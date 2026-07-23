@@ -17,7 +17,7 @@ export async function truncateAll(db: ReturnType<typeof drizzle>) {
   await db.execute(sql`
     TRUNCATE TABLE
       budgets, token_usage, user_credentials, model_bindings, models,
-      outbox_events, proposed_actions, project_git_connections,
+      outbox_events, agent_autonomy, proposed_actions, project_git_connections,
       project_repositories, session_events, sessions,
       project_members, projects, workspace_members, workspaces, users
     RESTART IDENTITY CASCADE

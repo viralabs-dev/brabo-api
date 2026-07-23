@@ -6,7 +6,7 @@ import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { assertTransition } from '../../../domain/actions/action-state-machine';
 
 @Injectable()
-export class RejectActionUseCase {
+export class DenyActionUseCase {
   constructor(
     private readonly unitOfWork: UnitOfWork,
     private readonly sessions: SessionRepository,
@@ -31,10 +31,10 @@ export class RejectActionUseCase {
       );
       if (!current) throw new NotFoundException('Ação não encontrada');
 
-      assertTransition(current.status, 'rejected');
+      assertTransition(current.status, 'denied');
 
       const updated = await this.proposedActions.updateDecision(actionId, {
-        status: 'rejected',
+        status: 'denied',
         decidedBy,
         decidedAt: new Date(),
         rejectionReason: reason ?? null,
@@ -43,8 +43,8 @@ export class RejectActionUseCase {
       await this.outbox.append({
         aggregateType: 'proposed_action',
         aggregateId: actionId,
-        eventType: 'proposed_action.rejected',
-        payload: { from: current.status, to: 'rejected' },
+        eventType: 'proposed_action.denied',
+        payload: { from: current.status, to: 'denied' },
       });
 
       return updated;

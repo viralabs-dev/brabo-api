@@ -3,6 +3,7 @@ import { and, asc, eq, gt } from 'drizzle-orm';
 import {
   ProposedActionRepository,
   type DecideProposedAction,
+  type ExecutionResultUpdate,
   type ListProposedActionsOptions,
   type NewProposedAction,
   type Page,
@@ -75,6 +76,23 @@ export class DrizzleProposedActionRepository implements ProposedActionRepository
     return toEntity(row);
   }
 
+  async updateExecutionResult(
+    actionId: string,
+    input: ExecutionResultUpdate,
+  ): Promise<ProposedAction> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .update(proposedActions)
+      .set({
+        status: input.status,
+        executionResult: input.executionResult,
+        updatedAt: new Date(),
+      })
+      .where(eq(proposedActions.id, actionId))
+      .returning();
+    return toEntity(row);
+  }
+
   async listPaginated(
     sessionId: string,
     opts: ListProposedActionsOptions,
@@ -117,6 +135,7 @@ function toEntity(row: typeof proposedActions.$inferSelect): ProposedAction {
     decidedBy: row.decidedBy,
     decidedAt: row.decidedAt,
     rejectionReason: row.rejectionReason,
+    executionResult: row.executionResult,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

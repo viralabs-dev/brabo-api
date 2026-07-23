@@ -1,6 +1,6 @@
 import { IsOptional, IsString } from 'class-validator';
 
-export class RejectActionDto {
+export class DenyActionDto {
   @IsOptional()
   @IsString()
   reason?: string;
