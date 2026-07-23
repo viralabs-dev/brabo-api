@@ -6,6 +6,7 @@ import { HealthModule } from './interfaces/http/health/health.module';
 import { AuthHttpModule } from './interfaces/http/auth/auth-http.module';
 import { IamHttpModule } from './interfaces/http/iam/iam-http.module';
 import { SessionsHttpModule } from './interfaces/http/sessions/sessions-http.module';
+import { LlmHttpModule } from './interfaces/http/llm/llm-http.module';
 
 @Module({
   // Ordem importa: AuthHttpModule antes de IamHttpModule, para o
@@ -17,6 +18,7 @@ import { SessionsHttpModule } from './interfaces/http/sessions/sessions-http.mod
     AuthHttpModule,
     IamHttpModule,
     SessionsHttpModule,
+    LlmHttpModule,
   ],
   controllers: [AppController],
   providers: [AppService],

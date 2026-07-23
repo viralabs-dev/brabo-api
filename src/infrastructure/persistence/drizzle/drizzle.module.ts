@@ -6,6 +6,11 @@ import { ProjectRepository } from '../../../application/ports/project-repository
 import { SessionRepository } from '../../../application/ports/session-repository.port';
 import { SessionEventRepository } from '../../../application/ports/session-event-repository.port';
 import { OutboxRepository } from '../../../application/ports/outbox-repository.port';
+import { ModelRepository } from '../../../application/ports/model-repository.port';
+import { ModelBindingRepository } from '../../../application/ports/model-binding-repository.port';
+import { UserCredentialRepository } from '../../../application/ports/user-credential-repository.port';
+import { TokenUsageRepository } from '../../../application/ports/token-usage-repository.port';
+import { BudgetRepository } from '../../../application/ports/budget-repository.port';
 import { createDrizzleClient, DRIZZLE } from './drizzle-client';
 import { DrizzleUnitOfWork } from './drizzle-unit-of-work';
 import { DrizzleUserRepository } from './user.repository';
@@ -14,6 +19,11 @@ import { DrizzleProjectRepository } from './project.repository';
 import { DrizzleSessionRepository } from './session.repository';
 import { DrizzleSessionEventRepository } from './session-event.repository';
 import { DrizzleOutboxRepository } from './outbox.repository';
+import { DrizzleModelRepository } from './model.repository';
+import { DrizzleModelBindingRepository } from './model-binding.repository';
+import { DrizzleUserCredentialRepository } from './user-credential.repository';
+import { DrizzleTokenUsageRepository } from './token-usage.repository';
+import { DrizzleBudgetRepository } from './budget.repository';
 
 const { db, pool } = createDrizzleClient();
 
@@ -32,6 +42,17 @@ const { db, pool } = createDrizzleClient();
       useClass: DrizzleSessionEventRepository,
     },
     { provide: OutboxRepository, useClass: DrizzleOutboxRepository },
+    { provide: ModelRepository, useClass: DrizzleModelRepository },
+    {
+      provide: ModelBindingRepository,
+      useClass: DrizzleModelBindingRepository,
+    },
+    {
+      provide: UserCredentialRepository,
+      useClass: DrizzleUserCredentialRepository,
+    },
+    { provide: TokenUsageRepository, useClass: DrizzleTokenUsageRepository },
+    { provide: BudgetRepository, useClass: DrizzleBudgetRepository },
   ],
   exports: [
     DRIZZLE,
@@ -42,6 +63,11 @@ const { db, pool } = createDrizzleClient();
     SessionRepository,
     SessionEventRepository,
     OutboxRepository,
+    ModelRepository,
+    ModelBindingRepository,
+    UserCredentialRepository,
+    TokenUsageRepository,
+    BudgetRepository,
   ],
 })
 export class DrizzleModule implements OnModuleDestroy {
