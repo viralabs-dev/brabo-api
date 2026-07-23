@@ -6,13 +6,15 @@ import {
 } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import type { HealthStatus } from '@brabo/shared';
-import { DRIZZLE } from '../db/db.module';
-import type { DrizzleDb } from '../db/db.module';
+import { DRIZZLE } from '../../../infrastructure/persistence/drizzle/drizzle-client';
+import type { DrizzleDb } from '../../../infrastructure/persistence/drizzle/drizzle-client';
+import { Public } from '../auth/public.decorator';
 
 @Controller('health')
 export class HealthController {
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
 
+  @Public()
   @Get()
   async check(): Promise<HealthStatus> {
     try {
