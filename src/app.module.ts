@@ -7,6 +7,7 @@ import { AuthHttpModule } from './interfaces/http/auth/auth-http.module';
 import { IamHttpModule } from './interfaces/http/iam/iam-http.module';
 import { SessionsHttpModule } from './interfaces/http/sessions/sessions-http.module';
 import { LlmHttpModule } from './interfaces/http/llm/llm-http.module';
+import { ActionsHttpModule } from './interfaces/http/actions/actions-http.module';
 
 @Module({
   // Ordem importa: AuthHttpModule antes de IamHttpModule, para o
@@ -19,6 +20,7 @@ import { LlmHttpModule } from './interfaces/http/llm/llm-http.module';
     IamHttpModule,
     SessionsHttpModule,
     LlmHttpModule,
+    ActionsHttpModule,
   ],
   controllers: [AppController],
   providers: [AppService],

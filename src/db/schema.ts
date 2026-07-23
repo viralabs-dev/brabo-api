@@ -5,14 +5,17 @@ import {
   text,
   integer,
   bigint,
+  bigserial,
   boolean,
   jsonb,
   timestamp,
   primaryKey,
   unique,
+  index,
   check,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+import type { PermissionsConfig } from '../domain/actions/permission-resolver';
 
 // --- Enums ---
 
@@ -53,6 +56,23 @@ export const modelBindingScopeEnum = pgEnum('model_binding_scope', [
 ]);
 
 export const budgetPolicyEnum = pgEnum('budget_policy', ['block', 'allow']);
+
+export const actionStatusEnum = pgEnum('action_status', [
+  'proposed',
+  'approved',
+  'rejected',
+  'auto_approved',
+]);
+
+// Só a coluna resolved_policy usa enum de Postgres — é escalar. O mesmo
+// vocabulário dentro de projects.permissions (jsonb) é um union type TS
+// (domain/actions/permission-resolver.ts), não um enum de banco: Postgres
+// não valida elementos de um jsonb.
+export const permissionPolicyEnum = pgEnum('permission_policy', [
+  'auto_approve',
+  'require_approval',
+  'deny',
+]);
 
 // --- Identidade ---
 
@@ -115,6 +135,10 @@ export const projects = pgTable(
     createdBy: uuid('created_by')
       .notNull()
       .references(() => users.id),
+    permissions: jsonb('permissions')
+      .$type<PermissionsConfig>()
+      .notNull()
+      .default({ rules: [] }),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -343,5 +367,42 @@ export const budgets = pgTable(
       'budgets_scope_check',
       sql`(${table.projectId} is not null) <> (${table.sessionId} is not null)`,
     ),
+  ],
+);
+
+// --- Pipeline de ações propostas ---
+
+export const proposedActions = pgTable(
+  'proposed_actions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    // Cursor de paginação monotônico global — bigserial, NÃO gapless por
+    // sessão (contraste deliberado com session_events.seq): não há
+    // requisito de negócio de "sem gaps" pra ações propostas.
+    seq: bigserial('seq', { mode: 'number' }).notNull(),
+    actionType: text('action_type').notNull(),
+    payload: jsonb('payload').notNull().default({}),
+    status: actionStatusEnum('status').notNull().default('proposed'),
+    resolvedPolicy: permissionPolicyEnum('resolved_policy').notNull(),
+    actorKind: actorKindEnum('actor_kind').notNull(), // quem propôs
+    actorId: text('actor_id').notNull(),
+    decidedBy: uuid('decided_by').references(() => users.id),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+    rejectionReason: text('rejection_reason'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('proposed_actions_session_seq_idx').on(table.sessionId, table.seq),
   ],
 );

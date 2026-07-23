@@ -12,6 +12,8 @@ import { UpdateProjectUseCase } from './update-project.use-case';
 import { DeleteProjectUseCase } from './delete-project.use-case';
 import { AddProjectMemberUseCase } from './add-project-member.use-case';
 import { ResolveEffectiveRoleUseCase } from './resolve-effective-role.use-case';
+import { GetProjectPermissionsUseCase } from './get-project-permissions.use-case';
+import { SetProjectPermissionsUseCase } from './set-project-permissions.use-case';
 
 const USE_CASES = [
   SyncUserUseCase,
@@ -27,6 +29,8 @@ const USE_CASES = [
   DeleteProjectUseCase,
   AddProjectMemberUseCase,
   ResolveEffectiveRoleUseCase,
+  GetProjectPermissionsUseCase,
+  SetProjectPermissionsUseCase,
 ];
 
 @Module({
