@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CreateSessionUseCase } from './create-session.use-case';
 import { GetSessionUseCase } from './get-session.use-case';
+import { ListSessionsForProjectUseCase } from './list-sessions-for-project.use-case';
 import { TransitionSessionUseCase } from './transition-session.use-case';
 import { AppendSessionEventUseCase } from './append-session-event.use-case';
 import { ListSessionEventsUseCase } from './list-session-events.use-case';
@@ -10,6 +11,7 @@ import { EngineHttpClientsModule } from '../../../infrastructure/http-clients/en
 const USE_CASES = [
   CreateSessionUseCase,
   GetSessionUseCase,
+  ListSessionsForProjectUseCase,
   TransitionSessionUseCase,
   AppendSessionEventUseCase,
   ListSessionEventsUseCase,

@@ -5,9 +5,12 @@ import {
   type ProjectInput,
 } from '../../../application/ports/project-repository.port';
 import type { Project } from '../../../domain/iam/project.entity';
-import type { ProjectMember } from '../../../domain/iam/project-member.entity';
+import type {
+  ProjectMember,
+  ProjectMemberWithUser,
+} from '../../../domain/iam/project-member.entity';
 import type { Role } from '../../../domain/iam/role';
-import { projectMembers, projects } from '../../../db/schema';
+import { projectMembers, projects, users } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
@@ -27,6 +30,14 @@ export class DrizzleProjectRepository implements ProjectRepository {
     const db = currentDb(this.rootDb);
     const [row] = await db.select().from(projects).where(eq(projects.id, id));
     return row ?? null;
+  }
+
+  async listForWorkspace(workspaceId: string): Promise<Project[]> {
+    const db = currentDb(this.rootDb);
+    return db
+      .select()
+      .from(projects)
+      .where(eq(projects.workspaceId, workspaceId));
   }
 
   async update(
@@ -83,5 +94,31 @@ export class DrizzleProjectRepository implements ProjectRepository {
         ),
       );
     return row?.role ?? null;
+  }
+
+  async removeMember(projectId: string, userId: string): Promise<void> {
+    const db = currentDb(this.rootDb);
+    await db
+      .delete(projectMembers)
+      .where(
+        and(
+          eq(projectMembers.projectId, projectId),
+          eq(projectMembers.userId, userId),
+        ),
+      );
+  }
+
+  async listMembers(projectId: string): Promise<ProjectMemberWithUser[]> {
+    const db = currentDb(this.rootDb);
+    return db
+      .select({
+        userId: projectMembers.userId,
+        role: projectMembers.role,
+        name: users.name,
+        email: users.email,
+      })
+      .from(projectMembers)
+      .innerJoin(users, eq(users.id, projectMembers.userId))
+      .where(eq(projectMembers.projectId, projectId));
   }
 }

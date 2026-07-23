@@ -12,6 +12,8 @@ export abstract class SessionRepository {
     sessionId: string,
   ): Promise<Session | null>;
 
+  abstract listForProject(projectId: string): Promise<Session[]>;
+
   /** SELECT ... FOR UPDATE — só faz sentido dentro de UnitOfWork.runInTransaction. */
   abstract findInProjectForUpdate(
     projectId: string,

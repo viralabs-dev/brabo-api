@@ -13,6 +13,8 @@ import { GetProjectUseCase } from '../../../application/use-cases/iam/get-projec
 import { UpdateProjectUseCase } from '../../../application/use-cases/iam/update-project.use-case';
 import { DeleteProjectUseCase } from '../../../application/use-cases/iam/delete-project.use-case';
 import { AddProjectMemberUseCase } from '../../../application/use-cases/iam/add-project-member.use-case';
+import { RemoveProjectMemberUseCase } from '../../../application/use-cases/iam/remove-project-member.use-case';
+import { ListProjectMembersUseCase } from '../../../application/use-cases/iam/list-project-members.use-case';
 import { GetProjectPermissionsUseCase } from '../../../application/use-cases/iam/get-project-permissions.use-case';
 import { SetProjectPermissionsUseCase } from '../../../application/use-cases/iam/set-project-permissions.use-case';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -26,6 +28,8 @@ export class ProjectsController {
     private readonly updateProject: UpdateProjectUseCase,
     private readonly deleteProject: DeleteProjectUseCase,
     private readonly addProjectMember: AddProjectMemberUseCase,
+    private readonly removeProjectMember: RemoveProjectMemberUseCase,
+    private readonly listProjectMembers: ListProjectMembersUseCase,
     private readonly getProjectPermissions: GetProjectPermissionsUseCase,
     private readonly setProjectPermissions: SetProjectPermissionsUseCase,
   ) {}
@@ -52,6 +56,21 @@ export class ProjectsController {
   @RequireRole('maintainer')
   addMember(@Param('projectId') projectId: string, @Body() dto: AddMemberDto) {
     return this.addProjectMember.execute(projectId, dto.userId, dto.role);
+  }
+
+  @Get(':projectId/members')
+  @RequireRole('viewer')
+  listMembers(@Param('projectId') projectId: string) {
+    return this.listProjectMembers.execute(projectId);
+  }
+
+  @Delete(':projectId/members/:userId')
+  @RequireRole('maintainer')
+  removeMember(
+    @Param('projectId') projectId: string,
+    @Param('userId') userId: string,
+  ) {
+    return this.removeProjectMember.execute(projectId, userId);
   }
 
   @Get(':projectId/permissions')

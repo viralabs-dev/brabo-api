@@ -73,6 +73,16 @@ export class ModelBindingsController {
     return this.setBinding.execute('session', sessionId, dto.modelId, user.id);
   }
 
+  /** Binding RESOLVIDO (cascata workspace→projeto→agente, sem sessão). */
+  @Get('projects/:projectId/agent-bindings/:agentSlug')
+  @RequireRole('viewer')
+  getAgentBinding(
+    @Param('projectId') projectId: string,
+    @Param('agentSlug') agentSlug: string,
+  ) {
+    return this.resolveBinding.execute({ projectId, agentId: agentSlug });
+  }
+
   @Put('projects/:projectId/agent-bindings/:agentSlug')
   @RequireRole('developer')
   setAgentBinding(

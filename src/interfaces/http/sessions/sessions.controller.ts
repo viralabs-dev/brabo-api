@@ -4,6 +4,7 @@ import type { User } from '../../../domain/iam/user.entity';
 import { RequireRole } from '../iam/require-role.decorator';
 import { CreateSessionUseCase } from '../../../application/use-cases/sessions/create-session.use-case';
 import { GetSessionUseCase } from '../../../application/use-cases/sessions/get-session.use-case';
+import { ListSessionsForProjectUseCase } from '../../../application/use-cases/sessions/list-sessions-for-project.use-case';
 import { TransitionSessionUseCase } from '../../../application/use-cases/sessions/transition-session.use-case';
 import { AppendSessionEventUseCase } from '../../../application/use-cases/sessions/append-session-event.use-case';
 import { ListSessionEventsUseCase } from '../../../application/use-cases/sessions/list-session-events.use-case';
@@ -15,6 +16,7 @@ export class SessionsController {
   constructor(
     private readonly createSession: CreateSessionUseCase,
     private readonly getSession: GetSessionUseCase,
+    private readonly listSessionsForProject: ListSessionsForProjectUseCase,
     private readonly transitionSession: TransitionSessionUseCase,
     private readonly appendSessionEvent: AppendSessionEventUseCase,
     private readonly listSessionEvents: ListSessionEventsUseCase,
@@ -24,6 +26,12 @@ export class SessionsController {
   @RequireRole('developer')
   create(@Param('projectId') projectId: string, @CurrentUser() user: User) {
     return this.createSession.execute(projectId, user.id);
+  }
+
+  @Get()
+  @RequireRole('viewer')
+  list(@Param('projectId') projectId: string) {
+    return this.listSessionsForProject.execute(projectId);
   }
 
   @Get(':sessionId')

@@ -6,3 +6,10 @@ export interface ProjectMember {
   role: Role;
   createdAt: Date;
 }
+
+export interface ProjectMemberWithUser {
+  userId: string;
+  role: Role;
+  name: string | null;
+  email: string;
+}
