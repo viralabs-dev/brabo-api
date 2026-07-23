@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ApiToEngineClient } from '../../application/ports/api-to-engine-client.port';
+import type { TerminalExecutionResult } from '../../domain/actions/terminal-execution-result';
 
 interface KeycloakTokenResponse {
   access_token: string;
@@ -35,6 +36,33 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
         `Falha ao criar sessão no engine: ${res.status} ${await res.text()}`,
       );
     }
+  }
+
+  async executeTerminalAction(
+    projectId: string,
+    sessionId: string,
+    actionId: string,
+    command: string,
+  ): Promise<TerminalExecutionResult> {
+    const token = await this.getToken();
+    const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
+
+    const res = await fetch(`${engineUrl}/internal/actions/execute`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ projectId, sessionId, actionId, command }),
+    });
+
+    if (!res.ok) {
+      throw new Error(
+        `Falha ao executar ação de terminal no engine: ${res.status} ${await res.text()}`,
+      );
+    }
+
+    return (await res.json()) as TerminalExecutionResult;
   }
 
   private async getToken(): Promise<string> {

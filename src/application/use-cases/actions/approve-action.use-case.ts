@@ -3,7 +3,9 @@ import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { SessionRepository } from '../../ports/session-repository.port';
 import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
 import { OutboxRepository } from '../../ports/outbox-repository.port';
+import { ExecuteTerminalActionUseCase } from './execute-terminal-action.use-case';
 import { assertTransition } from '../../../domain/actions/action-state-machine';
+import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
 
 @Injectable()
 export class ApproveActionUseCase {
@@ -12,9 +14,30 @@ export class ApproveActionUseCase {
     private readonly sessions: SessionRepository,
     private readonly proposedActions: ProposedActionRepository,
     private readonly outbox: OutboxRepository,
+    private readonly executeTerminalAction: ExecuteTerminalActionUseCase,
   ) {}
 
-  execute(
+  async execute(
+    projectId: string,
+    sessionId: string,
+    actionId: string,
+    decidedBy: string,
+  ): Promise<ProposedAction> {
+    const approved = await this.approve(
+      projectId,
+      sessionId,
+      actionId,
+      decidedBy,
+    );
+
+    if (approved.actionType === 'terminal') {
+      return this.executeTerminalAction.execute(projectId, sessionId, approved);
+    }
+
+    return approved;
+  }
+
+  private approve(
     projectId: string,
     sessionId: string,
     actionId: string,

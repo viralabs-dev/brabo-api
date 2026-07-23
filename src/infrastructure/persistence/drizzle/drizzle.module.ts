@@ -12,6 +12,7 @@ import { UserCredentialRepository } from '../../../application/ports/user-creden
 import { TokenUsageRepository } from '../../../application/ports/token-usage-repository.port';
 import { BudgetRepository } from '../../../application/ports/budget-repository.port';
 import { ProposedActionRepository } from '../../../application/ports/proposed-action-repository.port';
+import { AgentAutonomyRepository } from '../../../application/ports/agent-autonomy-repository.port';
 import { GitConnectionRepository } from '../../../application/ports/git-connection-repository.port';
 import { ProvisionedRepositoryRepository } from '../../../application/ports/provisioned-repository-repository.port';
 import { createDrizzleClient, DRIZZLE } from './drizzle-client';
@@ -28,6 +29,7 @@ import { DrizzleUserCredentialRepository } from './user-credential.repository';
 import { DrizzleTokenUsageRepository } from './token-usage.repository';
 import { DrizzleBudgetRepository } from './budget.repository';
 import { DrizzleProposedActionRepository } from './proposed-action.repository';
+import { DrizzleAgentAutonomyRepository } from './agent-autonomy.repository';
 import { DrizzleGitConnectionRepository } from './git-connection.repository';
 import { DrizzleProvisionedRepositoryRepository } from './provisioned-repository.repository';
 
@@ -64,6 +66,10 @@ const { db, pool } = createDrizzleClient();
       useClass: DrizzleProposedActionRepository,
     },
     {
+      provide: AgentAutonomyRepository,
+      useClass: DrizzleAgentAutonomyRepository,
+    },
+    {
       provide: GitConnectionRepository,
       useClass: DrizzleGitConnectionRepository,
     },
@@ -87,6 +93,7 @@ const { db, pool } = createDrizzleClient();
     TokenUsageRepository,
     BudgetRepository,
     ProposedActionRepository,
+    AgentAutonomyRepository,
     GitConnectionRepository,
     ProvisionedRepositoryRepository,
   ],

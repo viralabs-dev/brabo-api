@@ -43,6 +43,13 @@
       "when": 1784819079808,
       "tag": "0005_sad_nightmare",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784839930196,
+      "tag": "0006_whole_princess_powerful",
+      "breakpoints": true
     }
   ]
 }

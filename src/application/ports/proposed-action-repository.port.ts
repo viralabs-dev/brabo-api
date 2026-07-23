@@ -1,7 +1,8 @@
 import type { Actor } from '../../domain/sessions/session-event.entity';
 import type { ActionStatus } from '../../domain/actions/action-state-machine';
-import type { PermissionPolicy } from '../../domain/actions/permission-resolver';
+import type { PermissionPolicy } from '../../domain/actions/permissions-file';
 import type { ProposedAction } from '../../domain/actions/proposed-action.entity';
+import type { TerminalExecutionResult } from '../../domain/actions/terminal-execution-result';
 
 export interface NewProposedAction {
   projectId: string;
@@ -19,6 +20,11 @@ export interface DecideProposedAction {
   decidedBy: string;
   decidedAt: Date;
   rejectionReason?: string | null;
+}
+
+export interface ExecutionResultUpdate {
+  status: Extract<ActionStatus, 'executed' | 'failed'>;
+  executionResult: TerminalExecutionResult;
 }
 
 export interface ListProposedActionsOptions {
@@ -40,6 +46,10 @@ export abstract class ProposedActionRepository {
   abstract updateDecision(
     actionId: string,
     input: DecideProposedAction,
+  ): Promise<ProposedAction>;
+  abstract updateExecutionResult(
+    actionId: string,
+    input: ExecutionResultUpdate,
   ): Promise<ProposedAction>;
   abstract listPaginated(
     sessionId: string,

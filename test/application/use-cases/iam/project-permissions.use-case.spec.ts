@@ -1,16 +1,28 @@
-import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { NotFoundException } from '@nestjs/common';
 import { createTestDb, truncateAll } from '../../../support/test-db';
 import { projects, users, workspaces } from '../../../../src/db/schema';
 import { DrizzleProjectRepository } from '../../../../src/infrastructure/persistence/drizzle/project.repository';
+import { FsPermissionsFileStore } from '../../../../src/infrastructure/filesystem/fs-permissions-file-store';
 import { GetProjectPermissionsUseCase } from '../../../../src/application/use-cases/iam/get-project-permissions.use-case';
 import { SetProjectPermissionsUseCase } from '../../../../src/application/use-cases/iam/set-project-permissions.use-case';
+import { EMPTY_PERMISSIONS_FILE } from '../../../../src/domain/actions/permissions-file';
 
 const { db, pool } = createTestDb();
 const projectRepo = new DrizzleProjectRepository(db);
+const permissionsFileStore = new FsPermissionsFileStore();
 
-const getProjectPermissions = new GetProjectPermissionsUseCase(projectRepo);
-const setProjectPermissions = new SetProjectPermissionsUseCase(projectRepo);
+const getProjectPermissions = new GetProjectPermissionsUseCase(
+  projectRepo,
+  permissionsFileStore,
+);
+const setProjectPermissions = new SetProjectPermissionsUseCase(
+  projectRepo,
+  permissionsFileStore,
+);
 
 async function setupProject() {
   const [user] = await db
@@ -33,8 +45,17 @@ async function setupProject() {
   return { user, workspace, project };
 }
 
+let workspacesRoot: string;
+
 beforeEach(async () => {
   await truncateAll(db);
+  workspacesRoot = await mkdtemp(join(tmpdir(), 'brabo-workspaces-test-'));
+  process.env.PROJECT_WORKSPACES_ROOT = workspacesRoot;
+});
+
+afterEach(async () => {
+  if (workspacesRoot)
+    await rm(workspacesRoot, { recursive: true, force: true });
 });
 
 afterAll(async () => {
@@ -42,22 +63,26 @@ afterAll(async () => {
 });
 
 describe('project permissions use-cases', () => {
-  it('projeto recém-criado, sem permissions configurado, retorna {rules: []}', async () => {
+  it('projeto recém-criado, sem permissions.json gravado, retorna o default vazio', async () => {
     const { project } = await setupProject();
     const permissions = await getProjectPermissions.execute(project.id);
-    expect(permissions).toEqual({ rules: [] });
+    expect(permissions).toEqual(EMPTY_PERMISSIONS_FILE);
   });
 
-  it('set seguido de get reflete a mudança', async () => {
+  it('set seguido de get reflete a mudança (lida do arquivo físico)', async () => {
     const { project } = await setupProject();
 
     await setProjectPermissions.execute(project.id, {
-      rules: [{ actionType: 'shell.*', policy: 'auto_approve' }],
+      allow: ['Terminal(echo oi)'],
+      deny: [],
+      ask: [],
     });
 
     const permissions = await getProjectPermissions.execute(project.id);
     expect(permissions).toEqual({
-      rules: [{ actionType: 'shell.*', policy: 'auto_approve' }],
+      allow: ['Terminal(echo oi)'],
+      deny: [],
+      ask: [],
     });
   });
 
@@ -67,7 +92,7 @@ describe('project permissions use-cases', () => {
       NotFoundException,
     );
     await expect(
-      setProjectPermissions.execute(missingId, { rules: [] }),
+      setProjectPermissions.execute(missingId, EMPTY_PERMISSIONS_FILE),
     ).rejects.toThrow(NotFoundException);
   });
 });

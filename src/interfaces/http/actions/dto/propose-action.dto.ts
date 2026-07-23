@@ -1,16 +1,14 @@
 import { Type } from 'class-transformer';
-import {
-  IsNotEmpty,
-  IsObject,
-  IsString,
-  ValidateNested,
-} from 'class-validator';
+import { IsIn, IsObject, ValidateNested } from 'class-validator';
 import { ActorDto } from '../../shared/dto/actor.dto';
+import {
+  ACTION_TYPES,
+  type ActionType,
+} from '../../../../domain/actions/decide';
 
 export class ProposeActionDto {
-  @IsString()
-  @IsNotEmpty()
-  actionType!: string;
+  @IsIn(ACTION_TYPES)
+  actionType!: ActionType;
 
   @ValidateNested()
   @Type(() => ActorDto)
