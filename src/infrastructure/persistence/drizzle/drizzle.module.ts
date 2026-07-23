@@ -11,6 +11,7 @@ import { ModelBindingRepository } from '../../../application/ports/model-binding
 import { UserCredentialRepository } from '../../../application/ports/user-credential-repository.port';
 import { TokenUsageRepository } from '../../../application/ports/token-usage-repository.port';
 import { BudgetRepository } from '../../../application/ports/budget-repository.port';
+import { ProposedActionRepository } from '../../../application/ports/proposed-action-repository.port';
 import { createDrizzleClient, DRIZZLE } from './drizzle-client';
 import { DrizzleUnitOfWork } from './drizzle-unit-of-work';
 import { DrizzleUserRepository } from './user.repository';
@@ -24,6 +25,7 @@ import { DrizzleModelBindingRepository } from './model-binding.repository';
 import { DrizzleUserCredentialRepository } from './user-credential.repository';
 import { DrizzleTokenUsageRepository } from './token-usage.repository';
 import { DrizzleBudgetRepository } from './budget.repository';
+import { DrizzleProposedActionRepository } from './proposed-action.repository';
 
 const { db, pool } = createDrizzleClient();
 
@@ -53,6 +55,10 @@ const { db, pool } = createDrizzleClient();
     },
     { provide: TokenUsageRepository, useClass: DrizzleTokenUsageRepository },
     { provide: BudgetRepository, useClass: DrizzleBudgetRepository },
+    {
+      provide: ProposedActionRepository,
+      useClass: DrizzleProposedActionRepository,
+    },
   ],
   exports: [
     DRIZZLE,
@@ -68,6 +74,7 @@ const { db, pool } = createDrizzleClient();
     UserCredentialRepository,
     TokenUsageRepository,
     BudgetRepository,
+    ProposedActionRepository,
   ],
 })
 export class DrizzleModule implements OnModuleDestroy {

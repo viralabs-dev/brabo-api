@@ -1,21 +1,11 @@
 import { Type } from 'class-transformer';
 import {
-  IsIn,
   IsNotEmpty,
   IsObject,
   IsString,
   ValidateNested,
 } from 'class-validator';
-import type { ActorKind } from '../../../../domain/sessions/session-event.entity';
-
-class ActorDto {
-  @IsIn(['user', 'agent', 'system'])
-  kind!: ActorKind;
-
-  @IsString()
-  @IsNotEmpty()
-  id!: string;
-}
+import { ActorDto } from '../../shared/dto/actor.dto';
 
 export class AppendSessionEventDto {
   @IsString()
