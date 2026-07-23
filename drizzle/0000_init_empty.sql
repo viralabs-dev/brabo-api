@@ -1,0 +1,5 @@
+-- Migração inicial intencionalmente vazia. Só valida que o pipeline
+-- drizzle-kit migrate/journal funciona de ponta a ponta contra o Postgres
+-- compartilhado com o engine (schema "public", separado do schema
+-- "engine" usado pelo Ecto/Oban — ver apps/engine). Tabelas de domínio
+-- (workspaces, projetos, IAM, event log de sessões...) entram na Fase 1.
