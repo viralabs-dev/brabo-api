@@ -213,17 +213,25 @@ export const sessionEvents = pgTable(
 
 // --- Transactional outbox (sem consumidor ainda) ---
 
-export const outboxEvents = pgTable('outbox_events', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  aggregateType: text('aggregate_type').notNull(),
-  aggregateId: uuid('aggregate_id').notNull(),
-  eventType: text('event_type').notNull(),
-  payload: jsonb('payload').notNull().default({}),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  processedAt: timestamp('processed_at', { withTimezone: true }),
-});
+export const outboxEvents = pgTable(
+  'outbox_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    aggregateType: text('aggregate_type').notNull(),
+    aggregateId: uuid('aggregate_id').notNull(),
+    eventType: text('event_type').notNull(),
+    payload: jsonb('payload').notNull().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    processedAt: timestamp('processed_at', { withTimezone: true }),
+  },
+  (table) => [
+    index('outbox_events_unprocessed_idx')
+      .on(table.createdAt)
+      .where(sql`${table.processedAt} is null`),
+  ],
+);
 
 // --- LLM: registro de modelos, binding em cascata, credenciais, metering, budget ---
 

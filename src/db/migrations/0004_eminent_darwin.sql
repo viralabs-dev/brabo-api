@@ -1,0 +1,1 @@
+CREATE INDEX "outbox_events_unprocessed_idx" ON "outbox_events" USING btree ("created_at") WHERE "outbox_events"."processed_at" is null;
