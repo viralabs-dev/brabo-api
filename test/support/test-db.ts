@@ -16,6 +16,7 @@ export function createTestDb() {
 export async function truncateAll(db: ReturnType<typeof drizzle>) {
   await db.execute(sql`
     TRUNCATE TABLE
+      budgets, token_usage, user_credentials, model_bindings, models,
       outbox_events, session_events, sessions,
       project_members, projects, workspace_members, workspaces, users
     RESTART IDENTITY CASCADE
