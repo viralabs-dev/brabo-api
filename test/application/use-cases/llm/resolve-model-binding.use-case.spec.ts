@@ -103,6 +103,30 @@ describe('ResolveModelBindingUseCase', () => {
     expect(resolved).toEqual({ modelId: modelA.id, origin: 'workspace' });
   });
 
+  it('resolve por agente sem sessão — agente sobrepõe workspace', async () => {
+    const { user, workspace, project, modelA, modelB } = await setup();
+
+    await bindingRepo.upsert({
+      scope: 'workspace',
+      scopeId: workspace.id,
+      modelId: modelA.id,
+      createdBy: user.id,
+    });
+    await bindingRepo.upsert({
+      scope: 'agent',
+      scopeId: 'qa',
+      modelId: modelB.id,
+      createdBy: user.id,
+    });
+
+    const resolved = await resolveModelBinding.execute({
+      projectId: project.id,
+      agentId: 'qa',
+    });
+
+    expect(resolved).toEqual({ modelId: modelB.id, origin: 'agent' });
+  });
+
   it('falha: projeto inexistente retorna null (não lança)', async () => {
     const resolved = await resolveModelBinding.execute({
       projectId: '00000000-0000-0000-0000-000000000000',

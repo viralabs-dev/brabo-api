@@ -34,6 +34,11 @@ export class DrizzleSessionRepository implements SessionRepository {
     return row ?? null;
   }
 
+  async listForProject(projectId: string): Promise<Session[]> {
+    const db = currentDb(this.rootDb);
+    return db.select().from(sessions).where(eq(sessions.projectId, projectId));
+  }
+
   async findInProjectForUpdate(
     projectId: string,
     sessionId: string,

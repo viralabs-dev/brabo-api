@@ -17,6 +17,7 @@ import { UpdateWorkspaceUseCase } from '../../../application/use-cases/iam/updat
 import { DeleteWorkspaceUseCase } from '../../../application/use-cases/iam/delete-workspace.use-case';
 import { AddWorkspaceMemberUseCase } from '../../../application/use-cases/iam/add-workspace-member.use-case';
 import { CreateProjectUseCase } from '../../../application/use-cases/iam/create-project.use-case';
+import { ListProjectsForWorkspaceUseCase } from '../../../application/use-cases/iam/list-projects-for-workspace.use-case';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { AddMemberDto } from './dto/add-member.dto';
@@ -32,6 +33,7 @@ export class WorkspacesController {
     private readonly deleteWorkspace: DeleteWorkspaceUseCase,
     private readonly addWorkspaceMember: AddWorkspaceMemberUseCase,
     private readonly createProject: CreateProjectUseCase,
+    private readonly listProjectsForWorkspace: ListProjectsForWorkspaceUseCase,
   ) {}
 
   @Post()
@@ -82,5 +84,11 @@ export class WorkspacesController {
     @Body() dto: CreateProjectDto,
   ) {
     return this.createProject.execute(workspaceId, user.id, dto);
+  }
+
+  @Get(':workspaceId/projects')
+  @RequireRole('viewer')
+  listProjects(@Param('workspaceId') workspaceId: string) {
+    return this.listProjectsForWorkspace.execute(workspaceId);
   }
 }
