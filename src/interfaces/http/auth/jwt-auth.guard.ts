@@ -44,6 +44,7 @@ export class JwtAuthGuard implements CanActivate {
       email: verified.email,
       name: verified.name,
     });
+    request.clientId = verified.clientId;
 
     return true;
   }

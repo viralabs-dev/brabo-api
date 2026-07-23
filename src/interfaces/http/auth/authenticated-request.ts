@@ -5,4 +5,5 @@ import type { Role } from '../../../domain/iam/role';
 export interface AuthenticatedRequest extends Request {
   user: User;
   effectiveRole?: Role;
+  clientId: string | null;
 }
