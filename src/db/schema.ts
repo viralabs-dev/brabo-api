@@ -74,6 +74,12 @@ export const permissionPolicyEnum = pgEnum('permission_policy', [
   'deny',
 ]);
 
+export const gitProviderEnum = pgEnum('git_provider', [
+  'local',
+  'github',
+  'gitlab',
+]);
+
 // --- Identidade ---
 
 export const users = pgTable('users', {
@@ -413,4 +419,78 @@ export const proposedActions = pgTable(
   (table) => [
     index('proposed_actions_session_seq_idx').on(table.sessionId, table.seq),
   ],
+);
+
+// --- Git providers (Fase 2): conexão OAuth + repositório provisionado ---
+
+// Só existe pra 'github'/'gitlab' — 'local' nunca tem linha aqui (não
+// reforçado por constraint, pra não complicar o enum compartilhado com
+// project_repositories). O envelope (mesmas 6 colunas de user_credentials,
+// via EncryptionService) cifra um JSON {accessToken, refreshToken}, não
+// uma string simples — GitLab emite refresh_token, GitHub OAuth App
+// clássico normalmente não (fica null dentro do JSON).
+export const projectGitConnections = pgTable(
+  'project_git_connections',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    provider: gitProviderEnum('provider').notNull(),
+    wrappedDek: text('wrapped_dek').notNull(),
+    dekIv: text('dek_iv').notNull(),
+    dekAuthTag: text('dek_auth_tag').notNull(),
+    encryptedApiKey: text('encrypted_api_key').notNull(),
+    apiKeyIv: text('api_key_iv').notNull(),
+    apiKeyAuthTag: text('api_key_auth_tag').notNull(),
+    // null = token não expira (GitHub OAuth App clássico).
+    accessTokenExpiresAt: timestamp('access_token_expires_at', {
+      withTimezone: true,
+    }),
+    accountLogin: text('account_login'),
+    accountMetadata: jsonb('account_metadata')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    connectedBy: uuid('connected_by')
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [unique().on(table.projectId, table.provider)],
+);
+
+// Tabela separada de project_git_connections: ciclo de vida diferente
+// (uma conexão OAuth pode ser desconectada/reconectada sem apagar o fato
+// histórico de que o projeto já teve um repo provisionado; 'local' nunca
+// tem linha na tabela de conexão mas precisa de uma linha aqui).
+export const projectRepositories = pgTable(
+  'project_repositories',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    provider: gitProviderEnum('provider').notNull(),
+    // "owner/repo" (github), "namespace/path" (gitlab), path absoluto (local)
+    externalId: text('external_id').notNull(),
+    url: text('url').notNull(),
+    defaultBranch: text('default_branch').notNull().default('main'),
+    visibility: text('visibility').notNull(), // 'public' | 'private'
+    provisionedBy: uuid('provisioned_by')
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [unique().on(table.projectId)],
 );

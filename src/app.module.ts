@@ -8,6 +8,7 @@ import { IamHttpModule } from './interfaces/http/iam/iam-http.module';
 import { SessionsHttpModule } from './interfaces/http/sessions/sessions-http.module';
 import { LlmHttpModule } from './interfaces/http/llm/llm-http.module';
 import { ActionsHttpModule } from './interfaces/http/actions/actions-http.module';
+import { GitHttpModule } from './interfaces/http/git/git-http.module';
 import { InternalHttpModule } from './interfaces/http/internal/internal-http.module';
 
 @Module({
@@ -22,6 +23,7 @@ import { InternalHttpModule } from './interfaces/http/internal/internal-http.mod
     SessionsHttpModule,
     LlmHttpModule,
     ActionsHttpModule,
+    GitHttpModule,
     InternalHttpModule,
   ],
   controllers: [AppController],
