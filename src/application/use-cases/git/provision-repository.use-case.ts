@@ -37,9 +37,7 @@ export class ProvisionRepositoryUseCase {
   ) {
     const existing = await this.repositories.findByProjectId(projectId);
     if (existing) {
-      throw new ConflictException(
-        'Projeto já tem um repositório provisionado',
-      );
+      throw new ConflictException('Projeto já tem um repositório provisionado');
     }
 
     let accessToken: string | undefined;

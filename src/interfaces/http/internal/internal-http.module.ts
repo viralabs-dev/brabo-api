@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { SessionsUseCasesModule } from '../../../application/use-cases/sessions/sessions-use-cases.module';
-import { SessionTerminationController } from './session-termination.controller';
+import { InternalSessionsController } from './internal-sessions.controller';
 
 @Module({
   imports: [SessionsUseCasesModule],
-  controllers: [SessionTerminationController],
+  controllers: [InternalSessionsController],
 })
 export class InternalHttpModule {}
