@@ -78,3 +78,78 @@ describe('LocalGitProvider — commitFiles preserva árvore entre commits', () =
     expect(stdout.trim().split('\n').sort()).toEqual(['a.txt', 'b.txt']);
   });
 });
+
+// Fase 4a: PR local (store no sidecar + merge via git). O contrato genérico
+// cobre openPullRequest (state 'open'); o merge de verdade é local-específico.
+describe('LocalGitProvider — pull request local (open + merge)', () => {
+  let root: string;
+  let provider: LocalGitProvider;
+
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), 'brabo-git-repos-test-'));
+    process.env.GIT_LOCAL_REPOS_ROOT = root;
+    provider = new LocalGitProvider();
+  });
+
+  afterEach(async () => {
+    await chmod(root, 0o700).catch(() => {});
+    await rm(root, { recursive: true, force: true });
+  });
+
+  async function repoWithFeature() {
+    const repo = await provider.createRepo({ name: 'pr-flow', visibility: 'private' });
+    await provider.commitFiles({
+      externalId: repo.externalId,
+      branch: 'main',
+      message: 'base',
+      files: [{ path: 'a.txt', content: 'a' }],
+    });
+    await provider.createBranch({
+      externalId: repo.externalId,
+      branchName: 'feature/x',
+      fromRef: 'main',
+    });
+    const commit = await provider.commitFiles({
+      externalId: repo.externalId,
+      branch: 'feature/x',
+      message: 'trabalho',
+      files: [{ path: 'b.txt', content: 'b' }],
+    });
+    return { repo, featureSha: commit.sha };
+  }
+
+  it('abre e mescla uma PR — target avança pro commit da branch', async () => {
+    const { repo, featureSha } = await repoWithFeature();
+
+    const pr = await provider.openPullRequest({
+      externalId: repo.externalId,
+      sourceBranch: 'feature/x',
+      targetBranch: 'main',
+      title: 'Feature X',
+    });
+    expect(pr.state).toBe('open');
+    expect(pr.url).toContain('/pull/');
+
+    const merged = await provider.mergePullRequest({
+      externalId: repo.externalId,
+      pullRequestId: pr.id,
+    });
+    expect(merged.state).toBe('merged');
+
+    // main agora aponta pro commit da feature (fast-forward).
+    const branches = await provider.listBranches({ externalId: repo.externalId });
+    expect(branches.find((b) => b.name === 'main')?.commitSha).toBe(featureSha);
+  });
+
+  it('openPullRequest rejeita branch inexistente', async () => {
+    const { repo } = await repoWithFeature();
+    await expect(
+      provider.openPullRequest({
+        externalId: repo.externalId,
+        sourceBranch: 'nao-existe',
+        targetBranch: 'main',
+        title: 'x',
+      }),
+    ).rejects.toThrow();
+  });
+});

@@ -3,6 +3,7 @@ import type {
   Story,
   Task,
   StoryStatus,
+  TaskStatus,
 } from '../../domain/backlog/backlog.entity';
 
 export interface NewEpic {
@@ -47,5 +48,21 @@ export abstract class StoryRepository {
 
 export abstract class TaskRepository {
   abstract create(input: NewTask): Promise<Task>;
+  abstract findById(id: string): Promise<Task | null>;
   abstract findByStoryIds(storyIds: string[]): Promise<Task[]>;
+  // Pega ATOMICAMENTE a próxima task `todo` cuja story é `ready` e cujos
+  // moduleIds contêm `module` (FOR UPDATE SKIP LOCKED) — 2 devs nunca pegam a
+  // mesma. Marca in_progress + assignedTo. Retorna null se não há task pegável.
+  abstract claimNext(
+    projectId: string,
+    module: string,
+    agentId: string,
+  ): Promise<Task | null>;
+  abstract updateStatus(id: string, status: TaskStatus): Promise<Task>;
+  // Quantas tasks `todo` de story `ready` estão disponíveis pro módulo — usado
+  // pra sugerir paralelização (≥2 = ramos independentes disponíveis).
+  abstract countClaimableByModule(
+    projectId: string,
+    module: string,
+  ): Promise<number>;
 }

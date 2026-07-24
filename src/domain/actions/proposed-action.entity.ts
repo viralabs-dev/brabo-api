@@ -4,6 +4,7 @@ import type { PermissionPolicy } from './permissions-file';
 import type { TerminalExecutionResult } from './terminal-execution-result';
 import type { GitBootstrapExecutionResult } from '../git/bootstrap-execution-result';
 import type { AdrPrExecutionResult } from '../git/adr-pr-execution-result';
+import type { GitActionExecutionResult } from '../git/git-action-execution-result';
 
 export interface ProposedAction {
   id: string;
@@ -22,6 +23,7 @@ export interface ProposedAction {
     | TerminalExecutionResult
     | GitBootstrapExecutionResult
     | AdrPrExecutionResult
+    | GitActionExecutionResult
     | null;
   createdAt: Date;
   updatedAt: Date;

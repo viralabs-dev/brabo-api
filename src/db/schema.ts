@@ -18,6 +18,7 @@ import { sql } from 'drizzle-orm';
 import type { TerminalExecutionResult } from '../domain/actions/terminal-execution-result';
 import type { GitBootstrapExecutionResult } from '../domain/git/bootstrap-execution-result';
 import type { AdrPrExecutionResult } from '../domain/git/adr-pr-execution-result';
+import type { GitActionExecutionResult } from '../domain/git/git-action-execution-result';
 
 // --- Enums ---
 
@@ -126,6 +127,15 @@ export const handoffStatusEnum = pgEnum('handoff_status', [
 export const storyStatusEnum = pgEnum('story_status', [
   'draft',
   'ready',
+  'in_progress',
+  'done',
+]);
+
+// Ciclo de vida de uma tarefa executável (Fase 4a — devs): todo →
+// in_progress → done. Um dev "pega" (claim atômico) uma task `todo` cuja
+// story está `ready`; `assigned_to` = agent_id do dev (ex.: "dev-<modulo>").
+export const taskStatusEnum = pgEnum('task_status', [
+  'todo',
   'in_progress',
   'done',
 ]);
@@ -478,6 +488,7 @@ export const proposedActions = pgTable(
       | TerminalExecutionResult
       | GitBootstrapExecutionResult
       | AdrPrExecutionResult
+      | GitActionExecutionResult
     >(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
@@ -653,6 +664,9 @@ export const tasks = pgTable(
       .references(() => stories.id, { onDelete: 'cascade' }),
     title: text('title').notNull(),
     description: text('description').notNull().default(''),
+    // Fase 4a — execução: status + agente que pegou a task (claim atômico).
+    status: taskStatusEnum('status').notNull().default('todo'),
+    assignedTo: text('assigned_to'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

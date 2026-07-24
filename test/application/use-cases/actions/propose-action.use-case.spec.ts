@@ -68,6 +68,11 @@ class FakeApiToEngineClient implements ApiToEngineClient {
   async startAgent(): Promise<void> {}
   async sendAgentMessage(): Promise<void> {}
   async confirmReadiness(): Promise<void> {}
+  async startExecution(): Promise<void> {}
+  async executeGitAction(): Promise<Record<string, unknown>> {
+    return {};
+  }
+  async acceptParallelization(): Promise<void> {}
 
   executeTerminalAction(
     _projectId: string,
@@ -99,6 +104,7 @@ const proposeAction = new ProposeActionUseCase(
   outboxRepo,
   resolveEffectiveRole,
   executeTerminalAction,
+  undefined as never, // executeGitAction — não exercitado aqui
 );
 
 let workspacesRoot: string;
