@@ -27,6 +27,15 @@ import { ModuleMapRepository } from '../../../application/ports/module-map-repos
 import { InfraArtifactRepository } from '../../../application/ports/infra-artifact-repository.port';
 import { PsychologistAnalysisRepository } from '../../../application/ports/psychologist-analysis-repository.port';
 import { PsychologistHypothesisRepository } from '../../../application/ports/psychologist-hypothesis-repository.port';
+import { AgentInstructionVersionRepository } from '../../../application/ports/agent-instruction-version-repository.port';
+import {
+  AnamneseOptOutRepository,
+  ProficiencyProfileRepository,
+} from '../../../application/ports/proficiency-profile-repository.port';
+import {
+  AnamneseQueueRepository,
+  AnamneseRunRepository,
+} from '../../../application/ports/anamnese-repository.port';
 import { createDrizzleClient, DRIZZLE } from './drizzle-client';
 import { DrizzleUnitOfWork } from './drizzle-unit-of-work';
 import { DrizzleUserRepository } from './user.repository';
@@ -56,6 +65,15 @@ import { DrizzleModuleMapRepository } from './module-map.repository';
 import { DrizzleInfraArtifactRepository } from './infra-artifact.repository';
 import { DrizzlePsychologistAnalysisRepository } from './psychologist-analysis.repository';
 import { DrizzlePsychologistHypothesisRepository } from './psychologist-hypothesis.repository';
+import { DrizzleAgentInstructionVersionRepository } from './agent-instruction-version.repository';
+import {
+  DrizzleAnamneseOptOutRepository,
+  DrizzleProficiencyProfileRepository,
+} from './proficiency-profile.repository';
+import {
+  DrizzleAnamneseQueueRepository,
+  DrizzleAnamneseRunRepository,
+} from './anamnese.repository';
 
 const { db, pool } = createDrizzleClient();
 
@@ -126,6 +144,17 @@ const { db, pool } = createDrizzleClient();
       provide: PsychologistHypothesisRepository,
       useClass: DrizzlePsychologistHypothesisRepository,
     },
+    {
+      provide: AgentInstructionVersionRepository,
+      useClass: DrizzleAgentInstructionVersionRepository,
+    },
+    {
+      provide: ProficiencyProfileRepository,
+      useClass: DrizzleProficiencyProfileRepository,
+    },
+    { provide: AnamneseOptOutRepository, useClass: DrizzleAnamneseOptOutRepository },
+    { provide: AnamneseQueueRepository, useClass: DrizzleAnamneseQueueRepository },
+    { provide: AnamneseRunRepository, useClass: DrizzleAnamneseRunRepository },
   ],
   exports: [
     DRIZZLE,
@@ -155,6 +184,11 @@ const { db, pool } = createDrizzleClient();
     InfraArtifactRepository,
     PsychologistAnalysisRepository,
     PsychologistHypothesisRepository,
+    AgentInstructionVersionRepository,
+    ProficiencyProfileRepository,
+    AnamneseOptOutRepository,
+    AnamneseQueueRepository,
+    AnamneseRunRepository,
   ],
 })
 export class DrizzleModule implements OnModuleDestroy {

@@ -89,4 +89,14 @@ export abstract class ApiToEngineClient {
     projectId: string,
     sessionId: string,
   ): Promise<void>;
+
+  // Descarta o cache de instruções do agente no engine (Fase 4b) —
+  // depois de um instruction_patch aprovado ou de um rollback, senão os
+  // agentes seguem servindo o conteúdo antigo em memória. Best-effort:
+  // o chamador NUNCA falha o patch por causa disto (o conteúdo já está
+  // no banco; sem invalidar, os agentes só pegam ao reiniciar).
+  abstract invalidateInstructions(
+    projectId: string,
+    agent: string,
+  ): Promise<void>;
 }

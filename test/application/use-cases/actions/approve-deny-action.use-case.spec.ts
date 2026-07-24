@@ -63,6 +63,7 @@ class FakeApiToEngineClient implements ApiToEngineClient {
   async acceptParallelization(): Promise<void> {}
   async offerInfraHandoff(): Promise<void> {}
   async reanalyzeSession(): Promise<void> {}
+  async invalidateInstructions(): Promise<void> {}
   executeTerminalAction(): Promise<TerminalExecutionResult> {
     return Promise.resolve({
       stdout: '',
@@ -110,6 +111,7 @@ const approveAction = new ApproveActionUseCase(
   {
     execute: (_p: string, _s: string, a: unknown) => Promise.resolve(a),
   } as unknown as never,
+  undefined as never, // executeInstructionPatch — não exercitado aqui
 );
 const denyAction = new DenyActionUseCase(
   unitOfWork,

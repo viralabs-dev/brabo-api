@@ -6,6 +6,7 @@ import type { GitBootstrapExecutionResult } from '../git/bootstrap-execution-res
 import type { AdrPrExecutionResult } from '../git/adr-pr-execution-result';
 import type { GitActionExecutionResult } from '../git/git-action-execution-result';
 import type { InfraPrExecutionResult } from '../git/infra-pr-execution-result';
+import type { InstructionPatchExecutionResult } from '../instructions/instruction-patch-execution-result';
 
 export interface ProposedAction {
   id: string;
@@ -26,6 +27,7 @@ export interface ProposedAction {
     | AdrPrExecutionResult
     | GitActionExecutionResult
     | InfraPrExecutionResult
+    | InstructionPatchExecutionResult
     | null;
   createdAt: Date;
   updatedAt: Date;

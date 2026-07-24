@@ -15,7 +15,8 @@ export type ActionType =
   | 'write_file'
   | 'open_adr_pr'
   | 'git_merge'
-  | 'open_infra_pr';
+  | 'open_infra_pr'
+  | 'instruction_patch';
 
 export const ACTION_TYPES: readonly ActionType[] = [
   'terminal',
@@ -30,6 +31,7 @@ export const ACTION_TYPES: readonly ActionType[] = [
   'open_adr_pr',
   'git_merge',
   'open_infra_pr',
+  'instruction_patch',
 ];
 
 const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
@@ -67,6 +69,11 @@ const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
   // agent_autonomy auto_approve pra essa ação especificamente (o InfraAgent
   // NUNCA aplica nada, só propõe — auto-aprovar a PROPOSTA da PR é seguro).
   open_infra_pr: 'maintainer',
+  // Patch no arquivo de instrução de um agente (Fase 4b — Anamnese):
+  // muda o COMPORTAMENTO de um agente daí em diante, então é calibrado
+  // como maintainer e tem teto de "nunca auto-aprovável" abaixo — o
+  // usuário PRECISA ver o diff antes (CLAUDE.md 4b.9).
+  instruction_patch: 'maintainer',
 };
 
 // Rede de segurança padrão, sempre ativa, independente do permissions.json
@@ -149,6 +156,21 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
       policy: 'require_approval',
       reason:
         'trava de merge: destino em branch protegida nunca é auto-aprovável',
+    };
+  }
+
+  // TETO do patch de instrução (Fase 4b): mudar a instrução de um agente
+  // nunca é auto-aprovável — nem por agent_autonomy nem por
+  // permissions.json. O valor da feature está no humano ver o diff e
+  // decidir; auto-aprovar seria o agente reescrevendo a si mesmo.
+  if (
+    action.actionType === 'instruction_patch' &&
+    current.policy === 'auto_approve'
+  ) {
+    return {
+      policy: 'require_approval',
+      reason:
+        'patch de instrução nunca é auto-aprovável: o usuário precisa revisar o diff',
     };
   }
 

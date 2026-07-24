@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ProposeActionUseCase } from './propose-action.use-case';
 import { ApproveActionUseCase } from './approve-action.use-case';
 import { DenyActionUseCase } from './deny-action.use-case';
@@ -6,6 +6,7 @@ import { ApproveAlwaysActionUseCase } from './approve-always-action.use-case';
 import { ExecuteTerminalActionUseCase } from './execute-terminal-action.use-case';
 import { ExecuteAdrPrUseCase } from './execute-adr-pr.use-case';
 import { ExecuteInfraPrUseCase } from './execute-infra-pr.use-case';
+import { ExecuteInstructionPatchUseCase } from './execute-instruction-patch.use-case';
 import { ExecuteGitActionUseCase } from './execute-git-action.use-case';
 import { ListProposedActionsUseCase } from './list-proposed-actions.use-case';
 import { GetAgentAutonomyUseCase } from './get-agent-autonomy.use-case';
@@ -16,6 +17,7 @@ import { EngineHttpClientsModule } from '../../../infrastructure/http-clients/en
 import { FilesystemModule } from '../../../infrastructure/filesystem/filesystem.module';
 import { GitInfrastructureModule } from '../../../infrastructure/git/git-infrastructure.module';
 import { LlmInfrastructureModule } from '../../../infrastructure/llm/llm-infrastructure.module';
+import { InstructionsUseCasesModule } from '../instructions/instructions-use-cases.module';
 
 const USE_CASES = [
   ProposeActionUseCase,
@@ -25,6 +27,7 @@ const USE_CASES = [
   ExecuteTerminalActionUseCase,
   ExecuteAdrPrUseCase,
   ExecuteInfraPrUseCase,
+  ExecuteInstructionPatchUseCase,
   ExecuteGitActionUseCase,
   ListProposedActionsUseCase,
   GetAgentAutonomyUseCase,
@@ -39,6 +42,7 @@ const USE_CASES = [
     FilesystemModule,
     GitInfrastructureModule,
     LlmInfrastructureModule,
+    forwardRef(() => InstructionsUseCasesModule),
   ],
   providers: USE_CASES,
   exports: USE_CASES,
