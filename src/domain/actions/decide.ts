@@ -10,7 +10,8 @@ export type ActionType =
   | 'spend'
   | 'git_repo_create'
   | 'git_branch_create'
-  | 'git_branch_protect';
+  | 'git_branch_protect'
+  | 'write_file';
 
 export const ACTION_TYPES: readonly ActionType[] = [
   'terminal',
@@ -21,6 +22,7 @@ export const ACTION_TYPES: readonly ActionType[] = [
   'git_repo_create',
   'git_branch_create',
   'git_branch_protect',
+  'write_file',
 ];
 
 const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
@@ -38,6 +40,11 @@ const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
   git_repo_create: 'maintainer',
   git_branch_create: 'maintainer',
   git_branch_protect: 'maintainer',
+  // Escrita de arquivo por um agente fora da whitelist de paths (Fase 3a) —
+  // calibrado como git_commit (developer): quem pode commitar pode propor
+  // escrever um arquivo. Fica pending por padrão (sem regra em
+  // permissions.json), pra o usuário aprovar.
+  write_file: 'developer',
 };
 
 // Rede de segurança padrão, sempre ativa, independente do permissions.json

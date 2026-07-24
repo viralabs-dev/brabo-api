@@ -163,6 +163,23 @@ describe('ProposeActionUseCase', () => {
     expect(fakeEngineClient.calls).toHaveLength(0);
   });
 
+  it('write_file (agente, sem regra) cria proposed_action pending, sem executar', async () => {
+    const { project, session } = await setupSession();
+
+    const action = await proposeAction.execute(project.id, session.id, {
+      actionType: 'write_file',
+      actor: { kind: 'agent', id: 'echo' },
+      payload: { path: 'src/app.ts', content: 'export const x = 1;' },
+    });
+
+    expect(action.actionType).toBe('write_file');
+    expect(action.status).toBe('pending');
+    expect(action.resolvedPolicy).toBe('require_approval');
+    // write_file nunca é auto-executado nesta fase (branch de auto-exec é
+    // terminal-only) — o engine não é chamado.
+    expect(fakeEngineClient.calls).toHaveLength(0);
+  });
+
   it('allow em permissions.json: auto-aprova e JÁ EXECUTA (terminal)', async () => {
     const { project, session } = await setupSession();
     await permissionsFileStore.write(project.id, {

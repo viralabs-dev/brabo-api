@@ -9,8 +9,12 @@ import {
 import { EngineServiceGuard } from '../auth/engine-service.guard';
 import { ReportSessionTerminationUseCase } from '../../../application/use-cases/sessions/report-session-termination.use-case';
 import { AppendSessionEventUseCase } from '../../../application/use-cases/sessions/append-session-event.use-case';
+import { RunLlmTurnUseCase } from '../../../application/use-cases/llm/run-llm-turn.use-case';
+import { ProposeActionUseCase } from '../../../application/use-cases/actions/propose-action.use-case';
 import { ReportSessionTerminationDto } from './dto/report-session-termination.dto';
 import { AppendSessionEventInternalDto } from './dto/append-session-event-internal.dto';
+import { RunLlmTurnDto } from './dto/run-llm-turn.dto';
+import { CreateActionInternalDto } from './dto/create-action-internal.dto';
 
 /**
  * Chamadas internas do engine (Elixir/OTP) — nunca de um usuário humano.
@@ -25,6 +29,8 @@ export class InternalSessionsController {
   constructor(
     private readonly reportTermination: ReportSessionTerminationUseCase,
     private readonly appendSessionEvent: AppendSessionEventUseCase,
+    private readonly runLlmTurn: RunLlmTurnUseCase,
+    private readonly proposeAction: ProposeActionUseCase,
   ) {}
 
   /**
@@ -57,6 +63,39 @@ export class InternalSessionsController {
     return this.appendSessionEvent.execute(dto.projectId, sessionId, {
       type: dto.type,
       actor: { kind: dto.actorKind, id: dto.actorId },
+      payload: dto.payload,
+    });
+  }
+
+  /**
+   * Um turno de LLM pro harness do engine (ToolLoop/ContextManager) —
+   * metered obrigatório (token_usage), tool-aware, turno-a-turno. Não grava
+   * session_events: o engine narra o event log.
+   */
+  @Post(':sessionId/llm-turn')
+  llmTurn(@Param('sessionId') sessionId: string, @Body() dto: RunLlmTurnDto) {
+    return this.runLlmTurn.execute({
+      projectId: dto.projectId,
+      sessionId,
+      agentId: dto.agentId,
+      messages: dto.messages,
+      tools: dto.tools,
+    });
+  }
+
+  /**
+   * Cria uma proposed_action a partir de uma ferramenta do agente
+   * (write_file fora da whitelist, terminal) — passa pelo mesmo decide/
+   * permissions da rota humana; terminal auto_approved é auto-executado.
+   */
+  @Post(':sessionId/actions')
+  createAction(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: CreateActionInternalDto,
+  ) {
+    return this.proposeAction.execute(dto.projectId, sessionId, {
+      actionType: dto.actionType,
+      actor: dto.actor,
       payload: dto.payload,
     });
   }

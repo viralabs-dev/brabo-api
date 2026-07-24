@@ -21,10 +21,14 @@ export class OpenAIProvider implements LLMProvider {
     try {
       const stream = await client.chat.completions.create({
         model: options.model,
+        // Tool calling não é suportado neste provider ainda (só o Ollama,
+        // Fase 3a) — os callers atuais só mandam user/assistant/system em
+        // texto. O cast reflete isso: se um dia OpenAI ganhar tools, o
+        // mapeamento por role precisa ser explícito.
         messages: messages.map((message) => ({
           role: message.role,
           content: message.content,
-        })),
+        })) as OpenAI.Chat.ChatCompletionMessageParam[],
         max_tokens: options.maxTokens,
         stream: true,
         stream_options: { include_usage: true },
