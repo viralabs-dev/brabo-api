@@ -51,6 +51,7 @@ describe('GetRepoBootstrapStatusUseCase', () => {
 
     expect(result).toEqual({
       status: null,
+      sessionId: null,
       failedStep: null,
       lastError: null,
       attempts: 0,
@@ -76,6 +77,7 @@ describe('GetRepoBootstrapStatusUseCase', () => {
 
     expect(result).toEqual({
       status: 'provision_failed',
+      sessionId: 'session-1',
       failedStep: 'create_qa_branch',
       lastError: 'timeout ao criar branch',
       attempts: 2,
