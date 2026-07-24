@@ -13,6 +13,7 @@ import { CheckBudgetGateUseCase } from './check-budget-gate.use-case';
 import { RecordLlmUsageUseCase } from './record-llm-usage.use-case';
 import { SendChatMessageUseCase } from './send-chat-message.use-case';
 import { RunLlmTurnUseCase } from './run-llm-turn.use-case';
+import { StreamLlmTurnUseCase } from './stream-llm-turn.use-case';
 
 const USE_CASES = [
   ListModelsUseCase,
@@ -28,6 +29,7 @@ const USE_CASES = [
   RecordLlmUsageUseCase,
   SendChatMessageUseCase,
   RunLlmTurnUseCase,
+  StreamLlmTurnUseCase,
 ];
 
 @Module({

@@ -65,6 +65,9 @@ class FakeApiToEngineClient implements ApiToEngineClient {
   nextResult: TerminalExecutionResult = DEFAULT_RESULT;
 
   async startSession(): Promise<void> {}
+  async startAgent(): Promise<void> {}
+  async sendAgentMessage(): Promise<void> {}
+  async confirmReadiness(): Promise<void> {}
 
   executeTerminalAction(
     _projectId: string,

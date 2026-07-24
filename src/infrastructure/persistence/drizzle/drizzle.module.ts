@@ -16,6 +16,8 @@ import { AgentAutonomyRepository } from '../../../application/ports/agent-autono
 import { GitConnectionRepository } from '../../../application/ports/git-connection-repository.port';
 import { ProvisionedRepositoryRepository } from '../../../application/ports/provisioned-repository-repository.port';
 import { RepoBootstrapRepository } from '../../../application/ports/repo-bootstrap-repository.port';
+import { HandoffRepository } from '../../../application/ports/handoff-repository.port';
+import { AgentInstructionRepository } from '../../../application/ports/agent-instruction-repository.port';
 import { createDrizzleClient, DRIZZLE } from './drizzle-client';
 import { DrizzleUnitOfWork } from './drizzle-unit-of-work';
 import { DrizzleUserRepository } from './user.repository';
@@ -34,6 +36,8 @@ import { DrizzleAgentAutonomyRepository } from './agent-autonomy.repository';
 import { DrizzleGitConnectionRepository } from './git-connection.repository';
 import { DrizzleProvisionedRepositoryRepository } from './provisioned-repository.repository';
 import { DrizzleRepoBootstrapRepository } from './repo-bootstrap.repository';
+import { DrizzleHandoffRepository } from './handoff.repository';
+import { DrizzleAgentInstructionRepository } from './agent-instruction.repository';
 
 const { db, pool } = createDrizzleClient();
 
@@ -83,6 +87,11 @@ const { db, pool } = createDrizzleClient();
       provide: RepoBootstrapRepository,
       useClass: DrizzleRepoBootstrapRepository,
     },
+    { provide: HandoffRepository, useClass: DrizzleHandoffRepository },
+    {
+      provide: AgentInstructionRepository,
+      useClass: DrizzleAgentInstructionRepository,
+    },
   ],
   exports: [
     DRIZZLE,
@@ -103,6 +112,8 @@ const { db, pool } = createDrizzleClient();
     GitConnectionRepository,
     ProvisionedRepositoryRepository,
     RepoBootstrapRepository,
+    HandoffRepository,
+    AgentInstructionRepository,
   ],
 })
 export class DrizzleModule implements OnModuleDestroy {

@@ -24,6 +24,11 @@ import {
 } from '../application/ports/model-repository.port';
 import type { Model } from '../domain/llm/model.entity';
 import { SetModelBindingUseCase } from '../application/use-cases/llm/set-model-binding.use-case';
+import { UpsertAgentInstructionUseCase } from '../application/use-cases/agents/upsert-agent-instruction.use-case';
+import {
+  CRIATIVO_AGENT,
+  CRIATIVO_INSTRUCTIONS,
+} from './seeds/criativo-instructions';
 
 // Preços aproximados de mercado (micro-USD por 1M tokens) — editáveis
 // depois (ver README: "models" não tem endpoint HTTP de edição na
@@ -87,6 +92,7 @@ async function main() {
   const appendSessionEvent = app.get(AppendSessionEventUseCase);
   const models = app.get(ModelRepository);
   const setModelBinding = app.get(SetModelBindingUseCase);
+  const upsertAgentInstruction = app.get(UpsertAgentInstructionUseCase);
 
   const owner = await syncUser.execute({
     keycloakSub: 'seed-owner',
@@ -132,6 +138,26 @@ async function main() {
     slug: 'core-api',
   });
   console.log(`✓ projeto: ${project.name} (${project.slug})`);
+
+  // Fase 3b: persona base do Criativo (seed versionado) + binding do agente
+  // pro modelo local, pra ele poder conduzir a ideação numa sessão real.
+  const criativoInstr = await upsertAgentInstruction.execute(
+    project.id,
+    CRIATIVO_AGENT,
+    CRIATIVO_INSTRUCTIONS,
+  );
+  console.log(
+    `✓ instruções: ${CRIATIVO_AGENT} v${criativoInstr.version} (projeto ${project.slug})`,
+  );
+  await setModelBinding.execute(
+    'agent',
+    CRIATIVO_AGENT,
+    localModel.id,
+    owner.id,
+  );
+  console.log(
+    `✓ binding: agent ${CRIATIVO_AGENT} -> ${localModel.provider}/${localModel.name}`,
+  );
 
   const session = await createSession.execute(project.id, developer.id);
   console.log(`✓ sessão criada: ${session.id} (status=${session.status})`);

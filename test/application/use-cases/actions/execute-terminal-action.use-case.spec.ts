@@ -36,6 +36,9 @@ class FakeApiToEngineClient implements ApiToEngineClient {
   error: Error | null = null;
 
   async startSession(): Promise<void> {}
+  async startAgent(): Promise<void> {}
+  async sendAgentMessage(): Promise<void> {}
+  async confirmReadiness(): Promise<void> {}
 
   executeTerminalAction(): Promise<TerminalExecutionResult> {
     if (this.error) return Promise.reject(this.error);

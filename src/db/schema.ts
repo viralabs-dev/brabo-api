@@ -105,6 +105,18 @@ export const gitProviderEnum = pgEnum('git_provider', [
   'gitlab',
 ]);
 
+// Handoff entre agentes (Fase 3b): offered → accepted | rejected; accepted →
+// completed. Um agente só pode ser ativado numa sessão com um handoff
+// `accepted` endereçado a ele (ver domain/sessions/agent-activation.ts) — o
+// Criativo é a exceção (inicia por comando do usuário). Cada transição de
+// status também vira um session_event `handoff.*` imutável.
+export const handoffStatusEnum = pgEnum('handoff_status', [
+  'offered',
+  'accepted',
+  'completed',
+  'rejected',
+]);
+
 // user_credentials guarda tanto chaves de LLM quanto tokens de git do
 // usuário (github/gitlab) — enum dedicado em vez de alargar llm_provider
 // (que também serve models/token_usage, LLM-only de verdade) ou
@@ -512,6 +524,38 @@ export const agentInstructions = pgTable(
       .defaultNow(),
   },
   (table) => [unique().on(table.projectId, table.agent)],
+);
+
+// Handoffs entre agentes (Fase 3b): o Criativo, ao emitir o product_brief,
+// OFERECE um handoff ao PO. `from_agent`/`to_agent` são slugs livres (mesma
+// convenção de actor_id — sem FK nem enum). `artifact_id` referencia o
+// session_events.id do artefato entregue (o product_brief) — não é FK porque
+// session_events.id é ULID de texto e o vínculo é lógico, não relacional.
+// Diferente das tabelas de evento, `status` é MUTÁVEL (offered → accepted →
+// completed); a história imutável de cada transição vive nos session_events
+// `handoff.*`.
+export const handoffs = pgTable(
+  'handoffs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    fromAgent: text('from_agent').notNull(),
+    toAgent: text('to_agent').notNull(),
+    artifactId: text('artifact_id'),
+    status: handoffStatusEnum('status').notNull().default('offered'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index('handoffs_session_idx').on(table.sessionId)],
 );
 
 // --- Git providers (Fase 2): conexão OAuth + repositório provisionado ---

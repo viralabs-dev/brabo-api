@@ -71,6 +71,13 @@
       "when": 1784861819828,
       "tag": "0009_careless_silver_samurai",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784866282896,
+      "tag": "0010_mixed_weapon_omega",
+      "breakpoints": true
     }
   ]
 }

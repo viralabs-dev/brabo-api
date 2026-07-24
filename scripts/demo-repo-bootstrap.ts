@@ -45,6 +45,15 @@ class UnreachableEngineClient implements ApiToEngineClient {
   startSession(): Promise<void> {
     throw new Error('engine não deveria ser chamado pelo bootstrap');
   }
+  startAgent(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
+  sendAgentMessage(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
+  confirmReadiness(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
   executeTerminalAction(): Promise<never> {
     throw new Error('engine não deveria ser chamado pelo bootstrap');
   }
