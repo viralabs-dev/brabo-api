@@ -487,6 +487,33 @@ export const agentAutonomy = pgTable(
   (table) => [unique().on(table.projectId, table.agentId, table.actionType)],
 );
 
+// Instruções por agente e projeto (Fase 3a — harness): o arquivo de agente
+// que o InstructionFiles do engine lê e mescla com os AGENTS.md do workspace
+// (precedência banco > diretório > raiz). Uma linha ativa por (projeto,
+// agente); `version` é bumpado no update (não é tabela de histórico).
+// `agent` é slug livre (mesma convenção de agent_autonomy.agent_id /
+// actor_id — sem FK nem enum). Criada aqui (Drizzle, schema 'public'); o
+// engine só LÊ via Ecto schema read-only.
+export const agentInstructions = pgTable(
+  'agent_instructions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    agent: text('agent').notNull(),
+    content: text('content').notNull(),
+    version: integer('version').notNull().default(1),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [unique().on(table.projectId, table.agent)],
+);
+
 // --- Git providers (Fase 2): conexão OAuth + repositório provisionado ---
 
 // Só existe pra 'github'/'gitlab' — 'local' nunca tem linha aqui (não
