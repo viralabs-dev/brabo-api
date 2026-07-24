@@ -673,6 +673,11 @@ export const tasks = pgTable(
     // marcada aqui pra não ser reclaimada automaticamente e pra UI destacar.
     blocked: boolean('blocked').notNull().default(false),
     blockedReason: text('blocked_reason'),
+    // Fase 4a — gates de PR: null até a PR abrir; awaiting_qa/awaiting_secops/
+    // awaiting_user daí em diante (ver pr-gate-state-machine.ts). Contador
+    // zera a cada avanço de gate, incrementa a cada changes_requested.
+    gateStatus: text('gate_status'),
+    gateCorrectionCount: integer('gate_correction_count').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

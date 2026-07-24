@@ -29,7 +29,11 @@ import { ClaimNextTaskUseCase } from '../../../application/use-cases/execution/c
 import { MarkTaskUseCase } from '../../../application/use-cases/execution/mark-task.use-case';
 import { GetDevTaskContextUseCase } from '../../../application/use-cases/execution/get-dev-task-context.use-case';
 import { MarkTaskBlockedUseCase } from '../../../application/use-cases/execution/mark-task-blocked.use-case';
+import { RecordGateVerdictUseCase } from '../../../application/use-cases/execution/record-gate-verdict.use-case';
+import { OpenGateUseCase } from '../../../application/use-cases/execution/open-gate.use-case';
 import { BlockTaskInternalDto } from './dto/block-task-internal.dto';
+import { RecordGateVerdictInternalDto } from './dto/record-gate-verdict-internal.dto';
+import { OpenGateInternalDto } from './dto/open-gate-internal.dto';
 import { ReportSessionTerminationDto } from './dto/report-session-termination.dto';
 import { AppendSessionEventInternalDto } from './dto/append-session-event-internal.dto';
 import { RunLlmTurnDto } from './dto/run-llm-turn.dto';
@@ -71,6 +75,8 @@ export class InternalSessionsController {
     private readonly markTask: MarkTaskUseCase,
     private readonly getDevTaskContext: GetDevTaskContextUseCase,
     private readonly markTaskBlocked: MarkTaskBlockedUseCase,
+    private readonly recordGateVerdict: RecordGateVerdictUseCase,
+    private readonly openGate: OpenGateUseCase,
   ) {}
 
   /**
@@ -312,6 +318,43 @@ export class InternalSessionsController {
       dto.diagnosis,
       dto.agentId,
     );
+  }
+
+  /**
+   * Parecer de um gate de PR (QA/SecOps, Fase 4a) — aplica a máquina de
+   * estados do gate, comenta a PR, e devolve pro engine a próxima ação
+   * (correct/run_secops/done/blocked).
+   */
+  @Post(':sessionId/gates/verdict')
+  gateVerdict(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: RecordGateVerdictInternalDto,
+  ) {
+    return this.recordGateVerdict.execute(
+      dto.projectId,
+      sessionId,
+      {
+        taskId: dto.taskId,
+        gate: dto.gate,
+        veredito: dto.veredito,
+        resumo: dto.resumo,
+        itens: dto.itens,
+      },
+      dto.maxCorrections,
+    );
+  }
+
+  /**
+   * Abre o fluxo de gates de uma PR (Fase 4a) — chamado logo depois de
+   * `pr_open` executar com sucesso; o engine dispara o QAAgent em seguida.
+   */
+  @Post(':sessionId/tasks/:taskId/gate/open')
+  openGateEndpoint(
+    @Param('sessionId') sessionId: string,
+    @Param('taskId') taskId: string,
+    @Body() dto: OpenGateInternalDto,
+  ) {
+    return this.openGate.execute(dto.projectId, sessionId, taskId, dto.agentId);
   }
 
   /**

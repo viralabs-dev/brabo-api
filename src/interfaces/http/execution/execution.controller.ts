@@ -31,6 +31,7 @@ export class ExecutionController {
       projectId,
       user.id,
       dto.taskBudgetMicros,
+      dto.maxGateCorrections,
     );
   }
 

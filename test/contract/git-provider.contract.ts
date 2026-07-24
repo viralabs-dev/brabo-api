@@ -343,6 +343,50 @@ export function runGitProviderContract(
       }
     });
 
+    it('commentOnPullRequest: respeita capabilities.pullRequests', async () => {
+      const repo = await provider.createRepo({
+        name: 'pr-comment',
+        visibility: 'private',
+      });
+
+      if (!provider.capabilities.pullRequests) {
+        await expect(
+          provider.commentOnPullRequest({
+            externalId: repo.externalId,
+            pullRequestId: 'nao-existe',
+            body: 'parecer de teste',
+          }),
+        ).rejects.toThrow(GitNotSupportedError);
+        return;
+      }
+
+      await provider.commitFiles({
+        externalId: repo.externalId,
+        branch: 'main',
+        message: 'inicial',
+        files: [{ path: 'a.txt', content: 'a' }],
+      });
+      await provider.createBranch({
+        externalId: repo.externalId,
+        branchName: 'feature',
+        fromRef: 'main',
+      });
+      const pr = await provider.openPullRequest({
+        externalId: repo.externalId,
+        sourceBranch: 'feature',
+        targetBranch: 'main',
+        title: 'PR de teste',
+      });
+
+      await expect(
+        provider.commentOnPullRequest({
+          externalId: repo.externalId,
+          pullRequestId: pr.id,
+          body: 'parecer de teste',
+        }),
+      ).resolves.toBeUndefined();
+    });
+
     it('mergePullRequest: respeita capabilities.pullRequests', async () => {
       const repo = await provider.createRepo({
         name: 'pr-merge',

@@ -24,6 +24,8 @@ const task: Task = {
   assignedTo: null,
   blocked: false,
   blockedReason: null,
+  gateStatus: null,
+  gateCorrectionCount: 0,
   createdAt: now,
   updatedAt: now,
 };
@@ -146,6 +148,7 @@ describe('GetDevTaskContextUseCase', () => {
     expect(ctx.adrs[0]).toEqual({
       title: 'ADR: autenticação via JWT',
       content: 'Decisão: usar JWT.',
+      securityRelevant: false,
     });
   });
 

@@ -14,6 +14,7 @@ import type {
   Task,
   StoryStatus,
 } from '../../../domain/backlog/backlog.entity';
+import type { PrGateStatus } from '../../../domain/execution/pr-gate-state-machine';
 import { epics, stories, tasks } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
@@ -192,7 +193,7 @@ export class DrizzleTaskRepository implements TaskRepository {
         FOR UPDATE OF t SKIP LOCKED
         LIMIT 1
       )
-      RETURNING id, story_id, title, description, status, assigned_to, blocked, blocked_reason, created_at, updated_at
+      RETURNING id, story_id, title, description, status, assigned_to, blocked, blocked_reason, gate_status, gate_correction_count, created_at, updated_at
     `);
     const row = result.rows[0] as Record<string, unknown> | undefined;
     if (!row) return null;
@@ -205,6 +206,8 @@ export class DrizzleTaskRepository implements TaskRepository {
       assignedTo: (row.assigned_to as string | null) ?? null,
       blocked: row.blocked as boolean,
       blockedReason: (row.blocked_reason as string | null) ?? null,
+      gateStatus: (row.gate_status as PrGateStatus | null) ?? null,
+      gateCorrectionCount: Number(row.gate_correction_count ?? 0),
       createdAt: row.created_at as Date,
       updatedAt: row.updated_at as Date,
     };
@@ -267,6 +270,38 @@ export class DrizzleTaskRepository implements TaskRepository {
       .returning();
     return taskToEntity(row);
   }
+
+  async openGate(id: string): Promise<Task> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .update(tasks)
+      .set({
+        gateStatus: 'awaiting_qa',
+        gateCorrectionCount: 0,
+        updatedAt: new Date(),
+      })
+      .where(eq(tasks.id, id))
+      .returning();
+    return taskToEntity(row);
+  }
+
+  async updateGateStatus(
+    id: string,
+    gateStatus: PrGateStatus,
+    correctionCount: number,
+  ): Promise<Task> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .update(tasks)
+      .set({
+        gateStatus,
+        gateCorrectionCount: correctionCount,
+        updatedAt: new Date(),
+      })
+      .where(eq(tasks.id, id))
+      .returning();
+    return taskToEntity(row);
+  }
 }
 
 function epicToEntity(row: typeof epics.$inferSelect): Epic {
@@ -311,6 +346,8 @@ function taskToEntity(row: typeof tasks.$inferSelect): Task {
     assignedTo: row.assignedTo,
     blocked: row.blocked,
     blockedReason: row.blockedReason,
+    gateStatus: row.gateStatus as PrGateStatus | null,
+    gateCorrectionCount: row.gateCorrectionCount,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

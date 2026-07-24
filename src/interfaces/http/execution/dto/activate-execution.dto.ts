@@ -7,4 +7,12 @@ export class ActivateExecutionDto {
   @IsInt()
   @IsPositive()
   taskBudgetMicros?: number;
+
+  // Teto de correções dev↔gate (QA/SecOps) antes da task virar blocked —
+  // omitido usa o default (ver DEFAULT_MAX_GATE_CORRECTIONS em
+  // RecordGateVerdictUseCase).
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  maxGateCorrections?: number;
 }

@@ -31,5 +31,7 @@ export function withAccessToken(
       provider.mergePullRequest({ ...input, accessToken: token }),
     getFileContent: (input) =>
       provider.getFileContent({ ...input, accessToken: token }),
+    commentOnPullRequest: (input) =>
+      provider.commentOnPullRequest({ ...input, accessToken: token }),
   };
 }

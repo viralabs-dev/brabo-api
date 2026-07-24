@@ -20,6 +20,7 @@ import type {
   ListBranchesInput,
   OpenPullRequestInput,
   MergePullRequestInput,
+  CommentOnPullRequestInput,
 } from '@brabo/shared';
 import {
   GitBranchAlreadyExistsError,
@@ -311,6 +312,23 @@ export class LocalGitProvider implements GitProviderContract {
 
     return toPullRequest(repoDir, record);
   }
+
+  async commentOnPullRequest(input: CommentOnPullRequestInput): Promise<void> {
+    const repoDir = input.externalId;
+    await assertBareRepo(repoDir);
+
+    const store = await readPrStore(repoDir);
+    const record = store.find((p) => p.id === input.pullRequestId);
+    if (!record) {
+      throw new GitNotSupportedError(
+        this.name,
+        'commentOnPullRequest: PR não encontrada',
+      );
+    }
+
+    record.comments = [...(record.comments ?? []), input.body];
+    await writePrStore(repoDir, store);
+  }
 }
 
 interface StoredPr {
@@ -320,6 +338,7 @@ interface StoredPr {
   sourceBranch: string;
   targetBranch: string;
   state: 'open' | 'merged' | 'closed';
+  comments?: string[];
 }
 
 function prStorePath(repoDir: string): string {
