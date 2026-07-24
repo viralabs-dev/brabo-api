@@ -72,6 +72,7 @@ class FakeApiToEngineClient implements ApiToEngineClient {
     return {};
   }
   async acceptParallelization(): Promise<void> {}
+  async offerInfraHandoff(): Promise<void> {}
   executeTerminalAction(): Promise<TerminalExecutionResult> {
     this.callCount += 1;
     return Promise.resolve(EXEC_RESULT);
@@ -98,6 +99,7 @@ const proposeAction = new ProposeActionUseCase(
   resolveEffectiveRole,
   executeTerminalAction,
   undefined as never, // executeGitAction — não exercitado aqui
+  undefined as never, // executeInfraPr — não exercitado aqui
 );
 const approveAction = new ApproveActionUseCase(
   unitOfWork,
@@ -106,6 +108,7 @@ const approveAction = new ApproveActionUseCase(
   outboxRepo,
   executeTerminalAction,
   undefined as never, // executeAdrPr
+  undefined as never, // executeInfraPr
   {
     execute: (_p: string, _s: string, a: unknown) => Promise.resolve(a),
   } as unknown as never, // executeGitAction: passthrough

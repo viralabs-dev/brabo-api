@@ -5,6 +5,7 @@ import { RequireRole } from '../iam/require-role.decorator';
 import { ActivateAgentUseCase } from '../../../application/use-cases/agents/activate-agent.use-case';
 import { SendAgentMessageUseCase } from '../../../application/use-cases/agents/send-agent-message.use-case';
 import { ConfirmReadinessUseCase } from '../../../application/use-cases/agents/confirm-readiness.use-case';
+import { OfferInfraHandoffUseCase } from '../../../application/use-cases/agents/offer-infra-handoff.use-case';
 import { AcceptHandoffUseCase } from '../../../application/use-cases/agents/accept-handoff.use-case';
 import { ListHandoffsUseCase } from '../../../application/use-cases/agents/list-handoffs.use-case';
 import { SendAgentMessageDto } from './dto/send-agent-message.dto';
@@ -21,6 +22,7 @@ export class AgentsController {
     private readonly activateAgent: ActivateAgentUseCase,
     private readonly sendAgentMessage: SendAgentMessageUseCase,
     private readonly confirmReadiness: ConfirmReadinessUseCase,
+    private readonly offerInfraHandoff: OfferInfraHandoffUseCase,
     private readonly acceptHandoff: AcceptHandoffUseCase,
     private readonly listHandoffs: ListHandoffsUseCase,
   ) {}
@@ -62,6 +64,21 @@ export class AgentsController {
     @CurrentUser() user: User,
   ) {
     return this.confirmReadiness.execute(projectId, sessionId, user.id);
+  }
+
+  /**
+   * O usuário confirma que a arquitetura está pronta (Fase 4a — fechamento):
+   * dispara o Arquiteto a oferecer o handoff ao InfraAgent. Endpoint
+   * dedicado (não reaproveita `readiness`, que é do Criativo).
+   */
+  @Post('agents/arquiteto/handoff-infra')
+  @RequireRole('developer')
+  handoffInfra(
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.offerInfraHandoff.execute(projectId, sessionId, user.id);
   }
 
   @Get('handoffs')

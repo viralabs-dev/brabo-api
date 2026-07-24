@@ -12,6 +12,11 @@ import { MarkTaskBlockedUseCase } from './mark-task-blocked.use-case';
 import { UnblockTaskUseCase } from './unblock-task.use-case';
 import { RecordGateVerdictUseCase } from './record-gate-verdict.use-case';
 import { OpenGateUseCase } from './open-gate.use-case';
+import { MarkInfraArtifactBlockedUseCase } from './mark-infra-artifact-blocked.use-case';
+import { RecordInfraGateVerdictUseCase } from './record-infra-gate-verdict.use-case';
+import { GetInfraContextUseCase } from './get-infra-context.use-case';
+import { GetInfraPrFilesUseCase } from './get-infra-pr-files.use-case';
+import { ListInfraArtifactsUseCase } from './list-infra-artifacts.use-case';
 
 const USE_CASES = [
   ActivateExecutionUseCase,
@@ -23,6 +28,11 @@ const USE_CASES = [
   UnblockTaskUseCase,
   RecordGateVerdictUseCase,
   OpenGateUseCase,
+  MarkInfraArtifactBlockedUseCase,
+  RecordInfraGateVerdictUseCase,
+  GetInfraContextUseCase,
+  GetInfraPrFilesUseCase,
+  ListInfraArtifactsUseCase,
 ];
 
 @Module({

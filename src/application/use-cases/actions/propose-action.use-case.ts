@@ -13,6 +13,7 @@ import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { ResolveEffectiveRoleUseCase } from '../iam/resolve-effective-role.use-case';
 import { ExecuteTerminalActionUseCase } from './execute-terminal-action.use-case';
 import { ExecuteGitActionUseCase } from './execute-git-action.use-case';
+import { ExecuteInfraPrUseCase } from './execute-infra-pr.use-case';
 import {
   decide,
   ACTION_TYPES,
@@ -44,6 +45,7 @@ export class ProposeActionUseCase {
     private readonly resolveEffectiveRole: ResolveEffectiveRoleUseCase,
     private readonly executeTerminalAction: ExecuteTerminalActionUseCase,
     private readonly executeGitAction: ExecuteGitActionUseCase,
+    private readonly executeInfraPr: ExecuteInfraPrUseCase,
   ) {}
 
   async execute(
@@ -119,6 +121,10 @@ export class ProposeActionUseCase {
       GIT_EXECUTED_ACTION_TYPES.includes(actionType)
     ) {
       return this.executeGitAction.execute(projectId, sessionId, action);
+    }
+
+    if (status === 'auto_approved' && actionType === 'open_infra_pr') {
+      return this.executeInfraPr.execute(projectId, sessionId, action);
     }
 
     return action;

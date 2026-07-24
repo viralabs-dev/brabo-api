@@ -31,8 +31,12 @@ import { GetDevTaskContextUseCase } from '../../../application/use-cases/executi
 import { MarkTaskBlockedUseCase } from '../../../application/use-cases/execution/mark-task-blocked.use-case';
 import { RecordGateVerdictUseCase } from '../../../application/use-cases/execution/record-gate-verdict.use-case';
 import { OpenGateUseCase } from '../../../application/use-cases/execution/open-gate.use-case';
+import { GetInfraContextUseCase } from '../../../application/use-cases/execution/get-infra-context.use-case';
+import { RecordInfraGateVerdictUseCase } from '../../../application/use-cases/execution/record-infra-gate-verdict.use-case';
+import { GetInfraPrFilesUseCase } from '../../../application/use-cases/execution/get-infra-pr-files.use-case';
 import { BlockTaskInternalDto } from './dto/block-task-internal.dto';
 import { RecordGateVerdictInternalDto } from './dto/record-gate-verdict-internal.dto';
+import { RecordInfraGateVerdictInternalDto } from './dto/record-infra-gate-verdict-internal.dto';
 import { OpenGateInternalDto } from './dto/open-gate-internal.dto';
 import { ReportSessionTerminationDto } from './dto/report-session-termination.dto';
 import { AppendSessionEventInternalDto } from './dto/append-session-event-internal.dto';
@@ -77,6 +81,9 @@ export class InternalSessionsController {
     private readonly markTaskBlocked: MarkTaskBlockedUseCase,
     private readonly recordGateVerdict: RecordGateVerdictUseCase,
     private readonly openGate: OpenGateUseCase,
+    private readonly getInfraContext: GetInfraContextUseCase,
+    private readonly recordInfraGateVerdict: RecordInfraGateVerdictUseCase,
+    private readonly getInfraPrFiles: GetInfraPrFilesUseCase,
   ) {}
 
   /**
@@ -301,6 +308,28 @@ export class InternalSessionsController {
   }
 
   /**
+   * Contexto inicial do InfraAgent (Fase 4a): module_map vigente + ADRs
+   * `infraRelevant` do projeto — mesmo espírito de `dev-context`.
+   */
+  @Get(':sessionId/infra-context')
+  infraContext(@Query('projectId') projectId: string) {
+    return this.getInfraContext.execute(projectId);
+  }
+
+  /**
+   * Lê de volta title+files da proposed_action `open_infra_pr` já proposta
+   * (Fase 4a) — o `InfraGateRunner` usa isso pra rodar hadolint/gitleaks/
+   * semgrep sobre os arquivos SEM worktree (a PR de infra não tem um).
+   */
+  @Get(':sessionId/infra-artifacts/:prActionId/files')
+  infraPrFiles(
+    @Query('projectId') projectId: string,
+    @Param('prActionId') prActionId: string,
+  ) {
+    return this.getInfraPrFiles.execute(projectId, prActionId);
+  }
+
+  /**
    * O DevAgent não conseguiu concluir a task (Fase 4a) — devolve com
    * diagnóstico (limite de iterações, orçamento excedido, ou report_blocked).
    */
@@ -335,6 +364,31 @@ export class InternalSessionsController {
       sessionId,
       {
         taskId: dto.taskId,
+        gate: dto.gate,
+        veredito: dto.veredito,
+        resumo: dto.resumo,
+        itens: dto.itens,
+      },
+      dto.maxCorrections,
+    );
+  }
+
+  /**
+   * Parecer de um gate de PR de infra (QA/SecOps, Fase 4a — InfraAgent) —
+   * mesmo espírito de `gates/verdict`, mas chaveado por `prActionId` (id da
+   * proposed_action `open_infra_pr`, único id que o engine conhece de
+   * volta) em vez de `taskId` — o artefato de infra não tem task por trás.
+   */
+  @Post(':sessionId/infra-gates/verdict')
+  infraGateVerdict(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: RecordInfraGateVerdictInternalDto,
+  ) {
+    return this.recordInfraGateVerdict.execute(
+      dto.projectId,
+      sessionId,
+      {
+        prActionId: dto.prActionId,
         gate: dto.gate,
         veredito: dto.veredito,
         resumo: dto.resumo,

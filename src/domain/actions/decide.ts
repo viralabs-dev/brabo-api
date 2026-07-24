@@ -14,7 +14,8 @@ export type ActionType =
   | 'git_branch_protect'
   | 'write_file'
   | 'open_adr_pr'
-  | 'git_merge';
+  | 'git_merge'
+  | 'open_infra_pr';
 
 export const ACTION_TYPES: readonly ActionType[] = [
   'terminal',
@@ -28,6 +29,7 @@ export const ACTION_TYPES: readonly ActionType[] = [
   'write_file',
   'open_adr_pr',
   'git_merge',
+  'open_infra_pr',
 ];
 
 const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
@@ -59,6 +61,12 @@ const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
   // manual — a trava (teto em decide()) impede auto_approve independente da
   // configuração.
   git_merge: 'maintainer',
+  // PR de infra (Fase 4a — InfraAgent): commita N arquivos (Dockerfiles/
+  // compose/CI) e abre PR real, mesmo calibre de open_adr_pr (maintainer) —
+  // fica pending por padrão, mas o accept-handoff do InfraAgent seeda
+  // agent_autonomy auto_approve pra essa ação especificamente (o InfraAgent
+  // NUNCA aplica nada, só propõe — auto-aprovar a PROPOSTA da PR é seguro).
+  open_infra_pr: 'maintainer',
 };
 
 // Rede de segurança padrão, sempre ativa, independente do permissions.json

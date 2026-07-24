@@ -71,4 +71,13 @@ export abstract class ApiToEngineClient {
     sessionId: string,
     module: string,
   ): Promise<void>;
+
+  // Sinaliza que o usuário confirmou que a arquitetura está pronta (Fase 4a
+  // — fechamento): o engine instrui o Arquiteto a oferecer o handoff ao
+  // InfraAgent (mirror de confirmReadiness, sem reaproveitar o endpoint do
+  // Criativo — agentes diferentes, momentos diferentes do fluxo).
+  abstract offerInfraHandoff(
+    projectId: string,
+    sessionId: string,
+  ): Promise<void>;
 }

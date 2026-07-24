@@ -5,6 +5,7 @@ import { DenyActionUseCase } from './deny-action.use-case';
 import { ApproveAlwaysActionUseCase } from './approve-always-action.use-case';
 import { ExecuteTerminalActionUseCase } from './execute-terminal-action.use-case';
 import { ExecuteAdrPrUseCase } from './execute-adr-pr.use-case';
+import { ExecuteInfraPrUseCase } from './execute-infra-pr.use-case';
 import { ExecuteGitActionUseCase } from './execute-git-action.use-case';
 import { ListProposedActionsUseCase } from './list-proposed-actions.use-case';
 import { GetAgentAutonomyUseCase } from './get-agent-autonomy.use-case';
@@ -23,6 +24,7 @@ const USE_CASES = [
   ApproveAlwaysActionUseCase,
   ExecuteTerminalActionUseCase,
   ExecuteAdrPrUseCase,
+  ExecuteInfraPrUseCase,
   ExecuteGitActionUseCase,
   ListProposedActionsUseCase,
   GetAgentAutonomyUseCase,
