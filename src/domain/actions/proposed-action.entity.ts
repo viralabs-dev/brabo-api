@@ -3,6 +3,7 @@ import type { ActionStatus } from './action-state-machine';
 import type { PermissionPolicy } from './permissions-file';
 import type { TerminalExecutionResult } from './terminal-execution-result';
 import type { GitBootstrapExecutionResult } from '../git/bootstrap-execution-result';
+import type { AdrPrExecutionResult } from '../git/adr-pr-execution-result';
 
 export interface ProposedAction {
   id: string;
@@ -17,7 +18,11 @@ export interface ProposedAction {
   decidedBy: string | null;
   decidedAt: Date | null;
   rejectionReason: string | null;
-  executionResult: TerminalExecutionResult | GitBootstrapExecutionResult | null;
+  executionResult:
+    | TerminalExecutionResult
+    | GitBootstrapExecutionResult
+    | AdrPrExecutionResult
+    | null;
   createdAt: Date;
   updatedAt: Date;
 }

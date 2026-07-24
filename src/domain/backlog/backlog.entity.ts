@@ -24,6 +24,7 @@ export interface Story {
   businessRuleIds: string[];
   dod: string[];
   dor: string[];
+  moduleIds: string[];
   status: StoryStatus;
   createdAt: Date;
   updatedAt: Date;

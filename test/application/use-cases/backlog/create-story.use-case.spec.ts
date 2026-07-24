@@ -29,6 +29,7 @@ function makeStory(overrides: Partial<Story> = {}): Story {
     businessRuleIds: [],
     dod: [],
     dor: [],
+    moduleIds: [],
     status: 'draft',
     createdAt: new Date(),
     updatedAt: new Date(),

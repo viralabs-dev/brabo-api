@@ -95,6 +95,8 @@ const approveAction = new ApproveActionUseCase(
   proposedActionRepo,
   outboxRepo,
   executeTerminalAction,
+  // open_adr_pr não é exercitado aqui.
+  undefined as never,
 );
 const denyAction = new DenyActionUseCase(
   unitOfWork,

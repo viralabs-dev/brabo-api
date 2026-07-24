@@ -119,6 +119,24 @@ export class DrizzleProposedActionRepository implements ProposedActionRepository
       nextCursor: hasMore ? page[page.length - 1].seq : null,
     };
   }
+
+  async listByProjectAndType(
+    projectId: string,
+    actionType: string,
+  ): Promise<ProposedAction[]> {
+    const db = currentDb(this.rootDb);
+    const rows = await db
+      .select()
+      .from(proposedActions)
+      .where(
+        and(
+          eq(proposedActions.projectId, projectId),
+          eq(proposedActions.actionType, actionType),
+        ),
+      )
+      .orderBy(asc(proposedActions.seq));
+    return rows.map(toEntity);
+  }
 }
 
 function toEntity(row: typeof proposedActions.$inferSelect): ProposedAction {
