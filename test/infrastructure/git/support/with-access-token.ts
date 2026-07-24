@@ -29,5 +29,7 @@ export function withAccessToken(
       provider.openPullRequest({ ...input, accessToken: token }),
     mergePullRequest: (input) =>
       provider.mergePullRequest({ ...input, accessToken: token }),
+    getFileContent: (input) =>
+      provider.getFileContent({ ...input, accessToken: token }),
   };
 }

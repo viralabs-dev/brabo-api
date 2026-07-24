@@ -119,6 +119,60 @@ export function runGitProviderContract(
       expect(second.sha).not.toBe(first.sha);
     });
 
+    it('getFileContent: retorna o conteúdo do arquivo commitado', async () => {
+      const repo = await provider.createRepo({
+        name: 'get-file-content',
+        visibility: 'private',
+      });
+      await provider.commitFiles({
+        externalId: repo.externalId,
+        branch: 'main',
+        message: 'commit com arquivo',
+        files: [{ path: 'docs/policy.md', content: '# política\n' }],
+      });
+
+      const content = await provider.getFileContent({
+        externalId: repo.externalId,
+        branch: 'main',
+        path: 'docs/policy.md',
+      });
+      expect(content).toBe('# política\n');
+    });
+
+    it('getFileContent: retorna null pra arquivo inexistente', async () => {
+      const repo = await provider.createRepo({
+        name: 'get-file-content-missing-path',
+        visibility: 'private',
+      });
+      await provider.commitFiles({
+        externalId: repo.externalId,
+        branch: 'main',
+        message: 'commit sem o arquivo procurado',
+        files: [{ path: 'a.txt', content: 'a' }],
+      });
+
+      const content = await provider.getFileContent({
+        externalId: repo.externalId,
+        branch: 'main',
+        path: 'nao-existe.md',
+      });
+      expect(content).toBeNull();
+    });
+
+    it('getFileContent: retorna null pra branch inexistente', async () => {
+      const repo = await provider.createRepo({
+        name: 'get-file-content-missing-branch',
+        visibility: 'private',
+      });
+
+      const content = await provider.getFileContent({
+        externalId: repo.externalId,
+        branch: 'nao-existe',
+        path: 'a.txt',
+      });
+      expect(content).toBeNull();
+    });
+
     it('commitFiles: rejeita branch inexistente (repo com refs, branch nova) com GitBranchNotFoundError', async () => {
       const repo = await provider.createRepo({
         name: 'commit-missing-branch',

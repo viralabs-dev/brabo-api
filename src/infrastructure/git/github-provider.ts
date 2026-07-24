@@ -4,6 +4,7 @@ import type {
   CommitFilesInput,
   CreateBranchInput,
   CreateRepoInput,
+  GetFileContentInput,
   GetRepoInput,
   GitBranch,
   GitCommitResult,
@@ -18,12 +19,6 @@ import type {
   ProtectBranchInput,
 } from '@brabo/shared';
 import {
-  GitProvider,
-  type CreateRepositoryInput,
-  type CreateRepositoryResult,
-} from '../../application/ports/git-provider.port';
-import { GitProviderAuthError } from '../../domain/git/git-provider-errors';
-import {
   GitBranchAlreadyExistsError,
   GitBranchNotFoundError,
   GitPermissionDeniedError,
@@ -33,53 +28,17 @@ import {
 import { withRetry } from './retry';
 
 /**
- * Implementa DOIS contratos, igual LocalGitProvider (ver docs/adr/0001):
- * `GitProvider` (DI antiga, `createRepository` intocada) e
- * `GitProviderContract` (8 operações normalizadas, novo).
+ * Implementa `GitProviderContract` (ver docs/adr/0001) — as 9 operações
+ * normalizadas da Fase 2.
  */
 @Injectable()
-export class GithubProvider implements GitProvider, GitProviderContract {
+export class GithubProvider implements GitProviderContract {
   readonly name: GitProviderName = 'github';
 
   readonly capabilities: GitProviderCapabilities = {
     protectBranch: true,
     pullRequests: true,
   };
-
-  async createRepository(
-    input: CreateRepositoryInput,
-  ): Promise<CreateRepositoryResult> {
-    const octokit = new Octokit({ auth: input.accessToken });
-
-    try {
-      const { data } = input.namespace
-        ? await octokit.rest.repos.createInOrg({
-            org: input.namespace,
-            name: input.name,
-            private: input.visibility === 'private',
-            auto_init: false,
-          })
-        : await octokit.rest.repos.createForAuthenticatedUser({
-            name: input.name,
-            private: input.visibility === 'private',
-            auto_init: false,
-          });
-
-      return {
-        externalId: data.full_name,
-        url: data.clone_url ?? data.html_url,
-        defaultBranch: data.default_branch ?? 'main',
-      };
-    } catch (error) {
-      if (isAuthError(error)) {
-        throw new GitProviderAuthError(
-          'github',
-          'Token do GitHub inválido ou revogado',
-        );
-      }
-      throw error;
-    }
-  }
 
   async createRepo(input: CreateRepoInput): Promise<GitRepo> {
     const octokit = new Octokit({ auth: input.accessToken });
@@ -331,6 +290,29 @@ export class GithubProvider implements GitProvider, GitProviderContract {
     }
   }
 
+  async getFileContent(input: GetFileContentInput): Promise<string | null> {
+    const [owner, repo] = splitFullName(input.externalId);
+    const octokit = new Octokit({ auth: input.accessToken });
+
+    try {
+      const { data } = await octokit.rest.repos.getContent({
+        owner,
+        repo,
+        path: input.path,
+        ref: input.branch,
+      });
+      if (Array.isArray(data) || data.type !== 'file') {
+        throw new Error(
+          `getFileContent: "${input.path}" não resolve pra um arquivo único`,
+        );
+      }
+      return Buffer.from(data.content, 'base64').toString('utf8');
+    } catch (error) {
+      if (getStatus(error) === 404) return null;
+      throw error;
+    }
+  }
+
   async openPullRequest(input: OpenPullRequestInput): Promise<GitPullRequest> {
     const [owner, repo] = splitFullName(input.externalId);
     const octokit = new Octokit({ auth: input.accessToken });
@@ -441,13 +423,4 @@ function isRetryableReadError(error: unknown): boolean {
   if (status !== undefined && status >= 500) return true;
   if (status === 403) return isRateLimited(error);
   return false;
-}
-
-function isAuthError(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'status' in error &&
-    (error.status === 401 || error.status === 403)
-  );
 }

@@ -8,6 +8,7 @@ import type {
   CommitFilesInput,
   CreateBranchInput,
   CreateRepoInput,
+  GetFileContentInput,
   GetRepoInput,
   GitBranch,
   GitCommitResult,
@@ -18,11 +19,6 @@ import type {
   GitRepo,
   ListBranchesInput,
 } from '@brabo/shared';
-import {
-  GitProvider,
-  type CreateRepositoryInput,
-  type CreateRepositoryResult,
-} from '../../application/ports/git-provider.port';
 import {
   GitBranchAlreadyExistsError,
   GitBranchNotFoundError,
@@ -42,15 +38,11 @@ const execFileAsync = promisify(execFile);
  * inicial/README, pra "provisionado" ter o mesmo significado nos 3
  * providers.
  *
- * Implementa DOIS contratos: `GitProvider` (abstract class de DI do Nest,
- * usada hoje pelo pipeline de provisionamento — `createRepository` fica
- * intocada, byte a byte) e `GitProviderContract` (novo, normalizado, ver
- * @brabo/shared e docs/adr/0001) — as 8 operações da Fase 2. Os dois
- * coexistem deliberadamente nesta sessão; GithubProvider/GitlabProvider
- * ainda não implementam o segundo (ver docs/adr/0001).
+ * Implementa `GitProviderContract` (ver @brabo/shared e docs/adr/0001) —
+ * as 9 operações normalizadas da Fase 2.
  */
 @Injectable()
-export class LocalGitProvider implements GitProvider, GitProviderContract {
+export class LocalGitProvider implements GitProviderContract {
   readonly name: GitProviderName = 'local';
 
   // Nem branch protection nem pull requests fazem sentido pra um bare
@@ -59,22 +51,6 @@ export class LocalGitProvider implements GitProvider, GitProviderContract {
     protectBranch: false,
     pullRequests: false,
   };
-
-  async createRepository(
-    input: CreateRepositoryInput,
-  ): Promise<CreateRepositoryResult> {
-    const root = process.env.GIT_LOCAL_REPOS_ROOT ?? '/tmp/brabo-git-repos';
-    const dirName = `${sanitizeSlug(input.name)}.git`;
-    const absolutePath = join(root, dirName);
-
-    await execFileAsync('git', ['init', '--bare', absolutePath]);
-
-    return {
-      externalId: absolutePath,
-      url: `file://${absolutePath}`,
-      defaultBranch: 'main',
-    };
-  }
 
   async createRepo(input: CreateRepoInput): Promise<GitRepo> {
     const root = process.env.GIT_LOCAL_REPOS_ROOT ?? '/tmp/brabo-git-repos';
@@ -254,6 +230,22 @@ export class LocalGitProvider implements GitProvider, GitProviderContract {
     }));
   }
 
+  async getFileContent(input: GetFileContentInput): Promise<string | null> {
+    const repoDir = input.externalId;
+    await assertBareRepo(repoDir);
+
+    try {
+      const { stdout } = await execGit(repoDir, [
+        'show',
+        `${input.branch}:${input.path}`,
+      ]);
+      return stdout;
+    } catch (error) {
+      if (isMissingRefOrPath(error)) return null;
+      throw error;
+    }
+  }
+
   openPullRequest(): Promise<GitPullRequest> {
     return Promise.reject(
       new GitNotSupportedError(this.name, 'openPullRequest'),
@@ -350,6 +342,14 @@ async function hashObjectFromContent(
 function isAlreadyExists(error: unknown): boolean {
   const stderr = (error as { stderr?: string })?.stderr ?? '';
   return /already exists/i.test(stderr);
+}
+
+// `git show <branch>:<path>` erra de duas formas distintas pro nosso caso
+// "não existe" (branch inexistente vs. path ausente na árvore) — ambas
+// mapeiam pro mesmo `null` do contrato (ver GetFileContentInput).
+function isMissingRefOrPath(error: unknown): boolean {
+  const stderr = (error as { stderr?: string })?.stderr ?? '';
+  return /does not exist in|invalid object name/i.test(stderr);
 }
 
 function sanitizeSlug(name: string): string {
