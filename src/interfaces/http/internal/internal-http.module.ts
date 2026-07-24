@@ -4,6 +4,7 @@ import { LlmUseCasesModule } from '../../../application/use-cases/llm/llm-use-ca
 import { ActionsUseCasesModule } from '../../../application/use-cases/actions/actions-use-cases.module';
 import { AgentsUseCasesModule } from '../../../application/use-cases/agents/agents-use-cases.module';
 import { BacklogUseCasesModule } from '../../../application/use-cases/backlog/backlog-use-cases.module';
+import { ArchitectureUseCasesModule } from '../../../application/use-cases/architecture/architecture-use-cases.module';
 import { InternalSessionsController } from './internal-sessions.controller';
 
 @Module({
@@ -13,6 +14,7 @@ import { InternalSessionsController } from './internal-sessions.controller';
     ActionsUseCasesModule,
     AgentsUseCasesModule,
     BacklogUseCasesModule,
+    ArchitectureUseCasesModule,
   ],
   controllers: [InternalSessionsController],
 })

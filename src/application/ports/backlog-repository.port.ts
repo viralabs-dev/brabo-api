@@ -42,6 +42,7 @@ export abstract class StoryRepository {
   abstract findById(id: string): Promise<Story | null>;
   abstract findByProject(projectId: string): Promise<Story[]>;
   abstract updateStatus(id: string, status: StoryStatus): Promise<Story>;
+  abstract updateModules(id: string, moduleIds: string[]): Promise<Story>;
 }
 
 export abstract class TaskRepository {

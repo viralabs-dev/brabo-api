@@ -17,6 +17,7 @@ import {
 import { sql } from 'drizzle-orm';
 import type { TerminalExecutionResult } from '../domain/actions/terminal-execution-result';
 import type { GitBootstrapExecutionResult } from '../domain/git/bootstrap-execution-result';
+import type { AdrPrExecutionResult } from '../domain/git/adr-pr-execution-result';
 
 // --- Enums ---
 
@@ -474,7 +475,9 @@ export const proposedActions = pgTable(
     rejectionReason: text('rejection_reason'),
     // Preenchido só depois de executed/failed.
     executionResult: jsonb('execution_result').$type<
-      TerminalExecutionResult | GitBootstrapExecutionResult
+      | TerminalExecutionResult
+      | GitBootstrapExecutionResult
+      | AdrPrExecutionResult
     >(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
@@ -621,6 +624,10 @@ export const stories = pgTable(
     // Definition of Done / Definition of Ready.
     dod: jsonb('dod').$type<string[]>().notNull().default([]),
     dor: jsonb('dor').$type<string[]>().notNull().default([]),
+    // Módulos (nomes) do module_map vigente que a story realiza (Fase 3b —
+    // Arquiteto). Validação cruzada: story não vai a `ready` se algum módulo
+    // referenciado não existir no module_map. Vazio = pendência, não bloqueio.
+    moduleIds: jsonb('module_ids').$type<string[]>().notNull().default([]),
     status: storyStatusEnum('status').notNull().default('draft'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
@@ -654,6 +661,40 @@ export const tasks = pgTable(
       .defaultNow(),
   },
   (table) => [index('tasks_story_idx').on(table.storyId)],
+);
+
+// module_map (Fase 3b — Arquiteto): mapa de módulos do projeto, validado
+// contra ciclos de dependência. Cada emissão é uma linha nova; o **vigente** é
+// o de maior `version` do projeto (histórico imutável, sem UPDATE). Usado pela
+// validação cruzada story↔módulos. `modules` = [{name, stack, responsibility,
+// dependsOn: string[]}] (dependsOn referencia `name` de outro módulo).
+export const moduleMaps = pgTable(
+  'module_maps',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    modules: jsonb('modules')
+      .$type<
+        {
+          name: string;
+          stack: string;
+          responsibility: string;
+          dependsOn: string[];
+        }[]
+      >()
+      .notNull()
+      .default([]),
+    version: integer('version').notNull().default(1),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index('module_maps_project_idx').on(table.projectId)],
 );
 
 // --- Git providers (Fase 2): conexão OAuth + repositório provisionado ---

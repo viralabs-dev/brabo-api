@@ -99,6 +99,7 @@ const approveAction = new ApproveActionUseCase(
   proposedActionRepo,
   outboxRepo,
   executeTerminalAction,
+  undefined as never,
 );
 const approveAlwaysAction = new ApproveAlwaysActionUseCase(
   proposedActionRepo,

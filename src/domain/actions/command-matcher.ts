@@ -16,6 +16,7 @@ export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
   git_branch_create: 'GitBranchCreate',
   git_branch_protect: 'GitBranchProtect',
   write_file: 'WriteFile',
+  open_adr_pr: 'OpenAdrPr',
 };
 
 /**

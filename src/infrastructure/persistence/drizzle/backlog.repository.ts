@@ -110,6 +110,16 @@ export class DrizzleStoryRepository implements StoryRepository {
       .returning();
     return storyToEntity(row);
   }
+
+  async updateModules(id: string, moduleIds: string[]): Promise<Story> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .update(stories)
+      .set({ moduleIds, updatedAt: new Date() })
+      .where(eq(stories.id, id))
+      .returning();
+    return storyToEntity(row);
+  }
 }
 
 @Injectable()
@@ -166,6 +176,7 @@ function storyToEntity(row: typeof stories.$inferSelect): Story {
     businessRuleIds: row.businessRuleIds,
     dod: row.dod,
     dor: row.dor,
+    moduleIds: row.moduleIds,
     status: row.status,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

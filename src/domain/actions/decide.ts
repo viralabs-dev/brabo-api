@@ -11,7 +11,8 @@ export type ActionType =
   | 'git_repo_create'
   | 'git_branch_create'
   | 'git_branch_protect'
-  | 'write_file';
+  | 'write_file'
+  | 'open_adr_pr';
 
 export const ACTION_TYPES: readonly ActionType[] = [
   'terminal',
@@ -23,6 +24,7 @@ export const ACTION_TYPES: readonly ActionType[] = [
   'git_branch_create',
   'git_branch_protect',
   'write_file',
+  'open_adr_pr',
 ];
 
 const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
@@ -45,6 +47,11 @@ const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
   // escrever um arquivo. Fica pending por padrão (sem regra em
   // permissions.json), pra o usuário aprovar.
   write_file: 'developer',
+  // ADR commitado no repo do projeto + PR real aberta (Fase 3b — Arquiteto).
+  // Calibrado como pr_open (maintainer): abre uma PR de verdade no provider.
+  // Fica pending por padrão — o usuário aprova a ação (que então abre a PR) e
+  // depois mergeia a PR real no provider.
+  open_adr_pr: 'maintainer',
 };
 
 // Rede de segurança padrão, sempre ativa, independente do permissions.json

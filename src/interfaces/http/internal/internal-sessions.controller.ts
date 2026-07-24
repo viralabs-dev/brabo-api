@@ -23,6 +23,8 @@ import { CreateHandoffUseCase } from '../../../application/use-cases/agents/crea
 import { CreateEpicUseCase } from '../../../application/use-cases/backlog/create-epic.use-case';
 import { CreateStoryUseCase } from '../../../application/use-cases/backlog/create-story.use-case';
 import { CreateTaskUseCase } from '../../../application/use-cases/backlog/create-task.use-case';
+import { CreateModuleMapUseCase } from '../../../application/use-cases/architecture/create-module-map.use-case';
+import { AssignStoryModulesUseCase } from '../../../application/use-cases/architecture/assign-story-modules.use-case';
 import { ReportSessionTerminationDto } from './dto/report-session-termination.dto';
 import { AppendSessionEventInternalDto } from './dto/append-session-event-internal.dto';
 import { RunLlmTurnDto } from './dto/run-llm-turn.dto';
@@ -32,6 +34,8 @@ import { CreateHandoffInternalDto } from './dto/create-handoff-internal.dto';
 import { CreateEpicInternalDto } from './dto/create-epic-internal.dto';
 import { CreateStoryInternalDto } from './dto/create-story-internal.dto';
 import { CreateTaskInternalDto } from './dto/create-task-internal.dto';
+import { CreateModuleMapInternalDto } from './dto/create-module-map-internal.dto';
+import { AssignStoryModulesInternalDto } from './dto/assign-story-modules-internal.dto';
 
 /**
  * Chamadas internas do engine (Elixir/OTP) — nunca de um usuário humano.
@@ -54,6 +58,8 @@ export class InternalSessionsController {
     private readonly createEpic: CreateEpicUseCase,
     private readonly createStory: CreateStoryUseCase,
     private readonly createTask: CreateTaskUseCase,
+    private readonly createModuleMap: CreateModuleMapUseCase,
+    private readonly assignStoryModules: AssignStoryModulesUseCase,
   ) {}
 
   /**
@@ -204,6 +210,31 @@ export class InternalSessionsController {
       storyId: dto.storyId,
       title: dto.title,
       description: dto.description,
+    });
+  }
+
+  /**
+   * Ferramentas do Arquiteto: create_module_map (validado contra ciclos +
+   * revalida stories) e assign_story_modules (vincula módulos a uma story).
+   */
+  @Post(':sessionId/module-map')
+  moduleMap(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: CreateModuleMapInternalDto,
+  ) {
+    return this.createModuleMap.execute(dto.projectId, sessionId, {
+      modules: dto.modules,
+    });
+  }
+
+  @Post(':sessionId/story-modules')
+  storyModules(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: AssignStoryModulesInternalDto,
+  ) {
+    return this.assignStoryModules.execute(dto.projectId, sessionId, {
+      storyId: dto.storyId,
+      moduleIds: dto.moduleIds,
     });
   }
 
