@@ -113,6 +113,8 @@ class FailOnceGitProvider {
     this.inner.mergePullRequest(i);
   getFileContent: LocalGitProvider['getFileContent'] = (i) =>
     this.inner.getFileContent(i);
+  commentOnPullRequest: LocalGitProvider['commentOnPullRequest'] = (i) =>
+    this.inner.commentOnPullRequest(i);
 }
 
 async function main() {

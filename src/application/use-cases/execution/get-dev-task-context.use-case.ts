@@ -15,6 +15,11 @@ export interface DevContextBusinessRule {
 export interface DevContextAdr {
   title: string;
   content: string;
+  // Fase 4a — SecOps: ADR marcado como relevante de segurança pelo
+  // Arquiteto (payload opcional de `open_adr_pr`, default `false`) — vira
+  // checklist informativo no parecer do SecOpsAgent, sem correlação
+  // profunda linha-a-linha.
+  securityRelevant: boolean;
 }
 
 export interface DevTaskContext {
@@ -60,10 +65,15 @@ export class GetDevTaskContextUseCase {
     ]);
 
     const adrs: DevContextAdr[] = adrActions.map((a) => {
-      const payload = a.payload as { title?: string; content?: string };
+      const payload = a.payload as {
+        title?: string;
+        content?: string;
+        securityRelevant?: boolean;
+      };
       return {
         title: payload.title ?? '(ADR sem título)',
         content: payload.content ?? '',
+        securityRelevant: payload.securityRelevant ?? false,
       };
     });
 

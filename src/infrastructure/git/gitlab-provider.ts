@@ -17,6 +17,7 @@ import type {
   MergePullRequestInput,
   OpenPullRequestInput,
   ProtectBranchInput,
+  CommentOnPullRequestInput,
 } from '@brabo/shared';
 import {
   GitBranchAlreadyExistsError,
@@ -288,6 +289,16 @@ export class GitlabProvider implements GitProviderContract {
       targetBranch: mr.target_branch,
       state: 'merged',
     };
+  }
+
+  async commentOnPullRequest(input: CommentOnPullRequestInput): Promise<void> {
+    const api = new Gitlab({ token: input.accessToken ?? '' });
+    const mergeRequestIid = Number(input.pullRequestId);
+    await api.MergeRequestNotes.create(
+      input.externalId,
+      mergeRequestIid,
+      input.body,
+    );
   }
 }
 

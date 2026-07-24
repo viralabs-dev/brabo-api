@@ -51,6 +51,7 @@ export abstract class ApiToEngineClient {
     sessionId: string,
     modules: string[],
     taskBudgetMicros?: number,
+    maxGateCorrections?: number,
   ): Promise<void>;
 
   // Executa uma ação git (git_commit/git_push) no worktree do agente, no

@@ -139,6 +139,10 @@ class InstrumentedGitProvider implements GitProviderContract {
     this.track('mergePullRequest', () => this.inner.mergePullRequest(input));
   getFileContent: GitProviderContract['getFileContent'] = (input) =>
     this.track('getFileContent', () => this.inner.getFileContent(input));
+  commentOnPullRequest: GitProviderContract['commentOnPullRequest'] = (input) =>
+    this.track('commentOnPullRequest', () =>
+      this.inner.commentOnPullRequest(input),
+    );
 }
 
 function registryFor(provider: GitProviderContract): GitProviderRegistry {

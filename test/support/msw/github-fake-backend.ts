@@ -279,6 +279,20 @@ export function createGithubHandlers(store: FakeRepoStore) {
         base: { ref: pr.targetBranch },
       });
     }),
+
+    http.post(
+      `${BASE}/repos/:owner/:repo/issues/:number/comments`,
+      async ({ params, request }) => {
+        const repo = store.repos.get(fullNameFromParams(params));
+        if (!repo) return notFound();
+        const pr = repo.prs.find(
+          (candidate) => candidate.number === Number(params.number),
+        );
+        if (!pr) return notFound();
+        const body = (await request.json()) as { body: string };
+        return HttpResponse.json({ id: 1, body: body.body }, { status: 201 });
+      },
+    ),
   ];
 }
 

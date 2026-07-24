@@ -101,11 +101,13 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     sessionId: string,
     modules: string[],
     taskBudgetMicros?: number,
+    maxGateCorrections?: number,
   ): Promise<void> {
     await this.postCommand(`/internal/sessions/${sessionId}/execution/start`, {
       projectId,
       modules,
       taskBudgetMicros,
+      maxGateCorrections,
     });
   }
 

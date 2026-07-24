@@ -1,4 +1,5 @@
 import type { StoryStatus } from './story-state-machine';
+import type { PrGateStatus } from '../execution/pr-gate-state-machine';
 
 export type { StoryStatus };
 
@@ -41,6 +42,8 @@ export interface Task {
   assignedTo: string | null;
   blocked: boolean;
   blockedReason: string | null;
+  gateStatus: PrGateStatus | null;
+  gateCorrectionCount: number;
   createdAt: Date;
   updatedAt: Date;
 }

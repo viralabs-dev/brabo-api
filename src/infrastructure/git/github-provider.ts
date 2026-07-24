@@ -17,6 +17,7 @@ import type {
   MergePullRequestInput,
   OpenPullRequestInput,
   ProtectBranchInput,
+  CommentOnPullRequestInput,
 } from '@brabo/shared';
 import {
   GitBranchAlreadyExistsError,
@@ -358,6 +359,18 @@ export class GithubProvider implements GitProviderContract {
       targetBranch: data.base.ref,
       state: 'merged',
     };
+  }
+
+  async commentOnPullRequest(input: CommentOnPullRequestInput): Promise<void> {
+    const [owner, repo] = splitFullName(input.externalId);
+    const octokit = new Octokit({ auth: input.accessToken });
+
+    await octokit.rest.issues.createComment({
+      owner,
+      repo,
+      issue_number: Number(input.pullRequestId),
+      body: input.body,
+    });
   }
 }
 

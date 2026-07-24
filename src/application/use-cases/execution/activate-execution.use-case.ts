@@ -7,6 +7,7 @@ import { ApiToEngineClient } from '../../ports/api-to-engine-client.port';
 import { TransitionSessionUseCase } from '../sessions/transition-session.use-case';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { UpsertAgentInstructionUseCase } from '../agents/upsert-agent-instruction.use-case';
+import { DEFAULT_MAX_GATE_CORRECTIONS } from './record-gate-verdict.use-case';
 
 // agent_id/branch slug a partir do nome do módulo.
 export function devAgentId(moduleName: string): string {
@@ -44,8 +45,14 @@ export class ActivateExecutionUseCase {
     private readonly upsertInstruction: UpsertAgentInstructionUseCase,
   ) {}
 
-  async execute(projectId: string, userId: string, taskBudgetMicros?: number) {
+  async execute(
+    projectId: string,
+    userId: string,
+    taskBudgetMicros?: number,
+    maxGateCorrections?: number,
+  ) {
     const budget = taskBudgetMicros ?? DEFAULT_TASK_BUDGET_MICROS;
+    const maxCorrections = maxGateCorrections ?? DEFAULT_MAX_GATE_CORRECTIONS;
     const moduleMap = await this.moduleMaps.findCurrent(projectId);
     if (!moduleMap || moduleMap.modules.length === 0) {
       throw new BadRequestException(
@@ -84,6 +91,7 @@ export class ActivateExecutionUseCase {
       session.id,
       modules,
       budget,
+      maxCorrections,
     );
 
     await this.appendEvent.execute(projectId, session.id, {

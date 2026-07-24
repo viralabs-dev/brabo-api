@@ -5,6 +5,7 @@ import type {
   StoryStatus,
   TaskStatus,
 } from '../../domain/backlog/backlog.entity';
+import type { PrGateStatus } from '../../domain/execution/pr-gate-state-machine';
 
 export interface NewEpic {
   projectId: string;
@@ -74,4 +75,13 @@ export abstract class TaskRepository {
     diagnosis: string,
   ): Promise<Task>;
   abstract unblock(id: string): Promise<Task>;
+  // Fase 4a — gates de PR: abre o fluxo (gate_status: null -> 'awaiting_qa',
+  // contador zerado) quando a PR é criada; `updateGateStatus` aplica o
+  // resultado de `nextGateStatus` (pr-gate-state-machine.ts) a cada parecer.
+  abstract openGate(id: string): Promise<Task>;
+  abstract updateGateStatus(
+    id: string,
+    gateStatus: PrGateStatus,
+    correctionCount: number,
+  ): Promise<Task>;
 }
