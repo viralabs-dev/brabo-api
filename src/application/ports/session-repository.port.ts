@@ -20,10 +20,15 @@ export abstract class SessionRepository {
     sessionId: string,
   ): Promise<Session | null>;
 
+  // `terminationReason` só é passado (e gravado) no caminho de término
+  // reportado pelo engine — undefined significa "não mexe na coluna"
+  // (evita apagar um motivo já gravado numa transição terminal->terminal
+  // que não tem motivo novo, ex. nenhuma hoje, mas defensivo).
   abstract updateStatus(
     sessionId: string,
     status: SessionStatus,
     closedAt: Date | null,
+    terminationReason?: string | null,
   ): Promise<Session>;
 
   /**

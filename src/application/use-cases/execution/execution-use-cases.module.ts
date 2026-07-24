@@ -17,6 +17,13 @@ import { RecordInfraGateVerdictUseCase } from './record-infra-gate-verdict.use-c
 import { GetInfraContextUseCase } from './get-infra-context.use-case';
 import { GetInfraPrFilesUseCase } from './get-infra-pr-files.use-case';
 import { ListInfraArtifactsUseCase } from './list-infra-artifacts.use-case';
+import { GetPsychologistContextUseCase } from './get-psychologist-context.use-case';
+import { ProposeHypothesesUseCase } from './propose-hypotheses.use-case';
+import { AcceptHypothesisUseCase } from './accept-hypothesis.use-case';
+import { DismissHypothesisUseCase } from './dismiss-hypothesis.use-case';
+import { ListHypothesesUseCase } from './list-hypotheses.use-case';
+import { ReanalyzeSessionUseCase } from './reanalyze-session.use-case';
+import { GetPsychologistAnalysisCostUseCase } from './get-psychologist-analysis-cost.use-case';
 
 const USE_CASES = [
   ActivateExecutionUseCase,
@@ -33,6 +40,13 @@ const USE_CASES = [
   GetInfraContextUseCase,
   GetInfraPrFilesUseCase,
   ListInfraArtifactsUseCase,
+  GetPsychologistContextUseCase,
+  ProposeHypothesesUseCase,
+  AcceptHypothesisUseCase,
+  DismissHypothesisUseCase,
+  ListHypothesesUseCase,
+  ReanalyzeSessionUseCase,
+  GetPsychologistAnalysisCostUseCase,
 ];
 
 @Module({

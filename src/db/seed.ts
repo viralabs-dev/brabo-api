@@ -116,12 +116,22 @@ async function main() {
   console.log(`✓ workspace: ${workspace.name} (${workspace.slug})`);
 
   let localModel: Model | undefined;
+  // Fase 4b — Psicólogo: os dois tiers de triagem precisam de modelos
+  // GENUINAMENTE diferentes; é isso que faz o custo divergir de verdade
+  // no metering (ver Engine.Psychologist.Triage).
+  let strongModel: Model | undefined;
+  let cheapModel: Model | undefined;
   for (const modelSeed of MODEL_SEEDS) {
     const model = await models.upsertByProviderAndName(modelSeed);
     console.log(`✓ modelo: ${model.provider}/${model.name}`);
     if (model.provider === 'ollama') localModel = model;
+    if (model.name === 'claude-opus-4-8') strongModel = model;
+    if (model.name === 'claude-haiku-4-5-20251001') cheapModel = model;
   }
   if (!localModel) throw new Error('Modelo local não foi semeado');
+  if (!strongModel || !cheapModel) {
+    throw new Error('Modelos do Psicólogo (forte/barato) não foram semeados');
+  }
 
   await setModelBinding.execute(
     'workspace',
@@ -157,6 +167,23 @@ async function main() {
   );
   console.log(
     `✓ binding: agent ${CRIATIVO_AGENT} -> ${localModel.provider}/${localModel.name}`,
+  );
+
+  // Fase 4b — Psicólogo: binding próprio por tier de triagem. O agent id
+  // do ctx do ToolLoop ("psicologo"/"psicologo-leve") resolve por aqui
+  // via a cascata que já existe (session > agent > project > workspace).
+  await setModelBinding.execute('agent', 'psicologo', strongModel.id, owner.id);
+  console.log(
+    `✓ binding: agent psicologo -> ${strongModel.provider}/${strongModel.name}`,
+  );
+  await setModelBinding.execute(
+    'agent',
+    'psicologo-leve',
+    cheapModel.id,
+    owner.id,
+  );
+  console.log(
+    `✓ binding: agent psicologo-leve -> ${cheapModel.provider}/${cheapModel.name}`,
   );
 
   const session = await createSession.execute(project.id, developer.id);

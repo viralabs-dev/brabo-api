@@ -18,7 +18,12 @@ export class TransitionSessionUseCase {
     private readonly engineClient: ApiToEngineClient,
   ) {}
 
-  execute(projectId: string, sessionId: string, to: SessionStatus) {
+  execute(
+    projectId: string,
+    sessionId: string,
+    to: SessionStatus,
+    terminationReason?: string,
+  ) {
     if (to === 'active') return this.activate(projectId, sessionId);
 
     return this.unitOfWork.runInTransaction(async () => {
@@ -35,6 +40,7 @@ export class TransitionSessionUseCase {
         sessionId,
         to,
         terminal ? new Date() : current.closedAt,
+        terminal ? (terminationReason ?? null) : undefined,
       );
 
       if (terminal) {

@@ -25,6 +25,8 @@ import {
 } from '../../../application/ports/backlog-repository.port';
 import { ModuleMapRepository } from '../../../application/ports/module-map-repository.port';
 import { InfraArtifactRepository } from '../../../application/ports/infra-artifact-repository.port';
+import { PsychologistAnalysisRepository } from '../../../application/ports/psychologist-analysis-repository.port';
+import { PsychologistHypothesisRepository } from '../../../application/ports/psychologist-hypothesis-repository.port';
 import { createDrizzleClient, DRIZZLE } from './drizzle-client';
 import { DrizzleUnitOfWork } from './drizzle-unit-of-work';
 import { DrizzleUserRepository } from './user.repository';
@@ -52,6 +54,8 @@ import {
 } from './backlog.repository';
 import { DrizzleModuleMapRepository } from './module-map.repository';
 import { DrizzleInfraArtifactRepository } from './infra-artifact.repository';
+import { DrizzlePsychologistAnalysisRepository } from './psychologist-analysis.repository';
+import { DrizzlePsychologistHypothesisRepository } from './psychologist-hypothesis.repository';
 
 const { db, pool } = createDrizzleClient();
 
@@ -114,6 +118,14 @@ const { db, pool } = createDrizzleClient();
       provide: InfraArtifactRepository,
       useClass: DrizzleInfraArtifactRepository,
     },
+    {
+      provide: PsychologistAnalysisRepository,
+      useClass: DrizzlePsychologistAnalysisRepository,
+    },
+    {
+      provide: PsychologistHypothesisRepository,
+      useClass: DrizzlePsychologistHypothesisRepository,
+    },
   ],
   exports: [
     DRIZZLE,
@@ -141,6 +153,8 @@ const { db, pool } = createDrizzleClient();
     TaskRepository,
     ModuleMapRepository,
     InfraArtifactRepository,
+    PsychologistAnalysisRepository,
+    PsychologistHypothesisRepository,
   ],
 })
 export class DrizzleModule implements OnModuleDestroy {

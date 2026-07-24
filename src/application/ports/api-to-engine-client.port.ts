@@ -80,4 +80,13 @@ export abstract class ApiToEngineClient {
     projectId: string,
     sessionId: string,
   ): Promise<void>;
+
+  // Reprocessamento explícito da análise do Psicólogo (Fase 4b) — o
+  // engine enfileira o job do PsychologistWorker com triggeredBy:
+  // "manual" (sempre roda, mesmo se já houver análise current pra
+  // sessão; a análise antiga vira superseded, não é apagada).
+  abstract reanalyzeSession(
+    projectId: string,
+    sessionId: string,
+  ): Promise<void>;
 }
