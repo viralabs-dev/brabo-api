@@ -14,6 +14,7 @@ import { ExecutionHttpModule } from './interfaces/http/execution/execution-http.
 import { GitHttpModule } from './interfaces/http/git/git-http.module';
 import { InternalHttpModule } from './interfaces/http/internal/internal-http.module';
 import { PsychologistHttpModule } from './interfaces/http/psychologist/psychologist-http.module';
+import { AnamneseHttpModule } from './interfaces/http/anamnese/anamnese-http.module';
 
 @Module({
   // Ordem importa: AuthHttpModule antes de IamHttpModule, para o
@@ -32,6 +33,7 @@ import { PsychologistHttpModule } from './interfaces/http/psychologist/psycholog
     ExecutionHttpModule,
     GitHttpModule,
     PsychologistHttpModule,
+    AnamneseHttpModule,
     InternalHttpModule,
   ],
   controllers: [AppController],

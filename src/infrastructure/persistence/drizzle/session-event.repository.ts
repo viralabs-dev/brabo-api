@@ -1,18 +1,25 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, gt } from 'drizzle-orm';
+import { and, asc, eq, gt, gte, lt } from 'drizzle-orm';
 import {
   SessionEventRepository,
   type ListPaginatedOptions,
   type NewSessionEvent,
   type Page,
 } from '../../../application/ports/session-event-repository.port';
-import type { SessionEvent } from '../../../domain/sessions/session-event.entity';
+import type {
+  ActorKind,
+  SessionEvent,
+} from '../../../domain/sessions/session-event.entity';
 import { sessionEvents, sessions } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
+// Janela da Anamnese (Fase 4b) — teto próprio, mais alto que a paginação
+// humana: uma rodada precisa enxergar a janela inteira de uma vez.
+const WINDOW_DEFAULT_LIMIT = 500;
+const WINDOW_MAX_LIMIT = 2000;
 
 @Injectable()
 export class DrizzleSessionEventRepository implements SessionEventRepository {
@@ -85,6 +92,36 @@ export class DrizzleSessionEventRepository implements SessionEventRepository {
         and(eq(sessions.projectId, projectId), eq(sessionEvents.type, type)),
       )
       .orderBy(asc(sessionEvents.createdAt));
+    return rows.map((r) => toEntity(r.session_events));
+  }
+
+  async listForProjectInWindow(
+    projectId: string,
+    opts: {
+      from: Date;
+      to: Date;
+      actorKind?: ActorKind;
+      limit?: number;
+    },
+  ): Promise<SessionEvent[]> {
+    const db = currentDb(this.rootDb);
+    const limit = Math.min(opts.limit ?? WINDOW_DEFAULT_LIMIT, WINDOW_MAX_LIMIT);
+    const rows = await db
+      .select()
+      .from(sessionEvents)
+      .innerJoin(sessions, eq(sessionEvents.sessionId, sessions.id))
+      .where(
+        and(
+          eq(sessions.projectId, projectId),
+          gte(sessionEvents.createdAt, opts.from),
+          lt(sessionEvents.createdAt, opts.to),
+          ...(opts.actorKind
+            ? [eq(sessionEvents.actorKind, opts.actorKind)]
+            : []),
+        ),
+      )
+      .orderBy(asc(sessionEvents.createdAt))
+      .limit(limit);
     return rows.map((r) => toEntity(r.session_events));
   }
 }

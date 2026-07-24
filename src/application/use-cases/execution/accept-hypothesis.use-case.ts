@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PsychologistHypothesisRepository } from '../../ports/psychologist-hypothesis-repository.port';
+import { AnamneseQueueRepository } from '../../ports/anamnese-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import {
   assertHypothesisTransition,
@@ -23,6 +24,7 @@ export class AcceptHypothesisUseCase {
   constructor(
     private readonly hypotheses: PsychologistHypothesisRepository,
     private readonly appendSessionEvent: AppendSessionEventUseCase,
+    private readonly anamneseQueue: AnamneseQueueRepository,
   ) {}
 
   async execute(projectId: string, hypothesisId: string, userId: string) {
@@ -63,6 +65,12 @@ export class AcceptHypothesisUseCase {
       actor: { kind: 'user', id: userId },
       payload,
     });
+
+    // Loop fechado (Fase 4b): a hipótese aceita vira input PRIORIZADO da
+    // próxima rodada da Anamnese. Enfileirar aqui é determinístico —
+    // não depende de rotear o outbox nem de o consumidor estar de pé.
+    // Idempotente por hypothesisId (unique + doNothing).
+    await this.anamneseQueue.enqueueHypothesis(projectId, updated.id);
 
     return updated;
   }

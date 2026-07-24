@@ -36,10 +36,17 @@ import { RecordInfraGateVerdictUseCase } from '../../../application/use-cases/ex
 import { GetInfraPrFilesUseCase } from '../../../application/use-cases/execution/get-infra-pr-files.use-case';
 import { GetPsychologistContextUseCase } from '../../../application/use-cases/execution/get-psychologist-context.use-case';
 import { ProposeHypothesesUseCase } from '../../../application/use-cases/execution/propose-hypotheses.use-case';
+import { GetAnamneseContextUseCase } from '../../../application/use-cases/anamnese/get-anamnese-context.use-case';
+import { RecordProficiencyUseCase } from '../../../application/use-cases/anamnese/record-proficiency.use-case';
+import { ProposeInstructionPatchUseCase } from '../../../application/use-cases/instructions/propose-instruction-patch.use-case';
 import { BlockTaskInternalDto } from './dto/block-task-internal.dto';
 import { RecordGateVerdictInternalDto } from './dto/record-gate-verdict-internal.dto';
 import { RecordInfraGateVerdictInternalDto } from './dto/record-infra-gate-verdict-internal.dto';
 import { ProposeHypothesesInternalDto } from './dto/propose-hypotheses-internal.dto';
+import {
+  ProposeInstructionPatchInternalDto,
+  RecordProficiencyInternalDto,
+} from './dto/record-proficiency-internal.dto';
 import { OpenGateInternalDto } from './dto/open-gate-internal.dto';
 import { ReportSessionTerminationDto } from './dto/report-session-termination.dto';
 import { AppendSessionEventInternalDto } from './dto/append-session-event-internal.dto';
@@ -89,6 +96,9 @@ export class InternalSessionsController {
     private readonly getInfraPrFiles: GetInfraPrFilesUseCase,
     private readonly getPsychologistContext: GetPsychologistContextUseCase,
     private readonly proposeHypotheses: ProposeHypothesesUseCase,
+    private readonly getAnamneseContext: GetAnamneseContextUseCase,
+    private readonly recordProficiency: RecordProficiencyUseCase,
+    private readonly proposeInstructionPatch: ProposeInstructionPatchUseCase,
   ) {}
 
   /**
@@ -452,6 +462,53 @@ export class InternalSessionsController {
     @Body() dto: OpenGateInternalDto,
   ) {
     return this.openGate.execute(dto.projectId, sessionId, taskId, dto.agentId);
+  }
+
+  /**
+   * Contexto da rodada da Anamnese (Fase 4b): catálogo de competências
+   * permitidas, membros elegíveis (já sem quem optou por sair),
+   * hipóteses aceitas na fila, perfis atuais e a janela a analisar.
+   */
+  @Get(':sessionId/anamnese-context')
+  anamneseContext(@Query('projectId') projectId: string) {
+    return this.getAnamneseContext.execute(projectId);
+  }
+
+  /**
+   * Perfis de proficiência emitidos pela Anamnese (Fase 4b) — valida
+   * contra o catálogo permitido (guarda-corpo) e a evidência real antes
+   * de gravar; rejeição volta pro modelo como tool-result.
+   */
+  @Post(':sessionId/proficiency')
+  proficiency(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: RecordProficiencyInternalDto,
+  ) {
+    return this.recordProficiency.execute(dto.projectId, {
+      sessionId,
+      windowFrom: new Date(dto.windowFrom),
+      windowTo: new Date(dto.windowTo),
+      eventCount: dto.eventCount,
+      profiles: dto.profiles,
+      consumedQueueIds: dto.consumedQueueIds,
+    });
+  }
+
+  /**
+   * Patch de instrução proposto pela Anamnese (Fase 4b): calcula o diff
+   * e recusa repropor um patch já negado antes de criar a ação.
+   */
+  @Post(':sessionId/instruction-patches')
+  instructionPatch(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: ProposeInstructionPatchInternalDto,
+  ) {
+    return this.proposeInstructionPatch.execute(dto.projectId, sessionId, {
+      agent: dto.agent,
+      proposedContent: dto.proposedContent,
+      rationale: dto.rationale,
+      hypothesisId: dto.hypothesisId ?? null,
+    });
   }
 
   /**

@@ -1,5 +1,6 @@
 import type {
   Actor,
+  ActorKind,
   SessionEvent,
 } from '../../domain/sessions/session-event.entity';
 
@@ -36,5 +37,17 @@ export abstract class SessionEventRepository {
   abstract listByTypeForProject(
     projectId: string,
     type: string,
+  ): Promise<SessionEvent[]>;
+  // Janela de tempo do projeto inteiro (Fase 4b — Anamnese analisa
+  // "janelas do event log"). `actorKind` filtra interações do usuário;
+  // `limit` protege contra janelas patológicas.
+  abstract listForProjectInWindow(
+    projectId: string,
+    opts: {
+      from: Date;
+      to: Date;
+      actorKind?: ActorKind;
+      limit?: number;
+    },
   ): Promise<SessionEvent[]>;
 }

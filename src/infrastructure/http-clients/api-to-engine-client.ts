@@ -113,6 +113,16 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     );
   }
 
+  async invalidateInstructions(
+    projectId: string,
+    agent: string,
+  ): Promise<void> {
+    await this.postCommand(
+      `/internal/projects/${projectId}/agents/${agent}/instructions/invalidate`,
+      {},
+    );
+  }
+
   async startExecution(
     projectId: string,
     sessionId: string,

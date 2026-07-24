@@ -19,6 +19,7 @@ export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
   open_adr_pr: 'OpenAdrPr',
   git_merge: 'GitMerge',
   open_infra_pr: 'OpenInfraPr',
+  instruction_patch: 'InstructionPatch',
 };
 
 /**

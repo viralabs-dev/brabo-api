@@ -6,6 +6,7 @@ import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { ExecuteTerminalActionUseCase } from './execute-terminal-action.use-case';
 import { ExecuteAdrPrUseCase } from './execute-adr-pr.use-case';
 import { ExecuteInfraPrUseCase } from './execute-infra-pr.use-case';
+import { ExecuteInstructionPatchUseCase } from './execute-instruction-patch.use-case';
 import { ExecuteGitActionUseCase } from './execute-git-action.use-case';
 import { assertTransition } from '../../../domain/actions/action-state-machine';
 import { GIT_EXECUTED_ACTION_TYPES } from '../../../domain/actions/git-action-types';
@@ -22,6 +23,7 @@ export class ApproveActionUseCase {
     private readonly executeAdrPr: ExecuteAdrPrUseCase,
     private readonly executeInfraPr: ExecuteInfraPrUseCase,
     private readonly executeGitAction: ExecuteGitActionUseCase,
+    private readonly executeInstructionPatch: ExecuteInstructionPatchUseCase,
   ) {}
 
   async execute(
@@ -47,6 +49,14 @@ export class ApproveActionUseCase {
 
     if (approved.actionType === 'open_infra_pr') {
       return this.executeInfraPr.execute(projectId, sessionId, approved);
+    }
+
+    if (approved.actionType === 'instruction_patch') {
+      return this.executeInstructionPatch.execute(
+        projectId,
+        sessionId,
+        approved,
+      );
     }
 
     if (GIT_EXECUTED_ACTION_TYPES.includes(approved.actionType)) {
