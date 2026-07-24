@@ -141,7 +141,11 @@ export class DrizzleTaskRepository implements TaskRepository {
 
   async findById(id: string): Promise<Task | null> {
     const db = currentDb(this.rootDb);
-    const [row] = await db.select().from(tasks).where(eq(tasks.id, id)).limit(1);
+    const [row] = await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.id, id))
+      .limit(1);
     return row ? taskToEntity(row) : null;
   }
 
@@ -165,7 +169,12 @@ export class DrizzleTaskRepository implements TaskRepository {
     // UPDATE atômico: pega a próxima task `todo` de uma story `ready` cujo
     // module_ids (jsonb array) contém `module`, com FOR UPDATE SKIP LOCKED pra
     // dois devs nunca pegarem a mesma. `?` = operador jsonb "contém a chave/
-    // elemento string".
+    // elemento string". `FOR UPDATE OF t` é ESSENCIAL: sem ele, o lock cai
+    // também na linha de `stories` do join — como várias tasks compartilham a
+    // MESMA story, isso serializaria claims concorrentes pelo lock da story
+    // (e SKIP LOCKED os descartaria em vez de tentar outra task), perdendo
+    // claims mesmo com tasks disponíveis (bug real, achado pelo teste de
+    // concorrência).
     // `db.execute` retorna as colunas cruas (snake_case), não o mapeamento
     // camelCase do Drizzle — daí o mapeamento manual abaixo.
     const result = await db.execute(sql`
@@ -178,11 +187,12 @@ export class DrizzleTaskRepository implements TaskRepository {
           AND s.status = 'ready'
           AND s.module_ids ? ${module}
           AND t.status = 'todo'
+          AND t.blocked = false
         ORDER BY t.created_at
-        FOR UPDATE SKIP LOCKED
+        FOR UPDATE OF t SKIP LOCKED
         LIMIT 1
       )
-      RETURNING id, story_id, title, description, status, assigned_to, created_at, updated_at
+      RETURNING id, story_id, title, description, status, assigned_to, blocked, blocked_reason, created_at, updated_at
     `);
     const row = result.rows[0] as Record<string, unknown> | undefined;
     if (!row) return null;
@@ -193,6 +203,8 @@ export class DrizzleTaskRepository implements TaskRepository {
       description: row.description as string,
       status: row.status as Task['status'],
       assignedTo: (row.assigned_to as string | null) ?? null,
+      blocked: row.blocked as boolean,
+      blockedReason: (row.blocked_reason as string | null) ?? null,
       createdAt: row.created_at as Date,
       updatedAt: row.updated_at as Date,
     };
@@ -220,8 +232,40 @@ export class DrizzleTaskRepository implements TaskRepository {
         AND s.status = 'ready'
         AND s.module_ids ? ${module}
         AND t.status = 'todo'
+        AND t.blocked = false
     `);
     return Number(result.rows[0]?.n ?? 0);
+  }
+
+  async markBlocked(
+    id: string,
+    reason: string,
+    diagnosis: string,
+  ): Promise<Task> {
+    const db = currentDb(this.rootDb);
+    const blockedReason = diagnosis ? `${reason} — ${diagnosis}` : reason;
+    const [row] = await db
+      .update(tasks)
+      .set({
+        status: 'todo',
+        assignedTo: null,
+        blocked: true,
+        blockedReason,
+        updatedAt: new Date(),
+      })
+      .where(eq(tasks.id, id))
+      .returning();
+    return taskToEntity(row);
+  }
+
+  async unblock(id: string): Promise<Task> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .update(tasks)
+      .set({ blocked: false, blockedReason: null, updatedAt: new Date() })
+      .where(eq(tasks.id, id))
+      .returning();
+    return taskToEntity(row);
   }
 }
 
@@ -265,6 +309,8 @@ function taskToEntity(row: typeof tasks.$inferSelect): Task {
     description: row.description,
     status: row.status,
     assignedTo: row.assignedTo,
+    blocked: row.blocked,
+    blockedReason: row.blockedReason,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

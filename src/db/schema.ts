@@ -137,6 +137,7 @@ export const storyStatusEnum = pgEnum('story_status', [
 export const taskStatusEnum = pgEnum('task_status', [
   'todo',
   'in_progress',
+  'in_review',
   'done',
 ]);
 
@@ -667,6 +668,11 @@ export const tasks = pgTable(
     // Fase 4a — execução: status + agente que pegou a task (claim atômico).
     status: taskStatusEnum('status').notNull().default('todo'),
     assignedTo: text('assigned_to'),
+    // DevAgent devolveu a task com diagnóstico (limite de iterações, orçamento
+    // excedido, ou report_blocked) — status volta pra `todo`, mas fica
+    // marcada aqui pra não ser reclaimada automaticamente e pra UI destacar.
+    blocked: boolean('blocked').notNull().default(false),
+    blockedReason: text('blocked_reason'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

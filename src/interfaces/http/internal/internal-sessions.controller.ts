@@ -27,6 +27,9 @@ import { CreateModuleMapUseCase } from '../../../application/use-cases/architect
 import { AssignStoryModulesUseCase } from '../../../application/use-cases/architecture/assign-story-modules.use-case';
 import { ClaimNextTaskUseCase } from '../../../application/use-cases/execution/claim-next-task.use-case';
 import { MarkTaskUseCase } from '../../../application/use-cases/execution/mark-task.use-case';
+import { GetDevTaskContextUseCase } from '../../../application/use-cases/execution/get-dev-task-context.use-case';
+import { MarkTaskBlockedUseCase } from '../../../application/use-cases/execution/mark-task-blocked.use-case';
+import { BlockTaskInternalDto } from './dto/block-task-internal.dto';
 import { ReportSessionTerminationDto } from './dto/report-session-termination.dto';
 import { AppendSessionEventInternalDto } from './dto/append-session-event-internal.dto';
 import { RunLlmTurnDto } from './dto/run-llm-turn.dto';
@@ -66,6 +69,8 @@ export class InternalSessionsController {
     private readonly assignStoryModules: AssignStoryModulesUseCase,
     private readonly claimNextTask: ClaimNextTaskUseCase,
     private readonly markTask: MarkTaskUseCase,
+    private readonly getDevTaskContext: GetDevTaskContextUseCase,
+    private readonly markTaskBlocked: MarkTaskBlockedUseCase,
   ) {}
 
   /**
@@ -272,6 +277,39 @@ export class InternalSessionsController {
       sessionId,
       taskId,
       dto.status,
+      dto.agentId,
+    );
+  }
+
+  /**
+   * Contexto rico da task pro DevAgent (Fase 4a): story completa (RF/RNF/DoD/
+   * DoR), regras de negócio resolvidas e ADRs do projeto — alimenta as
+   * camadas `regras_negocio`/`estado_tarefa` do harness.
+   */
+  @Get(':sessionId/dev-context')
+  devContext(
+    @Query('projectId') projectId: string,
+    @Query('taskId') taskId: string,
+  ) {
+    return this.getDevTaskContext.execute(projectId, taskId);
+  }
+
+  /**
+   * O DevAgent não conseguiu concluir a task (Fase 4a) — devolve com
+   * diagnóstico (limite de iterações, orçamento excedido, ou report_blocked).
+   */
+  @Post(':sessionId/tasks/:taskId/block')
+  blockTask(
+    @Param('sessionId') sessionId: string,
+    @Param('taskId') taskId: string,
+    @Body() dto: BlockTaskInternalDto,
+  ) {
+    return this.markTaskBlocked.execute(
+      dto.projectId,
+      sessionId,
+      taskId,
+      dto.reason,
+      dto.diagnosis,
       dto.agentId,
     );
   }

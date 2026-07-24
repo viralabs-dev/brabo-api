@@ -20,6 +20,11 @@ export function devAgentId(moduleName: string): string {
 // NUNCA entra aqui — a trava de merge o mantém manual.
 const DEV_AUTO_GIT_ACTIONS = ['git_commit', 'git_push', 'pr_open'];
 
+// Orçamento de tokens por task (Fase 4a) quando não configurado na ativação
+// — US$0,50 em micro-USD. "Configurável por projeto" é satisfeito no
+// próprio ato de ativar (ver `execute`); sem tabela nova.
+const DEFAULT_TASK_BUDGET_MICROS = 500_000;
+
 /**
  * Ativa a fase de execução de um projeto (Fase 4a): exige module_map vigente;
  * cria uma sessão de execução dedicada e a ativa (sobe o SessionServer); seeda
@@ -39,7 +44,8 @@ export class ActivateExecutionUseCase {
     private readonly upsertInstruction: UpsertAgentInstructionUseCase,
   ) {}
 
-  async execute(projectId: string, userId: string) {
+  async execute(projectId: string, userId: string, taskBudgetMicros?: number) {
+    const budget = taskBudgetMicros ?? DEFAULT_TASK_BUDGET_MICROS;
     const moduleMap = await this.moduleMaps.findCurrent(projectId);
     if (!moduleMap || moduleMap.modules.length === 0) {
       throw new BadRequestException(
@@ -73,7 +79,12 @@ export class ActivateExecutionUseCase {
       }
     }
 
-    await this.engineClient.startExecution(projectId, session.id, modules);
+    await this.engineClient.startExecution(
+      projectId,
+      session.id,
+      modules,
+      budget,
+    );
 
     await this.appendEvent.execute(projectId, session.id, {
       type: 'execution.activated',
