@@ -36,6 +36,9 @@ class FakeApiToEngineClient implements ApiToEngineClient {
   error: Error | null = null;
 
   async startSession(): Promise<void> {}
+  async startAgent(): Promise<void> {}
+  async sendAgentMessage(): Promise<void> {}
+  async confirmReadiness(): Promise<void> {}
 
   executeTerminalAction(): Promise<TerminalExecutionResult> {
     if (this.error) return Promise.reject(this.error);
@@ -117,7 +120,9 @@ describe('ExecuteTerminalActionUseCase', () => {
     );
 
     expect(updated.status).toBe('executed');
-    expect(updated.executionResult?.stdout).toBe('oi\n');
+    expect((updated.executionResult as TerminalExecutionResult)?.stdout).toBe(
+      'oi\n',
+    );
 
     const events = await db
       .select()
@@ -159,6 +164,8 @@ describe('ExecuteTerminalActionUseCase', () => {
     );
 
     expect(updated.status).toBe('failed');
-    expect(updated.executionResult?.stderr).toContain('engine indisponível');
+    expect(
+      (updated.executionResult as TerminalExecutionResult)?.stderr,
+    ).toContain('engine indisponível');
   });
 });

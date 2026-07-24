@@ -15,4 +15,30 @@ export abstract class ApiToEngineClient {
     actionId: string,
     command: string,
   ): Promise<TerminalExecutionResult>;
+
+  // --- Agentes conversacionais (Fase 3b) ---
+
+  // Sobe o processo do agente (ex. Criativo) no engine, atado à sessão.
+  abstract startAgent(
+    projectId: string,
+    sessionId: string,
+    agent: string,
+  ): Promise<void>;
+
+  // Roteia uma mensagem do usuário pro agente ativo; o engine roda o turno no
+  // harness e narra a resposta via session_events (não retorna o texto aqui —
+  // o streaming vai pelo canal Phoenix e a persistência pelo event log).
+  abstract sendAgentMessage(
+    projectId: string,
+    sessionId: string,
+    agent: string,
+    text: string,
+  ): Promise<void>;
+
+  // Sinaliza que o usuário confirmou prontidão; o engine instrui o Criativo a
+  // emitir o product_brief e oferecer o handoff ao PO.
+  abstract confirmReadiness(
+    projectId: string,
+    sessionId: string,
+  ): Promise<void>;
 }

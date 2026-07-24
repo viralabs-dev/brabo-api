@@ -65,6 +65,9 @@ class FakeApiToEngineClient implements ApiToEngineClient {
   nextResult: TerminalExecutionResult = DEFAULT_RESULT;
 
   async startSession(): Promise<void> {}
+  async startAgent(): Promise<void> {}
+  async sendAgentMessage(): Promise<void> {}
+  async confirmReadiness(): Promise<void> {}
 
   executeTerminalAction(
     _projectId: string,
@@ -160,6 +163,23 @@ describe('ProposeActionUseCase', () => {
 
     expect(action.status).toBe('pending');
     expect(action.resolvedPolicy).toBe('require_approval');
+    expect(fakeEngineClient.calls).toHaveLength(0);
+  });
+
+  it('write_file (agente, sem regra) cria proposed_action pending, sem executar', async () => {
+    const { project, session } = await setupSession();
+
+    const action = await proposeAction.execute(project.id, session.id, {
+      actionType: 'write_file',
+      actor: { kind: 'agent', id: 'echo' },
+      payload: { path: 'src/app.ts', content: 'export const x = 1;' },
+    });
+
+    expect(action.actionType).toBe('write_file');
+    expect(action.status).toBe('pending');
+    expect(action.resolvedPolicy).toBe('require_approval');
+    // write_file nunca é auto-executado nesta fase (branch de auto-exec é
+    // terminal-only) — o engine não é chamado.
     expect(fakeEngineClient.calls).toHaveLength(0);
   });
 

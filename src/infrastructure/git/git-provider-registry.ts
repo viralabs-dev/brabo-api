@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import type { GitProviderName } from '@brabo/shared';
+import type { GitProviderContract, GitProviderName } from '@brabo/shared';
 import { GitProviderRegistry } from '../../application/ports/git-provider.port';
-import type { GitProvider } from '../../application/ports/git-provider.port';
 import { LocalGitProvider } from './local-git-provider';
 import { GithubProvider } from './github-provider';
 import { GitlabProvider } from './gitlab-provider';
@@ -14,7 +13,7 @@ export class GitProviderRegistryImpl implements GitProviderRegistry {
     private readonly gitlab: GitlabProvider,
   ) {}
 
-  get(provider: GitProviderName): GitProvider {
+  get(provider: GitProviderName): GitProviderContract {
     switch (provider) {
       case 'local':
         return this.local;

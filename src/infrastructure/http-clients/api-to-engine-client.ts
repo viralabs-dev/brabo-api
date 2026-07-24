@@ -65,6 +65,59 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     return (await res.json()) as TerminalExecutionResult;
   }
 
+  async startAgent(
+    projectId: string,
+    sessionId: string,
+    agent: string,
+  ): Promise<void> {
+    await this.postCommand(`/internal/sessions/${sessionId}/agent/start`, {
+      projectId,
+      agent,
+    });
+  }
+
+  async sendAgentMessage(
+    projectId: string,
+    sessionId: string,
+    agent: string,
+    text: string,
+  ): Promise<void> {
+    await this.postCommand(`/internal/sessions/${sessionId}/agent/message`, {
+      projectId,
+      agent,
+      text,
+    });
+  }
+
+  async confirmReadiness(projectId: string, sessionId: string): Promise<void> {
+    await this.postCommand(`/internal/sessions/${sessionId}/agent/readiness`, {
+      projectId,
+    });
+  }
+
+  private async postCommand(
+    path: string,
+    body: Record<string, unknown>,
+  ): Promise<void> {
+    const token = await this.getToken();
+    const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
+
+    const res = await fetch(`${engineUrl}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      throw new Error(
+        `Falha no comando ao engine (${path}): ${res.status} ${await res.text()}`,
+      );
+    }
+  }
+
   private async getToken(): Promise<string> {
     if (this.cachedToken && Date.now() < this.cachedToken.expiresAt) {
       return this.cachedToken.token;

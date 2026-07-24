@@ -12,6 +12,10 @@ export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
   git_push: 'GitPush',
   pr_open: 'PrOpen',
   spend: 'Spend',
+  git_repo_create: 'GitRepoCreate',
+  git_branch_create: 'GitBranchCreate',
+  git_branch_protect: 'GitBranchProtect',
+  write_file: 'WriteFile',
 };
 
 /**

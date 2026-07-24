@@ -1,0 +1,197 @@
+import type { GitProviderContract } from '@brabo/shared';
+import { GitBranchAlreadyExistsError } from '../../../domain/git/git-errors';
+import type { BootstrapStepName } from '../../../domain/git/repo-bootstrap.entity';
+import {
+  BRANCHING_POLICY_PATH,
+  PR_TEMPLATE_PATH,
+  branchingPolicyContent,
+  prTemplateContent,
+} from './bootstrap-templates';
+
+export interface BootstrapStepCtx {
+  provider: GitProviderContract;
+  externalId: string;
+  defaultBranch: string;
+  accessToken?: string;
+}
+
+export type BootstrapActionType =
+  'git_branch_create' | 'git_branch_protect' | 'git_commit';
+
+// Uma mutação individual ainda pendente dentro de um passo — "cada
+// mutação nasce como proposed_action" (CLAUDE.md) exige granularidade
+// por mutação, não por passo: `protect_branches` é UM passo que pode ter
+// até 4 mutações pendentes (uma por branch ainda não protegida).
+export interface BootstrapMutation {
+  actionType: BootstrapActionType;
+  payload: Record<string, unknown>;
+  run(ctx: BootstrapStepCtx): Promise<Record<string, unknown>>;
+}
+
+export interface BootstrapStep {
+  readonly step: BootstrapStepName;
+  /**
+   * Lista as mutações ainda pendentes pra esse passo — lista vazia
+   * significa "já satisfeito" (skip, `bootstrap.step_skipped`).
+   * `'capability_unsupported'` significa que o provider não suporta a
+   * operação (degrada com aviso, `bootstrap.step_degraded`, nunca
+   * falha). Chamado em TODA execução, mesmo pra passos já concluídos —
+   * é isso que garante idempotência e retomada correta (ver
+   * docs/adr/0005).
+   */
+  check(
+    ctx: BootstrapStepCtx,
+  ): Promise<BootstrapMutation[] | 'capability_unsupported'>;
+}
+
+// dev←main, qa←dev, rc←qa — cascata de promoção (default meu, o pedido
+// não especifica a origem de qa/rc; segue o pipeline dev→qa→rc→main
+// descrito no CLAUDE.md).
+function createBranchStep(
+  step: BootstrapStepName,
+  branchName: string,
+  fromRef: string,
+): BootstrapStep {
+  return {
+    step,
+    async check(ctx): Promise<BootstrapMutation[]> {
+      const branches = await ctx.provider.listBranches({
+        externalId: ctx.externalId,
+        accessToken: ctx.accessToken,
+      });
+      if (branches.some((b) => b.name === branchName)) return [];
+
+      return [
+        {
+          actionType: 'git_branch_create',
+          payload: { branchName, fromRef },
+          async run(runCtx) {
+            try {
+              const branch = await runCtx.provider.createBranch({
+                externalId: runCtx.externalId,
+                branchName,
+                fromRef,
+                accessToken: runCtx.accessToken,
+              });
+              return { branchName: branch.name, commitSha: branch.commitSha };
+            } catch (error) {
+              // Corrida entre check() e run() — a branch já existe
+              // agora, tratado como satisfeito, não como falha.
+              if (error instanceof GitBranchAlreadyExistsError) {
+                return { branchName, note: 'já existia (corrida)' };
+              }
+              throw error;
+            }
+          },
+        },
+      ];
+    },
+  };
+}
+
+// Um só passo, com até 4 mutações internas (uma por branch ainda não
+// protegida) — ordem literal do pedido: main, rc, qa, dev.
+const PROTECTED_BRANCH_NAMES = ['main', 'rc', 'qa', 'dev'] as const;
+
+const protectBranchesStep: BootstrapStep = {
+  step: 'protect_branches',
+  async check(ctx): Promise<BootstrapMutation[] | 'capability_unsupported'> {
+    if (!ctx.provider.capabilities.protectBranch) {
+      return 'capability_unsupported';
+    }
+
+    const branches = await ctx.provider.listBranches({
+      externalId: ctx.externalId,
+      accessToken: ctx.accessToken,
+    });
+    const branchByName = new Map(branches.map((b) => [b.name, b]));
+
+    const pending: BootstrapMutation[] = [];
+    for (const branchName of PROTECTED_BRANCH_NAMES) {
+      const branch = branchByName.get(branchName);
+      if (!branch || branch.protected) continue;
+
+      pending.push({
+        actionType: 'git_branch_protect',
+        payload: { branchName },
+        async run(runCtx) {
+          await runCtx.provider.protectBranch({
+            externalId: runCtx.externalId,
+            branchName,
+            accessToken: runCtx.accessToken,
+          });
+          return { branchName };
+        },
+      });
+    }
+    return pending;
+  },
+};
+
+function commitFileStep(
+  step: BootstrapStepName,
+  path: string,
+  content: () => string,
+  commitMessage: string,
+): BootstrapStep {
+  return {
+    step,
+    async check(ctx): Promise<BootstrapMutation[]> {
+      const canonical = content();
+      const current = await ctx.provider.getFileContent({
+        externalId: ctx.externalId,
+        branch: ctx.defaultBranch,
+        path,
+        accessToken: ctx.accessToken,
+      });
+      if (current === canonical) return [];
+
+      return [
+        {
+          actionType: 'git_commit',
+          payload: { path, branch: ctx.defaultBranch },
+          async run(runCtx) {
+            const result = await runCtx.provider.commitFiles({
+              externalId: runCtx.externalId,
+              branch: runCtx.defaultBranch,
+              message: commitMessage,
+              files: [{ path, content: canonical }],
+              accessToken: runCtx.accessToken,
+            });
+            return { path, sha: result.sha };
+          },
+        },
+      ];
+    },
+  };
+}
+
+// Ordem de EXECUÇÃO difere da ordem em que o pedido original lista os 6
+// itens (branches antes dos commits) — de propósito, e por uma razão
+// técnica inescapável: `createRepo` cria um repo bare vazio, SEM commit
+// inicial, nos 3 providers (auto_init: false — "provisionado" precisa
+// significar a mesma coisa nos 3). Uma ref sem nenhum commit não pode
+// ser origem de `createBranch` (não há o que resolver). Os dois commits
+// em `main` (template de PR, branching-policy) precisam vir PRIMEIRO —
+// são eles que dão a `main` seu primeiro commit — só depois dev/qa/rc
+// podem nascer a partir dela. O enum `bootstrap_step` no schema (ordem
+// de declaração) não muda — não afeta nada, é só um conjunto de valores
+// válidos, nunca comparado por ordem.
+export const BOOTSTRAP_STEP_SEQUENCE: readonly BootstrapStep[] = [
+  commitFileStep(
+    'commit_pr_template',
+    PR_TEMPLATE_PATH,
+    prTemplateContent,
+    'chore: adiciona template de PR',
+  ),
+  commitFileStep(
+    'commit_branching_policy',
+    BRANCHING_POLICY_PATH,
+    branchingPolicyContent,
+    'docs: adiciona política de branching',
+  ),
+  createBranchStep('create_dev_branch', 'dev', 'main'),
+  createBranchStep('create_qa_branch', 'qa', 'dev'),
+  createBranchStep('create_rc_branch', 'rc', 'qa'),
+  protectBranchesStep,
+];

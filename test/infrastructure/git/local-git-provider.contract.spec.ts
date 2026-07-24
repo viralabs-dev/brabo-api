@@ -50,7 +50,10 @@ describe('LocalGitProvider — commitFiles preserva árvore entre commits', () =
   });
 
   it('mantém arquivos de commits anteriores ao adicionar um novo', async () => {
-    const repo = await provider.createRepo({ name: 'preserva-arvore', visibility: 'private' });
+    const repo = await provider.createRepo({
+      name: 'preserva-arvore',
+      visibility: 'private',
+    });
     await provider.commitFiles({
       externalId: repo.externalId,
       branch: 'main',

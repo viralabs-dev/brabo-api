@@ -57,3 +57,18 @@ export class GitNotSupportedError extends Error {
     this.name = 'GitNotSupportedError';
   }
 }
+
+// Sessão 2 (ver docs/adr/0004-git-credential-registration.md): falha no
+// teste de conexão de uma credencial de git antes de persistir — nunca
+// lançado depois de gravar nada.
+export class GitCredentialConnectionTestFailedError extends Error {
+  constructor(
+    readonly provider: GitProviderName,
+    readonly reason?: string,
+  ) {
+    super(
+      `teste de conexão falhou para ${provider}${reason ? `: ${reason}` : ''}`,
+    );
+    this.name = 'GitCredentialConnectionTestFailedError';
+  }
+}

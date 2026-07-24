@@ -3,6 +3,7 @@ import type { ActionStatus } from '../../domain/actions/action-state-machine';
 import type { PermissionPolicy } from '../../domain/actions/permissions-file';
 import type { ProposedAction } from '../../domain/actions/proposed-action.entity';
 import type { TerminalExecutionResult } from '../../domain/actions/terminal-execution-result';
+import type { GitBootstrapExecutionResult } from '../../domain/git/bootstrap-execution-result';
 
 export interface NewProposedAction {
   projectId: string;
@@ -24,7 +25,7 @@ export interface DecideProposedAction {
 
 export interface ExecutionResultUpdate {
   status: Extract<ActionStatus, 'executed' | 'failed'>;
-  executionResult: TerminalExecutionResult;
+  executionResult: TerminalExecutionResult | GitBootstrapExecutionResult;
 }
 
 export interface ListProposedActionsOptions {

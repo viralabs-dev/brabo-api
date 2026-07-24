@@ -16,6 +16,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import type { TerminalExecutionResult } from '../domain/actions/terminal-execution-result';
+import type { GitBootstrapExecutionResult } from '../domain/git/bootstrap-execution-result';
 
 // --- Enums ---
 
@@ -39,6 +40,26 @@ export const sessionStatusEnum = pgEnum('session_status', [
 ]);
 
 export const actorKindEnum = pgEnum('actor_kind', ['user', 'agent', 'system']);
+
+// Cursor de progresso do bootstrap de Gitflow (Fase 2, sessão 3) — uma
+// linha por projeto, não um log por passo. `step` é o último passo
+// tocado; toda execução revalida TODOS os passos desde o início antes de
+// confiar nesse cursor (ver docs/adr/0005).
+export const bootstrapStepEnum = pgEnum('bootstrap_step', [
+  'create_dev_branch',
+  'create_qa_branch',
+  'create_rc_branch',
+  'protect_branches',
+  'commit_pr_template',
+  'commit_branching_policy',
+]);
+
+export const bootstrapStatusEnum = pgEnum('bootstrap_status', [
+  'pending',
+  'running',
+  'done',
+  'failed',
+]);
 
 export const llmProviderEnum = pgEnum('llm_provider', [
   'ollama',
@@ -80,6 +101,31 @@ export const permissionPolicyEnum = pgEnum('permission_policy', [
 
 export const gitProviderEnum = pgEnum('git_provider', [
   'local',
+  'github',
+  'gitlab',
+]);
+
+// Handoff entre agentes (Fase 3b): offered → accepted | rejected; accepted →
+// completed. Um agente só pode ser ativado numa sessão com um handoff
+// `accepted` endereçado a ele (ver domain/sessions/agent-activation.ts) — o
+// Criativo é a exceção (inicia por comando do usuário). Cada transição de
+// status também vira um session_event `handoff.*` imutável.
+export const handoffStatusEnum = pgEnum('handoff_status', [
+  'offered',
+  'accepted',
+  'completed',
+  'rejected',
+]);
+
+// user_credentials guarda tanto chaves de LLM quanto tokens de git do
+// usuário (github/gitlab) — enum dedicado em vez de alargar llm_provider
+// (que também serve models/token_usage, LLM-only de verdade) ou
+// reaproveitar git_provider (que tem 'local', sem sentido pra uma
+// credencial). Ver docs/adr/0004-git-credential-registration.md.
+export const credentialProviderEnum = pgEnum('credential_provider', [
+  'ollama',
+  'anthropic',
+  'openai',
   'github',
   'gitlab',
 ]);
@@ -310,7 +356,7 @@ export const userCredentials = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    provider: llmProviderEnum('provider').notNull(),
+    provider: credentialProviderEnum('provider').notNull(),
     wrappedDek: text('wrapped_dek').notNull(),
     dekIv: text('dek_iv').notNull(),
     dekAuthTag: text('dek_auth_tag').notNull(),
@@ -415,7 +461,9 @@ export const proposedActions = pgTable(
     decidedAt: timestamp('decided_at', { withTimezone: true }),
     rejectionReason: text('rejection_reason'),
     // Preenchido só depois de executed/failed.
-    executionResult: jsonb('execution_result').$type<TerminalExecutionResult>(),
+    executionResult: jsonb('execution_result').$type<
+      TerminalExecutionResult | GitBootstrapExecutionResult
+    >(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -449,6 +497,65 @@ export const agentAutonomy = pgTable(
       .defaultNow(),
   },
   (table) => [unique().on(table.projectId, table.agentId, table.actionType)],
+);
+
+// Instruções por agente e projeto (Fase 3a — harness): o arquivo de agente
+// que o InstructionFiles do engine lê e mescla com os AGENTS.md do workspace
+// (precedência banco > diretório > raiz). Uma linha ativa por (projeto,
+// agente); `version` é bumpado no update (não é tabela de histórico).
+// `agent` é slug livre (mesma convenção de agent_autonomy.agent_id /
+// actor_id — sem FK nem enum). Criada aqui (Drizzle, schema 'public'); o
+// engine só LÊ via Ecto schema read-only.
+export const agentInstructions = pgTable(
+  'agent_instructions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    agent: text('agent').notNull(),
+    content: text('content').notNull(),
+    version: integer('version').notNull().default(1),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [unique().on(table.projectId, table.agent)],
+);
+
+// Handoffs entre agentes (Fase 3b): o Criativo, ao emitir o product_brief,
+// OFERECE um handoff ao PO. `from_agent`/`to_agent` são slugs livres (mesma
+// convenção de actor_id — sem FK nem enum). `artifact_id` referencia o
+// session_events.id do artefato entregue (o product_brief) — não é FK porque
+// session_events.id é ULID de texto e o vínculo é lógico, não relacional.
+// Diferente das tabelas de evento, `status` é MUTÁVEL (offered → accepted →
+// completed); a história imutável de cada transição vive nos session_events
+// `handoff.*`.
+export const handoffs = pgTable(
+  'handoffs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    fromAgent: text('from_agent').notNull(),
+    toAgent: text('to_agent').notNull(),
+    artifactId: text('artifact_id'),
+    status: handoffStatusEnum('status').notNull().default('offered'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index('handoffs_session_idx').on(table.sessionId)],
 );
 
 // --- Git providers (Fase 2): conexão OAuth + repositório provisionado ---
@@ -515,6 +622,37 @@ export const projectRepositories = pgTable(
     provisionedBy: uuid('provisioned_by')
       .notNull()
       .references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [unique().on(table.projectId)],
+);
+
+// Progresso do bootstrap de Gitflow que roda depois de criar o repo
+// (branches dev/qa/rc, proteções, template de PR, branching-policy.md) —
+// tabela separada de project_repositories porque tem ciclo de vida e
+// forma diferentes (cursor de retomada, não um fato histórico único).
+// session_id aponta pra sessão dedicada (criada na 1ª tentativa, reusada
+// em toda retomada) onde o bootstrap narra sua história via session_events
+// — ver docs/adr/0005-repo-bootstrap-idempotent-steps.md.
+export const repoBootstraps = pgTable(
+  'repo_bootstraps',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id),
+    step: bootstrapStepEnum('step').notNull().default('create_dev_branch'),
+    status: bootstrapStatusEnum('status').notNull().default('pending'),
+    attempts: integer('attempts').notNull().default(0),
+    lastError: text('last_error'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

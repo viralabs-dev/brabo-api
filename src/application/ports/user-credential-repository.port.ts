@@ -1,11 +1,11 @@
-import type { LLMProviderName } from '@brabo/shared';
+import type { CredentialProviderName } from '@brabo/shared';
 import type { UserCredentialMetadata } from '../../domain/llm/user-credential.entity';
 import type { EncryptedSecret } from './encryption.port';
 
 export abstract class UserCredentialRepository {
   abstract upsert(
     userId: string,
-    provider: LLMProviderName,
+    provider: CredentialProviderName,
     secret: EncryptedSecret,
   ): Promise<UserCredentialMetadata>;
 
@@ -16,11 +16,14 @@ export abstract class UserCredentialRepository {
    */
   abstract findSecretByUserAndProvider(
     userId: string,
-    provider: LLMProviderName,
+    provider: CredentialProviderName,
   ): Promise<EncryptedSecret | null>;
 
   abstract listMetadataForUser(
     userId: string,
   ): Promise<UserCredentialMetadata[]>;
-  abstract delete(userId: string, provider: LLMProviderName): Promise<boolean>;
+  abstract delete(
+    userId: string,
+    provider: CredentialProviderName,
+  ): Promise<boolean>;
 }

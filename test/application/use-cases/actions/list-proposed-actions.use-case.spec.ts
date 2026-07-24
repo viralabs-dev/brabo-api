@@ -50,6 +50,9 @@ const appendSessionEvent = new AppendSessionEventUseCase(
 
 class FakeApiToEngineClient implements ApiToEngineClient {
   async startSession(): Promise<void> {}
+  async startAgent(): Promise<void> {}
+  async sendAgentMessage(): Promise<void> {}
+  async confirmReadiness(): Promise<void> {}
   executeTerminalAction(): Promise<TerminalExecutionResult> {
     return Promise.resolve({
       stdout: '',

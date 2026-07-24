@@ -64,6 +64,9 @@ const EXEC_RESULT: TerminalExecutionResult = {
 class FakeApiToEngineClient implements ApiToEngineClient {
   callCount = 0;
   async startSession(): Promise<void> {}
+  async startAgent(): Promise<void> {}
+  async sendAgentMessage(): Promise<void> {}
+  async confirmReadiness(): Promise<void> {}
   executeTerminalAction(): Promise<TerminalExecutionResult> {
     this.callCount += 1;
     return Promise.resolve(EXEC_RESULT);

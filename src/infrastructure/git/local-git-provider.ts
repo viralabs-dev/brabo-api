@@ -8,6 +8,7 @@ import type {
   CommitFilesInput,
   CreateBranchInput,
   CreateRepoInput,
+  GetFileContentInput,
   GetRepoInput,
   GitBranch,
   GitCommitResult,
@@ -17,15 +18,7 @@ import type {
   GitPullRequest,
   GitRepo,
   ListBranchesInput,
-  MergePullRequestInput,
-  OpenPullRequestInput,
-  ProtectBranchInput,
 } from '@brabo/shared';
-import {
-  GitProvider,
-  type CreateRepositoryInput,
-  type CreateRepositoryResult,
-} from '../../application/ports/git-provider.port';
 import {
   GitBranchAlreadyExistsError,
   GitBranchNotFoundError,
@@ -45,15 +38,11 @@ const execFileAsync = promisify(execFile);
  * inicial/README, pra "provisionado" ter o mesmo significado nos 3
  * providers.
  *
- * Implementa DOIS contratos: `GitProvider` (abstract class de DI do Nest,
- * usada hoje pelo pipeline de provisionamento — `createRepository` fica
- * intocada, byte a byte) e `GitProviderContract` (novo, normalizado, ver
- * @brabo/shared e docs/adr/0001) — as 8 operações da Fase 2. Os dois
- * coexistem deliberadamente nesta sessão; GithubProvider/GitlabProvider
- * ainda não implementam o segundo (ver docs/adr/0001).
+ * Implementa `GitProviderContract` (ver @brabo/shared e docs/adr/0001) —
+ * as 9 operações normalizadas da Fase 2.
  */
 @Injectable()
-export class LocalGitProvider implements GitProvider, GitProviderContract {
+export class LocalGitProvider implements GitProviderContract {
   readonly name: GitProviderName = 'local';
 
   // Nem branch protection nem pull requests fazem sentido pra um bare
@@ -62,22 +51,6 @@ export class LocalGitProvider implements GitProvider, GitProviderContract {
     protectBranch: false,
     pullRequests: false,
   };
-
-  async createRepository(
-    input: CreateRepositoryInput,
-  ): Promise<CreateRepositoryResult> {
-    const root = process.env.GIT_LOCAL_REPOS_ROOT ?? '/tmp/brabo-git-repos';
-    const dirName = `${sanitizeSlug(input.name)}.git`;
-    const absolutePath = join(root, dirName);
-
-    await execFileAsync('git', ['init', '--bare', absolutePath]);
-
-    return {
-      externalId: absolutePath,
-      url: `file://${absolutePath}`,
-      defaultBranch: 'main',
-    };
-  }
 
   async createRepo(input: CreateRepoInput): Promise<GitRepo> {
     const root = process.env.GIT_LOCAL_REPOS_ROOT ?? '/tmp/brabo-git-repos';
@@ -89,7 +62,8 @@ export class LocalGitProvider implements GitProvider, GitProviderContract {
       await mkdir(absolutePath, { recursive: false });
     } catch (error) {
       const err = error as NodeJS.ErrnoException;
-      if (err.code === 'EEXIST') throw new GitRepoAlreadyExistsError(absolutePath);
+      if (err.code === 'EEXIST')
+        throw new GitRepoAlreadyExistsError(absolutePath);
       if (err.code === 'EACCES' || err.code === 'EPERM') {
         throw new GitPermissionDeniedError(absolutePath);
       }
@@ -111,7 +85,11 @@ export class LocalGitProvider implements GitProvider, GitProviderContract {
     const repoDir = input.externalId;
     await assertBareRepo(repoDir);
 
-    const { stdout } = await execGit(repoDir, ['symbolic-ref', '--short', 'HEAD']);
+    const { stdout } = await execGit(repoDir, [
+      'symbolic-ref',
+      '--short',
+      'HEAD',
+    ]);
 
     return {
       externalId: repoDir,
@@ -134,7 +112,12 @@ export class LocalGitProvider implements GitProvider, GitProviderContract {
 
     try {
       // old-value '' = CAS exigindo que a ref ainda não exista.
-      await execGit(repoDir, ['update-ref', `refs/heads/${input.branchName}`, sha, '']);
+      await execGit(repoDir, [
+        'update-ref',
+        `refs/heads/${input.branchName}`,
+        sha,
+        '',
+      ]);
     } catch (error) {
       if (isAlreadyExists(error)) {
         throw new GitBranchAlreadyExistsError(repoDir, input.branchName);
@@ -145,8 +128,8 @@ export class LocalGitProvider implements GitProvider, GitProviderContract {
     return { name: input.branchName, commitSha: sha, protected: false };
   }
 
-  async protectBranch(_input: ProtectBranchInput): Promise<void> {
-    throw new GitNotSupportedError(this.name, 'protectBranch');
+  protectBranch(): Promise<void> {
+    return Promise.reject(new GitNotSupportedError(this.name, 'protectBranch'));
   }
 
   async commitFiles(input: CommitFilesInput): Promise<GitCommitResult> {
@@ -178,27 +161,56 @@ export class LocalGitProvider implements GitProvider, GitProviderContract {
         // Carrega a árvore do pai no índice-rascunho primeiro — senão o
         // commit novo conteria SÓ os arquivos de `files`, apagando tudo
         // que já existia na branch.
-        await execFileAsync('git', ['--git-dir', repoDir, 'read-tree', parentSha], { env });
+        await execFileAsync(
+          'git',
+          ['--git-dir', repoDir, 'read-tree', parentSha],
+          { env },
+        );
       }
 
       for (const file of input.files) {
         const blobSha = await hashObjectFromContent(repoDir, file.content, env);
         await execFileAsync(
           'git',
-          ['--git-dir', repoDir, 'update-index', '--add', '--cacheinfo', `100644,${blobSha},${file.path}`],
+          [
+            '--git-dir',
+            repoDir,
+            'update-index',
+            '--add',
+            '--cacheinfo',
+            `100644,${blobSha},${file.path}`,
+          ],
           { env },
         );
       }
 
-      const { stdout: treeOut } = await execFileAsync('git', ['--git-dir', repoDir, 'write-tree'], { env });
+      const { stdout: treeOut } = await execFileAsync(
+        'git',
+        ['--git-dir', repoDir, 'write-tree'],
+        { env },
+      );
       const treeSha = treeOut.trim();
 
-      const commitArgs = ['--git-dir', repoDir, 'commit-tree', treeSha, '-m', input.message];
+      const commitArgs = [
+        '--git-dir',
+        repoDir,
+        'commit-tree',
+        treeSha,
+        '-m',
+        input.message,
+      ];
       if (parentSha) commitArgs.push('-p', parentSha);
-      const { stdout: commitOut } = await execFileAsync('git', commitArgs, { env });
+      const { stdout: commitOut } = await execFileAsync('git', commitArgs, {
+        env,
+      });
       const newSha = commitOut.trim();
 
-      await execGit(repoDir, ['update-ref', `refs/heads/${input.branch}`, newSha, parentSha ?? '']);
+      await execGit(repoDir, [
+        'update-ref',
+        `refs/heads/${input.branch}`,
+        newSha,
+        parentSha ?? '',
+      ]);
 
       return { sha: newSha, branch: input.branch };
     } finally {
@@ -218,17 +230,37 @@ export class LocalGitProvider implements GitProvider, GitProviderContract {
     }));
   }
 
-  async openPullRequest(_input: OpenPullRequestInput): Promise<GitPullRequest> {
-    throw new GitNotSupportedError(this.name, 'openPullRequest');
+  async getFileContent(input: GetFileContentInput): Promise<string | null> {
+    const repoDir = input.externalId;
+    await assertBareRepo(repoDir);
+
+    try {
+      const { stdout } = await execGit(repoDir, [
+        'show',
+        `${input.branch}:${input.path}`,
+      ]);
+      return stdout;
+    } catch (error) {
+      if (isMissingRefOrPath(error)) return null;
+      throw error;
+    }
   }
 
-  async mergePullRequest(_input: MergePullRequestInput): Promise<GitPullRequest> {
-    // Quando o bootstrap de Gitflow (fase futura) precisar mesclar branches
-    // num provider sem `pullRequests` (como este), ele precisa de uma
-    // operação de merge direto ainda não modelada aqui — ver
-    // docs/adr/0001-git-provider-contract-shape.md. `mergePullRequest`
-    // continua estritamente sobre pull requests de verdade.
-    throw new GitNotSupportedError(this.name, 'mergePullRequest');
+  openPullRequest(): Promise<GitPullRequest> {
+    return Promise.reject(
+      new GitNotSupportedError(this.name, 'openPullRequest'),
+    );
+  }
+
+  // Quando o bootstrap de Gitflow (fase futura) precisar mesclar branches
+  // num provider sem `pullRequests` (como este), ele precisa de uma
+  // operação de merge direto ainda não modelada aqui — ver
+  // docs/adr/0001-git-provider-contract-shape.md. `mergePullRequest`
+  // continua estritamente sobre pull requests de verdade.
+  mergePullRequest(): Promise<GitPullRequest> {
+    return Promise.reject(
+      new GitNotSupportedError(this.name, 'mergePullRequest'),
+    );
   }
 }
 
@@ -236,7 +268,13 @@ async function initBareRepo(path: string): Promise<void> {
   await execFileAsync('git', ['init', '--bare', path]);
   // Força o branch default independente da versão/config do git do
   // host (init.defaultBranch pode não existir ou apontar pra outro nome).
-  await execFileAsync('git', ['--git-dir', path, 'symbolic-ref', 'HEAD', 'refs/heads/main']);
+  await execFileAsync('git', [
+    '--git-dir',
+    path,
+    'symbolic-ref',
+    'HEAD',
+    'refs/heads/main',
+  ]);
 }
 
 async function execGit(repoDir: string, args: string[]) {
@@ -245,16 +283,27 @@ async function execGit(repoDir: string, args: string[]) {
 
 async function assertBareRepo(repoDir: string): Promise<void> {
   try {
-    const { stdout } = await execGit(repoDir, ['rev-parse', '--is-bare-repository']);
+    const { stdout } = await execGit(repoDir, [
+      'rev-parse',
+      '--is-bare-repository',
+    ]);
     if (stdout.trim() !== 'true') throw new Error('not a bare repository');
   } catch {
     throw new GitRepoNotFoundError(repoDir);
   }
 }
 
-async function resolveRef(repoDir: string, ref: string): Promise<string | null> {
+async function resolveRef(
+  repoDir: string,
+  ref: string,
+): Promise<string | null> {
   try {
-    const { stdout } = await execGit(repoDir, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]);
+    const { stdout } = await execGit(repoDir, [
+      'rev-parse',
+      '--verify',
+      '--quiet',
+      `${ref}^{commit}`,
+    ]);
     return stdout.trim();
   } catch {
     return null;
@@ -280,7 +329,11 @@ async function hashObjectFromContent(
   content: string,
   env: NodeJS.ProcessEnv,
 ): Promise<string> {
-  const promise = execFileAsync('git', ['--git-dir', repoDir, 'hash-object', '-w', '--stdin'], { env });
+  const promise = execFileAsync(
+    'git',
+    ['--git-dir', repoDir, 'hash-object', '-w', '--stdin'],
+    { env },
+  );
   promise.child.stdin?.end(content, 'utf8');
   const { stdout } = await promise;
   return stdout.trim();
@@ -289,6 +342,14 @@ async function hashObjectFromContent(
 function isAlreadyExists(error: unknown): boolean {
   const stderr = (error as { stderr?: string })?.stderr ?? '';
   return /already exists/i.test(stderr);
+}
+
+// `git show <branch>:<path>` erra de duas formas distintas pro nosso caso
+// "não existe" (branch inexistente vs. path ausente na árvore) — ambas
+// mapeiam pro mesmo `null` do contrato (ver GetFileContentInput).
+function isMissingRefOrPath(error: unknown): boolean {
+  const stderr = (error as { stderr?: string })?.stderr ?? '';
+  return /does not exist in|invalid object name/i.test(stderr);
 }
 
 function sanitizeSlug(name: string): string {

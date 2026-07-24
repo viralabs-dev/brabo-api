@@ -1,0 +1,25 @@
+import { Module } from '@nestjs/common';
+import { SessionsUseCasesModule } from '../sessions/sessions-use-cases.module';
+import { EngineHttpClientsModule } from '../../../infrastructure/http-clients/engine-http-clients.module';
+import { ActivateAgentUseCase } from './activate-agent.use-case';
+import { SendAgentMessageUseCase } from './send-agent-message.use-case';
+import { ConfirmReadinessUseCase } from './confirm-readiness.use-case';
+import { CreateHandoffUseCase } from './create-handoff.use-case';
+import { ListHandoffsUseCase } from './list-handoffs.use-case';
+import { UpsertAgentInstructionUseCase } from './upsert-agent-instruction.use-case';
+
+const USE_CASES = [
+  ActivateAgentUseCase,
+  SendAgentMessageUseCase,
+  ConfirmReadinessUseCase,
+  CreateHandoffUseCase,
+  ListHandoffsUseCase,
+  UpsertAgentInstructionUseCase,
+];
+
+@Module({
+  imports: [SessionsUseCasesModule, EngineHttpClientsModule],
+  providers: USE_CASES,
+  exports: USE_CASES,
+})
+export class AgentsUseCasesModule {}
