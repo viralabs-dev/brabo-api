@@ -226,3 +226,46 @@ describe('decide — trava de merge (Fase 4a)', () => {
     expect(result.policy).toBe('deny');
   });
 });
+
+describe('decide — restrição de terminal do InfraAgent (Fase 4a)', () => {
+  it('agent_autonomy (infra, terminal) = deny nunca auto-aprova, mesmo com permissions.json allow:[*]', () => {
+    const result = decide(
+      { actionType: 'terminal', command: 'echo oi' },
+      ctx({
+        autonomyMode: 'deny',
+        permissionsFile: {
+          ...EMPTY_PERMISSIONS_FILE,
+          allow: ['Terminal(echo oi)'],
+        },
+      }),
+    );
+    expect(result.policy).toBe('deny');
+  });
+
+  it('a ordem prova o curto-circuito: deny em agent_autonomy nunca chega a consultar permissions.json', () => {
+    // Se permissions.json FOSSE consultado primeiro, o allow amplo abaixo
+    // promoveria o resultado — o fato de continuar `deny` prova que
+    // agent_autonomy=deny retornou ANTES de decideFromPermissionsFile rodar.
+    const result = decide(
+      { actionType: 'terminal', command: 'hadolint --version' },
+      ctx({
+        autonomyMode: 'deny',
+        permissionsFile: {
+          allow: ['Terminal(hadolint*)', 'Terminal(*)'],
+          deny: [],
+          ask: [],
+        },
+      }),
+    );
+    expect(result.policy).toBe('deny');
+    expect(result.reason).toContain('agent_autonomy');
+  });
+
+  it('open_infra_pr do InfraAgent pode ser auto-aprovado (autonomia seedada no accept do handoff), sem afetar terminal', () => {
+    const result = decide(
+      { actionType: 'open_infra_pr' },
+      ctx({ effectiveRole: 'maintainer', autonomyMode: 'auto_approve' }),
+    );
+    expect(result.policy).toBe('auto_approve');
+  });
+});

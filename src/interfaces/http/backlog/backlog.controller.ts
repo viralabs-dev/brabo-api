@@ -3,6 +3,7 @@ import { RequireRole } from '../iam/require-role.decorator';
 import { ListBacklogUseCase } from '../../../application/use-cases/backlog/list-backlog.use-case';
 import { GetCoverageUseCase } from '../../../application/use-cases/backlog/get-coverage.use-case';
 import { GetArchitectureUseCase } from '../../../application/use-cases/architecture/get-architecture.use-case';
+import { ListInfraArtifactsUseCase } from '../../../application/use-cases/execution/list-infra-artifacts.use-case';
 
 /**
  * Leitura do backlog + arquitetura do projeto (Fase 3b): a árvore
@@ -16,6 +17,7 @@ export class BacklogController {
     private readonly listBacklog: ListBacklogUseCase,
     private readonly getCoverage: GetCoverageUseCase,
     private readonly getArchitecture: GetArchitectureUseCase,
+    private readonly listInfraArtifacts: ListInfraArtifactsUseCase,
   ) {}
 
   @Get('backlog')
@@ -34,5 +36,11 @@ export class BacklogController {
   @RequireRole('viewer')
   architecture(@Param('projectId') projectId: string) {
     return this.getArchitecture.execute(projectId);
+  }
+
+  @Get('infra-artifacts')
+  @RequireRole('viewer')
+  infraArtifacts(@Param('projectId') projectId: string) {
+    return this.listInfraArtifacts.execute(projectId);
   }
 }

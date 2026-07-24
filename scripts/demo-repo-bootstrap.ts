@@ -63,6 +63,9 @@ class UnreachableEngineClient implements ApiToEngineClient {
   acceptParallelization(): Promise<void> {
     throw new Error('engine não deveria ser chamado pelo bootstrap');
   }
+  offerInfraHandoff(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
   executeTerminalAction(): Promise<never> {
     throw new Error('engine não deveria ser chamado pelo bootstrap');
   }

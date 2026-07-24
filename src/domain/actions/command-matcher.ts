@@ -18,6 +18,7 @@ export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
   write_file: 'WriteFile',
   open_adr_pr: 'OpenAdrPr',
   git_merge: 'GitMerge',
+  open_infra_pr: 'OpenInfraPr',
 };
 
 /**

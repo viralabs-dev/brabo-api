@@ -24,6 +24,7 @@ import {
   TaskRepository,
 } from '../../../application/ports/backlog-repository.port';
 import { ModuleMapRepository } from '../../../application/ports/module-map-repository.port';
+import { InfraArtifactRepository } from '../../../application/ports/infra-artifact-repository.port';
 import { createDrizzleClient, DRIZZLE } from './drizzle-client';
 import { DrizzleUnitOfWork } from './drizzle-unit-of-work';
 import { DrizzleUserRepository } from './user.repository';
@@ -50,6 +51,7 @@ import {
   DrizzleTaskRepository,
 } from './backlog.repository';
 import { DrizzleModuleMapRepository } from './module-map.repository';
+import { DrizzleInfraArtifactRepository } from './infra-artifact.repository';
 
 const { db, pool } = createDrizzleClient();
 
@@ -108,6 +110,10 @@ const { db, pool } = createDrizzleClient();
     { provide: StoryRepository, useClass: DrizzleStoryRepository },
     { provide: TaskRepository, useClass: DrizzleTaskRepository },
     { provide: ModuleMapRepository, useClass: DrizzleModuleMapRepository },
+    {
+      provide: InfraArtifactRepository,
+      useClass: DrizzleInfraArtifactRepository,
+    },
   ],
   exports: [
     DRIZZLE,
@@ -134,6 +140,7 @@ const { db, pool } = createDrizzleClient();
     StoryRepository,
     TaskRepository,
     ModuleMapRepository,
+    InfraArtifactRepository,
   ],
 })
 export class DrizzleModule implements OnModuleDestroy {
