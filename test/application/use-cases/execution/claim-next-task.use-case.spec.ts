@@ -35,7 +35,12 @@ async function seed(opts: {
     .returning();
   const [project] = await db
     .insert(projects)
-    .values({ workspaceId: ws.id, name: 'core', slug: 'core', createdBy: owner.id })
+    .values({
+      workspaceId: ws.id,
+      name: 'core',
+      slug: 'core',
+      createdBy: owner.id,
+    })
     .returning();
   const [session] = await db
     .insert(sessions)
@@ -57,9 +62,7 @@ async function seed(opts: {
     })
     .returning();
   for (let i = 0; i < opts.taskCount; i++) {
-    await db
-      .insert(tasks)
-      .values({ storyId: story.id, title: `task-${i}` });
+    await db.insert(tasks).values({ storyId: story.id, title: `task-${i}` });
   }
   return { projectId: project.id, sessionId: session.id };
 }
@@ -99,7 +102,9 @@ describe('ClaimNextTaskUseCase', () => {
       moduleIds: ['api'],
       taskCount: 1,
     });
-    expect(await useCase.execute(projectId, sessionId, 'api', 'dev-api')).toBeNull();
+    expect(
+      await useCase.execute(projectId, sessionId, 'api', 'dev-api'),
+    ).toBeNull();
   });
 
   it('não pega task de módulo diferente', async () => {
@@ -108,6 +113,33 @@ describe('ClaimNextTaskUseCase', () => {
       moduleIds: ['web'],
       taskCount: 1,
     });
-    expect(await useCase.execute(projectId, sessionId, 'api', 'dev-api')).toBeNull();
+    expect(
+      await useCase.execute(projectId, sessionId, 'api', 'dev-api'),
+    ).toBeNull();
+  });
+
+  it('concorrência real: N claims simultâneos nunca pegam a mesma task', async () => {
+    const taskCount = 8;
+    const { projectId, sessionId } = await seed({
+      storyStatus: 'ready',
+      moduleIds: ['api'],
+      taskCount,
+    });
+
+    const results = await Promise.all(
+      Array.from({ length: taskCount }, (_, i) =>
+        useCase.execute(projectId, sessionId, 'api', `dev-${i}`),
+      ),
+    );
+
+    const claimed = results.filter((t) => t !== null);
+    expect(claimed).toHaveLength(taskCount);
+    const distinctIds = new Set(claimed.map((t) => t.id));
+    expect(distinctIds.size).toBe(taskCount); // nenhuma task duplicada
+
+    // Um claim a mais, sem tasks sobrando, esgota.
+    expect(
+      await useCase.execute(projectId, sessionId, 'api', 'dev-extra'),
+    ).toBeNull();
   });
 });

@@ -65,4 +65,13 @@ export abstract class TaskRepository {
     projectId: string,
     module: string,
   ): Promise<number>;
+  // DevAgent não conseguiu concluir (Fase 4a): volta pra `todo` com o
+  // diagnóstico, sem dono — EXCLUÍDA do próximo claim automático (ver
+  // `claimNext`) até um humano liberar via `unblock`.
+  abstract markBlocked(
+    id: string,
+    reason: string,
+    diagnosis: string,
+  ): Promise<Task>;
+  abstract unblock(id: string): Promise<Task>;
 }

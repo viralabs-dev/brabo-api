@@ -14,6 +14,7 @@ export abstract class ApiToEngineClient {
     sessionId: string,
     actionId: string,
     command: string,
+    cwd?: string,
   ): Promise<TerminalExecutionResult>;
 
   // --- Agentes conversacionais (Fase 3b) ---
@@ -49,6 +50,7 @@ export abstract class ApiToEngineClient {
     projectId: string,
     sessionId: string,
     modules: string[],
+    taskBudgetMicros?: number,
   ): Promise<void>;
 
   // Executa uma ação git (git_commit/git_push) no worktree do agente, no

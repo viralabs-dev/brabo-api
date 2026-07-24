@@ -7,6 +7,6 @@ export class MarkTaskInternalDto {
   @IsString()
   agentId!: string;
 
-  @IsIn(['todo', 'in_progress', 'done'])
-  status!: 'todo' | 'in_progress' | 'done';
+  @IsIn(['todo', 'in_progress', 'in_review', 'done'])
+  status!: 'todo' | 'in_progress' | 'in_review' | 'done';
 }

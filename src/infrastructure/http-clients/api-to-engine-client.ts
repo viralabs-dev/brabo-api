@@ -43,6 +43,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     sessionId: string,
     actionId: string,
     command: string,
+    cwd?: string,
   ): Promise<TerminalExecutionResult> {
     const token = await this.getToken();
     const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
@@ -53,7 +54,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ projectId, sessionId, actionId, command }),
+      body: JSON.stringify({ projectId, sessionId, actionId, command, cwd }),
     });
 
     if (!res.ok) {
@@ -99,11 +100,13 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     projectId: string,
     sessionId: string,
     modules: string[],
+    taskBudgetMicros?: number,
   ): Promise<void> {
-    await this.postCommand(
-      `/internal/sessions/${sessionId}/execution/start`,
-      { projectId, modules },
-    );
+    await this.postCommand(`/internal/sessions/${sessionId}/execution/start`, {
+      projectId,
+      modules,
+      taskBudgetMicros,
+    });
   }
 
   async acceptParallelization(
