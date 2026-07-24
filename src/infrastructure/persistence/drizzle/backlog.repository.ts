@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { asc, eq, inArray } from 'drizzle-orm';
+import { asc, eq, inArray, sql } from 'drizzle-orm';
 import {
   EpicRepository,
   StoryRepository,
@@ -139,6 +139,12 @@ export class DrizzleTaskRepository implements TaskRepository {
     return taskToEntity(row);
   }
 
+  async findById(id: string): Promise<Task | null> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db.select().from(tasks).where(eq(tasks.id, id)).limit(1);
+    return row ? taskToEntity(row) : null;
+  }
+
   async findByStoryIds(storyIds: string[]): Promise<Task[]> {
     if (storyIds.length === 0) return [];
     const db = currentDb(this.rootDb);
@@ -148,6 +154,74 @@ export class DrizzleTaskRepository implements TaskRepository {
       .where(inArray(tasks.storyId, storyIds))
       .orderBy(asc(tasks.createdAt));
     return rows.map(taskToEntity);
+  }
+
+  async claimNext(
+    projectId: string,
+    module: string,
+    agentId: string,
+  ): Promise<Task | null> {
+    const db = currentDb(this.rootDb);
+    // UPDATE atômico: pega a próxima task `todo` de uma story `ready` cujo
+    // module_ids (jsonb array) contém `module`, com FOR UPDATE SKIP LOCKED pra
+    // dois devs nunca pegarem a mesma. `?` = operador jsonb "contém a chave/
+    // elemento string".
+    // `db.execute` retorna as colunas cruas (snake_case), não o mapeamento
+    // camelCase do Drizzle — daí o mapeamento manual abaixo.
+    const result = await db.execute(sql`
+      UPDATE tasks
+      SET status = 'in_progress', assigned_to = ${agentId}, updated_at = now()
+      WHERE id = (
+        SELECT t.id FROM tasks t
+        JOIN stories s ON s.id = t.story_id
+        WHERE s.project_id = ${projectId}
+          AND s.status = 'ready'
+          AND s.module_ids ? ${module}
+          AND t.status = 'todo'
+        ORDER BY t.created_at
+        FOR UPDATE SKIP LOCKED
+        LIMIT 1
+      )
+      RETURNING id, story_id, title, description, status, assigned_to, created_at, updated_at
+    `);
+    const row = result.rows[0] as Record<string, unknown> | undefined;
+    if (!row) return null;
+    return {
+      id: row.id as string,
+      storyId: row.story_id as string,
+      title: row.title as string,
+      description: row.description as string,
+      status: row.status as Task['status'],
+      assignedTo: (row.assigned_to as string | null) ?? null,
+      createdAt: row.created_at as Date,
+      updatedAt: row.updated_at as Date,
+    };
+  }
+
+  async updateStatus(id: string, status: Task['status']): Promise<Task> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .update(tasks)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(tasks.id, id))
+      .returning();
+    return taskToEntity(row);
+  }
+
+  async countClaimableByModule(
+    projectId: string,
+    module: string,
+  ): Promise<number> {
+    const db = currentDb(this.rootDb);
+    const result = await db.execute<{ n: string }>(sql`
+      SELECT count(*) AS n FROM tasks t
+      JOIN stories s ON s.id = t.story_id
+      WHERE s.project_id = ${projectId}
+        AND s.status = 'ready'
+        AND s.module_ids ? ${module}
+        AND t.status = 'todo'
+    `);
+    return Number(result.rows[0]?.n ?? 0);
   }
 }
 
@@ -189,6 +263,8 @@ function taskToEntity(row: typeof tasks.$inferSelect): Task {
     storyId: row.storyId,
     title: row.title,
     description: row.description,
+    status: row.status,
+    assignedTo: row.assignedTo,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

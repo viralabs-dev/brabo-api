@@ -5,6 +5,7 @@ import type { ProposedAction } from '../../domain/actions/proposed-action.entity
 import type { TerminalExecutionResult } from '../../domain/actions/terminal-execution-result';
 import type { GitBootstrapExecutionResult } from '../../domain/git/bootstrap-execution-result';
 import type { AdrPrExecutionResult } from '../../domain/git/adr-pr-execution-result';
+import type { GitActionExecutionResult } from '../../domain/git/git-action-execution-result';
 
 export interface NewProposedAction {
   projectId: string;
@@ -29,7 +30,8 @@ export interface ExecutionResultUpdate {
   executionResult:
     | TerminalExecutionResult
     | GitBootstrapExecutionResult
-    | AdrPrExecutionResult;
+    | AdrPrExecutionResult
+    | GitActionExecutionResult;
 }
 
 export interface ListProposedActionsOptions {

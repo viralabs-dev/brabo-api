@@ -1,6 +1,7 @@
 import { roleAtLeast, type Role } from '../iam/role';
 import type { PermissionPolicy, PermissionsFile } from './permissions-file';
 import { matchesPattern, parseCommand } from './command-matcher';
+import { isProtectedBranch } from './protected-branches';
 
 export type ActionType =
   | 'terminal'
@@ -12,7 +13,8 @@ export type ActionType =
   | 'git_branch_create'
   | 'git_branch_protect'
   | 'write_file'
-  | 'open_adr_pr';
+  | 'open_adr_pr'
+  | 'git_merge';
 
 export const ACTION_TYPES: readonly ActionType[] = [
   'terminal',
@@ -25,6 +27,7 @@ export const ACTION_TYPES: readonly ActionType[] = [
   'git_branch_protect',
   'write_file',
   'open_adr_pr',
+  'git_merge',
 ];
 
 const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
@@ -52,6 +55,10 @@ const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
   // Fica pending por padrão — o usuário aprova a ação (que então abre a PR) e
   // depois mergeia a PR real no provider.
   open_adr_pr: 'maintainer',
+  // Merge de PR (Fase 4a). Merge com destino em branch protegida é SEMPRE
+  // manual — a trava (teto em decide()) impede auto_approve independente da
+  // configuração.
+  git_merge: 'maintainer',
 };
 
 // Rede de segurança padrão, sempre ativa, independente do permissions.json
@@ -68,6 +75,7 @@ export const BUILTIN_DENY_PATTERNS: readonly string[] = [
 export interface DecideAction {
   actionType: ActionType;
   command?: string; // só usado (e obrigatório em espírito) pra actionType === 'terminal'
+  targetBranch?: string; // só usado pra actionType === 'git_merge' (trava de merge)
 }
 
 export interface DecideContext {
@@ -116,6 +124,24 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
   if (fileVerdict) {
     if (fileVerdict.policy === 'deny') return fileVerdict;
     current = fileVerdict;
+  }
+
+  // TETO da trava de merge (Fase 4a): merge com destino em branch protegida
+  // NUNCA é auto-aprovável — nem agent_autonomy nem permissions.json
+  // conseguem promovê-lo pra auto_approve. Aplicado por ÚLTIMO, sobre o
+  // veredito já calculado (deny já teria retornado antes; require_approval
+  // permanece). Ver domain/actions/protected-branches.ts.
+  if (
+    action.actionType === 'git_merge' &&
+    action.targetBranch !== undefined &&
+    isProtectedBranch(action.targetBranch) &&
+    current.policy === 'auto_approve'
+  ) {
+    return {
+      policy: 'require_approval',
+      reason:
+        'trava de merge: destino em branch protegida nunca é auto-aprovável',
+    };
   }
 
   return current;

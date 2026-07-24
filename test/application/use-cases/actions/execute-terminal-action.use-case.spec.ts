@@ -39,6 +39,11 @@ class FakeApiToEngineClient implements ApiToEngineClient {
   async startAgent(): Promise<void> {}
   async sendAgentMessage(): Promise<void> {}
   async confirmReadiness(): Promise<void> {}
+  async startExecution(): Promise<void> {}
+  async executeGitAction(): Promise<Record<string, unknown>> {
+    return {};
+  }
+  async acceptParallelization(): Promise<void> {}
 
   executeTerminalAction(): Promise<TerminalExecutionResult> {
     if (this.error) return Promise.reject(this.error);

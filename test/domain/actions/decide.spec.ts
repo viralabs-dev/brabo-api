@@ -167,3 +167,62 @@ describe('decide', () => {
     expect(result.policy).toBe('deny');
   });
 });
+
+describe('decide — trava de merge (Fase 4a)', () => {
+  const mergeToDev = {
+    actionType: 'git_merge' as const,
+    targetBranch: 'dev',
+  };
+
+  it('agent_autonomy auto_approve NÃO consegue auto-aprovar merge em branch protegida', () => {
+    const result = decide(
+      mergeToDev,
+      ctx({ effectiveRole: 'maintainer', autonomyMode: 'auto_approve' }),
+    );
+    expect(result.policy).toBe('require_approval');
+  });
+
+  it('permissions.json allow NÃO consegue auto-aprovar merge em branch protegida', () => {
+    const result = decide(
+      mergeToDev,
+      ctx({
+        effectiveRole: 'maintainer',
+        permissionsFile: { ...EMPTY_PERMISSIONS_FILE, allow: ['GitMerge()'] },
+      }),
+    );
+    expect(result.policy).toBe('require_approval');
+  });
+
+  it('NEM autonomy NEM permissions juntos sobrescrevem a trava (dev/qa/rc/main)', () => {
+    for (const target of ['dev', 'qa', 'rc', 'main']) {
+      const result = decide(
+        { actionType: 'git_merge', targetBranch: target },
+        ctx({
+          effectiveRole: 'maintainer',
+          autonomyMode: 'auto_approve',
+          permissionsFile: { ...EMPTY_PERMISSIONS_FILE, allow: ['GitMerge()'] },
+        }),
+      );
+      expect(result.policy).toBe('require_approval');
+    }
+  });
+
+  it('merge em branch NÃO protegida pode ser auto-aprovado', () => {
+    const result = decide(
+      { actionType: 'git_merge', targetBranch: 'feature/x' },
+      ctx({ effectiveRole: 'maintainer', autonomyMode: 'auto_approve' }),
+    );
+    expect(result.policy).toBe('auto_approve');
+  });
+
+  it('deny ainda vence — mesmo pra merge em branch protegida', () => {
+    const result = decide(
+      mergeToDev,
+      ctx({
+        effectiveRole: 'maintainer',
+        permissionsFile: { ...EMPTY_PERMISSIONS_FILE, deny: ['GitMerge()'] },
+      }),
+    );
+    expect(result.policy).toBe('deny');
+  });
+});

@@ -41,4 +41,31 @@ export abstract class ApiToEngineClient {
     projectId: string,
     sessionId: string,
   ): Promise<void>;
+
+  // --- Execução (Fase 4a) ---
+
+  // Sobe os DevAgentServers (um por módulo) no engine.
+  abstract startExecution(
+    projectId: string,
+    sessionId: string,
+    modules: string[],
+  ): Promise<void>;
+
+  // Executa uma ação git (git_commit/git_push) no worktree do agente, no
+  // engine — síncrono, espelha executeTerminalAction. Retorna o resultado
+  // bruto (sha/branch) que o use-case grava em execution_result.
+  abstract executeGitAction(
+    projectId: string,
+    sessionId: string,
+    actionId: string,
+    type: string,
+    payload: Record<string, unknown>,
+  ): Promise<Record<string, unknown>>;
+
+  // Aceite (um clique) da sugestão de paralelização — sobe um dev extra.
+  abstract acceptParallelization(
+    projectId: string,
+    sessionId: string,
+    module: string,
+  ): Promise<void>;
 }

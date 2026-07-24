@@ -56,6 +56,11 @@ class FakeApiToEngineClient implements ApiToEngineClient {
   async startAgent(): Promise<void> {}
   async sendAgentMessage(): Promise<void> {}
   async confirmReadiness(): Promise<void> {}
+  async startExecution(): Promise<void> {}
+  async executeGitAction(): Promise<Record<string, unknown>> {
+    return {};
+  }
+  async acceptParallelization(): Promise<void> {}
   executeTerminalAction(): Promise<TerminalExecutionResult> {
     return Promise.resolve({
       stdout: '',
@@ -88,6 +93,7 @@ const proposeAction = new ProposeActionUseCase(
   outboxRepo,
   resolveEffectiveRole,
   executeTerminalAction,
+  undefined as never, // executeGitAction — não exercitado aqui
 );
 const approveAction = new ApproveActionUseCase(
   unitOfWork,
@@ -95,8 +101,11 @@ const approveAction = new ApproveActionUseCase(
   proposedActionRepo,
   outboxRepo,
   executeTerminalAction,
-  // open_adr_pr não é exercitado aqui.
-  undefined as never,
+  undefined as never, // executeAdrPr — não exercitado aqui
+  // executeGitAction: passthrough (o executor git de verdade é testado à parte).
+  {
+    execute: (_p: string, _s: string, a: unknown) => Promise.resolve(a),
+  } as unknown as never,
 );
 const denyAction = new DenyActionUseCase(
   unitOfWork,

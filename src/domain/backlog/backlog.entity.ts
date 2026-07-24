@@ -30,11 +30,15 @@ export interface Story {
   updatedAt: Date;
 }
 
+export type TaskStatus = 'todo' | 'in_progress' | 'done';
+
 export interface Task {
   id: string;
   storyId: string;
   title: string;
   description: string;
+  status: TaskStatus;
+  assignedTo: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

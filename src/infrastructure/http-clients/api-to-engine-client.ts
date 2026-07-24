@@ -95,6 +95,55 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     });
   }
 
+  async startExecution(
+    projectId: string,
+    sessionId: string,
+    modules: string[],
+  ): Promise<void> {
+    await this.postCommand(
+      `/internal/sessions/${sessionId}/execution/start`,
+      { projectId, modules },
+    );
+  }
+
+  async acceptParallelization(
+    projectId: string,
+    sessionId: string,
+    module: string,
+  ): Promise<void> {
+    await this.postCommand(
+      `/internal/sessions/${sessionId}/execution/parallelize`,
+      { projectId, module },
+    );
+  }
+
+  async executeGitAction(
+    projectId: string,
+    sessionId: string,
+    actionId: string,
+    type: string,
+    payload: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    const token = await this.getToken();
+    const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
+
+    const res = await fetch(`${engineUrl}/internal/actions/execute-git`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ projectId, sessionId, actionId, type, payload }),
+    });
+
+    if (!res.ok) {
+      throw new Error(
+        `Falha ao executar ação git no engine: ${res.status} ${await res.text()}`,
+      );
+    }
+    return (await res.json()) as Record<string, unknown>;
+  }
+
   private async postCommand(
     path: string,
     body: Record<string, unknown>,

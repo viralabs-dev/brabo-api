@@ -25,6 +25,8 @@ import { CreateStoryUseCase } from '../../../application/use-cases/backlog/creat
 import { CreateTaskUseCase } from '../../../application/use-cases/backlog/create-task.use-case';
 import { CreateModuleMapUseCase } from '../../../application/use-cases/architecture/create-module-map.use-case';
 import { AssignStoryModulesUseCase } from '../../../application/use-cases/architecture/assign-story-modules.use-case';
+import { ClaimNextTaskUseCase } from '../../../application/use-cases/execution/claim-next-task.use-case';
+import { MarkTaskUseCase } from '../../../application/use-cases/execution/mark-task.use-case';
 import { ReportSessionTerminationDto } from './dto/report-session-termination.dto';
 import { AppendSessionEventInternalDto } from './dto/append-session-event-internal.dto';
 import { RunLlmTurnDto } from './dto/run-llm-turn.dto';
@@ -36,6 +38,8 @@ import { CreateStoryInternalDto } from './dto/create-story-internal.dto';
 import { CreateTaskInternalDto } from './dto/create-task-internal.dto';
 import { CreateModuleMapInternalDto } from './dto/create-module-map-internal.dto';
 import { AssignStoryModulesInternalDto } from './dto/assign-story-modules-internal.dto';
+import { ClaimTaskInternalDto } from './dto/claim-task-internal.dto';
+import { MarkTaskInternalDto } from './dto/mark-task-internal.dto';
 
 /**
  * Chamadas internas do engine (Elixir/OTP) — nunca de um usuário humano.
@@ -60,6 +64,8 @@ export class InternalSessionsController {
     private readonly createTask: CreateTaskUseCase,
     private readonly createModuleMap: CreateModuleMapUseCase,
     private readonly assignStoryModules: AssignStoryModulesUseCase,
+    private readonly claimNextTask: ClaimNextTaskUseCase,
+    private readonly markTask: MarkTaskUseCase,
   ) {}
 
   /**
@@ -236,6 +242,38 @@ export class InternalSessionsController {
       storyId: dto.storyId,
       moduleIds: dto.moduleIds,
     });
+  }
+
+  /**
+   * Ciclo de task dos dev agents (Fase 4a): claim atômico da próxima task
+   * pegável do módulo, e atualização de status ao longo do trabalho.
+   */
+  @Post(':sessionId/tasks/claim')
+  claimTask(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: ClaimTaskInternalDto,
+  ) {
+    return this.claimNextTask.execute(
+      dto.projectId,
+      sessionId,
+      dto.module,
+      dto.agentId,
+    );
+  }
+
+  @Post(':sessionId/tasks/:taskId/status')
+  markTaskStatus(
+    @Param('sessionId') sessionId: string,
+    @Param('taskId') taskId: string,
+    @Body() dto: MarkTaskInternalDto,
+  ) {
+    return this.markTask.execute(
+      dto.projectId,
+      sessionId,
+      taskId,
+      dto.status,
+      dto.agentId,
+    );
   }
 
   /**
