@@ -7,7 +7,7 @@ import {
   type Page,
 } from '../../../application/ports/session-event-repository.port';
 import type { SessionEvent } from '../../../domain/sessions/session-event.entity';
-import { sessionEvents } from '../../../db/schema';
+import { sessionEvents, sessions } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
@@ -60,6 +60,32 @@ export class DrizzleSessionEventRepository implements SessionEventRepository {
       items: page.map(toEntity),
       nextCursor: hasMore ? page[page.length - 1].seq : null,
     };
+  }
+
+  async findById(id: string): Promise<SessionEvent | null> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .select()
+      .from(sessionEvents)
+      .where(eq(sessionEvents.id, id))
+      .limit(1);
+    return row ? toEntity(row) : null;
+  }
+
+  async listByTypeForProject(
+    projectId: string,
+    type: string,
+  ): Promise<SessionEvent[]> {
+    const db = currentDb(this.rootDb);
+    const rows = await db
+      .select()
+      .from(sessionEvents)
+      .innerJoin(sessions, eq(sessionEvents.sessionId, sessions.id))
+      .where(
+        and(eq(sessions.projectId, projectId), eq(sessionEvents.type, type)),
+      )
+      .orderBy(asc(sessionEvents.createdAt));
+    return rows.map((r) => toEntity(r.session_events));
   }
 }
 

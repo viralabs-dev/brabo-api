@@ -78,6 +78,13 @@
       "when": 1784866282896,
       "tag": "0010_mixed_weapon_omega",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784869129487,
+      "tag": "0011_loose_randall_flagg",
+      "breakpoints": true
     }
   ]
 }
