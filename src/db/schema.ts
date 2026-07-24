@@ -11,6 +11,7 @@ import {
   timestamp,
   primaryKey,
   unique,
+  uniqueIndex,
   index,
   check,
 } from 'drizzle-orm/pg-core';
@@ -267,6 +268,12 @@ export const sessions = pgTable('sessions', {
     .notNull()
     .defaultNow(),
   closedAt: timestamp('closed_at', { withTimezone: true }),
+  // Fase 4b — Psicólogo: motivo reportado pelo engine na transição pra um
+  // estado terminal (heartbeat_timeout/killed/exceção/...) — só populado
+  // no caminho de término reportado pelo engine (ReportSessionTerminationUseCase);
+  // fecho humano/gracioso fica null. Alimenta a classificação determinística
+  // de causa (crash/kill/timeout) no contexto do Psicólogo.
+  terminationReason: text('termination_reason'),
 });
 
 // --- Event log (append-only) ---
@@ -834,6 +841,94 @@ export const projectRepositories = pgTable(
       .defaultNow(),
   },
   (table) => [unique().on(table.projectId)],
+);
+
+// --- Psicólogo (Fase 4b) ---
+
+// Uma linha por RUN de análise CONCLUÍDO COM SUCESSO (nunca gravado se o
+// ToolLoop estourar limite/orçamento sem emitir hipóteses — isso permite
+// um retry legítimo depois de uma falha, sem confundir com "duplicar uma
+// análise já concluída"). O índice parcial único é a "chave única
+// session_id + já processado" da CLAUDE.md: no máximo UMA análise
+// `superseded=false` por sessão, sempre — reprocessamento explícito
+// (triggeredBy='manual') marca a antiga `superseded=true` (nunca apaga)
+// e insere uma nova, preservando histórico.
+export const psychologistAnalyses = pgTable(
+  'psychologist_analyses',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    tier: text('tier').notNull(),
+    triggeredBy: text('triggered_by').notNull().default('auto'),
+    supersedes: uuid('supersedes'),
+    superseded: boolean('superseded').notNull().default(false),
+    eventCountAtAnalysis: integer('event_count_at_analysis').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('psychologist_analyses_current_idx')
+      .on(table.sessionId)
+      .where(sql`${table.superseded} = false`),
+  ],
+);
+
+// Tabela MUTÁVEL do ciclo de vida da hipótese (proposed -> accepted |
+// dismissed) — session_events é append-only (CLAUDE.md), então o estado
+// que muda precisa morar aqui, igual tasks.gate_status/
+// infra_artifacts.gate_status; cada transição TAMBÉM emite um
+// session_event imutável correspondente (trilha de auditoria).
+export const psychologistHypotheses = pgTable(
+  'psychologist_hypotheses',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    analysisId: uuid('analysis_id')
+      .notNull()
+      .references(() => psychologistAnalyses.id, { onDelete: 'cascade' }),
+    // Texto livre (não enum) — precisa caber agent ids dinâmicos como
+    // dev-<modulo>, além dos fixos (criativo/po/arquiteto/qa/secops/infra).
+    agenteAlvo: text('agente_alvo').notNull(),
+    observacao: text('observacao').notNull(),
+    hipotese: text('hipotese').notNull(),
+    sugestao: text('sugestao').notNull(),
+    // Inteiro 0-100 — convenção do repo pra ratio/dinheiro é inteiro
+    // (mesmo espírito de micro-USD), não float.
+    confiancaPercent: integer('confianca_percent').notNull(),
+    evidenceEventIds: jsonb('evidence_event_ids')
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    terminationAnalysis: jsonb('termination_analysis').$type<{
+      causa: string;
+      estadoDaSessao: string;
+      analise: string;
+    } | null>(),
+    status: text('status').notNull().default('proposed'),
+    decidedBy: uuid('decided_by').references(() => users.id),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('psychologist_hypotheses_project_idx').on(table.projectId),
+    index('psychologist_hypotheses_analysis_idx').on(table.analysisId),
+  ],
 );
 
 // Progresso do bootstrap de Gitflow que roda depois de criar o repo

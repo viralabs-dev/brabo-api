@@ -28,6 +28,7 @@ export class ReportSessionTerminationUseCase {
     projectId: string,
     sessionId: string,
     to: Extract<SessionStatus, 'closed' | 'closed_abnormally'>,
+    reason?: string,
   ) {
     if (to === 'closed') {
       const current = await this.sessions.findInProject(projectId, sessionId);
@@ -36,6 +37,6 @@ export class ReportSessionTerminationUseCase {
       }
     }
 
-    return this.transitionSession.execute(projectId, sessionId, to);
+    return this.transitionSession.execute(projectId, sessionId, to, reason);
   }
 }

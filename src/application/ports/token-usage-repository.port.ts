@@ -19,4 +19,12 @@ export interface RecordTokenUsageInput {
 
 export abstract class TokenUsageRepository {
   abstract record(input: RecordTokenUsageInput): Promise<TokenUsage>;
+  // Soma de costMicros pra uma sessão, filtrado por actor id (Fase 4b —
+  // Psicólogo: custo da análise, somando ['psicologo','psicologo-leve'],
+  // usado só pra exibição — o metering "de verdade" já é gravado
+  // incondicionalmente por RecordLlmUsageUseCase pra QUALQUER agente).
+  abstract sumBySessionAndActorIds(
+    sessionId: string,
+    actorIds: string[],
+  ): Promise<number>;
 }

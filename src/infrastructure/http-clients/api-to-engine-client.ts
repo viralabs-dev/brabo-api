@@ -106,6 +106,13 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     );
   }
 
+  async reanalyzeSession(projectId: string, sessionId: string): Promise<void> {
+    await this.postCommand(
+      `/internal/sessions/${sessionId}/psychologist/reanalyze`,
+      { projectId },
+    );
+  }
+
   async startExecution(
     projectId: string,
     sessionId: string,

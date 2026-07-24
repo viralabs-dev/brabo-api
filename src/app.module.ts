@@ -13,6 +13,7 @@ import { BacklogHttpModule } from './interfaces/http/backlog/backlog-http.module
 import { ExecutionHttpModule } from './interfaces/http/execution/execution-http.module';
 import { GitHttpModule } from './interfaces/http/git/git-http.module';
 import { InternalHttpModule } from './interfaces/http/internal/internal-http.module';
+import { PsychologistHttpModule } from './interfaces/http/psychologist/psychologist-http.module';
 
 @Module({
   // Ordem importa: AuthHttpModule antes de IamHttpModule, para o
@@ -30,6 +31,7 @@ import { InternalHttpModule } from './interfaces/http/internal/internal-http.mod
     BacklogHttpModule,
     ExecutionHttpModule,
     GitHttpModule,
+    PsychologistHttpModule,
     InternalHttpModule,
   ],
   controllers: [AppController],

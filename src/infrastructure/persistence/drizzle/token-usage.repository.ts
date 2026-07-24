@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import {
   TokenUsageRepository,
   type RecordTokenUsageInput,
@@ -47,5 +48,23 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
       bindingOrigin: row.bindingOrigin,
       createdAt: row.createdAt,
     };
+  }
+
+  async sumBySessionAndActorIds(
+    sessionId: string,
+    actorIds: string[],
+  ): Promise<number> {
+    if (actorIds.length === 0) return 0;
+    const db = currentDb(this.rootDb);
+    const [result] = await db
+      .select({ total: sql<string>`coalesce(sum(${tokenUsage.costMicros}), 0)` })
+      .from(tokenUsage)
+      .where(
+        and(
+          eq(tokenUsage.sessionId, sessionId),
+          inArray(tokenUsage.actorId, actorIds),
+        ),
+      );
+    return Number(result?.total ?? 0);
   }
 }

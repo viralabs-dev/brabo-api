@@ -9,4 +9,8 @@ export interface Session {
   createdAt: Date;
   updatedAt: Date;
   closedAt: Date | null;
+  // Fase 4b — Psicólogo: motivo reportado pelo engine na transição pra um
+  // estado terminal (heartbeat_timeout/killed/exceção/...); null pra
+  // fechamento humano/gracioso ou sessão ainda não terminal.
+  terminationReason: string | null;
 }

@@ -34,9 +34,12 @@ import { OpenGateUseCase } from '../../../application/use-cases/execution/open-g
 import { GetInfraContextUseCase } from '../../../application/use-cases/execution/get-infra-context.use-case';
 import { RecordInfraGateVerdictUseCase } from '../../../application/use-cases/execution/record-infra-gate-verdict.use-case';
 import { GetInfraPrFilesUseCase } from '../../../application/use-cases/execution/get-infra-pr-files.use-case';
+import { GetPsychologistContextUseCase } from '../../../application/use-cases/execution/get-psychologist-context.use-case';
+import { ProposeHypothesesUseCase } from '../../../application/use-cases/execution/propose-hypotheses.use-case';
 import { BlockTaskInternalDto } from './dto/block-task-internal.dto';
 import { RecordGateVerdictInternalDto } from './dto/record-gate-verdict-internal.dto';
 import { RecordInfraGateVerdictInternalDto } from './dto/record-infra-gate-verdict-internal.dto';
+import { ProposeHypothesesInternalDto } from './dto/propose-hypotheses-internal.dto';
 import { OpenGateInternalDto } from './dto/open-gate-internal.dto';
 import { ReportSessionTerminationDto } from './dto/report-session-termination.dto';
 import { AppendSessionEventInternalDto } from './dto/append-session-event-internal.dto';
@@ -84,6 +87,8 @@ export class InternalSessionsController {
     private readonly getInfraContext: GetInfraContextUseCase,
     private readonly recordInfraGateVerdict: RecordInfraGateVerdictUseCase,
     private readonly getInfraPrFiles: GetInfraPrFilesUseCase,
+    private readonly getPsychologistContext: GetPsychologistContextUseCase,
+    private readonly proposeHypotheses: ProposeHypothesesUseCase,
   ) {}
 
   /**
@@ -100,7 +105,12 @@ export class InternalSessionsController {
     this.logger.warn(
       `Sessão ${sessionId} terminou no engine (${dto.to}): ${dto.reason ?? '(sem motivo informado)'}`,
     );
-    return this.reportTermination.execute(dto.projectId, sessionId, dto.to);
+    return this.reportTermination.execute(
+      dto.projectId,
+      sessionId,
+      dto.to,
+      dto.reason,
+    );
   }
 
   /**
@@ -314,6 +324,39 @@ export class InternalSessionsController {
   @Get(':sessionId/infra-context')
   infraContext(@Query('projectId') projectId: string) {
     return this.getInfraContext.execute(projectId);
+  }
+
+  /**
+   * Contexto do Psicólogo (Fase 4b): se a sessão já foi analisada
+   * (idempotência), status/motivo de término, regras de negócio do
+   * projeto e hipóteses anteriores não descartadas. O log completo de
+   * eventos o engine lê direto do Postgres, não passa por aqui.
+   */
+  @Get(':sessionId/psychologist-context')
+  psychologistContext(
+    @Param('sessionId') sessionId: string,
+    @Query('projectId') projectId: string,
+  ) {
+    return this.getPsychologistContext.execute(projectId, sessionId);
+  }
+
+  /**
+   * Hipóteses emitidas pelo Psicólogo (Fase 4b) — valida que TODA
+   * evidência aponta pra um event id real desta sessão; rejeita o lote
+   * inteiro (4xx) se qualquer uma falhar, e a mensagem volta pro modelo
+   * como tool-result pra correção (até o teto de max_iterations).
+   */
+  @Post(':sessionId/hypotheses')
+  hypotheses(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: ProposeHypothesesInternalDto,
+  ) {
+    return this.proposeHypotheses.execute(dto.projectId, sessionId, {
+      tier: dto.tier,
+      triggeredBy: dto.triggeredBy,
+      eventCount: dto.eventCount,
+      hypotheses: dto.hypotheses,
+    });
   }
 
   /**

@@ -45,6 +45,7 @@ class FakeApiToEngineClient implements ApiToEngineClient {
   }
   async acceptParallelization(): Promise<void> {}
   async offerInfraHandoff(): Promise<void> {}
+  async reanalyzeSession(): Promise<void> {}
 
   executeTerminalAction(): Promise<TerminalExecutionResult> {
     if (this.error) return Promise.reject(this.error);
