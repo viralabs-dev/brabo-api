@@ -1,0 +1,2 @@
+CREATE TYPE "public"."credential_provider" AS ENUM('ollama', 'anthropic', 'openai', 'github', 'gitlab');--> statement-breakpoint
+ALTER TABLE "user_credentials" ALTER COLUMN "provider" SET DATA TYPE "public"."credential_provider" USING "provider"::text::"public"."credential_provider";

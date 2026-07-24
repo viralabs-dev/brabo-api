@@ -5,12 +5,14 @@ import { StartGitOauthUseCase } from './start-git-oauth.use-case';
 import { HandleGitOauthCallbackUseCase } from './handle-git-oauth-callback.use-case';
 import { ProvisionRepositoryUseCase } from './provision-repository.use-case';
 import { GetProvisionedRepositoryUseCase } from './get-provisioned-repository.use-case';
+import { RegisterGitCredentialUseCase } from './register-git-credential.use-case';
 
 const USE_CASES = [
   StartGitOauthUseCase,
   HandleGitOauthCallbackUseCase,
   ProvisionRepositoryUseCase,
   GetProvisionedRepositoryUseCase,
+  RegisterGitCredentialUseCase,
 ];
 
 @Module({

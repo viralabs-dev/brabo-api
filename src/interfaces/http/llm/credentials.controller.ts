@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
-import type { LLMProviderName } from '@brabo/shared';
+import type { CredentialProviderName } from '@brabo/shared';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { User } from '../../../domain/iam/user.entity';
 import { UpsertUserCredentialUseCase } from '../../../application/use-cases/llm/upsert-user-credential.use-case';
@@ -31,7 +31,7 @@ export class CredentialsController {
   @Delete(':provider')
   async remove(
     @CurrentUser() user: User,
-    @Param('provider') provider: LLMProviderName,
+    @Param('provider') provider: CredentialProviderName,
   ) {
     await this.deleteCredential.execute(user.id, provider);
     return { ok: true };

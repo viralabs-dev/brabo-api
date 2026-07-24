@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
-import type { LLMProviderName } from '@brabo/shared';
+import type { CredentialProviderName } from '@brabo/shared';
 import { UserCredentialRepository } from '../../../application/ports/user-credential-repository.port';
 import type { EncryptedSecret } from '../../../application/ports/encryption.port';
 import type { UserCredentialMetadata } from '../../../domain/llm/user-credential.entity';
@@ -14,7 +14,7 @@ export class DrizzleUserCredentialRepository implements UserCredentialRepository
 
   async upsert(
     userId: string,
-    provider: LLMProviderName,
+    provider: CredentialProviderName,
     secret: EncryptedSecret,
   ): Promise<UserCredentialMetadata> {
     const db = currentDb(this.rootDb);
@@ -31,7 +31,7 @@ export class DrizzleUserCredentialRepository implements UserCredentialRepository
 
   async findSecretByUserAndProvider(
     userId: string,
-    provider: LLMProviderName,
+    provider: CredentialProviderName,
   ): Promise<EncryptedSecret | null> {
     const db = currentDb(this.rootDb);
     const [row] = await db
@@ -63,7 +63,10 @@ export class DrizzleUserCredentialRepository implements UserCredentialRepository
     return rows.map(toMetadata);
   }
 
-  async delete(userId: string, provider: LLMProviderName): Promise<boolean> {
+  async delete(
+    userId: string,
+    provider: CredentialProviderName,
+  ): Promise<boolean> {
     const db = currentDb(this.rootDb);
     const rows = await db
       .delete(userCredentials)

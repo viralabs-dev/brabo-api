@@ -50,7 +50,10 @@ export function runGitProviderContract(
     });
 
     it('createRepo: cria um repositório novo', async () => {
-      const repo = await provider.createRepo({ name: 'contrato repo', visibility: 'private' });
+      const repo = await provider.createRepo({
+        name: 'contrato repo',
+        visibility: 'private',
+      });
       expect(repo.externalId).toBeTruthy();
       expect(repo.defaultBranch).toBe('main');
       expect(repo.visibility).toBe('private');
@@ -64,7 +67,10 @@ export function runGitProviderContract(
     });
 
     it('getRepo: retorna o repo criado', async () => {
-      const created = await provider.createRepo({ name: 'consulta', visibility: 'private' });
+      const created = await provider.createRepo({
+        name: 'consulta',
+        visibility: 'private',
+      });
       const found = await provider.getRepo({ externalId: created.externalId });
       expect(found.externalId).toBe(created.externalId);
       expect(found.defaultBranch).toBe('main');
@@ -72,12 +78,17 @@ export function runGitProviderContract(
 
     it('getRepo: rejeita id inexistente com GitRepoNotFoundError', async () => {
       await expect(
-        provider.getRepo({ externalId: '/definitivamente/nao/existe/repo.git' }),
+        provider.getRepo({
+          externalId: '/definitivamente/nao/existe/repo.git',
+        }),
       ).rejects.toThrow(GitRepoNotFoundError);
     });
 
     it('commitFiles: cria o primeiro commit numa branch nova', async () => {
-      const repo = await provider.createRepo({ name: 'commit-happy', visibility: 'private' });
+      const repo = await provider.createRepo({
+        name: 'commit-happy',
+        visibility: 'private',
+      });
       const result = await provider.commitFiles({
         externalId: repo.externalId,
         branch: 'main',
@@ -89,7 +100,10 @@ export function runGitProviderContract(
     });
 
     it('commitFiles: segundo commit na mesma branch produz um sha novo', async () => {
-      const repo = await provider.createRepo({ name: 'commit-second', visibility: 'private' });
+      const repo = await provider.createRepo({
+        name: 'commit-second',
+        visibility: 'private',
+      });
       const first = await provider.commitFiles({
         externalId: repo.externalId,
         branch: 'main',
@@ -106,7 +120,10 @@ export function runGitProviderContract(
     });
 
     it('commitFiles: rejeita branch inexistente (repo com refs, branch nova) com GitBranchNotFoundError', async () => {
-      const repo = await provider.createRepo({ name: 'commit-missing-branch', visibility: 'private' });
+      const repo = await provider.createRepo({
+        name: 'commit-missing-branch',
+        visibility: 'private',
+      });
       await provider.commitFiles({
         externalId: repo.externalId,
         branch: 'main',
@@ -124,7 +141,10 @@ export function runGitProviderContract(
     });
 
     it('createBranch: cria a partir de uma ref existente', async () => {
-      const repo = await provider.createRepo({ name: 'branch-happy', visibility: 'private' });
+      const repo = await provider.createRepo({
+        name: 'branch-happy',
+        visibility: 'private',
+      });
       await provider.commitFiles({
         externalId: repo.externalId,
         branch: 'main',
@@ -143,42 +163,72 @@ export function runGitProviderContract(
     });
 
     it('createBranch: rejeita fromRef inexistente com GitBranchNotFoundError', async () => {
-      const repo = await provider.createRepo({ name: 'branch-missing-ref', visibility: 'private' });
+      const repo = await provider.createRepo({
+        name: 'branch-missing-ref',
+        visibility: 'private',
+      });
       await expect(
-        provider.createBranch({ externalId: repo.externalId, branchName: 'feature/x', fromRef: 'main' }),
+        provider.createBranch({
+          externalId: repo.externalId,
+          branchName: 'feature/x',
+          fromRef: 'main',
+        }),
       ).rejects.toThrow(GitBranchNotFoundError);
     });
 
     it('createBranch: rejeita nome já existente com GitBranchAlreadyExistsError', async () => {
-      const repo = await provider.createRepo({ name: 'branch-duplicada', visibility: 'private' });
+      const repo = await provider.createRepo({
+        name: 'branch-duplicada',
+        visibility: 'private',
+      });
       await provider.commitFiles({
         externalId: repo.externalId,
         branch: 'main',
         message: 'inicial',
         files: [{ path: 'a.txt', content: 'a' }],
       });
-      await provider.createBranch({ externalId: repo.externalId, branchName: 'dev', fromRef: 'main' });
+      await provider.createBranch({
+        externalId: repo.externalId,
+        branchName: 'dev',
+        fromRef: 'main',
+      });
       await expect(
-        provider.createBranch({ externalId: repo.externalId, branchName: 'dev', fromRef: 'main' }),
+        provider.createBranch({
+          externalId: repo.externalId,
+          branchName: 'dev',
+          fromRef: 'main',
+        }),
       ).rejects.toThrow(GitBranchAlreadyExistsError);
     });
 
     it('listBranches: lista as branches existentes', async () => {
-      const repo = await provider.createRepo({ name: 'list-branches', visibility: 'private' });
+      const repo = await provider.createRepo({
+        name: 'list-branches',
+        visibility: 'private',
+      });
       await provider.commitFiles({
         externalId: repo.externalId,
         branch: 'main',
         message: 'inicial',
         files: [{ path: 'a.txt', content: 'a' }],
       });
-      await provider.createBranch({ externalId: repo.externalId, branchName: 'dev', fromRef: 'main' });
+      await provider.createBranch({
+        externalId: repo.externalId,
+        branchName: 'dev',
+        fromRef: 'main',
+      });
 
-      const branches = await provider.listBranches({ externalId: repo.externalId });
+      const branches = await provider.listBranches({
+        externalId: repo.externalId,
+      });
       expect(branches.map((b) => b.name).sort()).toEqual(['dev', 'main']);
     });
 
     it('protectBranch: respeita capabilities.protectBranch', async () => {
-      const repo = await provider.createRepo({ name: 'protect', visibility: 'private' });
+      const repo = await provider.createRepo({
+        name: 'protect',
+        visibility: 'private',
+      });
       await provider.commitFiles({
         externalId: repo.externalId,
         branch: 'main',
@@ -187,25 +237,40 @@ export function runGitProviderContract(
       });
 
       if (provider.capabilities.protectBranch) {
-        await provider.protectBranch({ externalId: repo.externalId, branchName: 'main' });
-        const branches = await provider.listBranches({ externalId: repo.externalId });
+        await provider.protectBranch({
+          externalId: repo.externalId,
+          branchName: 'main',
+        });
+        const branches = await provider.listBranches({
+          externalId: repo.externalId,
+        });
         expect(branches.find((b) => b.name === 'main')?.protected).toBe(true);
       } else {
         await expect(
-          provider.protectBranch({ externalId: repo.externalId, branchName: 'main' }),
+          provider.protectBranch({
+            externalId: repo.externalId,
+            branchName: 'main',
+          }),
         ).rejects.toThrow(GitNotSupportedError);
       }
     });
 
     it('openPullRequest: respeita capabilities.pullRequests', async () => {
-      const repo = await provider.createRepo({ name: 'pr-open', visibility: 'private' });
+      const repo = await provider.createRepo({
+        name: 'pr-open',
+        visibility: 'private',
+      });
       await provider.commitFiles({
         externalId: repo.externalId,
         branch: 'main',
         message: 'inicial',
         files: [{ path: 'a.txt', content: 'a' }],
       });
-      await provider.createBranch({ externalId: repo.externalId, branchName: 'feature', fromRef: 'main' });
+      await provider.createBranch({
+        externalId: repo.externalId,
+        branchName: 'feature',
+        fromRef: 'main',
+      });
 
       const input = {
         externalId: repo.externalId,
@@ -218,12 +283,17 @@ export function runGitProviderContract(
         const pr = await provider.openPullRequest(input);
         expect(pr.state).toBe('open');
       } else {
-        await expect(provider.openPullRequest(input)).rejects.toThrow(GitNotSupportedError);
+        await expect(provider.openPullRequest(input)).rejects.toThrow(
+          GitNotSupportedError,
+        );
       }
     });
 
     it('mergePullRequest: respeita capabilities.pullRequests', async () => {
-      const repo = await provider.createRepo({ name: 'pr-merge', visibility: 'private' });
+      const repo = await provider.createRepo({
+        name: 'pr-merge',
+        visibility: 'private',
+      });
 
       if (provider.capabilities.pullRequests) {
         // Sessão futura (Github/Gitlab): abrir e mesclar um PR de verdade.
@@ -231,21 +301,27 @@ export function runGitProviderContract(
       }
 
       await expect(
-        provider.mergePullRequest({ externalId: repo.externalId, pullRequestId: 'nao-existe' }),
+        provider.mergePullRequest({
+          externalId: repo.externalId,
+          pullRequestId: 'nao-existe',
+        }),
       ).rejects.toThrow(GitNotSupportedError);
     });
 
     // Containers da api rodam como root em dev (ver docker/api/Dockerfile) —
     // root ignora permissões Unix, então chmod não reproduz EACCES real.
     // Pulado nesse caso em vez de fingir que passou.
-    it.skipIf(isRoot)('createRepo: rejeita permissão negada com GitPermissionDeniedError', async () => {
-      if (!harness.makeUnwritableTarget) return;
-      const target = await harness.makeUnwritableTarget();
-      if (!target) return;
+    it.skipIf(isRoot)(
+      'createRepo: rejeita permissão negada com GitPermissionDeniedError',
+      async () => {
+        if (!harness.makeUnwritableTarget) return;
+        const target = await harness.makeUnwritableTarget();
+        if (!target) return;
 
-      await expect(
-        provider.createRepo({ name: 'sem-permissao', visibility: 'private' }),
-      ).rejects.toThrow(GitPermissionDeniedError);
-    });
+        await expect(
+          provider.createRepo({ name: 'sem-permissao', visibility: 'private' }),
+        ).rejects.toThrow(GitPermissionDeniedError);
+      },
+    );
   });
 }

@@ -84,6 +84,19 @@ export const gitProviderEnum = pgEnum('git_provider', [
   'gitlab',
 ]);
 
+// user_credentials guarda tanto chaves de LLM quanto tokens de git do
+// usuário (github/gitlab) — enum dedicado em vez de alargar llm_provider
+// (que também serve models/token_usage, LLM-only de verdade) ou
+// reaproveitar git_provider (que tem 'local', sem sentido pra uma
+// credencial). Ver docs/adr/0004-git-credential-registration.md.
+export const credentialProviderEnum = pgEnum('credential_provider', [
+  'ollama',
+  'anthropic',
+  'openai',
+  'github',
+  'gitlab',
+]);
+
 // --- Identidade ---
 
 export const users = pgTable('users', {
@@ -310,7 +323,7 @@ export const userCredentials = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    provider: llmProviderEnum('provider').notNull(),
+    provider: credentialProviderEnum('provider').notNull(),
     wrappedDek: text('wrapped_dek').notNull(),
     dekIv: text('dek_iv').notNull(),
     dekAuthTag: text('dek_auth_tag').notNull(),
