@@ -117,6 +117,18 @@ export const handoffStatusEnum = pgEnum('handoff_status', [
   'rejected',
 ]);
 
+// Ciclo de vida de uma história de backlog (Fase 3b — PO):
+//   draft → ready → in_progress → done
+// A transição draft→ready é validada NO DOMÍNIO (ver domain/backlog/
+// story-readiness.ts): exige DoD e DoR não vazios, ≥1 RF e ≥1 regra de
+// negócio vinculada. Sem isso a story não sai de draft.
+export const storyStatusEnum = pgEnum('story_status', [
+  'draft',
+  'ready',
+  'in_progress',
+  'done',
+]);
+
 // user_credentials guarda tanto chaves de LLM quanto tokens de git do
 // usuário (github/gitlab) — enum dedicado em vez de alargar llm_provider
 // (que também serve models/token_usage, LLM-only de verdade) ou
@@ -556,6 +568,92 @@ export const handoffs = pgTable(
       .defaultNow(),
   },
   (table) => [index('handoffs_session_idx').on(table.sessionId)],
+);
+
+// --- Backlog (Fase 3b — PO): épicos → histórias → tarefas ---
+//
+// Gerado pelo PO dentro de uma sessão (sessionId = proveniência) mas
+// consultado por projeto. Multi-valor em JSONB (o projeto não usa arrays do
+// Postgres — mesma convenção de session_events.payload). `business_rule_ids`
+// referencia session_events.id (ULID) dos artefatos artifact.business_rule —
+// texto sem FK (mesma escolha de handoffs.artifact_id), vínculo lógico.
+export const epics = pgTable('epics', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  projectId: uuid('project_id')
+    .notNull()
+    .references(() => projects.id, { onDelete: 'cascade' }),
+  sessionId: uuid('session_id')
+    .notNull()
+    .references(() => sessions.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  description: text('description').notNull().default(''),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const stories = pgTable(
+  'stories',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    epicId: uuid('epic_id')
+      .notNull()
+      .references(() => epics.id, { onDelete: 'cascade' }),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    description: text('description').notNull().default(''),
+    // Requisitos funcionais / não-funcionais (texto livre por item).
+    rf: jsonb('rf').$type<string[]>().notNull().default([]),
+    rnf: jsonb('rnf').$type<string[]>().notNull().default([]),
+    // Regras de negócio que originaram a story (session_events.id).
+    businessRuleIds: jsonb('business_rule_ids')
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    // Definition of Done / Definition of Ready.
+    dod: jsonb('dod').$type<string[]>().notNull().default([]),
+    dor: jsonb('dor').$type<string[]>().notNull().default([]),
+    status: storyStatusEnum('status').notNull().default('draft'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('stories_epic_idx').on(table.epicId),
+    index('stories_session_idx').on(table.sessionId),
+  ],
+);
+
+// Tarefas pertencem a uma story e HERDAM o vínculo a regra dela (derivado, não
+// armazenado). Folhas da árvore do backlog.
+export const tasks = pgTable(
+  'tasks',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    storyId: uuid('story_id')
+      .notNull()
+      .references(() => stories.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    description: text('description').notNull().default(''),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index('tasks_story_idx').on(table.storyId)],
 );
 
 // --- Git providers (Fase 2): conexão OAuth + repositório provisionado ---

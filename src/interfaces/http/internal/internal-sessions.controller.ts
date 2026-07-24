@@ -20,12 +20,18 @@ import { RunLlmTurnUseCase } from '../../../application/use-cases/llm/run-llm-tu
 import { StreamLlmTurnUseCase } from '../../../application/use-cases/llm/stream-llm-turn.use-case';
 import { ProposeActionUseCase } from '../../../application/use-cases/actions/propose-action.use-case';
 import { CreateHandoffUseCase } from '../../../application/use-cases/agents/create-handoff.use-case';
+import { CreateEpicUseCase } from '../../../application/use-cases/backlog/create-epic.use-case';
+import { CreateStoryUseCase } from '../../../application/use-cases/backlog/create-story.use-case';
+import { CreateTaskUseCase } from '../../../application/use-cases/backlog/create-task.use-case';
 import { ReportSessionTerminationDto } from './dto/report-session-termination.dto';
 import { AppendSessionEventInternalDto } from './dto/append-session-event-internal.dto';
 import { RunLlmTurnDto } from './dto/run-llm-turn.dto';
 import { StreamLlmTurnDto } from './dto/stream-llm-turn.dto';
 import { CreateActionInternalDto } from './dto/create-action-internal.dto';
 import { CreateHandoffInternalDto } from './dto/create-handoff-internal.dto';
+import { CreateEpicInternalDto } from './dto/create-epic-internal.dto';
+import { CreateStoryInternalDto } from './dto/create-story-internal.dto';
+import { CreateTaskInternalDto } from './dto/create-task-internal.dto';
 
 /**
  * Chamadas internas do engine (Elixir/OTP) — nunca de um usuário humano.
@@ -45,6 +51,9 @@ export class InternalSessionsController {
     private readonly streamLlmTurn: StreamLlmTurnUseCase,
     private readonly proposeAction: ProposeActionUseCase,
     private readonly createHandoff: CreateHandoffUseCase,
+    private readonly createEpic: CreateEpicUseCase,
+    private readonly createStory: CreateStoryUseCase,
+    private readonly createTask: CreateTaskUseCase,
   ) {}
 
   /**
@@ -150,6 +159,51 @@ export class InternalSessionsController {
       fromAgent: dto.fromAgent,
       toAgent: dto.toAgent,
       artifactId: dto.artifactId,
+    });
+  }
+
+  /**
+   * Ferramentas do PO (create_epic/create_story/create_task) — o PO nunca faz
+   * SQL/insert direto; toda criação passa por estes use-cases (validação de
+   * domínio: business_rule_id existe, prontidão draft→ready).
+   */
+  @Post(':sessionId/epics')
+  epic(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: CreateEpicInternalDto,
+  ) {
+    return this.createEpic.execute(dto.projectId, sessionId, {
+      title: dto.title,
+      description: dto.description,
+    });
+  }
+
+  @Post(':sessionId/stories')
+  story(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: CreateStoryInternalDto,
+  ) {
+    return this.createStory.execute(dto.projectId, sessionId, {
+      epicId: dto.epicId,
+      title: dto.title,
+      description: dto.description,
+      rf: dto.rf,
+      rnf: dto.rnf,
+      dod: dto.dod,
+      dor: dto.dor,
+      businessRuleIds: dto.businessRuleIds,
+    });
+  }
+
+  @Post(':sessionId/tasks')
+  task(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: CreateTaskInternalDto,
+  ) {
+    return this.createTask.execute(dto.projectId, sessionId, {
+      storyId: dto.storyId,
+      title: dto.title,
+      description: dto.description,
     });
   }
 

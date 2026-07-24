@@ -9,6 +9,7 @@ import { SessionsHttpModule } from './interfaces/http/sessions/sessions-http.mod
 import { LlmHttpModule } from './interfaces/http/llm/llm-http.module';
 import { ActionsHttpModule } from './interfaces/http/actions/actions-http.module';
 import { AgentsHttpModule } from './interfaces/http/agents/agents-http.module';
+import { BacklogHttpModule } from './interfaces/http/backlog/backlog-http.module';
 import { GitHttpModule } from './interfaces/http/git/git-http.module';
 import { InternalHttpModule } from './interfaces/http/internal/internal-http.module';
 
@@ -25,6 +26,7 @@ import { InternalHttpModule } from './interfaces/http/internal/internal-http.mod
     LlmHttpModule,
     ActionsHttpModule,
     AgentsHttpModule,
+    BacklogHttpModule,
     GitHttpModule,
     InternalHttpModule,
   ],

@@ -18,6 +18,11 @@ import { ProvisionedRepositoryRepository } from '../../../application/ports/prov
 import { RepoBootstrapRepository } from '../../../application/ports/repo-bootstrap-repository.port';
 import { HandoffRepository } from '../../../application/ports/handoff-repository.port';
 import { AgentInstructionRepository } from '../../../application/ports/agent-instruction-repository.port';
+import {
+  EpicRepository,
+  StoryRepository,
+  TaskRepository,
+} from '../../../application/ports/backlog-repository.port';
 import { createDrizzleClient, DRIZZLE } from './drizzle-client';
 import { DrizzleUnitOfWork } from './drizzle-unit-of-work';
 import { DrizzleUserRepository } from './user.repository';
@@ -38,6 +43,11 @@ import { DrizzleProvisionedRepositoryRepository } from './provisioned-repository
 import { DrizzleRepoBootstrapRepository } from './repo-bootstrap.repository';
 import { DrizzleHandoffRepository } from './handoff.repository';
 import { DrizzleAgentInstructionRepository } from './agent-instruction.repository';
+import {
+  DrizzleEpicRepository,
+  DrizzleStoryRepository,
+  DrizzleTaskRepository,
+} from './backlog.repository';
 
 const { db, pool } = createDrizzleClient();
 
@@ -92,6 +102,9 @@ const { db, pool } = createDrizzleClient();
       provide: AgentInstructionRepository,
       useClass: DrizzleAgentInstructionRepository,
     },
+    { provide: EpicRepository, useClass: DrizzleEpicRepository },
+    { provide: StoryRepository, useClass: DrizzleStoryRepository },
+    { provide: TaskRepository, useClass: DrizzleTaskRepository },
   ],
   exports: [
     DRIZZLE,
@@ -114,6 +127,9 @@ const { db, pool } = createDrizzleClient();
     RepoBootstrapRepository,
     HandoffRepository,
     AgentInstructionRepository,
+    EpicRepository,
+    StoryRepository,
+    TaskRepository,
   ],
 })
 export class DrizzleModule implements OnModuleDestroy {

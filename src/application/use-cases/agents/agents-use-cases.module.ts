@@ -5,6 +5,7 @@ import { ActivateAgentUseCase } from './activate-agent.use-case';
 import { SendAgentMessageUseCase } from './send-agent-message.use-case';
 import { ConfirmReadinessUseCase } from './confirm-readiness.use-case';
 import { CreateHandoffUseCase } from './create-handoff.use-case';
+import { AcceptHandoffUseCase } from './accept-handoff.use-case';
 import { ListHandoffsUseCase } from './list-handoffs.use-case';
 import { UpsertAgentInstructionUseCase } from './upsert-agent-instruction.use-case';
 
@@ -13,6 +14,7 @@ const USE_CASES = [
   SendAgentMessageUseCase,
   ConfirmReadinessUseCase,
   CreateHandoffUseCase,
+  AcceptHandoffUseCase,
   ListHandoffsUseCase,
   UpsertAgentInstructionUseCase,
 ];

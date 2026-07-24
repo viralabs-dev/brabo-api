@@ -14,6 +14,7 @@ export interface NewHandoff {
 
 export abstract class HandoffRepository {
   abstract create(input: NewHandoff): Promise<Handoff>;
+  abstract findById(id: string): Promise<Handoff | null>;
   abstract findBySession(sessionId: string): Promise<Handoff[]>;
   abstract updateStatus(id: string, status: HandoffStatus): Promise<Handoff>;
 }
