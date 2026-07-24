@@ -19,6 +19,7 @@ import { StartGitOauthUseCase } from '../../../application/use-cases/git/start-g
 import { HandleGitOauthCallbackUseCase } from '../../../application/use-cases/git/handle-git-oauth-callback.use-case';
 import { ProvisionRepositoryUseCase } from '../../../application/use-cases/git/provision-repository.use-case';
 import { GetProvisionedRepositoryUseCase } from '../../../application/use-cases/git/get-provisioned-repository.use-case';
+import { GetRepoBootstrapStatusUseCase } from '../../../application/use-cases/git/get-repo-bootstrap-status.use-case';
 import { ProvisionRepositoryDto } from './dto/provision-repository.dto';
 
 const OAUTH_PROVIDERS = ['github', 'gitlab'] as const;
@@ -45,6 +46,7 @@ export class GitController {
     private readonly handleCallback: HandleGitOauthCallbackUseCase,
     private readonly provisionRepository: ProvisionRepositoryUseCase,
     private readonly getRepository: GetProvisionedRepositoryUseCase,
+    private readonly getBootstrapStatus: GetRepoBootstrapStatusUseCase,
   ) {}
 
   @Get('projects/:projectId/git/:provider/connect')
@@ -109,5 +111,11 @@ export class GitController {
   @RequireRole('viewer')
   get(@Param('projectId') projectId: string) {
     return this.getRepository.execute(projectId);
+  }
+
+  @Get('projects/:projectId/git/bootstrap')
+  @RequireRole('viewer')
+  getBootstrap(@Param('projectId') projectId: string) {
+    return this.getBootstrapStatus.execute(projectId);
   }
 }

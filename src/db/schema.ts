@@ -16,6 +16,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import type { TerminalExecutionResult } from '../domain/actions/terminal-execution-result';
+import type { GitBootstrapExecutionResult } from '../domain/git/bootstrap-execution-result';
 
 // --- Enums ---
 
@@ -39,6 +40,26 @@ export const sessionStatusEnum = pgEnum('session_status', [
 ]);
 
 export const actorKindEnum = pgEnum('actor_kind', ['user', 'agent', 'system']);
+
+// Cursor de progresso do bootstrap de Gitflow (Fase 2, sessão 3) — uma
+// linha por projeto, não um log por passo. `step` é o último passo
+// tocado; toda execução revalida TODOS os passos desde o início antes de
+// confiar nesse cursor (ver docs/adr/0005).
+export const bootstrapStepEnum = pgEnum('bootstrap_step', [
+  'create_dev_branch',
+  'create_qa_branch',
+  'create_rc_branch',
+  'protect_branches',
+  'commit_pr_template',
+  'commit_branching_policy',
+]);
+
+export const bootstrapStatusEnum = pgEnum('bootstrap_status', [
+  'pending',
+  'running',
+  'done',
+  'failed',
+]);
 
 export const llmProviderEnum = pgEnum('llm_provider', [
   'ollama',
@@ -428,7 +449,9 @@ export const proposedActions = pgTable(
     decidedAt: timestamp('decided_at', { withTimezone: true }),
     rejectionReason: text('rejection_reason'),
     // Preenchido só depois de executed/failed.
-    executionResult: jsonb('execution_result').$type<TerminalExecutionResult>(),
+    executionResult: jsonb('execution_result').$type<
+      TerminalExecutionResult | GitBootstrapExecutionResult
+    >(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -528,6 +551,37 @@ export const projectRepositories = pgTable(
     provisionedBy: uuid('provisioned_by')
       .notNull()
       .references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [unique().on(table.projectId)],
+);
+
+// Progresso do bootstrap de Gitflow que roda depois de criar o repo
+// (branches dev/qa/rc, proteções, template de PR, branching-policy.md) —
+// tabela separada de project_repositories porque tem ciclo de vida e
+// forma diferentes (cursor de retomada, não um fato histórico único).
+// session_id aponta pra sessão dedicada (criada na 1ª tentativa, reusada
+// em toda retomada) onde o bootstrap narra sua história via session_events
+// — ver docs/adr/0005-repo-bootstrap-idempotent-steps.md.
+export const repoBootstraps = pgTable(
+  'repo_bootstraps',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id),
+    step: bootstrapStepEnum('step').notNull().default('create_dev_branch'),
+    status: bootstrapStatusEnum('status').notNull().default('pending'),
+    attempts: integer('attempts').notNull().default(0),
+    lastError: text('last_error'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

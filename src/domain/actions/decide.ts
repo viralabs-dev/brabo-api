@@ -3,7 +3,14 @@ import type { PermissionPolicy, PermissionsFile } from './permissions-file';
 import { matchesPattern, parseCommand } from './command-matcher';
 
 export type ActionType =
-  'terminal' | 'git_commit' | 'git_push' | 'pr_open' | 'spend';
+  | 'terminal'
+  | 'git_commit'
+  | 'git_push'
+  | 'pr_open'
+  | 'spend'
+  | 'git_repo_create'
+  | 'git_branch_create'
+  | 'git_branch_protect';
 
 export const ACTION_TYPES: readonly ActionType[] = [
   'terminal',
@@ -11,6 +18,9 @@ export const ACTION_TYPES: readonly ActionType[] = [
   'git_push',
   'pr_open',
   'spend',
+  'git_repo_create',
+  'git_branch_create',
+  'git_branch_protect',
 ];
 
 const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
@@ -19,6 +29,15 @@ const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
   git_push: 'maintainer',
   pr_open: 'maintainer',
   spend: 'owner',
+  // Mutações do bootstrap de Gitflow (Fase 2, sessão 3) — calibrado igual
+  // git_push, já que o endpoint de provisionamento já exige maintainer
+  // (@RequireRole em git.controller.ts). Na prática o bootstrap nunca
+  // passa por decide() (status nasce hardcoded auto_approved — ver
+  // docs/adr/0005), mas o Record é exaustivo por tipo, então toda
+  // ActionType precisa de uma entrada aqui mesmo assim.
+  git_repo_create: 'maintainer',
+  git_branch_create: 'maintainer',
+  git_branch_protect: 'maintainer',
 };
 
 // Rede de segurança padrão, sempre ativa, independente do permissions.json

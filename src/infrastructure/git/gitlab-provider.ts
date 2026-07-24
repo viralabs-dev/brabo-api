@@ -4,6 +4,7 @@ import type {
   CommitFilesInput,
   CreateBranchInput,
   CreateRepoInput,
+  GetFileContentInput,
   GetRepoInput,
   GitBranch,
   GitCommitResult,
@@ -18,12 +19,6 @@ import type {
   ProtectBranchInput,
 } from '@brabo/shared';
 import {
-  GitProvider,
-  type CreateRepositoryInput,
-  type CreateRepositoryResult,
-} from '../../application/ports/git-provider.port';
-import { GitProviderAuthError } from '../../domain/git/git-provider-errors';
-import {
   GitBranchAlreadyExistsError,
   GitBranchNotFoundError,
   GitPermissionDeniedError,
@@ -33,61 +28,19 @@ import {
 import { withRetry } from './retry';
 
 /**
- * Implementa DOIS contratos, igual LocalGitProvider (ver docs/adr/0001):
- * `GitProvider` (DI antiga, `createRepository` intocada — continua
- * usando `oauthToken`, único caminho que a alimenta hoje) e
- * `GitProviderContract` (8 operações normalizadas, novo — usa `token:`,
- * PAT de usuário, ver docs/adr/0004-git-credential-registration.md pra
- * por que os dois NÃO são intercambiáveis no construtor do Gitbeaker).
+ * Implementa `GitProviderContract` (ver docs/adr/0001) — as 9 operações
+ * normalizadas da Fase 2. Usa `token:` (PAT de usuário) no construtor do
+ * Gitbeaker — ver docs/adr/0004-git-credential-registration.md pra por
+ * que isso não é intercambiável com `oauthToken:`.
  */
 @Injectable()
-export class GitlabProvider implements GitProvider, GitProviderContract {
+export class GitlabProvider implements GitProviderContract {
   readonly name: GitProviderName = 'gitlab';
 
   readonly capabilities: GitProviderCapabilities = {
     protectBranch: true,
     pullRequests: true,
   };
-
-  async createRepository(
-    input: CreateRepositoryInput,
-  ): Promise<CreateRepositoryResult> {
-    if (!input.accessToken) {
-      throw new GitProviderAuthError('gitlab', 'Token de acesso ausente');
-    }
-    const api = new Gitlab({ oauthToken: input.accessToken });
-
-    try {
-      // A API de criação de projeto do GitLab pede namespace_id numérico,
-      // não o path direto — resolve o namespace antes de criar.
-      let namespaceId: number | undefined;
-      if (input.namespace) {
-        const namespace = await api.Namespaces.show(input.namespace);
-        namespaceId = namespace.id;
-      }
-
-      const project = await api.Projects.create({
-        name: input.name,
-        namespaceId,
-        visibility: input.visibility,
-        initializeWithReadme: false,
-      });
-
-      return {
-        externalId: project.path_with_namespace,
-        url: project.http_url_to_repo,
-        defaultBranch: project.default_branch ?? 'main',
-      };
-    } catch (error) {
-      if (isAuthError(error)) {
-        throw new GitProviderAuthError(
-          'gitlab',
-          'Token do GitLab inválido ou revogado',
-        );
-      }
-      throw error;
-    }
-  }
 
   async createRepo(input: CreateRepoInput): Promise<GitRepo> {
     const api = new Gitlab({ token: input.accessToken ?? '' });
@@ -279,6 +232,22 @@ export class GitlabProvider implements GitProvider, GitProviderContract {
     }
   }
 
+  async getFileContent(input: GetFileContentInput): Promise<string | null> {
+    const api = new Gitlab({ token: input.accessToken ?? '' });
+
+    try {
+      const file = await api.RepositoryFiles.show(
+        input.externalId,
+        input.path,
+        input.branch,
+      );
+      return Buffer.from(file.content, 'base64').toString('utf8');
+    } catch (error) {
+      if (getStatus(error) === 404) return null;
+      throw error;
+    }
+  }
+
   async openPullRequest(input: OpenPullRequestInput): Promise<GitPullRequest> {
     const api = new Gitlab({ token: input.accessToken ?? '' });
     const mr = await api.MergeRequests.create(
@@ -343,19 +312,4 @@ function isRetryableReadError(error: unknown): boolean {
     return true;
   const status = getStatus(error);
   return status === 500 || status === 503 || status === 504;
-}
-
-function isAuthError(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'cause' in error &&
-    typeof error.cause === 'object' &&
-    error.cause !== null &&
-    'response' in error.cause &&
-    typeof error.cause.response === 'object' &&
-    error.cause.response !== null &&
-    'status' in error.cause.response &&
-    (error.cause.response.status === 401 || error.cause.response.status === 403)
-  );
 }

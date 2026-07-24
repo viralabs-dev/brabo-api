@@ -101,7 +101,12 @@ export function createGitlabHandlers(store: FakeRepoStore) {
             { status: 400 },
           );
         }
-        const branch = { name: body.branch, sha: source.sha, protected: false };
+        const branch = {
+          name: body.branch,
+          sha: source.sha,
+          protected: false,
+          files: source.files ? new Map(source.files) : undefined,
+        };
         repo.branches.set(body.branch, branch);
         return HttpResponse.json(
           { name: branch.name, commit: { id: branch.sha }, protected: false },
@@ -121,15 +126,44 @@ export function createGitlabHandlers(store: FakeRepoStore) {
       async ({ params, request }) => {
         const repo = store.repos.get(fullNameFromParams(params));
         if (!repo) return notFound();
-        const body = (await request.json()) as { branch: string };
+        const body = (await request.json()) as {
+          branch: string;
+          actions: { action: string; file_path: string; content?: string }[];
+        };
         const sha = store.nextSha();
         const existing = repo.branches.get(body.branch);
+        const files = new Map(existing?.files ?? []);
+        for (const action of body.actions) {
+          if (action.action === 'delete') {
+            files.delete(action.file_path);
+          } else if (action.content !== undefined) {
+            files.set(action.file_path, action.content);
+          }
+        }
         repo.branches.set(body.branch, {
           name: body.branch,
           sha,
           protected: existing?.protected ?? false,
+          files,
         });
         return HttpResponse.json({ id: sha }, { status: 201 });
+      },
+    ),
+
+    http.get(
+      `${BASE}/projects/:id/repository/files/:file_path`,
+      ({ params, request }) => {
+        const repo = store.repos.get(fullNameFromParams(params));
+        if (!repo) return notFound();
+        const path = decodeURIComponent(String(params.file_path));
+        const ref = new URL(request.url).searchParams.get('ref');
+        const branch = ref ? repo.branches.get(ref) : undefined;
+        const content = branch?.files?.get(path);
+        if (content === undefined) return notFound();
+        return HttpResponse.json({
+          content: Buffer.from(content, 'utf8').toString('base64'),
+          encoding: 'base64',
+        });
       },
     ),
 

@@ -91,19 +91,62 @@ export function createGithubHandlers(store: FakeRepoStore) {
 
     http.get(`${BASE}/repos/:owner/:repo/git/commits/:sha`, ({ params }) => {
       const sha = String(params.sha);
-      return HttpResponse.json({ sha, tree: { sha: `tree-${sha}` } });
+      const treeSha = store.commitTree.get(sha) ?? `tree-${sha}`;
+      return HttpResponse.json({ sha, tree: { sha: treeSha } });
     }),
 
-    http.post(`${BASE}/repos/:owner/:repo/git/blobs`, () => {
-      return HttpResponse.json({ sha: store.nextSha() }, { status: 201 });
+    http.post(`${BASE}/repos/:owner/:repo/git/blobs`, async ({ request }) => {
+      const body = (await request.json()) as {
+        content: string;
+        encoding?: string;
+      };
+      const sha = store.nextSha();
+      const decoded =
+        body.encoding === 'base64'
+          ? Buffer.from(body.content, 'base64').toString('utf8')
+          : body.content;
+      store.blobContent.set(sha, decoded);
+      return HttpResponse.json({ sha }, { status: 201 });
     }),
 
-    http.post(`${BASE}/repos/:owner/:repo/git/trees`, () => {
-      return HttpResponse.json({ sha: store.nextSha() }, { status: 201 });
+    http.post(`${BASE}/repos/:owner/:repo/git/trees`, async ({ request }) => {
+      const body = (await request.json()) as {
+        base_tree?: string;
+        tree: { path: string; sha: string }[];
+      };
+      const sha = store.nextSha();
+      const files = new Map(store.treeFiles.get(body.base_tree ?? '') ?? []);
+      for (const entry of body.tree) {
+        const content = store.blobContent.get(entry.sha);
+        if (content !== undefined) files.set(entry.path, content);
+      }
+      store.treeFiles.set(sha, files);
+      return HttpResponse.json({ sha }, { status: 201 });
     }),
 
-    http.post(`${BASE}/repos/:owner/:repo/git/commits`, () => {
-      return HttpResponse.json({ sha: store.nextSha() }, { status: 201 });
+    http.post(`${BASE}/repos/:owner/:repo/git/commits`, async ({ request }) => {
+      const body = (await request.json()) as { tree: string };
+      const sha = store.nextSha();
+      store.commitTree.set(sha, body.tree);
+      return HttpResponse.json({ sha }, { status: 201 });
+    }),
+
+    http.get(`${BASE}/repos/:owner/:repo/contents/*`, ({ params, request }) => {
+      const repo = store.repos.get(fullNameFromParams(params));
+      if (!repo) return notFound();
+      const path = refSuffix(request.url, '/contents/');
+      const ref = new URL(request.url).searchParams.get('ref');
+      const commitSha = (ref ? repo.branches.get(ref)?.sha : undefined) ?? ref;
+      const treeSha = commitSha ? store.commitTree.get(commitSha) : undefined;
+      const content = treeSha
+        ? store.treeFiles.get(treeSha)?.get(path)
+        : undefined;
+      if (content === undefined) return notFound();
+      return HttpResponse.json({
+        type: 'file',
+        encoding: 'base64',
+        content: Buffer.from(content, 'utf8').toString('base64'),
+      });
     }),
 
     http.post(

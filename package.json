@@ -17,6 +17,7 @@
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "seed": "ts-node src/db/seed.ts",
+    "demo:repo-bootstrap": "ts-node scripts/demo-repo-bootstrap.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },

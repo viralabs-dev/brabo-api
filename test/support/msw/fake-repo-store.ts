@@ -12,6 +12,11 @@ export interface FakeBranch {
   name: string;
   sha: string;
   protected: boolean;
+  // Conteúdo de arquivo por caminho NA PONTA desta branch — só usado
+  // pelo backend fake do GitLab (commitFiles manda o estado completo
+  // dos arquivos por commit, sem grafo de blob/tree/commit separado
+  // como o GitHub — ver github-fake-backend.ts pra esse caso).
+  files?: Map<string, string>;
 }
 
 export interface FakePullRequest {
@@ -34,6 +39,16 @@ export interface FakeRepo {
 export class FakeRepoStore {
   private shaCounter = 0;
   readonly repos = new Map<string, FakeRepo>();
+
+  // Grafo de objetos git do backend fake do GitHub — commitFiles de
+  // verdade passa por blob→tree→commit→ref; guardamos o suficiente
+  // desse grafo (conteúdo por blob sha, path→conteúdo por tree sha,
+  // tree sha por commit sha) pra `getFileContent` conseguir resolver
+  // ref→commit→tree→path sem reimplementar um repositório git de
+  // verdade. Só o backend do GitHub usa isso.
+  readonly blobContent = new Map<string, string>();
+  readonly treeFiles = new Map<string, Map<string, string>>();
+  readonly commitTree = new Map<string, string>();
 
   nextSha(): string {
     this.shaCounter += 1;
@@ -60,5 +75,8 @@ export class FakeRepoStore {
   reset(): void {
     this.shaCounter = 0;
     this.repos.clear();
+    this.blobContent.clear();
+    this.treeFiles.clear();
+    this.commitTree.clear();
   }
 }
