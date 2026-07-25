@@ -18,6 +18,7 @@
     "test:cov": "vitest run --coverage",
     "seed": "ts-node src/db/seed.ts",
     "demo:repo-bootstrap": "ts-node scripts/demo-repo-bootstrap.ts",
+    "demo:noop-execution": "ts-node scripts/demo-noop-execution.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },
