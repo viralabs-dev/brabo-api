@@ -8,6 +8,10 @@ import { TransitionSessionUseCase } from '../sessions/transition-session.use-cas
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { UpsertAgentInstructionUseCase } from '../agents/upsert-agent-instruction.use-case';
 import { DEFAULT_MAX_GATE_CORRECTIONS } from './record-gate-verdict.use-case';
+import {
+  DEFAULT_DEV_AGENT_IMPL,
+  type DevAgentImpl,
+} from '../../../domain/execution/dev-agent-impl';
 
 // agent_id/branch slug a partir do nome do módulo.
 export function devAgentId(moduleName: string): string {
@@ -17,9 +21,29 @@ export function devAgentId(moduleName: string): string {
     .replace(/(^-|-$)/g, '')}`;
 }
 
+// agent_id do subagente extra do mesmo módulo (paralelização). PRECISA bater
+// com `Engine.Dev.Naming.extra_agent_id/1` no engine — o agent_id liga a
+// autonomia seedada aqui ao processo que sobe lá.
+export function extraDevAgentId(moduleName: string): string {
+  return `${devAgentId(moduleName)}-2`;
+}
+
+// Instrução seedada pro dev de um módulo. Compartilhada com o aceite da
+// paralelização, que precisa seedar o subagente extra do mesmo jeito.
+export function devAgentInstruction(
+  agentId: string,
+  m: { name: string; stack: string; responsibility: string },
+): string {
+  return (
+    `Você é o ${agentId}: implementa as tasks do módulo "${m.name}" (${m.stack}). ` +
+    `Responsabilidade: ${m.responsibility}. Trabalha no seu worktree, commita com sua ` +
+    `identidade e abre PR referenciando a story.`
+  );
+}
+
 // Ações git que o dev auto-aprova (o demo abre PRs sem clique). `git_merge`
 // NUNCA entra aqui — a trava de merge o mantém manual.
-const DEV_AUTO_GIT_ACTIONS = ['git_commit', 'git_push', 'pr_open'];
+export const DEV_AUTO_GIT_ACTIONS = ['git_commit', 'git_push', 'pr_open'];
 
 // Orçamento de tokens por task (Fase 4a) quando não configurado na ativação
 // — US$0,50 em micro-USD. "Configurável por projeto" é satisfeito no
@@ -50,9 +74,11 @@ export class ActivateExecutionUseCase {
     userId: string,
     taskBudgetMicros?: number,
     maxGateCorrections?: number,
+    devAgentImpl?: DevAgentImpl,
   ) {
     const budget = taskBudgetMicros ?? DEFAULT_TASK_BUDGET_MICROS;
     const maxCorrections = maxGateCorrections ?? DEFAULT_MAX_GATE_CORRECTIONS;
+    const impl = devAgentImpl ?? DEFAULT_DEV_AGENT_IMPL;
     const moduleMap = await this.moduleMaps.findCurrent(projectId);
     if (!moduleMap || moduleMap.modules.length === 0) {
       throw new BadRequestException(
@@ -72,9 +98,7 @@ export class ActivateExecutionUseCase {
       await this.upsertInstruction.execute(
         projectId,
         agentId,
-        `Você é o ${agentId}: implementa as tasks do módulo "${m.name}" (${m.stack}). ` +
-          `Responsabilidade: ${m.responsibility}. Trabalha no seu worktree, commita com sua ` +
-          `identidade e abre PR referenciando a story.`,
+        devAgentInstruction(agentId, m),
       );
       for (const type of DEV_AUTO_GIT_ACTIONS) {
         await this.agentAutonomy.upsert(
@@ -92,12 +116,13 @@ export class ActivateExecutionUseCase {
       modules,
       budget,
       maxCorrections,
+      impl,
     );
 
     await this.appendEvent.execute(projectId, session.id, {
       type: 'execution.activated',
       actor: { kind: 'user', id: userId },
-      payload: { modules },
+      payload: { modules, devAgentImpl: impl },
     });
 
     // Sugestão de paralelização: módulos com ≥2 tasks pegáveis têm ramos

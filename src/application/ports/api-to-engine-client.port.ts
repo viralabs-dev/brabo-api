@@ -1,4 +1,5 @@
 import type { TerminalExecutionResult } from '../../domain/actions/terminal-execution-result';
+import type { DevAgentImpl } from '../../domain/execution/dev-agent-impl';
 
 export abstract class ApiToEngineClient {
   abstract startSession(sessionId: string, projectId: string): Promise<void>;
@@ -45,13 +46,16 @@ export abstract class ApiToEngineClient {
 
   // --- Execução (Fase 4a) ---
 
-  // Sobe os DevAgentServers (um por módulo) no engine.
+  // Sobe os DevAgentServers (um por módulo) no engine. `impl` escolhe a
+  // implementação: 'real' (ToolLoop + LLM) ou 'noop' (NoopDevAgentServer —
+  // smoke test da infraestrutura, sem LLM).
   abstract startExecution(
     projectId: string,
     sessionId: string,
     modules: string[],
     taskBudgetMicros?: number,
     maxGateCorrections?: number,
+    impl?: DevAgentImpl,
   ): Promise<void>;
 
   // Executa uma ação git (git_commit/git_push) no worktree do agente, no

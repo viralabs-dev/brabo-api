@@ -32,6 +32,7 @@ export class ExecutionController {
       user.id,
       dto.taskBudgetMicros,
       dto.maxGateCorrections,
+      dto.devAgentImpl,
     );
   }
 

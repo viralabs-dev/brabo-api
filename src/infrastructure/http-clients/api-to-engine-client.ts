@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ApiToEngineClient } from '../../application/ports/api-to-engine-client.port';
 import type { TerminalExecutionResult } from '../../domain/actions/terminal-execution-result';
+import type { DevAgentImpl } from '../../domain/execution/dev-agent-impl';
 
 interface KeycloakTokenResponse {
   access_token: string;
@@ -129,12 +130,14 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     modules: string[],
     taskBudgetMicros?: number,
     maxGateCorrections?: number,
+    impl?: DevAgentImpl,
   ): Promise<void> {
     await this.postCommand(`/internal/sessions/${sessionId}/execution/start`, {
       projectId,
       modules,
       taskBudgetMicros,
       maxGateCorrections,
+      impl,
     });
   }
 
