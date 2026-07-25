@@ -4,6 +4,9 @@ import { SessionRepository } from '../../ports/session-repository.port';
 import { TaskRepository } from '../../ports/backlog-repository.port';
 import { AgentAutonomyRepository } from '../../ports/agent-autonomy-repository.port';
 import { ApiToEngineClient } from '../../ports/api-to-engine-client.port';
+import { ProjectRepository } from '../../ports/project-repository.port';
+import { PermissionsFileStore } from '../../ports/permissions-file-store.port';
+import { DEV_TERMINAL_ALLOW_PATTERNS } from '../../../domain/actions/dev-terminal-patterns';
 import { TransitionSessionUseCase } from '../sessions/transition-session.use-case';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { UpsertAgentInstructionUseCase } from '../agents/upsert-agent-instruction.use-case';
@@ -67,6 +70,8 @@ export class ActivateExecutionUseCase {
     private readonly transitionSession: TransitionSessionUseCase,
     private readonly appendEvent: AppendSessionEventUseCase,
     private readonly upsertInstruction: UpsertAgentInstructionUseCase,
+    private readonly projects: ProjectRepository,
+    private readonly permissionsFile: PermissionsFileStore,
   ) {}
 
   async execute(
@@ -75,8 +80,8 @@ export class ActivateExecutionUseCase {
     taskBudgetMicros?: number,
     maxGateCorrections?: number,
     devAgentImpl?: DevAgentImpl,
+    terminalAllowPatterns?: readonly string[],
   ) {
-    const budget = taskBudgetMicros ?? DEFAULT_TASK_BUDGET_MICROS;
     const maxCorrections = maxGateCorrections ?? DEFAULT_MAX_GATE_CORRECTIONS;
     const impl = devAgentImpl ?? DEFAULT_DEV_AGENT_IMPL;
     const moduleMap = await this.moduleMaps.findCurrent(projectId);
@@ -84,6 +89,28 @@ export class ActivateExecutionUseCase {
       throw new BadRequestException(
         'Projeto sem module_map vigente — o Arquiteto precisa definir os módulos antes de executar',
       );
+    }
+
+    // Orçamento por task: parâmetro → setting do projeto → default. Quando vem
+    // no parâmetro, PERSISTE — senão o valor escolhido se perderia na próxima
+    // ativação (o engine é quem o guardava, por linha de dev agent).
+    const project = await this.projects.findById(projectId);
+    const budget =
+      taskBudgetMicros ??
+      project?.taskBudgetMicros ??
+      DEFAULT_TASK_BUDGET_MICROS;
+    if (taskBudgetMicros !== undefined && taskBudgetMicros !== project?.taskBudgetMicros) {
+      await this.projects.update(projectId, { taskBudgetMicros });
+    }
+
+    // Sem regra no permissions.json, `decide()` cai em require_approval e TODO
+    // `terminal` do dev nasce pendente — e como o ReportDone exige um terminal
+    // com exit 0, a suite verde ficaria inalcançável e a task sempre acabaria
+    // bloqueada por limite de iterações. Padrões ESTREITOS (comandos de
+    // teste/build), no arquivo e não em agent_autonomy, pra que `deny`
+    // continue vencendo.
+    for (const pattern of terminalAllowPatterns ?? DEV_TERMINAL_ALLOW_PATTERNS) {
+      await this.permissionsFile.addPattern(projectId, 'allow', pattern);
     }
 
     const session = await this.sessions.create({
@@ -122,7 +149,7 @@ export class ActivateExecutionUseCase {
     await this.appendEvent.execute(projectId, session.id, {
       type: 'execution.activated',
       actor: { kind: 'user', id: userId },
-      payload: { modules, devAgentImpl: impl },
+      payload: { modules, devAgentImpl: impl, taskBudgetMicros: budget },
     });
 
     // Sugestão de paralelização: módulos com ≥2 tasks pegáveis têm ramos

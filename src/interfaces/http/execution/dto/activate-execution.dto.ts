@@ -1,4 +1,11 @@
-import { IsIn, IsInt, IsOptional, IsPositive } from 'class-validator';
+import {
+  IsArray,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsPositive,
+  IsString,
+} from 'class-validator';
 import {
   DEV_AGENT_IMPLS,
   type DevAgentImpl,
@@ -26,4 +33,11 @@ export class ActivateExecutionDto {
   @IsOptional()
   @IsIn(DEV_AGENT_IMPLS)
   devAgentImpl?: DevAgentImpl;
+
+  // Padrões de terminal liberados no permissions.json pros dev agents rodarem
+  // a suite. Omitido usa DEV_TERMINAL_ALLOW_PATTERNS. `deny` continua vencendo.
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  terminalAllowPatterns?: string[];
 }

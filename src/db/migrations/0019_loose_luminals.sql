@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "task_budget_micros" bigint;

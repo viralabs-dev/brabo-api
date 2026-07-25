@@ -42,6 +42,15 @@ const MODEL_SEEDS: ModelInput[] = [
     outputPricePerMillionMicros: 0,
   },
   {
+    // Modelo local de código — é o que roda os dev agents num ambiente sem
+    // chave paga (o llama3.2:1b não sustenta tool calling encadeado).
+    provider: 'ollama',
+    name: 'qwen2.5-coder:7b',
+    displayName: 'Qwen2.5 Coder 7B (local)',
+    inputPricePerMillionMicros: 0,
+    outputPricePerMillionMicros: 0,
+  },
+  {
     provider: 'anthropic',
     name: 'claude-opus-4-8',
     displayName: 'Claude Opus 4.8',

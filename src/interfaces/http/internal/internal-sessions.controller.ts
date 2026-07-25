@@ -316,15 +316,20 @@ export class InternalSessionsController {
 
   /**
    * Contexto rico da task pro DevAgent (Fase 4a): story completa (RF/RNF/DoD/
-   * DoR), regras de negócio resolvidas e ADRs do projeto — alimenta as
-   * camadas `regras_negocio`/`estado_tarefa` do harness.
+   * DoR), regras de negócio resolvidas e ADRs — alimenta as camadas
+   * `regras_negocio`/`estado_tarefa` do harness.
+   *
+   * `module` (opcional) restringe os ADRs ao módulo do dev; ADR sem módulo
+   * declarado é transversal e entra sempre. Omitido = acervo inteiro, que é o
+   * que os gates QA/SecOps querem ao reusar este contexto.
    */
   @Get(':sessionId/dev-context')
   devContext(
     @Query('projectId') projectId: string,
     @Query('taskId') taskId: string,
+    @Query('module') module?: string,
   ) {
-    return this.getDevTaskContext.execute(projectId, taskId);
+    return this.getDevTaskContext.execute(projectId, taskId, module);
   }
 
   /**

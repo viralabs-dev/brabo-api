@@ -83,9 +83,23 @@ const adrAction: ProposedAction = {
   updatedAt: now,
 };
 
+function adrFor(id: string, title: string, modules?: string[]): ProposedAction {
+  return {
+    ...adrAction,
+    id,
+    payload: {
+      title,
+      slug: id,
+      content: `Conteúdo de ${title}`,
+      ...(modules === undefined ? {} : { modules }),
+    },
+  };
+}
+
 function buildUseCase(overrides?: {
   task?: Task | null;
   story?: Story | null;
+  adrs?: ProposedAction[];
 }) {
   const tasks = {
     findById: (id: string) =>
@@ -115,7 +129,7 @@ function buildUseCase(overrides?: {
   } as unknown as SessionEventRepository;
 
   const proposedActions = {
-    listByProjectAndType: () => Promise.resolve([adrAction]),
+    listByProjectAndType: () => Promise.resolve(overrides?.adrs ?? [adrAction]),
   } as unknown as ProposedActionRepository;
 
   return new GetDevTaskContextUseCase(
@@ -149,6 +163,56 @@ describe('GetDevTaskContextUseCase', () => {
       title: 'ADR: autenticação via JWT',
       content: 'Decisão: usar JWT.',
       securityRelevant: false,
+    });
+  });
+
+  describe('filtro de ADR por módulo', () => {
+    const adrs = [
+      adrFor('adr-transversal', 'Padrão de commits'), // sem `modules`
+      adrFor('adr-vazio', 'Convenção de logs', []), // `modules` vazio
+      adrFor('adr-api', 'Persistência', ['api']),
+      adrFor('adr-web', 'Design system', ['web']),
+      adrFor('adr-ambos', 'Contrato HTTP', ['api', 'web']),
+    ];
+
+    it('ADR sem módulo declarado é transversal e entra sempre', async () => {
+      const useCase = buildUseCase({ adrs });
+
+      const ctx = await useCase.execute('proj-1', 'task-1', 'api');
+      const titulos = ctx.adrs.map((a) => a.title);
+
+      // O acervo anterior ao campo `modules` não pode sumir do contexto.
+      expect(titulos).toContain('Padrão de commits');
+      expect(titulos).toContain('Convenção de logs');
+    });
+
+    it('ADR de outro módulo é filtrado', async () => {
+      const useCase = buildUseCase({ adrs });
+
+      const ctx = await useCase.execute('proj-1', 'task-1', 'api');
+      const titulos = ctx.adrs.map((a) => a.title);
+
+      expect(titulos).toContain('Persistência');
+      expect(titulos).toContain('Contrato HTTP');
+      expect(titulos).not.toContain('Design system');
+    });
+
+    it('sem módulo informado não há filtro (gates QA/SecOps reusam o contexto)', async () => {
+      const useCase = buildUseCase({ adrs });
+
+      const ctx = await useCase.execute('proj-1', 'task-1');
+
+      expect(ctx.adrs).toHaveLength(adrs.length);
+    });
+
+    it('não vaza o campo `modules` pro contexto do agente', async () => {
+      const useCase = buildUseCase({ adrs });
+
+      const ctx = await useCase.execute('proj-1', 'task-1', 'api');
+
+      for (const adr of ctx.adrs) {
+        expect(adr).not.toHaveProperty('modules');
+      }
     });
   });
 
