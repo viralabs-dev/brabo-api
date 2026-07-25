@@ -20,6 +20,7 @@
     "demo:repo-bootstrap": "ts-node scripts/demo-repo-bootstrap.ts",
     "demo:noop-execution": "ts-node scripts/demo-noop-execution.ts",
     "demo:dev-agent-real": "ts-node scripts/demo-dev-agent-real.ts",
+    "demo:pr-gates": "ts-node scripts/demo-pr-gates.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },
