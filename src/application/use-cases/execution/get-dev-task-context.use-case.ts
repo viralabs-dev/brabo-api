@@ -22,6 +22,20 @@ export interface DevContextAdr {
   securityRelevant: boolean;
 }
 
+/**
+ * ADR entra no contexto do dev se for transversal (sem `modules` declarados —
+ * inclui o acervo anterior ao campo) ou se citar o módulo dele. Sem módulo
+ * informado, não há filtro. Pura.
+ */
+export function appliesToModule(
+  adrModules: string[],
+  module?: string,
+): boolean {
+  if (!module) return true;
+  if (adrModules.length === 0) return true;
+  return adrModules.includes(module);
+}
+
 export interface DevTaskContext {
   task: Task;
   story: Story;
@@ -34,8 +48,13 @@ export interface DevTaskContext {
  * `regras_negocio`/`estado_tarefa` do harness): a story completa (RF/RNF/DoD/
  * DoR), as regras de negócio referenciadas (resolvidas via session_events
  * `artifact.business_rule`, mesmo padrão de `CreateStoryUseCase`), e os ADRs
- * do projeto (todos — não há vínculo ADR↔módulo hoje, mesma simplificação já
- * assumida por `GetArchitectureUseCase`).
+ * **do módulo** do dev.
+ *
+ * O vínculo ADR↔módulo é o campo opcional `modules` no payload de
+ * `open_adr_pr` (preenchido pelo Arquiteto). ADR sem `modules` — inclusive
+ * todo o acervo anterior a este campo — conta como TRANSVERSAL e entra pra
+ * qualquer módulo: é o default seguro, e evita migração de dados. Sem `module`
+ * o filtro não se aplica (todos entram), preservando os chamadores antigos.
  */
 @Injectable()
 export class GetDevTaskContextUseCase {
@@ -46,7 +65,11 @@ export class GetDevTaskContextUseCase {
     private readonly proposedActions: ProposedActionRepository,
   ) {}
 
-  async execute(projectId: string, taskId: string): Promise<DevTaskContext> {
+  async execute(
+    projectId: string,
+    taskId: string,
+    module?: string,
+  ): Promise<DevTaskContext> {
     const task = await this.tasks.findById(taskId);
     if (!task) {
       throw new NotFoundException(`Task "${taskId}" não encontrada`);
@@ -64,18 +87,23 @@ export class GetDevTaskContextUseCase {
       this.proposedActions.listByProjectAndType(projectId, 'open_adr_pr'),
     ]);
 
-    const adrs: DevContextAdr[] = adrActions.map((a) => {
-      const payload = a.payload as {
-        title?: string;
-        content?: string;
-        securityRelevant?: boolean;
-      };
-      return {
-        title: payload.title ?? '(ADR sem título)',
-        content: payload.content ?? '',
-        securityRelevant: payload.securityRelevant ?? false,
-      };
-    });
+    const adrs: DevContextAdr[] = adrActions
+      .map((a) => {
+        const payload = a.payload as {
+          title?: string;
+          content?: string;
+          securityRelevant?: boolean;
+          modules?: string[];
+        };
+        return {
+          title: payload.title ?? '(ADR sem título)',
+          content: payload.content ?? '',
+          securityRelevant: payload.securityRelevant ?? false,
+          modules: payload.modules ?? [],
+        };
+      })
+      .filter((adr) => appliesToModule(adr.modules, module))
+      .map(({ modules: _modules, ...adr }) => adr);
 
     return { task, story, businessRules, adrs };
   }

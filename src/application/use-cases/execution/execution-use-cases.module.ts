@@ -3,6 +3,7 @@ import { SessionsUseCasesModule } from '../sessions/sessions-use-cases.module';
 import { AgentsUseCasesModule } from '../agents/agents-use-cases.module';
 import { EngineHttpClientsModule } from '../../../infrastructure/http-clients/engine-http-clients.module';
 import { GitInfrastructureModule } from '../../../infrastructure/git/git-infrastructure.module';
+import { FilesystemModule } from '../../../infrastructure/filesystem/filesystem.module';
 import { ActivateExecutionUseCase } from './activate-execution.use-case';
 import { AcceptParallelizationUseCase } from './accept-parallelization.use-case';
 import { ClaimNextTaskUseCase } from './claim-next-task.use-case';
@@ -56,6 +57,7 @@ const USE_CASES = [
     AgentsUseCasesModule,
     EngineHttpClientsModule,
     GitInfrastructureModule,
+    FilesystemModule,
     AnamneseUseCasesModule,
   ],
   providers: USE_CASES,

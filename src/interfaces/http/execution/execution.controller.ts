@@ -33,6 +33,7 @@ export class ExecutionController {
       dto.taskBudgetMicros,
       dto.maxGateCorrections,
       dto.devAgentImpl,
+      dto.terminalAllowPatterns,
     );
   }
 

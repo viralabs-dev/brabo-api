@@ -220,6 +220,13 @@ export const projects = pgTable(
       .references(() => users.id),
     // Permissões não vivem mais no banco — permissions.json físico na raiz
     // do workspace do projeto (ver infrastructure/filesystem/fs-permissions-file-store.ts).
+    //
+    // Teto de tokens POR TASK dos dev agents (Fase 4a), em micro-USD. Nulo usa
+    // o default do domínio. Distinto de `budgets`, que é o teto GLOBAL de gasto
+    // do projeto/sessão: este é por execução de task do ToolLoop. Fica aqui
+    // porque "configurável por projeto" precisa sobreviver — antes o valor só
+    // existia como parâmetro da ativação e se perdia na reativação.
+    taskBudgetMicros: bigint('task_budget_micros', { mode: 'number' }),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

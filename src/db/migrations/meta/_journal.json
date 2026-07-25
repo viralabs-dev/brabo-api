@@ -134,6 +134,13 @@
       "when": 1784918771961,
       "tag": "0018_wide_rockslide",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1785009652359,
+      "tag": "0019_loose_luminals",
+      "breakpoints": true
     }
   ]
 }

@@ -8,6 +8,9 @@ import type { Role } from '../../domain/iam/role';
 export interface ProjectInput {
   name: string;
   slug: string;
+  // Teto de tokens por task dos dev agents (micro-USD); nulo/omitido usa o
+  // default do domínio.
+  taskBudgetMicros?: number | null;
 }
 
 export abstract class ProjectRepository {
