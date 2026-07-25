@@ -19,12 +19,16 @@ export class AcceptParallelizationUseCase {
     module: string,
     userId: string,
   ) {
+    // O engine vem PRIMEIRO: ele recusa (409) quando não há agente base de
+    // quem herdar o teto de tokens, e o event log é imutável — registrar o
+    // aceite antes deixaria no feed um "paralelização aceita" que nunca
+    // aconteceu, sem como retratar.
+    await this.engineClient.acceptParallelization(projectId, sessionId, module);
     await this.appendEvent.execute(projectId, sessionId, {
       type: 'execution.parallelization_accepted',
       actor: { kind: 'user', id: userId },
       payload: { module },
     });
-    await this.engineClient.acceptParallelization(projectId, sessionId, module);
     return { ok: true as const };
   }
 }
