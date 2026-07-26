@@ -4,19 +4,17 @@ import {
   PsychologistHypothesisRepository,
   type NewPsychologistHypothesis,
 } from '../../../application/ports/psychologist-hypothesis-repository.port';
-import type {
-  HypothesisTerminationAnalysis,
-  PsychologistHypothesis,
-} from '../../../domain/psychologist/psychologist-hypothesis.entity';
+import type { PsychologistHypothesis } from '../../../domain/psychologist/psychologist-hypothesis.entity';
 import type { HypothesisStatus } from '../../../domain/psychologist/hypothesis-lifecycle';
-import { psychologistAnalyses, psychologistHypotheses } from '../../../db/schema';
+import {
+  psychologistAnalyses,
+  psychologistHypotheses,
+} from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
 @Injectable()
-export class DrizzlePsychologistHypothesisRepository
-  implements PsychologistHypothesisRepository
-{
+export class DrizzlePsychologistHypothesisRepository implements PsychologistHypothesisRepository {
   constructor(@Inject(DRIZZLE) private readonly rootDb: DrizzleDb) {}
 
   async createMany(
@@ -153,7 +151,7 @@ function toEntity(
     sugestao: row.sugestao,
     confiancaPercent: row.confiancaPercent,
     evidenceEventIds: row.evidenceEventIds,
-    terminationAnalysis: row.terminationAnalysis as HypothesisTerminationAnalysis | null,
+    terminationAnalysis: row.terminationAnalysis,
     status: row.status as HypothesisStatus,
     decidedBy: row.decidedBy,
     decidedAt: row.decidedAt,

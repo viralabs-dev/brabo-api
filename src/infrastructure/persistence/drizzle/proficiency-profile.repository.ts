@@ -12,9 +12,7 @@ import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
 @Injectable()
-export class DrizzleProficiencyProfileRepository
-  implements ProficiencyProfileRepository
-{
+export class DrizzleProficiencyProfileRepository implements ProficiencyProfileRepository {
   constructor(@Inject(DRIZZLE) private readonly rootDb: DrizzleDb) {}
 
   async upsertMany(
@@ -86,9 +84,7 @@ export class DrizzleProficiencyProfileRepository
 }
 
 @Injectable()
-export class DrizzleAnamneseOptOutRepository
-  implements AnamneseOptOutRepository
-{
+export class DrizzleAnamneseOptOutRepository implements AnamneseOptOutRepository {
   constructor(@Inject(DRIZZLE) private readonly rootDb: DrizzleDb) {}
 
   async optOut(projectId: string, userId: string): Promise<void> {

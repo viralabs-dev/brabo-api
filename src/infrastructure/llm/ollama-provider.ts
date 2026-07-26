@@ -121,7 +121,9 @@ const DEFAULT_REQUEST_TIMEOUT_MS = 300_000;
 
 function requestTimeoutMs(): number {
   const bruto = Number(process.env.OLLAMA_REQUEST_TIMEOUT_MS);
-  return Number.isFinite(bruto) && bruto > 0 ? bruto : DEFAULT_REQUEST_TIMEOUT_MS;
+  return Number.isFinite(bruto) && bruto > 0
+    ? bruto
+    : DEFAULT_REQUEST_TIMEOUT_MS;
 }
 
 /**
@@ -159,7 +161,9 @@ function postStream(
     // pendurada pra sempre mesmo depois de estourar.
     req.on('timeout', () => {
       req.destroy(
-        new Error(`sem resposta após ${timeoutMs}ms (OLLAMA_REQUEST_TIMEOUT_MS)`),
+        new Error(
+          `sem resposta após ${timeoutMs}ms (OLLAMA_REQUEST_TIMEOUT_MS)`,
+        ),
       );
     });
     req.on('error', reject);

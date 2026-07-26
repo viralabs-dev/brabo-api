@@ -88,8 +88,7 @@ export class ProposeHypothesesUseCase {
     );
     if (!validation.ok) throw new BadRequestException(validation.reason);
 
-    const actorId =
-      input.tier === 'pesada' ? 'psicologo' : 'psicologo-leve';
+    const actorId = input.tier === 'pesada' ? 'psicologo' : 'psicologo-leve';
 
     try {
       return await this.persist(projectId, sessionId, input, actorId);

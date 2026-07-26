@@ -58,7 +58,9 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
     if (actorIds.length === 0) return 0;
     const db = currentDb(this.rootDb);
     const [result] = await db
-      .select({ total: sql<string>`coalesce(sum(${tokenUsage.costMicros}), 0)` })
+      .select({
+        total: sql<string>`coalesce(sum(${tokenUsage.costMicros}), 0)`,
+      })
       .from(tokenUsage)
       .where(
         and(

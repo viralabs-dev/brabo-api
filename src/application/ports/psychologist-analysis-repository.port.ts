@@ -14,7 +14,9 @@ export interface NewPsychologistAnalysis {
 }
 
 export abstract class PsychologistAnalysisRepository {
-  abstract create(input: NewPsychologistAnalysis): Promise<PsychologistAnalysis>;
+  abstract create(
+    input: NewPsychologistAnalysis,
+  ): Promise<PsychologistAnalysis>;
   // A análise "current" (não superseded) de uma sessão — no máximo uma,
   // garantido pelo índice parcial único do schema. null = sessão nunca
   // analisada com sucesso (ou toda análise anterior foi superseded, o

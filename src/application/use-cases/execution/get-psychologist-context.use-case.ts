@@ -67,8 +67,7 @@ export class GetPsychologistContextUseCase {
     const businessRules: PsychologistContextBusinessRule[] =
       businessRuleEvents.map((e) => ({
         id: e.id,
-        title:
-          (e.payload as { title?: string }).title ?? '(regra sem título)',
+        title: (e.payload as { title?: string }).title ?? '(regra sem título)',
       }));
 
     return {

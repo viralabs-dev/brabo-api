@@ -99,7 +99,10 @@ export class ActivateExecutionUseCase {
       taskBudgetMicros ??
       project?.taskBudgetMicros ??
       DEFAULT_TASK_BUDGET_MICROS;
-    if (taskBudgetMicros !== undefined && taskBudgetMicros !== project?.taskBudgetMicros) {
+    if (
+      taskBudgetMicros !== undefined &&
+      taskBudgetMicros !== project?.taskBudgetMicros
+    ) {
       await this.projects.update(projectId, { taskBudgetMicros });
     }
 
@@ -109,7 +112,8 @@ export class ActivateExecutionUseCase {
     // bloqueada por limite de iterações. Padrões ESTREITOS (comandos de
     // teste/build), no arquivo e não em agent_autonomy, pra que `deny`
     // continue vencendo.
-    for (const pattern of terminalAllowPatterns ?? DEV_TERMINAL_ALLOW_PATTERNS) {
+    for (const pattern of terminalAllowPatterns ??
+      DEV_TERMINAL_ALLOW_PATTERNS) {
       await this.permissionsFile.addPattern(projectId, 'allow', pattern);
     }
 

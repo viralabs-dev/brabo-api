@@ -10,9 +10,7 @@ import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
 @Injectable()
-export class DrizzleAgentInstructionVersionRepository
-  implements AgentInstructionVersionRepository
-{
+export class DrizzleAgentInstructionVersionRepository implements AgentInstructionVersionRepository {
   constructor(@Inject(DRIZZLE) private readonly rootDb: DrizzleDb) {}
 
   async create(

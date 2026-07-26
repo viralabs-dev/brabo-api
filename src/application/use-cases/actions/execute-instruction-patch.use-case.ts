@@ -117,7 +117,9 @@ export class ExecuteInstructionPatchUseCase {
 
       await this.appendSessionEvent.execute(projectId, sessionId, {
         type:
-          status === 'executed' ? 'instruction.patched' : 'instruction.patch_failed',
+          status === 'executed'
+            ? 'instruction.patched'
+            : 'instruction.patch_failed',
         actor: { kind: 'system', id: 'action-executor' },
         payload: {
           actionId,
