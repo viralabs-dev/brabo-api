@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { PsychologistHypothesisRepository } from '../../ports/psychologist-hypothesis-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import {
@@ -15,10 +16,14 @@ import {
  * dismissed. Uma hipótese dismissed sai do contexto de "hipóteses
  * anteriores não descartadas" que alimenta análises futuras
  * (GetPsychologistContextUseCase.listNonDismissedByProject).
+ *
+ * Transição + evento numa transação, e a transição em si é CAS (só sai de
+ * `proposed`) — mesma disciplina do accept.
  */
 @Injectable()
 export class DismissHypothesisUseCase {
   constructor(
+    private readonly unitOfWork: UnitOfWork,
     private readonly hypotheses: PsychologistHypothesisRepository,
     private readonly appendSessionEvent: AppendSessionEventUseCase,
   ) {}
@@ -38,19 +43,27 @@ export class DismissHypothesisUseCase {
       throw error;
     }
 
-    const updated = await this.hypotheses.updateStatus(
-      hypothesisId,
-      'dismissed',
-      userId,
-      new Date(),
-    );
+    return this.unitOfWork.runInTransaction(async () => {
+      const updated = await this.hypotheses.updateStatusIfProposed(
+        hypothesisId,
+        'dismissed',
+        userId,
+        new Date(),
+      );
 
-    await this.appendSessionEvent.execute(projectId, updated.sessionId, {
-      type: 'psychologist.hypothesis_dismissed',
-      actor: { kind: 'user', id: userId },
-      payload: { hypothesisId: updated.id, agenteAlvo: updated.agenteAlvo },
+      if (!updated) {
+        throw new BadRequestException(
+          'hipótese já foi decidida (aceita ou descartada) por outra ação',
+        );
+      }
+
+      await this.appendSessionEvent.execute(projectId, updated.sessionId, {
+        type: 'psychologist.hypothesis_dismissed',
+        actor: { kind: 'user', id: userId },
+        payload: { hypothesisId: updated.id, agenteAlvo: updated.agenteAlvo },
+      });
+
+      return updated;
     });
-
-    return updated;
   }
 }

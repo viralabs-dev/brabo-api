@@ -6,6 +6,7 @@ import { ListHypothesesUseCase } from '../../../application/use-cases/execution/
 import { AcceptHypothesisUseCase } from '../../../application/use-cases/execution/accept-hypothesis.use-case';
 import { DismissHypothesisUseCase } from '../../../application/use-cases/execution/dismiss-hypothesis.use-case';
 import { ReanalyzeSessionUseCase } from '../../../application/use-cases/execution/reanalyze-session.use-case';
+import { ListPsychologistAnalysesUseCase } from '../../../application/use-cases/execution/list-psychologist-analyses.use-case';
 
 /**
  * Ações humanas sobre as hipóteses do Psicólogo (Fase 4b): listar (seção
@@ -21,12 +22,23 @@ export class PsychologistController {
     private readonly acceptHypothesis: AcceptHypothesisUseCase,
     private readonly dismissHypothesis: DismissHypothesisUseCase,
     private readonly reanalyzeSession: ReanalyzeSessionUseCase,
+    private readonly listAnalyses: ListPsychologistAnalysesUseCase,
   ) {}
 
   @Get('hypotheses')
   @RequireRole('viewer')
   hypotheses(@Param('projectId') projectId: string) {
     return this.listHypotheses.execute(projectId);
+  }
+
+  /**
+   * Análises current do projeto com tier e CUSTO — é o que torna "custos
+   * distintos entre triagem leve e pesada" visível na UI.
+   */
+  @Get('psychologist/analyses')
+  @RequireRole('viewer')
+  analyses(@Param('projectId') projectId: string) {
+    return this.listAnalyses.execute(projectId);
   }
 
   @Post('hypotheses/:hypothesisId/accept')

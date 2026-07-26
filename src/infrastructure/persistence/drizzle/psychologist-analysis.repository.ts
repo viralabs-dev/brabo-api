@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import {
   PsychologistAnalysisRepository,
   type NewPsychologistAnalysis,
@@ -52,11 +52,30 @@ export class DrizzlePsychologistAnalysisRepository
     return row ? toEntity(row) : null;
   }
 
+  async listCurrentByProject(
+    projectId: string,
+  ): Promise<PsychologistAnalysis[]> {
+    const db = currentDb(this.rootDb);
+    const rows = await db
+      .select()
+      .from(psychologistAnalyses)
+      .where(
+        and(
+          eq(psychologistAnalyses.projectId, projectId),
+          eq(psychologistAnalyses.superseded, false),
+        ),
+      )
+      .orderBy(desc(psychologistAnalyses.createdAt));
+    return rows.map(toEntity);
+  }
+
   async markSuperseded(id: string): Promise<void> {
     const db = currentDb(this.rootDb);
     await db
       .update(psychologistAnalyses)
-      .set({ superseded: true })
+      // `superseded_at` responde QUANDO — a cadeia `supersedes` já responde
+      // por quem. Sem a data, "com histórico" não é auditável.
+      .set({ superseded: true, supersededAt: new Date() })
       .where(eq(psychologistAnalyses.id, id));
   }
 }
@@ -72,6 +91,7 @@ function toEntity(
     triggeredBy: row.triggeredBy as PsychologistAnalysisTrigger,
     supersedes: row.supersedes,
     superseded: row.superseded,
+    supersededAt: row.supersededAt,
     eventCountAtAnalysis: row.eventCountAtAnalysis,
     createdAt: row.createdAt,
   };

@@ -124,9 +124,12 @@ export class InternalSessionsController {
   }
 
   /**
-   * Usado pelo PsychologistWorker (placeholder, fase 3+ traz a análise
-   * real) pra gravar psychologist.hypothesis no event log — reaproveita
-   * o mesmo use-case/contrato de seq atômico da rota humana.
+   * Append genérico de evento pelo engine — reaproveita o mesmo use-case/
+   * contrato de seq atômico da rota humana. Usado pelos hooks do harness
+   * (EventLog) e pelos desfechos narrados dos agentes (ex.:
+   * `psychologist.analysis_failed`). As hipóteses em si NÃO passam por
+   * aqui: têm rota própria com validação de evidência
+   * (`POST :sessionId/hypotheses`).
    */
   @Post(':sessionId/events')
   appendEvent(
@@ -370,6 +373,7 @@ export class InternalSessionsController {
       tier: dto.tier,
       triggeredBy: dto.triggeredBy,
       eventCount: dto.eventCount,
+      cause: dto.cause,
       hypotheses: dto.hypotheses,
     });
   }

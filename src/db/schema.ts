@@ -876,6 +876,10 @@ export const psychologistAnalyses = pgTable(
     triggeredBy: text('triggered_by').notNull().default('auto'),
     supersedes: uuid('supersedes'),
     superseded: boolean('superseded').notNull().default(false),
+    // QUANDO foi substituída. A cadeia `supersedes` já diz por quem, mas
+    // sem isto não se sabe quando — e "substitui a versão anterior com
+    // histórico" só é auditável com a data da troca.
+    supersededAt: timestamp('superseded_at', { withTimezone: true }),
     eventCountAtAnalysis: integer('event_count_at_analysis').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
