@@ -3,6 +3,7 @@ import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { SessionRepository } from '../../ports/session-repository.port';
 import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
 import { OutboxRepository } from '../../ports/outbox-repository.port';
+import { BraboMetrics } from '../../../infrastructure/observability/brabo-metrics';
 import { assertTransition } from '../../../domain/actions/action-state-machine';
 
 @Injectable()
@@ -12,6 +13,7 @@ export class DenyActionUseCase {
     private readonly sessions: SessionRepository,
     private readonly proposedActions: ProposedActionRepository,
     private readonly outbox: OutboxRepository,
+    private readonly metrics: BraboMetrics,
   ) {}
 
   execute(
@@ -45,6 +47,11 @@ export class DenyActionUseCase {
         aggregateId: actionId,
         eventType: 'proposed_action.denied',
         payload: { from: current.status, to: 'denied' },
+      });
+
+      this.metrics.actionsDecided.inc({
+        project: projectId,
+        decision: 'denied',
       });
 
       return updated;

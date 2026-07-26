@@ -1,11 +1,20 @@
+// PRIMEIRO import do processo, de propósito: a auto-instrumentação do
+// OpenTelemetry faz monkey-patch de `http`, `pg`, `express` e `undici`, e não
+// pega em módulo já carregado. Ver src/tracing.ts.
+import './tracing';
 import { NestFactory } from '@nestjs/core';
+import { Logger as PinoLogger } from 'nestjs-pino';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { DomainTransitionErrorFilter } from './interfaces/http/shared/domain-transition-error.filter';
 import { GitProviderErrorFilter } from './interfaces/http/shared/git-provider-error.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // `bufferLogs`: as linhas emitidas ANTES de o logger estar pronto ficam na
+  // fila e são reemitidas em JSON, em vez de sair no formato default do Nest —
+  // senão o começo do log de cada pod não é parseável pelo Loki.
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  app.useLogger(app.get(PinoLogger));
   app.enableCors({ origin: process.env.WEB_ORIGIN ?? 'http://localhost:5173' });
   app.useGlobalPipes(
     new ValidationPipe({

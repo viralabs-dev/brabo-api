@@ -24,9 +24,17 @@ export interface HypothesisDraft {
 export type HypothesisBatchValidation =
   { ok: true } | { ok: false; reason: string };
 
-/** Causas classificadas pelo engine — ver TerminationClassifier. */
+/**
+ * Causas classificadas pelo engine — ver TerminationClassifier.
+ *
+ * `node_shutdown` entrou na Fase 5: é a sessão que caiu junto com a réplica
+ * durante um rollout ou scale-down e não foi adotada por outro nó. Continua
+ * sendo término anormal — a sessão acabou sem que o trabalho acabasse — mas
+ * com causa CONHECIDA, o que muda a hipótese que o Psicólogo deve levantar:
+ * não é defeito do agente nem do projeto, é infraestrutura.
+ */
 export type TerminationCause =
-  'normal' | 'timeout' | 'kill' | 'crash' | 'unknown';
+  'normal' | 'timeout' | 'kill' | 'crash' | 'node_shutdown' | 'unknown';
 
 /**
  * Toda causa que não seja `normal` exige a seção de análise de término.

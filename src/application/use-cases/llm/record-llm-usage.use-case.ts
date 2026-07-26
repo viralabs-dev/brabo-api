@@ -3,6 +3,7 @@ import type { LLMProviderName } from '@brabo/shared';
 import { TokenUsageRepository } from '../../ports/token-usage-repository.port';
 import { BudgetRepository } from '../../ports/budget-repository.port';
 import { OutboxRepository } from '../../ports/outbox-repository.port';
+import { BraboMetrics } from '../../../infrastructure/observability/brabo-metrics';
 import { crossedThresholds } from '../../../domain/llm/budget-threshold';
 import type { Budget } from '../../../domain/llm/budget.entity';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
@@ -37,9 +38,23 @@ export class RecordLlmUsageUseCase {
     private readonly tokenUsage: TokenUsageRepository,
     private readonly budgets: BudgetRepository,
     private readonly outbox: OutboxRepository,
+    private readonly metrics: BraboMetrics,
   ) {}
 
   async execute(input: RecordLlmUsageInput): Promise<TokenUsage> {
+    // Métricas aqui e não no chamador: este é o ÚNICO caminho de metering do
+    // sistema, então a métrica herda a mesma garantia de cobertura que o
+    // `token_usage` — não há chamada de LLM contabilizada no banco e ausente
+    // do Prometheus, nem o contrário.
+    this.metrics.recordLlmUsage({
+      projectId: input.projectId,
+      provider: input.provider,
+      inputTokens: input.inputTokens,
+      outputTokens: input.outputTokens,
+      costMicros: input.costMicros,
+      latencyMs: input.latencyMs,
+    });
+
     const usage = await this.tokenUsage.record({
       sessionId: input.sessionId,
       actor: input.actor,

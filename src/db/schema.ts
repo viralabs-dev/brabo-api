@@ -256,33 +256,53 @@ export const projectMembers = pgTable(
 
 // --- Sessões ---
 
-export const sessions = pgTable('sessions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  projectId: uuid('project_id')
-    .notNull()
-    .references(() => projects.id, { onDelete: 'cascade' }),
-  createdBy: uuid('created_by')
-    .notNull()
-    .references(() => users.id),
-  status: sessionStatusEnum('status').notNull().default('created'),
-  // Contador da próxima seq a atribuir em session_events — incrementado
-  // atomicamente via UPDATE (lock de linha) para garantir seq sem gaps
-  // mesmo sob escrita concorrente. Ver SessionEventsService.append.
-  nextSeq: integer('next_seq').notNull().default(1),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  closedAt: timestamp('closed_at', { withTimezone: true }),
-  // Fase 4b — Psicólogo: motivo reportado pelo engine na transição pra um
-  // estado terminal (heartbeat_timeout/killed/exceção/...) — só populado
-  // no caminho de término reportado pelo engine (ReportSessionTerminationUseCase);
-  // fecho humano/gracioso fica null. Alimenta a classificação determinística
-  // de causa (crash/kill/timeout) no contexto do Psicólogo.
-  terminationReason: text('termination_reason'),
-});
+export const sessions = pgTable(
+  'sessions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references(() => users.id),
+    status: sessionStatusEnum('status').notNull().default('created'),
+    // Contador da próxima seq a atribuir em session_events — incrementado
+    // atomicamente via UPDATE (lock de linha) para garantir seq sem gaps
+    // mesmo sob escrita concorrente. Ver SessionEventsService.append.
+    nextSeq: integer('next_seq').notNull().default(1),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    closedAt: timestamp('closed_at', { withTimezone: true }),
+    // Fase 4b — Psicólogo: motivo reportado pelo engine na transição pra um
+    // estado terminal (heartbeat_timeout/killed/exceção/...) — só populado
+    // no caminho de término reportado pelo engine (ReportSessionTerminationUseCase);
+    // fecho humano/gracioso fica null. Alimenta a classificação determinística
+    // de causa (crash/kill/timeout) no contexto do Psicólogo.
+    terminationReason: text('termination_reason'),
+    // Fase 5 — OpenTelemetry: `traceparent` W3C da span raiz da sessão.
+    //
+    // Uma sessão dura minutos ou horas, e uma span OTel só aparece no backend
+    // quando TERMINA — uma raiz aberta esse tempo todo seria invisível no Tempo
+    // justamente enquanto interessa, e some de vez se a sessão nunca encerrar
+    // direito. Então a raiz é curta (`session.create`) e o traceparent dela é
+    // persistido aqui: todo trabalho posterior (turno de agente, tool call,
+    // chamada de LLM, gate, job do Oban) usa este valor como PARENT REMOTO,
+    // compartilha o mesmo trace_id, e a sessão inteira é recuperável no Tempo
+    // por um id só.
+    traceParent: text('trace_parent'),
+  },
+  (table) => [
+    // Fase 5 — a gauge `brabo_sessions_active` filtra por status e agrupa por
+    // projeto a cada 15s; sem índice isso é seq scan na tabela de sessões, que
+    // só cresce.
+    index('sessions_status_project_idx').on(table.status, table.projectId),
+  ],
+);
 
 // --- Event log (append-only) ---
 
@@ -305,7 +325,7 @@ export const sessionEvents = pgTable(
   (table) => [unique().on(table.sessionId, table.seq)],
 );
 
-// --- Transactional outbox (sem consumidor ainda) ---
+// --- Transactional outbox (consumido pelo Engine.Outbox.Drain) ---
 
 export const outboxEvents = pgTable(
   'outbox_events',
@@ -315,6 +335,14 @@ export const outboxEvents = pgTable(
     aggregateId: uuid('aggregate_id').notNull(),
     eventType: text('event_type').notNull(),
     payload: jsonb('payload').notNull().default({}),
+    // Fase 5 — metadado de TRANSPORTE, separado do payload de domínio.
+    //
+    // Carrega o `traceparent` para que o trabalho assíncrono disparado por um
+    // evento continue na mesma trace de quem o produziu. Coluna própria e não
+    // uma chave no `payload` porque o engine desserializa payload por tipo de
+    // evento: misturar transporte com domínio ali envenenaria os 18 pontos que
+    // escrevem no outbox e qualquer validação estrita futura.
+    metadata: jsonb('metadata').notNull().default({}),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -703,7 +731,16 @@ export const tasks = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [index('tasks_story_idx').on(table.storyId)],
+  (table) => [
+    index('tasks_story_idx').on(table.storyId),
+    // Fase 5 — a gauge `brabo_tasks_blocked` roda a cada 15s. Índice PARCIAL:
+    // a esmagadora maioria das tasks não está bloqueada, então indexar só as
+    // que estão mantém o índice pequeno e a varredura proporcional ao que
+    // realmente interessa.
+    index('tasks_blocked_idx')
+      .on(table.storyId)
+      .where(sql`${table.blocked}`),
+  ],
 );
 
 // Artefatos de infra (Fase 4a — InfraAgent): PR de Dockerfiles/compose/CI

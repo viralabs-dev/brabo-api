@@ -10,12 +10,17 @@ import type { SessionStatus } from '../../../domain/sessions/session-state-machi
  *
  * ALLOWED_TRANSITIONS['active'] só permite ['closing', 'closed_abnormally']
  * — não 'closed' direto — então, quando o destino é 'closed' e a sessão
- * ainda está 'active' (nunca passou por 'closing' explicitamente, já que
- * isso é hoje 100% interno ao engine), fazemos o hop implícito
- * active->closing aqui, cirurgicamente, sem tocar em
- * ALLOWED_TRANSITIONS/TransitionSessionUseCase (que continuam servindo o
- * resto do sistema sem mudança de comportamento pra outros chamadores,
- * ex. a rota humana de transição).
+ * ainda está 'active', fazemos o hop implícito active->closing aqui,
+ * cirurgicamente, sem tocar em ALLOWED_TRANSITIONS/TransitionSessionUseCase
+ * (que continuam servindo o resto do sistema sem mudança de comportamento
+ * pra outros chamadores, ex. a rota humana de transição).
+ *
+ * `closing` passou a ser um destino ACEITÁVEL vindo do engine (Fase 5): o
+ * drain de shutdown marca as sessões que está largando com causa
+ * `node_shutdown` antes de decidir se elas serão adotadas por outra réplica ou
+ * encerradas. Sem isso o engine não tinha como anunciar "estou soltando esta
+ * sessão" — a única rota que aceitava `closing` era a humana, atrás de
+ * RBAC de usuário, inacessível ao client `engine-service`.
  */
 @Injectable()
 export class ReportSessionTerminationUseCase {
@@ -27,7 +32,7 @@ export class ReportSessionTerminationUseCase {
   async execute(
     projectId: string,
     sessionId: string,
-    to: Extract<SessionStatus, 'closed' | 'closed_abnormally'>,
+    to: Extract<SessionStatus, 'closing' | 'closed' | 'closed_abnormally'>,
     reason?: string,
   ) {
     if (to === 'closed') {

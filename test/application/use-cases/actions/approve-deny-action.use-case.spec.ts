@@ -29,6 +29,7 @@ import { ApproveActionUseCase } from '../../../../src/application/use-cases/acti
 import { DenyActionUseCase } from '../../../../src/application/use-cases/actions/deny-action.use-case';
 import type { ApiToEngineClient } from '../../../../src/application/ports/api-to-engine-client.port';
 import type { TerminalExecutionResult } from '../../../../src/domain/actions/terminal-execution-result';
+import { BraboMetrics } from '../../../../src/infrastructure/observability/brabo-metrics';
 
 const { db, pool } = createTestDb();
 const unitOfWork = new DrizzleUnitOfWork(db);
@@ -112,13 +113,15 @@ const approveAction = new ApproveActionUseCase(
   {
     execute: (_p: string, _s: string, a: unknown) => Promise.resolve(a),
   } as unknown as never,
-  undefined as never, // executeInstructionPatch — não exercitado aqui
+  undefined as never, // executeInstructionPatch — não exercitado aqui,
+  new BraboMetrics(),
 );
 const denyAction = new DenyActionUseCase(
   unitOfWork,
   sessionRepo,
   proposedActionRepo,
   outboxRepo,
+  new BraboMetrics(),
 );
 
 let workspacesRoot: string;

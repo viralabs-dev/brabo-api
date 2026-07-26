@@ -76,8 +76,13 @@ export class ProposeHypothesesInternalDto {
   // quebrar um engine mais antigo em rolling deploy: sem ela, o domínio cai
   // no comportamento anterior (status === 'closed_abnormally').
   @IsOptional()
-  @IsIn(['normal', 'timeout', 'kill', 'crash', 'unknown'])
-  cause?: 'normal' | 'timeout' | 'kill' | 'crash' | 'unknown';
+  // Mantenha em sincronia com TerminationCause em
+  // domain/psychologist/hypothesis-evidence.ts. Divergir é caro e silencioso:
+  // um valor válido no engine e ausente aqui vira 400, o 400 volta ao modelo
+  // como resultado de tool, e o ToolLoop gira até estourar max_iterations —
+  // gastando orçamento sem nunca conseguir registrar a hipótese.
+  @IsIn(['normal', 'timeout', 'kill', 'crash', 'node_shutdown', 'unknown'])
+  cause?: 'normal' | 'timeout' | 'kill' | 'crash' | 'node_shutdown' | 'unknown';
 
   @IsArray()
   @ArrayNotEmpty()
