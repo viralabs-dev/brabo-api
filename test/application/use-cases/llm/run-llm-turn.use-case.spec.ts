@@ -28,6 +28,7 @@ import { RunLlmTurnUseCase } from '../../../../src/application/use-cases/llm/run
 import type { LLMProvider } from '../../../../src/application/ports/llm-provider.port';
 import type { LLMProviderRegistry } from '../../../../src/application/ports/llm-provider-registry.port';
 import type { ChatStreamChunk, LLMProviderName } from '@brabo/shared';
+import { BraboMetrics } from '../../../../src/infrastructure/observability/brabo-metrics';
 
 const { db, pool } = createTestDb();
 
@@ -51,6 +52,10 @@ const recordLlmUsage = new RecordLlmUsageUseCase(
   tokenUsageRepo,
   budgetRepo,
   outboxRepo,
+  // Registry próprio por spec: prom-client é global por default e
+  // contadores vazados entre arquivos tornariam as asserções dependentes
+  // da ordem de execução.
+  new BraboMetrics(),
 );
 
 class FakeProvider implements LLMProvider {

@@ -3,6 +3,7 @@ import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { SessionRepository } from '../../ports/session-repository.port';
 import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
 import { OutboxRepository } from '../../ports/outbox-repository.port';
+import { BraboMetrics } from '../../../infrastructure/observability/brabo-metrics';
 import { ExecuteTerminalActionUseCase } from './execute-terminal-action.use-case';
 import { ExecuteAdrPrUseCase } from './execute-adr-pr.use-case';
 import { ExecuteInfraPrUseCase } from './execute-infra-pr.use-case';
@@ -24,6 +25,7 @@ export class ApproveActionUseCase {
     private readonly executeInfraPr: ExecuteInfraPrUseCase,
     private readonly executeGitAction: ExecuteGitActionUseCase,
     private readonly executeInstructionPatch: ExecuteInstructionPatchUseCase,
+    private readonly metrics: BraboMetrics,
   ) {}
 
   async execute(
@@ -96,6 +98,14 @@ export class ApproveActionUseCase {
         aggregateId: actionId,
         eventType: 'proposed_action.approved',
         payload: { from: current.status, to: 'approved' },
+      });
+
+      // Contador e não consulta ao banco: uma ação aprovada que executa muda
+      // de status para `executed`, então `count(status='approved')` subconta
+      // grosseiramente. O evento "alguém decidiu" acontece uma vez, aqui.
+      this.metrics.actionsDecided.inc({
+        project: projectId,
+        decision: 'approved',
       });
 
       return updated;

@@ -3,6 +3,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DrizzleModule } from './infrastructure/persistence/drizzle/drizzle.module';
 import { HealthModule } from './interfaces/http/health/health.module';
+import { ObservabilityModule } from './infrastructure/observability/observability.module';
+import { ObservabilityHttpModule } from './interfaces/http/observability/observability-http.module';
 import { AuthHttpModule } from './interfaces/http/auth/auth-http.module';
 import { IamHttpModule } from './interfaces/http/iam/iam-http.module';
 import { SessionsHttpModule } from './interfaces/http/sessions/sessions-http.module';
@@ -22,6 +24,9 @@ import { AnamneseHttpModule } from './interfaces/http/anamnese/anamnese-http.mod
   // (depende dele).
   imports: [
     DrizzleModule,
+    // Antes dos módulos de domínio: eles injetam BraboMetrics.
+    ObservabilityModule,
+    ObservabilityHttpModule,
     HealthModule,
     AuthHttpModule,
     IamHttpModule,

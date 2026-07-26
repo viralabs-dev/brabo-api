@@ -14,6 +14,7 @@ import { DrizzleBudgetRepository } from '../../../../src/infrastructure/persiste
 import { DrizzleTokenUsageRepository } from '../../../../src/infrastructure/persistence/drizzle/token-usage.repository';
 import { DrizzleOutboxRepository } from '../../../../src/infrastructure/persistence/drizzle/outbox.repository';
 import { RecordLlmUsageUseCase } from '../../../../src/application/use-cases/llm/record-llm-usage.use-case';
+import { BraboMetrics } from '../../../../src/infrastructure/observability/brabo-metrics';
 
 const { db, pool } = createTestDb();
 const budgetRepo = new DrizzleBudgetRepository(db);
@@ -23,6 +24,10 @@ const recordLlmUsage = new RecordLlmUsageUseCase(
   tokenUsageRepo,
   budgetRepo,
   outboxRepo,
+  // Registry próprio por spec: prom-client é global por default e
+  // contadores vazados entre arquivos tornariam as asserções dependentes
+  // da ordem de execução.
+  new BraboMetrics(),
 );
 
 async function setupSessionAndModel() {
