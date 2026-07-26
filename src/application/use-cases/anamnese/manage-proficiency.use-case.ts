@@ -4,8 +4,9 @@ import {
   AnamneseOptOutRepository,
   ProficiencyProfileRepository,
 } from '../../ports/proficiency-profile-repository.port';
+import { ProjectRepository } from '../../ports/project-repository.port';
 import { ResolveEffectiveRoleUseCase } from '../iam/resolve-effective-role.use-case';
-import type { ProficiencyProfile } from '../../../domain/anamnese/proficiency-profile.entity';
+import type { ProficiencyProfileView } from '../../../domain/anamnese/proficiency-profile.entity';
 
 // Quem enxerga o perfil dos OUTROS. Perfil de competência é dado sobre a
 // pessoa, então o default é ela ver o dela; a leitura de time (útil pra
@@ -16,21 +17,37 @@ const ROLES_QUE_VEEM_O_TIME = ['owner', 'maintainer'];
 export class ListProficiencyProfilesUseCase {
   constructor(
     private readonly profiles: ProficiencyProfileRepository,
+    private readonly projects: ProjectRepository,
     private readonly resolveEffectiveRole: ResolveEffectiveRoleUseCase,
   ) {}
 
   async execute(
     projectId: string,
     requestedBy: string,
-  ): Promise<ProficiencyProfile[]> {
+  ): Promise<ProficiencyProfileView[]> {
     const role = await this.resolveEffectiveRole.forProject(
       requestedBy,
       projectId,
     );
 
-    return role !== null && ROLES_QUE_VEEM_O_TIME.includes(role)
-      ? this.profiles.listByProject(projectId)
-      : this.profiles.listByUser(projectId, requestedBy);
+    const [rows, members] = await Promise.all([
+      role !== null && ROLES_QUE_VEEM_O_TIME.includes(role)
+        ? this.profiles.listByProject(projectId)
+        : this.profiles.listByUser(projectId, requestedBy),
+      this.projects.listMembers(projectId),
+    ]);
+
+    // `listMembers` já traz name/email — não precisa de consulta nova.
+    const porUsuario = new Map(members.map((m) => [m.userId, m]));
+
+    return rows.map((profile) => {
+      const membro = porUsuario.get(profile.userId);
+      return {
+        ...profile,
+        userName: membro?.name ?? null,
+        userEmail: membro?.email ?? null,
+      };
+    });
   }
 }
 
