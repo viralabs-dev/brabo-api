@@ -114,6 +114,10 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     );
   }
 
+  async runAnamnese(projectId: string): Promise<void> {
+    await this.postCommand(`/internal/projects/${projectId}/anamnese/run`, {});
+  }
+
   async invalidateInstructions(
     projectId: string,
     agent: string,

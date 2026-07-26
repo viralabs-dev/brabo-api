@@ -99,6 +99,12 @@ export abstract class ApiToEngineClient {
   // agentes seguem servindo o conteúdo antigo em memória. Best-effort:
   // o chamador NUNCA falha o patch por causa disto (o conteúdo já está
   // no banco; sem invalidar, os agentes só pegam ao reiniciar).
+  /**
+   * Roda a Anamnese do projeto AGORA, sem esperar o tick periódico. O engine
+   * escolhe a mesma sessão que o scheduler escolheria; projeto sem sessão não
+   * tem log pra analisar.
+   */
+  abstract runAnamnese(projectId: string): Promise<void>;
   abstract invalidateInstructions(
     projectId: string,
     agent: string,

@@ -97,7 +97,10 @@ describe('LocalGitProvider — pull request local (open + merge)', () => {
   });
 
   async function repoWithFeature() {
-    const repo = await provider.createRepo({ name: 'pr-flow', visibility: 'private' });
+    const repo = await provider.createRepo({
+      name: 'pr-flow',
+      visibility: 'private',
+    });
     await provider.commitFiles({
       externalId: repo.externalId,
       branch: 'main',
@@ -137,7 +140,9 @@ describe('LocalGitProvider — pull request local (open + merge)', () => {
     expect(merged.state).toBe('merged');
 
     // main agora aponta pro commit da feature (fast-forward).
-    const branches = await provider.listBranches({ externalId: repo.externalId });
+    const branches = await provider.listBranches({
+      externalId: repo.externalId,
+    });
     expect(branches.find((b) => b.name === 'main')?.commitSha).toBe(featureSha);
   });
 

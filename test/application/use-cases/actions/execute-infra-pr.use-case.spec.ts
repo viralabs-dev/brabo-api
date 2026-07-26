@@ -58,7 +58,10 @@ function build(provider: {
     } as never,
     { findSecretByUserAndProvider: async () => null } as never,
     { decrypt: () => '' } as never,
-    { findBySessionId: async () => null, create: async () => undefined } as never,
+    {
+      findBySessionId: async () => null,
+      create: async () => undefined,
+    } as never,
   );
 
   return { useCase, gravados };
@@ -70,7 +73,9 @@ describe('normalizeInfraPath', () => {
     // do provider local recusa caminho absoluto e a PR morria com um erro
     // opaco de git (ADR 0021).
     expect(normalizeInfraPath('/api/Dockerfile')).toBe('api/Dockerfile');
-    expect(normalizeInfraPath('///worker/Dockerfile')).toBe('worker/Dockerfile');
+    expect(normalizeInfraPath('///worker/Dockerfile')).toBe(
+      'worker/Dockerfile',
+    );
   });
 
   it('caminho já relativo passa intacto', () => {
@@ -98,7 +103,9 @@ describe('ExecuteInfraPrUseCase — criação de branch idempotente', () => {
     const provider = {
       createBranch: vi
         .fn()
-        .mockRejectedValue(new GitBranchAlreadyExistsError('repo-1', 'feature/infra-setup')),
+        .mockRejectedValue(
+          new GitBranchAlreadyExistsError('repo-1', 'feature/infra-setup'),
+        ),
       commitFiles: vi.fn().mockResolvedValue(undefined),
       openPullRequest: vi
         .fn()

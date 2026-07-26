@@ -19,7 +19,10 @@ describe('isDuplicateOfRejected', () => {
 
   it('conteúdo idêntico a um negado é duplicata', () => {
     expect(
-      isDuplicateOfRejected('Você é o dev-backend.\nNão explique o básico.\n', rejected),
+      isDuplicateOfRejected(
+        'Você é o dev-backend.\nNão explique o básico.\n',
+        rejected,
+      ),
     ).toBe(true);
   });
 

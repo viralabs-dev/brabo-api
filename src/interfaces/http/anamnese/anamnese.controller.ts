@@ -17,6 +17,7 @@ import {
 import { ListInstructionVersionsUseCase } from '../../../application/use-cases/instructions/list-instruction-versions.use-case';
 import { RollbackInstructionUseCase } from '../../../application/use-cases/instructions/rollback-instruction.use-case';
 import { GetProjectEventUseCase } from '../../../application/use-cases/sessions/get-project-event.use-case';
+import { RunAnamneseUseCase } from '../../../application/use-cases/anamnese/run-anamnese.use-case';
 
 /**
  * Superfície humana da Anamnese (Fase 4b): perfil de proficiência
@@ -32,7 +33,18 @@ export class AnamneseController {
     private readonly listVersions: ListInstructionVersionsUseCase,
     private readonly rollback: RollbackInstructionUseCase,
     private readonly getProjectEvent: GetProjectEventUseCase,
+    private readonly runAnamnese: RunAnamneseUseCase,
   ) {}
+
+  /**
+   * Roda a Anamnese agora, sem esperar o tick de 15 min. `maintainer` pelo
+   * mesmo motivo da reanálise do Psicólogo: roda o ToolLoop e gasta orçamento.
+   */
+  @Post('anamnese/run')
+  @RequireRole('maintainer')
+  run(@Param('projectId') projectId: string) {
+    return this.runAnamnese.execute(projectId);
+  }
 
   /**
    * O próprio perfil por default; a visão agregada do time só para quem

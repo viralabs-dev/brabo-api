@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { createTestDb, truncateAll } from '../../../support/test-db';
-import { projects, sessions, users, workspaces } from '../../../../src/db/schema';
+import {
+  projects,
+  sessions,
+  users,
+  workspaces,
+} from '../../../../src/db/schema';
 import { DrizzleSessionRepository } from '../../../../src/infrastructure/persistence/drizzle/session.repository';
 import { ListSessionsForProjectUseCase } from '../../../../src/application/use-cases/sessions/list-sessions-for-project.use-case';
 
@@ -11,7 +16,10 @@ const listSessionsForProject = new ListSessionsForProjectUseCase(sessionRepo);
 async function setupProject() {
   const [user] = await db
     .insert(users)
-    .values({ keycloakSub: 'sub-list-sessions', email: 'list-sessions@brabo.dev' })
+    .values({
+      keycloakSub: 'sub-list-sessions',
+      email: 'list-sessions@brabo.dev',
+    })
     .returning();
   const [workspace] = await db
     .insert(workspaces)
@@ -19,11 +27,21 @@ async function setupProject() {
     .returning();
   const [project] = await db
     .insert(projects)
-    .values({ workspaceId: workspace.id, name: 'core', slug: 'core', createdBy: user.id })
+    .values({
+      workspaceId: workspace.id,
+      name: 'core',
+      slug: 'core',
+      createdBy: user.id,
+    })
     .returning();
   const [otherProject] = await db
     .insert(projects)
-    .values({ workspaceId: workspace.id, name: 'other', slug: 'other', createdBy: user.id })
+    .values({
+      workspaceId: workspace.id,
+      name: 'other',
+      slug: 'other',
+      createdBy: user.id,
+    })
     .returning();
   return { user, project, otherProject };
 }
@@ -39,9 +57,15 @@ afterAll(async () => {
 describe('ListSessionsForProjectUseCase', () => {
   it('caminho feliz: lista só as sessões do projeto informado', async () => {
     const { user, project, otherProject } = await setupProject();
-    await db.insert(sessions).values({ projectId: project.id, createdBy: user.id });
-    await db.insert(sessions).values({ projectId: project.id, createdBy: user.id });
-    await db.insert(sessions).values({ projectId: otherProject.id, createdBy: user.id });
+    await db
+      .insert(sessions)
+      .values({ projectId: project.id, createdBy: user.id });
+    await db
+      .insert(sessions)
+      .values({ projectId: project.id, createdBy: user.id });
+    await db
+      .insert(sessions)
+      .values({ projectId: otherProject.id, createdBy: user.id });
 
     const result = await listSessionsForProject.execute(project.id);
 

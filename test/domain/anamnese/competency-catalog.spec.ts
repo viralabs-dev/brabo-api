@@ -83,3 +83,56 @@ describe('normalizeCompetency', () => {
     expect(normalizeCompetency('  Nest   JS ')).toBe('nest js');
   });
 });
+
+describe('stack composta (texto livre do Arquiteto)', () => {
+  // `ModuleMapModule.stack` é UMA string escrita por LLM, e na prática lista
+  // várias tecnologias. Sem tokenizar, o catálogo ganhava só a frase inteira,
+  // a emissão natural "nestjs" caía fora e o LOTE INTEIRO era rejeitado — a
+  // Anamnese não conseguia gravar perfil em nenhum projeto realista.
+  it('libera cada tecnologia de uma stack com "+"', () => {
+    const catalog = deriveCatalog(['NestJS + Drizzle + Postgres']);
+
+    expect(isAllowedCompetency('nestjs', catalog)).toBe(true);
+    expect(isAllowedCompetency('drizzle', catalog)).toBe(true);
+    expect(isAllowedCompetency('Postgres', catalog)).toBe(true);
+  });
+
+  it('mantém a frase inteira no catálogo', () => {
+    // Quem escreveu "Node.js" (um token só, com ponto) não pode deixar de
+    // valer por causa da tokenização.
+    const catalog = deriveCatalog(['NestJS + Drizzle']);
+
+    expect(isAllowedCompetency('nestjs + drizzle', catalog)).toBe(true);
+    expect(isAllowedCompetency('Node.js', deriveCatalog(['Node.js']))).toBe(
+      true,
+    );
+  });
+
+  it('aceita vírgula, barra e & como separadores', () => {
+    const catalog = deriveCatalog(['React 19, Vite', 'CI/CD', 'Jest & Vitest']);
+
+    expect(isAllowedCompetency('react 19', catalog)).toBe(true);
+    expect(isAllowedCompetency('vite', catalog)).toBe(true);
+    expect(isAllowedCompetency('ci', catalog)).toBe(true);
+    expect(isAllowedCompetency('cd', catalog)).toBe(true);
+    expect(isAllowedCompetency('vitest', catalog)).toBe(true);
+  });
+
+  it('token de 1 caractere não entra (não é competência)', () => {
+    const catalog = deriveCatalog(['Go + K']);
+
+    expect(isAllowedCompetency('go', catalog)).toBe(true);
+    expect(isAllowedCompetency('k', catalog)).toBe(false);
+  });
+
+  it('tokenizar NÃO afrouxa o guarda-corpo', () => {
+    // O ponto do ADR 0016 §1 continua valendo: mais tokens permitidos não
+    // pode abrir caminho pra atributo sensível.
+    const catalog = deriveCatalog(['NestJS + Drizzle + Postgres, React']);
+
+    for (const sensitive of ['saúde mental', 'ansiedade', 'personalidade']) {
+      expect(isAllowedCompetency(sensitive, catalog)).toBe(false);
+    }
+    expect(isAllowedCompetency('cobol', catalog)).toBe(false);
+  });
+});
