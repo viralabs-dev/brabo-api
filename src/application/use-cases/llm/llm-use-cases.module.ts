@@ -9,6 +9,7 @@ import { ListUserCredentialsUseCase } from './list-user-credentials.use-case';
 import { DeleteUserCredentialUseCase } from './delete-user-credential.use-case';
 import { UpsertBudgetUseCase } from './upsert-budget.use-case';
 import { GetBudgetUseCase } from './get-budget.use-case';
+import { GetSessionTokenUsageUseCase } from './get-session-token-usage.use-case';
 import { CheckBudgetGateUseCase } from './check-budget-gate.use-case';
 import { RecordLlmUsageUseCase } from './record-llm-usage.use-case';
 import { SendChatMessageUseCase } from './send-chat-message.use-case';
@@ -25,6 +26,7 @@ const USE_CASES = [
   DeleteUserCredentialUseCase,
   UpsertBudgetUseCase,
   GetBudgetUseCase,
+  GetSessionTokenUsageUseCase,
   CheckBudgetGateUseCase,
   RecordLlmUsageUseCase,
   SendChatMessageUseCase,

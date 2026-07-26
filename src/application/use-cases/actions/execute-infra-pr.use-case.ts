@@ -3,6 +3,7 @@ import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
 import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { GitProviderRegistry } from '../../ports/git-provider.port';
+import { GitBranchAlreadyExistsError } from '../../../domain/git/git-errors';
 import { ProvisionedRepositoryRepository } from '../../ports/provisioned-repository-repository.port';
 import { UserCredentialRepository } from '../../ports/user-credential-repository.port';
 import { EncryptionService } from '../../ports/encryption.port';
@@ -22,6 +23,31 @@ interface InfraPrPayload {
 }
 
 const INFRA_BRANCH = 'feature/infra-setup';
+
+/**
+ * Normaliza o `path` que o MODELO escolheu para cada arquivo.
+ *
+ * `commitFiles` do provider local passa o path direto pro `git update-index
+ * --cacheinfo`, que rejeita caminho absoluto — e o InfraAgent produziu
+ * `/api/Dockerfile` na execução do critério de aceite, derrubando a PR inteira
+ * com um `Command failed: git ... update-index` opaco (ADR 0021). Barra à
+ * esquerda é intenção inequívoca de "raiz do repo": normalizar é seguro.
+ *
+ * Travessia (`..`) NÃO é normalizada — é recusada, com mensagem clara. Aqui o
+ * conteúdo vem de um LLM, e escrever fora do repositório nunca é intenção
+ * legítima.
+ */
+export function normalizeInfraPath(path: string): string {
+  const limpo = path.trim().replace(/^\/+/, '');
+
+  if (limpo === '') {
+    throw new Error('arquivo de infra com `path` vazio');
+  }
+  if (limpo.split('/').includes('..')) {
+    throw new Error(`arquivo de infra com caminho de travessia: "${path}"`);
+  }
+  return limpo;
+}
 
 /**
  * Executa uma ação `open_infra_pr` aprovada (Fase 4a — InfraAgent): commita os
@@ -51,7 +77,22 @@ export class ExecuteInfraPrUseCase {
   ): Promise<ProposedAction> {
     const payload = action.payload as InfraPrPayload;
     const branch = INFRA_BRANCH;
-    const paths = payload.files.map((f) => f.path);
+    let files: InfraFilePayload[];
+    try {
+      files = payload.files.map((f) => ({
+        ...f,
+        path: normalizeInfraPath(f.path),
+      }));
+    } catch (error) {
+      return this.fail(
+        projectId,
+        sessionId,
+        action.id,
+        payload.files.map((f) => f.path),
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+    const paths = files.map((f) => f.path);
 
     try {
       const repo = await this.repositories.findByProjectId(projectId);
@@ -94,19 +135,29 @@ export class ExecuteInfraPrUseCase {
       const existing = await this.infraArtifacts.findBySessionId(sessionId);
 
       if (!existing) {
-        await provider.createBranch({
-          externalId: repo.externalId,
-          branchName: branch,
-          fromRef: repo.defaultBranch,
-          accessToken,
-        });
+        // Idempotente de propósito. A branch é criada ANTES do artefato
+        // existir (ele só é gravado no sucesso), então qualquer falha entre
+        // os dois — commit inválido, PR recusada — deixava a sessão
+        // PERMANENTEMENTE travada: sem artefato, toda tentativa seguinte caía
+        // aqui de novo e morria com "branch já existe". Visto na execução do
+        // critério de aceite, com 5 tentativas seguidas falhando (ADR 0021).
+        try {
+          await provider.createBranch({
+            externalId: repo.externalId,
+            branchName: branch,
+            fromRef: repo.defaultBranch,
+            accessToken,
+          });
+        } catch (error) {
+          if (!(error instanceof GitBranchAlreadyExistsError)) throw error;
+        }
       }
 
       await provider.commitFiles({
         externalId: repo.externalId,
         branch,
         message: `chore(infra): ${payload.title}`,
-        files: payload.files,
+        files,
         accessToken,
       });
 

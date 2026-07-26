@@ -16,6 +16,18 @@ export interface NewSessionEvent {
 export interface ListPaginatedOptions {
   afterSeq?: number;
   limit?: number;
+  /**
+   * Devolve os ÚLTIMOS `limit` eventos em vez dos primeiros (ainda em ordem
+   * crescente de `seq`, pra não mudar a leitura de quem consome).
+   *
+   * Existe porque o padrão — os PRIMEIROS N — congela toda leitura ao vivo
+   * assim que a sessão passa de `limit` eventos: o painel do time, a seção de
+   * execução e o feed de atividade ficavam derivando estado do COMEÇO da
+   * sessão pra sempre (ver ADR 0021). É opt-in por chamador: a paginação
+   * incremental via `afterSeq` continua sendo o caminho de quem varre a
+   * sessão inteira, e `latest` a ignora.
+   */
+  latest?: boolean;
 }
 
 export interface Page<T> {

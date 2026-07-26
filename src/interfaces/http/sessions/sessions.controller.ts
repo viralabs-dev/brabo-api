@@ -60,10 +60,12 @@ export class SessionsController {
     @Param('sessionId') sessionId: string,
     @Query('afterSeq') afterSeq?: string,
     @Query('limit') limit?: string,
+    @Query('latest') latest?: string,
   ) {
     return this.listSessionEvents.execute(projectId, sessionId, {
       afterSeq: afterSeq !== undefined ? Number(afterSeq) : undefined,
       limit: limit !== undefined ? Number(limit) : undefined,
+      latest: latest === 'true',
     });
   }
 
