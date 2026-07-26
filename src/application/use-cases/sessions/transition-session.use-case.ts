@@ -40,7 +40,14 @@ export class TransitionSessionUseCase {
         sessionId,
         to,
         terminal ? new Date() : current.closedAt,
-        terminal ? (terminationReason ?? null) : undefined,
+        // A causa é persistida sempre que informada, não só em estado
+        // terminal. O drain de shutdown do engine (Fase 5) transiciona para
+        // `closing` com causa `node_shutdown`, e é justamente esse campo que o
+        // TerminationClassifier do Psicólogo lê depois — descartá-lo aqui
+        // apagaria a única evidência de POR QUE a sessão fechou.
+        // `undefined` (nenhuma causa informada) continua não sobrescrevendo o
+        // que já estiver gravado.
+        terminationReason ?? (terminal ? null : undefined),
       );
 
       if (terminal) {
