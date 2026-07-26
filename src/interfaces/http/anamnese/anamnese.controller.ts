@@ -16,6 +16,7 @@ import {
 } from '../../../application/use-cases/anamnese/manage-proficiency.use-case';
 import { ListInstructionVersionsUseCase } from '../../../application/use-cases/instructions/list-instruction-versions.use-case';
 import { RollbackInstructionUseCase } from '../../../application/use-cases/instructions/rollback-instruction.use-case';
+import { ListProjectInstructionVersionsUseCase } from '../../../application/use-cases/instructions/list-instruction-versions.use-case';
 import { GetProjectEventUseCase } from '../../../application/use-cases/sessions/get-project-event.use-case';
 import { RunAnamneseUseCase } from '../../../application/use-cases/anamnese/run-anamnese.use-case';
 
@@ -34,6 +35,7 @@ export class AnamneseController {
     private readonly rollback: RollbackInstructionUseCase,
     private readonly getProjectEvent: GetProjectEventUseCase,
     private readonly runAnamnese: RunAnamneseUseCase,
+    private readonly listProjectVersions: ListProjectInstructionVersionsUseCase,
   ) {}
 
   /**
@@ -92,6 +94,17 @@ export class AnamneseController {
   @RequireRole('viewer')
   optInMine(@Param('projectId') projectId: string, @CurrentUser() user: User) {
     return this.optIn.execute(projectId, user.id);
+  }
+
+  /**
+   * Histórico de TODOS os agentes que têm versão neste projeto. A UI listava
+   * fazendo fan-out sobre um roster estático, e por isso nunca via os dev
+   * agents por módulo (`dev-api`) — os que existem de verdade.
+   */
+  @Get('instruction-versions')
+  @RequireRole('viewer')
+  allVersions(@Param('projectId') projectId: string) {
+    return this.listProjectVersions.execute(projectId);
   }
 
   @Get('agents/:agent/instruction-versions')

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
 import {
   AgentInstructionVersionRepository,
   type NewAgentInstructionVersion,
@@ -33,6 +33,16 @@ export class DrizzleAgentInstructionVersionRepository
       })
       .returning();
     return toEntity(row);
+  }
+
+  async listAgentsWithHistory(projectId: string): Promise<string[]> {
+    const db = currentDb(this.rootDb);
+    const rows = await db
+      .selectDistinct({ agent: agentInstructionVersions.agent })
+      .from(agentInstructionVersions)
+      .where(eq(agentInstructionVersions.projectId, projectId))
+      .orderBy(asc(agentInstructionVersions.agent));
+    return rows.map((r) => r.agent);
   }
 
   async listByAgent(
