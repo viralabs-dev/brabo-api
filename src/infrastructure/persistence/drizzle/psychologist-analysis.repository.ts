@@ -14,9 +14,7 @@ import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
 @Injectable()
-export class DrizzlePsychologistAnalysisRepository
-  implements PsychologistAnalysisRepository
-{
+export class DrizzlePsychologistAnalysisRepository implements PsychologistAnalysisRepository {
   constructor(@Inject(DRIZZLE) private readonly rootDb: DrizzleDb) {}
 
   async create(input: NewPsychologistAnalysis): Promise<PsychologistAnalysis> {

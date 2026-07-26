@@ -5,7 +5,11 @@ import { ExecutionUseCasesModule } from '../../../application/use-cases/executio
 import { BacklogController } from './backlog.controller';
 
 @Module({
-  imports: [BacklogUseCasesModule, ArchitectureUseCasesModule, ExecutionUseCasesModule],
+  imports: [
+    BacklogUseCasesModule,
+    ArchitectureUseCasesModule,
+    ExecutionUseCasesModule,
+  ],
   controllers: [BacklogController],
 })
 export class BacklogHttpModule {}

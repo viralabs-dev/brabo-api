@@ -152,8 +152,14 @@ const { db, pool } = createDrizzleClient();
       provide: ProficiencyProfileRepository,
       useClass: DrizzleProficiencyProfileRepository,
     },
-    { provide: AnamneseOptOutRepository, useClass: DrizzleAnamneseOptOutRepository },
-    { provide: AnamneseQueueRepository, useClass: DrizzleAnamneseQueueRepository },
+    {
+      provide: AnamneseOptOutRepository,
+      useClass: DrizzleAnamneseOptOutRepository,
+    },
+    {
+      provide: AnamneseQueueRepository,
+      useClass: DrizzleAnamneseQueueRepository,
+    },
     { provide: AnamneseRunRepository, useClass: DrizzleAnamneseRunRepository },
   ],
   exports: [

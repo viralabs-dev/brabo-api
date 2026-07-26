@@ -24,8 +24,7 @@ export interface ProficiencyDraft {
 }
 
 export type ProficiencyBatchValidation =
-  | { ok: true }
-  | { ok: false; reason: string };
+  { ok: true } | { ok: false; reason: string };
 
 /**
  * `catalog` vem de deriveCatalog(stacks) — é o guarda-corpo que impede
@@ -70,11 +69,17 @@ export function validateProficiencyBatch(
     }
 
     if (draft.rationale.trim() === '') {
-      return { ok: false, reason: `${label}: rationale vazio (os "porquês" são obrigatórios)` };
+      return {
+        ok: false,
+        reason: `${label}: rationale vazio (os "porquês" são obrigatórios)`,
+      };
     }
 
     if (draft.evidenceEventIds.length === 0) {
-      return { ok: false, reason: `${label}: sem evidência (evidenceEventIds vazio)` };
+      return {
+        ok: false,
+        reason: `${label}: sem evidência (evidenceEventIds vazio)`,
+      };
     }
 
     const invalidId = draft.evidenceEventIds.find(

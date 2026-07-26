@@ -97,10 +97,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     });
   }
 
-  async offerInfraHandoff(
-    projectId: string,
-    sessionId: string,
-  ): Promise<void> {
+  async offerInfraHandoff(projectId: string, sessionId: string): Promise<void> {
     await this.postCommand(
       `/internal/sessions/${sessionId}/agent/offer-infra-handoff`,
       { projectId },

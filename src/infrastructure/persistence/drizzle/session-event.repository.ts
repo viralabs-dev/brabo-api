@@ -120,7 +120,10 @@ export class DrizzleSessionEventRepository implements SessionEventRepository {
     },
   ): Promise<SessionEvent[]> {
     const db = currentDb(this.rootDb);
-    const limit = Math.min(opts.limit ?? WINDOW_DEFAULT_LIMIT, WINDOW_MAX_LIMIT);
+    const limit = Math.min(
+      opts.limit ?? WINDOW_DEFAULT_LIMIT,
+      WINDOW_MAX_LIMIT,
+    );
     const rows = await db
       .select()
       .from(sessionEvents)

@@ -22,16 +22,11 @@ export interface HypothesisDraft {
 }
 
 export type HypothesisBatchValidation =
-  | { ok: true }
-  | { ok: false; reason: string };
+  { ok: true } | { ok: false; reason: string };
 
 /** Causas classificadas pelo engine — ver TerminationClassifier. */
 export type TerminationCause =
-  | 'normal'
-  | 'timeout'
-  | 'kill'
-  | 'crash'
-  | 'unknown';
+  'normal' | 'timeout' | 'kill' | 'crash' | 'unknown';
 
 /**
  * Toda causa que não seja `normal` exige a seção de análise de término.
@@ -70,10 +65,15 @@ export function validateHypothesisBatch(
     const label = `hipótese #${i + 1} (${draft.agenteAlvo || '?'})`;
 
     if (draft.evidenceEventIds.length === 0) {
-      return { ok: false, reason: `${label}: sem evidência (evidenceEventIds vazio)` };
+      return {
+        ok: false,
+        reason: `${label}: sem evidência (evidenceEventIds vazio)`,
+      };
     }
 
-    const invalidId = draft.evidenceEventIds.find((id) => !knownEventIds.has(id));
+    const invalidId = draft.evidenceEventIds.find(
+      (id) => !knownEventIds.has(id),
+    );
     if (invalidId) {
       return {
         ok: false,
@@ -93,7 +93,10 @@ export function validateHypothesisBatch(
     }
   }
 
-  if (requiresTermination && !drafts.some((d) => d.terminationAnalysis != null)) {
+  if (
+    requiresTermination &&
+    !drafts.some((d) => d.terminationAnalysis != null)
+  ) {
     return {
       ok: false,
       reason:
