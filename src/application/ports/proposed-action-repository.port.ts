@@ -73,8 +73,9 @@ export abstract class ProposedActionRepository {
    *
    * "comandos que aprova/nega" é um dos quatro sinais que o enunciado pede
    * pra derivar proficiência, e ele não está no event log: decisão vive
-   * aqui, em `proposed_actions.decided_at`. Só linhas com decisor humano
-   * entram — uma recusa de política não diz nada sobre a pessoa.
+   * aqui, em `proposed_actions.decided_at`. O critério é ter DECISOR humano —
+   * uma recusa de política não diz nada sobre a pessoa, e uma aprovação que já
+   * executou (status `executed`) continua sendo uma decisão dela.
    */
   abstract listDecidedInWindow(
     projectId: string,

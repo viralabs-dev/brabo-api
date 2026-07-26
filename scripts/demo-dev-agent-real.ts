@@ -247,7 +247,9 @@ async function main() {
     });
     taskIds.push(t.id);
   }
-  log(`✓ module_map (${MODULOS.map((m) => m.name).join(', ')}) + 2 tasks reais`);
+  log(
+    `✓ module_map (${MODULOS.map((m) => m.name).join(', ')}) + 2 tasks reais`,
+  );
 
   // --- Ativação: DevAgent REAL ---
   log('\n--- ativando a execução (DevAgent real, LLM local) ---');

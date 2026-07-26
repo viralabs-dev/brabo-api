@@ -23,7 +23,10 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { eq, and, inArray } from 'drizzle-orm';
 import { AppModule } from '../src/app.module';
-import { DRIZZLE, type DrizzleDb } from '../src/infrastructure/persistence/drizzle/drizzle-client';
+import {
+  DRIZZLE,
+  type DrizzleDb,
+} from '../src/infrastructure/persistence/drizzle/drizzle-client';
 import {
   users,
   workspaces,
@@ -281,11 +284,13 @@ async function main() {
   await permissions.addPattern(project.id, 'allow', 'GitMerge()');
   log('✓ agent_autonomy=auto_approve E permissions.json allow GitMerge()');
 
-  const merge = await app.get(ProposeActionUseCase).execute(project.id, sessionId, {
-    actionType: 'git_merge',
-    actor: { kind: 'agent', id: 'dev-api' },
-    payload: { pullRequestId: '1', targetBranch: 'dev' },
-  });
+  const merge = await app
+    .get(ProposeActionUseCase)
+    .execute(project.id, sessionId, {
+      actionType: 'git_merge',
+      actor: { kind: 'agent', id: 'dev-api' },
+      payload: { pullRequestId: '1', targetBranch: 'dev' },
+    });
   log(`→ merge em "dev": status=${merge.status}`);
   if (merge.status === 'auto_approved') {
     throw new Error(

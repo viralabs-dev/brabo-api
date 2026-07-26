@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, gt, gte, inArray, isNotNull, lt } from 'drizzle-orm';
+import { and, asc, eq, gt, gte, isNotNull, lt } from 'drizzle-orm';
 import {
   ProposedActionRepository,
   type DecideProposedAction,
@@ -132,13 +132,17 @@ export class DrizzleProposedActionRepository implements ProposedActionRepository
       .where(
         and(
           eq(proposedActions.projectId, projectId),
-          // `decidedBy` não-nulo é o que separa decisão HUMANA de recusa de
-          // política (que também grava status 'denied', mas sem decisor).
+          // `decidedBy` não-nulo é O critério: separa decisão HUMANA de
+          // recusa de política (que também grava status 'denied', mas sem
+          // decisor) e de auto-aprovação.
+          //
+          // Sem filtro por status de propósito: uma ação aprovada que EXECUTOU
+          // fica com status 'executed'/'failed', não 'approved' — filtrar por
+          // 'approved' escondia justamente as aprovações que viraram algo.
           isNotNull(proposedActions.decidedBy),
           isNotNull(proposedActions.decidedAt),
           gte(proposedActions.decidedAt, from),
           lt(proposedActions.decidedAt, to),
-          inArray(proposedActions.status, ['approved', 'denied']),
         ),
       )
       .orderBy(asc(proposedActions.decidedAt));

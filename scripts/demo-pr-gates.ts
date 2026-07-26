@@ -221,7 +221,8 @@ function pareceres(
   return eventos
     .filter(
       (e) =>
-        e.type === 'artifact.qa_verdict' || e.type === 'artifact.secops_verdict',
+        e.type === 'artifact.qa_verdict' ||
+        e.type === 'artifact.secops_verdict',
     )
     .map((e) => {
       const p = e.payload as {
@@ -231,7 +232,10 @@ function pareceres(
       };
       return {
         seq: e.seq,
-        gate: e.type === 'artifact.qa_verdict' ? ('qa' as const) : ('secops' as const),
+        gate:
+          e.type === 'artifact.qa_verdict'
+            ? ('qa' as const)
+            : ('secops' as const),
         veredito: p.veredito ?? '?',
         resumo: p.resumo ?? '',
         itens: p.itens ?? [],
@@ -458,7 +462,10 @@ async function main() {
   ESPERADO.forEach((esperado, i) => {
     const obtido = obtidos[i];
     if (!obtido) return;
-    if (obtido.gate !== esperado.gate || obtido.veredito !== esperado.veredito) {
+    if (
+      obtido.gate !== esperado.gate ||
+      obtido.veredito !== esperado.veredito
+    ) {
       falhas.push(
         `parecer ${i + 1}: ${obtido.gate}/${obtido.veredito}, esperado ${esperado.gate}/${esperado.veredito}`,
       );
