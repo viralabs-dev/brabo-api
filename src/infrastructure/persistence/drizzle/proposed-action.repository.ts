@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, gt } from 'drizzle-orm';
+import { and, asc, eq, gt, gte, inArray, isNotNull, lt } from 'drizzle-orm';
 import {
   ProposedActionRepository,
   type DecideProposedAction,
@@ -118,6 +118,31 @@ export class DrizzleProposedActionRepository implements ProposedActionRepository
       items: page.map(toEntity),
       nextCursor: hasMore ? page[page.length - 1].seq : null,
     };
+  }
+
+  async listDecidedInWindow(
+    projectId: string,
+    from: Date,
+    to: Date,
+  ): Promise<ProposedAction[]> {
+    const db = currentDb(this.rootDb);
+    const rows = await db
+      .select()
+      .from(proposedActions)
+      .where(
+        and(
+          eq(proposedActions.projectId, projectId),
+          // `decidedBy` não-nulo é o que separa decisão HUMANA de recusa de
+          // política (que também grava status 'denied', mas sem decisor).
+          isNotNull(proposedActions.decidedBy),
+          isNotNull(proposedActions.decidedAt),
+          gte(proposedActions.decidedAt, from),
+          lt(proposedActions.decidedAt, to),
+          inArray(proposedActions.status, ['approved', 'denied']),
+        ),
+      )
+      .orderBy(asc(proposedActions.decidedAt));
+    return rows.map(toEntity);
   }
 
   async listByProjectAndType(

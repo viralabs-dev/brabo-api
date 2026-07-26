@@ -6,6 +6,7 @@ import { TransitionSessionUseCase } from './transition-session.use-case';
 import { AppendSessionEventUseCase } from './append-session-event.use-case';
 import { ListSessionEventsUseCase } from './list-session-events.use-case';
 import { GetSessionEventUseCase } from './get-session-event.use-case';
+import { GetProjectEventUseCase } from './get-project-event.use-case';
 import { ReportSessionTerminationUseCase } from './report-session-termination.use-case';
 import { EngineHttpClientsModule } from '../../../infrastructure/http-clients/engine-http-clients.module';
 
@@ -17,6 +18,7 @@ const USE_CASES = [
   AppendSessionEventUseCase,
   ListSessionEventsUseCase,
   GetSessionEventUseCase,
+  GetProjectEventUseCase,
   ReportSessionTerminationUseCase,
 ];
 

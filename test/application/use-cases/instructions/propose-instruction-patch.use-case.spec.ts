@@ -3,15 +3,15 @@ import { ProposeInstructionPatchUseCase } from '../../../../src/application/use-
 import type { AgentInstructionRepository } from '../../../../src/application/ports/agent-instruction-repository.port';
 import type { ProposedActionRepository } from '../../../../src/application/ports/proposed-action-repository.port';
 import type { ProposeActionUseCase } from '../../../../src/application/use-cases/actions/propose-action.use-case';
+import type { UnitOfWork } from '../../../../src/application/ports/unit-of-work.port';
+import type { PsychologistHypothesisRepository } from '../../../../src/application/ports/psychologist-hypothesis-repository.port';
+import type { AnamneseQueueRepository } from '../../../../src/application/ports/anamnese-repository.port';
 import type { ProposedAction } from '../../../../src/domain/actions/proposed-action.entity';
 
 const now = new Date();
 const CURRENT = 'Você é o dev-api.\nExplique cada conceito básico.\n';
 
-function deniedAction(
-  agent: string,
-  proposedContent: string,
-): ProposedAction {
+function deniedAction(agent: string, proposedContent: string): ProposedAction {
   return {
     id: 'act-denied',
     projectId: 'proj-1',
@@ -31,7 +31,12 @@ function deniedAction(
   };
 }
 
-function buildHarness(opts: { priorActions?: ProposedAction[] } = {}) {
+function buildHarness(
+  opts: {
+    priorActions?: ProposedAction[];
+    hypothesis?: { id: string; projectId: string } | null;
+  } = {},
+) {
   const instructions = {
     findByProjectAndAgent: () =>
       Promise.resolve({
@@ -56,13 +61,35 @@ function buildHarness(opts: { priorActions?: ProposedAction[] } = {}) {
     execute: proposeExecute,
   } as unknown as ProposeActionUseCase;
 
+  const unitOfWork = {
+    runInTransaction: (work: () => Promise<unknown>) => work(),
+  } as unknown as UnitOfWork;
+
+  const hypotheses = {
+    findById: () =>
+      Promise.resolve(
+        opts.hypothesis === undefined
+          ? { id: 'hyp-1', projectId: 'proj-1' }
+          : opts.hypothesis,
+      ),
+  } as unknown as PsychologistHypothesisRepository;
+
+  const markConsumedByHypothesis = vi.fn(() => Promise.resolve());
+  const queue = {
+    markConsumedByHypothesis,
+  } as unknown as AnamneseQueueRepository;
+
   return {
     useCase: new ProposeInstructionPatchUseCase(
+      unitOfWork,
       instructions,
       proposedActions,
+      hypotheses,
+      queue,
       proposeAction,
     ),
     proposeExecute,
+    markConsumedByHypothesis,
   };
 }
 

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import {
   AnamneseQueueRepository,
   AnamneseRunRepository,
@@ -42,13 +42,21 @@ export class DrizzleAnamneseQueueRepository implements AnamneseQueueRepository {
     return rows.map(toQueueEntry);
   }
 
-  async markConsumed(ids: string[]): Promise<void> {
-    if (ids.length === 0) return;
+  async markConsumedByHypothesis(
+    projectId: string,
+    hypothesisId: string,
+  ): Promise<void> {
     const db = currentDb(this.rootDb);
     await db
       .update(anamneseQueue)
       .set({ status: 'consumed', consumedAt: new Date() })
-      .where(inArray(anamneseQueue.id, ids));
+      .where(
+        and(
+          eq(anamneseQueue.projectId, projectId),
+          eq(anamneseQueue.hypothesisId, hypothesisId),
+          eq(anamneseQueue.status, 'pending'),
+        ),
+      );
   }
 }
 

@@ -11,6 +11,7 @@ import {
   AnamneseQueueRepository,
   AnamneseRunRepository,
 } from '../../ports/anamnese-repository.port';
+import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
 import { deriveCatalog } from '../../../domain/anamnese/competency-catalog';
 
 export interface AnamneseContextMember {
@@ -36,6 +37,19 @@ export interface AnamneseContextProfile {
   rationale: string;
 }
 
+/**
+ * Decisão do usuário sobre uma ação proposta, dentro da janela. É o quarto
+ * sinal do enunciado ("comandos que aprova/nega") — e o `rejectionReason` de
+ * uma negação é o mais rico deles: diz o que a pessoa achou errado.
+ */
+export interface AnamneseContextDecision {
+  actionType: string;
+  status: string;
+  rejectionReason: string | null;
+  decidedBy: string | null;
+  decidedAt: string | null;
+}
+
 export interface AnamneseContextInstruction {
   agent: string;
   version: number;
@@ -52,6 +66,9 @@ export interface AnamneseContext {
   queuedHypotheses: AnamneseContextQueued[];
   currentProfiles: AnamneseContextProfile[];
   instructions: AnamneseContextInstruction[];
+  // Aprovações/negações do usuário DENTRO da janela — não estão no event
+  // log, então vêm por aqui.
+  decisions: AnamneseContextDecision[];
   // Janela a analisar: do fim da última rodada até agora.
   windowFrom: string | null;
 }
@@ -72,6 +89,7 @@ export class GetAnamneseContextUseCase {
     private readonly optOuts: AnamneseOptOutRepository,
     private readonly queue: AnamneseQueueRepository,
     private readonly runs: AnamneseRunRepository,
+    private readonly proposedActions: ProposedActionRepository,
   ) {}
 
   async execute(projectId: string): Promise<AnamneseContext> {
@@ -87,6 +105,15 @@ export class GetAnamneseContextUseCase {
 
     const optedOutSet = new Set(optedOut);
     const eligible = members.filter((m) => !optedOutSet.has(m.userId));
+
+    // Mesma janela que o engine usa pro event log: do fim da última rodada
+    // (ou do início dos tempos, na primeira) até agora.
+    const windowFrom = lastRun ? lastRun.windowTo : new Date(0);
+    const decisions = await this.proposedActions.listDecidedInWindow(
+      projectId,
+      windowFrom,
+      new Date(),
+    );
 
     const catalog = deriveCatalog(
       (moduleMap?.modules ?? []).map((m) => m.stack),
@@ -116,6 +143,15 @@ export class GetAnamneseContextUseCase {
           rationale: p.rationale,
         })),
       instructions,
+      decisions: decisions
+        .filter((a) => !optedOutSet.has(a.decidedBy ?? ''))
+        .map((a) => ({
+          actionType: a.actionType,
+          status: a.status,
+          rejectionReason: a.rejectionReason,
+          decidedBy: a.decidedBy,
+          decidedAt: a.decidedAt ? a.decidedAt.toISOString() : null,
+        })),
       windowFrom: lastRun ? lastRun.windowTo.toISOString() : null,
     };
   }
