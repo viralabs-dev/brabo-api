@@ -22,12 +22,23 @@ export abstract class PsychologistHypothesisRepository {
     inputs: NewPsychologistHypothesis[],
   ): Promise<PsychologistHypothesis[]>;
   abstract findById(id: string): Promise<PsychologistHypothesis | null>;
-  abstract updateStatus(
+  /**
+   * Compare-and-swap: só sai de `proposed`. Devolve `null` quando a linha
+   * já foi decidida — a checagem no use case sozinha é read-then-write, e
+   * dois cliques simultâneos passavam os dois. Quem perde a corrida vira
+   * 400, não uma segunda transição silenciosa.
+   */
+  abstract updateStatusIfProposed(
     id: string,
     status: Extract<HypothesisStatus, 'accepted' | 'dismissed'>,
     decidedBy: string,
     decidedAt: Date,
-  ): Promise<PsychologistHypothesis>;
+  ): Promise<PsychologistHypothesis | null>;
+  // Quantas hipóteses cada análise rendeu, por analysisId — usado na faixa
+  // de análises do Insights (uma query, não N).
+  abstract countByAnalysisIds(
+    analysisIds: string[],
+  ): Promise<Record<string, number>>;
   // Hipóteses de análises CURRENT (não superseded) do projeto — pra
   // seção Insights da UI, agrupamento por agenteAlvo fica no front.
   abstract listCurrentByProject(

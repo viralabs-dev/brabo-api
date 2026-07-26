@@ -12,6 +12,18 @@ export interface PsychologistAnalysis {
   triggeredBy: PsychologistAnalysisTrigger;
   supersedes: string | null;
   superseded: boolean;
+  supersededAt: Date | null;
   eventCountAtAnalysis: number;
   createdAt: Date;
+}
+
+/**
+ * Análise + o que o critério de aceite precisa ver: o custo real em
+ * micro-USD somado de `token_usage` e quantas hipóteses ela rendeu. É o que
+ * torna "custos distintos entre triagem leve e pesada" verificável — antes o
+ * custo por análise era calculável mas não exposto por rota nenhuma.
+ */
+export interface PsychologistAnalysisWithCost extends PsychologistAnalysis {
+  costMicros: number;
+  hypothesisCount: number;
 }

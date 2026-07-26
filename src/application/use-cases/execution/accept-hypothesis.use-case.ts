@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { PsychologistHypothesisRepository } from '../../ports/psychologist-hypothesis-repository.port';
 import { AnamneseQueueRepository } from '../../ports/anamnese-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
@@ -16,12 +17,17 @@ import {
  * accepted. Emite `psychologist.hypothesis_accepted` (auditoria) e um
  * SEGUNDO evento, `psychologist.hypothesis_accepted_for_anamnese` (tipo
  * distinto, não uma flag no payload — trivialmente filtrável por um
- * futuro consumidor da Fase 4.6, que ainda não existe: só o ponto de
- * emissão nasce aqui).
+ * consumidor que só se interessa pelo loop fechado).
+ *
+ * Tudo numa transação: a transição, os dois eventos e o enfileiramento pra
+ * Anamnese. Em quatro transações separadas, um crash no meio deixava uma
+ * hipótese `accepted` que nunca chegou na fila — quebrando exatamente o
+ * loop fechado que o accept existe pra alimentar.
  */
 @Injectable()
 export class AcceptHypothesisUseCase {
   constructor(
+    private readonly unitOfWork: UnitOfWork,
     private readonly hypotheses: PsychologistHypothesisRepository,
     private readonly appendSessionEvent: AppendSessionEventUseCase,
     private readonly anamneseQueue: AnamneseQueueRepository,
@@ -33,6 +39,8 @@ export class AcceptHypothesisUseCase {
       throw new NotFoundException('Hipótese não encontrada');
     }
 
+    // Checagem antecipada só pra dar a mensagem de domínio boa; quem
+    // garante a exclusão mútua é o CAS abaixo.
     try {
       assertHypothesisTransition(hypothesis.status, 'accepted');
     } catch (error) {
@@ -42,36 +50,44 @@ export class AcceptHypothesisUseCase {
       throw error;
     }
 
-    const updated = await this.hypotheses.updateStatus(
-      hypothesisId,
-      'accepted',
-      userId,
-      new Date(),
-    );
+    return this.unitOfWork.runInTransaction(async () => {
+      const updated = await this.hypotheses.updateStatusIfProposed(
+        hypothesisId,
+        'accepted',
+        userId,
+        new Date(),
+      );
 
-    const payload = {
-      hypothesisId: updated.id,
-      agenteAlvo: updated.agenteAlvo,
-    };
+      if (!updated) {
+        throw new BadRequestException(
+          'hipótese já foi decidida (aceita ou descartada) por outra ação',
+        );
+      }
 
-    await this.appendSessionEvent.execute(projectId, updated.sessionId, {
-      type: 'psychologist.hypothesis_accepted',
-      actor: { kind: 'user', id: userId },
-      payload,
+      const payload = {
+        hypothesisId: updated.id,
+        agenteAlvo: updated.agenteAlvo,
+      };
+
+      await this.appendSessionEvent.execute(projectId, updated.sessionId, {
+        type: 'psychologist.hypothesis_accepted',
+        actor: { kind: 'user', id: userId },
+        payload,
+      });
+
+      await this.appendSessionEvent.execute(projectId, updated.sessionId, {
+        type: 'psychologist.hypothesis_accepted_for_anamnese',
+        actor: { kind: 'user', id: userId },
+        payload,
+      });
+
+      // Loop fechado (Fase 4b): a hipótese aceita vira input PRIORIZADO da
+      // próxima rodada da Anamnese. Enfileirar aqui é determinístico —
+      // não depende de rotear o outbox nem de o consumidor estar de pé.
+      // Idempotente por hypothesisId (unique + doNothing).
+      await this.anamneseQueue.enqueueHypothesis(projectId, updated.id);
+
+      return updated;
     });
-
-    await this.appendSessionEvent.execute(projectId, updated.sessionId, {
-      type: 'psychologist.hypothesis_accepted_for_anamnese',
-      actor: { kind: 'user', id: userId },
-      payload,
-    });
-
-    // Loop fechado (Fase 4b): a hipótese aceita vira input PRIORIZADO da
-    // próxima rodada da Anamnese. Enfileirar aqui é determinístico —
-    // não depende de rotear o outbox nem de o consumidor estar de pé.
-    // Idempotente por hypothesisId (unique + doNothing).
-    await this.anamneseQueue.enqueueHypothesis(projectId, updated.id);
-
-    return updated;
   }
 }

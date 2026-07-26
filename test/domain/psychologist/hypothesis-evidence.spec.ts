@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  requiresTerminationAnalysis,
   validateHypothesisBatch,
   type HypothesisDraft,
 } from '../../../src/domain/psychologist/hypothesis-evidence';
@@ -108,5 +109,26 @@ describe('validateHypothesisBatch', () => {
       true,
     );
     expect(result.ok).toBe(true);
+  });
+
+  describe('requiresTerminationAnalysis', () => {
+    it('causa != normal exige a seção, inclusive timeout', () => {
+      // O caso que escapava: heartbeat_timeout fecha a sessão como
+      // "closed" (decisão do Monitor), então olhar o STATUS nunca exigia a
+      // seção — mesmo o enunciado nomeando timeout ao lado de crash/kill.
+      expect(requiresTerminationAnalysis('timeout', false)).toBe(true);
+      expect(requiresTerminationAnalysis('kill', false)).toBe(true);
+      expect(requiresTerminationAnalysis('crash', false)).toBe(true);
+      expect(requiresTerminationAnalysis('unknown', false)).toBe(true);
+    });
+
+    it('causa normal não exige, mesmo que o status diga anormal', () => {
+      expect(requiresTerminationAnalysis('normal', true)).toBe(false);
+    });
+
+    it('sem causa (engine antigo) cai no status terminal', () => {
+      expect(requiresTerminationAnalysis(undefined, true)).toBe(true);
+      expect(requiresTerminationAnalysis(undefined, false)).toBe(false);
+    });
   });
 });

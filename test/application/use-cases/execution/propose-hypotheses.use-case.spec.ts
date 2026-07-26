@@ -58,6 +58,7 @@ function buildHarness(opts: {
   session?: Session | null;
   events?: Record<string, SessionEvent | undefined>;
   existingAnalysis?: PsychologistAnalysis | null;
+  createRejectsWith?: unknown;
 }) {
   const session = opts.session === undefined ? buildSession() : opts.session;
   const events = opts.events ?? { 'evt-1': buildEvent() };
@@ -78,17 +79,19 @@ function buildHarness(opts: {
 
   const markSuperseded = vi.fn(() => Promise.resolve());
   const create = vi.fn((input: Record<string, unknown>) =>
-    Promise.resolve({
-      id: 'analysis-1',
-      projectId: input.projectId,
-      sessionId: input.sessionId,
-      tier: input.tier,
-      triggeredBy: input.triggeredBy,
-      supersedes: input.supersedes ?? null,
-      superseded: false,
-      eventCountAtAnalysis: input.eventCountAtAnalysis,
-      createdAt: now,
-    }),
+    opts.createRejectsWith
+      ? Promise.reject(opts.createRejectsWith)
+      : Promise.resolve({
+          id: 'analysis-1',
+          projectId: input.projectId,
+          sessionId: input.sessionId,
+          tier: input.tier,
+          triggeredBy: input.triggeredBy,
+          supersedes: input.supersedes ?? null,
+          superseded: false,
+          eventCountAtAnalysis: input.eventCountAtAnalysis,
+          createdAt: now,
+        }),
   );
   const psychologistAnalyses = {
     findCurrentBySession: () => Promise.resolve(existingAnalysis),
@@ -238,6 +241,7 @@ describe('ProposeHypothesesUseCase', () => {
       triggeredBy: 'auto',
       supersedes: null,
       superseded: false,
+      supersededAt: null,
       eventCountAtAnalysis: 25,
       createdAt: now,
     };
@@ -265,5 +269,62 @@ describe('ProposeHypothesesUseCase', () => {
       }),
     );
     expect(result.analysisId).toBe('analysis-1');
+  });
+
+  it('causa timeout exige terminationAnalysis mesmo com a sessão fechada como closed', async () => {
+    // heartbeat_timeout fecha como "closed" por decisão do Monitor; quem
+    // manda é a CAUSA classificada pelo engine, não o status.
+    const { useCase, create } = buildHarness({
+      session: buildSession({
+        status: 'closed',
+        terminationReason: 'heartbeat_timeout',
+      }),
+    });
+
+    await expect(
+      useCase.execute('proj-1', 'sess-1', {
+        tier: 'leve',
+        triggeredBy: 'auto',
+        eventCount: 4,
+        cause: 'timeout',
+        hypotheses: [buildDraft({ terminationAnalysis: null })],
+      }),
+    ).rejects.toThrow(/terminationAnalysis/);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('causa normal não exige terminationAnalysis mesmo se o status disser anormal', async () => {
+    const { useCase, create } = buildHarness({
+      session: buildSession({ status: 'closed_abnormally' }),
+    });
+
+    await useCase.execute('proj-1', 'sess-1', {
+      tier: 'leve',
+      triggeredBy: 'auto',
+      eventCount: 4,
+      cause: 'normal',
+      hypotheses: [buildDraft({ terminationAnalysis: null })],
+    });
+
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it('corrida de análise concorrente: violação do índice único vira 409, não 500', async () => {
+    const { useCase } = buildHarness({
+      // O outro run inseriu entre o findCurrentBySession e o insert deste.
+      createRejectsWith: Object.assign(new Error('duplicate key value'), {
+        code: '23505',
+        constraint: 'psychologist_analyses_current_idx',
+      }),
+    });
+
+    await expect(
+      useCase.execute('proj-1', 'sess-1', {
+        tier: 'pesada',
+        triggeredBy: 'auto',
+        eventCount: 25,
+        hypotheses: [buildDraft()],
+      }),
+    ).rejects.toThrow(/análise current/i);
   });
 });

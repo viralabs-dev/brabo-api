@@ -81,6 +81,7 @@ describe('GetPsychologistContextUseCase', () => {
         triggeredBy: 'auto',
         supersedes: null,
         superseded: false,
+        supersededAt: null,
         eventCountAtAnalysis: 25,
         createdAt: now,
       },

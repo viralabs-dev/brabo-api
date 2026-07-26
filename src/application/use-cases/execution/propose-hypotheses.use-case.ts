@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -9,8 +10,14 @@ import { SessionEventRepository } from '../../ports/session-event-repository.por
 import { PsychologistAnalysisRepository } from '../../ports/psychologist-analysis-repository.port';
 import { PsychologistHypothesisRepository } from '../../ports/psychologist-hypothesis-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
-import { validateHypothesisBatch } from '../../../domain/psychologist/hypothesis-evidence';
-import type { HypothesisDraft } from '../../../domain/psychologist/hypothesis-evidence';
+import {
+  requiresTerminationAnalysis,
+  validateHypothesisBatch,
+} from '../../../domain/psychologist/hypothesis-evidence';
+import type {
+  HypothesisDraft,
+  TerminationCause,
+} from '../../../domain/psychologist/hypothesis-evidence';
 import type {
   PsychologistAnalysisTier,
   PsychologistAnalysisTrigger,
@@ -21,6 +28,10 @@ export interface ProposeHypothesesInput {
   tier: PsychologistAnalysisTier;
   triggeredBy: PsychologistAnalysisTrigger;
   eventCount: number;
+  // Classificada pelo engine a partir de sessions.termination_reason.
+  // Ausente = engine antigo; cai no status terminal (ver
+  // requiresTerminationAnalysis).
+  cause?: TerminationCause;
   hypotheses: HypothesisDraft[];
 }
 
@@ -70,13 +81,40 @@ export class ProposeHypothesesUseCase {
     const validation = validateHypothesisBatch(
       input.hypotheses,
       knownEventIds,
-      session.status === 'closed_abnormally',
+      requiresTerminationAnalysis(
+        input.cause,
+        session.status === 'closed_abnormally',
+      ),
     );
     if (!validation.ok) throw new BadRequestException(validation.reason);
 
     const actorId =
       input.tier === 'pesada' ? 'psicologo' : 'psicologo-leve';
 
+    try {
+      return await this.persist(projectId, sessionId, input, actorId);
+    } catch (error) {
+      // Duas análises `auto` concorrentes chegam aqui juntas: as duas veem
+      // "sem análise current" e as duas inserem. O índice parcial único
+      // (psychologist_analyses_current_idx) é a rede de segurança — o que
+      // faltava era traduzir a violação num conflito legível em vez de
+      // deixar escapar como 500. Quem perde a corrida não perde trabalho:
+      // a análise vencedora já está gravada.
+      if (isCurrentAnalysisConflict(error)) {
+        throw new ConflictException(
+          'esta sessão já tem uma análise current (corrida de análise concorrente)',
+        );
+      }
+      throw error;
+    }
+  }
+
+  private persist(
+    projectId: string,
+    sessionId: string,
+    input: ProposeHypothesesInput,
+    actorId: string,
+  ): Promise<ProposeHypothesesResult> {
     return this.unitOfWork.runInTransaction(async () => {
       const existing =
         await this.psychologistAnalyses.findCurrentBySession(sessionId);
@@ -160,4 +198,18 @@ export class ProposeHypothesesUseCase {
     );
     return known;
   }
+}
+
+// Violação do índice parcial único de análise current. Postgres devolve
+// 23505 com o nome da constraint; casar pelo NOME evita confundir com
+// qualquer outro unique que apareça na mesma transação.
+const CURRENT_ANALYSIS_INDEX = 'psychologist_analyses_current_idx';
+
+function isCurrentAnalysisConflict(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  const candidate = error as { code?: string; constraint?: string };
+  return (
+    candidate.code === '23505' &&
+    candidate.constraint === CURRENT_ANALYSIS_INDEX
+  );
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "psychologist_analyses" ADD COLUMN "superseded_at" timestamp with time zone;

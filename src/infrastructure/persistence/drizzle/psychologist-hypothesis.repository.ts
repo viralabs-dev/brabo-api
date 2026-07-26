@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, ne } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, ne } from 'drizzle-orm';
 import {
   PsychologistHypothesisRepository,
   type NewPsychologistHypothesis,
@@ -53,19 +53,44 @@ export class DrizzlePsychologistHypothesisRepository
     return row ? toEntity(row) : null;
   }
 
-  async updateStatus(
+  async updateStatusIfProposed(
     id: string,
     status: Extract<HypothesisStatus, 'accepted' | 'dismissed'>,
     decidedBy: string,
     decidedAt: Date,
-  ): Promise<PsychologistHypothesis> {
+  ): Promise<PsychologistHypothesis | null> {
     const db = currentDb(this.rootDb);
     const [row] = await db
       .update(psychologistHypotheses)
       .set({ status, decidedBy, decidedAt, updatedAt: new Date() })
-      .where(eq(psychologistHypotheses.id, id))
+      // O `status = 'proposed'` no WHERE é o que torna isto atômico: sem
+      // ele, dois accepts simultâneos passavam os dois pela checagem do use
+      // case e o segundo sobrescrevia a decisão do primeiro.
+      .where(
+        and(
+          eq(psychologistHypotheses.id, id),
+          eq(psychologistHypotheses.status, 'proposed'),
+        ),
+      )
       .returning();
-    return toEntity(row);
+    return row ? toEntity(row) : null;
+  }
+
+  async countByAnalysisIds(
+    analysisIds: string[],
+  ): Promise<Record<string, number>> {
+    if (analysisIds.length === 0) return {};
+    const db = currentDb(this.rootDb);
+    const rows = await db
+      .select({
+        analysisId: psychologistHypotheses.analysisId,
+        total: count(),
+      })
+      .from(psychologistHypotheses)
+      .where(inArray(psychologistHypotheses.analysisId, analysisIds))
+      .groupBy(psychologistHypotheses.analysisId);
+
+    return Object.fromEntries(rows.map((r) => [r.analysisId, Number(r.total)]));
   }
 
   async listCurrentByProject(
@@ -84,7 +109,10 @@ export class DrizzlePsychologistHypothesisRepository
           eq(psychologistHypotheses.projectId, projectId),
           eq(psychologistAnalyses.superseded, false),
         ),
-      );
+      )
+      // Ordem estável na UI — sem ORDER BY o Postgres não promete nada e o
+      // agrupamento do Insights trocava de ordem entre polls.
+      .orderBy(desc(psychologistHypotheses.createdAt));
     return rows.map((r) => toEntity(r.hypothesis));
   }
 
@@ -105,7 +133,8 @@ export class DrizzlePsychologistHypothesisRepository
           eq(psychologistAnalyses.superseded, false),
           ne(psychologistHypotheses.status, 'dismissed'),
         ),
-      );
+      )
+      .orderBy(desc(psychologistHypotheses.createdAt));
     return rows.map((r) => toEntity(r.hypothesis));
   }
 }

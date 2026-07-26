@@ -22,5 +22,10 @@ export abstract class PsychologistAnalysisRepository {
   abstract findCurrentBySession(
     sessionId: string,
   ): Promise<PsychologistAnalysis | null>;
+  // Análises current do projeto, mais recentes primeiro — alimenta a faixa
+  // de análises da seção Insights (tier + custo por sessão analisada).
+  abstract listCurrentByProject(
+    projectId: string,
+  ): Promise<PsychologistAnalysis[]>;
   abstract markSuperseded(id: string): Promise<void>;
 }

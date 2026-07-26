@@ -70,6 +70,15 @@ export class ProposeHypothesesInternalDto {
   @Min(0)
   eventCount!: number;
 
+  // Causa CLASSIFICADA pelo engine (Engine.Psychologist.TerminationClassifier)
+  // a partir de sessions.termination_reason — é ela, e não o status terminal,
+  // que decide se `terminationAnalysis` é obrigatória. Opcional pra não
+  // quebrar um engine mais antigo em rolling deploy: sem ela, o domínio cai
+  // no comportamento anterior (status === 'closed_abnormally').
+  @IsOptional()
+  @IsIn(['normal', 'timeout', 'kill', 'crash', 'unknown'])
+  cause?: 'normal' | 'timeout' | 'kill' | 'crash' | 'unknown';
+
   @IsArray()
   @ArrayNotEmpty()
   @ValidateNested({ each: true })
