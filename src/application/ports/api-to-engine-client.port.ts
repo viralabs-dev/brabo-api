@@ -2,7 +2,16 @@ import type { TerminalExecutionResult } from '../../domain/actions/terminal-exec
 import type { DevAgentImpl } from '../../domain/execution/dev-agent-impl';
 
 export abstract class ApiToEngineClient {
-  abstract startSession(sessionId: string, projectId: string): Promise<void>;
+  abstract startSession(
+    sessionId: string,
+    projectId: string,
+    /**
+     * `traceparent` da span raiz da sessão. O engine o guarda no próprio estado
+     * e pendura nele toda span de trabalho da sessão — é o que faz "uma sessão
+     * = uma trace" atravessar api e engine (Fase 5, item 3).
+     */
+    traceParent?: string | null,
+  ): Promise<void>;
 
   /**
    * Síncrono — espera o engine terminar de rodar o comando (ou estourar o

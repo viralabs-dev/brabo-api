@@ -5,6 +5,8 @@ export abstract class SessionRepository {
   abstract create(input: {
     projectId: string;
     createdBy: string;
+    /** `traceparent` W3C da span raiz da sessão — ver sessions.trace_parent. */
+    traceParent?: string | null;
   }): Promise<Session>;
 
   abstract findInProject(

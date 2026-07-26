@@ -77,7 +77,13 @@ export class TransitionSessionUseCase {
     if (!current) throw new NotFoundException('Sessão não encontrada');
     assertTransition(current.status, 'active');
 
-    await this.engineClient.startSession(sessionId, projectId);
+    // Passa o traceparent gravado na criação: é assim que o trabalho do engine
+    // continua na mesma trace da sessão, e não numa própria.
+    await this.engineClient.startSession(
+      sessionId,
+      projectId,
+      current.traceParent,
+    );
 
     return this.unitOfWork.runInTransaction(async () => {
       const locked = await this.sessions.findInProjectForUpdate(

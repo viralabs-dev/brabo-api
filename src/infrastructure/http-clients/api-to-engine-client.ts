@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { injectTraceHeaders } from '../observability/trace-context';
 import { ApiToEngineClient } from '../../application/ports/api-to-engine-client.port';
 import type { TerminalExecutionResult } from '../../domain/actions/terminal-execution-result';
 import type { DevAgentImpl } from '../../domain/execution/dev-agent-impl';
@@ -19,17 +20,18 @@ interface KeycloakTokenResponse {
 export class HttpApiToEngineClient implements ApiToEngineClient {
   private cachedToken: { token: string; expiresAt: number } | null = null;
 
-  async startSession(sessionId: string, projectId: string): Promise<void> {
+  async startSession(
+    sessionId: string,
+    projectId: string,
+    traceParent?: string | null,
+  ): Promise<void> {
     const token = await this.getToken();
     const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
 
     const res = await fetch(`${engineUrl}/internal/sessions`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ sessionId, projectId }),
+      headers: this.buildHeaders(token),
+      body: JSON.stringify({ sessionId, projectId, traceParent }),
     });
 
     if (!res.ok) {
@@ -51,10 +53,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
 
     const res = await fetch(`${engineUrl}/internal/actions/execute`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers: this.buildHeaders(token),
       body: JSON.stringify({ projectId, sessionId, actionId, command, cwd }),
     });
 
@@ -165,10 +164,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
 
     const res = await fetch(`${engineUrl}/internal/actions/execute-git`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers: this.buildHeaders(token),
       body: JSON.stringify({ projectId, sessionId, actionId, type, payload }),
     });
 
@@ -180,6 +176,21 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     return (await res.json()) as Record<string, unknown>;
   }
 
+  /**
+   * Headers de toda chamada api -> engine, num lugar só (Fase 5, item 3).
+   *
+   * Antes eram quatro blocos idênticos montados inline, e o `traceparent`
+   * teria que ser lembrado em cada um — o tipo de duplicação em que um
+   * esquecimento não quebra nada, só produz uma trace partida que ninguém
+   * relaciona ao endpoint que faltou.
+   */
+  private buildHeaders(token: string): Record<string, string> {
+    return injectTraceHeaders({
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
   private async postCommand(
     path: string,
     body: Record<string, unknown>,
@@ -189,10 +200,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
 
     const res = await fetch(`${engineUrl}${path}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers: this.buildHeaders(token),
       body: JSON.stringify(body),
     });
 

@@ -14,6 +14,7 @@ export class DrizzleSessionRepository implements SessionRepository {
   async create(input: {
     projectId: string;
     createdBy: string;
+    traceParent?: string | null;
   }): Promise<Session> {
     const db = currentDb(this.rootDb);
     const [row] = await db.insert(sessions).values(input).returning();
