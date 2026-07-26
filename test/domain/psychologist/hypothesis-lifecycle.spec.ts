@@ -6,11 +6,15 @@ import {
 
 describe('assertHypothesisTransition', () => {
   it('proposed -> accepted é legal', () => {
-    expect(() => assertHypothesisTransition('proposed', 'accepted')).not.toThrow();
+    expect(() =>
+      assertHypothesisTransition('proposed', 'accepted'),
+    ).not.toThrow();
   });
 
   it('proposed -> dismissed é legal', () => {
-    expect(() => assertHypothesisTransition('proposed', 'dismissed')).not.toThrow();
+    expect(() =>
+      assertHypothesisTransition('proposed', 'dismissed'),
+    ).not.toThrow();
   });
 
   it('accepted -> accepted (double-accept) é ilegal', () => {

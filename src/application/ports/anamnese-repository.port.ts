@@ -16,7 +16,23 @@ export abstract class AnamneseQueueRepository {
     hypothesisId: string,
   ): Promise<void>;
   abstract listPending(projectId: string): Promise<AnamneseQueueEntry[]>;
-  abstract markConsumed(ids: string[]): Promise<void>;
+  /**
+   * Marca consumida a entrada da hipótese — chamado quando um
+   * `instruction_patch` que a referencia é PROPOSTO, não quando a rodada
+   * termina.
+   *
+   * Antes o engine mandava a lista de ids consumidos junto dos perfis, o
+   * que queimava a hipótese mesmo numa rodada que não gerou patch nenhum:
+   * o loop fechado morria em silêncio e nada re-enfileirava. Consumo agora
+   * é CONSEQUÊNCIA do patch existir, não uma alegação do modelo.
+   *
+   * `projectId` no filtro fecha a porta de uma chamada marcar consumida a
+   * fila de outro projeto. No-op se não houver entrada pendente.
+   */
+  abstract markConsumedByHypothesis(
+    projectId: string,
+    hypothesisId: string,
+  ): Promise<void>;
 }
 
 export interface AnamneseRun {

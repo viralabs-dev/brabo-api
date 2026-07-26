@@ -269,3 +269,68 @@ describe('decide — restrição de terminal do InfraAgent (Fase 4a)', () => {
     expect(result.policy).toBe('auto_approve');
   });
 });
+
+describe('decide — teto do patch de instrução (Fase 4b)', () => {
+  // Mesma classe de garantia da trava de merge, e por isso testada do mesmo
+  // jeito: o valor da feature está no humano ver o diff. Auto-aprovar seria o
+  // agente reescrevendo a si mesmo.
+  const patch = { actionType: 'instruction_patch' as const };
+
+  it('agent_autonomy auto_approve NÃO consegue auto-aprovar patch de instrução', () => {
+    const result = decide(
+      patch,
+      ctx({ effectiveRole: 'maintainer', autonomyMode: 'auto_approve' }),
+    );
+    expect(result.policy).toBe('require_approval');
+    expect(result.reason).toMatch(/nunca é auto-aprovável/);
+  });
+
+  it('permissions.json allow NÃO consegue auto-aprovar patch de instrução', () => {
+    const result = decide(
+      patch,
+      ctx({
+        effectiveRole: 'maintainer',
+        permissionsFile: {
+          ...EMPTY_PERMISSIONS_FILE,
+          allow: ['InstructionPatch()'],
+        },
+      }),
+    );
+    expect(result.policy).toBe('require_approval');
+  });
+
+  it('autonomy e permissions JUNTOS não sobrescrevem o teto', () => {
+    const result = decide(
+      patch,
+      ctx({
+        effectiveRole: 'maintainer',
+        autonomyMode: 'auto_approve',
+        permissionsFile: {
+          ...EMPTY_PERMISSIONS_FILE,
+          allow: ['InstructionPatch()'],
+        },
+      }),
+    );
+    expect(result.policy).toBe('require_approval');
+  });
+
+  it('deny ainda vence o teto — negar continua acima de pedir aprovação', () => {
+    const result = decide(
+      patch,
+      ctx({
+        effectiveRole: 'maintainer',
+        autonomyMode: 'auto_approve',
+        permissionsFile: {
+          ...EMPTY_PERMISSIONS_FILE,
+          deny: ['InstructionPatch()'],
+        },
+      }),
+    );
+    expect(result.policy).toBe('deny');
+  });
+
+  it('papel abaixo de maintainer nega o patch', () => {
+    const result = decide(patch, ctx({ effectiveRole: 'developer' }));
+    expect(result.policy).toBe('deny');
+  });
+});

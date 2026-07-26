@@ -33,11 +33,13 @@ function buildHypothesis(
   };
 }
 
-function buildHarness(opts: {
-  hypothesis?: PsychologistHypothesis | null;
-  // false simula a corrida: o CAS não casa porque outra ação já decidiu.
-  casWins?: boolean;
-} = {}) {
+function buildHarness(
+  opts: {
+    hypothesis?: PsychologistHypothesis | null;
+    // false simula a corrida: o CAS não casa porque outra ação já decidiu.
+    casWins?: boolean;
+  } = {},
+) {
   const hypothesis =
     opts.hypothesis === undefined ? buildHypothesis() : opts.hypothesis;
   const casWins = opts.casWins ?? true;

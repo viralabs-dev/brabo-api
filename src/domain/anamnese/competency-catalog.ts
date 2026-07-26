@@ -46,16 +46,46 @@ export function normalizeCompetency(name: string): string {
   return name.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
+// Separadores com que o Arquiteto costuma listar mais de uma tecnologia no
+// mesmo campo `stack` ("NestJS + Drizzle + Postgres", "React 19, Vite").
+const STACK_SEPARATORS = /[+,/&]/;
+
+/**
+ * Quebra uma `stack` de texto livre nas tecnologias que ela lista.
+ *
+ * `ModuleMapModule.stack` é UMA string escrita pelo Arquiteto (ver
+ * module-graph.ts), e na prática ela lista várias tecnologias. Sem quebrar,
+ * o catálogo ganhava só a frase inteira — então a emissão natural
+ * ("nestjs") caía fora do catálogo e o LOTE INTEIRO era rejeitado, deixando
+ * a Anamnese incapaz de gravar perfil em qualquer projeto realista.
+ *
+ * A frase inteira CONTINUA no catálogo: quem escreveu "Node.js" (um token
+ * só, com ponto) não pode deixar de valer.
+ *
+ * Token de 1 caractere é descartado — não é competência, e alargar o
+ * catálogo com ruído é exatamente o que o guarda-corpo não pode fazer.
+ */
+function tokenizeStack(stack: string): string[] {
+  const inteira = normalizeCompetency(stack);
+  if (inteira === '') return [];
+
+  const tokens = inteira
+    .split(STACK_SEPARATORS)
+    .map((t) => normalizeCompetency(t))
+    .filter((t) => t.length > 1);
+
+  return [inteira, ...tokens];
+}
+
 /**
  * Catálogo permitido = stacks do module_map vigente (normalizadas,
- * deduplicadas) + as competências de processo. Sem module_map, sobram só
- * as de processo — a Anamnese ainda funciona, com escopo menor.
+ * tokenizadas, deduplicadas) + as competências de processo. Sem module_map,
+ * sobram só as de processo — a Anamnese ainda funciona, com escopo menor.
  */
 export function deriveCatalog(stacks: string[]): Set<string> {
   const catalog = new Set<string>(PROCESS_COMPETENCIES);
   for (const stack of stacks) {
-    const normalized = normalizeCompetency(stack);
-    if (normalized !== '') catalog.add(normalized);
+    for (const competency of tokenizeStack(stack)) catalog.add(competency);
   }
   return catalog;
 }

@@ -3,14 +3,20 @@ import { ProposeInstructionPatchUseCase } from '../../../../src/application/use-
 import type { AgentInstructionRepository } from '../../../../src/application/ports/agent-instruction-repository.port';
 import type { ProposedActionRepository } from '../../../../src/application/ports/proposed-action-repository.port';
 import type { ProposeActionUseCase } from '../../../../src/application/use-cases/actions/propose-action.use-case';
+import type { UnitOfWork } from '../../../../src/application/ports/unit-of-work.port';
+import type { PsychologistHypothesisRepository } from '../../../../src/application/ports/psychologist-hypothesis-repository.port';
+import type { AnamneseQueueRepository } from '../../../../src/application/ports/anamnese-repository.port';
 import type { ProposedAction } from '../../../../src/domain/actions/proposed-action.entity';
 
 const now = new Date();
 const CURRENT = 'Você é o dev-api.\nExplique cada conceito básico.\n';
 
+const DENIED_CONTENT = 'Você é o dev-api.\nSeja direto e assuma senioridade.\n';
+
 function deniedAction(
   agent: string,
   proposedContent: string,
+  decidedBy: string | null = 'user-1',
 ): ProposedAction {
   return {
     id: 'act-denied',
@@ -22,7 +28,7 @@ function deniedAction(
     status: 'denied',
     resolvedPolicy: 'require_approval',
     actor: { kind: 'agent', id: 'anamnese' },
-    decidedBy: 'user-1',
+    decidedBy,
     decidedAt: now,
     rejectionReason: 'não concordo',
     executionResult: null,
@@ -31,7 +37,12 @@ function deniedAction(
   };
 }
 
-function buildHarness(opts: { priorActions?: ProposedAction[] } = {}) {
+function buildHarness(
+  opts: {
+    priorActions?: ProposedAction[];
+    hypothesis?: { id: string; projectId: string } | null;
+  } = {},
+) {
   const instructions = {
     findByProjectAndAgent: () =>
       Promise.resolve({
@@ -56,13 +67,35 @@ function buildHarness(opts: { priorActions?: ProposedAction[] } = {}) {
     execute: proposeExecute,
   } as unknown as ProposeActionUseCase;
 
+  const unitOfWork = {
+    runInTransaction: (work: () => Promise<unknown>) => work(),
+  } as unknown as UnitOfWork;
+
+  const hypotheses = {
+    findById: () =>
+      Promise.resolve(
+        opts.hypothesis === undefined
+          ? { id: 'hyp-1', projectId: 'proj-1' }
+          : opts.hypothesis,
+      ),
+  } as unknown as PsychologistHypothesisRepository;
+
+  const markConsumedByHypothesis = vi.fn(() => Promise.resolve());
+  const queue = {
+    markConsumedByHypothesis,
+  } as unknown as AnamneseQueueRepository;
+
   return {
     useCase: new ProposeInstructionPatchUseCase(
+      unitOfWork,
       instructions,
       proposedActions,
+      hypotheses,
+      queue,
       proposeAction,
     ),
     proposeExecute,
+    markConsumedByHypothesis,
   };
 }
 
@@ -179,5 +212,78 @@ describe('ProposeInstructionPatchUseCase', () => {
         rationale: 'vazio',
       }),
     ).rejects.toThrow(/vazio/);
+  });
+
+  it('patch barrado por POLÍTICA pode ser reproposto', async () => {
+    // `ProposeActionUseCase` grava status 'denied' SEM decisor quando o
+    // `decide` recusa (papel baixo, permissions.json). Tratar isso como
+    // negação humana condenava o conteúdo pra sempre, sem ninguém ver o diff.
+    const { useCase, proposeExecute } = buildHarness({
+      priorActions: [deniedAction('dev-api', DENIED_CONTENT, null)],
+    });
+
+    await useCase.execute('proj-1', 'sess-1', {
+      agent: 'dev-api',
+      proposedContent: DENIED_CONTENT,
+      rationale: 'de novo, agora com papel certo',
+    });
+
+    expect(proposeExecute).toHaveBeenCalledTimes(1);
+  });
+
+  it('patch negado pelo USUÁRIO continua bloqueado', async () => {
+    const { useCase, proposeExecute } = buildHarness({
+      priorActions: [deniedAction('dev-api', DENIED_CONTENT, 'user-9')],
+    });
+
+    await expect(
+      useCase.execute('proj-1', 'sess-1', {
+        agent: 'dev-api',
+        proposedContent: DENIED_CONTENT,
+        rationale: 'repetindo o que já foi negado',
+      }),
+    ).rejects.toThrow(/já foi negado/);
+    expect(proposeExecute).not.toHaveBeenCalled();
+  });
+
+  it('hipótese de origem inexistente no projeto é recusada', async () => {
+    // Um id alucinado seguia até `source_hypothesis_id` e apontava pra nada,
+    // quebrando a rastreabilidade que o loop fechado promete.
+    const { useCase, proposeExecute } = buildHarness({ hypothesis: null });
+
+    await expect(
+      useCase.execute('proj-1', 'sess-1', {
+        agent: 'dev-api',
+        proposedContent: 'Você é o dev-api.\nSeja direto.\n',
+        rationale: 'x',
+        hypothesisId: 'hyp-inventada',
+      }),
+    ).rejects.toThrow(/não existe neste projeto/);
+    expect(proposeExecute).not.toHaveBeenCalled();
+  });
+
+  it('propor com hipótese CONSOME a entrada da fila (consumo segue o patch)', async () => {
+    const { useCase, markConsumedByHypothesis } = buildHarness();
+
+    await useCase.execute('proj-1', 'sess-1', {
+      agent: 'dev-api',
+      proposedContent: 'Você é o dev-api.\nSeja direto.\n',
+      rationale: 'x',
+      hypothesisId: 'hyp-1',
+    });
+
+    expect(markConsumedByHypothesis).toHaveBeenCalledWith('proj-1', 'hyp-1');
+  });
+
+  it('propor SEM hipótese não mexe na fila', async () => {
+    const { useCase, markConsumedByHypothesis } = buildHarness();
+
+    await useCase.execute('proj-1', 'sess-1', {
+      agent: 'dev-api',
+      proposedContent: 'Você é o dev-api.\nSeja direto.\n',
+      rationale: 'x',
+    });
+
+    expect(markConsumedByHypothesis).not.toHaveBeenCalled();
   });
 });

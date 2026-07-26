@@ -25,7 +25,9 @@ describe('OllamaProvider (transporte)', () => {
     handler: Parameters<typeof createServer>[1],
   ): Promise<string> {
     server = createServer(handler);
-    await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve));
+    await new Promise<void>((resolve) =>
+      server!.listen(0, '127.0.0.1', resolve),
+    );
     const { port } = server.address() as AddressInfo;
     return `http://127.0.0.1:${port}`;
   }

@@ -109,7 +109,8 @@ function pareceres(
   return eventos
     .filter(
       (e) =>
-        e.type === 'artifact.qa_verdict' || e.type === 'artifact.secops_verdict',
+        e.type === 'artifact.qa_verdict' ||
+        e.type === 'artifact.secops_verdict',
     )
     .filter((e) => (e.payload as { prActionId?: string }).prActionId)
     .map((e) => {
@@ -121,7 +122,9 @@ function pareceres(
       return {
         seq: e.seq,
         gate:
-          e.type === 'artifact.qa_verdict' ? ('qa' as const) : ('secops' as const),
+          e.type === 'artifact.qa_verdict'
+            ? ('qa' as const)
+            : ('secops' as const),
         veredito: p.veredito ?? '?',
         resumo: p.resumo ?? '',
         itens: p.itens ?? [],
@@ -202,7 +205,9 @@ async function main() {
     projectId: project.id,
     createdBy: user.id,
   });
-  await app.get(TransitionSessionUseCase).execute(project.id, session.id, 'active');
+  await app
+    .get(TransitionSessionUseCase)
+    .execute(project.id, session.id, 'active');
 
   await moduleMaps.create({
     projectId: project.id,
@@ -218,14 +223,19 @@ async function main() {
     actor: { kind: 'agent', id: 'arquiteto' },
     payload: ADR_INFRA,
   });
-  log(`✓ module_map (${MODULOS.map((m) => m.name).join(', ')}) + ADR infraRelevant`);
+  log(
+    `✓ module_map (${MODULOS.map((m) => m.name).join(', ')}) + ADR infraRelevant`,
+  );
 
   // --- Handoff arquiteto → infra, aceito pelo usuário ---
   // O aceite é o que seeda a autonomia (open_infra_pr auto_approve, terminal
   // deny) e ativa o agente — o mesmo caminho da UI.
   const handoff = await app
     .get(CreateHandoffUseCase)
-    .execute(project.id, session.id, { fromAgent: 'arquiteto', toAgent: 'infra' });
+    .execute(project.id, session.id, {
+      fromAgent: 'arquiteto',
+      toAgent: 'infra',
+    });
 
   log('\n--- aceitando o handoff (ativa o InfraAgent) ---');
   await app
@@ -293,10 +303,13 @@ async function main() {
     );
 
   const arquivos =
-    (prAction?.payload as { files?: { path: string }[] } | undefined)?.files ?? [];
+    (prAction?.payload as { files?: { path: string }[] } | undefined)?.files ??
+    [];
   if (prAction) {
     const r = prAction.executionResult as Record<string, unknown> | null;
-    log(`\nPR: ${String(r?.pullRequestUrl ?? '-')} (status=${prAction.status})`);
+    log(
+      `\nPR: ${String(r?.pullRequestUrl ?? '-')} (status=${prAction.status})`,
+    );
     log(`arquivos: ${arquivos.map((f) => f.path).join(', ') || '(nenhum)'}`);
   }
 
@@ -316,7 +329,9 @@ async function main() {
   if (!temDockerfile) falhas.push('a PR não tem nenhum Dockerfile');
 
   if (artefato?.blocked) {
-    falhas.push(`artefato bloqueado: ${artefato.blockedReason ?? '(sem motivo)'}`);
+    falhas.push(
+      `artefato bloqueado: ${artefato.blockedReason ?? '(sem motivo)'}`,
+    );
   }
   if (artefato?.gateStatus !== 'awaiting_user') {
     falhas.push(
@@ -337,10 +352,14 @@ async function main() {
   // que é exatamente o defeito que o ADR 0021 corrigiu.
   const resumoQa = obtidos.find((p) => p.gate === 'qa')?.resumo ?? '';
   if (resumoQa.includes('hadolint indisponível')) {
-    falhas.push('hadolint ausente no engine — o gate de QA aprovou sem validar');
+    falhas.push(
+      'hadolint ausente no engine — o gate de QA aprovou sem validar',
+    );
   }
   if (resumoQa.includes('yamllint indisponível')) {
-    falhas.push('yamllint ausente no engine — compose e CI não foram validados');
+    falhas.push(
+      'yamllint ausente no engine — compose e CI não foram validados',
+    );
   }
 
   await app.close();

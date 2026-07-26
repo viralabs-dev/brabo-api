@@ -1,4 +1,11 @@
-import { Controller, Delete, Get, Param, Post } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+} from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { User } from '../../../domain/iam/user.entity';
 import { RequireRole } from '../iam/require-role.decorator';
@@ -9,6 +16,9 @@ import {
 } from '../../../application/use-cases/anamnese/manage-proficiency.use-case';
 import { ListInstructionVersionsUseCase } from '../../../application/use-cases/instructions/list-instruction-versions.use-case';
 import { RollbackInstructionUseCase } from '../../../application/use-cases/instructions/rollback-instruction.use-case';
+import { ListProjectInstructionVersionsUseCase } from '../../../application/use-cases/instructions/list-instruction-versions.use-case';
+import { GetProjectEventUseCase } from '../../../application/use-cases/sessions/get-project-event.use-case';
+import { RunAnamneseUseCase } from '../../../application/use-cases/anamnese/run-anamnese.use-case';
 
 /**
  * Superfície humana da Anamnese (Fase 4b): perfil de proficiência
@@ -23,12 +33,47 @@ export class AnamneseController {
     private readonly optIn: SetAnamneseOptInUseCase,
     private readonly listVersions: ListInstructionVersionsUseCase,
     private readonly rollback: RollbackInstructionUseCase,
+    private readonly getProjectEvent: GetProjectEventUseCase,
+    private readonly runAnamnese: RunAnamneseUseCase,
+    private readonly listProjectVersions: ListProjectInstructionVersionsUseCase,
   ) {}
 
+  /**
+   * Roda a Anamnese agora, sem esperar o tick de 15 min. `maintainer` pelo
+   * mesmo motivo da reanálise do Psicólogo: roda o ToolLoop e gasta orçamento.
+   */
+  @Post('anamnese/run')
+  @RequireRole('maintainer')
+  run(@Param('projectId') projectId: string) {
+    return this.runAnamnese.execute(projectId);
+  }
+
+  /**
+   * O próprio perfil por default; a visão agregada do time só para quem
+   * administra o projeto (owner/maintainer). Perfil de competência é dado
+   * SOBRE a pessoa — o default menos surpreendente é ela ver o dela.
+   */
   @Get('proficiency')
   @RequireRole('viewer')
-  proficiency(@Param('projectId') projectId: string) {
-    return this.listProfiles.execute(projectId);
+  proficiency(
+    @Param('projectId') projectId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.listProfiles.execute(projectId, user.id);
+  }
+
+  /**
+   * Um evento do log pelo id, resolvendo a sessão dele — é o que faz o chip
+   * de evidência do perfil chegar no evento certo, já que a janela da
+   * Anamnese atravessa várias sessões.
+   */
+  @Get('events/:eventId')
+  @RequireRole('viewer')
+  event(
+    @Param('projectId') projectId: string,
+    @Param('eventId') eventId: string,
+  ) {
+    return this.getProjectEvent.execute(projectId, eventId);
   }
 
   /**
@@ -36,19 +81,30 @@ export class AnamneseController {
    * o opt-out a rodada seguinte re-derivaria tudo e o apagar seria
    * cosmético.
    */
+  // `viewer`, não `developer`: a perfilagem cobre TODOS os membros do
+  // projeto, então exigir `developer` aqui deixava um viewer perfilado sem
+  // poder apagar o próprio perfil — 403 num direito que o enunciado dá.
   @Delete('proficiency/me')
-  @RequireRole('developer')
-  deleteMine(
-    @Param('projectId') projectId: string,
-    @CurrentUser() user: User,
-  ) {
+  @RequireRole('viewer')
+  deleteMine(@Param('projectId') projectId: string, @CurrentUser() user: User) {
     return this.deleteProfile.execute(projectId, user.id);
   }
 
   @Post('proficiency/me/opt-in')
-  @RequireRole('developer')
+  @RequireRole('viewer')
   optInMine(@Param('projectId') projectId: string, @CurrentUser() user: User) {
     return this.optIn.execute(projectId, user.id);
+  }
+
+  /**
+   * Histórico de TODOS os agentes que têm versão neste projeto. A UI listava
+   * fazendo fan-out sobre um roster estático, e por isso nunca via os dev
+   * agents por módulo (`dev-api`) — os que existem de verdade.
+   */
+  @Get('instruction-versions')
+  @RequireRole('viewer')
+  allVersions(@Param('projectId') projectId: string) {
+    return this.listProjectVersions.execute(projectId);
   }
 
   @Get('agents/:agent/instruction-versions')
@@ -72,6 +128,10 @@ export class AnamneseController {
     @Param('version') version: string,
     @CurrentUser() user: User,
   ) {
-    return this.rollback.execute(projectId, agent, Number(version), user.id);
+    const parsed = Number(version);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      throw new BadRequestException(`versão inválida: "${version}"`);
+    }
+    return this.rollback.execute(projectId, agent, parsed, user.id);
   }
 }

@@ -51,10 +51,6 @@ export class RecordProficiencyInternalDto {
   @ValidateNested({ each: true })
   @Type(() => ProficiencyDraftDto)
   profiles!: ProficiencyDraftDto[];
-
-  @IsArray()
-  @IsUUID('4', { each: true })
-  consumedQueueIds!: string[];
 }
 
 export class ProposeInstructionPatchInternalDto {

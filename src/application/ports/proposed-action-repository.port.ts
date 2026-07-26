@@ -68,6 +68,20 @@ export abstract class ProposedActionRepository {
     projectId: string,
     actionType: string,
   ): Promise<ProposedAction[]>;
+  /**
+   * Ações DECIDIDAS pelo usuário numa janela de tempo (Fase 4b — Anamnese).
+   *
+   * "comandos que aprova/nega" é um dos quatro sinais que o enunciado pede
+   * pra derivar proficiência, e ele não está no event log: decisão vive
+   * aqui, em `proposed_actions.decided_at`. O critério é ter DECISOR humano —
+   * uma recusa de política não diz nada sobre a pessoa, e uma aprovação que já
+   * executou (status `executed`) continua sendo uma decisão dela.
+   */
+  abstract listDecidedInWindow(
+    projectId: string,
+    from: Date,
+    to: Date,
+  ): Promise<ProposedAction[]>;
   abstract listPaginated(
     sessionId: string,
     opts: ListProposedActionsOptions,

@@ -1,12 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { ulid } from 'ulid';
 import { createTestDb, truncateAll } from '../../support/test-db';
-import {
-  projects,
-  sessions,
-  users,
-  workspaces,
-} from '../../../src/db/schema';
+import { projects, sessions, users, workspaces } from '../../../src/db/schema';
 import { DrizzleSessionEventRepository } from '../../../src/infrastructure/persistence/drizzle/session-event.repository';
 
 const { db, pool } = createTestDb();
@@ -75,7 +70,10 @@ describe('DrizzleSessionEventRepository.listPaginated — latest (Fase 4a)', () 
     const sessionId = await seedSession();
     await seedEvents(sessionId, 10);
 
-    const page = await repo.listPaginated(sessionId, { limit: 3, latest: true });
+    const page = await repo.listPaginated(sessionId, {
+      limit: 3,
+      latest: true,
+    });
 
     expect(page.items.map((e) => e.seq)).toEqual([8, 9, 10]);
   });
@@ -84,7 +82,10 @@ describe('DrizzleSessionEventRepository.listPaginated — latest (Fase 4a)', () 
     const sessionId = await seedSession();
     await seedEvents(sessionId, 10);
 
-    const page = await repo.listPaginated(sessionId, { limit: 3, latest: true });
+    const page = await repo.listPaginated(sessionId, {
+      limit: 3,
+      latest: true,
+    });
 
     expect(page.nextCursor).toBeNull();
   });

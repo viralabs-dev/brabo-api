@@ -68,17 +68,17 @@ describe('GetSessionEventUseCase', () => {
       event: buildEvent({ sessionId: 'sess-outra' }),
     });
 
-    await expect(
-      useCase.execute('proj-1', 'sess-1', 'evt-1'),
-    ).rejects.toThrow(/Evento não encontrado/i);
+    await expect(useCase.execute('proj-1', 'sess-1', 'evt-1')).rejects.toThrow(
+      /Evento não encontrado/i,
+    );
   });
 
   it('evento inexistente: 404', async () => {
     const useCase = buildHarness({ event: null });
 
-    await expect(
-      useCase.execute('proj-1', 'sess-1', 'evt-x'),
-    ).rejects.toThrow(/Evento não encontrado/i);
+    await expect(useCase.execute('proj-1', 'sess-1', 'evt-x')).rejects.toThrow(
+      /Evento não encontrado/i,
+    );
   });
 
   it('sessão fora do projeto: 404 antes de buscar o evento', async () => {

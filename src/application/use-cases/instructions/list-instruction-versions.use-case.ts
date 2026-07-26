@@ -69,3 +69,30 @@ function toView(
     diff: diffLines(previous?.content ?? '', version.content),
   };
 }
+
+/**
+ * Histórico de TODOS os agentes que têm versão neste projeto, agrupado por
+ * agente. A UI usava um roster estático pra descobrir de quem pedir histórico,
+ * e assim nunca via os dev agents por módulo (`dev-api`) — que são os que
+ * existem de verdade e os que a Anamnese patcheia.
+ */
+@Injectable()
+export class ListProjectInstructionVersionsUseCase {
+  constructor(
+    private readonly versionRepo: AgentInstructionVersionRepository,
+    private readonly listForAgent: ListInstructionVersionsUseCase,
+  ) {}
+
+  async execute(
+    projectId: string,
+  ): Promise<{ agent: string; versions: InstructionVersionView[] }[]> {
+    const agents = await this.versionRepo.listAgentsWithHistory(projectId);
+
+    return Promise.all(
+      agents.map(async (agent) => ({
+        agent,
+        versions: await this.listForAgent.execute(projectId, agent),
+      })),
+    );
+  }
+}

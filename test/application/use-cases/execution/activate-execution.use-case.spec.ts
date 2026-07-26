@@ -17,7 +17,10 @@ const MODULOS = [
   { name: 'web', stack: 'React', responsibility: 'ui', dependsOn: ['api'] },
 ];
 
-function build(opts?: { projectBudget?: number | null; modules?: typeof MODULOS }) {
+function build(opts?: {
+  projectBudget?: number | null;
+  modules?: typeof MODULOS;
+}) {
   const started: {
     budget?: number;
     maxCorrections?: number;
@@ -29,8 +32,7 @@ function build(opts?: { projectBudget?: number | null; modules?: typeof MODULOS 
   const eventos: { type: string; payload: Record<string, unknown> }[] = [];
 
   const moduleMaps = {
-    findCurrent: () =>
-      Promise.resolve({ modules: opts?.modules ?? MODULOS }),
+    findCurrent: () => Promise.resolve({ modules: opts?.modules ?? MODULOS }),
   } as unknown as ModuleMapRepository;
 
   const sessions = {
@@ -89,7 +91,11 @@ function build(opts?: { projectBudget?: number | null; modules?: typeof MODULOS 
   } as unknown as TransitionSessionUseCase;
 
   const appendEvent = {
-    execute: (_p: string, _s: string, e: { type: string; payload: Record<string, unknown> }) => {
+    execute: (
+      _p: string,
+      _s: string,
+      e: { type: string; payload: Record<string, unknown> },
+    ) => {
       eventos.push(e);
       return Promise.resolve({});
     },

@@ -23,6 +23,7 @@
     "demo:pr-gates": "ts-node scripts/demo-pr-gates.ts",
     "demo:infra-agent": "ts-node scripts/demo-infra-agent.ts",
     "demo:psicologo": "ts-node scripts/demo-psicologo.ts",
+    "demo:anamnese": "ts-node scripts/demo-anamnese.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },

@@ -29,7 +29,9 @@ function buildArtifact(overrides: Partial<InfraArtifact> = {}): InfraArtifact {
   };
 }
 
-function buildPrAction(overrides: Partial<ProposedAction> = {}): ProposedAction {
+function buildPrAction(
+  overrides: Partial<ProposedAction> = {},
+): ProposedAction {
   return {
     id: 'action-1',
     projectId: 'proj-1',
@@ -61,8 +63,10 @@ function buildHarness(opts: {
   prAction?: ProposedAction | null;
   repo?: ProvisionedRepository | null;
 }) {
-  const artifact = opts.artifact === undefined ? buildArtifact() : opts.artifact;
-  const prAction = opts.prAction === undefined ? buildPrAction() : opts.prAction;
+  const artifact =
+    opts.artifact === undefined ? buildArtifact() : opts.artifact;
+  const prAction =
+    opts.prAction === undefined ? buildPrAction() : opts.prAction;
   const repo =
     opts.repo === undefined
       ? ({
@@ -80,7 +84,11 @@ function buildHarness(opts: {
       : opts.repo;
 
   const updateGateStatus = vi.fn(
-    (id: string, gateStatus: InfraArtifact['gateStatus'], correctionCount: number) =>
+    (
+      id: string,
+      gateStatus: InfraArtifact['gateStatus'],
+      correctionCount: number,
+    ) =>
       Promise.resolve({
         ...(artifact as InfraArtifact),
         gateStatus,
@@ -137,7 +145,9 @@ function buildHarness(opts: {
 
 describe('RecordInfraGateVerdictUseCase', () => {
   it('QA aprovado: avança pro secops, comenta a PR', async () => {
-    const { useCase, updateGateStatus, commentOnPullRequest } = buildHarness({});
+    const { useCase, updateGateStatus, commentOnPullRequest } = buildHarness(
+      {},
+    );
 
     const result = await useCase.execute('proj-1', 'sess-1', {
       prActionId: 'action-1',
@@ -148,7 +158,11 @@ describe('RecordInfraGateVerdictUseCase', () => {
     });
 
     expect(result.nextAction).toBe('run_secops');
-    expect(updateGateStatus).toHaveBeenCalledWith('artifact-1', 'awaiting_secops', 0);
+    expect(updateGateStatus).toHaveBeenCalledWith(
+      'artifact-1',
+      'awaiting_secops',
+      0,
+    );
     expect(commentOnPullRequest).toHaveBeenCalledWith(
       expect.objectContaining({ pullRequestId: 'pr-1' }),
     );
@@ -188,13 +202,18 @@ describe('RecordInfraGateVerdictUseCase', () => {
     );
 
     expect(result.nextAction).toBe('correct');
-    expect(updateGateStatus).toHaveBeenCalledWith('artifact-1', 'awaiting_qa', 1);
+    expect(updateGateStatus).toHaveBeenCalledWith(
+      'artifact-1',
+      'awaiting_qa',
+      1,
+    );
   });
 
   it('changes_requested estourando o teto: bloqueia via MarkInfraArtifactBlockedUseCase', async () => {
-    const { useCase, markInfraArtifactBlockedExecute, updateGateStatus } = buildHarness({
-      artifact: buildArtifact({ gateCorrectionCount: 3 }),
-    });
+    const { useCase, markInfraArtifactBlockedExecute, updateGateStatus } =
+      buildHarness({
+        artifact: buildArtifact({ gateCorrectionCount: 3 }),
+      });
 
     const result = await useCase.execute(
       'proj-1',

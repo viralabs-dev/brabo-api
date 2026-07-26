@@ -499,7 +499,6 @@ export class InternalSessionsController {
       windowTo: new Date(dto.windowTo),
       eventCount: dto.eventCount,
       profiles: dto.profiles,
-      consumedQueueIds: dto.consumedQueueIds,
     });
   }
 

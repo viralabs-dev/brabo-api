@@ -39,7 +39,9 @@ function action(
 const unitOfWork = {
   runInTransaction: <T>(fn: () => Promise<T>) => fn(),
 } as never;
-const outbox = { append: () => Promise.resolve() } as unknown as OutboxRepository;
+const outbox = {
+  append: () => Promise.resolve(),
+} as unknown as OutboxRepository;
 const append = {
   execute: () => Promise.resolve({}),
 } as unknown as AppendSessionEventUseCase;
@@ -48,7 +50,10 @@ const encryption = {} as unknown as EncryptionService;
 
 class FakeProposedActions {
   saved: { status: string; result: unknown } | null = null;
-  updateExecutionResult(_id: string, input: { status: string; executionResult: unknown }) {
+  updateExecutionResult(
+    _id: string,
+    input: { status: string; executionResult: unknown },
+  ) {
     this.saved = { status: input.status, result: input.executionResult };
     return Promise.resolve(action('git_commit', {}));
   }
@@ -118,7 +123,11 @@ describe('ExecuteGitActionUseCase', () => {
     await uc.execute(
       PROJECT,
       SESSION,
-      action('pr_open', { sourceBranch: 'feature/x', targetBranch: 'main', title: 'X' }),
+      action('pr_open', {
+        sourceBranch: 'feature/x',
+        targetBranch: 'main',
+        title: 'X',
+      }),
     );
     expect(proposedActions.saved?.status).toBe('executed');
     expect(proposedActions.saved?.result).toMatchObject({

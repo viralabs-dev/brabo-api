@@ -4,13 +4,17 @@ import { EngineHttpClientsModule } from '../../../infrastructure/http-clients/en
 import { ActionsUseCasesModule } from '../actions/actions-use-cases.module';
 import { ApplyInstructionVersionService } from './apply-instruction-version.service';
 import { RollbackInstructionUseCase } from './rollback-instruction.use-case';
-import { ListInstructionVersionsUseCase } from './list-instruction-versions.use-case';
+import {
+  ListInstructionVersionsUseCase,
+  ListProjectInstructionVersionsUseCase,
+} from './list-instruction-versions.use-case';
 import { ProposeInstructionPatchUseCase } from './propose-instruction-patch.use-case';
 
 const USE_CASES = [
   ApplyInstructionVersionService,
   RollbackInstructionUseCase,
   ListInstructionVersionsUseCase,
+  ListProjectInstructionVersionsUseCase,
   ProposeInstructionPatchUseCase,
 ];
 
