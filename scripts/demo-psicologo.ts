@@ -25,18 +25,23 @@
  * cenário (resgate do job órfão pelo Oban.Plugins.Lifeline) e se verifica à
  * mão — ver ADR 0022.
  *
- * SOBRE OS PREÇOS: os dois modelos ollama são semeados com preço ZERO, e
- * custo zero nos dois tiers não provaria nada. O script atribui preços
- * nominais distintos a eles (o seed diz explicitamente que preço é
- * editável) e liga cada tier a um. O custo continua saindo do caminho real
- * — RunLlmTurnUseCase grava `token_usage.cost_micros` do preço do modelo —
- * sem nenhum mecanismo de custo paralelo.
+ * SOBRE OS PREÇOS: os modelos ollama são semeados com preço ZERO, e custo zero
+ * nos dois tiers não provaria nada. O script atribui preços nominais distintos
+ * (o seed diz explicitamente que preço é editável) e liga cada tier a um. O
+ * custo continua saindo do caminho real — RunLlmTurnUseCase grava
+ * `token_usage.cost_micros` do preço do modelo — sem nenhum mecanismo de custo
+ * paralelo. Ver o comentário de MODELO_PESADO pro porquê da cópia no Ollama.
  *
  * EFEITOS EM DADOS COMPARTILHADOS (é um script de dev, não de produção): os
  * bindings de `psicologo`/`psicologo-leve` são agent-scoped, ou seja
  * GLOBAIS — rodar isto re-aponta os dois tiers pros modelos locais em todo o
- * ambiente, e os preços dos dois modelos ollama mudam. Rode `pnpm --filter
- * api seed` pra voltar ao estado semeado.
+ * ambiente, e os preços desses modelos mudam. Rode `pnpm --filter api seed`
+ * pra voltar ao estado semeado.
+ *
+ * SOBRE O TETO DE ITERAÇÕES: o default do tier leve (4) foi calibrado pensando
+ * em modelo forte. Um 7B local costuma gastar tentativas hallucinando event id
+ * (e sendo corretamente rejeitado) antes de acertar, então rodando local vale
+ * subir `PSYCHOLOGIST_MAX_ITERATIONS_LEVE` no engine — o knob existe pra isso.
  */
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
@@ -68,20 +73,36 @@ import type { PsychologistAnalysisWithCost } from '../src/domain/psychologist/ps
 import type { PsychologistHypothesis } from '../src/domain/psychologist/psychologist-hypothesis.entity';
 
 // Modelo do tier LEVE (mais barato) e do PESADO. Sobrescrevíveis pra rodar
-// contra provider pago, onde os preços já divergem de verdade.
+// contra provider pago, onde os preços já divergem sem truque nenhum.
 //
-// OS DOIS precisam sustentar tool call com argumento estruturado — as 3
-// sessões têm que render hipótese válida, então nenhum tier pode receber um
-// modelo que não fecha o `emit_hypotheses`. É por isso que o `llama3.2:1b`
-// (que o compose baixa por padrão) NÃO é o default do tier leve: a lição do
-// ADR 0020 é que ele não sustenta tool calling. O tier leve é "mais barato",
-// não "burro".
+// OS DOIS precisam sustentar tool call com argumento estruturado: as 3 sessões
+// têm que render hipótese válida, então nenhum tier pode receber um modelo que
+// não fecha o `emit_hypotheses`. Medido nesta stack: `llama3.2:1b` e
+// `llama3.1:8b` NÃO chamam a tool (o 1b é a lição do ADR 0020; o 8b gastou as
+// 4 iterações do tier e nunca emitiu). Sobra o `qwen2.5-coder:7b`, que é o
+// mesmo motivo de ele rodar os dev agents.
+//
+// Só que os dois tiers precisam de PREÇOS diferentes, e `models` tem unique
+// (provider, name) — não dá pra ter duas linhas de preço pro mesmo modelo.
+// Daí o `qwen-psicologo-pesado`: uma CÓPIA do qwen no Ollama (mesmos pesos,
+// outro nome), criada por `garantirCopiaOllama` abaixo. Assim os dois tiers
+// são igualmente capazes e o custo diverge pelo preço, que é o que o critério
+// de aceite mede. Num provider pago isto não é necessário.
 const MODELO_LEVE = process.env.DEMO_MODEL_LEVE ?? 'qwen2.5-coder:7b';
-const MODELO_PESADO = process.env.DEMO_MODEL_PESADO ?? 'llama3.1:8b';
+const MODELO_PESADO =
+  process.env.DEMO_MODEL_PESADO ?? 'qwen-psicologo-pesado:latest';
 
-// Preços nominais em micro-USD por 1M tokens — só precisam DIFERIR.
-const PRECO_LEVE = { input: 100_000, output: 400_000 };
-const PRECO_PESADO = { input: 3_000_000, output: 15_000_000 };
+// Origem da cópia acima. Vazio desliga a cópia (provider pago).
+const COPIA_OLLAMA_ORIGEM =
+  process.env.DEMO_OLLAMA_COPY_FROM ?? 'qwen2.5-coder:7b';
+const OLLAMA_HOST = process.env.OLLAMA_HOST ?? 'http://ollama:11434';
+
+// Preços nominais em micro-USD por 1M tokens. Precisam DIFERIR bem (30x aqui,
+// pra a diferença ser óbvia no relatório) e, ao mesmo tempo, caber no
+// `token_budget_micros` DEFAULT de cada tier — inflar o preço até estourar o
+// orçamento só provaria que o enforcement funciona, não que o custo diverge.
+const PRECO_LEVE = { input: 10_000, output: 40_000 };
+const PRECO_PESADO = { input: 300_000, output: 1_500_000 };
 
 // Triagem: menos de 20 eventos -> leve (Engine.Psychologist.Triage). As
 // contagens abaixo ficam de propósito longe da fronteira.
@@ -112,6 +133,39 @@ function exigir(condicao: boolean, mensagem: string) {
 
 async function esperar(ms: number) {
   await new Promise((r) => setTimeout(r, ms));
+}
+
+/**
+ * Garante que o modelo do tier pesado existe no Ollama como cópia do modelo
+ * capaz. Idempotente (a cópia já existir é sucesso). Só roda quando os dois
+ * nomes diferem e a origem está configurada — num provider pago não faz nada.
+ */
+async function garantirCopiaOllama() {
+  if (!COPIA_OLLAMA_ORIGEM || MODELO_PESADO === COPIA_OLLAMA_ORIGEM) return;
+
+  const tags = await fetch(`${OLLAMA_HOST}/api/tags`);
+  const { models: servidos } = (await tags.json()) as {
+    models: { name: string }[];
+  };
+  if (servidos.some((m) => m.name === MODELO_PESADO)) {
+    log(`✓ ollama já serve ${MODELO_PESADO}`);
+    return;
+  }
+
+  const resp = await fetch(`${OLLAMA_HOST}/api/copy`, {
+    method: 'POST',
+    body: JSON.stringify({
+      source: COPIA_OLLAMA_ORIGEM,
+      destination: MODELO_PESADO,
+    }),
+  });
+  if (!resp.ok) {
+    throw new Error(
+      `Não foi possível copiar ${COPIA_OLLAMA_ORIGEM} -> ${MODELO_PESADO} no Ollama (${resp.status}). ` +
+        `Confira que a origem está baixada (\`ollama pull ${COPIA_OLLAMA_ORIGEM}\`).`,
+    );
+  }
+  log(`✓ ollama: ${MODELO_PESADO} copiado de ${COPIA_OLLAMA_ORIGEM}`);
 }
 
 /** Conversa plausível — é o material sobre o qual o Psicólogo opina. */
@@ -236,6 +290,8 @@ async function main() {
       .where(eq(models.id, modelo.id));
     return modelo;
   }
+
+  await garantirCopiaOllama();
 
   const modeloLeve = await prepararModelo(MODELO_LEVE, PRECO_LEVE);
   const modeloPesado = await prepararModelo(MODELO_PESADO, PRECO_PESADO);
