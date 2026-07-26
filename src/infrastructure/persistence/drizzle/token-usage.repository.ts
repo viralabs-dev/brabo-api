@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import {
   TokenUsageRepository,
+  type AgentTokenUsage,
   type RecordTokenUsageInput,
 } from '../../../application/ports/token-usage-repository.port';
 import type { TokenUsage } from '../../../domain/llm/token-usage.entity';
@@ -66,5 +67,28 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
         ),
       );
     return Number(result?.total ?? 0);
+  }
+
+  async sumBySessionGroupedByActor(
+    sessionId: string,
+  ): Promise<AgentTokenUsage[]> {
+    const db = currentDb(this.rootDb);
+    const rows = await db
+      .select({
+        actorId: tokenUsage.actorId,
+        costMicros: sql<string>`coalesce(sum(${tokenUsage.costMicros}), 0)`,
+        inputTokens: sql<string>`coalesce(sum(${tokenUsage.inputTokens}), 0)`,
+        outputTokens: sql<string>`coalesce(sum(${tokenUsage.outputTokens}), 0)`,
+      })
+      .from(tokenUsage)
+      .where(eq(tokenUsage.sessionId, sessionId))
+      .groupBy(tokenUsage.actorId);
+
+    return rows.map((row) => ({
+      actorId: row.actorId,
+      costMicros: Number(row.costMicros),
+      inputTokens: Number(row.inputTokens),
+      outputTokens: Number(row.outputTokens),
+    }));
   }
 }

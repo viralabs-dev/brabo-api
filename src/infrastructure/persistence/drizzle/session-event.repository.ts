@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, gt, gte, lt } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, lt } from 'drizzle-orm';
 import {
   SessionEventRepository,
   type ListPaginatedOptions,
@@ -49,8 +49,23 @@ export class DrizzleSessionEventRepository implements SessionEventRepository {
     const db = currentDb(this.rootDb);
     const limit = Math.min(opts.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
     const conditions = [eq(sessionEvents.sessionId, sessionId)];
-    if (opts.afterSeq !== undefined) {
+    if (opts.afterSeq !== undefined && !opts.latest) {
       conditions.push(gt(sessionEvents.seq, opts.afterSeq));
+    }
+
+    // `latest`: pega do fim pelo banco e reverte na memória, pra devolver
+    // sempre em ordem crescente. `nextCursor` é null porque não existe página
+    // "mais recente" que a última — quem precisa varrer a sessão inteira usa
+    // `afterSeq`, não isto.
+    if (opts.latest) {
+      const rows = await db
+        .select()
+        .from(sessionEvents)
+        .where(and(...conditions))
+        .orderBy(desc(sessionEvents.seq))
+        .limit(limit);
+
+      return { items: rows.reverse().map(toEntity), nextCursor: null };
     }
 
     const rows = await db
