@@ -18,6 +18,12 @@ async function bootstrap() {
     new DomainTransitionErrorFilter(),
     new GitProviderErrorFilter(),
   );
+  // Sem isto o SIGTERM mata o processo direto e o `onModuleDestroy` do
+  // DrizzleModule nunca roda: o pool do Postgres fica com conexões abertas do
+  // lado do servidor a cada rollout ou scale-down. Em Docker isso passava
+  // despercebido (o container inteiro sumia); em Kubernetes, onde replicaset e
+  // HPA reciclam pods o tempo todo, vira vazamento acumulado no banco.
+  app.enableShutdownHooks();
   await app.listen(process.env.PORT ?? 3000);
 }
 void bootstrap();
