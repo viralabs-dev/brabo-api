@@ -1,12 +1,36 @@
 import { Body, Controller, Get, Param, Put } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { RequireRole } from '../iam/require-role.decorator';
 import { UpsertBudgetUseCase } from '../../../application/use-cases/llm/upsert-budget.use-case';
 import { GetBudgetUseCase } from '../../../application/use-cases/llm/get-budget.use-case';
 import { GetSessionTokenUsageUseCase } from '../../../application/use-cases/llm/get-session-token-usage.use-case';
 import { UpsertBudgetDto } from './dto/upsert-budget.dto';
+import { BEARER } from '../../../infrastructure/openapi/documento';
+import {
+  AgentTokenUsageResponseDto,
+  BudgetResponseDto,
+} from './dto/llm.response.dto';
 
 const MICROS_PER_USD = 1_000_000;
 
+/**
+ * Teto de gasto por projeto e por sessão.
+ *
+ * A ENTRADA fala em dólar (é o que uma pessoa digita); tudo o mais fala em
+ * micro-USD. Preço de token é da ordem de 10⁻⁶ e somar float nessa escala
+ * acumula erro que aparece na fatura.
+ */
+@ApiTags('llm')
+@ApiBearerAuth(BEARER)
+@ApiForbiddenResponse({ description: 'Papel insuficiente no projeto.' })
+@ApiNotFoundResponse({ description: 'Projeto ou sessão inexistente.' })
 @Controller()
 export class BudgetsController {
   constructor(
@@ -17,12 +41,25 @@ export class BudgetsController {
 
   @Get('projects/:projectId/budget')
   @RequireRole('maintainer')
+  @ApiOperation({
+    summary: 'Lê o orçamento do projeto e o quanto já foi gasto',
+    description:
+      'Valores em micro-USD. Exige `maintainer` — é informação de custo.',
+  })
+  @ApiOkResponse({ type: BudgetResponseDto })
   getProjectBudget(@Param('projectId') projectId: string) {
     return this.getBudget.execute('project', projectId);
   }
 
   @Put('projects/:projectId/budget')
   @RequireRole('maintainer')
+  @ApiOperation({
+    summary: 'Define o teto de gasto do projeto',
+    description:
+      'O limite entra em DÓLARES e é convertido para micro-USD. Com `policy=block` ' +
+      'a chamada que estouraria o teto é RECUSADA, não apenas registrada.',
+  })
+  @ApiOkResponse({ type: BudgetResponseDto })
   setProjectBudget(
     @Param('projectId') projectId: string,
     @Body() dto: UpsertBudgetDto,
@@ -35,6 +72,12 @@ export class BudgetsController {
 
   @Get('projects/:projectId/sessions/:sessionId/budget')
   @RequireRole('developer')
+  @ApiOperation({
+    summary: 'Lê o orçamento da sessão e o gasto acumulado',
+    description:
+      'É o que alimenta o medidor de tokens ao vivo da tela de sessão.',
+  })
+  @ApiOkResponse({ type: BudgetResponseDto })
   getSessionBudget(@Param('sessionId') sessionId: string) {
     return this.getBudget.execute('session', sessionId);
   }
@@ -44,12 +87,26 @@ export class BudgetsController {
   // papel exigido.
   @Get('projects/:projectId/sessions/:sessionId/token-usage')
   @RequireRole('developer')
+  @ApiOperation({
+    summary: 'Quebra o gasto da sessão por agente',
+    description:
+      'O dado sempre esteve em `token_usage`, mas sem agregação nem rota o painel do ' +
+      'time não tinha como mostrar o custo por card. Mesmo papel exigido do ' +
+      'orçamento da sessão.',
+  })
+  @ApiOkResponse({ type: [AgentTokenUsageResponseDto] })
   getSessionTokenUsage(@Param('sessionId') sessionId: string) {
     return this.getSessionTokenUsageUseCase.execute(sessionId);
   }
 
   @Put('projects/:projectId/sessions/:sessionId/budget')
   @RequireRole('developer')
+  @ApiOperation({
+    summary: 'Define o teto de gasto da sessão',
+    description:
+      'Mesma conversão de dólar para micro-USD do orçamento de projeto.',
+  })
+  @ApiOkResponse({ type: BudgetResponseDto })
   setSessionBudget(
     @Param('sessionId') sessionId: string,
     @Body() dto: UpsertBudgetDto,
