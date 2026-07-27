@@ -24,7 +24,7 @@ function buildSession(overrides: Partial<Session> = {}): Session {
     updatedAt: now,
     closedAt: now,
     terminationReason: null,
-  traceParent: null,
+    traceParent: null,
     ...overrides,
   };
 }

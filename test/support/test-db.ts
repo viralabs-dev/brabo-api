@@ -21,6 +21,8 @@ export async function truncateAll(db: ReturnType<typeof drizzle>) {
       repo_bootstraps, project_repositories, tasks, stories, epics, module_maps,
       handoffs, agent_instructions,
       session_events, sessions,
+      auth_credentials, refresh_tokens, account_tokens,
+      auth_events, auth_lockout_hits,
       project_members, projects, workspace_members, workspaces, users
     RESTART IDENTITY CASCADE
   `);

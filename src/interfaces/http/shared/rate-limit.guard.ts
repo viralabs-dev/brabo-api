@@ -11,6 +11,7 @@ import { Reflector } from '@nestjs/core';
 import { sql } from 'drizzle-orm';
 import type { Response } from 'express';
 import { IS_PUBLIC_KEY } from '../auth/public.decorator';
+import { IS_SERVICE_ROUTE_KEY } from '../auth/service-route.decorator';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { DRIZZLE } from '../../../infrastructure/persistence/drizzle/drizzle-client';
 import type { DrizzleDb } from '../../../infrastructure/persistence/drizzle/drizzle-client';
@@ -41,9 +42,14 @@ import type { DrizzleDb } from '../../../infrastructure/persistence/drizzle/driz
  *
  * - rotas `@Public()`: probe e scrape do Prometheus. Estrangular o `/health`
  *   faz o kubelet reiniciar o pod, transformando pico de tráfego em queda;
- * - o client `engine-service`: o engine chama a api a cada evento de agente, em
+ * - rotas `@ServiceRoute()`: o engine chama a api a cada evento de agente, em
  *   volume que não tem relação com abuso. Limitá-lo seria o sistema se
  *   auto-estrangulando sob carga normal.
+ *
+ * A isenção do engine vinha do `request.clientId` (o `azp` do Keycloak) até a
+ * Fase 7a. Sem emissor externo não há claim de client, e este guard é
+ * `APP_GUARD` — roda ANTES do `EngineServiceGuard`, então não pode esperar por
+ * ele. O metadado da rota é o único sinal disponível a tempo.
  */
 @Injectable()
 export class RateLimitGuard implements CanActivate {
@@ -55,9 +61,6 @@ export class RateLimitGuard implements CanActivate {
   );
   private readonly userLimit = Number(process.env.RATE_LIMIT_USER ?? 300);
   private readonly ipLimit = Number(process.env.RATE_LIMIT_IP ?? 600);
-  private readonly engineClientId =
-    process.env.ENGINE_KEYCLOAK_CLIENT_ID ?? 'engine-service';
-
   constructor(
     private readonly reflector: Reflector,
     @Inject(DRIZZLE) private readonly db: DrizzleDb,
@@ -67,14 +70,20 @@ export class RateLimitGuard implements CanActivate {
     if (!this.enabled) return true;
     if (context.getType() !== 'http') return true;
 
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const alvo = [context.getHandler(), context.getClass()];
+    const isPublic = this.reflector.getAllAndOverride<boolean>(
+      IS_PUBLIC_KEY,
+      alvo,
+    );
     if (isPublic) return true;
 
+    const isServico = this.reflector.getAllAndOverride<boolean>(
+      IS_SERVICE_ROUTE_KEY,
+      alvo,
+    );
+    if (isServico) return true;
+
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    if (request.clientId === this.engineClientId) return true;
 
     const baldes: { chave: string; limite: number }[] = [];
     if (request.user?.id) {

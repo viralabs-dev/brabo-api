@@ -6,6 +6,17 @@ import {
   Param,
   Post,
 } from '@nestjs/common';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { User } from '../../../domain/iam/user.entity';
 import { RequireRole } from '../iam/require-role.decorator';
@@ -19,12 +30,27 @@ import { RollbackInstructionUseCase } from '../../../application/use-cases/instr
 import { ListProjectInstructionVersionsUseCase } from '../../../application/use-cases/instructions/list-instruction-versions.use-case';
 import { GetProjectEventUseCase } from '../../../application/use-cases/sessions/get-project-event.use-case';
 import { RunAnamneseUseCase } from '../../../application/use-cases/anamnese/run-anamnese.use-case';
+import { BEARER } from '../../../infrastructure/openapi/documento';
+import { OkResponseDto } from '../shared/dto/comuns.response.dto';
+import { SessionEventResponseDto } from '../sessions/dto/sessions.response.dto';
+import {
+  AgenteComVersoesResponseDto,
+  InstructionVersionResponseDto,
+  PerfilApagadoResponseDto,
+  PerfilOptInResponseDto,
+  ProficiencyProfileResponseDto,
+  RollbackResponseDto,
+} from './dto/anamnese.response.dto';
 
 /**
  * Superfície humana da Anamnese (Fase 4b): perfil de proficiência
  * (visível e apagável pelo próprio usuário) e histórico de versões dos
  * arquivos de agente com rollback.
  */
+@ApiTags('anamnese')
+@ApiBearerAuth(BEARER)
+@ApiForbiddenResponse({ description: 'Papel insuficiente no projeto.' })
+@ApiNotFoundResponse({ description: 'Projeto, evento ou versão inexistente.' })
 @Controller('projects/:projectId')
 export class AnamneseController {
   constructor(
@@ -44,6 +70,13 @@ export class AnamneseController {
    */
   @Post('anamnese/run')
   @RequireRole('maintainer')
+  @ApiOperation({
+    summary: 'Roda a Anamnese agora, sem esperar o tick',
+    description:
+      'Exige `maintainer` pelo mesmo motivo da reanálise do Psicólogo: roda o ' +
+      'ToolLoop e gasta orçamento de verdade.',
+  })
+  @ApiCreatedResponse({ type: OkResponseDto })
   run(@Param('projectId') projectId: string) {
     return this.runAnamnese.execute(projectId);
   }
@@ -55,6 +88,14 @@ export class AnamneseController {
    */
   @Get('proficiency')
   @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Devolve o perfil de proficiência',
+    description:
+      'O PRÓPRIO perfil por default; a visão agregada do time só para quem ' +
+      'administra o projeto. Perfil de competência é dado sobre a pessoa, e o ' +
+      'default menos surpreendente é ela ver o dela.',
+  })
+  @ApiOkResponse({ type: [ProficiencyProfileResponseDto] })
   proficiency(
     @Param('projectId') projectId: string,
     @CurrentUser() user: User,
@@ -69,6 +110,14 @@ export class AnamneseController {
    */
   @Get('events/:eventId')
   @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Devolve um evento do projeto pelo id, resolvendo a sessão',
+    description:
+      'Diferente da rota de evento por sessão: aqui a sessão não é conhecida. É o ' +
+      'que faz o chip de evidência do perfil chegar no evento certo, já que a janela ' +
+      'da Anamnese atravessa várias sessões.',
+  })
+  @ApiOkResponse({ type: SessionEventResponseDto })
   event(
     @Param('projectId') projectId: string,
     @Param('eventId') eventId: string,
@@ -86,12 +135,27 @@ export class AnamneseController {
   // poder apagar o próprio perfil — 403 num direito que o enunciado dá.
   @Delete('proficiency/me')
   @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Apaga o próprio perfil e registra o opt-out',
+    description:
+      'Só o PRÓPRIO perfil, nunca o de outro. O opt-out vem junto porque sem ele a ' +
+      'rodada seguinte re-derivaria tudo e o apagar seria cosmético. É `viewer` de ' +
+      'propósito: a perfilagem cobre todos os membros, então exigir `developer` ' +
+      'deixaria um viewer perfilado sem poder apagar o que é dele.',
+  })
+  @ApiOkResponse({ type: PerfilApagadoResponseDto })
   deleteMine(@Param('projectId') projectId: string, @CurrentUser() user: User) {
     return this.deleteProfile.execute(projectId, user.id);
   }
 
   @Post('proficiency/me/opt-in')
   @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Volta a permitir o perfilamento do próprio usuário',
+    description:
+      'Desfaz o opt-out. Os perfis voltam a ser derivados na próxima rodada.',
+  })
+  @ApiCreatedResponse({ type: PerfilOptInResponseDto })
   optInMine(@Param('projectId') projectId: string, @CurrentUser() user: User) {
     return this.optIn.execute(projectId, user.id);
   }
@@ -103,12 +167,27 @@ export class AnamneseController {
    */
   @Get('instruction-versions')
   @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Lista o histórico de instruções de todos os agentes do projeto',
+    description:
+      'Parte de quem TEM versão no projeto, não de um roster estático — é o que faz ' +
+      'os dev agents por módulo (`dev-api`) aparecerem.',
+  })
+  @ApiOkResponse({ type: [AgenteComVersoesResponseDto] })
   allVersions(@Param('projectId') projectId: string) {
     return this.listProjectVersions.execute(projectId);
   }
 
   @Get('agents/:agent/instruction-versions')
   @RequireRole('viewer')
+  @ApiParam({ name: 'agent', example: 'dev-api' })
+  @ApiOperation({
+    summary: 'Lista as versões de instrução de um agente',
+    description:
+      'Mais recente primeiro, cada uma já com o diff contra a anterior calculado no ' +
+      'servidor.',
+  })
+  @ApiOkResponse({ type: [InstructionVersionResponseDto] })
   versions(
     @Param('projectId') projectId: string,
     @Param('agent') agent: string,
@@ -122,6 +201,17 @@ export class AnamneseController {
    */
   @Post('agents/:agent/instruction-versions/:version/rollback')
   @RequireRole('maintainer')
+  @ApiParam({ name: 'agent', example: 'dev-api' })
+  @ApiParam({ name: 'version', example: 2, description: 'Versão a restaurar.' })
+  @ApiOperation({
+    summary: 'Restaura uma versão anterior da instrução de um agente',
+    description:
+      'O histórico é imutável: restaurar não apaga nada, CRIA uma versão nova com o ' +
+      'conteúdo antigo. Exige `maintainer` porque muda o comportamento do agente ' +
+      'daí em diante — mesmo calibre do patch.',
+  })
+  @ApiCreatedResponse({ type: RollbackResponseDto })
+  @ApiBadRequestResponse({ description: 'Versão não é inteiro positivo.' })
   rollbackVersion(
     @Param('projectId') projectId: string,
     @Param('agent') agent: string,

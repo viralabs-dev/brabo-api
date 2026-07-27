@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { FilesystemModule } from '../../../infrastructure/filesystem/filesystem.module';
-import { SyncUserUseCase } from './sync-user.use-case';
 import { CreateWorkspaceUseCase } from './create-workspace.use-case';
 import { ListWorkspacesForUserUseCase } from './list-workspaces-for-user.use-case';
 import { GetWorkspaceUseCase } from './get-workspace.use-case';
@@ -20,7 +19,6 @@ import { ListProjectsForWorkspaceUseCase } from './list-projects-for-workspace.u
 import { ListProjectMembersUseCase } from './list-project-members.use-case';
 
 const USE_CASES = [
-  SyncUserUseCase,
   CreateWorkspaceUseCase,
   ListWorkspacesForUserUseCase,
   GetWorkspaceUseCase,

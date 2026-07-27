@@ -2,9 +2,13 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { EnvelopeEncryptionService } from '../../../src/infrastructure/security/envelope-encryption.service';
 
 /** Instancia o serviço com um par de chaves explícito, isolando o ambiente. */
-function comChaves(atual: string, anterior?: string): EnvelopeEncryptionService {
+function comChaves(
+  atual: string,
+  anterior?: string,
+): EnvelopeEncryptionService {
   process.env.CREDENTIALS_MASTER_KEY = atual;
-  if (anterior === undefined) delete process.env.CREDENTIALS_MASTER_KEY_PREVIOUS;
+  if (anterior === undefined)
+    delete process.env.CREDENTIALS_MASTER_KEY_PREVIOUS;
   else process.env.CREDENTIALS_MASTER_KEY_PREVIOUS = anterior;
   return new EnvelopeEncryptionService();
 }
