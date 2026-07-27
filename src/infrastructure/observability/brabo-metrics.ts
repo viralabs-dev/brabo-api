@@ -54,6 +54,13 @@ export class BraboMetrics {
   readonly sessionsClosing: Gauge<string>;
   readonly tasksBlocked: Gauge<'project'>;
 
+  // Backup (Fase 5, item 6). Alimentados pelo DomainGaugesCollector a partir
+  // da tabela `backup_runs`, que o CronJob escreve.
+  readonly backupLastSuccessTimestamp: Gauge<string>;
+  readonly backupAgeSeconds: Gauge<string>;
+  readonly backupLastStatus: Gauge<string>;
+  readonly backupSizeBytes: Gauge<string>;
+
   constructor() {
     // CPU, memória e event loop do processo. Baratas e é o que se olha
     // primeiro quando a api fica lenta.
@@ -114,6 +121,36 @@ export class BraboMetrics {
       name: 'brabo_tasks_blocked',
       help: 'Tasks com blocked = true, por projeto',
       labelNames: ['project'],
+      registers: [this.registry],
+    });
+
+    this.backupLastSuccessTimestamp = new Gauge({
+      name: 'brabo_backup_last_success_timestamp_seconds',
+      help: 'Epoch em segundos do último backup concluído com sucesso',
+      registers: [this.registry],
+    });
+
+    // Derivada do gauge acima, mas publicada explicitamente: o alerta é
+    // "backup velho", e escrever isso como `time() - gauge` na regra esconde
+    // o caso em que NUNCA houve sucesso — ali o gauge é 0 e a subtração dá a
+    // idade do epoch, que dispara por acidente e não por diagnóstico.
+    // Aqui a ausência de backup é representada explicitamente (ver o
+    // collector) em vez de virar um número gigante sem significado.
+    this.backupAgeSeconds = new Gauge({
+      name: 'brabo_backup_age_seconds',
+      help: 'Idade em segundos do último backup bem-sucedido (-1 se nunca houve)',
+      registers: [this.registry],
+    });
+
+    this.backupLastStatus = new Gauge({
+      name: 'brabo_backup_last_status',
+      help: 'Resultado da ÚLTIMA execução do backup: 1 = ok, 0 = falhou, -1 = nunca rodou',
+      registers: [this.registry],
+    });
+
+    this.backupSizeBytes = new Gauge({
+      name: 'brabo_backup_size_bytes',
+      help: 'Tamanho em bytes do último backup bem-sucedido — queda brusca é sinal de dump truncado',
       registers: [this.registry],
     });
   }

@@ -5,11 +5,17 @@ import {
   type OnModuleDestroy,
   type OnModuleInit,
 } from '@nestjs/common';
-import { and, eq, isNotNull, sql } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, sql } from 'drizzle-orm';
 import { BraboMetrics } from './brabo-metrics';
 import { DRIZZLE } from '../persistence/drizzle/drizzle-client';
 import type { DrizzleDb } from '../persistence/drizzle/drizzle-client';
-import { sessions, stories, tasks } from '../../db/schema';
+import {
+  backupRuns,
+  rateLimitHits,
+  sessions,
+  stories,
+  tasks,
+} from '../../db/schema';
 
 /**
  * Coleta periódica das métricas que são ESTADO, não evento (Fase 5, item 4).
@@ -51,7 +57,12 @@ export class DomainGaugesCollector implements OnModuleInit, OnModuleDestroy {
 
   async collect(): Promise<void> {
     try {
-      await Promise.all([this.collectSessions(), this.collectBlockedTasks()]);
+      await Promise.all([
+        this.collectSessions(),
+        this.collectBlockedTasks(),
+        this.collectBackup(),
+        this.pruneRateLimit(),
+      ]);
     } catch (error) {
       // Uma falha de coleta não pode derrubar a api nem parar o timer: o
       // Prometheus simplesmente vê o valor anterior até a próxima rodada.
@@ -105,5 +116,72 @@ export class DomainGaugesCollector implements OnModuleInit, OnModuleDestroy {
     for (const row of rows) {
       this.metrics.tasksBlocked.set({ project: row.projectId }, row.total);
     }
+  }
+
+  /**
+   * Métricas de backup a partir de `backup_runs` (Fase 5, item 6).
+   *
+   * O CronJob não fala Prometheus — ele grava uma linha e termina. Quem
+   * publica é a api, que já é scrapeada. Duas consultas, porque as perguntas
+   * são diferentes: "quando foi o último SUCESSO" (o que o alerta de idade
+   * usa) e "como terminou a ÚLTIMA execução" (que pega o caso de estar
+   * falhando há três dias com um backup bom de quatro dias atrás).
+   */
+  private async collectBackup(): Promise<void> {
+    const [sucesso] = await this.db
+      .select({
+        finishedAt: backupRuns.finishedAt,
+        sizeBytes: backupRuns.sizeBytes,
+      })
+      .from(backupRuns)
+      .where(eq(backupRuns.status, 'ok'))
+      .orderBy(desc(backupRuns.finishedAt))
+      .limit(1);
+
+    if (sucesso) {
+      const epoch = sucesso.finishedAt.getTime() / 1000;
+      this.metrics.backupLastSuccessTimestamp.set(epoch);
+      this.metrics.backupAgeSeconds.set(Math.max(0, Date.now() / 1000 - epoch));
+      this.metrics.backupSizeBytes.set(sucesso.sizeBytes);
+    } else {
+      // -1 e não 0: "nunca houve backup" e "backup de 1970" são situações
+      // diferentes, e um alerta de idade não pode confundir as duas.
+      this.metrics.backupLastSuccessTimestamp.set(0);
+      this.metrics.backupAgeSeconds.set(-1);
+      this.metrics.backupSizeBytes.set(0);
+    }
+
+    const [ultima] = await this.db
+      .select({ status: backupRuns.status })
+      .from(backupRuns)
+      .orderBy(desc(backupRuns.finishedAt))
+      .limit(1);
+
+    this.metrics.backupLastStatus.set(
+      ultima ? (ultima.status === 'ok' ? 1 : 0) : -1,
+    );
+  }
+
+  /**
+   * Poda da janela do rate limit (Fase 5, item 7).
+   *
+   * A tabela recebe uma linha por request e só é consultada dentro da janela
+   * configurada; sem poda ela cresce para sempre e o índice degrada. Roda
+   * junto do collector em vez de num CronJob próprio porque é um DELETE por
+   * intervalo — não justifica um Job, e aqui herda o tratamento de erro que
+   * já existe (falhar a poda não pode derrubar a api).
+   *
+   * A margem sobre a janela é de propósito: apagar exatamente na borda
+   * removeria hits que uma requisição concorrente ainda está contando.
+   */
+  private async pruneRateLimit(): Promise<void> {
+    const janelaMs = Number(process.env.RATE_LIMIT_WINDOW_MS ?? 60_000);
+    const retencaoMs = janelaMs * 2;
+
+    await this.db
+      .delete(rateLimitHits)
+      .where(
+        sql`${rateLimitHits.occurredAt} < now() - ${sql.raw(`interval '${Math.ceil(retencaoMs / 1000)} seconds'`)}`,
+      );
   }
 }

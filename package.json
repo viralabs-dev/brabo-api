@@ -1,6 +1,6 @@
 {
   "name": "api",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "",
   "author": "",
   "private": true,
@@ -49,6 +49,7 @@
     "class-validator": "^0.15.1",
     "drizzle-orm": "^0.45.2",
     "gpt-tokenizer": "^3.4.0",
+    "helmet": "^8.3.0",
     "jose": "^6.2.4",
     "nestjs-pino": "^4.6.1",
     "openai": "^6.48.0",

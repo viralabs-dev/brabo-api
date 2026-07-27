@@ -83,6 +83,13 @@ export const modelBindingScopeEnum = pgEnum('model_binding_scope', [
 
 export const budgetPolicyEnum = pgEnum('budget_policy', ['block', 'allow']);
 
+// Backup (Fase 5). `daily` é toda execução; `weekly` marca a que também virou
+// cópia na retenção semanal — as duas retenções são podadas separadamente.
+export const backupKindEnum = pgEnum('backup_kind', ['daily', 'weekly']);
+// Só dois estados terminais: o job ou subiu o objeto e registrou o tamanho, ou
+// não. "em andamento" não existe aqui porque a linha só é escrita no fim.
+export const backupStatusEnum = pgEnum('backup_status', ['ok', 'failed']);
+
 // pending → approved | denied; approved/auto_approved → executed | failed
 // (ver domain/actions/action-state-machine.ts). "denied" cobre tanto
 // recusa manual quanto deny automático da política.
@@ -1152,4 +1159,77 @@ export const repoBootstraps = pgTable(
       .defaultNow(),
   },
   (table) => [unique().on(table.projectId)],
+);
+
+// --- Operação (Fase 5): backup e rate limit ---
+
+/**
+ * Execuções do CronJob de backup — a FONTE das métricas `brabo_backup_*`.
+ *
+ * Por que o resultado do backup mora no banco e não num Pushgateway: seria um
+ * componente a mais, uma segunda fonte de verdade, e um lugar onde a métrica
+ * sobrevive ao fato que ela descreve (a série continua publicada depois que o
+ * job sumiu). Aqui o `DomainGaugesCollector`, que já roda num timer, lê esta
+ * tabela e publica os gauges — e o runbook de restore ganha histórico
+ * consultável de brinde.
+ *
+ * A linha é gravada SEMPRE, inclusive em falha: é o `status = 'failed'` que
+ * transforma um backup quebrado em alerta em vez de silêncio.
+ */
+export const backupRuns = pgTable(
+  'backup_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+    finishedAt: timestamp('finished_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    kind: backupKindEnum('kind').notNull().default('daily'),
+    status: backupStatusEnum('status').notNull(),
+    // Nulo quando o job falhou antes de subir o objeto.
+    objectKey: text('object_key'),
+    sizeBytes: bigint('size_bytes', { mode: 'number' }).notNull().default(0),
+    errorMessage: text('error_message'),
+  },
+  (table) => [
+    // O collector pergunta "qual foi o último sucesso?" a cada 15 s, e o
+    // restore procura a janela de UM object_key. Sem índice as duas viram seq
+    // scan numa tabela que só cresce.
+    index('backup_runs_last_success_idx')
+      .on(table.finishedAt)
+      .where(sql`${table.status} = 'ok'`),
+    index('backup_runs_object_key_idx').on(table.objectKey),
+  ],
+);
+
+/**
+ * Janela deslizante do rate limit (Fase 5, item 7).
+ *
+ * Uma linha por request contado. O CLAUDE.md proíbe Redis (as filas ficam no
+ * Postgres via Oban), então a janela vive aqui — o custo é um INSERT por
+ * request, assumido e documentado no ADR 0027, com `RATE_LIMIT_ENABLED` para
+ * desligar.
+ *
+ * Sem chave estrangeira para `users` de propósito: o balde de IP não tem
+ * usuário, e a FK obrigaria a apagar histórico de rate limit ao remover um
+ * usuário — exatamente o registro que se quer preservar num incidente de abuso.
+ */
+export const rateLimitHits = pgTable(
+  'rate_limit_hits',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    // `user:<uuid>` ou `ip:<endereço>`.
+    bucketKey: text('bucket_key').notNull(),
+    occurredAt: timestamp('occurred_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    // Composto e nesta ordem: a consulta é sempre "quantos hits deste balde
+    // depois de T". Índice só em bucket_key faria o Postgres varrer todo o
+    // histórico do balde para filtrar por tempo depois.
+    index('rate_limit_hits_bucket_idx').on(table.bucketKey, table.occurredAt),
+    // A poda apaga por tempo, sem balde — precisa do índice próprio.
+    index('rate_limit_hits_occurred_idx').on(table.occurredAt),
+  ],
 );
