@@ -20,7 +20,7 @@ import { currentSpanId, currentTraceId } from './trace-context';
  * ## Redaction não é opcional
  *
  * O CLAUDE.md proíbe segredo em log, e este processo manuseia chave de API de
- * LLM, token do Keycloak e secret de client OAuth. `redact` cobre os caminhos
+ * LLM, access token, cookie de sessão e secret de client OAuth. `redact` cobre os caminhos
  * por onde eles passariam; a lista é conservadora de propósito — um campo
  * redigido a mais custa nada, um a menos é vazamento permanente no Loki.
  */

@@ -47,7 +47,7 @@ function build(provider: {
       listByProjectAndType: async () => [],
     } as never,
     { execute: async () => undefined } as never,
-    { append: async () => undefined } as never,
+    { append: async () => undefined },
     { get: () => provider } as never,
     {
       findByProjectId: async () => ({

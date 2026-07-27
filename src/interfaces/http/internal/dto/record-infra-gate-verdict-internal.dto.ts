@@ -1,3 +1,4 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsArray,
   IsIn,
@@ -9,25 +10,36 @@ import {
 } from 'class-validator';
 
 export class RecordInfraGateVerdictInternalDto {
+  @ApiProperty({ format: 'uuid', example: '01JC4Z0000PROJETO0000000001' })
   @IsUUID()
   projectId!: string;
 
+  @ApiProperty({
+    format: 'uuid',
+    example: '01JC4Z8QK3M7YV2N5T9B0PXHRD',
+    description: 'A `proposed_action` `open_infra_pr` que abriu a PR.',
+  })
   @IsUUID()
   prActionId!: string;
 
+  @ApiProperty({ enum: ['qa', 'secops'], example: 'secops' })
   @IsIn(['qa', 'secops'])
   gate!: 'qa' | 'secops';
 
+  @ApiProperty({ enum: ['approved', 'changes_requested'], example: 'approved' })
   @IsIn(['approved', 'changes_requested'])
   veredito!: 'approved' | 'changes_requested';
 
+  @ApiProperty({ example: 'Imagem non-root e sem segredo em ARG.' })
   @IsString()
   resumo!: string;
 
+  @ApiProperty({ example: [] })
   @IsArray()
   @IsString({ each: true })
   itens!: string[];
 
+  @ApiPropertyOptional({ example: 3 })
   @IsOptional()
   @IsInt()
   @Min(1)

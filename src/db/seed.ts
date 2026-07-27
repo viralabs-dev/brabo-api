@@ -11,7 +11,7 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../app.module';
-import { SyncUserUseCase } from '../application/use-cases/iam/sync-user.use-case';
+import { provisionarUsuario } from '../scripts/provisionar-usuario';
 import { CreateWorkspaceUseCase } from '../application/use-cases/iam/create-workspace.use-case';
 import { AddWorkspaceMemberUseCase } from '../application/use-cases/iam/add-workspace-member.use-case';
 import { CreateProjectUseCase } from '../application/use-cases/iam/create-project.use-case';
@@ -92,7 +92,6 @@ async function main() {
     logger: ['error', 'warn'],
   });
 
-  const syncUser = app.get(SyncUserUseCase);
   const createWorkspace = app.get(CreateWorkspaceUseCase);
   const addWorkspaceMember = app.get(AddWorkspaceMemberUseCase);
   const createProject = app.get(CreateProjectUseCase);
@@ -103,18 +102,23 @@ async function main() {
   const setModelBinding = app.get(SetModelBindingUseCase);
   const upsertAgentInstruction = app.get(UpsertAgentInstructionUseCase);
 
-  const owner = await syncUser.execute({
-    keycloakSub: 'seed-owner',
+  // Senha conhecida e e-mail já verificado: é seed de desenvolvimento, e sem
+  // Keycloak não existe mais um login pronto para entrar na aplicação depois
+  // de semear. `provisionarUsuario` recusa rodar em produção.
+  const senhaSeed = process.env.BRABO_SEED_PASSWORD ?? 'senha de dev do brabo';
+
+  const { user: owner } = await provisionarUsuario(app, {
     email: 'owner@brabo.dev',
-    name: 'Dona da Casa',
+    nome: 'Dona da Casa',
+    senha: senhaSeed,
   });
-  const developer = await syncUser.execute({
-    keycloakSub: 'seed-developer',
+  const { user: developer } = await provisionarUsuario(app, {
     email: 'dev@brabo.dev',
-    name: 'Dev Sênior',
+    nome: 'Dev Sênior',
+    senha: senhaSeed,
   });
   console.log(
-    `✓ usuários: ${owner.email} (owner), ${developer.email} (developer)`,
+    `✓ usuários: ${owner.email} (owner), ${developer.email} (developer) — senha: ${senhaSeed}`,
   );
 
   const workspace = await createWorkspace.execute(owner.id, {

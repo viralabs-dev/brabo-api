@@ -37,7 +37,7 @@ function decidedAction(
     createdAt: now,
     updatedAt: now,
     ...overrides,
-  } as ProposedAction;
+  };
 }
 
 function buildHarness(
