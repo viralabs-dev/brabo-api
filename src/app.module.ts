@@ -8,6 +8,7 @@ import { ObservabilityModule } from './infrastructure/observability/observabilit
 import { loggerParams } from './infrastructure/observability/logger.config';
 import { ObservabilityHttpModule } from './interfaces/http/observability/observability-http.module';
 import { AuthHttpModule } from './interfaces/http/auth/auth-http.module';
+import { RateLimitModule } from './interfaces/http/shared/rate-limit.module';
 import { IamHttpModule } from './interfaces/http/iam/iam-http.module';
 import { SessionsHttpModule } from './interfaces/http/sessions/sessions-http.module';
 import { LlmHttpModule } from './interfaces/http/llm/llm-http.module';
@@ -34,6 +35,9 @@ import { AnamneseHttpModule } from './interfaces/http/anamnese/anamnese-http.mod
     ObservabilityHttpModule,
     HealthModule,
     AuthHttpModule,
+    // DEPOIS do AuthHttpModule, sempre: o rate limit precisa do `request.user`
+    // e do `request.clientId` que o JwtAuthGuard popula. Ver o módulo.
+    RateLimitModule,
     IamHttpModule,
     SessionsHttpModule,
     LlmHttpModule,
