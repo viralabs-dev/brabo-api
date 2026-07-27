@@ -59,8 +59,14 @@ function parseGitProvider(value: string): GitProviderName {
   return value as GitProviderName;
 }
 
+/**
+ * O `@ApiBearerAuth` é POR ROTA aqui, e não na classe, porque o callback de
+ * OAuth é `@Public()`: uma declaração de classe vazaria para ele e a
+ * referência afirmaria que o browser precisa de token para voltar do provider.
+ * Nenhum decorator do @nestjs/swagger LIMPA uma exigência herdada, então a
+ * única saída correta é não herdar.
+ */
 @ApiTags('git')
-@ApiBearerAuth(BEARER)
 @ApiForbiddenResponse({ description: 'Papel insuficiente no projeto.' })
 @ApiNotFoundResponse({ description: 'Projeto inexistente.' })
 @Controller()
@@ -75,6 +81,7 @@ export class GitController {
 
   @Get('projects/:projectId/git/:provider/connect')
   @RequireRole('maintainer')
+  @ApiBearerAuth(BEARER)
   @ApiParam({ name: 'provider', enum: ['github', 'gitlab'] })
   @ApiOperation({
     summary: 'Começa o OAuth com o provider de git',
@@ -152,6 +159,7 @@ export class GitController {
 
   @Post('projects/:projectId/git/:provider/repository')
   @RequireRole('maintainer')
+  @ApiBearerAuth(BEARER)
   @ApiParam({ name: 'provider', enum: ['local', 'github', 'gitlab'] })
   @ApiOperation({
     summary: 'Cria o repositório e dispara o bootstrap de Gitflow',
@@ -178,6 +186,7 @@ export class GitController {
 
   @Get('projects/:projectId/git/repository')
   @RequireRole('viewer')
+  @ApiBearerAuth(BEARER)
   @ApiOperation({ summary: 'Devolve o repositório provisionado do projeto' })
   @ApiOkResponse({ type: ProvisionedRepositoryResponseDto })
   get(@Param('projectId') projectId: string) {
@@ -186,6 +195,7 @@ export class GitController {
 
   @Get('projects/:projectId/git/bootstrap')
   @RequireRole('viewer')
+  @ApiBearerAuth(BEARER)
   @ApiOperation({
     summary: 'Devolve o estado do bootstrap de Gitflow',
     description:

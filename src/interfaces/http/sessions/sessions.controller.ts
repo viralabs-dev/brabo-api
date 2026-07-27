@@ -85,7 +85,14 @@ export class SessionsController {
       'A transição é validada pela máquina de estados do domínio, não pelo cliente: ' +
       'created → active → closing → closed | closed_abnormally. Salto inválido é 409.',
   })
-  @ApiOkResponse({ type: SessionResponseDto })
+  @ApiCreatedResponse({
+    type: SessionResponseDto,
+    description:
+      'Devolve 201, e não 200, porque o handler é `@Post` sem `@HttpCode` — é o ' +
+      'default do Nest. Documentado como está em vez de mudado: a semântica é ' +
+      'discutível, o comportamento não tem defeito, e o teste de tabela reprova ' +
+      'qualquer divergência entre os dois.',
+  })
   @ApiConflictResponse({
     description: 'Transição não permitida a partir do estado atual.',
   })

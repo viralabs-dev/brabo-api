@@ -28,13 +28,21 @@ describe('classificação do refresh', () => {
 
   it('token já rotacionado é REUSO', () => {
     expect(
-      classificar(estado({ rotatedAt: new Date('2026-07-27T11:00:00Z') }), AGORA, TETO),
+      classificar(
+        estado({ rotatedAt: new Date('2026-07-27T11:00:00Z') }),
+        AGORA,
+        TETO,
+      ),
     ).toBe('reuso');
   });
 
   it('token expirado', () => {
     expect(
-      classificar(estado({ expiresAt: new Date('2026-07-26T12:00:00Z') }), AGORA, TETO),
+      classificar(
+        estado({ expiresAt: new Date('2026-07-26T12:00:00Z') }),
+        AGORA,
+        TETO,
+      ),
     ).toBe('expirado');
   });
 

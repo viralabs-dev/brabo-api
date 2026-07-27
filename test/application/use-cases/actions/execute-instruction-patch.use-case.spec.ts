@@ -33,7 +33,7 @@ function buildAction(payload: Record<string, unknown> = {}): ProposedAction {
     executionResult: null,
     createdAt: now,
     updatedAt: now,
-  } as ProposedAction;
+  };
 }
 
 function buildHarness(

@@ -214,8 +214,8 @@ describe('reset de senha', () => {
 
     const linhas = await h.db.select().from(accountTokens);
     expect(linhas.some((l) => l.tokenHash === token)).toBe(false);
-    expect(linhas.some((l) => l.tokenHash === h.tokenFactory.hashDe(token))).toBe(
-      true,
-    );
+    expect(
+      linhas.some((l) => l.tokenHash === h.tokenFactory.hashDe(token)),
+    ).toBe(true);
   });
 });

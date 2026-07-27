@@ -1,4 +1,12 @@
-import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  beforeEach,
+  afterAll,
+  vi,
+} from 'vitest';
 import { Reflector } from '@nestjs/core';
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { createTestDb, truncateAll } from '../support/test-db';
@@ -39,7 +47,7 @@ function contexto(opcoes: { authorization?: string }) {
   const request = {
     headers: opcoes.authorization
       ? { authorization: opcoes.authorization }
-      : ({} as Record<string, string>),
+      : {},
   } as { headers: Record<string, string>; user?: unknown };
 
   const ctx = {
@@ -108,7 +116,9 @@ describe('JwtAuthGuard', () => {
       email: usuario.email,
     });
 
-    await guard().canActivate(contexto({ authorization: `Bearer ${token}` }).ctx);
+    await guard().canActivate(
+      contexto({ authorization: `Bearer ${token}` }).ctx,
+    );
 
     expect(await contarUsuarios()).toBe(1);
   });

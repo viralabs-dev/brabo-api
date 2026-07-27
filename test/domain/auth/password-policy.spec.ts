@@ -64,9 +64,9 @@ describe('política de senha', () => {
   });
 
   it('recusa a senha igual à parte local do e-mail', () => {
-    expect(
-      avaliarSenha('desenvolvedor', 'desenvolvedor@brabo.dev'),
-    ).toBe('igual_ao_email');
+    expect(avaliarSenha('desenvolvedor', 'desenvolvedor@brabo.dev')).toBe(
+      'igual_ao_email',
+    );
   });
 
   it('compara o e-mail normalizado, não o literal', () => {

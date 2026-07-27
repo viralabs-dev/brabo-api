@@ -55,9 +55,7 @@ describe('bloqueadoAte', () => {
   it('conta a partir da ÚLTIMA falha, não da primeira', () => {
     // Contar da primeira faria o bloqueio expirar enquanto o atacante ainda
     // está tentando — a janela avança com ele.
-    expect(bloqueadoAte(5, ultima)).toEqual(
-      new Date('2026-07-27T12:00:30Z'),
-    );
+    expect(bloqueadoAte(5, ultima)).toEqual(new Date('2026-07-27T12:00:30Z'));
   });
 });
 

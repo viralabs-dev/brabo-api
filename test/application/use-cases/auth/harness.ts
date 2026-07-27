@@ -155,12 +155,7 @@ export async function montarHarness() {
       emitirSessao,
       tokenFactory,
     ),
-    logout: new LogoutUseCase(
-      unitOfWork,
-      refreshTokens,
-      eventos,
-      tokenFactory,
-    ),
+    logout: new LogoutUseCase(unitOfWork, refreshTokens, eventos, tokenFactory),
     verifyEmail: new VerifyEmailUseCase(
       unitOfWork,
       tokensDeConta,

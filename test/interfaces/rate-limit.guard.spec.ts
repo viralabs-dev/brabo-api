@@ -16,10 +16,10 @@ import { IS_SERVICE_ROUTE_KEY } from '../../src/interfaces/http/auth/service-rou
  */
 const { db, pool } = createTestDb();
 
-function contexto(opcoes: {
-  userId?: string;
-  ip?: string;
-}): { ctx: ExecutionContext; headers: Record<string, string> } {
+function contexto(opcoes: { userId?: string; ip?: string }): {
+  ctx: ExecutionContext;
+  headers: Record<string, string>;
+} {
   const headers: Record<string, string> = {};
   const request = {
     user: opcoes.userId ? { id: opcoes.userId } : undefined,
@@ -62,8 +62,8 @@ function guard(marcada?: 'publica' | 'servico'): RateLimitGuard {
       return undefined;
     }),
   } as unknown as Reflector;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return new RateLimitGuard(reflector, db as any);
+
+  return new RateLimitGuard(reflector, db);
 }
 
 describe('RateLimitGuard', () => {
@@ -96,21 +96,23 @@ describe('RateLimitGuard', () => {
     const g = guard();
 
     for (let i = 0; i < 3; i += 1) {
-      await expect(g.canActivate(contexto({ userId: 'u-2' }).ctx)).resolves.toBe(
-        true,
-      );
+      await expect(
+        g.canActivate(contexto({ userId: 'u-2' }).ctx),
+      ).resolves.toBe(true);
     }
 
     // A quarta estoura.
-    await expect(g.canActivate(contexto({ userId: 'u-2' }).ctx)).rejects.toThrow(
-      HttpException,
-    );
+    await expect(
+      g.canActivate(contexto({ userId: 'u-2' }).ctx),
+    ).rejects.toThrow(HttpException);
   });
 
   it('os baldes são independentes: um usuário estourado não afeta o outro', async () => {
     const g = guard();
     for (let i = 0; i < 4; i += 1) {
-      await g.canActivate(contexto({ userId: 'u-3' }).ctx).catch(() => undefined);
+      await g
+        .canActivate(contexto({ userId: 'u-3' }).ctx)
+        .catch(() => undefined);
     }
     await expect(g.canActivate(contexto({ userId: 'u-4' }).ctx)).resolves.toBe(
       true,
@@ -152,9 +154,9 @@ describe('RateLimitGuard', () => {
   it('rota @Public() não é limitada — estrangular /health reinicia o pod', async () => {
     const g = guard('publica');
     for (let i = 0; i < 10; i += 1) {
-      await expect(g.canActivate(contexto({ userId: 'u-7' }).ctx)).resolves.toBe(
-        true,
-      );
+      await expect(
+        g.canActivate(contexto({ userId: 'u-7' }).ctx),
+      ).resolves.toBe(true);
     }
   });
 
@@ -182,7 +184,7 @@ describe('RateLimitGuard', () => {
     const reflector = {
       getAllAndOverride: vi.fn().mockReturnValue(false),
     } as unknown as Reflector;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const g = new RateLimitGuard(reflector, quebrado as any);
 
     await expect(g.canActivate(contexto({ userId: 'u-9' }).ctx)).resolves.toBe(

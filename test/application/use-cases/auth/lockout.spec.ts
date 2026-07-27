@@ -146,7 +146,11 @@ describe('lockout por IP', () => {
     // impedir — 19 MiB e um núcleo por tentativa.
     for (let i = 0; i < 21; i++) {
       await h.login
-        .execute({ email: `x${i}@brabo.dev`, senha: 'chute comprido', ...DE_UM_IP })
+        .execute({
+          email: `x${i}@brabo.dev`,
+          senha: 'chute comprido',
+          ...DE_UM_IP,
+        })
         .catch(() => {});
     }
 
@@ -164,7 +168,11 @@ describe('lockout por IP', () => {
     await contaPronta(h);
     for (let i = 0; i < 10; i++) {
       await h.login
-        .execute({ email: `x${i}@brabo.dev`, senha: 'chute comprido', ...DE_UM_IP })
+        .execute({
+          email: `x${i}@brabo.dev`,
+          senha: 'chute comprido',
+          ...DE_UM_IP,
+        })
         .catch(() => {});
     }
 
@@ -178,7 +186,11 @@ describe('lockout por IP', () => {
     await contaPronta(h);
     for (let i = 0; i < 25; i++) {
       await h.login
-        .execute({ email: `x${i}@brabo.dev`, senha: 'chute comprido', ...DE_UM_IP })
+        .execute({
+          email: `x${i}@brabo.dev`,
+          senha: 'chute comprido',
+          ...DE_UM_IP,
+        })
         .catch(() => {});
     }
 

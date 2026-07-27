@@ -114,7 +114,9 @@ describe('RolesGuard — a matriz de papéis', () => {
     const { guard } = montar({ papelExigido: 'viewer', papelDeProjeto: null });
 
     await expect(
-      guard.canActivate(contexto({ userId: 'u-1', params: { projectId: 'p-1' } })),
+      guard.canActivate(
+        contexto({ userId: 'u-1', params: { projectId: 'p-1' } }),
+      ),
     ).rejects.toThrow(ForbiddenException);
   });
 
@@ -122,7 +124,10 @@ describe('RolesGuard — a matriz de papéis', () => {
     // O tipo diz que `user` sempre existe; em runtime não existe em rota
     // pública. Se o guard tratasse ausência como "sem papel a verificar", uma
     // rota com @RequireRole que escapasse do JwtAuthGuard passaria livre.
-    const { guard } = montar({ papelExigido: 'viewer', papelDeProjeto: 'owner' });
+    const { guard } = montar({
+      papelExigido: 'viewer',
+      papelDeProjeto: 'owner',
+    });
 
     await expect(
       guard.canActivate(contexto({ params: { projectId: 'p-1' } })),
