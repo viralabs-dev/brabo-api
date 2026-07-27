@@ -6,6 +6,7 @@ import {
   timingSafeEqual,
   type KeyObject,
 } from 'node:crypto';
+import { normalizarEmail } from '../../domain/auth/email';
 
 /**
  * Material criptográfico do auth first-party (Fase 7a).
@@ -125,17 +126,6 @@ export function baldeDeEmail(email: string): string {
     .update(normalizado)
     .digest('hex');
   return `email:${hmac}`;
-}
-
-/**
- * Normalização única de e-mail, usada na busca E na chave do balde.
- *
- * NFKC antes do lowercase: sem isso, duas grafias Unicode do mesmo endereço
- * geram baldes diferentes, e quem souber disso contorna o lockout trocando a
- * forma de composição dos caracteres.
- */
-export function normalizarEmail(email: string): string {
-  return email.normalize('NFKC').trim().toLowerCase();
 }
 
 /** Salt determinístico do hash dummy — ver Argon2PasswordHasher. */
