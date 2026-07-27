@@ -4,28 +4,28 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { AuthController } from './auth.controller';
 import { JwksController } from './jwks.controller';
 import { TokenVerifier } from '../../../application/ports/token-verifier.port';
-import { KeycloakTokenVerifier } from '../../../infrastructure/http-clients/keycloak-token-verifier';
+import { FirstPartyTokenVerifier } from '../../../infrastructure/security/first-party-token-verifier';
 import { IamUseCasesModule } from '../../../application/use-cases/iam/iam-use-cases.module';
 import { AuthUseCasesModule } from '../../../application/use-cases/auth/auth-use-cases.module';
 
 /**
- * Os dois emissores convivem nesta fase (Fase 7a).
+ * O emissor da api (Fase 7a — o corte).
  *
- * O `JwtAuthGuard` global continua ligado ao `KeycloakTokenVerifier`, intocado:
- * todo o resto da api depende do `request.user` que ele popula, e trocar o
- * emissor junto com a construção do auth novo não deixaria nenhum estado
- * intermediário testável.
+ * A 7.1 construiu o auth em paralelo e prometeu que a troca seria uma linha.
+ * Foi: o `useClass` do `TokenVerifier` saiu do `KeycloakTokenVerifier` e
+ * passou ao `FirstPartyTokenVerifier`. Nenhum controller mudou, e o RBAC da
+ * Fase 1 não foi tocado — nenhuma decisão de papel lê claim de token, só
+ * `request.user.id`, que continua sendo a mesma linha do banco.
  *
- * A troca da 7.2 é literalmente uma linha — `useClass` do `TokenVerifier`
- * apontando para uma implementação que valide o token emitido pelo
- * `Ed25519AccessTokenIssuer`. Nenhum controller muda, e o RBAC da Fase 1 não é
- * tocado.
+ * Não houve período de coexistência. Aceitar dois emissores exigiria manter
+ * dois caminhos vivos e testados por prazo indefinido; o corte custa um
+ * logout coletivo anunciado, uma vez. Ver ADR 0032.
  */
 @Module({
   imports: [IamUseCasesModule, AuthUseCasesModule],
   controllers: [AuthController, JwksController],
   providers: [
-    { provide: TokenVerifier, useClass: KeycloakTokenVerifier },
+    { provide: TokenVerifier, useClass: FirstPartyTokenVerifier },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
 })

@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { Observable, from, map } from 'rxjs';
 import { EngineServiceGuard } from '../auth/engine-service.guard';
+import { ServiceRoute } from '../auth/service-route.decorator';
 import { ReportSessionTerminationUseCase } from '../../../application/use-cases/sessions/report-session-termination.use-case';
 import { AppendSessionEventUseCase } from '../../../application/use-cases/sessions/append-session-event.use-case';
 import { ListSessionEventsUseCase } from '../../../application/use-cases/sessions/list-session-events.use-case';
@@ -64,10 +65,14 @@ import { MarkTaskInternalDto } from './dto/mark-task-internal.dto';
 
 /**
  * Chamadas internas do engine (Elixir/OTP) — nunca de um usuário humano.
- * Guardadas por EngineServiceGuard (client credentials do Keycloak,
- * client engine-service), não por RBAC de projeto.
+ *
+ * `@ServiceRoute()` tira estas rotas do JWT de usuário (não há usuário para
+ * autenticar) e do rate limit (o engine chama a api a cada evento de agente).
+ * Quem autentica é o `EngineServiceGuard`, com o segredo compartilhado
+ * `BRABO_SERVICE_TOKEN`. Não há RBAC de projeto aqui.
  */
 @Controller('internal/sessions')
+@ServiceRoute()
 @UseGuards(EngineServiceGuard)
 export class InternalSessionsController {
   private readonly logger = new Logger(InternalSessionsController.name);

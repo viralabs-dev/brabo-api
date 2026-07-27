@@ -4,6 +4,8 @@ import { ExecutionContext, HttpException } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { RateLimitGuard } from '../../src/interfaces/http/shared/rate-limit.guard';
 import { createTestDb } from '../support/test-db';
+import { IS_PUBLIC_KEY } from '../../src/interfaces/http/auth/public.decorator';
+import { IS_SERVICE_ROUTE_KEY } from '../../src/interfaces/http/auth/service-route.decorator';
 
 /**
  * Rate limit com janela deslizante no Postgres (Fase 5, item 7).
@@ -16,14 +18,11 @@ const { db, pool } = createTestDb();
 
 function contexto(opcoes: {
   userId?: string;
-  clientId?: string | null;
   ip?: string;
-  publica?: boolean;
 }): { ctx: ExecutionContext; headers: Record<string, string> } {
   const headers: Record<string, string> = {};
   const request = {
     user: opcoes.userId ? { id: opcoes.userId } : undefined,
-    clientId: opcoes.clientId ?? null,
     ip: opcoes.ip ?? '10.0.0.1',
     headers: {} as Record<string, string | string[] | undefined>,
     socket: { remoteAddress: opcoes.ip ?? '10.0.0.1' },
@@ -47,9 +46,21 @@ function contexto(opcoes: {
   return { ctx, headers };
 }
 
-function guard(reflectorRetorna = false): RateLimitGuard {
+/**
+ * O reflector responde por CHAVE, não com um valor único.
+ *
+ * Desde a Fase 7a o guard consulta dois metadados — `@Public()` e
+ * `@ServiceRoute()` — e um mock que devolvesse o mesmo para os dois não
+ * conseguiria distinguir "rota pública" de "rota de serviço", que é
+ * exatamente o que estes testes precisam separar.
+ */
+function guard(marcada?: 'publica' | 'servico'): RateLimitGuard {
   const reflector = {
-    getAllAndOverride: vi.fn().mockReturnValue(reflectorRetorna),
+    getAllAndOverride: vi.fn((chave: string) => {
+      if (chave === IS_PUBLIC_KEY) return marcada === 'publica';
+      if (chave === IS_SERVICE_ROUTE_KEY) return marcada === 'servico';
+      return undefined;
+    }),
   } as unknown as Reflector;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return new RateLimitGuard(reflector, db as any);
@@ -118,11 +129,15 @@ describe('RateLimitGuard', () => {
     );
   });
 
-  it('o engine-service não é limitado — senão o sistema se auto-estrangula', async () => {
-    const g = guard();
+  it('rota @ServiceRoute() não é limitada — senão o sistema se auto-estrangula', async () => {
+    // A isenção do engine vinha do `clientId` (o `azp` do Keycloak) até a Fase
+    // 7a. Sem emissor externo não há claim de client, e este guard roda ANTES
+    // do EngineServiceGuard — o metadado da rota é o único sinal disponível a
+    // tempo.
+    const g = guard('servico');
     for (let i = 0; i < 10; i += 1) {
       await expect(
-        g.canActivate(contexto({ userId: 'u-6', clientId: 'engine-service' }).ctx),
+        g.canActivate(contexto({ userId: 'u-6' }).ctx),
       ).resolves.toBe(true);
     }
     const [linha] = await db
@@ -135,7 +150,7 @@ describe('RateLimitGuard', () => {
   });
 
   it('rota @Public() não é limitada — estrangular /health reinicia o pod', async () => {
-    const g = guard(true);
+    const g = guard('publica');
     for (let i = 0; i < 10; i += 1) {
       await expect(g.canActivate(contexto({ userId: 'u-7' }).ctx)).resolves.toBe(
         true,
