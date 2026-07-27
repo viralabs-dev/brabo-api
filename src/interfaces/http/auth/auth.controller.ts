@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiAcceptedResponse,
+  ApiNoContentResponse,
   ApiBadRequestResponse,
   ApiForbiddenResponse,
   ApiOkResponse,
@@ -171,6 +172,9 @@ export class AuthController {
       'Sempre 204, inclusive para token desconhecido — responder 401 aqui seria ' +
       'um oráculo de validade de token.',
   })
+  @ApiNoContentResponse({
+    description: 'Sessão encerrada. Os cookies de sessão são limpos.',
+  })
   async logout_(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
@@ -199,6 +203,9 @@ export class AuthController {
   @ApiBadRequestResponse({
     description:
       'Link inválido, expirado ou já usado — os três com a mesma resposta.',
+  })
+  @ApiNoContentResponse({
+    description: 'E-mail verificado; o login já funciona.',
   })
   async verifyEmail(
     @Body() dto: VerifyEmailDto,
@@ -243,6 +250,10 @@ export class AuthController {
   })
   @ApiBadRequestResponse({
     description: 'Link inválido/expirado, ou senha fora da política.',
+  })
+  @ApiNoContentResponse({
+    description:
+      'Senha definida. TODAS as sessões vivas do usuário são revogadas junto.',
   })
   async resetPassword(
     @Body() dto: ResetPasswordDto,

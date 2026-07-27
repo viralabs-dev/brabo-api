@@ -48,7 +48,7 @@ export class AgentAutonomyController {
       'Upsert por (agente, tipo). NÃO sobrepõe o `permissions.json`: um padrão em ' +
       '`deny` continua bloqueado por mais autonomia que se conceda aqui.',
   })
-  @ApiNoContentResponse()
+  @ApiNoContentResponse({ description: 'Regra gravada. Sem corpo.' })
   set(@Param('projectId') projectId: string, @Body() dto: SetAgentAutonomyDto) {
     return this.setAgentAutonomy.execute(
       projectId,

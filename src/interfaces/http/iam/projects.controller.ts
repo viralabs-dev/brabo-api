@@ -124,7 +124,7 @@ export class ProjectsController {
       'Remove só a associação de PROJETO. Quem tem papel no workspace continua ' +
       'enxergando o projeto por herança.',
   })
-  @ApiNoContentResponse()
+  @ApiNoContentResponse({ description: 'Associação removida. Sem corpo.' })
   removeMember(
     @Param('projectId') projectId: string,
     @Param('userId') userId: string,

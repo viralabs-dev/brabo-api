@@ -11,6 +11,21 @@ import {
   Sse,
   UseGuards,
 } from '@nestjs/common';
+import {
+  ApiBadRequestResponse,
+  ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiExtraModels,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiSecurity,
+  ApiTags,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import { Observable, from, map } from 'rxjs';
 import { EngineServiceGuard } from '../auth/engine-service.guard';
 import { ServiceRoute } from '../auth/service-route.decorator';
@@ -62,6 +77,35 @@ import { CreateModuleMapInternalDto } from './dto/create-module-map-internal.dto
 import { AssignStoryModulesInternalDto } from './dto/assign-story-modules-internal.dto';
 import { ClaimTaskInternalDto } from './dto/claim-task-internal.dto';
 import { MarkTaskInternalDto } from './dto/mark-task-internal.dto';
+import { SERVICE_TOKEN } from '../../../infrastructure/openapi/documento';
+import {
+  PaginaDeEventosResponseDto,
+  SessionEventResponseDto,
+  SessionResponseDto,
+} from '../sessions/dto/sessions.response.dto';
+import { ProposedActionResponseDto } from '../actions/dto/actions.response.dto';
+import { HandoffResponseDto } from '../agents/dto/agents.response.dto';
+import {
+  EpicResponseDto,
+  ModuleMapResponseDto,
+  StoryResponseDto,
+  TaskResponseDto,
+} from '../backlog/dto/backlog.response.dto';
+import { OkResponseDto } from '../shared/dto/comuns.response.dto';
+import {
+  AnamneseContextResponseDto,
+  DevTaskContextResponseDto,
+  GateAbertoResponseDto,
+  GateVerdictResponseDto,
+  InfraContextResponseDto,
+  InfraGateVerdictResponseDto,
+  InfraPrFilesResponseDto,
+  LlmTurnResponseDto,
+  LlmTurnStreamEventResponseDto,
+  ProposeHypothesesResponseDto,
+  PsychologistContextResponseDto,
+  RecordProficiencyResponseDto,
+} from './dto/internal.response.dto';
 
 /**
  * Chamadas internas do engine (Elixir/OTP) — nunca de um usuário humano.
@@ -71,6 +115,13 @@ import { MarkTaskInternalDto } from './dto/mark-task-internal.dto';
  * Quem autentica é o `EngineServiceGuard`, com o segredo compartilhado
  * `BRABO_SERVICE_TOKEN`. Não há RBAC de projeto aqui.
  */
+@ApiTags('internal')
+@ApiSecurity(SERVICE_TOKEN)
+@ApiForbiddenResponse({
+  description: 'Service token ausente ou diferente do compartilhado.',
+})
+@ApiNotFoundResponse({ description: 'Sessão, projeto ou recurso inexistente.' })
+@ApiBadRequestResponse({ description: 'Corpo inválido.' })
 @Controller('internal/sessions')
 @ServiceRoute()
 @UseGuards(EngineServiceGuard)
@@ -113,6 +164,15 @@ export class InternalSessionsController {
    * delas via outbox, não há o que reportar de volta.
    */
   @Post(':sessionId/termination')
+  @ApiOperation({
+    summary: 'Reporta que o processo da sessão terminou no engine',
+    description:
+      'Só chega aqui o término que a api NÃO provocou — crash, kill, ' +
+      '`heartbeat_timeout`, encerramento defensivo. Parada planejada pela própria ' +
+      'api não passa por aqui: o engine já soube dela pelo outbox, e reportar de ' +
+      'volta seria eco.',
+  })
+  @ApiCreatedResponse({ type: SessionResponseDto })
   report(
     @Param('sessionId') sessionId: string,
     @Body() dto: ReportSessionTerminationDto,
@@ -137,6 +197,14 @@ export class InternalSessionsController {
    * (`POST :sessionId/hypotheses`).
    */
   @Post(':sessionId/events')
+  @ApiOperation({
+    summary: 'Anexa um evento ao log da sessão, em nome de um agente',
+    description:
+      'Mesmo caso de uso e mesma atribuição atômica de `seq` da rota humana. ' +
+      'Hipóteses do Psicólogo NÃO passam por aqui: têm rota própria, com validação ' +
+      'de evidência.',
+  })
+  @ApiCreatedResponse({ type: SessionEventResponseDto })
   appendEvent(
     @Param('sessionId') sessionId: string,
     @Body() dto: AppendSessionEventInternalDto,
@@ -154,6 +222,17 @@ export class InternalSessionsController {
    * restart. A rota humana equivalente é RBAC-guarded; esta é EngineService.
    */
   @Get(':sessionId/events')
+  @ApiOperation({
+    summary: 'Pagina o event log da sessão para o engine',
+    description:
+      'Usada para REIDRATAR o histórico de conversa de um agente depois de um ' +
+      'restart. A rota humana equivalente é protegida por RBAC; esta, pelo service ' +
+      'token.',
+  })
+  @ApiQuery({ name: 'projectId', required: true })
+  @ApiQuery({ name: 'afterSeq', required: false, example: 40 })
+  @ApiQuery({ name: 'limit', required: false, example: 200 })
+  @ApiOkResponse({ type: PaginaDeEventosResponseDto })
   listEvents(
     @Param('sessionId') sessionId: string,
     @Query('projectId') projectId: string,
@@ -172,6 +251,19 @@ export class InternalSessionsController {
    * session_events: o engine narra o event log.
    */
   @Post(':sessionId/llm-turn')
+  @ApiOperation({
+    summary: 'Executa um turno de LLM medido, com suporte a ferramentas',
+    description:
+      'O metering é OBRIGATÓRIO: todo turno grava `token_usage`, e é isso que faz o ' +
+      'orçamento significar alguma coisa. Não grava evento nenhum — quem narra o ' +
+      'event log é o engine. Falha do provider volta em `error` com 200, porque a ' +
+      'contabilidade continua válida: o turno gastou mesmo falhando.',
+  })
+  @ApiCreatedResponse({ type: LlmTurnResponseDto })
+  @ApiForbiddenResponse({
+    description:
+      'Orçamento estourado com `policy=block`, ou service token inválido.',
+  })
   llmTurn(@Param('sessionId') sessionId: string, @Body() dto: RunLlmTurnDto) {
     return this.runLlmTurn.execute({
       projectId: dto.projectId,
@@ -189,6 +281,22 @@ export class InternalSessionsController {
    * obrigatório, sem gravar session_events (o engine narra).
    */
   @Sse(':sessionId/llm-turn-stream', { method: RequestMethod.POST })
+  @ApiOperation({
+    summary: 'Executa um turno de LLM com a resposta em stream',
+    description:
+      'Mesma semântica do `llm-turn`, entregue quadro a quadro. O `done` traz o ' +
+      '`usage` — sem ele o turno teria saído sem contabilidade.',
+  })
+  @ApiExtraModels(LlmTurnStreamEventResponseDto)
+  @ApiResponse({
+    status: 200,
+    description: 'Stream de quadros até `done` ou `error`.',
+    content: {
+      'text/event-stream': {
+        schema: { $ref: getSchemaPath(LlmTurnStreamEventResponseDto) },
+      },
+    },
+  })
   llmTurnStream(
     @Param('sessionId') sessionId: string,
     @Body() dto: StreamLlmTurnDto,
@@ -209,6 +317,13 @@ export class InternalSessionsController {
    * product_brief e o oferece ao PO — a api é dona da tabela `handoffs`.
    */
   @Post(':sessionId/handoffs')
+  @ApiOperation({
+    summary: 'Oferece um handoff de um agente para outro',
+    description:
+      'Nasce em `offered`. Quem aceita é uma PESSOA, pela rota humana — agente não ' +
+      'ativa agente.',
+  })
+  @ApiCreatedResponse({ type: HandoffResponseDto })
   handoff(
     @Param('sessionId') sessionId: string,
     @Body() dto: CreateHandoffInternalDto,
@@ -226,6 +341,8 @@ export class InternalSessionsController {
    * domínio: business_rule_id existe, prontidão draft→ready).
    */
   @Post(':sessionId/epics')
+  @ApiOperation({ summary: 'Cria um épico do backlog' })
+  @ApiCreatedResponse({ type: EpicResponseDto })
   epic(
     @Param('sessionId') sessionId: string,
     @Body() dto: CreateEpicInternalDto,
@@ -237,6 +354,14 @@ export class InternalSessionsController {
   }
 
   @Post(':sessionId/stories')
+  @ApiOperation({
+    summary: 'Cria uma história com RF, RNF, DoD, DoR e regras cobertas',
+    description:
+      'O `businessRuleIds` é o que alimenta a cobertura regra→história. Cada id tem ' +
+      'de referenciar um evento `artifact.business_rule` que EXISTE — a validação ' +
+      'recusa id inventado.',
+  })
+  @ApiCreatedResponse({ type: StoryResponseDto })
   story(
     @Param('sessionId') sessionId: string,
     @Body() dto: CreateStoryInternalDto,
@@ -254,6 +379,8 @@ export class InternalSessionsController {
   }
 
   @Post(':sessionId/tasks')
+  @ApiOperation({ summary: 'Cria uma tarefa dentro de uma história' })
+  @ApiCreatedResponse({ type: TaskResponseDto })
   task(
     @Param('sessionId') sessionId: string,
     @Body() dto: CreateTaskInternalDto,
@@ -270,6 +397,15 @@ export class InternalSessionsController {
    * revalida stories) e assign_story_modules (vincula módulos a uma story).
    */
   @Post(':sessionId/module-map')
+  @ApiOperation({
+    summary: 'Publica uma versão nova do module_map',
+    description:
+      'O histórico é imutável: cada publicação é uma versão a mais e a vigente é a ' +
+      'de maior `version`. Um CICLO de dependência entre módulos faz o mapa ser ' +
+      'REJEITADO com 400 — o grafo precisa ser acíclico.',
+  })
+  @ApiCreatedResponse({ type: ModuleMapResponseDto })
+  @ApiBadRequestResponse({ description: 'Ciclo de dependência entre módulos.' })
   moduleMap(
     @Param('sessionId') sessionId: string,
     @Body() dto: CreateModuleMapInternalDto,
@@ -280,6 +416,13 @@ export class InternalSessionsController {
   }
 
   @Post(':sessionId/story-modules')
+  @ApiOperation({
+    summary: 'Associa uma história aos módulos que ela toca',
+    description:
+      'É a validação cruzada: módulo inexistente no mapa vigente vira pendência de ' +
+      'arquitetura em vez de passar despercebido.',
+  })
+  @ApiCreatedResponse({ type: StoryResponseDto })
   storyModules(
     @Param('sessionId') sessionId: string,
     @Body() dto: AssignStoryModulesInternalDto,
@@ -295,6 +438,14 @@ export class InternalSessionsController {
    * pegável do módulo, e atualização de status ao longo do trabalho.
    */
   @Post(':sessionId/tasks/claim')
+  @ApiOperation({
+    summary: 'Reivindica atomicamente a próxima tarefa pegável do módulo',
+    description:
+      'ATÔMICO de propósito: com vários dev agents no mesmo módulo, duas ' +
+      'reivindicações concorrentes não podem devolver a mesma tarefa. Sem tarefa ' +
+      'disponível, devolve vazio em vez de erro.',
+  })
+  @ApiCreatedResponse({ type: TaskResponseDto })
   claimTask(
     @Param('sessionId') sessionId: string,
     @Body() dto: ClaimTaskInternalDto,
@@ -308,6 +459,11 @@ export class InternalSessionsController {
   }
 
   @Post(':sessionId/tasks/:taskId/status')
+  @ApiOperation({ summary: 'Move a tarefa de estado ao longo do trabalho' })
+  @ApiCreatedResponse({ type: TaskResponseDto })
+  @ApiConflictResponse({
+    description: 'Transição inválida, ou tarefa de outro agente.',
+  })
   markTaskStatus(
     @Param('sessionId') sessionId: string,
     @Param('taskId') taskId: string,
@@ -332,6 +488,19 @@ export class InternalSessionsController {
    * que os gates QA/SecOps querem ao reusar este contexto.
    */
   @Get(':sessionId/dev-context')
+  @ApiOperation({
+    summary: 'Monta o contexto completo de uma tarefa para o dev agent',
+    description:
+      'Uma chamada com tudo o que o prompt precisa: a história inteira, as regras de ' +
+      'negócio resolvidas e as ADRs aplicáveis. `module` restringe as ADRs às do ' +
+      'módulo daquele dev; ADR sem módulo declarado é TRANSVERSAL e entra sempre. ' +
+      'Omitir `module` traz o acervo inteiro, que é o que os gates de QA e SecOps ' +
+      'querem ao reusar este mesmo contexto.',
+  })
+  @ApiQuery({ name: 'projectId', required: true })
+  @ApiQuery({ name: 'taskId', required: true })
+  @ApiQuery({ name: 'module', required: false, example: 'api' })
+  @ApiOkResponse({ type: DevTaskContextResponseDto })
   devContext(
     @Query('projectId') projectId: string,
     @Query('taskId') taskId: string,
@@ -345,6 +514,13 @@ export class InternalSessionsController {
    * `infraRelevant` do projeto — mesmo espírito de `dev-context`.
    */
   @Get(':sessionId/infra-context')
+  @ApiOperation({
+    summary: 'Monta o contexto inicial do InfraAgent',
+    description:
+      'O module_map vigente mais as ADRs relevantes de infraestrutura.',
+  })
+  @ApiQuery({ name: 'projectId', required: true })
+  @ApiOkResponse({ type: InfraContextResponseDto })
   infraContext(@Query('projectId') projectId: string) {
     return this.getInfraContext.execute(projectId);
   }
@@ -356,6 +532,15 @@ export class InternalSessionsController {
    * eventos o engine lê direto do Postgres, não passa por aqui.
    */
   @Get(':sessionId/psychologist-context')
+  @ApiOperation({
+    summary: 'Monta o contexto de uma rodada do Psicólogo',
+    description:
+      'O `alreadyAnalyzed` é o que dá IDEMPOTÊNCIA ao caminho automático: com `true` ' +
+      'o worker curto-circuita sem gastar token. As hipóteses anteriores vão junto ' +
+      'para a rodada não repetir a si mesma.',
+  })
+  @ApiQuery({ name: 'projectId', required: true })
+  @ApiOkResponse({ type: PsychologistContextResponseDto })
   psychologistContext(
     @Param('sessionId') sessionId: string,
     @Query('projectId') projectId: string,
@@ -370,6 +555,17 @@ export class InternalSessionsController {
    * como tool-result pra correção (até o teto de max_iterations).
    */
   @Post(':sessionId/hypotheses')
+  @ApiOperation({
+    summary: 'Registra uma rodada de análise e as hipóteses dela',
+    description:
+      'Cada hipótese precisa citar eventos que EXISTEM nesta sessão — evidência ' +
+      'inventada é recusada com 400, e é isso que separa hipótese de opinião. A ' +
+      'rodada anterior da sessão vira superseded.',
+  })
+  @ApiCreatedResponse({ type: ProposeHypothesesResponseDto })
+  @ApiConflictResponse({
+    description: 'Já existe análise current para esta sessão.',
+  })
   hypotheses(
     @Param('sessionId') sessionId: string,
     @Body() dto: ProposeHypothesesInternalDto,
@@ -389,6 +585,14 @@ export class InternalSessionsController {
    * semgrep sobre os arquivos SEM worktree (a PR de infra não tem um).
    */
   @Get(':sessionId/infra-artifacts/:prActionId/files')
+  @ApiOperation({
+    summary: 'Devolve os arquivos de uma PR de infra para os gates lerem',
+    description:
+      'O conteúdo sai do payload da própria `proposed_action`: artefato de infra ' +
+      'nunca toca um worktree, igual às ADRs.',
+  })
+  @ApiQuery({ name: 'projectId', required: true })
+  @ApiOkResponse({ type: InfraPrFilesResponseDto })
   infraPrFiles(
     @Query('projectId') projectId: string,
     @Param('prActionId') prActionId: string,
@@ -401,6 +605,13 @@ export class InternalSessionsController {
    * diagnóstico (limite de iterações, orçamento excedido, ou report_blocked).
    */
   @Post(':sessionId/tasks/:taskId/block')
+  @ApiOperation({
+    summary: 'Marca a tarefa como bloqueada, com o motivo',
+    description:
+      'Não há destrave automático: quem destrava é uma pessoa, pela rota humana. É ' +
+      'o que impede um agente de girar em falso indefinidamente.',
+  })
+  @ApiCreatedResponse({ type: TaskResponseDto })
   blockTask(
     @Param('sessionId') sessionId: string,
     @Param('taskId') taskId: string,
@@ -422,6 +633,15 @@ export class InternalSessionsController {
    * (correct/run_secops/done/blocked).
    */
   @Post(':sessionId/gates/verdict')
+  @ApiOperation({
+    summary: 'Registra o parecer de QA ou SecOps sobre a PR de uma tarefa',
+    description:
+      'O `nextAction` da resposta é o que o engine obedece: `correct` devolve ao ' +
+      'dev, `run_secops` avança o gate, `done` libera para o usuário e `blocked` ' +
+      'significa que o teto de correções estourou. O MERGE nunca é automático — ' +
+      '`done` só significa que chegou a vez do humano.',
+  })
+  @ApiCreatedResponse({ type: GateVerdictResponseDto })
   gateVerdict(
     @Param('sessionId') sessionId: string,
     @Body() dto: RecordGateVerdictInternalDto,
@@ -447,6 +667,11 @@ export class InternalSessionsController {
    * volta) em vez de `taskId` — o artefato de infra não tem task por trás.
    */
   @Post(':sessionId/infra-gates/verdict')
+  @ApiOperation({
+    summary: 'Registra o parecer de QA ou SecOps sobre uma PR de infra',
+    description: 'Mesma esteira e mesma máquina de estados das PRs de dev.',
+  })
+  @ApiCreatedResponse({ type: InfraGateVerdictResponseDto })
   infraGateVerdict(
     @Param('sessionId') sessionId: string,
     @Body() dto: RecordInfraGateVerdictInternalDto,
@@ -470,6 +695,11 @@ export class InternalSessionsController {
    * `pr_open` executar com sucesso; o engine dispara o QAAgent em seguida.
    */
   @Post(':sessionId/tasks/:taskId/gate/open')
+  @ApiOperation({
+    summary: 'Abre a esteira de gates da tarefa, começando pelo QA',
+    description: 'Chamado quando a PR do dev agent fica pronta para revisão.',
+  })
+  @ApiCreatedResponse({ type: GateAbertoResponseDto })
   openGateEndpoint(
     @Param('sessionId') sessionId: string,
     @Param('taskId') taskId: string,
@@ -484,6 +714,16 @@ export class InternalSessionsController {
    * hipóteses aceitas na fila, perfis atuais e a janela a analisar.
    */
   @Get(':sessionId/anamnese-context')
+  @ApiOperation({
+    summary: 'Monta o contexto de uma rodada da Anamnese',
+    description:
+      'Tudo numa chamada, espelhando o contexto do Psicólogo. Os membros já vêm SEM ' +
+      'quem optou por não ser perfilado, e as decisões do usuário na janela vêm por ' +
+      'aqui porque não estão no event log. Os eventos em si o engine lê direto do ' +
+      'Postgres — trafegá-los por HTTP seria mais caro sem ser mais correto.',
+  })
+  @ApiQuery({ name: 'projectId', required: true })
+  @ApiOkResponse({ type: AnamneseContextResponseDto })
   anamneseContext(@Query('projectId') projectId: string) {
     return this.getAnamneseContext.execute(projectId);
   }
@@ -494,6 +734,14 @@ export class InternalSessionsController {
    * de gravar; rejeição volta pro modelo como tool-result.
    */
   @Post(':sessionId/proficiency')
+  @ApiOperation({
+    summary: 'Grava os perfis de proficiência derivados na rodada',
+    description:
+      'Competência fora do catálogo é RECUSADA, e evidência que cita evento de ' +
+      'outro projeto também — as duas validações existem porque o modelo erra as ' +
+      'duas coisas.',
+  })
+  @ApiCreatedResponse({ type: RecordProficiencyResponseDto })
   proficiency(
     @Param('sessionId') sessionId: string,
     @Body() dto: RecordProficiencyInternalDto,
@@ -512,6 +760,14 @@ export class InternalSessionsController {
    * e recusa repropor um patch já negado antes de criar a ação.
    */
   @Post(':sessionId/instruction-patches')
+  @ApiOperation({
+    summary: 'Propõe um patch no arquivo de instrução de um agente',
+    description:
+      'Vira `proposed_action`, e não escrita direta: mudar o comportamento de um ' +
+      'agente é efeito externo e passa pelo mesmo pipeline de aprovação de tudo o ' +
+      'mais. É o fechamento do loop hipótese → patch.',
+  })
+  @ApiCreatedResponse({ type: ProposedActionResponseDto })
   instructionPatch(
     @Param('sessionId') sessionId: string,
     @Body() dto: ProposeInstructionPatchInternalDto,
@@ -530,6 +786,14 @@ export class InternalSessionsController {
    * permissions da rota humana; terminal auto_approved é auto-executado.
    */
   @Post(':sessionId/actions')
+  @ApiOperation({
+    summary: 'Propõe uma ação com efeito externo em nome de um agente',
+    description:
+      'A porta ÚNICA pela qual um agente toca git, terminal ou gasto. O ' +
+      '`permissions.json` decide na criação, e `deny` vence qualquer autonomia ' +
+      'concedida ao agente.',
+  })
+  @ApiCreatedResponse({ type: ProposedActionResponseDto })
   createAction(
     @Param('sessionId') sessionId: string,
     @Body() dto: CreateActionInternalDto,
