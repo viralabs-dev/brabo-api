@@ -1,4 +1,12 @@
-import { Body, Controller, HttpCode, Post, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  Post,
+  Req,
+  Res,
+  UnauthorizedException,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiForbiddenResponse,
@@ -7,7 +15,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { Public } from './public.decorator';
 import { LoginUseCase } from '../../../application/use-cases/auth/login.use-case';
 import { LogoutUseCase } from '../../../application/use-cases/auth/logout.use-case';
@@ -20,13 +28,19 @@ import type { ContextoDaRequisicao } from '../../../application/use-cases/auth/a
 import {
   AceiteResponseDto,
   LoginDto,
-  RefreshDto,
   RegisterDto,
   RequestPasswordResetDto,
   ResetPasswordDto,
   SessaoResponseDto,
   VerifyEmailDto,
 } from './dto/auth.dto';
+import {
+  definirCookiesDeSessao,
+  exigirCsrf,
+  limparCookiesDeSessao,
+  refreshDoCookie,
+} from './session-cookies';
+import { authConfig } from '../../../application/use-cases/auth/auth-config';
 
 const ACEITE = {
   message: 'Se o endereço estiver disponível, enviamos um e-mail.',
@@ -102,15 +116,17 @@ export class AuthController {
   @ApiOkResponse({ type: SessaoResponseDto })
   @ApiUnauthorizedResponse({ description: 'Credenciais inválidas.' })
   @ApiForbiddenResponse({ description: 'E-mail ainda não verificado.' })
-  login_(
+  async login_(
     @Body() dto: LoginDto,
     @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<SessaoResponseDto> {
-    return this.login.execute({
+    const sessao = await this.login.execute({
       email: dto.email,
       senha: dto.senha,
       contexto: contextoDe(req),
     });
+    return this.responderComCookies(res, sessao);
   }
 
   @Post('refresh')
@@ -127,14 +143,21 @@ export class AuthController {
   @ApiUnauthorizedResponse({
     description: 'Refresh inválido, expirado ou já usado.',
   })
-  refresh_(
-    @Body() dto: RefreshDto,
+  async refresh_(
     @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<SessaoResponseDto> {
-    return this.refresh.execute({
-      refreshToken: dto.refreshToken,
+    exigirCsrf(req);
+    const refreshToken = refreshDoCookie(req);
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh inválido ou expirado.');
+    }
+
+    const sessao = await this.refresh.execute({
+      refreshToken,
       contexto: contextoDe(req),
     });
+    return this.responderComCookies(res, sessao);
   }
 
   @Post('logout')
@@ -146,9 +169,21 @@ export class AuthController {
       'Sempre 204, inclusive para token desconhecido — responder 401 aqui seria ' +
       'um oráculo de validade de token.',
   })
-  async logout_(@Body() dto: RefreshDto, @Req() req: Request): Promise<void> {
+  async logout_(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<void> {
+    exigirCsrf(req);
+    const refreshToken = refreshDoCookie(req);
+
+    // Os cookies caem PRIMEIRO, e mesmo sem token: se a revogação falhar, o
+    // browser já esqueceu a sessão. O inverso — revogar e falhar ao limpar —
+    // deixaria o usuário com um cookie morto que ele não consegue descartar.
+    limparCookiesDeSessao(res);
+    if (!refreshToken) return;
+
     await this.logout.execute({
-      refreshToken: dto.refreshToken,
+      refreshToken,
       contexto: contextoDe(req),
     });
   }
@@ -216,6 +251,20 @@ export class AuthController {
       novaSenha: dto.novaSenha,
       contexto: contextoDe(req),
     });
+  }
+
+  /**
+   * Manda o refresh pelo cookie e devolve só o access no corpo.
+   *
+   * Devolver o refresh nos dois lugares anularia o `httpOnly`: bastaria o XSS
+   * ler a resposta. Por isso `SessaoResponseDto` perdeu o campo.
+   */
+  private responderComCookies(
+    res: Response,
+    sessao: { accessToken: string; refreshToken: string; expiresIn: number },
+  ): SessaoResponseDto {
+    definirCookiesDeSessao(res, sessao.refreshToken, authConfig.refreshTtlMs());
+    return { accessToken: sessao.accessToken, expiresIn: sessao.expiresIn };
   }
 }
 

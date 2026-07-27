@@ -6,6 +6,7 @@ import { NestFactory } from '@nestjs/core';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { DomainTransitionErrorFilter } from './interfaces/http/shared/domain-transition-error.filter';
 import { GitProviderErrorFilter } from './interfaces/http/shared/git-provider-error.filter';
@@ -36,6 +37,15 @@ async function bootstrap() {
     }),
   );
 
+  // O refresh da web vive em cookie httpOnly (Fase 7a, item 5). O Express não
+  // parseia `Cookie` sozinho, e sem isto `req.cookies` seria `undefined` — o
+  // login funcionaria e o refresh falharia, que é o modo de falha mais chato
+  // possível: só aparece 15 minutos depois.
+  app.use(cookieParser());
+
+  // `credentials: true` com origem EXATA (nunca `*`, e o boot falha se alguém
+  // tentar em produção — ver cors-origins.ts). É o que permite o browser
+  // mandar o cookie de sessão para uma api em outra origem.
   app.enableCors({ origin: resolveCorsOrigins(), credentials: true });
   app.useGlobalPipes(
     new ValidationPipe({

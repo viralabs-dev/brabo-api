@@ -61,17 +61,6 @@ export class LoginDto {
   senha!: string;
 }
 
-export class RefreshDto {
-  @ApiProperty({
-    description:
-      'O refresh token opaco devolvido no login ou no refresh anterior.',
-  })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(512)
-  refreshToken!: string;
-}
-
 export class VerifyEmailDto {
   @ApiProperty({ description: 'Token de uso único recebido por e-mail.' })
   @IsString()
@@ -108,17 +97,20 @@ export class SessaoResponseDto {
   accessToken!: string;
 
   @ApiProperty({
-    description:
-      'Token opaco de renovação. Rotaciona a cada uso — reapresentar um já usado revoga a família inteira.',
-  })
-  refreshToken!: string;
-
-  @ApiProperty({
     example: 900,
     description: 'Segundos até o access token expirar.',
   })
   expiresIn!: number;
 }
+
+/**
+ * O refresh NÃO aparece aqui de propósito (Fase 7a, item 5).
+ *
+ * Ele vai num cookie `httpOnly`, que o JavaScript não lê. Devolvê-lo também
+ * no corpo anularia a proteção: bastaria um XSS ler a resposta do login para
+ * levar a sessão longa. O par do cookie é o `brabo_csrf`, que a web ecoa em
+ * `X-CSRF-Token`. Ver `session-cookies.ts`.
+ */
 
 export class AceiteResponseDto {
   @ApiProperty({
