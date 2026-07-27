@@ -35,7 +35,7 @@ const SALT = 'brabo-credentials-salt';
  * O `encrypt` usa SEMPRE a chave atual: o que se rotaciona é o embrulho, e um
  * segredo novo já nasce na chave nova.
  *
- * Ver docs/runbooks/rotacao-chave-mestra.md.
+ * Ver docs/runbook.md (seção "Rotação da chave mestra").
  */
 @Injectable()
 export class EnvelopeEncryptionService implements EncryptionService {

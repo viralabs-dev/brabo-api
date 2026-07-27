@@ -7,7 +7,7 @@ import type { EncryptedSecret } from '../application/ports/encryption.port';
 
 /**
  * Re-embrulha os DEKs na chave mestra ATUAL — o passo do meio da rotação
- * (Fase 5, item 3). Ver docs/runbooks/rotacao-chave-mestra.md.
+ * (Fase 5, item 3). Ver docs/runbook.md (seção "Rotação da chave mestra").
  *
  * Roda com as DUAS variáveis definidas: `CREDENTIALS_MASTER_KEY` com a chave
  * nova e `CREDENTIALS_MASTER_KEY_PREVIOUS` com a antiga. Cada registro é aberto
