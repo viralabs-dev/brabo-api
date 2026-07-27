@@ -11,6 +11,8 @@ import { AppModule } from './app.module';
 import { DomainTransitionErrorFilter } from './interfaces/http/shared/domain-transition-error.filter';
 import { GitProviderErrorFilter } from './interfaces/http/shared/git-provider-error.filter';
 import { resolveCorsOrigins } from './infrastructure/security/cors-origins';
+import { SwaggerModule } from '@nestjs/swagger';
+import { configDoOpenapi } from './infrastructure/openapi/documento';
 
 async function bootstrap() {
   // `bufferLogs`: as linhas emitidas ANTES de o logger estar pronto ficam na
@@ -64,6 +66,25 @@ async function bootstrap() {
   // despercebido (o container inteiro sumia); em Kubernetes, onde replicaset e
   // HPA reciclam pods o tempo todo, vira vazamento acumulado no banco.
   app.enableShutdownHooks();
+
+  // Swagger UI (Fase 7b). FORA de produção apenas: a referência de produção é
+  // o site de docs, gerado do mesmo documento — servir a superfície inteira
+  // num ambiente real não acrescenta nada e dá mapa de graça a quem sondar.
+  //
+  // Estas duas rotas NÃO aparecem em docs/security-surface.md nem no
+  // route-surface.spec.ts, e isso não é esquecimento: `SwaggerModule.setup`
+  // monta middleware direto no Express, não um controller, e o teste enumera
+  // por `DiscoveryService`. A lacuna está registrada em prosa naquele
+  // documento, que é o lugar certo para o que o teste estruturalmente não vê.
+  if (process.env.NODE_ENV !== 'production') {
+    SwaggerModule.setup(
+      'docs',
+      app,
+      SwaggerModule.createDocument(app, configDoOpenapi()),
+      { jsonDocumentUrl: 'docs-json' },
+    );
+  }
+
   await app.listen(process.env.PORT ?? 3000);
 }
 void bootstrap();

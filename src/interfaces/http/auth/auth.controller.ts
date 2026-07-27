@@ -8,6 +8,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import {
+  ApiAcceptedResponse,
   ApiBadRequestResponse,
   ApiForbiddenResponse,
   ApiOkResponse,
@@ -51,10 +52,11 @@ const ACEITE = {
  *
  * ## Por que TODAS as rotas são `@Public()`
  *
- * O `JwtAuthGuard` global ainda verifica token do Keycloak nesta fase. Exigir
- * token numa rota de auth pediria um token do Keycloak para fazer login no
- * sistema que veio substituí-lo. A 7.2 revisita o `logout`, que é a única que
- * poderia ser autenticada depois da troca de emissor.
+ * São o caminho por onde se OBTÉM um access token, e o `JwtAuthGuard` global
+ * exige um. Atrás do guard, cada uma pediria a credencial que ela mesma emite.
+ * O `logout` é a única que poderia ser autenticada, e não é de propósito: a
+ * credencial que lhe interessa é o refresh no cookie, com o par de CSRF, e
+ * deslogar precisa funcionar com o access token já expirado.
  *
  * ## O que protege estas rotas
  *
@@ -86,7 +88,7 @@ export class AuthController {
       'a resposta não revela se a conta existe. No segundo caso nada é criado e o ' +
       'dono do endereço recebe um aviso.',
   })
-  @ApiOkResponse({ type: AceiteResponseDto })
+  @ApiAcceptedResponse({ type: AceiteResponseDto })
   @ApiForbiddenResponse({
     description: 'Cadastro fechado (AUTH_REGISTRATION_ENABLED=false).',
   })
@@ -217,7 +219,7 @@ export class AuthController {
       'Responde 202 para endereço conhecido e desconhecido. É também o caminho ' +
       'de quem foi importado do Keycloak e ainda não definiu senha.',
   })
-  @ApiOkResponse({ type: AceiteResponseDto })
+  @ApiAcceptedResponse({ type: AceiteResponseDto })
   async requestPasswordReset(
     @Body() dto: RequestPasswordResetDto,
     @Req() req: Request,
