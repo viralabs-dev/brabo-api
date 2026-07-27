@@ -82,7 +82,9 @@ async function main(): Promise<void> {
   try {
     for (const tabela of [userCredentials, projectGitConnections] as const) {
       const nome =
-        tabela === userCredentials ? 'user_credentials' : 'project_git_connections';
+        tabela === userCredentials
+          ? 'user_credentials'
+          : 'project_git_connections';
       const resultado: Resultado = {
         tabela: nome,
         total: 0,

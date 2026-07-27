@@ -53,7 +53,9 @@ export class EnvelopeEncryptionService implements EncryptionService {
 
     const previous = process.env.CREDENTIALS_MASTER_KEY_PREVIOUS;
     this.previousKey =
-      previous && previous !== passphrase ? scryptSync(previous, SALT, 32) : null;
+      previous && previous !== passphrase
+        ? scryptSync(previous, SALT, 32)
+        : null;
 
     if (this.previousKey) {
       // Visível de propósito: rodar por tempo indeterminado com duas chaves
@@ -106,7 +108,10 @@ export class EnvelopeEncryptionService implements EncryptionService {
 
     const dekIv = randomBytes(IV_LENGTH);
     const dekCipher = createCipheriv(ALGORITHM, this.masterKey, dekIv);
-    const wrappedDek = Buffer.concat([dekCipher.update(dek), dekCipher.final()]);
+    const wrappedDek = Buffer.concat([
+      dekCipher.update(dek),
+      dekCipher.final(),
+    ]);
 
     return {
       ...secret,
@@ -129,7 +134,10 @@ export class EnvelopeEncryptionService implements EncryptionService {
 
     const dekIv = randomBytes(IV_LENGTH);
     const dekCipher = createCipheriv(ALGORITHM, key, dekIv);
-    const wrappedDek = Buffer.concat([dekCipher.update(dek), dekCipher.final()]);
+    const wrappedDek = Buffer.concat([
+      dekCipher.update(dek),
+      dekCipher.final(),
+    ]);
     const dekAuthTag = dekCipher.getAuthTag();
 
     return {

@@ -50,7 +50,9 @@ export class RateLimitGuard implements CanActivate {
   private readonly logger = new Logger(RateLimitGuard.name);
 
   private readonly enabled = process.env.RATE_LIMIT_ENABLED !== 'false';
-  private readonly windowMs = Number(process.env.RATE_LIMIT_WINDOW_MS ?? 60_000);
+  private readonly windowMs = Number(
+    process.env.RATE_LIMIT_WINDOW_MS ?? 60_000,
+  );
   private readonly userLimit = Number(process.env.RATE_LIMIT_USER ?? 300);
   private readonly ipLimit = Number(process.env.RATE_LIMIT_IP ?? 600);
   private readonly engineClientId =
@@ -106,7 +108,8 @@ export class RateLimitGuard implements CanActivate {
         throw new HttpException(
           {
             statusCode: HttpStatus.TOO_MANY_REQUESTS,
-            message: 'Limite de requisições excedido. Tente novamente em instantes.',
+            message:
+              'Limite de requisições excedido. Tente novamente em instantes.',
             error: 'Too Many Requests',
           },
           HttpStatus.TOO_MANY_REQUESTS,
@@ -152,7 +155,8 @@ export class RateLimitGuard implements CanActivate {
              + (select count(*) from novo)::int as total
     `);
 
-    const linhas = (resultado as unknown as { rows?: { total: number }[] }).rows;
+    const linhas = (resultado as unknown as { rows?: { total: number }[] })
+      .rows;
     return Number(linhas?.[0]?.total ?? 0);
   }
 
