@@ -10,6 +10,13 @@ export interface RefreshTravado {
   id: string;
   userId: string;
   familyId: string;
+  /**
+   * Herdado sem alteração pelo filho na rotação. Vem daqui, e não de uma
+   * segunda consulta, porque a linha travada já o leu — e porque reemitir com
+   * `new Date()` reiniciaria o teto absoluto a cada rotação, devolvendo a
+   * sessão eterna que o campo existe para impedir.
+   */
+  familyStartedAt: Date;
   classificacao: ClassificacaoDoRefresh;
 }
 

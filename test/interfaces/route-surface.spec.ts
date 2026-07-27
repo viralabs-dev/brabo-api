@@ -196,21 +196,36 @@ describe('superfície exposta da api', () => {
     expect(divergentes, divergentes.join('\n  ')).toEqual([]);
   });
 
-  it('as únicas rotas públicas são as quatro justificadas no documento', () => {
+  it('as únicas rotas públicas são as justificadas no documento', () => {
     // Trava explícita e separada: as outras asserções pegariam uma pública
     // nova se ela não estivesse documentada, mas não impediriam alguém de
     // documentá-la sem pensar. Aqui, abrir mais uma rota exige mexer NESTE
     // teste — o que força a conversa.
+    //
+    // A lista saltou de quatro para doze na Fase 7a, e a conversa aconteceu:
+    // as oito novas são o auth first-party. Todas precisam ser públicas porque
+    // o guard global ainda verifica token do Keycloak — exigir token numa rota
+    // de auth pediria credencial do sistema antigo para entrar no novo. O que
+    // as protege é o lockout progressivo, não o RateLimitGuard, que libera
+    // rota `@Public()`. Ver docs/security-surface.md.
     const publicas = [...registradas.values()]
       .filter((r) => r.classificacao === 'public')
       .map((r) => `${r.metodo} ${r.caminho}`)
       .sort();
 
     expect(publicas).toEqual([
+      'GET /.well-known/jwks.json',
       'GET /git/oauth/:provider/callback',
       'GET /health',
       'GET /live',
       'GET /metrics',
+      'POST /auth/login',
+      'POST /auth/logout',
+      'POST /auth/refresh',
+      'POST /auth/register',
+      'POST /auth/request-password-reset',
+      'POST /auth/reset-password',
+      'POST /auth/verify-email',
     ]);
   });
 });

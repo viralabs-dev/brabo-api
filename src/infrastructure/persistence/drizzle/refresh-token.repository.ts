@@ -71,6 +71,7 @@ export class DrizzleRefreshTokenRepository extends RefreshTokenRepository {
       id: linha.id,
       userId: linha.user_id,
       familyId: linha.family_id,
+      familyStartedAt: new Date(linha.family_started_at),
       classificacao: classificar(
         {
           rotatedAt: linha.rotated_at ? new Date(linha.rotated_at) : null,
