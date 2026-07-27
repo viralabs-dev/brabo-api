@@ -161,6 +161,12 @@ export class GithubProvider implements GitProviderContract {
       // aplicamos o mais restritivo razoável dado o que já existe: bloqueia
       // até admin burlar a proteção e exige 1 aprovação, sem status-checks
       // (nenhum CI modelado ainda) nem restrição adicional de push.
+      //
+      // ATENÇÃO ao efeito de `required_approving_review_count: 1` junto com
+      // `enforce_admins: true`: é uma exigência de aprovação DA PLATAFORMA que
+      // a matriz do domínio (QA -> SecOps -> usuário) não preenche, e sem o
+      // bypass de admin ela pode BLOQUEAR o merge manual do usuário num
+      // repositório de dono único. Decisão e contorno em docs/adr/0028.
       await octokit.rest.repos.updateBranchProtection({
         owner,
         repo,
