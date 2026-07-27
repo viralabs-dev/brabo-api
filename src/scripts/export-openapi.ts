@@ -31,10 +31,8 @@
  */
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from '../app.module';
-import { configDoOpenapi } from '../infrastructure/openapi/documento';
-import { serializarDocumento } from '../infrastructure/openapi/normalizar';
+import { montarDocumento } from '../infrastructure/openapi/documento';
 
 async function main() {
   // `logger: false` porque a saída ÚTIL deste processo é o JSON no stdout;
@@ -42,9 +40,8 @@ async function main() {
   const app = await NestFactory.create(AppModule, { logger: false });
   await app.init();
 
-  const documento = SwaggerModule.createDocument(app, configDoOpenapi());
-
-  process.stdout.write(serializarDocumento(documento));
+  // `montarDocumento` já normaliza a ordenação; aqui só falta serializar.
+  process.stdout.write(`${JSON.stringify(montarDocumento(app), null, 2)}\n`);
   await app.close();
 }
 

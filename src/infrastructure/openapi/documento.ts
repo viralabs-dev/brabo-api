@@ -1,4 +1,9 @@
-import { DocumentBuilder, type OpenAPIObject } from '@nestjs/swagger';
+import {
+  DocumentBuilder,
+  SwaggerModule,
+  type OpenAPIObject,
+} from '@nestjs/swagger';
+import { normalizarDocumento } from './normalizar';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -119,4 +124,73 @@ export function configDoOpenapi(): Omit<OpenAPIObject, 'paths'> {
       SERVICE_TOKEN,
     )
     .build();
+}
+
+/**
+ * As respostas de erro que vêm da CADEIA DE GUARDS, não do handler.
+ *
+ * `401`, `429` e `400` não são propriedade de nenhuma rota em particular:
+ * saem do `JwtAuthGuard`, do `RateLimitGuard` e do `ValidationPipe` globais.
+ * Declará-las por decorator seria repetir os mesmos três blocos em mais de cem
+ * lugares — e a primeira que alguém esquecesse viraria uma mentira por
+ * omissão.
+ *
+ * Por isso a injeção é derivada do que o próprio documento já diz:
+ *
+ * - operação com `security: bearer` passa pelo `JwtAuthGuard` (→ 401) e pelo
+ *   `RateLimitGuard`, que ISENTA `@Public()` e `@ServiceRoute()` (→ 429);
+ * - operação com `requestBody` passa pelo `ValidationPipe`, que roda com
+ *   `whitelist` e `forbidNonWhitelisted` (→ 400, inclusive por campo
+ *   desconhecido).
+ *
+ * Uma declaração específica da rota SEMPRE vence: se o handler já descreveu o
+ * 400 dele, o genérico não sobrescreve.
+ */
+function injetarErrosDeGuard(documento: OpenAPIObject): OpenAPIObject {
+  const GENERICAS: Record<string, string> = {
+    '400':
+      'Corpo inválido. O `ValidationPipe` roda com `whitelist` e ' +
+      '`forbidNonWhitelisted`, então campo desconhecido também reprova.',
+    '401': 'Sem token, token expirado ou assinatura inválida.',
+    '429': 'Rate limit por usuário ou por IP.',
+  };
+
+  for (const operacoes of Object.values(documento.paths ?? {})) {
+    for (const operacao of Object.values(
+      operacoes as Record<string, unknown>,
+    )) {
+      const op = operacao as {
+        responses?: Record<string, { description?: string }>;
+        security?: Record<string, string[]>[];
+        requestBody?: unknown;
+      };
+      if (!op || typeof op !== 'object' || !op.responses) continue;
+
+      const autenticada = (op.security ?? []).some((s) => BEARER in s);
+      const codigos = [
+        ...(op.requestBody ? ['400'] : []),
+        ...(autenticada ? ['401', '429'] : []),
+      ];
+
+      for (const codigo of codigos) {
+        op.responses[codigo] ??= { description: GENERICAS[codigo] };
+      }
+    }
+  }
+  return documento;
+}
+
+/**
+ * O documento completo: escaneado, com os erros de guard e normalizado.
+ *
+ * `main.ts` (que serve `/docs`), o script de export e `route-surface.spec.ts`
+ * usam ESTA função. Chamar `SwaggerModule.createDocument` direto pularia a
+ * injeção, e cada consumidor veria um documento diferente.
+ */
+export function montarDocumento(
+  app: Parameters<typeof SwaggerModule.createDocument>[0],
+) {
+  return normalizarDocumento(
+    injetarErrosDeGuard(SwaggerModule.createDocument(app, configDoOpenapi())),
+  );
 }

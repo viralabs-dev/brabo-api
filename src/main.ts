@@ -12,7 +12,7 @@ import { DomainTransitionErrorFilter } from './interfaces/http/shared/domain-tra
 import { GitProviderErrorFilter } from './interfaces/http/shared/git-provider-error.filter';
 import { resolveCorsOrigins } from './infrastructure/security/cors-origins';
 import { SwaggerModule } from '@nestjs/swagger';
-import { configDoOpenapi } from './infrastructure/openapi/documento';
+import { montarDocumento } from './infrastructure/openapi/documento';
 
 async function bootstrap() {
   // `bufferLogs`: as linhas emitidas ANTES de o logger estar pronto ficam na
@@ -77,12 +77,9 @@ async function bootstrap() {
   // por `DiscoveryService`. A lacuna está registrada em prosa naquele
   // documento, que é o lugar certo para o que o teste estruturalmente não vê.
   if (process.env.NODE_ENV !== 'production') {
-    SwaggerModule.setup(
-      'docs',
-      app,
-      SwaggerModule.createDocument(app, configDoOpenapi()),
-      { jsonDocumentUrl: 'docs-json' },
-    );
+    SwaggerModule.setup('docs', app, montarDocumento(app), {
+      jsonDocumentUrl: 'docs-json',
+    });
   }
 
   await app.listen(process.env.PORT ?? 3000);

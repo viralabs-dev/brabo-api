@@ -14,14 +14,14 @@ import {
   METHOD_METADATA,
   HTTP_CODE_METADATA,
 } from '@nestjs/common/constants';
-import { SwaggerModule, type OpenAPIObject } from '@nestjs/swagger';
+import type { OpenAPIObject } from '@nestjs/swagger';
 import { AppModule } from '../../src/app.module';
 import { IS_PUBLIC_KEY } from '../../src/interfaces/http/auth/public.decorator';
 import { REQUIRED_ROLE_KEY } from '../../src/interfaces/http/iam/require-role.decorator';
 import {
   BEARER,
   SERVICE_TOKEN,
-  configDoOpenapi,
+  montarDocumento,
 } from '../../src/infrastructure/openapi/documento';
 
 /**
@@ -278,9 +278,7 @@ describe('superfície exposta da api', () => {
     await app.init();
     registradas = rotasRegistradas(app);
     documentadas = rotasDocumentadas();
-    operacoes = operacoesDoDocumento(
-      SwaggerModule.createDocument(app, configDoOpenapi()),
-    );
+    operacoes = operacoesDoDocumento(montarDocumento(app));
   }, 60_000);
 
   afterAll(async () => {
