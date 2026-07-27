@@ -3,8 +3,14 @@ import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { SessionRepository } from '../../ports/session-repository.port';
 import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
 import { OutboxRepository } from '../../ports/outbox-repository.port';
+import { BraboMetrics } from '../../../infrastructure/observability/brabo-metrics';
 import { ExecuteTerminalActionUseCase } from './execute-terminal-action.use-case';
+import { ExecuteAdrPrUseCase } from './execute-adr-pr.use-case';
+import { ExecuteInfraPrUseCase } from './execute-infra-pr.use-case';
+import { ExecuteInstructionPatchUseCase } from './execute-instruction-patch.use-case';
+import { ExecuteGitActionUseCase } from './execute-git-action.use-case';
 import { assertTransition } from '../../../domain/actions/action-state-machine';
+import { GIT_EXECUTED_ACTION_TYPES } from '../../../domain/actions/git-action-types';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
 
 @Injectable()
@@ -15,6 +21,11 @@ export class ApproveActionUseCase {
     private readonly proposedActions: ProposedActionRepository,
     private readonly outbox: OutboxRepository,
     private readonly executeTerminalAction: ExecuteTerminalActionUseCase,
+    private readonly executeAdrPr: ExecuteAdrPrUseCase,
+    private readonly executeInfraPr: ExecuteInfraPrUseCase,
+    private readonly executeGitAction: ExecuteGitActionUseCase,
+    private readonly executeInstructionPatch: ExecuteInstructionPatchUseCase,
+    private readonly metrics: BraboMetrics,
   ) {}
 
   async execute(
@@ -32,6 +43,26 @@ export class ApproveActionUseCase {
 
     if (approved.actionType === 'terminal') {
       return this.executeTerminalAction.execute(projectId, sessionId, approved);
+    }
+
+    if (approved.actionType === 'open_adr_pr') {
+      return this.executeAdrPr.execute(projectId, sessionId, approved);
+    }
+
+    if (approved.actionType === 'open_infra_pr') {
+      return this.executeInfraPr.execute(projectId, sessionId, approved);
+    }
+
+    if (approved.actionType === 'instruction_patch') {
+      return this.executeInstructionPatch.execute(
+        projectId,
+        sessionId,
+        approved,
+      );
+    }
+
+    if (GIT_EXECUTED_ACTION_TYPES.includes(approved.actionType)) {
+      return this.executeGitAction.execute(projectId, sessionId, approved);
     }
 
     return approved;
@@ -67,6 +98,14 @@ export class ApproveActionUseCase {
         aggregateId: actionId,
         eventType: 'proposed_action.approved',
         payload: { from: current.status, to: 'approved' },
+      });
+
+      // Contador e não consulta ao banco: uma ação aprovada que executa muda
+      // de status para `executed`, então `count(status='approved')` subconta
+      // grosseiramente. O evento "alguém decidiu" acontece uma vez, aqui.
+      this.metrics.actionsDecided.inc({
+        project: projectId,
+        decision: 'approved',
       });
 
       return updated;

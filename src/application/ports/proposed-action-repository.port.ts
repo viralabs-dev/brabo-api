@@ -4,6 +4,10 @@ import type { PermissionPolicy } from '../../domain/actions/permissions-file';
 import type { ProposedAction } from '../../domain/actions/proposed-action.entity';
 import type { TerminalExecutionResult } from '../../domain/actions/terminal-execution-result';
 import type { GitBootstrapExecutionResult } from '../../domain/git/bootstrap-execution-result';
+import type { AdrPrExecutionResult } from '../../domain/git/adr-pr-execution-result';
+import type { GitActionExecutionResult } from '../../domain/git/git-action-execution-result';
+import type { InfraPrExecutionResult } from '../../domain/git/infra-pr-execution-result';
+import type { InstructionPatchExecutionResult } from '../../domain/instructions/instruction-patch-execution-result';
 
 export interface NewProposedAction {
   projectId: string;
@@ -25,7 +29,13 @@ export interface DecideProposedAction {
 
 export interface ExecutionResultUpdate {
   status: Extract<ActionStatus, 'executed' | 'failed'>;
-  executionResult: TerminalExecutionResult | GitBootstrapExecutionResult;
+  executionResult:
+    | TerminalExecutionResult
+    | GitBootstrapExecutionResult
+    | AdrPrExecutionResult
+    | GitActionExecutionResult
+    | InfraPrExecutionResult
+    | InstructionPatchExecutionResult;
 }
 
 export interface ListProposedActionsOptions {
@@ -52,6 +62,26 @@ export abstract class ProposedActionRepository {
     actionId: string,
     input: ExecutionResultUpdate,
   ): Promise<ProposedAction>;
+  // Ações de um tipo num projeto (Fase 3b) — pra a seção de arquitetura listar
+  // as ADRs (open_adr_pr) com o link da PR.
+  abstract listByProjectAndType(
+    projectId: string,
+    actionType: string,
+  ): Promise<ProposedAction[]>;
+  /**
+   * Ações DECIDIDAS pelo usuário numa janela de tempo (Fase 4b — Anamnese).
+   *
+   * "comandos que aprova/nega" é um dos quatro sinais que o enunciado pede
+   * pra derivar proficiência, e ele não está no event log: decisão vive
+   * aqui, em `proposed_actions.decided_at`. O critério é ter DECISOR humano —
+   * uma recusa de política não diz nada sobre a pessoa, e uma aprovação que já
+   * executou (status `executed`) continua sendo uma decisão dela.
+   */
+  abstract listDecidedInWindow(
+    projectId: string,
+    from: Date,
+    to: Date,
+  ): Promise<ProposedAction[]>;
   abstract listPaginated(
     sessionId: string,
     opts: ListProposedActionsOptions,

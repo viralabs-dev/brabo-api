@@ -18,7 +18,12 @@ export class TransitionSessionUseCase {
     private readonly engineClient: ApiToEngineClient,
   ) {}
 
-  execute(projectId: string, sessionId: string, to: SessionStatus) {
+  execute(
+    projectId: string,
+    sessionId: string,
+    to: SessionStatus,
+    terminationReason?: string,
+  ) {
     if (to === 'active') return this.activate(projectId, sessionId);
 
     return this.unitOfWork.runInTransaction(async () => {
@@ -35,6 +40,14 @@ export class TransitionSessionUseCase {
         sessionId,
         to,
         terminal ? new Date() : current.closedAt,
+        // A causa é persistida sempre que informada, não só em estado
+        // terminal. O drain de shutdown do engine (Fase 5) transiciona para
+        // `closing` com causa `node_shutdown`, e é justamente esse campo que o
+        // TerminationClassifier do Psicólogo lê depois — descartá-lo aqui
+        // apagaria a única evidência de POR QUE a sessão fechou.
+        // `undefined` (nenhuma causa informada) continua não sobrescrevendo o
+        // que já estiver gravado.
+        terminationReason ?? (terminal ? null : undefined),
       );
 
       if (terminal) {
@@ -64,7 +77,13 @@ export class TransitionSessionUseCase {
     if (!current) throw new NotFoundException('Sessão não encontrada');
     assertTransition(current.status, 'active');
 
-    await this.engineClient.startSession(sessionId, projectId);
+    // Passa o traceparent gravado na criação: é assim que o trabalho do engine
+    // continua na mesma trace da sessão, e não numa própria.
+    await this.engineClient.startSession(
+      sessionId,
+      projectId,
+      current.traceParent,
+    );
 
     return this.unitOfWork.runInTransaction(async () => {
       const locked = await this.sessions.findInProjectForUpdate(

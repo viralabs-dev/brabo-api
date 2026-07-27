@@ -14,6 +14,7 @@ export class DrizzleSessionRepository implements SessionRepository {
   async create(input: {
     projectId: string;
     createdBy: string;
+    traceParent?: string | null;
   }): Promise<Session> {
     const db = currentDb(this.rootDb);
     const [row] = await db.insert(sessions).values(input).returning();
@@ -56,11 +57,17 @@ export class DrizzleSessionRepository implements SessionRepository {
     sessionId: string,
     status: SessionStatus,
     closedAt: Date | null,
+    terminationReason?: string | null,
   ): Promise<Session> {
     const db = currentDb(this.rootDb);
     const [row] = await db
       .update(sessions)
-      .set({ status, updatedAt: new Date(), closedAt })
+      .set({
+        status,
+        updatedAt: new Date(),
+        closedAt,
+        ...(terminationReason !== undefined ? { terminationReason } : {}),
+      })
       .where(eq(sessions.id, sessionId))
       .returning();
     return row;

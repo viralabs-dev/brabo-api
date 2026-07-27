@@ -28,6 +28,7 @@ import { ApproveActionUseCase } from '../../../../src/application/use-cases/acti
 import { ApproveAlwaysActionUseCase } from '../../../../src/application/use-cases/actions/approve-always-action.use-case';
 import type { ApiToEngineClient } from '../../../../src/application/ports/api-to-engine-client.port';
 import type { TerminalExecutionResult } from '../../../../src/domain/actions/terminal-execution-result';
+import { BraboMetrics } from '../../../../src/infrastructure/observability/brabo-metrics';
 
 const { db, pool } = createTestDb();
 const unitOfWork = new DrizzleUnitOfWork(db);
@@ -64,6 +65,18 @@ const EXEC_RESULT: TerminalExecutionResult = {
 class FakeApiToEngineClient implements ApiToEngineClient {
   callCount = 0;
   async startSession(): Promise<void> {}
+  async startAgent(): Promise<void> {}
+  async sendAgentMessage(): Promise<void> {}
+  async confirmReadiness(): Promise<void> {}
+  async startExecution(): Promise<void> {}
+  async executeGitAction(): Promise<Record<string, unknown>> {
+    return {};
+  }
+  async acceptParallelization(): Promise<void> {}
+  async offerInfraHandoff(): Promise<void> {}
+  async reanalyzeSession(): Promise<void> {}
+  async runAnamnese(): Promise<void> {}
+  async invalidateInstructions(): Promise<void> {}
   executeTerminalAction(): Promise<TerminalExecutionResult> {
     this.callCount += 1;
     return Promise.resolve(EXEC_RESULT);
@@ -89,6 +102,8 @@ const proposeAction = new ProposeActionUseCase(
   outboxRepo,
   resolveEffectiveRole,
   executeTerminalAction,
+  undefined as never, // executeGitAction — não exercitado aqui
+  undefined as never, // executeInfraPr — não exercitado aqui
 );
 const approveAction = new ApproveActionUseCase(
   unitOfWork,
@@ -96,6 +111,13 @@ const approveAction = new ApproveActionUseCase(
   proposedActionRepo,
   outboxRepo,
   executeTerminalAction,
+  undefined as never, // executeAdrPr
+  undefined as never, // executeInfraPr
+  {
+    execute: (_p: string, _s: string, a: unknown) => Promise.resolve(a),
+  } as unknown as never, // executeGitAction: passthrough
+  undefined as never, // executeInstructionPatch — não exercitado aqui,
+  new BraboMetrics(),
 );
 const approveAlwaysAction = new ApproveAlwaysActionUseCase(
   proposedActionRepo,

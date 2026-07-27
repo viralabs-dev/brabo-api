@@ -16,6 +16,26 @@ import { AgentAutonomyRepository } from '../../../application/ports/agent-autono
 import { GitConnectionRepository } from '../../../application/ports/git-connection-repository.port';
 import { ProvisionedRepositoryRepository } from '../../../application/ports/provisioned-repository-repository.port';
 import { RepoBootstrapRepository } from '../../../application/ports/repo-bootstrap-repository.port';
+import { HandoffRepository } from '../../../application/ports/handoff-repository.port';
+import { AgentInstructionRepository } from '../../../application/ports/agent-instruction-repository.port';
+import {
+  EpicRepository,
+  StoryRepository,
+  TaskRepository,
+} from '../../../application/ports/backlog-repository.port';
+import { ModuleMapRepository } from '../../../application/ports/module-map-repository.port';
+import { InfraArtifactRepository } from '../../../application/ports/infra-artifact-repository.port';
+import { PsychologistAnalysisRepository } from '../../../application/ports/psychologist-analysis-repository.port';
+import { PsychologistHypothesisRepository } from '../../../application/ports/psychologist-hypothesis-repository.port';
+import { AgentInstructionVersionRepository } from '../../../application/ports/agent-instruction-version-repository.port';
+import {
+  AnamneseOptOutRepository,
+  ProficiencyProfileRepository,
+} from '../../../application/ports/proficiency-profile-repository.port';
+import {
+  AnamneseQueueRepository,
+  AnamneseRunRepository,
+} from '../../../application/ports/anamnese-repository.port';
 import { createDrizzleClient, DRIZZLE } from './drizzle-client';
 import { DrizzleUnitOfWork } from './drizzle-unit-of-work';
 import { DrizzleUserRepository } from './user.repository';
@@ -34,6 +54,26 @@ import { DrizzleAgentAutonomyRepository } from './agent-autonomy.repository';
 import { DrizzleGitConnectionRepository } from './git-connection.repository';
 import { DrizzleProvisionedRepositoryRepository } from './provisioned-repository.repository';
 import { DrizzleRepoBootstrapRepository } from './repo-bootstrap.repository';
+import { DrizzleHandoffRepository } from './handoff.repository';
+import { DrizzleAgentInstructionRepository } from './agent-instruction.repository';
+import {
+  DrizzleEpicRepository,
+  DrizzleStoryRepository,
+  DrizzleTaskRepository,
+} from './backlog.repository';
+import { DrizzleModuleMapRepository } from './module-map.repository';
+import { DrizzleInfraArtifactRepository } from './infra-artifact.repository';
+import { DrizzlePsychologistAnalysisRepository } from './psychologist-analysis.repository';
+import { DrizzlePsychologistHypothesisRepository } from './psychologist-hypothesis.repository';
+import { DrizzleAgentInstructionVersionRepository } from './agent-instruction-version.repository';
+import {
+  DrizzleAnamneseOptOutRepository,
+  DrizzleProficiencyProfileRepository,
+} from './proficiency-profile.repository';
+import {
+  DrizzleAnamneseQueueRepository,
+  DrizzleAnamneseRunRepository,
+} from './anamnese.repository';
 
 const { db, pool } = createDrizzleClient();
 
@@ -83,6 +123,44 @@ const { db, pool } = createDrizzleClient();
       provide: RepoBootstrapRepository,
       useClass: DrizzleRepoBootstrapRepository,
     },
+    { provide: HandoffRepository, useClass: DrizzleHandoffRepository },
+    {
+      provide: AgentInstructionRepository,
+      useClass: DrizzleAgentInstructionRepository,
+    },
+    { provide: EpicRepository, useClass: DrizzleEpicRepository },
+    { provide: StoryRepository, useClass: DrizzleStoryRepository },
+    { provide: TaskRepository, useClass: DrizzleTaskRepository },
+    { provide: ModuleMapRepository, useClass: DrizzleModuleMapRepository },
+    {
+      provide: InfraArtifactRepository,
+      useClass: DrizzleInfraArtifactRepository,
+    },
+    {
+      provide: PsychologistAnalysisRepository,
+      useClass: DrizzlePsychologistAnalysisRepository,
+    },
+    {
+      provide: PsychologistHypothesisRepository,
+      useClass: DrizzlePsychologistHypothesisRepository,
+    },
+    {
+      provide: AgentInstructionVersionRepository,
+      useClass: DrizzleAgentInstructionVersionRepository,
+    },
+    {
+      provide: ProficiencyProfileRepository,
+      useClass: DrizzleProficiencyProfileRepository,
+    },
+    {
+      provide: AnamneseOptOutRepository,
+      useClass: DrizzleAnamneseOptOutRepository,
+    },
+    {
+      provide: AnamneseQueueRepository,
+      useClass: DrizzleAnamneseQueueRepository,
+    },
+    { provide: AnamneseRunRepository, useClass: DrizzleAnamneseRunRepository },
   ],
   exports: [
     DRIZZLE,
@@ -103,6 +181,20 @@ const { db, pool } = createDrizzleClient();
     GitConnectionRepository,
     ProvisionedRepositoryRepository,
     RepoBootstrapRepository,
+    HandoffRepository,
+    AgentInstructionRepository,
+    EpicRepository,
+    StoryRepository,
+    TaskRepository,
+    ModuleMapRepository,
+    InfraArtifactRepository,
+    PsychologistAnalysisRepository,
+    PsychologistHypothesisRepository,
+    AgentInstructionVersionRepository,
+    ProficiencyProfileRepository,
+    AnamneseOptOutRepository,
+    AnamneseQueueRepository,
+    AnamneseRunRepository,
   ],
 })
 export class DrizzleModule implements OnModuleDestroy {

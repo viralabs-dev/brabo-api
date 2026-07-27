@@ -12,11 +12,14 @@ import { PermissionsFileStore } from '../../ports/permissions-file-store.port';
 import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { ResolveEffectiveRoleUseCase } from '../iam/resolve-effective-role.use-case';
 import { ExecuteTerminalActionUseCase } from './execute-terminal-action.use-case';
+import { ExecuteGitActionUseCase } from './execute-git-action.use-case';
+import { ExecuteInfraPrUseCase } from './execute-infra-pr.use-case';
 import {
   decide,
   ACTION_TYPES,
   type ActionType,
 } from '../../../domain/actions/decide';
+import { GIT_EXECUTED_ACTION_TYPES } from '../../../domain/actions/git-action-types';
 import { commandFromPayload } from '../../../domain/actions/pattern-for-action';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
 import type { ActionStatus } from '../../../domain/actions/action-state-machine';
@@ -41,6 +44,8 @@ export class ProposeActionUseCase {
     private readonly outbox: OutboxRepository,
     private readonly resolveEffectiveRole: ResolveEffectiveRoleUseCase,
     private readonly executeTerminalAction: ExecuteTerminalActionUseCase,
+    private readonly executeGitAction: ExecuteGitActionUseCase,
+    private readonly executeInfraPr: ExecuteInfraPrUseCase,
   ) {}
 
   async execute(
@@ -68,9 +73,15 @@ export class ProposeActionUseCase {
 
     const command =
       actionType === 'terminal' ? commandFromPayload(input.payload) : undefined;
+    const rawTargetBranch = (input.payload as { targetBranch?: unknown })
+      .targetBranch;
+    const targetBranch =
+      actionType === 'git_merge' && typeof rawTargetBranch === 'string'
+        ? rawTargetBranch
+        : undefined;
 
     const decision = decide(
-      { actionType, command },
+      { actionType, command, targetBranch },
       { effectiveRole, autonomyMode, permissionsFile },
     );
 
@@ -103,6 +114,17 @@ export class ProposeActionUseCase {
 
     if (status === 'auto_approved' && actionType === 'terminal') {
       return this.executeTerminalAction.execute(projectId, sessionId, action);
+    }
+
+    if (
+      status === 'auto_approved' &&
+      GIT_EXECUTED_ACTION_TYPES.includes(actionType)
+    ) {
+      return this.executeGitAction.execute(projectId, sessionId, action);
+    }
+
+    if (status === 'auto_approved' && actionType === 'open_infra_pr') {
+      return this.executeInfraPr.execute(projectId, sessionId, action);
     }
 
     return action;

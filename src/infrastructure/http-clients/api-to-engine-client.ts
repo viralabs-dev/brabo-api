@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { injectTraceHeaders } from '../observability/trace-context';
 import { ApiToEngineClient } from '../../application/ports/api-to-engine-client.port';
 import type { TerminalExecutionResult } from '../../domain/actions/terminal-execution-result';
+import type { DevAgentImpl } from '../../domain/execution/dev-agent-impl';
 
 interface KeycloakTokenResponse {
   access_token: string;
@@ -18,17 +20,18 @@ interface KeycloakTokenResponse {
 export class HttpApiToEngineClient implements ApiToEngineClient {
   private cachedToken: { token: string; expiresAt: number } | null = null;
 
-  async startSession(sessionId: string, projectId: string): Promise<void> {
+  async startSession(
+    sessionId: string,
+    projectId: string,
+    traceParent?: string | null,
+  ): Promise<void> {
     const token = await this.getToken();
     const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
 
     const res = await fetch(`${engineUrl}/internal/sessions`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ sessionId, projectId }),
+      headers: this.buildHeaders(token),
+      body: JSON.stringify({ sessionId, projectId, traceParent }),
     });
 
     if (!res.ok) {
@@ -43,17 +46,15 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     sessionId: string,
     actionId: string,
     command: string,
+    cwd?: string,
   ): Promise<TerminalExecutionResult> {
     const token = await this.getToken();
     const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
 
     const res = await fetch(`${engineUrl}/internal/actions/execute`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ projectId, sessionId, actionId, command }),
+      headers: this.buildHeaders(token),
+      body: JSON.stringify({ projectId, sessionId, actionId, command, cwd }),
     });
 
     if (!res.ok) {
@@ -63,6 +64,151 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     }
 
     return (await res.json()) as TerminalExecutionResult;
+  }
+
+  async startAgent(
+    projectId: string,
+    sessionId: string,
+    agent: string,
+  ): Promise<void> {
+    await this.postCommand(`/internal/sessions/${sessionId}/agent/start`, {
+      projectId,
+      agent,
+    });
+  }
+
+  async sendAgentMessage(
+    projectId: string,
+    sessionId: string,
+    agent: string,
+    text: string,
+  ): Promise<void> {
+    await this.postCommand(`/internal/sessions/${sessionId}/agent/message`, {
+      projectId,
+      agent,
+      text,
+    });
+  }
+
+  async confirmReadiness(projectId: string, sessionId: string): Promise<void> {
+    await this.postCommand(`/internal/sessions/${sessionId}/agent/readiness`, {
+      projectId,
+    });
+  }
+
+  async offerInfraHandoff(projectId: string, sessionId: string): Promise<void> {
+    await this.postCommand(
+      `/internal/sessions/${sessionId}/agent/offer-infra-handoff`,
+      { projectId },
+    );
+  }
+
+  async reanalyzeSession(projectId: string, sessionId: string): Promise<void> {
+    await this.postCommand(
+      `/internal/sessions/${sessionId}/psychologist/reanalyze`,
+      { projectId },
+    );
+  }
+
+  async runAnamnese(projectId: string): Promise<void> {
+    await this.postCommand(`/internal/projects/${projectId}/anamnese/run`, {});
+  }
+
+  async invalidateInstructions(
+    projectId: string,
+    agent: string,
+  ): Promise<void> {
+    await this.postCommand(
+      `/internal/projects/${projectId}/agents/${agent}/instructions/invalidate`,
+      {},
+    );
+  }
+
+  async startExecution(
+    projectId: string,
+    sessionId: string,
+    modules: string[],
+    taskBudgetMicros?: number,
+    maxGateCorrections?: number,
+    impl?: DevAgentImpl,
+  ): Promise<void> {
+    await this.postCommand(`/internal/sessions/${sessionId}/execution/start`, {
+      projectId,
+      modules,
+      taskBudgetMicros,
+      maxGateCorrections,
+      impl,
+    });
+  }
+
+  async acceptParallelization(
+    projectId: string,
+    sessionId: string,
+    module: string,
+  ): Promise<void> {
+    await this.postCommand(
+      `/internal/sessions/${sessionId}/execution/parallelize`,
+      { projectId, module },
+    );
+  }
+
+  async executeGitAction(
+    projectId: string,
+    sessionId: string,
+    actionId: string,
+    type: string,
+    payload: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    const token = await this.getToken();
+    const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
+
+    const res = await fetch(`${engineUrl}/internal/actions/execute-git`, {
+      method: 'POST',
+      headers: this.buildHeaders(token),
+      body: JSON.stringify({ projectId, sessionId, actionId, type, payload }),
+    });
+
+    if (!res.ok) {
+      throw new Error(
+        `Falha ao executar ação git no engine: ${res.status} ${await res.text()}`,
+      );
+    }
+    return (await res.json()) as Record<string, unknown>;
+  }
+
+  /**
+   * Headers de toda chamada api -> engine, num lugar só (Fase 5, item 3).
+   *
+   * Antes eram quatro blocos idênticos montados inline, e o `traceparent`
+   * teria que ser lembrado em cada um — o tipo de duplicação em que um
+   * esquecimento não quebra nada, só produz uma trace partida que ninguém
+   * relaciona ao endpoint que faltou.
+   */
+  private buildHeaders(token: string): Record<string, string> {
+    return injectTraceHeaders({
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    });
+  }
+
+  private async postCommand(
+    path: string,
+    body: Record<string, unknown>,
+  ): Promise<void> {
+    const token = await this.getToken();
+    const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
+
+    const res = await fetch(`${engineUrl}${path}`, {
+      method: 'POST',
+      headers: this.buildHeaders(token),
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      throw new Error(
+        `Falha no comando ao engine (${path}): ${res.status} ${await res.text()}`,
+      );
+    }
   }
 
   private async getToken(): Promise<string> {

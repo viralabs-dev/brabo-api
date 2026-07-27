@@ -65,6 +65,18 @@ class FakeApiToEngineClient implements ApiToEngineClient {
   nextResult: TerminalExecutionResult = DEFAULT_RESULT;
 
   async startSession(): Promise<void> {}
+  async startAgent(): Promise<void> {}
+  async sendAgentMessage(): Promise<void> {}
+  async confirmReadiness(): Promise<void> {}
+  async startExecution(): Promise<void> {}
+  async executeGitAction(): Promise<Record<string, unknown>> {
+    return {};
+  }
+  async acceptParallelization(): Promise<void> {}
+  async offerInfraHandoff(): Promise<void> {}
+  async reanalyzeSession(): Promise<void> {}
+  async runAnamnese(): Promise<void> {}
+  async invalidateInstructions(): Promise<void> {}
 
   executeTerminalAction(
     _projectId: string,
@@ -96,6 +108,8 @@ const proposeAction = new ProposeActionUseCase(
   outboxRepo,
   resolveEffectiveRole,
   executeTerminalAction,
+  undefined as never, // executeGitAction — não exercitado aqui
+  undefined as never, // executeInfraPr — não exercitado aqui
 );
 
 let workspacesRoot: string;
@@ -228,6 +242,26 @@ describe('ProposeActionUseCase', () => {
 
     expect(action.status).toBe('denied');
     expect(action.resolvedPolicy).toBe('deny');
+  });
+
+  it('InfraAgent propondo terminal vira denied mesmo com allow amplo em permissions.json (Fase 4a — defesa em profundidade)', async () => {
+    const { project, session } = await setupSession();
+    await agentAutonomyRepo.upsert(project.id, 'infra', 'terminal', 'deny');
+    await permissionsFileStore.write(project.id, {
+      allow: ['Terminal(*)'],
+      deny: [],
+      ask: [],
+    });
+
+    const action = await proposeAction.execute(project.id, session.id, {
+      actionType: 'terminal',
+      actor: { kind: 'agent', id: 'infra' },
+      payload: { command: 'curl http://example.com' },
+    });
+
+    expect(action.status).toBe('denied');
+    expect(action.resolvedPolicy).toBe('deny');
+    expect(fakeEngineClient.calls).toHaveLength(0);
   });
 
   it('rejeita tipo de ação desconhecido', async () => {

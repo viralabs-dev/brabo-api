@@ -29,6 +29,18 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
+      // O prefixo `_` já é o sinal usado no repo pra "descartado de
+      // propósito" — o caso concreto é o rest-destructuring que remove um
+      // campo do objeto (`({ modules: _modules, ...adr }) => adr`), onde a
+      // variável existir sem uso É o ponto.
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
       "prettier/prettier": ["error", { endOfLine: "auto" }],
     },
   },

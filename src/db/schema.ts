@@ -11,12 +11,17 @@ import {
   timestamp,
   primaryKey,
   unique,
+  uniqueIndex,
   index,
   check,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import type { TerminalExecutionResult } from '../domain/actions/terminal-execution-result';
 import type { GitBootstrapExecutionResult } from '../domain/git/bootstrap-execution-result';
+import type { AdrPrExecutionResult } from '../domain/git/adr-pr-execution-result';
+import type { GitActionExecutionResult } from '../domain/git/git-action-execution-result';
+import type { InfraPrExecutionResult } from '../domain/git/infra-pr-execution-result';
+import type { InstructionPatchExecutionResult } from '../domain/instructions/instruction-patch-execution-result';
 
 // --- Enums ---
 
@@ -78,6 +83,13 @@ export const modelBindingScopeEnum = pgEnum('model_binding_scope', [
 
 export const budgetPolicyEnum = pgEnum('budget_policy', ['block', 'allow']);
 
+// Backup (Fase 5). `daily` é toda execução; `weekly` marca a que também virou
+// cópia na retenção semanal — as duas retenções são podadas separadamente.
+export const backupKindEnum = pgEnum('backup_kind', ['daily', 'weekly']);
+// Só dois estados terminais: o job ou subiu o objeto e registrou o tamanho, ou
+// não. "em andamento" não existe aqui porque a linha só é escrita no fim.
+export const backupStatusEnum = pgEnum('backup_status', ['ok', 'failed']);
+
 // pending → approved | denied; approved/auto_approved → executed | failed
 // (ver domain/actions/action-state-machine.ts). "denied" cobre tanto
 // recusa manual quanto deny automático da política.
@@ -103,6 +115,40 @@ export const gitProviderEnum = pgEnum('git_provider', [
   'local',
   'github',
   'gitlab',
+]);
+
+// Handoff entre agentes (Fase 3b): offered → accepted | rejected; accepted →
+// completed. Um agente só pode ser ativado numa sessão com um handoff
+// `accepted` endereçado a ele (ver domain/sessions/agent-activation.ts) — o
+// Criativo é a exceção (inicia por comando do usuário). Cada transição de
+// status também vira um session_event `handoff.*` imutável.
+export const handoffStatusEnum = pgEnum('handoff_status', [
+  'offered',
+  'accepted',
+  'completed',
+  'rejected',
+]);
+
+// Ciclo de vida de uma história de backlog (Fase 3b — PO):
+//   draft → ready → in_progress → done
+// A transição draft→ready é validada NO DOMÍNIO (ver domain/backlog/
+// story-readiness.ts): exige DoD e DoR não vazios, ≥1 RF e ≥1 regra de
+// negócio vinculada. Sem isso a story não sai de draft.
+export const storyStatusEnum = pgEnum('story_status', [
+  'draft',
+  'ready',
+  'in_progress',
+  'done',
+]);
+
+// Ciclo de vida de uma tarefa executável (Fase 4a — devs): todo →
+// in_progress → done. Um dev "pega" (claim atômico) uma task `todo` cuja
+// story está `ready`; `assigned_to` = agent_id do dev (ex.: "dev-<modulo>").
+export const taskStatusEnum = pgEnum('task_status', [
+  'todo',
+  'in_progress',
+  'in_review',
+  'done',
 ]);
 
 // user_credentials guarda tanto chaves de LLM quanto tokens de git do
@@ -181,6 +227,13 @@ export const projects = pgTable(
       .references(() => users.id),
     // Permissões não vivem mais no banco — permissions.json físico na raiz
     // do workspace do projeto (ver infrastructure/filesystem/fs-permissions-file-store.ts).
+    //
+    // Teto de tokens POR TASK dos dev agents (Fase 4a), em micro-USD. Nulo usa
+    // o default do domínio. Distinto de `budgets`, que é o teto GLOBAL de gasto
+    // do projeto/sessão: este é por execução de task do ToolLoop. Fica aqui
+    // porque "configurável por projeto" precisa sobreviver — antes o valor só
+    // existia como parâmetro da ativação e se perdia na reativação.
+    taskBudgetMicros: bigint('task_budget_micros', { mode: 'number' }),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -210,27 +263,53 @@ export const projectMembers = pgTable(
 
 // --- Sessões ---
 
-export const sessions = pgTable('sessions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  projectId: uuid('project_id')
-    .notNull()
-    .references(() => projects.id, { onDelete: 'cascade' }),
-  createdBy: uuid('created_by')
-    .notNull()
-    .references(() => users.id),
-  status: sessionStatusEnum('status').notNull().default('created'),
-  // Contador da próxima seq a atribuir em session_events — incrementado
-  // atomicamente via UPDATE (lock de linha) para garantir seq sem gaps
-  // mesmo sob escrita concorrente. Ver SessionEventsService.append.
-  nextSeq: integer('next_seq').notNull().default(1),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  closedAt: timestamp('closed_at', { withTimezone: true }),
-});
+export const sessions = pgTable(
+  'sessions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references(() => users.id),
+    status: sessionStatusEnum('status').notNull().default('created'),
+    // Contador da próxima seq a atribuir em session_events — incrementado
+    // atomicamente via UPDATE (lock de linha) para garantir seq sem gaps
+    // mesmo sob escrita concorrente. Ver SessionEventsService.append.
+    nextSeq: integer('next_seq').notNull().default(1),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    closedAt: timestamp('closed_at', { withTimezone: true }),
+    // Fase 4b — Psicólogo: motivo reportado pelo engine na transição pra um
+    // estado terminal (heartbeat_timeout/killed/exceção/...) — só populado
+    // no caminho de término reportado pelo engine (ReportSessionTerminationUseCase);
+    // fecho humano/gracioso fica null. Alimenta a classificação determinística
+    // de causa (crash/kill/timeout) no contexto do Psicólogo.
+    terminationReason: text('termination_reason'),
+    // Fase 5 — OpenTelemetry: `traceparent` W3C da span raiz da sessão.
+    //
+    // Uma sessão dura minutos ou horas, e uma span OTel só aparece no backend
+    // quando TERMINA — uma raiz aberta esse tempo todo seria invisível no Tempo
+    // justamente enquanto interessa, e some de vez se a sessão nunca encerrar
+    // direito. Então a raiz é curta (`session.create`) e o traceparent dela é
+    // persistido aqui: todo trabalho posterior (turno de agente, tool call,
+    // chamada de LLM, gate, job do Oban) usa este valor como PARENT REMOTO,
+    // compartilha o mesmo trace_id, e a sessão inteira é recuperável no Tempo
+    // por um id só.
+    traceParent: text('trace_parent'),
+  },
+  (table) => [
+    // Fase 5 — a gauge `brabo_sessions_active` filtra por status e agrupa por
+    // projeto a cada 15s; sem índice isso é seq scan na tabela de sessões, que
+    // só cresce.
+    index('sessions_status_project_idx').on(table.status, table.projectId),
+  ],
+);
 
 // --- Event log (append-only) ---
 
@@ -253,7 +332,7 @@ export const sessionEvents = pgTable(
   (table) => [unique().on(table.sessionId, table.seq)],
 );
 
-// --- Transactional outbox (sem consumidor ainda) ---
+// --- Transactional outbox (consumido pelo Engine.Outbox.Drain) ---
 
 export const outboxEvents = pgTable(
   'outbox_events',
@@ -263,6 +342,14 @@ export const outboxEvents = pgTable(
     aggregateId: uuid('aggregate_id').notNull(),
     eventType: text('event_type').notNull(),
     payload: jsonb('payload').notNull().default({}),
+    // Fase 5 — metadado de TRANSPORTE, separado do payload de domínio.
+    //
+    // Carrega o `traceparent` para que o trabalho assíncrono disparado por um
+    // evento continue na mesma trace de quem o produziu. Coluna própria e não
+    // uma chave no `payload` porque o engine desserializa payload por tipo de
+    // evento: misturar transporte com domínio ali envenenaria os 18 pontos que
+    // escrevem no outbox e qualquer validação estrita futura.
+    metadata: jsonb('metadata').notNull().default({}),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -450,7 +537,12 @@ export const proposedActions = pgTable(
     rejectionReason: text('rejection_reason'),
     // Preenchido só depois de executed/failed.
     executionResult: jsonb('execution_result').$type<
-      TerminalExecutionResult | GitBootstrapExecutionResult
+      | TerminalExecutionResult
+      | GitBootstrapExecutionResult
+      | AdrPrExecutionResult
+      | GitActionExecutionResult
+      | InfraPrExecutionResult
+      | InstructionPatchExecutionResult
     >(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
@@ -512,6 +604,222 @@ export const agentInstructions = pgTable(
       .defaultNow(),
   },
   (table) => [unique().on(table.projectId, table.agent)],
+);
+
+// Handoffs entre agentes (Fase 3b): o Criativo, ao emitir o product_brief,
+// OFERECE um handoff ao PO. `from_agent`/`to_agent` são slugs livres (mesma
+// convenção de actor_id — sem FK nem enum). `artifact_id` referencia o
+// session_events.id do artefato entregue (o product_brief) — não é FK porque
+// session_events.id é ULID de texto e o vínculo é lógico, não relacional.
+// Diferente das tabelas de evento, `status` é MUTÁVEL (offered → accepted →
+// completed); a história imutável de cada transição vive nos session_events
+// `handoff.*`.
+export const handoffs = pgTable(
+  'handoffs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    fromAgent: text('from_agent').notNull(),
+    toAgent: text('to_agent').notNull(),
+    artifactId: text('artifact_id'),
+    status: handoffStatusEnum('status').notNull().default('offered'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index('handoffs_session_idx').on(table.sessionId)],
+);
+
+// --- Backlog (Fase 3b — PO): épicos → histórias → tarefas ---
+//
+// Gerado pelo PO dentro de uma sessão (sessionId = proveniência) mas
+// consultado por projeto. Multi-valor em JSONB (o projeto não usa arrays do
+// Postgres — mesma convenção de session_events.payload). `business_rule_ids`
+// referencia session_events.id (ULID) dos artefatos artifact.business_rule —
+// texto sem FK (mesma escolha de handoffs.artifact_id), vínculo lógico.
+export const epics = pgTable('epics', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  projectId: uuid('project_id')
+    .notNull()
+    .references(() => projects.id, { onDelete: 'cascade' }),
+  sessionId: uuid('session_id')
+    .notNull()
+    .references(() => sessions.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  description: text('description').notNull().default(''),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const stories = pgTable(
+  'stories',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    epicId: uuid('epic_id')
+      .notNull()
+      .references(() => epics.id, { onDelete: 'cascade' }),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    description: text('description').notNull().default(''),
+    // Requisitos funcionais / não-funcionais (texto livre por item).
+    rf: jsonb('rf').$type<string[]>().notNull().default([]),
+    rnf: jsonb('rnf').$type<string[]>().notNull().default([]),
+    // Regras de negócio que originaram a story (session_events.id).
+    businessRuleIds: jsonb('business_rule_ids')
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    // Definition of Done / Definition of Ready.
+    dod: jsonb('dod').$type<string[]>().notNull().default([]),
+    dor: jsonb('dor').$type<string[]>().notNull().default([]),
+    // Módulos (nomes) do module_map vigente que a story realiza (Fase 3b —
+    // Arquiteto). Validação cruzada: story não vai a `ready` se algum módulo
+    // referenciado não existir no module_map. Vazio = pendência, não bloqueio.
+    moduleIds: jsonb('module_ids').$type<string[]>().notNull().default([]),
+    status: storyStatusEnum('status').notNull().default('draft'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('stories_epic_idx').on(table.epicId),
+    index('stories_session_idx').on(table.sessionId),
+  ],
+);
+
+// Tarefas pertencem a uma story e HERDAM o vínculo a regra dela (derivado, não
+// armazenado). Folhas da árvore do backlog.
+export const tasks = pgTable(
+  'tasks',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    storyId: uuid('story_id')
+      .notNull()
+      .references(() => stories.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    description: text('description').notNull().default(''),
+    // Fase 4a — execução: status + agente que pegou a task (claim atômico).
+    status: taskStatusEnum('status').notNull().default('todo'),
+    assignedTo: text('assigned_to'),
+    // DevAgent devolveu a task com diagnóstico (limite de iterações, orçamento
+    // excedido, ou report_blocked) — status volta pra `todo`, mas fica
+    // marcada aqui pra não ser reclaimada automaticamente e pra UI destacar.
+    blocked: boolean('blocked').notNull().default(false),
+    blockedReason: text('blocked_reason'),
+    // Fase 4a — gates de PR: null até a PR abrir; awaiting_qa/awaiting_secops/
+    // awaiting_user daí em diante (ver pr-gate-state-machine.ts). Contador
+    // zera a cada avanço de gate, incrementa a cada changes_requested.
+    gateStatus: text('gate_status'),
+    gateCorrectionCount: integer('gate_correction_count').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('tasks_story_idx').on(table.storyId),
+    // Fase 5 — a gauge `brabo_tasks_blocked` roda a cada 15s. Índice PARCIAL:
+    // a esmagadora maioria das tasks não está bloqueada, então indexar só as
+    // que estão mantém o índice pequeno e a varredura proporcional ao que
+    // realmente interessa.
+    index('tasks_blocked_idx')
+      .on(table.storyId)
+      .where(sql`${table.blocked}`),
+  ],
+);
+
+// Artefatos de infra (Fase 4a — InfraAgent): PR de Dockerfiles/compose/CI
+// gated pelos MESMOS QA/SecOps do dev, mas sem task/story/worktree por trás
+// (arquivos nascem como conteúdo direto, igual ADR) — tabela paralela leve a
+// `tasks`, reaproveitando a MESMA nextGateStatus (pr-gate-state-machine.ts).
+// Diferente de tasks (que existem ANTES da PR e abrem o gate depois), o
+// artefato só nasce quando a PR já foi aberta — gateStatus já chega
+// 'awaiting_qa'.
+export const infraArtifacts = pgTable(
+  'infra_artifacts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    // Id da proposed_action `open_infra_pr` que abriu esta PR — o engine só
+    // conhece esse id de volta (resposta de propose_action).
+    prActionId: uuid('pr_action_id').notNull(),
+    gateStatus: text('gate_status').notNull().default('awaiting_qa'),
+    gateCorrectionCount: integer('gate_correction_count').notNull().default(0),
+    blocked: boolean('blocked').notNull().default(false),
+    blockedReason: text('blocked_reason'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('infra_artifacts_project_idx').on(table.projectId),
+    index('infra_artifacts_pr_action_idx').on(table.prActionId),
+  ],
+);
+
+// module_map (Fase 3b — Arquiteto): mapa de módulos do projeto, validado
+// contra ciclos de dependência. Cada emissão é uma linha nova; o **vigente** é
+// o de maior `version` do projeto (histórico imutável, sem UPDATE). Usado pela
+// validação cruzada story↔módulos. `modules` = [{name, stack, responsibility,
+// dependsOn: string[]}] (dependsOn referencia `name` de outro módulo).
+export const moduleMaps = pgTable(
+  'module_maps',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    modules: jsonb('modules')
+      .$type<
+        {
+          name: string;
+          stack: string;
+          responsibility: string;
+          dependsOn: string[];
+        }[]
+      >()
+      .notNull()
+      .default([]),
+    version: integer('version').notNull().default(1),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index('module_maps_project_idx').on(table.projectId)],
 );
 
 // --- Git providers (Fase 2): conexão OAuth + repositório provisionado ---
@@ -588,6 +896,240 @@ export const projectRepositories = pgTable(
   (table) => [unique().on(table.projectId)],
 );
 
+// --- Psicólogo (Fase 4b) ---
+
+// Uma linha por RUN de análise CONCLUÍDO COM SUCESSO (nunca gravado se o
+// ToolLoop estourar limite/orçamento sem emitir hipóteses — isso permite
+// um retry legítimo depois de uma falha, sem confundir com "duplicar uma
+// análise já concluída"). O índice parcial único é a "chave única
+// session_id + já processado" da CLAUDE.md: no máximo UMA análise
+// `superseded=false` por sessão, sempre — reprocessamento explícito
+// (triggeredBy='manual') marca a antiga `superseded=true` (nunca apaga)
+// e insere uma nova, preservando histórico.
+export const psychologistAnalyses = pgTable(
+  'psychologist_analyses',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    tier: text('tier').notNull(),
+    triggeredBy: text('triggered_by').notNull().default('auto'),
+    supersedes: uuid('supersedes'),
+    superseded: boolean('superseded').notNull().default(false),
+    // QUANDO foi substituída. A cadeia `supersedes` já diz por quem, mas
+    // sem isto não se sabe quando — e "substitui a versão anterior com
+    // histórico" só é auditável com a data da troca.
+    supersededAt: timestamp('superseded_at', { withTimezone: true }),
+    eventCountAtAnalysis: integer('event_count_at_analysis').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('psychologist_analyses_current_idx')
+      .on(table.sessionId)
+      .where(sql`${table.superseded} = false`),
+  ],
+);
+
+// Tabela MUTÁVEL do ciclo de vida da hipótese (proposed -> accepted |
+// dismissed) — session_events é append-only (CLAUDE.md), então o estado
+// que muda precisa morar aqui, igual tasks.gate_status/
+// infra_artifacts.gate_status; cada transição TAMBÉM emite um
+// session_event imutável correspondente (trilha de auditoria).
+export const psychologistHypotheses = pgTable(
+  'psychologist_hypotheses',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    analysisId: uuid('analysis_id')
+      .notNull()
+      .references(() => psychologistAnalyses.id, { onDelete: 'cascade' }),
+    // Texto livre (não enum) — precisa caber agent ids dinâmicos como
+    // dev-<modulo>, além dos fixos (criativo/po/arquiteto/qa/secops/infra).
+    agenteAlvo: text('agente_alvo').notNull(),
+    observacao: text('observacao').notNull(),
+    hipotese: text('hipotese').notNull(),
+    sugestao: text('sugestao').notNull(),
+    // Inteiro 0-100 — convenção do repo pra ratio/dinheiro é inteiro
+    // (mesmo espírito de micro-USD), não float.
+    confiancaPercent: integer('confianca_percent').notNull(),
+    evidenceEventIds: jsonb('evidence_event_ids')
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    terminationAnalysis: jsonb('termination_analysis').$type<{
+      causa: string;
+      estadoDaSessao: string;
+      analise: string;
+    } | null>(),
+    status: text('status').notNull().default('proposed'),
+    decidedBy: uuid('decided_by').references(() => users.id),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('psychologist_hypotheses_project_idx').on(table.projectId),
+    index('psychologist_hypotheses_analysis_idx').on(table.analysisId),
+  ],
+);
+
+// --- Anamnese (Fase 4b) ---
+
+// Histórico APPEND-ONLY das instruções de agente. `agent_instructions`
+// continua sendo o ponteiro do "current" (é o que o engine lê via Ecto
+// read-only, sem mudança de schema lá); toda escrita grava a versão aqui
+// ANTES de bumpar o current. Rollback é operação PRA FRENTE: copia o
+// conteúdo de uma versão antiga numa versão NOVA — nada é apagado.
+// `sourceHypothesisId` é o que dá rastreabilidade hipótese→patch→versão.
+export const agentInstructionVersions = pgTable(
+  'agent_instruction_versions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    agent: text('agent').notNull(),
+    version: integer('version').notNull(),
+    content: text('content').notNull(),
+    createdBy: uuid('created_by').references(() => users.id),
+    // proposed_action `instruction_patch` que originou (null pra seed e
+    // pra escrita direta) — vínculo lógico, sem FK (mesma convenção de
+    // infra_artifacts.prActionId).
+    sourceActionId: uuid('source_action_id'),
+    sourceHypothesisId: uuid('source_hypothesis_id'),
+    note: text('note'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique().on(table.projectId, table.agent, table.version),
+    index('agent_instruction_versions_agent_idx').on(
+      table.projectId,
+      table.agent,
+    ),
+  ],
+);
+
+// Perfil de proficiência derivado pela Anamnese. `competency` é validada
+// contra o catálogo hard-coded do domínio (domain/anamnese/
+// competency-catalog.ts) — atributos sensíveis são estruturalmente
+// inalcançáveis, não uma instrução de prompt.
+export const proficiencyProfiles = pgTable(
+  'proficiency_profiles',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    competency: text('competency').notNull(),
+    level: text('level').notNull(),
+    // "os porquês" — o raciocínio + os event ids que sustentam o nível.
+    rationale: text('rationale').notNull(),
+    evidenceEventIds: jsonb('evidence_event_ids')
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique().on(table.projectId, table.userId, table.competency),
+    index('proficiency_profiles_project_idx').on(table.projectId),
+  ],
+);
+
+// Usuário que apagou o próprio perfil: apagar apaga DE VERDADE (delete
+// das linhas) e o opt-out impede a re-derivação na rodada seguinte —
+// sem isso o "apagar" seria cosmético. Reversível via opt-in.
+export const anamneseOptOuts = pgTable(
+  'anamnese_opt_outs',
+  {
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    optedOutAt: timestamp('opted_out_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.projectId, table.userId] })],
+);
+
+// Fila COM ORIGEM: hipótese aceita do Psicólogo vira input priorizado da
+// próxima rodada da Anamnese. Enfileirada por AcceptHypothesisUseCase
+// (determinístico, sem depender de rotear o outbox).
+export const anamneseQueue = pgTable(
+  'anamnese_queue',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    origin: text('origin').notNull().default('hypothesis'),
+    hypothesisId: uuid('hypothesis_id')
+      .notNull()
+      .references(() => psychologistHypotheses.id, { onDelete: 'cascade' }),
+    status: text('status').notNull().default('pending'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    consumedAt: timestamp('consumed_at', { withTimezone: true }),
+  },
+  (table) => [
+    unique().on(table.hypothesisId),
+    index('anamnese_queue_project_idx').on(table.projectId),
+  ],
+);
+
+// Uma linha por rodada CONCLUÍDA (run falho não grava — mesma disciplina
+// de psychologist_analyses). A janela da próxima rodada começa no
+// `windowTo` da última.
+export const anamneseRuns = pgTable(
+  'anamnese_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    windowFrom: timestamp('window_from', { withTimezone: true }).notNull(),
+    windowTo: timestamp('window_to', { withTimezone: true }).notNull(),
+    eventCount: integer('event_count').notNull(),
+    profileCount: integer('profile_count').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index('anamnese_runs_project_idx').on(table.projectId)],
+);
+
 // Progresso do bootstrap de Gitflow que roda depois de criar o repo
 // (branches dev/qa/rc, proteções, template de PR, branching-policy.md) —
 // tabela separada de project_repositories porque tem ciclo de vida e
@@ -617,4 +1159,77 @@ export const repoBootstraps = pgTable(
       .defaultNow(),
   },
   (table) => [unique().on(table.projectId)],
+);
+
+// --- Operação (Fase 5): backup e rate limit ---
+
+/**
+ * Execuções do CronJob de backup — a FONTE das métricas `brabo_backup_*`.
+ *
+ * Por que o resultado do backup mora no banco e não num Pushgateway: seria um
+ * componente a mais, uma segunda fonte de verdade, e um lugar onde a métrica
+ * sobrevive ao fato que ela descreve (a série continua publicada depois que o
+ * job sumiu). Aqui o `DomainGaugesCollector`, que já roda num timer, lê esta
+ * tabela e publica os gauges — e o runbook de restore ganha histórico
+ * consultável de brinde.
+ *
+ * A linha é gravada SEMPRE, inclusive em falha: é o `status = 'failed'` que
+ * transforma um backup quebrado em alerta em vez de silêncio.
+ */
+export const backupRuns = pgTable(
+  'backup_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+    finishedAt: timestamp('finished_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    kind: backupKindEnum('kind').notNull().default('daily'),
+    status: backupStatusEnum('status').notNull(),
+    // Nulo quando o job falhou antes de subir o objeto.
+    objectKey: text('object_key'),
+    sizeBytes: bigint('size_bytes', { mode: 'number' }).notNull().default(0),
+    errorMessage: text('error_message'),
+  },
+  (table) => [
+    // O collector pergunta "qual foi o último sucesso?" a cada 15 s, e o
+    // restore procura a janela de UM object_key. Sem índice as duas viram seq
+    // scan numa tabela que só cresce.
+    index('backup_runs_last_success_idx')
+      .on(table.finishedAt)
+      .where(sql`${table.status} = 'ok'`),
+    index('backup_runs_object_key_idx').on(table.objectKey),
+  ],
+);
+
+/**
+ * Janela deslizante do rate limit (Fase 5, item 7).
+ *
+ * Uma linha por request contado. O CLAUDE.md proíbe Redis (as filas ficam no
+ * Postgres via Oban), então a janela vive aqui — o custo é um INSERT por
+ * request, assumido e documentado no ADR 0027, com `RATE_LIMIT_ENABLED` para
+ * desligar.
+ *
+ * Sem chave estrangeira para `users` de propósito: o balde de IP não tem
+ * usuário, e a FK obrigaria a apagar histórico de rate limit ao remover um
+ * usuário — exatamente o registro que se quer preservar num incidente de abuso.
+ */
+export const rateLimitHits = pgTable(
+  'rate_limit_hits',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    // `user:<uuid>` ou `ip:<endereço>`.
+    bucketKey: text('bucket_key').notNull(),
+    occurredAt: timestamp('occurred_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    // Composto e nesta ordem: a consulta é sempre "quantos hits deste balde
+    // depois de T". Índice só em bucket_key faria o Postgres varrer todo o
+    // histórico do balde para filtrar por tempo depois.
+    index('rate_limit_hits_bucket_idx').on(table.bucketKey, table.occurredAt),
+    // A poda apaga por tempo, sem balde — precisa do índice próprio.
+    index('rate_limit_hits_occurred_idx').on(table.occurredAt),
+  ],
 );

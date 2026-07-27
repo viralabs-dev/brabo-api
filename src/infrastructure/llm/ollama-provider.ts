@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { request as httpRequest, type IncomingMessage } from 'node:http';
+import { request as httpsRequest } from 'node:https';
 import { Injectable } from '@nestjs/common';
 import type {
   ChatMessage,
@@ -31,22 +33,20 @@ export class OllamaProvider implements LLMProvider {
     const host =
       options.host ?? process.env.OLLAMA_HOST ?? 'http://localhost:11434';
 
-    let response: Response;
+    const body = JSON.stringify({
+      model: options.model,
+      messages,
+      stream: true,
+      // Ollama só aceita `tools` quando há alguma; mandar [] em modelos
+      // sem suporte pode dar erro, então só inclui quando há tools.
+      ...(options.tools && options.tools.length > 0
+        ? { tools: toOllamaTools(options.tools) }
+        : {}),
+    });
+
+    let response: IncomingMessage;
     try {
-      response = await fetch(`${host}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: options.model,
-          messages,
-          stream: true,
-          // Ollama só aceita `tools` quando há alguma; mandar [] em modelos
-          // sem suporte pode dar erro, então só inclui quando há tools.
-          ...(options.tools && options.tools.length > 0
-            ? { tools: toOllamaTools(options.tools) }
-            : {}),
-        }),
-      });
+      response = await postStream(`${host}/api/chat`, body, requestTimeoutMs());
     } catch (error) {
       yield {
         type: 'error',
@@ -55,23 +55,22 @@ export class OllamaProvider implements LLMProvider {
       return;
     }
 
-    if (!response.ok || !response.body) {
+    const status = response.statusCode ?? 0;
+    if (status < 200 || status >= 300) {
+      response.destroy();
       yield {
         type: 'error',
-        message: `Ollama respondeu com status ${response.status}`,
+        message: `Ollama respondeu com status ${status}`,
       };
       return;
     }
 
-    const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
 
     try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
+      for await (const chunk of response) {
+        buffer += decoder.decode(chunk as Buffer, { stream: true });
 
         let newlineIndex: number;
         while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
@@ -110,6 +109,66 @@ export class OllamaProvider implements LLMProvider {
       };
     }
   }
+}
+
+// Teto de INATIVIDADE do socket (não de duração total): vale tanto pra "o
+// Ollama ainda não mandou os headers" quanto pra "parou de mandar chunks no
+// meio do stream". Um turno legítimo pode demorar muito — modelo local
+// processa milhares de tokens de prompt antes do primeiro token, e requisições
+// de agentes diferentes se enfileiram no provider — mas nunca fica QUIETO por
+// muito tempo.
+const DEFAULT_REQUEST_TIMEOUT_MS = 300_000;
+
+function requestTimeoutMs(): number {
+  const bruto = Number(process.env.OLLAMA_REQUEST_TIMEOUT_MS);
+  return Number.isFinite(bruto) && bruto > 0
+    ? bruto
+    : DEFAULT_REQUEST_TIMEOUT_MS;
+}
+
+/**
+ * POST com resposta em streaming, via `node:http`.
+ *
+ * Por que não `fetch`: o timeout de headers do undici (300s, fixo) só é
+ * configurável passando um `dispatcher` próprio, que exige a dependência
+ * `undici`. Na prática o `LLM_TURN_TIMEOUT_MS` do engine não valia nada — o
+ * `fetch` desistia antes com um opaco "fetch failed", e o agente registrava
+ * "o modelo parou" pra uma requisição que nunca foi respondida (ADR 0020).
+ */
+function postStream(
+  url: string,
+  body: string,
+  timeoutMs: number,
+): Promise<IncomingMessage> {
+  return new Promise((resolve, reject) => {
+    const alvo = new URL(url);
+    const send = alvo.protocol === 'https:' ? httpsRequest : httpRequest;
+
+    const req = send(
+      alvo,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(body),
+        },
+        timeout: timeoutMs,
+      },
+      resolve,
+    );
+
+    // `timeout` só EMITE o evento; sem destruir o socket a requisição ficaria
+    // pendurada pra sempre mesmo depois de estourar.
+    req.on('timeout', () => {
+      req.destroy(
+        new Error(
+          `sem resposta após ${timeoutMs}ms (OLLAMA_REQUEST_TIMEOUT_MS)`,
+        ),
+      );
+    });
+    req.on('error', reject);
+    req.end(body);
+  });
 }
 
 function toOllamaTools(tools: NonNullable<ChatOptions['tools']>) {

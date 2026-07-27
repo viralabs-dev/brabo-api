@@ -50,6 +50,18 @@ const appendSessionEvent = new AppendSessionEventUseCase(
 
 class FakeApiToEngineClient implements ApiToEngineClient {
   async startSession(): Promise<void> {}
+  async startAgent(): Promise<void> {}
+  async sendAgentMessage(): Promise<void> {}
+  async confirmReadiness(): Promise<void> {}
+  async startExecution(): Promise<void> {}
+  async executeGitAction(): Promise<Record<string, unknown>> {
+    return {};
+  }
+  async acceptParallelization(): Promise<void> {}
+  async offerInfraHandoff(): Promise<void> {}
+  async reanalyzeSession(): Promise<void> {}
+  async runAnamnese(): Promise<void> {}
+  async invalidateInstructions(): Promise<void> {}
   executeTerminalAction(): Promise<TerminalExecutionResult> {
     return Promise.resolve({
       stdout: '',
@@ -82,6 +94,8 @@ const proposeAction = new ProposeActionUseCase(
   outboxRepo,
   resolveEffectiveRole,
   executeTerminalAction,
+  undefined as never, // executeGitAction — não exercitado aqui
+  undefined as never, // executeInfraPr — não exercitado aqui
 );
 const listProposedActions = new ListProposedActionsUseCase(
   sessionRepo,

@@ -1,6 +1,7 @@
 import { roleAtLeast, type Role } from '../iam/role';
 import type { PermissionPolicy, PermissionsFile } from './permissions-file';
 import { matchesPattern, parseCommand } from './command-matcher';
+import { isProtectedBranch } from './protected-branches';
 
 export type ActionType =
   | 'terminal'
@@ -11,7 +12,11 @@ export type ActionType =
   | 'git_repo_create'
   | 'git_branch_create'
   | 'git_branch_protect'
-  | 'write_file';
+  | 'write_file'
+  | 'open_adr_pr'
+  | 'git_merge'
+  | 'open_infra_pr'
+  | 'instruction_patch';
 
 export const ACTION_TYPES: readonly ActionType[] = [
   'terminal',
@@ -23,6 +28,10 @@ export const ACTION_TYPES: readonly ActionType[] = [
   'git_branch_create',
   'git_branch_protect',
   'write_file',
+  'open_adr_pr',
+  'git_merge',
+  'open_infra_pr',
+  'instruction_patch',
 ];
 
 const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
@@ -45,6 +54,26 @@ const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
   // escrever um arquivo. Fica pending por padrão (sem regra em
   // permissions.json), pra o usuário aprovar.
   write_file: 'developer',
+  // ADR commitado no repo do projeto + PR real aberta (Fase 3b — Arquiteto).
+  // Calibrado como pr_open (maintainer): abre uma PR de verdade no provider.
+  // Fica pending por padrão — o usuário aprova a ação (que então abre a PR) e
+  // depois mergeia a PR real no provider.
+  open_adr_pr: 'maintainer',
+  // Merge de PR (Fase 4a). Merge com destino em branch protegida é SEMPRE
+  // manual — a trava (teto em decide()) impede auto_approve independente da
+  // configuração.
+  git_merge: 'maintainer',
+  // PR de infra (Fase 4a — InfraAgent): commita N arquivos (Dockerfiles/
+  // compose/CI) e abre PR real, mesmo calibre de open_adr_pr (maintainer) —
+  // fica pending por padrão, mas o accept-handoff do InfraAgent seeda
+  // agent_autonomy auto_approve pra essa ação especificamente (o InfraAgent
+  // NUNCA aplica nada, só propõe — auto-aprovar a PROPOSTA da PR é seguro).
+  open_infra_pr: 'maintainer',
+  // Patch no arquivo de instrução de um agente (Fase 4b — Anamnese):
+  // muda o COMPORTAMENTO de um agente daí em diante, então é calibrado
+  // como maintainer e tem teto de "nunca auto-aprovável" abaixo — o
+  // usuário PRECISA ver o diff antes (CLAUDE.md 4b.9).
+  instruction_patch: 'maintainer',
 };
 
 // Rede de segurança padrão, sempre ativa, independente do permissions.json
@@ -61,6 +90,7 @@ export const BUILTIN_DENY_PATTERNS: readonly string[] = [
 export interface DecideAction {
   actionType: ActionType;
   command?: string; // só usado (e obrigatório em espírito) pra actionType === 'terminal'
+  targetBranch?: string; // só usado pra actionType === 'git_merge' (trava de merge)
 }
 
 export interface DecideContext {
@@ -109,6 +139,39 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
   if (fileVerdict) {
     if (fileVerdict.policy === 'deny') return fileVerdict;
     current = fileVerdict;
+  }
+
+  // TETO da trava de merge (Fase 4a): merge com destino em branch protegida
+  // NUNCA é auto-aprovável — nem agent_autonomy nem permissions.json
+  // conseguem promovê-lo pra auto_approve. Aplicado por ÚLTIMO, sobre o
+  // veredito já calculado (deny já teria retornado antes; require_approval
+  // permanece). Ver domain/actions/protected-branches.ts.
+  if (
+    action.actionType === 'git_merge' &&
+    action.targetBranch !== undefined &&
+    isProtectedBranch(action.targetBranch) &&
+    current.policy === 'auto_approve'
+  ) {
+    return {
+      policy: 'require_approval',
+      reason:
+        'trava de merge: destino em branch protegida nunca é auto-aprovável',
+    };
+  }
+
+  // TETO do patch de instrução (Fase 4b): mudar a instrução de um agente
+  // nunca é auto-aprovável — nem por agent_autonomy nem por
+  // permissions.json. O valor da feature está no humano ver o diff e
+  // decidir; auto-aprovar seria o agente reescrevendo a si mesmo.
+  if (
+    action.actionType === 'instruction_patch' &&
+    current.policy === 'auto_approve'
+  ) {
+    return {
+      policy: 'require_approval',
+      reason:
+        'patch de instrução nunca é auto-aprovável: o usuário precisa revisar o diff',
+    };
   }
 
   return current;

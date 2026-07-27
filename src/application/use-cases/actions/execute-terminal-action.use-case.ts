@@ -4,7 +4,10 @@ import { ProposedActionRepository } from '../../ports/proposed-action-repository
 import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { ApiToEngineClient } from '../../ports/api-to-engine-client.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
-import { commandFromPayload } from '../../../domain/actions/pattern-for-action';
+import {
+  commandFromPayload,
+  cwdFromPayload,
+} from '../../../domain/actions/pattern-for-action';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
 import type { TerminalExecutionResult } from '../../../domain/actions/terminal-execution-result';
 
@@ -32,6 +35,7 @@ export class ExecuteTerminalActionUseCase {
     action: ProposedAction,
   ): Promise<ProposedAction> {
     const command = commandFromPayload(action.payload);
+    const cwd = cwdFromPayload(action.payload);
 
     let result: TerminalExecutionResult;
     try {
@@ -40,6 +44,7 @@ export class ExecuteTerminalActionUseCase {
         sessionId,
         action.id,
         command,
+        cwd,
       );
     } catch (error) {
       return this.recordResult(projectId, sessionId, action.id, 'failed', {

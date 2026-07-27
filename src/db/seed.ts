@@ -24,6 +24,11 @@ import {
 } from '../application/ports/model-repository.port';
 import type { Model } from '../domain/llm/model.entity';
 import { SetModelBindingUseCase } from '../application/use-cases/llm/set-model-binding.use-case';
+import { UpsertAgentInstructionUseCase } from '../application/use-cases/agents/upsert-agent-instruction.use-case';
+import {
+  CRIATIVO_AGENT,
+  CRIATIVO_INSTRUCTIONS,
+} from './seeds/criativo-instructions';
 
 // Preços aproximados de mercado (micro-USD por 1M tokens) — editáveis
 // depois (ver README: "models" não tem endpoint HTTP de edição na
@@ -33,6 +38,15 @@ const MODEL_SEEDS: ModelInput[] = [
     provider: 'ollama',
     name: 'llama3.2:1b',
     displayName: 'Llama 3.2 1B (local)',
+    inputPricePerMillionMicros: 0,
+    outputPricePerMillionMicros: 0,
+  },
+  {
+    // Modelo local de código — é o que roda os dev agents num ambiente sem
+    // chave paga (o llama3.2:1b não sustenta tool calling encadeado).
+    provider: 'ollama',
+    name: 'qwen2.5-coder:7b',
+    displayName: 'Qwen2.5 Coder 7B (local)',
     inputPricePerMillionMicros: 0,
     outputPricePerMillionMicros: 0,
   },
@@ -87,6 +101,7 @@ async function main() {
   const appendSessionEvent = app.get(AppendSessionEventUseCase);
   const models = app.get(ModelRepository);
   const setModelBinding = app.get(SetModelBindingUseCase);
+  const upsertAgentInstruction = app.get(UpsertAgentInstructionUseCase);
 
   const owner = await syncUser.execute({
     keycloakSub: 'seed-owner',
@@ -110,12 +125,22 @@ async function main() {
   console.log(`✓ workspace: ${workspace.name} (${workspace.slug})`);
 
   let localModel: Model | undefined;
+  // Fase 4b — Psicólogo: os dois tiers de triagem precisam de modelos
+  // GENUINAMENTE diferentes; é isso que faz o custo divergir de verdade
+  // no metering (ver Engine.Psychologist.Triage).
+  let strongModel: Model | undefined;
+  let cheapModel: Model | undefined;
   for (const modelSeed of MODEL_SEEDS) {
     const model = await models.upsertByProviderAndName(modelSeed);
     console.log(`✓ modelo: ${model.provider}/${model.name}`);
     if (model.provider === 'ollama') localModel = model;
+    if (model.name === 'claude-opus-4-8') strongModel = model;
+    if (model.name === 'claude-haiku-4-5-20251001') cheapModel = model;
   }
   if (!localModel) throw new Error('Modelo local não foi semeado');
+  if (!strongModel || !cheapModel) {
+    throw new Error('Modelos do Psicólogo (forte/barato) não foram semeados');
+  }
 
   await setModelBinding.execute(
     'workspace',
@@ -132,6 +157,43 @@ async function main() {
     slug: 'core-api',
   });
   console.log(`✓ projeto: ${project.name} (${project.slug})`);
+
+  // Fase 3b: persona base do Criativo (seed versionado) + binding do agente
+  // pro modelo local, pra ele poder conduzir a ideação numa sessão real.
+  const criativoInstr = await upsertAgentInstruction.execute(
+    project.id,
+    CRIATIVO_AGENT,
+    CRIATIVO_INSTRUCTIONS,
+  );
+  console.log(
+    `✓ instruções: ${CRIATIVO_AGENT} v${criativoInstr.version} (projeto ${project.slug})`,
+  );
+  await setModelBinding.execute(
+    'agent',
+    CRIATIVO_AGENT,
+    localModel.id,
+    owner.id,
+  );
+  console.log(
+    `✓ binding: agent ${CRIATIVO_AGENT} -> ${localModel.provider}/${localModel.name}`,
+  );
+
+  // Fase 4b — Psicólogo: binding próprio por tier de triagem. O agent id
+  // do ctx do ToolLoop ("psicologo"/"psicologo-leve") resolve por aqui
+  // via a cascata que já existe (session > agent > project > workspace).
+  await setModelBinding.execute('agent', 'psicologo', strongModel.id, owner.id);
+  console.log(
+    `✓ binding: agent psicologo -> ${strongModel.provider}/${strongModel.name}`,
+  );
+  await setModelBinding.execute(
+    'agent',
+    'psicologo-leve',
+    cheapModel.id,
+    owner.id,
+  );
+  console.log(
+    `✓ binding: agent psicologo-leve -> ${cheapModel.provider}/${cheapModel.name}`,
+  );
 
   const session = await createSession.execute(project.id, developer.id);
   console.log(`✓ sessão criada: ${session.id} (status=${session.status})`);

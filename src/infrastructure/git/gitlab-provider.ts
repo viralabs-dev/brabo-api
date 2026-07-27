@@ -17,6 +17,7 @@ import type {
   MergePullRequestInput,
   OpenPullRequestInput,
   ProtectBranchInput,
+  CommentOnPullRequestInput,
 } from '@brabo/shared';
 import {
   GitBranchAlreadyExistsError,
@@ -148,6 +149,11 @@ export class GitlabProvider implements GitProviderContract {
       // (ver github-provider.ts). Como `ProtectBranchInput` não carrega
       // configuração ainda, normalizamos pro mais restritivo disponível:
       // só Maintainer ou acima pode dar push ou merge nessa branch.
+      //
+      // A assimetria com o GitHub é o oposto da de lá: aqui NÃO há exigência
+      // de aprovação nenhuma, então quem tem papel Maintainer faz merge direto
+      // e a matriz do domínio (QA -> SecOps -> usuário) é o ÚNICO portão.
+      // Decisão em docs/adr/0028.
       await api.ProtectedBranches.protect(input.externalId, input.branchName, {
         pushAccessLevel: AccessLevel.MAINTAINER,
         mergeAccessLevel: AccessLevel.MAINTAINER,
@@ -288,6 +294,16 @@ export class GitlabProvider implements GitProviderContract {
       targetBranch: mr.target_branch,
       state: 'merged',
     };
+  }
+
+  async commentOnPullRequest(input: CommentOnPullRequestInput): Promise<void> {
+    const api = new Gitlab({ token: input.accessToken ?? '' });
+    const mergeRequestIid = Number(input.pullRequestId);
+    await api.MergeRequestNotes.create(
+      input.externalId,
+      mergeRequestIid,
+      input.body,
+    );
   }
 }
 

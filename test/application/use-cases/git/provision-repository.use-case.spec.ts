@@ -54,6 +54,37 @@ class UnreachableEngineClient implements ApiToEngineClient {
   startSession(): Promise<void> {
     throw new Error('engine não deveria ser chamado pelo bootstrap');
   }
+  startAgent(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
+  sendAgentMessage(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
+  confirmReadiness(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
+  startExecution(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
+  executeGitAction(): Promise<Record<string, unknown>> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
+  acceptParallelization(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
+  offerInfraHandoff(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
+  reanalyzeSession(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
+
+  runAnamnese(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
+  invalidateInstructions(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
   executeTerminalAction(): Promise<never> {
     throw new Error('engine não deveria ser chamado pelo bootstrap');
   }
@@ -121,6 +152,10 @@ class InstrumentedGitProvider implements GitProviderContract {
     this.track('mergePullRequest', () => this.inner.mergePullRequest(input));
   getFileContent: GitProviderContract['getFileContent'] = (input) =>
     this.track('getFileContent', () => this.inner.getFileContent(input));
+  commentOnPullRequest: GitProviderContract['commentOnPullRequest'] = (input) =>
+    this.track('commentOnPullRequest', () =>
+      this.inner.commentOnPullRequest(input),
+    );
 }
 
 function registryFor(provider: GitProviderContract): GitProviderRegistry {

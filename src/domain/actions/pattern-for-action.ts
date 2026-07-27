@@ -29,3 +29,19 @@ export function commandFromPayload(payload: unknown): string {
   }
   return '';
 }
+
+/**
+ * `cwd` opcional (ex.: o worktree de um dev agent) — quando ausente, o
+ * terminal roda no workspace compartilhado do projeto (comportamento default).
+ */
+export function cwdFromPayload(payload: unknown): string | undefined {
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    'cwd' in payload &&
+    typeof payload.cwd === 'string'
+  ) {
+    return (payload as { cwd: string }).cwd;
+  }
+  return undefined;
+}

@@ -9,10 +9,12 @@ import { ListUserCredentialsUseCase } from './list-user-credentials.use-case';
 import { DeleteUserCredentialUseCase } from './delete-user-credential.use-case';
 import { UpsertBudgetUseCase } from './upsert-budget.use-case';
 import { GetBudgetUseCase } from './get-budget.use-case';
+import { GetSessionTokenUsageUseCase } from './get-session-token-usage.use-case';
 import { CheckBudgetGateUseCase } from './check-budget-gate.use-case';
 import { RecordLlmUsageUseCase } from './record-llm-usage.use-case';
 import { SendChatMessageUseCase } from './send-chat-message.use-case';
 import { RunLlmTurnUseCase } from './run-llm-turn.use-case';
+import { StreamLlmTurnUseCase } from './stream-llm-turn.use-case';
 
 const USE_CASES = [
   ListModelsUseCase,
@@ -24,10 +26,12 @@ const USE_CASES = [
   DeleteUserCredentialUseCase,
   UpsertBudgetUseCase,
   GetBudgetUseCase,
+  GetSessionTokenUsageUseCase,
   CheckBudgetGateUseCase,
   RecordLlmUsageUseCase,
   SendChatMessageUseCase,
   RunLlmTurnUseCase,
+  StreamLlmTurnUseCase,
 ];
 
 @Module({

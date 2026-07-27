@@ -71,6 +71,97 @@
       "when": 1784861819828,
       "tag": "0009_careless_silver_samurai",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784866282896,
+      "tag": "0010_mixed_weapon_omega",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784869129487,
+      "tag": "0011_loose_randall_flagg",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1784871564009,
+      "tag": "0012_quick_tattoo",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1784895478725,
+      "tag": "0013_milky_ultron",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1784901035777,
+      "tag": "0014_cultured_puck",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1784903192084,
+      "tag": "0015_complex_madripoor",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1784907658763,
+      "tag": "0016_slow_gorilla_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1784915550555,
+      "tag": "0017_whole_talon",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1784918771961,
+      "tag": "0018_wide_rockslide",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1785009652359,
+      "tag": "0019_loose_luminals",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1785031153896,
+      "tag": "0020_flat_lady_ursula",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1785099480032,
+      "tag": "0021_eminent_bucky",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1785108959360,
+      "tag": "0022_freezing_zodiak",
+      "breakpoints": true
     }
   ]
 }

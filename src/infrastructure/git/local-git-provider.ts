@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { basename, join } from 'node:path';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdir, rm, readFile, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import type {
@@ -18,6 +18,9 @@ import type {
   GitPullRequest,
   GitRepo,
   ListBranchesInput,
+  OpenPullRequestInput,
+  MergePullRequestInput,
+  CommentOnPullRequestInput,
 } from '@brabo/shared';
 import {
   GitBranchAlreadyExistsError,
@@ -45,11 +48,13 @@ const execFileAsync = promisify(execFile);
 export class LocalGitProvider implements GitProviderContract {
   readonly name: GitProviderName = 'local';
 
-  // Nem branch protection nem pull requests fazem sentido pra um bare
-  // repo local — não há plataforma por trás pra hospedar isso.
+  // Branch protection continua sem sentido (não há plataforma). Pull requests
+  // ganham suporte LOCAL (Fase 4a — devs): um store leve num sidecar do bare
+  // repo + merge via git, pra o fluxo dos dev agents rodar 100% self-contained
+  // (ver docs/adr/0011). O contrato único cobre PR no local a partir daqui.
   readonly capabilities: GitProviderCapabilities = {
     protectBranch: false,
-    pullRequests: false,
+    pullRequests: true,
   };
 
   async createRepo(input: CreateRepoInput): Promise<GitRepo> {
@@ -246,22 +251,123 @@ export class LocalGitProvider implements GitProviderContract {
     }
   }
 
-  openPullRequest(): Promise<GitPullRequest> {
-    return Promise.reject(
-      new GitNotSupportedError(this.name, 'openPullRequest'),
-    );
+  async openPullRequest(input: OpenPullRequestInput): Promise<GitPullRequest> {
+    const repoDir = input.externalId;
+    await assertBareRepo(repoDir);
+
+    if ((await resolveRef(repoDir, input.sourceBranch)) === null) {
+      throw new GitBranchNotFoundError(repoDir, input.sourceBranch);
+    }
+    if ((await resolveRef(repoDir, input.targetBranch)) === null) {
+      throw new GitBranchNotFoundError(repoDir, input.targetBranch);
+    }
+
+    const store = await readPrStore(repoDir);
+    const number = store.length + 1;
+    const record: StoredPr = {
+      id: `pr-${number}`,
+      number,
+      title: input.title,
+      sourceBranch: input.sourceBranch,
+      targetBranch: input.targetBranch,
+      state: 'open',
+    };
+    store.push(record);
+    await writePrStore(repoDir, store);
+
+    return toPullRequest(repoDir, record);
   }
 
-  // Quando o bootstrap de Gitflow (fase futura) precisar mesclar branches
-  // num provider sem `pullRequests` (como este), ele precisa de uma
-  // operação de merge direto ainda não modelada aqui — ver
-  // docs/adr/0001-git-provider-contract-shape.md. `mergePullRequest`
-  // continua estritamente sobre pull requests de verdade.
-  mergePullRequest(): Promise<GitPullRequest> {
-    return Promise.reject(
-      new GitNotSupportedError(this.name, 'mergePullRequest'),
-    );
+  async mergePullRequest(
+    input: MergePullRequestInput,
+  ): Promise<GitPullRequest> {
+    const repoDir = input.externalId;
+    await assertBareRepo(repoDir);
+
+    const store = await readPrStore(repoDir);
+    const record = store.find((p) => p.id === input.pullRequestId);
+    if (!record) {
+      throw new GitNotSupportedError(
+        this.name,
+        'mergePullRequest: PR não encontrada',
+      );
+    }
+
+    if (record.state === 'open') {
+      const sourceSha = await resolveRef(repoDir, record.sourceBranch);
+      if (sourceSha === null) {
+        throw new GitBranchNotFoundError(repoDir, record.sourceBranch);
+      }
+      // Merge local simplista: avança o target pro commit da branch da PR
+      // (fast-forward). Suficiente pro fluxo self-contained dos dev agents;
+      // divergência real do target não é exercitada aqui.
+      await execGit(repoDir, [
+        'update-ref',
+        `refs/heads/${record.targetBranch}`,
+        sourceSha,
+      ]);
+      record.state = 'merged';
+      await writePrStore(repoDir, store);
+    }
+
+    return toPullRequest(repoDir, record);
   }
+
+  async commentOnPullRequest(input: CommentOnPullRequestInput): Promise<void> {
+    const repoDir = input.externalId;
+    await assertBareRepo(repoDir);
+
+    const store = await readPrStore(repoDir);
+    const record = store.find((p) => p.id === input.pullRequestId);
+    if (!record) {
+      throw new GitNotSupportedError(
+        this.name,
+        'commentOnPullRequest: PR não encontrada',
+      );
+    }
+
+    record.comments = [...(record.comments ?? []), input.body];
+    await writePrStore(repoDir, store);
+  }
+}
+
+interface StoredPr {
+  id: string;
+  number: number;
+  title: string;
+  sourceBranch: string;
+  targetBranch: string;
+  state: 'open' | 'merged' | 'closed';
+  comments?: string[];
+}
+
+function prStorePath(repoDir: string): string {
+  return join(repoDir, 'brabo-prs.json');
+}
+
+async function readPrStore(repoDir: string): Promise<StoredPr[]> {
+  try {
+    return JSON.parse(
+      await readFile(prStorePath(repoDir), 'utf8'),
+    ) as StoredPr[];
+  } catch {
+    return [];
+  }
+}
+
+async function writePrStore(repoDir: string, store: StoredPr[]): Promise<void> {
+  await writeFile(prStorePath(repoDir), JSON.stringify(store, null, 2), 'utf8');
+}
+
+function toPullRequest(repoDir: string, pr: StoredPr): GitPullRequest {
+  return {
+    id: pr.id,
+    number: pr.number,
+    url: `local://${basename(repoDir)}/pull/${pr.number}`,
+    sourceBranch: pr.sourceBranch,
+    targetBranch: pr.targetBranch,
+    state: pr.state,
+  };
 }
 
 async function initBareRepo(path: string): Promise<void> {

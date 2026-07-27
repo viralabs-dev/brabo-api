@@ -8,6 +8,7 @@ import { ListSessionsForProjectUseCase } from '../../../application/use-cases/se
 import { TransitionSessionUseCase } from '../../../application/use-cases/sessions/transition-session.use-case';
 import { AppendSessionEventUseCase } from '../../../application/use-cases/sessions/append-session-event.use-case';
 import { ListSessionEventsUseCase } from '../../../application/use-cases/sessions/list-session-events.use-case';
+import { GetSessionEventUseCase } from '../../../application/use-cases/sessions/get-session-event.use-case';
 import { TransitionSessionDto } from './dto/transition-session.dto';
 import { AppendSessionEventDto } from './dto/append-session-event.dto';
 
@@ -20,6 +21,7 @@ export class SessionsController {
     private readonly transitionSession: TransitionSessionUseCase,
     private readonly appendSessionEvent: AppendSessionEventUseCase,
     private readonly listSessionEvents: ListSessionEventsUseCase,
+    private readonly getSessionEvent: GetSessionEventUseCase,
   ) {}
 
   @Post()
@@ -60,11 +62,28 @@ export class SessionsController {
     @Param('sessionId') sessionId: string,
     @Query('afterSeq') afterSeq?: string,
     @Query('limit') limit?: string,
+    @Query('latest') latest?: string,
   ) {
     return this.listSessionEvents.execute(projectId, sessionId, {
       afterSeq: afterSeq !== undefined ? Number(afterSeq) : undefined,
       limit: limit !== undefined ? Number(limit) : undefined,
+      latest: latest === 'true',
     });
+  }
+
+  /**
+   * Um evento pelo id — é o que faz a evidência das hipóteses do Psicólogo
+   * (Fase 4b) chegar no evento citado independente de paginação e dos
+   * filtros do feed. Ver GetSessionEventUseCase.
+   */
+  @Get(':sessionId/events/:eventId')
+  @RequireRole('viewer')
+  getEvent(
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @Param('eventId') eventId: string,
+  ) {
+    return this.getSessionEvent.execute(projectId, sessionId, eventId);
   }
 
   @Post(':sessionId/events')

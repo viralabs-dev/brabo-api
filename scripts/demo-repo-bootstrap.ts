@@ -45,6 +45,37 @@ class UnreachableEngineClient implements ApiToEngineClient {
   startSession(): Promise<void> {
     throw new Error('engine não deveria ser chamado pelo bootstrap');
   }
+  startAgent(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
+  sendAgentMessage(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
+  confirmReadiness(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
+  startExecution(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
+  executeGitAction(): Promise<Record<string, unknown>> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
+  acceptParallelization(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
+  offerInfraHandoff(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
+  reanalyzeSession(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
+
+  runAnamnese(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
+  invalidateInstructions(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
   executeTerminalAction(): Promise<never> {
     throw new Error('engine não deveria ser chamado pelo bootstrap');
   }
@@ -89,12 +120,14 @@ class FailOnceGitProvider {
     this.inner.commitFiles(i);
   listBranches: LocalGitProvider['listBranches'] = (i) =>
     this.inner.listBranches(i);
-  openPullRequest: LocalGitProvider['openPullRequest'] = () =>
-    this.inner.openPullRequest();
-  mergePullRequest: LocalGitProvider['mergePullRequest'] = () =>
-    this.inner.mergePullRequest();
+  openPullRequest: LocalGitProvider['openPullRequest'] = (i) =>
+    this.inner.openPullRequest(i);
+  mergePullRequest: LocalGitProvider['mergePullRequest'] = (i) =>
+    this.inner.mergePullRequest(i);
   getFileContent: LocalGitProvider['getFileContent'] = (i) =>
     this.inner.getFileContent(i);
+  commentOnPullRequest: LocalGitProvider['commentOnPullRequest'] = (i) =>
+    this.inner.commentOnPullRequest(i);
 }
 
 async function main() {
