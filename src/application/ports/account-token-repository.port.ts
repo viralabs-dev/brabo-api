@@ -42,6 +42,19 @@ export abstract class AccountTokenRepository {
     ip?: string | null;
   }): Promise<TokenConsumido | null>;
 
+  /**
+   * Existe token vivo daquele propósito?
+   *
+   * Usado para não reemitir link a cada tentativa: o `emitir` faz supersede, e
+   * sem esta checagem uma segunda execução do script de migração — ou um
+   * usuário migrado tentando logar duas vezes — invalidaria o link que acabou
+   * de ser enviado.
+   */
+  abstract existeVivo(
+    userId: string,
+    purpose: PropositoDeToken,
+  ): Promise<boolean>;
+
   /** Invalida os vivos de um ou mais propósitos — usado no reset de senha. */
   abstract invalidarVivos(
     userId: string,

@@ -6,7 +6,14 @@ import { PasswordHasher } from '../../ports/password-hasher.port';
 import { assuntoDoUsuario } from '../../../domain/auth/auth-event';
 import { normalizarEmail } from '../../../domain/auth/email';
 import { baldeDeEmail } from '../../../infrastructure/security/auth-key-material';
-import { falhaDeCredencial, type ContextoDaRequisicao } from './auth-config';
+import { AccountTokenRepository } from '../../ports/account-token-repository.port';
+import { MailSender } from '../../ports/mail-sender.port';
+import {
+  authConfig,
+  falhaDeCredencial,
+  type ContextoDaRequisicao,
+} from './auth-config';
+import { TokenFactory } from './token-factory';
 import {
   EmitirSessaoUseCase,
   type SessaoEmitida,
@@ -50,6 +57,9 @@ export class LoginUseCase {
     private readonly throttle: LoginThrottle,
     private readonly eventos: AuthEventRecorder,
     private readonly emitirSessao: EmitirSessaoUseCase,
+    private readonly tokensDeConta: AccountTokenRepository,
+    private readonly mail: MailSender,
+    private readonly tokenFactory: TokenFactory,
   ) {}
 
   async execute(entrada: {
@@ -82,7 +92,14 @@ export class LoginUseCase {
     const baldeEmail = await this.throttle.registrarEContar(chaveEmail);
 
     // 3-5. SEMPRE: busca, escolhe o hash (real ou dummy) e verifica.
-    const credencial = await this.credenciais.findByEmail(emailNormalizado);
+    //
+    // Uma consulta só (LEFT JOIN), com três desfechos de custo igual: usuário
+    // inexistente, usuário SEM senha (conta migrada do Keycloak) e usuário com
+    // senha. Duas consultas encadeadas fariam o ramo do meio pagar uma ida a
+    // mais ao banco, e o relógio distinguiria conta migrada de e-mail
+    // inexistente.
+    const achado = await this.credenciais.findByEmail(emailNormalizado);
+    const credencial = achado?.credencial ?? null;
     const hashParaVerificar = credencial?.passwordHash ?? this.hasher.dummyHash;
     const senhaConfere = await this.hasher.verify(
       hashParaVerificar,
@@ -95,9 +112,29 @@ export class LoginUseCase {
       await this.eventos.registrar({
         kind: 'login_blocked_user',
         subjectKey: chaveEmail,
-        userId: credencial?.userId ?? null,
+        userId: achado?.userId ?? null,
         ip,
         metadata: { falhas: baldeEmail.falhas },
+      });
+      throw falhaDeCredencial();
+    }
+
+    // Conta migrada do Keycloak: existe, mas nunca teve senha nesta api.
+    //
+    // A resposta é o 401 UNIFORME, igual à de e-mail inexistente. Responder
+    // "defina sua senha" seria confirmar que o endereço existe E que é conta
+    // legada — o sinal de enumeração mais valioso do sistema, e exatamente o
+    // que a RN-032 fecha. O usuário recebe o link mesmo assim; a tela de login
+    // exibe "confira seu e-mail" como texto fixo, derivado de nenhum sinal do
+    // servidor.
+    if (achado && !credencial) {
+      await this.enviarDefinicaoDeSenha(achado.userId, achado.email, ip);
+      await this.eventos.registrar({
+        kind: 'login_failure',
+        subjectKey: chaveEmail,
+        userId: achado.userId,
+        ip,
+        metadata: { falhas: baldeEmail.falhas, pendente: true },
       });
       throw falhaDeCredencial();
     }
@@ -109,7 +146,7 @@ export class LoginUseCase {
       await this.eventos.registrar({
         kind: 'login_failure',
         subjectKey: chaveEmail,
-        userId: credencial?.userId ?? null,
+        userId: achado?.userId ?? null,
         ip,
         metadata: { falhas: baldeEmail.falhas },
       });
@@ -137,8 +174,57 @@ export class LoginUseCase {
 
     return this.emitirSessao.execute({
       userId: credencial.userId,
-      email: credencial.email,
+      email: achado!.email,
       contexto: entrada.contexto,
     });
+  }
+
+  /**
+   * Dispara o link de definição de senha para uma conta migrada.
+   *
+   * Sob o MESMO balde do pedido de reset, e só quando não há link vivo. Sem as
+   * duas travas, tentar logar num endereço migrado viraria mail bomb — e um
+   * amplificador de tempo, já que emitir token é um INSERT que o ramo de
+   * e-mail inexistente não paga.
+   *
+   * A falha de envio é engolida de propósito: o usuário não pode descobrir
+   * pela resposta que algo foi tentado, e o desfecho dele é o 401 uniforme de
+   * qualquer forma. O que importa é que a trilha registre.
+   */
+  private async enviarDefinicaoDeSenha(
+    userId: string,
+    email: string,
+    ip: string | null,
+  ): Promise<void> {
+    try {
+      const balde = await this.throttle.registrarEContar(
+        `reset_${baldeDeEmail(email)}`,
+      );
+      if (balde.bloqueadoAte) return;
+      if (await this.tokensDeConta.existeVivo(userId, 'set_initial_password')) {
+        return;
+      }
+
+      const token = this.tokenFactory.gerar();
+      const expiraEm = new Date(
+        Date.now() + authConfig.definicaoDeSenhaTtlMs(),
+      );
+
+      await this.tokensDeConta.emitir({
+        userId,
+        purpose: 'set_initial_password',
+        tokenHash: token.hash,
+        expiresAt: expiraEm,
+        ip,
+      });
+      await this.mail.enviar({
+        para: email,
+        tipo: 'set_initial_password',
+        token: token.bruto,
+        expiraEm,
+      });
+    } catch {
+      // Ver o docblock: nada aqui pode mudar a resposta ao cliente.
+    }
   }
 }

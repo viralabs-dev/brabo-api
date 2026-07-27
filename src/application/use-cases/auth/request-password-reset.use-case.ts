@@ -57,16 +57,27 @@ export class RequestPasswordResetUseCase {
     // Gera nos DOIS ramos: o custo (32 bytes + HMAC) é idêntico, e descartar
     // no ramo desconhecido é mais barato do que criar uma diferença de tempo.
     const token = this.tokenFactory.gerar();
-    const expiraEm = new Date(Date.now() + authConfig.resetTtlMs());
 
     if (balde.bloqueadoAte) return;
 
-    const credencial = await this.credenciais.findByEmail(emailNormalizado);
-    if (!credencial || credencial.disabledAt) return;
+    const achado = await this.credenciais.findByEmail(emailNormalizado);
+    if (!achado || achado.credencial?.disabledAt) return;
+
+    // Conta migrada que ainda não definiu senha usa o propósito próprio: o
+    // fluxo é o mesmo, mas a janela é mais longa (ver authConfig) e a trilha
+    // distingue "esqueci minha senha" de "nunca tive uma".
+    const proposito = achado.credencial
+      ? ('password_reset' as const)
+      : ('set_initial_password' as const);
+    const ttl = achado.credencial
+      ? authConfig.resetTtlMs()
+      : authConfig.definicaoDeSenhaTtlMs();
+
+    const expiraEm = new Date(Date.now() + ttl);
 
     await this.tokensDeConta.emitir({
-      userId: credencial.userId,
-      purpose: 'password_reset',
+      userId: achado.userId,
+      purpose: proposito,
       tokenHash: token.hash,
       expiresAt: expiraEm,
       ip,
@@ -74,14 +85,14 @@ export class RequestPasswordResetUseCase {
 
     await this.eventos.registrar({
       kind: 'password_reset_requested',
-      subjectKey: assuntoDoUsuario(credencial.userId),
-      userId: credencial.userId,
+      subjectKey: assuntoDoUsuario(achado.userId),
+      userId: achado.userId,
       ip,
     });
 
     await this.mail.enviar({
       para: emailNormalizado,
-      tipo: 'password_reset',
+      tipo: proposito,
       token: token.bruto,
       expiraEm,
     });

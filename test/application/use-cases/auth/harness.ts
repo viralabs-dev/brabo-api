@@ -142,6 +142,9 @@ export async function montarHarness() {
       throttle,
       eventos,
       emitirSessao,
+      tokensDeConta,
+      mail,
+      tokenFactory,
     ),
     refresh: new RefreshUseCase(
       unitOfWork,

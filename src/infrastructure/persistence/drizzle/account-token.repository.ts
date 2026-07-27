@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import {
   AccountTokenRepository,
   type PropositoDeToken,
@@ -85,6 +85,27 @@ export class DrizzleAccountTokenRepository extends AccountTokenRepository {
       userId: linha.user_id,
       createdAt: new Date(linha.created_at),
     };
+  }
+
+  async existeVivo(
+    userId: string,
+    purpose: PropositoDeToken,
+  ): Promise<boolean> {
+    const db = currentDb(this.rootDb);
+    const linhas = await db
+      .select({ id: accountTokens.id })
+      .from(accountTokens)
+      .where(
+        and(
+          eq(accountTokens.userId, userId),
+          eq(accountTokens.purpose, purpose),
+          isNull(accountTokens.consumedAt),
+          isNull(accountTokens.invalidatedAt),
+          gt(accountTokens.expiresAt, new Date()),
+        ),
+      )
+      .limit(1);
+    return linhas.length > 0;
   }
 
   async invalidarVivos(

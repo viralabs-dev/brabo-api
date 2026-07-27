@@ -39,6 +39,17 @@ export const authConfig = {
 
   resetTtlMs: () => Number(process.env.AUTH_RESET_TOKEN_TTL_MS ?? 3_600_000),
 
+  /**
+   * Janela do link de "definir senha" dos usuários migrados do Keycloak.
+   *
+   * Sete dias, contra uma hora do reset comum: a migração é um evento
+   * anunciado, não uma resposta a suspeita de comprometimento, e o usuário
+   * pode estar de férias no dia do corte. Um link de uma hora transformaria o
+   * corte numa enxurrada de pedidos de reset.
+   */
+  definicaoDeSenhaTtlMs: () =>
+    Number(process.env.AUTH_SET_PASSWORD_TTL_MS ?? 604_800_000),
+
   limiarIpTodasTentativas: () =>
     Number(process.env.AUTH_IP_ATTEMPT_THRESHOLD ?? 60),
 };
