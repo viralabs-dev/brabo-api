@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { KeyObject } from 'node:crypto';
 import { SignJWT, calculateJwkThumbprint, jwtVerify } from 'jose';
 import {
   AccessTokenIssuer,
@@ -139,7 +138,7 @@ export class Ed25519AccessTokenIssuer extends AccessTokenIssuer {
 
   private async montar(passphrase: string): Promise<ChaveComKid> {
     const par = derivarParEd25519(passphrase);
-    const jwkBruta = (par.publica as KeyObject).export({ format: 'jwk' }) as {
+    const jwkBruta = par.publica.export({ format: 'jwk' }) as {
       kty: string;
       crv: string;
       x: string;

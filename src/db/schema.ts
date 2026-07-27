@@ -1400,7 +1400,9 @@ export const accountTokens = pgTable(
     // Parcial: o supersede na emissão só olha os vivos, que são um ou dois.
     index('account_tokens_live_idx')
       .on(table.userId, table.purpose)
-      .where(sql`${table.consumedAt} is null and ${table.invalidatedAt} is null`),
+      .where(
+        sql`${table.consumedAt} is null and ${table.invalidatedAt} is null`,
+      ),
     index('account_tokens_expires_idx').on(table.expiresAt),
   ],
 );

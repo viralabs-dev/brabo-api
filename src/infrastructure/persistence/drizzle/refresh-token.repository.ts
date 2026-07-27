@@ -109,10 +109,7 @@ export class DrizzleRefreshTokenRepository extends RefreshTokenRepository {
     `);
   }
 
-  revogarFamilia(
-    familyId: string,
-    motivo: MotivoDeRevogacao,
-  ): Promise<number> {
+  revogarFamilia(familyId: string, motivo: MotivoDeRevogacao): Promise<number> {
     return this.revogar(sql`family_id = ${familyId}`, motivo);
   }
 

@@ -43,11 +43,7 @@ export const PROIBIDAS = new Set([
 ]);
 
 export type FalhaDePolitica =
-  | 'curta'
-  | 'longa'
-  | 'comum'
-  | 'igual_ao_email'
-  | 'so_repeticao';
+  'curta' | 'longa' | 'comum' | 'igual_ao_email' | 'so_repeticao';
 
 export class PoliticaDeSenhaError extends Error {
   constructor(readonly falha: FalhaDePolitica) {

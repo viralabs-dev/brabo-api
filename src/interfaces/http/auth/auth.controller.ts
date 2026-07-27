@@ -73,7 +73,9 @@ export class AuthController {
       'dono do endereço recebe um aviso.',
   })
   @ApiOkResponse({ type: AceiteResponseDto })
-  @ApiForbiddenResponse({ description: 'Cadastro fechado (AUTH_REGISTRATION_ENABLED=false).' })
+  @ApiForbiddenResponse({
+    description: 'Cadastro fechado (AUTH_REGISTRATION_ENABLED=false).',
+  })
   @ApiBadRequestResponse({ description: 'Senha fora da política mínima.' })
   async register(
     @Body() dto: RegisterDto,
@@ -122,7 +124,9 @@ export class AuthController {
       'a causa foi um duplo-submit do cliente.',
   })
   @ApiOkResponse({ type: SessaoResponseDto })
-  @ApiUnauthorizedResponse({ description: 'Refresh inválido, expirado ou já usado.' })
+  @ApiUnauthorizedResponse({
+    description: 'Refresh inválido, expirado ou já usado.',
+  })
   refresh_(
     @Body() dto: RefreshDto,
     @Req() req: Request,
@@ -227,10 +231,7 @@ function contextoDe(req: Request): ContextoDaRequisicao {
   const encaminhado = req.headers['x-forwarded-for'];
   const bruto = Array.isArray(encaminhado) ? encaminhado[0] : encaminhado;
   const ip =
-    bruto?.split(',')[0]?.trim() ||
-    req.ip ||
-    req.socket?.remoteAddress ||
-    null;
+    bruto?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress || null;
 
   return { ip, userAgent: req.headers['user-agent'] ?? null };
 }

@@ -51,10 +51,7 @@ export function classificar(
   if (estado.revokedAt) return 'revogado';
   if (estado.rotatedAt) return 'reuso';
   if (estado.expiresAt.getTime() <= agora.getTime()) return 'expirado';
-  if (
-    estado.familyStartedAt.getTime() + tetoAbsolutoMs <=
-    agora.getTime()
-  ) {
+  if (estado.familyStartedAt.getTime() + tetoAbsolutoMs <= agora.getTime()) {
     return 'familia_expirada';
   }
   return 'ok';

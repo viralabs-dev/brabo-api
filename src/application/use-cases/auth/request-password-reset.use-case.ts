@@ -51,9 +51,7 @@ export class RequestPasswordResetUseCase {
 
     // Throttle nos dois ramos, sempre. Sem ele, o e-mail de aviso ao endereço
     // existente vira arma de mail bombing e queima a cota de envio.
-    const balde = await this.throttle.registrarEContar(
-      `reset_${chaveEmail}`,
-    );
+    const balde = await this.throttle.registrarEContar(`reset_${chaveEmail}`);
     if (ip) await this.throttle.registrarEContar(`reset_ip:${ip}`);
 
     // Gera nos DOIS ramos: o custo (32 bytes + HMAC) é idêntico, e descartar

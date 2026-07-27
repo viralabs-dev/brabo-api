@@ -7,7 +7,10 @@ import { assuntoDoUsuario } from '../../../domain/auth/auth-event';
 import { normalizarEmail } from '../../../domain/auth/email';
 import { baldeDeEmail } from '../../../infrastructure/security/auth-key-material';
 import { falhaDeCredencial, type ContextoDaRequisicao } from './auth-config';
-import { EmitirSessaoUseCase, type SessaoEmitida } from './emitir-sessao.use-case';
+import {
+  EmitirSessaoUseCase,
+  type SessaoEmitida,
+} from './emitir-sessao.use-case';
 
 /**
  * Login (Fase 7a, itens 1 e 2).

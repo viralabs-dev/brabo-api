@@ -56,7 +56,10 @@ const ARGON2ID = 2;
 const SENHA_DO_DUMMY = 'brabo-dummy-password-never-a-real-credential';
 
 @Injectable()
-export class Argon2PasswordHasher extends PasswordHasher implements OnModuleInit {
+export class Argon2PasswordHasher
+  extends PasswordHasher
+  implements OnModuleInit
+{
   private readonly logger = new Logger(Argon2PasswordHasher.name);
   readonly params = PARAMS;
 

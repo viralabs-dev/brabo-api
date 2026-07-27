@@ -1,7 +1,5 @@
 export type PropositoDeToken =
-  | 'email_verification'
-  | 'password_reset'
-  | 'set_initial_password';
+  'email_verification' | 'password_reset' | 'set_initial_password';
 
 export interface TokenConsumido {
   id: string;

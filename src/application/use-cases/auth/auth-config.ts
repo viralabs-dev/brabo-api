@@ -21,10 +21,10 @@ export function falhaDeRefresh(): UnauthorizedException {
 }
 
 export const authConfig = {
-  registroHabilitado: () =>
-    process.env.AUTH_REGISTRATION_ENABLED !== 'false',
+  registroHabilitado: () => process.env.AUTH_REGISTRATION_ENABLED !== 'false',
 
-  refreshTtlMs: () => Number(process.env.AUTH_REFRESH_TOKEN_TTL_MS ?? 1_209_600_000),
+  refreshTtlMs: () =>
+    Number(process.env.AUTH_REFRESH_TOKEN_TTL_MS ?? 1_209_600_000),
 
   /**
    * Teto ABSOLUTO da família, contado do login. Sem ele, rotação a cada 15
@@ -34,7 +34,8 @@ export const authConfig = {
   refreshTetoAbsolutoMs: () =>
     Number(process.env.AUTH_REFRESH_ABSOLUTE_TTL_MS ?? 2_592_000_000),
 
-  verificacaoTtlMs: () => Number(process.env.AUTH_EMAIL_TOKEN_TTL_MS ?? 172_800_000),
+  verificacaoTtlMs: () =>
+    Number(process.env.AUTH_EMAIL_TOKEN_TTL_MS ?? 172_800_000),
 
   resetTtlMs: () => Number(process.env.AUTH_RESET_TOKEN_TTL_MS ?? 3_600_000),
 

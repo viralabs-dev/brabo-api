@@ -63,7 +63,8 @@ export class LoginDto {
 
 export class RefreshDto {
   @ApiProperty({
-    description: 'O refresh token opaco devolvido no login ou no refresh anterior.',
+    description:
+      'O refresh token opaco devolvido no login ou no refresh anterior.',
   })
   @IsString()
   @IsNotEmpty()
@@ -112,7 +113,10 @@ export class SessaoResponseDto {
   })
   refreshToken!: string;
 
-  @ApiProperty({ example: 900, description: 'Segundos até o access token expirar.' })
+  @ApiProperty({
+    example: 900,
+    description: 'Segundos até o access token expirar.',
+  })
   expiresIn!: number;
 }
 

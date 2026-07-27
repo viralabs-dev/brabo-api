@@ -1,9 +1,18 @@
 export interface EstadoDoBalde {
   /** Falhas na janela, JÁ incluindo a tentativa que acabou de ser registrada. */
   falhas: number;
-  /** Até quando está bloqueado. `null` = liberado. */
+  /**
+   * Até quando o balde estava bloqueado ANTES desta tentativa. `null` =
+   * liberado, e a tentativa deve prosseguir.
+   *
+   * O recorte é no estado ANTERIOR de propósito. Se fosse no posterior, com
+   * limiar 5 a quinta tentativa seria recusada mesmo com a senha certa — quem
+   * errasse quatro vezes não conseguiria mais entrar até a janela drenar, e o
+   * limiar valeria na prática 4. O usuário legítimo pagaria por um limite que
+   * o sistema diz ser 5.
+   */
   bloqueadoAte: Date | null;
-  /** `false` quando o hit não foi registrado por já estar bloqueado. */
+  /** `false` quando o hit não foi registrado por o balde já estar bloqueado. */
   registrou: boolean;
 }
 

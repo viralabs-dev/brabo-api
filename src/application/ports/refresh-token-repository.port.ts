@@ -1,10 +1,7 @@
 import type { ClassificacaoDoRefresh } from '../../domain/auth/refresh-token';
 
 export type MotivoDeRevogacao =
-  | 'reuse_detected'
-  | 'logout'
-  | 'password_reset'
-  | 'family_max_age';
+  'reuse_detected' | 'logout' | 'password_reset' | 'family_max_age';
 
 export interface RefreshTravado {
   id: string;

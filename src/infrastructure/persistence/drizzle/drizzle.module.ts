@@ -99,8 +99,14 @@ const { db, pool } = createDrizzleClient();
       provide: AuthCredentialRepository,
       useClass: DrizzleAuthCredentialRepository,
     },
-    { provide: RefreshTokenRepository, useClass: DrizzleRefreshTokenRepository },
-    { provide: AccountTokenRepository, useClass: DrizzleAccountTokenRepository },
+    {
+      provide: RefreshTokenRepository,
+      useClass: DrizzleRefreshTokenRepository,
+    },
+    {
+      provide: AccountTokenRepository,
+      useClass: DrizzleAccountTokenRepository,
+    },
     { provide: AuthEventRecorder, useClass: DrizzleAuthEventRepository },
     { provide: LoginThrottle, useClass: DrizzleLoginThrottle },
     { provide: WorkspaceRepository, useClass: DrizzleWorkspaceRepository },

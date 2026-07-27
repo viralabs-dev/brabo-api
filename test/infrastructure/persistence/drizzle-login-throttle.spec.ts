@@ -55,18 +55,29 @@ describe('DrizzleLoginThrottle', () => {
     expect((await throttle.registrarEContar(BALDE)).falhas).toBe(3);
   });
 
-  it('bloqueia ao atingir o primeiro degrau', async () => {
-    const estado = await falharVezes(BALDE, 5);
+  it('a tentativa que ATINGE o limiar ainda passa; a seguinte é barrada', async () => {
+    // `bloqueadoAte` recorta o estado ANTERIOR à tentativa, e isso é o que faz
+    // o limiar valer 5 de verdade. Se recortasse o posterior, a quinta
+    // tentativa já viria bloqueada — inclusive com a senha certa —, e quem
+    // errasse quatro vezes não conseguiria mais entrar até a janela drenar.
+    const quinta = await falharVezes(BALDE, 5);
+    expect(quinta.falhas).toBe(5);
+    expect(quinta.bloqueadoAte).toBeNull();
 
-    expect(estado.falhas).toBe(5);
-    expect(estado.bloqueadoAte).not.toBeNull();
-    expect(estado.bloqueadoAte!.getTime()).toBeGreaterThan(Date.now());
+    const sexta = await throttle.registrarEContar(BALDE);
+    expect(sexta.bloqueadoAte).not.toBeNull();
+    expect(sexta.bloqueadoAte!.getTime()).toBeGreaterThan(Date.now());
   });
 
   it('bloqueado, NÃO registra novo hit — senão o lockout vira DoS', async () => {
     // Se registrasse, um atacante manteria a conta da vítima travada para
     // sempre só continuando a tentar: cada tentativa empurraria o bloqueio.
-    await falharVezes(BALDE, 5);
+    //
+    // As cinco primeiras entram; da sexta em diante o portão da CTE recusa o
+    // INSERT. Por isso a contagem CONGELA em 5 por mais que se insista — é a
+    // prova de que o bloqueio tem duração fixa a partir da última falha real,
+    // e não uma que o atacante consegue empurrar.
+    await falharVezes(BALDE, 6);
     const durante = await throttle.registrarEContar(BALDE);
 
     expect(durante.registrou).toBe(false);
@@ -101,7 +112,7 @@ describe('DrizzleLoginThrottle', () => {
   });
 
   it('baldes diferentes não se contaminam', async () => {
-    await falharVezes('email:um', 5);
+    await falharVezes('email:um', 6);
     const outro = await throttle.registrarEContar('email:dois');
 
     expect(outro.falhas).toBe(1);
@@ -109,7 +120,7 @@ describe('DrizzleLoginThrottle', () => {
   });
 
   it('limpar zera o balde', async () => {
-    await falharVezes(BALDE, 5);
+    await falharVezes(BALDE, 6);
     await throttle.limpar(BALDE);
 
     expect((await throttle.consultar(BALDE)).falhas).toBe(0);
