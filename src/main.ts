@@ -1,7 +1,7 @@
 // PRIMEIRO import do processo, de propósito: a auto-instrumentação do
 // OpenTelemetry faz monkey-patch de `http`, `pg`, `express` e `undici`, e não
-// pega em módulo já carregado. Ver src/tracing.ts.
-import './tracing';
+// pega em módulo já carregado. Ver src/tracing-boot.ts e src/tracing.ts.
+import './tracing-boot';
 import { NestFactory } from '@nestjs/core';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import { ValidationPipe } from '@nestjs/common';
