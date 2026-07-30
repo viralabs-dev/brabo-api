@@ -18,6 +18,7 @@ import {
   EmitirSessaoUseCase,
   type SessaoEmitida,
 } from './emitir-sessao.use-case';
+import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 /**
  * Login (Fase 7a, itens 1 e 2).
@@ -62,6 +63,7 @@ export class LoginUseCase {
     private readonly tokenFactory: TokenFactory,
   ) {}
 
+  @Traced('application')
   async execute(entrada: {
     email: string;
     senha: string;

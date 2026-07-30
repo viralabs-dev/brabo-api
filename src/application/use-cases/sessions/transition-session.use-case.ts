@@ -8,6 +8,7 @@ import {
   isTerminal,
   type SessionStatus,
 } from '../../../domain/sessions/session-state-machine';
+import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 @Injectable()
 export class TransitionSessionUseCase {
@@ -18,6 +19,7 @@ export class TransitionSessionUseCase {
     private readonly engineClient: ApiToEngineClient,
   ) {}
 
+  @Traced('application')
   execute(
     projectId: string,
     sessionId: string,
@@ -72,6 +74,7 @@ export class TransitionSessionUseCase {
    * correspondente no engine. Revalida sob lock dentro da transação pra
    * fechar a janela entre a checagem inicial e a escrita.
    */
+  @Traced('application')
   private async activate(projectId: string, sessionId: string) {
     const current = await this.sessions.findInProject(projectId, sessionId);
     if (!current) throw new NotFoundException('Sessão não encontrada');

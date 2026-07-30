@@ -12,6 +12,7 @@ import { ExecuteGitActionUseCase } from './execute-git-action.use-case';
 import { assertTransition } from '../../../domain/actions/action-state-machine';
 import { GIT_EXECUTED_ACTION_TYPES } from '../../../domain/actions/git-action-types';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
+import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 @Injectable()
 export class ApproveActionUseCase {
@@ -28,6 +29,7 @@ export class ApproveActionUseCase {
     private readonly metrics: BraboMetrics,
   ) {}
 
+  @Traced('application')
   async execute(
     projectId: string,
     sessionId: string,

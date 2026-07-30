@@ -25,6 +25,7 @@ import type { Actor } from '../../../domain/sessions/session-event.entity';
 import type { ActionStatus } from '../../../domain/actions/action-state-machine';
 import type { PermissionPolicy } from '../../../domain/actions/permissions-file';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
+import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 export interface ProposeActionInput {
   actionType: string;
@@ -48,6 +49,7 @@ export class ProposeActionUseCase {
     private readonly executeInfraPr: ExecuteInfraPrUseCase,
   ) {}
 
+  @Traced('application')
   async execute(
     projectId: string,
     sessionId: string,

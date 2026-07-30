@@ -4,6 +4,7 @@ import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { SessionRepository } from '../../ports/session-repository.port';
 import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { currentTraceparent } from '../../../infrastructure/observability/trace-context';
+import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 @Injectable()
 export class CreateSessionUseCase {
@@ -27,6 +28,11 @@ export class CreateSessionUseCase {
    * call, chamada de LLM, gate e job do Oban compartilham o mesmo `trace_id`, e
    * a sessão inteira é recuperável no Tempo por um id só.
    */
+  // `ownSpan`: este método já abre `session.create`, que é a raiz da trace da
+  // sessão. O decorator entra só para o caminho entre camadas aparecer no log —
+  // abrir outra span aqui faria dela a raiz e tornaria falsa a afirmação de
+  // `docs/reference/events.md`.
+  @Traced('application', { ownSpan: true })
   execute(projectId: string, userId: string) {
     const tracer = trace.getTracer('brabo-api');
 

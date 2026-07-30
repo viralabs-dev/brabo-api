@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CABECALHO_SERVICE_TOKEN } from '../../interfaces/http/auth/engine-service.guard';
 import { tokenDeServicoAtual } from '../security/service-token';
 import { injectTraceHeaders } from '../observability/trace-context';
+import { Traced } from '../observability/traced.decorator';
 import { ApiToEngineClient } from '../../application/ports/api-to-engine-client.port';
 import type { TerminalExecutionResult } from '../../domain/actions/terminal-execution-result';
 import type { DevAgentImpl } from '../../domain/execution/dev-agent-impl';
@@ -20,6 +21,7 @@ import type { DevAgentImpl } from '../../domain/execution/dev-agent-impl';
  */
 @Injectable()
 export class HttpApiToEngineClient implements ApiToEngineClient {
+  @Traced('infrastructure')
   async startSession(
     sessionId: string,
     projectId: string,
@@ -188,6 +190,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     });
   }
 
+  @Traced('infrastructure')
   private async postCommand(
     path: string,
     body: Record<string, unknown>,
