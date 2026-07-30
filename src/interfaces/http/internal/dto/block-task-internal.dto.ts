@@ -1,6 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
-import { FAILURE_ORIGINS, type FailureOrigin } from '../../../../domain/agents/failure-origin';
+import {
+  FAILURE_ORIGINS,
+  type FailureOrigin,
+} from '../../../../domain/agents/failure-origin';
 
 export class BlockTaskInternalDto {
   @ApiProperty({ format: 'uuid', example: '01JC4Z0000PROJETO0000000001' })
@@ -17,7 +20,8 @@ export class BlockTaskInternalDto {
 
   @ApiProperty({
     example: 'Ciclo de correção esgotado sem exit 0.',
-    description: 'Diagnóstico em texto livre — detalhe humano do que aconteceu, não a origem estruturada da falha.',
+    description:
+      'Diagnóstico em texto livre — detalhe humano do que aconteceu, não a origem estruturada da falha.',
   })
   @IsString()
   diagnosis!: string;

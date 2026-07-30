@@ -32,7 +32,12 @@ export class MarkTaskBlockedUseCase {
     agentId: string,
     origin?: FailureOrigin,
   ) {
-    const task = await this.tasks.markBlocked(taskId, reason, diagnosis, origin);
+    const task = await this.tasks.markBlocked(
+      taskId,
+      reason,
+      diagnosis,
+      origin,
+    );
     await this.appendEvent.execute(projectId, sessionId, {
       type: 'backlog.task_blocked',
       actor: { kind: 'agent', id: agentId },

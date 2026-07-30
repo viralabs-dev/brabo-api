@@ -684,7 +684,10 @@ export class InternalSessionsController {
       'caminho: cada delegação nasce aqui já resolvida.',
   })
   @ApiCreatedResponse({ type: DelegationResponseDto })
-  recordDelegationOutcome(@Param('sessionId') sessionId: string, @Body() dto: RecordDelegationInternalDto) {
+  recordDelegationOutcome(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: RecordDelegationInternalDto,
+  ) {
     return this.recordDelegation.execute(dto.projectId, sessionId, {
       taskId: dto.taskId,
       area: dto.area,

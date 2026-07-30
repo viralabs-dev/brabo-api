@@ -2,7 +2,11 @@ import { ApiProperty } from '@nestjs/swagger';
 import type { GitProviderName } from '@brabo/shared';
 import type { MesmasChaves, Wire } from '../../shared/dto/wire';
 
-const GIT_PROVIDER_NAMES: readonly GitProviderName[] = ['local', 'github', 'gitlab'];
+const GIT_PROVIDER_NAMES: readonly GitProviderName[] = [
+  'local',
+  'github',
+  'gitlab',
+];
 import { PR_GATE_STATUSES } from '../../../../domain/execution/pr-gate-state-machine';
 import {
   ModuleMapResponseDto,
@@ -580,7 +584,8 @@ export class DelegationResponseDto implements Wire<Delegation> {
     format: 'uuid',
     nullable: true,
     example: '01JC4Z0000TAREFA00000000001',
-    description: 'null quando a área não tem task de backlog por trás (Infra, Fase 8c).',
+    description:
+      'null quando a área não tem task de backlog por trás (Infra, Fase 8c).',
   })
   taskId!: string | null;
 

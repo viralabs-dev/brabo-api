@@ -11,7 +11,8 @@ export class RecordDelegationInternalDto {
 
   @ApiProperty({
     example: 'qa',
-    description: 'A área que delegou — "qa" (Fase 8b) ou "infra" (Fase 8c). Texto, não enum.',
+    description:
+      'A área que delegou — "qa" (Fase 8b) ou "infra" (Fase 8c). Texto, não enum.',
   })
   @IsString()
   area!: string;

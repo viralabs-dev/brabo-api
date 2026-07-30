@@ -46,7 +46,11 @@ export class RecordDelegationUseCase {
     private readonly appendEvent: AppendSessionEventUseCase,
   ) {}
 
-  async execute(projectId: string, sessionId: string, input: RecordDelegationInput) {
+  async execute(
+    projectId: string,
+    sessionId: string,
+    input: RecordDelegationInput,
+  ) {
     try {
       assertDelegationOutcomeWellFormed(input);
     } catch (error) {
