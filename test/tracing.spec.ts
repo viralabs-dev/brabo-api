@@ -94,10 +94,14 @@ describe('tracing', () => {
       // este teste foi escrito: quem extrai é a HttpInstrumentation. Se o
       // propagador não estiver registrado, o trace id recebido é ignorado e este
       // teste falha.
-      const traceIdDaWeb = '4bf92f3577b34da6a3ce929d0e0e4736';
-      const ctx = contextFromTraceparent(
-        `00-${traceIdDaWeb}-00f067aa0ba902b7-01`,
-      );
+      // Derivado do traceparent, não repetido, para os dois não poderem divergir.
+      // Valor é o exemplo canônico da spec W3C Trace Context — o mesmo padrão que
+      // o gitleaks morde como `generic-api-key` quando atribuído direto (ver a
+      // allowlist em `.gitleaks.toml`).
+      const traceparentDaWeb =
+        '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01';
+      const traceIdDaWeb = traceparentDaWeb.split('-')[1];
+      const ctx = contextFromTraceparent(traceparentDaWeb);
 
       context.with(ctx, () => {
         const tracer = trace.getTracer('teste');
