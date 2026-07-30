@@ -60,6 +60,16 @@ async function bootstrap() {
   // safelisted), `Authorization`, `X-CSRF-Token` (auth.ts — sem ele login,
   // refresh e logout param no browser) e `traceparent`. `Accept` é safelisted e
   // não precisa constar.
+  //
+  // `maxAge` acrescentado no ADR 0037. TODA chamada da web é preflighted — o
+  // `api-client` manda `Authorization` e `traceparent`, que não são safelisted —
+  // então sem cache de preflight cada requisição vira DUAS viagens. O cache do
+  // navegador é por URL+método, e com o `refetchInterval` do TanStack Query
+  // batendo na mesma URL de novo e de novo, é justamente aí que ele paga.
+  //
+  // 10 minutos, o mesmo do engine: curto o bastante para uma mudança de
+  // `allowedHeaders` não ficar presa no cache do navegador de quem estava com a
+  // aba aberta.
   app.enableCors({
     origin: resolveCorsOrigins(),
     credentials: true,
@@ -69,6 +79,7 @@ async function bootstrap() {
       'X-CSRF-Token',
       'traceparent',
     ],
+    maxAge: 600,
   });
   app.useGlobalPipes(
     new ValidationPipe({
