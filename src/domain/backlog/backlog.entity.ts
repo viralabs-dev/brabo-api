@@ -1,5 +1,6 @@
 import type { StoryStatus } from './story-state-machine';
 import type { PrGateStatus } from '../execution/pr-gate-state-machine';
+import type { FailureOrigin } from '../agents/failure-origin';
 
 export type { StoryStatus };
 
@@ -42,6 +43,10 @@ export interface Task {
   assignedTo: string | null;
   blocked: boolean;
   blockedReason: string | null;
+  // Fase 8b (ADR 0020/0038) — a ORIGEM do bloqueio, quando conhecida. Ver o
+  // moduledoc de `MarkTaskBlockedUseCase`: nasce `null` pra todo bloqueio da
+  // Fase 4a (não retrofitado nesta entrega), preenchido só pelo `QaLeadServer`.
+  blockedOrigin: FailureOrigin | null;
   gateStatus: PrGateStatus | null;
   gateCorrectionCount: number;
   createdAt: Date;

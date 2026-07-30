@@ -6,6 +6,7 @@ import type {
   TaskStatus,
 } from '../../domain/backlog/backlog.entity';
 import type { PrGateStatus } from '../../domain/execution/pr-gate-state-machine';
+import type { FailureOrigin } from '../../domain/agents/failure-origin';
 
 export interface NewEpic {
   projectId: string;
@@ -73,6 +74,7 @@ export abstract class TaskRepository {
     id: string,
     reason: string,
     diagnosis: string,
+    origin?: FailureOrigin,
   ): Promise<Task>;
   abstract unblock(id: string): Promise<Task>;
   // Fase 4a — gates de PR: abre o fluxo (gate_status: null -> 'awaiting_qa',

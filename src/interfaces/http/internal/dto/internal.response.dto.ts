@@ -1,5 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
+import type { GitProviderName } from '@brabo/shared';
 import type { MesmasChaves, Wire } from '../../shared/dto/wire';
+
+const GIT_PROVIDER_NAMES: readonly GitProviderName[] = ['local', 'github', 'gitlab'];
 import { PR_GATE_STATUSES } from '../../../../domain/execution/pr-gate-state-machine';
 import {
   ModuleMapResponseDto,
@@ -34,6 +37,11 @@ import type { RunLlmTurnResult } from '../../../../application/use-cases/llm/run
 import type { ProposeHypothesesResult } from '../../../../application/use-cases/execution/propose-hypotheses.use-case';
 import type { RecordGateVerdictResult } from '../../../../application/use-cases/execution/record-gate-verdict.use-case';
 import type { RecordInfraGateVerdictResult } from '../../../../application/use-cases/execution/record-infra-gate-verdict.use-case';
+import type { Delegation } from '../../../../domain/agents/delegation.entity';
+import {
+  FAILURE_ORIGINS,
+  type FailureOrigin,
+} from '../../../../domain/agents/failure-origin';
 import type {
   InfraPrFile,
   InfraPrFiles,
@@ -133,6 +141,17 @@ export class InfraContextResponseDto implements Wire<InfraContext> {
 
   @ApiProperty({ type: [InfraContextAdrResponseDto] })
   adrs!: InfraContextAdrResponseDto[];
+
+  @ApiProperty({
+    enum: GIT_PROVIDER_NAMES,
+    nullable: true,
+    example: 'github',
+    description:
+      'null quando o projeto ainda não provisionou repositório. O subagente Workflows ' +
+      '(Fase 8c) decide o formato do pipeline de CI por isto: "gitlab" gera .gitlab-ci.yml, ' +
+      'qualquer outro valor gera GitHub Actions.',
+  })
+  gitProvider!: GitProviderName | null;
 }
 export const _chavesCtxInfra: MesmasChaves<
   InfraContextResponseDto,
@@ -543,3 +562,56 @@ export class GateAbertoResponseDto {
   @ApiProperty({ enum: PR_GATE_STATUSES, example: 'awaiting_qa' })
   gateStatus!: (typeof PR_GATE_STATUSES)[number];
 }
+
+const DELEGATION_STATUSES = ['completed', 'failed', 'dispensed'] as const;
+
+/** Uma delegação da área de QA, como registrada (Fase 8b, ADR 0038). */
+export class DelegationResponseDto implements Wire<Delegation> {
+  @ApiProperty({ format: 'uuid', example: '01JC4Z0000DELEGACAO00000001' })
+  id!: string;
+
+  @ApiProperty({ format: 'uuid', example: '01JC4Z0000PROJETO0000000001' })
+  projectId!: string;
+
+  @ApiProperty({ format: 'uuid', example: '01JC4Z0000SESSAO000000000001' })
+  sessionId!: string;
+
+  @ApiProperty({
+    format: 'uuid',
+    nullable: true,
+    example: '01JC4Z0000TAREFA00000000001',
+    description: 'null quando a área não tem task de backlog por trás (Infra, Fase 8c).',
+  })
+  taskId!: string | null;
+
+  @ApiProperty({ example: 'qa' })
+  area!: string;
+
+  @ApiProperty({ example: 'qa-lead' })
+  leadAgent!: string;
+
+  @ApiProperty({ example: 'qa-automacao' })
+  subagent!: string;
+
+  @ApiProperty({ enum: DELEGATION_STATUSES, example: 'completed' })
+  status!: (typeof DELEGATION_STATUSES)[number];
+
+  @ApiProperty({ nullable: true, example: 'evt_01jc4z0000parecer000000001' })
+  parecerArtifactId!: string | null;
+
+  @ApiProperty({ enum: FAILURE_ORIGINS, nullable: true, example: null })
+  failureOrigin!: FailureOrigin | null;
+
+  @ApiProperty({ nullable: true, example: null })
+  failureReason!: string | null;
+
+  @ApiProperty({ nullable: true, example: null })
+  justification!: string | null;
+
+  @ApiProperty({ example: '2026-07-30T12:00:00.000Z' })
+  createdAt!: string;
+}
+export const _chavesDelegation: MesmasChaves<
+  DelegationResponseDto,
+  Delegation
+> = true;

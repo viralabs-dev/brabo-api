@@ -22,6 +22,7 @@ function buildTask(overrides: Partial<Task> = {}): Task {
     assignedTo: null,
     blocked: false,
     blockedReason: null,
+    blockedOrigin: null,
     gateStatus: 'awaiting_qa',
     gateCorrectionCount: 0,
     createdAt: now,
