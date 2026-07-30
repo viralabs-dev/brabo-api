@@ -5,11 +5,13 @@ import { outboxEvents } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 import { currentTraceparent } from '../../observability/trace-context';
+import { Traced } from '../../observability/traced.decorator';
 
 @Injectable()
 export class DrizzleOutboxRepository implements OutboxRepository {
   constructor(@Inject(DRIZZLE) private readonly rootDb: DrizzleDb) {}
 
+  @Traced('infrastructure')
   async append(input: NewOutboxEvent): Promise<void> {
     const db = currentDb(this.rootDb);
 

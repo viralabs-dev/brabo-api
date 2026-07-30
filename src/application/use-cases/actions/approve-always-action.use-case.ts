@@ -6,6 +6,7 @@ import { ApproveActionUseCase } from './approve-action.use-case';
 import { patternForAction } from '../../../domain/actions/pattern-for-action';
 import type { ActionType } from '../../../domain/actions/decide';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
+import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 /**
  * "Aprovar sempre": aprova a ação (mesmo fluxo de ApproveActionUseCase,
@@ -24,6 +25,7 @@ export class ApproveAlwaysActionUseCase {
     private readonly approveAction: ApproveActionUseCase,
   ) {}
 
+  @Traced('application')
   async execute(
     projectId: string,
     sessionId: string,

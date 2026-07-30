@@ -5,6 +5,7 @@ import { SessionRepository } from '../../ports/session-repository.port';
 import { SessionEventRepository } from '../../ports/session-event-repository.port';
 import { OutboxRepository } from '../../ports/outbox-repository.port';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
+import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 export interface AppendSessionEventInput {
   type: string;
@@ -26,6 +27,7 @@ export class AppendSessionEventUseCase {
    * chamadas concorrentes para a MESMA sessão serializam aqui — sem
    * gaps e sem duplicidade, sem precisar de retry loop.
    */
+  @Traced('application')
   execute(
     projectId: string,
     sessionId: string,

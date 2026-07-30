@@ -15,6 +15,7 @@ import {
   type SessaoEmitida,
 } from './emitir-sessao.use-case';
 import { TokenFactory } from './token-factory';
+import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 /** A transação DEVOLVE o desfecho; quem lança é o chamador, já commitado. */
 type Desfecho = { tipo: 'ok'; sessao: SessaoEmitida } | { tipo: 'falha' };
@@ -58,6 +59,7 @@ export class RefreshUseCase {
     private readonly tokenFactory: TokenFactory,
   ) {}
 
+  @Traced('application')
   async execute(entrada: {
     refreshToken: string;
     contexto?: ContextoDaRequisicao;
