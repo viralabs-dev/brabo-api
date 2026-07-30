@@ -105,7 +105,7 @@ async function main() {
   // Senha conhecida e e-mail já verificado: é seed de desenvolvimento, e sem
   // Keycloak não existe mais um login pronto para entrar na aplicação depois
   // de semear. `provisionarUsuario` recusa rodar em produção.
-  const senhaSeed = process.env.BRABO_SEED_PASSWORD ?? 'senha de dev do brabo';
+  const senhaSeed = process.env.BRABO_SEED_PASSWORD ?? 'brabo12345678';
 
   const { user: owner } = await provisionarUsuario(app, {
     email: 'owner@brabo.dev',
