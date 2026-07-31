@@ -1,0 +1,1 @@
+ALTER TABLE "delegations" ALTER COLUMN "task_id" DROP NOT NULL;

@@ -24,6 +24,7 @@ const task: Task = {
   assignedTo: null,
   blocked: false,
   blockedReason: null,
+  blockedOrigin: null,
   gateStatus: null,
   gateCorrectionCount: 0,
   createdAt: now,
