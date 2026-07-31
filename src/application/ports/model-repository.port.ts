@@ -8,6 +8,9 @@ export interface ModelInput {
   inputPricePerMillionMicros: number;
   outputPricePerMillionMicros: number;
   contextWindow?: number | null;
+  supportsToolCalling?: boolean;
+  supportsStreaming?: boolean;
+  supportsVision?: boolean;
   isActive?: boolean;
 }
 

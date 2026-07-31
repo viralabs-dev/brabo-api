@@ -64,6 +64,7 @@ const recordLlmUsage = new RecordLlmUsageUseCase(
 
 class FakeProvider implements LLMProvider {
   name: LLMProviderName = 'ollama';
+  readonly capabilities = { streaming: true, toolCalling: true };
   callCount = 0;
 
   constructor(private readonly script: ChatStreamChunk[]) {}
@@ -79,6 +80,7 @@ class FakeProvider implements LLMProvider {
 
 class ThrowingProvider implements LLMProvider {
   name: LLMProviderName = 'anthropic';
+  readonly capabilities = { streaming: true, toolCalling: true };
   callCount = 0;
 
   async *chat(): AsyncGenerator<ChatStreamChunk> {

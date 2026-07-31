@@ -421,7 +421,20 @@ export const models = pgTable(
     })
       .notNull()
       .default(0),
+    /** Serve de `context_length` nas capabilities — já existia desde a Fase 1. */
     contextWindow: integer('context_window'),
+    // Capabilities POR MODELO (Fase 9a — ADR 0040). Colunas discretas em vez
+    // de um jsonb porque o filtro "aptos para agentes" da Fase 9c precisa ser
+    // um WHERE, e porque uma capability sem coluna é uma capability que
+    // ninguém consegue consultar.
+    //
+    // O default de `supports_tool_calling` é FALSE de propósito: modelo
+    // descoberto por sync (Fase 9c) entra sem promessa que ninguém verificou.
+    supportsToolCalling: boolean('supports_tool_calling')
+      .notNull()
+      .default(false),
+    supportsStreaming: boolean('supports_streaming').notNull().default(true),
+    supportsVision: boolean('supports_vision').notNull().default(false),
     isActive: boolean('is_active').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()

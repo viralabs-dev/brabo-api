@@ -51,8 +51,26 @@ export class ModelResponseDto implements Wire<Model> {
   })
   outputPricePerMillionMicros!: number;
 
-  @ApiProperty({ example: 200000, nullable: true })
+  @ApiProperty({
+    example: 200000,
+    nullable: true,
+    description: 'Também é o `context_length` das capabilities do modelo.',
+  })
   contextWindow!: number | null;
+
+  @ApiProperty({
+    example: true,
+    description:
+      'Tool calling NATIVO. Sem isto o modelo é chat-only e não pode ser ' +
+      'vinculado a um agente (RN-038).',
+  })
+  supportsToolCalling!: boolean;
+
+  @ApiProperty({ example: true })
+  supportsStreaming!: boolean;
+
+  @ApiProperty({ example: false })
+  supportsVision!: boolean;
 
   @ApiProperty({
     example: true,

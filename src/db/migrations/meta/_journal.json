@@ -183,6 +183,13 @@
       "when": 1785437420136,
       "tag": "0025_long_molecule_man",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1785531602671,
+      "tag": "0026_skinny_blade",
+      "breakpoints": true
     }
   ]
 }

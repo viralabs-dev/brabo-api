@@ -100,7 +100,11 @@ describe('OllamaProvider (transporte)', () => {
     const chunks = await coletar(host);
 
     expect(chunks).toEqual([
-      { type: 'error', message: 'Ollama respondeu com status 500' },
+      {
+        type: 'error',
+        code: 'upstream',
+        message: 'Ollama respondeu com status 500',
+      },
     ]);
   });
 
