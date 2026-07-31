@@ -129,6 +129,30 @@ export const handoffStatusEnum = pgEnum('handoff_status', [
   'rejected',
 ]);
 
+// A ORIGEM de uma falha de agente (Fase 8b, ADR 0020/0038) — nunca por
+// eliminação, sempre nomeada. `codigo` e não `código`: os enums deste
+// arquivo não usam acento (ver os demais). Hoje só populada por
+// `delegations` e `tasks.blockedOrigin`; os ~18 pontos de bloqueio da Fase
+// 4a (`Engine.Dev.AgentIo.block_task/3`) não foram retrofitados nesta
+// entrega — é dívida registrada no ADR 0038, não esquecimento.
+export const failureOriginEnum = pgEnum('failure_origin', [
+  'infra',
+  'modelo',
+  'codigo',
+  'politica',
+]);
+
+// Desfecho de uma delegação da área de QA (Fase 8b, ADR 0038). Sem `pending`:
+// o `QaLeadServer` resolve cada delegação SÍNCRONA, numa rodada só — toda
+// linha nasce já no estado final. `dispensed` é a decisão do lead de NÃO
+// delegar (ex.: story sem RNF de performance) — sempre registrada, nunca
+// silêncio (CLAUDE.md, Fase 8b item 2).
+export const delegationStatusEnum = pgEnum('delegation_status', [
+  'completed',
+  'failed',
+  'dispensed',
+]);
+
 // Ciclo de vida de uma história de backlog (Fase 3b — PO):
 //   draft → ready → in_progress → done
 // A transição draft→ready é validada NO DOMÍNIO (ver domain/backlog/
@@ -651,6 +675,70 @@ export const handoffs = pgTable(
   (table) => [index('handoffs_session_idx').on(table.sessionId)],
 );
 
+// Delegação interna de uma área a um subagente (Fase 8b, ADR 0038). Nunca
+// visível como handoff — é o que preserva "o lead é o único contato
+// externo". Primeira instância: a área "qa", `leadAgent: "qa-lead"`
+// delegando a `qa-automacao`/`qa-performance-seguranca`.
+//
+// Sem status `pending`: o `QaLeadServer` resolve cada delegação síncrona,
+// numa rodada só, e só chama esta rota já com o desfecho final.
+//
+// `parecerArtifactId` é TEXT sem FK — mesma escolha de `handoffs.artifactId`
+// (`session_events.id` é ULID em `text`, vínculo lógico, não chave
+// estrangeira).
+//
+// Sem `agent_areas`/`agent_area_members` (o aparato genérico do ADR 0038):
+// o fluxo de QA nasce do `Dispatcher`, nunca de `CreateHandoffUseCase`, então
+// a validação de alvo de handoff não é exercitada aqui — corte de escopo
+// registrado no ADR. `area` é TEXT, não enum — hoje "qa" e "infra".
+//
+// `taskId` é NULLABLE (Fase 8c): a área de Infra delega sobre a SESSÃO, sem
+// task de backlog por trás — só existe PR de infra, nunca task. QA (Fase
+// 8b) sempre preenche; nasceu NOT NULL até a segunda instância do modelo
+// (ADR 0038) provar que a suposição "toda área tem task" era estreita
+// demais.
+export const delegations = pgTable(
+  'delegations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    // Nullable: a área de Infra (Fase 8c) delega sobre a SESSÃO, sem task de
+    // backlog por trás — só QA (Fase 8b) sempre preenche.
+    taskId: uuid('task_id').references(() => tasks.id, { onDelete: 'cascade' }),
+    area: text('area').notNull(),
+    leadAgent: text('lead_agent').notNull(),
+    subagent: text('subagent').notNull(),
+    status: delegationStatusEnum('status').notNull(),
+    parecerArtifactId: text('parecer_artifact_id'),
+    failureOrigin: failureOriginEnum('failure_origin'),
+    failureReason: text('failure_reason'),
+    justification: text('justification'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('delegations_task_idx').on(table.taskId),
+    check(
+      'delegations_completed_tem_parecer',
+      sql`${table.status} <> 'completed' or ${table.parecerArtifactId} is not null`,
+    ),
+    check(
+      'delegations_failed_tem_origem',
+      sql`${table.status} <> 'failed' or ${table.failureOrigin} is not null`,
+    ),
+    check(
+      'delegations_dispensed_tem_justificativa',
+      sql`${table.status} <> 'dispensed' or ${table.justification} is not null`,
+    ),
+  ],
+);
+
 // --- Backlog (Fase 3b — PO): épicos → histórias → tarefas ---
 //
 // Gerado pelo PO dentro de uma sessão (sessionId = proveniência) mas
@@ -739,6 +827,12 @@ export const tasks = pgTable(
     // marcada aqui pra não ser reclaimada automaticamente e pra UI destacar.
     blocked: boolean('blocked').notNull().default(false),
     blockedReason: text('blocked_reason'),
+    // Fase 8b (ADR 0020/0038) — a ORIGEM do bloqueio, quando conhecida.
+    // NULLABLE de propósito: só o caminho novo do `QaLeadServer` a preenche;
+    // os pontos de bloqueio da Fase 4a (worktree, contexto, limite de
+    // iterações do Dev) não foram retrofitados nesta entrega. Campo NOVO ao
+    // lado de `blockedReason`, nunca substituição.
+    blockedOrigin: failureOriginEnum('blocked_origin'),
     // Fase 4a — gates de PR: null até a PR abrir; awaiting_qa/awaiting_secops/
     // awaiting_user daí em diante (ver pr-gate-state-machine.ts). Contador
     // zera a cada avanço de gate, incrementa a cada changes_requested.

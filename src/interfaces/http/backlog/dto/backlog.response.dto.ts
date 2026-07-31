@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import type { MesmasChaves, Wire } from '../../shared/dto/wire';
 import { STORY_STATUSES } from '../../../../domain/backlog/story-state-machine';
 import { PR_GATE_STATUSES } from '../../../../domain/execution/pr-gate-state-machine';
+import { FAILURE_ORIGINS } from '../../../../domain/agents/failure-origin';
 import type {
   Epic,
   EpicWithStories,
@@ -68,6 +69,16 @@ export class TaskResponseDto implements Wire<Task> {
 
   @ApiProperty({ example: null, nullable: true })
   blockedReason!: string | null;
+
+  @ApiProperty({
+    enum: FAILURE_ORIGINS,
+    example: null,
+    nullable: true,
+    description:
+      'A ORIGEM do bloqueio (ADR 0020/0038), quando conhecida. `null` pra todo ' +
+      'bloqueio da Fase 4a — só o QA Lead (Fase 8b) a preenche.',
+  })
+  blockedOrigin!: Wire<Task>['blockedOrigin'];
 
   @ApiProperty({
     enum: PR_GATE_STATUSES,

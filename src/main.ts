@@ -1,7 +1,7 @@
 // PRIMEIRO import do processo, de propósito: a auto-instrumentação do
 // OpenTelemetry faz monkey-patch de `http`, `pg`, `express` e `undici`, e não
-// pega em módulo já carregado. Ver src/tracing.ts.
-import './tracing';
+// pega em módulo já carregado. Ver src/tracing-boot.ts e src/tracing.ts.
+import './tracing-boot';
 import { NestFactory } from '@nestjs/core';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import { ValidationPipe } from '@nestjs/common';
@@ -48,7 +48,39 @@ async function bootstrap() {
   // `credentials: true` com origem EXATA (nunca `*`, e o boot falha se alguém
   // tentar em produção — ver cors-origins.ts). É o que permite o browser
   // mandar o cookie de sessão para uma api em outra origem.
-  app.enableCors({ origin: resolveCorsOrigins(), credentials: true });
+  //
+  // `allowedHeaders` explícito a partir do ADR 0035. Sem ele o pacote `cors`
+  // reflete o `Access-Control-Request-Headers` do preflight, e é só por causa
+  // desse default que o `traceparent` da web passava. Ou seja: a correlação
+  // inteira entre os três serviços dependia de um comportamento implícito de
+  // biblioteca que nenhum teste cobria. Listar é o mesmo comportamento, dito.
+  // A lista tem que conter TODO header que a web manda, senão o preflight
+  // bloqueia a chamada — e nenhum teste pega isso, porque teste não faz
+  // preflight. Hoje são: `Content-Type` (valor `application/json` não é
+  // safelisted), `Authorization`, `X-CSRF-Token` (auth.ts — sem ele login,
+  // refresh e logout param no browser) e `traceparent`. `Accept` é safelisted e
+  // não precisa constar.
+  //
+  // `maxAge` acrescentado no ADR 0037. TODA chamada da web é preflighted — o
+  // `api-client` manda `Authorization` e `traceparent`, que não são safelisted —
+  // então sem cache de preflight cada requisição vira DUAS viagens. O cache do
+  // navegador é por URL+método, e com o `refetchInterval` do TanStack Query
+  // batendo na mesma URL de novo e de novo, é justamente aí que ele paga.
+  //
+  // 10 minutos, o mesmo do engine: curto o bastante para uma mudança de
+  // `allowedHeaders` não ficar presa no cache do navegador de quem estava com a
+  // aba aberta.
+  app.enableCors({
+    origin: resolveCorsOrigins(),
+    credentials: true,
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-CSRF-Token',
+      'traceparent',
+    ],
+    maxAge: 600,
+  });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

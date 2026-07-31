@@ -110,6 +110,65 @@ describe('MarkTaskBlockedUseCase / UnblockTaskUseCase', () => {
     ).toBeNull();
   });
 
+  it('origem (Fase 8b) é opcional — pontos de bloqueio antigos continuam sem ela', async () => {
+    const { projectId, sessionId, taskId } = await seed();
+    await claimNext.execute(projectId, sessionId, 'api', 'dev-api');
+
+    // Mesma chamada de 6 argumentos que todo call site da Fase 4a já faz —
+    // sem o 7º, `origin` fica undefined e persiste como null.
+    const blocked = await markBlocked.execute(
+      projectId,
+      sessionId,
+      taskId,
+      'limite de iterações atingido',
+      'tentou rodar a suite 8 vezes, sempre falhando',
+      'dev-api',
+    );
+
+    expect(blocked.blockedOrigin).toBeNull();
+  });
+
+  it('origem preenchida (Fase 8b, ADR 0020/0038) persiste em blockedOrigin', async () => {
+    const { projectId, sessionId, taskId } = await seed();
+    await claimNext.execute(projectId, sessionId, 'api', 'dev-api');
+
+    const blocked = await markBlocked.execute(
+      projectId,
+      sessionId,
+      taskId,
+      'QA de Automação: QA de Automação não concluiu o parecer',
+      'limite de iterações atingido sem emit_qa_verdict',
+      'qa-lead',
+      'modelo',
+    );
+
+    expect(blocked.blockedOrigin).toBe('modelo');
+    expect(blocked.blockedReason).toContain('limite de iterações atingido');
+  });
+
+  it('unblock também limpa blockedOrigin — nada de rastro do bloqueio anterior', async () => {
+    const { projectId, sessionId, taskId } = await seed();
+    await claimNext.execute(projectId, sessionId, 'api', 'dev-api');
+    await markBlocked.execute(
+      projectId,
+      sessionId,
+      taskId,
+      'falhou',
+      'diagnóstico',
+      'qa-lead',
+      'infra',
+    );
+
+    const unblocked = await unblock.execute(
+      projectId,
+      sessionId,
+      taskId,
+      'user-1',
+    );
+
+    expect(unblocked.blockedOrigin).toBeNull();
+  });
+
   it('unblock libera a task pro próximo claim', async () => {
     const { projectId, sessionId, taskId } = await seed();
     await claimNext.execute(projectId, sessionId, 'api', 'dev-api');

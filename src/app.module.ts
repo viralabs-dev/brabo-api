@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { TracePathInterceptor } from './infrastructure/observability/trace-path.interceptor';
 import { DrizzleModule } from './infrastructure/persistence/drizzle/drizzle.module';
 import { HealthModule } from './interfaces/http/health/health.module';
 import { LoggerModule } from 'nestjs-pino';
@@ -51,6 +53,18 @@ import { AnamneseHttpModule } from './interfaces/http/anamnese/anamnese-http.mod
     InternalHttpModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // O caminho entre camadas (ADR 0035). Interceptor e não middleware de
+    // propósito: `getClass()`/`getHandler()` só existem no ExecutionContext, e é
+    // deles que sai o passo da fronteira HTTP sem tocar controller nenhum.
+    //
+    // Consequência aceita e registrada no ADR: guard roda ANTES de interceptor,
+    // então JwtAuthGuard, RateLimitGuard e RolesGuard ficam fora do caminho
+    // (~1-3ms, já visíveis como spans `pg` no Tempo). Se algum dia precisarem
+    // entrar, o caminho é aditivo: mover só o `runWithRequestContext` para um
+    // middleware e manter este interceptor semeando e emitindo.
+    { provide: APP_INTERCEPTOR, useClass: TracePathInterceptor },
+  ],
 })
 export class AppModule {}

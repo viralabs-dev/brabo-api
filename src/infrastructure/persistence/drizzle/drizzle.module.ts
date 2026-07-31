@@ -17,6 +17,7 @@ import { GitConnectionRepository } from '../../../application/ports/git-connecti
 import { ProvisionedRepositoryRepository } from '../../../application/ports/provisioned-repository-repository.port';
 import { RepoBootstrapRepository } from '../../../application/ports/repo-bootstrap-repository.port';
 import { HandoffRepository } from '../../../application/ports/handoff-repository.port';
+import { DelegationRepository } from '../../../application/ports/delegation-repository.port';
 import { AgentInstructionRepository } from '../../../application/ports/agent-instruction-repository.port';
 import {
   EpicRepository,
@@ -65,6 +66,7 @@ import { DrizzleGitConnectionRepository } from './git-connection.repository';
 import { DrizzleProvisionedRepositoryRepository } from './provisioned-repository.repository';
 import { DrizzleRepoBootstrapRepository } from './repo-bootstrap.repository';
 import { DrizzleHandoffRepository } from './handoff.repository';
+import { DrizzleDelegationRepository } from './delegation.repository';
 import { DrizzleAgentInstructionRepository } from './agent-instruction.repository';
 import {
   DrizzleEpicRepository,
@@ -149,6 +151,7 @@ const { db, pool } = createDrizzleClient();
       useClass: DrizzleRepoBootstrapRepository,
     },
     { provide: HandoffRepository, useClass: DrizzleHandoffRepository },
+    { provide: DelegationRepository, useClass: DrizzleDelegationRepository },
     {
       provide: AgentInstructionRepository,
       useClass: DrizzleAgentInstructionRepository,
@@ -212,6 +215,7 @@ const { db, pool } = createDrizzleClient();
     ProvisionedRepositoryRepository,
     RepoBootstrapRepository,
     HandoffRepository,
+    DelegationRepository,
     AgentInstructionRepository,
     EpicRepository,
     StoryRepository,

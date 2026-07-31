@@ -12,6 +12,7 @@ import { GetDevTaskContextUseCase } from './get-dev-task-context.use-case';
 import { MarkTaskBlockedUseCase } from './mark-task-blocked.use-case';
 import { UnblockTaskUseCase } from './unblock-task.use-case';
 import { RecordGateVerdictUseCase } from './record-gate-verdict.use-case';
+import { RecordDelegationUseCase } from './record-delegation.use-case';
 import { OpenGateUseCase } from './open-gate.use-case';
 import { MarkInfraArtifactBlockedUseCase } from './mark-infra-artifact-blocked.use-case';
 import { RecordInfraGateVerdictUseCase } from './record-infra-gate-verdict.use-case';
@@ -37,6 +38,7 @@ const USE_CASES = [
   MarkTaskBlockedUseCase,
   UnblockTaskUseCase,
   RecordGateVerdictUseCase,
+  RecordDelegationUseCase,
   OpenGateUseCase,
   MarkInfraArtifactBlockedUseCase,
   RecordInfraGateVerdictUseCase,

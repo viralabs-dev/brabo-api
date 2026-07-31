@@ -52,7 +52,20 @@ RUN pnpm --filter api --prod --legacy deploy /prod
 # ---------------------------------------------------------------------------
 FROM node:24.11.1-alpine3.21 AS runtime
 
-ENV NODE_ENV=production
+# Versão do artefato (ADR 0036). `tracing.ts` já lia `BRABO_VERSION` para o
+# `service.version` do recurso OpenTelemetry, e sempre recebia o fallback "dev" —
+# nada no repo definia a variável, então TODO span de TODO ambiente dizia "dev" e
+# o atributo era inútil justamente para o que ele serve: saber qual build gerou o
+# trace.
+#
+# É ARG e não só ENV para o `release.yml` poder assar a tag na imagem via bake. O
+# default mantém "dev" para build local e `docker compose`, que não passam pelo
+# workflow de release. Como é ENV, um overlay do Kubernetes ainda pode
+# sobrescrever, mas não deveria: a imagem sabe a própria versão.
+ARG BRABO_VERSION=dev
+
+ENV NODE_ENV=production \
+    BRABO_VERSION=$BRABO_VERSION
 
 # `wget` (do busybox) já existe na imagem base e é o que o HEALTHCHECK usa —
 # nada a instalar. Não instalamos git aqui: quem faz operação de git é o

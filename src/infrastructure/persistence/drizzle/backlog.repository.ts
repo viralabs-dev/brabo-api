@@ -15,6 +15,7 @@ import type {
   StoryStatus,
 } from '../../../domain/backlog/backlog.entity';
 import type { PrGateStatus } from '../../../domain/execution/pr-gate-state-machine';
+import type { FailureOrigin } from '../../../domain/agents/failure-origin';
 import { epics, stories, tasks } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
@@ -193,7 +194,7 @@ export class DrizzleTaskRepository implements TaskRepository {
         FOR UPDATE OF t SKIP LOCKED
         LIMIT 1
       )
-      RETURNING id, story_id, title, description, status, assigned_to, blocked, blocked_reason, gate_status, gate_correction_count, created_at, updated_at
+      RETURNING id, story_id, title, description, status, assigned_to, blocked, blocked_reason, blocked_origin, gate_status, gate_correction_count, created_at, updated_at
     `);
     const row = result.rows[0] as Record<string, unknown> | undefined;
     if (!row) return null;
@@ -206,6 +207,7 @@ export class DrizzleTaskRepository implements TaskRepository {
       assignedTo: (row.assigned_to as string | null) ?? null,
       blocked: row.blocked as boolean,
       blockedReason: (row.blocked_reason as string | null) ?? null,
+      blockedOrigin: (row.blocked_origin as Task['blockedOrigin']) ?? null,
       gateStatus: (row.gate_status as PrGateStatus | null) ?? null,
       gateCorrectionCount: Number(row.gate_correction_count ?? 0),
       createdAt: row.created_at as Date,
@@ -244,6 +246,7 @@ export class DrizzleTaskRepository implements TaskRepository {
     id: string,
     reason: string,
     diagnosis: string,
+    origin?: FailureOrigin,
   ): Promise<Task> {
     const db = currentDb(this.rootDb);
     const blockedReason = diagnosis ? `${reason} — ${diagnosis}` : reason;
@@ -254,6 +257,7 @@ export class DrizzleTaskRepository implements TaskRepository {
         assignedTo: null,
         blocked: true,
         blockedReason,
+        blockedOrigin: origin ?? null,
         updatedAt: new Date(),
       })
       .where(eq(tasks.id, id))
@@ -265,7 +269,12 @@ export class DrizzleTaskRepository implements TaskRepository {
     const db = currentDb(this.rootDb);
     const [row] = await db
       .update(tasks)
-      .set({ blocked: false, blockedReason: null, updatedAt: new Date() })
+      .set({
+        blocked: false,
+        blockedReason: null,
+        blockedOrigin: null,
+        updatedAt: new Date(),
+      })
       .where(eq(tasks.id, id))
       .returning();
     return taskToEntity(row);
@@ -346,6 +355,7 @@ function taskToEntity(row: typeof tasks.$inferSelect): Task {
     assignedTo: row.assignedTo,
     blocked: row.blocked,
     blockedReason: row.blockedReason,
+    blockedOrigin: row.blockedOrigin,
     gateStatus: row.gateStatus as PrGateStatus | null,
     gateCorrectionCount: row.gateCorrectionCount,
     createdAt: row.createdAt,

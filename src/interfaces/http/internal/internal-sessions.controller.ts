@@ -46,6 +46,7 @@ import { MarkTaskUseCase } from '../../../application/use-cases/execution/mark-t
 import { GetDevTaskContextUseCase } from '../../../application/use-cases/execution/get-dev-task-context.use-case';
 import { MarkTaskBlockedUseCase } from '../../../application/use-cases/execution/mark-task-blocked.use-case';
 import { RecordGateVerdictUseCase } from '../../../application/use-cases/execution/record-gate-verdict.use-case';
+import { RecordDelegationUseCase } from '../../../application/use-cases/execution/record-delegation.use-case';
 import { OpenGateUseCase } from '../../../application/use-cases/execution/open-gate.use-case';
 import { GetInfraContextUseCase } from '../../../application/use-cases/execution/get-infra-context.use-case';
 import { RecordInfraGateVerdictUseCase } from '../../../application/use-cases/execution/record-infra-gate-verdict.use-case';
@@ -57,6 +58,7 @@ import { RecordProficiencyUseCase } from '../../../application/use-cases/anamnes
 import { ProposeInstructionPatchUseCase } from '../../../application/use-cases/instructions/propose-instruction-patch.use-case';
 import { BlockTaskInternalDto } from './dto/block-task-internal.dto';
 import { RecordGateVerdictInternalDto } from './dto/record-gate-verdict-internal.dto';
+import { RecordDelegationInternalDto } from './dto/record-delegation-internal.dto';
 import { RecordInfraGateVerdictInternalDto } from './dto/record-infra-gate-verdict-internal.dto';
 import { ProposeHypothesesInternalDto } from './dto/propose-hypotheses-internal.dto';
 import {
@@ -93,6 +95,7 @@ import {
 } from '../backlog/dto/backlog.response.dto';
 import {
   AnamneseContextResponseDto,
+  DelegationResponseDto,
   DevTaskContextResponseDto,
   GateAbertoResponseDto,
   GateVerdictResponseDto,
@@ -145,6 +148,7 @@ export class InternalSessionsController {
     private readonly getDevTaskContext: GetDevTaskContextUseCase,
     private readonly markTaskBlocked: MarkTaskBlockedUseCase,
     private readonly recordGateVerdict: RecordGateVerdictUseCase,
+    private readonly recordDelegation: RecordDelegationUseCase,
     private readonly openGate: OpenGateUseCase,
     private readonly getInfraContext: GetInfraContextUseCase,
     private readonly recordInfraGateVerdict: RecordInfraGateVerdictUseCase,
@@ -623,6 +627,7 @@ export class InternalSessionsController {
       dto.reason,
       dto.diagnosis,
       dto.agentId,
+      dto.origin,
     );
   }
 
@@ -657,6 +662,43 @@ export class InternalSessionsController {
       },
       dto.maxCorrections,
     );
+  }
+
+  /**
+   * Desfecho de UMA delegação de área (Fase 8b QA, Fase 8c Infra — ADR 0038)
+   * — o lead da área chama isto uma vez por delegado, SEPARADO da chamada
+   * que reporta o resultado consolidado pra fora (`gates/verdict` pro QA,
+   * `open_infra_pr` pro Infra). Nunca visível como handoff; a api nunca
+   * sabe que existe mais de um agente por trás do resultado final da área.
+   *
+   * Session-scoped, não task-scoped: `taskId` vem no corpo, opcional — QA
+   * sempre manda (delegação é sobre uma task), Infra nunca manda (delegação
+   * é sobre a sessão, sem task de backlog por trás de uma PR de infra).
+   */
+  @Post(':sessionId/delegations')
+  @ApiOperation({
+    summary: 'Registra o desfecho de uma delegação de área',
+    description:
+      '`completed` (com o parecer), `failed` (com a origem) ou `dispensed` (com ' +
+      'a justificativa) — o lead nunca chama esta rota com um desfecho a meio ' +
+      'caminho: cada delegação nasce aqui já resolvida.',
+  })
+  @ApiCreatedResponse({ type: DelegationResponseDto })
+  recordDelegationOutcome(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: RecordDelegationInternalDto,
+  ) {
+    return this.recordDelegation.execute(dto.projectId, sessionId, {
+      taskId: dto.taskId,
+      area: dto.area,
+      leadAgent: dto.leadAgent,
+      subagent: dto.subagent,
+      status: dto.status,
+      parecerArtifactId: dto.parecerArtifactId,
+      failureOrigin: dto.failureOrigin,
+      failureReason: dto.failureReason,
+      justification: dto.justification,
+    });
   }
 
   /**

@@ -5,6 +5,7 @@ import { ProposedActionRepository } from '../../ports/proposed-action-repository
 import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { BraboMetrics } from '../../../infrastructure/observability/brabo-metrics';
 import { assertTransition } from '../../../domain/actions/action-state-machine';
+import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 @Injectable()
 export class DenyActionUseCase {
@@ -16,6 +17,7 @@ export class DenyActionUseCase {
     private readonly metrics: BraboMetrics,
   ) {}
 
+  @Traced('application')
   execute(
     projectId: string,
     sessionId: string,
