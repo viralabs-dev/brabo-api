@@ -17,6 +17,8 @@ import { GetProjectPermissionsUseCase } from './get-project-permissions.use-case
 import { SetProjectPermissionsUseCase } from './set-project-permissions.use-case';
 import { ListProjectsForWorkspaceUseCase } from './list-projects-for-workspace.use-case';
 import { ListProjectMembersUseCase } from './list-project-members.use-case';
+import { GetWorkspaceSummaryUseCase } from './get-workspace-summary.use-case';
+import { GetProjectsStatusForWorkspaceUseCase } from './get-projects-status-for-workspace.use-case';
 
 const USE_CASES = [
   CreateWorkspaceUseCase,
@@ -36,6 +38,8 @@ const USE_CASES = [
   SetProjectPermissionsUseCase,
   ListProjectsForWorkspaceUseCase,
   ListProjectMembersUseCase,
+  GetWorkspaceSummaryUseCase,
+  GetProjectsStatusForWorkspaceUseCase,
 ];
 
 @Module({
