@@ -15,5 +15,7 @@ export interface TokenUsage {
   costMicros: number;
   latencyMs: number;
   bindingOrigin: ModelBindingScope | null;
+  /** Quem serviu de fato, quando a chamada passou por um hub (Fase 9b). */
+  upstreamProvider: string | null;
   createdAt: Date;
 }

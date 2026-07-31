@@ -75,6 +75,14 @@ export class ModelResponseDto implements Wire<Model> {
   @ApiProperty({
     example: true,
     description:
+      'Preço digitado da doc do provider, não sincronizado. O sync de preços ' +
+      'não sobrescreve uma linha marcada sem decisão explícita.',
+  })
+  manualPricing!: boolean;
+
+  @ApiProperty({
+    example: true,
+    description:
       'Modelo desativado some da seleção mas continua nos custos históricos.',
   })
   isActive!: boolean;

@@ -160,6 +160,66 @@ describe('OpenAICompatibleProvider — particularidades da base', () => {
     await servidor.fechar();
   });
 
+  it('hub: o provider subjacente sai no chunk de usage (Fase 9b)', async () => {
+    // Um hub informa quem SERVIU a chamada num frame qualquer do stream, não
+    // necessariamente no que traz o usage — por isso a leitura acontece em
+    // todos os frames e o último visto vale.
+    const servidor = await subirServidorFalso((_cenario, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+      res.write(
+        `data: ${JSON.stringify({ provider: 'DeepInfra', choices: [{ delta: { content: 'oi' } }] })}\n\n`,
+      );
+      res.write(
+        `data: ${JSON.stringify({ choices: [], usage: { prompt_tokens: 3, completion_tokens: 1 } })}\n\n`,
+      );
+      res.write('data: [DONE]\n\n');
+      res.end();
+    });
+
+    const base = openaiConfig(servidor.baseUrl);
+    const hub = new OpenAICompatibleProvider({
+      ...base,
+      extrairUpstreamProvider: (frame) =>
+        typeof frame.provider === 'string' ? frame.provider : undefined,
+    });
+
+    const chunks = [];
+    for await (const chunk of hub.chat([{ role: 'user', content: 'oi' }], {
+      model: 'qualquer',
+    })) {
+      chunks.push(chunk);
+    }
+    await servidor.fechar();
+
+    expect(chunks.find((c) => c.type === 'usage')).toEqual({
+      type: 'usage',
+      inputTokens: 3,
+      outputTokens: 1,
+      estimated: false,
+      upstreamProvider: 'DeepInfra',
+    });
+  });
+
+  it('sem hub configurado, o chunk de usage não ganha campo nenhum', async () => {
+    const servidor = await subirServidorFalso(dialetoOpenAI);
+    servidor.usar('com_usage');
+
+    const provider = new OpenAICompatibleProvider(
+      openaiConfig(servidor.baseUrl),
+    );
+    const chunks = [];
+    for await (const chunk of provider.chat([{ role: 'user', content: 'oi' }], {
+      model: 'gpt-4o-mini',
+    })) {
+      chunks.push(chunk);
+    }
+    await servidor.fechar();
+
+    expect(chunks.find((c) => c.type === 'usage')).not.toHaveProperty(
+      'upstreamProvider',
+    );
+  });
+
   it('mensagens de ferramenta viram role tool com tool_call_id', async () => {
     const servidor = await subirServidorFalso(dialetoOpenAI);
     const provider = new OpenAICompatibleProvider(

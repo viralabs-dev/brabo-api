@@ -17,6 +17,11 @@ export interface Model {
   supportsToolCalling: boolean;
   supportsStreaming: boolean;
   supportsVision: boolean;
+  /**
+   * Preço digitado da doc do provider, não sincronizado (Fase 9b). O sync da
+   * Fase 9c não sobrescreve linha marcada sem decisão explícita.
+   */
+  manualPricing: boolean;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

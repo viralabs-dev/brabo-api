@@ -39,6 +39,7 @@ export class DrizzleModelRepository implements ModelRepository {
           supportsToolCalling: input.supportsToolCalling ?? false,
           supportsStreaming: input.supportsStreaming ?? true,
           supportsVision: input.supportsVision ?? false,
+          manualPricing: input.manualPricing ?? true,
           isActive: input.isActive ?? true,
           updatedAt: new Date(),
         },

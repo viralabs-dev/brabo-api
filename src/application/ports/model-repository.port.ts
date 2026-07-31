@@ -11,6 +11,7 @@ export interface ModelInput {
   supportsToolCalling?: boolean;
   supportsStreaming?: boolean;
   supportsVision?: boolean;
+  manualPricing?: boolean;
   isActive?: boolean;
 }
 

@@ -47,6 +47,19 @@ export interface OpenAICompatibleFlags {
   readonly maxTokensField: 'max_tokens' | 'max_completion_tokens';
 }
 
+/**
+ * Um HUB (OpenRouter) roteia a chamada para um provedor real e informa quem
+ * serviu. Como cada hub põe isso num lugar diferente do frame, a leitura é
+ * configurável em vez de virar `if` dentro do parsing — a regra da fase é que
+ * particularidade de provider vira flag na base, nunca condicional espalhada.
+ *
+ * `undefined` na config = não é hub. Devolver `undefined` = é hub, mas esta
+ * resposta não informou.
+ */
+export type ExtrairUpstreamProvider = (
+  frame: Record<string, unknown>,
+) => string | undefined;
+
 export interface OpenAICompatibleConfig {
   readonly name: LLMProviderName;
   /** Sem barra no fim — `/chat/completions` é concatenado. */
@@ -54,6 +67,8 @@ export interface OpenAICompatibleConfig {
   readonly capabilities: LLMProviderCapabilities;
   readonly authHeaders: (apiKey?: string) => Record<string, string>;
   readonly flags: OpenAICompatibleFlags;
+  /** Só em hubs — ver `ExtrairUpstreamProvider`. */
+  readonly extrairUpstreamProvider?: ExtrairUpstreamProvider;
 }
 
 /**
@@ -115,6 +130,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
     const emAndamento = new Map<number, ToolCallEmMontagem>();
     let usageRecebido = false;
     let textoAcumulado = '';
+    let upstreamProvider: string | undefined;
 
     try {
       for await (const payload of iterateSseData(response)) {
@@ -124,6 +140,13 @@ export class OpenAICompatibleProvider implements LLMProvider {
         } catch {
           continue; // frame corrompido/parcial — ignora, não derruba o stream
         }
+
+        // Vem num frame qualquer do stream (não necessariamente no do usage),
+        // então é lido em todos e o último visto vale.
+        upstreamProvider =
+          this.config.extrairUpstreamProvider?.(
+            frame as unknown as Record<string, unknown>,
+          ) ?? upstreamProvider;
 
         const delta = frame.choices?.[0]?.delta;
 
@@ -146,6 +169,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
             inputTokens: frame.usage.prompt_tokens ?? 0,
             outputTokens: frame.usage.completion_tokens ?? 0,
             estimated: false,
+            ...(upstreamProvider ? { upstreamProvider } : {}),
           };
         }
       }
@@ -165,6 +189,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
         ),
         outputTokens: this.tokenEstimator.count(textoAcumulado),
         estimated: true,
+        ...(upstreamProvider ? { upstreamProvider } : {}),
       };
     }
   }

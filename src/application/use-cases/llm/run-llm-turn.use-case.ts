@@ -98,6 +98,8 @@ export class RunLlmTurnUseCase {
     let inputTokens = 0;
     let outputTokens = 0;
     let estimated = false;
+    // Só um hub preenche isto; nos providers diretos fica null (Fase 9b).
+    let upstreamProvider: string | null = null;
     let streamError: string | null = null;
 
     try {
@@ -114,6 +116,7 @@ export class RunLlmTurnUseCase {
           inputTokens = chunk.inputTokens;
           outputTokens = chunk.outputTokens;
           estimated = chunk.estimated;
+          upstreamProvider = chunk.upstreamProvider ?? null;
         } else if (chunk.type === 'error') {
           streamError = chunk.message;
         }
@@ -153,6 +156,7 @@ export class RunLlmTurnUseCase {
         costMicros,
         latencyMs,
         bindingOrigin: binding.origin,
+        upstreamProvider,
       });
     });
 

@@ -31,6 +31,7 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
         costMicros: input.costMicros,
         latencyMs: input.latencyMs,
         bindingOrigin: input.bindingOrigin,
+        upstreamProvider: input.upstreamProvider,
       })
       .returning();
 
@@ -47,6 +48,7 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
       costMicros: row.costMicros,
       latencyMs: row.latencyMs,
       bindingOrigin: row.bindingOrigin,
+      upstreamProvider: row.upstreamProvider,
       createdAt: row.createdAt,
     };
   }

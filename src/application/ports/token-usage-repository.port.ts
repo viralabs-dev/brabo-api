@@ -15,6 +15,7 @@ export interface RecordTokenUsageInput {
   costMicros: number;
   latencyMs: number;
   bindingOrigin: ModelBindingScope | null;
+  upstreamProvider: string | null;
 }
 
 export abstract class TokenUsageRepository {

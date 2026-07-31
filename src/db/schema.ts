@@ -435,6 +435,11 @@ export const models = pgTable(
       .default(false),
     supportsStreaming: boolean('supports_streaming').notNull().default(true),
     supportsVision: boolean('supports_vision').notNull().default(false),
+    // Preço digitado à mão a partir da doc do provider, em vez de vindo de
+    // sync (Fase 9b). Quem sincroniza preço na Fase 9c NÃO pode sobrescrever
+    // uma linha marcada aqui sem decisão explícita: o número manual costuma
+    // ser o único que existe para provider que não expõe catálogo.
+    manualPricing: boolean('manual_pricing').notNull().default(true),
     isActive: boolean('is_active').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
@@ -515,6 +520,11 @@ export const tokenUsage = pgTable('token_usage', {
   costMicros: bigint('cost_micros', { mode: 'number' }).notNull(),
   latencyMs: integer('latency_ms').notNull(),
   bindingOrigin: modelBindingScopeEnum('binding_origin'),
+  // Provider SUBJACENTE, quando a chamada passou por um hub que informa quem
+  // serviu (Fase 9b). Texto livre e não enum: o conjunto é do hub, muda sem
+  // aviso e não é nosso para versionar. `null` = não veio de hub, ou o hub
+  // não informou.
+  upstreamProvider: text('upstream_provider'),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
