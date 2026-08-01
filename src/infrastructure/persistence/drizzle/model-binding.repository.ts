@@ -4,7 +4,7 @@ import { ModelBindingRepository } from '../../../application/ports/model-binding
 import type { ModelBinding } from '../../../domain/llm/model-binding.entity';
 import type { ModelBindingScope } from '../../../domain/llm/model-binding-scope';
 import type { ScopedBinding } from '../../../domain/llm/binding-resolver';
-import { modelBindings } from '../../../db/schema';
+import { modelBindings, models } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
@@ -21,9 +21,18 @@ export class DrizzleModelBindingRepository implements ModelBindingRepository {
     if (pairs.length === 0) return [];
 
     const db = currentDb(this.rootDb);
+    // Join com `models` (Fase 9c): o resolver precisa saber se o modelo do
+    // binding ainda existe no catálogo remoto e se ele faz tool calling — sem
+    // isso a cascata não tem como pular um nível quebrado.
     const rows = await db
-      .select({ scope: modelBindings.scope, modelId: modelBindings.modelId })
+      .select({
+        scope: modelBindings.scope,
+        modelId: modelBindings.modelId,
+        availability: models.availability,
+        supportsToolCalling: models.supportsToolCalling,
+      })
       .from(modelBindings)
+      .innerJoin(models, eq(models.id, modelBindings.modelId))
       .where(
         or(
           ...pairs.map(([scope, scopeId]) =>

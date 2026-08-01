@@ -1,6 +1,11 @@
 import { Module } from '@nestjs/common';
 import { LlmInfrastructureModule } from '../../../infrastructure/llm/llm-infrastructure.module';
 import { ListModelsUseCase } from './list-models.use-case';
+import { ListModelCatalogUseCase } from './list-model-catalog.use-case';
+import { SetModelsActiveUseCase } from './set-models-active.use-case';
+import { SyncModelCatalogUseCase } from './sync-model-catalog.use-case';
+import { UpdateModelPricingUseCase } from './update-model-pricing.use-case';
+import { ListModelPriceChangesUseCase } from './list-model-price-changes.use-case';
 import { SetModelBindingUseCase } from './set-model-binding.use-case';
 import { GetModelBindingUseCase } from './get-model-binding.use-case';
 import { ResolveModelBindingUseCase } from './resolve-model-binding.use-case';
@@ -18,6 +23,11 @@ import { StreamLlmTurnUseCase } from './stream-llm-turn.use-case';
 
 const USE_CASES = [
   ListModelsUseCase,
+  ListModelCatalogUseCase,
+  SetModelsActiveUseCase,
+  SyncModelCatalogUseCase,
+  UpdateModelPricingUseCase,
+  ListModelPriceChangesUseCase,
   SetModelBindingUseCase,
   GetModelBindingUseCase,
   ResolveModelBindingUseCase,

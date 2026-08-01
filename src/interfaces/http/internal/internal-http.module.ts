@@ -9,6 +9,7 @@ import { ExecutionUseCasesModule } from '../../../application/use-cases/executio
 import { AnamneseUseCasesModule } from '../../../application/use-cases/anamnese/anamnese-use-cases.module';
 import { InstructionsUseCasesModule } from '../../../application/use-cases/instructions/instructions-use-cases.module';
 import { InternalSessionsController } from './internal-sessions.controller';
+import { InternalModelsController } from './internal-models.controller';
 
 @Module({
   imports: [
@@ -22,6 +23,6 @@ import { InternalSessionsController } from './internal-sessions.controller';
     AnamneseUseCasesModule,
     InstructionsUseCasesModule,
   ],
-  controllers: [InternalSessionsController],
+  controllers: [InternalSessionsController, InternalModelsController],
 })
 export class InternalHttpModule {}

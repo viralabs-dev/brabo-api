@@ -60,6 +60,10 @@ export class RunLlmTurnUseCase {
       projectId: input.projectId,
       sessionId: input.sessionId,
       agentId: input.agentId,
+      // Fase 9c: o gatilho é o turno CARREGAR ferramentas, não o ator ser
+      // agente — um turno de resumo do context-manager sem `tools` roda bem em
+      // modelo chat-only, e travá-lo restringiria mais do que a RN-040 pede.
+      exigeToolCalling: (input.tools?.length ?? 0) > 0,
     });
     if (!binding) {
       return errorResult('Nenhum modelo vinculado para esta sessão');
@@ -98,6 +102,8 @@ export class RunLlmTurnUseCase {
     let inputTokens = 0;
     let outputTokens = 0;
     let estimated = false;
+    // Só um hub preenche isto; nos providers diretos fica null (Fase 9b).
+    let upstreamProvider: string | null = null;
     let streamError: string | null = null;
 
     try {
@@ -114,6 +120,7 @@ export class RunLlmTurnUseCase {
           inputTokens = chunk.inputTokens;
           outputTokens = chunk.outputTokens;
           estimated = chunk.estimated;
+          upstreamProvider = chunk.upstreamProvider ?? null;
         } else if (chunk.type === 'error') {
           streamError = chunk.message;
         }
@@ -151,8 +158,13 @@ export class RunLlmTurnUseCase {
         outputTokens,
         estimated,
         costMicros,
+        // Congela o preço junto do custo: sem isso o `cost_micros` de ontem é
+        // um número sem procedência quando o preço mudar (RN-044).
+        inputPricePerMillionMicros: model.inputPricePerMillionMicros,
+        outputPricePerMillionMicros: model.outputPricePerMillionMicros,
         latencyMs,
         bindingOrigin: binding.origin,
+        upstreamProvider,
       });
     });
 

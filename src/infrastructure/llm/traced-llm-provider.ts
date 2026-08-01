@@ -3,6 +3,7 @@ import type {
   ChatMessage,
   ChatOptions,
   ChatStreamChunk,
+  LLMProviderCapabilities,
   LLMProviderName,
 } from '@brabo/shared';
 import { LLMProvider } from '../../application/ports/llm-provider.port';
@@ -38,6 +39,10 @@ export class TracedLLMProvider extends LLMProvider {
 
   get name(): LLMProviderName {
     return this.inner.name;
+  }
+
+  get capabilities(): LLMProviderCapabilities {
+    return this.inner.capabilities;
   }
 
   async *chat(

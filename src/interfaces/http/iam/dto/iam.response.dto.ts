@@ -9,6 +9,8 @@ import type {
   ProjectMemberWithUser,
 } from '../../../../domain/iam/project-member.entity';
 import type { WorkspaceWithRole } from '../../../../application/ports/workspace-repository.port';
+import type { WorkspaceSummary } from '../../../../application/use-cases/iam/get-workspace-summary.use-case';
+import type { ProjectBlockedStatus } from '../../../../application/use-cases/iam/get-projects-status-for-workspace.use-case';
 
 /**
  * Respostas de workspaces, projetos e associações (Fase 7b, item 6).
@@ -66,6 +68,49 @@ export class WorkspaceComPapelResponseDto implements Wire<WorkspaceWithRole> {
 export const _chavesWorkspaceComPapel: MesmasChaves<
   WorkspaceComPapelResponseDto,
   WorkspaceWithRole
+> = true;
+
+/** Resumo agregado do workspace pro topo do dashboard de projetos. */
+export class WorkspaceSummaryResponseDto implements Wire<WorkspaceSummary> {
+  @ApiProperty({
+    example: 4,
+    description:
+      'Quantidade de projetos do workspace. Não há flag de "ativo" no domínio — todo ' +
+      'projeto conta.',
+  })
+  activeProjects!: number;
+
+  @ApiProperty({
+    example: 6,
+    description:
+      'Agentes distintos (actorKind=agent) que gastaram tokens neste mês, somando ' +
+      'todos os projetos do workspace — inclui subespecialidades de área (Fase 8).',
+  })
+  agentCount!: number;
+
+  @ApiProperty({
+    example: 12500000,
+    description:
+      'Gasto do mês corrente, em micro-USD, somado por token_usage.createdAt.',
+  })
+  spentMicros!: number;
+}
+export const _chavesWorkspaceSummary: MesmasChaves<
+  WorkspaceSummaryResponseDto,
+  WorkspaceSummary
+> = true;
+
+/** Contagem de tasks bloqueadas de um projeto — dot de status da sidebar. */
+export class ProjectBlockedStatusResponseDto implements Wire<ProjectBlockedStatus> {
+  @ApiProperty({ example: '01JC4Z0000PROJETO0000000001' })
+  projectId!: string;
+
+  @ApiProperty({ example: 2 })
+  blockedTaskCount!: number;
+}
+export const _chavesProjectBlockedStatus: MesmasChaves<
+  ProjectBlockedStatusResponseDto,
+  ProjectBlockedStatus
 > = true;
 
 export class ProjectResponseDto implements Wire<Project> {

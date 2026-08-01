@@ -37,10 +37,12 @@ export class BraboMetrics {
   readonly registry = new Registry();
 
   /** Tokens consumidos. `kind` distingue input de output. */
-  readonly llmTokens: Counter<'project' | 'provider' | 'kind'>;
+  readonly llmTokens: Counter<
+    'project' | 'provider' | 'upstream_provider' | 'kind'
+  >;
 
   /** Custo em micro-dólar. `/1e6` dá dólar; `rate()*3600` dá custo/hora. */
-  readonly llmCostMicros: Counter<'project' | 'provider'>;
+  readonly llmCostMicros: Counter<'project' | 'provider' | 'upstream_provider'>;
 
   /** Duração da chamada de LLM. Buckets cobrem de 100ms a 2min. */
   readonly llmCallDuration: Histogram<'provider'>;
@@ -68,15 +70,15 @@ export class BraboMetrics {
 
     this.llmTokens = new Counter({
       name: 'brabo_llm_tokens_total',
-      help: 'Tokens de LLM consumidos, por projeto, provider e tipo (input/output)',
-      labelNames: ['project', 'provider', 'kind'],
+      help: 'Tokens de LLM consumidos, por projeto, provider, provider subjacente e tipo (input/output)',
+      labelNames: ['project', 'provider', 'upstream_provider', 'kind'],
       registers: [this.registry],
     });
 
     this.llmCostMicros = new Counter({
       name: 'brabo_llm_cost_micros_total',
-      help: 'Custo de LLM em micro-dólar (1 USD = 1e6), por projeto e provider',
-      labelNames: ['project', 'provider'],
+      help: 'Custo de LLM em micro-dólar (1 USD = 1e6), por projeto, provider e provider subjacente',
+      labelNames: ['project', 'provider', 'upstream_provider'],
       registers: [this.registry],
     });
 
@@ -167,15 +169,28 @@ export class BraboMetrics {
     outputTokens: number;
     costMicros: number;
     latencyMs: number;
+    /** Quem serviu de fato, quando a chamada passou por um hub (Fase 9b). */
+    upstreamProvider?: string | null;
   }): void {
     const { projectId: project, provider } = input;
+    // Sem hub, o subjacente É o próprio provider. Rotular assim (em vez de
+    // deixar vazio) mantém `sum by (upstream_provider)` somando o custo
+    // INTEIRO — com rótulo vazio, o painel mostraria só o que passou por hub e
+    // pareceria que o resto não custou nada.
+    const upstream_provider = input.upstreamProvider ?? provider;
 
-    this.llmTokens.inc({ project, provider, kind: 'input' }, input.inputTokens);
     this.llmTokens.inc(
-      { project, provider, kind: 'output' },
+      { project, provider, upstream_provider, kind: 'input' },
+      input.inputTokens,
+    );
+    this.llmTokens.inc(
+      { project, provider, upstream_provider, kind: 'output' },
       input.outputTokens,
     );
-    this.llmCostMicros.inc({ project, provider }, input.costMicros);
+    this.llmCostMicros.inc(
+      { project, provider, upstream_provider },
+      input.costMicros,
+    );
     this.llmCallDuration.observe({ provider }, input.latencyMs / 1000);
   }
 
