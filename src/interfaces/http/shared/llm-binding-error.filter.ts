@@ -7,8 +7,8 @@ import {
 
 /**
  * 422, e não 400: o pedido está bem formado e o modelo referenciado existe —
- * o que não se sustenta é a combinação modelo + escopo (Fase 9a, RN-038) ou o
- * estado do modelo (Fase 9c, RN-041). Mesmo vocabulário que o
+ * o que não se sustenta é a combinação modelo + escopo (Fase 9a, RN-040) ou o
+ * estado do modelo (Fase 9c, RN-043). Mesmo vocabulário que o
  * `GitProviderErrorFilter` já usa para o teste de conexão de credencial que
  * falha.
  */

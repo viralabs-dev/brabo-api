@@ -128,7 +128,7 @@ describe('UpdateModelPricingUseCase', () => {
     });
   });
 
-  it('o custo de ontem NÃO se move — e continua batendo com o preço gravado (RN-042)', async () => {
+  it('o custo de ontem NÃO se move — e continua batendo com o preço gravado (RN-044)', async () => {
     const { user, session, model } = await setup();
     const ontem = await consumoDeOntem(session.id, model.id);
 

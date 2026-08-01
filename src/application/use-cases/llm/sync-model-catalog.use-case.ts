@@ -42,7 +42,7 @@ export interface SyncModelCatalogResult {
 
 /**
  * Sincroniza o catálogo REMOTO de cada provider com a tabela `models`
- * (Fase 9c, RN-041).
+ * (Fase 9c, RN-043).
  *
  * ## As três regras da reconciliação
  *

@@ -8,7 +8,7 @@ export interface SetModelsActiveInput {
 }
 
 /**
- * Curadoria do owner: liga ou desliga modelos do seletor (Fase 9c, RN-041).
+ * Curadoria do owner: liga ou desliga modelos do seletor (Fase 9c, RN-043).
  *
  * Um só e lote são a MESMA operação — a tela de curadoria marca várias linhas
  * de uma vez depois de um sync, e um endpoint por id faria N chamadas para uma

@@ -32,7 +32,7 @@ export function openaiConfig(
 }
 
 /**
- * A OpenAI é a primeira instância da base compatível (Fase 9a — ADR 0040), não
+ * A OpenAI é a primeira instância da base compatível (Fase 9a — ADR 0041), não
  * um provider com parsing próprio. Antes disto ela usava o SDK `openai` e
  * descartava `options.tools` em silêncio; a base trouxe tool calling, erros
  * normalizados e teto de inatividade de socket.

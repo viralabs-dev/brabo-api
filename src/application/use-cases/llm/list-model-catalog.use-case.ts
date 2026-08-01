@@ -12,7 +12,7 @@ import type { ModelsByCategory } from './list-models.use-case';
  * `ListModelsUseCase` continua sendo o que alimenta o seletor de modelos e
  * segue mostrando só o ativo. Esta é a tela de curadoria: sem enxergar o
  * inativo não há como ativar o que o sync acabou de descobrir, que é
- * exatamente o estado em que todo modelo descoberto nasce (RN-041).
+ * exatamente o estado em que todo modelo descoberto nasce (RN-043).
  */
 @Injectable()
 export class ListModelCatalogUseCase {

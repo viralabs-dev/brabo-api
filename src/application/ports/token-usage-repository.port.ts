@@ -13,7 +13,7 @@ export interface RecordTokenUsageInput {
   outputTokens: number;
   estimated: boolean;
   costMicros: number;
-  /** O preço vigente no instante da chamada (Fase 9c, RN-042). */
+  /** O preço vigente no instante da chamada (Fase 9c, RN-044). */
   inputPricePerMillionMicros: number;
   outputPricePerMillionMicros: number;
   latencyMs: number;
@@ -38,6 +38,13 @@ export abstract class TokenUsageRepository {
   abstract sumBySessionGroupedByActor(
     sessionId: string,
   ): Promise<AgentTokenUsage[]>;
+  // Resumo do workspace pro dashboard de projetos (Fase de fidelidade da
+  // UI): "M agentes" e o gasto do mês, numa query só. `actorKind = 'agent'`
+  // é filtro OBRIGATÓRIO — sem ele um `user` mandando chat ou um `system`
+  // registrando uso infla a contagem de agentes (RN-038).
+  abstract summarizeForWorkspaceThisMonth(
+    workspaceId: string,
+  ): Promise<WorkspaceTokenUsageSummary>;
 }
 
 export interface AgentTokenUsage {
@@ -45,4 +52,9 @@ export interface AgentTokenUsage {
   costMicros: number;
   inputTokens: number;
   outputTokens: number;
+}
+
+export interface WorkspaceTokenUsageSummary {
+  agentCount: number;
+  spentMicros: number;
 }

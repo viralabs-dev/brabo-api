@@ -62,7 +62,7 @@ export class RunLlmTurnUseCase {
       agentId: input.agentId,
       // Fase 9c: o gatilho é o turno CARREGAR ferramentas, não o ator ser
       // agente — um turno de resumo do context-manager sem `tools` roda bem em
-      // modelo chat-only, e travá-lo restringiria mais do que a RN-038 pede.
+      // modelo chat-only, e travá-lo restringiria mais do que a RN-040 pede.
       exigeToolCalling: (input.tools?.length ?? 0) > 0,
     });
     if (!binding) {
@@ -159,7 +159,7 @@ export class RunLlmTurnUseCase {
         estimated,
         costMicros,
         // Congela o preço junto do custo: sem isso o `cost_micros` de ontem é
-        // um número sem procedência quando o preço mudar (RN-042).
+        // um número sem procedência quando o preço mudar (RN-044).
         inputPricePerMillionMicros: model.inputPricePerMillionMicros,
         outputPricePerMillionMicros: model.outputPricePerMillionMicros,
         latencyMs,

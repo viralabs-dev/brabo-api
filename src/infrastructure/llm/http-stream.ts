@@ -8,7 +8,7 @@ import {
 
 /**
  * Transporte de streaming compartilhado pelos providers de LLM (Fase 9a —
- * ADR 0040). Nasceu dentro do `ollama-provider.ts` no ADR 0020 e foi extraído
+ * ADR 0041). Nasceu dentro do `ollama-provider.ts` no ADR 0020 e foi extraído
  * aqui quando a base OpenAI-compatível passou a precisar exatamente do mesmo
  * comportamento de socket.
  *

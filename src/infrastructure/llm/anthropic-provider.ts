@@ -38,7 +38,7 @@ export interface AnthropicOptions {
 
 /**
  * O Anthropic NÃO fala o dialeto `/chat/completions`, então continua no SDK
- * oficial em vez de derivar da base compatível (Fase 9a — ADR 0040). O que
+ * oficial em vez de derivar da base compatível (Fase 9a — ADR 0041). O que
  * mudou aqui foi o alinhamento ao contrato: tool calling nativo, erros
  * normalizados por status e teto de inatividade via `withIdleTimeout`.
  */
@@ -49,7 +49,7 @@ export class AnthropicProvider implements LLMProvider {
     streaming: true,
     toolCalling: true,
     // Mesma razão do Ollama: o endpoint de catálogo do SDK não foi verificado
-    // na doc oficial nesta fase. Backlog no ADR 0041.
+    // na doc oficial nesta fase. Backlog no ADR 0042.
     listModels: false,
   };
 

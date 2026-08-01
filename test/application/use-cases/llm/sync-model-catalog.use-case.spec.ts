@@ -24,7 +24,7 @@ const encryption = new EnvelopeEncryptionService();
 /**
  * O catálogo que o "provider" devolve nesta rodada. O teste mexe nele para
  * simular modelo novo, modelo que sumiu e modelo que voltou — que são
- * exatamente as três regras de reconciliação da RN-041.
+ * exatamente as três regras de reconciliação da RN-043.
  */
 let catalogoRemoto: string[] = [];
 let status = 200;
@@ -103,7 +103,7 @@ afterAll(async () => {
 });
 
 describe('SyncModelCatalogUseCase', () => {
-  it('caminho feliz: o que o sync descobre entra INATIVO (RN-041)', async () => {
+  it('caminho feliz: o que o sync descobre entra INATIVO (RN-043)', async () => {
     await comCredencialDaOpenAI();
     catalogoRemoto = ['gpt-4o-mini', 'gpt-4o'];
 

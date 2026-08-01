@@ -74,7 +74,7 @@ describe('resolveBinding', () => {
     expect(resolveBinding([])).toBeNull();
   });
 
-  // --- Fase 9c (RN-041) ---
+  // --- Fase 9c (RN-043) ---
 
   it('pula o modelo indisponível e diz QUAL escopo foi pulado', () => {
     const resolved = resolveBinding([
@@ -98,7 +98,7 @@ describe('resolveBinding', () => {
   });
 
   it('revalida tool calling A CADA nível quando o pedido é de agente', () => {
-    // Sem isso o fallback pousaria num modelo chat-only e a violação da RN-038
+    // Sem isso o fallback pousaria num modelo chat-only e a violação da RN-040
     // só apareceria lá na frente, no ToolLoop, como "o agente parou sozinho".
     const resolved = resolveBinding(
       [

@@ -70,7 +70,7 @@ describe('SetModelBindingUseCase', () => {
     });
   });
 
-  it('recusa modelo chat-only no escopo agent (RN-038)', async () => {
+  it('recusa modelo chat-only no escopo agent (RN-040)', async () => {
     const { user, chatOnly } = await setup();
 
     await expect(
@@ -100,7 +100,7 @@ describe('SetModelBindingUseCase', () => {
     ).resolves.toMatchObject({ scope: 'workspace' });
   });
 
-  it('recusa binding novo para modelo que o owner desativou (RN-041)', async () => {
+  it('recusa binding novo para modelo que o owner desativou (RN-043)', async () => {
     const { user, comFerramentas } = await setup();
     await modelRepo.setActive([comFerramentas.id], false);
 
@@ -112,7 +112,7 @@ describe('SetModelBindingUseCase', () => {
     });
   });
 
-  it('recusa binding novo para modelo que sumiu do provider (RN-041)', async () => {
+  it('recusa binding novo para modelo que sumiu do provider (RN-043)', async () => {
     const { user, comFerramentas } = await setup();
     await modelRepo.setAvailability([comFerramentas.id], 'unavailable');
 

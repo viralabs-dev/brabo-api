@@ -34,7 +34,7 @@ import {
 // depois (ver README: "models" não tem endpoint HTTP de edição na
 // Fase 1, corrija aqui ou via SQL direto).
 //
-// `supportsToolCalling` é explícito em cada linha (Fase 9a — ADR 0040): o
+// `supportsToolCalling` é explícito em cada linha (Fase 9a — ADR 0041): o
 // default da coluna é `false`, e um binding de agente para modelo sem tool
 // calling é recusado no domínio. Os sete abaixo têm suporte nativo
 // verificado — a migração 0026 faz o mesmo backfill para bancos já criados.

@@ -20,7 +20,7 @@ async function setup() {
       provider: 'openai',
       name: 'gpt-4o-mini',
       displayName: 'GPT-4o mini',
-      // É assim que o sync de catálogo deixa todo modelo novo (RN-041).
+      // É assim que o sync de catálogo deixa todo modelo novo (RN-043).
       isActive: false,
     })
     .returning();

@@ -2,7 +2,7 @@ export const PRICE_CHANGE_SOURCES = ['manual', 'sync'] as const;
 export type PriceChangeSource = (typeof PRICE_CHANGE_SOURCES)[number];
 
 /**
- * Uma mudança de preço de modelo (Fase 9c, RN-042).
+ * Uma mudança de preço de modelo (Fase 9c, RN-044).
  *
  * Log de domínio IMUTÁVEL, como `session_events`: nunca se faz UPDATE aqui.
  * Fica em tabela própria e não no outbox porque `Engine.Outbox.Drain.run_once/0`

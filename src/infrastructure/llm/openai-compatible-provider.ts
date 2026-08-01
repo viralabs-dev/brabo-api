@@ -87,7 +87,7 @@ export interface OpenAICompatibleConfig {
 
 /**
  * Base configurável para todo provider que fala o dialeto `/chat/completions`
- * da OpenAI (Fase 9a — ADR 0040). A própria OpenAI é uma instância dela; NVIDIA
+ * da OpenAI (Fase 9a — ADR 0041). A própria OpenAI é uma instância dela; NVIDIA
  * NIM, Deep Infra, Together, Bitdeer, Vultr e OpenRouter nascem da mesma base
  * na Fase 9b, mudando `baseUrl`, header de auth e flags — não o parsing.
  *
@@ -288,7 +288,7 @@ interface LinhaDeCatalogo {
  *
  * Só o id é extraído. Preço, janela e capabilities NÃO são inventados a partir
  * do nome — campo ausente significa "o provider não disse", e o sync preserva
- * o que já estava gravado em vez de zerar (RN-041).
+ * o que já estava gravado em vez de zerar (RN-043).
  */
 export function parseCatalogoPadrao(corpo: unknown): ModeloDoCatalogo[] {
   const data = (corpo as { data?: unknown })?.data;

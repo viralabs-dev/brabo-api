@@ -22,7 +22,7 @@ export interface RecordLlmUsageInput {
   estimated: boolean;
   costMicros: number;
   /**
-   * O preço do modelo NO MOMENTO da chamada (Fase 9c, RN-042). Vem do
+   * O preço do modelo NO MOMENTO da chamada (Fase 9c, RN-044). Vem do
    * orquestrador, que já leu a linha de `models` para calcular o custo — e é
    * gravado junto para o custo ficar reproduzível quando o preço mudar.
    */

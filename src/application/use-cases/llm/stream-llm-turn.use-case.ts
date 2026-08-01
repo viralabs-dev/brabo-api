@@ -170,7 +170,7 @@ export class StreamLlmTurnUseCase {
         estimated,
         costMicros,
         // Congela o preço junto do custo: sem isso o `cost_micros` de ontem é
-        // um número sem procedência quando o preço mudar (RN-042).
+        // um número sem procedência quando o preço mudar (RN-044).
         inputPricePerMillionMicros: model.inputPricePerMillionMicros,
         outputPricePerMillionMicros: model.outputPricePerMillionMicros,
         latencyMs,

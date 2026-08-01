@@ -10,7 +10,7 @@ import type {
 export abstract class LLMProvider {
   abstract readonly name: LLMProviderName;
   /**
-   * O TETO do que este provider sabe fazer (Fase 9a — ADR 0040). Espelha o
+   * O TETO do que este provider sabe fazer (Fase 9a — ADR 0041). Espelha o
    * `capabilities` que o `GitProviderContract` carrega desde a Fase 2: quem
    * consome degrada olhando a capability, em vez de descobrir na falha.
    *

@@ -1,5 +1,5 @@
 /**
- * Teto de INATIVIDADE sobre um async iterable qualquer (Fase 9a — ADR 0040).
+ * Teto de INATIVIDADE sobre um async iterable qualquer (Fase 9a — ADR 0041).
  *
  * Os providers que falam `node:http` ganham isso do socket (ver
  * `http-stream.ts`). O Anthropic continua no SDK oficial — que fala `fetch` e

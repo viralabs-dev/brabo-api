@@ -72,7 +72,7 @@ export class ModelResponseDto implements Wire<Model> {
     example: true,
     description:
       'Tool calling NATIVO. Sem isto o modelo é chat-only e não pode ser ' +
-      'vinculado a um agente (RN-038).',
+      'vinculado a um agente (RN-040).',
   })
   supportsToolCalling!: boolean;
 
@@ -181,7 +181,7 @@ export const _chavesBinding: MesmasChaves<
 > = true;
 
 /**
- * Um escopo que a cascata PULOU (Fase 9c, RN-041). Existe para a UI conseguir
+ * Um escopo que a cascata PULOU (Fase 9c, RN-043). Existe para a UI conseguir
  * dizer "o modelo do agente sumiu, caiu para o do projeto" — trocar o modelo em
  * silêncio é o que a regra proíbe.
  */
@@ -198,7 +198,7 @@ export class SkippedBindingResponseDto implements Wire<SkippedBinding> {
     description:
       '`unavailable`: o modelo sumiu do catálogo do provider. ' +
       '`sem_tool_calling`: o pedido é de um agente e o modelo é chat-only — a ' +
-      'cascata revalida a capability a cada nível para não violar a RN-038 em ' +
+      'cascata revalida a capability a cada nível para não violar a RN-040 em ' +
       'silêncio.',
   })
   reason!: Wire<SkippedBinding>['reason'];
@@ -237,7 +237,7 @@ export const _chavesBindingResolvido: MesmasChaves<
 > = true;
 
 /**
- * Uma mudança de preço (Fase 9c, RN-042). Append-only: o par antes/depois é
+ * Uma mudança de preço (Fase 9c, RN-044). Append-only: o par antes/depois é
  * gravado junto para a auditoria não depender de reconstruir o "antes" a
  * partir da linha anterior.
  */

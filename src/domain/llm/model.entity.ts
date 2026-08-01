@@ -13,7 +13,7 @@ export interface Model {
   /** Também é o `context_length` das capabilities do modelo. */
   contextWindow: number | null;
   /**
-   * Capabilities DO MODELO (Fase 9a — ADR 0040), não do provider: um provider
+   * Capabilities DO MODELO (Fase 9a — ADR 0041), não do provider: um provider
    * pode falar tool calling e o modelo específico não. Quem decide se um
    * binding é válido olha estas, nunca as do provider.
    */

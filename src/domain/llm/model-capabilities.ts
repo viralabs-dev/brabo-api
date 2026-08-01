@@ -3,7 +3,7 @@ import type { ModelBindingScope } from './model-binding-scope';
 
 /**
  * Um agente só existe dentro do ToolLoop, e o ToolLoop só funciona se o modelo
- * souber PEDIR ferramentas (Fase 9a — ADR 0040, RN-038).
+ * souber PEDIR ferramentas (Fase 9a — ADR 0041, RN-040).
  *
  * O `ToolCallRecovery` do engine (ADR 0020) resgata modelos que escrevem a
  * chamada em prosa em vez de usar o campo `tools` — mas ele é RESGATE, não
@@ -24,7 +24,7 @@ export class ModelNotFitForAgentScopeError extends Error {
 
 /**
  * Modelo que o owner desligou, ou que sumiu do catálogo remoto, não recebe
- * binding NOVO (Fase 9c, RN-041). Os bindings que já existem continuam de pé —
+ * binding NOVO (Fase 9c, RN-043). Os bindings que já existem continuam de pé —
  * quem os resolve é a cascata, que pula o indisponível e cai para o nível de
  * baixo avisando. Deletar o modelo nunca é opção: `token_usage` e
  * `model_bindings` apontam para ele.

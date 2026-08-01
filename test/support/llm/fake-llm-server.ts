@@ -2,7 +2,7 @@ import { createServer, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
 /**
- * Servidor de LLM falso para a suite de contrato (Fase 9a — ADR 0040).
+ * Servidor de LLM falso para a suite de contrato (Fase 9a — ADR 0041).
  *
  * Segue o molde do teste de transporte do Ollama da Fase 4 (`node:http` de
  * verdade em porta efêmera, não mock de `fetch`): o que está sob teste é

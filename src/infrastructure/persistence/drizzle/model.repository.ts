@@ -56,7 +56,7 @@ export class DrizzleModelRepository implements ModelRepository {
           manualPricing: input.manualPricing ?? true,
           // `isActive` NÃO entra no update: é curadoria do owner, e o sync
           // reencontrando um modelo não pode religar o que alguém desligou
-          // de propósito (Fase 9c, RN-041).
+          // de propósito (Fase 9c, RN-043).
           availability: input.availability ?? 'available',
           lastSeenAt: input.lastSeenAt ?? null,
           updatedAt: new Date(),

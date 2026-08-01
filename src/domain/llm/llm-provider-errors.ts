@@ -1,7 +1,7 @@
 import type { LLMErrorCode, LLMProviderName } from '@brabo/shared';
 
 /**
- * Erros normalizados de provider de LLM (Fase 9a — ver docs/adr/0040).
+ * Erros normalizados de provider de LLM (Fase 9a — ver docs/adr/0041).
  *
  * ## Por que uma classe-base aqui, e não avulsas como em git-errors.ts
  *

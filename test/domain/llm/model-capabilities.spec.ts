@@ -25,7 +25,7 @@ function modelo(overrides: Partial<Model> = {}): Model {
   };
 }
 
-describe('assertModelFitsBindingScope (RN-038)', () => {
+describe('assertModelFitsBindingScope (RN-040)', () => {
   it('aceita modelo com tool calling nativo em qualquer escopo', () => {
     for (const scope of MODEL_BINDING_SCOPES) {
       expect(() => assertModelFitsBindingScope(modelo(), scope)).not.toThrow();

@@ -438,7 +438,7 @@ export const models = pgTable(
       .default(0),
     /** Serve de `context_length` nas capabilities — já existia desde a Fase 1. */
     contextWindow: integer('context_window'),
-    // Capabilities POR MODELO (Fase 9a — ADR 0040). Colunas discretas em vez
+    // Capabilities POR MODELO (Fase 9a — ADR 0041). Colunas discretas em vez
     // de um jsonb porque o filtro "aptos para agentes" da Fase 9c precisa ser
     // um WHERE, e porque uma capability sem coluna é uma capability que
     // ninguém consegue consultar.
@@ -457,7 +457,7 @@ export const models = pgTable(
     manualPricing: boolean('manual_pricing').notNull().default(true),
     /**
      * Curadoria do OWNER: aparece no seletor e pode receber binding novo.
-     * Modelo descoberto por sync entra `false` (Fase 9c, RN-041).
+     * Modelo descoberto por sync entra `false` (Fase 9c, RN-043).
      */
     isActive: boolean('is_active').notNull().default(true),
     availability: modelAvailabilityEnum('availability')
@@ -527,7 +527,7 @@ export const userCredentials = pgTable(
   (table) => [unique().on(table.userId, table.provider)],
 );
 
-// Auditoria de preço (Fase 9c, RN-042). Append-only como `session_events`:
+// Auditoria de preço (Fase 9c, RN-044). Append-only como `session_events`:
 // nunca há UPDATE aqui.
 //
 // Por que tabela própria e não `outbox_events`: o dreno do engine
@@ -572,7 +572,7 @@ export const tokenUsage = pgTable('token_usage', {
   outputTokens: integer('output_tokens').notNull(),
   estimated: boolean('estimated').notNull().default(false),
   costMicros: bigint('cost_micros', { mode: 'number' }).notNull(),
-  // Os preços que PRODUZIRAM o `cost_micros` acima (Fase 9c, RN-042). Sem
+  // Os preços que PRODUZIRAM o `cost_micros` acima (Fase 9c, RN-044). Sem
   // eles o custo já era congelado (ninguém recalcula), mas não era
   // REPRODUZÍVEL: não dava para conferir `tokens × preço = custo` depois que a
   // linha de `models` mudasse.

@@ -14,7 +14,7 @@ export class ResultadoPorProviderResponseDto implements Wire<ResultadoPorProvide
     example: 3,
     description:
       'Modelos que não existiam no banco. Entram INATIVOS — ativar é curadoria ' +
-      'do owner (RN-041).',
+      'do owner (RN-043).',
   })
   descobertos!: number;
 

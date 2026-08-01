@@ -43,7 +43,7 @@ import { SyncModelCatalogResponseDto } from '../internal/dto/model-sync.response
  * nenhum, e um `@RequireRole` numa rota sem escopo reprovaria SEMPRE. O
  * catálogo em si é global (a tabela `models` nunca foi por workspace); o
  * workspace no caminho é a âncora de RBAC, não um recorte de dados. Catálogo
- * por workspace está no backlog do ADR 0041.
+ * por workspace está no backlog do ADR 0042.
  */
 @ApiTags('llm')
 @ApiBearerAuth(BEARER)

@@ -14,7 +14,7 @@ import {
 
 /**
  * Suite de CONTRATO única dos providers de LLM (Fase 9a — ver CLAUDE.md e
- * docs/adr/0040). Espelha o que `git-provider.contract.ts` faz desde a Fase 2:
+ * docs/adr/0041). Espelha o que `git-provider.contract.ts` faz desde a Fase 2:
  * a MESMA bateria roda contra qualquer implementação de `LLMProvider`, e um
  * provider novo (Fase 9b) só precisa escrever o harness.
  *
@@ -227,7 +227,7 @@ export function runLLMProviderContract(
         // Quem não declara a capability não promete o método. O que o contrato
         // exige é que os dois lados andem juntos: ou não existe método, ou
         // chamá-lo REJEITA — nunca uma lista vazia, que o sync leria como
-        // "sumiram todos" e indisponibilizaria o catálogo inteiro (RN-041).
+        // "sumiram todos" e indisponibilizaria o catálogo inteiro (RN-043).
         servidor = await subirServidorFalso(harness.dialeto);
         const provider = harness.criar(servidor.baseUrl);
         if (provider.listModels) {

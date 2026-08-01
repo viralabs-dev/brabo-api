@@ -28,7 +28,7 @@ export interface ResolvedBinding {
   /**
    * Escopos que a cascata PULOU por indisponibilidade ou falta de capability.
    * Existe para a UI conseguir dizer "o modelo do agente sumiu, caiu para o do
-   * projeto" em vez de trocar o modelo em silêncio (RN-041).
+   * projeto" em vez de trocar o modelo em silêncio (RN-043).
    */
   skipped: SkippedBinding[];
 }
@@ -48,7 +48,7 @@ export interface SkippedBinding {
  *
  * Um binding de agente para modelo indisponível cai para o nível de baixo. Se
  * o resolver aceitasse qualquer coisa ali, um agente pousaria num modelo
- * chat-only e violaria a RN-038 EM SILÊNCIO — a falha só apareceria depois, no
+ * chat-only e violaria a RN-040 EM SILÊNCIO — a falha só apareceria depois, no
  * ToolLoop, como "o agente parou sem concluir". Por isso o filtro de
  * `supportsToolCalling` vale para todo candidato quando o pedido é de agente,
  * não só para o primeiro.

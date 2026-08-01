@@ -141,7 +141,7 @@ describe('ResolveModelBindingUseCase', () => {
     });
   });
 
-  it('modelo do agente indisponível: a cascata assume o workspace e avisa (RN-041)', async () => {
+  it('modelo do agente indisponível: a cascata assume o workspace e avisa (RN-043)', async () => {
     const { user, workspace, project, modelA, modelB } = await setup();
 
     await bindingRepo.upsert({

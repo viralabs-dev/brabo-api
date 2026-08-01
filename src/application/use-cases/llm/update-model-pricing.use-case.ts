@@ -15,7 +15,7 @@ export interface UpdateModelPricingInput {
 }
 
 /**
- * Muda o preço de um modelo e DEIXA RASTRO (Fase 9c, RN-042).
+ * Muda o preço de um modelo e DEIXA RASTRO (Fase 9c, RN-044).
  *
  * O que o preço novo NÃO faz: reprecificar o passado. `token_usage` guarda o
  * custo já calculado E o preço que o produziu — mudar `models` daqui em diante
