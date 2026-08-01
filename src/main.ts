@@ -10,6 +10,7 @@ import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { DomainTransitionErrorFilter } from './interfaces/http/shared/domain-transition-error.filter';
 import { GitProviderErrorFilter } from './interfaces/http/shared/git-provider-error.filter';
+import { LlmBindingErrorFilter } from './interfaces/http/shared/llm-binding-error.filter';
 import { resolveCorsOrigins } from './infrastructure/security/cors-origins';
 import { SwaggerModule } from '@nestjs/swagger';
 import { montarDocumento } from './infrastructure/openapi/documento';
@@ -91,6 +92,7 @@ async function bootstrap() {
   app.useGlobalFilters(
     new DomainTransitionErrorFilter(),
     new GitProviderErrorFilter(),
+    new LlmBindingErrorFilter(),
   );
   // Sem isto o SIGTERM mata o processo direto e o `onModuleDestroy` do
   // DrizzleModule nunca roda: o pool do Postgres fica com conexões abertas do

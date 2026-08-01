@@ -30,8 +30,11 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
         outputTokens: input.outputTokens,
         estimated: input.estimated,
         costMicros: input.costMicros,
+        inputPricePerMillionMicros: input.inputPricePerMillionMicros,
+        outputPricePerMillionMicros: input.outputPricePerMillionMicros,
         latencyMs: input.latencyMs,
         bindingOrigin: input.bindingOrigin,
+        upstreamProvider: input.upstreamProvider,
       })
       .returning();
 
@@ -46,8 +49,11 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
       outputTokens: row.outputTokens,
       estimated: row.estimated,
       costMicros: row.costMicros,
+      inputPricePerMillionMicros: row.inputPricePerMillionMicros,
+      outputPricePerMillionMicros: row.outputPricePerMillionMicros,
       latencyMs: row.latencyMs,
       bindingOrigin: row.bindingOrigin,
+      upstreamProvider: row.upstreamProvider,
       createdAt: row.createdAt,
     };
   }

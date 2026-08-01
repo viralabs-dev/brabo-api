@@ -44,14 +44,18 @@ export class DrizzleUserCredentialRepository implements UserCredentialRepository
         ),
       );
     if (!row) return null;
-    return {
-      wrappedDek: row.wrappedDek,
-      dekIv: row.dekIv,
-      dekAuthTag: row.dekAuthTag,
-      encryptedApiKey: row.encryptedApiKey,
-      apiKeyIv: row.apiKeyIv,
-      apiKeyAuthTag: row.apiKeyAuthTag,
-    };
+    return toSecret(row);
+  }
+
+  async listSecretsByProvider(
+    provider: CredentialProviderName,
+  ): Promise<EncryptedSecret[]> {
+    const db = currentDb(this.rootDb);
+    const rows = await db
+      .select()
+      .from(userCredentials)
+      .where(eq(userCredentials.provider, provider));
+    return rows.map(toSecret);
   }
 
   async listMetadataForUser(userId: string): Promise<UserCredentialMetadata[]> {
@@ -79,6 +83,17 @@ export class DrizzleUserCredentialRepository implements UserCredentialRepository
       .returning({ id: userCredentials.id });
     return rows.length > 0;
   }
+}
+
+function toSecret(row: typeof userCredentials.$inferSelect): EncryptedSecret {
+  return {
+    wrappedDek: row.wrappedDek,
+    dekIv: row.dekIv,
+    dekAuthTag: row.dekAuthTag,
+    encryptedApiKey: row.encryptedApiKey,
+    apiKeyIv: row.apiKeyIv,
+    apiKeyAuthTag: row.apiKeyAuthTag,
+  };
 }
 
 function toMetadata(

@@ -33,6 +33,11 @@ import {
 // Preços aproximados de mercado (micro-USD por 1M tokens) — editáveis
 // depois (ver README: "models" não tem endpoint HTTP de edição na
 // Fase 1, corrija aqui ou via SQL direto).
+//
+// `supportsToolCalling` é explícito em cada linha (Fase 9a — ADR 0041): o
+// default da coluna é `false`, e um binding de agente para modelo sem tool
+// calling é recusado no domínio. Os sete abaixo têm suporte nativo
+// verificado — a migração 0026 faz o mesmo backfill para bancos já criados.
 const MODEL_SEEDS: ModelInput[] = [
   {
     provider: 'ollama',
@@ -40,6 +45,7 @@ const MODEL_SEEDS: ModelInput[] = [
     displayName: 'Llama 3.2 1B (local)',
     inputPricePerMillionMicros: 0,
     outputPricePerMillionMicros: 0,
+    supportsToolCalling: true,
   },
   {
     // Modelo local de código — é o que roda os dev agents num ambiente sem
@@ -49,6 +55,7 @@ const MODEL_SEEDS: ModelInput[] = [
     displayName: 'Qwen2.5 Coder 7B (local)',
     inputPricePerMillionMicros: 0,
     outputPricePerMillionMicros: 0,
+    supportsToolCalling: true,
   },
   {
     provider: 'anthropic',
@@ -56,6 +63,7 @@ const MODEL_SEEDS: ModelInput[] = [
     displayName: 'Claude Opus 4.8',
     inputPricePerMillionMicros: 5_000_000,
     outputPricePerMillionMicros: 25_000_000,
+    supportsToolCalling: true,
   },
   {
     provider: 'anthropic',
@@ -63,6 +71,7 @@ const MODEL_SEEDS: ModelInput[] = [
     displayName: 'Claude Sonnet 5',
     inputPricePerMillionMicros: 3_000_000,
     outputPricePerMillionMicros: 15_000_000,
+    supportsToolCalling: true,
   },
   {
     provider: 'anthropic',
@@ -70,6 +79,7 @@ const MODEL_SEEDS: ModelInput[] = [
     displayName: 'Claude Haiku 4.5',
     inputPricePerMillionMicros: 1_000_000,
     outputPricePerMillionMicros: 5_000_000,
+    supportsToolCalling: true,
   },
   {
     provider: 'openai',
@@ -77,6 +87,7 @@ const MODEL_SEEDS: ModelInput[] = [
     displayName: 'GPT-4o',
     inputPricePerMillionMicros: 2_500_000,
     outputPricePerMillionMicros: 10_000_000,
+    supportsToolCalling: true,
   },
   {
     provider: 'openai',
@@ -84,6 +95,7 @@ const MODEL_SEEDS: ModelInput[] = [
     displayName: 'GPT-4o mini',
     inputPricePerMillionMicros: 150_000,
     outputPricePerMillionMicros: 600_000,
+    supportsToolCalling: true,
   },
 ];
 

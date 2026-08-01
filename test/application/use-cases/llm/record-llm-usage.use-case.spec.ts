@@ -241,4 +241,58 @@ describe('RecordLlmUsageUseCase', () => {
     const updated = await budgetRepo.findForProject(project.id);
     expect(updated?.spentMicros).toBe(CONCURRENCY * deltaPerCall);
   });
+  it('grava o provider subjacente quando o hub informou (Fase 9b)', async () => {
+    const { user, project, session, model } = await setupSessionAndModel();
+
+    const usage = await recordLlmUsage.execute({
+      projectId: project.id,
+      sessionId: session.id,
+      actor: { kind: 'user', id: user.id },
+      provider: 'openai',
+      modelId: model.id,
+      modelName: model.name,
+      inputTokens: 10,
+      outputTokens: 5,
+      estimated: false,
+      costMicros: 1_000,
+      latencyMs: 30,
+      bindingOrigin: 'project',
+      upstreamProvider: 'deepinfra',
+    });
+
+    const [row] = await db
+      .select()
+      .from(tokenUsage)
+      .where(eq(tokenUsage.id, usage.id));
+
+    expect(row.upstreamProvider).toBe('deepinfra');
+  });
+
+  it('sem hub, o provider subjacente fica null — não vira string vazia', async () => {
+    const { user, project, session, model } = await setupSessionAndModel();
+
+    const usage = await recordLlmUsage.execute({
+      projectId: project.id,
+      sessionId: session.id,
+      actor: { kind: 'user', id: user.id },
+      provider: 'ollama',
+      modelId: model.id,
+      modelName: model.name,
+      inputTokens: 1,
+      outputTokens: 1,
+      estimated: false,
+      costMicros: 0,
+      latencyMs: 5,
+      bindingOrigin: 'workspace',
+    });
+
+    const [row] = await db
+      .select()
+      .from(tokenUsage)
+      .where(eq(tokenUsage.id, usage.id));
+
+    // `null` e não `''`: a consulta de custo por provedor precisa distinguir
+    // "não passou por hub" de "passou e o hub não disse".
+    expect(row.upstreamProvider).toBeNull();
+  });
 });

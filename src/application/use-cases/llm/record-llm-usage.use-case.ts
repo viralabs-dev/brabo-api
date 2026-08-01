@@ -21,8 +21,17 @@ export interface RecordLlmUsageInput {
   outputTokens: number;
   estimated: boolean;
   costMicros: number;
+  /**
+   * O preço do modelo NO MOMENTO da chamada (Fase 9c, RN-044). Vem do
+   * orquestrador, que já leu a linha de `models` para calcular o custo — e é
+   * gravado junto para o custo ficar reproduzível quando o preço mudar.
+   */
+  inputPricePerMillionMicros: number;
+  outputPricePerMillionMicros: number;
   latencyMs: number;
   bindingOrigin: ModelBindingScope | null;
+  /** Só quando um hub informou quem serviu de fato (Fase 9b). */
+  upstreamProvider?: string | null;
 }
 
 /**
@@ -53,6 +62,7 @@ export class RecordLlmUsageUseCase {
       outputTokens: input.outputTokens,
       costMicros: input.costMicros,
       latencyMs: input.latencyMs,
+      upstreamProvider: input.upstreamProvider ?? null,
     });
 
     const usage = await this.tokenUsage.record({
@@ -65,8 +75,11 @@ export class RecordLlmUsageUseCase {
       outputTokens: input.outputTokens,
       estimated: input.estimated,
       costMicros: input.costMicros,
+      inputPricePerMillionMicros: input.inputPricePerMillionMicros,
+      outputPricePerMillionMicros: input.outputPricePerMillionMicros,
       latencyMs: input.latencyMs,
       bindingOrigin: input.bindingOrigin,
+      upstreamProvider: input.upstreamProvider ?? null,
     });
 
     const [projectBudget, sessionBudget] = await Promise.all([
