@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import {
   EpicRepository,
   StoryRepository,
@@ -16,7 +16,7 @@ import type {
 } from '../../../domain/backlog/backlog.entity';
 import type { PrGateStatus } from '../../../domain/execution/pr-gate-state-machine';
 import type { FailureOrigin } from '../../../domain/agents/failure-origin';
-import { epics, stories, tasks } from '../../../db/schema';
+import { epics, projects, stories, tasks } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
@@ -310,6 +310,25 @@ export class DrizzleTaskRepository implements TaskRepository {
       .where(eq(tasks.id, id))
       .returning();
     return taskToEntity(row);
+  }
+
+  async countBlockedByWorkspace(
+    workspaceId: string,
+  ): Promise<{ projectId: string; total: number }[]> {
+    const db = currentDb(this.rootDb);
+    const rows = await db
+      .select({
+        projectId: stories.projectId,
+        total: sql<number>`count(*)::int`,
+      })
+      .from(tasks)
+      .innerJoin(stories, eq(tasks.storyId, stories.id))
+      .innerJoin(projects, eq(projects.id, stories.projectId))
+      .where(
+        and(eq(tasks.blocked, true), eq(projects.workspaceId, workspaceId)),
+      )
+      .groupBy(stories.projectId);
+    return rows.map((row) => ({ projectId: row.projectId, total: row.total }));
   }
 }
 

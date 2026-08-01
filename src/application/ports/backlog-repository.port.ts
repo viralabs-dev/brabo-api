@@ -86,4 +86,12 @@ export abstract class TaskRepository {
     gateStatus: PrGateStatus,
     correctionCount: number,
   ): Promise<Task>;
+  // Contagem de tasks bloqueadas por projeto, pro workspace inteiro numa
+  // query só — alimenta o dot de status da sidebar do dashboard. Mesmo
+  // formato da consulta que já roda em DomainGaugesCollector.collectBlockedTasks
+  // (índice parcial em tasks.blocked), só que escopada por workspace em vez
+  // de global.
+  abstract countBlockedByWorkspace(
+    workspaceId: string,
+  ): Promise<{ projectId: string; total: number }[]>;
 }

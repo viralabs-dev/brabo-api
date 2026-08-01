@@ -28,6 +28,8 @@ import { DeleteWorkspaceUseCase } from '../../../application/use-cases/iam/delet
 import { AddWorkspaceMemberUseCase } from '../../../application/use-cases/iam/add-workspace-member.use-case';
 import { CreateProjectUseCase } from '../../../application/use-cases/iam/create-project.use-case';
 import { ListProjectsForWorkspaceUseCase } from '../../../application/use-cases/iam/list-projects-for-workspace.use-case';
+import { GetWorkspaceSummaryUseCase } from '../../../application/use-cases/iam/get-workspace-summary.use-case';
+import { GetProjectsStatusForWorkspaceUseCase } from '../../../application/use-cases/iam/get-projects-status-for-workspace.use-case';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { AddMemberDto } from './dto/add-member.dto';
@@ -38,6 +40,8 @@ import {
   WorkspaceComPapelResponseDto,
   WorkspaceMemberResponseDto,
   WorkspaceResponseDto,
+  WorkspaceSummaryResponseDto,
+  ProjectBlockedStatusResponseDto,
 } from './dto/iam.response.dto';
 
 @ApiTags('workspaces')
@@ -57,6 +61,8 @@ export class WorkspacesController {
     private readonly addWorkspaceMember: AddWorkspaceMemberUseCase,
     private readonly createProject: CreateProjectUseCase,
     private readonly listProjectsForWorkspace: ListProjectsForWorkspaceUseCase,
+    private readonly getWorkspaceSummary: GetWorkspaceSummaryUseCase,
+    private readonly getProjectsStatusForWorkspace: GetProjectsStatusForWorkspaceUseCase,
   ) {}
 
   @Post()
@@ -153,5 +159,31 @@ export class WorkspacesController {
   @ApiOkResponse({ type: [ProjectResponseDto] })
   listProjects(@Param('workspaceId') workspaceId: string) {
     return this.listProjectsForWorkspace.execute(workspaceId);
+  }
+
+  @Get(':workspaceId/summary')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Resumo agregado do workspace',
+    description:
+      'Contagem de projetos, agentes que gastaram tokens neste mês e o gasto do mês ' +
+      '— alimenta a linha de resumo do dashboard de projetos.',
+  })
+  @ApiOkResponse({ type: WorkspaceSummaryResponseDto })
+  getSummary(@Param('workspaceId') workspaceId: string) {
+    return this.getWorkspaceSummary.execute(workspaceId);
+  }
+
+  @Get(':workspaceId/projects-status')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Contagem de tasks bloqueadas por projeto',
+    description:
+      'Uma linha por projeto do workspace com task bloqueada — alimenta o dot de ' +
+      'status da sidebar do dashboard, numa query só em vez de N chamadas ao backlog.',
+  })
+  @ApiOkResponse({ type: [ProjectBlockedStatusResponseDto] })
+  getProjectsStatus(@Param('workspaceId') workspaceId: string) {
+    return this.getProjectsStatusForWorkspace.execute(workspaceId);
   }
 }
