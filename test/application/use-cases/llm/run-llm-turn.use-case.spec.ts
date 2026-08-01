@@ -60,6 +60,7 @@ const recordLlmUsage = new RecordLlmUsageUseCase(
 
 class FakeProvider implements LLMProvider {
   name: LLMProviderName = 'ollama';
+  readonly capabilities = { streaming: true, toolCalling: true };
   constructor(private readonly script: ChatStreamChunk[]) {}
   async *chat(): AsyncGenerator<ChatStreamChunk> {
     await Promise.resolve();
@@ -69,6 +70,7 @@ class FakeProvider implements LLMProvider {
 
 class ThrowingProvider implements LLMProvider {
   name: LLMProviderName = 'ollama';
+  readonly capabilities = { streaming: true, toolCalling: true };
   async *chat(): AsyncGenerator<ChatStreamChunk> {
     await Promise.resolve();
     yield { type: 'text_delta', text: 'parcial' };
@@ -124,6 +126,9 @@ async function setup() {
       displayName: 'Llama 3.2 3B',
       inputPricePerMillionMicros: 0,
       outputPricePerMillionMicros: 0,
+      // Os turnos daqui mandam `tools`, e desde a Fase 9c a cascata recusa
+      // candidato sem tool calling quando o turno pede ferramentas.
+      supportsToolCalling: true,
     })
     .returning();
   await bindingRepo.upsert({

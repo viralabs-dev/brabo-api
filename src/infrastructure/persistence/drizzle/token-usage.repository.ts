@@ -1,12 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, sql } from 'drizzle-orm';
 import {
   TokenUsageRepository,
   type AgentTokenUsage,
   type RecordTokenUsageInput,
+  type WorkspaceTokenUsageSummary,
 } from '../../../application/ports/token-usage-repository.port';
 import type { TokenUsage } from '../../../domain/llm/token-usage.entity';
-import { tokenUsage } from '../../../db/schema';
+import { projects, sessions, tokenUsage } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
@@ -29,8 +30,11 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
         outputTokens: input.outputTokens,
         estimated: input.estimated,
         costMicros: input.costMicros,
+        inputPricePerMillionMicros: input.inputPricePerMillionMicros,
+        outputPricePerMillionMicros: input.outputPricePerMillionMicros,
         latencyMs: input.latencyMs,
         bindingOrigin: input.bindingOrigin,
+        upstreamProvider: input.upstreamProvider,
       })
       .returning();
 
@@ -45,8 +49,11 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
       outputTokens: row.outputTokens,
       estimated: row.estimated,
       costMicros: row.costMicros,
+      inputPricePerMillionMicros: row.inputPricePerMillionMicros,
+      outputPricePerMillionMicros: row.outputPricePerMillionMicros,
       latencyMs: row.latencyMs,
       bindingOrigin: row.bindingOrigin,
+      upstreamProvider: row.upstreamProvider,
       createdAt: row.createdAt,
     };
   }
@@ -92,5 +99,31 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
       inputTokens: Number(row.inputTokens),
       outputTokens: Number(row.outputTokens),
     }));
+  }
+
+  async summarizeForWorkspaceThisMonth(
+    workspaceId: string,
+  ): Promise<WorkspaceTokenUsageSummary> {
+    const db = currentDb(this.rootDb);
+    const [result] = await db
+      .select({
+        agentCount: sql<string>`count(distinct ${tokenUsage.actorId})`,
+        spentMicros: sql<string>`coalesce(sum(${tokenUsage.costMicros}), 0)`,
+      })
+      .from(tokenUsage)
+      .innerJoin(sessions, eq(sessions.id, tokenUsage.sessionId))
+      .innerJoin(projects, eq(projects.id, sessions.projectId))
+      .where(
+        and(
+          eq(projects.workspaceId, workspaceId),
+          eq(tokenUsage.actorKind, 'agent'),
+          gte(tokenUsage.createdAt, sql`date_trunc('month', now())`),
+        ),
+      );
+
+    return {
+      agentCount: Number(result?.agentCount ?? 0),
+      spentMicros: Number(result?.spentMicros ?? 0),
+    };
   }
 }

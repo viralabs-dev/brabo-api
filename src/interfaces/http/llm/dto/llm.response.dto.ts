@@ -2,10 +2,20 @@ import { ApiProperty } from '@nestjs/swagger';
 import type { MesmasChaves, Wire } from '../../shared/dto/wire';
 import { BUDGET_POLICIES } from '../../../../domain/llm/budget-threshold';
 import { MODEL_BINDING_SCOPES } from '../../../../domain/llm/model-binding-scope';
-import type { Model } from '../../../../domain/llm/model.entity';
+import {
+  MODEL_AVAILABILITIES,
+  type Model,
+} from '../../../../domain/llm/model.entity';
 import type { Budget } from '../../../../domain/llm/budget.entity';
+import {
+  PRICE_CHANGE_SOURCES,
+  type ModelPriceChange,
+} from '../../../../domain/llm/model-price-change.entity';
 import type { ModelBinding } from '../../../../domain/llm/model-binding.entity';
-import type { ResolvedBinding } from '../../../../domain/llm/binding-resolver';
+import type {
+  ResolvedBinding,
+  SkippedBinding,
+} from '../../../../domain/llm/binding-resolver';
 import type { UserCredentialMetadata } from '../../../../domain/llm/user-credential.entity';
 import type { AgentTokenUsage } from '../../../../application/ports/token-usage-repository.port';
 
@@ -51,15 +61,60 @@ export class ModelResponseDto implements Wire<Model> {
   })
   outputPricePerMillionMicros!: number;
 
-  @ApiProperty({ example: 200000, nullable: true })
+  @ApiProperty({
+    example: 200000,
+    nullable: true,
+    description: 'Também é o `context_length` das capabilities do modelo.',
+  })
   contextWindow!: number | null;
 
   @ApiProperty({
     example: true,
     description:
-      'Modelo desativado some da seleção mas continua nos custos históricos.',
+      'Tool calling NATIVO. Sem isto o modelo é chat-only e não pode ser ' +
+      'vinculado a um agente (RN-040).',
+  })
+  supportsToolCalling!: boolean;
+
+  @ApiProperty({ example: true })
+  supportsStreaming!: boolean;
+
+  @ApiProperty({ example: false })
+  supportsVision!: boolean;
+
+  @ApiProperty({
+    example: true,
+    description:
+      'Preço digitado da doc do provider, não sincronizado. O sync de preços ' +
+      'não sobrescreve uma linha marcada sem decisão explícita.',
+  })
+  manualPricing!: boolean;
+
+  @ApiProperty({
+    example: true,
+    description:
+      'Curadoria do OWNER: modelo desativado some da seleção mas continua nos ' +
+      'custos históricos. Modelo descoberto pelo sync de catálogo entra `false`.',
   })
   isActive!: boolean;
+
+  @ApiProperty({
+    enum: MODEL_AVAILABILITIES,
+    example: 'available',
+    description:
+      'Realidade REMOTA observada pelo sync, eixo independente de `isActive`. ' +
+      '`unavailable` é o modelo que sumiu do catálogo do provider — ele nunca ' +
+      'é deletado, porque bindings e histórico de custo apontam para ele.',
+  })
+  availability!: Wire<Model>['availability'];
+
+  @ApiProperty({
+    example: '2026-07-30T03:00:00.000Z',
+    format: 'date-time',
+    nullable: true,
+    description: 'Última vez que o sync viu o modelo no catálogo do provider.',
+  })
+  lastSeenAt!: string | null;
 
   @ApiProperty({ example: '2026-07-01T00:00:00.000Z', format: 'date-time' })
   createdAt!: string;
@@ -125,6 +180,34 @@ export const _chavesBinding: MesmasChaves<
   ModelBinding
 > = true;
 
+/**
+ * Um escopo que a cascata PULOU (Fase 9c, RN-043). Existe para a UI conseguir
+ * dizer "o modelo do agente sumiu, caiu para o do projeto" — trocar o modelo em
+ * silêncio é o que a regra proíbe.
+ */
+export class SkippedBindingResponseDto implements Wire<SkippedBinding> {
+  @ApiProperty({ enum: MODEL_BINDING_SCOPES, example: 'agent' })
+  scope!: Wire<SkippedBinding>['scope'];
+
+  @ApiProperty({ example: '01JC4Z0000MODELO00000000001' })
+  modelId!: string;
+
+  @ApiProperty({
+    enum: ['unavailable', 'sem_tool_calling'],
+    example: 'unavailable',
+    description:
+      '`unavailable`: o modelo sumiu do catálogo do provider. ' +
+      '`sem_tool_calling`: o pedido é de um agente e o modelo é chat-only — a ' +
+      'cascata revalida a capability a cada nível para não violar a RN-040 em ' +
+      'silêncio.',
+  })
+  reason!: Wire<SkippedBinding>['reason'];
+}
+export const _chavesBindingPulado: MesmasChaves<
+  SkippedBindingResponseDto,
+  SkippedBinding
+> = true;
+
 /** O binding já RESOLVIDO pela cascata, com a origem do valor. */
 export class ResolvedBindingResponseDto implements Wire<ResolvedBinding> {
   @ApiProperty({ example: '01JC4Z0000MODELO00000000001' })
@@ -139,10 +222,66 @@ export class ResolvedBindingResponseDto implements Wire<ResolvedBinding> {
       'em vez de mostrar um valor sem procedência.',
   })
   origin!: Wire<ResolvedBinding>['origin'];
+
+  @ApiProperty({
+    type: [SkippedBindingResponseDto],
+    description:
+      'Escopos mais específicos que a cascata descartou antes de chegar em ' +
+      '`origin`. Vazio no caminho normal.',
+  })
+  skipped!: SkippedBindingResponseDto[];
 }
 export const _chavesBindingResolvido: MesmasChaves<
   ResolvedBindingResponseDto,
   ResolvedBinding
+> = true;
+
+/**
+ * Uma mudança de preço (Fase 9c, RN-044). Append-only: o par antes/depois é
+ * gravado junto para a auditoria não depender de reconstruir o "antes" a
+ * partir da linha anterior.
+ */
+export class ModelPriceChangeResponseDto implements Wire<ModelPriceChange> {
+  @ApiProperty({ example: '01JC4Z0000PRECO000000000001' })
+  id!: string;
+
+  @ApiProperty({ example: '01JC4Z0000MODELO00000000001' })
+  modelId!: string;
+
+  @ApiProperty({ example: 2500000, description: 'Micro-USD por 1M, antes.' })
+  inputBeforeMicros!: number;
+
+  @ApiProperty({ example: 3000000, description: 'Micro-USD por 1M, depois.' })
+  inputAfterMicros!: number;
+
+  @ApiProperty({ example: 10000000 })
+  outputBeforeMicros!: number;
+
+  @ApiProperty({ example: 12000000 })
+  outputAfterMicros!: number;
+
+  @ApiProperty({
+    enum: PRICE_CHANGE_SOURCES,
+    example: 'manual',
+    description:
+      '`manual` foi alguém digitando da doc do provider; `sync` veio do ' +
+      'catálogo remoto.',
+  })
+  source!: Wire<ModelPriceChange>['source'];
+
+  @ApiProperty({
+    example: '01JC4Z0000USUARIO0000000001',
+    nullable: true,
+    description: '`null` quando veio do sync — não há pessoa por trás.',
+  })
+  changedBy!: string | null;
+
+  @ApiProperty({ example: '2026-08-01T12:00:00.000Z', format: 'date-time' })
+  createdAt!: string;
+}
+export const _chavesMudancaDePreco: MesmasChaves<
+  ModelPriceChangeResponseDto,
+  ModelPriceChange
 > = true;
 
 export class BudgetResponseDto implements Wire<Budget> {

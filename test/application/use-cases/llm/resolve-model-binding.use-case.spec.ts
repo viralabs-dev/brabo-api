@@ -9,11 +9,13 @@ import {
 } from '../../../../src/db/schema';
 import { DrizzleModelBindingRepository } from '../../../../src/infrastructure/persistence/drizzle/model-binding.repository';
 import { DrizzleProjectRepository } from '../../../../src/infrastructure/persistence/drizzle/project.repository';
+import { DrizzleModelRepository } from '../../../../src/infrastructure/persistence/drizzle/model.repository';
 import { ResolveModelBindingUseCase } from '../../../../src/application/use-cases/llm/resolve-model-binding.use-case';
 
 const { db, pool } = createTestDb();
 const bindingRepo = new DrizzleModelBindingRepository(db);
 const projectRepo = new DrizzleProjectRepository(db);
+const modelRepo = new DrizzleModelRepository(db);
 const resolveModelBinding = new ResolveModelBindingUseCase(
   bindingRepo,
   projectRepo,
@@ -82,7 +84,11 @@ describe('ResolveModelBindingUseCase', () => {
       sessionId: session.id,
     });
 
-    expect(resolved).toEqual({ modelId: modelB.id, origin: 'session' });
+    expect(resolved).toEqual({
+      modelId: modelB.id,
+      origin: 'session',
+      skipped: [],
+    });
   });
 
   it('sem binding de sessão, cai pro workspace via o projeto', async () => {
@@ -100,7 +106,11 @@ describe('ResolveModelBindingUseCase', () => {
       sessionId: session.id,
     });
 
-    expect(resolved).toEqual({ modelId: modelA.id, origin: 'workspace' });
+    expect(resolved).toEqual({
+      modelId: modelA.id,
+      origin: 'workspace',
+      skipped: [],
+    });
   });
 
   it('resolve por agente sem sessão — agente sobrepõe workspace', async () => {
@@ -124,7 +134,83 @@ describe('ResolveModelBindingUseCase', () => {
       agentId: 'qa',
     });
 
-    expect(resolved).toEqual({ modelId: modelB.id, origin: 'agent' });
+    expect(resolved).toEqual({
+      modelId: modelB.id,
+      origin: 'agent',
+      skipped: [],
+    });
+  });
+
+  it('modelo do agente indisponível: a cascata assume o workspace e avisa (RN-043)', async () => {
+    const { user, workspace, project, modelA, modelB } = await setup();
+
+    await bindingRepo.upsert({
+      scope: 'workspace',
+      scopeId: workspace.id,
+      modelId: modelA.id,
+      createdBy: user.id,
+    });
+    await bindingRepo.upsert({
+      scope: 'agent',
+      scopeId: 'qa',
+      modelId: modelB.id,
+      createdBy: user.id,
+    });
+
+    // O sync deixou de ver o modelo no provider. O binding CONTINUA no banco —
+    // deletar o modelo levaria junto o histórico de custo que aponta pra ele.
+    await modelRepo.setAvailability([modelB.id], 'unavailable');
+
+    const resolved = await resolveModelBinding.execute({
+      projectId: project.id,
+      agentId: 'qa',
+    });
+
+    expect(resolved).toEqual({
+      modelId: modelA.id,
+      origin: 'workspace',
+      skipped: [{ scope: 'agent', modelId: modelB.id, reason: 'unavailable' }],
+    });
+  });
+
+  it('modelo do agente chat-only: turno com ferramentas não pousa nele', async () => {
+    const { user, workspace, project, modelA, modelB } = await setup();
+
+    await modelRepo.upsertByProviderAndName({
+      provider: 'ollama',
+      name: 'model-a',
+      displayName: 'A',
+      inputPricePerMillionMicros: 0,
+      outputPricePerMillionMicros: 0,
+      supportsToolCalling: true,
+    });
+
+    await bindingRepo.upsert({
+      scope: 'workspace',
+      scopeId: workspace.id,
+      modelId: modelA.id,
+      createdBy: user.id,
+    });
+    await bindingRepo.upsert({
+      scope: 'agent',
+      scopeId: 'qa',
+      modelId: modelB.id, // fica com o default `supportsToolCalling: false`
+      createdBy: user.id,
+    });
+
+    const resolved = await resolveModelBinding.execute({
+      projectId: project.id,
+      agentId: 'qa',
+      exigeToolCalling: true,
+    });
+
+    expect(resolved).toEqual({
+      modelId: modelA.id,
+      origin: 'workspace',
+      skipped: [
+        { scope: 'agent', modelId: modelB.id, reason: 'sem_tool_calling' },
+      ],
+    });
   });
 
   it('falha: projeto inexistente retorna null (não lança)', async () => {

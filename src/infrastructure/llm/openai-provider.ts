@@ -1,54 +1,48 @@
-import { Injectable } from '@nestjs/common';
-import OpenAI from 'openai';
-import type {
-  ChatMessage,
-  ChatOptions,
-  ChatStreamChunk,
-  LLMProviderName,
-} from '@brabo/shared';
-import { LLMProvider } from '../../application/ports/llm-provider.port';
+import { Injectable, Optional } from '@nestjs/common';
+import { TokenEstimator } from '../../application/ports/token-estimator.port';
+import {
+  OpenAICompatibleProvider,
+  type OpenAICompatibleConfig,
+} from './openai-compatible-provider';
 
+export const OPENAI_BASE_URL = 'https://api.openai.com/v1';
+
+/**
+ * A configuração é exportada à parte para que a suite de contrato exercite
+ * ESTA configuração apontando para o servidor falso — e não uma cópia dela
+ * escrita no teste, que passaria verde mesmo se a de produção divergisse.
+ */
+export function openaiConfig(
+  baseUrl: string = OPENAI_BASE_URL,
+): OpenAICompatibleConfig {
+  return {
+    name: 'openai',
+    baseUrl,
+    // `GET /v1/models` é o endpoint canônico do dialeto e a base já o fala.
+    capabilities: { streaming: true, toolCalling: true, listModels: true },
+    authHeaders: (apiKey) => ({ Authorization: `Bearer ${apiKey ?? ''}` }),
+    flags: {
+      streamOptionsIncludeUsage: true,
+      // `max_completion_tokens` é o nome novo, mas `max_tokens` continua
+      // aceito e é o que os compatíveis entendem — trocar aqui quebraria os
+      // clones da Fase 9b sem ganhar nada nos modelos que usamos.
+      maxTokensField: 'max_tokens',
+    },
+  };
+}
+
+/**
+ * A OpenAI é a primeira instância da base compatível (Fase 9a — ADR 0041), não
+ * um provider com parsing próprio. Antes disto ela usava o SDK `openai` e
+ * descartava `options.tools` em silêncio; a base trouxe tool calling, erros
+ * normalizados e teto de inatividade de socket.
+ *
+ * Continua sendo uma classe com este nome porque o registry e o módulo de DI a
+ * referenciam por tipo — quem chama não vê diferença nenhuma.
+ */
 @Injectable()
-export class OpenAIProvider implements LLMProvider {
-  readonly name: LLMProviderName = 'openai';
-
-  async *chat(
-    messages: ChatMessage[],
-    options: ChatOptions,
-  ): AsyncGenerator<ChatStreamChunk> {
-    const client = new OpenAI({ apiKey: options.apiKey });
-
-    try {
-      const stream = await client.chat.completions.create({
-        model: options.model,
-        // Tool calling não é suportado neste provider ainda (só o Ollama,
-        // Fase 3a) — os callers atuais só mandam user/assistant/system em
-        // texto. O cast reflete isso: se um dia OpenAI ganhar tools, o
-        // mapeamento por role precisa ser explícito.
-        messages: messages.map((message) => ({
-          role: message.role,
-          content: message.content,
-        })) as OpenAI.Chat.ChatCompletionMessageParam[],
-        max_tokens: options.maxTokens,
-        stream: true,
-        stream_options: { include_usage: true },
-      });
-
-      for await (const chunk of stream) {
-        const delta = chunk.choices[0]?.delta?.content;
-        if (delta) yield { type: 'text_delta', text: delta };
-
-        if (chunk.usage) {
-          yield {
-            type: 'usage',
-            inputTokens: chunk.usage.prompt_tokens,
-            outputTokens: chunk.usage.completion_tokens,
-            estimated: false,
-          };
-        }
-      }
-    } catch (error) {
-      yield { type: 'error', message: (error as Error).message };
-    }
+export class OpenAIProvider extends OpenAICompatibleProvider {
+  constructor(@Optional() tokenEstimator?: TokenEstimator) {
+    super(openaiConfig(), tokenEstimator);
   }
 }
