@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { ChatOptions, ChatStreamChunk, LLMErrorCode } from '@brabo/shared';
 import type { LLMProvider } from '../../src/application/ports/llm-provider.port';
 import {
+  CATALOGO_ESPERADO,
   FERRAMENTA_ESPERADA,
   TEXTO_ESPERADO,
   USAGE_ESPERADO,
@@ -128,6 +129,7 @@ export function runLLMProviderContract(
     it('declara capabilities', () => {
       expect(capabilities.streaming).toBe(true);
       expect(typeof capabilities.toolCalling).toBe('boolean');
+      expect(typeof capabilities.listModels).toBe('boolean');
     });
 
     it('stream: remonta o texto mesmo com o frame partido entre dois writes', async () => {
@@ -219,6 +221,41 @@ export function runLLMProviderContract(
         expect(erroDe(await rodar(cenario)).code).toBe(code);
       });
     }
+
+    it('catálogo: respeita capabilities.listModels', async () => {
+      if (!capabilities.listModels) {
+        // Quem não declara a capability não promete o método. O que o contrato
+        // exige é que os dois lados andem juntos: ou não existe método, ou
+        // chamá-lo REJEITA — nunca uma lista vazia, que o sync leria como
+        // "sumiram todos" e indisponibilizaria o catálogo inteiro (RN-041).
+        servidor = await subirServidorFalso(harness.dialeto);
+        const provider = harness.criar(servidor.baseUrl);
+        if (provider.listModels) {
+          await expect(provider.listModels('chave-de-teste')).rejects.toThrow();
+        }
+        return;
+      }
+
+      servidor = await subirServidorFalso(harness.dialeto);
+      servidor.usar('catalogo');
+
+      const provider = harness.criar(servidor.baseUrl);
+      const catalogo = await provider.listModels!('chave-de-teste');
+
+      expect(catalogo.map((m) => m.name)).toEqual([...CATALOGO_ESPERADO]);
+    });
+
+    it('catálogo: erro do provider LANÇA, em vez de virar lista vazia', async () => {
+      if (!capabilities.listModels) return;
+
+      servidor = await subirServidorFalso(harness.dialeto);
+      servidor.usar('erro_401');
+
+      const provider = harness.criar(servidor.baseUrl);
+      await expect(
+        provider.listModels!('chave-invalida'),
+      ).rejects.toMatchObject({ code: 'auth' });
+    });
 
     it('servidor mudo: estoura o teto de inatividade em vez de pendurar', async () => {
       // O caso real do ADR 0020: o provider aceitou a conexão e não mandou nem

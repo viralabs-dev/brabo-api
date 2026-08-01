@@ -34,6 +34,12 @@ export class OllamaProvider implements LLMProvider {
   readonly capabilities: LLMProviderCapabilities = {
     streaming: true,
     toolCalling: true,
+    // O Ollama tem `GET /api/tags`, mas o formato dele NÃO foi verificado na
+    // doc oficial nesta fase — e a regra da Fase 9b/9c é não codar contra um
+    // contrato adivinhado. Declarar `false` faz o sync pular explicitamente,
+    // que é honesto; declarar `true` e errar o parsing marcaria o catálogo
+    // inteiro como indisponível. Ver o backlog do ADR 0041.
+    listModels: false,
   };
 
   async *chat(

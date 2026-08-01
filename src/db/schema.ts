@@ -81,6 +81,21 @@ export const modelBindingScopeEnum = pgEnum('model_binding_scope', [
   'session',
 ]);
 
+// Realidade REMOTA do modelo, observada pelo sync de catálogo (Fase 9c) — eixo
+// diferente de `is_active`, que é a curadoria do owner. Um modelo pode estar
+// ativo E indisponível: é esse cruzamento que gera aviso no binding. Manter os
+// dois separados é o que preserva a escolha do owner quando o modelo volta.
+export const modelAvailabilityEnum = pgEnum('model_availability', [
+  'available',
+  'unavailable',
+]);
+
+// Quem originou a mudança de preço, na auditoria (Fase 9c).
+export const priceChangeSourceEnum = pgEnum('price_change_source', [
+  'manual',
+  'sync',
+]);
+
 export const budgetPolicyEnum = pgEnum('budget_policy', ['block', 'allow']);
 
 // Backup (Fase 5). `daily` é toda execução; `weekly` marca a que também virou
@@ -440,7 +455,16 @@ export const models = pgTable(
     // uma linha marcada aqui sem decisão explícita: o número manual costuma
     // ser o único que existe para provider que não expõe catálogo.
     manualPricing: boolean('manual_pricing').notNull().default(true),
+    /**
+     * Curadoria do OWNER: aparece no seletor e pode receber binding novo.
+     * Modelo descoberto por sync entra `false` (Fase 9c, RN-041).
+     */
     isActive: boolean('is_active').notNull().default(true),
+    availability: modelAvailabilityEnum('availability')
+      .notNull()
+      .default('available'),
+    /** Última vez que o sync viu este modelo no catálogo remoto. */
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -503,6 +527,36 @@ export const userCredentials = pgTable(
   (table) => [unique().on(table.userId, table.provider)],
 );
 
+// Auditoria de preço (Fase 9c, RN-042). Append-only como `session_events`:
+// nunca há UPDATE aqui.
+//
+// Por que tabela própria e não `outbox_events`: o dreno do engine
+// (`Engine.Outbox.Drain.run_once/0`) filtra `aggregate_type == "session"`, então
+// uma linha de preço ficaria com `processed_at` nulo para sempre e sujaria a
+// métrica de lag da outbox. Isto é log de domínio, não comando.
+export const modelPriceChanges = pgTable('model_price_changes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  modelId: uuid('model_id')
+    .notNull()
+    .references(() => models.id),
+  inputBeforeMicros: bigint('input_before_micros', {
+    mode: 'number',
+  }).notNull(),
+  inputAfterMicros: bigint('input_after_micros', { mode: 'number' }).notNull(),
+  outputBeforeMicros: bigint('output_before_micros', {
+    mode: 'number',
+  }).notNull(),
+  outputAfterMicros: bigint('output_after_micros', {
+    mode: 'number',
+  }).notNull(),
+  source: priceChangeSourceEnum('source').notNull(),
+  /** `null` quando veio do sync — não há pessoa por trás. */
+  changedBy: uuid('changed_by').references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 // Append-only: metering obrigatório de cada chamada de LLM.
 export const tokenUsage = pgTable('token_usage', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -518,6 +572,20 @@ export const tokenUsage = pgTable('token_usage', {
   outputTokens: integer('output_tokens').notNull(),
   estimated: boolean('estimated').notNull().default(false),
   costMicros: bigint('cost_micros', { mode: 'number' }).notNull(),
+  // Os preços que PRODUZIRAM o `cost_micros` acima (Fase 9c, RN-042). Sem
+  // eles o custo já era congelado (ninguém recalcula), mas não era
+  // REPRODUZÍVEL: não dava para conferir `tokens × preço = custo` depois que a
+  // linha de `models` mudasse.
+  inputPricePerMillionMicros: bigint('input_price_per_million_micros', {
+    mode: 'number',
+  })
+    .notNull()
+    .default(0),
+  outputPricePerMillionMicros: bigint('output_price_per_million_micros', {
+    mode: 'number',
+  })
+    .notNull()
+    .default(0),
   latencyMs: integer('latency_ms').notNull(),
   bindingOrigin: modelBindingScopeEnum('binding_origin'),
   // Provider SUBJACENTE, quando a chamada passou por um hub que informa quem

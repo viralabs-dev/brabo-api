@@ -13,6 +13,9 @@ export interface RecordTokenUsageInput {
   outputTokens: number;
   estimated: boolean;
   costMicros: number;
+  /** O preço vigente no instante da chamada (Fase 9c, RN-042). */
+  inputPricePerMillionMicros: number;
+  outputPricePerMillionMicros: number;
   latencyMs: number;
   bindingOrigin: ModelBindingScope | null;
   upstreamProvider: string | null;

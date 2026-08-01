@@ -21,6 +21,13 @@ export interface RecordLlmUsageInput {
   outputTokens: number;
   estimated: boolean;
   costMicros: number;
+  /**
+   * O preço do modelo NO MOMENTO da chamada (Fase 9c, RN-042). Vem do
+   * orquestrador, que já leu a linha de `models` para calcular o custo — e é
+   * gravado junto para o custo ficar reproduzível quando o preço mudar.
+   */
+  inputPricePerMillionMicros: number;
+  outputPricePerMillionMicros: number;
   latencyMs: number;
   bindingOrigin: ModelBindingScope | null;
   /** Só quando um hub informou quem serviu de fato (Fase 9b). */
@@ -68,6 +75,8 @@ export class RecordLlmUsageUseCase {
       outputTokens: input.outputTokens,
       estimated: input.estimated,
       costMicros: input.costMicros,
+      inputPricePerMillionMicros: input.inputPricePerMillionMicros,
+      outputPricePerMillionMicros: input.outputPricePerMillionMicros,
       latencyMs: input.latencyMs,
       bindingOrigin: input.bindingOrigin,
       upstreamProvider: input.upstreamProvider ?? null,

@@ -4,6 +4,7 @@ import type {
   ChatStreamChunk,
   LLMProviderCapabilities,
   LLMProviderName,
+  ModeloDoCatalogo,
 } from '@brabo/shared';
 
 export abstract class LLMProvider {
@@ -21,4 +22,17 @@ export abstract class LLMProvider {
     messages: ChatMessage[],
     options: ChatOptions,
   ): AsyncGenerator<ChatStreamChunk>;
+
+  /**
+   * O catálogo remoto (Fase 9c). Só existe quando
+   * `capabilities.listModels` é `true` — o contrato exige os dois lados juntos:
+   * quem declara a capability implementa o método, e quem não declara não o
+   * expõe.
+   *
+   * Diferente de `chat`, aqui um erro LANÇA em vez de virar chunk: não há
+   * turno em andamento nem token gasto para preservar, e o sync precisa saber
+   * a ORIGEM da falha para não marcar como indisponível um catálogo que só
+   * não pôde ser lido.
+   */
+  listModels?(apiKey?: string): Promise<ModeloDoCatalogo[]>;
 }

@@ -5,6 +5,7 @@ import { openaiConfig } from '../../../src/infrastructure/llm/openai-provider';
 import { GptTokenizerEstimator } from '../../../src/infrastructure/tokenization/gpt-tokenizer-estimator';
 import { runLLMProviderContract } from '../../contract/llm-provider.contract';
 import {
+  CATALOGO_ESPERADO,
   FERRAMENTA_ESPERADA,
   PEDACOS_DO_TEXTO,
   STATUS_DO_CENARIO,
@@ -24,6 +25,17 @@ function dialetoOpenAI(cenario: CenarioLLM, res: ServerResponse): void {
           message: 'falha simulada',
           ...(status === 413 ? { code: 'context_length_exceeded' } : {}),
         },
+      }),
+    );
+    return;
+  }
+
+  if (cenario === 'catalogo') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(
+      JSON.stringify({
+        object: 'list',
+        data: CATALOGO_ESPERADO.map((id) => ({ id, object: 'model' })),
       }),
     );
     return;

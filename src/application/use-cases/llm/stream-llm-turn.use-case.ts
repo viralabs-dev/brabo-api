@@ -68,6 +68,9 @@ export class StreamLlmTurnUseCase {
       projectId: input.projectId,
       sessionId: input.sessionId,
       agentId: input.agentId,
+      // Mesmo critério do RunLlmTurnUseCase (Fase 9c): quem pede ferramentas
+      // precisa de um modelo que saiba pedi-las, em qualquer nível da cascata.
+      exigeToolCalling: (input.tools?.length ?? 0) > 0,
     });
     if (!binding) {
       yield finalError('Nenhum modelo vinculado para esta sessão');
@@ -166,6 +169,10 @@ export class StreamLlmTurnUseCase {
         outputTokens,
         estimated,
         costMicros,
+        // Congela o preço junto do custo: sem isso o `cost_micros` de ontem é
+        // um número sem procedência quando o preço mudar (RN-042).
+        inputPricePerMillionMicros: model.inputPricePerMillionMicros,
+        outputPricePerMillionMicros: model.outputPricePerMillionMicros,
         latencyMs,
         bindingOrigin: binding.origin,
         upstreamProvider,

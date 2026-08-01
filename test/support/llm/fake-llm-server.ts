@@ -23,7 +23,9 @@ export type CenarioLLM =
   | 'erro_429'
   | 'erro_413'
   /** Aceita a conexão e nunca responde — nem headers. */
-  | 'mudo';
+  | 'mudo'
+  /** `GET /models`: o catálogo remoto do provider (Fase 9c). */
+  | 'catalogo';
 
 /** Cada provider traduz o cenário para o SEU formato de fio. */
 export type Dialeto = (cenario: CenarioLLM, res: ServerResponse) => void;
@@ -107,3 +109,6 @@ export const FERRAMENTA_ESPERADA = {
 } as const;
 
 export const USAGE_ESPERADO = { inputTokens: 7, outputTokens: 3 } as const;
+
+/** Os modelos que o cenário `catalogo` devolve, em qualquer dialeto. */
+export const CATALOGO_ESPERADO = ['modelo-um', 'modelo-dois'] as const;

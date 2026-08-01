@@ -6,6 +6,7 @@ import type {
   ChatStreamChunk,
   LLMProviderCapabilities,
   LLMProviderName,
+  ModeloDoCatalogo,
   ToolCall,
   ToolDef,
 } from '@brabo/shared';
@@ -17,6 +18,7 @@ import {
   normalizeHttpStatus,
 } from '../../domain/llm/llm-provider-errors';
 import {
+  getJson,
   iterateSseData,
   postStream,
   readBody,
@@ -60,6 +62,16 @@ export type ExtrairUpstreamProvider = (
   frame: Record<string, unknown>,
 ) => string | undefined;
 
+/**
+ * Como ler o `GET /models` deste provider (Fase 9c).
+ *
+ * O padrão OpenAI é `{ data: [{ id }] }` e informa pouco mais que o id. Um hub
+ * devolve preço, janela e capabilities na mesma linha — e é por isso que o
+ * parsing é substituível em vez de ganhar `if`s por provider: o padrão continua
+ * intocado quando alguém precisa de mais.
+ */
+export type ParseCatalogo = (corpo: unknown) => ModeloDoCatalogo[];
+
 export interface OpenAICompatibleConfig {
   readonly name: LLMProviderName;
   /** Sem barra no fim — `/chat/completions` é concatenado. */
@@ -69,6 +81,8 @@ export interface OpenAICompatibleConfig {
   readonly flags: OpenAICompatibleFlags;
   /** Só em hubs — ver `ExtrairUpstreamProvider`. */
   readonly extrairUpstreamProvider?: ExtrairUpstreamProvider;
+  /** Só quando `capabilities.listModels`; ausente = o parsing padrão. */
+  readonly parseCatalogo?: ParseCatalogo;
 }
 
 /**
@@ -194,6 +208,49 @@ export class OpenAICompatibleProvider implements LLMProvider {
     }
   }
 
+  /**
+   * O catálogo remoto (Fase 9c). Existe sempre na base — quem instancia com
+   * `capabilities.listModels: false` está dizendo que o endpoint não foi
+   * verificado na doc oficial, e o `SyncModelCatalogUseCase` respeita a
+   * declaração em vez de tentar e interpretar o 404.
+   */
+  async listModels(apiKey?: string): Promise<ModeloDoCatalogo[]> {
+    if (!this.capabilities.listModels) {
+      // Lança em vez de devolver `[]`: lista vazia é indistinguível de "o
+      // provider não tem modelo nenhum", e o sync leria isso como "sumiram
+      // todos" e marcaria o catálogo inteiro como indisponível.
+      throw new LLMUpstreamError(
+        this.name,
+        `${this.name} não declara a capability \`listModels\``,
+      );
+    }
+
+    const { status, body } = await getJson({
+      url: `${this.config.baseUrl}/models`,
+      headers: this.config.authHeaders(apiKey),
+      timeoutMs: timeoutFromEnv(LLM_TIMEOUT_ENV, DEFAULT_TIMEOUT_MS),
+      timeoutEnvName: LLM_TIMEOUT_ENV,
+      provider: this.name,
+    });
+
+    if (status < 200 || status >= 300) {
+      throw normalizeHttpStatus(this.name, status, body);
+    }
+
+    let corpo: unknown;
+    try {
+      corpo = JSON.parse(body);
+    } catch (error) {
+      throw new LLMUpstreamError(
+        this.name,
+        'catálogo devolvido não é JSON válido',
+        error,
+      );
+    }
+
+    return (this.config.parseCatalogo ?? parseCatalogoPadrao)(corpo);
+  }
+
   private buildBody(messages: ChatMessage[], options: ChatOptions) {
     const { flags } = this.config;
 
@@ -216,6 +273,38 @@ export class OpenAICompatibleProvider implements LLMProvider {
         : {}),
     };
   }
+}
+
+// --- Catálogo ---
+
+interface LinhaDeCatalogo {
+  id?: unknown;
+  /** Alguns compatíveis mandam um rótulo legível junto do id. */
+  name?: unknown;
+}
+
+/**
+ * O formato da OpenAI: `{ object: "list", data: [{ id, object, ... }] }`.
+ *
+ * Só o id é extraído. Preço, janela e capabilities NÃO são inventados a partir
+ * do nome — campo ausente significa "o provider não disse", e o sync preserva
+ * o que já estava gravado em vez de zerar (RN-041).
+ */
+export function parseCatalogoPadrao(corpo: unknown): ModeloDoCatalogo[] {
+  const data = (corpo as { data?: unknown })?.data;
+  if (!Array.isArray(data)) return [];
+
+  return data
+    .map((linha) => linha as LinhaDeCatalogo)
+    .filter((linha): linha is LinhaDeCatalogo & { id: string } => {
+      return typeof linha.id === 'string' && linha.id.length > 0;
+    })
+    .map((linha) => ({
+      name: linha.id,
+      ...(typeof linha.name === 'string' && linha.name
+        ? { displayName: linha.name }
+        : {}),
+    }));
 }
 
 // --- Mapeamento para o formato de fio ---

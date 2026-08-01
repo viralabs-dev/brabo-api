@@ -23,6 +23,37 @@ export class ModelNotFitForAgentScopeError extends Error {
 }
 
 /**
+ * Modelo que o owner desligou, ou que sumiu do catálogo remoto, não recebe
+ * binding NOVO (Fase 9c, RN-041). Os bindings que já existem continuam de pé —
+ * quem os resolve é a cascata, que pula o indisponível e cai para o nível de
+ * baixo avisando. Deletar o modelo nunca é opção: `token_usage` e
+ * `model_bindings` apontam para ele.
+ */
+export class ModelNotBindableError extends Error {
+  constructor(
+    readonly model: Model,
+    readonly motivo: 'inativo' | 'indisponivel',
+  ) {
+    super(
+      motivo === 'inativo'
+        ? `Modelo "${model.displayName}" está desativado. Ative-o no catálogo ` +
+            `antes de vinculá-lo.`
+        : `Modelo "${model.displayName}" não está mais disponível no ` +
+            `provider. Escolha outro — os vínculos e o histórico dele são ` +
+            `preservados.`,
+    );
+    this.name = 'ModelNotBindableError';
+  }
+}
+
+export function assertModelIsBindable(model: Model): void {
+  if (!model.isActive) throw new ModelNotBindableError(model, 'inativo');
+  if (model.availability === 'unavailable') {
+    throw new ModelNotBindableError(model, 'indisponivel');
+  }
+}
+
+/**
  * Só o escopo `agent` é validado. `workspace` e `project` são o fallback do
  * chat humano — travá-los proibiria modelo chat-only no produto inteiro, que
  * não é o que a regra quer. O escopo `session` também fica livre: uma sessão

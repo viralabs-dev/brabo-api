@@ -18,7 +18,8 @@ export function openaiConfig(
   return {
     name: 'openai',
     baseUrl,
-    capabilities: { streaming: true, toolCalling: true },
+    // `GET /v1/models` é o endpoint canônico do dialeto e a base já o fala.
+    capabilities: { streaming: true, toolCalling: true, listModels: true },
     authHeaders: (apiKey) => ({ Authorization: `Bearer ${apiKey ?? ''}` }),
     flags: {
       streamOptionsIncludeUsage: true,

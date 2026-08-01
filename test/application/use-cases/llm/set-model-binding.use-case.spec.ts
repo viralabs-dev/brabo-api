@@ -8,9 +8,10 @@ import { SetModelBindingUseCase } from '../../../../src/application/use-cases/ll
 import { ModelNotFitForAgentScopeError } from '../../../../src/domain/llm/model-capabilities';
 
 const { db, pool } = createTestDb();
+const modelRepo = new DrizzleModelRepository(db);
 const useCase = new SetModelBindingUseCase(
   new DrizzleModelBindingRepository(db),
-  new DrizzleModelRepository(db),
+  modelRepo,
 );
 
 async function setup() {
@@ -97,6 +98,43 @@ describe('SetModelBindingUseCase', () => {
     await expect(
       useCase.execute('workspace', 'ws-1', chatOnly.id, user.id),
     ).resolves.toMatchObject({ scope: 'workspace' });
+  });
+
+  it('recusa binding novo para modelo que o owner desativou (RN-041)', async () => {
+    const { user, comFerramentas } = await setup();
+    await modelRepo.setActive([comFerramentas.id], false);
+
+    await expect(
+      useCase.execute('agent', 'dev-backend', comFerramentas.id, user.id),
+    ).rejects.toMatchObject({
+      name: 'ModelNotBindableError',
+      motivo: 'inativo',
+    });
+  });
+
+  it('recusa binding novo para modelo que sumiu do provider (RN-041)', async () => {
+    const { user, comFerramentas } = await setup();
+    await modelRepo.setAvailability([comFerramentas.id], 'unavailable');
+
+    await expect(
+      useCase.execute('agent', 'dev-backend', comFerramentas.id, user.id),
+    ).rejects.toMatchObject({
+      name: 'ModelNotBindableError',
+      motivo: 'indisponivel',
+    });
+  });
+
+  it('binding ANTIGO para modelo indisponível não é apagado — quem lida é a cascata', async () => {
+    const { user, comFerramentas } = await setup();
+
+    await useCase.execute('agent', 'dev-backend', comFerramentas.id, user.id);
+    await modelRepo.setAvailability([comFerramentas.id], 'unavailable');
+
+    const binding = await new DrizzleModelBindingRepository(db).findOne(
+      'agent',
+      'dev-backend',
+    );
+    expect(binding).toMatchObject({ modelId: comFerramentas.id });
   });
 
   it('modelo inexistente continua sendo 404', async () => {

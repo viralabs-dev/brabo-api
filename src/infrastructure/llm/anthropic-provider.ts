@@ -48,6 +48,9 @@ export class AnthropicProvider implements LLMProvider {
   readonly capabilities: LLMProviderCapabilities = {
     streaming: true,
     toolCalling: true,
+    // Mesma razão do Ollama: o endpoint de catálogo do SDK não foi verificado
+    // na doc oficial nesta fase. Backlog no ADR 0041.
+    listModels: false,
   };
 
   constructor(

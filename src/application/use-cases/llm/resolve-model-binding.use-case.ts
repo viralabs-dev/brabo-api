@@ -11,6 +11,12 @@ export interface ResolveModelBindingInput {
   projectId: string;
   sessionId?: string;
   agentId?: string;
+  /**
+   * `true` quando quem vai usar o modelo roda ToolLoop (Fase 9c). A cascata
+   * então PULA candidatos sem tool calling em vez de pousar num modelo
+   * chat-only e quebrar depois — ver `binding-resolver.ts`.
+   */
+  exigeToolCalling?: boolean;
 }
 
 @Injectable()
@@ -34,6 +40,6 @@ export class ResolveModelBindingUseCase {
     if (input.sessionId) scopeIds.session = input.sessionId;
 
     const candidates = await this.bindings.findCandidates(scopeIds);
-    return resolveBinding(candidates);
+    return resolveBinding(candidates, input.exigeToolCalling ?? false);
   }
 }

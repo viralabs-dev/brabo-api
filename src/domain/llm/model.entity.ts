@@ -1,5 +1,8 @@
 import type { LLMProviderName } from '@brabo/shared';
 
+export const MODEL_AVAILABILITIES = ['available', 'unavailable'] as const;
+export type ModelAvailability = (typeof MODEL_AVAILABILITIES)[number];
+
 export interface Model {
   id: string;
   provider: LLMProviderName;
@@ -22,7 +25,18 @@ export interface Model {
    * Fase 9c não sobrescreve linha marcada sem decisão explícita.
    */
   manualPricing: boolean;
+  /**
+   * Curadoria do OWNER (Fase 9c): se aparece no seletor e pode receber binding
+   * novo. Modelo descoberto por sync entra `false`.
+   */
   isActive: boolean;
+  /**
+   * Realidade REMOTA observada pelo sync. Eixo independente de `isActive`:
+   * um modelo pode estar ativo e indisponível ao mesmo tempo — e quando o
+   * provider o traz de volta, a escolha do owner continua valendo.
+   */
+  availability: ModelAvailability;
+  lastSeenAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

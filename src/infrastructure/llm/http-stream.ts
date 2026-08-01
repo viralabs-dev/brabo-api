@@ -85,6 +85,62 @@ export function postStream(
   });
 }
 
+export interface GetJsonOptions {
+  url: string;
+  headers: Record<string, string>;
+  timeoutMs: number;
+  timeoutEnvName: string;
+  provider: LLMProviderName;
+}
+
+/**
+ * GET simples com corpo inteiro, para o catálogo de modelos (Fase 9c).
+ *
+ * Compartilha o transporte com `postStream` de propósito: a mesma marca de
+ * inatividade, o mesmo par timeout/connection normalizado. Um catálogo não é
+ * stream, então aqui o corpo é lido de uma vez — e o erro LANÇA, porque não há
+ * turno em andamento cujo gasto precise ser preservado.
+ */
+export function getJson(options: GetJsonOptions): Promise<{
+  status: number;
+  body: string;
+}> {
+  const { url, headers, timeoutMs, timeoutEnvName, provider } = options;
+
+  return new Promise((resolve, reject) => {
+    const alvo = new URL(url);
+    const send = alvo.protocol === 'https:' ? httpsRequest : httpRequest;
+    let estourouPorInatividade = false;
+
+    const req = send(
+      alvo,
+      { method: 'GET', headers, timeout: timeoutMs },
+      (res) => {
+        void readBody(res).then((body) =>
+          resolve({ status: res.statusCode ?? 0, body }),
+        );
+      },
+    );
+
+    req.on('timeout', () => {
+      estourouPorInatividade = true;
+      req.destroy(
+        new Error(`sem resposta após ${timeoutMs}ms (${timeoutEnvName})`),
+      );
+    });
+
+    req.on('error', (error) => {
+      reject(
+        estourouPorInatividade
+          ? new LLMTimeoutError(provider, error.message, error)
+          : new LLMConnectionError(provider, error.message, error),
+      );
+    });
+
+    req.end();
+  });
+}
+
 /** Lê o corpo inteiro — só para respostas de ERRO, que são curtas. */
 export async function readBody(response: IncomingMessage): Promise<string> {
   const pedacos: Buffer[] = [];
