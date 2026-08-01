@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { LLM_PROVIDER_NAMES } from '@brabo/shared';
+import { LLM_PROVIDER_NAMES } from '../../../../domain/llm/llm-provider-names';
 import type { MesmasChaves, Wire } from '../../shared/dto/wire';
 import type {
   ResultadoPorProvider,

@@ -1,9 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  LLM_PROVIDER_NAMES,
-  type LLMProviderName,
-  type ModeloDoCatalogo,
-} from '@brabo/shared';
+import type { LLMProviderName, ModeloDoCatalogo } from '@brabo/shared';
+import { LLM_PROVIDER_NAMES } from '../../../domain/llm/llm-provider-names';
 import { ModelRepository } from '../../ports/model-repository.port';
 import { UserCredentialRepository } from '../../ports/user-credential-repository.port';
 import { EncryptionService } from '../../ports/encryption.port';
