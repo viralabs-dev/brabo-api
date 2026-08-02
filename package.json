@@ -29,6 +29,7 @@
     "demo:infra-workflows-github": "ts-node scripts/demo-infra-workflows-github.ts",
     "demo:psicologo": "ts-node scripts/demo-psicologo.ts",
     "demo:anamnese": "ts-node scripts/demo-anamnese.ts",
+    "validacao:fase-12": "ts-node scripts/validacao-fase-12.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },
