@@ -4,8 +4,26 @@ import { createTestDb, truncateAll } from '../../../support/test-db';
 import { userCredentials, users } from '../../../../src/db/schema';
 import { DrizzleUserCredentialRepository } from '../../../../src/infrastructure/persistence/drizzle/user-credential.repository';
 import { EnvelopeEncryptionService } from '../../../../src/infrastructure/security/envelope-encryption.service';
+import { LLMCredentialConnectionTester } from '../../../../src/application/ports/llm-credential-connection-tester.port';
+import { LLMCredentialConnectionTestFailedError } from '../../../../src/domain/llm/llm-credential-errors';
 import { UpsertUserCredentialUseCase } from '../../../../src/application/use-cases/llm/upsert-user-credential.use-case';
 import { ListUserCredentialsUseCase } from '../../../../src/application/use-cases/llm/list-user-credentials.use-case';
+
+class FakeConnectionTester implements LLMCredentialConnectionTester {
+  constructor(private readonly shouldFail = false) {}
+
+  test(): Promise<void> {
+    if (this.shouldFail) {
+      return Promise.reject(
+        new LLMCredentialConnectionTestFailedError(
+          'openrouter',
+          'chave inválida (simulado)',
+        ),
+      );
+    }
+    return Promise.resolve();
+  }
+}
 
 const { db, pool } = createTestDb();
 const credentialRepo = new DrizzleUserCredentialRepository(db);
@@ -13,6 +31,7 @@ const encryption = new EnvelopeEncryptionService();
 const upsertCredential = new UpsertUserCredentialUseCase(
   credentialRepo,
   encryption,
+  new FakeConnectionTester(),
 );
 const listCredentials = new ListUserCredentialsUseCase(credentialRepo);
 
@@ -93,5 +112,24 @@ describe('UpsertUserCredentialUseCase', () => {
 
     const list = await listCredentials.execute(user.id);
     expect(list).toHaveLength(1);
+  });
+
+  it('falha: teste de conexão rejeita SEM persistir nada', async () => {
+    const user = await setupUser();
+    const upsertComTesteFalhando = new UpsertUserCredentialUseCase(
+      credentialRepo,
+      encryption,
+      new FakeConnectionTester(true),
+    );
+
+    await expect(
+      upsertComTesteFalhando.execute(user.id, 'openrouter', 'chave-invalida'),
+    ).rejects.toThrow(LLMCredentialConnectionTestFailedError);
+
+    const rows = await db
+      .select()
+      .from(userCredentials)
+      .where(eq(userCredentials.userId, user.id));
+    expect(rows).toHaveLength(0);
   });
 });

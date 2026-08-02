@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { ServerResponse } from 'node:http';
 import type { LLMProviderName } from '@brabo/shared';
+import { LLM_PROVIDER_NAMES } from '../../../../src/domain/llm/llm-provider-names';
 import { createTestDb, truncateAll } from '../../../support/test-db';
 import { models, users } from '../../../../src/db/schema';
 import { DrizzleModelRepository } from '../../../../src/infrastructure/persistence/drizzle/model.repository';
@@ -232,6 +233,8 @@ describe('SyncModelCatalogUseCase', () => {
     expect(
       resultado.porProvider.find((p) => p.provider === 'anthropic'),
     ).toMatchObject({ pulado: 'sem_capability' });
-    expect(resultado.porProvider).toHaveLength(3);
+    // Um por provider da taxonomia inteira (RN-043) — cresce junto com
+    // LLM_PROVIDER_NAMES, não é um número fixo desta suite.
+    expect(resultado.porProvider).toHaveLength(LLM_PROVIDER_NAMES.length);
   });
 });

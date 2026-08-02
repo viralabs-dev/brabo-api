@@ -70,6 +70,12 @@ export const llmProviderEnum = pgEnum('llm_provider', [
   'ollama',
   'anthropic',
   'openai',
+  'openrouter',
+  'nvidia-nim',
+  'together',
+  'deepinfra',
+  'bitdeer',
+  'vultr',
 ]);
 
 // workspace < project < agent < session, do menos pro mais específico —
@@ -199,6 +205,12 @@ export const credentialProviderEnum = pgEnum('credential_provider', [
   'ollama',
   'anthropic',
   'openai',
+  'openrouter',
+  'nvidia-nim',
+  'together',
+  'deepinfra',
+  'bitdeer',
+  'vultr',
   'github',
   'gitlab',
 ]);
