@@ -2,11 +2,15 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { TransitionStoryUseCase } from '../../../../src/application/use-cases/backlog/transition-story.use-case';
 import { StoryNotReadyError } from '../../../../src/domain/backlog/story-readiness';
 import { InvalidStoryTransitionError } from '../../../../src/domain/backlog/story-state-machine';
-import type { StoryRepository } from '../../../../src/application/ports/backlog-repository.port';
+import type {
+  StoryRepository,
+  TaskRepository,
+} from '../../../../src/application/ports/backlog-repository.port';
 import type { ModuleMapRepository } from '../../../../src/application/ports/module-map-repository.port';
+import type { OutboxRepository } from '../../../../src/application/ports/outbox-repository.port';
 import type { ModuleMap } from '../../../../src/domain/architecture/module-map.entity';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
-import type { Story } from '../../../../src/domain/backlog/backlog.entity';
+import type { Story, Task } from '../../../../src/domain/backlog/backlog.entity';
 
 const PROJECT = 'p1';
 const SESSION = 's1';
@@ -61,19 +65,69 @@ class FakeModuleMaps {
   }
 }
 
+function makeTask(overrides: Partial<Task> = {}): Task {
+  return {
+    id: 'task-1',
+    storyId: 'story-1',
+    title: 't',
+    description: '',
+    status: 'todo',
+    assignedTo: null,
+    blocked: false,
+    blockedReason: null,
+    blockedOrigin: null,
+    gateStatus: null,
+    gateCorrectionCount: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
+
+class FakeTasks {
+  byStory: Task[] = [];
+  findByStoryIds(_storyIds: string[]) {
+    return Promise.resolve(this.byStory);
+  }
+}
+
+class FakeOutbox {
+  calls: {
+    aggregateType: string;
+    eventType: string;
+    aggregateId: string;
+    payload: unknown;
+  }[] = [];
+  append(input: {
+    aggregateType: string;
+    eventType: string;
+    aggregateId: string;
+    payload: unknown;
+  }) {
+    this.calls.push(input);
+    return Promise.resolve();
+  }
+}
+
 let stories: FakeStories;
 let moduleMaps: FakeModuleMaps;
 let append: FakeAppend;
+let tasks: FakeTasks;
+let outbox: FakeOutbox;
 let useCase: TransitionStoryUseCase;
 
 beforeEach(() => {
   stories = new FakeStories();
   moduleMaps = new FakeModuleMaps();
   append = new FakeAppend();
+  tasks = new FakeTasks();
+  outbox = new FakeOutbox();
   useCase = new TransitionStoryUseCase(
     stories as unknown as StoryRepository,
     moduleMaps as unknown as ModuleMapRepository,
     append as unknown as AppendSessionEventUseCase,
+    tasks as unknown as TaskRepository,
+    outbox as unknown as OutboxRepository,
   );
 });
 
@@ -131,5 +185,72 @@ describe('TransitionStoryUseCase', () => {
     await expect(
       useCase.execute(PROJECT, SESSION, 'story-1', 'in_progress'),
     ).rejects.toBeInstanceOf(InvalidStoryTransitionError);
+  });
+
+  describe('outbox task.became_claimable (Fase 12b — RN-047)', () => {
+    it('→ready: uma linha por task todo/não-bloqueada da story', async () => {
+      stories.story = makeStory({ moduleIds: ['api', 'web'] });
+      moduleMaps.current = {
+        id: 'mm1',
+        projectId: PROJECT,
+        sessionId: SESSION,
+        version: 1,
+        modules: [
+          { name: 'api', stack: 'ts', responsibility: 'x', dependsOn: [] },
+          { name: 'web', stack: 'ts', responsibility: 'x', dependsOn: [] },
+        ],
+        createdAt: new Date(),
+      };
+      tasks.byStory = [
+        makeTask({ id: 't1', status: 'todo', blocked: false }),
+        makeTask({ id: 't2', status: 'todo', blocked: false }),
+      ];
+
+      await useCase.execute(PROJECT, SESSION, 'story-1', 'ready');
+
+      expect(outbox.calls).toEqual([
+        {
+          aggregateType: 'task',
+          eventType: 'task.became_claimable',
+          aggregateId: 't1',
+          payload: expect.objectContaining({
+            taskId: 't1',
+            modules: ['api', 'web'],
+            cause: 'story_ready',
+          }),
+        },
+        {
+          aggregateType: 'task',
+          eventType: 'task.became_claimable',
+          aggregateId: 't2',
+          payload: expect.objectContaining({
+            taskId: 't2',
+            modules: ['api', 'web'],
+            cause: 'story_ready',
+          }),
+        },
+      ]);
+    });
+
+    it('→ready: task done/in_progress/bloqueada não gera linha nenhuma', async () => {
+      tasks.byStory = [
+        makeTask({ id: 't1', status: 'done' }),
+        makeTask({ id: 't2', status: 'in_progress' }),
+        makeTask({ id: 't3', status: 'todo', blocked: true }),
+      ];
+
+      await useCase.execute(PROJECT, SESSION, 'story-1', 'ready');
+
+      expect(outbox.calls).toEqual([]);
+    });
+
+    it('transição que não é →ready não toca o outbox', async () => {
+      stories.story = makeStory({ status: 'ready' });
+      tasks.byStory = [makeTask()];
+
+      await useCase.execute(PROJECT, SESSION, 'story-1', 'in_progress');
+
+      expect(outbox.calls).toEqual([]);
+    });
   });
 });

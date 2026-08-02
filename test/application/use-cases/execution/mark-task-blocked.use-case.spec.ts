@@ -9,19 +9,32 @@ import {
   users,
   workspaces,
 } from '../../../../src/db/schema';
-import { DrizzleTaskRepository } from '../../../../src/infrastructure/persistence/drizzle/backlog.repository';
+import {
+  DrizzleStoryRepository,
+  DrizzleTaskRepository,
+} from '../../../../src/infrastructure/persistence/drizzle/backlog.repository';
 import { MarkTaskBlockedUseCase } from '../../../../src/application/use-cases/execution/mark-task-blocked.use-case';
 import { UnblockTaskUseCase } from '../../../../src/application/use-cases/execution/unblock-task.use-case';
 import { ClaimNextTaskUseCase } from '../../../../src/application/use-cases/execution/claim-next-task.use-case';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
+import type { OutboxRepository } from '../../../../src/application/ports/outbox-repository.port';
 
 const { db, pool } = createTestDb();
 const taskRepo = new DrizzleTaskRepository(db);
+const storyRepo = new DrizzleStoryRepository(db);
 const appendStub = {
   execute: () => Promise.resolve({}),
 } as unknown as AppendSessionEventUseCase;
+const outboxStub = {
+  append: () => Promise.resolve(),
+} as unknown as OutboxRepository;
 const markBlocked = new MarkTaskBlockedUseCase(taskRepo, appendStub);
-const unblock = new UnblockTaskUseCase(taskRepo, appendStub);
+const unblock = new UnblockTaskUseCase(
+  taskRepo,
+  storyRepo,
+  appendStub,
+  outboxStub,
+);
 const claimNext = new ClaimNextTaskUseCase(taskRepo, appendStub);
 
 async function seed() {

@@ -7,6 +7,7 @@ import { TaskRepository } from '../../ports/backlog-repository.port';
 import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
 import { ProvisionedRepositoryRepository } from '../../ports/provisioned-repository-repository.port';
 import { GitProviderRegistry } from '../../ports/git-provider.port';
+import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { MarkTaskBlockedUseCase } from './mark-task-blocked.use-case';
 import {
@@ -52,6 +53,7 @@ export class RecordGateVerdictUseCase {
     private readonly gitProviders: GitProviderRegistry,
     private readonly appendEvent: AppendSessionEventUseCase,
     private readonly markTaskBlocked: MarkTaskBlockedUseCase,
+    private readonly outbox: OutboxRepository,
   ) {}
 
   async execute(
@@ -69,6 +71,11 @@ export class RecordGateVerdictUseCase {
         `Task "${input.taskId}" não tem gate de PR aberto`,
       );
     }
+
+    // Capturado ANTES de qualquer mutação: `markTaskBlocked.execute` zera
+    // `assignedTo` quando o transition é `blocked`, e é esse agente que a
+    // Fase 12b precisa acordar com o outbox `task.gate_resolved`.
+    const agentId = task.assignedTo;
 
     const transition = nextGateStatus(
       task.gateStatus,
@@ -118,6 +125,28 @@ export class RecordGateVerdictUseCase {
         blocked: updatedTask.blocked,
       },
     });
+
+    // Fase 12b (RN-047, ADR 0045): só os desfechos TERMINAIS viajam por
+    // outbox — `correct`/`run_secops` continuam tratados em processo pelo
+    // engine (QaLeadServer/SecOpsAgentServer), sem outbox nenhum. É a prova
+    // mecânica de que reagendar não duplica esse caminho: não existe linha
+    // pra ele acionar duas vezes.
+    if (agentId && (nextAction === 'done' || nextAction === 'blocked')) {
+      await this.outbox.append({
+        aggregateType: 'task',
+        aggregateId: task.id,
+        eventType: 'task.gate_resolved',
+        payload: {
+          projectId,
+          sessionId,
+          taskId: task.id,
+          agentId,
+          gate: input.gate,
+          veredito: input.veredito,
+          nextAction,
+        },
+      });
+    }
 
     return { nextAction, task: updatedTask };
   }

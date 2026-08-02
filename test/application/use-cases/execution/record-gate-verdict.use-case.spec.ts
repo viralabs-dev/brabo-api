@@ -6,6 +6,7 @@ import type { ProposedActionRepository } from '../../../../src/application/ports
 import type { ProvisionedRepositoryRepository } from '../../../../src/application/ports/provisioned-repository-repository.port';
 import type { GitProviderRegistry } from '../../../../src/application/ports/git-provider.port';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
+import type { OutboxRepository } from '../../../../src/application/ports/outbox-repository.port';
 import type { Task } from '../../../../src/domain/backlog/backlog.entity';
 import type { ProposedAction } from '../../../../src/domain/actions/proposed-action.entity';
 import type { ProvisionedRepository } from '../../../../src/domain/git/provisioned-repository.entity';
@@ -19,7 +20,10 @@ function buildTask(overrides: Partial<Task> = {}): Task {
     title: 'task',
     description: '',
     status: 'in_review',
-    assignedTo: null,
+    // Um task com gate aberto sempre tem dono no mundo real — default
+    // realista pra os testes de emissão de outbox (Fase 12b) não
+    // precisarem sobrescrever em todo teste.
+    assignedTo: 'dev-api',
     blocked: false,
     blockedReason: null,
     blockedOrigin: null,
@@ -116,11 +120,22 @@ function buildHarness(opts: {
   } as unknown as AppendSessionEventUseCase;
 
   const markTaskBlockedExecute = vi.fn(() =>
-    Promise.resolve({ ...(task as Task), status: 'todo', blocked: true }),
+    // O bloqueio real zera assignedTo (backlog.repository.ts) — o mock
+    // reflete isso pra provar que o outbox usa o valor CAPTURADO antes da
+    // mutação, não o que markTaskBlocked devolve.
+    Promise.resolve({
+      ...(task as Task),
+      status: 'todo',
+      blocked: true,
+      assignedTo: null,
+    }),
   );
   const markTaskBlocked = {
     execute: markTaskBlockedExecute,
   } as unknown as MarkTaskBlockedUseCase;
+
+  const outboxAppend = vi.fn(() => Promise.resolve());
+  const outbox = { append: outboxAppend } as unknown as OutboxRepository;
 
   const useCase = new RecordGateVerdictUseCase(
     tasks,
@@ -129,6 +144,7 @@ function buildHarness(opts: {
     gitProviders,
     appendEvent,
     markTaskBlocked,
+    outbox,
   );
 
   return {
@@ -137,6 +153,7 @@ function buildHarness(opts: {
     commentOnPullRequest,
     markTaskBlockedExecute,
     appendEvent,
+    outboxAppend,
   };
 }
 
@@ -244,5 +261,120 @@ describe('RecordGateVerdictUseCase', () => {
     });
 
     expect(result.nextAction).toBe('run_secops');
+  });
+
+  describe('outbox task.gate_resolved (Fase 12b — RN-047)', () => {
+    it('nextAction done: emite outbox com o agentId da task', async () => {
+      const { useCase, outboxAppend } = buildHarness({
+        task: buildTask({ gateStatus: 'awaiting_secops' }),
+      });
+
+      await useCase.execute('proj-1', 'sess-1', {
+        taskId: 'task-1',
+        gate: 'secops',
+        veredito: 'approved',
+        resumo: 'nenhum achado',
+        itens: [],
+      });
+
+      expect(outboxAppend).toHaveBeenCalledWith({
+        aggregateType: 'task',
+        aggregateId: 'task-1',
+        eventType: 'task.gate_resolved',
+        payload: {
+          projectId: 'proj-1',
+          sessionId: 'sess-1',
+          taskId: 'task-1',
+          agentId: 'dev-api',
+          gate: 'secops',
+          veredito: 'approved',
+          nextAction: 'done',
+        },
+      });
+    });
+
+    it('nextAction blocked: emite outbox com o agentId CAPTURADO antes do bloqueio zerar assignedTo', async () => {
+      const { useCase, outboxAppend, markTaskBlockedExecute } = buildHarness({
+        task: buildTask({ gateCorrectionCount: 3, assignedTo: 'dev-api' }),
+      });
+
+      await useCase.execute(
+        'proj-1',
+        'sess-1',
+        {
+          taskId: 'task-1',
+          gate: 'qa',
+          veredito: 'changes_requested',
+          resumo: 'ainda falhando',
+          itens: ['x'],
+        },
+        3,
+      );
+
+      // O mock de markTaskBlocked devolve assignedTo: null (como o real) —
+      // se o outbox lesse dali, agentId viria nulo.
+      expect(markTaskBlockedExecute).toHaveBeenCalled();
+      expect(outboxAppend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: 'task.gate_resolved',
+          payload: expect.objectContaining({
+            agentId: 'dev-api',
+            nextAction: 'blocked',
+          }),
+        }),
+      );
+    });
+
+    it('nextAction correct (changes_requested sob o teto): NÃO emite outbox', async () => {
+      // Prova mecânica do requisito 4: o caminho de correção continua
+      // tratado em processo pelo engine (QaLeadServer/SecOpsAgentServer),
+      // sem outbox — não existe linha para ele acionar duas vezes.
+      const { useCase, outboxAppend } = buildHarness({});
+
+      await useCase.execute(
+        'proj-1',
+        'sess-1',
+        {
+          taskId: 'task-1',
+          gate: 'qa',
+          veredito: 'changes_requested',
+          resumo: 'regra sem teste',
+          itens: ['regra X sem cobertura'],
+        },
+        3,
+      );
+
+      expect(outboxAppend).not.toHaveBeenCalled();
+    });
+
+    it('nextAction run_secops (QA aprovado): NÃO emite outbox — não é desfecho terminal', async () => {
+      const { useCase, outboxAppend } = buildHarness({});
+
+      await useCase.execute('proj-1', 'sess-1', {
+        taskId: 'task-1',
+        gate: 'qa',
+        veredito: 'approved',
+        resumo: 'suite verde',
+        itens: [],
+      });
+
+      expect(outboxAppend).not.toHaveBeenCalled();
+    });
+
+    it('task sem assignedTo: não emite outbox (nada pra acordar)', async () => {
+      const { useCase, outboxAppend } = buildHarness({
+        task: buildTask({ gateStatus: 'awaiting_secops', assignedTo: null }),
+      });
+
+      await useCase.execute('proj-1', 'sess-1', {
+        taskId: 'task-1',
+        gate: 'secops',
+        veredito: 'approved',
+        resumo: 'ok',
+        itens: [],
+      });
+
+      expect(outboxAppend).not.toHaveBeenCalled();
+    });
   });
 });

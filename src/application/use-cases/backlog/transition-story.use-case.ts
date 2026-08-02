@@ -1,6 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { StoryRepository } from '../../ports/backlog-repository.port';
+import {
+  StoryRepository,
+  TaskRepository,
+} from '../../ports/backlog-repository.port';
 import { ModuleMapRepository } from '../../ports/module-map-repository.port';
+import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { assertReady } from '../../../domain/backlog/story-readiness';
 import { assertModulesResolved } from '../../../domain/architecture/module-resolution';
@@ -22,6 +26,8 @@ export class TransitionStoryUseCase {
     private readonly stories: StoryRepository,
     private readonly moduleMaps: ModuleMapRepository,
     private readonly appendEvent: AppendSessionEventUseCase,
+    private readonly tasks: TaskRepository,
+    private readonly outbox: OutboxRepository,
   ) {}
 
   async execute(
@@ -52,6 +58,30 @@ export class TransitionStoryUseCase {
       actor: { kind: 'agent', id: 'po' },
       payload: { storyId, from: story.status, to },
     });
+
+    // Fase 12b (RN-047, ADR 0045): promover a `ready` libera de uma vez o
+    // lote de tasks já criadas sob ela — uma linha de outbox por task
+    // pegável, pra cada dev agent idle do módulo acordar e reivindicar.
+    if (to === 'ready') {
+      const claimable = (await this.tasks.findByStoryIds([storyId])).filter(
+        (t) => t.status === 'todo' && !t.blocked,
+      );
+
+      for (const task of claimable) {
+        await this.outbox.append({
+          aggregateType: 'task',
+          aggregateId: task.id,
+          eventType: 'task.became_claimable',
+          payload: {
+            projectId,
+            sessionId,
+            taskId: task.id,
+            modules: story.moduleIds,
+            cause: 'story_ready',
+          },
+        });
+      }
+    }
 
     return updated;
   }

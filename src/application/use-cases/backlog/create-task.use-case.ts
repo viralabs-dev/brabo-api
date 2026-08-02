@@ -3,6 +3,7 @@ import {
   StoryRepository,
   TaskRepository,
 } from '../../ports/backlog-repository.port';
+import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 
 export interface CreateTaskInput {
@@ -22,6 +23,7 @@ export class CreateTaskUseCase {
     private readonly tasks: TaskRepository,
     private readonly stories: StoryRepository,
     private readonly appendEvent: AppendSessionEventUseCase,
+    private readonly outbox: OutboxRepository,
   ) {}
 
   async execute(projectId: string, sessionId: string, input: CreateTaskInput) {
@@ -43,6 +45,25 @@ export class CreateTaskUseCase {
       actor: { kind: 'agent', id: 'po' },
       payload: { taskId: task.id, storyId: task.storyId, title: task.title },
     });
+
+    // Fase 12b (RN-047, ADR 0045): a story já pode estar `ready` (segunda
+    // task pra frente, ou task criada tarde numa story já promovida) — sem
+    // isto, a task nasceria pegável e nenhum dev agent idle acordaria pra
+    // ela até o próximo gate resolver em outro lugar.
+    if (story.status === 'ready') {
+      await this.outbox.append({
+        aggregateType: 'task',
+        aggregateId: task.id,
+        eventType: 'task.became_claimable',
+        payload: {
+          projectId,
+          sessionId,
+          taskId: task.id,
+          modules: story.moduleIds,
+          cause: 'task_created',
+        },
+      });
+    }
 
     return task;
   }
