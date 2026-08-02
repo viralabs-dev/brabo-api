@@ -67,6 +67,18 @@ export class ProvisionRepositoryUseCase {
     const existingRepo = await this.repositories.findByProjectId(projectId);
     let bootstrap = await this.repoBootstraps.findByProjectId(projectId);
 
+    // Repositório ADOTADO não passa por aqui (Fase 12a, RN-045). Sem esta
+    // guarda o caminho "os dois já existem" cairia direto no runner e
+    // rodaria o bootstrap num repo de terceiro SEM plano aprovado —
+    // exatamente o que a regra proíbe. Adoção tem fluxo próprio, com
+    // portão humano.
+    if (existingRepo?.origin === 'adopted') {
+      throw new ConflictException(
+        `O projeto adotou ${existingRepo.provider}:${existingRepo.externalId} — ` +
+          'o bootstrap de um repositório adotado só roda por aprovação do plano',
+      );
+    }
+
     // Provider/credencial resolvidos UMA vez, válidos tanto pro caminho
     // "cria do zero" quanto pra retomada (nesse caso, a partir do
     // provider já persistido, não do input — que pode nem ter sido
