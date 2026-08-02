@@ -2,7 +2,11 @@ import { ApiProperty } from '@nestjs/swagger';
 import type { MesmasChaves, Wire } from '../../shared/dto/wire';
 import { ROLE_ORDER, type Role } from '../../../../domain/iam/role';
 import type { Workspace } from '../../../../domain/iam/workspace.entity';
-import type { Project } from '../../../../domain/iam/project.entity';
+import {
+  STORY_PROMOTION_MODES,
+  type Project,
+  type StoryPromotionMode,
+} from '../../../../domain/iam/project.entity';
 import type { WorkspaceMember } from '../../../../domain/iam/workspace-member.entity';
 import type {
   ProjectMember,
@@ -140,6 +144,25 @@ export class ProjectResponseDto implements Wire<Project> {
       'do domínio.',
   })
   taskBudgetMicros!: number | null;
+
+  @ApiProperty({
+    example: 3,
+    nullable: true,
+    description:
+      'Circuit breaker por dev agent (Fase 12b — RN-047): tasks consecutivas ' +
+      'terminando blocked até parar em idle_tripped. `null` usa o padrão do domínio.',
+  })
+  maxConsecutiveBlocked!: number | null;
+
+  @ApiProperty({
+    enum: STORY_PROMOTION_MODES,
+    example: 'manual',
+    description:
+      'Quem promove story a `ready` (Fase 12c — RN-048). `manual`: o PO propõe ' +
+      'e o usuário decide. `auto`: promoção automática na criação (opt-in; é ' +
+      'onde os projetos anteriores à 12c ficaram).',
+  })
+  storyPromotion!: StoryPromotionMode;
 
   @ApiProperty({ example: '2026-07-21T11:00:00.000Z', format: 'date-time' })
   createdAt!: string;

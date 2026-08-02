@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { TaskRepository } from '../../ports/backlog-repository.port';
+import {
+  StoryRepository,
+  TaskRepository,
+} from '../../ports/backlog-repository.port';
+import { OutboxRepository } from '../../ports/outbox-repository.port';
+import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 
 /**
@@ -10,21 +15,49 @@ import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-
 export class UnblockTaskUseCase {
   constructor(
     private readonly tasks: TaskRepository,
+    private readonly stories: StoryRepository,
     private readonly appendEvent: AppendSessionEventUseCase,
+    private readonly outbox: OutboxRepository,
+    private readonly unitOfWork: UnitOfWork,
   ) {}
 
-  async execute(
+  execute(
     projectId: string,
     sessionId: string,
     taskId: string,
     userId: string,
   ) {
-    const task = await this.tasks.unblock(taskId);
-    await this.appendEvent.execute(projectId, sessionId, {
-      type: 'backlog.task_unblocked',
-      actor: { kind: 'user', id: userId },
-      payload: { taskId },
+    // Desbloqueio e wake na MESMA transação (D7): destravar a task e perder o
+    // wake devolve o problema que o usuário acabou de resolver — a task fica
+    // pegável e o agente idle não fica sabendo.
+    return this.unitOfWork.runInTransaction(async () => {
+      const task = await this.tasks.unblock(taskId);
+      await this.appendEvent.execute(projectId, sessionId, {
+        type: 'backlog.task_unblocked',
+        actor: { kind: 'user', id: userId },
+        payload: { taskId },
+      });
+
+      // Fase 12b (RN-047, ADR 0045): só emite se a story já estiver `ready` —
+      // senão a task volta pegável mas ninguém pode reivindicá-la ainda, e o
+      // wake seria ruído sem efeito (nenhum agente conseguiria o claim).
+      const story = await this.stories.findById(task.storyId);
+      if (story?.status === 'ready') {
+        await this.outbox.append({
+          aggregateType: 'task',
+          aggregateId: task.id,
+          eventType: 'task.became_claimable',
+          payload: {
+            projectId,
+            sessionId,
+            taskId: task.id,
+            modules: story.moduleIds,
+            cause: 'task_unblocked',
+          },
+        });
+      }
+
+      return task;
     });
-    return task;
   }
 }

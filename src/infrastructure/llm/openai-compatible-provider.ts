@@ -63,6 +63,23 @@ export type ExtrairUpstreamProvider = (
 ) => string | undefined;
 
 /**
+ * Só um HUB precisa disto: ele aceita a conexão, começa a mandar texto, e o
+ * provedor real por trás cai NO MEIO do stream — a OpenAI não tem esse modo de
+ * falha, porque não roteia para infraestrutura de terceiros. Sem este hook, um
+ * frame de erro no meio do SSE seria lido como se fosse um frame de conteúdo
+ * comum: `choices?.[0]?.delta` viria vazio/ausente e `usage` também, e o erro
+ * seria ENGOLIDO — o usuário veria um texto parcial truncado sem nenhum aviso
+ * do porquê.
+ *
+ * `undefined` = este frame não é um frame de erro (segue o processamento
+ * normal). Checado ANTES de `delta`/`usage` de propósito: um frame de erro não
+ * deve ser tratado como frame de conteúdo só porque não bateu o formato certo.
+ */
+export type ParseErrorFrame = (
+  frame: Record<string, unknown>,
+) => LLMProviderError | undefined;
+
+/**
  * Como ler o `GET /models` deste provider (Fase 9c).
  *
  * O padrão OpenAI é `{ data: [{ id }] }` e informa pouco mais que o id. Um hub
@@ -83,6 +100,8 @@ export interface OpenAICompatibleConfig {
   readonly extrairUpstreamProvider?: ExtrairUpstreamProvider;
   /** Só quando `capabilities.listModels`; ausente = o parsing padrão. */
   readonly parseCatalogo?: ParseCatalogo;
+  /** Só em hubs — ver `ParseErrorFrame`. Ausente = nenhum frame é erro. */
+  readonly parseErrorFrame?: ParseErrorFrame;
 }
 
 /**
@@ -153,6 +172,18 @@ export class OpenAICompatibleProvider implements LLMProvider {
           frame = JSON.parse(payload) as FrameDeChat;
         } catch {
           continue; // frame corrompido/parcial — ignora, não derruba o stream
+        }
+
+        // Checado ANTES de tudo: um frame de erro de hub não é um frame de
+        // conteúdo com campos vazios, é outra coisa — tratá-lo como o
+        // segundo esconderia a falha em vez de reportá-la (ver
+        // `ParseErrorFrame`).
+        const erroDeFrame = this.config.parseErrorFrame?.(
+          frame as unknown as Record<string, unknown>,
+        );
+        if (erroDeFrame) {
+          yield toErrorChunk(erroDeFrame, this.name);
+          return;
         }
 
         // Vem num frame qualquer do stream (não necessariamente no do usage),

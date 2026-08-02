@@ -204,6 +204,41 @@
       "when": 1785606080467,
       "tag": "0028_nostalgic_owl",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1785626519799,
+      "tag": "0029_quiet_captain_stacy",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1785632017880,
+      "tag": "0030_public_mockingbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1785637706306,
+      "tag": "0031_special_winter_soldier",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1785690343586,
+      "tag": "0032_freezing_true_believers",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1785698104095,
+      "tag": "0033_absurd_domino",
+      "breakpoints": true
     }
   ]
 }

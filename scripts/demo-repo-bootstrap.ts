@@ -37,6 +37,7 @@ import { EnvelopeEncryptionService } from '../src/infrastructure/security/envelo
 import { AppendSessionEventUseCase } from '../src/application/use-cases/sessions/append-session-event.use-case';
 import { TransitionSessionUseCase } from '../src/application/use-cases/sessions/transition-session.use-case';
 import { ProvisionRepositoryUseCase } from '../src/application/use-cases/git/provision-repository.use-case';
+import { BootstrapRunner } from '../src/application/use-cases/git/bootstrap-runner';
 import { LocalGitProvider } from '../src/infrastructure/git/local-git-provider';
 import type { GitProviderRegistry } from '../src/application/ports/git-provider.port';
 import type { ApiToEngineClient } from '../src/application/ports/api-to-engine-client.port';
@@ -61,6 +62,12 @@ class UnreachableEngineClient implements ApiToEngineClient {
     throw new Error('engine não deveria ser chamado pelo bootstrap');
   }
   acceptParallelization(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
+  rearmDevAgent(): Promise<void> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
+  reviseStory(): Promise<void> {
     throw new Error('engine não deveria ser chamado pelo bootstrap');
   }
   offerInfraHandoff(): Promise<void> {
@@ -180,6 +187,13 @@ async function main() {
     sessionRepo,
     appendSessionEvent,
     transitionSession,
+    new BootstrapRunner(
+      unitOfWork,
+      repoBootstraps,
+      outbox,
+      proposedActionsRepo,
+      appendSessionEvent,
+    ),
   );
 
   const [user] = await db

@@ -5,6 +5,12 @@ import type { LLMProvider } from '../../application/ports/llm-provider.port';
 import { OllamaProvider } from './ollama-provider';
 import { AnthropicProvider } from './anthropic-provider';
 import { OpenAIProvider } from './openai-provider';
+import { OpenRouterProvider } from './openrouter-provider';
+import { NvidiaNimProvider } from './nvidia-nim-provider';
+import { TogetherProvider } from './together-provider';
+import { DeepInfraProvider } from './deepinfra-provider';
+import { BitdeerProvider } from './bitdeer-provider';
+import { VultrProvider } from './vultr-provider';
 import { TracedLLMProvider } from './traced-llm-provider';
 import { BraboMetrics } from '../observability/brabo-metrics';
 
@@ -14,6 +20,12 @@ export class LLMProviderRegistryImpl implements LLMProviderRegistry {
     private readonly ollama: OllamaProvider,
     private readonly anthropic: AnthropicProvider,
     private readonly openai: OpenAIProvider,
+    private readonly openrouter: OpenRouterProvider,
+    private readonly nvidiaNim: NvidiaNimProvider,
+    private readonly together: TogetherProvider,
+    private readonly deepinfra: DeepInfraProvider,
+    private readonly bitdeer: BitdeerProvider,
+    private readonly vultr: VultrProvider,
     private readonly metrics: BraboMetrics,
   ) {}
 
@@ -46,6 +58,18 @@ export class LLMProviderRegistryImpl implements LLMProviderRegistry {
         return this.anthropic;
       case 'openai':
         return this.openai;
+      case 'openrouter':
+        return this.openrouter;
+      case 'nvidia-nim':
+        return this.nvidiaNim;
+      case 'together':
+        return this.together;
+      case 'deepinfra':
+        return this.deepinfra;
+      case 'bitdeer':
+        return this.bitdeer;
+      case 'vultr':
+        return this.vultr;
     }
   }
 }

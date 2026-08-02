@@ -21,6 +21,7 @@ import {
 } from '../../../domain/actions/decide';
 import { GIT_EXECUTED_ACTION_TYPES } from '../../../domain/actions/git-action-types';
 import { commandFromPayload } from '../../../domain/actions/pattern-for-action';
+import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
 import type { ActionStatus } from '../../../domain/actions/action-state-machine';
 import type { PermissionPolicy } from '../../../domain/actions/permissions-file';
@@ -47,6 +48,7 @@ export class ProposeActionUseCase {
     private readonly executeTerminalAction: ExecuteTerminalActionUseCase,
     private readonly executeGitAction: ExecuteGitActionUseCase,
     private readonly executeInfraPr: ExecuteInfraPrUseCase,
+    private readonly appendSessionEvent: AppendSessionEventUseCase,
   ) {}
 
   @Traced('application')
@@ -109,6 +111,28 @@ export class ProposeActionUseCase {
         aggregateId: created.id,
         eventType: 'proposed_action.created',
         payload: { actionType, status, resolvedPolicy: decision.policy },
+      });
+
+      // O MESMO fato no event log (achado #17 do dogfooding). A linha de
+      // outbox acima existe desde a Fase 1 e é consumida pelo engine — ela é
+      // transporte, não memória: o outbox é podado, e `processed_at` conta
+      // entrega, não decisão. `docs/reference/events.md` documentava
+      // `proposed_action.created` como evento de domínio desde sempre; até
+      // aqui isso simplesmente não era verdade.
+      //
+      // `status` no payload é o que torna a auto-aprovação AUDITÁVEL: sem ele
+      // não há como distinguir "o usuário clicou" de "a política decidiu
+      // sozinha", que é exatamente a métrica que a Fase 10 quis medir e não
+      // conseguiu.
+      await this.appendSessionEvent.execute(projectId, sessionId, {
+        type: 'proposed_action.created',
+        actor: input.actor,
+        payload: {
+          actionId: created.id,
+          actionType,
+          status,
+          resolvedPolicy: decision.policy,
+        },
       });
 
       return created;

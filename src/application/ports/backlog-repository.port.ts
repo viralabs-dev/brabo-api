@@ -46,6 +46,16 @@ export abstract class StoryRepository {
   abstract findByProject(projectId: string): Promise<Story[]>;
   abstract updateStatus(id: string, status: StoryStatus): Promise<Story>;
   abstract updateModules(id: string, moduleIds: string[]): Promise<Story>;
+  // Fase 12c (RN-048). `proposedReady` liga ao criar em modo `manual` e
+  // desliga tanto na promoção quanto na recusa — sempre junto do fato que a
+  // resolveu, para nunca sobrar uma story "aguardando" que já foi decidida.
+  abstract setProposedReady(id: string, proposed: boolean): Promise<Story>;
+  // Recusa do usuário: grava o motivo, carimba a hora e tira da fila de
+  // proposta, numa escrita só.
+  abstract markReturned(id: string, reason: string): Promise<Story>;
+  // As stories aguardando decisão do usuário — a seção do Backlog e o badge
+  // de contagem.
+  abstract listProposedReady(projectId: string): Promise<Story[]>;
 }
 
 export abstract class TaskRepository {

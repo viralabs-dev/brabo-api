@@ -97,6 +97,168 @@ const MODEL_SEEDS: ModelInput[] = [
     outputPricePerMillionMicros: 600_000,
     supportsToolCalling: true,
   },
+  // NVIDIA NIM (Fase 11b) — `listModels: false` (o catálogo hospedado não
+  // informa preço em nenhuma doc verificada), então o provider só existe pra
+  // curadoria através deste seed até alguém confirmar um endpoint de preço.
+  // NVIDIA não publica preço de produção (a doc oficial aponta pra contato
+  // comercial) — os valores abaixo são uma ESTIMATIVA por comparação com
+  // modelos equivalentes noutros providers (não uma cotação oficial), com
+  // `manualPricing: true` pra o sync nunca sobrescrever sem decisão
+  // explícita. Corrigir assim que houver uma fonte oficial.
+  {
+    provider: 'nvidia-nim',
+    name: 'meta/llama-3.1-70b-instruct',
+    displayName: 'Llama 3.1 70B Instruct (NVIDIA NIM)',
+    inputPricePerMillionMicros: 600_000,
+    outputPricePerMillionMicros: 600_000,
+    supportsToolCalling: true,
+    manualPricing: true,
+  },
+  {
+    provider: 'nvidia-nim',
+    name: 'nvidia/llama-3.1-nemotron-70b-instruct',
+    displayName: 'Llama 3.1 Nemotron 70B Instruct (NVIDIA NIM)',
+    inputPricePerMillionMicros: 600_000,
+    outputPricePerMillionMicros: 600_000,
+    supportsToolCalling: false,
+    manualPricing: true,
+  },
+  {
+    provider: 'nvidia-nim',
+    name: 'meta/llama-3.2-3b-instruct',
+    displayName: 'Llama 3.2 3B Instruct (NVIDIA NIM)',
+    inputPricePerMillionMicros: 50_000,
+    outputPricePerMillionMicros: 50_000,
+    supportsToolCalling: false,
+    manualPricing: true,
+  },
+  // Together AI (Fase 11b) — `listModels: true` (o sync cobre o catálogo
+  // assim que houver credencial), estas 2 linhas são só bootstrap pra não
+  // ficar vazio antes do primeiro sync. Preço batido contra
+  // together.ai/models nesta sessão; `manualPricing: false` porque o sync
+  // PODE atualizar (ao contrário da NIM, aqui o catálogo tem preço real).
+  {
+    provider: 'together',
+    name: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+    displayName: 'Llama 3.3 70B Instruct Turbo (Together)',
+    inputPricePerMillionMicros: 880_000,
+    outputPricePerMillionMicros: 880_000,
+    supportsToolCalling: true,
+  },
+  {
+    provider: 'together',
+    name: 'openai/gpt-oss-20b',
+    displayName: 'GPT-OSS 20B (Together)',
+    inputPricePerMillionMicros: 50_000,
+    outputPricePerMillionMicros: 200_000,
+    supportsToolCalling: true,
+  },
+  // DeepInfra (Fase 11b) — `listModels: true` (o catálogo é PÚBLICO, sem
+  // autenticação, confirmado ao vivo nesta sessão), mas o seed é
+  // OBRIGATÓRIO mesmo assim: sem tester de conexão declarado (nenhum
+  // endpoint autenticado de validação foi encontrado — o próprio catálogo
+  // não exige chave), o primeiro sync só roda depois que ALGUÉM cadastrar
+  // uma credencial de qualquer jeito. Preço e contexto confirmados AO VIVO
+  // contra `GET /v1/openai/models` nesta sessão — `manualPricing: false`
+  // porque o sync PODE atualizar. `supportsToolCalling: false`: a doc não
+  // confirma a capability por modelo (diferente do id em si, que é real).
+  {
+    provider: 'deepinfra',
+    name: 'deepseek-ai/DeepSeek-V3',
+    displayName: 'DeepSeek V3 (DeepInfra)',
+    inputPricePerMillionMicros: 320_000,
+    outputPricePerMillionMicros: 890_000,
+    contextWindow: 163_840,
+    supportsToolCalling: false,
+  },
+  {
+    provider: 'deepinfra',
+    name: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo',
+    displayName: 'Llama 3.1 70B Instruct Turbo (DeepInfra)',
+    inputPricePerMillionMicros: 400_000,
+    outputPricePerMillionMicros: 400_000,
+    contextWindow: 131_072,
+    supportsToolCalling: false,
+  },
+  {
+    provider: 'deepinfra',
+    name: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo',
+    displayName: 'Llama 3.1 8B Instruct Turbo (DeepInfra)',
+    inputPricePerMillionMicros: 20_000,
+    outputPricePerMillionMicros: 40_000,
+    contextWindow: 131_072,
+    supportsToolCalling: false,
+  },
+  // Bitdeer (Fase 11b) — `listModels: false` (nenhum shape de preço
+  // verificado publicamente), MAS os três ids abaixo são REAIS, confirmados
+  // em exemplos de configuração do próprio blog da Bitdeer nesta sessão
+  // (não são nomes de vitrine — são o valor literal que vai no campo
+  // `model`). Preço da Bitdeer em si não foi encontrado (a página de preço
+  // renderiza via JS) — os valores são ESTIMATIVA por comparação com o
+  // mesmo modelo/família noutros providers, com `manualPricing: true`.
+  // Corrigir assim que houver uma fonte oficial da própria Bitdeer.
+  {
+    provider: 'bitdeer',
+    name: 'moonshotai/Kimi-K2.5',
+    displayName: 'Kimi K2.5 (Bitdeer)',
+    inputPricePerMillionMicros: 900_000,
+    outputPricePerMillionMicros: 3_500_000,
+    supportsToolCalling: false,
+    manualPricing: true,
+  },
+  {
+    provider: 'bitdeer',
+    name: 'zai-org/GLM-5',
+    displayName: 'GLM-5 (Bitdeer)',
+    inputPricePerMillionMicros: 1_200_000,
+    outputPricePerMillionMicros: 4_000_000,
+    supportsToolCalling: false,
+    manualPricing: true,
+  },
+  {
+    provider: 'bitdeer',
+    name: 'nvidia/NVIDIA-Nemotron-3-Super-120B-A12B',
+    displayName: 'NVIDIA Nemotron 3 Super 120B (Bitdeer)',
+    inputPricePerMillionMicros: 600_000,
+    outputPricePerMillionMicros: 1_800_000,
+    supportsToolCalling: false,
+    manualPricing: true,
+  },
+  // Vultr (Fase 11b) — `listModels: false` (a rota que a base chama,
+  // `GET /models`, não tem preço na doc oficial; a rota com preço
+  // documentado devolveu 404 ao vivo nesta sessão — decisão MUDOU do plano
+  // original, que apontava `true`). `kimi-k2-instruct` é tool-calling
+  // CONFIRMADO com exemplo real na doc oficial nesta sessão
+  // (finish_reason: "tool_calls"); os outros dois vêm de exemplo de doc
+  // sem confirmação de tool calling. Preço ESTIMADO — Vultr não publica
+  // preço por modelo em doc acessível nesta sessão.
+  {
+    provider: 'vultr',
+    name: 'kimi-k2-instruct',
+    displayName: 'Kimi K2 Instruct (Vultr)',
+    inputPricePerMillionMicros: 900_000,
+    outputPricePerMillionMicros: 3_500_000,
+    supportsToolCalling: true,
+    manualPricing: true,
+  },
+  {
+    provider: 'vultr',
+    name: 'llama-3.3-70b-instruct-fp8',
+    displayName: 'Llama 3.3 70B Instruct FP8 (Vultr)',
+    inputPricePerMillionMicros: 400_000,
+    outputPricePerMillionMicros: 400_000,
+    supportsToolCalling: false,
+    manualPricing: true,
+  },
+  {
+    provider: 'vultr',
+    name: 'deepseek-r1-distill-llama-70b',
+    displayName: 'DeepSeek R1 Distill Llama 70B (Vultr)',
+    inputPricePerMillionMicros: 400_000,
+    outputPricePerMillionMicros: 400_000,
+    supportsToolCalling: false,
+    manualPricing: true,
+  },
 ];
 
 async function main() {
