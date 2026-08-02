@@ -313,6 +313,11 @@ export const projects = pgTable(
     // porque "configurável por projeto" precisa sobreviver — antes o valor só
     // existia como parâmetro da ativação e se perdia na reativação.
     taskBudgetMicros: bigint('task_budget_micros', { mode: 'number' }),
+    // Circuit breaker por dev agent (Fase 12b, RN-047): quantas tasks
+    // TERMINAM blocked em sequência até o agente parar em idle_tripped.
+    // Nulo usa o default do domínio. Mesmo motivo do campo acima: precisa
+    // sobreviver à reativação, não só existir como parâmetro dela.
+    maxConsecutiveBlocked: integer('max_consecutive_blocked'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

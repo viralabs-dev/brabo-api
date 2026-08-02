@@ -19,12 +19,14 @@ const MODULOS = [
 
 function build(opts?: {
   projectBudget?: number | null;
+  projectBreaker?: number | null;
   modules?: typeof MODULOS;
 }) {
   const started: {
     budget?: number;
     maxCorrections?: number;
     impl?: string;
+    maxConsecutiveBlocked?: number;
   } = {};
   const autonomias: { agentId: string; type: string }[] = [];
   const allowPatterns: string[] = [];
@@ -58,10 +60,12 @@ function build(opts?: {
       budget?: number,
       maxCorrections?: number,
       impl?: string,
+      maxConsecutiveBlocked?: number,
     ) => {
       started.budget = budget;
       started.maxCorrections = maxCorrections;
       started.impl = impl;
+      started.maxConsecutiveBlocked = maxConsecutiveBlocked;
       return Promise.resolve();
     },
   } as unknown as ApiToEngineClient;
@@ -72,6 +76,8 @@ function build(opts?: {
         id: 'proj-1',
         taskBudgetMicros:
           opts?.projectBudget === undefined ? null : opts.projectBudget,
+        maxConsecutiveBlocked:
+          opts?.projectBreaker === undefined ? null : opts.projectBreaker,
       }),
     update: (_id: string, input: Record<string, unknown>) => {
       projectUpdates.push(input);
@@ -171,6 +177,80 @@ describe('ActivateExecutionUseCase — orçamento por task', () => {
 
     const ativacao = eventos.find((e) => e.type === 'execution.activated');
     expect(ativacao?.payload.taskBudgetMicros).toBe(777_000);
+  });
+});
+
+describe('ActivateExecutionUseCase — circuit breaker (Fase 12b — RN-047)', () => {
+  it('sem parâmetro e sem setting do projeto: usa o default', async () => {
+    const { useCase, started } = build();
+
+    await useCase.execute('proj-1', 'user-1');
+
+    expect(started.maxConsecutiveBlocked).toBe(3);
+  });
+
+  it('setting do projeto vence o default', async () => {
+    const { useCase, started } = build({ projectBreaker: 5 });
+
+    await useCase.execute('proj-1', 'user-1');
+
+    expect(started.maxConsecutiveBlocked).toBe(5);
+  });
+
+  it('parâmetro vence o setting do projeto E é persistido (sobrevive à reativação)', async () => {
+    const { useCase, started, projectUpdates } = build({
+      projectBreaker: 5,
+    });
+
+    await useCase.execute(
+      'proj-1',
+      'user-1',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      2,
+    );
+
+    expect(started.maxConsecutiveBlocked).toBe(2);
+    expect(projectUpdates).toEqual([{ maxConsecutiveBlocked: 2 }]);
+  });
+
+  it('parâmetro igual ao já persistido não gera escrita à toa', async () => {
+    const { useCase, projectUpdates } = build({ projectBreaker: 2 });
+
+    await useCase.execute(
+      'proj-1',
+      'user-1',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      2,
+    );
+
+    expect(projectUpdates).toEqual([]);
+  });
+
+  it('orçamento E breaker divergindo juntos: uma escrita só, com os dois campos', async () => {
+    const { useCase, projectUpdates } = build({
+      projectBudget: 1_200_000,
+      projectBreaker: 5,
+    });
+
+    await useCase.execute(
+      'proj-1',
+      'user-1',
+      300_000,
+      undefined,
+      undefined,
+      undefined,
+      2,
+    );
+
+    expect(projectUpdates).toEqual([
+      { taskBudgetMicros: 300_000, maxConsecutiveBlocked: 2 },
+    ]);
   });
 });
 

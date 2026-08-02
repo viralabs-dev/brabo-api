@@ -131,6 +131,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     taskBudgetMicros?: number,
     maxGateCorrections?: number,
     impl?: DevAgentImpl,
+    maxConsecutiveBlocked?: number,
   ): Promise<void> {
     await this.postCommand(`/internal/sessions/${sessionId}/execution/start`, {
       projectId,
@@ -138,6 +139,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
       taskBudgetMicros,
       maxGateCorrections,
       impl,
+      maxConsecutiveBlocked,
     });
   }
 

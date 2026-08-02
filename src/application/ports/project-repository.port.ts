@@ -11,6 +11,9 @@ export interface ProjectInput {
   // Teto de tokens por task dos dev agents (micro-USD); nulo/omitido usa o
   // default do domínio.
   taskBudgetMicros?: number | null;
+  // Circuit breaker por dev agent (Fase 12b — RN-047); nulo/omitido usa o
+  // default do domínio.
+  maxConsecutiveBlocked?: number | null;
 }
 
 export abstract class ProjectRepository {

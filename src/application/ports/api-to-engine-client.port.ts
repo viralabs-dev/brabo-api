@@ -65,6 +65,7 @@ export abstract class ApiToEngineClient {
     taskBudgetMicros?: number,
     maxGateCorrections?: number,
     impl?: DevAgentImpl,
+    maxConsecutiveBlocked?: number,
   ): Promise<void>;
 
   // Executa uma ação git (git_commit/git_push) no worktree do agente, no

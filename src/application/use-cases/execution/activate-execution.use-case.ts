@@ -53,6 +53,11 @@ export const DEV_AUTO_GIT_ACTIONS = ['git_commit', 'git_push', 'pr_open'];
 // próprio ato de ativar (ver `execute`); sem tabela nova.
 const DEFAULT_TASK_BUDGET_MICROS = 500_000;
 
+// Circuit breaker por dev agent (Fase 12b — RN-047): tasks consecutivas
+// terminando blocked até o agente parar em idle_tripped. Mesmo espírito do
+// teto acima — conservador por padrão, configurável por projeto.
+export const DEFAULT_MAX_CONSECUTIVE_BLOCKED = 3;
+
 /**
  * Ativa a fase de execução de um projeto (Fase 4a): exige module_map vigente;
  * cria uma sessão de execução dedicada e a ativa (sobe o SessionServer); seeda
@@ -81,6 +86,7 @@ export class ActivateExecutionUseCase {
     maxGateCorrections?: number,
     devAgentImpl?: DevAgentImpl,
     terminalAllowPatterns?: readonly string[],
+    maxConsecutiveBlocked?: number,
   ) {
     const maxCorrections = maxGateCorrections ?? DEFAULT_MAX_GATE_CORRECTIONS;
     const impl = devAgentImpl ?? DEFAULT_DEV_AGENT_IMPL;
@@ -91,19 +97,38 @@ export class ActivateExecutionUseCase {
       );
     }
 
-    // Orçamento por task: parâmetro → setting do projeto → default. Quando vem
-    // no parâmetro, PERSISTE — senão o valor escolhido se perderia na próxima
-    // ativação (o engine é quem o guardava, por linha de dev agent).
+    // Orçamento por task e teto do circuit breaker: parâmetro → setting do
+    // projeto → default. Quando vem no parâmetro, PERSISTE — senão o valor
+    // escolhido se perderia na próxima ativação (o engine é quem os
+    // guardava, por linha de dev agent).
     const project = await this.projects.findById(projectId);
     const budget =
       taskBudgetMicros ??
       project?.taskBudgetMicros ??
       DEFAULT_TASK_BUDGET_MICROS;
+    const breakerThreshold =
+      maxConsecutiveBlocked ??
+      project?.maxConsecutiveBlocked ??
+      DEFAULT_MAX_CONSECUTIVE_BLOCKED;
+
+    const diverges: Partial<{
+      taskBudgetMicros: number;
+      maxConsecutiveBlocked: number;
+    }> = {};
     if (
       taskBudgetMicros !== undefined &&
       taskBudgetMicros !== project?.taskBudgetMicros
     ) {
-      await this.projects.update(projectId, { taskBudgetMicros });
+      diverges.taskBudgetMicros = taskBudgetMicros;
+    }
+    if (
+      maxConsecutiveBlocked !== undefined &&
+      maxConsecutiveBlocked !== project?.maxConsecutiveBlocked
+    ) {
+      diverges.maxConsecutiveBlocked = maxConsecutiveBlocked;
+    }
+    if (Object.keys(diverges).length > 0) {
+      await this.projects.update(projectId, diverges);
     }
 
     // Sem regra no permissions.json, `decide()` cai em require_approval e TODO
@@ -148,6 +173,7 @@ export class ActivateExecutionUseCase {
       budget,
       maxCorrections,
       impl,
+      breakerThreshold,
     );
 
     await this.appendEvent.execute(projectId, session.id, {

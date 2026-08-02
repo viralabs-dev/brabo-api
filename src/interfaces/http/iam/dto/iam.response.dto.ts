@@ -141,6 +141,15 @@ export class ProjectResponseDto implements Wire<Project> {
   })
   taskBudgetMicros!: number | null;
 
+  @ApiProperty({
+    example: 3,
+    nullable: true,
+    description:
+      'Circuit breaker por dev agent (Fase 12b — RN-047): tasks consecutivas ' +
+      'terminando blocked até parar em idle_tripped. `null` usa o padrão do domínio.',
+  })
+  maxConsecutiveBlocked!: number | null;
+
   @ApiProperty({ example: '2026-07-21T11:00:00.000Z', format: 'date-time' })
   createdAt!: string;
 
