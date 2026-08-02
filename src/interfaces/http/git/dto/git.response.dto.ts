@@ -1,12 +1,21 @@
 import { ApiProperty } from '@nestjs/swagger';
 import type { MesmasChaves, Wire } from '../../shared/dto/wire';
 import {
+  BOOTSTRAP_DIAGNOSTIC_KINDS,
+  BOOTSTRAP_PLAN_DECISIONS,
   BOOTSTRAP_STATUSES,
   BOOTSTRAP_STEPS,
   REPO_ORIGINS,
 } from '../../../../domain/git/repo-bootstrap.entity';
+import type {
+  BootstrapDiagnostic,
+  BootstrapPlan,
+  BootstrapPlanStep,
+} from '../../../../domain/git/repo-bootstrap.entity';
 import type { ProvisionedRepository } from '../../../../domain/git/provisioned-repository.entity';
 import type { ProvisionRepositoryResult } from '../../../../application/use-cases/git/provision-repository.use-case';
+import type { AdoptRepositoryResult } from '../../../../application/use-cases/git/adopt-repository.use-case';
+import type { DecideBootstrapPlanResult } from '../../../../application/use-cases/git/decide-bootstrap-plan.use-case';
 import type { RepoBootstrapStatus } from '../../../../application/use-cases/git/get-repo-bootstrap-status.use-case';
 
 /**
@@ -107,10 +116,18 @@ export const _chavesProvisionamento: MesmasChaves<
 
 export class RepoBootstrapStatusResponseDto implements Wire<RepoBootstrapStatus> {
   @ApiProperty({
-    enum: ['provisioning', 'ready', 'failed'],
+    enum: [
+      'provisioning',
+      'provisioned',
+      'provision_failed',
+      'awaiting_plan_decision',
+    ],
     example: 'provisioning',
     nullable: true,
-    description: '`null` quando nunca houve provisionamento neste projeto.',
+    description:
+      '`null` quando nunca houve provisionamento neste projeto. ' +
+      '`awaiting_plan_decision` é repositório ADOTADO com plano gerado e ainda ' +
+      'não decidido: nada roda até alguém aprovar o plano ou adotar como está.',
   })
   status!: Wire<RepoBootstrapStatus>['status'];
 
@@ -140,4 +157,141 @@ export class RepoBootstrapStatusResponseDto implements Wire<RepoBootstrapStatus>
 export const _chavesBootstrap: MesmasChaves<
   RepoBootstrapStatusResponseDto,
   RepoBootstrapStatus
+> = true;
+
+// --- Adoção de repositório existente (Fase 12a) ---
+
+export class BootstrapPlanStepResponseDto implements Wire<BootstrapPlanStep> {
+  @ApiProperty({ enum: BOOTSTRAP_STEPS, example: 'create_qa_branch' })
+  step!: Wire<BootstrapPlanStep>['step'];
+
+  @ApiProperty({
+    example: 'git_branch_create',
+    description:
+      'A mesma taxonomia de `proposed_actions` — cada passo aprovado vira uma ' +
+      'ação registrada quando o bootstrap roda.',
+  })
+  actionType!: string;
+
+  @ApiProperty({
+    example: { branchName: 'qa', fromRef: 'dev' },
+    description: 'Os dados da mutação: qual branch, qual arquivo, de onde.',
+    additionalProperties: true,
+  })
+  payload!: Record<string, unknown>;
+}
+export const _chavesPlanoPasso: MesmasChaves<
+  BootstrapPlanStepResponseDto,
+  BootstrapPlanStep
+> = true;
+
+export class BootstrapDiagnosticResponseDto implements Wire<BootstrapDiagnostic> {
+  @ApiProperty({
+    enum: BOOTSTRAP_DIAGNOSTIC_KINDS,
+    example: 'extra_branch',
+    description:
+      '`extra_branch` é INFORMATIVO e nunca bloqueia: repositório adotado tem a ' +
+      'política que tem, e o bootstrap não a apaga.',
+  })
+  kind!: Wire<BootstrapDiagnostic>['kind'];
+
+  @ApiProperty({
+    example: { branchName: 'develop', protected: false },
+    additionalProperties: true,
+  })
+  detail!: Record<string, unknown>;
+}
+export const _chavesDiagnostico: MesmasChaves<
+  BootstrapDiagnosticResponseDto,
+  BootstrapDiagnostic
+> = true;
+
+export class BootstrapPlanResponseDto implements Wire<BootstrapPlan> {
+  @ApiProperty({ example: '2026-08-01T23:45:00.000Z', format: 'date-time' })
+  generatedAt!: string;
+
+  @ApiProperty({
+    type: [BootstrapPlanStepResponseDto],
+    description:
+      'O que o bootstrap FARIA. Lista vazia = o repositório já está como o ' +
+      'template quer, e não há o que aprovar.',
+  })
+  steps!: BootstrapPlanStepResponseDto[];
+
+  @ApiProperty({
+    type: [BootstrapDiagnosticResponseDto],
+    description: 'As divergências entre o repositório e o template.',
+  })
+  diagnostics!: BootstrapDiagnosticResponseDto[];
+}
+export const _chavesPlano: MesmasChaves<
+  BootstrapPlanResponseDto,
+  BootstrapPlan
+> = true;
+
+export class AdoptRepositoryResponseDto implements Wire<AdoptRepositoryResult> {
+  @ApiProperty({ type: ProvisionedRepositoryResponseDto })
+  repository!: ProvisionedRepositoryResponseDto;
+
+  @ApiProperty({
+    type: BootstrapPlanResponseDto,
+    description:
+      'O DRY-RUN: nada foi executado no repositório. Decida por ' +
+      '`POST .../bootstrap/plan/approve` ou `.../plan/skip`.',
+  })
+  plan!: BootstrapPlanResponseDto;
+
+  @ApiProperty({
+    example: false,
+    description:
+      '`true` quando o projeto já tinha adotado ESTE repositório — nada foi ' +
+      'criado, o plano só foi regerado sobre o estado atual.',
+  })
+  alreadyAdopted!: boolean;
+}
+export const _chavesAdocao: MesmasChaves<
+  AdoptRepositoryResponseDto,
+  AdoptRepositoryResult
+> = true;
+
+export class BootstrapPlanEstadoResponseDto {
+  @ApiProperty({
+    type: BootstrapPlanResponseDto,
+    nullable: true,
+    description: '`null` quando o projeto não tem repositório adotado.',
+  })
+  plan!: BootstrapPlanResponseDto | null;
+
+  @ApiProperty({
+    enum: BOOTSTRAP_PLAN_DECISIONS,
+    example: null,
+    nullable: true,
+    description:
+      '`null` = plano gerado e ainda NÃO decidido. É o estado em que nada roda ' +
+      '(RN-045).',
+  })
+  decision!: (typeof BOOTSTRAP_PLAN_DECISIONS)[number] | null;
+
+  @ApiProperty({ example: null, nullable: true, format: 'date-time' })
+  decidedAt!: string | null;
+
+  @ApiProperty({ example: null, nullable: true })
+  decidedBy!: string | null;
+}
+
+export class DecideBootstrapPlanResponseDto implements Wire<DecideBootstrapPlanResult> {
+  @ApiProperty({ type: ProvisionedRepositoryResponseDto })
+  repository!: ProvisionedRepositoryResponseDto;
+
+  @ApiProperty({
+    type: PassoDeBootstrapResponseDto,
+    description:
+      'Onde o bootstrap ficou. Em `skip` o cursor NÃO avança: nenhum passo ' +
+      'rodou, e o registro diz isso.',
+  })
+  bootstrap!: PassoDeBootstrapResponseDto;
+}
+export const _chavesDecisao: MesmasChaves<
+  DecideBootstrapPlanResponseDto,
+  DecideBootstrapPlanResult
 > = true;

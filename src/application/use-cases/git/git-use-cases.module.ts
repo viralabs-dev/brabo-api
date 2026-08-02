@@ -11,6 +11,7 @@ import { RegisterGitCredentialUseCase } from './register-git-credential.use-case
 import { BootstrapRunner } from './bootstrap-runner';
 import { AdoptRepositoryUseCase } from './adopt-repository.use-case';
 import { DecideBootstrapPlanUseCase } from './decide-bootstrap-plan.use-case';
+import { GetBootstrapPlanUseCase } from './get-bootstrap-plan.use-case';
 
 const USE_CASES = [
   StartGitOauthUseCase,
@@ -18,6 +19,7 @@ const USE_CASES = [
   ProvisionRepositoryUseCase,
   AdoptRepositoryUseCase,
   DecideBootstrapPlanUseCase,
+  GetBootstrapPlanUseCase,
   GetProvisionedRepositoryUseCase,
   GetRepoBootstrapStatusUseCase,
   RegisterGitCredentialUseCase,
