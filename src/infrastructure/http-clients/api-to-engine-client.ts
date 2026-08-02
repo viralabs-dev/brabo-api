@@ -154,6 +154,17 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     );
   }
 
+  async rearmDevAgent(
+    projectId: string,
+    sessionId: string,
+    agentId: string,
+  ): Promise<void> {
+    await this.postCommand(
+      `/internal/sessions/${sessionId}/dev-agents/${agentId}/rearm`,
+      { projectId },
+    );
+  }
+
   async executeGitAction(
     projectId: string,
     sessionId: string,

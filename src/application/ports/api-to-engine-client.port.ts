@@ -86,6 +86,15 @@ export abstract class ApiToEngineClient {
     module: string,
   ): Promise<void>;
 
+  // Rearma um dev agent travado pelo circuit breaker (Fase 12b — RN-047):
+  // zera o contador de blocked consecutivas e devolve o agente a tentar
+  // reivindicar. Lança (404 do engine) se o agente não existe.
+  abstract rearmDevAgent(
+    projectId: string,
+    sessionId: string,
+    agentId: string,
+  ): Promise<void>;
+
   // Sinaliza que o usuário confirmou que a arquitetura está pronta (Fase 4a
   // — fechamento): o engine instrui o Arquiteto a oferecer o handoff ao
   // InfraAgent (mirror de confirmReadiness, sem reaproveitar o endpoint do
