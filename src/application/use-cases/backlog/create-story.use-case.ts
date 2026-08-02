@@ -4,8 +4,10 @@ import {
   StoryRepository,
 } from '../../ports/backlog-repository.port';
 import { SessionEventRepository } from '../../ports/session-event-repository.port';
+import { ModuleMapRepository } from '../../ports/module-map-repository.port';
+import { ProjectRepository } from '../../ports/project-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
-import { canBecomeReady } from '../../../domain/backlog/story-readiness';
+import { isPromotable } from '../../../domain/backlog/story-promotion';
 import type { Story } from '../../../domain/backlog/backlog.entity';
 
 export interface CreateStoryInput {
@@ -24,9 +26,17 @@ export interface CreateStoryInput {
  *  - o épico existe no projeto;
  *  - cada business_rule_id referencia MESMO um evento artifact.business_rule
  *    existente (justificativa rastreável — recusa ids inventados).
- * Cria em `draft` e, se satisfaz a regra de prontidão do domínio
- * (DoD/DoR/RF/regra), promove pra `ready` na mesma operação. Nada é criado se
- * a validação falha.
+ * Nada é criado se a validação falha.
+ *
+ * O que acontece DEPOIS de criar depende do modo do projeto (Fase 12c —
+ * RN-048):
+ *  - `auto`: se a story satisfaz `assertPromotable`, vai direto a `ready`.
+ *    É o comportamento anterior à 12c, agora opt-in.
+ *  - `manual` (default de projeto novo): a story fica `draft` com
+ *    `proposedReady`, e QUEM promove é o usuário, na aba Backlog.
+ *
+ * O modo muda só QUEM dispara — o que é validado é o mesmo
+ * `isPromotable`/`assertPromotable` nos dois casos (requisito 3 da fase).
  */
 @Injectable()
 export class CreateStoryUseCase {
@@ -35,6 +45,8 @@ export class CreateStoryUseCase {
     private readonly epics: EpicRepository,
     private readonly sessionEvents: SessionEventRepository,
     private readonly appendEvent: AppendSessionEventUseCase,
+    private readonly projects: ProjectRepository,
+    private readonly moduleMaps: ModuleMapRepository,
   ) {}
 
   async execute(
@@ -59,6 +71,17 @@ export class CreateStoryUseCase {
       }
     }
 
+    const project = await this.projects.findById(projectId);
+    const modo = project?.storyPromotion ?? 'manual';
+
+    // O module_map vigente é lido nos DOIS modos, e não só quando promove:
+    // é o que faz a simetria da validação ser real em vez de coincidência.
+    // Hoje `moduleIds` é sempre `[]` na criação (quem atribui módulo é o
+    // Arquiteto, depois), então na prática isto sempre passa — mas se a
+    // criação um dia aceitar módulos, ela já valida como a promoção.
+    const moduleMap = await this.moduleMaps.findCurrent(projectId);
+    const moduleNames = moduleMap?.modules.map((m) => m.name) ?? [];
+
     let story = await this.stories.create({
       epicId: input.epicId,
       projectId,
@@ -72,9 +95,15 @@ export class CreateStoryUseCase {
       businessRuleIds,
     });
 
-    // Promoção draft→ready pela regra de domínio (mesma de story-readiness).
-    if (canBecomeReady(story)) {
+    const promovivel = isPromotable(story, moduleNames);
+
+    if (modo === 'auto' && promovivel) {
       story = await this.stories.updateStatus(story.id, 'ready');
+    } else if (modo === 'manual' && promovivel) {
+      // Fica `draft` — logo, nenhuma task dela é pegável — e entra na fila
+      // do usuário. Story incompleta NÃO entra: propor algo que a própria
+      // validação recusaria seria empurrar trabalho do PO para o usuário.
+      story = await this.stories.setProposedReady(story.id, true);
     }
 
     await this.appendEvent.execute(projectId, sessionId, {
@@ -88,6 +117,18 @@ export class CreateStoryUseCase {
         businessRuleIds: story.businessRuleIds,
       },
     });
+
+    if (story.proposedReady) {
+      await this.appendEvent.execute(projectId, sessionId, {
+        type: 'backlog.story_promotion_proposed',
+        actor: { kind: 'agent', id: 'po' },
+        payload: {
+          storyId: story.id,
+          epicId: story.epicId,
+          title: story.title,
+        },
+      });
+    }
 
     return story;
   }

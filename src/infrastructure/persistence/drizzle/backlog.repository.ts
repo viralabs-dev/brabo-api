@@ -122,6 +122,46 @@ export class DrizzleStoryRepository implements StoryRepository {
       .returning();
     return storyToEntity(row);
   }
+
+  async setProposedReady(id: string, proposed: boolean): Promise<Story> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .update(stories)
+      .set({ proposedReady: proposed, updatedAt: new Date() })
+      .where(eq(stories.id, id))
+      .returning();
+    return storyToEntity(row);
+  }
+
+  async markReturned(id: string, reason: string): Promise<Story> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .update(stories)
+      .set({
+        // Sai da fila de proposta NA MESMA escrita em que a recusa é
+        // gravada: separar as duas deixaria uma janela em que a story
+        // aparece como "aguardando decisão" e já foi decidida.
+        proposedReady: false,
+        returnedReason: reason,
+        returnedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(stories.id, id))
+      .returning();
+    return storyToEntity(row);
+  }
+
+  async listProposedReady(projectId: string): Promise<Story[]> {
+    const db = currentDb(this.rootDb);
+    const rows = await db
+      .select()
+      .from(stories)
+      .where(
+        and(eq(stories.projectId, projectId), eq(stories.proposedReady, true)),
+      )
+      .orderBy(asc(stories.createdAt));
+    return rows.map(storyToEntity);
+  }
 }
 
 @Injectable()
