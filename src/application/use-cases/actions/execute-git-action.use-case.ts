@@ -164,7 +164,12 @@ export class ExecuteGitActionUseCase {
         payload: { actionId },
       });
 
-      await this.settlePrOpen(projectId, sessionId, updated, status === 'executed');
+      await this.settlePrOpen(
+        projectId,
+        sessionId,
+        updated,
+        status === 'executed',
+      );
 
       return updated;
     });
