@@ -9,11 +9,13 @@ import { GetProvisionedRepositoryUseCase } from './get-provisioned-repository.us
 import { GetRepoBootstrapStatusUseCase } from './get-repo-bootstrap-status.use-case';
 import { RegisterGitCredentialUseCase } from './register-git-credential.use-case';
 import { BootstrapRunner } from './bootstrap-runner';
+import { AdoptRepositoryUseCase } from './adopt-repository.use-case';
 
 const USE_CASES = [
   StartGitOauthUseCase,
   HandleGitOauthCallbackUseCase,
   ProvisionRepositoryUseCase,
+  AdoptRepositoryUseCase,
   GetProvisionedRepositoryUseCase,
   GetRepoBootstrapStatusUseCase,
   RegisterGitCredentialUseCase,
