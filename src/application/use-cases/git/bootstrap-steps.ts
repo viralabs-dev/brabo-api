@@ -93,6 +93,15 @@ function createBranchStep(
 // protegida) — ordem literal do pedido: main, rc, qa, dev.
 const PROTECTED_BRANCH_NAMES = ['main', 'rc', 'qa', 'dev'] as const;
 
+/**
+ * As branches que o template CONHECE — as mesmas que ele protege, já que
+ * `main` é criada pelo provider e as outras três pelos passos acima.
+ * Exportado para o dry-run da adoção (Fase 12a) poder chamar de "extra"
+ * o que não está aqui: uma branch fora desta lista é política própria do
+ * projeto adotado, informativa e nunca tocada pelo bootstrap.
+ */
+export const TEMPLATE_BRANCH_NAMES: readonly string[] = PROTECTED_BRANCH_NAMES;
+
 const protectBranchesStep: BootstrapStep = {
   step: 'protect_branches',
   async check(ctx): Promise<BootstrapMutation[] | 'capability_unsupported'> {
