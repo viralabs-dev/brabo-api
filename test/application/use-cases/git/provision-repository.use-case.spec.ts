@@ -25,6 +25,7 @@ import { EnvelopeEncryptionService } from '../../../../src/infrastructure/securi
 import { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
 import { TransitionSessionUseCase } from '../../../../src/application/use-cases/sessions/transition-session.use-case';
 import { ProvisionRepositoryUseCase } from '../../../../src/application/use-cases/git/provision-repository.use-case';
+import { BootstrapRunner } from '../../../../src/application/use-cases/git/bootstrap-runner';
 import { LocalGitProvider } from '../../../../src/infrastructure/git/local-git-provider';
 import type { GitProviderRegistry } from '../../../../src/application/ports/git-provider.port';
 import type { ApiToEngineClient } from '../../../../src/application/ports/api-to-engine-client.port';
@@ -175,6 +176,16 @@ function buildUseCase(provider: GitProviderContract) {
     sessionRepo,
     appendSessionEvent,
     transitionSession,
+    // Fase 12a: o runner saiu daqui pra um colaborador próprio, sem uma
+    // linha de comportamento alterada — os testes abaixo (idempotência
+    // 3× e retomada inclusas) não mudaram, e é isso que prova a extração.
+    new BootstrapRunner(
+      unitOfWork,
+      repoBootstraps,
+      outbox,
+      proposedActionsRepo,
+      appendSessionEvent,
+    ),
   );
 }
 

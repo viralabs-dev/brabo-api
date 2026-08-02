@@ -21,12 +21,8 @@ import type { ProvisionedRepository } from '../../../domain/git/provisioned-repo
 import type {
   BootstrapStepName,
   BootstrapStepStatus,
-  RepoBootstrap,
 } from '../../../domain/git/repo-bootstrap.entity';
-import {
-  BOOTSTRAP_STEP_SEQUENCE,
-  type BootstrapStepCtx,
-} from './bootstrap-steps';
+import { BootstrapRunner } from './bootstrap-runner';
 
 export interface ProvisionRepositoryInput {
   provider: GitProviderName;
@@ -56,6 +52,7 @@ export class ProvisionRepositoryUseCase {
     private readonly sessions: SessionRepository,
     private readonly appendSessionEvent: AppendSessionEventUseCase,
     private readonly transitionSession: TransitionSessionUseCase,
+    private readonly bootstrapRunner: BootstrapRunner,
   ) {}
 
   async execute(
@@ -213,7 +210,7 @@ export class ProvisionRepositoryUseCase {
       await this.sessions.updateStatus(session.id, 'active', null);
     }
 
-    bootstrap = await this.runBootstrapSteps(projectId, bootstrap, {
+    bootstrap = await this.bootstrapRunner.run(projectId, bootstrap, {
       provider,
       externalId: repo.externalId,
       defaultBranch: repo.defaultBranch,
@@ -245,148 +242,5 @@ export class ProvisionRepositoryUseCase {
       repository: repo,
       bootstrap: { step: bootstrap.step, status: bootstrap.status },
     };
-  }
-
-  private async runBootstrapSteps(
-    projectId: string,
-    initialBootstrap: RepoBootstrap,
-    ctx: BootstrapStepCtx,
-  ): Promise<RepoBootstrap> {
-    let bootstrap = initialBootstrap;
-    const initialStep = initialBootstrap.step;
-    const initialAttempts = initialBootstrap.attempts;
-    const sessionId = bootstrap.sessionId;
-
-    for (const step of BOOTSTRAP_STEP_SEQUENCE) {
-      const pending = await step.check(ctx);
-
-      if (pending === 'capability_unsupported') {
-        await this.appendSessionEvent.execute(projectId, sessionId, {
-          type: 'bootstrap.step_degraded',
-          actor: BOOTSTRAP_ACTOR,
-          payload: {
-            step: step.step,
-            reason: 'capability_unsupported',
-            provider: ctx.provider.name,
-          },
-        });
-        bootstrap = await this.repoBootstraps.update(projectId, {
-          step: step.step,
-          status: 'done',
-          attempts: 0,
-          lastError: null,
-        });
-        continue;
-      }
-
-      if (pending.length === 0) {
-        await this.appendSessionEvent.execute(projectId, sessionId, {
-          type: 'bootstrap.step_skipped',
-          actor: BOOTSTRAP_ACTOR,
-          payload: { step: step.step, reason: 'already_satisfied' },
-        });
-        bootstrap = await this.repoBootstraps.update(projectId, {
-          step: step.step,
-          status: 'done',
-          attempts: 0,
-          lastError: null,
-        });
-        continue;
-      }
-
-      const attemptNumber =
-        (initialStep === step.step ? initialAttempts : 0) + 1;
-      bootstrap = await this.repoBootstraps.update(projectId, {
-        step: step.step,
-        status: 'running',
-        attempts: attemptNumber,
-        lastError: null,
-      });
-      await this.appendSessionEvent.execute(projectId, sessionId, {
-        type: 'bootstrap.step_started',
-        actor: BOOTSTRAP_ACTOR,
-        payload: { step: step.step },
-      });
-
-      for (const mutation of pending) {
-        const proposedAction = await this.unitOfWork.runInTransaction(
-          async () => {
-            const created = await this.proposedActions.create({
-              projectId,
-              sessionId,
-              actionType: mutation.actionType,
-              payload: mutation.payload,
-              status: 'auto_approved',
-              resolvedPolicy: 'auto_approve',
-              actor: BOOTSTRAP_ACTOR,
-            });
-            await this.outbox.append({
-              aggregateType: 'proposed_action',
-              aggregateId: created.id,
-              eventType: 'proposed_action.created',
-              payload: {
-                actionType: mutation.actionType,
-                status: 'auto_approved',
-              },
-            });
-            return created;
-          },
-        );
-
-        try {
-          const detail = await mutation.run(ctx);
-          await this.unitOfWork.runInTransaction(async () => {
-            await this.proposedActions.updateExecutionResult(
-              proposedAction.id,
-              {
-                status: 'executed',
-                executionResult: { kind: 'git_bootstrap', detail },
-              },
-            );
-          });
-          await this.appendSessionEvent.execute(projectId, sessionId, {
-            type: 'bootstrap.step_completed',
-            actor: BOOTSTRAP_ACTOR,
-            payload: { step: step.step, ...detail },
-          });
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : String(error);
-          await this.unitOfWork.runInTransaction(async () => {
-            await this.proposedActions.updateExecutionResult(
-              proposedAction.id,
-              {
-                status: 'failed',
-                executionResult: {
-                  kind: 'git_bootstrap',
-                  detail: { error: message },
-                },
-              },
-            );
-          });
-          await this.appendSessionEvent.execute(projectId, sessionId, {
-            type: 'bootstrap.step_failed',
-            actor: BOOTSTRAP_ACTOR,
-            payload: { step: step.step, error: message },
-          });
-          await this.repoBootstraps.update(projectId, {
-            step: step.step,
-            status: 'failed',
-            attempts: attemptNumber,
-            lastError: message,
-          });
-          throw error;
-        }
-      }
-
-      bootstrap = await this.repoBootstraps.update(projectId, {
-        step: step.step,
-        status: 'done',
-        attempts: 0,
-        lastError: null,
-      });
-    }
-
-    return bootstrap;
   }
 }
