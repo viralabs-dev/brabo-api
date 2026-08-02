@@ -8,14 +8,25 @@ import { ProvisionRepositoryUseCase } from './provision-repository.use-case';
 import { GetProvisionedRepositoryUseCase } from './get-provisioned-repository.use-case';
 import { GetRepoBootstrapStatusUseCase } from './get-repo-bootstrap-status.use-case';
 import { RegisterGitCredentialUseCase } from './register-git-credential.use-case';
+import { BootstrapRunner } from './bootstrap-runner';
+import { AdoptRepositoryUseCase } from './adopt-repository.use-case';
+import { DecideBootstrapPlanUseCase } from './decide-bootstrap-plan.use-case';
+import { GetBootstrapPlanUseCase } from './get-bootstrap-plan.use-case';
 
 const USE_CASES = [
   StartGitOauthUseCase,
   HandleGitOauthCallbackUseCase,
   ProvisionRepositoryUseCase,
+  AdoptRepositoryUseCase,
+  DecideBootstrapPlanUseCase,
+  GetBootstrapPlanUseCase,
   GetProvisionedRepositoryUseCase,
   GetRepoBootstrapStatusUseCase,
   RegisterGitCredentialUseCase,
+  // Colaborador, não caso de uso: o executor do bootstrap, extraído na
+  // Fase 12a pra ser compartilhado com a adoção sem que ela precise
+  // depender do provisionamento inteiro.
+  BootstrapRunner,
 ];
 
 @Module({

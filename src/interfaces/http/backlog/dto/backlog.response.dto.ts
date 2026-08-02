@@ -168,6 +168,31 @@ export class StoryResponseDto implements Wire<Story> {
   @ApiProperty({ enum: STORY_STATUSES, example: 'ready' })
   status!: Wire<Story>['status'];
 
+  @ApiProperty({
+    example: true,
+    description:
+      'O PO terminou a história e ela aguarda a decisão do usuário (Fase 12c — ' +
+      'RN-048). Convive com `status: "draft"`: é uma proposta, não um estado. ' +
+      'Sempre `false` em projeto no modo `auto`.',
+  })
+  proposedReady!: boolean;
+
+  @ApiProperty({
+    example: 'DoD genérico demais — detalhe o critério de aceite.',
+    nullable: true,
+    description:
+      'Por que o usuário devolveu a história ao PO. `null` quando nunca foi ' +
+      'devolvida.',
+  })
+  returnedReason!: string | null;
+
+  @ApiProperty({
+    example: '2026-08-02T14:00:00.000Z',
+    format: 'date-time',
+    nullable: true,
+  })
+  returnedAt!: string | null;
+
   @ApiProperty({ example: '2026-07-25T09:00:00.000Z', format: 'date-time' })
   createdAt!: string;
 

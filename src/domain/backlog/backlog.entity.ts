@@ -28,6 +28,12 @@ export interface Story {
   dor: string[];
   moduleIds: string[];
   status: StoryStatus;
+  // Fase 12c (RN-048): o PO terminou e a story aguarda a decisão do usuário.
+  // Convive com `status: 'draft'` — a flag não é um estado, é uma proposta.
+  proposedReady: boolean;
+  // Por que o usuário devolveu a story ao PO, e quando.
+  returnedReason: string | null;
+  returnedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
