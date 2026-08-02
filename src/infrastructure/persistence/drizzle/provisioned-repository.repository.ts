@@ -47,6 +47,7 @@ function toEntity(
     url: row.url,
     defaultBranch: row.defaultBranch,
     visibility: row.visibility as 'public' | 'private',
+    origin: row.origin,
     provisionedBy: row.provisionedBy,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

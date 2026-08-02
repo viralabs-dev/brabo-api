@@ -53,6 +53,7 @@ function repo(provider: ProvisionedRepository['provider'] | null): ProvisionedRe
             url: 'https://example.com/org/repo',
             defaultBranch: 'main',
             visibility: 'private',
+            origin: 'created',
             provisionedBy: 'user-1',
             createdAt: now,
             updatedAt: now,

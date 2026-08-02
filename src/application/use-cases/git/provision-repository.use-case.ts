@@ -176,6 +176,10 @@ export class ProvisionRepositoryUseCase {
           url: created.url,
           defaultBranch: created.defaultBranch,
           visibility: input.visibility,
+          // Explícito, não pelo default da coluna: este é o caminho que
+          // CRIA o repositório, e dizer isso aqui é o que faz a adoção
+          // (origin: 'adopted') ser uma escolha visível (Fase 12a, RN-046).
+          origin: 'created',
           provisionedBy: userId,
         });
         await this.outbox.append({

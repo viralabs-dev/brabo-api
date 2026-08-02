@@ -3,6 +3,7 @@ import type { MesmasChaves, Wire } from '../../shared/dto/wire';
 import {
   BOOTSTRAP_STATUSES,
   BOOTSTRAP_STEPS,
+  REPO_ORIGINS,
 } from '../../../../domain/git/repo-bootstrap.entity';
 import type { ProvisionedRepository } from '../../../../domain/git/provisioned-repository.entity';
 import type { ProvisionRepositoryResult } from '../../../../application/use-cases/git/provision-repository.use-case';
@@ -55,6 +56,15 @@ export class ProvisionedRepositoryResponseDto implements Wire<ProvisionedReposit
 
   @ApiProperty({ enum: ['public', 'private'], example: 'private' })
   visibility!: Wire<ProvisionedRepository>['visibility'];
+
+  @ApiProperty({
+    enum: REPO_ORIGINS,
+    example: 'created',
+    description:
+      '`created` = o Brabo criou o repositório; `adopted` = apontou para um que ' +
+      'já existia. Imutável depois de gravado (RN-046).',
+  })
+  origin!: Wire<ProvisionedRepository>['origin'];
 
   @ApiProperty({ example: '01JC4Z0000USUARIO0000000001' })
   provisionedBy!: string;

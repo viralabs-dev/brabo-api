@@ -241,6 +241,10 @@ describe('ProvisionRepositoryUseCase', () => {
     const bootstrapRow = await repoBootstraps.findByProjectId(project.id);
     expect(bootstrapRow?.status).toBe('done');
     expect(bootstrapRow?.attempts).toBe(0);
+    // Fase 12a (RN-046): este caminho CRIA — a origem tem que dizer isso,
+    // e não sobrar como default silencioso da coluna.
+    expect(bootstrapRow?.origin).toBe('created');
+    expect(result.repository.origin).toBe('created');
 
     const session = await sessionRepo.findInProject(
       project.id,
