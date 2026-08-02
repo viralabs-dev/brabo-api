@@ -19,6 +19,11 @@ import { ClaimNextTaskUseCase } from '../../../../src/application/use-cases/exec
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
 import type { OutboxRepository } from '../../../../src/application/ports/outbox-repository.port';
 
+// Reentrante e passa-direto, como o DrizzleUnitOfWork quando já há tx ativa.
+const uowStub = {
+  runInTransaction: <T>(work: () => Promise<T>) => work(),
+};
+
 const { db, pool } = createTestDb();
 const taskRepo = new DrizzleTaskRepository(db);
 const storyRepo = new DrizzleStoryRepository(db);
@@ -37,12 +42,14 @@ const markBlocked = new MarkTaskBlockedUseCase(
   taskRepo,
   appendStub,
   outboxStub,
+  uowStub,
 );
 const unblock = new UnblockTaskUseCase(
   taskRepo,
   storyRepo,
   appendStub,
   outboxStub,
+  uowStub,
 );
 const claimNext = new ClaimNextTaskUseCase(taskRepo, appendStub);
 

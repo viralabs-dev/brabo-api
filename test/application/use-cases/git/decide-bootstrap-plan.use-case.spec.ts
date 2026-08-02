@@ -98,12 +98,10 @@ class ProtecaoObservavelProvider implements GitProviderContract {
   listBranches: GitProviderContract['listBranches'] = async (input) => {
     const branches = await this.inner.listBranches(input);
     // Reflete o que este wrapper "protegeu", já que o local não persiste.
-    return branches.map(
-      (b): GitBranch => ({
-        ...b,
-        protected: this.protegidas.includes(b.name),
-      }),
-    );
+    return branches.map((b): GitBranch => ({
+      ...b,
+      protected: this.protegidas.includes(b.name),
+    }));
   };
 
   createRepo: GitProviderContract['createRepo'] = (i) =>

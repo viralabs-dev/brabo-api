@@ -4,9 +4,16 @@ import type {
   StoryRepository,
   TaskRepository,
 } from '../../../../src/application/ports/backlog-repository.port';
-import type { OutboxRepository } from '../../../../src/application/ports/outbox-repository.port';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
-import type { Story, Task } from '../../../../src/domain/backlog/backlog.entity';
+import type {
+  Story,
+  Task,
+} from '../../../../src/domain/backlog/backlog.entity';
+
+// Reentrante e passa-direto, como o DrizzleUnitOfWork quando já há tx ativa.
+const uowStub = {
+  runInTransaction: <T>(work: () => Promise<T>) => work(),
+};
 
 const PROJECT = 'p1';
 const SESSION = 's1';
@@ -90,7 +97,8 @@ beforeEach(() => {
     tasks as unknown as TaskRepository,
     stories as unknown as StoryRepository,
     append as unknown as AppendSessionEventUseCase,
-    outbox as unknown as OutboxRepository,
+    outbox,
+    uowStub,
   );
 });
 
@@ -121,18 +129,17 @@ describe('CreateTaskUseCase', () => {
         title: 'implementar x',
       });
 
-      expect(outbox.calls).toEqual([
-        {
-          aggregateType: 'task',
-          aggregateId: 'task-1',
-          eventType: 'task.became_claimable',
-          payload: expect.objectContaining({
-            taskId: 'task-1',
-            modules: ['api', 'web'],
-            cause: 'task_created',
-          }),
+      expect(outbox.calls).toHaveLength(1);
+      expect(outbox.calls[0]).toMatchObject({
+        aggregateType: 'task',
+        aggregateId: 'task-1',
+        eventType: 'task.became_claimable',
+        payload: {
+          taskId: 'task-1',
+          modules: ['api', 'web'],
+          cause: 'task_created',
         },
-      ]);
+      });
     });
 
     it('story draft: NÃO emite outbox — a task ainda não é pegável', async () => {

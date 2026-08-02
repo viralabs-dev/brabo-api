@@ -164,7 +164,9 @@ describe('AdoptRepositoryUseCase', () => {
   it('adota um repositório existente sem NUNCA chamar createRepo', async () => {
     const { user, project } = await setupProject();
     const externalId = await repoExistente('checkout');
-    const useCase = buildUseCase(new NuncaCriaGitProvider(new LocalGitProvider()));
+    const useCase = buildUseCase(
+      new NuncaCriaGitProvider(new LocalGitProvider()),
+    );
 
     const result = await useCase.execute(project.id, user.id, {
       provider: 'local',
@@ -252,7 +254,9 @@ describe('AdoptRepositoryUseCase', () => {
   it('adotar o MESMO repo duas vezes converge: não duplica linha, regenera o plano', async () => {
     const { user, project } = await setupProject();
     const externalId = await repoExistente('checkout');
-    const useCase = buildUseCase(new NuncaCriaGitProvider(new LocalGitProvider()));
+    const useCase = buildUseCase(
+      new NuncaCriaGitProvider(new LocalGitProvider()),
+    );
     const input = { provider: 'local' as const, externalId };
 
     const primeira = await useCase.execute(project.id, user.id, input);
@@ -279,7 +283,9 @@ describe('AdoptRepositoryUseCase', () => {
     const { user, project } = await setupProject();
     const primeiro = await repoExistente('checkout');
     const outro = await repoExistente('outro');
-    const useCase = buildUseCase(new NuncaCriaGitProvider(new LocalGitProvider()));
+    const useCase = buildUseCase(
+      new NuncaCriaGitProvider(new LocalGitProvider()),
+    );
 
     await useCase.execute(project.id, user.id, {
       provider: 'local',
@@ -311,7 +317,9 @@ describe('AdoptRepositoryUseCase', () => {
       provisionedBy: user.id,
     });
 
-    const useCase = buildUseCase(new NuncaCriaGitProvider(new LocalGitProvider()));
+    const useCase = buildUseCase(
+      new NuncaCriaGitProvider(new LocalGitProvider()),
+    );
     const erro = await useCase
       .execute(project.id, user.id, { provider: 'local', externalId })
       .catch((e: unknown) => e);

@@ -7,10 +7,17 @@ import type {
   TaskRepository,
 } from '../../../../src/application/ports/backlog-repository.port';
 import type { ModuleMapRepository } from '../../../../src/application/ports/module-map-repository.port';
-import type { OutboxRepository } from '../../../../src/application/ports/outbox-repository.port';
 import type { ModuleMap } from '../../../../src/domain/architecture/module-map.entity';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
-import type { Story, Task } from '../../../../src/domain/backlog/backlog.entity';
+import type {
+  Story,
+  Task,
+} from '../../../../src/domain/backlog/backlog.entity';
+
+// Reentrante e passa-direto, como o DrizzleUnitOfWork quando já há tx ativa.
+const uowStub = {
+  runInTransaction: <T>(work: () => Promise<T>) => work(),
+};
 
 const PROJECT = 'p1';
 const SESSION = 's1';
@@ -127,7 +134,8 @@ beforeEach(() => {
     moduleMaps as unknown as ModuleMapRepository,
     append as unknown as AppendSessionEventUseCase,
     tasks as unknown as TaskRepository,
-    outbox as unknown as OutboxRepository,
+    outbox,
+    uowStub,
   );
 });
 
@@ -208,28 +216,27 @@ describe('TransitionStoryUseCase', () => {
 
       await useCase.execute(PROJECT, SESSION, 'story-1', 'ready');
 
-      expect(outbox.calls).toEqual([
-        {
-          aggregateType: 'task',
-          eventType: 'task.became_claimable',
-          aggregateId: 't1',
-          payload: expect.objectContaining({
-            taskId: 't1',
-            modules: ['api', 'web'],
-            cause: 'story_ready',
-          }),
+      expect(outbox.calls).toHaveLength(2);
+      expect(outbox.calls[0]).toMatchObject({
+        aggregateType: 'task',
+        eventType: 'task.became_claimable',
+        aggregateId: 't1',
+        payload: {
+          taskId: 't1',
+          modules: ['api', 'web'],
+          cause: 'story_ready',
         },
-        {
-          aggregateType: 'task',
-          eventType: 'task.became_claimable',
-          aggregateId: 't2',
-          payload: expect.objectContaining({
-            taskId: 't2',
-            modules: ['api', 'web'],
-            cause: 'story_ready',
-          }),
+      });
+      expect(outbox.calls[1]).toMatchObject({
+        aggregateType: 'task',
+        eventType: 'task.became_claimable',
+        aggregateId: 't2',
+        payload: {
+          taskId: 't2',
+          modules: ['api', 'web'],
+          cause: 'story_ready',
         },
-      ]);
+      });
     });
 
     it('→ready: task done/in_progress/bloqueada não gera linha nenhuma', async () => {

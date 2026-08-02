@@ -73,9 +73,9 @@ describe('planBootstrap — o dry-run da adoção', () => {
       .map((s) => s.payload.branchName);
     expect(aProteger).toEqual(['qa']);
 
-    expect(
-      diagnostics.filter((d) => d.kind === 'unprotected_branch'),
-    ).toEqual([{ kind: 'unprotected_branch', detail: { branchName: 'qa' } }]);
+    expect(diagnostics.filter((d) => d.kind === 'unprotected_branch')).toEqual([
+      { kind: 'unprotected_branch', detail: { branchName: 'qa' } },
+    ]);
   });
 
   it('promete a proteção das branches que ELE MESMO vai criar', async () => {

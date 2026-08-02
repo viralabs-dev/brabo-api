@@ -13,7 +13,9 @@ const moduleMap: ModuleMap = {
   id: 'mm-1',
   projectId: 'proj-1',
   sessionId: 'sess-1',
-  modules: [{ name: 'api', stack: 'Node.js', responsibility: 'backend', dependsOn: [] }],
+  modules: [
+    { name: 'api', stack: 'Node.js', responsibility: 'backend', dependsOn: [] },
+  ],
   version: 1,
   createdAt: now,
 };
@@ -37,10 +39,16 @@ const adrAction: ProposedAction = {
 const naoInfraAdrAction: ProposedAction = {
   ...adrAction,
   id: 'action-2',
-  payload: { title: 'Decisão qualquer', content: '# ADR', infraRelevant: false },
-} as unknown as ProposedAction;
+  payload: {
+    title: 'Decisão qualquer',
+    content: '# ADR',
+    infraRelevant: false,
+  },
+};
 
-function repo(provider: ProvisionedRepository['provider'] | null): ProvisionedRepositoryRepository {
+function repo(
+  provider: ProvisionedRepository['provider'] | null,
+): ProvisionedRepositoryRepository {
   return {
     findByProjectId: async () =>
       provider === null
@@ -70,7 +78,9 @@ function build(
 ) {
   return new GetInfraContextUseCase(
     { findCurrent: async () => moduleMap } as unknown as ModuleMapRepository,
-    { listByProjectAndType: async () => adrs } as unknown as ProposedActionRepository,
+    {
+      listByProjectAndType: async () => adrs,
+    } as unknown as ProposedActionRepository,
     repo(provider),
   );
 }

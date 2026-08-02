@@ -11,6 +11,11 @@ import type { Task } from '../../../../src/domain/backlog/backlog.entity';
 import type { ProposedAction } from '../../../../src/domain/actions/proposed-action.entity';
 import type { ProvisionedRepository } from '../../../../src/domain/git/provisioned-repository.entity';
 
+// Reentrante e passa-direto, como o DrizzleUnitOfWork quando já há tx ativa.
+const uowStub = {
+  runInTransaction: <T>(work: () => Promise<T>) => work(),
+};
+
 const now = new Date();
 
 function buildTask(overrides: Partial<Task> = {}): Task {
@@ -145,6 +150,7 @@ function buildHarness(opts: {
     appendEvent,
     markTaskBlocked,
     outbox,
+    uowStub,
   );
 
   return {
