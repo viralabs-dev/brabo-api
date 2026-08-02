@@ -293,7 +293,12 @@ describe('RecordGateVerdictUseCase', () => {
       });
     });
 
-    it('nextAction blocked: emite outbox com o agentId CAPTURADO antes do bloqueio zerar assignedTo', async () => {
+    it('nextAction blocked: NÃO emite aqui — delega a MarkTaskBlockedUseCase, que emite (D3)', async () => {
+      // Antes da revisão os dois emitiam, o que dava DUAS linhas para o mesmo
+      // desfecho. Pior: quem bloqueia sem passar por este caso de uso (o
+      // `QaLeadServer` falhando internamente) não emitia NENHUMA, e o agente
+      // ficava preso em `awaiting_gate` para sempre. A emissão desceu para o
+      // MarkTaskBlockedUseCase, que é o funil por onde TODOS passam.
       const { useCase, outboxAppend, markTaskBlockedExecute } = buildHarness({
         task: buildTask({ gateCorrectionCount: 3, assignedTo: 'dev-api' }),
       });
@@ -311,18 +316,8 @@ describe('RecordGateVerdictUseCase', () => {
         3,
       );
 
-      // O mock de markTaskBlocked devolve assignedTo: null (como o real) —
-      // se o outbox lesse dali, agentId viria nulo.
       expect(markTaskBlockedExecute).toHaveBeenCalled();
-      expect(outboxAppend).toHaveBeenCalledWith(
-        expect.objectContaining({
-          eventType: 'task.gate_resolved',
-          payload: expect.objectContaining({
-            agentId: 'dev-api',
-            nextAction: 'blocked',
-          }),
-        }),
-      );
+      expect(outboxAppend).not.toHaveBeenCalled();
     });
 
     it('nextAction correct (changes_requested sob o teto): NÃO emite outbox', async () => {

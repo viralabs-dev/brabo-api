@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { TaskRepository } from '../../ports/backlog-repository.port';
+import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import type { FailureOrigin } from '../../../domain/agents/failure-origin';
 
@@ -21,6 +22,7 @@ export class MarkTaskBlockedUseCase {
   constructor(
     private readonly tasks: TaskRepository,
     private readonly appendEvent: AppendSessionEventUseCase,
+    private readonly outbox: OutboxRepository,
   ) {}
 
   async execute(
@@ -32,6 +34,11 @@ export class MarkTaskBlockedUseCase {
     agentId: string,
     origin?: FailureOrigin,
   ) {
+    // O DONO da task, lido ANTES de `markBlocked` zerar `assignedTo`. NÃO é o
+    // mesmo que o `agentId` do parâmetro, que é QUEM BLOQUEOU (`qa-lead`,
+    // `qa-agent`, o próprio dev...). É o dono que precisa ser acordado.
+    const owner = (await this.tasks.findById(taskId))?.assignedTo ?? null;
+
     const task = await this.tasks.markBlocked(
       taskId,
       reason,
@@ -43,6 +50,34 @@ export class MarkTaskBlockedUseCase {
       actor: { kind: 'agent', id: agentId },
       payload: { taskId, reason, diagnosis, origin: origin ?? null },
     });
+
+    // Fase 12b (correção pós-revisão, D3): TODO bloqueio externo passa por
+    // aqui — inclusive o do `QaLeadServer`, que chama este caso de uso DIRETO
+    // sem passar pelo `RecordGateVerdictUseCase`. Sem esta emissão, o dev
+    // agent ficava em `awaiting_gate` PARA SEMPRE quando um gate falhava
+    // internamente: a task era bloqueada na api e o agente nunca ficava
+    // sabendo (e o breaker também não contava).
+    //
+    // Emitir também quando quem bloqueou é o PRÓPRIO dev é inofensivo: ele já
+    // tratou localmente por `finish_task/2` e o guard de identidade
+    // (`task_id` batendo + `awaiting_gate`) transforma o wake em no-op.
+    if (owner) {
+      await this.outbox.append({
+        aggregateType: 'task',
+        aggregateId: taskId,
+        eventType: 'task.gate_resolved',
+        payload: {
+          projectId,
+          sessionId,
+          taskId,
+          agentId: owner,
+          gate: null,
+          veredito: null,
+          nextAction: 'blocked',
+        },
+      });
+    }
+
     return task;
   }
 }

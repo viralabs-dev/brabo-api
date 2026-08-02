@@ -131,7 +131,13 @@ export class RecordGateVerdictUseCase {
     // engine (QaLeadServer/SecOpsAgentServer), sem outbox nenhum. É a prova
     // mecânica de que reagendar não duplica esse caminho: não existe linha
     // pra ele acionar duas vezes.
-    if (agentId && (nextAction === 'done' || nextAction === 'blocked')) {
+    //
+    // `blocked` NÃO entra aqui: esse ramo delega a `MarkTaskBlockedUseCase`,
+    // que emite a linha ele mesmo desde a correção D3 — é por lá que passam
+    // TAMBÉM os bloqueios que nunca chegam a este caso de uso (o
+    // `QaLeadServer` falhando internamente). Emitir nos dois lugares daria
+    // duas linhas para o mesmo desfecho.
+    if (agentId && nextAction === 'done') {
       await this.outbox.append({
         aggregateType: 'task',
         aggregateId: task.id,
