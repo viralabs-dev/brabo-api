@@ -11,6 +11,7 @@ import {
   sessionEvents,
   users,
   workspaces,
+  repoBootstraps as repoBootstrapsTable,
 } from '../../../../src/db/schema';
 import { DrizzleUnitOfWork } from '../../../../src/infrastructure/persistence/drizzle/drizzle-unit-of-work';
 import { DrizzleProvisionedRepositoryRepository } from '../../../../src/infrastructure/persistence/drizzle/provisioned-repository.repository';
@@ -328,6 +329,35 @@ describe('DecideBootstrapPlanUseCase — o portão da RN-045', () => {
 
     expect(erro).toBeInstanceOf(ConflictException);
     expect((erro as Error).message).toContain('regerado');
+  });
+
+  it('o `generatedAt` gravado é o DO PLANO, não o instante da gravação', async () => {
+    // Eram dois relógios: `planBootstrap()` carimbava `generatedAt` ao montar
+    // o plano, e `savePlan` gravava outro `new Date()` alguns milissegundos
+    // depois. Como a guarda otimista compara os dois, ela só aprovava quando
+    // as duas chamadas caíam no MESMO milissegundo — e recusava com "o plano
+    // foi regerado" qualquer decisão sobre um plano que ninguém regerou.
+    //
+    // Passava por acidente de relógio, e ficou vermelho assim que uma escrita
+    // a mais entrou no caminho. Este teste trava o instante, em vez de
+    // depender de sorte.
+    const { user, project } = await setupProject();
+    const externalId = await repoExistente('checkout');
+    const { adopt } = buildUseCases(
+      new ProtecaoObservavelProvider(new LocalGitProvider()),
+    );
+
+    const adotado = await adopt.execute(project.id, user.id, {
+      provider: 'local',
+      externalId,
+    });
+
+    const [linha] = await db
+      .select()
+      .from(repoBootstrapsTable)
+      .where(eq(repoBootstrapsTable.projectId, project.id));
+
+    expect(linha.planGeneratedAt?.toISOString()).toBe(adotado.plan.generatedAt);
   });
 
   it('decidir duas vezes recusa — a decisão é única por plano', async () => {

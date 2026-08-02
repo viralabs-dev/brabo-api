@@ -58,7 +58,7 @@ export class ExecuteGitActionUseCase {
           },
         })
         .catch(() => undefined);
-      return this.markFailed(action.id);
+      return this.markFailed(projectId, sessionId, action);
     }
   }
 
@@ -163,16 +163,67 @@ export class ExecuteGitActionUseCase {
         eventType: 'proposed_action.executed',
         payload: { actionId },
       });
+
+      await this.settlePrOpen(projectId, sessionId, updated, status === 'executed');
+
       return updated;
     });
   }
 
-  private markFailed(actionId: string) {
-    return this.unitOfWork.runInTransaction(() =>
-      this.proposedActions.updateExecutionResult(actionId, {
-        status: 'failed',
-        executionResult: { kind: 'git_push', branch: '' },
-      }),
-    );
+  /**
+   * Avisa o engine que o `pr_open` de um dev agent teve DESFECHO (Fase 12e).
+   *
+   * O gate deixou de ser aberto pelo agente logo depois de propor a PR: com
+   * autonomia manual as três ações git ficam `pending`, e o gate abria assim
+   * mesmo — o QA varria o worktree, aprovava, e a task fechava sem uma linha
+   * commitada. Agora o agente espera em `awaiting_approval`, e é esta linha de
+   * outbox que o solta.
+   *
+   * `aggregateType: 'task'` porque é o que o `Engine.Outbox.Drain` já drena
+   * desde a Fase 12b — nenhum tipo novo de agregado.
+   */
+  private async settlePrOpen(
+    projectId: string,
+    sessionId: string,
+    action: ProposedAction,
+    opened: boolean,
+  ) {
+    if (action.actionType !== 'pr_open') return;
+
+    const taskId = (action.payload as { storyTaskId?: unknown }).storyTaskId;
+    const agentId = action.actor?.id;
+    // PR de infra e de ADR não têm task por trás — `storyTaskId` só existe no
+    // `propose_pr` do dev agent.
+    if (typeof taskId !== 'string' || !agentId) return;
+
+    await this.outbox.append({
+      aggregateType: 'task',
+      aggregateId: taskId,
+      eventType: 'task.pr_settled',
+      payload: { projectId, sessionId, taskId, agentId, opened },
+    });
+  }
+
+  private markFailed(
+    projectId: string,
+    sessionId: string,
+    action: ProposedAction,
+  ) {
+    return this.unitOfWork.runInTransaction(async () => {
+      const updated = await this.proposedActions.updateExecutionResult(
+        action.id,
+        {
+          status: 'failed',
+          executionResult: { kind: 'git_push', branch: '' },
+        },
+      );
+
+      // Uma PR que FALHOU ao abrir também é desfecho: sem isto o agente
+      // esperaria em `awaiting_approval` para sempre por um gate que nunca
+      // vai abrir.
+      await this.settlePrOpen(projectId, sessionId, updated, false);
+
+      return updated;
+    });
   }
 }

@@ -98,6 +98,7 @@ const proposeAction = new ProposeActionUseCase(
   executeTerminalAction,
   undefined as never, // executeGitAction — não exercitado aqui
   undefined as never, // executeInfraPr — não exercitado aqui
+  appendSessionEvent,
 );
 const listProposedActions = new ListProposedActionsUseCase(
   sessionRepo,
