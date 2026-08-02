@@ -37,20 +37,22 @@ const BASE_URL_PADRAO: Partial<Record<LLMProviderName, string>> = {
  * um provider com `listModels: false`.
  */
 @Injectable()
-export class LLMCredentialConnectionTesterImpl
-  implements LLMCredentialConnectionTester
-{
+export class LLMCredentialConnectionTesterImpl implements LLMCredentialConnectionTester {
   constructor(
     @Optional()
-    private readonly baseUrlOverrides: Partial<Record<LLMProviderName, string>> = {},
+    private readonly baseUrlOverrides: Partial<
+      Record<LLMProviderName, string>
+    > = {},
   ) {}
 
   async test(provider: LLMProviderName, apiKey: string): Promise<void> {
-    const baseUrl = this.baseUrlOverrides[provider] ?? BASE_URL_PADRAO[provider];
+    const baseUrl =
+      this.baseUrlOverrides[provider] ?? BASE_URL_PADRAO[provider];
     if (!baseUrl) return; // sem teste declarado — ver o port
 
     try {
-      const url = provider === 'openrouter' ? `${baseUrl}/key` : `${baseUrl}/models`;
+      const url =
+        provider === 'openrouter' ? `${baseUrl}/key` : `${baseUrl}/models`;
       await testarComStatus(url, apiKey, provider);
     } catch (error) {
       throw new LLMCredentialConnectionTestFailedError(
