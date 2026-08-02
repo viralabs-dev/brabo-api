@@ -1,11 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsIn, IsNotEmpty, IsString } from 'class-validator';
-import type { LLMProviderName } from '@brabo/shared';
+import { LLM_PROVIDER_NAMES_COM_CREDENCIAL } from '../../../../domain/llm/llm-provider-names';
 
 export class UpsertCredentialDto {
-  @ApiProperty({ enum: ['anthropic', 'openai'], example: 'anthropic' })
-  @IsIn(['anthropic', 'openai'])
-  provider!: Extract<LLMProviderName, 'anthropic' | 'openai'>;
+  @ApiProperty({
+    enum: LLM_PROVIDER_NAMES_COM_CREDENCIAL,
+    example: 'anthropic',
+  })
+  @IsIn(LLM_PROVIDER_NAMES_COM_CREDENCIAL)
+  provider!: (typeof LLM_PROVIDER_NAMES_COM_CREDENCIAL)[number];
 
   @ApiProperty({
     example: 'sk-ant-api03-…',
