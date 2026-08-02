@@ -201,6 +201,17 @@ export const storyStatusEnum = pgEnum('story_status', [
   'done',
 ]);
 
+// QUEM promove uma story de draft para ready (Fase 12c, RN-048).
+// `manual` (default de projeto NOVO): o PO propõe e o USUÁRIO decide.
+// `auto`: o comportamento anterior à 12c, agora opt-in — a story completa
+// já nasce ready. Projetos que existiam antes da migração 0033 ficaram em
+// `auto` de propósito: mudar o comportamento debaixo de quem já opera não
+// é uma escolha que o produto pode fazer sozinho.
+export const storyPromotionModeEnum = pgEnum('story_promotion_mode', [
+  'manual',
+  'auto',
+]);
+
 // Ciclo de vida de uma tarefa executável (Fase 4a — devs): todo →
 // in_progress → done. Um dev "pega" (claim atômico) uma task `todo` cuja
 // story está `ready`; `assigned_to` = agent_id do dev (ex.: "dev-<modulo>").
@@ -318,6 +329,13 @@ export const projects = pgTable(
     // Nulo usa o default do domínio. Mesmo motivo do campo acima: precisa
     // sobreviver à reativação, não só existir como parâmetro dela.
     maxConsecutiveBlocked: integer('max_consecutive_blocked'),
+    // Quem promove story a `ready` (Fase 12c, RN-048). NOT NULL com default
+    // `manual` — diferente dos dois tetos acima, que são nullable porque
+    // "nulo = default do domínio". Aqui o valor É a decisão, e uma decisão
+    // de autoridade não pode ficar implícita.
+    storyPromotion: storyPromotionModeEnum('story_promotion')
+      .notNull()
+      .default('manual'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -918,6 +936,20 @@ export const stories = pgTable(
     // referenciado não existir no module_map. Vazio = pendência, não bloqueio.
     moduleIds: jsonb('module_ids').$type<string[]>().notNull().default([]),
     status: storyStatusEnum('status').notNull().default('draft'),
+    // O PO terminou a story e ela AGUARDA a decisão do usuário (Fase 12c,
+    // RN-048). Flag booleana, e NÃO um valor novo em `story_status`, de
+    // propósito: `status = 'ready'` é o único portão de claimabilidade no
+    // `claimNext` (backlog.repository.ts) — mexer no enum mexeria em quem
+    // pode pegar trabalho. Aqui a story continua `draft` (logo, nenhuma task
+    // dela é pegável) e a flag só diz que ela está pronta para ser olhada.
+    proposedReady: boolean('proposed_ready').notNull().default(false),
+    // A recusa do usuário (Fase 12c): por que ele devolveu a story ao PO.
+    // Fica na linha, e não só no event log, porque é o que a tela do Backlog
+    // mostra e o que o PO precisa ler para revisar — e porque o push ao
+    // PoServer é best-effort: se o processo estiver morto, isto aqui é o que
+    // garante que a recusa não se perdeu.
+    returnedReason: text('returned_reason'),
+    returnedAt: timestamp('returned_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -928,6 +960,12 @@ export const stories = pgTable(
   (table) => [
     index('stories_epic_idx').on(table.epicId),
     index('stories_session_idx').on(table.sessionId),
+    // A consulta da seção "Aguardando sua promoção" e do badge de contagem:
+    // as proposed de um projeto. Parcial porque a esmagadora maioria das
+    // stories não está proposta.
+    index('stories_proposed_idx')
+      .on(table.projectId)
+      .where(sql`${table.proposedReady}`),
   ],
 );
 

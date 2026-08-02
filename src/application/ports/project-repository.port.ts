@@ -1,4 +1,7 @@
-import type { Project } from '../../domain/iam/project.entity';
+import type {
+  Project,
+  StoryPromotionMode,
+} from '../../domain/iam/project.entity';
 import type {
   ProjectMember,
   ProjectMemberWithUser,
@@ -14,6 +17,9 @@ export interface ProjectInput {
   // Circuit breaker por dev agent (Fase 12b — RN-047); nulo/omitido usa o
   // default do domínio.
   maxConsecutiveBlocked?: number | null;
+  // Quem promove story a `ready` (Fase 12c — RN-048). Omitido na criação usa
+  // o default da coluna (`manual`).
+  storyPromotion?: StoryPromotionMode;
 }
 
 export abstract class ProjectRepository {

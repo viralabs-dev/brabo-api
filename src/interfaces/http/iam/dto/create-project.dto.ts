@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsIn,
   IsInt,
   IsOptional,
   IsPositive,
@@ -7,6 +8,10 @@ import {
   Matches,
   MinLength,
 } from 'class-validator';
+import {
+  STORY_PROMOTION_MODES,
+  type StoryPromotionMode,
+} from '../../../../domain/iam/project.entity';
 
 export class CreateProjectDto {
   @ApiProperty({ example: 'Checkout', minLength: 2 })
@@ -37,4 +42,19 @@ export class CreateProjectDto {
   @IsInt()
   @IsPositive()
   maxConsecutiveBlocked?: number;
+
+  @ApiPropertyOptional({
+    enum: STORY_PROMOTION_MODES,
+    example: 'manual',
+    description:
+      'Quem promove uma story de `draft` para `ready` (Fase 12c — RN-048). ' +
+      '`manual` (default de projeto novo): o PO propõe e VOCÊ decide, na aba ' +
+      'Backlog. `auto`: a story completa já nasce `ready`, sem passo humano — ' +
+      'era o comportamento até a 12c, e projetos criados antes dela ficaram ' +
+      'nele. As validações de domínio (DoD/DoR/RF/regra/módulos) são as MESMAS ' +
+      'nos dois modos; o modo muda só quem dispara.',
+  })
+  @IsOptional()
+  @IsIn(STORY_PROMOTION_MODES)
+  storyPromotion?: StoryPromotionMode;
 }
