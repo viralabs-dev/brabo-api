@@ -95,6 +95,19 @@ export abstract class ApiToEngineClient {
     agentId: string,
   ): Promise<void>;
 
+  // Devolve ao PO uma história que o usuário RECUSOU promover (Fase 12c —
+  // RN-048). Espelha a devolução de gate ao dev: o motivo vira uma mensagem
+  // fixada na sessão do PO, que decide o que fazer e registra. Lança (404 do
+  // engine) se o PO daquela sessão não está mais de pé — a recusa em si já
+  // está gravada, e é o chamador que decide se isso é fatal.
+  abstract reviseStory(
+    projectId: string,
+    sessionId: string,
+    storyId: string,
+    title: string,
+    reason: string,
+  ): Promise<void>;
+
   // Sinaliza que o usuário confirmou que a arquitetura está pronta (Fase 4a
   // — fechamento): o engine instrui o Arquiteto a oferecer o handoff ao
   // InfraAgent (mirror de confirmReadiness, sem reaproveitar o endpoint do

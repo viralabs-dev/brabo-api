@@ -165,6 +165,21 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     );
   }
 
+  async reviseStory(
+    projectId: string,
+    sessionId: string,
+    storyId: string,
+    title: string,
+    reason: string,
+  ): Promise<void> {
+    await this.postCommand(`/internal/sessions/${sessionId}/agent/revise`, {
+      projectId,
+      storyId,
+      title,
+      reason,
+    });
+  }
+
   async executeGitAction(
     projectId: string,
     sessionId: string,

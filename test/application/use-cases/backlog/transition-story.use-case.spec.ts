@@ -62,8 +62,14 @@ class FakeStories {
 
 class FakeAppend {
   calls: string[] = [];
-  execute(_p: string, _s: string, input: { type: string }) {
+  actors: { kind: string; id: string }[] = [];
+  execute(
+    _p: string,
+    _s: string,
+    input: { type: string; actor: { kind: string; id: string } },
+  ) {
     this.calls.push(input.type);
+    this.actors.push(input.actor);
     return Promise.resolve({} as never);
   }
 }
@@ -196,6 +202,24 @@ describe('TransitionStoryUseCase', () => {
     await expect(
       useCase.execute(PROJECT, SESSION, 'story-1', 'in_progress'),
     ).rejects.toBeInstanceOf(InvalidStoryTransitionError);
+  });
+
+  describe('quem promoveu (Fase 12c — RN-048)', () => {
+    it('sem ator explícito o evento continua sendo do PO', async () => {
+      await useCase.execute(PROJECT, SESSION, 'story-1', 'ready');
+      expect(append.actors).toEqual([{ kind: 'agent', id: 'po' }]);
+    });
+
+    it('promoção do usuário grava o USUÁRIO no evento, não o PO', async () => {
+      // O event log é imutável e é o que a auditoria lê: registrar `agent/po`
+      // numa promoção que foi decisão do usuário apagaria exatamente o passo
+      // humano que a Fase 12c existe para devolver.
+      await useCase.execute(PROJECT, SESSION, 'story-1', 'ready', {
+        kind: 'user',
+        id: 'u-42',
+      });
+      expect(append.actors).toEqual([{ kind: 'user', id: 'u-42' }]);
+    });
   });
 
   describe('outbox task.became_claimable (Fase 12b — RN-047)', () => {
