@@ -28,7 +28,10 @@ const appendStub = {
   },
 } as unknown as AppendSessionEventUseCase;
 
-const recordDelegation = new RecordDelegationUseCase(delegationRepo, appendStub);
+const recordDelegation = new RecordDelegationUseCase(
+  delegationRepo,
+  appendStub,
+);
 
 async function seed() {
   const [owner] = await db
@@ -139,9 +142,7 @@ describe('RecordDelegationUseCase', () => {
     });
 
     expect(delegation.status).toBe('completed');
-    expect(delegation.parecerArtifactId).toBe(
-      'evt_01jc4z0000parecer000000001',
-    );
+    expect(delegation.parecerArtifactId).toBe('evt_01jc4z0000parecer000000001');
     expect(delegation.failureOrigin).toBeNull();
 
     expect(eventos).toHaveLength(1);

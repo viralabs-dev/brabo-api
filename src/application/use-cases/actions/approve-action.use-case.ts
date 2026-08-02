@@ -4,6 +4,7 @@ import { SessionRepository } from '../../ports/session-repository.port';
 import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
 import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { BraboMetrics } from '../../../infrastructure/observability/brabo-metrics';
+import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { ExecuteTerminalActionUseCase } from './execute-terminal-action.use-case';
 import { ExecuteAdrPrUseCase } from './execute-adr-pr.use-case';
 import { ExecuteInfraPrUseCase } from './execute-infra-pr.use-case';
@@ -27,6 +28,7 @@ export class ApproveActionUseCase {
     private readonly executeGitAction: ExecuteGitActionUseCase,
     private readonly executeInstructionPatch: ExecuteInstructionPatchUseCase,
     private readonly metrics: BraboMetrics,
+    private readonly appendSessionEvent: AppendSessionEventUseCase,
   ) {}
 
   @Traced('application')
@@ -100,6 +102,27 @@ export class ApproveActionUseCase {
         aggregateId: actionId,
         eventType: 'proposed_action.approved',
         payload: { from: current.status, to: 'approved' },
+      });
+
+      // A DECISÃO no event log, com quem decidiu (achado #17 do dogfooding).
+      //
+      // Era o buraco mais caro da colheita da Fase 10: "cliques de aprovação"
+      // era a métrica principal do experimento e não existia em lugar nenhum
+      // durável e consultável — a linha de outbox acima é transporte (podada
+      // depois de entregue), e `proposed_actions.decided_at` diz QUANDO mas
+      // não aparece na linha do tempo que o Psicólogo e a Anamnese leem.
+      //
+      // O ator é o usuário que clicou. É o que distingue esta linha de uma
+      // auto-aprovação por política, que nasce em `proposed_action.created`
+      // com `status: auto_approved` e ator AGENTE.
+      await this.appendSessionEvent.execute(projectId, sessionId, {
+        type: 'proposed_action.approved',
+        actor: { kind: 'user', id: decidedBy },
+        payload: {
+          actionId,
+          actionType: current.actionType,
+          from: current.status,
+        },
       });
 
       // Contador e não consulta ao banco: uma ação aprovada que executa muda

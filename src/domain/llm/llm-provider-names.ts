@@ -17,7 +17,24 @@ export const LLM_PROVIDER_NAMES = [
   'ollama',
   'anthropic',
   'openai',
+  'openrouter',
+  'nvidia-nim',
+  'together',
+  'deepinfra',
+  'bitdeer',
+  'vultr',
 ] as const satisfies readonly LLMProviderName[];
+
+/**
+ * Providers que EXIGEM credencial — todos menos `ollama`, que roda local sem
+ * chave (Fase 11b). Existe para o DTO de cadastro de credencial derivar daqui
+ * em vez de manter uma 4ª lista manual: a lista tríplice hardcoded em
+ * `upsert-credential.dto.ts` foi exatamente o que quebrou o build nesta sessão
+ * quando um provider novo entrou e um lugar ficou pra trás.
+ */
+export const LLM_PROVIDER_NAMES_COM_CREDENCIAL = LLM_PROVIDER_NAMES.filter(
+  (p): p is Exclude<LLMProviderName, 'ollama'> => p !== 'ollama',
+);
 
 /**
  * Exaustividade nos DOIS sentidos, em tempo de compilação.

@@ -9,19 +9,48 @@ import {
   users,
   workspaces,
 } from '../../../../src/db/schema';
-import { DrizzleTaskRepository } from '../../../../src/infrastructure/persistence/drizzle/backlog.repository';
+import {
+  DrizzleStoryRepository,
+  DrizzleTaskRepository,
+} from '../../../../src/infrastructure/persistence/drizzle/backlog.repository';
 import { MarkTaskBlockedUseCase } from '../../../../src/application/use-cases/execution/mark-task-blocked.use-case';
 import { UnblockTaskUseCase } from '../../../../src/application/use-cases/execution/unblock-task.use-case';
 import { ClaimNextTaskUseCase } from '../../../../src/application/use-cases/execution/claim-next-task.use-case';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
+import type { OutboxRepository } from '../../../../src/application/ports/outbox-repository.port';
+
+// Reentrante e passa-direto, como o DrizzleUnitOfWork quando já há tx ativa.
+const uowStub = {
+  runInTransaction: <T>(work: () => Promise<T>) => work(),
+};
 
 const { db, pool } = createTestDb();
 const taskRepo = new DrizzleTaskRepository(db);
+const storyRepo = new DrizzleStoryRepository(db);
 const appendStub = {
   execute: () => Promise.resolve({}),
 } as unknown as AppendSessionEventUseCase;
-const markBlocked = new MarkTaskBlockedUseCase(taskRepo, appendStub);
-const unblock = new UnblockTaskUseCase(taskRepo, appendStub);
+const outboxCalls: { eventType: string; payload: Record<string, unknown> }[] =
+  [];
+const outboxStub = {
+  append: (input: { eventType: string; payload: Record<string, unknown> }) => {
+    outboxCalls.push(input);
+    return Promise.resolve();
+  },
+} as unknown as OutboxRepository;
+const markBlocked = new MarkTaskBlockedUseCase(
+  taskRepo,
+  appendStub,
+  outboxStub,
+  uowStub,
+);
+const unblock = new UnblockTaskUseCase(
+  taskRepo,
+  storyRepo,
+  appendStub,
+  outboxStub,
+  uowStub,
+);
 const claimNext = new ClaimNextTaskUseCase(taskRepo, appendStub);
 
 async function seed() {
@@ -70,6 +99,7 @@ async function seed() {
 
 beforeEach(async () => {
   await truncateAll(db);
+  outboxCalls.length = 0;
 });
 
 afterAll(async () => {
@@ -197,5 +227,54 @@ describe('MarkTaskBlockedUseCase / UnblockTaskUseCase', () => {
       'dev-api-3',
     );
     expect(reclaimed!.id).toBe(taskId);
+  });
+
+  describe('outbox task.gate_resolved (D3 — revisão da Fase 12b)', () => {
+    it('bloqueio EXTERNO acorda o dono da task, com o agentId lido antes de assignedTo ser zerado', async () => {
+      // O buraco que isto fecha: o `QaLeadServer` bloqueia chamando este caso
+      // de uso DIRETO, sem passar pelo `RecordGateVerdictUseCase`. Sem a
+      // emissão aqui, o dev agent ficava em `awaiting_gate` para sempre — a
+      // task morria bloqueada na api e ele nunca ficava sabendo.
+      const { projectId, sessionId, taskId } = await seed();
+      await claimNext.execute(projectId, sessionId, 'api', 'dev-api');
+
+      const blocked = await markBlocked.execute(
+        projectId,
+        sessionId,
+        taskId,
+        'QA de Automação não concluiu o parecer',
+        'limite de iterações sem emit_qa_verdict',
+        // quem BLOQUEOU é o qa-lead, não o dono da task
+        'qa-lead',
+        'modelo',
+      );
+
+      // O banco real confirma a premissa: markBlocked zera o dono.
+      expect(blocked.assignedTo).toBeNull();
+
+      expect(outboxCalls).toHaveLength(1);
+      expect(outboxCalls[0].eventType).toBe('task.gate_resolved');
+      expect(outboxCalls[0].payload).toMatchObject({
+        taskId,
+        // o DONO (dev-api), não quem bloqueou (qa-lead)
+        agentId: 'dev-api',
+        nextAction: 'blocked',
+      });
+    });
+
+    it('task sem dono: não emite — não há agente para acordar', async () => {
+      const { projectId, sessionId, taskId } = await seed();
+      // sem claim: assignedTo é null desde o começo
+      await markBlocked.execute(
+        projectId,
+        sessionId,
+        taskId,
+        'bloqueada antes de ter dono',
+        'diagnóstico',
+        'qa-lead',
+      );
+
+      expect(outboxCalls).toEqual([]);
+    });
   });
 });

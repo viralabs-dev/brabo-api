@@ -65,6 +65,7 @@ export abstract class ApiToEngineClient {
     taskBudgetMicros?: number,
     maxGateCorrections?: number,
     impl?: DevAgentImpl,
+    maxConsecutiveBlocked?: number,
   ): Promise<void>;
 
   // Executa uma ação git (git_commit/git_push) no worktree do agente, no
@@ -83,6 +84,28 @@ export abstract class ApiToEngineClient {
     projectId: string,
     sessionId: string,
     module: string,
+  ): Promise<void>;
+
+  // Rearma um dev agent travado pelo circuit breaker (Fase 12b — RN-047):
+  // zera o contador de blocked consecutivas e devolve o agente a tentar
+  // reivindicar. Lança (404 do engine) se o agente não existe.
+  abstract rearmDevAgent(
+    projectId: string,
+    sessionId: string,
+    agentId: string,
+  ): Promise<void>;
+
+  // Devolve ao PO uma história que o usuário RECUSOU promover (Fase 12c —
+  // RN-048). Espelha a devolução de gate ao dev: o motivo vira uma mensagem
+  // fixada na sessão do PO, que decide o que fazer e registra. Lança (404 do
+  // engine) se o PO daquela sessão não está mais de pé — a recusa em si já
+  // está gravada, e é o chamador que decide se isso é fatal.
+  abstract reviseStory(
+    projectId: string,
+    sessionId: string,
+    storyId: string,
+    title: string,
+    reason: string,
   ): Promise<void>;
 
   // Sinaliza que o usuário confirmou que a arquitetura está pronta (Fase 4a

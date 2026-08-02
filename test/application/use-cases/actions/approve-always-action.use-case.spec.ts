@@ -73,6 +73,8 @@ class FakeApiToEngineClient implements ApiToEngineClient {
     return {};
   }
   async acceptParallelization(): Promise<void> {}
+  async rearmDevAgent(): Promise<void> {}
+  async reviseStory(): Promise<void> {}
   async offerInfraHandoff(): Promise<void> {}
   async reanalyzeSession(): Promise<void> {}
   async runAnamnese(): Promise<void> {}
@@ -104,6 +106,7 @@ const proposeAction = new ProposeActionUseCase(
   executeTerminalAction,
   undefined as never, // executeGitAction — não exercitado aqui
   undefined as never, // executeInfraPr — não exercitado aqui
+  appendSessionEvent,
 );
 const approveAction = new ApproveActionUseCase(
   unitOfWork,
@@ -118,6 +121,7 @@ const approveAction = new ApproveActionUseCase(
   } as unknown as never, // executeGitAction: passthrough
   undefined as never, // executeInstructionPatch — não exercitado aqui,
   new BraboMetrics(),
+  appendSessionEvent,
 );
 const approveAlwaysAction = new ApproveAlwaysActionUseCase(
   proposedActionRepo,

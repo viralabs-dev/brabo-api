@@ -45,6 +45,9 @@ const story: Story = {
   dor: [],
   moduleIds: ['api'],
   status: 'ready',
+  proposedReady: false,
+  returnedReason: null,
+  returnedAt: null,
   createdAt: now,
   updatedAt: now,
 };

@@ -11,6 +11,7 @@ import { MarkTaskUseCase } from './mark-task.use-case';
 import { GetDevTaskContextUseCase } from './get-dev-task-context.use-case';
 import { MarkTaskBlockedUseCase } from './mark-task-blocked.use-case';
 import { UnblockTaskUseCase } from './unblock-task.use-case';
+import { RearmDevAgentUseCase } from './rearm-dev-agent.use-case';
 import { RecordGateVerdictUseCase } from './record-gate-verdict.use-case';
 import { RecordDelegationUseCase } from './record-delegation.use-case';
 import { OpenGateUseCase } from './open-gate.use-case';
@@ -37,6 +38,7 @@ const USE_CASES = [
   GetDevTaskContextUseCase,
   MarkTaskBlockedUseCase,
   UnblockTaskUseCase,
+  RearmDevAgentUseCase,
   RecordGateVerdictUseCase,
   RecordDelegationUseCase,
   OpenGateUseCase,

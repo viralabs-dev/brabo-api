@@ -131,6 +131,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     taskBudgetMicros?: number,
     maxGateCorrections?: number,
     impl?: DevAgentImpl,
+    maxConsecutiveBlocked?: number,
   ): Promise<void> {
     await this.postCommand(`/internal/sessions/${sessionId}/execution/start`, {
       projectId,
@@ -138,6 +139,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
       taskBudgetMicros,
       maxGateCorrections,
       impl,
+      maxConsecutiveBlocked,
     });
   }
 
@@ -150,6 +152,32 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
       `/internal/sessions/${sessionId}/execution/parallelize`,
       { projectId, module },
     );
+  }
+
+  async rearmDevAgent(
+    projectId: string,
+    sessionId: string,
+    agentId: string,
+  ): Promise<void> {
+    await this.postCommand(
+      `/internal/sessions/${sessionId}/dev-agents/${agentId}/rearm`,
+      { projectId },
+    );
+  }
+
+  async reviseStory(
+    projectId: string,
+    sessionId: string,
+    storyId: string,
+    title: string,
+    reason: string,
+  ): Promise<void> {
+    await this.postCommand(`/internal/sessions/${sessionId}/agent/revise`, {
+      projectId,
+      storyId,
+      title,
+      reason,
+    });
   }
 
   async executeGitAction(

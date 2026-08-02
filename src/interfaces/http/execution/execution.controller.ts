@@ -14,6 +14,7 @@ import { RequireRole } from '../iam/require-role.decorator';
 import { ActivateExecutionUseCase } from '../../../application/use-cases/execution/activate-execution.use-case';
 import { AcceptParallelizationUseCase } from '../../../application/use-cases/execution/accept-parallelization.use-case';
 import { UnblockTaskUseCase } from '../../../application/use-cases/execution/unblock-task.use-case';
+import { RearmDevAgentUseCase } from '../../../application/use-cases/execution/rearm-dev-agent.use-case';
 import { AcceptParallelizationDto } from './dto/accept-parallelization.dto';
 import { ActivateExecutionDto } from './dto/activate-execution.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
@@ -34,6 +35,7 @@ export class ExecutionController {
     private readonly activateExecution: ActivateExecutionUseCase,
     private readonly acceptParallelization: AcceptParallelizationUseCase,
     private readonly unblockTask: UnblockTaskUseCase,
+    private readonly rearmDevAgent: RearmDevAgentUseCase,
   ) {}
 
   @Post('execution/activate')
@@ -103,5 +105,24 @@ export class ExecutionController {
     @CurrentUser() user: User,
   ) {
     return this.unblockTask.execute(projectId, sessionId, taskId, user.id);
+  }
+
+  @Post('sessions/:sessionId/agents/:agentId/rearm')
+  @RequireRole('developer')
+  @ApiOperation({
+    summary: 'Rearma um dev agent travado pelo circuit breaker',
+    description:
+      'Zera o contador de tasks blocked consecutivas (RN-047) e devolve o agente ' +
+      'a tentar reivindicar. É a única saída de `idle_tripped` — não existe ' +
+      'destrave automático.',
+  })
+  @ApiCreatedResponse({ type: OkResponseDto })
+  rearm(
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @Param('agentId') agentId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.rearmDevAgent.execute(projectId, sessionId, agentId, user.id);
   }
 }

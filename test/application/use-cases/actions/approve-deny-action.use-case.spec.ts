@@ -62,6 +62,8 @@ class FakeApiToEngineClient implements ApiToEngineClient {
     return {};
   }
   async acceptParallelization(): Promise<void> {}
+  async rearmDevAgent(): Promise<void> {}
+  async reviseStory(): Promise<void> {}
   async offerInfraHandoff(): Promise<void> {}
   async reanalyzeSession(): Promise<void> {}
   async runAnamnese(): Promise<void> {}
@@ -100,6 +102,7 @@ const proposeAction = new ProposeActionUseCase(
   executeTerminalAction,
   undefined as never, // executeGitAction — não exercitado aqui
   undefined as never, // executeInfraPr — não exercitado aqui
+  appendSessionEvent,
 );
 const approveAction = new ApproveActionUseCase(
   unitOfWork,
@@ -115,6 +118,7 @@ const approveAction = new ApproveActionUseCase(
   } as unknown as never,
   undefined as never, // executeInstructionPatch — não exercitado aqui,
   new BraboMetrics(),
+  appendSessionEvent,
 );
 const denyAction = new DenyActionUseCase(
   unitOfWork,
@@ -122,6 +126,7 @@ const denyAction = new DenyActionUseCase(
   proposedActionRepo,
   outboxRepo,
   new BraboMetrics(),
+  appendSessionEvent,
 );
 
 let workspacesRoot: string;
@@ -179,6 +184,108 @@ async function setupPendingAction() {
   });
   return { user, project, session, action };
 }
+
+/** Os eventos da sessão, em ordem, como a linha do tempo os mostra. */
+async function eventosDa(sessionId: string) {
+  const page = await sessionEventRepo.listPaginated(sessionId, { limit: 200 });
+  return page.items;
+}
+
+describe('a decisão no event log (achado #17 do dogfooding)', () => {
+  it('propor grava `proposed_action.created` com o AGENTE e o status resolvido', async () => {
+    const { session } = await setupPendingAction();
+
+    const criado = (await eventosDa(session.id)).find(
+      (e) => e.type === 'proposed_action.created',
+    );
+
+    expect(criado).toBeTruthy();
+    expect(criado!.actor).toEqual({ kind: 'agent', id: 'dev-agent' });
+    // `status` é o que torna a auto-aprovação distinguível de um clique.
+    expect(criado!.payload).toMatchObject({
+      actionType: 'git_push',
+      status: 'pending',
+    });
+  });
+
+  it('aprovar grava `proposed_action.approved` com o USUÁRIO que clicou', async () => {
+    // A métrica que a Fase 10 quis medir e não conseguiu: cliques de
+    // aprovação. Antes disto, a decisão só existia no outbox (transporte,
+    // podado) e em `proposed_actions.decided_at` (fora da linha do tempo).
+    const { user, project, session, action } = await setupPendingAction();
+
+    await approveAction.execute(project.id, session.id, action.id, user.id);
+
+    const aprovado = (await eventosDa(session.id)).find(
+      (e) => e.type === 'proposed_action.approved',
+    );
+
+    expect(aprovado).toBeTruthy();
+    expect(aprovado!.actor).toEqual({ kind: 'user', id: user.id });
+    expect(aprovado!.payload).toMatchObject({
+      actionId: action.id,
+      actionType: 'git_push',
+      from: 'pending',
+    });
+  });
+
+  it('negar grava `proposed_action.denied` com o usuário e o motivo', async () => {
+    const { user, project, session, action } = await setupPendingAction();
+
+    await denyAction.execute(
+      project.id,
+      session.id,
+      action.id,
+      user.id,
+      'push direto em branch protegida',
+    );
+
+    const negado = (await eventosDa(session.id)).find(
+      (e) => e.type === 'proposed_action.denied',
+    );
+
+    expect(negado!.actor).toEqual({ kind: 'user', id: user.id });
+    expect(negado!.payload).toMatchObject({
+      reason: 'push direto em branch protegida',
+    });
+  });
+
+  it('auto-aprovação NÃO produz evento de aprovação — só o created com o status', async () => {
+    // O corte que dá a métrica: contar `proposed_action.approved` conta
+    // decisão HUMANA. A política decidindo sozinha aparece no `created`, com
+    // ator agente, e nunca é confundida com um clique.
+    const { user, project, session } = await setupPendingAction();
+    // `write_file` porque auto-aprovar não dispara executor nenhum no propose
+    // — o que está sob teste é o EVENTO, não a execução.
+    await agentAutonomyRepo.upsert(
+      project.id,
+      'dev-agent',
+      'write_file',
+      'auto_approve',
+    );
+
+    await proposeAction.execute(project.id, session.id, {
+      actionType: 'write_file',
+      actor: { kind: 'agent', id: 'dev-agent' },
+      payload: { path: 'x.md', content: 'x' },
+    });
+
+    const eventos = await eventosDa(session.id);
+    const auto = eventos.filter(
+      (e) =>
+        e.type === 'proposed_action.created' &&
+        (e.payload as { status?: string }).status === 'auto_approved',
+    );
+    const cliques = eventos.filter(
+      (e) => e.type === 'proposed_action.approved',
+    );
+
+    expect(auto).toHaveLength(1);
+    expect(auto[0].actor.kind).toBe('agent');
+    expect(cliques).toHaveLength(0);
+    expect(user).toBeTruthy();
+  });
+});
 
 describe('ApproveActionUseCase', () => {
   it('caminho feliz: aprova uma ação pending e grava decidedBy/decidedAt', async () => {
