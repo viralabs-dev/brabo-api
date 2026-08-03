@@ -17,11 +17,41 @@ export const BOOTSTRAP_STEPS = [
   'commit_branching_policy',
   'create_dev_branch',
   'create_qa_branch',
-  'create_rc_branch',
   'protect_branches',
 ] as const;
 
-export type BootstrapStepName = (typeof BOOTSTRAP_STEPS)[number];
+/**
+ * Passos que o bootstrap NÃO executa mais, mas que existem em linhas antigas
+ * de `repo_bootstraps.step` e no enum `bootstrap_step` do banco.
+ *
+ * `create_rc_branch` saiu quando o degrau `rc` saiu da política (ADR 0030); o
+ * bootstrap continuava criando e protegendo a branch, e o
+ * `branching-policy.md` commitado no repositório do usuário continuava
+ * ensinando a escada de quatro — achado #3 do primeiro dogfooding.
+ *
+ * O valor fica no enum de propósito: bootstraps já rodados têm linhas com ele,
+ * e removê-lo reescreveria história para apagar um passo que realmente
+ * aconteceu. Ele não entra em `BOOTSTRAP_STEPS` porque essa lista é a ORDEM DE
+ * EXECUÇÃO — e é do último item dela que `deriveProvisioningStatus` tira "já
+ * convergiu".
+ */
+export const RETIRED_BOOTSTRAP_STEPS = ['create_rc_branch'] as const;
+
+export type BootstrapStepName =
+  | (typeof BOOTSTRAP_STEPS)[number]
+  | (typeof RETIRED_BOOTSTRAP_STEPS)[number];
+
+/**
+ * Todos os valores que `repo_bootstraps.step` PODE ter — os que o bootstrap
+ * executa hoje mais os aposentados. É o que a api pode devolver, então é isto
+ * que os DTOs declaram no OpenAPI: publicar só os atuais faria o contrato
+ * mentir sobre um projeto antigo, cujo cursor legitimamente aponta para um
+ * passo que não existe mais.
+ */
+export const ALL_BOOTSTRAP_STEP_NAMES = [
+  ...BOOTSTRAP_STEPS,
+  ...RETIRED_BOOTSTRAP_STEPS,
+] as const;
 
 export const BOOTSTRAP_STATUSES = [
   'pending',

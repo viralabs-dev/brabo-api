@@ -44,9 +44,14 @@ export interface BootstrapStep {
   ): Promise<BootstrapMutation[] | 'capability_unsupported'>;
 }
 
-// dev←main, qa←dev, rc←qa — cascata de promoção (default meu, o pedido
-// não especifica a origem de qa/rc; segue o pipeline dev→qa→rc→main
-// descrito no CLAUDE.md).
+// dev←main, qa←dev — cascata de promoção do pipeline dev→qa→main.
+//
+// Havia um terceiro degrau, `rc`, criado a partir de `qa`. O ADR 0030 o
+// removeu da política do Brabo ("sem ambiente e sem gente para exercê-lo,
+// seria degrau cerimonial") e o `pr-police` do CI opera com três desde então —
+// mas o bootstrap continuou criando e protegendo `rc` no repositório do
+// usuário, e o `branching-policy.md` que ele commita continuou ensinando a
+// escada de quatro. Era o achado #3 do primeiro dogfooding.
 function createBranchStep(
   step: BootstrapStepName,
   branchName: string,
@@ -89,16 +94,27 @@ function createBranchStep(
   };
 }
 
-// Um só passo, com até 4 mutações internas (uma por branch ainda não
-// protegida) — ordem literal do pedido: main, rc, qa, dev.
-const PROTECTED_BRANCH_NAMES = ['main', 'rc', 'qa', 'dev'] as const;
+// Um só passo, com até 3 mutações internas (uma por branch ainda não
+// protegida) — da ponta de produção para a de integração: main, qa, dev.
+const PROTECTED_BRANCH_NAMES = ['main', 'qa', 'dev'] as const;
 
 /**
  * As branches que o template CONHECE — as mesmas que ele protege, já que
- * `main` é criada pelo provider e as outras três pelos passos acima.
+ * `main` é criada pelo provider e as outras duas pelos passos acima.
  * Exportado para o dry-run da adoção (Fase 12a) poder chamar de "extra"
  * o que não está aqui: uma branch fora desta lista é política própria do
  * projeto adotado, informativa e nunca tocada pelo bootstrap.
+ *
+ * `rc` saiu daqui junto com o degrau (ADR 0030), e a consequência na adoção é
+ * correta e deliberada: um repositório que já tem `rc` — inclusive um
+ * bootstrapado por uma versão anterior do Brabo — passa a vê-la classificada
+ * como `extra_branch`. É o que ela é hoje: política do projeto, descrita no
+ * plano e nunca tocada.
+ *
+ * A lista de merge protegido (`domain/actions/protected-branches.ts`) NÃO
+ * perdeu `rc`, de propósito: aquela lista decide o que a trava de merge
+ * recusa, e afrouxá-la para uma branch que ainda existe em repositórios
+ * antigos trocaria um degrau cerimonial por um merge automático em produção.
  */
 export const TEMPLATE_BRANCH_NAMES: readonly string[] = PROTECTED_BRANCH_NAMES;
 
@@ -201,6 +217,10 @@ export const BOOTSTRAP_STEP_SEQUENCE: readonly BootstrapStep[] = [
   ),
   createBranchStep('create_dev_branch', 'dev', 'main'),
   createBranchStep('create_qa_branch', 'qa', 'dev'),
-  createBranchStep('create_rc_branch', 'rc', 'qa'),
+  // `create_rc_branch` saiu da sequência (achado #3), mas CONTINUA no enum
+  // `bootstrap_step` do banco: bootstraps já rodados têm linhas com esse
+  // valor, e apagá-lo do enum reescreveria história para tirar um passo que
+  // realmente aconteceu. Passo que não está nesta lista simplesmente não é
+  // executado nem cobrado pela retomada.
   protectBranchesStep,
 ];

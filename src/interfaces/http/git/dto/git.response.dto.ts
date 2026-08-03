@@ -4,7 +4,8 @@ import {
   BOOTSTRAP_DIAGNOSTIC_KINDS,
   BOOTSTRAP_PLAN_DECISIONS,
   BOOTSTRAP_STATUSES,
-  BOOTSTRAP_STEPS,
+  ALL_BOOTSTRAP_STEP_NAMES,
+  type BootstrapStepName,
   REPO_ORIGINS,
 } from '../../../../domain/git/repo-bootstrap.entity';
 import type {
@@ -90,8 +91,8 @@ export const _chavesRepo: MesmasChaves<
 > = true;
 
 export class PassoDeBootstrapResponseDto {
-  @ApiProperty({ enum: BOOTSTRAP_STEPS, example: 'create_dev_branch' })
-  step!: (typeof BOOTSTRAP_STEPS)[number];
+  @ApiProperty({ enum: ALL_BOOTSTRAP_STEP_NAMES, example: 'create_dev_branch' })
+  step!: BootstrapStepName;
 
   @ApiProperty({ enum: BOOTSTRAP_STATUSES, example: 'running' })
   status!: (typeof BOOTSTRAP_STATUSES)[number];
@@ -140,7 +141,7 @@ export class RepoBootstrapStatusResponseDto implements Wire<RepoBootstrapStatus>
   })
   sessionId!: string | null;
 
-  @ApiProperty({ enum: BOOTSTRAP_STEPS, example: null, nullable: true })
+  @ApiProperty({ enum: ALL_BOOTSTRAP_STEP_NAMES, example: null, nullable: true })
   failedStep!: Wire<RepoBootstrapStatus>['failedStep'];
 
   @ApiProperty({ example: null, nullable: true })
@@ -162,7 +163,7 @@ export const _chavesBootstrap: MesmasChaves<
 // --- Adoção de repositório existente (Fase 12a) ---
 
 export class BootstrapPlanStepResponseDto implements Wire<BootstrapPlanStep> {
-  @ApiProperty({ enum: BOOTSTRAP_STEPS, example: 'create_qa_branch' })
+  @ApiProperty({ enum: ALL_BOOTSTRAP_STEP_NAMES, example: 'create_qa_branch' })
   step!: Wire<BootstrapPlanStep>['step'];
 
   @ApiProperty({

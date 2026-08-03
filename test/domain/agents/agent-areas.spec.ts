@@ -47,8 +47,9 @@ function areasDoWeb(): { lead: string; members: string[] }[] {
       return [];
     }
 
+    const corpo = prop.initializer;
     const campo = (nome: string) =>
-      prop.initializer.properties.find(
+      corpo.properties.find(
         (p): p is ts.PropertyAssignment =>
           ts.isPropertyAssignment(p) && p.name.getText() === nome,
       )?.initializer;
