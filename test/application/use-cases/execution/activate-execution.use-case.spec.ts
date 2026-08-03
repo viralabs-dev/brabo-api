@@ -21,6 +21,8 @@ function build(opts?: {
   projectBudget?: number | null;
   projectBreaker?: number | null;
   modules?: typeof MODULOS;
+  /** Sessão de execução já vigente no projeto (cenário de REATIVAÇÃO). */
+  sessaoVigente?: { id: string } | null;
 }) {
   const started: {
     budget?: number;
@@ -37,8 +39,16 @@ function build(opts?: {
     findCurrent: () => Promise.resolve({ modules: opts?.modules ?? MODULOS }),
   } as unknown as ModuleMapRepository;
 
+  const sessoesCriadas: string[] = [];
+  const sessoesAtivadas: string[] = [];
+
   const sessions = {
-    create: () => Promise.resolve({ id: 'sess-1' }),
+    create: () => {
+      sessoesCriadas.push('sess-1');
+      return Promise.resolve({ id: 'sess-1' });
+    },
+    findActiveExecutionSession: () =>
+      Promise.resolve(opts?.sessaoVigente ?? null),
   } as unknown as SessionRepository;
 
   const taskRepo = {
@@ -93,7 +103,10 @@ function build(opts?: {
   } as unknown as PermissionsFileStore;
 
   const transitionSession = {
-    execute: () => Promise.resolve({}),
+    execute: (_p: string, sessionId: string) => {
+      sessoesAtivadas.push(sessionId);
+      return Promise.resolve({});
+    },
   } as unknown as TransitionSessionUseCase;
 
   const appendEvent = {
@@ -129,6 +142,8 @@ function build(opts?: {
     allowPatterns,
     projectUpdates,
     eventos,
+    sessoesCriadas,
+    sessoesAtivadas,
   };
 }
 
@@ -177,6 +192,49 @@ describe('ActivateExecutionUseCase — orçamento por task', () => {
 
     const ativacao = eventos.find((e) => e.type === 'execution.activated');
     expect(ativacao?.payload.taskBudgetMicros).toBe(777_000);
+  });
+});
+
+// Achado #11 do primeiro dogfooding. O `sessions.create` era incondicional:
+// cada clique em "ativar" abria uma sessão nova, ativa, que recebia o
+// `execution.activated` e mais nada — porque o engine descarta o `session_id`
+// quando o agente já está vivo, e os eventos dos agentes continuavam indo pra
+// sessão da ativação anterior.
+describe('ActivateExecutionUseCase — reativação não abre sessão órfã', () => {
+  it('sem sessão de execução vigente: cria e ativa uma', async () => {
+    const { useCase, sessoesCriadas, sessoesAtivadas } = build();
+
+    const { sessionId } = await useCase.execute('proj-1', 'user-1');
+
+    expect(sessionId).toBe('sess-1');
+    expect(sessoesCriadas).toEqual(['sess-1']);
+    expect(sessoesAtivadas).toEqual(['sess-1']);
+  });
+
+  it('com sessão vigente: reusa, sem criar nem re-transicionar', async () => {
+    const { useCase, sessoesCriadas, sessoesAtivadas } = build({
+      sessaoVigente: { id: 'sess-em-curso' },
+    });
+
+    const { sessionId } = await useCase.execute('proj-1', 'user-1');
+
+    expect(sessionId).toBe('sess-em-curso');
+    expect(sessoesCriadas).toEqual([]);
+    // Transicionar uma sessão que já está `active` para `active` seria um
+    // no-op na melhor das hipóteses e um erro de máquina de estados na pior.
+    expect(sessoesAtivadas).toEqual([]);
+  });
+
+  it('o evento de ativação da reativação cai na sessão vigente', async () => {
+    const { useCase, eventos } = build({
+      sessaoVigente: { id: 'sess-em-curso' },
+    });
+
+    await useCase.execute('proj-1', 'user-1');
+
+    // O `execution.activated` continua sendo emitido — reativar É um fato do
+    // projeto —, mas na linha do tempo que os agentes já estão escrevendo.
+    expect(eventos.some((e) => e.type === 'execution.activated')).toBe(true);
   });
 });
 
