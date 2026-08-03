@@ -60,9 +60,12 @@ export const DEFAULT_MAX_CONSECUTIVE_BLOCKED = 3;
 
 /**
  * Ativa a fase de execução de um projeto (Fase 4a): exige module_map vigente;
- * cria uma sessão de execução dedicada e a ativa (sobe o SessionServer); seeda
- * as instruções + a autonomia (auto_approve nos git ops) de um dev por módulo;
- * e manda o engine subir os DevAgentServers.
+ * usa a sessão de execução vigente — ou cria e ativa uma, se não houver;
+ * seeda as instruções + a autonomia (auto_approve nos git ops) de um dev por
+ * módulo; e manda o engine subir os DevAgentServers.
+ *
+ * É IDEMPOTENTE em sessão: chamar de novo num projeto que já está executando
+ * reativa dentro da mesma sessão. Ver o comentário no ponto da decisão.
  */
 @Injectable()
 export class ActivateExecutionUseCase {
@@ -142,11 +145,18 @@ export class ActivateExecutionUseCase {
       await this.permissionsFile.addPattern(projectId, 'allow', pattern);
     }
 
-    const session = await this.sessions.create({
-      projectId,
-      createdBy: userId,
-    });
-    await this.transitionSession.execute(projectId, session.id, 'active');
+    // REATIVAR cai na sessão de execução que já existe, em vez de abrir uma
+    // nova (achado #11 do primeiro dogfooding). O `create` era incondicional,
+    // e o engine descarta o `session_id` novo quando o agente já está vivo:
+    // a sessão nascia `active`, recebia o `execution.activated`, e nunca mais
+    // recebia coisa nenhuma — os eventos dos agentes continuavam indo para a
+    // sessão da ativação anterior. Uma sessão órfã por clique de reativação.
+    const vigente = await this.sessions.findActiveExecutionSession(projectId);
+    const session =
+      vigente ?? (await this.sessions.create({ projectId, createdBy: userId }));
+    if (!vigente) {
+      await this.transitionSession.execute(projectId, session.id, 'active');
+    }
 
     const modules = moduleMap.modules.map((m) => m.name);
     for (const m of moduleMap.modules) {

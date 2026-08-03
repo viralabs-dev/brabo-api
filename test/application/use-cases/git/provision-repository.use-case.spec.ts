@@ -241,7 +241,7 @@ afterAll(async () => {
 });
 
 describe('ProvisionRepositoryUseCase', () => {
-  it('local: cria o repo, converge os 6 passos, degrada protect_branches com aviso (não erro)', async () => {
+  it('local: cria o repo, converge os 5 passos, degrada protect_branches com aviso (não erro)', async () => {
     const { user, project } = await setupProject();
     const provider = new InstrumentedGitProvider(new LocalGitProvider());
     const useCase = buildUseCase(provider);
@@ -286,9 +286,10 @@ describe('ProvisionRepositoryUseCase', () => {
       .select()
       .from(proposedActions)
       .where(eq(proposedActions.sessionId, bootstrapRow!.sessionId));
-    // git_repo_create + 3 git_branch_create (dev/qa/rc) + 2 git_commit —
-    // nenhum git_branch_protect (degradado, sem mutação de verdade).
-    expect(actions).toHaveLength(6);
+    // git_repo_create + 2 git_branch_create (dev/qa) + 2 git_commit —
+    // nenhum git_branch_protect (degradado, sem mutação de verdade). Eram 3
+    // branches até o degrau `rc` sair do template (ADR 0030, achado #3).
+    expect(actions).toHaveLength(5);
     expect(actions.every((a) => a.status === 'executed')).toBe(true);
     expect(actions.every((a) => a.resolvedPolicy === 'auto_approve')).toBe(
       true,
@@ -337,11 +338,11 @@ describe('ProvisionRepositoryUseCase', () => {
     const degradedAfterReruns = events.filter(
       (e) => e.type === 'bootstrap.step_degraded',
     );
-    // 5 passos com mutação real (2 commits + 3 branches) * 2 reruns = 10
+    // 4 passos com mutação real (2 commits + 2 branches) * 2 reruns = 8
     // skips — protect_branches nunca é "skipped", sempre "degraded" (não
     // suportado pelo Local, independente de progresso prévio) — 3
     // ocorrências no total (1ª execução + 2 reruns).
-    expect(skipsAfterReruns.length).toBe(10);
+    expect(skipsAfterReruns.length).toBe(8);
     expect(degradedAfterReruns.length).toBe(3);
   });
 
