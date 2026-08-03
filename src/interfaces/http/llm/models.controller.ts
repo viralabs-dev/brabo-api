@@ -26,6 +26,7 @@ import { ListModelPriceChangesUseCase } from '../../../application/use-cases/llm
 import { RequireRole } from '../iam/require-role.decorator';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import {
+  ModelComCuradoriaResponseDto,
   ModelPriceChangeResponseDto,
   ModelResponseDto,
 } from './dto/llm.response.dto';
@@ -40,10 +41,17 @@ import { SyncModelCatalogResponseDto } from '../internal/dto/model-sync.response
  *
  * O `RolesGuard` resolve o papel efetivo a partir de `:projectId` ou
  * `:workspaceId` na rota — sem um dos dois ele não tem de onde tirar papel
- * nenhum, e um `@RequireRole` numa rota sem escopo reprovaria SEMPRE. O
- * catálogo em si é global (a tabela `models` nunca foi por workspace); o
- * workspace no caminho é a âncora de RBAC, não um recorte de dados. Catálogo
- * por workspace está no backlog do ADR 0042.
+ * nenhum, e um `@RequireRole` numa rota sem escopo reprovaria SEMPRE.
+ *
+ * Desde o ADR 0049 o workspace no caminho deixou de ser só âncora de RBAC: ele
+ * é o RECORTE dos dados. A tabela `models` continua global (nome, preço e
+ * capabilities são fato do provider, iguais para todo mundo), mas a curadoria
+ * — quais desses modelos aparecem no seletor — vive em `workspace_models`, uma
+ * linha por (workspace, modelo).
+ *
+ * A rota do seletor pende de `:projectId`, e não de `:workspaceId`, porque é
+ * assim que a pergunta nasce nas telas que a consomem; o workspace sai do
+ * projeto dentro do caso de uso.
  */
 @ApiTags('llm')
 @ApiBearerAuth(BEARER)
@@ -64,13 +72,16 @@ export class ModelsController {
    * têm chaves DINÂMICAS (o nome do provider), e não existe classe que
    * expresse isso. `additionalProperties` é a forma correta em OpenAPI.
    */
-  @Get('models')
+  @Get('projects/:projectId/models')
+  @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Lista os modelos disponíveis, agrupados por categoria e provider',
+    summary: 'Lista os modelos ativos NO WORKSPACE do projeto',
     description:
       'Categoria `local` são os do Ollama, que não gastam dinheiro; `cloud` são os ' +
-      'de API paga. Modelo inativo não aparece aqui, mas continua nos custos ' +
-      'históricos — para vê-lo use a rota de catálogo.',
+      'de API paga. Modelo que o workspace não ativou não aparece aqui, mas ' +
+      'continua nos custos históricos — para vê-lo use a rota de catálogo. ' +
+      'A lista é do workspace DONO do projeto: o mesmo modelo pode estar ' +
+      'ligado num workspace e desligado no vizinho (ADR 0049).',
   })
   @ApiExtraModels(ModelResponseDto)
   @ApiOkResponse({
@@ -98,8 +109,8 @@ export class ModelsController {
       },
     },
   })
-  list() {
-    return this.listModels.execute();
+  list(@Param('projectId') projectId: string) {
+    return this.listModels.execute(projectId);
   }
 
   @Get('workspaces/:workspaceId/models/catalog')
@@ -110,9 +121,11 @@ export class ModelsController {
       'A tela de curadoria. Modelo descoberto pelo sync entra `isActive: false` ' +
       'e só aparece aqui até alguém ativá-lo; modelo que sumiu do provider vem ' +
       'com `availability: "unavailable"` e nunca é deletado, porque bindings e ' +
-      'histórico de custo apontam para ele.',
+      'histórico de custo apontam para ele. O `isActive` é DESTE workspace ' +
+      '(ADR 0049); `availability` é global, porque é o que o sync observou no ' +
+      'provider.',
   })
-  @ApiExtraModels(ModelResponseDto)
+  @ApiExtraModels(ModelComCuradoriaResponseDto)
   @ApiForbiddenResponse({ description: 'Papel insuficiente no workspace.' })
   @ApiOkResponse({
     schema: {
@@ -122,14 +135,14 @@ export class ModelsController {
           type: 'object',
           additionalProperties: {
             type: 'array',
-            items: { $ref: getSchemaPath(ModelResponseDto) },
+            items: { $ref: getSchemaPath(ModelComCuradoriaResponseDto) },
           },
         },
         cloud: {
           type: 'object',
           additionalProperties: {
             type: 'array',
-            items: { $ref: getSchemaPath(ModelResponseDto) },
+            items: { $ref: getSchemaPath(ModelComCuradoriaResponseDto) },
           },
         },
       },
@@ -139,8 +152,8 @@ export class ModelsController {
       },
     },
   })
-  catalog() {
-    return this.listCatalog.execute();
+  catalog(@Param('workspaceId') workspaceId: string) {
+    return this.listCatalog.execute(workspaceId);
   }
 
   @Post('workspaces/:workspaceId/models/activate')
@@ -150,15 +163,25 @@ export class ModelsController {
   @ApiOperation({
     summary: 'Liga ou desliga modelos no seletor (lote)',
     description:
-      'Curadoria do owner. Só mexe em `isActive` — `availability` é o que o ' +
-      'sync observou no provider e não se altera por aqui. Lote inteiro ou ' +
-      'nada: um id inexistente reprova a chamada sem aplicar nenhuma linha.',
+      'Curadoria do owner, VALENDO SÓ NESTE WORKSPACE (ADR 0049). Só mexe em ' +
+      '`isActive` — `availability` é o que o sync observou no provider, é ' +
+      'global e não se altera por aqui. Lote inteiro ou nada: um id ' +
+      'inexistente reprova a chamada sem aplicar nenhuma linha.',
   })
-  @ApiOkResponse({ type: [ModelResponseDto] })
+  @ApiOkResponse({ type: [ModelComCuradoriaResponseDto] })
   @ApiForbiddenResponse({ description: 'Exige `owner` no workspace.' })
   @ApiNotFoundResponse({ description: 'Algum id do lote não existe.' })
-  activate(@Body() dto: SetModelsActiveDto) {
-    return this.setModelsActive.execute(dto);
+  activate(
+    @Param('workspaceId') workspaceId: string,
+    @CurrentUser() user: User,
+    @Body() dto: SetModelsActiveDto,
+  ) {
+    return this.setModelsActive.execute({
+      workspaceId,
+      modelIds: dto.modelIds,
+      isActive: dto.isActive,
+      curatedBy: user.id,
+    });
   }
 
   @Post('workspaces/:workspaceId/models/sync')

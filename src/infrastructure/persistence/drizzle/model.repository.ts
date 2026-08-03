@@ -17,11 +17,6 @@ import { currentDb } from './drizzle-context';
 export class DrizzleModelRepository implements ModelRepository {
   constructor(@Inject(DRIZZLE) private readonly rootDb: DrizzleDb) {}
 
-  async listActive(): Promise<Model[]> {
-    const db = currentDb(this.rootDb);
-    return db.select().from(models).where(eq(models.isActive, true));
-  }
-
   async listAll(): Promise<Model[]> {
     const db = currentDb(this.rootDb);
     return db.select().from(models);
@@ -54,9 +49,9 @@ export class DrizzleModelRepository implements ModelRepository {
           supportsStreaming: input.supportsStreaming ?? true,
           supportsVision: input.supportsVision ?? false,
           manualPricing: input.manualPricing ?? true,
-          // `isActive` NÃO entra no update: é curadoria do owner, e o sync
-          // reencontrando um modelo não pode religar o que alguém desligou
-          // de propósito (Fase 9c, RN-043).
+          // Curadoria não passa por aqui — ela é por workspace, noutra tabela
+          // (ADR 0049). O sync reencontrando um modelo não tem como religar o
+          // que alguém desligou, porque não alcança essa decisão.
           availability: input.availability ?? 'available',
           lastSeenAt: input.lastSeenAt ?? null,
           updatedAt: new Date(),
@@ -64,17 +59,6 @@ export class DrizzleModelRepository implements ModelRepository {
       })
       .returning();
     return row;
-  }
-
-  async setActive(ids: string[], isActive: boolean): Promise<number> {
-    if (ids.length === 0) return 0;
-    const db = currentDb(this.rootDb);
-    const rows = await db
-      .update(models)
-      .set({ isActive, updatedAt: new Date() })
-      .where(inArray(models.id, ids))
-      .returning({ id: models.id });
-    return rows.length;
   }
 
   async setAvailability(

@@ -7,6 +7,7 @@ import { SessionRepository } from '../../../application/ports/session-repository
 import { SessionEventRepository } from '../../../application/ports/session-event-repository.port';
 import { OutboxRepository } from '../../../application/ports/outbox-repository.port';
 import { ModelRepository } from '../../../application/ports/model-repository.port';
+import { WorkspaceModelRepository } from '../../../application/ports/workspace-model-repository.port';
 import { ModelPriceChangeRepository } from '../../../application/ports/model-price-change-repository.port';
 import { ModelBindingRepository } from '../../../application/ports/model-binding-repository.port';
 import { UserCredentialRepository } from '../../../application/ports/user-credential-repository.port';
@@ -57,6 +58,7 @@ import { DrizzleSessionRepository } from './session.repository';
 import { DrizzleSessionEventRepository } from './session-event.repository';
 import { DrizzleOutboxRepository } from './outbox.repository';
 import { DrizzleModelRepository } from './model.repository';
+import { DrizzleWorkspaceModelRepository } from './workspace-model.repository';
 import { DrizzleModelPriceChangeRepository } from './model-price-change.repository';
 import { DrizzleModelBindingRepository } from './model-binding.repository';
 import { DrizzleUserCredentialRepository } from './user-credential.repository';
@@ -122,6 +124,10 @@ const { db, pool } = createDrizzleClient();
     },
     { provide: OutboxRepository, useClass: DrizzleOutboxRepository },
     { provide: ModelRepository, useClass: DrizzleModelRepository },
+    {
+      provide: WorkspaceModelRepository,
+      useClass: DrizzleWorkspaceModelRepository,
+    },
     {
       provide: ModelPriceChangeRepository,
       useClass: DrizzleModelPriceChangeRepository,
@@ -211,6 +217,7 @@ const { db, pool } = createDrizzleClient();
     SessionEventRepository,
     OutboxRepository,
     ModelRepository,
+    WorkspaceModelRepository,
     ModelPriceChangeRepository,
     ModelBindingRepository,
     UserCredentialRepository,

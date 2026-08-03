@@ -5,6 +5,7 @@ import { MODEL_BINDING_SCOPES } from '../../../../domain/llm/model-binding-scope
 import {
   MODEL_AVAILABILITIES,
   type Model,
+  type ModelComCuradoria,
 } from '../../../../domain/llm/model.entity';
 import type { Budget } from '../../../../domain/llm/budget.entity';
 import {
@@ -91,18 +92,10 @@ export class ModelResponseDto implements Wire<Model> {
   manualPricing!: boolean;
 
   @ApiProperty({
-    example: true,
-    description:
-      'Curadoria do OWNER: modelo desativado some da seleção mas continua nos ' +
-      'custos históricos. Modelo descoberto pelo sync de catálogo entra `false`.',
-  })
-  isActive!: boolean;
-
-  @ApiProperty({
     enum: MODEL_AVAILABILITIES,
     example: 'available',
     description:
-      'Realidade REMOTA observada pelo sync, eixo independente de `isActive`. ' +
+      'Realidade REMOTA observada pelo sync, eixo independente da curadoria. ' +
       '`unavailable` é o modelo que sumiu do catálogo do provider — ele nunca ' +
       'é deletado, porque bindings e histórico de custo apontam para ele.',
   })
@@ -123,6 +116,33 @@ export class ModelResponseDto implements Wire<Model> {
   updatedAt!: string;
 }
 export const _chavesModel: MesmasChaves<ModelResponseDto, Model> = true;
+
+/**
+ * O modelo COM a curadoria de um workspace (ADR 0049).
+ *
+ * `isActive` está aqui e não em `ModelResponseDto` porque ele não é atributo
+ * do modelo: é a decisão de um workspace sobre ele. A rota do seletor devolve
+ * o DTO sem curadoria — lá a lista já É a dos ativos, e repetir o campo
+ * sugeriria que ele pode vir `false`. Só a tela de curadoria e a resposta da
+ * ativação usam este.
+ */
+export class ModelComCuradoriaResponseDto
+  extends ModelResponseDto
+  implements Wire<ModelComCuradoria>
+{
+  @ApiProperty({
+    example: true,
+    description:
+      'Curadoria do OWNER **deste workspace**: modelo desativado some da ' +
+      'seleção mas continua nos custos históricos. Modelo descoberto pelo ' +
+      'sync não tem linha de curadoria, e ausência de linha é `false`.',
+  })
+  isActive!: boolean;
+}
+export const _chavesModelComCuradoria: MesmasChaves<
+  ModelComCuradoriaResponseDto,
+  ModelComCuradoria
+> = true;
 
 /**
  * A projeção segura de uma credencial. **Nunca** traz o segredo — nem cifrado.
