@@ -48,6 +48,16 @@ export interface LLMProviderContractHarness {
   usageFallback: 'estimated' | 'nenhum' | 'sempre';
   /** Env var que regula o teto de INATIVIDADE deste provider. */
   timeoutEnv: string;
+  /**
+   * Env var que aponta o provider para o servidor, quando `listModels` não
+   * recebe o endereço.
+   *
+   * Só o Ollama precisa: `chat` aceita `options.host`, mas o contrato de
+   * `listModels(apiKey?)` não tem por onde passar host — e para um daemon que
+   * é um por máquina, ambiente é o lugar certo. Ausente = o provider já foi
+   * construído apontado (é o caso de todos os outros).
+   */
+  hostEnv?: string;
   /** Confirma que as ferramentas oferecidas chegaram no corpo do pedido. */
   temFerramentasNoPedido: (body: Record<string, unknown>) => boolean;
   modelo: string;
@@ -84,6 +94,7 @@ export function runLLMProviderContract(
         servidor = undefined;
       }
       delete process.env[harness.timeoutEnv];
+      if (harness.hostEnv) delete process.env[harness.hostEnv];
     });
 
     async function rodar(
@@ -238,6 +249,7 @@ export function runLLMProviderContract(
 
       servidor = await subirServidorFalso(harness.dialeto);
       servidor.usar('catalogo');
+      if (harness.hostEnv) process.env[harness.hostEnv] = servidor.baseUrl;
 
       const provider = harness.criar(servidor.baseUrl);
       const catalogo = await provider.listModels!('chave-de-teste');
@@ -250,6 +262,7 @@ export function runLLMProviderContract(
 
       servidor = await subirServidorFalso(harness.dialeto);
       servidor.usar('erro_401');
+      if (harness.hostEnv) process.env[harness.hostEnv] = servidor.baseUrl;
 
       const provider = harness.criar(servidor.baseUrl);
       await expect(
