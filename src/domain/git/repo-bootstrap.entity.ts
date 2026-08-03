@@ -3,55 +3,50 @@
 // `step` é o último passo tocado; toda execução do runner revalida TODOS
 // os passos desde o início antes de confiar nesse cursor.
 //
-// ORDEM AQUI = ordem de EXECUÇÃO real (BOOTSTRAP_STEP_SEQUENCE em
-// application/use-cases/git/bootstrap-steps.ts) — os dois commits em
-// `main` vêm ANTES das branches, não depois: `createRepo` não faz commit
-// inicial em nenhum provider (auto_init: false), então uma ref sem commit
-// nenhum não pode ser origem de `createBranch`. `deriveProvisioningStatus`
-// (repo-bootstrap-status.ts) usa o ÚLTIMO valor deste array pra saber
-// quando o bootstrap convergiu — se as duas ordens divergirem, "já
-// convergiu" fica errado.
+// Esta lista é o VOCABULÁRIO da coluna `repo_bootstraps.step` — tudo que ela
+// pode conter, em ordem histórica de execução. Não é a lista do que o
+// bootstrap faz hoje: essa é BOOTSTRAP_STEP_SEQUENCE, em
+// application/use-cases/git/bootstrap-steps.ts, e ela é MENOR (ver
+// RETIRED_BOOTSTRAP_STEPS abaixo).
+//
+// Os dois commits em `main` vêm ANTES das branches, não depois: `createRepo`
+// não faz commit inicial em nenhum provider (auto_init: false), então uma ref
+// sem commit nenhum não pode ser origem de `createBranch`.
+// `deriveProvisioningStatus` (repo-bootstrap-status.ts) usa o ÚLTIMO valor
+// deste array pra saber quando o bootstrap convergiu — `protect_branches`
+// fecha a lista, e é isso que precisa continuar verdadeiro.
 
 export const BOOTSTRAP_STEPS = [
   'commit_pr_template',
   'commit_branching_policy',
   'create_dev_branch',
   'create_qa_branch',
+  'create_rc_branch',
   'protect_branches',
 ] as const;
 
+export type BootstrapStepName = (typeof BOOTSTRAP_STEPS)[number];
+
 /**
- * Passos que o bootstrap NÃO executa mais, mas que existem em linhas antigas
- * de `repo_bootstraps.step` e no enum `bootstrap_step` do banco.
+ * Passos APOSENTADOS: continuam no vocabulário (e no enum `bootstrap_step` do
+ * banco), mas o bootstrap não os executa mais.
  *
- * `create_rc_branch` saiu quando o degrau `rc` saiu da política (ADR 0030); o
+ * `create_rc_branch` saiu quando o degrau `rc` saiu da política (ADR 0030): o
  * bootstrap continuava criando e protegendo a branch, e o
- * `branching-policy.md` commitado no repositório do usuário continuava
+ * `branching-policy.md` que ele commita no repositório do usuário continuava
  * ensinando a escada de quatro — achado #3 do primeiro dogfooding.
  *
- * O valor fica no enum de propósito: bootstraps já rodados têm linhas com ele,
- * e removê-lo reescreveria história para apagar um passo que realmente
- * aconteceu. Ele não entra em `BOOTSTRAP_STEPS` porque essa lista é a ORDEM DE
- * EXECUÇÃO — e é do último item dela que `deriveProvisioningStatus` tira "já
- * convergiu".
+ * Ele NÃO sai do vocabulário, e por dois motivos distintos: bootstraps já
+ * rodados têm linhas com esse valor (apagá-lo reescreveria história para negar
+ * um passo que aconteceu), e a api pode devolvê-lo — um contrato que só
+ * publicasse os passos atuais mentiria sobre um projeto antigo.
+ *
+ * Quem consome isto é a UI, para não listar como pendente um passo que nunca
+ * vai rodar (ver `apps/web/src/lib/bootstrap.ts`).
  */
-export const RETIRED_BOOTSTRAP_STEPS = ['create_rc_branch'] as const;
-
-export type BootstrapStepName =
-  | (typeof BOOTSTRAP_STEPS)[number]
-  | (typeof RETIRED_BOOTSTRAP_STEPS)[number];
-
-/**
- * Todos os valores que `repo_bootstraps.step` PODE ter — os que o bootstrap
- * executa hoje mais os aposentados. É o que a api pode devolver, então é isto
- * que os DTOs declaram no OpenAPI: publicar só os atuais faria o contrato
- * mentir sobre um projeto antigo, cujo cursor legitimamente aponta para um
- * passo que não existe mais.
- */
-export const ALL_BOOTSTRAP_STEP_NAMES = [
-  ...BOOTSTRAP_STEPS,
-  ...RETIRED_BOOTSTRAP_STEPS,
-] as const;
+export const RETIRED_BOOTSTRAP_STEPS: readonly BootstrapStepName[] = [
+  'create_rc_branch',
+];
 
 export const BOOTSTRAP_STATUSES = [
   'pending',

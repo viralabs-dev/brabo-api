@@ -40,9 +40,7 @@ export class DrizzleSessionRepository implements SessionRepository {
     return db.select().from(sessions).where(eq(sessions.projectId, projectId));
   }
 
-  async findActiveExecutionSession(
-    projectId: string,
-  ): Promise<Session | null> {
+  async findActiveExecutionSession(projectId: string): Promise<Session | null> {
     const db = currentDb(this.rootDb);
     // O join pode repetir a sessão (nada impede dois `execution.activated` na
     // mesma), mas o `limit(1)` sobre a ordem já resolve — a linha repetida é a
