@@ -26,17 +26,31 @@ export interface Model {
    */
   manualPricing: boolean;
   /**
-   * Curadoria do OWNER (Fase 9c): se aparece no seletor e pode receber binding
-   * novo. Modelo descoberto por sync entra `false`.
-   */
-  isActive: boolean;
-  /**
-   * Realidade REMOTA observada pelo sync. Eixo independente de `isActive`:
-   * um modelo pode estar ativo e indisponível ao mesmo tempo — e quando o
-   * provider o traz de volta, a escolha do owner continua valendo.
+   * Realidade REMOTA observada pelo sync. Eixo independente da curadoria: um
+   * modelo pode estar ativo num workspace e indisponível no provider ao mesmo
+   * tempo — e quando o provider o traz de volta, a escolha de quem curou
+   * continua valendo.
    */
   availability: ModelAvailability;
   lastSeenAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/**
+ * O modelo COM a curadoria de um workspace específico (ADR 0049).
+ *
+ * `isActive` saiu de `Model` de propósito. Ele nunca foi propriedade do
+ * modelo: era uma decisão de quem opera, e mantê-lo na entidade global era o
+ * que fazia um owner do workspace A ligar um modelo para o B. Aqui ele volta,
+ * mas amarrado ao workspace em que a pergunta foi feita — e um tipo que só
+ * existe quando há workspace na mão impede que a distinção se perca de novo.
+ */
+export interface ModelComCuradoria extends Model {
+  /**
+   * Curadoria do OWNER daquele workspace: se aparece no seletor e pode
+   * receber binding novo. Modelo descoberto por sync não tem linha de
+   * curadoria, e ausência de linha é `false` (RN-043).
+   */
+  isActive: boolean;
 }

@@ -46,8 +46,24 @@ export class ModelNotBindableError extends Error {
   }
 }
 
-export function assertModelIsBindable(model: Model): void {
-  if (!model.isActive) throw new ModelNotBindableError(model, 'inativo');
+/**
+ * `ativoNoWorkspace` chega de fora porque a curadoria deixou de ser atributo
+ * do modelo: ela é uma linha de `workspace_models`, e a mesma linha de
+ * `models` pode estar ligada num workspace e desligada no vizinho (ADR 0049).
+ *
+ * `null` quer dizer "não há workspace nesta pergunta" — e aí só a
+ * disponibilidade é checada. Acontece nos escopos `agent` e `session`, que
+ * hoje não têm âncora de workspace nenhuma (binding de agente é por slug
+ * global, ver `model-bindings.controller.ts`). Fingir uma resposta ali seria
+ * inventar um workspace; deixar explícito mantém a lacuna visível.
+ */
+export function assertModelIsBindable(
+  model: Model,
+  ativoNoWorkspace: boolean | null,
+): void {
+  if (ativoNoWorkspace === false) {
+    throw new ModelNotBindableError(model, 'inativo');
+  }
   if (model.availability === 'unavailable') {
     throw new ModelNotBindableError(model, 'indisponivel');
   }

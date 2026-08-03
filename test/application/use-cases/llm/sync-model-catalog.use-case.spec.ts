@@ -3,11 +3,12 @@ import type { ServerResponse } from 'node:http';
 import type { LLMProviderName } from '@brabo/shared';
 import { LLM_PROVIDER_NAMES } from '../../../../src/domain/llm/llm-provider-names';
 import { createTestDb, truncateAll } from '../../../support/test-db';
-import { models, users } from '../../../../src/db/schema';
+import { models, users, workspaces } from '../../../../src/db/schema';
 import { DrizzleModelRepository } from '../../../../src/infrastructure/persistence/drizzle/model.repository';
 import { DrizzleUserCredentialRepository } from '../../../../src/infrastructure/persistence/drizzle/user-credential.repository';
 import { EnvelopeEncryptionService } from '../../../../src/infrastructure/security/envelope-encryption.service';
 import { DrizzleModelPriceChangeRepository } from '../../../../src/infrastructure/persistence/drizzle/model-price-change.repository';
+import { DrizzleWorkspaceModelRepository } from '../../../../src/infrastructure/persistence/drizzle/workspace-model.repository';
 import { DrizzleUnitOfWork } from '../../../../src/infrastructure/persistence/drizzle/drizzle-unit-of-work';
 import { OpenAICompatibleProvider } from '../../../../src/infrastructure/llm/openai-compatible-provider';
 import { openaiConfig } from '../../../../src/infrastructure/llm/openai-provider';
@@ -24,6 +25,7 @@ const { db, pool } = createTestDb();
 const modelRepo = new DrizzleModelRepository(db);
 const credentialRepo = new DrizzleUserCredentialRepository(db);
 const priceChangeRepo = new DrizzleModelPriceChangeRepository(db);
+const workspaceModelRepo = new DrizzleWorkspaceModelRepository(db);
 const unitOfWork = new DrizzleUnitOfWork(db);
 const encryption = new EnvelopeEncryptionService();
 
@@ -123,6 +125,22 @@ async function comCredencialDaOpenAI() {
   return user;
 }
 
+async function workspaceRepoAtivos(workspaceId: string) {
+  return (await workspaceModelRepo.listActive(workspaceId)).map((m) => m.name);
+}
+
+async function workspaceDeTeste() {
+  const [dono] = await db
+    .insert(users)
+    .values({ keycloakSub: 'sub-ws-sync', email: 'ws-sync@brabo.dev' })
+    .returning();
+  const [ws] = await db
+    .insert(workspaces)
+    .values({ name: 'Sync', slug: 'sync-ws', createdBy: dono.id })
+    .returning();
+  return ws;
+}
+
 async function comCredencialDaDeepInfra() {
   const [user] = await db
     .insert(users)
@@ -163,6 +181,7 @@ afterAll(async () => {
 describe('SyncModelCatalogUseCase', () => {
   it('caminho feliz: o que o sync descobre entra INATIVO (RN-043)', async () => {
     await comCredencialDaOpenAI();
+    const ws = await workspaceDeTeste();
     catalogoRemoto = ['gpt-4o-mini', 'gpt-4o'];
 
     const resultado = await useCase.execute();
@@ -176,8 +195,10 @@ describe('SyncModelCatalogUseCase', () => {
       'gpt-4o',
       'gpt-4o-mini',
     ]);
-    // O ponto da regra: nada foi ligado sozinho.
-    expect(gravados.every((m) => !m.isActive)).toBe(true);
+    // O ponto da regra: nada foi ligado sozinho. Desde o ADR 0049 isso se
+    // observa pela AUSÊNCIA de linha de curadoria — o sync não tem mais uma
+    // coluna em `models` para escrever, mesmo que quisesse.
+    expect(await workspaceRepoAtivos(ws.id)).toEqual([]);
     expect(gravados.every((m) => m.availability === 'available')).toBe(true);
     expect(gravados.every((m) => m.lastSeenAt !== null)).toBe(true);
   });
@@ -207,7 +228,16 @@ describe('SyncModelCatalogUseCase', () => {
     await useCase.execute();
 
     const [antes] = await modelRepo.listByProvider('openai');
-    await modelRepo.setActive([antes.id], true);
+    // A curadoria mora em `workspace_models` desde o ADR 0049 — o sync não a
+    // alcança, e é isso que este teste continua provando: o eixo do provider
+    // (`availability`) vai e volta sem tocar no eixo de quem opera.
+    const ws = await workspaceDeTeste();
+    await workspaceModelRepo.setActive({
+      workspaceId: ws.id,
+      modelIds: [antes.id],
+      isActive: true,
+      curatedBy: ws.createdBy,
+    });
 
     catalogoRemoto = [];
     await useCase.execute();
@@ -222,12 +252,11 @@ describe('SyncModelCatalogUseCase', () => {
       resultado.porProvider.find((p) => p.provider === 'openai'),
     ).toMatchObject({ reencontrados: 1 });
 
-    const depois = await modelRepo.findById(antes.id);
-    expect(depois).toMatchObject({
-      availability: 'available',
-      // A escolha do owner sobreviveu à ausência — é a razão dos dois eixos.
-      isActive: true,
-    });
+    expect((await modelRepo.findById(antes.id))?.availability).toBe(
+      'available',
+    );
+    // A escolha de quem curou sobreviveu à ausência — é a razão dos dois eixos.
+    expect(await workspaceModelRepo.isActive(ws.id, antes.id)).toBe(true);
   });
 
   it('preço digitado à mão não é zerado por um catálogo que não informa preço', async () => {

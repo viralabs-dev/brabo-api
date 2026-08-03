@@ -201,8 +201,10 @@ export class SyncModelCatalogUseCase {
         supportsStreaming: local?.supportsStreaming ?? true,
         supportsVision: local?.supportsVision ?? false,
         manualPricing: preco.manual,
-        // Só no INSERT: o `set` do upsert não toca em `is_active` de propósito.
-        isActive: local?.isActive ?? false,
+        // Curadoria não é mais campo deste upsert: ela é por workspace, em
+        // `workspace_models` (ADR 0049). Modelo descoberto simplesmente não
+        // tem linha lá, e ausência de linha É o desligado — a RN-043 continua
+        // valendo, agora sem coluna nenhuma para o sync poder atropelar.
         availability: 'available' as const,
         lastSeenAt: agora,
       };

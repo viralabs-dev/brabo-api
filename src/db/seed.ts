@@ -24,6 +24,7 @@ import {
 } from '../application/ports/model-repository.port';
 import type { Model } from '../domain/llm/model.entity';
 import { UpdateModelPricingUseCase } from '../application/use-cases/llm/update-model-pricing.use-case';
+import { SetModelsActiveUseCase } from '../application/use-cases/llm/set-models-active.use-case';
 import { SetModelBindingUseCase } from '../application/use-cases/llm/set-model-binding.use-case';
 import { UpsertAgentInstructionUseCase } from '../application/use-cases/agents/upsert-agent-instruction.use-case';
 import {
@@ -300,6 +301,7 @@ async function main() {
   const appendSessionEvent = app.get(AppendSessionEventUseCase);
   const models = app.get(ModelRepository);
   const updateModelPricing = app.get(UpdateModelPricingUseCase);
+  const setModelsActive = app.get(SetModelsActiveUseCase);
   const setModelBinding = app.get(SetModelBindingUseCase);
   const upsertAgentInstruction = app.get(UpsertAgentInstructionUseCase);
 
@@ -329,6 +331,7 @@ async function main() {
   await addWorkspaceMember.execute(workspace.id, developer.id, 'developer');
   console.log(`✓ workspace: ${workspace.name} (${workspace.slug})`);
 
+  const semeados: Model[] = [];
   let localModel: Model | undefined;
   // Fase 4b — Psicólogo: os dois tiers de triagem precisam de modelos
   // GENUINAMENTE diferentes; é isso que faz o custo divergir de verdade
@@ -379,6 +382,7 @@ async function main() {
     }
 
     const model = await models.upsertByProviderAndName(modelSeed);
+    semeados.push(model);
     console.log(`✓ modelo: ${model.provider}/${model.name}`);
     if (model.provider === 'ollama') localModel = model;
     if (model.name === 'claude-opus-4-8') strongModel = model;
@@ -388,6 +392,20 @@ async function main() {
   if (!strongModel || !cheapModel) {
     throw new Error('Modelos do Psicólogo (forte/barato) não foram semeados');
   }
+
+  // A curadoria é por workspace desde o ADR 0049: sem estas linhas os modelos
+  // existem no catálogo e o seletor sai VAZIO — e o binding logo abaixo seria
+  // recusado por "modelo desativado". Semear é dizer "neste workspace, tudo o
+  // que eu acabei de criar está ligado".
+  await setModelsActive.execute({
+    workspaceId: workspace.id,
+    modelIds: semeados.map((m) => m.id),
+    isActive: true,
+    curatedBy: owner.id,
+  });
+  console.log(
+    `✓ curadoria: ${semeados.length} modelos ativos em ${workspace.slug}`,
+  );
 
   await setModelBinding.execute(
     'workspace',

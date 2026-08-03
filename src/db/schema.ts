@@ -505,11 +505,12 @@ export const models = pgTable(
     // uma linha marcada aqui sem decisão explícita: o número manual costuma
     // ser o único que existe para provider que não expõe catálogo.
     manualPricing: boolean('manual_pricing').notNull().default(true),
-    /**
-     * Curadoria do OWNER: aparece no seletor e pode receber binding novo.
-     * Modelo descoberto por sync entra `false` (Fase 9c, RN-043).
-     */
-    isActive: boolean('is_active').notNull().default(true),
+    // A curadoria NÃO mora mais aqui. Ela era `is_active` nesta linha, e por
+    // isso um owner do workspace A ativando um modelo o ativava para o B —
+    // consequência registrada como backlog no próprio ADR 0042. Agora vive em
+    // `workspace_models`, uma linha por (workspace, modelo). O que sobra em
+    // `models` é fato do PROVIDER: nome, preço, capabilities, disponibilidade
+    // — igual para todo mundo (ADR 0049).
     availability: modelAvailabilityEnum('availability')
       .notNull()
       .default('available'),
@@ -523,6 +524,49 @@ export const models = pgTable(
       .defaultNow(),
   },
   (table) => [unique().on(table.provider, table.name)],
+);
+
+/**
+ * A curadoria de modelo, POR WORKSPACE (ADR 0049).
+ *
+ * Antes era `models.is_active`, uma coluna só para a instalação inteira: um
+ * owner do workspace A ligando um modelo o ligava para o B. O catálogo em si
+ * continua global de propósito — nome, preço e capabilities são fato do
+ * provider, e duplicá-los por workspace criaria N verdades sobre o mesmo
+ * modelo, além de partir `token_usage.model_id` ao meio.
+ *
+ * **Ausência de linha é o desligado.** Não existe estado "nunca decidido"
+ * separado de "desligado": modelo descoberto pelo sync simplesmente não tem
+ * linha aqui, e é isso que preserva a RN-043 sem coluna nenhuma em `models`.
+ * A linha só nasce quando alguém decide, e guarda QUEM decidiu.
+ */
+export const workspaceModels = pgTable(
+  'workspace_models',
+  {
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    modelId: uuid('model_id')
+      .notNull()
+      .references(() => models.id, { onDelete: 'cascade' }),
+    isActive: boolean('is_active').notNull().default(true),
+    /**
+     * Quem decidiu. `null` só nas linhas nascidas da migração de dados, que
+     * vieram de uma curadoria global sem dono registrado — é a diferença
+     * entre "não sabemos" e "não houve pessoa".
+     */
+    curatedBy: uuid('curated_by').references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.workspaceId, table.modelId] }),
+    index('workspace_models_workspace_idx').on(table.workspaceId),
+  ],
 );
 
 export const modelBindings = pgTable(
