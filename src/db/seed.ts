@@ -23,6 +23,8 @@ import {
   type ModelInput,
 } from '../application/ports/model-repository.port';
 import type { Model } from '../domain/llm/model.entity';
+import { UpdateModelPricingUseCase } from '../application/use-cases/llm/update-model-pricing.use-case';
+import { SetModelsActiveUseCase } from '../application/use-cases/llm/set-models-active.use-case';
 import { SetModelBindingUseCase } from '../application/use-cases/llm/set-model-binding.use-case';
 import { UpsertAgentInstructionUseCase } from '../application/use-cases/agents/upsert-agent-instruction.use-case';
 import {
@@ -99,12 +101,22 @@ const MODEL_SEEDS: ModelInput[] = [
   },
   // NVIDIA NIM (Fase 11b) — `listModels: false` (o catálogo hospedado não
   // informa preço em nenhuma doc verificada), então o provider só existe pra
-  // curadoria através deste seed até alguém confirmar um endpoint de preço.
-  // NVIDIA não publica preço de produção (a doc oficial aponta pra contato
-  // comercial) — os valores abaixo são uma ESTIMATIVA por comparação com
-  // modelos equivalentes noutros providers (não uma cotação oficial), com
-  // `manualPricing: true` pra o sync nunca sobrescrever sem decisão
-  // explícita. Corrigir assim que houver uma fonte oficial.
+  // curadoria através deste seed.
+  //
+  // A busca por fonte oficial foi REFEITA e chegou a uma resposta melhor que
+  // "não achei": a NVIDIA **não cobra por token**. A doc oficial
+  // (https://docs.api.nvidia.com/nim/docs/product) diz que o endpoint
+  // hospedado é acesso gratuito de PROTOTIPAGEM pra membro do Developer
+  // Program, e que produção exige licença NVIDIA AI Enterprise — "These
+  // licenses start at $4500 per GPU per year or ~ $1 per GPU per hour in the
+  // cloud". Unidade por GPU/hora, não por token.
+  //
+  // Ou seja: não existe preço oficial por token pra converter, e nunca vai
+  // existir enquanto o modelo comercial for esse. Os valores abaixo seguem
+  // sendo ESTIMATIVA por comparação com modelos equivalentes noutros
+  // providers — o suficiente pra o teto de orçamento ter o que descontar, e
+  // marcado com `manualPricing: true` pra o sync nunca sobrescrever sem
+  // decisão explícita.
   {
     provider: 'nvidia-nim',
     name: 'meta/llama-3.1-70b-instruct',
@@ -193,10 +205,13 @@ const MODEL_SEEDS: ModelInput[] = [
   // verificado publicamente), MAS os três ids abaixo são REAIS, confirmados
   // em exemplos de configuração do próprio blog da Bitdeer nesta sessão
   // (não são nomes de vitrine — são o valor literal que vai no campo
-  // `model`). Preço da Bitdeer em si não foi encontrado (a página de preço
-  // renderiza via JS) — os valores são ESTIMATIVA por comparação com o
-  // mesmo modelo/família noutros providers, com `manualPricing: true`.
-  // Corrigir assim que houver uma fonte oficial da própria Bitdeer.
+  // `model`). Preço da Bitdeer em si segue sem fonte: a página
+  // `bitdeer.ai/en/pricing/ai-models` monta a tabela no cliente (o HTML
+  // servido não traz nome de modelo nenhum — verificado de novo nesta
+  // sessão) e não há doc de preço fora dela. Os valores são ESTIMATIVA por
+  // comparação com o mesmo modelo/família noutros providers, com
+  // `manualPricing: true`. Corrigir assim que houver fonte oficial legível
+  // da própria Bitdeer.
   {
     provider: 'bitdeer',
     name: 'moonshotai/Kimi-K2.5',
@@ -230,14 +245,26 @@ const MODEL_SEEDS: ModelInput[] = [
   // original, que apontava `true`). `kimi-k2-instruct` é tool-calling
   // CONFIRMADO com exemplo real na doc oficial nesta sessão
   // (finish_reason: "tool_calls"); os outros dois vêm de exemplo de doc
-  // sem confirmação de tool calling. Preço ESTIMADO — Vultr não publica
-  // preço por modelo em doc acessível nesta sessão.
+  // sem confirmação de tool calling.
+  //
+  // Preço OFICIAL, não mais estimativa. A doc da Vultr publica a tarifa em
+  // https://docs.vultr.com/support/products/serverless/how-do-i-monitor-the-usage-and-cost-of-my-vultr-serverless-inference-subscription:
+  // "Requests are billed at $0.55 per 1,000,000 input tokens and $2.75 per
+  // 1,000,000 output tokens." É tarifa ÚNICA do serviço — a doc não
+  // diferencia por modelo, e por isso as três linhas repetem o mesmo par.
+  //
+  // A estimativa anterior errava na direção perigosa: 400_000 de SAÍDA para
+  // dois dos três modelos, contra 2_750_000 reais. O metering subestimava o
+  // custo de saída em quase 7×, e é a saída que domina a conta de um agente
+  // que escreve código. `manualPricing` continua `true` porque o número
+  // vem de doc lida por gente, não de sync (é o que a flag significa —
+  // `schema.ts:507`); o que mudou é que agora ele é o número do provider.
   {
     provider: 'vultr',
     name: 'kimi-k2-instruct',
     displayName: 'Kimi K2 Instruct (Vultr)',
-    inputPricePerMillionMicros: 900_000,
-    outputPricePerMillionMicros: 3_500_000,
+    inputPricePerMillionMicros: 550_000,
+    outputPricePerMillionMicros: 2_750_000,
     supportsToolCalling: true,
     manualPricing: true,
   },
@@ -245,8 +272,8 @@ const MODEL_SEEDS: ModelInput[] = [
     provider: 'vultr',
     name: 'llama-3.3-70b-instruct-fp8',
     displayName: 'Llama 3.3 70B Instruct FP8 (Vultr)',
-    inputPricePerMillionMicros: 400_000,
-    outputPricePerMillionMicros: 400_000,
+    inputPricePerMillionMicros: 550_000,
+    outputPricePerMillionMicros: 2_750_000,
     supportsToolCalling: false,
     manualPricing: true,
   },
@@ -254,8 +281,8 @@ const MODEL_SEEDS: ModelInput[] = [
     provider: 'vultr',
     name: 'deepseek-r1-distill-llama-70b',
     displayName: 'DeepSeek R1 Distill Llama 70B (Vultr)',
-    inputPricePerMillionMicros: 400_000,
-    outputPricePerMillionMicros: 400_000,
+    inputPricePerMillionMicros: 550_000,
+    outputPricePerMillionMicros: 2_750_000,
     supportsToolCalling: false,
     manualPricing: true,
   },
@@ -273,6 +300,8 @@ async function main() {
   const transitionSession = app.get(TransitionSessionUseCase);
   const appendSessionEvent = app.get(AppendSessionEventUseCase);
   const models = app.get(ModelRepository);
+  const updateModelPricing = app.get(UpdateModelPricingUseCase);
+  const setModelsActive = app.get(SetModelsActiveUseCase);
   const setModelBinding = app.get(SetModelBindingUseCase);
   const upsertAgentInstruction = app.get(UpsertAgentInstructionUseCase);
 
@@ -302,14 +331,58 @@ async function main() {
   await addWorkspaceMember.execute(workspace.id, developer.id, 'developer');
   console.log(`✓ workspace: ${workspace.name} (${workspace.slug})`);
 
+  const semeados: Model[] = [];
   let localModel: Model | undefined;
   // Fase 4b — Psicólogo: os dois tiers de triagem precisam de modelos
   // GENUINAMENTE diferentes; é isso que faz o custo divergir de verdade
   // no metering (ver Engine.Psychologist.Triage).
   let strongModel: Model | undefined;
   let cheapModel: Model | undefined;
+  // Reseed sobre banco já semeado é o caso normal (o `bootstrap.sh` do k8s
+  // roda com `BRABO_FORCE_SEED=1`), e uma correção de preço aqui — como a da
+  // Vultr, que passou a valer a tarifa oficial — trocaria o número por dentro
+  // do `upsert`, sem linha em `model_price_changes`. A RN-044 diz que TODA
+  // troca deixa rastro, e um seed não é exceção: quem for conferir um custo
+  // antigo precisa achar o momento em que o preço mudou.
+  const jaGravados = new Map<string, Model>();
+  for (const provider of new Set(MODEL_SEEDS.map((m) => m.provider))) {
+    for (const m of await models.listByProvider(provider)) {
+      jaGravados.set(`${m.provider}/${m.name}`, m);
+    }
+  }
+
   for (const modelSeed of MODEL_SEEDS) {
+    const anterior = jaGravados.get(`${modelSeed.provider}/${modelSeed.name}`);
+    const trocouPreco =
+      anterior !== undefined &&
+      (anterior.inputPricePerMillionMicros !==
+        modelSeed.inputPricePerMillionMicros ||
+        anterior.outputPricePerMillionMicros !==
+          modelSeed.outputPricePerMillionMicros);
+
+    // ANTES do upsert, de propósito: é o use-case auditado que compara o
+    // "antes" com o "depois". Depois do upsert ele já veria os dois iguais e
+    // trataria como no-op — o preço mudaria e a auditoria diria que nada
+    // aconteceu.
+    if (trocouPreco) {
+      await updateModelPricing.execute({
+        modelId: anterior.id,
+        inputPricePerMillionMicros: modelSeed.inputPricePerMillionMicros,
+        outputPricePerMillionMicros: modelSeed.outputPricePerMillionMicros,
+        // `manual` porque o número do seed vem de doc lida por gente.
+        source: 'manual',
+        // Não há usuário por trás de um seed.
+        changedBy: null,
+      });
+      console.log(
+        `  ↳ preço corrigido: ${modelSeed.provider}/${modelSeed.name} ` +
+          `${anterior.inputPricePerMillionMicros}/${anterior.outputPricePerMillionMicros} → ` +
+          `${modelSeed.inputPricePerMillionMicros}/${modelSeed.outputPricePerMillionMicros} (auditado)`,
+      );
+    }
+
     const model = await models.upsertByProviderAndName(modelSeed);
+    semeados.push(model);
     console.log(`✓ modelo: ${model.provider}/${model.name}`);
     if (model.provider === 'ollama') localModel = model;
     if (model.name === 'claude-opus-4-8') strongModel = model;
@@ -319,6 +392,20 @@ async function main() {
   if (!strongModel || !cheapModel) {
     throw new Error('Modelos do Psicólogo (forte/barato) não foram semeados');
   }
+
+  // A curadoria é por workspace desde o ADR 0049: sem estas linhas os modelos
+  // existem no catálogo e o seletor sai VAZIO — e o binding logo abaixo seria
+  // recusado por "modelo desativado". Semear é dizer "neste workspace, tudo o
+  // que eu acabei de criar está ligado".
+  await setModelsActive.execute({
+    workspaceId: workspace.id,
+    modelIds: semeados.map((m) => m.id),
+    isActive: true,
+    curatedBy: owner.id,
+  });
+  console.log(
+    `✓ curadoria: ${semeados.length} modelos ativos em ${workspace.slug}`,
+  );
 
   await setModelBinding.execute(
     'workspace',
