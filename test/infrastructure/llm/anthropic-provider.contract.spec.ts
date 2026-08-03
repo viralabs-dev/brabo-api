@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { AnthropicProvider } from '../../../src/infrastructure/llm/anthropic-provider';
 import { runLLMProviderContract } from '../../contract/llm-provider.contract';
 import {
+  CATALOGO_ESPERADO,
   FERRAMENTA_ESPERADA,
   PEDACOS_DO_TEXTO,
   STATUS_DO_CENARIO,
@@ -27,6 +28,29 @@ function dialetoAnthropic(cenario: CenarioLLM, res: ServerResponse): void {
           type: status === 413 ? 'request_too_large' : 'api_error',
           message: 'falha simulada',
         },
+      }),
+    );
+    return;
+  }
+
+  // O catálogo é JSON comum, não SSE: `GET /v1/models` devolve
+  // `{ data: [...], has_more, first_id, last_id }`. `has_more: false` fecha a
+  // auto-paginação do SDK numa página só.
+  if (cenario === 'catalogo') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(
+      JSON.stringify({
+        data: CATALOGO_ESPERADO.map((id) => ({
+          id,
+          type: 'model',
+          display_name: id,
+          created_at: '2026-08-02T00:00:00Z',
+          max_input_tokens: 200_000,
+          max_tokens: 64_000,
+        })),
+        first_id: CATALOGO_ESPERADO[0],
+        last_id: CATALOGO_ESPERADO[CATALOGO_ESPERADO.length - 1],
+        has_more: false,
       }),
     );
     return;

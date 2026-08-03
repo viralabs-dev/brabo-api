@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { LLMProviderName, ModeloDoCatalogo } from '@brabo/shared';
 import { LLM_PROVIDER_NAMES } from '../../../domain/llm/llm-provider-names';
 import { ModelRepository } from '../../ports/model-repository.port';
+import { ModelPriceChangeRepository } from '../../ports/model-price-change-repository.port';
+import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { UserCredentialRepository } from '../../ports/user-credential-repository.port';
 import { EncryptionService } from '../../ports/encryption.port';
 import { LLMProviderRegistry } from '../../ports/llm-provider-registry.port';
@@ -58,6 +60,19 @@ export interface SyncModelCatalogResult {
  * nada lá". Marcar o catálogo inteiro como sumido por causa de uma chave
  * revogada derrubaria todos os bindings do provider de uma vez. Provider que
  * falha é PULADO, com a origem registrada.
+ *
+ * ## As duas regras de PREÇO (RN-044)
+ *
+ * 4. **`manual_pricing` vence o catálogo remoto.** É o que o `schema.ts` sempre
+ *    disse ("quem sincroniza preço NÃO pode sobrescrever uma linha marcada
+ *    aqui sem decisão explícita") e o que o código não fazia: o remoto ganhava
+ *    sempre que trouxesse preço. Quem digitou um número da doc do provider —
+ *    ou corrigiu um errado — via o sync seguinte desfazer a correção.
+ * 5. **Toda troca de preço deixa linha em `model_price_changes`.** A origem
+ *    `sync` existe no domínio desde a Fase 9c e nenhuma escrita a produzia: o
+ *    sync trocava preço por fora do caminho auditado. A auditoria guarda o par
+ *    antes/depois justamente para provar que nenhuma escrita escapou — e uma
+ *    escapava.
  */
 @Injectable()
 export class SyncModelCatalogUseCase {
@@ -68,6 +83,8 @@ export class SyncModelCatalogUseCase {
     private readonly credentials: UserCredentialRepository,
     private readonly encryption: EncryptionService,
     private readonly providers: LLMProviderRegistry,
+    private readonly priceChanges: ModelPriceChangeRepository,
+    private readonly unitOfWork: UnitOfWork,
   ) {}
 
   async execute(): Promise<SyncModelCatalogResult> {
@@ -170,31 +187,54 @@ export class SyncModelCatalogUseCase {
       if (!local) descobertos++;
       else if (local.availability === 'unavailable') reencontrados++;
 
-      await this.models.upsertByProviderAndName({
+      const preco = this.resolverPreco(remoto, local);
+
+      const entrada = {
         provider: nome,
         name: remoto.name,
         displayName: remoto.displayName ?? local?.displayName ?? remoto.name,
-        // Preço ausente no catálogo NÃO zera o que já está gravado — na Fase 9b
-        // vários preços entraram digitados da doc (`manual_pricing`), e
-        // sobrescrevê-los com 0 faria toda chamada parecer de graça.
-        inputPricePerMillionMicros:
-          remoto.inputPricePerMillionMicros ??
-          local?.inputPricePerMillionMicros ??
-          0,
-        outputPricePerMillionMicros:
-          remoto.outputPricePerMillionMicros ??
-          local?.outputPricePerMillionMicros ??
-          0,
+        inputPricePerMillionMicros: preco.input,
+        outputPricePerMillionMicros: preco.output,
         contextWindow: remoto.contextLength ?? local?.contextWindow ?? null,
         supportsToolCalling:
           remoto.supportsToolCalling ?? local?.supportsToolCalling ?? false,
         supportsStreaming: local?.supportsStreaming ?? true,
         supportsVision: local?.supportsVision ?? false,
-        manualPricing: local?.manualPricing ?? true,
+        manualPricing: preco.manual,
         // Só no INSERT: o `set` do upsert não toca em `is_active` de propósito.
         isActive: local?.isActive ?? false,
-        availability: 'available',
+        availability: 'available' as const,
         lastSeenAt: agora,
+      };
+
+      const trocouPreco =
+        local !== undefined &&
+        (local.inputPricePerMillionMicros !== preco.input ||
+          local.outputPricePerMillionMicros !== preco.output);
+
+      if (!trocouPreco) {
+        // O caminho comum de um catálogo de centenas de linhas: nada de preço
+        // mudou, e abrir transação por modelo só para não escrever nada seria
+        // custo puro.
+        await this.models.upsertByProviderAndName(entrada);
+        continue;
+      }
+
+      await this.unitOfWork.runInTransaction(async () => {
+        const linha = await this.models.upsertByProviderAndName(entrada);
+        // MESMA transação que a escrita do preço, como no
+        // `UpdateModelPricingUseCase`: preço trocado sem linha de auditoria é
+        // o buraco que a RN-044 fecha, e commitar um sem o outro reabre.
+        await this.priceChanges.record({
+          modelId: linha.id,
+          inputBeforeMicros: local.inputPricePerMillionMicros,
+          inputAfterMicros: preco.input,
+          outputBeforeMicros: local.outputPricePerMillionMicros,
+          outputAfterMicros: preco.output,
+          source: 'sync',
+          // `null` porque não há pessoa por trás de um sync.
+          changedBy: null,
+        });
       });
     }
 
@@ -212,6 +252,53 @@ export class SyncModelCatalogUseCase {
       descobertos,
       reencontrados,
       indisponibilizados: sumiram.length,
+    };
+  }
+
+  /**
+   * Qual preço fica gravado, e de quem ele é.
+   *
+   * Três situações, e cada uma tem um dono diferente:
+   *
+   * - **Linha `manual_pricing`**: o número é de quem digitou, e o catálogo
+   *   remoto não encosta nele — nem quando traz preço. Era exatamente aqui que
+   *   o sync desfazia correção humana.
+   * - **Catálogo sem preço**: o que já está gravado permanece. Zerar faria toda
+   *   chamada do modelo parecer de graça e o teto de orçamento nunca disparar.
+   * - **Catálogo com preço, linha não-manual**: o remoto manda, que é o
+   *   propósito do sync.
+   *
+   * O `manual` de um modelo NOVO sai do catálogo, não de um default fixo:
+   * descoberto COM preço, a origem é o sync e ele mantém a linha em dia;
+   * descoberto SEM preço, a linha nasce esperando alguém digitar — e marcá-la
+   * manual desde já protege esse número do primeiro catálogo que resolver
+   * informar preço.
+   */
+  private resolverPreco(
+    remoto: ModeloDoCatalogo,
+    local: Model | undefined,
+  ): { input: number; output: number; manual: boolean } {
+    const manual =
+      local?.manualPricing ?? remoto.inputPricePerMillionMicros === undefined;
+
+    if (local && local.manualPricing) {
+      return {
+        input: local.inputPricePerMillionMicros,
+        output: local.outputPricePerMillionMicros,
+        manual,
+      };
+    }
+
+    return {
+      input:
+        remoto.inputPricePerMillionMicros ??
+        local?.inputPricePerMillionMicros ??
+        0,
+      output:
+        remoto.outputPricePerMillionMicros ??
+        local?.outputPricePerMillionMicros ??
+        0,
+      manual,
     };
   }
 }

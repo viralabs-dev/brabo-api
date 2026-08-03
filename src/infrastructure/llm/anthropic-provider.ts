@@ -6,6 +6,7 @@ import type {
   ChatStreamChunk,
   LLMProviderCapabilities,
   LLMProviderName,
+  ModeloDoCatalogo,
   ToolCall,
   ToolDef,
 } from '@brabo/shared';
@@ -48,9 +49,11 @@ export class AnthropicProvider implements LLMProvider {
   readonly capabilities: LLMProviderCapabilities = {
     streaming: true,
     toolCalling: true,
-    // Mesma razão do Ollama: o endpoint de catálogo do SDK não foi verificado
-    // na doc oficial nesta fase. Backlog no ADR 0042.
-    listModels: false,
+    // `GET /v1/models` verificado na doc oficial (backlog do ADR 0042
+    // fechado), paginado por cursor. O shape está em `listModels` abaixo —
+    // e fica lá, não aqui: chave de objeto neste literal quebra o extrator
+    // de capabilities do `docs:generate`, que casa até o primeiro fecha-chave.
+    listModels: true,
   };
 
   constructor(
@@ -58,6 +61,65 @@ export class AnthropicProvider implements LLMProvider {
     @Inject(ANTHROPIC_OPTIONS)
     private readonly options?: AnthropicOptions,
   ) {}
+
+  /**
+   * O catálogo remoto, por `GET /v1/models` (Fase 9c — o backlog do ADR 0042).
+   *
+   * Três coisas que a doc oficial decidiu, e que não dá para adivinhar:
+   *
+   * 1. **É paginado por cursor**, não por offset: `has_more` + `last_id` como
+   *    `after_id` da próxima página, com `limit` de 1 a 1000. O
+   *    `client.models.list` do SDK já expõe iteração automática, e é ela que
+   *    usamos — reimplementar o laço de cursor à mão seria repetir código que
+   *    o SDK mantém.
+   * 2. **`max_input_tokens` é a janela de contexto**, e é o único campo que o
+   *    catálogo do Brabo consegue aproveitar além do id e do nome legível.
+   * 3. **Preço NÃO vem** nesta resposta. Por isso `inputPricePerMillionMicros`
+   *    e o par de saída ficam ausentes, e o modelo entra no catálogo sem
+   *    preço em vez de com preço inventado (RN-042 — o custo gravado tem que
+   *    ser reproduzível).
+   *
+   * Erro LANÇA, como o contrato exige: lista vazia seria lida pelo sync como
+   * "sumiram todos" e indisponibilizaria o catálogo inteiro (RN-043).
+   */
+  async listModels(apiKey?: string): Promise<ModeloDoCatalogo[]> {
+    const client = new Anthropic({
+      apiKey,
+      ...(this.options?.baseURL ? { baseURL: this.options.baseURL } : {}),
+      ...(this.options?.maxRetries !== undefined
+        ? { maxRetries: this.options.maxRetries }
+        : {}),
+    });
+
+    try {
+      const modelos: ModeloDoCatalogo[] = [];
+
+      // `limit: 1000` é o teto documentado. Com a auto-paginação do SDK, o
+      // limite alto só reduz o número de idas à rede — não muda o resultado.
+      for await (const modelo of client.models.list({ limit: 1000 })) {
+        modelos.push({
+          name: modelo.id,
+          displayName: modelo.display_name,
+          // `max_input_tokens` pode vir 0 quando o provider não o declara
+          // para aquele modelo; 0 não é janela, é ausência.
+          ...(typeof modelo.max_input_tokens === 'number' &&
+          modelo.max_input_tokens > 0
+            ? { contextLength: modelo.max_input_tokens }
+            : {}),
+          // Todo modelo servido pela Messages API aceita `tools`.
+          supportsToolCalling: true,
+        });
+      }
+
+      return modelos;
+    } catch (error) {
+      // O MESMO `normalize` do `chat`, e não um tratamento paralelo: é ele que
+      // mapeia timeout, falha de conexão e status HTTP para os erros
+      // normalizados por `code` (ADR 0041). Aqui o resultado é LANÇADO em vez
+      // de virar chunk — não há turno em andamento para preservar.
+      throw this.normalize(error);
+    }
+  }
 
   async *chat(
     messages: ChatMessage[],
