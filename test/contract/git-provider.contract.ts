@@ -12,10 +12,21 @@ import {
 /**
  * Suite de CONTRATO única (ver CLAUDE.md e docs/adr/0001) — roda a MESMA
  * bateria de asserções contra qualquer implementação de
- * `GitProviderContract`. Nesta sessão só `LocalGitProvider` é exercitado
- * (ver test/infrastructure/git/local-git-provider.contract.spec.ts); uma
- * sessão futura (Github/Gitlab) reutiliza esta função sem modificação,
- * só trocando o harness.
+ * `GitProviderContract`.
+ *
+ * Quem a exercita hoje, cinco invocações em cinco arquivos:
+ *
+ * - `test/infrastructure/git/local-git-provider.contract.spec.ts`
+ * - `test/infrastructure/git/github-provider.contract.spec.ts` (mockado)
+ * - `test/infrastructure/git/github-provider.smoke.spec.ts` (API real, gated)
+ * - `test/infrastructure/git/gitlab-provider.contract.spec.ts` (mockado)
+ * - `test/infrastructure/git/gitlab-provider.smoke.spec.ts` (API real, gated)
+ *
+ * A previsão original — "uma sessão futura reutiliza esta função sem
+ * modificação, só trocando o harness" — se cumpriu na Fase 2, e o cabeçalho
+ * não acompanhou: era o achado #8 do primeiro dogfooding. A lista acima é
+ * travada por `test/contract/git-provider-contract-callers.spec.ts`, para não
+ * apodrecer de novo.
  */
 export interface GitProviderContractHarness {
   provider: GitProviderContract;
