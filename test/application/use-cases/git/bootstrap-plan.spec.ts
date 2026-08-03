@@ -39,7 +39,7 @@ describe('planBootstrap — o dry-run da adoção', () => {
     expect(resultado.generatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
-  it('repo vazio: planeja os 2 arquivos, as 3 branches e as 4 proteções', async () => {
+  it('repo vazio: planeja os 2 arquivos, as 2 branches e as 3 proteções', async () => {
     const { plano } = planejar(semNada);
     const { steps } = await plano;
 
@@ -48,13 +48,15 @@ describe('planBootstrap — o dry-run da adoção', () => {
       steps
         .filter((s) => s.actionType === 'git_branch_create')
         .map((s) => s.payload.branchName),
-    ).toEqual(['dev', 'qa', 'rc']);
-    // main já existe e as três nascem no plano — as 4 entram pra proteger.
+    ).toEqual(['dev', 'qa']);
+    // main já existe e as duas nascem no plano — as 3 entram pra proteger.
+    // `rc` saiu com o degrau (ADR 0030, achado #3): o bootstrap não a cria
+    // nem a protege mais.
     expect(
       steps
         .filter((s) => s.actionType === 'git_branch_protect')
         .map((s) => s.payload.branchName),
-    ).toEqual(['main', 'rc', 'qa', 'dev']);
+    ).toEqual(['main', 'qa', 'dev']);
   });
 
   it('branch JÁ protegida não entra no plano — é o que a RN-045 protege', async () => {
@@ -63,7 +65,6 @@ describe('planBootstrap — o dry-run da adoção', () => {
         { name: 'main', protected: true },
         { name: 'dev', protected: true },
         { name: 'qa', protected: false },
-        { name: 'rc', protected: true },
       ],
     });
     const { steps, diagnostics } = await plano;
@@ -79,16 +80,14 @@ describe('planBootstrap — o dry-run da adoção', () => {
   });
 
   it('promete a proteção das branches que ELE MESMO vai criar', async () => {
-    // O caso do fork da Fase 10: tem main/dev/qa protegidas, falta rc.
-    // `check()` sozinho não veria `rc` como desprotegida — ela nem
-    // existe ainda —, então o plano diria "crio rc" sem avisar que ela
-    // sairia protegida. Prometer MENOS do que a execução faz é
-    // exatamente o que a RN-045 não pode permitir.
+    // Tem main/dev protegidas, falta `qa`. `check()` sozinho não veria `qa`
+    // como desprotegida — ela nem existe ainda —, então o plano diria "crio
+    // qa" sem avisar que ela sairia protegida. Prometer MENOS do que a
+    // execução faz é exatamente o que a RN-045 não pode permitir.
     const { plano } = planejar({
       branches: [
         { name: 'main', protected: true },
         { name: 'dev', protected: true },
-        { name: 'qa', protected: true },
       ],
     });
     const { steps } = await plano;
@@ -97,11 +96,34 @@ describe('planBootstrap — o dry-run da adoção', () => {
       steps
         .filter((s) => s.actionType === 'git_branch_create')
         .map((s) => s.payload.branchName),
-    ).toEqual(['rc']);
+    ).toEqual(['qa']);
     expect(
       steps
         .filter((s) => s.actionType === 'git_branch_protect')
         .map((s) => s.payload.branchName),
+    ).toEqual(['qa']);
+  });
+
+  it('`rc` de um repo antigo vira branch EXTRA, não passo do plano', async () => {
+    // Consequência deliberada de tirar `rc` do template (achado #3): um
+    // repositório bootstrapado por uma versão anterior do Brabo tem `rc`, e
+    // ela passa a ser o que de fato é hoje — política do projeto, descrita no
+    // plano e nunca tocada. O contrário (continuar protegendo uma branch que
+    // a política abandonou) é que seria mentira.
+    const { plano } = planejar({
+      branches: [
+        { name: 'main', protected: true },
+        { name: 'dev', protected: true },
+        { name: 'qa', protected: true },
+        { name: 'rc', protected: true },
+      ],
+      arquivosCanonicos: [PR_TEMPLATE_PATH, BRANCHING_POLICY_PATH],
+    });
+    const { steps, diagnostics } = await plano;
+
+    expect(steps).toEqual([]);
+    expect(
+      diagnostics.filter((d) => d.kind === 'extra_branch').map((d) => d.detail.branchName),
     ).toEqual(['rc']);
   });
 
@@ -111,7 +133,6 @@ describe('planBootstrap — o dry-run da adoção', () => {
         { name: 'main', protected: true },
         { name: 'dev', protected: true },
         { name: 'qa', protected: true },
-        { name: 'rc', protected: true },
         { name: 'develop' },
         { name: 'release/1.2' },
       ],
@@ -166,7 +187,6 @@ describe('planBootstrap — o dry-run da adoção', () => {
         { name: 'main', protected: true },
         { name: 'dev', protected: true },
         { name: 'qa', protected: true },
-        { name: 'rc', protected: true },
       ],
       arquivosCanonicos: [PR_TEMPLATE_PATH, BRANCHING_POLICY_PATH],
     });

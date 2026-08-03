@@ -199,7 +199,7 @@ describe('AdoptRepositoryUseCase', () => {
       result.plan.steps
         .filter((s) => s.actionType === 'git_branch_create')
         .map((s) => s.payload.branchName),
-    ).toEqual(['dev', 'qa', 'rc']);
+    ).toEqual(['dev', 'qa']);
 
     // ...e o repositório continua só com `main` (RN-045: nada roda antes
     // da decisão).

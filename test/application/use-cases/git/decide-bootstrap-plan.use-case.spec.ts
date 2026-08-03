@@ -257,15 +257,12 @@ describe('DecideBootstrapPlanUseCase — o portão da RN-045', () => {
 
     expect(resultado.bootstrap.step).toBe('protect_branches');
     expect(resultado.bootstrap.status).toBe('done');
-    expect(provider.protegidas).toEqual(['main', 'rc', 'qa', 'dev']);
+    expect(provider.protegidas).toEqual(['main', 'qa', 'dev']);
 
     const branches = await new LocalGitProvider().listBranches({ externalId });
-    expect(branches.map((b) => b.name).sort()).toEqual([
-      'dev',
-      'main',
-      'qa',
-      'rc',
-    ]);
+    // Três degraus, não quatro: `rc` saiu do template junto com o degrau
+    // (ADR 0030, achado #3), então o bootstrap aprovado não a cria mais.
+    expect(branches.map((b) => b.name).sort()).toEqual(['dev', 'main', 'qa']);
 
     const bootstrap = await repoBootstraps.findByProjectId(project.id);
     expect(bootstrap?.planDecision).toBe('approved');

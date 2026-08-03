@@ -16,6 +16,20 @@ export abstract class SessionRepository {
 
   abstract listForProject(projectId: string): Promise<Session[]>;
 
+  /**
+   * Sessão de execução VIGENTE do projeto: a `active` mais recente que já
+   * carrega um `execution.activated`. `null` quando não há nenhuma.
+   *
+   * Não existe coluna que diga "esta sessão é de execução" — o que distingue
+   * uma é o evento que ela guarda, e é por ele que se pergunta. Serve à
+   * reativação, que precisa cair na sessão onde os dev agents já estão
+   * escrevendo, em vez de abrir uma nova a cada chamada (achado #11 do
+   * primeiro dogfooding).
+   */
+  abstract findActiveExecutionSession(
+    projectId: string,
+  ): Promise<Session | null>;
+
   /** SELECT ... FOR UPDATE — só faz sentido dentro de UnitOfWork.runInTransaction. */
   abstract findInProjectForUpdate(
     projectId: string,
