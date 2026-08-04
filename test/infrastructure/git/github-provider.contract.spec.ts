@@ -38,6 +38,66 @@ describe('GithubProvider — cenários de HTTP mockados', () => {
     store.reset();
   });
 
+  /**
+   * O primeiro commit num repositório recém-criado.
+   *
+   * O GitHub cria com `auto_init: false` — repo sem commit nenhum —, e aí
+   * QUALQUER leitura de ref responde `409 Git Repository is empty`, não 404.
+   * O provider já tinha o caminho de primeiro commit, guardado por 404, e por
+   * isso ele nunca era alcançado: o bootstrap de Gitflow morria no passo 1
+   * ("Commit do template de PR") em todo projeto GitHub novo. Verificado
+   * contra a API viva antes de existir este teste.
+   */
+  it('repo VAZIO (409) aceita o primeiro commit, sem consultar refs de novo', async () => {
+    const provider = withAccessToken(new GithubProvider(), 'fake-token');
+    const repo = await provider.createRepo({
+      name: 'recem-criado',
+      visibility: 'private',
+    });
+
+    const commit = await provider.commitFiles({
+      externalId: repo.externalId,
+      branch: 'main',
+      message: 'chore: template de PR',
+      files: [{ path: '.github/PULL_REQUEST_TEMPLATE.md', content: '## O quê' }],
+    });
+
+    expect(commit.branch).toBe('main');
+    expect(commit.sha).toBeTruthy();
+
+    // E a branch passa a existir: o commit sem pai criou o ref.
+    const branches = await provider.listBranches({ externalId: repo.externalId });
+    expect(branches.map((b) => b.name)).toContain('main');
+  });
+
+  /**
+   * O 409 não pode virar "aceita qualquer branch": num repo que JÁ tem refs, o
+   * GitHub responde 404 para branch inexistente, e aí a distinção volta a
+   * importar — senão um erro de digitação no nome da branch criaria uma nova.
+   */
+  it('branch inexistente num repo COM refs continua sendo erro', async () => {
+    const provider = withAccessToken(new GithubProvider(), 'fake-token');
+    const repo = await provider.createRepo({
+      name: 'com-historico',
+      visibility: 'private',
+    });
+    await provider.commitFiles({
+      externalId: repo.externalId,
+      branch: 'main',
+      message: 'chore: primeiro',
+      files: [{ path: 'README.md', content: '# oi' }],
+    });
+
+    await expect(
+      provider.commitFiles({
+        externalId: repo.externalId,
+        branch: 'nao-existe',
+        message: 'chore: segundo',
+        files: [{ path: 'outro.md', content: 'x' }],
+      }),
+    ).rejects.toThrow(GitBranchNotFoundError);
+  });
+
   it('404 num repositório inexistente vira GitRepoNotFoundError', async () => {
     const provider = withAccessToken(new GithubProvider(), 'fake-token');
     await expect(
