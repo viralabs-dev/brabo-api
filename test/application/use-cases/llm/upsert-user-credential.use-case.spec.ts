@@ -4,26 +4,8 @@ import { createTestDb, truncateAll } from '../../../support/test-db';
 import { userCredentials, users } from '../../../../src/db/schema';
 import { DrizzleUserCredentialRepository } from '../../../../src/infrastructure/persistence/drizzle/user-credential.repository';
 import { EnvelopeEncryptionService } from '../../../../src/infrastructure/security/envelope-encryption.service';
-import { LLMCredentialConnectionTester } from '../../../../src/application/ports/llm-credential-connection-tester.port';
-import { LLMCredentialConnectionTestFailedError } from '../../../../src/domain/llm/llm-credential-errors';
 import { UpsertUserCredentialUseCase } from '../../../../src/application/use-cases/llm/upsert-user-credential.use-case';
 import { ListUserCredentialsUseCase } from '../../../../src/application/use-cases/llm/list-user-credentials.use-case';
-
-class FakeConnectionTester implements LLMCredentialConnectionTester {
-  constructor(private readonly shouldFail = false) {}
-
-  test(): Promise<void> {
-    if (this.shouldFail) {
-      return Promise.reject(
-        new LLMCredentialConnectionTestFailedError(
-          'openrouter',
-          'chave inválida (simulado)',
-        ),
-      );
-    }
-    return Promise.resolve();
-  }
-}
 
 const { db, pool } = createTestDb();
 const credentialRepo = new DrizzleUserCredentialRepository(db);
@@ -31,7 +13,6 @@ const encryption = new EnvelopeEncryptionService();
 const upsertCredential = new UpsertUserCredentialUseCase(
   credentialRepo,
   encryption,
-  new FakeConnectionTester(),
 );
 const listCredentials = new ListUserCredentialsUseCase(credentialRepo);
 
@@ -114,22 +95,30 @@ describe('UpsertUserCredentialUseCase', () => {
     expect(list).toHaveLength(1);
   });
 
-  it('falha: teste de conexão rejeita SEM persistir nada', async () => {
+  /**
+   * A INVERSÃO do ADR 0050, escrita como teste — este caso afirmava
+   * exatamente o contrário até a Fase 12.
+   *
+   * O portão parecia prudente e produziu o pior desfecho possível em uso
+   * real: chave recusada virava 422, nada era gravado, e o usuário não tinha
+   * o que corrigir — nem a chave (a tela nunca reexibe) nem o motivo. Guardar
+   * é incondicional; verificar é `TestStoredCredentialUseCase`.
+   */
+  it('chave que o provider recusaria é gravada do mesmo jeito — o cadastro não julga', async () => {
     const user = await setupUser();
-    const upsertComTesteFalhando = new UpsertUserCredentialUseCase(
-      credentialRepo,
-      encryption,
-      new FakeConnectionTester(true),
-    );
 
-    await expect(
-      upsertComTesteFalhando.execute(user.id, 'openrouter', 'chave-invalida'),
-    ).rejects.toThrow(LLMCredentialConnectionTestFailedError);
+    await upsertCredential.execute(user.id, 'openrouter', 'chave-invalida');
 
     const rows = await db
       .select()
       .from(userCredentials)
       .where(eq(userCredentials.userId, user.id));
-    expect(rows).toHaveLength(0);
+    expect(rows).toHaveLength(1);
+
+    const secret = await credentialRepo.findSecretByUserAndProvider(
+      user.id,
+      'openrouter',
+    );
+    expect(encryption.decrypt(secret!)).toBe('chave-invalida');
   });
 });

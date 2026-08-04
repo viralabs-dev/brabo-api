@@ -1,4 +1,5 @@
 import type { Model, ModelComCuradoria } from '../../domain/llm/model.entity';
+import type { UsoDeModelo } from '../../domain/llm/model-uses';
 
 /**
  * A curadoria de modelo POR WORKSPACE (ADR 0049).
@@ -37,6 +38,23 @@ export abstract class WorkspaceModelRepository {
     workspaceId: string;
     modelIds: string[];
     isActive: boolean;
+    curatedBy: string;
+  }): Promise<number>;
+
+  /**
+   * Substitui os usos do lote — não faz merge. A tela manda a lista completa
+   * que o usuário vê marcada, e um merge tornaria impossível DESmarcar um uso
+   * sem uma segunda operação.
+   *
+   * Eixo separado de `setActive`: marcar "serve para código" não liga o modelo
+   * no seletor. Um modelo que ganha linha aqui sem nunca ter sido ligado nasce
+   * INATIVO, contra o default `true` da coluna — opinar sobre um modelo não é
+   * autorizá-lo a gastar (RN-043).
+   */
+  abstract setUses(input: {
+    workspaceId: string;
+    modelIds: string[];
+    uses: UsoDeModelo[];
     curatedBy: string;
   }): Promise<number>;
 }

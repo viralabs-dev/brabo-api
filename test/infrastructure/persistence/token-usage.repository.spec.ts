@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { eq, sql } from 'drizzle-orm';
 import { createTestDb, truncateAll } from '../../support/test-db';
 import {
   models,
   projects,
   sessions,
+  tokenUsage,
   users,
   workspaces,
 } from '../../../src/db/schema';
@@ -12,7 +14,11 @@ import { DrizzleTokenUsageRepository } from '../../../src/infrastructure/persist
 const { db, pool } = createTestDb();
 const repo = new DrizzleTokenUsageRepository(db);
 
-async function seed(): Promise<{ sessionId: string; modelId: string }> {
+async function seed(): Promise<{
+  projectId: string;
+  sessionId: string;
+  modelId: string;
+}> {
   const [owner] = await db
     .insert(users)
     .values({ keycloakSub: 'sub-tu', email: 'tu@brabo.dev' })
@@ -42,7 +48,7 @@ async function seed(): Promise<{ sessionId: string; modelId: string }> {
       displayName: 'Qwen Coder 7B',
     })
     .returning();
-  return { sessionId: session.id, modelId: model.id };
+  return { projectId: project.id, sessionId: session.id, modelId: model.id };
 }
 
 async function record(
@@ -95,5 +101,73 @@ describe('DrizzleTokenUsageRepository.sumBySessionGroupedByActor (Fase 4a)', () 
   it('sessão sem consumo devolve lista vazia, não erro', async () => {
     const { sessionId } = await seed();
     expect(await repo.sumBySessionGroupedByActor(sessionId)).toEqual([]);
+  });
+});
+
+describe('DrizzleTokenUsageRepository.sumByProjectGroupedByAgentLast30Days', () => {
+  it('agrupa por agente somando as sessões do projeto', async () => {
+    const { projectId, sessionId, modelId } = await seed();
+    await record(sessionId, modelId, 'dev-core', 100);
+    await record(sessionId, modelId, 'dev-core', 250);
+    await record(sessionId, modelId, 'qa', 70);
+
+    const linhas = await repo.sumByProjectGroupedByAgentLast30Days(projectId);
+    const porAgente = Object.fromEntries(linhas.map((l) => [l.actorId, l]));
+
+    expect(porAgente['dev-core'].costMicros).toBe(350);
+    expect(porAgente['qa'].costMicros).toBe(70);
+  });
+
+  /**
+   * A janela é DESLIZANTE, e este teste é o que impede alguém de trocá-la por
+   * `date_trunc('month')` "para bater com o outro método": no dia 1º a
+   * estimativa da tela despencaria por virada de página, não por mudança de
+   * uso — e o rótulo do desenho diz "últimos 30 dias".
+   */
+  it('exclui consumo mais velho que 30 dias', async () => {
+    const { projectId, sessionId, modelId } = await seed();
+    await record(sessionId, modelId, 'dev-core', 100);
+
+    // 31 dias atrás: fora da janela.
+    await db
+      .update(tokenUsage)
+      .set({ createdAt: sql`now() - interval '31 days'` })
+      .where(eq(tokenUsage.actorId, 'dev-core'));
+    await record(sessionId, modelId, 'dev-core', 40);
+
+    const [linha] = await repo.sumByProjectGroupedByAgentLast30Days(projectId);
+    expect(linha.costMicros).toBe(40);
+  });
+
+  /**
+   * RN-038: sem o filtro de `actor_kind`, um usuário conversando no chat
+   * entraria na conta de um agente cujo nome ele nem carrega.
+   */
+  it('ignora consumo que não é de agente', async () => {
+    const { projectId, sessionId, modelId } = await seed();
+    await repo.record({
+      sessionId,
+      actor: { kind: 'user', id: 'alguem' },
+      provider: 'ollama',
+      modelId,
+      modelName: 'qwen2.5-coder:7b',
+      inputTokens: 10,
+      outputTokens: 5,
+      estimated: false,
+      costMicros: 999,
+      latencyMs: 1,
+      bindingOrigin: 'project',
+    });
+
+    expect(await repo.sumByProjectGroupedByAgentLast30Days(projectId)).toEqual(
+      [],
+    );
+  });
+
+  it('projeto sem consumo devolve lista vazia', async () => {
+    const { projectId } = await seed();
+    expect(await repo.sumByProjectGroupedByAgentLast30Days(projectId)).toEqual(
+      [],
+    );
   });
 });

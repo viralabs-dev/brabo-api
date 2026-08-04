@@ -5,6 +5,10 @@ import type {
   Model,
   ModelComCuradoria,
 } from '../../../domain/llm/model.entity';
+import {
+  isUsoDeModelo,
+  type UsoDeModelo,
+} from '../../../domain/llm/model-uses';
 import { models, workspaceModels } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
@@ -36,7 +40,11 @@ export class DrizzleWorkspaceModelRepository implements WorkspaceModelRepository
   async listAllComCuradoria(workspaceId: string): Promise<ModelComCuradoria[]> {
     const db = currentDb(this.rootDb);
     const linhas = await db
-      .select({ model: models, isActive: workspaceModels.isActive })
+      .select({
+        model: models,
+        isActive: workspaceModels.isActive,
+        uses: workspaceModels.uses,
+      })
       .from(models)
       .leftJoin(
         workspaceModels,
@@ -48,7 +56,14 @@ export class DrizzleWorkspaceModelRepository implements WorkspaceModelRepository
           eq(workspaceModels.workspaceId, workspaceId),
         ),
       );
-    return linhas.map((l) => ({ ...l.model, isActive: l.isActive ?? false }));
+    return linhas.map((l) => ({
+      ...l.model,
+      isActive: l.isActive ?? false,
+      // A coluna é TEXT[]: um uso que saiu do vocabulário continua gravado no
+      // banco e é filtrado na leitura, em vez de vazar como valor inválido
+      // para um tipo que promete o contrário.
+      uses: (l.uses ?? []).filter(isUsoDeModelo),
+    }));
   }
 
   async isActive(workspaceId: string, modelId: string): Promise<boolean> {
@@ -93,6 +108,45 @@ export class DrizzleWorkspaceModelRepository implements WorkspaceModelRepository
         target: [workspaceModels.workspaceId, workspaceModels.modelId],
         set: {
           isActive: input.isActive,
+          curatedBy: input.curatedBy,
+          updatedAt: agora,
+        },
+      })
+      .returning({ modelId: workspaceModels.modelId });
+
+    return linhas.length;
+  }
+
+  async setUses(input: {
+    workspaceId: string;
+    modelIds: string[];
+    uses: UsoDeModelo[];
+    curatedBy: string;
+  }): Promise<number> {
+    if (input.modelIds.length === 0) return 0;
+    const db = currentDb(this.rootDb);
+    const agora = new Date();
+
+    const linhas = await db
+      .insert(workspaceModels)
+      .values(
+        input.modelIds.map((modelId) => ({
+          workspaceId: input.workspaceId,
+          modelId,
+          // Explícito contra o default `true` da coluna: opinar sobre um
+          // modelo nunca o liga no seletor. Sem isto, marcar "serve para
+          // código" ativaria um modelo que ninguém autorizou a gastar.
+          isActive: false,
+          uses: input.uses,
+          curatedBy: input.curatedBy,
+        })),
+      )
+      .onConflictDoUpdate({
+        target: [workspaceModels.workspaceId, workspaceModels.modelId],
+        // `isActive` fora do SET: o UPDATE mexe só no eixo desta operação, e a
+        // curadoria de quem ligou o modelo sobrevive à mudança de uso.
+        set: {
+          uses: input.uses,
           curatedBy: input.curatedBy,
           updatedAt: agora,
         },
