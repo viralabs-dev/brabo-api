@@ -2,7 +2,13 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import type { LLMProviderName } from '@brabo/shared';
 import { createTestDb, truncateAll } from '../../support/test-db';
-import { projects, sessions, tokenUsage, users, workspaces } from '../../../src/db/schema';
+import {
+  projects,
+  sessions,
+  tokenUsage,
+  users,
+  workspaces,
+} from '../../../src/db/schema';
 import { DrizzleModelRepository } from '../../../src/infrastructure/persistence/drizzle/model.repository';
 import { DrizzleModelBindingRepository } from '../../../src/infrastructure/persistence/drizzle/model-binding.repository';
 import { DrizzleUserCredentialRepository } from '../../../src/infrastructure/persistence/drizzle/user-credential.repository';
@@ -19,6 +25,7 @@ import { BraboMetrics } from '../../../src/infrastructure/observability/brabo-me
 import { LLMCredentialConnectionTesterImpl } from '../../../src/infrastructure/llm/llm-credential-connection-tester';
 import { NvidiaNimProvider } from '../../../src/infrastructure/llm/nvidia-nim-provider';
 import { UpsertUserCredentialUseCase } from '../../../src/application/use-cases/llm/upsert-user-credential.use-case';
+import { TestStoredCredentialUseCase } from '../../../src/application/use-cases/credentials/test-stored-credential.use-case';
 import { SyncModelCatalogUseCase } from '../../../src/application/use-cases/llm/sync-model-catalog.use-case';
 import { SetModelsActiveUseCase } from '../../../src/application/use-cases/llm/set-models-active.use-case';
 import { SetModelBindingUseCase } from '../../../src/application/use-cases/llm/set-model-binding.use-case';
@@ -97,7 +104,18 @@ describe.skipIf(!apiKey)(
     const upsertCredential = new UpsertUserCredentialUseCase(
       credentialRepo,
       encryption,
+    );
+    // A verificação virou ação própria sobre a credencial GRAVADA (ADR 0050).
+    // O tester de git entra como stub: este smoke só toca provider de LLM, e
+    // arrastar o Octokit/GitBeaker pra cá seria peso sem prova nenhuma.
+    const testStoredCredential = new TestStoredCredentialUseCase(
+      credentialRepo,
+      encryption,
       new LLMCredentialConnectionTesterImpl(),
+      {
+        test: () =>
+          Promise.reject(new Error('tester de git não é usado neste smoke')),
+      },
     );
     const syncCatalog = new SyncModelCatalogUseCase(
       modelRepo,
@@ -145,7 +163,10 @@ describe.skipIf(!apiKey)(
 
         const [owner] = await db
           .insert(users)
-          .values({ keycloakSub: 'sub-nim-smoke', email: 'nim-smoke@brabo.dev' })
+          .values({
+            keycloakSub: 'sub-nim-smoke',
+            email: 'nim-smoke@brabo.dev',
+          })
           .returning();
         const [workspace] = await db
           .insert(workspaces)
@@ -153,16 +174,29 @@ describe.skipIf(!apiKey)(
           .returning();
         const [project] = await db
           .insert(projects)
-          .values({ workspaceId: workspace.id, name: 'core', slug: 'core', createdBy: owner.id })
+          .values({
+            workspaceId: workspace.id,
+            name: 'core',
+            slug: 'core',
+            createdBy: owner.id,
+          })
           .returning();
         const [session] = await db
           .insert(sessions)
           .values({ projectId: project.id, createdBy: owner.id })
           .returning();
 
-        // 1) Cadastro — passa pelo teste de conexão REAL (GET /v1/models,
-        //    status-only) antes de cifrar/persistir.
+        // 1) Cadastro — cifra e grava, SEM testar (ADR 0050). Uma chave
+        //    errada é gravada do mesmo jeito; o cadastro não é o lugar do
+        //    diagnóstico.
         await upsertCredential.execute(owner.id, 'nvidia-nim', apiKey!);
+
+        // 1b) Verificação como ação explícita sobre a credencial já gravada —
+        //     é ela que prova a chave REAL contra a API real, que é o valor
+        //     deste smoke desde o ADR 0043.
+        expect(
+          await testStoredCredential.execute(owner.id, 'nvidia-nim'),
+        ).toEqual({ resultado: 'ok' });
 
         // 2) Sync — confirma que a capability declarada é respeitada: NIM é
         //    PULADO por `sem_capability`, nunca tenta um catálogo que a doc
@@ -217,11 +251,16 @@ describe.skipIf(!apiKey)(
         }
 
         expect(
-          eventos.find((e) => e.type === 'error' || e.type === 'metering_failed'),
+          eventos.find(
+            (e) => e.type === 'error' || e.type === 'metering_failed',
+          ),
           `turno de chat falhou: ${JSON.stringify(eventos)}`,
         ).toBeUndefined();
         const feito = eventos.find((e) => e.type === 'done');
-        expect(feito, `sem evento 'done': ${JSON.stringify(eventos)}`).toBeDefined();
+        expect(
+          feito,
+          `sem evento 'done': ${JSON.stringify(eventos)}`,
+        ).toBeDefined();
 
         // Custo CONGELADO em token_usage (RN-044).
         const [uso] = await db
@@ -229,11 +268,18 @@ describe.skipIf(!apiKey)(
           .from(tokenUsage)
           .where(eq(tokenUsage.sessionId, session.id));
 
-        expect(uso, 'nenhuma linha em token_usage para a sessão do smoke').toBeDefined();
+        expect(
+          uso,
+          'nenhuma linha em token_usage para a sessão do smoke',
+        ).toBeDefined();
         expect(uso.provider).toBe('nvidia-nim');
         expect(uso.modelName).toBe(modeloAlvo);
-        expect(uso.inputPricePerMillionMicros).toBe(ativado.inputPricePerMillionMicros);
-        expect(uso.outputPricePerMillionMicros).toBe(ativado.outputPricePerMillionMicros);
+        expect(uso.inputPricePerMillionMicros).toBe(
+          ativado.inputPricePerMillionMicros,
+        );
+        expect(uso.outputPricePerMillionMicros).toBe(
+          ativado.outputPricePerMillionMicros,
+        );
         expect(uso.costMicros).toBeGreaterThanOrEqual(0);
 
         // NIM não é hub — sem `extrairUpstreamProvider` na config, o campo

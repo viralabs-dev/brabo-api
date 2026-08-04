@@ -59,7 +59,10 @@ class GitTesterFalso implements GitCredentialConnectionTester {
   test(): Promise<void> {
     return this.recusa
       ? Promise.reject(
-          new GitCredentialConnectionTestFailedError('github', 'Bad credentials'),
+          new GitCredentialConnectionTestFailedError(
+            'github',
+            'Bad credentials',
+          ),
         )
       : Promise.resolve();
   }
@@ -104,9 +107,10 @@ describe('TestStoredCredentialUseCase (ADR 0050)', () => {
     const user = await setupUser();
     await upsert.execute(user.id, 'openrouter', CHAVE);
 
-    const resultado = await casoDeUso(
-      new LlmTesterFalso(true, true),
-    ).execute(user.id, 'openrouter');
+    const resultado = await casoDeUso(new LlmTesterFalso(true, true)).execute(
+      user.id,
+      'openrouter',
+    );
 
     expect(resultado.resultado).toBe('recusado');
     expect(
@@ -158,9 +162,10 @@ describe('TestStoredCredentialUseCase (ADR 0050)', () => {
     const user = await setupUser();
     await upsert.execute(user.id, 'openrouter', CHAVE);
 
-    const resultado = await casoDeUso(
-      new LlmTesterFalso(true, true),
-    ).execute(user.id, 'openrouter');
+    const resultado = await casoDeUso(new LlmTesterFalso(true, true)).execute(
+      user.id,
+      'openrouter',
+    );
 
     expect(JSON.stringify(resultado)).not.toContain(CHAVE);
   });

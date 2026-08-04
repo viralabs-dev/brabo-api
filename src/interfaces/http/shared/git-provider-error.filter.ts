@@ -7,7 +7,6 @@ import {
 import {
   GitBranchAlreadyExistsError,
   GitBranchNotFoundError,
-  GitCredentialConnectionTestFailedError,
   GitNotSupportedError,
   GitPermissionDeniedError,
   GitRepoAlreadyExistsError,
@@ -17,7 +16,6 @@ import {
 type CaughtError =
   | GitProviderAuthError
   | InvalidOauthStateError
-  | GitCredentialConnectionTestFailedError
   | GitRepoNotFoundError
   | GitBranchNotFoundError
   | GitRepoAlreadyExistsError
@@ -25,6 +23,12 @@ type CaughtError =
   | GitPermissionDeniedError
   | GitNotSupportedError;
 
+// `GitCredentialConnectionTestFailedError` saiu daqui no ADR 0050: com o
+// cadastro não testando mais nada, o único chamador do tester é
+// `TestStoredCredentialUseCase`, que CAPTURA o erro e o devolve como
+// resultado. Um `@Catch` que não pode disparar é regra morta — mesmo critério
+// que o docmap aplica a glob que não casa com arquivo nenhum.
+//
 // O bootstrap de Gitflow (Fase 2, sessão 3 — ProvisionRepositoryUseCase)
 // agora expõe as mutações do GitProviderContract de verdade via HTTP, então
 // os erros de domain/git/git-errors.ts (antes só circulando dentro do
@@ -34,7 +38,6 @@ type CaughtError =
 @Catch(
   GitProviderAuthError,
   InvalidOauthStateError,
-  GitCredentialConnectionTestFailedError,
   GitRepoNotFoundError,
   GitBranchNotFoundError,
   GitRepoAlreadyExistsError,
@@ -59,8 +62,6 @@ function statusFor(exception: CaughtError): { status: number; error: string } {
   // já usado no DomainTransitionErrorFilter pra "estado atual conflita
   // com o pedido". InvalidOauthStateError: state malformado/expirado no
   // callback — não é sobre credenciais, é 400.
-  // GitCredentialConnectionTestFailedError: o token nunca foi válido
-  // (não é um estado que "conflita" com nada existente) — 422.
   // GitRepoNotFoundError/GitBranchNotFoundError: 404 de verdade — o
   // recurso referenciado não existe no provider.
   // GitRepoAlreadyExistsError/GitBranchAlreadyExistsError: 409 — conflita
@@ -70,9 +71,6 @@ function statusFor(exception: CaughtError): { status: number; error: string } {
   // não suportada por ESSE provider (distinto de um erro do cliente).
   if (exception instanceof GitProviderAuthError) {
     return { status: 409, error: 'Conflict' };
-  }
-  if (exception instanceof GitCredentialConnectionTestFailedError) {
-    return { status: 422, error: 'Unprocessable Entity' };
   }
   if (
     exception instanceof GitRepoNotFoundError ||

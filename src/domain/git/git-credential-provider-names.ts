@@ -25,5 +25,7 @@ void _todosListados;
 export function isGitCredentialProvider(
   provider: string,
 ): provider is GitCredentialProviderName {
-  return (GIT_CREDENTIAL_PROVIDER_NAMES as readonly string[]).includes(provider);
+  return (GIT_CREDENTIAL_PROVIDER_NAMES as readonly string[]).includes(
+    provider,
+  );
 }

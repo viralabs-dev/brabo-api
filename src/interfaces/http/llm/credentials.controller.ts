@@ -1,7 +1,16 @@
-import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -13,10 +22,14 @@ import type { User } from '../../../domain/iam/user.entity';
 import { UpsertUserCredentialUseCase } from '../../../application/use-cases/llm/upsert-user-credential.use-case';
 import { ListUserCredentialsUseCase } from '../../../application/use-cases/llm/list-user-credentials.use-case';
 import { DeleteUserCredentialUseCase } from '../../../application/use-cases/llm/delete-user-credential.use-case';
+import { TestStoredCredentialUseCase } from '../../../application/use-cases/credentials/test-stored-credential.use-case';
 import { UpsertCredentialDto } from './dto/upsert-credential.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import { OkResponseDto } from '../shared/dto/comuns.response.dto';
-import { UserCredentialResponseDto } from './dto/llm.response.dto';
+import {
+  CredentialTestResultResponseDto,
+  UserCredentialResponseDto,
+} from './dto/llm.response.dto';
 
 // Sem @RequireRole — credenciais são sobre o próprio usuário autenticado,
 // não escopadas a workspace/projeto. Nunca retornar o segredo, nem
@@ -29,6 +42,7 @@ export class CredentialsController {
     private readonly upsertCredential: UpsertUserCredentialUseCase,
     private readonly listCredentials: ListUserCredentialsUseCase,
     private readonly deleteCredential: DeleteUserCredentialUseCase,
+    private readonly testStoredCredential: TestStoredCredentialUseCase,
   ) {}
 
   @Post()
@@ -54,6 +68,27 @@ export class CredentialsController {
   @ApiOkResponse({ type: [UserCredentialResponseDto] })
   list(@CurrentUser() user: User) {
     return this.listCredentials.execute(user.id);
+  }
+
+  @Post(':provider/test')
+  @HttpCode(200)
+  @ApiParam({ name: 'provider', example: 'openrouter' })
+  @ApiOperation({
+    summary: 'Verifica a credencial JÁ gravada contra o provider',
+    description:
+      'A verificação é uma ação explícita, separada do cadastro (ADR 0050): a api ' +
+      'decifra o segredo, chama o provider e devolve SÓ o veredito — a chave nunca ' +
+      'volta, nem em pedaço. Responde 200 nos três resultados, porque o pedido foi ' +
+      'processado; `recusado` é um resultado, não um erro de protocolo. 404 quando ' +
+      'não há credencial para (usuário, provider) — aí não há o que testar.',
+  })
+  @ApiOkResponse({ type: CredentialTestResultResponseDto })
+  @ApiNotFoundResponse({ description: 'Nenhuma credencial deste provider.' })
+  test(
+    @CurrentUser() user: User,
+    @Param('provider') provider: CredentialProviderName,
+  ) {
+    return this.testStoredCredential.execute(user.id, provider);
   }
 
   @Delete(':provider')
