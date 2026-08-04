@@ -1,6 +1,5 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import {
-  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiOperation,
@@ -14,11 +13,13 @@ import { BEARER } from '../../../infrastructure/openapi/documento';
 import { UserCredentialResponseDto } from '../llm/dto/llm.response.dto';
 
 // Sem @RequireRole — credencial é sobre o próprio usuário autenticado,
-// mesmo padrão de users/me/credentials (LLM). GET/DELETE reaproveitam os
+// mesmo padrão de users/me/credentials (LLM). GET/DELETE/test reaproveitam os
 // endpoints já existentes em CredentialsController (mesma tabela, mesmo
-// UserCredentialRepository, já alargado pra CredentialProviderName) —
-// só o registro precisa de um caminho próprio, por causa do teste de
-// conexão obrigatório antes de persistir.
+// UserCredentialRepository, já alargado pra CredentialProviderName).
+//
+// O registro segue num caminho próprio porque o CORPO é diferente (`token`,
+// e o enum de providers é outro), não mais por causa do teste de conexão:
+// desde o ADR 0050 nenhum dos dois cadastros testa nada antes de gravar.
 @ApiTags('credenciais')
 @ApiBearerAuth(BEARER)
 @Controller('users/me/git-credentials')
@@ -29,15 +30,15 @@ export class GitCredentialsController {
 
   @Post()
   @ApiOperation({
-    summary: 'Registra um token de git depois de TESTAR a conexão',
+    summary: 'Registra um token de git (cifrado, sem testar)',
     description:
-      'Caminho próprio, e não o de `users/me/credentials`, por causa do teste: o ' +
-      'token é validado contra o provider ANTES de ser persistido, para não guardar ' +
-      'uma credencial que só falharia no primeiro push. A leitura e a remoção ' +
+      'Caminho próprio, e não o de `users/me/credentials`, porque o corpo é outro ' +
+      '(`token`, e o enum de providers é `github`/`gitlab`). O token é cifrado e ' +
+      'gravado sem verificação prévia (ADR 0050); para verificá-lo, ' +
+      '`POST /users/me/credentials/{provider}/test`. Leitura, remoção e teste ' +
       'reaproveitam as rotas de `users/me/credentials` — é a mesma tabela.',
   })
   @ApiCreatedResponse({ type: UserCredentialResponseDto })
-  @ApiBadRequestResponse({ description: 'O provider recusou o token.' })
   create(@CurrentUser() user: User, @Body() dto: RegisterGitCredentialDto) {
     return this.registerGitCredential.execute(user.id, dto.provider, dto.token);
   }

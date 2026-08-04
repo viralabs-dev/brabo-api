@@ -13,6 +13,7 @@ import { DrizzleUnitOfWork } from '../../../../src/infrastructure/persistence/dr
 import { OpenAICompatibleProvider } from '../../../../src/infrastructure/llm/openai-compatible-provider';
 import { openaiConfig } from '../../../../src/infrastructure/llm/openai-provider';
 import { deepinfraConfig } from '../../../../src/infrastructure/llm/deepinfra-provider';
+import { openrouterConfig } from '../../../../src/infrastructure/llm/openrouter-provider';
 import { SyncModelCatalogUseCase } from '../../../../src/application/use-cases/llm/sync-model-catalog.use-case';
 import { LLMProviderRegistry } from '../../../../src/application/ports/llm-provider-registry.port';
 import type { LLMProvider } from '../../../../src/application/ports/llm-provider.port';
@@ -45,6 +46,17 @@ let status = 200;
 let precoRemoto: { entrada: number; saida: number } | null = null;
 
 /**
+ * As facetas que o catálogo remoto DECLARA nesta rodada. `null` é o catálogo
+ * que se cala — a distinção que importa, porque calar-se preserva o valor
+ * local e declarar `false` o sobrescreve (ADR 0041).
+ */
+let facetasRemotas: {
+  input_modalities?: string[];
+  output_modalities?: string[];
+  supported_parameters?: string[];
+} | null = null;
+
+/**
  * Um corpo só, servindo os dois parsers: `id` é o que o parser padrão lê, e
  * `metadata` é o que o `parseCatalogoDeepInfra` lê. Assim o mesmo servidor
  * falso atende o provider sem preço (OpenAI) e o provider com preço
@@ -63,6 +75,21 @@ function dialetoCatalogo(_cenario: unknown, res: ServerResponse): void {
       data: catalogoRemoto.map((id) => ({
         id,
         object: 'model',
+        ...(facetasRemotas
+          ? {
+              architecture: {
+                ...(facetasRemotas.input_modalities
+                  ? { input_modalities: facetasRemotas.input_modalities }
+                  : {}),
+                ...(facetasRemotas.output_modalities
+                  ? { output_modalities: facetasRemotas.output_modalities }
+                  : {}),
+              },
+              ...(facetasRemotas.supported_parameters
+                ? { supported_parameters: facetasRemotas.supported_parameters }
+                : {}),
+            }
+          : {}),
         metadata: {
           tags: ['chat'],
           ...(precoRemoto
@@ -91,6 +118,9 @@ function dialetoCatalogo(_cenario: unknown, res: ServerResponse): void {
 function registryApontadoPara(baseUrl: string): LLMProviderRegistry {
   const openai = new OpenAICompatibleProvider(openaiConfig(baseUrl));
   const deepinfra = new OpenAICompatibleProvider(deepinfraConfig(baseUrl));
+  // O hub é o único catálogo que publica facetas de capability, então é com
+  // ele que a regra de precedência delas se prova.
+  const openrouter = new OpenAICompatibleProvider(openrouterConfig(baseUrl));
   const semCatalogo = (nome: LLMProviderName): LLMProvider => ({
     name: nome,
     capabilities: { streaming: true, toolCalling: true, listModels: false },
@@ -104,6 +134,7 @@ function registryApontadoPara(baseUrl: string): LLMProviderRegistry {
     get: (nome) => {
       if (nome === 'openai') return openai;
       if (nome === 'deepinfra') return deepinfra;
+      if (nome === 'openrouter') return openrouter;
       return semCatalogo(nome);
     },
   };
@@ -141,6 +172,19 @@ async function workspaceDeTeste() {
   return ws;
 }
 
+async function comCredencialDoOpenRouter() {
+  const [user] = await db
+    .insert(users)
+    .values({ keycloakSub: 'sub-sync-or', email: 'sync-or@brabo.dev' })
+    .returning();
+  await credentialRepo.upsert(
+    user.id,
+    'openrouter',
+    encryption.encrypt('sk-or-v1-de-teste'),
+  );
+  return user;
+}
+
 async function comCredencialDaDeepInfra() {
   const [user] = await db
     .insert(users)
@@ -159,6 +203,7 @@ beforeEach(async () => {
   catalogoRemoto = [];
   status = 200;
   precoRemoto = null;
+  facetasRemotas = null;
   servidor = await subirServidorFalso(dialetoCatalogo);
   useCase = new SyncModelCatalogUseCase(
     modelRepo,
@@ -257,6 +302,54 @@ describe('SyncModelCatalogUseCase', () => {
     );
     // A escolha de quem curou sobreviveu à ausência — é a razão dos dois eixos.
     expect(await workspaceModelRepo.isActive(ws.id, antes.id)).toBe(true);
+  });
+
+  /**
+   * As facetas de capability. O eixo é o mesmo do preço — o remoto manda no que
+   * declara e o silêncio não apaga nada — mas com uma diferença que custou os
+   * 338 modelos do primeiro sync: antes, `supportsVision` era lido do LOCAL e o
+   * remoto nunca era consultado, então a coluna nascia `false` e morria `false`.
+   */
+  it('faceta declarada pelo catálogo vence o que estava gravado', async () => {
+    await comCredencialDoOpenRouter();
+    catalogoRemoto = ['anthropic/claude-sonnet-4'];
+    await useCase.execute();
+
+    const [antes] = await modelRepo.listByProvider('openrouter');
+    expect(antes.supportsVision).toBe(false);
+
+    facetasRemotas = {
+      input_modalities: ['text', 'image'],
+      output_modalities: ['text'],
+      supported_parameters: ['reasoning'],
+    };
+    await useCase.execute();
+
+    const [depois] = await modelRepo.listByProvider('openrouter');
+    expect(depois).toMatchObject({
+      supportsVision: true,
+      supportsReasoning: true,
+      generatesImage: false,
+    });
+  });
+
+  it('catálogo que se cala sobre modalidade preserva a faceta gravada', async () => {
+    await comCredencialDoOpenRouter();
+    catalogoRemoto = ['algum/multimodal'];
+    facetasRemotas = { input_modalities: ['text', 'image'] };
+    await useCase.execute();
+    expect(
+      (await modelRepo.listByProvider('openrouter'))[0].supportsVision,
+    ).toBe(true);
+
+    // O provider parou de publicar `architecture` — ausência de declaração não
+    // é declaração de ausência (ADR 0041).
+    facetasRemotas = null;
+    await useCase.execute();
+
+    expect(
+      (await modelRepo.listByProvider('openrouter'))[0].supportsVision,
+    ).toBe(true);
   });
 
   it('preço digitado à mão não é zerado por um catálogo que não informa preço', async () => {

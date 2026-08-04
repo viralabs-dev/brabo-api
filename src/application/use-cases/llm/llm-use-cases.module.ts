@@ -3,6 +3,7 @@ import { LlmInfrastructureModule } from '../../../infrastructure/llm/llm-infrast
 import { ListModelsUseCase } from './list-models.use-case';
 import { ListModelCatalogUseCase } from './list-model-catalog.use-case';
 import { SetModelsActiveUseCase } from './set-models-active.use-case';
+import { SetModelUsesUseCase } from './set-model-uses.use-case';
 import { SyncModelCatalogUseCase } from './sync-model-catalog.use-case';
 import { UpdateModelPricingUseCase } from './update-model-pricing.use-case';
 import { ListModelPriceChangesUseCase } from './list-model-price-changes.use-case';
@@ -15,6 +16,7 @@ import { DeleteUserCredentialUseCase } from './delete-user-credential.use-case';
 import { UpsertBudgetUseCase } from './upsert-budget.use-case';
 import { GetBudgetUseCase } from './get-budget.use-case';
 import { GetSessionTokenUsageUseCase } from './get-session-token-usage.use-case';
+import { GetProjectAgentCostsUseCase } from './get-project-agent-costs.use-case';
 import { CheckBudgetGateUseCase } from './check-budget-gate.use-case';
 import { RecordLlmUsageUseCase } from './record-llm-usage.use-case';
 import { SendChatMessageUseCase } from './send-chat-message.use-case';
@@ -25,6 +27,7 @@ const USE_CASES = [
   ListModelsUseCase,
   ListModelCatalogUseCase,
   SetModelsActiveUseCase,
+  SetModelUsesUseCase,
   SyncModelCatalogUseCase,
   UpdateModelPricingUseCase,
   ListModelPriceChangesUseCase,
@@ -37,6 +40,7 @@ const USE_CASES = [
   UpsertBudgetUseCase,
   GetBudgetUseCase,
   GetSessionTokenUsageUseCase,
+  GetProjectAgentCostsUseCase,
   CheckBudgetGateUseCase,
   RecordLlmUsageUseCase,
   SendChatMessageUseCase,

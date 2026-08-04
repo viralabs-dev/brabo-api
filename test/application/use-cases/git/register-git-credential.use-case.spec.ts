@@ -4,29 +4,12 @@ import { createTestDb, truncateAll } from '../../../support/test-db';
 import { userCredentials, users } from '../../../../src/db/schema';
 import { DrizzleUserCredentialRepository } from '../../../../src/infrastructure/persistence/drizzle/user-credential.repository';
 import { EnvelopeEncryptionService } from '../../../../src/infrastructure/security/envelope-encryption.service';
-import { GitCredentialConnectionTester } from '../../../../src/application/ports/git-credential-connection-tester.port';
-import { GitCredentialConnectionTestFailedError } from '../../../../src/domain/git/git-errors';
 import { RegisterGitCredentialUseCase } from '../../../../src/application/use-cases/git/register-git-credential.use-case';
 
 const { db, pool } = createTestDb();
 const credentialRepo = new DrizzleUserCredentialRepository(db);
 const encryption = new EnvelopeEncryptionService();
-
-class FakeConnectionTester implements GitCredentialConnectionTester {
-  constructor(private readonly shouldFail: boolean) {}
-
-  test(): Promise<void> {
-    if (this.shouldFail) {
-      return Promise.reject(
-        new GitCredentialConnectionTestFailedError(
-          'github',
-          'token inválido (simulado)',
-        ),
-      );
-    }
-    return Promise.resolve();
-  }
-}
+const useCase = new RegisterGitCredentialUseCase(credentialRepo, encryption);
 
 const PLAINTEXT_TOKEN = 'ghp_super_secret_token_0123456789';
 
@@ -47,13 +30,8 @@ afterAll(async () => {
 });
 
 describe('RegisterGitCredentialUseCase', () => {
-  it('caminho feliz: testa a conexão antes de persistir, nunca grava o texto plano', async () => {
+  it('caminho feliz: cifra e persiste, nunca grava o texto plano', async () => {
     const user = await setupUser();
-    const useCase = new RegisterGitCredentialUseCase(
-      credentialRepo,
-      encryption,
-      new FakeConnectionTester(false),
-    );
 
     const metadata = await useCase.execute(user.id, 'github', PLAINTEXT_TOKEN);
     expect(metadata.provider).toBe('github');
@@ -66,22 +44,30 @@ describe('RegisterGitCredentialUseCase', () => {
     expect(JSON.stringify(row)).not.toContain(PLAINTEXT_TOKEN);
   });
 
-  it('falha: credencial inválida rejeita no teste de conexão SEM persistir nada', async () => {
+  /**
+   * A INVERSÃO do ADR 0050, escrita como teste.
+   *
+   * Até aqui este caso afirmava o contrário: token recusado no teste de
+   * conexão não podia deixar rastro. O modo de falha real foi o oposto do
+   * previsto — sem gravar nada, o usuário ficava sem token E sem diagnóstico,
+   * porque a tela nunca reexibe o que ele digitou. Guardar passou a ser
+   * incondicional; verificar é `TestStoredCredentialUseCase`.
+   */
+  it('token que o provider recusaria é gravado do mesmo jeito — o cadastro não julga', async () => {
     const user = await setupUser();
-    const useCase = new RegisterGitCredentialUseCase(
-      credentialRepo,
-      encryption,
-      new FakeConnectionTester(true),
-    );
 
-    await expect(
-      useCase.execute(user.id, 'github', 'token-invalido'),
-    ).rejects.toThrow(GitCredentialConnectionTestFailedError);
+    await useCase.execute(user.id, 'github', 'token-que-nao-vale-nada');
 
     const rows = await db
       .select()
       .from(userCredentials)
       .where(eq(userCredentials.userId, user.id));
-    expect(rows).toHaveLength(0);
+    expect(rows).toHaveLength(1);
+
+    const secret = await credentialRepo.findSecretByUserAndProvider(
+      user.id,
+      'github',
+    );
+    expect(encryption.decrypt(secret!)).toBe('token-que-nao-vale-nada');
   });
 });

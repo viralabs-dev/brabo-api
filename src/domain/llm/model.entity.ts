@@ -1,4 +1,5 @@
 import type { LLMProviderName } from '@brabo/shared';
+import type { UsoDeModelo } from './model-uses';
 
 export const MODEL_AVAILABILITIES = ['available', 'unavailable'] as const;
 export type ModelAvailability = (typeof MODEL_AVAILABILITIES)[number];
@@ -20,6 +21,12 @@ export interface Model {
   supportsToolCalling: boolean;
   supportsStreaming: boolean;
   supportsVision: boolean;
+  /**
+   * `false` significa "o provider não declarou", não "o modelo não faz" — o
+   * catálogo é a única fonte, e quem não publica não prova nada (ADR 0041).
+   */
+  supportsReasoning: boolean;
+  generatesImage: boolean;
   /**
    * Preço digitado da doc do provider, não sincronizado (Fase 9b). O sync da
    * Fase 9c não sobrescreve linha marcada sem decisão explícita.
@@ -53,4 +60,11 @@ export interface ModelComCuradoria extends Model {
    * curadoria, e ausência de linha é `false` (RN-043).
    */
   isActive: boolean;
+  /**
+   * Para que o time DAQUELE workspace usa este modelo. Eixo independente de
+   * `isActive` — marcar uso não liga o modelo, e desligar não apaga a opinião
+   * de quem já usou. Lista vazia é "ninguém opinou ainda", não "não serve para
+   * nada" (ver `model-uses.ts`).
+   */
+  uses: UsoDeModelo[];
 }

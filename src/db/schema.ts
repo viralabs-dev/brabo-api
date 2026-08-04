@@ -500,6 +500,17 @@ export const models = pgTable(
       .default(false),
     supportsStreaming: boolean('supports_streaming').notNull().default(true),
     supportsVision: boolean('supports_vision').notNull().default(false),
+    /**
+     * Raciocínio explícito (thinking) e geração de imagem — as duas capabilities
+     * que o catálogo do OpenRouter publica e o parser descartava (`architecture`
+     * e `supported_parameters` chegavam e eram jogados fora).
+     *
+     * `false` aqui significa "este provider não declarou", não "o modelo não
+     * faz". É a regra do ADR 0041: capability só é afirmada quando provada, e o
+     * provider que não publica deixa o valor como está em vez de zerá-lo.
+     */
+    supportsReasoning: boolean('supports_reasoning').notNull().default(false),
+    generatesImage: boolean('generates_image').notNull().default(false),
     // Preço digitado à mão a partir da doc do provider, em vez de vindo de
     // sync (Fase 9b). Quem sincroniza preço na Fase 9c NÃO pode sobrescrever
     // uma linha marcada aqui sem decisão explícita: o número manual costuma
@@ -550,6 +561,20 @@ export const workspaceModels = pgTable(
       .notNull()
       .references(() => models.id, { onDelete: 'cascade' }),
     isActive: boolean('is_active').notNull().default(true),
+    /**
+     * Para que este workspace usa o modelo (`codigo`, `documentacao`, …).
+     *
+     * Vive aqui, e não em `models`, porque é OPINIÃO de quem opera e não
+     * capability do provider: o mesmo modelo pode ser "o de código" num
+     * workspace e o de conversa barata em outro. Vocabulário fechado em
+     * `domain/llm/model-uses.ts` — coluna de texto e não enum do Postgres pela
+     * mesma razão de `delegations.area` (Fase 8): uso novo não deve exigir
+     * migração de tipo.
+     */
+    uses: text('uses')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     /**
      * Quem decidiu. `null` só nas linhas nascidas da migração de dados, que
      * vieram de uma curadoria global sem dono registrado — é a diferença

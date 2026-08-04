@@ -7,6 +7,10 @@ import {
   type Model,
   type ModelComCuradoria,
 } from '../../../../domain/llm/model.entity';
+import {
+  USOS_DE_MODELO,
+  type UsoDeModelo,
+} from '../../../../domain/llm/model-uses';
 import type { Budget } from '../../../../domain/llm/budget.entity';
 import {
   PRICE_CHANGE_SOURCES,
@@ -80,8 +84,29 @@ export class ModelResponseDto implements Wire<Model> {
   @ApiProperty({ example: true })
   supportsStreaming!: boolean;
 
-  @ApiProperty({ example: false })
+  @ApiProperty({
+    example: false,
+    description:
+      'Aceita IMAGEM na entrada. `false` quer dizer que o provider não declarou ' +
+      'a modalidade — não que o modelo não saiba (ADR 0041).',
+  })
   supportsVision!: boolean;
+
+  @ApiProperty({
+    example: true,
+    description:
+      'Aceita raciocínio explícito (thinking). No OpenRouter sai de ' +
+      '`supported_parameters: reasoning`.',
+  })
+  supportsReasoning!: boolean;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'PRODUZ imagem — eixo diferente de aceitá-la na entrada. São poucos ' +
+      'modelos, e confundir os dois manda o usuário para o modelo errado.',
+  })
+  generatesImage!: boolean;
 
   @ApiProperty({
     example: true,
@@ -138,6 +163,17 @@ export class ModelComCuradoriaResponseDto
       'sync não tem linha de curadoria, e ausência de linha é `false`.',
   })
   isActive!: boolean;
+
+  @ApiProperty({
+    enum: USOS_DE_MODELO,
+    isArray: true,
+    example: ['codigo'],
+    description:
+      'Para que ESTE workspace usa o modelo. Opinião de quem opera, não ' +
+      'capability do provider — nenhum catálogo publica "bom para código". ' +
+      'Lista vazia é "ninguém opinou", não "não serve".',
+  })
+  uses!: UsoDeModelo[];
 }
 export const _chavesModelComCuradoria: MesmasChaves<
   ModelComCuradoriaResponseDto,
@@ -168,6 +204,33 @@ export const _chavesCredencial: MesmasChaves<
   UserCredentialResponseDto,
   UserCredentialMetadata
 > = true;
+
+/**
+ * O resultado de verificar uma credencial GRAVADA (ADR 0050). Note o que
+ * NÃO está aqui: a chave, nem um pedaço dela, nem o corpo cru da resposta do
+ * provider. Só o veredito e, quando há recusa, a frase de diagnóstico.
+ */
+export class CredentialTestResultResponseDto {
+  @ApiProperty({
+    enum: ['ok', 'recusado', 'nao_suportado'],
+    example: 'recusado',
+    description:
+      '`ok` — o provider aceitou a credencial. `recusado` — o provider a ' +
+      'rejeitou (chave inválida/revogada, sem saldo, rede). `nao_suportado` — ' +
+      'este provider não tem endpoint de teste verificado (`ollama`, ' +
+      '`anthropic`, `openai`): NADA foi verificado, e dizer "ok" aqui seria ' +
+      'mentira.',
+  })
+  resultado!: 'ok' | 'recusado' | 'nao_suportado';
+
+  @ApiProperty({
+    required: false,
+    example:
+      'teste de conexão falhou para openrouter: openrouter respondeu 401',
+    description: 'Só em `recusado` — o motivo que o provider deu.',
+  })
+  motivo?: string;
+}
 
 export class ModelBindingResponseDto implements Wire<ModelBinding> {
   @ApiProperty({ example: '01JC4Z0000BINDING00000000001' })

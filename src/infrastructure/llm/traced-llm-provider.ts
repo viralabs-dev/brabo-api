@@ -5,6 +5,7 @@ import type {
   ChatStreamChunk,
   LLMProviderCapabilities,
   LLMProviderName,
+  ModeloDoCatalogo,
 } from '@brabo/shared';
 import { LLMProvider } from '../../application/ports/llm-provider.port';
 import { BraboMetrics } from '../observability/brabo-metrics';
@@ -30,11 +31,32 @@ import { BraboMetrics } from '../observability/brabo-metrics';
  * uma chamada que falha nunca chega ao metering, e sem isto seria invisível.
  */
 export class TracedLLMProvider extends LLMProvider {
+  /**
+   * `listModels` é OPCIONAL no port, e é por isso que ele é atribuído aqui em
+   * vez de declarado como método.
+   *
+   * O decorator encaminhava só `name`, `capabilities` e `chat`. Como o
+   * registry envolve TODO provider, `provider.listModels` era `undefined` para
+   * os nove — e o sync de catálogo, que exige os dois lados
+   * (`capabilities.listModels` **e** o método), pulava cada um deles com
+   * `sem_capability`. O relatório mentia com todas as letras: a capability
+   * estava declarada; quem a perdia era o decorator.
+   *
+   * Definir `listModels` como método de classe não serviria: ele existiria
+   * sempre, inclusive envolvendo um provider que não lista, e o guarda passaria
+   * a chamar um método que só falharia lá dentro. Atribuir condicionalmente
+   * preserva o contrato do port — "quem não declara não expõe".
+   */
+  readonly listModels?: (apiKey?: string) => Promise<ModeloDoCatalogo[]>;
+
   constructor(
     private readonly inner: LLMProvider,
     private readonly metrics: BraboMetrics,
   ) {
     super();
+    if (inner.listModels) {
+      this.listModels = (apiKey?: string) => inner.listModels!(apiKey);
+    }
   }
 
   get name(): LLMProviderName {

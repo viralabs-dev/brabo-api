@@ -60,6 +60,25 @@ interface LinhaDoCatalogoOpenRouter {
   context_length?: unknown;
   pricing?: { prompt?: unknown; completion?: unknown };
   supported_parameters?: unknown;
+  /**
+   * `{modality, input_modalities, output_modalities, tokenizer, …}`. É daqui
+   * que saem "aceita imagem" e "gera imagem" — o catálogo do OpenRouter publica
+   * os dois e o parser os descartava, o que deixava `supports_vision` em
+   * `false` para os 338 modelos.
+   */
+  architecture?: {
+    input_modalities?: unknown;
+    output_modalities?: unknown;
+  };
+}
+
+/** `["text","image","file"]` → tem `image`? Lista ausente é "não declarou". */
+function temModalidade(
+  lista: unknown,
+  modalidade: string,
+): boolean | undefined {
+  if (!Array.isArray(lista)) return undefined;
+  return lista.includes(modalidade);
 }
 
 /**
@@ -83,6 +102,15 @@ export function parseCatalogoOpenRouter(corpo: unknown): ModeloDoCatalogo[] {
       const precoEntrada = precoParaMicrosPorMilhao(linha.pricing?.prompt);
       const precoSaida = precoParaMicrosPorMilhao(linha.pricing?.completion);
 
+      const entrada = temModalidade(
+        linha.architecture?.input_modalities,
+        'image',
+      );
+      const saida = temModalidade(
+        linha.architecture?.output_modalities,
+        'image',
+      );
+
       return {
         name: linha.id,
         ...(typeof linha.name === 'string' && linha.name
@@ -92,6 +120,13 @@ export function parseCatalogoOpenRouter(corpo: unknown): ModeloDoCatalogo[] {
           ? { contextLength: linha.context_length }
           : {}),
         supportsToolCalling: parametros.includes('tools'),
+        // `reasoning` no `supported_parameters` é como o OpenRouter declara
+        // thinking — 213 dos 338 no catálogo de hoje.
+        supportsReasoning: parametros.includes('reasoning'),
+        // Omitidos quando o provider não declarou a modalidade: `undefined`
+        // deixa o sync preservar o valor local em vez de zerá-lo.
+        ...(entrada !== undefined ? { supportsVision: entrada } : {}),
+        ...(saida !== undefined ? { generatesImage: saida } : {}),
         ...(precoEntrada !== undefined
           ? { inputPricePerMillionMicros: precoEntrada }
           : {}),
