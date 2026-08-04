@@ -169,6 +169,33 @@ export const _chavesCredencial: MesmasChaves<
   UserCredentialMetadata
 > = true;
 
+/**
+ * O resultado de verificar uma credencial GRAVADA (ADR 0050). Note o que
+ * NÃO está aqui: a chave, nem um pedaço dela, nem o corpo cru da resposta do
+ * provider. Só o veredito e, quando há recusa, a frase de diagnóstico.
+ */
+export class CredentialTestResultResponseDto {
+  @ApiProperty({
+    enum: ['ok', 'recusado', 'nao_suportado'],
+    example: 'recusado',
+    description:
+      '`ok` — o provider aceitou a credencial. `recusado` — o provider a ' +
+      'rejeitou (chave inválida/revogada, sem saldo, rede). `nao_suportado` — ' +
+      'este provider não tem endpoint de teste verificado (`ollama`, ' +
+      '`anthropic`, `openai`): NADA foi verificado, e dizer "ok" aqui seria ' +
+      'mentira.',
+  })
+  resultado!: 'ok' | 'recusado' | 'nao_suportado';
+
+  @ApiProperty({
+    required: false,
+    example:
+      'teste de conexão falhou para openrouter: openrouter respondeu 401',
+    description: 'Só em `recusado` — o motivo que o provider deu.',
+  })
+  motivo?: string;
+}
+
 export class ModelBindingResponseDto implements Wire<ModelBinding> {
   @ApiProperty({ example: '01JC4Z0000BINDING00000000001' })
   id!: string;
