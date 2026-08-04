@@ -67,6 +67,8 @@ import {
 } from './dto/record-proficiency-internal.dto';
 import { OpenGateInternalDto } from './dto/open-gate-internal.dto';
 import { ReportSessionTerminationDto } from './dto/report-session-termination.dto';
+import { SessionPendingWorkResponseDto } from './dto/session-pending-work.response.dto';
+import { GetSessionPendingWorkUseCase } from '../../../application/use-cases/sessions/get-session-pending-work.use-case';
 import { AppendSessionEventInternalDto } from './dto/append-session-event-internal.dto';
 import { RunLlmTurnDto } from './dto/run-llm-turn.dto';
 import { StreamLlmTurnDto } from './dto/stream-llm-turn.dto';
@@ -132,6 +134,7 @@ export class InternalSessionsController {
 
   constructor(
     private readonly reportTermination: ReportSessionTerminationUseCase,
+    private readonly getSessionPendingWork: GetSessionPendingWorkUseCase,
     private readonly appendSessionEvent: AppendSessionEventUseCase,
     private readonly listSessionEvents: ListSessionEventsUseCase,
     private readonly runLlmTurn: RunLlmTurnUseCase,
@@ -166,6 +169,24 @@ export class InternalSessionsController {
    * planejadas pela própria api nunca chegam aqui — o engine já sabe
    * delas via outbox, não há o que reportar de volta.
    */
+  // O engine pergunta ANTES de encerrar por heartbeat: fechar sessão é sobre o
+  // trabalho ter acabado, não sobre quem está olhando. Numa execução real um
+  // handoff `offered` ficou preso numa sessão morta por 30s sem aba — épico e
+  // quatro histórias prontos, e a cadeia sem como seguir.
+  @Get(':sessionId/pending-work')
+  @ApiOperation({
+    summary: 'A sessão tem trabalho pendente que impede encerrá-la?',
+    description:
+      'Consultada pelo `SessionServer` do engine no timeout de heartbeat. ' +
+      '`pending: true` faz o timeout ser reagendado em vez de encerrar, e o ' +
+      '`motivo` vai para o log do engine — sessão que não fecha sem dizer por ' +
+      'que é indiagnosticável.',
+  })
+  @ApiOkResponse({ type: SessionPendingWorkResponseDto })
+  pendingWork(@Param('sessionId') sessionId: string) {
+    return this.getSessionPendingWork.execute(sessionId);
+  }
+
   @Post(':sessionId/termination')
   @ApiOperation({
     summary: 'Reporta que o processo da sessão terminou no engine',
