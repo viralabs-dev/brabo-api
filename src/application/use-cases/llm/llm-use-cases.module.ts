@@ -3,6 +3,7 @@ import { LlmInfrastructureModule } from '../../../infrastructure/llm/llm-infrast
 import { ListModelsUseCase } from './list-models.use-case';
 import { ListModelCatalogUseCase } from './list-model-catalog.use-case';
 import { SetModelsActiveUseCase } from './set-models-active.use-case';
+import { SetModelUsesUseCase } from './set-model-uses.use-case';
 import { SyncModelCatalogUseCase } from './sync-model-catalog.use-case';
 import { UpdateModelPricingUseCase } from './update-model-pricing.use-case';
 import { ListModelPriceChangesUseCase } from './list-model-price-changes.use-case';
@@ -26,6 +27,7 @@ const USE_CASES = [
   ListModelsUseCase,
   ListModelCatalogUseCase,
   SetModelsActiveUseCase,
+  SetModelUsesUseCase,
   SyncModelCatalogUseCase,
   UpdateModelPricingUseCase,
   ListModelPriceChangesUseCase,

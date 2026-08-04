@@ -246,6 +246,20 @@
       "when": 1785724942299,
       "tag": "0034_quick_saracen",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1785868537652,
+      "tag": "0035_cloudy_rockslide",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1785869111583,
+      "tag": "0036_abnormal_phalanx",
+      "breakpoints": true
     }
   ]
 }

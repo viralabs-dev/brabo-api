@@ -1,0 +1,1 @@
+ALTER TABLE "workspace_models" ADD COLUMN "uses" text[] DEFAULT '{}'::text[] NOT NULL;
