@@ -73,7 +73,9 @@ function dialetoOpenRouter(cenario: CenarioLLM, res: ServerResponse): void {
     escrever(res, {
       choices: [
         {
-          delta: { tool_calls: [{ index: 0, function: { arguments: argumentos } }] },
+          delta: {
+            tool_calls: [{ index: 0, function: { arguments: argumentos } }],
+          },
         },
       ],
     });
@@ -206,6 +208,7 @@ describe('parseCatalogoOpenRouter', () => {
         displayName: 'GPT-4o mini',
         contextLength: 128_000,
         supportsToolCalling: true,
+        supportsReasoning: false,
         inputPricePerMillionMicros: 2_500_000,
         outputPricePerMillionMicros: 10_000_000,
       },
@@ -218,7 +221,11 @@ describe('parseCatalogoOpenRouter', () => {
     });
 
     expect(catalogo).toEqual([
-      { name: 'algum/modelo', supportsToolCalling: false },
+      {
+        name: 'algum/modelo',
+        supportsToolCalling: false,
+        supportsReasoning: false,
+      },
     ]);
   });
 
@@ -228,6 +235,65 @@ describe('parseCatalogoOpenRouter', () => {
     });
 
     expect(catalogo.map((m) => m.name)).toEqual(['valido']);
+  });
+
+  /**
+   * As facetas de capability. O catálogo do OpenRouter publica modalidade e
+   * `reasoning` desde sempre; o parser os descartava, e por isso os 338 modelos
+   * do primeiro sync de verdade chegaram todos com `supports_vision = false`.
+   */
+  it('lê modalidade de ENTRADA e de SAÍDA — aceitar imagem e gerar imagem são eixos distintos', () => {
+    const catalogo = parseCatalogoOpenRouter({
+      data: [
+        {
+          id: 've/multimodal',
+          architecture: {
+            input_modalities: ['text', 'image'],
+            output_modalities: ['text'],
+          },
+        },
+        {
+          id: 'desenha/imagem',
+          architecture: {
+            input_modalities: ['text'],
+            output_modalities: ['text', 'image'],
+          },
+        },
+      ],
+    });
+
+    expect(catalogo[0]).toMatchObject({
+      supportsVision: true,
+      generatesImage: false,
+    });
+    expect(catalogo[1]).toMatchObject({
+      supportsVision: false,
+      generatesImage: true,
+    });
+  });
+
+  it('`reasoning` em supported_parameters vira thinking', () => {
+    const catalogo = parseCatalogoOpenRouter({
+      data: [
+        { id: 'pensa/muito', supported_parameters: ['tools', 'reasoning'] },
+      ],
+    });
+
+    expect(catalogo[0].supportsReasoning).toBe(true);
+  });
+
+  /**
+   * ADR 0041: capability sem prova não é `false`, é ausência. Omitir o campo é
+   * o que deixa o sync preservar o valor local em vez de zerá-lo — declarar
+   * `false` aqui apagaria uma curadoria feita à mão.
+   */
+  it('modalidade não declarada OMITE o campo em vez de afirmar `false`', () => {
+    const [modelo] = parseCatalogoOpenRouter({
+      data: [{ id: 'sem/arquitetura' }],
+    });
+
+    expect(modelo).not.toHaveProperty('supportsVision');
+    expect(modelo).not.toHaveProperty('generatesImage');
   });
 
   it('corpo sem `data` (ou não-array) vira catálogo vazio, não exceção', () => {

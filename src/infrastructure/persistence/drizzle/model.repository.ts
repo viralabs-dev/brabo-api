@@ -48,6 +48,8 @@ export class DrizzleModelRepository implements ModelRepository {
           supportsToolCalling: input.supportsToolCalling ?? false,
           supportsStreaming: input.supportsStreaming ?? true,
           supportsVision: input.supportsVision ?? false,
+          supportsReasoning: input.supportsReasoning ?? false,
+          generatesImage: input.generatesImage ?? false,
           manualPricing: input.manualPricing ?? true,
           // Curadoria não passa por aqui — ela é por workspace, noutra tabela
           // (ADR 0049). O sync reencontrando um modelo não tem como religar o

@@ -87,6 +87,29 @@ describe('cookies de sessão', () => {
     expect(csrf.valor).toBeTruthy();
   });
 
+  /**
+   * `httpOnly: false` sozinho NÃO torna um cookie legível: `document.cookie` só
+   * expõe os cookies cujo path é prefixo do path da PÁGINA. Este cookie nasceu
+   * com `/auth` junto do refresh, e a web — que vive em `/`, `/login`,
+   * `/projects/...` — nunca o enxergou. O `X-CSRF-Token` ia vazio e TODO
+   * refresh morria em 403: a sessão caía no primeiro reload, e o sintoma
+   * (voltar para o login) não parecia bug de cookie.
+   *
+   * Este teste existia afirmando o contrário — cobrava `/auth` para os dois
+   * cookies —, que é como o defeito atravessou a suite inteira.
+   */
+  it('o CSRF vale para o site TODO — senão o JS da web não o alcança', () => {
+    const { res, gravados } = resposta();
+
+    definirCookiesDeSessao(res, 'refresh-abc', 1000);
+
+    expect(gravados.find((c) => c.nome === COOKIE_CSRF)!.opcoes.path).toBe('/');
+    // E o refresh continua trancado: é ele que carrega a sessão.
+    expect(gravados.find((c) => c.nome === COOKIE_REFRESH)!.opcoes.path).toBe(
+      '/auth',
+    );
+  });
+
   it('cada login gera um CSRF diferente', () => {
     const a = resposta();
     const b = resposta();
@@ -132,9 +155,52 @@ describe('cookies de sessão', () => {
       COOKIE_REFRESH,
     ]);
     for (const c of limpos) {
-      expect(c.opcoes.path).toBe('/auth');
       expect(c.opcoes.sameSite).toBe('strict');
     }
+    // Cada um com o SEU path — apagar o csrf com `/auth` não removeria o
+    // cookie que foi gravado em `/`.
+    const porNome = Object.fromEntries(limpos.map((c) => [c.nome, c]));
+    expect(porNome[COOKIE_REFRESH].opcoes.path).toBe('/auth');
+    expect(porNome[COOKIE_CSRF].opcoes.path).toBe('/');
+  });
+
+  /**
+   * A migração que o próprio conserto criou.
+   *
+   * Quem já tinha sessão ficava com DOIS `brabo_csrf` — o velho em `/auth` e o
+   * novo em `/`. O browser manda os dois para `/auth/refresh`, e pela RFC 6265
+   * o de path mais específico vem primeiro: a api lia o velho enquanto o JS
+   * ecoava o novo. Os dois existiam, não batiam, e o 403 passava a dizer
+   * "Token CSRF não confere" — pior que o anterior, porque parece ataque em vez
+   * de configuração. Visto em execução, depois do conserto.
+   */
+  it('o login apaga o CSRF legado de /auth — senão os dois convivem', () => {
+    const { res, limpos } = resposta();
+
+    definirCookiesDeSessao(res, 'r', 1000);
+
+    const legado = limpos.find(
+      (c) => c.nome === COOKIE_CSRF && c.opcoes.path === '/auth',
+    );
+    expect(legado, 'o csrf de /auth precisa ser apagado no login').toBeDefined();
+  });
+
+  /**
+   * A trava que fecha o ciclo: o path com que o cookie é GRAVADO tem de ser o
+   * mesmo com que ele é APAGADO, cookie a cookie. Foi a divergência entre os
+   * dois lados que deixou o defeito passar, e comparar os dois conjuntos é o
+   * que impede a próxima.
+   */
+  it('grava e apaga com os MESMOS paths, cookie a cookie', () => {
+    const { res, gravados, limpos } = resposta();
+
+    definirCookiesDeSessao(res, 'r', 1000);
+    limparCookiesDeSessao(res);
+
+    const pathDe = (lista: typeof gravados) =>
+      Object.fromEntries(lista.map((c) => [c.nome, c.opcoes.path]));
+
+    expect(pathDe(limpos)).toEqual(pathDe(gravados));
   });
 
   it('lê o refresh do cookie, e devolve null quando não há', () => {

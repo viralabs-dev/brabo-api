@@ -11,6 +11,7 @@ import { RequireRole } from '../iam/require-role.decorator';
 import { UpsertBudgetUseCase } from '../../../application/use-cases/llm/upsert-budget.use-case';
 import { GetBudgetUseCase } from '../../../application/use-cases/llm/get-budget.use-case';
 import { GetSessionTokenUsageUseCase } from '../../../application/use-cases/llm/get-session-token-usage.use-case';
+import { GetProjectAgentCostsUseCase } from '../../../application/use-cases/llm/get-project-agent-costs.use-case';
 import { UpsertBudgetDto } from './dto/upsert-budget.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import {
@@ -37,6 +38,7 @@ export class BudgetsController {
     private readonly upsertBudget: UpsertBudgetUseCase,
     private readonly getBudget: GetBudgetUseCase,
     private readonly getSessionTokenUsageUseCase: GetSessionTokenUsageUseCase,
+    private readonly getProjectAgentCostsUseCase: GetProjectAgentCostsUseCase,
   ) {}
 
   @Get('projects/:projectId/budget')
@@ -97,6 +99,25 @@ export class BudgetsController {
   @ApiOkResponse({ type: [AgentTokenUsageResponseDto] })
   getSessionTokenUsage(@Param('sessionId') sessionId: string) {
     return this.getSessionTokenUsageUseCase.execute(sessionId);
+  }
+
+  // Custo por agente no PROJETO, últimos 30 dias — a coluna "EST. MÊS" e o
+  // card de custo do time da tela de Configurações (`design/SCREENS.md`).
+  // Irmã da rota acima: mesma agregação, outro recorte.
+  @Get('projects/:projectId/agent-costs')
+  @RequireRole('developer')
+  @ApiOperation({
+    summary: 'Quebra o gasto do projeto por agente, nos últimos 30 dias',
+    description:
+      'Janela DESLIZANTE de 30 dias, não o mês corrente: é o rótulo que a tela ' +
+      'mostra, e num mês-calendário a estimativa despencaria no dia 1º por ' +
+      'virada de página, não por mudança de uso. Só `actor_kind = agent` entra ' +
+      '(RN-038). Agente que nunca rodou não aparece na lista — a tela mostra ' +
+      'traço para ele, que é diferente de zero.',
+  })
+  @ApiOkResponse({ type: [AgentTokenUsageResponseDto] })
+  getProjectAgentCosts(@Param('projectId') projectId: string) {
+    return this.getProjectAgentCostsUseCase.execute(projectId);
   }
 
   @Put('projects/:projectId/sessions/:sessionId/budget')

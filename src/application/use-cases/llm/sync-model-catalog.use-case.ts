@@ -199,7 +199,14 @@ export class SyncModelCatalogUseCase {
         supportsToolCalling:
           remoto.supportsToolCalling ?? local?.supportsToolCalling ?? false,
         supportsStreaming: local?.supportsStreaming ?? true,
-        supportsVision: local?.supportsVision ?? false,
+        // Mesmo fallback do tool calling, e pelo mesmo motivo: provider que não
+        // publica a capability deixa `undefined`, e `undefined` preserva o que
+        // já estava — zerar seria afirmar ausência a partir de silêncio, que é
+        // exatamente o que o ADR 0041 proíbe.
+        supportsVision: remoto.supportsVision ?? local?.supportsVision ?? false,
+        supportsReasoning:
+          remoto.supportsReasoning ?? local?.supportsReasoning ?? false,
+        generatesImage: remoto.generatesImage ?? local?.generatesImage ?? false,
         manualPricing: preco.manual,
         // Curadoria não é mais campo deste upsert: ela é por workspace, em
         // `workspace_models` (ADR 0049). Modelo descoberto simplesmente não

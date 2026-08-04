@@ -20,6 +20,7 @@ import {
 import { ListModelsUseCase } from '../../../application/use-cases/llm/list-models.use-case';
 import { ListModelCatalogUseCase } from '../../../application/use-cases/llm/list-model-catalog.use-case';
 import { SetModelsActiveUseCase } from '../../../application/use-cases/llm/set-models-active.use-case';
+import { SetModelUsesUseCase } from '../../../application/use-cases/llm/set-model-uses.use-case';
 import { SyncModelCatalogUseCase } from '../../../application/use-cases/llm/sync-model-catalog.use-case';
 import { UpdateModelPricingUseCase } from '../../../application/use-cases/llm/update-model-pricing.use-case';
 import { ListModelPriceChangesUseCase } from '../../../application/use-cases/llm/list-model-price-changes.use-case';
@@ -31,6 +32,7 @@ import {
   ModelResponseDto,
 } from './dto/llm.response.dto';
 import { SetModelsActiveDto } from './dto/set-models-active.dto';
+import { SetModelUsesDto } from './dto/set-model-uses.dto';
 import { UpdateModelPricingDto } from './dto/update-model-pricing.dto';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { User } from '../../../domain/iam/user.entity';
@@ -61,6 +63,7 @@ export class ModelsController {
     private readonly listModels: ListModelsUseCase,
     private readonly listCatalog: ListModelCatalogUseCase,
     private readonly setModelsActive: SetModelsActiveUseCase,
+    private readonly setModelUses: SetModelUsesUseCase,
     private readonly syncCatalog: SyncModelCatalogUseCase,
     private readonly updateModelPricing: UpdateModelPricingUseCase,
     private readonly listPriceChanges: ListModelPriceChangesUseCase,
@@ -180,6 +183,36 @@ export class ModelsController {
       workspaceId,
       modelIds: dto.modelIds,
       isActive: dto.isActive,
+      curatedBy: user.id,
+    });
+  }
+
+  @Post('workspaces/:workspaceId/models/uses')
+  // Substitui a curadoria de linhas que já existem — 201 mentiria, como na
+  // rota de ativação.
+  @HttpCode(200)
+  @RequireRole('owner')
+  @ApiOperation({
+    summary: 'Marca para que o workspace usa cada modelo (lote)',
+    description:
+      'O eixo que nenhum catálogo publica: "bom para código" não é capability ' +
+      'declarada por provider nenhum, é opinião de quem opera — e vale SÓ ' +
+      'neste workspace (ADR 0049). Eixo independente da ativação: marcar uso ' +
+      'não liga o modelo no seletor, e trocar o uso não desliga o que estava ' +
+      'ligado. A lista de usos SUBSTITUI a anterior.',
+  })
+  @ApiOkResponse({ type: [ModelComCuradoriaResponseDto] })
+  @ApiForbiddenResponse({ description: 'Exige `owner` no workspace.' })
+  @ApiNotFoundResponse({ description: 'Algum id do lote não existe.' })
+  uses(
+    @Param('workspaceId') workspaceId: string,
+    @CurrentUser() user: User,
+    @Body() dto: SetModelUsesDto,
+  ) {
+    return this.setModelUses.execute({
+      workspaceId,
+      modelIds: dto.modelIds,
+      uses: dto.uses,
       curatedBy: user.id,
     });
   }

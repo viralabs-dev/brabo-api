@@ -45,6 +45,12 @@ export class LLMCredentialConnectionTesterImpl implements LLMCredentialConnectio
     > = {},
   ) {}
 
+  supports(provider: LLMProviderName): boolean {
+    return Boolean(
+      this.baseUrlOverrides[provider] ?? BASE_URL_PADRAO[provider],
+    );
+  }
+
   async test(provider: LLMProviderName, apiKey: string): Promise<void> {
     const baseUrl =
       this.baseUrlOverrides[provider] ?? BASE_URL_PADRAO[provider];

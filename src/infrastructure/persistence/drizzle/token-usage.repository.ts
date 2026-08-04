@@ -126,4 +126,36 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
       spentMicros: Number(result?.spentMicros ?? 0),
     };
   }
+
+  async sumByProjectGroupedByAgentLast30Days(
+    projectId: string,
+  ): Promise<AgentTokenUsage[]> {
+    const db = currentDb(this.rootDb);
+    const rows = await db
+      .select({
+        actorId: tokenUsage.actorId,
+        costMicros: sql<string>`coalesce(sum(${tokenUsage.costMicros}), 0)`,
+        inputTokens: sql<string>`coalesce(sum(${tokenUsage.inputTokens}), 0)`,
+        outputTokens: sql<string>`coalesce(sum(${tokenUsage.outputTokens}), 0)`,
+      })
+      .from(tokenUsage)
+      // `token_usage` pende da SESSÃO; o projeto vem daqui. Mesmo caminho de
+      // `summarizeForWorkspaceThisMonth`, um join mais curto.
+      .innerJoin(sessions, eq(sessions.id, tokenUsage.sessionId))
+      .where(
+        and(
+          eq(sessions.projectId, projectId),
+          eq(tokenUsage.actorKind, 'agent'),
+          gte(tokenUsage.createdAt, sql`now() - interval '30 days'`),
+        ),
+      )
+      .groupBy(tokenUsage.actorId);
+
+    return rows.map((row) => ({
+      actorId: row.actorId,
+      costMicros: Number(row.costMicros),
+      inputTokens: Number(row.inputTokens),
+      outputTokens: Number(row.outputTokens),
+    }));
+  }
 }
