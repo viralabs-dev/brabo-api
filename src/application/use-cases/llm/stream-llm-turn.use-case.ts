@@ -9,6 +9,7 @@ import { TokenEstimator } from '../../ports/token-estimator.port';
 import { ResolveModelBindingUseCase } from './resolve-model-binding.use-case';
 import { CheckBudgetGateUseCase } from './check-budget-gate.use-case';
 import { RecordLlmUsageUseCase } from './record-llm-usage.use-case';
+import { ResolveCredentialOwnerUseCase } from './resolve-credential-owner.use-case';
 import { calculateCostMicros } from '../../../domain/llm/cost-calculator';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
 
@@ -57,6 +58,7 @@ export class StreamLlmTurnUseCase {
     private readonly resolveModelBinding: ResolveModelBindingUseCase,
     private readonly checkBudgetGate: CheckBudgetGateUseCase,
     private readonly recordLlmUsage: RecordLlmUsageUseCase,
+    private readonly resolveCredentialOwner: ResolveCredentialOwnerUseCase,
   ) {}
 
   async *execute(
@@ -93,8 +95,13 @@ export class StreamLlmTurnUseCase {
 
     let apiKey: string | undefined;
     if (model.provider !== 'ollama') {
+      // O dono da chave é o OWNER DO WORKSPACE, não o agente. Passar o slug
+      // aqui — `agentId ?? sessionId` — mandava "criativo" para uma coluna
+      // UUID e derrubava a query; o erro virava resposta vazia e nenhum agente
+      // conseguia usar provider com credencial.
+      const dono = await this.resolveCredentialOwner.execute(input.projectId);
       const secret = await this.credentials.findSecretByUserAndProvider(
-        input.agentId ?? input.sessionId,
+        dono,
         model.provider,
       );
       if (!secret) {
