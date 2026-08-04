@@ -45,6 +45,25 @@ export abstract class TokenUsageRepository {
   abstract summarizeForWorkspaceThisMonth(
     workspaceId: string,
   ): Promise<WorkspaceTokenUsageSummary>;
+
+  /**
+   * Custo por AGENTE no projeto, nos últimos 30 dias — a coluna "EST. MÊS" e o
+   * card de custo do time que o mockup de Configurações desenha
+   * (`design/SCREENS.md`). O dado sempre esteve em `token_usage`; faltava a
+   * agregação por projeto, e a coluna vivia com um traço fixo.
+   *
+   * Janela DESLIZANTE de 30 dias, e não o mês corrente do
+   * `summarizeForWorkspaceThisMonth`: o rótulo do desenho é "com base no
+   * histórico de 30 dias", e no dia 1º um mês-calendário mostraria quase zero
+   * — a estimativa despencaria por virada de página, não por mudança de uso.
+   *
+   * `actorKind = 'agent'` é filtro OBRIGATÓRIO pelo mesmo motivo do método
+   * acima (RN-038): sem ele, um usuário conversando no chat entraria na conta
+   * do agente cujo nome ele nem carrega.
+   */
+  abstract sumByProjectGroupedByAgentLast30Days(
+    projectId: string,
+  ): Promise<AgentTokenUsage[]>;
 }
 
 export interface AgentTokenUsage {
