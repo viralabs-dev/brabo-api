@@ -118,7 +118,12 @@ export class GithubProvider implements GitProviderContract {
       });
       sha = data.object.sha;
     } catch (error) {
-      if (getStatus(error) === 404) {
+      const status = getStatus(error);
+      // 404 é a branch que não existe; 409 é o repo inteiro sem commit nenhum
+      // (`Git Repository is empty`). Para QUEM PEDIU, os dois dizem a mesma
+      // coisa: a ref de origem não está lá. Deixar o 409 vazar como erro cru
+      // faria "criar branch antes do primeiro commit" morrer sem diagnóstico.
+      if (status === 404 || status === 409) {
         throw new GitBranchNotFoundError(input.externalId, input.fromRef);
       }
       throw error;
@@ -193,6 +198,15 @@ export class GithubProvider implements GitProviderContract {
     const octokit = new Octokit({ auth: input.accessToken });
 
     let parentSha: string | undefined;
+    /**
+     * Repo SEM commit nenhum. Num repositório vazio o GitHub recusa a Git Data
+     * API INTEIRA com `409 Git Repository is empty` — refs, blobs, trees,
+     * commits —, então não há como montar o primeiro commit por ali. Quem
+     * funciona é a Contents API, que cria arquivo, commit e branch de uma vez.
+     * Verificado contra a API viva (2026-08-04): `git/ref` 409, `git/blobs`
+     * 409, `PUT /contents/<path>` cria.
+     */
+    let repoVazio = false;
     try {
       const { data } = await octokit.rest.git.getRef({
         owner,
@@ -201,18 +215,33 @@ export class GithubProvider implements GitProviderContract {
       });
       parentSha = data.object.sha;
     } catch (error) {
-      if (getStatus(error) !== 404) throw error;
-      // Ref não existe — só é aceitável se o repo ainda não tiver
-      // NENHUMA branch (primeiro commit, igual ao LocalGitProvider);
-      // senão é uma branch de verdade que não existe.
-      const { data: refs } = await octokit.rest.git.listMatchingRefs({
-        owner,
-        repo,
-        ref: 'heads/',
-      });
-      if (refs.length > 0) {
-        throw new GitBranchNotFoundError(input.externalId, input.branch);
+      const status = getStatus(error);
+
+      // 409 `Git Repository is empty`: o repo não tem commit NENHUM, e a API
+      // de refs inteira responde isso — inclusive o `listMatchingRefs` logo
+      // abaixo. O 409 já É a prova de que este é o primeiro commit, então
+      // perguntar de novo só devolveria outro 409 e mataria o bootstrap no
+      // primeiro passo. Era exatamente o que acontecia: o caminho de repo
+      // vazio existia, guardado por um status que o GitHub não usa.
+      if (status === 409) {
+        repoVazio = true;
+      } else {
+        if (status !== 404) throw error;
+        // 404 é a branch que não existe num repo que TEM refs — aí a
+        // distinção importa: primeiro commit, ou branch inventada?
+        const { data: refs } = await octokit.rest.git.listMatchingRefs({
+          owner,
+          repo,
+          ref: 'heads/',
+        });
+        if (refs.length > 0) {
+          throw new GitBranchNotFoundError(input.externalId, input.branch);
+        }
       }
+    }
+
+    if (repoVazio) {
+      return this.primeiroCommitEmRepoVazio(octokit, owner, repo, input);
     }
 
     let baseTreeSha: string | undefined;
@@ -274,6 +303,39 @@ export class GithubProvider implements GitProviderContract {
     }
 
     return { sha: commit.sha, branch: input.branch };
+  }
+
+  /**
+   * O primeiro commit de um repositório vazio, pela Contents API.
+   *
+   * Com UM arquivo — o caso do bootstrap, que commita um por passo — sai
+   * exatamente um commit, como o contrato promete. Com mais de um, o primeiro
+   * nasce aqui (é ele que cria a branch) e o resto vai num segundo commit pelo
+   * caminho normal: dois commits em vez de um, degradação declarada, porque a
+   * alternativa seria recusar o commit inicial multiarquivo — que é pior.
+   */
+  private async primeiroCommitEmRepoVazio(
+    octokit: Octokit,
+    owner: string,
+    repo: string,
+    input: CommitFilesInput,
+  ): Promise<GitCommitResult> {
+    const [primeiro, ...resto] = input.files;
+
+    const { data } = await octokit.rest.repos.createOrUpdateFileContents({
+      owner,
+      repo,
+      path: primeiro.path,
+      message: input.message,
+      content: Buffer.from(primeiro.content, 'utf8').toString('base64'),
+      branch: input.branch,
+    });
+
+    const sha = data.commit.sha ?? '';
+    if (resto.length === 0) return { sha, branch: input.branch };
+
+    // A branch existe agora, então o caminho normal volta a valer.
+    return this.commitFiles({ ...input, files: resto });
   }
 
   async listBranches(input: ListBranchesInput): Promise<GitBranch[]> {
