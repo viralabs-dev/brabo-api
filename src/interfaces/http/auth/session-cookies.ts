@@ -40,11 +40,29 @@ export const COOKIE_CSRF = 'brabo_csrf';
 export const CABECALHO_CSRF = 'x-csrf-token';
 
 /**
- * `Path=/auth` limita o alcance: o cookie não acompanha nenhuma outra rota da
- * api, então nem o log de acesso nem um proxy no meio veem o refresh no
+ * `Path=/auth` limita o alcance do REFRESH: ele não acompanha nenhuma outra
+ * rota da api, então nem o log de acesso nem um proxy no meio o veem no
  * tráfego normal.
  */
-const PATH = '/auth';
+const PATH_REFRESH = '/auth';
+
+/**
+ * O CSRF precisa de `Path=/`, e não é descuido — é o que faz o double-submit
+ * funcionar.
+ *
+ * `document.cookie` só expõe cookies cujo path é prefixo do path da PÁGINA. Com
+ * `/auth`, a web (que vive em `/`, `/login`, `/projects/...`) nunca enxergava
+ * este cookie: `csrf()` devolvia string vazia, o `X-CSRF-Token` ia vazio e todo
+ * `POST /auth/refresh` morria em 403. Na prática o refresh nunca funcionou no
+ * browser — a sessão caía no primeiro reload ou quando o access de 15 minutos
+ * expirava, e o sintoma (voltar para o login) não parecia um bug de cookie.
+ *
+ * Alargar o path NÃO enfraquece nada: este cookie não é credencial, é um valor
+ * aleatório que só serve para ser ecoado num cabeçalho e comparado — o próprio
+ * comentário abaixo diz que ele não é segredo. Quem carrega a sessão é o
+ * refresh, e esse continua trancado em `/auth` e `httpOnly`.
+ */
+const PATH_CSRF = '/';
 
 function producao(): boolean {
   return process.env.NODE_ENV === 'production';
@@ -59,8 +77,30 @@ export function definirCookiesDeSessao(
     httpOnly: true,
     sameSite: 'strict',
     secure: producao(),
-    path: PATH,
+    path: PATH_REFRESH,
     maxAge: ttlMs,
+  });
+
+  /**
+   * Apaga o CSRF legado, que nasceu com `Path=/auth`.
+   *
+   * Sem isto, quem já tinha sessão fica com DOIS `brabo_csrf` no browser — o
+   * velho em `/auth` e o novo em `/` — e o browser manda os dois para
+   * `/auth/refresh`. Pela RFC 6265 o de path mais específico vem primeiro,
+   * então o `cookie-parser` lê o VELHO enquanto o JS (que só enxerga o de `/`)
+   * ecoa o NOVO: os dois valores existem, não batem, e o refresh morre em
+   * "Token CSRF não confere" — um 403 pior que o anterior, porque agora parece
+   * ataque em vez de configuração.
+   *
+   * O login precisa curar isso sozinho: ninguém vai pedir ao usuário que limpe
+   * cookie. Pode sair quando não houver mais sessão emitida antes desta versão
+   * — o TTL da família de refresh é de 30 dias.
+   */
+  res.clearCookie(COOKIE_CSRF, {
+    httpOnly: false,
+    sameSite: 'strict',
+    secure: producao(),
+    path: PATH_REFRESH,
   });
 
   // Legível por JS de propósito: é a metade que a web precisa ecoar no
@@ -69,7 +109,7 @@ export function definirCookiesDeSessao(
     httpOnly: false,
     sameSite: 'strict',
     secure: producao(),
-    path: PATH,
+    path: PATH_CSRF,
     maxAge: ttlMs,
   });
 }
@@ -82,10 +122,16 @@ export function limparCookiesDeSessao(res: Response): void {
     httpOnly: true,
     sameSite: 'strict' as const,
     secure: producao(),
-    path: PATH,
   };
-  res.clearCookie(COOKIE_REFRESH, opcoes);
-  res.clearCookie(COOKIE_CSRF, { ...opcoes, httpOnly: false });
+  res.clearCookie(COOKIE_REFRESH, { ...opcoes, path: PATH_REFRESH });
+  // Cada um com o SEU path: apagar o csrf com `/auth` deixaria vivo o cookie
+  // que foi gravado em `/`, e o logout viraria mentira justamente no cookie
+  // que o JS enxerga.
+  res.clearCookie(COOKIE_CSRF, {
+    ...opcoes,
+    httpOnly: false,
+    path: PATH_CSRF,
+  });
 }
 
 /**
