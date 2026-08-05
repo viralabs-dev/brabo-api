@@ -541,13 +541,15 @@ export class CredentialSpendPorProviderResponseDto {
 
   @ApiProperty({
     example: 900_000,
-    description: 'Parte gasta por AGENTES — a conta que a RN-058 passou a debitar do owner.',
+    description:
+      'Parte gasta por AGENTES — a conta que a RN-058 passou a debitar do owner.',
   })
   costMicrosAgentes!: number;
 
   @ApiProperty({
     example: 350_000,
-    description: 'Parte gasta por PESSOAS no chat. Sai da mesma chave, e a pergunta é outra.',
+    description:
+      'Parte gasta por PESSOAS no chat. Sai da mesma chave, e a pergunta é outra.',
   })
   costMicrosPessoas!: number;
 
@@ -556,13 +558,17 @@ export class CredentialSpendPorProviderResponseDto {
 }
 
 export class CredentialSpendResponseDto {
-  @ApiProperty({ example: '9b1c2d3e-4f50-4a61-8b72-0c3d4e5f6a7b', format: 'uuid' })
+  @ApiProperty({
+    example: '9b1c2d3e-4f50-4a61-8b72-0c3d4e5f6a7b',
+    format: 'uuid',
+  })
   workspaceId!: string;
 
   @ApiProperty({
     example: '9b1c2d3e-4f50-4a61-8b72-0c3d4e5f6a7b',
     format: 'uuid',
-    description: 'Dono das chaves — quem banca os agentes deste workspace (RN-058).',
+    description:
+      'Dono das chaves — quem banca os agentes deste workspace (RN-058).',
   })
   ownerId!: string;
 
