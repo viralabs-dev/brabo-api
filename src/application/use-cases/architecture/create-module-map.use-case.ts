@@ -58,9 +58,14 @@ export class CreateModuleMapUseCase {
     // A recusa volta ao modelo pelo tool-result (RN-061): ele lê que já existe
     // e segue para o passo 2 do kickoff, em vez de reabrir o passo 1.
     if (current && current.sessionId === sessionId) {
+      // A recusa diz os NOMES, não só a contagem. Na execução que motivou este
+      // guarda, o Arquiteto leu "2 módulos", não soube quais, e reemitiu o mapa
+      // justamente para tentar fixar nomes que não conseguia ler — o laço era
+      // sintoma da cegueira, não a doença.
       throw new ConflictException(
-        `Esta sessão já definiu o module_map (versão ${current.version}, ` +
-          `${current.modules.length} módulos). Siga para assign_story_modules.`,
+        `Esta sessão já definiu o module_map (versão ${current.version}), ` +
+          `com os módulos: ${current.modules.map((m) => m.name).join(', ')}. ` +
+          `Siga para assign_story_modules usando esses nomes.`,
       );
     }
 

@@ -148,6 +148,30 @@ describe('CreateModuleMapUseCase', () => {
     expect(append.calls).not.toContain('artifact.module_map');
   });
 
+  /**
+   * A recusa precisa dizer os NOMES, não a contagem.
+   *
+   * O Arquiteto não tem ferramenta para ler o module_map vigente. Enquanto a
+   * mensagem era "(2 módulos)", ele lia que o mapa existia, continuava sem
+   * saber como chamar os módulos, e reemitia o mapa justamente para tentar
+   * fixá-los — o laço era sintoma da cegueira. Com os nomes, a recusa vira a
+   * resposta da pergunta que ele estava fazendo.
+   */
+  it('a recusa diz QUAIS são os módulos, não quantos', async () => {
+    maps.current = {
+      id: 'atual',
+      projectId: PROJECT,
+      sessionId: SESSION,
+      modules: [mod('saudacao'), mod('api_http')],
+      version: 1,
+      createdAt: new Date(),
+    };
+
+    await expect(
+      useCase.execute(PROJECT, SESSION, { modules: [mod('outro')] }),
+    ).rejects.toThrow(/saudacao, api_http/);
+  });
+
   it('revalida: rebaixa a story ready cujo módulo sumiu, com evento', async () => {
     stories.rows = [
       story({ id: 's-orfa', status: 'ready', moduleIds: ['sumiu'] }),
