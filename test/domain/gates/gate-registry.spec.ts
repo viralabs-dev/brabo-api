@@ -46,11 +46,68 @@ describe('docs/gates.yml — o arquivo real', () => {
         'qa-verificada',
         'secops-segura',
         // PR de INFRA tem caminho próprio e estava fora da lista original.
-        'infra-verificada',
+        'infra-qa-verificada',
+        'infra-secops-segura',
         'merge-protegida',
+        // Os do repositório (ADR 0030).
         'backmerge',
+        'pr-no-lugar-certo',
+        'aprovacoes-da-escada',
+        'promocao-conferida',
       ]),
     );
+  });
+
+  /**
+   * Dois gates que compartilham `event_types` precisam de filtros que os
+   * separem — senão a "última passagem" de um reportaria a linha do outro.
+   * Vale para qa/secops (`pr.gate_changed`) e para os dois de infra
+   * (`infra.gate_changed`).
+   */
+  it('nenhum par (event_types + filtro) se repete entre gates', () => {
+    const chaves = registro.gates
+      .map((g) => g.evidencia)
+      .filter((e) => e?.tipo === 'event_log')
+      .map((e) => JSON.stringify([e.event_types, e.filtro ?? null]));
+
+    expect(new Set(chaves).size).toBe(chaves.length);
+  });
+
+  it('infra tem um gate por julgador, discriminados por payload', () => {
+    const qa = gate('infra-qa-verificada').evidencia;
+    const secops = gate('infra-secops-segura').evidencia;
+    if (qa?.tipo !== 'event_log' || secops?.tipo !== 'event_log') {
+      throw new Error('os dois deveriam ter evidência no event log');
+    }
+    expect(qa.event_types).toEqual(['infra.gate_changed']);
+    expect(qa.filtro?.gate).toBe('qa');
+    expect(secops.filtro?.gate).toBe('secops');
+  });
+
+  /**
+   * O único gate de CI cuja decisão é de gente: ele conta assinaturas por
+   * papel. Um registro que o marcasse como automático mentiria sobre o que a
+   * escada de aprovação faz.
+   */
+  it('a escada de aprovação é o gate de CI com decisão humana', () => {
+    expect(gate('aprovacoes-da-escada').aprovacao_humana).toBe(true);
+
+    const outrosDeCi = registro.gates.filter(
+      (g) => g.fluxo === 'ci' && g.id !== 'aprovacoes-da-escada',
+    );
+    expect(outrosDeCi.length).toBeGreaterThan(0);
+    for (const g of outrosDeCi) expect(g.aprovacao_humana).toBe(false);
+  });
+
+  it('todo gate de CI aponta workflow e alvo existentes', () => {
+    for (const g of registro.gates.filter((x) => x.fluxo === 'ci')) {
+      const evidencia = g.evidencia;
+      if (evidencia?.tipo !== 'ci') {
+        throw new Error(`${g.id} deveria ter evidência de CI`);
+      }
+      expect(existe(evidencia.workflow!)).toBe(true);
+      expect(existe(evidencia.arquivo)).toBe(true);
+    }
   });
 
   /**
