@@ -9,6 +9,7 @@ import { RepoBootstrapRepository } from '../../ports/repo-bootstrap-repository.p
 import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { SessionRepository } from '../../ports/session-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
+import { CreateSessionUseCase } from '../sessions/create-session.use-case';
 import { assertTransition } from '../../../domain/sessions/session-state-machine';
 import {
   GitPermissionDeniedError,
@@ -61,6 +62,10 @@ export class AdoptRepositoryUseCase {
     private readonly repoBootstraps: RepoBootstrapRepository,
     private readonly outbox: OutboxRepository,
     private readonly sessions: SessionRepository,
+    // Sessão nasce SEMPRE pelo use case (RN-067): é ele que emite
+    // `session.created` no outbox, e é esse evento que faz o engine subir o
+    // SessionServer. Pelo `sessions.create` direto, a sessão fica sem processo.
+    private readonly createSession: CreateSessionUseCase,
     private readonly appendSessionEvent: AppendSessionEventUseCase,
   ) {}
 
@@ -173,10 +178,7 @@ export class AdoptRepositoryUseCase {
     input: AdoptRepositoryInput,
     repoRemoto: GitRepo,
   ): Promise<ProvisionedRepository> {
-    const session = await this.sessions.create({
-      projectId,
-      createdBy: userId,
-    });
+    const session = await this.createSession.execute(projectId, userId);
 
     const repository = await this.unitOfWork.runInTransaction(async () => {
       const repoRow = await this.repositories.create({

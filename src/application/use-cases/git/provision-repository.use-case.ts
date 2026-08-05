@@ -15,6 +15,7 @@ import { ProposedActionRepository } from '../../ports/proposed-action-repository
 import { SessionRepository } from '../../ports/session-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { TransitionSessionUseCase } from '../sessions/transition-session.use-case';
+import { CreateSessionUseCase } from '../sessions/create-session.use-case';
 import { assertTransition } from '../../../domain/sessions/session-state-machine';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
 import type { ProvisionedRepository } from '../../../domain/git/provisioned-repository.entity';
@@ -50,6 +51,12 @@ export class ProvisionRepositoryUseCase {
     private readonly outbox: OutboxRepository,
     private readonly proposedActions: ProposedActionRepository,
     private readonly sessions: SessionRepository,
+    // Sessão nasce SEMPRE pelo use case, nunca pelo `sessions.create` direto:
+    // é ele que emite `session.created` no outbox, na mesma transação, e é
+    // esse evento que faz o engine subir o SessionServer (RN-067). Sem ele a
+    // sessão fica sem processo: canal recusado, sem heartbeat, e `active` para
+    // sempre.
+    private readonly createSession: CreateSessionUseCase,
     private readonly appendSessionEvent: AppendSessionEventUseCase,
     private readonly transitionSession: TransitionSessionUseCase,
     private readonly bootstrapRunner: BootstrapRunner,
@@ -109,19 +116,13 @@ export class ProvisionRepositoryUseCase {
       // acontecer sob o fluxo novo, já que os dois nascem na mesma
       // transação — defensivo pra dados de uma versão anterior).
       repo = existingRepo;
-      const session = await this.sessions.create({
-        projectId,
-        createdBy: userId,
-      });
+      const session = await this.createSession.execute(projectId, userId);
       bootstrap = await this.repoBootstraps.create({
         projectId,
         sessionId: session.id,
       });
     } else {
-      const session = await this.sessions.create({
-        projectId,
-        createdBy: userId,
-      });
+      const session = await this.createSession.execute(projectId, userId);
 
       const proposedAction = await this.unitOfWork.runInTransaction(
         async () => {
