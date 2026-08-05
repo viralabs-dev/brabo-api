@@ -1,4 +1,8 @@
-import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
 import { ModuleMapRepository } from '../../ports/module-map-repository.port';
 import { StoryRepository } from '../../ports/backlog-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
