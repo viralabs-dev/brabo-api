@@ -117,7 +117,10 @@ export class ApproveActionUseCase {
     if (acao.actor?.kind !== 'agent' || !acao.actor.id) return acao;
 
     await this.outbox.append({
-      aggregateType: 'proposed_action',
+      // `task` e não `proposed_action`: o dreno do engine só lê
+      // `aggregate_type in ("session","task")`. Emitido no agregado errado, o
+      // evento nascia e nunca era sequer LIDO — o agente esperava para sempre.
+      aggregateType: 'task',
       aggregateId: acao.id,
       eventType: 'task.action_settled',
       payload: {

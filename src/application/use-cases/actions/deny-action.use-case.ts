@@ -101,7 +101,9 @@ export class DenyActionUseCase {
       // desfecho é a task inteira, aqui é uma ferramenta no meio do turno.
       if (updated.actor?.kind === 'agent' && updated.actor.id) {
         await this.outbox.append({
-          aggregateType: 'proposed_action',
+          // Ver o comentário gêmeo em approve-action: o dreno do engine só lê
+          // os agregados `session` e `task`.
+          aggregateType: 'task',
           aggregateId: actionId,
           eventType: 'task.action_settled',
           payload: {

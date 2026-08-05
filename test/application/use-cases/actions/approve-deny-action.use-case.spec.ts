@@ -4,7 +4,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { NotFoundException } from '@nestjs/common';
 import { createTestDb, truncateAll } from '../../../support/test-db';
+import { eq } from 'drizzle-orm';
 import {
+  outboxEvents,
   projects,
   sessions,
   users,
@@ -284,6 +286,68 @@ describe('a decisão no event log (achado #17 do dogfooding)', () => {
     expect(auto[0].actor.kind).toBe('agent');
     expect(cliques).toHaveLength(0);
     expect(user).toBeTruthy();
+  });
+});
+
+/**
+ * O evento que solta o agente parado (ADR 0052) — e o agregado em que ele
+ * NASCE, que é a metade do contrato que mora deste lado.
+ *
+ * A regressão: emitido com `aggregateType: 'proposed_action'`, o evento é
+ * gravado com sucesso e o dreno do engine nunca o lê — o `where` de
+ * `Engine.Outbox.Drain` só aceita `session` e `task`. Nada falha aqui, nada
+ * falha lá, e o agente fica em `awaiting_approval` para sempre. A outra metade
+ * está em apps/engine/test/engine/outbox/drain_test.exs; nenhum dos dois lados
+ * sozinho pega a divergência.
+ */
+describe('task.action_settled: o agregado que o engine consegue ler', () => {
+  async function settledDe(sessionId: string) {
+    const rows = await db
+      .select()
+      .from(outboxEvents)
+      .where(eq(outboxEvents.eventType, 'task.action_settled'));
+    return rows.filter(
+      (r) => (r.payload as { sessionId?: string }).sessionId === sessionId,
+    );
+  }
+
+  it('aprovar emite no agregado `task`, com o resultado pro agente', async () => {
+    const { user, project, session, action } = await setupPendingAction();
+
+    await approveAction.execute(project.id, session.id, action.id, user.id);
+
+    const [evento] = await settledDe(session.id);
+    expect(evento).toBeTruthy();
+    // O assert que teria evitado a execução perdida.
+    expect(evento.aggregateType).toBe('task');
+    expect(evento.aggregateId).toBe(action.id);
+    expect(evento.payload).toMatchObject({
+      projectId: project.id,
+      actionId: action.id,
+      agentId: 'dev-agent',
+    });
+  });
+
+  it('negar emite no agregado `task`, com o motivo — recusa é resposta', async () => {
+    const { user, project, session, action } = await setupPendingAction();
+
+    await denyAction.execute(
+      project.id,
+      session.id,
+      action.id,
+      user.id,
+      'esse comando não',
+    );
+
+    const [evento] = await settledDe(session.id);
+    expect(evento).toBeTruthy();
+    expect(evento.aggregateType).toBe('task');
+    expect(evento.payload).toMatchObject({
+      actionId: action.id,
+      agentId: 'dev-agent',
+      status: 'denied',
+      rejectionReason: 'esse comando não',
+    });
   });
 });
 
