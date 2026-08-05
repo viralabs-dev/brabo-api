@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  agenteDe,
   formatarDuracao,
   formatarUsd,
   sinaisDeCodigo,
@@ -15,9 +16,12 @@ import {
  * com o banco é exercitada pela execução real.
  */
 
+const USUARIO = 'd623c9c9-1dae-40ed-90f5-4c71ae5b95b6';
+
 let seq = 0;
-function evento(
+function bruto(
   type: string,
+  actorKind: string,
   actorId: string,
   payload: Record<string, unknown> = {},
 ) {
@@ -27,17 +31,59 @@ function evento(
     sessionId: 's1',
     seq,
     type,
-    actorKind: 'agent',
+    actorKind,
     actorId,
     payload,
     createdAt: new Date(2026, 7, 4, 12, 0, seq),
   };
 }
 
+/** O que o AGENTE escreve: `actorKind: 'agent'` e o slug em `actorId`. */
+function evento(
+  type: string,
+  actorId: string,
+  payload: Record<string, unknown> = {},
+) {
+  return bruto(type, 'agent', actorId, payload);
+}
+
+/**
+ * `agent.activated` NÃO é escrito pelo agente — é escrito por quem o ativou.
+ *
+ * O fixture antigo montava esse evento com `actorKind: 'agent'` e o slug em
+ * `actorId`, forma que o produto nunca produz; por isso a suite ficava verde
+ * enquanto o script marcava todo turno como mudo na execução real. Fixture que
+ * mente é o defeito, não o atalho.
+ */
+function ativacao(agent: string, actorId = USUARIO) {
+  return bruto('agent.activated', 'user', actorId, { agent });
+}
+
+/**
+ * Quem é o agente de um evento: `agent.activated` traz no payload, o resto
+ * traz em `actorId`. Errar isso faz o script comparar id de usuário com slug e
+ * concluir que TODO agente ficou calado.
+ */
+describe('agenteDe', () => {
+  it('tira o agente do payload na ativação, não do ator', () => {
+    expect(agenteDe(ativacao('criativo'))).toBe('criativo');
+  });
+
+  it('usa o `actorId` quando quem escreveu foi o agente', () => {
+    expect(agenteDe(evento('agent.response', 'po', { content: 'oi' }))).toBe(
+      'po',
+    );
+  });
+
+  it('evento de sistema não pertence a agente nenhum', () => {
+    expect(agenteDe(bruto('session.closed', 'system', 'engine'))).toBeNull();
+  });
+});
+
 describe('turnosMudos', () => {
   it('agente que ativa e responde não é mudo', () => {
     const eventos = [
-      evento('agent.activated', 'criativo'),
+      ativacao('criativo'),
       evento('agent.response', 'criativo', { content: 'olá' }),
     ];
 
@@ -46,11 +92,11 @@ describe('turnosMudos', () => {
 
   it('agente que ativa e não escreve NADA é o defeito que se caça', () => {
     const eventos = [
-      evento('agent.activated', 'po'),
-      evento('session.closed', 'system'),
+      ativacao('po'),
+      bruto('session.closed', 'system', 'engine'),
     ];
 
-    expect(turnosMudos(eventos).map((e) => e.actorId)).toEqual(['po']);
+    expect(turnosMudos(eventos).map(agenteDe)).toEqual(['po']);
   });
 
   /**
@@ -59,7 +105,7 @@ describe('turnosMudos', () => {
    */
   it('`agent.error` conta como desfecho', () => {
     const eventos = [
-      evento('agent.activated', 'arquiteto'),
+      ativacao('arquiteto'),
       evento('agent.error', 'arquiteto', { message: 'provider fora' }),
     ];
 
@@ -68,7 +114,7 @@ describe('turnosMudos', () => {
 
   it('handoff também é desfecho — o agente falou pelo ato de passar adiante', () => {
     const eventos = [
-      evento('agent.activated', 'criativo'),
+      ativacao('criativo'),
       evento('handoff.offered', 'criativo', { to: 'po' }),
     ];
 
@@ -81,24 +127,52 @@ describe('turnosMudos', () => {
    */
   it('resposta de OUTRO agente não cobre o silêncio deste', () => {
     const eventos = [
-      evento('agent.activated', 'po'),
+      ativacao('po'),
       evento('agent.response', 'criativo', { content: 'eu falei' }),
     ];
 
-    expect(turnosMudos(eventos).map((e) => e.actorId)).toEqual(['po']);
+    expect(turnosMudos(eventos).map(agenteDe)).toEqual(['po']);
   });
 
   it('duas ativações do mesmo agente são julgadas separadamente', () => {
     const eventos = [
-      evento('agent.activated', 'po'),
+      ativacao('po'),
       evento('agent.response', 'po', { content: 'primeira' }),
-      evento('agent.activated', 'po'),
-      evento('session.closed', 'system'),
+      ativacao('po'),
+      bruto('session.closed', 'system', 'engine'),
     ];
 
     const mudos = turnosMudos(eventos);
     expect(mudos).toHaveLength(1);
     expect(mudos[0].id).toBe(eventos[2].id);
+  });
+
+  /**
+   * O caso da execução real: o MESMO usuário ativa três agentes diferentes e
+   * todos respondem. Comparando `actorId` dos dois lados, o script acusava três
+   * turnos mudos onde não havia nenhum.
+   */
+  it('ativações do mesmo usuário para agentes diferentes não viram turno mudo', () => {
+    const eventos = [
+      ativacao('criativo'),
+      evento('agent.response', 'criativo', { content: 'regras' }),
+      ativacao('po'),
+      evento('agent.response', 'po', { content: 'épico' }),
+      ativacao('arquiteto'),
+      evento('agent.response', 'arquiteto', { content: 'module map' }),
+    ];
+
+    expect(turnosMudos(eventos)).toEqual([]);
+  });
+
+  /** Ativação sem agente no payload não dá para julgar — e não vira acusação. */
+  it('ativação sem `payload.agent` é ignorada em vez de acusada', () => {
+    const eventos = [
+      bruto('agent.activated', 'user', USUARIO),
+      bruto('session.closed', 'system', 'engine'),
+    ];
+
+    expect(turnosMudos(eventos)).toEqual([]);
   });
 });
 
@@ -113,7 +187,11 @@ describe('sinaisDeCodigo', () => {
     ].join('\n');
 
     expect(sinaisDeCodigo(texto)).toEqual(
-      expect.arrayContaining(['bloco de código', 'import/require', 'nome de arquivo']),
+      expect.arrayContaining([
+        'bloco de código',
+        'import/require',
+        'nome de arquivo',
+      ]),
     );
   });
 
