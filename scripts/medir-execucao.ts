@@ -88,14 +88,25 @@ export function formatarUsd(micros: number): string {
  */
 export const SINAIS_DE_CODIGO: readonly { nome: string; padrao: RegExp }[] = [
   { nome: 'bloco de código', padrao: /```[a-z]*\n/ },
-  { nome: 'import/require', padrao: /^\s*(import .+ from |const .+ = require\()/m },
+  {
+    nome: 'import/require',
+    padrao: /^\s*(import .+ from |const .+ = require\()/m,
+  },
   { nome: 'definição de função', padrao: /\b(function |def |func |=> \{)/ },
-  { nome: 'nome de arquivo', padrao: /\b[\w./-]+\.(ts|js|py|go|rb|java|json|yml|yaml)\b/ },
-  { nome: 'comando de shell', padrao: /\b(npm |pnpm |yarn |docker |git )(install|run|add|build|commit)\b/ },
+  {
+    nome: 'nome de arquivo',
+    padrao: /\b[\w./-]+\.(ts|js|py|go|rb|java|json|yml|yaml)\b/,
+  },
+  {
+    nome: 'comando de shell',
+    padrao: /\b(npm |pnpm |yarn |docker |git )(install|run|add|build|commit)\b/,
+  },
 ];
 
 export function sinaisDeCodigo(texto: string): string[] {
-  return SINAIS_DE_CODIGO.filter((s) => s.padrao.test(texto)).map((s) => s.nome);
+  return SINAIS_DE_CODIGO.filter((s) => s.padrao.test(texto)).map(
+    (s) => s.nome,
+  );
 }
 
 interface Evento {
@@ -110,9 +121,25 @@ interface Evento {
 }
 
 /**
+ * Slug do agente a que o evento se refere.
+ *
+ * `agent.activated` é escrito pelo USUÁRIO que ativou (`actorKind: 'user'`,
+ * `actorId` = id dele) e traz o agente em `payload.agent`; o que o agente
+ * escreve depois vem com `actorKind: 'agent'` e `actorId` = slug. Comparar
+ * `actorId` dos dois lados nunca casa — casa slug com slug.
+ */
+export function agenteDe(evento: Evento): string | null {
+  if (evento.type === 'agent.activated') {
+    const agente = evento.payload?.agent;
+    return typeof agente === 'string' ? agente : null;
+  }
+  return evento.actorKind === 'agent' ? evento.actorId : null;
+}
+
+/**
  * Turnos que ativaram um agente e não produziram resposta.
  *
- * A janela é do `agent.activated` até a PRÓXIMA ativação do MESMO ator (ou o
+ * A janela é do `agent.activated` até a PRÓXIMA ativação do MESMO AGENTE (ou o
  * fim da sessão): dentro dela tem que haver `agent.response`, `agent.error` ou
  * um handoff — qualquer desfecho escrito. Nada escrito é o turno mudo.
  *
@@ -132,15 +159,17 @@ export function turnosMudos(eventos: Evento[]): Evento[] {
 
   for (const [i, evento] of eventos.entries()) {
     if (evento.type !== 'agent.activated') continue;
+    const agente = agenteDe(evento);
+    if (agente == null) continue;
 
     const posteriores = eventos.slice(i + 1);
     const fim = posteriores.findIndex(
-      (e) => e.type === 'agent.activated' && e.actorId === evento.actorId,
+      (e) => e.type === 'agent.activated' && agenteDe(e) === agente,
     );
     const janela = fim === -1 ? posteriores : posteriores.slice(0, fim);
 
     const falou = janela.some(
-      (e) => e.actorId === evento.actorId && desfechos.has(e.type),
+      (e) => agenteDe(e) === agente && desfechos.has(e.type),
     );
     if (!falou) mudos.push(evento);
   }
@@ -201,9 +230,12 @@ async function main() {
   // do início da execução só existe se o engine subiu de novo no meio dela.
   // Não dá para contar quantas vezes — a linha é sobrescrita —, e o script diz
   // isso em vez de inventar um número.
-  const [peer] = (await db.execute(
+  // `db.execute` no driver node-postgres devolve o resultado do pg
+  // (`{ rows }`), não um array — destruturar direto quebra em runtime.
+  const peerResult = (await db.execute(
     sql`select node, started_at from engine.oban_peers limit 1`,
-  )) as unknown as { node: string; started_at: Date }[];
+  )) as unknown as { rows?: { node: string; started_at: Date }[] };
+  const peer = peerResult.rows?.[0];
 
   const engineSubiuDepois =
     peer != null && new Date(peer.started_at) > new Date(inicio);
@@ -250,14 +282,15 @@ async function main() {
   const etapas = eventos
     .filter((e) => e.type === 'agent.activated')
     .map((ativacao) => {
+      const agente = agenteDe(ativacao);
       const posteriores = eventos.slice(eventos.indexOf(ativacao) + 1);
       const desfecho = posteriores.find(
         (e) =>
-          e.actorId === ativacao.actorId &&
+          agenteDe(e) === agente &&
           ['agent.response', 'handoff.offered', 'agent.error'].includes(e.type),
       );
       return {
-        agente: ativacao.actorId,
+        agente: agente ?? ativacao.actorId,
         eventId: ativacao.id,
         desfecho: desfecho?.type ?? '— nenhum —',
         duracao: desfecho
@@ -292,7 +325,7 @@ async function main() {
     engineSubiuDepois,
     etapas,
     turnosMudos: mudos.map((e) => ({
-      agente: e.actorId,
+      agente: agenteDe(e) ?? e.actorId,
       eventId: e.id,
       quando: new Date(e.createdAt).toISOString(),
     })),
@@ -333,7 +366,9 @@ async function main() {
     process.exit(1);
   }
 
-  console.log('\n[medir-execucao] critérios fechados: sem restart, sem turno mudo.');
+  console.log(
+    '\n[medir-execucao] critérios fechados: sem restart, sem turno mudo.',
+  );
 }
 
 interface Medida {
@@ -366,7 +401,9 @@ interface Medida {
 function imprimir(m: Medida) {
   console.log(`# Execução medida — ${m.projeto.nome}\n`);
   console.log(`- projeto: \`${m.projeto.id}\``);
-  console.log(`- janela: ${m.janela.inicio} → ${m.janela.fim} (${m.janela.duracao})`);
+  console.log(
+    `- janela: ${m.janela.inicio} → ${m.janela.fim} (${m.janela.duracao})`,
+  );
   console.log(`- sessões: ${m.sessoes} · eventos: ${m.eventos}`);
   console.log(
     `- restart do engine no meio: **${m.engineSubiuDepois ? 'SIM' : 'não'}**\n`,
