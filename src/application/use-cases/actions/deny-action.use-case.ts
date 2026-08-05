@@ -92,6 +92,30 @@ export class DenyActionUseCase {
         });
       }
 
+      // Recusa também é RESPOSTA (ADR 0052). O agente que esperava a decisão
+      // retoma o laço com o motivo no lugar do resultado, e aprende que aquele
+      // caminho está fechado — em vez de esperar para sempre por algo que
+      // ninguém vai aprovar.
+      //
+      // O `pr_open` acima é o caso especial que a Fase 12e já tratava: lá o
+      // desfecho é a task inteira, aqui é uma ferramenta no meio do turno.
+      if (updated.actor?.kind === 'agent' && updated.actor.id) {
+        await this.outbox.append({
+          aggregateType: 'proposed_action',
+          aggregateId: actionId,
+          eventType: 'task.action_settled',
+          payload: {
+            projectId,
+            sessionId,
+            actionId,
+            agentId: updated.actor.id,
+            actionType: updated.actionType,
+            status: 'denied',
+            rejectionReason: reason ?? null,
+          },
+        });
+      }
+
       this.metrics.actionsDecided.inc({
         project: projectId,
         decision: 'denied',
