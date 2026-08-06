@@ -93,7 +93,8 @@ export class ProposeActionUseCase {
         actionType,
         command,
         targetBranch,
-        cwd: actionType === 'terminal' ? cwdFromPayload(input.payload) : undefined,
+        cwd:
+          actionType === 'terminal' ? cwdFromPayload(input.payload) : undefined,
       },
       {
         effectiveRole,
