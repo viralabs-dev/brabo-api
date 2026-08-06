@@ -8,6 +8,10 @@ import { ModuleMapRepository } from '../../ports/module-map-repository.port';
 import { ProjectRepository } from '../../ports/project-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { isPromotable } from '../../../domain/backlog/story-promotion';
+import {
+  regrasJaCobertas,
+  tituloDuplicado,
+} from '../../../domain/backlog/story-overlap';
 import type { Story } from '../../../domain/backlog/backlog.entity';
 
 export interface CreateStoryInput {
@@ -25,8 +29,15 @@ export interface CreateStoryInput {
  * Cria uma história (via ferramenta create_story do PO). Valida que:
  *  - o épico existe no projeto;
  *  - cada business_rule_id referencia MESMO um evento artifact.business_rule
- *    existente (justificativa rastreável — recusa ids inventados).
+ *    existente (justificativa rastreável — recusa ids inventados);
+ *  - não há outra história com o MESMO título no projeto (achado R).
  * Nada é criado se a validação falha.
+ *
+ * Sobreposição por justificativa (todas as regras citadas já cobertas por
+ * outra história) não impede a criação: vira `backlog.story_overlap_warned`
+ * no event log. Ver `domain/backlog/story-overlap.ts` para por que uma é
+ * recusa e a outra é aviso — e para o que este mecanismo declaradamente
+ * NÃO pega.
  *
  * O que acontece DEPOIS de criar depende do modo do projeto (Fase 12c —
  * RN-048):
@@ -69,6 +80,18 @@ export class CreateStoryUseCase {
           `business_rule_id "${ruleId}" não corresponde a uma regra de negócio existente`,
         );
       }
+    }
+
+    // Achado R: o PO gerou duas histórias para o mesmo endpoint. Título
+    // igual é erro e para aqui; justificativa igual é suspeita e vira
+    // aviso, depois de criar (ver abaixo).
+    const doProjeto = await this.stories.findByProject(projectId);
+    const mesmoTitulo = tituloDuplicado(input.title, doProjeto);
+    if (mesmoTitulo) {
+      throw new BadRequestException(
+        `Já existe a história "${mesmoTitulo.title}" (${mesmoTitulo.id}) neste projeto — ` +
+          `refine a existente em vez de criar outra igual`,
+      );
     }
 
     const project = await this.projects.findById(projectId);
@@ -117,6 +140,25 @@ export class CreateStoryUseCase {
         businessRuleIds: story.businessRuleIds,
       },
     });
+
+    // Aviso, não recusa: a história EXISTE e segue o fluxo normal. Um
+    // segundo recorte da mesma regra pode ser legítimo, então quem decide
+    // se é sobreposição é o usuário — o produto só se recusa a deixar
+    // isso passar despercebido, que era o que o achado apontava.
+    const jaCoberta = regrasJaCobertas(businessRuleIds, doProjeto);
+    if (jaCoberta) {
+      await this.appendEvent.execute(projectId, sessionId, {
+        type: 'backlog.story_overlap_warned',
+        actor: { kind: 'system', id: 'backlog' },
+        payload: {
+          storyId: story.id,
+          title: story.title,
+          sobrepoeStoryId: jaCoberta.id,
+          sobrepoeTitulo: jaCoberta.title,
+          businessRuleIds,
+        },
+      });
+    }
 
     if (story.proposedReady) {
       await this.appendEvent.execute(projectId, sessionId, {
