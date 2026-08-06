@@ -86,4 +86,16 @@ export abstract class ProposedActionRepository {
     sessionId: string,
     opts: ListProposedActionsOptions,
   ): Promise<Page<ProposedAction>>;
+
+  /**
+   * A ação `pending` mais antiga da sessão, se houver (achado V).
+   *
+   * Existe para o heartbeat saber que há alguém ESPERANDO uma decisão antes de
+   * encerrar a sessão por inatividade da aba. Devolve a ação em vez de um
+   * booleano porque o motivo que o engine loga precisa dizer O QUE ficou
+   * pendurado — "há trabalho pendente" não ajuda ninguém a diagnosticar.
+   */
+  abstract findOldestPendingInSession(
+    sessionId: string,
+  ): Promise<ProposedAction | null>;
 }

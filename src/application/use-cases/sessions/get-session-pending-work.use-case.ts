@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { HandoffRepository } from '../../ports/handoff-repository.port';
+import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
 
 export interface SessionPendingWork {
   pending: boolean;
@@ -20,7 +21,10 @@ export interface SessionPendingWork {
  */
 @Injectable()
 export class GetSessionPendingWorkUseCase {
-  constructor(private readonly handoffs: HandoffRepository) {}
+  constructor(
+    private readonly handoffs: HandoffRepository,
+    private readonly proposedActions: ProposedActionRepository,
+  ) {}
 
   async execute(sessionId: string): Promise<SessionPendingWork> {
     const abertos = (await this.handoffs.findBySession(sessionId)).filter(
@@ -34,10 +38,29 @@ export class GetSessionPendingWorkUseCase {
       };
     }
 
-    // Task em andamento NÃO entra ainda: o dev agent tem máquina de estados
-    // própria (Fase 12b) e retém o worktree por conta dele; incluí-la aqui sem
-    // um teste que prove a interação seria adivinhar. Handoff pendurado é o
-    // caso que a execução real produziu, e é o que esta versão fecha.
+    // Ação esperando decisão (achado V). É o MESMO defeito do handoff, um nível
+    // abaixo: alguém está esperando VOCÊ, e fechar a sessão por inatividade da
+    // aba deixa a espera órfã.
+    //
+    // Na execução do `hello-limpo` a sessão nasceu 23:34:12, uma ação ficou
+    // `pending` às 23:34:13, e o heartbeat a fechou às 23:34:42 — exatamente os
+    // 30s do timeout. O dev agent seguiu trabalhando por mais de uma hora numa
+    // sessão que o banco dava por encerrada, e é isso que envenena toda métrica
+    // por sessão: duração, custo e "quantas terminaram bem".
+    //
+    // Uma ação pendente é ainda mais forte que o handoff como sinal: ela
+    // significa que um agente está SUSPENSO esperando o desfecho
+    // ([RN-073](../../../../docs/business-rules.md#rn-073)).
+    const acao =
+      await this.proposedActions.findOldestPendingInSession(sessionId);
+
+    if (acao) {
+      return {
+        pending: true,
+        motivo: `ação ${acao.actionType} de ${acao.actor?.id ?? 'um agente'} aguardando decisão`,
+      };
+    }
+
     return { pending: false, motivo: null };
   }
 }
