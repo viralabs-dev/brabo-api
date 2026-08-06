@@ -20,7 +20,11 @@ import {
   type ActionType,
 } from '../../../domain/actions/decide';
 import { GIT_EXECUTED_ACTION_TYPES } from '../../../domain/actions/git-action-types';
-import { commandFromPayload } from '../../../domain/actions/pattern-for-action';
+import {
+  commandFromPayload,
+  cwdFromPayload,
+} from '../../../domain/actions/pattern-for-action';
+import { projectScopeRoot } from '../../../infrastructure/filesystem/project-workspaces-root';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
 import type { ActionStatus } from '../../../domain/actions/action-state-machine';
@@ -85,8 +89,19 @@ export class ProposeActionUseCase {
         : undefined;
 
     const decision = decide(
-      { actionType, command, targetBranch },
-      { effectiveRole, autonomyMode, permissionsFile },
+      {
+        actionType,
+        command,
+        targetBranch,
+        cwd:
+          actionType === 'terminal' ? cwdFromPayload(input.payload) : undefined,
+      },
+      {
+        effectiveRole,
+        autonomyMode,
+        permissionsFile,
+        projectScopeRoot: projectScopeRoot(projectId),
+      },
     );
 
     const { status, rejectionReason } = initialStatusFor(
