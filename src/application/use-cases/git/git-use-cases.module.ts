@@ -14,8 +14,10 @@ import { AdoptRepositoryUseCase } from './adopt-repository.use-case';
 import { DecideBootstrapPlanUseCase } from './decide-bootstrap-plan.use-case';
 import { GetBootstrapPlanUseCase } from './get-bootstrap-plan.use-case';
 import { GetProjectGitRemoteUseCase } from './get-project-git-remote.use-case';
+import { AcknowledgeProtectionFailureUseCase } from './acknowledge-protection-failure.use-case';
 
 const USE_CASES = [
+  AcknowledgeProtectionFailureUseCase,
   GetProjectGitRemoteUseCase,
   StartGitOauthUseCase,
   HandleGitOauthCallbackUseCase,

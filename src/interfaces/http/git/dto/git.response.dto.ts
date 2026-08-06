@@ -295,3 +295,18 @@ export const _chavesDecisao: MesmasChaves<
   DecideBootstrapPlanResponseDto,
   DecideBootstrapPlanResult
 > = true;
+
+/**
+ * O estado do provisionamento depois de reconhecer a falha de proteção
+ * (achado D). Devolve o status para a tela saber que o projeto ficou
+ * alcançável — era ele que a mantinha presa na página de provisionamento.
+ */
+export class ReconhecerFalhaDeProtecaoResponseDto {
+  @ApiProperty({
+    example: 'provisioned',
+    description:
+      'Como `protect_branches` é o ÚLTIMO passo, reconhecer a falha dele ' +
+      'fecha o bootstrap — o projeto passa a ser alcançável pelo dashboard.',
+  })
+  status!: string | null;
+}
