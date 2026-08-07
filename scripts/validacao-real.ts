@@ -22,6 +22,17 @@
  * branch protegida é decisão do usuário ([RN-014]), e nenhuma automação do
  * produto o executa.
  *
+ * ## PRÉ-REQUISITO: rodar DE DENTRO do container da api
+ *
+ * Não é detalhe de conveniência. A política de permissões é um ARQUIVO em
+ * `PROJECT_WORKSPACES_ROOT`, que api e engine compartilham por volume. Rodando
+ * pelo host, a raiz cai no default (`/tmp/brabo-project-workspaces`) e o
+ * `permissions.json` nasce num filesystem que o engine não enxerga — a política
+ * simplesmente não existe para quem decide, e todo comando fica pendente.
+ *
+ * É a mesma armadilha que a `validacao-fase-12` documenta sobre o repositório
+ * cobaia, e ela reaparece aqui por outro caminho.
+ *
  * ## O owner é REAL, não um usuário descartável
  *
  * A `validacao-fase-12` cria usuário e workspace próprios porque não gasta
@@ -79,6 +90,7 @@ import { CreateStoryUseCase } from '../src/application/use-cases/backlog/create-
 import { PromoteStoriesUseCase } from '../src/application/use-cases/backlog/promote-stories.use-case';
 import { ActivateExecutionUseCase } from '../src/application/use-cases/execution/activate-execution.use-case';
 import { SetModelBindingUseCase } from '../src/application/use-cases/llm/set-model-binding.use-case';
+import { PermissionsFileStore } from '../src/application/ports/permissions-file-store.port';
 import { SessionRepository } from '../src/application/ports/session-repository.port';
 import { ModuleMapRepository } from '../src/application/ports/module-map-repository.port';
 import {
@@ -520,6 +532,47 @@ async function main() {
     modelo.provider !== 'ollama',
     `o modelo resolvido é LOCAL (${modelo.name}) — o ADR 0020 proíbe no passo semântico`,
   );
+
+  // A política de terminal, decidida UMA vez — que é como o produto foi
+  // desenhado depois da Fase F.
+  //
+  // `ActivateExecutionUseCase` já semeia `auto_approve` para
+  // git_commit/git_push/pr_open, mas NÃO para terminal. E a regra de escopo
+  // da RN-075 apenas REBAIXA `auto_approve` fora da pasta do projeto — ela
+  // não promove. Sem uma linha de `allow`, todo `npm test` vira
+  // `proposed_action` pendente e o agente para em `awaiting_approval`.
+  //
+  // Observado na 3ª execução: o dev agent escreveu três arquivos, chamou
+  // `npm test --silent`, e ficou esperando alguém clicar. Aprovar comando a
+  // comando é justamente a escada que a Fase F declarou inviável.
+  //
+  // Isto NÃO esconde a decisão: `proposed_action.created` carrega
+  // `status: auto_approved` (ADR 0048), e o medidor separa política de
+  // clique humano.
+  //
+  // O casamento é por PREFIXO DE TOKENS, e o allowlist governa o VERBO. Não há
+  // padrão "libere tudo" — de propósito. O teto de escopo protege o CAMINHO,
+  // não o verbo, então cada comando novo que o agente inventa (`ls -la` foi o
+  // da 4ª execução) cai em `require_approval` se o verbo não estiver aqui.
+  const permissoes = app.get(PermissionsFileStore);
+  for (const padrao of [
+    'Terminal(npm)',
+    'Terminal(pnpm)',
+    'Terminal(npx)',
+    'Terminal(node)',
+    'Terminal(ls)',
+    'Terminal(cat)',
+    'Terminal(mkdir)',
+    'Terminal(touch)',
+    'Terminal(echo)',
+    'Terminal(pwd)',
+    'Terminal(find)',
+    'Terminal(grep)',
+    'Terminal(git)',
+  ]) {
+    await permissoes.addPattern(project.id, 'allow', padrao);
+  }
+  log('✓ política: verbos de build/teste/inspeção liberados no projeto');
 
   const { sessionId } = await app
     .get(ActivateExecutionUseCase)
