@@ -118,10 +118,7 @@ export abstract class ApiToEngineClient {
   ): Promise<void>;
 
   /** FASE 14d: o Dev Lead recebe da MESMA confirmação de arquitetura pronta. */
-  abstract offerDevHandoff(
-    projectId: string,
-    sessionId: string,
-  ): Promise<void>;
+  abstract offerDevHandoff(projectId: string, sessionId: string): Promise<void>;
 
   // Reprocessamento explícito da análise do Psicólogo (Fase 4b) — o
   // engine enfileira o job do PsychologistWorker com triggeredBy:
