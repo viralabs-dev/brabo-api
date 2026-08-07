@@ -103,6 +103,13 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     );
   }
 
+  async offerDevHandoff(projectId: string, sessionId: string): Promise<void> {
+    await this.postCommand(
+      `/internal/sessions/${sessionId}/agent/offer-dev-handoff`,
+      { projectId },
+    );
+  }
+
   async reanalyzeSession(projectId: string, sessionId: string): Promise<void> {
     await this.postCommand(
       `/internal/sessions/${sessionId}/psychologist/reanalyze`,

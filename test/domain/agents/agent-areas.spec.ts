@@ -87,7 +87,28 @@ describe('regra de alvo do handoff (ADR 0038)', () => {
     // O caso mais comum e o que a Fase 3 já fazia: Criativo → PO.
     expect(() => assertHandoffTargetAllowed('po')).not.toThrow();
     expect(() => assertHandoffTargetAllowed('arquiteto')).not.toThrow();
-    expect(() => assertHandoffTargetAllowed('dev-api')).not.toThrow();
+  });
+
+  it('o dev de módulo DEIXOU de ser endereçável (FASE 14d)', () => {
+    // Mudança deliberada do ADR 0053, e a linha deste teste que mudou de lado.
+    // Enquanto não havia Dev Lead, `dev-api` era agente SEM área e por isso
+    // alvo válido. Com a área de dev existindo, ele vira membro — e o único
+    // endereço externo da execução passa a ser o lead.
+    expect(() => assertHandoffTargetAllowed('dev-api')).toThrow(
+      HandoffToSubagentError,
+    );
+    expect(() => assertHandoffTargetAllowed('dev-api-2')).toThrow(
+      HandoffToSubagentError,
+    );
+  });
+
+  it('`dev-lead` É endereçável, apesar do prefixo `dev-`', () => {
+    // A ordem da checagem é o que garante isto: o lead é testado ANTES do
+    // predicado de membro. Invertida, o lead da área ficaria inendereçável de
+    // fora — o contrário do que o ADR quer.
+    expect(() => assertHandoffTargetAllowed('dev-lead')).not.toThrow();
+    expect(ehSubagente('dev-lead')).toBe(false);
+    expect(areaDo('dev-lead')?.key).toBe('dev');
   });
 
   it('subagente NÃO é alvo — e o erro diz a quem falar', () => {
