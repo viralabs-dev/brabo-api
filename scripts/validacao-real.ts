@@ -60,6 +60,7 @@ import {
   type DrizzleDb,
 } from '../src/infrastructure/persistence/drizzle/drizzle-client';
 import {
+  models,
   projectMembers,
   projectRepositories,
   projects,
@@ -77,6 +78,7 @@ import { AppendSessionEventUseCase } from '../src/application/use-cases/sessions
 import { CreateStoryUseCase } from '../src/application/use-cases/backlog/create-story.use-case';
 import { PromoteStoriesUseCase } from '../src/application/use-cases/backlog/promote-stories.use-case';
 import { ActivateExecutionUseCase } from '../src/application/use-cases/execution/activate-execution.use-case';
+import { SetModelBindingUseCase } from '../src/application/use-cases/llm/set-model-binding.use-case';
 import { SessionRepository } from '../src/application/ports/session-repository.port';
 import { ModuleMapRepository } from '../src/application/ports/module-map-repository.port';
 import {
@@ -94,6 +96,8 @@ interface Opcoes {
   repo: string;
   ate: Fase;
   plano: Plano;
+  /** Modelo de API do dev agent e dos gates. Nunca local — ver ADR 0020. */
+  modelo: string;
 }
 
 function lerOpcoes(): Opcoes {
@@ -123,10 +127,15 @@ function lerOpcoes(): Opcoes {
     process.exit(2);
   }
 
+  const modeloArg = args.includes('--modelo')
+    ? args[args.indexOf('--modelo') + 1]
+    : null;
+
   return {
     repo,
     ate: (ateArg as Fase) ?? 'execucao',
     plano: (planoArg as Plano) ?? 'como-esta',
+    modelo: modeloArg ?? 'openai/gpt-5-mini',
   };
 }
 
@@ -194,7 +203,7 @@ async function esperar<T>(
 }
 
 async function main() {
-  const { repo, ate, plano } = lerOpcoes();
+  const { repo, ate, plano, modelo: modeloAlvo } = lerOpcoes();
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ['error'],
   });
@@ -482,6 +491,34 @@ async function main() {
   // ---------------- 3. execução PAGA: dev real + gates por LLM ------------
   log(
     '\n--- 3. execução com dev agent REAL e gates por LLM (A PARTIR DAQUI GASTA) ---',
+  );
+
+  // O modelo do projeto, ANTES de ativar. Sem isto a cascata pousa no default
+  // do workspace, que aqui é `llama3.2:1b` — e a 13b proíbe explicitamente 7B
+  // local no passo semântico (ADR 0020). A regra vira ASSERÇÃO em vez de
+  // confiança: se o resolvido for local, o script para antes de gastar.
+  const [modelo] = await db
+    .select()
+    .from(models)
+    .where(and(eq(models.provider, 'openrouter'), eq(models.name, modeloAlvo)));
+
+  assertar(
+    modelo != null,
+    `modelo "${modeloAlvo}" não está no catálogo — rode o sync, ou passe --modelo`,
+  );
+  assertar(
+    modelo.supportsToolCalling,
+    `"${modeloAlvo}" não declara tool calling; o dev agent não funciona sem isso`,
+  );
+
+  await app
+    .get(SetModelBindingUseCase)
+    .execute('project', project.id, modelo.id, owner.id);
+  log(`✓ modelo do projeto: ${modelo.provider}/${modelo.name}`);
+
+  assertar(
+    modelo.provider !== 'ollama',
+    `o modelo resolvido é LOCAL (${modelo.name}) — o ADR 0020 proíbe no passo semântico`,
   );
 
   const { sessionId } = await app
