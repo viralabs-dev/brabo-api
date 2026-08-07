@@ -75,7 +75,7 @@ export function parseCommand(command: string): string[][] {
 
 function encadeiaComando(entry: unknown): boolean {
   if (entry && typeof entry === 'object' && 'op' in entry) {
-    return OPERADORES_DE_COMANDO.has(String((entry as { op: unknown }).op));
+    return OPERADORES_DE_COMANDO.has(String(entry.op));
   }
   // Construção desconhecida: trata como quebra, que é o lado conservador —
   // um segmento a mais só pode gerar aprovação, nunca auto-aprovação.
