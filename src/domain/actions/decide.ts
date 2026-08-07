@@ -18,7 +18,8 @@ export type ActionType =
   | 'git_merge'
   | 'open_infra_pr'
   | 'instruction_patch'
-  | 'parallelize';
+  | 'parallelize'
+  | 'raise_max_parallel';
 
 export const ACTION_TYPES: readonly ActionType[] = [
   'terminal',
@@ -34,8 +35,10 @@ export const ACTION_TYPES: readonly ActionType[] = [
   'git_merge',
   'open_infra_pr',
   'instruction_patch',
-  // FASE 14d: o lead pedindo mais agentes do que o teto dele permite.
+  // FASE 14d: o lead pedindo mais agentes do que o teto dele permite, e a
+  // Anamnese propondo subir o próprio teto.
   'parallelize',
+  'raise_max_parallel',
 ];
 
 const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
@@ -81,6 +84,7 @@ const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
   // Subir agente é GASTO. `maintainer` pelo mesmo motivo de `spend`: quem
   // autoriza custo é quem responde pelo projeto.
   parallelize: 'maintainer',
+  raise_max_parallel: 'maintainer',
 };
 
 // Rede de segurança padrão, sempre ativa, independente do permissions.json
@@ -209,6 +213,26 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
       policy: 'require_approval',
       reason:
         'patch de instrução nunca é auto-aprovável: o usuário precisa revisar o diff',
+    };
+  }
+
+  // TETO do paralelismo (FASE 14d): as duas ações que mexem em QUANTO o
+  // produto pode gastar sozinho nunca são auto-aprováveis.
+  //
+  // Sem isto o teto seria decorativo: um `permissions.json` com
+  // `parallelize: auto_approve` faria toda ultrapassagem se aprovar sozinha, e
+  // a regra que existe para exigir sua decisão passaria a dispensá-la. O
+  // `raise_max_parallel` é pior ainda — seria o produto elevando o próprio
+  // teto, que é exatamente o que o pipeline de aprovação existe para impedir.
+  if (
+    (action.actionType === 'parallelize' ||
+      action.actionType === 'raise_max_parallel') &&
+    current.policy === 'auto_approve'
+  ) {
+    return {
+      policy: 'require_approval',
+      reason:
+        'gastar com mais agentes nunca é auto-aprovável: quem decide subir o teto é você',
     };
   }
 

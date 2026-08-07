@@ -10,6 +10,8 @@ import { ExecuteAdrPrUseCase } from './execute-adr-pr.use-case';
 import { ExecuteInfraPrUseCase } from './execute-infra-pr.use-case';
 import { ExecuteInstructionPatchUseCase } from './execute-instruction-patch.use-case';
 import { ExecuteGitActionUseCase } from './execute-git-action.use-case';
+import { ExecuteParallelizationUseCase } from '../execution/execute-parallelization.use-case';
+import { ExecuteMaxParallelRaiseUseCase } from '../execution/execute-max-parallel-raise.use-case';
 import { assertTransition } from '../../../domain/actions/action-state-machine';
 import { GIT_EXECUTED_ACTION_TYPES } from '../../../domain/actions/git-action-types';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
@@ -26,6 +28,8 @@ export class ApproveActionUseCase {
     private readonly executeAdrPr: ExecuteAdrPrUseCase,
     private readonly executeInfraPr: ExecuteInfraPrUseCase,
     private readonly executeGitAction: ExecuteGitActionUseCase,
+    private readonly executeParallelization: ExecuteParallelizationUseCase,
+    private readonly executeMaxParallelRaise: ExecuteMaxParallelRaiseUseCase,
     private readonly executeInstructionPatch: ExecuteInstructionPatchUseCase,
     private readonly metrics: BraboMetrics,
     private readonly appendSessionEvent: AppendSessionEventUseCase,
@@ -78,6 +82,33 @@ export class ApproveActionUseCase {
         projectId,
         sessionId,
         await this.executeInstructionPatch.execute(
+          projectId,
+          sessionId,
+          approved,
+        ),
+      );
+    }
+
+    // FASE 14d: sem isto a ação nascia, era aprovada — e nada subia. Pior que
+    // não ter a feature: a tela afirma que você autorizou um agente que nunca
+    // veio.
+    if (approved.actionType === 'parallelize') {
+      return this.avisarQuemEsperava(
+        projectId,
+        sessionId,
+        await this.executeParallelization.execute(
+          projectId,
+          sessionId,
+          approved,
+        ),
+      );
+    }
+
+    if (approved.actionType === 'raise_max_parallel') {
+      return this.avisarQuemEsperava(
+        projectId,
+        sessionId,
+        await this.executeMaxParallelRaise.execute(
           projectId,
           sessionId,
           approved,

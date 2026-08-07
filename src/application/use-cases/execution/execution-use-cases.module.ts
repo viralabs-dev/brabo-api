@@ -9,6 +9,9 @@ import { AcceptParallelizationUseCase } from './accept-parallelization.use-case'
 import { RequestParallelizationUseCase } from './request-parallelization.use-case';
 import { ListAgentAreasUseCase } from './list-agent-areas.use-case';
 import { SetAreaMaxParallelUseCase } from './set-area-max-parallel.use-case';
+import { ExecuteParallelizationUseCase } from './execute-parallelization.use-case';
+import { ProposeMaxParallelUseCase } from './propose-max-parallel.use-case';
+import { ExecuteMaxParallelRaiseUseCase } from './execute-max-parallel-raise.use-case';
 import { ActionsUseCasesModule } from '../actions/actions-use-cases.module';
 import { ClaimNextTaskUseCase } from './claim-next-task.use-case';
 import { MarkTaskUseCase } from './mark-task.use-case';
@@ -40,6 +43,9 @@ const USE_CASES = [
   RequestParallelizationUseCase,
   ListAgentAreasUseCase,
   SetAreaMaxParallelUseCase,
+  ExecuteParallelizationUseCase,
+  ProposeMaxParallelUseCase,
+  ExecuteMaxParallelRaiseUseCase,
   ClaimNextTaskUseCase,
   MarkTaskUseCase,
   GetDevTaskContextUseCase,
