@@ -6,6 +6,7 @@ import { ApiToEngineClient } from '../../ports/api-to-engine-client.port';
 import { GitProviderRegistry } from '../../ports/git-provider.port';
 import { ProvisionedRepositoryRepository } from '../../ports/provisioned-repository-repository.port';
 import { UserCredentialRepository } from '../../ports/user-credential-repository.port';
+import { ResolveCredentialOwnerUseCase } from '../llm/resolve-credential-owner.use-case';
 import { EncryptionService } from '../../ports/encryption.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
@@ -37,6 +38,7 @@ export class ExecuteGitActionUseCase {
     private readonly repositories: ProvisionedRepositoryRepository,
     private readonly userCredentials: UserCredentialRepository,
     private readonly encryption: EncryptionService,
+    private readonly resolveOwner: ResolveCredentialOwnerUseCase,
   ) {}
 
   async execute(
@@ -97,9 +99,27 @@ export class ExecuteGitActionUseCase {
     if (!repo) throw new Error('Projeto sem repositório provisionado');
     const provider = this.gitProviders.get(repo.provider);
     let accessToken: string | undefined;
-    if (repo.provider !== 'local' && action.decidedBy) {
+    if (repo.provider !== 'local') {
+      // A credencial é do OWNER do workspace, não de quem decidiu a ação.
+      //
+      // Resolver por `action.decidedBy` funcionava só quando um humano
+      // clicava: ação AUTO-APROVADA por política não tem decisor, o campo
+      // fica NULL, o token fica `undefined`, e o GitHub responde
+      // `Requires authentication`. Na prática, com autonomia ligada —
+      // que é o modo que a Fase F existe para viabilizar — nenhum dev agent
+      // conseguia abrir PR em provider remoto (achado AA da FASE 13b).
+      //
+      // Nunca apareceu antes porque toda validação anterior usou o
+      // `LocalGitProvider`, onde o token não é consultado.
+      //
+      // É a mesma resposta da RN-058 para chave de LLM, e pelo mesmo motivo:
+      // quem banca a conta banca os agentes, e isso não muda conforme quem
+      // clica. O caminho do engine (`git_auth.ex`, RN-076) já fazia assim —
+      // era a api que estava fora de simetria, e é por isso que no mesmo run
+      // o `git_push` passava e o `pr_open` falhava.
+      const dono = await this.resolveOwner.execute(projectId);
       const secret = await this.userCredentials.findSecretByUserAndProvider(
-        action.decidedBy,
+        dono,
         repo.provider,
       );
       if (secret) accessToken = this.encryption.decrypt(secret);
