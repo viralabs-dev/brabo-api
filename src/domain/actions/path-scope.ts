@@ -53,9 +53,29 @@ export function dentroDoEscopo(caminho: string, raiz: string): boolean {
  * `HEAD` não são caminhos, e tratá-los como tal reprovaria comando legítimo
  * sem ganhar segurança nenhuma.
  */
+/**
+ * Dispositivos que NÃO são caminho de usuário.
+ *
+ * `2>/dev/null` é idioma, não acesso a arquivo: descarta saída, não lê nem
+ * escreve dado de ninguém. Tratá-lo como caminho fora do escopo fazia o teto
+ * rebaixar qualquer comando que silenciasse erro esperado — e modelos fazem
+ * isso o tempo todo (achado AC da FASE 13b).
+ *
+ * A lista é curta de propósito e NÃO é `/dev` inteiro: `/dev/sda` é disco,
+ * `/dev/mem` é memória física. O que entra aqui são os fluxos padrão e o
+ * buraco negro, cujo conteúdo não pertence a ninguém.
+ */
+const DISPOSITIVOS_NEUTROS = new Set([
+  '/dev/null',
+  '/dev/stdin',
+  '/dev/stdout',
+  '/dev/stderr',
+]);
+
 export function tokensDeCaminho(segmentos: string[][]): string[] {
   return segmentos
     .flat()
+    .filter((t) => !DISPOSITIVOS_NEUTROS.has(t))
     .filter((t) => t.startsWith('/') || t.split('/').includes('..'));
 }
 

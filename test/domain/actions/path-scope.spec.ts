@@ -112,4 +112,45 @@ describe('comandoNoEscopo', () => {
       ),
     ).toBe(false);
   });
+  // --- achado AC da FASE 13b -------------------------------------------
+  describe('redirecionamento (achado AC)', () => {
+    it('2>/dev/null não é caminho de usuário — o comando continua no escopo', () => {
+      // O caso real: o agente de QA rodou
+      // `ls -la && … cat package.json 2>/dev/null`. Todos os verbos estavam
+      // liberados, e mesmo assim virava require_approval.
+      const segs = parseCommand('cat package.json 2>/dev/null');
+
+      expect(tokensDeCaminho(segs)).toEqual([]);
+      expect(comandoNoEscopo(segs, RAIZ, RAIZ)).toBe(true);
+    });
+
+    it('os fluxos padrão também são neutros', () => {
+      const segs = parseCommand('echo oi > /dev/stdout 2> /dev/stderr');
+      expect(tokensDeCaminho(segs)).toEqual([]);
+      expect(comandoNoEscopo(segs, RAIZ, RAIZ)).toBe(true);
+    });
+
+    // O que NÃO pode afrouxar: o alvo do redirecionamento continua sendo
+    // avaliado como caminho. Se isto quebrar, a correção do AC virou buraco.
+    it('redirecionar para FORA do projeto continua fora do escopo', () => {
+      const segs = parseCommand('echo x > /etc/passwd');
+
+      expect(tokensDeCaminho(segs)).toContain('/etc/passwd');
+      expect(comandoNoEscopo(segs, RAIZ, RAIZ)).toBe(false);
+    });
+
+    it('`/dev` NÃO é liberado inteiro — só os neutros', () => {
+      // `/dev/sda` é disco; `/dev/mem` é memória física. Liberar `/dev`
+      // inteiro trocaria um incômodo por um buraco.
+      const segs = parseCommand('cat /dev/sda > dump.bin');
+
+      expect(tokensDeCaminho(segs)).toContain('/dev/sda');
+      expect(comandoNoEscopo(segs, RAIZ, RAIZ)).toBe(false);
+    });
+
+    it('redirecionar para dentro do projeto continua permitido', () => {
+      const segs = parseCommand('npm test > saida.log');
+      expect(comandoNoEscopo(segs, RAIZ, RAIZ)).toBe(true);
+    });
+  });
 });

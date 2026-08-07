@@ -23,10 +23,30 @@ export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
 };
 
 /**
- * Divide um comando em segmentos por qualquer operador de shell (&&, ;, |,
- * ||, &) — cada segmento é a lista de tokens (glob "*.js" vira o próprio
- * padrão, não uma string opaca). Comando sem operador retorna 1 segmento
- * só. Base de "comando composto exige aprovação de cada parte".
+ * Operadores que ENCADEIAM comandos. Só estes quebram segmento, porque só
+ * estes introduzem um comando novo — que é o que "comando composto exige
+ * aprovação de cada parte" quer dizer.
+ */
+const OPERADORES_DE_COMANDO = new Set(['&&', '||', ';', '|', '&']);
+
+/**
+ * Divide um comando em segmentos por operador que ENCADEIA comandos (&&, ;,
+ * |, ||, &) — cada segmento é a lista de tokens (glob "*.js" vira o próprio
+ * padrão, não uma string opaca). Comando sem operador retorna 1 segmento só.
+ * Base de "comando composto exige aprovação de cada parte".
+ *
+ * **Redirecionamento (`>`, `>>`, `<`) NÃO quebra segmento.** Ele não
+ * introduz comando nenhum: `cat x 2>/dev/null` é UM comando cujo verbo é
+ * `cat`. Tratá-lo como separador criava um segmento fantasma `["/dev/null"]`,
+ * cujo "verbo" era o próprio caminho — e como composto exige TODO segmento
+ * liberado, qualquer comando com redirecionamento virava
+ * `require_approval`. Como `2>/dev/null` é idiomático, isso na prática
+ * tornava a autonomia inútil (achado AC da FASE 13b).
+ *
+ * O alvo do redirecionamento continua como TOKEN do segmento, de propósito:
+ * é assim que `echo x > /etc/passwd` segue sendo pego pelo teto de escopo
+ * (RN-075), que olha os tokens de caminho. A mudança torna o VERBO correto
+ * sem afrouxar o caminho.
  */
 export function parseCommand(command: string): string[][] {
   const parsed = shellParse(command, PRESERVE_ENV_VARS);
@@ -35,9 +55,15 @@ export function parseCommand(command: string): string[][] {
 
   for (const entry of parsed) {
     const token = tokenOf(entry);
+
     if (token !== null) {
       current.push(token);
-    } else if (current.length > 0) {
+      continue;
+    }
+
+    // Operador. Só encadeamento fecha o segmento; redirecionamento é
+    // ignorado como token e o alvo cai no MESMO segmento.
+    if (encadeiaComando(entry) && current.length > 0) {
       segments.push(current);
       current = [];
     }
@@ -47,12 +73,21 @@ export function parseCommand(command: string): string[][] {
   return segments.length > 0 ? segments : [[]];
 }
 
+function encadeiaComando(entry: unknown): boolean {
+  if (entry && typeof entry === 'object' && 'op' in entry) {
+    return OPERADORES_DE_COMANDO.has(String((entry as { op: unknown }).op));
+  }
+  // Construção desconhecida: trata como quebra, que é o lado conservador —
+  // um segmento a mais só pode gerar aprovação, nunca auto-aprovação.
+  return true;
+}
+
 function tokenOf(entry: unknown): string | null {
   if (typeof entry === 'string') return entry;
   if (entry && typeof entry === 'object' && 'pattern' in entry) {
     return (entry as { pattern: string }).pattern;
   }
-  return null; // operador de shell (&&, ;, |, ...) ou outra construção especial
+  return null; // operador de shell (&&, ;, |, >, ...) ou construção especial
 }
 
 /**
