@@ -56,6 +56,7 @@ import { ProposeHypothesesUseCase } from '../../../application/use-cases/executi
 import { GetAnamneseContextUseCase } from '../../../application/use-cases/anamnese/get-anamnese-context.use-case';
 import { RecordProficiencyUseCase } from '../../../application/use-cases/anamnese/record-proficiency.use-case';
 import { ProposeInstructionPatchUseCase } from '../../../application/use-cases/instructions/propose-instruction-patch.use-case';
+import { ProposeMaxParallelUseCase } from '../../../application/use-cases/execution/propose-max-parallel.use-case';
 import { BlockTaskInternalDto } from './dto/block-task-internal.dto';
 import { RecordGateVerdictInternalDto } from './dto/record-gate-verdict-internal.dto';
 import { RecordDelegationInternalDto } from './dto/record-delegation-internal.dto';
@@ -63,6 +64,7 @@ import { RecordInfraGateVerdictInternalDto } from './dto/record-infra-gate-verdi
 import { ProposeHypothesesInternalDto } from './dto/propose-hypotheses-internal.dto';
 import {
   ProposeInstructionPatchInternalDto,
+  ProposeMaxParallelInternalDto,
   RecordProficiencyInternalDto,
 } from './dto/record-proficiency-internal.dto';
 import { OpenGateInternalDto } from './dto/open-gate-internal.dto';
@@ -161,6 +163,7 @@ export class InternalSessionsController {
     private readonly getAnamneseContext: GetAnamneseContextUseCase,
     private readonly recordProficiency: RecordProficiencyUseCase,
     private readonly proposeInstructionPatch: ProposeInstructionPatchUseCase,
+    private readonly proposeMaxParallel: ProposeMaxParallelUseCase,
   ) {}
 
   /**
@@ -839,6 +842,33 @@ export class InternalSessionsController {
       proposedContent: dto.proposedContent,
       rationale: dto.rationale,
       hypothesisId: dto.hypothesisId ?? null,
+    });
+  }
+
+  /**
+   * A Anamnese propondo subir o teto de paralelismo (FASE 14d, item 4).
+   *
+   * Vira `proposed_action` que NUNCA se auto-aprova. Automatizar o ajuste
+   * seria o produto elevando o próprio limite de gasto — a Anamnese aponta, e
+   * a decisão continua do usuário.
+   */
+  @Post(':sessionId/max-parallel-proposals')
+  @ApiOperation({
+    summary: 'Propõe subir o teto de paralelismo de uma área',
+    description:
+      'Recusa propor um teto igual ou menor que o vigente: a Anamnese roda ' +
+      'periodicamente, e reproporia a mesma coisa a cada rodada, enchendo de ' +
+      'ruído uma fila que o usuário precisa ler.',
+  })
+  @ApiCreatedResponse({ type: ProposedActionResponseDto })
+  maxParallelProposal(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: ProposeMaxParallelInternalDto,
+  ) {
+    return this.proposeMaxParallel.execute(dto.projectId, sessionId, {
+      area: dto.area,
+      proposto: dto.proposto,
+      rationale: dto.rationale,
     });
   }
 

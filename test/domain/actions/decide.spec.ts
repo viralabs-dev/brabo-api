@@ -270,6 +270,64 @@ describe('decide — restrição de terminal do InfraAgent (Fase 4a)', () => {
   });
 });
 
+describe('decide — teto do paralelismo (FASE 14d)', () => {
+  // As duas ações que mexem em QUANTO o produto gasta sozinho. Sem este teto o
+  // limite do lead seria decorativo: um permissions.json com auto_approve faria
+  // toda ultrapassagem se aprovar sozinha, e a regra que existe para EXIGIR a
+  // decisão do usuário passaria a dispensá-la.
+  const pedido = { actionType: 'parallelize' as const };
+  const subirTeto = { actionType: 'raise_max_parallel' as const };
+
+  it('agent_autonomy auto_approve NÃO auto-aprova ultrapassar o teto', () => {
+    const result = decide(
+      pedido,
+      ctx({ effectiveRole: 'maintainer', autonomyMode: 'auto_approve' }),
+    );
+    expect(result.policy).toBe('require_approval');
+    expect(result.reason).toMatch(/nunca é auto-aprovável/);
+  });
+
+  it('permissions.json allow NÃO auto-aprova ultrapassar o teto', () => {
+    const result = decide(
+      pedido,
+      ctx({
+        effectiveRole: 'maintainer',
+        permissionsFile: {
+          ...EMPTY_PERMISSIONS_FILE,
+          allow: ['Parallelize()'],
+        },
+      }),
+    );
+    expect(result.policy).toBe('require_approval');
+  });
+
+  it('SUBIR o teto nunca é auto-aprovável — seria o produto elevando o próprio limite', () => {
+    // O caso mais grave dos dois: a Anamnese propõe subir, e se a proposta
+    // pudesse se auto-aprovar o produto ajustaria sozinho quanto pode gastar.
+    const result = decide(
+      subirTeto,
+      ctx({
+        effectiveRole: 'maintainer',
+        autonomyMode: 'auto_approve',
+        permissionsFile: {
+          ...EMPTY_PERMISSIONS_FILE,
+          allow: ['RaiseMaxParallel()'],
+        },
+      }),
+    );
+    expect(result.policy).toBe('require_approval');
+  });
+
+  it('developer não alcança nenhuma das duas: papel mínimo é maintainer', () => {
+    expect(decide(pedido, ctx({ effectiveRole: 'developer' })).policy).toBe(
+      'deny',
+    );
+    expect(decide(subirTeto, ctx({ effectiveRole: 'developer' })).policy).toBe(
+      'deny',
+    );
+  });
+});
+
 describe('decide — teto do patch de instrução (Fase 4b)', () => {
   // Mesma classe de garantia da trava de merge, e por isso testada do mesmo
   // jeito: o valor da feature está no humano ver o diff. Auto-aprovar seria o

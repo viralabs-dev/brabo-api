@@ -112,3 +112,42 @@ export class ProposeInstructionPatchInternalDto {
   @IsUUID()
   hypothesisId?: string;
 }
+
+/**
+ * A Anamnese propondo subir o teto de paralelismo de uma área (FASE 14d).
+ *
+ * Vira `proposed_action` que NUNCA se auto-aprova (teto em `decide.ts`):
+ * automatizar o ajuste seria o produto elevando o próprio limite de gasto.
+ */
+export class ProposeMaxParallelInternalDto {
+  @ApiProperty({ format: 'uuid', example: '01JC4Z0000PROJETO0000000001' })
+  @IsUUID()
+  projectId!: string;
+
+  @ApiProperty({
+    example: 'dev',
+    description: 'A área cujo teto subiria.',
+  })
+  @IsString()
+  area!: string;
+
+  @ApiProperty({
+    example: 4,
+    minimum: 1,
+    description:
+      'O teto proposto. Precisa ser MAIOR que o vigente — propor o mesmo ou ' +
+      'menos vira ruído numa fila que o usuário precisa ler, e a Anamnese roda ' +
+      'periodicamente.',
+  })
+  @IsInt()
+  @Min(1)
+  proposto!: number;
+
+  @ApiProperty({
+    example:
+      'Você autorizou o mesmo pedido quatro vezes nesta janela, e nenhuma foi negada.',
+    description: 'Ancorado nas DECISÕES observadas, não em impressão.',
+  })
+  @IsString()
+  rationale!: string;
+}

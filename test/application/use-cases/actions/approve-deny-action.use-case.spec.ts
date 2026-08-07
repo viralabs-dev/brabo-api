@@ -118,6 +118,8 @@ const approveAction = new ApproveActionUseCase(
   {
     execute: (_p: string, _s: string, a: unknown) => Promise.resolve(a),
   } as unknown as never,
+  undefined as never, // executeParallelization — não exercitado aqui
+  undefined as never, // executeMaxParallelRaise — não exercitado aqui
   undefined as never, // executeInstructionPatch — não exercitado aqui,
   new BraboMetrics(),
   appendSessionEvent,
