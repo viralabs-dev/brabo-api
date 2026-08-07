@@ -35,8 +35,30 @@ export function normalizarCaminho(caminho: string, base?: string): string {
  */
 export function dentroDoEscopo(caminho: string, raiz: string): boolean {
   const c = normalizarCaminho(caminho);
-  const r = posix.normalize(raiz).replace(/\/+$/, '');
+  const r = semBarraFinal(posix.normalize(raiz));
   return c === r || c.startsWith(`${r}/`);
+}
+
+/**
+ * Tira as barras finais SEM regex.
+ *
+ * Era `.replace(/\/+$/, '')`, e o CodeQL apontou ReDoS polinomial
+ * (`js/polynomial-redos`, HIGH): `\/+$` obriga o motor a tentar cada posição
+ * inicial e varrer até o fim, degradando em O(n²) numa string cheia de
+ * barras. A raiz vem de configuração hoje, mas a função é exportada e o
+ * `caminho` deriva de comando de AGENTE — assumir que o dado é confiável
+ * seria apostar no chamador de amanhã.
+ *
+ * O laço faz o mesmo em O(n) e é EQUIVALENTE ao regex, inclusive no caso
+ * degenerado: a raiz `/` vira string vazia nos dois, e é isso que faz
+ * `startsWith('/')` continuar valendo para todo caminho absoluto. Preservar
+ * a `/` mudaria a semântica de carona, e correção de segurança não muda
+ * comportamento sem querer.
+ */
+function semBarraFinal(caminho: string): string {
+  let fim = caminho.length;
+  while (fim > 0 && caminho[fim - 1] === '/') fim--;
+  return caminho.slice(0, fim);
 }
 
 /**

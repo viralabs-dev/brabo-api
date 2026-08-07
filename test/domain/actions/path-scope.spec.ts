@@ -153,4 +153,33 @@ describe('comandoNoEscopo', () => {
       expect(comandoNoEscopo(segs, RAIZ, RAIZ)).toBe(true);
     });
   });
+  // --- ReDoS apontado pelo CodeQL (js/polynomial-redos, HIGH) -----------
+  describe('barras finais sem regex', () => {
+    it('raiz com barras repetidas ainda casa', () => {
+      expect(dentroDoEscopo(`${RAIZ}/src/a.ts`, `${RAIZ}///`)).toBe(true);
+      expect(dentroDoEscopo(RAIZ, `${RAIZ}/`)).toBe(true);
+    });
+
+    it('a raiz `/` sobrevive — não vira string vazia', () => {
+      // Se o corte comesse a última barra, a raiz `/` viraria '' e
+      // `startsWith('/')` passaria a valer para QUALQUER caminho.
+      expect(dentroDoEscopo('/qualquer/coisa', '/')).toBe(true);
+      expect(dentroDoEscopo('/', '/')).toBe(true);
+    });
+
+    it('o prefixo continua exigindo a barra — projeto vizinho segue de fora', () => {
+      expect(dentroDoEscopo('/data/ws/abcdef/x', '/data/ws/abc')).toBe(false);
+    });
+
+    it('entrada patológica termina rápido', () => {
+      // O caso que o CodeQL apontou: milhares de barras faziam o motor de
+      // regex retroceder em O(n²). Sem regex é varredura linear.
+      const barras = '/'.repeat(50_000);
+      const inicio = Date.now();
+
+      expect(dentroDoEscopo('/data/ws/x', `${RAIZ}${barras}`)).toBe(false);
+
+      expect(Date.now() - inicio).toBeLessThan(1000);
+    });
+  });
 });
