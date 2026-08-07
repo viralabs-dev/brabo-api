@@ -223,6 +223,9 @@ const TAGS_PERMITIDAS = [
   'git',
   'infraestrutura',
   'internal',
+  // FASE 15b: o registro de gates, para a tela derivar as etapas em vez de
+  // repetir a lista no código.
+  'gates',
 ];
 
 /** `/projects/{id}` (OpenAPI) → `/projects/:id` (Nest), para as chaves baterem. */
