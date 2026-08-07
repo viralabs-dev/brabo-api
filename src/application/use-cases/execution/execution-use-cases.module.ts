@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { SessionsUseCasesModule } from '../sessions/sessions-use-cases.module';
 import { AgentsUseCasesModule } from '../agents/agents-use-cases.module';
 import { EngineHttpClientsModule } from '../../../infrastructure/http-clients/engine-http-clients.module';
@@ -6,6 +6,8 @@ import { GitInfrastructureModule } from '../../../infrastructure/git/git-infrast
 import { FilesystemModule } from '../../../infrastructure/filesystem/filesystem.module';
 import { ActivateExecutionUseCase } from './activate-execution.use-case';
 import { AcceptParallelizationUseCase } from './accept-parallelization.use-case';
+import { RequestParallelizationUseCase } from './request-parallelization.use-case';
+import { ActionsUseCasesModule } from '../actions/actions-use-cases.module';
 import { ClaimNextTaskUseCase } from './claim-next-task.use-case';
 import { MarkTaskUseCase } from './mark-task.use-case';
 import { GetDevTaskContextUseCase } from './get-dev-task-context.use-case';
@@ -33,6 +35,7 @@ import { AnamneseUseCasesModule } from '../anamnese/anamnese-use-cases.module';
 const USE_CASES = [
   ActivateExecutionUseCase,
   AcceptParallelizationUseCase,
+  RequestParallelizationUseCase,
   ClaimNextTaskUseCase,
   MarkTaskUseCase,
   GetDevTaskContextUseCase,
@@ -65,6 +68,8 @@ const USE_CASES = [
     GitInfrastructureModule,
     FilesystemModule,
     AnamneseUseCasesModule,
+    // FASE 14d: o pedido de paralelismo acima do teto vira proposed_action.
+    forwardRef(() => ActionsUseCasesModule),
   ],
   providers: USE_CASES,
   exports: USE_CASES,

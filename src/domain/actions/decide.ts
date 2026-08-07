@@ -17,7 +17,8 @@ export type ActionType =
   | 'open_adr_pr'
   | 'git_merge'
   | 'open_infra_pr'
-  | 'instruction_patch';
+  | 'instruction_patch'
+  | 'parallelize';
 
 export const ACTION_TYPES: readonly ActionType[] = [
   'terminal',
@@ -33,6 +34,8 @@ export const ACTION_TYPES: readonly ActionType[] = [
   'git_merge',
   'open_infra_pr',
   'instruction_patch',
+  // FASE 14d: o lead pedindo mais agentes do que o teto dele permite.
+  'parallelize',
 ];
 
 const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
@@ -75,6 +78,9 @@ const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
   // como maintainer e tem teto de "nunca auto-aprovável" abaixo — o
   // usuário PRECISA ver o diff antes (CLAUDE.md 4b.9).
   instruction_patch: 'maintainer',
+  // Subir agente é GASTO. `maintainer` pelo mesmo motivo de `spend`: quem
+  // autoriza custo é quem responde pelo projeto.
+  parallelize: 'maintainer',
 };
 
 // Rede de segurança padrão, sempre ativa, independente do permissions.json
