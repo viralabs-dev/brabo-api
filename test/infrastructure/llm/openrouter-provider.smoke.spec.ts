@@ -3,7 +3,6 @@ import { eq } from 'drizzle-orm';
 import type { LLMProviderName } from '@brabo/shared';
 import { createTestDb, truncateAll } from '../../support/test-db';
 import {
-  models,
   projects,
   sessions,
   tokenUsage,
@@ -11,6 +10,7 @@ import {
   workspaces,
 } from '../../../src/db/schema';
 import { DrizzleModelRepository } from '../../../src/infrastructure/persistence/drizzle/model.repository';
+import { DrizzleWorkspaceModelRepository } from '../../../src/infrastructure/persistence/drizzle/workspace-model.repository';
 import { DrizzleModelBindingRepository } from '../../../src/infrastructure/persistence/drizzle/model-binding.repository';
 import { DrizzleUserCredentialRepository } from '../../../src/infrastructure/persistence/drizzle/user-credential.repository';
 import { DrizzleProjectRepository } from '../../../src/infrastructure/persistence/drizzle/project.repository';
@@ -80,6 +80,7 @@ describe.skipIf(!apiKey)(
     const { db, pool } = createTestDb();
 
     const modelRepo = new DrizzleModelRepository(db);
+    const workspaceModelRepo = new DrizzleWorkspaceModelRepository(db);
     const bindingRepo = new DrizzleModelBindingRepository(db);
     const credentialRepo = new DrizzleUserCredentialRepository(db);
     const projectRepo = new DrizzleProjectRepository(db);
@@ -130,8 +131,16 @@ describe.skipIf(!apiKey)(
       encryption,
       registry,
     );
-    const setModelsActive = new SetModelsActiveUseCase(modelRepo);
-    const setModelBinding = new SetModelBindingUseCase(bindingRepo, modelRepo);
+    const setModelsActive = new SetModelsActiveUseCase(
+      modelRepo,
+      workspaceModelRepo,
+    );
+    const setModelBinding = new SetModelBindingUseCase(
+      bindingRepo,
+      modelRepo,
+      workspaceModelRepo,
+      projectRepo,
+    );
     const resolveModelBinding = new ResolveModelBindingUseCase(
       bindingRepo,
       projectRepo,
@@ -239,10 +248,23 @@ describe.skipIf(!apiKey)(
 
         // 3) Curadoria — o modelo entrou DESATIVADO (RN-043); ativar é
         //    decisão explícita do owner, nunca automática.
-        expect(alvo!.isActive).toBe(false);
+        //
+        // A pergunta é feita ao `workspace_models`, não a uma coluna de
+        // `models`: desde o ADR 0049 a curadoria é POR WORKSPACE, e o
+        // desligado é a AUSÊNCIA de linha. Este smoke ainda afirmava
+        // `alvo.isActive === false` sobre o catálogo global — campo que não
+        // existe mais, e que vinha `undefined`. Passou despercebido porque o
+        // smoke nunca tinha rodado: sem `OPENROUTER_TEST_KEY` o describe
+        // inteiro é pulado.
+        expect(
+          await workspaceModelRepo.isActive(workspace.id, alvo!.id),
+          'modelo descoberto pelo sync não pode nascer ativo (RN-043)',
+        ).toBe(false);
         const [ativado] = await setModelsActive.execute({
+          workspaceId: workspace.id,
           modelIds: [alvo!.id],
           isActive: true,
+          curatedBy: owner.id,
         });
         expect(ativado.isActive).toBe(true);
 
