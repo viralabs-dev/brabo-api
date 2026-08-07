@@ -17,6 +17,7 @@ import { EngineHttpClientsModule } from '../../../infrastructure/http-clients/en
 import { FilesystemModule } from '../../../infrastructure/filesystem/filesystem.module';
 import { GitInfrastructureModule } from '../../../infrastructure/git/git-infrastructure.module';
 import { LlmInfrastructureModule } from '../../../infrastructure/llm/llm-infrastructure.module';
+import { LlmUseCasesModule } from '../llm/llm-use-cases.module';
 import { InstructionsUseCasesModule } from '../instructions/instructions-use-cases.module';
 
 const USE_CASES = [
@@ -42,6 +43,11 @@ const USE_CASES = [
     FilesystemModule,
     GitInfrastructureModule,
     LlmInfrastructureModule,
+    // Pelo `ResolveCredentialOwnerUseCase` (RN-058): a credencial de git das
+    // ações executadas aqui é a do OWNER do workspace, não a de quem decidiu
+    // — e reusar o resolvedor é o que impede duas regras de "de quem é a
+    // credencial" divergirem. Mesmo motivo do `GitUseCasesModule`.
+    LlmUseCasesModule,
     forwardRef(() => InstructionsUseCasesModule),
   ],
   providers: USE_CASES,

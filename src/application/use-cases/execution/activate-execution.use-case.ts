@@ -8,6 +8,7 @@ import { ProjectRepository } from '../../ports/project-repository.port';
 import { PermissionsFileStore } from '../../ports/permissions-file-store.port';
 import { DEV_TERMINAL_ALLOW_PATTERNS } from '../../../domain/actions/dev-terminal-patterns';
 import { TransitionSessionUseCase } from '../sessions/transition-session.use-case';
+import { CreateSessionUseCase } from '../sessions/create-session.use-case';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { UpsertAgentInstructionUseCase } from '../agents/upsert-agent-instruction.use-case';
 import { DEFAULT_MAX_GATE_CORRECTIONS } from './record-gate-verdict.use-case';
@@ -76,6 +77,7 @@ export class ActivateExecutionUseCase {
     private readonly agentAutonomy: AgentAutonomyRepository,
     private readonly engineClient: ApiToEngineClient,
     private readonly transitionSession: TransitionSessionUseCase,
+    private readonly createSession: CreateSessionUseCase,
     private readonly appendEvent: AppendSessionEventUseCase,
     private readonly upsertInstruction: UpsertAgentInstructionUseCase,
     private readonly projects: ProjectRepository,
@@ -151,9 +153,15 @@ export class ActivateExecutionUseCase {
     // a sessão nascia `active`, recebia o `execution.activated`, e nunca mais
     // recebia coisa nenhuma — os eventos dos agentes continuavam indo para a
     // sessão da ativação anterior. Uma sessão órfã por clique de reativação.
+    //
+    // A sessão nova sai pelo `CreateSessionUseCase` e não pelo repositório: é
+    // ele que emite `session.created` no outbox, e é esse evento que faz o
+    // engine subir o SessionServer (RN-067). Pelo caminho direto a sessão dos
+    // DEV AGENTS nascia sem processo nenhum — canal recusado, sem heartbeat,
+    // e `active` para sempre.
     const vigente = await this.sessions.findActiveExecutionSession(projectId);
     const session =
-      vigente ?? (await this.sessions.create({ projectId, createdBy: userId }));
+      vigente ?? (await this.createSession.execute(projectId, userId));
     if (!vigente) {
       await this.transitionSession.execute(projectId, session.id, 'active');
     }

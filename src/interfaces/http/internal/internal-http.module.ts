@@ -8,8 +8,11 @@ import { ArchitectureUseCasesModule } from '../../../application/use-cases/archi
 import { ExecutionUseCasesModule } from '../../../application/use-cases/execution/execution-use-cases.module';
 import { AnamneseUseCasesModule } from '../../../application/use-cases/anamnese/anamnese-use-cases.module';
 import { InstructionsUseCasesModule } from '../../../application/use-cases/instructions/instructions-use-cases.module';
+import { GitUseCasesModule } from '../../../application/use-cases/git/git-use-cases.module';
 import { InternalSessionsController } from './internal-sessions.controller';
 import { InternalModelsController } from './internal-models.controller';
+import { InternalGatesController } from './internal-gates.controller';
+import { InternalProjectsController } from './internal-projects.controller';
 
 @Module({
   imports: [
@@ -22,7 +25,14 @@ import { InternalModelsController } from './internal-models.controller';
     ExecutionUseCasesModule,
     AnamneseUseCasesModule,
     InstructionsUseCasesModule,
+    GitUseCasesModule,
   ],
-  controllers: [InternalSessionsController, InternalModelsController],
+  controllers: [
+    InternalSessionsController,
+    InternalModelsController,
+    // Sem provider: o registro é arquivo, e o loader é função pura memoizada.
+    InternalGatesController,
+    InternalProjectsController,
+  ],
 })
 export class InternalHttpModule {}

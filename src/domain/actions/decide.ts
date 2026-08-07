@@ -2,6 +2,7 @@ import { roleAtLeast, type Role } from '../iam/role';
 import type { PermissionPolicy, PermissionsFile } from './permissions-file';
 import { matchesPattern, parseCommand } from './command-matcher';
 import { isProtectedBranch } from './protected-branches';
+import { comandoNoEscopo } from './path-scope';
 
 export type ActionType =
   | 'terminal'
@@ -91,12 +92,20 @@ export interface DecideAction {
   actionType: ActionType;
   command?: string; // só usado (e obrigatório em espírito) pra actionType === 'terminal'
   targetBranch?: string; // só usado pra actionType === 'git_merge' (trava de merge)
+  cwd?: string; // só usado pra actionType === 'terminal' (escopo de caminho)
 }
 
 export interface DecideContext {
   effectiveRole: Role | null;
   autonomyMode: PermissionPolicy | null;
   permissionsFile: PermissionsFile;
+  /**
+   * Raiz do projeto no disco (`<workspaces_root>/<projectId>`), quando
+   * conhecida. AUSENTE mantém o comportamento anterior ao ADR 0055: sem
+   * afrouxamento do `cd` e sem o teto de caminho. É o que permite existir
+   * chamador que não sabe a raiz sem mudar o veredito dele.
+   */
+  projectScopeRoot?: string;
 }
 
 export interface Decision {
@@ -135,10 +144,33 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
     if (current.policy === 'deny') return current;
   }
 
-  const fileVerdict = decideFromPermissionsFile(action, ctx.permissionsFile);
+  const noEscopo = terminalNoEscopo(action, ctx);
+
+  const fileVerdict = decideFromPermissionsFile(
+    action,
+    ctx.permissionsFile,
+    noEscopo === true,
+  );
   if (fileVerdict) {
     if (fileVerdict.policy === 'deny') return fileVerdict;
     current = fileVerdict;
+  }
+
+  // TETO DO ESCOPO DE CAMINHO (ADR 0055). Comando de terminal que toca
+  // qualquer caminho FORA da pasta do projeto nunca é auto-aprovável, por mais
+  // que o verbo esteja em `allow`.
+  //
+  // É o que fecha o achado U: o casamento do arquivo é por VERBO, então `cat`
+  // liberado auto-aprovava `cat /workspace/apps/engine/.../git_executor.ex` —
+  // o código da plataforma que executa o agente. Fora do escopo vira
+  // `require_approval` e não `deny` de propósito: o agente pode ter razão
+  // legítima para olhar fora, e quem decide continua sendo o usuário.
+  if (noEscopo === false && current.policy === 'auto_approve') {
+    return {
+      policy: 'require_approval',
+      reason:
+        'escopo: o comando toca caminho fora da pasta do projeto — decisão do usuário',
+    };
   }
 
   // TETO da trava de merge (Fase 4a): merge com destino em branch protegida
@@ -177,18 +209,64 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
   return current;
 }
 
+/**
+ * O comando de terminal está inteiramente dentro da pasta do projeto?
+ *
+ * `null` = não dá para dizer (não é terminal, ou o chamador não informou a
+ * raiz). Os três estados são de propósito: `null` não afrouxa nem aperta nada,
+ * o que mantém o comportamento anterior ao ADR 0055 para quem não passa a raiz.
+ */
+function terminalNoEscopo(
+  action: DecideAction,
+  ctx: DecideContext,
+): boolean | null {
+  if (action.actionType !== 'terminal' || !ctx.projectScopeRoot) return null;
+  if (!action.command) return null;
+
+  return comandoNoEscopo(
+    parseCommand(action.command),
+    action.cwd,
+    ctx.projectScopeRoot,
+  );
+}
+
+/** `cd` para dentro do escopo é a própria declaração de escopo, não um verbo. */
+function ehCdNoEscopo(tokens: string[]): boolean {
+  return tokens[0] === 'cd';
+}
+
 function decideFromPermissionsFile(
   action: DecideAction,
   file: PermissionsFile,
+  noEscopo: boolean,
 ): Decision | null {
   const segments =
     action.actionType === 'terminal' && action.command
       ? parseCommand(action.command)
       : [[]];
 
-  const perSegment = segments.map((tokens) =>
-    matchAgainstFile(action.actionType, tokens, file),
-  );
+  const perSegment = segments.map((tokens) => {
+    const veredito = matchAgainstFile(action.actionType, tokens, file);
+    if (veredito) return veredito;
+
+    // Dentro do escopo, um `cd` sem regra deixa de reprovar o comando composto
+    // (ADR 0055). Era o defeito mais caro da escada: o dev agent emite SEMPRE
+    // `cd <caminho> && <verbo>`, `cd` não está em allow nenhum, e comando
+    // composto exige que TODOS os segmentos casem — então o allow semeado
+    // quase nunca era alcançado e cada comando parava para aprovação.
+    //
+    // Só vale com o escopo já verificado: `comandoNoEscopo` conferiu que o
+    // destino do `cd` está dentro da pasta do projeto. Fora dela, o `cd`
+    // continua sem regra e o comando continua indo para o usuário.
+    if (noEscopo && ehCdNoEscopo(tokens)) {
+      return {
+        policy: 'auto_approve' as const,
+        reason: 'escopo: cd dentro da pasta do projeto',
+      };
+    }
+
+    return null;
+  });
 
   const denyHit = perSegment.find((v) => v?.policy === 'deny');
   if (denyHit) return denyHit;

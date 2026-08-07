@@ -123,7 +123,9 @@ describe('planBootstrap — o dry-run da adoção', () => {
 
     expect(steps).toEqual([]);
     expect(
-      diagnostics.filter((d) => d.kind === 'extra_branch').map((d) => d.detail.branchName),
+      diagnostics
+        .filter((d) => d.kind === 'extra_branch')
+        .map((d) => d.detail.branchName),
     ).toEqual(['rc']);
   });
 

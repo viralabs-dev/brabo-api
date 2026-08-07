@@ -61,6 +61,12 @@ class FakeStories {
   created: Story | null = null;
   status: string | null = null;
   proposed: boolean | null = null;
+  // As histórias que o projeto JÁ tem — vazio por padrão, que é o cenário
+  // dos testes herdados. Quem testa duplicata/sobreposição preenche.
+  existentes: Story[] = [];
+  findByProject() {
+    return Promise.resolve(this.existentes);
+  }
   create(input: Partial<Story>) {
     this.created = makeStory({ ...input, id: 'story-1' });
     return Promise.resolve(this.created);
@@ -287,6 +293,103 @@ describe('CreateStoryUseCase', () => {
       });
 
       expect(story.proposedReady).toBe(false);
+    });
+  });
+  // Achado R: o PO gerou "Endpoint público de saudação determinística" e
+  // "Endpoint público GET /hello que responde saudação imediata" para o
+  // mesmo endpoint, sem dedupe nem aviso.
+  describe('história repetida (achado R)', () => {
+    it('recusa título idêntico no projeto — nada é criado', async () => {
+      stories.existentes = [
+        makeStory({ id: 'story-velha', title: 'Endpoint público de saudação' }),
+      ];
+
+      await expect(
+        useCase.execute(PROJECT, SESSION, {
+          epicId: 'epic-1',
+          title: 'Endpoint público de saudação',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      expect(stories.created).toBeNull();
+      expect(append.calls).toHaveLength(0);
+    });
+
+    it('caixa e acento diferentes ainda são o mesmo título', async () => {
+      stories.existentes = [
+        makeStory({ id: 'story-velha', title: 'Endpoint público de saudação' }),
+      ];
+
+      await expect(
+        useCase.execute(PROJECT, SESSION, {
+          epicId: 'epic-1',
+          title: '  ENDPOINT PUBLICO DE SAUDACAO  ',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('avisa quando a nova história não acrescenta cobertura — mas CRIA', async () => {
+      events.byId['evt-r1'] = ruleEvent('evt-r1');
+      stories.existentes = [
+        makeStory({
+          id: 'story-velha',
+          title: 'Saudação determinística',
+          businessRuleIds: ['evt-r1', 'evt-r2'],
+        }),
+      ];
+
+      const story = await useCase.execute(PROJECT, SESSION, {
+        epicId: 'epic-1',
+        title: 'GET /hello responde saudação imediata',
+        businessRuleIds: ['evt-r1'],
+      });
+
+      // A história EXISTE: o aviso não bloqueia. Quem decide é o usuário.
+      expect(story).not.toBeNull();
+      expect(append.calls).toContain('backlog.story_overlap_warned');
+    });
+
+    it('regra em comum, mas cobertura NOVA, não vira aviso', async () => {
+      events.byId['evt-r1'] = ruleEvent('evt-r1');
+      events.byId['evt-r9'] = ruleEvent('evt-r9');
+      stories.existentes = [
+        makeStory({ id: 'story-velha', businessRuleIds: ['evt-r1'] }),
+      ];
+
+      await useCase.execute(PROJECT, SESSION, {
+        epicId: 'epic-1',
+        title: 'Outra coisa',
+        businessRuleIds: ['evt-r1', 'evt-r9'],
+      });
+
+      // Compartilhar UMA regra é normal; avisar disso seria ruído.
+      expect(append.calls).not.toContain('backlog.story_overlap_warned');
+    });
+
+    it('história sem regra citada não gera aviso', async () => {
+      stories.existentes = [
+        makeStory({ id: 'story-velha', businessRuleIds: ['evt-r1'] }),
+      ];
+
+      await useCase.execute(PROJECT, SESSION, {
+        epicId: 'epic-1',
+        title: 'Sem justificativa',
+      });
+
+      expect(append.calls).not.toContain('backlog.story_overlap_warned');
+    });
+
+    it('projeto vazio: primeira história nunca é duplicata nem aviso', async () => {
+      events.byId['evt-r1'] = ruleEvent('evt-r1');
+
+      const story = await useCase.execute(PROJECT, SESSION, {
+        epicId: 'epic-1',
+        title: 'A primeira',
+        businessRuleIds: ['evt-r1'],
+      });
+
+      expect(story).not.toBeNull();
+      expect(append.calls).not.toContain('backlog.story_overlap_warned');
     });
   });
 });

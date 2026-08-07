@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
 import { ModuleMapRepository } from '../../ports/module-map-repository.port';
 import { StoryRepository } from '../../ports/backlog-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
@@ -43,6 +47,28 @@ export class CreateModuleMapUseCase {
     }
 
     const current = await this.moduleMaps.findCurrent(projectId);
+
+    // Um mapa POR SESSÃO. Versionar entre sessões é desejado — arquitetura se
+    // revisa —, mas dentro da MESMA sessão a segunda emissão nunca é revisão:
+    // é o modelo redecidindo do zero. Numa execução real o Arquiteto emitiu
+    // quatro mapas seguidos, com nomes e recortes diferentes a cada volta
+    // (`greeting`, `hello_core`, `greeting`, `hello-api-core`), e só parou
+    // porque a rede caiu.
+    //
+    // A recusa volta ao modelo pelo tool-result (RN-061): ele lê que já existe
+    // e segue para o passo 2 do kickoff, em vez de reabrir o passo 1.
+    if (current && current.sessionId === sessionId) {
+      // A recusa diz os NOMES, não só a contagem. Na execução que motivou este
+      // guarda, o Arquiteto leu "2 módulos", não soube quais, e reemitiu o mapa
+      // justamente para tentar fixar nomes que não conseguia ler — o laço era
+      // sintoma da cegueira, não a doença.
+      throw new ConflictException(
+        `Esta sessão já definiu o module_map (versão ${current.version}), ` +
+          `com os módulos: ${current.modules.map((m) => m.name).join(', ')}. ` +
+          `Siga para assign_story_modules usando esses nomes.`,
+      );
+    }
+
     const map = await this.moduleMaps.create({
       projectId,
       sessionId,

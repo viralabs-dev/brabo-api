@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Put } from '@nestjs/common';
+import { Body, Controller, Get, Param, Query, Put } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiForbiddenResponse,
@@ -12,11 +12,13 @@ import { UpsertBudgetUseCase } from '../../../application/use-cases/llm/upsert-b
 import { GetBudgetUseCase } from '../../../application/use-cases/llm/get-budget.use-case';
 import { GetSessionTokenUsageUseCase } from '../../../application/use-cases/llm/get-session-token-usage.use-case';
 import { GetProjectAgentCostsUseCase } from '../../../application/use-cases/llm/get-project-agent-costs.use-case';
+import { GetCredentialSpendUseCase } from '../../../application/use-cases/llm/get-credential-spend.use-case';
 import { UpsertBudgetDto } from './dto/upsert-budget.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import {
   AgentTokenUsageResponseDto,
   BudgetResponseDto,
+  CredentialSpendResponseDto,
 } from './dto/llm.response.dto';
 
 const MICROS_PER_USD = 1_000_000;
@@ -39,6 +41,7 @@ export class BudgetsController {
     private readonly getBudget: GetBudgetUseCase,
     private readonly getSessionTokenUsageUseCase: GetSessionTokenUsageUseCase,
     private readonly getProjectAgentCostsUseCase: GetProjectAgentCostsUseCase,
+    private readonly getCredentialSpendUseCase: GetCredentialSpendUseCase,
   ) {}
 
   @Get('projects/:projectId/budget')
@@ -118,6 +121,33 @@ export class BudgetsController {
   @ApiOkResponse({ type: [AgentTokenUsageResponseDto] })
   getProjectAgentCosts(@Param('projectId') projectId: string) {
     return this.getProjectAgentCostsUseCase.execute(projectId);
+  }
+
+  // Gasto das CHAVES do owner. `owner` e não `maintainer`: desde a RN-058 os
+  // agentes gastam a credencial do dono do workspace, e a fatura dele não é
+  // assunto de quem só opera o projeto.
+  @Get('workspaces/:workspaceId/credential-spend')
+  @RequireRole('owner')
+  @ApiOperation({
+    summary: 'Quanto as chaves do owner gastaram, por provider e por mês',
+    description:
+      'Existe porque a chave que os agentes gastam é a do OWNER do workspace ' +
+      '(RN-058) — quem paga a conta precisa ver a conta. Agrupa por provider ' +
+      'porque é essa a unidade da credencial, e separa o que saiu por AGENTE ' +
+      'do que saiu por pessoa no chat: as duas coisas saem da mesma chave e ' +
+      'respondem perguntas diferentes. Não devolve segredo nenhum.',
+  })
+  @ApiOkResponse({ type: CredentialSpendResponseDto })
+  @ApiForbiddenResponse({ description: 'Exige `owner` no workspace.' })
+  getCredentialSpend(
+    @Param('workspaceId') workspaceId: string,
+    @Query('meses') meses?: string,
+  ) {
+    const janela = Number(meses);
+    return this.getCredentialSpendUseCase.execute(
+      workspaceId,
+      Number.isFinite(janela) && janela > 0 && janela <= 24 ? janela : 6,
+    );
   }
 
   @Put('projects/:projectId/sessions/:sessionId/budget')

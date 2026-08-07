@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { projectScopeRoot } from './project-workspaces-root';
 import { Injectable } from '@nestjs/common';
 import { PermissionsFileStore } from '../../application/ports/permissions-file-store.port';
 import {
@@ -38,10 +39,11 @@ export class FsPermissionsFileStore implements PermissionsFileStore {
     });
   }
 
+  // A raiz vem da função compartilhada, e não de uma leitura própria do env:
+  // o escopo de caminho do ADR 0055 deriva a MESMA raiz, e duas leituras
+  // separadas poderiam divergir — política lida de um lugar, aplicada a outro.
   private pathFor(projectId: string): string {
-    const root =
-      process.env.PROJECT_WORKSPACES_ROOT ?? '/tmp/brabo-project-workspaces';
-    return join(root, projectId, 'permissions.json');
+    return join(projectScopeRoot(projectId), 'permissions.json');
   }
 }
 

@@ -19,6 +19,34 @@
  * Puro, sem IO.
  */
 export const DEV_TERMINAL_ALLOW_PATTERNS: readonly string[] = [
+  // LEITURA do próprio worktree — o que o agente faz ANTES de qualquer build.
+  //
+  // A lista cobria só build/teste, e isso bastava enquanto quem rodava era o
+  // dev agent Noop. Com modelo de verdade, num repositório recém-provisionado
+  // (só o template de PR e a política de branches), o primeiro instinto dele é
+  // olhar em volta: `ls -la`, `find .`, `pwd`. Cada um caía em
+  // `require_approval`, voltava do tool-result como `status pending` — e não
+  // como a saída do comando — e queimava uma iteração. Numa execução real ele
+  // morreu em `toolloop.limit_reached {iteration: 8, max_iterations: 8}` sem
+  // ter escrito uma linha, e nunca chegou perto de um `pnpm test`.
+  //
+  // Todos são de leitura e não alteram nada. O que protege não é a inocência do
+  // verbo, é o resto do mecanismo continuar valendo: `deny` vence `allow`, os
+  // `BUILTIN_DENY_PATTERNS` seguem ativos, o comando roda no worktree do
+  // próprio agente, e comando composto exige que CADA segmento case — então
+  // `ls && rm -rf /` não passa por causa do `ls`.
+  'Terminal(ls)',
+  'Terminal(pwd)',
+  'Terminal(find)',
+  'Terminal(cat)',
+  'Terminal(head)',
+  'Terminal(tail)',
+  'Terminal(grep)',
+  'Terminal(wc)',
+  'Terminal(echo)',
+  'Terminal(git status)',
+  'Terminal(git diff)',
+  'Terminal(git log)',
   // Node / pnpm / npm / yarn
   'Terminal(pnpm install)',
   'Terminal(pnpm test)',

@@ -23,6 +23,8 @@ import { EnvelopeEncryptionService } from '../../../../src/infrastructure/securi
 import { GptTokenizerEstimator } from '../../../../src/infrastructure/tokenization/gpt-tokenizer-estimator';
 import { ResolveModelBindingUseCase } from '../../../../src/application/use-cases/llm/resolve-model-binding.use-case';
 import { CheckBudgetGateUseCase } from '../../../../src/application/use-cases/llm/check-budget-gate.use-case';
+import { ResolveCredentialOwnerUseCase } from '../../../../src/application/use-cases/llm/resolve-credential-owner.use-case';
+import { DrizzleWorkspaceRepository } from '../../../../src/infrastructure/persistence/drizzle/workspace.repository';
 import { RecordLlmUsageUseCase } from '../../../../src/application/use-cases/llm/record-llm-usage.use-case';
 import { RunLlmTurnUseCase } from '../../../../src/application/use-cases/llm/run-llm-turn.use-case';
 import type { LLMProvider } from '../../../../src/application/ports/llm-provider.port';
@@ -48,6 +50,10 @@ const resolveModelBinding = new ResolveModelBindingUseCase(
   projectRepo,
 );
 const checkBudgetGate = new CheckBudgetGateUseCase(budgetRepo);
+const resolveCredentialOwner = new ResolveCredentialOwnerUseCase(
+  projectRepo,
+  new DrizzleWorkspaceRepository(db),
+);
 const recordLlmUsage = new RecordLlmUsageUseCase(
   tokenUsageRepo,
   budgetRepo,
@@ -93,6 +99,7 @@ function buildUseCase(provider: LLMProvider) {
     resolveModelBinding,
     checkBudgetGate,
     recordLlmUsage,
+    resolveCredentialOwner,
   );
 }
 
