@@ -554,20 +554,48 @@ async function main() {
   // padrão "libere tudo" — de propósito. O teto de escopo protege o CAMINHO,
   // não o verbo, então cada comando novo que o agente inventa (`ls -la` foi o
   // da 4ª execução) cai em `require_approval` se o verbo não estiver aqui.
+  //
+  // O CRITÉRIO da lista: verbos que LEEM ou CONSTROEM. Nada que busque na
+  // rede (`curl`, `wget`) e nada que destrua (`rm`, `mv`, `chmod`, `sudo`) —
+  // esses continuam pedindo decisão, que é o que a lista fechada existe para
+  // garantir. O teto de escopo (RN-075) protege o CAMINHO; esta lista protege
+  // o VERBO, e as duas coisas são independentes.
+  //
+  // `head` entrou depois da 6ª execução: o agente de QA rodou
+  // `ls -la && find … | head -50`, e comando composto só é auto-aprovado
+  // quando TODO segmento está liberado.
   const permissoes = app.get(PermissionsFileStore);
   for (const padrao of [
+    // build e teste
     'Terminal(npm)',
     'Terminal(pnpm)',
     'Terminal(npx)',
     'Terminal(node)',
+    'Terminal(yarn)',
+    'Terminal(make)',
+    // navegação e leitura
     'Terminal(ls)',
     'Terminal(cat)',
-    'Terminal(mkdir)',
-    'Terminal(touch)',
-    'Terminal(echo)',
     'Terminal(pwd)',
     'Terminal(find)',
     'Terminal(grep)',
+    'Terminal(head)',
+    'Terminal(tail)',
+    'Terminal(wc)',
+    'Terminal(sort)',
+    'Terminal(uniq)',
+    'Terminal(cut)',
+    'Terminal(tree)',
+    'Terminal(stat)',
+    'Terminal(file)',
+    'Terminal(which)',
+    'Terminal(diff)',
+    'Terminal(env)',
+    'Terminal(printenv)',
+    // escrita DENTRO do projeto (o teto de escopo cuida do resto)
+    'Terminal(mkdir)',
+    'Terminal(touch)',
+    'Terminal(echo)',
     'Terminal(git)',
   ]) {
     await permissoes.addPattern(project.id, 'allow', padrao);
