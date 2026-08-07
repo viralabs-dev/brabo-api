@@ -41,13 +41,19 @@
  * Rodar a barata primeiro, sozinha, é o que evita descobrir um erro de
  * configuração depois de já ter pago por ele.
  *
- *   adocao    — projeto + adoção remota + decisão do plano   (grátis)
+ *   adocao    — projeto + adoção remota, SEM decidir o plano   (grátis)
+ *
+ * `--plano aprovar|como-esta` decide o que fazer com a divergência. Não é
+ * simétrico: "como está" é o certo para repositório que já tem convenção
+ * própria (o caso da RN-045), e "aprovar" é o certo para repositório VAZIO —
+ * onde "como está" não deixa branch nem commit, e o dev agent não teria de
+ * onde partir.
  *   backlog   — story criada e promovida por você            (grátis)
  *   execucao  — dev agent real → PR remota → gates por LLM   (PAGO)
  */
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { AppModule } from '../src/app.module';
 import {
   DRIZZLE,
@@ -57,20 +63,37 @@ import {
   projectMembers,
   projectRepositories,
   projects,
+  proposedActions,
   repoBootstraps,
+  sessionEvents,
   userCredentials,
   users,
   workspaces,
 } from '../src/db/schema';
 import { AdoptRepositoryUseCase } from '../src/application/use-cases/git/adopt-repository.use-case';
 import { DecideBootstrapPlanUseCase } from '../src/application/use-cases/git/decide-bootstrap-plan.use-case';
+import { AcknowledgeProtectionFailureUseCase } from '../src/application/use-cases/git/acknowledge-protection-failure.use-case';
+import { AppendSessionEventUseCase } from '../src/application/use-cases/sessions/append-session-event.use-case';
+import { CreateStoryUseCase } from '../src/application/use-cases/backlog/create-story.use-case';
+import { PromoteStoriesUseCase } from '../src/application/use-cases/backlog/promote-stories.use-case';
+import { ActivateExecutionUseCase } from '../src/application/use-cases/execution/activate-execution.use-case';
+import { SessionRepository } from '../src/application/ports/session-repository.port';
+import { ModuleMapRepository } from '../src/application/ports/module-map-repository.port';
+import {
+  EpicRepository,
+  StoryRepository,
+  TaskRepository,
+} from '../src/application/ports/backlog-repository.port';
 
 type Fase = 'adocao' | 'backlog' | 'execucao';
 const FASES: Fase[] = ['adocao', 'backlog', 'execucao'];
 
+type Plano = 'aprovar' | 'como-esta';
+
 interface Opcoes {
   repo: string;
   ate: Fase;
+  plano: Plano;
 }
 
 function lerOpcoes(): Opcoes {
@@ -92,7 +115,19 @@ function lerOpcoes(): Opcoes {
     process.exit(2);
   }
 
-  return { repo, ate: (ateArg as Fase) ?? 'execucao' };
+  const planoArg = args.includes('--plano')
+    ? args[args.indexOf('--plano') + 1]
+    : null;
+  if (planoArg != null && planoArg !== 'aprovar' && planoArg !== 'como-esta') {
+    console.error(`--plano inválido: ${planoArg} (use aprovar | como-esta)`);
+    process.exit(2);
+  }
+
+  return {
+    repo,
+    ate: (ateArg as Fase) ?? 'execucao',
+    plano: (planoArg as Plano) ?? 'como-esta',
+  };
 }
 
 function log(msg: string) {
@@ -103,8 +138,63 @@ function assertar(condicao: boolean, mensagem: string): asserts condicao {
   if (!condicao) throw new Error(`CRITÉRIO NÃO FECHOU: ${mensagem}`);
 }
 
+const MODULOS = [
+  {
+    name: 'api',
+    stack: 'NestJS',
+    responsibility: 'regras de negócio e endpoints',
+    dependsOn: [],
+  },
+];
+
+// Tetos generosos, e por motivos diferentes. O dev real escreve código com
+// LLM e faz três chamadas de rede ao GitHub (commit, push, PR); os gates são
+// dois agentes lendo um diff. Um teto curto aqui não mede nada — só transforma
+// lentidão em falha, e desperdiça o que já foi PAGO até o ponto do timeout.
+const TIMEOUT_DEV_MS = 15 * 60_000;
+const TIMEOUT_GATES_MS = 15 * 60_000;
+
+/**
+ * Espera uma condição aparecer no banco.
+ *
+ * Sonda em vez de assinar evento de propósito: o que se está validando é o
+ * ESTADO durável que sobra depois, e não uma notificação em memória — se a
+ * cadeia funcionar só por broadcast, ela não passa aqui, que é justamente o
+ * tipo de defeito que esta fase existe para pegar.
+ */
+async function esperar<T>(
+  rotulo: string,
+  fn: () => Promise<T | null>,
+  timeoutMs: number,
+): Promise<T> {
+  const limite = Date.now() + timeoutMs;
+  let ultimoAviso = 0;
+
+  for (;;) {
+    const valor = await fn();
+    if (valor) return valor;
+
+    if (Date.now() > limite) {
+      throw new Error(
+        `timeout (${Math.round(timeoutMs / 60_000)}min) esperando: ${rotulo}`,
+      );
+    }
+
+    // Um sinal de vida a cada minuto: sem ele, uma espera de 15 minutos é
+    // indistinguível de um script travado, e a tentação é matá-lo no meio —
+    // justamente o que descartaria o gasto já feito.
+    const decorrido = Date.now() - (limite - timeoutMs);
+    if (decorrido - ultimoAviso >= 60_000) {
+      ultimoAviso = decorrido;
+      log(`  … ${Math.round(decorrido / 1000)}s esperando ${rotulo}`);
+    }
+
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+}
+
 async function main() {
-  const { repo, ate } = lerOpcoes();
+  const { repo, ate, plano } = lerOpcoes();
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ['error'],
   });
@@ -241,14 +331,218 @@ async function main() {
   }
 
   // A partir daqui o Brabo ESCREVE no repositório do usuário.
-  await app.get(DecideBootstrapPlanUseCase).adoptAsIs(project.id, owner.id, {
-    planGeneratedAt: adocao.plan.generatedAt,
+  //
+  // A escolha importa e não é simétrica. "Como está" faz sentido para um repo
+  // que JÁ TEM convenção própria — o caso que a RN-045 protege, e o que a
+  // validação da Fase 12 exercitou. Num repositório VAZIO ele não deixa nada:
+  // sem branch e sem commit, o dev agent não tem de onde partir, e a fase
+  // paga morreria montando o worktree.
+  const decisao = app.get(DecideBootstrapPlanUseCase);
+  if (plano === 'aprovar') {
+    try {
+      await decisao.approve(project.id, owner.id, {
+        planGeneratedAt: adocao.plan.generatedAt,
+      });
+      log('✓ plano APROVADO por você — o Brabo escreve no repositório remoto');
+    } catch (erro) {
+      // `protect_branches` falha em repo PRIVADO no plano gratuito do GitHub,
+      // e é o único passo cuja falha deixa um repositório utilizável: o repo
+      // existe, os arquivos foram commitados, as branches foram criadas. A
+      // RN-078 existe exatamente para isto — reconhecer e seguir.
+      //
+      // Reconhecer aqui não é contornar o erro: é exercitar, contra um remoto
+      // de verdade, a saída que a Fase D construiu e que nunca tinha rodado
+      // fora de teste.
+      const msg = String(erro);
+      const daProtecao =
+        msg.includes('branch-protection') || msg.includes('GitHub Pro');
+      if (!daProtecao) throw erro;
+
+      log(`  bootstrap parou na proteção de branches: ${msg.split(' - ')[0]}`);
+      await app
+        .get(AcknowledgeProtectionFailureUseCase)
+        .execute(project.id, owner.id);
+      log(
+        '✓ falha de proteção RECONHECIDA por você (RN-078) — o projeto segue utilizável',
+      );
+      log(
+        '  a trava de merge do produto NÃO depende disso: ela é aplicada em decide.ts (RN-006)',
+      );
+    }
+  } else {
+    await decisao.adoptAsIs(project.id, owner.id, {
+      planGeneratedAt: adocao.plan.generatedAt,
+    });
+    log('✓ adotado COMO ESTÁ — o template não foi forçado sobre o repo remoto');
+  }
+
+  // ---------------- 2. backlog: UMA story, promovida por você -------------
+  log('\n--- 2. backlog: UMA story, e nada pegável antes de você decidir ---');
+
+  const sessionRepo = app.get(SessionRepository);
+  const moduleMaps = app.get(ModuleMapRepository);
+  const epics = app.get(EpicRepository);
+  const stories = app.get(StoryRepository);
+  const tasks = app.get(TaskRepository);
+
+  const sessaoBacklog = await sessionRepo.create({
+    projectId: project.id,
+    createdBy: owner.id,
   });
-  log('✓ adotado COMO ESTÁ — o template não foi forçado sobre o repo remoto');
+  await moduleMaps.create({
+    projectId: project.id,
+    sessionId: sessaoBacklog.id,
+    modules: MODULOS,
+    version: 1,
+  });
+
+  const epic = await epics.create({
+    projectId: project.id,
+    sessionId: sessaoBacklog.id,
+    title: 'Saudação pública',
+  });
+
+  // A regra tem de existir no event log: `CreateStoryUseCase` valida cada
+  // `businessRuleId` contra um `artifact.business_rule` REAL. Emitida pelo
+  // caso de uso, não inserida à mão — `seq` é denso por sessão (RN-002).
+  const eventoRegra = await app
+    .get(AppendSessionEventUseCase)
+    .execute(project.id, sessaoBacklog.id, {
+      type: 'artifact.business_rule',
+      actor: { kind: 'agent', id: 'criativo' },
+      payload: {
+        title: 'Saudação sem autenticação',
+        description: 'a rota de saudação responde sem exigir login',
+        origin: [1],
+      },
+    });
+
+  // UMA story e UMA task, de propósito: a 13b pede "promoção manual de UMA
+  // story", e cada task a mais é um ciclo de dev+gates a mais, PAGO. O
+  // reagendamento entre tasks já está provado pela validação da Fase 12.
+  const story = await app
+    .get(CreateStoryUseCase)
+    .execute(project.id, sessaoBacklog.id, {
+      epicId: epic.id,
+      title: 'Rota pública de saudação',
+      rf: ['GET /saudacao responde 200 com uma mensagem'],
+      dod: ['teste do caminho feliz'],
+      dor: ['regra de negócio definida'],
+      businessRuleIds: [eventoRegra.id],
+    });
+
+  await stories.updateModules(story.id, ['api']);
+  await tasks.create({ storyId: story.id, title: 'Expor GET /saudacao' });
+
+  assertar(
+    story.status === 'draft' && story.proposedReady,
+    `story deveria ficar draft e proposta; veio status="${story.status}" proposta=${String(story.proposedReady)}`,
+  );
+  log('✓ story ficou DRAFT, proposta a você (não promovida sozinha)');
+
+  const claimAntes = await tasks.claimNext(project.id, 'api', 'dev-api-teste');
+  assertar(
+    claimAntes === null,
+    'uma task foi reivindicável ANTES da promoção — o passo humano não travou nada',
+  );
+  log('✓ claimNext devolve NULL antes da sua decisão');
+
+  const resultado = await app
+    .get(PromoteStoriesUseCase)
+    .execute(project.id, [story.id], owner.id);
+  assertar(
+    resultado.promoted.length === 1 && resultado.failed.length === 0,
+    `promoção falhou: ${JSON.stringify(resultado.failed)}`,
+  );
+
+  const promocao = await db
+    .select()
+    .from(sessionEvents)
+    .where(
+      and(
+        eq(sessionEvents.sessionId, sessaoBacklog.id),
+        eq(sessionEvents.type, 'backlog.story_transitioned'),
+      ),
+    );
+  assertar(
+    promocao[0]?.actorKind === 'user' && promocao[0].actorId === owner.id,
+    `o evento registrou "${promocao[0]?.actorKind}/${promocao[0]?.actorId}" e não você`,
+  );
+  log('✓ promovida por AÇÃO SUA — e o event log registra isso');
+
+  if (ate === 'backlog') {
+    log(
+      `\n[validacao-real] parou em "backlog" como pedido. Nada foi gasto.\n` +
+        `projeto: ${project.id}\nstory: ${story.id}`,
+    );
+    await app.close();
+    return;
+  }
+
+  // ---------------- 3. execução PAGA: dev real + gates por LLM ------------
+  log(
+    '\n--- 3. execução com dev agent REAL e gates por LLM (A PARTIR DAQUI GASTA) ---',
+  );
+
+  const { sessionId } = await app
+    .get(ActivateExecutionUseCase)
+    .execute(project.id, owner.id, undefined, undefined, 'real');
+  log(`sessão de execução: ${sessionId}`);
+  log('  (o engine NÃO pode ser reiniciado daqui em diante — é critério)');
+
+  // A PR é a primeira prova de que o dev agent real trabalhou: escreveu
+  // código, commitou, deu push e abriu PR REMOTA.
+  const pr = await esperar(
+    'a PR remota do dev agent',
+    async () => {
+      const [linha] = await db
+        .select()
+        .from(proposedActions)
+        .where(
+          and(
+            eq(proposedActions.projectId, project.id),
+            eq(proposedActions.actionType, 'pr_open'),
+          ),
+        );
+      return linha ?? null;
+    },
+    TIMEOUT_DEV_MS,
+  );
+  log(`✓ PR proposta: status=${pr.status}`);
+
+  // O gate é julgado por AGENTE, não pelo script — é a diferença central em
+  // relação à validação da Fase 12, que escrevia o veredito ela mesma.
+  const comVeredito = await esperar(
+    'os gates julgarem (QA e SecOps, por LLM)',
+    async () => {
+      const linhas = await db
+        .select()
+        .from(sessionEvents)
+        .where(
+          and(
+            eq(sessionEvents.sessionId, sessionId),
+            eq(sessionEvents.type, 'pr.gate_changed'),
+          ),
+        );
+      const julgados = linhas.filter(
+        (e) => (e.payload as Record<string, unknown>)?.veredito != null,
+      );
+      return julgados.length >= 2 ? julgados : null;
+    },
+    TIMEOUT_GATES_MS,
+  );
+
+  for (const e of comVeredito) {
+    const p = e.payload as Record<string, unknown>;
+    log(`✓ gate ${String(p.gate)}: ${String(p.veredito)} — evento \`${e.id}\``);
+  }
 
   log(
-    '\n[validacao-real] as fases `backlog` e `execucao` ainda não estão implementadas.',
+    `\n[validacao-real] execução concluída SEM merge — ele é seu, por desenho (RN-014).\n` +
+      `projeto: ${project.id}\nsessão de execução: ${sessionId}\n\n` +
+      `Agora meça: pnpm --filter api medir:execucao -- --projeto ${project.id}`,
   );
+
   await app.close();
 }
 
