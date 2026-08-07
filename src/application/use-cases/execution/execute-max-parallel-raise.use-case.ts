@@ -39,7 +39,11 @@ export class ExecuteMaxParallelRaiseUseCase {
 
     // O valor vem do PAYLOAD, que é o que você leu ao decidir. Recalcular
     // agora poderia aplicar um teto diferente do autorizado.
-    await this.setMaxParallel.execute(projectId, payload.area, payload.proposto);
+    await this.setMaxParallel.execute(
+      projectId,
+      payload.area,
+      payload.proposto,
+    );
 
     return action;
   }
