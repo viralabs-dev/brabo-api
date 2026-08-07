@@ -7,6 +7,8 @@ import { FilesystemModule } from '../../../infrastructure/filesystem/filesystem.
 import { ActivateExecutionUseCase } from './activate-execution.use-case';
 import { AcceptParallelizationUseCase } from './accept-parallelization.use-case';
 import { RequestParallelizationUseCase } from './request-parallelization.use-case';
+import { ListAgentAreasUseCase } from './list-agent-areas.use-case';
+import { SetAreaMaxParallelUseCase } from './set-area-max-parallel.use-case';
 import { ActionsUseCasesModule } from '../actions/actions-use-cases.module';
 import { ClaimNextTaskUseCase } from './claim-next-task.use-case';
 import { MarkTaskUseCase } from './mark-task.use-case';
@@ -36,6 +38,8 @@ const USE_CASES = [
   ActivateExecutionUseCase,
   AcceptParallelizationUseCase,
   RequestParallelizationUseCase,
+  ListAgentAreasUseCase,
+  SetAreaMaxParallelUseCase,
   ClaimNextTaskUseCase,
   MarkTaskUseCase,
   GetDevTaskContextUseCase,
