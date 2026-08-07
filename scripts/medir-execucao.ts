@@ -237,8 +237,20 @@ async function main() {
   )) as unknown as { rows?: { node: string; started_at: Date }[] };
   const peer = peerResult.rows?.[0];
 
+  // Restart NO MEIO é o que reprova — dentro da janela, não depois dela.
+  //
+  // Sem o segundo limite, qualquer restart posterior à execução acusava
+  // interrupção: medir um dogfooding de ontem depois de reiniciar a stack
+  // hoje reprovava sempre. Isso contradizia o propósito declarado no
+  // cabeçalho — o script recebe um projeto e mede o que houver ali, para
+  // servir a qualquer execução, inclusive passada.
+  //
+  // Encontrado medindo a execução do hello-limpo: ela terminou em 2026-08-06
+  // e o critério reprovou por um restart de 2026-08-07.
+  const subiuEm = peer == null ? null : new Date(peer.started_at);
+
   const engineSubiuDepois =
-    peer != null && new Date(peer.started_at) > new Date(inicio);
+    subiuEm != null && subiuEm > new Date(inicio) && subiuEm <= new Date(fim);
 
   // --- intervenções do usuário ---------------------------------------------
   const decisoes = await db
@@ -351,7 +363,7 @@ async function main() {
   const reprovacoes: string[] = [];
   if (engineSubiuDepois) {
     reprovacoes.push(
-      `o engine subiu em ${new Date(peer.started_at).toISOString()}, DEPOIS do início da execução — houve restart no meio`,
+      `o engine subiu em ${subiuEm.toISOString()}, DENTRO da janela da execução (${new Date(inicio).toISOString()} → ${new Date(fim).toISOString()}) — houve restart no meio`,
     );
   }
   if (mudos.length > 0) {
