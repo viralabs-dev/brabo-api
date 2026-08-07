@@ -46,30 +46,95 @@ export class ApproveActionUseCase {
     );
 
     if (approved.actionType === 'terminal') {
-      return this.executeTerminalAction.execute(projectId, sessionId, approved);
+      return this.avisarQuemEsperava(
+        projectId,
+        sessionId,
+        await this.executeTerminalAction.execute(
+          projectId,
+          sessionId,
+          approved,
+        ),
+      );
     }
 
     if (approved.actionType === 'open_adr_pr') {
-      return this.executeAdrPr.execute(projectId, sessionId, approved);
+      return this.avisarQuemEsperava(
+        projectId,
+        sessionId,
+        await this.executeAdrPr.execute(projectId, sessionId, approved),
+      );
     }
 
     if (approved.actionType === 'open_infra_pr') {
-      return this.executeInfraPr.execute(projectId, sessionId, approved);
+      return this.avisarQuemEsperava(
+        projectId,
+        sessionId,
+        await this.executeInfraPr.execute(projectId, sessionId, approved),
+      );
     }
 
     if (approved.actionType === 'instruction_patch') {
-      return this.executeInstructionPatch.execute(
+      return this.avisarQuemEsperava(
         projectId,
         sessionId,
-        approved,
+        await this.executeInstructionPatch.execute(
+          projectId,
+          sessionId,
+          approved,
+        ),
       );
     }
 
     if (GIT_EXECUTED_ACTION_TYPES.includes(approved.actionType)) {
-      return this.executeGitAction.execute(projectId, sessionId, approved);
+      return this.avisarQuemEsperava(
+        projectId,
+        sessionId,
+        await this.executeGitAction.execute(projectId, sessionId, approved),
+      );
     }
 
-    return approved;
+    return this.avisarQuemEsperava(projectId, sessionId, approved);
+  }
+
+  /**
+   * Avisa o agente que a ação dele teve desfecho (ADR 0052).
+   *
+   * Um agente que propõe ação e recebe `pending` como RESULTADO da ferramenta
+   * não aprendeu nada sobre o comando — e, sem poder esperar, gastava uma
+   * iteração por tentativa até morrer no teto. Este evento é o que o solta,
+   * com o resultado de verdade no lugar da palavra "pending".
+   *
+   * Vale para qualquer ator agente: quem roteia é o worker do engine, e se
+   * ninguém estiver esperando por aquele id a entrega simplesmente não acha
+   * destinatário. Ação auto-aprovada não passa por aqui — ela é executada na
+   * proposta, e o resultado já volta no próprio tool-result.
+   */
+  private async avisarQuemEsperava(
+    projectId: string,
+    sessionId: string,
+    acao: ProposedAction,
+  ): Promise<ProposedAction> {
+    if (acao.actor?.kind !== 'agent' || !acao.actor.id) return acao;
+
+    await this.outbox.append({
+      // `task` e não `proposed_action`: o dreno do engine só lê
+      // `aggregate_type in ("session","task")`. Emitido no agregado errado, o
+      // evento nascia e nunca era sequer LIDO — o agente esperava para sempre.
+      aggregateType: 'task',
+      aggregateId: acao.id,
+      eventType: 'task.action_settled',
+      payload: {
+        projectId,
+        sessionId,
+        actionId: acao.id,
+        agentId: acao.actor.id,
+        actionType: acao.actionType,
+        status: acao.status,
+        executionResult: acao.executionResult ?? null,
+      },
+    });
+
+    return acao;
   }
 
   private approve(

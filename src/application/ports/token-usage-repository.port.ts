@@ -64,6 +64,35 @@ export abstract class TokenUsageRepository {
   abstract sumByProjectGroupedByAgentLast30Days(
     projectId: string,
   ): Promise<AgentTokenUsage[]>;
+
+  /**
+   * O que as CHAVES do owner gastaram no workspace, por provider e por mês.
+   *
+   * Existe porque a chave passou a ser a do owner do workspace (RN-058): os
+   * agentes de todos os projetos gastam a credencial dele, e quem paga a conta
+   * precisa ver a conta. Agrupa por `provider` porque é essa a unidade da
+   * credencial — uma chave por provider, por pessoa.
+   *
+   * Sem filtro de `actor_kind`, ao contrário da RN-038: aqui a pergunta é
+   * "quanto saiu da minha chave", e o chat do próprio owner também sai dela.
+   * O `actorKind` vem na linha para o relatório separar as duas coisas sem
+   * precisar de uma segunda consulta.
+   */
+  abstract sumByWorkspaceGroupedByProviderAndMonth(
+    workspaceId: string,
+    meses: number,
+  ): Promise<CredentialSpendRow[]>;
+}
+
+export interface CredentialSpendRow {
+  provider: string;
+  /** Primeiro dia do mês, em ISO — o eixo do relatório. */
+  mes: string;
+  actorKind: string;
+  costMicros: number;
+  inputTokens: number;
+  outputTokens: number;
+  chamadas: number;
 }
 
 export interface AgentTokenUsage {

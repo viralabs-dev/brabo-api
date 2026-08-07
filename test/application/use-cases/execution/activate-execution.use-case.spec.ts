@@ -9,6 +9,7 @@ import type { ApiToEngineClient } from '../../../../src/application/ports/api-to
 import type { ProjectRepository } from '../../../../src/application/ports/project-repository.port';
 import type { PermissionsFileStore } from '../../../../src/application/ports/permissions-file-store.port';
 import type { TransitionSessionUseCase } from '../../../../src/application/use-cases/sessions/transition-session.use-case';
+import { CreateSessionUseCase } from '../../../../src/application/use-cases/sessions/create-session.use-case';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
 import type { UpsertAgentInstructionUseCase } from '../../../../src/application/use-cases/agents/upsert-agent-instruction.use-case';
 
@@ -42,14 +43,25 @@ function build(opts?: {
   const sessoesCriadas: string[] = [];
   const sessoesAtivadas: string[] = [];
 
+  // `create` fica aqui para EXPLODIR se alguém voltar a criar sessão pelo
+  // repositório: o caminho é o `CreateSessionUseCase`, que é quem emite
+  // `session.created` no outbox (RN-067).
   const sessions = {
     create: () => {
-      sessoesCriadas.push('sess-1');
-      return Promise.resolve({ id: 'sess-1' });
+      throw new Error(
+        'sessão criada pelo repositório: use o CreateSessionUseCase (RN-067)',
+      );
     },
     findActiveExecutionSession: () =>
       Promise.resolve(opts?.sessaoVigente ?? null),
   } as unknown as SessionRepository;
+
+  const createSession = {
+    execute: () => {
+      sessoesCriadas.push('sess-1');
+      return Promise.resolve({ id: 'sess-1' });
+    },
+  } as unknown as CreateSessionUseCase;
 
   const taskRepo = {
     countClaimableByModule: () => Promise.resolve(0),
@@ -132,6 +144,7 @@ function build(opts?: {
       agentAutonomy,
       engineClient,
       transitionSession,
+      createSession,
       appendEvent,
       upsertInstruction,
       projects,

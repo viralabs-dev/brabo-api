@@ -67,6 +67,10 @@ export function createGithubHandlers(store: FakeRepoStore) {
     http.get(`${BASE}/repos/:owner/:repo/git/ref/*`, ({ params, request }) => {
       const repo = store.repos.get(fullNameFromParams(params));
       if (!repo) return notFound();
+      // Repo SEM commit nenhum: a API de refs inteira responde 409, não 404.
+      // O fake respondia 404 e por isso a suite passava enquanto o GitHub de
+      // verdade derrubava o bootstrap no primeiro passo.
+      if (repo.branches.size === 0) return repositorioVazio();
       const branchName = refSuffix(request.url, '/git/ref/').replace(
         /^heads\//,
         '',
@@ -82,6 +86,10 @@ export function createGithubHandlers(store: FakeRepoStore) {
     http.get(`${BASE}/repos/:owner/:repo/git/matching-refs/*`, ({ params }) => {
       const repo = store.repos.get(fullNameFromParams(params));
       if (!repo) return notFound();
+      // Mesmo 409 do `git/ref`: num repo vazio NÃO existe lista vazia, existe
+      // erro. Devolver `[]` aqui era o que fazia o provider achar que tinha
+      // como perguntar "quantas branches há?" antes do primeiro commit.
+      if (repo.branches.size === 0) return repositorioVazio();
       const items = Array.from(repo.branches.values()).map((branch) => ({
         ref: `refs/heads/${branch.name}`,
         object: { sha: branch.sha, type: 'commit' },
@@ -95,7 +103,14 @@ export function createGithubHandlers(store: FakeRepoStore) {
       return HttpResponse.json({ sha, tree: { sha: treeSha } });
     }),
 
-    http.post(`${BASE}/repos/:owner/:repo/git/blobs`, async ({ request }) => {
+    http.post(
+      `${BASE}/repos/:owner/:repo/git/blobs`,
+      async ({ params, request }) => {
+      const repoDoBlob = store.repos.get(fullNameFromParams(params));
+      // A Git Data API INTEIRA responde 409 num repo sem commit — não só as
+      // refs. Sem isto, o fake deixaria montar blob/tree/commit num repo vazio
+      // e o teste não conseguiria reproduzir o bootstrap morrendo.
+      if (repoDoBlob && repoDoBlob.branches.size === 0) return repositorioVazio();
       const body = (await request.json()) as {
         content: string;
         encoding?: string;
@@ -107,7 +122,49 @@ export function createGithubHandlers(store: FakeRepoStore) {
           : body.content;
       store.blobContent.set(sha, decoded);
       return HttpResponse.json({ sha }, { status: 201 });
-    }),
+      },
+    ),
+
+    /**
+     * Contents API — o ÚNICO caminho que cria o primeiro commit num repo
+     * vazio. Cria o arquivo, o commit e a branch de uma vez.
+     */
+    http.put(
+      `${BASE}/repos/:owner/:repo/contents/*`,
+      async ({ params, request }) => {
+        const repo = store.repos.get(fullNameFromParams(params));
+        if (!repo) return notFound();
+
+        const body = (await request.json()) as {
+          content: string;
+          branch?: string;
+          message: string;
+        };
+        const path = refSuffix(request.url, '/contents/');
+        const branchName = body.branch ?? repo.defaultBranch;
+        const sha = store.nextSha();
+        const treeSha = store.nextSha();
+
+        const anterior = repo.branches.get(branchName);
+        const arquivos = new Map(
+          anterior ? store.treeFiles.get(store.commitTree.get(anterior.sha) ?? '') ?? [] : [],
+        );
+        arquivos.set(path, Buffer.from(body.content, 'base64').toString('utf8'));
+
+        store.treeFiles.set(treeSha, arquivos);
+        store.commitTree.set(sha, treeSha);
+        repo.branches.set(branchName, {
+          name: branchName,
+          sha,
+          protected: anterior?.protected ?? false,
+        });
+
+        return HttpResponse.json(
+          { content: { path }, commit: { sha } },
+          { status: 201 },
+        );
+      },
+    ),
 
     http.post(`${BASE}/repos/:owner/:repo/git/trees`, async ({ request }) => {
       const body = (await request.json()) as {
@@ -321,6 +378,21 @@ function handleCreateRepo(
   }
   const repo = store.createRepo(fullName, name, visibility);
   return HttpResponse.json(repoJson(repo), { status: 201 });
+}
+
+/**
+ * `409 Git Repository is empty` — a resposta REAL do GitHub para qualquer
+ * leitura de ref num repositório recém-criado com `auto_init: false`.
+ * Verificado contra a API viva em 2026-08-04, em `daneiel/hello-api`.
+ */
+function repositorioVazio() {
+  return HttpResponse.json(
+    {
+      message: 'Git Repository is empty.',
+      documentation_url: 'https://docs.github.com/rest/git/refs#get-a-reference',
+    },
+    { status: 409 },
+  );
 }
 
 function refSuffix(url: string, marker: string): string {

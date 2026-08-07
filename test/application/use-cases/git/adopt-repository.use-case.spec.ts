@@ -22,6 +22,7 @@ import {
   GitRepoNotFoundError,
 } from '../../../../src/domain/git/git-errors';
 import type { GitProviderRegistry } from '../../../../src/application/ports/git-provider.port';
+import { CreateSessionUseCase } from '../../../../src/application/use-cases/sessions/create-session.use-case';
 
 const { db, pool } = createTestDb();
 
@@ -102,6 +103,7 @@ function buildUseCase(provider: GitProviderContract) {
     repoBootstraps,
     outbox,
     sessionRepo,
+    new CreateSessionUseCase(unitOfWork, sessionRepo, outbox),
     appendSessionEvent,
   );
 }

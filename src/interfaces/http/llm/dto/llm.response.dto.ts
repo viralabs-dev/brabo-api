@@ -498,3 +498,86 @@ export class ChatSseEventResponseDto {
   })
   message?: string;
 }
+
+/**
+ * O gasto das chaves do owner (RN-058/060). Não traz segredo nenhum — só
+ * quanto cada PROVIDER consumiu; a credencial em si nunca atravessa a
+ * fronteira HTTP, nem cifrada (ADR 0050).
+ */
+export class CredentialSpendPorMesResponseDto {
+  @ApiProperty({ example: '2026-08-01T00:00:00.000Z', format: 'date-time' })
+  mes!: string;
+
+  @ApiProperty({ example: 1_250_000 })
+  costMicros!: number;
+
+  @ApiProperty({ example: 42 })
+  chamadas!: number;
+}
+
+export class CredentialSpendPorProviderResponseDto {
+  @ApiProperty({ example: 'openrouter' })
+  provider!: string;
+
+  @ApiProperty({
+    example: true,
+    description:
+      'A credencial existe HOJE. `false` é gasto histórico de uma chave já ' +
+      'removida — o consumo aconteceu e não some do relatório por isso.',
+  })
+  temCredencial!: boolean;
+
+  @ApiProperty({ example: 1_250_000 })
+  costMicros!: number;
+
+  @ApiProperty({ example: 120_000 })
+  inputTokens!: number;
+
+  @ApiProperty({ example: 35_000 })
+  outputTokens!: number;
+
+  @ApiProperty({ example: 42 })
+  chamadas!: number;
+
+  @ApiProperty({
+    example: 900_000,
+    description:
+      'Parte gasta por AGENTES — a conta que a RN-058 passou a debitar do owner.',
+  })
+  costMicrosAgentes!: number;
+
+  @ApiProperty({
+    example: 350_000,
+    description:
+      'Parte gasta por PESSOAS no chat. Sai da mesma chave, e a pergunta é outra.',
+  })
+  costMicrosPessoas!: number;
+
+  @ApiProperty({ type: [CredentialSpendPorMesResponseDto] })
+  porMes!: CredentialSpendPorMesResponseDto[];
+}
+
+export class CredentialSpendResponseDto {
+  @ApiProperty({
+    example: '9b1c2d3e-4f50-4a61-8b72-0c3d4e5f6a7b',
+    format: 'uuid',
+  })
+  workspaceId!: string;
+
+  @ApiProperty({
+    example: '9b1c2d3e-4f50-4a61-8b72-0c3d4e5f6a7b',
+    format: 'uuid',
+    description:
+      'Dono das chaves — quem banca os agentes deste workspace (RN-058).',
+  })
+  ownerId!: string;
+
+  @ApiProperty({ example: 6 })
+  meses!: number;
+
+  @ApiProperty({ example: 1_250_000 })
+  totalMicros!: number;
+
+  @ApiProperty({ type: [CredentialSpendPorProviderResponseDto] })
+  porProvider!: CredentialSpendPorProviderResponseDto[];
+}

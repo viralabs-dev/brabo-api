@@ -17,10 +17,12 @@ import { UpsertBudgetUseCase } from './upsert-budget.use-case';
 import { GetBudgetUseCase } from './get-budget.use-case';
 import { GetSessionTokenUsageUseCase } from './get-session-token-usage.use-case';
 import { GetProjectAgentCostsUseCase } from './get-project-agent-costs.use-case';
+import { GetCredentialSpendUseCase } from './get-credential-spend.use-case';
 import { CheckBudgetGateUseCase } from './check-budget-gate.use-case';
 import { RecordLlmUsageUseCase } from './record-llm-usage.use-case';
 import { SendChatMessageUseCase } from './send-chat-message.use-case';
 import { RunLlmTurnUseCase } from './run-llm-turn.use-case';
+import { ResolveCredentialOwnerUseCase } from './resolve-credential-owner.use-case';
 import { StreamLlmTurnUseCase } from './stream-llm-turn.use-case';
 
 const USE_CASES = [
@@ -41,10 +43,12 @@ const USE_CASES = [
   GetBudgetUseCase,
   GetSessionTokenUsageUseCase,
   GetProjectAgentCostsUseCase,
+  GetCredentialSpendUseCase,
   CheckBudgetGateUseCase,
   RecordLlmUsageUseCase,
   SendChatMessageUseCase,
   RunLlmTurnUseCase,
+  ResolveCredentialOwnerUseCase,
   StreamLlmTurnUseCase,
 ];
 

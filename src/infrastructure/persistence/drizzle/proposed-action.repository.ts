@@ -120,6 +120,25 @@ export class DrizzleProposedActionRepository implements ProposedActionRepository
     };
   }
 
+  async findOldestPendingInSession(
+    sessionId: string,
+  ): Promise<ProposedAction | null> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .select()
+      .from(proposedActions)
+      .where(
+        and(
+          eq(proposedActions.sessionId, sessionId),
+          eq(proposedActions.status, 'pending'),
+        ),
+      )
+      .orderBy(asc(proposedActions.seq))
+      .limit(1);
+
+    return row ? toEntity(row) : null;
+  }
+
   async listDecidedInWindow(
     projectId: string,
     from: Date,

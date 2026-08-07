@@ -106,11 +106,13 @@ describe('CreateModuleMapUseCase', () => {
     expect(append.calls).toHaveLength(0);
   });
 
-  it('cria o mapa (version+1) e emite artifact.module_map', async () => {
+  it('versiona (version+1) quando o mapa anterior é de OUTRA sessão', async () => {
+    // Sessão diferente: revisar a arquitetura numa sessão nova é o caso que o
+    // versionamento existe para servir.
     maps.current = {
       id: 'old',
       projectId: PROJECT,
-      sessionId: SESSION,
+      sessionId: 'sessao-anterior',
       modules: [],
       version: 3,
       createdAt: new Date(),
@@ -120,6 +122,54 @@ describe('CreateModuleMapUseCase', () => {
     });
     expect(map.version).toBe(4);
     expect(append.calls).toContain('artifact.module_map');
+  });
+
+  /**
+   * Dentro da MESMA sessão, a segunda emissão nunca é revisão — é o modelo
+   * redecidindo do zero. Numa execução real o Arquiteto emitiu quatro mapas
+   * seguidos, com recortes diferentes a cada volta (`greeting`, `hello_core`,
+   * `greeting`, `hello-api-core`), e só parou porque a rede caiu.
+   */
+  it('recusa o SEGUNDO mapa da mesma sessão, dizendo o que fazer em seguida', async () => {
+    maps.current = {
+      id: 'atual',
+      projectId: PROJECT,
+      sessionId: SESSION,
+      modules: [mod('api')],
+      version: 1,
+      createdAt: new Date(),
+    };
+
+    await expect(
+      useCase.execute(PROJECT, SESSION, { modules: [mod('outro')] }),
+    ).rejects.toThrow(/já definiu o module_map/);
+
+    // E não grava nada: nem mapa, nem evento.
+    expect(append.calls).not.toContain('artifact.module_map');
+  });
+
+  /**
+   * A recusa precisa dizer os NOMES, não a contagem.
+   *
+   * O Arquiteto não tem ferramenta para ler o module_map vigente. Enquanto a
+   * mensagem era "(2 módulos)", ele lia que o mapa existia, continuava sem
+   * saber como chamar os módulos, e reemitia o mapa justamente para tentar
+   * fixá-los — o laço era sintoma da cegueira. Com os nomes, a recusa vira a
+   * resposta da pergunta que ele estava fazendo.
+   */
+  it('a recusa diz QUAIS são os módulos, não quantos', async () => {
+    maps.current = {
+      id: 'atual',
+      projectId: PROJECT,
+      sessionId: SESSION,
+      modules: [mod('saudacao'), mod('api_http')],
+      version: 1,
+      createdAt: new Date(),
+    };
+
+    await expect(
+      useCase.execute(PROJECT, SESSION, { modules: [mod('outro')] }),
+    ).rejects.toThrow(/saudacao, api_http/);
   });
 
   it('revalida: rebaixa a story ready cujo módulo sumiu, com evento', async () => {

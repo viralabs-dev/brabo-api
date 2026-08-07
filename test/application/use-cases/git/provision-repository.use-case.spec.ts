@@ -29,6 +29,7 @@ import { BootstrapRunner } from '../../../../src/application/use-cases/git/boots
 import { LocalGitProvider } from '../../../../src/infrastructure/git/local-git-provider';
 import type { GitProviderRegistry } from '../../../../src/application/ports/git-provider.port';
 import type { ApiToEngineClient } from '../../../../src/application/ports/api-to-engine-client.port';
+import { CreateSessionUseCase } from '../../../../src/application/use-cases/sessions/create-session.use-case';
 
 const { db, pool } = createTestDb();
 
@@ -180,6 +181,7 @@ function buildUseCase(provider: GitProviderContract) {
     outbox,
     proposedActionsRepo,
     sessionRepo,
+    new CreateSessionUseCase(unitOfWork, sessionRepo, outbox),
     appendSessionEvent,
     transitionSession,
     // Fase 12a: o runner saiu daqui pra um colaborador próprio, sem uma

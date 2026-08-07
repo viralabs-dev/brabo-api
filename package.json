@@ -30,6 +30,9 @@
     "demo:psicologo": "ts-node scripts/demo-psicologo.ts",
     "demo:anamnese": "ts-node scripts/demo-anamnese.ts",
     "validacao:fase-12": "ts-node scripts/validacao-fase-12.ts",
+    "validacao:real": "ts-node scripts/validacao-real.ts",
+    "validacao:gates": "ts-node scripts/validacao-gates.ts",
+    "medir:execucao": "ts-node scripts/medir-execucao.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },
@@ -68,7 +71,8 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "shell-quote": "^1.10.0",
-    "ulid": "^3.0.2"
+    "ulid": "^3.0.2",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

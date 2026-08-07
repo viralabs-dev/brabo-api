@@ -38,7 +38,7 @@
  *   o passo 6 mostra a trava recusando exatamente isso.
  */
 import 'reflect-metadata';
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFile } from 'node:child_process';
@@ -115,13 +115,51 @@ async function esperar<T>(
 }
 
 /**
+ * Onde o repositório-cobaia é criado.
+ *
+ * **Precisa ser visível pelos DOIS containers.** Quem adota é a api; quem
+ * clona para montar o worktree é o dev agent, que roda no engine. `os.tmpdir()`
+ * é local ao container — o bare nascia em `/tmp` da api, o engine não o
+ * enxergava, e o passo 4 morria em
+ * `fatal: '/tmp/brabo-validacao-…' does not appear to be a git repository`.
+ *
+ * `GIT_LOCAL_REPOS_ROOT` é o volume que api e engine compartilham, e é
+ * exatamente o pré-requisito que o cabeçalho deste arquivo já declarava. O
+ * fallback para `tmpdir()` mantém o script utilizável fora do compose, onde os
+ * dois processos veem o mesmo FS de qualquer jeito.
+ */
+function raizCompartilhada(): string {
+  return process.env.GIT_LOCAL_REPOS_ROOT ?? tmpdir();
+}
+
+/**
  * Um bare repo com política DIVERGENTE do template do Brabo: tem `main` e
  * `develop`, não tem `qa` nem `rc`. É o caso real que a RN-045 endereça — um
  * repositório que já existia, com convenção própria, e que o produto não pode
  * reescrever sem plano aprovado.
  */
+/**
+ * Apaga os restos das corridas ANTERIORES, não os desta.
+ *
+ * A ordem importa: limpar no fim mataria justamente os artefatos que se quer
+ * inspecionar quando o critério não fecha. E limpar é obrigatório agora que a
+ * cobaia mora num volume PERSISTENTE — em `/tmp` o lixo sumia sozinho no
+ * restart do container.
+ */
+async function limparCorridasAnteriores(): Promise<void> {
+  const raiz = raizCompartilhada();
+
+  for (const nome of await readdir(raiz).catch(() => [] as string[])) {
+    if (nome.startsWith('brabo-validacao-')) {
+      await rm(join(raiz, nome), { recursive: true, force: true });
+    }
+  }
+}
+
 async function criarRepoDivergente(sufixo: string): Promise<string> {
-  const raiz = await mkdtemp(join(tmpdir(), 'brabo-validacao-'));
+  await limparCorridasAnteriores();
+
+  const raiz = await mkdtemp(join(raizCompartilhada(), 'brabo-validacao-'));
   const bare = join(raiz, `adotado-${sufixo}.git`);
   const trabalho = join(raiz, 'trabalho');
 

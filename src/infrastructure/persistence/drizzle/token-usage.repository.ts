@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, gte, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import {
   TokenUsageRepository,
   type AgentTokenUsage,
@@ -7,6 +7,7 @@ import {
   type WorkspaceTokenUsageSummary,
 } from '../../../application/ports/token-usage-repository.port';
 import type { TokenUsage } from '../../../domain/llm/token-usage.entity';
+import type { CredentialSpendRow } from '../../../application/ports/token-usage-repository.port';
 import { projects, sessions, tokenUsage } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
@@ -156,6 +157,53 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
       costMicros: Number(row.costMicros),
       inputTokens: Number(row.inputTokens),
       outputTokens: Number(row.outputTokens),
+    }));
+  }
+
+  async sumByWorkspaceGroupedByProviderAndMonth(
+    workspaceId: string,
+    meses: number,
+  ): Promise<CredentialSpendRow[]> {
+    const db = currentDb(this.rootDb);
+    const mes = sql<string>`date_trunc('month', ${tokenUsage.createdAt})`;
+
+    const rows = await db
+      .select({
+        provider: tokenUsage.provider,
+        mes,
+        actorKind: tokenUsage.actorKind,
+        costMicros: sql<string>`coalesce(sum(${tokenUsage.costMicros}), 0)`,
+        inputTokens: sql<string>`coalesce(sum(${tokenUsage.inputTokens}), 0)`,
+        outputTokens: sql<string>`coalesce(sum(${tokenUsage.outputTokens}), 0)`,
+        chamadas: sql<string>`count(*)`,
+      })
+      .from(tokenUsage)
+      // Dois saltos: `token_usage` pende da sessão, a sessão do projeto, e o
+      // projeto do workspace — o mesmo caminho de `summarizeForWorkspace…`.
+      .innerJoin(sessions, eq(sessions.id, tokenUsage.sessionId))
+      .innerJoin(projects, eq(projects.id, sessions.projectId))
+      .where(
+        and(
+          eq(projects.workspaceId, workspaceId),
+          // Janela em MESES inteiros, alinhada ao começo do mês: o relatório é
+          // de conta a pagar, e conta de provider fecha por mês-calendário.
+          gte(
+            tokenUsage.createdAt,
+            sql`date_trunc('month', now()) - make_interval(months => ${meses - 1})`,
+          ),
+        ),
+      )
+      .groupBy(tokenUsage.provider, mes, tokenUsage.actorKind)
+      .orderBy(desc(mes), tokenUsage.provider);
+
+    return rows.map((row) => ({
+      provider: row.provider,
+      mes: new Date(row.mes).toISOString(),
+      actorKind: row.actorKind,
+      costMicros: Number(row.costMicros),
+      inputTokens: Number(row.inputTokens),
+      outputTokens: Number(row.outputTokens),
+      chamadas: Number(row.chamadas),
     }));
   }
 }

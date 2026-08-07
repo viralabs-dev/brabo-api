@@ -35,6 +35,7 @@ import { GetRepoBootstrapStatusUseCase } from '../../../application/use-cases/gi
 import { AdoptRepositoryUseCase } from '../../../application/use-cases/git/adopt-repository.use-case';
 import { DecideBootstrapPlanUseCase } from '../../../application/use-cases/git/decide-bootstrap-plan.use-case';
 import { GetBootstrapPlanUseCase } from '../../../application/use-cases/git/get-bootstrap-plan.use-case';
+import { AcknowledgeProtectionFailureUseCase } from '../../../application/use-cases/git/acknowledge-protection-failure.use-case';
 import { ProvisionRepositoryDto } from './dto/provision-repository.dto';
 import { AdoptRepositoryDto } from './dto/adopt-repository.dto';
 import { DecideBootstrapPlanDto } from './dto/decide-bootstrap-plan.dto';
@@ -46,6 +47,7 @@ import {
   GitAuthorizeUrlResponseDto,
   ProvisionRepositoryResponseDto,
   ProvisionedRepositoryResponseDto,
+  ReconhecerFalhaDeProtecaoResponseDto,
   RepoBootstrapStatusResponseDto,
 } from './dto/git.response.dto';
 
@@ -87,6 +89,7 @@ export class GitController {
     private readonly adoptRepository: AdoptRepositoryUseCase,
     private readonly decideBootstrapPlan: DecideBootstrapPlanUseCase,
     private readonly getPlan: GetBootstrapPlanUseCase,
+    private readonly acknowledgeProtectionFailure: AcknowledgeProtectionFailureUseCase,
   ) {}
 
   @Get('projects/:projectId/git/:provider/connect')
@@ -288,6 +291,35 @@ export class GitController {
     @CurrentUser() user: User,
   ) {
     return this.decideBootstrapPlan.adoptAsIs(projectId, user.id, dto);
+  }
+
+  @Post('projects/:projectId/git/bootstrap/acknowledge-protection-failure')
+  @RequireRole('maintainer')
+  @ApiBearerAuth(BEARER)
+  @ApiOperation({
+    summary: 'Reconhece a falha ao proteger as branches e segue',
+    description:
+      '`protect_branches` falha em repositório privado no plano gratuito, e o ' +
+      'wizard avisa isso ANTES. Sem esta saída o único botão era "Tentar ' +
+      'novamente", que falha sempre pelo mesmo motivo — e `provision_failed` ' +
+      'faz o dashboard redirecionar o projeto de volta para a página de ' +
+      'provisionamento, deixando-o inalcançável para sempre. Só a falha em ' +
+      'PROTEGER pode ser reconhecida: ela é o último passo e o único cujo ' +
+      'fracasso deixa um repositório utilizável. A trava de merge do produto ' +
+      '(RN-006) não depende da proteção do provider e continua valendo.',
+  })
+  @ApiCreatedResponse({ type: ReconhecerFalhaDeProtecaoResponseDto })
+  @ApiResponse({
+    status: 409,
+    description:
+      'O bootstrap não falhou, ou falhou num passo anterior à proteção — ' +
+      'seguir ali deixaria o projeto sem repositório utilizável.',
+  })
+  reconhecerFalhaDeProtecao(
+    @Param('projectId') projectId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.acknowledgeProtectionFailure.execute(projectId, user.id);
   }
 
   @Get('projects/:projectId/git/repository')
