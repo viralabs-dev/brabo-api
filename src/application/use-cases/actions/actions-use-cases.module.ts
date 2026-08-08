@@ -1,4 +1,5 @@
 import { forwardRef, Module } from '@nestjs/common';
+import { ExecutionUseCasesModule } from '../execution/execution-use-cases.module';
 import { ProposeActionUseCase } from './propose-action.use-case';
 import { ApproveActionUseCase } from './approve-action.use-case';
 import { DenyActionUseCase } from './deny-action.use-case';
@@ -49,6 +50,11 @@ const USE_CASES = [
     // credencial" divergirem. Mesmo motivo do `GitUseCasesModule`.
     LlmUseCasesModule,
     forwardRef(() => InstructionsUseCasesModule),
+    // FASE 14d: aprovar `parallelize` sobe o agente, e aprovar
+    // `raise_max_parallel` muda o teto. `forwardRef` porque a execução também
+    // depende daqui — é ela que cria a proposed_action quando o lead estoura o
+    // teto.
+    forwardRef(() => ExecutionUseCasesModule),
   ],
   providers: USE_CASES,
   exports: USE_CASES,

@@ -897,16 +897,74 @@ export const handoffs = pgTable(
 // (`session_events.id` é ULID em `text`, vínculo lógico, não chave
 // estrangeira).
 //
-// Sem `agent_areas`/`agent_area_members` (o aparato genérico do ADR 0038):
-// o fluxo de QA nasce do `Dispatcher`, nunca de `CreateHandoffUseCase`, então
-// a validação de alvo de handoff não é exercitada aqui — corte de escopo
-// registrado no ADR. `area` é TEXT, não enum — hoje "qa" e "infra".
+// `agent_areas`/`agent_area_members` existem desde a FASE 14d (ADR 0053, que
+// revogou o corte do ADR 0038). `area` continua TEXT e não enum: a área de
+// `dev` tem um membro por MÓDULO do `module_map`, decidido pelo Arquiteto e
+// diferente em cada projeto — não é enumerável em migração.
 //
 // `taskId` é NULLABLE (Fase 8c): a área de Infra delega sobre a SESSÃO, sem
 // task de backlog por trás — só existe PR de infra, nunca task. QA (Fase
 // 8b) sempre preenche; nasceu NOT NULL até a segunda instância do modelo
 // (ADR 0038) provar que a suposição "toda área tem task" era estreita
 // demais.
+/**
+ * As áreas de agente, POR PROJETO (ADR 0053, FASE 14d).
+ *
+ * Antes eram uma lista hardcoded em `apps/web/src/lib/agents.ts` — `qa` e
+ * `infra` com membros fixos. Isso bastava enquanto as áreas eram fixas, e
+ * deixou de bastar quando a área de `dev` entrou: os membros dela são um por
+ * módulo do `module_map`, decididos pelo Arquiteto, e portanto diferentes em
+ * cada projeto. O que não é enumerável em código passa a ser dado.
+ *
+ * `max_parallel` é o teto que o LEAD pode usar sem perguntar — não o teto do
+ * que o usuário pode aprovar. Default 2, configurável por lead.
+ *
+ * O teto é da SESSÃO, não do módulo. Contar por módulo permitiria N módulos ×
+ * 2 agentes sem autorização nenhuma, que é o buraco de hoje com outro nome.
+ */
+export const agentAreas = pgTable(
+  'agent_areas',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    /** `dev`, `qa`, `infra`. TEXT pelo mesmo motivo de `delegations.area`. */
+    key: text('key').notNull(),
+    /** O contato externo da área (ADR 0038). */
+    leadAgentId: text('lead_agent_id').notNull(),
+    maxParallel: integer('max_parallel').notNull().default(2),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [unique().on(table.projectId, table.key)],
+);
+
+/**
+ * Quem pertence a cada área.
+ *
+ * Membro não é endereçável por handoff externo (ADR 0038) — é o lead que
+ * responde pela área. É por isso que a área de `dev` muda o endereçamento:
+ * os `dev-<modulo>` deixam de ser agentes sem área.
+ */
+export const agentAreaMembers = pgTable(
+  'agent_area_members',
+  {
+    areaId: uuid('area_id')
+      .notNull()
+      .references(() => agentAreas.id, { onDelete: 'cascade' }),
+    agentId: text('agent_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.areaId, table.agentId] })],
+);
+
 export const delegations = pgTable(
   'delegations',
   {
