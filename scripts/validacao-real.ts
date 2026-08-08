@@ -89,6 +89,7 @@ import { AppendSessionEventUseCase } from '../src/application/use-cases/sessions
 import { CreateStoryUseCase } from '../src/application/use-cases/backlog/create-story.use-case';
 import { PromoteStoriesUseCase } from '../src/application/use-cases/backlog/promote-stories.use-case';
 import { ActivateExecutionUseCase } from '../src/application/use-cases/execution/activate-execution.use-case';
+import { RequestParallelizationUseCase } from '../src/application/use-cases/execution/request-parallelization.use-case';
 import { SetModelBindingUseCase } from '../src/application/use-cases/llm/set-model-binding.use-case';
 import { PermissionsFileStore } from '../src/application/ports/permissions-file-store.port';
 import { SessionRepository } from '../src/application/ports/session-repository.port';
@@ -132,6 +133,17 @@ function lerOpcoes(): Opcoes {
     : null;
   if (ateArg != null && !FASES.includes(ateArg as Fase)) {
     console.error(`--ate inválido: ${ateArg} (use ${FASES.join(' | ')})`);
+    process.exit(2);
+  }
+
+  // Quantas histórias no MESMO módulo. Default 1 — cada task a mais é um
+  // ciclo de dev+gates a mais, PAGO. Com 2+ o Dev Lead tem motivo real para
+  // pedir mais de um agente, que é o que coloca o teto da RN-083 à prova.
+  const historias = args.includes('--historias')
+    ? Number(args[args.indexOf('--historias') + 1])
+    : 1;
+  if (!Number.isInteger(historias) || historias < 1) {
+    console.error('--historias precisa ser inteiro >= 1');
     process.exit(2);
   }
 
@@ -459,6 +471,28 @@ async function main() {
   await stories.updateModules(story.id, ['api']);
   await tasks.create({ storyId: story.id, title: 'Expor GET /saudacao' });
 
+  // As extras vão no MESMO módulo de propósito: é isso que dá ao Dev Lead
+  // motivo para pedir mais de um agente ali, em vez de espalhar um por módulo.
+  const extras = [];
+  for (let i = 2; i <= historias; i++) {
+    const extra = await app
+      .get(CreateStoryUseCase)
+      .execute(project.id, sessaoBacklog.id, {
+        epicId: epic.id,
+        title: `Rota pública de status ${i}`,
+        rf: [`GET /status${i} responde 200 com o estado do serviço`],
+        dod: ['teste do caminho feliz'],
+        dor: ['regra de negócio definida'],
+        businessRuleIds: [eventoRegra.id],
+      });
+    await stories.updateModules(extra.id, ['api']);
+    await tasks.create({ storyId: extra.id, title: `Expor GET /status${i}` });
+    extras.push(extra);
+  }
+  if (extras.length > 0) {
+    log(`✓ ${extras.length} história(s) extra(s) no MESMO módulo (api)`);
+  }
+
   assertar(
     story.status === 'draft' && story.proposedReady,
     `story deveria ficar draft e proposta; veio status="${story.status}" proposta=${String(story.proposedReady)}`,
@@ -474,9 +508,9 @@ async function main() {
 
   const resultado = await app
     .get(PromoteStoriesUseCase)
-    .execute(project.id, [story.id], owner.id);
+    .execute(project.id, [story.id, ...extras.map((e) => e.id)], owner.id);
   assertar(
-    resultado.promoted.length === 1 && resultado.failed.length === 0,
+    resultado.promoted.length === historias && resultado.failed.length === 0,
     `promoção falhou: ${JSON.stringify(resultado.failed)}`,
   );
 
@@ -724,6 +758,53 @@ async function main() {
     .execute(project.id, owner.id, undefined, undefined, 'real');
   log(`sessão de execução: ${sessionId}`);
   log('  (o engine NÃO pode ser reiniciado daqui em diante — é critério)');
+
+  // ---- o TETO de paralelismo, exercitado de verdade (RN-083) -------------
+  //
+  // A ativação sobe UM agente por módulo. Daqui em diante quem pede mais é o
+  // lead, e é aqui que o teto da área cobra a sua decisão. Custa ZERO token:
+  // é regra de domínio pura, não turno de LLM.
+  {
+    const pedir = () =>
+      app
+        .get(RequestParallelizationUseCase)
+        .execute(project.id, sessionId, 'api', owner.id);
+
+    const dentro = await pedir();
+    assertar(
+      dentro.estado === 'executado',
+      `o 2º agente deveria caber no teto (2) e veio "${dentro.estado}"`,
+    );
+    log(`✓ 2º agente subiu SEM perguntar — dentro do teto (${dentro.maxParallel})`);
+
+    const acima = await pedir();
+    assertar(
+      acima.estado === 'aguardando_autorizacao',
+      `o 3º agente deveria pedir autorização e veio "${acima.estado}"`,
+    );
+    assertar(
+      typeof acima.actionId === 'string' && acima.actionId.length > 0,
+      'não veio `actionId`: sem ação, não há o que você decidir',
+    );
+
+    // O ponto: NADA subiu. Se tivesse subido, a autorização seria teatro.
+    const [acao] = await db
+      .select()
+      .from(proposedActions)
+      .where(eq(proposedActions.id, acima.actionId!));
+    assertar(
+      acao?.actionType === 'parallelize' && acao.status === 'pending',
+      `a ação veio "${acao?.actionType}/${acao?.status}"`,
+    );
+    assertar(
+      acao.resolvedPolicy === 'require_approval',
+      `a ação resolveu "${acao.resolvedPolicy}" — o teto do decide.ts falhou (RN-086)`,
+    );
+    log(
+      `✓ 3º agente PAROU: ação ${acima.actionId} pendente da sua decisão ` +
+        `(${acima.ativosNaSessao} ativos, teto ${acima.maxParallel})`,
+    );
+  }
 
   // A PR é a primeira prova de que o dev agent real trabalhou: escreveu
   // código, commitou, deu push e abriu PR REMOTA.
