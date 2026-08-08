@@ -25,6 +25,15 @@ export class OfferInfraHandoffUseCase {
 
     await this.engineClient.offerInfraHandoff(projectId, sessionId);
 
+    // FASE 14d (ADR 0053): a MESMA confirmação também entrega ao Dev Lead. A
+    // cadeia vira Arquiteto → Dev Lead → execução, e antes disto não havia
+    // ninguém entre o fim da arquitetura e o botão de ativar.
+    //
+    // Chamadas SEPARADAS, e a de dev vem depois: são duas áreas com desfechos
+    // independentes, e uma falha do Dev Lead não pode desfazer o handoff de
+    // Infra que já foi aceito — o event log não retrata.
+    await this.engineClient.offerDevHandoff(projectId, sessionId);
+
     return { ok: true as const };
   }
 }
