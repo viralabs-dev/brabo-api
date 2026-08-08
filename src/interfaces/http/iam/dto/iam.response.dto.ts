@@ -15,6 +15,15 @@ import type {
 import type { WorkspaceWithRole } from '../../../../application/ports/workspace-repository.port';
 import type { WorkspaceSummary } from '../../../../application/use-cases/iam/get-workspace-summary.use-case';
 import type { ProjectBlockedStatus } from '../../../../application/use-cases/iam/get-projects-status-for-workspace.use-case';
+import type { GitProviderName } from '@brabo/shared';
+import type {
+  ProjectCardSummary,
+  ProjectUnreadEvents,
+  RosterFacts,
+} from '../../../../application/ports/projects-summary-repository.port';
+import type { ProvisioningStatus } from '../../../../domain/git/repo-bootstrap-status';
+import type { SessionEvent } from '../../../../domain/sessions/session-event.entity';
+import { SessionEventResponseDto } from '../../sessions/dto/sessions.response.dto';
 
 /**
  * Respostas de workspaces, projetos e associações (Fase 7b, item 6).
@@ -230,4 +239,169 @@ export class ProjectMemberComUsuarioResponseDto implements Wire<ProjectMemberWit
 export const _chavesMembroComUsuario: MesmasChaves<
   ProjectMemberComUsuarioResponseDto,
   ProjectMemberWithUser
+> = true;
+
+// --- Resumo do dashboard (RN-090) ---
+
+/**
+ * Os fatos do event log que decidem QUEM aparece na roster de agentes do
+ * card. Não é a roster: ícone, cor, lead de área e agrupamento em chip são
+ * catálogo de apresentação e vivem no web (`lib/agents.ts`). A api responde o
+ * que aconteceu; a tela decide o que desenha com isso.
+ */
+export class RosterFactsResponseDto implements Wire<RosterFacts> {
+  @ApiProperty({
+    example: true,
+    description:
+      'A sessão mais recente já registrou `execution.activated` — é o que faz os ' +
+      'dev agents por módulo entrarem na roster.',
+  })
+  executionActivated!: boolean;
+
+  @ApiProperty({
+    example: ['api', 'web'],
+    description:
+      'Nomes dos módulos do module_map VIGENTE (maior `version`). Um dev agent por ' +
+      'módulo, quando a execução foi ativada.',
+  })
+  moduleNames!: string[];
+
+  @ApiProperty({
+    example: true,
+    description:
+      'Algum gate de PR (dev ou infra) já abriu ALGUMA VEZ nesta sessão — é o que traz ' +
+      'QA e SecOps para a roster. Cobre a sessão inteira, não uma janela dos últimos ' +
+      'N eventos.',
+  })
+  gatesEverOpened!: boolean;
+
+  @ApiProperty({
+    example: ['qa-automacao'],
+    description:
+      'Subagentes com pelo menos uma delegação registrada na sessão, qualquer que seja ' +
+      'o desfecho — dispensa é decisão registrada, não silêncio.',
+  })
+  delegatedSubagents!: string[];
+
+  @ApiProperty({
+    example: false,
+    description:
+      'Existe handoff `accepted` para `infra` na sessão mais recente.',
+  })
+  infraActive!: boolean;
+}
+export const _chavesRosterFacts: MesmasChaves<
+  RosterFactsResponseDto,
+  RosterFacts
+> = true;
+
+/** Teto e gasto do projeto, em micro-USD. */
+export class ProjectCardBudgetResponseDto implements Wire<
+  NonNullable<ProjectCardSummary['budget']>
+> {
+  @ApiProperty({ example: 50000000 })
+  limitMicros!: number;
+
+  @ApiProperty({ example: 12500000 })
+  spentMicros!: number;
+}
+
+/**
+ * Uma linha por projeto com tudo que o card do dashboard desenha.
+ *
+ * Existe para que a grade custe UMA requisição em vez de sete por card: com 23
+ * projetos o dashboard sozinho estourava o rate limit de 300 req/min e a tela
+ * inteira voltava 429.
+ */
+export class ProjectCardSummaryResponseDto implements Wire<ProjectCardSummary> {
+  @ApiProperty({ example: '01JC4Z0000PROJETO0000000001' })
+  projectId!: string;
+
+  @ApiProperty({
+    enum: ['local', 'github', 'gitlab'],
+    example: 'github',
+    description:
+      '`local` quando o projeto ainda não tem repositório provisionado.',
+  })
+  provider!: GitProviderName;
+
+  @ApiProperty({
+    enum: [
+      'provisioning',
+      'provisioned',
+      'provision_failed',
+      'awaiting_plan_decision',
+    ],
+    nullable: true,
+    example: 'provisioned',
+    description: '`null` quando o bootstrap nunca começou. Derivado do cursor.',
+  })
+  provisioningStatus!: ProvisioningStatus | null;
+
+  @ApiProperty({
+    type: ProjectCardBudgetResponseDto,
+    nullable: true,
+    description:
+      '`null` quando o projeto NUNCA teve orçamento definido — distinto de uma linha ' +
+      'zerada, e é o que faz o card oferecer "Definir orçamento".',
+  })
+  budget!: { limitMicros: number; spentMicros: number } | null;
+
+  @ApiProperty({ example: '01JC4Z0000SESSAO00000000001', nullable: true })
+  latestSessionId!: string | null;
+
+  @ApiProperty({
+    example: 41,
+    description:
+      'Último `seq` já gravado na sessão mais recente (`nextSeq - 1`); 0 quando não há ' +
+      'sessão. O web compara com o que já foi visto para contar não lidos.',
+  })
+  latestSeq!: number;
+
+  @ApiProperty({
+    type: SessionEventResponseDto,
+    nullable: true,
+    description:
+      'Último evento da sessão mais recente — a linha de rodapé do card.',
+  })
+  lastEvent!: Wire<SessionEvent> | null;
+
+  @ApiProperty({
+    example: 2,
+    description:
+      'Histórias que o PO terminou e que aguardam a promoção do usuário (RN-048).',
+  })
+  storiesAwaitingPromotion!: number;
+
+  @ApiProperty({ type: RosterFactsResponseDto })
+  roster!: RosterFactsResponseDto;
+}
+export const _chavesProjectCardSummary: MesmasChaves<
+  ProjectCardSummaryResponseDto,
+  ProjectCardSummary
+> = true;
+
+export class ProjectUnreadEventsResponseDto implements Wire<ProjectUnreadEvents> {
+  @ApiProperty({ example: '01JC4Z0000PROJETO0000000001' })
+  projectId!: string;
+
+  @ApiProperty({
+    example: '01JC4Z0000SESSAO00000000001',
+    description:
+      'A sessão MAIS RECENTE do projeto — a mesma que `projects-summary` reporta ' +
+      'em `latestSessionId`.',
+  })
+  sessionId!: string;
+
+  @ApiProperty({
+    type: [SessionEventResponseDto],
+    description:
+      'Em ordem crescente de `seq`, no máximo os 50 primeiros depois do corte — ' +
+      'o mesmo teto que `GET .../events` aplica sem `limit`.',
+  })
+  events!: Wire<SessionEvent>[];
+}
+export const _chavesProjectUnreadEvents: MesmasChaves<
+  ProjectUnreadEventsResponseDto,
+  ProjectUnreadEvents
 > = true;

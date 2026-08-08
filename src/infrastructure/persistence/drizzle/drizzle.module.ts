@@ -27,6 +27,7 @@ import {
   TaskRepository,
 } from '../../../application/ports/backlog-repository.port';
 import { ModuleMapRepository } from '../../../application/ports/module-map-repository.port';
+import { ProjectsSummaryRepository } from '../../../application/ports/projects-summary-repository.port';
 import { AgentAreaRepository } from '../../../application/ports/agent-area-repository.port';
 import { InfraArtifactRepository } from '../../../application/ports/infra-artifact-repository.port';
 import { PsychologistAnalysisRepository } from '../../../application/ports/psychologist-analysis-repository.port';
@@ -55,6 +56,7 @@ import { DrizzleUnitOfWork } from './drizzle-unit-of-work';
 import { DrizzleUserRepository } from './user.repository';
 import { DrizzleWorkspaceRepository } from './workspace.repository';
 import { DrizzleProjectRepository } from './project.repository';
+import { DrizzleProjectsSummaryRepository } from './projects-summary.repository';
 import { DrizzleSessionRepository } from './session.repository';
 import { DrizzleSessionEventRepository } from './session-event.repository';
 import { DrizzleOutboxRepository } from './outbox.repository';
@@ -173,6 +175,10 @@ const { db, pool } = createDrizzleClient();
     { provide: EpicRepository, useClass: DrizzleEpicRepository },
     { provide: StoryRepository, useClass: DrizzleStoryRepository },
     { provide: TaskRepository, useClass: DrizzleTaskRepository },
+    {
+      provide: ProjectsSummaryRepository,
+      useClass: DrizzleProjectsSummaryRepository,
+    },
     { provide: ModuleMapRepository, useClass: DrizzleModuleMapRepository },
     { provide: AgentAreaRepository, useClass: DrizzleAgentAreaRepository },
     {
@@ -237,6 +243,7 @@ const { db, pool } = createDrizzleClient();
     EpicRepository,
     StoryRepository,
     TaskRepository,
+    ProjectsSummaryRepository,
     AgentAreaRepository,
     ModuleMapRepository,
     InfraArtifactRepository,

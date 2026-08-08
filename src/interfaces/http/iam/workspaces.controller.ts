@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -30,10 +31,13 @@ import { CreateProjectUseCase } from '../../../application/use-cases/iam/create-
 import { ListProjectsForWorkspaceUseCase } from '../../../application/use-cases/iam/list-projects-for-workspace.use-case';
 import { GetWorkspaceSummaryUseCase } from '../../../application/use-cases/iam/get-workspace-summary.use-case';
 import { GetProjectsStatusForWorkspaceUseCase } from '../../../application/use-cases/iam/get-projects-status-for-workspace.use-case';
+import { GetProjectsSummaryForWorkspaceUseCase } from '../../../application/use-cases/iam/get-projects-summary-for-workspace.use-case';
+import { GetUnreadEventsForWorkspaceUseCase } from '../../../application/use-cases/iam/get-unread-events-for-workspace.use-case';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { UnreadEventsDto } from './dto/unread-events.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import {
   ProjectResponseDto,
@@ -42,6 +46,8 @@ import {
   WorkspaceResponseDto,
   WorkspaceSummaryResponseDto,
   ProjectBlockedStatusResponseDto,
+  ProjectCardSummaryResponseDto,
+  ProjectUnreadEventsResponseDto,
 } from './dto/iam.response.dto';
 
 @ApiTags('workspaces')
@@ -63,6 +69,8 @@ export class WorkspacesController {
     private readonly listProjectsForWorkspace: ListProjectsForWorkspaceUseCase,
     private readonly getWorkspaceSummary: GetWorkspaceSummaryUseCase,
     private readonly getProjectsStatusForWorkspace: GetProjectsStatusForWorkspaceUseCase,
+    private readonly getProjectsSummaryForWorkspace: GetProjectsSummaryForWorkspaceUseCase,
+    private readonly getUnreadEventsForWorkspace: GetUnreadEventsForWorkspaceUseCase,
   ) {}
 
   @Post()
@@ -185,5 +193,52 @@ export class WorkspacesController {
   @ApiOkResponse({ type: [ProjectBlockedStatusResponseDto] })
   getProjectsStatus(@Param('workspaceId') workspaceId: string) {
     return this.getProjectsStatusForWorkspace.execute(workspaceId);
+  }
+
+  @Get(':workspaceId/projects-summary')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Tudo que os cards do dashboard desenham, numa chamada',
+    description:
+      'Uma linha por projeto do workspace com provedor de git, status de ' +
+      'provisionamento, orçamento, última atividade, histórias aguardando promoção e ' +
+      'os fatos que decidem a roster de agentes (RN-090).\n\n' +
+      'Mesma ideia de `projects-status`, um andar acima: a grade de cards é uma ' +
+      'leitura do WORKSPACE, não N leituras de projeto. O caminho anterior fazia sete ' +
+      'consultas em poll por card, e com 23 projetos o dashboard sozinho estourava o ' +
+      'rate limit de 300 req/min.',
+  })
+  @ApiOkResponse({ type: [ProjectCardSummaryResponseDto] })
+  getProjectsSummary(@Param('workspaceId') workspaceId: string) {
+    return this.getProjectsSummaryForWorkspace.execute(workspaceId);
+  }
+
+  @Post(':workspaceId/unread-events')
+  // LEITURA, apesar do POST — nada é criado, alterado ou apagado, e `201`
+  // mentiria. Ver a justificativa na descrição abaixo.
+  @HttpCode(200)
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Os eventos não lidos de vários projetos, numa chamada',
+    description:
+      'A gaveta do sino, para o workspace inteiro (RN-091). Cada cursor diz até que ' +
+      '`seq` aquele projeto já foi lido, e a resposta traz o que veio depois disso na ' +
+      'sessão mais recente de cada um.\n\n' +
+      '**É POST porque é o único verbo com CORPO, não porque muda estado.** O ' +
+      'servidor não sabe onde cada leitor parou: "lido até aqui" é um `seq` por ' +
+      'projeto guardado no navegador, e não existe (de propósito) endpoint de marcar ' +
+      'como lido. Logo o corte precisa VIAJAR no pedido, e são dezenas de pares — em ' +
+      'query string isso vira URL longa, que proxy trunca, e ainda colocaria id de ' +
+      'projeto do usuário em log de acesso. A rota é idempotente e sem efeito ' +
+      'colateral: responde `200`, nunca `201`.\n\n' +
+      'Substitui uma requisição POR PROJETO com a gaveta aberta — 23 projetos ' +
+      'custavam 286 req/min contra um limite de 300.',
+  })
+  @ApiOkResponse({ type: [ProjectUnreadEventsResponseDto] })
+  getUnreadEvents(
+    @Param('workspaceId') workspaceId: string,
+    @Body() dto: UnreadEventsDto,
+  ) {
+    return this.getUnreadEventsForWorkspace.execute(workspaceId, dto.cursors);
   }
 }
