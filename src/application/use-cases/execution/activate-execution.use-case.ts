@@ -11,6 +11,7 @@ import { TransitionSessionUseCase } from '../sessions/transition-session.use-cas
 import { CreateSessionUseCase } from '../sessions/create-session.use-case';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { UpsertAgentInstructionUseCase } from '../agents/upsert-agent-instruction.use-case';
+import { SeedAgentAreasUseCase } from '../agents/seed-agent-areas.use-case';
 import { DEFAULT_MAX_GATE_CORRECTIONS } from './record-gate-verdict.use-case';
 import {
   DEFAULT_DEV_AGENT_IMPL,
@@ -82,6 +83,7 @@ export class ActivateExecutionUseCase {
     private readonly upsertInstruction: UpsertAgentInstructionUseCase,
     private readonly projects: ProjectRepository,
     private readonly permissionsFile: PermissionsFileStore,
+    private readonly seedAreas: SeedAgentAreasUseCase,
   ) {}
 
   async execute(
@@ -167,6 +169,13 @@ export class ActivateExecutionUseCase {
     }
 
     const modules = moduleMap.modules.map((m) => m.name);
+
+    // As áreas já nasceram com o projeto (RN-094); o que a ativação acrescenta
+    // é QUEM são os membros da área de dev — um `dev-<modulo>` por módulo do
+    // `module_map`, que não existia na criação. `upsert` SUBSTITUI a lista, e é
+    // isso que faz um `module_map` novo não deixar agente fantasma na área.
+    await this.seedAreas.execute(projectId, modules.map(devAgentId));
+
     for (const m of moduleMap.modules) {
       const agentId = devAgentId(m.name);
       await this.upsertInstruction.execute(

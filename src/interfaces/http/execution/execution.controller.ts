@@ -108,9 +108,9 @@ export class ExecutionController {
   @ApiOperation({
     summary: 'As áreas de agente do projeto, com o teto de cada lead',
     description:
-      'Vazio para projeto que nunca ativou execução, e isso NÃO é erro: as ' +
-      'áreas nascem no seeding da ativação, porque os membros da área de dev ' +
-      'vêm do `module_map`.',
+      'O projeto nasce com as três áreas (RN-094), então a lista vem cheia ' +
+      'mesmo antes de haver `module_map`. O que a ativação de execução ' +
+      'acrescenta são os MEMBROS da área de dev, um por módulo.',
   })
   @ApiOkResponse({ type: [AreaDeAgentesResponseDto] })
   listAreas(@Param('projectId') projectId: string) {
