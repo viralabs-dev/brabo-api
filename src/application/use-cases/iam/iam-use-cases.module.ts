@@ -19,6 +19,7 @@ import { ListProjectsForWorkspaceUseCase } from './list-projects-for-workspace.u
 import { ListProjectMembersUseCase } from './list-project-members.use-case';
 import { GetWorkspaceSummaryUseCase } from './get-workspace-summary.use-case';
 import { GetProjectsStatusForWorkspaceUseCase } from './get-projects-status-for-workspace.use-case';
+import { GetProjectsSummaryForWorkspaceUseCase } from './get-projects-summary-for-workspace.use-case';
 
 const USE_CASES = [
   CreateWorkspaceUseCase,
@@ -40,6 +41,7 @@ const USE_CASES = [
   ListProjectMembersUseCase,
   GetWorkspaceSummaryUseCase,
   GetProjectsStatusForWorkspaceUseCase,
+  GetProjectsSummaryForWorkspaceUseCase,
 ];
 
 @Module({

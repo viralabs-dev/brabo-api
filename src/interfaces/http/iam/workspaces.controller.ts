@@ -30,6 +30,7 @@ import { CreateProjectUseCase } from '../../../application/use-cases/iam/create-
 import { ListProjectsForWorkspaceUseCase } from '../../../application/use-cases/iam/list-projects-for-workspace.use-case';
 import { GetWorkspaceSummaryUseCase } from '../../../application/use-cases/iam/get-workspace-summary.use-case';
 import { GetProjectsStatusForWorkspaceUseCase } from '../../../application/use-cases/iam/get-projects-status-for-workspace.use-case';
+import { GetProjectsSummaryForWorkspaceUseCase } from '../../../application/use-cases/iam/get-projects-summary-for-workspace.use-case';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { AddMemberDto } from './dto/add-member.dto';
@@ -42,6 +43,7 @@ import {
   WorkspaceResponseDto,
   WorkspaceSummaryResponseDto,
   ProjectBlockedStatusResponseDto,
+  ProjectCardSummaryResponseDto,
 } from './dto/iam.response.dto';
 
 @ApiTags('workspaces')
@@ -63,6 +65,7 @@ export class WorkspacesController {
     private readonly listProjectsForWorkspace: ListProjectsForWorkspaceUseCase,
     private readonly getWorkspaceSummary: GetWorkspaceSummaryUseCase,
     private readonly getProjectsStatusForWorkspace: GetProjectsStatusForWorkspaceUseCase,
+    private readonly getProjectsSummaryForWorkspace: GetProjectsSummaryForWorkspaceUseCase,
   ) {}
 
   @Post()
@@ -185,5 +188,23 @@ export class WorkspacesController {
   @ApiOkResponse({ type: [ProjectBlockedStatusResponseDto] })
   getProjectsStatus(@Param('workspaceId') workspaceId: string) {
     return this.getProjectsStatusForWorkspace.execute(workspaceId);
+  }
+
+  @Get(':workspaceId/projects-summary')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Tudo que os cards do dashboard desenham, numa chamada',
+    description:
+      'Uma linha por projeto do workspace com provedor de git, status de ' +
+      'provisionamento, orçamento, última atividade, histórias aguardando promoção e ' +
+      'os fatos que decidem a roster de agentes (RN-090).\n\n' +
+      'Mesma ideia de `projects-status`, um andar acima: a grade de cards é uma ' +
+      'leitura do WORKSPACE, não N leituras de projeto. O caminho anterior fazia sete ' +
+      'consultas em poll por card, e com 23 projetos o dashboard sozinho estourava o ' +
+      'rate limit de 300 req/min.',
+  })
+  @ApiOkResponse({ type: [ProjectCardSummaryResponseDto] })
+  getProjectsSummary(@Param('workspaceId') workspaceId: string) {
+    return this.getProjectsSummaryForWorkspace.execute(workspaceId);
   }
 }
