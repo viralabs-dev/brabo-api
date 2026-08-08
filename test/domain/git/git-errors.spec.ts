@@ -56,7 +56,7 @@ describe('cabeçalho de git-errors.ts × GitProviderContract', () => {
     return Number(achado[1]);
   };
 
-  it('o contrato tem as 10 operações que o cabeçalho afirma', () => {
+  it('o contrato tem as 12 operações que o cabeçalho afirma', () => {
     expect(operacoesDoContrato()).toEqual([
       'createRepo',
       'getRepo',
@@ -68,6 +68,8 @@ describe('cabeçalho de git-errors.ts × GitProviderContract', () => {
       'mergePullRequest',
       'getFileContent',
       'commentOnPullRequest',
+      'listTree',
+      'getPullRequestDiff',
     ]);
   });
 

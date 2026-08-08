@@ -9,19 +9,30 @@ import type {
   CreateBranchInput,
   CreateRepoInput,
   GetFileContentInput,
+  GetPullRequestDiffInput,
   GetRepoInput,
   GitBranch,
   GitCommitResult,
+  GitDiffFileStatus,
   GitProviderCapabilities,
   GitProviderContract,
   GitProviderName,
   GitPullRequest,
+  GitPullRequestDiff,
+  GitPullRequestDiffFile,
   GitRepo,
+  GitTree,
+  GitTreeEntry,
   ListBranchesInput,
+  ListTreeInput,
   OpenPullRequestInput,
   MergePullRequestInput,
   CommentOnPullRequestInput,
 } from '@brabo/shared';
+import {
+  GIT_DIFF_FILE_LIMIT,
+  GIT_TREE_ENTRY_LIMIT,
+} from '../../domain/git/git-read-limits';
 import {
   GitBranchAlreadyExistsError,
   GitBranchNotFoundError,
@@ -42,7 +53,8 @@ const execFileAsync = promisify(execFile);
  * providers.
  *
  * Implementa `GitProviderContract` (ver @brabo/shared e docs/adr/0001) —
- * as 9 operações normalizadas da Fase 2.
+ * as 12 operações normalizadas, das 9 da Fase 2 às duas de leitura da aba
+ * Code (FASE 26).
  */
 @Injectable()
 export class LocalGitProvider implements GitProviderContract {
@@ -52,9 +64,15 @@ export class LocalGitProvider implements GitProviderContract {
   // ganham suporte LOCAL (Fase 4a — devs): um store leve num sidecar do bare
   // repo + merge via git, pra o fluxo dos dev agents rodar 100% self-contained
   // (ver docs/adr/0011). O contrato único cobre PR no local a partir daqui.
+  // `listTree` sai de `git ls-tree` e `getPullRequestDiff` de `git diff`
+  // entre as branches guardadas no store de PR — as duas rodam no bare repo,
+  // sem plataforma nenhuma por trás, e por isso são declaradas `true`: a
+  // suite de contrato as exercita de ponta a ponta neste provider.
   readonly capabilities: GitProviderCapabilities = {
     protectBranch: false,
     pullRequests: true,
+    listTree: true,
+    pullRequestDiff: true,
   };
 
   async createRepo(input: CreateRepoInput): Promise<GitRepo> {
@@ -329,7 +347,210 @@ export class LocalGitProvider implements GitProviderContract {
     record.comments = [...(record.comments ?? []), input.body];
     await writePrStore(repoDir, store);
   }
+
+  async listTree(input: ListTreeInput): Promise<GitTree | null> {
+    const repoDir = input.externalId;
+    await assertBareRepo(repoDir);
+
+    const path = normalizeTreePath(input.path);
+    // `ls-tree <ref> -- <dir>/` lista UM nível. O sufixo `/` é o que faz o
+    // git tratar o argumento como diretório a abrir em vez de entrada a
+    // casar — sem ele, `ls-tree HEAD -- src` devolve a própria `src`, e a
+    // árvore nunca desceria.
+    const spec = path === '' ? [] : ['--', `${path}/`];
+
+    let stdout: string;
+    try {
+      ({ stdout } = await execGit(repoDir, [
+        'ls-tree',
+        '-l',
+        '-z',
+        `${input.ref}^{tree}`,
+        ...spec,
+      ]));
+    } catch (error) {
+      if (isMissingRefOrPath(error)) return null;
+      throw error;
+    }
+
+    const linhas = stdout.split('\0').filter(Boolean);
+    // Caminho que não existe, ou que é ARQUIVO: `ls-tree -- <arquivo>/` não
+    // casa nada e sai com zero. A raiz é a exceção — repositório sem commit
+    // tem árvore vazia legítima, e aí `null` seria mentira.
+    if (linhas.length === 0 && path !== '') return null;
+
+    const entries: GitTreeEntry[] = [];
+    for (const linha of linhas.slice(0, GIT_TREE_ENTRY_LIMIT)) {
+      // `<mode> <type> <sha> <size>\t<path>` — size é `-` para árvore.
+      const [meta, entryPath] = linha.split('\t');
+      const campos = meta.trim().split(/\s+/);
+      const tipo = campos[1];
+      const tamanho = campos[3];
+      entries.push({
+        path: entryPath,
+        name: entryPath.slice(entryPath.lastIndexOf('/') + 1),
+        type: tipo === 'tree' ? 'dir' : 'file',
+        size: tipo === 'blob' && tamanho !== '-' ? Number(tamanho) : null,
+      });
+    }
+
+    return {
+      ref: input.ref,
+      path,
+      entries,
+      truncated: linhas.length > GIT_TREE_ENTRY_LIMIT,
+    };
+  }
+
+  async getPullRequestDiff(
+    input: GetPullRequestDiffInput,
+  ): Promise<GitPullRequestDiff | null> {
+    const repoDir = input.externalId;
+    await assertBareRepo(repoDir);
+
+    const store = await readPrStore(repoDir);
+    const record = store.find((p) => p.id === input.pullRequestId);
+    if (!record) return null;
+
+    // `a...b` é o diff contra a MERGE BASE, não contra a ponta do target —
+    // é o que a plataforma mostra numa PR. Contra a ponta, commits que
+    // entraram no target depois da branch apareceriam invertidos no diff.
+    const range = `${record.targetBranch}...${record.sourceBranch}`;
+
+    const numstat = await execGit(repoDir, [
+      'diff',
+      '-M',
+      '-z',
+      '--numstat',
+      range,
+    ]);
+    const nameStatus = await execGit(repoDir, [
+      'diff',
+      '-M',
+      '-z',
+      '--name-status',
+      range,
+    ]);
+
+    const statusPorCaminho = parseNameStatusZ(nameStatus.stdout);
+    const contagens = parseNumstatZ(numstat.stdout);
+
+    const files: GitPullRequestDiffFile[] = [];
+    for (const contagem of contagens.slice(0, GIT_DIFF_FILE_LIMIT)) {
+      const status = statusPorCaminho.get(contagem.path) ?? 'modified';
+      const { stdout: patch } = await execGit(repoDir, [
+        'diff',
+        '-M',
+        range,
+        '--',
+        contagem.path,
+      ]);
+      files.push({
+        path: contagem.path,
+        previousPath: status === 'renamed' ? contagem.previousPath : null,
+        status,
+        additions: contagem.additions,
+        deletions: contagem.deletions,
+        // Binário: o numstat vem com `-` nas duas contagens e o patch não
+        // tem hunk nenhum. `null` diz "não veio", que é o contrato.
+        patch: contagem.binary ? null : patch,
+      });
+    }
+
+    return {
+      pullRequestId: record.id,
+      files,
+      truncated: contagens.length > GIT_DIFF_FILE_LIMIT,
+    };
+  }
 }
+
+/** `""` para a raiz; sem `/` na ponta, sem `./`. */
+function normalizeTreePath(path: string | undefined): string {
+  return (path ?? '').replace(/^\.?\/+/, '').replace(/\/+$/, '');
+}
+
+interface ContagemDeArquivo {
+  path: string;
+  previousPath: string | null;
+  additions: number;
+  deletions: number;
+  binary: boolean;
+}
+
+/**
+ * `git diff -z --numstat` emite `adds\tdels\t\0<path>\0` e, para renomeação,
+ * `adds\tdels\t\0<antigo>\0<novo>\0` — três campos em vez de dois. É por isso
+ * que o parse é por NUL e não por linha: sem `-z`, uma renomeação vira
+ * `{antigo => novo}` numa string só, e caminho com espaço/chave quebra o
+ * desempate.
+ */
+function parseNumstatZ(stdout: string): ContagemDeArquivo[] {
+  const campos = stdout.split('\0');
+  const resultado: ContagemDeArquivo[] = [];
+
+  let i = 0;
+  while (i < campos.length) {
+    const cabecalho = campos[i];
+    if (!cabecalho) break;
+    const [adds, dels, restoNaMesmaCelula] = cabecalho.split('\t');
+    const binary = adds === '-' && dels === '-';
+
+    // Sem renomeação o path vem colado no 3º pedaço do cabeçalho; com
+    // renomeação esse pedaço é vazio e os dois caminhos vêm nos NULs
+    // seguintes.
+    if (restoNaMesmaCelula) {
+      resultado.push({
+        path: restoNaMesmaCelula,
+        previousPath: null,
+        additions: binary ? 0 : Number(adds),
+        deletions: binary ? 0 : Number(dels),
+        binary,
+      });
+      i += 1;
+      continue;
+    }
+
+    const anterior = campos[i + 1];
+    const novo = campos[i + 2];
+    resultado.push({
+      path: novo,
+      previousPath: anterior,
+      additions: binary ? 0 : Number(adds),
+      deletions: binary ? 0 : Number(dels),
+      binary,
+    });
+    i += 3;
+  }
+
+  return resultado;
+}
+
+/** `git diff -z --name-status`: `<letra>\0<path>\0` (ou `R<score>` com dois). */
+function parseNameStatusZ(stdout: string): Map<string, GitDiffFileStatus> {
+  const campos = stdout.split('\0').filter((c) => c !== '');
+  const mapa = new Map<string, GitDiffFileStatus>();
+
+  let i = 0;
+  while (i < campos.length) {
+    const letra = campos[i][0];
+    if (letra === 'R' || letra === 'C') {
+      mapa.set(campos[i + 2], 'renamed');
+      i += 3;
+      continue;
+    }
+    mapa.set(campos[i + 1], STATUS_POR_LETRA[letra] ?? 'modified');
+    i += 2;
+  }
+
+  return mapa;
+}
+
+const STATUS_POR_LETRA: Record<string, GitDiffFileStatus> = {
+  A: 'added',
+  D: 'removed',
+  M: 'modified',
+};
 
 interface StoredPr {
   id: string;
@@ -453,9 +674,17 @@ function isAlreadyExists(error: unknown): boolean {
 // `git show <branch>:<path>` erra de duas formas distintas pro nosso caso
 // "não existe" (branch inexistente vs. path ausente na árvore) — ambas
 // mapeiam pro mesmo `null` do contrato (ver GetFileContentInput).
+//
+// `git ls-tree <ref>^{tree}` (listTree) erra numa TERCEIRA forma para ref
+// inexistente: `fatal: Not a valid object name`. Verificado contra o git do
+// ambiente antes de entrar aqui — "not a valid" não casa com "invalid", e
+// sem esta alternativa a ref inexistente vazaria como erro cru em vez de
+// virar o `null` que o contrato promete.
 function isMissingRefOrPath(error: unknown): boolean {
   const stderr = (error as { stderr?: string })?.stderr ?? '';
-  return /does not exist in|invalid object name/i.test(stderr);
+  return /does not exist in|invalid object name|not a valid object name/i.test(
+    stderr,
+  );
 }
 
 function sanitizeSlug(name: string): string {

@@ -164,6 +164,12 @@ class InstrumentedGitProvider implements GitProviderContract {
     this.track('commentOnPullRequest', () =>
       this.inner.commentOnPullRequest(input),
     );
+  listTree: GitProviderContract['listTree'] = (input) =>
+    this.track('listTree', () => this.inner.listTree(input));
+  getPullRequestDiff: GitProviderContract['getPullRequestDiff'] = (input) =>
+    this.track('getPullRequestDiff', () =>
+      this.inner.getPullRequestDiff(input),
+    );
 }
 
 function registryFor(provider: GitProviderContract): GitProviderRegistry {

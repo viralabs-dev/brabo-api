@@ -5,20 +5,29 @@ import type {
   CreateBranchInput,
   CreateRepoInput,
   GetFileContentInput,
+  GetPullRequestDiffInput,
   GetRepoInput,
   GitBranch,
   GitCommitResult,
+  GitDiffFileStatus,
   GitProviderCapabilities,
   GitProviderContract,
   GitProviderName,
   GitPullRequest,
+  GitPullRequestDiff,
   GitRepo,
+  GitTree,
   ListBranchesInput,
+  ListTreeInput,
   MergePullRequestInput,
   OpenPullRequestInput,
   ProtectBranchInput,
   CommentOnPullRequestInput,
 } from '@brabo/shared';
+import {
+  GIT_DIFF_FILE_LIMIT,
+  GIT_TREE_ENTRY_LIMIT,
+} from '../../domain/git/git-read-limits';
 import {
   GitBranchAlreadyExistsError,
   GitBranchNotFoundError,
@@ -29,8 +38,9 @@ import {
 import { withRetry } from './retry';
 
 /**
- * Implementa `GitProviderContract` (ver docs/adr/0001) — as 9 operações
- * normalizadas da Fase 2. Usa `token:` (PAT de usuário) no construtor do
+ * Implementa `GitProviderContract` (ver docs/adr/0001) — as 12 operações
+ * normalizadas, das 9 da Fase 2 às duas de leitura da aba Code (FASE 26).
+ * Usa `token:` (PAT de usuário) no construtor do
  * Gitbeaker — ver docs/adr/0004-git-credential-registration.md pra por
  * que isso não é intercambiável com `oauthToken:`.
  */
@@ -41,6 +51,8 @@ export class GitlabProvider implements GitProviderContract {
   readonly capabilities: GitProviderCapabilities = {
     protectBranch: true,
     pullRequests: true,
+    listTree: true,
+    pullRequestDiff: true,
   };
 
   async createRepo(input: CreateRepoInput): Promise<GitRepo> {
@@ -305,6 +317,134 @@ export class GitlabProvider implements GitProviderContract {
       input.body,
     );
   }
+
+  async listTree(input: ListTreeInput): Promise<GitTree | null> {
+    const api = new Gitlab({ token: input.accessToken ?? '' });
+    const path = normalizeTreePath(input.path);
+
+    let entradas: { id: string; name: string; type: string; path: string }[];
+    try {
+      entradas = await withRetry(
+        () =>
+          api.Repositories.allRepositoryTrees(input.externalId, {
+            ref: input.ref,
+            path,
+            recursive: false,
+            perPage: 100,
+          }),
+        { shouldRetry: isRetryableReadError },
+      );
+    } catch (error) {
+      // O GitLab responde 404 tanto para projeto inexistente quanto para ref
+      // ou caminho inexistente — todos `null` pelo contrato.
+      if (getStatus(error) === 404) return null;
+      throw error;
+    }
+
+    // Caminho que não existe (ou que é ARQUIVO) devolve lista VAZIA, com 200
+    // — o GitLab não erra nesse caso. A raiz é a exceção: repositório sem
+    // commit tem árvore vazia legítima, e `null` ali seria mentira.
+    if (entradas.length === 0 && path !== '') return null;
+
+    return {
+      ref: input.ref,
+      path,
+      entries: entradas.slice(0, GIT_TREE_ENTRY_LIMIT).map((entrada) => ({
+        path: entrada.path,
+        name: entrada.name,
+        // 'tree' é diretório; 'blob' e 'commit' (submódulo) são folhas.
+        type: entrada.type === 'tree' ? ('dir' as const) : ('file' as const),
+        // `RepositoryTreeSchema` NÃO traz tamanho — só o blob individual
+        // traz, e pedi-lo por entrada faria uma requisição por arquivo.
+        // `null` é a degradação honesta; a tela mostra a árvore sem bytes.
+        size: null,
+      })),
+      truncated: entradas.length > GIT_TREE_ENTRY_LIMIT,
+    };
+  }
+
+  async getPullRequestDiff(
+    input: GetPullRequestDiffInput,
+  ): Promise<GitPullRequestDiff | null> {
+    const api = new Gitlab({ token: input.accessToken ?? '' });
+    const mergeRequestIid = Number(input.pullRequestId);
+
+    let diffs: {
+      old_path: string;
+      new_path: string;
+      new_file: boolean;
+      renamed_file: boolean;
+      deleted_file: boolean;
+      diff: string;
+    }[];
+    try {
+      diffs = await withRetry(
+        () => api.MergeRequests.allDiffs(input.externalId, mergeRequestIid),
+        { shouldRetry: isRetryableReadError },
+      );
+    } catch (error) {
+      if (getStatus(error) === 404) return null;
+      throw error;
+    }
+
+    return {
+      pullRequestId: input.pullRequestId,
+      files: diffs.slice(0, GIT_DIFF_FILE_LIMIT).map((arquivo) => {
+        const status = statusDoGitlab(arquivo);
+        // `MergeRequestDiffSchema` NÃO traz additions/deletions — ao
+        // contrário do GitHub, que já entrega os dois. Contar as linhas do
+        // diff unificado é a única fonte disponível, e é exata: é o mesmo
+        // que o `--numstat` faria sobre este texto.
+        const { additions, deletions } = contarLinhas(arquivo.diff);
+        return {
+          path: arquivo.new_path,
+          previousPath: status === 'renamed' ? arquivo.old_path : null,
+          status,
+          additions,
+          deletions,
+          // Binário vem com `diff` VAZIO (o GitLab não gera texto para ele).
+          // `null` é o que o contrato manda — string vazia diria "sem
+          // mudanças", que é falso.
+          patch: arquivo.diff === '' ? null : arquivo.diff,
+        };
+      }),
+      truncated: diffs.length > GIT_DIFF_FILE_LIMIT,
+    };
+  }
+}
+
+/** `""` para a raiz. */
+function normalizeTreePath(path: string | undefined): string {
+  return (path ?? '').replace(/^\.?\/+/, '').replace(/\/+$/, '');
+}
+
+function statusDoGitlab(arquivo: {
+  new_file: boolean;
+  renamed_file: boolean;
+  deleted_file: boolean;
+}): GitDiffFileStatus {
+  if (arquivo.renamed_file) return 'renamed';
+  if (arquivo.new_file) return 'added';
+  if (arquivo.deleted_file) return 'removed';
+  return 'modified';
+}
+
+/**
+ * Conta `+`/`-` de um diff unificado, ignorando os cabeçalhos `+++`/`---`
+ * (que começam com o mesmo caractere e não são linhas de conteúdo).
+ */
+function contarLinhas(diff: string): {
+  additions: number;
+  deletions: number;
+} {
+  let additions = 0;
+  let deletions = 0;
+  for (const linha of diff.split('\n')) {
+    if (linha.startsWith('+++') || linha.startsWith('---')) continue;
+    if (linha.startsWith('+')) additions += 1;
+    else if (linha.startsWith('-')) deletions += 1;
+  }
+  return { additions, deletions };
 }
 
 function getStatus(error: unknown): number | undefined {

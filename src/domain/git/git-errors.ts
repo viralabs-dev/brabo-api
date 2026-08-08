@@ -1,6 +1,6 @@
 import type { GitProviderName } from '@brabo/shared';
 
-// Erros normalizados das 10 operações do GitProviderContract (ver
+// Erros normalizados das 12 operações do GitProviderContract (ver
 // docs/adr/0002) — cada um é uma classe avulsa com campos de contexto
 // tipados, mesmo padrão já usado em git-provider-errors.ts (OAuth) e no
 // resto do domínio. Deliberadamente sem classe-base comum: nenhum filtro
