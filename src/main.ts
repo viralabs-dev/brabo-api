@@ -12,11 +12,18 @@ import { DomainTransitionErrorFilter } from './interfaces/http/shared/domain-tra
 import { GitProviderErrorFilter } from './interfaces/http/shared/git-provider-error.filter';
 import { LlmBindingErrorFilter } from './interfaces/http/shared/llm-binding-error.filter';
 import { resolveCorsOrigins } from './infrastructure/security/cors-origins';
+import { resolveOauthStateSecret } from './infrastructure/security/oauth-state-secret';
 import { helmetOptions } from './infrastructure/security/security-headers';
 import { SwaggerModule } from '@nestjs/swagger';
 import { montarDocumento } from './infrastructure/openapi/documento';
 
 async function bootstrap() {
+  // ANTES de subir qualquer coisa: em produção, a chave que assina o `state` do
+  // OAuth de git não pode ser a de exemplo (ver oauth-state-secret.ts). Aqui, e
+  // não no primeiro uso, porque o primeiro uso pode demorar semanas — e nesse
+  // intervalo a api estaria de pé aceitando `state` assinado com chave pública.
+  resolveOauthStateSecret();
+
   // `bufferLogs`: as linhas emitidas ANTES de o logger estar pronto ficam na
   // fila e são reemitidas em JSON, em vez de sair no formato default do Nest —
   // senão o começo do log de cada pod não é parseável pelo Loki.
