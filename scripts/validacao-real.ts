@@ -92,6 +92,10 @@ import { ActivateExecutionUseCase } from '../src/application/use-cases/execution
 import { SetModelBindingUseCase } from '../src/application/use-cases/llm/set-model-binding.use-case';
 import { PermissionsFileStore } from '../src/application/ports/permissions-file-store.port';
 import { SessionRepository } from '../src/application/ports/session-repository.port';
+import { CreateHandoffUseCase } from '../src/application/use-cases/agents/create-handoff.use-case';
+import { AcceptHandoffUseCase } from '../src/application/use-cases/agents/accept-handoff.use-case';
+import { OfferInfraHandoffUseCase } from '../src/application/use-cases/agents/offer-infra-handoff.use-case';
+import { HandoffRepository } from '../src/application/ports/handoff-repository.port';
 import { ModuleMapRepository } from '../src/application/ports/module-map-repository.port';
 import {
   EpicRepository,
@@ -99,8 +103,8 @@ import {
   TaskRepository,
 } from '../src/application/ports/backlog-repository.port';
 
-type Fase = 'adocao' | 'backlog' | 'execucao';
-const FASES: Fase[] = ['adocao', 'backlog', 'execucao'];
+type Fase = 'adocao' | 'backlog' | 'dev-lead' | 'execucao';
+const FASES: Fase[] = ['adocao', 'backlog', 'dev-lead', 'execucao'];
 
 type Plano = 'aprovar' | 'como-esta';
 
@@ -118,7 +122,7 @@ function lerOpcoes(): Opcoes {
 
   if (!args.includes('--repo') || !repo || repo.startsWith('--')) {
     console.error(
-      'uso: validacao-real.ts --repo <owner/repo> [--ate adocao|backlog|execucao]',
+      'uso: validacao-real.ts --repo <owner/repo> [--ate adocao|backlog|dev-lead|execucao]',
     );
     process.exit(2);
   }
@@ -491,10 +495,123 @@ async function main() {
   );
   log('✓ promovida por AÇÃO SUA — e o event log registra isso');
 
+  // -------------- 2b. o Dev Lead recebe e PLANEJA (FASE 14d) --------------
+  //
+  // Fase própria, com custo próprio: um turno de LLM do Arquiteto (fechamento)
+  // e um do Dev Lead (o plano). Separada da execução pelo mesmo critério que
+  // separa as outras — a barata roda primeiro, e é assim que erro de
+  // configuração aparece antes de custar o preço da execução inteira.
+  async function faseDevLead() {
+    log('\n--- 2b. o Dev Lead recebe o handoff e PLANEJA (GASTA POUCO) ---');
+
+    const handoffs = app.get(HandoffRepository);
+
+    // O Arquiteto precisa estar DE PÉ: quem oferece os dois handoffs é ele, e
+    // `offer_*_handoff` é um GenServer.call no processo dele.
+    //
+    // O handoff PO → Arquiteto é SEMEADO, como o module_map logo acima: esta
+    // fase testa o elo Arquiteto → Dev Lead, e rodar Criativo e PO só para
+    // chegar aqui custaria vários turnos sem provar nada de novo. O que NÃO é
+    // semeado é o que está sob teste — os dois handoffs que saem daqui.
+    const paraArquiteto = await app
+      .get(CreateHandoffUseCase)
+      .execute(project.id, sessaoBacklog.id, {
+        fromAgent: 'po',
+        toAgent: 'arquiteto',
+      });
+
+    // Aceitar já ATIVA o agente (AcceptHandoffUseCase chama ActivateAgent).
+    await app
+      .get(AcceptHandoffUseCase)
+      .execute(project.id, sessaoBacklog.id, paraArquiteto.id, owner.id);
+    log('✓ Arquiteto de pé (handoff PO→Arquiteto semeado)');
+
+    // A confirmação de arquitetura pronta: UMA ação, DOIS handoffs.
+    await app
+      .get(OfferInfraHandoffUseCase)
+      .execute(project.id, sessaoBacklog.id, owner.id);
+
+    const ofertados = await esperar(
+      'os handoffs para infra E dev-lead',
+      async () => {
+        const todos = await handoffs.findBySession(sessaoBacklog.id);
+        const alvos = todos.map((h) => h.toAgent);
+        return alvos.includes('dev-lead') && alvos.includes('infra')
+          ? todos
+          : null;
+      },
+      60_000,
+    );
+    log(`✓ ${ofertados.length} handoff(s) ofertado(s): infra e dev-lead`);
+
+    const paraDev = ofertados.find((h) => h.toAgent === 'dev-lead')!;
+    await app
+      .get(AcceptHandoffUseCase)
+      .execute(project.id, sessaoBacklog.id, paraDev.id, owner.id);
+    log('✓ handoff do Dev Lead aceito — ele foi ativado');
+
+    // O plano é o desfecho observável do item 5: sem ele, o agente subiu e não
+    // fez o que existe para fazer.
+    const plano = await esperar(
+      'o plano do Dev Lead (execution.plan_proposed)',
+      async () => {
+        const [ev] = await db
+          .select()
+          .from(sessionEvents)
+          .where(
+            and(
+              eq(sessionEvents.sessionId, sessaoBacklog.id),
+              eq(sessionEvents.type, 'execution.plan_proposed'),
+            ),
+          );
+        return ev ?? null;
+      },
+      300_000,
+    );
+
+    const payload = plano.payload as {
+      totalAgentes?: number;
+      resumo?: string;
+      modulos?: { modulo: string; agentes: number; porque: string }[];
+    };
+
+    assertar(
+      plano.actorId === 'dev-lead' && plano.actorKind === 'agent',
+      `o plano veio de "${plano.actorKind}/${plano.actorId}" e não do dev-lead`,
+    );
+    assertar(
+      (payload.modulos?.length ?? 0) > 0,
+      'o plano não trouxe módulo nenhum',
+    );
+    assertar(
+      payload.modulos!.every((m) => (m.porque ?? '').trim().length > 0),
+      'algum módulo veio sem justificativa — é o que você lê para decidir',
+    );
+
+    log(
+      `✓ PLANO: ${payload.totalAgentes} agente(s) em ` +
+        `${payload.modulos!.length} módulo(s) — "${payload.resumo}"`,
+    );
+    for (const m of payload.modulos!) {
+      log(`    ${m.modulo}: ${m.agentes} — ${m.porque}`);
+    }
+  }
+
   if (ate === 'backlog') {
     log(
       `\n[validacao-real] parou em "backlog" como pedido. Nada foi gasto.\n` +
         `projeto: ${project.id}\nstory: ${story.id}`,
+    );
+    await app.close();
+    return;
+  }
+
+  await faseDevLead();
+
+  if (ate === 'dev-lead') {
+    log(
+      `\n[validacao-real] parou em "dev-lead" como pedido.\n` +
+        `projeto: ${project.id}\nsessão: ${sessaoBacklog.id}`,
     );
     await app.close();
     return;
