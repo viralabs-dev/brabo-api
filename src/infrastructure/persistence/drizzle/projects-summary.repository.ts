@@ -2,8 +2,11 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import {
   ProjectsSummaryRepository,
+  UNREAD_EVENTS_POR_PROJETO,
   type ProjectCardSummary,
+  type ProjectUnreadEvents,
   type RosterFacts,
+  type UnreadCursor,
 } from '../../../application/ports/projects-summary-repository.port';
 import { deriveProvisioningStatus } from '../../../domain/git/repo-bootstrap-status';
 import type { BootstrapPlan } from '../../../domain/git/repo-bootstrap.entity';
@@ -35,6 +38,9 @@ import { currentDb } from './drizzle-context';
  * um N+1 de SQL, que é o mesmo defeito num andar mais barato.
  *
  * O caminho anterior fazia SETE requisições HTTP em poll POR CARD.
+ *
+ * `unreadEventsForWorkspace` é a segunda metade do mesmo read model, sob a
+ * mesma disciplina: DUAS consultas, quantos projetos forem.
  */
 @Injectable()
 export class DrizzleProjectsSummaryRepository implements ProjectsSummaryRepository {
@@ -241,6 +247,113 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
       };
     });
   }
+
+  /**
+   * A gaveta do sino inteira em DUAS consultas, quantos projetos forem
+   * (RN-091).
+   *
+   * A primeira resolve a sessão mais recente de cada projeto PEDIDO — com
+   * `join` em `projects` filtrando por workspace, que é o mesmo passo que
+   * descarta cursor de projeto alheio. A segunda traz os eventos das N sessões
+   * de uma vez: os cortes entram como uma tabela `VALUES` no `join`, e
+   * `row_number()` aplica o teto POR SESSÃO, que é o que um `limit` no fim não
+   * conseguiria (ele cortaria a resposta inteira, e um projeto barulhento
+   * comeria a cota dos outros).
+   *
+   * Raw SQL aqui, e não query builder, por causa dessas duas peças — `VALUES`
+   * correlacionado e função de janela. A alternativa em builder seria um laço
+   * sobre as sessões, que é o N+1 que esta chamada existe para matar.
+   */
+  async unreadEventsForWorkspace(
+    workspaceId: string,
+    cursors: UnreadCursor[],
+  ): Promise<ProjectUnreadEvents[]> {
+    // Mapa vazio devolve vazio, sem ir ao banco: "não perguntei nada" não é
+    // "me dê tudo". O `Map` também desduplica projeto repetido, que de outro
+    // modo apareceria duas vezes no `VALUES` e duplicaria os eventos dele.
+    const corteDe = new Map(cursors.map((c) => [c.projectId, c.afterSeq]));
+    if (corteDe.size === 0) return [];
+
+    const db = currentDb(this.rootDb);
+    const projectIds = [...corteDe.keys()];
+
+    const latestSessions = await db
+      .selectDistinctOn([sessions.projectId], {
+        projectId: sessions.projectId,
+        sessionId: sessions.id,
+      })
+      .from(sessions)
+      .innerJoin(projects, eq(projects.id, sessions.projectId))
+      .where(
+        and(
+          eq(projects.workspaceId, workspaceId),
+          inArray(sessions.projectId, projectIds),
+        ),
+      )
+      .orderBy(sessions.projectId, desc(sessions.createdAt));
+
+    if (latestSessions.length === 0) return [];
+
+    const cortes = sql.join(
+      latestSessions.map(
+        (s) => sql`(${s.sessionId}::uuid, ${corteDe.get(s.projectId)!}::int)`,
+      ),
+      sql`, `,
+    );
+
+    const eventos = await db.execute(sql`
+      SELECT id, session_id, seq, type, actor_kind, actor_id, payload, created_at
+      FROM (
+        SELECT e.*,
+               row_number() OVER (
+                 PARTITION BY e.session_id ORDER BY e.seq ASC
+               ) AS rn
+        FROM session_events e
+        JOIN (VALUES ${cortes}) AS c(session_id, after_seq)
+          ON e.session_id = c.session_id AND e.seq > c.after_seq
+      ) t
+      WHERE t.rn <= ${UNREAD_EVENTS_POR_PROJETO}
+      ORDER BY t.session_id, t.seq
+    `);
+
+    const porSessao = new Map<string, SessionEvent[]>();
+    for (const linha of eventos.rows) {
+      const evento = toEvent(paraColunas(linha));
+      const lista = porSessao.get(evento.sessionId) ?? [];
+      lista.push(evento);
+      porSessao.set(evento.sessionId, lista);
+    }
+
+    const sessaoDe = indexarPor(latestSessions, (s) => s.projectId);
+
+    // Na ordem em que os cursores chegaram, e sem projeto que não tenha nada:
+    // grupo com zero eventos viraria um cabeçalho vazio na gaveta.
+    return projectIds.flatMap((projectId) => {
+      const sessao = sessaoDe.get(projectId);
+      if (!sessao) return [];
+      const events = porSessao.get(sessao.sessionId) ?? [];
+      if (events.length === 0) return [];
+      return [{ projectId, sessionId: sessao.sessionId, events }];
+    });
+  }
+}
+
+/**
+ * `db.execute` devolve as colunas CRUAS (snake_case), sem o mapeamento
+ * camelCase do Drizzle — mesma conversão manual que `claimNext` faz em
+ * `backlog.repository.ts`.
+ */
+function paraColunas(linha: Record<string, unknown>) {
+  return {
+    id: linha.id as string,
+    sessionId: linha.session_id as string,
+    seq: Number(linha.seq),
+    type: linha.type as string,
+    actorKind: linha.actor_kind as SessionEvent['actor']['kind'],
+    actorId: linha.actor_id as string,
+    payload: linha.payload,
+    createdAt: linha.created_at as Date,
+  };
 }
 
 /**

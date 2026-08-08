@@ -39,7 +39,11 @@ async function criarWorkspace(ownerId: string, slug: string) {
   return row;
 }
 
-async function criarProjeto(workspaceId: string, ownerId: string, slug: string) {
+async function criarProjeto(
+  workspaceId: string,
+  ownerId: string,
+  slug: string,
+) {
   const [row] = await db
     .insert(projects)
     .values({ workspaceId, name: slug, slug, createdBy: ownerId })
@@ -320,5 +324,207 @@ describe('DrizzleProjectsSummaryRepository', () => {
     // Sanidade: se as duas fossem 0, a igualdade acima não provaria nada.
     expect(comDois).toBeGreaterThan(0);
     expect(ws.id).toBeTruthy();
+  });
+});
+
+/**
+ * A gaveta do sino, em lote (RN-091).
+ *
+ * O que estes testes protegem não é só o custo: é a SEMÂNTICA do `afterSeq`
+ * por projeto. Batelar leituras cujo corte é diferente em cada uma é onde o
+ * erro fácil mora — um corte só para todo mundo, ou nenhum, devolve dados
+ * plausíveis e ERRADOS.
+ */
+describe('DrizzleProjectsSummaryRepository — não lidos em lote', () => {
+  it('lista de cursores VAZIA devolve vazio, e sem tocar no banco', async () => {
+    const owner = await criarUsuario('vazio-sino@brabo.dev');
+    const ws = await criarWorkspace(owner.id, 'vazio-sino');
+    const projeto = await criarProjeto(ws.id, owner.id, 'core');
+    const sessao = await criarSessao(projeto.id, owner.id);
+    await gravarEvento(sessao.id, 'chat.message');
+
+    const original = pool.query.bind(pool);
+    let consultas = 0;
+    (pool as { query: unknown }).query = (...args: unknown[]) => {
+      consultas += 1;
+      return (original as (...a: unknown[]) => unknown)(...args);
+    };
+    try {
+      // "Não perguntei nada" não é "me dê tudo": o projeto acima TEM evento
+      // não lido, e mesmo assim a resposta é vazia.
+      await expect(repo.unreadEventsForWorkspace(ws.id, [])).resolves.toEqual(
+        [],
+      );
+    } finally {
+      (pool as { query: unknown }).query = original;
+    }
+
+    expect(consultas).toBe(0);
+  });
+
+  it('cada projeto respeita o SEU corte', async () => {
+    const owner = await criarUsuario('cortes@brabo.dev');
+    const ws = await criarWorkspace(owner.id, 'cortes');
+    const a = await criarProjeto(ws.id, owner.id, 'a');
+    const b = await criarProjeto(ws.id, owner.id, 'b');
+    const sa = await criarSessao(a.id, owner.id);
+    const sb = await criarSessao(b.id, owner.id);
+
+    const a1 = await gravarEvento(sa.id, 'chat.message');
+    const a2 = await gravarEvento(sa.id, 'agent.response');
+    const b1 = await gravarEvento(sb.id, 'chat.message');
+    const b2 = await gravarEvento(sb.id, 'agent.response');
+
+    // `a` foi lido até o primeiro evento; `b` nunca foi lido.
+    const grupos = await repo.unreadEventsForWorkspace(ws.id, [
+      { projectId: a.id, afterSeq: a1.seq },
+      { projectId: b.id, afterSeq: 0 },
+    ]);
+
+    const porProjeto = new Map(grupos.map((g) => [g.projectId, g]));
+    expect(porProjeto.get(a.id)?.events.map((e) => e.id)).toEqual([a2.id]);
+    expect(porProjeto.get(b.id)?.events.map((e) => e.id)).toEqual([
+      b1.id,
+      b2.id,
+    ]);
+  });
+
+  it('projeto sem evento novo some da resposta, em vez de vir vazio', async () => {
+    const owner = await criarUsuario('emdia@brabo.dev');
+    const ws = await criarWorkspace(owner.id, 'emdia');
+    const projeto = await criarProjeto(ws.id, owner.id, 'core');
+    const sessao = await criarSessao(projeto.id, owner.id);
+    const ultimo = await gravarEvento(sessao.id, 'chat.message');
+
+    const grupos = await repo.unreadEventsForWorkspace(ws.id, [
+      { projectId: projeto.id, afterSeq: ultimo.seq },
+    ]);
+
+    expect(grupos).toEqual([]);
+  });
+
+  it('projeto de OUTRO workspace é ignorado, não vaza nem estoura', async () => {
+    const owner = await criarUsuario('vizinho@brabo.dev');
+    const a = await criarWorkspace(owner.id, 'ws-sino-a');
+    const b = await criarWorkspace(owner.id, 'ws-sino-b');
+    const doA = await criarProjeto(a.id, owner.id, 'core');
+    const doB = await criarProjeto(b.id, owner.id, 'core');
+    const sa = await criarSessao(doA.id, owner.id);
+    const sb = await criarSessao(doB.id, owner.id);
+    const eventoDoA = await gravarEvento(sa.id, 'chat.message');
+    await gravarEvento(sb.id, 'chat.message');
+
+    // O cursor do vizinho vem do `localStorage` de quem chama e pode ser
+    // sobra de outro workspace — é descartado, não é erro.
+    const grupos = await repo.unreadEventsForWorkspace(a.id, [
+      { projectId: doA.id, afterSeq: 0 },
+      { projectId: doB.id, afterSeq: 0 },
+    ]);
+
+    expect(grupos.map((g) => g.projectId)).toEqual([doA.id]);
+    expect(grupos[0].events.map((e) => e.id)).toEqual([eventoDoA.id]);
+  });
+
+  it('lê a sessão MAIS RECENTE, a mesma que o resumo reporta', async () => {
+    const owner = await criarUsuario('recente-sino@brabo.dev');
+    const ws = await criarWorkspace(owner.id, 'recente-sino');
+    const projeto = await criarProjeto(ws.id, owner.id, 'core');
+
+    const antiga = await criarSessao(projeto.id, owner.id);
+    await db
+      .update(sessions)
+      .set({ createdAt: new Date(Date.now() - 60_000) })
+      .where(sql`${sessions.id} = ${antiga.id}`);
+    const recente = await criarSessao(projeto.id, owner.id);
+
+    await gravarEvento(antiga.id, 'chat.message');
+    const novo = await gravarEvento(recente.id, 'agent.response');
+
+    const [grupo] = await repo.unreadEventsForWorkspace(ws.id, [
+      { projectId: projeto.id, afterSeq: 0 },
+    ]);
+    const [resumo] = await repo.summarizeForWorkspace(ws.id);
+
+    expect(grupo.sessionId).toBe(recente.id);
+    expect(grupo.sessionId).toBe(resumo.latestSessionId);
+    expect(grupo.events.map((e) => e.id)).toEqual([novo.id]);
+  });
+
+  /**
+   * O teto é POR PROJETO, não da resposta inteira. Um `limit` no fim da
+   * consulta devolveria o mesmo total e deixaria o projeto barulhento comer a
+   * cota dos calados — que é justamente o caso em que a gaveta importa.
+   */
+  it('o teto de 50 eventos vale por projeto, não para a resposta toda', async () => {
+    const owner = await criarUsuario('teto@brabo.dev');
+    const ws = await criarWorkspace(owner.id, 'teto');
+    const barulhento = await criarProjeto(ws.id, owner.id, 'barulhento');
+    const calado = await criarProjeto(ws.id, owner.id, 'calado');
+    const sb = await criarSessao(barulhento.id, owner.id);
+    const sc = await criarSessao(calado.id, owner.id);
+
+    for (let i = 0; i < 60; i++) await gravarEvento(sb.id, 'chat.message');
+    const doCalado = await gravarEvento(sc.id, 'chat.message');
+
+    const grupos = await repo.unreadEventsForWorkspace(ws.id, [
+      { projectId: barulhento.id, afterSeq: 0 },
+      { projectId: calado.id, afterSeq: 0 },
+    ]);
+    const porProjeto = new Map(grupos.map((g) => [g.projectId, g]));
+
+    expect(porProjeto.get(barulhento.id)?.events).toHaveLength(50);
+    // Os 50 PRIMEIROS depois do corte, em ordem crescente — mesma leitura de
+    // `GET .../events?afterSeq=`, que é o caminho que esta chamada substitui.
+    expect(porProjeto.get(barulhento.id)?.events[0].seq).toBeLessThan(
+      porProjeto.get(barulhento.id)!.events[49].seq,
+    );
+    expect(porProjeto.get(calado.id)?.events.map((e) => e.id)).toEqual([
+      doCalado.id,
+    ]);
+  });
+
+  /**
+   * A propriedade que a PR inteira depende, e o irmão do teste de consultas
+   * do resumo: 20 projetos custam o MESMO que 2.
+   *
+   * Um `for (const cursor of cursors)` aqui dentro devolveria dados idênticos
+   * e passaria em todos os testes acima — trocaria N+1 de HTTP por N+1 de SQL.
+   * Por isso este conta idas ao banco em vez de olhar o resultado, e afirma
+   * IGUALDADE em vez de um número fixo (que passaria de novo com o laço de
+   * volta e dois projetos na fixture).
+   */
+  it('o número de consultas NÃO cresce com a quantidade de projetos', async () => {
+    const contarConsultas = async (n: number): Promise<number> => {
+      await truncateAll(db);
+      const owner = await criarUsuario(`sino-escala-${n}@brabo.dev`);
+      const ws = await criarWorkspace(owner.id, `sino-escala-${n}`);
+      const cursores: { projectId: string; afterSeq: number }[] = [];
+      for (let i = 0; i < n; i++) {
+        const p = await criarProjeto(ws.id, owner.id, `p-${i}`);
+        const s = await criarSessao(p.id, owner.id);
+        await gravarEvento(s.id, 'chat.message');
+        cursores.push({ projectId: p.id, afterSeq: 0 });
+      }
+
+      const original = pool.query.bind(pool);
+      let consultas = 0;
+      (pool as { query: unknown }).query = (...args: unknown[]) => {
+        consultas += 1;
+        return (original as (...a: unknown[]) => unknown)(...args);
+      };
+      try {
+        const grupos = await repo.unreadEventsForWorkspace(ws.id, cursores);
+        expect(grupos).toHaveLength(n);
+      } finally {
+        (pool as { query: unknown }).query = original;
+      }
+      return consultas;
+    };
+
+    const comDois = await contarConsultas(2);
+    const comVinte = await contarConsultas(20);
+
+    expect(comVinte).toBe(comDois);
+    expect(comDois).toBeGreaterThan(0);
   });
 });
