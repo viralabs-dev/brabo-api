@@ -28,3 +28,52 @@ export const GIT_TREE_ENTRY_LIMIT = 1000;
 
 /** Arquivos por diff de PR. */
 export const GIT_DIFF_FILE_LIMIT = 300;
+
+// ---------------------------------------------------------------------------
+// Tetos da SUPERFÍCIE HTTP de leitura (FASE 26b)
+//
+// Os dois de cima são do CONTRATO — eles limitam o que um provider devolve numa
+// chamada. Os de baixo limitam quantas CHAMADAS a superfície faz por requisição
+// do cliente, e é outra coisa: `listTree` é barato uma vez e caro mil vezes.
+//
+// A busca é o caso que obriga a distinção. Ela não é operação do contrato:
+// nenhum dos três providers a tem, e inventá-la traria code search da
+// plataforma para dentro do contrato normalizado. Então ela é COMPOSTA sobre
+// `listTree` + `getFileContent` — e composição sem teto é o amplificador de
+// tráfego que a fase proíbe pelo nome (item 34), a mesma família dos
+// 3.824 req/min do dashboard na PÓS-FASE 15.
+// ---------------------------------------------------------------------------
+
+/**
+ * Diretórios que UMA busca percorre — cada um custa uma chamada `listTree`.
+ *
+ * O corte é por número de chamadas e não por profundidade: uma árvore rasa e
+ * larga (mil pastas na raiz) custa o mesmo que uma funda e estreita, e só a
+ * contagem de chamadas enxerga as duas.
+ */
+export const GIT_SEARCH_DIR_LIMIT = 60;
+
+/** Arquivos que UMA busca abre — cada um custa uma chamada `getFileContent`. */
+export const GIT_SEARCH_FILE_LIMIT = 200;
+
+/** Linhas casadas devolvidas por busca. */
+export const GIT_SEARCH_MATCH_LIMIT = 100;
+
+/**
+ * Bytes de um arquivo lido pela aba.
+ *
+ * Vale para a rota de blob (que corta e marca `truncated`) e para a busca (que
+ * PULA o arquivo grande em vez de cortá-lo — casar metade de um arquivo daria
+ * um resultado que muda conforme o teto, e isso é pior que não casar).
+ */
+export const GIT_BLOB_MAX_BYTES = 512 * 1024;
+
+/**
+ * Entradas vivas no cache de leitura, e por quanto tempo.
+ *
+ * Curto de propósito: a aba Code lê uma branch VIVA, e um TTL longo mostraria
+ * código que já mudou. 30s cobre o padrão real de uso — navegar a árvore,
+ * abrir três arquivos, buscar — sem que a tela minta sobre o repositório.
+ */
+export const GIT_READ_CACHE_MAX_ENTRIES = 500;
+export const GIT_READ_CACHE_TTL_MS = 30_000;

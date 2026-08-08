@@ -69,20 +69,30 @@ describe('cabeçalho da suite de contrato × quem realmente a chama', () => {
  * consome escrita ao lado. E a saída se fecha sozinha — o segundo teste
  * reprova quando uma operação da lista JÁ tem consumidor, obrigando a 26b a
  * apagar a entrada em vez de deixá-la apodrecer.
+ *
+ * **A saída fechou, e o mecanismo funcionou como escrito.** A FASE 26b deu
+ * consumidor às duas — `listTree` e `getPullRequestDiff` são chamadas por
+ * `application/use-cases/git/read-project-code.use-case.ts`, que é a superfície
+ * de leitura da aba Code. A lista está vazia porque foi ESVAZIADA pelo segundo
+ * teste, não porque alguém lembrou: assim que a rota passou a existir, ele
+ * reprovou apontando as duas entradas pelo nome. Deixá-la vazia (em vez de
+ * apagar o mapa) é o que mantém a saída disponível para o próximo contrato que
+ * nascer antes do seu consumidor — com a mesma obrigação de fechar.
  */
 describe('operações do GitProviderContract × quem as consome em src/', () => {
   const raizDoRepo = join(__dirname, '../../../..');
   const raizDoSrc = join(__dirname, '../../src');
 
   /**
-   * Declarado, consumidor ainda por vir. Só a FASE 26b pode esvaziar isto —
-   * e ela é OBRIGADA a esvaziar, porque a entrada passa a reprovar assim que
-   * a rota existir.
+   * Declarado, consumidor ainda por vir.
+   *
+   * VAZIO desde a FASE 26b: as duas entradas que a 26a deixou aqui
+   * (`listTree` e `getPullRequestDiff`) ganharam consumidor em
+   * `read-project-code.use-case.ts` e saíram. Operação nova que nasça sem
+   * consumidor entra aqui NOMEADA, com a fase que a consome ao lado — e sai
+   * quando a fase chegar, porque o segundo teste não deixa ficar.
    */
-  const SEM_CONSUMIDOR_AINDA: Record<string, string> = {
-    listTree: 'FASE 26b — rota de leitura da árvore da aba Code',
-    getPullRequestDiff: 'FASE 26b — rota de leitura do diff da PR',
-  };
+  const SEM_CONSUMIDOR_AINDA: Record<string, string> = {};
 
   const arquivosTs = (dir: string): string[] =>
     readdirSync(dir, { withFileTypes: true }).flatMap((e) => {

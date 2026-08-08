@@ -15,6 +15,8 @@ import { DecideBootstrapPlanUseCase } from './decide-bootstrap-plan.use-case';
 import { GetBootstrapPlanUseCase } from './get-bootstrap-plan.use-case';
 import { GetProjectGitRemoteUseCase } from './get-project-git-remote.use-case';
 import { AcknowledgeProtectionFailureUseCase } from './acknowledge-protection-failure.use-case';
+import { ReadProjectCodeUseCase } from './read-project-code.use-case';
+import { GitReadCache } from '../../../domain/git/git-read-cache';
 
 const USE_CASES = [
   AcknowledgeProtectionFailureUseCase,
@@ -27,11 +29,16 @@ const USE_CASES = [
   GetBootstrapPlanUseCase,
   GetProvisionedRepositoryUseCase,
   GetRepoBootstrapStatusUseCase,
+  ReadProjectCodeUseCase,
   RegisterGitCredentialUseCase,
   // Colaborador, não caso de uso: o executor do bootstrap, extraído na
   // Fase 12a pra ser compartilhado com a adoção sem que ela precise
   // depender do provisionamento inteiro.
   BootstrapRunner,
+  // Também colaborador: o cache de leitura da aba Code. Singleton do módulo de
+  // propósito — um cache por instância de caso de uso não cachearia nada entre
+  // requisições, que é justamente onde a repetição acontece.
+  GitReadCache,
 ];
 
 @Module({
