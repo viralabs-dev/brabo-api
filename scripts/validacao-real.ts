@@ -117,6 +117,8 @@ interface Opcoes {
   modelo: string;
   /** Quantas histórias no MESMO módulo. Cada uma a mais é um ciclo PAGO. */
   historias: number;
+  /** Quantos módulos no module_map. Com 2, a ativação já sobe 2 agentes. */
+  modulos: number;
 }
 
 function lerOpcoes(): Opcoes {
@@ -149,6 +151,14 @@ function lerOpcoes(): Opcoes {
     process.exit(2);
   }
 
+  const modulos = args.includes('--modulos')
+    ? Number(args[args.indexOf('--modulos') + 1])
+    : 1;
+  if (!Number.isInteger(modulos) || modulos < 1 || modulos > 2) {
+    console.error('--modulos precisa ser 1 ou 2');
+    process.exit(2);
+  }
+
   const planoArg = args.includes('--plano')
     ? args[args.indexOf('--plano') + 1]
     : null;
@@ -167,6 +177,7 @@ function lerOpcoes(): Opcoes {
     plano: (planoArg as Plano) ?? 'como-esta',
     modelo: modeloArg ?? 'openai/gpt-5-mini',
     historias,
+    modulos,
   };
 }
 
@@ -186,6 +197,24 @@ const MODULOS = [
     dependsOn: [],
   },
 ];
+
+/**
+ * O segundo módulo, com `--modulos 2`.
+ *
+ * Existe para o Dev Lead ter motivo REAL de pedir mais de um agente: duas
+ * histórias no MESMO módulo ele recusa paralelizar, e com razão — "esbarrariam
+ * nos mesmos arquivos". Trabalho independente é outra conversa.
+ *
+ * `dependsOn: []` de propósito: dependência entre os dois daria ao lead um
+ * argumento legítimo para serializar, e o que se quer medir aqui é a decisão
+ * dele quando o paralelismo FAZ sentido.
+ */
+const MODULO_EXTRA = {
+  name: 'web',
+  stack: 'React',
+  responsibility: 'interface do usuário',
+  dependsOn: [],
+};
 
 // Tetos generosos, e por motivos diferentes. O dev real escreve código com
 // LLM e faz três chamadas de rede ao GitHub (commit, push, PR); os gates são
@@ -234,7 +263,14 @@ async function esperar<T>(
 }
 
 async function main() {
-  const { repo, ate, plano, modelo: modeloAlvo, historias } = lerOpcoes();
+  const {
+  repo,
+  ate,
+  plano,
+  modelo: modeloAlvo,
+  historias,
+  modulos,
+} = lerOpcoes();
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ['error'],
   });
@@ -432,7 +468,7 @@ async function main() {
   await moduleMaps.create({
     projectId: project.id,
     sessionId: sessaoBacklog.id,
-    modules: MODULOS,
+    modules: modulos === 2 ? [...MODULOS, MODULO_EXTRA] : MODULOS,
     version: 1,
   });
 
@@ -488,7 +524,9 @@ async function main() {
         dor: ['regra de negócio definida'],
         businessRuleIds: [eventoRegra.id],
       });
-    await stories.updateModules(extra.id, ['api']);
+    // Com dois módulos, a extra vai para o SEGUNDO: é o que torna o trabalho
+    // independente e dá ao lead motivo para pedir dois agentes.
+    await stories.updateModules(extra.id, [modulos === 2 ? 'web' : 'api']);
     await tasks.create({ storyId: extra.id, title: `Expor GET /status${i}` });
     extras.push(extra);
   }
