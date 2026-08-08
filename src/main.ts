@@ -12,10 +12,18 @@ import { DomainTransitionErrorFilter } from './interfaces/http/shared/domain-tra
 import { GitProviderErrorFilter } from './interfaces/http/shared/git-provider-error.filter';
 import { LlmBindingErrorFilter } from './interfaces/http/shared/llm-binding-error.filter';
 import { resolveCorsOrigins } from './infrastructure/security/cors-origins';
+import { resolveOauthStateSecret } from './infrastructure/security/oauth-state-secret';
+import { helmetOptions } from './infrastructure/security/security-headers';
 import { SwaggerModule } from '@nestjs/swagger';
 import { montarDocumento } from './infrastructure/openapi/documento';
 
 async function bootstrap() {
+  // ANTES de subir qualquer coisa: em produção, a chave que assina o `state` do
+  // OAuth de git não pode ser a de exemplo (ver oauth-state-secret.ts). Aqui, e
+  // não no primeiro uso, porque o primeiro uso pode demorar semanas — e nesse
+  // intervalo a api estaria de pé aceitando `state` assinado com chave pública.
+  resolveOauthStateSecret();
+
   // `bufferLogs`: as linhas emitidas ANTES de o logger estar pronto ficam na
   // fila e são reemitidas em JSON, em vez de sair no formato default do Nest —
   // senão o começo do log de cada pod não é parseável pelo Loki.
@@ -24,21 +32,11 @@ async function bootstrap() {
 
   // Cabeçalhos de segurança (Fase 5, item 7). A api não mandava nenhum.
   //
-  // `contentSecurityPolicy: false` de propósito: esta api serve JSON, e um CSP
-  // aqui não protege nada — quem executa script é a web, e o CSP dela já
-  // existe e é mais específico (docker/web/nginx.conf, com o `connect-src`
-  // montado por ambiente). Ligar um CSP genérico aqui daria a impressão de
-  // cobertura sem acrescentar defesa.
-  //
-  // `crossOriginResourcePolicy: false` porque a web é OUTRA origem e precisa
-  // consumir estas respostas; o default `same-origin` do helmet bloquearia o
-  // app inteiro, e o sintoma seria confundido com erro de CORS.
-  app.use(
-    helmet({
-      contentSecurityPolicy: false,
-      crossOriginResourcePolicy: false,
-    }),
-  );
+  // As opções vivem em `security-headers.ts` porque no literal aqui elas não
+  // eram testáveis — o CSP `default-src 'none'` que a api manda em produção, e
+  // o perfil afrouxado que o Swagger UI exige fora dela, estão explicados e
+  // cobertos por teste lá.
+  app.use(helmet(helmetOptions()));
 
   // O refresh da web vive em cookie httpOnly (Fase 7a, item 5). O Express não
   // parseia `Cookie` sozinho, e sem isto `req.cookies` seria `undefined` — o
