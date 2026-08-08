@@ -18,6 +18,7 @@ import type { ProjectBlockedStatus } from '../../../../application/use-cases/iam
 import type { GitProviderName } from '@brabo/shared';
 import type {
   ProjectCardSummary,
+  ProjectUnreadEvents,
   RosterFacts,
 } from '../../../../application/ports/projects-summary-repository.port';
 import type { ProvisioningStatus } from '../../../../domain/git/repo-bootstrap-status';
@@ -378,4 +379,29 @@ export class ProjectCardSummaryResponseDto implements Wire<ProjectCardSummary> {
 export const _chavesProjectCardSummary: MesmasChaves<
   ProjectCardSummaryResponseDto,
   ProjectCardSummary
+> = true;
+
+export class ProjectUnreadEventsResponseDto implements Wire<ProjectUnreadEvents> {
+  @ApiProperty({ example: '01JC4Z0000PROJETO0000000001' })
+  projectId!: string;
+
+  @ApiProperty({
+    example: '01JC4Z0000SESSAO00000000001',
+    description:
+      'A sessão MAIS RECENTE do projeto — a mesma que `projects-summary` reporta ' +
+      'em `latestSessionId`.',
+  })
+  sessionId!: string;
+
+  @ApiProperty({
+    type: [SessionEventResponseDto],
+    description:
+      'Em ordem crescente de `seq`, no máximo os 50 primeiros depois do corte — ' +
+      'o mesmo teto que `GET .../events` aplica sem `limit`.',
+  })
+  events!: Wire<SessionEvent>[];
+}
+export const _chavesProjectUnreadEvents: MesmasChaves<
+  ProjectUnreadEventsResponseDto,
+  ProjectUnreadEvents
 > = true;
