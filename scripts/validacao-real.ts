@@ -115,6 +115,8 @@ interface Opcoes {
   plano: Plano;
   /** Modelo de API do dev agent e dos gates. Nunca local — ver ADR 0020. */
   modelo: string;
+  /** Quantas histórias no MESMO módulo. Cada uma a mais é um ciclo PAGO. */
+  historias: number;
 }
 
 function lerOpcoes(): Opcoes {
@@ -164,6 +166,7 @@ function lerOpcoes(): Opcoes {
     ate: (ateArg as Fase) ?? 'execucao',
     plano: (planoArg as Plano) ?? 'como-esta',
     modelo: modeloArg ?? 'openai/gpt-5-mini',
+    historias,
   };
 }
 
@@ -231,7 +234,7 @@ async function esperar<T>(
 }
 
 async function main() {
-  const { repo, ate, plano, modelo: modeloAlvo } = lerOpcoes();
+  const { repo, ate, plano, modelo: modeloAlvo, historias } = lerOpcoes();
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ['error'],
   });
@@ -473,7 +476,7 @@ async function main() {
 
   // As extras vão no MESMO módulo de propósito: é isso que dá ao Dev Lead
   // motivo para pedir mais de um agente ali, em vez de espalhar um por módulo.
-  const extras = [];
+  const extras: { id: string }[] = [];
   for (let i = 2; i <= historias; i++) {
     const extra = await app
       .get(CreateStoryUseCase)
