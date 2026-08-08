@@ -518,15 +518,24 @@ async function main() {
       .get(CreateStoryUseCase)
       .execute(project.id, sessaoBacklog.id, {
         epicId: epic.id,
-        title: `Rota pública de status ${i}`,
-        rf: [`GET /status${i} responde 200 com o estado do serviço`],
+        title:
+          modulos === 2
+            ? `Tela de status ${i}`
+            : `Rota pública de status ${i}`,
+        rf: [
+          modulos === 2
+            ? `uma PÁGINA no navegador mostra o estado do serviço, consumindo a rota`
+            : `GET /status${i} responde 200 com o estado do serviço`,
+        ],
         dod: ['teste do caminho feliz'],
         dor: ['regra de negócio definida'],
         businessRuleIds: [eventoRegra.id],
       });
-    // Com dois módulos, a extra vai para o SEGUNDO: é o que torna o trabalho
-    // independente e dá ao lead motivo para pedir dois agentes.
-    await stories.updateModules(extra.id, [modulos === 2 ? 'web' : 'api']);
+    // Semeia `api`, mas NÃO conte com isso: o Arquiteto roda um turno real na
+    // fase seguinte e reatribui as histórias com `assign_story_modules` — foi
+    // o que aconteceu na primeira tentativa de dois módulos, e por isso a
+    // história extra agora é de UI. Quem decide o module_map é ele.
+    await stories.updateModules(extra.id, ['api']);
     await tasks.create({ storyId: extra.id, title: `Expor GET /status${i}` });
     extras.push(extra);
   }
@@ -802,37 +811,63 @@ async function main() {
 
   // ---- o TETO de paralelismo, exercitado de verdade (RN-083) -------------
   //
-  // A ativação sobe UM agente por módulo. Daqui em diante quem pede mais é o
-  // lead, e é aqui que o teto da área cobra a sua decisão. Custa ZERO token:
-  // é regra de domínio pura, não turno de LLM.
+  // A ativação sobe UM agente por módulo, então quantos já existem depende do
+  // module_map — que quem decide é o ARQUITETO, não este roteiro. A primeira
+  // versão daqui assumia a conta de um módulo só e reprovou uma execução em
+  // que o produto agiu certo: com dois módulos a ativação já enche o teto, e o
+  // pedido seguinte PRECISA pedir autorização.
+  //
+  // Então o que se afirma é a REGRA, não o número: enquanto couber, sobe sem
+  // perguntar; quando não couber, para. Custa ZERO token — é domínio puro.
   {
     const pedir = () =>
       app
         .get(RequestParallelizationUseCase)
         .execute(project.id, sessionId, 'api', owner.id);
 
-    const dentro = await pedir();
-    assertar(
-      dentro.estado === 'executado',
-      `o 2º agente deveria caber no teto (2) e veio "${dentro.estado}"`,
-    );
-    log(`✓ 2º agente subiu SEM perguntar — dentro do teto (${dentro.maxParallel})`);
+    let parou = null as Awaited<ReturnType<typeof pedir>> | null;
 
-    const acima = await pedir();
+    for (let tentativa = 1; tentativa <= 4 && parou === null; tentativa++) {
+      const r = await pedir();
+
+      if (r.estado === 'executado') {
+        assertar(
+          (r.ativosNaSessao ?? 0) < (r.maxParallel ?? 0) + 1,
+          `subiu um agente com ${r.ativosNaSessao} ativos e teto ${r.maxParallel}`,
+        );
+        log(
+          `✓ agente subiu SEM perguntar — ${r.ativosNaSessao} ativos, teto ${r.maxParallel}`,
+        );
+        continue;
+      }
+
+      assertar(
+        r.estado === 'aguardando_autorizacao',
+        `pedido devolveu "${r.estado}" — nem subiu nem pediu autorização`,
+      );
+      parou = r;
+    }
+
     assertar(
-      acima.estado === 'aguardando_autorizacao',
-      `o 3º agente deveria pedir autorização e veio "${acima.estado}"`,
+      parou !== null,
+      'quatro pedidos e nenhum precisou de autorização — o teto não está segurando nada',
     );
     assertar(
-      typeof acima.actionId === 'string' && acima.actionId.length > 0,
+      (parou!.ativosNaSessao ?? 0) >= (parou!.maxParallel ?? 0),
+      `parou com ${parou!.ativosNaSessao} ativos e teto ${parou!.maxParallel} — parou cedo demais`,
+    );
+    assertar(
+      typeof parou!.actionId === 'string' && parou!.actionId.length > 0,
       'não veio `actionId`: sem ação, não há o que você decidir',
     );
 
-    // O ponto: NADA subiu. Se tivesse subido, a autorização seria teatro.
+    // O ponto: NADA subiu, e a ação nasceu exigindo você. Se o decide.ts
+    // deixasse ela auto-aprovar (RN-086), o estado ainda diria "aguardando" e
+    // a autorização seria teatro — por isso a prova é sobre o BANCO.
     const [acao] = await db
       .select()
       .from(proposedActions)
-      .where(eq(proposedActions.id, acima.actionId!));
+      .where(eq(proposedActions.id, parou!.actionId!));
     assertar(
       acao?.actionType === 'parallelize' && acao.status === 'pending',
       `a ação veio "${acao?.actionType}/${acao?.status}"`,
@@ -842,8 +877,8 @@ async function main() {
       `a ação resolveu "${acao.resolvedPolicy}" — o teto do decide.ts falhou (RN-086)`,
     );
     log(
-      `✓ 3º agente PAROU: ação ${acima.actionId} pendente da sua decisão ` +
-        `(${acima.ativosNaSessao} ativos, teto ${acima.maxParallel})`,
+      `✓ o pedido acima do teto PAROU: ação ${parou!.actionId} pendente ` +
+        `(${parou!.ativosNaSessao} ativos, teto ${parou!.maxParallel})`,
     );
   }
 
