@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import type { FakeRepoStore } from './fake-repo-store';
+import { compararArvores } from './fake-diff';
 
 const BASE = 'https://api.github.com';
 
@@ -188,23 +189,48 @@ export function createGithubHandlers(store: FakeRepoStore) {
       return HttpResponse.json({ sha }, { status: 201 });
     }),
 
-    http.get(`${BASE}/repos/:owner/:repo/contents/*`, ({ params, request }) => {
-      const repo = store.repos.get(fullNameFromParams(params));
-      if (!repo) return notFound();
-      const path = refSuffix(request.url, '/contents/');
-      const ref = new URL(request.url).searchParams.get('ref');
-      const commitSha = (ref ? repo.branches.get(ref)?.sha : undefined) ?? ref;
-      const treeSha = commitSha ? store.commitTree.get(commitSha) : undefined;
-      const content = treeSha
-        ? store.treeFiles.get(treeSha)?.get(path)
-        : undefined;
-      if (content === undefined) return notFound();
-      return HttpResponse.json({
-        type: 'file',
-        encoding: 'base64',
-        content: Buffer.from(content, 'utf8').toString('base64'),
-      });
-    }),
+    // DUAS rotas para o mesmo handler: com `path: ''` (a raiz, que `listTree`
+    // pede) o Octokit monta `/contents` SEM barra final, e o padrão com
+    // wildcard não casa. Sem a segunda, listar a raiz caía em "requisição não
+    // tratada" — que é como o msw reprova, corretamente, um fake incompleto.
+    http.get(`${BASE}/repos/:owner/:repo/contents/*`, lerConteudo(store)),
+    http.get(`${BASE}/repos/:owner/:repo/contents`, lerConteudo(store)),
+
+    http.get(
+      `${BASE}/repos/:owner/:repo/pulls/:number/files`,
+      ({ params, request }) => {
+        const repo = store.repos.get(fullNameFromParams(params));
+        if (!repo) return notFound();
+        const pr = repo.prs.find(
+          (candidate) => candidate.number === Number(params.number),
+        );
+        if (!pr) return notFound();
+
+        const arquivos = compararArvores(
+          arquivosDaBranch(store, repo, pr.targetBranch),
+          arquivosDaBranch(store, repo, pr.sourceBranch),
+        );
+
+        // Paginação de verdade: o provider pagina com teto, e um fake que
+        // ignorasse `page`/`per_page` deixaria esse laço sem prova nenhuma.
+        const url = new URL(request.url);
+        const perPage = Number(url.searchParams.get('per_page') ?? '30');
+        const page = Number(url.searchParams.get('page') ?? '1');
+        const fatia = arquivos.slice((page - 1) * perPage, page * perPage);
+
+        return HttpResponse.json(
+          fatia.map((arquivo) => ({
+            filename: arquivo.path,
+            previous_filename: arquivo.previousPath ?? undefined,
+            status: arquivo.status,
+            additions: arquivo.additions,
+            deletions: arquivo.deletions,
+            changes: arquivo.additions + arquivo.deletions,
+            patch: arquivo.patch,
+          })),
+        );
+      },
+    ),
 
     http.post(
       `${BASE}/repos/:owner/:repo/git/refs`,
@@ -393,6 +419,99 @@ function repositorioVazio() {
     },
     { status: 409 },
   );
+}
+
+/**
+ * Contents API na LEITURA: arquivo quando o caminho casa exatamente, lista de
+ * um nível quando é diretório. O fake só sabia devolver arquivo — sem o
+ * segundo caso, `listTree` (FASE 26) não teria como ser exercitado.
+ */
+function lerConteudo(store: FakeRepoStore) {
+  return ({
+    params,
+    request,
+  }: {
+    params: { owner?: string | readonly string[]; repo?: string | readonly string[] };
+    request: Request;
+  }) => {
+    const repo = store.repos.get(fullNameFromParams(params));
+    if (!repo) return notFound();
+
+    const path = refSuffix(request.url, '/contents').replace(/^\/+|\/+$/g, '');
+    const ref = new URL(request.url).searchParams.get('ref');
+    const commitSha = (ref ? repo.branches.get(ref)?.sha : undefined) ?? ref;
+    const treeSha = commitSha ? store.commitTree.get(commitSha) : undefined;
+    const arquivos = treeSha ? store.treeFiles.get(treeSha) : undefined;
+    if (!arquivos) return notFound();
+
+    const content = arquivos.get(path);
+    if (content !== undefined) {
+      return HttpResponse.json({
+        type: 'file',
+        encoding: 'base64',
+        content: Buffer.from(content, 'utf8').toString('base64'),
+        path,
+        name: path.slice(path.lastIndexOf('/') + 1),
+        size: Buffer.byteLength(content, 'utf8'),
+      });
+    }
+
+    const entradas = umNivel(arquivos, path);
+    if (entradas === null) return notFound();
+    return HttpResponse.json(entradas);
+  };
+}
+
+/** Arquivos na ponta de uma branch, resolvendo ref -> commit -> tree. */
+function arquivosDaBranch(
+  store: FakeRepoStore,
+  repo: { branches: Map<string, { sha: string }> },
+  branch: string,
+): Map<string, string> {
+  const sha = repo.branches.get(branch)?.sha;
+  const treeSha = sha ? store.commitTree.get(sha) : undefined;
+  return new Map(treeSha ? (store.treeFiles.get(treeSha) ?? []) : []);
+}
+
+/**
+ * UM nível sob `dir` a partir da lista plana de caminhos. `null` quando não
+ * há nada ali — que é o 404 da Contents API para diretório inexistente.
+ */
+function umNivel(
+  arquivos: Map<string, string>,
+  dir: string,
+): { type: string; name: string; path: string; size: number }[] | null {
+  const prefixo = dir === '' ? '' : `${dir}/`;
+  const vistos = new Map<
+    string,
+    { type: string; name: string; path: string; size: number }
+  >();
+
+  for (const [caminho, conteudo] of arquivos) {
+    if (prefixo !== '' && !caminho.startsWith(prefixo)) continue;
+    const resto = caminho.slice(prefixo.length);
+    if (resto === '') continue;
+    const corte = resto.indexOf('/');
+    if (corte === -1) {
+      vistos.set(resto, {
+        type: 'file',
+        name: resto,
+        path: caminho,
+        size: Buffer.byteLength(conteudo, 'utf8'),
+      });
+    } else {
+      const nome = resto.slice(0, corte);
+      vistos.set(nome, {
+        type: 'dir',
+        name: nome,
+        path: `${prefixo}${nome}`,
+        size: 0,
+      });
+    }
+  }
+
+  if (vistos.size === 0) return null;
+  return [...vistos.values()];
 }
 
 function refSuffix(url: string, marker: string): string {

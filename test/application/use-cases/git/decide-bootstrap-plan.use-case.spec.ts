@@ -86,7 +86,12 @@ const transitionSession = new TransitionSessionUseCase(
  */
 class ProtecaoObservavelProvider implements GitProviderContract {
   readonly protegidas: string[] = [];
-  readonly capabilities = { protectBranch: true, pullRequests: true };
+  readonly capabilities = {
+    protectBranch: true,
+    pullRequests: true,
+    listTree: true,
+    pullRequestDiff: true,
+  };
 
   constructor(private readonly inner: GitProviderContract) {}
 
@@ -123,6 +128,9 @@ class ProtecaoObservavelProvider implements GitProviderContract {
     this.inner.getFileContent(i);
   commentOnPullRequest: GitProviderContract['commentOnPullRequest'] = (i) =>
     this.inner.commentOnPullRequest(i);
+  listTree: GitProviderContract['listTree'] = (i) => this.inner.listTree(i);
+  getPullRequestDiff: GitProviderContract['getPullRequestDiff'] = (i) =>
+    this.inner.getPullRequestDiff(i);
 }
 
 function registryFor(provider: GitProviderContract): GitProviderRegistry {

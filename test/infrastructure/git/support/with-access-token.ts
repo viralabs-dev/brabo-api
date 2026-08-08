@@ -33,5 +33,8 @@ export function withAccessToken(
       provider.getFileContent({ ...input, accessToken: token }),
     commentOnPullRequest: (input) =>
       provider.commentOnPullRequest({ ...input, accessToken: token }),
+    listTree: (input) => provider.listTree({ ...input, accessToken: token }),
+    getPullRequestDiff: (input) =>
+      provider.getPullRequestDiff({ ...input, accessToken: token }),
   };
 }

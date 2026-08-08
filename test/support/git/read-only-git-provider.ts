@@ -36,6 +36,8 @@ export class ReadOnlyGitProvider implements GitProviderContract {
     this.capabilities = {
       protectBranch: true,
       pullRequests: true,
+      listTree: true,
+      pullRequestDiff: true,
       ...estado.capabilities,
     };
   }
@@ -97,5 +99,13 @@ export class ReadOnlyGitProvider implements GitProviderContract {
   }
   commentOnPullRequest(): never {
     return this.proibido('commentOnPullRequest');
+  }
+  // Leituras, mas fora do escopo do plano — igual `getRepo`. Quem as chama é
+  // a aba Code (FASE 26), nunca o dry-run do bootstrap.
+  listTree(): never {
+    return this.proibido('listTree');
+  }
+  getPullRequestDiff(): never {
+    return this.proibido('getPullRequestDiff');
   }
 }

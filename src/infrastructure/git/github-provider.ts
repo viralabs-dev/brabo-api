@@ -5,20 +5,29 @@ import type {
   CreateBranchInput,
   CreateRepoInput,
   GetFileContentInput,
+  GetPullRequestDiffInput,
   GetRepoInput,
   GitBranch,
   GitCommitResult,
+  GitDiffFileStatus,
   GitProviderCapabilities,
   GitProviderContract,
   GitProviderName,
   GitPullRequest,
+  GitPullRequestDiff,
   GitRepo,
+  GitTree,
   ListBranchesInput,
+  ListTreeInput,
   MergePullRequestInput,
   OpenPullRequestInput,
   ProtectBranchInput,
   CommentOnPullRequestInput,
 } from '@brabo/shared';
+import {
+  GIT_DIFF_FILE_LIMIT,
+  GIT_TREE_ENTRY_LIMIT,
+} from '../../domain/git/git-read-limits';
 import {
   GitBranchAlreadyExistsError,
   GitBranchNotFoundError,
@@ -29,8 +38,8 @@ import {
 import { withRetry } from './retry';
 
 /**
- * Implementa `GitProviderContract` (ver docs/adr/0001) — as 9 operações
- * normalizadas da Fase 2.
+ * Implementa `GitProviderContract` (ver docs/adr/0001) — as 12 operações
+ * normalizadas, das 9 da Fase 2 às duas de leitura da aba Code (FASE 26).
  */
 @Injectable()
 export class GithubProvider implements GitProviderContract {
@@ -39,6 +48,8 @@ export class GithubProvider implements GitProviderContract {
   readonly capabilities: GitProviderCapabilities = {
     protectBranch: true,
     pullRequests: true,
+    listTree: true,
+    pullRequestDiff: true,
   };
 
   async createRepo(input: CreateRepoInput): Promise<GitRepo> {
@@ -440,7 +451,144 @@ export class GithubProvider implements GitProviderContract {
       body: input.body,
     });
   }
+
+  async listTree(input: ListTreeInput): Promise<GitTree | null> {
+    const [owner, repo] = splitFullName(input.externalId);
+    const octokit = new Octokit({ auth: input.accessToken });
+    const path = normalizeTreePath(input.path);
+
+    let data: unknown;
+    try {
+      ({ data } = await withRetry(
+        () =>
+          octokit.rest.repos.getContent({
+            owner,
+            repo,
+            path,
+            ref: input.ref,
+          }),
+        { shouldRetry: isRetryableReadError },
+      ));
+    } catch (error) {
+      if (getStatus(error) === 404) return null;
+      // Repo sem commit nenhum responde 409 na Contents API, igual à Git
+      // Data API (ver commitFiles). Para a aba Code isso é "não há árvore",
+      // não erro de infraestrutura.
+      if (getStatus(error) === 409) return null;
+      throw error;
+    }
+
+    // Caminho que resolve para um ARQUIVO devolve objeto, não lista — o
+    // contrato manda `null` nesse caso.
+    if (!Array.isArray(data)) return null;
+
+    const entradas = data as {
+      type: string;
+      name: string;
+      path: string;
+      size?: number;
+    }[];
+
+    return {
+      ref: input.ref,
+      path,
+      entries: entradas.slice(0, GIT_TREE_ENTRY_LIMIT).map((entrada) => ({
+        path: entrada.path,
+        name: entrada.name,
+        // 'submodule' e 'symlink' existem no GitHub e não têm equivalente no
+        // contrato. Viram 'file': são folhas, não descem — que é a única
+        // coisa que a árvore precisa saber para navegar.
+        type: entrada.type === 'dir' ? ('dir' as const) : ('file' as const),
+        size: entrada.type === 'dir' ? null : (entrada.size ?? null),
+      })),
+      // A Contents API para diretório para em 1000 entradas por desenho da
+      // própria API — o mesmo número de `GIT_TREE_ENTRY_LIMIT`, então o
+      // corte é indistinguível e `truncated` cobre os dois.
+      truncated: entradas.length > GIT_TREE_ENTRY_LIMIT,
+    };
+  }
+
+  async getPullRequestDiff(
+    input: GetPullRequestDiffInput,
+  ): Promise<GitPullRequestDiff | null> {
+    const [owner, repo] = splitFullName(input.externalId);
+    const octokit = new Octokit({ auth: input.accessToken });
+    const pullNumber = Number(input.pullRequestId);
+
+    type ArquivoDaPr = Awaited<
+      ReturnType<typeof octokit.rest.pulls.listFiles>
+    >['data'][number];
+
+    const arquivos: ArquivoDaPr[] = [];
+    let page = 1;
+    let truncated = false;
+
+    // Paginação explícita, com teto: `octokit.paginate` puxaria TODAS as
+    // páginas, e uma PR grande viraria dezenas de chamadas por abertura de
+    // tela — o amplificador de tráfego que a FASE 26 proíbe.
+    for (;;) {
+      let pagina: ArquivoDaPr[];
+      try {
+        const resposta = await withRetry(
+          () =>
+            octokit.rest.pulls.listFiles({
+              owner,
+              repo,
+              pull_number: pullNumber,
+              per_page: 100,
+              page,
+            }),
+          { shouldRetry: isRetryableReadError },
+        );
+        pagina = resposta.data;
+      } catch (error) {
+        if (getStatus(error) === 404) return null;
+        throw error;
+      }
+
+      arquivos.push(...pagina);
+      if (pagina.length < 100) break;
+      if (arquivos.length >= GIT_DIFF_FILE_LIMIT) {
+        truncated = true;
+        break;
+      }
+      page += 1;
+    }
+
+    return {
+      pullRequestId: input.pullRequestId,
+      files: arquivos.slice(0, GIT_DIFF_FILE_LIMIT).map((arquivo) => ({
+        path: arquivo.filename,
+        previousPath: arquivo.previous_filename ?? null,
+        status: STATUS_DO_GITHUB[arquivo.status] ?? 'modified',
+        additions: arquivo.additions,
+        deletions: arquivo.deletions,
+        // `patch` vem AUSENTE para binário e para arquivo grande demais — é
+        // exatamente o `null` do contrato, e por isso não vira string vazia.
+        patch: arquivo.patch ?? null,
+      })),
+      truncated: truncated || arquivos.length > GIT_DIFF_FILE_LIMIT,
+    };
+  }
 }
+
+/** `""` para a raiz — é o que a Contents API espera. */
+function normalizeTreePath(path: string | undefined): string {
+  return (path ?? '').replace(/^\.?\/+/, '').replace(/\/+$/, '');
+}
+
+// `copied` carrega `previous_filename` como `renamed`; `changed` e
+// `unchanged` são variações de conteúdo alterado que o contrato não
+// distingue.
+const STATUS_DO_GITHUB: Record<string, GitDiffFileStatus> = {
+  added: 'added',
+  removed: 'removed',
+  modified: 'modified',
+  renamed: 'renamed',
+  copied: 'renamed',
+  changed: 'modified',
+  unchanged: 'modified',
+};
 
 function splitFullName(externalId: string): [string, string] {
   const parts = externalId.split('/');
