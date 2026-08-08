@@ -295,9 +295,9 @@ export const _chavesRosterFacts: MesmasChaves<
 > = true;
 
 /** Teto e gasto do projeto, em micro-USD. */
-export class ProjectCardBudgetResponseDto
-  implements Wire<NonNullable<ProjectCardSummary['budget']>>
-{
+export class ProjectCardBudgetResponseDto implements Wire<
+  NonNullable<ProjectCardSummary['budget']>
+> {
   @ApiProperty({ example: 50000000 })
   limitMicros!: number;
 
