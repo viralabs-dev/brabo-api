@@ -1,20 +1,29 @@
 /**
- * Áreas de agentes (ADR 0038) do lado da api.
+ * Áreas de agentes (ADR 0038). **Esta é a fonte** — web e engine derivam.
  *
- * ## Por que é uma lista fixa, e não uma tabela
+ * ## Por que a lista existe, se a tabela também existe
  *
- * O aparato genérico do ADR 0038 — `agent_areas`/`agent_area_members`, área
- * configurável por projeto, orçamento por área — é **corte de escopo
- * registrado** da Fase 8, e continua cortado (`db/schema.ts`, comentário da
- * tabela `delegations`). Área, lead e membros são fatos do produto, hardcoded
- * em `apps/web/src/lib/agents.ts` e no engine.
+ * A lista é o CATÁLOGO: quais áreas existem, quem é o lead, quais subagentes
+ * são enumeráveis. A tabela `agent_areas`/`agent_area_members` (ADR 0053,
+ * FASE 14d) é o ESTADO por projeto: o teto de paralelismo que o usuário
+ * decidiu e os membros da área dinâmica de `dev` — um por módulo do
+ * `module_map`, e o que não é enumerável em código tem de ser dado. As duas
+ * convivem porque respondem perguntas diferentes, e `SeedAgentAreasUseCase` é
+ * a ponte: grava esta lista no banco quando o projeto nasce (RN-094).
  *
- * O que faltava não era a tabela: era a REGRA. O ADR 0038 mandou
- * `CreateHandoffUseCase` recusar handoff endereçado a subagente, e essa
- * validação nunca foi implementada — achado #12 do primeiro dogfooding. Isto
- * aqui é a terceira cópia da mesma lista, e existe porque a regra precisa
- * viver do lado que grava `handoffs`. A cópia é travada por teste contra a do
- * web (`test/domain/agents/agent-areas.spec.ts`): divergir reprova.
+ * A regra que faz a lista viver do lado da api é a mesma de sempre: o ADR 0038
+ * manda `CreateHandoffUseCase` recusar handoff endereçado a subagente — achado
+ * #12 do primeiro dogfooding — e decidir isso a cada handoff não pode depender
+ * de consultar o banco.
+ *
+ * ## As outras duas cópias são GERADAS
+ *
+ * `apps/web/src/lib/agent-areas.generated.ts` e
+ * `apps/engine/lib/engine/agents/areas.ex` saem de
+ * `pnpm --filter api gerar:areas` (FASE 18). Eram escritas à mão, e o teste só
+ * travava o web: o engine divergia calado. Mexeu aqui, rode o gerador —
+ * `test/domain/agents/agent-areas.spec.ts` reprova o que estiver velho em
+ * disco.
  */
 export interface AreaDeAgentes {
   key: string;

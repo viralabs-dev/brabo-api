@@ -12,6 +12,11 @@ import type { TransitionSessionUseCase } from '../../../../src/application/use-c
 import { CreateSessionUseCase } from '../../../../src/application/use-cases/sessions/create-session.use-case';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
 import type { UpsertAgentInstructionUseCase } from '../../../../src/application/use-cases/agents/upsert-agent-instruction.use-case';
+import { SeedAgentAreasUseCase } from '../../../../src/application/use-cases/agents/seed-agent-areas.use-case';
+import type {
+  AgentAreaRepository,
+  UpsertAreaInput,
+} from '../../../../src/application/ports/agent-area-repository.port';
 
 const MODULOS = [
   { name: 'api', stack: 'NestJS', responsibility: 'regras', dependsOn: [] },
@@ -136,6 +141,17 @@ function build(opts?: {
     execute: () => Promise.resolve({}),
   } as unknown as UpsertAgentInstructionUseCase;
 
+  // Áreas semeadas de verdade pelo caso de uso real (RN-094) — o fake é só o
+  // repositório. Trocar o `SeedAgentAreasUseCase` por um fake aqui esconderia
+  // exatamente o defeito da FASE 18: o caminho até o `upsert`.
+  const areasSemeadas: UpsertAreaInput[] = [];
+  const seedAreas = new SeedAgentAreasUseCase({
+    upsert: (input: UpsertAreaInput) => {
+      areasSemeadas.push(input);
+      return Promise.resolve({ id: 'area-1', maxParallel: 2, ...input });
+    },
+  } as unknown as AgentAreaRepository);
+
   return {
     useCase: new ActivateExecutionUseCase(
       moduleMaps,
@@ -149,7 +165,9 @@ function build(opts?: {
       upsertInstruction,
       projects,
       permissionsFile,
+      seedAreas,
     ),
+    areasSemeadas,
     started,
     autonomias,
     allowPatterns,
@@ -374,5 +392,36 @@ describe('ActivateExecutionUseCase — terminal do dev', () => {
     expect(new Set(autonomias.map((a) => a.agentId))).toEqual(
       new Set(['dev-api', 'dev-web']),
     );
+  });
+});
+
+describe('ActivateExecutionUseCase — áreas de agente (RN-094)', () => {
+  it('a ativação semeia as três áreas, e a de dev com um membro por módulo', async () => {
+    // O que a ativação acrescenta ao que a criação do projeto já gravou são os
+    // MEMBROS da área dinâmica: `dev-<modulo>` sai do `module_map`, que não
+    // existia quando o projeto nasceu.
+    const { useCase, areasSemeadas } = build();
+
+    await useCase.execute('proj-1', 'user-1');
+
+    expect(areasSemeadas.map((a) => a.key)).toEqual(['dev', 'qa', 'infra']);
+    expect(areasSemeadas.find((a) => a.key === 'dev')?.members).toEqual([
+      'dev-api',
+      'dev-web',
+    ]);
+    expect(areasSemeadas.find((a) => a.key === 'qa')?.members).toEqual([
+      'qa-automacao',
+      'qa-performance-seguranca',
+    ]);
+  });
+
+  it('NUNCA manda `maxParallel` — semear de novo não desfaz a decisão do usuário', async () => {
+    // O teto é do usuário (FASE 14d). Como a ativação é repetível, mandar o
+    // default aqui faria um teto subido para 5 voltar para 2 em silêncio.
+    const { useCase, areasSemeadas } = build();
+
+    await useCase.execute('proj-1', 'user-1');
+
+    expect(areasSemeadas.every((a) => a.maxParallel === undefined)).toBe(true);
   });
 });

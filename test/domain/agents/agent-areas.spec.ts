@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import ts from 'typescript';
 import {
   AGENT_AREAS,
   areaDo,
@@ -9,71 +7,53 @@ import {
   ehSubagente,
   HandoffToSubagentError,
 } from '../../../src/domain/agents/agent-areas';
+import {
+  CAMINHO_ENGINE,
+  CAMINHO_WEB,
+  renderEngine,
+  renderWeb,
+} from '../../../scripts/gerar-areas';
 
 /**
- * Área, lead e membros são HARDCODED em três lugares (web, engine e agora
- * api) — o aparato genérico do ADR 0038 é corte de escopo registrado da Fase
- * 8, e continua cortado. O achado #4 do primeiro dogfooding já apontava o
- * risco: "dois lugares que podem divergir".
+ * Área, lead e membros eram HARDCODED em três lugares (api, web e engine), e o
+ * achado #4 do primeiro dogfooding já apontava o risco: "dois lugares que
+ * podem divergir". A versão anterior deste teste lia a AST do web e comparava
+ * com a lista daqui — travava DOIS dos três, e o engine podia divergir em
+ * silêncio.
  *
- * Este teste não desfaz o corte. Ele apenas garante que a cópia nova não
- * divirja da do web em silêncio: se alguém acrescentar um subagente lá e
- * esquecer aqui, o handoff para ele passaria a ser aceito de novo — o defeito
- * volta calado, que é exatamente o que o achado descreve.
+ * A FASE 18 colapsou as três: esta é a fonte, e web e engine são gerados por
+ * `pnpm --filter api gerar:areas`. O que este teste faz agora é provar que o
+ * que está em disco É o que o gerador produz — sem isso, "derivado" seria só
+ * uma intenção escrita no comentário.
  */
-function areasDoWeb(): { lead: string; members: string[] }[] {
-  const caminho = join(
-    __dirname,
-    '../../../../../apps/web/src/lib/agents.ts',
-  );
-  const fonte = ts.createSourceFile(
-    'agents.ts',
-    readFileSync(caminho, 'utf8'),
-    ts.ScriptTarget.ESNext,
-    true,
-  );
-
-  const declaracao = fonte.statements
-    .filter(ts.isVariableStatement)
-    .flatMap((s) => s.declarationList.declarations)
-    .find((d) => ts.isIdentifier(d.name) && d.name.text === 'AREAS');
-
-  if (!declaracao?.initializer || !ts.isObjectLiteralExpression(declaracao.initializer)) {
-    throw new Error('AREAS do web mudou de forma — ajuste este teste junto');
-  }
-
-  return declaracao.initializer.properties.flatMap((prop) => {
-    if (!ts.isPropertyAssignment(prop) || !ts.isObjectLiteralExpression(prop.initializer)) {
-      return [];
-    }
-
-    const corpo = prop.initializer;
-    const campo = (nome: string) =>
-      corpo.properties.find(
-        (p): p is ts.PropertyAssignment =>
-          ts.isPropertyAssignment(p) && p.name.getText() === nome,
-      )?.initializer;
-
-    const lead = campo('lead');
-    const members = campo('members');
-
-    return [
-      {
-        lead: lead ? lead.getText().replace(/['"]/g, '') : '',
-        members:
-          members && ts.isArrayLiteralExpression(members)
-            ? members.elements.map((e) => e.getText().replace(/['"]/g, ''))
-            : [],
-      },
-    ];
+describe('as cópias derivadas não divergem da fonte (FASE 18)', () => {
+  it('o arquivo do web é exatamente o que o gerador produz', () => {
+    expect(readFileSync(CAMINHO_WEB, 'utf8')).toBe(renderWeb(AGENT_AREAS));
   });
-}
 
-describe('AGENT_AREAS não diverge do web', () => {
-  it('mesmos leads e mesmos membros, na mesma ordem', () => {
-    expect(
-      AGENT_AREAS.map((a) => ({ lead: a.lead, members: [...a.members] })),
-    ).toEqual(areasDoWeb());
+  it('o módulo do engine é exatamente o que o gerador produz', () => {
+    expect(readFileSync(CAMINHO_ENGINE, 'utf8')).toBe(
+      renderEngine(AGENT_AREAS),
+    );
+  });
+
+  it('área nova na fonte aparece nas duas derivadas — nenhuma some no caminho', () => {
+    // A garantia que importa não é o texto, é a COBERTURA: subagente novo aqui
+    // tem de virar alvo recusado no handoff (api), rótulo na tela (web) e
+    // `Wake.subscribe` no lead (engine). Se o gerador deixasse um de fora, os
+    // dois testes acima passariam felizes com a lista incompleta.
+    const web = renderWeb(AGENT_AREAS);
+    const engine = renderEngine(AGENT_AREAS);
+
+    for (const area of AGENT_AREAS) {
+      expect(web).toContain(`lead: '${area.lead}'`);
+      expect(engine).toContain(`lead: "${area.lead}"`);
+
+      for (const membro of area.members) {
+        expect(web).toContain(`'${membro}'`);
+        expect(engine).toContain(`"${membro}"`);
+      }
+    }
   });
 });
 
