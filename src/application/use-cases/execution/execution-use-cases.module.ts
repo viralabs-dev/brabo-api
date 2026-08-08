@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { SessionsUseCasesModule } from '../sessions/sessions-use-cases.module';
 import { AgentsUseCasesModule } from '../agents/agents-use-cases.module';
 import { EngineHttpClientsModule } from '../../../infrastructure/http-clients/engine-http-clients.module';
@@ -6,6 +6,13 @@ import { GitInfrastructureModule } from '../../../infrastructure/git/git-infrast
 import { FilesystemModule } from '../../../infrastructure/filesystem/filesystem.module';
 import { ActivateExecutionUseCase } from './activate-execution.use-case';
 import { AcceptParallelizationUseCase } from './accept-parallelization.use-case';
+import { RequestParallelizationUseCase } from './request-parallelization.use-case';
+import { ListAgentAreasUseCase } from './list-agent-areas.use-case';
+import { SetAreaMaxParallelUseCase } from './set-area-max-parallel.use-case';
+import { ExecuteParallelizationUseCase } from './execute-parallelization.use-case';
+import { ProposeMaxParallelUseCase } from './propose-max-parallel.use-case';
+import { ExecuteMaxParallelRaiseUseCase } from './execute-max-parallel-raise.use-case';
+import { ActionsUseCasesModule } from '../actions/actions-use-cases.module';
 import { ClaimNextTaskUseCase } from './claim-next-task.use-case';
 import { MarkTaskUseCase } from './mark-task.use-case';
 import { GetDevTaskContextUseCase } from './get-dev-task-context.use-case';
@@ -33,6 +40,12 @@ import { AnamneseUseCasesModule } from '../anamnese/anamnese-use-cases.module';
 const USE_CASES = [
   ActivateExecutionUseCase,
   AcceptParallelizationUseCase,
+  RequestParallelizationUseCase,
+  ListAgentAreasUseCase,
+  SetAreaMaxParallelUseCase,
+  ExecuteParallelizationUseCase,
+  ProposeMaxParallelUseCase,
+  ExecuteMaxParallelRaiseUseCase,
   ClaimNextTaskUseCase,
   MarkTaskUseCase,
   GetDevTaskContextUseCase,
@@ -65,6 +78,8 @@ const USE_CASES = [
     GitInfrastructureModule,
     FilesystemModule,
     AnamneseUseCasesModule,
+    // FASE 14d: o pedido de paralelismo acima do teto vira proposed_action.
+    forwardRef(() => ActionsUseCasesModule),
   ],
   providers: USE_CASES,
   exports: USE_CASES,

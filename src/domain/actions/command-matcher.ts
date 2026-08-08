@@ -20,6 +20,8 @@ export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
   git_merge: 'GitMerge',
   open_infra_pr: 'OpenInfraPr',
   instruction_patch: 'InstructionPatch',
+  parallelize: 'Parallelize',
+  raise_max_parallel: 'RaiseMaxParallel',
 };
 
 /**

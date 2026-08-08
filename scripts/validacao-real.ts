@@ -89,9 +89,14 @@ import { AppendSessionEventUseCase } from '../src/application/use-cases/sessions
 import { CreateStoryUseCase } from '../src/application/use-cases/backlog/create-story.use-case';
 import { PromoteStoriesUseCase } from '../src/application/use-cases/backlog/promote-stories.use-case';
 import { ActivateExecutionUseCase } from '../src/application/use-cases/execution/activate-execution.use-case';
+import { RequestParallelizationUseCase } from '../src/application/use-cases/execution/request-parallelization.use-case';
 import { SetModelBindingUseCase } from '../src/application/use-cases/llm/set-model-binding.use-case';
 import { PermissionsFileStore } from '../src/application/ports/permissions-file-store.port';
 import { SessionRepository } from '../src/application/ports/session-repository.port';
+import { CreateHandoffUseCase } from '../src/application/use-cases/agents/create-handoff.use-case';
+import { AcceptHandoffUseCase } from '../src/application/use-cases/agents/accept-handoff.use-case';
+import { OfferInfraHandoffUseCase } from '../src/application/use-cases/agents/offer-infra-handoff.use-case';
+import { HandoffRepository } from '../src/application/ports/handoff-repository.port';
 import { ModuleMapRepository } from '../src/application/ports/module-map-repository.port';
 import {
   EpicRepository,
@@ -99,8 +104,8 @@ import {
   TaskRepository,
 } from '../src/application/ports/backlog-repository.port';
 
-type Fase = 'adocao' | 'backlog' | 'execucao';
-const FASES: Fase[] = ['adocao', 'backlog', 'execucao'];
+type Fase = 'adocao' | 'backlog' | 'dev-lead' | 'execucao';
+const FASES: Fase[] = ['adocao', 'backlog', 'dev-lead', 'execucao'];
 
 type Plano = 'aprovar' | 'como-esta';
 
@@ -110,6 +115,10 @@ interface Opcoes {
   plano: Plano;
   /** Modelo de API do dev agent e dos gates. Nunca local — ver ADR 0020. */
   modelo: string;
+  /** Quantas histórias no MESMO módulo. Cada uma a mais é um ciclo PAGO. */
+  historias: number;
+  /** Quantos módulos no module_map. Com 2, a ativação já sobe 2 agentes. */
+  modulos: number;
 }
 
 function lerOpcoes(): Opcoes {
@@ -118,7 +127,7 @@ function lerOpcoes(): Opcoes {
 
   if (!args.includes('--repo') || !repo || repo.startsWith('--')) {
     console.error(
-      'uso: validacao-real.ts --repo <owner/repo> [--ate adocao|backlog|execucao]',
+      'uso: validacao-real.ts --repo <owner/repo> [--ate adocao|backlog|dev-lead|execucao]',
     );
     process.exit(2);
   }
@@ -128,6 +137,25 @@ function lerOpcoes(): Opcoes {
     : null;
   if (ateArg != null && !FASES.includes(ateArg as Fase)) {
     console.error(`--ate inválido: ${ateArg} (use ${FASES.join(' | ')})`);
+    process.exit(2);
+  }
+
+  // Quantas histórias no MESMO módulo. Default 1 — cada task a mais é um
+  // ciclo de dev+gates a mais, PAGO. Com 2+ o Dev Lead tem motivo real para
+  // pedir mais de um agente, que é o que coloca o teto da RN-083 à prova.
+  const historias = args.includes('--historias')
+    ? Number(args[args.indexOf('--historias') + 1])
+    : 1;
+  if (!Number.isInteger(historias) || historias < 1) {
+    console.error('--historias precisa ser inteiro >= 1');
+    process.exit(2);
+  }
+
+  const modulos = args.includes('--modulos')
+    ? Number(args[args.indexOf('--modulos') + 1])
+    : 1;
+  if (!Number.isInteger(modulos) || modulos < 1 || modulos > 2) {
+    console.error('--modulos precisa ser 1 ou 2');
     process.exit(2);
   }
 
@@ -148,6 +176,8 @@ function lerOpcoes(): Opcoes {
     ate: (ateArg as Fase) ?? 'execucao',
     plano: (planoArg as Plano) ?? 'como-esta',
     modelo: modeloArg ?? 'openai/gpt-5-mini',
+    historias,
+    modulos,
   };
 }
 
@@ -167,6 +197,24 @@ const MODULOS = [
     dependsOn: [],
   },
 ];
+
+/**
+ * O segundo módulo, com `--modulos 2`.
+ *
+ * Existe para o Dev Lead ter motivo REAL de pedir mais de um agente: duas
+ * histórias no MESMO módulo ele recusa paralelizar, e com razão — "esbarrariam
+ * nos mesmos arquivos". Trabalho independente é outra conversa.
+ *
+ * `dependsOn: []` de propósito: dependência entre os dois daria ao lead um
+ * argumento legítimo para serializar, e o que se quer medir aqui é a decisão
+ * dele quando o paralelismo FAZ sentido.
+ */
+const MODULO_EXTRA = {
+  name: 'web',
+  stack: 'React',
+  responsibility: 'interface do usuário',
+  dependsOn: [],
+};
 
 // Tetos generosos, e por motivos diferentes. O dev real escreve código com
 // LLM e faz três chamadas de rede ao GitHub (commit, push, PR); os gates são
@@ -215,7 +263,14 @@ async function esperar<T>(
 }
 
 async function main() {
-  const { repo, ate, plano, modelo: modeloAlvo } = lerOpcoes();
+  const {
+  repo,
+  ate,
+  plano,
+  modelo: modeloAlvo,
+  historias,
+  modulos,
+} = lerOpcoes();
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ['error'],
   });
@@ -413,7 +468,7 @@ async function main() {
   await moduleMaps.create({
     projectId: project.id,
     sessionId: sessaoBacklog.id,
-    modules: MODULOS,
+    modules: modulos === 2 ? [...MODULOS, MODULO_EXTRA] : MODULOS,
     version: 1,
   });
 
@@ -455,6 +510,39 @@ async function main() {
   await stories.updateModules(story.id, ['api']);
   await tasks.create({ storyId: story.id, title: 'Expor GET /saudacao' });
 
+  // As extras vão no MESMO módulo de propósito: é isso que dá ao Dev Lead
+  // motivo para pedir mais de um agente ali, em vez de espalhar um por módulo.
+  const extras: { id: string }[] = [];
+  for (let i = 2; i <= historias; i++) {
+    const extra = await app
+      .get(CreateStoryUseCase)
+      .execute(project.id, sessaoBacklog.id, {
+        epicId: epic.id,
+        title:
+          modulos === 2
+            ? `Tela de status ${i}`
+            : `Rota pública de status ${i}`,
+        rf: [
+          modulos === 2
+            ? `uma PÁGINA no navegador mostra o estado do serviço, consumindo a rota`
+            : `GET /status${i} responde 200 com o estado do serviço`,
+        ],
+        dod: ['teste do caminho feliz'],
+        dor: ['regra de negócio definida'],
+        businessRuleIds: [eventoRegra.id],
+      });
+    // Semeia `api`, mas NÃO conte com isso: o Arquiteto roda um turno real na
+    // fase seguinte e reatribui as histórias com `assign_story_modules` — foi
+    // o que aconteceu na primeira tentativa de dois módulos, e por isso a
+    // história extra agora é de UI. Quem decide o module_map é ele.
+    await stories.updateModules(extra.id, ['api']);
+    await tasks.create({ storyId: extra.id, title: `Expor GET /status${i}` });
+    extras.push(extra);
+  }
+  if (extras.length > 0) {
+    log(`✓ ${extras.length} história(s) extra(s) no MESMO módulo (api)`);
+  }
+
   assertar(
     story.status === 'draft' && story.proposedReady,
     `story deveria ficar draft e proposta; veio status="${story.status}" proposta=${String(story.proposedReady)}`,
@@ -470,9 +558,9 @@ async function main() {
 
   const resultado = await app
     .get(PromoteStoriesUseCase)
-    .execute(project.id, [story.id], owner.id);
+    .execute(project.id, [story.id, ...extras.map((e) => e.id)], owner.id);
   assertar(
-    resultado.promoted.length === 1 && resultado.failed.length === 0,
+    resultado.promoted.length === historias && resultado.failed.length === 0,
     `promoção falhou: ${JSON.stringify(resultado.failed)}`,
   );
 
@@ -491,10 +579,123 @@ async function main() {
   );
   log('✓ promovida por AÇÃO SUA — e o event log registra isso');
 
+  // -------------- 2b. o Dev Lead recebe e PLANEJA (FASE 14d) --------------
+  //
+  // Fase própria, com custo próprio: um turno de LLM do Arquiteto (fechamento)
+  // e um do Dev Lead (o plano). Separada da execução pelo mesmo critério que
+  // separa as outras — a barata roda primeiro, e é assim que erro de
+  // configuração aparece antes de custar o preço da execução inteira.
+  async function faseDevLead() {
+    log('\n--- 2b. o Dev Lead recebe o handoff e PLANEJA (GASTA POUCO) ---');
+
+    const handoffs = app.get(HandoffRepository);
+
+    // O Arquiteto precisa estar DE PÉ: quem oferece os dois handoffs é ele, e
+    // `offer_*_handoff` é um GenServer.call no processo dele.
+    //
+    // O handoff PO → Arquiteto é SEMEADO, como o module_map logo acima: esta
+    // fase testa o elo Arquiteto → Dev Lead, e rodar Criativo e PO só para
+    // chegar aqui custaria vários turnos sem provar nada de novo. O que NÃO é
+    // semeado é o que está sob teste — os dois handoffs que saem daqui.
+    const paraArquiteto = await app
+      .get(CreateHandoffUseCase)
+      .execute(project.id, sessaoBacklog.id, {
+        fromAgent: 'po',
+        toAgent: 'arquiteto',
+      });
+
+    // Aceitar já ATIVA o agente (AcceptHandoffUseCase chama ActivateAgent).
+    await app
+      .get(AcceptHandoffUseCase)
+      .execute(project.id, sessaoBacklog.id, paraArquiteto.id, owner.id);
+    log('✓ Arquiteto de pé (handoff PO→Arquiteto semeado)');
+
+    // A confirmação de arquitetura pronta: UMA ação, DOIS handoffs.
+    await app
+      .get(OfferInfraHandoffUseCase)
+      .execute(project.id, sessaoBacklog.id, owner.id);
+
+    const ofertados = await esperar(
+      'os handoffs para infra E dev-lead',
+      async () => {
+        const todos = await handoffs.findBySession(sessaoBacklog.id);
+        const alvos = todos.map((h) => h.toAgent);
+        return alvos.includes('dev-lead') && alvos.includes('infra')
+          ? todos
+          : null;
+      },
+      60_000,
+    );
+    log(`✓ ${ofertados.length} handoff(s) ofertado(s): infra e dev-lead`);
+
+    const paraDev = ofertados.find((h) => h.toAgent === 'dev-lead')!;
+    await app
+      .get(AcceptHandoffUseCase)
+      .execute(project.id, sessaoBacklog.id, paraDev.id, owner.id);
+    log('✓ handoff do Dev Lead aceito — ele foi ativado');
+
+    // O plano é o desfecho observável do item 5: sem ele, o agente subiu e não
+    // fez o que existe para fazer.
+    const plano = await esperar(
+      'o plano do Dev Lead (execution.plan_proposed)',
+      async () => {
+        const [ev] = await db
+          .select()
+          .from(sessionEvents)
+          .where(
+            and(
+              eq(sessionEvents.sessionId, sessaoBacklog.id),
+              eq(sessionEvents.type, 'execution.plan_proposed'),
+            ),
+          );
+        return ev ?? null;
+      },
+      300_000,
+    );
+
+    const payload = plano.payload as {
+      totalAgentes?: number;
+      resumo?: string;
+      modulos?: { modulo: string; agentes: number; porque: string }[];
+    };
+
+    assertar(
+      plano.actorId === 'dev-lead' && plano.actorKind === 'agent',
+      `o plano veio de "${plano.actorKind}/${plano.actorId}" e não do dev-lead`,
+    );
+    assertar(
+      (payload.modulos?.length ?? 0) > 0,
+      'o plano não trouxe módulo nenhum',
+    );
+    assertar(
+      payload.modulos!.every((m) => (m.porque ?? '').trim().length > 0),
+      'algum módulo veio sem justificativa — é o que você lê para decidir',
+    );
+
+    log(
+      `✓ PLANO: ${payload.totalAgentes} agente(s) em ` +
+        `${payload.modulos!.length} módulo(s) — "${payload.resumo}"`,
+    );
+    for (const m of payload.modulos!) {
+      log(`    ${m.modulo}: ${m.agentes} — ${m.porque}`);
+    }
+  }
+
   if (ate === 'backlog') {
     log(
       `\n[validacao-real] parou em "backlog" como pedido. Nada foi gasto.\n` +
         `projeto: ${project.id}\nstory: ${story.id}`,
+    );
+    await app.close();
+    return;
+  }
+
+  await faseDevLead();
+
+  if (ate === 'dev-lead') {
+    log(
+      `\n[validacao-real] parou em "dev-lead" como pedido.\n` +
+        `projeto: ${project.id}\nsessão: ${sessaoBacklog.id}`,
     );
     await app.close();
     return;
@@ -607,6 +808,79 @@ async function main() {
     .execute(project.id, owner.id, undefined, undefined, 'real');
   log(`sessão de execução: ${sessionId}`);
   log('  (o engine NÃO pode ser reiniciado daqui em diante — é critério)');
+
+  // ---- o TETO de paralelismo, exercitado de verdade (RN-083) -------------
+  //
+  // A ativação sobe UM agente por módulo, então quantos já existem depende do
+  // module_map — que quem decide é o ARQUITETO, não este roteiro. A primeira
+  // versão daqui assumia a conta de um módulo só e reprovou uma execução em
+  // que o produto agiu certo: com dois módulos a ativação já enche o teto, e o
+  // pedido seguinte PRECISA pedir autorização.
+  //
+  // Então o que se afirma é a REGRA, não o número: enquanto couber, sobe sem
+  // perguntar; quando não couber, para. Custa ZERO token — é domínio puro.
+  {
+    const pedir = () =>
+      app
+        .get(RequestParallelizationUseCase)
+        .execute(project.id, sessionId, 'api', owner.id);
+
+    let parou = null as Awaited<ReturnType<typeof pedir>> | null;
+
+    for (let tentativa = 1; tentativa <= 4 && parou === null; tentativa++) {
+      const r = await pedir();
+
+      if (r.estado === 'executado') {
+        assertar(
+          (r.ativosNaSessao ?? 0) < (r.maxParallel ?? 0) + 1,
+          `subiu um agente com ${r.ativosNaSessao} ativos e teto ${r.maxParallel}`,
+        );
+        log(
+          `✓ agente subiu SEM perguntar — ${r.ativosNaSessao} ativos, teto ${r.maxParallel}`,
+        );
+        continue;
+      }
+
+      assertar(
+        r.estado === 'aguardando_autorizacao',
+        `pedido devolveu "${r.estado}" — nem subiu nem pediu autorização`,
+      );
+      parou = r;
+    }
+
+    assertar(
+      parou !== null,
+      'quatro pedidos e nenhum precisou de autorização — o teto não está segurando nada',
+    );
+    assertar(
+      (parou!.ativosNaSessao ?? 0) >= (parou!.maxParallel ?? 0),
+      `parou com ${parou!.ativosNaSessao} ativos e teto ${parou!.maxParallel} — parou cedo demais`,
+    );
+    assertar(
+      typeof parou!.actionId === 'string' && parou!.actionId.length > 0,
+      'não veio `actionId`: sem ação, não há o que você decidir',
+    );
+
+    // O ponto: NADA subiu, e a ação nasceu exigindo você. Se o decide.ts
+    // deixasse ela auto-aprovar (RN-086), o estado ainda diria "aguardando" e
+    // a autorização seria teatro — por isso a prova é sobre o BANCO.
+    const [acao] = await db
+      .select()
+      .from(proposedActions)
+      .where(eq(proposedActions.id, parou!.actionId!));
+    assertar(
+      acao?.actionType === 'parallelize' && acao.status === 'pending',
+      `a ação veio "${acao?.actionType}/${acao?.status}"`,
+    );
+    assertar(
+      acao.resolvedPolicy === 'require_approval',
+      `a ação resolveu "${acao.resolvedPolicy}" — o teto do decide.ts falhou (RN-086)`,
+    );
+    log(
+      `✓ o pedido acima do teto PAROU: ação ${parou!.actionId} pendente ` +
+        `(${parou!.ativosNaSessao} ativos, teto ${parou!.maxParallel})`,
+    );
+  }
 
   // A PR é a primeira prova de que o dev agent real trabalhou: escreveu
   // código, commitou, deu push e abriu PR REMOTA.

@@ -1,8 +1,10 @@
-import { Body, Controller, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiConflictResponse,
+  ApiBadRequestResponse,
   ApiCreatedResponse,
+  ApiOkResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOperation,
@@ -12,14 +14,21 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import type { User } from '../../../domain/iam/user.entity';
 import { RequireRole } from '../iam/require-role.decorator';
 import { ActivateExecutionUseCase } from '../../../application/use-cases/execution/activate-execution.use-case';
-import { AcceptParallelizationUseCase } from '../../../application/use-cases/execution/accept-parallelization.use-case';
+import { RequestParallelizationUseCase } from '../../../application/use-cases/execution/request-parallelization.use-case';
 import { UnblockTaskUseCase } from '../../../application/use-cases/execution/unblock-task.use-case';
 import { RearmDevAgentUseCase } from '../../../application/use-cases/execution/rearm-dev-agent.use-case';
+import { ListAgentAreasUseCase } from '../../../application/use-cases/execution/list-agent-areas.use-case';
+import { SetAreaMaxParallelUseCase } from '../../../application/use-cases/execution/set-area-max-parallel.use-case';
 import { AcceptParallelizationDto } from './dto/accept-parallelization.dto';
 import { ActivateExecutionDto } from './dto/activate-execution.dto';
+import { SetMaxParallelDto } from './dto/set-max-parallel.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import { OkResponseDto } from '../shared/dto/comuns.response.dto';
-import { ExecucaoAtivadaResponseDto } from './dto/execution.response.dto';
+import {
+  AreaDeAgentesResponseDto,
+  ExecucaoAtivadaResponseDto,
+  PedidoDeParalelismoResponseDto,
+} from './dto/execution.response.dto';
 
 /**
  * Ações do usuário sobre a fase de execução (Fase 4a). Ativar exige maintainer
@@ -33,9 +42,11 @@ import { ExecucaoAtivadaResponseDto } from './dto/execution.response.dto';
 export class ExecutionController {
   constructor(
     private readonly activateExecution: ActivateExecutionUseCase,
-    private readonly acceptParallelization: AcceptParallelizationUseCase,
+    private readonly requestParallelization: RequestParallelizationUseCase,
     private readonly unblockTask: UnblockTaskUseCase,
     private readonly rearmDevAgent: RearmDevAgentUseCase,
+    private readonly listAgentAreas: ListAgentAreasUseCase,
+    private readonly setAreaMaxParallel: SetAreaMaxParallelUseCase,
   ) {}
 
   @Post('execution/activate')
@@ -70,23 +81,60 @@ export class ExecutionController {
   @Post('sessions/:sessionId/execution/parallelize')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Aceita paralelizar um módulo com um dev agent dedicado',
+    summary: 'Pede mais um dev agent para um módulo',
     description:
-      'Sobe mais um agente, em worktree próprio, para o módulo indicado.',
+      'Passa pelo TETO da área de dev (RN-083): dentro dele o agente sobe na ' +
+      'hora, em worktree próprio; acima dele a resposta é uma `proposed_action` ' +
+      'do tipo `parallelize` aguardando a sua decisão, e NADA sobe até você ' +
+      'decidir. O que o teto vale é configurável por lead em Configurações.',
   })
-  @ApiCreatedResponse({ type: OkResponseDto })
+  @ApiCreatedResponse({ type: PedidoDeParalelismoResponseDto })
   parallelize(
     @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
     @CurrentUser() user: User,
     @Body() dto: AcceptParallelizationDto,
   ) {
-    return this.acceptParallelization.execute(
+    return this.requestParallelization.execute(
       projectId,
       sessionId,
       dto.module,
       user.id,
     );
+  }
+
+  @Get('agent-areas')
+  @RequireRole('developer')
+  @ApiOperation({
+    summary: 'As áreas de agente do projeto, com o teto de cada lead',
+    description:
+      'Vazio para projeto que nunca ativou execução, e isso NÃO é erro: as ' +
+      'áreas nascem no seeding da ativação, porque os membros da área de dev ' +
+      'vêm do `module_map`.',
+  })
+  @ApiOkResponse({ type: [AreaDeAgentesResponseDto] })
+  listAreas(@Param('projectId') projectId: string) {
+    return this.listAgentAreas.execute(projectId);
+  }
+
+  @Patch('agent-areas/:key/max-parallel')
+  @RequireRole('maintainer')
+  @ApiOperation({
+    summary: 'Muda o teto de paralelismo de uma área',
+    description:
+      'Exige `maintainer`, e não `developer`, pelo mesmo motivo de ativar a ' +
+      'execução: subir o teto é decidir quanto o produto pode gastar sem ' +
+      'perguntar. Vale para os PRÓXIMOS pedidos — o que já está aguardando ' +
+      'sua decisão continua aguardando.',
+  })
+  @ApiOkResponse({ type: AreaDeAgentesResponseDto })
+  @ApiBadRequestResponse({ description: '`maxParallel` não é inteiro >= 1.' })
+  setMaxParallel(
+    @Param('projectId') projectId: string,
+    @Param('key') key: string,
+    @Body() dto: SetMaxParallelDto,
+  ) {
+    return this.setAreaMaxParallel.execute(projectId, key, dto.maxParallel);
   }
 
   @Post('sessions/:sessionId/tasks/:taskId/unblock')

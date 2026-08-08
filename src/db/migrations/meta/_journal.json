@@ -260,6 +260,13 @@
       "when": 1785869111583,
       "tag": "0036_abnormal_phalanx",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1786134325519,
+      "tag": "0037_polite_adam_warlock",
+      "breakpoints": true
     }
   ]
 }
