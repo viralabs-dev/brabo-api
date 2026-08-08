@@ -6,6 +6,7 @@ import { EncryptionService } from '../../ports/encryption.port';
 import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { verifyOauthState } from '../../../domain/git/oauth-state';
 import type { GitOauthProviderName } from '../../../domain/git/oauth-state';
+import { resolveOauthStateSecret } from '../../../infrastructure/security/oauth-state-secret';
 
 @Injectable()
 export class HandleGitOauthCallbackUseCase {
@@ -25,7 +26,7 @@ export class HandleGitOauthCallbackUseCase {
   ) {
     const statePayload = verifyOauthState(
       state,
-      process.env.GIT_OAUTH_STATE_SECRET ?? 'dev-oauth-state-secret-change-me',
+      resolveOauthStateSecret(),
       provider,
     );
 

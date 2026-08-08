@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { GitOauthClientRegistry } from '../../ports/git-oauth-client.port';
 import { signOauthState } from '../../../domain/git/oauth-state';
 import type { GitOauthProviderName } from '../../../domain/git/oauth-state';
+import { resolveOauthStateSecret } from '../../../infrastructure/security/oauth-state-secret';
 
 @Injectable()
 export class StartGitOauthUseCase {
@@ -14,7 +15,7 @@ export class StartGitOauthUseCase {
   ): { authorizeUrl: string } {
     const state = signOauthState(
       { projectId, userId, provider },
-      stateSecret(),
+      resolveOauthStateSecret(),
     );
     const redirectUri = `${apiPublicUrl()}/git/oauth/${provider}/callback`;
     const authorizeUrl = this.gitOauthClients
@@ -23,12 +24,6 @@ export class StartGitOauthUseCase {
 
     return { authorizeUrl };
   }
-}
-
-function stateSecret(): string {
-  return (
-    process.env.GIT_OAUTH_STATE_SECRET ?? 'dev-oauth-state-secret-change-me'
-  );
 }
 
 function apiPublicUrl(): string {
