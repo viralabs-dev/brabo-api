@@ -1918,3 +1918,61 @@ export const authLockoutHits = pgTable(
     index('auth_lockout_hits_occurred_idx').on(table.occurredAt),
   ],
 );
+
+export const socketTicketScopeEnum = pgEnum('socket_ticket_scope', [
+  'heartbeat',
+  'terminal',
+]);
+
+/**
+ * Ticket opaco de uso único pra autenticar `connect/3` do socket Phoenix da
+ * sessão (RN-108) — fecha o gap descrito no moduledoc de
+ * `EngineWeb.SessionSocket`: antes desta tabela, qualquer um que descobrisse
+ * um `session_id` (UUID) entrava no canal e recebia os broadcasts ao vivo.
+ *
+ * NÃO é o JWT reaproveitado: TTL de 30s, uso único, e escopo fechado
+ * (`heartbeat` | `terminal`) — o mesmo papel mínimo de
+ * `MIN_ROLE_FOR_ACTION_TYPE.terminal` em `domain/actions/decide.ts` decide
+ * quem pode pedir escopo `terminal`.
+ *
+ * `ticketHash` é SHA-256 PURO do token bruto (`node:crypto` `createHash`),
+ * não `hashDeToken` (HMAC com pepper). A verificação roda no ENGINE, que lê
+ * esta tabela direto (mesmo padrão de `outbox_events` — ver
+ * `Engine.Outbox.Event`) e não tem acesso ao pepper derivado de
+ * `AUTH_TOKEN_PEPPER`/`AUTH_JWT_SECRET`: exigir isso duplicaria segredo de
+ * auth entre os dois serviços só para verificar um token de 256 bits de
+ * CSPRNG que, como o próprio `hashDeToken` já registra, não tem dicionário
+ * possível — o pepper não protegeria nada aqui que a entropia do token não já
+ * proteja sozinha.
+ */
+export const sessionSocketTickets = pgTable(
+  'session_socket_tickets',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    scope: socketTicketScopeEnum('scope').notNull(),
+    ticketHash: text('ticket_hash').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    // Consumo de uso único — engine marca atomicamente (UPDATE condicional,
+    // mesmo padrão de `account_tokens.consumed_at`). Reuso tem que achar a
+    // linha já marcada e falhar.
+    consumedAt: timestamp('consumed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('session_socket_tickets_hash_idx').on(table.ticketHash),
+    index('session_socket_tickets_session_idx').on(table.sessionId),
+    // A poda apaga por tempo — mesmo padrão de refresh_tokens_expires_idx.
+    index('session_socket_tickets_expires_idx').on(table.expiresAt),
+  ],
+);

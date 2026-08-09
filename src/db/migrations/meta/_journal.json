@@ -288,6 +288,13 @@
       "when": 1786256510090,
       "tag": "0040_tearful_night_nurse",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1786306627724,
+      "tag": "0041_first_betty_brant",
+      "breakpoints": true
     }
   ]
 }

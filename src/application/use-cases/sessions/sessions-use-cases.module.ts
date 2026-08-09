@@ -10,6 +10,7 @@ import { GetSessionEventUseCase } from './get-session-event.use-case';
 import { GetProjectEventUseCase } from './get-project-event.use-case';
 import { ReportSessionTerminationUseCase } from './report-session-termination.use-case';
 import { GetSessionPendingWorkUseCase } from './get-session-pending-work.use-case';
+import { CreateSocketTicketUseCase } from './create-socket-ticket.use-case';
 import { EngineHttpClientsModule } from '../../../infrastructure/http-clients/engine-http-clients.module';
 
 const USE_CASES = [
@@ -24,6 +25,7 @@ const USE_CASES = [
   GetProjectEventUseCase,
   ReportSessionTerminationUseCase,
   GetSessionPendingWorkUseCase,
+  CreateSocketTicketUseCase,
 ];
 
 @Module({
