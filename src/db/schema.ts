@@ -102,11 +102,16 @@ export const llmProviderEnum = pgEnum('llm_provider', [
   'vultr',
 ]);
 
-// workspace < project < agent < session, do menos pro mais específico —
+// workspace < project < area < agent < session, do menos pro mais específico —
 // ver domain/llm/binding-resolver.ts pra precedência de resolução.
+//
+// `area` entrou na FASE 23 (ADR 0064): é o modelo PADRÃO que o lead e os
+// subagentes de uma área compartilham, e o binding de `agent` é a divergência
+// que o sobrepõe.
 export const modelBindingScopeEnum = pgEnum('model_binding_scope', [
   'workspace',
   'project',
+  'area',
   'agent',
   'session',
 ]);
@@ -618,9 +623,12 @@ export const modelBindings = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     scope: modelBindingScopeEnum('scope').notNull(),
-    // Mesma convenção de session_events.actor_id: às vezes UUID
-    // (workspace/project/session), às vezes slug de agente (sem
-    // tabela própria — fase 3+ não implementa agentes de produto).
+    // UUID puro em `workspace`, `project` e `session`, que já se identificam
+    // sozinhos. Em `agent` e `area` é COMPOSTO — `<projectId>:<slug|chave>` —
+    // porque esses dois existem POR PROJETO e o mesmo `qa` aparece em todos
+    // (ADR 0064). O formato e a validação moram em
+    // domain/llm/binding-scope-id.ts; agente e área continuam sem tabela
+    // própria, como em session_events.actor_id.
     scopeId: text('scope_id').notNull(),
     modelId: uuid('model_id')
       .notNull()

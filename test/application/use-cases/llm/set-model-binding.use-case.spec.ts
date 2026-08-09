@@ -1,13 +1,23 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
 import { createTestDb, truncateAll } from '../../../support/test-db';
-import { models, users, workspaces } from '../../../../src/db/schema';
+import {
+  models,
+  projects,
+  users,
+  workspaces,
+} from '../../../../src/db/schema';
 import { DrizzleModelBindingRepository } from '../../../../src/infrastructure/persistence/drizzle/model-binding.repository';
 import { DrizzleModelRepository } from '../../../../src/infrastructure/persistence/drizzle/model.repository';
 import { DrizzleWorkspaceModelRepository } from '../../../../src/infrastructure/persistence/drizzle/workspace-model.repository';
 import { DrizzleProjectRepository } from '../../../../src/infrastructure/persistence/drizzle/project.repository';
 import { SetModelBindingUseCase } from '../../../../src/application/use-cases/llm/set-model-binding.use-case';
 import { ModelNotFitForAgentScopeError } from '../../../../src/domain/llm/model-capabilities';
+import {
+  chaveDeAgente,
+  chaveDeArea,
+  ScopeIdSemProjetoError,
+} from '../../../../src/domain/llm/binding-scope-id';
 
 const { db, pool } = createTestDb();
 const modelRepo = new DrizzleModelRepository(db);
@@ -51,7 +61,30 @@ async function setup() {
     })
     .returning();
 
-  return { user, ws, comFerramentas, chatOnly };
+  const [project] = await db
+    .insert(projects)
+    .values({
+      workspaceId: ws.id,
+      name: 'Core',
+      slug: 'core',
+      createdBy: user.id,
+    })
+    .returning();
+
+  /**
+   * A curadoria do workspace (RN-043) passou a valer para `agent` e `area` no
+   * ADR 0064, porque o `scope_id` deles carrega o projeto e o workspace virou
+   * derivável. Antes esses escopos devolviam `null` e escapavam da checagem.
+   */
+  const ativarNoWorkspace = (modelId: string) =>
+    workspaceModelRepo.setActive({
+      workspaceId: ws.id,
+      modelIds: [modelId],
+      isActive: true,
+      curatedBy: user.id,
+    });
+
+  return { user, ws, project, comFerramentas, chatOnly, ativarNoWorkspace };
 }
 
 beforeEach(async () => {
@@ -64,40 +97,51 @@ afterAll(async () => {
 
 describe('SetModelBindingUseCase', () => {
   it('vincula um modelo com tool calling a um agente', async () => {
-    const { user, comFerramentas } = await setup();
+    const { user, project, comFerramentas, ativarNoWorkspace } = await setup();
+    await ativarNoWorkspace(comFerramentas.id);
 
     const binding = await useCase.execute(
       'agent',
-      'dev-backend',
+      chaveDeAgente(project.id, 'dev-backend'),
       comFerramentas.id,
       user.id,
     );
 
     expect(binding).toMatchObject({
       scope: 'agent',
-      scopeId: 'dev-backend',
+      scopeId: `${project.id}:dev-backend`,
       modelId: comFerramentas.id,
     });
   });
 
   it('recusa modelo chat-only no escopo agent (RN-040)', async () => {
-    const { user, chatOnly } = await setup();
+    const { user, project, chatOnly } = await setup();
 
     await expect(
-      useCase.execute('agent', 'dev-backend', chatOnly.id, user.id),
+      useCase.execute(
+        'agent',
+        chaveDeAgente(project.id, 'dev-backend'),
+        chatOnly.id,
+        user.id,
+      ),
     ).rejects.toThrow(ModelNotFitForAgentScopeError);
   });
 
   it('não grava nada quando recusa', async () => {
-    const { user, chatOnly } = await setup();
+    const { user, project, chatOnly } = await setup();
 
     await expect(
-      useCase.execute('agent', 'qa', chatOnly.id, user.id),
+      useCase.execute(
+        'agent',
+        chaveDeAgente(project.id, 'qa'),
+        chatOnly.id,
+        user.id,
+      ),
     ).rejects.toThrow(ModelNotFitForAgentScopeError);
 
     const bindings = await new DrizzleModelBindingRepository(db).findOne(
       'agent',
-      'qa',
+      chaveDeAgente(project.id, 'qa'),
     );
     expect(bindings).toBeNull();
   });
@@ -145,11 +189,17 @@ describe('SetModelBindingUseCase', () => {
   });
 
   it('recusa binding novo para modelo que sumiu do provider (RN-043)', async () => {
-    const { user, comFerramentas } = await setup();
+    const { user, project, comFerramentas, ativarNoWorkspace } = await setup();
+    await ativarNoWorkspace(comFerramentas.id);
     await modelRepo.setAvailability([comFerramentas.id], 'unavailable');
 
     await expect(
-      useCase.execute('agent', 'dev-backend', comFerramentas.id, user.id),
+      useCase.execute(
+        'agent',
+        chaveDeAgente(project.id, 'dev-backend'),
+        comFerramentas.id,
+        user.id,
+      ),
     ).rejects.toMatchObject({
       name: 'ModelNotBindableError',
       motivo: 'indisponivel',
@@ -157,28 +207,82 @@ describe('SetModelBindingUseCase', () => {
   });
 
   it('binding ANTIGO para modelo indisponível não é apagado — quem lida é a cascata', async () => {
-    const { user, comFerramentas } = await setup();
+    const { user, project, comFerramentas, ativarNoWorkspace } = await setup();
+    await ativarNoWorkspace(comFerramentas.id);
 
-    await useCase.execute('agent', 'dev-backend', comFerramentas.id, user.id);
+    await useCase.execute(
+      'agent',
+      chaveDeAgente(project.id, 'dev-backend'),
+      comFerramentas.id,
+      user.id,
+    );
     await modelRepo.setAvailability([comFerramentas.id], 'unavailable');
 
     const binding = await new DrizzleModelBindingRepository(db).findOne(
       'agent',
-      'dev-backend',
+      chaveDeAgente(project.id, 'dev-backend'),
     );
     expect(binding).toMatchObject({ modelId: comFerramentas.id });
   });
 
   it('modelo inexistente continua sendo 404', async () => {
-    const { user } = await setup();
+    const { user, project } = await setup();
 
     await expect(
       useCase.execute(
         'agent',
-        'qa',
+        chaveDeAgente(project.id, 'qa'),
         '00000000-0000-0000-0000-000000000000',
         user.id,
       ),
     ).rejects.toThrow(NotFoundException);
+  });
+
+  // ------------------------------------------------ FASE 23 / ADR 0064
+
+  it('a ÁREA exige tool calling como o agente — ela só é lida por agentes', async () => {
+    const { user, project, chatOnly } = await setup();
+
+    await expect(
+      useCase.execute(
+        'area',
+        chaveDeArea(project.id, 'qa'),
+        chatOnly.id,
+        user.id,
+      ),
+    ).rejects.toThrow(ModelNotFitForAgentScopeError);
+  });
+
+  it('a ÁREA também responde pela curadoria do workspace (RN-043)', async () => {
+    const { user, project, comFerramentas } = await setup();
+
+    // Sem `ativarNoWorkspace`: modelo nunca curado. Antes do ADR 0064 este
+    // caminho devolvia `null` de workspace e passava — o escopo `agent` não
+    // tinha âncora nenhuma.
+    await expect(
+      useCase.execute(
+        'area',
+        chaveDeArea(project.id, 'qa'),
+        comFerramentas.id,
+        user.id,
+      ),
+    ).rejects.toMatchObject({
+      name: 'ModelNotBindableError',
+      motivo: 'inativo',
+    });
+  });
+
+  it('falha: `scope_id` de agente sem projeto é recusado (RN-103)', async () => {
+    const { user, comFerramentas, ativarNoWorkspace } = await setup();
+    await ativarNoWorkspace(comFerramentas.id);
+
+    // O formato antigo, global. Gravá-lo criaria um binding que a cascata
+    // nunca mais encontraria.
+    await expect(
+      useCase.execute('agent', 'dev-backend', comFerramentas.id, user.id),
+    ).rejects.toThrow(ScopeIdSemProjetoError);
+    await expect(
+      useCase.execute('area', 'qa', comFerramentas.id, user.id),
+    ).rejects.toThrow(ScopeIdSemProjetoError);
   });
 });

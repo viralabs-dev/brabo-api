@@ -69,6 +69,7 @@ import { ModuleMapRepository } from '../src/application/ports/module-map-reposit
 import { AgentInstructionRepository } from '../src/application/ports/agent-instruction-repository.port';
 import { ProposedActionRepository } from '../src/application/ports/proposed-action-repository.port';
 import { deriveCatalog } from '../src/domain/anamnese/competency-catalog';
+import { chaveDeAgente } from '../src/domain/llm/binding-scope-id';
 
 const MODELO = process.env.DEMO_MODEL ?? 'qwen2.5-coder:7b';
 
@@ -201,7 +202,12 @@ async function main() {
       `Modelo ollama/${MODELO} não está seedado — rode \`pnpm --filter api seed\``,
     );
   }
-  await setModelBinding.execute('agent', 'anamnese', modelo.id, user.id);
+  await setModelBinding.execute(
+    'agent',
+    chaveDeAgente(project.id, 'anamnese'),
+    modelo.id,
+    user.id,
+  );
   await setModelBinding.execute('project', project.id, modelo.id, user.id);
   log(`✓ anamnese -> ollama/${MODELO}`);
 

@@ -195,6 +195,9 @@ const SEM_CORPO_JSON = new Map<
   ['POST /auth/reset-password', 'sem-conteudo'],
   ['PUT /projects/:projectId/agent-autonomy', 'sem-conteudo'],
   ['DELETE /projects/:projectId/members/:userId', 'sem-conteudo'],
+  // FASE 23 / ADR 0064 — "voltar a herdar" é 204: apaga o binding, sem corpo.
+  ['DELETE /projects/:projectId/agent-bindings/:agentSlug', 'sem-conteudo'],
+  ['DELETE /projects/:projectId/area-bindings/:areaKey', 'sem-conteudo'],
 ]);
 
 /**

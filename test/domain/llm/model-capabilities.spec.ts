@@ -59,7 +59,17 @@ describe('assertModelFitsBindingScope (RN-040)', () => {
     );
   });
 
-  it('deixa passar modelo chat-only fora do escopo agent', () => {
+  it('recusa modelo chat-only no escopo area (ADR 0064)', () => {
+    // A área não é fallback genérico: quem lê o modelo dela é sempre um agente,
+    // lead ou subagente. Deixá-la passar adiaria a mesma falha em um nível.
+    const chatOnly = modelo({ supportsToolCalling: false });
+
+    expect(() => assertModelFitsBindingScope(chatOnly, 'area')).toThrow(
+      ModelNotFitForAgentScopeError,
+    );
+  });
+
+  it('deixa passar modelo chat-only fora dos escopos de agente', () => {
     const chatOnly = modelo({ supportsToolCalling: false });
 
     // workspace/project são o fallback do chat humano e session é conversa —

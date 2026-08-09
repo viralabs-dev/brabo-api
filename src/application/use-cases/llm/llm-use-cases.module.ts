@@ -9,6 +9,7 @@ import { UpdateModelPricingUseCase } from './update-model-pricing.use-case';
 import { ListModelPriceChangesUseCase } from './list-model-price-changes.use-case';
 import { SetModelBindingUseCase } from './set-model-binding.use-case';
 import { GetModelBindingUseCase } from './get-model-binding.use-case';
+import { ClearModelBindingUseCase } from './clear-model-binding.use-case';
 import { ResolveModelBindingUseCase } from './resolve-model-binding.use-case';
 import { UpsertUserCredentialUseCase } from './upsert-user-credential.use-case';
 import { ListUserCredentialsUseCase } from './list-user-credentials.use-case';
@@ -37,6 +38,7 @@ const USE_CASES = [
   ListModelPriceChangesUseCase,
   SetModelBindingUseCase,
   GetModelBindingUseCase,
+  ClearModelBindingUseCase,
   ResolveModelBindingUseCase,
   UpsertUserCredentialUseCase,
   ListUserCredentialsUseCase,

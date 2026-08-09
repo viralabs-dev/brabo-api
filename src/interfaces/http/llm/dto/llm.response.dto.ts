@@ -248,7 +248,9 @@ export class ModelBindingResponseDto implements Wire<ModelBinding> {
   @ApiProperty({
     example: '01JC4Z0000PROJETO0000000001',
     description:
-      'Id do workspace, projeto, agente ou sessão a que o binding se prende.',
+      'Id do workspace, projeto ou sessão a que o binding se prende. Nos escopos ' +
+      '`agent` e `area`, que existem POR PROJETO, é composto: ' +
+      '`<projectId>:<slug do agente|chave da área>` (ADR 0064).',
   })
   scopeId!: string;
 
