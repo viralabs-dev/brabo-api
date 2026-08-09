@@ -26,6 +26,7 @@ import type { Model } from '../domain/llm/model.entity';
 import { UpdateModelPricingUseCase } from '../application/use-cases/llm/update-model-pricing.use-case';
 import { SetModelsActiveUseCase } from '../application/use-cases/llm/set-models-active.use-case';
 import { SetModelBindingUseCase } from '../application/use-cases/llm/set-model-binding.use-case';
+import { chaveDeAgente } from '../domain/llm/binding-scope-id';
 import { UpsertAgentInstructionUseCase } from '../application/use-cases/agents/upsert-agent-instruction.use-case';
 import {
   CRIATIVO_AGENT,
@@ -435,7 +436,7 @@ async function main() {
   );
   await setModelBinding.execute(
     'agent',
-    CRIATIVO_AGENT,
+    chaveDeAgente(project.id, CRIATIVO_AGENT),
     localModel.id,
     owner.id,
   );
@@ -445,14 +446,19 @@ async function main() {
 
   // Fase 4b — Psicólogo: binding próprio por tier de triagem. O agent id
   // do ctx do ToolLoop ("psicologo"/"psicologo-leve") resolve por aqui
-  // via a cascata que já existe (session > agent > project > workspace).
-  await setModelBinding.execute('agent', 'psicologo', strongModel.id, owner.id);
+  // via a cascata que já existe (session > agent > area > project > workspace).
+  await setModelBinding.execute(
+    'agent',
+    chaveDeAgente(project.id, 'psicologo'),
+    strongModel.id,
+    owner.id,
+  );
   console.log(
     `✓ binding: agent psicologo -> ${strongModel.provider}/${strongModel.name}`,
   );
   await setModelBinding.execute(
     'agent',
-    'psicologo-leve',
+    chaveDeAgente(project.id, 'psicologo-leve'),
     cheapModel.id,
     owner.id,
   );

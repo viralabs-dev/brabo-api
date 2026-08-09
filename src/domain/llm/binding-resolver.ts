@@ -1,11 +1,18 @@
 import type { ModelBindingScope } from './model-binding-scope';
 import type { ModelAvailability } from './model.entity';
 
-// Mais específico primeiro — papel de sessão sobrepõe agente, que
-// sobrepõe projeto, que sobrepõe workspace.
+// Mais específico primeiro — papel de sessão sobrepõe agente, que sobrepõe
+// área, que sobrepõe projeto, que sobrepõe workspace.
+//
+// `area` entrou na FASE 23 (ADR 0064) e a POSIÇÃO dela é a decisão, não o
+// nível em si: o modelo da área é o PADRÃO que lead e subagentes compartilham,
+// e o binding do agente é a DIVERGÊNCIA explícita de um deles. Se a área
+// viesse acima do agente, divergir seria impossível — a área venceria sempre,
+// e "padrão herdável" viraria "padrão imposto".
 const PRECEDENCE: readonly ModelBindingScope[] = [
   'session',
   'agent',
+  'area',
   'project',
   'workspace',
 ];

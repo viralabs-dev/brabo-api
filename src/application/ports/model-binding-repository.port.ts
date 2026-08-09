@@ -19,4 +19,14 @@ export abstract class ModelBindingRepository {
     modelId: string;
     createdBy: string;
   }): Promise<ModelBinding>;
+
+  /**
+   * Apaga o binding de um escopo — `false` quando não havia nenhum.
+   *
+   * É como se VOLTA A HERDAR (ADR 0064). Gravar no agente o modelo que a área
+   * decidiu pareceria o mesmo na tela e não é: viraria cópia, e a próxima
+   * mudança da área deixaria esse agente para trás em silêncio. Herança é a
+   * AUSÊNCIA de decisão, e desfazer uma decisão é removê-la.
+   */
+  abstract remove(scope: ModelBindingScope, scopeId: string): Promise<boolean>;
 }
