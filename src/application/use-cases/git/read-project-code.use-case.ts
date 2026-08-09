@@ -7,6 +7,7 @@ import {
 import type { GitPullRequestDiff, GitTree, GitTreeEntry } from '@brabo/shared';
 import { GitProviderRegistry } from '../../ports/git-provider.port';
 import { ProvisionedRepositoryRepository } from '../../ports/provisioned-repository-repository.port';
+import { ProjectRepository } from '../../ports/project-repository.port';
 import { UserCredentialRepository } from '../../ports/user-credential-repository.port';
 import { EncryptionService } from '../../ports/encryption.port';
 import { ResolveCredentialOwnerUseCase } from '../llm/resolve-credential-owner.use-case';
@@ -122,6 +123,7 @@ const MAX_TRECHO = 300;
 export class ReadProjectCodeUseCase {
   constructor(
     private readonly repositories: ProvisionedRepositoryRepository,
+    private readonly projects: ProjectRepository,
     private readonly gitProviders: GitProviderRegistry,
     private readonly userCredentials: UserCredentialRepository,
     private readonly encryption: EncryptionService,
@@ -303,6 +305,11 @@ export class ReadProjectCodeUseCase {
   ): Promise<Alvo> {
     await this.portaoDoContainer(projectId);
 
+    const project = await this.projects.findById(projectId);
+    if (!project) {
+      throw new NotFoundException(`Projeto não encontrado: ${projectId}`);
+    }
+
     const repo = await this.repositories.findByProjectId(projectId);
     if (!repo) {
       throw new NotFoundException(
@@ -322,7 +329,7 @@ export class ReadProjectCodeUseCase {
 
     let contido = '';
     try {
-      contido = caminhoDeRepositorioContido(projectId, path);
+      contido = caminhoDeRepositorioContido(project.workspaceDirName, path);
     } catch (erro) {
       if (erro instanceof CaminhoForaDoEscopoError) {
         // 400 e não 404: dizer "não encontrado" a um caminho que escapa
@@ -330,8 +337,8 @@ export class ReadProjectCodeUseCase {
         // ele não vaza nada — o cliente escreveu o caminho.
         throw new BadRequestException(erro.message);
       }
-      // `projectScopeRoot` recusa projectId que não seja segmento de caminho
-      // (RN-092). Também é pedido do cliente, e também é 400.
+      // `projectScopeRoot` recusa workspaceDirName que não seja segmento de
+      // caminho (RN-092). Também é pedido do cliente, e também é 400.
       throw new BadRequestException(
         erro instanceof Error ? erro.message : 'caminho inválido',
       );

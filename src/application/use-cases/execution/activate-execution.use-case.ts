@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ModuleMapRepository } from '../../ports/module-map-repository.port';
 import { SessionRepository } from '../../ports/session-repository.port';
 import { TaskRepository } from '../../ports/backlog-repository.port';
@@ -109,6 +113,10 @@ export class ActivateExecutionUseCase {
     // escolhido se perderia na próxima ativação (o engine é quem os
     // guardava, por linha de dev agent).
     const project = await this.projects.findById(projectId);
+    // O module_map vigente encontrado acima só existe se o projeto existir
+    // (FK) — este guard é defensivo, não um caminho alcançável na prática, mas
+    // sem ele o workspaceDirName abaixo seria lido de `null`.
+    if (!project) throw new NotFoundException('Projeto não encontrado');
     const budget =
       taskBudgetMicros ??
       project?.taskBudgetMicros ??
@@ -146,7 +154,11 @@ export class ActivateExecutionUseCase {
     // continue vencendo.
     for (const pattern of terminalAllowPatterns ??
       DEV_TERMINAL_ALLOW_PATTERNS) {
-      await this.permissionsFile.addPattern(projectId, 'allow', pattern);
+      await this.permissionsFile.addPattern(
+        project.workspaceDirName,
+        'allow',
+        pattern,
+      );
     }
 
     // REATIVAR cai na sessão de execução que já existe, em vez de abrir uma

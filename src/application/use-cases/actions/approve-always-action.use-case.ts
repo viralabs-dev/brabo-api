@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
+import { ProjectRepository } from '../../ports/project-repository.port';
 import { PermissionsFileStore } from '../../ports/permissions-file-store.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { ApproveActionUseCase } from './approve-action.use-case';
@@ -20,6 +21,7 @@ import { Traced } from '../../../infrastructure/observability/traced.decorator';
 export class ApproveAlwaysActionUseCase {
   constructor(
     private readonly proposedActions: ProposedActionRepository,
+    private readonly projects: ProjectRepository,
     private readonly permissionsFileStore: PermissionsFileStore,
     private readonly appendSessionEvent: AppendSessionEventUseCase,
     private readonly approveAction: ApproveActionUseCase,
@@ -38,11 +40,18 @@ export class ApproveAlwaysActionUseCase {
     );
     if (!current) throw new NotFoundException('Ação não encontrada');
 
+    const project = await this.projects.findById(projectId);
+    if (!project) throw new NotFoundException('Projeto não encontrado');
+
     const pattern = patternForAction(
       current.actionType as ActionType,
       current.payload,
     );
-    await this.permissionsFileStore.addPattern(projectId, 'allow', pattern);
+    await this.permissionsFileStore.addPattern(
+      project.workspaceDirName,
+      'allow',
+      pattern,
+    );
 
     const approved = await this.approveAction.execute(
       projectId,

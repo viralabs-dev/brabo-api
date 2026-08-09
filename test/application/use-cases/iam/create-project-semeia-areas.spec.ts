@@ -133,3 +133,41 @@ describe('projeto recém-criado TEM áreas (RN-094)', () => {
     expect(await projetos.listForWorkspace(workspaceId)).toEqual([]);
   });
 });
+
+describe('nome de pasta legível (RN-109)', () => {
+  it('workspaceDirName nasce <slug>-<8 chars do id>', async () => {
+    const { ownerId, workspaceId } = await workspace();
+
+    const projeto = await criarProjeto.execute(workspaceId, ownerId, {
+      name: 'Pasta Legível',
+      slug: 'pasta-legivel',
+    });
+
+    expect(projeto.workspaceDirName).toBe(
+      `pasta-legivel-${projeto.id.slice(0, 8)}`,
+    );
+  });
+
+  it('dois projetos com o MESMO slug em workspaces diferentes não colidem de pasta', async () => {
+    const a = await workspace();
+    const [outroOwner] = await db
+      .insert(users)
+      .values({ keycloakSub: 'sub-areas-2', email: 'areas2@brabo.dev' })
+      .returning();
+    const [outroWs] = await db
+      .insert(workspaces)
+      .values({ name: 'areas2', slug: 'areas2', createdBy: outroOwner.id })
+      .returning();
+
+    const p1 = await criarProjeto.execute(a.workspaceId, a.ownerId, {
+      name: 'api',
+      slug: 'api',
+    });
+    const p2 = await criarProjeto.execute(outroWs.id, outroOwner.id, {
+      name: 'api',
+      slug: 'api',
+    });
+
+    expect(p1.workspaceDirName).not.toBe(p2.workspaceDirName);
+  });
+});

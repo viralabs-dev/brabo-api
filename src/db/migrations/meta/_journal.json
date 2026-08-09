@@ -295,6 +295,13 @@
       "when": 1786306627724,
       "tag": "0041_first_betty_brant",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1786311658219,
+      "tag": "0042_tough_captain_midlands",
+      "breakpoints": true
     }
   ]
 }

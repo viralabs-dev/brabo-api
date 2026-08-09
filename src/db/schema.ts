@@ -326,6 +326,13 @@ export const projects = pgTable(
       .references(() => workspaces.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     slug: text('slug').notNull(),
+    // O nome da pasta física em PROJECT_WORKSPACES_ROOT — CONGELADO na
+    // criação do projeto e nunca recalculado (RN-109, ver
+    // project-workspaces-root.ts). Projeto novo nasce com
+    // `<slug>-<8 chars do id>` (legível); projeto que já existia antes desta
+    // coluna foi retroativado com o UUID puro, que é o que já era verdade no
+    // disco — o backfill da migração NÃO renomeia diretório nenhum.
+    workspaceDirName: text('workspace_dir_name').notNull().unique(),
     createdBy: uuid('created_by')
       .notNull()
       .references(() => users.id),
