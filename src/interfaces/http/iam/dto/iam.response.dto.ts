@@ -396,8 +396,11 @@ export class ProjectUnreadEventsResponseDto implements Wire<ProjectUnreadEvents>
   @ApiProperty({
     type: [SessionEventResponseDto],
     description:
-      'Em ordem crescente de `seq`, no máximo os 50 primeiros depois do corte — ' +
-      'o mesmo teto que `GET .../events` aplica sem `limit`.',
+      'Em ordem DECRESCENTE de `seq` — o primeiro item é o mais recente (RN-100). ' +
+      'No máximo 50 por projeto, o mesmo teto que `GET .../events` aplica sem ' +
+      '`limit`, e quando há mais não lidos que isso os que voltam são os mais ' +
+      'NOVOS. Quantos ficaram de fora sai de `latestSeq` menos o corte, sem outra ' +
+      'requisição.',
   })
   events!: Wire<SessionEvent>[];
 }

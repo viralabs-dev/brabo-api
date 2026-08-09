@@ -18,6 +18,8 @@ import { GetBudgetUseCase } from './get-budget.use-case';
 import { GetSessionTokenUsageUseCase } from './get-session-token-usage.use-case';
 import { GetProjectAgentCostsUseCase } from './get-project-agent-costs.use-case';
 import { GetCredentialSpendUseCase } from './get-credential-spend.use-case';
+import { GetWorkspaceSpendReportUseCase } from './get-workspace-spend-report.use-case';
+import { GetMySpendUseCase } from './get-my-spend.use-case';
 import { CheckBudgetGateUseCase } from './check-budget-gate.use-case';
 import { RecordLlmUsageUseCase } from './record-llm-usage.use-case';
 import { SendChatMessageUseCase } from './send-chat-message.use-case';
@@ -44,6 +46,8 @@ const USE_CASES = [
   GetSessionTokenUsageUseCase,
   GetProjectAgentCostsUseCase,
   GetCredentialSpendUseCase,
+  GetWorkspaceSpendReportUseCase,
+  GetMySpendUseCase,
   CheckBudgetGateUseCase,
   RecordLlmUsageUseCase,
   SendChatMessageUseCase,

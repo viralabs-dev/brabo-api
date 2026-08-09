@@ -8,6 +8,7 @@ import { ModelBindingsController } from './model-bindings.controller';
 import { CredentialsController } from './credentials.controller';
 import { BudgetsController } from './budgets.controller';
 import { ChatController } from './chat.controller';
+import { SpendController } from './spend.controller';
 
 @Module({
   imports: [LlmUseCasesModule, CredentialsUseCasesModule],
@@ -17,6 +18,7 @@ import { ChatController } from './chat.controller';
     CredentialsController,
     BudgetsController,
     ChatController,
+    SpendController,
   ],
 })
 export class LlmHttpModule {}
