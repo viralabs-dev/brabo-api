@@ -383,9 +383,10 @@ describe('DrizzleProjectsSummaryRepository — não lidos em lote', () => {
 
     const porProjeto = new Map(grupos.map((g) => [g.projectId, g]));
     expect(porProjeto.get(a.id)?.events.map((e) => e.id)).toEqual([a2.id]);
+    // Do mais NOVO para o mais antigo (RN-100).
     expect(porProjeto.get(b.id)?.events.map((e) => e.id)).toEqual([
-      b1.id,
       b2.id,
+      b1.id,
     ]);
   });
 
@@ -473,14 +474,50 @@ describe('DrizzleProjectsSummaryRepository — não lidos em lote', () => {
     const porProjeto = new Map(grupos.map((g) => [g.projectId, g]));
 
     expect(porProjeto.get(barulhento.id)?.events).toHaveLength(50);
-    // Os 50 PRIMEIROS depois do corte, em ordem crescente — mesma leitura de
-    // `GET .../events?afterSeq=`, que é o caminho que esta chamada substitui.
-    expect(porProjeto.get(barulhento.id)?.events[0].seq).toBeLessThan(
-      porProjeto.get(barulhento.id)!.events[49].seq,
-    );
     expect(porProjeto.get(calado.id)?.events.map((e) => e.id)).toEqual([
       doCalado.id,
     ]);
+  });
+
+  /**
+   * RN-100 — a ordem do sino é do SQL, e o teto é o motivo.
+   *
+   * São DUAS afirmações, e a segunda é a que um `.sort()` no front não
+   * alcançaria: a função de janela decide QUAIS 50 eventos sobrevivem ao teto,
+   * não só em que ordem eles saem. Com `ORDER BY e.seq ASC` lá dentro, um
+   * projeto com 60 não lidos devolvia os 50 mais ANTIGOS — e ordenar isso por
+   * recência no cliente mostraria o 11º evento como "o mais recente do
+   * projeto", que é a mentira exata que o usuário viu na tela.
+   *
+   * Por isso o teste afirma o CONJUNTO (os 10 mais novos estão dentro, os 10
+   * mais antigos estão fora) antes de afirmar a ordenação.
+   */
+  it('com mais não lidos que o teto, voltam os MAIS RECENTES, do novo para o velho', async () => {
+    const owner = await criarUsuario('recencia@brabo.dev');
+    const ws = await criarWorkspace(owner.id, 'recencia');
+    const projeto = await criarProjeto(ws.id, owner.id, 'core');
+    const sessao = await criarSessao(projeto.id, owner.id);
+
+    const todos: { seq: number }[] = [];
+    for (let i = 0; i < 60; i++) {
+      todos.push(await gravarEvento(sessao.id, 'chat.message'));
+    }
+
+    const [grupo] = await repo.unreadEventsForWorkspace(ws.id, [
+      { projectId: projeto.id, afterSeq: 0 },
+    ]);
+
+    const seqs = grupo.events.map((e) => e.seq);
+    expect(seqs).toHaveLength(50);
+
+    // O CONJUNTO: a janela é a cauda, não a cabeça.
+    expect(seqs[0]).toBe(todos[59].seq);
+    expect(seqs).toContain(todos[10].seq);
+    expect(seqs).not.toContain(todos[9].seq);
+    expect(seqs).not.toContain(todos[0].seq);
+
+    // A ORDEM: decrescente, sem depender de nada no cliente.
+    expect([...seqs].sort((a, b) => b - a)).toEqual(seqs);
   });
 
   /**
