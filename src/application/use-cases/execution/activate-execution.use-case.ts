@@ -163,7 +163,13 @@ export class ActivateExecutionUseCase {
     // e `active` para sempre.
     const vigente = await this.sessions.findActiveExecutionSession(projectId);
     const session =
-      vigente ?? (await this.createSession.execute(projectId, userId));
+      vigente ??
+      // `criativa` é obrigatório aqui, e não uma escolha: a próxima coisa que
+      // esta sessão recebe é o `execution.activated` do fim deste método, que
+      // uma sessão consultiva recusa (RN-097).
+      (await this.createSession.execute(projectId, userId, {
+        kind: 'criativa',
+      }));
     if (!vigente) {
       await this.transitionSession.execute(projectId, session.id, 'active');
     }

@@ -318,7 +318,9 @@ async function main() {
 
   // --- as 3 sessões ---
   async function semearSessao(quantidadeEventos: number) {
-    const session = await createSession.execute(project.id, user.id);
+    const session = await createSession.execute(project.id, user.id, {
+      kind: 'criativa',
+    });
     await transition.execute(project.id, session.id, 'active');
     for (const evento of eventosDeConversa(quantidadeEventos)) {
       await appendEvent.execute(project.id, session.id, evento);

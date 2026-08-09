@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { SessionRepository } from '../../../application/ports/session-repository.port';
 import type { Session } from '../../../domain/sessions/session.entity';
+import type { SessionKind } from '../../../domain/sessions/session-kind';
 import type { SessionStatus } from '../../../domain/sessions/session-state-machine';
 import { sessionEvents, sessions } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
@@ -14,6 +15,8 @@ export class DrizzleSessionRepository implements SessionRepository {
   async create(input: {
     projectId: string;
     createdBy: string;
+    kind: SessionKind;
+    name?: string | null;
     traceParent?: string | null;
   }): Promise<Session> {
     const db = currentDb(this.rootDb);
@@ -59,6 +62,23 @@ export class DrizzleSessionRepository implements SessionRepository {
       .orderBy(desc(sessions.createdAt), desc(sessions.id))
       .limit(1);
     return row?.session ?? null;
+  }
+
+  async rename(
+    projectId: string,
+    sessionId: string,
+    name: string | null,
+  ): Promise<Session | null> {
+    const db = currentDb(this.rootDb);
+    // O `projectId` entra no WHERE, e não numa checagem prévia: assim a troca
+    // de nome de uma sessão de OUTRO projeto não altera linha nenhuma, em vez
+    // de depender de o chamador ter conferido antes.
+    const [row] = await db
+      .update(sessions)
+      .set({ name, updatedAt: new Date() })
+      .where(and(eq(sessions.id, sessionId), eq(sessions.projectId, projectId)))
+      .returning();
+    return row ?? null;
   }
 
   async findInProjectForUpdate(

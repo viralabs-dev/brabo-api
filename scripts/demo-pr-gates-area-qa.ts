@@ -304,6 +304,8 @@ async function main() {
   const sessaoArq = await sessions.create({
     projectId: project.id,
     createdBy: user.id,
+    // Demo/roteiro exercita o caminho de EXECUÇÃO — `criativa` (RN-097).
+    kind: 'criativa' as const,
   });
   await moduleMaps.create({
     projectId: project.id,

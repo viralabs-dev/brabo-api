@@ -205,7 +205,9 @@ async function main() {
   await setModelBinding.execute('project', project.id, modelo.id, user.id);
   log(`✓ anamnese -> ollama/${MODELO}`);
 
-  const session = await createSession.execute(project.id, user.id);
+  const session = await createSession.execute(project.id, user.id, {
+    kind: 'criativa',
+  });
   await transition.execute(project.id, session.id, 'active');
 
   await moduleMaps.create({

@@ -178,7 +178,11 @@ export class AdoptRepositoryUseCase {
     input: AdoptRepositoryInput,
     repoRemoto: GitRepo,
   ): Promise<ProvisionedRepository> {
-    const session = await this.createSession.execute(projectId, userId);
+    // Mesmo motivo do provisionamento: adotar um repositório abre o projeto,
+    // e o projeto executa. Ver RN-097.
+    const session = await this.createSession.execute(projectId, userId, {
+      kind: 'criativa',
+    });
 
     const repository = await this.unitOfWork.runInTransaction(async () => {
       const repoRow = await this.repositories.create({

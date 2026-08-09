@@ -44,6 +44,15 @@ export const sessionStatusEnum = pgEnum('session_status', [
   'closed_abnormally',
 ]);
 
+// FASE 20 (RN-097) — a INTENÇÃO com que a sessão foi aberta. `consultiva` é só
+// conversa; `criativa` é a que produz, e a única que pode entrar em execução.
+// Não confundir com ESTADO de execução, que continua sendo o evento
+// `execution.activated` — ver domain/sessions/session-kind.ts.
+export const sessionKindEnum = pgEnum('session_kind', [
+  'consultiva',
+  'criativa',
+]);
+
 export const actorKindEnum = pgEnum('actor_kind', ['user', 'agent', 'system']);
 
 // Cursor de progresso do bootstrap de Gitflow (Fase 2, sessão 3) — uma
@@ -376,6 +385,16 @@ export const sessions = pgTable(
       .notNull()
       .references(() => users.id),
     status: sessionStatusEnum('status').notNull().default('created'),
+    // FASE 20 (RN-097) — INTENÇÃO de criação, escolhida por quem abre a sessão
+    // e imutável depois. O DEFAULT é o tipo que pode MENOS: linha que chegue
+    // sem tipo declarado não ganha o direito de executar. A rota exige o campo
+    // no corpo, então o default só cobre caminho que não passa por ela.
+    kind: sessionKindEnum('kind').notNull().default('consultiva'),
+    // FASE 20 (RN-098) — nome amigável, opcional. NUNCA substitui a hashtag
+    // (`#` + 8 caracteres do id): é ela que se cola numa URL, e nome escolhido
+    // por pessoa não é único. `null` significa "sem nome", e a tela degrada
+    // para a hashtag sozinha.
+    name: text('name'),
     // Contador da próxima seq a atribuir em session_events — incrementado
     // atomicamente via UPDATE (lock de linha) para garantir seq sem gaps
     // mesmo sob escrita concorrente. Ver SessionEventsService.append.

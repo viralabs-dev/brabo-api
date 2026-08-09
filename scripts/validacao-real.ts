@@ -464,6 +464,8 @@ async function main() {
   const sessaoBacklog = await sessionRepo.create({
     projectId: project.id,
     createdBy: owner.id,
+    // Demo/roteiro exercita o caminho de EXECUÇÃO — `criativa` (RN-097).
+    kind: 'criativa' as const,
   });
   await moduleMaps.create({
     projectId: project.id,
