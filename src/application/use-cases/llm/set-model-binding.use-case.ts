@@ -8,6 +8,11 @@ import {
   assertModelFitsBindingScope,
   assertModelIsBindable,
 } from '../../../domain/llm/model-capabilities';
+import {
+  assertScopeIdBemFormado,
+  ehEscopoDeProjeto,
+  lerChaveDeProjeto,
+} from '../../../domain/llm/binding-scope-id';
 
 @Injectable()
 export class SetModelBindingUseCase {
@@ -24,6 +29,11 @@ export class SetModelBindingUseCase {
     modelId: string,
     createdBy: string,
   ) {
+    // Antes de tudo: `scope_id` de `agent`/`area` sem projeto (ADR 0064) é
+    // binding que a cascata nunca mais encontraria — recusa em vez de gravar
+    // um fantasma.
+    assertScopeIdBemFormado(scope, scopeId);
+
     const model = await this.models.findById(modelId);
     if (!model) throw new NotFoundException('Modelo não encontrado');
 
@@ -49,23 +59,29 @@ export class SetModelBindingUseCase {
   /**
    * De qual workspace é esta decisão — e `null` quando não dá para saber.
    *
-   * Só dois dos quatro escopos têm âncora: `workspace` É o workspace, e
-   * `project` chega nele pelo projeto. `agent` guarda um SLUG global (o
-   * `:projectId` da rota é explicitamente ignorado hoje, ver
-   * `model-bindings.controller.ts`) e `session` não passa por aqui com projeto
-   * na mão. Para esses dois a curadoria não é verificável, e devolver `null`
-   * diz isso em vez de chutar um workspace.
+   * `workspace` É o workspace; `project`, `agent` e `area` chegam nele pelo
+   * projeto. Os dois últimos passaram a chegar no ADR 0064, quando o `scope_id`
+   * deles virou `<projectId>:<chave>`: antes o binding de agente guardava um
+   * SLUG global e a curadoria da RN-043 simplesmente não era verificável ali —
+   * dava para vincular um agente a modelo que o owner tinha desligado. Sobra
+   * `session`, que não passa por aqui com projeto na mão; devolver `null` diz
+   * isso em vez de chutar um workspace.
    */
   private async workspaceDoEscopo(
     scope: ModelBindingScope,
     scopeId: string,
   ): Promise<string | null> {
     if (scope === 'workspace') return scopeId;
-    if (scope === 'project') {
-      const project = await this.projects.findById(scopeId);
-      if (!project) throw new NotFoundException('Projeto não encontrado');
-      return project.workspaceId;
-    }
-    return null;
+
+    const projectId = ehEscopoDeProjeto(scope)
+      ? lerChaveDeProjeto(scopeId)?.projectId
+      : scope === 'project'
+        ? scopeId
+        : undefined;
+    if (!projectId) return null;
+
+    const project = await this.projects.findById(projectId);
+    if (!project) throw new NotFoundException('Projeto não encontrado');
+    return project.workspaceId;
   }
 }

@@ -77,4 +77,15 @@ export class DrizzleModelBindingRepository implements ModelBindingRepository {
       .returning();
     return row;
   }
+
+  async remove(scope: ModelBindingScope, scopeId: string): Promise<boolean> {
+    const db = currentDb(this.rootDb);
+    const apagados = await db
+      .delete(modelBindings)
+      .where(
+        and(eq(modelBindings.scope, scope), eq(modelBindings.scopeId, scopeId)),
+      )
+      .returning({ id: modelBindings.id });
+    return apagados.length > 0;
+  }
 }

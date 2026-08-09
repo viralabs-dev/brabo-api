@@ -11,6 +11,10 @@ import { DrizzleModelBindingRepository } from '../../../../src/infrastructure/pe
 import { DrizzleProjectRepository } from '../../../../src/infrastructure/persistence/drizzle/project.repository';
 import { DrizzleModelRepository } from '../../../../src/infrastructure/persistence/drizzle/model.repository';
 import { ResolveModelBindingUseCase } from '../../../../src/application/use-cases/llm/resolve-model-binding.use-case';
+import {
+  chaveDeAgente,
+  chaveDeArea,
+} from '../../../../src/domain/llm/binding-scope-id';
 
 const { db, pool } = createTestDb();
 const bindingRepo = new DrizzleModelBindingRepository(db);
@@ -124,7 +128,7 @@ describe('ResolveModelBindingUseCase', () => {
     });
     await bindingRepo.upsert({
       scope: 'agent',
-      scopeId: 'qa',
+      scopeId: chaveDeAgente(project.id, 'qa'),
       modelId: modelB.id,
       createdBy: user.id,
     });
@@ -152,7 +156,7 @@ describe('ResolveModelBindingUseCase', () => {
     });
     await bindingRepo.upsert({
       scope: 'agent',
-      scopeId: 'qa',
+      scopeId: chaveDeAgente(project.id, 'qa'),
       modelId: modelB.id,
       createdBy: user.id,
     });
@@ -193,7 +197,7 @@ describe('ResolveModelBindingUseCase', () => {
     });
     await bindingRepo.upsert({
       scope: 'agent',
-      scopeId: 'qa',
+      scopeId: chaveDeAgente(project.id, 'qa'),
       modelId: modelB.id, // fica com o default `supportsToolCalling: false`
       createdBy: user.id,
     });
@@ -211,6 +215,209 @@ describe('ResolveModelBindingUseCase', () => {
         { scope: 'agent', modelId: modelB.id, reason: 'sem_tool_calling' },
       ],
     });
+  });
+
+  // ------------------------------------------------ FASE 23 / ADR 0064
+  // O padrão herdável da área, e a consequência de o binding de agente ter
+  // deixado de ser global.
+
+  it('o LEAD e o SUBAGENTE da mesma área herdam o mesmo modelo (RN-102)', async () => {
+    const { user, workspace, project, modelA, modelB } = await setup();
+
+    await bindingRepo.upsert({
+      scope: 'workspace',
+      scopeId: workspace.id,
+      modelId: modelA.id,
+      createdBy: user.id,
+    });
+    await bindingRepo.upsert({
+      scope: 'area',
+      scopeId: chaveDeArea(project.id, 'qa'),
+      modelId: modelB.id,
+      createdBy: user.id,
+    });
+
+    // `qa` é o lead e `qa-automacao` é membro — a área sai do catálogo, sem
+    // consultar `agent_areas`.
+    for (const agentId of ['qa', 'qa-automacao']) {
+      expect(
+        await resolveModelBinding.execute({ projectId: project.id, agentId }),
+      ).toEqual({ modelId: modelB.id, origin: 'area', skipped: [] });
+    }
+  });
+
+  it('a área DINÂMICA de dev também herda: `dev-api` cai no predicado', async () => {
+    const { user, project, modelB } = await setup();
+
+    await bindingRepo.upsert({
+      scope: 'area',
+      scopeId: chaveDeArea(project.id, 'dev'),
+      modelId: modelB.id,
+      createdBy: user.id,
+    });
+
+    expect(
+      await resolveModelBinding.execute({
+        projectId: project.id,
+        agentId: 'dev-api',
+      }),
+    ).toEqual({ modelId: modelB.id, origin: 'area', skipped: [] });
+  });
+
+  it('o agente que DIVERGIU vence o padrão da área (RN-102)', async () => {
+    const { user, project, modelA, modelB } = await setup();
+
+    await bindingRepo.upsert({
+      scope: 'area',
+      scopeId: chaveDeArea(project.id, 'qa'),
+      modelId: modelA.id,
+      createdBy: user.id,
+    });
+    await bindingRepo.upsert({
+      scope: 'agent',
+      scopeId: chaveDeAgente(project.id, 'qa-automacao'),
+      modelId: modelB.id,
+      createdBy: user.id,
+    });
+
+    // O que divergiu diverge; o lead ao lado continua herdando.
+    expect(
+      await resolveModelBinding.execute({
+        projectId: project.id,
+        agentId: 'qa-automacao',
+      }),
+    ).toEqual({ modelId: modelB.id, origin: 'agent', skipped: [] });
+    expect(
+      await resolveModelBinding.execute({
+        projectId: project.id,
+        agentId: 'qa',
+      }),
+    ).toEqual({ modelId: modelA.id, origin: 'area', skipped: [] });
+  });
+
+  it('pergunta pela ÁREA em si, sem agente nenhum', async () => {
+    const { user, project, modelB } = await setup();
+
+    await bindingRepo.upsert({
+      scope: 'area',
+      scopeId: chaveDeArea(project.id, 'infra'),
+      modelId: modelB.id,
+      createdBy: user.id,
+    });
+
+    expect(
+      await resolveModelBinding.execute({
+        projectId: project.id,
+        areaKey: 'infra',
+      }),
+    ).toEqual({ modelId: modelB.id, origin: 'area', skipped: [] });
+  });
+
+  it('agente SEM área nenhuma ignora o nível: o Criativo cai no projeto', async () => {
+    const { user, project, modelA, modelB } = await setup();
+
+    await bindingRepo.upsert({
+      scope: 'project',
+      scopeId: project.id,
+      modelId: modelA.id,
+      createdBy: user.id,
+    });
+    // Existe um padrão de área de QA, e ele NÃO pode alcançar o Criativo.
+    await bindingRepo.upsert({
+      scope: 'area',
+      scopeId: chaveDeArea(project.id, 'qa'),
+      modelId: modelB.id,
+      createdBy: user.id,
+    });
+
+    expect(
+      await resolveModelBinding.execute({
+        projectId: project.id,
+        agentId: 'criativo',
+      }),
+    ).toEqual({ modelId: modelA.id, origin: 'project', skipped: [] });
+  });
+
+  it('o binding de agente é POR PROJETO: o vizinho não o enxerga (RN-103)', async () => {
+    const { user, workspace, project, modelA, modelB } = await setup();
+    const [vizinho] = await db
+      .insert(projects)
+      .values({
+        workspaceId: workspace.id,
+        name: 'loja',
+        slug: 'loja',
+        createdBy: user.id,
+      })
+      .returning();
+
+    await bindingRepo.upsert({
+      scope: 'workspace',
+      scopeId: workspace.id,
+      modelId: modelA.id,
+      createdBy: user.id,
+    });
+    await bindingRepo.upsert({
+      scope: 'agent',
+      scopeId: chaveDeAgente(project.id, 'arquiteto'),
+      modelId: modelB.id,
+      createdBy: user.id,
+    });
+
+    // Era exatamente isto que não valia antes do ADR 0064: escolher o modelo do
+    // Arquiteto aqui mudava o modelo dele em TODOS os projetos.
+    expect(
+      await resolveModelBinding.execute({
+        projectId: project.id,
+        agentId: 'arquiteto',
+      }),
+    ).toMatchObject({ modelId: modelB.id, origin: 'agent' });
+    expect(
+      await resolveModelBinding.execute({
+        projectId: vizinho.id,
+        agentId: 'arquiteto',
+      }),
+    ).toMatchObject({ modelId: modelA.id, origin: 'workspace' });
+  });
+
+  it('a herança do Criativo também é do PROJETO, não do slug global', async () => {
+    const { user, workspace, project, modelA, modelB } = await setup();
+    const [vizinho] = await db
+      .insert(projects)
+      .values({
+        workspaceId: workspace.id,
+        name: 'loja',
+        slug: 'loja',
+        createdBy: user.id,
+      })
+      .returning();
+
+    await bindingRepo.upsert({
+      scope: 'workspace',
+      scopeId: workspace.id,
+      modelId: modelA.id,
+      createdBy: user.id,
+    });
+    await bindingRepo.upsert({
+      scope: 'agent',
+      scopeId: chaveDeAgente(project.id, 'criativo'),
+      modelId: modelB.id,
+      createdBy: user.id,
+    });
+
+    // Aqui o Criativo decidiu, e o dev agent herda dele (RN-057).
+    expect(
+      await resolveModelBinding.execute({
+        projectId: project.id,
+        agentId: 'dev-api',
+      }),
+    ).toMatchObject({ modelId: modelB.id, origin: 'agent' });
+    // No vizinho ninguém decidiu nada: fica o default do workspace.
+    expect(
+      await resolveModelBinding.execute({
+        projectId: vizinho.id,
+        agentId: 'dev-api',
+      }),
+    ).toMatchObject({ modelId: modelA.id, origin: 'workspace' });
   });
 
   it('falha: projeto inexistente retorna null (não lança)', async () => {

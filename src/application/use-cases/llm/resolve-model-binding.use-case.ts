@@ -7,12 +7,23 @@ import {
   resolveBinding,
   type ResolvedBinding,
 } from '../../../domain/llm/binding-resolver';
+import {
+  chaveDeAgente,
+  chaveDeArea,
+} from '../../../domain/llm/binding-scope-id';
+import { areaDo } from '../../../domain/agents/agent-areas';
 import type { ModelBindingScope } from '../../../domain/llm/model-binding-scope';
 
 export interface ResolveModelBindingInput {
   projectId: string;
   sessionId?: string;
   agentId?: string;
+  /**
+   * A área a consultar, quando a pergunta é sobre a ÁREA e não sobre um agente
+   * dela ("qual modelo a área de QA usa"). Com `agentId`, a área sai sozinha do
+   * catálogo e este campo não é necessário.
+   */
+  areaKey?: string;
   /**
    * `true` quando quem vai usar o modelo roda ToolLoop (Fase 9c). A cascata
    * então PULA candidatos sem tool calling em vez de pousar num modelo
@@ -38,7 +49,19 @@ export class ResolveModelBindingUseCase {
       workspace: project.workspaceId,
       project: input.projectId,
     };
-    if (input.agentId) scopeIds.agent = input.agentId;
+    if (input.agentId) {
+      scopeIds.agent = chaveDeAgente(input.projectId, input.agentId);
+    }
+
+    // A área do agente sai do CATÁLOGO (`agent-areas.ts`), não da tabela: é a
+    // mesma fonte que decide endereçamento de handoff, e ela cobre a área
+    // dinâmica de `dev` pelo predicado `ehDevDeModulo` — consultar
+    // `agent_areas` aqui acrescentaria um round-trip por turno de agente para
+    // responder o que a lista já responde sem banco.
+    const areaKey =
+      input.areaKey ?? (input.agentId ? areaDo(input.agentId)?.key : undefined);
+    if (areaKey) scopeIds.area = chaveDeArea(input.projectId, areaKey);
+
     if (input.sessionId) scopeIds.session = input.sessionId;
 
     const exigeToolCalling = input.exigeToolCalling ?? false;
@@ -54,8 +77,10 @@ export class ResolveModelBindingUseCase {
     // projeto (ver `herdarModeloDeStart`).
     if (resolvido?.origin !== 'workspace') return resolvido;
 
+    // O Criativo DESTE projeto: desde o ADR 0064 o binding de agente é por
+    // projeto, e buscar o slug puro não acharia mais nada.
     const [doCriativo] = await this.bindings.findCandidates({
-      agent: AGENTE_DE_START,
+      agent: chaveDeAgente(input.projectId, AGENTE_DE_START),
     });
 
     return herdarModeloDeStart(resolvido, doCriativo ?? null, exigeToolCalling);
