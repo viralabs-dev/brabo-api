@@ -1,5 +1,9 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import type {
   GetFileContentInput,
   GitProviderCapabilities,
@@ -22,6 +26,12 @@ import type { ProvisionedRepositoryRepository } from '../../../../src/applicatio
 import type { UserCredentialRepository } from '../../../../src/application/ports/user-credential-repository.port';
 import type { EncryptionService } from '../../../../src/application/ports/encryption.port';
 import type { ResolveCredentialOwnerUseCase } from '../../../../src/application/use-cases/llm/resolve-credential-owner.use-case';
+import type { ObterContainerDoProjetoUseCase } from '../../../../src/application/use-cases/containers/obter-container-do-projeto.use-case';
+import {
+  RECURSOS_PADRAO,
+  SEM_DECISAO,
+  type EstadoDoContainer,
+} from '../../../../src/domain/containers/project-container';
 
 /**
  * A superfície de leitura da aba Code (FASE 26b).
@@ -136,9 +146,32 @@ function naoDeveria(metodo: string): never & (() => never) {
   }) as never & (() => never);
 }
 
+/**
+ * O portão da FASE 25 (RN-105): a aba Code só abre depois que o Arquiteto
+ * decide a imagem. O default do helper é DECIDIDO — os testes desta suite são
+ * sobre a leitura, e teriam de repetir a decisão em cada um. O portão fechado
+ * tem bloco próprio, no fim do arquivo.
+ */
+const CONTAINER_DECIDIDO: EstadoDoContainer = {
+  status: 'decidido',
+  decisao: {
+    image: 'node:22-bookworm-slim',
+    rationale: 'stack TypeScript sobre Node',
+    network: 'none',
+    resources: RECURSOS_PADRAO,
+  },
+  version: 1,
+  eventId: '01JC4Z0000EVENTO000000001',
+  decidedAt: new Date('2026-08-09T00:00:00Z').toISOString(),
+};
+
 function montar(
   provider: GitProviderContract,
-  opcoes: { provider?: GitProviderName; semRepositorio?: boolean } = {},
+  opcoes: {
+    provider?: GitProviderName;
+    semRepositorio?: boolean;
+    container?: EstadoDoContainer;
+  } = {},
 ) {
   const nome = opcoes.provider ?? 'github';
   const repositorios = {
@@ -171,6 +204,10 @@ function montar(
     },
   } as unknown as ResolveCredentialOwnerUseCase;
 
+  const container = {
+    execute: () => Promise.resolve(opcoes.container ?? CONTAINER_DECIDIDO),
+  } as unknown as ObterContainerDoProjetoUseCase;
+
   const useCase = new ReadProjectCodeUseCase(
     repositorios,
     { get: () => provider } as unknown as GitProviderRegistry,
@@ -178,6 +215,7 @@ function montar(
     { decrypt: () => 'token-do-owner' } as unknown as EncryptionService,
     resolveOwner,
     new GitReadCache(),
+    container,
   );
 
   return { useCase, donosPedidos };
@@ -467,5 +505,50 @@ describe('ReadProjectCodeUseCase — credencial', () => {
     });
     await useCase.tree(PROJETO, 'dev');
     expect(donosPedidos).toEqual([]);
+  });
+});
+
+describe('ReadProjectCodeUseCase — o portão do container (FASE 25, RN-105)', () => {
+  // A pergunta que estes testes respondem não é "a leitura funciona", e sim
+  // "ela chega a acontecer". O provider CONTA chamadas: se o portão vazasse,
+  // o repositório teria sido tocado antes de o erro subir, e é isso que
+  // `chamadas` prova.
+  it.each([
+    ['tree', (u: ReadProjectCodeUseCase) => u.tree(PROJETO, 'dev')],
+    ['file', (u: ReadProjectCodeUseCase) => u.file(PROJETO, 'README.md')],
+    [
+      'search',
+      (u: ReadProjectCodeUseCase) => u.search(PROJETO, { query: 'agulha' }),
+    ],
+    ['diff', (u: ReadProjectCodeUseCase) => u.pullRequestDiff(PROJETO, 'pr-1')],
+  ])(
+    '%s responde 409 enquanto o Arquiteto não decide a imagem',
+    async (_nome, chamar) => {
+      const provider = new ProviderFalso(REPO);
+      const { useCase } = montar(provider, { container: SEM_DECISAO });
+
+      await expect(chamar(useCase)).rejects.toThrow(ConflictException);
+      // Nem uma chamada ao provider: o portão vem ANTES de resolver o
+      // repositório, a credencial e o caminho.
+      expect(provider.chamadas).toEqual([]);
+    },
+  );
+
+  it('a mensagem diz o que falta, para a tela não mostrar erro mudo', async () => {
+    const { useCase } = montar(new ProviderFalso(REPO), {
+      container: SEM_DECISAO,
+    });
+    await expect(useCase.tree(PROJETO, 'dev')).rejects.toThrow(
+      /Arquiteto não decidiu qual imagem de container/,
+    );
+  });
+
+  it('decidida a imagem, a leitura passa a acontecer', async () => {
+    const provider = new ProviderFalso(REPO);
+    const { useCase } = montar(provider, { container: CONTAINER_DECIDIDO });
+
+    const arvore = await useCase.tree(PROJETO, 'dev', 'src');
+
+    expect(arvore.entries.map((e) => e.name)).toEqual(['a.ts', 'b.ts', 'deep']);
   });
 });
