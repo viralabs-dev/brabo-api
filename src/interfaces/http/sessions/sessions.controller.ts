@@ -6,6 +6,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -20,6 +21,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
+import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import type { User } from '../../../domain/iam/user.entity';
 import { RequireRole } from '../iam/require-role.decorator';
 import { BEARER } from '../../../infrastructure/openapi/documento';
@@ -31,10 +33,13 @@ import { TransitionSessionUseCase } from '../../../application/use-cases/session
 import { AppendSessionEventUseCase } from '../../../application/use-cases/sessions/append-session-event.use-case';
 import { ListSessionEventsUseCase } from '../../../application/use-cases/sessions/list-session-events.use-case';
 import { GetSessionEventUseCase } from '../../../application/use-cases/sessions/get-session-event.use-case';
+import { CreateSocketTicketUseCase } from '../../../application/use-cases/sessions/create-socket-ticket.use-case';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { RenameSessionDto } from './dto/rename-session.dto';
 import { TransitionSessionDto } from './dto/transition-session.dto';
 import { AppendSessionEventDto } from './dto/append-session-event.dto';
+import { CreateSocketTicketDto } from './dto/create-socket-ticket.dto';
+import { SocketTicketResponseDto } from './dto/socket-ticket.response.dto';
 import {
   PaginaDeEventosResponseDto,
   SessionEventResponseDto,
@@ -56,6 +61,7 @@ export class SessionsController {
     private readonly appendSessionEvent: AppendSessionEventUseCase,
     private readonly listSessionEvents: ListSessionEventsUseCase,
     private readonly getSessionEvent: GetSessionEventUseCase,
+    private readonly createSocketTicket: CreateSocketTicketUseCase,
   ) {}
 
   @Post()
@@ -232,5 +238,43 @@ export class SessionsController {
     @Body() dto: AppendSessionEventDto,
   ) {
     return this.appendSessionEvent.execute(projectId, sessionId, dto);
+  }
+
+  /**
+   * Fecha o gap descrito no moduledoc de `EngineWeb.SessionSocket` (RN-108):
+   * antes deste ticket, `connect/3` do socket Phoenix da sessão não exigia
+   * nada além do `session_id` existir. `@RequireRole('viewer')` é o MÍNIMO
+   * comum aos dois escopos; `terminal` exige `developer` — checado dentro do
+   * use case contra `request.effectiveRole`, que o `RolesGuard` já resolveu
+   * para não repetir a consulta de papel efetivo.
+   */
+  @Post(':sessionId/socket-ticket')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Emite um ticket opaco de uso único para o socket da sessão',
+    description:
+      'O ticket autentica `connect/3` do socket Phoenix `session:<id>` no ' +
+      'engine — NÃO é o JWT reaproveitado. TTL de 30s e uso único: cada ' +
+      'reconexão (inclusive automática) pede um ticket novo. `scope: ' +
+      '"heartbeat"` exige papel `viewer`; `scope: "terminal"` exige ' +
+      '`developer`, o mesmo papel mínimo de ações de terminal.',
+  })
+  @ApiCreatedResponse({ type: SocketTicketResponseDto })
+  @ApiForbiddenResponse({
+    description: 'Papel insuficiente para o escopo pedido.',
+  })
+  issueSocketTicket(
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @CurrentUser() user: User,
+    @Req() request: AuthenticatedRequest,
+    @Body() dto: CreateSocketTicketDto,
+  ) {
+    return this.createSocketTicket
+      .execute(projectId, sessionId, user.id, request.effectiveRole!, dto.scope)
+      .then((emitido) => ({
+        ticket: emitido.ticket,
+        expiresAt: emitido.expiresAt.toISOString(),
+      }));
   }
 }
