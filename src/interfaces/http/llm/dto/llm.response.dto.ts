@@ -23,6 +23,12 @@ import type {
 } from '../../../../domain/llm/binding-resolver';
 import type { UserCredentialMetadata } from '../../../../domain/llm/user-credential.entity';
 import type { AgentTokenUsage } from '../../../../application/ports/token-usage-repository.port';
+import type {
+  SpendLinha,
+  SpendPorDia,
+} from '../../../../application/use-cases/llm/spend-report';
+import type { WorkspaceSpendReport } from '../../../../application/use-cases/llm/get-workspace-spend-report.use-case';
+import type { MySpend } from '../../../../application/use-cases/llm/get-my-spend.use-case';
 
 /**
  * Respostas de modelos, credenciais, bindings e orçamento (Fase 7b, item 6).
@@ -581,3 +587,166 @@ export class CredentialSpendResponseDto {
   @ApiProperty({ type: [CredentialSpendPorProviderResponseDto] })
   porProvider!: CredentialSpendPorProviderResponseDto[];
 }
+
+/**
+ * O relatório de gasto em duas audiências (FASE 22, RN-101).
+ *
+ * Nenhum dos DTOs abaixo tem campo `provider`, e a ausência é a regra: quebrar
+ * gasto por provider é quebrar por CREDENCIAL, e essa resposta é a
+ * `CredentialSpendResponseDto` acima — exclusiva do owner pela RN-060.
+ */
+export class SpendLinhaResponseDto implements Wire<SpendLinha> {
+  @ApiProperty({
+    example: 'anthropic/claude-sonnet-4',
+    description:
+      'A chave do agrupamento: nome do modelo, id do projeto, id do ator ou ' +
+      'id da sessão, conforme a lista em que a linha aparece.',
+  })
+  chave!: string;
+
+  @ApiProperty({
+    example: 'Loja',
+    nullable: true,
+    description:
+      'Nome legível, quando existe tabela com nome (projeto). `null` quando a ' +
+      'chave já é o rótulo.',
+  })
+  rotulo!: string | null;
+
+  @ApiProperty({
+    example: 'agent',
+    nullable: true,
+    description: 'Só a lista `porAtor` preenche; nas outras é `null`.',
+  })
+  actorKind!: string | null;
+
+  @ApiProperty({ example: 1_250_000 })
+  costMicros!: number;
+
+  @ApiProperty({ example: 120_000 })
+  inputTokens!: number;
+
+  @ApiProperty({ example: 35_000 })
+  outputTokens!: number;
+
+  @ApiProperty({ example: 42 })
+  chamadas!: number;
+}
+export const _chavesSpendLinha: MesmasChaves<
+  SpendLinhaResponseDto,
+  SpendLinha
+> = true;
+
+export class SpendPorDiaResponseDto implements Wire<SpendPorDia> {
+  @ApiProperty({
+    example: '2026-08-09',
+    description: 'Dia em UTC. A série é DENSA: dia sem gasto vem com zero.',
+  })
+  dia!: string;
+
+  @ApiProperty({ example: 1_250_000 })
+  costMicros!: number;
+
+  @ApiProperty({ example: 42 })
+  chamadas!: number;
+}
+export const _chavesSpendPorDia: MesmasChaves<
+  SpendPorDiaResponseDto,
+  SpendPorDia
+> = true;
+
+export class WorkspaceSpendReportResponseDto implements Wire<WorkspaceSpendReport> {
+  @ApiProperty({
+    example: '9b1c2d3e-4f50-4a61-8b72-0c3d4e5f6a7b',
+    format: 'uuid',
+  })
+  workspaceId!: string;
+
+  @ApiProperty({
+    example: '9b1c2d3e-4f50-4a61-8b72-0c3d4e5f6a7b',
+    format: 'uuid',
+    description: 'Dono das chaves que bancaram este gasto (RN-058).',
+  })
+  ownerId!: string;
+
+  @ApiProperty({ example: 30, description: 'Janela deslizante, em dias.' })
+  dias!: number;
+
+  @ApiProperty({ example: 1_250_000 })
+  totalMicros!: number;
+
+  @ApiProperty({ example: 120_000 })
+  inputTokens!: number;
+
+  @ApiProperty({ example: 35_000 })
+  outputTokens!: number;
+
+  @ApiProperty({ example: 42 })
+  chamadas!: number;
+
+  @ApiProperty({
+    type: [SpendLinhaResponseDto],
+    description:
+      'Por MODELO. Dois providers servindo o mesmo nome caem na mesma linha — ' +
+      'separá-los reintroduziria o eixo de credencial por outro nome.',
+  })
+  porModelo!: SpendLinhaResponseDto[];
+
+  @ApiProperty({
+    type: [SpendLinhaResponseDto],
+    description: 'Por PROJETO dentro do workspace.',
+  })
+  porProjeto!: SpendLinhaResponseDto[];
+
+  @ApiProperty({
+    type: [SpendLinhaResponseDto],
+    description:
+      'Por ATOR — agente e pessoa na mesma lista, distintos por `actorKind`.',
+  })
+  porAtor!: SpendLinhaResponseDto[];
+
+  @ApiProperty({ type: [SpendPorDiaResponseDto] })
+  porDia!: SpendPorDiaResponseDto[];
+}
+export const _chavesWorkspaceSpend: MesmasChaves<
+  WorkspaceSpendReportResponseDto,
+  WorkspaceSpendReport
+> = true;
+
+export class MySpendResponseDto implements Wire<MySpend> {
+  @ApiProperty({
+    example: '9b1c2d3e-4f50-4a61-8b72-0c3d4e5f6a7b',
+    format: 'uuid',
+  })
+  projectId!: string;
+
+  @ApiProperty({ example: 30 })
+  dias!: number;
+
+  @ApiProperty({
+    example: '9b1c2d3e-4f50-4a61-8b72-0c3d4e5f6a7b',
+    format: 'uuid',
+    description:
+      'O ator do relatório — sempre quem chamou. Linha de outro ator não entra.',
+  })
+  actorId!: string;
+
+  @ApiProperty({ example: 1_250_000 })
+  totalMicros!: number;
+
+  @ApiProperty({ example: 120_000 })
+  inputTokens!: number;
+
+  @ApiProperty({ example: 35_000 })
+  outputTokens!: number;
+
+  @ApiProperty({ example: 42 })
+  chamadas!: number;
+
+  @ApiProperty({ type: [SpendLinhaResponseDto] })
+  porSessao!: SpendLinhaResponseDto[];
+
+  @ApiProperty({ type: [SpendPorDiaResponseDto] })
+  porDia!: SpendPorDiaResponseDto[];
+}
+export const _chavesMySpend: MesmasChaves<MySpendResponseDto, MySpend> = true;
