@@ -1,5 +1,14 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
+import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -17,10 +26,13 @@ import { BEARER } from '../../../infrastructure/openapi/documento';
 import { CreateSessionUseCase } from '../../../application/use-cases/sessions/create-session.use-case';
 import { GetSessionUseCase } from '../../../application/use-cases/sessions/get-session.use-case';
 import { ListSessionsForProjectUseCase } from '../../../application/use-cases/sessions/list-sessions-for-project.use-case';
+import { RenameSessionUseCase } from '../../../application/use-cases/sessions/rename-session.use-case';
 import { TransitionSessionUseCase } from '../../../application/use-cases/sessions/transition-session.use-case';
 import { AppendSessionEventUseCase } from '../../../application/use-cases/sessions/append-session-event.use-case';
 import { ListSessionEventsUseCase } from '../../../application/use-cases/sessions/list-session-events.use-case';
 import { GetSessionEventUseCase } from '../../../application/use-cases/sessions/get-session-event.use-case';
+import { CreateSessionDto } from './dto/create-session.dto';
+import { RenameSessionDto } from './dto/rename-session.dto';
 import { TransitionSessionDto } from './dto/transition-session.dto';
 import { AppendSessionEventDto } from './dto/append-session-event.dto';
 import {
@@ -39,6 +51,7 @@ export class SessionsController {
     private readonly createSession: CreateSessionUseCase,
     private readonly getSession: GetSessionUseCase,
     private readonly listSessionsForProject: ListSessionsForProjectUseCase,
+    private readonly renameSession: RenameSessionUseCase,
     private readonly transitionSession: TransitionSessionUseCase,
     private readonly appendSessionEvent: AppendSessionEventUseCase,
     private readonly listSessionEvents: ListSessionEventsUseCase,
@@ -51,11 +64,51 @@ export class SessionsController {
     summary: 'Abre uma sessão no projeto',
     description:
       'A sessão nasce em `created` e é o contêiner de tudo o que os agentes fazem: ' +
-      'o event log, as ações propostas e o orçamento de tokens penduram nela.',
+      'o event log, as ações propostas e o orçamento de tokens penduram nela. ' +
+      'O `kind` é OBRIGATÓRIO e fica gravado: `consultiva` só conversa, ' +
+      '`criativa` produz e é a única que aceita `execution.activated`.',
   })
   @ApiCreatedResponse({ type: SessionResponseDto })
-  create(@Param('projectId') projectId: string, @CurrentUser() user: User) {
-    return this.createSession.execute(projectId, user.id);
+  @ApiBadRequestResponse({
+    description: 'Corpo sem `kind`, ou com um valor fora da lista.',
+  })
+  create(
+    @Param('projectId') projectId: string,
+    @CurrentUser() user: User,
+    @Body() dto: CreateSessionDto,
+  ) {
+    return this.createSession.execute(projectId, user.id, {
+      kind: dto.kind,
+      name: dto.name,
+    });
+  }
+
+  /**
+   * Renomear é `developer` — o mesmo papel que ABRE a sessão. Trocar um rótulo
+   * de navegação não é decisão de gasto nem de autoridade (que exigiriam
+   * `maintainer`), mas é escrita em estado compartilhado do projeto, e quem
+   * só lê (`viewer`) não muda o que os outros veem.
+   */
+  @Patch(':sessionId')
+  @RequireRole('developer')
+  @ApiOperation({
+    summary: 'Dá ou tira o nome amigável da sessão',
+    description:
+      'O nome é rótulo de navegação e NÃO substitui a hashtag do id — as telas ' +
+      'compõem os dois, e sem nome degradam para a hashtag sozinha. `null` ou ' +
+      'string em branco apaga o nome. Não há como trocar o `kind`: ele é a ' +
+      'intenção de criação, e mudá-lo depois o tornaria estado.',
+  })
+  @ApiOkResponse({ type: SessionResponseDto })
+  @ApiBadRequestResponse({
+    description: 'Corpo sem `name`, ou nome acima do limite de caracteres.',
+  })
+  rename(
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @Body() dto: RenameSessionDto,
+  ) {
+    return this.renameSession.execute(projectId, sessionId, dto.name);
   }
 
   @Get()

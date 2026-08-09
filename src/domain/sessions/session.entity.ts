@@ -1,10 +1,20 @@
 import type { SessionStatus } from './session-state-machine';
+import type { SessionKind } from './session-kind';
 
 export interface Session {
   id: string;
   projectId: string;
   createdBy: string;
   status: SessionStatus;
+  // FASE 20 — a INTENÇÃO com que a sessão foi aberta (RN-097). Fica ao lado de
+  // `status` de propósito: são as duas classificações da sessão e respondem
+  // perguntas diferentes — `kind` diz para que ela nasceu e não muda, `status`
+  // diz onde ela está na máquina de estados. Nenhuma das duas é o ESTADO de
+  // execução, que continua derivado do evento `execution.activated`.
+  kind: SessionKind;
+  // FASE 20 — nome amigável dado pelo usuário (RN-098), ou `null`. Não
+  // substitui a hashtag do id em lugar nenhum da tela.
+  name: string | null;
   nextSeq: number;
   createdAt: Date;
   updatedAt: Date;

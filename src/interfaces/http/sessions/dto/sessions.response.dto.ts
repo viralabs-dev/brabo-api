@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { ActorResponseDto } from '../../shared/dto/comuns.response.dto';
 import type { MesmasChaves, Wire } from '../../shared/dto/wire';
+import { SESSION_KINDS } from '../../../../domain/sessions/session-kind';
 import type { Session } from '../../../../domain/sessions/session.entity';
 import type { SessionEvent } from '../../../../domain/sessions/session-event.entity';
 import type { Page } from '../../../../application/ports/session-event-repository.port';
@@ -37,6 +38,26 @@ export class SessionResponseDto implements Wire<Session> {
       'Transição inválida responde 409.',
   })
   status!: Wire<Session>['status'];
+
+  @ApiProperty({
+    enum: SESSION_KINDS,
+    example: 'criativa',
+    description:
+      'A INTENÇÃO com que a sessão foi aberta, escolhida na criação e imutável. ' +
+      '`consultiva` é só conversa; `criativa` produz e é a única que entra em ' +
+      'execução. Não confundir com estado de execução, que continua sendo o ' +
+      'evento `execution.activated` no log.',
+  })
+  kind!: Wire<Session>['kind'];
+
+  @ApiProperty({
+    example: 'Checkout do carrinho',
+    nullable: true,
+    description:
+      'Nome amigável, ou `null`. As telas o compõem com a hashtag do id; ele ' +
+      'nunca a substitui.',
+  })
+  name!: string | null;
 
   @ApiProperty({
     example: 42,

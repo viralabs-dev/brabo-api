@@ -116,13 +116,21 @@ export class ProvisionRepositoryUseCase {
       // acontecer sob o fluxo novo, já que os dois nascem na mesma
       // transação — defensivo pra dados de uma versão anterior).
       repo = existingRepo;
-      const session = await this.createSession.execute(projectId, userId);
+      const session = await this.createSession.execute(projectId, userId, {
+        kind: 'criativa',
+      });
       bootstrap = await this.repoBootstraps.create({
         projectId,
         sessionId: session.id,
       });
     } else {
-      const session = await this.createSession.execute(projectId, userId);
+      // `criativa`: a sessão do provisionamento é onde o projeto COMEÇA — dela
+      // saem o bootstrap de Gitflow, a ideação e, mais adiante, a execução. Uma
+      // sessão consultiva aqui recusaria `execution.activated` (RN-097) e
+      // travaria o projeto no primeiro clique de "Ativar execução".
+      const session = await this.createSession.execute(projectId, userId, {
+        kind: 'criativa',
+      });
 
       const proposedAction = await this.unitOfWork.runInTransaction(
         async () => {

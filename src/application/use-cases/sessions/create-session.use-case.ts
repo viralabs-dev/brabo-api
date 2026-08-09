@@ -5,6 +5,22 @@ import { SessionRepository } from '../../ports/session-repository.port';
 import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { currentTraceparent } from '../../../infrastructure/observability/trace-context';
 import { Traced } from '../../../infrastructure/observability/traced.decorator';
+import type { SessionKind } from '../../../domain/sessions/session-kind';
+
+/**
+ * O que quem abre a sessão declara (FASE 20).
+ *
+ * `kind` é obrigatório, e é o ponto da fase: até aqui toda sessão nascia
+ * igual e o único jeito de chegar ao Criativo era um botão na barra de topo
+ * DEPOIS de a sessão existir. Um campo opcional teria deixado os cinco
+ * chamadores herdarem o default calados — que é o mesmo defeito de origem, com
+ * outro nome.
+ */
+export interface CriacaoDeSessao {
+  kind: SessionKind;
+  /** Nome amigável (RN-098). Ausente é `null`: a tela mostra só a hashtag. */
+  name?: string | null;
+}
 
 @Injectable()
 export class CreateSessionUseCase {
@@ -33,12 +49,13 @@ export class CreateSessionUseCase {
   // abrir outra span aqui faria dela a raiz e tornaria falsa a afirmação de
   // `docs/reference/events.md`.
   @Traced('application', { ownSpan: true })
-  execute(projectId: string, userId: string) {
+  execute(projectId: string, userId: string, criacao: CriacaoDeSessao) {
     const tracer = trace.getTracer('brabo-api');
 
     return tracer.startActiveSpan('session.create', async (span) => {
       try {
         span.setAttribute('brabo.project_id', projectId);
+        span.setAttribute('brabo.session_kind', criacao.kind);
 
         // Dentro da span ativa: é daqui que o traceparent é lido, e é o mesmo
         // contexto que o DrizzleOutboxRepository vai capturar sozinho.
@@ -48,6 +65,11 @@ export class CreateSessionUseCase {
           const created = await this.sessions.create({
             projectId,
             createdBy: userId,
+            kind: criacao.kind,
+            // Nome em branco (ou só espaço) é ausência de nome, e não um nome
+            // vazio: gravar `''` faria a tela compor um rótulo com separador e
+            // nada depois dele.
+            name: criacao.name?.trim() || null,
             traceParent,
           });
 
@@ -55,6 +77,9 @@ export class CreateSessionUseCase {
             aggregateType: 'session',
             aggregateId: created.id,
             eventType: 'session.created',
+            // O `kind` NÃO entra no payload: nenhum consumidor o lê, e evento é
+            // imutável — campo especulativo num log append-only fica lá para
+            // sempre. Quem precisar da intenção lê a coluna.
             payload: { projectId, createdBy: userId },
           });
 

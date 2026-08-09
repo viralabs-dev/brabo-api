@@ -460,7 +460,13 @@ async function main() {
     `✓ binding: agent psicologo-leve -> ${cheapModel.provider}/${cheapModel.name}`,
   );
 
-  const session = await createSession.execute(project.id, developer.id);
+  // `criativa` e com nome: a sessão do seed é a que demonstra o fluxo inteiro
+  // (Criativo → PO → Arquiteto), e o nome exercita o rótulo composto da
+  // RN-098 já na primeira tela que alguém abre.
+  const session = await createSession.execute(project.id, developer.id, {
+    kind: 'criativa',
+    name: 'Ideação inicial',
+  });
   console.log(`✓ sessão criada: ${session.id} (status=${session.status})`);
 
   await transitionSession.execute(project.id, session.id, 'active');
