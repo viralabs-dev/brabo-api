@@ -9,32 +9,71 @@ import {
  * mesmo volume (ver `PROJECT_WORKSPACES_ROOT` em configuration.md).
  *
  * Existe como função única porque DOIS consumidores dependem dela concordarem:
- * o `permissions.json` é lido de `<raiz>/<projectId>/permissions.json`, e o
- * escopo de caminho do ADR 0055 autoriza comandos sob `<raiz>/<projectId>`.
- * Se as duas derivações divergissem, a política seria lida de um lugar e
- * aplicada a outro — falha silenciosa e difícil de enxergar.
+ * o `permissions.json` é lido de `<raiz>/<workspace_dir_name>/permissions.json`,
+ * e o escopo de caminho do ADR 0055 autoriza comandos sob
+ * `<raiz>/<workspace_dir_name>`. Se as duas derivações divergissem, a política
+ * seria lida de um lugar e aplicada a outro — falha silenciosa e difícil de
+ * enxergar.
+ *
+ * `<workspace_dir_name>` (RN-109) é o nome de pasta CONGELADO na criação do
+ * projeto — `<slug>-<8 chars do id>` para projeto novo, o UUID puro (o que já
+ * era verdade no disco) para projeto de antes desta coluna existir. O engine
+ * concorda porque lê a MESMA coluna do MESMO banco
+ * (`Engine.Projects.Project.workspace_dir_name/1`), nunca recomputando o nome
+ * a partir do id — as duas derivações são, na prática, a mesma leitura.
  */
 export function projectWorkspacesRoot(): string {
   return process.env.PROJECT_WORKSPACES_ROOT ?? '/tmp/brabo-project-workspaces';
 }
 
 /**
- * Um id de projeto é UUID vindo do banco. Aqui ele vira SEGMENTO DE CAMINHO, e
- * por isso a forma passou a ser exigida em vez de presumida — a checagem é
- * deliberadamente mais larga que UUID (aceita hex, hífen e sublinhado) para não
- * amarrar o formato do id, e estreita o bastante para que o resultado nunca
+ * Quantos caracteres do id entram no nome da pasta — mesma convenção do
+ * rótulo de sessão (`apps/web/src/lib/session-label.ts`), reusada aqui só
+ * pela consistência do número, não pelo código.
+ */
+const CARACTERES_DO_ID_NO_NOME = 8;
+
+/**
+ * O nome de pasta de um projeto NOVO (RN-109): `<slug>-<8 chars do id>` —
+ * legível (o slug já é kebab-case, validado no DTO) e único mesmo entre dois
+ * workspaces com o mesmo slug, porque `PROJECT_WORKSPACES_ROOT` é UMA raiz
+ * para a instância inteira, compartilhada entre TODOS os workspaces.
+ *
+ * CONGELADO no momento da criação — quem chama grava o resultado em
+ * `projects.workspace_dir_name` e nunca mais recalcula, nem quando o slug
+ * muda depois (`UpdateProjectUseCase` não toca esta coluna). Projeto criado
+ * ANTES desta função existir tem `workspace_dir_name = id` (backfill da
+ * migração), preservando o nome físico que já era verdade no disco.
+ */
+export function workspaceDirNameFor(id: string, slug: string): string {
+  return `${slug}-${id.slice(0, CARACTERES_DO_ID_NO_NOME)}`;
+}
+
+/**
+ * O nome de pasta chega já resolvido (`projects.workspace_dir_name`) — nunca
+ * mais o `projectId` cru. Aqui ele vira SEGMENTO DE CAMINHO, e por isso a
+ * forma passou a ser exigida em vez de presumida — a checagem é
+ * deliberadamente mais larga que UUID (aceita hex, hífen e sublinhado) para
+ * caber tanto no UUID puro (projeto de antes da RN-109) quanto no
+ * `<slug>-<id>` legível, e estreita o bastante para que o resultado nunca
  * escape da raiz.
  */
-const ID_DE_PROJETO_VALIDO = /^[A-Za-z0-9_-]{1,64}$/;
+const NOME_DE_PASTA_VALIDO = /^[A-Za-z0-9_-]{1,64}$/;
 
 /**
  * A pasta do projeto — o que o ADR 0055 chama de escopo.
  *
- * O `projectId` chega de `@Param('projectId')` sem pipe de validação, e o
- * Express decodifica o percent-encoding do segmento ANTES de entregá-lo: um
- * `projectId` como `..%2F..%2Fetc` vira `../../etc`, e o `join` o resolveria
- * para FORA da raiz sem reclamar. Isso valia para os dois consumidores desta
- * função, e o segundo é o que dói:
+ * Recebe `workspace_dir_name`, não `projectId`: o nome da pasta física é
+ * dado (RN-109), congelado na criação, e pode divergir do id quando o
+ * projeto é legível (`<slug>-<8 chars>`). Quem chama busca o projeto e passa
+ * `project.workspaceDirName` — nunca o id cru.
+ *
+ * O valor pode chegar de `@Param('projectId')` sem pipe de validação em
+ * algum ponto da cadeia (ou de uma coluna do banco, que também não é
+ * fronteira de validação): um `workspace_dir_name` como `..%2F..%2Fetc`
+ * decodificado vira `../../etc`, e o `join` o resolveria para FORA da raiz
+ * sem reclamar. Isso vale para os dois consumidores desta função, e o
+ * segundo é o que dói:
  *
  * - o `permissions.json` seria lido e ESCRITO em caminho arbitrário
  *   (`fs-permissions-file-store.ts`);
@@ -44,16 +83,16 @@ const ID_DE_PROJETO_VALIDO = /^[A-Za-z0-9_-]{1,64}$/;
  *   falha de SEGURANÇA, não de arquivo não encontrado.
  *
  * Validar aqui, e não em cada chamador, é a mesma razão que fez esta função
- * existir: as duas derivações têm que concordar, e uma checagem duplicada é
- * uma checagem que um dia diverge.
+ * existir: as duas derivações (api e engine) têm que concordar, e uma
+ * checagem duplicada é uma checagem que um dia diverge.
  */
-export function projectScopeRoot(projectId: string): string {
-  if (!ID_DE_PROJETO_VALIDO.test(projectId)) {
+export function projectScopeRoot(workspaceDirName: string): string {
+  if (!NOME_DE_PASTA_VALIDO.test(workspaceDirName)) {
     throw new Error(
-      `projectId inválido como segmento de caminho: ${JSON.stringify(projectId)}`,
+      `workspaceDirName inválido como segmento de caminho: ${JSON.stringify(workspaceDirName)}`,
     );
   }
-  return join(projectWorkspacesRoot(), projectId);
+  return join(projectWorkspacesRoot(), workspaceDirName);
 }
 
 /**
@@ -118,7 +157,7 @@ export class CaminhoForaDoEscopoError extends Error {
  * validar uma string e usar outra.
  */
 export function caminhoDeRepositorioContido(
-  projectId: string,
+  workspaceDirName: string,
   caminho: string | undefined,
 ): string {
   const bruto = caminho ?? '';
@@ -126,7 +165,7 @@ export function caminhoDeRepositorioContido(
   // normalização de string o enxerga — por isso a recusa vem antes dela.
   if (bruto.includes('\0')) throw new CaminhoForaDoEscopoError(bruto);
 
-  const raiz = projectScopeRoot(projectId);
+  const raiz = projectScopeRoot(workspaceDirName);
   const absoluto = normalizarCaminho(bruto, raiz);
   if (!dentroDoEscopo(absoluto, raiz))
     throw new CaminhoForaDoEscopoError(bruto);

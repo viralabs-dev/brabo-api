@@ -23,6 +23,7 @@ import {
 import { GitNotSupportedError } from '../../../../src/domain/git/git-errors';
 import type { GitProviderRegistry } from '../../../../src/application/ports/git-provider.port';
 import type { ProvisionedRepositoryRepository } from '../../../../src/application/ports/provisioned-repository-repository.port';
+import type { ProjectRepository } from '../../../../src/application/ports/project-repository.port';
 import type { UserCredentialRepository } from '../../../../src/application/ports/user-credential-repository.port';
 import type { EncryptionService } from '../../../../src/application/ports/encryption.port';
 import type { ResolveCredentialOwnerUseCase } from '../../../../src/application/use-cases/llm/resolve-credential-owner.use-case';
@@ -174,6 +175,23 @@ function montar(
   } = {},
 ) {
   const nome = opcoes.provider ?? 'github';
+  const gitProviders: GitProviderRegistry = { get: () => provider };
+  const projetos = {
+    findById: () =>
+      Promise.resolve({
+        id: PROJETO,
+        workspaceId: 'ws-1',
+        name: 'checkout',
+        slug: 'checkout',
+        workspaceDirName: PROJETO,
+        createdBy: 'user-1',
+        taskBudgetMicros: null,
+        maxConsecutiveBlocked: null,
+        storyPromotion: 'manual' as const,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
+  } as unknown as ProjectRepository;
   const repositorios = {
     findByProjectId: () =>
       Promise.resolve(
@@ -210,7 +228,8 @@ function montar(
 
   const useCase = new ReadProjectCodeUseCase(
     repositorios,
-    { get: () => provider } as unknown as GitProviderRegistry,
+    projetos,
+    gitProviders,
     credenciais,
     { decrypt: () => 'token-do-owner' } as unknown as EncryptionService,
     resolveOwner,

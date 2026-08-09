@@ -142,6 +142,16 @@ export class ProjectResponseDto implements Wire<Project> {
   })
   slug!: string;
 
+  @ApiProperty({
+    example: 'checkout-3f2b1c8e',
+    description:
+      'Nome da pasta física do workspace deste projeto em ' +
+      'PROJECT_WORKSPACES_ROOT (RN-109). `<slug>-<8 chars do id>` num ' +
+      'projeto novo; o UUID puro num projeto criado antes desta coluna ' +
+      'existir. Congelado na criação — editar `slug` depois não recalcula.',
+  })
+  workspaceDirName!: string;
+
   @ApiProperty({ example: '01JC4Z0000USUARIO0000000001' })
   createdBy!: string;
 

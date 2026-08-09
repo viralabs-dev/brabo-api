@@ -4,16 +4,36 @@ import {
   caminhoDeRepositorioContido,
   projectScopeRoot,
   projectWorkspacesRoot,
+  workspaceDirNameFor,
 } from '../../../src/infrastructure/filesystem/project-workspaces-root';
+
+/**
+ * `workspaceDirNameFor` (RN-109): nome de pasta legível pra projeto NOVO.
+ */
+describe('workspaceDirNameFor', () => {
+  it('compõe slug + 8 primeiros chars do id', () => {
+    expect(
+      workspaceDirNameFor('3f2b1c8e-0a5d-4f6b-9c1e-2d7a8b3c4d5e', 'checkout'),
+    ).toBe('checkout-3f2b1c8e');
+  });
+
+  it('o resultado passa na validação de projectScopeRoot', () => {
+    const nome = workspaceDirNameFor(
+      '3f2b1c8e-0a5d-4f6b-9c1e-2d7a8b3c4d5e',
+      'meu-projeto',
+    );
+    expect(() => projectScopeRoot(nome)).not.toThrow();
+  });
+});
 
 /**
  * Contenção do escopo de projeto (CodeQL `js/path-injection`).
  *
- * O `projectId` chega de um parâmetro de rota sem pipe de validação e o Express
- * já decodificou o percent-encoding — `..%2F..%2Fetc` chega como `../../etc`.
- * Sem a checagem, o `join` resolvia para fora da raiz em silêncio, e isso
- * atingia tanto o `permissions.json` quanto o escopo que AUTORIZA comando de
- * terminal (ADR 0055).
+ * `projectScopeRoot` recebe `workspace_dir_name` (RN-109) — para projeto de
+ * antes dessa coluna existir ele É o UUID puro, então os casos abaixo
+ * continuam valendo tal como estão. Sem a checagem, o `join` resolvia para
+ * fora da raiz em silêncio, e isso atingia tanto o `permissions.json` quanto
+ * o escopo que AUTORIZA comando de terminal (ADR 0055).
  */
 
 // Montado por código, e não escrito literalmente, porque um NUL cru no fonte
@@ -40,8 +60,10 @@ describe('projectScopeRoot', () => {
     ['.', 'a própria raiz'],
     ['', 'vazio, que faria o escopo ser a raiz inteira'],
     [`proj${NUL}eto`, 'byte NUL, que trunca o caminho no syscall'],
-  ])('RECUSA %j — %s', (projectId) => {
-    expect(() => projectScopeRoot(projectId)).toThrow(/projectId inválido/);
+  ])('RECUSA %j — %s', (workspaceDirName) => {
+    expect(() => projectScopeRoot(workspaceDirName)).toThrow(
+      /workspaceDirName inválido/,
+    );
   });
 
   it('nenhum id aceito escapa da raiz', () => {
@@ -85,7 +107,10 @@ describe('caminhoDeRepositorioContido', () => {
   });
 
   it.each([
-    ['../outro-projeto/permissions.json', 'sobe um nível e cai em outro projeto'],
+    [
+      '../outro-projeto/permissions.json',
+      'sobe um nível e cai em outro projeto',
+    ],
     ['../../etc/passwd', 'o que `..%2F..%2Fetc%2Fpasswd` vira no Express'],
     ['/etc/passwd', 'absoluto fora da raiz'],
     [
@@ -93,7 +118,10 @@ describe('caminhoDeRepositorioContido', () => {
       'absoluto que POR ACASO existiria no repo — reinterpretar a barra ' +
         'inicial como "relativo à raiz" seria conferir uma string e usar outra',
     ],
-    ['apps/../../../root/.ssh/id_rsa', 'sobe DEPOIS de descer — o caso que uma checagem de prefixo ingênua deixa passar'],
+    [
+      'apps/../../../root/.ssh/id_rsa',
+      'sobe DEPOIS de descer — o caso que uma checagem de prefixo ingênua deixa passar',
+    ],
     [`app${NUL}s`, 'byte NUL, que trunca o caminho no syscall'],
   ])('RECUSA %j — %s', (caminho) => {
     expect(() => caminhoDeRepositorioContido(PROJETO, caminho)).toThrow(
@@ -101,11 +129,11 @@ describe('caminhoDeRepositorioContido', () => {
     );
   });
 
-  it('recusa projectId que não é segmento de caminho — a MESMA checagem', () => {
+  it('recusa workspaceDirName que não é segmento de caminho — a MESMA checagem', () => {
     // Não é duplicata do teste de cima: aqui o ponto é que a função nova não
-    // reimplementou a validação de `projectId`, e sim passou por ela.
+    // reimplementou a validação de `workspaceDirName`, e sim passou por ela.
     expect(() => caminhoDeRepositorioContido('../../etc', 'README.md')).toThrow(
-      /projectId inválido/,
+      /workspaceDirName inválido/,
     );
   });
 
