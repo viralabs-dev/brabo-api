@@ -517,3 +517,104 @@ describe('decide — escopo de caminho', () => {
     expect(semRaiz.policy).toBe('require_approval');
   });
 });
+
+/**
+ * A fronteira do container (FASE 25c, ADR 0065, RN-106).
+ *
+ * O que estes testes travam é a metade que NÃO é isolamento: dentro do
+ * container o agente é livre, mas três efeitos atravessam a parede e chegam no
+ * mundo — push, PR e deploy —, e a constituição do produto os declara humanos.
+ *
+ * **Mutação que os mata**: apagar o bloco "FRONTEIRA DO CONTAINER" de
+ * `decide()`. Sem ele, o primeiro caso volta a `require_approval` e o segundo
+ * — o que importa — vira `auto_approve`, porque `Terminal(git)` em `allow`
+ * passa a cobrir `git push`.
+ */
+describe('decide — a fronteira do container (RN-106)', () => {
+  const RAIZ_CONTAINER = '/data/project-workspaces/proj-1';
+
+  it('`git push` pelo terminal é NEGADO, mesmo dentro do escopo do projeto', () => {
+    const result = decide(
+      {
+        actionType: 'terminal',
+        command: 'git push origin feature/x',
+        cwd: `${RAIZ_CONTAINER}/.worktrees/dev-api`,
+      },
+      ctx({ projectScopeRoot: RAIZ_CONTAINER }),
+    );
+
+    expect(result.policy).toBe('deny');
+    // A mensagem redireciona: o efeito continua existindo, pela ação tipada
+    // `git_push`, que nasce proposed_action.
+    expect(result.reason).toMatch(/`git_push`/);
+    expect(result.reason).toMatch(/proposed_action/);
+  });
+
+  it('nem um `allow` largo abre a segunda porta — `deny` vence sempre', () => {
+    // É este o caso que "sempre permitir" criaria: um clique gravando
+    // `Terminal(git)` faria o push passar direto para sempre.
+    const result = decide(
+      {
+        actionType: 'terminal',
+        command: 'git push --force origin main',
+        cwd: `${RAIZ_CONTAINER}/.worktrees/dev-api`,
+      },
+      ctx({
+        effectiveRole: 'owner',
+        autonomyMode: 'auto_approve',
+        permissionsFile: {
+          ...EMPTY_PERMISSIONS_FILE,
+          allow: ['Terminal(git)', 'Terminal(git push)'],
+        },
+        projectScopeRoot: RAIZ_CONTAINER,
+      }),
+    );
+
+    expect(result.policy).toBe('deny');
+  });
+
+  it('o push escondido num composto derruba o comando inteiro', () => {
+    const result = decide(
+      {
+        actionType: 'terminal',
+        command: 'pnpm test && git push origin main',
+        cwd: `${RAIZ_CONTAINER}/.worktrees/dev-api`,
+      },
+      ctx({
+        permissionsFile: {
+          ...EMPTY_PERMISSIONS_FILE,
+          allow: ['Terminal(pnpm test)', 'Terminal(git)'],
+        },
+        projectScopeRoot: RAIZ_CONTAINER,
+      }),
+    );
+
+    expect(result.policy).toBe('deny');
+  });
+
+  it('a ação TIPADA `git_push` continua existindo — a fronteira redireciona, não bloqueia', () => {
+    // O ponto inteiro da regra: o efeito não some, muda de porta. Aqui ele
+    // segue pelo pipeline normal, com papel mínimo e decisão do usuário.
+    const result = decide({ actionType: 'git_push' }, ctx({ effectiveRole: 'maintainer' }));
+    expect(result.policy).toBe('require_approval');
+  });
+
+  it('o trabalho DENTRO do container não é tocado pela fronteira', () => {
+    const result = decide(
+      {
+        actionType: 'terminal',
+        command: `cd ${RAIZ_CONTAINER} && git status && pnpm test`,
+        cwd: RAIZ_CONTAINER,
+      },
+      ctx({
+        permissionsFile: {
+          ...EMPTY_PERMISSIONS_FILE,
+          allow: ['Terminal(git status)', 'Terminal(pnpm test)'],
+        },
+        projectScopeRoot: RAIZ_CONTAINER,
+      }),
+    );
+
+    expect(result.policy).toBe('auto_approve');
+  });
+});

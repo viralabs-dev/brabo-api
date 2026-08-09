@@ -41,6 +41,7 @@ import { CreateStoryUseCase } from '../../../application/use-cases/backlog/creat
 import { CreateTaskUseCase } from '../../../application/use-cases/backlog/create-task.use-case';
 import { CreateModuleMapUseCase } from '../../../application/use-cases/architecture/create-module-map.use-case';
 import { AssignStoryModulesUseCase } from '../../../application/use-cases/architecture/assign-story-modules.use-case';
+import { DecidirImagemDoProjetoUseCase } from '../../../application/use-cases/containers/decidir-imagem-do-projeto.use-case';
 import { ClaimNextTaskUseCase } from '../../../application/use-cases/execution/claim-next-task.use-case';
 import { MarkTaskUseCase } from '../../../application/use-cases/execution/mark-task.use-case';
 import { GetDevTaskContextUseCase } from '../../../application/use-cases/execution/get-dev-task-context.use-case';
@@ -81,6 +82,8 @@ import { CreateStoryInternalDto } from './dto/create-story-internal.dto';
 import { CreateTaskInternalDto } from './dto/create-task-internal.dto';
 import { CreateModuleMapInternalDto } from './dto/create-module-map-internal.dto';
 import { AssignStoryModulesInternalDto } from './dto/assign-story-modules-internal.dto';
+import { DecideProjectImageInternalDto } from './dto/decide-project-image-internal.dto';
+import { ImagemDecididaResponseDto } from '../containers/dto/containers.response.dto';
 import { ClaimTaskInternalDto } from './dto/claim-task-internal.dto';
 import { MarkTaskInternalDto } from './dto/mark-task-internal.dto';
 import { SERVICE_TOKEN } from '../../../infrastructure/openapi/documento';
@@ -148,6 +151,7 @@ export class InternalSessionsController {
     private readonly createTask: CreateTaskUseCase,
     private readonly createModuleMap: CreateModuleMapUseCase,
     private readonly assignStoryModules: AssignStoryModulesUseCase,
+    private readonly decidirImagem: DecidirImagemDoProjetoUseCase,
     private readonly claimNextTask: ClaimNextTaskUseCase,
     private readonly markTask: MarkTaskUseCase,
     private readonly getDevTaskContext: GetDevTaskContextUseCase,
@@ -439,6 +443,40 @@ export class InternalSessionsController {
   ) {
     return this.createModuleMap.execute(dto.projectId, sessionId, {
       modules: dto.modules,
+    });
+  }
+
+  /**
+   * O Arquiteto decide qual imagem sobe para o projeto (FASE 25a, ADR 0065).
+   *
+   * Fica aqui, entre as outras ferramentas dele, porque é do mesmo calibre: o
+   * artefato do Arquiteto, versionado no event log, que outra parte do produto
+   * consome. É esta decisão que abre o portão da RN-105.
+   */
+  @Post(':sessionId/project-image')
+  @ApiOperation({
+    summary: 'Fixa a imagem de container do projeto',
+    description:
+      'O artefato É o evento `artifact.project_image`: imutável, versionado e ' +
+      'com autor. Revisar é emitir uma versão nova, nunca sobrescrever. ' +
+      'Enquanto não houver nenhuma, o container do projeto não sobe e a aba ' +
+      'Code responde 409.',
+  })
+  @ApiCreatedResponse({ type: ImagemDecididaResponseDto })
+  @ApiBadRequestResponse({
+    description:
+      'Imagem sem tag explícita (ou `latest`), `rationale` curto demais, ' +
+      '`network` fora de {none, egress} ou recurso acima do teto.',
+  })
+  projectImage(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: DecideProjectImageInternalDto,
+  ) {
+    return this.decidirImagem.execute(dto.projectId, sessionId, {
+      image: dto.image,
+      rationale: dto.rationale,
+      network: dto.network,
+      resources: dto.resources,
     });
   }
 

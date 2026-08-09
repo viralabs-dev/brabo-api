@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -20,6 +21,7 @@ import {
   CaminhoForaDoEscopoError,
   caminhoDeRepositorioContido,
 } from '../../../infrastructure/filesystem/project-workspaces-root';
+import { ObterContainerDoProjetoUseCase } from '../containers/obter-container-do-projeto.use-case';
 
 /**
  * A superfície de LEITURA de código de um projeto (FASE 26b).
@@ -125,6 +127,7 @@ export class ReadProjectCodeUseCase {
     private readonly encryption: EncryptionService,
     private readonly resolveOwner: ResolveCredentialOwnerUseCase,
     private readonly cache: GitReadCache,
+    private readonly container: ObterContainerDoProjetoUseCase,
   ) {}
 
   async tree(projectId: string, ref?: string, path?: string): Promise<GitTree> {
@@ -298,6 +301,8 @@ export class ReadProjectCodeUseCase {
     ref: string | undefined,
     path: string | undefined,
   ): Promise<Alvo> {
+    await this.portaoDoContainer(projectId);
+
     const repo = await this.repositories.findByProjectId(projectId);
     if (!repo) {
       throw new NotFoundException(
@@ -353,6 +358,34 @@ export class ReadProjectCodeUseCase {
       path: contido,
       accessToken,
     };
+  }
+
+  /**
+   * O portão da FASE 25 (RN-105).
+   *
+   * A aba Code só libera depois que o Arquiteto decide QUAL IMAGEM sobe para o
+   * projeto. A ordem é do usuário, e a razão dela é de produto: o container é o
+   * que dá sentido a ler o código ali — ler para depois rodar, buildar,
+   * corrigir. Liberar a leitura antes de existir onde executar seria entregar
+   * meia aba e ensinar que o portão é decorativo.
+   *
+   * Mora no MESMO funil que a contenção de caminho (`alvo`), e não em cada uma
+   * das quatro rotas, pelo mesmo motivo da RN-092: checagem duplicada em quatro
+   * chamadores é checagem que um dia diverge em um deles.
+   *
+   * 409 e não 403: nada está errado com quem pediu nem com a permissão dele —
+   * o recurso ainda não existe neste estado. E a mensagem diz o que falta, para
+   * a tela poder mostrar o motivo em vez de um erro mudo.
+   */
+  private async portaoDoContainer(projectId: string): Promise<void> {
+    const estado = await this.container.execute(projectId);
+    if (estado.status === 'sem_decisao') {
+      throw new ConflictException(
+        'A aba Code ainda não está liberada: o Arquiteto não decidiu qual ' +
+          'imagem de container sobe para este projeto. Sem essa decisão o ' +
+          'container do projeto não sobe, e é ele que isola a execução.',
+      );
+    }
   }
 
   private chave(alvo: Alvo, tipo: string, path: string): string {
