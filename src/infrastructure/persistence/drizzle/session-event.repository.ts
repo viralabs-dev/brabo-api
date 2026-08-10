@@ -119,7 +119,10 @@ export class DrizzleSessionEventRepository implements SessionEventRepository {
       .select()
       .from(sessionEvents)
       .where(
-        and(eq(sessionEvents.sessionId, sessionId), eq(sessionEvents.type, type)),
+        and(
+          eq(sessionEvents.sessionId, sessionId),
+          eq(sessionEvents.type, type),
+        ),
       )
       .orderBy(asc(sessionEvents.seq));
     return rows.map(toEntity);
