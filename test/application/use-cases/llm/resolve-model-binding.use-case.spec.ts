@@ -420,6 +420,60 @@ describe('ResolveModelBindingUseCase', () => {
     ).toMatchObject({ modelId: modelA.id, origin: 'workspace' });
   });
 
+  // ------------------------------------------------ item 1 do achado da
+  // topbar (bugfix/sessao-chat-consistencia): sem `agentId`, a rota de
+  // model-binding da SESSÃO só enxergava sessão→projeto→workspace — com o
+  // fallback fixo pro Criativo (`herdarModeloDeStart`) quando o workspace era
+  // tudo que sobrava. Depois de um handoff pro PO/Arquiteto/Dev Lead, a
+  // topbar continuava mostrando o modelo do Criativo, nunca o do agente
+  // REALMENTE ativo. `agentId` roda a cascata completa
+  // (sessão→agente→área→projeto→workspace) pro agente certo.
+
+  it('sessão + agentId do PO ativo: resolve pro binding do PO, não pro fallback do Criativo', async () => {
+    const { user, workspace, project, session, modelA, modelB } = await setup();
+    const [modelC] = await db
+      .insert(models)
+      .values({ provider: 'ollama', name: 'model-c', displayName: 'C' })
+      .returning();
+
+    await bindingRepo.upsert({
+      scope: 'workspace',
+      scopeId: workspace.id,
+      modelId: modelA.id,
+      createdBy: user.id,
+    });
+    // O Criativo divergiu — é o que o fallback usaria SEM `agentId`.
+    await bindingRepo.upsert({
+      scope: 'agent',
+      scopeId: chaveDeAgente(project.id, 'criativo'),
+      modelId: modelB.id,
+      createdBy: user.id,
+    });
+    // O PO, que é quem está realmente ativo depois do handoff, tem o
+    // binding dele PRÓPRIO.
+    await bindingRepo.upsert({
+      scope: 'agent',
+      scopeId: chaveDeAgente(project.id, 'po'),
+      modelId: modelC.id,
+      createdBy: user.id,
+    });
+
+    // Sem `agentId` (o que a rota fazia antes da correção): cai no fallback
+    // do Criativo.
+    expect(
+      await resolveModelBinding.execute({ projectId: project.id, sessionId: session.id }),
+    ).toMatchObject({ modelId: modelB.id, origin: 'agent' });
+
+    // Com `agentId: 'po'` (a correção): resolve pro modelo do PO.
+    expect(
+      await resolveModelBinding.execute({
+        projectId: project.id,
+        sessionId: session.id,
+        agentId: 'po',
+      }),
+    ).toMatchObject({ modelId: modelC.id, origin: 'agent' });
+  });
+
   it('falha: projeto inexistente retorna null (não lança)', async () => {
     const resolved = await resolveModelBinding.execute({
       projectId: '00000000-0000-0000-0000-000000000000',

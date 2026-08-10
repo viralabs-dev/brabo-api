@@ -6,6 +6,7 @@ import {
   HttpCode,
   Param,
   Put,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -15,6 +16,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -130,14 +132,24 @@ export class ModelBindingsController {
       'Devolve o binding RESOLVIDO pela cascata, não o binding cru da sessão: uma ' +
       'sessão sem binding próprio usa o do projeto, e responder `null` aqui seria ' +
       'a resposta errada para a pergunta certa. O campo `origin` diz de qual ' +
-      'escopo o valor veio.',
+      'escopo o valor veio.\n\n' +
+      '`agentId` é opcional e é o agente REALMENTE ativo na sessão agora (o ' +
+      'mesmo que `RunLlmTurnUseCase` usa pra rodar o turno) — sem ele, a cascata ' +
+      'só enxerga sessão→projeto→workspace (mais o fallback fixo pro Criativo) e ' +
+      'nunca reflete PO/Arquiteto/Dev Lead/área depois de um handoff.',
+  })
+  @ApiQuery({
+    name: 'agentId',
+    required: false,
+    description: 'Agente ativo agora nesta sessão (ex.: "po", "arquiteto", "dev-lead").',
   })
   @ApiOkResponse({ type: ResolvedBindingResponseDto })
   getSessionBinding(
     @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
+    @Query('agentId') agentId?: string,
   ) {
-    return this.resolveBinding.execute({ projectId, sessionId });
+    return this.resolveBinding.execute({ projectId, sessionId, agentId });
   }
 
   @Put('projects/:projectId/sessions/:sessionId/model-binding')
