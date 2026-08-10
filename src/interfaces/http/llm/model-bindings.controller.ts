@@ -141,7 +141,8 @@ export class ModelBindingsController {
   @ApiQuery({
     name: 'agentId',
     required: false,
-    description: 'Agente ativo agora nesta sessão (ex.: "po", "arquiteto", "dev-lead").',
+    description:
+      'Agente ativo agora nesta sessão (ex.: "po", "arquiteto", "dev-lead").',
   })
   @ApiOkResponse({ type: ResolvedBindingResponseDto })
   getSessionBinding(
