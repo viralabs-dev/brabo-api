@@ -5,11 +5,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type {
+  BlameInput,
   GetFileContentInput,
+  GitBlame,
+  GitBranchDetailList,
   GitProviderCapabilities,
   GitProviderContract,
   GitProviderName,
   GitPullRequestDiff,
+  GitPullRequestList,
   GitTree,
   ListTreeInput,
 } from '@brabo/shared';
@@ -64,6 +68,9 @@ class ProviderFalso implements GitProviderContract {
       pullRequests: true,
       listTree: true,
       pullRequestDiff: true,
+      blame: true,
+      pullRequestsList: true,
+      branchesDetailed: true,
       ...capabilities,
     };
   }
@@ -121,6 +128,87 @@ class ProviderFalso implements GitProviderContract {
           additions: 2,
           deletions: 1,
           patch: '@@ -1 +1,2 @@\n+novo\n',
+        },
+      ],
+      truncated: false,
+    });
+  }
+
+  blame(input: BlameInput): Promise<GitBlame | null> {
+    if (!this.capabilities.blame) {
+      return Promise.reject(new GitNotSupportedError(this.name, 'blame'));
+    }
+    this.chamadas.push(`blame:${input.path}`);
+    const conteudo = this.arquivos[input.path];
+    if (conteudo === undefined) return Promise.resolve(null);
+
+    const brutas = conteudo.split('\n');
+    const linhasDoArquivo =
+      brutas[brutas.length - 1] === '' ? brutas.slice(0, -1) : brutas;
+
+    return Promise.resolve({
+      ref: input.ref,
+      path: input.path,
+      lines: linhasDoArquivo.map((_, i) => ({
+        line: i + 1,
+        commitSha: 'sha-falso',
+        author: 'autor falso',
+        authorDate: '2026-08-09T00:00:00.000Z',
+        summary: 'commit falso',
+      })),
+      truncated: false,
+    });
+  }
+
+  listPullRequests(): Promise<GitPullRequestList> {
+    if (!this.capabilities.pullRequestsList) {
+      return Promise.reject(
+        new GitNotSupportedError(this.name, 'listPullRequests'),
+      );
+    }
+    this.chamadas.push('listPullRequests');
+    return Promise.resolve({
+      items: [
+        {
+          id: 'pr-1',
+          number: 1,
+          title: 'PR de teste',
+          url: 'https://example.com/pr/1',
+          author: 'autor-falso',
+          state: 'open',
+          sourceBranch: 'feature',
+          targetBranch: 'dev',
+          updatedAt: '2026-08-09T00:00:00.000Z',
+        },
+      ],
+      truncated: false,
+    });
+  }
+
+  listBranchesDetailed(): Promise<GitBranchDetailList> {
+    if (!this.capabilities.branchesDetailed) {
+      return Promise.reject(
+        new GitNotSupportedError(this.name, 'listBranchesDetailed'),
+      );
+    }
+    this.chamadas.push('listBranchesDetailed');
+    return Promise.resolve({
+      items: [
+        {
+          name: 'dev',
+          commitSha: 'sha-dev',
+          protected: true,
+          ahead: 0,
+          behind: 0,
+          pullRequest: null,
+        },
+        {
+          name: 'feature',
+          commitSha: 'sha-feature',
+          protected: false,
+          ahead: 2,
+          behind: 1,
+          pullRequest: { number: 1, state: 'open' },
         },
       ],
       truncated: false,
@@ -439,6 +527,74 @@ describe('ReadProjectCodeUseCase — diff de PR', () => {
   });
 });
 
+describe('ReadProjectCodeUseCase — blame (FASE 26b)', () => {
+  it('caminho feliz: uma linha anotada por linha do arquivo', async () => {
+    const { useCase } = montar(new ProviderFalso(REPO));
+    const blame = await useCase.blame(PROJETO, 'src/a.ts', 'dev');
+    expect(blame.lines).toHaveLength(1);
+    expect(blame.lines[0]).toMatchObject({ line: 1, commitSha: 'sha-falso' });
+  });
+
+  it('caso de falha: arquivo inexistente é 404', async () => {
+    const { useCase } = montar(new ProviderFalso(REPO));
+    await expect(
+      useCase.blame(PROJETO, 'nao-existe.ts', 'dev'),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('caso de falha: `path` vazio é 400 — não faz sentido anotar a raiz', async () => {
+    const { useCase } = montar(new ProviderFalso(REPO));
+    await expect(useCase.blame(PROJETO, '', 'dev')).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('caso de falha: provider sem a capability propaga 501', async () => {
+    const { useCase } = montar(new ProviderFalso(REPO, { blame: false }));
+    await expect(useCase.blame(PROJETO, 'src/a.ts', 'dev')).rejects.toThrow(
+      GitNotSupportedError,
+    );
+  });
+});
+
+describe('ReadProjectCodeUseCase — lista de PRs (FASE 26b)', () => {
+  it('caminho feliz: devolve o resumo de cada PR do contrato', async () => {
+    const { useCase } = montar(new ProviderFalso(REPO));
+    const lista = await useCase.pullRequests(PROJETO);
+    expect(lista.items).toHaveLength(1);
+    expect(lista.items[0]).toMatchObject({ id: 'pr-1', sourceBranch: 'feature' });
+  });
+
+  it('caso de falha: provider sem a capability propaga 501', async () => {
+    const { useCase } = montar(
+      new ProviderFalso(REPO, { pullRequestsList: false }),
+    );
+    await expect(useCase.pullRequests(PROJETO)).rejects.toThrow(
+      GitNotSupportedError,
+    );
+  });
+});
+
+describe('ReadProjectCodeUseCase — branches detalhadas (FASE 26b)', () => {
+  it('caminho feliz: cada branch vem com ahead/behind e a PR associada', async () => {
+    const { useCase } = montar(new ProviderFalso(REPO));
+    const lista = await useCase.branches(PROJETO);
+    const feature = lista.items.find((b) => b.name === 'feature');
+    expect(feature?.ahead).toBe(2);
+    expect(feature?.behind).toBe(1);
+    expect(feature?.pullRequest).toEqual({ number: 1, state: 'open' });
+  });
+
+  it('caso de falha: provider sem a capability propaga 501', async () => {
+    const { useCase } = montar(
+      new ProviderFalso(REPO, { branchesDetailed: false }),
+    );
+    await expect(useCase.branches(PROJETO)).rejects.toThrow(
+      GitNotSupportedError,
+    );
+  });
+});
+
 /**
  * A trava que dá nome à RN-095. Está separada e nomeada porque é a razão de a
  * checagem ser CENTRAL: um teste por rota provaria quatro implementações, e o
@@ -493,6 +649,11 @@ describe('ReadProjectCodeUseCase — caminho malicioso é RECUSADO', () => {
     expect(provider.chamadas).toEqual([]);
   });
 
+  it.each(maliciosos)('o blame recusa %j com 400', async (caminho) => {
+    await recusadoPorEscopo(useCase.blame(PROJETO, caminho, 'dev'));
+    expect(provider.chamadas).toEqual([]);
+  });
+
   it('a recusa é 400 e não 404 — dizer "não existe" convida a procurar', async () => {
     await expect(
       useCase.file(PROJETO, '../../etc/passwd', 'dev'),
@@ -540,6 +701,9 @@ describe('ReadProjectCodeUseCase — o portão do container (FASE 25, RN-105)', 
       (u: ReadProjectCodeUseCase) => u.search(PROJETO, { query: 'agulha' }),
     ],
     ['diff', (u: ReadProjectCodeUseCase) => u.pullRequestDiff(PROJETO, 'pr-1')],
+    ['blame', (u: ReadProjectCodeUseCase) => u.blame(PROJETO, 'src/a.ts', 'dev')],
+    ['pullRequests', (u: ReadProjectCodeUseCase) => u.pullRequests(PROJETO)],
+    ['branches', (u: ReadProjectCodeUseCase) => u.branches(PROJETO)],
   ])(
     '%s responde 409 enquanto o Arquiteto não decide a imagem',
     async (_nome, chamar) => {

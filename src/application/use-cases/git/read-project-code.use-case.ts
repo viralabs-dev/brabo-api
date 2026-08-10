@@ -4,7 +4,14 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { GitPullRequestDiff, GitTree, GitTreeEntry } from '@brabo/shared';
+import type {
+  GitBlame,
+  GitBranchDetailList,
+  GitPullRequestDiff,
+  GitPullRequestList,
+  GitTree,
+  GitTreeEntry,
+} from '@brabo/shared';
 import { GitProviderRegistry } from '../../ports/git-provider.port';
 import { ProvisionedRepositoryRepository } from '../../ports/provisioned-repository-repository.port';
 import { ProjectRepository } from '../../ports/project-repository.port';
@@ -29,19 +36,22 @@ import { ObterContainerDoProjetoUseCase } from '../containers/obter-container-do
  *
  * ## O que ela é, e o que ela não é
  *
- * Quatro leituras: árvore, arquivo, busca e diff de PR. **Nada aqui escreve.**
- * Isso não é omissão — é o congelamento declarado da fase: a aba Code é só
- * leitura, e escrita é efeito externo, que nasce `proposed_action` e é fase
- * seguinte. Por isso este caso de uso não conhece a outbox, nem o event log,
- * nem `proposed_actions`: ler não é ação com efeito externo, e transformá-la em
- * uma encheria a fila de aprovação de ruído até ninguém mais ler as de verdade.
+ * Sete leituras: árvore, arquivo, busca, diff de PR, blame, lista de PRs e
+ * branches detalhadas (as três últimas da FASE 26b — fundação das pendências
+ * declaradas da aba Code; a UI que as consome é onda seguinte, em três
+ * agentes separados). **Nada aqui escreve.** Isso não é omissão — é o
+ * congelamento declarado da fase: a aba Code é só leitura, e escrita é efeito
+ * externo, que nasce `proposed_action` e é fase seguinte. Por isso este caso
+ * de uso não conhece a outbox, nem o event log, nem `proposed_actions`: ler
+ * não é ação com efeito externo, e transformá-la em uma encheria a fila de
+ * aprovação de ruído até ninguém mais ler as de verdade.
  *
- * ## Um caso de uso só, e não quatro
+ * ## Um caso de uso só, e não sete
  *
- * As quatro leituras compartilham exatamente as três coisas que dão errado:
+ * As sete leituras compartilham exatamente as três coisas que dão errado:
  * de quem é a credencial, como o caminho é contido, e quanto se pode gastar
- * antes de parar. Separá-las em quatro classes multiplicaria essas três por
- * quatro — e a lição da FASE 14d é que a peça testada não é o caminho até ela.
+ * antes de parar. Separá-las em sete classes multiplicaria essas três por
+ * sete — e a lição da FASE 14d é que a peça testada não é o caminho até ela.
  *
  * ## Contenção de caminho (RN-095)
  *
@@ -190,6 +200,72 @@ export class ReadProjectCodeUseCase {
       throw new NotFoundException(`PR inexistente: ${pullRequestId}`);
     }
     return diff;
+  }
+
+  /**
+   * Anota cada linha de um arquivo com o commit que a tocou (FASE 26b, item
+   * 1 — fundação do blame). Mesma resolução de credencial e contenção de
+   * caminho que `file()`; sem cache, porque é chamada uma vez por arquivo
+   * aberto, não em laço como `search`.
+   */
+  async blame(
+    projectId: string,
+    path: string,
+    ref?: string,
+  ): Promise<GitBlame> {
+    const alvo = await this.alvo(projectId, ref, path);
+    if (alvo.path === '') {
+      throw new BadRequestException(
+        '`path` é obrigatório para anotar um arquivo',
+      );
+    }
+
+    const blame = await alvo.provider.blame({
+      externalId: alvo.externalId,
+      ref: alvo.ref,
+      path: alvo.path,
+      accessToken: alvo.accessToken,
+    });
+    if (!blame) {
+      throw new NotFoundException(
+        `Arquivo inexistente em "${alvo.path}" na ref "${alvo.ref}"`,
+      );
+    }
+    return blame;
+  }
+
+  /**
+   * Lista de PRs/MRs do repositório (FASE 26b, item 3 — fundação da lista
+   * navegável). O diff de cada uma continua vindo de `pullRequestDiff`, por
+   * id — esta rota não substitui aquela, só resolve como chegar ao id sem
+   * precisar saber de cor.
+   */
+  async pullRequests(
+    projectId: string,
+    state?: 'open' | 'merged' | 'closed',
+  ): Promise<GitPullRequestList> {
+    const alvo = await this.alvo(projectId, undefined, undefined);
+    return alvo.provider.listPullRequests({
+      externalId: alvo.externalId,
+      state,
+      accessToken: alvo.accessToken,
+    });
+  }
+
+  /**
+   * Branches com `ahead`/`behind` contra a default e a PR aberta associada
+   * (FASE 26b, item 2 — fundação do dropdown rico). Deliberadamente NESTE
+   * caso de uso, e não perto do bootstrap: é uma LEITURA da aba Code, com a
+   * mesma resolução de credencial e o mesmo portão de container das outras
+   * seis — tratá-la como operação de bootstrap duplicaria os dois.
+   */
+  async branches(projectId: string): Promise<GitBranchDetailList> {
+    const alvo = await this.alvo(projectId, undefined, undefined);
+    return alvo.provider.listBranchesDetailed({
+      externalId: alvo.externalId,
+      defaultBranch: alvo.ref,
+      accessToken: alvo.accessToken,
+    });
   }
 
   /**

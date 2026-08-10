@@ -77,3 +77,40 @@ export const GIT_BLOB_MAX_BYTES = 512 * 1024;
  */
 export const GIT_READ_CACHE_MAX_ENTRIES = 500;
 export const GIT_READ_CACHE_TTL_MS = 30_000;
+
+// ---------------------------------------------------------------------------
+// Tetos das TRÊS operações novas do contrato (FASE 26b — blame, PRs
+// navegáveis, branch rica). Moram aqui pelo MESMO motivo dos de cima: são
+// valores, não tipo, e `packages/shared` é 100% tipo por invariante travado.
+// ---------------------------------------------------------------------------
+
+/**
+ * Linhas anotadas por chamada de `blame`.
+ *
+ * Um arquivo de uma linha só (minificado) já é coberto por
+ * `GIT_BLOB_MAX_BYTES` na rota de conteúdo, mas `blame` lê o arquivo INTEIRO
+ * do provider antes de decidir — o teto de linhas é o que impede um arquivo
+ * de texto genuinamente enorme (log, dataset) de virar uma resposta de
+ * dezenas de milhares de entradas.
+ */
+export const GIT_BLAME_LINE_LIMIT = 2000;
+
+/**
+ * PRs/MRs devolvidas por chamada de `listPullRequests`.
+ *
+ * UMA página, sem paginação de seguimento — a lista é pra navegação humana
+ * na aba Code, não pra sincronizar todo o histórico de PRs do repositório.
+ */
+export const GIT_PR_LIST_LIMIT = 100;
+
+/**
+ * Branches enriquecidas por chamada de `listBranchesDetailed`.
+ *
+ * Cada uma custa ao menos UMA chamada extra ao provider (comparação
+ * ahead/behind) — duas no GitLab, que não tem um endpoint que devolva os
+ * dois lados de uma comparação como o GitHub. Sem teto, um repositório com
+ * centenas de branches viraria centenas de chamadas por abertura do
+ * dropdown — o mesmo amplificador de tráfego que a busca (item 34 da FASE
+ * 26) já tinha proibido pelo nome.
+ */
+export const GIT_BRANCH_DETAIL_LIMIT = 30;

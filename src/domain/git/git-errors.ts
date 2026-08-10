@@ -1,15 +1,17 @@
 import type { GitProviderName } from '@brabo/shared';
 
-// Erros normalizados das 12 operações do GitProviderContract (ver
+// Erros normalizados das 15 operações do GitProviderContract (ver
 // docs/adr/0002) — cada um é uma classe avulsa com campos de contexto
 // tipados, mesmo padrão já usado em git-provider-errors.ts (OAuth) e no
 // resto do domínio. Deliberadamente sem classe-base comum: nenhum filtro
 // HTTP novo é registrado nesta sessão (não há endpoint ainda expondo
 // essas operações), então uma base compartilhada não teria uso imediato.
 //
-// Eram 8 quando o arquivo nasceu; `getFileContent` (bootstrap idempotente) e
-// `commentOnPullRequest` (gates de PR, Fase 4a) entraram depois e o número
-// aqui não acompanhou — achado #7 do primeiro dogfooding. A contagem é
+// Eram 8 quando o arquivo nasceu; `getFileContent` (bootstrap idempotente),
+// `commentOnPullRequest` (gates de PR, Fase 4a), `listTree`/`getPullRequestDiff`
+// (aba Code, FASE 26) e `blame`/`listPullRequests`/`listBranchesDetailed`
+// (fundação da aba Code, FASE 26b) entraram depois e o número aqui não
+// acompanhava sozinho — achado #7 do primeiro dogfooding. A contagem é
 // travada por teste: ver test/domain/git/git-errors.spec.ts.
 //
 // A última classe do arquivo, `GitCredentialConnectionTestFailedError`, NÃO
