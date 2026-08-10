@@ -646,7 +646,8 @@ export class GithubProvider implements GitProviderContract {
     // de LISTAGEM, é derivado de `merged_at` por item (abaixo). Pedir
     // `state: 'closed'` já cobre merged+closed-sem-merge; o filtro fino
     // acontece depois de normalizar.
-    const stateNaListagem = input.state === 'merged' ? 'closed' : (input.state ?? 'all');
+    const stateNaListagem =
+      input.state === 'merged' ? 'closed' : (input.state ?? 'all');
 
     let data: Awaited<ReturnType<typeof octokit.rest.pulls.list>>['data'];
     try {
@@ -667,16 +668,17 @@ export class GithubProvider implements GitProviderContract {
     }
 
     const itens: GitPullRequestSummary[] = data
-      .map((pr) => ({
+      .map((pr): GitPullRequestSummary => ({
         id: String(pr.id),
         number: pr.number,
         title: pr.title,
         url: pr.html_url,
         author: pr.user?.login ?? null,
-        state: (pr.merged_at ? 'merged' : pr.state === 'open' ? 'open' : 'closed') as
-          | 'open'
-          | 'merged'
-          | 'closed',
+        state: pr.merged_at
+          ? 'merged'
+          : pr.state === 'open'
+            ? 'open'
+            : 'closed',
         sourceBranch: pr.head.ref,
         targetBranch: pr.base.ref,
         updatedAt: pr.updated_at,
@@ -755,7 +757,9 @@ export class GithubProvider implements GitProviderContract {
           ...branch,
           ahead,
           behind,
-          pullRequest: pr ? { number: pr.number, state: 'open' as const } : null,
+          pullRequest: pr
+            ? { number: pr.number, state: 'open' as const }
+            : null,
         };
       }),
     );
@@ -908,6 +912,7 @@ function isGraphqlNotFound(error: unknown): boolean {
   if (!errors) return false;
   return errors.some(
     (e) =>
-      e.type === 'NOT_FOUND' || /not found|could not resolve/i.test(e.message ?? ''),
+      e.type === 'NOT_FOUND' ||
+      /not found|could not resolve/i.test(e.message ?? ''),
   );
 }

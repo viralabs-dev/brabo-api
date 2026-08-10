@@ -243,7 +243,10 @@ export const _chavesDiff: MesmasChaves<
  */
 
 export class CodeBlameLineResponseDto implements Wire<GitBlameLine> {
-  @ApiProperty({ example: 12, description: '1-based, como todo editor mostra.' })
+  @ApiProperty({
+    example: 12,
+    description: '1-based, como todo editor mostra.',
+  })
   line!: number;
 
   @ApiProperty({ example: '0f3e8181fbd010b10c78db17b90ecb35fb8cc89c' })
@@ -281,9 +284,7 @@ export class CodeBlameResponseDto implements Wire<GitBlame> {
 }
 export const _chavesBlame: MesmasChaves<CodeBlameResponseDto, GitBlame> = true;
 
-export class CodePullRequestSummaryResponseDto
-  implements Wire<GitPullRequestSummary>
-{
+export class CodePullRequestSummaryResponseDto implements Wire<GitPullRequestSummary> {
   @ApiProperty({ example: '2401938475' })
   id!: string;
 
@@ -300,7 +301,8 @@ export class CodePullRequestSummaryResponseDto
     type: String,
     nullable: true,
     example: 'daneiel',
-    description: 'Login/username de quem abriu. `null` quando o provider não informa.',
+    description:
+      'Login/username de quem abriu. `null` quando o provider não informa.',
   })
   author!: string | null;
 
@@ -341,9 +343,7 @@ export const _chavesListaDePrs: MesmasChaves<
   GitPullRequestList
 > = true;
 
-export class CodeBranchPullRequestRefResponseDto
-  implements Wire<GitBranchPullRequestRef>
-{
+export class CodeBranchPullRequestRefResponseDto implements Wire<GitBranchPullRequestRef> {
   @ApiProperty({ example: 42 })
   number!: number;
 
@@ -369,7 +369,8 @@ export class CodeBranchDetailResponseDto implements Wire<GitBranchDetail> {
     type: Number,
     nullable: true,
     example: 3,
-    description: 'Commits à frente da branch default. `null` quando não computável.',
+    description:
+      'Commits à frente da branch default. `null` quando não computável.',
   })
   ahead!: number | null;
 
@@ -389,9 +390,7 @@ export const _chavesBranchDetalhada: MesmasChaves<
   GitBranchDetail
 > = true;
 
-export class CodeBranchDetailListResponseDto
-  implements Wire<GitBranchDetailList>
-{
+export class CodeBranchDetailListResponseDto implements Wire<GitBranchDetailList> {
   @ApiProperty({ type: [CodeBranchDetailResponseDto] })
   items!: CodeBranchDetailResponseDto[];
 

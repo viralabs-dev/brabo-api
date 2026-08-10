@@ -215,7 +215,9 @@ export class ReadProjectCodeUseCase {
   ): Promise<GitBlame> {
     const alvo = await this.alvo(projectId, ref, path);
     if (alvo.path === '') {
-      throw new BadRequestException('`path` é obrigatório para anotar um arquivo');
+      throw new BadRequestException(
+        '`path` é obrigatório para anotar um arquivo',
+      );
     }
 
     const blame = await alvo.provider.blame({

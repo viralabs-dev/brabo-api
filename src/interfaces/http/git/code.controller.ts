@@ -206,7 +206,8 @@ export class CodeController {
   @ApiQuery({
     name: 'ref',
     required: false,
-    description: 'Branch, tag ou sha. Ausente usa a branch padrão do repositório.',
+    description:
+      'Branch, tag ou sha. Ausente usa a branch padrão do repositório.',
   })
   @ApiQuery({
     name: 'path',
