@@ -138,6 +138,10 @@ export abstract class ApiToEngineClient {
    * Roda a Anamnese do projeto AGORA, sem esperar o tick periódico. O engine
    * escolhe a mesma sessão que o scheduler escolheria; projeto sem sessão não
    * tem log pra analisar.
+   *
+   * Lança `AnamneseDisabledError` quando a flag global `ANAMNESE_ENABLED` do
+   * engine está desligada (decisão de produto — ver
+   * docs/explanation/backlog.md); o chamador decide o que fazer com isso.
    */
   abstract runAnamnese(projectId: string): Promise<void>;
   abstract invalidateInstructions(
