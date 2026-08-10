@@ -1,7 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
 import type {
+  GitBlame,
+  GitBlameLine,
+  GitBranchDetail,
+  GitBranchDetailList,
+  GitBranchPullRequestRef,
   GitPullRequestDiff,
   GitPullRequestDiffFile,
+  GitPullRequestList,
+  GitPullRequestSummary,
   GitTree,
   GitTreeEntry,
 } from '@brabo/shared';
@@ -225,4 +232,176 @@ export class CodeDiffResponseDto implements Wire<GitPullRequestDiff> {
 export const _chavesDiff: MesmasChaves<
   CodeDiffResponseDto,
   GitPullRequestDiff
+> = true;
+
+/**
+ * Respostas de blame, lista de PRs e branch rica (FASE 26b) — fundação das
+ * três pendências declaradas da aba Code. Os três tipos vêm do
+ * `GitProviderContract` sem tradução, pela mesma razão de árvore e diff: já
+ * são normalizados por provider, e reescrevê-los aqui criaria um segundo
+ * vocabulário pra mesma coisa.
+ */
+
+export class CodeBlameLineResponseDto implements Wire<GitBlameLine> {
+  @ApiProperty({ example: 12, description: '1-based, como todo editor mostra.' })
+  line!: number;
+
+  @ApiProperty({ example: '0f3e8181fbd010b10c78db17b90ecb35fb8cc89c' })
+  commitSha!: string;
+
+  @ApiProperty({ example: 'Daniel Souza' })
+  author!: string;
+
+  @ApiProperty({ example: '2026-08-04T12:00:00.000Z' })
+  authorDate!: string;
+
+  @ApiProperty({ example: 'fix(api): corrige o resolvedor de credencial' })
+  summary!: string;
+}
+export const _chavesLinhaDeBlame: MesmasChaves<
+  CodeBlameLineResponseDto,
+  GitBlameLine
+> = true;
+
+export class CodeBlameResponseDto implements Wire<GitBlame> {
+  @ApiProperty({ example: 'dev' })
+  ref!: string;
+
+  @ApiProperty({ example: 'apps/api/src/main.ts' })
+  path!: string;
+
+  @ApiProperty({ type: [CodeBlameLineResponseDto] })
+  lines!: CodeBlameLineResponseDto[];
+
+  @ApiProperty({
+    example: false,
+    description: 'O arquivo passou do teto de linhas anotadas por chamada.',
+  })
+  truncated!: boolean;
+}
+export const _chavesBlame: MesmasChaves<CodeBlameResponseDto, GitBlame> = true;
+
+export class CodePullRequestSummaryResponseDto
+  implements Wire<GitPullRequestSummary>
+{
+  @ApiProperty({ example: '2401938475' })
+  id!: string;
+
+  @ApiProperty({ example: 42 })
+  number!: number;
+
+  @ApiProperty({ example: 'fix(api): a área de agentes nasce com o projeto' })
+  title!: string;
+
+  @ApiProperty({ example: 'https://github.com/acme/repo/pull/42' })
+  url!: string;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: 'daneiel',
+    description: 'Login/username de quem abriu. `null` quando o provider não informa.',
+  })
+  author!: string | null;
+
+  @ApiProperty({ enum: ['open', 'merged', 'closed'], example: 'open' })
+  state!: Wire<GitPullRequestSummary>['state'];
+
+  @ApiProperty({ example: 'feature/x' })
+  sourceBranch!: string;
+
+  @ApiProperty({ example: 'dev' })
+  targetBranch!: string;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: '2026-08-04T12:00:00.000Z',
+    description: '`null` quando o provider não informa.',
+  })
+  updatedAt!: string | null;
+}
+export const _chavesResumoDePr: MesmasChaves<
+  CodePullRequestSummaryResponseDto,
+  GitPullRequestSummary
+> = true;
+
+export class CodePullRequestListResponseDto implements Wire<GitPullRequestList> {
+  @ApiProperty({ type: [CodePullRequestSummaryResponseDto] })
+  items!: CodePullRequestSummaryResponseDto[];
+
+  @ApiProperty({
+    example: false,
+    description: 'A lista foi cortada no teto de PRs por chamada.',
+  })
+  truncated!: boolean;
+}
+export const _chavesListaDePrs: MesmasChaves<
+  CodePullRequestListResponseDto,
+  GitPullRequestList
+> = true;
+
+export class CodeBranchPullRequestRefResponseDto
+  implements Wire<GitBranchPullRequestRef>
+{
+  @ApiProperty({ example: 42 })
+  number!: number;
+
+  @ApiProperty({ enum: ['open', 'merged', 'closed'], example: 'open' })
+  state!: Wire<GitBranchPullRequestRef>['state'];
+}
+export const _chavesRefDePrDaBranch: MesmasChaves<
+  CodeBranchPullRequestRefResponseDto,
+  GitBranchPullRequestRef
+> = true;
+
+export class CodeBranchDetailResponseDto implements Wire<GitBranchDetail> {
+  @ApiProperty({ example: 'feature/x' })
+  name!: string;
+
+  @ApiProperty({ example: '0f3e8181fbd010b10c78db17b90ecb35fb8cc89c' })
+  commitSha!: string;
+
+  @ApiProperty({ example: false })
+  protected!: boolean;
+
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    example: 3,
+    description: 'Commits à frente da branch default. `null` quando não computável.',
+  })
+  ahead!: number | null;
+
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    example: 0,
+    description: 'Commits atrás da branch default.',
+  })
+  behind!: number | null;
+
+  @ApiProperty({ type: CodeBranchPullRequestRefResponseDto, nullable: true })
+  pullRequest!: CodeBranchPullRequestRefResponseDto | null;
+}
+export const _chavesBranchDetalhada: MesmasChaves<
+  CodeBranchDetailResponseDto,
+  GitBranchDetail
+> = true;
+
+export class CodeBranchDetailListResponseDto
+  implements Wire<GitBranchDetailList>
+{
+  @ApiProperty({ type: [CodeBranchDetailResponseDto] })
+  items!: CodeBranchDetailResponseDto[];
+
+  @ApiProperty({
+    example: false,
+    description: 'A lista foi cortada no teto de branches enriquecidas.',
+  })
+  truncated!: boolean;
+}
+export const _chavesListaDeBranches: MesmasChaves<
+  CodeBranchDetailListResponseDto,
+  GitBranchDetailList
 > = true;

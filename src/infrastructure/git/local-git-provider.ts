@@ -5,13 +5,18 @@ import { mkdir, rm, readFile, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import type {
+  BlameInput,
   CommitFilesInput,
   CreateBranchInput,
   CreateRepoInput,
   GetFileContentInput,
   GetPullRequestDiffInput,
   GetRepoInput,
+  GitBlame,
+  GitBlameLine,
   GitBranch,
+  GitBranchDetail,
+  GitBranchDetailList,
   GitCommitResult,
   GitDiffFileStatus,
   GitProviderCapabilities,
@@ -20,17 +25,24 @@ import type {
   GitPullRequest,
   GitPullRequestDiff,
   GitPullRequestDiffFile,
+  GitPullRequestList,
+  GitPullRequestSummary,
   GitRepo,
   GitTree,
   GitTreeEntry,
+  ListBranchesDetailedInput,
   ListBranchesInput,
+  ListPullRequestsInput,
   ListTreeInput,
   OpenPullRequestInput,
   MergePullRequestInput,
   CommentOnPullRequestInput,
 } from '@brabo/shared';
 import {
+  GIT_BLAME_LINE_LIMIT,
+  GIT_BRANCH_DETAIL_LIMIT,
   GIT_DIFF_FILE_LIMIT,
+  GIT_PR_LIST_LIMIT,
   GIT_TREE_ENTRY_LIMIT,
 } from '../../domain/git/git-read-limits';
 import {
@@ -53,8 +65,8 @@ const execFileAsync = promisify(execFile);
  * providers.
  *
  * Implementa `GitProviderContract` (ver @brabo/shared e docs/adr/0001) —
- * as 12 operações normalizadas, das 9 da Fase 2 às duas de leitura da aba
- * Code (FASE 26).
+ * as 15 operações normalizadas, das 9 da Fase 2 às três de fundação da
+ * FASE 26b (`blame`, `listPullRequests`, `listBranchesDetailed`).
  */
 @Injectable()
 export class LocalGitProvider implements GitProviderContract {
@@ -68,11 +80,19 @@ export class LocalGitProvider implements GitProviderContract {
   // entre as branches guardadas no store de PR — as duas rodam no bare repo,
   // sem plataforma nenhuma por trás, e por isso são declaradas `true`: a
   // suite de contrato as exercita de ponta a ponta neste provider.
+  //
+  // As três da FASE 26b também rodam 100% locais: `blame` sai de `git blame
+  // --porcelain`, `listPullRequests` do MESMO store de PR acima, e
+  // `listBranchesDetailed` de `git rev-list --left-right --count` (que
+  // devolve os dois lados numa chamada só — ao contrário do GitLab).
   readonly capabilities: GitProviderCapabilities = {
     protectBranch: false,
     pullRequests: true,
     listTree: true,
     pullRequestDiff: true,
+    blame: true,
+    pullRequestsList: true,
+    branchesDetailed: true,
   };
 
   async createRepo(input: CreateRepoInput): Promise<GitRepo> {
@@ -463,6 +483,118 @@ export class LocalGitProvider implements GitProviderContract {
       truncated: contagens.length > GIT_DIFF_FILE_LIMIT,
     };
   }
+
+  async blame(input: BlameInput): Promise<GitBlame | null> {
+    const repoDir = input.externalId;
+    await assertBareRepo(repoDir);
+
+    let stdout: string;
+    try {
+      ({ stdout } = await execGit(repoDir, [
+        'blame',
+        '--porcelain',
+        input.ref,
+        '--',
+        input.path,
+      ]));
+    } catch (error) {
+      if (isMissingRefOrPath(error)) return null;
+      throw error;
+    }
+
+    const linhas = parseBlamePorcelain(stdout);
+    return {
+      ref: input.ref,
+      path: input.path,
+      lines: linhas.slice(0, GIT_BLAME_LINE_LIMIT),
+      truncated: linhas.length > GIT_BLAME_LINE_LIMIT,
+    };
+  }
+
+  async listPullRequests(
+    input: ListPullRequestsInput,
+  ): Promise<GitPullRequestList> {
+    const repoDir = input.externalId;
+    await assertBareRepo(repoDir);
+
+    const store = await readPrStore(repoDir);
+    const itens: GitPullRequestSummary[] = store
+      .filter((pr) => !input.state || pr.state === input.state)
+      .map((pr) => ({
+        id: pr.id,
+        number: pr.number,
+        title: pr.title,
+        url: `local://${basename(repoDir)}/pull/${pr.number}`,
+        // O store local não tem conceito de autor — não há usuário
+        // autenticado por trás de um bare repo em disco.
+        author: null,
+        state: pr.state,
+        sourceBranch: pr.sourceBranch,
+        targetBranch: pr.targetBranch,
+        updatedAt: null,
+      }));
+
+    return {
+      items: itens.slice(0, GIT_PR_LIST_LIMIT),
+      truncated: itens.length > GIT_PR_LIST_LIMIT,
+    };
+  }
+
+  async listBranchesDetailed(
+    input: ListBranchesDetailedInput,
+  ): Promise<GitBranchDetailList> {
+    const repoDir = input.externalId;
+    await assertBareRepo(repoDir);
+
+    const branches = await this.listBranches({ externalId: input.externalId });
+    const store = await readPrStore(repoDir);
+    const prPorBranch = new Map(
+      store
+        .filter((pr) => pr.state === 'open')
+        .map((pr) => [pr.sourceBranch, pr] as const),
+    );
+
+    const truncated = branches.length > GIT_BRANCH_DETAIL_LIMIT;
+    const alvo = branches.slice(0, GIT_BRANCH_DETAIL_LIMIT);
+
+    const items: GitBranchDetail[] = await Promise.all(
+      alvo.map(async (branch) => {
+        if (branch.name === input.defaultBranch) {
+          return { ...branch, ahead: 0, behind: 0, pullRequest: null };
+        }
+
+        let ahead: number | null = null;
+        let behind: number | null = null;
+        try {
+          // `--left-right --count A...B` devolve OS DOIS LADOS numa chamada
+          // só: "<commits só de A>\t<commits só de B>" — behind e ahead,
+          // nessa ordem, quando A é a default. Verificado contra o git do
+          // ambiente antes de entrar aqui.
+          const { stdout } = await execGit(repoDir, [
+            'rev-list',
+            '--left-right',
+            '--count',
+            `${input.defaultBranch}...${branch.name}`,
+          ]);
+          const [behindTxt, aheadTxt] = stdout.trim().split('\t');
+          behind = Number(behindTxt);
+          ahead = Number(aheadTxt);
+        } catch {
+          // Degradação honesta — ver o mesmo `catch` no GithubProvider.
+        }
+
+        const pr = prPorBranch.get(branch.name);
+        return {
+          ...branch,
+          ahead,
+          behind,
+          pullRequest: pr ? { number: pr.number, state: pr.state } : null,
+        };
+      }),
+    );
+
+    return { items, truncated };
+  }
 }
 
 /** `""` para a raiz; sem `/` na ponta, sem `./`. */
@@ -680,11 +812,83 @@ function isAlreadyExists(error: unknown): boolean {
 // ambiente antes de entrar aqui — "not a valid" não casa com "invalid", e
 // sem esta alternativa a ref inexistente vazaria como erro cru em vez de
 // virar o `null` que o contrato promete.
+// `git blame` erra numa QUARTA forma pras suas duas causas de "não existe":
+// `fatal: no such path <path> in <ref>` pro caminho, `fatal: bad revision
+// '<ref>'` pra ref — nenhuma das duas casa com as três de cima. Confirmado
+// rodando `git blame` contra um bare repo de verdade antes de entrar aqui.
 function isMissingRefOrPath(error: unknown): boolean {
   const stderr = (error as { stderr?: string })?.stderr ?? '';
-  return /does not exist in|invalid object name|not a valid object name/i.test(
+  return /does not exist in|invalid object name|not a valid object name|no such path|bad revision/i.test(
     stderr,
   );
+}
+
+/**
+ * `git blame --porcelain` — um bloco de cabeçalho (`<sha> <origline>
+ * <resultline> [<numlines>]`) por linha do arquivo, com os METADADOS do
+ * commit (author, author-time, summary...) só na PRIMEIRA vez que aquele sha
+ * aparece na saída; ocorrências seguintes do mesmo commit repetem só o
+ * cabeçalho. Por isso o cache por sha — sem ele, linhas de commits já vistos
+ * ficariam sem autor/data.
+ */
+function parseBlamePorcelain(stdout: string): GitBlameLine[] {
+  const linhas = stdout.split('\n');
+  const metaPorSha = new Map<
+    string,
+    { author: string; authorDate: string; summary: string }
+  >();
+  const resultado: GitBlameLine[] = [];
+
+  const cabecalho = /^([0-9a-f]{40}) \d+ (\d+)(?: \d+)?$/;
+  let i = 0;
+  while (i < linhas.length) {
+    const match = cabecalho.exec(linhas[i]);
+    if (!match) {
+      i += 1;
+      continue;
+    }
+    const sha = match[1];
+    const numeroDaLinha = Number(match[2]);
+    i += 1;
+
+    let author: string | undefined;
+    let authorTime: string | undefined;
+    let summary: string | undefined;
+
+    while (i < linhas.length && !linhas[i].startsWith('\t')) {
+      const linha = linhas[i];
+      if (linha.startsWith('author ')) author = linha.slice('author '.length);
+      else if (linha.startsWith('author-time '))
+        authorTime = linha.slice('author-time '.length);
+      else if (linha.startsWith('summary '))
+        summary = linha.slice('summary '.length);
+      i += 1;
+    }
+    // A linha de conteúdo (começa com TAB) marca o fim do bloco.
+    if (i < linhas.length) i += 1;
+
+    let meta = metaPorSha.get(sha);
+    if (!meta) {
+      meta = {
+        author: author ?? 'desconhecido',
+        authorDate: authorTime
+          ? new Date(Number(authorTime) * 1000).toISOString()
+          : '',
+        summary: summary ?? '',
+      };
+      metaPorSha.set(sha, meta);
+    }
+
+    resultado.push({
+      line: numeroDaLinha,
+      commitSha: sha,
+      author: meta.author,
+      authorDate: meta.authorDate,
+      summary: meta.summary,
+    });
+  }
+
+  return resultado;
 }
 
 function sanitizeSlug(name: string): string {

@@ -14,8 +14,11 @@ import { RequireRole } from '../iam/require-role.decorator';
 import { ReadProjectCodeUseCase } from '../../../application/use-cases/git/read-project-code.use-case';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import {
+  CodeBlameResponseDto,
+  CodeBranchDetailListResponseDto,
   CodeDiffResponseDto,
   CodeFileResponseDto,
+  CodePullRequestListResponseDto,
   CodeSearchResponseDto,
   CodeTreeResponseDto,
 } from './dto/code.response.dto';
@@ -40,9 +43,15 @@ import {
  *
  * ## Papel
  *
- * `viewer` nas quatro, igual a `GET /projects/:id/git/repository`: ver o código
+ * `viewer` nas sete, igual a `GET /projects/:id/git/repository`: ver o código
  * do projeto é a mesma permissão que ver o projeto. A contenção que importa não
  * é de papel — é de CAMINHO (RN-095), e mora no caso de uso.
+ *
+ * ## FASE 26b — fundação de blame, PRs navegáveis e branch rica
+ *
+ * `blame`, `pull-requests` (lista) e `branches` são NOVAS nesta sessão — a
+ * API existe, mas nenhuma tela ainda consome: a UI é onda seguinte, em três
+ * agentes separados, sem risco de colisão com esta PR.
  */
 @ApiTags('git')
 @ApiBearerAuth(BEARER)
@@ -59,8 +68,9 @@ import {
 @ApiResponse({
   status: 501,
   description:
-    'O provider do projeto não declara a capability da operação — `listTree` ' +
-    'ou `pullRequestDiff`. Capability só é declarada quando provada pela ' +
+    'O provider do projeto não declara a capability da operação — ' +
+    '`listTree`, `pullRequestDiff`, `blame`, `pullRequestsList` ou ' +
+    '`branchesDetailed`. Capability só é declarada quando provada pela ' +
     'suite de contrato, então isto é resposta legítima e não defeito.',
 })
 @Controller('projects/:projectId/code')
@@ -182,5 +192,74 @@ export class CodeController {
     @Param('pullRequestId') pullRequestId: string,
   ) {
     return this.read.pullRequestDiff(projectId, pullRequestId);
+  }
+
+  @Get('blame')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Anota cada linha de um arquivo com o commit que a tocou',
+    description:
+      'Fundação da pendência declarada de blame (FASE 26b) — a UI que ' +
+      'anota o editor linha a linha ainda não existe. `truncated` avisa ' +
+      'quando o arquivo passou do teto de linhas anotadas.',
+  })
+  @ApiQuery({
+    name: 'ref',
+    required: false,
+    description: 'Branch, tag ou sha. Ausente usa a branch padrão do repositório.',
+  })
+  @ApiQuery({
+    name: 'path',
+    required: true,
+    description: 'Caminho do arquivo a anotar.',
+  })
+  @ApiOkResponse({ type: CodeBlameResponseDto })
+  blame(
+    @Param('projectId') projectId: string,
+    @Query('path') path: string,
+    @Query('ref') ref?: string,
+  ) {
+    return this.read.blame(projectId, path, ref);
+  }
+
+  @Get('pull-requests')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Lista as PRs/MRs do repositório',
+    description:
+      'Fundação da lista navegável (FASE 26b) — hoje o diff só é ' +
+      'alcançável por id conhecido (ex.: vindo de Aprovações); esta rota ' +
+      'resolve como chegar ao id sem precisar saber de cor. `truncated` ' +
+      'avisa quando a lista passou do teto por chamada.',
+  })
+  @ApiQuery({
+    name: 'state',
+    required: false,
+    enum: ['open', 'merged', 'closed'],
+    description: 'Ausente lista todos os estados.',
+  })
+  @ApiOkResponse({ type: CodePullRequestListResponseDto })
+  pullRequests(
+    @Param('projectId') projectId: string,
+    @Query('state') state?: 'open' | 'merged' | 'closed',
+  ) {
+    return this.read.pullRequests(projectId, state);
+  }
+
+  @Get('branches')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Lista as branches com ahead/behind e a PR aberta associada',
+    description:
+      'Fundação do dropdown rico (FASE 26b) — hoje o seletor de ref é ' +
+      'campo de texto simples. `ahead`/`behind` são relativos à branch ' +
+      'DEFAULT do repositório; `null` quando o provider não consegue ' +
+      'computar (degradação honesta, não erro). NÃO é `listBranches` (que ' +
+      'o bootstrap de Gitflow usa) — é operação própria, porque enriquecer ' +
+      'custa uma chamada extra ao provider POR BRANCH.',
+  })
+  @ApiOkResponse({ type: CodeBranchDetailListResponseDto })
+  branches(@Param('projectId') projectId: string) {
+    return this.read.branches(projectId);
   }
 }

@@ -50,6 +50,15 @@ export class FakeRepoStore {
   readonly treeFiles = new Map<string, Map<string, string>>();
   readonly commitTree = new Map<string, string>();
 
+  /**
+   * Lineage de commit (sha -> shas dos pais) — só o suficiente pra computar
+   * ahead/behind (FASE 26b, `listBranchesDetailed`) sem reimplementar um
+   * repositório git de verdade. Populado pelos DOIS backends fake — GitHub
+   * em `git/commits`/Contents API, GitLab em `repository/commits` — e
+   * consumido por `ancestraisDe`/`aheadBehind` abaixo.
+   */
+  readonly commitParents = new Map<string, string[]>();
+
   nextSha(): string {
     this.shaCounter += 1;
     return this.shaCounter.toString(16).padStart(40, '0');
@@ -78,5 +87,38 @@ export class FakeRepoStore {
     this.blobContent.clear();
     this.treeFiles.clear();
     this.commitTree.clear();
+    this.commitParents.clear();
   }
+}
+
+/** Todo sha alcançável a partir de `sha`, subindo por `commitParents`. */
+function ancestraisDe(store: FakeRepoStore, sha: string): Set<string> {
+  const vistos = new Set<string>();
+  const fila = [sha];
+  while (fila.length > 0) {
+    const atual = fila.shift()!;
+    if (vistos.has(atual)) continue;
+    vistos.add(atual);
+    fila.push(...(store.commitParents.get(atual) ?? []));
+  }
+  return vistos;
+}
+
+/**
+ * `ahead`/`behind` de `head` contra `base`, no mesmo vocabulário do
+ * `ahead_by`/`behind_by` do GitHub — commits alcançáveis de um lado e não do
+ * outro. Usado pelos handlers de compare dos DOIS backends fake.
+ */
+export function aheadBehind(
+  store: FakeRepoStore,
+  baseSha: string,
+  headSha: string,
+): { ahead: number; behind: number } {
+  const daBase = ancestraisDe(store, baseSha);
+  const doHead = ancestraisDe(store, headSha);
+  let ahead = 0;
+  for (const sha of doHead) if (!daBase.has(sha)) ahead += 1;
+  let behind = 0;
+  for (const sha of daBase) if (!doHead.has(sha)) behind += 1;
+  return { ahead, behind };
 }

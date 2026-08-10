@@ -38,6 +38,9 @@ export class ReadOnlyGitProvider implements GitProviderContract {
       pullRequests: true,
       listTree: true,
       pullRequestDiff: true,
+      blame: true,
+      pullRequestsList: true,
+      branchesDetailed: true,
       ...estado.capabilities,
     };
   }
@@ -101,11 +104,20 @@ export class ReadOnlyGitProvider implements GitProviderContract {
     return this.proibido('commentOnPullRequest');
   }
   // Leituras, mas fora do escopo do plano — igual `getRepo`. Quem as chama é
-  // a aba Code (FASE 26), nunca o dry-run do bootstrap.
+  // a aba Code (FASE 26/26b), nunca o dry-run do bootstrap.
   listTree(): never {
     return this.proibido('listTree');
   }
   getPullRequestDiff(): never {
     return this.proibido('getPullRequestDiff');
+  }
+  blame(): never {
+    return this.proibido('blame');
+  }
+  listPullRequests(): never {
+    return this.proibido('listPullRequests');
+  }
+  listBranchesDetailed(): never {
+    return this.proibido('listBranchesDetailed');
   }
 }

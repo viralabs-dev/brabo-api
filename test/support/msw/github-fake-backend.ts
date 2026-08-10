@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw';
-import type { FakeRepoStore } from './fake-repo-store';
+import { aheadBehind, type FakeRepoStore } from './fake-repo-store';
 import { compararArvores } from './fake-diff';
 
 const BASE = 'https://api.github.com';
@@ -154,6 +154,7 @@ export function createGithubHandlers(store: FakeRepoStore) {
 
         store.treeFiles.set(treeSha, arquivos);
         store.commitTree.set(sha, treeSha);
+        store.commitParents.set(sha, anterior ? [anterior.sha] : []);
         repo.branches.set(branchName, {
           name: branchName,
           sha,
@@ -183,9 +184,13 @@ export function createGithubHandlers(store: FakeRepoStore) {
     }),
 
     http.post(`${BASE}/repos/:owner/:repo/git/commits`, async ({ request }) => {
-      const body = (await request.json()) as { tree: string };
+      const body = (await request.json()) as {
+        tree: string;
+        parents?: string[];
+      };
       const sha = store.nextSha();
       store.commitTree.set(sha, body.tree);
+      store.commitParents.set(sha, body.parents ?? []);
       return HttpResponse.json({ sha }, { status: 201 });
     }),
 
@@ -345,6 +350,125 @@ export function createGithubHandlers(store: FakeRepoStore) {
       if (!pr) return notFound();
       pr.state = 'merged';
       return HttpResponse.json({ merged: true, sha: store.nextSha() });
+    }),
+
+    /**
+     * Lista de PRs (FASE 26b, `listPullRequests`) — filtra por `state`
+     * exatamente como o GitHub real: `open`/`closed`/`all`, e `closed`
+     * inclui PR mesclada (o GitHub não tem `state=merged` na LISTAGEM, só
+     * na LEITURA de uma PR — é `merged_at` que distingue, e o provider
+     * normaliza isso na resposta).
+     */
+    http.get(`${BASE}/repos/:owner/:repo/pulls`, ({ params, request }) => {
+      const repo = store.repos.get(fullNameFromParams(params));
+      if (!repo) return notFound();
+
+      const estado = new URL(request.url).searchParams.get('state') ?? 'open';
+      const prs = repo.prs.filter((pr) => {
+        if (estado === 'all') return true;
+        if (estado === 'open') return pr.state === 'open';
+        return pr.state === 'closed' || pr.state === 'merged';
+      });
+
+      return HttpResponse.json(
+        prs.map((pr) => ({
+          id: pr.number,
+          number: pr.number,
+          title: pr.title,
+          html_url: `https://github.com/${repo.fullName}/pull/${pr.number}`,
+          user: { login: 'octocat' },
+          state: pr.state === 'merged' ? 'closed' : pr.state,
+          merged_at:
+            pr.state === 'merged' ? '2026-08-04T12:00:00.000Z' : null,
+          head: { ref: pr.sourceBranch },
+          base: { ref: pr.targetBranch },
+          updated_at: '2026-08-04T12:00:00.000Z',
+        })),
+      );
+    }),
+
+    /**
+     * `compareCommitsWithBasehead` (FASE 26b, `listBranchesDetailed`) — os
+     * dois lados numa chamada só, igual a API real. `ahead_by`/`behind_by`
+     * saem do grafo de commits que `git/commits`/Contents API populam em
+     * `store.commitParents`.
+     */
+    http.get(
+      `${BASE}/repos/:owner/:repo/compare/:basehead`,
+      ({ params }) => {
+        const repo = store.repos.get(fullNameFromParams(params));
+        if (!repo) return notFound();
+
+        const [base, head] = String(params.basehead).split('...');
+        const baseSha = repo.branches.get(base)?.sha;
+        const headSha = repo.branches.get(head)?.sha;
+        if (!baseSha || !headSha) return notFound();
+
+        const { ahead, behind } = aheadBehind(store, baseSha, headSha);
+        return HttpResponse.json({ ahead_by: ahead, behind_by: behind });
+      },
+    ),
+
+    /**
+     * `blame` (FASE 26b) é a ÚNICA operação do provider que fala GraphQL — a
+     * REST do GitHub não tem essa operação. O fake não rastreia história
+     * LINHA A LINHA (nenhum backend fake faz), então toda linha do arquivo
+     * na ponta da branch é atribuída ao commit da PONTA — suficiente pra
+     * provar o SHAPE da resposta (uma entrada por linha, sha/autor/data em
+     * cada uma), que é o que a suite de contrato verifica.
+     */
+    http.post(`${BASE}/graphql`, async ({ request }) => {
+      const body = (await request.json()) as {
+        variables: { owner: string; repo: string; expr: string; path: string };
+      };
+      const { owner, repo: repoName, expr, path } = body.variables;
+      const repo = store.repos.get(`${owner}/${repoName}`);
+      if (!repo) {
+        return HttpResponse.json({
+          data: null,
+          errors: [{ type: 'NOT_FOUND', message: 'Could not resolve to a Repository' }],
+        });
+      }
+
+      const branch = repo.branches.get(expr);
+      if (!branch) {
+        return HttpResponse.json({ data: { repository: { object: null } } });
+      }
+
+      const arquivos = arquivosDaBranch(store, repo, expr);
+      const conteudo = arquivos.get(path);
+      if (conteudo === undefined) {
+        return HttpResponse.json({
+          data: null,
+          errors: [{ type: 'NOT_FOUND', message: 'Could not resolve to a file' }],
+        });
+      }
+
+      const brutas = conteudo.split('\n');
+      const linhas = brutas[brutas.length - 1] === '' ? brutas.slice(0, -1) : brutas;
+
+      return HttpResponse.json({
+        data: {
+          repository: {
+            object: {
+              blame: {
+                ranges: [
+                  {
+                    startingLine: 1,
+                    endingLine: Math.max(linhas.length, 1),
+                    commit: {
+                      oid: branch.sha,
+                      message: 'commit falso',
+                      committedDate: '2026-08-04T12:00:00.000Z',
+                      author: { name: 'Autor Falso' },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      });
     }),
 
     http.get(`${BASE}/repos/:owner/:repo/pulls/:number`, ({ params }) => {

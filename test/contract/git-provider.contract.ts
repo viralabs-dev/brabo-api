@@ -641,6 +641,236 @@ export function runGitProviderContract(
       ).resolves.toBeNull();
     });
 
+    // --- blame (13ª operação, FASE 26b) ---
+
+    it('blame: respeita capabilities.blame e anota cada linha com commit e autor', async () => {
+      const repo = await provider.createRepo({
+        name: 'blame-basico',
+        visibility: 'private',
+      });
+      await provider.commitFiles({
+        externalId: repo.externalId,
+        branch: 'main',
+        message: 'inicial',
+        files: [{ path: 'a.txt', content: 'linha um\nlinha dois\nlinha tres\n' }],
+      });
+
+      const input = { externalId: repo.externalId, ref: 'main', path: 'a.txt' };
+
+      if (!provider.capabilities.blame) {
+        await expect(provider.blame(input)).rejects.toThrow(
+          GitNotSupportedError,
+        );
+        return;
+      }
+
+      const blame = await provider.blame(input);
+      expect(blame).not.toBeNull();
+      expect(blame!.ref).toBe('main');
+      expect(blame!.path).toBe('a.txt');
+      expect(blame!.truncated).toBe(false);
+      expect(blame!.lines).toHaveLength(3);
+      for (const [i, linha] of blame!.lines.entries()) {
+        expect(linha.line).toBe(i + 1);
+        expect(linha.commitSha).toMatch(/^[0-9a-f]{40}$/);
+        expect(linha.author).toBeTruthy();
+        expect(linha.authorDate).toBeTruthy();
+      }
+    });
+
+    it('blame: retorna null pra arquivo inexistente', async () => {
+      if (!provider.capabilities.blame) return;
+
+      const repo = await provider.createRepo({
+        name: 'blame-arquivo-ausente',
+        visibility: 'private',
+      });
+      await provider.commitFiles({
+        externalId: repo.externalId,
+        branch: 'main',
+        message: 'inicial',
+        files: [{ path: 'a.txt', content: 'a' }],
+      });
+
+      await expect(
+        provider.blame({
+          externalId: repo.externalId,
+          ref: 'main',
+          path: 'nao-existe.txt',
+        }),
+      ).resolves.toBeNull();
+    });
+
+    // --- listPullRequests (14ª operação, FASE 26b) ---
+
+    it('listPullRequests: respeita capabilities.pullRequestsList e lista a PR aberta', async () => {
+      const repo = await provider.createRepo({
+        name: 'pr-list',
+        visibility: 'private',
+      });
+
+      const input = { externalId: repo.externalId };
+
+      if (!provider.capabilities.pullRequestsList) {
+        await expect(provider.listPullRequests(input)).rejects.toThrow(
+          GitNotSupportedError,
+        );
+        return;
+      }
+      if (!provider.capabilities.pullRequests) return;
+
+      await provider.commitFiles({
+        externalId: repo.externalId,
+        branch: 'main',
+        message: 'inicial',
+        files: [{ path: 'a.txt', content: 'a' }],
+      });
+      await provider.createBranch({
+        externalId: repo.externalId,
+        branchName: 'feature',
+        fromRef: 'main',
+      });
+      const pr = await provider.openPullRequest({
+        externalId: repo.externalId,
+        sourceBranch: 'feature',
+        targetBranch: 'main',
+        title: 'PR de teste',
+      });
+
+      const lista = await provider.listPullRequests(input);
+      expect(lista.truncated).toBe(false);
+      const encontrada = lista.items.find((item) => item.id === pr.id);
+      expect(encontrada).toBeDefined();
+      expect(encontrada!.sourceBranch).toBe('feature');
+      expect(encontrada!.targetBranch).toBe('main');
+      expect(encontrada!.state).toBe('open');
+      expect(encontrada!.title).toBe('PR de teste');
+    });
+
+    it('listPullRequests: filtra por `state` quando informado', async () => {
+      if (!provider.capabilities.pullRequestsList) return;
+      if (!provider.capabilities.pullRequests) return;
+
+      const repo = await provider.createRepo({
+        name: 'pr-list-filtro',
+        visibility: 'private',
+      });
+      await provider.commitFiles({
+        externalId: repo.externalId,
+        branch: 'main',
+        message: 'inicial',
+        files: [{ path: 'a.txt', content: 'a' }],
+      });
+      await provider.createBranch({
+        externalId: repo.externalId,
+        branchName: 'feature',
+        fromRef: 'main',
+      });
+      const pr = await provider.openPullRequest({
+        externalId: repo.externalId,
+        sourceBranch: 'feature',
+        targetBranch: 'main',
+        title: 'PR de teste',
+      });
+
+      const abertas = await provider.listPullRequests({
+        externalId: repo.externalId,
+        state: 'open',
+      });
+      expect(abertas.items.some((item) => item.id === pr.id)).toBe(true);
+
+      const mescladas = await provider.listPullRequests({
+        externalId: repo.externalId,
+        state: 'merged',
+      });
+      expect(mescladas.items.some((item) => item.id === pr.id)).toBe(false);
+    });
+
+    // --- listBranchesDetailed (15ª operação, FASE 26b) ---
+
+    it('listBranchesDetailed: respeita capabilities.branchesDetailed e computa ahead/behind contra a default', async () => {
+      const repo = await provider.createRepo({
+        name: 'branch-detail',
+        visibility: 'private',
+      });
+
+      const input = { externalId: repo.externalId, defaultBranch: 'main' };
+
+      if (!provider.capabilities.branchesDetailed) {
+        await expect(provider.listBranchesDetailed(input)).rejects.toThrow(
+          GitNotSupportedError,
+        );
+        return;
+      }
+
+      await provider.commitFiles({
+        externalId: repo.externalId,
+        branch: 'main',
+        message: 'inicial',
+        files: [{ path: 'a.txt', content: 'a' }],
+      });
+      await provider.createBranch({
+        externalId: repo.externalId,
+        branchName: 'feature',
+        fromRef: 'main',
+      });
+      await provider.commitFiles({
+        externalId: repo.externalId,
+        branch: 'feature',
+        message: 'segundo',
+        files: [{ path: 'b.txt', content: 'b' }],
+      });
+
+      const lista = await provider.listBranchesDetailed(input);
+      expect(lista.truncated).toBe(false);
+
+      const main = lista.items.find((b) => b.name === 'main');
+      expect(main?.ahead).toBe(0);
+      expect(main?.behind).toBe(0);
+
+      const feature = lista.items.find((b) => b.name === 'feature');
+      expect(feature).toBeDefined();
+      expect(feature!.ahead).toBe(1);
+      expect(feature!.behind).toBe(0);
+    });
+
+    it('listBranchesDetailed: a PR aberta com a branch como origem aparece associada', async () => {
+      if (!provider.capabilities.branchesDetailed) return;
+      if (!provider.capabilities.pullRequests) return;
+
+      const repo = await provider.createRepo({
+        name: 'branch-detail-pr',
+        visibility: 'private',
+      });
+      await provider.commitFiles({
+        externalId: repo.externalId,
+        branch: 'main',
+        message: 'inicial',
+        files: [{ path: 'a.txt', content: 'a' }],
+      });
+      await provider.createBranch({
+        externalId: repo.externalId,
+        branchName: 'feature',
+        fromRef: 'main',
+      });
+      const pr = await provider.openPullRequest({
+        externalId: repo.externalId,
+        sourceBranch: 'feature',
+        targetBranch: 'main',
+        title: 'PR de teste',
+      });
+
+      const lista = await provider.listBranchesDetailed({
+        externalId: repo.externalId,
+        defaultBranch: 'main',
+      });
+      const feature = lista.items.find((b) => b.name === 'feature');
+      expect(feature?.pullRequest).toEqual({
+        number: pr.number,
+        state: 'open',
+      });
+    });
+
     // Containers da api rodam como root em dev (ver docker/api/Dockerfile) —
     // root ignora permissões Unix, então chmod não reproduz EACCES real.
     // Pulado nesse caso em vez de fingir que passou.
