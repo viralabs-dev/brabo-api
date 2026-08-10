@@ -19,11 +19,52 @@ import { comparaEmTempoConstante } from './auth-key-material';
  * sem janela em que uma recusa a outra. É a mesma dança de três etapas do
  * `AUTH_JWT_SECRET` e do `CREDENTIALS_MASTER_KEY`, e o runbook trata as três
  * no mesmo lugar.
+ *
+ * ## Sem default em produção
+ *
+ * Mesma regra de `resolveOauthStateSecret()` (ADR 0059, RN-093, estendido
+ * pela RN-110): o default abaixo é público neste repositório, e o
+ * `docker-compose.prod.yml` o supria como fallback — o caminho real de erro
+ * tinha a variável DEFINIDA, com o valor errado. Em produção ela é
+ * obrigatória, o literal de exemplo é recusado mesmo definido explicitamente,
+ * e há um piso de 16 caracteres.
  */
 const PADRAO_DEV = 'dev-service-token-change-me';
+const TAMANHO_MINIMO = 16;
 
 export function tokenDeServicoAtual(): string {
-  return process.env.BRABO_SERVICE_TOKEN ?? PADRAO_DEV;
+  const producao = process.env.NODE_ENV === 'production';
+  const bruto = (process.env.BRABO_SERVICE_TOKEN ?? '').trim();
+
+  if (!producao) {
+    return bruto || PADRAO_DEV;
+  }
+
+  if (!bruto) {
+    throw new Error(
+      'BRABO_SERVICE_TOKEN é obrigatória em produção — é o que autentica o ' +
+        'tráfego interno api <-> engine, e o default de desenvolvimento é ' +
+        'público neste repositório.',
+    );
+  }
+
+  if (bruto === PADRAO_DEV) {
+    throw new Error(
+      'BRABO_SERVICE_TOKEN está com o valor de exemplo do repositório, que é ' +
+        'público — em produção isso equivale a não ter autenticação nenhuma ' +
+        'entre api e engine. Gere um próprio (ex.: `openssl rand -base64 32`).',
+    );
+  }
+
+  if (bruto.length < TAMANHO_MINIMO) {
+    throw new Error(
+      `BRABO_SERVICE_TOKEN tem ${bruto.length} caracteres; o mínimo em ` +
+        `produção é ${TAMANHO_MINIMO}. Gere um aleatório (ex.: ` +
+        '`openssl rand -base64 32`).',
+    );
+  }
+
+  return bruto;
 }
 
 function tokenDeServicoAnterior(): string | null {
