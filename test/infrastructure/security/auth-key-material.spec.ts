@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { passphraseAtual } from '../../../src/infrastructure/security/auth-key-material';
 
 /**
- * Passphrase que deriva o par Ed25519 do access token (RN-110, mesmo padrão
+ * Passphrase que deriva o par Ed25519 do access token (RN-114, mesmo padrão
  * do `GIT_OAUTH_STATE_SECRET` — ADR 0059/RN-093).
  *
  * Mesma observação de `oauth-state-secret.spec.ts`: o caso que interessa não

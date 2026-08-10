@@ -53,7 +53,7 @@ const SALT_DUMMY = 'brabo-auth-dummy-salt';
  * Default de DESENVOLVIMENTO, público neste repositório (`.env.example`).
  *
  * Em produção ele é recusado pelo mesmo motivo do `GIT_OAUTH_STATE_SECRET`
- * (ADR 0059, RN-093, estendido pela RN-110): um segredo com valor padrão
+ * (ADR 0059, RN-093, estendido pela RN-114): um segredo com valor padrão
  * conhecido não protege nada, e o `docker-compose.prod.yml` supria este
  * literal como fallback — o caminho real de erro tinha a variável DEFINIDA,
  * então "não vazia" não pegaria o defeito.
@@ -84,7 +84,7 @@ export function derivarParEd25519(passphrase: string): ParDeChaves {
  * de produção o default de desenvolvimento vale, para o `docker compose up`
  * sem `.env` continuar funcionando; em produção a variável é obrigatória, o
  * literal de exemplo é rejeitado mesmo definido explicitamente, e há um piso
- * de 16 caracteres (RN-110).
+ * de 16 caracteres (RN-114).
  */
 export function passphraseAtual(): string {
   const producao = process.env.NODE_ENV === 'production';

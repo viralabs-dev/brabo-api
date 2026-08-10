@@ -23,7 +23,7 @@ import { comparaEmTempoConstante } from './auth-key-material';
  * ## Sem default em produção
  *
  * Mesma regra de `resolveOauthStateSecret()` (ADR 0059, RN-093, estendido
- * pela RN-110): o default abaixo é público neste repositório, e o
+ * pela RN-114): o default abaixo é público neste repositório, e o
  * `docker-compose.prod.yml` o supria como fallback — o caminho real de erro
  * tinha a variável DEFINIDA, com o valor errado. Em produção ela é
  * obrigatória, o literal de exemplo é recusado mesmo definido explicitamente,

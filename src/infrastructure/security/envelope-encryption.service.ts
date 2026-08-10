@@ -19,7 +19,7 @@ const SALT = 'brabo-credentials-salt';
  * Default de DESENVOLVIMENTO, público neste repositório (`.env.example`).
  *
  * Recusado em produção pelo mesmo motivo do `GIT_OAUTH_STATE_SECRET` (ADR
- * 0059, RN-093, estendido pela RN-110): o `docker-compose.prod.yml` supria
+ * 0059, RN-093, estendido pela RN-114): o `docker-compose.prod.yml` supria
  * este literal como fallback, então o caminho real de erro tinha a variável
  * DEFINIDA — "não vazia" não pegaria o defeito. A checagem aqui é só de
  * BOOT (ausente/exemplo/curta); não mexe no mecanismo de ROTAÇÃO, que
