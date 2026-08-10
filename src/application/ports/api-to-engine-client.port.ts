@@ -124,6 +124,11 @@ export abstract class ApiToEngineClient {
   // engine enfileira o job do PsychologistWorker com triggeredBy:
   // "manual" (sempre roda, mesmo se já houver análise current pra
   // sessão; a análise antiga vira superseded, não é apagada).
+  //
+  // Lança `PsychologistDisabledError` quando a flag global
+  // `PSYCHOLOGIST_ENABLED` do engine está desligada (decisão de produto —
+  // ver docs/explanation/backlog.md); o chamador decide o que fazer com
+  // isso.
   abstract reanalyzeSession(
     projectId: string,
     sessionId: string,
