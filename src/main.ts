@@ -13,16 +13,24 @@ import { GitProviderErrorFilter } from './interfaces/http/shared/git-provider-er
 import { LlmBindingErrorFilter } from './interfaces/http/shared/llm-binding-error.filter';
 import { resolveCorsOrigins } from './infrastructure/security/cors-origins';
 import { resolveOauthStateSecret } from './infrastructure/security/oauth-state-secret';
+import { passphraseAtual } from './infrastructure/security/auth-key-material';
+import { tokenDeServicoAtual } from './infrastructure/security/service-token';
 import { helmetOptions } from './infrastructure/security/security-headers';
 import { SwaggerModule } from '@nestjs/swagger';
 import { montarDocumento } from './infrastructure/openapi/documento';
 
 async function bootstrap() {
-  // ANTES de subir qualquer coisa: em produção, a chave que assina o `state` do
-  // OAuth de git não pode ser a de exemplo (ver oauth-state-secret.ts). Aqui, e
-  // não no primeiro uso, porque o primeiro uso pode demorar semanas — e nesse
-  // intervalo a api estaria de pé aceitando `state` assinado com chave pública.
+  // ANTES de subir qualquer coisa: em produção, nenhum destes segredos pode
+  // ficar no valor de exemplo (RN-093/RN-110). Aqui, e não no primeiro uso,
+  // porque o primeiro uso pode demorar semanas — e nesse intervalo a api
+  // estaria de pé assinando/autenticando com uma chave pública neste
+  // repositório. `CREDENTIALS_MASTER_KEY` é validada à parte, no construtor de
+  // `EnvelopeEncryptionService`: ela é resolvida via injeção de dependência
+  // quando `NestFactory.create` monta o grafo de providers, logo abaixo — e é
+  // esse boot, e não uma chamada eager aqui, que a exercita.
   resolveOauthStateSecret();
+  passphraseAtual();
+  tokenDeServicoAtual();
 
   // `bufferLogs`: as linhas emitidas ANTES de o logger estar pronto ficam na
   // fila e são reemitidas em JSON, em vez de sair no formato default do Nest —

@@ -16,6 +16,19 @@ const DEK_LENGTH = 32;
 const SALT = 'brabo-credentials-salt';
 
 /**
+ * Default de DESENVOLVIMENTO, público neste repositório (`.env.example`).
+ *
+ * Recusado em produção pelo mesmo motivo do `GIT_OAUTH_STATE_SECRET` (ADR
+ * 0059, RN-093, estendido pela RN-110): o `docker-compose.prod.yml` supria
+ * este literal como fallback, então o caminho real de erro tinha a variável
+ * DEFINIDA — "não vazia" não pegaria o defeito. A checagem aqui é só de
+ * BOOT (ausente/exemplo/curta); não mexe no mecanismo de ROTAÇÃO, que
+ * continua sendo `CREDENTIALS_MASTER_KEY_PREVIOUS` + `rewrap-deks.ts`.
+ */
+const PASSPHRASE_PADRAO = 'dev-master-key-change-me';
+const TAMANHO_MINIMO = 16;
+
+/**
  * Envelope encryption dos segredos do usuário (chaves de LLM e tokens de git).
  *
  * ## Rotação da chave mestra (Fase 5, item 3)
@@ -45,10 +58,8 @@ export class EnvelopeEncryptionService implements EncryptionService {
 
   constructor() {
     // Aceita qualquer tamanho de passphrase (não exige exatos 32 bytes);
-    // deriva uma chave AES-256 válida via scrypt — mesmo estilo `?? default`
-    // usado no resto do código pra variáveis de ambiente.
-    const passphrase =
-      process.env.CREDENTIALS_MASTER_KEY ?? 'dev-master-key-change-me';
+    // deriva uma chave AES-256 válida via scrypt.
+    const passphrase = EnvelopeEncryptionService.resolveMasterKeyPassphrase();
     this.masterKey = scryptSync(passphrase, SALT, 32);
 
     const previous = process.env.CREDENTIALS_MASTER_KEY_PREVIOUS;
@@ -66,6 +77,48 @@ export class EnvelopeEncryptionService implements EncryptionService {
           'Rode `node scripts/rewrap-deks.js` e remova a variável ao terminar.',
       );
     }
+  }
+
+  /**
+   * Resolve a passphrase da chave mestra, com a mesma regra de
+   * `resolveOauthStateSecret()`: fora de produção o default de
+   * desenvolvimento vale; em produção a variável é obrigatória, o literal de
+   * exemplo é recusado mesmo definido explicitamente, e há um piso de 16
+   * caracteres.
+   */
+  private static resolveMasterKeyPassphrase(): string {
+    const producao = process.env.NODE_ENV === 'production';
+    const bruto = (process.env.CREDENTIALS_MASTER_KEY ?? '').trim();
+
+    if (!producao) {
+      return bruto || PASSPHRASE_PADRAO;
+    }
+
+    if (!bruto) {
+      throw new Error(
+        'CREDENTIALS_MASTER_KEY é obrigatória em produção — ela embrulha os ' +
+          'DEKs que cifram as credenciais do usuário, e o default de ' +
+          'desenvolvimento é público neste repositório.',
+      );
+    }
+
+    if (bruto === PASSPHRASE_PADRAO) {
+      throw new Error(
+        'CREDENTIALS_MASTER_KEY está com o valor de exemplo do repositório, ' +
+          'que é público — em produção isso equivale a não cifrar credencial ' +
+          'nenhuma. Gere uma própria (ex.: `openssl rand -base64 32`).',
+      );
+    }
+
+    if (bruto.length < TAMANHO_MINIMO) {
+      throw new Error(
+        `CREDENTIALS_MASTER_KEY tem ${bruto.length} caracteres; o mínimo em ` +
+          `produção é ${TAMANHO_MINIMO}. Gere uma aleatória (ex.: ` +
+          '`openssl rand -base64 32`).',
+      );
+    }
+
+    return bruto;
   }
 
   encrypt(plaintext: string): EncryptedSecret {
