@@ -21,7 +21,7 @@ import { montarDocumento } from './infrastructure/openapi/documento';
 
 async function bootstrap() {
   // ANTES de subir qualquer coisa: em produção, nenhum destes segredos pode
-  // ficar no valor de exemplo (RN-093/RN-110). Aqui, e não no primeiro uso,
+  // ficar no valor de exemplo (RN-093/RN-114). Aqui, e não no primeiro uso,
   // porque o primeiro uso pode demorar semanas — e nesse intervalo a api
   // estaria de pé assinando/autenticando com uma chave pública neste
   // repositório. `CREDENTIALS_MASTER_KEY` é validada à parte, no construtor de

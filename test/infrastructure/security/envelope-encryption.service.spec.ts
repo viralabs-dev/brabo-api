@@ -131,7 +131,7 @@ describe('EnvelopeEncryptionService', () => {
   });
 
   /**
-   * `CREDENTIALS_MASTER_KEY` sem default em produção (RN-110, mesmo padrão do
+   * `CREDENTIALS_MASTER_KEY` sem default em produção (RN-114, mesmo padrão do
    * `GIT_OAUTH_STATE_SECRET` — ADR 0059/RN-093). Mesma observação dos outros
    * dois specs desta família: o caso que interessa não é o feliz, é o de
    * subir produção sem configurar — e o caso central é a chave DEFINIDA com o

@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { tokenDeServicoAtual } from '../../../src/infrastructure/security/service-token';
 
 /**
- * Segredo compartilhado do tráfego interno api <-> engine (RN-110, mesmo
+ * Segredo compartilhado do tráfego interno api <-> engine (RN-114, mesmo
  * padrão do `GIT_OAUTH_STATE_SECRET` — ADR 0059/RN-093).
  *
  * Mesma observação de `oauth-state-secret.spec.ts`: o caso que interessa não
