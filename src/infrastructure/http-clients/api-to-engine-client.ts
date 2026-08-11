@@ -98,6 +98,17 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     });
   }
 
+  async cancelAgentTurn(
+    projectId: string,
+    sessionId: string,
+    agent: string,
+  ): Promise<void> {
+    await this.postCommand(`/internal/sessions/${sessionId}/agent/cancel`, {
+      projectId,
+      agent,
+    });
+  }
+
   async offerInfraHandoff(projectId: string, sessionId: string): Promise<void> {
     await this.postCommand(
       `/internal/sessions/${sessionId}/agent/offer-infra-handoff`,

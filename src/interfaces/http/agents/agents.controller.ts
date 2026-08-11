@@ -15,6 +15,7 @@ import type { User } from '../../../domain/iam/user.entity';
 import { RequireRole } from '../iam/require-role.decorator';
 import { ActivateAgentUseCase } from '../../../application/use-cases/agents/activate-agent.use-case';
 import { SendAgentMessageUseCase } from '../../../application/use-cases/agents/send-agent-message.use-case';
+import { CancelAgentTurnUseCase } from '../../../application/use-cases/agents/cancel-agent-turn.use-case';
 import { ConfirmReadinessUseCase } from '../../../application/use-cases/agents/confirm-readiness.use-case';
 import { OfferInfraHandoffUseCase } from '../../../application/use-cases/agents/offer-infra-handoff.use-case';
 import { AcceptHandoffUseCase } from '../../../application/use-cases/agents/accept-handoff.use-case';
@@ -42,6 +43,7 @@ export class AgentsController {
   constructor(
     private readonly activateAgent: ActivateAgentUseCase,
     private readonly sendAgentMessage: SendAgentMessageUseCase,
+    private readonly cancelAgentTurn: CancelAgentTurnUseCase,
     private readonly confirmReadiness: ConfirmReadinessUseCase,
     private readonly offerInfraHandoff: OfferInfraHandoffUseCase,
     private readonly acceptHandoff: AcceptHandoffUseCase,
@@ -104,6 +106,30 @@ export class AgentsController {
       dto.text,
       user.id,
     );
+  }
+
+  @Post('agents/:agent/cancel')
+  @RequireRole('developer')
+  @ApiParam({
+    name: 'agent',
+    example: 'po',
+    description: 'Slug do agente ativo.',
+  })
+  @ApiOperation({
+    summary: 'Cancela o turno em curso do agente ativo',
+    description:
+      'O botão "Parar" do composer (RN-121): mata a chamada ao LLM em curso no ' +
+      'engine, cortando a conexão no meio — economiza token de verdade, não só ' +
+      'para de renderizar no cliente. Idempotente: sem turno em curso, é aceito ' +
+      'sem efeito.',
+  })
+  @ApiCreatedResponse({ type: OkResponseDto })
+  cancel(
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @Param('agent') agent: string,
+  ) {
+    return this.cancelAgentTurn.execute(projectId, sessionId, agent);
   }
 
   @Post('readiness')

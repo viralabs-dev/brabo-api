@@ -53,6 +53,19 @@ export abstract class ApiToEngineClient {
     sessionId: string,
   ): Promise<void>;
 
+  /**
+   * Cancela o turno em curso do agente conversacional (RN-121, o botão
+   * "Parar" do composer) — mata a Task que segura a chamada ao LLM no
+   * engine, cortando a conexão SSE no meio para economizar token de
+   * verdade, não só parar de renderizar no cliente. Idempotente: sem
+   * turno em curso (ou sem o agente de pé), é NO-OP no engine.
+   */
+  abstract cancelAgentTurn(
+    projectId: string,
+    sessionId: string,
+    agent: string,
+  ): Promise<void>;
+
   // --- Execução (Fase 4a) ---
 
   // Sobe os DevAgentServers (um por módulo) no engine. `impl` escolhe a
