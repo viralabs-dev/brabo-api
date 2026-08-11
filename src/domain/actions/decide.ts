@@ -3,6 +3,10 @@ import type { PermissionPolicy, PermissionsFile } from './permissions-file';
 import { matchesPattern, parseCommand } from './command-matcher';
 import { isProtectedBranch } from './protected-branches';
 import { comandoNoEscopo } from './path-scope';
+import {
+  efeitoExternoNoComando,
+  mensagemDeEfeitoExterno,
+} from './external-effect';
 
 export type ActionType =
   | 'terminal'
@@ -139,6 +143,23 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
       policy: 'deny',
       reason: `IAM insuficiente: "${action.actionType}" exige papel >= ${minRole}`,
     };
+  }
+
+  // FRONTEIRA DO CONTAINER (ADR 0065, RN-106). Aplicada ANTES de qualquer
+  // estágio permissivo porque não é uma preferência: é onde o container
+  // termina. `git push`, abertura de PR e deploy atravessam a parede e chegam
+  // no mundo, e a constituição do produto os declara humanos.
+  //
+  // `deny` e não `require_approval` porque existe "sempre permitir": um clique
+  // gravaria o padrão em `allow` e a segunda porta ficaria aberta para sempre.
+  // Negar aqui não tira poder do agente — a mensagem diz qual ação TIPADA usar,
+  // e é ela que nasce `proposed_action`, registra no event log o que foi
+  // empurrado e para onde, e passa pela decisão do usuário.
+  if (action.actionType === 'terminal' && action.command) {
+    const efeito = efeitoExternoNoComando(parseCommand(action.command));
+    if (efeito) {
+      return { policy: 'deny', reason: mensagemDeEfeitoExterno(efeito) };
+    }
   }
 
   let current: Decision = {

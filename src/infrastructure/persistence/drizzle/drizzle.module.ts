@@ -5,6 +5,7 @@ import { WorkspaceRepository } from '../../../application/ports/workspace-reposi
 import { ProjectRepository } from '../../../application/ports/project-repository.port';
 import { SessionRepository } from '../../../application/ports/session-repository.port';
 import { SessionEventRepository } from '../../../application/ports/session-event-repository.port';
+import { SessionSocketTicketRepository } from '../../../application/ports/session-socket-ticket-repository.port';
 import { OutboxRepository } from '../../../application/ports/outbox-repository.port';
 import { ModelRepository } from '../../../application/ports/model-repository.port';
 import { WorkspaceModelRepository } from '../../../application/ports/workspace-model-repository.port';
@@ -59,6 +60,7 @@ import { DrizzleProjectRepository } from './project.repository';
 import { DrizzleProjectsSummaryRepository } from './projects-summary.repository';
 import { DrizzleSessionRepository } from './session.repository';
 import { DrizzleSessionEventRepository } from './session-event.repository';
+import { DrizzleSessionSocketTicketRepository } from './session-socket-ticket.repository';
 import { DrizzleOutboxRepository } from './outbox.repository';
 import { DrizzleModelRepository } from './model.repository';
 import { DrizzleWorkspaceModelRepository } from './workspace-model.repository';
@@ -125,6 +127,10 @@ const { db, pool } = createDrizzleClient();
     {
       provide: SessionEventRepository,
       useClass: DrizzleSessionEventRepository,
+    },
+    {
+      provide: SessionSocketTicketRepository,
+      useClass: DrizzleSessionSocketTicketRepository,
     },
     { provide: OutboxRepository, useClass: DrizzleOutboxRepository },
     { provide: ModelRepository, useClass: DrizzleModelRepository },
@@ -224,6 +230,7 @@ const { db, pool } = createDrizzleClient();
     ProjectRepository,
     SessionRepository,
     SessionEventRepository,
+    SessionSocketTicketRepository,
     OutboxRepository,
     ModelRepository,
     WorkspaceModelRepository,

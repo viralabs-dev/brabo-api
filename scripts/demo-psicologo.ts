@@ -71,6 +71,7 @@ import { ReanalyzeSessionUseCase } from '../src/application/use-cases/execution/
 import { PsychologistAnalysisRepository } from '../src/application/ports/psychologist-analysis-repository.port';
 import type { PsychologistAnalysisWithCost } from '../src/domain/psychologist/psychologist-analysis.entity';
 import type { PsychologistHypothesis } from '../src/domain/psychologist/psychologist-hypothesis.entity';
+import { chaveDeAgente } from '../src/domain/llm/binding-scope-id';
 
 // Modelo do tier LEVE (mais barato) e do PESADO. Sobrescrevíveis pra rodar
 // contra provider pago, onde os preços já divergem sem truque nenhum.
@@ -298,11 +299,16 @@ async function main() {
 
   await setModelBinding.execute(
     'agent',
-    'psicologo-leve',
+    chaveDeAgente(project.id, 'psicologo-leve'),
     modeloLeve.id,
     user.id,
   );
-  await setModelBinding.execute('agent', 'psicologo', modeloPesado.id, user.id);
+  await setModelBinding.execute(
+    'agent',
+    chaveDeAgente(project.id, 'psicologo'),
+    modeloPesado.id,
+    user.id,
+  );
   await setModelBinding.execute(
     'project',
     project.id,
@@ -318,7 +324,9 @@ async function main() {
 
   // --- as 3 sessões ---
   async function semearSessao(quantidadeEventos: number) {
-    const session = await createSession.execute(project.id, user.id);
+    const session = await createSession.execute(project.id, user.id, {
+      kind: 'criativa',
+    });
     await transition.execute(project.id, session.id, 'active');
     for (const evento of eventosDeConversa(quantidadeEventos)) {
       await appendEvent.execute(project.id, session.id, evento);

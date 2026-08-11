@@ -14,9 +14,13 @@ function comChaves(
 }
 
 describe('EnvelopeEncryptionService', () => {
+  const nodeEnvOriginal = process.env.NODE_ENV;
+
   afterEach(() => {
     delete process.env.CREDENTIALS_MASTER_KEY;
     delete process.env.CREDENTIALS_MASTER_KEY_PREVIOUS;
+    if (nodeEnvOriginal === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = nodeEnvOriginal;
   });
 
   it('caminho feliz: decrypt(encrypt(x)) retorna x', () => {
@@ -123,6 +127,72 @@ describe('EnvelopeEncryptionService', () => {
 
       const semFallback = comChaves('chave-nova');
       expect(() => semFallback.decrypt(secret)).toThrow();
+    });
+  });
+
+  /**
+   * `CREDENTIALS_MASTER_KEY` sem default em produção (RN-114, mesmo padrão do
+   * `GIT_OAUTH_STATE_SECRET` — ADR 0059/RN-093). Mesma observação dos outros
+   * dois specs desta família: o caso que interessa não é o feliz, é o de
+   * subir produção sem configurar — e o caso central é a chave DEFINIDA com o
+   * valor de exemplo, porque era esse o caminho real de erro com o
+   * `docker-compose.prod.yml` suprindo o literal como fallback.
+   *
+   * Fica FORA de escopo aqui qualquer mecanismo de rotação — esse já existe
+   * (`CREDENTIALS_MASTER_KEY_PREVIOUS` + `rewrap-deks.ts`) e está coberto
+   * acima; esta checagem é só de BOOT.
+   */
+  describe('validação de produção', () => {
+    it('caminho feliz: em produção, constrói com a chave configurada', () => {
+      process.env.NODE_ENV = 'production';
+      process.env.CREDENTIALS_MASTER_KEY = 'chave-de-teste-nao-e-segredo';
+      expect(() => new EnvelopeEncryptionService()).not.toThrow();
+    });
+
+    it('em produção, a chave de EXEMPLO do repositório derruba o boot', () => {
+      process.env.NODE_ENV = 'production';
+      process.env.CREDENTIALS_MASTER_KEY = 'dev-master-key-change-me';
+      expect(() => new EnvelopeEncryptionService()).toThrow(
+        /valor de exemplo/i,
+      );
+    });
+
+    it('em produção, sem a variável, derruba o boot', () => {
+      process.env.NODE_ENV = 'production';
+      expect(() => new EnvelopeEncryptionService()).toThrow(
+        /obrigatória em produção/i,
+      );
+    });
+
+    it('em produção, chave curta derruba o boot', () => {
+      process.env.NODE_ENV = 'production';
+      process.env.CREDENTIALS_MASTER_KEY = 'senha123';
+      expect(() => new EnvelopeEncryptionService()).toThrow(
+        /mínimo em produção/i,
+      );
+    });
+
+    it('em produção, espaço em volta não conta como chave', () => {
+      process.env.NODE_ENV = 'production';
+      process.env.CREDENTIALS_MASTER_KEY = '   ';
+      expect(() => new EnvelopeEncryptionService()).toThrow(
+        /obrigatória em produção/i,
+      );
+    });
+
+    it('fora de produção, sem a variável, cai no default de desenvolvimento', () => {
+      process.env.NODE_ENV = 'development';
+      // O default de dev não derruba nada, e continua interoperando com
+      // decrypt() de uma instância construída com o mesmo default implícito.
+      const semVar = new EnvelopeEncryptionService();
+      const secret = semVar.encrypt('sk-ant-super-secreta-123');
+      expect(semVar.decrypt(secret)).toBe('sk-ant-super-secreta-123');
+    });
+
+    it('fora de produção, chave curta é aceita', () => {
+      process.env.NODE_ENV = 'development';
+      process.env.CREDENTIALS_MASTER_KEY = 'curta';
+      expect(() => new EnvelopeEncryptionService()).not.toThrow();
     });
   });
 });

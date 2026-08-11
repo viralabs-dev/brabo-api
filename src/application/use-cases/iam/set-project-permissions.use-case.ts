@@ -13,7 +13,7 @@ export class SetProjectPermissionsUseCase {
   async execute(projectId: string, file: PermissionsFile) {
     const project = await this.projects.findById(projectId);
     if (!project) throw new NotFoundException('Projeto não encontrado');
-    await this.permissionsFileStore.write(projectId, file);
+    await this.permissionsFileStore.write(project.workspaceDirName, file);
     return file;
   }
 }

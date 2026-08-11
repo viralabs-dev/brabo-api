@@ -23,8 +23,18 @@ export interface ProjectInput {
 }
 
 export abstract class ProjectRepository {
+  // `id` e `workspaceDirName` chegam PRONTOS de quem chama (CreateProjectUseCase):
+  // o nome da pasta se compõe do id ANTES de o projeto existir, então o id não
+  // pode vir do `defaultRandom()` do Postgres — é gerado em código
+  // (`crypto.randomUUID()`) para o use case poder montar `workspaceDirName`
+  // na mesma chamada.
   abstract create(
-    input: ProjectInput & { workspaceId: string; createdBy: string },
+    input: ProjectInput & {
+      id: string;
+      workspaceId: string;
+      createdBy: string;
+      workspaceDirName: string;
+    },
   ): Promise<Project>;
   abstract findById(id: string): Promise<Project | null>;
   abstract listForWorkspace(workspaceId: string): Promise<Project[]>;

@@ -6,6 +6,8 @@ import { Traced } from '../observability/traced.decorator';
 import { ApiToEngineClient } from '../../application/ports/api-to-engine-client.port';
 import type { TerminalExecutionResult } from '../../domain/actions/terminal-execution-result';
 import type { DevAgentImpl } from '../../domain/execution/dev-agent-impl';
+import { AnamneseDisabledError } from '../../domain/anamnese/anamnese-disabled.error';
+import { PsychologistDisabledError } from '../../domain/psychologist/psychologist-disabled.error';
 
 /**
  * Comando síncrono api -> engine: cria o processo de sessão
@@ -96,6 +98,17 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     });
   }
 
+  async cancelAgentTurn(
+    projectId: string,
+    sessionId: string,
+    agent: string,
+  ): Promise<void> {
+    await this.postCommand(`/internal/sessions/${sessionId}/agent/cancel`, {
+      projectId,
+      agent,
+    });
+  }
+
   async offerInfraHandoff(projectId: string, sessionId: string): Promise<void> {
     await this.postCommand(
       `/internal/sessions/${sessionId}/agent/offer-infra-handoff`,
@@ -110,15 +123,62 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     );
   }
 
+  /**
+   * Não usa `postCommand`: precisa distinguir o 503 ("Psicólogo desativado
+   * globalmente", RN — ver `PsychologistDisabledError`) de qualquer outra
+   * falha de transporte, e `postCommand` colapsa todo `!res.ok` num `Error`
+   * genérico que perde o status. Mesmo tratamento de `runAnamnese` abaixo.
+   */
   async reanalyzeSession(projectId: string, sessionId: string): Promise<void> {
-    await this.postCommand(
-      `/internal/sessions/${sessionId}/psychologist/reanalyze`,
-      { projectId },
+    const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
+
+    const res = await fetch(
+      `${engineUrl}/internal/sessions/${sessionId}/psychologist/reanalyze`,
+      {
+        method: 'POST',
+        headers: this.buildHeaders(),
+        body: JSON.stringify({ projectId }),
+      },
     );
+
+    if (res.status === 503) {
+      throw new PsychologistDisabledError();
+    }
+
+    if (!res.ok) {
+      throw new Error(
+        `Falha no comando ao engine (psychologist/reanalyze): ${res.status} ${await res.text()}`,
+      );
+    }
   }
 
+  /**
+   * Não usa `postCommand`: precisa distinguir o 503 ("Anamnese desativada
+   * globalmente", RN — ver `AnamneseDisabledError`) de qualquer outra falha
+   * de transporte, e `postCommand` colapsa todo `!res.ok` num `Error`
+   * genérico que perde o status.
+   */
   async runAnamnese(projectId: string): Promise<void> {
-    await this.postCommand(`/internal/projects/${projectId}/anamnese/run`, {});
+    const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
+
+    const res = await fetch(
+      `${engineUrl}/internal/projects/${projectId}/anamnese/run`,
+      {
+        method: 'POST',
+        headers: this.buildHeaders(),
+        body: JSON.stringify({}),
+      },
+    );
+
+    if (res.status === 503) {
+      throw new AnamneseDisabledError();
+    }
+
+    if (!res.ok) {
+      throw new Error(
+        `Falha no comando ao engine (anamnese/run): ${res.status} ${await res.text()}`,
+      );
+    }
   }
 
   async invalidateInstructions(

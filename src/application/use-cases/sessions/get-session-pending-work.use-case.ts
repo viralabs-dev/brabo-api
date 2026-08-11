@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { HandoffRepository } from '../../ports/handoff-repository.port';
 import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
+import { SessionEventRepository } from '../../ports/session-event-repository.port';
 
 export interface SessionPendingWork {
   pending: boolean;
@@ -24,6 +25,7 @@ export class GetSessionPendingWorkUseCase {
   constructor(
     private readonly handoffs: HandoffRepository,
     private readonly proposedActions: ProposedActionRepository,
+    private readonly sessionEvents: SessionEventRepository,
   ) {}
 
   async execute(sessionId: string): Promise<SessionPendingWork> {
@@ -58,6 +60,42 @@ export class GetSessionPendingWorkUseCase {
       return {
         pending: true,
         motivo: `ação ${acao.actionType} de ${acao.actor?.id ?? 'um agente'} aguardando decisão`,
+      };
+    }
+
+    // Turno de agente em andamento — o defeito real que fez esta sessão
+    // fechar cedo. `AcceptHandoffUseCase` marca o handoff antigo como
+    // `accepted` e ativa o próximo agente na hora, mas a ativação no engine é
+    // `GenServer.cast` (fire-and-forget): entre o cast chegar e o agente
+    // oferecer o handoff seguinte (ou terminar a conversa), NEM handoff
+    // `offered` NEM `proposed_action` pendente existem — só o ping do canal
+    // Phoenix segurava a sessão, e o PO podia levar até 12 iterações de LLM
+    // pra terminar o kickoff.
+    //
+    // `agent.status` narra os limites de turno de todo agente conversacional
+    // (Criativo/PO/Arquiteto/Dev Lead/Infra) e é PERSISTIDO no event log, não
+    // só broadcastado no canal (`Engine.Sessions.LiveBroadcast.agent_status/4`,
+    // ADR 0021) — o mesmo sinal que o painel do time já lê para derivar o
+    // roster (`conversationalStatus` em `apps/web/src/lib/agent-status.ts`).
+    // O último `agent.status` de CADA ator que já falou nesta sessão: se
+    // algum for `working` sem um `idle` posterior, o agente está no meio do
+    // turno.
+    const statusEvents = await this.sessionEvents.listByTypeInSession(
+      sessionId,
+      'agent.status',
+    );
+    const ultimoPorAtor = new Map<string, (typeof statusEvents)[number]>();
+    for (const evento of statusEvents) {
+      ultimoPorAtor.set(evento.actor.id, evento);
+    }
+    const trabalhando = [...ultimoPorAtor.values()].find(
+      (e) => (e.payload as { status?: string } | null)?.status === 'working',
+    );
+
+    if (trabalhando) {
+      return {
+        pending: true,
+        motivo: `agente ${trabalhando.actor.id} em turno (agent.status working sem idle posterior)`,
       };
     }
 

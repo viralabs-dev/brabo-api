@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { ulid } from 'ulid';
 import { createTestDb, truncateAll } from '../../../support/test-db';
 import {
   projects,
@@ -9,6 +10,7 @@ import {
 } from '../../../../src/db/schema';
 import { DrizzleHandoffRepository } from '../../../../src/infrastructure/persistence/drizzle/handoff.repository';
 import { DrizzleProposedActionRepository } from '../../../../src/infrastructure/persistence/drizzle/proposed-action.repository';
+import { DrizzleSessionEventRepository } from '../../../../src/infrastructure/persistence/drizzle/session-event.repository';
 import { GetSessionPendingWorkUseCase } from '../../../../src/application/use-cases/sessions/get-session-pending-work.use-case';
 
 /**
@@ -20,16 +22,28 @@ import { GetSessionPendingWorkUseCase } from '../../../../src/application/use-ca
  * `hello-limpo` produziu a prova: a sessão nasceu 23:34:12, uma ação ficou
  * `pending` às 23:34:13, e o heartbeat a fechou às 23:34:42 — exatamente os 30s
  * do timeout —, enquanto o dev agent seguiu trabalhando por mais de uma hora.
+ *
+ * O TERCEIRO sinal (esta rodada): `AcceptHandoffUseCase` ativa o próximo
+ * agente por `GenServer.cast` fire-and-forget — entre a ativação e o agente
+ * oferecer o handoff seguinte (ou terminar), nem handoff `offered` nem
+ * `proposed_action` pendente existem, só o ping do canal Phoenix segurava a
+ * sessão. `agent.status` (working/idle) é o que os agentes conversacionais
+ * (Criativo/PO/Arquiteto/Dev Lead/Infra) narram nos limites de turno, e é
+ * PERSISTIDO no event log (ADR 0021) — o mesmo sinal que o painel do time já
+ * lê para o roster.
  */
 const { db, pool } = createTestDb();
 const acoes = new DrizzleProposedActionRepository(db);
+const eventos = new DrizzleSessionEventRepository(db);
 const useCase = new GetSessionPendingWorkUseCase(
   new DrizzleHandoffRepository(db),
   acoes,
+  eventos,
 );
 
 beforeEach(async () => {
   await truncateAll(db);
+  seqCounter = 0;
 });
 
 afterAll(async () => {
@@ -75,6 +89,22 @@ const acaoPendente = (projectId: string, sessionId: string) =>
     resolvedPolicy: 'require_approval',
     actor: { kind: 'agent', id: 'dev-http-api' },
     rejectionReason: null,
+  });
+
+let seqCounter = 0;
+
+const agentStatus = (
+  sessionId: string,
+  agentId: string,
+  status: 'working' | 'idle',
+) =>
+  eventos.append({
+    id: ulid(),
+    sessionId,
+    seq: ++seqCounter,
+    type: 'agent.status',
+    actor: { kind: 'agent', id: agentId },
+    payload: { status },
   });
 
 describe('GetSessionPendingWorkUseCase', () => {
@@ -156,5 +186,68 @@ describe('GetSessionPendingWorkUseCase', () => {
     expect(primeira.actionType).toBe('terminal');
     expect(r.motivo).toContain('terminal');
     expect(r.motivo).not.toContain('dev-outro');
+  });
+
+  it('agente ATIVADO ainda em turno SEGURA a sessão (o defeito relatado)', async () => {
+    // O cenário real: o PO foi ativado pelo handoff aceito e está no meio do
+    // kickoff (até 12 iterações de LLM) — `agent.status: working` gravado,
+    // sem `idle` posterior nenhum ainda.
+    const { session } = await sessao();
+    await agentStatus(session.id, 'po', 'working');
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(true);
+    expect(r.motivo).toContain('po');
+  });
+
+  it('agente que já TERMINOU o turno (idle) não segura a sessão', async () => {
+    const { session } = await sessao();
+    await agentStatus(session.id, 'po', 'working');
+    await agentStatus(session.id, 'po', 'idle');
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(false);
+    expect(r.motivo).toBeNull();
+  });
+
+  it('é genérico por tipo de agente — não hardcoded pro "po"', async () => {
+    // Mesma mecânica pro Arquiteto ativando o Infra/Dev Lead via handoff.
+    const { session } = await sessao();
+    await agentStatus(session.id, 'infra', 'working');
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(true);
+    expect(r.motivo).toContain('infra');
+  });
+
+  it('só o ÚLTIMO status de cada ator importa, não a história inteira', async () => {
+    // Criativo terminou (idle); PO foi ativado depois e está em turno agora.
+    // Sem isolar por ator, o idle mais antigo do Criativo não pode mascarar
+    // o working mais recente do PO, nem o contrário.
+    const { session } = await sessao();
+    await agentStatus(session.id, 'criativo', 'working');
+    await agentStatus(session.id, 'criativo', 'idle');
+    await agentStatus(session.id, 'po', 'working');
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(true);
+    expect(r.motivo).toContain('po');
+  });
+
+  it('agent.status de OUTRA sessão não segura esta', async () => {
+    const { session } = await sessao();
+    const [outra] = await db
+      .insert(sessions)
+      .values({ projectId: session.projectId, createdBy: session.createdBy })
+      .returning();
+    await agentStatus(outra.id, 'po', 'working');
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(false);
   });
 });

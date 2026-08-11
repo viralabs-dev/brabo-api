@@ -78,6 +78,9 @@ class NuncaCriaGitProvider implements GitProviderContract {
     this.inner.getFileContent(i);
   commentOnPullRequest: GitProviderContract['commentOnPullRequest'] = (i) =>
     this.inner.commentOnPullRequest(i);
+  listTree: GitProviderContract['listTree'] = (i) => this.inner.listTree(i);
+  getPullRequestDiff: GitProviderContract['getPullRequestDiff'] = (i) =>
+    this.inner.getPullRequestDiff(i);
 }
 
 /** Provider que falha o `getRepo` com o erro pedido — o resto não importa. */

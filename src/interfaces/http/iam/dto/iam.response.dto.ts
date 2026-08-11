@@ -142,6 +142,16 @@ export class ProjectResponseDto implements Wire<Project> {
   })
   slug!: string;
 
+  @ApiProperty({
+    example: 'checkout-3f2b1c8e',
+    description:
+      'Nome da pasta física do workspace deste projeto em ' +
+      'PROJECT_WORKSPACES_ROOT (RN-109). `<slug>-<8 chars do id>` num ' +
+      'projeto novo; o UUID puro num projeto criado antes desta coluna ' +
+      'existir. Congelado na criação — editar `slug` depois não recalcula.',
+  })
+  workspaceDirName!: string;
+
   @ApiProperty({ example: '01JC4Z0000USUARIO0000000001' })
   createdBy!: string;
 
@@ -396,8 +406,11 @@ export class ProjectUnreadEventsResponseDto implements Wire<ProjectUnreadEvents>
   @ApiProperty({
     type: [SessionEventResponseDto],
     description:
-      'Em ordem crescente de `seq`, no máximo os 50 primeiros depois do corte — ' +
-      'o mesmo teto que `GET .../events` aplica sem `limit`.',
+      'Em ordem DECRESCENTE de `seq` — o primeiro item é o mais recente (RN-100). ' +
+      'No máximo 50 por projeto, o mesmo teto que `GET .../events` aplica sem ' +
+      '`limit`, e quando há mais não lidos que isso os que voltam são os mais ' +
+      'NOVOS. Quantos ficaram de fora sai de `latestSeq` menos o corte, sem outra ' +
+      'requisição.',
   })
   events!: Wire<SessionEvent>[];
 }

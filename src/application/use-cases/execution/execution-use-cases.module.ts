@@ -36,8 +36,12 @@ import { ReanalyzeSessionUseCase } from './reanalyze-session.use-case';
 import { GetPsychologistAnalysisCostUseCase } from './get-psychologist-analysis-cost.use-case';
 import { ListPsychologistAnalysesUseCase } from './list-psychologist-analyses.use-case';
 import { AnamneseUseCasesModule } from '../anamnese/anamnese-use-cases.module';
+// Mesmo provider que o IAM registra na criação do projeto (RN-094): aqui ele
+// volta para dizer QUEM são os membros da área de dev, que só a ativação sabe.
+import { SeedAgentAreasUseCase } from '../agents/seed-agent-areas.use-case';
 
 const USE_CASES = [
+  SeedAgentAreasUseCase,
   ActivateExecutionUseCase,
   AcceptParallelizationUseCase,
   RequestParallelizationUseCase,

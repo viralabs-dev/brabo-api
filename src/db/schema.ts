@@ -44,6 +44,15 @@ export const sessionStatusEnum = pgEnum('session_status', [
   'closed_abnormally',
 ]);
 
+// FASE 20 (RN-097) — a INTENÇÃO com que a sessão foi aberta. `consultiva` é só
+// conversa; `criativa` é a que produz, e a única que pode entrar em execução.
+// Não confundir com ESTADO de execução, que continua sendo o evento
+// `execution.activated` — ver domain/sessions/session-kind.ts.
+export const sessionKindEnum = pgEnum('session_kind', [
+  'consultiva',
+  'criativa',
+]);
+
 export const actorKindEnum = pgEnum('actor_kind', ['user', 'agent', 'system']);
 
 // Cursor de progresso do bootstrap de Gitflow (Fase 2, sessão 3) — uma
@@ -93,11 +102,16 @@ export const llmProviderEnum = pgEnum('llm_provider', [
   'vultr',
 ]);
 
-// workspace < project < agent < session, do menos pro mais específico —
+// workspace < project < area < agent < session, do menos pro mais específico —
 // ver domain/llm/binding-resolver.ts pra precedência de resolução.
+//
+// `area` entrou na FASE 23 (ADR 0064): é o modelo PADRÃO que o lead e os
+// subagentes de uma área compartilham, e o binding de `agent` é a divergência
+// que o sobrepõe.
 export const modelBindingScopeEnum = pgEnum('model_binding_scope', [
   'workspace',
   'project',
+  'area',
   'agent',
   'session',
 ]);
@@ -312,6 +326,13 @@ export const projects = pgTable(
       .references(() => workspaces.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     slug: text('slug').notNull(),
+    // O nome da pasta física em PROJECT_WORKSPACES_ROOT — CONGELADO na
+    // criação do projeto e nunca recalculado (RN-109, ver
+    // project-workspaces-root.ts). Projeto novo nasce com
+    // `<slug>-<8 chars do id>` (legível); projeto que já existia antes desta
+    // coluna foi retroativado com o UUID puro, que é o que já era verdade no
+    // disco — o backfill da migração NÃO renomeia diretório nenhum.
+    workspaceDirName: text('workspace_dir_name').notNull().unique(),
     createdBy: uuid('created_by')
       .notNull()
       .references(() => users.id),
@@ -376,6 +397,16 @@ export const sessions = pgTable(
       .notNull()
       .references(() => users.id),
     status: sessionStatusEnum('status').notNull().default('created'),
+    // FASE 20 (RN-097) — INTENÇÃO de criação, escolhida por quem abre a sessão
+    // e imutável depois. O DEFAULT é o tipo que pode MENOS: linha que chegue
+    // sem tipo declarado não ganha o direito de executar. A rota exige o campo
+    // no corpo, então o default só cobre caminho que não passa por ela.
+    kind: sessionKindEnum('kind').notNull().default('consultiva'),
+    // FASE 20 (RN-098) — nome amigável, opcional. NUNCA substitui a hashtag
+    // (`#` + 8 caracteres do id): é ela que se cola numa URL, e nome escolhido
+    // por pessoa não é único. `null` significa "sem nome", e a tela degrada
+    // para a hashtag sozinha.
+    name: text('name'),
     // Contador da próxima seq a atribuir em session_events — incrementado
     // atomicamente via UPDATE (lock de linha) para garantir seq sem gaps
     // mesmo sob escrita concorrente. Ver SessionEventsService.append.
@@ -599,9 +630,12 @@ export const modelBindings = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     scope: modelBindingScopeEnum('scope').notNull(),
-    // Mesma convenção de session_events.actor_id: às vezes UUID
-    // (workspace/project/session), às vezes slug de agente (sem
-    // tabela própria — fase 3+ não implementa agentes de produto).
+    // UUID puro em `workspace`, `project` e `session`, que já se identificam
+    // sozinhos. Em `agent` e `area` é COMPOSTO — `<projectId>:<slug|chave>` —
+    // porque esses dois existem POR PROJETO e o mesmo `qa` aparece em todos
+    // (ADR 0064). O formato e a validação moram em
+    // domain/llm/binding-scope-id.ts; agente e área continuam sem tabela
+    // própria, como em session_events.actor_id.
     scopeId: text('scope_id').notNull(),
     modelId: uuid('model_id')
       .notNull()
@@ -1889,5 +1923,63 @@ export const authLockoutHits = pgTable(
     // sempre "quantos hits deste balde depois de T".
     index('auth_lockout_hits_bucket_idx').on(table.bucketKey, table.occurredAt),
     index('auth_lockout_hits_occurred_idx').on(table.occurredAt),
+  ],
+);
+
+export const socketTicketScopeEnum = pgEnum('socket_ticket_scope', [
+  'heartbeat',
+  'terminal',
+]);
+
+/**
+ * Ticket opaco de uso único pra autenticar `connect/3` do socket Phoenix da
+ * sessão (RN-108) — fecha o gap descrito no moduledoc de
+ * `EngineWeb.SessionSocket`: antes desta tabela, qualquer um que descobrisse
+ * um `session_id` (UUID) entrava no canal e recebia os broadcasts ao vivo.
+ *
+ * NÃO é o JWT reaproveitado: TTL de 30s, uso único, e escopo fechado
+ * (`heartbeat` | `terminal`) — o mesmo papel mínimo de
+ * `MIN_ROLE_FOR_ACTION_TYPE.terminal` em `domain/actions/decide.ts` decide
+ * quem pode pedir escopo `terminal`.
+ *
+ * `ticketHash` é SHA-256 PURO do token bruto (`node:crypto` `createHash`),
+ * não `hashDeToken` (HMAC com pepper). A verificação roda no ENGINE, que lê
+ * esta tabela direto (mesmo padrão de `outbox_events` — ver
+ * `Engine.Outbox.Event`) e não tem acesso ao pepper derivado de
+ * `AUTH_TOKEN_PEPPER`/`AUTH_JWT_SECRET`: exigir isso duplicaria segredo de
+ * auth entre os dois serviços só para verificar um token de 256 bits de
+ * CSPRNG que, como o próprio `hashDeToken` já registra, não tem dicionário
+ * possível — o pepper não protegeria nada aqui que a entropia do token não já
+ * proteja sozinha.
+ */
+export const sessionSocketTickets = pgTable(
+  'session_socket_tickets',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    scope: socketTicketScopeEnum('scope').notNull(),
+    ticketHash: text('ticket_hash').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    // Consumo de uso único — engine marca atomicamente (UPDATE condicional,
+    // mesmo padrão de `account_tokens.consumed_at`). Reuso tem que achar a
+    // linha já marcada e falhar.
+    consumedAt: timestamp('consumed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('session_socket_tickets_hash_idx').on(table.ticketHash),
+    index('session_socket_tickets_session_idx').on(table.sessionId),
+    // A poda apaga por tempo — mesmo padrão de refresh_tokens_expires_idx.
+    index('session_socket_tickets_expires_idx').on(table.expiresAt),
   ],
 );

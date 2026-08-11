@@ -127,6 +127,7 @@ const approveAction = new ApproveActionUseCase(
 );
 const approveAlwaysAction = new ApproveAlwaysActionUseCase(
   proposedActionRepo,
+  projectRepo,
   permissionsFileStore,
   appendSessionEvent,
   approveAction,

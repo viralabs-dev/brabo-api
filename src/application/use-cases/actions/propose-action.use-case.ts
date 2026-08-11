@@ -76,7 +76,7 @@ export class ProposeActionUseCase {
       input.actor.kind === 'agent'
         ? this.agentAutonomy.findMode(projectId, input.actor.id, actionType)
         : Promise.resolve(null as PermissionPolicy | null),
-      this.permissionsFileStore.read(projectId),
+      this.permissionsFileStore.read(project.workspaceDirName),
     ]);
 
     const command =
@@ -100,7 +100,7 @@ export class ProposeActionUseCase {
         effectiveRole,
         autonomyMode,
         permissionsFile,
-        projectScopeRoot: projectScopeRoot(projectId),
+        projectScopeRoot: projectScopeRoot(project.workspaceDirName),
       },
     );
 

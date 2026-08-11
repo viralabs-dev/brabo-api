@@ -4,9 +4,10 @@ import { AgentAreaRepository } from '../../ports/agent-area-repository.port';
 /**
  * As áreas de agente de um projeto, para a tela de Configurações (FASE 14d).
  *
- * Devolve vazio para projeto que nunca ativou execução, e isso NÃO é erro: as
- * áreas nascem no seeding da ativação, porque os membros da área de dev vêm do
- * `module_map` — antes disso não há o que listar.
+ * Desde a RN-094 o projeto nasce com as três áreas, e a lista vem cheia mesmo
+ * antes de existir `module_map`: o que a ativação acrescenta são os MEMBROS da
+ * área de dev, não a área. Vazio aqui deixou de ser normal — é projeto que a
+ * migração de backfill não alcançou.
  */
 @Injectable()
 export class ListAgentAreasUseCase {

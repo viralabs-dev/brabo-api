@@ -15,6 +15,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiServiceUnavailableResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -77,6 +78,11 @@ export class AnamneseController {
       'ToolLoop e gasta orçamento de verdade.',
   })
   @ApiCreatedResponse({ type: OkResponseDto })
+  @ApiServiceUnavailableResponse({
+    description:
+      'A Anamnese está desativada globalmente por decisão do usuário (não é ' +
+      'bug) — corpo com `reason: "anamnese_disabled"`.',
+  })
   run(@Param('projectId') projectId: string) {
     return this.runAnamnese.execute(projectId);
   }

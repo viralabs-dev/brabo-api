@@ -10,9 +10,9 @@ import {
 
 @Injectable()
 export class FsPermissionsFileStore implements PermissionsFileStore {
-  async read(projectId: string): Promise<PermissionsFile> {
+  async read(workspaceDirName: string): Promise<PermissionsFile> {
     try {
-      const raw = await readFile(this.pathFor(projectId), 'utf-8');
+      const raw = await readFile(this.pathFor(workspaceDirName), 'utf-8');
       return JSON.parse(raw) as PermissionsFile;
     } catch (error) {
       if (isNotFound(error)) return EMPTY_PERMISSIONS_FILE;
@@ -20,20 +20,20 @@ export class FsPermissionsFileStore implements PermissionsFileStore {
     }
   }
 
-  async write(projectId: string, file: PermissionsFile): Promise<void> {
-    const path = this.pathFor(projectId);
+  async write(workspaceDirName: string, file: PermissionsFile): Promise<void> {
+    const path = this.pathFor(workspaceDirName);
     await mkdir(dirname(path), { recursive: true });
     await writeFile(path, JSON.stringify(file, null, 2));
   }
 
   async addPattern(
-    projectId: string,
+    workspaceDirName: string,
     list: keyof PermissionsFile,
     pattern: string,
   ): Promise<void> {
-    const current = await this.read(projectId);
+    const current = await this.read(workspaceDirName);
     if (current[list].includes(pattern)) return;
-    await this.write(projectId, {
+    await this.write(workspaceDirName, {
       ...current,
       [list]: [...current[list], pattern],
     });
@@ -42,8 +42,8 @@ export class FsPermissionsFileStore implements PermissionsFileStore {
   // A raiz vem da função compartilhada, e não de uma leitura própria do env:
   // o escopo de caminho do ADR 0055 deriva a MESMA raiz, e duas leituras
   // separadas poderiam divergir — política lida de um lugar, aplicada a outro.
-  private pathFor(projectId: string): string {
-    return join(projectScopeRoot(projectId), 'permissions.json');
+  private pathFor(workspaceDirName: string): string {
+    return join(projectScopeRoot(workspaceDirName), 'permissions.json');
   }
 }
 

@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ModuleMapRepository } from '../../ports/module-map-repository.port';
 import { SessionRepository } from '../../ports/session-repository.port';
 import { TaskRepository } from '../../ports/backlog-repository.port';
@@ -11,6 +15,7 @@ import { TransitionSessionUseCase } from '../sessions/transition-session.use-cas
 import { CreateSessionUseCase } from '../sessions/create-session.use-case';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { UpsertAgentInstructionUseCase } from '../agents/upsert-agent-instruction.use-case';
+import { SeedAgentAreasUseCase } from '../agents/seed-agent-areas.use-case';
 import { DEFAULT_MAX_GATE_CORRECTIONS } from './record-gate-verdict.use-case';
 import {
   DEFAULT_DEV_AGENT_IMPL,
@@ -82,6 +87,7 @@ export class ActivateExecutionUseCase {
     private readonly upsertInstruction: UpsertAgentInstructionUseCase,
     private readonly projects: ProjectRepository,
     private readonly permissionsFile: PermissionsFileStore,
+    private readonly seedAreas: SeedAgentAreasUseCase,
   ) {}
 
   async execute(
@@ -107,6 +113,10 @@ export class ActivateExecutionUseCase {
     // escolhido se perderia na próxima ativação (o engine é quem os
     // guardava, por linha de dev agent).
     const project = await this.projects.findById(projectId);
+    // O module_map vigente encontrado acima só existe se o projeto existir
+    // (FK) — este guard é defensivo, não um caminho alcançável na prática, mas
+    // sem ele o workspaceDirName abaixo seria lido de `null`.
+    if (!project) throw new NotFoundException('Projeto não encontrado');
     const budget =
       taskBudgetMicros ??
       project?.taskBudgetMicros ??
@@ -144,7 +154,11 @@ export class ActivateExecutionUseCase {
     // continue vencendo.
     for (const pattern of terminalAllowPatterns ??
       DEV_TERMINAL_ALLOW_PATTERNS) {
-      await this.permissionsFile.addPattern(projectId, 'allow', pattern);
+      await this.permissionsFile.addPattern(
+        project.workspaceDirName,
+        'allow',
+        pattern,
+      );
     }
 
     // REATIVAR cai na sessão de execução que já existe, em vez de abrir uma
@@ -161,12 +175,25 @@ export class ActivateExecutionUseCase {
     // e `active` para sempre.
     const vigente = await this.sessions.findActiveExecutionSession(projectId);
     const session =
-      vigente ?? (await this.createSession.execute(projectId, userId));
+      vigente ??
+      // `criativa` é obrigatório aqui, e não uma escolha: a próxima coisa que
+      // esta sessão recebe é o `execution.activated` do fim deste método, que
+      // uma sessão consultiva recusa (RN-097).
+      (await this.createSession.execute(projectId, userId, {
+        kind: 'criativa',
+      }));
     if (!vigente) {
       await this.transitionSession.execute(projectId, session.id, 'active');
     }
 
     const modules = moduleMap.modules.map((m) => m.name);
+
+    // As áreas já nasceram com o projeto (RN-094); o que a ativação acrescenta
+    // é QUEM são os membros da área de dev — um `dev-<modulo>` por módulo do
+    // `module_map`, que não existia na criação. `upsert` SUBSTITUI a lista, e é
+    // isso que faz um `module_map` novo não deixar agente fantasma na área.
+    await this.seedAreas.execute(projectId, modules.map(devAgentId));
+
     for (const m of moduleMap.modules) {
       const agentId = devAgentId(m.name);
       await this.upsertInstruction.execute(

@@ -250,7 +250,7 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
 
   /**
    * A gaveta do sino inteira em DUAS consultas, quantos projetos forem
-   * (RN-091).
+   * (RN-091), do MAIS RECENTE para o mais antigo (RN-100).
    *
    * A primeira resolve a sessão mais recente de cada projeto PEDIDO — com
    * `join` em `projects` filtrando por workspace, que é o mesmo passo que
@@ -259,6 +259,13 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
    * `row_number()` aplica o teto POR SESSÃO, que é o que um `limit` no fim não
    * conseguiria (ele cortaria a resposta inteira, e um projeto barulhento
    * comeria a cota dos outros).
+   *
+   * O `DESC` das duas ordenações é a correção da RN-100, e ele é do SQL por
+   * necessidade, não por gosto: a função de janela decide QUAIS 50 eventos
+   * sobrevivem ao teto. Com `ASC` sobreviviam os 50 mais ANTIGOS não lidos, e
+   * um `.sort()` no cliente ordenaria por recência justamente os que a
+   * consulta já tinha escolhido errado — mostrando o 51º evento mais antigo
+   * como se fosse o mais novo do projeto.
    *
    * Raw SQL aqui, e não query builder, por causa dessas duas peças — `VALUES`
    * correlacionado e função de janela. A alternativa em builder seria um laço
@@ -306,14 +313,14 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
       FROM (
         SELECT e.*,
                row_number() OVER (
-                 PARTITION BY e.session_id ORDER BY e.seq ASC
+                 PARTITION BY e.session_id ORDER BY e.seq DESC
                ) AS rn
         FROM session_events e
         JOIN (VALUES ${cortes}) AS c(session_id, after_seq)
           ON e.session_id = c.session_id AND e.seq > c.after_seq
       ) t
       WHERE t.rn <= ${UNREAD_EVENTS_POR_PROJETO}
-      ORDER BY t.session_id, t.seq
+      ORDER BY t.session_id, t.seq DESC
     `);
 
     const porSessao = new Map<string, SessionEvent[]>();

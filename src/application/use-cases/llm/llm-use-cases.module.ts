@@ -9,6 +9,7 @@ import { UpdateModelPricingUseCase } from './update-model-pricing.use-case';
 import { ListModelPriceChangesUseCase } from './list-model-price-changes.use-case';
 import { SetModelBindingUseCase } from './set-model-binding.use-case';
 import { GetModelBindingUseCase } from './get-model-binding.use-case';
+import { ClearModelBindingUseCase } from './clear-model-binding.use-case';
 import { ResolveModelBindingUseCase } from './resolve-model-binding.use-case';
 import { UpsertUserCredentialUseCase } from './upsert-user-credential.use-case';
 import { ListUserCredentialsUseCase } from './list-user-credentials.use-case';
@@ -18,6 +19,8 @@ import { GetBudgetUseCase } from './get-budget.use-case';
 import { GetSessionTokenUsageUseCase } from './get-session-token-usage.use-case';
 import { GetProjectAgentCostsUseCase } from './get-project-agent-costs.use-case';
 import { GetCredentialSpendUseCase } from './get-credential-spend.use-case';
+import { GetWorkspaceSpendReportUseCase } from './get-workspace-spend-report.use-case';
+import { GetMySpendUseCase } from './get-my-spend.use-case';
 import { CheckBudgetGateUseCase } from './check-budget-gate.use-case';
 import { RecordLlmUsageUseCase } from './record-llm-usage.use-case';
 import { SendChatMessageUseCase } from './send-chat-message.use-case';
@@ -35,6 +38,7 @@ const USE_CASES = [
   ListModelPriceChangesUseCase,
   SetModelBindingUseCase,
   GetModelBindingUseCase,
+  ClearModelBindingUseCase,
   ResolveModelBindingUseCase,
   UpsertUserCredentialUseCase,
   ListUserCredentialsUseCase,
@@ -44,6 +48,8 @@ const USE_CASES = [
   GetSessionTokenUsageUseCase,
   GetProjectAgentCostsUseCase,
   GetCredentialSpendUseCase,
+  GetWorkspaceSpendReportUseCase,
+  GetMySpendUseCase,
   CheckBudgetGateUseCase,
   RecordLlmUsageUseCase,
   SendChatMessageUseCase,

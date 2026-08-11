@@ -50,6 +50,13 @@ export abstract class SessionEventRepository {
     projectId: string,
     type: string,
   ): Promise<SessionEvent[]>;
+  // Todos os eventos de um tipo numa sessão, em ordem crescente de seq. Usado
+  // pelo terceiro sinal de trabalho pendente (RN-064): o último `agent.status`
+  // por ator diz se ele está `working` no meio de um turno.
+  abstract listByTypeInSession(
+    sessionId: string,
+    type: string,
+  ): Promise<SessionEvent[]>;
   // Janela de tempo do projeto inteiro (Fase 4b — Anamnese analisa
   // "janelas do event log"). `actorKind` filtra interações do usuário;
   // `limit` protege contra janelas patológicas.
