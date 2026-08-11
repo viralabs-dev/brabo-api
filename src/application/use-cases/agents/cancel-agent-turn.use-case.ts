@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ApiToEngineClient } from '../../ports/api-to-engine-client.port';
 
 /**
- * O botão "Parar" do composer (RN-121). Diferente de `SendAgentMessageUseCase`,
+ * O botão "Parar" do composer (RN-122). Diferente de `SendAgentMessageUseCase`,
  * não grava `chat.message` nenhum — cancelar não é uma fala do usuário, e o
  * desfecho de verdade (o `agent.error` com origem "politica" e o motivo do
  * cancelamento) quem grava é o PRÓPRIO engine, no evento terminal do turno que

@@ -118,7 +118,7 @@ export class AgentsController {
   @ApiOperation({
     summary: 'Cancela o turno em curso do agente ativo',
     description:
-      'O botão "Parar" do composer (RN-121): mata a chamada ao LLM em curso no ' +
+      'O botão "Parar" do composer (RN-122): mata a chamada ao LLM em curso no ' +
       'engine, cortando a conexão no meio — economiza token de verdade, não só ' +
       'para de renderizar no cliente. Idempotente: sem turno em curso, é aceito ' +
       'sem efeito.',
