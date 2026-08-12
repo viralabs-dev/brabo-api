@@ -75,6 +75,8 @@ export class ExecutionController {
       dto.maxGateCorrections,
       dto.devAgentImpl,
       dto.terminalAllowPatterns,
+      undefined,
+      dto.originSessionId,
     );
   }
 
