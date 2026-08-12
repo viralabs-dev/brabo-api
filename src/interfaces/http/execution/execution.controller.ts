@@ -90,7 +90,7 @@ export class ExecutionController {
     description:
       'A sessão `active` mais recente que já carrega `execution.activated` — ' +
       'o MESMO critério que `activate` usa para decidir se reativa ou cria ' +
-      '(RN-136). `null` quando não há execução em curso. Existe para a aba ' +
+      '(RN-139). `null` quando não há execução em curso. Existe para a aba ' +
       'Executores parar de inferir essa sessão pela mais recente do projeto, ' +
       'que muda de sessão em sessão nova sem pista nenhuma na tela.',
   })

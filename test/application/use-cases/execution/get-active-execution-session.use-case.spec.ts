@@ -30,7 +30,7 @@ const SESSAO: Session = {
   traceParent: null,
 };
 
-describe('GetActiveExecutionSessionUseCase (RN-136)', () => {
+describe('GetActiveExecutionSessionUseCase (RN-139)', () => {
   it('devolve a sessão de execução vigente do projeto, delegando ao MESMO critério que a ativação usa', async () => {
     const { useCase, chamadas } = build(SESSAO);
 
