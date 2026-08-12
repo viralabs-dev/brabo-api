@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CABECALHO_SERVICE_TOKEN } from '../../interfaces/http/auth/engine-service.guard';
 import { tokenDeServicoAtual } from '../security/service-token';
 import { injectTraceHeaders } from '../observability/trace-context';
@@ -8,6 +8,27 @@ import type { TerminalExecutionResult } from '../../domain/actions/terminal-exec
 import type { DevAgentImpl } from '../../domain/execution/dev-agent-impl';
 import { AnamneseDisabledError } from '../../domain/anamnese/anamnese-disabled.error';
 import { PsychologistDisabledError } from '../../domain/psychologist/psychologist-disabled.error';
+
+/**
+ * `sessionId`, `projectId` e `agent`/`agentId` viram SEGMENTO DE URL de uma
+ * requisição interna api -> engine sem DTO/`class-validator` no meio — nenhum
+ * framework confere a forma deles antes da interpolação em template string
+ * (RN-128). Mesma largura que `NOME_DE_PASTA_VALIDO` de
+ * `project-workspaces-root.ts` aceita para segmento de caminho: hex, hífen e
+ * sublinhado, 1 a 64 chars — cabe tanto no UUID que estes campos são hoje
+ * quanto num slug de agente (`dev-frontend`), e estreito o bastante para que
+ * nada vire segmento de path extra nem quebre a URL montada.
+ */
+const SEGMENTO_DE_URL_INTERNA_VALIDO = /^[A-Za-z0-9_-]{1,64}$/;
+
+function garantirSegmentoDeUrlInterna(valor: string, nome: string): string {
+  if (!SEGMENTO_DE_URL_INTERNA_VALIDO.test(valor)) {
+    throw new BadRequestException(
+      `${nome} inválido para requisição interna: ${JSON.stringify(valor)}`,
+    );
+  }
+  return valor;
+}
 
 /**
  * Comando síncrono api -> engine: cria o processo de sessão
@@ -73,10 +94,11 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     sessionId: string,
     agent: string,
   ): Promise<void> {
-    await this.postCommand(`/internal/sessions/${sessionId}/agent/start`, {
-      projectId,
-      agent,
-    });
+    await this.postCommand(
+      `/internal/sessions/${sessionId}/agent/start`,
+      { projectId, agent },
+      [['sessionId', sessionId]],
+    );
   }
 
   async sendAgentMessage(
@@ -85,17 +107,19 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     agent: string,
     text: string,
   ): Promise<void> {
-    await this.postCommand(`/internal/sessions/${sessionId}/agent/message`, {
-      projectId,
-      agent,
-      text,
-    });
+    await this.postCommand(
+      `/internal/sessions/${sessionId}/agent/message`,
+      { projectId, agent, text },
+      [['sessionId', sessionId]],
+    );
   }
 
   async confirmReadiness(projectId: string, sessionId: string): Promise<void> {
-    await this.postCommand(`/internal/sessions/${sessionId}/agent/readiness`, {
-      projectId,
-    });
+    await this.postCommand(
+      `/internal/sessions/${sessionId}/agent/readiness`,
+      { projectId },
+      [['sessionId', sessionId]],
+    );
   }
 
   async cancelAgentTurn(
@@ -103,16 +127,18 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     sessionId: string,
     agent: string,
   ): Promise<void> {
-    await this.postCommand(`/internal/sessions/${sessionId}/agent/cancel`, {
-      projectId,
-      agent,
-    });
+    await this.postCommand(
+      `/internal/sessions/${sessionId}/agent/cancel`,
+      { projectId, agent },
+      [['sessionId', sessionId]],
+    );
   }
 
   async offerInfraHandoff(projectId: string, sessionId: string): Promise<void> {
     await this.postCommand(
       `/internal/sessions/${sessionId}/agent/offer-infra-handoff`,
       { projectId },
+      [['sessionId', sessionId]],
     );
   }
 
@@ -120,6 +146,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     await this.postCommand(
       `/internal/sessions/${sessionId}/agent/offer-dev-handoff`,
       { projectId },
+      [['sessionId', sessionId]],
     );
   }
 
@@ -130,6 +157,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
    * genérico que perde o status. Mesmo tratamento de `runAnamnese` abaixo.
    */
   async reanalyzeSession(projectId: string, sessionId: string): Promise<void> {
+    garantirSegmentoDeUrlInterna(sessionId, 'sessionId');
     const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
 
     const res = await fetch(
@@ -159,6 +187,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
    * genérico que perde o status.
    */
   async runAnamnese(projectId: string): Promise<void> {
+    garantirSegmentoDeUrlInterna(projectId, 'projectId');
     const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
 
     const res = await fetch(
@@ -188,6 +217,10 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     await this.postCommand(
       `/internal/projects/${projectId}/agents/${agent}/instructions/invalidate`,
       {},
+      [
+        ['projectId', projectId],
+        ['agent', agent],
+      ],
     );
   }
 
@@ -200,14 +233,18 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     impl?: DevAgentImpl,
     maxConsecutiveBlocked?: number,
   ): Promise<void> {
-    await this.postCommand(`/internal/sessions/${sessionId}/execution/start`, {
-      projectId,
-      modules,
-      taskBudgetMicros,
-      maxGateCorrections,
-      impl,
-      maxConsecutiveBlocked,
-    });
+    await this.postCommand(
+      `/internal/sessions/${sessionId}/execution/start`,
+      {
+        projectId,
+        modules,
+        taskBudgetMicros,
+        maxGateCorrections,
+        impl,
+        maxConsecutiveBlocked,
+      },
+      [['sessionId', sessionId]],
+    );
   }
 
   async acceptParallelization(
@@ -218,6 +255,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     await this.postCommand(
       `/internal/sessions/${sessionId}/execution/parallelize`,
       { projectId, module },
+      [['sessionId', sessionId]],
     );
   }
 
@@ -229,6 +267,10 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     await this.postCommand(
       `/internal/sessions/${sessionId}/dev-agents/${agentId}/rearm`,
       { projectId },
+      [
+        ['sessionId', sessionId],
+        ['agentId', agentId],
+      ],
     );
   }
 
@@ -239,12 +281,11 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     title: string,
     reason: string,
   ): Promise<void> {
-    await this.postCommand(`/internal/sessions/${sessionId}/agent/revise`, {
-      projectId,
-      storyId,
-      title,
-      reason,
-    });
+    await this.postCommand(
+      `/internal/sessions/${sessionId}/agent/revise`,
+      { projectId, storyId, title, reason },
+      [['sessionId', sessionId]],
+    );
   }
 
   async executeGitAction(
@@ -289,7 +330,16 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
   private async postCommand(
     path: string,
     body: Record<string, unknown>,
+    // (nome, valor) de cada id que o chamador já interpolou em `path`
+    // (RN-128) — validados aqui, num lugar só, ANTES de montar a
+    // requisição, para que esquecer de listar um id não compile em silêncio
+    // como "sem checagem nenhuma" (revisão de PR ainda vê a lista vazia).
+    segmentosDeUrl: ReadonlyArray<readonly [string, string]> = [],
   ): Promise<void> {
+    for (const [nome, valor] of segmentosDeUrl) {
+      garantirSegmentoDeUrlInterna(valor, nome);
+    }
+
     const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
 
     const res = await fetch(`${engineUrl}${path}`, {
