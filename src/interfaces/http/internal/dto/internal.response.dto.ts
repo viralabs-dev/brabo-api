@@ -446,6 +446,16 @@ export class LlmTurnResponseDto implements Wire<RunLlmTurnResult> {
       'contabilidade em `usage` continua válida — o turno gastou, mesmo falhando.',
   })
   error!: string | null;
+
+  @ApiProperty({
+    example: 'llama3.2:3b',
+    nullable: true,
+    description:
+      'Nome do modelo que gerou a resposta (achado do problema 2) — `null` quando ' +
+      'o turno falhou antes de resolver um modelo (sem binding, ou binding para ' +
+      'modelo inexistente).',
+  })
+  modelName!: string | null;
 }
 export const _chavesTurno: MesmasChaves<LlmTurnResponseDto, RunLlmTurnResult> =
   true;
@@ -468,6 +478,17 @@ export class LlmTurnStreamEventResponseDto {
 
   @ApiProperty({ example: 'provider indisponível', required: false })
   message?: string;
+
+  @ApiProperty({
+    example: 'llama3.2:3b',
+    required: false,
+    nullable: true,
+    description:
+      'Só no quadro `done`/`final` — nome do modelo que gerou a resposta ' +
+      '(achado do problema 2). `null` quando o turno falhou antes de resolver ' +
+      'um modelo.',
+  })
+  modelName?: string | null;
 }
 
 // ------------------------------------------------------------------------- gates
