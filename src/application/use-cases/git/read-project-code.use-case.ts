@@ -28,6 +28,7 @@ import {
 import {
   CaminhoForaDoEscopoError,
   caminhoDeRepositorioContido,
+  garantirQueryEscalar,
 } from '../../../infrastructure/filesystem/project-workspaces-root';
 import { ObterContainerDoProjetoUseCase } from '../containers/obter-container-do-projeto.use-case';
 
@@ -392,6 +393,14 @@ export class ReadProjectCodeUseCase {
         `Projeto sem repositório provisionado: ${projectId}`,
       );
     }
+
+    // Array antes de tudo (RN-127): `ref.includes('..')` e `REF_VALIDO.test(ref)`
+    // abaixo têm semântica diferente para array do que para string, e um
+    // valor como `['x/../y']` escaparia da checagem de `..` por causa disso.
+    ref = garantirQueryEscalar(
+      ref,
+      () => new BadRequestException(`ref inválida: ${JSON.stringify(ref)}`),
+    );
 
     if (ref !== undefined && !REF_VALIDO.test(ref)) {
       throw new BadRequestException(`ref inválida: ${JSON.stringify(ref)}`);

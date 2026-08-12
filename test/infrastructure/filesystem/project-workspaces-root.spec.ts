@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import {
   CaminhoForaDoEscopoError,
   caminhoDeRepositorioContido,
+  garantirQueryEscalar,
   projectScopeRoot,
   projectWorkspacesRoot,
   workspaceDirNameFor,
@@ -142,5 +143,38 @@ describe('caminhoDeRepositorioContido', () => {
     // provider tendo validado `b`. A contenção só vale se ela devolve o que
     // conferiu.
     expect(caminhoDeRepositorioContido(PROJETO, 'a/./b/../c')).toBe('a/c');
+  });
+
+  it('RECUSA `path` como array — a confusão de tipo do CodeQL (RN-127)', () => {
+    // `?path=a&path=b` chega como array no Express; sem esta checagem,
+    // `.includes('\0')` teria semântica de elemento exato (não substring) e
+    // um valor como `['x/../y']` escaparia da recusa de `..`.
+    expect(() =>
+      caminhoDeRepositorioContido(
+        PROJETO,
+        // @ts-expect-error — runtime pode entregar array mesmo o tipo dizendo string
+        ['a', 'b'],
+      ),
+    ).toThrow(CaminhoForaDoEscopoError);
+  });
+});
+
+/**
+ * `garantirQueryEscalar` isolada (RN-127) — o guarda que
+ * `caminhoDeRepositorioContido` e `ReadProjectCodeUseCase.alvo` reusam.
+ */
+describe('garantirQueryEscalar', () => {
+  it('devolve o valor escalar sem tocar nele', () => {
+    expect(garantirQueryEscalar('a/b', () => new Error('não deveria'))).toBe(
+      'a/b',
+    );
+    expect(
+      garantirQueryEscalar(undefined, () => new Error('não deveria')),
+    ).toBeUndefined();
+  });
+
+  it('lança o erro do chamador quando o valor é array', () => {
+    const erro = new Error('parâmetro repetido');
+    expect(() => garantirQueryEscalar(['a', 'b'], () => erro)).toThrow(erro);
   });
 });
