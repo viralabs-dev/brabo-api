@@ -157,7 +157,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
    * genérico que perde o status. Mesmo tratamento de `runAnamnese` abaixo.
    */
   async reanalyzeSession(projectId: string, sessionId: string): Promise<void> {
-    garantirSegmentoDeUrlInterna(sessionId, 'sessionId');
+    sessionId = garantirSegmentoDeUrlInterna(sessionId, 'sessionId');
     const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
 
     const res = await fetch(
@@ -187,7 +187,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
    * genérico que perde o status.
    */
   async runAnamnese(projectId: string): Promise<void> {
-    garantirSegmentoDeUrlInterna(projectId, 'projectId');
+    projectId = garantirSegmentoDeUrlInterna(projectId, 'projectId');
     const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
 
     const res = await fetch(
