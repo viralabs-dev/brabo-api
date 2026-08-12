@@ -14,6 +14,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import type { User } from '../../../domain/iam/user.entity';
 import { RequireRole } from '../iam/require-role.decorator';
 import { ActivateExecutionUseCase } from '../../../application/use-cases/execution/activate-execution.use-case';
+import { GetActiveExecutionSessionUseCase } from '../../../application/use-cases/execution/get-active-execution-session.use-case';
 import { RequestParallelizationUseCase } from '../../../application/use-cases/execution/request-parallelization.use-case';
 import { UnblockTaskUseCase } from '../../../application/use-cases/execution/unblock-task.use-case';
 import { RearmDevAgentUseCase } from '../../../application/use-cases/execution/rearm-dev-agent.use-case';
@@ -24,6 +25,7 @@ import { ActivateExecutionDto } from './dto/activate-execution.dto';
 import { SetMaxParallelDto } from './dto/set-max-parallel.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import { OkResponseDto } from '../shared/dto/comuns.response.dto';
+import { SessionResponseDto } from '../sessions/dto/sessions.response.dto';
 import {
   AreaDeAgentesResponseDto,
   ExecucaoAtivadaResponseDto,
@@ -42,6 +44,7 @@ import {
 export class ExecutionController {
   constructor(
     private readonly activateExecution: ActivateExecutionUseCase,
+    private readonly getActiveExecutionSession: GetActiveExecutionSessionUseCase,
     private readonly requestParallelization: RequestParallelizationUseCase,
     private readonly unblockTask: UnblockTaskUseCase,
     private readonly rearmDevAgent: RearmDevAgentUseCase,
@@ -78,6 +81,25 @@ export class ExecutionController {
       undefined,
       dto.originSessionId,
     );
+  }
+
+  @Get('execution/session')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Devolve a sessão de execução vigente do projeto, ou nada',
+    description:
+      'A sessão `active` mais recente que já carrega `execution.activated` — ' +
+      'o MESMO critério que `activate` usa para decidir se reativa ou cria ' +
+      '(RN-139). `null` quando não há execução em curso. Existe para a aba ' +
+      'Executores parar de inferir essa sessão pela mais recente do projeto, ' +
+      'que muda de sessão em sessão nova sem pista nenhuma na tela.',
+  })
+  @ApiOkResponse({
+    type: SessionResponseDto,
+    description: '`null` no corpo quando não há execução ativa.',
+  })
+  getSession(@Param('projectId') projectId: string) {
+    return this.getActiveExecutionSession.execute(projectId);
   }
 
   @Post('sessions/:sessionId/execution/parallelize')
