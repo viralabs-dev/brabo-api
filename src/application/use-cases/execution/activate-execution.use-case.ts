@@ -14,6 +14,7 @@ import { DEV_TERMINAL_ALLOW_PATTERNS } from '../../../domain/actions/dev-termina
 import { TransitionSessionUseCase } from '../sessions/transition-session.use-case';
 import { CreateSessionUseCase } from '../sessions/create-session.use-case';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
+import { GetSessionPendingWorkUseCase } from '../sessions/get-session-pending-work.use-case';
 import { UpsertAgentInstructionUseCase } from '../agents/upsert-agent-instruction.use-case';
 import { SeedAgentAreasUseCase } from '../agents/seed-agent-areas.use-case';
 import { DEFAULT_MAX_GATE_CORRECTIONS } from './record-gate-verdict.use-case';
@@ -88,6 +89,7 @@ export class ActivateExecutionUseCase {
     private readonly projects: ProjectRepository,
     private readonly permissionsFile: PermissionsFileStore,
     private readonly seedAreas: SeedAgentAreasUseCase,
+    private readonly getSessionPendingWork: GetSessionPendingWorkUseCase,
   ) {}
 
   async execute(
@@ -98,6 +100,11 @@ export class ActivateExecutionUseCase {
     devAgentImpl?: DevAgentImpl,
     terminalAllowPatterns?: readonly string[],
     maxConsecutiveBlocked?: number,
+    // Id da sessão de CHAT (criativa/consultiva) de onde partiu o clique em
+    // "ativar execução" — RN-135. Omitido (chamador antigo, ex. ativação pela
+    // Visão Geral) não fecha sessão nenhuma: o comportamento sem este
+    // parâmetro é IDÊNTICO ao de antes dele existir.
+    originSessionId?: string,
   ) {
     const maxCorrections = maxGateCorrections ?? DEFAULT_MAX_GATE_CORRECTIONS;
     const impl = devAgentImpl ?? DEFAULT_DEV_AGENT_IMPL;
@@ -243,6 +250,45 @@ export class ActivateExecutionUseCase {
       }
     }
 
+    // Fecha a sessão de CHAT que originou o pedido (RN-135) — sem isto ela
+    // ficava `active` para sempre, aparecendo como conversa em aberto mesmo
+    // depois de a execução (numa sessão SEPARADA) já ter avançado sozinha.
+    // Nunca a sessão de execução: fechá-la destruiria o processo que acabou
+    // de subir para os dev agents.
+    if (originSessionId && originSessionId !== session.id) {
+      await this.closeOriginSession(projectId, originSessionId);
+    }
+
     return { sessionId: session.id, modules };
+  }
+
+  /**
+   * Fecha a sessão de origem só quando ela está `active` (mesma cautela de
+   * `decide-bootstrap-plan.use-case.ts#fecharSessao` — nada a fazer se já
+   * não existir ou já não estiver aberta) E não tem trabalho pendurado: o
+   * mesmo `GetSessionPendingWorkUseCase` que segura o fechamento por
+   * heartbeat de inatividade, reusado aqui para não fechar uma sessão com
+   * handoff `offered`, ação `pending` ou agente `working` sem `idle`
+   * posterior. Falha ou pendência aqui NUNCA propaga — a ativação da
+   * execução já aconteceu, e fechar o chat de origem é um efeito colateral
+   * best-effort, não uma condição da ativação.
+   */
+  private async closeOriginSession(
+    projectId: string,
+    originSessionId: string,
+  ): Promise<void> {
+    const origin = await this.sessions.findInProject(
+      projectId,
+      originSessionId,
+    );
+    if (origin?.status !== 'active') return;
+
+    const { pending } = await this.getSessionPendingWork.execute(
+      originSessionId,
+    );
+    if (pending) return;
+
+    await this.transitionSession.execute(projectId, originSessionId, 'closing');
+    await this.transitionSession.execute(projectId, originSessionId, 'closed');
   }
 }
