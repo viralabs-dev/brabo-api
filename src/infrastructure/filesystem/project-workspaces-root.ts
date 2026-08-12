@@ -110,6 +110,34 @@ export class CaminhoForaDoEscopoError extends Error {
 }
 
 /**
+ * Recusa um parâmetro de query que chegou como ARRAY em vez de string
+ * (RN-127).
+ *
+ * `@Query('ref') ref?: string` e `@Query('path') path?: string` extraem o
+ * valor cru sem DTO/`class-validator` no meio — e o `ValidationPipe` global
+ * (`main.ts`) não ajuda aqui: ele pula tipo primitivo nativo (`String`) por
+ * desenho do Nest, então nada intercepta `ref`/`path` antes deles chegarem
+ * como argumento de método. O Express entrega `?ref=a&ref=b` como ARRAY, e a
+ * anotação `string` do TypeScript só existe em compile-time — em runtime, um
+ * array passa incólume por `.includes()` (semântica de elemento exato, não
+ * substring) e por `RegExp.test()` (chama `.toString()` no array antes de
+ * casar), então um valor como `['x/../y']` escaparia da checagem de `..`
+ * mesmo contendo `..`.
+ *
+ * Central aqui porque os DOIS lugares que tratam query como string têm o
+ * MESMO problema: `caminhoDeRepositorioContido` logo abaixo (`path`) e
+ * `ReadProjectCodeUseCase.alvo` (`ref`) — checagem duplicada é checagem que
+ * um dia diverge, mesmo motivo do resto deste arquivo.
+ */
+export function garantirQueryEscalar<T>(
+  valor: T | T[],
+  criarErro: () => Error,
+): T {
+  if (Array.isArray(valor)) throw criarErro();
+  return valor;
+}
+
+/**
  * O caminho de arquivo que o CLIENTE pediu, contido na pasta do projeto
  * (RN-095, FASE 26b).
  *
@@ -160,7 +188,13 @@ export function caminhoDeRepositorioContido(
   workspaceDirName: string,
   caminho: string | undefined,
 ): string {
-  const bruto = caminho ?? '';
+  // Array antes de tudo (RN-127) — `.includes('\0')` logo abaixo também
+  // teria semântica de array em vez de string, e escaparia a mesma checagem.
+  const escalar = garantirQueryEscalar(
+    caminho,
+    () => new CaminhoForaDoEscopoError(JSON.stringify(caminho)),
+  );
+  const bruto = escalar ?? '';
   // Byte NUL trunca o caminho em qualquer API que atravesse C, e nenhuma
   // normalização de string o enxerga — por isso a recusa vem antes dela.
   if (bruto.includes('\0')) throw new CaminhoForaDoEscopoError(bruto);

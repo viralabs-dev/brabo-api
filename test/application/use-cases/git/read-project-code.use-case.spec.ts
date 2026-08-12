@@ -378,6 +378,24 @@ describe('ReadProjectCodeUseCase — árvore', () => {
       GitNotSupportedError,
     );
   });
+
+  it('caso de falha: `ref` como array (confusão de tipo, RN-127) é 400', async () => {
+    // `?ref=a&ref=b` chega como array no Express — sem a checagem, `ref`
+    // passaria incólume por `.includes('..')`/`REF_VALIDO.test`.
+    const { useCase } = montar(new ProviderFalso(REPO));
+    const refArray = ['dev', 'main'] as unknown as string;
+    await expect(useCase.tree(PROJETO, refArray)).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('caso de falha: `path` como array (confusão de tipo, RN-127) é 400', async () => {
+    const { useCase } = montar(new ProviderFalso(REPO));
+    const pathArray = ['src', '../../etc'] as unknown as string;
+    await expect(useCase.tree(PROJETO, 'dev', pathArray)).rejects.toThrow(
+      BadRequestException,
+    );
+  });
 });
 
 describe('ReadProjectCodeUseCase — arquivo', () => {
