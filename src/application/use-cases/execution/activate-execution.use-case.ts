@@ -283,9 +283,8 @@ export class ActivateExecutionUseCase {
     );
     if (origin?.status !== 'active') return;
 
-    const { pending } = await this.getSessionPendingWork.execute(
-      originSessionId,
-    );
+    const { pending } =
+      await this.getSessionPendingWork.execute(originSessionId);
     if (pending) return;
 
     await this.transitionSession.execute(projectId, originSessionId, 'closing');
