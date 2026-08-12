@@ -41,6 +41,7 @@ import { CreateStoryUseCase } from '../../../application/use-cases/backlog/creat
 import { CreateTaskUseCase } from '../../../application/use-cases/backlog/create-task.use-case';
 import { CreateModuleMapUseCase } from '../../../application/use-cases/architecture/create-module-map.use-case';
 import { AssignStoryModulesUseCase } from '../../../application/use-cases/architecture/assign-story-modules.use-case';
+import { CreateC4DiagramUseCase } from '../../../application/use-cases/architecture/create-c4-diagram.use-case';
 import { DecidirImagemDoProjetoUseCase } from '../../../application/use-cases/containers/decidir-imagem-do-projeto.use-case';
 import { ClaimNextTaskUseCase } from '../../../application/use-cases/execution/claim-next-task.use-case';
 import { MarkTaskUseCase } from '../../../application/use-cases/execution/mark-task.use-case';
@@ -82,6 +83,7 @@ import { CreateStoryInternalDto } from './dto/create-story-internal.dto';
 import { CreateTaskInternalDto } from './dto/create-task-internal.dto';
 import { CreateModuleMapInternalDto } from './dto/create-module-map-internal.dto';
 import { AssignStoryModulesInternalDto } from './dto/assign-story-modules-internal.dto';
+import { CreateC4DiagramInternalDto } from './dto/create-c4-diagram-internal.dto';
 import { DecideProjectImageInternalDto } from './dto/decide-project-image-internal.dto';
 import { ImagemDecididaResponseDto } from '../containers/dto/containers.response.dto';
 import { ClaimTaskInternalDto } from './dto/claim-task-internal.dto';
@@ -97,6 +99,7 @@ import { HandoffResponseDto } from '../agents/dto/agents.response.dto';
 import {
   EpicResponseDto,
   ModuleMapResponseDto,
+  C4DiagramaGeradoResponseDto,
   StoryResponseDto,
   TaskResponseDto,
 } from '../backlog/dto/backlog.response.dto';
@@ -150,6 +153,7 @@ export class InternalSessionsController {
     private readonly createStory: CreateStoryUseCase,
     private readonly createTask: CreateTaskUseCase,
     private readonly createModuleMap: CreateModuleMapUseCase,
+    private readonly createC4Diagram: CreateC4DiagramUseCase,
     private readonly assignStoryModules: AssignStoryModulesUseCase,
     private readonly decidirImagem: DecidirImagemDoProjetoUseCase,
     private readonly claimNextTask: ClaimNextTaskUseCase,
@@ -443,6 +447,37 @@ export class InternalSessionsController {
   ) {
     return this.createModuleMap.execute(dto.projectId, sessionId, {
       modules: dto.modules,
+    });
+  }
+
+  /**
+   * Ferramenta `create_c4_diagram` do Arquiteto: gera o diagrama C4 (Context
+   * + Container, modelo de Simon Brown) a partir do module_map vigente. O
+   * Container level é DERIVADO do mapa — o modelo não o redigita; só o nível
+   * Context (nome/descrição do sistema e os atores externos) vem do tool
+   * call.
+   */
+  @Post(':sessionId/c4-diagram')
+  @ApiOperation({
+    summary: 'Gera uma versão nova do diagrama C4 (Context + Container)',
+    description:
+      'O artefato É o evento `artifact.c4_diagram`: imutável, versionado e com ' +
+      'autor, ao lado de `artifact.module_map`. Exige module_map vigente — sem ' +
+      'ele não há Container level para desenhar (400).',
+  })
+  @ApiCreatedResponse({ type: C4DiagramaGeradoResponseDto })
+  @ApiBadRequestResponse({
+    description:
+      '`system_name` ausente, ator inválido, ou sem module_map vigente.',
+  })
+  c4Diagram(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: CreateC4DiagramInternalDto,
+  ) {
+    return this.createC4Diagram.execute(dto.projectId, sessionId, {
+      systemName: dto.systemName,
+      systemDescription: dto.systemDescription,
+      actors: dto.actors,
     });
   }
 

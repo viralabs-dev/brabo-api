@@ -21,6 +21,13 @@ import type {
   Architecture,
   ArchitecturePendency,
 } from '../../../../application/use-cases/architecture/get-architecture.use-case';
+import type { C4DiagramaGerado } from '../../../../application/use-cases/architecture/create-c4-diagram.use-case';
+import { TIPOS_DE_ATOR_C4 } from '../../../../domain/architecture/c4-diagram';
+import type {
+  C4Ator,
+  C4Diagrama,
+  EstadoDoC4Diagrama,
+} from '../../../../domain/architecture/c4-diagram';
 import type { InfraArtifact } from '../../../../domain/execution/infra-artifact.entity';
 
 /**
@@ -387,7 +394,87 @@ export const _chavesPendencia: MesmasChaves<
   ArchitecturePendency
 > = true;
 
-/** A seção de arquitetura: mapa vigente, ADRs e o que não fecha. */
+export class C4AtorResponseDto implements Wire<C4Ator> {
+  @ApiProperty({ example: 'Usuário' })
+  name!: string;
+
+  @ApiProperty({
+    enum: TIPOS_DE_ATOR_C4 as unknown as string[],
+    example: 'person',
+  })
+  type!: Wire<C4Ator>['type'];
+
+  @ApiProperty({ example: 'Quem opera o produto pela web.' })
+  description!: string;
+}
+export const _chavesC4Ator: MesmasChaves<C4AtorResponseDto, C4Ator> = true;
+
+export class C4DiagramaResponseDto implements Wire<C4Diagrama> {
+  @ApiProperty({ example: 'Brabo' })
+  systemName!: string;
+
+  @ApiProperty({ example: 'Plataforma de engenharia orquestrada por agentes.' })
+  systemDescription!: string;
+
+  @ApiProperty({ type: [C4AtorResponseDto] })
+  actors!: C4AtorResponseDto[];
+
+  @ApiProperty({
+    example: 'C4Context\n  title Diagrama de Contexto -- Brabo\n  ...',
+    description:
+      'Sintaxe Mermaid `C4Context` — o sistema e os atores externos.',
+  })
+  contextDiagram!: string;
+
+  @ApiProperty({
+    example: 'C4Container\n  title Diagrama de Container -- Brabo\n  ...',
+    description:
+      'Sintaxe Mermaid `C4Container` — os módulos do module_map vigente e as ' +
+      'dependências entre eles.',
+  })
+  containerDiagram!: string;
+}
+export const _chavesC4Diagrama: MesmasChaves<
+  C4DiagramaResponseDto,
+  C4Diagrama
+> = true;
+
+export class EstadoDoC4DiagramaResponseDto implements Wire<EstadoDoC4Diagrama> {
+  @ApiProperty({
+    enum: ['sem_diagrama', 'gerado'],
+    example: 'sem_diagrama',
+    description:
+      '`sem_diagrama` é o estado inicial: o Arquiteto ainda não gerou nenhum.',
+  })
+  status!: 'sem_diagrama' | 'gerado';
+
+  @ApiProperty({
+    type: C4DiagramaResponseDto,
+    nullable: true,
+    description: 'O diagrama vigente, ou `null` enquanto não há nenhum.',
+  })
+  diagrama!: C4DiagramaResponseDto | null;
+
+  @ApiProperty({
+    example: 0,
+    description:
+      'Versão do artefato vigente; 0 quando não há diagrama. Revisar é gerar ' +
+      'de novo — o histórico não é reescrito.',
+  })
+  version!: number;
+
+  @ApiProperty({ nullable: true, example: '01JC4Z0000EVENTO000000002' })
+  eventId!: string | null;
+
+  @ApiProperty({ nullable: true, format: 'date-time' })
+  createdAt!: string | null;
+}
+export const _chavesEstadoC4Diagrama: MesmasChaves<
+  EstadoDoC4DiagramaResponseDto,
+  EstadoDoC4Diagrama
+> = true;
+
+/** A seção de arquitetura: mapa vigente, ADRs, o que não fecha e o diagrama C4. */
 export class ArchitectureResponseDto implements Wire<Architecture> {
   @ApiProperty({
     type: ModuleMapResponseDto,
@@ -405,10 +492,26 @@ export class ArchitectureResponseDto implements Wire<Architecture> {
       'Validação cruzada história↔mapa. Lista vazia é o estado saudável.',
   })
   pendencies!: ArchitecturePendencyResponseDto[];
+
+  @ApiProperty({ type: EstadoDoC4DiagramaResponseDto })
+  c4Diagram!: EstadoDoC4DiagramaResponseDto;
 }
 export const _chavesArquitetura: MesmasChaves<
   ArchitectureResponseDto,
   Architecture
+> = true;
+
+/** Resposta de `POST .../c4-diagram`: o diagrama recém-gerado + a versão. */
+export class C4DiagramaGeradoResponseDto implements Wire<C4DiagramaGerado> {
+  @ApiProperty({ type: C4DiagramaResponseDto })
+  diagrama!: C4DiagramaResponseDto;
+
+  @ApiProperty({ example: 1 })
+  version!: number;
+}
+export const _chavesC4DiagramaGerado: MesmasChaves<
+  C4DiagramaGeradoResponseDto,
+  C4DiagramaGerado
 > = true;
 
 export class InfraArtifactResponseDto implements Wire<InfraArtifact> {
