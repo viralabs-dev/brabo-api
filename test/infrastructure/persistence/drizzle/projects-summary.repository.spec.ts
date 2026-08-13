@@ -8,6 +8,7 @@ import {
   moduleMaps,
   projectRepositories,
   projects,
+  proposedActions,
   repoBootstraps,
   sessionEvents,
   sessions,
@@ -55,6 +56,32 @@ async function criarSessao(projectId: string, ownerId: string) {
   const [row] = await db
     .insert(sessions)
     .values({ projectId, createdBy: ownerId })
+    .returning();
+  return row;
+}
+
+async function criarAcaoProposta(
+  projectId: string,
+  sessionId: string,
+  status:
+    | 'pending'
+    | 'approved'
+    | 'denied'
+    | 'auto_approved'
+    | 'executed'
+    | 'failed' = 'pending',
+) {
+  const [row] = await db
+    .insert(proposedActions)
+    .values({
+      projectId,
+      sessionId,
+      actionType: 'terminal',
+      resolvedPolicy: 'require_approval',
+      actorKind: 'agent',
+      actorId: 'dev',
+      status,
+    })
     .returning();
   return row;
 }
@@ -115,6 +142,7 @@ describe('DrizzleProjectsSummaryRepository', () => {
       latestSeq: 0,
       lastEvent: null,
       storiesAwaitingPromotion: 0,
+      pendingApprovalsCount: 0,
       roster: {
         executionActivated: false,
         moduleNames: [],
@@ -202,6 +230,11 @@ describe('DrizzleProjectsSummaryRepository', () => {
       },
     ]);
 
+    // Duas pendentes e uma já decidida — só as `pending` contam (RN-151).
+    await criarAcaoProposta(projeto.id, sessao.id, 'pending');
+    await criarAcaoProposta(projeto.id, sessao.id, 'pending');
+    await criarAcaoProposta(projeto.id, sessao.id, 'approved');
+
     const [resumo] = await repo.summarizeForWorkspace(ws.id);
 
     expect(resumo.provider).toBe('github');
@@ -216,6 +249,7 @@ describe('DrizzleProjectsSummaryRepository', () => {
     expect(resumo.lastEvent?.id).toBe(ultimo.id);
     expect(resumo.lastEvent?.type).toBe('chat.message');
     expect(resumo.storiesAwaitingPromotion).toBe(1);
+    expect(resumo.pendingApprovalsCount).toBe(2);
     expect(resumo.roster).toEqual({
       executionActivated: true,
       moduleNames: ['api'],
@@ -257,6 +291,40 @@ describe('DrizzleProjectsSummaryRepository', () => {
     const resumos = await repo.summarizeForWorkspace(a.id);
 
     expect(resumos.map((r) => r.projectId)).toEqual([doA.id]);
+  });
+
+  /**
+   * RN-151: o número que vira badge da sidebar é `proposed_actions` pendentes
+   * do projeto INTEIRO — todas as sessões, não só a mais recente — e nunca
+   * vaza para o projeto vizinho.
+   */
+  it('pendingApprovalsCount soma o projeto INTEIRO, não só a sessão mais recente', async () => {
+    const owner = await criarUsuario('pendencias@brabo.dev');
+    const ws = await criarWorkspace(owner.id, 'pendencias');
+    const comPendencia = await criarProjeto(ws.id, owner.id, 'com-pendencia');
+    const semPendencia = await criarProjeto(ws.id, owner.id, 'sem-pendencia');
+
+    const antiga = await criarSessao(comPendencia.id, owner.id);
+    await db
+      .update(sessions)
+      .set({ createdAt: new Date(Date.now() - 60_000) })
+      .where(sql`${sessions.id} = ${antiga.id}`);
+    const recente = await criarSessao(comPendencia.id, owner.id);
+
+    // Uma pendência em cada sessão do projeto — a soma conta as DUAS, mesmo a
+    // sessão que não é mais a "mais recente".
+    await criarAcaoProposta(comPendencia.id, antiga.id, 'pending');
+    await criarAcaoProposta(comPendencia.id, recente.id, 'pending');
+    await criarAcaoProposta(comPendencia.id, recente.id, 'denied');
+
+    const sessaoSemPendencia = await criarSessao(semPendencia.id, owner.id);
+    await criarAcaoProposta(semPendencia.id, sessaoSemPendencia.id, 'executed');
+
+    const resumos = await repo.summarizeForWorkspace(ws.id);
+    const porId = new Map(resumos.map((r) => [r.projectId, r]));
+
+    expect(porId.get(comPendencia.id)?.pendingApprovalsCount).toBe(2);
+    expect(porId.get(semPendencia.id)?.pendingApprovalsCount).toBe(0);
   });
 
   it('usa a sessão MAIS RECENTE quando o projeto tem várias', async () => {

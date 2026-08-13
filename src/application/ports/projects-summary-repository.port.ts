@@ -44,6 +44,15 @@ export interface ProjectCardSummary {
   /** Último evento da sessão mais recente — a linha de rodapé do card. */
   lastEvent: SessionEvent | null;
   storiesAwaitingPromotion: number;
+  /**
+   * `proposed_actions` com `status = 'pending'` no projeto INTEIRO, todas as
+   * sessões — não só a mais recente (RN-151). É o número que a sidebar
+   * (`Shell.tsx`) mostra: antes ela reusava `latestSeq - seen` (atividade não
+   * lida), que misturava qualquer evento com decisão pendente de verdade. A
+   * aba Aprovações mostra só as da sessão mais recente; aqui é o projeto todo
+   * de propósito, porque o badge é por PROJETO, não por sessão.
+   */
+  pendingApprovalsCount: number;
   roster: RosterFacts;
 }
 

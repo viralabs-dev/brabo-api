@@ -383,6 +383,15 @@ export class ProjectCardSummaryResponseDto implements Wire<ProjectCardSummary> {
   })
   storiesAwaitingPromotion!: number;
 
+  @ApiProperty({
+    example: 8,
+    description:
+      '`proposed_actions` com `status = pending` no projeto INTEIRO, todas as ' +
+      'sessões — não só a mais recente. É o que a sidebar mostra como badge do ' +
+      'projeto (RN-151).',
+  })
+  pendingApprovalsCount!: number;
+
   @ApiProperty({ type: RosterFactsResponseDto })
   roster!: RosterFactsResponseDto;
 }

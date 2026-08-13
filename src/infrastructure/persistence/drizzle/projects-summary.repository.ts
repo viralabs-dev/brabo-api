@@ -18,6 +18,7 @@ import {
   moduleMaps,
   projectRepositories,
   projects,
+  proposedActions,
   repoBootstraps,
   sessionEvents,
   sessions,
@@ -27,11 +28,11 @@ import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
 /**
- * Read model do dashboard em ONZE consultas escopadas por workspace: duas em
- * sequência (os projetos, e a sessão mais recente de cada um) e nove em
+ * Read model do dashboard em DOZE consultas escopadas por workspace: duas em
+ * sequência (os projetos, e a sessão mais recente de cada um) e dez em
  * paralelo sobre esses dois conjuntos de ids.
  *
- * Onze é CONSTANTE — nenhuma roda dentro de laço sobre projetos, e é essa a
+ * Doze é CONSTANTE — nenhuma roda dentro de laço sobre projetos, e é essa a
  * propriedade que a suíte prova: `projects-summary.repository.spec.ts` conta
  * idas ao banco com 2 e com 20 projetos e exige o mesmo número. Sem esse
  * teste, um laço aqui devolveria dados idênticos e trocaria o N+1 de HTTP por
@@ -80,6 +81,7 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
       budgetRows,
       maps,
       promocoes,
+      pendencias,
       lastEvents,
       marcos,
       infraHandoffs,
@@ -131,6 +133,23 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
           ),
         )
         .groupBy(stories.projectId),
+
+      // Ações propostas ainda por decidir, no projeto INTEIRO — todas as
+      // sessões, não só a mais recente (RN-151). É o número que o badge da
+      // sidebar mostra; mesmo formato agregado de `promocoes` acima.
+      db
+        .select({
+          projectId: proposedActions.projectId,
+          total: sql<number>`count(*)::int`,
+        })
+        .from(proposedActions)
+        .where(
+          and(
+            inArray(proposedActions.projectId, projectIds),
+            eq(proposedActions.status, 'pending'),
+          ),
+        )
+        .groupBy(proposedActions.projectId),
 
       // Último evento de cada sessão — o card mostra UMA linha de atividade,
       // então trazer uma linha por sessão é o pedido exato.
@@ -191,6 +210,7 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
     const budgetDe = indexarPor(budgetRows, (r) => r.projectId);
     const modulosDe = indexarPor(maps, (r) => r.projectId);
     const promocaoDe = indexarPor(promocoes, (r) => r.projectId);
+    const pendenciasDe = indexarPor(pendencias, (r) => r.projectId);
 
     const sessaoDe = indexarPor(latestSessions, (s) => s.projectId);
     const ultimoEventoDe = indexarPor(lastEvents, (e) => e.sessionId);
@@ -243,6 +263,7 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
         latestSeq: sessao ? sessao.nextSeq - 1 : 0,
         lastEvent: evento ? toEvent(evento) : null,
         storiesAwaitingPromotion: promocaoDe.get(projectId)?.total ?? 0,
+        pendingApprovalsCount: pendenciasDe.get(projectId)?.total ?? 0,
         roster,
       };
     });
