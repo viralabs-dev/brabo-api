@@ -2,9 +2,15 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsIn, IsNotEmpty, IsString } from 'class-validator';
 import {
   ACTION_TYPES,
-  type ActionType,
+  AGENT_AUTONOMY_ALL_ACTIONS,
+  type AgentAutonomyActionType,
 } from '../../../../domain/actions/decide';
 import type { PermissionPolicy } from '../../../../domain/actions/permissions-file';
+
+const AGENT_AUTONOMY_ACTION_TYPES = [
+  ...ACTION_TYPES,
+  AGENT_AUTONOMY_ALL_ACTIONS,
+];
 
 export class SetAgentAutonomyDto {
   @ApiProperty({ example: 'dev-api', description: 'Slug do agente.' })
@@ -12,9 +18,17 @@ export class SetAgentAutonomyDto {
   @IsNotEmpty()
   agentId!: string;
 
-  @ApiProperty({ enum: ACTION_TYPES, example: 'terminal' })
-  @IsIn(ACTION_TYPES)
-  actionType!: ActionType;
+  @ApiProperty({
+    enum: AGENT_AUTONOMY_ACTION_TYPES,
+    example: 'terminal',
+    description:
+      'Tipo de ação, ou `"*"` para TODO tipo de ação deste agente — o "auto ' +
+      'mode" do ApprovalCard (RN-153). Uma regra ESPECÍFICA sempre vence a ' +
+      'curinga: gravar `terminal: deny` com `"*": auto_approve` já ligado ' +
+      'continua negando terminal.',
+  })
+  @IsIn(AGENT_AUTONOMY_ACTION_TYPES)
+  actionType!: AgentAutonomyActionType;
 
   @ApiProperty({
     enum: ['auto_approve', 'require_approval', 'deny'],

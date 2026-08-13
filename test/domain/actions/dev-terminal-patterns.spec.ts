@@ -55,6 +55,71 @@ describe('DEV_TERMINAL_ALLOW_PATTERNS — exploração', () => {
   });
 });
 
+describe('DEV_TERMINAL_ALLOW_PATTERNS — subcomandos git de leitura (achado ao vivo)', () => {
+  it.each([
+    'git branch -a',
+    'git remote -v',
+    'git worktree list',
+    'git show origin/dev --stat',
+    'git log --all --oneline --graph',
+    'git for-each-ref',
+    'git ls-tree -r origin/dev --name-only',
+    'git rev-parse --show-toplevel',
+    'git remote show origin',
+    'git config --get user.name',
+  ])('libera `%s` — leitura de histórico/remoto/config', (comando) => {
+    expect(politicaDe(comando)).toBe('auto_approve');
+  });
+
+  it('a cadeia composta observada ao vivo auto-aprova de ponta a ponta', () => {
+    expect(
+      politicaDe('git worktree list && git branch -a && git remote -v'),
+    ).toBe('auto_approve');
+  });
+
+  it('`git log` já liberado antes continua cobrindo flags extras (prefixo de tokens)', () => {
+    expect(politicaDe('git log --all --graph --oneline --decorate')).toBe(
+      'auto_approve',
+    );
+  });
+
+  it.each([
+    // git branch: a MESMA palavra de comando tem irmão mutante — apagar,
+    // renomear ou criar não pode andar de carona no prefixo ancorado.
+    'git branch -D nome-para-apagar',
+    'git branch -d nome-para-apagar',
+    'git branch -m nome-antigo nome-novo',
+    'git branch -M nome-antigo nome-novo',
+    'git branch nome-nova-branch',
+    // git remote: só -v/show são leitura; add/remove/set-url mutam config.
+    'git remote add origin https://exemplo.com/repo.git',
+    'git remote remove origin',
+    'git remote set-url origin https://exemplo.com/outro.git',
+    // git worktree: só list é leitura; add/remove/prune mudam o filesystem.
+    'git worktree add ../nova-pasta',
+    'git worktree remove ../pasta',
+    'git worktree prune',
+    // git config: sem --get, o mecanismo não distingue leitura de escrita —
+    // fica de fora por cautela, e --global/--system nunca foram ancorados.
+    'git config user.name',
+    'git config user.name "Novo Nome"',
+    'git config user.email novo@exemplo.com',
+    'git config --global user.name "Novo Nome"',
+    'git config --global --get user.email',
+  ])('`%s` continua exigindo aprovação — mutação com a mesma palavra de comando', (comando) => {
+    expect(politicaDe(comando)).not.toBe('auto_approve');
+  });
+
+  it('comando composto real observado ao vivo não passa carona se um segmento mutar', () => {
+    expect(
+      politicaDe('git worktree list && git branch -D feature/velha'),
+    ).not.toBe('auto_approve');
+    expect(
+      politicaDe('git remote -v && git remote add origin evil.git'),
+    ).not.toBe('auto_approve');
+  });
+});
+
 describe('DEV_TERMINAL_ALLOW_PATTERNS — o que NÃO abriu junto', () => {
   it.each([
     'rm -rf build',

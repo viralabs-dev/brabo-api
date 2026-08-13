@@ -2,8 +2,6 @@ import { ApiProperty } from '@nestjs/swagger';
 import type {
   GitBlame,
   GitBlameLine,
-  GitBranchDetail,
-  GitBranchDetailList,
   GitBranchPullRequestRef,
   GitPullRequestDiff,
   GitPullRequestDiffFile,
@@ -14,6 +12,9 @@ import type {
 } from '@brabo/shared';
 import type { MesmasChaves, Wire } from '../../shared/dto/wire';
 import type {
+  CodeBranch,
+  CodeBranchList,
+  CodeBranchProducedBy,
   CodeFile,
   CodeSearchMatch,
   CodeSearchResult,
@@ -355,7 +356,26 @@ export const _chavesRefDePrDaBranch: MesmasChaves<
   GitBranchPullRequestRef
 > = true;
 
-export class CodeBranchDetailResponseDto implements Wire<GitBranchDetail> {
+export class CodeBranchProducedByResponseDto implements Wire<CodeBranchProducedBy> {
+  @ApiProperty({
+    example: 'dev-pieces',
+    description:
+      'agent_id do dev que criou a branch (`dev-<modulo>`/`dev-<modulo>-2`, RN-087).',
+  })
+  agentId!: string;
+
+  @ApiProperty({
+    example: 'pieces',
+    description: 'Nome do módulo, do `module_map` vigente do projeto.',
+  })
+  moduleId!: string;
+}
+export const _chavesProduzidaPor: MesmasChaves<
+  CodeBranchProducedByResponseDto,
+  CodeBranchProducedBy
+> = true;
+
+export class CodeBranchDetailResponseDto implements Wire<CodeBranch> {
   @ApiProperty({ example: 'feature/x' })
   name!: string;
 
@@ -384,13 +404,23 @@ export class CodeBranchDetailResponseDto implements Wire<GitBranchDetail> {
 
   @ApiProperty({ type: CodeBranchPullRequestRefResponseDto, nullable: true })
   pullRequest!: CodeBranchPullRequestRefResponseDto | null;
+
+  @ApiProperty({
+    type: CodeBranchProducedByResponseDto,
+    nullable: true,
+    description:
+      'Dev agent/módulo dono da branch (RN-152), quando o nome bate com ' +
+      '`feature/task-XXXXXXXX` e a task/módulo ainda são resolvíveis. ' +
+      '`null` pra branch manual do usuário ou pra `main`/`dev`/`qa`.',
+  })
+  producedBy!: CodeBranchProducedByResponseDto | null;
 }
 export const _chavesBranchDetalhada: MesmasChaves<
   CodeBranchDetailResponseDto,
-  GitBranchDetail
+  CodeBranch
 > = true;
 
-export class CodeBranchDetailListResponseDto implements Wire<GitBranchDetailList> {
+export class CodeBranchDetailListResponseDto implements Wire<CodeBranchList> {
   @ApiProperty({ type: [CodeBranchDetailResponseDto] })
   items!: CodeBranchDetailResponseDto[];
 
@@ -402,5 +432,5 @@ export class CodeBranchDetailListResponseDto implements Wire<GitBranchDetailList
 }
 export const _chavesListaDeBranches: MesmasChaves<
   CodeBranchDetailListResponseDto,
-  GitBranchDetailList
+  CodeBranchList
 > = true;

@@ -5,6 +5,7 @@ import { EngineHttpClientsModule } from '../../../infrastructure/http-clients/en
 import { GitInfrastructureModule } from '../../../infrastructure/git/git-infrastructure.module';
 import { FilesystemModule } from '../../../infrastructure/filesystem/filesystem.module';
 import { ActivateExecutionUseCase } from './activate-execution.use-case';
+import { GetActiveExecutionSessionUseCase } from './get-active-execution-session.use-case';
 import { AcceptParallelizationUseCase } from './accept-parallelization.use-case';
 import { RequestParallelizationUseCase } from './request-parallelization.use-case';
 import { ListAgentAreasUseCase } from './list-agent-areas.use-case';
@@ -43,6 +44,7 @@ import { SeedAgentAreasUseCase } from '../agents/seed-agent-areas.use-case';
 const USE_CASES = [
   SeedAgentAreasUseCase,
   ActivateExecutionUseCase,
+  GetActiveExecutionSessionUseCase,
   AcceptParallelizationUseCase,
   RequestParallelizationUseCase,
   ListAgentAreasUseCase,

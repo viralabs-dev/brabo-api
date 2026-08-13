@@ -29,6 +29,10 @@ import type { GitProviderRegistry } from '../../../../src/application/ports/git-
 import type { ProvisionedRepositoryRepository } from '../../../../src/application/ports/provisioned-repository-repository.port';
 import type { ProjectRepository } from '../../../../src/application/ports/project-repository.port';
 import type { UserCredentialRepository } from '../../../../src/application/ports/user-credential-repository.port';
+import type { TaskRepository } from '../../../../src/application/ports/backlog-repository.port';
+import type { ModuleMapRepository } from '../../../../src/application/ports/module-map-repository.port';
+import type { Task } from '../../../../src/domain/backlog/backlog.entity';
+import type { ModuleMap } from '../../../../src/domain/architecture/module-map.entity';
 import type { EncryptionService } from '../../../../src/application/ports/encryption.port';
 import type { ResolveCredentialOwnerUseCase } from '../../../../src/application/use-cases/llm/resolve-credential-owner.use-case';
 import type { ObterContainerDoProjetoUseCase } from '../../../../src/application/use-cases/containers/obter-container-do-projeto.use-case';
@@ -53,6 +57,25 @@ const PROJETO = '3f2b1c8e-0a5d-4f6b-9c1e-2d7a8b3c4d5e';
 /** Repositório falso: caminho → conteúdo. Diretórios são derivados. */
 type Arquivos = Record<string, string>;
 
+const BRANCHES_PADRAO: GitBranchDetailList['items'] = [
+  {
+    name: 'dev',
+    commitSha: 'sha-dev',
+    protected: true,
+    ahead: 0,
+    behind: 0,
+    pullRequest: null,
+  },
+  {
+    name: 'feature',
+    commitSha: 'sha-feature',
+    protected: false,
+    ahead: 2,
+    behind: 1,
+    pullRequest: { number: 1, state: 'open' },
+  },
+];
+
 class ProviderFalso implements GitProviderContract {
   readonly name: GitProviderName = 'github';
   readonly capabilities: GitProviderCapabilities;
@@ -62,6 +85,7 @@ class ProviderFalso implements GitProviderContract {
   constructor(
     private readonly arquivos: Arquivos,
     capabilities?: Partial<GitProviderCapabilities>,
+    private readonly branchesFalsas: GitBranchDetailList['items'] = BRANCHES_PADRAO,
   ) {
     this.capabilities = {
       protectBranch: true,
@@ -192,27 +216,7 @@ class ProviderFalso implements GitProviderContract {
       );
     }
     this.chamadas.push('listBranchesDetailed');
-    return Promise.resolve({
-      items: [
-        {
-          name: 'dev',
-          commitSha: 'sha-dev',
-          protected: true,
-          ahead: 0,
-          behind: 0,
-          pullRequest: null,
-        },
-        {
-          name: 'feature',
-          commitSha: 'sha-feature',
-          protected: false,
-          ahead: 2,
-          behind: 1,
-          pullRequest: { number: 1, state: 'open' },
-        },
-      ],
-      truncated: false,
-    });
+    return Promise.resolve({ items: this.branchesFalsas, truncated: false });
   }
 
   // O resto do contrato não pertence à leitura, e explodir é melhor que
@@ -260,6 +264,9 @@ function montar(
     provider?: GitProviderName;
     semRepositorio?: boolean;
     container?: EstadoDoContainer;
+    /** Tasks por prefixo do id (8 chars, minúsculo) — RN-152. */
+    tasksPorPrefixo?: Record<string, Task>;
+    moduleMap?: ModuleMap | null;
   } = {},
 ) {
   const nome = opcoes.provider ?? 'github';
@@ -314,6 +321,16 @@ function montar(
     execute: () => Promise.resolve(opcoes.container ?? CONTAINER_DECIDIDO),
   } as unknown as ObterContainerDoProjetoUseCase;
 
+  const tasksPorPrefixo = opcoes.tasksPorPrefixo ?? {};
+  const tasks = {
+    findByProjectAndIdPrefix: (_projectId: string, prefixo: string) =>
+      Promise.resolve(tasksPorPrefixo[prefixo] ?? null),
+  } as unknown as TaskRepository;
+
+  const moduleMaps = {
+    findCurrent: () => Promise.resolve(opcoes.moduleMap ?? null),
+  } as unknown as ModuleMapRepository;
+
   const useCase = new ReadProjectCodeUseCase(
     repositorios,
     projetos,
@@ -323,6 +340,8 @@ function montar(
     resolveOwner,
     new GitReadCache(),
     container,
+    tasks,
+    moduleMaps,
   );
 
   return { useCase, donosPedidos };
@@ -610,6 +629,180 @@ describe('ReadProjectCodeUseCase — branches detalhadas (FASE 26b)', () => {
     await expect(useCase.branches(PROJETO)).rejects.toThrow(
       GitNotSupportedError,
     );
+  });
+});
+
+/** Task mínima válida, com os overrides do caso de teste. */
+function tarefaFalsa(overrides: Partial<Task>): Task {
+  return {
+    id: '3f2b1c8e-0000-4000-8000-000000000001',
+    storyId: 'story-1',
+    title: 'Task de teste',
+    description: '',
+    status: 'in_progress',
+    assignedTo: 'dev-pieces',
+    blocked: false,
+    blockedReason: null,
+    blockedOrigin: null,
+    gateStatus: null,
+    gateCorrectionCount: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
+
+const MODULE_MAP_PIECES: ModuleMap = {
+  id: 'mm-1',
+  projectId: PROJETO,
+  sessionId: 'session-1',
+  version: 1,
+  createdAt: new Date(),
+  modules: [
+    { name: 'pieces', stack: 'ts', responsibility: 'peças', dependsOn: [] },
+    { name: 'board', stack: 'ts', responsibility: 'tabuleiro', dependsOn: [] },
+  ],
+};
+
+describe('ReadProjectCodeUseCase — producedBy da branch de task (RN-152)', () => {
+  const BRANCH_DE_TASK = 'feature/task-3f2b1c8e';
+  const PREFIXO = '3f2b1c8e';
+
+  it('caminho feliz: branch de task resolve o dev agent e o módulo dono', async () => {
+    const provider = new ProviderFalso(REPO, undefined, [
+      {
+        name: BRANCH_DE_TASK,
+        commitSha: 'sha-1',
+        protected: false,
+        ahead: 1,
+        behind: 0,
+        pullRequest: null,
+      },
+    ]);
+    const { useCase } = montar(provider, {
+      tasksPorPrefixo: { [PREFIXO]: tarefaFalsa({ assignedTo: 'dev-pieces' }) },
+      moduleMap: MODULE_MAP_PIECES,
+    });
+
+    const lista = await useCase.branches(PROJETO);
+
+    expect(lista.items[0].producedBy).toEqual({
+      agentId: 'dev-pieces',
+      moduleId: 'pieces',
+    });
+  });
+
+  it('caminho feliz: resolve também o agente extra da paralelização (dev-<modulo>-2)', async () => {
+    const provider = new ProviderFalso(REPO, undefined, [
+      {
+        name: BRANCH_DE_TASK,
+        commitSha: 'sha-1',
+        protected: false,
+        ahead: 1,
+        behind: 0,
+        pullRequest: null,
+      },
+    ]);
+    const { useCase } = montar(provider, {
+      tasksPorPrefixo: {
+        [PREFIXO]: tarefaFalsa({ assignedTo: 'dev-pieces-2' }),
+      },
+      moduleMap: MODULE_MAP_PIECES,
+    });
+
+    const lista = await useCase.branches(PROJETO);
+
+    expect(lista.items[0].producedBy).toEqual({
+      agentId: 'dev-pieces-2',
+      moduleId: 'pieces',
+    });
+  });
+
+  it('caso de falha: branch fora do padrão de task nunca ganha producedBy', async () => {
+    // Mesmo com uma task de prefixo casável no repositório falso — o nome da
+    // branch é que decide, não a existência da task.
+    const provider = new ProviderFalso(REPO, undefined, [
+      {
+        name: 'feature/refatoracao-manual',
+        commitSha: 'sha-2',
+        protected: false,
+        ahead: 0,
+        behind: 0,
+        pullRequest: null,
+      },
+    ]);
+    const { useCase } = montar(provider, {
+      tasksPorPrefixo: { [PREFIXO]: tarefaFalsa() },
+      moduleMap: MODULE_MAP_PIECES,
+    });
+
+    const lista = await useCase.branches(PROJETO);
+
+    expect(lista.items[0].producedBy).toBeNull();
+  });
+
+  it('caso de falha: padrão bate mas não há task com esse prefixo neste projeto', async () => {
+    const provider = new ProviderFalso(REPO, undefined, [
+      {
+        name: BRANCH_DE_TASK,
+        commitSha: 'sha-1',
+        protected: false,
+        ahead: 0,
+        behind: 0,
+        pullRequest: null,
+      },
+    ]);
+    const { useCase } = montar(provider, {
+      tasksPorPrefixo: {},
+      moduleMap: MODULE_MAP_PIECES,
+    });
+
+    const lista = await useCase.branches(PROJETO);
+
+    expect(lista.items[0].producedBy).toBeNull();
+  });
+
+  it('caso de falha: task sem módulo resolvível no module_map vigente degrada para null', async () => {
+    const provider = new ProviderFalso(REPO, undefined, [
+      {
+        name: BRANCH_DE_TASK,
+        commitSha: 'sha-1',
+        protected: false,
+        ahead: 0,
+        behind: 0,
+        pullRequest: null,
+      },
+    ]);
+    const { useCase } = montar(provider, {
+      // Módulo do agente não existe (mais) no module_map vigente.
+      tasksPorPrefixo: { [PREFIXO]: tarefaFalsa({ assignedTo: 'dev-removido' }) },
+      moduleMap: MODULE_MAP_PIECES,
+    });
+
+    const lista = await useCase.branches(PROJETO);
+
+    expect(lista.items[0].producedBy).toBeNull();
+  });
+
+  it('caso de falha: task existe mas não tem dono ainda (assignedTo null) é null', async () => {
+    const provider = new ProviderFalso(REPO, undefined, [
+      {
+        name: BRANCH_DE_TASK,
+        commitSha: 'sha-1',
+        protected: false,
+        ahead: 0,
+        behind: 0,
+        pullRequest: null,
+      },
+    ]);
+    const { useCase } = montar(provider, {
+      tasksPorPrefixo: { [PREFIXO]: tarefaFalsa({ assignedTo: null }) },
+      moduleMap: MODULE_MAP_PIECES,
+    });
+
+    const lista = await useCase.branches(PROJETO);
+
+    expect(lista.items[0].producedBy).toBeNull();
   });
 });
 

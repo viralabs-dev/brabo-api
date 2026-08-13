@@ -4,6 +4,8 @@ import { StoryRepository } from '../../ports/backlog-repository.port';
 import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
 import { missingModules } from '../../../domain/architecture/module-resolution';
 import type { ModuleMap } from '../../../domain/architecture/module-map.entity';
+import { GetC4DiagramUseCase } from './get-c4-diagram.use-case';
+import type { EstadoDoC4Diagrama } from '../../../domain/architecture/c4-diagram';
 
 export interface AdrRef {
   actionId: string;
@@ -24,12 +26,16 @@ export interface Architecture {
   moduleMap: ModuleMap | null;
   adrs: AdrRef[];
   pendencies: ArchitecturePendency[];
+  /** Diagrama C4 (Context + Container) vigente, ou `sem_diagrama` (FASE do diagrama C4). */
+  c4Diagram: EstadoDoC4Diagrama;
 }
 
 /**
  * Seção de arquitetura da visão geral: o module_map vigente, as ADRs
- * (proposed_actions open_adr_pr do projeto → título + status + link da PR) e as
- * pendências de validação cruzada (stories sem módulo OU com módulo faltante).
+ * (proposed_actions open_adr_pr do projeto → título + status + link da PR), as
+ * pendências de validação cruzada (stories sem módulo OU com módulo faltante)
+ * e o diagrama C4 vigente (`GetC4DiagramUseCase`, mesmo padrão do container
+ * do projeto — ADR 0065).
  */
 @Injectable()
 export class GetArchitectureUseCase {
@@ -37,13 +43,15 @@ export class GetArchitectureUseCase {
     private readonly moduleMaps: ModuleMapRepository,
     private readonly stories: StoryRepository,
     private readonly proposedActions: ProposedActionRepository,
+    private readonly getC4Diagram: GetC4DiagramUseCase,
   ) {}
 
   async execute(projectId: string): Promise<Architecture> {
-    const [moduleMap, stories, adrActions] = await Promise.all([
+    const [moduleMap, stories, adrActions, c4Diagram] = await Promise.all([
       this.moduleMaps.findCurrent(projectId),
       this.stories.findByProject(projectId),
       this.proposedActions.listByProjectAndType(projectId, 'open_adr_pr'),
+      this.getC4Diagram.execute(projectId),
     ]);
 
     const names = moduleMap?.modules.map((m) => m.name) ?? [];
@@ -82,6 +90,6 @@ export class GetArchitectureUseCase {
       }
     }
 
-    return { moduleMap, adrs, pendencies };
+    return { moduleMap, adrs, pendencies, c4Diagram };
   }
 }

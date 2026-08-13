@@ -62,6 +62,15 @@ export abstract class TaskRepository {
   abstract create(input: NewTask): Promise<Task>;
   abstract findById(id: string): Promise<Task | null>;
   abstract findByStoryIds(storyIds: string[]): Promise<Task[]>;
+  // A branch `feature/task-XXXXXXXX` (Engine.Dev.AgentIo) carrega os 8
+  // primeiros chars do id — que É o primeiro grupo hifenizado do uuid, não
+  // um substring arbitrário. Escopado por projeto (via join com stories) pra
+  // não vazar task de outro projeto por colisão de prefixo. `null` sem task
+  // com esse prefixo NESTE projeto.
+  abstract findByProjectAndIdPrefix(
+    projectId: string,
+    idPrefix: string,
+  ): Promise<Task | null>;
   // Pega ATOMICAMENTE a próxima task `todo` cuja story é `ready` e cujos
   // moduleIds contêm `module` (FOR UPDATE SKIP LOCKED) — 2 devs nunca pegam a
   // mesma. Marca in_progress + assignedTo. Retorna null se não há task pegável.

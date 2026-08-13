@@ -39,6 +39,12 @@ export interface ProvisionRepositoryResult {
 
 const BOOTSTRAP_ACTOR: Actor = { kind: 'system', id: 'git-bootstrap' };
 
+// Nome fixo e reconhecível (RN-098 já permite nome amigável) — não gerado
+// dinamicamente. É o que deixa o usuário identificar de cara, na lista de
+// sessões do Criativo, qual delas é a automática de provisionamento, sem
+// precisar abrir cada uma para ler o event log.
+const BOOTSTRAP_SESSION_NAME = 'git-bootstrap';
+
 @Injectable()
 export class ProvisionRepositoryUseCase {
   constructor(
@@ -118,6 +124,7 @@ export class ProvisionRepositoryUseCase {
       repo = existingRepo;
       const session = await this.createSession.execute(projectId, userId, {
         kind: 'criativa',
+        name: BOOTSTRAP_SESSION_NAME,
       });
       bootstrap = await this.repoBootstraps.create({
         projectId,
@@ -130,6 +137,7 @@ export class ProvisionRepositoryUseCase {
       // travaria o projeto no primeiro clique de "Ativar execução".
       const session = await this.createSession.execute(projectId, userId, {
         kind: 'criativa',
+        name: BOOTSTRAP_SESSION_NAME,
       });
 
       const proposedAction = await this.unitOfWork.runInTransaction(
