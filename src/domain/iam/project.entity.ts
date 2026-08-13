@@ -8,6 +8,10 @@ export interface Project {
   workspaceId: string;
   name: string;
   slug: string;
+  // O nome da pasta física do workspace do projeto — CONGELADO na criação e
+  // nunca recalculado (RN-109). Ver `workspaceDirNameFor` em
+  // infrastructure/filesystem/project-workspaces-root.ts.
+  workspaceDirName: string;
   createdBy: string;
   // Teto de tokens por task dos dev agents (micro-USD). Nulo = default do
   // domínio (ver DEFAULT_TASK_BUDGET_MICROS em ActivateExecutionUseCase).

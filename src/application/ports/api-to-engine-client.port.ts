@@ -53,6 +53,19 @@ export abstract class ApiToEngineClient {
     sessionId: string,
   ): Promise<void>;
 
+  /**
+   * Cancela o turno em curso do agente conversacional (RN-122, o botão
+   * "Parar" do composer) — mata a Task que segura a chamada ao LLM no
+   * engine, cortando a conexão SSE no meio para economizar token de
+   * verdade, não só parar de renderizar no cliente. Idempotente: sem
+   * turno em curso (ou sem o agente de pé), é NO-OP no engine.
+   */
+  abstract cancelAgentTurn(
+    projectId: string,
+    sessionId: string,
+    agent: string,
+  ): Promise<void>;
+
   // --- Execução (Fase 4a) ---
 
   // Sobe os DevAgentServers (um por módulo) no engine. `impl` escolhe a
@@ -124,6 +137,11 @@ export abstract class ApiToEngineClient {
   // engine enfileira o job do PsychologistWorker com triggeredBy:
   // "manual" (sempre roda, mesmo se já houver análise current pra
   // sessão; a análise antiga vira superseded, não é apagada).
+  //
+  // Lança `PsychologistDisabledError` quando a flag global
+  // `PSYCHOLOGIST_ENABLED` do engine está desligada (decisão de produto —
+  // ver docs/explanation/backlog.md); o chamador decide o que fazer com
+  // isso.
   abstract reanalyzeSession(
     projectId: string,
     sessionId: string,
@@ -138,6 +156,10 @@ export abstract class ApiToEngineClient {
    * Roda a Anamnese do projeto AGORA, sem esperar o tick periódico. O engine
    * escolhe a mesma sessão que o scheduler escolheria; projeto sem sessão não
    * tem log pra analisar.
+   *
+   * Lança `AnamneseDisabledError` quando a flag global `ANAMNESE_ENABLED` do
+   * engine está desligada (decisão de produto — ver
+   * docs/explanation/backlog.md); o chamador decide o que fazer com isso.
    */
   abstract runAnamnese(projectId: string): Promise<void>;
   abstract invalidateInstructions(

@@ -188,6 +188,9 @@ describe('RunLlmTurnUseCase', () => {
       outputTokens: 4,
       estimated: false,
     });
+    // Achado do problema 2 (RN-146): o nome do modelo viaja no resultado —
+    // antes só existia em `token_usage`, sem vínculo com o turno específico.
+    expect(result.modelName).toBe('llama3.2:3b');
 
     // Metering gravado.
     const usageRows = await db
@@ -223,6 +226,9 @@ describe('RunLlmTurnUseCase', () => {
     expect(result.error).toContain('provider caiu');
     // Sem usage do provider -> estimativa marcada.
     expect(result.usage.estimated).toBe(true);
+    // O modelo já tinha sido resolvido ANTES do provider falhar — o nome
+    // viaja mesmo no caminho de erro (RN-146).
+    expect(result.modelName).toBe('llama3.2:3b');
     const usageRows = await db
       .select()
       .from(tokenUsage)
@@ -243,6 +249,9 @@ describe('RunLlmTurnUseCase', () => {
     });
 
     expect(result.error).toMatch(/modelo vinculado/i);
+    // Borda (RN-146): sem binding, nenhum modelo foi resolvido — `modelName`
+    // é `null`, nunca undefined nem o nome de um modelo que não existiu.
+    expect(result.modelName).toBeNull();
     const usageRows = await db
       .select()
       .from(tokenUsage)

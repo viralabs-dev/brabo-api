@@ -52,10 +52,11 @@ export class ModelNotBindableError extends Error {
  * `models` pode estar ligada num workspace e desligada no vizinho (ADR 0049).
  *
  * `null` quer dizer "não há workspace nesta pergunta" — e aí só a
- * disponibilidade é checada. Acontece nos escopos `agent` e `session`, que
- * hoje não têm âncora de workspace nenhuma (binding de agente é por slug
- * global, ver `model-bindings.controller.ts`). Fingir uma resposta ali seria
- * inventar um workspace; deixar explícito mantém a lacuna visível.
+ * disponibilidade é checada. Desde o ADR 0064 sobra um único escopo assim, o
+ * `session`, que não chega aqui com projeto na mão: `agent` e `area` passaram a
+ * carregar o projeto no próprio `scope_id` e agora respondem pela curadoria
+ * como os outros dois. Fingir uma resposta ali seria inventar um workspace;
+ * deixar explícito mantém a lacuna visível.
  */
 export function assertModelIsBindable(
   model: Model,
@@ -70,10 +71,16 @@ export function assertModelIsBindable(
 }
 
 /**
- * Só o escopo `agent` é validado. `workspace` e `project` são o fallback do
- * chat humano — travá-los proibiria modelo chat-only no produto inteiro, que
- * não é o que a regra quer. O escopo `session` também fica livre: uma sessão
- * de conversa não roda ToolLoop.
+ * Só os escopos `agent` e `area` são validados. `workspace` e `project` são o
+ * fallback do chat humano — travá-los proibiria modelo chat-only no produto
+ * inteiro, que não é o que a regra quer. O escopo `session` também fica livre:
+ * uma sessão de conversa não roda ToolLoop.
+ *
+ * `area` entrou junto na FASE 23 (ADR 0064) porque ela NÃO é um fallback
+ * genérico: o único consumidor do modelo de uma área é um agente dela, lead ou
+ * subagente. Deixá-la passar seria admitir um padrão que a cascata teria de
+ * pular em todo agente que o herdasse — a mesma falha silenciosa da RN-040,
+ * atrasada em um nível.
  *
  * O agente `context-manager` (ADR 0007) é coberto por construção: ele é um
  * slug DENTRO do escopo `agent`, não um escopo próprio.
@@ -82,7 +89,8 @@ export function assertModelFitsBindingScope(
   model: Model,
   scope: ModelBindingScope,
 ): void {
-  if (scope === 'agent' && !model.supportsToolCalling) {
+  const exigeFerramentas = scope === 'agent' || scope === 'area';
+  if (exigeFerramentas && !model.supportsToolCalling) {
     throw new ModelNotFitForAgentScopeError(model);
   }
 }

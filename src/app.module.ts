@@ -18,6 +18,7 @@ import { ActionsHttpModule } from './interfaces/http/actions/actions-http.module
 import { AgentsHttpModule } from './interfaces/http/agents/agents-http.module';
 import { BacklogHttpModule } from './interfaces/http/backlog/backlog-http.module';
 import { ExecutionHttpModule } from './interfaces/http/execution/execution-http.module';
+import { ContainersHttpModule } from './interfaces/http/containers/containers-http.module';
 import { GatesHttpModule } from './interfaces/http/gates/gates-http.module';
 import { GitHttpModule } from './interfaces/http/git/git-http.module';
 import { InternalHttpModule } from './interfaces/http/internal/internal-http.module';
@@ -48,6 +49,7 @@ import { AnamneseHttpModule } from './interfaces/http/anamnese/anamnese-http.mod
     AgentsHttpModule,
     BacklogHttpModule,
     ExecutionHttpModule,
+    ContainersHttpModule,
     GatesHttpModule,
     GitHttpModule,
     PsychologistHttpModule,

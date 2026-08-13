@@ -135,6 +135,9 @@ class FailOnceGitProvider {
     this.inner.getFileContent(i);
   commentOnPullRequest: LocalGitProvider['commentOnPullRequest'] = (i) =>
     this.inner.commentOnPullRequest(i);
+  listTree: LocalGitProvider['listTree'] = (i) => this.inner.listTree(i);
+  getPullRequestDiff: LocalGitProvider['getPullRequestDiff'] = (i) =>
+    this.inner.getPullRequestDiff(i);
 }
 
 async function main() {

@@ -44,6 +44,15 @@ export interface ProjectCardSummary {
   /** Último evento da sessão mais recente — a linha de rodapé do card. */
   lastEvent: SessionEvent | null;
   storiesAwaitingPromotion: number;
+  /**
+   * `proposed_actions` com `status = 'pending'` no projeto INTEIRO, todas as
+   * sessões — não só a mais recente (RN-151). É o número que a sidebar
+   * (`Shell.tsx`) mostra: antes ela reusava `latestSeq - seen` (atividade não
+   * lida), que misturava qualquer evento com decisão pendente de verdade. A
+   * aba Aprovações mostra só as da sessão mais recente; aqui é o projeto todo
+   * de propósito, porque o badge é por PROJETO, não por sessão.
+   */
+  pendingApprovalsCount: number;
   roster: RosterFacts;
 }
 
@@ -60,10 +69,14 @@ export interface UnreadCursor {
   afterSeq: number;
 }
 
-/** Os eventos não lidos de um projeto, na sessão mais recente dele. */
+/**
+ * Os eventos não lidos de um projeto, na sessão mais recente dele — do MAIS
+ * RECENTE para o mais antigo (RN-100).
+ */
 export interface ProjectUnreadEvents {
   projectId: string;
   sessionId: string;
+  /** Ordem decrescente por `seq`: o primeiro item é o evento mais novo. */
   events: SessionEvent[];
 }
 
@@ -75,6 +88,12 @@ export interface ProjectUnreadEvents {
  * é o que mantém a resposta idêntica à do caminho antigo. Sem ele, um projeto
  * abandonado por semanas devolveria a sessão inteira e a chamada em lote
  * ficaria mais cara que as N que ela substitui.
+ *
+ * O teto é o motivo de a ORDEM ser do SQL (RN-100): ele decide QUAIS 50
+ * eventos sobrevivem, e a resposta é uma JANELA — os 50 mais recentes não
+ * lidos, não os 50 primeiros. Quem chama sabe quantos ficaram de fora sem
+ * perguntar de novo: `latestSeq` menos o corte é o total de não lidos, e o
+ * resto é subtração.
  */
 export const UNREAD_EVENTS_POR_PROJETO = 50;
 
@@ -114,7 +133,10 @@ export abstract class ProjectsSummaryRepository {
    * - projeto sem sessão, ou sem evento novo depois do corte, sai da resposta
    *   em vez de aparecer com lista vazia;
    * - a sessão consultada é a MAIS RECENTE do projeto, a mesma que
-   *   `summarizeForWorkspace` reporta em `latestSessionId`.
+   *   `summarizeForWorkspace` reporta em `latestSessionId`;
+   * - os eventos vêm do MAIS RECENTE para o mais antigo, e quando há mais que
+   *   `UNREAD_EVENTS_POR_PROJETO` não lidos os que sobrevivem ao teto são os
+   *   mais NOVOS (RN-100).
    */
   abstract unreadEventsForWorkspace(
     workspaceId: string,

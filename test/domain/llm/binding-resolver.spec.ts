@@ -48,6 +48,64 @@ describe('resolveBinding', () => {
     });
   });
 
+  // FASE 23 / ADR 0064 — os três testes abaixo são a POSIÇÃO da área na
+  // cascata, que é a decisão da fase: ela é o padrão de quem não decidiu, e
+  // perde para o agente que decidiu.
+  it('a área é o padrão: quem não tem binding de agente herda dela (RN-102)', () => {
+    const resolved = resolveBinding([
+      candidato('workspace', 'workspace-model'),
+      candidato('project', 'project-model'),
+      candidato('area', 'area-model'),
+    ]);
+    expect(resolved).toEqual({
+      modelId: 'area-model',
+      origin: 'area',
+      skipped: [],
+    });
+  });
+
+  it('o agente DIVERGE: binding próprio vence o padrão da área (RN-102)', () => {
+    const resolved = resolveBinding([
+      candidato('project', 'project-model'),
+      candidato('area', 'area-model'),
+      candidato('agent', 'agent-model'),
+    ]);
+    expect(resolved).toEqual({
+      modelId: 'agent-model',
+      origin: 'agent',
+      skipped: [],
+    });
+  });
+
+  it('a área entra na MESMA revalidação: modelo sumido cai para o projeto e avisa', () => {
+    const resolved = resolveBinding([
+      candidato('project', 'project-model'),
+      candidato('area', 'area-sumiu', { availability: 'unavailable' }),
+    ]);
+    expect(resolved).toEqual({
+      modelId: 'project-model',
+      origin: 'project',
+      skipped: [{ scope: 'area', modelId: 'area-sumiu', reason: 'unavailable' }],
+    });
+  });
+
+  it('área chat-only não serve a turno com ferramentas — pula e registra', () => {
+    const resolved = resolveBinding(
+      [
+        candidato('project', 'project-model'),
+        candidato('area', 'area-tagarela', { supportsToolCalling: false }),
+      ],
+      true,
+    );
+    expect(resolved).toEqual({
+      modelId: 'project-model',
+      origin: 'project',
+      skipped: [
+        { scope: 'area', modelId: 'area-tagarela', reason: 'sem_tool_calling' },
+      ],
+    });
+  });
+
   it('projeto sobrepõe workspace quando só esses dois existem', () => {
     const resolved = resolveBinding([
       candidato('workspace', 'workspace-model'),

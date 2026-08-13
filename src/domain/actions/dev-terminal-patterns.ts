@@ -47,6 +47,58 @@ export const DEV_TERMINAL_ALLOW_PATTERNS: readonly string[] = [
   'Terminal(git status)',
   'Terminal(git diff)',
   'Terminal(git log)',
+
+  // Subcomandos de LEITURA que a exploração real de uma sessão mostrou em
+  // falta: `git status`/`diff`/`log` bastam pra olhar o worktree, mas não pra
+  // o agente se orientar no HISTÓRICO e nos REMOTOS de um repo recém-adotado
+  // (`git branch -a`, `git remote -v`, `git worktree list`, `git show
+  // origin/dev --stat`, `git for-each-ref`, `git ls-tree -r origin/dev
+  // --name-only`, `git config user.name`) — cada um caiu fora do allow e, como
+  // aparecem no MEIO de uma cadeia exploratória composta, reprovavam o
+  // comando inteiro para aprovação manual.
+  //
+  // O casamento de `terminal` é por PREFIXO de tokens (ver
+  // command-matcher.ts) — tokens extras no FINAL do comando são permitidos,
+  // não só os que o padrão lista. Isso é seguro para verbos cuja família
+  // INTEIRA é leitura (`git show`, `git log`, `git for-each-ref`, `git
+  // ls-tree`, `git rev-parse`: nenhuma continuação deles muta o repo), mas
+  // vira BURACO pros verbos com irmão mutante que aceita a MESMA forma
+  // truncada — `Terminal(git branch)` bateria em `git branch -D nome`
+  // (apaga) e em `git branch nome-nova` (cria) do mesmo jeito que bate em
+  // `git branch` sozinho, porque o padrão não vê o que vem depois do prefixo
+  // que ele checou. Por isso os quatro abaixo são ANCORADOS pela flag que
+  // torna a leitura inequívoca, nunca pelo verbo pelado:
+  //   - `git branch` sozinho poderia ganhar um nome de branch (cria) ou
+  //     -D/-d/-m/-M (apaga/renomeia) depois do prefixo — ancorado em
+  //     -a/-r/-v/--list/--show-current, que não aceitam continuação mutante.
+  //   - `git remote` sozinho poderia ganhar `add`/`remove`/`set-url` — só
+  //     `-v` e `show` (que só aceita nome de remote depois, sempre leitura).
+  //   - `git worktree` sozinho poderia ganhar `add`/`remove`/`prune` — só
+  //     `list`.
+  //   - `git config` sozinho poderia ganhar um SEGUNDO argumento após a
+  //     chave (`git config user.name "novo"` é ESCRITA; `git config
+  //     user.name` sem mais nada é leitura, e o mecanismo de prefixo não
+  //     distingue "sem mais tokens" de "com mais um token" — ver achado
+  //     análogo em `git branch`). Só `--get` é ancorado, porque essa flag é
+  //     o único jeito de o próprio git garantir leitura independente do que
+  //     vier depois (chave, ou chave + padrão de valor pra filtrar). Isso
+  //     deixa `git config user.name`/`git config --global ...` FORA da
+  //     allowlist de propósito — granularidade que o casamento por prefixo
+  //     já suporta, sem inventar parser de "conta quantos argumentos" novo.
+  'Terminal(git branch -a)',
+  'Terminal(git branch -r)',
+  'Terminal(git branch -v)',
+  'Terminal(git branch --list)',
+  'Terminal(git branch --show-current)',
+  'Terminal(git remote -v)',
+  'Terminal(git remote show)',
+  'Terminal(git worktree list)',
+  'Terminal(git show)',
+  'Terminal(git for-each-ref)',
+  'Terminal(git ls-tree)',
+  'Terminal(git rev-parse)',
+  'Terminal(git config --get)',
+
   // Node / pnpm / npm / yarn
   'Terminal(pnpm install)',
   'Terminal(pnpm test)',

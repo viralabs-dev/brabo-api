@@ -46,7 +46,10 @@ export class AgentAutonomyController {
     summary: 'Define a autonomia de um agente para um tipo de ação',
     description:
       'Upsert por (agente, tipo). NÃO sobrepõe o `permissions.json`: um padrão em ' +
-      '`deny` continua bloqueado por mais autonomia que se conceda aqui.',
+      '`deny` continua bloqueado por mais autonomia que se conceda aqui. ' +
+      '`actionType: "*"` é o "auto mode" (RN-153) — autonomia pra QUALQUER tipo ' +
+      'de ação deste agente; uma regra específica gravada depois continua ' +
+      'vencendo a curinga para aquele tipo.',
   })
   @ApiNoContentResponse({ description: 'Regra gravada. Sem corpo.' })
   set(@Param('projectId') projectId: string, @Body() dto: SetAgentAutonomyDto) {

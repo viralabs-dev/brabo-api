@@ -19,7 +19,12 @@ export class DrizzleProjectRepository implements ProjectRepository {
   constructor(@Inject(DRIZZLE) private readonly rootDb: DrizzleDb) {}
 
   async create(
-    input: ProjectInput & { workspaceId: string; createdBy: string },
+    input: ProjectInput & {
+      id: string;
+      workspaceId: string;
+      createdBy: string;
+      workspaceDirName: string;
+    },
   ): Promise<Project> {
     const db = currentDb(this.rootDb);
     const [row] = await db.insert(projects).values(input).returning();

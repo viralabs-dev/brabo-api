@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { GitInfrastructureModule } from '../../../infrastructure/git/git-infrastructure.module';
 import { LlmInfrastructureModule } from '../../../infrastructure/llm/llm-infrastructure.module';
 import { LlmUseCasesModule } from '../llm/llm-use-cases.module';
+import { ContainersUseCasesModule } from '../containers/containers-use-cases.module';
 import { SessionsUseCasesModule } from '../sessions/sessions-use-cases.module';
 import { StartGitOauthUseCase } from './start-git-oauth.use-case';
 import { HandleGitOauthCallbackUseCase } from './handle-git-oauth-callback.use-case';
@@ -15,6 +16,8 @@ import { DecideBootstrapPlanUseCase } from './decide-bootstrap-plan.use-case';
 import { GetBootstrapPlanUseCase } from './get-bootstrap-plan.use-case';
 import { GetProjectGitRemoteUseCase } from './get-project-git-remote.use-case';
 import { AcknowledgeProtectionFailureUseCase } from './acknowledge-protection-failure.use-case';
+import { ReadProjectCodeUseCase } from './read-project-code.use-case';
+import { GitReadCache } from '../../../domain/git/git-read-cache';
 
 const USE_CASES = [
   AcknowledgeProtectionFailureUseCase,
@@ -27,11 +30,16 @@ const USE_CASES = [
   GetBootstrapPlanUseCase,
   GetProvisionedRepositoryUseCase,
   GetRepoBootstrapStatusUseCase,
+  ReadProjectCodeUseCase,
   RegisterGitCredentialUseCase,
   // Colaborador, não caso de uso: o executor do bootstrap, extraído na
   // Fase 12a pra ser compartilhado com a adoção sem que ela precise
   // depender do provisionamento inteiro.
   BootstrapRunner,
+  // Também colaborador: o cache de leitura da aba Code. Singleton do módulo de
+  // propósito — um cache por instância de caso de uso não cachearia nada entre
+  // requisições, que é justamente onde a repetição acontece.
+  GitReadCache,
 ];
 
 @Module({
@@ -45,7 +53,12 @@ const USE_CASES = [
   // remoto de trabalho usa a credencial do OWNER, e reusar o resolvedor é o
   // que impede duas regras de "de quem é a credencial" divergirem com o tempo.
   // Sem ciclo: `LlmUseCasesModule` só importa a infraestrutura de LLM.
+  // `ContainersUseCasesModule` entra pelo portão da FASE 25 (RN-105): a aba
+  // Code só abre depois que o Arquiteto decide a imagem do projeto. A seta é
+  // esta e não a contrária — quem lê código depende do container, e o container
+  // não sabe que a aba existe.
   imports: [
+    ContainersUseCasesModule,
     GitInfrastructureModule,
     LlmInfrastructureModule,
     LlmUseCasesModule,

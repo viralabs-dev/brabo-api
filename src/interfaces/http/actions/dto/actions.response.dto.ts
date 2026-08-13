@@ -171,7 +171,12 @@ export class AgentAutonomyRuleResponseDto implements RegraDeAutonomia {
   @ApiProperty({ example: 'dev-api', description: 'Slug do agente.' })
   agentId!: string;
 
-  @ApiProperty({ enum: ACTION_TYPES, example: 'terminal' })
+  @ApiProperty({
+    example: 'terminal',
+    description:
+      'O tipo de ação, ou `"*"` — "auto mode" (RN-153): autonomia pra ' +
+      'QUALQUER tipo de ação deste agente.',
+  })
   actionType!: string;
 
   @ApiProperty({

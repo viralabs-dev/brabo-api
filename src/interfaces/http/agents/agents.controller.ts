@@ -15,11 +15,14 @@ import type { User } from '../../../domain/iam/user.entity';
 import { RequireRole } from '../iam/require-role.decorator';
 import { ActivateAgentUseCase } from '../../../application/use-cases/agents/activate-agent.use-case';
 import { SendAgentMessageUseCase } from '../../../application/use-cases/agents/send-agent-message.use-case';
+import { CancelAgentTurnUseCase } from '../../../application/use-cases/agents/cancel-agent-turn.use-case';
 import { ConfirmReadinessUseCase } from '../../../application/use-cases/agents/confirm-readiness.use-case';
 import { OfferInfraHandoffUseCase } from '../../../application/use-cases/agents/offer-infra-handoff.use-case';
 import { AcceptHandoffUseCase } from '../../../application/use-cases/agents/accept-handoff.use-case';
 import { ListHandoffsUseCase } from '../../../application/use-cases/agents/list-handoffs.use-case';
+import { AnswerStructuredQuestionUseCase } from '../../../application/use-cases/agents/answer-structured-question.use-case';
 import { SendAgentMessageDto } from './dto/send-agent-message.dto';
+import { AnswerStructuredQuestionDto } from './dto/answer-structured-question.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import { OkResponseDto } from '../shared/dto/comuns.response.dto';
 import {
@@ -42,10 +45,12 @@ export class AgentsController {
   constructor(
     private readonly activateAgent: ActivateAgentUseCase,
     private readonly sendAgentMessage: SendAgentMessageUseCase,
+    private readonly cancelAgentTurn: CancelAgentTurnUseCase,
     private readonly confirmReadiness: ConfirmReadinessUseCase,
     private readonly offerInfraHandoff: OfferInfraHandoffUseCase,
     private readonly acceptHandoff: AcceptHandoffUseCase,
     private readonly listHandoffs: ListHandoffsUseCase,
+    private readonly answerStructuredQuestion: AnswerStructuredQuestionUseCase,
   ) {}
 
   @Post('agents/:agent/start')
@@ -104,6 +109,78 @@ export class AgentsController {
       dto.text,
       user.id,
     );
+  }
+
+  /**
+   * Submissão do formulário de `chat.structured_question` (RN-162): o
+   * Criativo pode pedir várias respostas de uma vez, num formulário, em vez
+   * de texto livre respondido item por item. As respostas voltam ao agente
+   * pelo MESMO caminho de `SendAgentMessageUseCase` — concatenadas numa
+   * mensagem `chat.message` — então `agent` é quem vai LER a resposta, do
+   * mesmo jeito que em `.../message`.
+   */
+  @Post('agents/:agent/structured-question/:questionSetId/answer')
+  @RequireRole('developer')
+  @ApiParam({
+    name: 'agent',
+    example: 'criativo',
+    description: 'Slug do agente que fez as perguntas (e vai ler a resposta).',
+  })
+  @ApiParam({
+    name: 'questionSetId',
+    example: '01JC4Z0000EVENTO000000000001',
+    description: 'Id do evento `chat.structured_question` respondido.',
+  })
+  @ApiOperation({
+    summary: 'Responde a um conjunto de perguntas estruturadas do agente',
+    description:
+      'Grava `chat.structured_question_answered` e reenvia as respostas ao agente como uma ' +
+      'mensagem normal. Um conjunto de perguntas só pode ser respondido uma vez.',
+  })
+  @ApiCreatedResponse({ type: OkResponseDto })
+  @ApiConflictResponse({
+    description: 'Este conjunto de perguntas já foi respondido.',
+  })
+  submitStructuredQuestionAnswer(
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @Param('agent') agent: string,
+    @Param('questionSetId') questionSetId: string,
+    @CurrentUser() user: User,
+    @Body() dto: AnswerStructuredQuestionDto,
+  ) {
+    return this.answerStructuredQuestion.execute(
+      projectId,
+      sessionId,
+      agent,
+      questionSetId,
+      dto.answers,
+      user.id,
+    );
+  }
+
+  @Post('agents/:agent/cancel')
+  @RequireRole('developer')
+  @ApiParam({
+    name: 'agent',
+    example: 'po',
+    description: 'Slug do agente ativo.',
+  })
+  @ApiOperation({
+    summary: 'Cancela o turno em curso do agente ativo',
+    description:
+      'O botão "Parar" do composer (RN-122): mata a chamada ao LLM em curso no ' +
+      'engine, cortando a conexão no meio — economiza token de verdade, não só ' +
+      'para de renderizar no cliente. Idempotente: sem turno em curso, é aceito ' +
+      'sem efeito.',
+  })
+  @ApiCreatedResponse({ type: OkResponseDto })
+  cancel(
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @Param('agent') agent: string,
+  ) {
+    return this.cancelAgentTurn.execute(projectId, sessionId, agent);
   }
 
   @Post('readiness')

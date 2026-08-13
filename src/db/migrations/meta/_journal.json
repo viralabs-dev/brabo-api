@@ -267,6 +267,41 @@
       "when": 1786134325519,
       "tag": "0037_polite_adam_warlock",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1786224405884,
+      "tag": "0038_wandering_lila_cheney",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1786245324111,
+      "tag": "0039_messy_loki",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1786256510090,
+      "tag": "0040_tearful_night_nurse",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1786306627724,
+      "tag": "0041_first_betty_brant",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1786311658219,
+      "tag": "0042_tough_captain_midlands",
+      "breakpoints": true
     }
   ]
 }

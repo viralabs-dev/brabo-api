@@ -75,6 +75,7 @@ import {
 } from '../src/application/ports/backlog-repository.port';
 import { ProvisionedRepositoryRepository } from '../src/application/ports/provisioned-repository-repository.port';
 import { GitProviderRegistry } from '../src/application/ports/git-provider.port';
+import { chaveDeAgente } from '../src/domain/llm/binding-scope-id';
 
 const MODELO = process.env.DEMO_MODEL ?? 'qwen2.5-coder:7b';
 const MODELO_QA = process.env.DEMO_QA_MODEL ?? MODELO;
@@ -275,10 +276,15 @@ async function main() {
   // As DUAS subespecialidades, não o "qa" de antes da Fase 8b — ver o
   // comentário no topo do arquivo.
   const modeloQa = await resolveModelo(MODELO_QA);
-  await bindings.execute('agent', 'qa-automacao', modeloQa.id, user.id);
   await bindings.execute(
     'agent',
-    'qa-performance-seguranca',
+    chaveDeAgente(project.id, 'qa-automacao'),
+    modeloQa.id,
+    user.id,
+  );
+  await bindings.execute(
+    'agent',
+    chaveDeAgente(project.id, 'qa-performance-seguranca'),
     modeloQa.id,
     user.id,
   );
@@ -304,6 +310,8 @@ async function main() {
   const sessaoArq = await sessions.create({
     projectId: project.id,
     createdBy: user.id,
+    // Demo/roteiro exercita o caminho de EXECUÇÃO — `criativa` (RN-097).
+    kind: 'criativa' as const,
   });
   await moduleMaps.create({
     projectId: project.id,

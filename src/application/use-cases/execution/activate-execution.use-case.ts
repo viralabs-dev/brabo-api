@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ModuleMapRepository } from '../../ports/module-map-repository.port';
 import { SessionRepository } from '../../ports/session-repository.port';
 import { TaskRepository } from '../../ports/backlog-repository.port';
@@ -10,7 +14,9 @@ import { DEV_TERMINAL_ALLOW_PATTERNS } from '../../../domain/actions/dev-termina
 import { TransitionSessionUseCase } from '../sessions/transition-session.use-case';
 import { CreateSessionUseCase } from '../sessions/create-session.use-case';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
+import { GetSessionPendingWorkUseCase } from '../sessions/get-session-pending-work.use-case';
 import { UpsertAgentInstructionUseCase } from '../agents/upsert-agent-instruction.use-case';
+import { SeedAgentAreasUseCase } from '../agents/seed-agent-areas.use-case';
 import { DEFAULT_MAX_GATE_CORRECTIONS } from './record-gate-verdict.use-case';
 import {
   DEFAULT_DEV_AGENT_IMPL,
@@ -82,6 +88,8 @@ export class ActivateExecutionUseCase {
     private readonly upsertInstruction: UpsertAgentInstructionUseCase,
     private readonly projects: ProjectRepository,
     private readonly permissionsFile: PermissionsFileStore,
+    private readonly seedAreas: SeedAgentAreasUseCase,
+    private readonly getSessionPendingWork: GetSessionPendingWorkUseCase,
   ) {}
 
   async execute(
@@ -92,6 +100,11 @@ export class ActivateExecutionUseCase {
     devAgentImpl?: DevAgentImpl,
     terminalAllowPatterns?: readonly string[],
     maxConsecutiveBlocked?: number,
+    // Id da sessão de CHAT (criativa/consultiva) de onde partiu o clique em
+    // "ativar execução" — RN-135. Omitido (chamador antigo, ex. ativação pela
+    // Visão Geral) não fecha sessão nenhuma: o comportamento sem este
+    // parâmetro é IDÊNTICO ao de antes dele existir.
+    originSessionId?: string,
   ) {
     const maxCorrections = maxGateCorrections ?? DEFAULT_MAX_GATE_CORRECTIONS;
     const impl = devAgentImpl ?? DEFAULT_DEV_AGENT_IMPL;
@@ -107,6 +120,10 @@ export class ActivateExecutionUseCase {
     // escolhido se perderia na próxima ativação (o engine é quem os
     // guardava, por linha de dev agent).
     const project = await this.projects.findById(projectId);
+    // O module_map vigente encontrado acima só existe se o projeto existir
+    // (FK) — este guard é defensivo, não um caminho alcançável na prática, mas
+    // sem ele o workspaceDirName abaixo seria lido de `null`.
+    if (!project) throw new NotFoundException('Projeto não encontrado');
     const budget =
       taskBudgetMicros ??
       project?.taskBudgetMicros ??
@@ -144,7 +161,11 @@ export class ActivateExecutionUseCase {
     // continue vencendo.
     for (const pattern of terminalAllowPatterns ??
       DEV_TERMINAL_ALLOW_PATTERNS) {
-      await this.permissionsFile.addPattern(projectId, 'allow', pattern);
+      await this.permissionsFile.addPattern(
+        project.workspaceDirName,
+        'allow',
+        pattern,
+      );
     }
 
     // REATIVAR cai na sessão de execução que já existe, em vez de abrir uma
@@ -161,12 +182,25 @@ export class ActivateExecutionUseCase {
     // e `active` para sempre.
     const vigente = await this.sessions.findActiveExecutionSession(projectId);
     const session =
-      vigente ?? (await this.createSession.execute(projectId, userId));
+      vigente ??
+      // `criativa` é obrigatório aqui, e não uma escolha: a próxima coisa que
+      // esta sessão recebe é o `execution.activated` do fim deste método, que
+      // uma sessão consultiva recusa (RN-097).
+      (await this.createSession.execute(projectId, userId, {
+        kind: 'criativa',
+      }));
     if (!vigente) {
       await this.transitionSession.execute(projectId, session.id, 'active');
     }
 
     const modules = moduleMap.modules.map((m) => m.name);
+
+    // As áreas já nasceram com o projeto (RN-094); o que a ativação acrescenta
+    // é QUEM são os membros da área de dev — um `dev-<modulo>` por módulo do
+    // `module_map`, que não existia na criação. `upsert` SUBSTITUI a lista, e é
+    // isso que faz um `module_map` novo não deixar agente fantasma na área.
+    await this.seedAreas.execute(projectId, modules.map(devAgentId));
+
     for (const m of moduleMap.modules) {
       const agentId = devAgentId(m.name);
       await this.upsertInstruction.execute(
@@ -216,6 +250,44 @@ export class ActivateExecutionUseCase {
       }
     }
 
+    // Fecha a sessão de CHAT que originou o pedido (RN-135) — sem isto ela
+    // ficava `active` para sempre, aparecendo como conversa em aberto mesmo
+    // depois de a execução (numa sessão SEPARADA) já ter avançado sozinha.
+    // Nunca a sessão de execução: fechá-la destruiria o processo que acabou
+    // de subir para os dev agents.
+    if (originSessionId && originSessionId !== session.id) {
+      await this.closeOriginSession(projectId, originSessionId);
+    }
+
     return { sessionId: session.id, modules };
+  }
+
+  /**
+   * Fecha a sessão de origem só quando ela está `active` (mesma cautela de
+   * `decide-bootstrap-plan.use-case.ts#fecharSessao` — nada a fazer se já
+   * não existir ou já não estiver aberta) E não tem trabalho pendurado: o
+   * mesmo `GetSessionPendingWorkUseCase` que segura o fechamento por
+   * heartbeat de inatividade, reusado aqui para não fechar uma sessão com
+   * handoff `offered`, ação `pending` ou agente `working` sem `idle`
+   * posterior. Falha ou pendência aqui NUNCA propaga — a ativação da
+   * execução já aconteceu, e fechar o chat de origem é um efeito colateral
+   * best-effort, não uma condição da ativação.
+   */
+  private async closeOriginSession(
+    projectId: string,
+    originSessionId: string,
+  ): Promise<void> {
+    const origin = await this.sessions.findInProject(
+      projectId,
+      originSessionId,
+    );
+    if (origin?.status !== 'active') return;
+
+    const { pending } =
+      await this.getSessionPendingWork.execute(originSessionId);
+    if (pending) return;
+
+    await this.transitionSession.execute(projectId, originSessionId, 'closing');
+    await this.transitionSession.execute(projectId, originSessionId, 'closed');
   }
 }

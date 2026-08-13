@@ -267,6 +267,89 @@ describe('ProposeActionUseCase', () => {
     expect(fakeEngineClient.calls).toHaveLength(0);
   });
 
+  it('auto mode (agent_autonomy "*") auto-aprova ação comum SEM bater em permissions.json (RN-153)', async () => {
+    const { project, session } = await setupSession();
+    await agentAutonomyRepo.upsert(project.id, 'dev-api', '*', 'auto_approve');
+    // permissions.json fica vazio de propósito — se a auto-aprovação
+    // dependesse dele, esta ação cairia em pending.
+
+    const action = await proposeAction.execute(project.id, session.id, {
+      actionType: 'terminal',
+      actor: { kind: 'agent', id: 'dev-api' },
+      payload: { command: 'echo oi' },
+    });
+
+    expect(action.resolvedPolicy).toBe('auto_approve');
+    expect(action.status).toBe('executed');
+    expect(fakeEngineClient.calls).toEqual([
+      { actionId: action.id, command: 'echo oi' },
+    ]);
+  });
+
+  it('auto mode NÃO auto-aprova merge em branch protegida — teto absoluto (RN-154)', async () => {
+    const { project, session } = await setupSession('maintainer');
+    await agentAutonomyRepo.upsert(project.id, 'dev-api', '*', 'auto_approve');
+
+    const action = await proposeAction.execute(project.id, session.id, {
+      actionType: 'git_merge',
+      actor: { kind: 'agent', id: 'dev-api' },
+      payload: { targetBranch: 'dev' },
+    });
+
+    expect(action.resolvedPolicy).toBe('require_approval');
+    expect(action.status).toBe('pending');
+  });
+
+  it('auto mode NÃO auto-aprova instruction_patch — teto absoluto (RN-154)', async () => {
+    const { project, session } = await setupSession('maintainer');
+    await agentAutonomyRepo.upsert(project.id, 'anamnese', '*', 'auto_approve');
+
+    const action = await proposeAction.execute(project.id, session.id, {
+      actionType: 'instruction_patch',
+      actor: { kind: 'agent', id: 'anamnese' },
+      payload: {},
+    });
+
+    expect(action.resolvedPolicy).toBe('require_approval');
+    expect(action.status).toBe('pending');
+  });
+
+  it('auto mode NÃO auto-aprova parallelize/raise_max_parallel — teto absoluto (RN-154)', async () => {
+    const { project, session } = await setupSession('maintainer');
+    await agentAutonomyRepo.upsert(project.id, 'dev-lead', '*', 'auto_approve');
+
+    const pedido = await proposeAction.execute(project.id, session.id, {
+      actionType: 'parallelize',
+      actor: { kind: 'agent', id: 'dev-lead' },
+      payload: {},
+    });
+    expect(pedido.resolvedPolicy).toBe('require_approval');
+    expect(pedido.status).toBe('pending');
+
+    const subirTeto = await proposeAction.execute(project.id, session.id, {
+      actionType: 'raise_max_parallel',
+      actor: { kind: 'agent', id: 'dev-lead' },
+      payload: {},
+    });
+    expect(subirTeto.resolvedPolicy).toBe('require_approval');
+    expect(subirTeto.status).toBe('pending');
+  });
+
+  it('regra específica em deny vence a curinga de auto mode pro mesmo tipo', async () => {
+    const { project, session } = await setupSession();
+    await agentAutonomyRepo.upsert(project.id, 'infra', '*', 'auto_approve');
+    await agentAutonomyRepo.upsert(project.id, 'infra', 'terminal', 'deny');
+
+    const action = await proposeAction.execute(project.id, session.id, {
+      actionType: 'terminal',
+      actor: { kind: 'agent', id: 'infra' },
+      payload: { command: 'echo oi' },
+    });
+
+    expect(action.status).toBe('denied');
+    expect(action.resolvedPolicy).toBe('deny');
+  });
+
   it('rejeita tipo de ação desconhecido', async () => {
     const { project, session } = await setupSession();
     await expect(

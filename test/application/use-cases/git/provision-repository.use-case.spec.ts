@@ -164,6 +164,12 @@ class InstrumentedGitProvider implements GitProviderContract {
     this.track('commentOnPullRequest', () =>
       this.inner.commentOnPullRequest(input),
     );
+  listTree: GitProviderContract['listTree'] = (input) =>
+    this.track('listTree', () => this.inner.listTree(input));
+  getPullRequestDiff: GitProviderContract['getPullRequestDiff'] = (input) =>
+    this.track('getPullRequestDiff', () =>
+      this.inner.getPullRequestDiff(input),
+    );
 }
 
 function registryFor(provider: GitProviderContract): GitProviderRegistry {
@@ -428,5 +434,34 @@ describe('ProvisionRepositoryUseCase', () => {
     expect(provider.callCounts.createRepo).toBeUndefined();
     const bootstrapRow = await repoBootstraps.findByProjectId(project.id);
     expect(bootstrapRow).toBeNull();
+  });
+
+  it('a sessão do bootstrap nasce com nome default "git-bootstrap", sem afetar sessão criada manualmente pelo usuário', async () => {
+    const { user, project } = await setupProject();
+    const provider = new InstrumentedGitProvider(new LocalGitProvider());
+    const useCase = buildUseCase(provider);
+
+    await useCase.execute(project.id, user.id, {
+      provider: 'local',
+      name: 'nome-repo',
+      visibility: 'private',
+    });
+
+    const bootstrapRow = await repoBootstraps.findByProjectId(project.id);
+    const bootstrapSession = await sessionRepo.findInProject(
+      project.id,
+      bootstrapRow!.sessionId,
+    );
+    expect(bootstrapSession?.name).toBe('git-bootstrap');
+
+    // Sessão aberta manualmente (ex.: "+ Nova ideação"), sem nome informado,
+    // continua nascendo sem nome — a tela degrada pra hashtag, e o default
+    // desta tarefa é exclusivo do fluxo automático de provisionamento.
+    const manualSession = await new CreateSessionUseCase(
+      unitOfWork,
+      sessionRepo,
+      outbox,
+    ).execute(project.id, user.id, { kind: 'criativa' });
+    expect(manualSession.name).toBeNull();
   });
 });

@@ -8,6 +8,7 @@ import {
   moduleMaps,
   projectRepositories,
   projects,
+  proposedActions,
   repoBootstraps,
   sessionEvents,
   sessions,
@@ -55,6 +56,32 @@ async function criarSessao(projectId: string, ownerId: string) {
   const [row] = await db
     .insert(sessions)
     .values({ projectId, createdBy: ownerId })
+    .returning();
+  return row;
+}
+
+async function criarAcaoProposta(
+  projectId: string,
+  sessionId: string,
+  status:
+    | 'pending'
+    | 'approved'
+    | 'denied'
+    | 'auto_approved'
+    | 'executed'
+    | 'failed' = 'pending',
+) {
+  const [row] = await db
+    .insert(proposedActions)
+    .values({
+      projectId,
+      sessionId,
+      actionType: 'terminal',
+      resolvedPolicy: 'require_approval',
+      actorKind: 'agent',
+      actorId: 'dev',
+      status,
+    })
     .returning();
   return row;
 }
@@ -115,6 +142,7 @@ describe('DrizzleProjectsSummaryRepository', () => {
       latestSeq: 0,
       lastEvent: null,
       storiesAwaitingPromotion: 0,
+      pendingApprovalsCount: 0,
       roster: {
         executionActivated: false,
         moduleNames: [],
@@ -202,6 +230,11 @@ describe('DrizzleProjectsSummaryRepository', () => {
       },
     ]);
 
+    // Duas pendentes e uma já decidida — só as `pending` contam (RN-151).
+    await criarAcaoProposta(projeto.id, sessao.id, 'pending');
+    await criarAcaoProposta(projeto.id, sessao.id, 'pending');
+    await criarAcaoProposta(projeto.id, sessao.id, 'approved');
+
     const [resumo] = await repo.summarizeForWorkspace(ws.id);
 
     expect(resumo.provider).toBe('github');
@@ -216,6 +249,7 @@ describe('DrizzleProjectsSummaryRepository', () => {
     expect(resumo.lastEvent?.id).toBe(ultimo.id);
     expect(resumo.lastEvent?.type).toBe('chat.message');
     expect(resumo.storiesAwaitingPromotion).toBe(1);
+    expect(resumo.pendingApprovalsCount).toBe(2);
     expect(resumo.roster).toEqual({
       executionActivated: true,
       moduleNames: ['api'],
@@ -257,6 +291,40 @@ describe('DrizzleProjectsSummaryRepository', () => {
     const resumos = await repo.summarizeForWorkspace(a.id);
 
     expect(resumos.map((r) => r.projectId)).toEqual([doA.id]);
+  });
+
+  /**
+   * RN-151: o número que vira badge da sidebar é `proposed_actions` pendentes
+   * do projeto INTEIRO — todas as sessões, não só a mais recente — e nunca
+   * vaza para o projeto vizinho.
+   */
+  it('pendingApprovalsCount soma o projeto INTEIRO, não só a sessão mais recente', async () => {
+    const owner = await criarUsuario('pendencias@brabo.dev');
+    const ws = await criarWorkspace(owner.id, 'pendencias');
+    const comPendencia = await criarProjeto(ws.id, owner.id, 'com-pendencia');
+    const semPendencia = await criarProjeto(ws.id, owner.id, 'sem-pendencia');
+
+    const antiga = await criarSessao(comPendencia.id, owner.id);
+    await db
+      .update(sessions)
+      .set({ createdAt: new Date(Date.now() - 60_000) })
+      .where(sql`${sessions.id} = ${antiga.id}`);
+    const recente = await criarSessao(comPendencia.id, owner.id);
+
+    // Uma pendência em cada sessão do projeto — a soma conta as DUAS, mesmo a
+    // sessão que não é mais a "mais recente".
+    await criarAcaoProposta(comPendencia.id, antiga.id, 'pending');
+    await criarAcaoProposta(comPendencia.id, recente.id, 'pending');
+    await criarAcaoProposta(comPendencia.id, recente.id, 'denied');
+
+    const sessaoSemPendencia = await criarSessao(semPendencia.id, owner.id);
+    await criarAcaoProposta(semPendencia.id, sessaoSemPendencia.id, 'executed');
+
+    const resumos = await repo.summarizeForWorkspace(ws.id);
+    const porId = new Map(resumos.map((r) => [r.projectId, r]));
+
+    expect(porId.get(comPendencia.id)?.pendingApprovalsCount).toBe(2);
+    expect(porId.get(semPendencia.id)?.pendingApprovalsCount).toBe(0);
   });
 
   it('usa a sessão MAIS RECENTE quando o projeto tem várias', async () => {
@@ -383,9 +451,10 @@ describe('DrizzleProjectsSummaryRepository — não lidos em lote', () => {
 
     const porProjeto = new Map(grupos.map((g) => [g.projectId, g]));
     expect(porProjeto.get(a.id)?.events.map((e) => e.id)).toEqual([a2.id]);
+    // Do mais NOVO para o mais antigo (RN-100).
     expect(porProjeto.get(b.id)?.events.map((e) => e.id)).toEqual([
-      b1.id,
       b2.id,
+      b1.id,
     ]);
   });
 
@@ -473,14 +542,50 @@ describe('DrizzleProjectsSummaryRepository — não lidos em lote', () => {
     const porProjeto = new Map(grupos.map((g) => [g.projectId, g]));
 
     expect(porProjeto.get(barulhento.id)?.events).toHaveLength(50);
-    // Os 50 PRIMEIROS depois do corte, em ordem crescente — mesma leitura de
-    // `GET .../events?afterSeq=`, que é o caminho que esta chamada substitui.
-    expect(porProjeto.get(barulhento.id)?.events[0].seq).toBeLessThan(
-      porProjeto.get(barulhento.id)!.events[49].seq,
-    );
     expect(porProjeto.get(calado.id)?.events.map((e) => e.id)).toEqual([
       doCalado.id,
     ]);
+  });
+
+  /**
+   * RN-100 — a ordem do sino é do SQL, e o teto é o motivo.
+   *
+   * São DUAS afirmações, e a segunda é a que um `.sort()` no front não
+   * alcançaria: a função de janela decide QUAIS 50 eventos sobrevivem ao teto,
+   * não só em que ordem eles saem. Com `ORDER BY e.seq ASC` lá dentro, um
+   * projeto com 60 não lidos devolvia os 50 mais ANTIGOS — e ordenar isso por
+   * recência no cliente mostraria o 11º evento como "o mais recente do
+   * projeto", que é a mentira exata que o usuário viu na tela.
+   *
+   * Por isso o teste afirma o CONJUNTO (os 10 mais novos estão dentro, os 10
+   * mais antigos estão fora) antes de afirmar a ordenação.
+   */
+  it('com mais não lidos que o teto, voltam os MAIS RECENTES, do novo para o velho', async () => {
+    const owner = await criarUsuario('recencia@brabo.dev');
+    const ws = await criarWorkspace(owner.id, 'recencia');
+    const projeto = await criarProjeto(ws.id, owner.id, 'core');
+    const sessao = await criarSessao(projeto.id, owner.id);
+
+    const todos: { seq: number }[] = [];
+    for (let i = 0; i < 60; i++) {
+      todos.push(await gravarEvento(sessao.id, 'chat.message'));
+    }
+
+    const [grupo] = await repo.unreadEventsForWorkspace(ws.id, [
+      { projectId: projeto.id, afterSeq: 0 },
+    ]);
+
+    const seqs = grupo.events.map((e) => e.seq);
+    expect(seqs).toHaveLength(50);
+
+    // O CONJUNTO: a janela é a cauda, não a cabeça.
+    expect(seqs[0]).toBe(todos[59].seq);
+    expect(seqs).toContain(todos[10].seq);
+    expect(seqs).not.toContain(todos[9].seq);
+    expect(seqs).not.toContain(todos[0].seq);
+
+    // A ORDEM: decrescente, sem depender de nada no cliente.
+    expect([...seqs].sort((a, b) => b - a)).toEqual(seqs);
   });
 
   /**

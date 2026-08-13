@@ -9,6 +9,8 @@ import { CreateHandoffUseCase } from './create-handoff.use-case';
 import { AcceptHandoffUseCase } from './accept-handoff.use-case';
 import { ListHandoffsUseCase } from './list-handoffs.use-case';
 import { UpsertAgentInstructionUseCase } from './upsert-agent-instruction.use-case';
+import { CancelAgentTurnUseCase } from './cancel-agent-turn.use-case';
+import { AnswerStructuredQuestionUseCase } from './answer-structured-question.use-case';
 
 const USE_CASES = [
   ActivateAgentUseCase,
@@ -19,6 +21,8 @@ const USE_CASES = [
   AcceptHandoffUseCase,
   ListHandoffsUseCase,
   UpsertAgentInstructionUseCase,
+  CancelAgentTurnUseCase,
+  AnswerStructuredQuestionUseCase,
 ];
 
 @Module({

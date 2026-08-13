@@ -110,6 +110,24 @@ export class DrizzleSessionEventRepository implements SessionEventRepository {
     return rows.map((r) => toEntity(r.session_events));
   }
 
+  async listByTypeInSession(
+    sessionId: string,
+    type: string,
+  ): Promise<SessionEvent[]> {
+    const db = currentDb(this.rootDb);
+    const rows = await db
+      .select()
+      .from(sessionEvents)
+      .where(
+        and(
+          eq(sessionEvents.sessionId, sessionId),
+          eq(sessionEvents.type, type),
+        ),
+      )
+      .orderBy(asc(sessionEvents.seq));
+    return rows.map(toEntity);
+  }
+
   async listForProjectInWindow(
     projectId: string,
     opts: {
