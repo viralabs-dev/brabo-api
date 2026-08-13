@@ -45,6 +45,24 @@ export const ACTION_TYPES: readonly ActionType[] = [
   'raise_max_parallel',
 ];
 
+/**
+ * Valor especial de `agent_autonomy.action_type` — "auto mode" (RN-153):
+ * qualquer tipo de ação deste agente, não um tipo específico. NÃO entra em
+ * `ACTION_TYPES`: não é um tipo de ação que `decide()` avalia, é um curinga
+ * sobre uma coluna que já é texto livre, sem enum nem FK (`schema.ts`).
+ *
+ * A resolução do curinga (uma regra ESPECÍFICA sempre vence a curinga) mora
+ * no repositório (`DrizzleAgentAutonomyRepository.findMode`), não aqui —
+ * `decide()` continua recebendo só o `PermissionPolicy` já resolvido, exatamente
+ * como antes do curinga existir. É por isso que os três tetos abaixo (escopo,
+ * merge protegido, instruction_patch, paralelismo) valem para "auto mode" sem
+ * precisar saber que ele existe: eles agem sobre `current.policy ===
+ * 'auto_approve'`, não sobre a origem dela.
+ */
+export const AGENT_AUTONOMY_ALL_ACTIONS = '*' as const;
+export type AgentAutonomyActionType =
+  ActionType | typeof AGENT_AUTONOMY_ALL_ACTIONS;
+
 const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
   terminal: 'developer',
   git_commit: 'developer',
