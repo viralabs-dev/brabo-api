@@ -18,6 +18,7 @@ import {
   moduleMaps,
   projectRepositories,
   projects,
+  proposedActions,
   repoBootstraps,
   sessionEvents,
   sessions,
@@ -27,11 +28,11 @@ import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
 /**
- * Read model do dashboard em ONZE consultas escopadas por workspace: duas em
- * sequência (os projetos, e a sessão mais recente de cada um) e nove em
+ * Read model do dashboard em DOZE consultas escopadas por workspace: duas em
+ * sequência (os projetos, e a sessão mais recente de cada um) e dez em
  * paralelo sobre esses dois conjuntos de ids.
  *
- * Onze é CONSTANTE — nenhuma roda dentro de laço sobre projetos, e é essa a
+ * Doze é CONSTANTE — nenhuma roda dentro de laço sobre projetos, e é essa a
  * propriedade que a suíte prova: `projects-summary.repository.spec.ts` conta
  * idas ao banco com 2 e com 20 projetos e exige o mesmo número. Sem esse
  * teste, um laço aqui devolveria dados idênticos e trocaria o N+1 de HTTP por
@@ -80,6 +81,7 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
       budgetRows,
       maps,
       promocoes,
+      pendencias,
       lastEvents,
       marcos,
       infraHandoffs,
@@ -131,6 +133,23 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
           ),
         )
         .groupBy(stories.projectId),
+
+      // Ações propostas ainda por decidir, no projeto INTEIRO — todas as
+      // sessões, não só a mais recente (RN-151). É o número que o badge da
+      // sidebar mostra; mesmo formato agregado de `promocoes` acima.
+      db
+        .select({
+          projectId: proposedActions.projectId,
+          total: sql<number>`count(*)::int`,
+        })
+        .from(proposedActions)
+        .where(
+          and(
+            inArray(proposedActions.projectId, projectIds),
+            eq(proposedActions.status, 'pending'),
+          ),
+        )
+        .groupBy(proposedActions.projectId),
 
       // Último evento de cada sessão — o card mostra UMA linha de atividade,
       // então trazer uma linha por sessão é o pedido exato.
@@ -191,6 +210,7 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
     const budgetDe = indexarPor(budgetRows, (r) => r.projectId);
     const modulosDe = indexarPor(maps, (r) => r.projectId);
     const promocaoDe = indexarPor(promocoes, (r) => r.projectId);
+    const pendenciasDe = indexarPor(pendencias, (r) => r.projectId);
 
     const sessaoDe = indexarPor(latestSessions, (s) => s.projectId);
     const ultimoEventoDe = indexarPor(lastEvents, (e) => e.sessionId);
@@ -243,6 +263,7 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
         latestSeq: sessao ? sessao.nextSeq - 1 : 0,
         lastEvent: evento ? toEvent(evento) : null,
         storiesAwaitingPromotion: promocaoDe.get(projectId)?.total ?? 0,
+        pendingApprovalsCount: pendenciasDe.get(projectId)?.total ?? 0,
         roster,
       };
     });
@@ -250,7 +271,7 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
 
   /**
    * A gaveta do sino inteira em DUAS consultas, quantos projetos forem
-   * (RN-091).
+   * (RN-091), do MAIS RECENTE para o mais antigo (RN-100).
    *
    * A primeira resolve a sessão mais recente de cada projeto PEDIDO — com
    * `join` em `projects` filtrando por workspace, que é o mesmo passo que
@@ -259,6 +280,13 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
    * `row_number()` aplica o teto POR SESSÃO, que é o que um `limit` no fim não
    * conseguiria (ele cortaria a resposta inteira, e um projeto barulhento
    * comeria a cota dos outros).
+   *
+   * O `DESC` das duas ordenações é a correção da RN-100, e ele é do SQL por
+   * necessidade, não por gosto: a função de janela decide QUAIS 50 eventos
+   * sobrevivem ao teto. Com `ASC` sobreviviam os 50 mais ANTIGOS não lidos, e
+   * um `.sort()` no cliente ordenaria por recência justamente os que a
+   * consulta já tinha escolhido errado — mostrando o 51º evento mais antigo
+   * como se fosse o mais novo do projeto.
    *
    * Raw SQL aqui, e não query builder, por causa dessas duas peças — `VALUES`
    * correlacionado e função de janela. A alternativa em builder seria um laço
@@ -306,14 +334,14 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
       FROM (
         SELECT e.*,
                row_number() OVER (
-                 PARTITION BY e.session_id ORDER BY e.seq ASC
+                 PARTITION BY e.session_id ORDER BY e.seq DESC
                ) AS rn
         FROM session_events e
         JOIN (VALUES ${cortes}) AS c(session_id, after_seq)
           ON e.session_id = c.session_id AND e.seq > c.after_seq
       ) t
       WHERE t.rn <= ${UNREAD_EVENTS_POR_PROJETO}
-      ORDER BY t.session_id, t.seq
+      ORDER BY t.session_id, t.seq DESC
     `);
 
     const porSessao = new Map<string, SessionEvent[]>();

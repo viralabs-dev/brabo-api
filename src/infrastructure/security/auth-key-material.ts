@@ -49,7 +49,17 @@ const SALT_PEPPER_TOKEN = 'brabo-auth-token-pepper';
 const SALT_PEPPER_BALDE = 'brabo-auth-bucket-pepper';
 const SALT_DUMMY = 'brabo-auth-dummy-salt';
 
+/**
+ * Default de DESENVOLVIMENTO, público neste repositório (`.env.example`).
+ *
+ * Em produção ele é recusado pelo mesmo motivo do `GIT_OAUTH_STATE_SECRET`
+ * (ADR 0059, RN-093, estendido pela RN-114): um segredo com valor padrão
+ * conhecido não protege nada, e o `docker-compose.prod.yml` supria este
+ * literal como fallback — o caminho real de erro tinha a variável DEFINIDA,
+ * então "não vazia" não pegaria o defeito.
+ */
 const PASSPHRASE_PADRAO = 'dev-auth-jwt-secret-change-me';
+const TAMANHO_MINIMO = 16;
 
 export interface ParDeChaves {
   privada: KeyObject;
@@ -67,8 +77,48 @@ export function derivarParEd25519(passphrase: string): ParDeChaves {
   return { privada, publica: createPublicKey(privada) };
 }
 
+/**
+ * Resolve a passphrase de onde o par Ed25519 do access token é derivado.
+ *
+ * Mesma regra de `resolveOauthStateSecret()` (`oauth-state-secret.ts`): fora
+ * de produção o default de desenvolvimento vale, para o `docker compose up`
+ * sem `.env` continuar funcionando; em produção a variável é obrigatória, o
+ * literal de exemplo é rejeitado mesmo definido explicitamente, e há um piso
+ * de 16 caracteres (RN-114).
+ */
 export function passphraseAtual(): string {
-  return process.env.AUTH_JWT_SECRET ?? PASSPHRASE_PADRAO;
+  const producao = process.env.NODE_ENV === 'production';
+  const bruto = (process.env.AUTH_JWT_SECRET ?? '').trim();
+
+  if (!producao) {
+    return bruto || PASSPHRASE_PADRAO;
+  }
+
+  if (!bruto) {
+    throw new Error(
+      'AUTH_JWT_SECRET é obrigatória em produção — dela deriva o par Ed25519 ' +
+        'que assina o access token, e o default de desenvolvimento é público ' +
+        'neste repositório.',
+    );
+  }
+
+  if (bruto === PASSPHRASE_PADRAO) {
+    throw new Error(
+      'AUTH_JWT_SECRET está com o valor de exemplo do repositório, que é ' +
+        'público — em produção isso equivale a assinar tokens com uma chave ' +
+        'conhecida. Gere uma própria (ex.: `openssl rand -base64 32`).',
+    );
+  }
+
+  if (bruto.length < TAMANHO_MINIMO) {
+    throw new Error(
+      `AUTH_JWT_SECRET tem ${bruto.length} caracteres; o mínimo em produção é ` +
+        `${TAMANHO_MINIMO}. Gere uma aleatória (ex.: ` +
+        '`openssl rand -base64 32`).',
+    );
+  }
+
+  return bruto;
 }
 
 /**

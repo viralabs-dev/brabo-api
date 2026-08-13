@@ -56,4 +56,18 @@ export class ActivateExecutionDto {
   @IsArray()
   @IsString({ each: true })
   terminalAllowPatterns?: string[];
+
+  @ApiPropertyOptional({
+    example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+    description:
+      'Id da sessão de CHAT de onde partiu o clique em "ativar execução" — a ' +
+      'sessão criativa/consultiva do Dev Lead/PO, nunca a de execução. Omitido ' +
+      '(chamador antigo, ex. ativação pela Visão Geral sem contexto de sessão) ' +
+      'não fecha sessão nenhuma, igual ao comportamento de antes. Informado, é ' +
+      'fechada ao final — mas só se não tiver handoff/ação/turno pendente ' +
+      '(RN-135), e nunca se for a própria sessão de execução.',
+  })
+  @IsOptional()
+  @IsString()
+  originSessionId?: string;
 }

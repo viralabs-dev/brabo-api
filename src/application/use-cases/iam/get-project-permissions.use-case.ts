@@ -12,6 +12,6 @@ export class GetProjectPermissionsUseCase {
   async execute(projectId: string) {
     const project = await this.projects.findById(projectId);
     if (!project) throw new NotFoundException('Projeto não encontrado');
-    return this.permissionsFileStore.read(projectId);
+    return this.permissionsFileStore.read(project.workspaceDirName);
   }
 }

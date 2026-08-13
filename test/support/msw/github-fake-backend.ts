@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw';
-import type { FakeRepoStore } from './fake-repo-store';
+import { aheadBehind, type FakeRepoStore } from './fake-repo-store';
+import { compararArvores } from './fake-diff';
 
 const BASE = 'https://api.github.com';
 
@@ -153,6 +154,7 @@ export function createGithubHandlers(store: FakeRepoStore) {
 
         store.treeFiles.set(treeSha, arquivos);
         store.commitTree.set(sha, treeSha);
+        store.commitParents.set(sha, anterior ? [anterior.sha] : []);
         repo.branches.set(branchName, {
           name: branchName,
           sha,
@@ -182,29 +184,58 @@ export function createGithubHandlers(store: FakeRepoStore) {
     }),
 
     http.post(`${BASE}/repos/:owner/:repo/git/commits`, async ({ request }) => {
-      const body = (await request.json()) as { tree: string };
+      const body = (await request.json()) as {
+        tree: string;
+        parents?: string[];
+      };
       const sha = store.nextSha();
       store.commitTree.set(sha, body.tree);
+      store.commitParents.set(sha, body.parents ?? []);
       return HttpResponse.json({ sha }, { status: 201 });
     }),
 
-    http.get(`${BASE}/repos/:owner/:repo/contents/*`, ({ params, request }) => {
-      const repo = store.repos.get(fullNameFromParams(params));
-      if (!repo) return notFound();
-      const path = refSuffix(request.url, '/contents/');
-      const ref = new URL(request.url).searchParams.get('ref');
-      const commitSha = (ref ? repo.branches.get(ref)?.sha : undefined) ?? ref;
-      const treeSha = commitSha ? store.commitTree.get(commitSha) : undefined;
-      const content = treeSha
-        ? store.treeFiles.get(treeSha)?.get(path)
-        : undefined;
-      if (content === undefined) return notFound();
-      return HttpResponse.json({
-        type: 'file',
-        encoding: 'base64',
-        content: Buffer.from(content, 'utf8').toString('base64'),
-      });
-    }),
+    // DUAS rotas para o mesmo handler: com `path: ''` (a raiz, que `listTree`
+    // pede) o Octokit monta `/contents` SEM barra final, e o padrão com
+    // wildcard não casa. Sem a segunda, listar a raiz caía em "requisição não
+    // tratada" — que é como o msw reprova, corretamente, um fake incompleto.
+    http.get(`${BASE}/repos/:owner/:repo/contents/*`, lerConteudo(store)),
+    http.get(`${BASE}/repos/:owner/:repo/contents`, lerConteudo(store)),
+
+    http.get(
+      `${BASE}/repos/:owner/:repo/pulls/:number/files`,
+      ({ params, request }) => {
+        const repo = store.repos.get(fullNameFromParams(params));
+        if (!repo) return notFound();
+        const pr = repo.prs.find(
+          (candidate) => candidate.number === Number(params.number),
+        );
+        if (!pr) return notFound();
+
+        const arquivos = compararArvores(
+          arquivosDaBranch(store, repo, pr.targetBranch),
+          arquivosDaBranch(store, repo, pr.sourceBranch),
+        );
+
+        // Paginação de verdade: o provider pagina com teto, e um fake que
+        // ignorasse `page`/`per_page` deixaria esse laço sem prova nenhuma.
+        const url = new URL(request.url);
+        const perPage = Number(url.searchParams.get('per_page') ?? '30');
+        const page = Number(url.searchParams.get('page') ?? '1');
+        const fatia = arquivos.slice((page - 1) * perPage, page * perPage);
+
+        return HttpResponse.json(
+          fatia.map((arquivo) => ({
+            filename: arquivo.path,
+            previous_filename: arquivo.previousPath ?? undefined,
+            status: arquivo.status,
+            additions: arquivo.additions,
+            deletions: arquivo.deletions,
+            changes: arquivo.additions + arquivo.deletions,
+            patch: arquivo.patch,
+          })),
+        );
+      },
+    ),
 
     http.post(
       `${BASE}/repos/:owner/:repo/git/refs`,
@@ -321,6 +352,125 @@ export function createGithubHandlers(store: FakeRepoStore) {
       return HttpResponse.json({ merged: true, sha: store.nextSha() });
     }),
 
+    /**
+     * Lista de PRs (FASE 26b, `listPullRequests`) — filtra por `state`
+     * exatamente como o GitHub real: `open`/`closed`/`all`, e `closed`
+     * inclui PR mesclada (o GitHub não tem `state=merged` na LISTAGEM, só
+     * na LEITURA de uma PR — é `merged_at` que distingue, e o provider
+     * normaliza isso na resposta).
+     */
+    http.get(`${BASE}/repos/:owner/:repo/pulls`, ({ params, request }) => {
+      const repo = store.repos.get(fullNameFromParams(params));
+      if (!repo) return notFound();
+
+      const estado = new URL(request.url).searchParams.get('state') ?? 'open';
+      const prs = repo.prs.filter((pr) => {
+        if (estado === 'all') return true;
+        if (estado === 'open') return pr.state === 'open';
+        return pr.state === 'closed' || pr.state === 'merged';
+      });
+
+      return HttpResponse.json(
+        prs.map((pr) => ({
+          id: pr.number,
+          number: pr.number,
+          title: pr.title,
+          html_url: `https://github.com/${repo.fullName}/pull/${pr.number}`,
+          user: { login: 'octocat' },
+          state: pr.state === 'merged' ? 'closed' : pr.state,
+          merged_at:
+            pr.state === 'merged' ? '2026-08-04T12:00:00.000Z' : null,
+          head: { ref: pr.sourceBranch },
+          base: { ref: pr.targetBranch },
+          updated_at: '2026-08-04T12:00:00.000Z',
+        })),
+      );
+    }),
+
+    /**
+     * `compareCommitsWithBasehead` (FASE 26b, `listBranchesDetailed`) — os
+     * dois lados numa chamada só, igual a API real. `ahead_by`/`behind_by`
+     * saem do grafo de commits que `git/commits`/Contents API populam em
+     * `store.commitParents`.
+     */
+    http.get(
+      `${BASE}/repos/:owner/:repo/compare/:basehead`,
+      ({ params }) => {
+        const repo = store.repos.get(fullNameFromParams(params));
+        if (!repo) return notFound();
+
+        const [base, head] = String(params.basehead).split('...');
+        const baseSha = repo.branches.get(base)?.sha;
+        const headSha = repo.branches.get(head)?.sha;
+        if (!baseSha || !headSha) return notFound();
+
+        const { ahead, behind } = aheadBehind(store, baseSha, headSha);
+        return HttpResponse.json({ ahead_by: ahead, behind_by: behind });
+      },
+    ),
+
+    /**
+     * `blame` (FASE 26b) é a ÚNICA operação do provider que fala GraphQL — a
+     * REST do GitHub não tem essa operação. O fake não rastreia história
+     * LINHA A LINHA (nenhum backend fake faz), então toda linha do arquivo
+     * na ponta da branch é atribuída ao commit da PONTA — suficiente pra
+     * provar o SHAPE da resposta (uma entrada por linha, sha/autor/data em
+     * cada uma), que é o que a suite de contrato verifica.
+     */
+    http.post(`${BASE}/graphql`, async ({ request }) => {
+      const body = (await request.json()) as {
+        variables: { owner: string; repo: string; expr: string; path: string };
+      };
+      const { owner, repo: repoName, expr, path } = body.variables;
+      const repo = store.repos.get(`${owner}/${repoName}`);
+      if (!repo) {
+        return HttpResponse.json({
+          data: null,
+          errors: [{ type: 'NOT_FOUND', message: 'Could not resolve to a Repository' }],
+        });
+      }
+
+      const branch = repo.branches.get(expr);
+      if (!branch) {
+        return HttpResponse.json({ data: { repository: { object: null } } });
+      }
+
+      const arquivos = arquivosDaBranch(store, repo, expr);
+      const conteudo = arquivos.get(path);
+      if (conteudo === undefined) {
+        return HttpResponse.json({
+          data: null,
+          errors: [{ type: 'NOT_FOUND', message: 'Could not resolve to a file' }],
+        });
+      }
+
+      const brutas = conteudo.split('\n');
+      const linhas = brutas[brutas.length - 1] === '' ? brutas.slice(0, -1) : brutas;
+
+      return HttpResponse.json({
+        data: {
+          repository: {
+            object: {
+              blame: {
+                ranges: [
+                  {
+                    startingLine: 1,
+                    endingLine: Math.max(linhas.length, 1),
+                    commit: {
+                      oid: branch.sha,
+                      message: 'commit falso',
+                      committedDate: '2026-08-04T12:00:00.000Z',
+                      author: { name: 'Autor Falso' },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      });
+    }),
+
     http.get(`${BASE}/repos/:owner/:repo/pulls/:number`, ({ params }) => {
       const repo = store.repos.get(fullNameFromParams(params));
       if (!repo) return notFound();
@@ -393,6 +543,99 @@ function repositorioVazio() {
     },
     { status: 409 },
   );
+}
+
+/**
+ * Contents API na LEITURA: arquivo quando o caminho casa exatamente, lista de
+ * um nível quando é diretório. O fake só sabia devolver arquivo — sem o
+ * segundo caso, `listTree` (FASE 26) não teria como ser exercitado.
+ */
+function lerConteudo(store: FakeRepoStore) {
+  return ({
+    params,
+    request,
+  }: {
+    params: { owner?: string | readonly string[]; repo?: string | readonly string[] };
+    request: Request;
+  }) => {
+    const repo = store.repos.get(fullNameFromParams(params));
+    if (!repo) return notFound();
+
+    const path = refSuffix(request.url, '/contents').replace(/^\/+|\/+$/g, '');
+    const ref = new URL(request.url).searchParams.get('ref');
+    const commitSha = (ref ? repo.branches.get(ref)?.sha : undefined) ?? ref;
+    const treeSha = commitSha ? store.commitTree.get(commitSha) : undefined;
+    const arquivos = treeSha ? store.treeFiles.get(treeSha) : undefined;
+    if (!arquivos) return notFound();
+
+    const content = arquivos.get(path);
+    if (content !== undefined) {
+      return HttpResponse.json({
+        type: 'file',
+        encoding: 'base64',
+        content: Buffer.from(content, 'utf8').toString('base64'),
+        path,
+        name: path.slice(path.lastIndexOf('/') + 1),
+        size: Buffer.byteLength(content, 'utf8'),
+      });
+    }
+
+    const entradas = umNivel(arquivos, path);
+    if (entradas === null) return notFound();
+    return HttpResponse.json(entradas);
+  };
+}
+
+/** Arquivos na ponta de uma branch, resolvendo ref -> commit -> tree. */
+function arquivosDaBranch(
+  store: FakeRepoStore,
+  repo: { branches: Map<string, { sha: string }> },
+  branch: string,
+): Map<string, string> {
+  const sha = repo.branches.get(branch)?.sha;
+  const treeSha = sha ? store.commitTree.get(sha) : undefined;
+  return new Map(treeSha ? (store.treeFiles.get(treeSha) ?? []) : []);
+}
+
+/**
+ * UM nível sob `dir` a partir da lista plana de caminhos. `null` quando não
+ * há nada ali — que é o 404 da Contents API para diretório inexistente.
+ */
+function umNivel(
+  arquivos: Map<string, string>,
+  dir: string,
+): { type: string; name: string; path: string; size: number }[] | null {
+  const prefixo = dir === '' ? '' : `${dir}/`;
+  const vistos = new Map<
+    string,
+    { type: string; name: string; path: string; size: number }
+  >();
+
+  for (const [caminho, conteudo] of arquivos) {
+    if (prefixo !== '' && !caminho.startsWith(prefixo)) continue;
+    const resto = caminho.slice(prefixo.length);
+    if (resto === '') continue;
+    const corte = resto.indexOf('/');
+    if (corte === -1) {
+      vistos.set(resto, {
+        type: 'file',
+        name: resto,
+        path: caminho,
+        size: Buffer.byteLength(conteudo, 'utf8'),
+      });
+    } else {
+      const nome = resto.slice(0, corte);
+      vistos.set(nome, {
+        type: 'dir',
+        name: nome,
+        path: `${prefixo}${nome}`,
+        size: 0,
+      });
+    }
+  }
+
+  if (vistos.size === 0) return null;
+  return [...vistos.values()];
 }
 
 function refSuffix(url: string, marker: string): string {

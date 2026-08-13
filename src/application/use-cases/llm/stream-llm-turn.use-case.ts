@@ -35,6 +35,12 @@ export type LlmTurnStreamEvent =
       message: { role: 'assistant'; content: string; toolCalls: ToolCall[] };
       usage: LlmTurnUsage;
       error: string | null;
+      // Nome do modelo que gerou a resposta (achado do problema 2) — antes só
+      // vivia em `token_usage`, sem vínculo com o evento `agent.response`
+      // específico que ele produziu. `null` quando o turno falhou ANTES de
+      // resolver um modelo (`!binding`/`!model`); nos demais casos (inclusive
+      // budget excedido) o binding já resolveu e o nome viaja.
+      modelName: string | null;
     };
 
 /**
@@ -89,7 +95,7 @@ export class StreamLlmTurnUseCase {
       input.sessionId,
     );
     if (gate.blocked) {
-      yield finalError(gate.reason ?? 'Budget excedido');
+      yield finalError(gate.reason ?? 'Budget excedido', model.name);
       return;
     }
 
@@ -191,15 +197,20 @@ export class StreamLlmTurnUseCase {
       message: { role: 'assistant', content: fullText, toolCalls },
       usage: { inputTokens, outputTokens, costMicros, estimated },
       error: streamError,
+      modelName: model.name,
     };
   }
 }
 
-function finalError(message: string): LlmTurnStreamEvent {
+function finalError(
+  message: string,
+  modelName: string | null = null,
+): LlmTurnStreamEvent {
   return {
     type: 'final',
     message: { role: 'assistant', content: '', toolCalls: [] },
     usage: { inputTokens: 0, outputTokens: 0, costMicros: 0, estimated: true },
     error: message,
+    modelName,
   };
 }

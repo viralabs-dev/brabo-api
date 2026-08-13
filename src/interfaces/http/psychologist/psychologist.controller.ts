@@ -7,6 +7,7 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiServiceUnavailableResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -127,6 +128,11 @@ export class PsychologistController {
       'local. A análise anterior é marcada como superseded.',
   })
   @ApiCreatedResponse({ type: OkResponseDto })
+  @ApiServiceUnavailableResponse({
+    description:
+      'O Psicólogo está desativado globalmente por decisão do usuário (não ' +
+      'é bug) — corpo com `reason: "psychologist_disabled"`.',
+  })
   reanalyze(
     @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,

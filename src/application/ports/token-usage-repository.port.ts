@@ -82,6 +82,61 @@ export abstract class TokenUsageRepository {
     workspaceId: string,
     meses: number,
   ): Promise<CredentialSpendRow[]>;
+
+  /**
+   * As agregações que faltavam (FASE 22): por modelo, por projeto dentro do
+   * workspace, por ator, por sessão e por dia.
+   *
+   * Um método só, parametrizado pela DIMENSÃO, porque as cinco perguntas
+   * diferem em exatamente um `GROUP BY` — cinco cópias do mesmo join com uma
+   * coluna trocada envelheceriam em direções diferentes.
+   *
+   * **`provider` não é uma dimensão daqui, e a ausência é o desenho**
+   * ([RN-101](../../../../../docs/business-rules.md)). Quebrar gasto por
+   * provider é quebrar por CREDENCIAL, e isso responde à fatura do owner —
+   * que continua morando, exclusiva, em
+   * `sumByWorkspaceGroupedByProviderAndMonth` e na rota com `@RequireRole('owner')`.
+   * Deixar o eixo fora deste método é o que impede a visão do membro de
+   * ganhá-lo por descuido: não existe argumento a passar.
+   *
+   * Sem filtro implícito de `actor_kind`: quem restringe é o `escopo`. A
+   * RN-038 vale para os agregados que dizem "agentes"; este diz "gasto".
+   */
+  abstract sumGroupedBy(
+    dimensao: SpendDimension,
+    escopo: SpendScope,
+  ): Promise<SpendBucket[]>;
+}
+
+/** Os cinco recortes do relatório de gasto. Nenhum deles é `provider`. */
+export type SpendDimension = 'model' | 'project' | 'actor' | 'session' | 'day';
+
+export interface SpendScope {
+  /** Recorte largo: a fatura do owner. */
+  workspaceId?: string;
+  /** Recorte estreito: um projeto. */
+  projectId?: string;
+  /**
+   * Quando presente, SÓ as linhas deste ator entram — é o que torna a visão do
+   * membro dele e de mais ninguém (RN-101). Quem preenche é o caso de uso a
+   * partir do usuário AUTENTICADO, nunca um parâmetro de rota.
+   */
+  actor?: Actor;
+  /** Janela deslizante, em dias. */
+  dias: number;
+}
+
+export interface SpendBucket {
+  /** A chave do agrupamento: nome do modelo, id do projeto/sessão/ator, ou o dia `YYYY-MM-DD`. */
+  chave: string;
+  /** Nome legível quando a tabela tem um (projeto); `null` quando a chave já é o rótulo. */
+  rotulo: string | null;
+  /** Só a dimensão `actor` preenche — nas outras é `null`. */
+  actorKind: string | null;
+  costMicros: number;
+  inputTokens: number;
+  outputTokens: number;
+  chamadas: number;
 }
 
 export interface CredentialSpendRow {

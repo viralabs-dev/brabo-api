@@ -11,7 +11,13 @@ import type { PermissionsFileStore } from '../../../../src/application/ports/per
 import type { TransitionSessionUseCase } from '../../../../src/application/use-cases/sessions/transition-session.use-case';
 import { CreateSessionUseCase } from '../../../../src/application/use-cases/sessions/create-session.use-case';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
+import type { GetSessionPendingWorkUseCase } from '../../../../src/application/use-cases/sessions/get-session-pending-work.use-case';
 import type { UpsertAgentInstructionUseCase } from '../../../../src/application/use-cases/agents/upsert-agent-instruction.use-case';
+import { SeedAgentAreasUseCase } from '../../../../src/application/use-cases/agents/seed-agent-areas.use-case';
+import type {
+  AgentAreaRepository,
+  UpsertAreaInput,
+} from '../../../../src/application/ports/agent-area-repository.port';
 
 const MODULOS = [
   { name: 'api', stack: 'NestJS', responsibility: 'regras', dependsOn: [] },
@@ -24,6 +30,10 @@ function build(opts?: {
   modules?: typeof MODULOS;
   /** Sessão de execução já vigente no projeto (cenário de REATIVAÇÃO). */
   sessaoVigente?: { id: string } | null;
+  /** Sessão de origem (chat de onde partiu "ativar execução") — RN-135. */
+  sessaoOrigem?: { id: string; status: string } | null;
+  /** O que `GetSessionPendingWorkUseCase` devolve para a sessão de origem. */
+  pendingWork?: { pending: boolean; motivo: string | null };
 }) {
   const started: {
     budget?: number;
@@ -42,6 +52,7 @@ function build(opts?: {
 
   const sessoesCriadas: string[] = [];
   const sessoesAtivadas: string[] = [];
+  const transicoes: { sessionId: string; to: string }[] = [];
 
   // `create` fica aqui para EXPLODIR se alguém voltar a criar sessão pelo
   // repositório: o caminho é o `CreateSessionUseCase`, que é quem emite
@@ -54,7 +65,20 @@ function build(opts?: {
     },
     findActiveExecutionSession: () =>
       Promise.resolve(opts?.sessaoVigente ?? null),
+    findInProject: (_p: string, sessionId: string) => {
+      if (opts?.sessaoOrigem?.id === sessionId) {
+        return Promise.resolve(opts.sessaoOrigem);
+      }
+      return Promise.resolve(null);
+    },
   } as unknown as SessionRepository;
+
+  const getSessionPendingWork = {
+    execute: () =>
+      Promise.resolve(
+        opts?.pendingWork ?? { pending: false, motivo: null },
+      ),
+  } as unknown as GetSessionPendingWorkUseCase;
 
   const createSession = {
     execute: () => {
@@ -115,8 +139,9 @@ function build(opts?: {
   } as unknown as PermissionsFileStore;
 
   const transitionSession = {
-    execute: (_p: string, sessionId: string) => {
-      sessoesAtivadas.push(sessionId);
+    execute: (_p: string, sessionId: string, to: string) => {
+      transicoes.push({ sessionId, to });
+      if (to === 'active') sessoesAtivadas.push(sessionId);
       return Promise.resolve({});
     },
   } as unknown as TransitionSessionUseCase;
@@ -136,6 +161,17 @@ function build(opts?: {
     execute: () => Promise.resolve({}),
   } as unknown as UpsertAgentInstructionUseCase;
 
+  // Áreas semeadas de verdade pelo caso de uso real (RN-094) — o fake é só o
+  // repositório. Trocar o `SeedAgentAreasUseCase` por um fake aqui esconderia
+  // exatamente o defeito da FASE 18: o caminho até o `upsert`.
+  const areasSemeadas: UpsertAreaInput[] = [];
+  const seedAreas = new SeedAgentAreasUseCase({
+    upsert: (input: UpsertAreaInput) => {
+      areasSemeadas.push(input);
+      return Promise.resolve({ id: 'area-1', maxParallel: 2, ...input });
+    },
+  } as unknown as AgentAreaRepository);
+
   return {
     useCase: new ActivateExecutionUseCase(
       moduleMaps,
@@ -149,7 +185,10 @@ function build(opts?: {
       upsertInstruction,
       projects,
       permissionsFile,
+      seedAreas,
+      getSessionPendingWork,
     ),
+    areasSemeadas,
     started,
     autonomias,
     allowPatterns,
@@ -157,6 +196,7 @@ function build(opts?: {
     eventos,
     sessoesCriadas,
     sessoesAtivadas,
+    transicoes,
   };
 }
 
@@ -374,5 +414,141 @@ describe('ActivateExecutionUseCase — terminal do dev', () => {
     expect(new Set(autonomias.map((a) => a.agentId))).toEqual(
       new Set(['dev-api', 'dev-web']),
     );
+  });
+});
+
+describe('ActivateExecutionUseCase — áreas de agente (RN-094)', () => {
+  it('a ativação semeia as três áreas, e a de dev com um membro por módulo', async () => {
+    // O que a ativação acrescenta ao que a criação do projeto já gravou são os
+    // MEMBROS da área dinâmica: `dev-<modulo>` sai do `module_map`, que não
+    // existia quando o projeto nasceu.
+    const { useCase, areasSemeadas } = build();
+
+    await useCase.execute('proj-1', 'user-1');
+
+    expect(areasSemeadas.map((a) => a.key)).toEqual(['dev', 'qa', 'infra']);
+    expect(areasSemeadas.find((a) => a.key === 'dev')?.members).toEqual([
+      'dev-api',
+      'dev-web',
+    ]);
+    expect(areasSemeadas.find((a) => a.key === 'qa')?.members).toEqual([
+      'qa-automacao',
+      'qa-performance-seguranca',
+    ]);
+  });
+
+  it('NUNCA manda `maxParallel` — semear de novo não desfaz a decisão do usuário', async () => {
+    // O teto é do usuário (FASE 14d). Como a ativação é repetível, mandar o
+    // default aqui faria um teto subido para 5 voltar para 2 em silêncio.
+    const { useCase, areasSemeadas } = build();
+
+    await useCase.execute('proj-1', 'user-1');
+
+    expect(areasSemeadas.every((a) => a.maxParallel === undefined)).toBe(true);
+  });
+});
+
+// RN-135: a sessão de CHAT (criativa/consultiva) de onde partiu o clique em
+// "ativar execução" nunca era fechada — ficava `active` para sempre, mesmo
+// com a execução já avançando sozinha numa sessão separada.
+describe('ActivateExecutionUseCase — fecha a sessão de origem (RN-135)', () => {
+  it('sessão de origem informada e SEM pendência: fecha (closing -> closed)', async () => {
+    const { useCase, transicoes } = build({
+      sessaoOrigem: { id: 'sess-origem', status: 'active' },
+      pendingWork: { pending: false, motivo: null },
+    });
+
+    await useCase.execute(
+      'proj-1',
+      'user-1',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'sess-origem',
+    );
+
+    expect(
+      transicoes.filter((t) => t.sessionId === 'sess-origem').map((t) => t.to),
+    ).toEqual(['closing', 'closed']);
+  });
+
+  it('sessão de origem informada e COM pendência: NÃO fecha', async () => {
+    const { useCase, transicoes } = build({
+      sessaoOrigem: { id: 'sess-origem', status: 'active' },
+      pendingWork: {
+        pending: true,
+        motivo: 'handoff po → arquiteto aguardando aceite',
+      },
+    });
+
+    await useCase.execute(
+      'proj-1',
+      'user-1',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'sess-origem',
+    );
+
+    expect(transicoes.filter((t) => t.sessionId === 'sess-origem')).toEqual(
+      [],
+    );
+  });
+
+  it('sessão de origem já não está active: não tenta transicionar', async () => {
+    const { useCase, transicoes } = build({
+      sessaoOrigem: { id: 'sess-origem', status: 'closed' },
+    });
+
+    await useCase.execute(
+      'proj-1',
+      'user-1',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'sess-origem',
+    );
+
+    expect(transicoes.filter((t) => t.sessionId === 'sess-origem')).toEqual(
+      [],
+    );
+  });
+
+  it('sem `originSessionId` (chamador antigo, ex. Visão Geral): nada é fechado', async () => {
+    const { useCase, transicoes } = build({
+      sessaoOrigem: { id: 'sess-origem', status: 'active' },
+    });
+
+    await useCase.execute('proj-1', 'user-1');
+
+    // A ÚNICA transição é a ativação da sessão de execução nova — a de
+    // origem, sem o parâmetro, nunca é sequer consultada.
+    expect(transicoes).toEqual([{ sessionId: 'sess-1', to: 'active' }]);
+  });
+
+  it('originSessionId igual à sessão de execução: nunca fecha a própria execução', async () => {
+    const { useCase, transicoes } = build({
+      sessaoVigente: { id: 'sess-em-curso' },
+      sessaoOrigem: { id: 'sess-em-curso', status: 'active' },
+    });
+
+    await useCase.execute(
+      'proj-1',
+      'user-1',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'sess-em-curso',
+    );
+
+    expect(transicoes).toEqual([]);
   });
 });

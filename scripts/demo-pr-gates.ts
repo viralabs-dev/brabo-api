@@ -80,6 +80,7 @@ import {
 } from '../src/application/ports/backlog-repository.port';
 import { ProvisionedRepositoryRepository } from '../src/application/ports/provisioned-repository-repository.port';
 import { GitProviderRegistry } from '../src/application/ports/git-provider.port';
+import { chaveDeAgente } from '../src/domain/llm/binding-scope-id';
 
 const MODELO = process.env.DEMO_MODEL ?? 'qwen2.5-coder:7b';
 
@@ -303,7 +304,12 @@ async function main() {
   log(`✓ modelo do projeto: ${modelo.provider}/${modelo.name}`);
 
   const modeloQa = await resolveModelo(MODELO_QA);
-  await bindings.execute('agent', 'qa', modeloQa.id, user.id);
+  await bindings.execute(
+    'agent',
+    chaveDeAgente(project.id, 'qa'),
+    modeloQa.id,
+    user.id,
+  );
   log(`✓ modelo do agente qa: ${modeloQa.provider}/${modeloQa.name}`);
 
   await app.get(ProvisionRepositoryUseCase).execute(project.id, user.id, {
@@ -327,6 +333,8 @@ async function main() {
   const sessaoArq = await sessions.create({
     projectId: project.id,
     createdBy: user.id,
+    // Demo/roteiro exercita o caminho de EXECUÇÃO — `criativa` (RN-097).
+    kind: 'criativa' as const,
   });
   await moduleMaps.create({
     projectId: project.id,

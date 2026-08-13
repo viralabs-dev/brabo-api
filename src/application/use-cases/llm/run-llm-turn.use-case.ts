@@ -30,6 +30,9 @@ export interface RunLlmTurnResult {
     estimated: boolean;
   };
   error: string | null;
+  // Espelha `LlmTurnStreamEvent.modelName` (achado do problema 2) — `null`
+  // quando o turno falhou antes de resolver um modelo.
+  modelName: string | null;
 }
 
 /**
@@ -81,7 +84,7 @@ export class RunLlmTurnUseCase {
       input.sessionId,
     );
     if (gate.blocked) {
-      return errorResult(gate.reason ?? 'Budget excedido');
+      return errorResult(gate.reason ?? 'Budget excedido', model.name);
     }
 
     let apiKey: string | undefined;
@@ -179,14 +182,19 @@ export class RunLlmTurnUseCase {
       message: { role: 'assistant', content: fullText, toolCalls },
       usage: { inputTokens, outputTokens, costMicros, estimated },
       error: streamError,
+      modelName: model.name,
     };
   }
 }
 
-function errorResult(message: string): RunLlmTurnResult {
+function errorResult(
+  message: string,
+  modelName: string | null = null,
+): RunLlmTurnResult {
   return {
     message: { role: 'assistant', content: '', toolCalls: [] },
     usage: { inputTokens: 0, outputTokens: 0, costMicros: 0, estimated: true },
     error: message,
+    modelName,
   };
 }

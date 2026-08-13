@@ -3,6 +3,10 @@ import type { PermissionPolicy, PermissionsFile } from './permissions-file';
 import { matchesPattern, parseCommand } from './command-matcher';
 import { isProtectedBranch } from './protected-branches';
 import { comandoNoEscopo } from './path-scope';
+import {
+  efeitoExternoNoComando,
+  mensagemDeEfeitoExterno,
+} from './external-effect';
 
 export type ActionType =
   | 'terminal'
@@ -40,6 +44,24 @@ export const ACTION_TYPES: readonly ActionType[] = [
   'parallelize',
   'raise_max_parallel',
 ];
+
+/**
+ * Valor especial de `agent_autonomy.action_type` — "auto mode" (RN-153):
+ * qualquer tipo de ação deste agente, não um tipo específico. NÃO entra em
+ * `ACTION_TYPES`: não é um tipo de ação que `decide()` avalia, é um curinga
+ * sobre uma coluna que já é texto livre, sem enum nem FK (`schema.ts`).
+ *
+ * A resolução do curinga (uma regra ESPECÍFICA sempre vence a curinga) mora
+ * no repositório (`DrizzleAgentAutonomyRepository.findMode`), não aqui —
+ * `decide()` continua recebendo só o `PermissionPolicy` já resolvido, exatamente
+ * como antes do curinga existir. É por isso que os três tetos abaixo (escopo,
+ * merge protegido, instruction_patch, paralelismo) valem para "auto mode" sem
+ * precisar saber que ele existe: eles agem sobre `current.policy ===
+ * 'auto_approve'`, não sobre a origem dela.
+ */
+export const AGENT_AUTONOMY_ALL_ACTIONS = '*' as const;
+export type AgentAutonomyActionType =
+  ActionType | typeof AGENT_AUTONOMY_ALL_ACTIONS;
 
 const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
   terminal: 'developer',
@@ -139,6 +161,23 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
       policy: 'deny',
       reason: `IAM insuficiente: "${action.actionType}" exige papel >= ${minRole}`,
     };
+  }
+
+  // FRONTEIRA DO CONTAINER (ADR 0065, RN-106). Aplicada ANTES de qualquer
+  // estágio permissivo porque não é uma preferência: é onde o container
+  // termina. `git push`, abertura de PR e deploy atravessam a parede e chegam
+  // no mundo, e a constituição do produto os declara humanos.
+  //
+  // `deny` e não `require_approval` porque existe "sempre permitir": um clique
+  // gravaria o padrão em `allow` e a segunda porta ficaria aberta para sempre.
+  // Negar aqui não tira poder do agente — a mensagem diz qual ação TIPADA usar,
+  // e é ela que nasce `proposed_action`, registra no event log o que foi
+  // empurrado e para onde, e passa pela decisão do usuário.
+  if (action.actionType === 'terminal' && action.command) {
+    const efeito = efeitoExternoNoComando(parseCommand(action.command));
+    if (efeito) {
+      return { policy: 'deny', reason: mensagemDeEfeitoExterno(efeito) };
+    }
   }
 
   let current: Decision = {

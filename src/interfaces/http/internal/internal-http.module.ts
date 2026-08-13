@@ -4,6 +4,7 @@ import { LlmUseCasesModule } from '../../../application/use-cases/llm/llm-use-ca
 import { ActionsUseCasesModule } from '../../../application/use-cases/actions/actions-use-cases.module';
 import { AgentsUseCasesModule } from '../../../application/use-cases/agents/agents-use-cases.module';
 import { BacklogUseCasesModule } from '../../../application/use-cases/backlog/backlog-use-cases.module';
+import { ContainersUseCasesModule } from '../../../application/use-cases/containers/containers-use-cases.module';
 import { ArchitectureUseCasesModule } from '../../../application/use-cases/architecture/architecture-use-cases.module';
 import { ExecutionUseCasesModule } from '../../../application/use-cases/execution/execution-use-cases.module';
 import { AnamneseUseCasesModule } from '../../../application/use-cases/anamnese/anamnese-use-cases.module';
@@ -22,6 +23,7 @@ import { InternalProjectsController } from './internal-projects.controller';
     AgentsUseCasesModule,
     BacklogUseCasesModule,
     ArchitectureUseCasesModule,
+    ContainersUseCasesModule,
     ExecutionUseCasesModule,
     AnamneseUseCasesModule,
     InstructionsUseCasesModule,

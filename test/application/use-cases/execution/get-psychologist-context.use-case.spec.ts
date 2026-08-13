@@ -17,6 +17,8 @@ function buildSession(overrides: Partial<Session> = {}): Session {
     projectId: 'proj-1',
     createdBy: 'user-1',
     status: 'closed',
+    kind: 'criativa',
+    name: null,
     nextSeq: 10,
     createdAt: now,
     updatedAt: now,

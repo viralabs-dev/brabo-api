@@ -33,9 +33,10 @@ export abstract class AgentAreaRepository {
   /**
    * Cria ou atualiza a área e a lista de membros.
    *
-   * Idempotente de propósito: o seeding roda em ativação de execução, que o
-   * usuário pode disparar mais de uma vez, e `module_map` novo troca os
-   * membros da área de dev sem criar área duplicada.
+   * Idempotente de propósito: o seeding roda na criação do projeto E em toda
+   * ativação de execução (RN-094, `SeedAgentAreasUseCase`), que o usuário pode
+   * disparar mais de uma vez, e `module_map` novo troca os membros da área de
+   * dev sem criar área duplicada.
    */
   abstract upsert(input: UpsertAreaInput): Promise<AgentArea>;
 

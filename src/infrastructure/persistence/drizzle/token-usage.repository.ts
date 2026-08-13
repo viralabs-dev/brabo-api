@@ -7,7 +7,12 @@ import {
   type WorkspaceTokenUsageSummary,
 } from '../../../application/ports/token-usage-repository.port';
 import type { TokenUsage } from '../../../domain/llm/token-usage.entity';
-import type { CredentialSpendRow } from '../../../application/ports/token-usage-repository.port';
+import type {
+  CredentialSpendRow,
+  SpendBucket,
+  SpendDimension,
+  SpendScope,
+} from '../../../application/ports/token-usage-repository.port';
 import { projects, sessions, tokenUsage } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
@@ -199,6 +204,98 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
     return rows.map((row) => ({
       provider: row.provider,
       mes: new Date(row.mes).toISOString(),
+      actorKind: row.actorKind,
+      costMicros: Number(row.costMicros),
+      inputTokens: Number(row.inputTokens),
+      outputTokens: Number(row.outputTokens),
+      chamadas: Number(row.chamadas),
+    }));
+  }
+
+  /**
+   * O relatório de gasto, num join só (FASE 22).
+   *
+   * `token_usage` só tem FK para `sessions` — projeto e workspace saem por
+   * join, e os dois saltos são sempre os mesmos das agregações acima. Os joins
+   * ficam incondicionais mesmo quando a dimensão não os usa: são `inner join`
+   * por FK `not null`, não mudam a cardinalidade, e um caminho único é mais
+   * barato de manter do que quatro variações do mesmo `from`.
+   */
+  async sumGroupedBy(
+    dimensao: SpendDimension,
+    escopo: SpendScope,
+  ): Promise<SpendBucket[]> {
+    const db = currentDb(this.rootDb);
+
+    // O dia sai como TEXTO já em UTC. `date_trunc` puro devolveria timestamptz,
+    // e renderizar isso a oeste de Greenwich joga o bucket para o dia anterior
+    // — o mesmo defeito que o relatório por mês já pagou uma vez.
+    const dia = sql<string>`to_char(date_trunc('day', ${tokenUsage.createdAt} at time zone 'UTC'), 'YYYY-MM-DD')`;
+
+    const chave = {
+      model: sql<string>`${tokenUsage.modelName}`,
+      project: sql<string>`${projects.id}::text`,
+      actor: sql<string>`${tokenUsage.actorId}`,
+      session: sql<string>`${tokenUsage.sessionId}::text`,
+      day: dia,
+    }[dimensao];
+
+    // Rótulo só existe onde há uma tabela com nome. Sessão não tem — quem
+    // decide como uma sessão se chama é o front (`session-label.ts`).
+    const rotulo =
+      dimensao === 'project'
+        ? sql<string | null>`${projects.name}`
+        : sql<string | null>`null::text`;
+
+    const actorKind =
+      dimensao === 'actor'
+        ? sql<string | null>`${tokenUsage.actorKind}::text`
+        : sql<string | null>`null::text`;
+
+    const condicoes = [
+      gte(
+        tokenUsage.createdAt,
+        sql`now() - make_interval(days => ${escopo.dias})`,
+      ),
+    ];
+    if (escopo.workspaceId) {
+      condicoes.push(eq(projects.workspaceId, escopo.workspaceId));
+    }
+    if (escopo.projectId) {
+      condicoes.push(eq(sessions.projectId, escopo.projectId));
+    }
+    // A cláusula que separa as duas audiências: com ator, a consulta devolve
+    // as linhas DELE e de mais ninguém (RN-101).
+    if (escopo.actor) {
+      condicoes.push(eq(tokenUsage.actorKind, escopo.actor.kind));
+      condicoes.push(eq(tokenUsage.actorId, escopo.actor.id));
+    }
+
+    const custo = sql<string>`coalesce(sum(${tokenUsage.costMicros}), 0)`;
+
+    const rows = await db
+      .select({
+        chave,
+        rotulo,
+        actorKind,
+        costMicros: custo,
+        inputTokens: sql<string>`coalesce(sum(${tokenUsage.inputTokens}), 0)`,
+        outputTokens: sql<string>`coalesce(sum(${tokenUsage.outputTokens}), 0)`,
+        chamadas: sql<string>`count(*)`,
+      })
+      .from(tokenUsage)
+      .innerJoin(sessions, eq(sessions.id, tokenUsage.sessionId))
+      .innerJoin(projects, eq(projects.id, sessions.projectId))
+      .where(and(...condicoes))
+      .groupBy(chave, rotulo, actorKind)
+      // Série temporal cresce da esquerda para a direita; ranking desce do
+      // maior gasto. São eixos diferentes, e ordenar os dois igual esconderia
+      // um dos dois.
+      .orderBy(dimensao === 'day' ? sql`1 asc` : desc(custo));
+
+    return rows.map((row) => ({
+      chave: String(row.chave),
+      rotulo: row.rotulo,
       actorKind: row.actorKind,
       costMicros: Number(row.costMicros),
       inputTokens: Number(row.inputTokens),

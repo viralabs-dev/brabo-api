@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw';
-import type { FakeRepoStore } from './fake-repo-store';
+import { aheadBehind, type FakeRepoStore } from './fake-repo-store';
+import { compararArvores } from './fake-diff';
 
 const BASE = 'https://gitlab.com/api/v4';
 
@@ -115,11 +116,101 @@ export function createGitlabHandlers(store: FakeRepoStore) {
       },
     ),
 
-    http.get(`${BASE}/projects/:id/repository/tree`, ({ params }) => {
+    /**
+     * A árvore do repositório. O fake DEVOLVIA sempre `[]` — bastava para o
+     * `commitFiles` (que só perguntava quais caminhos já existiam, e com
+     * lista vazia mandava tudo como `create`), mas deixava `listTree` sem
+     * nada para exercitar. Agora responde a partir dos arquivos da branch,
+     * nos dois modos que o provider usa: recursivo (commitFiles) e um nível
+     * (listTree).
+     */
+    http.get(`${BASE}/projects/:id/repository/tree`, ({ params, request }) => {
       const repo = store.repos.get(fullNameFromParams(params));
       if (!repo) return notFound();
-      return HttpResponse.json([]);
+
+      const url = new URL(request.url);
+      const ref = url.searchParams.get('ref') ?? repo.defaultBranch;
+      const path = (url.searchParams.get('path') ?? '').replace(/\/+$/, '');
+      const recursivo = url.searchParams.get('recursive') === 'true';
+
+      const branch = repo.branches.get(ref);
+      // Ref inexistente é 404 no GitLab — não lista vazia.
+      if (!branch) return notFound();
+      const arquivos = branch.files ?? new Map<string, string>();
+
+      if (recursivo) {
+        return HttpResponse.json(
+          [...arquivos.keys()].sort().map((caminho) => ({
+            id: `blob-${caminho}`,
+            name: caminho.slice(caminho.lastIndexOf('/') + 1),
+            type: 'blob',
+            path: caminho,
+            mode: '100644',
+          })),
+        );
+      }
+
+      const prefixo = path === '' ? '' : `${path}/`;
+      const vistos = new Map<
+        string,
+        { id: string; name: string; type: string; path: string; mode: string }
+      >();
+      for (const caminho of arquivos.keys()) {
+        if (prefixo !== '' && !caminho.startsWith(prefixo)) continue;
+        const resto = caminho.slice(prefixo.length);
+        if (resto === '') continue;
+        const corte = resto.indexOf('/');
+        const nome = corte === -1 ? resto : resto.slice(0, corte);
+        vistos.set(nome, {
+          id: `${corte === -1 ? 'blob' : 'tree'}-${prefixo}${nome}`,
+          name: nome,
+          type: corte === -1 ? 'blob' : 'tree',
+          path: `${prefixo}${nome}`,
+          mode: corte === -1 ? '100644' : '040000',
+        });
+      }
+
+      // Caminho inexistente (ou que é arquivo) responde 200 com lista VAZIA
+      // no GitLab, não 404 — é essa assimetria com o GitHub que o provider
+      // normaliza.
+      return HttpResponse.json([...vistos.values()]);
     }),
+
+    http.get(
+      `${BASE}/projects/:id/merge_requests/:iid/diffs`,
+      ({ params, request }) => {
+        const repo = store.repos.get(fullNameFromParams(params));
+        if (!repo) return notFound();
+        const pr = repo.prs.find(
+          (candidate) => candidate.number === Number(params.iid),
+        );
+        if (!pr) return notFound();
+
+        const url = new URL(request.url);
+        const perPage = Number(url.searchParams.get('per_page') ?? '20');
+        const page = Number(url.searchParams.get('page') ?? '1');
+
+        const arquivos = compararArvores(
+          repo.branches.get(pr.targetBranch)?.files ?? new Map(),
+          repo.branches.get(pr.sourceBranch)?.files ?? new Map(),
+        );
+
+        return HttpResponse.json(
+          arquivos
+            .slice((page - 1) * perPage, page * perPage)
+            .map((arquivo) => ({
+              old_path: arquivo.previousPath ?? arquivo.path,
+              new_path: arquivo.path,
+              a_mode: '100644',
+              b_mode: '100644',
+              new_file: arquivo.status === 'added',
+              renamed_file: arquivo.status === 'renamed',
+              deleted_file: arquivo.status === 'removed',
+              diff: arquivo.patch,
+            })),
+        );
+      },
+    ),
 
     http.post(
       `${BASE}/projects/:id/repository/commits`,
@@ -146,6 +237,7 @@ export function createGitlabHandlers(store: FakeRepoStore) {
           protected: existing?.protected ?? false,
           files,
         });
+        store.commitParents.set(sha, existing ? [existing.sha] : []);
         return HttpResponse.json({ id: sha }, { status: 201 });
       },
     ),
@@ -163,6 +255,105 @@ export function createGitlabHandlers(store: FakeRepoStore) {
         return HttpResponse.json({
           content: Buffer.from(content, 'utf8').toString('base64'),
           encoding: 'base64',
+        });
+      },
+    ),
+
+    /**
+     * `allFileBlames` (FASE 26b, `blame`) — mesma degradação do fake do
+     * GitHub: sem história linha a linha, toda linha do arquivo na ponta da
+     * branch vem numa faixa só, atribuída ao commit da ponta. Prova o SHAPE
+     * (`commit`/`lines` por faixa), que é o que a suite de contrato verifica.
+     */
+    http.get(
+      `${BASE}/projects/:id/repository/files/:file_path/blame`,
+      ({ params, request }) => {
+        const repo = store.repos.get(fullNameFromParams(params));
+        if (!repo) return notFound();
+        const path = decodeURIComponent(String(params.file_path));
+        const ref = new URL(request.url).searchParams.get('ref');
+        const branch = ref ? repo.branches.get(ref) : undefined;
+        if (!branch) return notFound();
+        const conteudo = branch.files?.get(path);
+        // Arquivo ausente na ref: 200 com faixa VAZIA (sem `lines`), não
+        // 404 — a mesma assimetria de `repository/tree` (ver o comentário
+        // lá). O provider trata `linhas.length === 0` como "não achou".
+        if (conteudo === undefined) {
+          return HttpResponse.json([{ commit: { id: branch.sha }, lines: [] }]);
+        }
+        const brutas = conteudo.split('\n');
+        const linhas =
+          brutas[brutas.length - 1] === '' ? brutas.slice(0, -1) : brutas;
+        return HttpResponse.json([
+          {
+            commit: {
+              id: branch.sha,
+              author_name: 'Autor Falso',
+              authored_date: '2026-08-04T12:00:00.000Z',
+              message: 'commit falso',
+            },
+            lines: linhas,
+          },
+        ]);
+      },
+    ),
+
+    /**
+     * `MergeRequests.all` como LISTA (FASE 26b, `listPullRequests`) — o
+     * handler de criação/merge já existe abaixo; este é só a leitura em
+     * lote, filtrada por `state`.
+     */
+    http.get(`${BASE}/projects/:id/merge_requests`, ({ params, request }) => {
+      const repo = store.repos.get(fullNameFromParams(params));
+      if (!repo) return notFound();
+      const estado = new URL(request.url).searchParams.get('state');
+      const mrs = repo.prs.filter((pr) => {
+        if (!estado || estado === 'all') return true;
+        if (estado === 'opened') return pr.state === 'open';
+        return pr.state === estado;
+      });
+      return HttpResponse.json(
+        mrs.map((pr) => ({
+          id: pr.number,
+          iid: pr.number,
+          title: pr.title,
+          web_url: `https://gitlab.com/${repo.fullName}/-/merge_requests/${pr.number}`,
+          author: { username: 'octocat-gl' },
+          state: pr.state === 'open' ? 'opened' : pr.state,
+          source_branch: pr.sourceBranch,
+          target_branch: pr.targetBranch,
+          updated_at: '2026-08-04T12:00:00.000Z',
+        })),
+      );
+    }),
+
+    /**
+     * `Repositories.compare` (FASE 26b, `listBranchesDetailed`) — devolve os
+     * commits que estão em `to` e não em `from`, igual a API real. O
+     * provider faz DUAS chamadas (ahead e behind, invertendo `from`/`to`);
+     * este handler só precisa saber contar num sentido de cada vez.
+     */
+    http.get(
+      `${BASE}/projects/:id/repository/compare`,
+      ({ params, request }) => {
+        const repo = store.repos.get(fullNameFromParams(params));
+        if (!repo) return notFound();
+        const url = new URL(request.url);
+        const from = url.searchParams.get('from') ?? '';
+        const to = url.searchParams.get('to') ?? '';
+        const fromSha = repo.branches.get(from)?.sha;
+        const toSha = repo.branches.get(to)?.sha;
+        if (!fromSha || !toSha) return notFound();
+
+        // `aheadBehind(from, to)` devolve `{ ahead, behind }` no vocabulário
+        // do GitHub; o que `compare(from, to)` do GitLab quer é só
+        // "commits em `to` e não em `from`" — que é exatamente `ahead`
+        // quando `from` faz o papel de base.
+        const { ahead } = aheadBehind(store, fromSha, toSha);
+        return HttpResponse.json({
+          commits: Array.from({ length: ahead }, (_, i) => ({ id: `c${i}` })),
+          compare_timeout: false,
+          compare_same_ref: from === to,
         });
       },
     ),
