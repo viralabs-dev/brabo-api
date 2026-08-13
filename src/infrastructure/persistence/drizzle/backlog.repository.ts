@@ -202,6 +202,25 @@ export class DrizzleTaskRepository implements TaskRepository {
     return rows.map(taskToEntity);
   }
 
+  async findByProjectAndIdPrefix(
+    projectId: string,
+    idPrefix: string,
+  ): Promise<Task | null> {
+    const db = currentDb(this.rootDb);
+    const rows = await db
+      .select({ task: tasks })
+      .from(tasks)
+      .innerJoin(stories, eq(stories.id, tasks.storyId))
+      .where(
+        and(
+          eq(stories.projectId, projectId),
+          sql`${tasks.id}::text LIKE ${`${idPrefix}-%`}`,
+        ),
+      )
+      .limit(1);
+    return rows[0] ? taskToEntity(rows[0].task) : null;
+  }
+
   async claimNext(
     projectId: string,
     module: string,
