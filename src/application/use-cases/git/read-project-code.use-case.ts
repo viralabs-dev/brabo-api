@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import type {
   GitBlame,
-  GitBranchDetailList,
+  GitBranchDetail,
   GitPullRequestDiff,
   GitPullRequestList,
   GitTree,
@@ -16,8 +16,14 @@ import { GitProviderRegistry } from '../../ports/git-provider.port';
 import { ProvisionedRepositoryRepository } from '../../ports/provisioned-repository-repository.port';
 import { ProjectRepository } from '../../ports/project-repository.port';
 import { UserCredentialRepository } from '../../ports/user-credential-repository.port';
+import { TaskRepository } from '../../ports/backlog-repository.port';
+import { ModuleMapRepository } from '../../ports/module-map-repository.port';
 import { EncryptionService } from '../../ports/encryption.port';
 import { ResolveCredentialOwnerUseCase } from '../llm/resolve-credential-owner.use-case';
+import {
+  devAgentId,
+  extraDevAgentId,
+} from '../execution/activate-execution.use-case';
 import { GitReadCache } from '../../../domain/git/git-read-cache';
 import {
   GIT_BLOB_MAX_BYTES,
@@ -113,6 +119,45 @@ export interface CodeSearchInput {
 }
 
 /**
+ * O dev agent (e o módulo dele) que produziu uma branch `feature/task-XXXXXXXX`
+ * (RN-152). `null` quando a branch não segue esse padrão — manual do usuário,
+ * ou `main`/`dev`/`qa` — ou quando o padrão bate mas a task/o módulo não são
+ * mais resolvíveis (task apagada, módulo removido do `module_map` vigente):
+ * degradação honesta, igual `ahead`/`behind` já fazem quando o provider não
+ * consegue computar.
+ */
+export interface CodeBranchProducedBy {
+  agentId: string;
+  moduleId: string;
+}
+
+/**
+ * `GitBranchDetail` do contrato de git + a proveniência de quem a criou.
+ *
+ * NÃO entra no `GitProviderContract` (packages/shared): providers não sabem
+ * de task nem de module_map, esse é vocabulário do domínio do Brabo. A
+ * enriquecida só existe aqui, na superfície de leitura — mesma decisão que
+ * já separa `CodeFile`/`CodeSearchResult` do que os providers devolvem.
+ */
+export interface CodeBranch extends GitBranchDetail {
+  producedBy: CodeBranchProducedBy | null;
+}
+
+export interface CodeBranchList {
+  items: CodeBranch[];
+  /** `true` quando a lista foi cortada no teto de branches enriquecidas. */
+  truncated: boolean;
+}
+
+/**
+ * `Engine.Dev.AgentIo` nasce a branch como
+ * `"feature/task-" <> String.slice(to_string(row.task_id), 0, 8)` — os 8
+ * primeiros chars do uuid, que são exatamente o primeiro grupo hifenizado
+ * dele (`xxxxxxxx-xxxx-...`), não um substring arbitrário.
+ */
+const BRANCH_DE_TASK = /^feature\/task-([0-9a-f]{8})$/i;
+
+/**
  * Um `ref` é branch, tag ou sha, e vira segmento de URL nos providers remotos e
  * o lado esquerdo de `git show <ref>:<path>` no local. A forma é conferida em
  * UM lugar, pelo mesmo motivo do caminho.
@@ -141,6 +186,8 @@ export class ReadProjectCodeUseCase {
     private readonly resolveOwner: ResolveCredentialOwnerUseCase,
     private readonly cache: GitReadCache,
     private readonly container: ObterContainerDoProjetoUseCase,
+    private readonly tasks: TaskRepository,
+    private readonly moduleMaps: ModuleMapRepository,
   ) {}
 
   async tree(projectId: string, ref?: string, path?: string): Promise<GitTree> {
@@ -259,14 +306,76 @@ export class ReadProjectCodeUseCase {
    * caso de uso, e não perto do bootstrap: é uma LEITURA da aba Code, com a
    * mesma resolução de credencial e o mesmo portão de container das outras
    * seis — tratá-la como operação de bootstrap duplicaria os dois.
+   *
+   * Cada item ganha `producedBy` (RN-152): quando o nome bate com
+   * `feature/task-XXXXXXXX`, resolve o dev agent/módulo dono via
+   * `TaskRepository`/`ModuleMapRepository` — nenhuma chamada a mais ao
+   * provider de git, e `null` pra branch manual do usuário ou pra
+   * `main`/`dev`/`qa`.
    */
-  async branches(projectId: string): Promise<GitBranchDetailList> {
+  async branches(projectId: string): Promise<CodeBranchList> {
     const alvo = await this.alvo(projectId, undefined, undefined);
-    return alvo.provider.listBranchesDetailed({
+    const lista = await alvo.provider.listBranchesDetailed({
       externalId: alvo.externalId,
       defaultBranch: alvo.ref,
       accessToken: alvo.accessToken,
     });
+    const items = await Promise.all(
+      lista.items.map(async (item) => ({
+        ...item,
+        producedBy: await this.producedBy(projectId, item.name),
+      })),
+    );
+    return { items, truncated: lista.truncated };
+  }
+
+  /**
+   * RN-152: resolve a branch `feature/task-XXXXXXXX` até o dev agent (e o
+   * módulo) que a produziu, ou `null` sem nada a resolver.
+   *
+   * Duas buscas, nunca mais: o prefixo casa no máximo uma task (RN é o join
+   * por PROJETO — task de outro projeto nunca entra), e o `module_map`
+   * vigente é o mesmo que `create_c4_diagram`/`activate-execution` já
+   * consultam. Nenhuma delas custa chamada ao provider de git.
+   */
+  private async producedBy(
+    projectId: string,
+    branchName: string,
+  ): Promise<CodeBranchProducedBy | null> {
+    const casamento = BRANCH_DE_TASK.exec(branchName);
+    if (!casamento) return null;
+
+    const task = await this.tasks.findByProjectAndIdPrefix(
+      projectId,
+      casamento[1].toLowerCase(),
+    );
+    if (!task || !task.assignedTo) return null;
+
+    const moduleId = await this.moduloDoAgente(projectId, task.assignedTo);
+    if (!moduleId) return null;
+
+    return { agentId: task.assignedTo, moduleId };
+  }
+
+  /**
+   * `assignedTo` é o agent_id (`dev-<modulo>`/`dev-<modulo>-2`, RN-087) — o
+   * módulo é resolvido comparando contra cada módulo do `module_map`
+   * vigente pela MESMA função que os gerou (`devAgentId`/`extraDevAgentId`
+   * em `activate-execution.use-case.ts`), nunca por regex reversa: um nome
+   * de módulo com caracteres especiais degenera no slug de formas que uma
+   * regex não desfaz sem ambiguidade.
+   */
+  private async moduloDoAgente(
+    projectId: string,
+    agentId: string,
+  ): Promise<string | null> {
+    const mapa = await this.moduleMaps.findCurrent(projectId);
+    if (!mapa) return null;
+    for (const modulo of mapa.modules) {
+      if (devAgentId(modulo.name) === agentId) return modulo.name;
+      if (extraDevAgentId(modulo.name) === agentId) return modulo.name;
+    }
+    return null;
   }
 
   /**
