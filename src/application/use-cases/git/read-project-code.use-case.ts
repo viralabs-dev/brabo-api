@@ -20,7 +20,10 @@ import { TaskRepository } from '../../ports/backlog-repository.port';
 import { ModuleMapRepository } from '../../ports/module-map-repository.port';
 import { EncryptionService } from '../../ports/encryption.port';
 import { ResolveCredentialOwnerUseCase } from '../llm/resolve-credential-owner.use-case';
-import { devAgentId, extraDevAgentId } from '../execution/activate-execution.use-case';
+import {
+  devAgentId,
+  extraDevAgentId,
+} from '../execution/activate-execution.use-case';
 import { GitReadCache } from '../../../domain/git/git-read-cache';
 import {
   GIT_BLOB_MAX_BYTES,

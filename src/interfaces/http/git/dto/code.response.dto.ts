@@ -359,7 +359,8 @@ export const _chavesRefDePrDaBranch: MesmasChaves<
 export class CodeBranchProducedByResponseDto implements Wire<CodeBranchProducedBy> {
   @ApiProperty({
     example: 'dev-pieces',
-    description: 'agent_id do dev que criou a branch (`dev-<modulo>`/`dev-<modulo>-2`, RN-087).',
+    description:
+      'agent_id do dev que criou a branch (`dev-<modulo>`/`dev-<modulo>-2`, RN-087).',
   })
   agentId!: string;
 
