@@ -76,7 +76,7 @@ export class ProposeActionUseCase {
       input.actor.kind === 'agent'
         ? this.agentAutonomy.findMode(projectId, input.actor.id, actionType)
         : Promise.resolve(null as PermissionPolicy | null),
-      this.permissionsFileStore.read(project.workspaceDirName),
+      this.permissionsFileStore.read(project),
     ]);
 
     const command =
@@ -100,7 +100,10 @@ export class ProposeActionUseCase {
         effectiveRole,
         autonomyMode,
         permissionsFile,
-        projectScopeRoot: projectScopeRoot(project.workspaceDirName),
+        // A raiz do escopo de terminal (ADR 0055) deriva do MODO do projeto
+        // desde o ADR 0072: pasta gerenciada no `container`, a pasta do usuário
+        // no `local` (RN-169).
+        projectScopeRoot: projectScopeRoot(project),
       },
     );
 

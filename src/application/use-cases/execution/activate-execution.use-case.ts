@@ -161,11 +161,7 @@ export class ActivateExecutionUseCase {
     // continue vencendo.
     for (const pattern of terminalAllowPatterns ??
       DEV_TERMINAL_ALLOW_PATTERNS) {
-      await this.permissionsFile.addPattern(
-        project.workspaceDirName,
-        'allow',
-        pattern,
-      );
+      await this.permissionsFile.addPattern(project, 'allow', pattern);
     }
 
     // REATIVAR cai na sessão de execução que já existe, em vez de abrir uma

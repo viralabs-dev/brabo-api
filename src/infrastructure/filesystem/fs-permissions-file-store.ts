@@ -7,12 +7,13 @@ import {
   EMPTY_PERMISSIONS_FILE,
   type PermissionsFile,
 } from '../../domain/actions/permissions-file';
+import type { ProjectWorkspaceLocation } from '../../domain/iam/project.entity';
 
 @Injectable()
 export class FsPermissionsFileStore implements PermissionsFileStore {
-  async read(workspaceDirName: string): Promise<PermissionsFile> {
+  async read(local: ProjectWorkspaceLocation): Promise<PermissionsFile> {
     try {
-      const raw = await readFile(this.pathFor(workspaceDirName), 'utf-8');
+      const raw = await readFile(this.pathFor(local), 'utf-8');
       return JSON.parse(raw) as PermissionsFile;
     } catch (error) {
       if (isNotFound(error)) return EMPTY_PERMISSIONS_FILE;
@@ -20,20 +21,23 @@ export class FsPermissionsFileStore implements PermissionsFileStore {
     }
   }
 
-  async write(workspaceDirName: string, file: PermissionsFile): Promise<void> {
-    const path = this.pathFor(workspaceDirName);
+  async write(
+    local: ProjectWorkspaceLocation,
+    file: PermissionsFile,
+  ): Promise<void> {
+    const path = this.pathFor(local);
     await mkdir(dirname(path), { recursive: true });
     await writeFile(path, JSON.stringify(file, null, 2));
   }
 
   async addPattern(
-    workspaceDirName: string,
+    local: ProjectWorkspaceLocation,
     list: keyof PermissionsFile,
     pattern: string,
   ): Promise<void> {
-    const current = await this.read(workspaceDirName);
+    const current = await this.read(local);
     if (current[list].includes(pattern)) return;
-    await this.write(workspaceDirName, {
+    await this.write(local, {
       ...current,
       [list]: [...current[list], pattern],
     });
@@ -42,8 +46,8 @@ export class FsPermissionsFileStore implements PermissionsFileStore {
   // A raiz vem da função compartilhada, e não de uma leitura própria do env:
   // o escopo de caminho do ADR 0055 deriva a MESMA raiz, e duas leituras
   // separadas poderiam divergir — política lida de um lugar, aplicada a outro.
-  private pathFor(workspaceDirName: string): string {
-    return join(projectScopeRoot(workspaceDirName), 'permissions.json');
+  private pathFor(local: ProjectWorkspaceLocation): string {
+    return join(projectScopeRoot(local), 'permissions.json');
   }
 }
 

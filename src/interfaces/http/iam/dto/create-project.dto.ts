@@ -9,7 +9,9 @@ import {
   MinLength,
 } from 'class-validator';
 import {
+  PROJECT_WORKSPACE_MODES,
   STORY_PROMOTION_MODES,
+  type ProjectWorkspaceMode,
   type StoryPromotionMode,
 } from '../../../../domain/iam/project.entity';
 
@@ -57,4 +59,32 @@ export class CreateProjectDto {
   @IsOptional()
   @IsIn(STORY_PROMOTION_MODES)
   storyPromotion?: StoryPromotionMode;
+
+  @ApiPropertyOptional({
+    enum: PROJECT_WORKSPACE_MODES,
+    example: 'container',
+    description:
+      'ONDE o código deste projeto mora (RN-169 — ADR 0072). `container` ' +
+      '(default): a pasta gerenciada pelo produto dentro de ' +
+      'PROJECT_WORKSPACES_ROOT, que é o comportamento de sempre. `local`: uma ' +
+      'pasta SUA, informada em `workspacePath`, que precisa estar montada ' +
+      'dentro dos containers da api e do engine — a criação RECUSA (400) o ' +
+      'caminho que não estiver, com a instrução de como montar (RN-170).',
+  })
+  @IsOptional()
+  @IsIn(PROJECT_WORKSPACE_MODES)
+  workspaceMode?: ProjectWorkspaceMode;
+
+  @ApiPropertyOptional({
+    example: '/home/voce/projetos/loja',
+    description:
+      'Caminho ABSOLUTO da pasta, obrigatório quando `workspaceMode` é ' +
+      '`local` e recusado quando é `container`. Validado na criação: precisa ' +
+      'existir e ser gravável de dentro do container, e não pode ser a raiz ' +
+      'do sistema, pasta de sistema, nem se sobrepor ao checkout do Brabo ' +
+      '(RN-170).',
+  })
+  @IsOptional()
+  @IsString()
+  workspacePath?: string;
 }

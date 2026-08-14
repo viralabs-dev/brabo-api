@@ -12,6 +12,8 @@ export class GetProjectPermissionsUseCase {
   async execute(projectId: string) {
     const project = await this.projects.findById(projectId);
     if (!project) throw new NotFoundException('Projeto não encontrado');
-    return this.permissionsFileStore.read(project.workspaceDirName);
+    // O `project` inteiro, e não só o nome da pasta: desde o ADR 0072 é o par
+    // (modo, caminho) que diz onde o permissions.json mora (RN-169).
+    return this.permissionsFileStore.read(project);
   }
 }

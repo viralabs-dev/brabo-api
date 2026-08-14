@@ -199,7 +199,7 @@ describe('ProposeActionUseCase', () => {
 
   it('allow em permissions.json: auto-aprova e JÁ EXECUTA (terminal)', async () => {
     const { project, session } = await setupSession();
-    await permissionsFileStore.write(project.id, {
+    await permissionsFileStore.write(project, {
       allow: ['Terminal(echo oi)'],
       deny: [],
       ask: [],
@@ -250,7 +250,7 @@ describe('ProposeActionUseCase', () => {
   it('InfraAgent propondo terminal vira denied mesmo com allow amplo em permissions.json (Fase 4a — defesa em profundidade)', async () => {
     const { project, session } = await setupSession();
     await agentAutonomyRepo.upsert(project.id, 'infra', 'terminal', 'deny');
-    await permissionsFileStore.write(project.id, {
+    await permissionsFileStore.write(project, {
       allow: ['Terminal(*)'],
       deny: [],
       ask: [],

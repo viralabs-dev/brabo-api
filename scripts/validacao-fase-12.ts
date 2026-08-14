@@ -473,7 +473,7 @@ async function main() {
   // ================= 6. O MERGE CONTINUA SENDO SEU =================
   log('\n--- 6. trava de merge (o que a fase NÃO mudou) ---');
   await app.get(AgentAutonomyRepository).upsert(project.id, 'dev-api', 'git_merge', 'auto_approve');
-  await app.get(PermissionsFileStore).addPattern(project.id, 'allow', 'GitMerge()');
+  await app.get(PermissionsFileStore).addPattern(project, 'allow', 'GitMerge()');
 
   const merge = await app.get(ProposeActionUseCase).execute(project.id, sessionId, {
     actionType: 'git_merge',

@@ -264,6 +264,8 @@ function montar(
     provider?: GitProviderName;
     semRepositorio?: boolean;
     container?: EstadoDoContainer;
+    /** Onde o código mora (RN-169). Default `container`, como todo projeto. */
+    workspaceMode?: 'container' | 'local';
     /** Tasks por prefixo do id (8 chars, minúsculo) — RN-152. */
     tasksPorPrefixo?: Record<string, Task>;
     moduleMap?: ModuleMap | null;
@@ -279,6 +281,9 @@ function montar(
         name: 'checkout',
         slug: 'checkout',
         workspaceDirName: PROJETO,
+        workspaceMode: opcoes.workspaceMode ?? ('container' as const),
+        workspacePath:
+          opcoes.workspaceMode === 'local' ? '/home/voce/projetos/loja' : null,
         createdBy: 'user-1',
         taskBudgetMicros: null,
         maxConsecutiveBlocked: null,
@@ -940,6 +945,25 @@ describe('ReadProjectCodeUseCase — o portão do container (FASE 25, RN-105)', 
   it('decidida a imagem, a leitura passa a acontecer', async () => {
     const provider = new ProviderFalso(REPO);
     const { useCase } = montar(provider, { container: CONTAINER_DECIDIDO });
+
+    const arvore = await useCase.tree(PROJETO, 'dev', 'src');
+
+    expect(arvore.entries.map((e) => e.name)).toEqual(['a.ts', 'b.ts', 'deep']);
+  });
+
+  /**
+   * Projeto no modo Local NÃO passa pelo portão (RN-169, ADR 0072).
+   *
+   * Ele não sobe container nenhum, então a decisão do Arquiteto nunca vai
+   * acontecer — e a regra como estava responderia 409 para sempre, fechando a
+   * aba por efeito colateral em vez de por escolha.
+   */
+  it('projeto Local lê sem esperar decisão que nunca vai acontecer', async () => {
+    const provider = new ProviderFalso(REPO);
+    const { useCase } = montar(provider, {
+      container: SEM_DECISAO,
+      workspaceMode: 'local',
+    });
 
     const arvore = await useCase.tree(PROJETO, 'dev', 'src');
 

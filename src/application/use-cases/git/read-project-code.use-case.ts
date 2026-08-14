@@ -37,6 +37,7 @@ import {
   garantirQueryEscalar,
 } from '../../../infrastructure/filesystem/project-workspaces-root';
 import { ObterContainerDoProjetoUseCase } from '../containers/obter-container-do-projeto.use-case';
+import type { Project } from '../../../domain/iam/project.entity';
 
 /**
  * A superfície de LEITURA de código de um projeto (FASE 26b).
@@ -489,12 +490,15 @@ export class ReadProjectCodeUseCase {
     ref: string | undefined,
     path: string | undefined,
   ): Promise<Alvo> {
-    await this.portaoDoContainer(projectId);
-
     const project = await this.projects.findById(projectId);
     if (!project) {
       throw new NotFoundException(`Projeto não encontrado: ${projectId}`);
     }
+
+    // O projeto é buscado ANTES do portão porque o portão depende dele: um
+    // projeto Local não sobe container nenhum, e portanto não espera decisão
+    // do Arquiteto (RN-169).
+    await this.portaoDoContainer(project);
 
     const repo = await this.repositories.findByProjectId(projectId);
     if (!repo) {
@@ -523,7 +527,7 @@ export class ReadProjectCodeUseCase {
 
     let contido = '';
     try {
-      contido = caminhoDeRepositorioContido(project.workspaceDirName, path);
+      contido = caminhoDeRepositorioContido(project, path);
     } catch (erro) {
       if (erro instanceof CaminhoForaDoEscopoError) {
         // 400 e não 404: dizer "não encontrado" a um caminho que escapa
@@ -577,9 +581,22 @@ export class ReadProjectCodeUseCase {
    * 409 e não 403: nada está errado com quem pediu nem com a permissão dele —
    * o recurso ainda não existe neste estado. E a mensagem diz o que falta, para
    * a tela poder mostrar o motivo em vez de um erro mudo.
+   *
+   * ## Por que o modo Local NÃO passa por aqui (RN-169, ADR 0072)
+   *
+   * O portão existe porque o container é o que dá sentido a ler o código — e
+   * um projeto Local, por definição, não sobe container: o código mora numa
+   * pasta do usuário, montada nos containers que já existem. Deixar a regra
+   * como estava responderia 409 para sempre num projeto onde a decisão do
+   * Arquiteto nunca vai acontecer, e ninguém teria decidido isso — seria a aba
+   * Code fechada por um efeito colateral, não por uma escolha. A dispensa é
+   * explícita aqui, e não uma exceção espalhada pelas rotas, pelo mesmo motivo
+   * que o portão mora neste funil.
    */
-  private async portaoDoContainer(projectId: string): Promise<void> {
-    const estado = await this.container.execute(projectId);
+  private async portaoDoContainer(project: Project): Promise<void> {
+    if (project.workspaceMode === 'local') return;
+
+    const estado = await this.container.execute(project.id);
     if (estado.status === 'sem_decisao') {
       throw new ConflictException(
         'A aba Code ainda não está liberada: o Arquiteto não decidiu qual ' +
