@@ -283,7 +283,7 @@ async function main() {
   // --- 4. Trava de merge: nem autonomia nem permissions.json sobrescrevem ---
   log('\n--- 4. trava de merge em branch protegida ---');
   await autonomy.upsert(project.id, 'dev-api', 'git_merge', 'auto_approve');
-  await permissions.addPattern(project.id, 'allow', 'GitMerge()');
+  await permissions.addPattern(project, 'allow', 'GitMerge()');
   log('✓ agent_autonomy=auto_approve E permissions.json allow GitMerge()');
 
   const merge = await app

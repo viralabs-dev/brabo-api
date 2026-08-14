@@ -801,7 +801,7 @@ async function main() {
     'Terminal(echo)',
     'Terminal(git)',
   ]) {
-    await permissoes.addPattern(project.id, 'allow', padrao);
+    await permissoes.addPattern(project, 'allow', padrao);
   }
   log('✓ política: verbos de build/teste/inspeção liberados no projeto');
 

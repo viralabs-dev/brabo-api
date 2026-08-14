@@ -302,6 +302,13 @@
       "when": 1786311658219,
       "tag": "0042_tough_captain_midlands",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1786671680705,
+      "tag": "0043_plain_wraith",
+      "breakpoints": true
     }
   ]
 }

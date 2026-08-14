@@ -203,7 +203,7 @@ describe('ApproveAlwaysActionUseCase', () => {
     expect(approved.status).toBe('executed');
     expect(fakeEngineClient.callCount).toBe(1);
 
-    const file = await permissionsFileStore.read(project.id);
+    const file = await permissionsFileStore.read(project);
     expect(file.allow).toEqual(['Terminal(echo oi)']);
   });
 

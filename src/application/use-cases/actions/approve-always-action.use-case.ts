@@ -47,11 +47,7 @@ export class ApproveAlwaysActionUseCase {
       current.actionType as ActionType,
       current.payload,
     );
-    await this.permissionsFileStore.addPattern(
-      project.workspaceDirName,
-      'allow',
-      pattern,
-    );
+    await this.permissionsFileStore.addPattern(project, 'allow', pattern);
 
     const approved = await this.approveAction.execute(
       projectId,
