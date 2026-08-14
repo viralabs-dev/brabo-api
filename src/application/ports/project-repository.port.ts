@@ -1,5 +1,6 @@
 import type {
   Project,
+  ProjectWorkspaceMode,
   StoryPromotionMode,
 } from '../../domain/iam/project.entity';
 import type {
@@ -20,6 +21,12 @@ export interface ProjectInput {
   // Quem promove story a `ready` (Fase 12c — RN-048). Omitido na criação usa
   // o default da coluna (`manual`).
   storyPromotion?: StoryPromotionMode;
+  // ONDE o código mora (RN-169, ADR 0072). Omitido na criação usa o default
+  // da coluna (`container`) — o comportamento de sempre.
+  workspaceMode?: ProjectWorkspaceMode;
+  // Caminho absoluto da pasta do usuário; só com `workspaceMode: 'local'`, e
+  // validado pelo CreateProjectUseCase antes de chegar aqui (RN-170).
+  workspacePath?: string | null;
 }
 
 export abstract class ProjectRepository {

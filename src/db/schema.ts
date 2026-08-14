@@ -226,6 +226,17 @@ export const storyPromotionModeEnum = pgEnum('story_promotion_mode', [
   'auto',
 ]);
 
+// ONDE o código de um projeto mora no disco (RN-169, ADR 0072).
+// `container` (default): a pasta gerenciada em PROJECT_WORKSPACES_ROOT — o
+// comportamento que sempre existiu, e por isso o default; projeto criado
+// antes desta coluna não muda de lugar.
+// `local`: uma pasta do USUÁRIO, caminho absoluto livre, que só funciona
+// montada nos containers da api e do engine (RN-170).
+export const projectWorkspaceModeEnum = pgEnum('project_workspace_mode', [
+  'container',
+  'local',
+]);
+
 // Ciclo de vida de uma tarefa executável (Fase 4a — devs): todo →
 // in_progress → done. Um dev "pega" (claim atômico) uma task `todo` cuja
 // story está `ready`; `assigned_to` = agent_id do dev (ex.: "dev-<modulo>").
@@ -333,6 +344,17 @@ export const projects = pgTable(
     // coluna foi retroativado com o UUID puro, que é o que já era verdade no
     // disco — o backfill da migração NÃO renomeia diretório nenhum.
     workspaceDirName: text('workspace_dir_name').notNull().unique(),
+    // ONDE o código deste projeto mora (RN-169, ADR 0072). NOT NULL com
+    // default `container` — o comportamento de sempre —, pelo mesmo motivo de
+    // `story_promotion` logo abaixo: o valor É a decisão, e decisão de onde o
+    // agente escreve não fica implícita.
+    workspaceMode: projectWorkspaceModeEnum('workspace_mode')
+      .notNull()
+      .default('container'),
+    // O caminho absoluto da pasta do usuário, SÓ no modo `local`. Validado na
+    // criação (RN-170) — existe, é gravável de dentro do container, não é raiz
+    // de sistema nem contém o repositório do Brabo.
+    workspacePath: text('workspace_path'),
     createdBy: uuid('created_by')
       .notNull()
       .references(() => users.id),
@@ -364,7 +386,19 @@ export const projects = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [unique().on(table.workspaceId, table.slug)],
+  (table) => [
+    unique().on(table.workspaceId, table.slug),
+    // Modo e caminho são UMA decisão, não duas: `local` sem caminho é escopo
+    // de terminal apontando para lugar nenhum, e `container` COM caminho é uma
+    // segunda fonte de verdade esperando divergir da primeira. A trava fica no
+    // banco, e não só no caso de uso, porque a coluna é lida por DOIS
+    // processos (api e engine) e escrita por scripts de seed/backfill que não
+    // passam pelo caso de uso.
+    check(
+      'projects_workspace_path_casa_com_modo',
+      sql`(${table.workspaceMode} = 'local') = (${table.workspacePath} IS NOT NULL)`,
+    ),
+  ],
 );
 
 export const projectMembers = pgTable(

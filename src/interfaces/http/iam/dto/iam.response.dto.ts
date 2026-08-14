@@ -3,8 +3,10 @@ import type { MesmasChaves, Wire } from '../../shared/dto/wire';
 import { ROLE_ORDER, type Role } from '../../../../domain/iam/role';
 import type { Workspace } from '../../../../domain/iam/workspace.entity';
 import {
+  PROJECT_WORKSPACE_MODES,
   STORY_PROMOTION_MODES,
   type Project,
+  type ProjectWorkspaceMode,
   type StoryPromotionMode,
 } from '../../../../domain/iam/project.entity';
 import type { WorkspaceMember } from '../../../../domain/iam/workspace-member.entity';
@@ -151,6 +153,25 @@ export class ProjectResponseDto implements Wire<Project> {
       'existir. Congelado na criação — editar `slug` depois não recalcula.',
   })
   workspaceDirName!: string;
+
+  @ApiProperty({
+    enum: PROJECT_WORKSPACE_MODES,
+    example: 'container',
+    description:
+      'ONDE o código mora (RN-169 — ADR 0072). `container`: a pasta ' +
+      'gerenciada em PROJECT_WORKSPACES_ROOT. `local`: a pasta do usuário em ' +
+      '`workspacePath`.',
+  })
+  workspaceMode!: ProjectWorkspaceMode;
+
+  @ApiProperty({
+    example: null,
+    nullable: true,
+    description:
+      'Caminho absoluto da pasta do usuário — preenchido só no modo `local`, ' +
+      'sempre `null` no modo `container`.',
+  })
+  workspacePath!: string | null;
 
   @ApiProperty({ example: '01JC4Z0000USUARIO0000000001' })
   createdBy!: string;
