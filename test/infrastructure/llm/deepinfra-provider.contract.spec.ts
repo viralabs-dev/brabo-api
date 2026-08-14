@@ -133,6 +133,9 @@ describe('DeepInfraProvider — quirks (Fase 11b)', () => {
       streaming: true,
       toolCalling: true,
       listModels: true,
+      // Nenhum smoke com credencial provou o `/embeddings` deste provider
+      // (ADR 0075) — a base sabe falar o dialeto, o provider nao declara.
+      embeddings: false,
     });
     expect(DEEPINFRA_BASE_URL).toBe('https://api.deepinfra.com/v1/openai');
   });

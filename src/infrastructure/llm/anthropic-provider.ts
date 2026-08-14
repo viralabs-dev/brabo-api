@@ -54,6 +54,12 @@ export class AnthropicProvider implements LLMProvider {
     // e fica lá, não aqui: chave de objeto neste literal quebra o extrator
     // de capabilities do `docs:generate`, que casa até o primeiro fecha-chave.
     listModels: true,
+    // A Anthropic não tem endpoint de embedding próprio — a doc dela manda
+    // usar um terceiro (Voyage AI), que é OUTRO provider, com outra chave e
+    // outro dialeto. Aqui `false` não é falta de prova: é ausência da
+    // operação, e por isso este é o único dos nove que não vira `true` nem
+    // com credencial na mão (ADR 0075).
+    embeddings: false,
   };
 
   constructor(

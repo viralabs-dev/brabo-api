@@ -86,7 +86,14 @@ export function togetherConfig(
   return {
     name: 'together',
     baseUrl,
-    capabilities: { streaming: true, toolCalling: true, listModels: true },
+    capabilities: {
+      streaming: true,
+      toolCalling: true,
+      listModels: true,
+      // Sem `TOGETHER_TEST_KEY` no ambiente nenhum smoke rodou contra o
+      // `/embeddings` real (ADR 0075).
+      embeddings: false,
+    },
     authHeaders: (apiKey) => ({
       Authorization: `Bearer ${apiKey ?? ''}`,
     }),

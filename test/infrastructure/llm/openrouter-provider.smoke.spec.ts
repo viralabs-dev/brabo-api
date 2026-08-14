@@ -99,7 +99,12 @@ describe.skipIf(!apiKey)(
     const openrouter = new OpenRouterProvider(tokenEstimator);
     const semCatalogo = (nome: LLMProviderName): LLMProvider => ({
       name: nome,
-      capabilities: { streaming: true, toolCalling: true, listModels: false },
+      capabilities: {
+        streaming: true,
+        toolCalling: true,
+        listModels: false,
+        embeddings: false,
+      },
       // eslint-disable-next-line @typescript-eslint/require-await
       chat: async function* () {
         yield { type: 'text_delta' as const, text: '' };

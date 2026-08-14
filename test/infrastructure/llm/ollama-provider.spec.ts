@@ -19,6 +19,7 @@ describe('OllamaProvider (transporte)', () => {
       server = undefined;
     }
     delete process.env.OLLAMA_REQUEST_TIMEOUT_MS;
+    delete process.env.OLLAMA_HOST;
   });
 
   async function subir(
@@ -117,5 +118,119 @@ describe('OllamaProvider (transporte)', () => {
     expect((chunks[0] as { message: string }).message).toContain(
       'Falha ao conectar no Ollama',
     );
+  });
+
+  /**
+   * A camada de MODELO da capability de embedding (ADR 0075), lida do
+   * `/api/tags`. O Ollama é o único dos nove que publica isso por modelo — o
+   * corpo abaixo é o do daemon 0.32.1, copiado da resposta real.
+   */
+  describe('catálogo: quem é modelo de embedding sai do próprio /api/tags', () => {
+    function tags(modelos: unknown[]) {
+      return subir((_req, res) => {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ models: modelos }));
+      });
+    }
+
+    it('declara supportsEmbeddings e a dimensão de quem é de embedding', async () => {
+      process.env.OLLAMA_HOST = await tags([
+        {
+          name: 'nomic-embed-text:latest',
+          capabilities: ['embedding'],
+          details: { family: 'nomic-bert', embedding_length: 768 },
+        },
+        {
+          name: 'llama3.2:1b',
+          capabilities: ['completion', 'tools'],
+          // Todo modelo de chat TAMBÉM tem `embedding_length` (é o vetor
+          // interno dele) — copiá-lo faria um modelo de chat parecer
+          // indexável, e é por isso que a dimensão só acompanha quem embeda.
+          details: { family: 'llama', embedding_length: 2048 },
+        },
+      ]);
+
+      const catalogo = await new OllamaProvider().listModels();
+
+      expect(catalogo).toEqual([
+        {
+          name: 'nomic-embed-text:latest',
+          supportsToolCalling: true,
+          supportsEmbeddings: true,
+          embeddingDimensions: 768,
+        },
+        {
+          name: 'llama3.2:1b',
+          supportsToolCalling: true,
+          supportsEmbeddings: false,
+        },
+      ]);
+    });
+
+    it('daemon antigo, sem `capabilities`: não declara nada em vez de dizer false', async () => {
+      // Ausência é "o provider não disse" (ADR 0041). Um `false` aqui seria
+      // afirmação nossa sobre o que o daemon não respondeu.
+      process.env.OLLAMA_HOST = await tags([
+        { name: 'llama3.2:1b', details: { family: 'llama' } },
+      ]);
+
+      const catalogo = await new OllamaProvider().listModels();
+
+      expect(catalogo).toEqual([
+        { name: 'llama3.2:1b', supportsToolCalling: true },
+      ]);
+    });
+  });
+
+  describe('embed', () => {
+    it('POST /api/embed: um vetor por entrada, com a contagem do daemon', async () => {
+      const host = await subir((req, res) => {
+        expect(req.url).toBe('/api/embed');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            model: 'nomic-embed-text',
+            embeddings: [
+              [0.1, 0.2],
+              [0.3, 0.4],
+            ],
+            prompt_eval_count: 10,
+          }),
+        );
+      });
+
+      const resultado = await new OllamaProvider().embed(['um', 'dois'], {
+        model: 'nomic-embed-text',
+        host,
+      });
+
+      expect(resultado).toEqual({
+        vectors: [
+          [0.1, 0.2],
+          [0.3, 0.4],
+        ],
+        dimensions: 2,
+        model: 'nomic-embed-text',
+        inputTokens: 10,
+        estimated: false,
+      });
+    });
+
+    it('modelo de chat: o 501 do daemon vira erro normalizado, não vetor vazio', async () => {
+      // Resposta REAL do daemon 0.32.1 pedindo embedding de `llama3.2:1b`.
+      const host = await subir((_req, res) => {
+        res.writeHead(501, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            error:
+              'This server does not support embeddings. Start it with `--embeddings`',
+          }),
+        );
+      });
+
+      await expect(
+        new OllamaProvider().embed(['um'], { model: 'llama3.2:1b', host }),
+      ).rejects.toMatchObject({ code: 'upstream' });
+    });
   });
 });

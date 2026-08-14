@@ -124,6 +124,9 @@ describe('OpenRouterProvider — quirks (Fase 11a)', () => {
       streaming: true,
       toolCalling: true,
       listModels: true,
+      // Nenhum smoke com credencial provou o `/embeddings` deste provider
+      // (ADR 0075) — a base sabe falar o dialeto, o provider nao declara.
+      embeddings: false,
     });
     expect(OPENROUTER_BASE_URL).toBe('https://openrouter.ai/api/v1');
   });
