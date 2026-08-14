@@ -8,6 +8,14 @@ import {
   workspaces,
 } from '../../../../src/db/schema';
 import { DrizzleTokenUsageRepository } from '../../../../src/infrastructure/persistence/drizzle/token-usage.repository';
+import type {
+  SpendBucket,
+  SpendDimension,
+  SpendScope,
+  SpendScopeAmplo,
+  SpendScopeDeAtor,
+  TokenUsageRepository,
+} from '../../../../src/application/ports/token-usage-repository.port';
 import { DrizzleWorkspaceRepository } from '../../../../src/infrastructure/persistence/drizzle/workspace.repository';
 import { GetWorkspaceSpendReportUseCase } from '../../../../src/application/use-cases/llm/get-workspace-spend-report.use-case';
 import { GetMySpendUseCase } from '../../../../src/application/use-cases/llm/get-my-spend.use-case';
@@ -96,6 +104,25 @@ async function setup() {
     sessaoPortal,
     modelo,
   };
+}
+
+/**
+ * Um repositório que não soma nada: só ANOTA o que lhe pediram (ADR 0076).
+ *
+ * O que ele prova não é o número — isso os testes contra o banco já fazem. É
+ * qual PERGUNTA o caso de uso do membro faz, que é onde o eixo de credencial
+ * poderia vazar sem ninguém notar.
+ */
+class RepositorioEspiao {
+  readonly pedidos: Array<{ dimensao: SpendDimension; temAtor: boolean }> = [];
+
+  async sumGroupedBy(
+    dimensao: SpendDimension,
+    escopo: SpendScope,
+  ): Promise<SpendBucket[]> {
+    this.pedidos.push({ dimensao, temAtor: Boolean(escopo.actor) });
+    return [];
+  }
 }
 
 async function gasto(input: {
@@ -195,12 +222,13 @@ describe('GetWorkspaceSpendReportUseCase — a audiência do owner', () => {
   });
 
   /**
-   * A ausência do eixo é a regra, não esquecimento: quebrar gasto por provider
-   * é quebrar por CREDENCIAL, e essa resposta é `credential-spend`, exclusiva
-   * do owner pela RN-060. Duas chamadas em providers diferentes servindo o
-   * MESMO nome de modelo caem numa linha só.
+   * O eixo de PROVIDER (ADR 0076, RN-186), que o ADR 0063 tinha deixado de
+   * fora. Ele mora aqui porque esta rota já exige `owner` (RN-060) — e o que
+   * NÃO mudou é a dimensão `model`: dois providers servindo o mesmo nome de
+   * modelo continuam caindo numa linha só, porque quem quer a quebra por
+   * credencial tem a lista própria logo ao lado.
    */
-  it('não tem eixo de provider — o mesmo modelo em dois providers é UMA linha', async () => {
+  it('quebra por PROVIDER, e o mesmo nome de modelo em dois providers segue UMA linha', async () => {
     const { ws, sessaoA, modelo } = await setup();
 
     await gasto({
@@ -226,7 +254,70 @@ describe('GetWorkspaceSpendReportUseCase — a audiência do owner', () => {
 
     expect(relatorio.porModelo).toHaveLength(1);
     expect(relatorio.porModelo[0].costMicros).toBe(500);
-    expect(JSON.stringify(relatorio)).not.toContain('openrouter');
+
+    // O ranking desce do maior gasto, como as outras dimensões.
+    expect(relatorio.porProvider.map((l) => [l.chave, l.costMicros])).toEqual([
+      ['openai', 400],
+      ['openrouter', 100],
+    ]);
+    // O total não é afetado: é o MESMO gasto visto por outro eixo.
+    expect(relatorio.totalMicros).toBe(500);
+  });
+
+  /**
+   * "Por owner" e "Por agente" são PARTIÇÃO de `porAtor` (RN-188) — a mesma
+   * leitura, separada por `actor_kind`, sem consulta a mais. `porAtor` continua
+   * inteira: quem já a consumia não perde nada.
+   */
+  it('separa PESSOA de AGENTE em dois blocos, sem perder a lista por ator', async () => {
+    const { ws, sessaoA, modelo, membro, dono } = await setup();
+
+    await gasto({
+      sessionId: sessaoA.id,
+      modelId: modelo.id,
+      actorKind: 'agent',
+      actorId: 'criativo',
+      costMicros: 1_000,
+    });
+    await gasto({
+      sessionId: sessaoA.id,
+      modelId: modelo.id,
+      actorKind: 'agent',
+      actorId: 'arquiteto',
+      costMicros: 700,
+    });
+    await gasto({
+      sessionId: sessaoA.id,
+      modelId: modelo.id,
+      actorKind: 'user',
+      actorId: membro.id,
+      costMicros: 300,
+    });
+    await gasto({
+      sessionId: sessaoA.id,
+      modelId: modelo.id,
+      actorKind: 'user',
+      actorId: dono.id,
+      costMicros: 50,
+    });
+
+    const relatorio = await relatorioDoOwner.execute(ws.id, 30);
+
+    expect(relatorio.porAgente.map((l) => [l.chave, l.costMicros])).toEqual([
+      ['criativo', 1_000],
+      ['arquiteto', 700],
+    ]);
+    expect(relatorio.porOwner.map((l) => [l.chave, l.costMicros])).toEqual([
+      [membro.id, 300],
+      [dono.id, 50],
+    ]);
+    expect(relatorio.porAtor).toHaveLength(4);
+    // A soma das duas partes é a lista inteira — nenhuma linha se perde nem
+    // aparece duas vezes.
+    expect(
+      relatorio.porOwner.length + relatorio.porAgente.length,
+    ).toBe(relatorio.porAtor.length);
+    expect(relatorio.totalMicros).toBe(2_050);
   });
 
   it('workspace sem gasto devolve relatório vazio com série densa, não erro', async () => {
@@ -236,6 +327,9 @@ describe('GetWorkspaceSpendReportUseCase — a audiência do owner', () => {
 
     expect(relatorio.totalMicros).toBe(0);
     expect(relatorio.porModelo).toEqual([]);
+    expect(relatorio.porProvider).toEqual([]);
+    expect(relatorio.porOwner).toEqual([]);
+    expect(relatorio.porAgente).toEqual([]);
     expect(relatorio.porDia).toHaveLength(7);
     expect(relatorio.porDia.every((p) => p.costMicros === 0)).toBe(true);
   });
@@ -417,5 +511,58 @@ describe('GetMySpendUseCase — a audiência do membro', () => {
     expect(meu.totalMicros).toBe(0);
     expect(meu.porSessao).toEqual([]);
     expect(meu.porDia).toHaveLength(5);
+  });
+
+  /**
+   * O eixo de provider existe desde o ADR 0076 — e continua fora do alcance do
+   * membro por duas barreiras independentes (RN-187).
+   *
+   * A primeira é de tempo de execução e está aqui: o caso de uso pede DUAS
+   * dimensões, `session` e `day`, sempre com o ator no escopo, e a rota não tem
+   * parâmetro de dimensão para mudar isso. A segunda é do COMPILADOR, logo
+   * abaixo.
+   */
+  it('só pede as dimensões `session` e `day`, e sempre com o ator no escopo', async () => {
+    const espiao = new RepositorioEspiao();
+
+    await new GetMySpendUseCase(
+      espiao as unknown as TokenUsageRepository,
+    ).execute('projeto-qualquer', 'usuario-qualquer', 30);
+
+    expect(espiao.pedidos.map((p) => p.dimensao)).toEqual(['session', 'day']);
+    expect(espiao.pedidos.every((p) => p.temAtor)).toBe(true);
+    expect(espiao.pedidos.map((p) => p.dimensao)).not.toContain('provider');
+  });
+
+  /**
+   * O CASO DE FALHA, e ele é de compilação: pedir `provider` com um escopo que
+   * carrega ator não tipa. Se alguém apagar a sobrecarga do port — ou puser
+   * `provider` de volta em `SpendDimensionDoAtor` —, o `@ts-expect-error`
+   * abaixo fica sem erro para suprimir e o `tsc` reprova a linha por diretiva
+   * NÃO USADA. É o oposto de um teste que passa a mentir em silêncio.
+   *
+   * `expect` nenhum aqui seria honesto: o que este teste afirma não roda, é
+   * verificado antes. O `expect` que existe é sobre a outra metade da regra —
+   * com escopo AMPLO, a mesma chamada é legítima.
+   */
+  it('não compila pedir `provider` com escopo de ator; com escopo amplo, compila', async () => {
+    const espiao = new RepositorioEspiao();
+    const port = espiao as unknown as TokenUsageRepository;
+
+    const escopoDoMembro: SpendScopeDeAtor = {
+      projectId: 'projeto-qualquer',
+      actor: { kind: 'user', id: 'usuario-qualquer' },
+      dias: 30,
+    };
+    // @ts-expect-error `provider` não pertence a `SpendDimensionDoAtor` (RN-187)
+    await port.sumGroupedBy('provider', escopoDoMembro);
+
+    const escopoDoOwner: SpendScopeAmplo = { workspaceId: 'ws', dias: 30 };
+    await port.sumGroupedBy('provider', escopoDoOwner);
+
+    expect(espiao.pedidos.at(-1)).toEqual({
+      dimensao: 'provider',
+      temAtor: false,
+    });
   });
 });

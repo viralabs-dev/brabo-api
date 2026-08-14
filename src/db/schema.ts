@@ -745,45 +745,57 @@ export const modelPriceChanges = pgTable('model_price_changes', {
 });
 
 // Append-only: metering obrigatório de cada chamada de LLM.
-export const tokenUsage = pgTable('token_usage', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  sessionId: uuid('session_id')
-    .notNull()
-    .references(() => sessions.id, { onDelete: 'cascade' }),
-  actorKind: actorKindEnum('actor_kind').notNull(),
-  actorId: text('actor_id').notNull(),
-  provider: llmProviderEnum('provider').notNull(),
-  modelId: uuid('model_id').references(() => models.id),
-  modelName: text('model_name').notNull(), // snapshot no momento da chamada
-  inputTokens: integer('input_tokens').notNull(),
-  outputTokens: integer('output_tokens').notNull(),
-  estimated: boolean('estimated').notNull().default(false),
-  costMicros: bigint('cost_micros', { mode: 'number' }).notNull(),
-  // Os preços que PRODUZIRAM o `cost_micros` acima (Fase 9c, RN-044). Sem
-  // eles o custo já era congelado (ninguém recalcula), mas não era
-  // REPRODUZÍVEL: não dava para conferir `tokens × preço = custo` depois que a
-  // linha de `models` mudasse.
-  inputPricePerMillionMicros: bigint('input_price_per_million_micros', {
-    mode: 'number',
-  })
-    .notNull()
-    .default(0),
-  outputPricePerMillionMicros: bigint('output_price_per_million_micros', {
-    mode: 'number',
-  })
-    .notNull()
-    .default(0),
-  latencyMs: integer('latency_ms').notNull(),
-  bindingOrigin: modelBindingScopeEnum('binding_origin'),
-  // Provider SUBJACENTE, quando a chamada passou por um hub que informa quem
-  // serviu (Fase 9b). Texto livre e não enum: o conjunto é do hub, muda sem
-  // aviso e não é nosso para versionar. `null` = não veio de hub, ou o hub
-  // não informou.
-  upstreamProvider: text('upstream_provider'),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+export const tokenUsage = pgTable(
+  'token_usage',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    actorKind: actorKindEnum('actor_kind').notNull(),
+    actorId: text('actor_id').notNull(),
+    provider: llmProviderEnum('provider').notNull(),
+    modelId: uuid('model_id').references(() => models.id),
+    modelName: text('model_name').notNull(), // snapshot no momento da chamada
+    inputTokens: integer('input_tokens').notNull(),
+    outputTokens: integer('output_tokens').notNull(),
+    estimated: boolean('estimated').notNull().default(false),
+    costMicros: bigint('cost_micros', { mode: 'number' }).notNull(),
+    // Os preços que PRODUZIRAM o `cost_micros` acima (Fase 9c, RN-044). Sem
+    // eles o custo já era congelado (ninguém recalcula), mas não era
+    // REPRODUZÍVEL: não dava para conferir `tokens × preço = custo` depois que a
+    // linha de `models` mudasse.
+    inputPricePerMillionMicros: bigint('input_price_per_million_micros', {
+      mode: 'number',
+    })
+      .notNull()
+      .default(0),
+    outputPricePerMillionMicros: bigint('output_price_per_million_micros', {
+      mode: 'number',
+    })
+      .notNull()
+      .default(0),
+    latencyMs: integer('latency_ms').notNull(),
+    bindingOrigin: modelBindingScopeEnum('binding_origin'),
+    // Provider SUBJACENTE, quando a chamada passou por um hub que informa quem
+    // serviu (Fase 9b). Texto livre e não enum: o conjunto é do hub, muda sem
+    // aviso e não é nosso para versionar. `null` = não veio de hub, ou o hub
+    // não informou.
+    upstreamProvider: text('upstream_provider'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    // ADR 0076: as duas consultas do relatório de gasto leem uma JANELA
+    // deslizante sobre `created_at`, e a tabela só tinha a PK. Medido a 525
+    // mil linhas pelo ADR 0063: 55 ms e 38 ms por seq scan, 32 ms e 19 ms com
+    // este índice, que transforma os dois planos em bitmap heap scan. O custo
+    // cresce com o tamanho de `token_usage`, não com o do pedido — por isso o
+    // índice é do tempo, e não de nenhuma das dimensões.
+    index('token_usage_created_at_idx').on(table.createdAt),
+  ],
+);
 
 export const budgets = pgTable(
   'budgets',

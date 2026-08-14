@@ -309,6 +309,13 @@
       "when": 1786671680705,
       "tag": "0043_plain_wraith",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1786749196229,
+      "tag": "0044_stale_human_fly",
+      "breakpoints": true
     }
   ]
 }
