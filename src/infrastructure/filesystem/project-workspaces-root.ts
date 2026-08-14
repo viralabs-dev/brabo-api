@@ -1,4 +1,4 @@
-import { accessSync, constants, statSync } from 'node:fs';
+import { accessSync, constants, statSync, type Stats } from 'node:fs';
 import { join, posix } from 'node:path';
 import {
   dentroDoEscopo,
@@ -221,7 +221,10 @@ function caminhoDeWorkspaceLocalValido(caminho: string): boolean {
   // próprio produto. Recusar um e permitir o outro seria fechar a porta e
   // deixar a janela.
   const brabo = raizDoBrabo();
-  if (dentroDoEscopo(normalizado, brabo) || dentroDoEscopo(brabo, normalizado)) {
+  if (
+    dentroDoEscopo(normalizado, brabo) ||
+    dentroDoEscopo(brabo, normalizado)
+  ) {
     return false;
   }
 
@@ -297,7 +300,12 @@ export function validarCaminhoDeWorkspaceLocal(caminho: string): string {
 
   const normalizado = normalizarSemBarraFinal(bruto);
 
-  let info;
+  // O tipo é explícito porque `let` sem anotação nasce `any` implícito: a
+  // atribuição acontece DENTRO do try, e o TypeScript não propaga de lá o tipo
+  // para a declaração. Sem isto, `info.isDirectory()` vira chamada em `any` — a
+  // checagem de "é pasta?" deixa de ser verificada pelo compilador, e o ESLint
+  // do CI (que roda sobre `src/`, sem `--fix`) reprova.
+  let info: Stats;
   try {
     info = statSync(normalizado);
   } catch {
