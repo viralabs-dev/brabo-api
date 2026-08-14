@@ -201,7 +201,14 @@ describe('SendChatMessageUseCase', () => {
       'chat.message',
       'agent.response',
     ]);
-    expect(storedEvents[1].payload).toMatchObject({ text: 'Olá! tudo bem?' });
+    // RN-175: o `agent.response` diz QUAL modelo respondeu. O ator já é o
+    // nome do modelo neste caminho (chat sem agente ativo), mas a tela lê o
+    // PAYLOAD — e é ele que continua valendo se um dia este caminho ganhar
+    // um agente de verdade.
+    expect(storedEvents[1].payload).toMatchObject({
+      text: 'Olá! tudo bem?',
+      modelName: model.name,
+    });
 
     const usageRows = await db
       .select()
