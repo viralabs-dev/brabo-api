@@ -10,17 +10,33 @@ import {
 import { EngineServiceGuard } from '../auth/engine-service.guard';
 import { ServiceRoute } from '../auth/service-route.decorator';
 import { GetProjectGitRemoteUseCase } from '../../../application/use-cases/git/get-project-git-remote.use-case';
+import { ListBusinessRulesUseCase } from '../../../application/use-cases/backlog/list-business-rules.use-case';
+import { ListBacklogUseCase } from '../../../application/use-cases/backlog/list-backlog.use-case';
 import { SERVICE_TOKEN } from '../../../infrastructure/openapi/documento';
 import { ProjectGitRemoteResponseDto } from './dto/project-git-remote.response.dto';
+import { ProjectBusinessRulesResponseDto } from './dto/internal.response.dto';
+import { EpicComHistoriasResponseDto } from '../backlog/dto/backlog.response.dto';
 
 /**
- * O que o engine precisa da api para trabalhar no repositório de um projeto
- * ([ADR 0056](../../../../../docs/adr/0056-o-engine-trabalha-em-repositorio-remoto.md)).
+ * O que o engine precisa da api sobre um PROJETO — e não sobre uma sessão.
  *
- * A divisão é a mesma do sync de catálogo: quem trabalha no sistema de
- * arquivos é o engine, quem tem as credenciais é a api. Replicar a chave
- * mestra no engine pouparia uma chamada HTTP e dobraria o raio de explosão do
- * segredo mais sensível do produto.
+ * Duas famílias moram aqui, e o critério é o mesmo: o recurso é do projeto, e
+ * o segmento de sessão seria decorativo.
+ *
+ * 1. O repositório de trabalho
+ *    ([ADR 0056](../../../../../docs/adr/0056-o-engine-trabalha-em-repositorio-remoto.md)).
+ *    A divisão é a mesma do sync de catálogo: quem trabalha no sistema de
+ *    arquivos é o engine, quem tem as credenciais é a api. Replicar a chave
+ *    mestra no engine pouparia uma chamada HTTP e dobraria o raio de explosão
+ *    do segredo mais sensível do produto.
+ * 2. O que o PO precisa RELER
+ *    ([RN-164](../../../../../docs/business-rules.md#rn-164)): as regras de
+ *    negócio do projeto e o backlog já escrito. O PO só tinha ferramenta de
+ *    escrita e lia o contexto uma única vez, no kickoff — dali em diante não
+ *    sabia o que existia nem o que ele mesmo já tinha criado. Estas duas são
+ *    LEITURA e por isso não viram `proposed_action`; o que elas devem é ser
+ *    contidas, e são: escopo fechado no projeto, sem parâmetro de busca e sem
+ *    paginação a explorar.
  */
 @ApiTags('internal')
 @ApiSecurity(SERVICE_TOKEN)
@@ -31,7 +47,11 @@ import { ProjectGitRemoteResponseDto } from './dto/project-git-remote.response.d
 @ServiceRoute()
 @UseGuards(EngineServiceGuard)
 export class InternalProjectsController {
-  constructor(private readonly getGitRemote: GetProjectGitRemoteUseCase) {}
+  constructor(
+    private readonly getGitRemote: GetProjectGitRemoteUseCase,
+    private readonly listBusinessRules: ListBusinessRulesUseCase,
+    private readonly listBacklog: ListBacklogUseCase,
+  ) {}
 
   @Get(':projectId/git-remote')
   @ApiOperation({
@@ -51,5 +71,35 @@ export class InternalProjectsController {
   })
   gitRemote(@Param('projectId') projectId: string) {
     return this.getGitRemote.execute(projectId);
+  }
+
+  @Get(':projectId/business-rules')
+  @ApiOperation({
+    summary: 'As regras de negócio do projeto, com cobertura, para o PO ler',
+    description:
+      'Todo `artifact.business_rule` das sessões do projeto — não só as da ' +
+      'sessão corrente, que era o teto do contexto de kickoff do PO — com a ' +
+      '`description` inteira e quais histórias já citam cada regra. ' +
+      '`uncoveredCount` é a pendência: regra que nenhuma história cobre ' +
+      '(RN-164). Projeto sem regra nenhuma responde `200` com lista vazia: ' +
+      '"ainda não capturei regra" não é erro.',
+  })
+  @ApiOkResponse({ type: ProjectBusinessRulesResponseDto })
+  businessRules(@Param('projectId') projectId: string) {
+    return this.listBusinessRules.execute(projectId);
+  }
+
+  @Get(':projectId/backlog')
+  @ApiOperation({
+    summary: 'O backlog do projeto em árvore, para o PO ler o que já escreveu',
+    description:
+      'A MESMA árvore épico → história → tarefa da aba Backlog, pelo mesmo ' +
+      'caso de uso (três leituras por projeto, nunca N+1). É com ela que o ' +
+      'PO enxerga épico órfão e história sem tarefa em vez de recriar o que ' +
+      'já existe (RN-164).',
+  })
+  @ApiOkResponse({ type: [EpicComHistoriasResponseDto] })
+  backlog(@Param('projectId') projectId: string) {
+    return this.listBacklog.execute(projectId);
   }
 }

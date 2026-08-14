@@ -50,6 +50,10 @@ import type {
   InfraPrFile,
   InfraPrFiles,
 } from '../../../../application/use-cases/execution/get-infra-pr-files.use-case';
+import type {
+  BusinessRuleWithCoverage,
+  ProjectBusinessRules,
+} from '../../../../application/use-cases/backlog/list-business-rules.use-case';
 
 /**
  * Respostas da superfície interna api ↔ engine (Fase 7b, item 6).
@@ -640,4 +644,58 @@ export class DelegationResponseDto implements Wire<Delegation> {
 export const _chavesDelegation: MesmasChaves<
   DelegationResponseDto,
   Delegation
+> = true;
+
+// ------------------------------------------------------- leitura do PO (RN-164)
+
+export class ProjectBusinessRuleResponseDto implements Wire<BusinessRuleWithCoverage> {
+  @ApiProperty({
+    example: 'evt_01jc4z0000regra0000000001',
+    description:
+      'O id do EVENTO `artifact.business_rule`. É este valor que vai em ' +
+      '`business_rule_ids` ao criar a história — não existe tabela de regras.',
+  })
+  id!: string;
+
+  @ApiProperty({ example: 'Carrinho aceita no máximo 50 itens' })
+  title!: string;
+
+  @ApiProperty({
+    example: 'Acima disso, a adição é recusada com 409.',
+    description:
+      'O conteúdo da regra, e não só o enunciado: é dele que sai o RF da ' +
+      'história. É o campo que distingue esta leitura da cobertura da tela.',
+  })
+  description!: string;
+
+  @ApiProperty({
+    type: [String],
+    example: ['01JC4Z0000HISTORIA000000001'],
+    description: 'Histórias que já citam esta regra.',
+  })
+  coveredByStoryIds!: string[];
+
+  @ApiProperty({ example: true })
+  covered!: boolean;
+}
+export const _chavesRegraDoProjeto: MesmasChaves<
+  ProjectBusinessRuleResponseDto,
+  BusinessRuleWithCoverage
+> = true;
+
+export class ProjectBusinessRulesResponseDto implements Wire<ProjectBusinessRules> {
+  @ApiProperty({ type: [ProjectBusinessRuleResponseDto] })
+  rules!: ProjectBusinessRuleResponseDto[];
+
+  @ApiProperty({
+    example: 2,
+    description:
+      'Quantas regras nenhuma história cobre. É a pendência do PO, e o número ' +
+      'que a ferramenta `listar_regras_de_negocio` põe na frente do modelo.',
+  })
+  uncoveredCount!: number;
+}
+export const _chavesRegrasDoProjeto: MesmasChaves<
+  ProjectBusinessRulesResponseDto,
+  ProjectBusinessRules
 > = true;
