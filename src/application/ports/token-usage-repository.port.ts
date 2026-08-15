@@ -84,50 +84,89 @@ export abstract class TokenUsageRepository {
   ): Promise<CredentialSpendRow[]>;
 
   /**
-   * As agregações que faltavam (FASE 22): por modelo, por projeto dentro do
-   * workspace, por ator, por sessão e por dia.
+   * As agregações do relatório de gasto: por modelo, por provider, por projeto
+   * dentro do workspace, por ator, por sessão e por dia.
    *
-   * Um método só, parametrizado pela DIMENSÃO, porque as cinco perguntas
-   * diferem em exatamente um `GROUP BY` — cinco cópias do mesmo join com uma
-   * coluna trocada envelheceriam em direções diferentes.
+   * Um método só, parametrizado pela DIMENSÃO, porque as perguntas diferem em
+   * exatamente um `GROUP BY` — seis cópias do mesmo join com uma coluna trocada
+   * envelheceriam em direções diferentes.
    *
-   * **`provider` não é uma dimensão daqui, e a ausência é o desenho**
-   * ([RN-101](../../../../../docs/business-rules.md)). Quebrar gasto por
-   * provider é quebrar por CREDENCIAL, e isso responde à fatura do owner —
-   * que continua morando, exclusiva, em
-   * `sumByWorkspaceGroupedByProviderAndMonth` e na rota com `@RequireRole('owner')`.
-   * Deixar o eixo fora deste método é o que impede a visão do membro de
-   * ganhá-lo por descuido: não existe argumento a passar.
+   * **`provider` voltou a ser dimensão (ADR 0076, RN-186), e a contenção que a
+   * ausência dele fazia agora é feita pelo TIPO.** O ADR 0063 tinha deixado o
+   * eixo de fora porque quebrar gasto por provider é quebrar por CREDENCIAL, e
+   * isso é a fatura do owner ([RN-060](../../../../../docs/business-rules.md)).
+   * O argumento continua de pé; o que mudou é como ele é imposto: são DUAS
+   * assinaturas, e um escopo que carrega `actor` — a visão do membro, e a única
+   * que existe para ele — só aceita `SpendDimensionDoAtor`, de onde `provider`
+   * está excluído. Pedir `provider` com escopo de ator não compila; não é um
+   * `if` que alguém possa esquecer de escrever (RN-187).
    *
    * Sem filtro implícito de `actor_kind`: quem restringe é o `escopo`. A
    * RN-038 vale para os agregados que dizem "agentes"; este diz "gasto".
    */
   abstract sumGroupedBy(
+    dimensao: SpendDimensionDoAtor,
+    escopo: SpendScopeDeAtor,
+  ): Promise<SpendBucket[]>;
+  abstract sumGroupedBy(
     dimensao: SpendDimension,
-    escopo: SpendScope,
+    escopo: SpendScopeAmplo,
   ): Promise<SpendBucket[]>;
 }
 
-/** Os cinco recortes do relatório de gasto. Nenhum deles é `provider`. */
-export type SpendDimension = 'model' | 'project' | 'actor' | 'session' | 'day';
+/**
+ * Os recortes do relatório de gasto (ADR 0076).
+ *
+ * `provider` é o único que fala de CREDENCIAL, e é por isso que ele não
+ * pertence a `SpendDimensionDoAtor` logo abaixo.
+ */
+export type SpendDimension =
+  'model' | 'provider' | 'project' | 'actor' | 'session' | 'day';
 
-export interface SpendScope {
+/**
+ * O que um escopo COM ator alcança — tudo menos `provider` (RN-187).
+ *
+ * `Exclude` e não uma lista escrita à mão: dimensão nova nasce alcançável pelas
+ * duas audiências por padrão, e tirar uma delas do alcance do membro passa a
+ * ser um ato deliberado neste ponto — nunca um esquecimento em outro arquivo.
+ */
+export type SpendDimensionDoAtor = Exclude<SpendDimension, 'provider'>;
+
+interface SpendScopeBase {
   /** Recorte largo: a fatura do owner. */
   workspaceId?: string;
   /** Recorte estreito: um projeto. */
   projectId?: string;
-  /**
-   * Quando presente, SÓ as linhas deste ator entram — é o que torna a visão do
-   * membro dele e de mais ninguém (RN-101). Quem preenche é o caso de uso a
-   * partir do usuário AUTENTICADO, nunca um parâmetro de rota.
-   */
-  actor?: Actor;
   /** Janela deslizante, em dias. */
   dias: number;
 }
 
+/**
+ * O escopo da audiência do OWNER: sem ator, e por isso com o eixo de provider
+ * ao alcance. `actor?: undefined` não é decoração — é o que torna os dois
+ * escopos mutuamente exclusivos e faz o compilador escolher a sobrecarga certa.
+ */
+export interface SpendScopeAmplo extends SpendScopeBase {
+  actor?: undefined;
+}
+
+/**
+ * O escopo da audiência do MEMBRO: SÓ as linhas deste ator entram (RN-101).
+ * Quem preenche é o caso de uso a partir do usuário AUTENTICADO, nunca um
+ * parâmetro de rota — e, desde o ADR 0076, carregar `actor` também é o que
+ * fecha o eixo de provider por tipo.
+ */
+export interface SpendScopeDeAtor extends SpendScopeBase {
+  actor: Actor;
+}
+
+export type SpendScope = SpendScopeAmplo | SpendScopeDeAtor;
+
 export interface SpendBucket {
-  /** A chave do agrupamento: nome do modelo, id do projeto/sessão/ator, ou o dia `YYYY-MM-DD`. */
+  /**
+   * A chave do agrupamento: nome do modelo, nome do provider, id do
+   * projeto/sessão/ator, ou o dia `YYYY-MM-DD`.
+   */
   chave: string;
   /** Nome legível quando a tabela tem um (projeto); `null` quando a chave já é o rótulo. */
   rotulo: string | null;

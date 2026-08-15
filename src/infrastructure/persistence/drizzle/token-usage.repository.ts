@@ -220,6 +220,12 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
    * ficam incondicionais mesmo quando a dimensão não os usa: são `inner join`
    * por FK `not null`, não mudam a cardinalidade, e um caminho único é mais
    * barato de manter do que quatro variações do mesmo `from`.
+   *
+   * A implementação atende as DUAS sobrecargas do port com uma assinatura só
+   * (ADR 0076). Ela não checa a combinação `provider` × escopo de ator: a
+   * checagem é do TIPO, no port, e repeti-la aqui como `if` daria a impressão
+   * de que a garantia é de tempo de execução — quando o que a sustenta é o
+   * compilador (RN-187).
    */
   async sumGroupedBy(
     dimensao: SpendDimension,
@@ -234,6 +240,9 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
 
     const chave = {
       model: sql<string>`${tokenUsage.modelName}`,
+      // O eixo que o ADR 0076 reabriu. A coluna sempre existiu em
+      // `token_usage`: o que faltava era o `GROUP BY`.
+      provider: sql<string>`${tokenUsage.provider}`,
       project: sql<string>`${projects.id}::text`,
       actor: sql<string>`${tokenUsage.actorId}`,
       session: sql<string>`${tokenUsage.sessionId}::text`,

@@ -591,18 +591,24 @@ export class CredentialSpendResponseDto {
 }
 
 /**
- * O relatório de gasto em duas audiências (FASE 22, RN-101).
+ * O relatório de gasto em duas audiências (FASE 22, RN-101; revisto pelo
+ * ADR 0076).
  *
- * Nenhum dos DTOs abaixo tem campo `provider`, e a ausência é a regra: quebrar
- * gasto por provider é quebrar por CREDENCIAL, e essa resposta é a
- * `CredentialSpendResponseDto` acima — exclusiva do owner pela RN-060.
+ * `WorkspaceSpendReportResponseDto` GANHOU a lista `porProvider` (RN-186), e
+ * `MySpendResponseDto` continua sem nenhum campo de provider — a assimetria é o
+ * desenho. Quebrar gasto por provider é quebrar por CREDENCIAL, e a resposta
+ * de credencial é do owner (RN-060): as duas formas que a carregam,
+ * `CredentialSpendResponseDto` acima e o relatório do workspace, saem de rotas
+ * com `@RequireRole('owner')`. A do membro sai de uma rota `viewer`, e é por
+ * isso que o eixo não entra nela.
  */
 export class SpendLinhaResponseDto implements Wire<SpendLinha> {
   @ApiProperty({
     example: 'anthropic/claude-sonnet-4',
     description:
-      'A chave do agrupamento: nome do modelo, id do projeto, id do ator ou ' +
-      'id da sessão, conforme a lista em que a linha aparece.',
+      'A chave do agrupamento: nome do modelo, nome do provider, id do ' +
+      'projeto, id do ator ou id da sessão, conforme a lista em que a linha ' +
+      'aparece.',
   })
   chave!: string;
 
@@ -618,7 +624,9 @@ export class SpendLinhaResponseDto implements Wire<SpendLinha> {
   @ApiProperty({
     example: 'agent',
     nullable: true,
-    description: 'Só a lista `porAtor` preenche; nas outras é `null`.',
+    description:
+      'Só as listas por ator preenchem (`porAtor`, `porOwner`, `porAgente`); ' +
+      'nas outras é `null`.',
   })
   actorKind!: string | null;
 
@@ -696,6 +704,16 @@ export class WorkspaceSpendReportResponseDto implements Wire<WorkspaceSpendRepor
 
   @ApiProperty({
     type: [SpendLinhaResponseDto],
+    description:
+      'Por PROVIDER (ADR 0076, RN-186). Este eixo fala de CREDENCIAL e por ' +
+      'isso só existe aqui, numa rota que exige `owner` (RN-060) — a resposta ' +
+      'do membro não o tem, e não é um filtro que o esconde: é a assinatura do ' +
+      'repositório que não o aceita com escopo de ator (RN-187).',
+  })
+  porProvider!: SpendLinhaResponseDto[];
+
+  @ApiProperty({
+    type: [SpendLinhaResponseDto],
     description: 'Por PROJETO dentro do workspace.',
   })
   porProjeto!: SpendLinhaResponseDto[];
@@ -706,6 +724,24 @@ export class WorkspaceSpendReportResponseDto implements Wire<WorkspaceSpendRepor
       'Por ATOR — agente e pessoa na mesma lista, distintos por `actorKind`.',
   })
   porAtor!: SpendLinhaResponseDto[];
+
+  @ApiProperty({
+    type: [SpendLinhaResponseDto],
+    description:
+      'As linhas de PESSOA (`actor_kind = "user"`) — o bloco que o handoff ' +
+      'chama de "Por owner", porque pela RN-058 é a chave do owner que todas ' +
+      'elas gastam. Quem é o dono está em `ownerId`. Partição de `porAtor`, ' +
+      'sem consulta a mais (RN-188).',
+  })
+  porOwner!: SpendLinhaResponseDto[];
+
+  @ApiProperty({
+    type: [SpendLinhaResponseDto],
+    description:
+      'As linhas de AGENTE (`actor_kind = "agent"`). A outra metade de ' +
+      '`porAtor`.',
+  })
+  porAgente!: SpendLinhaResponseDto[];
 
   @ApiProperty({ type: [SpendPorDiaResponseDto] })
   porDia!: SpendPorDiaResponseDto[];
