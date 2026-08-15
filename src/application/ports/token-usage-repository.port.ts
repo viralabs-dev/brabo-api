@@ -121,12 +121,7 @@ export abstract class TokenUsageRepository {
  * pertence a `SpendDimensionDoAtor` logo abaixo.
  */
 export type SpendDimension =
-  | 'model'
-  | 'provider'
-  | 'project'
-  | 'actor'
-  | 'session'
-  | 'day';
+  'model' | 'provider' | 'project' | 'actor' | 'session' | 'day';
 
 /**
  * O que um escopo COM ator alcança — tudo menos `provider` (RN-187).
