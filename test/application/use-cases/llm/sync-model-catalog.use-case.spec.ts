@@ -123,7 +123,12 @@ function registryApontadoPara(baseUrl: string): LLMProviderRegistry {
   const openrouter = new OpenAICompatibleProvider(openrouterConfig(baseUrl));
   const semCatalogo = (nome: LLMProviderName): LLMProvider => ({
     name: nome,
-    capabilities: { streaming: true, toolCalling: true, listModels: false },
+    capabilities: {
+        streaming: true,
+        toolCalling: true,
+        listModels: false,
+        embeddings: false,
+      },
     // eslint-disable-next-line @typescript-eslint/require-await
     chat: async function* () {
       yield { type: 'text_delta' as const, text: '' };

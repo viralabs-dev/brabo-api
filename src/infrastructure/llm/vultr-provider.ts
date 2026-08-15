@@ -31,7 +31,16 @@ export function vultrConfig(
   return {
     name: 'vultr',
     baseUrl,
-    capabilities: { streaming: true, toolCalling: true, listModels: false },
+    capabilities: {
+      streaming: true,
+      toolCalling: true,
+      listModels: false,
+      // Sem `VULTR_TEST_KEY` no ambiente nenhum smoke rodou contra o
+      // `/embeddings` real (ADR 0075). Este é o provider da SEGUNDA reversão
+      // ao vivo do ADR 0043 — aqui menos que em qualquer outro se declara
+      // capability por leitura.
+      embeddings: false,
+    },
     authHeaders: (apiKey) => ({
       Authorization: `Bearer ${apiKey ?? ''}`,
     }),

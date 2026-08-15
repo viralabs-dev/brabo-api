@@ -25,7 +25,16 @@ export type CenarioLLM =
   /** Aceita a conexão e nunca responde — nem headers. */
   | 'mudo'
   /** `GET /models`: o catálogo remoto do provider (Fase 9c). */
-  | 'catalogo';
+  | 'catalogo'
+  /** Texto → vetor, o segundo endpoint do provider (ADR 0075). */
+  | 'embedding'
+  /**
+   * O provider devolve MENOS vetores do que entradas pedidas. Não é hipótese:
+   * é o que um lote parcialmente recusado produz, e é indetectável depois — a
+   * ordem é o único vínculo entre entrada e vetor, então o i-ésimo vetor passa
+   * a ser de outra coisa e o índice fica errado em silêncio.
+   */
+  | 'embedding_incompleto';
 
 /** Cada provider traduz o cenário para o SEU formato de fio. */
 export type Dialeto = (cenario: CenarioLLM, res: ServerResponse) => void;
@@ -112,3 +121,23 @@ export const USAGE_ESPERADO = { inputTokens: 7, outputTokens: 3 } as const;
 
 /** Os modelos que o cenário `catalogo` devolve, em qualquer dialeto. */
 export const CATALOGO_ESPERADO = ['modelo-um', 'modelo-dois'] as const;
+
+/**
+ * O que o cenário `embedding` devolve, em qualquer dialeto (ADR 0075).
+ *
+ * DOIS vetores porque embedding é operação de lote, e um só esconderia o
+ * defeito que mais importa: a ordem entre entrada e vetor. Valores diferentes
+ * entre eles pela mesma razão — dois vetores iguais passariam num teste que
+ * embaralhasse a lista.
+ */
+export const EMBEDDING_ESPERADO = {
+  entradas: ['primeiro trecho', 'segundo trecho'],
+  vetores: [
+    [0.1, -0.2, 0.3, 0.4],
+    [-0.5, 0.6, -0.7, 0.8],
+  ],
+  dimensao: 4,
+  /** O modelo que o provider DIZ ter usado — diferente do pedido, de propósito. */
+  modeloRespondido: 'modelo-de-embedding-v2',
+  inputTokens: 11,
+} as const;

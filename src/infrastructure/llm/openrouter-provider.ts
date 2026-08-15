@@ -212,7 +212,16 @@ export function openrouterConfig(
     baseUrl,
     // `GET /v1/models` devolve pricing/janela/capability por linha — a base
     // já degradaria honestamente pra `false` se algum dia isso divergir.
-    capabilities: { streaming: true, toolCalling: true, listModels: true },
+    capabilities: {
+      streaming: true,
+      toolCalling: true,
+      listModels: true,
+      // É o único dos oito de nuvem com credencial já provada no ambiente
+      // (Fase 13a), e mesmo assim `false`: o smoke que rodou foi de CHAT. O
+      // hub roteia embedding para provedores diferentes dos de chat, e a prova
+      // de um endpoint não é prova do outro (ADR 0075).
+      embeddings: false,
+    },
     authHeaders: (apiKey) => ({
       Authorization: `Bearer ${apiKey ?? ''}`,
       'HTTP-Referer': referer(),
