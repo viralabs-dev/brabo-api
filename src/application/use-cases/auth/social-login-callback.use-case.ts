@@ -1,4 +1,8 @@
-import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { AuthCredentialRepository } from '../../ports/auth-credential-repository.port';
 import { AuthEventRecorder } from '../../ports/auth-event-recorder.port';
 import { GitOauthClientRegistry } from '../../ports/git-oauth-client.port';
@@ -81,7 +85,11 @@ export class SocialLoginCallbackUseCase {
       );
 
       if (existente) {
-        return this.entrarComIdentidadeConhecida(existente.userId, provider, contexto);
+        return this.entrarComIdentidadeConhecida(
+          existente.userId,
+          provider,
+          contexto,
+        );
       }
 
       const emailNormalizado = identity.email
@@ -182,7 +190,11 @@ export class SocialLoginCallbackUseCase {
     userId: string,
     email: string,
     provider: SocialOauthProviderName,
-    identity: { providerUserId: string; email: string | null; login: string | null },
+    identity: {
+      providerUserId: string;
+      email: string | null;
+      login: string | null;
+    },
     contexto?: ContextoDaRequisicao,
   ): Promise<SessaoEmitida> {
     const credencial = await this.credenciais.findByUserId(userId);
@@ -230,7 +242,11 @@ export class SocialLoginCallbackUseCase {
   private async provisionarContaNova(
     emailNormalizado: string,
     provider: SocialOauthProviderName,
-    identity: { providerUserId: string; email: string | null; login: string | null },
+    identity: {
+      providerUserId: string;
+      email: string | null;
+      login: string | null;
+    },
     contexto?: ContextoDaRequisicao,
   ): Promise<SessaoEmitida> {
     const criado = await this.credenciais.criarUsuarioSemCredencial({

@@ -317,10 +317,7 @@ export class AuthController {
     },
   })
   @ApiBadRequestResponse({ description: 'Provider fora de `github`/`gitlab`.' })
-  oauthStart(
-    @Param('provider') provider: string,
-    @Res() res: Response,
-  ): void {
+  oauthStart(@Param('provider') provider: string, @Res() res: Response): void {
     const { authorizeUrl } = this.startSocialLogin.execute(
       parseSocialProvider(provider),
     );
@@ -383,7 +380,11 @@ export class AuthController {
         redirectUri,
         contextoDe(req),
       );
-      definirCookiesDeSessao(res, sessao.refreshToken, authConfig.refreshTtlMs());
+      definirCookiesDeSessao(
+        res,
+        sessao.refreshToken,
+        authConfig.refreshTtlMs(),
+      );
       res.redirect(302, `${webOrigin}/`);
     } catch {
       // Navegação de browser vindo do provider — ver o docblock do

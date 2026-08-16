@@ -41,10 +41,7 @@ export class DrizzleSocialIdentityRepository extends SocialIdentityRepository {
     providerLogin: string | null;
   }): Promise<SocialIdentity> {
     const db = currentDb(this.rootDb);
-    const [row] = await db
-      .insert(socialIdentities)
-      .values(entrada)
-      .returning();
+    const [row] = await db.insert(socialIdentities).values(entrada).returning();
     return row;
   }
 }

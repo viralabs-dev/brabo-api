@@ -87,7 +87,9 @@ export function verifySocialOauthState(
 
   // PRIMEIRO campo checado, de propósito — ver o docblock de `PURPOSE`.
   if (payload.purpose !== PURPOSE) {
-    throw new InvalidSocialOauthStateError('state emitido para outro propósito');
+    throw new InvalidSocialOauthStateError(
+      'state emitido para outro propósito',
+    );
   }
   if (payload.expiresAt < Date.now()) {
     throw new InvalidSocialOauthStateError('state expirado');
