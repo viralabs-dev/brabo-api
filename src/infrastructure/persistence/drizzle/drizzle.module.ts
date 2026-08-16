@@ -28,6 +28,7 @@ import {
   TaskRepository,
 } from '../../../application/ports/backlog-repository.port';
 import { ModuleMapRepository } from '../../../application/ports/module-map-repository.port';
+import { ChunkRepository } from '../../../application/ports/chunk-repository.port';
 import { ProjectsSummaryRepository } from '../../../application/ports/projects-summary-repository.port';
 import { AgentAreaRepository } from '../../../application/ports/agent-area-repository.port';
 import { InfraArtifactRepository } from '../../../application/ports/infra-artifact-repository.port';
@@ -83,6 +84,7 @@ import {
   DrizzleTaskRepository,
 } from './backlog.repository';
 import { DrizzleModuleMapRepository } from './module-map.repository';
+import { DrizzleChunkRepository } from './chunk.repository';
 import { DrizzleAgentAreaRepository } from './agent-area.repository';
 import { DrizzleInfraArtifactRepository } from './infra-artifact.repository';
 import { DrizzlePsychologistAnalysisRepository } from './psychologist-analysis.repository';
@@ -186,6 +188,7 @@ const { db, pool } = createDrizzleClient();
       useClass: DrizzleProjectsSummaryRepository,
     },
     { provide: ModuleMapRepository, useClass: DrizzleModuleMapRepository },
+    { provide: ChunkRepository, useClass: DrizzleChunkRepository },
     { provide: AgentAreaRepository, useClass: DrizzleAgentAreaRepository },
     {
       provide: InfraArtifactRepository,
@@ -253,6 +256,7 @@ const { db, pool } = createDrizzleClient();
     ProjectsSummaryRepository,
     AgentAreaRepository,
     ModuleMapRepository,
+    ChunkRepository,
     InfraArtifactRepository,
     PsychologistAnalysisRepository,
     PsychologistHypothesisRepository,
