@@ -5,6 +5,7 @@ import { PasswordHasher } from '../../ports/password-hasher.port';
 import { Argon2PasswordHasher } from '../../../infrastructure/security/argon2-password-hasher';
 import { Ed25519AccessTokenIssuer } from '../../../infrastructure/security/ed25519-access-token-issuer';
 import { LogMailSender } from '../../../infrastructure/mail/log-mail-sender';
+import { GitInfrastructureModule } from '../../../infrastructure/git/git-infrastructure.module';
 import { EmitirSessaoUseCase } from './emitir-sessao.use-case';
 import { LoginUseCase } from './login.use-case';
 import { LogoutUseCase } from './logout.use-case';
@@ -12,6 +13,8 @@ import { RefreshUseCase } from './refresh.use-case';
 import { RegisterUseCase } from './register.use-case';
 import { RequestPasswordResetUseCase } from './request-password-reset.use-case';
 import { ResetPasswordUseCase } from './reset-password.use-case';
+import { SocialLoginCallbackUseCase } from './social-login-callback.use-case';
+import { StartSocialLoginUseCase } from './start-social-login.use-case';
 import { TokenFactory } from './token-factory';
 import { VerifyEmailUseCase } from './verify-email.use-case';
 
@@ -25,6 +28,8 @@ const USE_CASES = [
   VerifyEmailUseCase,
   RequestPasswordResetUseCase,
   ResetPasswordUseCase,
+  StartSocialLoginUseCase,
+  SocialLoginCallbackUseCase,
 ];
 
 /**
@@ -37,8 +42,15 @@ const USE_CASES = [
  * recuperável e não tem nada a ver com envelope encryption. Puxar aquele
  * módulo aqui só para "reaproveitar cripto" seria erro de segurança, não de
  * arquitetura.
+ *
+ * `GitInfrastructureModule` entrou pelo login social (ADR 0084): é de lá que
+ * vem o `GitOauthClientRegistry` — os MESMOS `GithubOauthClient`/
+ * `GitlabOauthClient` do fluxo de conexão de git, reusados para autenticação.
+ * `SocialIdentityRepository` não precisa de import próprio: é `@Global()` via
+ * `DrizzleModule`, como `AuthCredentialRepository`.
  */
 @Module({
+  imports: [GitInfrastructureModule],
   providers: [
     ...USE_CASES,
     { provide: PasswordHasher, useClass: Argon2PasswordHasher },

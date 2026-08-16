@@ -1,8 +1,12 @@
 import {
+  BadRequestException,
   Body,
   Controller,
+  Get,
   HttpCode,
+  Param,
   Post,
+  Query,
   Req,
   Res,
   UnauthorizedException,
@@ -14,6 +18,8 @@ import {
   ApiForbiddenResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiParam,
+  ApiResponse,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
@@ -25,7 +31,10 @@ import { RefreshUseCase } from '../../../application/use-cases/auth/refresh.use-
 import { RegisterUseCase } from '../../../application/use-cases/auth/register.use-case';
 import { RequestPasswordResetUseCase } from '../../../application/use-cases/auth/request-password-reset.use-case';
 import { ResetPasswordUseCase } from '../../../application/use-cases/auth/reset-password.use-case';
+import { SocialLoginCallbackUseCase } from '../../../application/use-cases/auth/social-login-callback.use-case';
+import { StartSocialLoginUseCase } from '../../../application/use-cases/auth/start-social-login.use-case';
 import { VerifyEmailUseCase } from '../../../application/use-cases/auth/verify-email.use-case';
+import type { SocialOauthProviderName } from '../../../domain/auth/social-oauth-state';
 import type { ContextoDaRequisicao } from '../../../application/use-cases/auth/auth-config';
 import {
   AceiteResponseDto,
@@ -43,6 +52,15 @@ import {
   refreshDoCookie,
 } from './session-cookies';
 import { authConfig } from '../../../application/use-cases/auth/auth-config';
+
+const SOCIAL_PROVIDERS = ['github', 'gitlab'] as const;
+
+function parseSocialProvider(value: string): SocialOauthProviderName {
+  if (!SOCIAL_PROVIDERS.includes(value as SocialOauthProviderName)) {
+    throw new BadRequestException(`Provider inválido: ${value}`);
+  }
+  return value as SocialOauthProviderName;
+}
 
 const ACEITE = {
   message: 'Se o endereço estiver disponível, enviamos um e-mail.',
@@ -77,6 +95,8 @@ export class AuthController {
     private readonly verificarEmail: VerifyEmailUseCase,
     private readonly pedirReset: RequestPasswordResetUseCase,
     private readonly resetar: ResetPasswordUseCase,
+    private readonly startSocialLogin: StartSocialLoginUseCase,
+    private readonly socialLoginCallback: SocialLoginCallbackUseCase,
   ) {}
 
   @Post('register')
@@ -264,6 +284,112 @@ export class AuthController {
       novaSenha: dto.novaSenha,
       contexto: contextoDe(req),
     });
+  }
+
+  /**
+   * Início do login social (RN-272..286, ADR 0084).
+   *
+   * `@Public()` pela mesma razão do callback de conexão de git: quem chega é
+   * o BROWSER, sem sessão nenhuma da api ainda — é o próprio ponto de
+   * entrada. Redireciona direto para o provider, sem corpo JSON no meio: um
+   * `<a href>` simples na tela de login basta, sem JavaScript de mais.
+   */
+  @Get('oauth/:provider/start')
+  @Public()
+  @ApiParam({ name: 'provider', enum: SOCIAL_PROVIDERS })
+  @ApiOperation({
+    summary: 'Redireciona para o provider OAuth para login social',
+    description:
+      'O `state` vai assinado por HMAC com propósito PRÓPRIO — nunca o do ' +
+      'fluxo de conexão de git a um projeto (ver ADR 0084).',
+  })
+  @ApiResponse({
+    status: 302,
+    description: 'Redireciona para o provider.',
+    headers: {
+      Location: {
+        description: 'URL de autorização do provider.',
+        schema: {
+          type: 'string',
+          example: 'https://github.com/login/oauth/authorize?…',
+        },
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: 'Provider fora de `github`/`gitlab`.' })
+  oauthStart(
+    @Param('provider') provider: string,
+    @Res() res: Response,
+  ): void {
+    const { authorizeUrl } = this.startSocialLogin.execute(
+      parseSocialProvider(provider),
+    );
+    res.redirect(302, authorizeUrl);
+  }
+
+  /**
+   * Recebe o retorno do OAuth de login social e redireciona para a web.
+   *
+   * Mesmo desenho do `git/oauth/:provider/callback`: pública, `state`
+   * verificado por HMAC, e NUNCA responde JSON — um corpo de erro cru numa
+   * navegação de browser seria péssima experiência, e o motivo do erro NÃO
+   * vaza na URL.
+   *
+   * O access token não vai na URL nem no corpo: os cookies de sessão são
+   * gravados aqui (mesma `definirCookiesDeSessao` do login por senha) e o
+   * boot da web (`restaurarSessao()`, chamado em TODA carga de página) já
+   * troca o refresh recém-gravado por um access token, sem código novo do
+   * lado do cliente.
+   */
+  @Get('oauth/:provider/callback')
+  @Public()
+  @ApiParam({ name: 'provider', enum: SOCIAL_PROVIDERS })
+  @ApiOperation({
+    summary: 'Recebe o retorno do OAuth de login social',
+    description:
+      'Sucesso vai para `WEB_ORIGIN/` já com os cookies de sessão gravados; ' +
+      'falha vai para `WEB_ORIGIN/login?oauth_error=1`, sem detalhar o motivo.',
+  })
+  @ApiResponse({
+    status: 302,
+    description: 'Redireciona para a web.',
+    headers: {
+      Location: {
+        description: 'Destino na web.',
+        schema: {
+          type: 'string',
+          example: 'http://localhost:5173/',
+        },
+      },
+    },
+  })
+  async oauthCallback(
+    @Param('provider') provider: string,
+    @Query('code') code: string,
+    @Query('state') state: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    const webOrigin = process.env.WEB_ORIGIN ?? 'http://localhost:5173';
+    const apiPublicUrl = process.env.API_PUBLIC_URL ?? 'http://localhost:3000';
+
+    try {
+      const parsedProvider = parseSocialProvider(provider);
+      const redirectUri = `${apiPublicUrl}/auth/oauth/${parsedProvider}/callback`;
+      const sessao = await this.socialLoginCallback.execute(
+        parsedProvider,
+        code,
+        state,
+        redirectUri,
+        contextoDe(req),
+      );
+      definirCookiesDeSessao(res, sessao.refreshToken, authConfig.refreshTtlMs());
+      res.redirect(302, `${webOrigin}/`);
+    } catch {
+      // Navegação de browser vindo do provider — ver o docblock do
+      // `git.controller.ts#callback`, mesmo raciocínio.
+      res.redirect(302, `${webOrigin}/login?oauth_error=1`);
+    }
   }
 
   /**

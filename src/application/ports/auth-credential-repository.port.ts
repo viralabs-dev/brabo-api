@@ -46,6 +46,19 @@ export abstract class AuthCredentialRepository {
   }): Promise<UsuarioComCredencial>;
 
   /**
+   * Cria um usuário SEM credencial de senha — conta provisionada por login
+   * social (RN-278, ADR 0084), no MESMO estado "pendente" que a migração do
+   * Keycloak já deixa: uma linha em `users` sem linha em `auth_credentials`.
+   * `LoginUseCase` e `ResetPasswordUseCase` já sabem tratar esse estado — a
+   * conta social ganha "esqueci minha senha" e "definir senha" de graça, sem
+   * um segundo jeito de dizer "ainda não tem senha".
+   */
+  abstract criarUsuarioSemCredencial(entrada: {
+    email: string;
+    name: string | null;
+  }): Promise<{ userId: string; email: string }>;
+
+  /**
    * Define a senha — CRIANDO a credencial se não houver.
    *
    * O usuário migrado do Keycloak não tem linha em `auth_credentials`, e um

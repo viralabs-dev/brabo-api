@@ -125,6 +125,25 @@ export class DrizzleAuthCredentialRepository extends AuthCredentialRepository {
   }
 
   /**
+   * Cria um usuário SEM credencial — login social (RN-278, ADR 0084).
+   *
+   * `keycloakSub` fica NULL, igual ao registro normal: esta conta não veio do
+   * Keycloak, só compartilha com ele a FORMA de "senha pendente" (nenhuma
+   * linha em `auth_credentials`).
+   */
+  async criarUsuarioSemCredencial(entrada: {
+    email: string;
+    name: string | null;
+  }): Promise<{ userId: string; email: string }> {
+    const db = currentDb(this.rootDb);
+    const [usuario] = await db
+      .insert(users)
+      .values({ email: entrada.email, name: entrada.name })
+      .returning();
+    return { userId: usuario.id, email: usuario.email };
+  }
+
+  /**
    * Define a senha do usuário — criando a credencial se ela não existir.
    *
    * É UPSERT e não UPDATE por causa da migração: o usuário importado do

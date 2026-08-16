@@ -330,6 +330,13 @@
       "when": 1786856235138,
       "tag": "0046_chilly_forgotten_one",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1786903245445,
+      "tag": "0047_complete_hannibal_king",
+      "breakpoints": true
     }
   ]
 }

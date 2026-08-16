@@ -1800,6 +1800,56 @@ export const authCredentials = pgTable('auth_credentials', {
     .defaultNow(),
 });
 
+// Providers de login social (RN-272..286, ADR 0084). Enum PRÓPRIO — não é o
+// mesmo conjunto de `gitProviderEnum`, que inclui `local` e representa onde o
+// CÓDIGO mora, não quem AUTENTICA. Hoje os dois catálogos coincidem em
+// github/gitlab por acaso: são os únicos dois com `GitOauthClient` registrado.
+export const socialIdentityProviderEnum = pgEnum('social_identity_provider', [
+  'github',
+  'gitlab',
+]);
+
+/**
+ * Vínculo de identidade social (login via OAuth, ADR 0084).
+ *
+ * Tabela NOVA, e não coluna em `users` — `keycloak_sub` já ensinou o erro de
+ * dedicar uma coluna a UM provider: um usuário pode ter GitHub e GitLab ao
+ * mesmo tempo (uma linha por provider), e o dia de somar um terceiro provider
+ * OAuth não pede migração de schema, só um valor novo no enum.
+ *
+ * `providerUserId` é o id NUMÉRICO estável do provider — NUNCA o login/e-mail,
+ * que podem mudar. `(provider, providerUserId)` é a chave que decide se um
+ * retorno de OAuth é um login conhecido.
+ *
+ * `userId` é NOT NULL: o vínculo nasce no MESMO passo que resolve a
+ * identidade (login de conta existente, vínculo por e-mail verificado, ou
+ * provisionamento de conta nova) — não existe hoje um fluxo de duas etapas
+ * que crie o vínculo antes de saber a quem ele pertence.
+ */
+export const socialIdentities = pgTable(
+  'social_identities',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    provider: socialIdentityProviderEnum('provider').notNull(),
+    providerUserId: text('provider_user_id').notNull(),
+    providerEmail: text('provider_email'),
+    providerLogin: text('provider_login'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('social_identities_provider_account_idx').on(
+      table.provider,
+      table.providerUserId,
+    ),
+    index('social_identities_user_id_idx').on(table.userId),
+  ],
+);
+
 /**
  * Refresh tokens opacos com rotação obrigatória — Fase 7a, item 1.
  *
