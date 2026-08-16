@@ -45,7 +45,11 @@ export class DrizzleChunkRepository implements ChunkRepository {
 
   async findById(id: string): Promise<Chunk | null> {
     const db = currentDb(this.rootDb);
-    const [row] = await db.select().from(chunks).where(eq(chunks.id, id)).limit(1);
+    const [row] = await db
+      .select()
+      .from(chunks)
+      .where(eq(chunks.id, id))
+      .limit(1);
     return row ? toEntity(row) : null;
   }
 
