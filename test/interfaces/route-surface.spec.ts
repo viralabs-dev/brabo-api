@@ -224,6 +224,8 @@ const TAGS_PERMITIDAS = [
   'llm',
   'credenciais',
   'git',
+  // PROGRAMA 28, Onda 4 (G2) — indexação e busca híbrida do Chat RAG.
+  'rag',
   'infraestrutura',
   'internal',
   // FASE 15b: o registro de gates, para a tela derivar as etapas em vez de
