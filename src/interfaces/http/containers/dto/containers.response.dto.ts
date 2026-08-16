@@ -3,6 +3,10 @@ import type {
   PosturaDeRede,
   RecursosDoContainer,
 } from '../../../../domain/containers/project-container';
+import {
+  CONTAINER_LIFECYCLE_STATUSES,
+  type ContainerLifecycleStatus,
+} from '../../../../domain/containers/container-lifecycle';
 
 export class RecursosDoContainerResponseDto implements RecursosDoContainer {
   @ApiProperty({ example: 2, description: 'CPUs, fração permitida.' })
@@ -91,4 +95,50 @@ export class ImagemDecididaResponseDto {
 
   @ApiProperty({ example: 1 })
   version!: number;
+}
+
+/**
+ * O ESTADO do ciclo de vida do container (ADR 0081/0083, RN-243..248) —
+ * distinto de `EstadoDoContainerResponseDto`, que é a DECISÃO de imagem do
+ * Arquiteto. `null` no corpo da resposta (fora desta classe, ver o
+ * controller) é o estado honesto de "nunca provisionado": nenhum processo do
+ * produto hoje transiciona `project_containers` de verdade (RN-267), então
+ * é o resultado esperado para a maioria dos projetos.
+ */
+export class CicloDeVidaDoContainerResponseDto {
+  @ApiProperty({
+    enum: CONTAINER_LIFECYCLE_STATUSES,
+    example: 'provisioning',
+    description:
+      'O que foi REGISTRADO, não o que um daemon Docker confirma — nenhum ' +
+      'orquestrador real transiciona esta tabela hoje (RN-243).',
+  })
+  status!: ContainerLifecycleStatus;
+
+  @ApiProperty({
+    example: 1,
+    description:
+      'Versão de `artifact.project_image` CONGELADA na primeira transição ' +
+      '(RN-245) — não é reaplicada a cada leitura.',
+  })
+  imageVersion!: number;
+
+  @ApiProperty({
+    type: RecursosDoContainerResponseDto,
+    description: 'Teto DECLARADO no provisionamento — não aplicado (RN-248).',
+  })
+  resources!: RecursosDoContainerResponseDto;
+
+  @ApiProperty({
+    nullable: true,
+    example: null,
+    description: 'Só populado numa transição para `failed`.',
+  })
+  failureReason!: string | null;
+
+  @ApiProperty({ format: 'date-time' })
+  createdAt!: string;
+
+  @ApiProperty({ format: 'date-time' })
+  statusChangedAt!: string;
 }
