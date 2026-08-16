@@ -190,6 +190,8 @@ const SEM_CORPO_JSON = new Map<
   ['POST /internal/sessions/:sessionId/llm-turn-stream', 'sse'],
   ['GET /metrics', 'texto'],
   ['GET /git/oauth/:provider/callback', 'redirect'],
+  ['GET /auth/oauth/:provider/start', 'redirect'],
+  ['GET /auth/oauth/:provider/callback', 'redirect'],
   ['POST /auth/logout', 'sem-conteudo'],
   ['POST /auth/verify-email', 'sem-conteudo'],
   ['POST /auth/reset-password', 'sem-conteudo'],
@@ -358,6 +360,8 @@ describe('superfície exposta da api', () => {
 
     expect(publicas).toEqual([
       'GET /.well-known/jwks.json',
+      'GET /auth/oauth/:provider/callback',
+      'GET /auth/oauth/:provider/start',
       'GET /git/oauth/:provider/callback',
       'GET /health',
       'GET /live',

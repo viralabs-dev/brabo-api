@@ -17,6 +17,7 @@ import { InvalidOauthStateError } from '../../../../src/domain/git/git-provider-
 import type {
   GitOauthClient,
   GitOauthClientRegistry,
+  OauthIdentity,
   OauthTokenResult,
 } from '../../../../src/application/ports/git-oauth-client.port';
 
@@ -32,6 +33,10 @@ const SECRET = 'test-oauth-secret';
 class FakeGithubOauthClient implements GitOauthClient {
   provider = 'github' as const;
   buildAuthorizeUrl = () => 'https://github.com/login/oauth/authorize?fake';
+  // Login social (ADR 0084) — este fake serve só o fluxo de CONEXÃO de git,
+  // que nunca chama os dois métodos abaixo; stubs para satisfazer o tipo.
+  buildLoginAuthorizeUrl = () =>
+    'https://github.com/login/oauth/authorize?fake-login';
 
   async exchangeCode(code: string): Promise<OauthTokenResult> {
     await Promise.resolve();
@@ -45,6 +50,11 @@ class FakeGithubOauthClient implements GitOauthClient {
       accountLogin: 'octocat',
       accountMetadata: {},
     };
+  }
+
+  async fetchIdentity(): Promise<OauthIdentity> {
+    await Promise.resolve();
+    throw new Error('não usado pelo fluxo de conexão de git');
   }
 }
 

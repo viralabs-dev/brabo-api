@@ -29,7 +29,18 @@ export type AuthEventKind =
   | 'refresh_family_expired'
   /** Token já gasto reapresentado: a família inteira foi revogada. */
   | 'refresh_reuse_detected'
-  | 'logout';
+  | 'logout'
+  // --- login social (RN-272..286, ADR 0084) ---
+  /** Identidade social já conhecida — login direto. */
+  | 'social_login_success'
+  /** Nenhuma conta com aquele e-mail: usuário provisionado SEM senha. */
+  | 'social_login_new_user'
+  /** Conta existente, e-mail do provider VERIFICADO batendo: identidade vinculada. */
+  | 'social_login_linked'
+  /** E-mail bate com conta existente, mas o provider não o marca verificado. */
+  | 'social_login_denied_unverified_email'
+  /** Conta desabilitada, ou falha ao falar com o provider. */
+  | 'social_login_failure';
 
 export interface AuthEventParaGravar {
   kind: AuthEventKind;

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   GitOauthClient,
+  type OauthIdentity,
   type OauthTokenResult,
 } from '../../application/ports/git-oauth-client.port';
 import { GitProviderAuthError } from '../../domain/git/git-provider-errors';
@@ -14,7 +15,11 @@ interface GitlabAccessTokenResponse {
 }
 
 interface GitlabUserResponse {
+  id: number;
   username: string;
+  email: string | null;
+  /** Presente quando a conta (e o e-mail primário) foi confirmada. */
+  confirmed_at: string | null;
 }
 
 @Injectable()
@@ -77,5 +82,46 @@ export class GitlabOauthClient implements GitOauthClient {
     if (!response.ok) return null;
     const user = (await response.json()) as GitlabUserResponse;
     return user.username ?? null;
+  }
+
+  /**
+   * `read_user` — mínimo e mais estreito que o `api` do fluxo de conexão de
+   * git: login não precisa (e não deveria) alcançar repositório nenhum.
+   */
+  buildLoginAuthorizeUrl(state: string, redirectUri: string): string {
+    const clientId = process.env.GITLAB_OAUTH_CLIENT_ID ?? '';
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'read_user',
+      state,
+    });
+    return `https://gitlab.com/oauth/authorize?${params.toString()}`;
+  }
+
+  /**
+   * O GitLab não separa "e-mail" de "e-mail verificado" em dois campos: o
+   * `email` de `/user` É o primário da conta, e `confirmed_at` não-nulo é a
+   * confirmação — da CONTA, que na prática é a confirmação daquele endereço.
+   */
+  async fetchIdentity(accessToken: string): Promise<OauthIdentity> {
+    const response = await fetch('https://gitlab.com/api/v4/user', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!response.ok) {
+      throw new GitProviderAuthError(
+        'gitlab',
+        'Falha ao obter o perfil do GitLab',
+      );
+    }
+    const user = (await response.json()) as GitlabUserResponse;
+
+    return {
+      providerUserId: String(user.id),
+      login: user.username ?? null,
+      email: user.email ?? null,
+      emailVerified: Boolean(user.confirmed_at) && Boolean(user.email),
+    };
   }
 }

@@ -49,7 +49,9 @@ import { RefreshTokenRepository } from '../../../application/ports/refresh-token
 import { AccountTokenRepository } from '../../../application/ports/account-token-repository.port';
 import { AuthEventRecorder } from '../../../application/ports/auth-event-recorder.port';
 import { LoginThrottle } from '../../../application/ports/login-throttle.port';
+import { SocialIdentityRepository } from '../../../application/ports/social-identity-repository.port';
 import { DrizzleAuthCredentialRepository } from './auth-credential.repository';
+import { DrizzleSocialIdentityRepository } from './social-identity.repository';
 import { DrizzleRefreshTokenRepository } from './refresh-token.repository';
 import { DrizzleAccountTokenRepository } from './account-token.repository';
 import { DrizzleAuthEventRepository } from './auth-event.repository';
@@ -125,6 +127,10 @@ const { db, pool } = createDrizzleClient();
     },
     { provide: AuthEventRecorder, useClass: DrizzleAuthEventRepository },
     { provide: LoginThrottle, useClass: DrizzleLoginThrottle },
+    {
+      provide: SocialIdentityRepository,
+      useClass: DrizzleSocialIdentityRepository,
+    },
     { provide: WorkspaceRepository, useClass: DrizzleWorkspaceRepository },
     { provide: ProjectRepository, useClass: DrizzleProjectRepository },
     { provide: SessionRepository, useClass: DrizzleSessionRepository },
@@ -232,6 +238,7 @@ const { db, pool } = createDrizzleClient();
     AccountTokenRepository,
     AuthEventRecorder,
     LoginThrottle,
+    SocialIdentityRepository,
     WorkspaceRepository,
     ProjectRepository,
     SessionRepository,
