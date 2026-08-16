@@ -1,9 +1,20 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  cosineDistance,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  sql,
+} from 'drizzle-orm';
 import {
   ChunkRepository,
   type Chunk,
   type ChunkScope,
+  type ChunkSearchCandidate,
+  type ChunkSearchOptions,
   type NewChunk,
 } from '../../../application/ports/chunk-repository.port';
 import { chunks } from '../../../db/schema';
@@ -60,6 +71,87 @@ export class DrizzleChunkRepository implements ChunkRepository {
       : eq(chunks.projectId, projectId);
     const rows = await db.select().from(chunks).where(condition);
     return rows.map(toEntity);
+  }
+
+  async deleteByScope(
+    projectId: string,
+    scope: Exclude<ChunkScope, 'session'>,
+  ): Promise<number> {
+    const db = currentDb(this.rootDb);
+    const apagados = await db
+      .delete(chunks)
+      .where(and(eq(chunks.projectId, projectId), eq(chunks.scope, scope)))
+      .returning({ id: chunks.id });
+    return apagados.length;
+  }
+
+  async deleteBySession(sessionId: string): Promise<number> {
+    const db = currentDb(this.rootDb);
+    const apagados = await db
+      .delete(chunks)
+      .where(eq(chunks.sessionId, sessionId))
+      .returning({ id: chunks.id });
+    return apagados.length;
+  }
+
+  async searchByVector(
+    projectId: string,
+    queryVector: number[],
+    opts: ChunkSearchOptions,
+  ): Promise<ChunkSearchCandidate[]> {
+    const db = currentDb(this.rootDb);
+    const distancia = cosineDistance(chunks.embedding, queryVector);
+    const condicoes = [
+      eq(chunks.projectId, projectId),
+      isNotNull(chunks.embedding),
+    ];
+    if (opts.scope?.length) condicoes.push(inArray(chunks.scope, opts.scope));
+
+    const linhas = await db
+      .select({ chunk: chunks, distancia: sql<number>`${distancia}` })
+      .from(chunks)
+      .where(and(...condicoes))
+      .orderBy(asc(distancia))
+      .limit(opts.limit);
+
+    // similaridade = 1 - distância de cosseno. Clampada em [0, 1]: a
+    // distância pode passar de 1 para vetores pouco relacionados, o que
+    // daria similaridade negativa — sem sentido como "score de relevância".
+    return linhas.map((linha) => ({
+      chunk: toEntity(linha.chunk),
+      score: Math.min(1, Math.max(0, 1 - Number(linha.distancia))),
+    }));
+  }
+
+  async searchByLexicalQuery(
+    projectId: string,
+    query: string,
+    opts: ChunkSearchOptions,
+  ): Promise<ChunkSearchCandidate[]> {
+    const db = currentDb(this.rootDb);
+    const consulta = sql`plainto_tsquery('portuguese', ${query})`;
+    // Normalização 32 = rank / (rank + 1): mantém o resultado sempre em
+    // [0, 1), na mesma família de escala que a similaridade de cosseno —
+    // sem isso, `ts_rank` cru é ilimitado e a fusão de pesos (ADR 0080)
+    // não teria régua nenhuma para comparar as duas metades.
+    const rank = sql<number>`ts_rank(${chunks.searchVector}, ${consulta}, 32)`;
+    const condicoes = [
+      eq(chunks.projectId, projectId),
+      sql`${chunks.searchVector} @@ ${consulta}`,
+    ];
+    if (opts.scope?.length) condicoes.push(inArray(chunks.scope, opts.scope));
+
+    const linhas = await db
+      .select({ chunk: chunks, rank })
+      .from(chunks)
+      .where(and(...condicoes))
+      .orderBy(desc(rank))
+      .limit(opts.limit);
+
+    return linhas.map((linha) => ({
+      chunk: toEntity(linha.chunk),
+      score: Number(linha.rank),
+    }));
   }
 }
 

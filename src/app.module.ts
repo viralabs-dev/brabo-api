@@ -21,6 +21,7 @@ import { ExecutionHttpModule } from './interfaces/http/execution/execution-http.
 import { ContainersHttpModule } from './interfaces/http/containers/containers-http.module';
 import { GatesHttpModule } from './interfaces/http/gates/gates-http.module';
 import { GitHttpModule } from './interfaces/http/git/git-http.module';
+import { RagHttpModule } from './interfaces/http/rag/rag-http.module';
 import { InternalHttpModule } from './interfaces/http/internal/internal-http.module';
 import { PsychologistHttpModule } from './interfaces/http/psychologist/psychologist-http.module';
 import { AnamneseHttpModule } from './interfaces/http/anamnese/anamnese-http.module';
@@ -52,6 +53,7 @@ import { AnamneseHttpModule } from './interfaces/http/anamnese/anamnese-http.mod
     ContainersHttpModule,
     GatesHttpModule,
     GitHttpModule,
+    RagHttpModule,
     PsychologistHttpModule,
     AnamneseHttpModule,
     InternalHttpModule,
