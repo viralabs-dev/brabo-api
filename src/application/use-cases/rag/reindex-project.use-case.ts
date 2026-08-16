@@ -1,7 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ProjectRepository } from '../../ports/project-repository.port';
 import { SessionRepository } from '../../ports/session-repository.port';
-import { IndexProjectDocsUseCase, type IndexDocsReport } from './index-project-docs.use-case';
+import {
+  IndexProjectDocsUseCase,
+  type IndexDocsReport,
+} from './index-project-docs.use-case';
 import { IndexSessionUseCase } from './index-session.use-case';
 
 export interface ReindexProjectReport {
@@ -43,7 +46,8 @@ export class ReindexProjectUseCase {
 
   async execute(projectId: string): Promise<ReindexProjectReport> {
     const project = await this.projects.findById(projectId);
-    if (!project) throw new NotFoundException(`Projeto não encontrado: ${projectId}`);
+    if (!project)
+      throw new NotFoundException(`Projeto não encontrado: ${projectId}`);
 
     const docs = await this.indexDocs.execute(projectId);
 
@@ -63,7 +67,8 @@ export class ReindexProjectUseCase {
       }
     }
 
-    const embeddingAvailable = docs.embedding.available && !algumaSessaoSemVetor;
+    const embeddingAvailable =
+      docs.embedding.available && !algumaSessaoSemVetor;
 
     return {
       docs,

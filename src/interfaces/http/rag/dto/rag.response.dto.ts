@@ -41,14 +41,16 @@ export class HybridSearchHitResponseDto implements Wire<HybridSearchHit> {
   @ApiProperty({
     type: Number,
     nullable: true,
-    description: 'Similaridade de cosseno, 0..1. `null` quando este chunk não tinha vetor.',
+    description:
+      'Similaridade de cosseno, 0..1. `null` quando este chunk não tinha vetor.',
   })
   vectorScore!: number | null;
 
   @ApiProperty({
     type: Number,
     nullable: true,
-    description: '`ts_rank` normalizado, 0..1. `null` quando o termo não casou neste chunk.',
+    description:
+      '`ts_rank` normalizado, 0..1. `null` quando o termo não casou neste chunk.',
   })
   lexicalScore!: number | null;
 
@@ -89,9 +91,9 @@ export const _chavesResultado: MesmasChaves<
 
 // -------------------------------------------------------------- indexação
 
-export class IndexEmbeddingResponseDto
-  implements Wire<IndexDocsReport['embedding']>
-{
+export class IndexEmbeddingResponseDto implements Wire<
+  IndexDocsReport['embedding']
+> {
   @ApiProperty() available!: boolean;
   @ApiProperty() embedded!: number;
   @ApiProperty() skipped!: number;
@@ -107,16 +109,17 @@ export class IndexDocsReportResponseDto implements Wire<IndexDocsReport> {
   @ApiProperty() docsChunks!: number;
   @ApiProperty() adrChunks!: number;
   @ApiProperty() truncated!: boolean;
-  @ApiProperty({ type: IndexEmbeddingResponseDto }) embedding!: IndexEmbeddingResponseDto;
+  @ApiProperty({ type: IndexEmbeddingResponseDto })
+  embedding!: IndexEmbeddingResponseDto;
 }
 export const _chavesIndexDocs: MesmasChaves<
   IndexDocsReportResponseDto,
   Wire<IndexDocsReport>
 > = true;
 
-export class ReindexSessionsResponseDto
-  implements Wire<ReindexProjectReport['sessions']>
-{
+export class ReindexSessionsResponseDto implements Wire<
+  ReindexProjectReport['sessions']
+> {
   @ApiProperty() total!: number;
   @ApiProperty() indexed!: number;
   @ApiProperty() chunksCreated!: number;
@@ -127,8 +130,10 @@ export const _chavesReindexSessions: MesmasChaves<
 > = true;
 
 export class ReindexProjectResponseDto implements Wire<ReindexProjectReport> {
-  @ApiProperty({ type: IndexDocsReportResponseDto }) docs!: IndexDocsReportResponseDto;
-  @ApiProperty({ type: ReindexSessionsResponseDto }) sessions!: ReindexSessionsResponseDto;
+  @ApiProperty({ type: IndexDocsReportResponseDto })
+  docs!: IndexDocsReportResponseDto;
+  @ApiProperty({ type: ReindexSessionsResponseDto })
+  sessions!: ReindexSessionsResponseDto;
   @ApiProperty() embeddingAvailable!: boolean;
   @ApiProperty({ required: false }) embeddingReason?: string;
 }
@@ -141,7 +146,8 @@ export const _chavesReindex: MesmasChaves<
 export class IndexSessionReportResponseDto implements Wire<IndexSessionReport> {
   @ApiProperty() eventsScanned!: number;
   @ApiProperty() chunksCreated!: number;
-  @ApiProperty({ type: IndexEmbeddingResponseDto }) embedding!: IndexEmbeddingResponseDto;
+  @ApiProperty({ type: IndexEmbeddingResponseDto })
+  embedding!: IndexEmbeddingResponseDto;
 }
 export const _chavesIndexSession: MesmasChaves<
   IndexSessionReportResponseDto,
@@ -170,9 +176,12 @@ export const _chavesSessionCoverage: MesmasChaves<
 > = true;
 
 export class RagCoverageResponseDto implements Wire<RagCoverage> {
-  @ApiProperty({ type: RagFileCoverageResponseDto }) docs!: RagFileCoverageResponseDto;
-  @ApiProperty({ type: RagFileCoverageResponseDto }) adr!: RagFileCoverageResponseDto;
-  @ApiProperty({ type: RagSessionCoverageResponseDto }) session!: RagSessionCoverageResponseDto;
+  @ApiProperty({ type: RagFileCoverageResponseDto })
+  docs!: RagFileCoverageResponseDto;
+  @ApiProperty({ type: RagFileCoverageResponseDto })
+  adr!: RagFileCoverageResponseDto;
+  @ApiProperty({ type: RagSessionCoverageResponseDto })
+  session!: RagSessionCoverageResponseDto;
   @ApiProperty() chunksTotal!: number;
   @ApiProperty() chunksWithoutVector!: number;
 }

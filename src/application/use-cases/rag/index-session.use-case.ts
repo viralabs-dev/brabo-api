@@ -1,7 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { SessionRepository } from '../../ports/session-repository.port';
 import { SessionEventRepository } from '../../ports/session-event-repository.port';
-import { ChunkRepository, type NewChunk } from '../../ports/chunk-repository.port';
+import {
+  ChunkRepository,
+  type NewChunk,
+} from '../../ports/chunk-repository.port';
 import { RagEmbeddingService } from './rag-embedding.service';
 import { chunkText } from '../../../domain/rag/chunking';
 

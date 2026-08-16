@@ -1,5 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { ChunkRepository, type Chunk, type ChunkScope } from '../../ports/chunk-repository.port';
+import {
+  ChunkRepository,
+  type Chunk,
+  type ChunkScope,
+} from '../../ports/chunk-repository.port';
 import { RagEmbeddingService } from './rag-embedding.service';
 import {
   origemDoChunk,
@@ -54,7 +58,11 @@ export class HybridSearchUseCase {
         `\`query\` precisa ter entre ${QUERY_MIN} e ${QUERY_MAX} caracteres`,
       );
     }
-    const limit = clamp(input.limit ?? RAG_SEARCH_RESULT_LIMIT, 1, RAG_SEARCH_RESULT_LIMIT);
+    const limit = clamp(
+      input.limit ?? RAG_SEARCH_RESULT_LIMIT,
+      1,
+      RAG_SEARCH_RESULT_LIMIT,
+    );
 
     const [{ vector: queryVector, available, reason }, lexicalCandidatos] =
       await Promise.all([

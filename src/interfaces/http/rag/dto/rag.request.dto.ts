@@ -1,5 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsArray,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 import type { ChunkScope } from '../../../../application/ports/chunk-repository.port';
 import { RAG_SEARCH_RESULT_LIMIT } from '../../../../domain/rag/rag-search-limits';
 

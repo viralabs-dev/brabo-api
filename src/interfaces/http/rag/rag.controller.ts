@@ -98,7 +98,8 @@ export class RagController {
   @Get('coverage')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Cobertura do índice: arquivos/sessões indexados contra o total real',
+    summary:
+      'Cobertura do índice: arquivos/sessões indexados contra o total real',
     description:
       'Contagem real (nunca estimada) de arquivos `.md` de `docs`/`docs/adr` ' +
       'no repositório do projeto contra quantos têm chunk, e sessões do ' +

@@ -166,7 +166,10 @@ export function chunkMarkdownDocument(markdown: string): MarkdownChunk[] {
   for (const secao of secoes) {
     const pedacos = chunkText(secao.content);
     for (const pedaco of pedacos) {
-      resultado.push({ headingPath: secao.headingPath, content: pedaco.content });
+      resultado.push({
+        headingPath: secao.headingPath,
+        content: pedaco.content,
+      });
     }
   }
   return resultado;

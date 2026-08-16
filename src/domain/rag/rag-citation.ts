@@ -1,4 +1,7 @@
-import type { Chunk, ChunkScope } from '../../application/ports/chunk-repository.port';
+import type {
+  Chunk,
+  ChunkScope,
+} from '../../application/ports/chunk-repository.port';
 
 /**
  * O que conta como CITAÇÃO (RN-234, ADR 0080) — o contrato que o Chat RAG

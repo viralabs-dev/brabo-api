@@ -68,7 +68,11 @@ export class RagEmbeddingService {
     }
 
     const vetores: (number[] | null)[] = [];
-    for (let inicio = 0; inicio < texts.length; inicio += RAG_EMBED_BATCH_SIZE) {
+    for (
+      let inicio = 0;
+      inicio < texts.length;
+      inicio += RAG_EMBED_BATCH_SIZE
+    ) {
       const lote = texts.slice(inicio, inicio + RAG_EMBED_BATCH_SIZE);
       try {
         const resultado = await provider.embed(lote, {

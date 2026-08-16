@@ -54,7 +54,8 @@ export class GetRagCoverageUseCase {
 
   async execute(projectId: string): Promise<RagCoverage> {
     const project = await this.projects.findById(projectId);
-    if (!project) throw new NotFoundException(`Projeto não encontrado: ${projectId}`);
+    if (!project)
+      throw new NotFoundException(`Projeto não encontrado: ${projectId}`);
 
     const [todosOsChunks, arquivos, sessoes] = await Promise.all([
       this.chunks.listByProject(projectId),
@@ -62,8 +63,12 @@ export class GetRagCoverageUseCase {
       this.sessions.listForProject(projectId),
     ]);
 
-    const arquivosDocs = arquivos.paths.filter((p) => !p.startsWith(ADR_DIR_PREFIX));
-    const arquivosAdr = arquivos.paths.filter((p) => p.startsWith(ADR_DIR_PREFIX));
+    const arquivosDocs = arquivos.paths.filter(
+      (p) => !p.startsWith(ADR_DIR_PREFIX),
+    );
+    const arquivosAdr = arquivos.paths.filter((p) =>
+      p.startsWith(ADR_DIR_PREFIX),
+    );
 
     const docsIndexados = new Set(
       todosOsChunks.filter((c) => c.scope === 'docs').map((c) => c.sourcePath),
@@ -72,7 +77,9 @@ export class GetRagCoverageUseCase {
       todosOsChunks.filter((c) => c.scope === 'adr').map((c) => c.sourcePath),
     );
     const sessoesIndexadas = new Set(
-      todosOsChunks.filter((c) => c.scope === 'session').map((c) => c.sessionId),
+      todosOsChunks
+        .filter((c) => c.scope === 'session')
+        .map((c) => c.sessionId),
     );
 
     return {
@@ -93,7 +100,8 @@ export class GetRagCoverageUseCase {
         ).length,
       },
       chunksTotal: todosOsChunks.length,
-      chunksWithoutVector: todosOsChunks.filter((c) => c.embedding === null).length,
+      chunksWithoutVector: todosOsChunks.filter((c) => c.embedding === null)
+        .length,
     };
   }
 }

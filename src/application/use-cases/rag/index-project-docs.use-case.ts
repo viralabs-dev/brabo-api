@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import type { GitTree } from '@brabo/shared';
 import { ReadProjectCodeUseCase } from '../git/read-project-code.use-case';
 import {
   ChunkRepository,
@@ -167,7 +168,7 @@ export class IndexProjectDocsUseCase {
       const diretorio = fila.shift()!;
       diretorios++;
 
-      let arvore;
+      let arvore: GitTree;
       try {
         arvore = await this.readCode.tree(projectId, undefined, diretorio);
       } catch (erro) {

@@ -101,7 +101,10 @@ export class DrizzleChunkRepository implements ChunkRepository {
   ): Promise<ChunkSearchCandidate[]> {
     const db = currentDb(this.rootDb);
     const distancia = cosineDistance(chunks.embedding, queryVector);
-    const condicoes = [eq(chunks.projectId, projectId), isNotNull(chunks.embedding)];
+    const condicoes = [
+      eq(chunks.projectId, projectId),
+      isNotNull(chunks.embedding),
+    ];
     if (opts.scope?.length) condicoes.push(inArray(chunks.scope, opts.scope));
 
     const linhas = await db
