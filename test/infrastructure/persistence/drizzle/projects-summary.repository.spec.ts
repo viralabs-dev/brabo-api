@@ -149,6 +149,8 @@ describe('DrizzleProjectsSummaryRepository', () => {
         gatesEverOpened: false,
         delegatedSubagents: [],
         infraActive: false,
+        uxDesignerActive: false,
+        staffActive: false,
       },
     });
   });
@@ -191,6 +193,23 @@ describe('DrizzleProjectsSummaryRepository', () => {
       projectId: projeto.id,
       fromAgent: 'arquiteto',
       toAgent: 'infra',
+      status: 'accepted',
+    });
+    // Três presenças na MESMA consulta (ADR 0087/0088) — prova que o
+    // `inArray` widened não confunde os `toAgent` entre si.
+    await db.insert(handoffs).values({
+      sessionId: sessao.id,
+      projectId: projeto.id,
+      fromAgent: 'criativo',
+      toAgent: 'ux-designer',
+      status: 'accepted',
+    });
+    // Staff (docs/fluxo.yml, ADR 0088) — ativação MANUAL já aceita.
+    await db.insert(handoffs).values({
+      sessionId: sessao.id,
+      projectId: projeto.id,
+      fromAgent: 'arquiteto',
+      toAgent: 'staff',
       status: 'accepted',
     });
     await db.insert(delegations).values({
@@ -256,6 +275,8 @@ describe('DrizzleProjectsSummaryRepository', () => {
       gatesEverOpened: true,
       delegatedSubagents: ['qa-automacao'],
       infraActive: true,
+      uxDesignerActive: true,
+      staffActive: true,
     });
   });
 
