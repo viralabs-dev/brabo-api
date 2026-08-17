@@ -34,6 +34,8 @@
     "validacao:gates": "ts-node scripts/validacao-gates.ts",
     "medir:execucao": "ts-node scripts/medir-execucao.ts",
     "gerar:areas": "ts-node scripts/gerar-areas.ts",
+    "lint:migracao": "ts-node scripts/lint-migracao.ts",
+    "relatorio:backup": "ts-node scripts/relatorio-backup.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },
