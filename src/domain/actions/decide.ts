@@ -24,7 +24,8 @@ export type ActionType =
   | 'instruction_patch'
   | 'parallelize'
   | 'raise_max_parallel'
-  | 'propose_execution_plan';
+  | 'propose_execution_plan'
+  | 'assess_implementability';
 
 export const ACTION_TYPES: readonly ActionType[] = [
   'terminal',
@@ -49,6 +50,11 @@ export const ACTION_TYPES: readonly ActionType[] = [
   // fluxo.yml x código). Ver o comentário no teto do paralelismo, abaixo,
   // sobre por que este tipo NÃO entra naquele bloco.
   'propose_execution_plan',
+  // ADR 0090: o parecer de implementabilidade do Dev Lead (gate
+  // `implementavel`, docs/gates.yml, ativo). Mesmo calibre e o mesmo
+  // raciocínio de `propose_execution_plan` — decisão INICIAL, não
+  // ultrapassagem de teto.
+  'assess_implementability',
 ];
 
 /**
@@ -118,6 +124,13 @@ const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
   // paralelismo, só que na largada em vez de numa ultrapassagem de teto
   // (ADR 0086, RN-284).
   propose_execution_plan: 'maintainer',
+  // Gate `implementavel` (ADR 0090): quem decide se uma story é
+  // implementável é o mesmo calibre de quem decide o plano de execução —
+  // `maintainer`, e DELIBERADAMENTE fora do bloco de tetos absolutos
+  // abaixo (ver o comentário lá) pelo MESMO raciocínio de
+  // `propose_execution_plan`: é uma decisão inicial da sessão, não uma
+  // ultrapassagem de teto já autorizado.
+  assess_implementability: 'maintainer',
 };
 
 // Rede de segurança padrão, sempre ativa, independente do permissions.json
@@ -287,6 +300,10 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
   // ausência de regra em `permissions.json`), mas o usuário PODE configurar
   // auto-aprovação explícita, como já vale para `open_adr_pr`/
   // `open_infra_pr`.
+  //
+  // `assess_implementability` (ADR 0090) segue o MESMO raciocínio de
+  // `propose_execution_plan`, pelo mesmo motivo: é um parecer inicial
+  // sobre uma story, não uma ultrapassagem de teto já autorizado.
   if (
     (action.actionType === 'parallelize' ||
       action.actionType === 'raise_max_parallel') &&
