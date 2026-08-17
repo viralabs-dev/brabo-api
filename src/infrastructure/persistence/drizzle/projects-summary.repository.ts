@@ -85,6 +85,7 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
       lastEvents,
       marcos,
       infraHandoffs,
+      staffHandoffs,
       delegados,
     ] = await Promise.all([
       db
@@ -196,6 +197,20 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
           ),
         ),
 
+      // Staff (docs/fluxo.yml, ADR 0088) — mesmo critério de `infraHandoffs`
+      // acima: dormente para disparo automático (a Anamnese está pausada),
+      // presente aqui só por ativação MANUAL já aceita.
+      db
+        .selectDistinct({ sessionId: handoffs.sessionId })
+        .from(handoffs)
+        .where(
+          and(
+            inArray(handoffs.sessionId, sessionIds),
+            eq(handoffs.toAgent, 'staff'),
+            eq(handoffs.status, 'accepted'),
+          ),
+        ),
+
       db
         .selectDistinct({
           sessionId: delegations.sessionId,
@@ -216,6 +231,7 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
     const ultimoEventoDe = indexarPor(lastEvents, (e) => e.sessionId);
     const marcosDe = indexarPor(marcos, (m) => m.sessionId);
     const infraAtivoEm = new Set(infraHandoffs.map((h) => h.sessionId));
+    const staffAtivoEm = new Set(staffHandoffs.map((h) => h.sessionId));
     const subagentesDe = new Map<string, string[]>();
     for (const d of delegados) {
       const lista = subagentesDe.get(d.sessionId) ?? [];
@@ -241,6 +257,7 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
           ? (subagentesDe.get(sessionId) ?? [])
           : [],
         infraActive: sessionId ? infraAtivoEm.has(sessionId) : false,
+        staffActive: sessionId ? staffAtivoEm.has(sessionId) : false,
       };
 
       return {

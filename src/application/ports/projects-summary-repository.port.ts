@@ -25,6 +25,8 @@ export interface RosterFacts {
   gatesEverOpened: boolean;
   delegatedSubagents: string[];
   infraActive: boolean;
+  /** Staff (docs/fluxo.yml, ADR 0088) — mesmo critério de `infraActive`. */
+  staffActive: boolean;
 }
 
 /** Tudo que UM card do dashboard precisa para renderizar. */

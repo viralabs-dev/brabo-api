@@ -149,6 +149,7 @@ describe('DrizzleProjectsSummaryRepository', () => {
         gatesEverOpened: false,
         delegatedSubagents: [],
         infraActive: false,
+        staffActive: false,
       },
     });
   });
@@ -191,6 +192,14 @@ describe('DrizzleProjectsSummaryRepository', () => {
       projectId: projeto.id,
       fromAgent: 'arquiteto',
       toAgent: 'infra',
+      status: 'accepted',
+    });
+    // Staff (docs/fluxo.yml, ADR 0088) — ativação MANUAL já aceita.
+    await db.insert(handoffs).values({
+      sessionId: sessao.id,
+      projectId: projeto.id,
+      fromAgent: 'arquiteto',
+      toAgent: 'staff',
       status: 'accepted',
     });
     await db.insert(delegations).values({
@@ -256,6 +265,7 @@ describe('DrizzleProjectsSummaryRepository', () => {
       gatesEverOpened: true,
       delegatedSubagents: ['qa-automacao'],
       infraActive: true,
+      staffActive: true,
     });
   });
 
