@@ -37,6 +37,8 @@
     "relatorio:seguranca-runtime": "ts-node scripts/relatorio-seguranca-runtime.ts",
     "relatorio:telemetria": "ts-node scripts/relatorio-telemetria.ts",
     "gerar:areas": "ts-node scripts/gerar-areas.ts",
+    "lint:migracao": "ts-node scripts/lint-migracao.ts",
+    "relatorio:backup": "ts-node scripts/relatorio-backup.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },
