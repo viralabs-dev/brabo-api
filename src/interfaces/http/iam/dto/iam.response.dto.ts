@@ -327,6 +327,15 @@ export class RosterFactsResponseDto implements Wire<RosterFacts> {
       'Existe handoff `accepted` para `ux-designer` na sessão mais recente (ADR 0087).',
   })
   uxDesignerActive!: boolean;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'Existe handoff `accepted` para `staff` na sessão mais recente ' +
+      '(docs/fluxo.yml, ADR 0088) — dormente para disparo automático, só ' +
+      'reflete ativação MANUAL já aceita.',
+  })
+  staffActive!: boolean;
 }
 export const _chavesRosterFacts: MesmasChaves<
   RosterFactsResponseDto,

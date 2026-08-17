@@ -185,10 +185,12 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
         .where(inArray(sessionEvents.sessionId, sessionIds))
         .groupBy(sessionEvents.sessionId),
 
-      // `infra` e `ux-designer` (ADR 0087) na MESMA consulta — os dois são a
-      // mesma pergunta ("handoff accepted endereçado a este agente"), e
-      // somar um segundo `toAgent` widening o `inArray` não muda a contagem
-      // de doze consultas que `projects-summary.repository.spec.ts` prova
+      // `infra`, `ux-designer` (ADR 0087) e `staff` (docs/fluxo.yml, ADR
+      // 0088 — dormente para disparo automático, presente aqui só por
+      // ativação MANUAL já aceita) na MESMA consulta: os três são a mesma
+      // pergunta ("handoff accepted endereçado a este agente"), e somar
+      // mais um `toAgent` widening o `inArray` não muda a contagem de doze
+      // consultas que `projects-summary.repository.spec.ts` prova
       // constante. Uma consulta NOVA por agente ativável cresceria sem teto.
       db
         .selectDistinct({
@@ -199,7 +201,7 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
         .where(
           and(
             inArray(handoffs.sessionId, sessionIds),
-            inArray(handoffs.toAgent, ['infra', 'ux-designer']),
+            inArray(handoffs.toAgent, ['infra', 'ux-designer', 'staff']),
             eq(handoffs.status, 'accepted'),
           ),
         ),
@@ -233,6 +235,11 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
         .filter((h) => h.toAgent === 'ux-designer')
         .map((h) => h.sessionId),
     );
+    const staffAtivoEm = new Set(
+      presencaHandoffs
+        .filter((h) => h.toAgent === 'staff')
+        .map((h) => h.sessionId),
+    );
     const subagentesDe = new Map<string, string[]>();
     for (const d of delegados) {
       const lista = subagentesDe.get(d.sessionId) ?? [];
@@ -259,6 +266,7 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
           : [],
         infraActive: sessionId ? infraAtivoEm.has(sessionId) : false,
         uxDesignerActive: sessionId ? uxDesignerAtivoEm.has(sessionId) : false,
+        staffActive: sessionId ? staffAtivoEm.has(sessionId) : false,
       };
 
       return {
