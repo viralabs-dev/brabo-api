@@ -23,6 +23,7 @@ export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
   parallelize: 'Parallelize',
   raise_max_parallel: 'RaiseMaxParallel',
   propose_execution_plan: 'ProposeExecutionPlan',
+  assess_implementability: 'AssessImplementability',
 };
 
 /**
