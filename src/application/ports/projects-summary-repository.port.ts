@@ -25,6 +25,8 @@ export interface RosterFacts {
   gatesEverOpened: boolean;
   delegatedSubagents: string[];
   infraActive: boolean;
+  /** ADR 0087 — mesmo critério de `infraActive`: handoff `accepted` para "ux-designer". */
+  uxDesignerActive: boolean;
 }
 
 /** Tudo que UM card do dashboard precisa para renderizar. */
