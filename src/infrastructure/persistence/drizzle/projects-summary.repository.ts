@@ -84,8 +84,7 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
       pendencias,
       lastEvents,
       marcos,
-      infraHandoffs,
-      staffHandoffs,
+      presencaHandoffs,
       delegados,
     ] = await Promise.all([
       db
@@ -186,27 +185,23 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
         .where(inArray(sessionEvents.sessionId, sessionIds))
         .groupBy(sessionEvents.sessionId),
 
+      // `infra`, `ux-designer` (ADR 0087) e `staff` (docs/fluxo.yml, ADR
+      // 0088 — dormente para disparo automático, presente aqui só por
+      // ativação MANUAL já aceita) na MESMA consulta: os três são a mesma
+      // pergunta ("handoff accepted endereçado a este agente"), e somar
+      // mais um `toAgent` widening o `inArray` não muda a contagem de doze
+      // consultas que `projects-summary.repository.spec.ts` prova
+      // constante. Uma consulta NOVA por agente ativável cresceria sem teto.
       db
-        .selectDistinct({ sessionId: handoffs.sessionId })
+        .selectDistinct({
+          sessionId: handoffs.sessionId,
+          toAgent: handoffs.toAgent,
+        })
         .from(handoffs)
         .where(
           and(
             inArray(handoffs.sessionId, sessionIds),
-            eq(handoffs.toAgent, 'infra'),
-            eq(handoffs.status, 'accepted'),
-          ),
-        ),
-
-      // Staff (docs/fluxo.yml, ADR 0088) — mesmo critério de `infraHandoffs`
-      // acima: dormente para disparo automático (a Anamnese está pausada),
-      // presente aqui só por ativação MANUAL já aceita.
-      db
-        .selectDistinct({ sessionId: handoffs.sessionId })
-        .from(handoffs)
-        .where(
-          and(
-            inArray(handoffs.sessionId, sessionIds),
-            eq(handoffs.toAgent, 'staff'),
+            inArray(handoffs.toAgent, ['infra', 'ux-designer', 'staff']),
             eq(handoffs.status, 'accepted'),
           ),
         ),
@@ -230,8 +225,21 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
     const sessaoDe = indexarPor(latestSessions, (s) => s.projectId);
     const ultimoEventoDe = indexarPor(lastEvents, (e) => e.sessionId);
     const marcosDe = indexarPor(marcos, (m) => m.sessionId);
-    const infraAtivoEm = new Set(infraHandoffs.map((h) => h.sessionId));
-    const staffAtivoEm = new Set(staffHandoffs.map((h) => h.sessionId));
+    const infraAtivoEm = new Set(
+      presencaHandoffs
+        .filter((h) => h.toAgent === 'infra')
+        .map((h) => h.sessionId),
+    );
+    const uxDesignerAtivoEm = new Set(
+      presencaHandoffs
+        .filter((h) => h.toAgent === 'ux-designer')
+        .map((h) => h.sessionId),
+    );
+    const staffAtivoEm = new Set(
+      presencaHandoffs
+        .filter((h) => h.toAgent === 'staff')
+        .map((h) => h.sessionId),
+    );
     const subagentesDe = new Map<string, string[]>();
     for (const d of delegados) {
       const lista = subagentesDe.get(d.sessionId) ?? [];
@@ -257,6 +265,7 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
           ? (subagentesDe.get(sessionId) ?? [])
           : [],
         infraActive: sessionId ? infraAtivoEm.has(sessionId) : false,
+        uxDesignerActive: sessionId ? uxDesignerAtivoEm.has(sessionId) : false,
         staffActive: sessionId ? staffAtivoEm.has(sessionId) : false,
       };
 
