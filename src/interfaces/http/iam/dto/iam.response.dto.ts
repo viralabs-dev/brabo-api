@@ -320,6 +320,13 @@ export class RosterFactsResponseDto implements Wire<RosterFacts> {
       'Existe handoff `accepted` para `infra` na sessão mais recente.',
   })
   infraActive!: boolean;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'Existe handoff `accepted` para `ux-designer` na sessão mais recente (ADR 0087).',
+  })
+  uxDesignerActive!: boolean;
 }
 export const _chavesRosterFacts: MesmasChaves<
   RosterFactsResponseDto,

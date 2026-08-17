@@ -149,6 +149,7 @@ describe('DrizzleProjectsSummaryRepository', () => {
         gatesEverOpened: false,
         delegatedSubagents: [],
         infraActive: false,
+        uxDesignerActive: false,
       },
     });
   });
@@ -191,6 +192,15 @@ describe('DrizzleProjectsSummaryRepository', () => {
       projectId: projeto.id,
       fromAgent: 'arquiteto',
       toAgent: 'infra',
+      status: 'accepted',
+    });
+    // Duas presenças na MESMA consulta (ADR 0087) — prova que o `inArray`
+    // widened não confunde os dois `toAgent`.
+    await db.insert(handoffs).values({
+      sessionId: sessao.id,
+      projectId: projeto.id,
+      fromAgent: 'criativo',
+      toAgent: 'ux-designer',
       status: 'accepted',
     });
     await db.insert(delegations).values({
@@ -256,6 +266,7 @@ describe('DrizzleProjectsSummaryRepository', () => {
       gatesEverOpened: true,
       delegatedSubagents: ['qa-automacao'],
       infraActive: true,
+      uxDesignerActive: true,
     });
   });
 
