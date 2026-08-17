@@ -33,6 +33,7 @@
     "validacao:real": "ts-node scripts/validacao-real.ts",
     "validacao:gates": "ts-node scripts/validacao-gates.ts",
     "medir:execucao": "ts-node scripts/medir-execucao.ts",
+    "relatorio:telemetria": "ts-node scripts/relatorio-telemetria.ts",
     "gerar:areas": "ts-node scripts/gerar-areas.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
