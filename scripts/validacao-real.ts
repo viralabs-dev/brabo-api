@@ -637,33 +637,51 @@ async function main() {
     log('✓ handoff do Dev Lead aceito — ele foi ativado');
 
     // O plano é o desfecho observável do item 5: sem ele, o agente subiu e não
-    // fez o que existe para fazer.
-    const plano = await esperar(
-      'o plano do Dev Lead (execution.plan_proposed)',
+    // fez o que existe para fazer. Desde o ADR 0086 (RN-284) o plano nasce
+    // `proposed_action` (tipo `propose_execution_plan`) em vez do evento
+    // simples `execution.plan_proposed` — o turno do Dev Lead SUSPENDE
+    // enquanto ela não é decidida. Este script não a decide: neste ponto do
+    // roteiro `ActivateExecutionUseCase` (mais abaixo) ainda não semeou
+    // `agent_autonomy` nenhuma para "dev-lead"/`propose_execution_plan`, e o
+    // `permissions.json` do projeto também não tem regra — a ação nasce
+    // `pending`, provando que o teto de aprovação segura de verdade (mesma
+    // prova por BANCO que o bloco de `parallelize`, mais abaixo, já faz).
+    // `ActivateExecutionUseCase` não depende do plano ter sido decidido
+    // (ADR 0053 item 5, fora de escopo) — o Dev Lead fica suspenso pelo
+    // resto do roteiro, e o restante da cadeia segue sem ele.
+    const acaoDoPlano = await esperar(
+      'o plano do Dev Lead (proposed_action propose_execution_plan)',
       async () => {
-        const [ev] = await db
+        const [linha] = await db
           .select()
-          .from(sessionEvents)
+          .from(proposedActions)
           .where(
             and(
-              eq(sessionEvents.sessionId, sessaoBacklog.id),
-              eq(sessionEvents.type, 'execution.plan_proposed'),
+              eq(proposedActions.sessionId, sessaoBacklog.id),
+              eq(proposedActions.actionType, 'propose_execution_plan'),
             ),
           );
-        return ev ?? null;
+        return linha ?? null;
       },
       300_000,
     );
 
-    const payload = plano.payload as {
+    const payload = acaoDoPlano.payload as {
       totalAgentes?: number;
       resumo?: string;
       modulos?: { modulo: string; agentes: number; porque: string }[];
     };
 
     assertar(
-      plano.actorId === 'dev-lead' && plano.actorKind === 'agent',
-      `o plano veio de "${plano.actorKind}/${plano.actorId}" e não do dev-lead`,
+      acaoDoPlano.actorId === 'dev-lead' && acaoDoPlano.actorKind === 'agent',
+      `o plano veio de "${acaoDoPlano.actorKind}/${acaoDoPlano.actorId}" e não do dev-lead`,
+    );
+    assertar(
+      acaoDoPlano.status === 'pending' &&
+        acaoDoPlano.resolvedPolicy === 'require_approval',
+      `a ação veio "${acaoDoPlano.actionType}/${acaoDoPlano.status}" ` +
+        `(policy: ${acaoDoPlano.resolvedPolicy}) — esperava pending/require_approval, ` +
+        'sem regra semeada para este tipo neste ponto do roteiro',
     );
     assertar(
       (payload.modulos?.length ?? 0) > 0,
@@ -675,12 +693,16 @@ async function main() {
     );
 
     log(
-      `✓ PLANO: ${payload.totalAgentes} agente(s) em ` +
-        `${payload.modulos!.length} módulo(s) — "${payload.resumo}"`,
+      `✓ PLANO PROPOSTO (pendente de aprovação, ação ${acaoDoPlano.id}): ` +
+        `${payload.totalAgentes} agente(s) em ${payload.modulos!.length} módulo(s) — "${payload.resumo}"`,
     );
     for (const m of payload.modulos!) {
       log(`    ${m.modulo}: ${m.agentes} — ${m.porque}`);
     }
+    log(
+      '  (o Dev Lead fica SUSPENSO esperando esta decisão — ADR 0086 — e o ' +
+        'roteiro segue sem ele: ActivateExecutionUseCase não depende do plano)',
+    );
   }
 
   if (ate === 'backlog') {
