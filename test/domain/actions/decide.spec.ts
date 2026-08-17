@@ -328,6 +328,55 @@ describe('decide — teto do paralelismo (FASE 14d)', () => {
   });
 });
 
+describe('decide — plano de execução do Dev Lead (ADR 0086, RN-284)', () => {
+  // Diferente do teto de paralelismo: este tipo NÃO entra no bloco de tetos
+  // absolutos — o objetivo é provar o contrário do que os testes acima
+  // provam, que auto_approve SOBREVIVE quando o usuário configura.
+  const plano = { actionType: 'propose_execution_plan' as const };
+
+  it('minRole: maintainer — developer é insuficiente e nega mesmo antes de olhar autonomy/permissions.json', () => {
+    const result = decide(
+      plano,
+      ctx({
+        effectiveRole: 'developer',
+        autonomyMode: 'auto_approve',
+        permissionsFile: {
+          ...EMPTY_PERMISSIONS_FILE,
+          allow: ['ProposeExecutionPlan()'],
+        },
+      }),
+    );
+    expect(result.policy).toBe('deny');
+  });
+
+  it('sem regra nenhuma, default é require_approval', () => {
+    const result = decide(plano, ctx({ effectiveRole: 'maintainer' }));
+    expect(result.policy).toBe('require_approval');
+  });
+
+  it('agent_autonomy auto_approve PERMANECE auto_approve — não é um teto absoluto', () => {
+    const result = decide(
+      plano,
+      ctx({ effectiveRole: 'maintainer', autonomyMode: 'auto_approve' }),
+    );
+    expect(result.policy).toBe('auto_approve');
+  });
+
+  it('permissions.json allow também PERMANECE auto_approve', () => {
+    const result = decide(
+      plano,
+      ctx({
+        effectiveRole: 'maintainer',
+        permissionsFile: {
+          ...EMPTY_PERMISSIONS_FILE,
+          allow: ['ProposeExecutionPlan()'],
+        },
+      }),
+    );
+    expect(result.policy).toBe('auto_approve');
+  });
+});
+
 describe('decide — teto do patch de instrução (Fase 4b)', () => {
   // Mesma classe de garantia da trava de merge, e por isso testada do mesmo
   // jeito: o valor da feature está no humano ver o diff. Auto-aprovar seria o

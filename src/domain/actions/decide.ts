@@ -23,7 +23,8 @@ export type ActionType =
   | 'open_infra_pr'
   | 'instruction_patch'
   | 'parallelize'
-  | 'raise_max_parallel';
+  | 'raise_max_parallel'
+  | 'propose_execution_plan';
 
 export const ACTION_TYPES: readonly ActionType[] = [
   'terminal',
@@ -43,6 +44,11 @@ export const ACTION_TYPES: readonly ActionType[] = [
   // Anamnese propondo subir o próprio teto.
   'parallelize',
   'raise_max_parallel',
+  // ADR 0086 (RN-284): o plano de execução do Dev Lead — antes um evento
+  // simples, sem aprovação nenhuma no meio (achado A2 da auditoria
+  // fluxo.yml x código). Ver o comentário no teto do paralelismo, abaixo,
+  // sobre por que este tipo NÃO entra naquele bloco.
+  'propose_execution_plan',
 ];
 
 /**
@@ -107,6 +113,11 @@ const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
   // autoriza custo é quem responde pelo projeto.
   parallelize: 'maintainer',
   raise_max_parallel: 'maintainer',
+  // O plano decide QUANTOS agentes sobem por módulo — mesmo calibre de
+  // `parallelize`: é decisão de QUANTO o produto vai gastar com
+  // paralelismo, só que na largada em vez de numa ultrapassagem de teto
+  // (ADR 0086, RN-284).
+  propose_execution_plan: 'maintainer',
 };
 
 // Rede de segurança padrão, sempre ativa, independente do permissions.json
@@ -263,6 +274,19 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
   // a regra que existe para exigir sua decisão passaria a dispensá-la. O
   // `raise_max_parallel` é pior ainda — seria o produto elevando o próprio
   // teto, que é exatamente o que o pipeline de aprovação existe para impedir.
+  //
+  // `propose_execution_plan` (ADR 0086) foi CONSIDERADO para este bloco e
+  // DELIBERADAMENTE deixado fora — não é esquecimento. Os três tetos
+  // absolutos que o CLAUDE.md enumera (merge protegido, instruction_patch,
+  // parallelize/raise_max_parallel) são os pontos em que o produto recusa
+  // deixar o usuário automatizar a própria decisão, mesmo com "sempre
+  // permitir" configurado. O plano do Dev Lead é diferente: é a PRIMEIRA
+  // vez que o usuário decide quantos agentes sobem numa sessão, não uma
+  // ultrapassagem de um teto já autorizado — e nada nesta feature pede um
+  // quarto absoluto. Fica `require_approval` por padrão (via IAM +
+  // ausência de regra em `permissions.json`), mas o usuário PODE configurar
+  // auto-aprovação explícita, como já vale para `open_adr_pr`/
+  // `open_infra_pr`.
   if (
     (action.actionType === 'parallelize' ||
       action.actionType === 'raise_max_parallel') &&
