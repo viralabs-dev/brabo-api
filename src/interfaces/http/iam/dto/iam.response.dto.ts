@@ -429,6 +429,16 @@ export class ProjectCardSummaryResponseDto implements Wire<ProjectCardSummary> {
   })
   pendingApprovalsCount!: number;
 
+  @ApiProperty({
+    example: 2,
+    description:
+      'Quantos agentes estão ONLINE agora — trabalhando ou com pendência ' +
+      'esperando decisão (RN-409). Nunca tamanho de equipe: dev agent ' +
+      '`idle`/`idle_tripped` não conta, agente conversacional `idle` não ' +
+      'conta, QA/SecOps nunca contam (veredito único por invocação).',
+  })
+  onlineAgentCount!: number;
+
   @ApiProperty({ type: RosterFactsResponseDto })
   roster!: RosterFactsResponseDto;
 }

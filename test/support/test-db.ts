@@ -24,7 +24,8 @@ export async function truncateAll(db: ReturnType<typeof drizzle>) {
       session_socket_tickets, session_events, sessions,
       auth_credentials, refresh_tokens, account_tokens,
       auth_events, auth_lockout_hits,
-      project_members, projects, workspace_members, workspaces, users
+      project_members, projects, workspace_members, workspaces, users,
+      engine.dev_agent_states
     RESTART IDENTITY CASCADE
   `);
 }
