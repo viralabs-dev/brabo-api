@@ -3,13 +3,28 @@ import { AcceptParallelizationUseCase } from '../../../../src/application/use-ca
 import type { ApiToEngineClient } from '../../../../src/application/ports/api-to-engine-client.port';
 import type { ModuleMapRepository } from '../../../../src/application/ports/module-map-repository.port';
 import type { AgentAutonomyRepository } from '../../../../src/application/ports/agent-autonomy-repository.port';
+import type { SessionEventRepository } from '../../../../src/application/ports/session-event-repository.port';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
 import type { UpsertAgentInstructionUseCase } from '../../../../src/application/use-cases/agents/upsert-agent-instruction.use-case';
+import type { RecordDelegationUseCase } from '../../../../src/application/use-cases/execution/record-delegation.use-case';
 
-function build(engineFails: boolean, moduleFound = true) {
+interface BuildOptions {
+  moduleFound?: boolean;
+  moduleMapEventIds?: string[] | null;
+  recordDelegationFails?: boolean;
+}
+
+function build(engineFails: boolean, opts: BuildOptions = {}) {
+  const {
+    moduleFound = true,
+    moduleMapEventIds = ['event-module-map-1'],
+    recordDelegationFails = false,
+  } = opts;
+
   const ordem: string[] = [];
   const autonomias: { agentId: string; type: string; mode: string }[] = [];
   const instrucoes: { agentId: string; content: string }[] = [];
+  const delegacoes: Record<string, unknown>[] = [];
 
   const engineClient = {
     acceptParallelization: () => {
@@ -61,6 +76,27 @@ function build(engineFails: boolean, moduleFound = true) {
     },
   } as unknown as AppendSessionEventUseCase;
 
+  const sessionEvents = {
+    listByTypeForProject: (_projectId: string, type: string) => {
+      ordem.push('busca-module-map');
+      expect(type).toBe('artifact.module_map');
+      return Promise.resolve(
+        (moduleMapEventIds ?? []).map((id) => ({ id })),
+      );
+    },
+  } as unknown as SessionEventRepository;
+
+  const recordDelegation = {
+    execute: (_p: string, _s: string, input: Record<string, unknown>) => {
+      ordem.push('delegacao');
+      if (recordDelegationFails) {
+        return Promise.reject(new Error('delegações fora do ar'));
+      }
+      delegacoes.push(input);
+      return Promise.resolve({ id: 'delegation-1', ...input });
+    },
+  } as unknown as RecordDelegationUseCase;
+
   return {
     useCase: new AcceptParallelizationUseCase(
       engineClient,
@@ -68,10 +104,13 @@ function build(engineFails: boolean, moduleFound = true) {
       agentAutonomy,
       appendEvent,
       upsertInstruction,
+      sessionEvents,
+      recordDelegation,
     ),
     ordem,
     autonomias,
     instrucoes,
+    delegacoes,
   };
 }
 
@@ -83,8 +122,10 @@ describe('AcceptParallelizationUseCase', () => {
       useCase.execute('proj-1', 'sess-1', 'api', 'user-1'),
     ).resolves.toEqual({ ok: true });
 
-    expect(ordem.at(-2)).toBe('engine');
-    expect(ordem.at(-1)).toBe('evento');
+    expect(ordem.indexOf('engine')).toBeLessThan(ordem.indexOf('evento'));
+    // A delegação (área dev, ADR 0094) é registrada DEPOIS do evento de
+    // aceite — a ativação já é sucesso quando ela é tentada.
+    expect(ordem.indexOf('evento')).toBeLessThan(ordem.indexOf('delegacao'));
   });
 
   it('engine recusando (sem agente base): não grava o evento de aceite', async () => {
@@ -130,11 +171,56 @@ describe('AcceptParallelizationUseCase', () => {
   });
 
   it('módulo fora do module_map vigente: seeda autonomia mesmo sem instrução', async () => {
-    const { useCase, autonomias, instrucoes } = build(false, false);
+    const { useCase, autonomias, instrucoes } = build(false, {
+      moduleFound: false,
+    });
 
     await useCase.execute('proj-1', 'sess-1', 'api', 'user-1');
 
     expect(instrucoes).toEqual([]);
     expect(autonomias).toHaveLength(3);
+  });
+
+  describe('delegação Dev Lead → dev (área dev, ADR 0094)', () => {
+    it('registra delegations com area=dev, apontando pro module_map vigente', async () => {
+      const { useCase, delegacoes } = build(false, {
+        moduleMapEventIds: ['event-antigo', 'event-module-map-vigente'],
+      });
+
+      await useCase.execute('proj-1', 'sess-1', 'api', 'user-1');
+
+      expect(delegacoes).toEqual([
+        {
+          area: 'dev',
+          leadAgent: 'dev-lead',
+          subagent: 'dev-api-2',
+          status: 'completed',
+          // O MAIS RECENTE (último da lista, listByTypeForProject ordena por
+          // createdAt ASC) — não o primeiro.
+          parecerArtifactId: 'event-module-map-vigente',
+        },
+      ]);
+    });
+
+    it('sem artifact.module_map no projeto: NÃO grava com id falso, só loga e segue', async () => {
+      const { useCase, ordem, delegacoes } = build(false, {
+        moduleMapEventIds: [],
+      });
+
+      await expect(
+        useCase.execute('proj-1', 'sess-1', 'api', 'user-1'),
+      ).resolves.toEqual({ ok: true });
+
+      expect(delegacoes).toEqual([]);
+      expect(ordem).not.toContain('delegacao');
+    });
+
+    it('RecordDelegationUseCase falhando: não derruba a ativação (já é sucesso)', async () => {
+      const { useCase } = build(false, { recordDelegationFails: true });
+
+      await expect(
+        useCase.execute('proj-1', 'sess-1', 'api', 'user-1'),
+      ).resolves.toEqual({ ok: true });
+    });
   });
 });

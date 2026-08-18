@@ -2,6 +2,11 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { OfferInfraHandoffUseCase } from '../../../../src/application/use-cases/agents/offer-infra-handoff.use-case';
 import type { ApiToEngineClient } from '../../../../src/application/ports/api-to-engine-client.port';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
+import type { StoryRepository } from '../../../../src/application/ports/backlog-repository.port';
+import type {
+  Story,
+  StoryStatus,
+} from '../../../../src/domain/backlog/backlog.entity';
 
 const PROJECT = 'p1';
 const SESSION = 's1';
@@ -30,16 +35,51 @@ class FakeEvents {
   }
 }
 
+function fakeStory(status: StoryStatus): Story {
+  return {
+    id: `story-${status}`,
+    epicId: 'epic-1',
+    projectId: PROJECT,
+    sessionId: SESSION,
+    title: 'história de teste',
+    description: '',
+    rf: [],
+    rnf: [],
+    businessRuleIds: [],
+    dod: [],
+    dor: [],
+    moduleIds: [],
+    status,
+    proposedReady: false,
+    returnedReason: null,
+    returnedAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+}
+
+class FakeStoryRepository {
+  stories: Story[] = [];
+  findByProject(_projectId: string) {
+    return Promise.resolve(this.stories);
+  }
+}
+
 let engine: FakeEngine;
 let events: FakeEvents;
+let stories: FakeStoryRepository;
 let uc: OfferInfraHandoffUseCase;
 
 beforeEach(() => {
   engine = new FakeEngine();
   events = new FakeEvents();
+  stories = new FakeStoryRepository();
+  // Caminho feliz por padrão: pelo menos uma história promovida (RN-160).
+  stories.stories = [fakeStory('ready')];
   uc = new OfferInfraHandoffUseCase(
     engine as unknown as ApiToEngineClient,
     events as unknown as AppendSessionEventUseCase,
+    stories as unknown as StoryRepository,
   );
 });
 
@@ -67,5 +107,23 @@ describe('OfferInfraHandoffUseCase', () => {
     await expect(uc.execute(PROJECT, SESSION, 'user-1')).rejects.toThrow();
 
     expect(engine.chamadas).toEqual(['infra']);
+  });
+
+  it('RN-160 revalidada no backend: zero história promovida recusa ANTES de qualquer efeito colateral', async () => {
+    stories.stories = [fakeStory('draft')];
+
+    await expect(uc.execute(PROJECT, SESSION, 'user-1')).rejects.toThrow();
+
+    expect(engine.chamadas).toEqual([]);
+    expect(events.tipos).toEqual([]);
+  });
+
+  it('RN-160: com ao menos uma história ready/in_progress/done, segue o fluxo normal', async () => {
+    stories.stories = [fakeStory('draft'), fakeStory('in_progress')];
+
+    await uc.execute(PROJECT, SESSION, 'user-1');
+
+    expect(engine.chamadas).toEqual(['infra', 'dev']);
+    expect(events.tipos).toEqual(['architecture.readiness_confirmed']);
   });
 });
