@@ -99,7 +99,7 @@ export class GetSessionPendingWorkUseCase {
       };
     }
 
-    // QUARTO sinal (RN-410): dev agents (`Engine.Dev.DevAgentServer`) NUNCA
+    // QUARTO sinal (RN-411): dev agents (`Engine.Dev.DevAgentServer`) NUNCA
     // emitem `agent.status` — usam vocabulário próprio no event log,
     // `dev.*` (`Engine.Dev.AgentIo`). Sem este sinal o terceiro sinal acima
     // nunca enxerga um dev agent, e uma sessão de execução real fechava com

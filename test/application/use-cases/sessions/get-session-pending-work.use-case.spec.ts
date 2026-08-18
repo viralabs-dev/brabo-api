@@ -261,7 +261,7 @@ describe('GetSessionPendingWorkUseCase', () => {
     expect(r.pending).toBe(false);
   });
 
-  // Quarto sinal (RN-410): dev agents não emitem `agent.status` — usam
+  // Quarto sinal (RN-411): dev agents não emitem `agent.status` — usam
   // vocabulário próprio (`dev.*`). O achado real: cinco dev agents subiram,
   // ficaram `idle_tripped` (RN-047, o circuit breaker), e o heartbeat
   // fechou a sessão por baixo enquanto o usuário ainda desbloqueava tarefas
