@@ -46,15 +46,46 @@
  */
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { and, eq, inArray, asc } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { AppModule } from '../src/app.module';
 import {
   DRIZZLE,
   type DrizzleDb,
 } from '../src/infrastructure/persistence/drizzle/drizzle-client';
-import { projects, proposedActions } from '../src/db/schema';
-import { PROTECTED_BRANCHES } from '../src/domain/actions/protected-branches';
+import { projects } from '../src/db/schema';
 import { formatarDuracao } from './medir-execucao';
+// As funções de CÁLCULO puras e a query que monta `AcaoGit[]` migraram para
+// `src/application/services/funil-metrics.ts` (RN-407): a leitura do PO
+// (`ListProductMetricsUseCase`) precisava do mesmo cálculo, e um caso de uso
+// em `src/` não pode importar de `scripts/` — a direção é sempre
+// `scripts/` → `src/`. Este arquivo REEXPORTA em vez de definir localmente;
+// nenhuma assinatura mudou, e `test/scripts/analise-funil.spec.ts` continua
+// verde sem ser tocado.
+import {
+  buscarAcoesGitDoFunil,
+  calcularFunil,
+  calcularLeadTimes,
+  leadTimeMedioMs,
+  deploymentFrequencyPorDia,
+  type FunilResultado,
+  type FrequenciaPorDia,
+} from '../src/application/services/funil-metrics';
+
+export {
+  ACOES_DO_FUNIL,
+  calcularFunil,
+  calcularLeadTimes,
+  leadTimeMedioMs,
+  deploymentFrequencyPorDia,
+} from '../src/application/services/funil-metrics';
+export type {
+  AcaoDoFunil,
+  AcaoGit,
+  EtapaFunil,
+  FunilResultado,
+  LeadTime,
+  FrequenciaPorDia,
+} from '../src/application/services/funil-metrics';
 
 interface Opcoes {
   projeto: string;
@@ -71,170 +102,6 @@ function lerOpcoes(): Opcoes {
   }
 
   return { projeto, json: args.includes('--json') };
-}
-
-/** As três ações git que o funil enxerga — o resto de `actionType` é ruído aqui. */
-export const ACOES_DO_FUNIL = ['git_commit', 'pr_open', 'git_merge'] as const;
-export type AcaoDoFunil = (typeof ACOES_DO_FUNIL)[number];
-
-/** Forma mínima que a query devolve — deliberadamente mais estreita que o schema. */
-export interface AcaoGit {
-  sessionId: string;
-  actionType: string;
-  status: string;
-  executionResult: Record<string, unknown> | null;
-  updatedAt: Date;
-}
-
-const EXECUTADAS = 'executed';
-
-function executadasDoTipo(acoes: AcaoGit[], tipo: AcaoDoFunil): AcaoGit[] {
-  return acoes.filter((a) => a.actionType === tipo && a.status === EXECUTADAS);
-}
-
-export interface EtapaFunil {
-  etapa: string;
-  sessoes: number;
-  /** `null` na primeira etapa — não há "conversão de" nada. */
-  taxaDaEtapaAnterior: number | null;
-}
-
-export interface FunilResultado {
-  etapas: EtapaFunil[];
-  sessoesComCommit: string[];
-  sessoesComPr: string[];
-  sessoesComMerge: string[];
-}
-
-/**
- * Quantas sessões produziram pelo menos um commit / PR aberta / PR mergeada,
- * e a taxa de conversão entre etapas consecutivas. Conta SESSÃO, não ação —
- * uma sessão com três commits e uma PR entra uma vez em cada etapa que
- * alcançou.
- */
-export function calcularFunil(acoes: AcaoGit[]): FunilResultado {
-  const sessoesComCommit = new Set(
-    executadasDoTipo(acoes, 'git_commit').map((a) => a.sessionId),
-  );
-  const sessoesComPr = new Set(
-    executadasDoTipo(acoes, 'pr_open').map((a) => a.sessionId),
-  );
-  const sessoesComMerge = new Set(
-    executadasDoTipo(acoes, 'git_merge').map((a) => a.sessionId),
-  );
-
-  const taxa = (numerador: number, denominador: number): number | null =>
-    denominador === 0 ? null : numerador / denominador;
-
-  const etapas: EtapaFunil[] = [
-    {
-      etapa: 'sessão produziu commit',
-      sessoes: sessoesComCommit.size,
-      taxaDaEtapaAnterior: null,
-    },
-    {
-      etapa: 'commit → PR aberta',
-      sessoes: sessoesComPr.size,
-      taxaDaEtapaAnterior: taxa(sessoesComPr.size, sessoesComCommit.size),
-    },
-    {
-      etapa: 'PR aberta → merge',
-      sessoes: sessoesComMerge.size,
-      taxaDaEtapaAnterior: taxa(sessoesComMerge.size, sessoesComPr.size),
-    },
-  ];
-
-  return {
-    etapas,
-    sessoesComCommit: [...sessoesComCommit],
-    sessoesComPr: [...sessoesComPr],
-    sessoesComMerge: [...sessoesComMerge],
-  };
-}
-
-export interface LeadTime {
-  sessionId: string;
-  primeiroCommitEm: Date;
-  primeiroMergeEm: Date;
-  leadTimeMs: number;
-}
-
-/**
- * Lead time real: do primeiro `git_commit` executado ao primeiro `git_merge`
- * executado, por sessão. Só entra sessão com os dois — a mesma regra do
- * funil, sem inventar tempo para quem não chegou lá.
- *
- * Merge anterior ao commit (sessão com duas levas, ou dado de fixture
- * incoerente) é descartado em vez de virar lead time negativo.
- */
-export function calcularLeadTimes(acoes: AcaoGit[]): LeadTime[] {
-  const primeiroPorSessao = (lista: AcaoGit[]): Map<string, Date> => {
-    const mapa = new Map<string, Date>();
-    for (const a of lista) {
-      const atual = mapa.get(a.sessionId);
-      if (!atual || a.updatedAt < atual) mapa.set(a.sessionId, a.updatedAt);
-    }
-    return mapa;
-  };
-
-  const commits = primeiroPorSessao(executadasDoTipo(acoes, 'git_commit'));
-  const merges = primeiroPorSessao(executadasDoTipo(acoes, 'git_merge'));
-
-  const resultado: LeadTime[] = [];
-  for (const [sessionId, primeiroCommitEm] of commits) {
-    const primeiroMergeEm = merges.get(sessionId);
-    if (!primeiroMergeEm) continue;
-    if (primeiroMergeEm < primeiroCommitEm) continue;
-    resultado.push({
-      sessionId,
-      primeiroCommitEm,
-      primeiroMergeEm,
-      leadTimeMs: primeiroMergeEm.getTime() - primeiroCommitEm.getTime(),
-    });
-  }
-  return resultado;
-}
-
-/** Média simples em ms — `null` sem nenhum lead time para mediar. */
-export function leadTimeMedioMs(leadTimes: LeadTime[]): number | null {
-  if (leadTimes.length === 0) return null;
-  const soma = leadTimes.reduce((acc, l) => acc + l.leadTimeMs, 0);
-  return soma / leadTimes.length;
-}
-
-export interface FrequenciaPorDia {
-  dia: string; // YYYY-MM-DD
-  merges: number;
-}
-
-/**
- * Deployment frequency real: `git_merge` executado cujo `targetBranch` é uma
- * branch PROTEGIDA (dev/qa/main — `rc` também está na lista por não ter sido
- * removida de `PROTECTED_BRANCHES`, ver CLAUDE.md), agrupado por dia.
- *
- * Cruza só por REFERÊNCIA com o gate `backmerge` (`docs/gates.yml`): a
- * evidência dele é CI, em `.release/gate.json`, fora do alcance de um script
- * que só lê o banco — não há junção de dado aqui, só o mesmo recorte de
- * branch que o gate observa.
- */
-export function deploymentFrequencyPorDia(
-  acoes: AcaoGit[],
-  branchesProtegidas: readonly string[] = PROTECTED_BRANCHES,
-): FrequenciaPorDia[] {
-  const merges = executadasDoTipo(acoes, 'git_merge').filter((a) => {
-    const alvo = a.executionResult?.targetBranch;
-    return typeof alvo === 'string' && branchesProtegidas.includes(alvo);
-  });
-
-  const porDia = new Map<string, number>();
-  for (const m of merges) {
-    const dia = m.updatedAt.toISOString().slice(0, 10);
-    porDia.set(dia, (porDia.get(dia) ?? 0) + 1);
-  }
-
-  return [...porDia.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([dia, merges]) => ({ dia, merges }));
 }
 
 interface Relatorio {
@@ -271,22 +138,7 @@ async function main() {
     process.exit(2);
   }
 
-  const acoes = (await db
-    .select({
-      sessionId: proposedActions.sessionId,
-      actionType: proposedActions.actionType,
-      status: proposedActions.status,
-      executionResult: proposedActions.executionResult,
-      updatedAt: proposedActions.updatedAt,
-    })
-    .from(proposedActions)
-    .where(
-      and(
-        eq(proposedActions.projectId, projeto),
-        inArray(proposedActions.actionType, [...ACOES_DO_FUNIL]),
-      ),
-    )
-    .orderBy(asc(proposedActions.updatedAt))) as unknown as AcaoGit[];
+  const acoes = await buscarAcoesGitDoFunil(db, projeto);
 
   const funil = calcularFunil(acoes);
   const leadTimes = calcularLeadTimes(acoes);
