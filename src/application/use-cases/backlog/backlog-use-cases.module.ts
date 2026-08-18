@@ -12,6 +12,7 @@ import { ReturnStoryUseCase } from './return-story.use-case';
 import { ListBacklogUseCase } from './list-backlog.use-case';
 import { GetCoverageUseCase } from './get-coverage.use-case';
 import { ListBusinessRulesUseCase } from './list-business-rules.use-case';
+import { ListProductMetricsUseCase } from './list-product-metrics.use-case';
 
 const USE_CASES = [
   CreateEpicUseCase,
@@ -23,6 +24,7 @@ const USE_CASES = [
   ListBacklogUseCase,
   GetCoverageUseCase,
   ListBusinessRulesUseCase,
+  ListProductMetricsUseCase,
 ];
 
 @Module({
