@@ -2,13 +2,21 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { ForbiddenException, BadRequestException } from '@nestjs/common';
 import { createTestDb, truncateAll } from '../../../support/test-db';
-import { authCredentials, authEvents, socialIdentities, users } from '../../../../src/db/schema';
+import {
+  authCredentials,
+  authEvents,
+  socialIdentities,
+  users,
+  workspaceMembers,
+  workspaces,
+} from '../../../../src/db/schema';
 import { DrizzleUnitOfWork } from '../../../../src/infrastructure/persistence/drizzle/drizzle-unit-of-work';
 import { DrizzleUserRepository } from '../../../../src/infrastructure/persistence/drizzle/user.repository';
 import { DrizzleAuthCredentialRepository } from '../../../../src/infrastructure/persistence/drizzle/auth-credential.repository';
 import { DrizzleAuthEventRepository } from '../../../../src/infrastructure/persistence/drizzle/auth-event.repository';
 import { DrizzleRefreshTokenRepository } from '../../../../src/infrastructure/persistence/drizzle/refresh-token.repository';
 import { DrizzleSocialIdentityRepository } from '../../../../src/infrastructure/persistence/drizzle/social-identity.repository';
+import { DrizzleWorkspaceRepository } from '../../../../src/infrastructure/persistence/drizzle/workspace.repository';
 import { Ed25519AccessTokenIssuer } from '../../../../src/infrastructure/security/ed25519-access-token-issuer';
 import { TokenFactory } from '../../../../src/application/use-cases/auth/token-factory';
 import { EmitirSessaoUseCase } from '../../../../src/application/use-cases/auth/emitir-sessao.use-case';
@@ -31,9 +39,14 @@ const credenciais = new DrizzleAuthCredentialRepository(db);
 const eventos = new DrizzleAuthEventRepository(db);
 const refreshTokens = new DrizzleRefreshTokenRepository(db);
 const socialIdentitiesRepo = new DrizzleSocialIdentityRepository(db);
+const workspacesRepo = new DrizzleWorkspaceRepository(db);
 const accessTokens = new Ed25519AccessTokenIssuer();
 const tokenFactory = new TokenFactory();
-const emitirSessao = new EmitirSessaoUseCase(accessTokens, refreshTokens, tokenFactory);
+const emitirSessao = new EmitirSessaoUseCase(
+  accessTokens,
+  refreshTokens,
+  tokenFactory,
+);
 
 const SECRET = 'test-social-oauth-secret';
 
@@ -89,6 +102,7 @@ function montarCallback(identidadeDevolvida: OauthIdentity) {
     usuarios,
     eventos,
     emitirSessao,
+    workspacesRepo,
   );
 }
 
@@ -157,6 +171,34 @@ describe('SocialLoginCallbackUseCase', () => {
     expect(evento.kind).toBe('social_login_new_user');
   });
 
+  it('conta nova via login social ganha workspace pessoal, com o usuário como owner (RN-410)', async () => {
+    const callback = montarCallback(
+      identidade({ email: 'nova-com-workspace@brabo.dev', login: 'octogata' }),
+    );
+    const state = signSocialOauthState('github', SECRET);
+
+    await callback.execute('github', 'valid-code', state, REDIRECT_URI);
+
+    const [usuario] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, 'nova-com-workspace@brabo.dev'));
+
+    const [workspace] = await db
+      .select()
+      .from(workspaces)
+      .where(eq(workspaces.createdBy, usuario.id));
+    expect(workspace).toBeTruthy();
+    expect(workspace.slug).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+
+    const [membro] = await db
+      .select()
+      .from(workspaceMembers)
+      .where(eq(workspaceMembers.workspaceId, workspace.id));
+    expect(membro.userId).toBe(usuario.id);
+    expect(membro.role).toBe('owner');
+  });
+
   it('provisiona conta nova mesmo com e-mail NÃO verificado — não há conta a proteger', async () => {
     const callback = montarCallback(
       identidade({ email: 'sem-verificar@brabo.dev', emailVerified: false }),
@@ -191,7 +233,9 @@ describe('SocialLoginCallbackUseCase', () => {
       providerLogin: 'octocat',
     });
 
-    const callback = montarCallback(identidade({ email: 'conhecido@brabo.dev' }));
+    const callback = montarCallback(
+      identidade({ email: 'conhecido@brabo.dev' }),
+    );
     const state = signSocialOauthState('github', SECRET);
 
     const sessao = await callback.execute(
