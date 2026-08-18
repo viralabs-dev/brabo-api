@@ -99,6 +99,74 @@ export class GetSessionPendingWorkUseCase {
       };
     }
 
+    // QUARTO sinal (RN-410): dev agents (`Engine.Dev.DevAgentServer`) NUNCA
+    // emitem `agent.status` — usam vocabulário próprio no event log,
+    // `dev.*` (`Engine.Dev.AgentIo`). Sem este sinal o terceiro sinal acima
+    // nunca enxerga um dev agent, e uma sessão de execução real fechava com
+    // dev agents TRABALHANDO ou TRAVADOS esperando o usuário desbloquear
+    // uma task (`dev.idle_tripped`, o circuit breaker da RN-047) — achado
+    // real: cinco dev agents subiram, ficaram `idle_tripped`, e o heartbeat
+    // de 30s fechou a sessão por baixo enquanto o usuário ainda estava
+    // desbloqueando tarefas manualmente.
+    //
+    // Busca TODOS os tipos `dev.*` conhecidos para achar o ÚLTIMO evento de
+    // verdade por agente — não só os que decidem `pending` abaixo — senão
+    // um `dev.awaiting_gate`/`dev.idle` mais recente passaria despercebido
+    // e um `dev.working` mais antigo seria tomado como o estado atual.
+    const devEventLists = await Promise.all(
+      DEV_EVENT_TYPES.map((type) =>
+        this.sessionEvents.listByTypeInSession(sessionId, type),
+      ),
+    );
+    const ultimoPorDevAgent = new Map<
+      string,
+      (typeof devEventLists)[number][number]
+    >();
+    for (const evento of devEventLists.flat()) {
+      const atual = ultimoPorDevAgent.get(evento.actor.id);
+      if (!atual || evento.seq > atual.seq) {
+        ultimoPorDevAgent.set(evento.actor.id, evento);
+      }
+    }
+
+    // Só estes três significam "tem trabalho rolando ou um humano precisa
+    // agir" — travado esperando desbloqueio É trabalho pendente, é
+    // literalmente o que o usuário estava fazendo quando a sessão fechou.
+    // `dev.idle` (sem tarefa nenhuma pra pegar, drenado de verdade) e os
+    // demais tipos (`started`/`awaiting_gate`/`awaiting_approval`/`error`)
+    // ficam FORA desta régua — `awaiting_approval` já é coberto pelo
+    // segundo sinal (a ação git nasce `pending`), e `awaiting_gate` é uma
+    // lacuna residual conhecida, não fechada aqui.
+    const devPendente = [...ultimoPorDevAgent.values()].find((e) =>
+      DEV_PENDING_TYPES.has(e.type),
+    );
+
+    if (devPendente) {
+      return {
+        pending: true,
+        motivo: `dev-agent ${devPendente.actor.id} com ${devPendente.type.replace('dev.', '')} (sem idle posterior)`,
+      };
+    }
+
     return { pending: false, motivo: null };
   }
 }
+
+// Vocabulário completo emitido por `Engine.Dev.AgentIo`/`DevAgentServer` —
+// confirmado por leitura direta do código do engine, não por suposição.
+const DEV_EVENT_TYPES = [
+  'dev.started',
+  'dev.working',
+  'dev.awaiting_gate',
+  'dev.awaiting_approval',
+  'dev.idle',
+  'dev.idle_tripped',
+  'dev.blocked',
+  'dev.error',
+];
+
+const DEV_PENDING_TYPES = new Set([
+  'dev.working',
+  'dev.blocked',
+  'dev.idle_tripped',
+]);
