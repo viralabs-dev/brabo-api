@@ -107,6 +107,16 @@ const agentStatus = (
     payload: { status },
   });
 
+const devEvent = (sessionId: string, agentId: string, type: string) =>
+  eventos.append({
+    id: ulid(),
+    sessionId,
+    seq: ++seqCounter,
+    type,
+    actor: { kind: 'agent', id: agentId },
+    payload: { agentId },
+  });
+
 describe('GetSessionPendingWorkUseCase', () => {
   it('sessão sem nada pendurado libera o encerramento', async () => {
     const { session } = await sessao();
@@ -245,6 +255,107 @@ describe('GetSessionPendingWorkUseCase', () => {
       .values({ projectId: session.projectId, createdBy: session.createdBy })
       .returning();
     await agentStatus(outra.id, 'po', 'working');
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(false);
+  });
+
+  // Quarto sinal (RN-411): dev agents não emitem `agent.status` — usam
+  // vocabulário próprio (`dev.*`). O achado real: cinco dev agents subiram,
+  // ficaram `idle_tripped` (RN-047, o circuit breaker), e o heartbeat
+  // fechou a sessão por baixo enquanto o usuário ainda desbloqueava tarefas
+  // manualmente — o terceiro sinal (agent.status) nunca via nada.
+  it('dev agent TRABALHANDO segura a sessão (dev.working)', async () => {
+    const { session } = await sessao();
+    await devEvent(session.id, 'dev-api', 'dev.started');
+    await devEvent(session.id, 'dev-api', 'dev.working');
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(true);
+    expect(r.motivo).toContain('dev-api');
+    expect(r.motivo).toContain('working');
+  });
+
+  it('dev agent TRAVADO esperando desbloqueio segura a sessão (dev.idle_tripped, o defeito relatado)', async () => {
+    const { session } = await sessao();
+    await devEvent(session.id, 'dev-api', 'dev.started');
+    await devEvent(session.id, 'dev-api', 'dev.working');
+    await devEvent(session.id, 'dev-api', 'dev.blocked');
+    await devEvent(session.id, 'dev-api', 'dev.idle_tripped');
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(true);
+    expect(r.motivo).toContain('dev-api');
+    expect(r.motivo).toContain('idle_tripped');
+  });
+
+  it('dev.blocked, sozinho como último evento, também segura a sessão', async () => {
+    const { session } = await sessao();
+    await devEvent(session.id, 'dev-api', 'dev.working');
+    await devEvent(session.id, 'dev-api', 'dev.blocked');
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(true);
+    expect(r.motivo).toContain('blocked');
+  });
+
+  it('dev agent OCIOSO (dev.idle, drenado de verdade) NÃO segura a sessão', async () => {
+    const { session } = await sessao();
+    await devEvent(session.id, 'dev-api', 'dev.started');
+    await devEvent(session.id, 'dev-api', 'dev.idle');
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(false);
+    expect(r.motivo).toBeNull();
+  });
+
+  it('sessão sem NENHUM evento dev.* preserva o comportamento atual', async () => {
+    const { session } = await sessao();
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(false);
+    expect(r.motivo).toBeNull();
+  });
+
+  it('só o ÚLTIMO evento dev.* de cada agente importa, não a história inteira', async () => {
+    // dev-web terminou de verdade (idle); dev-api ficou travado depois.
+    const { session } = await sessao();
+    await devEvent(session.id, 'dev-web', 'dev.working');
+    await devEvent(session.id, 'dev-web', 'dev.idle');
+    await devEvent(session.id, 'dev-api', 'dev.working');
+    await devEvent(session.id, 'dev-api', 'dev.blocked');
+    await devEvent(session.id, 'dev-api', 'dev.idle_tripped');
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(true);
+    expect(r.motivo).toContain('dev-api');
+    expect(r.motivo).not.toContain('dev-web');
+  });
+
+  it('é genérico por módulo — dev-<modulo>-2 (extra) também segura', async () => {
+    const { session } = await sessao();
+    await devEvent(session.id, 'dev-web-2', 'dev.working');
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(true);
+    expect(r.motivo).toContain('dev-web-2');
+  });
+
+  it('evento dev.* de OUTRA sessão não segura esta', async () => {
+    const { session } = await sessao();
+    const [outra] = await db
+      .insert(sessions)
+      .values({ projectId: session.projectId, createdBy: session.createdBy })
+      .returning();
+    await devEvent(outra.id, 'dev-api', 'dev.working');
 
     const r = await useCase.execute(session.id);
 
