@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ApiToEngineClient } from '../../ports/api-to-engine-client.port';
+import { StoryRepository } from '../../ports/backlog-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 
 /**
@@ -8,15 +9,31 @@ import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-
  * o de readiness — agente e momento diferentes). Grava
  * `architecture.readiness_confirmed` e sinaliza o engine, que só então
  * instrui o Arquiteto a oferecer o handoff ao InfraAgent.
+ *
+ * RN-160 revalidada aqui (auditoria fluxo.yml x código, item B6): a UI
+ * (`SessionPage.tsx`, `hasPromotedStory`) já desabilita o botão sem
+ * história promovida, mas uma chamada HTTP direta ignorava a regra por
+ * completo — quem tem autoridade final é o backend, não o cliente.
  */
 @Injectable()
 export class OfferInfraHandoffUseCase {
   constructor(
     private readonly engineClient: ApiToEngineClient,
     private readonly appendEvent: AppendSessionEventUseCase,
+    private readonly storyRepository: StoryRepository,
   ) {}
 
   async execute(projectId: string, sessionId: string, userId: string) {
+    const stories = await this.storyRepository.findByProject(projectId);
+    const haHistoriaPromovida = stories.some(
+      (story) => story.status !== 'draft',
+    );
+    if (!haHistoriaPromovida) {
+      throw new BadRequestException(
+        'Confirme com pelo menos uma história promovida do backlog (RN-160): nenhuma história deste projeto saiu de "draft".',
+      );
+    }
+
     await this.appendEvent.execute(projectId, sessionId, {
       type: 'architecture.readiness_confirmed',
       actor: { kind: 'user', id: userId },

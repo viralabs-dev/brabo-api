@@ -1,9 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ApiToEngineClient } from '../../ports/api-to-engine-client.port';
 import { ModuleMapRepository } from '../../ports/module-map-repository.port';
 import { AgentAutonomyRepository } from '../../ports/agent-autonomy-repository.port';
+import { SessionEventRepository } from '../../ports/session-event-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { UpsertAgentInstructionUseCase } from '../agents/upsert-agent-instruction.use-case';
+import { RecordDelegationUseCase } from './record-delegation.use-case';
 import {
   DEV_AUTO_GIT_ACTIONS,
   devAgentInstruction,
@@ -16,12 +18,16 @@ import {
  */
 @Injectable()
 export class AcceptParallelizationUseCase {
+  private readonly logger = new Logger(AcceptParallelizationUseCase.name);
+
   constructor(
     private readonly engineClient: ApiToEngineClient,
     private readonly moduleMaps: ModuleMapRepository,
     private readonly agentAutonomy: AgentAutonomyRepository,
     private readonly appendEvent: AppendSessionEventUseCase,
     private readonly upsertInstruction: UpsertAgentInstructionUseCase,
+    private readonly sessionEvents: SessionEventRepository,
+    private readonly recordDelegation: RecordDelegationUseCase,
   ) {}
 
   async execute(
@@ -60,6 +66,59 @@ export class AcceptParallelizationUseCase {
       actor: { kind: 'user', id: userId },
       payload: { module, agentId },
     });
+
+    // Auditoria fluxo.yml x código (item B1, ADR 0094): a delegação
+    // Dev Lead → dev-<modulo> vira DADO em `delegations`, com `area: 'dev'`
+    // — mesmo padrão de QA e Infra (ADR 0038), com UMA diferença consciente:
+    // `status: 'completed'` aqui significa "a delegação foi EFETIVADA" (o
+    // agente subiu), não "o subagente terminou e emitiu parecer". Não pode
+    // travar a ativação, que já é sucesso — falha ou lacuna vira LOG, nunca
+    // exceção (RN-059: nunca falha silenciosa, mas também nunca aborta um
+    // sucesso já consumado).
+    await this.recordDevDelegation(projectId, sessionId, module, agentId);
+
     return { ok: true as const };
+  }
+
+  private async recordDevDelegation(
+    projectId: string,
+    sessionId: string,
+    module: string,
+    agentId: string,
+  ): Promise<void> {
+    const moduleMapEvents = await this.sessionEvents.listByTypeForProject(
+      projectId,
+      'artifact.module_map',
+    );
+    const latestModuleMapEvent = moduleMapEvents.at(-1);
+
+    if (!latestModuleMapEvent) {
+      // Não deveria acontecer — o Arquiteto sempre entrega module_map antes
+      // do Dev Lead operar (entrada obrigatória dele em docs/fluxo.yml).
+      // Mas se acontecer, a delegação NÃO nasce com um id falso: pula, e diz
+      // por quê, em vez de mentir sobre o que justificou a decisão.
+      this.logger.error(
+        `Delegação dev-lead → ${agentId} (área dev, módulo "${module}") NÃO ` +
+          `registrada: nenhum artifact.module_map encontrado no projeto ` +
+          `${projectId}. O dev agent já foi ativado; só a gravação da ` +
+          `delegação foi pulada.`,
+      );
+      return;
+    }
+
+    try {
+      await this.recordDelegation.execute(projectId, sessionId, {
+        area: 'dev',
+        leadAgent: 'dev-lead',
+        subagent: agentId,
+        status: 'completed',
+        parecerArtifactId: latestModuleMapEvent.id,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Falha ao registrar delegação dev-lead → ${agentId} (área dev, ` +
+          `módulo "${module}"): ${error instanceof Error ? error.message : error}`,
+      );
+    }
   }
 }
