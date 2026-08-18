@@ -9,8 +9,10 @@ import { GitOauthClientRegistry } from '../../ports/git-oauth-client.port';
 import { SocialIdentityRepository } from '../../ports/social-identity-repository.port';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { UserRepository } from '../../ports/user-repository.port';
+import { WorkspaceRepository } from '../../ports/workspace-repository.port';
 import { assuntoDoUsuario } from '../../../domain/auth/auth-event';
 import { normalizarEmail } from '../../../domain/auth/email';
+import { nomeESlugDoWorkspacePessoal } from '../../../domain/auth/personal-workspace';
 import {
   verifySocialOauthState,
   type SocialOauthProviderName,
@@ -41,7 +43,11 @@ import {
  *    NOVO, sem senha (mesma forma que a migração do Keycloak já deixa — ver
  *    `criarUsuarioSemCredencial`). Aqui o e-mail NÃO PRECISA estar verificado:
  *    não há conta existente para tomar, só uma nova para nascer. Exigir
- *    verificação encareceria o caso comum sem proteger nada.
+ *    verificação encareceria o caso comum sem proteger nada. Esse ramo
+ *    também grava o workspace pessoal (RN-410), na MESMA transação — a
+ *    mesma regra e a mesma função (`nomeESlugDoWorkspacePessoal`) que o
+ *    registro por e-mail/senha usa, para não existir conta nova sem onde
+ *    criar projeto.
  *
  * ## Por que o `state` não carrega mais nada
  *
@@ -61,6 +67,7 @@ export class SocialLoginCallbackUseCase {
     private readonly usuarios: UserRepository,
     private readonly eventos: AuthEventRecorder,
     private readonly emitirSessao: EmitirSessaoUseCase,
+    private readonly workspaces: WorkspaceRepository,
   ) {}
 
   async execute(
@@ -261,6 +268,21 @@ export class SocialLoginCallbackUseCase {
       providerEmail: identity.email,
       providerLogin: identity.login,
     });
+
+    // Workspace pessoal automático (RN-410), na MESMA transação — mesma
+    // regra e mesma função do registro por e-mail/senha, para não existir
+    // conta social nova sem onde criar projeto.
+    const { name, slug } = nomeESlugDoWorkspacePessoal(
+      identity.login,
+      emailNormalizado,
+      criado.userId,
+    );
+    const workspace = await this.workspaces.create({
+      name,
+      slug,
+      createdBy: criado.userId,
+    });
+    await this.workspaces.addMember(workspace.id, criado.userId, 'owner');
 
     await this.eventos.registrar({
       kind: 'social_login_new_user',
