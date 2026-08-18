@@ -21,9 +21,10 @@ export interface EmailParaEnviar {
 /**
  * Porta de envio de e-mail (Fase 7a, item 3).
  *
- * SMTP real é configuração futura e não bloqueia esta fase. O que a porta
- * garante é que o dia de ligar SMTP seja trocar a implementação, e não achar
- * as chamadas espalhadas.
+ * SMTP real chegou pelo backlog "SMTP real no MailSender" (ADR 0096):
+ * `LogMailSender` (default) e `SmtpMailSender` implementam a MESMA porta, e
+ * `MAIL_TRANSPORT` escolhe entre as duas no `useFactory` de
+ * `AuthUseCasesModule` — nenhuma chamada a `MailSender.enviar()` mudou.
  */
 export abstract class MailSender {
   abstract enviar(email: EmailParaEnviar): Promise<void>;
