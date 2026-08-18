@@ -57,6 +57,17 @@ export interface ProjectCardSummary {
    * de propósito, porque o badge é por PROJETO, não por sessão.
    */
   pendingApprovalsCount: number;
+  /**
+   * Quantos agentes estão ONLINE agora — trabalhando ou com pendência
+   * esperando decisão —, nunca tamanho de equipe/presença histórica
+   * (RN-409). Soma dois mecanismos, unificados pela mesma régua ("não
+   * ocioso, não travado"): dev agents (`engine.dev_agent_states.status
+   * NOT IN ('idle', 'idle_tripped')`) e agentes conversacionais (último
+   * evento `agent.status` da sessão mais recente com `status !== 'idle'`).
+   * QA/SecOps NUNCA entram — não emitem `agent.status` (são veredito único
+   * por invocação, sem noção de "ocioso" entre chamadas).
+   */
+  onlineAgentCount: number;
   roster: RosterFacts;
 }
 
