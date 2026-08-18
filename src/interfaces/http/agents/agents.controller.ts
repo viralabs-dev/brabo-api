@@ -18,6 +18,7 @@ import { SendAgentMessageUseCase } from '../../../application/use-cases/agents/s
 import { CancelAgentTurnUseCase } from '../../../application/use-cases/agents/cancel-agent-turn.use-case';
 import { ConfirmReadinessUseCase } from '../../../application/use-cases/agents/confirm-readiness.use-case';
 import { OfferInfraHandoffUseCase } from '../../../application/use-cases/agents/offer-infra-handoff.use-case';
+import { ValidateNecessityUseCase } from '../../../application/use-cases/agents/validate-necessity.use-case';
 import { AcceptHandoffUseCase } from '../../../application/use-cases/agents/accept-handoff.use-case';
 import { ListHandoffsUseCase } from '../../../application/use-cases/agents/list-handoffs.use-case';
 import { AnswerStructuredQuestionUseCase } from '../../../application/use-cases/agents/answer-structured-question.use-case';
@@ -48,6 +49,7 @@ export class AgentsController {
     private readonly cancelAgentTurn: CancelAgentTurnUseCase,
     private readonly confirmReadiness: ConfirmReadinessUseCase,
     private readonly offerInfraHandoff: OfferInfraHandoffUseCase,
+    private readonly validateNecessity: ValidateNecessityUseCase,
     private readonly acceptHandoff: AcceptHandoffUseCase,
     private readonly listHandoffs: ListHandoffsUseCase,
     private readonly answerStructuredQuestion: AnswerStructuredQuestionUseCase,
@@ -221,6 +223,31 @@ export class AgentsController {
     @CurrentUser() user: User,
   ) {
     return this.offerInfraHandoff.execute(projectId, sessionId, user.id);
+  }
+
+  /**
+   * Gate `necessidade-validada` (Criativo → PO — auditoria fluxo.yml x
+   * código, achado B2, RN-406/ADR 0095): o usuário confirma que o
+   * `product_brief` que o Criativo consolidou reflete de verdade a
+   * necessidade de negócio. Endpoint dedicado — não reaproveita `readiness`
+   * (que só exige regra capturada, RN-142) nem o aceite do handoff pelo PO
+   * (que é estrutural, sem julgamento de conteúdo).
+   */
+  @Post('agents/criativo/validate-necessity')
+  @RequireRole('developer')
+  @ApiOperation({
+    summary: 'Confirma que a necessidade de negócio do Criativo foi validada',
+    description:
+      'Grava `necessity.validated`. Exige que o Criativo já tenha consolidado um ' +
+      '`product_brief` nesta sessão (RN-406) — sem ele, recusa: não há o que validar.',
+  })
+  @ApiCreatedResponse({ type: OkResponseDto })
+  validateNecessityHandoff(
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.validateNecessity.execute(projectId, sessionId, user.id);
   }
 
   @Get('handoffs')
