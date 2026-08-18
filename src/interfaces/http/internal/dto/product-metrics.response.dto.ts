@@ -72,9 +72,7 @@ export const _chavesLeadTime: MesmasChaves<
   LeadTime
 > = true;
 
-export class ProductMetricsDeploymentDayResponseDto
-  implements Wire<FrequenciaPorDia>
-{
+export class ProductMetricsDeploymentDayResponseDto implements Wire<FrequenciaPorDia> {
   @ApiProperty({ example: '2026-08-01' })
   dia!: string;
 
@@ -94,16 +92,17 @@ export class ProductMetricsProjectResponseDto {
   name!: string;
 }
 
-export class ProductMetricsLeadTimesResponseDto
-  implements Wire<ProductMetricsReport['leadTimes']>
-{
+export class ProductMetricsLeadTimesResponseDto implements Wire<
+  ProductMetricsReport['leadTimes']
+> {
   @ApiProperty({ type: [ProductMetricsLeadTimeResponseDto] })
   perSession!: ProductMetricsLeadTimeResponseDto[];
 
   @ApiProperty({
     example: 7200000,
     nullable: true,
-    description: 'Média simples em ms — `null` sem nenhuma sessão com commit E merge.',
+    description:
+      'Média simples em ms — `null` sem nenhuma sessão com commit E merge.',
   })
   averageMs!: number | null;
 }
