@@ -24,9 +24,12 @@
  *
  * ## Onde os links aparecem
  *
- * No log da api, não em caixa de entrada: o `MailSender` é log-only e SMTP
- * real segue como config futura. Com `AUTH_MAIL_LOG_TOKENS=true` o token sai
- * no log; sem ela, sai só o destinatário. Ver o runbook.
+ * Depende de `MAIL_TRANSPORT` (backlog "SMTP real no MailSender", ADR 0096):
+ * em `log` (default) vão para o log da api, não para caixa de entrada — com
+ * `AUTH_MAIL_LOG_TOKENS=true` o token sai no log, sem ela sai só o
+ * destinatário; em `smtp` vão para o e-mail de verdade. O script não escolhe
+ * o modo — usa o `MailSender` que a DI resolveu, o mesmo que qualquer outro
+ * caso de uso de auth. Ver o runbook.
  *
  * Uso: pnpm --filter api migrate:keycloak-users
  */
