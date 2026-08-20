@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { createTestDb, truncateAll } from '../../../support/test-db';
 import {
+  outboxEvents,
   projects,
   sessionEvents,
   sessions,
@@ -15,6 +16,7 @@ import { DrizzleSessionEventRepository } from '../../../../src/infrastructure/pe
 import { DrizzleOutboxRepository } from '../../../../src/infrastructure/persistence/drizzle/outbox.repository';
 import { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
 import { ListSessionEventsUseCase } from '../../../../src/application/use-cases/sessions/list-session-events.use-case';
+import { GRAPH_PROJECTION_AGGREGATE_TYPE } from '../../../../src/domain/graph/graph-projection-events';
 
 const { db, pool } = createTestDb();
 const unitOfWork = new DrizzleUnitOfWork(db);
@@ -134,5 +136,60 @@ describe('AppendSessionEventUseCase', () => {
 
     const page = await listSessionEvents.execute(project.id, session.id, {});
     expect(page.items.map((e) => e.seq)).toEqual([1, 2, 3]);
+  });
+
+  it('tipo projetável no grafo (ex. handoff.offered) grava uma SEGUNDA linha de outbox, aggregateType graph_projection, na mesma transação', async () => {
+    const { project, session } = await setupSession();
+
+    const event = await appendSessionEvent.execute(project.id, session.id, {
+      type: 'handoff.offered',
+      actor: { kind: 'agent', id: 'po' },
+      payload: { handoffId: 'h-1', toAgent: 'arquiteto' },
+    });
+
+    const rows = await db
+      .select()
+      .from(outboxEvents)
+      .where(
+        and(
+          eq(outboxEvents.aggregateId, session.id),
+          eq(outboxEvents.aggregateType, GRAPH_PROJECTION_AGGREGATE_TYPE),
+        ),
+      );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].eventType).toBe('handoff.offered');
+    expect(rows[0].payload).toEqual({ eventId: event.id });
+    expect(rows[0].processedAt).toBeNull();
+
+    // A linha 'session' de sempre continua sendo gravada do lado dela —
+    // a projeção do grafo é ADITIVA, nunca substitui o outbox existente.
+    const sessionRows = await db
+      .select()
+      .from(outboxEvents)
+      .where(
+        and(
+          eq(outboxEvents.aggregateId, session.id),
+          eq(outboxEvents.aggregateType, 'session'),
+        ),
+      );
+    expect(sessionRows).toHaveLength(1);
+  });
+
+  it('tipo NÃO projetável (ex. message.sent) não grava linha nenhuma em graph_projection', async () => {
+    const { project, session, user } = await setupSession();
+
+    await appendSessionEvent.execute(project.id, session.id, {
+      type: 'message.sent',
+      actor: { kind: 'user', id: user.id },
+      payload: { text: 'oi' },
+    });
+
+    const rows = await db
+      .select()
+      .from(outboxEvents)
+      .where(eq(outboxEvents.aggregateType, GRAPH_PROJECTION_AGGREGATE_TYPE));
+
+    expect(rows).toHaveLength(0);
   });
 });

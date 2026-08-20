@@ -14,6 +14,10 @@ import {
   SessionKindNaoExecutaError,
   garantirQuePodeAtivarExecucao,
 } from '../../../domain/sessions/session-kind';
+import {
+  GRAPH_PROJECTABLE_EVENT_TYPES,
+  GRAPH_PROJECTION_AGGREGATE_TYPE,
+} from '../../../domain/graph/graph-projection-events';
 import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 export interface AppendSessionEventInput {
@@ -89,6 +93,22 @@ export class AppendSessionEventUseCase {
         eventType: 'session_event.appended',
         payload: { eventId: id, seq, type: input.type },
       });
+
+      // Segunda linha de outbox, MESMA transação, SÓ para o tipo de evento
+      // que a memória do grafo consome (RN-413/414/415, Onda 2 —
+      // GraphProjector). `aggregateType` distinto do `'session'` de cima é
+      // o que evita a corrida contra `Engine.Outbox.Drain` — ver
+      // `graph-projection-events.ts`. Payload mínimo (só o id do evento):
+      // o projetor relê o envelope completo do event log na hora de
+      // projetar, nunca confia numa cópia estale aqui.
+      if (GRAPH_PROJECTABLE_EVENT_TYPES.has(input.type)) {
+        await this.outbox.append({
+          aggregateType: GRAPH_PROJECTION_AGGREGATE_TYPE,
+          aggregateId: sessionId,
+          eventType: input.type,
+          payload: { eventId: id },
+        });
+      }
 
       return event;
     });

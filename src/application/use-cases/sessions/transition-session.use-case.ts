@@ -8,6 +8,7 @@ import {
   isTerminal,
   type SessionStatus,
 } from '../../../domain/sessions/session-state-machine';
+import { GRAPH_PROJECTION_AGGREGATE_TYPE } from '../../../domain/graph/graph-projection-events';
 import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 @Injectable()
@@ -53,12 +54,27 @@ export class TransitionSessionUseCase {
       );
 
       if (terminal) {
+        const eventType =
+          to === 'closed' ? 'session.closed' : 'session.closed_abnormally';
+
         await this.outbox.append({
           aggregateType: 'session',
           aggregateId: sessionId,
-          eventType:
-            to === 'closed' ? 'session.closed' : 'session.closed_abnormally',
+          eventType,
           payload: { from: current.status, to, projectId },
+        });
+
+        // Segunda linha, MESMA transação, para o GraphProjector consolidar a
+        // `Interacao` (janela de seq da sessão inteira) — mesmo desenho da
+        // instrumentação em AppendSessionEventUseCase, ver
+        // graph-projection-events.ts. Fechamento de sessão não passa por
+        // `session_events` (é transição pura), então o payload carrega o
+        // que o projetor precisa direto, em vez de um `eventId` para reler.
+        await this.outbox.append({
+          aggregateType: GRAPH_PROJECTION_AGGREGATE_TYPE,
+          aggregateId: sessionId,
+          eventType,
+          payload: { sessionId, projectId },
         });
       }
 
