@@ -98,4 +98,23 @@ export abstract class ProposedActionRepository {
   abstract findOldestPendingInSession(
     sessionId: string,
   ): Promise<ProposedAction | null>;
+
+  /**
+   * Ações PENDENTES do PROJETO inteiro, em QUALQUER sessão (Onda 2 do
+   * programa de abas agrupadas).
+   *
+   * Ao lado de `listPaginated`/`findOldestPendingInSession` (escopados por
+   * SESSÃO) — é este método que fecha o bug de raiz da aba Aprovações
+   * (`ProjectApprovalsTab.tsx`): ela só olha `usePendingActions(projectId,
+   * latestSession?.id)`, então a revisão pendente de uma PR proposta numa
+   * sessão anterior desaparece assim que uma sessão nova nasce, porque a
+   * consulta nem chega a considerá-la. A aba PRs usa isto para achar a
+   * `proposed_action` correspondente a um PR (ex.: um `git_merge` pendente)
+   * sem depender de qual sessão a propôs. `actionType` opcional filtra por
+   * tipo — a aba PRs pede só `git_merge`.
+   */
+  abstract findPendingByProject(
+    projectId: string,
+    actionType?: string,
+  ): Promise<ProposedAction[]>;
 }

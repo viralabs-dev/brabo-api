@@ -353,6 +353,60 @@ describe('ProposeActionUseCase', () => {
     expect(action.resolvedPolicy).toBe('deny');
   });
 
+  it('git_merge proposto pela aba PRs (produtor real, RN-154) segue pending mesmo com "sempre permitir" já gravado em permissions.json', async () => {
+    // Onda 2 do programa de abas agrupadas: a aba PRs é a PRIMEIRA a propor
+    // `git_merge` de verdade, com `actor.kind: 'user'` e o payload real que o
+    // botão "Merge" envia (pullRequestId/sourceBranch/targetBranch/title).
+    // `GitMerge()` (sem especificidade nenhuma — `patternForAction` não
+    // discrimina por branch) já em `allow` simula quem clicou "Sempre
+    // permitir" numa PR anterior — e mesmo assim a trava de branch protegida
+    // continua vencendo por ÚLTIMO em `decide()`.
+    const { project, session } = await setupSession('maintainer');
+    await permissionsFileStore.write(project, {
+      allow: ['GitMerge()'],
+      deny: [],
+      ask: [],
+    });
+
+    const action = await proposeAction.execute(project.id, session.id, {
+      actionType: 'git_merge',
+      actor: { kind: 'user', id: 'user-1' },
+      payload: {
+        pullRequestId: '218',
+        sourceBranch: 'feature/task-a1b2c3d4',
+        targetBranch: 'dev',
+        title: 'feat: aba de PRs',
+      },
+    });
+
+    expect(action.resolvedPolicy).toBe('require_approval');
+    expect(action.status).toBe('pending');
+  });
+
+  it('git_merge proposto pela aba PRs continua pending mesmo com agent_autonomy curinga ligado pro mesmo ator', async () => {
+    // Reforça a suíte já existente da RN-154 (acima, com `actor.kind: 'agent'`)
+    // com o produtor real desta onda: o teto é absoluto independente de QUEM
+    // propõe. `autonomyMode` só é consultado para `actor.kind === 'agent'`
+    // (ver `ProposeActionUseCase.execute`), então este cenário usa um agente —
+    // é o que prova que nem essa porta ajudaria.
+    const { project, session } = await setupSession('maintainer');
+    await agentAutonomyRepo.upsert(project.id, 'dev-lead', '*', 'auto_approve');
+
+    const action = await proposeAction.execute(project.id, session.id, {
+      actionType: 'git_merge',
+      actor: { kind: 'agent', id: 'dev-lead' },
+      payload: {
+        pullRequestId: '218',
+        sourceBranch: 'feature/task-a1b2c3d4',
+        targetBranch: 'main',
+        title: 'feat: aba de PRs',
+      },
+    });
+
+    expect(action.resolvedPolicy).toBe('require_approval');
+    expect(action.status).toBe('pending');
+  });
+
   it('rejeita tipo de ação desconhecido', async () => {
     const { project, session } = await setupSession();
     await expect(
