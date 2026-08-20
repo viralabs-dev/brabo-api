@@ -12,6 +12,7 @@ import { AppModule } from './app.module';
 import { DomainTransitionErrorFilter } from './interfaces/http/shared/domain-transition-error.filter';
 import { GitProviderErrorFilter } from './interfaces/http/shared/git-provider-error.filter';
 import { LlmBindingErrorFilter } from './interfaces/http/shared/llm-binding-error.filter';
+import { GraphErrorFilter } from './interfaces/http/shared/graph-error.filter';
 import { resolveCorsOrigins } from './infrastructure/security/cors-origins';
 import { resolveOauthStateSecret } from './infrastructure/security/oauth-state-secret';
 import { passphraseAtual } from './infrastructure/security/auth-key-material';
@@ -118,6 +119,7 @@ async function bootstrap() {
     new DomainTransitionErrorFilter(),
     new GitProviderErrorFilter(),
     new LlmBindingErrorFilter(),
+    new GraphErrorFilter(),
   );
   // Sem isto o SIGTERM mata o processo direto e o `onModuleDestroy` do
   // DrizzleModule nunca roda: o pool do Postgres fica com conexões abertas do

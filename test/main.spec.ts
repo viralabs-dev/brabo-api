@@ -104,7 +104,8 @@ describe('main.ts — limite do body parser JSON (achado 413 engine→api)', () 
     // modelo). É a prova de que o corpo chegou INTEIRO ao caso de uso, e não
     // só que o parser não rejeitou a requisição antes de lê-la.
     expect(resposta.status).toBe(201);
-    expect(resposta.body.error).toBe('Nenhum modelo vinculado para esta sessão');
+    const corpo = resposta.body as { error?: string };
+    expect(corpo.error).toBe('Nenhum modelo vinculado para esta sessão');
   });
 
   it('body acima do limite configurado é RECUSADO com 413', async () => {
