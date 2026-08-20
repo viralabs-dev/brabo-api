@@ -129,14 +129,34 @@ export class GetSessionPendingWorkUseCase {
       }
     }
 
-    // Só estes três significam "tem trabalho rolando ou um humano precisa
-    // agir" — travado esperando desbloqueio É trabalho pendente, é
+    // Estes cinco significam "tem trabalho rolando ou um humano precisa
+    // agir" — travado esperando desbloqueio, esperando o gate de QA/SecOps
+    // terminar, ou esperando decisão de aprovação, É trabalho pendente, é
     // literalmente o que o usuário estava fazendo quando a sessão fechou.
+    //
+    // `dev.awaiting_gate` entrou porque o gate pode morrer (bug real
+    // corrigido em paralelo, o 413 nas PRs) e deixar o dev agent preso
+    // nesse estado indefinidamente — sem este sinal, o heartbeat fechava a
+    // sessão por baixo e a aba Executores passava a mostrar "nenhuma
+    // execução" com trabalho real pendurado.
+    //
+    // `dev.awaiting_approval` entrou pelo MESMO argumento, não por
+    // segurança extra: o segundo sinal (ação `pending`) cobre a maior
+    // parte da espera, mas não o intervalo inteiro. A decisão
+    // (`approve`/`deny`) grava `proposed_actions.status` de forma
+    // SÍNCRONA, na transação do `ApproveActionUseCase` — o segundo sinal
+    // já não vê mais `pending` ali. A retomada do dev agent, porém, é
+    // ASSÍNCRONA: só depois de `avisarQuemEsperava()` gravar
+    // `task.action_settled`/`task.pr_settled` na outbox é que
+    // `Engine.Outbox.Drain` (loop de polling) enfileira o job do Oban que
+    // acorda `DevAgentServer` (`handle_info({:action_settled, ...})`).
+    // Nessa janela — decisão já gravada, dev agent ainda não acordado — o
+    // último evento `dev.*` continua sendo `dev.awaiting_approval`, e sem
+    // este sinal a sessão fica sem NADA segurando ela: o mesmo defeito da
+    // RN-411, um nível mais fundo.
+    //
     // `dev.idle` (sem tarefa nenhuma pra pegar, drenado de verdade) e os
-    // demais tipos (`started`/`awaiting_gate`/`awaiting_approval`/`error`)
-    // ficam FORA desta régua — `awaiting_approval` já é coberto pelo
-    // segundo sinal (a ação git nasce `pending`), e `awaiting_gate` é uma
-    // lacuna residual conhecida, não fechada aqui.
+    // demais tipos (`started`/`error`) ficam FORA desta régua.
     const devPendente = [...ultimoPorDevAgent.values()].find((e) =>
       DEV_PENDING_TYPES.has(e.type),
     );
@@ -169,4 +189,6 @@ const DEV_PENDING_TYPES = new Set([
   'dev.working',
   'dev.blocked',
   'dev.idle_tripped',
+  'dev.awaiting_gate',
+  'dev.awaiting_approval',
 ]);
