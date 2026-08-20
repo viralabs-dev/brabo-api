@@ -224,6 +224,38 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     );
   }
 
+  /**
+   * Diferente do resto deste client, não usa `postCommand`: precisa do
+   * CORPO da resposta (o ticket bruto só existe aqui, uma vez — o engine
+   * grava só o hash), e `postCommand` descarta o corpo em sucesso.
+   */
+  async requestRunnerTicket(
+    projectId: string,
+    userId: string,
+    kind: 'runner' | 'terminal',
+  ): Promise<{ ticket: string; expiresAt: Date }> {
+    projectId = garantirSegmentoDeUrlInterna(projectId, 'projectId');
+    const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
+
+    const res = await fetch(
+      `${engineUrl}/internal/projects/${projectId}/runner-tickets`,
+      {
+        method: 'POST',
+        headers: this.buildHeaders(),
+        body: JSON.stringify({ userId, kind }),
+      },
+    );
+
+    if (!res.ok) {
+      throw new Error(
+        `Falha ao pedir ticket de runner ao engine: ${res.status} ${await res.text()}`,
+      );
+    }
+
+    const corpo = (await res.json()) as { ticket: string; expiresAt: string };
+    return { ticket: corpo.ticket, expiresAt: new Date(corpo.expiresAt) };
+  }
+
   async startExecution(
     projectId: string,
     sessionId: string,

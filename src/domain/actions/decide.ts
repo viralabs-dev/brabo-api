@@ -6,6 +6,8 @@ import { comandoNoEscopo } from './path-scope';
 import {
   efeitoExternoNoComando,
   mensagemDeEfeitoExterno,
+  comandoPrivilegiadoNoComando,
+  mensagemDeComandoPrivilegiado,
 } from './external-effect';
 
 export type ActionType =
@@ -187,22 +189,12 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
     };
   }
 
-  // FRONTEIRA DO CONTAINER (ADR 0065, RN-106). Aplicada ANTES de qualquer
-  // estágio permissivo porque não é uma preferência: é onde o container
-  // termina. `git push`, abertura de PR e deploy atravessam a parede e chegam
-  // no mundo, e a constituição do produto os declara humanos.
-  //
-  // `deny` e não `require_approval` porque existe "sempre permitir": um clique
-  // gravaria o padrão em `allow` e a segunda porta ficaria aberta para sempre.
-  // Negar aqui não tira poder do agente — a mensagem diz qual ação TIPADA usar,
-  // e é ela que nasce `proposed_action`, registra no event log o que foi
-  // empurrado e para onde, e passa pela decisão do usuário.
-  if (action.actionType === 'terminal' && action.command) {
-    const efeito = efeitoExternoNoComando(parseCommand(action.command));
-    if (efeito) {
-      return { policy: 'deny', reason: mensagemDeEfeitoExterno(efeito) };
-    }
-  }
+  // A FRONTEIRA DO CONTAINER e o COMANDO PRIVILEGIADO (ADR 0065, RN-106 —
+  // revisados nesta entrega) DEIXARAM de ser barrados aqui, logo após o IAM.
+  // Viraram teto absoluto, no bloco final junto dos outros (escopo, merge
+  // protegido, instruction_patch, paralelismo) — ver o comentário lá embaixo
+  // pra saber por que a mudança de `deny` pra `require_approval` incondicional
+  // é segura.
 
   let current: Decision = {
     policy: 'require_approval',
@@ -227,6 +219,42 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
   if (fileVerdict) {
     if (fileVerdict.policy === 'deny') return fileVerdict;
     current = fileVerdict;
+  }
+
+  // TETO DA FRONTEIRA DO CONTAINER + COMANDO PRIVILEGIADO (ADR 0065, RN-106
+  // — revisado nesta entrega). `git push`, abertura de PR, deploy e
+  // `sudo`/`doas` nunca são auto-aprováveis — nem por `agent_autonomy`
+  // (inclusive o curinga `"*"` de "modo automático") nem por
+  // `permissions.json`.
+  //
+  // Antes disto era `deny` incondicional logo após o IAM (ver o comentário
+  // que sobrava lá em cima). Virou teto absoluto — `require_approval`, não
+  // `deny` — pelo MESMO motivo que os tetos vizinhos já são assim: o produto
+  // prefere que a ação exista como `proposed_action` pendente, auditável no
+  // event log, decidida caso a caso, a recusá-la sem deixar rastro. Isso só é
+  // seguro porque a fresta que o `deny` original tapava à força — "sempre
+  // permitir" gravando o padrão em `allow` e abrindo a porta pra sempre — foi
+  // fechada na FONTE: `ApproveAlwaysActionUseCase`/`patternForAction` recusam
+  // gravar padrão pra ação com efeito externo git ou comando privilegiado
+  // (ver approve-always-action.use-case.ts). Sem essa fresta fechada, este
+  // teto viraria decorativo do mesmo jeito que os outros tetos alertam: um
+  // clique bastaria pra reabrir a porta que ele diz fechar.
+  //
+  // git com efeito externo continua tendo ação TIPADA pra redirecionar
+  // (`git_push`/`pr_open`/`git_merge`/`deploy`); `sudo`/`doas` não têm — a
+  // mensagem só explica por que aquele comando pede decisão humana.
+  if (action.actionType === 'terminal' && action.command) {
+    const tokens = parseCommand(action.command);
+    const efeito = efeitoExternoNoComando(tokens);
+    const privilegiado = comandoPrivilegiadoNoComando(tokens);
+    if ((efeito || privilegiado) && current.policy === 'auto_approve') {
+      return {
+        policy: 'require_approval',
+        reason: efeito
+          ? mensagemDeEfeitoExterno(efeito)
+          : mensagemDeComandoPrivilegiado(privilegiado!),
+      };
+    }
   }
 
   // TETO DO ESCOPO DE CAMINHO (ADR 0055). Comando de terminal que toca

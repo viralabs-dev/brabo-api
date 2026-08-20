@@ -166,4 +166,21 @@ export abstract class ApiToEngineClient {
     projectId: string,
     agent: string,
   ): Promise<void>;
+
+  /**
+   * Pede ao engine um ticket opaco de uso único pro socket `/runner`
+   * (`terminal:<projectId>`) — INVERSO do ticket de sessão (RN-108): lá a
+   * api insere direto em `session_socket_tickets` (dela, Drizzle); aqui é o
+   * engine quem gera e guarda `runner_socket_tickets` (dele, schema
+   * "engine"), porque é ele quem PRECISA ler a tabela em `connect/3` e a api
+   * não tem acesso de escrita ao schema do engine.
+   *
+   * `kind: "runner"` é pro CLI na máquina do usuário (no máximo um
+   * conectado por projeto); `kind: "terminal"` é pra aba Terminal da web.
+   */
+  abstract requestRunnerTicket(
+    projectId: string,
+    userId: string,
+    kind: 'runner' | 'terminal',
+  ): Promise<{ ticket: string; expiresAt: Date }>;
 }
