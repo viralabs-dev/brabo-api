@@ -96,6 +96,9 @@ class UnreachableEngineClient implements ApiToEngineClient {
   executeTerminalAction(): Promise<never> {
     throw new Error('engine não deveria ser chamado pelo bootstrap');
   }
+  requestRunnerTicket(): Promise<{ ticket: string; expiresAt: Date }> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
 }
 
 const transitionSession = new TransitionSessionUseCase(

@@ -19,6 +19,7 @@ import { AgentsHttpModule } from './interfaces/http/agents/agents-http.module';
 import { BacklogHttpModule } from './interfaces/http/backlog/backlog-http.module';
 import { ExecutionHttpModule } from './interfaces/http/execution/execution-http.module';
 import { ContainersHttpModule } from './interfaces/http/containers/containers-http.module';
+import { RunnerHttpModule } from './interfaces/http/runner/runner-http.module';
 import { GatesHttpModule } from './interfaces/http/gates/gates-http.module';
 import { GitHttpModule } from './interfaces/http/git/git-http.module';
 import { RagHttpModule } from './interfaces/http/rag/rag-http.module';
@@ -52,6 +53,7 @@ import { GraphProjectionModule } from './application/graph-projection/graph-proj
     BacklogHttpModule,
     ExecutionHttpModule,
     ContainersHttpModule,
+    RunnerHttpModule,
     GatesHttpModule,
     GitHttpModule,
     RagHttpModule,
