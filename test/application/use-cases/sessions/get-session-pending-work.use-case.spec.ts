@@ -292,6 +292,46 @@ describe('GetSessionPendingWorkUseCase', () => {
     expect(r.motivo).toContain('idle_tripped');
   });
 
+  it('dev agent esperando o gate de QA/SecOps segura a sessão (dev.awaiting_gate)', async () => {
+    // O gate pode morrer (bug real corrigido em paralelo, o 413 nas PRs) e
+    // deixar o dev agent preso em `awaiting_gate` indefinidamente — sem este
+    // sinal, o heartbeat fechava a sessão por baixo enquanto o trabalho de
+    // verdade (esperar o gate) continuava pendurado.
+    const { session } = await sessao();
+    await devEvent(session.id, 'dev-api', 'dev.working');
+    await devEvent(session.id, 'dev-api', 'dev.awaiting_gate');
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(true);
+    expect(r.motivo).toContain('dev-api');
+    expect(r.motivo).toContain('awaiting_gate');
+  });
+
+  it('dev agent esperando aprovação segura a sessão mesmo com a ação já decidida (dev.awaiting_approval)', async () => {
+    // A janela real: `ApproveActionUseCase` grava a decisão de forma
+    // SÍNCRONA (a ação deixa de ser `pending`), mas a retomada do dev agent
+    // é ASSÍNCRONA (outbox + Oban). Entre os dois, o segundo sinal
+    // (proposed_action pendente) já não segura mais nada — só este sinal
+    // continua vendo o dev agent parado.
+    const { user, project, session } = await sessao();
+    const acao = await acaoPendente(project.id, session.id);
+    await acoes.updateDecision(acao.id, {
+      status: 'approved',
+      decidedBy: user.id,
+      decidedAt: new Date(),
+      rejectionReason: null,
+    });
+    await devEvent(session.id, 'dev-api', 'dev.working');
+    await devEvent(session.id, 'dev-api', 'dev.awaiting_approval');
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(true);
+    expect(r.motivo).toContain('dev-api');
+    expect(r.motivo).toContain('awaiting_approval');
+  });
+
   it('dev.blocked, sozinho como último evento, também segura a sessão', async () => {
     const { session } = await sessao();
     await devEvent(session.id, 'dev-api', 'dev.working');
