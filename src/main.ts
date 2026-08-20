@@ -53,7 +53,9 @@ async function bootstrap() {
   // nem em rota nenhuma que exija corpo cru. Configurável por env var para
   // não exigir novo deploy se o teto do engine mudar; 10 MB de default,
   // com folga sobre os 8 MB do Phoenix.
-  app.useBodyParser('json', { limit: process.env.API_JSON_BODY_LIMIT ?? '10mb' });
+  app.useBodyParser('json', {
+    limit: process.env.API_JSON_BODY_LIMIT ?? '10mb',
+  });
 
   // Cabeçalhos de segurança (Fase 5, item 7). A api não mandava nenhum.
   //
