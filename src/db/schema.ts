@@ -255,6 +255,12 @@ export const taskStatusEnum = pgEnum('task_status', [
 // (que também serve models/token_usage, LLM-only de verdade) ou
 // reaproveitar git_provider (que tem 'local', sem sentido pra uma
 // credencial). Ver docs/adr/0004-git-credential-registration.md.
+// Idioma da interface (fundação de i18n, Onda 6a). Fechado a dois valores de
+// propósito — abrir para qualquer BCP-47 exigiria arquivo de recurso e
+// validação de fallback que a extração de strings (etapa separada) ainda não
+// tem. `pt-BR` é o default: nunca flipar silenciosamente quem já tem conta.
+export const userLocaleEnum = pgEnum('user_locale', ['pt-BR', 'en']);
+
 export const credentialProviderEnum = pgEnum('credential_provider', [
   'ollama',
   'anthropic',
@@ -282,6 +288,11 @@ export const users = pgTable(
     keycloakSub: text('keycloak_sub').unique(),
     email: text('email').notNull(),
     name: text('name'),
+    // Preferência de idioma (fundação de i18n, Onda 6a) — default 'pt-BR'
+    // para NUNCA flipar silenciosamente quem já tem conta; usuário sem conta
+    // ainda usa `navigator.language` só como sugestão de EXIBIÇÃO, nunca
+    // persistida (ver `apps/web/src/lib/idioma.ts`).
+    locale: userLocaleEnum('locale').notNull().default('pt-BR'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

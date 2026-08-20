@@ -401,10 +401,19 @@ export class AuthController {
    */
   private responderComCookies(
     res: Response,
-    sessao: { accessToken: string; refreshToken: string; expiresIn: number },
+    sessao: {
+      accessToken: string;
+      refreshToken: string;
+      expiresIn: number;
+      locale: string;
+    },
   ): SessaoResponseDto {
     definirCookiesDeSessao(res, sessao.refreshToken, authConfig.refreshTtlMs());
-    return { accessToken: sessao.accessToken, expiresIn: sessao.expiresIn };
+    return {
+      accessToken: sessao.accessToken,
+      expiresIn: sessao.expiresIn,
+      locale: sessao.locale,
+    };
   }
 }
 

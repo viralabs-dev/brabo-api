@@ -233,6 +233,9 @@ const TAGS_PERMITIDAS = [
   // FASE 15b: o registro de gates, para a tela derivar as etapas em vez de
   // repetir a lista no código.
   'gates',
+  // Fundação de i18n (Onda 6a) — preferência de idioma do próprio usuário.
+  // Não é 'credenciais': não guarda segredo nenhum.
+  'usuários',
 ];
 
 /** `/projects/{id}` (OpenAPI) → `/projects/:id` (Nest), para as chaves baterem. */

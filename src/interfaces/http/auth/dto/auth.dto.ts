@@ -101,6 +101,16 @@ export class SessaoResponseDto {
     description: 'Segundos até o access token expirar.',
   })
   expiresIn!: number;
+
+  @ApiProperty({
+    example: 'pt-BR',
+    enum: ['pt-BR', 'en'],
+    description:
+      'Preferência de idioma do usuário (fundação de i18n, Onda 6a). Vem ' +
+      'aqui — e não numa chamada separada — para a web nunca precisar de um ' +
+      'round-trip extra só para saber em que idioma desenhar a tela.',
+  })
+  locale!: string;
 }
 
 /**

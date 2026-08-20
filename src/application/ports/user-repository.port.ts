@@ -1,4 +1,4 @@
-import type { User } from '../../domain/iam/user.entity';
+import type { User, UserLocale } from '../../domain/iam/user.entity';
 
 /**
  * Leitura de usuário.
@@ -10,4 +10,12 @@ import type { User } from '../../domain/iam/user.entity';
  */
 export abstract class UserRepository {
   abstract findById(id: string): Promise<User | null>;
+
+  /**
+   * Grava a preferência de idioma (fundação de i18n, Onda 6a). Único campo de
+   * `users` gravável pelo próprio dono da conta hoje — por isso um método
+   * dedicado em vez de um `update` genérico, que abriria a porta para
+   * gravar `keycloakSub`/`email` por engano.
+   */
+  abstract updateLocale(id: string, locale: UserLocale): Promise<User>;
 }
