@@ -64,6 +64,9 @@ class FakeApiToEngineClient implements ApiToEngineClient {
   async reanalyzeSession(): Promise<void> {}
   async runAnamnese(): Promise<void> {}
   async invalidateInstructions(): Promise<void> {}
+  async requestRunnerTicket(): Promise<{ ticket: string; expiresAt: Date }> {
+    return { ticket: 'fake-ticket', expiresAt: new Date() };
+  }
   executeTerminalAction(): Promise<TerminalExecutionResult> {
     return Promise.resolve({
       stdout: '',

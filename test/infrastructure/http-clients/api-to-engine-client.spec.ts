@@ -124,4 +124,41 @@ describe('HttpApiToEngineClient — validação de segmento de URL interna (RN-1
 
     await servidor.fechar();
   });
+
+  it('requestRunnerTicket: `projectId` malformado é recusado ANTES de tocar a rede', async () => {
+    process.env.ENGINE_URL = PORTA_QUE_NADA_ESCUTA;
+    const client = new HttpApiToEngineClient();
+
+    await expect(
+      client.requestRunnerTicket('../../etc/passwd', 'user-1', 'runner'),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('requestRunnerTicket: caminho feliz — devolve ticket/expiresAt do corpo da resposta do engine', async () => {
+    const expiresAt = new Date(Date.now() + 30_000).toISOString();
+    const server: Server = createServer((req, res) => {
+      res.writeHead(201, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ticket: 'ticket-bruto-do-engine', expiresAt }));
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, '127.0.0.1', resolve),
+    );
+    const { port } = server.address() as AddressInfo;
+    process.env.ENGINE_URL = `http://127.0.0.1:${port}`;
+
+    const client = new HttpApiToEngineClient();
+    const resultado = await client.requestRunnerTicket(
+      PROJETO,
+      'user-1',
+      'runner',
+    );
+
+    expect(resultado.ticket).toBe('ticket-bruto-do-engine');
+    expect(resultado.expiresAt.toISOString()).toBe(expiresAt);
+
+    await new Promise<void>((resolve) => {
+      server.closeAllConnections();
+      server.close(() => resolve());
+    });
+  });
 });
