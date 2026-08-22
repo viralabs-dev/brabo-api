@@ -22,6 +22,8 @@ import { VerifyEmailUseCase } from './verify-email.use-case';
 import { IssuePersonalAccessTokenUseCase } from './issue-personal-access-token.use-case';
 import { ListPersonalAccessTokensUseCase } from './list-personal-access-tokens.use-case';
 import { RevokePersonalAccessTokenUseCase } from './revoke-personal-access-token.use-case';
+import { ListPersonalAccessTokensAsMaintainerUseCase } from './list-personal-access-tokens-as-maintainer.use-case';
+import { RevokePersonalAccessTokenAsMaintainerUseCase } from './revoke-personal-access-token-as-maintainer.use-case';
 
 const USE_CASES = [
   TokenFactory,
@@ -38,6 +40,8 @@ const USE_CASES = [
   IssuePersonalAccessTokenUseCase,
   ListPersonalAccessTokensUseCase,
   RevokePersonalAccessTokenUseCase,
+  ListPersonalAccessTokensAsMaintainerUseCase,
+  RevokePersonalAccessTokenAsMaintainerUseCase,
 ];
 
 /**

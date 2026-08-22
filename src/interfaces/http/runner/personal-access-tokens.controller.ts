@@ -24,17 +24,27 @@ import { BEARER } from '../../../infrastructure/openapi/documento';
 import { IssuePersonalAccessTokenUseCase } from '../../../application/use-cases/auth/issue-personal-access-token.use-case';
 import { ListPersonalAccessTokensUseCase } from '../../../application/use-cases/auth/list-personal-access-tokens.use-case';
 import { RevokePersonalAccessTokenUseCase } from '../../../application/use-cases/auth/revoke-personal-access-token.use-case';
+import { ListPersonalAccessTokensAsMaintainerUseCase } from '../../../application/use-cases/auth/list-personal-access-tokens-as-maintainer.use-case';
+import { RevokePersonalAccessTokenAsMaintainerUseCase } from '../../../application/use-cases/auth/revoke-personal-access-token-as-maintainer.use-case';
 import { IssuePatRequestDto } from './dto/issue-pat.request.dto';
 import { IssuePatResponseDto } from './dto/issue-pat.response.dto';
 import { PersonalAccessTokenResponseDto } from './dto/personal-access-token.response.dto';
+import { PersonalAccessTokenAdminResponseDto } from './dto/personal-access-token-admin.response.dto';
 
 /**
  * Gestão de Personal Access Tokens do runner (ADR 0105, RN-424/425/426).
  *
- * Papel mínimo `developer` nas três rotas — a mesma régua de `runner-ticket`
- * (`RunnerTicketsController`): emitir um PAT não pode ser mais fácil que
- * usar a capacidade que ele concede. Cada usuário só gerencia os PRÓPRIOS
- * tokens — sem admin cross-user nesta onda (RN-426, decisão declarada).
+ * Papel mínimo `developer` nas três rotas de self-service — a mesma régua de
+ * `runner-ticket` (`RunnerTicketsController`): emitir um PAT não pode ser
+ * mais fácil que usar a capacidade que ele concede. Cada usuário só gerencia
+ * os PRÓPRIOS tokens por essas rotas.
+ *
+ * As duas rotas `/all`/`/:tokenId/admin` são a extensão de `maintainer`
+ * (RN-427) — resposta a incidente (dev desligado com token vazando),
+ * declarada fora de escopo no ADR 0105 e fechada aqui. Rotas SEPARADAS, não
+ * um `if` dentro dos handlers de self-service: mesmo princípio já usado no
+ * resto do produto para autorização por nível (`OfferInfraHandoffUseCase`,
+ * por exemplo).
  */
 @ApiTags('projetos')
 @ApiBearerAuth(BEARER)
@@ -46,6 +56,8 @@ export class PersonalAccessTokensController {
     private readonly issue: IssuePersonalAccessTokenUseCase,
     private readonly list: ListPersonalAccessTokensUseCase,
     private readonly revoke: RevokePersonalAccessTokenUseCase,
+    private readonly listAsMaintainer: ListPersonalAccessTokensAsMaintainerUseCase,
+    private readonly revokeAsMaintainer: RevokePersonalAccessTokenAsMaintainerUseCase,
   ) {}
 
   @Post()
@@ -96,5 +108,36 @@ export class PersonalAccessTokensController {
     @CurrentUser() user: User,
   ): Promise<void> {
     await this.revoke.execute(tokenId, user.id);
+  }
+
+  @Get('all')
+  @RequireRole('maintainer')
+  @ApiOperation({
+    summary:
+      'Lista TODOS os Personal Access Tokens do projeto, de qualquer usuário',
+    description:
+      'Visão de `maintainer` para resposta a incidente (RN-427) — inclui ' +
+      'o dono de cada token. Nunca inclui o token bruto.',
+  })
+  @ApiOkResponse({ type: [PersonalAccessTokenAdminResponseDto] })
+  listAllPats(@Param('projectId') projectId: string) {
+    return this.listAsMaintainer.execute(projectId);
+  }
+
+  @Delete(':tokenId/admin')
+  @RequireRole('maintainer')
+  @HttpCode(204)
+  @ApiOperation({
+    summary: 'Revoga o Personal Access Token de QUALQUER usuário no projeto',
+    description:
+      'Resposta a incidente — dev desligado com token vazando (RN-427). ' +
+      'Idempotente — revogar de novo não é erro.',
+  })
+  @ApiNoContentResponse({ description: 'Token revogado. Sem corpo.' })
+  async revokePatAsMaintainer(
+    @Param('projectId') projectId: string,
+    @Param('tokenId') tokenId: string,
+  ): Promise<void> {
+    await this.revokeAsMaintainer.execute(tokenId, projectId);
   }
 }

@@ -283,4 +283,139 @@ describe('DrizzlePersonalAccessTokenRepository', () => {
       ).toBeNull();
     });
   });
+
+  describe('listarDoProjeto (RN-427 — visão de maintainer)', () => {
+    it('lista tokens de TODOS os usuários do projeto, com o dono', async () => {
+      const { usuario: dono, project } = await seedUsuarioEProjeto('dono');
+      const { usuario: outro } = await seedUsuarioEProjeto('outro');
+      await repo.emitir({
+        userId: dono.id,
+        projectId: project.id,
+        name: 'laptop',
+        tokenHash: 'hash-do-dono',
+        expiresAt: null,
+      });
+      await repo.emitir({
+        userId: outro.id,
+        projectId: project.id,
+        name: 'laptop-do-outro',
+        tokenHash: 'hash-do-outro',
+        expiresAt: null,
+      });
+
+      const lista = await repo.listarDoProjeto(project.id);
+
+      expect(lista).toHaveLength(2);
+      const nomes = lista.map((t) => t.name).sort();
+      expect(nomes).toEqual(['laptop', 'laptop-do-outro']);
+      const donoNaLista = lista.find((t) => t.name === 'laptop');
+      expect(donoNaLista?.userId).toBe(dono.id);
+      expect(donoNaLista?.userEmail).toBe(dono.email);
+    });
+
+    it('não traz token de OUTRO projeto', async () => {
+      const { usuario, project } = await seedUsuarioEProjeto('a');
+      const { project: outroProjeto } = await seedUsuarioEProjeto('b');
+      await repo.emitir({
+        userId: usuario.id,
+        projectId: project.id,
+        name: 'laptop',
+        tokenHash: 'hash-a',
+        expiresAt: null,
+      });
+
+      expect(await repo.listarDoProjeto(outroProjeto.id)).toHaveLength(0);
+    });
+
+    it('nunca inclui o hash', async () => {
+      const { usuario, project } = await seedUsuarioEProjeto();
+      await repo.emitir({
+        userId: usuario.id,
+        projectId: project.id,
+        name: 'laptop',
+        tokenHash: 'hash-segredo',
+        expiresAt: null,
+      });
+
+      const [resumo] = await repo.listarDoProjeto(project.id);
+
+      expect(resumo).not.toHaveProperty('tokenHash');
+    });
+  });
+
+  describe('revogarComoMaintainer (RN-427)', () => {
+    it('revoga o token de OUTRO usuário — escopado ao projeto, não ao dono', async () => {
+      const { usuario: dono, project } = await seedUsuarioEProjeto('dono');
+      const emitido = await repo.emitir({
+        userId: dono.id,
+        projectId: project.id,
+        name: 'laptop',
+        tokenHash: 'hash-do-dono',
+        expiresAt: null,
+      });
+
+      const revogado = await repo.revogarComoMaintainer(
+        emitido.id,
+        project.id,
+        'revoked_by_maintainer',
+      );
+
+      expect(revogado?.revokedAt).toBeInstanceOf(Date);
+    });
+
+    it('idempotente: revogar um já revogado devolve a linha, sem erro', async () => {
+      const { usuario, project } = await seedUsuarioEProjeto();
+      const emitido = await repo.emitir({
+        userId: usuario.id,
+        projectId: project.id,
+        name: 'laptop',
+        tokenHash: 'hash-a',
+        expiresAt: null,
+      });
+      await repo.revogarComoMaintainer(
+        emitido.id,
+        project.id,
+        'revoked_by_maintainer',
+      );
+
+      const segunda = await repo.revogarComoMaintainer(
+        emitido.id,
+        project.id,
+        'revoked_by_maintainer',
+      );
+
+      expect(segunda).not.toBeNull();
+    });
+
+    it('token de OUTRO projeto: null — mesma resposta de "não existe", não vaza existência', async () => {
+      const { usuario, project } = await seedUsuarioEProjeto('a');
+      const { project: outroProjeto } = await seedUsuarioEProjeto('b');
+      const emitido = await repo.emitir({
+        userId: usuario.id,
+        projectId: project.id,
+        name: 'laptop',
+        tokenHash: 'hash-a',
+        expiresAt: null,
+      });
+
+      expect(
+        await repo.revogarComoMaintainer(
+          emitido.id,
+          outroProjeto.id,
+          'revoked_by_maintainer',
+        ),
+      ).toBeNull();
+    });
+
+    it('id inexistente: null', async () => {
+      const { project } = await seedUsuarioEProjeto();
+      expect(
+        await repo.revogarComoMaintainer(
+          '00000000-0000-0000-0000-000000000000',
+          project.id,
+          'revoked_by_maintainer',
+        ),
+      ).toBeNull();
+    });
+  });
 });
