@@ -1,4 +1,4 @@
-import { Controller, Post, Param } from '@nestjs/common';
+import { Controller, Post, Param, UseGuards } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -11,6 +11,8 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { User } from '../../../domain/iam/user.entity';
 import { RequireRole } from '../iam/require-role.decorator';
+import { RequirePatAuth } from '../auth/pat-route.decorator';
+import { PatAuthGuard } from '../auth/pat-auth.guard';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import { RequestRunnerTicketUseCase } from '../../../application/use-cases/runner/request-runner-ticket.use-case';
 import { RunnerTicketResponseDto } from './dto/runner-ticket.response.dto';
@@ -20,13 +22,15 @@ import { RunnerTicketResponseDto } from './dto/runner-ticket.response.dto';
  * moduledoc de `EngineWeb.RunnerSocket` no engine). Duas rotas, dois papéis
  * do MESMO tópico `terminal:<projectId>`:
  *
- * - `runner-ticket`: o CLI na máquina do usuário. Só existe em projeto modo
- *   `local` (ADR 0072) — ver `RequestRunnerTicketUseCase` pro porquê. Papel
- *   mínimo `developer`, o mesmo de ações de terminal
- *   (`MIN_ROLE_FOR_ACTION_TYPE.terminal`).
+ * - `runner-ticket`: o CLI na máquina do usuário. Só existe em projeto no
+ *   modo `runner` (RN-421, ADR 0104) — ver `RequestRunnerTicketUseCase` pro
+ *   porquê. Autenticado por Personal Access Token, NUNCA por JWT de sessão
+ *   (`PatAuthGuard`/`@RequirePatAuth()`, ADR 0105) — não há chamador de
+ *   browser pra esta rota. Papel mínimo `developer` (`RolesGuard` roda
+ *   DEPOIS do `PatAuthGuard`, revalidando o dono do token pela via normal).
  * - `terminal-ticket`: a aba Terminal da web, que só VÊ e interage — papel
- *   mínimo `viewer`, mesma régua das outras leituras da aba Code
- *   (`containers.controller.ts`).
+ *   mínimo `viewer`, JWT de sessão normal, mesma régua das outras leituras
+ *   da aba Code (`containers.controller.ts`).
  */
 @ApiTags('projetos')
 @ApiBearerAuth(BEARER)
@@ -37,19 +41,22 @@ export class RunnerTicketsController {
   constructor(private readonly requestTicket: RequestRunnerTicketUseCase) {}
 
   @Post('runner-ticket')
+  @RequirePatAuth()
+  @UseGuards(PatAuthGuard)
   @RequireRole('developer')
   @ApiOperation({
     summary: 'Emite um ticket de uso único para o runner local conectar',
     description:
       'Autentica `connect/3` do socket Phoenix `/runner` (tópico ' +
-      '`terminal:<projectId>`, papel "runner") — NÃO é o JWT reaproveitado. ' +
-      'TTL de 30s e uso único. Recusa com 400 se o projeto não estiver no ' +
-      'modo "local" (ADR 0072): o runner não tem o que servir num projeto ' +
-      'cujo código mora no container gerenciado.',
+      '`terminal:<projectId>`, papel "runner") — NÃO é o JWT reaproveitado, ' +
+      'e esta rota em si só aceita um Personal Access Token no lugar do JWT ' +
+      'de sessão (ADR 0105). TTL de 30s e uso único. Recusa com 400 se o ' +
+      'projeto não estiver no modo "runner" (RN-421): o runner não tem o ' +
+      'que servir num projeto cujo código mora no container gerenciado.',
   })
   @ApiCreatedResponse({ type: RunnerTicketResponseDto })
   @ApiBadRequestResponse({
-    description: 'Projeto não está no modo "local".',
+    description: 'Projeto não está no modo "runner".',
   })
   runnerTicket(
     @Param('projectId') projectId: string,

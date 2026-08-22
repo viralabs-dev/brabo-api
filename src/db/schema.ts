@@ -1967,6 +1967,47 @@ export const accountTokens = pgTable(
 );
 
 /**
+ * Personal Access Token do runner local (`brb_…`, ADR 0105) — escopado a
+ * UM projeto, e só à capacidade de pedir ticket de runner
+ * (`POST /projects/:projectId/runner-ticket`, `PatAuthGuard`). Diferente de
+ * `accountTokens`, permite VÁRIOS tokens vivos por usuário+projeto ao mesmo
+ * tempo (um por máquina) — não há supersede-on-issue. Diferente de
+ * `refreshTokens`, é apresentado repetidamente SEM MUDAR: não é
+ * consumido-e-reemitido por uso, então não tem `familyId`/rotação.
+ *
+ * Hash HMAC-SHA256+pepper via `hashDeToken()` (`TokenFactory.hashDe`), o
+ * mesmo mecanismo de `refreshTokens`/`accountTokens` — nunca argon2: um
+ * token de 256 bits de CSPRNG não tem superfície de dicionário, e o salt
+ * por linha do argon2 só quebraria a busca indexada por `token_hash`.
+ */
+export const personalAccessTokens = pgTable(
+  'personal_access_tokens',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    tokenHash: text('token_hash').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    revokedReason: text('revoked_reason'),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('personal_access_tokens_hash_idx').on(table.tokenHash),
+    index('personal_access_tokens_user_idx').on(table.userId),
+    index('personal_access_tokens_project_idx').on(table.projectId),
+  ],
+);
+
+/**
  * Trilha de auditoria do auth — append-only (Fase 7a, item 1).
  *
  * Sem chave estrangeira para `users`, pela mesma razão registrada em
