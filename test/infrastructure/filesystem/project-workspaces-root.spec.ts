@@ -6,6 +6,7 @@ import {
   CaminhoForaDoEscopoError,
   CaminhoLocalInvalidoError,
   caminhoDeRepositorioContido,
+  caminhoDeWorkspaceLocalValido,
   garantirQueryEscalar,
   projectScopeRoot,
   projectWorkspacesRoot,
@@ -19,14 +20,27 @@ import type { ProjectWorkspaceLocation } from '../../../src/domain/iam/project.e
  * pasta — é o que todos os casos herdados deste arquivo exercitam.
  */
 function noContainer(workspaceDirName: string): ProjectWorkspaceLocation {
-  return { workspaceDirName, workspaceMode: 'container', workspacePath: null };
+  return { workspaceDirName, executionMode: 'container', workspacePath: null };
 }
 
-/** O projeto no modo Local (RN-169): a raiz é o caminho, não o nome. */
-function local(workspacePath: string): ProjectWorkspaceLocation {
+/** O projeto no modo Pasta montada (RN-169/RN-421): a raiz é o caminho, não o nome. */
+function montado(workspacePath: string): ProjectWorkspaceLocation {
   return {
     workspaceDirName: 'checkout-3f2b1c8e',
-    workspaceMode: 'local',
+    executionMode: 'mounted',
+    workspacePath,
+  };
+}
+
+/**
+ * O projeto no modo Runner (RN-423): MESMA derivação de raiz de `mounted` —
+ * o que muda entre os dois é QUANDO/QUEM verifica o disco, não onde a raiz
+ * fica.
+ */
+function runner(workspacePath: string): ProjectWorkspaceLocation {
+  return {
+    workspaceDirName: 'checkout-3f2b1c8e',
+    executionMode: 'runner',
     workspacePath,
   };
 }
@@ -109,26 +123,35 @@ describe('projectScopeRoot', () => {
 });
 
 /**
- * O modo Local (RN-169, ADR 0072): a raiz deixa de ser `join(env, coluna)`.
+ * Os modos `mounted`/`runner` (RN-169/RN-421, ADR 0072/0104): a raiz deixa
+ * de ser `join(env, coluna)`.
  *
  * Estes casos são a metade LÉXICA da guarda — a que vale para sempre e por
  * isso roda também na leitura. A metade de disco está em
- * `validarCaminhoDeWorkspaceLocal`, logo abaixo.
+ * `validarCaminhoDeWorkspaceLocal`, logo abaixo, e só se aplica a
+ * `mounted` — `runner` não toca disco nem na criação nem na leitura
+ * (RN-423).
  */
-describe('projectScopeRoot no modo local', () => {
+describe('projectScopeRoot nos modos mounted/runner', () => {
   afterEach(() => {
     delete process.env.PROJECT_WORKSPACES_ROOT;
   });
 
-  it('caminho feliz: a raiz é a pasta do usuário, não a gerenciada', () => {
+  it.each([
+    ['mounted', montado] as const,
+    ['runner', runner] as const,
+  ])('%s — caminho feliz: a raiz é a pasta do usuário, não a gerenciada', (_nome, fabrica) => {
     process.env.PROJECT_WORKSPACES_ROOT = '/var/brabo';
-    expect(projectScopeRoot(local('/home/voce/projetos/loja'))).toBe(
+    expect(projectScopeRoot(fabrica('/home/voce/projetos/loja'))).toBe(
       '/home/voce/projetos/loja',
     );
   });
 
-  it('a barra final não muda a raiz — senão o prefixo do escopo mudaria com ela', () => {
-    expect(projectScopeRoot(local('/home/voce/projetos/loja/'))).toBe(
+  it.each([
+    ['mounted', montado] as const,
+    ['runner', runner] as const,
+  ])('%s — a barra final não muda a raiz — senão o prefixo do escopo mudaria com ela', (_nome, fabrica) => {
+    expect(projectScopeRoot(fabrica('/home/voce/projetos/loja/'))).toBe(
       '/home/voce/projetos/loja',
     );
   });
@@ -141,33 +164,63 @@ describe('projectScopeRoot no modo local', () => {
     ['relativo/sem/barra', 'relativo: dependeria do cwd de QUEM resolve'],
     ['/home/voce/../../etc', '`..` no meio: o caminho gravado não é o que se lê'],
     ['', 'vazio'],
-  ])('RECUSA %j na derivação — %s', (caminho) => {
-    expect(() => projectScopeRoot(local(caminho))).toThrow(
+  ])('RECUSA %j na derivação (mounted) — %s', (caminho) => {
+    expect(() => projectScopeRoot(montado(caminho))).toThrow(
       /workspacePath inválido/,
     );
   });
 
-  it('linha incoerente no banco (local sem caminho) NÃO vira escopo em `/`', () => {
+  it('RECUSA o mesmo léxico em runner — a diferença entre os dois modos não é o que conta como válido', () => {
+    expect(() => projectScopeRoot(runner('/home/voce/../../etc'))).toThrow(
+      /workspacePath inválido/,
+    );
+  });
+
+  it('linha incoerente no banco (mounted sem caminho) NÃO vira escopo em `/`', () => {
     // O CHECK do banco impede, mas a derivação é a última barreira: um `null`
     // caindo em `join()` daria `/`, e `/` como escopo de terminal autoriza o
     // container inteiro. Falhar alto é a resposta certa.
     expect(() =>
       projectScopeRoot({
         workspaceDirName: 'checkout-3f2b1c8e',
-        workspaceMode: 'local',
+        executionMode: 'mounted',
         workspacePath: null,
       }),
     ).toThrow(/workspacePath inválido/);
   });
 
   it('a contenção de caminho da aba Code segue valendo, agora sobre a pasta do usuário', () => {
-    const projeto = local('/home/voce/projetos/loja');
+    const projeto = montado('/home/voce/projetos/loja');
     expect(caminhoDeRepositorioContido(projeto, 'src/main.ts')).toBe(
       'src/main.ts',
     );
     expect(() =>
       caminhoDeRepositorioContido(projeto, '../../etc/passwd'),
     ).toThrow(CaminhoForaDoEscopoError);
+  });
+});
+
+/**
+ * `caminhoDeWorkspaceLocalValido` exportada (ADR 0104, RN-423) — o predicado
+ * que valida a criação de um projeto `runner` sem tocar disco. Os casos
+ * léxicos já são cobertos indiretamente pelos blocos acima (via
+ * `projectScopeRoot`) e por `validarCaminhoDeWorkspaceLocal` abaixo; este
+ * bloco prova só que a função é a MESMA usada nos dois lugares.
+ */
+describe('caminhoDeWorkspaceLocalValido', () => {
+  it('aceita o mesmo caminho que validarCaminhoDeWorkspaceLocal aceitaria, sem tocar disco', () => {
+    // Uma pasta que não existe no disco: validarCaminhoDeWorkspaceLocal
+    // recusaria (I/O), mas o predicado léxico puro aceita — é exatamente a
+    // diferença que RN-423 documenta entre `mounted` e `runner`.
+    expect(
+      caminhoDeWorkspaceLocalValido('/home/voce/projetos/inexistente'),
+    ).toBe(true);
+  });
+
+  it('recusa o mesmo léxico que RECUSARIA em mounted', () => {
+    expect(caminhoDeWorkspaceLocalValido('/')).toBe(false);
+    expect(caminhoDeWorkspaceLocalValido('relativo/sem/barra')).toBe(false);
+    expect(caminhoDeWorkspaceLocalValido('/home/voce/../../etc')).toBe(false);
   });
 });
 

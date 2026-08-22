@@ -9,9 +9,9 @@ import {
   MinLength,
 } from 'class-validator';
 import {
-  PROJECT_WORKSPACE_MODES,
+  PROJECT_EXECUTION_MODES,
   STORY_PROMOTION_MODES,
-  type ProjectWorkspaceMode,
+  type ProjectExecutionMode,
   type StoryPromotionMode,
 } from '../../../../domain/iam/project.entity';
 
@@ -61,28 +61,34 @@ export class CreateProjectDto {
   storyPromotion?: StoryPromotionMode;
 
   @ApiPropertyOptional({
-    enum: PROJECT_WORKSPACE_MODES,
+    enum: PROJECT_EXECUTION_MODES,
     example: 'container',
     description:
-      'ONDE o código deste projeto mora (RN-169 — ADR 0072). `container` ' +
-      '(default): a pasta gerenciada pelo produto dentro de ' +
-      'PROJECT_WORKSPACES_ROOT, que é o comportamento de sempre. `local`: uma ' +
-      'pasta SUA, informada em `workspacePath`, que precisa estar montada ' +
-      'dentro dos containers da api e do engine — a criação RECUSA (400) o ' +
-      'caminho que não estiver, com a instrução de como montar (RN-170).',
+      'ONDE o comando deste projeto EXECUTA (RN-169/RN-421 — ADR 0072/0104). ' +
+      '`container` (default): a pasta gerenciada pelo produto dentro de ' +
+      'PROJECT_WORKSPACES_ROOT, que é o comportamento de sempre. `mounted`: ' +
+      'uma pasta SUA, informada em `workspacePath`, que precisa estar ' +
+      'montada dentro dos containers da api e do engine — a criação RECUSA ' +
+      '(400) o caminho que não estiver, com a instrução de como montar ' +
+      '(RN-422). `runner`: uma pasta SUA que NÃO precisa de bind-mount — a ' +
+      'criação valida só o formato do caminho e o projeto nasce ' +
+      '"unverified"; rode `brabo-runner --project <id> --dir <pasta>` na ' +
+      'sua máquina para confirmar (RN-423).',
   })
   @IsOptional()
-  @IsIn(PROJECT_WORKSPACE_MODES)
-  workspaceMode?: ProjectWorkspaceMode;
+  @IsIn(PROJECT_EXECUTION_MODES)
+  executionMode?: ProjectExecutionMode;
 
   @ApiPropertyOptional({
     example: '/home/voce/projetos/loja',
     description:
-      'Caminho ABSOLUTO da pasta, obrigatório quando `workspaceMode` é ' +
-      '`local` e recusado quando é `container`. Validado na criação: precisa ' +
-      'existir e ser gravável de dentro do container, e não pode ser a raiz ' +
-      'do sistema, pasta de sistema, nem se sobrepor ao checkout do Brabo ' +
-      '(RN-170).',
+      'Caminho ABSOLUTO da pasta, obrigatório quando `executionMode` é ' +
+      '`mounted` ou `runner`, e recusado quando é `container`. Em ' +
+      '`mounted`, validado na criação: precisa existir e ser gravável de ' +
+      'dentro do container, e não pode ser a raiz do sistema, pasta de ' +
+      'sistema, nem se sobrepor ao checkout do Brabo (RN-422). Em `runner`, ' +
+      'só o FORMATO é validado agora — a existência é confirmada depois, ' +
+      'pelo runner (RN-423).',
   })
   @IsOptional()
   @IsString()

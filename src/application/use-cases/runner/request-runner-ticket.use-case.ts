@@ -26,12 +26,14 @@ export interface RunnerTicketEmitido {
  * `runner_socket_tickets` vive no schema "engine", que esta api não escreve.
  *
  * `kind: "runner"` é o CLI na máquina do usuário — só existe pra projeto em
- * modo `local` (ADR 0072): não faz sentido um runner local pra um projeto
- * cujo código mora no container gerenciado. `kind: "terminal"` é a aba
- * Terminal da web, que pode assistir/interagir em QUALQUER modo (inclusive
- * `container`, onde ela mostra o terminal do container de sempre — o
- * roteamento pro runner em `Engine.Actions.TerminalExecutor` só entra em
- * jogo quando HÁ um runner conectado).
+ * modo `runner` (ADR 0104; era `local` antes da reconciliação — RN-421): não
+ * faz sentido um runner pra um projeto cujo código mora no container
+ * gerenciado, nem para um `mounted`, que já resolve por bind-mount.
+ * `kind: "terminal"` é a aba Terminal da web, que pode assistir/interagir em
+ * QUALQUER modo (inclusive `container`, onde ela mostra o terminal do
+ * container de sempre — o roteamento pro runner em
+ * `Engine.Actions.TerminalExecutor` só entra em jogo quando HÁ um runner
+ * conectado E o workspace já foi verificado, RN-423).
  */
 @Injectable()
 export class RequestRunnerTicketUseCase {
@@ -48,13 +50,14 @@ export class RequestRunnerTicketUseCase {
     const project = await this.projects.findById(projectId);
     if (!project) throw new NotFoundException('Projeto não encontrado');
 
-    if (kind === 'runner' && project.workspaceMode !== 'local') {
+    if (kind === 'runner' && project.executionMode !== 'runner') {
       throw new BadRequestException(
-        'O runner local só pode conectar em projetos no modo "local" (ADR 0072). ' +
-          `Este projeto está no modo "${project.workspaceMode}", onde o código roda ` +
-          'dentro do container gerenciado pelo produto — não há pasta do usuário ' +
-          'nenhuma para o runner servir. Mude o modo do projeto para "local" nas ' +
-          'configurações antes de conectar um runner.',
+        'O runner local só pode conectar em projetos no modo "runner" ' +
+          `(ADR 0104). Este projeto está no modo "${project.executionMode}", ` +
+          'onde o runner não tem papel — em "container" o código roda no ' +
+          'container gerenciado, e em "mounted" a pasta já é acessada por ' +
+          'bind-mount. Crie o projeto no modo "runner" para conectar um ' +
+          'runner.',
       );
     }
 

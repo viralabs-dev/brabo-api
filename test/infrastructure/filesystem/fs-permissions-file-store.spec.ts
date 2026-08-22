@@ -12,7 +12,7 @@ import type { ProjectWorkspaceLocation } from '../../../src/domain/iam/project.e
  * o permissions.json mora.
  */
 function noContainer(workspaceDirName: string): ProjectWorkspaceLocation {
-  return { workspaceDirName, workspaceMode: 'container', workspacePath: null };
+  return { workspaceDirName, executionMode: 'container', workspacePath: null };
 }
 
 let root: string;
@@ -84,20 +84,22 @@ describe('FsPermissionsFileStore', () => {
   });
 
   /**
-   * O modo Local (RN-169): a política é gravada NA PASTA DO USUÁRIO.
+   * O modo Pasta montada (RN-169/RN-421): a política é gravada NA PASTA DO
+   * USUÁRIO.
    *
    * Este é o teste que prova que a api e o engine continuam concordando — o
    * permissions.json tem que morar na mesma raiz que o escopo de terminal
-   * autoriza, e no modo Local essa raiz é a pasta do usuário. Se ele caísse na
-   * raiz gerenciada, a política seria lida de um lugar e aplicada a outro.
+   * autoriza, e nos modos `mounted`/`runner` essa raiz é a pasta do usuário.
+   * Se ele caísse na raiz gerenciada, a política seria lida de um lugar e
+   * aplicada a outro.
    */
-  it('projeto Local: o permissions.json mora na pasta do usuário, não na gerenciada', async () => {
+  it('projeto mounted: o permissions.json mora na pasta do usuário, não na gerenciada', async () => {
     const pastaDoUsuario = await mkdtemp(join(tmpdir(), 'brabo-pasta-usuario-'));
     try {
       const store = new FsPermissionsFileStore();
       const local: ProjectWorkspaceLocation = {
         workspaceDirName: 'loja-3f2b1c8e',
-        workspaceMode: 'local',
+        executionMode: 'mounted',
         workspacePath: pastaDoUsuario,
       };
 

@@ -34,8 +34,9 @@ function projeto(overrides: Partial<Project> = {}): Project {
     name: 'Projeto',
     slug: 'projeto',
     workspaceDirName: 'projeto-abcdefgh',
-    workspaceMode: 'container',
+    executionMode: 'container',
     workspacePath: null,
+    workspaceVerifiedAt: null,
     createdBy: 'user-1',
     taskBudgetMicros: null,
     maxConsecutiveBlocked: null,
@@ -204,12 +205,28 @@ describe('RegistrarTransicaoDeContainerUseCase', () => {
     expect(atualizada.containerId).toBe('abc123');
   });
 
-  it('projeto em modo `local` não tem ciclo de vida de container (ADR 0072)', async () => {
+  it('projeto em modo `mounted` não tem ciclo de vida de container (ADR 0072/0104)', async () => {
     const { repo } = containerRepo(null);
     const useCase = new RegistrarTransicaoDeContainerUseCase(
       unitOfWork,
       projectRepo(
-        projeto({ workspaceMode: 'local', workspacePath: '/repos/x' }),
+        projeto({ executionMode: 'mounted', workspacePath: '/repos/x' }),
+      ),
+      repo,
+      obterImagemDecidida(),
+    );
+
+    await expect(useCase.execute(PROJETO, 'provisioning')).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('projeto em modo `runner` também não tem ciclo de vida de container', async () => {
+    const { repo } = containerRepo(null);
+    const useCase = new RegistrarTransicaoDeContainerUseCase(
+      unitOfWork,
+      projectRepo(
+        projeto({ executionMode: 'runner', workspacePath: '/repos/x' }),
       ),
       repo,
       obterImagemDecidida(),

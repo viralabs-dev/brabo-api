@@ -13,8 +13,9 @@ function buildProject(overrides: Partial<Project> = {}): Project {
     name: 'Projeto',
     slug: 'projeto',
     workspaceDirName: 'projeto-abcdefgh',
-    workspaceMode: 'container',
+    executionMode: 'container',
     workspacePath: null,
+    workspaceVerifiedAt: null,
     createdBy: 'user-1',
     taskBudgetMicros: null,
     maxConsecutiveBlocked: null,
@@ -48,22 +49,37 @@ function buildHarness(opts: { project?: Project | null }) {
 }
 
 describe('RequestRunnerTicketUseCase', () => {
-  it('kind "runner": recusa com 400 quando o projeto NÃO está em modo local', async () => {
+  it('kind "runner": recusa com 400 quando o projeto NÃO está em modo "runner" (ADR 0104)', async () => {
     const { useCase, requestRunnerTicket } = buildHarness({
-      project: buildProject({ workspaceMode: 'container' }),
+      project: buildProject({ executionMode: 'container' }),
     });
 
     await expect(useCase.execute('proj-1', 'user-1', 'runner')).rejects.toThrow(
-      /modo "local"/i,
+      /modo "runner"/i,
     );
 
     expect(requestRunnerTicket).not.toHaveBeenCalled();
   });
 
-  it('kind "runner": caminho feliz quando o projeto ESTÁ em modo local', async () => {
+  it('kind "runner": também recusa em modo "mounted" — bind-mount já resolve, sem papel pro runner', async () => {
     const { useCase, requestRunnerTicket } = buildHarness({
       project: buildProject({
-        workspaceMode: 'local',
+        executionMode: 'mounted',
+        workspacePath: '/pasta/do/usuario',
+      }),
+    });
+
+    await expect(useCase.execute('proj-1', 'user-1', 'runner')).rejects.toThrow(
+      /modo "runner"/i,
+    );
+
+    expect(requestRunnerTicket).not.toHaveBeenCalled();
+  });
+
+  it('kind "runner": caminho feliz quando o projeto ESTÁ em modo "runner"', async () => {
+    const { useCase, requestRunnerTicket } = buildHarness({
+      project: buildProject({
+        executionMode: 'runner',
         workspacePath: '/pasta/do/usuario',
       }),
     });
@@ -81,7 +97,7 @@ describe('RequestRunnerTicketUseCase', () => {
 
   it('kind "terminal": funciona para QUALQUER modo de projeto, inclusive container', async () => {
     const { useCase, requestRunnerTicket } = buildHarness({
-      project: buildProject({ workspaceMode: 'container' }),
+      project: buildProject({ executionMode: 'container' }),
     });
 
     const emitido = await useCase.execute('proj-1', 'user-1', 'terminal');
@@ -94,10 +110,10 @@ describe('RequestRunnerTicketUseCase', () => {
     );
   });
 
-  it('kind "terminal": também funciona em modo local', async () => {
+  it('kind "terminal": também funciona em modo runner', async () => {
     const { useCase, requestRunnerTicket } = buildHarness({
       project: buildProject({
-        workspaceMode: 'local',
+        executionMode: 'runner',
         workspacePath: '/pasta',
       }),
     });

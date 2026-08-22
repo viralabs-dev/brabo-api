@@ -264,8 +264,8 @@ function montar(
     provider?: GitProviderName;
     semRepositorio?: boolean;
     container?: EstadoDoContainer;
-    /** Onde o código mora (RN-169). Default `container`, como todo projeto. */
-    workspaceMode?: 'container' | 'local';
+    /** Onde o código mora (RN-169/RN-421). Default `container`, como todo projeto. */
+    executionMode?: 'container' | 'mounted' | 'runner';
     /** Tasks por prefixo do id (8 chars, minúsculo) — RN-152. */
     tasksPorPrefixo?: Record<string, Task>;
     moduleMap?: ModuleMap | null;
@@ -281,9 +281,12 @@ function montar(
         name: 'checkout',
         slug: 'checkout',
         workspaceDirName: PROJETO,
-        workspaceMode: opcoes.workspaceMode ?? ('container' as const),
+        executionMode: opcoes.executionMode ?? ('container' as const),
         workspacePath:
-          opcoes.workspaceMode === 'local' ? '/home/voce/projetos/loja' : null,
+          opcoes.executionMode && opcoes.executionMode !== 'container'
+            ? '/home/voce/projetos/loja'
+            : null,
+        workspaceVerifiedAt: null,
         createdBy: 'user-1',
         taskBudgetMicros: null,
         maxConsecutiveBlocked: null,
@@ -952,17 +955,30 @@ describe('ReadProjectCodeUseCase — o portão do container (FASE 25, RN-105)', 
   });
 
   /**
-   * Projeto no modo Local NÃO passa pelo portão (RN-169, ADR 0072).
+   * Projeto no modo `mounted` NÃO passa pelo portão (RN-169/RN-421, ADR
+   * 0072/0104).
    *
    * Ele não sobe container nenhum, então a decisão do Arquiteto nunca vai
    * acontecer — e a regra como estava responderia 409 para sempre, fechando a
    * aba por efeito colateral em vez de por escolha.
    */
-  it('projeto Local lê sem esperar decisão que nunca vai acontecer', async () => {
+  it('projeto mounted lê sem esperar decisão que nunca vai acontecer', async () => {
     const provider = new ProviderFalso(REPO);
     const { useCase } = montar(provider, {
       container: SEM_DECISAO,
-      workspaceMode: 'local',
+      executionMode: 'mounted',
+    });
+
+    const arvore = await useCase.tree(PROJETO, 'dev', 'src');
+
+    expect(arvore.entries.map((e) => e.name)).toEqual(['a.ts', 'b.ts', 'deep']);
+  });
+
+  it('projeto runner também não passa pelo portão — mesma régua de mounted', async () => {
+    const provider = new ProviderFalso(REPO);
+    const { useCase } = montar(provider, {
+      container: SEM_DECISAO,
+      executionMode: 'runner',
     });
 
     const arvore = await useCase.tree(PROJETO, 'dev', 'src');
