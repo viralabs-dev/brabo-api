@@ -229,15 +229,24 @@ export const storyPromotionModeEnum = pgEnum('story_promotion_mode', [
   'auto',
 ]);
 
-// ONDE o código de um projeto mora no disco (RN-169, ADR 0072).
+// ONDE o comando de um projeto EXECUTA (RN-169/RN-421, ADR 0072/0104).
 // `container` (default): a pasta gerenciada em PROJECT_WORKSPACES_ROOT — o
 // comportamento que sempre existiu, e por isso o default; projeto criado
 // antes desta coluna não muda de lugar.
-// `local`: uma pasta do USUÁRIO, caminho absoluto livre, que só funciona
-// montada nos containers da api e do engine (RN-170).
-export const projectWorkspaceModeEnum = pgEnum('project_workspace_mode', [
+// `mounted` (antigo `local`, renomeado pelo ADR 0104): uma pasta do
+// USUÁRIO, caminho absoluto livre, que só funciona montada nos containers
+// da api e do engine (RN-170/RN-422).
+// `runner`: uma pasta do usuário que NÃO precisa de bind-mount — o CLI
+// `brabo-runner` roda na máquina do usuário e confirma o caminho quando
+// conecta (RN-423). O projeto nasce com `workspace_verified_at` nulo e é
+// promovido quando a confirmação chega.
+// CUIDADO com o homônimo: nenhum destes três valores tem relação com o
+// `GitProviderName` `'local'` (git-provider.ts) — são eixos diferentes,
+// um decide ONDE O COMANDO EXECUTA, o outro decide QUEM HOSPEDA O GIT.
+export const projectExecutionModeEnum = pgEnum('project_execution_mode', [
   'container',
-  'local',
+  'mounted',
+  'runner',
 ]);
 
 // Ciclo de vida de uma tarefa executável (Fase 4a — devs): todo →
@@ -358,17 +367,26 @@ export const projects = pgTable(
     // coluna foi retroativado com o UUID puro, que é o que já era verdade no
     // disco — o backfill da migração NÃO renomeia diretório nenhum.
     workspaceDirName: text('workspace_dir_name').notNull().unique(),
-    // ONDE o código deste projeto mora (RN-169, ADR 0072). NOT NULL com
-    // default `container` — o comportamento de sempre —, pelo mesmo motivo de
-    // `story_promotion` logo abaixo: o valor É a decisão, e decisão de onde o
-    // agente escreve não fica implícita.
-    workspaceMode: projectWorkspaceModeEnum('workspace_mode')
+    // ONDE o comando deste projeto EXECUTA (RN-169/RN-421, ADR 0072/0104).
+    // NOT NULL com default `container` — o comportamento de sempre —, pelo
+    // mesmo motivo de `story_promotion` logo abaixo: o valor É a decisão, e
+    // decisão de onde o agente escreve não fica implícita.
+    executionMode: projectExecutionModeEnum('execution_mode')
       .notNull()
       .default('container'),
-    // O caminho absoluto da pasta do usuário, SÓ no modo `local`. Validado na
-    // criação (RN-170) — existe, é gravável de dentro do container, não é raiz
-    // de sistema nem contém o repositório do Brabo.
+    // O caminho absoluto da pasta do usuário, para `mounted` OU `runner`.
+    // Em `mounted`, validado NA CRIAÇÃO (RN-422) — existe, é gravável de
+    // dentro do container, não é raiz de sistema nem contém o repositório
+    // do Brabo. Em `runner`, só a parte LÉXICA é validada na criação; o
+    // runner é quem confirma o resto quando conecta (RN-423) — e pode
+    // SOBRESCREVER este valor com o caminho real do host.
     workspacePath: text('workspace_path'),
+    // NULL = não verificado. Só ganha sentido em `execution_mode: runner`
+    // — `container`/`mounted` nunca preenchem esta coluna (RN-423). Vira
+    // timestamp quando o primeiro runner conecta e confirma o caminho.
+    workspaceVerifiedAt: timestamp('workspace_verified_at', {
+      withTimezone: true,
+    }),
     createdBy: uuid('created_by')
       .notNull()
       .references(() => users.id),
@@ -402,15 +420,15 @@ export const projects = pgTable(
   },
   (table) => [
     unique().on(table.workspaceId, table.slug),
-    // Modo e caminho são UMA decisão, não duas: `local` sem caminho é escopo
-    // de terminal apontando para lugar nenhum, e `container` COM caminho é uma
-    // segunda fonte de verdade esperando divergir da primeira. A trava fica no
-    // banco, e não só no caso de uso, porque a coluna é lida por DOIS
-    // processos (api e engine) e escrita por scripts de seed/backfill que não
-    // passam pelo caso de uso.
+    // Modo e caminho são UMA decisão, não duas: `mounted`/`runner` sem
+    // caminho é escopo de terminal apontando para lugar nenhum, e
+    // `container` COM caminho é uma segunda fonte de verdade esperando
+    // divergir da primeira. A trava fica no banco, e não só no caso de uso,
+    // porque a coluna é lida por DOIS processos (api e engine) e escrita
+    // por scripts de seed/backfill que não passam pelo caso de uso.
     check(
       'projects_workspace_path_casa_com_modo',
-      sql`(${table.workspaceMode} = 'local') = (${table.workspacePath} IS NOT NULL)`,
+      sql`(${table.executionMode} <> 'container') = (${table.workspacePath} IS NOT NULL)`,
     ),
   ],
 );
@@ -1960,6 +1978,47 @@ export const accountTokens = pgTable(
 );
 
 /**
+ * Personal Access Token do runner local (`brb_…`, ADR 0105) — escopado a
+ * UM projeto, e só à capacidade de pedir ticket de runner
+ * (`POST /projects/:projectId/runner-ticket`, `PatAuthGuard`). Diferente de
+ * `accountTokens`, permite VÁRIOS tokens vivos por usuário+projeto ao mesmo
+ * tempo (um por máquina) — não há supersede-on-issue. Diferente de
+ * `refreshTokens`, é apresentado repetidamente SEM MUDAR: não é
+ * consumido-e-reemitido por uso, então não tem `familyId`/rotação.
+ *
+ * Hash HMAC-SHA256+pepper via `hashDeToken()` (`TokenFactory.hashDe`), o
+ * mesmo mecanismo de `refreshTokens`/`accountTokens` — nunca argon2: um
+ * token de 256 bits de CSPRNG não tem superfície de dicionário, e o salt
+ * por linha do argon2 só quebraria a busca indexada por `token_hash`.
+ */
+export const personalAccessTokens = pgTable(
+  'personal_access_tokens',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    tokenHash: text('token_hash').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    revokedReason: text('revoked_reason'),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('personal_access_tokens_hash_idx').on(table.tokenHash),
+    index('personal_access_tokens_user_idx').on(table.userId),
+    index('personal_access_tokens_project_idx').on(table.projectId),
+  ],
+);
+
+/**
  * Trilha de auditoria do auth — append-only (Fase 7a, item 1).
  *
  * Sem chave estrangeira para `users`, pela mesma razão registrada em
@@ -2128,7 +2187,7 @@ export const chunkScopeEnum = pgEnum('chunk_scope', ['docs', 'adr', 'session']);
  * INSERT, sem depender de nenhum provider.
  *
  * O vínculo com o escopo indexado é MUTUAMENTE EXCLUSIVO por CHECK — mesmo
- * padrão de `projects.workspace_mode`/`workspace_path` (ADR 0072): `session`
+ * padrão de `projects.execution_mode`/`workspace_path` (ADR 0072/0104): `session`
  * exige `session_id` e recusa `source_path`; `docs`/`adr` exigem
  * `source_path` (caminho relativo do arquivo) e recusam `session_id`. A
  * trava fica no banco porque a tabela vai ser escrita por um pipeline
@@ -2199,7 +2258,7 @@ export const chunks = pgTable(
       table.embedding.op('vector_cosine_ops'),
     ),
     // RN-219 — mutuamente exclusivo com sourcePath, mesmo padrão do CHECK de
-    // `projects.workspace_mode`/`workspace_path` (ADR 0072).
+    // `projects.execution_mode`/`workspace_path` (ADR 0072/0104).
     check(
       'chunks_session_id_casa_com_escopo',
       sql`(${table.scope} = 'session') = (${table.sessionId} IS NOT NULL)`,

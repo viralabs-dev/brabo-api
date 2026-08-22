@@ -62,12 +62,13 @@ export class RegistrarTransicaoDeContainerUseCase {
     if (!project) throw new NotFoundException('Projeto não encontrado');
 
     // RN: só projeto em modo `container` tem ciclo de vida de container —
-    // `local` roda no container do agente de sempre e nunca sobe o próprio
-    // (ADR 0072, RN-169).
-    if (project.workspaceMode !== 'container') {
+    // `mounted`/`runner` rodam no container do agente de sempre (ou fora
+    // dele, via runner) e nunca sobem o próprio (ADR 0072/0104, RN-169/421).
+    if (project.executionMode !== 'container') {
       throw new BadRequestException(
-        'Projeto no modo "local" não tem container próprio (ADR 0072) — ' +
-          'ciclo de vida de container só existe para projetos em modo "container".',
+        `Projeto no modo "${project.executionMode}" não tem container próprio ` +
+          '(ADR 0072/0104) — ciclo de vida de container só existe para ' +
+          'projetos em modo "container".',
       );
     }
 

@@ -7,6 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from './public.decorator';
 import { IS_SERVICE_ROUTE_KEY } from './service-route.decorator';
+import { IS_PAT_ROUTE_KEY } from './pat-route.decorator';
 import type { AuthenticatedRequest } from './authenticated-request';
 import {
   TokenVerifier,
@@ -68,6 +69,15 @@ export class JwtAuthGuard implements CanActivate {
       alvo,
     );
     if (isServico) return true;
+
+    // Rota autenticável só por Personal Access Token (ADR 0105) — quem
+    // valida é o PatAuthGuard, que roda depois deste retornar `true`. Nunca
+    // tenta `tokenVerifier.verify()` aqui: um `brb_...` não é JWT.
+    const isPat = this.reflector.getAllAndOverride<boolean>(
+      IS_PAT_ROUTE_KEY,
+      alvo,
+    );
+    if (isPat) return true;
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const token = extractBearerToken(request.headers.authorization);

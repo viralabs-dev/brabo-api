@@ -200,6 +200,11 @@ const SEM_CORPO_JSON = new Map<
   // FASE 23 / ADR 0064 — "voltar a herdar" é 204: apaga o binding, sem corpo.
   ['DELETE /projects/:projectId/agent-bindings/:agentSlug', 'sem-conteudo'],
   ['DELETE /projects/:projectId/area-bindings/:areaKey', 'sem-conteudo'],
+  // ADR 0105 — revogar PAT é 204, sem corpo.
+  [
+    'DELETE /projects/:projectId/personal-access-tokens/:tokenId',
+    'sem-conteudo',
+  ],
 ]);
 
 /**

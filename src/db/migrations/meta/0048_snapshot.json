@@ -1,5 +1,5 @@
 {
-  "id": "a6746284-1d06-4322-a0de-4ad999d8936b",
+  "id": "568719b4-0d30-4caf-b152-7ee88bc428f9",
   "prevId": "4ff534ea-bf3b-423c-981e-8e7d8dddddd2",
   "version": "7",
   "dialect": "postgresql",
@@ -3189,9 +3189,9 @@
           "primaryKey": false,
           "notNull": true
         },
-        "workspace_mode": {
-          "name": "workspace_mode",
-          "type": "project_workspace_mode",
+        "execution_mode": {
+          "name": "execution_mode",
+          "type": "project_execution_mode",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
@@ -3200,6 +3200,12 @@
         "workspace_path": {
           "name": "workspace_path",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "workspace_verified_at": {
+          "name": "workspace_verified_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
@@ -3295,7 +3301,7 @@
       "checkConstraints": {
         "projects_workspace_path_casa_com_modo": {
           "name": "projects_workspace_path_casa_com_modo",
-          "value": "(\"projects\".\"workspace_mode\" = 'local') = (\"projects\".\"workspace_path\" IS NOT NULL)"
+          "value": "(\"projects\".\"execution_mode\" <> 'container') = (\"projects\".\"workspace_path\" IS NOT NULL)"
         }
       },
       "isRLSEnabled": false
@@ -5355,14 +5361,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "locale": {
-          "name": "locale",
-          "type": "user_locale",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'pt-BR'"
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -5893,14 +5891,6 @@
         "sync"
       ]
     },
-    "public.project_workspace_mode": {
-      "name": "project_workspace_mode",
-      "schema": "public",
-      "values": [
-        "container",
-        "local"
-      ]
-    },
     "public.refresh_revoke_reason": {
       "name": "refresh_revoke_reason",
       "schema": "public",
@@ -5992,12 +5982,13 @@
         "done"
       ]
     },
-    "public.user_locale": {
-      "name": "user_locale",
+    "public.project_execution_mode": {
+      "name": "project_execution_mode",
       "schema": "public",
       "values": [
-        "pt-BR",
-        "en"
+        "container",
+        "mounted",
+        "runner"
       ]
     }
   },

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { SessionsUseCasesModule } from '../../../application/use-cases/sessions/sessions-use-cases.module';
+import { IamUseCasesModule } from '../../../application/use-cases/iam/iam-use-cases.module';
 import { LlmUseCasesModule } from '../../../application/use-cases/llm/llm-use-cases.module';
 import { ActionsUseCasesModule } from '../../../application/use-cases/actions/actions-use-cases.module';
 import { AgentsUseCasesModule } from '../../../application/use-cases/agents/agents-use-cases.module';
@@ -38,6 +39,7 @@ import { InternalGraphController } from './internal-graph.controller';
     // do grafo.
     RagUseCasesModule,
     GraphUseCasesModule,
+    IamUseCasesModule,
   ],
   controllers: [
     InternalSessionsController,

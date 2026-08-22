@@ -1,5 +1,14 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBadRequestResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -13,11 +22,14 @@ import { GetProjectGitRemoteUseCase } from '../../../application/use-cases/git/g
 import { ListBusinessRulesUseCase } from '../../../application/use-cases/backlog/list-business-rules.use-case';
 import { ListBacklogUseCase } from '../../../application/use-cases/backlog/list-backlog.use-case';
 import { ListProductMetricsUseCase } from '../../../application/use-cases/backlog/list-product-metrics.use-case';
+import { ConfirmProjectWorkspaceUseCase } from '../../../application/use-cases/iam/confirm-project-workspace.use-case';
 import { SERVICE_TOKEN } from '../../../infrastructure/openapi/documento';
 import { ProjectGitRemoteResponseDto } from './dto/project-git-remote.response.dto';
 import { ProjectBusinessRulesResponseDto } from './dto/internal.response.dto';
 import { EpicComHistoriasResponseDto } from '../backlog/dto/backlog.response.dto';
 import { ProductMetricsResponseDto } from './dto/product-metrics.response.dto';
+import { ConfirmProjectWorkspaceInternalDto } from './dto/confirm-project-workspace-internal.dto';
+import { ConfirmProjectWorkspaceResponseDto } from './dto/confirm-project-workspace.response.dto';
 
 /**
  * O que o engine precisa da api sobre um PROJETO — e não sobre uma sessão.
@@ -55,6 +67,7 @@ export class InternalProjectsController {
     private readonly listBusinessRules: ListBusinessRulesUseCase,
     private readonly listBacklog: ListBacklogUseCase,
     private readonly listProductMetrics: ListProductMetricsUseCase,
+    private readonly confirmWorkspace: ConfirmProjectWorkspaceUseCase,
   ) {}
 
   @Get(':projectId/git-remote')
@@ -123,5 +136,35 @@ export class InternalProjectsController {
   @ApiNotFoundResponse({ description: 'Projeto inexistente.' })
   productMetrics(@Param('projectId') projectId: string) {
     return this.listProductMetrics.execute(projectId);
+  }
+
+  @Post(':projectId/workspace-verification')
+  // Reconcilia o estado do projeto; não cria recurso endereçável.
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'O runner confirma o caminho de um projeto "runner" (RN-423)',
+    description:
+      'Chamada só pelo engine, depois de um runner conectar e mandar ' +
+      '`workspace_confirm` pelo canal. O runner é a FONTE DA VERDADE do ' +
+      'caminho — a api sobrescreve `workspacePath` com o que ele reportou, ' +
+      'depois de revalidar léxico (raiz de sistema/sobreposição com o ' +
+      'Brabo continuam proibidas mesmo vindo do runner). Idempotente: ' +
+      'reconectar com o MESMO caminho não regrava nada.',
+  })
+  @ApiOkResponse({ type: ConfirmProjectWorkspaceResponseDto })
+  @ApiBadRequestResponse({
+    description:
+      'Caminho lexicamente inválido, ou o projeto não está no modo "runner".',
+  })
+  @ApiNotFoundResponse({ description: 'Projeto inexistente.' })
+  confirmWorkspaceVerification(
+    @Param('projectId') projectId: string,
+    @Body() dto: ConfirmProjectWorkspaceInternalDto,
+  ) {
+    return this.confirmWorkspace.execute(projectId, {
+      path: dto.path,
+      sessionId: dto.sessionId,
+      actorId: dto.actorId,
+    });
   }
 }
