@@ -582,11 +582,13 @@ export class ReadProjectCodeUseCase {
    * o recurso ainda não existe neste estado. E a mensagem diz o que falta, para
    * a tela poder mostrar o motivo em vez de um erro mudo.
    *
-   * ## Por que o modo Local NÃO passa por aqui (RN-169, ADR 0072)
+   * ## Por que `mounted`/`runner` NÃO passam por aqui (RN-169/421,
+   * ADR 0072/0104)
    *
    * O portão existe porque o container é o que dá sentido a ler o código — e
-   * um projeto Local, por definição, não sobe container: o código mora numa
-   * pasta do usuário, montada nos containers que já existem. Deixar a regra
+   * um projeto `mounted`/`runner`, por definição, não sobe container próprio:
+   * o código mora numa pasta do usuário (montada nos containers que já
+   * existem, ou confirmada por um runner rodando fora deles). Deixar a regra
    * como estava responderia 409 para sempre num projeto onde a decisão do
    * Arquiteto nunca vai acontecer, e ninguém teria decidido isso — seria a aba
    * Code fechada por um efeito colateral, não por uma escolha. A dispensa é
@@ -594,7 +596,7 @@ export class ReadProjectCodeUseCase {
    * que o portão mora neste funil.
    */
   private async portaoDoContainer(project: Project): Promise<void> {
-    if (project.workspaceMode === 'local') return;
+    if (project.executionMode !== 'container') return;
 
     const estado = await this.container.execute(project.id);
     if (estado.status === 'sem_decisao') {

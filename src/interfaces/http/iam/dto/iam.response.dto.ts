@@ -3,10 +3,10 @@ import type { MesmasChaves, Wire } from '../../shared/dto/wire';
 import { ROLE_ORDER, type Role } from '../../../../domain/iam/role';
 import type { Workspace } from '../../../../domain/iam/workspace.entity';
 import {
-  PROJECT_WORKSPACE_MODES,
+  PROJECT_EXECUTION_MODES,
   STORY_PROMOTION_MODES,
   type Project,
-  type ProjectWorkspaceMode,
+  type ProjectExecutionMode,
   type StoryPromotionMode,
 } from '../../../../domain/iam/project.entity';
 import type { WorkspaceMember } from '../../../../domain/iam/workspace-member.entity';
@@ -155,23 +155,34 @@ export class ProjectResponseDto implements Wire<Project> {
   workspaceDirName!: string;
 
   @ApiProperty({
-    enum: PROJECT_WORKSPACE_MODES,
+    enum: PROJECT_EXECUTION_MODES,
     example: 'container',
     description:
-      'ONDE o código mora (RN-169 — ADR 0072). `container`: a pasta ' +
-      'gerenciada em PROJECT_WORKSPACES_ROOT. `local`: a pasta do usuário em ' +
-      '`workspacePath`.',
+      'ONDE o comando executa (RN-169/RN-421 — ADR 0072/0104). `container`: ' +
+      'a pasta gerenciada em PROJECT_WORKSPACES_ROOT. `mounted`: a pasta do ' +
+      'usuário em `workspacePath`, montada por bind-mount. `runner`: a ' +
+      'pasta do usuário confirmada pelo runner (ver `workspaceVerifiedAt`).',
   })
-  workspaceMode!: ProjectWorkspaceMode;
+  executionMode!: ProjectExecutionMode;
 
   @ApiProperty({
     example: null,
     nullable: true,
     description:
-      'Caminho absoluto da pasta do usuário — preenchido só no modo `local`, ' +
-      'sempre `null` no modo `container`.',
+      'Caminho absoluto da pasta do usuário — preenchido para `mounted`/' +
+      '`runner`, sempre `null` no modo `container`.',
   })
   workspacePath!: string | null;
+
+  @ApiProperty({
+    example: null,
+    nullable: true,
+    description:
+      'Quando o runner confirmou o caminho pela primeira vez (RN-423). ' +
+      '`null` = ainda não verificado — só ganha sentido em `executionMode: ' +
+      '"runner"`; `container`/`mounted` nunca preenchem este campo.',
+  })
+  workspaceVerifiedAt!: string | null;
 
   @ApiProperty({ example: '01JC4Z0000USUARIO0000000001' })
   createdBy!: string;

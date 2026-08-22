@@ -64,7 +64,7 @@ async function workspace() {
   return { ownerId: owner.id, workspaceId: ws.id };
 }
 
-describe('o projeto escolhe onde o código mora (RN-169)', () => {
+describe('o projeto escolhe onde o código mora (RN-169/RN-421, ADR 0104)', () => {
   it('sem escolha, nasce `container` com caminho nulo — o comportamento de sempre', async () => {
     const { ownerId, workspaceId } = await workspace();
 
@@ -73,43 +73,65 @@ describe('o projeto escolhe onde o código mora (RN-169)', () => {
       slug: 'padrao',
     });
 
-    expect(projeto.workspaceMode).toBe('container');
+    expect(projeto.executionMode).toBe('container');
     expect(projeto.workspacePath).toBeNull();
+    expect(projeto.workspaceVerifiedAt).toBeNull();
     // E a raiz de escopo continua saindo da pasta gerenciada.
     expect(projectScopeRoot(projeto)).toContain(projeto.workspaceDirName);
   });
 
-  it('caminho feliz do modo Local: a raiz de escopo passa a ser a pasta do usuário', async () => {
+  it('caminho feliz do modo Pasta montada: a raiz de escopo passa a ser a pasta do usuário', async () => {
     const { ownerId, workspaceId } = await workspace();
     const pasta = pastaDoUsuario();
 
     const projeto = await criarProjeto.execute(workspaceId, ownerId, {
-      name: 'local',
-      slug: 'local',
-      workspaceMode: 'local',
+      name: 'montado',
+      slug: 'montado',
+      executionMode: 'mounted',
       workspacePath: `${pasta}/`,
     });
 
-    expect(projeto.workspaceMode).toBe('local');
+    expect(projeto.executionMode).toBe('mounted');
     // Gravado NORMALIZADO: validar uma string e gravar outra é como a
     // validação deixa de valer no dia seguinte.
     expect(projeto.workspacePath).toBe(pasta);
+    expect(projeto.workspaceVerifiedAt).toBeNull();
     expect(projectScopeRoot(projeto)).toBe(pasta);
     // O nome de pasta continua existindo como identidade — ele só deixou de
     // ser o caminho.
-    expect(projeto.workspaceDirName).toBe(`local-${projeto.id.slice(0, 8)}`);
+    expect(projeto.workspaceDirName).toBe(`montado-${projeto.id.slice(0, 8)}`);
+  });
+
+  it('caminho feliz do modo Runner: valida só o LÉXICO — a pasta não precisa existir no container (RN-423)', async () => {
+    const { ownerId, workspaceId } = await workspace();
+    // Nunca criada no disco do processo de teste — é o ponto do caso: só o
+    // runner, rodando no host de verdade, confirma que ela existe.
+    const inexistenteAqui = '/home/voce/projetos/loja-nunca-montada/';
+
+    const projeto = await criarProjeto.execute(workspaceId, ownerId, {
+      name: 'runner',
+      slug: 'runner',
+      executionMode: 'runner',
+      workspacePath: inexistenteAqui,
+    });
+
+    expect(projeto.executionMode).toBe('runner');
+    expect(projeto.workspacePath).toBe('/home/voce/projetos/loja-nunca-montada');
+    // Nasce NÃO verificado — só a confirmação do runner preenche isto.
+    expect(projeto.workspaceVerifiedAt).toBeNull();
+    expect(projectScopeRoot(projeto)).toBe('/home/voce/projetos/loja-nunca-montada');
   });
 });
 
-describe('a criação RECUSA o caminho que travaria depois (RN-170)', () => {
-  it('pasta que não existe dentro do container: 400 com a instrução de montagem, e NENHUM projeto criado', async () => {
+describe('a criação RECUSA o caminho que travaria depois (RN-170/RN-422)', () => {
+  it('mounted: pasta que não existe dentro do container — 400 com a instrução de montagem, e NENHUM projeto criado', async () => {
     const { ownerId, workspaceId } = await workspace();
     const inexistente = join(pastaDoUsuario(), 'nao-montada');
 
     const promessa = criarProjeto.execute(workspaceId, ownerId, {
       name: 'quebrado',
       slug: 'quebrado',
-      workspaceMode: 'local',
+      executionMode: 'mounted',
       workspacePath: inexistente,
     });
 
@@ -123,16 +145,47 @@ describe('a criação RECUSA o caminho que travaria depois (RN-170)', () => {
     expect(await projetos.listForWorkspace(workspaceId)).toEqual([]);
   });
 
-  it('modo `local` sem caminho é recusado antes de tocar o banco', async () => {
+  it('modo `mounted` sem caminho é recusado antes de tocar o banco', async () => {
     const { ownerId, workspaceId } = await workspace();
 
     await expect(
       criarProjeto.execute(workspaceId, ownerId, {
         name: 'sem-caminho',
         slug: 'sem-caminho',
-        workspaceMode: 'local',
+        executionMode: 'mounted',
       }),
     ).rejects.toThrow(/precisa de workspacePath/);
+
+    expect(await projetos.listForWorkspace(workspaceId)).toEqual([]);
+  });
+
+  it('modo `runner` sem caminho é recusado antes de tocar o banco — mesma régua de mounted', async () => {
+    const { ownerId, workspaceId } = await workspace();
+
+    await expect(
+      criarProjeto.execute(workspaceId, ownerId, {
+        name: 'sem-caminho-runner',
+        slug: 'sem-caminho-runner',
+        executionMode: 'runner',
+      }),
+    ).rejects.toThrow(/precisa de workspacePath/);
+
+    expect(await projetos.listForWorkspace(workspaceId)).toEqual([]);
+  });
+
+  it('runner: raiz do sistema e checkout do Brabo são recusados léxico — sem tocar disco (ADR 0055/RN-423)', async () => {
+    const { ownerId, workspaceId } = await workspace();
+
+    for (const caminho of ['/', '/etc', process.cwd()]) {
+      await expect(
+        criarProjeto.execute(workspaceId, ownerId, {
+          name: 'perigoso-runner',
+          slug: 'perigoso-runner',
+          executionMode: 'runner',
+          workspacePath: caminho,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    }
 
     expect(await projetos.listForWorkspace(workspaceId)).toEqual([]);
   });
@@ -144,10 +197,10 @@ describe('a criação RECUSA o caminho que travaria depois (RN-170)', () => {
       criarProjeto.execute(workspaceId, ownerId, {
         name: 'confuso',
         slug: 'confuso',
-        workspaceMode: 'container',
+        executionMode: 'container',
         workspacePath: pastaDoUsuario(),
       }),
-    ).rejects.toThrow(/só vale para projeto no modo "local"/);
+    ).rejects.toThrow(/só vale para projeto nos modos "mounted"\/"runner"/);
   });
 
   it('a raiz do sistema e o checkout do Brabo são recusados (ADR 0055)', async () => {
@@ -158,7 +211,7 @@ describe('a criação RECUSA o caminho que travaria depois (RN-170)', () => {
         criarProjeto.execute(workspaceId, ownerId, {
           name: 'perigoso',
           slug: 'perigoso',
-          workspaceMode: 'local',
+          executionMode: 'mounted',
           workspacePath: caminho,
         }),
       ).rejects.toThrow(BadRequestException);
