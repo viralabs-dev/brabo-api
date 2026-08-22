@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { Reflector } from '@nestjs/core';
 import { RunnerTicketsController } from '../../../../src/interfaces/http/runner/runner-tickets.controller';
 import { REQUIRED_ROLE_KEY } from '../../../../src/interfaces/http/iam/require-role.decorator';
+import { IS_PAT_ROUTE_KEY } from '../../../../src/interfaces/http/auth/pat-route.decorator';
 import type { User } from '../../../../src/domain/iam/user.entity';
 
 const user = { id: 'user-1' } as User;
@@ -25,6 +26,26 @@ describe('RunnerTicketsController', () => {
         RunnerTicketsController.prototype.terminalTicket,
       ),
     ).toBe('viewer');
+  });
+
+  it('runner-ticket é @RequirePatAuth() — só aceita Personal Access Token (ADR 0105)', () => {
+    const reflector = new Reflector();
+    expect(
+      reflector.get(
+        IS_PAT_ROUTE_KEY,
+        RunnerTicketsController.prototype.runnerTicket,
+      ),
+    ).toBe(true);
+  });
+
+  it('terminal-ticket NÃO é @RequirePatAuth() — continua JWT de sessão normal', () => {
+    const reflector = new Reflector();
+    expect(
+      reflector.get(
+        IS_PAT_ROUTE_KEY,
+        RunnerTicketsController.prototype.terminalTicket,
+      ),
+    ).toBeUndefined();
   });
 
   it('runner-ticket: delega ao use case com kind "runner" e serializa a resposta', async () => {

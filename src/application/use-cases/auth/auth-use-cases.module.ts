@@ -19,6 +19,9 @@ import { SocialLoginCallbackUseCase } from './social-login-callback.use-case';
 import { StartSocialLoginUseCase } from './start-social-login.use-case';
 import { TokenFactory } from './token-factory';
 import { VerifyEmailUseCase } from './verify-email.use-case';
+import { IssuePersonalAccessTokenUseCase } from './issue-personal-access-token.use-case';
+import { ListPersonalAccessTokensUseCase } from './list-personal-access-tokens.use-case';
+import { RevokePersonalAccessTokenUseCase } from './revoke-personal-access-token.use-case';
 
 const USE_CASES = [
   TokenFactory,
@@ -32,6 +35,9 @@ const USE_CASES = [
   ResetPasswordUseCase,
   StartSocialLoginUseCase,
   SocialLoginCallbackUseCase,
+  IssuePersonalAccessTokenUseCase,
+  ListPersonalAccessTokensUseCase,
+  RevokePersonalAccessTokenUseCase,
 ];
 
 /**
