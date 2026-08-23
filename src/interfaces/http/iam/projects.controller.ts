@@ -23,6 +23,7 @@ import {
 import { RequireRole } from './require-role.decorator';
 import { GetProjectUseCase } from '../../../application/use-cases/iam/get-project.use-case';
 import { UpdateProjectUseCase } from '../../../application/use-cases/iam/update-project.use-case';
+import { ConvertProjectExecutionModeUseCase } from '../../../application/use-cases/iam/convert-project-execution-mode.use-case';
 import { DeleteProjectUseCase } from '../../../application/use-cases/iam/delete-project.use-case';
 import { AddProjectMemberUseCase } from '../../../application/use-cases/iam/add-project-member.use-case';
 import { RemoveProjectMemberUseCase } from '../../../application/use-cases/iam/remove-project-member.use-case';
@@ -30,6 +31,7 @@ import { ListProjectMembersUseCase } from '../../../application/use-cases/iam/li
 import { GetProjectPermissionsUseCase } from '../../../application/use-cases/iam/get-project-permissions.use-case';
 import { SetProjectPermissionsUseCase } from '../../../application/use-cases/iam/set-project-permissions.use-case';
 import { UpdateProjectDto } from './dto/update-project.dto';
+import { ConvertExecutionModeDto } from './dto/convert-execution-mode.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { SetProjectPermissionsDto } from './dto/set-project-permissions.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
@@ -51,6 +53,7 @@ export class ProjectsController {
   constructor(
     private readonly getProject: GetProjectUseCase,
     private readonly updateProject: UpdateProjectUseCase,
+    private readonly convertExecutionMode: ConvertProjectExecutionModeUseCase,
     private readonly deleteProject: DeleteProjectUseCase,
     private readonly addProjectMember: AddProjectMemberUseCase,
     private readonly removeProjectMember: RemoveProjectMemberUseCase,
@@ -76,6 +79,30 @@ export class ProjectsController {
   })
   update(@Param('projectId') projectId: string, @Body() dto: UpdateProjectDto) {
     return this.updateProject.execute(projectId, dto);
+  }
+
+  @Put(':projectId/execution-mode')
+  @RequireRole('maintainer')
+  @ApiOperation({
+    summary: "Converts the project's execution mode",
+    description:
+      'Migrates `execution_mode`/`workspacePath` for a project that ' +
+      'ALREADY exists (RN-447..450, ADR 0111) — dedicated route, separate ' +
+      'from PATCH, because it orchestrates more than a column write: it ' +
+      'moves permissions.json to the new scope root, retires the ' +
+      'container lifecycle row when leaving `container` mode, and refuses ' +
+      '(409) while any dev agent of the project is non-idle, since a ' +
+      "running agent doesn't re-resolve its worktree location on its own.",
+  })
+  @ApiOkResponse({ type: ProjectResponseDto })
+  @ApiConflictResponse({
+    description: 'A dev agent of this project is working or stuck right now.',
+  })
+  convertExecutionModeRoute(
+    @Param('projectId') projectId: string,
+    @Body() dto: ConvertExecutionModeDto,
+  ) {
+    return this.convertExecutionMode.execute(projectId, dto);
   }
 
   @Delete(':projectId')

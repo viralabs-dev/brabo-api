@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { projectScopeRoot } from './project-workspaces-root';
 import { Injectable } from '@nestjs/common';
@@ -41,6 +41,31 @@ export class FsPermissionsFileStore implements PermissionsFileStore {
       ...current,
       [list]: [...current[list], pattern],
     });
+  }
+
+  async move(
+    from: ProjectWorkspaceLocation,
+    to: ProjectWorkspaceLocation,
+  ): Promise<void> {
+    const fromPath = this.pathFor(from);
+    const toPath = this.pathFor(to);
+    if (fromPath === toPath) return;
+
+    // `read` já degrada para `EMPTY_PERMISSIONS_FILE` quando o arquivo de
+    // origem não existe — um projeto que nunca acumulou "sempre permitir"
+    // não tem permissions.json físico, e a conversão não deve falhar por
+    // isso: ela grava um vazio no destino, que é o mesmo estado que um
+    // projeto nesse modo teria se tivesse nascido ali.
+    const conteudo = await this.read(from);
+    await this.write(to, conteudo);
+
+    // Apagar a origem é limpeza, não correção — best-effort. Se o arquivo já
+    // não existir (o caso comum, "leu vazio"), não há nada a apagar.
+    try {
+      await unlink(fromPath);
+    } catch (error) {
+      if (!isNotFound(error)) throw error;
+    }
   }
 
   // A raiz vem da função compartilhada, e não de uma leitura própria do env:
