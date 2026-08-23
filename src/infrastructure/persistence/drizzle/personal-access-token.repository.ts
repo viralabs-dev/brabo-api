@@ -4,9 +4,10 @@ import {
   PersonalAccessTokenRepository,
   type NovoPat,
   type PatResumo,
+  type PatResumoComDono,
   type PatValidado,
 } from '../../../application/ports/personal-access-token-repository.port';
-import { personalAccessTokens } from '../../../db/schema';
+import { personalAccessTokens, users } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
@@ -123,6 +124,61 @@ export class DrizzlePersonalAccessTokenRepository extends PersonalAccessTokenRep
         and(
           eq(personalAccessTokens.id, id),
           eq(personalAccessTokens.userId, userId),
+        ),
+      );
+    return existente ? paraResumo(existente) : null;
+  }
+
+  async listarDoProjeto(projectId: string): Promise<PatResumoComDono[]> {
+    const db = currentDb(this.rootDb);
+    const linhas = await db
+      .select({
+        id: personalAccessTokens.id,
+        name: personalAccessTokens.name,
+        projectId: personalAccessTokens.projectId,
+        createdAt: personalAccessTokens.createdAt,
+        expiresAt: personalAccessTokens.expiresAt,
+        revokedAt: personalAccessTokens.revokedAt,
+        lastUsedAt: personalAccessTokens.lastUsedAt,
+        userId: personalAccessTokens.userId,
+        userEmail: users.email,
+      })
+      .from(personalAccessTokens)
+      .innerJoin(users, eq(users.id, personalAccessTokens.userId))
+      .where(eq(personalAccessTokens.projectId, projectId));
+    return linhas;
+  }
+
+  async revogarComoMaintainer(
+    id: string,
+    projectId: string,
+    motivo: string,
+  ): Promise<PatResumo | null> {
+    const db = currentDb(this.rootDb);
+
+    const [revogado] = await db
+      .update(personalAccessTokens)
+      .set({ revokedAt: new Date(), revokedReason: motivo })
+      .where(
+        and(
+          eq(personalAccessTokens.id, id),
+          eq(personalAccessTokens.projectId, projectId),
+          sql`${personalAccessTokens.revokedAt} is null`,
+        ),
+      )
+      .returning();
+    if (revogado) return paraResumo(revogado);
+
+    // Mesma disciplina de `revogar()`: zero linhas cobre "já revogado"
+    // (idempotente, devolve a linha) e "não existe/é de outro projeto"
+    // (devolve null) com a MESMA resposta — não vaza existência.
+    const [existente] = await db
+      .select()
+      .from(personalAccessTokens)
+      .where(
+        and(
+          eq(personalAccessTokens.id, id),
+          eq(personalAccessTokens.projectId, projectId),
         ),
       );
     return existente ? paraResumo(existente) : null;

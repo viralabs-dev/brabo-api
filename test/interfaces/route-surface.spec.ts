@@ -205,6 +205,11 @@ const SEM_CORPO_JSON = new Map<
     'DELETE /projects/:projectId/personal-access-tokens/:tokenId',
     'sem-conteudo',
   ],
+  // RN-427 — revogar PAT de outro usuário (maintainer) também é 204.
+  [
+    'DELETE /projects/:projectId/personal-access-tokens/:tokenId/admin',
+    'sem-conteudo',
+  ],
 ]);
 
 /**
