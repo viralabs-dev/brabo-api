@@ -214,7 +214,7 @@ describe('RolesGuard — a matriz de papéis', () => {
     expect(resolve.forProject).toHaveBeenCalledTimes(1);
   });
 
-  describe('rota @RequirePatAuth() (RN-438)', () => {
+  describe('rota @RequirePatAuth() (RN-439)', () => {
     // `JwtAuthGuard` (global) já se abstém nessas rotas sem popular
     // `request.user` — a autorização é do PRÓPRIO `PatAuthGuard`, o guard
     // LOCAL que roda DEPOIS dos dois guards globais. Sem este desvio,

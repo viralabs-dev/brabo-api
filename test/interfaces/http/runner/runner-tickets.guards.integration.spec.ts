@@ -28,7 +28,7 @@ import { DrizzleUserRepository } from '../../../../src/infrastructure/persistenc
 import { DrizzlePersonalAccessTokenRepository } from '../../../../src/infrastructure/persistence/drizzle/personal-access-token.repository';
 
 /**
- * RN-438: `POST /projects/:projectId/runner-ticket` sempre respondia 403
+ * RN-439: `POST /projects/:projectId/runner-ticket` sempre respondia 403
  * "Não autenticado", mesmo com um Personal Access Token válido — achado
  * numa verificação AO VIVO do runner conectando a um projeto real, nunca
  * por teste automatizado.
@@ -55,7 +55,7 @@ const { db, pool } = createTestDb();
 const tokenFactory = new TokenFactory();
 const patRepo = new DrizzlePersonalAccessTokenRepository(db);
 
-describe('runner-ticket — JwtAuthGuard + RolesGuard + PatAuthGuard juntos (RN-438)', () => {
+describe('runner-ticket — JwtAuthGuard + RolesGuard + PatAuthGuard juntos (RN-439)', () => {
   let app: INestApplication;
 
   beforeEach(async () => {

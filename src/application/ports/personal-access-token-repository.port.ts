@@ -22,6 +22,17 @@ export interface PatResumo {
   lastUsedAt: Date | null;
 }
 
+/**
+ * A visão de `maintainer` (RN-427) — carrega o DONO do token, porque "revogar
+ * token de quem?" numa resposta a incidente exige saber quem é. `PatResumo`
+ * nunca carrega isso de propósito: é a visão do próprio usuário sobre os
+ * PRÓPRIOS tokens, que já sabe de quem eles são.
+ */
+export interface PatResumoComDono extends PatResumo {
+  userId: string;
+  userEmail: string;
+}
+
 export abstract class PersonalAccessTokenRepository {
   /**
    * Emite um Personal Access Token novo. Diferente de `AccountTokenRepository`,
@@ -60,6 +71,24 @@ export abstract class PersonalAccessTokenRepository {
   abstract revogar(
     id: string,
     userId: string,
+    motivo: string,
+  ): Promise<PatResumo | null>;
+
+  /**
+   * Visão de `maintainer` (RN-427): TODOS os tokens do projeto, de QUALQUER
+   * usuário — escopado ao projeto no WHERE, nunca ao usuário chamador.
+   */
+  abstract listarDoProjeto(projectId: string): Promise<PatResumoComDono[]>;
+
+  /**
+   * Revoga QUALQUER token do projeto, não só o do usuário chamador — mesmo
+   * desenho idempotente de `revogar()`, mas o WHERE compara `project_id`,
+   * nunca `user_id`. `null` = não existe OU é de outro projeto — mesma
+   * resposta pros dois casos, mesma disciplina de não vazar existência.
+   */
+  abstract revogarComoMaintainer(
+    id: string,
+    projectId: string,
     motivo: string,
   ): Promise<PatResumo | null>;
 }

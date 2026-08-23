@@ -26,7 +26,7 @@ const PREFIXO = 'brb_';
  * Nenhum serviço intermediário: injeta os dois ports direto, mesmo padrão de
  * `JwtAuthGuard` (que também não passa por uma camada de "AuthService").
  *
- * RN-438 fechou DOIS defeitos nesta rota, achados juntos numa verificação AO
+ * RN-439 fechou DOIS defeitos nesta rota, achados juntos numa verificação AO
  * VIVO (nenhum teste os pegava): a ordem de guards abaixo, e o token bruto
  * sendo comparado direto contra `token_hash` em `validarEUsar` (que sempre
  * espera o HASH — `hashDeToken(token)`, nunca o token em si). O segundo
@@ -34,7 +34,7 @@ const PREFIXO = 'brb_';
  * antes deste guard rodar, o bug do hash nunca chegava a se manifestar.
  *
  * ## Por que a checagem de `@RequireRole` mora AQUI, e não em `RolesGuard`
- * (RN-438)
+ * (RN-439)
  *
  * `JwtAuthGuard` e `RolesGuard` são os dois `APP_GUARD` — GLOBAIS — e um
  * guard global SEMPRE roda antes de um guard local de rota (`@UseGuards`),
@@ -75,7 +75,7 @@ export class PatAuthGuard implements CanActivate {
     // `validarEUsar` compara contra `token_hash` — recebe o HASH
     // (HMAC-SHA256+pepper, `TokenFactory.hashDe`/`IssuePersonalAccessTokenUseCase`
     // hasheiam o token INTEIRO, prefixo incluído), nunca o bruto. Achado
-    // nesta mesma correção (RN-438): sem isto, `validarEUsar` nunca batia
+    // nesta mesma correção (RN-439): sem isto, `validarEUsar` nunca batia
     // com nada — a rota trocava um 403 sempre (guard errado na frente) por
     // um 401 sempre (hash nunca comparado), e o PAT nunca tinha funcionado
     // de ponta a ponta.
@@ -101,7 +101,7 @@ export class PatAuthGuard implements CanActivate {
 
     request.user = usuario;
 
-    // `@RequireRole` desta rota (RN-438, ver o docblock acima) — revalida
+    // `@RequireRole` desta rota (RN-439, ver o docblock acima) — revalida
     // que o dono do token ainda tem o papel exigido no projeto pela via
     // normal (`ProjectMember`/workspace). Cinto e suspensório: se o usuário
     // perder acesso ao projeto, o PAT para de funcionar mesmo sem ser

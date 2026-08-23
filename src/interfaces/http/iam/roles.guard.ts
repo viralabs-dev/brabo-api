@@ -32,7 +32,7 @@ export class RolesGuard implements CanActivate {
     // de execução do Nest, não configurável pela ordem dos decorators no
     // controller). Sem este desvio, `RolesGuard` recusava TODA chamada
     // aqui com `request.user` ainda vazio, e `PatAuthGuard` nunca chegava a
-    // rodar (RN-438) — é por isso que autorização por papel nesta rota é
+    // rodar (RN-439) — é por isso que autorização por papel nesta rota é
     // responsabilidade do PRÓPRIO `PatAuthGuard`, não deste guard.
     const isPatRoute = this.reflector.getAllAndOverride<boolean>(
       IS_PAT_ROUTE_KEY,

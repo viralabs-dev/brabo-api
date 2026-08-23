@@ -11,20 +11,26 @@ function controller() {
   const issue = { execute: vi.fn() };
   const list = { execute: vi.fn() };
   const revoke = { execute: vi.fn() };
+  const listAsMaintainer = { execute: vi.fn() };
+  const revokeAsMaintainer = { execute: vi.fn() };
   return {
     controller: new PersonalAccessTokensController(
       issue as never,
       list as never,
       revoke as never,
+      listAsMaintainer as never,
+      revokeAsMaintainer as never,
     ),
     issue,
     list,
     revoke,
+    listAsMaintainer,
+    revokeAsMaintainer,
   };
 }
 
 describe('PersonalAccessTokensController', () => {
-  it('as três rotas exigem developer — mesma régua de runner-ticket', () => {
+  it('as três rotas de self-service exigem developer — mesma régua de runner-ticket', () => {
     const reflector = new Reflector();
     for (const handler of [
       PersonalAccessTokensController.prototype.issuePat,
@@ -35,12 +41,32 @@ describe('PersonalAccessTokensController', () => {
     }
   });
 
+  it('as duas rotas de admin (RN-427) exigem maintainer', () => {
+    const reflector = new Reflector();
+    for (const handler of [
+      PersonalAccessTokensController.prototype.listAllPats,
+      PersonalAccessTokensController.prototype.revokePatAsMaintainer,
+    ]) {
+      expect(reflector.get(REQUIRED_ROLE_KEY, handler)).toBe('maintainer');
+    }
+  });
+
   it('revokePat é 204', () => {
     const reflector = new Reflector();
     expect(
       reflector.get(
         HTTP_CODE_METADATA,
         PersonalAccessTokensController.prototype.revokePat,
+      ),
+    ).toBe(204);
+  });
+
+  it('revokePatAsMaintainer também é 204', () => {
+    const reflector = new Reflector();
+    expect(
+      reflector.get(
+        HTTP_CODE_METADATA,
+        PersonalAccessTokensController.prototype.revokePatAsMaintainer,
       ),
     ).toBe(204);
   });
@@ -75,5 +101,23 @@ describe('PersonalAccessTokensController', () => {
     await c.revokePat('proj-1', 'pat-1', user);
 
     expect(revoke.execute).toHaveBeenCalledWith('pat-1', 'user-1');
+  });
+
+  it('listAllPats: delega ao use case só com projectId — nunca com userId do chamador', async () => {
+    const { controller: c, listAsMaintainer } = controller();
+    listAsMaintainer.execute.mockResolvedValue([]);
+
+    await c.listAllPats('proj-1');
+
+    expect(listAsMaintainer.execute).toHaveBeenCalledWith('proj-1');
+  });
+
+  it('revokePatAsMaintainer: delega ao use case com tokenId e projectId — nunca com userId do chamador', async () => {
+    const { controller: c, revokeAsMaintainer } = controller();
+    revokeAsMaintainer.execute.mockResolvedValue(undefined);
+
+    await c.revokePatAsMaintainer('proj-1', 'pat-1');
+
+    expect(revokeAsMaintainer.execute).toHaveBeenCalledWith('pat-1', 'proj-1');
   });
 });

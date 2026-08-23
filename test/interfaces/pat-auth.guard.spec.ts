@@ -21,7 +21,7 @@ import type { User } from '../../src/domain/iam/user.entity';
  * `personal-access-token.repository.spec.ts`; aqui o que importa é o
  * CONTRATO do guard — o que ele aceita, recusa, e em que ordem.
  *
- * Desde RN-438, este guard também aplica `@RequireRole` — ver o docblock
+ * Desde RN-439, este guard também aplica `@RequireRole` — ver o docblock
  * do próprio `PatAuthGuard` pro porquê (`RolesGuard`, guard GLOBAL, roda
  * ANTES do guard LOCAL desta rota e por isso não podia ser quem autoriza).
  */
@@ -97,7 +97,7 @@ describe('PatAuthGuard', () => {
     expect((request.user as User).id).toBe('user-1');
   });
 
-  it('valida contra o HASH do token, nunca o token bruto (RN-438)', async () => {
+  it('valida contra o HASH do token, nunca o token bruto (RN-439)', async () => {
     // Achado na mesma correção da ordem de guards: `validarEUsar` compara
     // contra `token_hash` no banco — passar o bruto direto nunca batia com
     // nada, e o sintoma era 401 sempre, escondido atrás do 403 de
@@ -191,7 +191,7 @@ describe('PatAuthGuard', () => {
     await expect(g.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
   });
 
-  describe('autorização por papel (RN-438)', () => {
+  describe('autorização por papel (RN-439)', () => {
     it('sem @RequireRole na rota: autentica e passa sem consultar papel', async () => {
       const { ctx, request } = contexto({
         authorization: 'Bearer brb_valido',

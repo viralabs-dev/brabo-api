@@ -10,7 +10,7 @@ import { PatAuthGuard } from '../auth/pat-auth.guard';
   // AuthUseCasesModule entrou pelo PAT (ADR 0105) — Issue/List/Revoke
   // PersonalAccessTokenUseCase moram lá (TokenFactory já é de lá), e
   // PersonalAccessTokensController é interface do runner que os consome.
-  // IamUseCasesModule entrou pela RN-438: `PatAuthGuard` passou a aplicar
+  // IamUseCasesModule entrou pela RN-439: `PatAuthGuard` passou a aplicar
   // `@RequireRole` ele mesmo (ver o docblock do guard) e precisa de
   // `ResolveEffectiveRoleUseCase`, que mora lá.
   imports: [RunnerUseCasesModule, AuthUseCasesModule, IamUseCasesModule],

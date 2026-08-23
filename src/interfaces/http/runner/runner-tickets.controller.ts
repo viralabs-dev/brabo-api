@@ -27,7 +27,7 @@ import { RunnerTicketResponseDto } from './dto/runner-ticket.response.dto';
  *   porquê. Autenticado por Personal Access Token, NUNCA por JWT de sessão
  *   (`PatAuthGuard`/`@RequirePatAuth()`, ADR 0105) — não há chamador de
  *   browser pra esta rota. Papel mínimo `developer`, aplicado pelo PRÓPRIO
- *   `PatAuthGuard` (RN-438): `RolesGuard` é guard GLOBAL e roda ANTES de
+ *   `PatAuthGuard` (RN-439): `RolesGuard` é guard GLOBAL e roda ANTES de
  *   `PatAuthGuard`, que é LOCAL — nunca depois, não importa a ordem dos
  *   decorators abaixo — então `RolesGuard` se abstém aqui (rota
  *   `@RequirePatAuth()`) e é `PatAuthGuard` quem revalida o papel do dono do
