@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { HandoffRepository } from '../../ports/handoff-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
+import type { Actor } from '../../../domain/sessions/session-event.entity';
 import {
   assertHandoffTargetAllowed,
   HandoffToSubagentError,
@@ -10,6 +11,15 @@ export interface CreateHandoffInput {
   fromAgent: string;
   toAgent: string;
   artifactId?: string | null;
+  /**
+   * Ator que grava o `handoff.offered` (ADR 0109/RN-440). Default
+   * `{kind:'agent', id: fromAgent}` — o caminho de sempre, o PRÓPRIO agente
+   * oferecendo o handoff que produziu. `RequestManualHandoffUseCase` passa
+   * `{kind:'user', id: userId}` explicitamente: no handoff MANUAL quem
+   * decidiu foi a pessoa, não `fromAgent` (que ali só documenta de que
+   * conversa o handoff partiu, não quem pediu).
+   */
+  actor?: Actor;
 }
 
 /**
@@ -61,7 +71,7 @@ export class CreateHandoffUseCase {
 
     await this.appendEvent.execute(projectId, sessionId, {
       type: 'handoff.offered',
-      actor: { kind: 'agent', id: input.fromAgent },
+      actor: input.actor ?? { kind: 'agent', id: input.fromAgent },
       payload: {
         handoffId: handoff.id,
         toAgent: input.toAgent,
