@@ -132,3 +132,32 @@ export function assertHandoffTargetAllowed(toAgent: string): void {
   const area = AGENT_AREAS.find((a) => ehMembroDe(a, toAgent));
   if (area) throw new HandoffToSubagentError(toAgent, area);
 }
+
+/**
+ * Agentes conversacionais SOLO — sem área, sem subagentes (ADR 0053/0087/0088).
+ * `dev-lead`/`qa`/`infra` já são LEADS de área (`AGENT_AREAS`) e por isso não
+ * entram aqui de novo; `addressableAgents` faz a união.
+ *
+ * Lista PRÓPRIA, não derivada de `apps/web/src/lib/agents.ts` — aquele roster
+ * inclui agentes de gate (qa-automacao, secops…) e o Psicólogo/Anamnese, que
+ * não são endereçáveis por handoff manual (ADR 0109).
+ */
+export const SOLO_CONVERSATIONAL_AGENTS = [
+  'criativo',
+  'po',
+  'arquiteto',
+  'ux-designer',
+  'staff',
+] as const;
+
+/**
+ * Handoff manual a agente à escolha (backlog, ADR 0109/RN-440): todo agente
+ * que um handoff EXTERNO pode endereçar sem ser recusado por
+ * `assertHandoffTargetAllowed` — leads de área ∪ agentes solo. Subagente de
+ * área nunca entra aqui, pela MESMA regra do ADR 0038 que já vale para o
+ * handoff automático.
+ */
+export function addressableAgents(): string[] {
+  const leads = AGENT_AREAS.map((area) => area.lead);
+  return [...new Set([...leads, ...SOLO_CONVERSATIONAL_AGENTS])];
+}

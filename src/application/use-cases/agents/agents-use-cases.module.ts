@@ -9,6 +9,7 @@ import { ValidateNecessityUseCase } from './validate-necessity.use-case';
 import { CreateHandoffUseCase } from './create-handoff.use-case';
 import { AcceptHandoffUseCase } from './accept-handoff.use-case';
 import { ListHandoffsUseCase } from './list-handoffs.use-case';
+import { RequestManualHandoffUseCase } from './request-manual-handoff.use-case';
 import { UpsertAgentInstructionUseCase } from './upsert-agent-instruction.use-case';
 import { CancelAgentTurnUseCase } from './cancel-agent-turn.use-case';
 import { AnswerStructuredQuestionUseCase } from './answer-structured-question.use-case';
@@ -22,6 +23,7 @@ const USE_CASES = [
   CreateHandoffUseCase,
   AcceptHandoffUseCase,
   ListHandoffsUseCase,
+  RequestManualHandoffUseCase,
   UpsertAgentInstructionUseCase,
   CancelAgentTurnUseCase,
   AnswerStructuredQuestionUseCase,
