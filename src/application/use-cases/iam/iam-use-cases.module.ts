@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { FilesystemModule } from '../../../infrastructure/filesystem/filesystem.module';
 import { SessionsUseCasesModule } from '../sessions/sessions-use-cases.module';
+import { ContainersUseCasesModule } from '../containers/containers-use-cases.module';
 import { CreateWorkspaceUseCase } from './create-workspace.use-case';
 import { ListWorkspacesForUserUseCase } from './list-workspaces-for-user.use-case';
 import { GetWorkspaceUseCase } from './get-workspace.use-case';
@@ -9,6 +10,7 @@ import { DeleteWorkspaceUseCase } from './delete-workspace.use-case';
 import { AddWorkspaceMemberUseCase } from './add-workspace-member.use-case';
 import { CreateProjectUseCase } from './create-project.use-case';
 import { ConfirmProjectWorkspaceUseCase } from './confirm-project-workspace.use-case';
+import { ConvertProjectExecutionModeUseCase } from './convert-project-execution-mode.use-case';
 import { GetProjectUseCase } from './get-project.use-case';
 import { UpdateProjectUseCase } from './update-project.use-case';
 import { DeleteProjectUseCase } from './delete-project.use-case';
@@ -41,6 +43,7 @@ const USE_CASES = [
   AddWorkspaceMemberUseCase,
   CreateProjectUseCase,
   ConfirmProjectWorkspaceUseCase,
+  ConvertProjectExecutionModeUseCase,
   GetProjectUseCase,
   UpdateProjectUseCase,
   DeleteProjectUseCase,
@@ -60,7 +63,7 @@ const USE_CASES = [
 ];
 
 @Module({
-  imports: [FilesystemModule, SessionsUseCasesModule],
+  imports: [FilesystemModule, SessionsUseCasesModule, ContainersUseCasesModule],
   providers: USE_CASES,
   exports: USE_CASES,
 })

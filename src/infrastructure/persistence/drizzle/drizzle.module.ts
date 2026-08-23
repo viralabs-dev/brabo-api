@@ -31,6 +31,7 @@ import { ModuleMapRepository } from '../../../application/ports/module-map-repos
 import { ChunkRepository } from '../../../application/ports/chunk-repository.port';
 import { ContainerRepository } from '../../../application/ports/container-repository.port';
 import { ProjectsSummaryRepository } from '../../../application/ports/projects-summary-repository.port';
+import { DevAgentActivityPort } from '../../../application/ports/dev-agent-activity.port';
 import { AgentAreaRepository } from '../../../application/ports/agent-area-repository.port';
 import { InfraArtifactRepository } from '../../../application/ports/infra-artifact-repository.port';
 import { PsychologistAnalysisRepository } from '../../../application/ports/psychologist-analysis-repository.port';
@@ -64,6 +65,7 @@ import { DrizzleUserRepository } from './user.repository';
 import { DrizzleWorkspaceRepository } from './workspace.repository';
 import { DrizzleProjectRepository } from './project.repository';
 import { DrizzleProjectsSummaryRepository } from './projects-summary.repository';
+import { DrizzleDevAgentActivityRepository } from './dev-agent-activity.repository';
 import { DrizzleSessionRepository } from './session.repository';
 import { DrizzleSessionEventRepository } from './session-event.repository';
 import { DrizzleSessionSocketTicketRepository } from './session-socket-ticket.repository';
@@ -201,6 +203,10 @@ const { db, pool } = createDrizzleClient();
       provide: ProjectsSummaryRepository,
       useClass: DrizzleProjectsSummaryRepository,
     },
+    {
+      provide: DevAgentActivityPort,
+      useClass: DrizzleDevAgentActivityRepository,
+    },
     { provide: ModuleMapRepository, useClass: DrizzleModuleMapRepository },
     { provide: ChunkRepository, useClass: DrizzleChunkRepository },
     { provide: ContainerRepository, useClass: DrizzleContainerRepository },
@@ -271,6 +277,7 @@ const { db, pool } = createDrizzleClient();
     StoryRepository,
     TaskRepository,
     ProjectsSummaryRepository,
+    DevAgentActivityPort,
     AgentAreaRepository,
     ModuleMapRepository,
     ChunkRepository,
