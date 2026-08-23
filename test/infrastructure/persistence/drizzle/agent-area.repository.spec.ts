@@ -46,7 +46,7 @@ async function criarProjetoComArea(key = 'infra') {
   return project;
 }
 
-describe('DrizzleAgentAreaRepository — budget de área (ADR 0109, RN-440)', () => {
+describe('DrizzleAgentAreaRepository — budget de área (ADR 0110, RN-443)', () => {
   it('nasce com budgetMicros null e spentMicros 0', async () => {
     const project = await criarProjetoComArea();
     const area = await repo.findByKey(project.id, 'infra');

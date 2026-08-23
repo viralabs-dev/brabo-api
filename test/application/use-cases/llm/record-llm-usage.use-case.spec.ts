@@ -300,7 +300,7 @@ describe('RecordLlmUsageUseCase', () => {
     expect(row.upstreamProvider).toBeNull();
   });
 
-  describe('gasto por área (ADR 0109, RN-440)', () => {
+  describe('gasto por área (ADR 0110, RN-443)', () => {
     it('incrementa spentMicros da área quando o ator é membro dela', async () => {
       const { project, session, model } = await setupSessionAndModel();
       await db.insert(agentAreas).values({

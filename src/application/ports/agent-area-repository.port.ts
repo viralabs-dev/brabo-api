@@ -5,7 +5,7 @@ export interface AgentArea {
   key: string;
   leadAgentId: string;
   maxParallel: number;
-  /** Teto de gasto em micro-USD (ADR 0109, RN-440). `null` = sem teto. */
+  /** Teto de gasto em micro-USD (ADR 0110, RN-443). `null` = sem teto. */
   budgetMicros: number | null;
   /** Gasto acumulado em micro-USD — soma SEMPRE, com ou sem teto definido. */
   spentMicros: number;
@@ -52,7 +52,7 @@ export abstract class AgentAreaRepository {
   ): Promise<AgentArea>;
 
   /**
-   * O teto de GASTO da área (ADR 0109, RN-440) — mesma forma de
+   * O teto de GASTO da área (ADR 0110, RN-443) — mesma forma de
    * `setMaxParallel`, mesma tela. `null` limpa o teto (volta a ilimitado).
    */
   abstract setBudget(

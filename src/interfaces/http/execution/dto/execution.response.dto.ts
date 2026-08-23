@@ -100,7 +100,7 @@ export class AreaDeAgentesResponseDto {
     example: 20000000,
     nullable: true,
     description:
-      "The area's spend cap, in micro-USD (ADR 0109, RN-440). `null` means " +
+      "The area's spend cap, in micro-USD (ADR 0110, RN-443). `null` means " +
       'no cap — an independent, ADDITIVE check next to the project and ' +
       'session budgets, not a cascade: whichever of the three hits its cap ' +
       'first blocks the call.',

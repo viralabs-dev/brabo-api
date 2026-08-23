@@ -1034,7 +1034,7 @@ export const handoffs = pgTable(
  * O teto é da SESSÃO, não do módulo. Contar por módulo permitiria N módulos ×
  * 2 agentes sem autorização nenhuma, que é o buraco de hoje com outro nome.
  *
- * `budgetMicros`/`spentMicros` (ADR 0109, RN-440) fecham o "budget por área"
+ * `budgetMicros`/`spentMicros` (ADR 0110, RN-443) fecham o "budget por área"
  * do backlog do ADR 0038, mirando exatamente `maxParallel`: teto do USUÁRIO,
  * default vazio (sem teto), direto na linha da área — não a tabela genérica
  * `budgets` (cujo CHECK de mutual exclusion projeto/sessão não tem onde

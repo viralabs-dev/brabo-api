@@ -123,7 +123,7 @@ describe('CheckBudgetGateUseCase', () => {
     expect(result.blocked).toBe(true);
   });
 
-  describe('budget de área (ADR 0109, RN-440) — aditivo, não cascata', () => {
+  describe('budget de área (ADR 0110, RN-443) — aditivo, não cascata', () => {
     it('bloqueia por área excedida MESMO com projeto e sessão OK', async () => {
       const { project } = await setupProject();
       await db.insert(agentAreas).values({

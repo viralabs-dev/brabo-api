@@ -1,6 +1,6 @@
 /**
  * Teto de gasto de UMA ÁREA (`agent_areas.budget_micros`/`spent_micros`,
- * ADR 0109, RN-440).
+ * ADR 0110, RN-443).
  *
  * ADITIVO, não cascata — não confundir com a cascata de binding de modelo
  * (`sessão > agente > área > projeto > workspace`, ADR 0064). Aqui não há

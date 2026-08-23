@@ -13,7 +13,7 @@ export interface BudgetGateResult {
 /**
  * Checagem PRÉ-chamada, fail-closed: se não der pra confirmar o estado
  * do budget (erro no repositório), a chamada é recusada — nunca
- * liberada por omissão. Projeto, sessão e ÁREA (ADR 0109) são verificados
+ * liberada por omissão. Projeto, sessão e ÁREA (ADR 0110) são verificados
  * INDEPENDENTEMENTE; qualquer um dos três bloqueado já recusa. Aditivo, não
  * cascata — não é "o mais específico vence" (isso é o binding de modelo do
  * ADR 0064, mecanismo diferente).

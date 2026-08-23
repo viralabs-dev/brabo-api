@@ -2,8 +2,8 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsNumber, Min, ValidateIf } from 'class-validator';
 
 /**
- * Corpo de `PUT projects/:projectId/agent-areas/:key/budget` (ADR 0109,
- * RN-440).
+ * Corpo de `PUT projects/:projectId/agent-areas/:key/budget` (ADR 0110,
+ * RN-443).
  */
 export class SetAreaBudgetDto {
   @ApiProperty({

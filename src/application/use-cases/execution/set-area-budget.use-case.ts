@@ -2,7 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { AgentAreaRepository } from '../../ports/agent-area-repository.port';
 
 /**
- * O teto de GASTO de uma área, decidido pelo usuário (ADR 0109, RN-440).
+ * O teto de GASTO de uma área, decidido pelo usuário (ADR 0110, RN-443).
  *
  * Espelha `SetAreaMaxParallelUseCase` — mesmo dono da decisão
  * (`maintainer`, mesma régua de "mudar o teto é decidir quanto o produto

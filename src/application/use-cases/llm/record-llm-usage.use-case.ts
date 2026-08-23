@@ -41,7 +41,7 @@ export interface RecordLlmUsageInput {
  * grava token_usage e incrementa 0/1/2 budgets (projeto e/ou sessão,
  * cada um independentemente), emitindo outbox de threshold sempre que
  * cruzar 70/90/100%, e — quando o ator pertence a uma área (ADR 0053) —
- * incrementa o `spentMicros` dela também (ADR 0109), SEMPRE, com ou sem
+ * incrementa o `spentMicros` dela também (ADR 0110), SEMPRE, com ou sem
  * teto configurado. Chamado sempre dentro da transação do use case
  * orquestrador (SendChatMessageUseCase).
  */
