@@ -78,13 +78,13 @@ export class ModelsController {
   @Get('projects/:projectId/models')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Lista os modelos ativos NO WORKSPACE do projeto',
+    summary: "Lists the models active IN THE PROJECT's WORKSPACE",
     description:
-      'Categoria `local` são os do Ollama, que não gastam dinheiro; `cloud` são os ' +
-      'de API paga. Modelo que o workspace não ativou não aparece aqui, mas ' +
-      'continua nos custos históricos — para vê-lo use a rota de catálogo. ' +
-      'A lista é do workspace DONO do projeto: o mesmo modelo pode estar ' +
-      'ligado num workspace e desligado no vizinho (ADR 0049).',
+      "The `local` category are Ollama's, which spend no money; `cloud` are " +
+      'the paid API ones. A model the workspace has not activated does not ' +
+      'appear here, but stays in the historical costs — to see it use the ' +
+      "catalog route. The list is the project's OWNER workspace: the same " +
+      'model can be on in one workspace and off in the neighboring one (ADR 0049).',
   })
   @ApiExtraModels(ModelResponseDto)
   @ApiOkResponse({
@@ -119,17 +119,18 @@ export class ModelsController {
   @Get('workspaces/:workspaceId/models/catalog')
   @RequireRole('maintainer')
   @ApiOperation({
-    summary: 'Lista o catálogo INTEIRO, inclusive inativo e indisponível',
+    summary: 'Lists the WHOLE catalog, including inactive and unavailable',
     description:
-      'A tela de curadoria. Modelo descoberto pelo sync entra `isActive: false` ' +
-      'e só aparece aqui até alguém ativá-lo; modelo que sumiu do provider vem ' +
-      'com `availability: "unavailable"` e nunca é deletado, porque bindings e ' +
-      'histórico de custo apontam para ele. O `isActive` é DESTE workspace ' +
-      '(ADR 0049); `availability` é global, porque é o que o sync observou no ' +
-      'provider.',
+      'The curation screen. A model discovered by the sync comes in as ' +
+      '`isActive: false` and only appears here until someone activates it; a ' +
+      'model that disappeared from the provider comes with ' +
+      '`availability: "unavailable"` and is never deleted, because bindings ' +
+      'and cost history point to it. `isActive` is FOR THIS workspace (ADR ' +
+      '0049); `availability` is global, because it is what the sync observed ' +
+      'at the provider.',
   })
   @ApiExtraModels(ModelComCuradoriaResponseDto)
-  @ApiForbiddenResponse({ description: 'Papel insuficiente no workspace.' })
+  @ApiForbiddenResponse({ description: 'Insufficient role on the workspace.' })
   @ApiOkResponse({
     schema: {
       type: 'object',
@@ -164,16 +165,16 @@ export class ModelsController {
   @HttpCode(200)
   @RequireRole('owner')
   @ApiOperation({
-    summary: 'Liga ou desliga modelos no seletor (lote)',
+    summary: 'Turns models on or off in the selector (batch)',
     description:
-      'Curadoria do owner, VALENDO SÓ NESTE WORKSPACE (ADR 0049). Só mexe em ' +
-      '`isActive` — `availability` é o que o sync observou no provider, é ' +
-      'global e não se altera por aqui. Lote inteiro ou nada: um id ' +
-      'inexistente reprova a chamada sem aplicar nenhuma linha.',
+      "Owner's curation, APPLYING ONLY TO THIS WORKSPACE (ADR 0049). Only " +
+      'touches `isActive` — `availability` is what the sync observed at the ' +
+      'provider, is global, and does not change here. Whole batch or nothing: ' +
+      'a non-existent id fails the call without applying any row.',
   })
   @ApiOkResponse({ type: [ModelComCuradoriaResponseDto] })
-  @ApiForbiddenResponse({ description: 'Exige `owner` no workspace.' })
-  @ApiNotFoundResponse({ description: 'Algum id do lote não existe.' })
+  @ApiForbiddenResponse({ description: 'Requires `owner` on the workspace.' })
+  @ApiNotFoundResponse({ description: "Some id in the batch doesn't exist." })
   activate(
     @Param('workspaceId') workspaceId: string,
     @CurrentUser() user: User,
@@ -193,17 +194,18 @@ export class ModelsController {
   @HttpCode(200)
   @RequireRole('owner')
   @ApiOperation({
-    summary: 'Marca para que o workspace usa cada modelo (lote)',
+    summary: 'Marks what the workspace uses each model for (batch)',
     description:
-      'O eixo que nenhum catálogo publica: "bom para código" não é capability ' +
-      'declarada por provider nenhum, é opinião de quem opera — e vale SÓ ' +
-      'neste workspace (ADR 0049). Eixo independente da ativação: marcar uso ' +
-      'não liga o modelo no seletor, e trocar o uso não desliga o que estava ' +
-      'ligado. A lista de usos SUBSTITUI a anterior.',
+      'The axis no catalog publishes: "good for code" is not a capability ' +
+      "declared by any provider, it is the operator's opinion — and applies " +
+      'ONLY to this workspace (ADR 0049). Axis independent of activation: ' +
+      'marking a use does not turn the model on in the selector, and ' +
+      'changing the use does not turn off what was on. The uses list ' +
+      'REPLACES the previous one.',
   })
   @ApiOkResponse({ type: [ModelComCuradoriaResponseDto] })
-  @ApiForbiddenResponse({ description: 'Exige `owner` no workspace.' })
-  @ApiNotFoundResponse({ description: 'Algum id do lote não existe.' })
+  @ApiForbiddenResponse({ description: 'Requires `owner` on the workspace.' })
+  @ApiNotFoundResponse({ description: "Some id in the batch doesn't exist." })
   uses(
     @Param('workspaceId') workspaceId: string,
     @CurrentUser() user: User,
@@ -221,14 +223,14 @@ export class ModelsController {
   @HttpCode(200)
   @RequireRole('owner')
   @ApiOperation({
-    summary: 'Força agora o sync de catálogo que o job periódico faz',
+    summary: 'Forces the catalog sync the periodic job does, right now',
     description:
-      'Mesmo caso de uso da rota interna que o engine agenda — o botão de ' +
-      'atualizar da tela de curadoria não tem um caminho próprio, para não ' +
-      'existirem duas reconciliações que possam divergir.',
+      'Same use case as the internal route the engine schedules — the ' +
+      "curation screen's refresh button has no path of its own, so there " +
+      'are never two reconciliations that could diverge.',
   })
   @ApiOkResponse({ type: SyncModelCatalogResponseDto })
-  @ApiForbiddenResponse({ description: 'Exige `owner` no workspace.' })
+  @ApiForbiddenResponse({ description: 'Requires `owner` on the workspace.' })
   sync() {
     return this.syncCatalog.execute();
   }
@@ -236,15 +238,15 @@ export class ModelsController {
   @Patch('workspaces/:workspaceId/models/:modelId/pricing')
   @RequireRole('owner')
   @ApiOperation({
-    summary: 'Corrige o preço de um modelo',
+    summary: "Corrects a model's price",
     description:
-      'Vale daqui em diante e NUNCA reprecifica o passado: cada linha de ' +
-      '`token_usage` guarda o preço que produziu o custo dela. A mudança fica ' +
-      'registrada com o par antes/depois — consultável na rota de histórico.',
+      'Applies from now on and NEVER re-prices the past: each `token_usage` ' +
+      'row keeps the price that produced its cost. The change stays recorded ' +
+      'with the before/after pair — queryable on the history route.',
   })
   @ApiOkResponse({ type: ModelResponseDto })
-  @ApiForbiddenResponse({ description: 'Exige `owner` no workspace.' })
-  @ApiNotFoundResponse({ description: 'Modelo inexistente.' })
+  @ApiForbiddenResponse({ description: 'Requires `owner` on the workspace.' })
+  @ApiNotFoundResponse({ description: 'Model not found.' })
   updatePricing(
     @CurrentUser() user: User,
     @Param('modelId') modelId: string,
@@ -261,14 +263,14 @@ export class ModelsController {
   @Get('workspaces/:workspaceId/models/:modelId/price-changes')
   @RequireRole('maintainer')
   @ApiOperation({
-    summary: 'Histórico de mudanças de preço de um modelo',
+    summary: "History of a model's price changes",
     description:
-      'Mais recente primeiro. É log imutável: nunca sofre UPDATE, e a linha ' +
-      'traz o par antes/depois para a auditoria não depender de reconstruir o ' +
-      '"antes" a partir da linha anterior.',
+      'Most recent first. It is an immutable log: never gets an UPDATE, and ' +
+      'the row carries the before/after pair so the audit does not depend on ' +
+      'reconstructing the "before" from the previous row.',
   })
   @ApiOkResponse({ type: [ModelPriceChangeResponseDto] })
-  @ApiForbiddenResponse({ description: 'Papel insuficiente no workspace.' })
+  @ApiForbiddenResponse({ description: 'Insufficient role on the workspace.' })
   priceChanges(@Param('modelId') modelId: string) {
     return this.listPriceChanges.execute(modelId);
   }

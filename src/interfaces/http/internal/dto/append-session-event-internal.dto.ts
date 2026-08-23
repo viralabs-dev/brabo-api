@@ -9,7 +9,7 @@ export class AppendSessionEventInternalDto {
 
   @ApiProperty({
     example: 'agent.tool_call',
-    description: 'Ver `docs/reference/events.md`.',
+    description: 'See `docs/reference/events.md`.',
   })
   @IsString()
   @IsNotEmpty()
@@ -21,7 +21,7 @@ export class AppendSessionEventInternalDto {
 
   @ApiProperty({
     example: 'dev-api',
-    description: 'Slug do agente que emitiu.',
+    description: 'Slug of the agent that emitted it.',
   })
   @IsString()
   @IsNotEmpty()

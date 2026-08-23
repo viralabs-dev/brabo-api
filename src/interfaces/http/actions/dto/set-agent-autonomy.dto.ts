@@ -13,7 +13,7 @@ const AGENT_AUTONOMY_ACTION_TYPES = [
 ];
 
 export class SetAgentAutonomyDto {
-  @ApiProperty({ example: 'dev-api', description: 'Slug do agente.' })
+  @ApiProperty({ example: 'dev-api', description: 'Agent slug.' })
   @IsString()
   @IsNotEmpty()
   agentId!: string;
@@ -22,10 +22,10 @@ export class SetAgentAutonomyDto {
     enum: AGENT_AUTONOMY_ACTION_TYPES,
     example: 'terminal',
     description:
-      'Tipo de ação, ou `"*"` para TODO tipo de ação deste agente — o "auto ' +
-      'mode" do ApprovalCard (RN-153). Uma regra ESPECÍFICA sempre vence a ' +
-      'curinga: gravar `terminal: deny` com `"*": auto_approve` já ligado ' +
-      'continua negando terminal.',
+      'Action type, or `"*"` for EVERY action type of this agent — the ' +
+      '"auto mode" of the ApprovalCard (RN-153). A SPECIFIC rule always wins ' +
+      'over the wildcard: recording `terminal: deny` with `"*": auto_approve` ' +
+      'already on still denies terminal.',
   })
   @IsIn(AGENT_AUTONOMY_ACTION_TYPES)
   actionType!: AgentAutonomyActionType;
@@ -34,8 +34,8 @@ export class SetAgentAutonomyDto {
     enum: ['auto_approve', 'require_approval', 'deny'],
     example: 'auto_approve',
     description:
-      'Autonomia deste agente para este tipo. NÃO sobrepõe o `permissions.json`: ' +
-      'um padrão em `deny` continua bloqueado por mais autonomia que o agente tenha.',
+      "This agent's autonomy for this type. Does NOT override `permissions.json`: " +
+      'a pattern in `deny` stays blocked no matter how much autonomy the agent has.',
   })
   @IsIn(['auto_approve', 'require_approval', 'deny'])
   mode!: PermissionPolicy;

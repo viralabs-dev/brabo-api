@@ -23,6 +23,8 @@ import { GetWorkspaceSummaryUseCase } from './get-workspace-summary.use-case';
 import { GetProjectsStatusForWorkspaceUseCase } from './get-projects-status-for-workspace.use-case';
 import { GetProjectsSummaryForWorkspaceUseCase } from './get-projects-summary-for-workspace.use-case';
 import { GetUnreadEventsForWorkspaceUseCase } from './get-unread-events-for-workspace.use-case';
+import { GetUserPreferencesUseCase } from './get-user-preferences.use-case';
+import { UpdateUserPreferencesUseCase } from './update-user-preferences.use-case';
 // Provider direto, e não `imports: [AgentsUseCasesModule]`: o seeding só
 // depende do repositório de áreas (DrizzleModule é global), e importar o
 // módulo de agentes traria sessões e o cliente do engine junto — aresta nova
@@ -53,6 +55,8 @@ const USE_CASES = [
   GetProjectsStatusForWorkspaceUseCase,
   GetProjectsSummaryForWorkspaceUseCase,
   GetUnreadEventsForWorkspaceUseCase,
+  GetUserPreferencesUseCase,
+  UpdateUserPreferencesUseCase,
 ];
 
 @Module({

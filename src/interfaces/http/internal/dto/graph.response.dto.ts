@@ -11,7 +11,9 @@ import { ApiProperty } from '@nestjs/swagger';
 export class PromptTemplateReadResponseDto {
   @ApiProperty({ example: 'dev-agent-kickoff' }) name!: string;
   @ApiProperty({ example: '3' }) version!: string;
-  @ApiProperty({ example: 'Você é o dev agent do módulo {{modulo}}...' })
+  @ApiProperty({
+    example: 'You are the dev agent for the {{modulo}} module...',
+  })
   body!: string;
   @ApiProperty({ example: 'sha256:9f2c...' }) hash!: string;
 }
@@ -20,15 +22,17 @@ export class PromptTemplateReadResponseDto {
 export class PromptTemplateResponseDto {
   @ApiProperty({ example: 'dev-agent-kickoff' }) name!: string;
   @ApiProperty({ example: '3' }) version!: string;
-  @ApiProperty({ example: 'Você é o dev agent do módulo {{modulo}}...' })
+  @ApiProperty({
+    example: 'You are the dev agent for the {{modulo}} module...',
+  })
   body!: string;
   @ApiProperty({ example: 'sha256:9f2c...' }) hash!: string;
   @ApiProperty({
     description:
-      'Se esta é a versão vigente do template. Sempre `true` logo depois de ' +
-      'um upsert que criou versão nova; pode voltar `false` quando o hit de ' +
-      'idempotência (mesmo hash) aponta para uma versão que uma publicação ' +
-      'POSTERIOR já desativou.',
+      'Whether this is the current version of the template. Always `true` ' +
+      'right after an upsert that created a new version; can come back ' +
+      '`false` when the idempotency hit (same hash) points to a version ' +
+      'that a LATER publish already deactivated.',
   })
   active!: boolean;
 }

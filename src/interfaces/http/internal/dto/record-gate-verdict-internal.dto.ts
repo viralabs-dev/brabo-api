@@ -30,14 +30,14 @@ export class RecordGateVerdictInternalDto {
   veredito!: 'approved' | 'changes_requested';
 
   @ApiProperty({
-    example: 'Faltam testes para o caminho de estoque insuficiente.',
+    example: 'Missing tests for the insufficient-stock path.',
   })
   @IsString()
   resumo!: string;
 
   @ApiProperty({
-    example: ['Sem teste para SKU inexistente'],
-    description: 'O que precisa mudar, item a item.',
+    example: ['No test for a non-existent SKU'],
+    description: 'What needs to change, item by item.',
   })
   @IsArray()
   @IsString({ each: true })
@@ -46,7 +46,7 @@ export class RecordGateVerdictInternalDto {
   @ApiPropertyOptional({
     example: 3,
     description:
-      'Teto de idas e voltas antes de a tarefa virar `blocked`. Omitido usa o default do domínio.',
+      "Cap on round trips before the task becomes `blocked`. Omitted uses the domain's default.",
   })
   @IsOptional()
   @IsInt()

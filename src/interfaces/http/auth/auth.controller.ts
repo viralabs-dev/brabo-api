@@ -103,17 +103,17 @@ export class AuthController {
   @Public()
   @HttpCode(202)
   @ApiOperation({
-    summary: 'Cria uma conta e envia o e-mail de verificação',
+    summary: 'Creates an account and sends the verification email',
     description:
-      'Responde 202 tanto para endereço novo quanto para endereço já cadastrado — ' +
-      'a resposta não revela se a conta existe. No segundo caso nada é criado e o ' +
-      'dono do endereço recebe um aviso.',
+      'Responds 202 for both a new address and an already-registered one — ' +
+      "the response doesn't reveal whether the account exists. In the second " +
+      "case nothing is created and the address's owner gets a notice.",
   })
   @ApiAcceptedResponse({ type: AceiteResponseDto })
   @ApiForbiddenResponse({
-    description: 'Cadastro fechado (AUTH_REGISTRATION_ENABLED=false).',
+    description: 'Registration closed (AUTH_REGISTRATION_ENABLED=false).',
   })
-  @ApiBadRequestResponse({ description: 'Senha fora da política mínima.' })
+  @ApiBadRequestResponse({ description: 'Password fails the minimum policy.' })
   async register(
     @Body() dto: RegisterDto,
     @Req() req: Request,
@@ -131,14 +131,14 @@ export class AuthController {
   @Public()
   @HttpCode(200)
   @ApiOperation({
-    summary: 'Autentica e emite o par access + refresh',
+    summary: 'Authenticates and issues the access + refresh pair',
     description:
-      'E-mail inexistente, senha errada e conta bloqueada devolvem exatamente a ' +
-      'mesma resposta 401 — mesmo corpo, mesmo status.',
+      'A nonexistent email, wrong password, and a locked account all return ' +
+      'exactly the same 401 response — same body, same status.',
   })
   @ApiOkResponse({ type: SessaoResponseDto })
-  @ApiUnauthorizedResponse({ description: 'Credenciais inválidas.' })
-  @ApiForbiddenResponse({ description: 'E-mail ainda não verificado.' })
+  @ApiUnauthorizedResponse({ description: 'Invalid credentials.' })
+  @ApiForbiddenResponse({ description: 'Email not yet verified.' })
   async login_(
     @Body() dto: LoginDto,
     @Req() req: Request,
@@ -156,15 +156,15 @@ export class AuthController {
   @Public()
   @HttpCode(200)
   @ApiOperation({
-    summary: 'Rotaciona o refresh e emite um par novo',
+    summary: 'Rotates the refresh and issues a new pair',
     description:
-      'O refresh apresentado é consumido. Reapresentar um token já rotacionado ' +
-      'revoga a FAMÍLIA inteira e registra evento de segurança — inclusive quando ' +
-      'a causa foi um duplo-submit do cliente.',
+      'The presented refresh is consumed. Re-presenting an already-rotated ' +
+      'token revokes the WHOLE family and records a security event — even ' +
+      'when the cause was a client double-submit.',
   })
   @ApiOkResponse({ type: SessaoResponseDto })
   @ApiUnauthorizedResponse({
-    description: 'Refresh inválido, expirado ou já usado.',
+    description: 'Refresh invalid, expired, or already used.',
   })
   async refresh_(
     @Req() req: Request,
@@ -187,13 +187,13 @@ export class AuthController {
   @Public()
   @HttpCode(204)
   @ApiOperation({
-    summary: 'Revoga a família do refresh apresentado',
+    summary: 'Revokes the family of the presented refresh',
     description:
-      'Sempre 204, inclusive para token desconhecido — responder 401 aqui seria ' +
-      'um oráculo de validade de token.',
+      'Always 204, even for an unknown token — answering 401 here would be a ' +
+      'token-validity oracle.',
   })
   @ApiNoContentResponse({
-    description: 'Sessão encerrada. Os cookies de sessão são limpos.',
+    description: 'Session ended. The session cookies are cleared.',
   })
   async logout_(
     @Req() req: Request,
@@ -218,14 +218,14 @@ export class AuthController {
   @Public()
   @HttpCode(204)
   @ApiOperation({
-    summary: 'Confirma o e-mail com o token de uso único',
+    summary: 'Confirms the email with the single-use token',
   })
   @ApiBadRequestResponse({
     description:
-      'Link inválido, expirado ou já usado — os três com a mesma resposta.',
+      'Link invalid, expired, or already used — all three with the same response.',
   })
   @ApiNoContentResponse({
-    description: 'E-mail verificado; o login já funciona.',
+    description: 'Email verified; login already works.',
   })
   async verifyEmail(
     @Body() dto: VerifyEmailDto,
@@ -241,10 +241,10 @@ export class AuthController {
   @Public()
   @HttpCode(202)
   @ApiOperation({
-    summary: 'Pede o link de redefinição de senha',
+    summary: 'Requests the password reset link',
     description:
-      'Responde 202 para endereço conhecido e desconhecido. É também o caminho ' +
-      'de quem foi importado do Keycloak e ainda não definiu senha.',
+      'Responds 202 for both a known and an unknown address. It is also the ' +
+      "path for whoever was imported from Keycloak and hasn't set a password yet.",
   })
   @ApiAcceptedResponse({ type: AceiteResponseDto })
   async requestPasswordReset(
@@ -262,18 +262,18 @@ export class AuthController {
   @Public()
   @HttpCode(204)
   @ApiOperation({
-    summary: 'Define a senha nova a partir do token',
+    summary: 'Sets the new password from the token',
     description:
-      'Revoga TODAS as sessões do usuário. Não emite tokens: quem redefine a ' +
-      'senha é mandado para o login, para comprometer o e-mail não equivaler a ' +
-      'tomar a conta em um passo só.',
+      "Revokes ALL of the user's sessions. Does not issue tokens: whoever " +
+      'resets the password is sent to login, so that compromising the email ' +
+      "doesn't equal taking over the account in a single step.",
   })
   @ApiBadRequestResponse({
-    description: 'Link inválido/expirado, ou senha fora da política.',
+    description: 'Link invalid/expired, or password fails the policy.',
   })
   @ApiNoContentResponse({
     description:
-      'Senha definida. TODAS as sessões vivas do usuário são revogadas junto.',
+      "Password set. ALL of the user's live sessions are revoked along with it.",
   })
   async resetPassword(
     @Body() dto: ResetPasswordDto,
@@ -298,17 +298,17 @@ export class AuthController {
   @Public()
   @ApiParam({ name: 'provider', enum: SOCIAL_PROVIDERS })
   @ApiOperation({
-    summary: 'Redireciona para o provider OAuth para login social',
+    summary: 'Redirects to the OAuth provider for social login',
     description:
-      'O `state` vai assinado por HMAC com propósito PRÓPRIO — nunca o do ' +
-      'fluxo de conexão de git a um projeto (ver ADR 0084).',
+      'The `state` goes signed by HMAC with its OWN purpose — never the git ' +
+      "connection-to-project flow's (see ADR 0084).",
   })
   @ApiResponse({
     status: 302,
-    description: 'Redireciona para o provider.',
+    description: 'Redirects to the provider.',
     headers: {
       Location: {
-        description: 'URL de autorização do provider.',
+        description: "The provider's authorization URL.",
         schema: {
           type: 'string',
           example: 'https://github.com/login/oauth/authorize?…',
@@ -316,7 +316,7 @@ export class AuthController {
       },
     },
   })
-  @ApiBadRequestResponse({ description: 'Provider fora de `github`/`gitlab`.' })
+  @ApiBadRequestResponse({ description: 'Provider outside `github`/`gitlab`.' })
   oauthStart(@Param('provider') provider: string, @Res() res: Response): void {
     const { authorizeUrl } = this.startSocialLogin.execute(
       parseSocialProvider(provider),
@@ -342,17 +342,17 @@ export class AuthController {
   @Public()
   @ApiParam({ name: 'provider', enum: SOCIAL_PROVIDERS })
   @ApiOperation({
-    summary: 'Recebe o retorno do OAuth de login social',
+    summary: 'Receives the social login OAuth callback',
     description:
-      'Sucesso vai para `WEB_ORIGIN/` já com os cookies de sessão gravados; ' +
-      'falha vai para `WEB_ORIGIN/login?oauth_error=1`, sem detalhar o motivo.',
+      'Success goes to `WEB_ORIGIN/` already with the session cookies set; ' +
+      'failure goes to `WEB_ORIGIN/login?oauth_error=1`, without detailing the reason.',
   })
   @ApiResponse({
     status: 302,
-    description: 'Redireciona para a web.',
+    description: 'Redirects to the web app.',
     headers: {
       Location: {
-        description: 'Destino na web.',
+        description: 'Destination on the web app.',
         schema: {
           type: 'string',
           example: 'http://localhost:5173/',
@@ -401,10 +401,19 @@ export class AuthController {
    */
   private responderComCookies(
     res: Response,
-    sessao: { accessToken: string; refreshToken: string; expiresIn: number },
+    sessao: {
+      accessToken: string;
+      refreshToken: string;
+      expiresIn: number;
+      locale: string;
+    },
   ): SessaoResponseDto {
     definirCookiesDeSessao(res, sessao.refreshToken, authConfig.refreshTtlMs());
-    return { accessToken: sessao.accessToken, expiresIn: sessao.expiresIn };
+    return {
+      accessToken: sessao.accessToken,
+      expiresIn: sessao.expiresIn,
+      locale: sessao.locale,
+    };
   }
 }
 

@@ -5,8 +5,8 @@ export class AcceptParallelizationDto {
   @ApiProperty({
     example: 'api',
     description:
-      'Nome do módulo, como ele aparece no `module_map`. Sobe um dev agent ' +
-      'dedicado a ele, em worktree isolado.',
+      'Module name, as it appears in the `module_map`. Starts a dev agent ' +
+      'dedicated to it, in an isolated worktree.',
   })
   @IsString()
   module!: string;

@@ -37,13 +37,13 @@ import type {
 export class CodeTreeEntryResponseDto implements Wire<GitTreeEntry> {
   @ApiProperty({
     example: 'apps/api/src/main.ts',
-    description: 'Caminho completo a partir da raiz do repositório.',
+    description: "Full path from the repository's root.",
   })
   path!: string;
 
   @ApiProperty({
     example: 'main.ts',
-    description: 'Último segmento de `path`.',
+    description: 'Last segment of `path`.',
   })
   name!: string;
 
@@ -55,8 +55,9 @@ export class CodeTreeEntryResponseDto implements Wire<GitTreeEntry> {
     nullable: true,
     example: 1284,
     description:
-      'Bytes. `null` para diretório e quando o provider não informa — ' +
-      'distinguir de `0` importa para a tela não afirmar "arquivo vazio".',
+      "Bytes. `null` for a directory and when the provider doesn't report " +
+      'it — distinguishing it from `0` matters so the screen never claims ' +
+      '"empty file".',
   })
   size!: number | null;
 }
@@ -66,12 +67,12 @@ export const _chavesEntradaDeArvore: MesmasChaves<
 > = true;
 
 export class CodeTreeResponseDto implements Wire<GitTree> {
-  @ApiProperty({ example: 'dev', description: 'Branch, tag ou sha lido.' })
+  @ApiProperty({ example: 'dev', description: 'Branch, tag, or sha read.' })
   ref!: string;
 
   @ApiProperty({
     example: 'apps/api',
-    description: 'Diretório listado; `""` é a raiz.',
+    description: 'Listed directory; `""` is the root.',
   })
   path!: string;
 
@@ -81,8 +82,8 @@ export class CodeTreeResponseDto implements Wire<GitTree> {
   @ApiProperty({
     example: false,
     description:
-      'A listagem foi cortada no teto de entradas por nível. Há mais coisa ' +
-      'no diretório do que veio aqui.',
+      'The listing was cut at the per-level entry cap. There is more in ' +
+      'the directory than what came back here.',
   })
   truncated!: boolean;
 }
@@ -97,21 +98,22 @@ export class CodeFileResponseDto implements Wire<CodeFile> {
 
   @ApiProperty({
     example: "import { NestFactory } from '@nestjs/core';\n",
-    description: 'Conteúdo em UTF-8. Binário não é servido por esta rota.',
+    description: 'UTF-8 content. Binary is not served by this route.',
   })
   content!: string;
 
   @ApiProperty({
     example: false,
     description:
-      'O arquivo passou do teto de bytes e `content` é o começo dele. ' +
-      'A aba é de leitura: cortar e avisar é melhor que recusar o arquivo.',
+      'The file went past the byte cap and `content` is the beginning of ' +
+      'it. The tab is read-only: truncating and warning is better than ' +
+      'refusing the file.',
   })
   truncated!: boolean;
 
   @ApiProperty({
     example: 1284,
-    description: 'Bytes DEVOLVIDOS — depois do corte, não antes.',
+    description: 'Bytes RETURNED — after the cut, not before.',
   })
   bytes!: number;
 }
@@ -123,14 +125,14 @@ export class CodeSearchMatchResponseDto implements Wire<CodeSearchMatch> {
 
   @ApiProperty({
     example: 12,
-    description: '1-based, como todo editor mostra.',
+    description: '1-based, like every editor shows.',
   })
   line!: number;
 
   @ApiProperty({
     example: '  const app = await NestFactory.create(AppModule);',
     description:
-      'A linha inteira, cortada para não devolver arquivo minificado.',
+      'The whole line, trimmed so a minified file is never returned in full.',
   })
   text!: string;
 }
@@ -143,7 +145,7 @@ export class CodeSearchResponseDto implements Wire<CodeSearchResult> {
   @ApiProperty({ example: 'dev' })
   ref!: string;
 
-  @ApiProperty({ example: '', description: 'Subárvore em que a busca correu.' })
+  @ApiProperty({ example: '', description: 'Subtree the search ran over.' })
   path!: string;
 
   @ApiProperty({ example: 'NestFactory' })
@@ -155,16 +157,16 @@ export class CodeSearchResponseDto implements Wire<CodeSearchResult> {
   @ApiProperty({
     example: 87,
     description:
-      'Arquivos efetivamente abertos. É o custo real da busca, e está na ' +
-      'resposta para não ficar invisível.',
+      "Files actually opened. This is the search's real cost, and it is in " +
+      "the response so it doesn't stay invisible.",
   })
   filesScanned!: number;
 
   @ApiProperty({
     example: true,
     description:
-      'A varredura parou por orçamento (diretórios, arquivos ou casamentos) ' +
-      'antes de acabar a árvore. Refine o `path` ou o termo.',
+      'The scan stopped by budget (directories, files, or matches) before ' +
+      'finishing the tree. Narrow the `path` or the term.',
   })
   truncated!: boolean;
 }
@@ -176,7 +178,7 @@ export const _chavesBusca: MesmasChaves<
 export class CodeDiffFileResponseDto implements Wire<GitPullRequestDiffFile> {
   @ApiProperty({
     example: 'apps/api/src/main.ts',
-    description: 'Caminho DEPOIS da mudança (para `removed`, o que sumiu).',
+    description: 'Path AFTER the change (for `removed`, what disappeared).',
   })
   path!: string;
 
@@ -184,7 +186,7 @@ export class CodeDiffFileResponseDto implements Wire<GitPullRequestDiffFile> {
     type: String,
     nullable: true,
     example: null,
-    description: 'Caminho anterior; só preenchido quando `status` é `renamed`.',
+    description: 'Previous path; only filled in when `status` is `renamed`.',
   })
   previousPath!: string | null;
 
@@ -205,10 +207,10 @@ export class CodeDiffFileResponseDto implements Wire<GitPullRequestDiffFile> {
     nullable: true,
     example: '@@ -1,3 +1,4 @@\n+import x\n',
     description:
-      'Diff unificado do arquivo. `null` quando o provider não o entrega ' +
-      '(binário, ou patch grande demais) — distinto de `""`, que é "veio ' +
-      'vazio". Sem essa distinção a tela diria "sem mudanças" num binário ' +
-      'alterado.',
+      "The file's unified diff. `null` when the provider doesn't deliver it " +
+      '(binary, or the patch is too large) — distinct from `""`, which is ' +
+      '"came back empty". Without this distinction the screen would say ' +
+      '"no changes" on a changed binary.',
   })
   patch!: string | null;
 }
@@ -226,7 +228,7 @@ export class CodeDiffResponseDto implements Wire<GitPullRequestDiff> {
 
   @ApiProperty({
     example: false,
-    description: 'A lista foi cortada no teto de arquivos por diff.',
+    description: 'The list was cut at the per-diff file cap.',
   })
   truncated!: boolean;
 }
@@ -246,7 +248,7 @@ export const _chavesDiff: MesmasChaves<
 export class CodeBlameLineResponseDto implements Wire<GitBlameLine> {
   @ApiProperty({
     example: 12,
-    description: '1-based, como todo editor mostra.',
+    description: '1-based, like every editor shows.',
   })
   line!: number;
 
@@ -259,7 +261,7 @@ export class CodeBlameLineResponseDto implements Wire<GitBlameLine> {
   @ApiProperty({ example: '2026-08-04T12:00:00.000Z' })
   authorDate!: string;
 
-  @ApiProperty({ example: 'fix(api): corrige o resolvedor de credencial' })
+  @ApiProperty({ example: 'fix(api): fix the credential resolver' })
   summary!: string;
 }
 export const _chavesLinhaDeBlame: MesmasChaves<
@@ -279,7 +281,7 @@ export class CodeBlameResponseDto implements Wire<GitBlame> {
 
   @ApiProperty({
     example: false,
-    description: 'O arquivo passou do teto de linhas anotadas por chamada.',
+    description: 'The file went past the per-call annotated-lines cap.',
   })
   truncated!: boolean;
 }
@@ -292,7 +294,9 @@ export class CodePullRequestSummaryResponseDto implements Wire<GitPullRequestSum
   @ApiProperty({ example: 42 })
   number!: number;
 
-  @ApiProperty({ example: 'fix(api): a área de agentes nasce com o projeto' })
+  @ApiProperty({
+    example: 'fix(api): the agents area is born with the project',
+  })
   title!: string;
 
   @ApiProperty({ example: 'https://github.com/acme/repo/pull/42' })
@@ -303,7 +307,7 @@ export class CodePullRequestSummaryResponseDto implements Wire<GitPullRequestSum
     nullable: true,
     example: 'daneiel',
     description:
-      'Login/username de quem abriu. `null` quando o provider não informa.',
+      "Login/username of who opened it. `null` when the provider doesn't report it.",
   })
   author!: string | null;
 
@@ -320,7 +324,7 @@ export class CodePullRequestSummaryResponseDto implements Wire<GitPullRequestSum
     type: String,
     nullable: true,
     example: '2026-08-04T12:00:00.000Z',
-    description: '`null` quando o provider não informa.',
+    description: "`null` when the provider doesn't report it.",
   })
   updatedAt!: string | null;
 }
@@ -335,7 +339,7 @@ export class CodePullRequestListResponseDto implements Wire<GitPullRequestList> 
 
   @ApiProperty({
     example: false,
-    description: 'A lista foi cortada no teto de PRs por chamada.',
+    description: 'The list was cut at the per-call PR cap.',
   })
   truncated!: boolean;
 }
@@ -360,13 +364,13 @@ export class CodeBranchProducedByResponseDto implements Wire<CodeBranchProducedB
   @ApiProperty({
     example: 'dev-pieces',
     description:
-      'agent_id do dev que criou a branch (`dev-<modulo>`/`dev-<modulo>-2`, RN-087).',
+      'agent_id of the dev who created the branch (`dev-<module>`/`dev-<module>-2`, RN-087).',
   })
   agentId!: string;
 
   @ApiProperty({
     example: 'pieces',
-    description: 'Nome do módulo, do `module_map` vigente do projeto.',
+    description: "Module name, from the project's current `module_map`.",
   })
   moduleId!: string;
 }
@@ -390,7 +394,7 @@ export class CodeBranchDetailResponseDto implements Wire<CodeBranch> {
     nullable: true,
     example: 3,
     description:
-      'Commits à frente da branch default. `null` quando não computável.',
+      'Commits ahead of the default branch. `null` when not computable.',
   })
   ahead!: number | null;
 
@@ -398,7 +402,7 @@ export class CodeBranchDetailResponseDto implements Wire<CodeBranch> {
     type: Number,
     nullable: true,
     example: 0,
-    description: 'Commits atrás da branch default.',
+    description: 'Commits behind the default branch.',
   })
   behind!: number | null;
 
@@ -409,9 +413,9 @@ export class CodeBranchDetailResponseDto implements Wire<CodeBranch> {
     type: CodeBranchProducedByResponseDto,
     nullable: true,
     description:
-      'Dev agent/módulo dono da branch (RN-152), quando o nome bate com ' +
-      '`feature/task-XXXXXXXX` e a task/módulo ainda são resolvíveis. ' +
-      '`null` pra branch manual do usuário ou pra `main`/`dev`/`qa`.',
+      'Dev agent/module owning the branch (RN-152), when the name matches ' +
+      '`feature/task-XXXXXXXX` and the task/module are still resolvable. ' +
+      "`null` for a user's manual branch or for `main`/`dev`/`qa`.",
   })
   producedBy!: CodeBranchProducedByResponseDto | null;
 }
@@ -426,7 +430,7 @@ export class CodeBranchDetailListResponseDto implements Wire<CodeBranchList> {
 
   @ApiProperty({
     example: false,
-    description: 'A lista foi cortada no teto de branches enriquecidas.',
+    description: 'The list was cut at the enriched-branches cap.',
   })
   truncated!: boolean;
 }

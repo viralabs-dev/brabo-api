@@ -10,6 +10,7 @@ import { ExecuteInfraPrUseCase } from './execute-infra-pr.use-case';
 import { ExecuteInstructionPatchUseCase } from './execute-instruction-patch.use-case';
 import { ExecuteGitActionUseCase } from './execute-git-action.use-case';
 import { ListProposedActionsUseCase } from './list-proposed-actions.use-case';
+import { ListProjectPendingActionsUseCase } from './list-project-pending-actions.use-case';
 import { GetAgentAutonomyUseCase } from './get-agent-autonomy.use-case';
 import { SetAgentAutonomyUseCase } from './set-agent-autonomy.use-case';
 import { IamUseCasesModule } from '../iam/iam-use-cases.module';
@@ -32,6 +33,7 @@ const USE_CASES = [
   ExecuteInstructionPatchUseCase,
   ExecuteGitActionUseCase,
   ListProposedActionsUseCase,
+  ListProjectPendingActionsUseCase,
   GetAgentAutonomyUseCase,
   SetAgentAutonomyUseCase,
 ];

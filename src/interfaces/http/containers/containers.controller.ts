@@ -38,9 +38,9 @@ import {
  * pública de escrita em qualquer uma das duas faria o estado nascer sem
  * passar por quem tem autoridade sobre ele.
  */
-@ApiTags('projetos')
+@ApiTags('projects')
 @ApiBearerAuth(BEARER)
-@ApiForbiddenResponse({ description: 'Papel insuficiente no projeto.' })
+@ApiForbiddenResponse({ description: 'Insufficient role on the project.' })
 @Controller('projects/:projectId/container')
 export class ContainersController {
   constructor(
@@ -51,11 +51,11 @@ export class ContainersController {
   @Get()
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Estado do container do projeto (a decisão de imagem vigente)',
+    summary: "State of the project's container (the current image decision)",
     description:
-      'Enquanto o status for `sem_decisao`, o container do projeto não sobe e ' +
-      'a aba Code responde 409 — é o portão da RN-105. Ver o estado é a mesma ' +
-      'permissão que ver o projeto, então `viewer`.',
+      'While the status is `sem_decisao`, the project container does not come ' +
+      "up and the Code tab responds 409 — that's the RN-105 gate. Seeing the " +
+      'state requires the same permission as seeing the project, so `viewer`.',
   })
   @ApiOkResponse({ type: EstadoDoContainerResponseDto })
   estado(@Param('projectId') projectId: string) {
@@ -65,17 +65,16 @@ export class ContainersController {
   @Get('lifecycle')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Ciclo de vida do container do projeto (estado registrado)',
+    summary: "Lifecycle of the project's container (recorded state)",
     description:
-      '`null` quando o projeto nunca foi provisionado — hoje o caso comum, ' +
-      'porque nenhum orquestrador real transiciona esta tabela ainda ' +
-      '(RN-243/RN-267). O estado devolvido é o que foi REGISTRADO, nunca ' +
-      'confirmado contra um daemon Docker: não existe cliente Docker no ' +
-      'produto.',
+      '`null` when the project was never provisioned — the common case today, ' +
+      'because no real orchestrator transitions this table yet ' +
+      '(RN-243/RN-267). The returned state is what was RECORDED, never ' +
+      'confirmed against a Docker daemon: the product has no Docker client.',
   })
   @ApiOkResponse({
     type: CicloDeVidaDoContainerResponseDto,
-    description: 'O ciclo de vida registrado, ou `null` (nunca provisionado).',
+    description: 'The recorded lifecycle, or `null` (never provisioned).',
   })
   async cicloDeVida(@Param('projectId') projectId: string) {
     const estado = await this.obterCicloDeVida.execute(projectId);

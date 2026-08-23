@@ -46,6 +46,9 @@ export async function provisionarUsuario(
         keycloakSub: null,
         email: existente.email,
         name: entrada.nome,
+        // Sintético — este ramo não lê o usuário de verdade (só a
+        // credencial), e locale não interessa a nenhum chamador deste script.
+        locale: 'pt-BR',
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -69,6 +72,9 @@ export async function provisionarUsuario(
         keycloakSub: null,
         email: criada.email,
         name: entrada.nome,
+        // Sintético, mesma nota do outro ramo — a linha recém-criada usa o
+        // default do banco ('pt-BR'), e nada aqui lê o valor real.
+        locale: 'pt-BR',
         createdAt: new Date(),
         updatedAt: new Date(),
       },

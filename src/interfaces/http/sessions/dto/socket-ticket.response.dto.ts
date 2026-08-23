@@ -11,14 +11,14 @@ import { ApiProperty } from '@nestjs/swagger';
 export class SocketTicketResponseDto {
   @ApiProperty({
     description:
-      'Token opaco de uso único, base64url. TTL de 30s e uso único: some ' +
-      'depois do primeiro `connect/3` bem-sucedido, ou quando expira.',
+      'Opaque, single-use, base64url token. 30s TTL and single use: it ' +
+      'disappears after the first successful `connect/3`, or when it expires.',
   })
   ticket!: string;
 
   @ApiProperty({
     example: '2026-08-09T12:00:30.000Z',
-    description: 'Quando o ticket expira (ISO 8601).',
+    description: 'When the ticket expires (ISO 8601).',
   })
   expiresAt!: string;
 }

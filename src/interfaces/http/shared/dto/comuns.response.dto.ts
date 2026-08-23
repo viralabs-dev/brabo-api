@@ -23,24 +23,24 @@ import type { MesmasChaves, Wire } from './wire';
 export class OkResponseDto {
   @ApiProperty({
     example: true,
-    description: 'Sempre `true`; falha vira erro HTTP.',
+    description: 'Always `true`; failure becomes an HTTP error.',
   })
   ok!: true;
 }
 
-/** Quem originou um evento ou uma ação: pessoa, agente ou o próprio sistema. */
+/** Who originated an event or an action: a person, an agent, or the system itself. */
 export class ActorResponseDto implements Wire<Actor> {
   @ApiProperty({
     enum: ['user', 'agent', 'system'],
     example: 'agent',
-    description: 'Natureza de quem agiu.',
+    description: 'Nature of who acted.',
   })
   kind!: ActorKind;
 
   @ApiProperty({
     example: 'dev-api',
     description:
-      'Id do usuário quando `kind=user`; o slug do agente quando `kind=agent`.',
+      "The user's id when `kind=user`; the agent's slug when `kind=agent`.",
   })
   id!: string;
 }

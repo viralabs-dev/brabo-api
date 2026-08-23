@@ -13,7 +13,9 @@ export class UpsertPromptTemplateInternalDto {
   @MinLength(1)
   version!: string;
 
-  @ApiProperty({ example: 'Você é o dev agent do módulo {{modulo}}...' })
+  @ApiProperty({
+    example: 'You are the dev agent for the {{modulo}} module...',
+  })
   @IsString()
   @MinLength(1)
   body!: string;

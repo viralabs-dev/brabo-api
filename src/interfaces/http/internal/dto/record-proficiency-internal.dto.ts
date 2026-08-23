@@ -22,9 +22,9 @@ export class ProficiencyDraftDto {
   @ApiProperty({
     example: 'TypeScript',
     description:
-      'Precisa estar no catálogo devolvido em `anamnese-context` — competência ' +
-      'inventada é RECUSADA. O catálogo depende do `module_map`, por isso a ' +
-      'validação é de domínio e não do DTO.',
+      'Has to be in the catalog returned by `anamnese-context` — a made-up ' +
+      'competency is REJECTED. The catalog depends on the `module_map`, which ' +
+      'is why the validation is a domain one, not a DTO one.',
   })
   @IsString()
   competency!: string;
@@ -37,7 +37,7 @@ export class ProficiencyDraftDto {
   level!: string;
 
   @ApiProperty({
-    example: 'Corrigiu três erros de tipagem genérica sem ajuda.',
+    example: 'Fixed three generic typing errors without help.',
   })
   @IsString()
   rationale!: string;
@@ -45,8 +45,8 @@ export class ProficiencyDraftDto {
   @ApiProperty({
     example: ['01JC4Z8QK3M7YV2N5T9B0PXHRB'],
     description:
-      'Cada id tem de ser de um evento de sessão DESTE projeto — citar evento de ' +
-      'outro projeto é recusado.',
+      'Each id has to be from a session event OF THIS project — citing an ' +
+      'event from another project is refused.',
   })
   @IsArray()
   @ArrayNotEmpty()
@@ -90,14 +90,14 @@ export class ProposeInstructionPatchInternalDto {
   agent!: string;
 
   @ApiProperty({
-    example: '# dev-api\n\nSempre rode a suíte antes de abrir a PR.',
-    description: 'O arquivo INTEIRO como ficaria, não um diff.',
+    example: '# dev-api\n\nAlways run the suite before opening the PR.',
+    description: 'The WHOLE file as it would end up, not a diff.',
   })
   @IsString()
   proposedContent!: string;
 
   @ApiProperty({
-    example: 'A tarefa foi reaberta três vezes por falta de critério.',
+    example: 'The task was reopened three times for lack of a criterion.',
   })
   @IsString()
   rationale!: string;
@@ -106,7 +106,7 @@ export class ProposeInstructionPatchInternalDto {
     format: 'uuid',
     example: '01JC4Z0000HIPOTESE000000001',
     description:
-      'A hipótese que motivou o patch. É o que fecha o loop da Anamnese.',
+      'The hypothesis that motivated the patch. This is what closes the Anamnesis loop.',
   })
   @IsOptional()
   @IsUUID()
@@ -126,7 +126,7 @@ export class ProposeMaxParallelInternalDto {
 
   @ApiProperty({
     example: 'dev',
-    description: 'A área cujo teto subiria.',
+    description: 'The area whose cap would go up.',
   })
   @IsString()
   area!: string;
@@ -135,9 +135,9 @@ export class ProposeMaxParallelInternalDto {
     example: 4,
     minimum: 1,
     description:
-      'O teto proposto. Precisa ser MAIOR que o vigente — propor o mesmo ou ' +
-      'menos vira ruído numa fila que o usuário precisa ler, e a Anamnese roda ' +
-      'periodicamente.',
+      'The proposed cap. Has to be HIGHER than the current one — proposing ' +
+      'the same or less turns into noise in a queue the user needs to read, ' +
+      'and the Anamnesis runs periodically.',
   })
   @IsInt()
   @Min(1)
@@ -145,8 +145,8 @@ export class ProposeMaxParallelInternalDto {
 
   @ApiProperty({
     example:
-      'Você autorizou o mesmo pedido quatro vezes nesta janela, e nenhuma foi negada.',
-    description: 'Ancorado nas DECISÕES observadas, não em impressão.',
+      'You authorized the same request four times in this window, and none was denied.',
+    description: 'Anchored in OBSERVED DECISIONS, not an impression.',
   })
   @IsString()
   rationale!: string;

@@ -15,7 +15,7 @@ export class RagSearchInternalDto {
   @IsUUID()
   projectId!: string;
 
-  @ApiProperty({ example: 'como o teto de paralelismo é decidido' })
+  @ApiProperty({ example: 'how the parallelism cap is decided' })
   @IsString()
   @MinLength(1)
   query!: string;

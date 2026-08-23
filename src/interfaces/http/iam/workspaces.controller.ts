@@ -52,9 +52,9 @@ import {
 
 @ApiTags('workspaces')
 @ApiBearerAuth(BEARER)
-@ApiForbiddenResponse({ description: 'Papel insuficiente no workspace.' })
+@ApiForbiddenResponse({ description: 'Insufficient role in the workspace.' })
 @ApiNotFoundResponse({
-  description: 'Workspace inexistente ou invisível para quem chamou.',
+  description: "Workspace doesn't exist or is invisible to the caller.",
 })
 @Controller('workspaces')
 export class WorkspacesController {
@@ -75,23 +75,25 @@ export class WorkspacesController {
 
   @Post()
   @ApiOperation({
-    summary: 'Cria um workspace',
+    summary: 'Creates a workspace',
     description:
-      'Não exige papel: quem cria vira `owner`. É o único ponto de entrada de quem ' +
-      'ainda não pertence a workspace nenhum.',
+      "Requires no role: whoever creates it becomes `owner`. It's the only " +
+      "entry point for someone who doesn't belong to any workspace yet.",
   })
   @ApiCreatedResponse({ type: WorkspaceResponseDto })
-  @ApiConflictResponse({ description: 'Já existe workspace com este slug.' })
+  @ApiConflictResponse({
+    description: 'A workspace with this slug already exists.',
+  })
   create(@CurrentUser() user: User, @Body() dto: CreateWorkspaceDto) {
     return this.createWorkspace.execute(user.id, dto);
   }
 
   @Get()
   @ApiOperation({
-    summary: 'Lista os workspaces de quem chamou',
+    summary: "Lists the caller's workspaces",
     description:
-      'Já filtrada pela associação — não existe listagem global. Cada item traz o ' +
-      'papel do próprio chamador.',
+      'Already filtered by association — there is no global listing. Each ' +
+      "item carries the caller's own role.",
   })
   @ApiOkResponse({ type: [WorkspaceComPapelResponseDto] })
   list(@CurrentUser() user: User) {
@@ -100,7 +102,7 @@ export class WorkspacesController {
 
   @Get(':workspaceId')
   @RequireRole('viewer')
-  @ApiOperation({ summary: 'Devolve um workspace pelo id' })
+  @ApiOperation({ summary: 'Returns a workspace by id' })
   @ApiOkResponse({ type: WorkspaceResponseDto })
   get(@Param('workspaceId') workspaceId: string) {
     return this.getWorkspace.execute(workspaceId);
@@ -108,9 +110,11 @@ export class WorkspacesController {
 
   @Patch(':workspaceId')
   @RequireRole('maintainer')
-  @ApiOperation({ summary: 'Altera nome ou slug do workspace' })
+  @ApiOperation({ summary: "Changes the workspace's name or slug" })
   @ApiOkResponse({ type: WorkspaceResponseDto })
-  @ApiConflictResponse({ description: 'Já existe workspace com este slug.' })
+  @ApiConflictResponse({
+    description: 'A workspace with this slug already exists.',
+  })
   update(
     @Param('workspaceId') workspaceId: string,
     @Body() dto: UpdateWorkspaceDto,
@@ -121,9 +125,9 @@ export class WorkspacesController {
   @Delete(':workspaceId')
   @RequireRole('owner')
   @ApiOperation({
-    summary: 'Remove o workspace',
+    summary: 'Removes the workspace',
     description:
-      'Exige `owner`. Leva junto projetos, sessões e o histórico deles.',
+      'Requires `owner`. Takes its projects, sessions, and their history along with it.',
   })
   @ApiOkResponse({ type: WorkspaceResponseDto })
   remove(@Param('workspaceId') workspaceId: string) {
@@ -133,10 +137,10 @@ export class WorkspacesController {
   @Post(':workspaceId/members')
   @RequireRole('owner')
   @ApiOperation({
-    summary: 'Associa um usuário ao workspace',
+    summary: 'Associates a user with the workspace',
     description:
-      'Só `owner` mexe no quadro de membros. O papel aqui é herdado por TODOS os ' +
-      'projetos do workspace.',
+      'Only `owner` can touch the member roster. The role here is inherited ' +
+      "by ALL of the workspace's projects.",
   })
   @ApiCreatedResponse({ type: WorkspaceMemberResponseDto })
   addMember(
@@ -148,10 +152,10 @@ export class WorkspacesController {
 
   @Post(':workspaceId/projects')
   @RequireRole('maintainer')
-  @ApiOperation({ summary: 'Cria um projeto dentro do workspace' })
+  @ApiOperation({ summary: 'Creates a project inside the workspace' })
   @ApiCreatedResponse({ type: ProjectResponseDto })
   @ApiConflictResponse({
-    description: 'Já existe projeto com este slug no workspace.',
+    description: 'A project with this slug already exists in the workspace.',
   })
   createProjectInWorkspace(
     @Param('workspaceId') workspaceId: string,
@@ -163,7 +167,7 @@ export class WorkspacesController {
 
   @Get(':workspaceId/projects')
   @RequireRole('viewer')
-  @ApiOperation({ summary: 'Lista os projetos do workspace' })
+  @ApiOperation({ summary: "Lists the workspace's projects" })
   @ApiOkResponse({ type: [ProjectResponseDto] })
   listProjects(@Param('workspaceId') workspaceId: string) {
     return this.listProjectsForWorkspace.execute(workspaceId);
@@ -172,10 +176,10 @@ export class WorkspacesController {
   @Get(':workspaceId/summary')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Resumo agregado do workspace',
+    summary: 'Aggregated workspace summary',
     description:
-      'Contagem de projetos, agentes que gastaram tokens neste mês e o gasto do mês ' +
-      '— alimenta a linha de resumo do dashboard de projetos.',
+      "Project count, agents that spent tokens this month, and this month's " +
+      'spend — feeds the summary line of the project dashboard.',
   })
   @ApiOkResponse({ type: WorkspaceSummaryResponseDto })
   getSummary(@Param('workspaceId') workspaceId: string) {
@@ -185,10 +189,11 @@ export class WorkspacesController {
   @Get(':workspaceId/projects-status')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Contagem de tasks bloqueadas por projeto',
+    summary: 'Count of blocked tasks per project',
     description:
-      'Uma linha por projeto do workspace com task bloqueada — alimenta o dot de ' +
-      'status da sidebar do dashboard, numa query só em vez de N chamadas ao backlog.',
+      'One row per workspace project with a blocked task — feeds the ' +
+      "dashboard sidebar's status dot with a single query instead of N calls " +
+      'to the backlog.',
   })
   @ApiOkResponse({ type: [ProjectBlockedStatusResponseDto] })
   getProjectsStatus(@Param('workspaceId') workspaceId: string) {
@@ -198,15 +203,15 @@ export class WorkspacesController {
   @Get(':workspaceId/projects-summary')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Tudo que os cards do dashboard desenham, numa chamada',
+    summary: 'Everything the dashboard cards render, in one call',
     description:
-      'Uma linha por projeto do workspace com provedor de git, status de ' +
-      'provisionamento, orçamento, última atividade, histórias aguardando promoção e ' +
-      'os fatos que decidem a roster de agentes (RN-090).\n\n' +
-      'Mesma ideia de `projects-status`, um andar acima: a grade de cards é uma ' +
-      'leitura do WORKSPACE, não N leituras de projeto. O caminho anterior fazia sete ' +
-      'consultas em poll por card, e com 23 projetos o dashboard sozinho estourava o ' +
-      'rate limit de 300 req/min.',
+      'One row per workspace project with git provider, provisioning ' +
+      'status, budget, last activity, stories awaiting promotion, and the ' +
+      'facts that decide the agent roster (RN-090).\n\n' +
+      'Same idea as `projects-status`, one floor up: the card grid is a ' +
+      'WORKSPACE read, not N project reads. The previous path made seven ' +
+      'polled queries per card, and with 23 projects the dashboard alone ' +
+      'blew through the 300 req/min rate limit.',
   })
   @ApiOkResponse({ type: [ProjectCardSummaryResponseDto] })
   getProjectsSummary(@Param('workspaceId') workspaceId: string) {
@@ -219,20 +224,22 @@ export class WorkspacesController {
   @HttpCode(200)
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Os eventos não lidos de vários projetos, numa chamada',
+    summary: 'Unread events across multiple projects, in one call',
     description:
-      'A gaveta do sino, para o workspace inteiro (RN-091). Cada cursor diz até que ' +
-      '`seq` aquele projeto já foi lido, e a resposta traz o que veio depois disso na ' +
-      'sessão mais recente de cada um.\n\n' +
-      '**É POST porque é o único verbo com CORPO, não porque muda estado.** O ' +
-      'servidor não sabe onde cada leitor parou: "lido até aqui" é um `seq` por ' +
-      'projeto guardado no navegador, e não existe (de propósito) endpoint de marcar ' +
-      'como lido. Logo o corte precisa VIAJAR no pedido, e são dezenas de pares — em ' +
-      'query string isso vira URL longa, que proxy trunca, e ainda colocaria id de ' +
-      'projeto do usuário em log de acesso. A rota é idempotente e sem efeito ' +
-      'colateral: responde `200`, nunca `201`.\n\n' +
-      'Substitui uma requisição POR PROJETO com a gaveta aberta — 23 projetos ' +
-      'custavam 286 req/min contra um limite de 300.',
+      "The bell's drawer, for the whole workspace (RN-091). Each cursor " +
+      'says up to which `seq` that project has already been read, and the ' +
+      "response carries what came after that in each one's most recent " +
+      'session.\n\n' +
+      "**It's POST because it's the only verb with a BODY, not because it " +
+      "changes state.** The server doesn't know where each reader stopped: " +
+      '"read up to here" is a `seq` per project stored in the browser, and ' +
+      'there is (deliberately) no mark-as-read endpoint. So the cutoff needs ' +
+      'to TRAVEL in the request, and there are dozens of pairs — in a query ' +
+      'string that becomes a long URL, which a proxy truncates, and would ' +
+      "also put the user's project ids in access logs. The route is " +
+      'idempotent and has no side effect: it responds `200`, never `201`.\n\n' +
+      'Replaces one request PER PROJECT with the drawer open — 23 projects ' +
+      'cost 286 req/min against a limit of 300.',
   })
   @ApiOkResponse({ type: [ProjectUnreadEventsResponseDto] })
   getUnreadEvents(

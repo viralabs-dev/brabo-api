@@ -8,25 +8,25 @@ export class ConfirmProjectWorkspaceResponseDto {
   @ApiProperty({
     example: true,
     description:
-      'Sempre `true` quando a chamada não lançou — a confirmação é ' +
-      'idempotente. `changed` diz se ALGO mudou nesta chamada.',
+      'Always `true` when the call did not throw — confirmation is ' +
+      'idempotent. `changed` says whether ANYTHING changed on this call.',
   })
   verified!: boolean;
 
   @ApiProperty({
-    example: '/home/voce/projetos/loja',
+    example: '/home/you/projects/store',
     description:
-      'O caminho GRAVADO (normalizado) — pode diferir do que a criação ' +
-      'tinha, porque o runner é a fonte da verdade e sobrescreve.',
+      'The WRITTEN (normalized) path — can differ from what creation had, ' +
+      'because the runner is the source of truth and overwrites it.',
   })
   workspacePath!: string;
 
   @ApiProperty({
     example: true,
     description:
-      '`true` na primeira confirmação, ou quando o caminho reportado é ' +
-      'DIFERENTE do que já estava gravado. `false` numa reconexão que ' +
-      'reporta o mesmo caminho de sempre — nada foi regravado.',
+      '`true` on the first confirmation, or when the reported path is ' +
+      'DIFFERENT from what was already written. `false` on a reconnection ' +
+      'that reports the same path as always — nothing was rewritten.',
   })
   changed!: boolean;
 }

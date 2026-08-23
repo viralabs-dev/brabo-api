@@ -56,7 +56,7 @@ import { ConfirmProjectWorkspaceResponseDto } from './dto/confirm-project-worksp
 @ApiTags('internal')
 @ApiSecurity(SERVICE_TOKEN)
 @ApiForbiddenResponse({
-  description: 'Service token ausente ou diferente do compartilhado.',
+  description: 'Service token missing or different from the shared one.',
 })
 @Controller('internal/projects')
 @ServiceRoute()
@@ -72,19 +72,19 @@ export class InternalProjectsController {
 
   @Get(':projectId/git-remote')
   @ApiOperation({
-    summary: 'O remoto de trabalho do projeto, para buscar e empurrar',
+    summary: "The project's working remote, to fetch and push",
     description:
-      'Devolve a origem limpa (sem credencial embutida) e, para provider ' +
-      'remoto, o token do OWNER do workspace (RN-058) decifrado na hora. ' +
-      'Quem consome injeta o token por invocação e NUNCA o escreve em ' +
-      'arquivo — o `.git/config` fica dentro da pasta onde a RN-075 dá ' +
-      'leitura auto-aprovada ao dev agent.',
+      'Returns the clean origin (no credential embedded) and, for a remote ' +
+      "provider, the workspace OWNER's token (RN-058) decrypted on the fly. " +
+      'Whoever consumes it injects the token per invocation and NEVER writes ' +
+      'it to a file — `.git/config` sits inside the folder where RN-075 ' +
+      'grants the dev agent auto-approved read access.',
   })
   @ApiOkResponse({ type: ProjectGitRemoteResponseDto })
   @ApiNotFoundResponse({
     description:
-      'Projeto sem repositório provisionado, ou owner do workspace sem ' +
-      'credencial cadastrada para o provider do repositório.',
+      'Project with no provisioned repository, or the workspace owner has ' +
+      'no registered credential for the repository provider.',
   })
   gitRemote(@Param('projectId') projectId: string) {
     return this.getGitRemote.execute(projectId);
@@ -92,14 +92,14 @@ export class InternalProjectsController {
 
   @Get(':projectId/business-rules')
   @ApiOperation({
-    summary: 'As regras de negócio do projeto, com cobertura, para o PO ler',
+    summary: "The project's business rules, with coverage, for the PO to read",
     description:
-      'Todo `artifact.business_rule` das sessões do projeto — não só as da ' +
-      'sessão corrente, que era o teto do contexto de kickoff do PO — com a ' +
-      '`description` inteira e quais histórias já citam cada regra. ' +
-      '`uncoveredCount` é a pendência: regra que nenhuma história cobre ' +
-      '(RN-164). Projeto sem regra nenhuma responde `200` com lista vazia: ' +
-      '"ainda não capturei regra" não é erro.',
+      "Every `artifact.business_rule` from the project's sessions — not " +
+      "just the current session's, which was the ceiling of the PO's " +
+      'kickoff context — with the full `description` and which stories ' +
+      'already cite each rule. `uncoveredCount` is the pending item: a rule ' +
+      'no story covers (RN-164). A project with no rule at all responds ' +
+      '`200` with an empty list: "no rule captured yet" is not an error.',
   })
   @ApiOkResponse({ type: ProjectBusinessRulesResponseDto })
   businessRules(@Param('projectId') projectId: string) {
@@ -108,12 +108,13 @@ export class InternalProjectsController {
 
   @Get(':projectId/backlog')
   @ApiOperation({
-    summary: 'O backlog do projeto em árvore, para o PO ler o que já escreveu',
+    summary:
+      "The project's backlog as a tree, for the PO to read what was already written",
     description:
-      'A MESMA árvore épico → história → tarefa da aba Backlog, pelo mesmo ' +
-      'caso de uso (três leituras por projeto, nunca N+1). É com ela que o ' +
-      'PO enxerga épico órfão e história sem tarefa em vez de recriar o que ' +
-      'já existe (RN-164).',
+      'The SAME epic → story → task tree as the Backlog tab, through the ' +
+      'same use case (three reads per project, never N+1). It is with this ' +
+      'that the PO sees an orphan epic and a story with no task instead of ' +
+      're-creating what already exists (RN-164).',
   })
   @ApiOkResponse({ type: [EpicComHistoriasResponseDto] })
   backlog(@Param('projectId') projectId: string) {
@@ -122,41 +123,42 @@ export class InternalProjectsController {
 
   @Get(':projectId/product-metrics')
   @ApiOperation({
-    summary: 'O funil de entrega e DORA parcial do projeto, para o PO ler',
+    summary:
+      "The project's delivery funnel and partial DORA metrics, for the PO to read",
     description:
-      'O MESMO relatório do script `analise:funil` (ADR 0089) — funil ' +
-      'sessão → commit → PR → merge, lead time real e deployment frequency ' +
-      'real — pelas mesmas funções puras e a mesma query ' +
-      '(`apps/api/src/application/services/funil-metrics.ts`), para que os ' +
-      'dois nunca divirjam do mesmo fato. Fecha `docs/fluxo.yml` (papel ' +
-      '`po`, entrada `metricas-de-produto`, antes `status: lacuna`) ' +
+      'The SAME report as the `analise:funil` script (ADR 0089) — session → ' +
+      'commit → PR → merge funnel, real lead time and real deployment ' +
+      'frequency — through the same pure functions and the same query ' +
+      '(`apps/api/src/application/services/funil-metrics.ts`), so the two ' +
+      'never diverge from the same fact. Closes `docs/fluxo.yml` (role ' +
+      '`po`, input `metricas-de-produto`, previously `status: lacuna`) ' +
       '(RN-407).',
   })
   @ApiOkResponse({ type: ProductMetricsResponseDto })
-  @ApiNotFoundResponse({ description: 'Projeto inexistente.' })
+  @ApiNotFoundResponse({ description: 'Project does not exist.' })
   productMetrics(@Param('projectId') projectId: string) {
     return this.listProductMetrics.execute(projectId);
   }
 
   @Post(':projectId/workspace-verification')
-  // Reconcilia o estado do projeto; não cria recurso endereçável.
+  // Reconciles the project's state; does not create an addressable resource.
   @HttpCode(200)
   @ApiOperation({
-    summary: 'O runner confirma o caminho de um projeto "runner" (RN-423)',
+    summary: 'The runner confirms the path of a "runner" project (RN-423)',
     description:
-      'Chamada só pelo engine, depois de um runner conectar e mandar ' +
-      '`workspace_confirm` pelo canal. O runner é a FONTE DA VERDADE do ' +
-      'caminho — a api sobrescreve `workspacePath` com o que ele reportou, ' +
-      'depois de revalidar léxico (raiz de sistema/sobreposição com o ' +
-      'Brabo continuam proibidas mesmo vindo do runner). Idempotente: ' +
-      'reconectar com o MESMO caminho não regrava nada.',
+      'Called only by the engine, after a runner connects and sends ' +
+      '`workspace_confirm` over the channel. The runner is the SOURCE OF ' +
+      'TRUTH for the path — the api overwrites `workspacePath` with what it ' +
+      'reported, after re-validating it lexically (system root/overlap with ' +
+      'Brabo are still forbidden even coming from the runner). Idempotent: ' +
+      'reconnecting with the SAME path writes nothing again.',
   })
   @ApiOkResponse({ type: ConfirmProjectWorkspaceResponseDto })
   @ApiBadRequestResponse({
     description:
-      'Caminho lexicamente inválido, ou o projeto não está no modo "runner".',
+      'Lexically invalid path, or the project is not in "runner" mode.',
   })
-  @ApiNotFoundResponse({ description: 'Projeto inexistente.' })
+  @ApiNotFoundResponse({ description: 'Project does not exist.' })
   confirmWorkspaceVerification(
     @Param('projectId') projectId: string,
     @Body() dto: ConfirmProjectWorkspaceInternalDto,

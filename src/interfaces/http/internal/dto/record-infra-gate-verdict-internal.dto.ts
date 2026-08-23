@@ -17,7 +17,7 @@ export class RecordInfraGateVerdictInternalDto {
   @ApiProperty({
     format: 'uuid',
     example: '01JC4Z8QK3M7YV2N5T9B0PXHRD',
-    description: 'A `proposed_action` `open_infra_pr` que abriu a PR.',
+    description: 'The `open_infra_pr` `proposed_action` that opened the PR.',
   })
   @IsUUID()
   prActionId!: string;
@@ -30,7 +30,7 @@ export class RecordInfraGateVerdictInternalDto {
   @IsIn(['approved', 'changes_requested'])
   veredito!: 'approved' | 'changes_requested';
 
-  @ApiProperty({ example: 'Imagem non-root e sem segredo em ARG.' })
+  @ApiProperty({ example: 'Non-root image with no secret in ARG.' })
   @IsString()
   resumo!: string;
 

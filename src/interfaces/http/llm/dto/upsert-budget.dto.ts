@@ -8,9 +8,9 @@ export class UpsertBudgetDto {
     example: 50,
     minimum: 0,
     description:
-      'Teto em DÓLARES — é o único lugar do contrato que fala em dólar, porque é o ' +
-      'que uma pessoa digita. A api converte para micro-USD, e as respostas voltam ' +
-      'em micro-USD.',
+      'Cap in DOLLARS — the only place in the contract that speaks in ' +
+      'dollars, because that is what a person types. The api converts it to ' +
+      'micro-USD, and responses come back in micro-USD.',
   })
   @IsNumber()
   @Min(0)
@@ -20,8 +20,8 @@ export class UpsertBudgetDto {
     enum: BUDGET_POLICIES,
     example: 'block',
     description:
-      '`block` recusa a chamada ao estourar o teto; `allow` deixa passar e apenas ' +
-      'avisa.',
+      '`block` refuses the call when it would exceed the cap; `allow` lets ' +
+      'it through and only warns.',
   })
   @IsIn(['block', 'allow'])
   policy!: BudgetPolicy;

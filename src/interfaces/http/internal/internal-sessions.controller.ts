@@ -130,10 +130,12 @@ import {
 @ApiTags('internal')
 @ApiSecurity(SERVICE_TOKEN)
 @ApiForbiddenResponse({
-  description: 'Service token ausente ou diferente do compartilhado.',
+  description: 'Service token missing or different from the shared one.',
 })
-@ApiNotFoundResponse({ description: 'Sessão, projeto ou recurso inexistente.' })
-@ApiBadRequestResponse({ description: 'Corpo inválido.' })
+@ApiNotFoundResponse({
+  description: 'Session, project, or resource not found.',
+})
+@ApiBadRequestResponse({ description: 'Invalid body.' })
 @Controller('internal/sessions')
 @ServiceRoute()
 @UseGuards(EngineServiceGuard)
@@ -186,12 +188,12 @@ export class InternalSessionsController {
   // quatro histórias prontos, e a cadeia sem como seguir.
   @Get(':sessionId/pending-work')
   @ApiOperation({
-    summary: 'A sessão tem trabalho pendente que impede encerrá-la?',
+    summary: 'Does the session have pending work that blocks closing it?',
     description:
-      'Consultada pelo `SessionServer` do engine no timeout de heartbeat. ' +
-      '`pending: true` faz o timeout ser reagendado em vez de encerrar, e o ' +
-      '`motivo` vai para o log do engine — sessão que não fecha sem dizer por ' +
-      'que é indiagnosticável.',
+      "Queried by the engine's `SessionServer` on heartbeat timeout. " +
+      '`pending: true` makes the timeout get rescheduled instead of closing, and ' +
+      "the `motivo` goes into the engine's log — a session that doesn't close " +
+      'without saying why is undiagnosable.',
   })
   @ApiOkResponse({ type: SessionPendingWorkResponseDto })
   pendingWork(@Param('sessionId') sessionId: string) {
@@ -200,12 +202,12 @@ export class InternalSessionsController {
 
   @Post(':sessionId/termination')
   @ApiOperation({
-    summary: 'Reporta que o processo da sessão terminou no engine',
+    summary: 'Reports that the session process terminated in the engine',
     description:
-      'Só chega aqui o término que a api NÃO provocou — crash, kill, ' +
-      '`heartbeat_timeout`, encerramento defensivo. Parada planejada pela própria ' +
-      'api não passa por aqui: o engine já soube dela pelo outbox, e reportar de ' +
-      'volta seria eco.',
+      'Only terminations the api did NOT cause reach here — crash, kill, ' +
+      '`heartbeat_timeout`, defensive shutdown. A stop planned by the api itself ' +
+      "doesn't go through here: the engine already learned of it via the " +
+      'outbox, and reporting it back would be an echo.',
   })
   @ApiCreatedResponse({ type: SessionResponseDto })
   report(
@@ -233,11 +235,11 @@ export class InternalSessionsController {
    */
   @Post(':sessionId/events')
   @ApiOperation({
-    summary: 'Anexa um evento ao log da sessão, em nome de um agente',
+    summary: "Appends an event to the session's log, on behalf of an agent",
     description:
-      'Mesmo caso de uso e mesma atribuição atômica de `seq` da rota humana. ' +
-      'Hipóteses do Psicólogo NÃO passam por aqui: têm rota própria, com validação ' +
-      'de evidência.',
+      'Same use case and same atomic `seq` assignment as the human route. ' +
+      "The Psychologist's hypotheses do NOT go through here: they have their " +
+      'own route, with evidence validation.',
   })
   @ApiCreatedResponse({ type: SessionEventResponseDto })
   appendEvent(
@@ -258,11 +260,10 @@ export class InternalSessionsController {
    */
   @Get(':sessionId/events')
   @ApiOperation({
-    summary: 'Pagina o event log da sessão para o engine',
+    summary: "Paginates the session's event log for the engine",
     description:
-      'Usada para REIDRATAR o histórico de conversa de um agente depois de um ' +
-      'restart. A rota humana equivalente é protegida por RBAC; esta, pelo service ' +
-      'token.',
+      "Used to REHYDRATE an agent's conversation history after a restart. The " +
+      'equivalent human route is protected by RBAC; this one, by the service token.',
   })
   @ApiQuery({ name: 'projectId', required: true })
   @ApiQuery({ name: 'afterSeq', required: false, example: 40 })
@@ -287,17 +288,18 @@ export class InternalSessionsController {
    */
   @Post(':sessionId/llm-turn')
   @ApiOperation({
-    summary: 'Executa um turno de LLM medido, com suporte a ferramentas',
+    summary: 'Runs a metered LLM turn, with tool support',
     description:
-      'O metering é OBRIGATÓRIO: todo turno grava `token_usage`, e é isso que faz o ' +
-      'orçamento significar alguma coisa. Não grava evento nenhum — quem narra o ' +
-      'event log é o engine. Falha do provider volta em `error` com 200, porque a ' +
-      'contabilidade continua válida: o turno gastou mesmo falhando.',
+      'Metering is MANDATORY: every turn records `token_usage`, and that is ' +
+      "what makes the budget mean something. Doesn't record any event — the " +
+      'engine narrates the event log. A provider failure comes back in `error` ' +
+      'with 200, because the accounting in `usage` remains valid: the turn ' +
+      'spent even while failing.',
   })
   @ApiCreatedResponse({ type: LlmTurnResponseDto })
   @ApiForbiddenResponse({
     description:
-      'Orçamento estourado com `policy=block`, ou service token inválido.',
+      'Budget exceeded with `policy=block`, or invalid service token.',
   })
   llmTurn(@Param('sessionId') sessionId: string, @Body() dto: RunLlmTurnDto) {
     return this.runLlmTurn.execute({
@@ -317,15 +319,16 @@ export class InternalSessionsController {
    */
   @Sse(':sessionId/llm-turn-stream', { method: RequestMethod.POST })
   @ApiOperation({
-    summary: 'Executa um turno de LLM com a resposta em stream',
+    summary: 'Runs an LLM turn with the response streamed',
     description:
-      'Mesma semântica do `llm-turn`, entregue quadro a quadro. O `done` traz o ' +
-      '`usage` — sem ele o turno teria saído sem contabilidade.',
+      'Same semantics as `llm-turn`, delivered frame by frame. The `done` frame ' +
+      'carries the `usage` — without it the turn would have come out with no ' +
+      'accounting.',
   })
   @ApiExtraModels(LlmTurnStreamEventResponseDto)
   @ApiResponse({
     status: 200,
-    description: 'Stream de quadros até `done` ou `error`.',
+    description: 'Stream of frames up to `done` or `error`.',
     content: {
       'text/event-stream': {
         schema: { $ref: getSchemaPath(LlmTurnStreamEventResponseDto) },
@@ -353,10 +356,10 @@ export class InternalSessionsController {
    */
   @Post(':sessionId/handoffs')
   @ApiOperation({
-    summary: 'Oferece um handoff de um agente para outro',
+    summary: 'Offers a handoff from one agent to another',
     description:
-      'Nasce em `offered`. Quem aceita é uma PESSOA, pela rota humana — agente não ' +
-      'ativa agente.',
+      'Born as `offered`. Who accepts is a PERSON, via the human route — an ' +
+      "agent doesn't activate an agent.",
   })
   @ApiCreatedResponse({ type: HandoffResponseDto })
   handoff(
@@ -376,7 +379,7 @@ export class InternalSessionsController {
    * domínio: business_rule_id existe, prontidão draft→ready).
    */
   @Post(':sessionId/epics')
-  @ApiOperation({ summary: 'Cria um épico do backlog' })
+  @ApiOperation({ summary: 'Creates a backlog epic' })
   @ApiCreatedResponse({ type: EpicResponseDto })
   epic(
     @Param('sessionId') sessionId: string,
@@ -390,11 +393,12 @@ export class InternalSessionsController {
 
   @Post(':sessionId/stories')
   @ApiOperation({
-    summary: 'Cria uma história com RF, RNF, DoD, DoR e regras cobertas',
+    summary:
+      'Creates a story with functional/non-functional requirements, DoD, DoR, and covered rules',
     description:
-      'O `businessRuleIds` é o que alimenta a cobertura regra→história. Cada id tem ' +
-      'de referenciar um evento `artifact.business_rule` que EXISTE — a validação ' +
-      'recusa id inventado.',
+      '`businessRuleIds` is what feeds the rule→story coverage. Each id has to ' +
+      'reference an `artifact.business_rule` event that EXISTS — validation ' +
+      'rejects a made-up id.',
   })
   @ApiCreatedResponse({ type: StoryResponseDto })
   story(
@@ -414,7 +418,7 @@ export class InternalSessionsController {
   }
 
   @Post(':sessionId/tasks')
-  @ApiOperation({ summary: 'Cria uma tarefa dentro de uma história' })
+  @ApiOperation({ summary: 'Creates a task inside a story' })
   @ApiCreatedResponse({ type: TaskResponseDto })
   task(
     @Param('sessionId') sessionId: string,
@@ -433,14 +437,14 @@ export class InternalSessionsController {
    */
   @Post(':sessionId/module-map')
   @ApiOperation({
-    summary: 'Publica uma versão nova do module_map',
+    summary: 'Publishes a new version of the module_map',
     description:
-      'O histórico é imutável: cada publicação é uma versão a mais e a vigente é a ' +
-      'de maior `version`. Um CICLO de dependência entre módulos faz o mapa ser ' +
-      'REJEITADO com 400 — o grafo precisa ser acíclico.',
+      'The history is immutable: each publication is one more version, and the ' +
+      'current one is the one with the highest `version`. A dependency CYCLE ' +
+      'between modules gets the map REJECTED with 400 — the graph needs to be acyclic.',
   })
   @ApiCreatedResponse({ type: ModuleMapResponseDto })
-  @ApiBadRequestResponse({ description: 'Ciclo de dependência entre módulos.' })
+  @ApiBadRequestResponse({ description: 'Dependency cycle between modules.' })
   moduleMap(
     @Param('sessionId') sessionId: string,
     @Body() dto: CreateModuleMapInternalDto,
@@ -459,16 +463,16 @@ export class InternalSessionsController {
    */
   @Post(':sessionId/c4-diagram')
   @ApiOperation({
-    summary: 'Gera uma versão nova do diagrama C4 (Context + Container)',
+    summary: 'Generates a new version of the C4 diagram (Context + Container)',
     description:
-      'O artefato É o evento `artifact.c4_diagram`: imutável, versionado e com ' +
-      'autor, ao lado de `artifact.module_map`. Exige module_map vigente — sem ' +
-      'ele não há Container level para desenhar (400).',
+      'The artifact IS the `artifact.c4_diagram` event: immutable, versioned, ' +
+      'and with an author, alongside `artifact.module_map`. Requires a current ' +
+      'module_map — without one there is no Container level to draw (400).',
   })
   @ApiCreatedResponse({ type: C4DiagramaGeradoResponseDto })
   @ApiBadRequestResponse({
     description:
-      '`system_name` ausente, ator inválido, ou sem module_map vigente.',
+      'Missing `system_name`, invalid actor, or no current module_map.',
   })
   c4Diagram(
     @Param('sessionId') sessionId: string,
@@ -490,18 +494,18 @@ export class InternalSessionsController {
    */
   @Post(':sessionId/project-image')
   @ApiOperation({
-    summary: 'Fixa a imagem de container do projeto',
+    summary: "Sets the project's container image",
     description:
-      'O artefato É o evento `artifact.project_image`: imutável, versionado e ' +
-      'com autor. Revisar é emitir uma versão nova, nunca sobrescrever. ' +
-      'Enquanto não houver nenhuma, o container do projeto não sobe e a aba ' +
-      'Code responde 409.',
+      'The artifact IS the `artifact.project_image` event: immutable, ' +
+      'versioned, and with an author. Revising means issuing a new version, ' +
+      "never overwriting. While there isn't one yet, the project's container " +
+      'does not come up and the Code tab responds 409.',
   })
   @ApiCreatedResponse({ type: ImagemDecididaResponseDto })
   @ApiBadRequestResponse({
     description:
-      'Imagem sem tag explícita (ou `latest`), `rationale` curto demais, ' +
-      '`network` fora de {none, egress} ou recurso acima do teto.',
+      'Image with no explicit tag (or `latest`), `rationale` too short, ' +
+      '`network` outside {none, egress}, or a resource above the cap.',
   })
   projectImage(
     @Param('sessionId') sessionId: string,
@@ -517,10 +521,10 @@ export class InternalSessionsController {
 
   @Post(':sessionId/story-modules')
   @ApiOperation({
-    summary: 'Associa uma história aos módulos que ela toca',
+    summary: 'Associates a story with the modules it touches',
     description:
-      'É a validação cruzada: módulo inexistente no mapa vigente vira pendência de ' +
-      'arquitetura em vez de passar despercebido.',
+      "This is the cross-validation: a module that doesn't exist in the " +
+      'current map becomes an architecture pending item instead of slipping through unnoticed.',
   })
   @ApiCreatedResponse({ type: StoryResponseDto })
   storyModules(
@@ -539,11 +543,11 @@ export class InternalSessionsController {
    */
   @Post(':sessionId/tasks/claim')
   @ApiOperation({
-    summary: 'Reivindica atomicamente a próxima tarefa pegável do módulo',
+    summary: "Atomically claims the module's next claimable task",
     description:
-      'ATÔMICO de propósito: com vários dev agents no mesmo módulo, duas ' +
-      'reivindicações concorrentes não podem devolver a mesma tarefa. Sem tarefa ' +
-      'disponível, devolve vazio em vez de erro.',
+      'ATOMIC by design: with several dev agents on the same module, two ' +
+      'concurrent claims cannot return the same task. With no task available, ' +
+      'returns empty instead of an error.',
   })
   @ApiCreatedResponse({ type: TaskResponseDto })
   claimTask(
@@ -559,10 +563,10 @@ export class InternalSessionsController {
   }
 
   @Post(':sessionId/tasks/:taskId/status')
-  @ApiOperation({ summary: 'Move a tarefa de estado ao longo do trabalho' })
+  @ApiOperation({ summary: "Moves the task's state as work progresses" })
   @ApiCreatedResponse({ type: TaskResponseDto })
   @ApiConflictResponse({
-    description: 'Transição inválida, ou tarefa de outro agente.',
+    description: "Invalid transition, or another agent's task.",
   })
   markTaskStatus(
     @Param('sessionId') sessionId: string,
@@ -589,13 +593,13 @@ export class InternalSessionsController {
    */
   @Get(':sessionId/dev-context')
   @ApiOperation({
-    summary: 'Monta o contexto completo de uma tarefa para o dev agent',
+    summary: 'Assembles the full context of a task for the dev agent',
     description:
-      'Uma chamada com tudo o que o prompt precisa: a história inteira, as regras de ' +
-      'negócio resolvidas e as ADRs aplicáveis. `module` restringe as ADRs às do ' +
-      'módulo daquele dev; ADR sem módulo declarado é TRANSVERSAL e entra sempre. ' +
-      'Omitir `module` traz o acervo inteiro, que é o que os gates de QA e SecOps ' +
-      'querem ao reusar este mesmo contexto.',
+      'A single call with everything the prompt needs: the whole story, the ' +
+      'resolved business rules, and the applicable ADRs. `module` restricts the ' +
+      "ADRs to that dev's module; an ADR with no declared module is CROSS-CUTTING " +
+      'and always comes in. Omitting `module` brings the whole collection, which ' +
+      'is what the QA and SecOps gates want when reusing this same context.',
   })
   @ApiQuery({ name: 'projectId', required: true })
   @ApiQuery({ name: 'taskId', required: true })
@@ -615,9 +619,9 @@ export class InternalSessionsController {
    */
   @Get(':sessionId/infra-context')
   @ApiOperation({
-    summary: 'Monta o contexto inicial do InfraAgent',
+    summary: "Assembles the InfraAgent's initial context",
     description:
-      'O module_map vigente mais as ADRs relevantes de infraestrutura.',
+      'The current module_map plus the relevant infrastructure ADRs.',
   })
   @ApiQuery({ name: 'projectId', required: true })
   @ApiOkResponse({ type: InfraContextResponseDto })
@@ -633,11 +637,11 @@ export class InternalSessionsController {
    */
   @Get(':sessionId/psychologist-context')
   @ApiOperation({
-    summary: 'Monta o contexto de uma rodada do Psicólogo',
+    summary: 'Assembles the context for a Psychologist round',
     description:
-      'O `alreadyAnalyzed` é o que dá IDEMPOTÊNCIA ao caminho automático: com `true` ' +
-      'o worker curto-circuita sem gastar token. As hipóteses anteriores vão junto ' +
-      'para a rodada não repetir a si mesma.',
+      '`alreadyAnalyzed` is what gives the automatic path IDEMPOTENCY: with ' +
+      '`true` the worker short-circuits without spending a token. The prior ' +
+      "hypotheses come along so the round doesn't repeat itself.",
   })
   @ApiQuery({ name: 'projectId', required: true })
   @ApiOkResponse({ type: PsychologistContextResponseDto })
@@ -656,15 +660,15 @@ export class InternalSessionsController {
    */
   @Post(':sessionId/hypotheses')
   @ApiOperation({
-    summary: 'Registra uma rodada de análise e as hipóteses dela',
+    summary: 'Records an analysis round and its hypotheses',
     description:
-      'Cada hipótese precisa citar eventos que EXISTEM nesta sessão — evidência ' +
-      'inventada é recusada com 400, e é isso que separa hipótese de opinião. A ' +
-      'rodada anterior da sessão vira superseded.',
+      'Each hypothesis needs to cite events that EXIST in this session — made-up ' +
+      'evidence is rejected with 400, and that is what separates a hypothesis ' +
+      "from an opinion. The session's previous round becomes superseded.",
   })
   @ApiCreatedResponse({ type: ProposeHypothesesResponseDto })
   @ApiConflictResponse({
-    description: 'Já existe análise current para esta sessão.',
+    description: 'A current analysis already exists for this session.',
   })
   hypotheses(
     @Param('sessionId') sessionId: string,
@@ -686,10 +690,10 @@ export class InternalSessionsController {
    */
   @Get(':sessionId/infra-artifacts/:prActionId/files')
   @ApiOperation({
-    summary: 'Devolve os arquivos de uma PR de infra para os gates lerem',
+    summary: 'Returns the files of an infra PR for the gates to read',
     description:
-      'O conteúdo sai do payload da própria `proposed_action`: artefato de infra ' +
-      'nunca toca um worktree, igual às ADRs.',
+      "The content comes from the `proposed_action`'s own payload: an infra " +
+      'artifact never touches a worktree, same as ADRs.',
   })
   @ApiQuery({ name: 'projectId', required: true })
   @ApiOkResponse({ type: InfraPrFilesResponseDto })
@@ -706,10 +710,10 @@ export class InternalSessionsController {
    */
   @Post(':sessionId/tasks/:taskId/block')
   @ApiOperation({
-    summary: 'Marca a tarefa como bloqueada, com o motivo',
+    summary: 'Marks the task as blocked, with the reason',
     description:
-      'Não há destrave automático: quem destrava é uma pessoa, pela rota humana. É ' +
-      'o que impede um agente de girar em falso indefinidamente.',
+      'There is no automatic unblocking: whoever unblocks it is a person, via ' +
+      'the human route. That is what stops an agent from spinning indefinitely.',
   })
   @ApiCreatedResponse({ type: TaskResponseDto })
   blockTask(
@@ -735,12 +739,12 @@ export class InternalSessionsController {
    */
   @Post(':sessionId/gates/verdict')
   @ApiOperation({
-    summary: 'Registra o parecer de QA ou SecOps sobre a PR de uma tarefa',
+    summary: "Records QA's or SecOps's verdict on a task's PR",
     description:
-      'O `nextAction` da resposta é o que o engine obedece: `correct` devolve ao ' +
-      'dev, `run_secops` avança o gate, `done` libera para o usuário e `blocked` ' +
-      'significa que o teto de correções estourou. O MERGE nunca é automático — ' +
-      '`done` só significa que chegou a vez do humano.',
+      "The response's `nextAction` is what the engine obeys: `correct` returns " +
+      'to dev, `run_secops` advances the gate, `done` releases it to the user, ' +
+      'and `blocked` means the correction cap ran out. MERGE is never automatic ' +
+      "— `done` only means it's the human's turn.",
   })
   @ApiCreatedResponse({ type: GateVerdictResponseDto })
   gateVerdict(
@@ -774,11 +778,11 @@ export class InternalSessionsController {
    */
   @Post(':sessionId/delegations')
   @ApiOperation({
-    summary: 'Registra o desfecho de uma delegação de área',
+    summary: 'Records the outcome of an area delegation',
     description:
-      '`completed` (com o parecer), `failed` (com a origem) ou `dispensed` (com ' +
-      'a justificativa) — o lead nunca chama esta rota com um desfecho a meio ' +
-      'caminho: cada delegação nasce aqui já resolvida.',
+      '`completed` (with the verdict), `failed` (with the origin), or ' +
+      '`dispensed` (with the justification) — the lead never calls this route ' +
+      'with a halfway outcome: every delegation is born here already resolved.',
   })
   @ApiCreatedResponse({ type: DelegationResponseDto })
   recordDelegationOutcome(
@@ -806,8 +810,8 @@ export class InternalSessionsController {
    */
   @Post(':sessionId/infra-gates/verdict')
   @ApiOperation({
-    summary: 'Registra o parecer de QA ou SecOps sobre uma PR de infra',
-    description: 'Mesma esteira e mesma máquina de estados das PRs de dev.',
+    summary: "Records QA's or SecOps's verdict on an infra PR",
+    description: 'Same pipeline and same state machine as dev PRs.',
   })
   @ApiCreatedResponse({ type: InfraGateVerdictResponseDto })
   infraGateVerdict(
@@ -834,8 +838,8 @@ export class InternalSessionsController {
    */
   @Post(':sessionId/tasks/:taskId/gate/open')
   @ApiOperation({
-    summary: 'Abre a esteira de gates da tarefa, começando pelo QA',
-    description: 'Chamado quando a PR do dev agent fica pronta para revisão.',
+    summary: "Opens the task's gate pipeline, starting with QA",
+    description: "Called when the dev agent's PR is ready for review.",
   })
   @ApiCreatedResponse({ type: GateAbertoResponseDto })
   openGateEndpoint(
@@ -853,12 +857,14 @@ export class InternalSessionsController {
    */
   @Get(':sessionId/anamnese-context')
   @ApiOperation({
-    summary: 'Monta o contexto de uma rodada da Anamnese',
+    summary: 'Assembles the context for an Anamnesis round',
     description:
-      'Tudo numa chamada, espelhando o contexto do Psicólogo. Os membros já vêm SEM ' +
-      'quem optou por não ser perfilado, e as decisões do usuário na janela vêm por ' +
-      'aqui porque não estão no event log. Os eventos em si o engine lê direto do ' +
-      'Postgres — trafegá-los por HTTP seria mais caro sem ser mais correto.',
+      "Everything in one call, mirroring the Psychologist's context. Members " +
+      'already come EXCLUDING whoever opted out of being profiled, and the ' +
+      "user's decisions within the window come through here because they " +
+      "aren't in the event log. The engine reads the events themselves " +
+      'straight from Postgres — carrying them over HTTP would be more ' +
+      'expensive without being more correct.',
   })
   @ApiQuery({ name: 'projectId', required: true })
   @ApiOkResponse({ type: AnamneseContextResponseDto })
@@ -873,11 +879,11 @@ export class InternalSessionsController {
    */
   @Post(':sessionId/proficiency')
   @ApiOperation({
-    summary: 'Grava os perfis de proficiência derivados na rodada',
+    summary: 'Records the proficiency profiles derived in the round',
     description:
-      'Competência fora do catálogo é RECUSADA, e evidência que cita evento de ' +
-      'outro projeto também — as duas validações existem porque o modelo erra as ' +
-      'duas coisas.',
+      'A competency outside the catalog is REJECTED, and so is evidence that ' +
+      'cites an event from another project — both validations exist because ' +
+      'the model gets both things wrong.',
   })
   @ApiCreatedResponse({ type: RecordProficiencyResponseDto })
   proficiency(
@@ -899,11 +905,11 @@ export class InternalSessionsController {
    */
   @Post(':sessionId/instruction-patches')
   @ApiOperation({
-    summary: 'Propõe um patch no arquivo de instrução de um agente',
+    summary: "Proposes a patch to an agent's instruction file",
     description:
-      'Vira `proposed_action`, e não escrita direta: mudar o comportamento de um ' +
-      'agente é efeito externo e passa pelo mesmo pipeline de aprovação de tudo o ' +
-      'mais. É o fechamento do loop hipótese → patch.',
+      "Becomes a `proposed_action`, not a direct write: changing an agent's " +
+      'behavior is an external effect and goes through the same approval ' +
+      'pipeline as everything else. This closes the hypothesis → patch loop.',
   })
   @ApiCreatedResponse({ type: ProposedActionResponseDto })
   instructionPatch(
@@ -927,11 +933,11 @@ export class InternalSessionsController {
    */
   @Post(':sessionId/max-parallel-proposals')
   @ApiOperation({
-    summary: 'Propõe subir o teto de paralelismo de uma área',
+    summary: "Proposes raising an area's parallelism cap",
     description:
-      'Recusa propor um teto igual ou menor que o vigente: a Anamnese roda ' +
-      'periodicamente, e reproporia a mesma coisa a cada rodada, enchendo de ' +
-      'ruído uma fila que o usuário precisa ler.',
+      'Refuses to propose a cap equal to or lower than the current one: the ' +
+      'Anamnesis runs periodically, and would re-propose the same thing every ' +
+      'round, filling with noise a queue the user needs to read.',
   })
   @ApiCreatedResponse({ type: ProposedActionResponseDto })
   maxParallelProposal(
@@ -952,11 +958,11 @@ export class InternalSessionsController {
    */
   @Post(':sessionId/actions')
   @ApiOperation({
-    summary: 'Propõe uma ação com efeito externo em nome de um agente',
+    summary: 'Proposes an action with an external effect on behalf of an agent',
     description:
-      'A porta ÚNICA pela qual um agente toca git, terminal ou gasto. O ' +
-      '`permissions.json` decide na criação, e `deny` vence qualquer autonomia ' +
-      'concedida ao agente.',
+      'The ONLY door through which an agent touches git, terminal, or spend. ' +
+      '`permissions.json` decides at creation, and `deny` beats any autonomy ' +
+      'granted to the agent.',
   })
   @ApiCreatedResponse({ type: ProposedActionResponseDto })
   createAction(

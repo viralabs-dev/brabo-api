@@ -55,23 +55,23 @@ import {
  */
 @ApiTags('git')
 @ApiBearerAuth(BEARER)
-@ApiForbiddenResponse({ description: 'Papel insuficiente no projeto.' })
+@ApiForbiddenResponse({ description: 'Insufficient role on the project.' })
 @ApiNotFoundResponse({
   description:
-    'Projeto sem repositório provisionado, ou ref/caminho/PR inexistente.',
+    'Project without a provisioned repository, or a nonexistent ref/path/PR.',
 })
 @ApiBadRequestResponse({
   description:
-    'Caminho fora do escopo do projeto (RN-095), ref malformada, ou busca ' +
-    'com termo curto/longo demais.',
+    'Path outside the project scope (RN-095), malformed ref, or a search ' +
+    'term that is too short or too long.',
 })
 @ApiResponse({
   status: 501,
   description:
-    'O provider do projeto não declara a capability da operação — ' +
-    '`listTree`, `pullRequestDiff`, `blame`, `pullRequestsList` ou ' +
-    '`branchesDetailed`. Capability só é declarada quando provada pela ' +
-    'suite de contrato, então isto é resposta legítima e não defeito.',
+    "The project's provider does not declare the operation's capability — " +
+    '`listTree`, `pullRequestDiff`, `blame`, `pullRequestsList`, or ' +
+    '`branchesDetailed`. A capability is only declared once proven by the ' +
+    'contract suite, so this is a legitimate response, not a defect.',
 })
 @Controller('projects/:projectId/code')
 export class CodeController {
@@ -80,23 +80,23 @@ export class CodeController {
   @Get('tree')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Lista UM nível da árvore do repositório',
+    summary: 'Lists ONE level of the repository tree',
     description:
-      'Não é recursivo, por desenho do contrato: a aba navega sob demanda, e ' +
-      'pedir a árvore inteira de um repositório grande é o amplificador de ' +
-      'tráfego que a fase proíbe. `truncated` avisa quando o nível passou do ' +
-      'teto de entradas.',
+      'Not recursive, by contract design: the tab navigates on demand, and ' +
+      'requesting the whole tree of a large repository is exactly the ' +
+      'traffic amplifier this phase forbids. `truncated` warns when the ' +
+      'level went past the entry cap.',
   })
   @ApiQuery({
     name: 'ref',
     required: false,
     description:
-      'Branch, tag ou sha. Ausente usa a branch padrão do repositório.',
+      "Branch, tag, or sha. Absent uses the repository's default branch.",
   })
   @ApiQuery({
     name: 'path',
     required: false,
-    description: 'Diretório a listar. Ausente ou vazio é a raiz.',
+    description: 'Directory to list. Absent or empty is the root.',
   })
   @ApiOkResponse({ type: CodeTreeResponseDto })
   tree(
@@ -110,21 +110,22 @@ export class CodeController {
   @Get('file')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Devolve o conteúdo de um arquivo',
+    summary: "Returns a file's content",
     description:
-      'UTF-8, cortado no teto de bytes com `truncated: true` quando passa. ' +
-      'Um caminho que sai da pasta do projeto é recusado com 400 pela ' +
-      'checagem central da RN-095 — nunca com 404, que convidaria a procurar.',
+      "UTF-8, cut at the byte cap with `truncated: true` when it's " +
+      'exceeded. A path that escapes the project folder is refused with ' +
+      '400 by the central check in RN-095 — never with 404, which would ' +
+      'invite probing.',
   })
   @ApiQuery({
     name: 'ref',
     required: false,
-    description: 'Branch, tag ou sha.',
+    description: 'Branch, tag, or sha.',
   })
   @ApiQuery({
     name: 'path',
     required: true,
-    description: 'Caminho do arquivo.',
+    description: 'File path.',
   })
   @ApiOkResponse({ type: CodeFileResponseDto })
   file(
@@ -138,28 +139,29 @@ export class CodeController {
   @Get('search')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Busca texto no repositório, com orçamento',
+    summary: 'Searches text in the repository, with a budget',
     description:
-      'A busca NÃO é operação do contrato de git: ela é composta sobre a ' +
-      'árvore e o conteúdo, e por isso é a única leitura cujo custo cresce ' +
-      'com o tamanho do repositório. Três orçamentos a param — diretórios ' +
-      'percorridos, arquivos abertos e casamentos devolvidos — e `truncated` ' +
-      'diz que ela parou. `filesScanned` mostra o custo que ela teve.',
+      'Search is NOT a git contract operation: it is composed over the ' +
+      'tree and the content, and so is the only read whose cost grows with ' +
+      'the size of the repository. Three budgets cap it — directories ' +
+      'walked, files opened, and matches returned — and `truncated` says it ' +
+      'stopped. `filesScanned` shows the cost it incurred.',
   })
   @ApiQuery({
     name: 'q',
     required: true,
-    description: 'Termo, 2 a 200 caracteres.',
+    description: 'Term, 2 to 200 characters.',
   })
   @ApiQuery({
     name: 'ref',
     required: false,
-    description: 'Branch, tag ou sha.',
+    description: 'Branch, tag, or sha.',
   })
   @ApiQuery({
     name: 'path',
     required: false,
-    description: 'Subárvore em que buscar. Refinar aqui é o que evita o corte.',
+    description:
+      'Subtree to search in. Narrowing this is what avoids truncation.',
   })
   @ApiOkResponse({ type: CodeSearchResponseDto })
   search(
@@ -174,17 +176,17 @@ export class CodeController {
   @Get('pull-requests/:pullRequestId/diff')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Devolve o diff de uma PR, normalizado por provider',
-    // Sem aspas duplas nem `""` literal nesta string: ela vira o
-    // `description:` do front matter YAML do MDX gerado, e o gerador troca
-    // aspas duplas por simples — um `""` sai como `'"` e derruba o
-    // `pnpm docs:build` com "bad indentation of a mapping entry".
+    summary: 'Returns the diff of a PR, normalized across providers',
+    // No double quotes nor a literal `""` in this string: it becomes the
+    // `description:` of the generated MDX's YAML front matter, and the
+    // generator swaps double quotes for single ones — a `""` comes out as
+    // `'"` and breaks `pnpm docs:build` with "bad indentation of a mapping entry".
     description:
-      'Um `patch` nulo distingue o caso em que o provider não entregou o ' +
-      'texto (binário, ou patch grande demais) do caso em que o texto veio ' +
-      'vazio. Colapsar os dois faria a tela dizer que um binário alterado ' +
-      'não mudou. O campo `truncated` avisa quando a lista de arquivos ' +
-      'passou do teto.',
+      "A null `patch` distinguishes the case where the provider didn't " +
+      'deliver the text (binary, or a patch too large) from the case where ' +
+      'the text came back empty. Collapsing the two would make the screen ' +
+      "say a changed binary didn't change. The `truncated` field warns " +
+      'when the file list went past the cap.',
   })
   @ApiOkResponse({ type: CodeDiffResponseDto })
   diff(
@@ -197,22 +199,22 @@ export class CodeController {
   @Get('blame')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Anota cada linha de um arquivo com o commit que a tocou',
+    summary: 'Annotates every line of a file with the commit that touched it',
     description:
-      'Fundação da pendência declarada de blame (FASE 26b) — a UI que ' +
-      'anota o editor linha a linha ainda não existe. `truncated` avisa ' +
-      'quando o arquivo passou do teto de linhas anotadas.',
+      'Foundation for the declared blame pending item (PHASE 26b) — the UI ' +
+      "that annotates the editor line by line doesn't exist yet. " +
+      '`truncated` warns when the file went past the annotated-lines cap.',
   })
   @ApiQuery({
     name: 'ref',
     required: false,
     description:
-      'Branch, tag ou sha. Ausente usa a branch padrão do repositório.',
+      "Branch, tag, or sha. Absent uses the repository's default branch.",
   })
   @ApiQuery({
     name: 'path',
     required: true,
-    description: 'Caminho do arquivo a anotar.',
+    description: 'Path of the file to annotate.',
   })
   @ApiOkResponse({ type: CodeBlameResponseDto })
   blame(
@@ -226,18 +228,18 @@ export class CodeController {
   @Get('pull-requests')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Lista as PRs/MRs do repositório',
+    summary: "Lists the repository's PRs/MRs",
     description:
-      'Fundação da lista navegável (FASE 26b) — hoje o diff só é ' +
-      'alcançável por id conhecido (ex.: vindo de Aprovações); esta rota ' +
-      'resolve como chegar ao id sem precisar saber de cor. `truncated` ' +
-      'avisa quando a lista passou do teto por chamada.',
+      'Foundation for the navigable list (PHASE 26b) — today the diff is ' +
+      'only reachable by a known id (e.g. coming from Approvals); this ' +
+      'route resolves how to reach the id without having to know it by ' +
+      'heart. `truncated` warns when the list went past the per-call cap.',
   })
   @ApiQuery({
     name: 'state',
     required: false,
     enum: ['open', 'merged', 'closed'],
-    description: 'Ausente lista todos os estados.',
+    description: 'Absent lists all states.',
   })
   @ApiOkResponse({ type: CodePullRequestListResponseDto })
   pullRequests(
@@ -250,14 +252,15 @@ export class CodeController {
   @Get('branches')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Lista as branches com ahead/behind e a PR aberta associada',
+    summary: 'Lists branches with ahead/behind and the associated open PR',
     description:
-      'Fundação do dropdown rico (FASE 26b) — hoje o seletor de ref é ' +
-      'campo de texto simples. `ahead`/`behind` são relativos à branch ' +
-      'DEFAULT do repositório; `null` quando o provider não consegue ' +
-      'computar (degradação honesta, não erro). NÃO é `listBranches` (que ' +
-      'o bootstrap de Gitflow usa) — é operação própria, porque enriquecer ' +
-      'custa uma chamada extra ao provider POR BRANCH.',
+      'Foundation for the rich dropdown (PHASE 26b) — today the ref ' +
+      'selector is a plain text field. `ahead`/`behind` are relative to ' +
+      "the repository's DEFAULT branch; `null` when the provider can't " +
+      'compute it (an honest degradation, not an error). It is NOT ' +
+      '`listBranches` (which the Gitflow bootstrap uses) — it is its own ' +
+      'operation, because enriching costs an extra call to the provider ' +
+      'PER BRANCH.',
   })
   @ApiOkResponse({ type: CodeBranchDetailListResponseDto })
   branches(@Param('projectId') projectId: string) {

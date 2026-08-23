@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { AccessTokenIssuer } from '../../ports/access-token-issuer.port';
 import { RefreshTokenRepository } from '../../ports/refresh-token-repository.port';
+import { UserRepository } from '../../ports/user-repository.port';
+import type { UserLocale } from '../../../domain/iam/user.entity';
 import { authConfig, type ContextoDaRequisicao } from './auth-config';
 import { TokenFactory } from './token-factory';
 
@@ -9,6 +11,7 @@ export interface SessaoEmitida {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
+  locale: UserLocale;
 }
 
 /**
@@ -19,6 +22,14 @@ export interface SessaoEmitida {
  * pode ser sutilmente traído: um refresh que emite família nova em vez de
  * herdar a existente quebra a detecção de reuso sem quebrar nenhum teste
  * feliz.
+ *
+ * `locale` (fundação de i18n, Onda 6a) é lido daqui — o ÚNICO choke point dos
+ * três fluxos — em vez de exigir que cada chamador busque o usuário. É assim
+ * que o payload de login/refresh carrega o idioma sem exigir uma chamada
+ * extra da web só para descobri-lo (`apps/web/src/lib/idioma.ts` lê deste
+ * mesmo corpo). Usuário não encontrado (não deveria acontecer aqui — a
+ * autenticação já validou a conta) degrada para o default do banco, nunca
+ * lança: idioma é preferência de exibição, não deve derrubar o login.
  */
 @Injectable()
 export class EmitirSessaoUseCase {
@@ -26,6 +37,7 @@ export class EmitirSessaoUseCase {
     private readonly accessTokens: AccessTokenIssuer,
     private readonly refreshTokens: RefreshTokenRepository,
     private readonly tokenFactory: TokenFactory,
+    private readonly usuarios: UserRepository,
   ) {}
 
   async execute(entrada: {
@@ -53,10 +65,13 @@ export class EmitirSessaoUseCase {
       userAgent: entrada.contexto?.userAgent,
     });
 
+    const usuario = await this.usuarios.findById(entrada.userId);
+
     return {
       accessToken: acesso.token,
       refreshToken: refresh.bruto,
       expiresIn: acesso.expiresIn,
+      locale: usuario?.locale ?? 'pt-BR',
     };
   }
 }

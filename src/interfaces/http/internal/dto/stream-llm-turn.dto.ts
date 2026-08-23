@@ -17,7 +17,7 @@ export class StreamLlmTurnDto {
   @ApiProperty({
     type: 'array',
     items: { type: 'object', additionalProperties: true },
-    example: [{ role: 'user', content: 'Resuma o que decidimos.' }],
+    example: [{ role: 'user', content: 'Summarize what we decided.' }],
   })
   @IsArray()
   messages!: ChatMessage[];

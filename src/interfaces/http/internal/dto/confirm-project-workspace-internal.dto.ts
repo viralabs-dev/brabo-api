@@ -3,11 +3,11 @@ import { IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class ConfirmProjectWorkspaceInternalDto {
   @ApiProperty({
-    example: '/home/voce/projetos/loja',
+    example: '/home/you/projects/store',
     description:
-      'Caminho absoluto confirmado pelo runner NO HOST — a fonte da ' +
-      'verdade (RN-423). Revalidado LEXICAMENTE aqui antes de gravar; ' +
-      'inválido é 400, nunca gravado.',
+      'Absolute path confirmed by the runner ON THE HOST — the source of ' +
+      'truth (RN-423). Re-validated LEXICALLY here before writing; invalid ' +
+      'is 400, never written.',
   })
   @IsString()
   path!: string;
@@ -16,10 +16,10 @@ export class ConfirmProjectWorkspaceInternalDto {
     format: 'uuid',
     example: '01JC4Z0000SESSAO00000000001',
     description:
-      'A sessão mais recente do projeto (`ProjectSession.latest_id/1`), ' +
-      'resolvida do lado engine. `null`/omitido quando o projeto ainda não ' +
-      'tem sessão nenhuma — o projeto é atualizado mesmo assim, só o ' +
-      'evento de auditoria é pulado (lacuna aceita, RN-423).',
+      "The project's most recent session (`ProjectSession.latest_id/1`), " +
+      "resolved on the engine side. `null`/omitted when the project doesn't " +
+      'have any session yet — the project is still updated, only the audit ' +
+      'event is skipped (accepted gap, RN-423).',
   })
   @IsOptional()
   @IsUUID()
@@ -29,9 +29,10 @@ export class ConfirmProjectWorkspaceInternalDto {
     format: 'uuid',
     example: '01JC4Z0000USUARIO0000000001',
     description:
-      'Quem pediu o ticket do runner (dono do socket que confirmou) — vira ' +
-      'o ator do evento `project.workspace_verified`. Omitido: o evento (se ' +
-      'houver sessão) nasce sem ator identificado.',
+      'Who requested the runner ticket (owner of the socket that ' +
+      'confirmed) — becomes the actor of the `project.workspace_verified` ' +
+      'event. Omitted: the event (if there is a session) is born with no ' +
+      'identified actor.',
   })
   @IsOptional()
   @IsUUID()

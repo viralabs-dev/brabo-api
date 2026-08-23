@@ -21,14 +21,15 @@ export class ReportSessionTerminationDto {
     enum: ['closing', 'closed', 'closed_abnormally'],
     example: 'closed_abnormally',
     description:
-      '`closing` NÃO é terminal: significa "estou soltando esta sessão". Se outra réplica adotá-la ela segue viva; se ninguém adotar até o timeout, o drain manda `closed_abnormally`. `created` e `active` ficam de fora porque entrar neles é decisão da api, nunca do engine relatando término.',
+      '`closing` is NOT terminal: it means "I am releasing this session". If another replica adopts it, it stays alive; if no one adopts it before the timeout, the drain sends `closed_abnormally`. `created` and `active` are left out because entering them is a decision made by the api, never by the engine reporting a termination.',
   })
   @IsIn(['closing', 'closed', 'closed_abnormally'])
   to!: 'closing' | 'closed' | 'closed_abnormally';
 
   @ApiPropertyOptional({
     example: 'heartbeat_timeout',
-    description: 'A ORIGEM do término, não um diagnóstico por eliminação.',
+    description:
+      'The ORIGIN of the termination, not a diagnosis by elimination.',
   })
   @IsOptional()
   @IsString()

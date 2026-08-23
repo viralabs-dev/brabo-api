@@ -13,30 +13,30 @@ export class GateResumoResponseDto {
   @ApiProperty({ example: 'qa-verificada' })
   id!: string;
 
-  @ApiProperty({ example: 'pr', description: 'Fluxo a que o gate pertence.' })
+  @ApiProperty({ example: 'pr', description: 'Flow the gate belongs to.' })
   fluxo!: string;
 
-  @ApiProperty({ example: 'area-qa', description: 'Quem julga.' })
+  @ApiProperty({ example: 'area-qa', description: 'Who judges.' })
   dono!: string;
 
   @ApiProperty({
     example: ['pr-aberta'],
-    description: 'O que precisa existir para o gate abrir.',
+    description: 'What needs to exist for the gate to open.',
     type: [String],
   })
   entrada!: string[];
 
   @ApiProperty({
     example: 'veredito-qa',
-    description: 'O que o gate produz quando passa.',
+    description: 'What the gate produces when it passes.',
   })
   entregavel!: string | string[];
 
   @ApiProperty({
     example: true,
     description:
-      'A decisão é do usuário — direta no clique OU delegada por política ' +
-      'que ele mesmo escreveu (ver RN-071).',
+      "The decision is the user's — direct on click OR delegated by a policy " +
+      'they wrote themselves (see RN-071).',
   })
   aprovacaoHumana!: boolean;
 
@@ -45,14 +45,14 @@ export class GateResumoResponseDto {
 }
 
 export class GatesResponseDto {
-  @ApiProperty({ example: 1, description: 'Versão do formato do registro.' })
+  @ApiProperty({ example: 1, description: 'Version of the registry format.' })
   version!: number;
 
   @ApiProperty({
     type: [GateResumoResponseDto],
     description:
-      'Só os gates ATIVOS. Gate `planned` descreve papel futuro e não ' +
-      'deve aparecer numa tela que diz o que está acontecendo agora.',
+      'Only ACTIVE gates. A `planned` gate describes a future role and should ' +
+      'not appear on a screen that says what is happening right now.',
   })
   gates!: GateResumoResponseDto[];
 }

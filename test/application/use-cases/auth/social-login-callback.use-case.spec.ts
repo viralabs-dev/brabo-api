@@ -46,6 +46,7 @@ const emitirSessao = new EmitirSessaoUseCase(
   accessTokens,
   refreshTokens,
   tokenFactory,
+  usuarios,
 );
 
 const SECRET = 'test-social-oauth-secret';

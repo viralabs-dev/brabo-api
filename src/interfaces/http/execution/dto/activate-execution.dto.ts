@@ -16,7 +16,7 @@ export class ActivateExecutionDto {
   @ApiPropertyOptional({
     example: 500000,
     description:
-      'Orçamento por task em micro-USD. Omitido usa o default do domínio ' +
+      'Budget per task in micro-USD. Omitted uses the domain default ' +
       '(DEFAULT_TASK_BUDGET_MICROS).',
   })
   @IsOptional()
@@ -27,8 +27,8 @@ export class ActivateExecutionDto {
   @ApiPropertyOptional({
     example: 3,
     description:
-      'Quantas idas e voltas dev↔gate antes da task virar `blocked`. É o que ' +
-      'impede um agente de gastar orçamento em loop de correção.',
+      'How many dev↔gate round trips before the task becomes `blocked`. It is ' +
+      'what stops an agent from spending its budget in a correction loop.',
   })
   @IsOptional()
   @IsInt()
@@ -39,8 +39,8 @@ export class ActivateExecutionDto {
     enum: DEV_AGENT_IMPLS,
     example: 'real',
     description:
-      '`noop` sobe os dev agents SEM LLM, para exercitar a infraestrutura de ' +
-      'execução de ponta a ponta sem gastar token. Omitido usa `real`.',
+      '`noop` starts the dev agents WITHOUT an LLM, to exercise the execution ' +
+      'infrastructure end to end without spending tokens. Omitted uses `real`.',
   })
   @IsOptional()
   @IsIn(DEV_AGENT_IMPLS)
@@ -49,8 +49,8 @@ export class ActivateExecutionDto {
   @ApiPropertyOptional({
     example: ['Terminal(pnpm test:*)', 'Terminal(pnpm lint)'],
     description:
-      'Padrões liberados no `permissions.json` para os dev agents rodarem a suite. ' +
-      '`deny` continua vencendo o que estiver aqui.',
+      'Patterns released in `permissions.json` for the dev agents to run the ' +
+      'test suite. `deny` still wins over anything listed here.',
   })
   @IsOptional()
   @IsArray()
@@ -60,12 +60,12 @@ export class ActivateExecutionDto {
   @ApiPropertyOptional({
     example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
     description:
-      'Id da sessão de CHAT de onde partiu o clique em "ativar execução" — a ' +
-      'sessão criativa/consultiva do Dev Lead/PO, nunca a de execução. Omitido ' +
-      '(chamador antigo, ex. ativação pela Visão Geral sem contexto de sessão) ' +
-      'não fecha sessão nenhuma, igual ao comportamento de antes. Informado, é ' +
-      'fechada ao final — mas só se não tiver handoff/ação/turno pendente ' +
-      '(RN-135), e nunca se for a própria sessão de execução.',
+      'Id of the CHAT session the "activate execution" click came from — the ' +
+      "Dev Lead/PO's creative/consultative session, never the execution one. " +
+      'Omitted (legacy caller, e.g. activation from the Overview without ' +
+      'session context) closes no session, same as before. When given, it is ' +
+      'closed at the end — but only if it has no pending handoff/action/turn ' +
+      '(RN-135), and never if it is the execution session itself.',
   })
   @IsOptional()
   @IsString()

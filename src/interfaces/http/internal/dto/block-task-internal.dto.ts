@@ -14,14 +14,14 @@ export class BlockTaskInternalDto {
   @IsString()
   agentId!: string;
 
-  @ApiProperty({ example: 'Teto de correções de gate atingido.' })
+  @ApiProperty({ example: 'Gate correction cap reached.' })
   @IsString()
   reason!: string;
 
   @ApiProperty({
-    example: 'Ciclo de correção esgotado sem exit 0.',
+    example: 'Correction cycle exhausted without exit 0.',
     description:
-      'Diagnóstico em texto livre — detalhe humano do que aconteceu, não a origem estruturada da falha.',
+      'Free-text diagnosis — a human detail of what happened, not the structured origin of the failure.',
   })
   @IsString()
   diagnosis!: string;
@@ -30,8 +30,8 @@ export class BlockTaskInternalDto {
     enum: FAILURE_ORIGINS,
     example: 'infra',
     description:
-      'A ORIGEM da falha: `infra`, `modelo`, `codigo` ou `politica`. Nunca por eliminação — é a lição do ' +
-      'ADR 0020, retomada um nível acima pelo QA Lead no ADR 0038. Opcional: nem todo call site conhece a origem.',
+      'The ORIGIN of the failure: `infra`, `modelo`, `codigo`, or `politica`. Never by elimination — this is the lesson ' +
+      'from ADR 0020, taken up a level by the QA Lead in ADR 0038. Optional: not every call site knows the origin.',
   })
   @IsOptional()
   @IsIn(FAILURE_ORIGINS)

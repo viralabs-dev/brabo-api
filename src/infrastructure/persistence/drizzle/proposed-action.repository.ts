@@ -168,6 +168,26 @@ export class DrizzleProposedActionRepository implements ProposedActionRepository
     return rows.map(toEntity);
   }
 
+  async findPendingByProject(
+    projectId: string,
+    actionType?: string,
+  ): Promise<ProposedAction[]> {
+    const db = currentDb(this.rootDb);
+    const conditions = [
+      eq(proposedActions.projectId, projectId),
+      eq(proposedActions.status, 'pending'),
+    ];
+    if (actionType !== undefined) {
+      conditions.push(eq(proposedActions.actionType, actionType));
+    }
+    const rows = await db
+      .select()
+      .from(proposedActions)
+      .where(and(...conditions))
+      .orderBy(asc(proposedActions.seq));
+    return rows.map(toEntity);
+  }
+
   async listByProjectAndType(
     projectId: string,
     actionType: string,

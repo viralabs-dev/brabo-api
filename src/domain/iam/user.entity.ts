@@ -1,3 +1,12 @@
+/**
+ * O idioma da interface (fundação de i18n, Onda 6a). Fechado a dois valores —
+ * abrir para qualquer BCP-47 exigiria arquivo de recurso e fallback que a
+ * extração de strings (etapa separada, em paralelo) ainda não tem.
+ */
+export type UserLocale = 'pt-BR' | 'en';
+
+export const USER_LOCALES: readonly UserLocale[] = ['pt-BR', 'en'];
+
 export interface User {
   id: string;
   /**
@@ -8,6 +17,8 @@ export interface User {
   keycloakSub: string | null;
   email: string;
   name: string | null;
+  /** Default 'pt-BR' — nunca flipar silenciosamente quem já tem conta. */
+  locale: UserLocale;
   createdAt: Date;
   updatedAt: Date;
 }

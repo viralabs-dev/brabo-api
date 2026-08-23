@@ -43,7 +43,7 @@ import {
  */
 @ApiTags('llm')
 @ApiBearerAuth(BEARER)
-@ApiForbiddenResponse({ description: 'Papel insuficiente.' })
+@ApiForbiddenResponse({ description: 'Insufficient role.' })
 @Controller()
 export class SpendController {
   constructor(
@@ -55,24 +55,25 @@ export class SpendController {
   @RequireRole('owner')
   @ApiOperation({
     summary:
-      'Quebra o gasto do workspace por modelo, provider, projeto, ator e dia',
+      "Breaks down the workspace's spend by model, provider, project, actor, and day",
     description:
-      'A audiência do OWNER. O eixo de PROVIDER voltou (ADR 0076, RN-186) e ' +
-      'está aqui, e não na rota do membro, porque quebrar por provider é ' +
-      'quebrar por CREDENCIAL — e credencial é assunto de quem paga (RN-060). ' +
-      'Complementa `credential-spend`, que segue respondendo a pergunta da ' +
-      'FATURA (por mês, com o vínculo à chave que existe hoje). Pessoa e ' +
-      'agente também vêm em blocos separados, por `actor_kind`. Janela ' +
-      'deslizante em dias, e a série diária vem DENSA — dia sem gasto entra ' +
-      'com zero, senão a sparkline mente sobre o ritmo.',
+      "The OWNER's audience. The PROVIDER axis came back (ADR 0076, RN-186) " +
+      "and is here, not on the member's route, because breaking down by " +
+      'provider is breaking down by CREDENTIAL — and credential is whoever ' +
+      "pays's business (RN-060). Complements `credential-spend`, which keeps " +
+      'answering the INVOICE question (per month, with the tie to the key ' +
+      'that exists today). Person and agent also come in separate blocks, by ' +
+      '`actor_kind`. Sliding window in days, and the daily series comes ' +
+      'DENSE — a day with no spend comes in as zero, otherwise the ' +
+      'sparkline lies about the pace.',
   })
   @ApiQuery({
     name: 'dias',
     required: false,
-    description: `Janela deslizante. Padrão ${DIAS_PADRAO}, máximo ${DIAS_MAXIMO}.`,
+    description: `Sliding window. Default ${DIAS_PADRAO}, max ${DIAS_MAXIMO}.`,
   })
   @ApiOkResponse({ type: WorkspaceSpendReportResponseDto })
-  @ApiForbiddenResponse({ description: 'Exige `owner` no workspace.' })
+  @ApiForbiddenResponse({ description: 'Requires `owner` on the workspace.' })
   getWorkspaceSpendReport(
     @Param('workspaceId') workspaceId: string,
     @Query('dias') dias?: string,
@@ -91,21 +92,22 @@ export class SpendController {
   @Get('projects/:projectId/spend/me')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'O meu consumo neste projeto, por sessão e por dia',
+    summary: 'My own consumption in this project, by session and by day',
     description:
-      'A audiência do MEMBRO. Só as linhas de quem chama — o ator sai do token ' +
-      'autenticado e não há parâmetro para trocá-lo. Em tokens e custo ' +
-      'ESTIMADO, sem quebrar por provider nem por credencial: a chave que rodou ' +
-      'é a do owner (RN-058) e a fatura dela é dele (RN-060). O eixo de ' +
-      'provider passou a existir no relatório do owner (ADR 0076) e continua ' +
-      'inalcançável daqui — não há parâmetro de dimensão nesta rota, e o tipo ' +
-      'do repositório recusa a combinação (RN-187). Agente não entra: ' +
-      '`token_usage` registra quem gastou, não quem mandou gastar.',
+      "The MEMBER's audience. Only the caller's own rows — the actor comes " +
+      'from the authenticated token and there is no parameter to swap it. In ' +
+      'tokens and ESTIMATED cost, without breaking down by provider or by ' +
+      "credential: the key that ran is the owner's (RN-058) and its invoice " +
+      "is theirs (RN-060). The provider axis came to exist in the owner's " +
+      'report (ADR 0076) and remains unreachable from here — there is no ' +
+      'dimension parameter on this route, and the repository type refuses ' +
+      "the combination (RN-187). Agent doesn't count: `token_usage` records " +
+      'who spent, not who ordered the spend.',
   })
   @ApiQuery({
     name: 'dias',
     required: false,
-    description: `Janela deslizante. Padrão ${DIAS_PADRAO}, máximo ${DIAS_MAXIMO}.`,
+    description: `Sliding window. Default ${DIAS_PADRAO}, max ${DIAS_MAXIMO}.`,
   })
   @ApiOkResponse({ type: MySpendResponseDto })
   getMySpend(

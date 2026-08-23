@@ -12,11 +12,12 @@ export class RegisterGitCredentialDto {
     example: 'ghp_…',
     maxLength: CREDENCIAL_COMPRIMENTO_MAXIMO,
     description:
-      'Personal access token. Cifrado por envelope encryption antes de tocar o banco ' +
-      'e nunca devolvido, nem cifrado. O cadastro NÃO testa o token (ADR 0050) — ' +
-      'para verificá-lo use `POST /users/me/credentials/{provider}/test`. O teto de ' +
-      `${CREDENCIAL_COMPRIMENTO_MAXIMO} caracteres é proteção contra payload absurdo, ` +
-      'não validação de formato.',
+      'Personal access token. Encrypted by envelope encryption before ' +
+      'touching the database and never returned, not even encrypted. ' +
+      'Registration does NOT test the token (ADR 0050) — to verify it use ' +
+      '`POST /users/me/credentials/{provider}/test`. The ' +
+      `${CREDENCIAL_COMPRIMENTO_MAXIMO}-character cap is protection against ` +
+      'an absurd payload, not format validation.',
   })
   @IsString()
   @IsNotEmpty()

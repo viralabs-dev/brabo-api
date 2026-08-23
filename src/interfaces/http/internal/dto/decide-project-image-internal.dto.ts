@@ -25,16 +25,16 @@ export class DecideProjectImageInternalDto {
   @ApiProperty({
     example: 'node:22-bookworm-slim',
     description:
-      'Referência OCI com TAG explícita ou digest. `latest` é RECUSADO com ' +
-      '400 — a regra é de domínio.',
+      'OCI reference with an explicit TAG or digest. `latest` is REFUSED with ' +
+      '400 — the rule is domain-level.',
   })
   @IsString()
   image!: string;
 
   @ApiProperty({
     example:
-      'O module_map é TypeScript sobre Node 22; a slim tem o runtime e nada mais.',
-    description: 'Por que esta imagem. Mínimo de 10 caracteres.',
+      'The module_map is TypeScript on Node 22; the slim variant has the runtime and nothing else.',
+    description: 'Why this image. Minimum of 10 characters.',
   })
   @IsString()
   @MinLength(10)
@@ -44,8 +44,8 @@ export class DecideProjectImageInternalDto {
     enum: POSTURAS_DE_REDE as unknown as string[],
     default: 'none',
     description:
-      'Postura de rede do container. `none` é o default, e é o que torna ' +
-      '"dentro o agente é livre" uma frase segura.',
+      "The container's network posture. `none` is the default, and it is " +
+      'what makes "inside, the agent is free" a safe sentence.',
   })
   @IsOptional()
   @IsIn(POSTURAS_DE_REDE)
@@ -56,8 +56,8 @@ export class DecideProjectImageInternalDto {
     additionalProperties: true,
     example: { cpus: 2, memoryMb: 4096, pidsLimit: 512 },
     description:
-      'Teto de recursos. Acima do máximo a decisão é RECUSADA, nunca ' +
-      'rebaixada em silêncio.',
+      'Resource cap. Above the maximum, the decision is REFUSED, never ' +
+      'silently downgraded.',
   })
   @IsOptional()
   @IsObject()

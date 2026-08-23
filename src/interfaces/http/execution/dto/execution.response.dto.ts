@@ -5,15 +5,15 @@ import { ApiProperty } from '@nestjs/swagger';
 export class ExecucaoAtivadaResponseDto {
   @ApiProperty({
     example: '01JC4Z8QK3M7YV2N5T9B0PXHRA',
-    description: 'Sessão de execução criada.',
+    description: 'Execution session created.',
   })
   sessionId!: string;
 
   @ApiProperty({
     example: ['api', 'web'],
     description:
-      'Módulos do `module_map` que ganharam dev agent. Um agente por módulo, cada ' +
-      'um em worktree isolado.',
+      'Modules of the `module_map` that got a dev agent. One agent per module, ' +
+      'each in an isolated worktree.',
   })
   modules!: string[];
 }
@@ -30,36 +30,38 @@ export class PedidoDeParalelismoResponseDto {
     enum: ['executado', 'aguardando_autorizacao', 'recusado'],
     example: 'aguardando_autorizacao',
     description:
-      '`executado`: o agente subiu, dentro do teto do lead. ' +
-      '`aguardando_autorizacao`: o pedido virou `proposed_action` e NADA subiu ' +
-      'até você decidir. `recusado`: a área tem `max_parallel` inválido.',
+      "`executado`: the agent started, within the lead's cap. " +
+      '`aguardando_autorizacao`: the request became a `proposed_action` and ' +
+      'NOTHING started until you decide. `recusado`: the area has an invalid ' +
+      '`max_parallel`.',
   })
   estado!: 'executado' | 'aguardando_autorizacao' | 'recusado';
 
   @ApiProperty({
     required: false,
     example: '01JC4Z8QK3M7YV2N5T9B0PXHRA',
-    description: 'A ação a decidir. Só em `aguardando_autorizacao`.',
+    description: 'The action to decide on. Only in `aguardando_autorizacao`.',
   })
   actionId?: string;
 
   @ApiProperty({
     required: false,
     example: 2,
-    description: 'Dev agents já de pé NA SESSÃO, somando todos os módulos.',
+    description:
+      'Dev agents already up IN THE SESSION, summed across all modules.',
   })
   ativosNaSessao?: number;
 
   @ApiProperty({
     required: false,
     example: 2,
-    description: 'O teto que o lead usa sem perguntar.',
+    description: 'The cap the lead uses without asking.',
   })
   maxParallel?: number;
 
   @ApiProperty({
     required: false,
-    description: 'Por que o pedido foi recusado. Só em `recusado`.',
+    description: 'Why the request was refused. Only in `recusado`.',
   })
   motivo?: string;
 }
@@ -74,30 +76,31 @@ export class AreaDeAgentesResponseDto {
 
   @ApiProperty({
     example: 'dev',
-    description: 'Identificador da área. Único dentro do projeto.',
+    description: 'Area identifier. Unique within the project.',
   })
   key!: string;
 
   @ApiProperty({
     example: 'dev-lead',
-    description: 'O lead da área — o único contato externo dela.',
+    description: "The area's lead — its only external contact.",
   })
   leadAgentId!: string;
 
   @ApiProperty({
     example: 2,
     description:
-      'Quantos agentes o lead pode ter na SESSÃO sem pedir autorização. Acima ' +
-      'disso, `proposed_action`. O teto é da sessão e não do módulo: contar ' +
-      'por módulo permitiria N módulos × N agentes sem autorização nenhuma.',
+      'How many agents the lead can have in the SESSION without requesting ' +
+      'authorization. Above that, a `proposed_action`. The cap is per session, ' +
+      'not per module: counting per module would allow N modules × N agents ' +
+      'with no authorization at all.',
   })
   maxParallel!: number;
 
   @ApiProperty({
     example: ['dev-api', 'dev-web'],
     description:
-      'Os membros. Na área de dev vêm do `module_map`, um por módulo — é o ' +
-      'que impede a área de ser uma lista fixa em código.',
+      'The members. In the dev area they come from the `module_map`, one per ' +
+      'module — that is what keeps the area from being a fixed list in code.',
   })
   members!: string[];
 }

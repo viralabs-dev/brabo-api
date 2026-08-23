@@ -33,7 +33,7 @@ const EXCERPT_MAX_CHARS = 240;
 @ApiTags('internal')
 @ApiSecurity(SERVICE_TOKEN)
 @ApiForbiddenResponse({
-  description: 'Service token ausente ou diferente do compartilhado.',
+  description: 'Service token missing or different from the shared one.',
 })
 @Controller('internal/rag')
 @ServiceRoute()
@@ -43,10 +43,11 @@ export class InternalRagController {
 
   @Post('search')
   @ApiOperation({
-    summary: 'Busca híbrida no índice RAG do projeto, para a tool do engine',
+    summary:
+      "Hybrid search over the project's RAG index, for the engine's tool",
     description:
-      'Mesmo motor de `POST /projects/:projectId/rag/search` (rota humana), ' +
-      'projetado no formato que a tool `rag_search` do engine espera.',
+      'Same engine as `POST /projects/:projectId/rag/search` (human route), ' +
+      "projected into the format the engine's `rag_search` tool expects.",
   })
   @ApiCreatedResponse({ type: RagSearchInternalResponseDto })
   async buscar(

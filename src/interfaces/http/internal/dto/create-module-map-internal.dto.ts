@@ -16,12 +16,12 @@ export class CreateModuleMapInternalDto {
       {
         name: 'api',
         stack: 'NestJS',
-        responsibility: 'Regras e HTTP',
+        responsibility: 'Rules and HTTP',
         dependsOn: ['db'],
       },
     ],
     description:
-      'Grafo de módulos. CICLO faz o mapa ser rejeitado com 400 — a validação é de domínio.',
+      'Module graph. A CYCLE makes the map get rejected with 400 — the validation is domain-level.',
   })
   @IsArray()
   modules!: ModuleNode[];

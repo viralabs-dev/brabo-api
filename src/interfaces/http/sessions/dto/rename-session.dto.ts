@@ -13,13 +13,14 @@ export const LIMITE_NOME_DA_SESSAO = 80;
 /** Corpo de `PATCH /projects/:projectId/sessions/:sessionId` (RN-098). */
 export class RenameSessionDto {
   @ApiProperty({
-    example: 'Checkout do carrinho',
+    example: 'Cart checkout',
     nullable: true,
     maxLength: LIMITE_NOME_DA_SESSAO,
     description:
-      'O nome novo. `null` (ou string em branco) TIRA o nome e a sessão volta ' +
-      'a se identificar só pela hashtag — é o caminho de desfazer, e por isso ' +
-      'o campo aceita nulo em vez de exigir uma rota de remoção.',
+      'The new name. `null` (or a blank string) CLEARS the name and the ' +
+      'session goes back to identifying itself only by the hashtag — this ' +
+      'is the undo path, which is why the field accepts null instead of ' +
+      'requiring a removal route.',
   })
   // `ValidateIf` em vez de `IsOptional`: `IsOptional` também deixaria passar
   // `undefined`, e aqui a AUSÊNCIA do campo não é pedido válido — não há o que

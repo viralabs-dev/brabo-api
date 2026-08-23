@@ -10,8 +10,9 @@ export class TransitionSessionDto {
     enum: SESSION_STATUSES,
     example: 'closing',
     description:
-      'Estado de destino. A máquina de estados recusa salto inválido com 409 — ' +
-      'de `created` só se vai para `active`, e de um terminal não se volta.',
+      'Target state. The state machine refuses an invalid jump with 409 — ' +
+      'from `created` you can only go to `active`, and there is no going ' +
+      'back from a terminal state.',
   })
   @IsIn(SESSION_STATUSES)
   status!: SessionStatus;

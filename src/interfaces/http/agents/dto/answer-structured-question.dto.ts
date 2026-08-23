@@ -13,12 +13,12 @@ export class AnswerStructuredQuestionDto {
     type: 'object',
     additionalProperties: { type: 'string' },
     example: {
-      nome: 'Checkout Fácil',
-      usuarios: 'Lojistas de pequeno porte',
-      plataforma: 'Web',
+      name: 'Easy Checkout',
+      users: 'Small business owners',
+      platform: 'Web',
     },
     description:
-      'Resposta por `id` de pergunta — o mesmo `id` que veio em `chat.structured_question`.',
+      'Answer keyed by question `id` — the same `id` that came in `chat.structured_question`.',
   })
   @IsObject()
   answers!: Record<string, string>;

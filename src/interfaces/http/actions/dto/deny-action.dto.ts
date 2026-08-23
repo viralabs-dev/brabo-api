@@ -3,9 +3,9 @@ import { IsOptional, IsString } from 'class-validator';
 
 export class DenyActionDto {
   @ApiPropertyOptional({
-    example: 'O comando apagaria o diretório de trabalho.',
+    example: 'The command would delete the working directory.',
     description:
-      'Fica no event log junto com a negativa. Opcional, mas recomendado.',
+      'Stays in the event log alongside the denial. Optional, but recommended.',
   })
   @IsOptional()
   @IsString()

@@ -18,7 +18,7 @@ import type { Page } from '../../../../application/ports/session-event-repositor
 const EXEMPLO_ID = '01JC4Z8QK3M7YV2N5T9B0PXHRA';
 
 export class SessionResponseDto implements Wire<Session> {
-  @ApiProperty({ example: EXEMPLO_ID, description: 'ULID da sessão.' })
+  @ApiProperty({ example: EXEMPLO_ID, description: "The session's ULID." })
   id!: string;
 
   @ApiProperty({ example: '01JC4Z0000PROJETO0000000001' })
@@ -26,7 +26,7 @@ export class SessionResponseDto implements Wire<Session> {
 
   @ApiProperty({
     example: '01JC4Z0000USUARIO0000000001',
-    description: 'Quem abriu a sessão.',
+    description: 'Who opened the session.',
   })
   createdBy!: string;
 
@@ -34,8 +34,8 @@ export class SessionResponseDto implements Wire<Session> {
     enum: ['created', 'active', 'closing', 'closed', 'closed_abnormally'],
     example: 'active',
     description:
-      'Máquina de estados explícita: created → active → closing → closed | closed_abnormally. ' +
-      'Transição inválida responde 409.',
+      'Explicit state machine: created → active → closing → closed | ' +
+      'closed_abnormally. An invalid transition responds 409.',
   })
   status!: Wire<Session>['status'];
 
@@ -43,26 +43,27 @@ export class SessionResponseDto implements Wire<Session> {
     enum: SESSION_KINDS,
     example: 'criativa',
     description:
-      'A INTENÇÃO com que a sessão foi aberta, escolhida na criação e imutável. ' +
-      '`consultiva` é só conversa; `criativa` produz e é a única que entra em ' +
-      'execução. Não confundir com estado de execução, que continua sendo o ' +
-      'evento `execution.activated` no log.',
+      'The INTENT with which the session was opened, chosen at creation and ' +
+      'immutable. `consultiva` (consultative) is conversation only; ' +
+      '`criativa` (creative) produces and is the only one that enters ' +
+      'execution. Not to be confused with execution state, which remains ' +
+      'the `execution.activated` event in the log.',
   })
   kind!: Wire<Session>['kind'];
 
   @ApiProperty({
-    example: 'Checkout do carrinho',
+    example: 'Cart checkout',
     nullable: true,
     description:
-      'Nome amigável, ou `null`. As telas o compõem com a hashtag do id; ele ' +
-      'nunca a substitui.',
+      "Friendly name, or `null`. Screens compose it with the id's hashtag; " +
+      'it never replaces it.',
   })
   name!: string | null;
 
   @ApiProperty({
     example: 42,
     description:
-      'Próximo `seq` do event log. Serve de cursor: `?afterSeq=41` traz tudo depois do 41.',
+      'Next `seq` of the event log. Serves as a cursor: `?afterSeq=41` fetches everything after 41.',
   })
   nextSeq!: number;
 
@@ -76,7 +77,7 @@ export class SessionResponseDto implements Wire<Session> {
     example: null,
     format: 'date-time',
     nullable: true,
-    description: 'Preenchido só nos estados terminais.',
+    description: 'Only filled in terminal states.',
   })
   closedAt!: string | null;
 
@@ -84,8 +85,8 @@ export class SessionResponseDto implements Wire<Session> {
     example: null,
     nullable: true,
     description:
-      'Motivo reportado pelo engine ao terminar (heartbeat_timeout, killed, exceção…). ' +
-      '`null` em fechamento humano ou sessão ainda viva.',
+      'Reason reported by the engine when terminating (heartbeat_timeout, ' +
+      'killed, exception…). `null` on a human close or a still-live session.',
   })
   terminationReason!: string | null;
 
@@ -93,7 +94,8 @@ export class SessionResponseDto implements Wire<Session> {
     example: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
     nullable: true,
     description:
-      '`traceparent` W3C da span raiz. É por ele que a sessão inteira se recupera no Tempo.',
+      'W3C `traceparent` of the root span. This is how the whole session is ' +
+      'recovered in Tempo.',
   })
   traceParent!: string | null;
 }
@@ -102,7 +104,7 @@ export const _chavesSession: MesmasChaves<SessionResponseDto, Session> = true;
 export class SessionEventResponseDto implements Wire<SessionEvent> {
   @ApiProperty({
     example: '01JC4Z8QK3M7YV2N5T9B0PXHRB',
-    description: 'ULID do evento.',
+    description: "The event's ULID.",
   })
   id!: string;
 
@@ -111,14 +113,14 @@ export class SessionEventResponseDto implements Wire<SessionEvent> {
 
   @ApiProperty({
     example: 41,
-    description: 'Ordem dentro da sessão. Monotônico e sem buracos.',
+    description: 'Order within the session. Monotonic and gapless.',
   })
   seq!: number;
 
   @ApiProperty({
     example: 'chat.message',
     description:
-      'Tipo do evento. O inventário completo está em `docs/reference/events.md`.',
+      'Event type. The full inventory is in `docs/reference/events.md`.',
   })
   type!: string;
 
@@ -128,9 +130,9 @@ export class SessionEventResponseDto implements Wire<SessionEvent> {
   @ApiProperty({
     type: 'object',
     additionalProperties: true,
-    example: { role: 'assistant', content: 'Vou abrir o épico primeiro.' },
+    example: { role: 'assistant', content: "I'll open the epic first." },
     description:
-      'Forma livre, específica de cada `type`. Ver a referência de eventos.',
+      'Free-form shape, specific to each `type`. See the events reference.',
   })
   payload!: unknown;
 
@@ -150,7 +152,7 @@ export class PaginaDeEventosResponseDto implements Wire<Page<SessionEvent>> {
     example: 41,
     nullable: true,
     description:
-      'Passe como `afterSeq` para a próxima página. `null` significa fim do log.',
+      'Pass as `afterSeq` for the next page. `null` means end of the log.',
   })
   nextCursor!: number | null;
 }

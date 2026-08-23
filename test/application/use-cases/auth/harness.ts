@@ -114,6 +114,7 @@ export async function montarHarness() {
     accessTokens,
     refreshTokens,
     tokenFactory,
+    usuarios,
   );
 
   return {
@@ -129,6 +130,7 @@ export async function montarHarness() {
     credenciais,
     tokensDeConta,
     workspaces,
+    usuarios,
     limpar: () => truncateAll(db),
     register: new RegisterUseCase(
       unitOfWork,

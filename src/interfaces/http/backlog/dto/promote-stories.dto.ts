@@ -18,9 +18,9 @@ export class PromoteStoriesDto {
     type: [String],
     example: ['01JC2XK9Q7', '01JC2XKB4M'],
     description:
-      'Ids das histórias a promover para `ready`. Uma só é um lote de 1. ' +
-      'Cada história é validada e promovida por conta própria — uma que ' +
-      'falhe não impede as outras.',
+      'Ids of the stories to promote to `ready`. A single one is a batch of 1. ' +
+      'Each story is validated and promoted on its own — one that fails does ' +
+      'not block the others.',
   })
   @IsArray()
   @ArrayNotEmpty()
@@ -34,10 +34,10 @@ export class PromocaoRecusadaResponseDto implements Wire<PromocaoRecusada> {
   storyId!: string;
 
   @ApiProperty({
-    example: 'História não está pronta: faltam dod, dor',
+    example: 'Story is not ready: missing dod, dor',
     description:
-      'Motivo legível. A história pode ter perdido a prontidão, ou um módulo ' +
-      'dela pode ter saído do `module_map` entre a proposta e a decisão.',
+      'Readable reason. The story may have lost its readiness, or one of its ' +
+      'modules may have dropped out of `module_map` between the proposal and the decision.',
   })
   reason!: string;
 }
@@ -54,13 +54,13 @@ export const _chavesPromocaoRecusada: MesmasChaves<
 export class PromoteStoriesResponseDto implements Wire<PromoteStoriesResult> {
   @ApiProperty({
     type: [String],
-    description: 'Ids que foram para `ready`, com as tasks já pegáveis.',
+    description: 'Ids that went to `ready`, with their tasks already pickable.',
   })
   promoted!: string[];
 
   @ApiProperty({
     type: [PromocaoRecusadaResponseDto],
-    description: 'Vazio quando o lote inteiro passou.',
+    description: 'Empty when the whole batch passed.',
   })
   failed!: PromocaoRecusadaResponseDto[];
 }
@@ -72,10 +72,10 @@ export const _chavesPromoteStories: MesmasChaves<
 /** Recusa da promoção, com o comentário que volta ao PO. */
 export class ReturnStoryDto {
   @ApiProperty({
-    example: 'Os critérios de aceite não cobrem o caso de recusa do pagamento.',
+    example: "The acceptance criteria don't cover the payment refusal case.",
     description:
-      'O motivo é OBRIGATÓRIO: ele vira mensagem fixada na sessão do PO, e ' +
-      'uma devolução sem motivo devolve trabalho sem informação.',
+      'The reason is REQUIRED: it becomes a message pinned to the PO session, ' +
+      'and a return with no reason hands back work with no information.',
   })
   @IsString()
   @IsNotEmpty()

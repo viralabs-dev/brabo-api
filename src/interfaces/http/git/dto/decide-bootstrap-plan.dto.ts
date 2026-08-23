@@ -6,10 +6,10 @@ export class DecideBootstrapPlanDto {
     example: '2026-08-01T23:45:00.000Z',
     format: 'date-time',
     description:
-      'O `generatedAt` do plano que você VIU. Guarda otimista: se o plano ' +
-      'tiver sido regerado desde então (readoção, ou o repositório mudou), a ' +
-      'decisão é recusada com 409 em vez de aplicar um "sim" dado sobre outra ' +
-      'coisa.',
+      'The `generatedAt` of the plan you SAW. Optimistic lock: if the plan ' +
+      'has been regenerated since then (re-adoption, or the repository ' +
+      'changed), the decision is refused with 409 instead of applying a ' +
+      'yes given about something else.',
   })
   @IsISO8601()
   @IsNotEmpty()

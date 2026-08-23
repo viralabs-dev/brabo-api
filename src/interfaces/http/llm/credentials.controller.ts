@@ -34,7 +34,7 @@ import {
 // Sem @RequireRole — credenciais são sobre o próprio usuário autenticado,
 // não escopadas a workspace/projeto. Nunca retornar o segredo, nem
 // cifrado — só a projeção {id, provider, createdAt, updatedAt}.
-@ApiTags('credenciais')
+@ApiTags('credentials')
 @ApiBearerAuth(BEARER)
 @Controller('users/me/credentials')
 export class CredentialsController {
@@ -47,11 +47,11 @@ export class CredentialsController {
 
   @Post()
   @ApiOperation({
-    summary: 'Registra ou substitui a chave de API de um provider',
+    summary: "Registers or replaces a provider's API key",
     description:
-      'Upsert por (usuário, provider). A chave é cifrada por envelope encryption ' +
-      'antes de tocar o banco e a resposta traz só a PROJEÇÃO — nunca o segredo, ' +
-      'nem cifrado.',
+      'Upsert by (user, provider). The key is encrypted via envelope encryption ' +
+      'before touching the database, and the response carries only the ' +
+      'PROJECTION — never the secret, not even encrypted.',
   })
   @ApiCreatedResponse({ type: UserCredentialResponseDto })
   create(@CurrentUser() user: User, @Body() dto: UpsertCredentialDto) {
@@ -60,10 +60,10 @@ export class CredentialsController {
 
   @Get()
   @ApiOperation({
-    summary: 'Lista as credenciais do próprio usuário',
+    summary: "Lists the current user's own credentials",
     description:
-      'Sem papel exigido: credencial é sobre quem chamou, não sobre workspace ou ' +
-      'projeto. Cobre chaves de LLM e tokens de git na mesma listagem.',
+      'No role required: a credential is about whoever called, not about a ' +
+      'workspace or project. Covers LLM keys and git tokens in the same listing.',
   })
   @ApiOkResponse({ type: [UserCredentialResponseDto] })
   list(@CurrentUser() user: User) {
@@ -74,16 +74,17 @@ export class CredentialsController {
   @HttpCode(200)
   @ApiParam({ name: 'provider', example: 'openrouter' })
   @ApiOperation({
-    summary: 'Verifica a credencial JÁ gravada contra o provider',
+    summary: 'Checks the ALREADY stored credential against the provider',
     description:
-      'A verificação é uma ação explícita, separada do cadastro (ADR 0050): a api ' +
-      'decifra o segredo, chama o provider e devolve SÓ o veredito — a chave nunca ' +
-      'volta, nem em pedaço. Responde 200 nos três resultados, porque o pedido foi ' +
-      'processado; `recusado` é um resultado, não um erro de protocolo. 404 quando ' +
-      'não há credencial para (usuário, provider) — aí não há o que testar.',
+      'The check is an explicit action, separate from registration (ADR 0050): ' +
+      'the api decrypts the secret, calls the provider, and returns ONLY the ' +
+      'verdict — the key never comes back, not even in part. Responds 200 for ' +
+      'all three outcomes, because the request was processed; `refused` is an ' +
+      'outcome, not a protocol error. 404 when there is no credential for ' +
+      '(user, provider) — then there is nothing to test.',
   })
   @ApiOkResponse({ type: CredentialTestResultResponseDto })
-  @ApiNotFoundResponse({ description: 'Nenhuma credencial deste provider.' })
+  @ApiNotFoundResponse({ description: 'No credential for this provider.' })
   test(
     @CurrentUser() user: User,
     @Param('provider') provider: CredentialProviderName,
@@ -94,9 +95,9 @@ export class CredentialsController {
   @Delete(':provider')
   @ApiParam({ name: 'provider', example: 'anthropic' })
   @ApiOperation({
-    summary: 'Remove a credencial de um provider',
+    summary: "Removes a provider's credential",
     description:
-      'Idempotente: apagar o que não existe também responde `{ ok: true }`.',
+      'Idempotent: deleting what does not exist also responds `{ ok: true }`.',
   })
   @ApiOkResponse({ type: OkResponseDto })
   async remove(

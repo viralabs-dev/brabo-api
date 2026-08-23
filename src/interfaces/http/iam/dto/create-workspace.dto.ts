@@ -10,7 +10,7 @@ export class CreateWorkspaceDto {
   @ApiProperty({
     example: 'acme-corp',
     pattern: '^[a-z0-9]+(-[a-z0-9]+)*$',
-    description: 'kebab-case. Único no sistema e visível na URL.',
+    description: 'kebab-case. Unique in the system and visible in the URL.',
   })
   @IsString()
   @Matches(/^[a-z0-9]+(-[a-z0-9]+)*$/, {

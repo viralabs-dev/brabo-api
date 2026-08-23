@@ -49,10 +49,10 @@ export class TaskResponseDto implements Wire<Task> {
   @ApiProperty({ example: '01JC4Z0000HISTORIA000000001' })
   storyId!: string;
 
-  @ApiProperty({ example: 'Endpoint POST /carrinho/itens' })
+  @ApiProperty({ example: 'POST /cart/items endpoint' })
   title!: string;
 
-  @ApiProperty({ example: 'Aceita SKU e quantidade; valida estoque.' })
+  @ApiProperty({ example: 'Accepts SKU and quantity; validates stock.' })
   description!: string;
 
   @ApiProperty({
@@ -64,13 +64,13 @@ export class TaskResponseDto implements Wire<Task> {
   @ApiProperty({
     example: 'dev-api',
     nullable: true,
-    description: 'Slug do dev agent que reivindicou a tarefa.',
+    description: 'Slug of the dev agent that claimed the task.',
   })
   assignedTo!: string | null;
 
   @ApiProperty({
     example: false,
-    description: 'Tarefa travada esperando decisão ou dependência.',
+    description: 'Task blocked waiting on a decision or a dependency.',
   })
   blocked!: boolean;
 
@@ -82,8 +82,8 @@ export class TaskResponseDto implements Wire<Task> {
     example: null,
     nullable: true,
     description:
-      'A ORIGEM do bloqueio (ADR 0020/0038), quando conhecida. `null` pra todo ' +
-      'bloqueio da Fase 4a — só o QA Lead (Fase 8b) a preenche.',
+      'The ORIGIN of the block (ADR 0020/0038), when known. `null` for every ' +
+      'Phase 4a block — only the QA Lead (Phase 8b) fills it in.',
   })
   blockedOrigin!: Wire<Task>['blockedOrigin'];
 
@@ -92,14 +92,14 @@ export class TaskResponseDto implements Wire<Task> {
     example: null,
     nullable: true,
     description:
-      'Onde a PR da tarefa está na esteira de gates: QA, depois SecOps, depois o ' +
-      'usuário. `null` enquanto não há PR aberta.',
+      "Where the task's PR is in the gate pipeline: QA, then SecOps, then " +
+      'the user. `null` while no PR is open.',
   })
   gateStatus!: Wire<Task>['gateStatus'];
 
   @ApiProperty({
     example: 0,
-    description: 'Quantas rodadas de correção os gates já pediram.',
+    description: 'How many correction rounds the gates have already requested.',
   })
   gateCorrectionCount!: number;
 
@@ -124,42 +124,42 @@ export class StoryResponseDto implements Wire<Story> {
   @ApiProperty({ example: EXEMPLO_SESSAO })
   sessionId!: string;
 
-  @ApiProperty({ example: 'Adicionar item ao carrinho' })
+  @ApiProperty({ example: 'Add item to cart' })
   title!: string;
 
   @ApiProperty({
-    example: 'Como comprador, quero juntar itens antes de pagar.',
+    example: 'As a buyer, I want to gather items before paying.',
   })
   description!: string;
 
   @ApiProperty({
-    example: ['O carrinho aceita até 50 itens'],
-    description: 'Requisitos funcionais.',
+    example: ['The cart accepts up to 50 items'],
+    description: 'Functional requirements.',
   })
   rf!: string[];
 
   @ApiProperty({
-    example: ['A resposta fica abaixo de 200 ms no p95'],
-    description: 'Requisitos não funcionais.',
+    example: ['The response stays under 200 ms at p95'],
+    description: 'Non-functional requirements.',
   })
   rnf!: string[];
 
   @ApiProperty({
     example: ['RN-014'],
     description:
-      'Regras de negócio cobertas. É por aqui que a cobertura regra→história é ' +
-      'calculada em `GET /projects/:id/coverage`.',
+      'Business rules covered. This is where rule→story coverage is ' +
+      'computed in `GET /projects/:id/coverage`.',
   })
   businessRuleIds!: string[];
 
   @ApiProperty({
-    example: ['Testes de unidade verdes'],
+    example: ['Unit tests green'],
     description: 'Definition of done.',
   })
   dod!: string[];
 
   @ApiProperty({
-    example: ['Módulo definido'],
+    example: ['Module defined'],
     description: 'Definition of ready.',
   })
   dor!: string[];
@@ -167,8 +167,9 @@ export class StoryResponseDto implements Wire<Story> {
   @ApiProperty({
     example: ['api'],
     description:
-      'Módulos do `module_map` que a história toca. História sem módulo, ou com ' +
-      'módulo inexistente, vira pendência de arquitetura.',
+      'Modules from the `module_map` that the story touches. A story with ' +
+      'no module, or with a non-existent module, becomes an architecture ' +
+      'pending item.',
   })
   moduleIds!: string[];
 
@@ -178,18 +179,18 @@ export class StoryResponseDto implements Wire<Story> {
   @ApiProperty({
     example: true,
     description:
-      'O PO terminou a história e ela aguarda a decisão do usuário (Fase 12c — ' +
-      'RN-048). Convive com `status: "draft"`: é uma proposta, não um estado. ' +
-      'Sempre `false` em projeto no modo `auto`.',
+      "The PO finished the story and it's waiting on the user's decision " +
+      '(Phase 12c — RN-048). Coexists with `status: "draft"`: it is a ' +
+      'proposal, not a state. Always `false` in a project in `auto` mode.',
   })
   proposedReady!: boolean;
 
   @ApiProperty({
-    example: 'DoD genérico demais — detalhe o critério de aceite.',
+    example: 'DoD too generic — spell out the acceptance criteria.',
     nullable: true,
     description:
-      'Por que o usuário devolveu a história ao PO. `null` quando nunca foi ' +
-      'devolvida.',
+      'Why the user returned the story to the PO. `null` when it was never ' +
+      'returned.',
   })
   returnedReason!: string | null;
 
@@ -230,10 +231,10 @@ export class EpicResponseDto implements Wire<Epic> {
   @ApiProperty({ example: EXEMPLO_SESSAO })
   sessionId!: string;
 
-  @ApiProperty({ example: 'Carrinho de compras' })
+  @ApiProperty({ example: 'Shopping cart' })
   title!: string;
 
-  @ApiProperty({ example: 'Tudo que o comprador faz antes de pagar.' })
+  @ApiProperty({ example: 'Everything the buyer does before paying.' })
   description!: string;
 
   @ApiProperty({ example: '2026-07-25T08:30:00.000Z', format: 'date-time' })
@@ -244,7 +245,7 @@ export class EpicResponseDto implements Wire<Epic> {
 }
 export const _chavesEpic: MesmasChaves<EpicResponseDto, Epic> = true;
 
-/** A árvore inteira: épico → histórias → tarefas. */
+/** The whole tree: epic → stories → tasks. */
 export class EpicComHistoriasResponseDto
   extends EpicResponseDto
   implements Wire<EpicWithStories>
@@ -261,7 +262,7 @@ export class RuleCoverageResponseDto implements Wire<RuleCoverage> {
   @ApiProperty({ example: 'RN-014' })
   ruleId!: string;
 
-  @ApiProperty({ example: 'Carrinho aceita no máximo 50 itens' })
+  @ApiProperty({ example: 'Cart accepts at most 50 items' })
   title!: string;
 
   @ApiProperty({ example: ['01JC4Z0000HISTORIA000000001'] })
@@ -275,7 +276,7 @@ export const _chavesRuleCoverage: MesmasChaves<
   RuleCoverage
 > = true;
 
-/** Rastreabilidade regra→história. Regra sem cobertura é pendência do PO. */
+/** Rule→story traceability. A rule with no coverage is a pending item for the PO. */
 export class CoverageReportResponseDto implements Wire<CoverageReport> {
   @ApiProperty({ type: [RuleCoverageResponseDto] })
   rules!: RuleCoverageResponseDto[];
@@ -283,7 +284,7 @@ export class CoverageReportResponseDto implements Wire<CoverageReport> {
   @ApiProperty({
     example: 2,
     description:
-      'Quantas regras não têm história nenhuma. Cada uma é uma descoberta.',
+      'How many rules have no story at all. Each one is a discovery.',
   })
   uncoveredCount!: number;
 }
@@ -299,13 +300,13 @@ export class ModuleNodeResponseDto implements Wire<ModuleNode> {
   @ApiProperty({ example: 'NestJS + Drizzle' })
   stack!: string;
 
-  @ApiProperty({ example: 'Regras de negócio e superfície HTTP.' })
+  @ApiProperty({ example: 'Business rules and HTTP surface.' })
   responsibility!: string;
 
   @ApiProperty({
     example: ['db'],
     description:
-      'Nomes de outros módulos. Um ciclo aqui faz o mapa ser REJEITADO na escrita.',
+      'Names of other modules. A cycle here gets the map REJECTED on write.',
   })
   dependsOn!: string[];
 }
@@ -330,8 +331,8 @@ export class ModuleMapResponseDto implements Wire<ModuleMap> {
   @ApiProperty({
     example: 3,
     description:
-      'O histórico é imutável: cada mapa novo é uma versão a mais, e o vigente é o ' +
-      'de maior `version`.',
+      'History is immutable: each new map is one more version, and the ' +
+      'current one is the one with the highest `version`.',
   })
   version!: number;
 
@@ -344,11 +345,12 @@ export const _chavesModuleMap: MesmasChaves<ModuleMapResponseDto, ModuleMap> =
 export class AdrRefResponseDto implements Wire<AdrRef> {
   @ApiProperty({
     example: '01JC4Z8QK3M7YV2N5T9B0PXHRC',
-    description: 'Id da `proposed_action` `open_adr_pr` que abriu a ADR.',
+    description:
+      'Id of the `open_adr_pr` `proposed_action` that opened the ADR.',
   })
   actionId!: string;
 
-  @ApiProperty({ example: '0007 — Fila no Postgres em vez de Redis' })
+  @ApiProperty({ example: '0007 — Postgres queue instead of Redis' })
   title!: string;
 
   @ApiProperty({ example: 'executed' })
@@ -357,7 +359,7 @@ export class AdrRefResponseDto implements Wire<AdrRef> {
   @ApiProperty({
     example: 'https://github.com/daneiel/brabo/pull/42',
     nullable: true,
-    description: '`null` enquanto a PR não foi aberta de fato.',
+    description: '`null` while the PR has not actually been opened.',
   })
   pullRequestUrl!: string | null;
 }
@@ -367,7 +369,7 @@ export class ArchitecturePendencyResponseDto implements Wire<ArchitecturePendenc
   @ApiProperty({ example: '01JC4Z0000HISTORIA000000001' })
   storyId!: string;
 
-  @ApiProperty({ example: 'Adicionar item ao carrinho' })
+  @ApiProperty({ example: 'Add item to cart' })
   title!: string;
 
   @ApiProperty({ example: 'ready' })
@@ -377,15 +379,14 @@ export class ArchitecturePendencyResponseDto implements Wire<ArchitecturePendenc
     enum: ['no_module', 'missing_module'],
     example: 'missing_module',
     description:
-      '`no_module`: a história não aponta módulo nenhum. `missing_module`: aponta ' +
-      'um que não existe no mapa vigente.',
+      "`no_module`: the story doesn't point at any module. `missing_module`: " +
+      "it points at one that doesn't exist in the current map.",
   })
   reason!: Wire<ArchitecturePendency>['reason'];
 
   @ApiProperty({
     example: ['pagamentos'],
-    description:
-      'Os módulos citados que não existem. Vazio quando `no_module`.',
+    description: "The cited modules that don't exist. Empty when `no_module`.",
   })
   missing!: string[];
 }
@@ -395,7 +396,7 @@ export const _chavesPendencia: MesmasChaves<
 > = true;
 
 export class C4AtorResponseDto implements Wire<C4Ator> {
-  @ApiProperty({ example: 'Usuário' })
+  @ApiProperty({ example: 'User' })
   name!: string;
 
   @ApiProperty({
@@ -404,7 +405,7 @@ export class C4AtorResponseDto implements Wire<C4Ator> {
   })
   type!: Wire<C4Ator>['type'];
 
-  @ApiProperty({ example: 'Quem opera o produto pela web.' })
+  @ApiProperty({ example: 'Whoever operates the product through the web.' })
   description!: string;
 }
 export const _chavesC4Ator: MesmasChaves<C4AtorResponseDto, C4Ator> = true;
@@ -413,24 +414,24 @@ export class C4DiagramaResponseDto implements Wire<C4Diagrama> {
   @ApiProperty({ example: 'Brabo' })
   systemName!: string;
 
-  @ApiProperty({ example: 'Plataforma de engenharia orquestrada por agentes.' })
+  @ApiProperty({ example: 'Agent-orchestrated engineering platform.' })
   systemDescription!: string;
 
   @ApiProperty({ type: [C4AtorResponseDto] })
   actors!: C4AtorResponseDto[];
 
   @ApiProperty({
-    example: 'C4Context\n  title Diagrama de Contexto -- Brabo\n  ...',
+    example: 'C4Context\n  title Context Diagram -- Brabo\n  ...',
     description:
-      'Sintaxe Mermaid `C4Context` — o sistema e os atores externos.',
+      'Mermaid `C4Context` syntax — the system and the external actors.',
   })
   contextDiagram!: string;
 
   @ApiProperty({
-    example: 'C4Container\n  title Diagrama de Container -- Brabo\n  ...',
+    example: 'C4Container\n  title Container Diagram -- Brabo\n  ...',
     description:
-      'Sintaxe Mermaid `C4Container` — os módulos do module_map vigente e as ' +
-      'dependências entre eles.',
+      "Mermaid `C4Container` syntax — the current module_map's modules and " +
+      'the dependencies between them.',
   })
   containerDiagram!: string;
 }
@@ -444,22 +445,23 @@ export class EstadoDoC4DiagramaResponseDto implements Wire<EstadoDoC4Diagrama> {
     enum: ['sem_diagrama', 'gerado'],
     example: 'sem_diagrama',
     description:
-      '`sem_diagrama` é o estado inicial: o Arquiteto ainda não gerou nenhum.',
+      '`sem_diagrama` is the initial state: the Architect has not generated ' +
+      'one yet.',
   })
   status!: 'sem_diagrama' | 'gerado';
 
   @ApiProperty({
     type: C4DiagramaResponseDto,
     nullable: true,
-    description: 'O diagrama vigente, ou `null` enquanto não há nenhum.',
+    description: 'The current diagram, or `null` while there is none.',
   })
   diagrama!: C4DiagramaResponseDto | null;
 
   @ApiProperty({
     example: 0,
     description:
-      'Versão do artefato vigente; 0 quando não há diagrama. Revisar é gerar ' +
-      'de novo — o histórico não é reescrito.',
+      'Version of the current artifact; 0 when there is no diagram. ' +
+      'Revising means generating again — history is never rewritten.',
   })
   version!: number;
 
@@ -474,12 +476,12 @@ export const _chavesEstadoC4Diagrama: MesmasChaves<
   EstadoDoC4Diagrama
 > = true;
 
-/** A seção de arquitetura: mapa vigente, ADRs, o que não fecha e o diagrama C4. */
+/** The architecture section: current map, ADRs, what's outstanding, and the C4 diagram. */
 export class ArchitectureResponseDto implements Wire<Architecture> {
   @ApiProperty({
     type: ModuleMapResponseDto,
     nullable: true,
-    description: '`null` enquanto o Arquiteto não escreveu o primeiro mapa.',
+    description: '`null` while the Architect has not written the first map.',
   })
   moduleMap!: ModuleMapResponseDto | null;
 
@@ -489,7 +491,7 @@ export class ArchitectureResponseDto implements Wire<Architecture> {
   @ApiProperty({
     type: [ArchitecturePendencyResponseDto],
     description:
-      'Validação cruzada história↔mapa. Lista vazia é o estado saudável.',
+      'Story↔map cross-validation. An empty list is the healthy state.',
   })
   pendencies!: ArchitecturePendencyResponseDto[];
 
@@ -501,7 +503,7 @@ export const _chavesArquitetura: MesmasChaves<
   Architecture
 > = true;
 
-/** Resposta de `POST .../c4-diagram`: o diagrama recém-gerado + a versão. */
+/** Response for `POST .../c4-diagram`: the freshly generated diagram + the version. */
 export class C4DiagramaGeradoResponseDto implements Wire<C4DiagramaGerado> {
   @ApiProperty({ type: C4DiagramaResponseDto })
   diagrama!: C4DiagramaResponseDto;
@@ -524,21 +526,21 @@ export class InfraArtifactResponseDto implements Wire<InfraArtifact> {
   @ApiProperty({ example: EXEMPLO_SESSAO })
   sessionId!: string;
 
-  @ApiProperty({ example: 'Dockerfile de produção da api' })
+  @ApiProperty({ example: "api's production Dockerfile" })
   title!: string;
 
   @ApiProperty({
     example: '01JC4Z8QK3M7YV2N5T9B0PXHRD',
     description:
-      'Id da `proposed_action` `open_infra_pr` que abriu a PR. É o que o engine ' +
-      'conhece de volta — não existe id de artefato à parte.',
+      'Id of the `open_infra_pr` `proposed_action` that opened the PR. It is ' +
+      'what the engine knows in return — there is no separate artifact id.',
   })
   prActionId!: string;
 
   @ApiProperty({
     enum: PR_GATE_STATUSES,
     example: 'awaiting_qa',
-    description: 'Passa pelos MESMOS gates de QA e SecOps das PRs de dev.',
+    description: 'Goes through the SAME QA and SecOps gates as dev PRs.',
   })
   gateStatus!: Wire<InfraArtifact>['gateStatus'];
 
