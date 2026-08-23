@@ -357,7 +357,9 @@ async function main() {
     const apiKey = process.env[envVar];
     if (!apiKey) continue;
     await upsertUserCredential.execute(owner.id, provider, apiKey);
-    console.log(`✓ credencial: ${provider} ativada para ${owner.email} (via ${envVar})`);
+    console.log(
+      `✓ credencial: ${provider} ativada para ${owner.email} (via ${envVar})`,
+    );
   }
 
   const workspace = await createWorkspace.execute(owner.id, {
