@@ -32,6 +32,28 @@ import {
   CRIATIVO_AGENT,
   CRIATIVO_INSTRUCTIONS,
 } from './seeds/criativo-instructions';
+import type { LLMProviderName } from '@brabo/shared';
+import { UpsertUserCredentialUseCase } from '../application/use-cases/llm/upsert-user-credential.use-case';
+
+/**
+ * Credenciais de provider pré-salvas (opcional): reaproveita as MESMAS
+ * variáveis `<PROVIDER>_TEST_KEY` que os smokes de LLM já usam
+ * (apps/api/test/infrastructure/llm/*.smoke.spec.ts) — uma convenção de
+ * nome só, dois consumidores. Quem já tem uma chave em `.env` não precisa
+ * recadastrá-la na UI toda vez que reseta o banco local (ver
+ * scripts/dev/reset-total.sh). `ollama` fica de fora: é local, não pede
+ * credencial.
+ */
+const CREDENCIAL_ENV_VARS: Partial<Record<LLMProviderName, string>> = {
+  anthropic: 'ANTHROPIC_TEST_KEY',
+  openai: 'OPENAI_TEST_KEY',
+  openrouter: 'OPENROUTER_TEST_KEY',
+  'nvidia-nim': 'NVIDIA_NIM_TEST_KEY',
+  together: 'TOGETHER_TEST_KEY',
+  deepinfra: 'DEEPINFRA_TEST_KEY',
+  bitdeer: 'BITDEER_TEST_KEY',
+  vultr: 'VULTR_TEST_KEY',
+};
 
 // Preços aproximados de mercado (micro-USD por 1M tokens) — editáveis
 // depois (ver README: "models" não tem endpoint HTTP de edição na
@@ -305,6 +327,7 @@ async function main() {
   const setModelsActive = app.get(SetModelsActiveUseCase);
   const setModelBinding = app.get(SetModelBindingUseCase);
   const upsertAgentInstruction = app.get(UpsertAgentInstructionUseCase);
+  const upsertUserCredential = app.get(UpsertUserCredentialUseCase);
 
   // Senha conhecida e e-mail já verificado: é seed de desenvolvimento, e sem
   // Keycloak não existe mais um login pronto para entrar na aplicação depois
@@ -324,6 +347,20 @@ async function main() {
   console.log(
     `✓ usuários: ${owner.email} (owner), ${developer.email} (developer) — senha: ${senhaSeed}`,
   );
+
+  // A chave que um agente gasta é a do OWNER do workspace (RN-058) — é dele
+  // que a credencial fica. Provider sem variável definida não entra, sem erro.
+  for (const [provider, envVar] of Object.entries(CREDENCIAL_ENV_VARS) as [
+    LLMProviderName,
+    string,
+  ][]) {
+    const apiKey = process.env[envVar];
+    if (!apiKey) continue;
+    await upsertUserCredential.execute(owner.id, provider, apiKey);
+    console.log(
+      `✓ credencial: ${provider} ativada para ${owner.email} (via ${envVar})`,
+    );
+  }
 
   const workspace = await createWorkspace.execute(owner.id, {
     name: 'Acme Corp',
