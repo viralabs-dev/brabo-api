@@ -5,6 +5,10 @@ export interface AgentArea {
   key: string;
   leadAgentId: string;
   maxParallel: number;
+  /** Teto de gasto em micro-USD (ADR 0109, RN-440). `null` = sem teto. */
+  budgetMicros: number | null;
+  /** Gasto acumulado em micro-USD — soma SEMPRE, com ou sem teto definido. */
+  spentMicros: number;
   members: string[];
 }
 
@@ -45,5 +49,26 @@ export abstract class AgentAreaRepository {
     projectId: string,
     key: string,
     maxParallel: number,
+  ): Promise<AgentArea>;
+
+  /**
+   * O teto de GASTO da área (ADR 0109, RN-440) — mesma forma de
+   * `setMaxParallel`, mesma tela. `null` limpa o teto (volta a ilimitado).
+   */
+  abstract setBudget(
+    projectId: string,
+    key: string,
+    budgetMicros: number | null,
+  ): Promise<AgentArea>;
+
+  /**
+   * Soma `deltaMicros` ao gasto acumulado da área, atomicamente. Chamada
+   * pelo ÚNICO caminho de metering (`RecordLlmUsageUseCase`), o mesmo que já
+   * incrementa os budgets de projeto e sessão.
+   */
+  abstract incrementSpent(
+    projectId: string,
+    key: string,
+    deltaMicros: number,
   ): Promise<AgentArea>;
 }

@@ -1033,6 +1033,15 @@ export const handoffs = pgTable(
  *
  * O teto é da SESSÃO, não do módulo. Contar por módulo permitiria N módulos ×
  * 2 agentes sem autorização nenhuma, que é o buraco de hoje com outro nome.
+ *
+ * `budgetMicros`/`spentMicros` (ADR 0109, RN-440) fecham o "budget por área"
+ * do backlog do ADR 0038, mirando exatamente `maxParallel`: teto do USUÁRIO,
+ * default vazio (sem teto), direto na linha da área — não a tabela genérica
+ * `budgets` (cujo CHECK de mutual exclusion projeto/sessão não tem onde
+ * encaixar um terceiro escopo) nem uma tabela nova. `spentMicros` acumula
+ * SEMPRE que um agente da área gasta, com ou sem `budgetMicros` definido —
+ * é o que permite mostrar o gasto real da área antes mesmo de alguém
+ * configurar um teto.
  */
 export const agentAreas = pgTable(
   'agent_areas',
@@ -1046,6 +1055,11 @@ export const agentAreas = pgTable(
     /** O contato externo da área (ADR 0038). */
     leadAgentId: text('lead_agent_id').notNull(),
     maxParallel: integer('max_parallel').notNull().default(2),
+    /** `null` = sem teto. Em micro-USD, mesma unidade de `budgets.limit_micros`. */
+    budgetMicros: bigint('budget_micros', { mode: 'number' }),
+    spentMicros: bigint('spent_micros', { mode: 'number' })
+      .notNull()
+      .default(0),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -1053,7 +1067,14 @@ export const agentAreas = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [unique().on(table.projectId, table.key)],
+  (table) => [
+    unique().on(table.projectId, table.key),
+    check(
+      'agent_areas_budget_micros_check',
+      sql`${table.budgetMicros} is null or ${table.budgetMicros} >= 0`,
+    ),
+    check('agent_areas_spent_micros_check', sql`${table.spentMicros} >= 0`),
+  ],
 );
 
 /**

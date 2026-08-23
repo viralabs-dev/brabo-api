@@ -10,6 +10,7 @@ import { AcceptParallelizationUseCase } from './accept-parallelization.use-case'
 import { RequestParallelizationUseCase } from './request-parallelization.use-case';
 import { ListAgentAreasUseCase } from './list-agent-areas.use-case';
 import { SetAreaMaxParallelUseCase } from './set-area-max-parallel.use-case';
+import { SetAreaBudgetUseCase } from './set-area-budget.use-case';
 import { ExecuteParallelizationUseCase } from './execute-parallelization.use-case';
 import { ProposeMaxParallelUseCase } from './propose-max-parallel.use-case';
 import { ExecuteMaxParallelRaiseUseCase } from './execute-max-parallel-raise.use-case';
@@ -49,6 +50,7 @@ const USE_CASES = [
   RequestParallelizationUseCase,
   ListAgentAreasUseCase,
   SetAreaMaxParallelUseCase,
+  SetAreaBudgetUseCase,
   ExecuteParallelizationUseCase,
   ProposeMaxParallelUseCase,
   ExecuteMaxParallelRaiseUseCase,

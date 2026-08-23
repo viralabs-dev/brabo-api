@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { createTestDb, truncateAll } from '../../../support/test-db';
 import {
+  agentAreas,
   models,
   outboxEvents,
   projects,
@@ -11,6 +12,7 @@ import {
   workspaces,
 } from '../../../../src/db/schema';
 import { DrizzleBudgetRepository } from '../../../../src/infrastructure/persistence/drizzle/budget.repository';
+import { DrizzleAgentAreaRepository } from '../../../../src/infrastructure/persistence/drizzle/agent-area.repository';
 import { DrizzleTokenUsageRepository } from '../../../../src/infrastructure/persistence/drizzle/token-usage.repository';
 import { DrizzleOutboxRepository } from '../../../../src/infrastructure/persistence/drizzle/outbox.repository';
 import { RecordLlmUsageUseCase } from '../../../../src/application/use-cases/llm/record-llm-usage.use-case';
@@ -18,11 +20,13 @@ import { BraboMetrics } from '../../../../src/infrastructure/observability/brabo
 
 const { db, pool } = createTestDb();
 const budgetRepo = new DrizzleBudgetRepository(db);
+const areaRepo = new DrizzleAgentAreaRepository(db);
 const tokenUsageRepo = new DrizzleTokenUsageRepository(db);
 const outboxRepo = new DrizzleOutboxRepository(db);
 const recordLlmUsage = new RecordLlmUsageUseCase(
   tokenUsageRepo,
   budgetRepo,
+  areaRepo,
   outboxRepo,
   // Registry próprio por spec: prom-client é global por default e
   // contadores vazados entre arquivos tornariam as asserções dependentes
@@ -294,5 +298,130 @@ describe('RecordLlmUsageUseCase', () => {
     // `null` e não `''`: a consulta de custo por provedor precisa distinguir
     // "não passou por hub" de "passou e o hub não disse".
     expect(row.upstreamProvider).toBeNull();
+  });
+
+  describe('gasto por área (ADR 0109, RN-440)', () => {
+    it('incrementa spentMicros da área quando o ator é membro dela', async () => {
+      const { project, session, model } = await setupSessionAndModel();
+      await db.insert(agentAreas).values({
+        projectId: project.id,
+        key: 'infra',
+        leadAgentId: 'infra',
+      });
+
+      await recordLlmUsage.execute({
+        projectId: project.id,
+        sessionId: session.id,
+        // `infra-workflows` é membro FIXO da área `infra` (agent-areas.ts).
+        actor: { kind: 'agent', id: 'infra-workflows' },
+        provider: 'ollama',
+        modelId: model.id,
+        modelName: model.name,
+        inputTokens: 10,
+        outputTokens: 5,
+        estimated: false,
+        costMicros: 300,
+        latencyMs: 20,
+        bindingOrigin: 'project',
+      });
+
+      const area = await areaRepo.findByKey(project.id, 'infra');
+      expect(area?.spentMicros).toBe(300);
+    });
+
+    it('o LEAD da área também conta (areaDo devolve área pro lead)', async () => {
+      const { project, session, model } = await setupSessionAndModel();
+      await db.insert(agentAreas).values({
+        projectId: project.id,
+        key: 'qa',
+        leadAgentId: 'qa',
+      });
+
+      await recordLlmUsage.execute({
+        projectId: project.id,
+        sessionId: session.id,
+        actor: { kind: 'agent', id: 'qa' },
+        provider: 'ollama',
+        modelId: model.id,
+        modelName: model.name,
+        inputTokens: 1,
+        outputTokens: 1,
+        estimated: false,
+        costMicros: 42,
+        latencyMs: 5,
+        bindingOrigin: 'project',
+      });
+
+      const area = await areaRepo.findByKey(project.id, 'qa');
+      expect(area?.spentMicros).toBe(42);
+    });
+
+    it('não faz nada nocivo quando o ator não tem área (agente sem área)', async () => {
+      const { project, session, model, user } = await setupSessionAndModel();
+
+      // Nenhuma área cadastrada no projeto — só confirma que nada lança.
+      await expect(
+        recordLlmUsage.execute({
+          projectId: project.id,
+          sessionId: session.id,
+          actor: { kind: 'agent', id: 'criativo' },
+          provider: 'ollama',
+          modelId: model.id,
+          modelName: model.name,
+          inputTokens: 1,
+          outputTokens: 1,
+          estimated: false,
+          costMicros: 10,
+          latencyMs: 5,
+          bindingOrigin: 'project',
+        }),
+      ).resolves.toBeDefined();
+
+      // Usuário no chat também não tem área — mesma garantia, ator humano.
+      await expect(
+        recordLlmUsage.execute({
+          projectId: project.id,
+          sessionId: session.id,
+          actor: { kind: 'user', id: user.id },
+          provider: 'ollama',
+          modelId: model.id,
+          modelName: model.name,
+          inputTokens: 1,
+          outputTokens: 1,
+          estimated: false,
+          costMicros: 10,
+          latencyMs: 5,
+          bindingOrigin: 'project',
+        }),
+      ).resolves.toBeDefined();
+    });
+
+    it('soma SEM teto configurado — spentMicros acumula com budgetMicros null', async () => {
+      const { project, session, model } = await setupSessionAndModel();
+      const [area] = await db
+        .insert(agentAreas)
+        .values({ projectId: project.id, key: 'infra', leadAgentId: 'infra' })
+        .returning();
+      expect(area.budgetMicros).toBeNull();
+
+      await recordLlmUsage.execute({
+        projectId: project.id,
+        sessionId: session.id,
+        actor: { kind: 'agent', id: 'infra-workflows' },
+        provider: 'ollama',
+        modelId: model.id,
+        modelName: model.name,
+        inputTokens: 1,
+        outputTokens: 1,
+        estimated: false,
+        costMicros: 999,
+        latencyMs: 5,
+        bindingOrigin: 'project',
+      });
+
+      const atualizada = await areaRepo.findByKey(project.id, 'infra');
+      expect(atualizada?.spentMicros).toBe(999);
+      expect(atualizada?.budgetMicros).toBeNull();
+    });
   });
 });

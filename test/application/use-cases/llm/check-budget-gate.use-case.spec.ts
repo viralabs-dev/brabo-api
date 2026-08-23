@@ -1,13 +1,20 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { createTestDb, truncateAll } from '../../../support/test-db';
-import { projects, users, workspaces } from '../../../../src/db/schema';
+import {
+  agentAreas,
+  projects,
+  users,
+  workspaces,
+} from '../../../../src/db/schema';
 import { DrizzleBudgetRepository } from '../../../../src/infrastructure/persistence/drizzle/budget.repository';
+import { DrizzleAgentAreaRepository } from '../../../../src/infrastructure/persistence/drizzle/agent-area.repository';
 import { CheckBudgetGateUseCase } from '../../../../src/application/use-cases/llm/check-budget-gate.use-case';
 import type { BudgetRepository } from '../../../../src/application/ports/budget-repository.port';
 
 const { db, pool } = createTestDb();
 const budgetRepo = new DrizzleBudgetRepository(db);
-const checkBudgetGate = new CheckBudgetGateUseCase(budgetRepo);
+const areaRepo = new DrizzleAgentAreaRepository(db);
+const checkBudgetGate = new CheckBudgetGateUseCase(budgetRepo, areaRepo);
 
 async function setupProject() {
   const [user] = await db
@@ -110,9 +117,88 @@ describe('CheckBudgetGateUseCase', () => {
       updateLastNotified: (budgetId, threshold) =>
         budgetRepo.updateLastNotified(budgetId, threshold),
     };
-    const gate = new CheckBudgetGateUseCase(throwingRepo);
+    const gate = new CheckBudgetGateUseCase(throwingRepo, areaRepo);
 
     const result = await gate.execute('any-project', 'any-session');
     expect(result.blocked).toBe(true);
+  });
+
+  describe('budget de área (ADR 0109, RN-440) — aditivo, não cascata', () => {
+    it('bloqueia por área excedida MESMO com projeto e sessão OK', async () => {
+      const { project } = await setupProject();
+      await db.insert(agentAreas).values({
+        projectId: project.id,
+        key: 'infra',
+        leadAgentId: 'infra',
+        budgetMicros: 100,
+      });
+      await areaRepo.incrementSpent(project.id, 'infra', 100);
+
+      const result = await checkBudgetGate.execute(
+        project.id,
+        '00000000-0000-0000-0000-000000000000',
+        'infra-workflows',
+      );
+      expect(result.blocked).toBe(true);
+      expect(result.reason).toMatch(/área/);
+    });
+
+    it('projeto excedido bloqueia MESMO com área dentro do teto (independência)', async () => {
+      const { project } = await setupProject();
+      const budget = await budgetRepo.upsertForProject(project.id, {
+        limitMicros: 100,
+        policy: 'block',
+      });
+      await budgetRepo.incrementSpent(budget.id, 100);
+      await db.insert(agentAreas).values({
+        projectId: project.id,
+        key: 'infra',
+        leadAgentId: 'infra',
+        budgetMicros: 1_000_000,
+      });
+
+      const result = await checkBudgetGate.execute(
+        project.id,
+        '00000000-0000-0000-0000-000000000000',
+        'infra-workflows',
+      );
+      expect(result.blocked).toBe(true);
+      expect(result.reason).toMatch(/projeto/);
+    });
+
+    it('sem teto de área (budgetMicros null), nunca bloqueia por área', async () => {
+      const { project } = await setupProject();
+      await db.insert(agentAreas).values({
+        projectId: project.id,
+        key: 'infra',
+        leadAgentId: 'infra',
+      });
+      await areaRepo.incrementSpent(project.id, 'infra', 9_999_999);
+
+      const result = await checkBudgetGate.execute(
+        project.id,
+        '00000000-0000-0000-0000-000000000000',
+        'infra-workflows',
+      );
+      expect(result.blocked).toBe(false);
+    });
+
+    it('agente sem área não é afetado pelo teto de outra área', async () => {
+      const { project } = await setupProject();
+      await db.insert(agentAreas).values({
+        projectId: project.id,
+        key: 'infra',
+        leadAgentId: 'infra',
+        budgetMicros: 1,
+      });
+      await areaRepo.incrementSpent(project.id, 'infra', 1);
+
+      const result = await checkBudgetGate.execute(
+        project.id,
+        '00000000-0000-0000-0000-000000000000',
+        'criativo',
+      );
+      expect(result.blocked).toBe(false);
+    });
   });
 });

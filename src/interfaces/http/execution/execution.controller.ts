@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Put } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiConflictResponse,
@@ -20,9 +20,11 @@ import { UnblockTaskUseCase } from '../../../application/use-cases/execution/unb
 import { RearmDevAgentUseCase } from '../../../application/use-cases/execution/rearm-dev-agent.use-case';
 import { ListAgentAreasUseCase } from '../../../application/use-cases/execution/list-agent-areas.use-case';
 import { SetAreaMaxParallelUseCase } from '../../../application/use-cases/execution/set-area-max-parallel.use-case';
+import { SetAreaBudgetUseCase } from '../../../application/use-cases/execution/set-area-budget.use-case';
 import { AcceptParallelizationDto } from './dto/accept-parallelization.dto';
 import { ActivateExecutionDto } from './dto/activate-execution.dto';
 import { SetMaxParallelDto } from './dto/set-max-parallel.dto';
+import { SetAreaBudgetDto } from './dto/set-area-budget.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import { OkResponseDto } from '../shared/dto/comuns.response.dto';
 import { SessionResponseDto } from '../sessions/dto/sessions.response.dto';
@@ -31,6 +33,10 @@ import {
   ExecucaoAtivadaResponseDto,
   PedidoDeParalelismoResponseDto,
 } from './dto/execution.response.dto';
+
+// Mesma convenção de `BudgetsController`: a ENTRADA fala em dólar, o resto
+// fala em micro-USD (ADR 0109).
+const MICROS_PER_USD = 1_000_000;
 
 /**
  * Ações do usuário sobre a fase de execução (Fase 4a). Ativar exige maintainer
@@ -50,6 +56,7 @@ export class ExecutionController {
     private readonly rearmDevAgent: RearmDevAgentUseCase,
     private readonly listAgentAreas: ListAgentAreasUseCase,
     private readonly setAreaMaxParallel: SetAreaMaxParallelUseCase,
+    private readonly setAreaBudget: SetAreaBudgetUseCase,
   ) {}
 
   @Post('execution/activate')
@@ -163,6 +170,32 @@ export class ExecutionController {
     @Body() dto: SetMaxParallelDto,
   ) {
     return this.setAreaMaxParallel.execute(projectId, key, dto.maxParallel);
+  }
+
+  @Put('agent-areas/:key/budget')
+  @RequireRole('maintainer')
+  @ApiOperation({
+    summary: "Sets (or clears) an area's spend cap",
+    description:
+      'Requires `maintainer`, same reason as the parallelism cap: this is ' +
+      'an INDEPENDENT, additive check next to the project and session ' +
+      'budgets (ADR 0109) — not a cascade, and not a replacement for ' +
+      'either. The limit comes in as DOLLARS and is converted to ' +
+      'micro-USD server-side, same convention as `BudgetsController`. ' +
+      '`null` clears the cap.',
+  })
+  @ApiOkResponse({ type: AreaDeAgentesResponseDto })
+  @ApiBadRequestResponse({
+    description: '`limitUsd` is neither `null` nor a number >= 0.',
+  })
+  setBudget(
+    @Param('projectId') projectId: string,
+    @Param('key') key: string,
+    @Body() dto: SetAreaBudgetDto,
+  ) {
+    const budgetMicros =
+      dto.limitUsd === null ? null : Math.round(dto.limitUsd * MICROS_PER_USD);
+    return this.setAreaBudget.execute(projectId, key, budgetMicros);
   }
 
   @Post('sessions/:sessionId/tasks/:taskId/unblock')
