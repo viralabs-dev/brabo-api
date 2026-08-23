@@ -95,8 +95,8 @@ export class ProjectsController {
   @ApiOperation({
     summary: 'Associates a user with the project',
     description:
-      "The EFFECTIVE role is the higher of this one and what the person " +
-      "already has in the workspace — associating someone as `viewer` here " +
+      'The EFFECTIVE role is the higher of this one and what the person ' +
+      'already has in the workspace — associating someone as `viewer` here ' +
       "doesn't downgrade a workspace `owner`.",
   })
   @ApiCreatedResponse({ type: ProjectMemberResponseDto })

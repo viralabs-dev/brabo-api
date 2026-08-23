@@ -132,7 +132,9 @@ import {
 @ApiForbiddenResponse({
   description: 'Service token missing or different from the shared one.',
 })
-@ApiNotFoundResponse({ description: 'Session, project, or resource not found.' })
+@ApiNotFoundResponse({
+  description: 'Session, project, or resource not found.',
+})
 @ApiBadRequestResponse({ description: 'Invalid body.' })
 @Controller('internal/sessions')
 @ServiceRoute()
@@ -203,7 +205,7 @@ export class InternalSessionsController {
     summary: 'Reports that the session process terminated in the engine',
     description:
       'Only terminations the api did NOT cause reach here — crash, kill, ' +
-      "`heartbeat_timeout`, defensive shutdown. A stop planned by the api itself " +
+      '`heartbeat_timeout`, defensive shutdown. A stop planned by the api itself ' +
       "doesn't go through here: the engine already learned of it via the " +
       'outbox, and reporting it back would be an echo.',
   })
@@ -290,7 +292,7 @@ export class InternalSessionsController {
     description:
       'Metering is MANDATORY: every turn records `token_usage`, and that is ' +
       "what makes the budget mean something. Doesn't record any event — the " +
-      "engine narrates the event log. A provider failure comes back in `error` " +
+      'engine narrates the event log. A provider failure comes back in `error` ' +
       'with 200, because the accounting in `usage` remains valid: the turn ' +
       'spent even while failing.',
   })
@@ -356,7 +358,7 @@ export class InternalSessionsController {
   @ApiOperation({
     summary: 'Offers a handoff from one agent to another',
     description:
-      "Born as `offered`. Who accepts is a PERSON, via the human route — an " +
+      'Born as `offered`. Who accepts is a PERSON, via the human route — an ' +
       "agent doesn't activate an agent.",
   })
   @ApiCreatedResponse({ type: HandoffResponseDto })
@@ -391,7 +393,8 @@ export class InternalSessionsController {
 
   @Post(':sessionId/stories')
   @ApiOperation({
-    summary: 'Creates a story with functional/non-functional requirements, DoD, DoR, and covered rules',
+    summary:
+      'Creates a story with functional/non-functional requirements, DoD, DoR, and covered rules',
     description:
       '`businessRuleIds` is what feeds the rule→story coverage. Each id has to ' +
       'reference an `artifact.business_rule` event that EXISTS — validation ' +
@@ -634,10 +637,10 @@ export class InternalSessionsController {
    */
   @Get(':sessionId/psychologist-context')
   @ApiOperation({
-    summary: "Assembles the context for a Psychologist round",
+    summary: 'Assembles the context for a Psychologist round',
     description:
-      "`alreadyAnalyzed` is what gives the automatic path IDEMPOTENCY: with " +
-      "`true` the worker short-circuits without spending a token. The prior " +
+      '`alreadyAnalyzed` is what gives the automatic path IDEMPOTENCY: with ' +
+      '`true` the worker short-circuits without spending a token. The prior ' +
       "hypotheses come along so the round doesn't repeat itself.",
   })
   @ApiQuery({ name: 'projectId', required: true })
@@ -659,7 +662,7 @@ export class InternalSessionsController {
   @ApiOperation({
     summary: 'Records an analysis round and its hypotheses',
     description:
-      "Each hypothesis needs to cite events that EXIST in this session — made-up " +
+      'Each hypothesis needs to cite events that EXIST in this session — made-up ' +
       'evidence is rejected with 400, and that is what separates a hypothesis ' +
       "from an opinion. The session's previous round becomes superseded.",
   })
@@ -775,7 +778,7 @@ export class InternalSessionsController {
    */
   @Post(':sessionId/delegations')
   @ApiOperation({
-    summary: "Records the outcome of an area delegation",
+    summary: 'Records the outcome of an area delegation',
     description:
       '`completed` (with the verdict), `failed` (with the origin), or ' +
       '`dispensed` (with the justification) — the lead never calls this route ' +
@@ -808,7 +811,7 @@ export class InternalSessionsController {
   @Post(':sessionId/infra-gates/verdict')
   @ApiOperation({
     summary: "Records QA's or SecOps's verdict on an infra PR",
-    description: "Same pipeline and same state machine as dev PRs.",
+    description: 'Same pipeline and same state machine as dev PRs.',
   })
   @ApiCreatedResponse({ type: InfraGateVerdictResponseDto })
   infraGateVerdict(
@@ -878,7 +881,7 @@ export class InternalSessionsController {
   @ApiOperation({
     summary: 'Records the proficiency profiles derived in the round',
     description:
-      "A competency outside the catalog is REJECTED, and so is evidence that " +
+      'A competency outside the catalog is REJECTED, and so is evidence that ' +
       'cites an event from another project — both validations exist because ' +
       'the model gets both things wrong.',
   })
@@ -932,7 +935,7 @@ export class InternalSessionsController {
   @ApiOperation({
     summary: "Proposes raising an area's parallelism cap",
     description:
-      "Refuses to propose a cap equal to or lower than the current one: the " +
+      'Refuses to propose a cap equal to or lower than the current one: the ' +
       'Anamnesis runs periodically, and would re-propose the same thing every ' +
       'round, filling with noise a queue the user needs to read.',
   })
@@ -957,7 +960,7 @@ export class InternalSessionsController {
   @ApiOperation({
     summary: 'Proposes an action with an external effect on behalf of an agent',
     description:
-      "The ONLY door through which an agent touches git, terminal, or spend. " +
+      'The ONLY door through which an agent touches git, terminal, or spend. ' +
       '`permissions.json` decides at creation, and `deny` beats any autonomy ' +
       'granted to the agent.',
   })

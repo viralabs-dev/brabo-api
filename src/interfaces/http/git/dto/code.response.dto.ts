@@ -43,7 +43,7 @@ export class CodeTreeEntryResponseDto implements Wire<GitTreeEntry> {
 
   @ApiProperty({
     example: 'main.ts',
-    description: "Last segment of `path`.",
+    description: 'Last segment of `path`.',
   })
   name!: string;
 
@@ -98,7 +98,7 @@ export class CodeFileResponseDto implements Wire<CodeFile> {
 
   @ApiProperty({
     example: "import { NestFactory } from '@nestjs/core';\n",
-    description: "UTF-8 content. Binary is not served by this route.",
+    description: 'UTF-8 content. Binary is not served by this route.',
   })
   content!: string;
 
@@ -294,7 +294,9 @@ export class CodePullRequestSummaryResponseDto implements Wire<GitPullRequestSum
   @ApiProperty({ example: 42 })
   number!: number;
 
-  @ApiProperty({ example: 'fix(api): the agents area is born with the project' })
+  @ApiProperty({
+    example: 'fix(api): the agents area is born with the project',
+  })
   title!: string;
 
   @ApiProperty({ example: 'https://github.com/acme/repo/pull/42' })
@@ -362,7 +364,7 @@ export class CodeBranchProducedByResponseDto implements Wire<CodeBranchProducedB
   @ApiProperty({
     example: 'dev-pieces',
     description:
-      "agent_id of the dev who created the branch (`dev-<module>`/`dev-<module>-2`, RN-087).",
+      'agent_id of the dev who created the branch (`dev-<module>`/`dev-<module>-2`, RN-087).',
   })
   agentId!: string;
 

@@ -27,7 +27,8 @@ export class ProposeActionDto {
     type: 'object',
     additionalProperties: true,
     example: { command: 'pnpm test' },
-    description: 'Action parameters, with a shape specific to the `actionType`.',
+    description:
+      'Action parameters, with a shape specific to the `actionType`.',
   })
   @IsObject()
   payload!: Record<string, unknown>;

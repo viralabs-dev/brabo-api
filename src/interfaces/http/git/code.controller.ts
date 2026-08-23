@@ -58,7 +58,7 @@ import {
 @ApiForbiddenResponse({ description: 'Insufficient role on the project.' })
 @ApiNotFoundResponse({
   description:
-    "Project without a provisioned repository, or a nonexistent ref/path/PR.",
+    'Project without a provisioned repository, or a nonexistent ref/path/PR.',
 })
 @ApiBadRequestResponse({
   description:
@@ -82,10 +82,10 @@ export class CodeController {
   @ApiOperation({
     summary: 'Lists ONE level of the repository tree',
     description:
-      "Not recursive, by contract design: the tab navigates on demand, and " +
-      "requesting the whole tree of a large repository is exactly the " +
-      "traffic amplifier this phase forbids. `truncated` warns when the " +
-      "level went past the entry cap.",
+      'Not recursive, by contract design: the tab navigates on demand, and ' +
+      'requesting the whole tree of a large repository is exactly the ' +
+      'traffic amplifier this phase forbids. `truncated` warns when the ' +
+      'level went past the entry cap.',
   })
   @ApiQuery({
     name: 'ref',
@@ -113,9 +113,9 @@ export class CodeController {
     summary: "Returns a file's content",
     description:
       "UTF-8, cut at the byte cap with `truncated: true` when it's " +
-      "exceeded. A path that escapes the project folder is refused with " +
-      "400 by the central check in RN-095 — never with 404, which would " +
-      "invite probing.",
+      'exceeded. A path that escapes the project folder is refused with ' +
+      '400 by the central check in RN-095 — never with 404, which would ' +
+      'invite probing.',
   })
   @ApiQuery({
     name: 'ref',
@@ -160,7 +160,8 @@ export class CodeController {
   @ApiQuery({
     name: 'path',
     required: false,
-    description: 'Subtree to search in. Narrowing this is what avoids truncation.',
+    description:
+      'Subtree to search in. Narrowing this is what avoids truncation.',
   })
   @ApiOkResponse({ type: CodeSearchResponseDto })
   search(
@@ -200,9 +201,9 @@ export class CodeController {
   @ApiOperation({
     summary: 'Annotates every line of a file with the commit that touched it',
     description:
-      "Foundation for the declared blame pending item (PHASE 26b) — the UI " +
+      'Foundation for the declared blame pending item (PHASE 26b) — the UI ' +
       "that annotates the editor line by line doesn't exist yet. " +
-      "`truncated` warns when the file went past the annotated-lines cap.",
+      '`truncated` warns when the file went past the annotated-lines cap.',
   })
   @ApiQuery({
     name: 'ref',
@@ -253,8 +254,8 @@ export class CodeController {
   @ApiOperation({
     summary: 'Lists branches with ahead/behind and the associated open PR',
     description:
-      "Foundation for the rich dropdown (PHASE 26b) — today the ref " +
-      "selector is a plain text field. `ahead`/`behind` are relative to " +
+      'Foundation for the rich dropdown (PHASE 26b) — today the ref ' +
+      'selector is a plain text field. `ahead`/`behind` are relative to ' +
       "the repository's DEFAULT branch; `null` when the provider can't " +
       'compute it (an honest degradation, not an error). It is NOT ' +
       '`listBranches` (which the Gitflow bootstrap uses) — it is its own ' +

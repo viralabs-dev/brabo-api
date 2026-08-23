@@ -16,7 +16,7 @@ export class ActivateExecutionDto {
   @ApiPropertyOptional({
     example: 500000,
     description:
-      "Budget per task in micro-USD. Omitted uses the domain default " +
+      'Budget per task in micro-USD. Omitted uses the domain default ' +
       '(DEFAULT_TASK_BUDGET_MICROS).',
   })
   @IsOptional()
@@ -28,7 +28,7 @@ export class ActivateExecutionDto {
     example: 3,
     description:
       'How many dev↔gate round trips before the task becomes `blocked`. It is ' +
-      "what stops an agent from spending its budget in a correction loop.",
+      'what stops an agent from spending its budget in a correction loop.',
   })
   @IsOptional()
   @IsInt()
@@ -49,7 +49,7 @@ export class ActivateExecutionDto {
   @ApiPropertyOptional({
     example: ['Terminal(pnpm test:*)', 'Terminal(pnpm lint)'],
     description:
-      "Patterns released in `permissions.json` for the dev agents to run the " +
+      'Patterns released in `permissions.json` for the dev agents to run the ' +
       'test suite. `deny` still wins over anything listed here.',
   })
   @IsOptional()

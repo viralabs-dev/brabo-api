@@ -39,7 +39,8 @@ export class ProposedActionResponseDto implements Wire<ProposedAction> {
 
   @ApiProperty({
     example: 7,
-    description: 'Order of the action within the session; used as a cursor in listings.',
+    description:
+      'Order of the action within the session; used as a cursor in listings.',
   })
   seq!: number;
 
@@ -184,7 +185,7 @@ export class AgentAutonomyRuleResponseDto implements RegraDeAutonomia {
     enum: ['auto_approve', 'require_approval', 'deny'],
     example: 'auto_approve',
     description:
-      "Autonomy granted. Does not override `permissions.json`: a `deny` there " +
+      'Autonomy granted. Does not override `permissions.json`: a `deny` there ' +
       'still wins.',
   })
   mode!: PermissionPolicy;

@@ -55,7 +55,7 @@ export class ContainersController {
     description:
       'While the status is `sem_decisao`, the project container does not come ' +
       "up and the Code tab responds 409 — that's the RN-105 gate. Seeing the " +
-      "state requires the same permission as seeing the project, so `viewer`.",
+      'state requires the same permission as seeing the project, so `viewer`.',
   })
   @ApiOkResponse({ type: EstadoDoContainerResponseDto })
   estado(@Param('projectId') projectId: string) {

@@ -94,7 +94,7 @@ export class SessionResponseDto implements Wire<Session> {
     example: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
     nullable: true,
     description:
-      "W3C `traceparent` of the root span. This is how the whole session is " +
+      'W3C `traceparent` of the root span. This is how the whole session is ' +
       'recovered in Tempo.',
   })
   traceParent!: string | null;

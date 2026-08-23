@@ -29,7 +29,7 @@ export class ConfirmProjectWorkspaceInternalDto {
     format: 'uuid',
     example: '01JC4Z0000USUARIO0000000001',
     description:
-      "Who requested the runner ticket (owner of the socket that " +
+      'Who requested the runner ticket (owner of the socket that ' +
       'confirmed) — becomes the actor of the `project.workspace_verified` ' +
       'event. Omitted: the event (if there is a session) is born with no ' +
       'identified actor.',

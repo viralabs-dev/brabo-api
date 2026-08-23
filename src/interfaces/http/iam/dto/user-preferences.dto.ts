@@ -1,6 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsIn } from 'class-validator';
-import { USER_LOCALES, type UserLocale } from '../../../../domain/iam/user.entity';
+import {
+  USER_LOCALES,
+  type UserLocale,
+} from '../../../../domain/iam/user.entity';
 import type { MesmasChaves, Wire } from '../../shared/dto/wire';
 
 /**

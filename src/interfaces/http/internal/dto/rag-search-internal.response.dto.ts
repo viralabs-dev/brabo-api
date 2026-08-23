@@ -20,7 +20,8 @@ export class RagSearchInternalHitResponseDto {
   chunk!: string;
 
   @ApiProperty({
-    description: 'Combined score (vector + lexical), already filtered by the threshold.',
+    description:
+      'Combined score (vector + lexical), already filtered by the threshold.',
   })
   score!: number;
 

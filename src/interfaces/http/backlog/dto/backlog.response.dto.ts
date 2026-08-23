@@ -167,7 +167,7 @@ export class StoryResponseDto implements Wire<Story> {
   @ApiProperty({
     example: ['api'],
     description:
-      "Modules from the `module_map` that the story touches. A story with " +
+      'Modules from the `module_map` that the story touches. A story with ' +
       'no module, or with a non-existent module, becomes an architecture ' +
       'pending item.',
   })
@@ -189,7 +189,7 @@ export class StoryResponseDto implements Wire<Story> {
     example: 'DoD too generic — spell out the acceptance criteria.',
     nullable: true,
     description:
-      "Why the user returned the story to the PO. `null` when it was never " +
+      'Why the user returned the story to the PO. `null` when it was never ' +
       'returned.',
   })
   returnedReason!: string | null;
@@ -345,7 +345,8 @@ export const _chavesModuleMap: MesmasChaves<ModuleMapResponseDto, ModuleMap> =
 export class AdrRefResponseDto implements Wire<AdrRef> {
   @ApiProperty({
     example: '01JC4Z8QK3M7YV2N5T9B0PXHRC',
-    description: "Id of the `open_adr_pr` `proposed_action` that opened the ADR.",
+    description:
+      'Id of the `open_adr_pr` `proposed_action` that opened the ADR.',
   })
   actionId!: string;
 
@@ -385,8 +386,7 @@ export class ArchitecturePendencyResponseDto implements Wire<ArchitecturePendenc
 
   @ApiProperty({
     example: ['pagamentos'],
-    description:
-      "The cited modules that don't exist. Empty when `no_module`.",
+    description: "The cited modules that don't exist. Empty when `no_module`.",
   })
   missing!: string[];
 }
@@ -532,8 +532,8 @@ export class InfraArtifactResponseDto implements Wire<InfraArtifact> {
   @ApiProperty({
     example: '01JC4Z8QK3M7YV2N5T9B0PXHRD',
     description:
-      "Id of the `open_infra_pr` `proposed_action` that opened the PR. It is " +
-      "what the engine knows in return — there is no separate artifact id.",
+      'Id of the `open_infra_pr` `proposed_action` that opened the PR. It is ' +
+      'what the engine knows in return — there is no separate artifact id.',
   })
   prActionId!: string;
 

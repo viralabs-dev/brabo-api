@@ -68,10 +68,10 @@ export class CreateProjectDto {
       "WHERE this project's command EXECUTES (RN-169/RN-421 — ADR 0072/0104). " +
       '`container` (default): the folder managed by the product inside ' +
       'PROJECT_WORKSPACES_ROOT, the usual behavior. `mounted`: a folder of ' +
-      "YOURS, given in `workspacePath`, that needs to be mounted inside the " +
+      'YOURS, given in `workspacePath`, that needs to be mounted inside the ' +
       "api's and engine's containers — creation REFUSES (400) a path that " +
       "isn't, with instructions on how to mount it (RN-422). `runner`: a " +
-      "folder of YOURS that does NOT need a bind-mount — creation only " +
+      'folder of YOURS that does NOT need a bind-mount — creation only ' +
       'validates the path format and the project is born "unverified"; run ' +
       '`brabo-runner --project <id> --dir <folder>` on your machine to ' +
       'confirm it (RN-423).',
@@ -87,7 +87,7 @@ export class CreateProjectDto {
       '`mounted` or `runner`, and refused when it is `container`. In ' +
       '`mounted`, validated on creation: it needs to exist and be writable ' +
       'from inside the container, and cannot be the system root, a system ' +
-      "folder, nor overlap with the Brabo checkout (RN-422). In `runner`, " +
+      'folder, nor overlap with the Brabo checkout (RN-422). In `runner`, ' +
       'only the FORMAT is validated now — existence is confirmed later, by the runner (RN-423).',
   })
   @IsOptional()

@@ -225,7 +225,8 @@ export class PsychologistContextResponseDto implements Wire<PsychologistContext>
 
   @ApiProperty({
     type: [PriorHypothesisResponseDto],
-    description: "What was already proposed before, so the round doesn't repeat itself.",
+    description:
+      "What was already proposed before, so the round doesn't repeat itself.",
   })
   priorHypotheses!: PriorHypothesisResponseDto[];
 }
@@ -307,7 +308,10 @@ export class AnamneseDecisionResponseDto implements Wire<AnamneseContextDecision
   @ApiProperty({ example: 'denied' })
   status!: string;
 
-  @ApiProperty({ example: 'Command would delete the directory.', nullable: true })
+  @ApiProperty({
+    example: 'Command would delete the directory.',
+    nullable: true,
+  })
   rejectionReason!: string | null;
 
   @ApiProperty({ example: '01JC4Z0000USUARIO0000000001', nullable: true })
@@ -340,7 +344,7 @@ export class AnamneseContextResponseDto implements Wire<AnamneseContext> {
   @ApiProperty({
     example: ['TypeScript', 'Elixir', 'Kubernetes'],
     description:
-      "CLOSED catalog. The model cannot emit a competency outside of this — " +
+      'CLOSED catalog. The model cannot emit a competency outside of this — ' +
       'validation rejects it — so it goes into the prompt as a list.',
   })
   competencyCatalog!: string[];
@@ -378,7 +382,7 @@ export class AnamneseContextResponseDto implements Wire<AnamneseContext> {
     description:
       'Start of the window to analyze (end of the last round). `null` on the ' +
       'first one. The engine reads the events themselves straight from ' +
-      "Postgres — carrying them over HTTP would be more expensive without " +
+      'Postgres — carrying them over HTTP would be more expensive without ' +
       'being more correct.',
   })
   windowFrom!: string | null;
@@ -450,7 +454,7 @@ export class LlmTurnResponseDto implements Wire<RunLlmTurnResult> {
     nullable: true,
     description:
       "The provider's failure. Comes in the BODY with 200, not as an HTTP " +
-      "error, because the accounting in `usage` remains valid — the turn " +
+      'error, because the accounting in `usage` remains valid — the turn ' +
       'spent, even while failing.',
   })
   error!: string | null;
@@ -506,7 +510,7 @@ export class GateVerdictResponseDto implements Wire<RecordGateVerdictResult> {
     enum: GATE_NEXT_ACTIONS,
     example: 'run_secops',
     description:
-      "What happens next. `correct` returns to dev; `run_secops` advances " +
+      'What happens next. `correct` returns to dev; `run_secops` advances ' +
       'the gate; `done` releases it to the user; `blocked` means the ' +
       'correction cap ran out and only a human can unblock it.',
   })
@@ -566,7 +570,8 @@ export const _chavesArquivosPr: MesmasChaves<
 export class ProposeHypothesesResponseDto implements Wire<ProposeHypothesesResult> {
   @ApiProperty({
     example: '01JC4Z0000ANALISE0000000001',
-    description: "The created round. This session's previous one becomes superseded.",
+    description:
+      "The created round. This session's previous one becomes superseded.",
   })
   analysisId!: string;
 
@@ -614,7 +619,7 @@ export class DelegationResponseDto implements Wire<Delegation> {
     nullable: true,
     example: '01JC4Z0000TAREFA00000000001',
     description:
-      "null when the area has no backlog task behind it (Infra, Phase 8c).",
+      'null when the area has no backlog task behind it (Infra, Phase 8c).',
   })
   taskId!: string | null;
 

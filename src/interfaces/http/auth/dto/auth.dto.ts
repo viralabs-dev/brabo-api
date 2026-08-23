@@ -27,7 +27,10 @@ import {
  */
 
 export class RegisterDto {
-  @ApiProperty({ example: 'fulano@brabo.dev', description: "The account's email." })
+  @ApiProperty({
+    example: 'fulano@brabo.dev',
+    description: "The account's email.",
+  })
   @IsEmail()
   email!: string;
 

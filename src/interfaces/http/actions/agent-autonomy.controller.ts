@@ -43,7 +43,7 @@ export class AgentAutonomyController {
   @RequireRole('maintainer')
   @HttpCode(204)
   @ApiOperation({
-    summary: 'Sets an agent\'s autonomy for an action type',
+    summary: "Sets an agent's autonomy for an action type",
     description:
       'Upsert by (agent, type). It does NOT override `permissions.json`: a ' +
       'pattern already in `deny` stays blocked no matter how much autonomy is ' +

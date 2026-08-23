@@ -43,7 +43,8 @@ export class InternalRagController {
 
   @Post('search')
   @ApiOperation({
-    summary: "Hybrid search over the project's RAG index, for the engine's tool",
+    summary:
+      "Hybrid search over the project's RAG index, for the engine's tool",
     description:
       'Same engine as `POST /projects/:projectId/rag/search` (human route), ' +
       "projected into the format the engine's `rag_search` tool expects.",

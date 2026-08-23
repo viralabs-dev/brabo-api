@@ -10,7 +10,7 @@ export class SessionPendingWorkResponseDto {
   @ApiProperty({
     example: true,
     description:
-      "There is work that blocks closing due to tab inactivity. Today: an " +
+      'There is work that blocks closing due to tab inactivity. Today: an ' +
       '`offered` handoff waiting for acceptance.',
   })
   pending!: boolean;

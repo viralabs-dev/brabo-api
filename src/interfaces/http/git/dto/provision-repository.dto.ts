@@ -17,7 +17,7 @@ export class ProvisionRepositoryDto {
   @ApiPropertyOptional({
     example: 'acme',
     description:
-      "Organization or group. When omitted, the repository is created in " +
+      'Organization or group. When omitted, the repository is created in ' +
       "whoever registered the credential's personal account.",
   })
   @IsOptional()

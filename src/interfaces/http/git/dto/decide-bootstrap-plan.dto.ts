@@ -9,7 +9,7 @@ export class DecideBootstrapPlanDto {
       'The `generatedAt` of the plan you SAW. Optimistic lock: if the plan ' +
       'has been regenerated since then (re-adoption, or the repository ' +
       'changed), the decision is refused with 409 instead of applying a ' +
-      "yes given about something else.",
+      'yes given about something else.',
   })
   @IsISO8601()
   @IsNotEmpty()

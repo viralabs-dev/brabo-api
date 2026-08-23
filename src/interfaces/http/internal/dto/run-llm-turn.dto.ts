@@ -12,7 +12,7 @@ export class RunLlmTurnDto {
 
   @ApiPropertyOptional({
     example: 'dev-api',
-    description: "Attributes the cost to this agent in the team panel.",
+    description: 'Attributes the cost to this agent in the team panel.',
   })
   @IsOptional()
   @IsString()
@@ -30,8 +30,7 @@ export class RunLlmTurnDto {
   @ApiPropertyOptional({
     type: 'array',
     items: { type: 'object', additionalProperties: true },
-    description:
-      'Tools offered to the model; `parameters` is JSON Schema.',
+    description: 'Tools offered to the model; `parameters` is JSON Schema.',
   })
   @IsOptional()
   @IsArray()

@@ -47,7 +47,8 @@ export class PedidoDeParalelismoResponseDto {
   @ApiProperty({
     required: false,
     example: 2,
-    description: 'Dev agents already up IN THE SESSION, summed across all modules.',
+    description:
+      'Dev agents already up IN THE SESSION, summed across all modules.',
   })
   ativosNaSessao?: number;
 
@@ -88,7 +89,7 @@ export class AreaDeAgentesResponseDto {
   @ApiProperty({
     example: 2,
     description:
-      "How many agents the lead can have in the SESSION without requesting " +
+      'How many agents the lead can have in the SESSION without requesting ' +
       'authorization. Above that, a `proposed_action`. The cap is per session, ' +
       'not per module: counting per module would allow N modules × N agents ' +
       'with no authorization at all.',

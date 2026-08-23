@@ -44,7 +44,7 @@ export class UnreadEventsDto {
     description:
       'One cursor per project to query. An EMPTY list returns an empty ' +
       'list — "I asked for nothing" is not "give me everything". A ' +
-      "project from another workspace is silently ignored, because the " +
+      'project from another workspace is silently ignored, because the ' +
       "cursor comes from the caller's local storage and may carry leftovers from an old workspace.",
   })
   @IsArray()

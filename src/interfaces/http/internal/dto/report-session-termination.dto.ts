@@ -28,7 +28,8 @@ export class ReportSessionTerminationDto {
 
   @ApiPropertyOptional({
     example: 'heartbeat_timeout',
-    description: 'The ORIGIN of the termination, not a diagnosis by elimination.',
+    description:
+      'The ORIGIN of the termination, not a diagnosis by elimination.',
   })
   @IsOptional()
   @IsString()

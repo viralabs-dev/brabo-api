@@ -57,7 +57,8 @@ export class RagController {
   @Post('search')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: "Hybrid search (vector + lexical) over the project's indexed chunks",
+    summary:
+      "Hybrid search (vector + lexical) over the project's indexed chunks",
     description:
       'Combines cosine similarity (pgvector) with lexical `ts_rank` ' +
       '(tsvector), each from an independent query, merged by weighted sum ' +
@@ -81,7 +82,8 @@ export class RagController {
   @Post('reindex')
   @RequireRole('maintainer')
   @ApiOperation({
-    summary: "Reindexes the project's docs/ADR/sessions (idempotent full rebuild)",
+    summary:
+      "Reindexes the project's docs/ADR/sessions (idempotent full rebuild)",
     description:
       '"Reindex now" from the Chat RAG panel. Deletes and recreates the chunks ' +
       'of the three honest scopes (RN-219) from the CURRENT state — there is ' +
@@ -98,8 +100,7 @@ export class RagController {
   @Get('coverage')
   @RequireRole('viewer')
   @ApiOperation({
-    summary:
-      'Index coverage: indexed files/sessions against the real total',
+    summary: 'Index coverage: indexed files/sessions against the real total',
     description:
       'Real count (never estimated) of `.md` files under `docs`/`docs/adr` in ' +
       "the project's repository against how many have a chunk, and the " +

@@ -76,7 +76,7 @@ export class HypothesisResponseDto implements Wire<PsychologistHypothesis> {
     minimum: 0,
     maximum: 100,
     description:
-      "Confidence declared by the model itself. Not a measurement, a self-report.",
+      'Confidence declared by the model itself. Not a measurement, a self-report.',
   })
   confiancaPercent!: number;
 
@@ -158,8 +158,7 @@ export class PsychologistAnalysisResponseDto implements Wire<PsychologistAnalysi
 
   @ApiProperty({
     example: 128,
-    description:
-      'Log size at the time of the analysis — the snapshot it saw.',
+    description: 'Log size at the time of the analysis — the snapshot it saw.',
   })
   eventCountAtAnalysis!: number;
 

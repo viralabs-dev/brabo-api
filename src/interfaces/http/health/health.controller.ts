@@ -60,7 +60,8 @@ export class HealthController {
   })
   @ApiOkResponse({ type: HealthStatusResponseDto })
   @ApiServiceUnavailableResponse({
-    description: 'The database did not respond. The body carries the message in `details`.',
+    description:
+      'The database did not respond. The body carries the message in `details`.',
     type: HealthStatusResponseDto,
   })
   async check(): Promise<HealthStatus> {

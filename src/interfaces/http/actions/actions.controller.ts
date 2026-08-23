@@ -94,7 +94,7 @@ export class ActionsController {
     summary: 'Approves the action, once',
     description:
       'Applies only to this action. The decision stays in the event log with ' +
-      "the id of who decided.",
+      'the id of who decided.',
   })
   @ApiCreatedResponse({ type: ProposedActionResponseDto })
   @ApiConflictResponse({
@@ -114,7 +114,7 @@ export class ActionsController {
   @ApiOperation({
     summary: 'Approves the action and records the pattern in permissions.json',
     description:
-      "Besides releasing this action, it adds the corresponding pattern to " +
+      'Besides releasing this action, it adds the corresponding pattern to ' +
       "the project's `allow` list — future matching actions come out " +
       '`auto_approved` without asking. A pattern already in `deny` stays blocked.',
   })

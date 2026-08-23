@@ -83,7 +83,7 @@ export class InternalProjectsController {
   @ApiOkResponse({ type: ProjectGitRemoteResponseDto })
   @ApiNotFoundResponse({
     description:
-      "Project with no provisioned repository, or the workspace owner has " +
+      'Project with no provisioned repository, or the workspace owner has ' +
       'no registered credential for the repository provider.',
   })
   gitRemote(@Param('projectId') projectId: string) {
@@ -108,7 +108,8 @@ export class InternalProjectsController {
 
   @Get(':projectId/backlog')
   @ApiOperation({
-    summary: "The project's backlog as a tree, for the PO to read what was already written",
+    summary:
+      "The project's backlog as a tree, for the PO to read what was already written",
     description:
       'The SAME epic → story → task tree as the Backlog tab, through the ' +
       'same use case (three reads per project, never N+1). It is with this ' +
@@ -122,13 +123,14 @@ export class InternalProjectsController {
 
   @Get(':projectId/product-metrics')
   @ApiOperation({
-    summary: "The project's delivery funnel and partial DORA metrics, for the PO to read",
+    summary:
+      "The project's delivery funnel and partial DORA metrics, for the PO to read",
     description:
       'The SAME report as the `analise:funil` script (ADR 0089) — session → ' +
       'commit → PR → merge funnel, real lead time and real deployment ' +
       'frequency — through the same pure functions and the same query ' +
       '(`apps/api/src/application/services/funil-metrics.ts`), so the two ' +
-      "never diverge from the same fact. Closes `docs/fluxo.yml` (role " +
+      'never diverge from the same fact. Closes `docs/fluxo.yml` (role ' +
       '`po`, input `metricas-de-produto`, previously `status: lacuna`) ' +
       '(RN-407).',
   })
@@ -146,7 +148,7 @@ export class InternalProjectsController {
     description:
       'Called only by the engine, after a runner connects and sends ' +
       '`workspace_confirm` over the channel. The runner is the SOURCE OF ' +
-      "TRUTH for the path — the api overwrites `workspacePath` with what it " +
+      'TRUTH for the path — the api overwrites `workspacePath` with what it ' +
       'reported, after re-validating it lexically (system root/overlap with ' +
       'Brabo are still forbidden even coming from the runner). Idempotent: ' +
       'reconnecting with the SAME path writes nothing again.',

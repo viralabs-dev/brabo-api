@@ -71,7 +71,7 @@ export class PsychologistController {
     summary: 'Lists the analysis rounds with tier and real cost',
     description:
       "`costMicros` is summed from the round's `token_usage`. This is what makes " +
-      "the cost difference between light and heavy triage VISIBLE, instead of " +
+      'the cost difference between light and heavy triage VISIBLE, instead of ' +
       'just asserted — the two tiers use genuinely different models.',
   })
   @ApiOkResponse({ type: [PsychologistAnalysisResponseDto] })

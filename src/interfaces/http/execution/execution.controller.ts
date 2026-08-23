@@ -55,9 +55,10 @@ export class ExecutionController {
   @Post('execution/activate')
   @RequireRole('maintainer')
   @ApiOperation({
-    summary: 'Activates the execution phase and starts one dev agent per module',
+    summary:
+      'Activates the execution phase and starts one dev agent per module',
     description:
-      'Requires `maintainer`, not `developer`, because the dev agents\' git ' +
+      "Requires `maintainer`, not `developer`, because the dev agents' git " +
       'actions inherit the role of WHOEVER ACTIVATED it in the IAM evaluation — ' +
       'activating as developer would leave agents unable to open a PR. Each ' +
       'module in the `module_map` gets an agent in an isolated worktree.',
@@ -153,7 +154,9 @@ export class ExecutionController {
       'already awaiting your decision keeps waiting.',
   })
   @ApiOkResponse({ type: AreaDeAgentesResponseDto })
-  @ApiBadRequestResponse({ description: '`maxParallel` is not an integer >= 1.' })
+  @ApiBadRequestResponse({
+    description: '`maxParallel` is not an integer >= 1.',
+  })
   setMaxParallel(
     @Param('projectId') projectId: string,
     @Param('key') key: string,
@@ -167,7 +170,7 @@ export class ExecutionController {
   @ApiOperation({
     summary: 'Unblocks a blocked task',
     description:
-      "Resets the gate correction counter and hands the task back to the " +
+      'Resets the gate correction counter and hands the task back to the ' +
       'agent. It is the human escape hatch for the correction cap — there is ' +
       'no automatic unblock.',
   })

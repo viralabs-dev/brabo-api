@@ -164,7 +164,7 @@ export class ModelComCuradoriaResponseDto
   @ApiProperty({
     example: true,
     description:
-      "Curation by the OWNER **of this workspace**: a deactivated model " +
+      'Curation by the OWNER **of this workspace**: a deactivated model ' +
       'disappears from the selector but stays in historical costs. A model ' +
       'discovered by sync has no curation row, and no row means `false`.',
   })
@@ -175,7 +175,7 @@ export class ModelComCuradoriaResponseDto
     isArray: true,
     example: ['codigo'],
     description:
-      'What THIS workspace uses the model for. The operator\'s opinion, not ' +
+      "What THIS workspace uses the model for. The operator's opinion, not " +
       'a provider capability — no catalog publishes "good for code". An ' +
       'empty list means "nobody has an opinion", not "not fit for it".',
   })
@@ -231,8 +231,7 @@ export class CredentialTestResultResponseDto {
 
   @ApiProperty({
     required: false,
-    example:
-      'connection test failed for openrouter: openrouter responded 401',
+    example: 'connection test failed for openrouter: openrouter responded 401',
     description: 'Only on `recusado` — the reason the provider gave.',
   })
   motivo?: string;
@@ -479,10 +478,18 @@ export class ChatSseEventResponseDto {
   })
   text?: string;
 
-  @ApiProperty({ example: 1820, required: false, description: 'Only on `done`.' })
+  @ApiProperty({
+    example: 1820,
+    required: false,
+    description: 'Only on `done`.',
+  })
   inputTokens?: number;
 
-  @ApiProperty({ example: 340, required: false, description: 'Only on `done`.' })
+  @ApiProperty({
+    example: 340,
+    required: false,
+    description: 'Only on `done`.',
+  })
   outputTokens?: number;
 
   @ApiProperty({
@@ -653,7 +660,8 @@ export const _chavesSpendLinha: MesmasChaves<
 export class SpendPorDiaResponseDto implements Wire<SpendPorDia> {
   @ApiProperty({
     example: '2026-08-09',
-    description: 'Day in UTC. The series is DENSE: a day with no spend comes as zero.',
+    description:
+      'Day in UTC. The series is DENSE: a day with no spend comes as zero.',
   })
   dia!: string;
 
@@ -709,7 +717,7 @@ export class WorkspaceSpendReportResponseDto implements Wire<WorkspaceSpendRepor
     type: [SpendLinhaResponseDto],
     description:
       'By PROVIDER (ADR 0076, RN-186). This axis speaks of CREDENTIAL and so ' +
-      "only exists here, on a route that requires `owner` (RN-060) — the " +
+      'only exists here, on a route that requires `owner` (RN-060) — the ' +
       "member's response does not have it, and it is not a filter that " +
       "hides it: it is the repository's type that refuses it with an actor " +
       'scope (RN-187).',

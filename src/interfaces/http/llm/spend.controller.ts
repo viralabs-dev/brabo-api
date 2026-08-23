@@ -59,7 +59,7 @@ export class SpendController {
     description:
       "The OWNER's audience. The PROVIDER axis came back (ADR 0076, RN-186) " +
       "and is here, not on the member's route, because breaking down by " +
-      "provider is breaking down by CREDENTIAL — and credential is whoever " +
+      'provider is breaking down by CREDENTIAL — and credential is whoever ' +
       "pays's business (RN-060). Complements `credential-spend`, which keeps " +
       'answering the INVOICE question (per month, with the tie to the key ' +
       'that exists today). Person and agent also come in separate blocks, by ' +

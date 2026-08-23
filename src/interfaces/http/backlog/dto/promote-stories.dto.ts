@@ -36,7 +36,7 @@ export class PromocaoRecusadaResponseDto implements Wire<PromocaoRecusada> {
   @ApiProperty({
     example: 'Story is not ready: missing dod, dor',
     description:
-      "Readable reason. The story may have lost its readiness, or one of its " +
+      'Readable reason. The story may have lost its readiness, or one of its ' +
       'modules may have dropped out of `module_map` between the proposal and the decision.',
   })
   reason!: string;

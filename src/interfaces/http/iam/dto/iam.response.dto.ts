@@ -395,7 +395,8 @@ export class ProjectCardSummaryResponseDto implements Wire<ProjectCardSummary> {
     ],
     nullable: true,
     example: 'provisioned',
-    description: '`null` when the bootstrap never started. Derived from the cursor.',
+    description:
+      '`null` when the bootstrap never started. Derived from the cursor.',
   })
   provisioningStatus!: ProvisioningStatus | null;
 
@@ -431,7 +432,7 @@ export class ProjectCardSummaryResponseDto implements Wire<ProjectCardSummary> {
   @ApiProperty({
     example: 2,
     description:
-      'Stories the PO finished and that are awaiting the user\'s promotion (RN-048).',
+      "Stories the PO finished and that are awaiting the user's promotion (RN-048).",
   })
   storiesAwaitingPromotion!: number;
 

@@ -17,7 +17,8 @@ const ESCOPOS: ChunkScope[] = ['docs', 'adr', 'session'];
 export class HybridSearchRequestDto {
   @ApiProperty({
     example: 'how does the PR gate work',
-    description: 'Between 2 and 500 characters — same rule as the Code tab search.',
+    description:
+      'Between 2 and 500 characters — same rule as the Code tab search.',
   })
   @IsString()
   query!: string;

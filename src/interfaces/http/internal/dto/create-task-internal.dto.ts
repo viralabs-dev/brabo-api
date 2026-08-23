@@ -15,7 +15,9 @@ export class CreateTaskInternalDto {
   @IsString()
   title!: string;
 
-  @ApiPropertyOptional({ example: 'Accepts SKU and quantity; validates stock.' })
+  @ApiPropertyOptional({
+    example: 'Accepts SKU and quantity; validates stock.',
+  })
   @IsOptional()
   @IsString()
   description?: string;

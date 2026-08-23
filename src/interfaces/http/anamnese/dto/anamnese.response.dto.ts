@@ -145,13 +145,19 @@ export class InstructionVersionResponseDto implements Wire<InstructionVersionVie
   })
   sourceHypothesisId!: string | null;
 
-  @ApiProperty({ example: 'Explicit definition-of-done criterion', nullable: true })
+  @ApiProperty({
+    example: 'Explicit definition-of-done criterion',
+    nullable: true,
+  })
   note!: string | null;
 
   @ApiProperty({ example: '2026-07-26T14:00:00.000Z', format: 'date-time' })
   createdAt!: string;
 
-  @ApiProperty({ example: true, description: 'Whether this is the version in effect.' })
+  @ApiProperty({
+    example: true,
+    description: 'Whether this is the version in effect.',
+  })
   isCurrent!: boolean;
 
   @ApiProperty({

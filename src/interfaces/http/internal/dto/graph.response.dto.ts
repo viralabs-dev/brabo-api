@@ -11,7 +11,9 @@ import { ApiProperty } from '@nestjs/swagger';
 export class PromptTemplateReadResponseDto {
   @ApiProperty({ example: 'dev-agent-kickoff' }) name!: string;
   @ApiProperty({ example: '3' }) version!: string;
-  @ApiProperty({ example: 'You are the dev agent for the {{modulo}} module...' })
+  @ApiProperty({
+    example: 'You are the dev agent for the {{modulo}} module...',
+  })
   body!: string;
   @ApiProperty({ example: 'sha256:9f2c...' }) hash!: string;
 }
@@ -20,7 +22,9 @@ export class PromptTemplateReadResponseDto {
 export class PromptTemplateResponseDto {
   @ApiProperty({ example: 'dev-agent-kickoff' }) name!: string;
   @ApiProperty({ example: '3' }) version!: string;
-  @ApiProperty({ example: 'You are the dev agent for the {{modulo}} module...' })
+  @ApiProperty({
+    example: 'You are the dev agent for the {{modulo}} module...',
+  })
   body!: string;
   @ApiProperty({ example: 'sha256:9f2c...' }) hash!: string;
   @ApiProperty({

@@ -71,7 +71,8 @@ export class AgentsController {
   })
   @ApiCreatedResponse({ type: AgenteAtivadoResponseDto })
   @ApiConflictResponse({
-    description: 'Agent without an accepted handoff, or already active in the session.',
+    description:
+      'Agent without an accepted handoff, or already active in the session.',
   })
   start(
     @Param('projectId') projectId: string,
@@ -92,11 +93,13 @@ export class AgentsController {
   @ApiOperation({
     summary: 'Sends a message to the active agent',
     description:
-      "The response is just the acknowledgment. What the agent replies arrives " +
+      'The response is just the acknowledgment. What the agent replies arrives ' +
       "via the session's event log and the chat SSE — not through this call.",
   })
   @ApiCreatedResponse({ type: OkResponseDto })
-  @ApiConflictResponse({ description: 'The agent is not active in this session.' })
+  @ApiConflictResponse({
+    description: 'The agent is not active in this session.',
+  })
   message(
     @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
@@ -126,7 +129,8 @@ export class AgentsController {
   @ApiParam({
     name: 'agent',
     example: 'criativo',
-    description: 'Slug of the agent that asked the questions (and will read the answer).',
+    description:
+      'Slug of the agent that asked the questions (and will read the answer).',
   })
   @ApiParam({
     name: 'questionSetId',

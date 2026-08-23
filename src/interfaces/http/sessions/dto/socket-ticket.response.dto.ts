@@ -12,7 +12,7 @@ export class SocketTicketResponseDto {
   @ApiProperty({
     description:
       'Opaque, single-use, base64url token. 30s TTL and single use: it ' +
-      "disappears after the first successful `connect/3`, or when it expires.",
+      'disappears after the first successful `connect/3`, or when it expires.',
   })
   ticket!: string;
 

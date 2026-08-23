@@ -77,7 +77,8 @@ export class SessionsController {
   })
   @ApiCreatedResponse({ type: SessionResponseDto })
   @ApiBadRequestResponse({
-    description: 'Body without `kind`, or with a value outside the allowed list.',
+    description:
+      'Body without `kind`, or with a value outside the allowed list.',
   })
   create(
     @Param('projectId') projectId: string,
@@ -99,7 +100,7 @@ export class SessionsController {
   @Patch(':sessionId')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Sets or clears the session\'s friendly name',
+    summary: "Sets or clears the session's friendly name",
     description:
       "The name is a navigation label and does NOT replace the id's hashtag " +
       '— screens compose the two, and without a name they degrade to just ' +
@@ -150,7 +151,7 @@ export class SessionsController {
   @ApiCreatedResponse({
     type: SessionResponseDto,
     description:
-      "Returns 201, not 200, because the handler is `@Post` without " +
+      'Returns 201, not 200, because the handler is `@Post` without ' +
       "`@HttpCode` — that's Nest's default. Documented as-is instead of " +
       "changed: the semantics are debatable, the behavior isn't defective, " +
       'and the table test fails on any divergence between the two.',
@@ -232,7 +233,7 @@ export class SessionsController {
   @ApiOperation({
     summary: "Appends an event to the session's log",
     description:
-      "Append-only: `seq` is assigned by the server and nothing in the log " +
+      'Append-only: `seq` is assigned by the server and nothing in the log ' +
       'is updated or removed afterward. There is no edit endpoint, by design.',
   })
   @ApiCreatedResponse({ type: SessionEventResponseDto })

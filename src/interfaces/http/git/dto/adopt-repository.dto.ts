@@ -15,7 +15,7 @@ export class AdoptRepositoryDto {
     example: 'acme/checkout',
     description:
       "The repository's identifier ON THE PROVIDER: `owner/repo` on github, " +
-      '`namespace/path` on gitlab, the bare repo\'s absolute path locally. ' +
+      "`namespace/path` on gitlab, the bare repo's absolute path locally. " +
       'Nothing is created — the repository must already exist and the ' +
       'registered credential must be able to reach it.',
   })

@@ -81,7 +81,9 @@ export class WorkspacesController {
       "entry point for someone who doesn't belong to any workspace yet.",
   })
   @ApiCreatedResponse({ type: WorkspaceResponseDto })
-  @ApiConflictResponse({ description: 'A workspace with this slug already exists.' })
+  @ApiConflictResponse({
+    description: 'A workspace with this slug already exists.',
+  })
   create(@CurrentUser() user: User, @Body() dto: CreateWorkspaceDto) {
     return this.createWorkspace.execute(user.id, dto);
   }
@@ -90,7 +92,7 @@ export class WorkspacesController {
   @ApiOperation({
     summary: "Lists the caller's workspaces",
     description:
-      "Already filtered by association — there is no global listing. Each " +
+      'Already filtered by association — there is no global listing. Each ' +
       "item carries the caller's own role.",
   })
   @ApiOkResponse({ type: [WorkspaceComPapelResponseDto] })
@@ -110,7 +112,9 @@ export class WorkspacesController {
   @RequireRole('maintainer')
   @ApiOperation({ summary: "Changes the workspace's name or slug" })
   @ApiOkResponse({ type: WorkspaceResponseDto })
-  @ApiConflictResponse({ description: 'A workspace with this slug already exists.' })
+  @ApiConflictResponse({
+    description: 'A workspace with this slug already exists.',
+  })
   update(
     @Param('workspaceId') workspaceId: string,
     @Body() dto: UpdateWorkspaceDto,
@@ -136,7 +140,7 @@ export class WorkspacesController {
     summary: 'Associates a user with the workspace',
     description:
       'Only `owner` can touch the member roster. The role here is inherited ' +
-      'by ALL of the workspace\'s projects.',
+      "by ALL of the workspace's projects.",
   })
   @ApiCreatedResponse({ type: WorkspaceMemberResponseDto })
   addMember(

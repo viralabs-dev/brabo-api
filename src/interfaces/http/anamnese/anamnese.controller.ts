@@ -51,7 +51,9 @@ import {
 @ApiTags('anamnesis')
 @ApiBearerAuth(BEARER)
 @ApiForbiddenResponse({ description: 'Insufficient role on the project.' })
-@ApiNotFoundResponse({ description: 'Project, event, or version does not exist.' })
+@ApiNotFoundResponse({
+  description: 'Project, event, or version does not exist.',
+})
 @Controller('projects/:projectId')
 export class AnamneseController {
   constructor(
@@ -117,7 +119,7 @@ export class AnamneseController {
   @Get('events/:eventId')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: "Returns a project event by id, resolving its session",
+    summary: 'Returns a project event by id, resolving its session',
     description:
       "Different from the event-by-session route: here the session isn't known. " +
       "This is what makes the profile's evidence chip land on the right event, " +
@@ -144,7 +146,7 @@ export class AnamneseController {
   @ApiOperation({
     summary: 'Deletes your own profile and records the opt-out',
     description:
-      'Only the caller\'s OWN profile, never someone else\'s. The opt-out comes ' +
+      "Only the caller's OWN profile, never someone else's. The opt-out comes " +
       'along because without it the next round would re-derive everything and the ' +
       'deletion would be cosmetic. It is `viewer` on purpose: profiling covers all ' +
       'members, so requiring `developer` would leave a profiled viewer unable to ' +
@@ -191,7 +193,7 @@ export class AnamneseController {
   @ApiOperation({
     summary: "Lists an agent's instruction versions",
     description:
-      "Most recent first, each already carrying its diff against the previous " +
+      'Most recent first, each already carrying its diff against the previous ' +
       'one, computed server-side.',
   })
   @ApiOkResponse({ type: [InstructionVersionResponseDto] })

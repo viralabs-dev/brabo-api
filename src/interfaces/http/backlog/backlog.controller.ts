@@ -76,7 +76,7 @@ export class BacklogController {
     description:
       "Cross-references the project's rules with the stories' " +
       '`businessRuleIds`. A rule with no story at all is a DISCOVERY — a ' +
-      "pending item for the PO, not an error.",
+      'pending item for the PO, not an error.',
   })
   @ApiOkResponse({ type: CoverageReportResponseDto })
   coverage(@Param('projectId') projectId: string) {
@@ -136,7 +136,7 @@ export class BacklogController {
   @ApiOperation({
     summary: 'Returns a refused story to the PO, with the reason',
     description:
-      "The story leaves the proposal queue and the reason becomes a message " +
+      'The story leaves the proposal queue and the reason becomes a message ' +
       "pinned to the PO's session — the same pattern as returning a gate to " +
       "dev. If that session's PO is no longer up, the return is recorded " +
       "anyway: it's the user's decision and does not depend on an agent " +

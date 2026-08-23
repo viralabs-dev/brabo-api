@@ -160,7 +160,7 @@ export class AuthController {
     description:
       'The presented refresh is consumed. Re-presenting an already-rotated ' +
       'token revokes the WHOLE family and records a security event — even ' +
-      "when the cause was a client double-submit.",
+      'when the cause was a client double-submit.',
   })
   @ApiOkResponse({ type: SessaoResponseDto })
   @ApiUnauthorizedResponse({

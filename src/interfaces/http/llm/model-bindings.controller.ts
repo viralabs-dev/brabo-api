@@ -130,7 +130,7 @@ export class ModelBindingsController {
     summary: 'Resolves which model the session uses, and where it came from',
     description:
       "Returns the binding RESOLVED by the cascade, not the session's raw " +
-      'binding: a session with no binding of its own uses the project\'s, ' +
+      "binding: a session with no binding of its own uses the project's, " +
       'and answering `null` here would be the wrong answer to the right ' +
       'question. The `origin` field says which scope the value came from.\n\n' +
       '`agentId` is optional and is the agent REALLY active in the session ' +
@@ -158,7 +158,8 @@ export class ModelBindingsController {
   @RequireRole('developer')
   @ApiOperation({
     summary: 'Pins the model for this session',
-    description: 'Beats everything else in the cascade for as long as the session lives.',
+    description:
+      'Beats everything else in the cascade for as long as the session lives.',
   })
   @ApiOkResponse({ type: ModelBindingResponseDto })
   setSessionBinding(
@@ -177,7 +178,7 @@ export class ModelBindingsController {
   @ApiOperation({
     summary: 'Resolves which model an agent uses, and where it came from',
     description:
-      "Agent → area → project → workspace cascade, WITHOUT a session: it is " +
+      'Agent → area → project → workspace cascade, WITHOUT a session: it is ' +
       "the agent's configuration on the project, not that of a specific " +
       'conversation. `origin: "agent"` means this agent DIVERGED from its ' +
       "area's default; any other origin means it inherits.",
@@ -229,7 +230,9 @@ export class ModelBindingsController {
       "a copy, and the area's next change would silently leave this agent " +
       'behind. 404 when it already inherits.',
   })
-  @ApiNoContentResponse({ description: 'The agent went back to inheriting. No body.' })
+  @ApiNoContentResponse({
+    description: 'The agent went back to inheriting. No body.',
+  })
   clearAgentBinding(
     @Param('projectId') projectId: string,
     @Param('agentSlug') agentSlug: string,
@@ -247,7 +250,7 @@ export class ModelBindingsController {
   @ApiOperation({
     summary: "Resolves what an area's default model is, and where it came from",
     description:
-      "The default the lead and the area's subagents share. `origin: \"area\"` " +
+      'The default the lead and the area\'s subagents share. `origin: "area"` ' +
       'means someone chose it for this area; any other origin means the area ' +
       'itself inherits from the project or the workspace.',
   })
@@ -300,7 +303,9 @@ export class ModelBindingsController {
       'project (or the workspace). Agents that diverged keep diverging: their ' +
       'binding is a different one, and deleting this one cannot decide for them.',
   })
-  @ApiNoContentResponse({ description: 'The area went back to inheriting. No body.' })
+  @ApiNoContentResponse({
+    description: 'The area went back to inheriting. No body.',
+  })
   clearAreaBinding(
     @Param('projectId') projectId: string,
     @Param('areaKey') areaKey: string,

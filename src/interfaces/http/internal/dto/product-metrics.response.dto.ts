@@ -27,7 +27,8 @@ export class ProductMetricsFunnelStageResponseDto implements Wire<EtapaFunil> {
   @ApiProperty({
     example: 0.67,
     nullable: true,
-    description: '`null` on the first stage — there is no "conversion from" anything.',
+    description:
+      '`null` on the first stage — there is no "conversion from" anything.',
   })
   taxaDaEtapaAnterior!: number | null;
 }

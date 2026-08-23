@@ -68,7 +68,7 @@ export class CreateC4DiagramInternalDto {
   @ApiPropertyOptional({
     type: [C4AtorInternalDto],
     description:
-      "External actors of the Context level (Simon Brown). The Container " +
+      'External actors of the Context level (Simon Brown). The Container ' +
       "level's containers do NOT go here: they come from the project's " +
       'current module_map.',
   })

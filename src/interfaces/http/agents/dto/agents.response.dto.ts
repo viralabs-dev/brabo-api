@@ -26,7 +26,8 @@ export class HandoffResponseDto implements Wire<Handoff> {
   @ApiProperty({
     example: '01JC4Z0000ARTEFATO000000001',
     nullable: true,
-    description: 'Artifact that motivated the handoff (product_brief, module_map…).',
+    description:
+      'Artifact that motivated the handoff (product_brief, module_map…).',
   })
   artifactId!: string | null;
 

@@ -170,7 +170,7 @@ export class BootstrapPlanStepResponseDto implements Wire<BootstrapPlanStep> {
   @ApiProperty({
     example: 'git_branch_create',
     description:
-      "The same taxonomy as `proposed_actions` — each approved step " +
+      'The same taxonomy as `proposed_actions` — each approved step ' +
       'becomes a recorded action when the bootstrap runs.',
   })
   actionType!: string;
@@ -260,7 +260,7 @@ export class BootstrapPlanEstadoResponseDto {
   @ApiProperty({
     type: BootstrapPlanResponseDto,
     nullable: true,
-    description: "`null` when the project has no adopted repository.",
+    description: '`null` when the project has no adopted repository.',
   })
   plan!: BootstrapPlanResponseDto | null;
 

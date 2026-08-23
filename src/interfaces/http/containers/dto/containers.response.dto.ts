@@ -34,7 +34,7 @@ export class DecisaoDeImagemResponseDto {
 
   @ApiProperty({
     example:
-      "The module_map is all TypeScript over Node; the slim variant is enough and reduces surface.",
+      'The module_map is all TypeScript over Node; the slim variant is enough and reduces surface.',
     description: 'Why THIS image. This is what makes the decision reviewable.',
   })
   rationale!: string;
@@ -81,7 +81,8 @@ export class EstadoDoContainerResponseDto {
   @ApiProperty({
     nullable: true,
     example: '01JC4Z0000EVENTO000000001',
-    description: 'Id of the event that fixed the current decision, for auditing.',
+    description:
+      'Id of the event that fixed the current decision, for auditing.',
   })
   eventId!: string | null;
 

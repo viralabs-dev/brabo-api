@@ -79,8 +79,7 @@ export class BudgetsController {
   @RequireRole('developer')
   @ApiOperation({
     summary: 'Reads the session budget and the accumulated spend',
-    description:
-      "This is what feeds the session screen's live token meter.",
+    description: "This is what feeds the session screen's live token meter.",
   })
   @ApiOkResponse({ type: BudgetResponseDto })
   getSessionBudget(@Param('sessionId') sessionId: string) {
@@ -96,7 +95,7 @@ export class BudgetsController {
     summary: 'Breaks down the session spend by agent',
     description:
       'The data was always in `token_usage`, but without aggregation or a route ' +
-      "the team panel had no way to show the cost per card. Same role " +
+      'the team panel had no way to show the cost per card. Same role ' +
       'required as the session budget.',
   })
   @ApiOkResponse({ type: [AgentTokenUsageResponseDto] })
@@ -156,8 +155,7 @@ export class BudgetsController {
   @RequireRole('developer')
   @ApiOperation({
     summary: 'Sets the session spend cap',
-    description:
-      'Same dollar-to-micro-USD conversion as the project budget.',
+    description: 'Same dollar-to-micro-USD conversion as the project budget.',
   })
   @ApiOkResponse({ type: BudgetResponseDto })
   setSessionBudget(

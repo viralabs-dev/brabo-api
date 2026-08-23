@@ -126,7 +126,7 @@ export class ProposeHypothesesInternalDto {
     enum: ['normal', 'timeout', 'kill', 'crash', 'node_shutdown', 'unknown'],
     example: 'timeout',
     description:
-      "Cause CLASSIFIED by the engine. It, not the terminal status, decides " +
+      'Cause CLASSIFIED by the engine. It, not the terminal status, decides ' +
       'whether `terminationAnalysis` is required. Optional so as not to break ' +
       'an older engine during a rolling deploy.',
   })
