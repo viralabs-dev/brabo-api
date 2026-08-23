@@ -21,9 +21,11 @@ import { OfferInfraHandoffUseCase } from '../../../application/use-cases/agents/
 import { ValidateNecessityUseCase } from '../../../application/use-cases/agents/validate-necessity.use-case';
 import { AcceptHandoffUseCase } from '../../../application/use-cases/agents/accept-handoff.use-case';
 import { ListHandoffsUseCase } from '../../../application/use-cases/agents/list-handoffs.use-case';
+import { RequestManualHandoffUseCase } from '../../../application/use-cases/agents/request-manual-handoff.use-case';
 import { AnswerStructuredQuestionUseCase } from '../../../application/use-cases/agents/answer-structured-question.use-case';
 import { SendAgentMessageDto } from './dto/send-agent-message.dto';
 import { AnswerStructuredQuestionDto } from './dto/answer-structured-question.dto';
+import { RequestManualHandoffDto } from './dto/request-manual-handoff.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import { OkResponseDto } from '../shared/dto/comuns.response.dto';
 import {
@@ -52,6 +54,7 @@ export class AgentsController {
     private readonly validateNecessity: ValidateNecessityUseCase,
     private readonly acceptHandoff: AcceptHandoffUseCase,
     private readonly listHandoffs: ListHandoffsUseCase,
+    private readonly requestManualHandoff: RequestManualHandoffUseCase,
     private readonly answerStructuredQuestion: AnswerStructuredQuestionUseCase,
   ) {}
 
@@ -265,6 +268,39 @@ export class AgentsController {
     @Param('sessionId') sessionId: string,
   ) {
     return this.listHandoffs.execute(projectId, sessionId);
+  }
+
+  /**
+   * Handoff manual a agente à escolha (ADR 0109/RN-440): o usuário endereça
+   * um handoff a QUALQUER agente do catálogo `addressableAgents()` (lead de
+   * área ou agente solo), não só o próximo da cadeia fixa — o caso real é o
+   * Staff (ADR 0088), pronto no engine mas só alcançável antes disto pela
+   * rota interna. Nasce `offered`, do MESMO jeito que um handoff automático
+   * — quem aceita continua sendo `accept`, abaixo, sem caminho novo.
+   */
+  @Post('handoffs')
+  @RequireRole('developer')
+  @ApiOperation({
+    summary: 'Manually offers a handoff to a chosen agent',
+    description:
+      "Born as `offered`, exactly like an agent's own `offer_handoff` — " +
+      'the only difference is who decided. `toAgent` has to be in the ' +
+      'addressable catalog (area lead or area-less agent); a subagent or an ' +
+      'unknown slug is refused with 400.',
+  })
+  @ApiCreatedResponse({ type: HandoffResponseDto })
+  requestManual(
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @CurrentUser() user: User,
+    @Body() dto: RequestManualHandoffDto,
+  ) {
+    return this.requestManualHandoff.execute(
+      projectId,
+      sessionId,
+      dto.toAgent,
+      user.id,
+    );
   }
 
   /**

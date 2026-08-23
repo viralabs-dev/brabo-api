@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
   AGENT_AREAS,
+  SOLO_CONVERSATIONAL_AGENTS,
+  addressableAgents,
   areaDo,
   assertHandoffTargetAllowed,
   ehSubagente,
@@ -115,5 +117,43 @@ describe('regra de alvo do handoff (ADR 0038)', () => {
     expect(ehSubagente('qa')).toBe(false);
     expect(ehSubagente('infra-workflows')).toBe(true);
     expect(ehSubagente('criativo')).toBe(false);
+  });
+});
+
+/**
+ * Handoff manual a agente à escolha (backlog, ADR 0109/RN-440):
+ * `addressableAgents()` é o catálogo FECHADO que `RequestManualHandoffUseCase`
+ * valida contra — leads de área ∪ agentes solo, nunca um subagente.
+ */
+describe('addressableAgents (ADR 0109)', () => {
+  it('contém todo LEAD de área e todo agente solo, sem duplicata', () => {
+    const catalogo = addressableAgents();
+
+    for (const area of AGENT_AREAS) {
+      expect(catalogo).toContain(area.lead);
+    }
+    for (const agente of SOLO_CONVERSATIONAL_AGENTS) {
+      expect(catalogo).toContain(agente);
+    }
+    expect(new Set(catalogo).size).toBe(catalogo.length);
+  });
+
+  it('NUNCA contém um subagente de área', () => {
+    const catalogo = addressableAgents();
+
+    for (const area of AGENT_AREAS) {
+      for (const membro of area.members) {
+        expect(catalogo).not.toContain(membro);
+      }
+    }
+    // `dev` é a área dinâmica (membros por module_map, não enumeráveis) —
+    // a garantia estrutural é `ehDevDeModulo`, testada acima; aqui só o
+    // caso concreto de exemplo.
+    expect(catalogo).not.toContain('dev-api');
+    expect(catalogo).not.toContain('qa-automacao');
+  });
+
+  it('inclui o Staff (ADR 0088) — o caso real que motivou esta feature', () => {
+    expect(addressableAgents()).toContain('staff');
   });
 });
