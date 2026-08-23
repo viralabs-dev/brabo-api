@@ -97,6 +97,25 @@ export class AreaDeAgentesResponseDto {
   maxParallel!: number;
 
   @ApiProperty({
+    example: 20000000,
+    nullable: true,
+    description:
+      "The area's spend cap, in micro-USD (ADR 0110, RN-443). `null` means " +
+      'no cap — an independent, ADDITIVE check next to the project and ' +
+      'session budgets, not a cascade: whichever of the three hits its cap ' +
+      'first blocks the call.',
+  })
+  budgetMicros!: number | null;
+
+  @ApiProperty({
+    example: 4300000,
+    description:
+      "The area's accumulated spend, in micro-USD. Increments whenever an " +
+      'agent that belongs to this area spends, WITH OR WITHOUT a cap set.',
+  })
+  spentMicros!: number;
+
+  @ApiProperty({
     example: ['dev-api', 'dev-web'],
     description:
       'The members. In the dev area they come from the `module_map`, one per ' +

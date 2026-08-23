@@ -104,6 +104,7 @@ export class SendChatMessageUseCase {
     const gate = await this.checkBudgetGate.execute(
       input.projectId,
       input.sessionId,
+      input.agentId,
     );
     if (gate.blocked) {
       yield { type: 'error', message: gate.reason ?? 'Budget excedido' };

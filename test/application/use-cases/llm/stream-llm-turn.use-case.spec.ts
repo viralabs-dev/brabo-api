@@ -18,6 +18,7 @@ import { DrizzleModelBindingRepository } from '../../../../src/infrastructure/pe
 import { DrizzleUserCredentialRepository } from '../../../../src/infrastructure/persistence/drizzle/user-credential.repository';
 import { DrizzleProjectRepository } from '../../../../src/infrastructure/persistence/drizzle/project.repository';
 import { DrizzleBudgetRepository } from '../../../../src/infrastructure/persistence/drizzle/budget.repository';
+import { DrizzleAgentAreaRepository } from '../../../../src/infrastructure/persistence/drizzle/agent-area.repository';
 import { DrizzleTokenUsageRepository } from '../../../../src/infrastructure/persistence/drizzle/token-usage.repository';
 import { EnvelopeEncryptionService } from '../../../../src/infrastructure/security/envelope-encryption.service';
 import { GptTokenizerEstimator } from '../../../../src/infrastructure/tokenization/gpt-tokenizer-estimator';
@@ -44,6 +45,7 @@ const bindingRepo = new DrizzleModelBindingRepository(db);
 const credentialRepo = new DrizzleUserCredentialRepository(db);
 const projectRepo = new DrizzleProjectRepository(db);
 const budgetRepo = new DrizzleBudgetRepository(db);
+const areaRepo = new DrizzleAgentAreaRepository(db);
 const tokenUsageRepo = new DrizzleTokenUsageRepository(db);
 const encryption = new EnvelopeEncryptionService();
 const tokenEstimator = new GptTokenizerEstimator();
@@ -52,7 +54,7 @@ const resolveModelBinding = new ResolveModelBindingUseCase(
   bindingRepo,
   projectRepo,
 );
-const checkBudgetGate = new CheckBudgetGateUseCase(budgetRepo);
+const checkBudgetGate = new CheckBudgetGateUseCase(budgetRepo, areaRepo);
 const resolveCredentialOwner = new ResolveCredentialOwnerUseCase(
   projectRepo,
   new DrizzleWorkspaceRepository(db),
@@ -60,6 +62,7 @@ const resolveCredentialOwner = new ResolveCredentialOwnerUseCase(
 const recordLlmUsage = new RecordLlmUsageUseCase(
   tokenUsageRepo,
   budgetRepo,
+  areaRepo,
   outboxRepo,
   // Registry próprio por spec: prom-client é global por default e
   // contadores vazados entre arquivos tornariam as asserções dependentes
