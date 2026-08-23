@@ -21,7 +21,7 @@ import { BEARER } from '../../../infrastructure/openapi/documento';
  * web usa a redundância só para reafirmar o valor sem esperar o próximo
  * refresh (ver `GetUserPreferencesUseCase`), nunca como a fonte primária.
  */
-@ApiTags('usuários')
+@ApiTags('users')
 @ApiBearerAuth(BEARER)
 @Controller('users/me/preferences')
 export class UserPreferencesController {
@@ -32,7 +32,7 @@ export class UserPreferencesController {
 
   @Get()
   @ApiOperation({
-    summary: 'Lê a preferência de idioma do usuário autenticado',
+    summary: "Reads the authenticated user's language preference",
   })
   @ApiOkResponse({ type: UserPreferencesResponseDto })
   get(@CurrentUser() user: User) {
@@ -41,10 +41,10 @@ export class UserPreferencesController {
 
   @Patch()
   @ApiOperation({
-    summary: 'Grava a preferência de idioma do usuário autenticado',
+    summary: "Writes the authenticated user's language preference",
     description:
-      'Só `locale` por ora — é a única preferência que existe. Fechado à ' +
-      'lista `pt-BR`/`en`; qualquer outro valor é 400.',
+      "Only `locale` for now — it's the only preference that exists. " +
+      'Closed to the `pt-BR`/`en` list; any other value is a 400.',
   })
   @ApiOkResponse({ type: UserPreferencesResponseDto })
   update(@CurrentUser() user: User, @Body() dto: UpdateUserPreferencesDto) {

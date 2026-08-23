@@ -15,11 +15,12 @@ export class UpsertCredentialDto {
     example: 'sk-ant-api03-…',
     maxLength: CREDENCIAL_COMPRIMENTO_MAXIMO,
     description:
-      'A chave em texto plano. É cifrada por envelope encryption antes de tocar o ' +
-      'banco e NUNCA volta em resposta nenhuma — nem cifrada. O teto de ' +
-      `${CREDENCIAL_COMPRIMENTO_MAXIMO} caracteres é proteção contra payload absurdo, ` +
-      'não validação de formato: se a chave presta ou não, quem responde é o ' +
-      'provider em `POST /users/me/credentials/{provider}/test`.',
+      'The key in plain text. It is encrypted via envelope encryption before ' +
+      'touching the database and NEVER comes back in any response — not even ' +
+      `encrypted. The ${CREDENCIAL_COMPRIMENTO_MAXIMO}-character cap is ` +
+      'protection against an absurd payload, not format validation: whether ' +
+      'the key is any good is answered by the provider, at ' +
+      '`POST /users/me/credentials/{provider}/test`.',
   })
   @IsString()
   @IsNotEmpty()

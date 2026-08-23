@@ -53,7 +53,7 @@ export class ModelResponseDto implements Wire<Model> {
 
   @ApiProperty({
     example: 'claude-opus-4-8',
-    description: 'Identificador no provider.',
+    description: 'Identifier at the provider.',
   })
   name!: string;
 
@@ -62,28 +62,28 @@ export class ModelResponseDto implements Wire<Model> {
 
   @ApiProperty({
     example: 15000000,
-    description: 'Preço por milhão de tokens de ENTRADA, em micro-USD.',
+    description: 'Price per million INPUT tokens, in micro-USD.',
   })
   inputPricePerMillionMicros!: number;
 
   @ApiProperty({
     example: 75000000,
-    description: 'Preço por milhão de tokens de SAÍDA, em micro-USD.',
+    description: 'Price per million OUTPUT tokens, in micro-USD.',
   })
   outputPricePerMillionMicros!: number;
 
   @ApiProperty({
     example: 200000,
     nullable: true,
-    description: 'Também é o `context_length` das capabilities do modelo.',
+    description: "Also the model's `context_length` capability.",
   })
   contextWindow!: number | null;
 
   @ApiProperty({
     example: true,
     description:
-      'Tool calling NATIVO. Sem isto o modelo é chat-only e não pode ser ' +
-      'vinculado a um agente (RN-040).',
+      'NATIVE tool calling. Without this the model is chat-only and cannot ' +
+      'be bound to an agent (RN-040).',
   })
   supportsToolCalling!: boolean;
 
@@ -93,15 +93,15 @@ export class ModelResponseDto implements Wire<Model> {
   @ApiProperty({
     example: false,
     description:
-      'Aceita IMAGEM na entrada. `false` quer dizer que o provider não declarou ' +
-      'a modalidade — não que o modelo não saiba (ADR 0041).',
+      'Accepts IMAGE input. `false` means the provider did not declare the ' +
+      "modality — not that the model can't do it (ADR 0041).",
   })
   supportsVision!: boolean;
 
   @ApiProperty({
     example: true,
     description:
-      'Aceita raciocínio explícito (thinking). No OpenRouter sai de ' +
+      'Accepts explicit reasoning (thinking). On OpenRouter it comes from ' +
       '`supported_parameters: reasoning`.',
   })
   supportsReasoning!: boolean;
@@ -109,16 +109,16 @@ export class ModelResponseDto implements Wire<Model> {
   @ApiProperty({
     example: false,
     description:
-      'PRODUZ imagem — eixo diferente de aceitá-la na entrada. São poucos ' +
-      'modelos, e confundir os dois manda o usuário para o modelo errado.',
+      'PRODUCES image — an axis different from accepting it as input. Few ' +
+      'models have it, and confusing the two sends the user to the wrong model.',
   })
   generatesImage!: boolean;
 
   @ApiProperty({
     example: true,
     description:
-      'Preço digitado da doc do provider, não sincronizado. O sync de preços ' +
-      'não sobrescreve uma linha marcada sem decisão explícita.',
+      "Price typed in from the provider's docs, not synced. The price sync " +
+      'does not overwrite a row marked without an explicit decision.',
   })
   manualPricing!: boolean;
 
@@ -126,9 +126,9 @@ export class ModelResponseDto implements Wire<Model> {
     enum: MODEL_AVAILABILITIES,
     example: 'available',
     description:
-      'Realidade REMOTA observada pelo sync, eixo independente da curadoria. ' +
-      '`unavailable` é o modelo que sumiu do catálogo do provider — ele nunca ' +
-      'é deletado, porque bindings e histórico de custo apontam para ele.',
+      'REMOTE reality observed by sync, an axis independent from curation. ' +
+      '`unavailable` is a model that vanished from the provider catalog — it ' +
+      'is never deleted, because bindings and cost history point to it.',
   })
   availability!: Wire<Model>['availability'];
 
@@ -136,7 +136,7 @@ export class ModelResponseDto implements Wire<Model> {
     example: '2026-07-30T03:00:00.000Z',
     format: 'date-time',
     nullable: true,
-    description: 'Última vez que o sync viu o modelo no catálogo do provider.',
+    description: 'Last time sync saw the model in the provider catalog.',
   })
   lastSeenAt!: string | null;
 
@@ -164,9 +164,9 @@ export class ModelComCuradoriaResponseDto
   @ApiProperty({
     example: true,
     description:
-      'Curadoria do OWNER **deste workspace**: modelo desativado some da ' +
-      'seleção mas continua nos custos históricos. Modelo descoberto pelo ' +
-      'sync não tem linha de curadoria, e ausência de linha é `false`.',
+      "Curation by the OWNER **of this workspace**: a deactivated model " +
+      'disappears from the selector but stays in historical costs. A model ' +
+      'discovered by sync has no curation row, and no row means `false`.',
   })
   isActive!: boolean;
 
@@ -175,9 +175,9 @@ export class ModelComCuradoriaResponseDto
     isArray: true,
     example: ['codigo'],
     description:
-      'Para que ESTE workspace usa o modelo. Opinião de quem opera, não ' +
-      'capability do provider — nenhum catálogo publica "bom para código". ' +
-      'Lista vazia é "ninguém opinou", não "não serve".',
+      'What THIS workspace uses the model for. The operator\'s opinion, not ' +
+      'a provider capability — no catalog publishes "good for code". An ' +
+      'empty list means "nobody has an opinion", not "not fit for it".',
   })
   uses!: UsoDeModelo[];
 }
@@ -196,7 +196,7 @@ export class UserCredentialResponseDto implements Wire<UserCredentialMetadata> {
 
   @ApiProperty({
     example: 'anthropic',
-    description: 'Cobre chaves de LLM e tokens de git (`github`, `gitlab`).',
+    description: 'Covers LLM keys and git tokens (`github`, `gitlab`).',
   })
   provider!: Wire<UserCredentialMetadata>['provider'];
 
@@ -221,19 +221,19 @@ export class CredentialTestResultResponseDto {
     enum: ['ok', 'recusado', 'nao_suportado'],
     example: 'recusado',
     description:
-      '`ok` — o provider aceitou a credencial. `recusado` — o provider a ' +
-      'rejeitou (chave inválida/revogada, sem saldo, rede). `nao_suportado` — ' +
-      'este provider não tem endpoint de teste verificado (`ollama`, ' +
-      '`anthropic`, `openai`): NADA foi verificado, e dizer "ok" aqui seria ' +
-      'mentira.',
+      '`ok` — the provider accepted the credential. `recusado` — the ' +
+      'provider rejected it (invalid/revoked key, no balance, network). ' +
+      '`nao_suportado` — this provider has no verified test endpoint ' +
+      '(`ollama`, `anthropic`, `openai`): NOTHING was verified, and saying ' +
+      '"ok" here would be a lie.',
   })
   resultado!: 'ok' | 'recusado' | 'nao_suportado';
 
   @ApiProperty({
     required: false,
     example:
-      'teste de conexão falhou para openrouter: openrouter respondeu 401',
-    description: 'Só em `recusado` — o motivo que o provider deu.',
+      'connection test failed for openrouter: openrouter responded 401',
+    description: 'Only on `recusado` — the reason the provider gave.',
   })
   motivo?: string;
 }
@@ -248,9 +248,9 @@ export class ModelBindingResponseDto implements Wire<ModelBinding> {
   @ApiProperty({
     example: '01JC4Z0000PROJETO0000000001',
     description:
-      'Id do workspace, projeto ou sessão a que o binding se prende. Nos escopos ' +
-      '`agent` e `area`, que existem POR PROJETO, é composto: ' +
-      '`<projectId>:<slug do agente|chave da área>` (ADR 0064).',
+      'Id of the workspace, project, or session the binding is pinned to. In ' +
+      'the `agent` and `area` scopes, which exist PER PROJECT, it is ' +
+      'composite: `<projectId>:<agent slug|area key>` (ADR 0064).',
   })
   scopeId!: string;
 
@@ -287,10 +287,10 @@ export class SkippedBindingResponseDto implements Wire<SkippedBinding> {
     enum: ['unavailable', 'sem_tool_calling'],
     example: 'unavailable',
     description:
-      '`unavailable`: o modelo sumiu do catálogo do provider. ' +
-      '`sem_tool_calling`: o pedido é de um agente e o modelo é chat-only — a ' +
-      'cascata revalida a capability a cada nível para não violar a RN-040 em ' +
-      'silêncio.',
+      '`unavailable`: the model vanished from the provider catalog. ' +
+      '`sem_tool_calling`: the request is from an agent and the model is ' +
+      'chat-only — the cascade revalidates the capability at every level so ' +
+      'as not to silently violate RN-040.',
   })
   reason!: Wire<SkippedBinding>['reason'];
 }
@@ -308,17 +308,17 @@ export class ResolvedBindingResponseDto implements Wire<ResolvedBinding> {
     enum: MODEL_BINDING_SCOPES,
     example: 'project',
     description:
-      'De qual escopo o valor veio. A cascata é sessão → agente → projeto → ' +
-      'workspace, e expor a ORIGEM é o que permite a UI dizer "herdado do projeto" ' +
-      'em vez de mostrar um valor sem procedência.',
+      'Which scope the value came from. The cascade is session → agent → ' +
+      'project → workspace, and exposing the ORIGIN is what lets the UI say ' +
+      '"inherited from the project" instead of showing a value with no provenance.',
   })
   origin!: Wire<ResolvedBinding>['origin'];
 
   @ApiProperty({
     type: [SkippedBindingResponseDto],
     description:
-      'Escopos mais específicos que a cascata descartou antes de chegar em ' +
-      '`origin`. Vazio no caminho normal.',
+      'More specific scopes the cascade discarded before reaching `origin`. ' +
+      'Empty on the normal path.',
   })
   skipped!: SkippedBindingResponseDto[];
 }
@@ -339,10 +339,10 @@ export class ModelPriceChangeResponseDto implements Wire<ModelPriceChange> {
   @ApiProperty({ example: '01JC4Z0000MODELO00000000001' })
   modelId!: string;
 
-  @ApiProperty({ example: 2500000, description: 'Micro-USD por 1M, antes.' })
+  @ApiProperty({ example: 2500000, description: 'Micro-USD per 1M, before.' })
   inputBeforeMicros!: number;
 
-  @ApiProperty({ example: 3000000, description: 'Micro-USD por 1M, depois.' })
+  @ApiProperty({ example: 3000000, description: 'Micro-USD per 1M, after.' })
   inputAfterMicros!: number;
 
   @ApiProperty({ example: 10000000 })
@@ -355,15 +355,15 @@ export class ModelPriceChangeResponseDto implements Wire<ModelPriceChange> {
     enum: PRICE_CHANGE_SOURCES,
     example: 'manual',
     description:
-      '`manual` foi alguém digitando da doc do provider; `sync` veio do ' +
-      'catálogo remoto.',
+      "`manual` was someone typing from the provider's docs; `sync` came " +
+      'from the remote catalog.',
   })
   source!: Wire<ModelPriceChange>['source'];
 
   @ApiProperty({
     example: '01JC4Z0000USUARIO0000000001',
     nullable: true,
-    description: '`null` quando veio do sync — não há pessoa por trás.',
+    description: '`null` when it came from sync — no person behind it.',
   })
   changedBy!: string | null;
 
@@ -382,26 +382,26 @@ export class BudgetResponseDto implements Wire<Budget> {
   @ApiProperty({
     example: '01JC4Z0000PROJETO0000000001',
     nullable: true,
-    description: 'Preenchido no orçamento de projeto; `null` no de sessão.',
+    description: 'Filled in for a project budget; `null` for a session one.',
   })
   projectId!: string | null;
 
   @ApiProperty({
     example: null,
     nullable: true,
-    description: 'O oposto do acima.',
+    description: 'The opposite of the above.',
   })
   sessionId!: string | null;
 
   @ApiProperty({
     example: 50000000,
-    description: 'Teto em micro-USD (50 USD).',
+    description: 'Cap in micro-USD (50 USD).',
   })
   limitMicros!: number;
 
   @ApiProperty({
     example: 12400000,
-    description: 'Gasto acumulado, em micro-USD.',
+    description: 'Accumulated spend, in micro-USD.',
   })
   spentMicros!: number;
 
@@ -409,16 +409,17 @@ export class BudgetResponseDto implements Wire<Budget> {
     enum: BUDGET_POLICIES,
     example: 'block',
     description:
-      '`block` recusa a chamada ao estourar o teto; `allow` deixa passar e só avisa.',
+      '`block` refuses the call when it would exceed the cap; `allow` lets ' +
+      'it through and only warns.',
   })
   policy!: Wire<Budget>['policy'];
 
   @ApiProperty({
     example: 70,
     description:
-      'Maior limiar (70/90/100) já notificado. É ele, e não o gasto anterior, que ' +
-      'serve de piso — usar o gasto faria o mesmo aviso disparar de novo a cada ' +
-      'chamada depois de cruzado.',
+      'Highest threshold (70/90/100) already notified. It, not the previous ' +
+      'spend, serves as the floor — using the spend would make the same ' +
+      'warning fire again on every call after it was crossed.',
   })
   lastThresholdNotified!: number;
 
@@ -434,11 +435,11 @@ export const _chavesOrcamento: MesmasChaves<BudgetResponseDto, Budget> = true;
 export class AgentTokenUsageResponseDto implements Wire<AgentTokenUsage> {
   @ApiProperty({
     example: 'dev-api',
-    description: 'Slug do agente, ou id do usuário.',
+    description: "The agent's slug, or the user's id.",
   })
   actorId!: string;
 
-  @ApiProperty({ example: 3400000, description: 'Custo em micro-USD.' })
+  @ApiProperty({ example: 3400000, description: 'Cost in micro-USD.' })
   costMicros!: number;
 
   @ApiProperty({ example: 128000 })
@@ -464,29 +465,30 @@ export class ChatSseEventResponseDto {
     enum: ['delta', 'done', 'error', 'metering_failed'],
     example: 'delta',
     description:
-      '`delta` traz `text` incremental; `done` fecha com a contabilidade; `error` ' +
-      'aborta; `metering_failed` significa que a RESPOSTA saiu mas o custo não foi ' +
-      'contabilizado — o quadro existe para essa falha não passar despercebida.',
+      '`delta` carries incremental `text`; `done` closes with the token/cost ' +
+      'accounting; `error` aborts; `metering_failed` means the RESPONSE went ' +
+      'out but the cost was not accounted for — the frame exists so that ' +
+      'failure does not go unnoticed.',
   })
   type!: 'delta' | 'done' | 'error' | 'metering_failed';
 
   @ApiProperty({
-    example: 'Vou abrir o épico',
+    example: 'I will open the epic',
     required: false,
-    description: 'Só em `delta`.',
+    description: 'Only on `delta`.',
   })
   text?: string;
 
-  @ApiProperty({ example: 1820, required: false, description: 'Só em `done`.' })
+  @ApiProperty({ example: 1820, required: false, description: 'Only on `done`.' })
   inputTokens?: number;
 
-  @ApiProperty({ example: 340, required: false, description: 'Só em `done`.' })
+  @ApiProperty({ example: 340, required: false, description: 'Only on `done`.' })
   outputTokens?: number;
 
   @ApiProperty({
     example: 52700,
     required: false,
-    description: 'Só em `done`, micro-USD.',
+    description: 'Only on `done`, micro-USD.',
   })
   costMicros?: number;
 
@@ -494,15 +496,16 @@ export class ChatSseEventResponseDto {
     example: false,
     required: false,
     description:
-      'Só em `done`. `true` quando o provider não devolveu contagem e o custo foi ' +
-      'ESTIMADO — o número vale menos e a UI precisa poder dizer isso.',
+      'Only on `done`. `true` when the provider did not return a count and ' +
+      'the cost was ESTIMATED — the number is worth less and the UI needs to ' +
+      'be able to say so.',
   })
   estimated?: boolean;
 
   @ApiProperty({
-    example: 'orçamento da sessão esgotado',
+    example: 'session budget exhausted',
     required: false,
-    description: 'Só em `error` e `metering_failed`.',
+    description: 'Only on `error` and `metering_failed`.',
   })
   message?: string;
 }
@@ -530,8 +533,9 @@ export class CredentialSpendPorProviderResponseDto {
   @ApiProperty({
     example: true,
     description:
-      'A credencial existe HOJE. `false` é gasto histórico de uma chave já ' +
-      'removida — o consumo aconteceu e não some do relatório por isso.',
+      'The credential exists TODAY. `false` is historical spend from a key ' +
+      'that was already removed — the consumption happened and does not ' +
+      'disappear from the report because of that.',
   })
   temCredencial!: boolean;
 
@@ -550,14 +554,14 @@ export class CredentialSpendPorProviderResponseDto {
   @ApiProperty({
     example: 900_000,
     description:
-      'Parte gasta por AGENTES — a conta que a RN-058 passou a debitar do owner.',
+      'Portion spent by AGENTS — the tab RN-058 started charging to the owner.',
   })
   costMicrosAgentes!: number;
 
   @ApiProperty({
     example: 350_000,
     description:
-      'Parte gasta por PESSOAS no chat. Sai da mesma chave, e a pergunta é outra.',
+      'Portion spent by PEOPLE in chat. Comes from the same key, and it is a different question.',
   })
   costMicrosPessoas!: number;
 
@@ -576,7 +580,7 @@ export class CredentialSpendResponseDto {
     example: '9b1c2d3e-4f50-4a61-8b72-0c3d4e5f6a7b',
     format: 'uuid',
     description:
-      'Dono das chaves — quem banca os agentes deste workspace (RN-058).',
+      "Owner of the keys — who funds this workspace's agents (RN-058).",
   })
   ownerId!: string;
 
@@ -606,9 +610,8 @@ export class SpendLinhaResponseDto implements Wire<SpendLinha> {
   @ApiProperty({
     example: 'anthropic/claude-sonnet-4',
     description:
-      'A chave do agrupamento: nome do modelo, nome do provider, id do ' +
-      'projeto, id do ator ou id da sessão, conforme a lista em que a linha ' +
-      'aparece.',
+      'The grouping key: model name, provider name, project id, actor id, ' +
+      'or session id, depending on which list the row appears in.',
   })
   chave!: string;
 
@@ -616,8 +619,8 @@ export class SpendLinhaResponseDto implements Wire<SpendLinha> {
     example: 'Loja',
     nullable: true,
     description:
-      'Nome legível, quando existe tabela com nome (projeto). `null` quando a ' +
-      'chave já é o rótulo.',
+      'Readable name, when there is a table with a name (project). `null` ' +
+      'when the key is already the label.',
   })
   rotulo!: string | null;
 
@@ -625,8 +628,8 @@ export class SpendLinhaResponseDto implements Wire<SpendLinha> {
     example: 'agent',
     nullable: true,
     description:
-      'Só as listas por ator preenchem (`porAtor`, `porOwner`, `porAgente`); ' +
-      'nas outras é `null`.',
+      'Only the per-actor lists fill this in (`porAtor`, `porOwner`, ' +
+      '`porAgente`); on the others it is `null`.',
   })
   actorKind!: string | null;
 
@@ -650,7 +653,7 @@ export const _chavesSpendLinha: MesmasChaves<
 export class SpendPorDiaResponseDto implements Wire<SpendPorDia> {
   @ApiProperty({
     example: '2026-08-09',
-    description: 'Dia em UTC. A série é DENSA: dia sem gasto vem com zero.',
+    description: 'Day in UTC. The series is DENSE: a day with no spend comes as zero.',
   })
   dia!: string;
 
@@ -675,11 +678,11 @@ export class WorkspaceSpendReportResponseDto implements Wire<WorkspaceSpendRepor
   @ApiProperty({
     example: '9b1c2d3e-4f50-4a61-8b72-0c3d4e5f6a7b',
     format: 'uuid',
-    description: 'Dono das chaves que bancaram este gasto (RN-058).',
+    description: 'Owner of the keys that funded this spend (RN-058).',
   })
   ownerId!: string;
 
-  @ApiProperty({ example: 30, description: 'Janela deslizante, em dias.' })
+  @ApiProperty({ example: 30, description: 'Sliding window, in days.' })
   dias!: number;
 
   @ApiProperty({ example: 1_250_000 })
@@ -697,49 +700,49 @@ export class WorkspaceSpendReportResponseDto implements Wire<WorkspaceSpendRepor
   @ApiProperty({
     type: [SpendLinhaResponseDto],
     description:
-      'Por MODELO. Dois providers servindo o mesmo nome caem na mesma linha — ' +
-      'separá-los reintroduziria o eixo de credencial por outro nome.',
+      'By MODEL. Two providers serving the same name fall into the same row ' +
+      '— separating them would reintroduce the credential axis under another name.',
   })
   porModelo!: SpendLinhaResponseDto[];
 
   @ApiProperty({
     type: [SpendLinhaResponseDto],
     description:
-      'Por PROVIDER (ADR 0076, RN-186). Este eixo fala de CREDENCIAL e por ' +
-      'isso só existe aqui, numa rota que exige `owner` (RN-060) — a resposta ' +
-      'do membro não o tem, e não é um filtro que o esconde: é a assinatura do ' +
-      'repositório que não o aceita com escopo de ator (RN-187).',
+      'By PROVIDER (ADR 0076, RN-186). This axis speaks of CREDENTIAL and so ' +
+      "only exists here, on a route that requires `owner` (RN-060) — the " +
+      "member's response does not have it, and it is not a filter that " +
+      "hides it: it is the repository's type that refuses it with an actor " +
+      'scope (RN-187).',
   })
   porProvider!: SpendLinhaResponseDto[];
 
   @ApiProperty({
     type: [SpendLinhaResponseDto],
-    description: 'Por PROJETO dentro do workspace.',
+    description: 'By PROJECT within the workspace.',
   })
   porProjeto!: SpendLinhaResponseDto[];
 
   @ApiProperty({
     type: [SpendLinhaResponseDto],
     description:
-      'Por ATOR — agente e pessoa na mesma lista, distintos por `actorKind`.',
+      'By ACTOR — agent and person in the same list, distinguished by `actorKind`.',
   })
   porAtor!: SpendLinhaResponseDto[];
 
   @ApiProperty({
     type: [SpendLinhaResponseDto],
     description:
-      'As linhas de PESSOA (`actor_kind = "user"`) — o bloco que o handoff ' +
-      'chama de "Por owner", porque pela RN-058 é a chave do owner que todas ' +
-      'elas gastam. Quem é o dono está em `ownerId`. Partição de `porAtor`, ' +
-      'sem consulta a mais (RN-188).',
+      'The PERSON rows (`actor_kind = "user"`) — the block the handoff ' +
+      'calls "By owner", because under RN-058 it is the owner\'s key that ' +
+      'all of them spend. Who the owner is sits in `ownerId`. A partition ' +
+      'of `porAtor`, with no extra query (RN-188).',
   })
   porOwner!: SpendLinhaResponseDto[];
 
   @ApiProperty({
     type: [SpendLinhaResponseDto],
     description:
-      'As linhas de AGENTE (`actor_kind = "agent"`). A outra metade de ' +
-      '`porAtor`.',
+      'The AGENT rows (`actor_kind = "agent"`). The other half of `porAtor`.',
   })
   porAgente!: SpendLinhaResponseDto[];
 
@@ -765,7 +768,7 @@ export class MySpendResponseDto implements Wire<MySpend> {
     example: '9b1c2d3e-4f50-4a61-8b72-0c3d4e5f6a7b',
     format: 'uuid',
     description:
-      'O ator do relatório — sempre quem chamou. Linha de outro ator não entra.',
+      "The report's actor — always whoever called. Another actor's row does not get in.",
   })
   actorId!: string;
 

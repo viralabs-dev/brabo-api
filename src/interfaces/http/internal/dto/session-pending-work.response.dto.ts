@@ -10,15 +10,15 @@ export class SessionPendingWorkResponseDto {
   @ApiProperty({
     example: true,
     description:
-      'Há trabalho que impede encerrar por inatividade da aba. Hoje: handoff ' +
-      '`offered` aguardando aceite.',
+      "There is work that blocks closing due to tab inactivity. Today: an " +
+      '`offered` handoff waiting for acceptance.',
   })
   pending!: boolean;
 
   @ApiProperty({
     example: 'handoff po → arquiteto aguardando aceite',
     nullable: true,
-    description: 'O que está pendurado. `null` quando não há nada.',
+    description: "What is hanging. `null` when there's nothing.",
   })
   motivo!: string | null;
 }

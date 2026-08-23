@@ -16,8 +16,8 @@ const ESCOPOS: ChunkScope[] = ['docs', 'adr', 'session'];
 /** O corpo de `POST /projects/:projectId/rag/search` (RN-234, ADR 0080). */
 export class HybridSearchRequestDto {
   @ApiProperty({
-    example: 'como funciona o gate de PR',
-    description: 'Entre 2 e 500 caracteres — mesma régua da busca da aba Code.',
+    example: 'how does the PR gate work',
+    description: 'Between 2 and 500 characters — same rule as the Code tab search.',
   })
   @IsString()
   query!: string;
@@ -26,7 +26,7 @@ export class HybridSearchRequestDto {
     required: false,
     enum: ESCOPOS,
     isArray: true,
-    description: 'Ausente busca nos três escopos (RN-219).',
+    description: 'When absent, searches all three scopes (RN-219).',
   })
   @IsOptional()
   @IsArray()
@@ -36,7 +36,7 @@ export class HybridSearchRequestDto {
   @ApiProperty({
     required: false,
     example: RAG_SEARCH_RESULT_LIMIT,
-    description: `1 a ${RAG_SEARCH_RESULT_LIMIT} — ausente usa o teto.`,
+    description: `1 to ${RAG_SEARCH_RESULT_LIMIT} — when absent, uses the cap.`,
   })
   @IsOptional()
   @IsInt()

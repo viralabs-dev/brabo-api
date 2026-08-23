@@ -31,11 +31,11 @@ import { GatesResponseDto } from './dto/gates.response.dto';
 export class GatesController {
   @Get()
   @ApiOperation({
-    summary: 'O registro de gates ativos',
+    summary: 'The registry of active gates',
     description:
-      'Índice declarativo dos gates do fluxo (ADR 0054). A tela deriva daqui ' +
-      'quais etapas existem e quem julga cada uma, em vez de repetir a lista ' +
-      'no código — que era como ela envelhecia sem ninguém perceber.',
+      'Declarative index of the flow gates (ADR 0054). The screen derives from ' +
+      'here which steps exist and who judges each one, instead of repeating the ' +
+      'list in code — which is how it used to go stale unnoticed.',
   })
   @ApiOkResponse({ type: GatesResponseDto })
   listar(): GatesResponseDto {

@@ -60,53 +60,55 @@ function versao(): string {
  * `docs/reference/api/`. Escrita nos dois lugares, divergiria no primeiro mês.
  */
 const VISAO_GERAL = `
-A API do Brabo. Todo endpoint devolve JSON, salvo os quatro documentados
-explicitamente com outro \`content-type\` (dois de SSE, o de métricas e o
-callback de OAuth, que redireciona).
+The Brabo API. Every endpoint returns JSON, except the four explicitly
+documented with a different \`content-type\` (two SSE ones, the metrics one,
+and the OAuth callback, which redirects).
 
-## Autenticação
+## Authentication
 
-O access token é um JWT **EdDSA de 15 minutos**, apresentado em
-\`Authorization: Bearer <token>\`. A chave pública fica em
+The access token is a **15-minute EdDSA JWT**, presented in
+\`Authorization: Bearer <token>\`. The public key lives at
 \`GET /.well-known/jwks.json\`.
 
-O refresh **não** é um JWT: é um token opaco que vive num cookie \`httpOnly\`
-(\`brabo_refresh\`, \`Path=/auth\`, \`SameSite=Strict\`) e nunca aparece no corpo
-de nenhuma resposta. \`POST /auth/refresh\` e \`POST /auth/logout\` leem o cookie
-e exigem o cabeçalho \`X-CSRF-Token\` igual ao cookie \`brabo_csrf\`.
+The refresh **is not** a JWT: it's an opaque token that lives in an
+\`httpOnly\` cookie (\`brabo_refresh\`, \`Path=/auth\`, \`SameSite=Strict\`) and
+never appears in any response body. \`POST /auth/refresh\` and
+\`POST /auth/logout\` read the cookie and require the \`X-CSRF-Token\` header
+to match the \`brabo_csrf\` cookie.
 
-**A rotação é obrigatória.** Cada refresh consome o token apresentado e emite
-outro. Reapresentar um já consumido é assinatura de roubo e revoga a família
-inteira — inclusive a sessão legítima. Um cliente que dispare dois refresh
-concorrentes derruba o próprio usuário; use uma única chamada em voo.
+**Rotation is mandatory.** Each refresh consumes the presented token and
+issues another. Re-presenting an already-consumed one is a theft signature
+and revokes the WHOLE family — including the legitimate session. A client
+that fires two concurrent refreshes takes itself down; use a single in-flight
+call.
 
-As rotas \`/internal/*\` são a superfície api ↔ engine e ficam **fora do JWT**:
-elas exigem o cabeçalho \`X-Brabo-Service-Token\` com o segredo compartilhado.
-Um token de usuário não abre nenhuma delas.
+The \`/internal/*\` routes are the api ↔ engine surface and sit **outside the
+JWT**: they require the \`X-Brabo-Service-Token\` header with the shared
+secret. A user token doesn't open any of them.
 
-## Erros
+## Errors
 
-Formato padrão do NestJS: \`{ "statusCode": number, "message": string | string[], "error": string }\`.
+NestJS default format: \`{ "statusCode": number, "message": string | string[], "error": string }\`.
 
-| código | quando |
+| code | when |
 |---|---|
-| \`400\` | corpo inválido — o \`ValidationPipe\` roda com \`whitelist\` e \`forbidNonWhitelisted\`, então campo desconhecido também reprova |
-| \`401\` | sem token, token expirado ou credencial inválida |
-| \`403\` | autenticado mas sem o papel exigido pelo RBAC, ou service token errado |
-| \`404\` | recurso inexistente **ou** invisível para quem chamou |
-| \`409\` | conflito de estado — transição de sessão inválida, recurso já existente |
-| \`429\` | rate limit ou lockout progressivo |
+| \`400\` | invalid body — the \`ValidationPipe\` runs with \`whitelist\` and \`forbidNonWhitelisted\`, so an unknown field also fails |
+| \`401\` | no token, expired token, or invalid credential |
+| \`403\` | authenticated but without the role RBAC requires, or a wrong service token |
+| \`404\` | resource doesn't exist **or** is invisible to the caller |
+| \`409\` | state conflict — invalid session transition, resource already exists |
+| \`429\` | rate limit or progressive lockout |
 
-As rotas de auth respondem de forma **deliberadamente indistinguível** entre
-e-mail inexistente, senha errada e conta bloqueada: mesmo corpo, mesmo status,
-mesmo tempo. É o que fecha a enumeração de contas, e não é defeito de
-diagnóstico.
+Auth routes respond **deliberately indistinguishably** between a nonexistent
+email, a wrong password, and a locked account: same body, same status, same
+timing. That's what closes account enumeration, and it's not a diagnostic
+defect.
 
 ## Rate limit
 
-Janela deslizante no Postgres: 300 requisições por usuário e 600 por IP a cada
-60 s, configuráveis. Rota \`@Public()\` e rota de serviço são **isentas** — o que
-segura \`/auth/*\` é o lockout progressivo, não o rate limit.
+Sliding window in Postgres: 300 requests per user and 600 per IP every 60s,
+configurable. A \`@Public()\` route and a service route are **exempt** — what
+guards \`/auth/*\` is the progressive lockout, not the rate limit.
 `.trim();
 
 /** O builder. `SwaggerModule.createDocument(app, configDoOpenapi())`. */
@@ -149,10 +151,10 @@ export function configDoOpenapi(): Omit<OpenAPIObject, 'paths'> {
 function injetarErrosDeGuard(documento: OpenAPIObject): OpenAPIObject {
   const GENERICAS: Record<string, string> = {
     '400':
-      'Corpo inválido. O `ValidationPipe` roda com `whitelist` e ' +
-      '`forbidNonWhitelisted`, então campo desconhecido também reprova.',
-    '401': 'Sem token, token expirado ou assinatura inválida.',
-    '429': 'Rate limit por usuário ou por IP.',
+      'Invalid body. The `ValidationPipe` runs with `whitelist` and ' +
+      '`forbidNonWhitelisted`, so an unknown field also fails.',
+    '401': 'No token, expired token, or invalid signature.',
+    '429': 'Rate limit per user or per IP.',
   };
 
   for (const operacoes of Object.values(documento.paths ?? {})) {

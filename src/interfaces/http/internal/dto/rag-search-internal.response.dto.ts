@@ -12,21 +12,21 @@ export class RagSearchInternalHitResponseDto {
   @ApiProperty({
     example: 'docs/adr/0080-chat-rag-pipeline-indexacao.md',
     description:
-      'Caminho do arquivo (escopos `docs`/`adr`) ou `session:<id>` (escopo `session`, sem caminho de arquivo real).',
+      'File path (`docs`/`adr` scopes) or `session:<id>` (`session` scope, no real file path).',
   })
   path!: string;
 
-  @ApiProperty({ description: 'O conteúdo completo do chunk recuperado.' })
+  @ApiProperty({ description: 'The full content of the retrieved chunk.' })
   chunk!: string;
 
   @ApiProperty({
-    description: 'Score combinado (vetor + léxico), já filtrado pelo limiar.',
+    description: 'Combined score (vector + lexical), already filtered by the threshold.',
   })
   score!: number;
 
   @ApiProperty({
     description:
-      'Prévia curta do chunk, para exibição sem estourar o contexto do modelo.',
+      "Short preview of the chunk, for display without blowing up the model's context.",
   })
   excerpt!: string;
 }
@@ -37,9 +37,9 @@ export class RagSearchInternalResponseDto {
 
   @ApiProperty({
     description:
-      '`true` quando o embedding da CONSULTA não estava disponível e a busca ' +
-      'caiu para léxico-only (mesma semântica de `vectorAvailable: false` do ' +
-      '`HybridSearchUseCase`).',
+      '`true` when the QUERY embedding was not available and the search ' +
+      'fell back to lexical-only (same semantics as `vectorAvailable: false` ' +
+      'from `HybridSearchUseCase`).',
   })
   degraded!: boolean;
 }

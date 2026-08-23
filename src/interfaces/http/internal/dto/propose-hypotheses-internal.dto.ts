@@ -18,7 +18,7 @@ export class HypothesisTerminationAnalysisDto {
   @ApiProperty({
     example: 'heartbeat_timeout',
     description:
-      'A ORIGEM da falha. Nunca deduzida por eliminação — lição do ADR 0020.',
+      'The ORIGIN of the failure. Never deduced by elimination — lesson from ADR 0020.',
   })
   @IsString()
   causa!: string;
@@ -28,7 +28,7 @@ export class HypothesisTerminationAnalysisDto {
   estadoDaSessao!: string;
 
   @ApiProperty({
-    example: 'O agente parou de responder depois de um tool call de 90 s.',
+    example: 'The agent stopped responding after a 90s tool call.',
   })
   @IsString()
   analise!: string;
@@ -39,17 +39,17 @@ export class HypothesisDraftDto {
   @IsString()
   agenteAlvo!: string;
 
-  @ApiProperty({ example: 'O agente reabriu a mesma tarefa três vezes.' })
+  @ApiProperty({ example: 'The agent reopened the same task three times.' })
   @IsString()
   observacao!: string;
 
   @ApiProperty({
-    example: 'As instruções não dizem quando a tarefa está pronta.',
+    example: "The instructions don't say when the task is done.",
   })
   @IsString()
   hipotese!: string;
 
-  @ApiProperty({ example: 'Acrescentar um critério de pronto explícito.' })
+  @ApiProperty({ example: 'Add an explicit definition-of-done criterion.' })
   @IsString()
   sugestao!: string;
 
@@ -59,7 +59,7 @@ export class HypothesisDraftDto {
     example: 72,
     minimum: 0,
     maximum: 100,
-    description: 'Auto-relato do modelo, não medida.',
+    description: 'Self-reported by the model, not measured.',
   })
   @IsInt()
   @Min(0)
@@ -69,8 +69,8 @@ export class HypothesisDraftDto {
   @ApiProperty({
     example: ['01JC4Z8QK3M7YV2N5T9B0PXHRB'],
     description:
-      'Pelo menos um, e cada um tem de EXISTIR nesta sessão. Evidência inventada é ' +
-      'recusada com 400 — é o que separa hipótese de opinião.',
+      'At least one, and each one has to EXIST in this session. Made-up ' +
+      'evidence is rejected with 400 — that is what separates a hypothesis from an opinion.',
   })
   @IsArray()
   @ArrayNotEmpty()
@@ -79,7 +79,7 @@ export class HypothesisDraftDto {
 
   @ApiPropertyOptional({
     type: HypothesisTerminationAnalysisDto,
-    description: 'OBRIGATÓRIA quando `cause` indica término anormal.',
+    description: 'REQUIRED when `cause` indicates an abnormal termination.',
   })
   @IsOptional()
   @IsObject()
@@ -97,7 +97,7 @@ export class ProposeHypothesesInternalDto {
     enum: ['leve', 'pesada'],
     example: 'leve',
     description:
-      'Os dois tiers usam modelos genuinamente diferentes; o custo diverge.',
+      'The two tiers use genuinely different models; the cost diverges.',
   })
   @IsIn(['leve', 'pesada'])
   tier!: 'leve' | 'pesada';
@@ -106,7 +106,7 @@ export class ProposeHypothesesInternalDto {
   @IsIn(['auto', 'manual'])
   triggeredBy!: 'auto' | 'manual';
 
-  @ApiProperty({ example: 128, description: 'Tamanho do log analisado.' })
+  @ApiProperty({ example: 128, description: 'Size of the analyzed log.' })
   @IsInt()
   @Min(0)
   eventCount!: number;
@@ -126,9 +126,9 @@ export class ProposeHypothesesInternalDto {
     enum: ['normal', 'timeout', 'kill', 'crash', 'node_shutdown', 'unknown'],
     example: 'timeout',
     description:
-      'Causa CLASSIFICADA pelo engine. É ela, e não o status terminal, que decide se ' +
-      '`terminationAnalysis` é obrigatória. Opcional para não quebrar engine antigo ' +
-      'em rolling deploy.',
+      "Cause CLASSIFIED by the engine. It, not the terminal status, decides " +
+      'whether `terminationAnalysis` is required. Optional so as not to break ' +
+      'an older engine during a rolling deploy.',
   })
   @IsIn(['normal', 'timeout', 'kill', 'crash', 'node_shutdown', 'unknown'])
   cause?: 'normal' | 'timeout' | 'kill' | 'crash' | 'node_shutdown' | 'unknown';

@@ -27,7 +27,7 @@ export class ProductMetricsFunnelStageResponseDto implements Wire<EtapaFunil> {
   @ApiProperty({
     example: 0.67,
     nullable: true,
-    description: '`null` na primeira etapa — não há "conversão de" nada.',
+    description: '`null` on the first stage — there is no "conversion from" anything.',
   })
   taxaDaEtapaAnterior!: number | null;
 }
@@ -102,7 +102,7 @@ export class ProductMetricsLeadTimesResponseDto implements Wire<
     example: 7200000,
     nullable: true,
     description:
-      'Média simples em ms — `null` sem nenhuma sessão com commit E merge.',
+      'Simple average in ms — `null` with no session having both a commit AND a merge.',
   })
   averageMs!: number | null;
 }
@@ -118,7 +118,7 @@ export class ProductMetricsResponseDto implements Wire<ProductMetricsReport> {
   @ApiProperty({
     example: 18,
     description:
-      'Ações git consideradas (git_commit/pr_open/git_merge, qualquer status).',
+      'Git actions considered (git_commit/pr_open/git_merge, any status).',
   })
   totalActionsConsidered!: number;
 

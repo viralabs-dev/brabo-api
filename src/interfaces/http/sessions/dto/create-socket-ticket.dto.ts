@@ -11,8 +11,8 @@ export class CreateSocketTicketDto {
     enum: SOCKET_TICKET_SCOPES,
     example: 'heartbeat',
     description:
-      '`heartbeat` exige papel `viewer`; `terminal` exige `developer` — o ' +
-      'mesmo papel mínimo de `MIN_ROLE_FOR_ACTION_TYPE.terminal`.',
+      '`heartbeat` requires the `viewer` role; `terminal` requires ' +
+      '`developer` — the same minimum role as `MIN_ROLE_FOR_ACTION_TYPE.terminal`.',
   })
   @IsIn(SOCKET_TICKET_SCOPES)
   scope!: SocketTicketScope;

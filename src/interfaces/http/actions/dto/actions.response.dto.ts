@@ -27,7 +27,7 @@ import type { Page } from '../../../../application/ports/proposed-action-reposit
 export class ProposedActionResponseDto implements Wire<ProposedAction> {
   @ApiProperty({
     example: '01JC4Z8QK3M7YV2N5T9B0PXHRC',
-    description: 'ULID da ação.',
+    description: 'ULID of the action.',
   })
   id!: string;
 
@@ -39,7 +39,7 @@ export class ProposedActionResponseDto implements Wire<ProposedAction> {
 
   @ApiProperty({
     example: 7,
-    description: 'Ordem da ação dentro da sessão; serve de cursor na listagem.',
+    description: 'Order of the action within the session; used as a cursor in listings.',
   })
   seq!: number;
 
@@ -47,7 +47,7 @@ export class ProposedActionResponseDto implements Wire<ProposedAction> {
     enum: ACTION_TYPES,
     example: 'terminal',
     description:
-      'O que a ação faria. `git_push` e `git_merge` exigem `maintainer`.',
+      'What the action would do. `git_push` and `git_merge` require `maintainer`.',
   })
   actionType!: string;
 
@@ -55,7 +55,7 @@ export class ProposedActionResponseDto implements Wire<ProposedAction> {
     type: 'object',
     additionalProperties: true,
     example: { command: 'pnpm test' },
-    description: 'Parâmetros da ação, específicos do `actionType`.',
+    description: 'Parameters of the action, specific to the `actionType`.',
   })
   payload!: unknown;
 
@@ -63,8 +63,9 @@ export class ProposedActionResponseDto implements Wire<ProposedAction> {
     enum: ACTION_STATUSES,
     example: 'pending',
     description:
-      'Estado no pipeline. `auto_approved` é distinto de `approved` de propósito: ' +
-      'o log precisa distinguir o que uma pessoa decidiu do que a política liberou.',
+      'State in the pipeline. `auto_approved` is distinct from `approved` on ' +
+      'purpose: the log needs to distinguish what a person decided from what ' +
+      'the policy released.',
   })
   status!: ActionStatus;
 
@@ -72,18 +73,18 @@ export class ProposedActionResponseDto implements Wire<ProposedAction> {
     enum: ['auto_approve', 'require_approval', 'deny'],
     example: 'require_approval',
     description:
-      'O que o `permissions.json` decidiu para esta ação. `deny` SEMPRE vence ' +
-      '`allow` — nem a autonomia do agente reverte.',
+      'What `permissions.json` decided for this action. `deny` ALWAYS wins over ' +
+      "`allow` — not even the agent's autonomy overrides it.",
   })
   resolvedPolicy!: Wire<ProposedAction>['resolvedPolicy'];
 
-  @ApiProperty({ type: ActorResponseDto, description: 'Quem propôs.' })
+  @ApiProperty({ type: ActorResponseDto, description: 'Who proposed it.' })
   actor!: ActorResponseDto;
 
   @ApiProperty({
     example: null,
     nullable: true,
-    description: 'Id do usuário que aprovou ou negou. Nunca um agente.',
+    description: 'Id of the user who approved or denied it. Never an agent.',
   })
   decidedBy!: string | null;
 
@@ -99,9 +100,9 @@ export class ProposedActionResponseDto implements Wire<ProposedAction> {
     nullable: true,
     example: null,
     description:
-      'Resultado da execução, com forma específica de cada `actionType` — saída e ' +
-      'código de saída no terminal, número e URL do PR nos tipos de git. `null` ' +
-      'enquanto a ação não foi executada.',
+      'Execution result, with a shape specific to each `actionType` — output and ' +
+      'exit code for terminal, PR number and URL for the git types. `null` while ' +
+      'the action has not been executed.',
   })
   executionResult!: Wire<ProposedAction>['executionResult'];
 
@@ -124,7 +125,7 @@ export class PaginaDeAcoesResponseDto implements Wire<Page<ProposedAction>> {
     example: 7,
     nullable: true,
     description:
-      'Passe como `afterSeq` na próxima página; `null` é fim da lista.',
+      'Pass as `afterSeq` on the next page; `null` means end of list.',
   })
   nextCursor!: number | null;
 }
@@ -133,25 +134,25 @@ export const _chavesPaginaAcoes: MesmasChaves<
   Page<ProposedAction>
 > = true;
 
-/** O `permissions.json` do projeto, como ele está em disco. */
+/** The project's `permissions.json`, as it is on disk. */
 export class PermissionsFileResponseDto implements Wire<PermissionsFile> {
   @ApiProperty({
     example: ['Terminal(pnpm test:*)', 'Terminal(pnpm lint)'],
-    description: 'Padrões aprovados automaticamente.',
+    description: 'Automatically approved patterns.',
   })
   allow!: string[];
 
   @ApiProperty({
     example: ['Terminal(rm -rf *)', 'Terminal(git push --force*)'],
     description:
-      'Padrões proibidos. `deny` vence `allow` e vence a autonomia do agente — ' +
-      'não há combinação de configuração que libere o que está aqui.',
+      "Forbidden patterns. `deny` wins over `allow` and over the agent's " +
+      'autonomy — no configuration combination releases what is listed here.',
   })
   deny!: string[];
 
   @ApiProperty({
     example: ['Terminal(pnpm add *)'],
-    description: 'Padrões que sempre pedem decisão humana.',
+    description: 'Patterns that always require a human decision.',
   })
   ask!: string[];
 }
@@ -160,7 +161,7 @@ export const _chavesPermissoes: MesmasChaves<
   PermissionsFile
 > = true;
 
-/** Uma linha da tabela de autonomia: o que este agente pode fazer sozinho. */
+/** A row of the autonomy table: what this agent can do on its own. */
 type RegraDeAutonomia = {
   agentId: string;
   actionType: string;
@@ -168,14 +169,14 @@ type RegraDeAutonomia = {
 };
 
 export class AgentAutonomyRuleResponseDto implements RegraDeAutonomia {
-  @ApiProperty({ example: 'dev-api', description: 'Slug do agente.' })
+  @ApiProperty({ example: 'dev-api', description: 'Agent slug.' })
   agentId!: string;
 
   @ApiProperty({
     example: 'terminal',
     description:
-      'O tipo de ação, ou `"*"` — "auto mode" (RN-153): autonomia pra ' +
-      'QUALQUER tipo de ação deste agente.',
+      'The action type, or `"*"` — "auto mode" (RN-153): autonomy for ANY ' +
+      'action type of this agent.',
   })
   actionType!: string;
 
@@ -183,8 +184,8 @@ export class AgentAutonomyRuleResponseDto implements RegraDeAutonomia {
     enum: ['auto_approve', 'require_approval', 'deny'],
     example: 'auto_approve',
     description:
-      'Autonomia concedida. Não sobrepõe o `permissions.json`: um `deny` de lá ' +
-      'continua vencendo.',
+      "Autonomy granted. Does not override `permissions.json`: a `deny` there " +
+      'still wins.',
   })
   mode!: PermissionPolicy;
 }

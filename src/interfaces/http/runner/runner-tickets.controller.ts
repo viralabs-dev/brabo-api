@@ -26,8 +26,12 @@ import { RunnerTicketResponseDto } from './dto/runner-ticket.response.dto';
  *   modo `runner` (RN-421, ADR 0104) — ver `RequestRunnerTicketUseCase` pro
  *   porquê. Autenticado por Personal Access Token, NUNCA por JWT de sessão
  *   (`PatAuthGuard`/`@RequirePatAuth()`, ADR 0105) — não há chamador de
- *   browser pra esta rota. Papel mínimo `developer` (`RolesGuard` roda
- *   DEPOIS do `PatAuthGuard`, revalidando o dono do token pela via normal).
+ *   browser pra esta rota. Papel mínimo `developer`, aplicado pelo PRÓPRIO
+ *   `PatAuthGuard` (RN-438): `RolesGuard` é guard GLOBAL e roda ANTES de
+ *   `PatAuthGuard`, que é LOCAL — nunca depois, não importa a ordem dos
+ *   decorators abaixo — então `RolesGuard` se abstém aqui (rota
+ *   `@RequirePatAuth()`) e é `PatAuthGuard` quem revalida o papel do dono do
+ *   token pela via normal, depois de autenticar.
  * - `terminal-ticket`: a aba Terminal da web, que só VÊ e interage — papel
  *   mínimo `viewer`, JWT de sessão normal, mesma régua das outras leituras
  *   da aba Code (`containers.controller.ts`).

@@ -43,8 +43,8 @@ import {
  */
 @ApiTags('backlog')
 @ApiBearerAuth(BEARER)
-@ApiForbiddenResponse({ description: 'Papel insuficiente no projeto.' })
-@ApiNotFoundResponse({ description: 'Projeto inexistente.' })
+@ApiForbiddenResponse({ description: 'Insufficient role on the project.' })
+@ApiNotFoundResponse({ description: 'Project does not exist.' })
 @Controller('projects/:projectId')
 export class BacklogController {
   constructor(
@@ -59,10 +59,10 @@ export class BacklogController {
   @Get('backlog')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Devolve a árvore épico → história → tarefa',
+    summary: 'Returns the epic → story → task tree',
     description:
-      'Aninhada e completa, numa chamada só. É LEITURA: quem escreve backlog são ' +
-      'os agentes, pelas rotas `/internal/*`.',
+      'Nested and complete, in a single call. This is READ-ONLY: backlog is ' +
+      'written by agents, through the `/internal/*` routes.',
   })
   @ApiOkResponse({ type: [EpicComHistoriasResponseDto] })
   backlog(@Param('projectId') projectId: string) {
@@ -72,10 +72,11 @@ export class BacklogController {
   @Get('coverage')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Calcula a cobertura regra de negócio → histórias',
+    summary: 'Computes business-rule → stories coverage',
     description:
-      'Cruza as regras do projeto com o `businessRuleIds` das histórias. Regra sem ' +
-      'história nenhuma é uma DESCOBERTA — pendência do PO, não erro.',
+      "Cross-references the project's rules with the stories' " +
+      '`businessRuleIds`. A rule with no story at all is a DISCOVERY — a ' +
+      "pending item for the PO, not an error.",
   })
   @ApiOkResponse({ type: CoverageReportResponseDto })
   coverage(@Param('projectId') projectId: string) {
@@ -85,11 +86,11 @@ export class BacklogController {
   @Get('architecture')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Devolve o module_map vigente, as ADRs e as pendências',
+    summary: 'Returns the current module_map, the ADRs, and the pending items',
     description:
-      'O mapa vigente é o de maior `version` (o histórico é imutável). As pendências ' +
-      'são a validação cruzada história↔mapa: história sem módulo, ou apontando um ' +
-      'módulo que não existe.',
+      'The current map is the one with the highest `version` (history is ' +
+      'immutable). The pending items are the story↔map cross-validation: a ' +
+      "story with no module, or pointing at a module that doesn't exist.",
   })
   @ApiOkResponse({ type: ArchitectureResponseDto })
   architecture(@Param('projectId') projectId: string) {
@@ -99,10 +100,10 @@ export class BacklogController {
   @Get('infra-artifacts')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Lista as PRs de infra e o estágio de gate de cada uma',
+    summary: 'Lists infra PRs and the gate stage of each one',
     description:
-      'Artefatos do InfraAgent (Dockerfile, compose, CI). Passam pelos MESMOS gates ' +
-      'de QA e SecOps das PRs de dev, sem task nem worktree por trás.',
+      "InfraAgent's artifacts (Dockerfile, compose, CI). They go through the " +
+      'SAME QA and SecOps gates as dev PRs, with no task or worktree behind them.',
   })
   @ApiOkResponse({ type: [InfraArtifactResponseDto] })
   infraArtifacts(@Param('projectId') projectId: string) {
@@ -112,13 +113,14 @@ export class BacklogController {
   @Post('stories/promote')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Promove a `ready` as histórias que o PO propôs',
+    summary: 'Promotes stories the PO proposed to `ready`',
     description:
-      'O passo humano que o modo `manual` (default desde a Fase 12c) devolve ' +
-      'ao usuário: até promover, NENHUMA tarefa da história é pegável por dev ' +
-      'agent nenhum. Promover libera o lote de tarefas de uma vez e acorda os ' +
-      'agentes idle do módulo (Fase 12b). O lote NÃO é all-or-nothing — o que ' +
-      'não passou volta em `failed` com o motivo, e o que passou está promovido.',
+      'The human step that `manual` mode (default since Phase 12c) hands ' +
+      'back to the user: until promotion, NO task from the story is pickable ' +
+      'by any dev agent. Promoting releases the batch of tasks at once and ' +
+      'wakes up the idle agents of the module (Phase 12b). The batch is NOT ' +
+      "all-or-nothing — whatever didn't pass comes back as `failed` with the " +
+      'reason, and whatever passed is promoted.',
   })
   @ApiCreatedResponse({ type: PromoteStoriesResponseDto })
   promote(
@@ -132,12 +134,13 @@ export class BacklogController {
   @Post('stories/:storyId/return')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Devolve ao PO uma história recusada, com o motivo',
+    summary: 'Returns a refused story to the PO, with the reason',
     description:
-      'A história sai da fila de propostas e o motivo vira mensagem fixada na ' +
-      'sessão do PO — mesmo padrão da devolução de um gate ao dev. Se o PO ' +
-      'daquela sessão não estiver mais de pé, a devolução é gravada assim ' +
-      'mesmo: a decisão é do usuário e não depende de haver agente ouvindo.',
+      "The story leaves the proposal queue and the reason becomes a message " +
+      "pinned to the PO's session — the same pattern as returning a gate to " +
+      "dev. If that session's PO is no longer up, the return is recorded " +
+      "anyway: it's the user's decision and does not depend on an agent " +
+      'listening.',
   })
   @ApiCreatedResponse({ type: OkResponseDto })
   return(

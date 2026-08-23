@@ -47,9 +47,13 @@ function montar(opcoes: {
   papelExigido?: Role;
   papelDeProjeto?: Role | null;
   papelDeWorkspace?: Role | null;
+  isPatRoute?: boolean;
 }) {
   const reflector = {
-    getAllAndOverride: vi.fn().mockReturnValue(opcoes.papelExigido),
+    getAllAndOverride: vi
+      .fn()
+      .mockReturnValueOnce(opcoes.papelExigido)
+      .mockReturnValue(opcoes.isPatRoute ?? false),
   } as unknown as Reflector;
 
   const resolve = {
@@ -208,5 +212,35 @@ describe('RolesGuard — a matriz de papéis', () => {
 
     expect(resolve.forProject).toHaveBeenCalledWith('u-42', 'p-9');
     expect(resolve.forProject).toHaveBeenCalledTimes(1);
+  });
+
+  describe('rota @RequirePatAuth() (RN-438)', () => {
+    // `JwtAuthGuard` (global) já se abstém nessas rotas sem popular
+    // `request.user` — a autorização é do PRÓPRIO `PatAuthGuard`, o guard
+    // LOCAL que roda DEPOIS dos dois guards globais. Sem este desvio,
+    // `RolesGuard` recusava toda chamada aqui com `request.user` vazio, e
+    // `PatAuthGuard` nunca chegava a executar.
+    it('rota marcada IS_PAT_ROUTE_KEY: passa mesmo com request.user vazio', async () => {
+      const { guard, resolve } = montar({
+        papelExigido: 'developer',
+        isPatRoute: true,
+      });
+
+      await expect(
+        guard.canActivate(contexto({ params: { projectId: 'p-1' } })),
+      ).resolves.toBe(true);
+      expect(resolve.forProject).not.toHaveBeenCalled();
+    });
+
+    it('rota SEM a marca: continua exigindo request.user normalmente', async () => {
+      const { guard } = montar({
+        papelExigido: 'developer',
+        isPatRoute: false,
+      });
+
+      await expect(
+        guard.canActivate(contexto({ params: { projectId: 'p-1' } })),
+      ).rejects.toThrow(ForbiddenException);
+    });
   });
 });

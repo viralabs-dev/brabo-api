@@ -42,9 +42,9 @@ export class GateResponseDto implements Wire<Gate> {
 
   @ApiProperty({
     description:
-      'A decisão é do usuário — direta no clique, ou delegada por política que ' +
-      'ele escreveu. Invariante nos quatro gates constitucionalmente manuais ' +
-      '(RN-071).',
+      "The decision is the user's — either a direct click, or delegated by a " +
+      'policy they wrote. Invariant across the four constitutionally manual ' +
+      'gates (RN-071).',
   })
   aprovacao_humana!: boolean;
 
@@ -56,8 +56,8 @@ export class GateResponseDto implements Wire<Gate> {
     type: Object,
     additionalProperties: true,
     description:
-      'Onde mora a prova de que o gate passou: `event_log` (tipos + filtro de ' +
-      'payload), `teste` ou `ci` (caminho do alvo). Ausente em gate `planned`.',
+      'Where the proof that the gate passed lives: `event_log` (types + ' +
+      'payload filter), `teste` or `ci` (target path). Absent on a `planned` gate.',
   })
   evidencia?: Evidencia;
 

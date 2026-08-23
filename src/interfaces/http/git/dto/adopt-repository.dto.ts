@@ -14,10 +14,10 @@ export class AdoptRepositoryDto {
   @ApiProperty({
     example: 'acme/checkout',
     description:
-      'Identificador do repositório NO PROVIDER: `owner/repo` no github, ' +
-      '`namespace/path` no gitlab, caminho absoluto do bare repo no local. ' +
-      'Nada é criado — o repositório precisa já existir e a credencial ' +
-      'cadastrada precisa alcançá-lo.',
+      "The repository's identifier ON THE PROVIDER: `owner/repo` on github, " +
+      '`namespace/path` on gitlab, the bare repo\'s absolute path locally. ' +
+      'Nothing is created — the repository must already exist and the ' +
+      'registered credential must be able to reach it.',
   })
   @IsString()
   @IsNotEmpty()

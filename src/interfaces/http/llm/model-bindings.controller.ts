@@ -57,8 +57,8 @@ import {
  */
 @ApiTags('llm')
 @ApiBearerAuth(BEARER)
-@ApiForbiddenResponse({ description: 'Papel insuficiente no escopo.' })
-@ApiNotFoundResponse({ description: 'Escopo inexistente.' })
+@ApiForbiddenResponse({ description: 'Insufficient role on the scope.' })
+@ApiNotFoundResponse({ description: 'Scope not found.' })
 @Controller()
 export class ModelBindingsController {
   constructor(
@@ -71,8 +71,8 @@ export class ModelBindingsController {
   @Get('workspaces/:workspaceId/model-binding')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Lê o binding de modelo do workspace',
-    description: 'O binding CRU deste escopo. É a raiz da cascata.',
+    summary: 'Reads the workspace model binding',
+    description: "This scope's RAW binding. It is the root of the cascade.",
   })
   @ApiOkResponse({ type: ModelBindingResponseDto })
   getWorkspaceBinding(@Param('workspaceId') workspaceId: string) {
@@ -82,8 +82,8 @@ export class ModelBindingsController {
   @Put('workspaces/:workspaceId/model-binding')
   @RequireRole('maintainer')
   @ApiOperation({
-    summary: 'Define o modelo default do workspace',
-    description: 'Vale para todos os projetos que não tenham binding próprio.',
+    summary: 'Sets the default model for the workspace',
+    description: 'Applies to every project that has no binding of its own.',
   })
   @ApiOkResponse({ type: ModelBindingResponseDto })
   setWorkspaceBinding(
@@ -102,9 +102,9 @@ export class ModelBindingsController {
   @Get('projects/:projectId/model-binding')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Lê o binding de modelo do projeto',
+    summary: 'Reads the project model binding',
     description:
-      'O binding CRU deste escopo — `null` se o projeto só herda do workspace.',
+      "This scope's RAW binding — `null` if the project only inherits from the workspace.",
   })
   @ApiOkResponse({ type: ModelBindingResponseDto })
   getProjectBinding(@Param('projectId') projectId: string) {
@@ -113,7 +113,7 @@ export class ModelBindingsController {
 
   @Put('projects/:projectId/model-binding')
   @RequireRole('maintainer')
-  @ApiOperation({ summary: 'Define o modelo do projeto' })
+  @ApiOperation({ summary: "Sets the project's model" })
   @ApiOkResponse({ type: ModelBindingResponseDto })
   setProjectBinding(
     @Param('projectId') projectId: string,
@@ -127,22 +127,23 @@ export class ModelBindingsController {
   @Get('projects/:projectId/sessions/:sessionId/model-binding')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Resolve qual modelo a sessão usa, e de onde ele veio',
+    summary: 'Resolves which model the session uses, and where it came from',
     description:
-      'Devolve o binding RESOLVIDO pela cascata, não o binding cru da sessão: uma ' +
-      'sessão sem binding próprio usa o do projeto, e responder `null` aqui seria ' +
-      'a resposta errada para a pergunta certa. O campo `origin` diz de qual ' +
-      'escopo o valor veio.\n\n' +
-      '`agentId` é opcional e é o agente REALMENTE ativo na sessão agora (o ' +
-      'mesmo que `RunLlmTurnUseCase` usa pra rodar o turno) — sem ele, a cascata ' +
-      'só enxerga sessão→projeto→workspace (mais o fallback fixo pro Criativo) e ' +
-      'nunca reflete PO/Arquiteto/Dev Lead/área depois de um handoff.',
+      "Returns the binding RESOLVED by the cascade, not the session's raw " +
+      'binding: a session with no binding of its own uses the project\'s, ' +
+      'and answering `null` here would be the wrong answer to the right ' +
+      'question. The `origin` field says which scope the value came from.\n\n' +
+      '`agentId` is optional and is the agent REALLY active in the session ' +
+      'right now (the same one `RunLlmTurnUseCase` uses to run the turn) — ' +
+      'without it, the cascade only sees session→project→workspace (plus the ' +
+      'fixed fallback to Creative) and never reflects PO/Architect/Dev Lead/' +
+      'area after a handoff.',
   })
   @ApiQuery({
     name: 'agentId',
     required: false,
     description:
-      'Agente ativo agora nesta sessão (ex.: "po", "arquiteto", "dev-lead").',
+      'Agent currently active in this session (e.g. "po", "arquiteto", "dev-lead").',
   })
   @ApiOkResponse({ type: ResolvedBindingResponseDto })
   getSessionBinding(
@@ -156,8 +157,8 @@ export class ModelBindingsController {
   @Put('projects/:projectId/sessions/:sessionId/model-binding')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Fixa o modelo desta sessão',
-    description: 'Vence tudo o mais na cascata enquanto a sessão viver.',
+    summary: 'Pins the model for this session',
+    description: 'Beats everything else in the cascade for as long as the session lives.',
   })
   @ApiOkResponse({ type: ModelBindingResponseDto })
   setSessionBinding(
@@ -174,12 +175,12 @@ export class ModelBindingsController {
   @RequireRole('viewer')
   @ApiParam({ name: 'agentSlug', example: 'dev-api' })
   @ApiOperation({
-    summary: 'Resolve qual modelo um agente usa, e de onde ele veio',
+    summary: 'Resolves which model an agent uses, and where it came from',
     description:
-      'Cascata agente → área → projeto → workspace, SEM sessão: é a configuração do ' +
-      'agente no projeto, não a de uma conversa específica. `origin: "agent"` quer ' +
-      'dizer que este agente DIVERGIU do padrão da área dele; qualquer outra origem ' +
-      'quer dizer que ele herda.',
+      "Agent → area → project → workspace cascade, WITHOUT a session: it is " +
+      "the agent's configuration on the project, not that of a specific " +
+      'conversation. `origin: "agent"` means this agent DIVERGED from its ' +
+      "area's default; any other origin means it inherits.",
   })
   @ApiOkResponse({ type: ResolvedBindingResponseDto })
   getAgentBinding(
@@ -193,12 +194,13 @@ export class ModelBindingsController {
   @RequireRole('developer')
   @ApiParam({ name: 'agentSlug', example: 'dev-api' })
   @ApiOperation({
-    summary: 'Fixa o modelo de um agente NESTE projeto',
+    summary: "Pins an agent's model in THIS project",
     description:
-      'Vale para todas as sessões deste projeto que não tenham binding próprio, e ' +
-      'só para elas — até o ADR 0064 o binding era global e alcançava os outros ' +
-      'projetos. É como se dá um modelo barato ao Psicólogo e um caro ao Arquiteto ' +
-      'no mesmo projeto, e é também como um agente DIVERGE do padrão da área dele.',
+      'Applies to every session in this project that has no binding of its ' +
+      'own, and only to those — before ADR 0064 the binding was global and ' +
+      'reached other projects too. This is how a cheap model is given to the ' +
+      'Psychologist and an expensive one to the Architect in the same ' +
+      "project, and also how an agent DIVERGES from its area's default.",
   })
   @ApiOkResponse({ type: ModelBindingResponseDto })
   setAgentBinding(
@@ -220,13 +222,14 @@ export class ModelBindingsController {
   @HttpCode(204)
   @ApiParam({ name: 'agentSlug', example: 'dev-api' })
   @ApiOperation({
-    summary: 'Faz o agente voltar a herdar o modelo da área',
+    summary: "Makes the agent go back to inheriting the area's model",
     description:
-      'APAGA o binding do agente — não copia para ele o modelo da área. Copiar ' +
-      'pareceria o mesmo na tela e não é: viraria uma cópia, e a próxima mudança da ' +
-      'área deixaria este agente para trás em silêncio. 404 quando ele já herda.',
+      "DELETES the agent's binding — it does not copy the area's model into " +
+      'it. Copying would look the same on screen and is not: it would become ' +
+      "a copy, and the area's next change would silently leave this agent " +
+      'behind. 404 when it already inherits.',
   })
-  @ApiNoContentResponse({ description: 'O agente voltou a herdar. Sem corpo.' })
+  @ApiNoContentResponse({ description: 'The agent went back to inheriting. No body.' })
   clearAgentBinding(
     @Param('projectId') projectId: string,
     @Param('agentSlug') agentSlug: string,
@@ -242,11 +245,11 @@ export class ModelBindingsController {
   @RequireRole('viewer')
   @ApiParam({ name: 'areaKey', example: 'qa' })
   @ApiOperation({
-    summary: 'Resolve qual modelo é o padrão de uma área, e de onde ele veio',
+    summary: "Resolves what an area's default model is, and where it came from",
     description:
-      'O padrão que o lead e os subagentes da área compartilham. `origin: "area"` ' +
-      'quer dizer que alguém o escolheu para esta área; qualquer outra origem quer ' +
-      'dizer que a própria área herda do projeto ou do workspace.',
+      "The default the lead and the area's subagents share. `origin: \"area\"` " +
+      'means someone chose it for this area; any other origin means the area ' +
+      'itself inherits from the project or the workspace.',
   })
   @ApiOkResponse({ type: ResolvedBindingResponseDto })
   getAreaBinding(
@@ -264,11 +267,12 @@ export class ModelBindingsController {
   @RequireRole('maintainer')
   @ApiParam({ name: 'areaKey', example: 'qa' })
   @ApiOperation({
-    summary: 'Define o modelo padrão de uma área',
+    summary: "Sets an area's default model",
     description:
-      'Vale para o lead e para todo subagente da área que não tenha binding próprio ' +
-      '(RN-102). Exige `maintainer` porque alcança a área inteira de uma vez, e ' +
-      'escolher modelo é decidir gasto — o mesmo motivo do teto de paralelismo.',
+      'Applies to the lead and to every subagent of the area that has no ' +
+      'binding of its own (RN-102). Requires `maintainer` because it reaches ' +
+      'the whole area at once, and choosing a model is deciding spend — the ' +
+      'same reason as the parallelism cap.',
   })
   @ApiOkResponse({ type: ModelBindingResponseDto })
   setAreaBinding(
@@ -290,13 +294,13 @@ export class ModelBindingsController {
   @HttpCode(204)
   @ApiParam({ name: 'areaKey', example: 'qa' })
   @ApiOperation({
-    summary: 'Faz a área voltar a herdar o modelo do projeto',
+    summary: "Makes the area go back to inheriting the project's model",
     description:
-      'A área deixa de ter padrão próprio e passa a herdar do projeto (ou do ' +
-      'workspace). Os agentes que divergiram continuam divergindo: o binding deles ' +
-      'é outro, e apagar este não pode decidir por eles.',
+      'The area stops having its own default and starts inheriting from the ' +
+      'project (or the workspace). Agents that diverged keep diverging: their ' +
+      'binding is a different one, and deleting this one cannot decide for them.',
   })
-  @ApiNoContentResponse({ description: 'A área voltou a herdar. Sem corpo.' })
+  @ApiNoContentResponse({ description: 'The area went back to inheriting. No body.' })
   clearAreaBinding(
     @Param('projectId') projectId: string,
     @Param('areaKey') areaKey: string,

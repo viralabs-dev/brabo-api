@@ -15,10 +15,10 @@ import { SetAgentAutonomyDto } from './dto/set-agent-autonomy.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import { AgentAutonomyRuleResponseDto } from './dto/actions.response.dto';
 
-@ApiTags('ações')
+@ApiTags('actions')
 @ApiBearerAuth(BEARER)
-@ApiForbiddenResponse({ description: 'Papel insuficiente no projeto.' })
-@ApiNotFoundResponse({ description: 'Projeto inexistente.' })
+@ApiForbiddenResponse({ description: 'Insufficient role on the project.' })
+@ApiNotFoundResponse({ description: 'Project not found.' })
 @Controller('projects/:projectId/agent-autonomy')
 export class AgentAutonomyController {
   constructor(
@@ -29,10 +29,10 @@ export class AgentAutonomyController {
   @Get()
   @RequireRole('maintainer')
   @ApiOperation({
-    summary: 'Lista a autonomia concedida a cada agente',
+    summary: 'Lists the autonomy granted to each agent',
     description:
-      'Só as regras explicitamente gravadas. Agente sem linha aqui cai no padrão ' +
-      'do `permissions.json` do projeto.',
+      'Only the explicitly recorded rules. An agent with no row here falls ' +
+      "back to the project's `permissions.json` default.",
   })
   @ApiOkResponse({ type: [AgentAutonomyRuleResponseDto] })
   list(@Param('projectId') projectId: string) {
@@ -43,15 +43,15 @@ export class AgentAutonomyController {
   @RequireRole('maintainer')
   @HttpCode(204)
   @ApiOperation({
-    summary: 'Define a autonomia de um agente para um tipo de ação',
+    summary: 'Sets an agent\'s autonomy for an action type',
     description:
-      'Upsert por (agente, tipo). NÃO sobrepõe o `permissions.json`: um padrão em ' +
-      '`deny` continua bloqueado por mais autonomia que se conceda aqui. ' +
-      '`actionType: "*"` é o "auto mode" (RN-153) — autonomia pra QUALQUER tipo ' +
-      'de ação deste agente; uma regra específica gravada depois continua ' +
-      'vencendo a curinga para aquele tipo.',
+      'Upsert by (agent, type). It does NOT override `permissions.json`: a ' +
+      'pattern already in `deny` stays blocked no matter how much autonomy is ' +
+      'granted here. `actionType: "*"` is "auto mode" (RN-153) — autonomy for ' +
+      'ANY action type of this agent; a specific rule recorded afterwards still ' +
+      'wins over the wildcard for that type.',
   })
-  @ApiNoContentResponse({ description: 'Regra gravada. Sem corpo.' })
+  @ApiNoContentResponse({ description: 'Rule recorded. No body.' })
   set(@Param('projectId') projectId: string, @Body() dto: SetAgentAutonomyDto) {
     return this.setAgentAutonomy.execute(
       projectId,

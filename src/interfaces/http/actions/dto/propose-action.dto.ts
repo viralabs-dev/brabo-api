@@ -12,13 +12,13 @@ export class ProposeActionDto {
     enum: ACTION_TYPES,
     example: 'terminal',
     description:
-      'Tipo da ação. Cada tipo tem papel mínimo próprio: `git_push`, `git_merge` e ' +
-      '`git_branch_protect` exigem `maintainer`, o resto `developer`.',
+      'Action type. Each type has its own minimum role: `git_push`, `git_merge`, ' +
+      'and `git_branch_protect` require `maintainer`, the rest `developer`.',
   })
   @IsIn(ACTION_TYPES)
   actionType!: ActionType;
 
-  @ApiProperty({ type: ActorDto, description: 'Quem está propondo.' })
+  @ApiProperty({ type: ActorDto, description: 'Who is proposing it.' })
   @ValidateNested()
   @Type(() => ActorDto)
   actor!: ActorDto;
@@ -27,7 +27,7 @@ export class ProposeActionDto {
     type: 'object',
     additionalProperties: true,
     example: { command: 'pnpm test' },
-    description: 'Parâmetros da ação, com forma específica do `actionType`.',
+    description: 'Action parameters, with a shape specific to the `actionType`.',
   })
   @IsObject()
   payload!: Record<string, unknown>;

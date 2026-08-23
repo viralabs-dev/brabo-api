@@ -13,24 +13,24 @@ export class ResultadoPorProviderResponseDto implements Wire<ResultadoPorProvide
   @ApiProperty({
     example: 3,
     description:
-      'Modelos que não existiam no banco. Entram INATIVOS — ativar é curadoria ' +
-      'do owner (RN-043).',
+      'Models that did not exist in the database. They enter INACTIVE — ' +
+      "activating is the owner's curation (RN-043).",
   })
   descobertos!: number;
 
   @ApiProperty({
     example: 1,
     description:
-      'Modelos que estavam `unavailable` e voltaram ao catálogo. O `isActive` ' +
-      'deles não é tocado: a escolha do owner sobrevive à ausência.',
+      'Models that were `unavailable` and came back to the catalog. Their ' +
+      "`isActive` is left untouched: the owner's choice survives the absence.",
   })
   reencontrados!: number;
 
   @ApiProperty({
     example: 0,
     description:
-      'Modelos que sumiram do catálogo remoto. Viram `unavailable` e NUNCA são ' +
-      'deletados — bindings e histórico de custo apontam para eles.',
+      'Models that disappeared from the remote catalog. They become ' +
+      '`unavailable` and are NEVER deleted — bindings and cost history point to them.',
   })
   indisponibilizados!: number;
 
@@ -38,8 +38,8 @@ export class ResultadoPorProviderResponseDto implements Wire<ResultadoPorProvide
     required: false,
     enum: ['sem_capability', 'sem_credencial', 'falha'],
     description:
-      'Presente quando o provider não foi sincronizado. Provider pulado não ' +
-      'indisponibiliza nada: "não sei o que tem lá" não é "não tem nada lá".',
+      'Present when the provider was not synced. A skipped provider does not ' +
+      'mark anything unavailable: "I don\'t know what\'s there" is not "there\'s nothing there".',
   })
   pulado?: Wire<ResultadoPorProvider>['pulado'];
 
@@ -47,13 +47,12 @@ export class ResultadoPorProviderResponseDto implements Wire<ResultadoPorProvide
     required: false,
     enum: ['infra', 'modelo'],
     description:
-      'Só com `pulado: "falha"`. Vocabulário de origem do ADR 0020 — `infra` ' +
-      'quando nem se chegou a falar com o provider, `modelo` quando ele ' +
-      'respondeu recusando.',
+      'Only with `pulado: "falha"`. Origin vocabulary from ADR 0020 — `infra` ' +
+      'when the provider was never even reached, `modelo` when it responded refusing.',
   })
   origemDaFalha?: Wire<ResultadoPorProvider>['origemDaFalha'];
 
-  @ApiProperty({ required: false, example: 'openai respondeu com status 401' })
+  @ApiProperty({ required: false, example: 'openai responded with status 401' })
   detalhe?: string;
 }
 export const _chavesResultadoPorProvider: MesmasChaves<

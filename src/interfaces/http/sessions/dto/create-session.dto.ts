@@ -18,20 +18,21 @@ export class CreateSessionDto {
     enum: SESSION_KINDS,
     example: 'criativa',
     description:
-      'A intenção da sessão. `consultiva` é só conversa; `criativa` é a que ' +
-      'produz — abre a ideação com o Criativo e é a única que entra em ' +
-      'execução. OBRIGATÓRIO: sem ele a resposta é 400, porque o tipo é ' +
-      'escolha de quem abre e fica gravado.',
+      "The session's intent. `consultiva` (consultative) is conversation " +
+      'only; `criativa` (creative) is the one that produces — it opens ' +
+      'ideation with the Creative agent and is the only one that enters ' +
+      'execution. REQUIRED: without it the response is 400, because the ' +
+      "type is the opener's choice and gets recorded.",
   })
   @IsIn(SESSION_KINDS)
   kind!: SessionKind;
 
   @ApiPropertyOptional({
-    example: 'Checkout do carrinho',
+    example: 'Cart checkout',
     maxLength: LIMITE_NOME_DA_SESSAO,
     description:
-      'Nome amigável, opcional. Não substitui a hashtag do id — as telas ' +
-      'compõem os dois. Em branco conta como ausente.',
+      "Friendly name, optional. Does not replace the id's hashtag — screens " +
+      'compose the two. Blank counts as absent.',
   })
   @IsOptional()
   @IsString()

@@ -54,12 +54,12 @@ import {
 @ApiTags('internal')
 @ApiSecurity(SERVICE_TOKEN)
 @ApiForbiddenResponse({
-  description: 'Service token ausente ou diferente do compartilhado.',
+  description: 'Service token missing or different from the shared one.',
 })
 @ApiServiceUnavailableResponse({
   description:
-    'Neo4j não configurado ou fora do ar — sem fallback possível para ' +
-    'leitura/escrita de template.',
+    'Neo4j not configured or unreachable — no fallback possible for ' +
+    'reading/writing a template.',
 })
 @Controller('internal/graph')
 @ServiceRoute()
@@ -72,16 +72,16 @@ export class InternalGraphController {
 
   @Get('prompt-templates/:name')
   @ApiOperation({
-    summary: 'Busca um template de prompt pelo nome',
+    summary: 'Looks up a prompt template by name',
     description:
-      '`version` específica busca por igualdade; omitida, busca a versão ' +
-      '`active` mais recente. 404 se o template (ou a versão pedida) não ' +
-      'existir.',
+      'A specific `version` looks up by equality; omitted, it looks up the ' +
+      'most recent `active` version. 404 if the template (or the requested ' +
+      'version) does not exist.',
   })
   @ApiQuery({ name: 'version', required: false, example: '3' })
   @ApiOkResponse({ type: PromptTemplateReadResponseDto })
   @ApiNotFoundResponse({
-    description: 'Template inexistente, ou sem a versão pedida.',
+    description: 'Template does not exist, or lacks the requested version.',
   })
   async getByName(
     @Param('name') name: string,
@@ -98,12 +98,12 @@ export class InternalGraphController {
 
   @Post('prompt-templates')
   @ApiOperation({
-    summary: 'Publica uma versão de template de prompt, idempotente por hash',
+    summary: 'Publishes a prompt template version, idempotent by hash',
     description:
-      'Se já existe uma versão com o MESMO hash para o mesmo `name`, nenhuma ' +
-      'versão nova é criada — a existente é devolvida (o hit de idempotência ' +
-      'não muda o status HTTP: sempre 201, por simplicidade — o corpo é ' +
-      'idêntico ao que teria sido criado).',
+      'If a version with the SAME hash already exists for the same `name`, ' +
+      'no new version is created — the existing one is returned (the ' +
+      'idempotency hit does not change the HTTP status: always 201, for ' +
+      'simplicity — the body is identical to what would have been created).',
   })
   @ApiCreatedResponse({ type: PromptTemplateResponseDto })
   async upsert(

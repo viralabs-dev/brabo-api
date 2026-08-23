@@ -44,8 +44,8 @@ import {
  */
 @ApiTags('rag')
 @ApiBearerAuth(BEARER)
-@ApiForbiddenResponse({ description: 'Papel insuficiente no projeto.' })
-@ApiNotFoundResponse({ description: 'Projeto inexistente.' })
+@ApiForbiddenResponse({ description: 'Insufficient role on the project.' })
+@ApiNotFoundResponse({ description: 'Project does not exist.' })
 @Controller('projects/:projectId/rag')
 export class RagController {
   constructor(
@@ -57,13 +57,13 @@ export class RagController {
   @Post('search')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Busca híbrida (vetor + léxico) nos chunks indexados do projeto',
+    summary: "Hybrid search (vector + lexical) over the project's indexed chunks",
     description:
-      'Combina similaridade de cosseno (pgvector) com `ts_rank` léxico ' +
-      '(tsvector), cada um por uma consulta independente, fundidas por soma ' +
-      'ponderada e cortadas pelo limiar (ADR 0080). `vectorAvailable: false` ' +
-      'avisa quando o provider de embedding não respondeu e a busca rodou ' +
-      'só com o sinal léxico — nunca finge ter rodado o híbrido completo.',
+      'Combines cosine similarity (pgvector) with lexical `ts_rank` ' +
+      '(tsvector), each from an independent query, merged by weighted sum ' +
+      'and cut off by the threshold (ADR 0080). `vectorAvailable: false` ' +
+      'warns when the embedding provider did not respond and the search ran ' +
+      'with only the lexical signal — it never pretends to have run the full hybrid.',
   })
   @ApiCreatedResponse({ type: HybridSearchResponseDto })
   buscar(
@@ -81,14 +81,14 @@ export class RagController {
   @Post('reindex')
   @RequireRole('maintainer')
   @ApiOperation({
-    summary: 'Reindexa docs/ADR/sessões do projeto (full rebuild idempotente)',
+    summary: "Reindexes the project's docs/ADR/sessions (idempotent full rebuild)",
     description:
-      '"Reindexar agora" do painel do Chat RAG. Apaga e recria os chunks dos ' +
-      'três escopos honestos (RN-219) a partir do estado ATUAL — não há ' +
-      'watcher automático por push/fechamento de sessão (decisão registrada ' +
-      'no ADR 0079/0080). Pode demorar em projetos com muitas sessões: roda ' +
-      'uma indexação por sessão, cada uma podendo chamar o provider de ' +
-      'embedding em lote.',
+      '"Reindex now" from the Chat RAG panel. Deletes and recreates the chunks ' +
+      'of the three honest scopes (RN-219) from the CURRENT state — there is ' +
+      'no automatic watcher on push/session close (decision recorded in ' +
+      'ADR 0079/0080). Can take a while on projects with many sessions: it runs ' +
+      'one indexing pass per session, each possibly calling the embedding ' +
+      'provider in batch.',
   })
   @ApiCreatedResponse({ type: ReindexProjectResponseDto })
   reindexar(@Param('projectId') projectId: string) {
@@ -99,13 +99,13 @@ export class RagController {
   @RequireRole('viewer')
   @ApiOperation({
     summary:
-      'Cobertura do índice: arquivos/sessões indexados contra o total real',
+      'Index coverage: indexed files/sessions against the real total',
     description:
-      'Contagem real (nunca estimada) de arquivos `.md` de `docs`/`docs/adr` ' +
-      'no repositório do projeto contra quantos têm chunk, e sessões do ' +
-      'projeto contra quantas têm chunk. Não inclui "há N minutos" — não há ' +
-      'coluna de timestamp de indexação por escopo, e um número chutado ' +
-      'mentiria (mesma régua do ADR 0042 para nota de modelo).',
+      'Real count (never estimated) of `.md` files under `docs`/`docs/adr` in ' +
+      "the project's repository against how many have a chunk, and the " +
+      "project's sessions against how many have a chunk. Does not include " +
+      '"N minutes ago" — there is no per-scope indexing timestamp column, and ' +
+      'a guessed number would lie (same rule as ADR 0042 for model rating).',
   })
   @ApiOkResponse({ type: RagCoverageResponseDto })
   obterCobertura(@Param('projectId') projectId: string) {

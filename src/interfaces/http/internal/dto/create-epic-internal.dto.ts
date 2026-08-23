@@ -7,11 +7,11 @@ export class CreateEpicInternalDto {
   @IsUUID()
   projectId!: string;
 
-  @ApiProperty({ example: 'Carrinho de compras' })
+  @ApiProperty({ example: 'Shopping cart' })
   @IsString()
   title!: string;
 
-  @ApiPropertyOptional({ example: 'Tudo que o comprador faz antes de pagar.' })
+  @ApiPropertyOptional({ example: 'Everything the buyer does before paying.' })
   @IsOptional()
   @IsString()
   description?: string;

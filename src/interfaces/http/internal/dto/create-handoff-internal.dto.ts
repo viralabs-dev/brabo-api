@@ -18,7 +18,7 @@ export class CreateHandoffInternalDto {
 
   @ApiPropertyOptional({
     example: '01JC4Z8QK3M7YV2N5T9B0PXHRB',
-    description: 'ULID do session_event do artefato que motivou o handoff.',
+    description: "ULID of the session_event for the artifact that motivated the handoff.",
   })
   @IsOptional()
   @IsString()

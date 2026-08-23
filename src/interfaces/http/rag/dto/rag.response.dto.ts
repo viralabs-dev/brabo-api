@@ -33,8 +33,8 @@ export class HybridSearchHitResponseDto implements Wire<HybridSearchHit> {
 
   @ApiProperty({
     description:
-      'Combinado (RAG_SEARCH_WEIGHT_VECTOR*vetor + RAG_SEARCH_WEIGHT_LEXICAL*léxico), ' +
-      'já filtrado pelo limiar — todo hit devolvido passou dele.',
+      'Combined (RAG_SEARCH_WEIGHT_VECTOR*vector + RAG_SEARCH_WEIGHT_LEXICAL*lexical), ' +
+      'already filtered by the threshold — every returned hit has passed it.',
   })
   score!: number;
 
@@ -42,7 +42,7 @@ export class HybridSearchHitResponseDto implements Wire<HybridSearchHit> {
     type: Number,
     nullable: true,
     description:
-      'Similaridade de cosseno, 0..1. `null` quando este chunk não tinha vetor.',
+      'Cosine similarity, 0..1. `null` when this chunk had no vector.',
   })
   vectorScore!: number | null;
 
@@ -50,7 +50,7 @@ export class HybridSearchHitResponseDto implements Wire<HybridSearchHit> {
     type: Number,
     nullable: true,
     description:
-      '`ts_rank` normalizado, 0..1. `null` quando o termo não casou neste chunk.',
+      'Normalized `ts_rank`, 0..1. `null` when the term did not match in this chunk.',
   })
   lexicalScore!: number | null;
 
@@ -58,8 +58,8 @@ export class HybridSearchHitResponseDto implements Wire<HybridSearchHit> {
     type: Object,
     additionalProperties: true,
     description:
-      'União discriminada por `kind`: "file" (`sourcePath`/`headingPath`) ou ' +
-      '"session" (`sessionId`/`eventId`). Ver `domain/rag/rag-citation.ts`.',
+      'Discriminated union by `kind`: "file" (`sourcePath`/`headingPath`) or ' +
+      '"session" (`sessionId`/`eventId`). See `domain/rag/rag-citation.ts`.',
   })
   origin!: ChunkOrigin;
 }
@@ -76,8 +76,8 @@ export class HybridSearchResponseDto implements Wire<HybridSearchResult> {
 
   @ApiProperty({
     description:
-      '`false` quando o provider de embedding não respondeu — a busca rodou ' +
-      'só com o sinal léxico (RN-233).',
+      '`false` when the embedding provider did not respond — the search ran ' +
+      'with only the lexical signal (RN-233).',
   })
   vectorAvailable!: boolean;
 

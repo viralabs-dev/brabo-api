@@ -28,9 +28,9 @@ export class UnreadCursorDto {
     example: 41,
     minimum: 0,
     description:
-      'Último `seq` que ESTE navegador já viu neste projeto. Devolve os eventos ' +
-      'com `seq` estritamente maior. `0` significa "nunca vi nada" e traz o começo ' +
-      'da sessão mais recente.',
+      'Last `seq` THIS browser has already seen in this project. Returns ' +
+      'events with strictly greater `seq`. `0` means "never saw anything" ' +
+      'and brings the start of the most recent session.',
   })
   @IsInt()
   @Min(0)
@@ -42,10 +42,10 @@ export class UnreadEventsDto {
     type: [UnreadCursorDto],
     maxItems: MAX_CURSORES,
     description:
-      'Um cursor por projeto que se quer consultar. Lista VAZIA devolve lista ' +
-      'vazia — "não perguntei nada" não é "me dê tudo". Projeto de outro ' +
-      'workspace é ignorado em silêncio, porque o cursor vem do armazenamento ' +
-      'local de quem chama e pode ter sobra de um workspace antigo.',
+      'One cursor per project to query. An EMPTY list returns an empty ' +
+      'list — "I asked for nothing" is not "give me everything". A ' +
+      "project from another workspace is silently ignored, because the " +
+      "cursor comes from the caller's local storage and may carry leftovers from an old workspace.",
   })
   @IsArray()
   @ArrayMaxSize(MAX_CURSORES)

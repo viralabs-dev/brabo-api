@@ -6,7 +6,7 @@ export class ActorDto {
   @ApiProperty({
     enum: ['user', 'agent', 'system'],
     example: 'agent',
-    description: 'Natureza de quem agiu.',
+    description: 'Nature of who acted.',
   })
   @IsIn(['user', 'agent', 'system'])
   kind!: ActorKind;
@@ -14,7 +14,7 @@ export class ActorDto {
   @ApiProperty({
     example: 'dev-api',
     description:
-      'Id do usuário quando `kind=user`; o slug do agente quando `kind=agent`.',
+      "The user's id when `kind=user`; the agent's slug when `kind=agent`.",
   })
   @IsString()
   @IsNotEmpty()

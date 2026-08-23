@@ -12,7 +12,7 @@ export class AppendSessionEventDto {
   @ApiProperty({
     example: 'chat.message',
     description:
-      'Tipo do evento. O inventário completo está em `docs/reference/events.md`.',
+      'Event type. The full inventory is in `docs/reference/events.md`.',
   })
   @IsString()
   @IsNotEmpty()
@@ -26,8 +26,8 @@ export class AppendSessionEventDto {
   @ApiProperty({
     type: 'object',
     additionalProperties: true,
-    example: { role: 'user', content: 'Quero um checkout novo.' },
-    description: 'Forma livre, específica de cada `type`.',
+    example: { role: 'user', content: 'I want a new checkout.' },
+    description: 'Free-form shape, specific to each `type`.',
   })
   @IsObject()
   payload!: Record<string, unknown>;

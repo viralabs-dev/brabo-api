@@ -33,15 +33,15 @@ export class ProficiencyProfileResponseDto implements Wire<ProficiencyProfileVie
   level!: Wire<ProficiencyProfileView>['level'];
 
   @ApiProperty({
-    example: 'Corrigiu três erros de tipagem genérica sem ajuda.',
+    example: 'Fixed three generic typing errors without help.',
     description:
-      'Os "porquês" do nível. Sem isto o perfil seria um veredito sem apelo.',
+      'The "whys" behind the level. Without this the profile would be a verdict with no appeal.',
   })
   rationale!: string;
 
   @ApiProperty({
     example: ['01JC4Z8QK3M7YV2N5T9B0PXHRB'],
-    description: 'Eventos do log que sustentam o nível.',
+    description: 'Log events that support the level.',
   })
   evidenceEventIds!: string[];
 
@@ -51,15 +51,15 @@ export class ProficiencyProfileResponseDto implements Wire<ProficiencyProfileVie
   @ApiProperty({ example: '2026-07-26T12:00:00.000Z', format: 'date-time' })
   updatedAt!: string;
 
-  @ApiProperty({ example: 'Dev Sênior', nullable: true })
+  @ApiProperty({ example: 'Senior Dev', nullable: true })
   userName!: string | null;
 
   @ApiProperty({
     example: 'dev@brabo.dev',
     nullable: true,
     description:
-      '`null` quando quem tem perfil já não é membro do projeto — o perfil sobrevive ' +
-      'à remoção do membro.',
+      '`null` when whoever has the profile is no longer a project member — the ' +
+      "profile survives the member's removal.",
   })
   userEmail!: string | null;
 }
@@ -70,14 +70,14 @@ export const _chavesPerfil: MesmasChaves<
 
 /** Confirmação do apagamento do próprio perfil. */
 export class PerfilApagadoResponseDto {
-  @ApiProperty({ example: 2, description: 'Quantos perfis foram apagados.' })
+  @ApiProperty({ example: 2, description: 'How many profiles were deleted.' })
   deleted!: number;
 
   @ApiProperty({
     example: true,
     description:
-      'Sempre `true`: apagar SEM registrar o opt-out seria cosmético, porque a ' +
-      'rodada seguinte re-derivaria tudo.',
+      'Always `true`: deleting WITHOUT recording the opt-out would be cosmetic, ' +
+      'because the next round would re-derive everything.',
   })
   optedOut!: true;
 }
@@ -92,7 +92,7 @@ export class DiffLineResponseDto implements Wire<DiffLine> {
   @ApiProperty({ enum: ['add', 'del', 'ctx'], example: 'add' })
   kind!: Wire<DiffLine>['kind'];
 
-  @ApiProperty({ example: 'Sempre rode a suíte antes de abrir a PR.' })
+  @ApiProperty({ example: 'Always run the suite before opening the PR.' })
   content!: string;
 
   @ApiProperty({ example: 42, required: false })
@@ -122,7 +122,7 @@ export class InstructionVersionResponseDto implements Wire<InstructionVersionVie
   version!: number;
 
   @ApiProperty({
-    example: '# dev-api\n\nSempre rode a suíte antes de abrir a PR.',
+    example: '# dev-api\n\nAlways run the suite before opening the PR.',
   })
   content!: string;
 
@@ -133,7 +133,7 @@ export class InstructionVersionResponseDto implements Wire<InstructionVersionVie
     example: null,
     nullable: true,
     description:
-      'A `proposed_action` de patch que produziu esta versão, se houve uma.',
+      'The patch `proposed_action` that produced this version, if there was one.',
   })
   sourceActionId!: string | null;
 
@@ -141,25 +141,25 @@ export class InstructionVersionResponseDto implements Wire<InstructionVersionVie
     example: '01JC4Z0000HIPOTESE000000001',
     nullable: true,
     description:
-      'A hipótese do Psicólogo que motivou o patch — o loop fechado.',
+      "The Psychologist's hypothesis that motivated the patch — the closed loop.",
   })
   sourceHypothesisId!: string | null;
 
-  @ApiProperty({ example: 'Critério de pronto explícito', nullable: true })
+  @ApiProperty({ example: 'Explicit definition-of-done criterion', nullable: true })
   note!: string | null;
 
   @ApiProperty({ example: '2026-07-26T14:00:00.000Z', format: 'date-time' })
   createdAt!: string;
 
-  @ApiProperty({ example: true, description: 'Se esta é a versão em vigor.' })
+  @ApiProperty({ example: true, description: 'Whether this is the version in effect.' })
   isCurrent!: boolean;
 
   @ApiProperty({
     type: TextDiffResponseDto,
     description:
-      'Diff desta versão contra a anterior, calculado no servidor para a UI não ' +
-      'precisar de um differ próprio. A mais antiga é diffada contra vazio, então ' +
-      'aparece como tudo-adição.',
+      'Diff of this version against the previous one, computed server-side so ' +
+      'the UI does not need its own differ. The oldest one is diffed against ' +
+      'empty, so it shows up as all-addition.',
   })
   diff!: TextDiffResponseDto;
 }
@@ -173,8 +173,8 @@ export class AgenteComVersoesResponseDto {
   @ApiProperty({
     example: 'dev-api',
     description:
-      'Slug real, incluindo os dev agents por módulo. A listagem NÃO parte de um ' +
-      'roster estático — se partisse, os agentes que existem de verdade não apareceriam.',
+      'Real slug, including the per-module dev agents. The listing does NOT ' +
+      'start from a static roster — if it did, the agents that actually exist would not show up.',
   })
   agent!: string;
 
@@ -188,22 +188,22 @@ export class RollbackResponseDto {
 
   @ApiProperty({
     example: 2,
-    description: 'A versão cujo conteúdo foi restaurado.',
+    description: 'The version whose content was restored.',
   })
   restoredFrom!: number;
 
   @ApiProperty({
     example: 5,
     description:
-      'A versão NOVA que o rollback criou. O histórico é imutável: restaurar não ' +
-      'apaga nada, acrescenta.',
+      'The NEW version the rollback created. History is immutable: restoring ' +
+      'deletes nothing, it adds.',
   })
   toVersion!: number;
 
   @ApiProperty({
     example: true,
     description:
-      'Se o cache de instruções do engine foi invalidado com sucesso.',
+      "Whether the engine's instruction cache was successfully invalidated.",
   })
   cacheInvalidated!: boolean;
 }

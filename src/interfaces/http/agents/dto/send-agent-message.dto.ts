@@ -3,10 +3,10 @@ import { IsString, MaxLength, MinLength } from 'class-validator';
 
 export class SendAgentMessageDto {
   @ApiProperty({
-    example: 'Quero permitir cupom de desconto no checkout.',
+    example: 'I want to allow discount coupons at checkout.',
     minLength: 1,
     maxLength: 10000,
-    description: 'Mensagem do usuário para o agente ativo da sessão.',
+    description: "User's message to the session's active agent.",
   })
   @IsString()
   @MinLength(1)

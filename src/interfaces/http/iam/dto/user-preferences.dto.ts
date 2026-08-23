@@ -15,7 +15,7 @@ export class UpdateUserPreferencesDto {
     enum: USER_LOCALES,
     example: 'en',
     description:
-      'O idioma da interface. Fechado à lista — não é BCP-47 livre.',
+      'The interface language. Closed to the list — not free-form BCP-47.',
   })
   @IsIn(USER_LOCALES)
   locale!: UserLocale;

@@ -46,10 +46,10 @@ import {
   SessionResponseDto,
 } from './dto/sessions.response.dto';
 
-@ApiTags('sessões')
+@ApiTags('sessions')
 @ApiBearerAuth(BEARER)
-@ApiForbiddenResponse({ description: 'Papel insuficiente no projeto.' })
-@ApiNotFoundResponse({ description: 'Projeto ou sessão inexistente.' })
+@ApiForbiddenResponse({ description: 'Insufficient role in the project.' })
+@ApiNotFoundResponse({ description: 'Project or session does not exist.' })
 @Controller('projects/:projectId/sessions')
 export class SessionsController {
   constructor(
@@ -67,16 +67,17 @@ export class SessionsController {
   @Post()
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Abre uma sessão no projeto',
+    summary: 'Opens a session in the project',
     description:
-      'A sessão nasce em `created` e é o contêiner de tudo o que os agentes fazem: ' +
-      'o event log, as ações propostas e o orçamento de tokens penduram nela. ' +
-      'O `kind` é OBRIGATÓRIO e fica gravado: `consultiva` só conversa, ' +
-      '`criativa` produz e é a única que aceita `execution.activated`.',
+      'The session is born in `created` and is the container for everything ' +
+      'agents do: the event log, proposed actions and the token budget all ' +
+      'hang off it. `kind` is REQUIRED and gets recorded: `consultiva` ' +
+      '(consultative) only converses, `criativa` (creative) produces and is ' +
+      'the only one that accepts `execution.activated`.',
   })
   @ApiCreatedResponse({ type: SessionResponseDto })
   @ApiBadRequestResponse({
-    description: 'Corpo sem `kind`, ou com um valor fora da lista.',
+    description: 'Body without `kind`, or with a value outside the allowed list.',
   })
   create(
     @Param('projectId') projectId: string,
@@ -98,16 +99,17 @@ export class SessionsController {
   @Patch(':sessionId')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Dá ou tira o nome amigável da sessão',
+    summary: 'Sets or clears the session\'s friendly name',
     description:
-      'O nome é rótulo de navegação e NÃO substitui a hashtag do id — as telas ' +
-      'compõem os dois, e sem nome degradam para a hashtag sozinha. `null` ou ' +
-      'string em branco apaga o nome. Não há como trocar o `kind`: ele é a ' +
-      'intenção de criação, e mudá-lo depois o tornaria estado.',
+      "The name is a navigation label and does NOT replace the id's hashtag " +
+      '— screens compose the two, and without a name they degrade to just ' +
+      'the hashtag. `null` or a blank string clears the name. There is no ' +
+      'way to change `kind`: it is the creation intent, and changing it ' +
+      'later would turn it into state.',
   })
   @ApiOkResponse({ type: SessionResponseDto })
   @ApiBadRequestResponse({
-    description: 'Corpo sem `name`, ou nome acima do limite de caracteres.',
+    description: 'Body without `name`, or a name above the character limit.',
   })
   rename(
     @Param('projectId') projectId: string,
@@ -119,7 +121,7 @@ export class SessionsController {
 
   @Get()
   @RequireRole('viewer')
-  @ApiOperation({ summary: 'Lista as sessões do projeto' })
+  @ApiOperation({ summary: "Lists the project's sessions" })
   @ApiOkResponse({ type: [SessionResponseDto] })
   list(@Param('projectId') projectId: string) {
     return this.listSessionsForProject.execute(projectId);
@@ -127,7 +129,7 @@ export class SessionsController {
 
   @Get(':sessionId')
   @RequireRole('viewer')
-  @ApiOperation({ summary: 'Devolve uma sessão pelo id' })
+  @ApiOperation({ summary: 'Returns a session by id' })
   @ApiOkResponse({ type: SessionResponseDto })
   get(
     @Param('projectId') projectId: string,
@@ -139,21 +141,22 @@ export class SessionsController {
   @Post(':sessionId/transition')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Move a sessão para outro estado',
+    summary: 'Moves the session to another state',
     description:
-      'A transição é validada pela máquina de estados do domínio, não pelo cliente: ' +
-      'created → active → closing → closed | closed_abnormally. Salto inválido é 409.',
+      "The transition is validated by the domain's state machine, not by the " +
+      'client: created → active → closing → closed | closed_abnormally. An ' +
+      'invalid jump is 409.',
   })
   @ApiCreatedResponse({
     type: SessionResponseDto,
     description:
-      'Devolve 201, e não 200, porque o handler é `@Post` sem `@HttpCode` — é o ' +
-      'default do Nest. Documentado como está em vez de mudado: a semântica é ' +
-      'discutível, o comportamento não tem defeito, e o teste de tabela reprova ' +
-      'qualquer divergência entre os dois.',
+      "Returns 201, not 200, because the handler is `@Post` without " +
+      "`@HttpCode` — that's Nest's default. Documented as-is instead of " +
+      "changed: the semantics are debatable, the behavior isn't defective, " +
+      'and the table test fails on any divergence between the two.',
   })
   @ApiConflictResponse({
-    description: 'Transição não permitida a partir do estado atual.',
+    description: 'Transition not allowed from the current state.',
   })
   transition(
     @Param('projectId') projectId: string,
@@ -166,25 +169,26 @@ export class SessionsController {
   @Get(':sessionId/events')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Pagina o event log da sessão',
+    summary: "Paginates the session's event log",
     description:
-      'O log é IMUTÁVEL e ordenado por `seq`. A paginação normal é incremental: ' +
-      'passe o `nextCursor` da resposta anterior como `afterSeq`. `latest=true` faz ' +
-      'o caminho oposto — traz a CAUDA e ignora `afterSeq`, para uma tela que abre ' +
-      'no fim em vez de reconstruir a sessão inteira desde o começo (ADR 0021).',
+      'The log is IMMUTABLE and ordered by `seq`. Normal pagination is ' +
+      "incremental: pass the previous response's `nextCursor` as `afterSeq`. " +
+      '`latest=true` does the opposite — it fetches the TAIL and ignores ' +
+      '`afterSeq`, for a screen that opens at the end instead of ' +
+      'reconstructing the whole session from the start (ADR 0021).',
   })
   @ApiQuery({
     name: 'afterSeq',
     required: false,
     example: 40,
-    description: 'Devolve os eventos com `seq` maior que este.',
+    description: 'Returns the events with `seq` greater than this.',
   })
   @ApiQuery({ name: 'limit', required: false, example: 50 })
   @ApiQuery({
     name: 'latest',
     required: false,
     example: 'true',
-    description: 'Traz a cauda do log; ignora `afterSeq`.',
+    description: 'Fetches the tail of the log; ignores `afterSeq`.',
   })
   @ApiOkResponse({ type: PaginaDeEventosResponseDto })
   listEvents(
@@ -209,10 +213,10 @@ export class SessionsController {
   @Get(':sessionId/events/:eventId')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Devolve um evento do log pelo id',
+    summary: 'Returns a log event by id',
     description:
-      'Existe para a evidência das hipóteses do Psicólogo chegar no evento citado ' +
-      'sem depender da página em que ele caiu nem dos filtros do feed.',
+      "Exists so the Psychologist's hypothesis evidence can reach the cited " +
+      "event regardless of which page it fell on or the feed's filters.",
   })
   @ApiOkResponse({ type: SessionEventResponseDto })
   getEvent(
@@ -226,10 +230,10 @@ export class SessionsController {
   @Post(':sessionId/events')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Anexa um evento ao log da sessão',
+    summary: "Appends an event to the session's log",
     description:
-      'Append-only: o `seq` é atribuído pelo servidor e nada no log é atualizado ' +
-      'ou removido depois. Não há endpoint de edição, de propósito.',
+      "Append-only: `seq` is assigned by the server and nothing in the log " +
+      'is updated or removed afterward. There is no edit endpoint, by design.',
   })
   @ApiCreatedResponse({ type: SessionEventResponseDto })
   appendEvent(
@@ -251,17 +255,18 @@ export class SessionsController {
   @Post(':sessionId/socket-ticket')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Emite um ticket opaco de uso único para o socket da sessão',
+    summary: "Issues an opaque, single-use ticket for the session's socket",
     description:
-      'O ticket autentica `connect/3` do socket Phoenix `session:<id>` no ' +
-      'engine — NÃO é o JWT reaproveitado. TTL de 30s e uso único: cada ' +
-      'reconexão (inclusive automática) pede um ticket novo. `scope: ' +
-      '"heartbeat"` exige papel `viewer`; `scope: "terminal"` exige ' +
-      '`developer`, o mesmo papel mínimo de ações de terminal.',
+      "The ticket authenticates the session's Phoenix socket " +
+      '`session:<id>` `connect/3` on the engine — it is NOT the reused JWT. ' +
+      '30s TTL and single use: every reconnection (including automatic ones) ' +
+      'requests a new ticket. `scope: "heartbeat"` requires the `viewer` ' +
+      'role; `scope: "terminal"` requires `developer`, the same minimum ' +
+      'role as terminal actions.',
   })
   @ApiCreatedResponse({ type: SocketTicketResponseDto })
   @ApiForbiddenResponse({
-    description: 'Papel insuficiente para o escopo pedido.',
+    description: 'Insufficient role for the requested scope.',
   })
   issueSocketTicket(
     @Param('projectId') projectId: string,

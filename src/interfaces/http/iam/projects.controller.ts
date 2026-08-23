@@ -40,11 +40,11 @@ import {
 } from './dto/iam.response.dto';
 import { PermissionsFileResponseDto } from '../actions/dto/actions.response.dto';
 
-@ApiTags('projetos')
+@ApiTags('projects')
 @ApiBearerAuth(BEARER)
-@ApiForbiddenResponse({ description: 'Papel insuficiente no projeto.' })
+@ApiForbiddenResponse({ description: 'Insufficient role on the project.' })
 @ApiNotFoundResponse({
-  description: 'Projeto inexistente ou invisível para quem chamou.',
+  description: "Project doesn't exist or is invisible to the caller.",
 })
 @Controller('projects')
 export class ProjectsController {
@@ -61,7 +61,7 @@ export class ProjectsController {
 
   @Get(':projectId')
   @RequireRole('viewer')
-  @ApiOperation({ summary: 'Devolve um projeto pelo id' })
+  @ApiOperation({ summary: 'Returns a project by id' })
   @ApiOkResponse({ type: ProjectResponseDto })
   get(@Param('projectId') projectId: string) {
     return this.getProject.execute(projectId);
@@ -69,10 +69,10 @@ export class ProjectsController {
 
   @Patch(':projectId')
   @RequireRole('maintainer')
-  @ApiOperation({ summary: 'Altera nome ou slug do projeto' })
+  @ApiOperation({ summary: "Changes the project's name or slug" })
   @ApiOkResponse({ type: ProjectResponseDto })
   @ApiConflictResponse({
-    description: 'Já existe projeto com este slug no workspace.',
+    description: 'A project with this slug already exists in the workspace.',
   })
   update(@Param('projectId') projectId: string, @Body() dto: UpdateProjectDto) {
     return this.updateProject.execute(projectId, dto);
@@ -81,9 +81,9 @@ export class ProjectsController {
   @Delete(':projectId')
   @RequireRole('maintainer')
   @ApiOperation({
-    summary: 'Remove o projeto',
+    summary: 'Removes the project',
     description:
-      'Leva junto as sessões, o event log e as ações propostas dele.',
+      'Takes its sessions, event log, and proposed actions along with it.',
   })
   @ApiOkResponse({ type: ProjectResponseDto })
   remove(@Param('projectId') projectId: string) {
@@ -93,10 +93,11 @@ export class ProjectsController {
   @Post(':projectId/members')
   @RequireRole('maintainer')
   @ApiOperation({
-    summary: 'Associa um usuário ao projeto',
+    summary: 'Associates a user with the project',
     description:
-      'O papel EFETIVO é o maior entre este e o que a pessoa já tem no workspace — ' +
-      'associar alguém como `viewer` aqui não rebaixa um `owner` do workspace.',
+      "The EFFECTIVE role is the higher of this one and what the person " +
+      "already has in the workspace — associating someone as `viewer` here " +
+      "doesn't downgrade a workspace `owner`.",
   })
   @ApiCreatedResponse({ type: ProjectMemberResponseDto })
   addMember(@Param('projectId') projectId: string, @Body() dto: AddMemberDto) {
@@ -106,9 +107,9 @@ export class ProjectsController {
   @Get(':projectId/members')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Lista os membros do projeto com o papel efetivo',
+    summary: "Lists the project's members with their effective role",
     description:
-      'Inclui quem herda acesso do workspace, não só quem foi associado aqui.',
+      'Includes whoever inherits access from the workspace, not just who was associated here.',
   })
   @ApiOkResponse({ type: [ProjectMemberComUsuarioResponseDto] })
   listMembers(@Param('projectId') projectId: string) {
@@ -119,12 +120,12 @@ export class ProjectsController {
   @RequireRole('maintainer')
   @HttpCode(204)
   @ApiOperation({
-    summary: 'Desassocia um usuário do projeto',
+    summary: 'Disassociates a user from the project',
     description:
-      'Remove só a associação de PROJETO. Quem tem papel no workspace continua ' +
-      'enxergando o projeto por herança.',
+      'Removes only the PROJECT association. Whoever has a role in the ' +
+      'workspace keeps seeing the project through inheritance.',
   })
-  @ApiNoContentResponse({ description: 'Associação removida. Sem corpo.' })
+  @ApiNoContentResponse({ description: 'Association removed. No body.' })
   removeMember(
     @Param('projectId') projectId: string,
     @Param('userId') userId: string,
@@ -135,9 +136,9 @@ export class ProjectsController {
   @Get(':projectId/permissions')
   @RequireRole('maintainer')
   @ApiOperation({
-    summary: 'Lê o permissions.json do projeto',
+    summary: "Reads the project's permissions.json",
     description:
-      'É o arquivo físico na raiz do workspace do projeto, não uma coluna do banco.',
+      "It's the physical file at the root of the project's workspace, not a database column.",
   })
   @ApiOkResponse({ type: PermissionsFileResponseDto })
   getPermissions(@Param('projectId') projectId: string) {
@@ -147,10 +148,10 @@ export class ProjectsController {
   @Put(':projectId/permissions')
   @RequireRole('maintainer')
   @ApiOperation({
-    summary: 'Reescreve o permissions.json do projeto',
+    summary: "Rewrites the project's permissions.json",
     description:
-      'Substitui as três listas de uma vez. `deny` continua vencendo `allow` na ' +
-      'avaliação — não há como liberar por aqui algo que esteja negado.',
+      'Replaces all three lists at once. `deny` still beats `allow` in ' +
+      "evaluation — there's no way to allow something denied through here.",
   })
   @ApiOkResponse({ type: PermissionsFileResponseDto })
   setPermissions(

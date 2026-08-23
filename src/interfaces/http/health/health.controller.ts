@@ -17,7 +17,7 @@ import type { DrizzleDb } from '../../../infrastructure/persistence/drizzle/driz
 import { Public } from '../auth/public.decorator';
 import { HealthStatusResponseDto } from './dto/health.response.dto';
 
-@ApiTags('infraestrutura')
+@ApiTags('infrastructure')
 @Controller()
 export class HealthController {
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
@@ -35,11 +35,11 @@ export class HealthController {
   @Public()
   @Get('live')
   @ApiOperation({
-    summary: 'Liveness — o processo ainda atende requisição',
+    summary: 'Liveness — the process still serves requests',
     description:
-      'NÃO toca o banco, de propósito. Se tocasse, um Postgres lento reiniciaria ' +
-      'TODAS as réplicas ao mesmo tempo e transformaria degradação em queda total. ' +
-      'Quem tira o pod do balanceamento é o `/health`.',
+      'Does NOT touch the database, on purpose. If it did, a slow Postgres would ' +
+      'restart ALL replicas at once and turn degradation into a total outage. ' +
+      'The pod is pulled from the load balancer by `/health`.',
   })
   @ApiOkResponse({ type: HealthStatusResponseDto })
   live(): HealthStatus {
@@ -53,14 +53,14 @@ export class HealthController {
   @Public()
   @Get('health')
   @ApiOperation({
-    summary: 'Readiness — o processo consegue atender de verdade',
+    summary: 'Readiness — the process can actually serve traffic',
     description:
-      'Faz um `select 1`. Revela apenas se o banco responde; nada de topologia ou ' +
-      'versão. Pública porque quem chama é o kubelet, que não carrega token.',
+      'Runs a `select 1`. Reveals only whether the database responds; no topology ' +
+      'or version. Public because the caller is kubelet, which carries no token.',
   })
   @ApiOkResponse({ type: HealthStatusResponseDto })
   @ApiServiceUnavailableResponse({
-    description: 'O banco não respondeu. O corpo traz a mensagem em `details`.',
+    description: 'The database did not respond. The body carries the message in `details`.',
     type: HealthStatusResponseDto,
   })
   async check(): Promise<HealthStatus> {

@@ -17,7 +17,7 @@ export class SetModelUsesDto {
     type: [String],
     format: 'uuid',
     example: ['9b1c2d3e-4f50-4a61-8b72-0c3d4e5f6a7b'],
-    description: 'Modelos a marcar. Lote inteiro ou nada.',
+    description: 'Models to mark. Whole batch or nothing.',
   })
   @IsArray()
   @ArrayNotEmpty()
@@ -29,9 +29,10 @@ export class SetModelUsesDto {
     isArray: true,
     example: ['codigo', 'analise'],
     description:
-      'A lista COMPLETA de usos — substitui a anterior, não soma. Lista vazia ' +
-      'desmarca todos. Vocabulário fechado: uso fora dele reprova a chamada, ' +
-      'porque texto livre daria `code`, `coding` e `código` no mesmo filtro.',
+      'The COMPLETE list of uses — replaces the previous one, does not add ' +
+      'to it. An empty list unmarks all. A closed vocabulary: a use outside ' +
+      'it fails the call, because free text would give `code`, `coding`, and ' +
+      '`código` in the same filter.',
   })
   @IsArray()
   @IsIn(USOS_DE_MODELO, { each: true })

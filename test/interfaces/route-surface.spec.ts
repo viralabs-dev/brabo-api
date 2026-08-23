@@ -220,27 +220,32 @@ const EXCLUIDAS_DA_REFERENCIA = ['GET /'];
 const TAGS_PERMITIDAS = [
   'auth',
   'workspaces',
-  'projetos',
-  'sessões',
-  'agentes',
-  'ações',
+  'projects',
+  'sessions',
+  'agents',
+  'actions',
   'backlog',
-  'execução',
-  'anamnese',
-  'psicólogo',
+  'execution',
+  'anamnesis',
+  'psychologist',
   'llm',
-  'credenciais',
+  'credentials',
   'git',
   // PROGRAMA 28, Onda 4 (G2) — indexação e busca híbrida do Chat RAG.
   'rag',
-  'infraestrutura',
+  'infrastructure',
   'internal',
   // FASE 15b: o registro de gates, para a tela derivar as etapas em vez de
   // repetir a lista no código.
   'gates',
   // Fundação de i18n (Onda 6a) — preferência de idioma do próprio usuário.
-  // Não é 'credenciais': não guarda segredo nenhum.
-  'usuários',
+  // Não é 'credentials': não guarda segredo nenhum.
+  'users',
+  // `runner-tickets.controller.ts`/`personal-access-tokens.controller.ts`
+  // (ADR 0103/0105) ficam FORA da tradução de docs por enquanto — outra
+  // frente mexe nesses arquivos exatos ao mesmo tempo. `projetos` some
+  // daqui quando a próxima passada de i18n os alcançar.
+  'projetos',
 ];
 
 /** `/projects/{id}` (OpenAPI) → `/projects/:id` (Nest), para as chaves baterem. */

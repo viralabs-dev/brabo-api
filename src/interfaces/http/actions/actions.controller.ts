@@ -33,10 +33,10 @@ import {
  * `proposed_action`, o `permissions.json` decide, e o que sobra espera decisão
  * humana. `deny` sempre vence `allow`.
  */
-@ApiTags('ações')
+@ApiTags('actions')
 @ApiBearerAuth(BEARER)
-@ApiForbiddenResponse({ description: 'Papel insuficiente no projeto.' })
-@ApiNotFoundResponse({ description: 'Projeto, sessão ou ação inexistente.' })
+@ApiForbiddenResponse({ description: 'Insufficient role on the project.' })
+@ApiNotFoundResponse({ description: 'Project, session, or action not found.' })
 @Controller('projects/:projectId/sessions/:sessionId/actions')
 export class ActionsController {
   constructor(
@@ -50,12 +50,13 @@ export class ActionsController {
   @Post()
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Propõe uma ação com efeito externo',
+    summary: 'Proposes an action with external effect',
     description:
-      'A ação é avaliada contra o `permissions.json` do projeto na criação. O ' +
-      '`resolvedPolicy` da resposta diz o que a política decidiu: `auto_approve` ' +
-      'já sai executável, `require_approval` espera decisão humana e `deny` nasce ' +
-      'recusada. Não existe caminho que execute sem passar por aqui.',
+      "The action is evaluated against the project's `permissions.json` on " +
+      "creation. The response's `resolvedPolicy` says what the policy decided: " +
+      '`auto_approve` comes out already executable, `require_approval` waits for ' +
+      'a human decision, and `deny` is born rejected. There is no path that ' +
+      'executes without going through here.',
   })
   @ApiCreatedResponse({ type: ProposedActionResponseDto })
   propose(
@@ -69,8 +70,8 @@ export class ActionsController {
   @Get()
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Pagina as ações propostas na sessão',
-    description: 'Ordenadas por `seq`; use o `nextCursor` como `afterSeq`.',
+    summary: 'Paginates the proposed actions in the session',
+    description: 'Ordered by `seq`; use `nextCursor` as `afterSeq`.',
   })
   @ApiQuery({ name: 'afterSeq', required: false, example: 6 })
   @ApiQuery({ name: 'limit', required: false, example: 50 })
@@ -90,12 +91,15 @@ export class ActionsController {
   @Post(':actionId/approve')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Aprova a ação, uma vez',
+    summary: 'Approves the action, once',
     description:
-      'Vale só para esta ação. A decisão fica no event log com o id de quem decidiu.',
+      'Applies only to this action. The decision stays in the event log with ' +
+      "the id of who decided.",
   })
   @ApiCreatedResponse({ type: ProposedActionResponseDto })
-  @ApiConflictResponse({ description: 'A ação já foi decidida ou executada.' })
+  @ApiConflictResponse({
+    description: 'The action was already decided or executed.',
+  })
   approve(
     @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
@@ -108,14 +112,16 @@ export class ActionsController {
   @Post(':actionId/approve_always')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Aprova a ação e grava o padrão no permissions.json',
+    summary: 'Approves the action and records the pattern in permissions.json',
     description:
-      'Além de liberar esta ação, acrescenta o padrão correspondente ao `allow` do ' +
-      'projeto — as próximas iguais saem `auto_approved` sem perguntar. Um padrão ' +
-      'que já esteja em `deny` continua bloqueado.',
+      "Besides releasing this action, it adds the corresponding pattern to " +
+      "the project's `allow` list — future matching actions come out " +
+      '`auto_approved` without asking. A pattern already in `deny` stays blocked.',
   })
   @ApiCreatedResponse({ type: ProposedActionResponseDto })
-  @ApiConflictResponse({ description: 'A ação já foi decidida ou executada.' })
+  @ApiConflictResponse({
+    description: 'The action was already decided or executed.',
+  })
   approveAlways(
     @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
@@ -133,11 +139,14 @@ export class ActionsController {
   @Post(':actionId/deny')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Recusa a ação',
-    description: 'O motivo, se vier, fica no event log junto com a decisão.',
+    summary: 'Denies the action',
+    description:
+      'The reason, if given, stays in the event log alongside the decision.',
   })
   @ApiCreatedResponse({ type: ProposedActionResponseDto })
-  @ApiConflictResponse({ description: 'A ação já foi decidida ou executada.' })
+  @ApiConflictResponse({
+    description: 'The action was already decided or executed.',
+  })
   deny(
     @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,

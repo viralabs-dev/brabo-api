@@ -29,10 +29,10 @@ import { ProposedActionResponseDto } from './dto/actions.response.dto';
  * para achar a `proposed_action` correspondente a um PR (ex.: a proposta de
  * `git_merge` do botão "Merge") sem depender de qual sessão a propôs.
  */
-@ApiTags('ações')
+@ApiTags('actions')
 @ApiBearerAuth(BEARER)
-@ApiForbiddenResponse({ description: 'Papel insuficiente no projeto.' })
-@ApiNotFoundResponse({ description: 'Projeto inexistente.' })
+@ApiForbiddenResponse({ description: 'Insufficient role on the project.' })
+@ApiNotFoundResponse({ description: 'Project not found.' })
 @Controller('projects/:projectId/actions')
 export class ProjectActionsController {
   constructor(
@@ -42,12 +42,13 @@ export class ProjectActionsController {
   @Get()
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Lista as ações PENDENTES do projeto inteiro, em qualquer sessão',
+    summary:
+      'Lists the PENDING actions of the whole project, across any session',
     description:
-      'Só `status=pending` é suportado hoje (omitir também vale como ' +
-      'pending). `actionType` filtra por tipo — ex.: `git_merge`, para a ' +
-      'aba PRs achar a proposta de merge de um PR sem saber qual sessão a ' +
-      'criou.',
+      'Only `status=pending` is supported today (omitting it also counts as ' +
+      'pending). `actionType` filters by type — e.g. `git_merge`, for the PRs ' +
+      'tab to find the merge proposal for a PR without knowing which session ' +
+      'created it.',
   })
   @ApiQuery({ name: 'status', required: false, example: 'pending' })
   @ApiQuery({ name: 'actionType', required: false, example: 'git_merge' })

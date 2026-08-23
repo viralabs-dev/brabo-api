@@ -9,16 +9,16 @@ import {
 } from '../../../../domain/containers/container-lifecycle';
 
 export class RecursosDoContainerResponseDto implements RecursosDoContainer {
-  @ApiProperty({ example: 2, description: 'CPUs, fração permitida.' })
+  @ApiProperty({ example: 2, description: 'CPUs, fractional value allowed.' })
   cpus!: number;
 
-  @ApiProperty({ example: 4096, description: 'Memória em MiB.' })
+  @ApiProperty({ example: 4096, description: 'Memory in MiB.' })
   memoryMb!: number;
 
   @ApiProperty({
     example: 512,
     description:
-      'Teto de processos. É o que contém fork bomb sem depender de allowlist de verbo.',
+      'Process cap. This is what contains a fork bomb without depending on a verb allowlist.',
   })
   pidsLimit!: number;
 }
@@ -27,15 +27,15 @@ export class DecisaoDeImagemResponseDto {
   @ApiProperty({
     example: 'node:22-bookworm-slim',
     description:
-      'Referência OCI com TAG explícita ou digest. `latest` é recusado: o ' +
-      'artefato precisa dizer a mesma coisa daqui a seis meses.',
+      'OCI reference with an explicit TAG or digest. `latest` is refused: the ' +
+      'artifact needs to say the same thing six months from now.',
   })
   image!: string;
 
   @ApiProperty({
     example:
-      'O module_map é todo TypeScript sobre Node; a slim basta e reduz superfície.',
-    description: 'Por que ESTA imagem. É o que torna a decisão revisável.',
+      "The module_map is all TypeScript over Node; the slim variant is enough and reduces surface.",
+    description: 'Why THIS image. This is what makes the decision reviewable.',
   })
   rationale!: string;
 
@@ -43,9 +43,9 @@ export class DecisaoDeImagemResponseDto {
     enum: ['none', 'egress'],
     example: 'none',
     description:
-      'Postura de rede do container, decidida UMA vez no artefato e não ' +
-      'comando a comando. `egress` é gasto e superfície: o Arquiteto pede, o ' +
-      'usuário autoriza no provisionamento.',
+      "The container's network posture, decided ONCE in the artifact and not " +
+      'command by command. `egress` is cost and surface: the Architect asks, ' +
+      'the user authorizes it at provisioning time.',
   })
   network!: PosturaDeRede;
 
@@ -58,30 +58,30 @@ export class EstadoDoContainerResponseDto {
     enum: ['sem_decisao', 'decidido'],
     example: 'sem_decisao',
     description:
-      '`sem_decisao` é o estado inicial de todo projeto e é ele que fecha o ' +
-      'portão da RN-105: sem imagem não há container, e a aba Code não libera.',
+      '`sem_decisao` is the initial state of every project and is what closes ' +
+      "the RN-105 gate: no image means no container, and the Code tab doesn't open.",
   })
   status!: 'sem_decisao' | 'decidido';
 
   @ApiProperty({
     type: DecisaoDeImagemResponseDto,
     nullable: true,
-    description: 'A decisão vigente, ou `null` quando ainda não há nenhuma.',
+    description: 'The current decision, or `null` when there is none yet.',
   })
   decisao!: DecisaoDeImagemResponseDto | null;
 
   @ApiProperty({
     example: 0,
     description:
-      'Versão do artefato vigente; 0 quando não há decisão. Revisar é emitir ' +
-      'uma versão nova — o histórico não é reescrito.',
+      'Version of the current artifact; 0 when there is no decision. Revising ' +
+      'means issuing a new version — history is never rewritten.',
   })
   version!: number;
 
   @ApiProperty({
     nullable: true,
     example: '01JC4Z0000EVENTO000000001',
-    description: 'Id do evento que fixou a decisão vigente, para auditoria.',
+    description: 'Id of the event that fixed the current decision, for auditing.',
   })
   eventId!: string | null;
 
@@ -110,29 +110,29 @@ export class CicloDeVidaDoContainerResponseDto {
     enum: CONTAINER_LIFECYCLE_STATUSES,
     example: 'provisioning',
     description:
-      'O que foi REGISTRADO, não o que um daemon Docker confirma — nenhum ' +
-      'orquestrador real transiciona esta tabela hoje (RN-243).',
+      'What was RECORDED, not what a Docker daemon confirms — no real ' +
+      'orchestrator transitions this table today (RN-243).',
   })
   status!: ContainerLifecycleStatus;
 
   @ApiProperty({
     example: 1,
     description:
-      'Versão de `artifact.project_image` CONGELADA na primeira transição ' +
-      '(RN-245) — não é reaplicada a cada leitura.',
+      'Version of `artifact.project_image` FROZEN at the first transition ' +
+      '(RN-245) — not reapplied on every read.',
   })
   imageVersion!: number;
 
   @ApiProperty({
     type: RecursosDoContainerResponseDto,
-    description: 'Teto DECLARADO no provisionamento — não aplicado (RN-248).',
+    description: 'Cap DECLARED at provisioning time — not enforced (RN-248).',
   })
   resources!: RecursosDoContainerResponseDto;
 
   @ApiProperty({
     nullable: true,
     example: null,
-    description: 'Só populado numa transição para `failed`.',
+    description: 'Only populated on a transition to `failed`.',
   })
   failureReason!: string | null;
 

@@ -32,8 +32,8 @@ const MICROS_PER_USD = 1_000_000;
  */
 @ApiTags('llm')
 @ApiBearerAuth(BEARER)
-@ApiForbiddenResponse({ description: 'Papel insuficiente no projeto.' })
-@ApiNotFoundResponse({ description: 'Projeto ou sessão inexistente.' })
+@ApiForbiddenResponse({ description: 'Insufficient role on the project.' })
+@ApiNotFoundResponse({ description: 'Project or session not found.' })
 @Controller()
 export class BudgetsController {
   constructor(
@@ -47,9 +47,9 @@ export class BudgetsController {
   @Get('projects/:projectId/budget')
   @RequireRole('maintainer')
   @ApiOperation({
-    summary: 'Lê o orçamento do projeto e o quanto já foi gasto',
+    summary: 'Reads the project budget and how much has already been spent',
     description:
-      'Valores em micro-USD. Exige `maintainer` — é informação de custo.',
+      'Values in micro-USD. Requires `maintainer` — it is cost information.',
   })
   @ApiOkResponse({ type: BudgetResponseDto })
   getProjectBudget(@Param('projectId') projectId: string) {
@@ -59,10 +59,10 @@ export class BudgetsController {
   @Put('projects/:projectId/budget')
   @RequireRole('maintainer')
   @ApiOperation({
-    summary: 'Define o teto de gasto do projeto',
+    summary: 'Sets the project spend cap',
     description:
-      'O limite entra em DÓLARES e é convertido para micro-USD. Com `policy=block` ' +
-      'a chamada que estouraria o teto é RECUSADA, não apenas registrada.',
+      'The limit comes in as DOLLARS and is converted to micro-USD. With ' +
+      '`policy=block` the call that would exceed the cap is REFUSED, not just recorded.',
   })
   @ApiOkResponse({ type: BudgetResponseDto })
   setProjectBudget(
@@ -78,9 +78,9 @@ export class BudgetsController {
   @Get('projects/:projectId/sessions/:sessionId/budget')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Lê o orçamento da sessão e o gasto acumulado',
+    summary: 'Reads the session budget and the accumulated spend',
     description:
-      'É o que alimenta o medidor de tokens ao vivo da tela de sessão.',
+      "This is what feeds the session screen's live token meter.",
   })
   @ApiOkResponse({ type: BudgetResponseDto })
   getSessionBudget(@Param('sessionId') sessionId: string) {
@@ -93,11 +93,11 @@ export class BudgetsController {
   @Get('projects/:projectId/sessions/:sessionId/token-usage')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Quebra o gasto da sessão por agente',
+    summary: 'Breaks down the session spend by agent',
     description:
-      'O dado sempre esteve em `token_usage`, mas sem agregação nem rota o painel do ' +
-      'time não tinha como mostrar o custo por card. Mesmo papel exigido do ' +
-      'orçamento da sessão.',
+      'The data was always in `token_usage`, but without aggregation or a route ' +
+      "the team panel had no way to show the cost per card. Same role " +
+      'required as the session budget.',
   })
   @ApiOkResponse({ type: [AgentTokenUsageResponseDto] })
   getSessionTokenUsage(@Param('sessionId') sessionId: string) {
@@ -110,13 +110,14 @@ export class BudgetsController {
   @Get('projects/:projectId/agent-costs')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Quebra o gasto do projeto por agente, nos últimos 30 dias',
+    summary: 'Breaks down the project spend by agent, over the last 30 days',
     description:
-      'Janela DESLIZANTE de 30 dias, não o mês corrente: é o rótulo que a tela ' +
-      'mostra, e num mês-calendário a estimativa despencaria no dia 1º por ' +
-      'virada de página, não por mudança de uso. Só `actor_kind = agent` entra ' +
-      '(RN-038). Agente que nunca rodou não aparece na lista — a tela mostra ' +
-      'traço para ele, que é diferente de zero.',
+      'A SLIDING 30-day window, not the current calendar month: that is the ' +
+      'label the screen shows, and with a calendar month the estimate would ' +
+      'plunge on the 1st from the page turning over, not from a change in ' +
+      'usage. Only `actor_kind = agent` counts (RN-038). An agent that never ' +
+      'ran does not appear in the list — the screen shows a dash for it, ' +
+      'which is different from zero.',
   })
   @ApiOkResponse({ type: [AgentTokenUsageResponseDto] })
   getProjectAgentCosts(@Param('projectId') projectId: string) {
@@ -129,16 +130,17 @@ export class BudgetsController {
   @Get('workspaces/:workspaceId/credential-spend')
   @RequireRole('owner')
   @ApiOperation({
-    summary: 'Quanto as chaves do owner gastaram, por provider e por mês',
+    summary: "How much the owner's keys spent, by provider and by month",
     description:
-      'Existe porque a chave que os agentes gastam é a do OWNER do workspace ' +
-      '(RN-058) — quem paga a conta precisa ver a conta. Agrupa por provider ' +
-      'porque é essa a unidade da credencial, e separa o que saiu por AGENTE ' +
-      'do que saiu por pessoa no chat: as duas coisas saem da mesma chave e ' +
-      'respondem perguntas diferentes. Não devolve segredo nenhum.',
+      "Exists because the key agents spend is the workspace OWNER's " +
+      '(RN-058) — whoever pays the bill needs to see the bill. Groups by ' +
+      'provider because that is the unit of the credential, and separates ' +
+      'what went out by AGENT from what went out by a person in chat: the ' +
+      'two come out of the same key and answer different questions. ' +
+      'Returns no secret at all.',
   })
   @ApiOkResponse({ type: CredentialSpendResponseDto })
-  @ApiForbiddenResponse({ description: 'Exige `owner` no workspace.' })
+  @ApiForbiddenResponse({ description: 'Requires `owner` on the workspace.' })
   getCredentialSpend(
     @Param('workspaceId') workspaceId: string,
     @Query('meses') meses?: string,
@@ -153,9 +155,9 @@ export class BudgetsController {
   @Put('projects/:projectId/sessions/:sessionId/budget')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Define o teto de gasto da sessão',
+    summary: 'Sets the session spend cap',
     description:
-      'Mesma conversão de dólar para micro-USD do orçamento de projeto.',
+      'Same dollar-to-micro-USD conversion as the project budget.',
   })
   @ApiOkResponse({ type: BudgetResponseDto })
   setSessionBudget(

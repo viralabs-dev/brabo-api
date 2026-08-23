@@ -22,7 +22,7 @@ import { TIPOS_DE_ATOR_C4 } from '../../../../domain/architecture/c4-diagram';
  * redigitado pelo modelo.
  */
 export class C4AtorInternalDto {
-  @ApiProperty({ example: 'Usuário' })
+  @ApiProperty({ example: 'User' })
   @IsString()
   @MinLength(1)
   name!: string;
@@ -32,14 +32,14 @@ export class C4AtorInternalDto {
     default: 'person',
     example: 'person',
     description:
-      '`person` (default) para quem opera o sistema; `external_system` para ' +
-      'outro sistema com o qual ele conversa (ex.: um provedor de Git).',
+      '`person` (default) for whoever operates the system; `external_system` ' +
+      'for another system it talks to (e.g. a Git provider).',
   })
   @IsOptional()
   @IsIn(TIPOS_DE_ATOR_C4)
   type?: 'person' | 'external_system';
 
-  @ApiPropertyOptional({ example: 'Quem opera o produto pela web.' })
+  @ApiPropertyOptional({ example: 'Whoever operates the product via the web.' })
   @IsOptional()
   @IsString()
   description?: string;
@@ -52,14 +52,14 @@ export class CreateC4DiagramInternalDto {
 
   @ApiProperty({
     example: 'Brabo',
-    description: 'Nome do sistema/projeto, para o rótulo do diagrama.',
+    description: "System/project name, for the diagram's label.",
   })
   @IsString()
   @MinLength(1)
   systemName!: string;
 
   @ApiPropertyOptional({
-    example: 'Plataforma de engenharia orquestrada por agentes.',
+    example: 'Agent-orchestrated engineering platform.',
   })
   @IsOptional()
   @IsString()
@@ -68,9 +68,9 @@ export class CreateC4DiagramInternalDto {
   @ApiPropertyOptional({
     type: [C4AtorInternalDto],
     description:
-      'Atores externos do nível Context (Simon Brown). Os containers do ' +
-      'nível Container NÃO entram aqui: vêm do module_map vigente do ' +
-      'projeto.',
+      "External actors of the Context level (Simon Brown). The Container " +
+      "level's containers do NOT go here: they come from the project's " +
+      'current module_map.',
   })
   @IsOptional()
   @IsArray()

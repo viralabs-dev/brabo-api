@@ -34,7 +34,7 @@ export class CreateActionInternalDto {
   @IsIn(ACTION_TYPES as readonly string[])
   actionType!: string;
 
-  @ApiProperty({ type: ActorDto, description: 'Sempre um agente nesta rota.' })
+  @ApiProperty({ type: ActorDto, description: 'Always an agent on this route.' })
   @ValidateNested()
   @Type(() => ActorDto)
   actor!: ActorDto;
