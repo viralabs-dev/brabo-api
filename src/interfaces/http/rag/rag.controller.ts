@@ -9,12 +9,19 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { RequireRole } from '../iam/require-role.decorator';
+import { CurrentUser } from '../auth/current-user.decorator';
+import type { User } from '../../../domain/iam/user.entity';
 import { HybridSearchUseCase } from '../../../application/use-cases/rag/hybrid-search.use-case';
 import { ReindexProjectUseCase } from '../../../application/use-cases/rag/reindex-project.use-case';
+import { IndexLocalFolderUseCase } from '../../../application/use-cases/rag/index-local-folder.use-case';
 import { GetRagCoverageUseCase } from '../../../application/use-cases/rag/get-rag-coverage.use-case';
 import { BEARER } from '../../../infrastructure/openapi/documento';
-import { HybridSearchRequestDto } from './dto/rag.request.dto';
 import {
+  AttachLocalFolderRequestDto,
+  HybridSearchRequestDto,
+} from './dto/rag.request.dto';
+import {
+  AttachLocalFolderResponseDto,
   HybridSearchResponseDto,
   RagCoverageResponseDto,
   ReindexProjectResponseDto,
@@ -41,6 +48,16 @@ import {
  *
  * Reindexação automática por push/fechamento de sessão — é decisão futura
  * (ADR 0079/0080), não desta rota. `reindex` é sempre disparado por alguém.
+ *
+ * ## `local` (ADR 0113, RN-455)
+ *
+ * `POST .../rag/local` é o quarto escopo: uma pasta do PRÓPRIO usuário, lida
+ * pelo NAVEGADOR e enviada como texto puro — nenhum caminho de host chega
+ * aqui. `maintainer`, mesma régua de `reindex` (dispara embedding e
+ * substitui o que já estava indexado nesse escopo). Ver
+ * `IndexLocalFolderUseCase` para o porquê de rejeitar (400) em vez de
+ * truncar, e `ReindexProjectUseCase` para o porquê deste escopo NÃO entrar
+ * no "Reindexar agora".
  */
 @ApiTags('rag')
 @ApiBearerAuth(BEARER)
@@ -51,6 +68,7 @@ export class RagController {
   constructor(
     private readonly search: HybridSearchUseCase,
     private readonly reindex: ReindexProjectUseCase,
+    private readonly indexLocalFolder: IndexLocalFolderUseCase,
     private readonly coverage: GetRagCoverageUseCase,
   ) {}
 
@@ -97,6 +115,33 @@ export class RagController {
     return this.reindex.execute(projectId);
   }
 
+  @Post('local')
+  @RequireRole('maintainer')
+  @ApiOperation({
+    summary:
+      'Attaches a local folder (browser upload) as read-only reference (RN-455, ADR 0113)',
+    description:
+      'Text content already read by the browser (`<input webkitdirectory>`), never a host path — ' +
+      'that distinction is the whole point of ADR 0113. Idempotent full rebuild of the `local` scope: ' +
+      'every call deletes and recreates it from the files sent THIS time, so re-uploading is the ' +
+      'resync mechanism. Rejects (400) over the file-count/total-bytes caps instead of truncating ' +
+      'silently — this is a one-shot user gesture with a folder picker in front of it, not a background ' +
+      'scan. An individual oversized or unrecognized-extension file is only skipped, never fails the batch.',
+  })
+  @ApiCreatedResponse({ type: AttachLocalFolderResponseDto })
+  anexarPastaLocal(
+    @Param('projectId') projectId: string,
+    @Body() body: AttachLocalFolderRequestDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.indexLocalFolder.execute(
+      projectId,
+      user.id,
+      body.folderName,
+      body.files,
+    );
+  }
+
   @Get('coverage')
   @RequireRole('viewer')
   @ApiOperation({
@@ -105,8 +150,11 @@ export class RagController {
       'Real count (never estimated) of `.md` files under `docs`/`docs/adr` in ' +
       "the project's repository against how many have a chunk, and the " +
       "project's sessions against how many have a chunk. Does not include " +
-      '"N minutes ago" — there is no per-scope indexing timestamp column, and ' +
-      'a guessed number would lie (same rule as ADR 0042 for model rating).',
+      '"N minutes ago" for those three scopes — there is no per-scope ' +
+      'indexing timestamp column, and a guessed number would lie (same rule ' +
+      'as ADR 0042 for model rating). `local` (RN-455) is the one exception: ' +
+      '`lastAttachedAt` is a real `MAX(created_at)` over that scope, because ' +
+      'a browser upload has no repository state to compare against.',
   })
   @ApiOkResponse({ type: RagCoverageResponseDto })
   obterCobertura(@Param('projectId') projectId: string) {

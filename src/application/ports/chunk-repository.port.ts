@@ -12,15 +12,21 @@
 // não sabe validar ciclo.
 
 /**
- * Os TRÊS escopos honestos do índice (RN-219): documentação, ADR e sessão.
- * Código e PR ficam de fora — ver `chunks` em `db/schema.ts` para o porquê.
+ * Os QUATRO escopos honestos do índice (RN-219/454): documentação, ADR,
+ * sessão e `local` (ADR 0113) — uma pasta do PRÓPRIO usuário anexada como
+ * referência de leitura via upload do navegador. Código do REPOSITÓRIO do
+ * projeto e PR ficam de fora — ver `chunks` em `db/schema.ts` para o
+ * porquê.
  */
-export type ChunkScope = 'docs' | 'adr' | 'session';
+export type ChunkScope = 'docs' | 'adr' | 'session' | 'local';
 
 /**
  * Metadados de origem do trecho — tudo opcional porque quem decide o que
- * preencher é o pipeline de indexação (Onda 4, ainda não existe), não este
- * port.
+ * preencher é o pipeline de indexação, não este port.
+ *
+ * `uploadedBy`/`folderName` (RN-455, ADR 0113) só se aplicam a `scope:
+ * 'local'` — quem anexou a pasta e o nome dela, para o painel de cobertura
+ * poder mostrar "X arquivos de <folderName>" sem uma coluna nova.
  */
 export interface ChunkMetadata {
   title?: string;
@@ -28,6 +34,8 @@ export interface ChunkMetadata {
   chunkIndex?: number;
   totalChunks?: number;
   sourceRef?: string;
+  uploadedBy?: string;
+  folderName?: string;
 }
 
 export interface Chunk {
@@ -66,7 +74,7 @@ export interface ChunkSearchCandidate {
 }
 
 export interface ChunkSearchOptions {
-  /** Ausente busca nos três escopos. */
+  /** Ausente busca nos quatro escopos. */
   scope?: ChunkScope[];
   limit: number;
 }
@@ -81,7 +89,7 @@ export abstract class ChunkRepository {
   abstract createMany(inputs: NewChunk[]): Promise<Chunk[]>;
   abstract findById(id: string): Promise<Chunk | null>;
   /**
-   * `scope` opcional — sem ele, lista os três escopos do projeto juntos.
+   * `scope` opcional — sem ele, lista os quatro escopos do projeto juntos.
    * Sem paginação de propósito: é fundação, o consumidor real (busca
    * híbrida da Onda 4) não vai listar por aqui, vai buscar por similaridade.
    */
@@ -91,9 +99,11 @@ export abstract class ChunkRepository {
   ): Promise<Chunk[]>;
 
   /**
-   * Apaga todos os chunks de UM escopo de arquivo (`docs`/`adr`) do
+   * Apaga todos os chunks de UM escopo de arquivo (`docs`/`adr`/`local`) do
    * projeto — nunca `session`, que é sempre um recorte por SESSÃO
-   * (`deleteBySession`), não por projeto inteiro (RN-231).
+   * (`deleteBySession`), não por projeto inteiro (RN-231). `local`
+   * (RN-455) segue exatamente o mesmo desenho de `docs`/`adr`: full
+   * rebuild por projeto, não por sessão.
    *
    * O pipeline de indexação (Onda 4) reindexa por FULL REBUILD: apaga o
    * escopo inteiro e recria a partir do estado atual dos arquivos, em vez de

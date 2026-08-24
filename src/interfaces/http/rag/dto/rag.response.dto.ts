@@ -8,19 +8,22 @@ import type {
 } from '../../../../domain/rag/rag-citation';
 import type { IndexDocsReport } from '../../../../application/use-cases/rag/index-project-docs.use-case';
 import type { IndexSessionReport } from '../../../../application/use-cases/rag/index-session.use-case';
+import type { IndexLocalFolderReport } from '../../../../application/use-cases/rag/index-local-folder.use-case';
 import type { ReindexProjectReport } from '../../../../application/use-cases/rag/reindex-project.use-case';
 import type {
   RagCoverage,
   RagFileCoverage,
+  RagLocalCoverage,
   RagSessionCoverage,
 } from '../../../../application/use-cases/rag/get-rag-coverage.use-case';
 
 /**
  * Respostas do pipeline de indexação e da busca híbrida do Chat RAG
- * (PROGRAMA 28, Onda 4, frente G2 — RN-231..234, ADR 0080).
+ * (PROGRAMA 28, Onda 4, frente G2 — RN-231..234, ADR 0080; RN-455/ADR 0113
+ * ampliou pra `local`).
  */
 
-const ESCOPOS = ['docs', 'adr', 'session'] as const;
+const ESCOPOS = ['docs', 'adr', 'session', 'local'] as const;
 
 // -------------------------------------------------------------- busca
 
@@ -154,6 +157,24 @@ export const _chavesIndexSession: MesmasChaves<
   Wire<IndexSessionReport>
 > = true;
 
+/** A resposta de `POST .../rag/local` (RN-455, ADR 0113). */
+export class AttachLocalFolderResponseDto implements Wire<IndexLocalFolderReport> {
+  @ApiProperty() folderName!: string;
+  @ApiProperty() filesIndexed!: number;
+  @ApiProperty({
+    description:
+      'Skipped for being over the per-file byte cap or having an unrecognized extension — never fails the whole batch.',
+  })
+  filesSkipped!: number;
+  @ApiProperty() chunksCreated!: number;
+  @ApiProperty({ type: IndexEmbeddingResponseDto })
+  embedding!: IndexEmbeddingResponseDto;
+}
+export const _chavesAttachLocalFolder: MesmasChaves<
+  AttachLocalFolderResponseDto,
+  Wire<IndexLocalFolderReport>
+> = true;
+
 // -------------------------------------------------------------- cobertura
 
 export class RagFileCoverageResponseDto implements Wire<RagFileCoverage> {
@@ -175,6 +196,22 @@ export const _chavesSessionCoverage: MesmasChaves<
   Wire<RagSessionCoverage>
 > = true;
 
+export class RagLocalCoverageResponseDto implements Wire<RagLocalCoverage> {
+  @ApiProperty() filesIndexed!: number;
+  @ApiProperty({ type: String, nullable: true }) folderName!: string | null;
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      'Real `MAX(chunks.created_at)` for this scope — never a guessed "N minutes ago" (RN-455).',
+  })
+  lastAttachedAt!: string | null;
+}
+export const _chavesLocalCoverage: MesmasChaves<
+  RagLocalCoverageResponseDto,
+  Wire<RagLocalCoverage>
+> = true;
+
 export class RagCoverageResponseDto implements Wire<RagCoverage> {
   @ApiProperty({ type: RagFileCoverageResponseDto })
   docs!: RagFileCoverageResponseDto;
@@ -182,6 +219,8 @@ export class RagCoverageResponseDto implements Wire<RagCoverage> {
   adr!: RagFileCoverageResponseDto;
   @ApiProperty({ type: RagSessionCoverageResponseDto })
   session!: RagSessionCoverageResponseDto;
+  @ApiProperty({ type: RagLocalCoverageResponseDto })
+  local!: RagLocalCoverageResponseDto;
   @ApiProperty() chunksTotal!: number;
   @ApiProperty() chunksWithoutVector!: number;
 }

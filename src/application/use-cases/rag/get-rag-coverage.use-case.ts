@@ -20,10 +20,25 @@ export interface RagSessionCoverage {
   sessionsIndexed: number;
 }
 
+/**
+ * Cobertura do escopo `local` (RN-455, ADR 0113) — não há "total real" para
+ * comparar (a pasta só existe no navegador de quem anexou, o servidor nunca
+ * a viu antes do upload), então esta forma é DIFERENTE de `RagFileCoverage`:
+ * conta o que está indexado AGORA, nunca um "de quantos". `lastAttachedAt` é
+ * `MAX(chunks.createdAt)` do escopo — um valor REAL, nunca um "há Xmin"
+ * chutado (mesma disciplina da RN-237 para os outros escopos).
+ */
+export interface RagLocalCoverage {
+  filesIndexed: number;
+  folderName: string | null;
+  lastAttachedAt: string | null;
+}
+
 export interface RagCoverage {
   docs: RagFileCoverage;
   adr: RagFileCoverage;
   session: RagSessionCoverage;
+  local: RagLocalCoverage;
   chunksTotal: number;
   /** Chunks gravados sem vetor — a lacuna que RN-233 declara em vez de esconder. */
   chunksWithoutVector: number;
@@ -82,6 +97,18 @@ export class GetRagCoverageUseCase {
         .map((c) => c.sessionId),
     );
 
+    const chunksLocal = todosOsChunks.filter((c) => c.scope === 'local');
+    const arquivosLocalIndexados = new Set(
+      chunksLocal.map((c) => c.sourcePath),
+    );
+    const ultimoChunkLocal = chunksLocal.reduce<Date | null>(
+      (mais_recente, c) =>
+        !mais_recente || c.createdAt > mais_recente
+          ? c.createdAt
+          : mais_recente,
+      null,
+    );
+
     return {
       docs: {
         filesInRepo: arquivosDocs.length,
@@ -98,6 +125,13 @@ export class GetRagCoverageUseCase {
         sessionsIndexed: [...sessoesIndexadas].filter((id) =>
           sessoes.some((s) => s.id === id),
         ).length,
+      },
+      local: {
+        filesIndexed: arquivosLocalIndexados.size,
+        folderName: chunksLocal[0]?.metadata.folderName ?? null,
+        lastAttachedAt: ultimoChunkLocal
+          ? ultimoChunkLocal.toISOString()
+          : null,
       },
       chunksTotal: todosOsChunks.length,
       chunksWithoutVector: todosOsChunks.filter((c) => c.embedding === null)

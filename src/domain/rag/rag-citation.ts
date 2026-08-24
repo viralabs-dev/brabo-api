@@ -42,6 +42,11 @@ export function origemDoChunk(chunk: Chunk): ChunkOrigin {
       title: chunk.metadata.title,
     };
   }
+  // `docs`/`adr`/`local` (RN-455, ADR 0113) são todos `kind: 'file'` — o
+  // navegador que anexou a pasta preencheu `sourcePath` com o caminho
+  // RELATIVO dentro dela, exatamente como `docs`/`adr` preenchem com o
+  // caminho relativo ao repositório. Zero ramo novo aqui: a distinção que
+  // importa para a citação é "arquivo vs. sessão", não a origem do arquivo.
   return {
     kind: 'file',
     sourcePath: chunk.sourcePath!,

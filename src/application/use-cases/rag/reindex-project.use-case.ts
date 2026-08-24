@@ -34,6 +34,19 @@ export interface ReindexProjectReport {
  * reindexação automática por push/evento é trabalho declarado como FORA
  * desta onda (ADR 0079: "reindexar é responsabilidade de quem escrever o
  * pipeline", e o pipeline aqui é sob demanda, não reativo).
+ *
+ * ## Por que `local` (ADR 0113/RN-455) NÃO entra aqui
+ *
+ * Este caso de uso reindexa lendo de uma fonte que o SERVIDOR consegue
+ * revisitar — o repositório do projeto (`docs`/`adr`) e o event log
+ * (`session`). O escopo `local` não tem fonte nenhuma para revisitar: o
+ * texto vive só no NAVEGADOR de quem anexou, e o servidor nunca guardou o
+ * caminho de host original. Chamar `deleteByScope(projectId, 'local')`
+ * aqui apagaria a referência anexada sem ter como recriá-la — a mesma
+ * classe de bug que apagaria dado do usuário num clique de "Reindexar"
+ * genérico. `IndexLocalFolderUseCase` é o ÚNICO caminho que escreve nesse
+ * escopo, e reanexar a pasta (novo upload) É o mecanismo de resincronizar
+ * — não este botão. NÃO "corrija" isto sem reler o ADR 0113 inteiro.
  */
 @Injectable()
 export class ReindexProjectUseCase {

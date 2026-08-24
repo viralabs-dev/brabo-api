@@ -4,6 +4,7 @@ import { LlmInfrastructureModule } from '../../../infrastructure/llm/llm-infrast
 import { RagEmbeddingService } from './rag-embedding.service';
 import { IndexProjectDocsUseCase } from './index-project-docs.use-case';
 import { IndexSessionUseCase } from './index-session.use-case';
+import { IndexLocalFolderUseCase } from './index-local-folder.use-case';
 import { ReindexProjectUseCase } from './reindex-project.use-case';
 import { GetRagCoverageUseCase } from './get-rag-coverage.use-case';
 import { HybridSearchUseCase } from './hybrid-search.use-case';
@@ -12,6 +13,7 @@ const USE_CASES = [
   RagEmbeddingService,
   IndexProjectDocsUseCase,
   IndexSessionUseCase,
+  IndexLocalFolderUseCase,
   ReindexProjectUseCase,
   GetRagCoverageUseCase,
   HybridSearchUseCase,

@@ -2187,11 +2187,21 @@ const tsvector = customType<{ data: string }>({
   },
 });
 
-// Os TRÊS escopos honestos do índice (RN-219): documentação, ADR e sessão.
-// Código e PR ficam de fora de propósito — indexá-los sem watcher de
-// reindexação a cada push faria o índice MENTIR sobre cobertura (achado do
-// plano do PROGRAMA 28, "onde eu cortaria").
-export const chunkScopeEnum = pgEnum('chunk_scope', ['docs', 'adr', 'session']);
+// Os QUATRO escopos honestos do índice (RN-219, ampliado pela RN-455):
+// documentação, ADR, sessão e — desde o ADR 0113 — `local`, uma pasta do
+// PRÓPRIO usuário anexada como referência de leitura via upload do
+// navegador (nunca um caminho de host, nunca o mesmo mecanismo do runner —
+// ver ADR 0113). Código do REPOSITÓRIO do projeto e PR continuam de fora de
+// propósito — indexá-los sem watcher de reindexação a cada push faria o
+// índice MENTIR sobre cobertura (achado do plano do PROGRAMA 28, "onde eu
+// cortaria"). `local` não sofre desse problema: o upload em si já É o
+// evento de atualização, não há reindexação automática para prometer.
+export const chunkScopeEnum = pgEnum('chunk_scope', [
+  'docs',
+  'adr',
+  'session',
+  'local',
+]);
 
 /**
  * Um trecho indexado para o Chat RAG (ondas futuras) — vetor E `tsvector` na

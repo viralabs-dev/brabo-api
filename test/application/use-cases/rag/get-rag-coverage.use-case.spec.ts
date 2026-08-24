@@ -4,7 +4,10 @@ import type { ProjectRepository } from '../../../../src/application/ports/projec
 import type { SessionRepository } from '../../../../src/application/ports/session-repository.port';
 import type { Project } from '../../../../src/domain/iam/project.entity';
 import type { Session } from '../../../../src/domain/sessions/session.entity';
-import { ChunkRepository, type Chunk } from '../../../../src/application/ports/chunk-repository.port';
+import {
+  ChunkRepository,
+  type Chunk,
+} from '../../../../src/application/ports/chunk-repository.port';
 import type { IndexProjectDocsUseCase } from '../../../../src/application/use-cases/rag/index-project-docs.use-case';
 import { GetRagCoverageUseCase } from '../../../../src/application/use-cases/rag/get-rag-coverage.use-case';
 
@@ -13,7 +16,9 @@ function fakeProjects(project: Project | null): ProjectRepository {
 }
 
 function fakeSessions(sessions: Session[]): SessionRepository {
-  return { listForProject: async () => sessions } as unknown as SessionRepository;
+  return {
+    listForProject: async () => sessions,
+  } as unknown as SessionRepository;
 }
 
 function mkChunk(overrides: Partial<Chunk>): Chunk {
@@ -65,11 +70,18 @@ const PROJETO = { id: 'proj-1' } as Project;
 
 describe('GetRagCoverageUseCase', () => {
   it('conta arquivos reais no repositório contra os que têm chunk, e sessões contra as indexadas', async () => {
+    const dataDoUpload = new Date('2026-08-23T10:00:00Z');
     const chunks = new FakeChunkRepository([
       mkChunk({ scope: 'docs', sourcePath: 'docs/intro.md' }),
       mkChunk({ scope: 'adr', sourcePath: 'docs/adr/0001-a.md' }),
       mkChunk({ scope: 'session', sessionId: 'sess-1', sourcePath: null }),
       mkChunk({ scope: 'docs', sourcePath: 'docs/intro.md', embedding: null }),
+      mkChunk({
+        scope: 'local',
+        sourcePath: 'README.md',
+        metadata: { folderName: 'meu-projeto' },
+        createdAt: dataDoUpload,
+      }),
     ]);
     const indexDocs = {
       listarArquivosMarkdown: async () => ({
@@ -87,11 +99,49 @@ describe('GetRagCoverageUseCase', () => {
 
     const cobertura = await useCase.execute('proj-1');
 
-    expect(cobertura.docs).toEqual({ filesInRepo: 2, filesIndexed: 1, truncated: false });
-    expect(cobertura.adr).toEqual({ filesInRepo: 1, filesIndexed: 1, truncated: false });
-    expect(cobertura.session).toEqual({ sessionsInProject: 2, sessionsIndexed: 1 });
-    expect(cobertura.chunksTotal).toBe(4);
-    expect(cobertura.chunksWithoutVector).toBe(4);
+    expect(cobertura.docs).toEqual({
+      filesInRepo: 2,
+      filesIndexed: 1,
+      truncated: false,
+    });
+    expect(cobertura.adr).toEqual({
+      filesInRepo: 1,
+      filesIndexed: 1,
+      truncated: false,
+    });
+    expect(cobertura.session).toEqual({
+      sessionsInProject: 2,
+      sessionsIndexed: 1,
+    });
+    expect(cobertura.local).toEqual({
+      filesIndexed: 1,
+      folderName: 'meu-projeto',
+      lastAttachedAt: dataDoUpload.toISOString(),
+    });
+    expect(cobertura.chunksTotal).toBe(5);
+    expect(cobertura.chunksWithoutVector).toBe(5);
+  });
+
+  it('CASO DE FALHA (degradação honesta): sem chunk `local` nenhum, nunca inventa nome de pasta ou timestamp', async () => {
+    const chunks = new FakeChunkRepository([
+      mkChunk({ scope: 'docs', sourcePath: 'docs/intro.md' }),
+    ]);
+    const useCase = new GetRagCoverageUseCase(
+      fakeProjects(PROJETO),
+      fakeSessions([]),
+      chunks,
+      {
+        listarArquivosMarkdown: async () => ({ paths: [], truncated: false }),
+      } as unknown as IndexProjectDocsUseCase,
+    );
+
+    const cobertura = await useCase.execute('proj-1');
+
+    expect(cobertura.local).toEqual({
+      filesIndexed: 0,
+      folderName: null,
+      lastAttachedAt: null,
+    });
   });
 
   it('CASO DE FALHA: projeto inexistente lança NotFoundException', async () => {

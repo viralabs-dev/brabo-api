@@ -91,3 +91,64 @@ export const RAG_SEARCH_WEIGHT_LEXICAL = 0.4;
  * que nenhuma citação.
  */
 export const RAG_SEARCH_SCORE_THRESHOLD = 0.2;
+
+// ---------------------------------------------------------------------------
+// Pasta local anexada (ADR 0113, RN-455) — upload do NAVEGADOR, um gesto
+// ÚNICO com um seletor de pasta na frente, não uma varredura em background.
+// Por isso a régua é REJEITAR (400) acima do teto em vez de truncar em
+// silêncio como `docs`/`adr`: quem clicou "Anexar" está olhando a tela e
+// pode escolher uma pasta menor, o mesmo motivo que a busca da aba Code
+// (item 34 da FASE 26) rejeita termo demais em vez de truncar.
+// ---------------------------------------------------------------------------
+
+/** Arquivos por upload — cada um vira ao menos um chunk. */
+export const RAG_LOCAL_FILE_COUNT_LIMIT = 500;
+
+/** Bytes por arquivo individual — mesma ordem de grandeza de `GIT_BLOB_MAX_BYTES`. */
+export const RAG_LOCAL_FILE_BYTES_LIMIT = 512 * 1024;
+
+/** Bytes somados de TODOS os arquivos do upload — o teto que protege o corpo HTTP e o custo de embedding de um lote. */
+export const RAG_LOCAL_TOTAL_BYTES_LIMIT = 8 * 1024 * 1024;
+
+/**
+ * Extensões de texto/código aceitas — allowlist, não denylist: um binário
+ * (imagem, `.zip`, `.node`) nunca deveria chegar a `chunkText`, que assume
+ * texto. Arquivo sem extensão nesta lista é PULADO no upload (contado em
+ * `filesSkipped`), nunca rejeita o lote inteiro — a mesma régua que
+ * `IndexProjectDocsUseCase` já aplica implicitamente ao filtrar só `.md`.
+ */
+export const RAG_LOCAL_ALLOWED_EXTENSIONS = [
+  '.md',
+  '.mdx',
+  '.txt',
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.json',
+  '.yml',
+  '.yaml',
+  '.py',
+  '.rb',
+  '.go',
+  '.rs',
+  '.java',
+  '.kt',
+  '.c',
+  '.h',
+  '.cpp',
+  '.hpp',
+  '.cs',
+  '.ex',
+  '.exs',
+  '.sql',
+  '.sh',
+  '.css',
+  '.html',
+  '.xml',
+  '.toml',
+  '.ini',
+  '.env',
+] as const;
