@@ -6,6 +6,7 @@ import { DrizzleRefreshTokenRepository } from '../../../../src/infrastructure/pe
 import { DrizzleAccountTokenRepository } from '../../../../src/infrastructure/persistence/drizzle/account-token.repository';
 import { DrizzleAuthEventRepository } from '../../../../src/infrastructure/persistence/drizzle/auth-event.repository';
 import { DrizzleLoginThrottle } from '../../../../src/infrastructure/persistence/drizzle/drizzle-login-throttle';
+import { DrizzleWorkspaceRepository } from '../../../../src/infrastructure/persistence/drizzle/workspace.repository';
 import { Argon2PasswordHasher } from '../../../../src/infrastructure/security/argon2-password-hasher';
 import { Ed25519AccessTokenIssuer } from '../../../../src/infrastructure/security/ed25519-access-token-issuer';
 import type {
@@ -99,6 +100,7 @@ export async function montarHarness() {
   const tokensDeConta = new DrizzleAccountTokenRepository(db);
   const eventos = new DrizzleAuthEventRepository(db);
   const throttle = new DrizzleLoginThrottle(db);
+  const workspaces = new DrizzleWorkspaceRepository(db);
 
   const hasherReal = new Argon2PasswordHasher();
   await hasherReal.onModuleInit();
@@ -112,6 +114,7 @@ export async function montarHarness() {
     accessTokens,
     refreshTokens,
     tokenFactory,
+    usuarios,
   );
 
   return {
@@ -126,6 +129,8 @@ export async function montarHarness() {
     refreshTokens,
     credenciais,
     tokensDeConta,
+    workspaces,
+    usuarios,
     limpar: () => truncateAll(db),
     register: new RegisterUseCase(
       unitOfWork,
@@ -135,6 +140,7 @@ export async function montarHarness() {
       mail,
       eventos,
       tokenFactory,
+      workspaces,
     ),
     login: new LoginUseCase(
       credenciais,

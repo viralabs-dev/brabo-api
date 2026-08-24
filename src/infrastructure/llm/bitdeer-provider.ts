@@ -30,7 +30,16 @@ export function bitdeerConfig(
   return {
     name: 'bitdeer',
     baseUrl,
-    capabilities: { streaming: true, toolCalling: true, listModels: false },
+    capabilities: {
+      streaming: true,
+      toolCalling: true,
+      listModels: false,
+      // A doc citada acima é justamente a de EMBEDDINGS da Bitdeer — e é só
+      // isso que existe: leitura. Sem chave no ambiente, nenhum smoke provou o
+      // endpoint, e a regra do ADR 0043 é clara sobre declarar por doc (custou
+      // duas reversões ao vivo). Fica `false`, e a base recusa a chamada.
+      embeddings: false,
+    },
     authHeaders: (apiKey) => ({
       Authorization: `Bearer ${apiKey ?? ''}`,
     }),

@@ -6,10 +6,10 @@ export class SetMaxParallelDto {
     example: 4,
     minimum: 1,
     description:
-      'Quantos agentes o lead da área pode ter na sessão SEM pedir sua ' +
-      'autorização. Mínimo 1 — zero não significa "sem limite", significa ' +
-      'configuração inválida, e tratá-lo como ilimitado transformaria um erro ' +
-      'de digitação em gasto irrestrito.',
+      "How many agents the area's lead can have in the session WITHOUT " +
+      'requesting your authorization. Minimum 1 — zero does not mean ' +
+      '"unlimited", it means invalid configuration, and treating it as ' +
+      'unlimited would turn a typo into unrestricted spending.',
   })
   @IsInt()
   @Min(1)

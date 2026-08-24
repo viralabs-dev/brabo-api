@@ -14,6 +14,7 @@ import { users } from '../../src/db/schema';
 import { JwtAuthGuard } from '../../src/interfaces/http/auth/jwt-auth.guard';
 import { IS_PUBLIC_KEY } from '../../src/interfaces/http/auth/public.decorator';
 import { IS_SERVICE_ROUTE_KEY } from '../../src/interfaces/http/auth/service-route.decorator';
+import { IS_PAT_ROUTE_KEY } from '../../src/interfaces/http/auth/pat-route.decorator';
 import { DrizzleUserRepository } from '../../src/infrastructure/persistence/drizzle/user.repository';
 import { Ed25519AccessTokenIssuer } from '../../src/infrastructure/security/ed25519-access-token-issuer';
 import { FirstPartyTokenVerifier } from '../../src/infrastructure/security/first-party-token-verifier';
@@ -59,11 +60,12 @@ function contexto(opcoes: { authorization?: string }) {
   return { ctx, request };
 }
 
-function guard(marcada?: 'publica' | 'servico'): JwtAuthGuard {
+function guard(marcada?: 'publica' | 'servico' | 'pat'): JwtAuthGuard {
   const reflector = {
     getAllAndOverride: vi.fn((chave: string) => {
       if (chave === IS_PUBLIC_KEY) return marcada === 'publica';
       if (chave === IS_SERVICE_ROUTE_KEY) return marcada === 'servico';
+      if (chave === IS_PAT_ROUTE_KEY) return marcada === 'pat';
       return undefined;
     }),
   } as unknown as Reflector;
@@ -206,6 +208,17 @@ describe('JwtAuthGuard', () => {
       // não tem usuário nem JWT para apresentar.
       await expect(
         guard('servico').canActivate(contexto({}).ctx),
+      ).resolves.toBe(true);
+    });
+
+    it('@RequirePatAuth() passa sem tentar verify() de JWT — quem valida é o PatAuthGuard', async () => {
+      // Um bearer `brb_...` nunca é um JWT válido; se este early-out não
+      // existisse, `tokenVerifier.verify()` rejeitaria ANTES do PatAuthGuard
+      // ter a chance de rodar (ADR 0105).
+      await expect(
+        guard('pat').canActivate(
+          contexto({ authorization: 'Bearer brb_qualquercoisa' }).ctx,
+        ),
       ).resolves.toBe(true);
     });
   });

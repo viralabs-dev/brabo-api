@@ -8,7 +8,7 @@ export class MarkTaskInternalDto {
 
   @ApiProperty({
     example: 'dev-api',
-    description: 'Só o agente que reivindicou a tarefa pode movê-la.',
+    description: 'Only the agent that claimed the task can move it.',
   })
   @IsString()
   agentId!: string;

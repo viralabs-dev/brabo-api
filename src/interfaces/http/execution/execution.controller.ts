@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Put } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiConflictResponse,
@@ -20,9 +20,11 @@ import { UnblockTaskUseCase } from '../../../application/use-cases/execution/unb
 import { RearmDevAgentUseCase } from '../../../application/use-cases/execution/rearm-dev-agent.use-case';
 import { ListAgentAreasUseCase } from '../../../application/use-cases/execution/list-agent-areas.use-case';
 import { SetAreaMaxParallelUseCase } from '../../../application/use-cases/execution/set-area-max-parallel.use-case';
+import { SetAreaBudgetUseCase } from '../../../application/use-cases/execution/set-area-budget.use-case';
 import { AcceptParallelizationDto } from './dto/accept-parallelization.dto';
 import { ActivateExecutionDto } from './dto/activate-execution.dto';
 import { SetMaxParallelDto } from './dto/set-max-parallel.dto';
+import { SetAreaBudgetDto } from './dto/set-area-budget.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import { OkResponseDto } from '../shared/dto/comuns.response.dto';
 import { SessionResponseDto } from '../sessions/dto/sessions.response.dto';
@@ -32,14 +34,18 @@ import {
   PedidoDeParalelismoResponseDto,
 } from './dto/execution.response.dto';
 
+// Mesma convenção de `BudgetsController`: a ENTRADA fala em dólar, o resto
+// fala em micro-USD (ADR 0110).
+const MICROS_PER_USD = 1_000_000;
+
 /**
  * Ações do usuário sobre a fase de execução (Fase 4a). Ativar exige maintainer
  * (as ações git dos devs herdam o papel do ativador na avaliação de IAM).
  */
-@ApiTags('execução')
+@ApiTags('execution')
 @ApiBearerAuth(BEARER)
-@ApiForbiddenResponse({ description: 'Papel insuficiente no projeto.' })
-@ApiNotFoundResponse({ description: 'Projeto, sessão ou tarefa inexistente.' })
+@ApiForbiddenResponse({ description: 'Insufficient role on the project.' })
+@ApiNotFoundResponse({ description: 'Project, session, or task not found.' })
 @Controller('projects/:projectId')
 export class ExecutionController {
   constructor(
@@ -50,21 +56,23 @@ export class ExecutionController {
     private readonly rearmDevAgent: RearmDevAgentUseCase,
     private readonly listAgentAreas: ListAgentAreasUseCase,
     private readonly setAreaMaxParallel: SetAreaMaxParallelUseCase,
+    private readonly setAreaBudget: SetAreaBudgetUseCase,
   ) {}
 
   @Post('execution/activate')
   @RequireRole('maintainer')
   @ApiOperation({
-    summary: 'Ativa a fase de execução e sobe um dev agent por módulo',
+    summary:
+      'Activates the execution phase and starts one dev agent per module',
     description:
-      'Exige `maintainer`, e não `developer`, porque as ações de git dos dev agents ' +
-      'herdam o papel de QUEM ATIVOU na avaliação de IAM — ativar como developer ' +
-      'daria agentes incapazes de abrir PR. Cada módulo do `module_map` ganha um ' +
-      'agente em worktree isolado.',
+      "Requires `maintainer`, not `developer`, because the dev agents' git " +
+      'actions inherit the role of WHOEVER ACTIVATED it in the IAM evaluation — ' +
+      'activating as developer would leave agents unable to open a PR. Each ' +
+      'module in the `module_map` gets an agent in an isolated worktree.',
   })
   @ApiCreatedResponse({ type: ExecucaoAtivadaResponseDto })
   @ApiConflictResponse({
-    description: 'Sem module_map vigente, ou execução já ativa.',
+    description: 'No current module_map, or execution already active.',
   })
   activate(
     @Param('projectId') projectId: string,
@@ -86,17 +94,18 @@ export class ExecutionController {
   @Get('execution/session')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Devolve a sessão de execução vigente do projeto, ou nada',
+    summary: "Returns the project's current execution session, or nothing",
     description:
-      'A sessão `active` mais recente que já carrega `execution.activated` — ' +
-      'o MESMO critério que `activate` usa para decidir se reativa ou cria ' +
-      '(RN-139). `null` quando não há execução em curso. Existe para a aba ' +
-      'Executores parar de inferir essa sessão pela mais recente do projeto, ' +
-      'que muda de sessão em sessão nova sem pista nenhuma na tela.',
+      'The most recent `active` session that already carries ' +
+      '`execution.activated` — the SAME criterion `activate` uses to decide ' +
+      'whether to reactivate or create one (RN-139). `null` when no execution ' +
+      'is in progress. Exists so the Executors tab stops inferring this session ' +
+      "from the project's most recent one, which shifts from session to " +
+      'session with no clue at all in the UI.',
   })
   @ApiOkResponse({
     type: SessionResponseDto,
-    description: '`null` no corpo quando não há execução ativa.',
+    description: '`null` in the body when there is no active execution.',
   })
   getSession(@Param('projectId') projectId: string) {
     return this.getActiveExecutionSession.execute(projectId);
@@ -105,12 +114,12 @@ export class ExecutionController {
   @Post('sessions/:sessionId/execution/parallelize')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Pede mais um dev agent para um módulo',
+    summary: 'Requests one more dev agent for a module',
     description:
-      'Passa pelo TETO da área de dev (RN-083): dentro dele o agente sobe na ' +
-      'hora, em worktree próprio; acima dele a resposta é uma `proposed_action` ' +
-      'do tipo `parallelize` aguardando a sua decisão, e NADA sobe até você ' +
-      'decidir. O que o teto vale é configurável por lead em Configurações.',
+      'Goes through the dev area CAP (RN-083): under it, the agent starts right ' +
+      'away, in its own worktree; above it, the response is a `proposed_action` ' +
+      'of type `parallelize` awaiting your decision, and NOTHING starts until ' +
+      'you decide. What the cap is set to is configurable per lead in Settings.',
   })
   @ApiCreatedResponse({ type: PedidoDeParalelismoResponseDto })
   parallelize(
@@ -130,11 +139,11 @@ export class ExecutionController {
   @Get('agent-areas')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'As áreas de agente do projeto, com o teto de cada lead',
+    summary: "The project's agent areas, with each lead's cap",
     description:
-      'O projeto nasce com as três áreas (RN-094), então a lista vem cheia ' +
-      'mesmo antes de haver `module_map`. O que a ativação de execução ' +
-      'acrescenta são os MEMBROS da área de dev, um por módulo.',
+      'The project is born with the three areas (RN-094), so the list comes ' +
+      'back full even before there is a `module_map`. What activating execution ' +
+      'adds are the MEMBERS of the dev area, one per module.',
   })
   @ApiOkResponse({ type: [AreaDeAgentesResponseDto] })
   listAreas(@Param('projectId') projectId: string) {
@@ -144,15 +153,17 @@ export class ExecutionController {
   @Patch('agent-areas/:key/max-parallel')
   @RequireRole('maintainer')
   @ApiOperation({
-    summary: 'Muda o teto de paralelismo de uma área',
+    summary: "Changes an area's parallelism cap",
     description:
-      'Exige `maintainer`, e não `developer`, pelo mesmo motivo de ativar a ' +
-      'execução: subir o teto é decidir quanto o produto pode gastar sem ' +
-      'perguntar. Vale para os PRÓXIMOS pedidos — o que já está aguardando ' +
-      'sua decisão continua aguardando.',
+      'Requires `maintainer`, not `developer`, for the same reason as ' +
+      'activating execution: raising the cap is deciding how much the product ' +
+      'can spend without asking. Applies to the NEXT requests — whatever is ' +
+      'already awaiting your decision keeps waiting.',
   })
   @ApiOkResponse({ type: AreaDeAgentesResponseDto })
-  @ApiBadRequestResponse({ description: '`maxParallel` não é inteiro >= 1.' })
+  @ApiBadRequestResponse({
+    description: '`maxParallel` is not an integer >= 1.',
+  })
   setMaxParallel(
     @Param('projectId') projectId: string,
     @Param('key') key: string,
@@ -161,13 +172,40 @@ export class ExecutionController {
     return this.setAreaMaxParallel.execute(projectId, key, dto.maxParallel);
   }
 
+  @Put('agent-areas/:key/budget')
+  @RequireRole('maintainer')
+  @ApiOperation({
+    summary: "Sets (or clears) an area's spend cap",
+    description:
+      'Requires `maintainer`, same reason as the parallelism cap: this is ' +
+      'an INDEPENDENT, additive check next to the project and session ' +
+      'budgets (ADR 0110) — not a cascade, and not a replacement for ' +
+      'either. The limit comes in as DOLLARS and is converted to ' +
+      'micro-USD server-side, same convention as `BudgetsController`. ' +
+      '`null` clears the cap.',
+  })
+  @ApiOkResponse({ type: AreaDeAgentesResponseDto })
+  @ApiBadRequestResponse({
+    description: '`limitUsd` is neither `null` nor a number >= 0.',
+  })
+  setBudget(
+    @Param('projectId') projectId: string,
+    @Param('key') key: string,
+    @Body() dto: SetAreaBudgetDto,
+  ) {
+    const budgetMicros =
+      dto.limitUsd === null ? null : Math.round(dto.limitUsd * MICROS_PER_USD);
+    return this.setAreaBudget.execute(projectId, key, budgetMicros);
+  }
+
   @Post('sessions/:sessionId/tasks/:taskId/unblock')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Destrava uma tarefa bloqueada',
+    summary: 'Unblocks a blocked task',
     description:
-      'Zera o contador de correções de gate e devolve a tarefa ao agente. É a saída ' +
-      'humana do teto de correções — não existe destrave automático.',
+      'Resets the gate correction counter and hands the task back to the ' +
+      'agent. It is the human escape hatch for the correction cap — there is ' +
+      'no automatic unblock.',
   })
   @ApiCreatedResponse({ type: OkResponseDto })
   unblock(
@@ -182,11 +220,11 @@ export class ExecutionController {
   @Post('sessions/:sessionId/agents/:agentId/rearm')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Rearma um dev agent travado pelo circuit breaker',
+    summary: 'Rearms a dev agent tripped by the circuit breaker',
     description:
-      'Zera o contador de tasks blocked consecutivas (RN-047) e devolve o agente ' +
-      'a tentar reivindicar. É a única saída de `idle_tripped` — não existe ' +
-      'destrave automático.',
+      'Resets the consecutive blocked-tasks counter (RN-047) and puts the agent ' +
+      'back to trying to claim work. It is the only way out of `idle_tripped` — ' +
+      'there is no automatic unblock.',
   })
   @ApiCreatedResponse({ type: OkResponseDto })
   rearm(

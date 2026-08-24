@@ -3,10 +3,10 @@ import type { MesmasChaves, Wire } from '../../shared/dto/wire';
 import { ROLE_ORDER, type Role } from '../../../../domain/iam/role';
 import type { Workspace } from '../../../../domain/iam/workspace.entity';
 import {
-  PROJECT_WORKSPACE_MODES,
+  PROJECT_EXECUTION_MODES,
   STORY_PROMOTION_MODES,
   type Project,
-  type ProjectWorkspaceMode,
+  type ProjectExecutionMode,
   type StoryPromotionMode,
 } from '../../../../domain/iam/project.entity';
 import type { WorkspaceMember } from '../../../../domain/iam/workspace-member.entity';
@@ -40,8 +40,8 @@ const PAPEL = {
   enum: ROLE_ORDER,
   example: 'maintainer',
   description:
-    'Hierarquia linear: owner > maintainer > developer > viewer. Cada papel inclui ' +
-    'as permissões dos seguintes.',
+    'Linear hierarchy: owner > maintainer > developer > viewer. Each role ' +
+    'includes the permissions of the ones after it.',
 } as const;
 
 export class WorkspaceResponseDto implements Wire<Workspace> {
@@ -53,7 +53,7 @@ export class WorkspaceResponseDto implements Wire<Workspace> {
 
   @ApiProperty({
     example: 'acme-corp',
-    description: 'Único no sistema; é ele que aparece na URL.',
+    description: "Unique in the system; it's what appears in the URL.",
   })
   slug!: string;
 
@@ -76,7 +76,7 @@ export class WorkspaceComPapelResponseDto implements Wire<WorkspaceWithRole> {
 
   @ApiProperty({
     ...PAPEL,
-    description: 'Papel de QUEM CHAMOU neste workspace.',
+    description: "The CALLER's role in this workspace.",
   })
   role!: Role;
 }
@@ -90,23 +90,24 @@ export class WorkspaceSummaryResponseDto implements Wire<WorkspaceSummary> {
   @ApiProperty({
     example: 4,
     description:
-      'Quantidade de projetos do workspace. Não há flag de "ativo" no domínio — todo ' +
-      'projeto conta.',
+      'Number of projects in the workspace. There is no "active" flag in ' +
+      'the domain — every project counts.',
   })
   activeProjects!: number;
 
   @ApiProperty({
     example: 6,
     description:
-      'Agentes distintos (actorKind=agent) que gastaram tokens neste mês, somando ' +
-      'todos os projetos do workspace — inclui subespecialidades de área (Fase 8).',
+      'Distinct agents (actorKind=agent) that spent tokens this month, ' +
+      "summed across all of the workspace's projects — includes area " +
+      'subspecialties (Phase 8).',
   })
   agentCount!: number;
 
   @ApiProperty({
     example: 12500000,
     description:
-      'Gasto do mês corrente, em micro-USD, somado por token_usage.createdAt.',
+      "Current month's spend, in micro-USD, summed by token_usage.createdAt.",
   })
   spentMicros!: number;
 }
@@ -140,38 +141,50 @@ export class ProjectResponseDto implements Wire<Project> {
 
   @ApiProperty({
     example: 'checkout',
-    description: 'Único dentro do workspace.',
+    description: 'Unique within the workspace.',
   })
   slug!: string;
 
   @ApiProperty({
     example: 'checkout-3f2b1c8e',
     description:
-      'Nome da pasta física do workspace deste projeto em ' +
-      'PROJECT_WORKSPACES_ROOT (RN-109). `<slug>-<8 chars do id>` num ' +
-      'projeto novo; o UUID puro num projeto criado antes desta coluna ' +
-      'existir. Congelado na criação — editar `slug` depois não recalcula.',
+      "Name of this project's physical workspace folder in " +
+      'PROJECT_WORKSPACES_ROOT (RN-109). `<slug>-<8 id chars>` on a new ' +
+      'project; the raw UUID on a project created before this column ' +
+      "existed. Frozen at creation — editing `slug` later doesn't recompute it.",
   })
   workspaceDirName!: string;
 
   @ApiProperty({
-    enum: PROJECT_WORKSPACE_MODES,
+    enum: PROJECT_EXECUTION_MODES,
     example: 'container',
     description:
-      'ONDE o código mora (RN-169 — ADR 0072). `container`: a pasta ' +
-      'gerenciada em PROJECT_WORKSPACES_ROOT. `local`: a pasta do usuário em ' +
-      '`workspacePath`.',
+      'WHERE the command executes (RN-169/RN-421 — ADR 0072/0104). ' +
+      '`container`: the folder managed in PROJECT_WORKSPACES_ROOT. ' +
+      "`mounted`: the user's folder in `workspacePath`, mounted via " +
+      "bind-mount. `runner`: the user's folder confirmed by the runner " +
+      '(see `workspaceVerifiedAt`).',
   })
-  workspaceMode!: ProjectWorkspaceMode;
+  executionMode!: ProjectExecutionMode;
 
   @ApiProperty({
     example: null,
     nullable: true,
     description:
-      'Caminho absoluto da pasta do usuário — preenchido só no modo `local`, ' +
-      'sempre `null` no modo `container`.',
+      "The user's folder absolute path — filled in for `mounted`/`runner`, " +
+      'always `null` in `container` mode.',
   })
   workspacePath!: string | null;
+
+  @ApiProperty({
+    example: null,
+    nullable: true,
+    description:
+      'When the runner first confirmed the path (RN-423). `null` = not ' +
+      'yet verified — only meaningful with `executionMode: "runner"`; ' +
+      '`container`/`mounted` never fill this field in.',
+  })
+  workspaceVerifiedAt!: string | null;
 
   @ApiProperty({ example: '01JC4Z0000USUARIO0000000001' })
   createdBy!: string;
@@ -180,8 +193,7 @@ export class ProjectResponseDto implements Wire<Project> {
     example: 500000,
     nullable: true,
     description:
-      'Teto de tokens por task dos dev agents, em micro-USD. `null` usa o padrão ' +
-      'do domínio.',
+      'Token cap per dev agent task, in micro-USD. `null` uses the domain default.',
   })
   taskBudgetMicros!: number | null;
 
@@ -189,8 +201,9 @@ export class ProjectResponseDto implements Wire<Project> {
     example: 3,
     nullable: true,
     description:
-      'Circuit breaker por dev agent (Fase 12b — RN-047): tasks consecutivas ' +
-      'terminando blocked até parar em idle_tripped. `null` usa o padrão do domínio.',
+      'Circuit breaker per dev agent (Phase 12b — RN-047): consecutive ' +
+      'tasks ending blocked before stopping at idle_tripped. `null` uses ' +
+      'the domain default.',
   })
   maxConsecutiveBlocked!: number | null;
 
@@ -198,9 +211,9 @@ export class ProjectResponseDto implements Wire<Project> {
     enum: STORY_PROMOTION_MODES,
     example: 'manual',
     description:
-      'Quem promove story a `ready` (Fase 12c — RN-048). `manual`: o PO propõe ' +
-      'e o usuário decide. `auto`: promoção automática na criação (opt-in; é ' +
-      'onde os projetos anteriores à 12c ficaram).',
+      'Who promotes a story to `ready` (Phase 12c — RN-048). `manual`: the ' +
+      'PO proposes and the user decides. `auto`: automatic promotion on ' +
+      'creation (opt-in; where projects predating 12c ended up).',
   })
   storyPromotion!: StoryPromotionMode;
 
@@ -256,12 +269,13 @@ export class ProjectMemberComUsuarioResponseDto implements Wire<ProjectMemberWit
   @ApiProperty({
     ...PAPEL,
     description:
-      'Papel EFETIVO: o maior entre o do projeto e o herdado do workspace. Quem é ' +
-      '`owner` do workspace não é rebaixado por uma associação de projeto menor.',
+      'EFFECTIVE role: the higher of the project one and the one inherited ' +
+      "from the workspace. Whoever is workspace `owner` isn't downgraded by " +
+      'a lesser project association.',
   })
   role!: Role;
 
-  @ApiProperty({ example: 'Dev Sênior', nullable: true })
+  @ApiProperty({ example: 'Senior Dev', nullable: true })
   name!: string | null;
 
   @ApiProperty({ example: 'dev@brabo.dev' })
@@ -284,42 +298,58 @@ export class RosterFactsResponseDto implements Wire<RosterFacts> {
   @ApiProperty({
     example: true,
     description:
-      'A sessão mais recente já registrou `execution.activated` — é o que faz os ' +
-      'dev agents por módulo entrarem na roster.',
+      'The most recent session has already recorded `execution.activated` ' +
+      '— this is what brings per-module dev agents into the roster.',
   })
   executionActivated!: boolean;
 
   @ApiProperty({
     example: ['api', 'web'],
     description:
-      'Nomes dos módulos do module_map VIGENTE (maior `version`). Um dev agent por ' +
-      'módulo, quando a execução foi ativada.',
+      'Module names from the CURRENT module_map (highest `version`). One ' +
+      'dev agent per module, once execution has been activated.',
   })
   moduleNames!: string[];
 
   @ApiProperty({
     example: true,
     description:
-      'Algum gate de PR (dev ou infra) já abriu ALGUMA VEZ nesta sessão — é o que traz ' +
-      'QA e SecOps para a roster. Cobre a sessão inteira, não uma janela dos últimos ' +
-      'N eventos.',
+      'Some PR gate (dev or infra) has opened AT LEAST ONCE in this session ' +
+      '— this is what brings QA and SecOps into the roster. Covers the ' +
+      'whole session, not a window of the last N events.',
   })
   gatesEverOpened!: boolean;
 
   @ApiProperty({
     example: ['qa-automacao'],
     description:
-      'Subagentes com pelo menos uma delegação registrada na sessão, qualquer que seja ' +
-      'o desfecho — dispensa é decisão registrada, não silêncio.',
+      'Subagents with at least one delegation recorded in the session, ' +
+      'whatever the outcome — dismissal is a recorded decision, not silence.',
   })
   delegatedSubagents!: string[];
 
   @ApiProperty({
     example: false,
     description:
-      'Existe handoff `accepted` para `infra` na sessão mais recente.',
+      'An `accepted` handoff to `infra` exists in the most recent session.',
   })
   infraActive!: boolean;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'An `accepted` handoff to `ux-designer` exists in the most recent session (ADR 0087).',
+  })
+  uxDesignerActive!: boolean;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'An `accepted` handoff to `staff` exists in the most recent session ' +
+      '(docs/fluxo.yml, ADR 0088) — dormant for automatic triggering, only ' +
+      'reflects an already-accepted MANUAL activation.',
+  })
+  staffActive!: boolean;
 }
 export const _chavesRosterFacts: MesmasChaves<
   RosterFactsResponseDto,
@@ -352,7 +382,7 @@ export class ProjectCardSummaryResponseDto implements Wire<ProjectCardSummary> {
     enum: ['local', 'github', 'gitlab'],
     example: 'github',
     description:
-      '`local` quando o projeto ainda não tem repositório provisionado.',
+      "`local` when the project doesn't have a provisioned repository yet.",
   })
   provider!: GitProviderName;
 
@@ -365,7 +395,8 @@ export class ProjectCardSummaryResponseDto implements Wire<ProjectCardSummary> {
     ],
     nullable: true,
     example: 'provisioned',
-    description: '`null` quando o bootstrap nunca começou. Derivado do cursor.',
+    description:
+      '`null` when the bootstrap never started. Derived from the cursor.',
   })
   provisioningStatus!: ProvisioningStatus | null;
 
@@ -373,8 +404,8 @@ export class ProjectCardSummaryResponseDto implements Wire<ProjectCardSummary> {
     type: ProjectCardBudgetResponseDto,
     nullable: true,
     description:
-      '`null` quando o projeto NUNCA teve orçamento definido — distinto de uma linha ' +
-      'zerada, e é o que faz o card oferecer "Definir orçamento".',
+      '`null` when the project NEVER had a budget set — distinct from a ' +
+      'zeroed-out row, and this is what makes the card offer "Set budget".',
   })
   budget!: { limitMicros: number; spentMicros: number } | null;
 
@@ -384,8 +415,9 @@ export class ProjectCardSummaryResponseDto implements Wire<ProjectCardSummary> {
   @ApiProperty({
     example: 41,
     description:
-      'Último `seq` já gravado na sessão mais recente (`nextSeq - 1`); 0 quando não há ' +
-      'sessão. O web compara com o que já foi visto para contar não lidos.',
+      'Last `seq` already recorded in the most recent session ' +
+      '(`nextSeq - 1`); 0 when there is no session. The web compares this ' +
+      'against what has already been seen to count unread.',
   })
   latestSeq!: number;
 
@@ -393,25 +425,35 @@ export class ProjectCardSummaryResponseDto implements Wire<ProjectCardSummary> {
     type: SessionEventResponseDto,
     nullable: true,
     description:
-      'Último evento da sessão mais recente — a linha de rodapé do card.',
+      "The most recent session's last event — the card's footer line.",
   })
   lastEvent!: Wire<SessionEvent> | null;
 
   @ApiProperty({
     example: 2,
     description:
-      'Histórias que o PO terminou e que aguardam a promoção do usuário (RN-048).',
+      "Stories the PO finished and that are awaiting the user's promotion (RN-048).",
   })
   storiesAwaitingPromotion!: number;
 
   @ApiProperty({
     example: 8,
     description:
-      '`proposed_actions` com `status = pending` no projeto INTEIRO, todas as ' +
-      'sessões — não só a mais recente. É o que a sidebar mostra como badge do ' +
-      'projeto (RN-151).',
+      '`proposed_actions` with `status = pending` across the WHOLE ' +
+      'project, all sessions — not just the most recent one. This is what ' +
+      "the sidebar shows as the project's badge (RN-151).",
   })
   pendingApprovalsCount!: number;
+
+  @ApiProperty({
+    example: 2,
+    description:
+      'How many agents are ONLINE right now — working or with a pending ' +
+      'item awaiting a decision (RN-409). Never team size: an ' +
+      '`idle`/`idle_tripped` dev agent does not count, an `idle` ' +
+      'conversational agent does not count, QA/SecOps never count (single verdict per invocation).',
+  })
+  onlineAgentCount!: number;
 
   @ApiProperty({ type: RosterFactsResponseDto })
   roster!: RosterFactsResponseDto;
@@ -428,19 +470,19 @@ export class ProjectUnreadEventsResponseDto implements Wire<ProjectUnreadEvents>
   @ApiProperty({
     example: '01JC4Z0000SESSAO00000000001',
     description:
-      'A sessão MAIS RECENTE do projeto — a mesma que `projects-summary` reporta ' +
-      'em `latestSessionId`.',
+      "The project's MOST RECENT session — the same one `projects-summary` " +
+      'reports in `latestSessionId`.',
   })
   sessionId!: string;
 
   @ApiProperty({
     type: [SessionEventResponseDto],
     description:
-      'Em ordem DECRESCENTE de `seq` — o primeiro item é o mais recente (RN-100). ' +
-      'No máximo 50 por projeto, o mesmo teto que `GET .../events` aplica sem ' +
-      '`limit`, e quando há mais não lidos que isso os que voltam são os mais ' +
-      'NOVOS. Quantos ficaram de fora sai de `latestSeq` menos o corte, sem outra ' +
-      'requisição.',
+      'In DESCENDING `seq` order — the first item is the most recent ' +
+      '(RN-100). At most 50 per project, the same cap `GET .../events` ' +
+      'applies without `limit`, and when there are more unread than that ' +
+      'the ones returned are the NEWEST. How many were left out comes from ' +
+      '`latestSeq` minus the cutoff, without another request.',
   })
   events!: Wire<SessionEvent>[];
 }

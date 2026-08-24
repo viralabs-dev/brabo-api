@@ -190,6 +190,8 @@ const SEM_CORPO_JSON = new Map<
   ['POST /internal/sessions/:sessionId/llm-turn-stream', 'sse'],
   ['GET /metrics', 'texto'],
   ['GET /git/oauth/:provider/callback', 'redirect'],
+  ['GET /auth/oauth/:provider/start', 'redirect'],
+  ['GET /auth/oauth/:provider/callback', 'redirect'],
   ['POST /auth/logout', 'sem-conteudo'],
   ['POST /auth/verify-email', 'sem-conteudo'],
   ['POST /auth/reset-password', 'sem-conteudo'],
@@ -198,6 +200,16 @@ const SEM_CORPO_JSON = new Map<
   // FASE 23 / ADR 0064 — "voltar a herdar" é 204: apaga o binding, sem corpo.
   ['DELETE /projects/:projectId/agent-bindings/:agentSlug', 'sem-conteudo'],
   ['DELETE /projects/:projectId/area-bindings/:areaKey', 'sem-conteudo'],
+  // ADR 0105 — revogar PAT é 204, sem corpo.
+  [
+    'DELETE /projects/:projectId/personal-access-tokens/:tokenId',
+    'sem-conteudo',
+  ],
+  // RN-427 — revogar PAT de outro usuário (maintainer) também é 204.
+  [
+    'DELETE /projects/:projectId/personal-access-tokens/:tokenId/admin',
+    'sem-conteudo',
+  ],
 ]);
 
 /**
@@ -213,22 +225,32 @@ const EXCLUIDAS_DA_REFERENCIA = ['GET /'];
 const TAGS_PERMITIDAS = [
   'auth',
   'workspaces',
-  'projetos',
-  'sessões',
-  'agentes',
-  'ações',
+  'projects',
+  'sessions',
+  'agents',
+  'actions',
   'backlog',
-  'execução',
-  'anamnese',
-  'psicólogo',
+  'execution',
+  'anamnesis',
+  'psychologist',
   'llm',
-  'credenciais',
+  'credentials',
   'git',
-  'infraestrutura',
+  // PROGRAMA 28, Onda 4 (G2) — indexação e busca híbrida do Chat RAG.
+  'rag',
+  'infrastructure',
   'internal',
   // FASE 15b: o registro de gates, para a tela derivar as etapas em vez de
   // repetir a lista no código.
   'gates',
+  // Fundação de i18n (Onda 6a) — preferência de idioma do próprio usuário.
+  // Não é 'credentials': não guarda segredo nenhum.
+  'users',
+  // `runner-tickets.controller.ts`/`personal-access-tokens.controller.ts`
+  // (ADR 0103/0105) ficam FORA da tradução de docs por enquanto — outra
+  // frente mexe nesses arquivos exatos ao mesmo tempo. `projetos` some
+  // daqui quando a próxima passada de i18n os alcançar.
+  'projetos',
 ];
 
 /** `/projects/{id}` (OpenAPI) → `/projects/:id` (Nest), para as chaves baterem. */
@@ -356,6 +378,8 @@ describe('superfície exposta da api', () => {
 
     expect(publicas).toEqual([
       'GET /.well-known/jwks.json',
+      'GET /auth/oauth/:provider/callback',
+      'GET /auth/oauth/:provider/start',
       'GET /git/oauth/:provider/callback',
       'GET /health',
       'GET /live',

@@ -20,7 +20,7 @@ import { UserCredentialResponseDto } from '../llm/dto/llm.response.dto';
 // O registro segue num caminho próprio porque o CORPO é diferente (`token`,
 // e o enum de providers é outro), não mais por causa do teste de conexão:
 // desde o ADR 0050 nenhum dos dois cadastros testa nada antes de gravar.
-@ApiTags('credenciais')
+@ApiTags('credentials')
 @ApiBearerAuth(BEARER)
 @Controller('users/me/git-credentials')
 export class GitCredentialsController {
@@ -30,13 +30,14 @@ export class GitCredentialsController {
 
   @Post()
   @ApiOperation({
-    summary: 'Registra um token de git (cifrado, sem testar)',
+    summary: 'Registers a git token (encrypted, without testing)',
     description:
-      'Caminho próprio, e não o de `users/me/credentials`, porque o corpo é outro ' +
-      '(`token`, e o enum de providers é `github`/`gitlab`). O token é cifrado e ' +
-      'gravado sem verificação prévia (ADR 0050); para verificá-lo, ' +
-      '`POST /users/me/credentials/{provider}/test`. Leitura, remoção e teste ' +
-      'reaproveitam as rotas de `users/me/credentials` — é a mesma tabela.',
+      'Its own path, not the `users/me/credentials` one, because the body ' +
+      'is different (`token`, and the provider enum is `github`/`gitlab`). ' +
+      'The token is encrypted and stored without prior verification (ADR ' +
+      '0050); to verify it, `POST /users/me/credentials/{provider}/test`. ' +
+      'Reading, removal, and testing reuse the `users/me/credentials` routes ' +
+      "— it's the same table.",
   })
   @ApiCreatedResponse({ type: UserCredentialResponseDto })
   create(@CurrentUser() user: User, @Body() dto: RegisterGitCredentialDto) {

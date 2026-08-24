@@ -18,6 +18,7 @@ import { DrizzleModelBindingRepository } from '../../../../src/infrastructure/pe
 import { DrizzleUserCredentialRepository } from '../../../../src/infrastructure/persistence/drizzle/user-credential.repository';
 import { DrizzleProjectRepository } from '../../../../src/infrastructure/persistence/drizzle/project.repository';
 import { DrizzleBudgetRepository } from '../../../../src/infrastructure/persistence/drizzle/budget.repository';
+import { DrizzleAgentAreaRepository } from '../../../../src/infrastructure/persistence/drizzle/agent-area.repository';
 import { DrizzleTokenUsageRepository } from '../../../../src/infrastructure/persistence/drizzle/token-usage.repository';
 import { EnvelopeEncryptionService } from '../../../../src/infrastructure/security/envelope-encryption.service';
 import { GptTokenizerEstimator } from '../../../../src/infrastructure/tokenization/gpt-tokenizer-estimator';
@@ -41,6 +42,7 @@ const bindingRepo = new DrizzleModelBindingRepository(db);
 const credentialRepo = new DrizzleUserCredentialRepository(db);
 const projectRepo = new DrizzleProjectRepository(db);
 const budgetRepo = new DrizzleBudgetRepository(db);
+const areaRepo = new DrizzleAgentAreaRepository(db);
 const tokenUsageRepo = new DrizzleTokenUsageRepository(db);
 const encryption = new EnvelopeEncryptionService();
 const tokenEstimator = new GptTokenizerEstimator();
@@ -49,7 +51,7 @@ const resolveModelBinding = new ResolveModelBindingUseCase(
   bindingRepo,
   projectRepo,
 );
-const checkBudgetGate = new CheckBudgetGateUseCase(budgetRepo);
+const checkBudgetGate = new CheckBudgetGateUseCase(budgetRepo, areaRepo);
 const resolveCredentialOwner = new ResolveCredentialOwnerUseCase(
   projectRepo,
   new DrizzleWorkspaceRepository(db),
@@ -57,6 +59,7 @@ const resolveCredentialOwner = new ResolveCredentialOwnerUseCase(
 const recordLlmUsage = new RecordLlmUsageUseCase(
   tokenUsageRepo,
   budgetRepo,
+  areaRepo,
   outboxRepo,
   // Registry próprio por spec: prom-client é global por default e
   // contadores vazados entre arquivos tornariam as asserções dependentes
@@ -66,7 +69,12 @@ const recordLlmUsage = new RecordLlmUsageUseCase(
 
 class FakeProvider implements LLMProvider {
   name: LLMProviderName = 'ollama';
-  readonly capabilities = { streaming: true, toolCalling: true };
+  readonly capabilities = {
+    streaming: true,
+    toolCalling: true,
+    listModels: false,
+    embeddings: false,
+  };
   constructor(private readonly script: ChatStreamChunk[]) {}
   async *chat(): AsyncGenerator<ChatStreamChunk> {
     await Promise.resolve();
@@ -76,7 +84,12 @@ class FakeProvider implements LLMProvider {
 
 class ThrowingProvider implements LLMProvider {
   name: LLMProviderName = 'ollama';
-  readonly capabilities = { streaming: true, toolCalling: true };
+  readonly capabilities = {
+    streaming: true,
+    toolCalling: true,
+    listModels: false,
+    embeddings: false,
+  };
   async *chat(): AsyncGenerator<ChatStreamChunk> {
     await Promise.resolve();
     yield { type: 'text_delta', text: 'parcial' };

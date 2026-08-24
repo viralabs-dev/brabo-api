@@ -141,7 +141,68 @@ export function getJson(options: GetJsonOptions): Promise<{
   });
 }
 
-/** Lê o corpo inteiro — só para respostas de ERRO, que são curtas. */
+/**
+ * POST com corpo inteiro de volta, para o embedding (ADR 0075).
+ *
+ * É `postStream` sem o stream: embedding não é streamado por provider nenhum
+ * — a resposta é um JSON único com todos os vetores. Compartilha a mesma marca
+ * de inatividade e a mesma normalização timeout/connection dos outros dois, e
+ * como não há turno em andamento cujo gasto precise ser preservado, o erro
+ * LANÇA em vez de virar chunk (a mesma escolha de `getJson`).
+ */
+export function postJson(options: PostStreamOptions): Promise<{
+  status: number;
+  body: string;
+}> {
+  const { url, body, headers, timeoutMs, timeoutEnvName, provider } = options;
+
+  return new Promise((resolve, reject) => {
+    const alvo = new URL(url);
+    const send = alvo.protocol === 'https:' ? httpsRequest : httpRequest;
+    let estourouPorInatividade = false;
+
+    const req = send(
+      alvo,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(body),
+          ...headers,
+        },
+        timeout: timeoutMs,
+      },
+      (res) => {
+        void readBody(res).then((corpo) =>
+          resolve({ status: res.statusCode ?? 0, body: corpo }),
+        );
+      },
+    );
+
+    req.on('timeout', () => {
+      estourouPorInatividade = true;
+      req.destroy(
+        new Error(`sem resposta após ${timeoutMs}ms (${timeoutEnvName})`),
+      );
+    });
+
+    req.on('error', (error) => {
+      reject(
+        estourouPorInatividade
+          ? new LLMTimeoutError(provider, error.message, error)
+          : new LLMConnectionError(provider, error.message, error),
+      );
+    });
+
+    req.end(body);
+  });
+}
+
+/**
+ * Lê o corpo inteiro. Nasceu para respostas de ERRO, que são curtas, e serve
+ * também as que NÃO são stream (catálogo, embedding) — nunca para o `chat`,
+ * cujo valor é justamente chegar chunk a chunk.
+ */
 export async function readBody(response: IncomingMessage): Promise<string> {
   const pedacos: Buffer[] = [];
   try {

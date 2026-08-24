@@ -3,8 +3,9 @@ import { IsNotEmpty, IsString } from 'class-validator';
 
 export class SendChatMessageDto {
   @ApiProperty({
-    example: 'Resuma o que já decidimos sobre o checkout.',
-    description: 'A mensagem do usuário. A resposta volta como stream SSE.',
+    example: 'Summarize what we have already decided about checkout.',
+    description:
+      "The user's message. The response comes back as an SSE stream.",
   })
   @IsString()
   @IsNotEmpty()

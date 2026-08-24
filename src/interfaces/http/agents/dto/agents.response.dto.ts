@@ -16,17 +16,18 @@ export class HandoffResponseDto implements Wire<Handoff> {
 
   @ApiProperty({
     example: 'criativo',
-    description: 'Slug do agente que passou a bola.',
+    description: 'Slug of the agent that passed the baton.',
   })
   fromAgent!: string;
 
-  @ApiProperty({ example: 'po', description: 'Slug do agente que recebe.' })
+  @ApiProperty({ example: 'po', description: 'Slug of the receiving agent.' })
   toAgent!: string;
 
   @ApiProperty({
     example: '01JC4Z0000ARTEFATO000000001',
     nullable: true,
-    description: 'Artefato que motivou o handoff (product_brief, module_map…).',
+    description:
+      'Artifact that motivated the handoff (product_brief, module_map…).',
   })
   artifactId!: string | null;
 
@@ -34,8 +35,9 @@ export class HandoffResponseDto implements Wire<Handoff> {
     enum: ['offered', 'accepted', 'completed', 'rejected'],
     example: 'offered',
     description:
-      'Este campo é MUTÁVEL — é o estado corrente. Cada transição também vira um ' +
-      'evento `handoff.*` imutável no log, que é onde fica o histórico.',
+      'This field is MUTABLE — it is the current state. Each transition also ' +
+      'becomes an immutable `handoff.*` event in the log, which is where the ' +
+      'history lives.',
   })
   status!: Wire<Handoff>['status'];
 
@@ -47,9 +49,9 @@ export class HandoffResponseDto implements Wire<Handoff> {
 }
 export const _chavesHandoff: MesmasChaves<HandoffResponseDto, Handoff> = true;
 
-/** Confirmação de que o agente subiu. */
+/** Confirmation that the agent has started. */
 export class AgenteAtivadoResponseDto {
-  @ApiProperty({ example: 'po', description: 'Slug do agente ativado.' })
+  @ApiProperty({ example: 'po', description: 'Slug of the activated agent.' })
   agent!: string;
 
   @ApiProperty({ example: 'active', enum: ['active'] })

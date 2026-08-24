@@ -17,8 +17,8 @@ export class HealthStatusResponseDto implements Wire<HealthStatus> {
     type: 'object',
     additionalProperties: true,
     description:
-      'Só quando `status=error`, com a mensagem da falha. Em resposta saudável não ' +
-      'há detalhe nenhum, de propósito: liveness não é lugar de expor topologia.',
+      'Only when `status=error`, with the failure message. A healthy response has ' +
+      'no detail at all, on purpose: liveness is not the place to expose topology.',
   })
   details?: Record<string, unknown>;
 }

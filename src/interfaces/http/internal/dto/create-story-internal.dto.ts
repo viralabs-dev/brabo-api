@@ -13,33 +13,33 @@ export class CreateStoryInternalDto {
   @IsUUID()
   epicId!: string;
 
-  @ApiProperty({ example: 'Adicionar item ao carrinho' })
+  @ApiProperty({ example: 'Add item to cart' })
   @IsString()
   title!: string;
 
   @ApiPropertyOptional({
-    example: 'Como comprador, quero juntar itens antes de pagar.',
+    example: 'As a buyer, I want to gather items before paying.',
   })
   @IsOptional()
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ example: ['O carrinho aceita até 50 itens'] })
+  @ApiPropertyOptional({ example: ['The cart accepts up to 50 items'] })
   @IsOptional()
   @IsArray()
   rf?: string[];
 
-  @ApiPropertyOptional({ example: ['Resposta abaixo de 200 ms no p95'] })
+  @ApiPropertyOptional({ example: ['Response under 200ms at p95'] })
   @IsOptional()
   @IsArray()
   rnf?: string[];
 
-  @ApiPropertyOptional({ example: ['Testes de unidade verdes'] })
+  @ApiPropertyOptional({ example: ['Unit tests green'] })
   @IsOptional()
   @IsArray()
   dod?: string[];
 
-  @ApiPropertyOptional({ example: ['Módulo definido'] })
+  @ApiPropertyOptional({ example: ['Module defined'] })
   @IsOptional()
   @IsArray()
   dor?: string[];
@@ -47,7 +47,7 @@ export class CreateStoryInternalDto {
   @ApiPropertyOptional({
     example: ['RN-014'],
     description:
-      'Cada id precisa referenciar um evento `artifact.business_rule` que EXISTE — id inventado é recusado.',
+      'Each id needs to reference an `artifact.business_rule` event that EXISTS — a made-up id is refused.',
   })
   @IsOptional()
   @IsArray()

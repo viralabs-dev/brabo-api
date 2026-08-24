@@ -1,8 +1,12 @@
 import {
+  BadRequestException,
   Body,
   Controller,
+  Get,
   HttpCode,
+  Param,
   Post,
+  Query,
   Req,
   Res,
   UnauthorizedException,
@@ -14,6 +18,8 @@ import {
   ApiForbiddenResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiParam,
+  ApiResponse,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
@@ -25,7 +31,10 @@ import { RefreshUseCase } from '../../../application/use-cases/auth/refresh.use-
 import { RegisterUseCase } from '../../../application/use-cases/auth/register.use-case';
 import { RequestPasswordResetUseCase } from '../../../application/use-cases/auth/request-password-reset.use-case';
 import { ResetPasswordUseCase } from '../../../application/use-cases/auth/reset-password.use-case';
+import { SocialLoginCallbackUseCase } from '../../../application/use-cases/auth/social-login-callback.use-case';
+import { StartSocialLoginUseCase } from '../../../application/use-cases/auth/start-social-login.use-case';
 import { VerifyEmailUseCase } from '../../../application/use-cases/auth/verify-email.use-case';
+import type { SocialOauthProviderName } from '../../../domain/auth/social-oauth-state';
 import type { ContextoDaRequisicao } from '../../../application/use-cases/auth/auth-config';
 import {
   AceiteResponseDto,
@@ -43,6 +52,15 @@ import {
   refreshDoCookie,
 } from './session-cookies';
 import { authConfig } from '../../../application/use-cases/auth/auth-config';
+
+const SOCIAL_PROVIDERS = ['github', 'gitlab'] as const;
+
+function parseSocialProvider(value: string): SocialOauthProviderName {
+  if (!SOCIAL_PROVIDERS.includes(value as SocialOauthProviderName)) {
+    throw new BadRequestException(`Provider inválido: ${value}`);
+  }
+  return value as SocialOauthProviderName;
+}
 
 const ACEITE = {
   message: 'Se o endereço estiver disponível, enviamos um e-mail.',
@@ -77,23 +95,25 @@ export class AuthController {
     private readonly verificarEmail: VerifyEmailUseCase,
     private readonly pedirReset: RequestPasswordResetUseCase,
     private readonly resetar: ResetPasswordUseCase,
+    private readonly startSocialLogin: StartSocialLoginUseCase,
+    private readonly socialLoginCallback: SocialLoginCallbackUseCase,
   ) {}
 
   @Post('register')
   @Public()
   @HttpCode(202)
   @ApiOperation({
-    summary: 'Cria uma conta e envia o e-mail de verificação',
+    summary: 'Creates an account and sends the verification email',
     description:
-      'Responde 202 tanto para endereço novo quanto para endereço já cadastrado — ' +
-      'a resposta não revela se a conta existe. No segundo caso nada é criado e o ' +
-      'dono do endereço recebe um aviso.',
+      'Responds 202 for both a new address and an already-registered one — ' +
+      "the response doesn't reveal whether the account exists. In the second " +
+      "case nothing is created and the address's owner gets a notice.",
   })
   @ApiAcceptedResponse({ type: AceiteResponseDto })
   @ApiForbiddenResponse({
-    description: 'Cadastro fechado (AUTH_REGISTRATION_ENABLED=false).',
+    description: 'Registration closed (AUTH_REGISTRATION_ENABLED=false).',
   })
-  @ApiBadRequestResponse({ description: 'Senha fora da política mínima.' })
+  @ApiBadRequestResponse({ description: 'Password fails the minimum policy.' })
   async register(
     @Body() dto: RegisterDto,
     @Req() req: Request,
@@ -111,14 +131,14 @@ export class AuthController {
   @Public()
   @HttpCode(200)
   @ApiOperation({
-    summary: 'Autentica e emite o par access + refresh',
+    summary: 'Authenticates and issues the access + refresh pair',
     description:
-      'E-mail inexistente, senha errada e conta bloqueada devolvem exatamente a ' +
-      'mesma resposta 401 — mesmo corpo, mesmo status.',
+      'A nonexistent email, wrong password, and a locked account all return ' +
+      'exactly the same 401 response — same body, same status.',
   })
   @ApiOkResponse({ type: SessaoResponseDto })
-  @ApiUnauthorizedResponse({ description: 'Credenciais inválidas.' })
-  @ApiForbiddenResponse({ description: 'E-mail ainda não verificado.' })
+  @ApiUnauthorizedResponse({ description: 'Invalid credentials.' })
+  @ApiForbiddenResponse({ description: 'Email not yet verified.' })
   async login_(
     @Body() dto: LoginDto,
     @Req() req: Request,
@@ -136,15 +156,15 @@ export class AuthController {
   @Public()
   @HttpCode(200)
   @ApiOperation({
-    summary: 'Rotaciona o refresh e emite um par novo',
+    summary: 'Rotates the refresh and issues a new pair',
     description:
-      'O refresh apresentado é consumido. Reapresentar um token já rotacionado ' +
-      'revoga a FAMÍLIA inteira e registra evento de segurança — inclusive quando ' +
-      'a causa foi um duplo-submit do cliente.',
+      'The presented refresh is consumed. Re-presenting an already-rotated ' +
+      'token revokes the WHOLE family and records a security event — even ' +
+      'when the cause was a client double-submit.',
   })
   @ApiOkResponse({ type: SessaoResponseDto })
   @ApiUnauthorizedResponse({
-    description: 'Refresh inválido, expirado ou já usado.',
+    description: 'Refresh invalid, expired, or already used.',
   })
   async refresh_(
     @Req() req: Request,
@@ -167,13 +187,13 @@ export class AuthController {
   @Public()
   @HttpCode(204)
   @ApiOperation({
-    summary: 'Revoga a família do refresh apresentado',
+    summary: 'Revokes the family of the presented refresh',
     description:
-      'Sempre 204, inclusive para token desconhecido — responder 401 aqui seria ' +
-      'um oráculo de validade de token.',
+      'Always 204, even for an unknown token — answering 401 here would be a ' +
+      'token-validity oracle.',
   })
   @ApiNoContentResponse({
-    description: 'Sessão encerrada. Os cookies de sessão são limpos.',
+    description: 'Session ended. The session cookies are cleared.',
   })
   async logout_(
     @Req() req: Request,
@@ -198,14 +218,14 @@ export class AuthController {
   @Public()
   @HttpCode(204)
   @ApiOperation({
-    summary: 'Confirma o e-mail com o token de uso único',
+    summary: 'Confirms the email with the single-use token',
   })
   @ApiBadRequestResponse({
     description:
-      'Link inválido, expirado ou já usado — os três com a mesma resposta.',
+      'Link invalid, expired, or already used — all three with the same response.',
   })
   @ApiNoContentResponse({
-    description: 'E-mail verificado; o login já funciona.',
+    description: 'Email verified; login already works.',
   })
   async verifyEmail(
     @Body() dto: VerifyEmailDto,
@@ -221,10 +241,10 @@ export class AuthController {
   @Public()
   @HttpCode(202)
   @ApiOperation({
-    summary: 'Pede o link de redefinição de senha',
+    summary: 'Requests the password reset link',
     description:
-      'Responde 202 para endereço conhecido e desconhecido. É também o caminho ' +
-      'de quem foi importado do Keycloak e ainda não definiu senha.',
+      'Responds 202 for both a known and an unknown address. It is also the ' +
+      "path for whoever was imported from Keycloak and hasn't set a password yet.",
   })
   @ApiAcceptedResponse({ type: AceiteResponseDto })
   async requestPasswordReset(
@@ -242,18 +262,18 @@ export class AuthController {
   @Public()
   @HttpCode(204)
   @ApiOperation({
-    summary: 'Define a senha nova a partir do token',
+    summary: 'Sets the new password from the token',
     description:
-      'Revoga TODAS as sessões do usuário. Não emite tokens: quem redefine a ' +
-      'senha é mandado para o login, para comprometer o e-mail não equivaler a ' +
-      'tomar a conta em um passo só.',
+      "Revokes ALL of the user's sessions. Does not issue tokens: whoever " +
+      'resets the password is sent to login, so that compromising the email ' +
+      "doesn't equal taking over the account in a single step.",
   })
   @ApiBadRequestResponse({
-    description: 'Link inválido/expirado, ou senha fora da política.',
+    description: 'Link invalid/expired, or password fails the policy.',
   })
   @ApiNoContentResponse({
     description:
-      'Senha definida. TODAS as sessões vivas do usuário são revogadas junto.',
+      "Password set. ALL of the user's live sessions are revoked along with it.",
   })
   async resetPassword(
     @Body() dto: ResetPasswordDto,
@@ -267,6 +287,113 @@ export class AuthController {
   }
 
   /**
+   * Início do login social (RN-272..286, ADR 0084).
+   *
+   * `@Public()` pela mesma razão do callback de conexão de git: quem chega é
+   * o BROWSER, sem sessão nenhuma da api ainda — é o próprio ponto de
+   * entrada. Redireciona direto para o provider, sem corpo JSON no meio: um
+   * `<a href>` simples na tela de login basta, sem JavaScript de mais.
+   */
+  @Get('oauth/:provider/start')
+  @Public()
+  @ApiParam({ name: 'provider', enum: SOCIAL_PROVIDERS })
+  @ApiOperation({
+    summary: 'Redirects to the OAuth provider for social login',
+    description:
+      'The `state` goes signed by HMAC with its OWN purpose — never the git ' +
+      "connection-to-project flow's (see ADR 0084).",
+  })
+  @ApiResponse({
+    status: 302,
+    description: 'Redirects to the provider.',
+    headers: {
+      Location: {
+        description: "The provider's authorization URL.",
+        schema: {
+          type: 'string',
+          example: 'https://github.com/login/oauth/authorize?…',
+        },
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: 'Provider outside `github`/`gitlab`.' })
+  oauthStart(@Param('provider') provider: string, @Res() res: Response): void {
+    const { authorizeUrl } = this.startSocialLogin.execute(
+      parseSocialProvider(provider),
+    );
+    res.redirect(302, authorizeUrl);
+  }
+
+  /**
+   * Recebe o retorno do OAuth de login social e redireciona para a web.
+   *
+   * Mesmo desenho do `git/oauth/:provider/callback`: pública, `state`
+   * verificado por HMAC, e NUNCA responde JSON — um corpo de erro cru numa
+   * navegação de browser seria péssima experiência, e o motivo do erro NÃO
+   * vaza na URL.
+   *
+   * O access token não vai na URL nem no corpo: os cookies de sessão são
+   * gravados aqui (mesma `definirCookiesDeSessao` do login por senha) e o
+   * boot da web (`restaurarSessao()`, chamado em TODA carga de página) já
+   * troca o refresh recém-gravado por um access token, sem código novo do
+   * lado do cliente.
+   */
+  @Get('oauth/:provider/callback')
+  @Public()
+  @ApiParam({ name: 'provider', enum: SOCIAL_PROVIDERS })
+  @ApiOperation({
+    summary: 'Receives the social login OAuth callback',
+    description:
+      'Success goes to `WEB_ORIGIN/` already with the session cookies set; ' +
+      'failure goes to `WEB_ORIGIN/login?oauth_error=1`, without detailing the reason.',
+  })
+  @ApiResponse({
+    status: 302,
+    description: 'Redirects to the web app.',
+    headers: {
+      Location: {
+        description: 'Destination on the web app.',
+        schema: {
+          type: 'string',
+          example: 'http://localhost:5173/',
+        },
+      },
+    },
+  })
+  async oauthCallback(
+    @Param('provider') provider: string,
+    @Query('code') code: string,
+    @Query('state') state: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    const webOrigin = process.env.WEB_ORIGIN ?? 'http://localhost:5173';
+    const apiPublicUrl = process.env.API_PUBLIC_URL ?? 'http://localhost:3000';
+
+    try {
+      const parsedProvider = parseSocialProvider(provider);
+      const redirectUri = `${apiPublicUrl}/auth/oauth/${parsedProvider}/callback`;
+      const sessao = await this.socialLoginCallback.execute(
+        parsedProvider,
+        code,
+        state,
+        redirectUri,
+        contextoDe(req),
+      );
+      definirCookiesDeSessao(
+        res,
+        sessao.refreshToken,
+        authConfig.refreshTtlMs(),
+      );
+      res.redirect(302, `${webOrigin}/`);
+    } catch {
+      // Navegação de browser vindo do provider — ver o docblock do
+      // `git.controller.ts#callback`, mesmo raciocínio.
+      res.redirect(302, `${webOrigin}/login?oauth_error=1`);
+    }
+  }
+
+  /**
    * Manda o refresh pelo cookie e devolve só o access no corpo.
    *
    * Devolver o refresh nos dois lugares anularia o `httpOnly`: bastaria o XSS
@@ -274,10 +401,19 @@ export class AuthController {
    */
   private responderComCookies(
     res: Response,
-    sessao: { accessToken: string; refreshToken: string; expiresIn: number },
+    sessao: {
+      accessToken: string;
+      refreshToken: string;
+      expiresIn: number;
+      locale: string;
+    },
   ): SessaoResponseDto {
     definirCookiesDeSessao(res, sessao.refreshToken, authConfig.refreshTtlMs());
-    return { accessToken: sessao.accessToken, expiresIn: sessao.expiresIn };
+    return {
+      accessToken: sessao.accessToken,
+      expiresIn: sessao.expiresIn,
+      locale: sessao.locale,
+    };
   }
 }
 

@@ -1,5 +1,6 @@
 /**
- * A fronteira do container (ADR 0065): o que é DENTRO e o que é FORA.
+ * A fronteira do container (ADR 0065) e o comando privilegiado: o que é
+ * DENTRO e o que é FORA, e o que eleva privilégio no host.
  *
  * ## O problema
  *
@@ -13,36 +14,47 @@
  * parede do container e chegam no mundo — `git push`, abertura de PR e deploy
  * — e o usuário foi textual sobre eles: *"agente livre para o que quiser desde
  * que não seja comandos de git ligado ao deploy e ao PR — estas ações ainda
- * devem ser humanas"*.
+ * devem ser humanas"*. `sudo`/`doas` entraram depois, pelo mesmo pedido
+ * textual, agora estendido a QUALQUER comando que eleve privilégio: também
+ * SEMPRE humano, mesmo com "modo automático" ligado.
  *
- * ## Por que `deny` no terminal, e não `require_approval`
+ * ## Por que TETO ABSOLUTO em `decide()`, e não mais `deny` aqui
  *
- * Cada um desses efeitos JÁ tem um caminho tipado — `git_push`, `pr_open`,
+ * Cada efeito de git JÁ tem um caminho tipado — `git_push`, `pr_open`,
  * `git_merge` — que nasce `proposed_action`, tem papel mínimo próprio, é
  * executado pela plataforma e fica no event log com o que foi empurrado e para
- * onde. O terminal é uma SEGUNDA porta para o mesmo efeito, e uma porta sem
- * nenhuma dessas garantias: o event log registraria "um comando rodou", não
- * "esta branch foi empurrada".
+ * onde. O terminal é uma SEGUNDA porta para o mesmo efeito. `sudo`/`doas` não
+ * têm ação tipada equivalente — não há "para onde redirecionar", o comando
+ * privilegiado É o comando, só que decidido por um humano toda vez.
  *
- * `require_approval` não bastaria porque o produto tem "sempre permitir", que
- * grava o padrão em `allow` — bastaria um clique para a segunda porta ficar
- * aberta para sempre. `deny` vence `allow` em qualquer estágio (ver
- * `decide.ts`), e é por isso que ele é a forma certa desta regra: não é uma
- * preferência configurável, é a fronteira.
+ * Esta função só DETECTA — quem decide a política é `decide.ts`, no bloco dos
+ * tetos absolutos (mesma forma de merge protegido/`instruction_patch`/
+ * paralelismo): `require_approval` incondicional, mesmo com `agent_autonomy`
+ * no curinga `"*"` em `auto_approve` ou um `allow` de `permissions.json` que
+ * casaria. Isto DEIXOU de ser `deny` (ver o histórico deste arquivo/ADR 0065
+ * para a versão anterior): "sempre permitir" gravaria o padrão em `allow` e a
+ * segunda porta ficaria aberta pra sempre — mas essa fresta foi fechada na
+ * FONTE (`pattern-for-action.ts`/`ApproveAlwaysActionUseCase` recusam gravar
+ * padrão pra comando com efeito externo ou privilegiado), então o teto pode
+ * ser a forma mais informativa (`proposed_action` pendente, no event log,
+ * decisão caso a caso) sem reabrir o buraco que o `deny` original existia
+ * pra tapar.
  *
- * Negar aqui não tira poder do agente — redireciona: a mensagem diz qual ação
- * tipada usar. Foi assim que o dev agent sempre fez, aliás (`agent_io.ex`
- * propõe `git_push`); o que muda é que agora está garantido, e não só
- * combinado.
+ * Negar aqui não tira poder do agente — a mensagem de efeito externo
+ * redireciona: diz qual ação tipada usar. Foi assim que o dev agent sempre
+ * fez, aliás (`agent_io.ex` propõe `git_push`); o que muda é que agora está
+ * garantido, e não só combinado. `sudo`/`doas` não redirecionam pra lugar
+ * nenhum — a mensagem só explica por que aquele comando específico pede
+ * decisão humana.
  *
  * ## Por que a lista pode ser curta sem ser um allowlist
  *
  * Esta lista NÃO tenta enumerar tudo que é perigoso — essa é justamente a
- * tentativa que os achados Z e AD provaram não convergir. Ela enumera os três
- * efeitos que a constituição do produto declara humanos, e o container cuida
- * do resto: sem rede (`network: none`, o default do artefato do Arquiteto), um
- * `curl | sh` não alcança nada, e um verbo destrutivo destrói o container
- * descartável do projeto, não o host.
+ * tentativa que os achados Z e AD provaram não convergir. Ela enumera os
+ * efeitos que a constituição do produto declara sempre humanos, e o
+ * container cuida do resto: sem rede (`network: none`, o default do artefato
+ * do Arquiteto), um `curl | sh` não alcança nada, e um verbo destrutivo
+ * destrói o container descartável do projeto, não o host.
  *
  * Puro, sem IO.
  */
@@ -221,4 +233,94 @@ export function mensagemDeEfeitoExterno(efeito: EfeitoExterno): string {
     `${efeito.motivo}. Use a ação tipada \`${efeito.acaoTipada}\`, que nasce ` +
     `proposed_action e passa pela decisão do usuário.`
   );
+}
+
+export interface ComandoPrivilegiado {
+  /** O verbo que elevou privilégio (`sudo` ou `doas`), para a mensagem. */
+  comando: string;
+  motivo: string;
+}
+
+/**
+ * Verbos que elevam privilégio no host. Categoria PRÓPRIA, separada de
+ * `REGRAS` (efeito externo git/PR/deploy): não têm ação tipada equivalente —
+ * não há "para onde redirecionar", o comando privilegiado É o comando, só
+ * que sempre decidido por um humano. `decide()` pergunta pelas duas
+ * categorias juntas (`efeitoExternoNoComando` OU `comandoPrivilegiadoNoComando`)
+ * no mesmo bloco de teto absoluto.
+ */
+const VERBOS_PRIVILEGIADOS: readonly string[] = ['sudo', 'doas'];
+
+const ELEVA_PRIVILEGIO =
+  'eleva privilégio no host — decisão sempre humana, mesmo com "modo automático" ligado';
+
+/**
+ * O primeiro comando privilegiado encontrado em QUALQUER segmento, ou
+ * `null`. Mesma varredura de `efeitoExternoNoComando`: `pnpm test && sudo
+ * rm -rf /` é um comando que eleva privilégio, e casar só o primeiro
+ * segmento seria a fresta pela qual ele passaria.
+ *
+ * Casamento é pelo VERBO (primeiro token do segmento) — `sudo -u root apt
+ * install x` casa; um argumento que só CONTÉM a palavra `sudo` no meio
+ * (ex.: `echo sudo`) não casa, porque `sudo` ali não é o verbo do segmento.
+ */
+export function comandoPrivilegiadoNoComando(
+  segmentos: string[][],
+): ComandoPrivilegiado | null {
+  for (const tokens of segmentos) {
+    if (tokens.length === 0) continue;
+    if (VERBOS_PRIVILEGIADOS.includes(tokens[0])) {
+      return { comando: tokens[0], motivo: ELEVA_PRIVILEGIO };
+    }
+  }
+  return null;
+}
+
+/**
+ * A mensagem que o agente lê pra comando privilegiado. Diferente de
+ * `mensagemDeEfeitoExterno`, não redireciona pra ação tipada — não existe
+ * uma: só explica por que aquele comando específico pede decisão humana.
+ */
+export function mensagemDeComandoPrivilegiado(
+  cmd: ComandoPrivilegiado,
+): string {
+  return (
+    `comando privilegiado: "${cmd.comando}" ${cmd.motivo}. Vira ` +
+    `proposed_action pendente — o usuário decide caso a caso.`
+  );
+}
+
+/**
+ * A OUTRA metade do teto absoluto (ver decide.ts): sem isto, "sempre
+ * permitir" gravaria `Terminal(git push)`/`Terminal(sudo)` em
+ * `permissions.json`/`allow`, e a próxima proposta do MESMO comando
+ * auto-aprovaria — reabrindo a porta que o teto de `decide()` existe pra
+ * manter fechada. `ApproveAlwaysActionUseCase` chama isto ANTES de gravar
+ * qualquer padrão; `null` significa "pode gravar normalmente".
+ *
+ * Mensagem endereçada ao USUÁRIO que clicou "sempre permitir" (tom
+ * diferente de `mensagemDeEfeitoExterno`/`mensagemDeComandoPrivilegiado`,
+ * que falam com o agente) — explica por que nada foi gravado e o que fazer
+ * em vez disso.
+ */
+export function motivoDeRecusaSempreAprovar(
+  segmentos: string[][],
+): string | null {
+  const efeito = efeitoExternoNoComando(segmentos);
+  if (efeito) {
+    return (
+      `"sempre permitir" não grava padrão pra "${efeito.comando}": ` +
+      `${efeito.motivo}. Esta ação nasce SEMPRE proposed_action pendente — ` +
+      `aprove só esta instância pelo fluxo normal de aprovação.`
+    );
+  }
+  const privilegiado = comandoPrivilegiadoNoComando(segmentos);
+  if (privilegiado) {
+    return (
+      `"sempre permitir" não grava padrão pra "${privilegiado.comando}": ` +
+      `${privilegiado.motivo}. Esta ação nasce SEMPRE proposed_action ` +
+      `pendente — aprove só esta instância pelo fluxo normal de aprovação.`
+    );
+  }
+  return null;
 }

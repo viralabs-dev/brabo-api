@@ -14,7 +14,7 @@ export class AssignStoryModulesInternalDto {
   @ApiProperty({
     example: ['api', 'web'],
     description:
-      'Nomes do `module_map` vigente. Módulo inexistente vira pendência de arquitetura.',
+      "Names from the current `module_map`. A module that doesn't exist becomes an architecture pending item.",
   })
   @IsArray()
   @IsString({ each: true })

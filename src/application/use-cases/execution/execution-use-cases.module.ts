@@ -10,6 +10,7 @@ import { AcceptParallelizationUseCase } from './accept-parallelization.use-case'
 import { RequestParallelizationUseCase } from './request-parallelization.use-case';
 import { ListAgentAreasUseCase } from './list-agent-areas.use-case';
 import { SetAreaMaxParallelUseCase } from './set-area-max-parallel.use-case';
+import { SetAreaBudgetUseCase } from './set-area-budget.use-case';
 import { ExecuteParallelizationUseCase } from './execute-parallelization.use-case';
 import { ProposeMaxParallelUseCase } from './propose-max-parallel.use-case';
 import { ExecuteMaxParallelRaiseUseCase } from './execute-max-parallel-raise.use-case';
@@ -34,6 +35,7 @@ import { AcceptHypothesisUseCase } from './accept-hypothesis.use-case';
 import { DismissHypothesisUseCase } from './dismiss-hypothesis.use-case';
 import { ListHypothesesUseCase } from './list-hypotheses.use-case';
 import { ReanalyzeSessionUseCase } from './reanalyze-session.use-case';
+import { GetPsychologistStatusUseCase } from './get-psychologist-status.use-case';
 import { GetPsychologistAnalysisCostUseCase } from './get-psychologist-analysis-cost.use-case';
 import { ListPsychologistAnalysesUseCase } from './list-psychologist-analyses.use-case';
 import { AnamneseUseCasesModule } from '../anamnese/anamnese-use-cases.module';
@@ -49,6 +51,7 @@ const USE_CASES = [
   RequestParallelizationUseCase,
   ListAgentAreasUseCase,
   SetAreaMaxParallelUseCase,
+  SetAreaBudgetUseCase,
   ExecuteParallelizationUseCase,
   ProposeMaxParallelUseCase,
   ExecuteMaxParallelRaiseUseCase,
@@ -72,6 +75,7 @@ const USE_CASES = [
   DismissHypothesisUseCase,
   ListHypothesesUseCase,
   ReanalyzeSessionUseCase,
+  GetPsychologistStatusUseCase,
   GetPsychologistAnalysisCostUseCase,
   ListPsychologistAnalysesUseCase,
 ];

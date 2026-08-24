@@ -9,7 +9,7 @@ export class ClaimTaskInternalDto {
 
   @ApiProperty({
     example: 'api',
-    description: 'Só tarefas deste módulo entram no sorteio.',
+    description: 'Only tasks from this module enter the draw.',
   })
   @IsString()
   module!: string;

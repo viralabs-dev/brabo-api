@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { createTestDb, truncateAll } from '../../../support/test-db';
 import {
   projects,
@@ -77,8 +77,14 @@ class FakeApiToEngineClient implements ApiToEngineClient {
   async reviseStory(): Promise<void> {}
   async offerInfraHandoff(): Promise<void> {}
   async reanalyzeSession(): Promise<void> {}
+  async getPsychologistStatus(): Promise<{ enabled: boolean }> {
+    return { enabled: true };
+  }
   async runAnamnese(): Promise<void> {}
   async invalidateInstructions(): Promise<void> {}
+  async requestRunnerTicket(): Promise<{ ticket: string; expiresAt: Date }> {
+    return { ticket: 'fake-ticket', expiresAt: new Date() };
+  }
   executeTerminalAction(): Promise<TerminalExecutionResult> {
     this.callCount += 1;
     return Promise.resolve(EXEC_RESULT);
@@ -238,5 +244,61 @@ describe('ApproveAlwaysActionUseCase', () => {
         user.id,
       ),
     ).rejects.toThrow(NotFoundException);
+  });
+
+  // A OUTRA metade do teto absoluto de decide.ts (RN-106): sem isto, um
+  // clique aqui gravaria `Terminal(git push)`/`Terminal(sudo)` em
+  // permissions.json/allow e reabriria pra sempre a porta que o teto de
+  // decide() existe pra manter fechada.
+  it('"sempre permitir" sobre `git push` recusa gravar padrão e NÃO aprova a ação', async () => {
+    const { project, session, user, action } = await setupPendingTerminalAction(
+      'git push origin main',
+    );
+    expect(action.status).toBe('pending');
+
+    await expect(
+      approveAlwaysAction.execute(project.id, session.id, action.id, user.id),
+    ).rejects.toThrow(BadRequestException);
+
+    const file = await permissionsFileStore.read(project);
+    expect(file.allow).toEqual([]);
+
+    // A ação instância continua pendente — não foi aprovada por este
+    // caminho. O usuário aprova ela pelo fluxo normal (approve simples).
+    const stillPending = await proposedActionRepo.findInSessionForUpdate(
+      session.id,
+      action.id,
+    );
+    expect(stillPending?.status).toBe('pending');
+  });
+
+  it('"sempre permitir" sobre comando privilegiado (`sudo`) recusa gravar padrão e NÃO aprova a ação', async () => {
+    const { project, session, user, action } = await setupPendingTerminalAction(
+      'sudo apt install htop',
+    );
+    expect(action.status).toBe('pending');
+
+    await expect(
+      approveAlwaysAction.execute(project.id, session.id, action.id, user.id),
+    ).rejects.toThrow(BadRequestException);
+
+    const file = await permissionsFileStore.read(project);
+    expect(file.allow).toEqual([]);
+  });
+
+  it('regressão: "sempre permitir" sobre comando comum (sem efeito externo, sem sudo) continua gravando o padrão normalmente', async () => {
+    const { project, session, user, action } =
+      await setupPendingTerminalAction('pnpm test');
+
+    const approved = await approveAlwaysAction.execute(
+      project.id,
+      session.id,
+      action.id,
+      user.id,
+    );
+
+    expect(approved.status).toBe('executed');
+    const file = await permissionsFileStore.read(project);
+    expect(file.allow).toEqual(['Terminal(pnpm test)']);
   });
 });

@@ -88,14 +88,14 @@ const NOME_DE_PASTA_VALIDO = /^[A-Za-z0-9_-]{1,64}$/;
  * existir: as duas derivações (api e engine) têm que concordar, e uma
  * checagem duplicada é uma checagem que um dia diverge.
  *
- * ## O modo Local (RN-169, ADR 0072)
+ * ## Os modos `mounted`/`runner` (RN-169/RN-421, ADR 0072/0104)
  *
  * A partir do ADR 0072 a raiz deixa de ser SEMPRE `join(env, coluna)`. Um
- * projeto `local` tem por raiz o caminho absoluto que o usuário digitou, e a
- * consequência é honesta e está escrita no ADR: a contenção estrutural que o
- * `join` dava — "o resultado nunca sai da raiz gerenciada, aconteça o que
- * acontecer com a coluna" — deixa de existir para esses projetos, e o que
- * sobra é a validação da CRIAÇÃO (RN-170).
+ * projeto `mounted` ou `runner` tem por raiz o caminho absoluto que o
+ * usuário digitou, e a consequência é honesta e está escrita no ADR: a
+ * contenção estrutural que o `join` dava — "o resultado nunca sai da raiz
+ * gerenciada, aconteça o que acontecer com a coluna" — deixa de existir para
+ * esses projetos, e o que sobra é a validação da CRIAÇÃO (RN-170/RN-422).
  *
  * Por isso o caminho gravado é REVALIDADO na leitura, e não só na escrita:
  * `caminhoDeWorkspaceLocalValido` é o mesmo predicado LÉXICO que a criação
@@ -107,13 +107,16 @@ const NOME_DE_PASTA_VALIDO = /^[A-Za-z0-9_-]{1,64}$/;
  * onde o usuário ainda pode corrigir o que digitou.
  */
 export function projectScopeRoot(local: ProjectWorkspaceLocation): string {
-  if (local.workspaceMode === 'local') {
+  if (local.executionMode !== 'container') {
     const caminho = local.workspacePath ?? '';
     // O banco tem CHECK para o par (modo, caminho), então chegar aqui sem
     // caminho é linha incoerente — e o erro diz isso em vez de devolver `/`.
+    // `mounted` e `runner` derivam a raiz da MESMA forma: os dois têm a
+    // pasta do usuário como raiz, o que muda entre eles é só QUANDO/QUEM
+    // verifica que ela existe de verdade (RN-422/RN-423), não onde ela fica.
     if (!caminhoDeWorkspaceLocalValido(caminho)) {
       throw new Error(
-        `workspacePath inválido para projeto no modo local: ${JSON.stringify(caminho)}`,
+        `workspacePath inválido para projeto no modo ${local.executionMode}: ${JSON.stringify(caminho)}`,
       );
     }
     return normalizarSemBarraFinal(caminho);
@@ -180,20 +183,28 @@ function raizDoBrabo(): string {
  * aqui seria reabrir o alerta com outro nome. Um caminho absoluto sempre sobra
  * com a barra inicial, por causa do primeiro segmento vazio do `split`.
  */
-function normalizarSemBarraFinal(caminho: string): string {
+export function normalizarSemBarraFinal(caminho: string): string {
   const partes = caminho.split('/').filter((p) => p.length > 0);
   return `/${partes.join('/')}`;
 }
 
 /**
- * O predicado LÉXICO do caminho de workspace local (RN-170) — sem tocar disco.
+ * O predicado LÉXICO do caminho de workspace (RN-170/RN-422) — sem tocar
+ * disco.
  *
  * Separado da checagem de disco porque os dois têm tempos de vida diferentes:
  * este vale para sempre (uma raiz em `/etc` é ruim hoje e amanhã) e por isso
  * roda também na LEITURA, em `projectScopeRoot`; o de disco descreve o estado
- * do container agora, e roda só na criação, onde o usuário pode corrigir.
+ * do container agora, e roda só na criação em modo `mounted`, onde o usuário
+ * pode corrigir.
+ *
+ * EXPORTADA (ADR 0104, RN-423): é também o que valida a criação de um
+ * projeto `runner` — sem tocar disco, porque só o runner, rodando no host de
+ * verdade, tem autoridade para confirmar que a pasta existe. Mesmo predicado
+ * nos dois modos: a diferença entre `mounted` e `runner` não é o que conta
+ * como caminho válido, é QUANDO/QUEM confirma a parte de disco.
  */
-function caminhoDeWorkspaceLocalValido(caminho: string): boolean {
+export function caminhoDeWorkspaceLocalValido(caminho: string): boolean {
   if (caminho.length === 0 || caminho.includes('\0')) return false;
   // Absoluto: um caminho relativo dependeria do `cwd` de QUEM resolve, e api e
   // engine são processos diferentes com cwd diferente — a raiz derivada por um

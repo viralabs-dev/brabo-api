@@ -4,7 +4,7 @@ import { IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 export class ProvisionRepositoryDto {
   @ApiProperty({
     example: 'checkout',
-    description: 'Nome do repositório no provider.',
+    description: 'Repository name on the provider.',
   })
   @IsString()
   @IsNotEmpty()
@@ -17,8 +17,8 @@ export class ProvisionRepositoryDto {
   @ApiPropertyOptional({
     example: 'acme',
     description:
-      'Organização ou grupo. Omitido, o repositório nasce na conta pessoal de quem ' +
-      'registrou a credencial.',
+      'Organization or group. When omitted, the repository is created in ' +
+      "whoever registered the credential's personal account.",
   })
   @IsOptional()
   @IsString()

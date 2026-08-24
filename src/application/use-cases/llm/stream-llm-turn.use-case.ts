@@ -93,6 +93,7 @@ export class StreamLlmTurnUseCase {
     const gate = await this.checkBudgetGate.execute(
       input.projectId,
       input.sessionId,
+      input.agentId,
     );
     if (gate.blocked) {
       yield finalError(gate.reason ?? 'Budget excedido', model.name);

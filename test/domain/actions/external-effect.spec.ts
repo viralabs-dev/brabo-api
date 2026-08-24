@@ -3,10 +3,16 @@ import { parseCommand } from '../../../src/domain/actions/command-matcher';
 import {
   efeitoExternoNoComando,
   mensagemDeEfeitoExterno,
+  comandoPrivilegiadoNoComando,
+  mensagemDeComandoPrivilegiado,
 } from '../../../src/domain/actions/external-effect';
 
 function efeito(comando: string) {
   return efeitoExternoNoComando(parseCommand(comando));
+}
+
+function privilegiado(comando: string) {
+  return comandoPrivilegiadoNoComando(parseCommand(comando));
 }
 
 describe('efeitoExternoNoComando — o que atravessa a parede do container', () => {
@@ -55,5 +61,41 @@ describe('efeitoExternoNoComando — o que atravessa a parede do container', () 
     expect(e).not.toBeNull();
     expect(mensagemDeEfeitoExterno(e!)).toMatch(/`git_push`/);
     expect(mensagemDeEfeitoExterno(e!)).toMatch(/proposed_action/);
+  });
+});
+
+describe('comandoPrivilegiadoNoComando — sudo/doas, sem ação tipada equivalente', () => {
+  it.each([
+    ['sudo apt install htop', 'sudo'],
+    ['sudo -u root systemctl restart nginx', 'sudo'],
+    ['doas pkg_add htop', 'doas'],
+  ])('%j é comando privilegiado (%s)', (comando, verbo) => {
+    expect(privilegiado(comando)?.comando).toBe(verbo);
+  });
+
+  it.each([
+    'echo sudo',
+    'pnpm run sudo-check',
+    'git commit -m "usa sudo com cautela"',
+    'ls -la',
+  ])(
+    '%j NÃO é comando privilegiado — "sudo" não é o VERBO do segmento',
+    (comando) => {
+      expect(privilegiado(comando)).toBeNull();
+    },
+  );
+
+  it('um sudo escondido no fim de um composto ainda é privilegiado', () => {
+    expect(privilegiado('echo oi && sudo rm -rf /tmp/x')?.comando).toBe(
+      'sudo',
+    );
+  });
+
+  it('a mensagem explica por que pede decisão humana, sem redirecionar pra ação nenhuma', () => {
+    const p = privilegiado('sudo apt install htop');
+    expect(p).not.toBeNull();
+    const msg = mensagemDeComandoPrivilegiado(p!);
+    expect(msg).toMatch(/sudo/);
+    expect(msg).toMatch(/proposed_action/);
   });
 });

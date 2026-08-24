@@ -14,6 +14,7 @@ import { DrizzleModelBindingRepository } from '../../../src/infrastructure/persi
 import { DrizzleUserCredentialRepository } from '../../../src/infrastructure/persistence/drizzle/user-credential.repository';
 import { DrizzleProjectRepository } from '../../../src/infrastructure/persistence/drizzle/project.repository';
 import { DrizzleBudgetRepository } from '../../../src/infrastructure/persistence/drizzle/budget.repository';
+import { DrizzleAgentAreaRepository } from '../../../src/infrastructure/persistence/drizzle/agent-area.repository';
 import { DrizzleTokenUsageRepository } from '../../../src/infrastructure/persistence/drizzle/token-usage.repository';
 import { DrizzleSessionRepository } from '../../../src/infrastructure/persistence/drizzle/session.repository';
 import { DrizzleSessionEventRepository } from '../../../src/infrastructure/persistence/drizzle/session-event.repository';
@@ -80,6 +81,7 @@ describe.skipIf(!apiKey)(
     const credentialRepo = new DrizzleUserCredentialRepository(db);
     const projectRepo = new DrizzleProjectRepository(db);
     const budgetRepo = new DrizzleBudgetRepository(db);
+    const areaRepo = new DrizzleAgentAreaRepository(db);
     const tokenUsageRepo = new DrizzleTokenUsageRepository(db);
     const sessionRepo = new DrizzleSessionRepository(db);
     const sessionEventRepo = new DrizzleSessionEventRepository(db);
@@ -91,7 +93,12 @@ describe.skipIf(!apiKey)(
     const nvidiaNim = new NvidiaNimProvider(tokenEstimator);
     const semCatalogo = (nome: LLMProviderName): LLMProvider => ({
       name: nome,
-      capabilities: { streaming: true, toolCalling: true, listModels: false },
+      capabilities: {
+        streaming: true,
+        toolCalling: true,
+        listModels: false,
+        embeddings: false,
+      },
       // eslint-disable-next-line @typescript-eslint/require-await
       chat: async function* () {
         yield { type: 'text_delta' as const, text: '' };
@@ -129,10 +136,11 @@ describe.skipIf(!apiKey)(
       bindingRepo,
       projectRepo,
     );
-    const checkBudgetGate = new CheckBudgetGateUseCase(budgetRepo);
+    const checkBudgetGate = new CheckBudgetGateUseCase(budgetRepo, areaRepo);
     const recordLlmUsage = new RecordLlmUsageUseCase(
       tokenUsageRepo,
       budgetRepo,
+      areaRepo,
       outboxRepo,
       new BraboMetrics(),
     );

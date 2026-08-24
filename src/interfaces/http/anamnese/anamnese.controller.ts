@@ -48,10 +48,12 @@ import {
  * (visível e apagável pelo próprio usuário) e histórico de versões dos
  * arquivos de agente com rollback.
  */
-@ApiTags('anamnese')
+@ApiTags('anamnesis')
 @ApiBearerAuth(BEARER)
-@ApiForbiddenResponse({ description: 'Papel insuficiente no projeto.' })
-@ApiNotFoundResponse({ description: 'Projeto, evento ou versão inexistente.' })
+@ApiForbiddenResponse({ description: 'Insufficient role on the project.' })
+@ApiNotFoundResponse({
+  description: 'Project, event, or version does not exist.',
+})
 @Controller('projects/:projectId')
 export class AnamneseController {
   constructor(
@@ -72,16 +74,16 @@ export class AnamneseController {
   @Post('anamnese/run')
   @RequireRole('maintainer')
   @ApiOperation({
-    summary: 'Roda a Anamnese agora, sem esperar o tick',
+    summary: 'Runs the Anamnese now, without waiting for the tick',
     description:
-      'Exige `maintainer` pelo mesmo motivo da reanálise do Psicólogo: roda o ' +
-      'ToolLoop e gasta orçamento de verdade.',
+      'Requires `maintainer` for the same reason as the Psychologist reanalysis: ' +
+      'it runs the ToolLoop and spends real budget.',
   })
   @ApiCreatedResponse({ type: OkResponseDto })
   @ApiServiceUnavailableResponse({
     description:
-      'A Anamnese está desativada globalmente por decisão do usuário (não é ' +
-      'bug) — corpo com `reason: "anamnese_disabled"`.',
+      "The Anamnese is disabled globally by the user's decision (not a bug) " +
+      '— body with `reason: "anamnese_disabled"`.',
   })
   run(@Param('projectId') projectId: string) {
     return this.runAnamnese.execute(projectId);
@@ -95,11 +97,11 @@ export class AnamneseController {
   @Get('proficiency')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Devolve o perfil de proficiência',
+    summary: 'Returns the proficiency profile',
     description:
-      'O PRÓPRIO perfil por default; a visão agregada do time só para quem ' +
-      'administra o projeto. Perfil de competência é dado sobre a pessoa, e o ' +
-      'default menos surpreendente é ela ver o dela.',
+      "The user's OWN profile by default; the aggregated team view only for " +
+      'whoever administers the project. A competency profile is data ABOUT the ' +
+      'person, and the least surprising default is seeing your own.',
   })
   @ApiOkResponse({ type: [ProficiencyProfileResponseDto] })
   proficiency(
@@ -117,11 +119,11 @@ export class AnamneseController {
   @Get('events/:eventId')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Devolve um evento do projeto pelo id, resolvendo a sessão',
+    summary: 'Returns a project event by id, resolving its session',
     description:
-      'Diferente da rota de evento por sessão: aqui a sessão não é conhecida. É o ' +
-      'que faz o chip de evidência do perfil chegar no evento certo, já que a janela ' +
-      'da Anamnese atravessa várias sessões.',
+      "Different from the event-by-session route: here the session isn't known. " +
+      "This is what makes the profile's evidence chip land on the right event, " +
+      "since the Anamnese's window spans several sessions.",
   })
   @ApiOkResponse({ type: SessionEventResponseDto })
   event(
@@ -142,12 +144,13 @@ export class AnamneseController {
   @Delete('proficiency/me')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Apaga o próprio perfil e registra o opt-out',
+    summary: 'Deletes your own profile and records the opt-out',
     description:
-      'Só o PRÓPRIO perfil, nunca o de outro. O opt-out vem junto porque sem ele a ' +
-      'rodada seguinte re-derivaria tudo e o apagar seria cosmético. É `viewer` de ' +
-      'propósito: a perfilagem cobre todos os membros, então exigir `developer` ' +
-      'deixaria um viewer perfilado sem poder apagar o que é dele.',
+      "Only the caller's OWN profile, never someone else's. The opt-out comes " +
+      'along because without it the next round would re-derive everything and the ' +
+      'deletion would be cosmetic. It is `viewer` on purpose: profiling covers all ' +
+      'members, so requiring `developer` would leave a profiled viewer unable to ' +
+      'delete their own.',
   })
   @ApiOkResponse({ type: PerfilApagadoResponseDto })
   deleteMine(@Param('projectId') projectId: string, @CurrentUser() user: User) {
@@ -157,9 +160,9 @@ export class AnamneseController {
   @Post('proficiency/me/opt-in')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Volta a permitir o perfilamento do próprio usuário',
+    summary: "Re-enables the user's own profiling",
     description:
-      'Desfaz o opt-out. Os perfis voltam a ser derivados na próxima rodada.',
+      'Undoes the opt-out. Profiles start being derived again from the next round on.',
   })
   @ApiCreatedResponse({ type: PerfilOptInResponseDto })
   optInMine(@Param('projectId') projectId: string, @CurrentUser() user: User) {
@@ -174,10 +177,10 @@ export class AnamneseController {
   @Get('instruction-versions')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Lista o histórico de instruções de todos os agentes do projeto',
+    summary: 'Lists the instruction history of every agent in the project',
     description:
-      'Parte de quem TEM versão no projeto, não de um roster estático — é o que faz ' +
-      'os dev agents por módulo (`dev-api`) aparecerem.',
+      'Starts from whoever HAS a version in the project, not from a static ' +
+      'roster — this is what makes the per-module dev agents (`dev-api`) show up.',
   })
   @ApiOkResponse({ type: [AgenteComVersoesResponseDto] })
   allVersions(@Param('projectId') projectId: string) {
@@ -188,10 +191,10 @@ export class AnamneseController {
   @RequireRole('viewer')
   @ApiParam({ name: 'agent', example: 'dev-api' })
   @ApiOperation({
-    summary: 'Lista as versões de instrução de um agente',
+    summary: "Lists an agent's instruction versions",
     description:
-      'Mais recente primeiro, cada uma já com o diff contra a anterior calculado no ' +
-      'servidor.',
+      'Most recent first, each already carrying its diff against the previous ' +
+      'one, computed server-side.',
   })
   @ApiOkResponse({ type: [InstructionVersionResponseDto] })
   versions(
@@ -208,16 +211,16 @@ export class AnamneseController {
   @Post('agents/:agent/instruction-versions/:version/rollback')
   @RequireRole('maintainer')
   @ApiParam({ name: 'agent', example: 'dev-api' })
-  @ApiParam({ name: 'version', example: 2, description: 'Versão a restaurar.' })
+  @ApiParam({ name: 'version', example: 2, description: 'Version to restore.' })
   @ApiOperation({
-    summary: 'Restaura uma versão anterior da instrução de um agente',
+    summary: "Restores a previous version of an agent's instruction",
     description:
-      'O histórico é imutável: restaurar não apaga nada, CRIA uma versão nova com o ' +
-      'conteúdo antigo. Exige `maintainer` porque muda o comportamento do agente ' +
-      'daí em diante — mesmo calibre do patch.',
+      'The history is immutable: restoring deletes nothing, it CREATES a new ' +
+      'version with the old content. Requires `maintainer` because it changes ' +
+      "the agent's behavior from that point on — same calibration as the patch.",
   })
   @ApiCreatedResponse({ type: RollbackResponseDto })
-  @ApiBadRequestResponse({ description: 'Versão não é inteiro positivo.' })
+  @ApiBadRequestResponse({ description: 'Version is not a positive integer.' })
   rollbackVersion(
     @Param('projectId') projectId: string,
     @Param('agent') agent: string,

@@ -16,7 +16,7 @@ import { Public } from '../auth/public.decorator';
  * tratamento que o `/metrics` do engine já recebe), e dentro do cluster só o
  * namespace de monitoramento tem motivo para chamar.
  */
-@ApiTags('infraestrutura')
+@ApiTags('infrastructure')
 @Controller('metrics')
 export class MetricsController {
   constructor(private readonly metrics: BraboMetrics) {}
@@ -25,21 +25,21 @@ export class MetricsController {
   @Get()
   @Header('Cache-Control', 'no-store')
   @ApiOperation({
-    summary: 'Expõe as métricas no formato de exposição do Prometheus',
+    summary: 'Exposes metrics in Prometheus exposition format',
     description:
-      'Não é JSON: é `text/plain` no formato de exposição. Pública por necessidade ' +
-      '(o scraper não carrega token) e restringida por REDE — o Ingress de produção ' +
-      'bloqueia este caminho na borda e a NetworkPolicy só libera o namespace de ' +
-      'monitoramento.',
+      "Not JSON: it's `text/plain` in exposition format. Public out of necessity " +
+      '(the scraper carries no token) and restricted by NETWORK — the production ' +
+      'Ingress blocks this path at the edge and the NetworkPolicy only allows the ' +
+      'monitoring namespace.',
   })
   @ApiResponse({
     status: 200,
-    description: 'Métricas no formato de exposição.',
+    description: 'Metrics in exposition format.',
     content: {
       'text/plain': {
         schema: { type: 'string' },
         example:
-          '# HELP oban_queue_depth Profundidade da fila do Oban\n' +
+          '# HELP oban_queue_depth Oban queue depth\n' +
           '# TYPE oban_queue_depth gauge\n' +
           'oban_queue_depth{queue="default",state="available"} 0\n',
       },

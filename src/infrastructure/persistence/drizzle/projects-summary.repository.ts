@@ -28,17 +28,26 @@ import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
 /**
- * Read model do dashboard em DOZE consultas escopadas por workspace: duas em
- * sequência (os projetos, e a sessão mais recente de cada um) e dez em
+ * Read model do dashboard em CATORZE consultas escopadas por workspace: duas
+ * em sequência (os projetos, e a sessão mais recente de cada um) e doze em
  * paralelo sobre esses dois conjuntos de ids.
  *
- * Doze é CONSTANTE — nenhuma roda dentro de laço sobre projetos, e é essa a
- * propriedade que a suíte prova: `projects-summary.repository.spec.ts` conta
- * idas ao banco com 2 e com 20 projetos e exige o mesmo número. Sem esse
- * teste, um laço aqui devolveria dados idênticos e trocaria o N+1 de HTTP por
- * um N+1 de SQL, que é o mesmo defeito num andar mais barato.
+ * Catorze é CONSTANTE — nenhuma roda dentro de laço sobre projetos, e é essa
+ * a propriedade que a suíte prova: `projects-summary.repository.spec.ts`
+ * conta idas ao banco com 2 e com 20 projetos e exige o mesmo número. Sem
+ * esse teste, um laço aqui devolveria dados idênticos e trocaria o N+1 de
+ * HTTP por um N+1 de SQL, que é o mesmo defeito num andar mais barato.
  *
  * O caminho anterior fazia SETE requisições HTTP em poll POR CARD.
+ *
+ * `devOnline` (RN-409) é a ÚNICA consulta desta classe contra uma tabela que
+ * a api não migra — `engine.dev_agent_states`, schema Postgres do engine
+ * (Ecto), mesmo banco físico, mesmo papel de conexão (ver
+ * `apps/api/scripts/medir-execucao.ts`, que já lê `engine.oban_peers` pelo
+ * mesmo caminho). A suposição aceita é que quem opera o produto migra os
+ * dois lados juntos (`db:migrate` E `engine:migrate`) — se só a api migrou,
+ * esta consulta falha, e a decisão de NÃO blindar com try/catch está no
+ * ADR 0097.
  *
  * `unreadEventsForWorkspace` é a segunda metade do mesmo read model, sob a
  * mesma disciplina: DUAS consultas, quantos projetos forem.
@@ -84,8 +93,10 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
       pendencias,
       lastEvents,
       marcos,
-      infraHandoffs,
+      presencaHandoffs,
       delegados,
+      devOnline,
+      agentStatusLatest,
     ] = await Promise.all([
       db
         .select({
@@ -185,13 +196,23 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
         .where(inArray(sessionEvents.sessionId, sessionIds))
         .groupBy(sessionEvents.sessionId),
 
+      // `infra`, `ux-designer` (ADR 0087) e `staff` (docs/fluxo.yml, ADR
+      // 0088 — dormente para disparo automático, presente aqui só por
+      // ativação MANUAL já aceita) na MESMA consulta: os três são a mesma
+      // pergunta ("handoff accepted endereçado a este agente"), e somar
+      // mais um `toAgent` widening o `inArray` não muda a contagem de
+      // consultas que `projects-summary.repository.spec.ts` prova
+      // constante. Uma consulta NOVA por agente ativável cresceria sem teto.
       db
-        .selectDistinct({ sessionId: handoffs.sessionId })
+        .selectDistinct({
+          sessionId: handoffs.sessionId,
+          toAgent: handoffs.toAgent,
+        })
         .from(handoffs)
         .where(
           and(
             inArray(handoffs.sessionId, sessionIds),
-            eq(handoffs.toAgent, 'infra'),
+            inArray(handoffs.toAgent, ['infra', 'ux-designer', 'staff']),
             eq(handoffs.status, 'accepted'),
           ),
         ),
@@ -203,6 +224,48 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
         })
         .from(delegations)
         .where(inArray(delegations.sessionId, sessionIds)),
+
+      // RN-409 — dev agents ONLINE (trabalhando OU com pendência), agregado
+      // em lote no engine: `working`/`awaiting_gate`/`awaiting_approval`
+      // contam, `idle`/`idle_tripped` não. `dev-<modulo>` e `dev-<modulo>-2`
+      // são chaves DISTINTAS (`agent_id`), então contam separado sem esforço
+      // nenhum aqui — é a própria chave primária da tabela que já separa.
+      db.execute(sql`
+        select project_id, count(*)::int as total
+        from engine.dev_agent_states
+        where project_id in (${sql.join(
+          projectIds.map((id) => sql`${id}`),
+          sql`, `,
+        )})
+          and status not in ('idle', 'idle_tripped')
+        group by project_id
+      `),
+
+      // RN-409 — último `agent.status` de CADA agente conversacional
+      // (criativo/po/arquiteto/dev-lead/ux-designer/staff/infra), na sessão
+      // MAIS RECENTE de cada projeto. QA/SecOps nunca aparecem aqui: não
+      // emitem `agent.status` (`live_broadcast.ex` só aceita
+      // working/idle/awaiting_approval, e só os leads/agentes conversacionais
+      // chamam `agent_status/4`) — veredito único por invocação, sem noção
+      // de "ocioso" entre chamadas.
+      db
+        .selectDistinctOn([sessionEvents.sessionId, sessionEvents.actorId], {
+          sessionId: sessionEvents.sessionId,
+          actorId: sessionEvents.actorId,
+          payload: sessionEvents.payload,
+        })
+        .from(sessionEvents)
+        .where(
+          and(
+            inArray(sessionEvents.sessionId, sessionIds),
+            eq(sessionEvents.type, 'agent.status'),
+          ),
+        )
+        .orderBy(
+          sessionEvents.sessionId,
+          sessionEvents.actorId,
+          desc(sessionEvents.seq),
+        ),
     ]);
 
     const providerDe = indexarPor(repos, (r) => r.projectId);
@@ -215,12 +278,45 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
     const sessaoDe = indexarPor(latestSessions, (s) => s.projectId);
     const ultimoEventoDe = indexarPor(lastEvents, (e) => e.sessionId);
     const marcosDe = indexarPor(marcos, (m) => m.sessionId);
-    const infraAtivoEm = new Set(infraHandoffs.map((h) => h.sessionId));
+    const infraAtivoEm = new Set(
+      presencaHandoffs
+        .filter((h) => h.toAgent === 'infra')
+        .map((h) => h.sessionId),
+    );
+    const uxDesignerAtivoEm = new Set(
+      presencaHandoffs
+        .filter((h) => h.toAgent === 'ux-designer')
+        .map((h) => h.sessionId),
+    );
+    const staffAtivoEm = new Set(
+      presencaHandoffs
+        .filter((h) => h.toAgent === 'staff')
+        .map((h) => h.sessionId),
+    );
     const subagentesDe = new Map<string, string[]>();
     for (const d of delegados) {
       const lista = subagentesDe.get(d.sessionId) ?? [];
       lista.push(d.subagent);
       subagentesDe.set(d.sessionId, lista);
+    }
+
+    // RN-409 — `devOnline` vem de `db.execute` (raw), então as colunas são
+    // snake_case cruas, sem o mapeamento camelCase do Drizzle (mesma
+    // ressalva de `paraColunas`, embaixo).
+    const devOnlineDe = new Map<string, number>(
+      (devOnline.rows as { project_id: string; total: number }[]).map((r) => [
+        r.project_id,
+        Number(r.total),
+      ]),
+    );
+    const onlineConversacionalPorSessao = new Map<string, number>();
+    for (const evento of agentStatusLatest) {
+      const status = (evento.payload as { status?: string } | null)?.status;
+      if (!status || status === 'idle') continue;
+      onlineConversacionalPorSessao.set(
+        evento.sessionId,
+        (onlineConversacionalPorSessao.get(evento.sessionId) ?? 0) + 1,
+      );
     }
 
     return projectIds.map((projectId) => {
@@ -241,6 +337,8 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
           ? (subagentesDe.get(sessionId) ?? [])
           : [],
         infraActive: sessionId ? infraAtivoEm.has(sessionId) : false,
+        uxDesignerActive: sessionId ? uxDesignerAtivoEm.has(sessionId) : false,
+        staffActive: sessionId ? staffAtivoEm.has(sessionId) : false,
       };
 
       return {
@@ -264,6 +362,11 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
         lastEvent: evento ? toEvent(evento) : null,
         storiesAwaitingPromotion: promocaoDe.get(projectId)?.total ?? 0,
         pendingApprovalsCount: pendenciasDe.get(projectId)?.total ?? 0,
+        // RN-409 — dev agents online (tabela do engine) + conversacionais
+        // online (último `agent.status` da sessão mais recente).
+        onlineAgentCount:
+          (devOnlineDe.get(projectId) ?? 0) +
+          (sessionId ? (onlineConversacionalPorSessao.get(sessionId) ?? 0) : 0),
         roster,
       };
     });

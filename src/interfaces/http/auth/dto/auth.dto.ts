@@ -27,15 +27,18 @@ import {
  */
 
 export class RegisterDto {
-  @ApiProperty({ example: 'fulano@brabo.dev', description: 'E-mail da conta.' })
+  @ApiProperty({
+    example: 'fulano@brabo.dev',
+    description: "The account's email.",
+  })
   @IsEmail()
   email!: string;
 
   @ApiProperty({
-    example: 'cavalo bateria grampo correto',
+    example: 'correct horse battery staple',
     minLength: COMPRIMENTO_MINIMO,
     description:
-      'Senha. Mínimo de 12 caracteres; não há exigência de maiúscula, dígito ou símbolo.',
+      'Password. Minimum of 12 characters; no requirement for uppercase, digit, or symbol.',
   })
   @IsString()
   @MinLength(COMPRIMENTO_MINIMO)
@@ -54,7 +57,7 @@ export class LoginDto {
   @IsEmail()
   email!: string;
 
-  @ApiProperty({ example: 'cavalo bateria grampo correto' })
+  @ApiProperty({ example: 'correct horse battery staple' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(COMPRIMENTO_MAXIMO)
@@ -62,7 +65,7 @@ export class LoginDto {
 }
 
 export class VerifyEmailDto {
-  @ApiProperty({ description: 'Token de uso único recebido por e-mail.' })
+  @ApiProperty({ description: 'Single-use token received by email.' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(512)
@@ -76,14 +79,14 @@ export class RequestPasswordResetDto {
 }
 
 export class ResetPasswordDto {
-  @ApiProperty({ description: 'Token de uso único recebido por e-mail.' })
+  @ApiProperty({ description: 'Single-use token received by email.' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(512)
   token!: string;
 
   @ApiProperty({
-    example: 'outra frase bem comprida',
+    example: 'another pretty long passphrase',
     minLength: COMPRIMENTO_MINIMO,
   })
   @IsString()
@@ -93,14 +96,24 @@ export class ResetPasswordDto {
 }
 
 export class SessaoResponseDto {
-  @ApiProperty({ description: 'JWT EdDSA de vida curta.' })
+  @ApiProperty({ description: 'Short-lived EdDSA JWT.' })
   accessToken!: string;
 
   @ApiProperty({
     example: 900,
-    description: 'Segundos até o access token expirar.',
+    description: 'Seconds until the access token expires.',
   })
   expiresIn!: number;
+
+  @ApiProperty({
+    example: 'pt-BR',
+    enum: ['pt-BR', 'en'],
+    description:
+      "The user's language preference (i18n foundation, Wave 6a). It comes " +
+      'here — and not in a separate call — so the web app never needs an ' +
+      'extra round-trip just to know which language to render the screen in.',
+  })
+  locale!: string;
 }
 
 /**
@@ -114,16 +127,16 @@ export class SessaoResponseDto {
 
 export class AceiteResponseDto {
   @ApiProperty({
-    example: 'Se o endereço estiver disponível, enviamos um e-mail.',
+    example: "If the address is available, we've sent an email.",
     description:
-      'Mensagem genérica, idêntica para endereço conhecido e desconhecido — ver a nota de enumeração na referência.',
+      'Generic message, identical for a known and an unknown address — see the enumeration note in the reference.',
   })
   message!: string;
 }
 
 export class JwksResponseDto {
   @ApiProperty({
-    description: 'Chaves públicas Ed25519 ativas. Durante uma rotação, duas.',
+    description: 'Active public Ed25519 keys. Two during a rotation.',
     isArray: true,
     type: Object,
   })

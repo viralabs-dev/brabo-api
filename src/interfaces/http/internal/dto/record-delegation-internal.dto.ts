@@ -12,7 +12,7 @@ export class RecordDelegationInternalDto {
   @ApiProperty({
     example: 'qa',
     description:
-      'A área que delegou — "qa" (Fase 8b) ou "infra" (Fase 8c). Texto, não enum.',
+      'The area that delegated — "qa" (Phase 8b) or "infra" (Phase 8c). Text, not enum.',
   })
   @IsString()
   area!: string;
@@ -21,8 +21,8 @@ export class RecordDelegationInternalDto {
     format: 'uuid',
     example: '01JC4Z0000TASK00000000001',
     description:
-      'A task de backlog por trás da delegação, quando existir. QA (Fase 8b) sempre manda; ' +
-      'Infra (Fase 8c) nunca manda — a delegação é sobre a SESSÃO, não sobre uma task.',
+      'The backlog task behind the delegation, when it exists. QA (Phase 8b) always sends it; ' +
+      'Infra (Phase 8c) never does — the delegation is about the SESSION, not a task.',
   })
   @IsOptional()
   @IsUUID()
@@ -43,8 +43,8 @@ export class RecordDelegationInternalDto {
   @ApiPropertyOptional({
     example: 'evt_01jc4z0000parecer000000001',
     description:
-      'Id do session_event `artifact.qa_verdict` do PARECER DESTA subespecialidade ' +
-      '— obrigatório quando `status` é "completed".',
+      "Id of the `artifact.qa_verdict` session_event for THIS subspecialty's VERDICT " +
+      '— required when `status` is "completed".',
   })
   @IsOptional()
   @IsString()
@@ -54,26 +54,26 @@ export class RecordDelegationInternalDto {
     enum: FAILURE_ORIGINS,
     example: 'infra',
     description:
-      'A ORIGEM da falha (ADR 0020/0038), nunca por eliminação — obrigatório ' +
-      'quando `status` é "failed".',
+      'The ORIGIN of the failure (ADR 0020/0038), never by elimination — required ' +
+      'when `status` is "failed".',
   })
   @IsOptional()
   @IsIn(FAILURE_ORIGINS)
   failureOrigin?: (typeof FAILURE_ORIGINS)[number];
 
   @ApiPropertyOptional({
-    example: 'limite de iterações atingido sem emit_perf_seguranca_verdict',
+    example: 'iteration limit reached without emit_perf_seguranca_verdict',
   })
   @IsOptional()
   @IsString()
   failureReason?: string;
 
   @ApiPropertyOptional({
-    example: 'story sem RNF de performance pertinente',
+    example: 'story with no relevant performance NFR',
     description:
-      'Por que o lead optou por NÃO delegar — obrigatório quando `status` é ' +
-      '"dispensed". Nunca fica em branco: dispensa é decisão registrada, não ' +
-      'silêncio (CLAUDE.md, Fase 8b item 2).',
+      'Why the lead chose NOT to delegate — required when `status` is ' +
+      '"dispensed". Never left blank: dispensing is a recorded decision, not ' +
+      'silence (CLAUDE.md, Phase 8b item 2).',
   })
   @IsOptional()
   @IsString()

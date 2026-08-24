@@ -1,8 +1,14 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import type { ChatOptions, ChatStreamChunk, LLMErrorCode } from '@brabo/shared';
+import type {
+  ChatOptions,
+  ChatStreamChunk,
+  EmbeddingOptions,
+  LLMErrorCode,
+} from '@brabo/shared';
 import type { LLMProvider } from '../../src/application/ports/llm-provider.port';
 import {
   CATALOGO_ESPERADO,
+  EMBEDDING_ESPERADO,
   FERRAMENTA_ESPERADA,
   TEXTO_ESPERADO,
   USAGE_ESPERADO,
@@ -61,6 +67,17 @@ export interface LLMProviderContractHarness {
   /** Confirma que as ferramentas oferecidas chegaram no corpo do pedido. */
   temFerramentasNoPedido: (body: Record<string, unknown>) => boolean;
   modelo: string;
+  /**
+   * Opções extras de `embed()` — o Ollama recebe o endereço por aqui, como já
+   * faz no chat. Separado de `chatOptions` porque `EmbeddingOptions` não é
+   * `ChatOptions`: `tools` e `maxTokens` não existem aqui (ADR 0075).
+   */
+  embedOptions?: (baseUrl: string) => Partial<EmbeddingOptions>;
+  /**
+   * O modelo DE EMBEDDING deste provider. Ausente quando o provider declara
+   * `capabilities.embeddings: false` — a suite não pede o que não vai usar.
+   */
+  modeloDeEmbedding?: string;
 }
 
 const FERRAMENTAS = [
@@ -141,6 +158,10 @@ export function runLLMProviderContract(
       expect(capabilities.streaming).toBe(true);
       expect(typeof capabilities.toolCalling).toBe('boolean');
       expect(typeof capabilities.listModels).toBe('boolean');
+      // Obrigatória desde o ADR 0075: um provider novo não pode ficar sem
+      // resposta sobre embedding — sem resposta, quem consome descobre na
+      // falha em vez de degradar.
+      expect(typeof capabilities.embeddings).toBe('boolean');
     });
 
     it('stream: remonta o texto mesmo com o frame partido entre dois writes', async () => {
@@ -268,6 +289,85 @@ export function runLLMProviderContract(
       await expect(
         provider.listModels!('chave-invalida'),
       ).rejects.toMatchObject({ code: 'auth' });
+    });
+
+    // --- Embedding (ADR 0075) ---
+
+    async function embedar(
+      cenario: CenarioLLM,
+      entradas: readonly string[] = EMBEDDING_ESPERADO.entradas,
+    ) {
+      servidor = await subirServidorFalso(harness.dialeto);
+      servidor.usar(cenario);
+      if (harness.hostEnv) process.env[harness.hostEnv] = servidor.baseUrl;
+
+      const provider = harness.criar(servidor.baseUrl);
+      return provider.embed!(entradas, {
+        model: harness.modeloDeEmbedding ?? harness.modelo,
+        apiKey: 'chave-de-teste',
+        ...harness.embedOptions?.(servidor.baseUrl),
+      });
+    }
+
+    it('embedding: respeita capabilities.embeddings', async () => {
+      if (!capabilities.embeddings) {
+        // Mesma degradação por capability de `listModels`: ou não existe
+        // método, ou chamá-lo REJEITA. NUNCA uma lista vazia de vetores — um
+        // índice que aceita isso grava "nenhuma semelhança com nada" e o
+        // defeito só aparece na busca, longe da causa.
+        servidor = await subirServidorFalso(harness.dialeto);
+        const provider = harness.criar(servidor.baseUrl);
+        if (provider.embed) {
+          await expect(
+            provider.embed(['qualquer coisa'], { model: harness.modelo }),
+          ).rejects.toThrow();
+        }
+        return;
+      }
+
+      expect(
+        harness.modeloDeEmbedding,
+        'provider que declara `embeddings` precisa dizer com qual modelo a suite prova',
+      ).toBeTruthy();
+    });
+
+    it('embedding: um vetor por entrada, na ordem, com dimensão e modelo usados', async () => {
+      if (!capabilities.embeddings) return;
+
+      const resultado = await embedar('embedding');
+
+      expect(resultado.vectors).toEqual(EMBEDDING_ESPERADO.vetores);
+      expect(resultado.dimensions).toBe(EMBEDDING_ESPERADO.dimensao);
+      // O modelo do RESULTADO é o que o provider disse ter usado, não o
+      // pedido: é ele que vai ao metering, pelo mesmo motivo que o preço é
+      // congelado em `token_usage` (RN-044).
+      expect(resultado.model).toBe(EMBEDDING_ESPERADO.modeloRespondido);
+      expect(resultado.inputTokens).toBe(EMBEDDING_ESPERADO.inputTokens);
+      expect(resultado.estimated).toBe(false);
+    });
+
+    it('embedding: lote incompleto é ERRO, nunca uma lista mais curta', async () => {
+      if (!capabilities.embeddings) return;
+
+      await expect(embedar('embedding_incompleto')).rejects.toThrow(
+        /vetor|entrada/i,
+      );
+    });
+
+    it('embedding: erro do provider LANÇA normalizado por code', async () => {
+      if (!capabilities.embeddings) return;
+
+      // Não vira chunk como no chat: não há turno em andamento nem token
+      // gasto a preservar, então o erro sobe classificado e quem chama decide.
+      await expect(embedar('erro_401')).rejects.toMatchObject({
+        code: 'auth' satisfies LLMErrorCode,
+      });
+    });
+
+    it('embedding: lista de entradas vazia é recusada antes de sair pela rede', async () => {
+      if (!capabilities.embeddings) return;
+
+      await expect(embedar('embedding', [])).rejects.toThrow();
     });
 
     it('servidor mudo: estoura o teto de inatividade em vez de pendurar', async () => {

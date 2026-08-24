@@ -19,7 +19,7 @@ export class AnaliseDeTerminoResponseDto implements Wire<HypothesisTerminationAn
   @ApiProperty({
     example: 'heartbeat_timeout',
     description:
-      'A ORIGEM da falha, nunca deduzida por eliminação (lição do ADR 0020).',
+      'The ORIGIN of the failure, never deduced by elimination (lesson from ADR 0020).',
   })
   causa!: string;
 
@@ -27,7 +27,7 @@ export class AnaliseDeTerminoResponseDto implements Wire<HypothesisTerminationAn
   estadoDaSessao!: string;
 
   @ApiProperty({
-    example: 'O agente parou de responder depois de um tool call de 90 s.',
+    example: 'The agent stopped responding after a 90s tool call.',
   })
   analise!: string;
 }
@@ -48,26 +48,26 @@ export class HypothesisResponseDto implements Wire<PsychologistHypothesis> {
 
   @ApiProperty({
     example: '01JC4Z0000ANALISE0000000001',
-    description: 'A rodada de análise que gerou esta hipótese.',
+    description: 'The analysis round that generated this hypothesis.',
   })
   analysisId!: string;
 
   @ApiProperty({
     example: 'dev-api',
-    description: 'Sobre qual agente é a hipótese.',
+    description: 'Which agent the hypothesis is about.',
   })
   agenteAlvo!: string;
 
-  @ApiProperty({ example: 'O agente reabriu a mesma tarefa três vezes.' })
+  @ApiProperty({ example: 'The agent reopened the same task three times.' })
   observacao!: string;
 
   @ApiProperty({
-    example: 'As instruções não dizem quando considerar a tarefa pronta.',
+    example: "The instructions don't say when to consider the task done.",
   })
   hipotese!: string;
 
   @ApiProperty({
-    example: 'Acrescentar um critério de pronto explícito à instrução.',
+    example: 'Add an explicit definition-of-done criterion to the instruction.',
   })
   sugestao!: string;
 
@@ -76,15 +76,15 @@ export class HypothesisResponseDto implements Wire<PsychologistHypothesis> {
     minimum: 0,
     maximum: 100,
     description:
-      'Confiança declarada pelo próprio modelo. Não é medida, é auto-relato.',
+      'Confidence declared by the model itself. Not a measurement, a self-report.',
   })
   confiancaPercent!: number;
 
   @ApiProperty({
     example: ['01JC4Z8QK3M7YV2N5T9B0PXHRB'],
     description:
-      'Eventos do log que sustentam a hipótese. É por eles que a evidência é ' +
-      'auditável em vez de acreditada.',
+      'Log events that support the hypothesis. This is what makes the evidence ' +
+      'auditable instead of taken on faith.',
   })
   evidenceEventIds!: string[];
 
@@ -92,7 +92,7 @@ export class HypothesisResponseDto implements Wire<PsychologistHypothesis> {
     type: AnaliseDeTerminoResponseDto,
     nullable: true,
     description:
-      'Presente só nas hipóteses sobre sessão terminada de forma anormal.',
+      'Present only on hypotheses about an abnormally terminated session.',
   })
   terminationAnalysis!: AnaliseDeTerminoResponseDto | null;
 
@@ -131,22 +131,22 @@ export class PsychologistAnalysisResponseDto implements Wire<PsychologistAnalysi
     enum: ['leve', 'pesada'],
     example: 'leve',
     description:
-      'Tier da triagem. Os dois usam modelos GENUINAMENTE diferentes — é isso que ' +
-      'faz o custo divergir de verdade em vez de na etiqueta.',
+      'Triage tier. The two use GENUINELY different models — this is what makes ' +
+      'the cost actually diverge instead of just the label.',
   })
   tier!: Wire<PsychologistAnalysisWithCost>['tier'];
 
   @ApiProperty({
     enum: ['auto', 'manual'],
     example: 'auto',
-    description: '`manual` é a reanálise pedida por gente.',
+    description: '`manual` is the reanalysis requested by a human.',
   })
   triggeredBy!: Wire<PsychologistAnalysisWithCost>['triggeredBy'];
 
   @ApiProperty({
     example: null,
     nullable: true,
-    description: 'Id da análise que esta substitui.',
+    description: 'Id of the analysis this one replaces.',
   })
   supersedes!: string | null;
 
@@ -158,8 +158,7 @@ export class PsychologistAnalysisResponseDto implements Wire<PsychologistAnalysi
 
   @ApiProperty({
     example: 128,
-    description:
-      'Tamanho do log no momento da análise — o recorte que ela enxergou.',
+    description: 'Log size at the time of the analysis — the snapshot it saw.',
   })
   eventCountAtAnalysis!: number;
 
@@ -169,14 +168,14 @@ export class PsychologistAnalysisResponseDto implements Wire<PsychologistAnalysi
   @ApiProperty({
     example: 4200,
     description:
-      'Custo real em micro-USD, somado do `token_usage` da rodada. Só há linha aqui ' +
-      'para run CONCLUÍDO: run que falhou não grava, de propósito.',
+      "Real cost in micro-USD, summed from the round's `token_usage`. There is " +
+      'only a row here for a COMPLETED run: a failed run does not record one, on purpose.',
   })
   costMicros!: number;
 
   @ApiProperty({
     example: 3,
-    description: 'Quantas hipóteses a rodada rendeu.',
+    description: 'How many hypotheses the round yielded.',
   })
   hypothesisCount!: number;
 }
@@ -184,3 +183,18 @@ export const _chavesAnalise: MesmasChaves<
   PsychologistAnalysisResponseDto,
   PsychologistAnalysisWithCost
 > = true;
+
+/**
+ * A flag global `PSYCHOLOGIST_ENABLED` (RN-454) — sem entidade de domínio
+ * por trás (não é `Wire<T>`), é leitura direta de configuração do engine.
+ */
+export class PsychologistStatusResponseDto {
+  @ApiProperty({
+    example: false,
+    description:
+      'Whether a NEW analysis round can run today, automatic or on-demand. ' +
+      'Disabled does not touch existing data — past analyses and hypotheses ' +
+      'stay intact and visible.',
+  })
+  enabled!: boolean;
+}

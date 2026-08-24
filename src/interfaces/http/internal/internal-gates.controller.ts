@@ -27,7 +27,7 @@ import { GateRegistryResponseDto } from './dto/gates.response.dto';
 @ApiTags('internal')
 @ApiSecurity(SERVICE_TOKEN)
 @ApiForbiddenResponse({
-  description: 'Service token ausente ou diferente do compartilhado.',
+  description: 'Service token missing or different from the shared one.',
 })
 @Controller('internal/gates')
 @ServiceRoute()
@@ -35,12 +35,12 @@ import { GateRegistryResponseDto } from './dto/gates.response.dto';
 export class InternalGatesController {
   @Get()
   @ApiOperation({
-    summary: 'Lê o registro declarativo de gates',
+    summary: 'Reads the declarative gate registry',
     description:
-      'O registro DESCREVE, não executa: nenhum gate passa a ser aplicado por ' +
-      'causa dele, e mudar um campo aqui não muda comportamento nenhum. Cada ' +
-      'gate diz onde mora a prova de que passou (`evidencia`), porque nem ' +
-      'toda prova está no event log.',
+      'The registry DESCRIBES, it does not execute: no gate becomes enforced ' +
+      'because of it, and changing a field here changes no behavior at all. ' +
+      'Each gate says where the proof that it passed lives (`evidencia`), ' +
+      'because not every proof is in the event log.',
   })
   @ApiOkResponse({ type: GateRegistryResponseDto })
   ler(): GateRegistryResponseDto {

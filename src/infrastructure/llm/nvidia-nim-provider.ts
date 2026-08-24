@@ -34,7 +34,15 @@ export function nvidiaNimConfig(
   return {
     name: 'nvidia-nim',
     baseUrl,
-    capabilities: { streaming: true, toolCalling: true, listModels: false },
+    capabilities: {
+      streaming: true,
+      toolCalling: true,
+      listModels: false,
+      // Sem `NVIDIA_NIM_TEST_KEY` no ambiente nenhum smoke rodou contra o
+      // `/embeddings` real (ADR 0075) — declarar por doc é o que o ADR 0043
+      // proíbe.
+      embeddings: false,
+    },
     authHeaders: (apiKey) => ({
       Authorization: `Bearer ${apiKey ?? ''}`,
     }),

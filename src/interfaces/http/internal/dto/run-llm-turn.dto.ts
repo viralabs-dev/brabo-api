@@ -12,7 +12,7 @@ export class RunLlmTurnDto {
 
   @ApiPropertyOptional({
     example: 'dev-api',
-    description: 'Atribui o custo a este agente no painel do time.',
+    description: 'Attributes the cost to this agent in the team panel.',
   })
   @IsOptional()
   @IsString()
@@ -21,8 +21,8 @@ export class RunLlmTurnDto {
   @ApiProperty({
     type: 'array',
     items: { type: 'object', additionalProperties: true },
-    example: [{ role: 'user', content: 'Leia o arquivo X.' }],
-    description: 'Histórico já montado pelo ContextManager do engine.',
+    example: [{ role: 'user', content: 'Read file X.' }],
+    description: "History already assembled by the engine's ContextManager.",
   })
   @IsArray()
   messages!: ChatMessage[];
@@ -30,8 +30,7 @@ export class RunLlmTurnDto {
   @ApiPropertyOptional({
     type: 'array',
     items: { type: 'object', additionalProperties: true },
-    description:
-      'Ferramentas oferecidas ao modelo; `parameters` é JSON Schema.',
+    description: 'Tools offered to the model; `parameters` is JSON Schema.',
   })
   @IsOptional()
   @IsArray()

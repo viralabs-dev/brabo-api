@@ -4,7 +4,7 @@ import { IsArray, IsString } from 'class-validator';
 export class SetProjectPermissionsDto {
   @ApiProperty({
     example: ['Terminal(pnpm test:*)', 'Terminal(pnpm lint)'],
-    description: 'Padrões aprovados automaticamente.',
+    description: 'Automatically approved patterns.',
   })
   @IsArray()
   @IsString({ each: true })
@@ -13,7 +13,7 @@ export class SetProjectPermissionsDto {
   @ApiProperty({
     example: ['Terminal(rm -rf *)', 'Terminal(git push --force*)'],
     description:
-      'Padrões proibidos. `deny` vence `allow` e vence a autonomia do agente.',
+      "Forbidden patterns. `deny` beats `allow` and beats the agent's autonomy.",
   })
   @IsArray()
   @IsString({ each: true })
@@ -21,7 +21,7 @@ export class SetProjectPermissionsDto {
 
   @ApiProperty({
     example: ['Terminal(pnpm add *)'],
-    description: 'Padrões que sempre pedem decisão humana.',
+    description: 'Patterns that always ask for a human decision.',
   })
   @IsArray()
   @IsString({ each: true })

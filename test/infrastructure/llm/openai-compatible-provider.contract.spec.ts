@@ -6,6 +6,7 @@ import { GptTokenizerEstimator } from '../../../src/infrastructure/tokenization/
 import { runLLMProviderContract } from '../../contract/llm-provider.contract';
 import {
   CATALOGO_ESPERADO,
+  EMBEDDING_ESPERADO,
   FERRAMENTA_ESPERADA,
   PEDACOS_DO_TEXTO,
   STATUS_DO_CENARIO,
@@ -36,6 +37,31 @@ function dialetoOpenAI(cenario: CenarioLLM, res: ServerResponse): void {
       JSON.stringify({
         object: 'list',
         data: CATALOGO_ESPERADO.map((id) => ({ id, object: 'model' })),
+      }),
+    );
+    return;
+  }
+
+  // `POST /embeddings`: JSON único, não SSE. `data` sai FORA DE ORDEM de
+  // propósito — a doc da OpenAI dá `index` como o vínculo com a entrada e não
+  // promete ordem, então quem não ordenar devolve o vetor da frase errada
+  // (ADR 0075).
+  if (cenario === 'embedding' || cenario === 'embedding_incompleto') {
+    const linhas = EMBEDDING_ESPERADO.vetores.map((embedding, index) => ({
+      object: 'embedding',
+      index,
+      embedding,
+    }));
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(
+      JSON.stringify({
+        object: 'list',
+        data: cenario === 'embedding' ? [...linhas].reverse() : [linhas[0]],
+        model: EMBEDDING_ESPERADO.modeloRespondido,
+        usage: {
+          prompt_tokens: EMBEDDING_ESPERADO.inputTokens,
+          total_tokens: EMBEDDING_ESPERADO.inputTokens,
+        },
       }),
     );
     return;
@@ -131,6 +157,35 @@ runLLMProviderContract('openai-compatible (base)', () => ({
   timeoutEnv: 'LLM_REQUEST_TIMEOUT_MS',
   temFerramentasNoPedido: (body) => Array.isArray(body.tools),
   modelo: 'gpt-4o-mini',
+}));
+
+/**
+ * A MESMA bateria, com a capability de embedding LIGADA (ADR 0075).
+ *
+ * Nenhum dos oito providers de nuvem declara `embeddings: true` — sem
+ * credencial nenhum smoke provou o endpoint deles, e o ADR 0043 custou duas
+ * reversões ao vivo para deixar claro que doc não é prova. O que esta segunda
+ * passada prova é outra coisa, e é a que falta: que a BASE fala o dialeto
+ * `/embeddings` corretamente — ordena por `index`, lê `usage.prompt_tokens`,
+ * recusa lote incompleto e normaliza o erro por `code`.
+ *
+ * É isso que torna barato virar um provider para `true` no dia em que a chave
+ * dele existir: a linha do literal muda, e o dialeto já está exercitado.
+ */
+runLLMProviderContract('openai-compatible (base, embeddings ligado)', () => ({
+  dialeto: dialetoOpenAI,
+  criar: (baseUrl) => {
+    const base = openaiConfig(baseUrl);
+    return new OpenAICompatibleProvider(
+      { ...base, capabilities: { ...base.capabilities, embeddings: true } },
+      new GptTokenizerEstimator(),
+    );
+  },
+  usageFallback: 'estimated',
+  timeoutEnv: 'LLM_REQUEST_TIMEOUT_MS',
+  temFerramentasNoPedido: (body) => Array.isArray(body.tools),
+  modelo: 'gpt-4o-mini',
+  modeloDeEmbedding: 'text-embedding-3-small',
 }));
 
 describe('OpenAICompatibleProvider — particularidades da base', () => {
@@ -230,6 +285,48 @@ describe('OpenAICompatibleProvider — particularidades da base', () => {
     expect(chunks.find((c) => c.type === 'usage')).not.toHaveProperty(
       'upstreamProvider',
     );
+  });
+
+  it('embed recusa quando a capability não é declarada, sem tocar a rede', async () => {
+    const servidor = await subirServidorFalso(dialetoOpenAI);
+    // `openaiConfig` de PRODUÇÃO: `embeddings: false` até um smoke com
+    // credencial provar (ADR 0075).
+    const provider = new OpenAICompatibleProvider(
+      openaiConfig(servidor.baseUrl),
+    );
+
+    await expect(
+      provider.embed(['trecho'], { model: 'text-embedding-3-small' }),
+    ).rejects.toThrow(/embeddings/);
+    // Nada saiu pela rede: a recusa é da capability, não do provider remoto.
+    expect(servidor.ultimoPedido()).toBeUndefined();
+    await servidor.fechar();
+  });
+
+  it('`dimensions` só vai no corpo quando quem chama pediu', async () => {
+    const servidor = await subirServidorFalso(dialetoOpenAI);
+    servidor.usar('embedding');
+    const base = openaiConfig(servidor.baseUrl);
+    const provider = new OpenAICompatibleProvider({
+      ...base,
+      capabilities: { ...base.capabilities, embeddings: true },
+    });
+
+    await provider.embed(EMBEDDING_ESPERADO.entradas, {
+      model: 'text-embedding-3-small',
+    });
+    expect(servidor.ultimoPedido()).not.toHaveProperty('dimensions');
+
+    await provider.embed(EMBEDDING_ESPERADO.entradas, {
+      model: 'text-embedding-3-small',
+      dimensions: 256,
+    });
+    expect(servidor.ultimoPedido()).toMatchObject({
+      dimensions: 256,
+      input: EMBEDDING_ESPERADO.entradas,
+    });
+
+    await servidor.fechar();
   });
 
   it('mensagens de ferramenta viram role tool com tool_call_id', async () => {

@@ -16,17 +16,18 @@ export class ProjectGitRemoteResponseDto {
     example: 'remote',
     enum: ['local', 'remote'],
     description:
-      '`local` é caminho de bare repo no disco e não tem credencial; ' +
-      '`remote` é URL que exige autenticação.',
+      '`local` is a bare-repo path on disk with no credential; `remote` is ' +
+      'a URL that requires authentication.',
   })
   kind!: 'local' | 'remote';
 
   @ApiProperty({
     example: 'https://github.com/daneiel/hello-api.git',
     description:
-      'O que vira `git remote add origin <isto>`. **Sem credencial embutida**, ' +
-      'de propósito: é este valor que fica gravado no `.git/config` do ' +
-      'workspace, legível por quem tiver acesso ao diretório do projeto.',
+      'What becomes `git remote add origin <this>`. **No credential ' +
+      'embedded**, by design: this is the value that gets written into the ' +
+      "workspace's `.git/config`, readable by anyone with access to the " +
+      "project's directory.",
   })
   origin!: string;
 
@@ -37,8 +38,8 @@ export class ProjectGitRemoteResponseDto {
     required: false,
     nullable: true,
     description:
-      'Só em `remote`. Token do OWNER do workspace (RN-058), decifrado no ' +
-      'momento da chamada. Quem recebe injeta por invocação e descarta.',
+      "Only on `remote`. The workspace OWNER's token (RN-058), decrypted at " +
+      'call time. Whoever receives it injects it per invocation and discards it.',
   })
   token?: string;
 
@@ -46,7 +47,7 @@ export class ProjectGitRemoteResponseDto {
     required: false,
     nullable: true,
     example: 'x-access-token',
-    description: 'Usuário do par HTTP Basic; o token é a senha.',
+    description: 'User of the HTTP Basic pair; the token is the password.',
   })
   username?: string;
 }

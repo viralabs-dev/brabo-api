@@ -4,6 +4,8 @@ import type {
   ChatMessage,
   ChatOptions,
   ChatStreamChunk,
+  EmbeddingOptions,
+  EmbeddingResult,
   LLMProviderCapabilities,
   LLMProviderName,
   ModeloDoCatalogo,
@@ -17,9 +19,11 @@ import {
   LLMUpstreamError,
   normalizeHttpStatus,
 } from '../../domain/llm/llm-provider-errors';
+import { extrairVetoresOpenAI, montarEmbedding } from './embedding-result';
 import {
   getJson,
   iterateSseData,
+  postJson,
   postStream,
   readBody,
   timeoutFromEnv,
@@ -280,6 +284,78 @@ export class OpenAICompatibleProvider implements LLMProvider {
     }
 
     return (this.config.parseCatalogo ?? parseCatalogoPadrao)(corpo);
+  }
+
+  /**
+   * `POST /embeddings`, o segundo endpoint do dialeto da OpenAI (ADR 0075).
+   *
+   * Existe sempre na base, e é a declaração de `capabilities.embeddings` que
+   * decide se ela pode ser chamada — mesmo desenho de `listModels`. A base
+   * saber falar o dialeto NÃO é prova de que um provider específico o serve:
+   * quem instancia com `false` está dizendo que ninguém verificou o endpoint
+   * daquele provider contra a API real, e é assim que fica até um smoke com
+   * credencial provar (ADR 0043).
+   */
+  async embed(
+    inputs: readonly string[],
+    options: EmbeddingOptions,
+  ): Promise<EmbeddingResult> {
+    if (!this.capabilities.embeddings) {
+      throw new LLMUpstreamError(
+        this.name,
+        `${this.name} não declara a capability \`embeddings\``,
+      );
+    }
+    if (inputs.length === 0) {
+      // Lista vazia é pergunta sem sentido, e responder `[]` a ela faria o
+      // chamador gravar um índice vazio achando que indexou.
+      throw new LLMUpstreamError(
+        this.name,
+        'embedding pedido sem nenhuma entrada',
+      );
+    }
+
+    const { status, body } = await postJson({
+      url: `${this.config.baseUrl}/embeddings`,
+      body: JSON.stringify({
+        model: options.model,
+        input: inputs,
+        ...(options.dimensions !== undefined
+          ? { dimensions: options.dimensions }
+          : {}),
+      }),
+      headers: this.config.authHeaders(options.apiKey),
+      timeoutMs: timeoutFromEnv(LLM_TIMEOUT_ENV, DEFAULT_TIMEOUT_MS),
+      timeoutEnvName: LLM_TIMEOUT_ENV,
+      provider: this.name,
+    });
+
+    if (status < 200 || status >= 300) {
+      throw normalizeHttpStatus(this.name, status, body);
+    }
+
+    let corpo: unknown;
+    try {
+      corpo = JSON.parse(body);
+    } catch (error) {
+      throw new LLMUpstreamError(
+        this.name,
+        'resposta de embedding não é JSON válido',
+        error,
+      );
+    }
+
+    return montarEmbedding({
+      provider: this.name,
+      esperados: inputs.length,
+      modeloPedido: options.model,
+      // `index` é o vínculo com a entrada, e a doc da OpenAI não promete ordem
+      // — ordenar aqui é o que mantém "o i-ésimo vetor é da i-ésima entrada".
+      vetores: extrairVetoresOpenAI(this.name, corpo),
+      modeloRespondido: (corpo as { model?: unknown }).model,
+      inputTokens: (corpo as { usage?: { prompt_tokens?: unknown } }).usage
+        ?.prompt_tokens,
+    });
   }
 
   private buildBody(messages: ChatMessage[], options: ChatOptions) {

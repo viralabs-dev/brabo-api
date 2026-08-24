@@ -6,6 +6,8 @@ import { comandoNoEscopo } from './path-scope';
 import {
   efeitoExternoNoComando,
   mensagemDeEfeitoExterno,
+  comandoPrivilegiadoNoComando,
+  mensagemDeComandoPrivilegiado,
 } from './external-effect';
 
 export type ActionType =
@@ -23,7 +25,9 @@ export type ActionType =
   | 'open_infra_pr'
   | 'instruction_patch'
   | 'parallelize'
-  | 'raise_max_parallel';
+  | 'raise_max_parallel'
+  | 'propose_execution_plan'
+  | 'assess_implementability';
 
 export const ACTION_TYPES: readonly ActionType[] = [
   'terminal',
@@ -43,6 +47,16 @@ export const ACTION_TYPES: readonly ActionType[] = [
   // Anamnese propondo subir o próprio teto.
   'parallelize',
   'raise_max_parallel',
+  // ADR 0086 (RN-284): o plano de execução do Dev Lead — antes um evento
+  // simples, sem aprovação nenhuma no meio (achado A2 da auditoria
+  // fluxo.yml x código). Ver o comentário no teto do paralelismo, abaixo,
+  // sobre por que este tipo NÃO entra naquele bloco.
+  'propose_execution_plan',
+  // ADR 0090: o parecer de implementabilidade do Dev Lead (gate
+  // `implementavel`, docs/gates.yml, ativo). Mesmo calibre e o mesmo
+  // raciocínio de `propose_execution_plan` — decisão INICIAL, não
+  // ultrapassagem de teto.
+  'assess_implementability',
 ];
 
 /**
@@ -107,6 +121,18 @@ const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
   // autoriza custo é quem responde pelo projeto.
   parallelize: 'maintainer',
   raise_max_parallel: 'maintainer',
+  // O plano decide QUANTOS agentes sobem por módulo — mesmo calibre de
+  // `parallelize`: é decisão de QUANTO o produto vai gastar com
+  // paralelismo, só que na largada em vez de numa ultrapassagem de teto
+  // (ADR 0086, RN-284).
+  propose_execution_plan: 'maintainer',
+  // Gate `implementavel` (ADR 0090): quem decide se uma story é
+  // implementável é o mesmo calibre de quem decide o plano de execução —
+  // `maintainer`, e DELIBERADAMENTE fora do bloco de tetos absolutos
+  // abaixo (ver o comentário lá) pelo MESMO raciocínio de
+  // `propose_execution_plan`: é uma decisão inicial da sessão, não uma
+  // ultrapassagem de teto já autorizado.
+  assess_implementability: 'maintainer',
 };
 
 // Rede de segurança padrão, sempre ativa, independente do permissions.json
@@ -163,22 +189,12 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
     };
   }
 
-  // FRONTEIRA DO CONTAINER (ADR 0065, RN-106). Aplicada ANTES de qualquer
-  // estágio permissivo porque não é uma preferência: é onde o container
-  // termina. `git push`, abertura de PR e deploy atravessam a parede e chegam
-  // no mundo, e a constituição do produto os declara humanos.
-  //
-  // `deny` e não `require_approval` porque existe "sempre permitir": um clique
-  // gravaria o padrão em `allow` e a segunda porta ficaria aberta para sempre.
-  // Negar aqui não tira poder do agente — a mensagem diz qual ação TIPADA usar,
-  // e é ela que nasce `proposed_action`, registra no event log o que foi
-  // empurrado e para onde, e passa pela decisão do usuário.
-  if (action.actionType === 'terminal' && action.command) {
-    const efeito = efeitoExternoNoComando(parseCommand(action.command));
-    if (efeito) {
-      return { policy: 'deny', reason: mensagemDeEfeitoExterno(efeito) };
-    }
-  }
+  // A FRONTEIRA DO CONTAINER e o COMANDO PRIVILEGIADO (ADR 0065, RN-106 —
+  // revisados nesta entrega) DEIXARAM de ser barrados aqui, logo após o IAM.
+  // Viraram teto absoluto, no bloco final junto dos outros (escopo, merge
+  // protegido, instruction_patch, paralelismo) — ver o comentário lá embaixo
+  // pra saber por que a mudança de `deny` pra `require_approval` incondicional
+  // é segura.
 
   let current: Decision = {
     policy: 'require_approval',
@@ -203,6 +219,42 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
   if (fileVerdict) {
     if (fileVerdict.policy === 'deny') return fileVerdict;
     current = fileVerdict;
+  }
+
+  // TETO DA FRONTEIRA DO CONTAINER + COMANDO PRIVILEGIADO (ADR 0065, RN-106
+  // — revisado nesta entrega). `git push`, abertura de PR, deploy e
+  // `sudo`/`doas` nunca são auto-aprováveis — nem por `agent_autonomy`
+  // (inclusive o curinga `"*"` de "modo automático") nem por
+  // `permissions.json`.
+  //
+  // Antes disto era `deny` incondicional logo após o IAM (ver o comentário
+  // que sobrava lá em cima). Virou teto absoluto — `require_approval`, não
+  // `deny` — pelo MESMO motivo que os tetos vizinhos já são assim: o produto
+  // prefere que a ação exista como `proposed_action` pendente, auditável no
+  // event log, decidida caso a caso, a recusá-la sem deixar rastro. Isso só é
+  // seguro porque a fresta que o `deny` original tapava à força — "sempre
+  // permitir" gravando o padrão em `allow` e abrindo a porta pra sempre — foi
+  // fechada na FONTE: `ApproveAlwaysActionUseCase`/`patternForAction` recusam
+  // gravar padrão pra ação com efeito externo git ou comando privilegiado
+  // (ver approve-always-action.use-case.ts). Sem essa fresta fechada, este
+  // teto viraria decorativo do mesmo jeito que os outros tetos alertam: um
+  // clique bastaria pra reabrir a porta que ele diz fechar.
+  //
+  // git com efeito externo continua tendo ação TIPADA pra redirecionar
+  // (`git_push`/`pr_open`/`git_merge`/`deploy`); `sudo`/`doas` não têm — a
+  // mensagem só explica por que aquele comando pede decisão humana.
+  if (action.actionType === 'terminal' && action.command) {
+    const tokens = parseCommand(action.command);
+    const efeito = efeitoExternoNoComando(tokens);
+    const privilegiado = comandoPrivilegiadoNoComando(tokens);
+    if ((efeito || privilegiado) && current.policy === 'auto_approve') {
+      return {
+        policy: 'require_approval',
+        reason: efeito
+          ? mensagemDeEfeitoExterno(efeito)
+          : mensagemDeComandoPrivilegiado(privilegiado!),
+      };
+    }
   }
 
   // TETO DO ESCOPO DE CAMINHO (ADR 0055). Comando de terminal que toca
@@ -263,6 +315,23 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
   // a regra que existe para exigir sua decisão passaria a dispensá-la. O
   // `raise_max_parallel` é pior ainda — seria o produto elevando o próprio
   // teto, que é exatamente o que o pipeline de aprovação existe para impedir.
+  //
+  // `propose_execution_plan` (ADR 0086) foi CONSIDERADO para este bloco e
+  // DELIBERADAMENTE deixado fora — não é esquecimento. Os três tetos
+  // absolutos que o CLAUDE.md enumera (merge protegido, instruction_patch,
+  // parallelize/raise_max_parallel) são os pontos em que o produto recusa
+  // deixar o usuário automatizar a própria decisão, mesmo com "sempre
+  // permitir" configurado. O plano do Dev Lead é diferente: é a PRIMEIRA
+  // vez que o usuário decide quantos agentes sobem numa sessão, não uma
+  // ultrapassagem de um teto já autorizado — e nada nesta feature pede um
+  // quarto absoluto. Fica `require_approval` por padrão (via IAM +
+  // ausência de regra em `permissions.json`), mas o usuário PODE configurar
+  // auto-aprovação explícita, como já vale para `open_adr_pr`/
+  // `open_infra_pr`.
+  //
+  // `assess_implementability` (ADR 0090) segue o MESMO raciocínio de
+  // `propose_execution_plan`, pelo mesmo motivo: é um parecer inicial
+  // sobre uma story, não uma ultrapassagem de teto já autorizado.
   if (
     (action.actionType === 'parallelize' ||
       action.actionType === 'raise_max_parallel') &&

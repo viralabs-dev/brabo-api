@@ -27,4 +27,17 @@ export abstract class PermissionsFileStore {
     list: keyof PermissionsFile,
     pattern: string,
   ): Promise<void>;
+
+  /**
+   * Relocaliza o permissions.json de uma localização para outra — usado pela
+   * conversão de `execution_mode` de um projeto EXISTENTE (RN-448, ADR
+   * 0111): o CONTEÚDO (allow/deny/ask) não muda, só o CAMINHO onde ele mora,
+   * porque `pathFor` deriva de `projectScopeRoot`, que muda com o par
+   * (modo, caminho). `from === to` (nenhuma mudança de raiz efetiva) é
+   * no-op — não regrava nem apaga nada.
+   */
+  abstract move(
+    from: ProjectWorkspaceLocation,
+    to: ProjectWorkspaceLocation,
+  ): Promise<void>;
 }

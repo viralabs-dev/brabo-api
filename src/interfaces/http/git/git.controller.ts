@@ -76,8 +76,8 @@ function parseGitProvider(value: string): GitProviderName {
  * única saída correta é não herdar.
  */
 @ApiTags('git')
-@ApiForbiddenResponse({ description: 'Papel insuficiente no projeto.' })
-@ApiNotFoundResponse({ description: 'Projeto inexistente.' })
+@ApiForbiddenResponse({ description: 'Insufficient role on the project.' })
+@ApiNotFoundResponse({ description: 'Project does not exist.' })
 @Controller()
 export class GitController {
   constructor(
@@ -97,13 +97,14 @@ export class GitController {
   @ApiBearerAuth(BEARER)
   @ApiParam({ name: 'provider', enum: ['github', 'gitlab'] })
   @ApiOperation({
-    summary: 'Começa o OAuth com o provider de git',
+    summary: 'Starts OAuth with the git provider',
     description:
-      'Não redireciona: devolve a URL para o cliente decidir quando mandar o browser. ' +
-      'O `state` vai assinado por HMAC, e é o que impede o callback de ser forjado.',
+      "Doesn't redirect: returns the URL for the client to decide when to send " +
+      'the browser. The `state` goes signed by HMAC, and that is what prevents ' +
+      'the callback from being forged.',
   })
   @ApiOkResponse({ type: GitAuthorizeUrlResponseDto })
-  @ApiBadRequestResponse({ description: 'Provider fora de `github`/`gitlab`.' })
+  @ApiBadRequestResponse({ description: 'Provider outside `github`/`gitlab`.' })
   connect(
     @Param('projectId') projectId: string,
     @Param('provider') provider: string,
@@ -120,21 +121,22 @@ export class GitController {
   @Get('git/oauth/:provider/callback')
   @ApiParam({ name: 'provider', enum: ['github', 'gitlab'] })
   @ApiOperation({
-    summary: 'Recebe o retorno do OAuth e redireciona para a web',
+    summary: 'Receives the OAuth return and redirects to the web app',
     description:
-      'Pública porque quem chega é o BROWSER do usuário vindo do provider, sem sessão ' +
-      'da api. Não é irrestrita: o `state` é verificado por HMAC e sem ele válido a ' +
-      'chamada é recusada. Nunca responde JSON — sempre redireciona, porque um corpo ' +
-      'de erro cru numa navegação de browser seria péssima experiência.',
+      "Public because whoever arrives is the user's BROWSER coming from the " +
+      "provider, without an api session. It isn't unrestricted: the `state` " +
+      'is verified by HMAC and without a valid one the call is refused. Never ' +
+      'responds with JSON — always redirects, because a raw error body in a ' +
+      'browser navigation would be a terrible experience.',
   })
   @ApiResponse({
     status: 302,
     description:
-      'Sucesso vai para `WEB_ORIGIN/projects/:id?git=connected`; falha vai para ' +
-      '`WEB_ORIGIN/git-error`. O erro NÃO vaza o motivo na URL.',
+      'Success goes to `WEB_ORIGIN/projects/:id?git=connected`; failure goes ' +
+      'to `WEB_ORIGIN/git-error`. The error does NOT leak the reason in the URL.',
     headers: {
       Location: {
-        description: 'Destino na web.',
+        description: 'Destination on the web app.',
         schema: {
           type: 'string',
           example: 'http://localhost:5173/projects/01JC…?git=connected',
@@ -175,15 +177,16 @@ export class GitController {
   @ApiBearerAuth(BEARER)
   @ApiParam({ name: 'provider', enum: ['local', 'github', 'gitlab'] })
   @ApiOperation({
-    summary: 'Cria o repositório e dispara o bootstrap de Gitflow',
+    summary: 'Creates the repository and triggers the Gitflow bootstrap',
     description:
-      'A resposta volta assim que o repositório existe; o bootstrap (branches ' +
-      'permanentes, proteções, templates) continua em segundo plano e é ' +
-      'IDEMPOTENTE E RETOMÁVEL. Acompanhe por `GET /projects/:id/git/bootstrap`.',
+      'The response comes back as soon as the repository exists; the ' +
+      'bootstrap (permanent branches, protections, templates) continues in ' +
+      'the background and is IDEMPOTENT AND RESUMABLE. Track it via ' +
+      '`GET /projects/:id/git/bootstrap`.',
   })
   @ApiCreatedResponse({ type: ProvisionRepositoryResponseDto })
   @ApiBadRequestResponse({
-    description: 'Provider inválido, ou credencial ausente.',
+    description: 'Invalid provider, or missing credential.',
   })
   provision(
     @Param('projectId') projectId: string,
@@ -202,22 +205,22 @@ export class GitController {
   @ApiBearerAuth(BEARER)
   @ApiParam({ name: 'provider', enum: ['local', 'github', 'gitlab'] })
   @ApiOperation({
-    summary: 'Adota um repositório que já existe, sem criar nada',
+    summary: 'Adopts an existing repository, without creating anything',
     description:
-      'Valida o acesso com `getRepo` e produz um PLANO (dry-run) do que o ' +
-      'bootstrap faria — branches faltantes, proteções ausentes, arquivos. ' +
-      'NADA é executado no repositório: decida depois por `plan/approve` ou ' +
-      '`plan/skip`. Readotar o mesmo repositório converge (regenera o plano ' +
-      'sem duplicar linha).',
+      'Validates access with `getRepo` and produces a PLAN (dry-run) of what ' +
+      'the bootstrap would do — missing branches, missing protections, files. ' +
+      'NOTHING is executed on the repository: decide afterward via ' +
+      '`plan/approve` or `plan/skip`. Re-adopting the same repository ' +
+      'converges (regenerates the plan without duplicating a row).',
   })
   @ApiCreatedResponse({ type: AdoptRepositoryResponseDto })
   @ApiNotFoundResponse({
     description:
-      'O repositório não existe no provider — confira o identificador.',
+      "The repository doesn't exist on the provider — check the identifier.",
   })
   @ApiForbiddenResponse({
     description:
-      'O repositório existe, mas a credencial cadastrada não o alcança.',
+      "The repository exists, but the registered credential can't reach it.",
   })
   adopt(
     @Param('projectId') projectId: string,
@@ -235,10 +238,10 @@ export class GitController {
   @RequireRole('viewer')
   @ApiBearerAuth(BEARER)
   @ApiOperation({
-    summary: 'Devolve o plano de bootstrap e o que foi decidido sobre ele',
+    summary: 'Returns the bootstrap plan and what was decided about it',
     description:
-      '`decision: null` com plano presente é o estado em que NADA roda — ' +
-      'esperando aprovação ou adoção como está (RN-045).',
+      '`decision: null` with a plan present is the state where NOTHING runs ' +
+      '— waiting for approval or as-is adoption (RN-045).',
   })
   @ApiOkResponse({ type: BootstrapPlanEstadoResponseDto })
   plan(@Param('projectId') projectId: string) {
@@ -249,17 +252,17 @@ export class GitController {
   @RequireRole('maintainer')
   @ApiBearerAuth(BEARER)
   @ApiOperation({
-    summary: 'Aprova o plano INTEIRO e roda o bootstrap',
+    summary: 'Approves the WHOLE plan and runs the bootstrap',
     description:
-      'Aprovação é tudo-ou-nada: aprovar passos soltos quebraria a cascata ' +
-      '`dev←main, qa←dev, rc←qa`. O que roda é o plano RE-DERIVADO no momento ' +
-      'da execução — igual ou menor que o exibido, nunca maior.',
+      'Approval is all-or-nothing: approving loose steps would break the ' +
+      '`dev←main, qa←dev, rc←qa` cascade. What runs is the plan RE-DERIVED at ' +
+      'execution time — equal to or smaller than what was shown, never larger.',
   })
   @ApiCreatedResponse({ type: DecideBootstrapPlanResponseDto })
   @ApiResponse({
     status: 409,
     description:
-      'O plano foi regerado desde que você o viu, ou já havia sido decidido.',
+      'The plan was regenerated since you last saw it, or it had already been decided.',
   })
   approvePlan(
     @Param('projectId') projectId: string,
@@ -273,17 +276,17 @@ export class GitController {
   @RequireRole('maintainer')
   @ApiBearerAuth(BEARER)
   @ApiOperation({
-    summary: 'Adota o repositório COMO ESTÁ, dispensando o bootstrap',
+    summary: 'Adopts the repository AS IS, dismissing the bootstrap',
     description:
-      'Registra a decisão e não toca no repositório. O plano fica guardado ' +
-      'como evidência do que deliberadamente não foi aplicado, e o cursor do ' +
-      'bootstrap NÃO é adulterado — nenhum passo rodou.',
+      "Records the decision and doesn't touch the repository. The plan " +
+      'stays stored as evidence of what was deliberately not applied, and ' +
+      'the bootstrap cursor is NOT tampered with — no step ran.',
   })
   @ApiCreatedResponse({ type: DecideBootstrapPlanResponseDto })
   @ApiResponse({
     status: 409,
     description:
-      'O plano foi regerado desde que você o viu, ou já havia sido decidido.',
+      'The plan was regenerated since you last saw it, or it had already been decided.',
   })
   skipPlan(
     @Param('projectId') projectId: string,
@@ -297,23 +300,24 @@ export class GitController {
   @RequireRole('maintainer')
   @ApiBearerAuth(BEARER)
   @ApiOperation({
-    summary: 'Reconhece a falha ao proteger as branches e segue',
+    summary: 'Acknowledges the branch-protection failure and moves on',
     description:
-      '`protect_branches` falha em repositório privado no plano gratuito, e o ' +
-      'wizard avisa isso ANTES. Sem esta saída o único botão era "Tentar ' +
-      'novamente", que falha sempre pelo mesmo motivo — e `provision_failed` ' +
-      'faz o dashboard redirecionar o projeto de volta para a página de ' +
-      'provisionamento, deixando-o inalcançável para sempre. Só a falha em ' +
-      'PROTEGER pode ser reconhecida: ela é o último passo e o único cujo ' +
-      'fracasso deixa um repositório utilizável. A trava de merge do produto ' +
-      '(RN-006) não depende da proteção do provider e continua valendo.',
+      '`protect_branches` fails on a private repository on the free plan, ' +
+      'and the wizard warns about this BEFOREHAND. Without this exit the ' +
+      'only button was "Try again", which always fails for the same reason ' +
+      '— and `provision_failed` makes the dashboard redirect the project ' +
+      'back to the provisioning page, leaving it unreachable forever. Only a ' +
+      'failure in PROTECTING can be acknowledged: it is the last step and ' +
+      'the only one whose failure leaves a usable repository. The ' +
+      "product's merge lock (RN-006) doesn't depend on the provider's " +
+      'protection and keeps applying.',
   })
   @ApiCreatedResponse({ type: ReconhecerFalhaDeProtecaoResponseDto })
   @ApiResponse({
     status: 409,
     description:
-      'O bootstrap não falhou, ou falhou num passo anterior à proteção — ' +
-      'seguir ali deixaria o projeto sem repositório utilizável.',
+      'The bootstrap did not fail, or it failed on a step before protection ' +
+      '— moving on there would leave the project without a usable repository.',
   })
   reconhecerFalhaDeProtecao(
     @Param('projectId') projectId: string,
@@ -325,7 +329,7 @@ export class GitController {
   @Get('projects/:projectId/git/repository')
   @RequireRole('viewer')
   @ApiBearerAuth(BEARER)
-  @ApiOperation({ summary: 'Devolve o repositório provisionado do projeto' })
+  @ApiOperation({ summary: "Returns the project's provisioned repository" })
   @ApiOkResponse({ type: ProvisionedRepositoryResponseDto })
   get(@Param('projectId') projectId: string) {
     return this.getRepository.execute(projectId);
@@ -335,10 +339,11 @@ export class GitController {
   @RequireRole('viewer')
   @ApiBearerAuth(BEARER)
   @ApiOperation({
-    summary: 'Devolve o estado do bootstrap de Gitflow',
+    summary: 'Returns the Gitflow bootstrap state',
     description:
-      'Em que passo está, se falhou e onde, e quantas tentativas houve. O detalhe ' +
-      'passo a passo vem dos eventos `bootstrap.step_*` da sessão dedicada.',
+      'Which step it is on, whether it failed and where, and how many ' +
+      'attempts there were. The step-by-step detail comes from the ' +
+      '`bootstrap.step_*` events of the dedicated session.',
   })
   @ApiOkResponse({ type: RepoBootstrapStatusResponseDto })
   getBootstrap(@Param('projectId') projectId: string) {

@@ -27,8 +27,8 @@ import { ChatSseEventResponseDto } from './dto/llm.response.dto';
 
 @ApiTags('llm')
 @ApiBearerAuth(BEARER)
-@ApiForbiddenResponse({ description: 'Papel insuficiente no projeto.' })
-@ApiNotFoundResponse({ description: 'Projeto ou sessão inexistente.' })
+@ApiForbiddenResponse({ description: 'Insufficient role on the project.' })
+@ApiNotFoundResponse({ description: 'Project or session not found.' })
 @Controller('projects/:projectId/sessions/:sessionId/chat')
 export class ChatController {
   constructor(private readonly sendChatMessage: SendChatMessageUseCase) {}
@@ -42,18 +42,18 @@ export class ChatController {
   @Sse('', { method: RequestMethod.POST })
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Conversa com o modelo da sessão, com a resposta em stream',
+    summary: "Talks to the session's model, with the response streamed",
     description:
-      'Server-Sent Events. Os quadros `delta` trazem o texto incremental e o `done` ' +
-      'fecha com a contabilidade de tokens e custo. Um quadro `metering_failed` ' +
-      'significa que a RESPOSTA saiu mas o custo não foi contabilizado — a falha ' +
-      'aparece em vez de sumir. Se o orçamento estiver estourado com `policy=block`, ' +
-      'o stream traz `error` e nenhum `delta`.',
+      'Server-Sent Events. `delta` frames carry the incremental text and ' +
+      '`done` closes with the token and cost accounting. A `metering_failed` ' +
+      'frame means the RESPONSE went out but the cost was not accounted for ' +
+      '— the failure shows up instead of disappearing. If the budget is ' +
+      'exceeded with `policy=block`, the stream carries `error` and no `delta`.',
   })
   @ApiExtraModels(ChatSseEventResponseDto)
   @ApiResponse({
     status: 200,
-    description: 'Stream de quadros até `done` ou `error`.',
+    description: 'Stream of frames until `done` or `error`.',
     content: {
       'text/event-stream': {
         schema: { $ref: getSchemaPath(ChatSseEventResponseDto) },

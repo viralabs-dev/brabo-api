@@ -18,11 +18,14 @@ import { SendAgentMessageUseCase } from '../../../application/use-cases/agents/s
 import { CancelAgentTurnUseCase } from '../../../application/use-cases/agents/cancel-agent-turn.use-case';
 import { ConfirmReadinessUseCase } from '../../../application/use-cases/agents/confirm-readiness.use-case';
 import { OfferInfraHandoffUseCase } from '../../../application/use-cases/agents/offer-infra-handoff.use-case';
+import { ValidateNecessityUseCase } from '../../../application/use-cases/agents/validate-necessity.use-case';
 import { AcceptHandoffUseCase } from '../../../application/use-cases/agents/accept-handoff.use-case';
 import { ListHandoffsUseCase } from '../../../application/use-cases/agents/list-handoffs.use-case';
+import { RequestManualHandoffUseCase } from '../../../application/use-cases/agents/request-manual-handoff.use-case';
 import { AnswerStructuredQuestionUseCase } from '../../../application/use-cases/agents/answer-structured-question.use-case';
 import { SendAgentMessageDto } from './dto/send-agent-message.dto';
 import { AnswerStructuredQuestionDto } from './dto/answer-structured-question.dto';
+import { RequestManualHandoffDto } from './dto/request-manual-handoff.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import { OkResponseDto } from '../shared/dto/comuns.response.dto';
 import {
@@ -36,10 +39,10 @@ import {
  * accepted — regra no ActivateAgentUseCase), mandar mensagem pro agente ativo,
  * confirmar prontidão (botão que dispara o product_brief), e listar handoffs.
  */
-@ApiTags('agentes')
+@ApiTags('agents')
 @ApiBearerAuth(BEARER)
-@ApiForbiddenResponse({ description: 'Papel insuficiente no projeto.' })
-@ApiNotFoundResponse({ description: 'Projeto, sessão ou handoff inexistente.' })
+@ApiForbiddenResponse({ description: 'Insufficient role on the project.' })
+@ApiNotFoundResponse({ description: 'Project, session, or handoff not found.' })
 @Controller('projects/:projectId/sessions/:sessionId')
 export class AgentsController {
   constructor(
@@ -48,8 +51,10 @@ export class AgentsController {
     private readonly cancelAgentTurn: CancelAgentTurnUseCase,
     private readonly confirmReadiness: ConfirmReadinessUseCase,
     private readonly offerInfraHandoff: OfferInfraHandoffUseCase,
+    private readonly validateNecessity: ValidateNecessityUseCase,
     private readonly acceptHandoff: AcceptHandoffUseCase,
     private readonly listHandoffs: ListHandoffsUseCase,
+    private readonly requestManualHandoff: RequestManualHandoffUseCase,
     private readonly answerStructuredQuestion: AnswerStructuredQuestionUseCase,
   ) {}
 
@@ -58,18 +63,19 @@ export class AgentsController {
   @ApiParam({
     name: 'agent',
     example: 'criativo',
-    description: 'Slug do agente.',
+    description: 'Agent slug.',
   })
   @ApiOperation({
-    summary: 'Sobe um agente na sessão',
+    summary: 'Starts an agent in the session',
     description:
-      'Só o Criativo pode ser iniciado por comando direto. Todos os outros exigem um ' +
-      'handoff ACEITO apontando para eles — a regra está no domínio, não aqui, e ' +
-      'tentar furá-la responde 409.',
+      'Only the Criativo can be started by a direct command. Every other agent ' +
+      'requires an ACCEPTED handoff pointing to it — the rule lives in the ' +
+      'domain, not here, and trying to bypass it returns 409.',
   })
   @ApiCreatedResponse({ type: AgenteAtivadoResponseDto })
   @ApiConflictResponse({
-    description: 'Agente sem handoff aceito, ou já ativo na sessão.',
+    description:
+      'Agent without an accepted handoff, or already active in the session.',
   })
   start(
     @Param('projectId') projectId: string,
@@ -85,16 +91,18 @@ export class AgentsController {
   @ApiParam({
     name: 'agent',
     example: 'po',
-    description: 'Slug do agente ativo.',
+    description: 'Slug of the active agent.',
   })
   @ApiOperation({
-    summary: 'Envia uma mensagem ao agente ativo',
+    summary: 'Sends a message to the active agent',
     description:
-      'A resposta é só o aceite. O que o agente responde chega pelo event log da ' +
-      'sessão e pelo SSE de chat — não por esta chamada.',
+      'The response is just the acknowledgment. What the agent replies arrives ' +
+      "via the session's event log and the chat SSE — not through this call.",
   })
   @ApiCreatedResponse({ type: OkResponseDto })
-  @ApiConflictResponse({ description: 'O agente não está ativo nesta sessão.' })
+  @ApiConflictResponse({
+    description: 'The agent is not active in this session.',
+  })
   message(
     @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
@@ -124,22 +132,23 @@ export class AgentsController {
   @ApiParam({
     name: 'agent',
     example: 'criativo',
-    description: 'Slug do agente que fez as perguntas (e vai ler a resposta).',
+    description:
+      'Slug of the agent that asked the questions (and will read the answer).',
   })
   @ApiParam({
     name: 'questionSetId',
     example: '01JC4Z0000EVENTO000000000001',
-    description: 'Id do evento `chat.structured_question` respondido.',
+    description: 'Id of the answered `chat.structured_question` event.',
   })
   @ApiOperation({
-    summary: 'Responde a um conjunto de perguntas estruturadas do agente',
+    summary: "Answers a set of the agent's structured questions",
     description:
-      'Grava `chat.structured_question_answered` e reenvia as respostas ao agente como uma ' +
-      'mensagem normal. Um conjunto de perguntas só pode ser respondido uma vez.',
+      'Records `chat.structured_question_answered` and resends the answers to the ' +
+      'agent as a normal message. A question set can only be answered once.',
   })
   @ApiCreatedResponse({ type: OkResponseDto })
   @ApiConflictResponse({
-    description: 'Este conjunto de perguntas já foi respondido.',
+    description: 'This question set has already been answered.',
   })
   submitStructuredQuestionAnswer(
     @Param('projectId') projectId: string,
@@ -164,15 +173,15 @@ export class AgentsController {
   @ApiParam({
     name: 'agent',
     example: 'po',
-    description: 'Slug do agente ativo.',
+    description: 'Slug of the active agent.',
   })
   @ApiOperation({
-    summary: 'Cancela o turno em curso do agente ativo',
+    summary: "Cancels the active agent's turn in progress",
     description:
-      'O botão "Parar" do composer (RN-122): mata a chamada ao LLM em curso no ' +
-      'engine, cortando a conexão no meio — economiza token de verdade, não só ' +
-      'para de renderizar no cliente. Idempotente: sem turno em curso, é aceito ' +
-      'sem efeito.',
+      'The composer\'s "Stop" button (RN-122): kills the in-flight LLM call in ' +
+      'the engine, cutting the connection mid-stream — it saves tokens for real, ' +
+      'not just stops rendering on the client. Idempotent: with no turn in ' +
+      'progress, it is accepted with no effect.',
   })
   @ApiCreatedResponse({ type: OkResponseDto })
   cancel(
@@ -186,10 +195,10 @@ export class AgentsController {
   @Post('readiness')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Confirma que o levantamento com o Criativo terminou',
+    summary: 'Confirms that the discovery session with the Criativo is done',
     description:
-      'É o botão que dispara o `product_brief` e o handoff para o PO. Registra ' +
-      '`readiness.confirmed` no event log.',
+      "It's the button that triggers the `product_brief` and the handoff to " +
+      'the PO. Records `readiness.confirmed` in the event log.',
   })
   @ApiCreatedResponse({ type: OkResponseDto })
   readiness(
@@ -209,10 +218,11 @@ export class AgentsController {
   @RequireRole('developer')
   @ApiOperation({
     summary:
-      'Confirma que a arquitetura está pronta e oferece o handoff ao Infra',
+      'Confirms the architecture is ready and offers the handoff to Infra',
     description:
-      'Endpoint dedicado em vez de reaproveitar `readiness`, que é do Criativo: ' +
-      'são dois marcos diferentes da sessão e confundi-los tornaria o event log ambíguo.',
+      'Dedicated endpoint instead of reusing `readiness`, which belongs to the ' +
+      'Criativo: they are two different milestones of the session, and ' +
+      'conflating them would make the event log ambiguous.',
   })
   @ApiCreatedResponse({ type: OkResponseDto })
   handoffInfra(
@@ -223,9 +233,35 @@ export class AgentsController {
     return this.offerInfraHandoff.execute(projectId, sessionId, user.id);
   }
 
+  /**
+   * Gate `necessidade-validada` (Criativo → PO — auditoria fluxo.yml x
+   * código, achado B2, RN-406/ADR 0095): o usuário confirma que o
+   * `product_brief` que o Criativo consolidou reflete de verdade a
+   * necessidade de negócio. Endpoint dedicado — não reaproveita `readiness`
+   * (que só exige regra capturada, RN-142) nem o aceite do handoff pelo PO
+   * (que é estrutural, sem julgamento de conteúdo).
+   */
+  @Post('agents/criativo/validate-necessity')
+  @RequireRole('developer')
+  @ApiOperation({
+    summary: "Confirms the Criativo's business need has been validated",
+    description:
+      'Records `necessity.validated`. Requires the Criativo to have already ' +
+      'consolidated a `product_brief` in this session (RN-406) — without it, it ' +
+      'is refused: there is nothing to validate.',
+  })
+  @ApiCreatedResponse({ type: OkResponseDto })
+  validateNecessityHandoff(
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.validateNecessity.execute(projectId, sessionId, user.id);
+  }
+
   @Get('handoffs')
   @RequireRole('viewer')
-  @ApiOperation({ summary: 'Lista os handoffs entre agentes da sessão' })
+  @ApiOperation({ summary: "Lists the session's agent-to-agent handoffs" })
   @ApiOkResponse({ type: [HandoffResponseDto] })
   handoffs(
     @Param('projectId') projectId: string,
@@ -235,19 +271,53 @@ export class AgentsController {
   }
 
   /**
+   * Handoff manual a agente à escolha (ADR 0109/RN-440): o usuário endereça
+   * um handoff a QUALQUER agente do catálogo `addressableAgents()` (lead de
+   * área ou agente solo), não só o próximo da cadeia fixa — o caso real é o
+   * Staff (ADR 0088), pronto no engine mas só alcançável antes disto pela
+   * rota interna. Nasce `offered`, do MESMO jeito que um handoff automático
+   * — quem aceita continua sendo `accept`, abaixo, sem caminho novo.
+   */
+  @Post('handoffs')
+  @RequireRole('developer')
+  @ApiOperation({
+    summary: 'Manually offers a handoff to a chosen agent',
+    description:
+      "Born as `offered`, exactly like an agent's own `offer_handoff` — " +
+      'the only difference is who decided. `toAgent` has to be in the ' +
+      'addressable catalog (area lead or area-less agent); a subagent or an ' +
+      'unknown slug is refused with 400.',
+  })
+  @ApiCreatedResponse({ type: HandoffResponseDto })
+  requestManual(
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @CurrentUser() user: User,
+    @Body() dto: RequestManualHandoffDto,
+  ) {
+    return this.requestManualHandoff.execute(
+      projectId,
+      sessionId,
+      dto.toAgent,
+      user.id,
+    );
+  }
+
+  /**
    * O usuário aceita um handoff oferecido → transiciona pra accepted e ATIVA o
    * agente destino (ex.: o PO). Exercita a regra de ativação (agent-activation).
    */
   @Post('handoffs/:handoffId/accept')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Aceita um handoff e ativa o agente de destino',
+    summary: 'Accepts a handoff and activates the destination agent',
     description:
-      'Uma coisa só: passar para `accepted` E subir o agente destino. É o caminho ' +
-      'normal de ativação de todo agente que não seja o Criativo.',
+      'One thing only: transition to `accepted` AND start the destination ' +
+      'agent. It is the normal activation path for every agent other than the ' +
+      'Criativo.',
   })
   @ApiCreatedResponse({ type: HandoffResponseDto })
-  @ApiConflictResponse({ description: 'O handoff não está em `offered`.' })
+  @ApiConflictResponse({ description: 'The handoff is not in `offered`.' })
   accept(
     @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,

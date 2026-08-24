@@ -99,7 +99,15 @@ export function deepinfraConfig(
   return {
     name: 'deepinfra',
     baseUrl,
-    capabilities: { streaming: true, toolCalling: true, listModels: true },
+    capabilities: {
+      streaming: true,
+      toolCalling: true,
+      listModels: true,
+      // Sem `DEEPINFRA_TEST_KEY` no ambiente nenhum smoke rodou contra o
+      // `/embeddings` real (ADR 0075). Este é o provider da PRIMEIRA reversão
+      // ao vivo do ADR 0043 — o catálogo público não prova o endpoint pago.
+      embeddings: false,
+    },
     authHeaders: (apiKey) => ({
       Authorization: `Bearer ${apiKey ?? ''}`,
     }),

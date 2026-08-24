@@ -3,6 +3,8 @@ import type {
   ChatMessage,
   ChatOptions,
   ChatStreamChunk,
+  EmbeddingOptions,
+  EmbeddingResult,
   LLMProviderCapabilities,
   LLMProviderName,
   ModeloDoCatalogo,
@@ -38,8 +40,10 @@ class ProviderFalso extends LLMProvider {
     streaming: true,
     toolCalling: true,
     listModels: true,
+    embeddings: true,
   };
   chaveRecebida: string | undefined = undefined;
+  entradasRecebidas: readonly string[] = [];
 
   // eslint-disable-next-line @typescript-eslint/require-await
   async *chat(
@@ -55,6 +59,21 @@ class ProviderFalso extends LLMProvider {
       { name: 'modelo-remoto', displayName: 'Modelo remoto' },
     ]);
   }
+
+  embed(
+    inputs: readonly string[],
+    options: EmbeddingOptions,
+  ): Promise<EmbeddingResult> {
+    this.entradasRecebidas = inputs;
+    this.chaveRecebida = options.apiKey;
+    return Promise.resolve({
+      vectors: inputs.map(() => [0.1, 0.2]),
+      dimensions: 2,
+      model: options.model,
+      inputTokens: 7,
+      estimated: false,
+    });
+  }
 }
 
 class ProviderSemCatalogo extends LLMProvider {
@@ -63,6 +82,7 @@ class ProviderSemCatalogo extends LLMProvider {
     streaming: true,
     toolCalling: false,
     listModels: false,
+    embeddings: false,
   };
 
   // eslint-disable-next-line @typescript-eslint/require-await
@@ -97,6 +117,46 @@ describe('TracedLLMProvider', () => {
     const traced = new TracedLLMProvider(new ProviderSemCatalogo(), metrics);
 
     expect(traced.listModels).toBeUndefined();
+  });
+
+  /**
+   * `embed` entrou depois (ADR 0075) e é o segundo membro opcional do port —
+   * exatamente a forma do defeito que `listModels` já teve. O teste é o mesmo,
+   * porque a armadilha é a mesma.
+   */
+  it('encaminha embed, com as entradas e a chave intactas', async () => {
+    const inner = new ProviderFalso();
+    const traced = new TracedLLMProvider(inner, metrics);
+
+    expect(typeof traced.embed).toBe('function');
+    const resultado = await traced.embed!(['um', 'dois'], {
+      model: 'modelo-de-embedding',
+      apiKey: 'sk-chave',
+    });
+
+    expect(resultado.vectors).toHaveLength(2);
+    expect(resultado.dimensions).toBe(2);
+    expect(inner.entradasRecebidas).toEqual(['um', 'dois']);
+    expect(inner.chaveRecebida).toBe('sk-chave');
+  });
+
+  it('NÃO inventa embed em provider que não embeda', () => {
+    const traced = new TracedLLMProvider(new ProviderSemCatalogo(), metrics);
+
+    expect(traced.embed).toBeUndefined();
+  });
+
+  it('erro de embed sobe pelo decorator em vez de virar resultado vazio', async () => {
+    class ProviderQueFalha extends ProviderFalso {
+      override embed(): Promise<EmbeddingResult> {
+        return Promise.reject(new Error('provider fora do ar'));
+      }
+    }
+    const traced = new TracedLLMProvider(new ProviderQueFalha(), metrics);
+
+    await expect(
+      traced.embed!(['um'], { model: 'modelo-de-embedding' }),
+    ).rejects.toThrow('provider fora do ar');
   });
 
   it('encaminha nome e capabilities', () => {
@@ -151,10 +211,14 @@ describe('TracedLLMProvider', () => {
         if (traced.capabilities.listModels) {
           expect(typeof traced.listModels).toBe('function');
         }
+        if (traced.capabilities.embeddings) {
+          expect(typeof traced.embed).toBe('function');
+        }
         // O decorator nunca pode ACRESCENTAR o método a quem não o tinha.
         expect(traced.listModels === undefined).toBe(
           provider.listModels === undefined,
         );
+        expect(traced.embed === undefined).toBe(provider.embed === undefined);
       });
     }
   });

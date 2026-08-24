@@ -28,7 +28,10 @@ import {
   TaskRepository,
 } from '../../../application/ports/backlog-repository.port';
 import { ModuleMapRepository } from '../../../application/ports/module-map-repository.port';
+import { ChunkRepository } from '../../../application/ports/chunk-repository.port';
+import { ContainerRepository } from '../../../application/ports/container-repository.port';
 import { ProjectsSummaryRepository } from '../../../application/ports/projects-summary-repository.port';
+import { DevAgentActivityPort } from '../../../application/ports/dev-agent-activity.port';
 import { AgentAreaRepository } from '../../../application/ports/agent-area-repository.port';
 import { InfraArtifactRepository } from '../../../application/ports/infra-artifact-repository.port';
 import { PsychologistAnalysisRepository } from '../../../application/ports/psychologist-analysis-repository.port';
@@ -45,11 +48,15 @@ import {
 import { AuthCredentialRepository } from '../../../application/ports/auth-credential-repository.port';
 import { RefreshTokenRepository } from '../../../application/ports/refresh-token-repository.port';
 import { AccountTokenRepository } from '../../../application/ports/account-token-repository.port';
+import { PersonalAccessTokenRepository } from '../../../application/ports/personal-access-token-repository.port';
 import { AuthEventRecorder } from '../../../application/ports/auth-event-recorder.port';
 import { LoginThrottle } from '../../../application/ports/login-throttle.port';
+import { SocialIdentityRepository } from '../../../application/ports/social-identity-repository.port';
 import { DrizzleAuthCredentialRepository } from './auth-credential.repository';
+import { DrizzleSocialIdentityRepository } from './social-identity.repository';
 import { DrizzleRefreshTokenRepository } from './refresh-token.repository';
 import { DrizzleAccountTokenRepository } from './account-token.repository';
+import { DrizzlePersonalAccessTokenRepository } from './personal-access-token.repository';
 import { DrizzleAuthEventRepository } from './auth-event.repository';
 import { DrizzleLoginThrottle } from './drizzle-login-throttle';
 import { createDrizzleClient, DRIZZLE } from './drizzle-client';
@@ -58,6 +65,7 @@ import { DrizzleUserRepository } from './user.repository';
 import { DrizzleWorkspaceRepository } from './workspace.repository';
 import { DrizzleProjectRepository } from './project.repository';
 import { DrizzleProjectsSummaryRepository } from './projects-summary.repository';
+import { DrizzleDevAgentActivityRepository } from './dev-agent-activity.repository';
 import { DrizzleSessionRepository } from './session.repository';
 import { DrizzleSessionEventRepository } from './session-event.repository';
 import { DrizzleSessionSocketTicketRepository } from './session-socket-ticket.repository';
@@ -83,6 +91,8 @@ import {
   DrizzleTaskRepository,
 } from './backlog.repository';
 import { DrizzleModuleMapRepository } from './module-map.repository';
+import { DrizzleChunkRepository } from './chunk.repository';
+import { DrizzleContainerRepository } from './container.repository';
 import { DrizzleAgentAreaRepository } from './agent-area.repository';
 import { DrizzleInfraArtifactRepository } from './infra-artifact.repository';
 import { DrizzlePsychologistAnalysisRepository } from './psychologist-analysis.repository';
@@ -119,8 +129,16 @@ const { db, pool } = createDrizzleClient();
       provide: AccountTokenRepository,
       useClass: DrizzleAccountTokenRepository,
     },
+    {
+      provide: PersonalAccessTokenRepository,
+      useClass: DrizzlePersonalAccessTokenRepository,
+    },
     { provide: AuthEventRecorder, useClass: DrizzleAuthEventRepository },
     { provide: LoginThrottle, useClass: DrizzleLoginThrottle },
+    {
+      provide: SocialIdentityRepository,
+      useClass: DrizzleSocialIdentityRepository,
+    },
     { provide: WorkspaceRepository, useClass: DrizzleWorkspaceRepository },
     { provide: ProjectRepository, useClass: DrizzleProjectRepository },
     { provide: SessionRepository, useClass: DrizzleSessionRepository },
@@ -185,7 +203,13 @@ const { db, pool } = createDrizzleClient();
       provide: ProjectsSummaryRepository,
       useClass: DrizzleProjectsSummaryRepository,
     },
+    {
+      provide: DevAgentActivityPort,
+      useClass: DrizzleDevAgentActivityRepository,
+    },
     { provide: ModuleMapRepository, useClass: DrizzleModuleMapRepository },
+    { provide: ChunkRepository, useClass: DrizzleChunkRepository },
+    { provide: ContainerRepository, useClass: DrizzleContainerRepository },
     { provide: AgentAreaRepository, useClass: DrizzleAgentAreaRepository },
     {
       provide: InfraArtifactRepository,
@@ -224,8 +248,10 @@ const { db, pool } = createDrizzleClient();
     AuthCredentialRepository,
     RefreshTokenRepository,
     AccountTokenRepository,
+    PersonalAccessTokenRepository,
     AuthEventRecorder,
     LoginThrottle,
+    SocialIdentityRepository,
     WorkspaceRepository,
     ProjectRepository,
     SessionRepository,
@@ -251,8 +277,11 @@ const { db, pool } = createDrizzleClient();
     StoryRepository,
     TaskRepository,
     ProjectsSummaryRepository,
+    DevAgentActivityPort,
     AgentAreaRepository,
     ModuleMapRepository,
+    ChunkRepository,
+    ContainerRepository,
     InfraArtifactRepository,
     PsychologistAnalysisRepository,
     PsychologistHypothesisRepository,

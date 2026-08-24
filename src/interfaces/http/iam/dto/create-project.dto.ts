@@ -9,9 +9,9 @@ import {
   MinLength,
 } from 'class-validator';
 import {
-  PROJECT_WORKSPACE_MODES,
+  PROJECT_EXECUTION_MODES,
   STORY_PROMOTION_MODES,
-  type ProjectWorkspaceMode,
+  type ProjectExecutionMode,
   type StoryPromotionMode,
 } from '../../../../domain/iam/project.entity';
 
@@ -24,7 +24,7 @@ export class CreateProjectDto {
   @ApiProperty({
     example: 'checkout',
     pattern: '^[a-z0-9]+(-[a-z0-9]+)*$',
-    description: 'kebab-case. Único dentro do workspace.',
+    description: 'kebab-case. Unique within the workspace.',
   })
   @IsString()
   @Matches(/^[a-z0-9]+(-[a-z0-9]+)*$/, {
@@ -35,10 +35,10 @@ export class CreateProjectDto {
   @ApiPropertyOptional({
     example: 3,
     description:
-      'Circuit breaker (Fase 12b — RN-047): quantas tasks consecutivas ' +
-      'terminando blocked param o dev agent do módulo em idle_tripped. ' +
-      'Omitido usa o default do domínio (DEFAULT_MAX_CONSECUTIVE_BLOCKED). ' +
-      'Vale a partir da PRÓXIMA ativação da execução — não afeta agentes já rodando.',
+      'Circuit breaker (Phase 12b — RN-047): how many consecutive tasks ' +
+      "ending blocked stop the module's dev agent at idle_tripped. Omitted " +
+      'uses the domain default (DEFAULT_MAX_CONSECUTIVE_BLOCKED). Applies ' +
+      "from the NEXT execution activation onward — doesn't affect agents already running.",
   })
   @IsOptional()
   @IsInt()
@@ -49,40 +49,46 @@ export class CreateProjectDto {
     enum: STORY_PROMOTION_MODES,
     example: 'manual',
     description:
-      'Quem promove uma story de `draft` para `ready` (Fase 12c — RN-048). ' +
-      '`manual` (default de projeto novo): o PO propõe e VOCÊ decide, na aba ' +
-      'Backlog. `auto`: a story completa já nasce `ready`, sem passo humano — ' +
-      'era o comportamento até a 12c, e projetos criados antes dela ficaram ' +
-      'nele. As validações de domínio (DoD/DoR/RF/regra/módulos) são as MESMAS ' +
-      'nos dois modos; o modo muda só quem dispara.',
+      'Who promotes a story from `draft` to `ready` (Phase 12c — RN-048). ' +
+      '`manual` (new-project default): the PO proposes and YOU decide, in ' +
+      'the Backlog tab. `auto`: a complete story is already born `ready`, ' +
+      'with no human step — this was the behavior up through 12c, and ' +
+      'projects created before it stayed on it. The domain validations ' +
+      '(DoD/DoR/RF/rule/modules) are the SAME in both modes; the mode only ' +
+      'changes who triggers it.',
   })
   @IsOptional()
   @IsIn(STORY_PROMOTION_MODES)
   storyPromotion?: StoryPromotionMode;
 
   @ApiPropertyOptional({
-    enum: PROJECT_WORKSPACE_MODES,
+    enum: PROJECT_EXECUTION_MODES,
     example: 'container',
     description:
-      'ONDE o código deste projeto mora (RN-169 — ADR 0072). `container` ' +
-      '(default): a pasta gerenciada pelo produto dentro de ' +
-      'PROJECT_WORKSPACES_ROOT, que é o comportamento de sempre. `local`: uma ' +
-      'pasta SUA, informada em `workspacePath`, que precisa estar montada ' +
-      'dentro dos containers da api e do engine — a criação RECUSA (400) o ' +
-      'caminho que não estiver, com a instrução de como montar (RN-170).',
+      "WHERE this project's command EXECUTES (RN-169/RN-421 — ADR 0072/0104). " +
+      '`container` (default): the folder managed by the product inside ' +
+      'PROJECT_WORKSPACES_ROOT, the usual behavior. `mounted`: a folder of ' +
+      'YOURS, given in `workspacePath`, that needs to be mounted inside the ' +
+      "api's and engine's containers — creation REFUSES (400) a path that " +
+      "isn't, with instructions on how to mount it (RN-422). `runner`: a " +
+      'folder of YOURS that does NOT need a bind-mount — creation only ' +
+      'validates the path format and the project is born "unverified"; run ' +
+      '`brabo-runner --project <id> --dir <folder>` on your machine to ' +
+      'confirm it (RN-423).',
   })
   @IsOptional()
-  @IsIn(PROJECT_WORKSPACE_MODES)
-  workspaceMode?: ProjectWorkspaceMode;
+  @IsIn(PROJECT_EXECUTION_MODES)
+  executionMode?: ProjectExecutionMode;
 
   @ApiPropertyOptional({
-    example: '/home/voce/projetos/loja',
+    example: '/home/you/projects/store',
     description:
-      'Caminho ABSOLUTO da pasta, obrigatório quando `workspaceMode` é ' +
-      '`local` e recusado quando é `container`. Validado na criação: precisa ' +
-      'existir e ser gravável de dentro do container, e não pode ser a raiz ' +
-      'do sistema, pasta de sistema, nem se sobrepor ao checkout do Brabo ' +
-      '(RN-170).',
+      "The folder's ABSOLUTE path, required when `executionMode` is " +
+      '`mounted` or `runner`, and refused when it is `container`. In ' +
+      '`mounted`, validated on creation: it needs to exist and be writable ' +
+      'from inside the container, and cannot be the system root, a system ' +
+      'folder, nor overlap with the Brabo checkout (RN-422). In `runner`, ' +
+      'only the FORMAT is validated now — existence is confirmed later, by the runner (RN-423).',
   })
   @IsOptional()
   @IsString()

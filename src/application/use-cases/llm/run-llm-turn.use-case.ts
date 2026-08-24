@@ -82,6 +82,7 @@ export class RunLlmTurnUseCase {
     const gate = await this.checkBudgetGate.execute(
       input.projectId,
       input.sessionId,
+      input.agentId,
     );
     if (gate.blocked) {
       return errorResult(gate.reason ?? 'Budget excedido', model.name);

@@ -11,11 +11,13 @@ export class CreateTaskInternalDto {
   @IsUUID()
   storyId!: string;
 
-  @ApiProperty({ example: 'Endpoint POST /carrinho/itens' })
+  @ApiProperty({ example: 'Endpoint POST /cart/items' })
   @IsString()
   title!: string;
 
-  @ApiPropertyOptional({ example: 'Aceita SKU e quantidade; valida estoque.' })
+  @ApiPropertyOptional({
+    example: 'Accepts SKU and quantity; validates stock.',
+  })
   @IsOptional()
   @IsString()
   description?: string;

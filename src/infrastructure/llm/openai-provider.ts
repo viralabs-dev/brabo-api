@@ -19,7 +19,17 @@ export function openaiConfig(
     name: 'openai',
     baseUrl,
     // `GET /v1/models` é o endpoint canônico do dialeto e a base já o fala.
-    capabilities: { streaming: true, toolCalling: true, listModels: true },
+    capabilities: {
+      streaming: true,
+      toolCalling: true,
+      listModels: true,
+      // A OpenAI é quem DEFINE o `/embeddings` que a base fala, e ainda assim
+      // fica `false`: não há `OPENAI_TEST_KEY` no ambiente, e a suite de
+      // contrato prova o DIALETO (contra o servidor falso), não que esta chave
+      // acessa aquele endpoint. Vira `true` no commit em que um smoke com
+      // credencial real passar — não antes (ADR 0043/0075).
+      embeddings: false,
+    },
     authHeaders: (apiKey) => ({ Authorization: `Bearer ${apiKey ?? ''}` }),
     flags: {
       streamOptionsIncludeUsage: true,

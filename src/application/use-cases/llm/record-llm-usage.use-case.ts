@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { LLMProviderName } from '@brabo/shared';
 import { TokenUsageRepository } from '../../ports/token-usage-repository.port';
 import { BudgetRepository } from '../../ports/budget-repository.port';
+import { AgentAreaRepository } from '../../ports/agent-area-repository.port';
 import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { BraboMetrics } from '../../../infrastructure/observability/brabo-metrics';
 import { crossedThresholds } from '../../../domain/llm/budget-threshold';
@@ -9,6 +10,7 @@ import type { Budget } from '../../../domain/llm/budget.entity';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
 import type { ModelBindingScope } from '../../../domain/llm/model-binding-scope';
 import type { TokenUsage } from '../../../domain/llm/token-usage.entity';
+import { areaDo } from '../../../domain/agents/agent-areas';
 
 export interface RecordLlmUsageInput {
   projectId: string;
@@ -38,7 +40,9 @@ export interface RecordLlmUsageInput {
  * ÚNICO caminho pra gravar metering — "obrigatório" por construção:
  * grava token_usage e incrementa 0/1/2 budgets (projeto e/ou sessão,
  * cada um independentemente), emitindo outbox de threshold sempre que
- * cruzar 70/90/100%. Chamado sempre dentro da transação do use case
+ * cruzar 70/90/100%, e — quando o ator pertence a uma área (ADR 0053) —
+ * incrementa o `spentMicros` dela também (ADR 0110), SEMPRE, com ou sem
+ * teto configurado. Chamado sempre dentro da transação do use case
  * orquestrador (SendChatMessageUseCase).
  */
 @Injectable()
@@ -46,6 +50,7 @@ export class RecordLlmUsageUseCase {
   constructor(
     private readonly tokenUsage: TokenUsageRepository,
     private readonly budgets: BudgetRepository,
+    private readonly areas: AgentAreaRepository,
     private readonly outbox: OutboxRepository,
     private readonly metrics: BraboMetrics,
   ) {}
@@ -89,8 +94,27 @@ export class RecordLlmUsageUseCase {
 
     await this.applyToBudget(projectBudget, input.costMicros);
     await this.applyToBudget(sessionBudget, input.costMicros);
+    await this.applyToArea(input.projectId, input.actor, input.costMicros);
 
     return usage;
+  }
+
+  /**
+   * Sem cascata: `actor.kind !== 'agent'` (usuário no chat) ou agente sem
+   * área (`areaDo` devolve `undefined`) simplesmente não incrementam nada —
+   * "não faz nada nocivo quando o ator não tem área" é o requisito, não
+   * erro silencioso disfarçado.
+   */
+  private async applyToArea(
+    projectId: string,
+    actor: Actor,
+    deltaMicros: number,
+  ): Promise<void> {
+    if (actor.kind !== 'agent') return;
+    const area = areaDo(actor.id);
+    if (!area) return;
+
+    await this.areas.incrementSpent(projectId, area.key, deltaMicros);
   }
 
   private async applyToBudget(

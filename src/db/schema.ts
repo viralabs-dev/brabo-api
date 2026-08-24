@@ -7,6 +7,7 @@ import {
   bigint,
   bigserial,
   boolean,
+  doublePrecision,
   jsonb,
   timestamp,
   primaryKey,
@@ -14,6 +15,8 @@ import {
   uniqueIndex,
   index,
   check,
+  vector,
+  customType,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import type { TerminalExecutionResult } from '../domain/actions/terminal-execution-result';
@@ -226,15 +229,24 @@ export const storyPromotionModeEnum = pgEnum('story_promotion_mode', [
   'auto',
 ]);
 
-// ONDE o código de um projeto mora no disco (RN-169, ADR 0072).
+// ONDE o comando de um projeto EXECUTA (RN-169/RN-421, ADR 0072/0104).
 // `container` (default): a pasta gerenciada em PROJECT_WORKSPACES_ROOT — o
 // comportamento que sempre existiu, e por isso o default; projeto criado
 // antes desta coluna não muda de lugar.
-// `local`: uma pasta do USUÁRIO, caminho absoluto livre, que só funciona
-// montada nos containers da api e do engine (RN-170).
-export const projectWorkspaceModeEnum = pgEnum('project_workspace_mode', [
+// `mounted` (antigo `local`, renomeado pelo ADR 0104): uma pasta do
+// USUÁRIO, caminho absoluto livre, que só funciona montada nos containers
+// da api e do engine (RN-170/RN-422).
+// `runner`: uma pasta do usuário que NÃO precisa de bind-mount — o CLI
+// `brabo-runner` roda na máquina do usuário e confirma o caminho quando
+// conecta (RN-423). O projeto nasce com `workspace_verified_at` nulo e é
+// promovido quando a confirmação chega.
+// CUIDADO com o homônimo: nenhum destes três valores tem relação com o
+// `GitProviderName` `'local'` (git-provider.ts) — são eixos diferentes,
+// um decide ONDE O COMANDO EXECUTA, o outro decide QUEM HOSPEDA O GIT.
+export const projectExecutionModeEnum = pgEnum('project_execution_mode', [
   'container',
-  'local',
+  'mounted',
+  'runner',
 ]);
 
 // Ciclo de vida de uma tarefa executável (Fase 4a — devs): todo →
@@ -252,6 +264,12 @@ export const taskStatusEnum = pgEnum('task_status', [
 // (que também serve models/token_usage, LLM-only de verdade) ou
 // reaproveitar git_provider (que tem 'local', sem sentido pra uma
 // credencial). Ver docs/adr/0004-git-credential-registration.md.
+// Idioma da interface (fundação de i18n, Onda 6a). Fechado a dois valores de
+// propósito — abrir para qualquer BCP-47 exigiria arquivo de recurso e
+// validação de fallback que a extração de strings (etapa separada) ainda não
+// tem. `pt-BR` é o default: nunca flipar silenciosamente quem já tem conta.
+export const userLocaleEnum = pgEnum('user_locale', ['pt-BR', 'en']);
+
 export const credentialProviderEnum = pgEnum('credential_provider', [
   'ollama',
   'anthropic',
@@ -279,6 +297,11 @@ export const users = pgTable(
     keycloakSub: text('keycloak_sub').unique(),
     email: text('email').notNull(),
     name: text('name'),
+    // Preferência de idioma (fundação de i18n, Onda 6a) — default 'pt-BR'
+    // para NUNCA flipar silenciosamente quem já tem conta; usuário sem conta
+    // ainda usa `navigator.language` só como sugestão de EXIBIÇÃO, nunca
+    // persistida (ver `apps/web/src/lib/idioma.ts`).
+    locale: userLocaleEnum('locale').notNull().default('pt-BR'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -344,17 +367,26 @@ export const projects = pgTable(
     // coluna foi retroativado com o UUID puro, que é o que já era verdade no
     // disco — o backfill da migração NÃO renomeia diretório nenhum.
     workspaceDirName: text('workspace_dir_name').notNull().unique(),
-    // ONDE o código deste projeto mora (RN-169, ADR 0072). NOT NULL com
-    // default `container` — o comportamento de sempre —, pelo mesmo motivo de
-    // `story_promotion` logo abaixo: o valor É a decisão, e decisão de onde o
-    // agente escreve não fica implícita.
-    workspaceMode: projectWorkspaceModeEnum('workspace_mode')
+    // ONDE o comando deste projeto EXECUTA (RN-169/RN-421, ADR 0072/0104).
+    // NOT NULL com default `container` — o comportamento de sempre —, pelo
+    // mesmo motivo de `story_promotion` logo abaixo: o valor É a decisão, e
+    // decisão de onde o agente escreve não fica implícita.
+    executionMode: projectExecutionModeEnum('execution_mode')
       .notNull()
       .default('container'),
-    // O caminho absoluto da pasta do usuário, SÓ no modo `local`. Validado na
-    // criação (RN-170) — existe, é gravável de dentro do container, não é raiz
-    // de sistema nem contém o repositório do Brabo.
+    // O caminho absoluto da pasta do usuário, para `mounted` OU `runner`.
+    // Em `mounted`, validado NA CRIAÇÃO (RN-422) — existe, é gravável de
+    // dentro do container, não é raiz de sistema nem contém o repositório
+    // do Brabo. Em `runner`, só a parte LÉXICA é validada na criação; o
+    // runner é quem confirma o resto quando conecta (RN-423) — e pode
+    // SOBRESCREVER este valor com o caminho real do host.
     workspacePath: text('workspace_path'),
+    // NULL = não verificado. Só ganha sentido em `execution_mode: runner`
+    // — `container`/`mounted` nunca preenchem esta coluna (RN-423). Vira
+    // timestamp quando o primeiro runner conecta e confirma o caminho.
+    workspaceVerifiedAt: timestamp('workspace_verified_at', {
+      withTimezone: true,
+    }),
     createdBy: uuid('created_by')
       .notNull()
       .references(() => users.id),
@@ -388,15 +420,15 @@ export const projects = pgTable(
   },
   (table) => [
     unique().on(table.workspaceId, table.slug),
-    // Modo e caminho são UMA decisão, não duas: `local` sem caminho é escopo
-    // de terminal apontando para lugar nenhum, e `container` COM caminho é uma
-    // segunda fonte de verdade esperando divergir da primeira. A trava fica no
-    // banco, e não só no caso de uso, porque a coluna é lida por DOIS
-    // processos (api e engine) e escrita por scripts de seed/backfill que não
-    // passam pelo caso de uso.
+    // Modo e caminho são UMA decisão, não duas: `mounted`/`runner` sem
+    // caminho é escopo de terminal apontando para lugar nenhum, e
+    // `container` COM caminho é uma segunda fonte de verdade esperando
+    // divergir da primeira. A trava fica no banco, e não só no caso de uso,
+    // porque a coluna é lida por DOIS processos (api e engine) e escrita
+    // por scripts de seed/backfill que não passam pelo caso de uso.
     check(
       'projects_workspace_path_casa_com_modo',
-      sql`(${table.workspaceMode} = 'local') = (${table.workspacePath} IS NOT NULL)`,
+      sql`(${table.executionMode} <> 'container') = (${table.workspacePath} IS NOT NULL)`,
     ),
   ],
 );
@@ -745,45 +777,57 @@ export const modelPriceChanges = pgTable('model_price_changes', {
 });
 
 // Append-only: metering obrigatório de cada chamada de LLM.
-export const tokenUsage = pgTable('token_usage', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  sessionId: uuid('session_id')
-    .notNull()
-    .references(() => sessions.id, { onDelete: 'cascade' }),
-  actorKind: actorKindEnum('actor_kind').notNull(),
-  actorId: text('actor_id').notNull(),
-  provider: llmProviderEnum('provider').notNull(),
-  modelId: uuid('model_id').references(() => models.id),
-  modelName: text('model_name').notNull(), // snapshot no momento da chamada
-  inputTokens: integer('input_tokens').notNull(),
-  outputTokens: integer('output_tokens').notNull(),
-  estimated: boolean('estimated').notNull().default(false),
-  costMicros: bigint('cost_micros', { mode: 'number' }).notNull(),
-  // Os preços que PRODUZIRAM o `cost_micros` acima (Fase 9c, RN-044). Sem
-  // eles o custo já era congelado (ninguém recalcula), mas não era
-  // REPRODUZÍVEL: não dava para conferir `tokens × preço = custo` depois que a
-  // linha de `models` mudasse.
-  inputPricePerMillionMicros: bigint('input_price_per_million_micros', {
-    mode: 'number',
-  })
-    .notNull()
-    .default(0),
-  outputPricePerMillionMicros: bigint('output_price_per_million_micros', {
-    mode: 'number',
-  })
-    .notNull()
-    .default(0),
-  latencyMs: integer('latency_ms').notNull(),
-  bindingOrigin: modelBindingScopeEnum('binding_origin'),
-  // Provider SUBJACENTE, quando a chamada passou por um hub que informa quem
-  // serviu (Fase 9b). Texto livre e não enum: o conjunto é do hub, muda sem
-  // aviso e não é nosso para versionar. `null` = não veio de hub, ou o hub
-  // não informou.
-  upstreamProvider: text('upstream_provider'),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+export const tokenUsage = pgTable(
+  'token_usage',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    actorKind: actorKindEnum('actor_kind').notNull(),
+    actorId: text('actor_id').notNull(),
+    provider: llmProviderEnum('provider').notNull(),
+    modelId: uuid('model_id').references(() => models.id),
+    modelName: text('model_name').notNull(), // snapshot no momento da chamada
+    inputTokens: integer('input_tokens').notNull(),
+    outputTokens: integer('output_tokens').notNull(),
+    estimated: boolean('estimated').notNull().default(false),
+    costMicros: bigint('cost_micros', { mode: 'number' }).notNull(),
+    // Os preços que PRODUZIRAM o `cost_micros` acima (Fase 9c, RN-044). Sem
+    // eles o custo já era congelado (ninguém recalcula), mas não era
+    // REPRODUZÍVEL: não dava para conferir `tokens × preço = custo` depois que a
+    // linha de `models` mudasse.
+    inputPricePerMillionMicros: bigint('input_price_per_million_micros', {
+      mode: 'number',
+    })
+      .notNull()
+      .default(0),
+    outputPricePerMillionMicros: bigint('output_price_per_million_micros', {
+      mode: 'number',
+    })
+      .notNull()
+      .default(0),
+    latencyMs: integer('latency_ms').notNull(),
+    bindingOrigin: modelBindingScopeEnum('binding_origin'),
+    // Provider SUBJACENTE, quando a chamada passou por um hub que informa quem
+    // serviu (Fase 9b). Texto livre e não enum: o conjunto é do hub, muda sem
+    // aviso e não é nosso para versionar. `null` = não veio de hub, ou o hub
+    // não informou.
+    upstreamProvider: text('upstream_provider'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    // ADR 0076: as duas consultas do relatório de gasto leem uma JANELA
+    // deslizante sobre `created_at`, e a tabela só tinha a PK. Medido a 525
+    // mil linhas pelo ADR 0063: 55 ms e 38 ms por seq scan, 32 ms e 19 ms com
+    // este índice, que transforma os dois planos em bitmap heap scan. O custo
+    // cresce com o tamanho de `token_usage`, não com o do pedido — por isso o
+    // índice é do tempo, e não de nenhuma das dimensões.
+    index('token_usage_created_at_idx').on(table.createdAt),
+  ],
+);
 
 export const budgets = pgTable(
   'budgets',
@@ -989,6 +1033,15 @@ export const handoffs = pgTable(
  *
  * O teto é da SESSÃO, não do módulo. Contar por módulo permitiria N módulos ×
  * 2 agentes sem autorização nenhuma, que é o buraco de hoje com outro nome.
+ *
+ * `budgetMicros`/`spentMicros` (ADR 0110, RN-443) fecham o "budget por área"
+ * do backlog do ADR 0038, mirando exatamente `maxParallel`: teto do USUÁRIO,
+ * default vazio (sem teto), direto na linha da área — não a tabela genérica
+ * `budgets` (cujo CHECK de mutual exclusion projeto/sessão não tem onde
+ * encaixar um terceiro escopo) nem uma tabela nova. `spentMicros` acumula
+ * SEMPRE que um agente da área gasta, com ou sem `budgetMicros` definido —
+ * é o que permite mostrar o gasto real da área antes mesmo de alguém
+ * configurar um teto.
  */
 export const agentAreas = pgTable(
   'agent_areas',
@@ -1002,6 +1055,11 @@ export const agentAreas = pgTable(
     /** O contato externo da área (ADR 0038). */
     leadAgentId: text('lead_agent_id').notNull(),
     maxParallel: integer('max_parallel').notNull().default(2),
+    /** `null` = sem teto. Em micro-USD, mesma unidade de `budgets.limit_micros`. */
+    budgetMicros: bigint('budget_micros', { mode: 'number' }),
+    spentMicros: bigint('spent_micros', { mode: 'number' })
+      .notNull()
+      .default(0),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -1009,7 +1067,14 @@ export const agentAreas = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [unique().on(table.projectId, table.key)],
+  (table) => [
+    unique().on(table.projectId, table.key),
+    check(
+      'agent_areas_budget_micros_check',
+      sql`${table.budgetMicros} is null or ${table.budgetMicros} >= 0`,
+    ),
+    check('agent_areas_spent_micros_check', sql`${table.spentMicros} >= 0`),
+  ],
 );
 
 /**
@@ -1785,6 +1850,56 @@ export const authCredentials = pgTable('auth_credentials', {
     .defaultNow(),
 });
 
+// Providers de login social (RN-272..286, ADR 0084). Enum PRÓPRIO — não é o
+// mesmo conjunto de `gitProviderEnum`, que inclui `local` e representa onde o
+// CÓDIGO mora, não quem AUTENTICA. Hoje os dois catálogos coincidem em
+// github/gitlab por acaso: são os únicos dois com `GitOauthClient` registrado.
+export const socialIdentityProviderEnum = pgEnum('social_identity_provider', [
+  'github',
+  'gitlab',
+]);
+
+/**
+ * Vínculo de identidade social (login via OAuth, ADR 0084).
+ *
+ * Tabela NOVA, e não coluna em `users` — `keycloak_sub` já ensinou o erro de
+ * dedicar uma coluna a UM provider: um usuário pode ter GitHub e GitLab ao
+ * mesmo tempo (uma linha por provider), e o dia de somar um terceiro provider
+ * OAuth não pede migração de schema, só um valor novo no enum.
+ *
+ * `providerUserId` é o id NUMÉRICO estável do provider — NUNCA o login/e-mail,
+ * que podem mudar. `(provider, providerUserId)` é a chave que decide se um
+ * retorno de OAuth é um login conhecido.
+ *
+ * `userId` é NOT NULL: o vínculo nasce no MESMO passo que resolve a
+ * identidade (login de conta existente, vínculo por e-mail verificado, ou
+ * provisionamento de conta nova) — não existe hoje um fluxo de duas etapas
+ * que crie o vínculo antes de saber a quem ele pertence.
+ */
+export const socialIdentities = pgTable(
+  'social_identities',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    provider: socialIdentityProviderEnum('provider').notNull(),
+    providerUserId: text('provider_user_id').notNull(),
+    providerEmail: text('provider_email'),
+    providerLogin: text('provider_login'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('social_identities_provider_account_idx').on(
+      table.provider,
+      table.providerUserId,
+    ),
+    index('social_identities_user_id_idx').on(table.userId),
+  ],
+);
+
 /**
  * Refresh tokens opacos com rotação obrigatória — Fase 7a, item 1.
  *
@@ -1880,6 +1995,47 @@ export const accountTokens = pgTable(
         sql`${table.consumedAt} is null and ${table.invalidatedAt} is null`,
       ),
     index('account_tokens_expires_idx').on(table.expiresAt),
+  ],
+);
+
+/**
+ * Personal Access Token do runner local (`brb_…`, ADR 0105) — escopado a
+ * UM projeto, e só à capacidade de pedir ticket de runner
+ * (`POST /projects/:projectId/runner-ticket`, `PatAuthGuard`). Diferente de
+ * `accountTokens`, permite VÁRIOS tokens vivos por usuário+projeto ao mesmo
+ * tempo (um por máquina) — não há supersede-on-issue. Diferente de
+ * `refreshTokens`, é apresentado repetidamente SEM MUDAR: não é
+ * consumido-e-reemitido por uso, então não tem `familyId`/rotação.
+ *
+ * Hash HMAC-SHA256+pepper via `hashDeToken()` (`TokenFactory.hashDe`), o
+ * mesmo mecanismo de `refreshTokens`/`accountTokens` — nunca argon2: um
+ * token de 256 bits de CSPRNG não tem superfície de dicionário, e o salt
+ * por linha do argon2 só quebraria a busca indexada por `token_hash`.
+ */
+export const personalAccessTokens = pgTable(
+  'personal_access_tokens',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    tokenHash: text('token_hash').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    revokedReason: text('revoked_reason'),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('personal_access_tokens_hash_idx').on(table.tokenHash),
+    index('personal_access_tokens_user_idx').on(table.userId),
+    index('personal_access_tokens_project_idx').on(table.projectId),
   ],
 );
 
@@ -2016,4 +2172,186 @@ export const sessionSocketTickets = pgTable(
     // A poda apaga por tempo — mesmo padrão de refresh_tokens_expires_idx.
     index('session_socket_tickets_expires_idx').on(table.expiresAt),
   ],
+);
+
+// --- Chunks indexados do Chat RAG (PROGRAMA 28, ADR 0075/0079) ---
+
+// `tsvector` não tem tipo nativo em drizzle-orm/pg-core (diferente de
+// `vector`, que a extensão pgvector traz pronto) — customType mínimo, só
+// para dar nome ao tipo físico na migração. O valor NUNCA é escrito por
+// quem chama: a coluna é GENERATED ALWAYS AS, populada pelo Postgres a
+// partir de `content` (ver `chunks.searchVector` abaixo).
+const tsvector = customType<{ data: string }>({
+  dataType() {
+    return 'tsvector';
+  },
+});
+
+// Os QUATRO escopos honestos do índice (RN-219, ampliado pela RN-455):
+// documentação, ADR, sessão e — desde o ADR 0113 — `local`, uma pasta do
+// PRÓPRIO usuário anexada como referência de leitura via upload do
+// navegador (nunca um caminho de host, nunca o mesmo mecanismo do runner —
+// ver ADR 0113). Código do REPOSITÓRIO do projeto e PR continuam de fora de
+// propósito — indexá-los sem watcher de reindexação a cada push faria o
+// índice MENTIR sobre cobertura (achado do plano do PROGRAMA 28, "onde eu
+// cortaria"). `local` não sofre desse problema: o upload em si já É o
+// evento de atualização, não há reindexação automática para prometer.
+export const chunkScopeEnum = pgEnum('chunk_scope', [
+  'docs',
+  'adr',
+  'session',
+  'local',
+]);
+
+/**
+ * Um trecho indexado para o Chat RAG (ondas futuras) — vetor E `tsvector` na
+ * MESMA linha (ADR 0079), para que a busca híbrida (Onda 4) não precise de
+ * duas tabelas nem de um join para juntar semântica e léxico do mesmo
+ * trecho.
+ *
+ * `embedding` é NULLABLE: esta tabela guarda o CHUNK (o texto recortado) e o
+ * VETOR pode chegar depois, num pipeline de indexação assíncrono que ainda
+ * não existe (Onda 4, G2) — sem isso, chunking teria que esperar embedding
+ * para existir, e as duas coisas falham por razões diferentes (parsing vs.
+ * chamada de LLM). `searchVector` não tem esse problema: é `GENERATED
+ * ALWAYS AS` sobre `content`, então nasce pronta na mesma transação do
+ * INSERT, sem depender de nenhum provider.
+ *
+ * O vínculo com o escopo indexado é MUTUAMENTE EXCLUSIVO por CHECK — mesmo
+ * padrão de `projects.execution_mode`/`workspace_path` (ADR 0072/0104): `session`
+ * exige `session_id` e recusa `source_path`; `docs`/`adr` exigem
+ * `source_path` (caminho relativo do arquivo) e recusam `session_id`. A
+ * trava fica no banco porque a tabela vai ser escrita por um pipeline
+ * (Onda 4) que não necessariamente passa pelo mesmo caso de uso toda vez.
+ */
+export const chunks = pgTable(
+  'chunks',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    scope: chunkScopeEnum('scope').notNull(),
+    // Só para scope = 'session'. O CHECK abaixo amarra os dois.
+    sessionId: uuid('session_id').references(() => sessions.id, {
+      onDelete: 'cascade',
+    }),
+    // Só para scope = 'docs'/'adr' — caminho relativo do arquivo fonte
+    // (ex.: "docs/adr/0079-tabela-de-chunks.md"). O CHECK abaixo amarra os
+    // dois.
+    sourcePath: text('source_path'),
+    // O texto do trecho — a unidade que a busca devolve como citação.
+    content: text('content').notNull(),
+    // 768 = a dimensão real do `nomic-embed-text` do Ollama, o único
+    // provider que hoje declara `capabilities.embeddings: true` (RN-191).
+    // Documentado, não adivinhado: um índice vetorial tem dimensão FIXA, e
+    // trocar de modelo de embedding no futuro é migração nova, não
+    // parâmetro de runtime.
+    embedding: vector('embedding', { dimensions: 768 }),
+    // GENERATED ALWAYS AS STORED — nunca escrita pelo aplicativo. Linguagem
+    // 'portuguese' porque docs/ADRs/sessões do produto são pt-BR por
+    // convenção (ver CLAUDE.md, seção Documentação).
+    searchVector: tsvector('search_vector').generatedAlwaysAs(
+      () => sql`to_tsvector('portuguese', content)`,
+    ),
+    // Metadados de origem — nunca um campo novo por metadado: título,
+    // trilha de headings, posição do chunk no documento/sessão fonte. Tudo
+    // opcional porque a Onda 4 (pipeline de indexação) é quem decide o que
+    // preencher; a tabela não impõe forma além de "é um objeto".
+    metadata: jsonb('metadata')
+      .$type<{
+        title?: string;
+        headingPath?: string[];
+        chunkIndex?: number;
+        totalChunks?: number;
+        sourceRef?: string;
+      }>()
+      .notNull()
+      .default({}),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('chunks_project_scope_idx').on(table.projectId, table.scope),
+    index('chunks_session_idx').on(table.sessionId),
+    // GIN sobre o tsvector — a metade LÉXICA da busca híbrida da Onda 4.
+    index('chunks_search_vector_idx').using('gin', table.searchVector),
+    // HNSW, não IVFFlat: IVFFlat precisa de linhas já carregadas para
+    // treinar as listas (`lists`) e fica ruim se construído sobre tabela
+    // vazia — que é exatamente o estado desta tabela ao nascer, sem
+    // pipeline de indexação ainda. HNSW constrói o grafo incrementalmente,
+    // inserção por inserção, sem etapa de treino. `vector_cosine_ops`
+    // porque é a métrica que embeddings de texto (Ollama incluso) esperam
+    // — magnitude do vetor não deveria mudar o ranking de similaridade.
+    index('chunks_embedding_idx').using(
+      'hnsw',
+      table.embedding.op('vector_cosine_ops'),
+    ),
+    // RN-219 — mutuamente exclusivo com sourcePath, mesmo padrão do CHECK de
+    // `projects.execution_mode`/`workspace_path` (ADR 0072/0104).
+    check(
+      'chunks_session_id_casa_com_escopo',
+      sql`(${table.scope} = 'session') = (${table.sessionId} IS NOT NULL)`,
+    ),
+    check(
+      'chunks_source_path_casa_com_escopo',
+      sql`(${table.scope} = 'session') = (${table.sourcePath} IS NULL)`,
+    ),
+  ],
+);
+
+// Ciclo de vida do container de um projeto (ADR 0081 — fecha o corte
+// declarado da FASE 25b / ADR 0065). NENHUM serviço do produto tem acesso a
+// um daemon Docker hoje: esta tabela só registra estado, nunca comanda
+// nada — ver o comentário em domain/containers/container-lifecycle.ts.
+export const containerLifecycleStatusEnum = pgEnum(
+  'container_lifecycle_status',
+  ['provisioning', 'running', 'stopped', 'failed', 'removed'],
+);
+
+/**
+ * Uma linha por PROJETO (`project_id` único) — só existe UM container
+ * vigente por vez, mesmo desenho de `dev_agent_states` no engine (ADR
+ * 0045). Distinta de `artifact.project_image` no event log (ADR 0065):
+ * aquele é a DECISÃO imutável do Arquiteto; esta é o ESTADO mutável do
+ * container que (um dia) corresponde a ela — por isso `image_version`
+ * aponta para a decisão em vez de duplicar `image`/`rationale`/`network`.
+ */
+export const projectContainers = pgTable(
+  'project_containers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .unique()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    status: containerLifecycleStatusEnum('status')
+      .notNull()
+      .default('provisioning'),
+    // A versão de `artifact.project_image` vigente quando esta linha
+    // nasceu (RN-105) — NÃO um FK, porque a decisão vive no event log, não
+    // numa tabela.
+    imageVersion: integer('image_version').notNull(),
+    // Id do container real no daemon Docker. NULL sempre, até um
+    // orquestrador de verdade existir e passar a escrever aqui.
+    containerId: text('container_id'),
+    // Teto de recursos DECLARADO — espelha RecursosDoContainer do artefato
+    // vigente no momento em que a linha nasceu; não é reaplicado depois.
+    cpus: doublePrecision('cpus').notNull(),
+    memoryMb: integer('memory_mb').notNull(),
+    pidsLimit: integer('pids_limit').notNull(),
+    // Só populado numa transição para `failed`.
+    failureReason: text('failure_reason'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    // Quando a última transição de `status` aconteceu — não uma coluna por
+    // estado (mesmo padrão simples de `dev_agent_states.updated_at`, sem
+    // histórico próprio: o event log já é onde histórico imutável mora).
+    statusChangedAt: timestamp('status_changed_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index('project_containers_status_idx').on(table.status)],
 );

@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { FilesystemModule } from '../../../infrastructure/filesystem/filesystem.module';
+import { SessionsUseCasesModule } from '../sessions/sessions-use-cases.module';
+import { ContainersUseCasesModule } from '../containers/containers-use-cases.module';
 import { CreateWorkspaceUseCase } from './create-workspace.use-case';
 import { ListWorkspacesForUserUseCase } from './list-workspaces-for-user.use-case';
 import { GetWorkspaceUseCase } from './get-workspace.use-case';
@@ -7,6 +9,8 @@ import { UpdateWorkspaceUseCase } from './update-workspace.use-case';
 import { DeleteWorkspaceUseCase } from './delete-workspace.use-case';
 import { AddWorkspaceMemberUseCase } from './add-workspace-member.use-case';
 import { CreateProjectUseCase } from './create-project.use-case';
+import { ConfirmProjectWorkspaceUseCase } from './confirm-project-workspace.use-case';
+import { ConvertProjectExecutionModeUseCase } from './convert-project-execution-mode.use-case';
 import { GetProjectUseCase } from './get-project.use-case';
 import { UpdateProjectUseCase } from './update-project.use-case';
 import { DeleteProjectUseCase } from './delete-project.use-case';
@@ -21,6 +25,8 @@ import { GetWorkspaceSummaryUseCase } from './get-workspace-summary.use-case';
 import { GetProjectsStatusForWorkspaceUseCase } from './get-projects-status-for-workspace.use-case';
 import { GetProjectsSummaryForWorkspaceUseCase } from './get-projects-summary-for-workspace.use-case';
 import { GetUnreadEventsForWorkspaceUseCase } from './get-unread-events-for-workspace.use-case';
+import { GetUserPreferencesUseCase } from './get-user-preferences.use-case';
+import { UpdateUserPreferencesUseCase } from './update-user-preferences.use-case';
 // Provider direto, e não `imports: [AgentsUseCasesModule]`: o seeding só
 // depende do repositório de áreas (DrizzleModule é global), e importar o
 // módulo de agentes traria sessões e o cliente do engine junto — aresta nova
@@ -36,6 +42,8 @@ const USE_CASES = [
   DeleteWorkspaceUseCase,
   AddWorkspaceMemberUseCase,
   CreateProjectUseCase,
+  ConfirmProjectWorkspaceUseCase,
+  ConvertProjectExecutionModeUseCase,
   GetProjectUseCase,
   UpdateProjectUseCase,
   DeleteProjectUseCase,
@@ -50,10 +58,12 @@ const USE_CASES = [
   GetProjectsStatusForWorkspaceUseCase,
   GetProjectsSummaryForWorkspaceUseCase,
   GetUnreadEventsForWorkspaceUseCase,
+  GetUserPreferencesUseCase,
+  UpdateUserPreferencesUseCase,
 ];
 
 @Module({
-  imports: [FilesystemModule],
+  imports: [FilesystemModule, SessionsUseCasesModule, ContainersUseCasesModule],
   providers: USE_CASES,
   exports: USE_CASES,
 })

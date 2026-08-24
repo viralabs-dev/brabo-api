@@ -147,6 +147,15 @@ export abstract class ApiToEngineClient {
     sessionId: string,
   ): Promise<void>;
 
+  /**
+   * Leitura da flag global `PSYCHOLOGIST_ENABLED` (RN-454) — sem efeito
+   * colateral nenhum, ao contrário de `reanalyzeSession`. Existe porque a
+   * aba Insights, com zero hipóteses ainda, nunca chega perto do botão
+   * "Reanalisar" (só aparece quando há uma rodada de análise para
+   * reprocessar) e por isso nunca esbarrava no 503 que denunciava a pausa.
+   */
+  abstract getPsychologistStatus(): Promise<{ enabled: boolean }>;
+
   // Descarta o cache de instruções do agente no engine (Fase 4b) —
   // depois de um instruction_patch aprovado ou de um rollback, senão os
   // agentes seguem servindo o conteúdo antigo em memória. Best-effort:
@@ -166,4 +175,21 @@ export abstract class ApiToEngineClient {
     projectId: string,
     agent: string,
   ): Promise<void>;
+
+  /**
+   * Pede ao engine um ticket opaco de uso único pro socket `/runner`
+   * (`terminal:<projectId>`) — INVERSO do ticket de sessão (RN-108): lá a
+   * api insere direto em `session_socket_tickets` (dela, Drizzle); aqui é o
+   * engine quem gera e guarda `runner_socket_tickets` (dele, schema
+   * "engine"), porque é ele quem PRECISA ler a tabela em `connect/3` e a api
+   * não tem acesso de escrita ao schema do engine.
+   *
+   * `kind: "runner"` é pro CLI na máquina do usuário (no máximo um
+   * conectado por projeto); `kind: "terminal"` é pra aba Terminal da web.
+   */
+  abstract requestRunnerTicket(
+    projectId: string,
+    userId: string,
+    kind: 'runner' | 'terminal',
+  ): Promise<{ ticket: string; expiresAt: Date }>;
 }

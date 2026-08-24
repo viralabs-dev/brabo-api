@@ -23,9 +23,9 @@ export class JwksController {
   @Get('jwks.json')
   @Public()
   @ApiOperation({
-    summary: 'Chaves públicas de verificação do access token',
+    summary: 'Public access token verification keys',
     description:
-      'Uma chave em operação normal; duas durante uma rotação de AUTH_JWT_SECRET.',
+      'One key in normal operation; two during an AUTH_JWT_SECRET rotation.',
   })
   @ApiOkResponse({ type: JwksResponseDto })
   jwks() {

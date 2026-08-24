@@ -108,6 +108,20 @@ async function gravarEvento(sessionId: string, type: string, actorId = 'po') {
   return row;
 }
 
+// RN-409 — `engine.dev_agent_states` não é tabela do Drizzle (é do engine,
+// schema "engine"); a fixture criada pelo globalSetup (`ensureEngineFixture`)
+// só tem as duas colunas que a consulta lê.
+async function criarDevAgentState(
+  projectId: string,
+  agentId: string,
+  status: string,
+) {
+  await db.execute(sql`
+    insert into engine.dev_agent_states (project_id, agent_id, status)
+    values (${projectId}, ${agentId}, ${status})
+  `);
+}
+
 beforeEach(async () => {
   await truncateAll(db);
   seq = 0;
@@ -143,12 +157,15 @@ describe('DrizzleProjectsSummaryRepository', () => {
       lastEvent: null,
       storiesAwaitingPromotion: 0,
       pendingApprovalsCount: 0,
+      onlineAgentCount: 0,
       roster: {
         executionActivated: false,
         moduleNames: [],
         gatesEverOpened: false,
         delegatedSubagents: [],
         infraActive: false,
+        uxDesignerActive: false,
+        staffActive: false,
       },
     });
   });
@@ -191,6 +208,23 @@ describe('DrizzleProjectsSummaryRepository', () => {
       projectId: projeto.id,
       fromAgent: 'arquiteto',
       toAgent: 'infra',
+      status: 'accepted',
+    });
+    // Três presenças na MESMA consulta (ADR 0087/0088) — prova que o
+    // `inArray` widened não confunde os `toAgent` entre si.
+    await db.insert(handoffs).values({
+      sessionId: sessao.id,
+      projectId: projeto.id,
+      fromAgent: 'criativo',
+      toAgent: 'ux-designer',
+      status: 'accepted',
+    });
+    // Staff (docs/fluxo.yml, ADR 0088) — ativação MANUAL já aceita.
+    await db.insert(handoffs).values({
+      sessionId: sessao.id,
+      projectId: projeto.id,
+      fromAgent: 'arquiteto',
+      toAgent: 'staff',
       status: 'accepted',
     });
     await db.insert(delegations).values({
@@ -256,6 +290,8 @@ describe('DrizzleProjectsSummaryRepository', () => {
       gatesEverOpened: true,
       delegatedSubagents: ['qa-automacao'],
       infraActive: true,
+      uxDesignerActive: true,
+      staffActive: true,
     });
   });
 
@@ -346,6 +382,185 @@ describe('DrizzleProjectsSummaryRepository', () => {
 
     expect(resumo.latestSessionId).toBe(recente.id);
     expect(resumo.roster.gatesEverOpened).toBe(true);
+  });
+
+  /**
+   * RN-409 — "N online" soma dev agents (tabela do engine) e agentes
+   * conversacionais (último `agent.status` da sessão mais recente), pela
+   * MESMA régua nos dois: `idle`/`idle_tripped` não conta, o resto conta.
+   */
+  describe('onlineAgentCount (RN-409)', () => {
+    it('dev agent working conta; idle e idle_tripped não contam', async () => {
+      const owner = await criarUsuario('online-dev@brabo.dev');
+      const ws = await criarWorkspace(owner.id, 'online-dev');
+      const projeto = await criarProjeto(ws.id, owner.id, 'core');
+
+      await criarDevAgentState(projeto.id, 'dev-api', 'working');
+      await criarDevAgentState(projeto.id, 'dev-web', 'idle');
+      await criarDevAgentState(projeto.id, 'dev-infra', 'idle_tripped');
+
+      const [resumo] = await repo.summarizeForWorkspace(ws.id);
+
+      expect(resumo.onlineAgentCount).toBe(1);
+    });
+
+    it('awaiting_gate e awaiting_approval contam como online (pendência)', async () => {
+      const owner = await criarUsuario('online-pendencia@brabo.dev');
+      const ws = await criarWorkspace(owner.id, 'online-pendencia');
+      const projeto = await criarProjeto(ws.id, owner.id, 'core');
+
+      await criarDevAgentState(projeto.id, 'dev-api', 'awaiting_gate');
+      await criarDevAgentState(projeto.id, 'dev-web', 'awaiting_approval');
+
+      const [resumo] = await repo.summarizeForWorkspace(ws.id);
+
+      expect(resumo.onlineAgentCount).toBe(2);
+    });
+
+    it('duas instâncias do MESMO agente-base contam separado', async () => {
+      const owner = await criarUsuario('online-instancias@brabo.dev');
+      const ws = await criarWorkspace(owner.id, 'online-instancias');
+      const projeto = await criarProjeto(ws.id, owner.id, 'core');
+
+      await criarDevAgentState(projeto.id, 'dev-api', 'working');
+      await criarDevAgentState(projeto.id, 'dev-api-2', 'working');
+
+      const [resumo] = await repo.summarizeForWorkspace(ws.id);
+
+      expect(resumo.onlineAgentCount).toBe(2);
+    });
+
+    it('agente conversacional working/awaiting_approval conta; idle não conta', async () => {
+      const owner = await criarUsuario('online-conversa@brabo.dev');
+      const ws = await criarWorkspace(owner.id, 'online-conversa');
+      const projeto = await criarProjeto(ws.id, owner.id, 'core');
+      const sessao = await criarSessao(projeto.id, owner.id);
+
+      seq += 1;
+      await db.insert(sessionEvents).values({
+        id: `evt-status-${seq}`,
+        sessionId: sessao.id,
+        seq,
+        type: 'agent.status',
+        actorKind: 'agent',
+        actorId: 'po',
+        payload: { status: 'working' },
+      });
+      seq += 1;
+      await db.insert(sessionEvents).values({
+        id: `evt-status-${seq}`,
+        sessionId: sessao.id,
+        seq,
+        type: 'agent.status',
+        actorKind: 'agent',
+        actorId: 'arquiteto',
+        payload: { status: 'idle' },
+      });
+      seq += 1;
+      await db.insert(sessionEvents).values({
+        id: `evt-status-${seq}`,
+        sessionId: sessao.id,
+        seq,
+        type: 'agent.status',
+        actorKind: 'agent',
+        actorId: 'dev-lead',
+        payload: { status: 'awaiting_approval' },
+      });
+      await db
+        .update(sessions)
+        .set({ nextSeq: seq + 1 })
+        .where(sql`${sessions.id} = ${sessao.id}`);
+
+      const [resumo] = await repo.summarizeForWorkspace(ws.id);
+
+      // po (working) + dev-lead (awaiting_approval) — arquiteto (idle) não.
+      expect(resumo.onlineAgentCount).toBe(2);
+    });
+
+    it('só o ÚLTIMO agent.status de cada agente conta — não soma histórico', async () => {
+      const owner = await criarUsuario('online-ultimo@brabo.dev');
+      const ws = await criarWorkspace(owner.id, 'online-ultimo');
+      const projeto = await criarProjeto(ws.id, owner.id, 'core');
+      const sessao = await criarSessao(projeto.id, owner.id);
+
+      for (const status of ['working', 'idle']) {
+        seq += 1;
+        await db.insert(sessionEvents).values({
+          id: `evt-status-${seq}`,
+          sessionId: sessao.id,
+          seq,
+          type: 'agent.status',
+          actorKind: 'agent',
+          actorId: 'criativo',
+          payload: { status },
+        });
+      }
+      await db
+        .update(sessions)
+        .set({ nextSeq: seq + 1 })
+        .where(sql`${sessions.id} = ${sessao.id}`);
+
+      const [resumo] = await repo.summarizeForWorkspace(ws.id);
+
+      // Último estado do criativo é `idle` — não conta, mesmo tendo passado
+      // por `working` antes.
+      expect(resumo.onlineAgentCount).toBe(0);
+    });
+
+    it('QA/SecOps nunca contam — não emitem agent.status', async () => {
+      const owner = await criarUsuario('online-qa@brabo.dev');
+      const ws = await criarWorkspace(owner.id, 'online-qa');
+      const projeto = await criarProjeto(ws.id, owner.id, 'core');
+      const sessao = await criarSessao(projeto.id, owner.id);
+
+      await gravarEvento(sessao.id, 'pr.gate_changed', 'qa');
+
+      const [resumo] = await repo.summarizeForWorkspace(ws.id);
+
+      expect(resumo.onlineAgentCount).toBe(0);
+    });
+
+    it('dev agents e conversacionais SOMAM no mesmo projeto', async () => {
+      const owner = await criarUsuario('online-soma@brabo.dev');
+      const ws = await criarWorkspace(owner.id, 'online-soma');
+      const projeto = await criarProjeto(ws.id, owner.id, 'core');
+      const sessao = await criarSessao(projeto.id, owner.id);
+
+      await criarDevAgentState(projeto.id, 'dev-api', 'working');
+      seq += 1;
+      await db.insert(sessionEvents).values({
+        id: `evt-status-${seq}`,
+        sessionId: sessao.id,
+        seq,
+        type: 'agent.status',
+        actorKind: 'agent',
+        actorId: 'po',
+        payload: { status: 'working' },
+      });
+      await db
+        .update(sessions)
+        .set({ nextSeq: seq + 1 })
+        .where(sql`${sessions.id} = ${sessao.id}`);
+
+      const [resumo] = await repo.summarizeForWorkspace(ws.id);
+
+      expect(resumo.onlineAgentCount).toBe(2);
+    });
+
+    it('não vaza do projeto vizinho', async () => {
+      const owner = await criarUsuario('online-isolado@brabo.dev');
+      const ws = await criarWorkspace(owner.id, 'online-isolado');
+      const comAgente = await criarProjeto(ws.id, owner.id, 'com-agente');
+      const semAgente = await criarProjeto(ws.id, owner.id, 'sem-agente');
+
+      await criarDevAgentState(comAgente.id, 'dev-api', 'working');
+
+      const resumos = await repo.summarizeForWorkspace(ws.id);
+      const porId = new Map(resumos.map((r) => [r.projectId, r]));
+
+      expect(porId.get(comAgente.id)?.onlineAgentCount).toBe(1);
+      expect(porId.get(semAgente.id)?.onlineAgentCount).toBe(0);
+    });
   });
 
   /**

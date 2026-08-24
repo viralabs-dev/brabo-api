@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { TokenUsageRepository } from '../../ports/token-usage-repository.port';
+import {
+  TokenUsageRepository,
+  type SpendScopeDeAtor,
+} from '../../ports/token-usage-repository.port';
 import {
   comoLinhas,
   densificarPorDia,
@@ -41,6 +44,14 @@ export interface MySpend {
  * outro ator" ser uma propriedade da assinatura, e não uma checagem que alguém
  * pode esquecer de chamar.
  *
+ * **O ADR 0076 devolveu o eixo de provider ao relatório do owner, e nada aqui
+ * mudou** — de propósito. Antes, o membro não alcançava o eixo porque ele não
+ * existia em lugar nenhum; agora ele existe, e o que o mantém fora daqui são
+ * duas barreiras independentes: a rota não tem parâmetro de dimensão (o
+ * `execute` recebe projeto, usuário e janela, e mais nada), e o escopo com
+ * `actor` não TIPA com `'provider'` no port (RN-187). A primeira já bastava; a
+ * segunda existe para que ela continue bastando depois da próxima mudança.
+ *
  * Agente não entra. `token_usage` registra QUEM gastou, não quem mandou
  * gastar — atribuir o agente a quem o iniciou seria inventar um dado que a
  * tabela não tem.
@@ -55,7 +66,11 @@ export class GetMySpendUseCase {
     dias: number,
     agora = new Date(),
   ): Promise<MySpend> {
-    const escopo = {
+    // Escopo DE ATOR. Ele restringe as linhas (RN-101) e, desde o ADR 0076,
+    // também restringe as DIMENSÕES: com `actor` presente, o port só aceita
+    // `SpendDimensionDoAtor`, e `sumGroupedBy('provider', escopo)` daqui não
+    // compila (RN-187). É por isso que o tipo está escrito, e não inferido.
+    const escopo: SpendScopeDeAtor = {
       projectId,
       actor: { kind: 'user' as const, id: userId },
       dias,

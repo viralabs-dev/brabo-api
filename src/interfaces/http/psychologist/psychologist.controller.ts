@@ -17,12 +17,14 @@ import { ListHypothesesUseCase } from '../../../application/use-cases/execution/
 import { AcceptHypothesisUseCase } from '../../../application/use-cases/execution/accept-hypothesis.use-case';
 import { DismissHypothesisUseCase } from '../../../application/use-cases/execution/dismiss-hypothesis.use-case';
 import { ReanalyzeSessionUseCase } from '../../../application/use-cases/execution/reanalyze-session.use-case';
+import { GetPsychologistStatusUseCase } from '../../../application/use-cases/execution/get-psychologist-status.use-case';
 import { ListPsychologistAnalysesUseCase } from '../../../application/use-cases/execution/list-psychologist-analyses.use-case';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import { OkResponseDto } from '../shared/dto/comuns.response.dto';
 import {
   HypothesisResponseDto,
   PsychologistAnalysisResponseDto,
+  PsychologistStatusResponseDto,
 } from './dto/psychologist.response.dto';
 
 /**
@@ -32,11 +34,11 @@ import {
  * descartar NÃO são proposed_actions — o Psicólogo é só leitura, nunca
  * propõe ação com efeito externo.
  */
-@ApiTags('psicólogo')
+@ApiTags('psychologist')
 @ApiBearerAuth(BEARER)
-@ApiForbiddenResponse({ description: 'Papel insuficiente no projeto.' })
+@ApiForbiddenResponse({ description: 'Insufficient role on the project.' })
 @ApiNotFoundResponse({
-  description: 'Projeto, sessão ou hipótese inexistente.',
+  description: 'Project, session, or hypothesis does not exist.',
 })
 @Controller('projects/:projectId')
 export class PsychologistController {
@@ -45,16 +47,17 @@ export class PsychologistController {
     private readonly acceptHypothesis: AcceptHypothesisUseCase,
     private readonly dismissHypothesis: DismissHypothesisUseCase,
     private readonly reanalyzeSession: ReanalyzeSessionUseCase,
+    private readonly getStatus: GetPsychologistStatusUseCase,
     private readonly listAnalyses: ListPsychologistAnalysesUseCase,
   ) {}
 
   @Get('hypotheses')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Lista as hipóteses do Psicólogo sobre os agentes',
+    summary: "Lists the Psychologist's hypotheses about the agents",
     description:
-      'Cada hipótese cita os eventos que a sustentam (`evidenceEventIds`) — é o que ' +
-      'a torna auditável em vez de acreditada.',
+      'Each hypothesis cites the events that support it (`evidenceEventIds`) — ' +
+      'this is what makes it auditable instead of taken on faith.',
   })
   @ApiOkResponse({ type: [HypothesisResponseDto] })
   hypotheses(@Param('projectId') projectId: string) {
@@ -68,27 +71,49 @@ export class PsychologistController {
   @Get('psychologist/analyses')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Lista as rodadas de análise com tier e custo real',
+    summary: 'Lists the analysis rounds with tier and real cost',
     description:
-      'O `costMicros` sai somado do `token_usage` da rodada. É o que torna a ' +
-      'diferença de custo entre triagem leve e pesada VISÍVEL, em vez de apenas ' +
-      'afirmada — os dois tiers usam modelos genuinamente diferentes.',
+      "`costMicros` is summed from the round's `token_usage`. This is what makes " +
+      'the cost difference between light and heavy triage VISIBLE, instead of ' +
+      'just asserted — the two tiers use genuinely different models.',
   })
   @ApiOkResponse({ type: [PsychologistAnalysisResponseDto] })
   analyses(@Param('projectId') projectId: string) {
     return this.listAnalyses.execute(projectId);
   }
 
+  /**
+   * Leitura da flag global `PSYCHOLOGIST_ENABLED` (RN-454) — sem efeito
+   * colateral, ao contrário de `reanalyze` abaixo. Existe para a aba
+   * Insights conseguir dizer que a pausa é DECISÃO antes do usuário clicar
+   * em "Reanalisar", que só aparece quando já há uma rodada de análise —
+   * uma sessão sem hipótese nenhuma nunca chegava perto do 503 que
+   * denunciava a pausa.
+   */
+  @Get('psychologist/status')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Reports whether the Psychologist can run a NEW analysis today',
+    description:
+      'Read-only — has no side effect. `enabled: false` means the pause is a ' +
+      "PRODUCT decision (not a bug): existing analyses and hypotheses aren't " +
+      'touched by it.',
+  })
+  @ApiOkResponse({ type: PsychologistStatusResponseDto })
+  status() {
+    return this.getStatus.execute();
+  }
+
   @Post('hypotheses/:hypothesisId/accept')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Aceita uma hipótese',
+    summary: 'Accepts a hypothesis',
     description:
-      'Move `proposed` → `accepted`. NÃO é uma `proposed_action`: o Psicólogo é só ' +
-      'leitura e nada aqui tem efeito externo.',
+      'Moves `proposed` → `accepted`. NOT a `proposed_action`: the Psychologist ' +
+      'is read-only and nothing here has an external effect.',
   })
   @ApiCreatedResponse({ type: HypothesisResponseDto })
-  @ApiConflictResponse({ description: 'A hipótese já foi decidida.' })
+  @ApiConflictResponse({ description: 'The hypothesis was already decided.' })
   accept(
     @Param('projectId') projectId: string,
     @Param('hypothesisId') hypothesisId: string,
@@ -100,11 +125,11 @@ export class PsychologistController {
   @Post('hypotheses/:hypothesisId/dismiss')
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Descarta uma hipótese',
-    description: 'Move `proposed` → `dismissed`. Mesmo raciocínio do aceite.',
+    summary: 'Dismisses a hypothesis',
+    description: 'Moves `proposed` → `dismissed`. Same reasoning as accepting.',
   })
   @ApiCreatedResponse({ type: HypothesisResponseDto })
-  @ApiConflictResponse({ description: 'A hipótese já foi decidida.' })
+  @ApiConflictResponse({ description: 'The hypothesis was already decided.' })
   dismiss(
     @Param('projectId') projectId: string,
     @Param('hypothesisId') hypothesisId: string,
@@ -121,17 +146,17 @@ export class PsychologistController {
   @Post('sessions/:sessionId/psychologist/reanalyze')
   @RequireRole('maintainer')
   @ApiOperation({
-    summary: 'Dispara uma reanálise da sessão',
+    summary: 'Triggers a reanalysis of the session',
     description:
-      'Exige `maintainer`, e não `developer`, porque roda o ToolLoop de novo e GASTA ' +
-      'orçamento de verdade — diferente de aceitar ou descartar, que só movem estado ' +
-      'local. A análise anterior é marcada como superseded.',
+      'Requires `maintainer`, not `developer`, because it runs the ToolLoop ' +
+      'again and SPENDS real budget — unlike accepting or dismissing, which only ' +
+      'move local state. The previous analysis is marked superseded.',
   })
   @ApiCreatedResponse({ type: OkResponseDto })
   @ApiServiceUnavailableResponse({
     description:
-      'O Psicólogo está desativado globalmente por decisão do usuário (não ' +
-      'é bug) — corpo com `reason: "psychologist_disabled"`.',
+      "The Psychologist is disabled globally by the user's decision (not a " +
+      'bug) — body with `reason: "psychologist_disabled"`.',
   })
   reanalyze(
     @Param('projectId') projectId: string,

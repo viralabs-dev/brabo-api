@@ -3,6 +3,7 @@ import { OllamaProvider } from '../../../src/infrastructure/llm/ollama-provider'
 import { runLLMProviderContract } from '../../contract/llm-provider.contract';
 import {
   CATALOGO_ESPERADO,
+  EMBEDDING_ESPERADO,
   FERRAMENTA_ESPERADA,
   PEDACOS_DO_TEXTO,
   STATUS_DO_CENARIO,
@@ -34,6 +35,26 @@ function dialetoOllama(cenario: CenarioLLM, res: ServerResponse): void {
           digest: '0a8c266910232fd3291e71e5ba1e058cc5af9d411192cf88b6d30e92b6e73163',
           details: { format: 'gguf', family: 'qwen2', parameter_size: '7.6B' },
         })),
+      }),
+    );
+    return;
+  }
+
+  // `POST /api/embed` também não é ndjson: um JSON único com `embeddings`
+  // (plural), um vetor por entrada, mais `prompt_eval_count` — o shape
+  // verificado ao vivo contra o daemon 0.32.1 (ADR 0075).
+  if (cenario === 'embedding' || cenario === 'embedding_incompleto') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(
+      JSON.stringify({
+        model: EMBEDDING_ESPERADO.modeloRespondido,
+        embeddings:
+          cenario === 'embedding'
+            ? EMBEDDING_ESPERADO.vetores
+            : EMBEDDING_ESPERADO.vetores.slice(0, 1),
+        total_duration: 446_020_157,
+        load_duration: 393_094_699,
+        prompt_eval_count: EMBEDDING_ESPERADO.inputTokens,
       }),
     );
     return;
@@ -100,4 +121,10 @@ runLLMProviderContract('ollama', () => ({
   hostEnv: 'OLLAMA_HOST',
   temFerramentasNoPedido: (body) => Array.isArray(body.tools),
   modelo: 'qwen2.5-coder:7b',
+  // O Ollama é o único dos nove com `embeddings: true` — provado contra o
+  // daemon de verdade, não contra doc (ADR 0075). `nomic-embed-text` é o
+  // modelo que o `/api/tags` do daemon declara com `capabilities:
+  // ["embedding"]` e 768 de dimensão.
+  embedOptions: (baseUrl) => ({ host: baseUrl }),
+  modeloDeEmbedding: 'nomic-embed-text',
 }));

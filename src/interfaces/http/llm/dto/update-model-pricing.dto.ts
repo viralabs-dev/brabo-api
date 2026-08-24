@@ -9,7 +9,7 @@ import { IsInt, Min } from 'class-validator';
 export class UpdateModelPricingDto {
   @ApiProperty({
     example: 2_500_000,
-    description: 'Preço por milhão de tokens de ENTRADA, em micro-USD.',
+    description: 'Price per million INPUT tokens, in micro-USD.',
   })
   @IsInt()
   @Min(0)
@@ -17,7 +17,7 @@ export class UpdateModelPricingDto {
 
   @ApiProperty({
     example: 10_000_000,
-    description: 'Preço por milhão de tokens de SAÍDA, em micro-USD.',
+    description: 'Price per million OUTPUT tokens, in micro-USD.',
   })
   @IsInt()
   @Min(0)

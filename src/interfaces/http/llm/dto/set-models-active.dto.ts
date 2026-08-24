@@ -10,7 +10,7 @@ export class SetModelsActiveDto {
     type: [String],
     format: 'uuid',
     example: ['9b1c2d3e-4f50-4a61-8b72-0c3d4e5f6a7b'],
-    description: 'Modelos a ligar ou desligar. Lote inteiro ou nada.',
+    description: 'Models to turn on or off. Whole batch or nothing.',
   })
   @IsArray()
   @ArrayNotEmpty()
@@ -20,8 +20,9 @@ export class SetModelsActiveDto {
   @ApiProperty({
     example: true,
     description:
-      '`true` faz o modelo aparecer no seletor e poder receber binding novo. ' +
-      'Não mexe em `availability`, que é o que o sync observou no provider.',
+      '`true` makes the model appear in the selector and be able to receive ' +
+      'a new binding. Does not touch `availability`, which is what sync ' +
+      'observed on the provider.',
   })
   @IsBoolean()
   isActive!: boolean;

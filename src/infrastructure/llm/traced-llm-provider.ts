@@ -3,6 +3,8 @@ import type {
   ChatMessage,
   ChatOptions,
   ChatStreamChunk,
+  EmbeddingOptions,
+  EmbeddingResult,
   LLMProviderCapabilities,
   LLMProviderName,
   ModeloDoCatalogo,
@@ -49,6 +51,18 @@ export class TracedLLMProvider extends LLMProvider {
    */
   readonly listModels?: (apiKey?: string) => Promise<ModeloDoCatalogo[]>;
 
+  /**
+   * `embed` é opcional pelo mesmo contrato de `listModels`, e é encaminhado
+   * pela mesma razão: o registry envolve TODO provider, então um método não
+   * encaminhado some para o produto inteiro enquanto a capability continua
+   * dizendo que existe. Foi exatamente esse o defeito que `listModels` teve, e
+   * repeti-lo em `embed` custaria o mesmo diagnóstico de novo (ADR 0075).
+   */
+  readonly embed?: (
+    inputs: readonly string[],
+    options: EmbeddingOptions,
+  ) => Promise<EmbeddingResult>;
+
   constructor(
     private readonly inner: LLMProvider,
     private readonly metrics: BraboMetrics,
@@ -56,6 +70,46 @@ export class TracedLLMProvider extends LLMProvider {
     super();
     if (inner.listModels) {
       this.listModels = (apiKey?: string) => inner.listModels!(apiKey);
+    }
+    if (inner.embed) {
+      this.embed = (inputs, options) => this.embedComSpan(inputs, options);
+    }
+  }
+
+  /**
+   * Span própria (`llm.embed`), não a de `llm.call`: um índice vetorial faz
+   * centenas de chamadas de embedding por uma de chat, e misturar as duas na
+   * mesma operação faria a latência de chat parecer o que ela não é. A métrica
+   * de erro é a mesma — uma chamada que falha nunca chega ao metering.
+   */
+  private async embedComSpan(
+    inputs: readonly string[],
+    options: EmbeddingOptions,
+  ): Promise<EmbeddingResult> {
+    const tracer = trace.getTracer('brabo-api');
+    const span = tracer.startSpan('llm.embed', {
+      attributes: {
+        'gen_ai.system': this.inner.name,
+        'gen_ai.request.model': options.model,
+        'brabo.llm.embedding_inputs': inputs.length,
+      },
+    });
+
+    try {
+      const resultado = await this.inner.embed!(inputs, options);
+      span.setAttribute('brabo.llm.embedding_dimensions', resultado.dimensions);
+      span.setStatus({ code: SpanStatusCode.OK });
+      return resultado;
+    } catch (error) {
+      this.metrics.llmCallErrors.inc({ provider: this.inner.name });
+      span.recordException(error as Error);
+      span.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: (error as Error).message,
+      });
+      throw error;
+    } finally {
+      span.end();
     }
   }
 

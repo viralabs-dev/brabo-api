@@ -23,7 +23,7 @@ import { SyncModelCatalogResponseDto } from './dto/model-sync.response.dto';
 @ApiTags('internal')
 @ApiSecurity(SERVICE_TOKEN)
 @ApiForbiddenResponse({
-  description: 'Service token ausente ou diferente do compartilhado.',
+  description: 'Service token missing or different from the shared one.',
 })
 @Controller('internal/models')
 @ServiceRoute()
@@ -32,14 +32,15 @@ export class InternalModelsController {
   constructor(private readonly syncCatalog: SyncModelCatalogUseCase) {}
 
   @Post('sync')
-  // Reconcilia linhas existentes; não cria recurso endereçável.
+  // Reconciles existing rows; does not create an addressable resource.
   @HttpCode(200)
   @ApiOperation({
-    summary: 'Sincroniza o catálogo de modelos de todos os providers',
+    summary: 'Syncs the model catalog across all providers',
     description:
-      'Nunca falha por causa de um provider: cada um responde por si no ' +
-      'relatório, com o motivo do pulo e a origem da falha quando houve. Um ' +
-      'provider que não respondeu é PULADO, não indisponibilizado.',
+      'Never fails because of one provider: each one answers for itself in ' +
+      'the report, with the reason it was skipped and the origin of the ' +
+      'failure when there was one. A provider that did not respond is ' +
+      'SKIPPED, not marked unavailable.',
   })
   @ApiOkResponse({ type: SyncModelCatalogResponseDto })
   sync() {

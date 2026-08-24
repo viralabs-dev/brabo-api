@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import {
   AgentAreaRepository,
   type AgentArea,
@@ -40,6 +40,8 @@ export class DrizzleAgentAreaRepository implements AgentAreaRepository {
       key: a.key,
       leadAgentId: a.leadAgentId,
       maxParallel: a.maxParallel,
+      budgetMicros: a.budgetMicros,
+      spentMicros: a.spentMicros,
       members: membros.filter((m) => m.areaId === a.id).map((m) => m.agentId),
     }));
   }
@@ -99,6 +101,8 @@ export class DrizzleAgentAreaRepository implements AgentAreaRepository {
       key: area.key,
       leadAgentId: area.leadAgentId,
       maxParallel: area.maxParallel,
+      budgetMicros: area.budgetMicros,
+      spentMicros: area.spentMicros,
       members: input.members,
     };
   }
@@ -112,6 +116,49 @@ export class DrizzleAgentAreaRepository implements AgentAreaRepository {
     const [row] = await db
       .update(agentAreas)
       .set({ maxParallel, updatedAt: new Date() })
+      .where(and(eq(agentAreas.projectId, projectId), eq(agentAreas.key, key)))
+      .returning();
+
+    if (!row) {
+      throw new NotFoundException(`Área "${key}" não existe neste projeto`);
+    }
+
+    const atual = await this.findByKey(projectId, key);
+    return atual!;
+  }
+
+  async setBudget(
+    projectId: string,
+    key: string,
+    budgetMicros: number | null,
+  ): Promise<AgentArea> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .update(agentAreas)
+      .set({ budgetMicros, updatedAt: new Date() })
+      .where(and(eq(agentAreas.projectId, projectId), eq(agentAreas.key, key)))
+      .returning();
+
+    if (!row) {
+      throw new NotFoundException(`Área "${key}" não existe neste projeto`);
+    }
+
+    const atual = await this.findByKey(projectId, key);
+    return atual!;
+  }
+
+  async incrementSpent(
+    projectId: string,
+    key: string,
+    deltaMicros: number,
+  ): Promise<AgentArea> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .update(agentAreas)
+      .set({
+        spentMicros: sql`${agentAreas.spentMicros} + ${deltaMicros}`,
+        updatedAt: new Date(),
+      })
       .where(and(eq(agentAreas.projectId, projectId), eq(agentAreas.key, key)))
       .returning();
 

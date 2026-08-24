@@ -3,6 +3,7 @@
 // pega em módulo já carregado. Ver src/tracing-boot.ts e src/tracing.ts.
 import './tracing-boot';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
@@ -11,6 +12,7 @@ import { AppModule } from './app.module';
 import { DomainTransitionErrorFilter } from './interfaces/http/shared/domain-transition-error.filter';
 import { GitProviderErrorFilter } from './interfaces/http/shared/git-provider-error.filter';
 import { LlmBindingErrorFilter } from './interfaces/http/shared/llm-binding-error.filter';
+import { GraphErrorFilter } from './interfaces/http/shared/graph-error.filter';
 import { resolveCorsOrigins } from './infrastructure/security/cors-origins';
 import { resolveOauthStateSecret } from './infrastructure/security/oauth-state-secret';
 import { passphraseAtual } from './infrastructure/security/auth-key-material';
@@ -35,8 +37,26 @@ async function bootstrap() {
   // `bufferLogs`: as linhas emitidas ANTES de o logger estar pronto ficam na
   // fila e são reemitidas em JSON, em vez de sair no formato default do Nest —
   // senão o começo do log de cada pod não é parseável pelo Loki.
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+  });
   app.useLogger(app.get(PinoLogger));
+
+  // Limite do body parser JSON do Express — o Nest nunca o configurou
+  // explicitamente, então valia o default do Express (100 KB). Isso fazia a
+  // api ser o gargalo mais estreito no sentido engine→api: o Phoenix aceita
+  // corpos de até 8 MB, e `POST /internal/sessions/:sessionId/llm-turn`
+  // recebe o histórico inteiro da conversa a cada iteração do ToolLoop do
+  // engine, estourando `413` em PRs de gate legítimas. `useBodyParser`
+  // ANTES de qualquer rota substitui o parser JSON que o Nest registraria
+  // sozinho (mesmo nome interno `jsonParser` — o auto-registro detecta o
+  // parser já aplicado e não duplica), sem tocar no parser `urlencoded`
+  // nem em rota nenhuma que exija corpo cru. Configurável por env var para
+  // não exigir novo deploy se o teto do engine mudar; 10 MB de default,
+  // com folga sobre os 8 MB do Phoenix.
+  app.useBodyParser('json', {
+    limit: process.env.API_JSON_BODY_LIMIT ?? '10mb',
+  });
 
   // Cabeçalhos de segurança (Fase 5, item 7). A api não mandava nenhum.
   //
@@ -99,6 +119,7 @@ async function bootstrap() {
     new DomainTransitionErrorFilter(),
     new GitProviderErrorFilter(),
     new LlmBindingErrorFilter(),
+    new GraphErrorFilter(),
   );
   // Sem isto o SIGTERM mata o processo direto e o `onModuleDestroy` do
   // DrizzleModule nunca roda: o pool do Postgres fica com conexões abertas do

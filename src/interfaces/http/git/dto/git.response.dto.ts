@@ -31,8 +31,9 @@ export class GitAuthorizeUrlResponseDto {
     example:
       'https://github.com/login/oauth/authorize?client_id=…&state=…&redirect_uri=…',
     description:
-      'Para onde mandar o browser. O `state` é assinado por HMAC com ' +
-      '`GIT_OAUTH_STATE_SECRET` — é isso que impede o callback de ser forjado.',
+      'Where to send the browser. The `state` is signed by HMAC with ' +
+      '`GIT_OAUTH_STATE_SECRET` — this is what prevents the callback from ' +
+      'being forged.',
   })
   authorizeUrl!: string;
 }
@@ -49,7 +50,7 @@ export class ProvisionedRepositoryResponseDto implements Wire<ProvisionedReposit
 
   @ApiProperty({
     example: '904837261',
-    description: 'Id do repositório no provider.',
+    description: "The repository's id on the provider.",
   })
   externalId!: string;
 
@@ -59,7 +60,7 @@ export class ProvisionedRepositoryResponseDto implements Wire<ProvisionedReposit
   @ApiProperty({
     example: 'main',
     description:
-      'A política do projeto usa `dev`, `qa` e `main` como permanentes.',
+      "The project's policy uses `dev`, `qa`, and `main` as permanent branches.",
   })
   defaultBranch!: string;
 
@@ -70,8 +71,8 @@ export class ProvisionedRepositoryResponseDto implements Wire<ProvisionedReposit
     enum: REPO_ORIGINS,
     example: 'created',
     description:
-      '`created` = o Brabo criou o repositório; `adopted` = apontou para um que ' +
-      'já existia. Imutável depois de gravado (RN-046).',
+      '`created` = Brabo created the repository; `adopted` = it pointed to ' +
+      'one that already existed. Immutable once recorded (RN-046).',
   })
   origin!: Wire<ProvisionedRepository>['origin'];
 
@@ -104,8 +105,8 @@ export class ProvisionRepositoryResponseDto implements Wire<ProvisionRepositoryR
   @ApiProperty({
     type: PassoDeBootstrapResponseDto,
     description:
-      'Onde o bootstrap de Gitflow parou. O trabalho continua em segundo plano — ' +
-      'acompanhe por `GET /projects/:id/git/bootstrap`.',
+      'Where the Gitflow bootstrap stopped. Work continues in the ' +
+      'background — track it via `GET /projects/:id/git/bootstrap`.',
   })
   bootstrap!: PassoDeBootstrapResponseDto;
 }
@@ -125,9 +126,10 @@ export class RepoBootstrapStatusResponseDto implements Wire<RepoBootstrapStatus>
     example: 'provisioning',
     nullable: true,
     description:
-      '`null` quando nunca houve provisionamento neste projeto. ' +
-      '`awaiting_plan_decision` é repositório ADOTADO com plano gerado e ainda ' +
-      'não decidido: nada roda até alguém aprovar o plano ou adotar como está.',
+      '`null` when there was never a provisioning in this project. ' +
+      '`awaiting_plan_decision` is an ADOPTED repository with a generated ' +
+      'plan not yet decided: nothing runs until someone approves the plan ' +
+      'or adopts it as is.',
   })
   status!: Wire<RepoBootstrapStatus>['status'];
 
@@ -135,8 +137,8 @@ export class RepoBootstrapStatusResponseDto implements Wire<RepoBootstrapStatus>
     example: '01JC4Z8QK3M7YV2N5T9B0PXHRA',
     nullable: true,
     description:
-      'Sessão DEDICADA do bootstrap. A tela de progresso lê os eventos ' +
-      '`bootstrap.step_*` dela para montar o checklist ao vivo.',
+      "The bootstrap's DEDICATED session. The progress screen reads its " +
+      '`bootstrap.step_*` events to build the live checklist.',
   })
   sessionId!: string | null;
 
@@ -149,8 +151,8 @@ export class RepoBootstrapStatusResponseDto implements Wire<RepoBootstrapStatus>
   @ApiProperty({
     example: 1,
     description:
-      'Quantas vezes o bootstrap já foi tentado. Ele é idempotente e retomável: ' +
-      'repetir não duplica o que já deu certo.',
+      'How many times the bootstrap has already been attempted. It is ' +
+      "idempotent and resumable: repeating doesn't duplicate what already worked.",
   })
   attempts!: number;
 }
@@ -159,7 +161,7 @@ export const _chavesBootstrap: MesmasChaves<
   RepoBootstrapStatus
 > = true;
 
-// --- Adoção de repositório existente (Fase 12a) ---
+// --- Adoption of an existing repository (Phase 12a) ---
 
 export class BootstrapPlanStepResponseDto implements Wire<BootstrapPlanStep> {
   @ApiProperty({ enum: BOOTSTRAP_STEPS, example: 'create_qa_branch' })
@@ -168,14 +170,14 @@ export class BootstrapPlanStepResponseDto implements Wire<BootstrapPlanStep> {
   @ApiProperty({
     example: 'git_branch_create',
     description:
-      'A mesma taxonomia de `proposed_actions` — cada passo aprovado vira uma ' +
-      'ação registrada quando o bootstrap roda.',
+      'The same taxonomy as `proposed_actions` — each approved step ' +
+      'becomes a recorded action when the bootstrap runs.',
   })
   actionType!: string;
 
   @ApiProperty({
     example: { branchName: 'qa', fromRef: 'dev' },
-    description: 'Os dados da mutação: qual branch, qual arquivo, de onde.',
+    description: 'The mutation data: which branch, which file, from where.',
     additionalProperties: true,
   })
   payload!: Record<string, unknown>;
@@ -190,8 +192,8 @@ export class BootstrapDiagnosticResponseDto implements Wire<BootstrapDiagnostic>
     enum: BOOTSTRAP_DIAGNOSTIC_KINDS,
     example: 'extra_branch',
     description:
-      '`extra_branch` é INFORMATIVO e nunca bloqueia: repositório adotado tem a ' +
-      'política que tem, e o bootstrap não a apaga.',
+      '`extra_branch` is INFORMATIONAL and never blocks: an adopted ' +
+      "repository has whatever policy it has, and the bootstrap doesn't delete it.",
   })
   kind!: Wire<BootstrapDiagnostic>['kind'];
 
@@ -213,14 +215,14 @@ export class BootstrapPlanResponseDto implements Wire<BootstrapPlan> {
   @ApiProperty({
     type: [BootstrapPlanStepResponseDto],
     description:
-      'O que o bootstrap FARIA. Lista vazia = o repositório já está como o ' +
-      'template quer, e não há o que aprovar.',
+      'What the bootstrap WOULD DO. An empty list = the repository is ' +
+      'already how the template wants it, and there is nothing to approve.',
   })
   steps!: BootstrapPlanStepResponseDto[];
 
   @ApiProperty({
     type: [BootstrapDiagnosticResponseDto],
-    description: 'As divergências entre o repositório e o template.',
+    description: 'The divergences between the repository and the template.',
   })
   diagnostics!: BootstrapDiagnosticResponseDto[];
 }
@@ -236,16 +238,16 @@ export class AdoptRepositoryResponseDto implements Wire<AdoptRepositoryResult> {
   @ApiProperty({
     type: BootstrapPlanResponseDto,
     description:
-      'O DRY-RUN: nada foi executado no repositório. Decida por ' +
-      '`POST .../bootstrap/plan/approve` ou `.../plan/skip`.',
+      'The DRY-RUN: nothing was executed on the repository. Decide via ' +
+      '`POST .../bootstrap/plan/approve` or `.../plan/skip`.',
   })
   plan!: BootstrapPlanResponseDto;
 
   @ApiProperty({
     example: false,
     description:
-      '`true` quando o projeto já tinha adotado ESTE repositório — nada foi ' +
-      'criado, o plano só foi regerado sobre o estado atual.',
+      '`true` when the project had already adopted THIS repository — ' +
+      'nothing was created, the plan was just regenerated over the current state.',
   })
   alreadyAdopted!: boolean;
 }
@@ -258,7 +260,7 @@ export class BootstrapPlanEstadoResponseDto {
   @ApiProperty({
     type: BootstrapPlanResponseDto,
     nullable: true,
-    description: '`null` quando o projeto não tem repositório adotado.',
+    description: '`null` when the project has no adopted repository.',
   })
   plan!: BootstrapPlanResponseDto | null;
 
@@ -267,8 +269,8 @@ export class BootstrapPlanEstadoResponseDto {
     example: null,
     nullable: true,
     description:
-      '`null` = plano gerado e ainda NÃO decidido. É o estado em que nada roda ' +
-      '(RN-045).',
+      '`null` = plan generated and NOT yet decided. This is the state in ' +
+      'which nothing runs (RN-045).',
   })
   decision!: (typeof BOOTSTRAP_PLAN_DECISIONS)[number] | null;
 
@@ -286,8 +288,8 @@ export class DecideBootstrapPlanResponseDto implements Wire<DecideBootstrapPlanR
   @ApiProperty({
     type: PassoDeBootstrapResponseDto,
     description:
-      'Onde o bootstrap ficou. Em `skip` o cursor NÃO avança: nenhum passo ' +
-      'rodou, e o registro diz isso.',
+      'Where the bootstrap ended up. On `skip` the cursor does NOT ' +
+      'advance: no step ran, and the record says so.',
   })
   bootstrap!: PassoDeBootstrapResponseDto;
 }
@@ -305,8 +307,9 @@ export class ReconhecerFalhaDeProtecaoResponseDto {
   @ApiProperty({
     example: 'provisioned',
     description:
-      'Como `protect_branches` é o ÚLTIMO passo, reconhecer a falha dele ' +
-      'fecha o bootstrap — o projeto passa a ser alcançável pelo dashboard.',
+      'Since `protect_branches` is the LAST step, acknowledging its ' +
+      'failure closes the bootstrap — the project becomes reachable from ' +
+      'the dashboard.',
   })
   status!: string | null;
 }

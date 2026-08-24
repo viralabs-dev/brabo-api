@@ -1,0 +1,297 @@
+import { describe, expect, it } from 'vitest';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
+import { ObterCicloDeVidaDoContainerUseCase } from '../../../../src/application/use-cases/containers/obter-ciclo-de-vida-do-container.use-case';
+import { RegistrarTransicaoDeContainerUseCase } from '../../../../src/application/use-cases/containers/registrar-transicao-de-container.use-case';
+import type { ObterContainerDoProjetoUseCase } from '../../../../src/application/use-cases/containers/obter-container-do-projeto.use-case';
+import type { ProjectRepository } from '../../../../src/application/ports/project-repository.port';
+import type { UnitOfWork } from '../../../../src/application/ports/unit-of-work.port';
+import {
+  ContainerRepository,
+  type CreateContainerLifecycleInput,
+  type UpdateContainerLifecycleInput,
+} from '../../../../src/application/ports/container-repository.port';
+import type {
+  ContainerLifecycleStatus,
+  ProjectContainerLifecycle,
+} from '../../../../src/domain/containers/container-lifecycle';
+import { RECURSOS_PADRAO } from '../../../../src/domain/containers/project-container';
+import type { Project } from '../../../../src/domain/iam/project.entity';
+
+const PROJETO = 'proj-1';
+
+const unitOfWork = {
+  runInTransaction: (work: () => Promise<unknown>) => work(),
+} as unknown as UnitOfWork;
+
+function projeto(overrides: Partial<Project> = {}): Project {
+  return {
+    id: PROJETO,
+    workspaceId: 'ws-1',
+    name: 'Projeto',
+    slug: 'projeto',
+    workspaceDirName: 'projeto-abcdefgh',
+    executionMode: 'container',
+    workspacePath: null,
+    workspaceVerifiedAt: null,
+    createdBy: 'user-1',
+    taskBudgetMicros: null,
+    maxConsecutiveBlocked: null,
+    storyPromotion: 'manual',
+    createdAt: new Date('2026-08-01T00:00:00Z'),
+    updatedAt: new Date('2026-08-01T00:00:00Z'),
+    ...overrides,
+  };
+}
+
+function linha(
+  overrides: Partial<ProjectContainerLifecycle> = {},
+): ProjectContainerLifecycle {
+  return {
+    id: 'lifecycle-1',
+    projectId: PROJETO,
+    status: 'provisioning',
+    imageVersion: 1,
+    containerId: null,
+    resources: RECURSOS_PADRAO,
+    failureReason: null,
+    createdAt: new Date('2026-08-14T00:00:00Z'),
+    statusChangedAt: new Date('2026-08-14T00:00:00Z'),
+    ...overrides,
+  };
+}
+
+/** Repositório de projetos falso — só `findById` importa aqui. */
+function projectRepo(p: Project | null): ProjectRepository {
+  return { findById: () => Promise.resolve(p) } as unknown as ProjectRepository;
+}
+
+/** Repositório de container falso, com um "banco" em memória. */
+function containerRepo(inicial: ProjectContainerLifecycle | null = null) {
+  let atual = inicial;
+  const chamadas: string[] = [];
+
+  const repo: ContainerRepository = {
+    findByProject: (projectId: string) => {
+      chamadas.push('findByProject');
+      return Promise.resolve(
+        atual && atual.projectId === projectId ? atual : null,
+      );
+    },
+    findByProjectForUpdate: (projectId: string) => {
+      chamadas.push('findByProjectForUpdate');
+      return Promise.resolve(
+        atual && atual.projectId === projectId ? atual : null,
+      );
+    },
+    create: (input: CreateContainerLifecycleInput) => {
+      chamadas.push('create');
+      atual = linha({
+        projectId: input.projectId,
+        imageVersion: input.imageVersion,
+        resources: input.resources,
+        status: 'provisioning',
+      });
+      return Promise.resolve(atual);
+    },
+    updateStatus: (
+      id: string,
+      status: ContainerLifecycleStatus,
+      patch: UpdateContainerLifecycleInput = {},
+    ) => {
+      chamadas.push('updateStatus');
+      if (!atual || atual.id !== id) throw new Error('linha não existe');
+      atual = {
+        ...atual,
+        status,
+        statusChangedAt: new Date('2026-08-14T01:00:00Z'),
+        ...(patch.containerId !== undefined
+          ? { containerId: patch.containerId }
+          : {}),
+        ...(patch.failureReason !== undefined
+          ? { failureReason: patch.failureReason }
+          : {}),
+      };
+      return Promise.resolve(atual);
+    },
+  };
+
+  return { repo, chamadas, atual: () => atual };
+}
+
+function obterImagemDecidida(version = 1): ObterContainerDoProjetoUseCase {
+  return {
+    execute: () =>
+      Promise.resolve({
+        status: 'decidido' as const,
+        decisao: {
+          image: 'node:22-bookworm-slim',
+          rationale: 'stack Node',
+          network: 'none' as const,
+          resources: RECURSOS_PADRAO,
+        },
+        version,
+        eventId: 'evt-1',
+        decidedAt: '2026-08-01T00:00:00Z',
+      }),
+  } as unknown as ObterContainerDoProjetoUseCase;
+}
+
+function obterImagemSemDecisao(): ObterContainerDoProjetoUseCase {
+  return {
+    execute: () =>
+      Promise.resolve({
+        status: 'sem_decisao' as const,
+        decisao: null,
+        version: 0,
+        eventId: null,
+        decidedAt: null,
+      }),
+  } as unknown as ObterContainerDoProjetoUseCase;
+}
+
+describe('ObterCicloDeVidaDoContainerUseCase', () => {
+  it('devolve null quando o projeto nunca foi provisionado', async () => {
+    const { repo } = containerRepo(null);
+    const useCase = new ObterCicloDeVidaDoContainerUseCase(repo);
+
+    expect(await useCase.execute(PROJETO)).toBeNull();
+  });
+
+  it('devolve a linha vigente quando existe', async () => {
+    const { repo } = containerRepo(linha({ status: 'running' }));
+    const useCase = new ObterCicloDeVidaDoContainerUseCase(repo);
+
+    const estado = await useCase.execute(PROJETO);
+    expect(estado?.status).toBe('running');
+  });
+});
+
+describe('RegistrarTransicaoDeContainerUseCase', () => {
+  it('a primeira transição (provisioning) cria a linha, com a versão e os recursos da decisão vigente', async () => {
+    const { repo, atual } = containerRepo(null);
+    const useCase = new RegistrarTransicaoDeContainerUseCase(
+      unitOfWork,
+      projectRepo(projeto()),
+      repo,
+      obterImagemDecidida(3),
+    );
+
+    const criada = await useCase.execute(PROJETO, 'provisioning');
+
+    expect(criada.status).toBe('provisioning');
+    expect(criada.imageVersion).toBe(3);
+    expect(criada.resources).toEqual(RECURSOS_PADRAO);
+    expect(atual()?.status).toBe('provisioning');
+  });
+
+  it('caminho feliz: provisioning -> running numa linha existente', async () => {
+    const { repo } = containerRepo(linha({ status: 'provisioning' }));
+    const useCase = new RegistrarTransicaoDeContainerUseCase(
+      unitOfWork,
+      projectRepo(projeto()),
+      repo,
+      obterImagemDecidida(),
+    );
+
+    const atualizada = await useCase.execute(PROJETO, 'running', {
+      containerId: 'abc123',
+    });
+
+    expect(atualizada.status).toBe('running');
+    expect(atualizada.containerId).toBe('abc123');
+  });
+
+  it('projeto em modo `mounted` não tem ciclo de vida de container (ADR 0072/0104)', async () => {
+    const { repo } = containerRepo(null);
+    const useCase = new RegistrarTransicaoDeContainerUseCase(
+      unitOfWork,
+      projectRepo(
+        projeto({ executionMode: 'mounted', workspacePath: '/repos/x' }),
+      ),
+      repo,
+      obterImagemDecidida(),
+    );
+
+    await expect(useCase.execute(PROJETO, 'provisioning')).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('projeto em modo `runner` também não tem ciclo de vida de container', async () => {
+    const { repo } = containerRepo(null);
+    const useCase = new RegistrarTransicaoDeContainerUseCase(
+      unitOfWork,
+      projectRepo(
+        projeto({ executionMode: 'runner', workspacePath: '/repos/x' }),
+      ),
+      repo,
+      obterImagemDecidida(),
+    );
+
+    await expect(useCase.execute(PROJETO, 'provisioning')).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('sem decisão de imagem do Arquiteto, não há o que provisionar (RN-105)', async () => {
+    const { repo } = containerRepo(null);
+    const useCase = new RegistrarTransicaoDeContainerUseCase(
+      unitOfWork,
+      projectRepo(projeto()),
+      repo,
+      obterImagemSemDecisao(),
+    );
+
+    await expect(useCase.execute(PROJETO, 'provisioning')).rejects.toThrow(
+      ConflictException,
+    );
+  });
+
+  it('sem linha existente, só `provisioning` é aceito como primeira transição', async () => {
+    const { repo } = containerRepo(null);
+    const useCase = new RegistrarTransicaoDeContainerUseCase(
+      unitOfWork,
+      projectRepo(projeto()),
+      repo,
+      obterImagemDecidida(),
+    );
+
+    await expect(useCase.execute(PROJETO, 'running')).rejects.toThrow(
+      ConflictException,
+    );
+  });
+
+  it('transição inválida na linha existente vira 409, sem gravar nada', async () => {
+    const { repo, atual } = containerRepo(linha({ status: 'running' }));
+    const useCase = new RegistrarTransicaoDeContainerUseCase(
+      unitOfWork,
+      projectRepo(projeto()),
+      repo,
+      obterImagemDecidida(),
+    );
+
+    await expect(useCase.execute(PROJETO, 'provisioning')).rejects.toThrow(
+      ConflictException,
+    );
+    // O estado não mudou: a rejeição aconteceu ANTES de qualquer escrita.
+    expect(atual()?.status).toBe('running');
+  });
+
+  it('projeto inexistente vira 404', async () => {
+    const { repo } = containerRepo(null);
+    const useCase = new RegistrarTransicaoDeContainerUseCase(
+      unitOfWork,
+      projectRepo(null),
+      repo,
+      obterImagemDecidida(),
+    );
+
+    await expect(useCase.execute(PROJETO, 'provisioning')).rejects.toThrow(
+      NotFoundException,
+    );
+  });
+});
