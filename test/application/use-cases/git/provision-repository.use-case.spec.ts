@@ -86,6 +86,9 @@ class UnreachableEngineClient implements ApiToEngineClient {
   reanalyzeSession(): Promise<void> {
     throw new Error('engine não deveria ser chamado pelo bootstrap');
   }
+  getPsychologistStatus(): Promise<{ enabled: boolean }> {
+    throw new Error('engine não deveria ser chamado pelo bootstrap');
+  }
 
   runAnamnese(): Promise<void> {
     throw new Error('engine não deveria ser chamado pelo bootstrap');

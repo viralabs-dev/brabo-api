@@ -181,6 +181,29 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
   }
 
   /**
+   * Leitura pura (RN-454) — sem `postCommand` porque é GET e a única deste
+   * client que devolve corpo em toda resposta de sucesso (sem `sessionId`/
+   * `projectId` de segmento de URL: a flag é GLOBAL).
+   */
+  async getPsychologistStatus(): Promise<{ enabled: boolean }> {
+    const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
+
+    const res = await fetch(`${engineUrl}/internal/psychologist/status`, {
+      method: 'GET',
+      headers: this.buildHeaders(),
+    });
+
+    if (!res.ok) {
+      throw new Error(
+        `Falha no comando ao engine (psychologist/status): ${res.status} ${await res.text()}`,
+      );
+    }
+
+    const corpo = (await res.json()) as { enabled: boolean };
+    return { enabled: corpo.enabled };
+  }
+
+  /**
    * Não usa `postCommand`: precisa distinguir o 503 ("Anamnese desativada
    * globalmente", RN — ver `AnamneseDisabledError`) de qualquer outra falha
    * de transporte, e `postCommand` colapsa todo `!res.ok` num `Error`

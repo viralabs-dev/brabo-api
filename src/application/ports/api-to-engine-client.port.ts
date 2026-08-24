@@ -147,6 +147,15 @@ export abstract class ApiToEngineClient {
     sessionId: string,
   ): Promise<void>;
 
+  /**
+   * Leitura da flag global `PSYCHOLOGIST_ENABLED` (RN-454) — sem efeito
+   * colateral nenhum, ao contrário de `reanalyzeSession`. Existe porque a
+   * aba Insights, com zero hipóteses ainda, nunca chega perto do botão
+   * "Reanalisar" (só aparece quando há uma rodada de análise para
+   * reprocessar) e por isso nunca esbarrava no 503 que denunciava a pausa.
+   */
+  abstract getPsychologistStatus(): Promise<{ enabled: boolean }>;
+
   // Descarta o cache de instruções do agente no engine (Fase 4b) —
   // depois de um instruction_patch aprovado ou de um rollback, senão os
   // agentes seguem servindo o conteúdo antigo em memória. Best-effort:

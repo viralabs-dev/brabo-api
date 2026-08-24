@@ -35,6 +35,7 @@ import { AcceptHypothesisUseCase } from './accept-hypothesis.use-case';
 import { DismissHypothesisUseCase } from './dismiss-hypothesis.use-case';
 import { ListHypothesesUseCase } from './list-hypotheses.use-case';
 import { ReanalyzeSessionUseCase } from './reanalyze-session.use-case';
+import { GetPsychologistStatusUseCase } from './get-psychologist-status.use-case';
 import { GetPsychologistAnalysisCostUseCase } from './get-psychologist-analysis-cost.use-case';
 import { ListPsychologistAnalysesUseCase } from './list-psychologist-analyses.use-case';
 import { AnamneseUseCasesModule } from '../anamnese/anamnese-use-cases.module';
@@ -74,6 +75,7 @@ const USE_CASES = [
   DismissHypothesisUseCase,
   ListHypothesesUseCase,
   ReanalyzeSessionUseCase,
+  GetPsychologistStatusUseCase,
   GetPsychologistAnalysisCostUseCase,
   ListPsychologistAnalysesUseCase,
 ];

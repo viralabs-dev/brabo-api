@@ -17,12 +17,14 @@ import { ListHypothesesUseCase } from '../../../application/use-cases/execution/
 import { AcceptHypothesisUseCase } from '../../../application/use-cases/execution/accept-hypothesis.use-case';
 import { DismissHypothesisUseCase } from '../../../application/use-cases/execution/dismiss-hypothesis.use-case';
 import { ReanalyzeSessionUseCase } from '../../../application/use-cases/execution/reanalyze-session.use-case';
+import { GetPsychologistStatusUseCase } from '../../../application/use-cases/execution/get-psychologist-status.use-case';
 import { ListPsychologistAnalysesUseCase } from '../../../application/use-cases/execution/list-psychologist-analyses.use-case';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import { OkResponseDto } from '../shared/dto/comuns.response.dto';
 import {
   HypothesisResponseDto,
   PsychologistAnalysisResponseDto,
+  PsychologistStatusResponseDto,
 } from './dto/psychologist.response.dto';
 
 /**
@@ -45,6 +47,7 @@ export class PsychologistController {
     private readonly acceptHypothesis: AcceptHypothesisUseCase,
     private readonly dismissHypothesis: DismissHypothesisUseCase,
     private readonly reanalyzeSession: ReanalyzeSessionUseCase,
+    private readonly getStatus: GetPsychologistStatusUseCase,
     private readonly listAnalyses: ListPsychologistAnalysesUseCase,
   ) {}
 
@@ -77,6 +80,28 @@ export class PsychologistController {
   @ApiOkResponse({ type: [PsychologistAnalysisResponseDto] })
   analyses(@Param('projectId') projectId: string) {
     return this.listAnalyses.execute(projectId);
+  }
+
+  /**
+   * Leitura da flag global `PSYCHOLOGIST_ENABLED` (RN-454) — sem efeito
+   * colateral, ao contrário de `reanalyze` abaixo. Existe para a aba
+   * Insights conseguir dizer que a pausa é DECISÃO antes do usuário clicar
+   * em "Reanalisar", que só aparece quando já há uma rodada de análise —
+   * uma sessão sem hipótese nenhuma nunca chegava perto do 503 que
+   * denunciava a pausa.
+   */
+  @Get('psychologist/status')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Reports whether the Psychologist can run a NEW analysis today',
+    description:
+      'Read-only — has no side effect. `enabled: false` means the pause is a ' +
+      "PRODUCT decision (not a bug): existing analyses and hypotheses aren't " +
+      'touched by it.',
+  })
+  @ApiOkResponse({ type: PsychologistStatusResponseDto })
+  status() {
+    return this.getStatus.execute();
   }
 
   @Post('hypotheses/:hypothesisId/accept')

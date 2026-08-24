@@ -125,6 +125,28 @@ describe('HttpApiToEngineClient — validação de segmento de URL interna (RN-1
     await servidor.fechar();
   });
 
+  it('getPsychologistStatus: sem segmento de URL variável — lê o corpo da resposta do engine (RN-454)', async () => {
+    const server: Server = createServer((req, res) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ enabled: false }));
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, '127.0.0.1', resolve),
+    );
+    const { port } = server.address() as AddressInfo;
+    process.env.ENGINE_URL = `http://127.0.0.1:${port}`;
+
+    const client = new HttpApiToEngineClient();
+    const resultado = await client.getPsychologistStatus();
+
+    expect(resultado).toEqual({ enabled: false });
+
+    await new Promise<void>((resolve) => {
+      server.closeAllConnections();
+      server.close(() => resolve());
+    });
+  });
+
   it('requestRunnerTicket: `projectId` malformado é recusado ANTES de tocar a rede', async () => {
     process.env.ENGINE_URL = PORTA_QUE_NADA_ESCUTA;
     const client = new HttpApiToEngineClient();

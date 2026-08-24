@@ -183,3 +183,18 @@ export const _chavesAnalise: MesmasChaves<
   PsychologistAnalysisResponseDto,
   PsychologistAnalysisWithCost
 > = true;
+
+/**
+ * A flag global `PSYCHOLOGIST_ENABLED` (RN-454) — sem entidade de domínio
+ * por trás (não é `Wire<T>`), é leitura direta de configuração do engine.
+ */
+export class PsychologistStatusResponseDto {
+  @ApiProperty({
+    example: false,
+    description:
+      'Whether a NEW analysis round can run today, automatic or on-demand. ' +
+      'Disabled does not touch existing data — past analyses and hypotheses ' +
+      'stay intact and visible.',
+  })
+  enabled!: boolean;
+}
