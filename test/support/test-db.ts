@@ -21,6 +21,7 @@ export async function truncateAll(db: ReturnType<typeof drizzle>) {
       outbox_events, agent_autonomy, proposed_actions, project_git_connections,
       repo_bootstraps, project_repositories, tasks, stories, epics, module_maps,
       handoffs, agent_instructions, chunks, project_containers,
+      huggingface_model_pull_requests,
       session_socket_tickets, session_events, sessions,
       auth_credentials, refresh_tokens, account_tokens,
       auth_events, auth_lockout_hits,

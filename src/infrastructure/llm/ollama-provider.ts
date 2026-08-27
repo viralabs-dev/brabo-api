@@ -14,6 +14,7 @@ import type {
 } from '@brabo/shared';
 import { LLMProvider } from '../../application/ports/llm-provider.port';
 import {
+  LLMConnectionError,
   LLMProviderError,
   LLMUpstreamError,
   normalizeHttpStatus,
@@ -48,6 +49,27 @@ interface OllamaChatLine {
   done?: boolean;
   prompt_eval_count?: number;
   eval_count?: number;
+}
+
+/**
+ * Uma linha do NDJSON de `POST /api/pull` (huggingface → Ollama). `status`
+ * varia por fase (`pulling manifest`, `downloading <digest>`, `verifying
+ * sha256 digest`, `success`) — `digest`/`total`/`completed` só acompanham as
+ * linhas de download, uma por camada do modelo.
+ */
+export interface OllamaPullProgress {
+  status: string;
+  digest?: string;
+  total?: number;
+  completed?: number;
+}
+
+interface OllamaPullLine {
+  status?: string;
+  digest?: string;
+  total?: number;
+  completed?: number;
+  error?: string;
 }
 
 @Injectable()
@@ -289,6 +311,98 @@ export class OllamaProvider implements LLMProvider {
         code: codigoDe(error),
         message: `Stream do Ollama interrompido: ${(error as Error).message}`,
       };
+    }
+  }
+
+  /**
+   * `POST /api/pull` puxando um modelo do Hugging Face Hub para dentro do
+   * Ollama (fluxo de Project/Workspace Settings — nunca automático: só roda
+   * depois da segunda confirmação explícita do humano, ver
+   * `ConfirmModelPullUseCase`).
+   *
+   * `model: "hf.co/<repoId>"` é a sintaxe que o Ollama documenta para puxar
+   * QUALQUER repo GGUF do Hub diretamente, sem precisar de um Modelfile
+   * próprio. O corpo do stream é NDJSON — mesmo padrão de `iterateLines` do
+   * `chat` — mas o VOCABULÁRIO é outro: `status` textual por fase
+   * (`"pulling manifest"`, `"downloading <digest>"`, `"verifying sha256
+   * digest"`, `"success"`), não `message`/`tool_calls`. `onProgress` é
+   * opcional porque o caminho síncrono de hoje (`ConfirmModelPullUseCase`
+   * aguarda o pull inteiro antes de responder — comentário lá explica por
+   * quê) não tem para quem emitir progresso incremental ainda; o parâmetro
+   * já existe para quando houver.
+   *
+   * Lança em vez de devolver chunk de erro (mesma escolha de `embed`): não há
+   * turno de chat em andamento cujo gasto precise sobreviver a esta chamada.
+   */
+  async pullModel(
+    repoId: string,
+    onProgress?: (evento: OllamaPullProgress) => void,
+  ): Promise<void> {
+    const host = process.env.OLLAMA_HOST ?? 'http://localhost:11434';
+    const body = JSON.stringify({ model: `hf.co/${repoId}`, stream: true });
+
+    let response: IncomingMessage;
+    try {
+      response = await postStream({
+        url: `${host}/api/pull`,
+        body,
+        headers: {},
+        timeoutMs: timeoutFromEnv(TIMEOUT_ENV, DEFAULT_REQUEST_TIMEOUT_MS),
+        timeoutEnvName: TIMEOUT_ENV,
+        provider: this.name,
+      });
+    } catch (error) {
+      throw error instanceof LLMProviderError
+        ? error
+        : new LLMConnectionError(
+            this.name,
+            `falha ao conectar no Ollama para o pull: ${(error as Error).message}`,
+            error,
+          );
+    }
+
+    const status = response.statusCode ?? 0;
+    if (status < 200 || status >= 300) {
+      response.destroy();
+      throw normalizeHttpStatus(this.name, status);
+    }
+
+    let ultimoStatus: string | undefined;
+    for await (const line of iterateLines(response)) {
+      let parsed: OllamaPullLine;
+      try {
+        parsed = JSON.parse(line) as OllamaPullLine;
+      } catch {
+        continue; // linha corrompida/parcial — ignora, não derruba o pull
+      }
+
+      // O Ollama pode reportar falha (repo/tag inexistente, manifest
+      // inválido) DENTRO do stream 200, não só por status HTTP — mesmo
+      // formato de erro do `/api/chat`, que `chat()` acima também trata como
+      // linha de dados em vez de rejeição de socket.
+      if (parsed.error) {
+        throw new LLMUpstreamError(
+          this.name,
+          `pull de "${repoId}" falhou: ${parsed.error}`,
+        );
+      }
+
+      if (parsed.status) {
+        ultimoStatus = parsed.status;
+        onProgress?.({
+          status: parsed.status,
+          digest: parsed.digest,
+          total: parsed.total,
+          completed: parsed.completed,
+        });
+      }
+    }
+
+    if (ultimoStatus !== 'success') {
+      throw new LLMUpstreamError(
+        this.name,
+        `pull de "${repoId}" terminou sem confirmação de sucesso (último status: ${ultimoStatus ?? 'nenhum'})`,
+      );
     }
   }
 }

@@ -4,6 +4,7 @@ import { LlmUseCasesModule } from '../../../application/use-cases/llm/llm-use-ca
 // por isso vem de um módulo próprio, e não do de LLM. Ver ADR 0050.
 import { CredentialsUseCasesModule } from '../../../application/use-cases/credentials/credentials-use-cases.module';
 import { ModelsController } from './models.controller';
+import { HuggingFaceModelsController } from './huggingface-models.controller';
 import { ModelBindingsController } from './model-bindings.controller';
 import { CredentialsController } from './credentials.controller';
 import { BudgetsController } from './budgets.controller';
@@ -14,6 +15,7 @@ import { SpendController } from './spend.controller';
   imports: [LlmUseCasesModule, CredentialsUseCasesModule],
   controllers: [
     ModelsController,
+    HuggingFaceModelsController,
     ModelBindingsController,
     CredentialsController,
     BudgetsController,

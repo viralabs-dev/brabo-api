@@ -15,6 +15,7 @@ import { UserCredentialRepository } from '../../../application/ports/user-creden
 import { TokenUsageRepository } from '../../../application/ports/token-usage-repository.port';
 import { BudgetRepository } from '../../../application/ports/budget-repository.port';
 import { ProposedActionRepository } from '../../../application/ports/proposed-action-repository.port';
+import { ModelPullRequestRepository } from '../../../application/ports/model-pull-request-repository.port';
 import { AgentAutonomyRepository } from '../../../application/ports/agent-autonomy-repository.port';
 import { GitConnectionRepository } from '../../../application/ports/git-connection-repository.port';
 import { ProvisionedRepositoryRepository } from '../../../application/ports/provisioned-repository-repository.port';
@@ -78,6 +79,7 @@ import { DrizzleUserCredentialRepository } from './user-credential.repository';
 import { DrizzleTokenUsageRepository } from './token-usage.repository';
 import { DrizzleBudgetRepository } from './budget.repository';
 import { DrizzleProposedActionRepository } from './proposed-action.repository';
+import { DrizzleModelPullRequestRepository } from './model-pull-request.repository';
 import { DrizzleAgentAutonomyRepository } from './agent-autonomy.repository';
 import { DrizzleGitConnectionRepository } from './git-connection.repository';
 import { DrizzleProvisionedRepositoryRepository } from './provisioned-repository.repository';
@@ -175,6 +177,10 @@ const { db, pool } = createDrizzleClient();
       useClass: DrizzleProposedActionRepository,
     },
     {
+      provide: ModelPullRequestRepository,
+      useClass: DrizzleModelPullRequestRepository,
+    },
+    {
       provide: AgentAutonomyRepository,
       useClass: DrizzleAgentAutonomyRepository,
     },
@@ -266,6 +272,7 @@ const { db, pool } = createDrizzleClient();
     TokenUsageRepository,
     BudgetRepository,
     ProposedActionRepository,
+    ModelPullRequestRepository,
     AgentAutonomyRepository,
     GitConnectionRepository,
     ProvisionedRepositoryRepository,

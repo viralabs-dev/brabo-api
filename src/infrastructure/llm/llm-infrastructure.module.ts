@@ -41,6 +41,13 @@ import { LLMCredentialConnectionTesterImpl } from './llm-credential-connection-t
     EncryptionService,
     TokenEstimator,
     LLMCredentialConnectionTester,
+    // `pullModel` é específico do Ollama — não faz parte do contrato
+    // `LLMProvider` (nenhum outro provider tem "puxar peso de modelo", e o
+    // `LLMProviderRegistry` só sabe devolver o tipo genérico). Exportar a
+    // classe concreta é o jeito de `ConfirmModelPullUseCase` chegar nela sem
+    // forçar o contrato compartilhado a carregar um método que só um dos
+    // nove providers implementa.
+    OllamaProvider,
   ],
 })
 export class LlmInfrastructureModule {}
