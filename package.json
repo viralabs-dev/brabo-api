@@ -18,7 +18,6 @@
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "seed": "ts-node src/db/seed.ts",
-    "migrate:keycloak-users": "ts-node src/scripts/migrate-keycloak-users.ts",
     "openapi:export": "ts-node src/scripts/export-openapi.ts",
     "demo:repo-bootstrap": "ts-node scripts/demo-repo-bootstrap.ts",
     "demo:noop-execution": "ts-node scripts/demo-noop-execution.ts",
