@@ -95,6 +95,7 @@
     "@types/pg": "^8.20.0",
     "@types/shell-quote": "^1.7.5",
     "@types/supertest": "^7.0.0",
+    "@vitest/coverage-v8": "4.1.10",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
