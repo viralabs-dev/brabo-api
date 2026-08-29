@@ -8,7 +8,7 @@ import { ApiProperty } from '@nestjs/swagger';
  * porque o engine não tem a chave mestra e não deve tê-la; em troca, quem a
  * consome tem uma obrigação: injetar o token por invocação e nunca escrevê-lo
  * em arquivo — nem no `.git/config`, que fica dentro da pasta onde a
- * [RN-075](../../../../../../docs/business-rules.md#rn-075) deu leitura
+ * [RN-075](../../../../../../docs/business-rules/custo.md#rn-075) deu leitura
  * auto-aprovada ao dev agent.
  */
 export class ProjectGitRemoteResponseDto {

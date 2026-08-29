@@ -21,7 +21,7 @@ export interface ProjectBusinessRules {
 
 /**
  * As regras de negócio do projeto INTEIRO, com cobertura, para o PO LER
- * ([RN-164](../../../../../../docs/business-rules.md#rn-164)).
+ * ([RN-164](../../../../../../docs/business-rules/autenticacao.md#rn-164)).
  *
  * Existe porque o PO só tinha ferramenta de ESCRITA: ele lia o contexto uma
  * vez, no kickoff, a partir dos 200 últimos eventos da SESSÃO dele, e depois

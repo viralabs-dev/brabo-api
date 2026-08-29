@@ -11,7 +11,7 @@ import { PROTECTED_BRANCHES } from '../../domain/actions/protected-branches';
  *
  * Até aqui só o script CLI (`pnpm --filter api analise:funil`) sabia calcular
  * estas métricas. O PO precisava LER o mesmo relatório dentro do turno
- * ([RN-164](../../../../../docs/business-rules.md#rn-164) já estabeleceu o
+ * ([RN-164](../../../../../docs/business-rules/autenticacao.md#rn-164) já estabeleceu o
  * padrão: agente que escreve precisa poder reler o que já existe), e um
  * caso de uso em `src/` não pode importar de `scripts/` — a direção é sempre
  * `scripts/` → `src/`, nunca o contrário. Então as funções PURAS (sem I/O) e

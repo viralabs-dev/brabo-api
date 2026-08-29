@@ -52,7 +52,7 @@ export class GetSessionPendingWorkUseCase {
     //
     // Uma ação pendente é ainda mais forte que o handoff como sinal: ela
     // significa que um agente está SUSPENSO esperando o desfecho
-    // ([RN-073](../../../../docs/business-rules.md#rn-073)).
+    // ([RN-073](../../../../docs/business-rules/custo.md#rn-073)).
     const acao =
       await this.proposedActions.findOldestPendingInSession(sessionId);
 

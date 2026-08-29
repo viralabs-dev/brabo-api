@@ -44,7 +44,7 @@ import { ConfirmProjectWorkspaceResponseDto } from './dto/confirm-project-worksp
  *    mestra no engine pouparia uma chamada HTTP e dobraria o raio de explosão
  *    do segredo mais sensível do produto.
  * 2. O que o PO precisa RELER
- *    ([RN-164](../../../../../docs/business-rules.md#rn-164)): as regras de
+ *    ([RN-164](../../../../../docs/business-rules/autenticacao.md#rn-164)): as regras de
  *    negócio do projeto, o backlog já escrito e — desde a RN-407 — o
  *    relatório de funil/DORA parcial (`analise:funil`, ADR 0089). O PO só
  *    tinha ferramenta de escrita e lia o contexto uma única vez, no
