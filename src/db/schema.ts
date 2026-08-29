@@ -2040,6 +2040,47 @@ export const personalAccessTokens = pgTable(
 );
 
 /**
+ * Chave de dispositivo do runner local (Ed25519, gerada NO NAVEGADOR) — a
+ * segunda forma de autenticar `POST /projects/:projectId/runner-ticket`,
+ * ao lado do Personal Access Token acima (`PatAuthGuard`). Só a metade
+ * PÚBLICA mora aqui: a privada nunca sai do navegador/máquina do usuário, e
+ * o dispositivo prova posse assinando um JWT curto (EdDSA) que o guard
+ * verifica contra `publicKeyJwk`. Diferente de `personalAccessTokens`, não
+ * há segredo nenhum a proteger nesta tabela — uma chave pública não precisa
+ * de hash nem de envelope encryption (`EnvelopeEncryptionService` é para
+ * segredo SIMÉTRICO recuperável, categoria diferente).
+ *
+ * O lookup na verificação é por `id` (o `kid` do JWT), não pela chave em
+ * si — por isso não há índice único em `publicKeyJwk`, ao contrário do
+ * índice único em `tokenHash` do PAT, que existe porque ali a busca É pelo
+ * valor apresentado.
+ */
+export const runnerDeviceKeys = pgTable(
+  'runner_device_keys',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    publicKeyJwk: text('public_key_jwk').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    revokedReason: text('revoked_reason'),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  },
+  (table) => [
+    index('runner_device_keys_user_idx').on(table.userId),
+    index('runner_device_keys_project_idx').on(table.projectId),
+  ],
+);
+
+/**
  * Trilha de auditoria do auth — append-only (Fase 7a, item 1).
  *
  * Sem chave estrangeira para `users`, pela mesma razão registrada em

@@ -4,17 +4,25 @@ import { AuthUseCasesModule } from '../../../application/use-cases/auth/auth-use
 import { IamUseCasesModule } from '../../../application/use-cases/iam/iam-use-cases.module';
 import { RunnerTicketsController } from './runner-tickets.controller';
 import { PersonalAccessTokensController } from './personal-access-tokens.controller';
+import { RunnerDeviceKeysController } from './runner-device-keys.controller';
+import { RunnerReleasesController } from './runner-releases.controller';
 import { PatAuthGuard } from '../auth/pat-auth.guard';
 
 @Module({
   // AuthUseCasesModule entrou pelo PAT (ADR 0105) — Issue/List/Revoke
   // PersonalAccessTokenUseCase moram lá (TokenFactory já é de lá), e
   // PersonalAccessTokensController é interface do runner que os consome.
-  // IamUseCasesModule entrou pela RN-439: `PatAuthGuard` passou a aplicar
-  // `@RequireRole` ele mesmo (ver o docblock do guard) e precisa de
+  // Register/RevokeRunnerDeviceKeyUseCase moram no MESMO módulo, mesmo
+  // padrão. IamUseCasesModule entrou pela RN-439: `PatAuthGuard` passou a
+  // aplicar `@RequireRole` ele mesmo (ver o docblock do guard) e precisa de
   // `ResolveEffectiveRoleUseCase`, que mora lá.
   imports: [RunnerUseCasesModule, AuthUseCasesModule, IamUseCasesModule],
-  controllers: [RunnerTicketsController, PersonalAccessTokensController],
+  controllers: [
+    RunnerTicketsController,
+    PersonalAccessTokensController,
+    RunnerDeviceKeysController,
+    RunnerReleasesController,
+  ],
   // PatAuthGuard entra em `providers` (não `APP_GUARD`) porque só a rota
   // `runner-ticket` o usa (`@UseGuards(PatAuthGuard)`) — diferente de
   // JwtAuthGuard/RolesGuard, que são globais. Tem dependências no

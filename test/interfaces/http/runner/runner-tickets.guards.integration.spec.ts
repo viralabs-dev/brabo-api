@@ -1,10 +1,23 @@
-import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  beforeEach,
+  afterEach,
+  afterAll,
+  vi,
+} from 'vitest';
 import { Test } from '@nestjs/testing';
 import { APP_GUARD } from '@nestjs/core';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { createTestDb, truncateAll } from '../../../support/test-db';
-import { users, workspaces, projects, projectMembers } from '../../../../src/db/schema';
+import {
+  users,
+  workspaces,
+  projects,
+  projectMembers,
+} from '../../../../src/db/schema';
 import type { Role } from '../../../../src/domain/iam/role';
 
 import { RunnerTicketsController } from '../../../../src/interfaces/http/runner/runner-tickets.controller';
@@ -19,6 +32,7 @@ import { ProjectRepository } from '../../../../src/application/ports/project-rep
 import { WorkspaceRepository } from '../../../../src/application/ports/workspace-repository.port';
 import { UserRepository } from '../../../../src/application/ports/user-repository.port';
 import { PersonalAccessTokenRepository } from '../../../../src/application/ports/personal-access-token-repository.port';
+import { RunnerDeviceKeyRepository } from '../../../../src/application/ports/runner-device-key-repository.port';
 import { TokenVerifier } from '../../../../src/application/ports/token-verifier.port';
 import { ApiToEngineClient } from '../../../../src/application/ports/api-to-engine-client.port';
 
@@ -72,10 +86,26 @@ describe('runner-ticket — JwtAuthGuard + RolesGuard + PatAuthGuard juntos (RN-
         PatAuthGuard,
         RequestRunnerTicketUseCase,
         ResolveEffectiveRoleUseCase,
-        { provide: ProjectRepository, useValue: new DrizzleProjectRepository(db) },
-        { provide: WorkspaceRepository, useValue: new DrizzleWorkspaceRepository(db) },
+        {
+          provide: ProjectRepository,
+          useValue: new DrizzleProjectRepository(db),
+        },
+        {
+          provide: WorkspaceRepository,
+          useValue: new DrizzleWorkspaceRepository(db),
+        },
         { provide: UserRepository, useValue: new DrizzleUserRepository(db) },
         { provide: PersonalAccessTokenRepository, useValue: patRepo },
+        // Nunca chamado nestes cenários — nenhum aqui usa credencial de
+        // chave de dispositivo — presente só porque o construtor do guard
+        // exige o port desde que ele passou a aceitar as DUAS formas.
+        {
+          provide: RunnerDeviceKeyRepository,
+          useValue: {
+            buscarChavePublicaAtiva: vi.fn().mockResolvedValue(null),
+            tocarUso: vi.fn(),
+          },
+        },
         // Nunca chamado nesta rota (`@RequirePatAuth()` faz `JwtAuthGuard`
         // se abster antes de tentar verificar JWT) — presente só porque o
         // construtor do guard exige o port.
@@ -217,7 +247,9 @@ describe('runner-ticket — JwtAuthGuard + RolesGuard + PatAuthGuard juntos (RN-
       .send();
 
     expect(resposta.status).toBe(403);
-    expect(resposta.body.message).toBe('Token não autorizado para este projeto');
+    expect(resposta.body.message).toBe(
+      'Token não autorizado para este projeto',
+    );
   });
 
   it('token ausente: continua 401', async () => {

@@ -184,7 +184,7 @@ function rotasRegistradas(app: INestApplication): Map<string, Rota> {
  */
 const SEM_CORPO_JSON = new Map<
   string,
-  'sse' | 'texto' | 'redirect' | 'sem-conteudo'
+  'sse' | 'texto' | 'redirect' | 'sem-conteudo' | 'binario'
 >([
   ['POST /projects/:projectId/sessions/:sessionId/chat', 'sse'],
   ['POST /internal/sessions/:sessionId/llm-turn-stream', 'sse'],
@@ -210,6 +210,13 @@ const SEM_CORPO_JSON = new Map<
     'DELETE /projects/:projectId/personal-access-tokens/:tokenId/admin',
     'sem-conteudo',
   ],
+  // Chave de dispositivo do runner — revogar é 204, mesmo padrão do PAT.
+  [
+    'DELETE /projects/:projectId/runner-device-keys/:deviceKeyId',
+    'sem-conteudo',
+  ],
+  // Proxy do binário standalone do runner — o corpo é o ARQUIVO, nunca JSON.
+  ['GET /runner-releases/binary', 'binario'],
 ]);
 
 /**
@@ -384,6 +391,7 @@ describe('superfície exposta da api', () => {
       'GET /health',
       'GET /live',
       'GET /metrics',
+      'GET /runner-releases/binary',
       'POST /auth/login',
       'POST /auth/logout',
       'POST /auth/refresh',
@@ -520,6 +528,13 @@ describe('superfície exposta da api', () => {
           if (!codigos.includes('204')) {
             problemas.push(
               `${chave}: declarado sem conteúdo mas não documenta 204`,
+            );
+          }
+          break;
+        case 'binario':
+          if (!resposta?.content?.['application/octet-stream']) {
+            problemas.push(
+              `${chave}: sem \`application/octet-stream\` declarado`,
             );
           }
           break;
