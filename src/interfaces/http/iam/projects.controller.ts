@@ -21,6 +21,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { RequireRole } from './require-role.decorator';
+import { CurrentUser } from '../auth/current-user.decorator';
+import type { User } from '../../../domain/iam/user.entity';
 import { GetProjectUseCase } from '../../../application/use-cases/iam/get-project.use-case';
 import { UpdateProjectUseCase } from '../../../application/use-cases/iam/update-project.use-case';
 import { ConvertProjectExecutionModeUseCase } from '../../../application/use-cases/iam/convert-project-execution-mode.use-case';
@@ -122,21 +124,39 @@ export class ProjectsController {
   @ApiOperation({
     summary: 'Associates a user with the project',
     description:
-      'The EFFECTIVE role is the higher of this one and what the person ' +
-      'already has in the workspace — associating someone as `viewer` here ' +
-      "doesn't downgrade a workspace `owner`.",
+      'This role OVERRIDES whatever the person has in the workspace, in ' +
+      'both directions: associating someone as `viewer` here really does ' +
+      'restrict a workspace `developer` on this project. Two movements are ' +
+      'refused with 403 and cannot be enabled anywhere: downgrading a ' +
+      'workspace `owner`, and downgrading yourself.',
   })
   @ApiCreatedResponse({ type: ProjectMemberResponseDto })
-  addMember(@Param('projectId') projectId: string, @Body() dto: AddMemberDto) {
-    return this.addProjectMember.execute(projectId, dto.userId, dto.role);
+  @ApiForbiddenResponse({
+    description:
+      'Insufficient role on the project, OR one of the two downgrade caps ' +
+      "(the target is a workspace `owner`; the target is the caller and the role is lower than the caller's current one).",
+  })
+  addMember(
+    @Param('projectId') projectId: string,
+    @CurrentUser() user: User,
+    @Body() dto: AddMemberDto,
+  ) {
+    return this.addProjectMember.execute(
+      projectId,
+      user.id,
+      dto.userId,
+      dto.role,
+    );
   }
 
   @Get(':projectId/members')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: "Lists the project's members with their effective role",
+    summary: "Lists the project's members",
     description:
-      'Includes whoever inherits access from the workspace, not just who was associated here.',
+      'Only who was associated HERE, with the role of that association — ' +
+      'whoever reaches the project through the workspace alone has no row and ' +
+      "doesn't show up.",
   })
   @ApiOkResponse({ type: [ProjectMemberComUsuarioResponseDto] })
   listMembers(@Param('projectId') projectId: string) {
