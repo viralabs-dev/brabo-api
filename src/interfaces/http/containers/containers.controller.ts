@@ -9,6 +9,7 @@ import {
 import { RequireRole } from '../iam/require-role.decorator';
 import { ObterContainerDoProjetoUseCase } from '../../../application/use-cases/containers/obter-container-do-projeto.use-case';
 import { ObterCicloDeVidaDoContainerUseCase } from '../../../application/use-cases/containers/obter-ciclo-de-vida-do-container.use-case';
+import { ObterEstadoObservadoDoContainerUseCase } from '../../../application/use-cases/containers/obter-estado-observado-do-container.use-case';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import {
   CicloDeVidaDoContainerResponseDto,
@@ -46,6 +47,7 @@ export class ContainersController {
   constructor(
     private readonly obter: ObterContainerDoProjetoUseCase,
     private readonly obterCicloDeVida: ObterCicloDeVidaDoContainerUseCase,
+    private readonly obterEstadoObservado: ObterEstadoObservadoDoContainerUseCase,
   ) {}
 
   @Get()
@@ -69,8 +71,13 @@ export class ContainersController {
     description:
       '`null` when the project was never provisioned — the common case today, ' +
       'because no real orchestrator transitions this table yet ' +
-      '(RN-243/RN-267). The returned state is what was RECORDED, never ' +
-      'confirmed against a Docker daemon: the product has no Docker client.',
+      '(RN-243/RN-267). `status`/`imageVersion`/`resources` are what was ' +
+      'RECORDED; `observado` is what the Docker daemon reports right now, ' +
+      'asked through the broker (ADR 0130). The two are never fused: a ' +
+      'container killed from the outside reads as recorded `running` and ' +
+      'observed `exited`. When there was no way to look, `observado` is ' +
+      '`null` and `naoObservado` says why — it never inherits the recorded ' +
+      'state (RN-468).',
   })
   @ApiOkResponse({
     type: CicloDeVidaDoContainerResponseDto,
@@ -79,6 +86,14 @@ export class ContainersController {
   async cicloDeVida(@Param('projectId') projectId: string) {
     const estado = await this.obterCicloDeVida.execute(projectId);
     if (!estado) return null;
+
+    // A observação é pedida DEPOIS de existir registro, e nunca no lugar dele.
+    // Consequência declarada (ADR 0130): um container órfão de um projeto que
+    // nunca teve linha de ciclo de vida não aparece por aqui — quem o acha é a
+    // varredura por `brabo.managed=true`, e a página global que a consome é
+    // outro PR.
+    const observacao = await this.obterEstadoObservado.execute(projectId);
+
     return {
       status: estado.status,
       imageVersion: estado.imageVersion,
@@ -86,6 +101,9 @@ export class ContainersController {
       failureReason: estado.failureReason,
       createdAt: estado.createdAt.toISOString(),
       statusChangedAt: estado.statusChangedAt.toISOString(),
+      observado: observacao.observado,
+      naoObservado: observacao.naoObservado,
+      detalheDaObservacao: observacao.detalhe,
     };
   }
 }

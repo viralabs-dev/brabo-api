@@ -142,4 +142,81 @@ export class CicloDeVidaDoContainerResponseDto {
 
   @ApiProperty({ format: 'date-time' })
   statusChangedAt!: string;
+
+  @ApiProperty({
+    type: () => ObservacaoDeContainerResponseDto,
+    nullable: true,
+    description:
+      'What the Docker daemon reports RIGHT NOW, asked through the broker ' +
+      '(ADR 0130) — never fused with the fields above, which are what was ' +
+      'RECORDED. A container killed from the outside shows up as recorded ' +
+      '`running` and observed `exited`, and that is the point. `null` means ' +
+      'either "there is no container" or "I could not look" — read ' +
+      '`naoObservado` to tell them apart.',
+  })
+  observado!: ObservacaoDeContainerResponseDto | null;
+
+  @ApiProperty({
+    enum: [
+      'broker-nao-configurado',
+      'broker-sem-resposta',
+      'broker-recusou',
+      null,
+    ],
+    nullable: true,
+    example: 'broker-nao-configurado',
+    description:
+      '`null` when the observation actually HAPPENED — including when it came ' +
+      'back empty, which is the positive statement "I looked and there is no ' +
+      'container". Filled in when there was no way to look, saying why. ' +
+      'Inheriting the recorded state here is exactly what RN-468 forbids.',
+  })
+  naoObservado!:
+    'broker-nao-configurado' | 'broker-sem-resposta' | 'broker-recusou' | null;
+
+  @ApiProperty({
+    nullable: true,
+    example: null,
+    description: "The broker's own message, when there was one.",
+  })
+  detalheDaObservacao!: string | null;
+}
+
+/**
+ * O estado OBSERVADO — o que o daemon responde agora. Distinto de tudo o mais
+ * nesta página: `EstadoDoContainerResponseDto` é a DECISÃO do Arquiteto e
+ * `CicloDeVidaDoContainerResponseDto` é o REGISTRO da api. Os três respondem
+ * perguntas diferentes e nenhum é recorte do outro.
+ */
+export class ObservacaoDeContainerResponseDto {
+  @ApiProperty({ example: 'c0ffeebabe...' })
+  containerId!: string;
+
+  @ApiProperty({ example: 'brabo-exp002-f52be111' })
+  nome!: string;
+
+  @ApiProperty({
+    enum: [
+      'created',
+      'running',
+      'paused',
+      'restarting',
+      'removing',
+      'exited',
+      'dead',
+    ],
+    example: 'running',
+    description: "The daemon's own state, with no translation and no collapse.",
+  })
+  estado!: string;
+
+  @ApiProperty({ example: 'node:22-bookworm-slim' })
+  imagem!: string;
+
+  @ApiProperty({
+    nullable: true,
+    format: 'date-time',
+    description: '`null` when the container has never started.',
+  })
+  iniciadoEm!: string | null;
 }
