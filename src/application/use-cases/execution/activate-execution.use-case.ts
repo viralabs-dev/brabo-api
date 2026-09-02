@@ -22,6 +22,7 @@ import {
   DEFAULT_DEV_AGENT_IMPL,
   type DevAgentImpl,
 } from '../../../domain/execution/dev-agent-impl';
+import { LocalizacaoDeProjetoInvalidaError } from '../../../infrastructure/filesystem/project-workspaces-root';
 
 // agent_id/branch slug a partir do nome do módulo.
 export function devAgentId(moduleName: string): string {
@@ -159,9 +160,22 @@ export class ActivateExecutionUseCase {
     // bloqueada por limite de iterações. Padrões ESTREITOS (comandos de
     // teste/build), no arquivo e não em agent_autonomy, pra que `deny`
     // continue vencendo.
-    for (const pattern of terminalAllowPatterns ??
-      DEV_TERMINAL_ALLOW_PATTERNS) {
-      await this.permissionsFile.addPattern(project, 'allow', pattern);
+    //
+    // O `try` é sobre a LINHA do projeto, não sobre disco: uma localização
+    // incoerente (par (modo, caminho) gravado por fora da criação) faz a
+    // derivação do caminho recusar, e sem isto a recusa saía como 500 sem
+    // corpo — a tela dizia "não foi possível ativar" e ninguém tinha o quê.
+    // 400 com o `motivo`, que já vem em pt-BR e diz o que corrigir (RN-478).
+    try {
+      for (const pattern of terminalAllowPatterns ??
+        DEV_TERMINAL_ALLOW_PATTERNS) {
+        await this.permissionsFile.addPattern(project, 'allow', pattern);
+      }
+    } catch (erro) {
+      if (erro instanceof LocalizacaoDeProjetoInvalidaError) {
+        throw new BadRequestException(erro.motivo);
+      }
+      throw erro;
     }
 
     // REATIVAR cai na sessão de execução que já existe, em vez de abrir uma

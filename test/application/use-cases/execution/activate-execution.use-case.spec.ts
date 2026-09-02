@@ -1,4 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { mkdtempSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { describe, it, expect, afterEach } from 'vitest';
 import { ActivateExecutionUseCase } from '../../../../src/application/use-cases/execution/activate-execution.use-case';
 import { DEV_TERMINAL_ALLOW_PATTERNS } from '../../../../src/domain/actions/dev-terminal-patterns';
 import type { ModuleMapRepository } from '../../../../src/application/ports/module-map-repository.port';
@@ -18,6 +21,8 @@ import type {
   AgentAreaRepository,
   UpsertAreaInput,
 } from '../../../../src/application/ports/agent-area-repository.port';
+import type { ProjectWorkspaceLocation } from '../../../../src/domain/iam/project.entity';
+import { FsPermissionsFileStore } from '../../../../src/infrastructure/filesystem/fs-permissions-file-store';
 
 const MODULOS = [
   { name: 'api', stack: 'NestJS', responsibility: 'regras', dependsOn: [] },
@@ -34,6 +39,18 @@ function build(opts?: {
   sessaoOrigem?: { id: string; status: string } | null;
   /** O que `GetSessionPendingWorkUseCase` devolve para a sessão de origem. */
   pendingWork?: { pending: boolean; motivo: string | null };
+  /**
+   * A LOCALIZAÇÃO do workspace do projeto (RN-169/RN-478) — o par
+   * (modo, caminho) + o nome de pasta congelado. O default é o modo de
+   * sempre; os casos de `runner` e de linha incoerente sobrescrevem.
+   */
+  local?: Partial<ProjectWorkspaceLocation>;
+  /**
+   * Store de permissões alternativo — os casos da RN-478 passam o
+   * `FsPermissionsFileStore` DE VERDADE, porque o que eles provam é
+   * justamente ONDE o arquivo cai no disco.
+   */
+  permissionsStore?: PermissionsFileStore;
 }) {
   const started: {
     budget?: number;
@@ -120,6 +137,10 @@ function build(opts?: {
     findById: () =>
       Promise.resolve({
         id: 'proj-1',
+        workspaceDirName: 'proj-1',
+        executionMode: 'container',
+        workspacePath: null,
+        ...opts?.local,
         taskBudgetMicros:
           opts?.projectBudget === undefined ? null : opts.projectBudget,
         maxConsecutiveBlocked:
@@ -131,12 +152,14 @@ function build(opts?: {
     },
   } as unknown as ProjectRepository;
 
-  const permissionsFile = {
-    addPattern: (_p: string, _list: string, pattern: string) => {
-      allowPatterns.push(pattern);
-      return Promise.resolve();
-    },
-  } as unknown as PermissionsFileStore;
+  const permissionsFile =
+    opts?.permissionsStore ??
+    ({
+      addPattern: (_p: string, _list: string, pattern: string) => {
+        allowPatterns.push(pattern);
+        return Promise.resolve();
+      },
+    } as unknown as PermissionsFileStore);
 
   const transitionSession = {
     execute: (_p: string, sessionId: string, to: string) => {
@@ -550,5 +573,123 @@ describe('ActivateExecutionUseCase — fecha a sessão de origem (RN-135)', () =
     );
 
     expect(transicoes).toEqual([]);
+  });
+});
+
+/**
+ * RN-478 — a ativação é a PRIMEIRA escrita do `permissions.json`, e era ela
+ * que devolvia 500 em projeto no modo `runner`.
+ *
+ * Estes dois casos usam o `FsPermissionsFileStore` DE VERDADE (com uma raiz
+ * gerenciada temporária), e não o dublê dos casos acima: o que eles provam é
+ * exatamente ONDE o arquivo cai no disco — um fake que só coleciona padrões
+ * não enxergaria a diferença, que foi como isto atravessou.
+ */
+describe('ActivateExecutionUseCase — permissions.json em projeto `runner` (RN-478)', () => {
+  const raizesTemporarias: string[] = [];
+
+  afterEach(() => {
+    delete process.env.PROJECT_WORKSPACES_ROOT;
+    for (const raiz of raizesTemporarias.splice(0)) {
+      rmSync(raiz, { recursive: true, force: true });
+    }
+  });
+
+  function raizGerenciadaTemporaria(): string {
+    const raiz = mkdtempSync(join(tmpdir(), 'brabo-rn478-'));
+    raizesTemporarias.push(raiz);
+    process.env.PROJECT_WORKSPACES_ROOT = raiz;
+    return raiz;
+  }
+
+  it('escreve na raiz GERENCIADA, e nunca na pasta do host que só o runner enxerga', async () => {
+    const raiz = raizGerenciadaTemporaria();
+    // Um caminho do host que NÃO existe dentro do container da api — é o caso
+    // real: `/home/danielsouza/dev/exp002`. Antes, o `mkdir -p` dele daqui
+    // dentro morria com `EACCES: permission denied, mkdir '/home'`.
+    const pastaDoHost = '/home/voce/dev/exp002';
+
+    const { useCase } = build({
+      permissionsStore: new FsPermissionsFileStore(),
+      local: {
+        workspaceDirName: 'exp002-f52be111',
+        executionMode: 'runner',
+        workspacePath: pastaDoHost,
+      },
+    });
+
+    await useCase.execute('proj-1', 'user-1');
+
+    const arquivo = join(raiz, 'exp002-f52be111', 'permissions.json');
+    expect(existsSync(arquivo)).toBe(true);
+    expect(
+      (JSON.parse(readFileSync(arquivo, 'utf-8')) as { allow: string[] }).allow,
+    ).toEqual([...DEV_TERMINAL_ALLOW_PATTERNS]);
+    // A pasta do host continua intocada: a api não tem o que fazer nela.
+    expect(existsSync(pastaDoHost)).toBe(false);
+  });
+
+  it('projeto `mounted` continua com o arquivo ao lado do código — a correção não mudou o modo que É bind-mount', async () => {
+    raizGerenciadaTemporaria();
+    const pastaMontada = mkdtempSync(join(tmpdir(), 'brabo-mount-'));
+    raizesTemporarias.push(pastaMontada);
+
+    const { useCase } = build({
+      permissionsStore: new FsPermissionsFileStore(),
+      local: {
+        workspaceDirName: 'loja-3f2b1c8e',
+        executionMode: 'mounted',
+        workspacePath: pastaMontada,
+      },
+    });
+
+    await useCase.execute('proj-1', 'user-1');
+
+    expect(existsSync(join(pastaMontada, 'permissions.json'))).toBe(true);
+  });
+
+  it('workspacePath corrompido no banco vira 400 que ENSINA, nunca 500 sem corpo', async () => {
+    raizGerenciadaTemporaria();
+
+    const { useCase } = build({
+      permissionsStore: new FsPermissionsFileStore(),
+      local: {
+        // Só se chega a isto adulterando a coluna direto no banco: a criação
+        // e a conversão aplicam a mesma régua léxica (RN-422/RN-423).
+        //
+        // `mounted` e não `runner` de propósito: é justamente no modo
+        // `mounted` que o `permissions.json` ainda deriva do `workspacePath`
+        // (RN-478). No modo `runner` ele passou a derivar do
+        // `workspaceDirName`, e é o caso logo abaixo que cobre o outro
+        // ponto de recusa.
+        workspaceDirName: 'loja-3f2b1c8e',
+        executionMode: 'mounted',
+        workspacePath: '/home/voce/../../etc',
+      },
+    });
+
+    await expect(useCase.execute('proj-1', 'user-1')).rejects.toMatchObject({
+      status: 400,
+    });
+    await expect(useCase.execute('proj-1', 'user-1')).rejects.toThrow(
+      /Configurações › Modo de execução/,
+    );
+  });
+
+  it('workspaceDirName corrompido em projeto `runner` também é 400 — a raiz gerenciada tem o MESMO ponto de recusa de sempre', async () => {
+    raizGerenciadaTemporaria();
+
+    const { useCase } = build({
+      permissionsStore: new FsPermissionsFileStore(),
+      local: {
+        workspaceDirName: '../../etc',
+        executionMode: 'runner',
+        workspacePath: '/home/voce/dev/exp002',
+      },
+    });
+
+    await expect(useCase.execute('proj-1', 'user-1')).rejects.toMatchObject({
+      status: 400,
+    });
   });
 });

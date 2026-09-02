@@ -71,8 +71,17 @@ export class ExecutionController {
       'module in the `module_map` gets an agent in an isolated worktree.',
   })
   @ApiCreatedResponse({ type: ExecucaoAtivadaResponseDto })
+  @ApiBadRequestResponse({
+    description:
+      'No current `module_map` (the Architect has to define the modules ' +
+      "first), or the project's stored workspace location is incoherent — " +
+      'the `permissions.json` seeded here cannot be derived from it (RN-478).',
+  })
   @ApiConflictResponse({
-    description: 'No current module_map, or execution already active.',
+    description:
+      'The origin session is `consultiva` and refuses `execution.activated` ' +
+      '(RN-097). Activating twice is NOT a conflict: it is idempotent by ' +
+      '`findActiveExecutionSession`, and reactivates inside the same session.',
   })
   activate(
     @Param('projectId') projectId: string,

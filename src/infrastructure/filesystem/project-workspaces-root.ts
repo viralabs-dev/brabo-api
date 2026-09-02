@@ -17,6 +17,11 @@ import type { ProjectWorkspaceLocation } from '../../domain/iam/project.entity';
  * seria lida de um lugar e aplicada a outro — falha silenciosa e difícil de
  * enxergar.
  *
+ * As duas derivações se SEPARARAM em um ponto (RN-478), e a fonte continua
+ * única: no modo `runner` o `permissions.json` fica na raiz gerenciada
+ * enquanto o escopo aponta para a pasta do host — ver `permissionsFilePath`,
+ * que mora ao lado de `projectScopeRoot` justamente por isso.
+ *
  * `<workspace_dir_name>` (RN-109) é o nome de pasta CONGELADO na criação do
  * projeto — `<slug>-<8 chars do id>` para projeto novo, o UUID puro (o que já
  * era verdade no disco) para projeto de antes desta coluna existir. O engine
@@ -115,19 +120,110 @@ export function projectScopeRoot(local: ProjectWorkspaceLocation): string {
     // pasta do usuário como raiz, o que muda entre eles é só QUANDO/QUEM
     // verifica que ela existe de verdade (RN-422/RN-423), não onde ela fica.
     if (!caminhoDeWorkspaceLocalValido(caminho)) {
-      throw new Error(
-        `workspacePath inválido para projeto no modo ${local.executionMode}: ${JSON.stringify(caminho)}`,
+      throw new LocalizacaoDeProjetoInvalidaError(
+        caminho,
+        `workspacePath inválido para projeto no modo ${local.executionMode}: ` +
+          `${JSON.stringify(caminho)}. A pasta do projeto precisa ser um ` +
+          `caminho absoluto, sem ".." no meio, e não pode ser pasta de ` +
+          `sistema nem se sobrepor ao checkout do Brabo — é a MESMA régua da ` +
+          `criação (RN-422/RN-423), então uma linha que a viola só pode ter ` +
+          `sido gravada por fora. Corrija a pasta do projeto em Configurações ` +
+          `› Modo de execução e tente de novo.`,
       );
     }
     return normalizarSemBarraFinal(caminho);
   }
 
-  if (!NOME_DE_PASTA_VALIDO.test(local.workspaceDirName)) {
-    throw new Error(
-      `workspaceDirName inválido como segmento de caminho: ${JSON.stringify(local.workspaceDirName)}`,
+  return raizGerenciadaDoProjeto(local.workspaceDirName);
+}
+
+const PERMISSOES = 'permissions.json';
+
+/**
+ * A pasta do projeto DENTRO da raiz gerenciada (`PROJECT_WORKSPACES_ROOT`) —
+ * a metade de `projectScopeRoot` que o modo `container` usa, extraída porque
+ * `permissionsFilePath` precisa exatamente dela para o modo `runner`.
+ *
+ * Extraída, e não copiada: a validação de `workspaceDirName` como SEGMENTO de
+ * caminho (o parágrafo grande de `projectScopeRoot`, sobre `..%2F..%2Fetc`)
+ * tem que valer nos dois usos, e uma segunda cópia é a cópia que um dia
+ * diverge — que é a razão de este arquivo existir.
+ */
+function raizGerenciadaDoProjeto(workspaceDirName: string): string {
+  if (!NOME_DE_PASTA_VALIDO.test(workspaceDirName)) {
+    throw new LocalizacaoDeProjetoInvalidaError(
+      workspaceDirName,
+      `workspaceDirName inválido como segmento de caminho: ${JSON.stringify(workspaceDirName)}`,
     );
   }
-  return join(projectWorkspacesRoot(), local.workspaceDirName);
+  return join(projectWorkspacesRoot(), workspaceDirName);
+}
+
+/**
+ * ONDE mora o `permissions.json` do projeto — e por que NÃO é sempre
+ * `projectScopeRoot` (RN-478).
+ *
+ * As duas derivações nasceram como uma só, e isso estava certo enquanto os
+ * dois modos com pasta de usuário eram bind-mount. Deixou de estar quando o
+ * modo `runner` nasceu (RN-423, ADR 0104), porque os dois consumidores da
+ * raiz querem coisas OPOSTAS:
+ *
+ * - o ESCOPO de terminal (ADR 0055, `decide.ts`) quer o caminho DO HOST — é
+ *   lá que o comando roda, na máquina do usuário, pelo runner. Trocá-lo pela
+ *   raiz gerenciada autorizaria comando numa pasta que não é a do projeto;
+ * - o `permissions.json` quer um caminho QUE A API ALCANCE. Ela o lê e o
+ *   ESCREVE de dentro do próprio container, e um projeto `runner` é
+ *   deliberadamente SEM bind-mount: `/home/voce/dev/loja` simplesmente não
+ *   existe ali. `mkdir -p` disparava `EACCES: mkdir '/home'`, e a ativação da
+ *   execução (a primeira ESCRITA) devolvia 500. A LEITURA degradava calada
+ *   (ENOENT → `EMPTY_PERMISSIONS_FILE`), então o efeito maior atravessou sem
+ *   ser visto: em projeto `runner` o arquivo nunca existiu, e `decide()`
+ *   sempre caiu em `require_approval` por um arquivo que não estava lá.
+ *
+ * Por que a raiz GERENCIADA e não o disco do usuário, já que o código está lá:
+ * `permissions.json` é POLÍTICA, não código do projeto. Quem a lê é a api,
+ * dentro do container dela — o runner nunca a lê (ele recebe comando já
+ * aprovado, e o engine não a toca em ponto nenhum). Guardá-la na máquina do
+ * usuário a tornaria editável por quem ela restringe, e ilegível justamente
+ * quando o runner está desconectado, que é quando a decisão precisa continuar
+ * valendo.
+ *
+ * CUSTO DECLARADO: para projeto `runner`, o arquivo de política deixa de
+ * morar ao lado do código. Quem procurar `permissions.json` na pasta do
+ * projeto não vai achar — ele está em
+ * `<PROJECT_WORKSPACES_ROOT>/<workspace_dir_name>/`, chaveado pelo nome que a
+ * RN-109 congela na criação (o mesmo que o modo `container` usa, e único
+ * mesmo entre workspaces diferentes porque o id é global).
+ *
+ * `mounted` continua junto do código, e não por descuido: ali a pasta É
+ * bind-mount, a api alcança o caminho do host de verdade, e mover o arquivo
+ * quebraria projetos que já o têm em disco sem ganhar nada.
+ */
+export function permissionsFilePath(local: ProjectWorkspaceLocation): string {
+  if (local.executionMode === 'runner') {
+    return join(raizGerenciadaDoProjeto(local.workspaceDirName), PERMISSOES);
+  }
+  return join(projectScopeRoot(local), PERMISSOES);
+}
+
+/**
+ * A localização do projeto gravada no banco não serve como raiz (RN-478).
+ *
+ * Classe própria, e `motivo` legível em pt-BR, pelo mesmo motivo de
+ * `CaminhoLocalInvalidoError` logo abaixo: quem chama precisa distinguir "a
+ * linha deste projeto está incoerente" (400, com o que fazer a respeito) de
+ * "deu ruim aqui dentro" (500, que não ensina nada e convida a tentar de
+ * novo). Eram dois `throw new Error(...)` crus, e a ativação da execução
+ * morria em 500 sem corpo útil.
+ */
+export class LocalizacaoDeProjetoInvalidaError extends Error {
+  constructor(
+    readonly valor: string,
+    readonly motivo: string,
+  ) {
+    super(motivo);
+    this.name = 'LocalizacaoDeProjetoInvalidaError';
+  }
 }
 
 /**

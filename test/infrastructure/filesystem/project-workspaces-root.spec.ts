@@ -8,6 +8,8 @@ import {
   caminhoDeRepositorioContido,
   caminhoDeWorkspaceLocalValido,
   garantirQueryEscalar,
+  LocalizacaoDeProjetoInvalidaError,
+  permissionsFilePath,
   projectScopeRoot,
   projectWorkspacesRoot,
   validarCaminhoDeWorkspaceLocal,
@@ -197,6 +199,99 @@ describe('projectScopeRoot nos modos mounted/runner', () => {
     expect(() =>
       caminhoDeRepositorioContido(projeto, '../../etc/passwd'),
     ).toThrow(CaminhoForaDoEscopoError);
+  });
+});
+
+/**
+ * `permissionsFilePath` (RN-478) — a SEGUNDA derivação, e o teste que impede
+ * a primeira de ser "consertada" junto.
+ *
+ * As duas eram uma só, e o modo `runner` as separou: o escopo do terminal
+ * quer o caminho DO HOST (é lá que o runner executa) e o `permissions.json`
+ * quer um caminho que a api ALCANCE (ela o escreve de dentro do container
+ * dela, e um projeto `runner` não tem bind-mount nenhum).
+ */
+describe('permissionsFilePath — onde o arquivo de política mora', () => {
+  afterEach(() => {
+    delete process.env.PROJECT_WORKSPACES_ROOT;
+  });
+
+  it('container: ao lado do código, na raiz gerenciada — inalterado', () => {
+    process.env.PROJECT_WORKSPACES_ROOT = '/var/brabo';
+    expect(permissionsFilePath(noContainer('checkout-3f2b1c8e'))).toBe(
+      '/var/brabo/checkout-3f2b1c8e/permissions.json',
+    );
+  });
+
+  it('mounted: ao lado do código, na pasta do usuário — inalterado, porque ALI a api alcança (bind-mount)', () => {
+    process.env.PROJECT_WORKSPACES_ROOT = '/var/brabo';
+    expect(permissionsFilePath(montado('/home/voce/projetos/loja'))).toBe(
+      '/home/voce/projetos/loja/permissions.json',
+    );
+  });
+
+  it('runner: na raiz GERENCIADA, chaveado pelo workspace_dir_name — nunca na pasta do host', () => {
+    process.env.PROJECT_WORKSPACES_ROOT = '/var/brabo';
+    const projeto = runner('/home/voce/projetos/loja');
+
+    expect(permissionsFilePath(projeto)).toBe(
+      '/var/brabo/checkout-3f2b1c8e/permissions.json',
+    );
+    // O que o 500 da ativação era: `mkdir -p` de um caminho do host dentro do
+    // container da api (`EACCES: mkdir '/home'`).
+    expect(permissionsFilePath(projeto).startsWith('/home/voce')).toBe(false);
+  });
+
+  it('runner: o workspaceDirName continua validado como segmento de caminho — a injeção não reabre pela porta nova', () => {
+    process.env.PROJECT_WORKSPACES_ROOT = '/var/brabo';
+    expect(() =>
+      permissionsFilePath({
+        workspaceDirName: '../../etc',
+        executionMode: 'runner',
+        workspacePath: '/home/voce/projetos/loja',
+      }),
+    ).toThrow(LocalizacaoDeProjetoInvalidaError);
+  });
+});
+
+/**
+ * NÃO-REGRESSÃO (RN-478): `projectScopeRoot` continua devolvendo o caminho do
+ * HOST para `runner` e `mounted`.
+ *
+ * Este teste existe contra uma correção plausível e errada: alguém que veja
+ * `permissionsFilePath` mandar `runner` para a raiz gerenciada pode "unificar"
+ * as duas de volta. Fazer isso quebra o ADR 0055 — o escopo é o que AUTORIZA
+ * o comando de terminal, e o comando de um projeto `runner` roda na máquina
+ * do usuário, na pasta dele. Escopo apontando para a raiz gerenciada
+ * autorizaria comando numa pasta que não é a do projeto.
+ */
+describe('projectScopeRoot NÃO segue permissionsFilePath (ADR 0055)', () => {
+  afterEach(() => {
+    delete process.env.PROJECT_WORKSPACES_ROOT;
+  });
+
+  it.each([
+    ['mounted', montado] as const,
+    ['runner', runner] as const,
+  ])('%s — o escopo continua sendo a pasta do host, e as duas derivações DIVERGEM', (_nome, fabrica) => {
+    process.env.PROJECT_WORKSPACES_ROOT = '/var/brabo';
+    const projeto = fabrica('/home/voce/projetos/loja');
+
+    expect(projectScopeRoot(projeto)).toBe('/home/voce/projetos/loja');
+  });
+
+  it('runner é o único modo em que as duas apontam para lugares diferentes', () => {
+    process.env.PROJECT_WORKSPACES_ROOT = '/var/brabo';
+    const comRunner = runner('/home/voce/projetos/loja');
+    const comMount = montado('/home/voce/projetos/loja');
+
+    expect(permissionsFilePath(comRunner)).not.toContain(
+      projectScopeRoot(comRunner),
+    );
+    expect(permissionsFilePath(comMount)).toContain(projectScopeRoot(comMount));
+    expect(permissionsFilePath(noContainer('checkout-3f2b1c8e'))).toContain(
+      projectScopeRoot(noContainer('checkout-3f2b1c8e')),
+    );
   });
 });
 

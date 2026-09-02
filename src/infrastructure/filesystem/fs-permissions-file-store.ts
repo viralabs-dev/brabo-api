@@ -1,6 +1,6 @@
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { projectScopeRoot } from './project-workspaces-root';
+import { dirname } from 'node:path';
+import { permissionsFilePath } from './project-workspaces-root';
 import { Injectable } from '@nestjs/common';
 import { PermissionsFileStore } from '../../application/ports/permissions-file-store.port';
 import {
@@ -68,11 +68,14 @@ export class FsPermissionsFileStore implements PermissionsFileStore {
     }
   }
 
-  // A raiz vem da função compartilhada, e não de uma leitura própria do env:
-  // o escopo de caminho do ADR 0055 deriva a MESMA raiz, e duas leituras
-  // separadas poderiam divergir — política lida de um lugar, aplicada a outro.
+  // O caminho vem da função compartilhada, e não de uma derivação própria:
+  // ela é quem sabe que o arquivo acompanha o escopo do ADR 0055 nos modos
+  // `container`/`mounted` e vai para a raiz GERENCIADA no modo `runner`
+  // (RN-478) — ali a pasta do usuário não é bind-mount, e este processo, que
+  // ESCREVE o arquivo, não a alcança. Derivar aqui seria a segunda derivação
+  // que um dia diverge: política lida de um lugar, aplicada a outro.
   private pathFor(local: ProjectWorkspaceLocation): string {
-    return join(projectScopeRoot(local), 'permissions.json');
+    return permissionsFilePath(local);
   }
 }
 
