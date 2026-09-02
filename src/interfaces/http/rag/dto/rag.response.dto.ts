@@ -6,6 +6,11 @@ import type {
   HybridSearchHit,
   HybridSearchResult,
 } from '../../../../domain/rag/rag-citation';
+import {
+  RAG_VERDICTS,
+  type RagVerdict,
+} from '../../../../domain/rag/rag-telemetry';
+import type { RagFeedbackReport } from '../../../../application/use-cases/rag/record-rag-feedback.use-case';
 import type { IndexDocsReport } from '../../../../application/use-cases/rag/index-project-docs.use-case';
 import type { IndexSessionReport } from '../../../../application/use-cases/rag/index-session.use-case';
 import type { IndexLocalFolderReport } from '../../../../application/use-cases/rag/index-local-folder.use-case';
@@ -74,6 +79,18 @@ export const _chavesHit: MesmasChaves<
 export class HybridSearchResponseDto implements Wire<HybridSearchResult> {
   @ApiProperty() query!: string;
 
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    format: 'uuid',
+    description:
+      'The `rag_searches` row this search left (RN-479) — the id a vote attaches to. ' +
+      '`null` means the telemetry row was NOT written (the insert failed), which is not ' +
+      'the same as "no results": there is nothing to attach a vote to, and the UI needs ' +
+      'the two apart so it does not offer a control the api will refuse.',
+  })
+  searchId!: string | null;
+
   @ApiProperty({ type: [HybridSearchHitResponseDto] })
   hits!: HybridSearchHitResponseDto[];
 
@@ -90,6 +107,23 @@ export class HybridSearchResponseDto implements Wire<HybridSearchResult> {
 export const _chavesResultado: MesmasChaves<
   HybridSearchResponseDto,
   Wire<HybridSearchResult>
+> = true;
+
+/** A resposta de `POST .../rag/feedback` (RN-480). */
+export class RagFeedbackResponseDto implements Wire<RagFeedbackReport> {
+  @ApiProperty({ format: 'uuid' }) searchId!: string;
+  @ApiProperty({ format: 'uuid' }) chunkId!: string;
+  @ApiProperty({ enum: RAG_VERDICTS }) verdict!: RagVerdict;
+  @ApiProperty({
+    description:
+      'The 1-based position the judged chunk held in THAT search — the number that separates ' +
+      '"the index is poor" from "the weights are wrong".',
+  })
+  rank!: number;
+}
+export const _chavesFeedback: MesmasChaves<
+  RagFeedbackResponseDto,
+  Wire<RagFeedbackReport>
 > = true;
 
 // -------------------------------------------------------------- indexação

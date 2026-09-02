@@ -4,6 +4,7 @@ import type { HybridSearchUseCase } from '../../../../src/application/use-cases/
 import type { ReindexProjectUseCase } from '../../../../src/application/use-cases/rag/reindex-project.use-case';
 import type { IndexLocalFolderUseCase } from '../../../../src/application/use-cases/rag/index-local-folder.use-case';
 import type { GetRagCoverageUseCase } from '../../../../src/application/use-cases/rag/get-rag-coverage.use-case';
+import type { RecordRagFeedbackUseCase } from '../../../../src/application/use-cases/rag/record-rag-feedback.use-case';
 import type { User } from '../../../../src/domain/iam/user.entity';
 import type { AttachLocalFolderRequestDto } from '../../../../src/interfaces/http/rag/dto/rag.request.dto';
 
@@ -26,12 +27,14 @@ const USUARIO: User = {
 describe('RagController', () => {
   function montarController(
     indexLocalFolder: Partial<IndexLocalFolderUseCase>,
+    feedback: Partial<RecordRagFeedbackUseCase> = {},
   ) {
     return new RagController(
       {} as HybridSearchUseCase,
       {} as ReindexProjectUseCase,
       indexLocalFolder as IndexLocalFolderUseCase,
       {} as GetRagCoverageUseCase,
+      feedback as RecordRagFeedbackUseCase,
     );
   }
 
@@ -78,5 +81,39 @@ describe('RagController', () => {
         USUARIO,
       ),
     ).rejects.toBe(erro);
+  });
+  // ------------------------------------------------------------- RN-480
+
+  it('votar: repassa projectId, o corpo e o usuário AUTENTICADO como ator', async () => {
+    // O ator do voto NUNCA vem do corpo: quem vota é quem está autenticado, e
+    // um `actorId` vindo do cliente deixaria a unique por ator (um voto por
+    // trecho por busca) contornável de fora.
+    const execute = vi.fn().mockResolvedValue({
+      searchId: 'b-1',
+      chunkId: 'c-9',
+      verdict: 'util',
+      rank: 2,
+    });
+    const controller = montarController({}, { execute });
+
+    const resultado = await controller.votar(
+      'proj-1',
+      { searchId: 'b-1', chunkId: 'c-9', verdict: 'util' },
+      USUARIO,
+    );
+
+    expect(execute).toHaveBeenCalledWith({
+      projectId: 'proj-1',
+      searchId: 'b-1',
+      chunkId: 'c-9',
+      verdict: 'util',
+      actor: { kind: 'user', id: 'user-1' },
+    });
+    expect(resultado).toEqual({
+      searchId: 'b-1',
+      chunkId: 'c-9',
+      verdict: 'util',
+      rank: 2,
+    });
   });
 });

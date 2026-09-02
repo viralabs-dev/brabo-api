@@ -7,6 +7,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   MaxLength,
   Min,
@@ -14,6 +15,10 @@ import {
   ValidateNested,
 } from 'class-validator';
 import type { ChunkScope } from '../../../../application/ports/chunk-repository.port';
+import {
+  RAG_VERDICTS,
+  type RagVerdict,
+} from '../../../../domain/rag/rag-telemetry';
 import {
   RAG_LOCAL_FILE_BYTES_LIMIT,
   RAG_LOCAL_FILE_COUNT_LIMIT,
@@ -102,4 +107,39 @@ export class AttachLocalFolderRequestDto {
   @ValidateNested({ each: true })
   @Type(() => LocalFolderFileDto)
   files!: LocalFolderFileDto[];
+}
+
+/**
+ * O corpo de `POST /projects/:projectId/rag/feedback` (RN-480) — o voto sobre
+ * UM trecho de UMA busca.
+ *
+ * `searchId` vem da própria resposta da busca (`HybridSearchResponseDto`), e
+ * não é opcional: sem ele não há rank, e sem rank o voto não distingue "o
+ * índice está pobre" de "os PESOS estão errados" — que é a pergunta que a
+ * telemetria existe para responder.
+ */
+export class RagFeedbackRequestDto {
+  @ApiProperty({
+    format: 'uuid',
+    description:
+      'The `searchId` returned by the search that produced this hit — never invented by the client.',
+  })
+  @IsUUID()
+  searchId!: string;
+
+  @ApiProperty({
+    format: 'uuid',
+    description:
+      'The chunk being judged. Must be one of the hits THAT search returned, otherwise 400.',
+  })
+  @IsUUID()
+  chunkId!: string;
+
+  @ApiProperty({
+    enum: RAG_VERDICTS,
+    description:
+      'Two values, not a 1-5 scale: a finer scale invites per-voter differences in ruler that no aggregation recovers later.',
+  })
+  @IsIn(RAG_VERDICTS)
+  verdict!: RagVerdict;
 }

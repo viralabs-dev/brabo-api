@@ -30,6 +30,7 @@ import {
 } from '../../../application/ports/backlog-repository.port';
 import { ModuleMapRepository } from '../../../application/ports/module-map-repository.port';
 import { ChunkRepository } from '../../../application/ports/chunk-repository.port';
+import { RagTelemetryRepository } from '../../../application/ports/rag-telemetry-repository.port';
 import { ContainerRepository } from '../../../application/ports/container-repository.port';
 import { ProjectsSummaryRepository } from '../../../application/ports/projects-summary-repository.port';
 import { DevAgentActivityPort } from '../../../application/ports/dev-agent-activity.port';
@@ -96,6 +97,7 @@ import {
 } from './backlog.repository';
 import { DrizzleModuleMapRepository } from './module-map.repository';
 import { DrizzleChunkRepository } from './chunk.repository';
+import { DrizzleRagTelemetryRepository } from './rag-telemetry.repository';
 import { DrizzleContainerRepository } from './container.repository';
 import { DrizzleAgentAreaRepository } from './agent-area.repository';
 import { DrizzleInfraArtifactRepository } from './infra-artifact.repository';
@@ -221,6 +223,10 @@ const { db, pool } = createDrizzleClient();
     },
     { provide: ModuleMapRepository, useClass: DrizzleModuleMapRepository },
     { provide: ChunkRepository, useClass: DrizzleChunkRepository },
+    {
+      provide: RagTelemetryRepository,
+      useClass: DrizzleRagTelemetryRepository,
+    },
     { provide: ContainerRepository, useClass: DrizzleContainerRepository },
     { provide: AgentAreaRepository, useClass: DrizzleAgentAreaRepository },
     {
@@ -295,6 +301,7 @@ const { db, pool } = createDrizzleClient();
     AgentAreaRepository,
     ModuleMapRepository,
     ChunkRepository,
+    RagTelemetryRepository,
     ContainerRepository,
     InfraArtifactRepository,
     PsychologistAnalysisRepository,

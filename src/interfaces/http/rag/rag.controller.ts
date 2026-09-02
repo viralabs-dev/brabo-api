@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiForbiddenResponse,
@@ -15,15 +16,18 @@ import { HybridSearchUseCase } from '../../../application/use-cases/rag/hybrid-s
 import { ReindexProjectUseCase } from '../../../application/use-cases/rag/reindex-project.use-case';
 import { IndexLocalFolderUseCase } from '../../../application/use-cases/rag/index-local-folder.use-case';
 import { GetRagCoverageUseCase } from '../../../application/use-cases/rag/get-rag-coverage.use-case';
+import { RecordRagFeedbackUseCase } from '../../../application/use-cases/rag/record-rag-feedback.use-case';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import {
   AttachLocalFolderRequestDto,
   HybridSearchRequestDto,
+  RagFeedbackRequestDto,
 } from './dto/rag.request.dto';
 import {
   AttachLocalFolderResponseDto,
   HybridSearchResponseDto,
   RagCoverageResponseDto,
+  RagFeedbackResponseDto,
   ReindexProjectResponseDto,
 } from './dto/rag.response.dto';
 
@@ -49,6 +53,13 @@ import {
  * Reindexação automática por push/fechamento de sessão — é decisão futura
  * (ADR 0079/0080), não desta rota. `reindex` é sempre disparado por alguém.
  *
+ * ## `feedback` (RN-480)
+ *
+ * `POST .../rag/feedback` é `viewer`, o MESMO papel de `search`: quem pode ler
+ * o resultado é quem pode julgá-lo. Não é `maintainer` porque votar não gasta
+ * nada nem muda configuração — é observação, e restringi-la esvaziaria a
+ * única fonte de verdade que a medição do RAG tem (`medir:rag`).
+ *
  * ## `local` (ADR 0113, RN-455)
  *
  * `POST .../rag/local` é o quarto escopo: uma pasta do PRÓPRIO usuário, lida
@@ -70,6 +81,7 @@ export class RagController {
     private readonly reindex: ReindexProjectUseCase,
     private readonly indexLocalFolder: IndexLocalFolderUseCase,
     private readonly coverage: GetRagCoverageUseCase,
+    private readonly feedback: RecordRagFeedbackUseCase,
   ) {}
 
   @Post('search')
@@ -88,12 +100,48 @@ export class RagController {
   buscar(
     @Param('projectId') projectId: string,
     @Body() body: HybridSearchRequestDto,
+    @CurrentUser() user: User,
   ) {
+    // Sem `sessionId`: esta é a busca da ABA, que é de PROJETO. É exatamente o
+    // caso que impede a telemetria de ser só evento de sessão (RN-479) —
+    // `session_events.session_id` é `NOT NULL`.
     return this.search.execute({
       projectId,
       query: body.query,
       scopes: body.scopes,
       limit: body.limit,
+      actor: { kind: 'user', id: user.id },
+    });
+  }
+
+  @Post('feedback')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Judges one hit of one search as useful or irrelevant (RN-480)',
+    description:
+      'The only signal of TRUTH the RAG measurement has: latency and degradation rate say ' +
+      'whether the search RAN, never whether it was RIGHT. Same role as `search` — whoever ' +
+      'can read the result is who can judge it. Re-voting the same chunk of the same search ' +
+      'overwrites your own vote rather than adding a second one (unique per actor), so the ' +
+      'metric measures accuracy and not enthusiasm.',
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Unknown `searchId` for this project, or a `chunkId` that was not among that search hits — ' +
+      'a vote without a rank would be a number without meaning.',
+  })
+  @ApiCreatedResponse({ type: RagFeedbackResponseDto })
+  votar(
+    @Param('projectId') projectId: string,
+    @Body() body: RagFeedbackRequestDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.feedback.execute({
+      projectId,
+      searchId: body.searchId,
+      chunkId: body.chunkId,
+      verdict: body.verdict,
+      actor: { kind: 'user', id: user.id },
     });
   }
 

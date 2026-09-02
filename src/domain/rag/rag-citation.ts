@@ -71,6 +71,17 @@ export interface HybridSearchHit {
 
 export interface HybridSearchResult {
   query: string;
+  /**
+   * A linha de `rag_searches` que esta busca deixou (RN-479) — o id a que um
+   * voto (`rag_feedback`) se anexa.
+   *
+   * `null` quando a telemetria NÃO foi gravada (o INSERT falhou). Não é o
+   * mesmo que "não houve resultado": é "não há a que anexar voto", e a UI
+   * precisa dos dois separados para não oferecer um controle que a api vai
+   * recusar. Gravar telemetria nunca derruba a busca — mas também não some
+   * calado (ver `HybridSearchUseCase`).
+   */
+  searchId: string | null;
   hits: HybridSearchHit[];
   /**
    * `false` quando o provider de embedding não respondeu (RN-233) — a busca

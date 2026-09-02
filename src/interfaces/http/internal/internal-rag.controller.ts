@@ -1,5 +1,6 @@
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiOperation,
@@ -9,9 +10,14 @@ import {
 import { EngineServiceGuard } from '../auth/engine-service.guard';
 import { ServiceRoute } from '../auth/service-route.decorator';
 import { HybridSearchUseCase } from '../../../application/use-cases/rag/hybrid-search.use-case';
+import { RecordRagFeedbackUseCase } from '../../../application/use-cases/rag/record-rag-feedback.use-case';
 import { SERVICE_TOKEN } from '../../../infrastructure/openapi/documento';
-import { RagSearchInternalDto } from './dto/rag-search-internal.dto';
 import {
+  RagFeedbackInternalDto,
+  RagSearchInternalDto,
+} from './dto/rag-search-internal.dto';
+import {
+  RagFeedbackInternalResponseDto,
   RagSearchInternalHitResponseDto,
   RagSearchInternalResponseDto,
 } from './dto/rag-search-internal.response.dto';
@@ -39,7 +45,10 @@ const EXCERPT_MAX_CHARS = 240;
 @ServiceRoute()
 @UseGuards(EngineServiceGuard)
 export class InternalRagController {
-  constructor(private readonly search: HybridSearchUseCase) {}
+  constructor(
+    private readonly search: HybridSearchUseCase,
+    private readonly feedback: RecordRagFeedbackUseCase,
+  ) {}
 
   @Post('search')
   @ApiOperation({
@@ -57,10 +66,15 @@ export class InternalRagController {
       projectId: dto.projectId,
       query: dto.query,
       limit: dto.topK,
+      // Sessão e agente vêm do CTX da tool no engine, nunca são deduzidos
+      // aqui: uma sessão que a api não recebeu é uma sessão que não existia.
+      sessionId: dto.sessionId ?? null,
+      actor: dto.agent ? { kind: 'agent', id: dto.agent } : undefined,
     });
 
     const hits: RagSearchInternalHitResponseDto[] = resultado.hits.map(
       (hit) => ({
+        chunkId: hit.chunkId,
         path:
           hit.origin.kind === 'file'
             ? hit.origin.sourcePath
@@ -71,7 +85,36 @@ export class InternalRagController {
       }),
     );
 
-    return { hits, degraded: !resultado.vectorAvailable };
+    return {
+      searchId: resultado.searchId,
+      hits,
+      degraded: !resultado.vectorAvailable,
+    };
+  }
+
+  @Post('feedback')
+  @ApiOperation({
+    summary: "The agent's vote on one retrieved chunk (RN-480)",
+    description:
+      'Same use case as the human route — no second judgement path. An unknown `searchId`/' +
+      '`chunkId` is a 400 that the engine turns into an error tool-result for the model to ' +
+      'correct (RN-061), never a crash.',
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Unknown `searchId` for this project, or a `chunkId` that was not among that search hits.',
+  })
+  @ApiCreatedResponse({ type: RagFeedbackInternalResponseDto })
+  votar(
+    @Body() dto: RagFeedbackInternalDto,
+  ): Promise<RagFeedbackInternalResponseDto> {
+    return this.feedback.execute({
+      projectId: dto.projectId,
+      searchId: dto.searchId,
+      chunkId: dto.chunkId,
+      verdict: dto.verdict,
+      actor: { kind: 'agent', id: dto.agent },
+    });
   }
 }
 
