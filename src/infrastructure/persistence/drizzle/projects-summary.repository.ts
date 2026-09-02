@@ -28,11 +28,11 @@ import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
 /**
- * Read model do dashboard em CATORZE consultas escopadas por workspace: duas
- * em sequência (os projetos, e a sessão mais recente de cada um) e doze em
+ * Read model do dashboard em QUINZE consultas escopadas por workspace: duas
+ * em sequência (os projetos, e a sessão mais recente de cada um) e treze em
  * paralelo sobre esses dois conjuntos de ids.
  *
- * Catorze é CONSTANTE — nenhuma roda dentro de laço sobre projetos, e é essa
+ * Quinze é CONSTANTE — nenhuma roda dentro de laço sobre projetos, e é essa
  * a propriedade que a suíte prova: `projects-summary.repository.spec.ts`
  * conta idas ao banco com 2 e com 20 projetos e exige o mesmo número. Sem
  * esse teste, um laço aqui devolveria dados idênticos e trocaria o N+1 de
@@ -97,6 +97,7 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
       delegados,
       devOnline,
       agentStatusLatest,
+      falhasDeCriacao,
     ] = await Promise.all([
       db
         .select({
@@ -266,10 +267,33 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
           sessionEvents.actorId,
           desc(sessionEvents.seq),
         ),
+
+      // As ações `git_repo_create` que FALHARAM. Existe porque há um fracasso
+      // que acontece ANTES da linha de bootstrap: `ProvisionRepositoryUseCase`
+      // só cria o cursor depois de o provider confirmar o repositório, então
+      // uma recusa em `createRepo` deixa o projeto com ZERO linha — e o card
+      // ficava sem badge nenhum, indistinguível de um projeto que nunca tentou.
+      // Sem badge, o clique também não levava de volta à tela de
+      // provisionamento (`Dashboard.tsx` só desvia em `provision_failed`), e o
+      // projeto ficava inalcançável.
+      db
+        .select({
+          projectId: proposedActions.projectId,
+          seq: proposedActions.seq,
+        })
+        .from(proposedActions)
+        .where(
+          and(
+            inArray(proposedActions.projectId, projectIds),
+            eq(proposedActions.actionType, 'git_repo_create'),
+            eq(proposedActions.status, 'failed'),
+          ),
+        ),
     ]);
 
     const providerDe = indexarPor(repos, (r) => r.projectId);
     const bootstrapDe = indexarPor(bootstraps, (r) => r.projectId);
+    const falhaDeCriacaoDe = new Set(falhasDeCriacao.map((f) => f.projectId));
     const budgetDe = indexarPor(budgetRows, (r) => r.projectId);
     const modulosDe = indexarPor(maps, (r) => r.projectId);
     const promocaoDe = indexarPor(promocoes, (r) => r.projectId);
@@ -351,6 +375,10 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
                 plan: (bootstrapRow.plan as BootstrapPlan | null) ?? null,
               }
             : null,
+          // O card não precisa do MOTIVO — precisa saber que falhou, pra
+          // pintar o badge e pra o clique levar de volta. A frase inteira
+          // mora no endpoint de status, que a tela de provisionamento lê.
+          falhaDeCriacaoDe.has(projectId) ? 'falhou' : null,
         ),
         budget: budget
           ? { limitMicros: budget.limitMicros, spentMicros: budget.spentMicros }

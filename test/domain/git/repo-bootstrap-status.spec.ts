@@ -28,6 +28,53 @@ describe('deriveProvisioningStatus', () => {
     expect(deriveProvisioningStatus(null)).toBeNull();
   });
 
+  /**
+   * A falha que acontece ANTES de existir linha de bootstrap.
+   *
+   * `ProvisionRepositoryUseCase` só cria o cursor depois de o provider
+   * confirmar o repositório — uma recusa em `createRepo` (permissão negada no
+   * disco, nome já em uso, 401 do provider) deixava o projeto com ZERO linha.
+   * Sem este segundo argumento, "falhou ao criar" e "nunca tentou" eram o
+   * mesmo `null`, e a tela mostrava "Iniciando provisionamento…" para sempre.
+   */
+  it('sem linha, mas com falha na CRIAÇÃO: provision_failed', () => {
+    expect(
+      deriveProvisioningStatus(null, 'permissão negada: /data/git-repos/x.git'),
+    ).toBe('provision_failed');
+  });
+
+  it('sem linha e sem falha de criação: segue null', () => {
+    expect(deriveProvisioningStatus(null, null)).toBeNull();
+    expect(deriveProvisioningStatus(null, undefined)).toBeNull();
+  });
+
+  /**
+   * Com linha, quem manda é a linha. Uma falha de criação ANTIGA não pode
+   * reabrir um provisionamento que já retomou e converge — senão um projeto
+   * consertado continuaria reportando o fracasso de antes.
+   */
+  it('com linha, a falha de criação antiga é IGNORADA', () => {
+    expect(
+      deriveProvisioningStatus(
+        bootstrap({ step: 'protect_branches', status: 'done' }),
+        'permissão negada: /data/git-repos/x.git',
+      ),
+    ).toBe('provisioned');
+  });
+
+  /**
+   * `pending` é o estado em que a linha NASCE, e ele cai no catch-all
+   * `provisioning` — indistinguível de "rodando". Como o bootstrap é síncrono
+   * dentro do request, uma linha `pending` depois que o POST terminou é sempre
+   * um travamento; a tela é quem tem o teto de espera (RN-474). Este caso
+   * existe para fixar a leitura: nenhum teste cobria `pending` puro.
+   */
+  it('pending puro: provisioning (o catch-all)', () => {
+    expect(deriveProvisioningStatus(bootstrap({ status: 'pending' }))).toBe(
+      'provisioning',
+    );
+  });
+
   it('status failed em qualquer passo: provision_failed', () => {
     expect(
       deriveProvisioningStatus(

@@ -28,8 +28,24 @@ export type ProvisioningStatus =
  */
 export function deriveProvisioningStatus(
   row: RepoBootstrap | null,
+  /**
+   * O motivo pelo qual a CRIAÇÃO do repositório falhou, quando falhou.
+   *
+   * Existe porque há um fracasso que acontece ANTES de a linha de bootstrap
+   * nascer: `ProvisionRepositoryUseCase` só cria o cursor depois de o provider
+   * confirmar o repositório, então uma recusa em `createRepo` deixava o projeto
+   * com ZERO linha — e "sem linha" era indistinguível de "nunca começou".
+   * O endpoint devolvia `{status: null, lastError: null}`, a tela mostrava
+   * "Iniciando provisionamento…" e pollava para sempre, sem botão de saída.
+   *
+   * Não vira uma linha de bootstrap `failed` porque isso exigiria escolher um
+   * `step`, e nenhum dos seis descreve o que aconteceu: o repositório não
+   * existe, então nenhum passo do Gitflow chegou a ser tentado. Mentir o passo
+   * para ganhar um estado seria trocar um silêncio por uma informação errada.
+   */
+  falhaDeCriacao?: string | null,
 ): ProvisioningStatus | null {
-  if (!row) return null;
+  if (!row) return falhaDeCriacao ? 'provision_failed' : null;
   if (row.status === 'failed') return 'provision_failed';
   if (row.planDecision === 'as_is') return 'provisioned';
   if (row.plan !== null && row.planDecision === null) {

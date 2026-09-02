@@ -25,6 +25,21 @@ RUN (getent group "$DEV_GID" >/dev/null 2>&1 || addgroup -g "$DEV_GID" devuser) 
 
 WORKDIR /workspace
 
+# Os dois volumes NOMEADOS do compose (`/data/git-repos`,
+# `/data/project-workspaces`) precisam existir aqui, com o dono certo, ANTES
+# do USER: um volume nomeado novo herda dono e conteúdo do caminho que existir
+# NA IMAGEM, e quando o caminho não existe ele nasce root — deixando o processo
+# non-root de fora. Sem estas duas linhas, `git init --bare` do LocalGitProvider
+# morria com "permissão negada: /data/git-repos/<slug>.git" e o
+# permissions.json de cada projeto não tinha onde ser escrito.
+#
+# O Dockerfile.prod (`:104-109`) já fazia exatamente isto, com este mesmo
+# comentário, desde que o modo produção existe. A lição estava aprendida e
+# nunca tinha atravessado para o desenvolvimento — que é justamente onde
+# alguém provisiona um repositório pela primeira vez.
+RUN mkdir -p /data/git-repos /data/project-workspaces \
+  && chown -R "${DEV_UID}:${DEV_GID}" /data
+
 USER ${DEV_UID}:${DEV_GID}
 
 # `--filter api...`: instala só a api e as dependências dela (incluindo

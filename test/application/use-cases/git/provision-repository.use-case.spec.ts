@@ -15,6 +15,7 @@ import {
 } from '../../../../src/db/schema';
 import { DrizzleUnitOfWork } from '../../../../src/infrastructure/persistence/drizzle/drizzle-unit-of-work';
 import { DrizzleProvisionedRepositoryRepository } from '../../../../src/infrastructure/persistence/drizzle/provisioned-repository.repository';
+import { GetRepoBootstrapStatusUseCase } from '../../../../src/application/use-cases/git/get-repo-bootstrap-status.use-case';
 import { DrizzleRepoBootstrapRepository } from '../../../../src/infrastructure/persistence/drizzle/repo-bootstrap.repository';
 import { DrizzleOutboxRepository } from '../../../../src/infrastructure/persistence/drizzle/outbox.repository';
 import { DrizzleProposedActionRepository } from '../../../../src/infrastructure/persistence/drizzle/proposed-action.repository';
@@ -422,6 +423,86 @@ describe('ProvisionRepositoryUseCase', () => {
     expect(
       types.filter((t) => t === 'bootstrap.step_skipped').length,
     ).toBeGreaterThanOrEqual(2);
+  });
+
+  /**
+   * A falha no `check`, que até aqui NÃO virava estado nenhum.
+   *
+   * `BootstrapRunner` chamava `step.check(ctx)` fora de todo try/catch, e
+   * `check` faz IO de rede (`getFileContent` nos passos de commit,
+   * `listBranches` nos de branch). Um 401 de token expirado, um 403 ou um
+   * timeout subiam sem tocar na linha: ela ficava `pending`, `attempts: 0`,
+   * `lastError: NULL`. `deriveProvisioningStatus` lia isso como
+   * `provisioning`, e a tela mostrava "Trabalhando…" pollando para sempre.
+   *
+   * O teste de retomada acima injeta a falha em `createBranch` — ou seja, em
+   * `run`, o único caminho que JÁ tinha try/catch. É por isso que ele passava
+   * com o defeito presente.
+   */
+  it('falha no CHECK (não na mutação) também vira failed com motivo', async () => {
+    const { user, project } = await setupProject();
+    const provider = new InstrumentedGitProvider(new LocalGitProvider());
+    const useCase = buildUseCase(provider);
+
+    // `getFileContent` é o que o `check` do PRIMEIRO passo chama — antes de
+    // qualquer mutação, e antes de a linha sair de `pending`.
+    provider.failNextCallTo('getFileContent');
+
+    await expect(
+      useCase.execute(project.id, user.id, {
+        provider: 'local',
+        name: 'check-quebrado',
+        visibility: 'private',
+      }),
+    ).rejects.toThrow('falha injetada em getFileContent');
+
+    const row = await repoBootstraps.findByProjectId(project.id);
+    expect(row?.status).toBe('failed');
+    expect(row?.lastError).toContain('falha injetada em getFileContent');
+    // A tentativa NÃO avança: o passo não chegou a ser executado.
+    expect(row?.attempts).toBe(0);
+
+    // E o event log recebe o desfecho — falha de bootstrap não fica só na
+    // linha, como nenhuma falha deste produto fica só em broadcast.
+    const types = (await eventsFor(row!.sessionId)).map((e) => e.type);
+    expect(types).toContain('bootstrap.step_failed');
+  });
+
+  /**
+   * A falha ANTES de existir linha de bootstrap — o caso que travou o uso
+   * real: `permissão negada: /data/git-repos/<slug>.git`.
+   *
+   * `repo_bootstraps` só nasce depois de o provider confirmar o repositório,
+   * então aqui não há linha nenhuma, e o endpoint de status devolvia
+   * `{status: null, lastError: null}`: a tela não tinha o que dizer e girava.
+   */
+  it('falha ao CRIAR o repositório: sem linha de bootstrap, mas o status reporta', async () => {
+    const { user, project } = await setupProject();
+    const provider = new InstrumentedGitProvider(new LocalGitProvider());
+    const useCase = buildUseCase(provider);
+
+    provider.failNextCallTo('createRepo');
+
+    await expect(
+      useCase.execute(project.id, user.id, {
+        provider: 'local',
+        name: 'nunca-nasceu',
+        visibility: 'private',
+      }),
+    ).rejects.toThrow('falha injetada em createRepo');
+
+    // Continua sem linha — e está certo: nenhum passo do Gitflow foi tentado.
+    expect(await repoBootstraps.findByProjectId(project.id)).toBeNull();
+
+    const status = await new GetRepoBootstrapStatusUseCase(
+      repoBootstraps,
+      proposedActionsRepo,
+    ).execute(project.id);
+
+    expect(status.status).toBe('provision_failed');
+    expect(status.lastError).toContain('falha injetada em createRepo');
+    // Sem passo, porque não houve passo. Nomear um seria inventar.
+    expect(status.failedStep).toBeNull();
   });
 
   it('rejeita provisionar github sem credencial cadastrada, sem tocar no provider', async () => {
