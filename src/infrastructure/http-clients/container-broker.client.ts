@@ -75,11 +75,12 @@ export class HttpContainerBrokerClient extends ContainerBrokerPort {
     projectId: string,
     comando: string,
     cwd?: string,
+    timeoutMs?: number,
   ): Promise<ResultadoDeExecNoContainer> {
     return this.chamar<ResultadoDeExecNoContainer>(
       'POST',
       `/containers/${segmento(projectId)}/exec`,
-      { comando, cwd },
+      { comando, cwd, timeoutMs },
     );
   }
 

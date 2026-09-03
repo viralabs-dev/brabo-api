@@ -79,6 +79,26 @@ describe('HttpContainerBrokerClient', () => {
     expect(chamadas[0]?.url).toBe('http://broker:8090/containers/proj-1/start');
   });
 
+  it('`exec` manda comando/cwd/timeoutMs no corpo', async () => {
+    responder(200, { exitCode: 0, output: 'ok', timedOut: false });
+
+    await new HttpContainerBrokerClient().exec(
+      'proj-1',
+      'npm test',
+      '/work',
+      60_000,
+    );
+
+    expect(chamadas[0]?.url).toBe(
+      'http://broker:8090/containers/proj-1/exec',
+    );
+    expect(JSON.parse(chamadas[0]?.init.body as string)).toEqual({
+      comando: 'npm test',
+      cwd: '/work',
+      timeoutMs: 60_000,
+    });
+  });
+
   it('sem BROKER_URL, lança `nao-configurado` sem tocar a rede', async () => {
     delete process.env.BROKER_URL;
     responder(200, {});

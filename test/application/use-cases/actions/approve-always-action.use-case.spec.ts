@@ -19,10 +19,12 @@ import { DrizzleProposedActionRepository } from '../../../../src/infrastructure/
 import { DrizzleAgentAutonomyRepository } from '../../../../src/infrastructure/persistence/drizzle/agent-autonomy.repository';
 import { DrizzleOutboxRepository } from '../../../../src/infrastructure/persistence/drizzle/outbox.repository';
 import { DrizzleSessionEventRepository } from '../../../../src/infrastructure/persistence/drizzle/session-event.repository';
+import { DrizzleContainerRepository } from '../../../../src/infrastructure/persistence/drizzle/container.repository';
 import { FsPermissionsFileStore } from '../../../../src/infrastructure/filesystem/fs-permissions-file-store';
 import { ResolveEffectiveRoleUseCase } from '../../../../src/application/use-cases/iam/resolve-effective-role.use-case';
 import { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
 import { ExecuteTerminalActionUseCase } from '../../../../src/application/use-cases/actions/execute-terminal-action.use-case';
+import { ObterCicloDeVidaDoContainerUseCase } from '../../../../src/application/use-cases/containers/obter-ciclo-de-vida-do-container.use-case';
 import { ProposeActionUseCase } from '../../../../src/application/use-cases/actions/propose-action.use-case';
 import { ApproveActionUseCase } from '../../../../src/application/use-cases/actions/approve-action.use-case';
 import { ApproveAlwaysActionUseCase } from '../../../../src/application/use-cases/actions/approve-always-action.use-case';
@@ -39,6 +41,10 @@ const proposedActionRepo = new DrizzleProposedActionRepository(db);
 const agentAutonomyRepo = new DrizzleAgentAutonomyRepository(db);
 const outboxRepo = new DrizzleOutboxRepository(db);
 const sessionEventRepo = new DrizzleSessionEventRepository(db);
+const containerRepo = new DrizzleContainerRepository(db);
+const obterCicloDeVidaDoContainer = new ObterCicloDeVidaDoContainerUseCase(
+  containerRepo,
+);
 const permissionsFileStore = new FsPermissionsFileStore();
 const resolveEffectiveRole = new ResolveEffectiveRoleUseCase(
   projectRepo,
@@ -114,6 +120,7 @@ const proposeAction = new ProposeActionUseCase(
   undefined as never, // executeInfraPr — não exercitado aqui
   undefined as never, // executeContainerStart — não exercitado aqui
   appendSessionEvent,
+  obterCicloDeVidaDoContainer,
 );
 const approveAction = new ApproveActionUseCase(
   unitOfWork,

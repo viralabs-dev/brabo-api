@@ -23,6 +23,7 @@ import { ListBusinessRulesUseCase } from '../../../application/use-cases/backlog
 import { ListBacklogUseCase } from '../../../application/use-cases/backlog/list-backlog.use-case';
 import { ListProductMetricsUseCase } from '../../../application/use-cases/backlog/list-product-metrics.use-case';
 import { ConfirmProjectWorkspaceUseCase } from '../../../application/use-cases/iam/confirm-project-workspace.use-case';
+import { ExecutarComandoNoContainerUseCase } from '../../../application/use-cases/containers/executar-comando-no-container.use-case';
 import { SERVICE_TOKEN } from '../../../infrastructure/openapi/documento';
 import { ProjectGitRemoteResponseDto } from './dto/project-git-remote.response.dto';
 import { ProjectBusinessRulesResponseDto } from './dto/internal.response.dto';
@@ -30,6 +31,8 @@ import { EpicComHistoriasResponseDto } from '../backlog/dto/backlog.response.dto
 import { ProductMetricsResponseDto } from './dto/product-metrics.response.dto';
 import { ConfirmProjectWorkspaceInternalDto } from './dto/confirm-project-workspace-internal.dto';
 import { ConfirmProjectWorkspaceResponseDto } from './dto/confirm-project-workspace.response.dto';
+import { ContainerExecInternalDto } from './dto/container-exec-internal.dto';
+import { ContainerExecInternalResponseDto } from './dto/container-exec-internal.response.dto';
 
 /**
  * O que o engine precisa da api sobre um PROJETO — e não sobre uma sessão.
@@ -52,6 +55,16 @@ import { ConfirmProjectWorkspaceResponseDto } from './dto/confirm-project-worksp
  *    já tinha criado. As três são LEITURA e por isso não viram
  *    `proposed_action`; o que elas devem é ser contidas, e são: escopo
  *    fechado no projeto, sem parâmetro de busca e sem paginação a explorar.
+ * 3. `container-exec` (ADR 0134, RN-492): o engine pede pra RODAR um comando
+ *    de terminal DENTRO do container real do projeto, quando
+ *    `Engine.Actions.TerminalExecutor` decidiu que é o caso — este
+ *    controller não decide isso, só repassa pro broker via
+ *    `ExecutarComandoNoContainerUseCase`. Diferente da `container-spec` de
+ *    `InternalContainersController` (que o BROKER lê da api), esta rota é o
+ *    ENGINE chamando a api — por isso mora aqui, e não lá: aquele
+ *    controller diz explicitamente "sem `@Post` aqui" pela autoridade de
+ *    ESCRITA do ciclo de vida, que não é o caso desta chamada (ela não
+ *    escreve `project_containers`, só executa um comando).
  */
 @ApiTags('internal')
 @ApiSecurity(SERVICE_TOKEN)
@@ -68,6 +81,7 @@ export class InternalProjectsController {
     private readonly listBacklog: ListBacklogUseCase,
     private readonly listProductMetrics: ListProductMetricsUseCase,
     private readonly confirmWorkspace: ConfirmProjectWorkspaceUseCase,
+    private readonly executarComandoNoContainer: ExecutarComandoNoContainerUseCase,
   ) {}
 
   @Get(':projectId/git-remote')
@@ -168,5 +182,36 @@ export class InternalProjectsController {
       sessionId: dto.sessionId,
       actorId: dto.actorId,
     });
+  }
+
+  @Post(':projectId/container-exec')
+  // Executa um comando; não cria recurso endereçável.
+  @HttpCode(200)
+  @ApiOperation({
+    summary:
+      'Runs a terminal command INSIDE the project real container (RN-492)',
+    description:
+      'Called only by the engine, when `Engine.Actions.TerminalExecutor` ' +
+      'decided the command belongs inside the real container ' +
+      '(`execution_mode: container` with a REGISTERED `running` row). ' +
+      'Proxies to `ContainerBrokerPort.exec` (ADR 0130/0134) — the last of ' +
+      "the broker's five operations to gain a real caller. `sucesso: false` " +
+      'in the response — never a thrown error — is the NORMAL shape for a ' +
+      'refused or unreachable broker: the container may have died or been ' +
+      'removed from outside between the registered `running` row and this ' +
+      'call (RN-486, registered and observed never merge), and that is a ' +
+      'command failure, not a transport error.',
+  })
+  @ApiOkResponse({ type: ContainerExecInternalResponseDto })
+  containerExec(
+    @Param('projectId') projectId: string,
+    @Body() dto: ContainerExecInternalDto,
+  ) {
+    return this.executarComandoNoContainer.execute(
+      projectId,
+      dto.comando,
+      dto.cwd,
+      dto.timeoutMs,
+    );
   }
 }

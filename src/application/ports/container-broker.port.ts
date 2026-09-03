@@ -3,14 +3,17 @@
  *
  * ## Cinco operações do lado de lá, e menos deste lado
  *
- * O broker expõe as cinco da `DockerPort`. Esta porta declara as cinco, mas
- * hoje só `inspect` tem chamador — a rota de ciclo de vida do container, que
- * passou a mostrar o estado OBSERVADO ao lado do REGISTRADO. Subir, parar e
- * remover são EFEITO EXTERNO e não acontecem sem `proposed_action`; quem vai
- * propor é o Infra Lead, com autoridade final do usuário, e isso é outro PR.
- * Declarar as cinco agora e ligar quatro depois é o oposto de deixar um
- * gatilho automático escondido: o método existe e nada o chama, o que qualquer
- * busca por chamador mostra em um segundo.
+ * O broker expõe as cinco da `DockerPort`. Esta porta declara as cinco, e três
+ * já têm chamador: `inspect` (a rota de ciclo de vida do container, que
+ * mostra o estado OBSERVADO ao lado do REGISTRADO), `start` (`container_start`,
+ * ADR 0130/0133) e, desde o ADR 0134, `exec` — `ExecutarComandoNoContainerUseCase`,
+ * chamado pela rota interna `POST internal/projects/:projectId/container-exec`
+ * que o ENGINE usa para rodar comando de terminal de um dev agent DENTRO do
+ * container real (RN-492), quando há um. `stop`/`remove` seguem sem chamador:
+ * são EFEITO EXTERNO e não acontecem sem `proposed_action` própria, que ainda
+ * não existe. Declarar as cinco desde o início e ligar uma a uma é o oposto de
+ * deixar um gatilho automático escondido: o método existe e nada o chama, o
+ * que qualquer busca por chamador mostra em um segundo.
  *
  * ## `null` não é erro, e as duas coisas nunca viram uma
  *
@@ -96,5 +99,6 @@ export abstract class ContainerBrokerPort {
     projectId: string,
     comando: string,
     cwd?: string,
+    timeoutMs?: number,
   ): Promise<ResultadoDeExecNoContainer>;
 }

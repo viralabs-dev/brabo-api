@@ -855,3 +855,113 @@ describe('decide — comando privilegiado (sudo/doas)', () => {
     expect(result.policy).toBe('auto_approve');
   });
 });
+
+/**
+ * O piso do container REAL do projeto (ADR 0134, RN-492) — não confundir
+ * com "decide — a fronteira do container (RN-106)" acima, que é sobre git
+ * push/comando privilegiado escapando do PROCESSO do agente, nada a ver com
+ * `containerExecutionActive`. `decide()` continua puro: quem decide SE o
+ * projeto tem um container `running` é `ProposeActionUseCase`, e este
+ * arquivo só afirma o que `decide()` faz com o booleano já resolvido.
+ */
+describe('decide — piso do container ativo do projeto', () => {
+  const RAIZ = '/data/project-workspaces/proj-1';
+
+  it('terminal auto-aprova SEM regra nenhuma quando o container está ativo', () => {
+    const result = decide(
+      { actionType: 'terminal', command: 'npm test', cwd: RAIZ },
+      ctx({ projectScopeRoot: RAIZ, containerExecutionActive: true }),
+    );
+    expect(result.policy).toBe('auto_approve');
+    expect(result.reason).toMatch(/container/);
+  });
+
+  it('sem containerExecutionActive, comportamento de hoje inalterado (require_approval por padrão)', () => {
+    const result = decide(
+      { actionType: 'terminal', command: 'npm test', cwd: RAIZ },
+      ctx({ projectScopeRoot: RAIZ, containerExecutionActive: false }),
+    );
+    expect(result.policy).toBe('require_approval');
+  });
+
+  it('containerExecutionActive NÃO afeta ação que não é terminal', () => {
+    const result = decide(
+      { actionType: 'container_start' },
+      ctx({ effectiveRole: 'maintainer', containerExecutionActive: true }),
+    );
+    expect(result.policy).toBe('require_approval');
+  });
+
+  it('o piso NÃO é um teto: agent_autonomy deny explícito rebaixa (nega) mesmo com container ativo', () => {
+    const result = decide(
+      { actionType: 'terminal', command: 'npm test', cwd: RAIZ },
+      ctx({
+        projectScopeRoot: RAIZ,
+        containerExecutionActive: true,
+        autonomyMode: 'deny',
+      }),
+    );
+    expect(result.policy).toBe('deny');
+  });
+
+  it('o piso NÃO é um teto: permissions.json ask explícito rebaixa para require_approval mesmo com container ativo', () => {
+    const result = decide(
+      { actionType: 'terminal', command: 'npm test', cwd: RAIZ },
+      ctx({
+        projectScopeRoot: RAIZ,
+        containerExecutionActive: true,
+        permissionsFile: {
+          ...EMPTY_PERMISSIONS_FILE,
+          ask: ['Terminal(npm test)'],
+        },
+      }),
+    );
+    expect(result.policy).toBe('require_approval');
+  });
+
+  it('IAM insuficiente nega mesmo com container ativo — o piso só se aplica DEPOIS do IAM', () => {
+    const result = decide(
+      { actionType: 'terminal', command: 'npm test', cwd: RAIZ },
+      ctx({
+        effectiveRole: 'viewer',
+        projectScopeRoot: RAIZ,
+        containerExecutionActive: true,
+      }),
+    );
+    expect(result.policy).toBe('deny');
+  });
+
+  it('escopo continua sendo teto por cima do piso: caminho fora da raiz do HOST não auto-aprova', () => {
+    // O `cwd`/`command` que chegam em decide() NUNCA são traduzidos pra
+    // `/work` — essa tradução acontece só depois, no engine. Aqui o teto
+    // de escopo continua rodando sobre os MESMOS caminhos de host de
+    // sempre, como defesa em profundidade.
+    const result = decide(
+      { actionType: 'terminal', command: 'cat /etc/passwd', cwd: RAIZ },
+      ctx({ projectScopeRoot: RAIZ, containerExecutionActive: true }),
+    );
+    expect(result.policy).toBe('require_approval');
+    expect(result.reason).toContain('fora da pasta do projeto');
+  });
+
+  it('git push continua require_approval mesmo com container ativo — teto absoluto (RN-418/ADR 0102)', () => {
+    const result = decide(
+      {
+        actionType: 'terminal',
+        command: 'git push origin feature/x',
+        cwd: RAIZ,
+      },
+      ctx({ projectScopeRoot: RAIZ, containerExecutionActive: true }),
+    );
+    expect(result.policy).toBe('require_approval');
+    expect(result.reason).toMatch(/`git_push`/);
+  });
+
+  it('sudo continua require_approval mesmo com container ativo — teto absoluto (RN-418/ADR 0102)', () => {
+    const result = decide(
+      { actionType: 'terminal', command: 'sudo apt-get update', cwd: RAIZ },
+      ctx({ projectScopeRoot: RAIZ, containerExecutionActive: true }),
+    );
+    expect(result.policy).toBe('require_approval');
+  });
+});

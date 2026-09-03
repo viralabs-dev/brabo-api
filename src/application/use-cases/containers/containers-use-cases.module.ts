@@ -7,6 +7,7 @@ import { ObterCicloDeVidaDoContainerUseCase } from './obter-ciclo-de-vida-do-con
 import { ObterEstadoObservadoDoContainerUseCase } from './obter-estado-observado-do-container.use-case';
 import { ObterSpecDeContainerUseCase } from './obter-spec-de-container.use-case';
 import { RegistrarTransicaoDeContainerUseCase } from './registrar-transicao-de-container.use-case';
+import { ExecutarComandoNoContainerUseCase } from './executar-comando-no-container.use-case';
 
 const USE_CASES = [
   DecidirImagemDoProjetoUseCase,
@@ -15,6 +16,7 @@ const USE_CASES = [
   ObterEstadoObservadoDoContainerUseCase,
   ObterSpecDeContainerUseCase,
   RegistrarTransicaoDeContainerUseCase,
+  ExecutarComandoNoContainerUseCase,
 ];
 
 /**
@@ -41,6 +43,11 @@ const USE_CASES = [
  *
  * `ObterSpecDeContainer` é o que o BROKER lê da api para compor a
  * especificação ele mesmo — a chamada que faz o broker não aceitar spec.
+ *
+ * `ExecutarComandoNoContainer` (ADR 0134) é a segunda escrita real via
+ * broker, depois de `container_start`: proxy síncrono chamado pela rota
+ * interna que o ENGINE usa para rodar comando de terminal DENTRO do
+ * container real do projeto, quando há um `running` (RN-492).
  */
 @Module({
   imports: [SessionsUseCasesModule, ContainerBrokerHttpClientModule],

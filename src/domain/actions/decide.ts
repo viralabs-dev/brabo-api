@@ -174,6 +174,35 @@ export interface DecideContext {
    * chamador que não sabe a raiz sem mudar o veredito dele.
    */
   projectScopeRoot?: string;
+  /**
+   * `true` quando o projeto está em `execution_mode: container` com uma
+   * linha REGISTRADA em `project_containers` como `running` (ADR 0134,
+   * RN-492) — `ProposeActionUseCase` é quem consulta
+   * `ObterCicloDeVidaDoContainerUseCase` e monta este campo; `decide()`
+   * continua puro, só lê o resultado. `true` NÃO confirma que o container
+   * está de pé DE VERDADE agora (RN-486: registrado e observado nunca se
+   * fundem) — é só o PISO inicial de `terminal`.
+   *
+   * Muda o valor INICIAL de `current` (abaixo) de `require_approval` para
+   * `auto_approve` só para `actionType === 'terminal'`. Isso não é um teto
+   * novo nem um atalho que pula estágio nenhum: é o mesmo `current` que já
+   * existia, com um valor de partida diferente — `agent_autonomy` e
+   * `permissions.json` continuam podendo REBAIXAR (ou manter) esse piso do
+   * jeito que já rebaixam o default de hoje, e os tetos absolutos (escopo,
+   * git push/comando privilegiado, merge protegido, instruction_patch,
+   * paralelismo) continuam se aplicando por cima, byte a byte como estavam.
+   * A justificativa de segurança de auto-aprovar aqui é que, DENTRO do
+   * container, a fronteira real deixa de ser a checagem léxica de
+   * `terminalNoEscopo` contra `projectScopeRoot` — vira o mount namespace do
+   * Docker somado à validação de `/work` que o BROKER já faz
+   * (`DiretorioForaDoEscopoError`, `apps/broker/src/operacoes.ts`) — e o
+   * teto de escopo abaixo continua rodando por cima, como defesa em
+   * profundidade, sobre os MESMOS caminhos de host de sempre (o `cwd`/
+   * `command` que chegam aqui nunca são traduzidos para `/work` — essa
+   * tradução acontece só depois, no engine, ao montar a chamada pro
+   * broker).
+   */
+  containerExecutionActive?: boolean;
 }
 
 export interface Decision {
@@ -206,10 +235,24 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
   // pra saber por que a mudança de `deny` pra `require_approval` incondicional
   // é segura.
 
-  let current: Decision = {
-    policy: 'require_approval',
-    reason: 'default (sem regra aplicável)',
-  };
+  // O PISO de `terminal` DENTRO do container real do projeto (ADR 0134,
+  // RN-492) — ver o docblock de `containerExecutionActive` em
+  // `DecideContext` pra o raciocínio completo. Os estágios que seguem
+  // (agent_autonomy, permissions.json, os tetos absolutos) tratam este
+  // valor exatamente como tratavam o `require_approval` fixo de sempre:
+  // podem rebaixá-lo, mantê-lo ou (não, no caso dos tetos) subi-lo.
+  let current: Decision =
+    action.actionType === 'terminal' && ctx.containerExecutionActive
+      ? {
+          policy: 'auto_approve',
+          reason:
+            'container: comando roda dentro do container real do projeto (ADR 0134) — ' +
+            'a fronteira é o mount namespace do Docker, não o escopo léxico',
+        }
+      : {
+          policy: 'require_approval',
+          reason: 'default (sem regra aplicável)',
+        };
 
   if (ctx.autonomyMode) {
     current = {

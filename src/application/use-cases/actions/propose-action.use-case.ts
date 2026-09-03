@@ -15,6 +15,7 @@ import { ExecuteTerminalActionUseCase } from './execute-terminal-action.use-case
 import { ExecuteGitActionUseCase } from './execute-git-action.use-case';
 import { ExecuteInfraPrUseCase } from './execute-infra-pr.use-case';
 import { ExecuteContainerStartUseCase } from './execute-container-start.use-case';
+import { ObterCicloDeVidaDoContainerUseCase } from '../containers/obter-ciclo-de-vida-do-container.use-case';
 import {
   decide,
   ACTION_TYPES,
@@ -55,6 +56,7 @@ export class ProposeActionUseCase {
     private readonly executeInfraPr: ExecuteInfraPrUseCase,
     private readonly executeContainerStart: ExecuteContainerStartUseCase,
     private readonly appendSessionEvent: AppendSessionEventUseCase,
+    private readonly obterCicloDeVidaDoContainer: ObterCicloDeVidaDoContainerUseCase,
   ) {}
 
   @Traced('application')
@@ -73,12 +75,27 @@ export class ProposeActionUseCase {
 
     // Contexto todo buscado ANTES de chamar decide() — a função em si é
     // pura (ver domain/actions/decide.ts), zero IO.
-    const [effectiveRole, autonomyMode, permissionsFile] = await Promise.all([
+    //
+    // `containerExecutionActive` (ADR 0134/RN-492) só consulta o ciclo de
+    // vida do container quando a pergunta pode fazer diferença — terminal
+    // num projeto `container` — poupando a query em todo o resto (git_push,
+    // container_start, projeto `mounted`/`runner`, etc.).
+    const [
+      effectiveRole,
+      autonomyMode,
+      permissionsFile,
+      containerExecutionActive,
+    ] = await Promise.all([
       this.resolveEffectiveRole.forProject(session.createdBy, projectId),
       input.actor.kind === 'agent'
         ? this.agentAutonomy.findMode(projectId, input.actor.id, actionType)
         : Promise.resolve(null as PermissionPolicy | null),
       this.permissionsFileStore.read(project),
+      actionType === 'terminal' && project.executionMode === 'container'
+        ? this.obterCicloDeVidaDoContainer
+            .execute(projectId)
+            .then((ciclo) => ciclo?.status === 'running')
+        : Promise.resolve(false),
     ]);
 
     const command =
@@ -106,6 +123,7 @@ export class ProposeActionUseCase {
         // desde o ADR 0072: pasta gerenciada no `container`, a pasta do usuário
         // no `local` (RN-169).
         projectScopeRoot: projectScopeRoot(project),
+        containerExecutionActive,
       },
     );
 
