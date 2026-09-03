@@ -42,6 +42,7 @@ import { CreateTaskUseCase } from '../../../application/use-cases/backlog/create
 import { CreateModuleMapUseCase } from '../../../application/use-cases/architecture/create-module-map.use-case';
 import { AssignStoryModulesUseCase } from '../../../application/use-cases/architecture/assign-story-modules.use-case';
 import { CreateC4DiagramUseCase } from '../../../application/use-cases/architecture/create-c4-diagram.use-case';
+import { RouteModulesToInfraUseCase } from '../../../application/use-cases/architecture/route-modules-to-infra.use-case';
 import { DecidirImagemDoProjetoUseCase } from '../../../application/use-cases/containers/decidir-imagem-do-projeto.use-case';
 import { ClaimNextTaskUseCase } from '../../../application/use-cases/execution/claim-next-task.use-case';
 import { MarkTaskUseCase } from '../../../application/use-cases/execution/mark-task.use-case';
@@ -84,6 +85,7 @@ import { CreateTaskInternalDto } from './dto/create-task-internal.dto';
 import { CreateModuleMapInternalDto } from './dto/create-module-map-internal.dto';
 import { AssignStoryModulesInternalDto } from './dto/assign-story-modules-internal.dto';
 import { CreateC4DiagramInternalDto } from './dto/create-c4-diagram-internal.dto';
+import { RouteModulesToInfraInternalDto } from './dto/route-modules-to-infra-internal.dto';
 import { DecideProjectImageInternalDto } from './dto/decide-project-image-internal.dto';
 import { ImagemDecididaResponseDto } from '../containers/dto/containers.response.dto';
 import { ClaimTaskInternalDto } from './dto/claim-task-internal.dto';
@@ -100,6 +102,7 @@ import {
   EpicResponseDto,
   ModuleMapResponseDto,
   C4DiagramaGeradoResponseDto,
+  RoteamentoDeModulosGeradoResponseDto,
   StoryResponseDto,
   TaskResponseDto,
 } from '../backlog/dto/backlog.response.dto';
@@ -156,6 +159,7 @@ export class InternalSessionsController {
     private readonly createTask: CreateTaskUseCase,
     private readonly createModuleMap: CreateModuleMapUseCase,
     private readonly createC4Diagram: CreateC4DiagramUseCase,
+    private readonly routeModulesToInfra: RouteModulesToInfraUseCase,
     private readonly assignStoryModules: AssignStoryModulesUseCase,
     private readonly decidirImagem: DecidirImagemDoProjetoUseCase,
     private readonly claimNextTask: ClaimNextTaskUseCase,
@@ -482,6 +486,41 @@ export class InternalSessionsController {
       systemName: dto.systemName,
       systemDescription: dto.systemDescription,
       actors: dto.actors,
+    });
+  }
+
+  /**
+   * Ferramenta `route_modules_to_infra` do Arquiteto (ADR 0131): um item por
+   * módulo do module_map vigente, com a imagem CANDIDATA e o porquê. O
+   * Arquiteto candidata; quem elege entre as candidatas é o Infra Lead, num
+   * PR à parte — este endpoint só valida a candidatura.
+   */
+  @Post(':sessionId/module-routing')
+  @ApiOperation({
+    summary:
+      'Routes each module of the current module_map to a candidate image',
+    description:
+      'The artifact IS the `artifact.module_routing` event: immutable, ' +
+      'versioned, and with an author, alongside `artifact.module_map`/' +
+      '`artifact.project_image`/`artifact.c4_diagram`. Each item is ' +
+      'validated with the same rule as `choose_project_image` (explicit ' +
+      'tag/digest, `latest` rejected, non-trivial `rationale`); a module ' +
+      'name outside the current module_map, an empty list, or a repeated ' +
+      'module are all rejected with 400.',
+  })
+  @ApiCreatedResponse({ type: RoteamentoDeModulosGeradoResponseDto })
+  @ApiBadRequestResponse({
+    description:
+      'Empty list, repeated module, module outside the current module_map, ' +
+      "or a candidate image that fails `choose_project_image`'s rule " +
+      '(no explicit tag, `latest`, or short `rationale`).',
+  })
+  moduleRouting(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: RouteModulesToInfraInternalDto,
+  ) {
+    return this.routeModulesToInfra.execute(dto.projectId, sessionId, {
+      roteamento: dto.roteamento,
     });
   }
 

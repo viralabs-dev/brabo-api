@@ -28,6 +28,8 @@ import type {
   C4Diagrama,
   EstadoDoC4Diagrama,
 } from '../../../../domain/architecture/c4-diagram';
+import type { RoteamentoDeModulosGerado } from '../../../../application/use-cases/architecture/route-modules-to-infra.use-case';
+import type { RoteamentoDeModulo } from '../../../../domain/architecture/module-routing';
 import type { InfraArtifact } from '../../../../domain/execution/infra-artifact.entity';
 
 /**
@@ -514,6 +516,37 @@ export class C4DiagramaGeradoResponseDto implements Wire<C4DiagramaGerado> {
 export const _chavesC4DiagramaGerado: MesmasChaves<
   C4DiagramaGeradoResponseDto,
   C4DiagramaGerado
+> = true;
+
+export class RoteamentoDeModuloResponseDto implements Wire<RoteamentoDeModulo> {
+  @ApiProperty({ example: 'checkout-api' })
+  modulo!: string;
+
+  @ApiProperty({ example: 'node:22-bookworm-slim' })
+  imagemCandidata!: string;
+
+  @ApiProperty({
+    example:
+      'This module is TypeScript on Node 22; the slim variant has the runtime and nothing else.',
+  })
+  porque!: string;
+}
+export const _chavesRoteamentoDeModulo: MesmasChaves<
+  RoteamentoDeModuloResponseDto,
+  RoteamentoDeModulo
+> = true;
+
+/** Response for `POST .../module-routing`: the freshly routed list + the version. */
+export class RoteamentoDeModulosGeradoResponseDto implements Wire<RoteamentoDeModulosGerado> {
+  @ApiProperty({ type: [RoteamentoDeModuloResponseDto] })
+  roteamento!: RoteamentoDeModuloResponseDto[];
+
+  @ApiProperty({ example: 1 })
+  version!: number;
+}
+export const _chavesRoteamentoDeModulosGerado: MesmasChaves<
+  RoteamentoDeModulosGeradoResponseDto,
+  RoteamentoDeModulosGerado
 > = true;
 
 export class InfraArtifactResponseDto implements Wire<InfraArtifact> {

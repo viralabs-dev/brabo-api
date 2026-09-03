@@ -5,6 +5,8 @@ import { AssignStoryModulesUseCase } from './assign-story-modules.use-case';
 import { GetArchitectureUseCase } from './get-architecture.use-case';
 import { CreateC4DiagramUseCase } from './create-c4-diagram.use-case';
 import { GetC4DiagramUseCase } from './get-c4-diagram.use-case';
+import { RouteModulesToInfraUseCase } from './route-modules-to-infra.use-case';
+import { GetModuleRoutingUseCase } from './get-module-routing.use-case';
 
 const USE_CASES = [
   CreateModuleMapUseCase,
@@ -12,6 +14,8 @@ const USE_CASES = [
   GetArchitectureUseCase,
   CreateC4DiagramUseCase,
   GetC4DiagramUseCase,
+  RouteModulesToInfraUseCase,
+  GetModuleRoutingUseCase,
 ];
 
 @Module({
