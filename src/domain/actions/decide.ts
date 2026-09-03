@@ -27,7 +27,8 @@ export type ActionType =
   | 'parallelize'
   | 'raise_max_parallel'
   | 'propose_execution_plan'
-  | 'assess_implementability';
+  | 'assess_implementability'
+  | 'container_start';
 
 export const ACTION_TYPES: readonly ActionType[] = [
   'terminal',
@@ -57,6 +58,9 @@ export const ACTION_TYPES: readonly ActionType[] = [
   // raciocínio de `propose_execution_plan` — decisão INICIAL, não
   // ultrapassagem de teto.
   'assess_implementability',
+  // ADR 0130/0133: a Infra elege uma das imagens candidatas do roteamento do
+  // Arquiteto e propõe subir o container REAL do projeto, pelo broker.
+  'container_start',
 ];
 
 /**
@@ -133,6 +137,12 @@ const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
   // `propose_execution_plan`: é uma decisão inicial da sessão, não uma
   // ultrapassagem de teto já autorizado.
   assess_implementability: 'maintainer',
+  // ADR 0130/0133: a Infra elege uma das imagens candidatas do roteamento do
+  // Arquiteto (`route_modules_to_infra`) e propõe subir o container REAL do
+  // projeto, pelo broker — efeito externo de verdade (gasta infra), mesmo
+  // calibre de `open_infra_pr`/`parallelize`. `maintainer` porque é quem
+  // responde pelo projeto que autoriza o gasto.
+  container_start: 'maintainer',
 };
 
 // Rede de segurança padrão, sempre ativa, independente do permissions.json
@@ -332,6 +342,16 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
   // `assess_implementability` (ADR 0090) segue o MESMO raciocínio de
   // `propose_execution_plan`, pelo mesmo motivo: é um parecer inicial
   // sobre uma story, não uma ultrapassagem de teto já autorizado.
+  //
+  // `container_start` (ADR 0130/0133) segue o MESMO raciocínio pela MESMA
+  // razão, com uma nuance: não é a Infra ultrapassando um teto já
+  // autorizado, é a PRIMEIRA vez que um container sobe de verdade para esta
+  // eleição — decisão inicial, não reincidência. Fica `require_approval`
+  // por padrão (não está semeado em `INFRA_AUTONOMY_SEEDS`, ao contrário de
+  // `open_infra_pr`: aqui o efeito é real, gasta infra, e a Infra nunca
+  // recebe auto-aprovação de propósito), mas nada o impede de ser
+  // configurado como auto-aprovável, como `open_adr_pr`/`open_infra_pr` já
+  // são.
   if (
     (action.actionType === 'parallelize' ||
       action.actionType === 'raise_max_parallel') &&

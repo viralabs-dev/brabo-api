@@ -426,6 +426,59 @@ describe('decide — parecer de implementabilidade do Dev Lead (ADR 0090)', () =
   });
 });
 
+describe('decide — eleição de container pela Infra (ADR 0130/0133)', () => {
+  // Mesmo raciocínio de `propose_execution_plan`/`assess_implementability`:
+  // NÃO entra no bloco de tetos absolutos — decisão INICIAL desta eleição,
+  // não ultrapassagem de um teto já autorizado. O objetivo aqui é provar
+  // exatamente isso: `container_start` CONSEGUE chegar em auto_approve
+  // quando `agent_autonomy`/`permissions.json` autorizam, ao contrário de
+  // `parallelize`/`git_merge` com branch protegida/`instruction_patch`, que
+  // NUNCA conseguem.
+  const subir = { actionType: 'container_start' as const };
+
+  it('minRole: maintainer — developer é insuficiente e nega mesmo antes de olhar autonomy/permissions.json', () => {
+    const result = decide(
+      subir,
+      ctx({
+        effectiveRole: 'developer',
+        autonomyMode: 'auto_approve',
+        permissionsFile: {
+          ...EMPTY_PERMISSIONS_FILE,
+          allow: ['ContainerStart()'],
+        },
+      }),
+    );
+    expect(result.policy).toBe('deny');
+  });
+
+  it('sem regra nenhuma, default é require_approval', () => {
+    const result = decide(subir, ctx({ effectiveRole: 'maintainer' }));
+    expect(result.policy).toBe('require_approval');
+  });
+
+  it('agent_autonomy auto_approve CONSEGUE chegar a auto_approve — não é um teto absoluto', () => {
+    const result = decide(
+      subir,
+      ctx({ effectiveRole: 'maintainer', autonomyMode: 'auto_approve' }),
+    );
+    expect(result.policy).toBe('auto_approve');
+  });
+
+  it('permissions.json allow também CONSEGUE chegar a auto_approve', () => {
+    const result = decide(
+      subir,
+      ctx({
+        effectiveRole: 'maintainer',
+        permissionsFile: {
+          ...EMPTY_PERMISSIONS_FILE,
+          allow: ['ContainerStart()'],
+        },
+      }),
+    );
+    expect(result.policy).toBe('auto_approve');
+  });
+});
+
 describe('decide — teto do patch de instrução (Fase 4b)', () => {
   // Mesma classe de garantia da trava de merge, e por isso testada do mesmo
   // jeito: o valor da feature está no humano ver o diff. Auto-aprovar seria o

@@ -112,6 +112,7 @@ const proposeAction = new ProposeActionUseCase(
   executeTerminalAction,
   undefined as never, // executeGitAction — não exercitado aqui
   undefined as never, // executeInfraPr — não exercitado aqui
+  undefined as never, // executeContainerStart — não exercitado aqui
   appendSessionEvent,
 );
 const approveAction = new ApproveActionUseCase(
@@ -122,6 +123,7 @@ const approveAction = new ApproveActionUseCase(
   executeTerminalAction,
   undefined as never, // executeAdrPr
   undefined as never, // executeInfraPr
+  undefined as never, // executeContainerStart
   {
     execute: (_p: string, _s: string, a: unknown) => Promise.resolve(a),
   } as unknown as never, // executeGitAction: passthrough

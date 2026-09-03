@@ -7,6 +7,7 @@ import type { AdrPrExecutionResult } from '../git/adr-pr-execution-result';
 import type { GitActionExecutionResult } from '../git/git-action-execution-result';
 import type { InfraPrExecutionResult } from '../git/infra-pr-execution-result';
 import type { InstructionPatchExecutionResult } from '../instructions/instruction-patch-execution-result';
+import type { ContainerStartExecutionResult } from '../containers/container-start-execution-result';
 
 export interface ProposedAction {
   id: string;
@@ -28,6 +29,7 @@ export interface ProposedAction {
     | GitActionExecutionResult
     | InfraPrExecutionResult
     | InstructionPatchExecutionResult
+    | ContainerStartExecutionResult
     | null;
   createdAt: Date;
   updatedAt: Date;

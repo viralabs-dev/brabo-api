@@ -6,6 +6,11 @@ import type { ProvisionedRepositoryRepository } from '../../../../src/applicatio
 import type { ModuleMap } from '../../../../src/domain/architecture/module-map.entity';
 import type { ProposedAction } from '../../../../src/domain/actions/proposed-action.entity';
 import type { ProvisionedRepository } from '../../../../src/domain/git/provisioned-repository.entity';
+import type { GetModuleRoutingUseCase } from '../../../../src/application/use-cases/architecture/get-module-routing.use-case';
+import {
+  SEM_ROTEAMENTO,
+  type EstadoDoRoteamento,
+} from '../../../../src/domain/architecture/module-routing';
 
 const now = new Date();
 
@@ -72,9 +77,20 @@ function repo(
   };
 }
 
+const roteado: EstadoDoRoteamento = {
+  status: 'roteado',
+  roteamento: [
+    { modulo: 'api', imagemCandidata: 'node:22-bookworm-slim', porque: 'TS/Node' },
+  ],
+  version: 1,
+  eventId: 'evt-1',
+  createdAt: now.toISOString(),
+};
+
 function build(
   provider: ProvisionedRepository['provider'] | null,
   adrs: ProposedAction[] = [adrAction, naoInfraAdrAction],
+  moduleRouting: EstadoDoRoteamento = SEM_ROTEAMENTO,
 ) {
   return new GetInfraContextUseCase(
     { findCurrent: async () => moduleMap } as unknown as ModuleMapRepository,
@@ -82,6 +98,7 @@ function build(
       listByProjectAndType: async () => adrs,
     } as unknown as ProposedActionRepository,
     repo(provider),
+    { execute: async () => moduleRouting } as unknown as GetModuleRoutingUseCase,
   );
 }
 
@@ -111,5 +128,19 @@ describe('GetInfraContextUseCase', () => {
     expect(ctx.moduleMap).toEqual(moduleMap);
     expect(ctx.adrs).toHaveLength(1);
     expect(ctx.adrs[0].title).toBe('Usar Postgres');
+  });
+
+  it('moduleRouting é SEM_ROTEAMENTO quando o Arquiteto ainda não roteou (ADR 0131/0133)', async () => {
+    const useCase = build('local', [adrAction, naoInfraAdrAction], SEM_ROTEAMENTO);
+    const ctx = await useCase.execute('proj-1');
+
+    expect(ctx.moduleRouting).toEqual(SEM_ROTEAMENTO);
+  });
+
+  it('moduleRouting repassa o roteamento vigente do Arquiteto quando ele existe', async () => {
+    const useCase = build('local', [adrAction, naoInfraAdrAction], roteado);
+    const ctx = await useCase.execute('proj-1');
+
+    expect(ctx.moduleRouting).toEqual(roteado);
   });
 });

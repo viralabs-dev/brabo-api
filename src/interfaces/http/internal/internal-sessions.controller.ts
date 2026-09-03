@@ -660,7 +660,9 @@ export class InternalSessionsController {
   @ApiOperation({
     summary: "Assembles the InfraAgent's initial context",
     description:
-      'The current module_map plus the relevant infrastructure ADRs.',
+      'The current module_map plus the relevant infrastructure ADRs, plus ' +
+      "the Architect's module routing (ADR 0131) — the candidates the " +
+      'Infra Lead elects among when proposing container_start.',
   })
   @ApiQuery({ name: 'projectId', required: true })
   @ApiOkResponse({ type: InfraContextResponseDto })

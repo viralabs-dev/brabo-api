@@ -12,6 +12,7 @@ import {
   ModuleMapResponseDto,
   StoryResponseDto,
   TaskResponseDto,
+  RoteamentoDeModuloResponseDto,
 } from '../../backlog/dto/backlog.response.dto';
 import { InfraArtifactResponseDto } from '../../backlog/dto/backlog.response.dto';
 import { HypothesisResponseDto } from '../../psychologist/dto/psychologist.response.dto';
@@ -24,6 +25,7 @@ import type {
   InfraContext,
   InfraContextAdr,
 } from '../../../../application/use-cases/execution/get-infra-context.use-case';
+import type { EstadoDoRoteamento } from '../../../../domain/architecture/module-routing';
 import type {
   PsychologistContext,
   PsychologistContextBusinessRule,
@@ -143,6 +145,34 @@ export const _chavesAdrInfra: MesmasChaves<
   InfraContextAdr
 > = true;
 
+/**
+ * Espelha `EstadoDoRoteamento` (domain/architecture/module-routing.ts) — o
+ * roteamento de módulos que o Arquiteto candidatou (`route_modules_to_infra`,
+ * ADR 0131). Reusa `RoteamentoDeModuloResponseDto`
+ * (backlog.response.dto.ts) para os itens: mesmo tipo de domínio, sem
+ * duplicar a classe.
+ */
+export class EstadoDoRoteamentoResponseDto implements Wire<EstadoDoRoteamento> {
+  @ApiProperty({ enum: ['sem_roteamento', 'roteado'], example: 'roteado' })
+  status!: 'sem_roteamento' | 'roteado';
+
+  @ApiProperty({ type: [RoteamentoDeModuloResponseDto] })
+  roteamento!: RoteamentoDeModuloResponseDto[];
+
+  @ApiProperty({ example: 1 })
+  version!: number;
+
+  @ApiProperty({ example: '01JC4Z0000EVENTOROTEAMENTO01', nullable: true })
+  eventId!: string | null;
+
+  @ApiProperty({ example: '2026-08-30T12:00:00.000Z', nullable: true })
+  createdAt!: string | null;
+}
+export const _chavesEstadoDoRoteamento: MesmasChaves<
+  EstadoDoRoteamentoResponseDto,
+  EstadoDoRoteamento
+> = true;
+
 export class InfraContextResponseDto implements Wire<InfraContext> {
   @ApiProperty({ type: ModuleMapResponseDto, nullable: true })
   moduleMap!: ModuleMapResponseDto | null;
@@ -161,6 +191,16 @@ export class InfraContextResponseDto implements Wire<InfraContext> {
       'GitHub Actions.',
   })
   gitProvider!: GitProviderName | null;
+
+  @ApiProperty({
+    type: EstadoDoRoteamentoResponseDto,
+    description:
+      'The Architect-routed candidates (route_modules_to_infra, ADR 0131) — ' +
+      'what the Infra Lead elects among when proposing container_start ' +
+      '(ADR 0130/0133). "sem_roteamento" when the Architect has not routed ' +
+      'anything yet.',
+  })
+  moduleRouting!: EstadoDoRoteamentoResponseDto;
 }
 export const _chavesCtxInfra: MesmasChaves<
   InfraContextResponseDto,

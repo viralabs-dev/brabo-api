@@ -7,6 +7,7 @@ import { ApproveAlwaysActionUseCase } from './approve-always-action.use-case';
 import { ExecuteTerminalActionUseCase } from './execute-terminal-action.use-case';
 import { ExecuteAdrPrUseCase } from './execute-adr-pr.use-case';
 import { ExecuteInfraPrUseCase } from './execute-infra-pr.use-case';
+import { ExecuteContainerStartUseCase } from './execute-container-start.use-case';
 import { ExecuteInstructionPatchUseCase } from './execute-instruction-patch.use-case';
 import { ExecuteGitActionUseCase } from './execute-git-action.use-case';
 import { ListProposedActionsUseCase } from './list-proposed-actions.use-case';
@@ -21,6 +22,9 @@ import { GitInfrastructureModule } from '../../../infrastructure/git/git-infrast
 import { LlmInfrastructureModule } from '../../../infrastructure/llm/llm-infrastructure.module';
 import { LlmUseCasesModule } from '../llm/llm-use-cases.module';
 import { InstructionsUseCasesModule } from '../instructions/instructions-use-cases.module';
+import { ContainersUseCasesModule } from '../containers/containers-use-cases.module';
+import { ArchitectureUseCasesModule } from '../architecture/architecture-use-cases.module';
+import { ContainerBrokerHttpClientModule } from '../../../infrastructure/http-clients/container-broker-http-client.module';
 
 const USE_CASES = [
   ProposeActionUseCase,
@@ -30,6 +34,7 @@ const USE_CASES = [
   ExecuteTerminalActionUseCase,
   ExecuteAdrPrUseCase,
   ExecuteInfraPrUseCase,
+  ExecuteContainerStartUseCase,
   ExecuteInstructionPatchUseCase,
   ExecuteGitActionUseCase,
   ListProposedActionsUseCase,
@@ -51,6 +56,19 @@ const USE_CASES = [
     // — e reusar o resolvedor é o que impede duas regras de "de quem é a
     // credencial" divergirem. Mesmo motivo do `GitUseCasesModule`.
     LlmUseCasesModule,
+    // `ExecuteContainerStartUseCase` (ADR 0130/0133): elege a imagem
+    // (`DecidirImagemDoProjetoUseCase`) e transiciona o ciclo de vida
+    // (`RegistrarTransicaoDeContainerUseCase`). Nenhum dos dois módulos
+    // abaixo importa `ActionsUseCasesModule`/`ExecutionUseCasesModule`
+    // (direta ou transitivamente) — import simples, sem `forwardRef`.
+    ContainersUseCasesModule,
+    ArchitectureUseCasesModule,
+    // `ContainersUseCasesModule` importa este módulo mas NÃO reexporta
+    // `ContainerBrokerPort` (só reexporta os próprios use cases) — sem esta
+    // linha, `ExecuteContainerStartUseCase` não resolveria a porta na
+    // inicialização do Nest. Import direto e não `forwardRef`: módulo folha,
+    // sem dependência de volta.
+    ContainerBrokerHttpClientModule,
     forwardRef(() => InstructionsUseCasesModule),
     // FASE 14d: aprovar `parallelize` sobe o agente, e aprovar
     // `raise_max_parallel` muda o teto. `forwardRef` porque a execução também

@@ -14,6 +14,7 @@ import { ResolveEffectiveRoleUseCase } from '../iam/resolve-effective-role.use-c
 import { ExecuteTerminalActionUseCase } from './execute-terminal-action.use-case';
 import { ExecuteGitActionUseCase } from './execute-git-action.use-case';
 import { ExecuteInfraPrUseCase } from './execute-infra-pr.use-case';
+import { ExecuteContainerStartUseCase } from './execute-container-start.use-case';
 import {
   decide,
   ACTION_TYPES,
@@ -52,6 +53,7 @@ export class ProposeActionUseCase {
     private readonly executeTerminalAction: ExecuteTerminalActionUseCase,
     private readonly executeGitAction: ExecuteGitActionUseCase,
     private readonly executeInfraPr: ExecuteInfraPrUseCase,
+    private readonly executeContainerStart: ExecuteContainerStartUseCase,
     private readonly appendSessionEvent: AppendSessionEventUseCase,
   ) {}
 
@@ -169,6 +171,17 @@ export class ProposeActionUseCase {
 
     if (status === 'auto_approved' && actionType === 'open_infra_pr') {
       return this.executeInfraPr.execute(projectId, sessionId, action);
+    }
+
+    // `container_start` nunca é semeado para auto-aprovação
+    // (`INFRA_AUTONOMY_SEEDS`, accept-handoff.use-case.ts) — mas um
+    // `maintainer` PODE configurar `permissions.json` para auto-aprovar
+    // mesmo assim, e sem este branch a ação nasceria `auto_approved` e nunca
+    // chamaria o broker: mesma lição do comentário de `parallelize` em
+    // `approve-action.use-case.ts` — "sem isto a ação nascia, era aprovada —
+    // e nada subia. Pior que não ter a feature".
+    if (status === 'auto_approved' && actionType === 'container_start') {
+      return this.executeContainerStart.execute(projectId, sessionId, action);
     }
 
     return action;
