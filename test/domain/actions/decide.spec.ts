@@ -479,6 +479,91 @@ describe('decide — eleição de container pela Infra (ADR 0130/0133)', () => {
   });
 });
 
+describe('decide — container_stop, a página global de containers (ADR 0136)', () => {
+  // MESMO calibre de container_start: pode chegar a auto_approve, nunca
+  // seedado, mas configurável.
+  const parar = { actionType: 'container_stop' as const };
+
+  it('minRole: maintainer — developer nega', () => {
+    const result = decide(
+      parar,
+      ctx({
+        effectiveRole: 'developer',
+        autonomyMode: 'auto_approve',
+      }),
+    );
+    expect(result.policy).toBe('deny');
+  });
+
+  it('sem regra nenhuma, default é require_approval', () => {
+    const result = decide(parar, ctx({ effectiveRole: 'maintainer' }));
+    expect(result.policy).toBe('require_approval');
+  });
+
+  it('agent_autonomy auto_approve CONSEGUE chegar a auto_approve — não é um teto absoluto', () => {
+    const result = decide(
+      parar,
+      ctx({ effectiveRole: 'maintainer', autonomyMode: 'auto_approve' }),
+    );
+    expect(result.policy).toBe('auto_approve');
+  });
+
+  it('permissions.json allow também CONSEGUE chegar a auto_approve', () => {
+    const result = decide(
+      parar,
+      ctx({
+        effectiveRole: 'maintainer',
+        permissionsFile: {
+          ...EMPTY_PERMISSIONS_FILE,
+          allow: ['ContainerStop()'],
+        },
+      }),
+    );
+    expect(result.policy).toBe('auto_approve');
+  });
+});
+
+describe('decide — teto de container_remove (ADR 0136, RN-495)', () => {
+  // MESMO calibre de merge protegido/instruction_patch: nunca consegue
+  // auto_approve, nem por agent_autonomy nem por permissions.json — é a
+  // ação mais destrutiva das três (descarta o container, exige
+  // reprovisionar do zero).
+  const remover = { actionType: 'container_remove' as const };
+
+  it('minRole: maintainer — developer nega', () => {
+    const result = decide(remover, ctx({ effectiveRole: 'developer' }));
+    expect(result.policy).toBe('deny');
+  });
+
+  it('sem regra nenhuma, default é require_approval', () => {
+    const result = decide(remover, ctx({ effectiveRole: 'maintainer' }));
+    expect(result.policy).toBe('require_approval');
+  });
+
+  it('agent_autonomy auto_approve NÃO consegue auto-aprovar remover', () => {
+    const result = decide(
+      remover,
+      ctx({ effectiveRole: 'maintainer', autonomyMode: 'auto_approve' }),
+    );
+    expect(result.policy).toBe('require_approval');
+    expect(result.reason).toMatch(/nunca é auto-aprovável/);
+  });
+
+  it('permissions.json allow NÃO consegue auto-aprovar remover', () => {
+    const result = decide(
+      remover,
+      ctx({
+        effectiveRole: 'maintainer',
+        permissionsFile: {
+          ...EMPTY_PERMISSIONS_FILE,
+          allow: ['ContainerRemove()'],
+        },
+      }),
+    );
+    expect(result.policy).toBe('require_approval');
+  });
+});
+
 describe('decide — teto do patch de instrução (Fase 4b)', () => {
   // Mesma classe de garantia da trava de merge, e por isso testada do mesmo
   // jeito: o valor da feature está no humano ver o diff. Auto-aprovar seria o

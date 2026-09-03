@@ -9,6 +9,8 @@ import { ExecuteTerminalActionUseCase } from './execute-terminal-action.use-case
 import { ExecuteAdrPrUseCase } from './execute-adr-pr.use-case';
 import { ExecuteInfraPrUseCase } from './execute-infra-pr.use-case';
 import { ExecuteContainerStartUseCase } from './execute-container-start.use-case';
+import { ExecuteContainerStopUseCase } from './execute-container-stop.use-case';
+import { ExecuteContainerRemoveUseCase } from './execute-container-remove.use-case';
 import { ExecuteInstructionPatchUseCase } from './execute-instruction-patch.use-case';
 import { ExecuteGitActionUseCase } from './execute-git-action.use-case';
 import { ExecuteParallelizationUseCase } from '../execution/execute-parallelization.use-case';
@@ -29,6 +31,8 @@ export class ApproveActionUseCase {
     private readonly executeAdrPr: ExecuteAdrPrUseCase,
     private readonly executeInfraPr: ExecuteInfraPrUseCase,
     private readonly executeContainerStart: ExecuteContainerStartUseCase,
+    private readonly executeContainerStop: ExecuteContainerStopUseCase,
+    private readonly executeContainerRemove: ExecuteContainerRemoveUseCase,
     private readonly executeGitAction: ExecuteGitActionUseCase,
     private readonly executeParallelization: ExecuteParallelizationUseCase,
     private readonly executeMaxParallelRaise: ExecuteMaxParallelRaiseUseCase,
@@ -84,6 +88,26 @@ export class ApproveActionUseCase {
         projectId,
         sessionId,
         await this.executeContainerStart.execute(
+          projectId,
+          sessionId,
+          approved,
+        ),
+      );
+    }
+
+    if (approved.actionType === 'container_stop') {
+      return this.avisarQuemEsperava(
+        projectId,
+        sessionId,
+        await this.executeContainerStop.execute(projectId, sessionId, approved),
+      );
+    }
+
+    if (approved.actionType === 'container_remove') {
+      return this.avisarQuemEsperava(
+        projectId,
+        sessionId,
+        await this.executeContainerRemove.execute(
           projectId,
           sessionId,
           approved,

@@ -9,6 +9,7 @@ import type { GitActionExecutionResult } from '../../domain/git/git-action-execu
 import type { InfraPrExecutionResult } from '../../domain/git/infra-pr-execution-result';
 import type { InstructionPatchExecutionResult } from '../../domain/instructions/instruction-patch-execution-result';
 import type { ContainerStartExecutionResult } from '../../domain/containers/container-start-execution-result';
+import type { ContainerStopOuRemoveExecutionResult } from '../../domain/containers/container-stop-remove-execution-result';
 
 export interface NewProposedAction {
   projectId: string;
@@ -37,7 +38,8 @@ export interface ExecutionResultUpdate {
     | GitActionExecutionResult
     | InfraPrExecutionResult
     | InstructionPatchExecutionResult
-    | ContainerStartExecutionResult;
+    | ContainerStartExecutionResult
+    | ContainerStopOuRemoveExecutionResult;
 }
 
 export interface ListProposedActionsOptions {

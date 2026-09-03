@@ -8,6 +8,7 @@ import { ObterEstadoObservadoDoContainerUseCase } from './obter-estado-observado
 import { ObterSpecDeContainerUseCase } from './obter-spec-de-container.use-case';
 import { RegistrarTransicaoDeContainerUseCase } from './registrar-transicao-de-container.use-case';
 import { ExecutarComandoNoContainerUseCase } from './executar-comando-no-container.use-case';
+import { ObterVisaoGeralDeContainersUseCase } from './obter-visao-geral-de-containers.use-case';
 
 const USE_CASES = [
   DecidirImagemDoProjetoUseCase,
@@ -17,6 +18,7 @@ const USE_CASES = [
   ObterSpecDeContainerUseCase,
   RegistrarTransicaoDeContainerUseCase,
   ExecutarComandoNoContainerUseCase,
+  ObterVisaoGeralDeContainersUseCase,
 ];
 
 /**
@@ -48,6 +50,14 @@ const USE_CASES = [
  * broker, depois de `container_start`: proxy síncrono chamado pela rota
  * interna que o ENGINE usa para rodar comando de terminal DENTRO do
  * container real do projeto, quando há um `running` (RN-492).
+ *
+ * `ObterVisaoGeralDeContainers` (ADR 0136, RN-495) é o read model da página
+ * global `/containers` — agrega o REGISTRADO de todo projeto do workspace
+ * (via `ContainersOverviewRepository`, sem N+1) com o OBSERVADO pedido ao
+ * broker só para quem está `provisioning`/`running` e dentro do teto por
+ * carga (`TETO_DE_VERIFICACOES_POR_CARGA`). Não importa `ContainerRepository`
+ * diretamente: `ContainersOverviewRepository` é ligado no módulo de
+ * persistência (`drizzle.module.ts`), fora daqui.
  */
 @Module({
   imports: [SessionsUseCasesModule, ContainerBrokerHttpClientModule],

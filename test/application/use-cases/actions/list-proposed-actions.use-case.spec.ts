@@ -111,6 +111,7 @@ const proposeAction = new ProposeActionUseCase(
   undefined as never, // executeGitAction — não exercitado aqui
   undefined as never, // executeInfraPr — não exercitado aqui
   undefined as never, // executeContainerStart — não exercitado aqui
+  undefined as never, // executeContainerStop — não exercitado aqui
   appendSessionEvent,
   obterCicloDeVidaDoContainer,
 );

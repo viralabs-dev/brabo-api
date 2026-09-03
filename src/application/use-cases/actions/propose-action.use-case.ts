@@ -15,6 +15,7 @@ import { ExecuteTerminalActionUseCase } from './execute-terminal-action.use-case
 import { ExecuteGitActionUseCase } from './execute-git-action.use-case';
 import { ExecuteInfraPrUseCase } from './execute-infra-pr.use-case';
 import { ExecuteContainerStartUseCase } from './execute-container-start.use-case';
+import { ExecuteContainerStopUseCase } from './execute-container-stop.use-case';
 import { ObterCicloDeVidaDoContainerUseCase } from '../containers/obter-ciclo-de-vida-do-container.use-case';
 import {
   decide,
@@ -55,6 +56,7 @@ export class ProposeActionUseCase {
     private readonly executeGitAction: ExecuteGitActionUseCase,
     private readonly executeInfraPr: ExecuteInfraPrUseCase,
     private readonly executeContainerStart: ExecuteContainerStartUseCase,
+    private readonly executeContainerStop: ExecuteContainerStopUseCase,
     private readonly appendSessionEvent: AppendSessionEventUseCase,
     private readonly obterCicloDeVidaDoContainer: ObterCicloDeVidaDoContainerUseCase,
   ) {}
@@ -200,6 +202,17 @@ export class ProposeActionUseCase {
     // e nada subia. Pior que não ter a feature".
     if (status === 'auto_approved' && actionType === 'container_start') {
       return this.executeContainerStart.execute(projectId, sessionId, action);
+    }
+
+    // `container_stop` nunca é semeado (mesma régua de `container_start`),
+    // mas PODE ser configurado em `permissions.json` — sem este branch a
+    // ação nasceria `auto_approved` e nunca pararia nada de verdade.
+    // `container_remove` NÃO precisa do branch gêmeo: o teto absoluto de
+    // `decide.ts` garante que ele nunca resolve `auto_approve`, então este
+    // `status === 'auto_approved'` nunca é `true` para ele — um branch aqui
+    // seria código morto que a suíte não teria como exercitar.
+    if (status === 'auto_approved' && actionType === 'container_stop') {
+      return this.executeContainerStop.execute(projectId, sessionId, action);
     }
 
     return action;

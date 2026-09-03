@@ -31,6 +31,7 @@ import {
 import { ModuleMapRepository } from '../../../application/ports/module-map-repository.port';
 import { ChunkRepository } from '../../../application/ports/chunk-repository.port';
 import { RagTelemetryRepository } from '../../../application/ports/rag-telemetry-repository.port';
+import { ContainersOverviewRepository } from '../../../application/ports/containers-overview-repository.port';
 import { ContainerRepository } from '../../../application/ports/container-repository.port';
 import { ProjectsSummaryRepository } from '../../../application/ports/projects-summary-repository.port';
 import { DevAgentActivityPort } from '../../../application/ports/dev-agent-activity.port';
@@ -99,6 +100,7 @@ import { DrizzleModuleMapRepository } from './module-map.repository';
 import { DrizzleChunkRepository } from './chunk.repository';
 import { DrizzleRagTelemetryRepository } from './rag-telemetry.repository';
 import { DrizzleContainerRepository } from './container.repository';
+import { DrizzleContainersOverviewRepository } from './containers-overview.repository';
 import { DrizzleAgentAreaRepository } from './agent-area.repository';
 import { DrizzleInfraArtifactRepository } from './infra-artifact.repository';
 import { DrizzlePsychologistAnalysisRepository } from './psychologist-analysis.repository';
@@ -228,6 +230,10 @@ const { db, pool } = createDrizzleClient();
       useClass: DrizzleRagTelemetryRepository,
     },
     { provide: ContainerRepository, useClass: DrizzleContainerRepository },
+    {
+      provide: ContainersOverviewRepository,
+      useClass: DrizzleContainersOverviewRepository,
+    },
     { provide: AgentAreaRepository, useClass: DrizzleAgentAreaRepository },
     {
       provide: InfraArtifactRepository,
@@ -303,6 +309,7 @@ const { db, pool } = createDrizzleClient();
     ChunkRepository,
     RagTelemetryRepository,
     ContainerRepository,
+    ContainersOverviewRepository,
     InfraArtifactRepository,
     PsychologistAnalysisRepository,
     PsychologistHypothesisRepository,

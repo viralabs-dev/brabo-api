@@ -66,6 +66,18 @@ export class ApproveAlwaysActionUseCase {
       }
     }
 
+    // `container_remove` é a OUTRA metade do teto absoluto de `decide.ts`
+    // (ADR 0136, RN-495, mesmo molde de RN-418/ADR 0102): descarta o
+    // container e exige reprovisionar do zero, então nunca grava padrão —
+    // o clique inteiro é recusado, e quem quiser remover aprova esta
+    // instância pelo fluxo normal (`POST .../approve`).
+    if (current.actionType === 'container_remove') {
+      throw new BadRequestException(
+        'Remover o container nunca é auto-aprovável — decisão do usuário a ' +
+          'cada vez. Aprove esta instância pelo fluxo normal.',
+      );
+    }
+
     const project = await this.projects.findById(projectId);
     if (!project) throw new NotFoundException('Projeto não encontrado');
 

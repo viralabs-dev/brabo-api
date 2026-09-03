@@ -28,7 +28,9 @@ export type ActionType =
   | 'raise_max_parallel'
   | 'propose_execution_plan'
   | 'assess_implementability'
-  | 'container_start';
+  | 'container_start'
+  | 'container_stop'
+  | 'container_remove';
 
 export const ACTION_TYPES: readonly ActionType[] = [
   'terminal',
@@ -61,6 +63,11 @@ export const ACTION_TYPES: readonly ActionType[] = [
   // ADR 0130/0133: a Infra elege uma das imagens candidatas do roteamento do
   // Arquiteto e propõe subir o container REAL do projeto, pelo broker.
   'container_start',
+  // ADR 0136 (RN-495): a página global de containers propõe estas duas —
+  // nunca ação de agente, sempre um humano clicando "Parar"/"Remover" numa
+  // linha da tela. Mesmo broker, mesma tabela `project_containers`.
+  'container_stop',
+  'container_remove',
 ];
 
 /**
@@ -143,6 +150,12 @@ const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
   // calibre de `open_infra_pr`/`parallelize`. `maintainer` porque é quem
   // responde pelo projeto que autoriza o gasto.
   container_start: 'maintainer',
+  // ADR 0136 (RN-495): mesma pergunta ("quem responde pelo projeto que
+  // autoriza mexer na infra dele") — `maintainer` para as duas. A diferença
+  // entre elas não é o PAPEL mínimo, é o teto absoluto logo abaixo: só
+  // `container_remove` entra nele.
+  container_stop: 'maintainer',
+  container_remove: 'maintainer',
 };
 
 // Rede de segurança padrão, sempre ativa, independente do permissions.json
@@ -404,6 +417,30 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
       policy: 'require_approval',
       reason:
         'gastar com mais agentes nunca é auto-aprovável: quem decide subir o teto é você',
+    };
+  }
+
+  // TETO de `container_remove` (ADR 0136, RN-495) — no MESMO calibre do teto
+  // de git push/comando privilegiado (RN-418): nunca auto-aprovável, nem por
+  // agent_autonomy nem por permissions.json, e `ApproveAlwaysActionUseCase`
+  // recusa gravar o padrão pra ele (mesma fechadura da fonte que RN-418 já
+  // usa). A diferença de `container_start`/`container_stop` — que PODEM ser
+  // configurados como auto-aprováveis, mesmo nunca semeados — não é o papel
+  // mínimo (os três são `maintainer`), é o que a ação FAZ: descartar o
+  // container é a única das três que joga fora o que existe e exige
+  // reprovisionar do zero (container-lifecycle.ts, `removed` só sai
+  // provisionando de novo). O produto trata isso como o mesmo calibre de
+  // merge em branch protegida — decisão que o usuário toma a cada vez, nunca
+  // uma vez só configurando o arquivo.
+  if (
+    action.actionType === 'container_remove' &&
+    current.policy === 'auto_approve'
+  ) {
+    return {
+      policy: 'require_approval',
+      reason:
+        'remover o container nunca é auto-aprovável: descarta o que existe e ' +
+        'exige reprovisionar do zero — decisão do usuário a cada vez',
     };
   }
 

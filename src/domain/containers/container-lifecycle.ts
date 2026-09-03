@@ -4,19 +4,22 @@ import type { RecursosDoContainer } from './project-container';
  * O CICLO DE VIDA do container de um projeto (ADR 0081, fecha o corte
  * declarado pela FASE 25b / ADR 0065 "O que este ADR NÃO faz").
  *
- * ## Onde isto termina, com todas as letras
+ * ## Onde isto termina, com todas as letras (revisado — ver histórico abaixo)
  *
  * Este módulo — e a tabela `project_containers` que ele valida — só GRAVA e
- * LÊ estado. Nenhuma linha daqui dispara `docker run`, `docker stop` ou
- * qualquer chamada a um daemon Docker: nenhum serviço do produto (api,
- * engine) monta `/var/run/docker.sock` nem roda `privileged`, e decidir
- * conceder isso é decisão de segurança que esta fatia NÃO toma. Um
- * orquestrador real — sidecar com privilégio restrito, ou outro desenho — é
- * quem vai CONSUMIR esta tabela no futuro, transicionando o estado dela à
- * medida que comanda o container de verdade. Até lá, `containerId` fica
- * `null` para sempre e cada transição é um pedido que alguém (hoje, um
- * humano ou um teste; amanhã, o orquestrador) registra depois de já ter
- * acontecido — nunca o gatilho de nada.
+ * LÊ estado; nenhuma linha AQUI dispara `docker run`/`stop`/`rm`. Mas isso já
+ * não significa "ninguém no produto fala com Docker": desde o ADR 0130 existe
+ * `apps/broker`, o único serviço com `/var/run/docker.sock` montado, e desde
+ * o ADR 0133/0136 ele TEM chamador real — `container_start`/`container_stop`/
+ * `container_remove` (`proposed_action`, `apps/api/src/application/use-cases/
+ * actions/execute-container-*.use-case.ts`) pedem ao broker para agir de
+ * verdade e SÓ DEPOIS registram aqui o resultado. A ordem continua sendo
+ * "orquestrador real age, depois grava aqui" — o que mudou é que o
+ * orquestrador real deixou de ser hipotético. `containerId` já é preenchido
+ * (`ContainerIniciadoPeloBroker.containerId`) quando o broker confirma que
+ * subiu; cada transição continua sendo um registro do que JÁ aconteceu do
+ * lado do broker, nunca o gatilho — só que agora esse "já aconteceu" é real
+ * na maioria dos casos, não mais só de humano/teste.
  *
  * ## Por que TABELA, e não evento (ao contrário de `project-container.ts`)
  *

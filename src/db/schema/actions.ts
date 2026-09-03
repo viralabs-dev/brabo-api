@@ -18,6 +18,7 @@ import type { GitActionExecutionResult } from '../../domain/git/git-action-execu
 import type { InfraPrExecutionResult } from '../../domain/git/infra-pr-execution-result';
 import type { InstructionPatchExecutionResult } from '../../domain/instructions/instruction-patch-execution-result';
 import type { ContainerStartExecutionResult } from '../../domain/containers/container-start-execution-result';
+import type { ContainerStopOuRemoveExecutionResult } from '../../domain/containers/container-stop-remove-execution-result';
 import { projects, users } from './iam';
 import { actorKindEnum, sessions } from './sessions';
 
@@ -77,6 +78,7 @@ export const proposedActions = pgTable(
       | InfraPrExecutionResult
       | InstructionPatchExecutionResult
       | ContainerStartExecutionResult
+      | ContainerStopOuRemoveExecutionResult
     >(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()

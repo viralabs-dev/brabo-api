@@ -7,6 +7,7 @@ import {
   CONTAINER_LIFECYCLE_STATUSES,
   type ContainerLifecycleStatus,
 } from '../../../../domain/containers/container-lifecycle';
+import { ProposedActionResponseDto } from '../../actions/dto/actions.response.dto';
 
 export class RecursosDoContainerResponseDto implements RecursosDoContainer {
   @ApiProperty({ example: 2, description: 'CPUs, fractional value allowed.' })
@@ -219,4 +220,109 @@ export class ObservacaoDeContainerResponseDto {
     description: '`null` when the container has never started.',
   })
   iniciadoEm!: string | null;
+}
+
+/**
+ * Uma linha da página global de containers (ADR 0136, RN-495) —
+ * `GET workspaces/:workspaceId/containers`. Uma por projeto do workspace que
+ * já tem `project_containers`; projeto sem linha nenhuma não aparece (não é
+ * "vazio", é ausente — a mesma régua da rota `lifecycle` por projeto).
+ */
+export class ContainerOverviewItemResponseDto {
+  @ApiProperty({ example: '01JC4Z0000PROJETO000001' })
+  projectId!: string;
+
+  @ApiProperty({ example: 'exp002' })
+  projectName!: string;
+
+  @ApiProperty({ example: 'exp002' })
+  projectSlug!: string;
+
+  @ApiProperty({
+    enum: CONTAINER_LIFECYCLE_STATUSES,
+    example: 'running',
+    description: 'What was RECORDED (project_containers.status).',
+  })
+  status!: ContainerLifecycleStatus;
+
+  @ApiProperty({ example: 1 })
+  imageVersion!: number;
+
+  @ApiProperty({
+    nullable: true,
+    example: 'node:22-bookworm-slim',
+    description:
+      'The image FROZEN at `imageVersion`, resolved from the ' +
+      '`artifact.project_image` event at that exact version — never the ' +
+      'current one, which may have been revised since. `null` when that ' +
+      "version's event could not be found.",
+  })
+  imagem!: string | null;
+
+  @ApiProperty({ type: RecursosDoContainerResponseDto })
+  resources!: RecursosDoContainerResponseDto;
+
+  @ApiProperty({ nullable: true, example: null })
+  failureReason!: string | null;
+
+  @ApiProperty({ format: 'date-time' })
+  createdAt!: string;
+
+  @ApiProperty({ format: 'date-time' })
+  statusChangedAt!: string;
+
+  @ApiProperty({
+    type: () => ObservacaoDeContainerResponseDto,
+    nullable: true,
+    description:
+      'What the broker reports right now — `null` either because there is ' +
+      'no container, because it could not be asked (`naoObservado`), or ' +
+      'because this row was not asked this load (`naoVerificado`).',
+  })
+  observado!: ObservacaoDeContainerResponseDto | null;
+
+  @ApiProperty({
+    enum: [
+      'broker-nao-configurado',
+      'broker-sem-resposta',
+      'broker-recusou',
+      null,
+    ],
+    nullable: true,
+  })
+  naoObservado!:
+    'broker-nao-configurado' | 'broker-sem-resposta' | 'broker-recusou' | null;
+
+  @ApiProperty({ nullable: true, example: null })
+  detalheDaObservacao!: string | null;
+
+  @ApiProperty({
+    enum: [
+      'fora_do_escopo_da_verificacao',
+      'teto_de_verificacoes_atingido',
+      null,
+    ],
+    nullable: true,
+    example: null,
+    description:
+      'Non-null when this row was NOT asked of the broker this load — never ' +
+      'confused with `naoObservado`, which means it WAS asked and failed. ' +
+      '`fora_do_escopo_da_verificacao`: status is `stopped`/`failed`/`removed`, ' +
+      'where daemon confirmation does not matter. ' +
+      '`teto_de_verificacoes_atingido`: eligible, but the per-load broker ' +
+      'call budget was already spent by other rows.',
+  })
+  naoVerificado!:
+    'fora_do_escopo_da_verificacao' | 'teto_de_verificacoes_atingido' | null;
+
+  @ApiProperty({
+    type: () => ProposedActionResponseDto,
+    nullable: true,
+    description:
+      'The pending `container_start`/`container_stop`/`container_remove` ' +
+      'action for this project, if any — in ANY of its sessions. The page ' +
+      'renders the inline `ApprovalCard` for it instead of the action ' +
+      'button, same pattern as the PRs tab.',
+  })
+  acaoPendente!: ProposedActionResponseDto | null;
 }

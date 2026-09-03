@@ -5,6 +5,7 @@ import {
   RECURSOS_PADRAO,
   SEM_DECISAO,
   validarDecisaoDeImagem,
+  versaoDoPayload,
   type DecisaoDeImagem,
   type EstadoDoContainer,
 } from '../../../domain/containers/project-container';
@@ -62,16 +63,11 @@ export class ObterContainerDoProjetoUseCase {
     return {
       status: 'decidido',
       decisao,
-      version: versao(payload),
+      version: versaoDoPayload(payload),
       eventId: vigente.id,
       decidedAt: vigente.createdAt.toISOString(),
     };
   }
-}
-
-function versao(payload: unknown): number {
-  const v = (payload as { version?: unknown } | null)?.version;
-  return typeof v === 'number' && Number.isFinite(v) ? v : 1;
 }
 
 /**
@@ -83,8 +79,8 @@ function maisNovo(
   candidato: { payload: unknown; seq: number },
   atual: { payload: unknown; seq: number },
 ): boolean {
-  const va = versao(candidato.payload);
-  const vb = versao(atual.payload);
+  const va = versaoDoPayload(candidato.payload);
+  const vb = versaoDoPayload(atual.payload);
   if (va !== vb) return va > vb;
   return candidato.seq > atual.seq;
 }

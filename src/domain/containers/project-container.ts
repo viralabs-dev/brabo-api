@@ -273,3 +273,52 @@ export const SEM_DECISAO: EstadoDoContainer = {
   eventId: null,
   decidedAt: null,
 };
+
+/**
+ * A versão declarada no payload de um evento `artifact.project_image` — 1
+ * quando ausente/inválida (schema mais antigo, de antes de `version`
+ * existir). Extraída de `ObterContainerDoProjetoUseCase` para ser reusada por
+ * quem precisa achar uma versão ESPECÍFICA entre vários eventos, não só a
+ * vigente (ver `decisaoNaVersao`, abaixo).
+ */
+export function versaoDoPayload(payload: unknown): number {
+  const v = (payload as { version?: unknown } | null)?.version;
+  return typeof v === 'number' && Number.isFinite(v) ? v : 1;
+}
+
+/**
+ * A decisão de imagem gravada numa VERSÃO específica, entre uma lista de
+ * eventos `artifact.project_image` de um projeto — `null` quando essa versão
+ * não está entre os eventos lidos (nunca inventa).
+ *
+ * Diferente da leitura VIGENTE que `ObterContainerDoProjetoUseCase` faz (a de
+ * maior versão): quem grava `project_containers.image_version` CONGELA a
+ * versão vigente no instante em que a linha nasceu (RN-105/245), e o
+ * Arquiteto pode ter revisado a decisão DEPOIS — a leitura vigente mostraria
+ * uma imagem que não é a que o container congelado usa. A página de
+ * containers (ADR 0136) precisa da imagem QUE FOI CONGELADA, não da mais
+ * recente.
+ *
+ * Mesmo degrade de `ObterContainerDoProjetoUseCase` para um payload que não
+ * valida mais: a referência de imagem crua sobrevive, o resto vira default —
+ * nunca derruba a leitura por um schema antigo.
+ */
+export function decisaoNaVersao(
+  eventos: { payload: unknown }[],
+  version: number,
+): DecisaoDeImagem | null {
+  const evento = eventos.find((e) => versaoDoPayload(e.payload) === version);
+  if (!evento) return null;
+
+  const payload = (evento.payload ?? {}) as Record<string, unknown>;
+  try {
+    return validarDecisaoDeImagem(payload);
+  } catch {
+    return {
+      image: typeof payload.image === 'string' ? payload.image : '(ilegível)',
+      rationale: typeof payload.rationale === 'string' ? payload.rationale : '',
+      network: 'none' as const,
+      resources: RECURSOS_PADRAO,
+    };
+  }
+}
