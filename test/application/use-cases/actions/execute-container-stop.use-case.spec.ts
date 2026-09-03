@@ -1,15 +1,20 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { ExecuteContainerStopUseCase } from '../../../../src/application/use-cases/actions/execute-container-stop.use-case';
 import {
   BrokerIndisponivelError,
   BrokerRecusouError,
 } from '../../../../src/application/ports/container-broker.port';
+import {
+  RunnerNaoConectadoError,
+  RunnerRecusouContainerError,
+} from '../../../../src/application/ports/api-to-engine-client.port';
 import { RECURSOS_PADRAO } from '../../../../src/domain/containers/project-container';
 import type { ProposedAction } from '../../../../src/domain/actions/proposed-action.entity';
 import type {
   ContainerLifecycleStatus,
   ProjectContainerLifecycle,
 } from '../../../../src/domain/containers/container-lifecycle';
+import type { ProjectExecutionMode } from '../../../../src/domain/iam/project.entity';
 
 function makeAction(overrides: Partial<ProposedAction> = {}): ProposedAction {
   return {
@@ -49,6 +54,8 @@ function makeLifecycle(
 function build(opts: {
   cicloAtual?: ProjectContainerLifecycle | null;
   brokerStop?: () => Promise<void>;
+  executionMode?: ProjectExecutionMode;
+  stopContainerViaRunner?: () => Promise<void>;
 }) {
   const gravados: { status: string; executionResult: unknown }[] = [];
   const transicoes: Array<{ to: string; input?: unknown }> = [];
@@ -67,6 +74,20 @@ function build(opts: {
     remove: async () => undefined,
     inspect: async () => null,
     exec: async () => ({ exitCode: 0, output: '', timedOut: false }),
+  };
+
+  const projects = {
+    findById: async () => ({
+      id: 'proj-1',
+      executionMode: opts.executionMode ?? 'container',
+      workspaceDirName: 'proj-1-abc12345',
+    }),
+  };
+
+  const apiToEngineClient = {
+    stopContainerViaRunner: vi.fn(
+      opts.stopContainerViaRunner ?? (async () => undefined),
+    ),
   };
 
   const useCase = new ExecuteContainerStopUseCase(
@@ -88,9 +109,11 @@ function build(opts: {
     } as never,
     registrarTransicao as never,
     broker as never,
+    projects as never,
+    apiToEngineClient as never,
   );
 
-  return { useCase, gravados, transicoes };
+  return { useCase, gravados, transicoes, broker, apiToEngineClient };
 }
 
 describe('ExecuteContainerStopUseCase', () => {
@@ -165,6 +188,56 @@ describe('ExecuteContainerStopUseCase', () => {
       cicloAtual: makeLifecycle('running'),
       brokerStop: async () => {
         throw new BrokerIndisponivelError('sem-resposta', 'timeout');
+      },
+    });
+
+    await expect(
+      useCase.execute('proj-1', 'sess-1', makeAction()),
+    ).resolves.toBeDefined();
+    expect(gravados.at(-1)?.status).toBe('failed');
+  });
+});
+
+describe('ExecuteContainerStopUseCase — mounted/runner (ADR 0137)', () => {
+  it('projeto "mounted": pede ao engine via ApiToEngineClient, nunca ao broker', async () => {
+    const { useCase, gravados, transicoes, apiToEngineClient, broker } = build({
+      executionMode: 'mounted',
+      cicloAtual: makeLifecycle('running'),
+    });
+    const brokerStop = vi.spyOn(broker, 'stop');
+
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+
+    expect(brokerStop).not.toHaveBeenCalled();
+    expect(apiToEngineClient.stopContainerViaRunner).toHaveBeenCalledWith(
+      'proj-1',
+      'proj-1-abc12345',
+    );
+    expect(transicoes.map((t) => t.to)).toEqual(['stopped']);
+    expect(gravados.at(-1)?.status).toBe('executed');
+  });
+
+  it('RunnerNaoConectadoError vira failed, nunca propaga', async () => {
+    const { useCase, gravados } = build({
+      executionMode: 'runner',
+      cicloAtual: makeLifecycle('running'),
+      stopContainerViaRunner: async () => {
+        throw new RunnerNaoConectadoError('timeout', 'o runner não respondeu a tempo');
+      },
+    });
+
+    await expect(
+      useCase.execute('proj-1', 'sess-1', makeAction()),
+    ).resolves.toBeDefined();
+    expect(gravados.at(-1)?.status).toBe('failed');
+  });
+
+  it('RunnerRecusouContainerError vira failed, nunca propaga', async () => {
+    const { useCase, gravados } = build({
+      executionMode: 'runner',
+      cicloAtual: makeLifecycle('running'),
+      stopContainerViaRunner: async () => {
+        throw new RunnerRecusouContainerError('Docker indisponível na máquina do usuário');
       },
     });
 

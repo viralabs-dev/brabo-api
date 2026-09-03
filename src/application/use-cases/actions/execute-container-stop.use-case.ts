@@ -5,11 +5,17 @@ import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { ObterCicloDeVidaDoContainerUseCase } from '../containers/obter-ciclo-de-vida-do-container.use-case';
 import { RegistrarTransicaoDeContainerUseCase } from '../containers/registrar-transicao-de-container.use-case';
+import { ProjectRepository } from '../../ports/project-repository.port';
 import {
   BrokerIndisponivelError,
   BrokerRecusouError,
   ContainerBrokerPort,
 } from '../../ports/container-broker.port';
+import {
+  ApiToEngineClient,
+  RunnerNaoConectadoError,
+  RunnerRecusouContainerError,
+} from '../../ports/api-to-engine-client.port';
 import type { ContainerStopOuRemoveExecutionResult } from '../../../domain/containers/container-stop-remove-execution-result';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
 
@@ -29,6 +35,16 @@ import type { ProposedAction } from '../../../domain/actions/proposed-action.ent
  * seguro, é idempotente) mas a tabela não se move — inventar uma transição
  * que a máquina de estados não descreveu de verdade seria o mesmo defeito
  * que RN-486 já nomeou para o observado: registrar o que não aconteceu.
+ *
+ * ## `mounted`/`runner` (ADR 0137)
+ *
+ * Mesma ramificação por `executionMode` de `ExecuteContainerStartUseCase`:
+ * fora de `container`, pede ao ENGINE para repassar `container_stop` ao
+ * RUNNER conectado via canal — nunca ao broker, que recusaria com
+ * `ModoDeExecucaoNaoSuportadoError` de qualquer forma. "Sem runner
+ * conectado"/"timeout" (`RunnerNaoConectadoError`) e "o runner recusou"
+ * (`RunnerRecusouContainerError`) são FALHAS NORMAIS, mesma disciplina do
+ * broker.
  */
 @Injectable()
 export class ExecuteContainerStopUseCase {
@@ -40,6 +56,8 @@ export class ExecuteContainerStopUseCase {
     private readonly obterCicloDeVida: ObterCicloDeVidaDoContainerUseCase,
     private readonly registrarTransicao: RegistrarTransicaoDeContainerUseCase,
     private readonly brokerPort: ContainerBrokerPort,
+    private readonly projects: ProjectRepository,
+    private readonly apiToEngineClient: ApiToEngineClient,
   ) {}
 
   async execute(
@@ -47,6 +65,16 @@ export class ExecuteContainerStopUseCase {
     sessionId: string,
     action: ProposedAction,
   ): Promise<ProposedAction> {
+    const project = await this.projects.findById(projectId);
+    if (!project) {
+      return this.fail(
+        projectId,
+        sessionId,
+        action.id,
+        'Projeto não encontrado.',
+      );
+    }
+
     try {
       const atual = await this.obterCicloDeVida.execute(projectId);
       if (!atual || atual.status === 'removed') {
@@ -58,16 +86,33 @@ export class ExecuteContainerStopUseCase {
         );
       }
 
-      try {
-        await this.brokerPort.stop(projectId);
-      } catch (erro) {
-        if (
-          erro instanceof BrokerRecusouError ||
-          erro instanceof BrokerIndisponivelError
-        ) {
-          return this.fail(projectId, sessionId, action.id, erro.message);
+      if (project.executionMode === 'container') {
+        try {
+          await this.brokerPort.stop(projectId);
+        } catch (erro) {
+          if (
+            erro instanceof BrokerRecusouError ||
+            erro instanceof BrokerIndisponivelError
+          ) {
+            return this.fail(projectId, sessionId, action.id, erro.message);
+          }
+          throw erro;
         }
-        throw erro;
+      } else {
+        try {
+          await this.apiToEngineClient.stopContainerViaRunner(
+            projectId,
+            project.workspaceDirName,
+          );
+        } catch (erro) {
+          if (
+            erro instanceof RunnerNaoConectadoError ||
+            erro instanceof RunnerRecusouContainerError
+          ) {
+            return this.fail(projectId, sessionId, action.id, erro.message);
+          }
+          throw erro;
+        }
       }
 
       const statusFinal =

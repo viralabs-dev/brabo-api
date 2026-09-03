@@ -5,11 +5,17 @@ import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { ObterCicloDeVidaDoContainerUseCase } from '../containers/obter-ciclo-de-vida-do-container.use-case';
 import { RegistrarTransicaoDeContainerUseCase } from '../containers/registrar-transicao-de-container.use-case';
+import { ProjectRepository } from '../../ports/project-repository.port';
 import {
   BrokerIndisponivelError,
   BrokerRecusouError,
   ContainerBrokerPort,
 } from '../../ports/container-broker.port';
+import {
+  ApiToEngineClient,
+  RunnerNaoConectadoError,
+  RunnerRecusouContainerError,
+} from '../../ports/api-to-engine-client.port';
 import type { ContainerStopOuRemoveExecutionResult } from '../../../domain/containers/container-stop-remove-execution-result';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
 
@@ -27,6 +33,12 @@ import type { ProposedAction } from '../../../domain/actions/proposed-action.ent
  * registra os DOIS hops quando o registrado ainda dizia `running`, refletindo
  * o que aconteceu de verdade do lado do Docker sem alargar a máquina de
  * estados por uma via de atalho que só existe aqui.
+ *
+ * ## `mounted`/`runner` (ADR 0137)
+ *
+ * Mesma ramificação por `executionMode` de `ExecuteContainerStartUseCase`/
+ * `ExecuteContainerStopUseCase`: fora de `container`, pede ao ENGINE para
+ * repassar `container_remove` ao RUNNER conectado via canal.
  */
 @Injectable()
 export class ExecuteContainerRemoveUseCase {
@@ -38,6 +50,8 @@ export class ExecuteContainerRemoveUseCase {
     private readonly obterCicloDeVida: ObterCicloDeVidaDoContainerUseCase,
     private readonly registrarTransicao: RegistrarTransicaoDeContainerUseCase,
     private readonly brokerPort: ContainerBrokerPort,
+    private readonly projects: ProjectRepository,
+    private readonly apiToEngineClient: ApiToEngineClient,
   ) {}
 
   async execute(
@@ -45,6 +59,16 @@ export class ExecuteContainerRemoveUseCase {
     sessionId: string,
     action: ProposedAction,
   ): Promise<ProposedAction> {
+    const project = await this.projects.findById(projectId);
+    if (!project) {
+      return this.fail(
+        projectId,
+        sessionId,
+        action.id,
+        'Projeto não encontrado.',
+      );
+    }
+
     try {
       const atual = await this.obterCicloDeVida.execute(projectId);
       if (!atual || atual.status === 'removed') {
@@ -56,16 +80,33 @@ export class ExecuteContainerRemoveUseCase {
         );
       }
 
-      try {
-        await this.brokerPort.remove(projectId);
-      } catch (erro) {
-        if (
-          erro instanceof BrokerRecusouError ||
-          erro instanceof BrokerIndisponivelError
-        ) {
-          return this.fail(projectId, sessionId, action.id, erro.message);
+      if (project.executionMode === 'container') {
+        try {
+          await this.brokerPort.remove(projectId);
+        } catch (erro) {
+          if (
+            erro instanceof BrokerRecusouError ||
+            erro instanceof BrokerIndisponivelError
+          ) {
+            return this.fail(projectId, sessionId, action.id, erro.message);
+          }
+          throw erro;
         }
-        throw erro;
+      } else {
+        try {
+          await this.apiToEngineClient.removeContainerViaRunner(
+            projectId,
+            project.workspaceDirName,
+          );
+        } catch (erro) {
+          if (
+            erro instanceof RunnerNaoConectadoError ||
+            erro instanceof RunnerRecusouContainerError
+          ) {
+            return this.fail(projectId, sessionId, action.id, erro.message);
+          }
+          throw erro;
+        }
       }
 
       if (atual.status === 'running') {

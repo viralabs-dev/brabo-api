@@ -1,15 +1,20 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { ExecuteContainerRemoveUseCase } from '../../../../src/application/use-cases/actions/execute-container-remove.use-case';
 import {
   BrokerIndisponivelError,
   BrokerRecusouError,
 } from '../../../../src/application/ports/container-broker.port';
+import {
+  RunnerNaoConectadoError,
+  RunnerRecusouContainerError,
+} from '../../../../src/application/ports/api-to-engine-client.port';
 import { RECURSOS_PADRAO } from '../../../../src/domain/containers/project-container';
 import type { ProposedAction } from '../../../../src/domain/actions/proposed-action.entity';
 import type {
   ContainerLifecycleStatus,
   ProjectContainerLifecycle,
 } from '../../../../src/domain/containers/container-lifecycle';
+import type { ProjectExecutionMode } from '../../../../src/domain/iam/project.entity';
 
 function makeAction(overrides: Partial<ProposedAction> = {}): ProposedAction {
   return {
@@ -49,6 +54,8 @@ function makeLifecycle(
 function build(opts: {
   cicloAtual?: ProjectContainerLifecycle | null;
   brokerRemove?: () => Promise<void>;
+  executionMode?: ProjectExecutionMode;
+  removeContainerViaRunner?: () => Promise<void>;
 }) {
   const gravados: { status: string; executionResult: unknown }[] = [];
   const transicoes: Array<{ to: string; input?: unknown }> = [];
@@ -67,6 +74,20 @@ function build(opts: {
     remove: opts.brokerRemove ?? (async () => undefined),
     inspect: async () => null,
     exec: async () => ({ exitCode: 0, output: '', timedOut: false }),
+  };
+
+  const projects = {
+    findById: async () => ({
+      id: 'proj-1',
+      executionMode: opts.executionMode ?? 'container',
+      workspaceDirName: 'proj-1-abc12345',
+    }),
+  };
+
+  const apiToEngineClient = {
+    removeContainerViaRunner: vi.fn(
+      opts.removeContainerViaRunner ?? (async () => undefined),
+    ),
   };
 
   const useCase = new ExecuteContainerRemoveUseCase(
@@ -88,9 +109,11 @@ function build(opts: {
     } as never,
     registrarTransicao as never,
     broker as never,
+    projects as never,
+    apiToEngineClient as never,
   );
 
-  return { useCase, gravados, transicoes };
+  return { useCase, gravados, transicoes, broker, apiToEngineClient };
 }
 
 describe('ExecuteContainerRemoveUseCase', () => {
@@ -172,6 +195,57 @@ describe('ExecuteContainerRemoveUseCase', () => {
       cicloAtual: makeLifecycle('running'),
       brokerRemove: async () => {
         throw new BrokerIndisponivelError('sem-resposta', 'timeout');
+      },
+    });
+
+    await expect(
+      useCase.execute('proj-1', 'sess-1', makeAction()),
+    ).resolves.toBeDefined();
+    expect(gravados.at(-1)?.status).toBe('failed');
+  });
+});
+
+describe('ExecuteContainerRemoveUseCase — mounted/runner (ADR 0137)', () => {
+  it('projeto "runner": pede ao engine via ApiToEngineClient, nunca ao broker', async () => {
+    const { useCase, gravados, transicoes, apiToEngineClient, broker } = build({
+      executionMode: 'runner',
+      cicloAtual: makeLifecycle('running'),
+    });
+    const brokerRemove = vi.spyOn(broker, 'remove');
+
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+
+    expect(brokerRemove).not.toHaveBeenCalled();
+    expect(apiToEngineClient.removeContainerViaRunner).toHaveBeenCalledWith(
+      'proj-1',
+      'proj-1-abc12345',
+    );
+    expect(transicoes.map((t) => t.to)).toEqual(['stopped', 'removed']);
+    expect(gravados.at(-1)?.status).toBe('executed');
+  });
+
+  it('RunnerNaoConectadoError vira failed, nunca propaga, e NÃO transiciona nada', async () => {
+    const { useCase, gravados, transicoes } = build({
+      executionMode: 'mounted',
+      cicloAtual: makeLifecycle('running'),
+      removeContainerViaRunner: async () => {
+        throw new RunnerNaoConectadoError('not_connected', 'nenhum runner conectado');
+      },
+    });
+
+    await expect(
+      useCase.execute('proj-1', 'sess-1', makeAction()),
+    ).resolves.toBeDefined();
+    expect(transicoes).toEqual([]);
+    expect(gravados.at(-1)?.status).toBe('failed');
+  });
+
+  it('RunnerRecusouContainerError vira failed, nunca propaga', async () => {
+    const { useCase, gravados } = build({
+      executionMode: 'mounted',
+      cicloAtual: makeLifecycle('running'),
+      removeContainerViaRunner: async () => {
+        throw new RunnerRecusouContainerError('Docker indisponível na máquina do usuário');
       },
     });
 

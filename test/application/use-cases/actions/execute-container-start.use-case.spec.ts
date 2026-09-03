@@ -4,10 +4,15 @@ import {
   BrokerIndisponivelError,
   BrokerRecusouError,
 } from '../../../../src/application/ports/container-broker.port';
+import {
+  RunnerNaoConectadoError,
+  RunnerRecusouContainerError,
+} from '../../../../src/application/ports/api-to-engine-client.port';
 import { RECURSOS_PADRAO } from '../../../../src/domain/containers/project-container';
 import type { ProposedAction } from '../../../../src/domain/actions/proposed-action.entity';
 import type { EstadoDoRoteamento } from '../../../../src/domain/architecture/module-routing';
 import type { ProjectContainerLifecycle } from '../../../../src/domain/containers/container-lifecycle';
+import type { ProjectExecutionMode } from '../../../../src/domain/iam/project.entity';
 
 const IMAGEM_CANDIDATA = 'node:22-bookworm-slim';
 
@@ -49,6 +54,16 @@ function build(opts: {
   roteamento?: EstadoDoRoteamento;
   cicloAtual?: ProjectContainerLifecycle | null;
   brokerStart?: () => Promise<{
+    containerId: string;
+    nome: string;
+    jaEstavaDePe: boolean;
+  }>;
+  executionMode?: ProjectExecutionMode;
+  spec?: {
+    imagem: { image: string; network: 'none' | 'egress'; resources: typeof RECURSOS_PADRAO } | null;
+    imagemVersao: number;
+  };
+  startContainerViaRunner?: () => Promise<{
     containerId: string;
     nome: string;
     jaEstavaDePe: boolean;
@@ -96,6 +111,45 @@ function build(opts: {
     exec: async () => ({ exitCode: 0, output: '', timedOut: false }),
   };
 
+  const projects = {
+    findById: async () => ({
+      id: 'proj-1',
+      executionMode: opts.executionMode ?? 'container',
+      workspaceDirName: 'proj-1-abc12345',
+      slug: 'proj-1',
+      workspaceId: 'ws-1',
+    }),
+  };
+
+  const obterSpec = {
+    execute: async () =>
+      opts.spec ?? {
+        projectId: 'proj-1',
+        projectSlug: 'proj-1',
+        workspaceId: 'ws-1',
+        workspaceDirName: 'proj-1-abc12345',
+        executionMode: opts.executionMode ?? 'runner',
+        imagem: {
+          image: IMAGEM_CANDIDATA,
+          network: 'none' as const,
+          resources: RECURSOS_PADRAO,
+        },
+        imagemVersao: 3,
+      },
+  };
+
+  const startContainerViaRunner =
+    opts.startContainerViaRunner ??
+    (async () => ({
+      containerId: 'container-runner-1',
+      nome: 'brabo-proj-1-abc12345',
+      jaEstavaDePe: false,
+    }));
+
+  const apiToEngineClient = {
+    startContainerViaRunner: vi.fn(startContainerViaRunner),
+  };
+
   const useCase = new ExecuteContainerStartUseCase(
     { runInTransaction: async (fn: () => unknown) => fn() } as never,
     {
@@ -119,9 +173,20 @@ function build(opts: {
     } as never,
     registrarTransicao as never,
     broker as never,
+    projects as never,
+    obterSpec as never,
+    apiToEngineClient as never,
   );
 
-  return { useCase, gravados, transicoes, decidirImagemChamadas, decidirImagem, broker };
+  return {
+    useCase,
+    gravados,
+    transicoes,
+    decidirImagemChamadas,
+    decidirImagem,
+    broker,
+    apiToEngineClient,
+  };
 }
 
 describe('ExecuteContainerStartUseCase — caminho feliz', () => {
@@ -247,6 +312,75 @@ describe('ExecuteContainerStartUseCase — recusa do broker', () => {
     const { useCase, gravados } = build({
       brokerStart: async () => {
         throw new BrokerIndisponivelError('sem-resposta', 'timeout');
+      },
+    });
+
+    await expect(
+      useCase.execute('proj-1', 'sess-1', makeAction()),
+    ).resolves.toBeDefined();
+    expect(gravados.at(-1)?.status).toBe('failed');
+  });
+});
+
+describe('ExecuteContainerStartUseCase — mounted/runner (ADR 0137)', () => {
+  it('projeto "runner": pede ao engine via ApiToEngineClient, nunca ao broker', async () => {
+    const { useCase, gravados, transicoes, apiToEngineClient, broker } = build({
+      executionMode: 'runner',
+      cicloAtual: null,
+    });
+    const brokerStart = vi.spyOn(broker, 'start');
+
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+
+    expect(brokerStart).not.toHaveBeenCalled();
+    expect(apiToEngineClient.startContainerViaRunner).toHaveBeenCalledWith(
+      'proj-1',
+      expect.objectContaining({ imagem: IMAGEM_CANDIDATA }),
+    );
+    expect(transicoes.map((t) => t.to)).toEqual(['provisioning', 'running']);
+    expect(gravados.at(-1)?.status).toBe('executed');
+  });
+
+  it('sem imagem decidida (RN-105): falha sem chamar o engine', async () => {
+    const { useCase, gravados, apiToEngineClient } = build({
+      executionMode: 'mounted',
+      spec: { imagem: null, imagemVersao: 0 },
+    });
+
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+
+    expect(apiToEngineClient.startContainerViaRunner).not.toHaveBeenCalled();
+    expect(gravados.at(-1)?.status).toBe('failed');
+    expect(
+      (gravados.at(-1)?.executionResult as { motivo: string }).motivo,
+    ).toContain('RN-105');
+  });
+
+  it('RunnerNaoConectadoError vira failed, nunca propaga', async () => {
+    const { useCase, gravados } = build({
+      executionMode: 'runner',
+      startContainerViaRunner: async () => {
+        throw new RunnerNaoConectadoError(
+          'not_connected',
+          'nenhum runner conectado a este projeto',
+        );
+      },
+    });
+
+    await expect(
+      useCase.execute('proj-1', 'sess-1', makeAction()),
+    ).resolves.toBeDefined();
+    expect(gravados.at(-1)?.status).toBe('failed');
+    expect(
+      (gravados.at(-1)?.executionResult as { motivo: string }).motivo,
+    ).toContain('nenhum runner conectado');
+  });
+
+  it('RunnerRecusouContainerError vira failed, nunca propaga', async () => {
+    const { useCase, gravados } = build({
+      executionMode: 'mounted',
+      startContainerViaRunner: async () => {
+        throw new RunnerRecusouContainerError('Docker indisponível na máquina do usuário');
       },
     });
 

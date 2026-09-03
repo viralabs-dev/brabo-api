@@ -1,5 +1,70 @@
 import type { TerminalExecutionResult } from '../../domain/actions/terminal-execution-result';
 import type { DevAgentImpl } from '../../domain/execution/dev-agent-impl';
+import type { PosturaDeRede } from '../../domain/containers/project-container';
+
+/**
+ * O que o RUNNER precisa para compor a `EspecificacaoDeContainer` dele mesmo
+ * (`packages/docker-port`, `especificacaoValidada`) — os MESMOS campos de
+ * `EntradaDeEspecificacao` menos `raizDoProjeto` (o runner enche esse campo
+ * sozinho, com `estado.dir` — a raiz já confirmada e validada no startup da
+ * CLI, RN-434/435; ninguém do lado servidor manda caminho de host nenhum
+ * para o runner, pelo mesmo motivo que o broker nunca manda pro daemon: quem
+ * sabe o caminho de VERDADE é quem está na máquina). Nomes de campo em
+ * pt-BR de propósito — é o vocabulário que atravessa engine/runner desde o
+ * ADR 0128/0130, e esta é só mais uma parada da mesma composição, não um
+ * contrato novo.
+ */
+export interface EspecificacaoDeContainerParaRunner {
+  workspaceDirName: string;
+  projectSlug: string;
+  workspaceId: string;
+  imagem: string;
+  imagemVersao: number;
+  rede: PosturaDeRede;
+  cpus: number;
+  memoriaMb: number;
+  pidsLimit: number;
+}
+
+export interface ContainerIniciadoViaRunner {
+  containerId: string;
+  nome: string;
+  /** `true` quando o container já estava de pé — `start` é idempotente do lado do runner também. */
+  jaEstavaDePe: boolean;
+}
+
+/**
+ * O runner não respondeu — nunca conectado, ou caiu no meio da espera
+ * (`RunnerRouter.exec/4` já devolve o mesmo par `{:error, :not_connected}` |
+ * `{:error, :timeout}` para o caminho de terminal; esta classe é o espelho
+ * do lado api para o caminho de container). Origem `infra`: falta uma peça
+ * de AMBIENTE (o CLI rodando na máquina do usuário), nunca defeito de quem
+ * chamou.
+ */
+export class RunnerNaoConectadoError extends Error {
+  readonly origem = 'infra';
+  readonly motivo: 'not_connected' | 'timeout';
+
+  constructor(motivo: 'not_connected' | 'timeout', detalhe: string) {
+    super(detalhe);
+    this.name = 'RunnerNaoConectadoError';
+    this.motivo = motivo;
+  }
+}
+
+/**
+ * O runner respondeu, mas RECUSOU (Docker indisponível na máquina do
+ * usuário, especificação inválida, etc.) — `sucesso: false` na resposta do
+ * engine. Mesmo raciocínio de `BrokerRecusouError` do lado do broker: a
+ * mensagem já vem pronta do runner (`mensagemDeErro`), nunca uma exceção
+ * genérica.
+ */
+export class RunnerRecusouContainerError extends Error {
+  constructor(mensagem: string) {
+    super(mensagem);
+    this.name = 'RunnerRecusouContainerError';
+  }
+}
 
 export abstract class ApiToEngineClient {
   abstract startSession(
@@ -192,4 +257,35 @@ export abstract class ApiToEngineClient {
     userId: string,
     kind: 'runner' | 'terminal',
   ): Promise<{ ticket: string; expiresAt: Date }>;
+
+  /**
+   * Pede ao engine para mandar o runner conectado SUBIR o container do
+   * projeto (`container_start` num projeto `mounted`/`runner` — PR "o
+   * runner sobe o container do projeto na máquina do usuário", ADR 0137).
+   * Síncrono, como `executeTerminalAction`: espera a resposta do runner (ou
+   * o timeout dele) antes de retornar.
+   *
+   * Lança `RunnerNaoConectadoError` (sem runner conectado, ou timeout) ou
+   * `RunnerRecusouContainerError` (o runner tentou e o Docker DELE recusou)
+   * — nunca uma exceção genérica de transporte para esses dois casos, mesma
+   * disciplina de `BrokerIndisponivelError`/`BrokerRecusouError` do lado do
+   * broker. Qualquer outra falha (HTTP fora do ar, engine derrubado) segue
+   * lançando `Error` comum, como o resto deste client.
+   */
+  abstract startContainerViaRunner(
+    projectId: string,
+    spec: EspecificacaoDeContainerParaRunner,
+  ): Promise<ContainerIniciadoViaRunner>;
+
+  /** Espelho de `startContainerViaRunner` para `container_stop`. */
+  abstract stopContainerViaRunner(
+    projectId: string,
+    workspaceDirName: string,
+  ): Promise<void>;
+
+  /** Espelho de `startContainerViaRunner` para `container_remove`. */
+  abstract removeContainerViaRunner(
+    projectId: string,
+    workspaceDirName: string,
+  ): Promise<void>;
 }
