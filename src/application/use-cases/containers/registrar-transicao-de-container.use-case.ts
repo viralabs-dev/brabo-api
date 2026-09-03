@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -24,24 +23,44 @@ export interface TransicaoDeContainerInput {
 /**
  * Registra uma transição de estado do container de um projeto (ADR 0081).
  *
- * ## O que este caso de uso NÃO faz
+ * ## O que este caso de uso, sozinho, NÃO faz
  *
- * Não chama Docker. Não sobe, para nem remove nada de verdade — só GRAVA
- * que uma transição foi pedida/observada, depois de validar que ela é
- * permitida pela máquina de estados. Nenhum serviço do produto tem acesso a
- * um daemon Docker hoje (nenhum `docker.sock` montado, nenhum container
- * `privileged`), e dar esse acesso é decisão de segurança fora do escopo
- * desta fatia. Quando um orquestrador real existir, é ELE quem chama este
- * caso de uso depois de agir — nunca o contrário.
+ * Não chama Docker diretamente — só GRAVA que uma transição foi
+ * pedida/observada, depois de validar que ela é permitida pela máquina de
+ * estados. Desde o ADR 0130, existe SIM um serviço do produto com acesso a
+ * um daemon Docker (`apps/broker`, o único com `docker.sock` montado), e
+ * desde o ADR 0133 `ExecuteContainerStartUseCase` é o primeiro chamador real
+ * que primeiro pede ao broker para agir e SÓ DEPOIS chama este caso de uso
+ * para registrar o resultado — a ordem "orquestrador real age, depois grava
+ * aqui" já vale, não é mais hipotética.
  *
  * ## A primeira transição é especial
  *
  * Não existe linha até a primeira chamada com `to: 'provisioning'`: aí o
- * caso de uso lê a decisão de imagem vigente do Arquiteto (ADR 0065,
- * RN-105) — sem decisão, sem provisionar, mesmo portão que já vale para a
+ * caso de uso lê a decisão de imagem vigente do Arquiteto/Infra (ADR 0065,
+ * RN-105/494) — sem decisão, sem provisionar, mesmo portão que já vale para a
  * aba Code — e CONGELA a versão e os recursos declarados naquele instante
  * na linha nova. Toda transição depois disso é validada contra o estado
  * atual pela máquina de `container-lifecycle.ts`.
+ *
+ * ## `mounted`/`runner` também passam por aqui agora (RN-494, revisa RN-169)
+ *
+ * Até o ADR 0135, este caso de uso recusava (400) qualquer projeto fora do
+ * modo `container` — em nome de uma regra que na verdade pertencia ao
+ * broker, não a este caso de uso. A tabela `project_containers` passa a
+ * poder registrar linha para os três modos; o que continua IMPOSSÍVEL para
+ * `mounted`/`runner` é chegar em `running` DE VERDADE, e isso é aplicado num
+ * lugar só: `ContainerBrokerPort.start()` recusa (`ModoDeExecucaoNaoSuportadoError`,
+ * política deliberada — `mounted`/`runner` rodam numa pasta do usuário que
+ * o broker, no servidor, não enxerga) e `ExecuteContainerStartUseCase` já
+ * trata essa recusa como falha normal (`BrokerRecusouError` vira
+ * `container.start_failed` com o motivo nomeado, nunca crash, nunca
+ * silêncio) — ANTES de qualquer transição chegar a ser chamada, então na
+ * prática nenhuma linha nasce para esses dois modos pelo caminho normal.
+ * Duplicar a checagem de modo aqui só faria a api e o broker discordarem
+ * sobre o que "existe", exatamente o que o comentário de
+ * `ModoDeExecucaoNaoSuportadoError` (`apps/broker/src/operacoes.ts`) pedia
+ * para não fazer.
  */
 @Injectable()
 export class RegistrarTransicaoDeContainerUseCase {
@@ -60,17 +79,6 @@ export class RegistrarTransicaoDeContainerUseCase {
   ): Promise<ProjectContainerLifecycle> {
     const project = await this.projects.findById(projectId);
     if (!project) throw new NotFoundException('Projeto não encontrado');
-
-    // RN: só projeto em modo `container` tem ciclo de vida de container —
-    // `mounted`/`runner` rodam no container do agente de sempre (ou fora
-    // dele, via runner) e nunca sobem o próprio (ADR 0072/0104, RN-169/421).
-    if (project.executionMode !== 'container') {
-      throw new BadRequestException(
-        `Projeto no modo "${project.executionMode}" não tem container próprio ` +
-          '(ADR 0072/0104) — ciclo de vida de container só existe para ' +
-          'projetos em modo "container".',
-      );
-    }
 
     return this.unitOfWork.runInTransaction(async () => {
       const atual = await this.containers.findByProjectForUpdate(projectId);

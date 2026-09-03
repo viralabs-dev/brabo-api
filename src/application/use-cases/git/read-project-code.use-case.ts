@@ -566,11 +566,13 @@ export class ReadProjectCodeUseCase {
   }
 
   /**
-   * O portão da FASE 25 (RN-105).
+   * O portão da FASE 25 (RN-105), revisado pela RN-494/ADR 0135 para valer
+   * nos TRÊS modos de execução.
    *
-   * A aba Code só libera depois que o Arquiteto decide QUAL IMAGEM sobe para o
-   * projeto. A ordem é do usuário, e a razão dela é de produto: o container é o
-   * que dá sentido a ler o código ali — ler para depois rodar, buildar,
+   * A aba Code só libera depois que o Arquiteto (ou a Infra, elegendo entre
+   * as candidatas do roteamento — ADR 0133) decide QUAL IMAGEM sobe para o
+   * projeto. A ordem é do usuário, e a razão dela é de produto: o container é
+   * o que dá sentido a ler o código ali — ler para depois rodar, buildar,
    * corrigir. Liberar a leitura antes de existir onde executar seria entregar
    * meia aba e ensinar que o portão é decorativo.
    *
@@ -582,22 +584,26 @@ export class ReadProjectCodeUseCase {
    * o recurso ainda não existe neste estado. E a mensagem diz o que falta, para
    * a tela poder mostrar o motivo em vez de um erro mudo.
    *
-   * ## Por que `mounted`/`runner` NÃO passam por aqui (RN-169/421,
-   * ADR 0072/0104)
+   * ## Por que `mounted`/`runner` PASSAM por aqui agora (RN-494, revisa
+   * RN-169/421)
    *
-   * O portão existe porque o container é o que dá sentido a ler o código — e
-   * um projeto `mounted`/`runner`, por definição, não sobe container próprio:
-   * o código mora numa pasta do usuário (montada nos containers que já
-   * existem, ou confirmada por um runner rodando fora deles). Deixar a regra
-   * como estava responderia 409 para sempre num projeto onde a decisão do
-   * Arquiteto nunca vai acontecer, e ninguém teria decidido isso — seria a aba
-   * Code fechada por um efeito colateral, não por uma escolha. A dispensa é
-   * explícita aqui, e não uma exceção espalhada pelas rotas, pelo mesmo motivo
-   * que o portão mora neste funil.
+   * A dispensa original (RN-169/RN-421, ADR 0072/0104) argumentava que
+   * `mounted`/`runner` não sobem container PRÓPRIO — o código mora numa pasta
+   * do usuário — logo o portão nunca teria como abrir para eles. Isso
+   * confundia duas perguntas: "este projeto sobe container no SERVIDOR?" (não,
+   * nos dois modos, e isso não muda aqui) e "faz sentido exigir que o
+   * Arquiteto tenha decidido uma imagem antes de liberar a leitura de
+   * código?" (sim, nos três modos — a decisão de imagem é sobre o que o
+   * projeto EXECUTA, não sobre onde o container físico sobe; `mounted`/
+   * `runner` executam dentro dos containers que já existem hoje, ou por um
+   * runner que um dia poderá espelhar essa decisão). Manter a dispensa
+   * deixava a aba Code de `mounted`/`runner` abrir mesmo sem NINGUÉM ter
+   * pensado na imagem do projeto — a regra uniforme fecha essa lacuna.
+   * Custo aceito e declarado no ADR 0135: projeto `mounted`/`runner`
+   * EXISTENTE sem `artifact.project_image` decidido perde a aba Code até o
+   * Arquiteto decidir — inclusive projetos reais de dogfooding.
    */
   private async portaoDoContainer(project: Project): Promise<void> {
-    if (project.executionMode !== 'container') return;
-
     const estado = await this.container.execute(project.id);
     if (estado.status === 'sem_decisao') {
       throw new ConflictException(

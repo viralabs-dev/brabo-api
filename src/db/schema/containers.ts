@@ -1,5 +1,6 @@
 // Ciclo de vida do container por projeto (ADR 0081) — `domain/containers`.
-// A tabela só GRAVA estado: nenhum serviço chama Docker (FASE 25b cortada).
+// A tabela só GRAVA estado; quem CHAMA Docker de verdade é o broker
+// (`apps/broker`, ADR 0130), nunca esta tabela nem quem escreve nela.
 
 import {
   pgTable,
@@ -14,9 +15,10 @@ import {
 import { projects } from './iam';
 
 // Ciclo de vida do container de um projeto (ADR 0081 — fecha o corte
-// declarado da FASE 25b / ADR 0065). NENHUM serviço do produto tem acesso a
-// um daemon Docker hoje: esta tabela só registra estado, nunca comanda
-// nada — ver o comentário em domain/containers/container-lifecycle.ts.
+// declarado da FASE 25b / ADR 0065). Esta tabela só registra estado, nunca
+// comanda nada diretamente — ver o comentário em
+// domain/containers/container-lifecycle.ts e o broker (ADR 0130), que é
+// quem de fato fala com o daemon Docker.
 export const containerLifecycleStatusEnum = pgEnum(
   'container_lifecycle_status',
   ['provisioning', 'running', 'stopped', 'failed', 'removed'],

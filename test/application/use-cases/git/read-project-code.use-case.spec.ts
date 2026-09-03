@@ -607,7 +607,10 @@ describe('ReadProjectCodeUseCase — lista de PRs (FASE 26b)', () => {
     const { useCase } = montar(new ProviderFalso(REPO));
     const lista = await useCase.pullRequests(PROJETO);
     expect(lista.items).toHaveLength(1);
-    expect(lista.items[0]).toMatchObject({ id: 'pr-1', sourceBranch: 'feature' });
+    expect(lista.items[0]).toMatchObject({
+      id: 'pr-1',
+      sourceBranch: 'feature',
+    });
   });
 
   it('caso de falha: provider sem a capability propaga 501', async () => {
@@ -783,7 +786,9 @@ describe('ReadProjectCodeUseCase — producedBy da branch de task (RN-152)', () 
     ]);
     const { useCase } = montar(provider, {
       // Módulo do agente não existe (mais) no module_map vigente.
-      tasksPorPrefixo: { [PREFIXO]: tarefaFalsa({ assignedTo: 'dev-removido' }) },
+      tasksPorPrefixo: {
+        [PREFIXO]: tarefaFalsa({ assignedTo: 'dev-removido' }),
+      },
       moduleMap: MODULE_MAP_PIECES,
     });
 
@@ -920,7 +925,10 @@ describe('ReadProjectCodeUseCase — o portão do container (FASE 25, RN-105)', 
       (u: ReadProjectCodeUseCase) => u.search(PROJETO, { query: 'agulha' }),
     ],
     ['diff', (u: ReadProjectCodeUseCase) => u.pullRequestDiff(PROJETO, 'pr-1')],
-    ['blame', (u: ReadProjectCodeUseCase) => u.blame(PROJETO, 'src/a.ts', 'dev')],
+    [
+      'blame',
+      (u: ReadProjectCodeUseCase) => u.blame(PROJETO, 'src/a.ts', 'dev'),
+    ],
     ['pullRequests', (u: ReadProjectCodeUseCase) => u.pullRequests(PROJETO)],
     ['branches', (u: ReadProjectCodeUseCase) => u.branches(PROJETO)],
   ])(
@@ -955,34 +963,46 @@ describe('ReadProjectCodeUseCase — o portão do container (FASE 25, RN-105)', 
   });
 
   /**
-   * Projeto no modo `mounted` NÃO passa pelo portão (RN-169/RN-421, ADR
-   * 0072/0104).
+   * `mounted`/`runner` passam pelo MESMO portão agora (RN-494, revisa
+   * RN-169/RN-421, ADR 0135).
    *
-   * Ele não sobe container nenhum, então a decisão do Arquiteto nunca vai
-   * acontecer — e a regra como estava responderia 409 para sempre, fechando a
-   * aba por efeito colateral em vez de por escolha.
+   * A dispensa original respondia 409 para sempre num projeto onde a decisão
+   * do Arquiteto nunca ia acontecer — a regra uniforme fecha essa lacuna
+   * exigindo a decisão nos três modos, em vez de fechar a aba por efeito
+   * colateral.
    */
-  it('projeto mounted lê sem esperar decisão que nunca vai acontecer', async () => {
-    const provider = new ProviderFalso(REPO);
-    const { useCase } = montar(provider, {
-      container: SEM_DECISAO,
-      executionMode: 'mounted',
-    });
+  it.each(['mounted', 'runner'] as const)(
+    'projeto %s também responde 409 sem decisão de imagem',
+    async (executionMode) => {
+      const provider = new ProviderFalso(REPO);
+      const { useCase } = montar(provider, {
+        container: SEM_DECISAO,
+        executionMode,
+      });
 
-    const arvore = await useCase.tree(PROJETO, 'dev', 'src');
+      await expect(useCase.tree(PROJETO, 'dev')).rejects.toThrow(
+        ConflictException,
+      );
+      expect(provider.chamadas).toEqual([]);
+    },
+  );
 
-    expect(arvore.entries.map((e) => e.name)).toEqual(['a.ts', 'b.ts', 'deep']);
-  });
+  it.each(['mounted', 'runner'] as const)(
+    'projeto %s lê normalmente uma vez decidida a imagem',
+    async (executionMode) => {
+      const provider = new ProviderFalso(REPO);
+      const { useCase } = montar(provider, {
+        container: CONTAINER_DECIDIDO,
+        executionMode,
+      });
 
-  it('projeto runner também não passa pelo portão — mesma régua de mounted', async () => {
-    const provider = new ProviderFalso(REPO);
-    const { useCase } = montar(provider, {
-      container: SEM_DECISAO,
-      executionMode: 'runner',
-    });
+      const arvore = await useCase.tree(PROJETO, 'dev', 'src');
 
-    const arvore = await useCase.tree(PROJETO, 'dev', 'src');
-
-    expect(arvore.entries.map((e) => e.name)).toEqual(['a.ts', 'b.ts', 'deep']);
-  });
+      expect(arvore.entries.map((e) => e.name)).toEqual([
+        'a.ts',
+        'b.ts',
+        'deep',
+      ]);
+    },
+  );
 });

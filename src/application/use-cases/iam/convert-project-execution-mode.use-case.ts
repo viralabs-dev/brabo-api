@@ -126,13 +126,18 @@ export class ConvertProjectExecutionModeUseCase {
     return this.unitOfWork.runInTransaction(async () => {
       // RN-449 — saindo de `container` com um container provisionado (ou
       // rodando): leva o ciclo de vida a `removed` ANTES de trocar a
-      // coluna, porque `RegistrarTransicaoDeContainerUseCase` recusa (400)
-      // transicionar o container de um projeto que não está em modo
-      // `container` (ADR 0081) — chamado DEPOIS da troca, ele já veria o
-      // modo novo e recusaria. Entrando EM `container` a partir de
-      // `mounted`/`runner`: nenhum auto-provisionamento — o portão da
-      // imagem do Arquiteto (RN-105) e o caminho normal do ciclo de vida
-      // se aplicam a partir daqui, como para qualquer projeto `container`.
+      // coluna. Até o ADR 0135 essa ordem era OBRIGATÓRIA —
+      // `RegistrarTransicaoDeContainerUseCase` recusava (400) transicionar
+      // o container de um projeto fora do modo `container`, e chamado
+      // DEPOIS da troca ele já veria o modo novo e recusaria. O 400 saiu
+      // (RN-494, `project_containers` passa a poder existir nos três
+      // modos); a ordem CONTINUA a mesma porque segue fazendo sentido por
+      // si só — desprovisionar o container real antes de declarar que o
+      // projeto deixou de ser `container`, não porque outra recusa force
+      // isso. Entrando EM `container` a partir de `mounted`/`runner`:
+      // nenhum auto-provisionamento — o portão da imagem (RN-105/494) e o
+      // caminho normal do ciclo de vida se aplicam a partir daqui, como
+      // para qualquer projeto `container`.
       if (
         project.executionMode === 'container' &&
         input.executionMode !== 'container'

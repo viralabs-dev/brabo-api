@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { ObterCicloDeVidaDoContainerUseCase } from '../../../../src/application/use-cases/containers/obter-ciclo-de-vida-do-container.use-case';
 import { RegistrarTransicaoDeContainerUseCase } from '../../../../src/application/use-cases/containers/registrar-transicao-de-container.use-case';
 import type { ObterContainerDoProjetoUseCase } from '../../../../src/application/use-cases/containers/obter-container-do-projeto.use-case';
@@ -205,37 +201,24 @@ describe('RegistrarTransicaoDeContainerUseCase', () => {
     expect(atualizada.containerId).toBe('abc123');
   });
 
-  it('projeto em modo `mounted` não tem ciclo de vida de container (ADR 0072/0104)', async () => {
-    const { repo } = containerRepo(null);
-    const useCase = new RegistrarTransicaoDeContainerUseCase(
-      unitOfWork,
-      projectRepo(
-        projeto({ executionMode: 'mounted', workspacePath: '/repos/x' }),
-      ),
-      repo,
-      obterImagemDecidida(),
-    );
+  it.each(['mounted', 'runner'] as const)(
+    'projeto em modo `%s` também registra ciclo de vida de container agora (RN-494, revisa ADR 0072/0104)',
+    async (executionMode) => {
+      const { repo, atual } = containerRepo(null);
+      const useCase = new RegistrarTransicaoDeContainerUseCase(
+        unitOfWork,
+        projectRepo(projeto({ executionMode, workspacePath: '/repos/x' })),
+        repo,
+        obterImagemDecidida(2),
+      );
 
-    await expect(useCase.execute(PROJETO, 'provisioning')).rejects.toThrow(
-      BadRequestException,
-    );
-  });
+      const criada = await useCase.execute(PROJETO, 'provisioning');
 
-  it('projeto em modo `runner` também não tem ciclo de vida de container', async () => {
-    const { repo } = containerRepo(null);
-    const useCase = new RegistrarTransicaoDeContainerUseCase(
-      unitOfWork,
-      projectRepo(
-        projeto({ executionMode: 'runner', workspacePath: '/repos/x' }),
-      ),
-      repo,
-      obterImagemDecidida(),
-    );
-
-    await expect(useCase.execute(PROJETO, 'provisioning')).rejects.toThrow(
-      BadRequestException,
-    );
-  });
+      expect(criada.status).toBe('provisioning');
+      expect(criada.imageVersion).toBe(2);
+      expect(atual()?.status).toBe('provisioning');
+    },
+  );
 
   it('sem decisão de imagem do Arquiteto, não há o que provisionar (RN-105)', async () => {
     const { repo } = containerRepo(null);
