@@ -25,6 +25,7 @@
     "demo:pr-gates": "ts-node scripts/demo-pr-gates.ts",
     "demo:pr-gates-area-qa": "ts-node scripts/demo-pr-gates-area-qa.ts",
     "golden-set:qa-seed": "ts-node scripts/seed-golden-set-qa.ts",
+    "golden-set:rag-seed": "ts-node scripts/seed-golden-set-rag.ts",
     "demo:infra-agent": "ts-node scripts/demo-infra-agent.ts",
     "demo:infra-workflows-github": "ts-node scripts/demo-infra-workflows-github.ts",
     "demo:psicologo": "ts-node scripts/demo-psicologo.ts",
