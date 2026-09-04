@@ -1,4 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { ExecuteContainerStartUseCase } from '../../../../src/application/use-cases/actions/execute-container-start.use-case';
 import {
   BrokerIndisponivelError,
@@ -68,6 +71,7 @@ function build(opts: {
     nome: string;
     jaEstavaDePe: boolean;
   }>;
+  workspacePath?: string | null;
 }) {
   const gravados: { status: string; executionResult: unknown }[] = [];
   const transicoes: Array<{ to: string; input?: unknown }> = [];
@@ -111,13 +115,19 @@ function build(opts: {
     exec: async () => ({ exitCode: 0, output: '', timedOut: false }),
   };
 
+  const updatesDoProjeto: Array<Record<string, unknown>> = [];
   const projects = {
     findById: async () => ({
       id: 'proj-1',
       executionMode: opts.executionMode ?? 'container',
       workspaceDirName: 'proj-1-abc12345',
+      workspacePath: opts.workspacePath ?? null,
       slug: 'proj-1',
       workspaceId: 'ws-1',
+    }),
+    update: vi.fn(async (_id: string, input: Record<string, unknown>) => {
+      updatesDoProjeto.push(input);
+      return null;
     }),
   };
 
@@ -186,8 +196,30 @@ function build(opts: {
     decidirImagem,
     broker,
     apiToEngineClient,
+    updatesDoProjeto,
   };
 }
+
+/**
+ * A base da instalação (ADR 0141) e a pasta de um projeto `mounted` DENTRO
+ * dela — devolvida sem existir, porque quem a cria é o caso de uso (RN-501).
+ */
+const basesTemporarias: string[] = [];
+function baseComProjetoMontado(nome = 'loja'): { base: string; dir: string } {
+  const base = mkdtempSync(join(tmpdir(), 'brabo-base-container-start-'));
+  basesTemporarias.push(base);
+  process.env.BRABO_PROJECTS_BASE = base;
+  return { base, dir: join(base, nome) };
+}
+
+const baseOriginal = process.env.BRABO_PROJECTS_BASE;
+afterEach(() => {
+  if (baseOriginal === undefined) delete process.env.BRABO_PROJECTS_BASE;
+  else process.env.BRABO_PROJECTS_BASE = baseOriginal;
+  for (const base of basesTemporarias.splice(0)) {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
 
 describe('ExecuteContainerStartUseCase — caminho feliz', () => {
   it('elege a imagem candidatada, sobe pelo broker e transiciona provisioning->running quando não há linha ainda', async () => {
@@ -342,8 +374,10 @@ describe('ExecuteContainerStartUseCase — mounted/runner (ADR 0137)', () => {
   });
 
   it('sem imagem decidida (RN-105): falha sem chamar o engine', async () => {
+    const { dir } = baseComProjetoMontado();
     const { useCase, gravados, apiToEngineClient } = build({
       executionMode: 'mounted',
+      workspacePath: dir,
       spec: { imagem: null, imagemVersao: 0 },
     });
 
@@ -377,10 +411,14 @@ describe('ExecuteContainerStartUseCase — mounted/runner (ADR 0137)', () => {
   });
 
   it('RunnerRecusouContainerError vira failed, nunca propaga', async () => {
+    const { dir } = baseComProjetoMontado();
     const { useCase, gravados } = build({
       executionMode: 'mounted',
+      workspacePath: dir,
       startContainerViaRunner: async () => {
-        throw new RunnerRecusouContainerError('Docker indisponível na máquina do usuário');
+        throw new RunnerRecusouContainerError(
+          'Docker indisponível na máquina do usuário',
+        );
       },
     });
 
@@ -388,5 +426,90 @@ describe('ExecuteContainerStartUseCase — mounted/runner (ADR 0137)', () => {
       useCase.execute('proj-1', 'sess-1', makeAction()),
     ).resolves.toBeDefined();
     expect(gravados.at(-1)?.status).toBe('failed');
+  });
+});
+
+/**
+ * A MATERIALIZAÇÃO da pasta montada (ADR 0142, RN-501).
+ *
+ * A criação do projeto `mounted` deixou de exigir a pasta pronta — o requisito
+ * é que o bind-mount nasça DEPOIS da decisão do Arquiteto. "Depois" é aqui,
+ * quando a Infra sobe o container, e o que este bloco prova é o par que torna
+ * isso honesto: a pasta é criada e `workspace_verified_at` é carimbado ANTES
+ * de qualquer transição; a falha vira `failed` NOMEADO e o ciclo de vida NÃO
+ * chega a ser marcado `provisioning`.
+ */
+describe('ExecuteContainerStartUseCase — materialização do `mounted` (RN-501)', () => {
+  it('caminho feliz: CRIA a pasta, carimba workspace_verified_at e só então transiciona', async () => {
+    const { dir } = baseComProjetoMontado();
+    const { useCase, gravados, transicoes, updatesDoProjeto } = build({
+      executionMode: 'mounted',
+      workspacePath: dir,
+      cicloAtual: null,
+    });
+
+    expect(existsSync(dir)).toBe(false);
+
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+
+    expect(existsSync(dir)).toBe(true);
+    expect(updatesDoProjeto).toHaveLength(1);
+    expect(updatesDoProjeto[0].workspaceVerifiedAt).toBeInstanceOf(Date);
+    expect(transicoes.map((t) => t.to)).toEqual(['provisioning', 'running']);
+    expect(gravados.at(-1)?.status).toBe('executed');
+  });
+
+  it('pasta INALCANÇÁVEL vira failed NOMEADO, e NÃO transiciona para provisioning', async () => {
+    const { base } = baseComProjetoMontado();
+    // Fora da base: é a recusa que acontece antes de qualquer `mkdir`, e é a
+    // que a mensagem precisa saber explicar.
+    const { useCase, gravados, transicoes, updatesDoProjeto } = build({
+      executionMode: 'mounted',
+      workspacePath: '/home/voce/fora-da-base/loja',
+      cicloAtual: null,
+    });
+
+    await expect(
+      useCase.execute('proj-1', 'sess-1', makeAction()),
+    ).resolves.toBeDefined();
+
+    expect(transicoes).toEqual([]);
+    expect(updatesDoProjeto).toEqual([]);
+    expect(gravados.at(-1)?.status).toBe('failed');
+    const motivo = (gravados.at(-1)?.executionResult as { motivo: string })
+      .motivo;
+    expect(motivo).toContain('/home/voce/fora-da-base/loja');
+    expect(motivo).toContain(`BRABO_PROJECTS_BASE=${base}`);
+    expect(motivo).toContain('non-root');
+    expect(motivo).toContain('aprove container_start de novo');
+  });
+
+  it('linha `mounted` sem workspacePath: failed nomeado, sem criar pasta nem transicionar', async () => {
+    baseComProjetoMontado();
+    const { useCase, gravados, transicoes } = build({
+      executionMode: 'mounted',
+      workspacePath: null,
+      cicloAtual: null,
+    });
+
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+
+    expect(transicoes).toEqual([]);
+    expect(gravados.at(-1)?.status).toBe('failed');
+    expect(
+      (gravados.at(-1)?.executionResult as { motivo: string }).motivo,
+    ).toContain('sem workspacePath');
+  });
+
+  it('projeto `container` não passa pela materialização — nada de mkdir nem de carimbo', async () => {
+    const { useCase, updatesDoProjeto, transicoes } = build({
+      executionMode: 'container',
+      cicloAtual: null,
+    });
+
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+
+    expect(updatesDoProjeto).toEqual([]);
+    expect(transicoes.map((t) => t.to)).toEqual(['provisioning', 'running']);
   });
 });

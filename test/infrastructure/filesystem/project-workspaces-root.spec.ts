@@ -1,4 +1,10 @@
-import { mkdtempSync, chmodSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it, expect, afterEach } from 'vitest';
@@ -11,10 +17,11 @@ import {
   dentroDaBaseDeProjetos,
   garantirQueryEscalar,
   LocalizacaoDeProjetoInvalidaError,
+  materializarWorkspaceMontado,
   permissionsFilePath,
   projectScopeRoot,
   projectWorkspacesRoot,
-  validarCaminhoDeWorkspaceLocal,
+  validarWorkspaceMontadoEmDisco,
   workspaceDirNameFor,
 } from '../../../src/infrastructure/filesystem/project-workspaces-root';
 import type { ProjectWorkspaceLocation } from '../../../src/domain/iam/project.entity';
@@ -132,7 +139,7 @@ describe('projectScopeRoot', () => {
  *
  * Estes casos são a metade LÉXICA da guarda — a que vale para sempre e por
  * isso roda também na leitura. A metade de disco está em
- * `validarCaminhoDeWorkspaceLocal`, logo abaixo, e só se aplica a
+ * `validarWorkspaceMontadoEmDisco`, logo abaixo, e só se aplica a
  * `mounted` — `runner` não toca disco nem na criação nem na leitura
  * (RN-423).
  */
@@ -191,6 +198,36 @@ describe('projectScopeRoot nos modos mounted/runner', () => {
         workspacePath: null,
       }),
     ).toThrow(/workspacePath inválido/);
+  });
+
+  /**
+   * A NÃO-REGRESSÃO mais importante do ADR 0142/RN-501.
+   *
+   * A regra da base é de CRIAÇÃO e CONVERSÃO. Se ela vazasse para
+   * `caminhoDeWorkspaceLocalValido` — o predicado que `projectScopeRoot` roda
+   * em TODA leitura —, todo projeto `mounted` LEGADO (criado quando o
+   * bind-mount era uma linha de compose por projeto, portanto fora de
+   * `BRABO_PROJECTS_BASE`) passaria a explodir com
+   * `LocalizacaoDeProjetoInvalidaError` ao ser simplesmente LIDO: escopo de
+   * terminal, `permissions.json` e aba Code, todos de uma vez, sem ninguém ter
+   * mudado nada naquele projeto.
+   */
+  it('projeto `mounted` LEGADO, FORA da base, continua resolvendo sem lançar (RN-501)', () => {
+    const original = process.env.BRABO_PROJECTS_BASE;
+    process.env.BRABO_PROJECTS_BASE = '/home/voce/brabo';
+    try {
+      const legado = montado('/home/voce/dev/loja-antiga');
+      expect(dentroDaBaseDeProjetos('/home/voce/dev/loja-antiga')).toBe(false);
+      expect(() => projectScopeRoot(legado)).not.toThrow();
+      expect(projectScopeRoot(legado)).toBe('/home/voce/dev/loja-antiga');
+      // E o arquivo de política continua sendo achado ao lado do código.
+      expect(permissionsFilePath(legado)).toBe(
+        '/home/voce/dev/loja-antiga/permissions.json',
+      );
+    } finally {
+      if (original === undefined) delete process.env.BRABO_PROJECTS_BASE;
+      else process.env.BRABO_PROJECTS_BASE = original;
+    }
   });
 
   it('a contenção de caminho da aba Code segue valendo, agora sobre a pasta do usuário', () => {
@@ -301,12 +338,12 @@ describe('projectScopeRoot NÃO segue permissionsFilePath (ADR 0055)', () => {
  * `caminhoDeWorkspaceLocalValido` exportada (ADR 0104, RN-423) — o predicado
  * que valida a criação de um projeto `runner` sem tocar disco. Os casos
  * léxicos já são cobertos indiretamente pelos blocos acima (via
- * `projectScopeRoot`) e por `validarCaminhoDeWorkspaceLocal` abaixo; este
+ * `projectScopeRoot`) e por `validarWorkspaceMontadoEmDisco` abaixo; este
  * bloco prova só que a função é a MESMA usada nos dois lugares.
  */
 describe('caminhoDeWorkspaceLocalValido', () => {
-  it('aceita o mesmo caminho que validarCaminhoDeWorkspaceLocal aceitaria, sem tocar disco', () => {
-    // Uma pasta que não existe no disco: validarCaminhoDeWorkspaceLocal
+  it('aceita o mesmo caminho que validarWorkspaceMontadoEmDisco aceitaria, sem tocar disco', () => {
+    // Uma pasta que não existe no disco: validarWorkspaceMontadoEmDisco
     // recusaria (I/O), mas o predicado léxico puro aceita — é exatamente a
     // diferença que RN-423 documenta entre `mounted` e `runner`.
     expect(
@@ -396,14 +433,17 @@ describe('baseDeProjetos / dentroDaBaseDeProjetos', () => {
 });
 
 /**
- * A guarda da CRIAÇÃO (RN-170) — a que toca disco.
+ * As três perguntas de DISCO (RN-170) — a parte que toca o filesystem.
  *
- * O caso de RECUSA é o ponto da entrega: um caminho que não está montado no
- * container produz um projeto que trava DEPOIS, longe da tela onde a decisão
- * foi tomada. Por isso os testes conferem também que a mensagem ENSINA — sem
- * a instrução de montagem, a recusa é só um "não".
+ * Ela NÃO roda mais na criação do projeto desde a RN-501 (ADR 0142): quem a
+ * chama é `materializarWorkspaceMontado`, na conversão de modo e na subida do
+ * container. O que ela prova continua o mesmo — um caminho que a api não
+ * alcança produz um projeto que trava DEPOIS, longe da tela onde a decisão foi
+ * tomada —, e por isso os testes conferem também que a mensagem ENSINA. O que
+ * mudou é o QUE ela ensina: a base do ADR 0141, nunca mais uma linha de
+ * bind-mount por projeto no compose.
  */
-describe('validarCaminhoDeWorkspaceLocal', () => {
+describe('validarWorkspaceMontadoEmDisco', () => {
   const criados: string[] = [];
 
   function pastaTemporaria(): string {
@@ -427,29 +467,39 @@ describe('validarCaminhoDeWorkspaceLocal', () => {
 
   it('caminho feliz: pasta que existe e é gravável passa, e volta normalizada', () => {
     const dir = pastaTemporaria();
-    expect(validarCaminhoDeWorkspaceLocal(`${dir}/`)).toBe(dir);
+    expect(validarWorkspaceMontadoEmDisco(`${dir}/`)).toBe(dir);
     // Espaço em volta é erro de digitação, não caminho diferente.
-    expect(validarCaminhoDeWorkspaceLocal(`  ${dir}  `)).toBe(dir);
+    expect(validarWorkspaceMontadoEmDisco(`  ${dir}  `)).toBe(dir);
   });
 
-  it('RECUSA pasta que não existe dentro do container, ENSINANDO como montar', () => {
+  it('RECUSA pasta que não existe dentro do container, ENSINANDO a base (ADR 0141)', () => {
+    const baseOriginal = process.env.BRABO_PROJECTS_BASE;
+    process.env.BRABO_PROJECTS_BASE = '/home/voce/brabo';
     const dir = pastaTemporaria();
     const inexistente = `${dir}/nao-montada`;
 
     let erro: unknown;
     try {
-      validarCaminhoDeWorkspaceLocal(inexistente);
+      validarWorkspaceMontadoEmDisco(inexistente);
     } catch (e) {
       erro = e;
+    } finally {
+      if (baseOriginal === undefined) delete process.env.BRABO_PROJECTS_BASE;
+      else process.env.BRABO_PROJECTS_BASE = baseOriginal;
     }
 
     expect(erro).toBeInstanceOf(CaminhoLocalInvalidoError);
     const mensagem = (erro as Error).message;
     expect(mensagem).toContain('não existe do lado de dentro da api');
-    // A parte que ENSINA: o caminho exato, o arquivo a editar e a linha.
+    // A parte que ENSINA: o caminho exato e a base configurada.
     expect(mensagem).toContain(inexistente);
-    expect(mensagem).toContain('docker/docker-compose.yml');
-    expect(mensagem).toContain(`- ${inexistente}:${inexistente}`);
+    expect(mensagem).toContain('BRABO_PROJECTS_BASE=/home/voce/brabo');
+    expect(mensagem).toContain('docker compose up -d api engine');
+    // O remédio MORTO (ADR 0141): uma linha de bind-mount por projeto no
+    // compose custava um restart de api+engine por projeto criado. Ensinar
+    // isso de novo mandaria o usuário derrubar a instalação inteira.
+    expect(mensagem).not.toContain('docker/docker-compose.yml');
+    expect(mensagem).not.toContain(`- ${inexistente}:${inexistente}`);
   });
 
   it('RECUSA pasta que existe mas não é gravável pelo processo', () => {
@@ -467,7 +517,7 @@ describe('validarCaminhoDeWorkspaceLocal', () => {
     }
     if (!semPermissao) return;
 
-    expect(() => validarCaminhoDeWorkspaceLocal(dir)).toThrow(
+    expect(() => validarWorkspaceMontadoEmDisco(dir)).toThrow(
       /não pode\s+escrever nela|não pode escrever nela/,
     );
   });
@@ -476,7 +526,7 @@ describe('validarCaminhoDeWorkspaceLocal', () => {
     const dir = pastaTemporaria();
     const arquivo = join(dir, 'arquivo.txt');
     writeFileSync(arquivo, 'oi');
-    expect(() => validarCaminhoDeWorkspaceLocal(arquivo)).toThrow(
+    expect(() => validarWorkspaceMontadoEmDisco(arquivo)).toThrow(
       /não é uma pasta/,
     );
   });
@@ -485,12 +535,12 @@ describe('validarCaminhoDeWorkspaceLocal', () => {
     // O `cwd` do processo de teste é o próprio monorepo: é literalmente o
     // problema que o container veio resolver — o agente executando na árvore
     // do produto.
-    expect(() => validarCaminhoDeWorkspaceLocal(process.cwd())).toThrow(
+    expect(() => validarWorkspaceMontadoEmDisco(process.cwd())).toThrow(
       CaminhoLocalInvalidoError,
     );
     // E a pasta que CONTÉM o checkout, que é o caso literal do pedido.
     expect(() =>
-      validarCaminhoDeWorkspaceLocal(join(process.cwd(), '..')),
+      validarWorkspaceMontadoEmDisco(join(process.cwd(), '..')),
     ).toThrow(CaminhoLocalInvalidoError);
   });
 
@@ -500,8 +550,114 @@ describe('validarCaminhoDeWorkspaceLocal', () => {
     ['/usr/local/projetos', 'abaixo de pasta de sistema'],
     ['projetos/loja', 'relativo'],
   ])('RECUSA %j — %s, e diz por quê', (caminho) => {
-    expect(() => validarCaminhoDeWorkspaceLocal(caminho)).toThrow(
+    expect(() => validarWorkspaceMontadoEmDisco(caminho)).toThrow(
       /Caminho inválido para um projeto Local/,
+    );
+  });
+});
+
+/**
+ * A MATERIALIZAÇÃO da pasta montada (ADR 0142, RN-501).
+ *
+ * A criação do projeto deixou de exigir a pasta pronta, para que o bind-mount
+ * nasça DEPOIS da decisão do Arquiteto. Esta é a função que fecha o outro
+ * lado: cria o que não existe, prova que dá para escrever, e recusa o que está
+ * fora da base — a recusa vem ANTES do `mkdir`, senão um caminho gravado por
+ * fora do produto faria a api criar pasta em qualquer lugar que ela alcança.
+ */
+describe('materializarWorkspaceMontado', () => {
+  const original = process.env.BRABO_PROJECTS_BASE;
+  const criados: string[] = [];
+
+  function baseTemporaria(): string {
+    const dir = mkdtempSync(join(tmpdir(), 'brabo-base-'));
+    criados.push(dir);
+    process.env.BRABO_PROJECTS_BASE = dir;
+    return dir;
+  }
+
+  afterEach(() => {
+    if (original === undefined) delete process.env.BRABO_PROJECTS_BASE;
+    else process.env.BRABO_PROJECTS_BASE = original;
+    for (const dir of criados.splice(0)) {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('CRIA a pasta que não existe dentro da base, e devolve o caminho normalizado', async () => {
+    const base = baseTemporaria();
+    const alvo = `${base}/loja`;
+
+    expect(existsSync(alvo)).toBe(false);
+    await expect(materializarWorkspaceMontado(`${alvo}/`)).resolves.toBe(alvo);
+    expect(existsSync(alvo)).toBe(true);
+  });
+
+  it('é idempotente: chamar de novo numa pasta que já existe não falha', async () => {
+    const base = baseTemporaria();
+    const alvo = `${base}/loja`;
+
+    await materializarWorkspaceMontado(alvo);
+    await expect(materializarWorkspaceMontado(alvo)).resolves.toBe(alvo);
+  });
+
+  it('cria pasta ANINHADA (mkdir -p), não só um nível', async () => {
+    const base = baseTemporaria();
+    const alvo = `${base}/time/loja`;
+
+    await expect(materializarWorkspaceMontado(alvo)).resolves.toBe(alvo);
+    expect(existsSync(alvo)).toBe(true);
+  });
+
+  it('RECUSA fora da base ANTES de criar qualquer coisa, nomeando a base e sugerindo o caminho', async () => {
+    const base = baseTemporaria();
+    const fora = mkdtempSync(join(tmpdir(), 'brabo-fora-'));
+    criados.push(fora);
+    const alvo = `${fora}/loja`;
+
+    await expect(materializarWorkspaceMontado(alvo)).rejects.toThrow(
+      CaminhoLocalInvalidoError,
+    );
+    await expect(materializarWorkspaceMontado(alvo)).rejects.toThrow(
+      new RegExp(`precisa ficar dentro de ${base}`),
+    );
+    // Sugere `<base>/<nome que a pessoa pediu>`, nunca a base pelada.
+    await expect(materializarWorkspaceMontado(alvo)).rejects.toThrow(
+      new RegExp(`Sugerido: ${base}/loja`),
+    );
+    // E não criou nada: a recusa vem ANTES do mkdir.
+    expect(existsSync(alvo)).toBe(false);
+  });
+
+  it('sem base configurada, diz que o MODO não está disponível — não que o caminho está errado', async () => {
+    delete process.env.BRABO_PROJECTS_BASE;
+
+    await expect(
+      materializarWorkspaceMontado('/home/voce/brabo/loja'),
+    ).rejects.toThrow(/não está disponível nesta instalação/);
+    await expect(
+      materializarWorkspaceMontado('/home/voce/brabo/loja'),
+    ).rejects.toThrow(/BRABO_PROJECTS_BASE/);
+  });
+
+  it('o LÉXICO continua rodando primeiro: pasta de sistema é recusada mesmo com base configurada', async () => {
+    baseTemporaria();
+
+    await expect(materializarWorkspaceMontado('/etc/loja')).rejects.toThrow(
+      CaminhoLocalInvalidoError,
+    );
+    await expect(materializarWorkspaceMontado('relativo/loja')).rejects.toThrow(
+      CaminhoLocalInvalidoError,
+    );
+  });
+
+  it('RECUSA arquivo no lugar de pasta, mesmo dentro da base', async () => {
+    const base = baseTemporaria();
+    const arquivo = join(base, 'arquivo.txt');
+    writeFileSync(arquivo, 'oi');
+
+    await expect(materializarWorkspaceMontado(arquivo)).rejects.toThrow(
+      CaminhoLocalInvalidoError,
     );
   });
 });
