@@ -64,7 +64,7 @@ export class InternalContainersController {
       'refusal names the field. No ABSOLUTE path is returned: the bind source ' +
       'is resolved by the daemon against the HOST filesystem, and a path from ' +
       'inside the api container would silently mount an empty folder. What ' +
-      'travels is `localizacao` (RN-501) — which of the two broker roots to ' +
+      'travels is `localizacao` (RN-503) — which of the two broker roots to ' +
       'use, plus the relative segment that root does not cover.',
   })
   @ApiOkResponse({ type: ContainerSpecInternalResponseDto })

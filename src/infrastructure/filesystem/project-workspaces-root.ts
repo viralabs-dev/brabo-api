@@ -97,7 +97,7 @@ export function dentroDaBaseDeProjetos(caminho: string): boolean {
 
 /**
  * O caminho absoluto de um projeto `mounted`, expresso como o SEGMENTO
- * RELATIVO dele sob a base (RN-501) — `/home/voce/brabo/loja` vira `loja`.
+ * RELATIVO dele sob a base (RN-503) — `/home/voce/brabo/loja` vira `loja`.
  *
  * Existe por causa de UM invariante, o do ADR 0130: nenhum caminho absoluto
  * atravessa a rede até o broker. Ele é root-equivalente no host e compõe o

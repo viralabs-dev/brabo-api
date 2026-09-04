@@ -196,9 +196,9 @@ describe('ExecuteContainerStopUseCase', () => {
   });
 });
 
-describe('ExecuteContainerStopUseCase — a ramificação é por DESTINO (ADR 0137, RN-501)', () => {
+describe('ExecuteContainerStopUseCase — a ramificação é por DESTINO (ADR 0137, RN-503)', () => {
   it('projeto "mounted" para pelo BROKER — o container dele está no SERVIDOR', async () => {
-    // Ele mudou de lado junto com o `start` (RN-501), e tinha de mudar: um
+    // Ele mudou de lado junto com o `start` (RN-503), e tinha de mudar: um
     // `stop` que continuasse indo pelo runner pediria para parar um container
     // que não existe na máquina do usuário, deixando de pé — sem forma de
     // parar — o que está de pé no servidor.

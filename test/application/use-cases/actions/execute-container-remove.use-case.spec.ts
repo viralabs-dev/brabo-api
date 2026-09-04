@@ -204,7 +204,7 @@ describe('ExecuteContainerRemoveUseCase', () => {
   });
 });
 
-describe('ExecuteContainerRemoveUseCase — a ramificação é por DESTINO (ADR 0137, RN-501)', () => {
+describe('ExecuteContainerRemoveUseCase — a ramificação é por DESTINO (ADR 0137, RN-503)', () => {
   it('projeto "mounted" remove pelo BROKER — o container dele existe no SERVIDOR', async () => {
     // Um `remove` pelo runner deixaria órfão no servidor um container que a
     // tabela passaria a chamar de `removed`.

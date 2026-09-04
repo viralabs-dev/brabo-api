@@ -36,7 +36,7 @@ import type { ProposedAction } from '../../../domain/actions/proposed-action.ent
  * que a máquina de estados não descreveu de verdade seria o mesmo defeito
  * que RN-486 já nomeou para o observado: registrar o que não aconteceu.
  *
- * ## `runner` (ADR 0137, RN-501)
+ * ## `runner` (ADR 0137, RN-503)
  *
  * Mesma ramificação por DESTINO de `ExecuteContainerStartUseCase`:
  * `container` e `mounted` vão ao BROKER; só `runner` pede ao ENGINE para
@@ -45,7 +45,7 @@ import type { ProposedAction } from '../../../domain/actions/proposed-action.ent
  * (`RunnerRecusouContainerError`) são FALHAS NORMAIS, mesma disciplina do
  * broker.
  *
- * `mounted` mudou de lado junto com o `start` (RN-501), e tinha de mudar: o
+ * `mounted` mudou de lado junto com o `start` (RN-503), e tinha de mudar: o
  * container de um projeto montado passou a subir NO SERVIDOR, e um `stop`
  * que continuasse indo pelo runner pediria para parar um container que não
  * existe na máquina do usuário — deixando de pé, sem forma de parar, o que

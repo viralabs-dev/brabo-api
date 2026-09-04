@@ -19,7 +19,7 @@ export class ImagemParaOBrokerResponseDto {
 
 /**
  * WHERE the project folder is, said in a way the broker can resolve WITHOUT
- * any absolute path crossing the wire (RN-501).
+ * any absolute path crossing the wire (RN-503).
  */
 export class LocalizacaoDoProjetoResponseDto {
   @ApiProperty({
@@ -66,7 +66,7 @@ export class LocalizacaoDoProjetoResponseDto {
  * O que o BROKER precisa da api para compor a especificação de container ele
  * mesmo (ADR 0130). Não há `rationale` (it only exists so a human can review
  * the decision) and — deliberately — **no absolute path at all**: what crosses
- * the wire is a `localizacao`, the discriminated locator of RN-501.
+ * the wire is a `localizacao`, the discriminated locator of RN-503.
  */
 export class ContainerSpecInternalResponseDto {
   @ApiProperty({ example: 'f52be111-0000-4000-8000-000000000000' })
@@ -84,7 +84,7 @@ export class ContainerSpecInternalResponseDto {
       'Folder name FROZEN at project creation (RN-109). It is the single ' +
       'source of the container name (`brabo-<workspaceDirName>`) in ALL ' +
       'three modes. Where the FOLDER is is a different question, answered by ' +
-      '`localizacao` (RN-501) — the api still never sends an absolute path, ' +
+      '`localizacao` (RN-503) — the api still never sends an absolute path, ' +
       'because a path from inside the api container is not a path the Docker ' +
       'daemon can resolve.',
   })
@@ -95,7 +95,7 @@ export class ContainerSpecInternalResponseDto {
     example: 'container',
     description:
       'Where the code lives. The broker serves `container` AND `mounted` ' +
-      '(RN-501): since ADR 0141 the mounted folder lives under one base this ' +
+      '(RN-503): since ADR 0141 the mounted folder lives under one base this ' +
       'server mounts by identity, so the daemon reaches it. It still refuses ' +
       "`runner`: that folder is on the user's machine and no root here sees " +
       'it — there, the runner is what brings a container up (ADR 0137).',
@@ -105,7 +105,7 @@ export class ContainerSpecInternalResponseDto {
   @ApiProperty({
     type: LocalizacaoDoProjetoResponseDto,
     description:
-      'The discriminated locator of the project folder (RN-501): which of ' +
+      'The discriminated locator of the project folder (RN-503): which of ' +
       "the broker's two roots resolves it, and the relative segment to join " +
       'to that root.',
   })

@@ -120,7 +120,7 @@ describe('ObterSpecDeContainerUseCase — o que o broker lê', () => {
   });
 });
 
-describe('ObterSpecDeContainerUseCase — o localizador discriminado (RN-501)', () => {
+describe('ObterSpecDeContainerUseCase — o localizador discriminado (RN-503)', () => {
   const BASE = '/home/voce/brabo';
 
   beforeEach(() => {

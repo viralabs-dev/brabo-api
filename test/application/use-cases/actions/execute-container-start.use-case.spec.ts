@@ -325,7 +325,7 @@ describe('ExecuteContainerStartUseCase — recusa do broker', () => {
   });
 });
 
-describe('ExecuteContainerStartUseCase — mounted vai pelo BROKER (RN-501)', () => {
+describe('ExecuteContainerStartUseCase — mounted vai pelo BROKER (RN-503)', () => {
   it('projeto "mounted": elege a candidata e sobe pelo broker, nunca pelo runner', async () => {
     // A eleição não é opcional aqui, e por isso o teste a exige: o broker
     // COMPÕE a partir de `artifact.project_image`, indo buscá-lo na api. Uma

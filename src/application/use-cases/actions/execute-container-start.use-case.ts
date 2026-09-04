@@ -50,7 +50,7 @@ interface ContainerStartPayload {
  * record()/fail() gravando `updateExecutionResult` + evento de sessão +
  * outbox `proposed_action.executed`/`.failed`.
  *
- * ## Dois caminhos, a partir do `executionMode` do projeto (ADR 0137, RN-501)
+ * ## Dois caminhos, a partir do `executionMode` do projeto (ADR 0137, RN-503)
  *
  * `container_start` não distingue modo na hora de ser PROPOSTA
  * (`GetInfraContextUseCase`/`propose_container_start` não restringem por
@@ -61,7 +61,7 @@ interface ContainerStartPayload {
  *   - `container` E `mounted` — o BROKER. Desde o ADR 0141 a pasta de um
  *     projeto montado mora sob UMA base que este servidor monta por
  *     identidade, então o daemon a alcança; a spec diz contra qual das duas
- *     raízes do broker o segmento vale (`localizacao`, RN-501) e mais nada
+ *     raízes do broker o segmento vale (`localizacao`, RN-503) e mais nada
  *     muda. Os dois ELEGEM a imagem candidata do roteamento do Arquiteto.
  *   - `runner` — o ENGINE repassando ao RUNNER conectado, via canal Phoenix
  *     (`container_start`/`container_start_result`, mesmo par de
@@ -224,7 +224,7 @@ export class ExecuteContainerStartUseCase {
    * .../container-spec` para o broker — chamado direto, sem HTTP, porque os
    * dois rodam no mesmo processo da api).
    *
-   * `mounted` deixou de passar por aqui na RN-501: a pasta dele virou
+   * `mounted` deixou de passar por aqui na RN-503: a pasta dele virou
    * alcançável pelo daemon do servidor (ADR 0141), e exigir um runner
    * conectado para um projeto cujo código o servidor enxerga era pedir uma
    * peça que não tem mais função.

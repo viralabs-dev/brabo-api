@@ -12,7 +12,7 @@ import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 /**
  * ONDE a pasta do projeto está, dita de um jeito que o broker consiga
- * resolver — e sem que nenhum caminho absoluto atravesse a rede (RN-501).
+ * resolver — e sem que nenhum caminho absoluto atravesse a rede (RN-503).
  *
  * São TRÊS estados e não dois, porque o terceiro existe de verdade e
  * colapsá-lo num `null` faria a mesma ausência significar coisas com
@@ -41,7 +41,7 @@ export interface SpecDeContainer {
   workspaceDirName: string;
   executionMode: ProjectExecutionMode;
   /**
-   * O localizador DISCRIMINADO da pasta (RN-501). Substitui o
+   * O localizador DISCRIMINADO da pasta (RN-503). Substitui o
    * `workspaceDirName` solto no papel de "o que o broker concatena com a
    * raiz dele" — `workspaceDirName` continua aqui porque ele é a fonte
    * ÚNICA do NOME do container (`brabo-<workspaceDirName>`), nos três modos,
@@ -80,7 +80,7 @@ export interface SpecDeContainer {
  * Quem sabe os caminhos de host é o broker, pela configuração DELE, e ele
  * compõe raiz + segmento.
  *
- * Desde a RN-501 o que sai daqui é um localizador DISCRIMINADO
+ * Desde a RN-503 o que sai daqui é um localizador DISCRIMINADO
  * (`LocalizacaoDoProjeto`) e não um nome solto, porque passaram a existir DUAS
  * raízes do lado de lá: `PROJECT_WORKSPACES_HOST_ROOT` (a pasta gerenciada
  * pelo produto) e `BRABO_PROJECTS_HOST_BASE` (a base dos projetos montados,
