@@ -35,7 +35,7 @@ export interface TransicaoDeContainerInput {
  * para registrar o resultado — a ordem "orquestrador real age, depois grava
  * aqui" já vale, não é mais hipotética.
  *
- * O que ele passou a fazer ALÉM de gravar (RN-501, ADR 0142): a chegada em
+ * O que ele passou a fazer ALÉM de gravar (RN-502, ADR 0143): a chegada em
  * `running` publica `container.running` no outbox, na MESMA transação. Não
  * é orquestração — é o aviso de que a pré-condição do claim de dev agent
  * passou a existir; ver `avisarQueOContainerSubiu` no fim do arquivo.
@@ -135,7 +135,7 @@ export class RegistrarTransicaoDeContainerUseCase {
 
   /**
    * O engine LÊ `project_containers` direto para decidir se um dev agent pode
-   * reivindicar task (RN-501, ADR 0142) — mas leitura não avisa ninguém: um
+   * reivindicar task (RN-502, ADR 0143) — mas leitura não avisa ninguém: um
    * agente já parado em `:idle` continuaria parado até um evento não
    * relacionado passar por perto. Por isso a chegada em `running` PUBLICA,
    * na mesma transação que a grava.

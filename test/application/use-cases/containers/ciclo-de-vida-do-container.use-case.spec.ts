@@ -26,7 +26,7 @@ const unitOfWork = {
 } as unknown as UnitOfWork;
 
 /**
- * O que a transição publicou (RN-501, ADR 0142) — limpo a cada teste pelo
+ * O que a transição publicou (RN-502, ADR 0143) — limpo a cada teste pelo
  * `beforeEach` do describe.
  */
 const publicados: NewOutboxEvent[] = [];
@@ -224,7 +224,7 @@ describe('RegistrarTransicaoDeContainerUseCase', () => {
     expect(atualizada.containerId).toBe('abc123');
   });
 
-  // RN-501/ADR 0142 — a leitura que o engine faz de `project_containers` não
+  // RN-502/ADR 0143 — a leitura que o engine faz de `project_containers` não
   // avisa ninguém; quem solta os dev agents parados em `:idle` é este evento.
   it('chegar em `running` publica `container.running` no agregado `container`, com o id do PROJETO', async () => {
     const { repo } = containerRepo(linha({ status: 'provisioning' }));
