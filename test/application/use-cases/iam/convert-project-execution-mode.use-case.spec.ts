@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, afterEach } from 'vitest';
@@ -134,9 +134,26 @@ function registrarTransicaoFake() {
   };
 }
 
-function pastaReal(): { dir: string; limpar: () => void } {
-  const dir = mkdtempSync(join(tmpdir(), 'brabo-convert-execution-mode-'));
-  return { dir, limpar: () => rmSync(dir, { recursive: true, force: true }) };
+/**
+ * Uma BASE de instalação (ADR 0141) mais uma pasta de projeto DENTRO dela.
+ *
+ * Desde a RN-501 a conversão para `mounted` exige as duas coisas: o caminho
+ * dentro da base (léxico, na validação) e a pasta materializada (mkdir, antes
+ * de mover o `permissions.json`). Aqui a pasta é devolvida SEM ser criada —
+ * quem a cria é o caso de uso, e é isso que os testes provam.
+ */
+function baseComProjeto(nome = 'loja'): {
+  base: string;
+  dir: string;
+  limpar: () => void;
+} {
+  const base = mkdtempSync(join(tmpdir(), 'brabo-convert-execution-mode-'));
+  process.env.BRABO_PROJECTS_BASE = base;
+  return {
+    base,
+    dir: join(base, nome),
+    limpar: () => rmSync(base, { recursive: true, force: true }),
+  };
 }
 
 function useCase(deps: {
@@ -157,16 +174,24 @@ function useCase(deps: {
 }
 
 const pastasParaLimpar: (() => void)[] = [];
+const baseOriginal = process.env.BRABO_PROJECTS_BASE;
 afterEach(() => {
+  if (baseOriginal === undefined) delete process.env.BRABO_PROJECTS_BASE;
+  else process.env.BRABO_PROJECTS_BASE = baseOriginal;
   for (const limpar of pastasParaLimpar.splice(0)) limpar();
 });
 
 describe('ConvertProjectExecutionModeUseCase', () => {
-  it('container -> mounted: relocaliza permissions.json e grava o novo par', async () => {
+  it('container -> mounted: CRIA a pasta, relocaliza permissions.json e grava o novo par', async () => {
     const { repo, atual } = projectRepo(projeto());
     const { store, movimentos } = permissionsStore();
-    const { dir, limpar } = pastaReal();
+    const { dir, limpar } = baseComProjeto();
     pastasParaLimpar.push(limpar);
+
+    // A pasta ainda não existe: a conversão é o único lugar onde
+    // mkdir-na-decisão é o certo (RN-501) — ela não tem passo de container
+    // onde pendurar o trabalho, e o `permissions.json` vai para dentro dela.
+    expect(existsSync(dir)).toBe(false);
 
     const uc = useCase({ projects: repo, permissions: store });
     const resultado = await uc.execute(PROJETO, {
@@ -174,6 +199,7 @@ describe('ConvertProjectExecutionModeUseCase', () => {
       workspacePath: dir,
     });
 
+    expect(existsSync(dir)).toBe(true);
     expect(resultado.executionMode).toBe('mounted');
     expect(resultado.workspacePath).toBe(dir);
     expect(resultado.workspaceVerifiedAt).toBeNull();
@@ -217,7 +243,7 @@ describe('ConvertProjectExecutionModeUseCase', () => {
   it('container -> mounted com container `provisioning`: vai direto para `removed`', async () => {
     const { repo } = projectRepo(projeto());
     const { fake, chamadas } = registrarTransicaoFake();
-    const { dir, limpar } = pastaReal();
+    const { dir, limpar } = baseComProjeto();
     pastasParaLimpar.push(limpar);
     const uc = useCase({
       projects: repo,
@@ -233,7 +259,7 @@ describe('ConvertProjectExecutionModeUseCase', () => {
   it('container -> mounted sem linha de container: não chama nenhuma transição', async () => {
     const { repo } = projectRepo(projeto());
     const { fake, chamadas } = registrarTransicaoFake();
-    const { dir, limpar } = pastaReal();
+    const { dir, limpar } = baseComProjeto();
     pastasParaLimpar.push(limpar);
     const uc = useCase({
       projects: repo,
@@ -247,7 +273,7 @@ describe('ConvertProjectExecutionModeUseCase', () => {
   });
 
   it('mounted -> runner: nenhuma transição de container é disparada (não havia container em `mounted`)', async () => {
-    const { dir: dirAntiga, limpar: limparAntiga } = pastaReal();
+    const { dir: dirAntiga, limpar: limparAntiga } = baseComProjeto('antiga');
     pastasParaLimpar.push(limparAntiga);
     const { repo, atual } = projectRepo(
       projeto({ executionMode: 'mounted', workspacePath: dirAntiga }),
@@ -265,14 +291,14 @@ describe('ConvertProjectExecutionModeUseCase', () => {
     expect(atual().workspacePath).toBe('/home/alguem/projeto-z');
   });
 
-  it('runner -> mounted: valida disco na entrada (RN-422)', async () => {
+  it('runner -> mounted: materializa a pasta na entrada (RN-501)', async () => {
     const { repo } = projectRepo(
       projeto({
         executionMode: 'runner',
         workspacePath: '/home/alguem/antiga',
       }),
     );
-    const { dir, limpar } = pastaReal();
+    const { dir, limpar } = baseComProjeto();
     pastasParaLimpar.push(limpar);
     const uc = useCase({ projects: repo });
 
@@ -332,7 +358,7 @@ describe('ConvertProjectExecutionModeUseCase', () => {
   it('dev agent ativo recusa a conversão com 409, sem gravar nada', async () => {
     const { repo, chamadasUpdate } = projectRepo(projeto());
     const { store, movimentos } = permissionsStore();
-    const { dir, limpar } = pastaReal();
+    const { dir, limpar } = baseComProjeto();
     pastasParaLimpar.push(limpar);
     const uc = useCase({
       projects: repo,
@@ -348,16 +374,35 @@ describe('ConvertProjectExecutionModeUseCase', () => {
     expect(movimentos).toHaveLength(0);
   });
 
-  it('caminho novo inválido (pasta inexistente em `mounted`) vira 400, sem gravar nada', async () => {
+  it('caminho novo FORA da base vira 400, sem gravar nada e sem criar pasta (RN-501)', async () => {
     const { repo, chamadasUpdate } = projectRepo(projeto());
+    const { base, limpar } = baseComProjeto();
+    pastasParaLimpar.push(limpar);
+    const uc = useCase({ projects: repo });
+    const fora = '/tmp/pasta-fora-da-base-de-jeito-nenhum-xyz';
+
+    await expect(
+      uc.execute(PROJETO, { executionMode: 'mounted', workspacePath: fora }),
+    ).rejects.toThrow(BadRequestException);
+    await expect(
+      uc.execute(PROJETO, { executionMode: 'mounted', workspacePath: fora }),
+    ).rejects.toThrow(new RegExp(`precisa ficar dentro de ${base}`));
+
+    expect(chamadasUpdate).toHaveLength(0);
+    expect(existsSync(fora)).toBe(false);
+  });
+
+  it('sem base configurada, converter para `mounted` diz que o MODO não está disponível', async () => {
+    const { repo, chamadasUpdate } = projectRepo(projeto());
+    delete process.env.BRABO_PROJECTS_BASE;
     const uc = useCase({ projects: repo });
 
     await expect(
       uc.execute(PROJETO, {
         executionMode: 'mounted',
-        workspacePath: '/tmp/pasta-que-nao-existe-de-jeito-nenhum-xyz',
+        workspacePath: '/home/voce/brabo/loja',
       }),
-    ).rejects.toThrow(BadRequestException);
+    ).rejects.toThrow(/não está disponível nesta instalação/);
 
     expect(chamadasUpdate).toHaveLength(0);
   });

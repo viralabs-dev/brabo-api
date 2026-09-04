@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest';
@@ -31,10 +31,23 @@ const criarProjeto = new CreateProjectUseCase(
 );
 
 const temporarias: string[] = [];
+const baseOriginal = process.env.BRABO_PROJECTS_BASE;
 
-function pastaDoUsuario(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'brabo-projeto-local-'));
+/**
+ * A BASE da instalação (ADR 0141, RN-500) — desde a RN-501 todo projeto
+ * `mounted` precisa morar dentro dela, e a criação recusa o que está fora.
+ * Cada teste que cria `mounted` configura a sua.
+ */
+function baseDaInstalacao(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'brabo-base-'));
   temporarias.push(dir);
+  process.env.BRABO_PROJECTS_BASE = dir;
+  return dir;
+}
+
+/** Uma pasta que EXISTE no disco, dentro da base. */
+function pastaDoUsuario(): string {
+  const dir = mkdtempSync(join(baseDaInstalacao(), 'projeto-'));
   return dir;
 }
 
@@ -43,6 +56,8 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  if (baseOriginal === undefined) delete process.env.BRABO_PROJECTS_BASE;
+  else process.env.BRABO_PROJECTS_BASE = baseOriginal;
   for (const dir of temporarias.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -123,28 +138,84 @@ describe('o projeto escolhe onde o código mora (RN-169/RN-421, ADR 0104)', () =
   });
 });
 
-describe('a criação RECUSA o caminho que travaria depois (RN-170/RN-422)', () => {
-  it('mounted: pasta que não existe dentro do container — 400 com a instrução de montagem, e NENHUM projeto criado', async () => {
+/**
+ * A INVERSÃO do ADR 0142 (RN-501): `mounted` valida só o LÉXICO + a base na
+ * criação, e a pasta é MATERIALIZADA depois, quando a Infra sobe o container.
+ *
+ * O requisito que força isso é do dono do produto — *"se for Pasta montada, o
+ * bind-mount deve ser criado APÓS a decisão do Arquiteto"* —, e a validação de
+ * disco na criação o tornava impossível: ela recusava muito antes de existir
+ * decisão nenhuma.
+ */
+describe('mounted valida só o léxico + a base na criação (RN-501, ADR 0142)', () => {
+  it('pasta INEXISTENTE agora PASSA, e o projeto nasce com workspaceVerifiedAt nulo', async () => {
     const { ownerId, workspaceId } = await workspace();
-    const inexistente = join(pastaDoUsuario(), 'nao-montada');
+    const base = baseDaInstalacao();
+    const aindaNaoCriada = join(base, 'loja');
+
+    const projeto = await criarProjeto.execute(workspaceId, ownerId, {
+      name: 'loja',
+      slug: 'loja',
+      executionMode: 'mounted',
+      workspacePath: aindaNaoCriada,
+    });
+
+    expect(projeto.executionMode).toBe('mounted');
+    expect(projeto.workspacePath).toBe(aindaNaoCriada);
+    // Nasce NÃO verificado: quem carimba é a materialização, junto com o
+    // container. Mesmo estado inicial de `runner` (RN-423).
+    expect(projeto.workspaceVerifiedAt).toBeNull();
+    // E a criação NÃO cria a pasta — é o requisito 3 provado no banco.
+    expect(existsSync(aindaNaoCriada)).toBe(false);
+  });
+
+  it('fora da base é 400 NOMEANDO a base, e nenhum projeto é criado', async () => {
+    const { ownerId, workspaceId } = await workspace();
+    const base = baseDaInstalacao();
+    const fora = mkdtempSync(join(tmpdir(), 'brabo-fora-'));
+    temporarias.push(fora);
 
     const promessa = criarProjeto.execute(workspaceId, ownerId, {
-      name: 'quebrado',
-      slug: 'quebrado',
+      name: 'fora',
+      slug: 'fora',
       executionMode: 'mounted',
-      workspacePath: inexistente,
+      workspacePath: join(fora, 'loja'),
     });
 
     await expect(promessa).rejects.toBeInstanceOf(BadRequestException);
-    await expect(promessa).rejects.toThrow(/não existe do lado de dentro da api/);
-    // A parte que ENSINA — sem ela a recusa seria só um "não".
-    await expect(promessa).rejects.toThrow(/docker\/docker-compose\.yml/);
+    await expect(promessa).rejects.toThrow(
+      new RegExp(`precisa ficar dentro de ${base}`),
+    );
+    // A parte que ENSINA: o caminho sugerido dentro da base.
+    await expect(promessa).rejects.toThrow(
+      new RegExp(`Sugerido: ${base}/loja`),
+    );
 
-    // O ponto da entrega: o projeto NÃO nasce quebrado para descobrir o
-    // problema na primeira ferramenta do primeiro agente.
     expect(await projetos.listForWorkspace(workspaceId)).toEqual([]);
   });
 
+  it('base NÃO configurada é 400 dizendo que o MODO não está disponível nesta instalação', async () => {
+    const { ownerId, workspaceId } = await workspace();
+    delete process.env.BRABO_PROJECTS_BASE;
+
+    const promessa = criarProjeto.execute(workspaceId, ownerId, {
+      name: 'sem-base',
+      slug: 'sem-base',
+      executionMode: 'mounted',
+      workspacePath: '/home/voce/brabo/loja',
+    });
+
+    await expect(promessa).rejects.toBeInstanceOf(BadRequestException);
+    await expect(promessa).rejects.toThrow(
+      /não está disponível nesta instalação/,
+    );
+    await expect(promessa).rejects.toThrow(/BRABO_PROJECTS_BASE/);
+
+    expect(await projetos.listForWorkspace(workspaceId)).toEqual([]);
+  });
+});
+
+describe('a criação RECUSA o caminho que travaria depois (RN-170/RN-422)', () => {
   it('modo `mounted` sem caminho é recusado antes de tocar o banco', async () => {
     const { ownerId, workspaceId } = await workspace();
 

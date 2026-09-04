@@ -161,9 +161,11 @@ export class ProjectResponseDto implements Wire<Project> {
     description:
       'WHERE the command executes (RN-169/RN-421 — ADR 0072/0104). ' +
       '`container`: the folder managed in PROJECT_WORKSPACES_ROOT. ' +
-      "`mounted`: the user's folder in `workspacePath`, mounted via " +
-      "bind-mount. `runner`: the user's folder confirmed by the runner " +
-      '(see `workspaceVerifiedAt`).',
+      "`mounted`: the user's folder in `workspacePath`, inside " +
+      '`BRABO_PROJECTS_BASE` and reached through the base bind-mount (ADR ' +
+      "0141). `runner`: the user's folder confirmed by the runner. Both " +
+      '`mounted` and `runner` report the confirmation in ' +
+      '`workspaceVerifiedAt`.',
   })
   executionMode!: ProjectExecutionMode;
 
@@ -180,9 +182,11 @@ export class ProjectResponseDto implements Wire<Project> {
     example: null,
     nullable: true,
     description:
-      'When the runner first confirmed the path (RN-423). `null` = not ' +
-      'yet verified — only meaningful with `executionMode: "runner"`; ' +
-      '`container`/`mounted` never fill this field in.',
+      'When the path was confirmed on disk. `null` = not yet verified. In ' +
+      '`runner` the confirmation comes from the CLI connecting (RN-423); in ' +
+      '`mounted` it is stamped when Infra starts the container and the ' +
+      'folder is materialized (RN-501, ADR 0142). `container` never fills ' +
+      'this field in. It records A confirmation, never a heartbeat.',
   })
   workspaceVerifiedAt!: string | null;
 
