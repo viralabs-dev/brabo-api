@@ -519,3 +519,81 @@ export class ProjectsBaseResponseDto {
   })
   projectsBase!: string | null;
 }
+
+/**
+ * Uma listagem do navegador de pastas de projeto (RN-504).
+ *
+ * ## Por que cinco campos, e não só `entries`
+ *
+ * Porque `entries` sozinho MENTE. Ele só traz diretório — arquivo e symlink
+ * são deliberadamente omitidos —, e uma pasta cheia de código, ou cheia de
+ * links, chegaria como lista vazia e a tela diria "pasta vazia". É o defeito
+ * que a RN-180 nomeia: tela que mostra um RECORTE diz que é recorte.
+ * `arquivos` e `simbolicos` são a declaração do que ficou de fora, e
+ * `truncado` é a declaração de que nem tudo que caberia coube.
+ *
+ * `base` vem em TODA resposta, e não só em `GET .../projects-base`, porque é
+ * ela que dá sentido a `path`: o cliente sabe onde a navegação começa e até
+ * onde ela sobe sem precisar de uma segunda chamada. `null` — em `base` e em
+ * `path` juntos — é a instalação sem `BRABO_PROJECTS_BASE`: normal, nunca
+ * erro, e é assim que o assistente de criação aprende a não oferecer o modo
+ * Pasta montada.
+ */
+export class ProjectFoldersResponseDto {
+  @ApiProperty({
+    example: '/home/voce/brabo',
+    nullable: true,
+    description:
+      'The mounted-projects base of this installation (`BRABO_PROJECTS_BASE`, ' +
+      'ADR 0141) — the same value `GET .../projects-base` returns, repeated ' +
+      'here so a client can render the breadcrumb without a second call. ' +
+      '`null` means the installation offers no Mounted mode.',
+  })
+  base!: string | null;
+
+  @ApiProperty({
+    example: '/home/voce/brabo/clientes',
+    nullable: true,
+    description:
+      'The folder actually listed, normalized. Equals `base` when the ' +
+      'request omitted `path`. `null` only when there is no base at all: ' +
+      'nothing was listed because there is nowhere to list.',
+  })
+  path!: string | null;
+
+  @ApiProperty({
+    type: [String],
+    example: ['api', 'loja', 'website'],
+    description:
+      'The SUBDIRECTORY names directly under `path`, sorted, never ' +
+      'recursive. Files, symlinks and dot-prefixed entries are excluded — ' +
+      'see `arquivos`, `simbolicos` and `truncado`.',
+  })
+  entries!: string[];
+
+  @ApiProperty({
+    example: false,
+    description:
+      'The folder holds more than 500 subdirectories and only the first 500 ' +
+      'came back. Sorting happens BEFORE the cut, so the cut is ' +
+      'deterministic instead of "whatever the filesystem returned first".',
+  })
+  truncado!: boolean;
+
+  @ApiProperty({
+    example: 12,
+    description:
+      'How many non-directory entries were left out. A folder full of code ' +
+      'must not look empty (RN-180).',
+  })
+  arquivos!: number;
+
+  @ApiProperty({
+    example: 1,
+    description:
+      'How many symlinks were left out. The browser never follows one — a ' +
+      'link is reported, never descended into, so a link pointing outside ' +
+      'the base is not a way out of it.',
+  })
+  simbolicos!: number;
+}
