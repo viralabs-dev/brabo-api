@@ -35,6 +35,11 @@ export interface TransicaoDeContainerInput {
  * para registrar o resultado — a ordem "orquestrador real age, depois grava
  * aqui" já vale, não é mais hipotética.
  *
+ * O que ele passou a fazer ALÉM de gravar (RN-501, ADR 0142): a chegada em
+ * `running` publica `container.running` no outbox, na MESMA transação. Não
+ * é orquestração — é o aviso de que a pré-condição do claim de dev agent
+ * passou a existir; ver `avisarQueOContainerSubiu` no fim do arquivo.
+ *
  * ## A primeira transição é especial
  *
  * Não existe linha até a primeira chamada com `to: 'provisioning'`: aí o
