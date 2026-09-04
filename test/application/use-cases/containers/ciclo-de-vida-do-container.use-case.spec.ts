@@ -1,10 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { ObterCicloDeVidaDoContainerUseCase } from '../../../../src/application/use-cases/containers/obter-ciclo-de-vida-do-container.use-case';
 import { RegistrarTransicaoDeContainerUseCase } from '../../../../src/application/use-cases/containers/registrar-transicao-de-container.use-case';
 import type { ObterContainerDoProjetoUseCase } from '../../../../src/application/use-cases/containers/obter-container-do-projeto.use-case';
 import type { ProjectRepository } from '../../../../src/application/ports/project-repository.port';
 import type { UnitOfWork } from '../../../../src/application/ports/unit-of-work.port';
+import type { OutboxRepository } from '../../../../src/application/ports/outbox-repository.port';
+import type { NewOutboxEvent } from '../../../../src/domain/shared/outbox-event.entity';
 import {
   ContainerRepository,
   type CreateContainerLifecycleInput,
@@ -22,6 +24,21 @@ const PROJETO = 'proj-1';
 const unitOfWork = {
   runInTransaction: (work: () => Promise<unknown>) => work(),
 } as unknown as UnitOfWork;
+
+/**
+ * O que a transição publicou (RN-501, ADR 0142) — limpo a cada teste pelo
+ * `beforeEach` do describe.
+ */
+const publicados: NewOutboxEvent[] = [];
+
+const outbox = {
+  append: (evento: NewOutboxEvent) => {
+    publicados.push(evento);
+    return Promise.resolve();
+  },
+  listUnprocessed: () => Promise.resolve([]),
+  markProcessed: () => Promise.resolve(),
+} as unknown as OutboxRepository;
 
 function projeto(overrides: Partial<Project> = {}): Project {
   return {
@@ -167,6 +184,10 @@ describe('ObterCicloDeVidaDoContainerUseCase', () => {
 });
 
 describe('RegistrarTransicaoDeContainerUseCase', () => {
+  beforeEach(() => {
+    publicados.length = 0;
+  });
+
   it('a primeira transição (provisioning) cria a linha, com a versão e os recursos da decisão vigente', async () => {
     const { repo, atual } = containerRepo(null);
     const useCase = new RegistrarTransicaoDeContainerUseCase(
@@ -174,6 +195,7 @@ describe('RegistrarTransicaoDeContainerUseCase', () => {
       projectRepo(projeto()),
       repo,
       obterImagemDecidida(3),
+      outbox,
     );
 
     const criada = await useCase.execute(PROJETO, 'provisioning');
@@ -191,6 +213,7 @@ describe('RegistrarTransicaoDeContainerUseCase', () => {
       projectRepo(projeto()),
       repo,
       obterImagemDecidida(),
+      outbox,
     );
 
     const atualizada = await useCase.execute(PROJETO, 'running', {
@@ -199,6 +222,64 @@ describe('RegistrarTransicaoDeContainerUseCase', () => {
 
     expect(atualizada.status).toBe('running');
     expect(atualizada.containerId).toBe('abc123');
+  });
+
+  // RN-501/ADR 0142 — a leitura que o engine faz de `project_containers` não
+  // avisa ninguém; quem solta os dev agents parados em `:idle` é este evento.
+  it('chegar em `running` publica `container.running` no agregado `container`, com o id do PROJETO', async () => {
+    const { repo } = containerRepo(linha({ status: 'provisioning' }));
+    const useCase = new RegistrarTransicaoDeContainerUseCase(
+      unitOfWork,
+      projectRepo(projeto()),
+      repo,
+      obterImagemDecidida(),
+      outbox,
+    );
+
+    await useCase.execute(PROJETO, 'running', { containerId: 'abc123' });
+
+    expect(publicados).toEqual([
+      {
+        aggregateType: 'container',
+        aggregateId: PROJETO,
+        eventType: 'container.running',
+        payload: { projectId: PROJETO },
+      },
+    ]);
+  });
+
+  it.each(['provisioning', 'stopped'] as const)(
+    'transição para `%s` NÃO publica nada — só `running` solta dev agent',
+    async (destino) => {
+      const inicial = destino === 'provisioning' ? 'failed' : 'running';
+      const { repo } = containerRepo(linha({ status: inicial }));
+      const useCase = new RegistrarTransicaoDeContainerUseCase(
+        unitOfWork,
+        projectRepo(projeto()),
+        repo,
+        obterImagemDecidida(),
+        outbox,
+      );
+
+      await useCase.execute(PROJETO, destino);
+
+      expect(publicados).toEqual([]);
+    },
+  );
+
+  it('a PRIMEIRA transição (criação da linha) não publica — ela nasce sempre em `provisioning`', async () => {
+    const { repo } = containerRepo(null);
+    const useCase = new RegistrarTransicaoDeContainerUseCase(
+      unitOfWork,
+      projectRepo(projeto()),
+      repo,
+      obterImagemDecidida(2),
+      outbox,
+    );
+
+    await useCase.execute(PROJETO, 'provisioning');
+
+    expect(publicados).toEqual([]);
   });
 
   it.each(['mounted', 'runner'] as const)(
@@ -210,6 +291,7 @@ describe('RegistrarTransicaoDeContainerUseCase', () => {
         projectRepo(projeto({ executionMode, workspacePath: '/repos/x' })),
         repo,
         obterImagemDecidida(2),
+        outbox,
       );
 
       const criada = await useCase.execute(PROJETO, 'provisioning');
@@ -227,6 +309,7 @@ describe('RegistrarTransicaoDeContainerUseCase', () => {
       projectRepo(projeto()),
       repo,
       obterImagemSemDecisao(),
+      outbox,
     );
 
     await expect(useCase.execute(PROJETO, 'provisioning')).rejects.toThrow(
@@ -241,6 +324,7 @@ describe('RegistrarTransicaoDeContainerUseCase', () => {
       projectRepo(projeto()),
       repo,
       obterImagemDecidida(),
+      outbox,
     );
 
     await expect(useCase.execute(PROJETO, 'running')).rejects.toThrow(
@@ -255,6 +339,7 @@ describe('RegistrarTransicaoDeContainerUseCase', () => {
       projectRepo(projeto()),
       repo,
       obterImagemDecidida(),
+      outbox,
     );
 
     await expect(useCase.execute(PROJETO, 'provisioning')).rejects.toThrow(
@@ -271,6 +356,7 @@ describe('RegistrarTransicaoDeContainerUseCase', () => {
       projectRepo(null),
       repo,
       obterImagemDecidida(),
+      outbox,
     );
 
     await expect(useCase.execute(PROJETO, 'provisioning')).rejects.toThrow(
