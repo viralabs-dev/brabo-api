@@ -3,10 +3,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it, expect, afterEach } from 'vitest';
 import {
+  baseDeProjetos,
   CaminhoForaDoEscopoError,
   CaminhoLocalInvalidoError,
   caminhoDeRepositorioContido,
   caminhoDeWorkspaceLocalValido,
+  dentroDaBaseDeProjetos,
   garantirQueryEscalar,
   LocalizacaoDeProjetoInvalidaError,
   permissionsFilePath,
@@ -316,6 +318,80 @@ describe('caminhoDeWorkspaceLocalValido', () => {
     expect(caminhoDeWorkspaceLocalValido('/')).toBe(false);
     expect(caminhoDeWorkspaceLocalValido('relativo/sem/barra')).toBe(false);
     expect(caminhoDeWorkspaceLocalValido('/home/voce/../../etc')).toBe(false);
+  });
+});
+
+/**
+ * A base dos projetos montados (ADR 0141, RN-500).
+ *
+ * Duas funções e um par de armadilhas. `baseDeProjetos` nunca lança — AUSENTE
+ * é o estado normal de uma instalação que não oferece o modo Pasta montada, e
+ * tratá-lo como erro faria a criação de projeto quebrar onde ela deveria só
+ * esconder uma opção. `dentroDaBaseDeProjetos` reusa `dentroDoEscopo`, e o
+ * caso que justifica esse reuso é o do prefixo: `/home/voce/brabo2` NÃO está
+ * dentro de `/home/voce/brabo`, embora a string comece igual.
+ */
+describe('baseDeProjetos / dentroDaBaseDeProjetos', () => {
+  const original = process.env.BRABO_PROJECTS_BASE;
+
+  afterEach(() => {
+    if (original === undefined) delete process.env.BRABO_PROJECTS_BASE;
+    else process.env.BRABO_PROJECTS_BASE = original;
+  });
+
+  it('ausente devolve null, sem lançar', () => {
+    delete process.env.BRABO_PROJECTS_BASE;
+    expect(() => baseDeProjetos()).not.toThrow();
+    expect(baseDeProjetos()).toBeNull();
+  });
+
+  it('vazia (e só com espaços) também é null — não é uma base chamada ""', () => {
+    process.env.BRABO_PROJECTS_BASE = '';
+    expect(baseDeProjetos()).toBeNull();
+    process.env.BRABO_PROJECTS_BASE = '   ';
+    expect(baseDeProjetos()).toBeNull();
+  });
+
+  it('normaliza a barra final', () => {
+    process.env.BRABO_PROJECTS_BASE = '/home/voce/brabo/';
+    expect(baseDeProjetos()).toBe('/home/voce/brabo');
+    process.env.BRABO_PROJECTS_BASE = '/home/voce/brabo//';
+    expect(baseDeProjetos()).toBe('/home/voce/brabo');
+  });
+
+  it('aceita o que está DENTRO da base', () => {
+    process.env.BRABO_PROJECTS_BASE = '/home/voce/brabo';
+    expect(dentroDaBaseDeProjetos('/home/voce/brabo/loja')).toBe(true);
+    expect(dentroDaBaseDeProjetos('/home/voce/brabo/loja/api')).toBe(true);
+  });
+
+  it('a própria base conta como dentro', () => {
+    process.env.BRABO_PROJECTS_BASE = '/home/voce/brabo';
+    expect(dentroDaBaseDeProjetos('/home/voce/brabo')).toBe(true);
+    expect(dentroDaBaseDeProjetos('/home/voce/brabo/')).toBe(true);
+  });
+
+  it('recusa o que está FORA da base', () => {
+    process.env.BRABO_PROJECTS_BASE = '/home/voce/brabo';
+    expect(dentroDaBaseDeProjetos('/home/voce/outra-pasta')).toBe(false);
+    expect(dentroDaBaseDeProjetos('/etc')).toBe(false);
+    expect(dentroDaBaseDeProjetos('/home/voce')).toBe(false);
+  });
+
+  // A armadilha de prefixo: é POR ISTO que a função reusa `dentroDoEscopo` em
+  // vez de um `startsWith` escrito aqui. `/home/voce/brabo2` é outra pasta,
+  // de outra pessoa possivelmente, e a string começa igual.
+  it('recusa a armadilha de prefixo (/home/voce/brabo2 vs /home/voce/brabo)', () => {
+    process.env.BRABO_PROJECTS_BASE = '/home/voce/brabo';
+    expect(dentroDaBaseDeProjetos('/home/voce/brabo2')).toBe(false);
+    expect(dentroDaBaseDeProjetos('/home/voce/brabo2/loja')).toBe(false);
+    expect(dentroDaBaseDeProjetos('/home/voce/brabo-outro')).toBe(false);
+  });
+
+  it('sem base configurada, NADA está dentro — e não lança', () => {
+    delete process.env.BRABO_PROJECTS_BASE;
+    expect(dentroDaBaseDeProjetos('/home/voce/brabo/loja')).toBe(false);
+    expect(dentroDaBaseDeProjetos('/')).toBe(false);
   });
 });
 

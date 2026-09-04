@@ -34,6 +34,68 @@ export function projectWorkspacesRoot(): string {
 }
 
 /**
+ * A BASE dos projetos no modo `mounted` — a ÚNICA pasta do computador do
+ * operador que os containers do Brabo enxergam (ADR 0141, RN-500).
+ *
+ * `BRABO_PROJECTS_BASE` é montada por IDENTIDADE (`$X:$X`) nos serviços `api`
+ * e `engine`, então o caminho lido aqui é o MESMO no host e nos dois
+ * containers. É isso que mantém honesta a string que o usuário digita e que a
+ * tela mostra de volta (`projects.workspace_path`), e é o que faz
+ * `projectScopeRoot` e `Engine.Actions.Workspace.workspace_dir/2` continuarem
+ * valendo sem uma linha de código nova.
+ *
+ * VARIÁVEL PRÓPRIA, e não `PROJECT_WORKSPACES_ROOT`/`PROJECT_WORKSPACES_HOST_DIR`,
+ * por três motivos que o ADR 0141 detalha e que valem repetir aqui, porque é
+ * daqui que sai a tentação de fundir as duas:
+ *
+ * - **colisão de namespace com consequência real.** A raiz gerenciada é
+ *   nomeada por `workspace_dir_name` (UNIQUE); a base é nomeada pelo USUÁRIO.
+ *   `<base>/loja` e um projeto `container` com `workspace_dir_name = loja`
+ *   cairiam na MESMA pasta, e o `git init` do bootstrap aconteceria dentro do
+ *   projeto de outra pessoa. Nada no schema impede: a unicidade é entre
+ *   `workspace_dir_name`, nunca contra o basename de `workspace_path`;
+ * - **semântica de dono oposta.** `/data/project-workspaces` é do PRODUTO
+ *   (descartável em modo `container`); a base é do USUÁRIO;
+ * - **a base é navegável, a raiz gerenciada não deve ser.** O navegador de
+ *   pastas é escopado à base; conflar exporia o interior de todo projeto
+ *   `container`.
+ *
+ * NUNCA lança, e AUSENTE é estado normal — é assim que uma instalação diz
+ * "esta máquina não oferece o modo Pasta montada". Quem consome trata `null`
+ * como "não ofereça", nunca como erro.
+ */
+export function baseDeProjetos(): string | null {
+  const bruto = process.env.BRABO_PROJECTS_BASE?.trim() ?? '';
+  if (bruto.length === 0) return null;
+  return normalizarSemBarraFinal(bruto);
+}
+
+/**
+ * O caminho está DENTRO da base de projetos montados (RN-500)?
+ *
+ * Reusa `dentroDoEscopo` — a mesma função que o escopo de terminal do ADR
+ * 0055 usa — e não uma comparação de prefixo escrita aqui, porque a armadilha
+ * é exatamente a que ela já resolve: `/home/voce/brabo2` **não** está dentro
+ * de `/home/voce/brabo`, embora a string comece igual. A própria base conta
+ * como dentro.
+ *
+ * Sem base configurada devolve `false`, e isso não é "recusar por precaução":
+ * é a resposta correta à pergunta feita. Não existe pasta alguma dentro de uma
+ * base que não existe, e o chamador que precisa distinguir "fora da base" de
+ * "não há base" pergunta a `baseDeProjetos()` — que é onde essa distinção mora.
+ *
+ * NÃO entra em `caminhoDeWorkspaceLocalValido` (esta PR não a toca): aquele
+ * predicado roda em toda LEITURA, por `projectScopeRoot`, e um projeto
+ * `mounted` legado fora da base passaria a explodir na leitura. A base é regra
+ * de CRIAÇÃO e CONVERSÃO; o léxico é para sempre.
+ */
+export function dentroDaBaseDeProjetos(caminho: string): boolean {
+  const base = baseDeProjetos();
+  if (base === null) return false;
+  return dentroDoEscopo(caminho, base);
+}
+
+/**
  * Quantos caracteres do id entram no nome da pasta — mesma convenção do
  * rótulo de sessão (`apps/web/src/lib/session-label.ts`), reusada aqui só
  * pela consistência do número, não pelo código.

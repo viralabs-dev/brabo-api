@@ -490,3 +490,32 @@ export const _chavesProjectUnreadEvents: MesmasChaves<
   ProjectUnreadEventsResponseDto,
   ProjectUnreadEvents
 > = true;
+
+/**
+ * A base dos projetos no modo `mounted`, como o cliente a enxerga (ADR 0141,
+ * RN-500).
+ *
+ * DTO de UM campo, e ele é `nullable` de propósito: `null` não é erro nem
+ * falha de leitura — é a instalação dizendo "esta máquina não oferece o modo
+ * Pasta montada". É por aqui que a criação de projeto aprende a NÃO oferecer
+ * um modo que a instalação não honra, em vez de oferecer e recusar depois.
+ *
+ * Sem `MesmasChaves` contra um tipo de domínio porque não há domínio nenhum
+ * aqui: o valor é configuração da INSTALAÇÃO, lido de `BRABO_PROJECTS_BASE`
+ * pela mesma função (`baseDeProjetos`) que a regra de criação/conversão vai
+ * usar. Uma cópia do valor em outro lugar seria a segunda fonte que um dia
+ * diverge.
+ */
+export class ProjectsBaseResponseDto {
+  @ApiProperty({
+    example: '/home/voce/brabo',
+    nullable: true,
+    description:
+      "The single folder on the operator's computer that the Brabo " +
+      'containers can see, mounted by IDENTITY (`$X:$X`) into `api` and ' +
+      '`engine` (ADR 0141). `null` means `BRABO_PROJECTS_BASE` is not set: ' +
+      'the installation offers no Mounted mode, and the project wizard must ' +
+      'not offer it. Never a failure — absent is a normal state.',
+  })
+  projectsBase!: string | null;
+}
