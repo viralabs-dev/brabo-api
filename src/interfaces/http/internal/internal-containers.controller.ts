@@ -61,9 +61,11 @@ export class InternalContainersController {
       "Project identity, execution mode and the Architect's current image " +
       'decision. The broker revalidates all of it before handing anything to ' +
       'the daemon — reading from here is not the same as trusting it, and the ' +
-      'refusal names the field. No path is returned: the bind source is ' +
-      'resolved by the daemon against the HOST filesystem, and a path from ' +
-      'inside the api container would silently mount an empty folder.',
+      'refusal names the field. No ABSOLUTE path is returned: the bind source ' +
+      'is resolved by the daemon against the HOST filesystem, and a path from ' +
+      'inside the api container would silently mount an empty folder. What ' +
+      'travels is `localizacao` (RN-501) — which of the two broker roots to ' +
+      'use, plus the relative segment that root does not cover.',
   })
   @ApiOkResponse({ type: ContainerSpecInternalResponseDto })
   @ApiNotFoundResponse({ description: 'Project not found.' })

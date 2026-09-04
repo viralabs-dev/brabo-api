@@ -34,11 +34,14 @@ import type { ProposedAction } from '../../../domain/actions/proposed-action.ent
  * o que aconteceu de verdade do lado do Docker sem alargar a máquina de
  * estados por uma via de atalho que só existe aqui.
  *
- * ## `mounted`/`runner` (ADR 0137)
+ * ## `runner` (ADR 0137, RN-501)
  *
- * Mesma ramificação por `executionMode` de `ExecuteContainerStartUseCase`/
- * `ExecuteContainerStopUseCase`: fora de `container`, pede ao ENGINE para
- * repassar `container_remove` ao RUNNER conectado via canal.
+ * Mesma ramificação por DESTINO de `ExecuteContainerStartUseCase`/
+ * `ExecuteContainerStopUseCase`: `container` e `mounted` vão ao BROKER; só
+ * `runner` pede ao ENGINE para repassar `container_remove` ao RUNNER
+ * conectado via canal. `mounted` mudou de lado junto com o `start` (RN-501)
+ * — o container dele passou a existir no SERVIDOR, e um `remove` pelo runner
+ * deixaria órfão no servidor um container que a tabela diria `removed`.
  */
 @Injectable()
 export class ExecuteContainerRemoveUseCase {
@@ -80,7 +83,7 @@ export class ExecuteContainerRemoveUseCase {
         );
       }
 
-      if (project.executionMode === 'container') {
+      if (project.executionMode !== 'runner') {
         try {
           await this.brokerPort.remove(projectId);
         } catch (erro) {
