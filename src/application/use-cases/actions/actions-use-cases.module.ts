@@ -8,6 +8,7 @@ import { ExecuteTerminalActionUseCase } from './execute-terminal-action.use-case
 import { ExecuteAdrPrUseCase } from './execute-adr-pr.use-case';
 import { ExecuteInfraPrUseCase } from './execute-infra-pr.use-case';
 import { ExecuteContainerStartUseCase } from './execute-container-start.use-case';
+import { ExecuteContainerStartViaRunnerUseCase } from './execute-container-start-via-runner.use-case';
 import { ExecuteContainerStopUseCase } from './execute-container-stop.use-case';
 import { ExecuteContainerRemoveUseCase } from './execute-container-remove.use-case';
 import { ExecuteInstructionPatchUseCase } from './execute-instruction-patch.use-case';
@@ -37,6 +38,7 @@ const USE_CASES = [
   ExecuteAdrPrUseCase,
   ExecuteInfraPrUseCase,
   ExecuteContainerStartUseCase,
+  ExecuteContainerStartViaRunnerUseCase,
   ExecuteContainerStopUseCase,
   ExecuteContainerRemoveUseCase,
   ExecuteInstructionPatchUseCase,

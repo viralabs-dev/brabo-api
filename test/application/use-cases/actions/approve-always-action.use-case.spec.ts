@@ -119,6 +119,7 @@ const proposeAction = new ProposeActionUseCase(
   undefined as never, // executeGitAction — não exercitado aqui
   undefined as never, // executeInfraPr — não exercitado aqui
   undefined as never, // executeContainerStart — não exercitado aqui
+  undefined as never, // executeContainerStartViaRunner — não exercitado aqui
   undefined as never, // executeContainerStop — não exercitado aqui
   appendSessionEvent,
   obterCicloDeVidaDoContainer,
@@ -132,6 +133,7 @@ const approveAction = new ApproveActionUseCase(
   undefined as never, // executeAdrPr
   undefined as never, // executeInfraPr
   undefined as never, // executeContainerStart
+  undefined as never, // executeContainerStartViaRunner
   undefined as never, // executeContainerStop
   undefined as never, // executeContainerRemove
   {

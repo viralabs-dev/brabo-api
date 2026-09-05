@@ -30,7 +30,8 @@ export type ActionType =
   | 'assess_implementability'
   | 'container_start'
   | 'container_stop'
-  | 'container_remove';
+  | 'container_remove'
+  | 'container_start_via_runner';
 
 export const ACTION_TYPES: readonly ActionType[] = [
   'terminal',
@@ -68,6 +69,14 @@ export const ACTION_TYPES: readonly ActionType[] = [
   // linha da tela. Mesmo broker, mesma tabela `project_containers`.
   'container_stop',
   'container_remove',
+  // RN-506 (ADR 0145): segundo tipo pra subir o container real do projeto —
+  // exclusivo de `execution_mode: runner` (o Infra Lead consulta isso
+  // LOCALMENTE, no engine, antes de propor; `decide()` aqui não olha modo,
+  // igual já não olhava para `container_start`). NÃO elege imagem
+  // candidata nenhuma (payload só tem `rationale` opcional) — o broker
+  // nunca alcança a pasta de um projeto `runner`, então não há roteamento
+  // do Arquiteto contra o qual eleger.
+  'container_start_via_runner',
 ];
 
 /**
@@ -156,6 +165,13 @@ const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
   // `container_remove` entra nele.
   container_stop: 'maintainer',
   container_remove: 'maintainer',
+  // RN-506 (ADR 0145): MESMO calibre de `container_start` — quem responde
+  // pelo projeto autoriza o gasto, seja ele elegido pela Infra (broker) ou
+  // simplesmente subido pelo runner do usuário. Não entra em teto absoluto
+  // nenhum, pelo mesmo raciocínio de `container_start`/`container_stop`:
+  // não é o mais destrutivo dos quatro (essa régua é só de
+  // `container_remove`).
+  container_start_via_runner: 'maintainer',
 };
 
 // Rede de segurança padrão, sempre ativa, independente do permissions.json

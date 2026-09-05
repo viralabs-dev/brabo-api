@@ -9,6 +9,7 @@ import { ObterSpecDeContainerUseCase } from './obter-spec-de-container.use-case'
 import { RegistrarTransicaoDeContainerUseCase } from './registrar-transicao-de-container.use-case';
 import { ExecutarComandoNoContainerUseCase } from './executar-comando-no-container.use-case';
 import { ObterVisaoGeralDeContainersUseCase } from './obter-visao-geral-de-containers.use-case';
+import { SubirCicloDeVidaDoContainerUseCase } from './subir-ciclo-de-vida-do-container.use-case';
 
 const USE_CASES = [
   DecidirImagemDoProjetoUseCase,
@@ -19,6 +20,7 @@ const USE_CASES = [
   RegistrarTransicaoDeContainerUseCase,
   ExecutarComandoNoContainerUseCase,
   ObterVisaoGeralDeContainersUseCase,
+  SubirCicloDeVidaDoContainerUseCase,
 ];
 
 /**
@@ -58,6 +60,14 @@ const USE_CASES = [
  * carga (`TETO_DE_VERIFICACOES_POR_CARGA`). Não importa `ContainerRepository`
  * diretamente: `ContainersOverviewRepository` é ligado no módulo de
  * persistência (`drizzle.module.ts`), fora daqui.
+ *
+ * `SubirCicloDeVidaDoContainer` (RN-506, ADR 0145) é a dança
+ * `provisioning -> running` da máquina de estados, extraída de
+ * `ExecuteContainerStartUseCase` (`apps/.../use-cases/actions/`) para ser
+ * COMPARTILHADA com `ExecuteContainerStartViaRunnerUseCase` — os dois
+ * chamam Docker por um caminho diferente (broker vs. runner), mas a dança
+ * de ciclo de vida depois de "subiu" é a MESMA, e duplicá-la nos dois
+ * arquivos divergiria o primeiro dia que um dos dois mudasse sozinho.
  */
 @Module({
   imports: [SessionsUseCasesModule, ContainerBrokerHttpClientModule],
