@@ -11,10 +11,14 @@ export type StoryPromotionMode = (typeof STORY_PROMOTION_MODES)[number];
 //   isso é o DEFAULT da coluna: projeto criado antes do ADR 0072 não muda de
 //   lugar.
 // - `mounted` (antigo `local`, renomeado pelo ADR 0104): uma pasta DO
-//   USUÁRIO, de caminho absoluto livre, que só funciona se estiver montada
-//   dentro do container da api E do engine (é a mesma pasta vista pelos dois
-//   processos). A validação da criação recusa o que não estiver montado
-//   (RN-170/RN-422) — ver `validarCaminhoDeWorkspaceLocal`.
+//   USUÁRIO, dentro da BASE única da instalação (`BRABO_PROJECTS_BASE`, ADR
+//   0141), que é a única pasta do computador montada dentro do container da
+//   api E do engine (é a mesma pasta vista pelos dois processos). A criação
+//   valida só o LÉXICO mais a base (RN-501, ADR 0142) — a mesma disciplina
+//   de `runner`, e pelo mesmo motivo invertido no tempo: a pasta é
+//   MATERIALIZADA quando a Infra sobe o container, depois da decisão do
+//   Arquiteto (ver `materializarWorkspaceMontado`). Nasce com
+//   `workspaceVerifiedAt: null`, carimbado na materialização.
 // - `runner`: uma pasta DO USUÁRIO que NÃO precisa de bind-mount — o CLI
 //   `brabo-runner` roda na máquina do usuário e confirma o caminho quando
 //   conecta (RN-423). A criação valida só a parte LÉXICA (sem I/O); o
