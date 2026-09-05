@@ -108,7 +108,7 @@ function build(opts: {
         opts.cicloAtual === undefined ? null : opts.cicloAtual,
     } as never,
     registrarTransicao as never,
-    broker as never,
+    broker,
     projects as never,
     apiToEngineClient as never,
   );
@@ -127,8 +127,7 @@ describe('ExecuteContainerRemoveUseCase', () => {
     expect(transicoes.map((t) => t.to)).toEqual(['stopped', 'removed']);
     expect(gravados.at(-1)?.status).toBe('executed');
     expect(
-      (gravados.at(-1)?.executionResult as { statusFinal: string })
-        .statusFinal,
+      (gravados.at(-1)?.executionResult as { statusFinal: string }).statusFinal,
     ).toBe('removed');
   });
 
@@ -205,7 +204,24 @@ describe('ExecuteContainerRemoveUseCase', () => {
   });
 });
 
-describe('ExecuteContainerRemoveUseCase — mounted/runner (ADR 0137)', () => {
+describe('ExecuteContainerRemoveUseCase — a ramificação é por DESTINO (ADR 0137, RN-503)', () => {
+  it('projeto "mounted" remove pelo BROKER — o container dele existe no SERVIDOR', async () => {
+    // Um `remove` pelo runner deixaria órfão no servidor um container que a
+    // tabela passaria a chamar de `removed`.
+    const { useCase, gravados, transicoes, apiToEngineClient, broker } = build({
+      executionMode: 'mounted',
+      cicloAtual: makeLifecycle('running'),
+    });
+    const brokerRemove = vi.spyOn(broker, 'remove');
+
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+
+    expect(apiToEngineClient.removeContainerViaRunner).not.toHaveBeenCalled();
+    expect(brokerRemove).toHaveBeenCalledWith('proj-1');
+    expect(transicoes.map((t) => t.to)).toEqual(['stopped', 'removed']);
+    expect(gravados.at(-1)?.status).toBe('executed');
+  });
+
   it('projeto "runner": pede ao engine via ApiToEngineClient, nunca ao broker', async () => {
     const { useCase, gravados, transicoes, apiToEngineClient, broker } = build({
       executionMode: 'runner',
@@ -226,10 +242,13 @@ describe('ExecuteContainerRemoveUseCase — mounted/runner (ADR 0137)', () => {
 
   it('RunnerNaoConectadoError vira failed, nunca propaga, e NÃO transiciona nada', async () => {
     const { useCase, gravados, transicoes } = build({
-      executionMode: 'mounted',
+      executionMode: 'runner',
       cicloAtual: makeLifecycle('running'),
       removeContainerViaRunner: async () => {
-        throw new RunnerNaoConectadoError('not_connected', 'nenhum runner conectado');
+        throw new RunnerNaoConectadoError(
+          'not_connected',
+          'nenhum runner conectado',
+        );
       },
     });
 
@@ -242,10 +261,12 @@ describe('ExecuteContainerRemoveUseCase — mounted/runner (ADR 0137)', () => {
 
   it('RunnerRecusouContainerError vira failed, nunca propaga', async () => {
     const { useCase, gravados } = build({
-      executionMode: 'mounted',
+      executionMode: 'runner',
       cicloAtual: makeLifecycle('running'),
       removeContainerViaRunner: async () => {
-        throw new RunnerRecusouContainerError('Docker indisponível na máquina do usuário');
+        throw new RunnerRecusouContainerError(
+          'Docker indisponível na máquina do usuário',
+        );
       },
     });
 

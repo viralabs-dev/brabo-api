@@ -36,15 +36,20 @@ import type { ProposedAction } from '../../../domain/actions/proposed-action.ent
  * que a máquina de estados não descreveu de verdade seria o mesmo defeito
  * que RN-486 já nomeou para o observado: registrar o que não aconteceu.
  *
- * ## `mounted`/`runner` (ADR 0137)
+ * ## `runner` (ADR 0137, RN-503)
  *
- * Mesma ramificação por `executionMode` de `ExecuteContainerStartUseCase`:
- * fora de `container`, pede ao ENGINE para repassar `container_stop` ao
- * RUNNER conectado via canal — nunca ao broker, que recusaria com
- * `ModoDeExecucaoNaoSuportadoError` de qualquer forma. "Sem runner
+ * Mesma ramificação por DESTINO de `ExecuteContainerStartUseCase`:
+ * `container` e `mounted` vão ao BROKER; só `runner` pede ao ENGINE para
+ * repassar `container_stop` ao RUNNER conectado via canal. "Sem runner
  * conectado"/"timeout" (`RunnerNaoConectadoError`) e "o runner recusou"
  * (`RunnerRecusouContainerError`) são FALHAS NORMAIS, mesma disciplina do
  * broker.
+ *
+ * `mounted` mudou de lado junto com o `start` (RN-503), e tinha de mudar: o
+ * container de um projeto montado passou a subir NO SERVIDOR, e um `stop`
+ * que continuasse indo pelo runner pediria para parar um container que não
+ * existe na máquina do usuário — deixando de pé, sem forma de parar, o que
+ * está de pé no servidor.
  */
 @Injectable()
 export class ExecuteContainerStopUseCase {
@@ -86,7 +91,7 @@ export class ExecuteContainerStopUseCase {
         );
       }
 
-      if (project.executionMode === 'container') {
+      if (project.executionMode !== 'runner') {
         try {
           await this.brokerPort.stop(projectId);
         } catch (erro) {

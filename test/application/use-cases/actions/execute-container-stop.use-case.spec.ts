@@ -108,7 +108,7 @@ function build(opts: {
         opts.cicloAtual === undefined ? null : opts.cicloAtual,
     } as never,
     registrarTransicao as never,
-    broker as never,
+    broker,
     projects as never,
     apiToEngineClient as never,
   );
@@ -127,8 +127,7 @@ describe('ExecuteContainerStopUseCase', () => {
     expect(transicoes.map((t) => t.to)).toEqual(['stopped']);
     expect(gravados.at(-1)?.status).toBe('executed');
     expect(
-      (gravados.at(-1)?.executionResult as { statusFinal: string })
-        .statusFinal,
+      (gravados.at(-1)?.executionResult as { statusFinal: string }).statusFinal,
     ).toBe('stopped');
   });
 
@@ -142,8 +141,7 @@ describe('ExecuteContainerStopUseCase', () => {
     expect(transicoes).toEqual([]);
     expect(gravados.at(-1)?.status).toBe('executed');
     expect(
-      (gravados.at(-1)?.executionResult as { statusFinal: string })
-        .statusFinal,
+      (gravados.at(-1)?.executionResult as { statusFinal: string }).statusFinal,
     ).toBe('stopped');
   });
 
@@ -198,10 +196,29 @@ describe('ExecuteContainerStopUseCase', () => {
   });
 });
 
-describe('ExecuteContainerStopUseCase — mounted/runner (ADR 0137)', () => {
-  it('projeto "mounted": pede ao engine via ApiToEngineClient, nunca ao broker', async () => {
+describe('ExecuteContainerStopUseCase — a ramificação é por DESTINO (ADR 0137, RN-503)', () => {
+  it('projeto "mounted" para pelo BROKER — o container dele está no SERVIDOR', async () => {
+    // Ele mudou de lado junto com o `start` (RN-503), e tinha de mudar: um
+    // `stop` que continuasse indo pelo runner pediria para parar um container
+    // que não existe na máquina do usuário, deixando de pé — sem forma de
+    // parar — o que está de pé no servidor.
     const { useCase, gravados, transicoes, apiToEngineClient, broker } = build({
       executionMode: 'mounted',
+      cicloAtual: makeLifecycle('running'),
+    });
+    const brokerStop = vi.spyOn(broker, 'stop');
+
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+
+    expect(apiToEngineClient.stopContainerViaRunner).not.toHaveBeenCalled();
+    expect(brokerStop).toHaveBeenCalledWith('proj-1');
+    expect(transicoes.map((t) => t.to)).toEqual(['stopped']);
+    expect(gravados.at(-1)?.status).toBe('executed');
+  });
+
+  it('projeto "runner": pede ao engine via ApiToEngineClient, nunca ao broker', async () => {
+    const { useCase, gravados, transicoes, apiToEngineClient, broker } = build({
+      executionMode: 'runner',
       cicloAtual: makeLifecycle('running'),
     });
     const brokerStop = vi.spyOn(broker, 'stop');
@@ -222,7 +239,10 @@ describe('ExecuteContainerStopUseCase — mounted/runner (ADR 0137)', () => {
       executionMode: 'runner',
       cicloAtual: makeLifecycle('running'),
       stopContainerViaRunner: async () => {
-        throw new RunnerNaoConectadoError('timeout', 'o runner não respondeu a tempo');
+        throw new RunnerNaoConectadoError(
+          'timeout',
+          'o runner não respondeu a tempo',
+        );
       },
     });
 
@@ -237,7 +257,9 @@ describe('ExecuteContainerStopUseCase — mounted/runner (ADR 0137)', () => {
       executionMode: 'runner',
       cicloAtual: makeLifecycle('running'),
       stopContainerViaRunner: async () => {
-        throw new RunnerRecusouContainerError('Docker indisponível na máquina do usuário');
+        throw new RunnerRecusouContainerError(
+          'Docker indisponível na máquina do usuário',
+        );
       },
     });
 

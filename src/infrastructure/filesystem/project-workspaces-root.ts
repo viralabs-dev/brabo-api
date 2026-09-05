@@ -97,6 +97,59 @@ export function dentroDaBaseDeProjetos(caminho: string): boolean {
 }
 
 /**
+ * O caminho absoluto de um projeto `mounted`, expresso como o SEGMENTO
+ * RELATIVO dele sob a base (RN-503) — `/home/voce/brabo/loja` vira `loja`.
+ *
+ * Existe por causa de UM invariante, o do ADR 0130: nenhum caminho absoluto
+ * atravessa a rede até o broker. Ele é root-equivalente no host e compõe o
+ * `-v` a partir das raízes DELE; se a api mandasse `/home/voce/brabo/loja`, a
+ * contenção do bind-mount passaria a depender de a api estar correta, que é
+ * exatamente a dependência que o broker existe para não ter. O que atravessa
+ * é o pedaço que a base não cobre, e a base é do outro lado.
+ *
+ * Devolve um RESULTADO, nunca `null`: "não há base configurada", "o caminho
+ * está fora da base" e "o caminho É a base" são três recusas com conserto
+ * diferente, e colapsá-las num `null` obrigaria quem lê a adivinhar qual foi.
+ * O caso `caminho === base` é recusa e não segmento vazio de propósito —
+ * montar a base inteira daria ao container de UM projeto a pasta de todos.
+ */
+export function segmentoSobABaseDeProjetos(
+  caminho: string,
+): { ok: true; segmento: string } | { ok: false; motivo: string } {
+  const base = baseDeProjetos();
+  if (base === null) {
+    return {
+      ok: false,
+      motivo:
+        'esta instalação não tem BRABO_PROJECTS_BASE configurada, então não ' +
+        'existe base sob a qual expressar a pasta deste projeto',
+    };
+  }
+
+  const normalizado = normalizarSemBarraFinal(caminho);
+  if (normalizado === base) {
+    return {
+      ok: false,
+      motivo:
+        `a pasta do projeto é a PRÓPRIA base (${base}) — montá-la daria a ` +
+        'este container a pasta de todos os projetos montados',
+    };
+  }
+
+  if (!dentroDoEscopo(normalizado, base)) {
+    return {
+      ok: false,
+      motivo:
+        `a pasta do projeto (${normalizado}) está fora da base ` +
+        `${base}. Só o que mora dentro dela é alcançável pelo daemon do ` +
+        'servidor, porque é ela que está montada por identidade',
+    };
+  }
+
+  return { ok: true, segmento: normalizado.slice(base.length + 1) };
+}
+
+/**
  * Quantos caracteres do id entram no nome da pasta — mesma convenção do
  * rótulo de sessão (`apps/web/src/lib/session-label.ts`), reusada aqui só
  * pela consistência do número, não pelo código.

@@ -63,7 +63,11 @@ function build(opts: {
   }>;
   executionMode?: ProjectExecutionMode;
   spec?: {
-    imagem: { image: string; network: 'none' | 'egress'; resources: typeof RECURSOS_PADRAO } | null;
+    imagem: {
+      image: string;
+      network: 'none' | 'egress';
+      resources: typeof RECURSOS_PADRAO;
+    } | null;
     imagemVersao: number;
   };
   startContainerViaRunner?: () => Promise<{
@@ -85,8 +89,7 @@ function build(opts: {
           image: (input as { image: string }).image,
           rationale: (input as { rationale: string }).rationale,
           network: (input as { network: 'none' | 'egress' }).network,
-          resources: (input as { resources: typeof RECURSOS_PADRAO })
-            .resources,
+          resources: (input as { resources: typeof RECURSOS_PADRAO }).resources,
         },
         version: 2,
       };
@@ -182,7 +185,7 @@ function build(opts: {
         opts.cicloAtual === undefined ? null : opts.cicloAtual,
     } as never,
     registrarTransicao as never,
-    broker as never,
+    broker,
     projects as never,
     obterSpec as never,
     apiToEngineClient as never,
@@ -354,7 +357,86 @@ describe('ExecuteContainerStartUseCase — recusa do broker', () => {
   });
 });
 
-describe('ExecuteContainerStartUseCase — mounted/runner (ADR 0137)', () => {
+describe('ExecuteContainerStartUseCase — mounted vai pelo BROKER (RN-503)', () => {
+  it('projeto "mounted": elege a candidata e sobe pelo broker, nunca pelo runner', async () => {
+    // A eleição não é opcional aqui, e por isso o teste a exige: o broker
+    // COMPÕE a partir de `artifact.project_image`, indo buscá-lo na api. Uma
+    // eleição que não fosse gravada nesse artefato seria inerte — o container
+    // subiria com a imagem do Arquiteto e o payload aprovado diria outra.
+    //
+    // A pasta vem da base da instalação porque `mounted` MATERIALIZA antes de
+    // qualquer transição (RN-501): sem base montada, o desfecho seria a falha
+    // da materialização e este teste não chegaria a provar o destino.
+    const { dir } = baseComProjetoMontado();
+    const { useCase, gravados, transicoes, decidirImagem, apiToEngineClient } =
+      build({ executionMode: 'mounted', workspacePath: dir, cicloAtual: null });
+
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+
+    expect(apiToEngineClient.startContainerViaRunner).not.toHaveBeenCalled();
+    expect(decidirImagem.execute).toHaveBeenCalledWith(
+      'proj-1',
+      'sess-1',
+      expect.objectContaining({ image: IMAGEM_CANDIDATA }),
+      'infra-lead',
+    );
+    expect(transicoes.map((t) => t.to)).toEqual(['provisioning', 'running']);
+    expect(gravados.at(-1)?.status).toBe('executed');
+  });
+
+  it('"mounted" sem broker de pé vira `failed` NOMEADO, nunca throw', async () => {
+    // O broker sobe sob `profiles: ["container-broker"]` e NÃO sobe por
+    // padrão. A ausência dele é o caminho comum, não a exceção — e ela tem de
+    // terminar num desfecho legível, com a origem no motivo.
+    const { dir } = baseComProjetoMontado();
+    const { useCase, gravados, transicoes } = build({
+      executionMode: 'mounted',
+      workspacePath: dir,
+      cicloAtual: null,
+      brokerStart: async () => {
+        throw new BrokerIndisponivelError(
+          'nao-configurado',
+          'BROKER_URL não está definida — o broker sobe sob profile e não sobe por padrão',
+        );
+      },
+    });
+
+    await expect(
+      useCase.execute('proj-1', 'sess-1', makeAction()),
+    ).resolves.toBeDefined();
+    expect(gravados.at(-1)?.status).toBe('failed');
+    expect(
+      (gravados.at(-1)?.executionResult as { motivo: string }).motivo,
+    ).toContain('BROKER_URL');
+    // Nada transicionou: não se registra o que não aconteceu.
+    expect(transicoes).toEqual([]);
+  });
+
+  it('"mounted" com o broker recusando (BrokerRecusouError) também vira failed', async () => {
+    const { dir } = baseComProjetoMontado();
+    const { useCase, gravados } = build({
+      executionMode: 'mounted',
+      workspacePath: dir,
+      brokerStart: async () => {
+        throw new BrokerRecusouError(
+          503,
+          'BRABO_PROJECTS_HOST_BASE não está definida neste broker',
+          'infra',
+        );
+      },
+    });
+
+    await expect(
+      useCase.execute('proj-1', 'sess-1', makeAction()),
+    ).resolves.toBeDefined();
+    expect(gravados.at(-1)?.status).toBe('failed');
+    expect(
+      (gravados.at(-1)?.executionResult as { motivo: string }).motivo,
+    ).toContain('BRABO_PROJECTS_HOST_BASE');
+  });
+});
+
+describe('ExecuteContainerStartUseCase — runner segue pelo runner (ADR 0137)', () => {
   it('projeto "runner": pede ao engine via ApiToEngineClient, nunca ao broker', async () => {
     const { useCase, gravados, transicoes, apiToEngineClient, broker } = build({
       executionMode: 'runner',
@@ -374,10 +456,8 @@ describe('ExecuteContainerStartUseCase — mounted/runner (ADR 0137)', () => {
   });
 
   it('sem imagem decidida (RN-105): falha sem chamar o engine', async () => {
-    const { dir } = baseComProjetoMontado();
     const { useCase, gravados, apiToEngineClient } = build({
-      executionMode: 'mounted',
-      workspacePath: dir,
+      executionMode: 'runner',
       spec: { imagem: null, imagemVersao: 0 },
     });
 
@@ -411,10 +491,8 @@ describe('ExecuteContainerStartUseCase — mounted/runner (ADR 0137)', () => {
   });
 
   it('RunnerRecusouContainerError vira failed, nunca propaga', async () => {
-    const { dir } = baseComProjetoMontado();
     const { useCase, gravados } = build({
-      executionMode: 'mounted',
-      workspacePath: dir,
+      executionMode: 'runner',
       startContainerViaRunner: async () => {
         throw new RunnerRecusouContainerError(
           'Docker indisponível na máquina do usuário',

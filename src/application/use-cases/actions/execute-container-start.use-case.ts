@@ -54,38 +54,52 @@ interface ContainerStartPayload {
  * record()/fail() gravando `updateExecutionResult` + evento de sessão +
  * outbox `proposed_action.executed`/`.failed`.
  *
- * ## Dois caminhos, a partir do `executionMode` do projeto (ADR 0137)
+ * ## Dois caminhos, a partir do `executionMode` do projeto (ADR 0137, RN-503)
  *
  * `container_start` não distingue modo na hora de ser PROPOSTA
  * (`GetInfraContextUseCase`/`propose_container_start` não restringem por
  * `executionMode` — lacuna aceita e declarada desde a RN-494) nem na hora de
  * ser APROVADA (`decide.ts` também não olha modo). A ramificação é só AQUI,
- * na execução:
+ * na execução, e ela é por DESTINO, não por modo:
  *
- *   - `container` (default) — o caminho de sempre: elege a imagem candidata
- *     do roteamento do Arquiteto e pede ao BROKER para subir.
- *   - `mounted`/`runner` — caminho novo: NÃO elege nada (não há roteamento
- *     de candidatas envolvido aqui, e a imagem que sobe é a que já estiver
- *     DECIDIDA, via `ObterSpecDeContainerUseCase` — o mesmo caso de uso que
- *     `GET .../container-spec` já expõe para o broker, reusado direto, sem
- *     HTTP, porque api e este caso de uso rodam no mesmo processo); pede ao
- *     ENGINE para repassar ao RUNNER conectado, via canal Phoenix
+ *   - `container` E `mounted` — o BROKER. Desde o ADR 0141 a pasta de um
+ *     projeto montado mora sob UMA base que este servidor monta por
+ *     identidade, então o daemon a alcança; a spec diz contra qual das duas
+ *     raízes do broker o segmento vale (`localizacao`, RN-503) e mais nada
+ *     muda. Os dois ELEGEM a imagem candidata do roteamento do Arquiteto.
+ *   - `runner` — o ENGINE repassando ao RUNNER conectado, via canal Phoenix
  *     (`container_start`/`container_start_result`, mesmo par de
- *     `exec`/`exec_result`). "Sem runner conectado" (`RunnerNaoConectadoError`)
- *     e "o runner recusou" (`RunnerRecusouContainerError`) são FALHAS
- *     NORMAIS — nunca lançam para fora, viram `failed` nomeado, mesma
- *     disciplina de `BrokerIndisponivelError`/`BrokerRecusouError` no
- *     caminho `container`.
+ *     `exec`/`exec_result`). NÃO elege nada: a imagem que sobe é a que já
+ *     estiver DECIDIDA, via `ObterSpecDeContainerUseCase` — o mesmo caso de
+ *     uso que `GET .../container-spec` expõe ao broker, reusado direto, sem
+ *     HTTP, porque api e este caso de uso rodam no mesmo processo. "Sem
+ *     runner conectado" (`RunnerNaoConectadoError`) e "o runner recusou"
+ *     (`RunnerRecusouContainerError`) são FALHAS NORMAIS — nunca lançam para
+ *     fora, viram `failed` nomeado, mesma disciplina de
+ *     `BrokerIndisponivelError`/`BrokerRecusouError` no caminho do broker.
+ *
+ * ## Por que `mounted` ELEGE, e não lê a imagem vigente como o runner faz
+ *
+ * Não é simetria estética: é o único desenho que funciona. O broker COMPÕE a
+ * partir de `artifact.project_image`, indo buscá-lo na api — ele nunca recebe
+ * a imagem no corpo da chamada, que é o invariante inteiro do ADR 0130. Uma
+ * eleição da Infra que não fosse GRAVADA naquele artefato seria, portanto,
+ * inerte: o container subiria com a imagem que o Arquiteto tinha decidido, o
+ * payload aprovado pelo humano diria outra coisa, e nada no registro
+ * denunciaria a diferença. O caminho do runner pode ler o vigente justamente
+ * porque a api LHE MANDA os campos da spec pelo canal — lá o artefato não é a
+ * fonte que o outro lado consulta.
  *
  * ## E `mounted` MATERIALIZA a pasta aqui (ADR 0142, RN-501)
  *
  * A criação de um projeto `mounted` deixou de exigir a pasta existindo
  * (validação léxica + base, a mesma disciplina de `runner`), justamente para
  * que o bind-mount nasça DEPOIS da decisão do Arquiteto. "Depois" é este
- * momento: antes de qualquer transição de ciclo de vida, este caso de uso cria
- * a pasta, prova que dá para escrever nela e carimba `workspace_verified_at`.
- * Falhar nisso é `failed` nomeado como todo o resto, e o ciclo de vida NÃO
- * chega a ser marcado `provisioning`.
+ * momento: antes de qualquer transição de ciclo de vida — e antes da eleição
+ * de imagem que manda o projeto ao broker —, este caso de uso cria a pasta,
+ * prova que dá para escrever nela e carimba `workspace_verified_at`. Falhar
+ * nisso é `failed` nomeado como todo o resto, e o ciclo de vida NÃO chega a
+ * ser marcado `provisioning`.
  */
 @Injectable()
 export class ExecuteContainerStartUseCase {
@@ -128,7 +142,10 @@ export class ExecuteContainerStartUseCase {
     // pasta inalcançável vira `failed` NOMEADO, com a mesma disciplina de
     // `BrokerIndisponivelError`/`RunnerNaoConectadoError` logo abaixo. Marcar
     // `provisioning` e só então descobrir que não dá para escrever deixaria a
-    // linha de ciclo de vida afirmando um estado que nunca existiu.
+    // linha de ciclo de vida afirmando um estado que nunca existiu. E vem
+    // ANTES da ramificação por destino porque `mounted` segue pelo BROKER
+    // desde a RN-503: a pasta precisa existir antes de o daemon do servidor
+    // tentar montá-la.
     if (project.executionMode === 'mounted') {
       const falha = await this.materializarPastaMontada(
         projectId,
@@ -137,7 +154,7 @@ export class ExecuteContainerStartUseCase {
       if (falha) return this.fail(projectId, sessionId, action.id, falha);
     }
 
-    if (project.executionMode !== 'container') {
+    if (project.executionMode === 'runner') {
       return this.executeViaRunner(projectId, sessionId, action);
     }
 
@@ -237,11 +254,16 @@ export class ExecuteContainerStartUseCase {
   }
 
   /**
-   * `mounted`/`runner` (ADR 0137) — ver o docblock da classe. Não elege
-   * candidata nenhuma: a imagem que sobe é a que `ObterSpecDeContainerUseCase`
-   * já devolve como VIGENTE (o mesmo caso de uso que compõe `GET
+   * `runner` (ADR 0137) — ver o docblock da classe. Não elege candidata
+   * nenhuma: a imagem que sobe é a que `ObterSpecDeContainerUseCase` já
+   * devolve como VIGENTE (o mesmo caso de uso que compõe `GET
    * .../container-spec` para o broker — chamado direto, sem HTTP, porque os
    * dois rodam no mesmo processo da api).
+   *
+   * `mounted` deixou de passar por aqui na RN-503: a pasta dele virou
+   * alcançável pelo daemon do servidor (ADR 0141), e exigir um runner
+   * conectado para um projeto cujo código o servidor enxerga era pedir uma
+   * peça que não tem mais função.
    */
   private async executeViaRunner(
     projectId: string,

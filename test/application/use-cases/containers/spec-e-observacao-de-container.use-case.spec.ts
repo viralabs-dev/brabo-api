@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
 import { ObterSpecDeContainerUseCase } from '../../../../src/application/use-cases/containers/obter-spec-de-container.use-case';
 import { ObterEstadoObservadoDoContainerUseCase } from '../../../../src/application/use-cases/containers/obter-estado-observado-do-container.use-case';
@@ -75,6 +75,7 @@ describe('ObterSpecDeContainerUseCase — o que o broker lê', () => {
       workspaceId: 'ws-1',
       workspaceDirName: 'projeto-abcdefgh',
       executionMode: 'container',
+      localizacao: { tipo: 'gerenciada', segmento: 'projeto-abcdefgh' },
       imagem: {
         image: 'node:22-bookworm-slim',
         network: 'egress',
@@ -116,6 +117,121 @@ describe('ObterSpecDeContainerUseCase — o que o broker lê', () => {
     await expect(
       montarSpec(null, SEM_DECISAO).execute(PROJETO),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+describe('ObterSpecDeContainerUseCase — o localizador discriminado (RN-503)', () => {
+  const BASE = '/home/voce/brabo';
+
+  beforeEach(() => {
+    process.env.BRABO_PROJECTS_BASE = BASE;
+  });
+  afterEach(() => {
+    delete process.env.BRABO_PROJECTS_BASE;
+  });
+
+  it('`mounted` sob a base vira `montada` com o segmento RELATIVO, nunca o absoluto', async () => {
+    const resultado = await montarSpec(
+      projeto({ executionMode: 'mounted', workspacePath: `${BASE}/loja` }),
+      DECIDIDO,
+    ).execute(PROJETO);
+
+    expect(resultado.localizacao).toEqual({
+      tipo: 'montada',
+      segmento: 'loja',
+    });
+    // O invariante do ADR 0130 em uma linha: nada de absoluto atravessa.
+    expect(JSON.stringify(resultado)).not.toContain(BASE);
+  });
+
+  it('segmento com mais de um nível continua relativo', async () => {
+    const resultado = await montarSpec(
+      projeto({
+        executionMode: 'mounted',
+        workspacePath: `${BASE}/times/loja/`,
+      }),
+      DECIDIDO,
+    ).execute(PROJETO);
+
+    expect(resultado.localizacao).toEqual({
+      tipo: 'montada',
+      segmento: 'times/loja',
+    });
+  });
+
+  it('`container` continua `gerenciada`, com o workspaceDirName como segmento', async () => {
+    const resultado = await montarSpec(projeto(), DECIDIDO).execute(PROJETO);
+
+    expect(resultado.localizacao).toEqual({
+      tipo: 'gerenciada',
+      segmento: 'projeto-abcdefgh',
+    });
+  });
+
+  it('`runner` é `indisponivel` e o motivo NOMEIA o modo — nenhuma raiz do servidor alcança', async () => {
+    const resultado = await montarSpec(
+      projeto({ executionMode: 'runner', workspacePath: `${BASE}/loja` }),
+      DECIDIDO,
+    ).execute(PROJETO);
+
+    expect(resultado.localizacao.tipo).toBe('indisponivel');
+    expect((resultado.localizacao as { motivo: string }).motivo).toContain(
+      'runner',
+    );
+  });
+
+  it('`mounted` FORA da base é `indisponivel` — e o motivo nomeia a base, não o modo', async () => {
+    // O projeto legado, criado antes do ADR 0141. O conserto é mover a pasta,
+    // não trocar de modo: a mensagem tem de mandar a pessoa para o lugar certo.
+    const resultado = await montarSpec(
+      projeto({ executionMode: 'mounted', workspacePath: '/opt/legado' }),
+      DECIDIDO,
+    ).execute(PROJETO);
+
+    expect(resultado.localizacao.tipo).toBe('indisponivel');
+    const motivo = (resultado.localizacao as { motivo: string }).motivo;
+    expect(motivo).toContain('/opt/legado');
+    expect(motivo).toContain(BASE);
+  });
+
+  it('a armadilha de prefixo: /home/voce/brabo2 NÃO está dentro de /home/voce/brabo', async () => {
+    const resultado = await montarSpec(
+      projeto({ executionMode: 'mounted', workspacePath: '/home/voce/brabo2' }),
+      DECIDIDO,
+    ).execute(PROJETO);
+
+    expect(resultado.localizacao.tipo).toBe('indisponivel');
+  });
+
+  it('a pasta que É a própria base é recusada, nunca segmento vazio', async () => {
+    // Segmento vazio viraria `<raiz>/`, isto é, a base INTEIRA montada no
+    // container de um projeto só — a pasta de todos os outros junto.
+    const resultado = await montarSpec(
+      projeto({ executionMode: 'mounted', workspacePath: BASE }),
+      DECIDIDO,
+    ).execute(PROJETO);
+
+    expect(resultado.localizacao.tipo).toBe('indisponivel');
+    expect((resultado.localizacao as { motivo: string }).motivo).toContain(
+      'base',
+    );
+  });
+
+  it('sem BRABO_PROJECTS_BASE, `mounted` é `indisponivel` nomeando a variável', async () => {
+    delete process.env.BRABO_PROJECTS_BASE;
+
+    const resultado = await montarSpec(
+      projeto({
+        executionMode: 'mounted',
+        workspacePath: '/home/voce/brabo/loja',
+      }),
+      DECIDIDO,
+    ).execute(PROJETO);
+
+    expect(resultado.localizacao.tipo).toBe('indisponivel');
+    expect((resultado.localizacao as { motivo: string }).motivo).toContain(
+      'BRABO_PROJECTS_BASE',
+    );
   });
 });
 
