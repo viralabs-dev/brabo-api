@@ -31,7 +31,7 @@ export default defineConfig({
     // Vitest 4 (o pool de workers virou uma opção só, de nível superior,
     // independente de qual `pool` está em uso — conferido lendo o `.d.ts`
     // publicado, não por suposição). 4 bate com as 4 vCPU do runner do
-    // GitHub Actions (`test-ts` do CI): medido localmente com 2/3/4 — 4 foi
+    // GitHub Actions (`test-api` do CI): medido localmente com 2/3/4 — 4 foi
     // o mais rápido e não estourou conexão nenhuma do Postgres do
     // container (cada worker abre poucas conexões, bem abaixo do
     // `max_connections` default). Não usar `process.env.CPU_COUNT`/auto-
