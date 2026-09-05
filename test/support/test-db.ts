@@ -2,13 +2,18 @@ import { Pool } from 'pg';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from '../../src/db/schema';
+import { resolveDatabaseUrlForCurrentWorker } from './test-db-name';
 
-const TEST_DATABASE_URL =
-  process.env.TEST_DATABASE_URL ??
-  'postgres://brabo:brabo@localhost:5432/brabo_test';
-
+// ASSINATURA pública inalterada de propósito — ~80 specs importam
+// `createTestDb`/`truncateAll` de caminhos relativos variados
+// (`../../../support/test-db`, `../../support/test-db`, ...) e nenhum deles
+// deveria precisar saber que o banco por trás mudou de "um só" para "um por
+// worker" (RN da perf/banco-por-worker-nos-testes-da-api). A mudança inteira
+// mora em `resolveDatabaseUrlForCurrentWorker()` (test-db-name.ts).
 export function createTestDb() {
-  const pool = new Pool({ connectionString: TEST_DATABASE_URL });
+  const pool = new Pool({
+    connectionString: resolveDatabaseUrlForCurrentWorker(),
+  });
   const db = drizzle(pool, { schema });
   return { db, pool };
 }

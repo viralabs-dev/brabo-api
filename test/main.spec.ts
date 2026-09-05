@@ -4,6 +4,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { tokenDeServicoAtual } from '../src/infrastructure/security/service-token';
 import { CABECALHO_SERVICE_TOKEN } from '../src/interfaces/http/auth/engine-service.guard';
+import { resolveDatabaseUrlForCurrentWorker } from './support/test-db-name';
 
 /**
  * Limite do body parser JSON (`src/main.ts`) — a causa do `413
@@ -25,10 +26,16 @@ import { CABECALHO_SERVICE_TOKEN } from '../src/interfaces/http/auth/engine-serv
  * o que importa aqui é o corpo chegar ATÉ o caso de uso de verdade — só
  * checar a config do parser em isolado não provaria que nada no meio do
  * caminho (guard, pipe) reintroduz um limite menor. `DATABASE_URL` é
- * apontada explicitamente para a base de TESTE (mesma robustez de
- * `test-db.ts`) porque o processo pode ter `DATABASE_URL` mirando a base de
- * dev — e diferente de `route-surface.spec.ts` (que só enumera rotas via
- * `DiscoveryService`), este teste faz uma chamada real que bate no banco.
+ * apontada explicitamente para o banco de TESTE deste worker (mesma
+ * resolução de `test-db.ts`, via `resolveDatabaseUrlForCurrentWorker()` —
+ * perf/banco-por-worker-nos-testes-da-api) porque o processo pode ter
+ * `DATABASE_URL` mirando a base de dev — e diferente de
+ * `route-surface.spec.ts` (que só enumera rotas via `DiscoveryService`),
+ * este teste faz uma chamada real que bate no banco. Este arquivo sobe o
+ * `AppModule` inteiro (mais pesado que os outros specs) mas roda dentro do
+ * MESMO esquema de banco por worker — ele já isola de qualquer outro
+ * arquivo por ter banco próprio, então não precisou de tratamento especial
+ * nenhum (nem projeto Vitest separado, nem execução sequencial à parte).
  *
  * `AppModule` é importado DINAMICAMENTE (`await import(...)`) dentro do
  * `beforeAll`, DEPOIS de `process.env.DATABASE_URL` já estar setado — nunca
@@ -37,8 +44,8 @@ import { CABECALHO_SERVICE_TOKEN } from '../src/interfaces/http/auth/engine-serv
  * roda uma vez, na primeira vez que o módulo é carregado, não a cada
  * `Test.createTestingModule().compile()`. Um `import` estático avalia essa
  * linha ANTES de qualquer código do `beforeAll` rodar, e o pool nasceria
- * apontando pro default de `createDrizzleClient()` — a base de DEV, não
- * `brabo_test`. Achado por execução real: mascarado enquanto a base de dev
+ * apontando pro default de `createDrizzleClient()` — a base de DEV, não a
+ * de teste. Achado por execução real: mascarado enquanto a base de dev
  * local também estava migrada (mesmo schema, então a query "achava" a
  * tabela mesmo assim); destravou assim que a base de dev foi recriada vazia.
  */
@@ -65,9 +72,7 @@ describe('main.ts — limite do body parser JSON (achado 413 engine→api)', () 
   let app: NestExpressApplication;
 
   beforeAll(async () => {
-    process.env.DATABASE_URL =
-      process.env.TEST_DATABASE_URL ??
-      'postgres://brabo:brabo@localhost:5432/brabo_test';
+    process.env.DATABASE_URL = resolveDatabaseUrlForCurrentWorker();
     process.env.API_JSON_BODY_LIMIT = LIMITE_DO_TESTE;
 
     // Extensão `.js` explícita: sob `moduleResolution: nodenext`, o
