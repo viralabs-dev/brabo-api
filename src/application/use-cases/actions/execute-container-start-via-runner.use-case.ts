@@ -15,7 +15,7 @@ import type { ContainerStartExecutionResult } from '../../../domain/containers/c
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
 
 /**
- * Executa `container_start_via_runner` aprovada (RN-506, ADR 0145) —
+ * Executa `container_start_via_runner` aprovada (RN-508, ADR 0145) —
  * segundo caminho para subir o container real do projeto, EXCLUSIVO de
  * `execution_mode: runner`. Extraído de `ExecuteContainerStartUseCase`, que
  * até esta entrega também atendia `runner` (via `executeViaRunner`) apesar

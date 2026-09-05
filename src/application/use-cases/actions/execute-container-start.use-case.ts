@@ -46,7 +46,7 @@ interface ContainerStartPayload {
  * record()/fail() gravando `updateExecutionResult` + evento de sessão +
  * outbox `proposed_action.executed`/`.failed`.
  *
- * ## EXCLUSIVO de `container`/`mounted` desde a RN-506 (ADR 0145)
+ * ## EXCLUSIVO de `container`/`mounted` desde a RN-508 (ADR 0145)
  *
  * Até aqui este caso de uso também atendia `runner` (o ENGINE repassando ao
  * RUNNER conectado, via canal Phoenix) — mas o payload de `container_start`

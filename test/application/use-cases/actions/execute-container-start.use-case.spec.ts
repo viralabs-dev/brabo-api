@@ -79,7 +79,7 @@ function build(opts: {
     }),
   };
 
-  // `SubirCicloDeVidaDoContainerUseCase` foi EXTRAÍDO (RN-506, ADR 0145) pra
+  // `SubirCicloDeVidaDoContainerUseCase` foi EXTRAÍDO (RN-508, ADR 0145) pra
   // ser compartilhado com `ExecuteContainerStartViaRunnerUseCase` — o fake
   // aqui reproduz a MESMA dança que o `registrarTransicao` isolado provava
   // antes da extração, só que atrás do novo caso de uso.

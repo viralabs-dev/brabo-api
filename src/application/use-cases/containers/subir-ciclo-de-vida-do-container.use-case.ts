@@ -5,7 +5,7 @@ import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 /**
  * A dança `provisioning -> running` (ADR 0081/0130/0133), extraída
- * (RN-506, ADR 0145) de `ExecuteContainerStartUseCase` — que a passou a
+ * (RN-508, ADR 0145) de `ExecuteContainerStartUseCase` — que a passou a
  * COMPARTILHAR com `ExecuteContainerStartViaRunnerUseCase` (`runner`, sem
  * eleição de imagem nenhuma) em vez de duplicar o mesmo racional da máquina
  * de estados nos dois arquivos.

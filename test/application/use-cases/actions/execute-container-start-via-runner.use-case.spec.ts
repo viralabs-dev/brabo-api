@@ -11,7 +11,7 @@ import type { ProjectContainerLifecycle } from '../../../../src/domain/container
 const IMAGEM_DECIDIDA = 'node:22-bookworm-slim';
 
 /**
- * Extraído de `execute-container-start.use-case.spec.ts` (RN-506, ADR
+ * Extraído de `execute-container-start.use-case.spec.ts` (RN-508, ADR
  * 0145) — até esta entrega `ExecuteContainerStartUseCase` também atendia
  * `runner` (`executeViaRunner`), e este bloco de testes vivia lá dentro.
  * `container_start_via_runner` virou AÇÃO própria porque o payload de

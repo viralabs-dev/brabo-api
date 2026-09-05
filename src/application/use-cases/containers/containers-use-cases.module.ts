@@ -61,7 +61,7 @@ const USE_CASES = [
  * diretamente: `ContainersOverviewRepository` é ligado no módulo de
  * persistência (`drizzle.module.ts`), fora daqui.
  *
- * `SubirCicloDeVidaDoContainer` (RN-506, ADR 0145) é a dança
+ * `SubirCicloDeVidaDoContainer` (RN-508, ADR 0145) é a dança
  * `provisioning -> running` da máquina de estados, extraída de
  * `ExecuteContainerStartUseCase` (`apps/.../use-cases/actions/`) para ser
  * COMPARTILHADA com `ExecuteContainerStartViaRunnerUseCase` — os dois

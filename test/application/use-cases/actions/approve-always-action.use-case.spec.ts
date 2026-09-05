@@ -151,6 +151,7 @@ const approveAlwaysAction = new ApproveAlwaysActionUseCase(
   permissionsFileStore,
   appendSessionEvent,
   approveAction,
+  agentAutonomyRepo,
 );
 
 let workspacesRoot: string;
@@ -171,7 +172,14 @@ afterAll(async () => {
   await pool.end();
 });
 
-async function setupPendingTerminalAction(command = 'echo oi') {
+// `qa-automacao` — de propósito NÃO prefixado por `dev-`: este é o fixture
+// default dos testes do caminho ANTIGO (permissions.json), e um agentId que
+// `ehDevDeModulo` classificasse como módulo mudaria o destino da gravação
+// por acidente de nome, não por intenção do teste.
+async function setupPendingTerminalAction(
+  command = 'echo oi',
+  actorId = 'qa-automacao',
+) {
   const [user] = await db
     .insert(users)
     .values({
@@ -201,7 +209,7 @@ async function setupPendingTerminalAction(command = 'echo oi') {
     .returning();
   const action = await proposeAction.execute(project.id, session.id, {
     actionType: 'terminal',
-    actor: { kind: 'agent', id: 'dev-agent' },
+    actor: { kind: 'agent', id: actorId },
     payload: { command },
   });
   return { user, project, session, action };
@@ -314,5 +322,167 @@ describe('ApproveAlwaysActionUseCase', () => {
     expect(approved.status).toBe('executed');
     const file = await permissionsFileStore.read(project);
     expect(file.allow).toEqual(['Terminal(pnpm test)']);
+  });
+
+  // RN-507 (Frente 2): "sempre permitir" de um dev-de-módulo escopa a
+  // `agent_autonomy`, POR AGENTE — não mais pro permissions.json de
+  // projeto inteiro.
+  describe('escopo por Dev Agent de módulo (RN-507)', () => {
+    it('caminho feliz: dev-checkout ganha agent_autonomy(projeto, dev-checkout, terminal)=auto_approve; permissions.json fica INTOCADO; dev-auth continua exigindo aprovação pra ação idêntica', async () => {
+      const { project, session, user, action } =
+        await setupPendingTerminalAction('echo oi', 'dev-checkout');
+
+      const approved = await approveAlwaysAction.execute(
+        project.id,
+        session.id,
+        action.id,
+        user.id,
+      );
+
+      expect(approved.status).toBe('executed');
+
+      const mode = await agentAutonomyRepo.findMode(
+        project.id,
+        'dev-checkout',
+        'terminal',
+      );
+      expect(mode).toBe('auto_approve');
+
+      const file = await permissionsFileStore.read(project);
+      expect(file.allow).toEqual([]);
+
+      // A mesma ação, do PONTO DE VISTA de outro agente de módulo — prova
+      // que a chave é (projeto, AGENTE, tipo), nunca (projeto, tipo).
+      const fromOtherAgent = await proposeAction.execute(
+        project.id,
+        session.id,
+        {
+          actionType: 'terminal',
+          actor: { kind: 'agent', id: 'dev-auth' },
+          payload: { command: 'echo oi' },
+        },
+      );
+      expect(fromOtherAgent.status).toBe('pending');
+    });
+
+    it('não-regressão dos tetos absolutos: dev-checkout em `git push` continua recusando o clique inteiro, sem gravar nada em agent_autonomy', async () => {
+      const { project, session, user, action } =
+        await setupPendingTerminalAction(
+          'git push origin main',
+          'dev-checkout',
+        );
+
+      await expect(
+        approveAlwaysAction.execute(project.id, session.id, action.id, user.id),
+      ).rejects.toThrow(BadRequestException);
+
+      const mode = await agentAutonomyRepo.findMode(
+        project.id,
+        'dev-checkout',
+        'terminal',
+      );
+      expect(mode).toBeNull();
+      const file = await permissionsFileStore.read(project);
+      expect(file.allow).toEqual([]);
+    });
+
+    it('não-regressão dos tetos absolutos: dev-checkout em `sudo` continua recusando o clique inteiro', async () => {
+      const { project, session, user, action } =
+        await setupPendingTerminalAction(
+          'sudo apt install htop',
+          'dev-checkout',
+        );
+
+      await expect(
+        approveAlwaysAction.execute(project.id, session.id, action.id, user.id),
+      ).rejects.toThrow(BadRequestException);
+
+      const mode = await agentAutonomyRepo.findMode(
+        project.id,
+        'dev-checkout',
+        'terminal',
+      );
+      expect(mode).toBeNull();
+    });
+
+    it('não-regressão dos tetos absolutos: dev-checkout em `container_remove` continua recusando o clique inteiro', async () => {
+      const { user, project, session } = await setupPendingTerminalAction();
+      const removal = await proposeAction.execute(project.id, session.id, {
+        actionType: 'container_remove',
+        actor: { kind: 'agent', id: 'dev-checkout' },
+        payload: {},
+      });
+      expect(removal.status).toBe('pending');
+
+      await expect(
+        approveAlwaysAction.execute(
+          project.id,
+          session.id,
+          removal.id,
+          user.id,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      const mode = await agentAutonomyRepo.findMode(
+        project.id,
+        'dev-checkout',
+        'container_remove',
+      );
+      expect(mode).toBeNull();
+    });
+
+    it('caso do achado: ator `dev-lead` (não é dev-de-módulo — lidera a área, não é membro dela) continua indo pro permissions.json', async () => {
+      const { project, session, user, action } =
+        await setupPendingTerminalAction('echo oi', 'dev-lead');
+
+      const approved = await approveAlwaysAction.execute(
+        project.id,
+        session.id,
+        action.id,
+        user.id,
+      );
+
+      expect(approved.status).toBe('executed');
+      const file = await permissionsFileStore.read(project);
+      expect(file.allow).toEqual(['Terminal(echo oi)']);
+
+      const mode = await agentAutonomyRepo.findMode(
+        project.id,
+        'dev-lead',
+        'terminal',
+      );
+      expect(mode).toBeNull();
+    });
+
+    it('não-regressão do caminho antigo: ator `user` (não `agent`) continua indo pro permissions.json, mesmo com um id que começa com "dev-"', async () => {
+      const { project, session, user } = await setupPendingTerminalAction();
+      // `current.actor.kind === 'agent'` é a PRIMEIRA guarda do branch — um
+      // ator `user` cujo id por acidente começasse com `dev-` não pode
+      // escapar pro caminho de `agent_autonomy`.
+      const action = await proposeAction.execute(project.id, session.id, {
+        actionType: 'terminal',
+        actor: { kind: 'user', id: 'dev-checkout' },
+        payload: { command: 'echo oi' },
+      });
+      expect(action.actor.kind).toBe('user');
+
+      const approved = await approveAlwaysAction.execute(
+        project.id,
+        session.id,
+        action.id,
+        user.id,
+      );
+
+      expect(approved.status).toBe('executed');
+      const file = await permissionsFileStore.read(project);
+      expect(file.allow).toEqual(['Terminal(echo oi)']);
+
+      const mode = await agentAutonomyRepo.findMode(
+        project.id,
+        'dev-checkout',
+        'terminal',
+      );
+      expect(mode).toBeNull();
+    });
   });
 });

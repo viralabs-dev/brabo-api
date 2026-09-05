@@ -206,7 +206,7 @@ export class ProposeActionUseCase {
       return this.executeContainerStart.execute(projectId, sessionId, action);
     }
 
-    // `container_start_via_runner` (RN-506) — MESMA régua de
+    // `container_start_via_runner` (RN-508) — MESMA régua de
     // `container_start`: nunca semeado, mas configurável em
     // `permissions.json`, e sem este branch a ação nasceria `auto_approved`
     // e nenhum container subiria de verdade na máquina do usuário.
