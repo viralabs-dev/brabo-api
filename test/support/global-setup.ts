@@ -123,7 +123,7 @@ async function migrateAndSeed(databaseUrl: string) {
  * "engine"), não da api. Migrada só no banco TEMPLATE; cada banco de worker
  * a herda pela cópia de `CREATE DATABASE ... TEMPLATE`, junto com o resto do
  * schema do Drizzle. As migrations do engine (`mix ecto.migrate`) não rodam
- * neste job (sem Elixir no `test-ts` do CI). Sem isto,
+ * neste job (sem Elixir no `test-api` do CI). Sem isto,
  * `DrizzleProjectsSummaryRepository` — que lê esta tabela via SQL cru (mesmo
  * caminho de `engine.oban_peers` em `medir-execucao.ts`) — falharia com
  * "relation does not exist" em TODO teste que chama `summarizeForWorkspace`.
