@@ -6,6 +6,7 @@ import {
 import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { ProjectRepository } from '../../ports/project-repository.port';
 import { ContainerRepository } from '../../ports/container-repository.port';
+import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { ObterContainerDoProjetoUseCase } from './obter-container-do-projeto.use-case';
 import {
   assertTransition,
@@ -33,6 +34,11 @@ export interface TransicaoDeContainerInput {
  * que primeiro pede ao broker para agir e SÓ DEPOIS chama este caso de uso
  * para registrar o resultado — a ordem "orquestrador real age, depois grava
  * aqui" já vale, não é mais hipotética.
+ *
+ * O que ele passou a fazer ALÉM de gravar (RN-502, ADR 0143): a chegada em
+ * `running` publica `container.running` no outbox, na MESMA transação. Não
+ * é orquestração — é o aviso de que a pré-condição do claim de dev agent
+ * passou a existir; ver `avisarQueOContainerSubiu` no fim do arquivo.
  *
  * ## A primeira transição é especial
  *
@@ -69,6 +75,7 @@ export class RegistrarTransicaoDeContainerUseCase {
     private readonly projects: ProjectRepository,
     private readonly containers: ContainerRepository,
     private readonly obterImagem: ObterContainerDoProjetoUseCase,
+    private readonly outbox: OutboxRepository,
   ) {}
 
   @Traced('application')
@@ -115,10 +122,46 @@ export class RegistrarTransicaoDeContainerUseCase {
         throw e;
       }
 
-      return this.containers.updateStatus(atual.id, to, {
+      const atualizado = await this.containers.updateStatus(atual.id, to, {
         containerId: input.containerId,
         failureReason: input.failureReason,
       });
+
+      await this.avisarQueOContainerSubiu(projectId, to);
+
+      return atualizado;
+    });
+  }
+
+  /**
+   * O engine LÊ `project_containers` direto para decidir se um dev agent pode
+   * reivindicar task (RN-502, ADR 0143) — mas leitura não avisa ninguém: um
+   * agente já parado em `:idle` continuaria parado até um evento não
+   * relacionado passar por perto. Por isso a chegada em `running` PUBLICA,
+   * na mesma transação que a grava.
+   *
+   * `aggregateType: 'container'` — e não `'task'`, que o dreno do engine já
+   * lia — porque o evento não é sobre task nenhuma; `Engine.Outbox.Drain`
+   * ganhou esse terceiro agregado na mesma mudança. `aggregateId` é o
+   * PROJETO e não a linha do container: quem consome acorda agentes por
+   * projeto, e a linha pode ter sido recriada desde então.
+   *
+   * Só `running`. `provisioning`/`stopped`/`failed`/`removed` não soltam
+   * ninguém — quem os observa é a tela, não o claim. E o caminho da PRIMEIRA
+   * transição (`create`, logo acima) não passa por aqui de propósito: ele
+   * nasce sempre em `provisioning`.
+   */
+  private async avisarQueOContainerSubiu(
+    projectId: string,
+    to: ContainerLifecycleStatus,
+  ): Promise<void> {
+    if (to !== 'running') return;
+
+    await this.outbox.append({
+      aggregateType: 'container',
+      aggregateId: projectId,
+      eventType: 'container.running',
+      payload: { projectId },
     });
   }
 }

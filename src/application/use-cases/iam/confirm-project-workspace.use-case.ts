@@ -31,8 +31,9 @@ export interface ConfirmProjectWorkspaceResult {
  *
  * ## O runner é a fonte da verdade (decisão confirmada com o usuário)
  *
- * Diferente de `validarCaminhoDeWorkspaceLocal` (modo `mounted`, onde o
- * caminho é fixado na criação), aqui a confirmação SOBRESCREVE
+ * Diferente do modo `mounted` (onde o caminho é fixado na criação e a pasta é
+ * materializada por `materializarWorkspaceMontado`), aqui a confirmação
+ * SOBRESCREVE
  * `workspacePath` com o que o runner reportou — ele é quem roda no host de
  * verdade, e é mais autoritativo que o que o usuário digitou no wizard. A
  * checagem LÉXICA (`caminhoDeWorkspaceLocalValido`) continua rodando

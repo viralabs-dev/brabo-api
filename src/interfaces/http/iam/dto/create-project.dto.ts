@@ -68,9 +68,10 @@ export class CreateProjectDto {
       "WHERE this project's command EXECUTES (RN-169/RN-421 — ADR 0072/0104). " +
       '`container` (default): the folder managed by the product inside ' +
       'PROJECT_WORKSPACES_ROOT, the usual behavior. `mounted`: a folder of ' +
-      'YOURS, given in `workspacePath`, that needs to be mounted inside the ' +
-      "api's and engine's containers — creation REFUSES (400) a path that " +
-      "isn't, with instructions on how to mount it (RN-422). `runner`: a " +
+      'YOURS, given in `workspacePath`, inside the installation-wide base ' +
+      '`BRABO_PROJECTS_BASE` (ADR 0141) — creation validates only the path ' +
+      'FORMAT plus that base, and the folder itself is created later, when ' +
+      'Infra starts the container (RN-501, ADR 0142). `runner`: a ' +
       'folder of YOURS that does NOT need a bind-mount — creation only ' +
       'validates the path format and the project is born "unverified"; run ' +
       '`brabo-runner --project <id> --dir <folder>` on your machine to ' +
@@ -84,11 +85,15 @@ export class CreateProjectDto {
     example: '/home/you/projects/store',
     description:
       "The folder's ABSOLUTE path, required when `executionMode` is " +
-      '`mounted` or `runner`, and refused when it is `container`. In ' +
-      '`mounted`, validated on creation: it needs to exist and be writable ' +
-      'from inside the container, and cannot be the system root, a system ' +
-      'folder, nor overlap with the Brabo checkout (RN-422). In `runner`, ' +
-      'only the FORMAT is validated now — existence is confirmed later, by the runner (RN-423).',
+      '`mounted` or `runner`, and refused when it is `container`. In BOTH ' +
+      'of them only the FORMAT is validated now — absolute, no `..`, not the ' +
+      'system root, not a system folder, not overlapping the Brabo checkout ' +
+      '(RN-422/RN-423). `mounted` adds one rule: it must sit inside ' +
+      '`BRABO_PROJECTS_BASE`, the single folder of your machine the Brabo ' +
+      'containers can see (ADR 0141) — with no base configured the mode is ' +
+      'not available on this installation and creation says so. Disk is ' +
+      'touched later: by the runner in `runner`, and when Infra starts the ' +
+      'container in `mounted` (RN-501, ADR 0142).',
   })
   @IsOptional()
   @IsString()

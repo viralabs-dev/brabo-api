@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -15,6 +16,10 @@ import type {
   ProjectWorkspaceLocation,
 } from '../../../domain/iam/project.entity';
 import { validarExecutionModeEWorkspacePath } from '../../services/workspace-location';
+import {
+  CaminhoLocalInvalidoError,
+  materializarWorkspaceMontado,
+} from '../../../infrastructure/filesystem/project-workspaces-root';
 import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 export interface ConvertProjectExecutionModeInput {
@@ -79,9 +84,11 @@ export class ConvertProjectExecutionModeUseCase {
     const project = await this.projects.findById(projectId);
     if (!project) throw new NotFoundException('Projeto não encontrado');
 
-    // Mesma régua de validação da CRIAÇÃO (RN-170/RN-422/RN-423) — reusada,
-    // não duplicada: `mounted` toca disco (existe? é pasta? é gravável?),
-    // `runner` só valida o léxico, `container` recusa caminho.
+    // Mesma régua de validação da CRIAÇÃO (RN-170/RN-422/RN-423/RN-501) —
+    // reusada, não duplicada: desde o ADR 0142 `mounted` e `runner` validam
+    // os DOIS só o léxico (com `mounted` exigindo também estar dentro de
+    // `BRABO_PROJECTS_BASE`), e `container` recusa caminho. Disco fica para
+    // a materialização, logo abaixo.
     const novoCaminho = validarExecutionModeEWorkspacePath(
       input.executionMode,
       input.workspacePath,
@@ -110,6 +117,34 @@ export class ConvertProjectExecutionModeUseCase {
           'o lugar novo. Espere o trabalho terminar (ou desbloqueie a task ' +
           'travada, se algum agente estiver preso) e tente de novo.',
       );
+    }
+
+    // RN-501 — a pasta de um projeto `mounted` é MATERIALIZADA aqui, e este é
+    // o único lugar onde mkdir-na-decisão é o certo.
+    //
+    // A regra geral do ADR 0142 é o contrário disto: a pasta nasce quando a
+    // Infra sobe o container, depois da decisão do Arquiteto. A conversão não
+    // tem esse passo onde pendurar o trabalho — ela é um ato isolado, sem
+    // container no meio —, e logo abaixo ela MOVE o `permissions.json` para
+    // `permissionsFilePath(localNova)`, que em `mounted` é `projectScopeRoot`,
+    // que é a pasta do usuário. Mover um arquivo para dentro de uma pasta que
+    // não existe falha; converter para `mounted` sem materializar seria trocar
+    // o 400 honesto por um erro de I/O no meio da transação.
+    //
+    // ANTES da transação de propósito: uma recusa aqui não deve deixar
+    // transação aberta, e a criação da pasta não é rollback-ável de qualquer
+    // forma.
+    if (input.executionMode === 'mounted' && novoCaminho) {
+      try {
+        await materializarWorkspaceMontado(novoCaminho);
+      } catch (erro) {
+        // 400 e não 500: quem escolheu o caminho é o cliente, e a mensagem é
+        // a parte útil da resposta (RN-170).
+        if (erro instanceof CaminhoLocalInvalidoError) {
+          throw new BadRequestException(erro.message);
+        }
+        throw erro;
+      }
     }
 
     const localAntiga: ProjectWorkspaceLocation = {

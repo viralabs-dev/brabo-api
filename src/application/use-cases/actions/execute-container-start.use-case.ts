@@ -27,6 +27,10 @@ import type {
 } from '../../../domain/containers/project-container';
 import type { ContainerStartExecutionResult } from '../../../domain/containers/container-start-execution-result';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
+import {
+  baseDeProjetos,
+  materializarWorkspaceMontado,
+} from '../../../infrastructure/filesystem/project-workspaces-root';
 
 interface ContainerStartPayload {
   imagem: string;
@@ -85,6 +89,17 @@ interface ContainerStartPayload {
  * denunciaria a diferença. O caminho do runner pode ler o vigente justamente
  * porque a api LHE MANDA os campos da spec pelo canal — lá o artefato não é a
  * fonte que o outro lado consulta.
+ *
+ * ## E `mounted` MATERIALIZA a pasta aqui (ADR 0142, RN-501)
+ *
+ * A criação de um projeto `mounted` deixou de exigir a pasta existindo
+ * (validação léxica + base, a mesma disciplina de `runner`), justamente para
+ * que o bind-mount nasça DEPOIS da decisão do Arquiteto. "Depois" é este
+ * momento: antes de qualquer transição de ciclo de vida — e antes da eleição
+ * de imagem que manda o projeto ao broker —, este caso de uso cria a pasta,
+ * prova que dá para escrever nela e carimba `workspace_verified_at`. Falhar
+ * nisso é `failed` nomeado como todo o resto, e o ciclo de vida NÃO chega a
+ * ser marcado `provisioning`.
  */
 @Injectable()
 export class ExecuteContainerStartUseCase {
@@ -116,6 +131,27 @@ export class ExecuteContainerStartUseCase {
         action.id,
         'Projeto não encontrado.',
       );
+    }
+
+    // RN-501 (ADR 0142) — a pasta de um projeto `mounted` é criada AGORA, e
+    // não na criação do projeto: é o requisito do dono do produto, "se for
+    // Pasta montada, o bind-mount é criado APÓS a decisão do Arquiteto".
+    // Quem sobe o container é quem materializa, e é aqui que isso acontece.
+    //
+    // ANTES de qualquer transição de ciclo de vida, e nunca com throw: uma
+    // pasta inalcançável vira `failed` NOMEADO, com a mesma disciplina de
+    // `BrokerIndisponivelError`/`RunnerNaoConectadoError` logo abaixo. Marcar
+    // `provisioning` e só então descobrir que não dá para escrever deixaria a
+    // linha de ciclo de vida afirmando um estado que nunca existiu. E vem
+    // ANTES da ramificação por destino porque `mounted` segue pelo BROKER
+    // desde a RN-503: a pasta precisa existir antes de o daemon do servidor
+    // tentar montá-la.
+    if (project.executionMode === 'mounted') {
+      const falha = await this.materializarPastaMontada(
+        projectId,
+        project.workspacePath,
+      );
+      if (falha) return this.fail(projectId, sessionId, action.id, falha);
     }
 
     if (project.executionMode === 'runner') {
@@ -297,6 +333,55 @@ export class ExecuteContainerStartUseCase {
         error instanceof Error ? error.message : String(error),
       );
     }
+  }
+
+  /**
+   * Cria a pasta do projeto `mounted` e CARIMBA a confirmação (ADR 0142,
+   * RN-501). Devolve `null` quando deu certo, ou o motivo da falha — nunca
+   * lança.
+   *
+   * O carimbo é `workspace_verified_at`, gravado pelo MESMO caminho que
+   * `ConfirmProjectWorkspaceUseCase` usa (`ProjectRepository.update`), e pelo
+   * mesmo motivo: ele é o registro de que ALGUÉM com autoridade confirmou o
+   * caminho no disco de verdade. No `runner` esse alguém é o CLI conectando;
+   * no `mounted` é esta função, que acabou de criar a pasta e provar que dá
+   * para escrever nela. Não é batimento — a tela continua dizendo "pasta
+   * confirmada em <data>", nunca "de pé" (RN-468).
+   *
+   * A mensagem de falha NOMEIA a variável e o dono da pasta porque essas são
+   * as duas causas reais quando a base está montada: `BRABO_PROJECTS_BASE`
+   * apontando para outro lugar, ou a pasta do host pertencendo a outro
+   * usuário (as imagens rodam non-root, ADR 0024).
+   */
+  private async materializarPastaMontada(
+    projectId: string,
+    workspacePath: string | null,
+  ): Promise<string | null> {
+    if (!workspacePath) {
+      // O CHECK do banco amarra o par (modo, caminho), então chegar aqui sem
+      // caminho é linha incoerente — e o desfecho diz isso, em vez de criar
+      // uma pasta em lugar nenhum.
+      return (
+        'Projeto no modo "mounted" sem workspacePath gravado — a linha do ' +
+        'projeto está incoerente e não há pasta para materializar.'
+      );
+    }
+
+    try {
+      await materializarWorkspaceMontado(workspacePath);
+    } catch (erro) {
+      const base = baseDeProjetos();
+      return (
+        `Não consegui criar/alcançar ${workspacePath} de dentro da api. ` +
+        `Confira BRABO_PROJECTS_BASE=${base ?? '<não configurada>'} no .env e ` +
+        `o dono da pasta no host — as imagens rodam non-root (ADR 0024). ` +
+        `Depois, aprove container_start de novo. ` +
+        `Detalhe: ${erro instanceof Error ? erro.message : String(erro)}`
+      );
+    }
+
+    await this.projects.update(projectId, { workspaceVerifiedAt: new Date() });
+    return null;
   }
 
   /**

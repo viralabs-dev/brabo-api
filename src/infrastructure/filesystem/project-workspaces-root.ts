@@ -1,4 +1,5 @@
 import { accessSync, constants, statSync, type Stats } from 'node:fs';
+import { mkdir } from 'node:fs/promises';
 import { join, posix } from 'node:path';
 import {
   dentroDoEscopo,
@@ -413,7 +414,27 @@ export function normalizarSemBarraFinal(caminho: string): string {
  * projeto `runner` — sem tocar disco, porque só o runner, rodando no host de
  * verdade, tem autoridade para confirmar que a pasta existe. Mesmo predicado
  * nos dois modos: a diferença entre `mounted` e `runner` não é o que conta
- * como caminho válido, é QUANDO/QUEM confirma a parte de disco.
+ * como caminho válido, é QUANDO/QUEM confirma a parte de disco. Desde a
+ * RN-501 (ADR 0142) `mounted` segue exatamente essa mesma disciplina na
+ * criação.
+ *
+ * ## NÃO acrescente a regra da base aqui (ADR 0141/0142, RN-500/RN-501)
+ *
+ * A tentação é óbvia — "todo projeto `mounted` mora dentro de
+ * `BRABO_PROJECTS_BASE`, então o predicado deveria exigir isso" — e é a
+ * regressão mais fácil de causar neste arquivo. Esta função roda em TODA
+ * LEITURA, por `projectScopeRoot` (que é chamada em caminho quente: escopo de
+ * terminal, `permissions.json`, aba Code). Um projeto `mounted` LEGADO, criado
+ * quando o bind-mount era uma linha de compose por projeto, mora fora da base
+ * e continua perfeitamente válido — exigir a base aqui o faria explodir com
+ * `LocalizacaoDeProjetoInvalidaError` ao ser simplesmente LIDO, sem que
+ * ninguém tivesse mudado nada nele.
+ *
+ * A base é regra de CRIAÇÃO e CONVERSÃO (`validarExecutionModeEWorkspacePath`,
+ * `materializarWorkspaceMontado`), onde há um usuário na frente da tela que
+ * ainda pode escolher outro caminho. O LÉXICO — absoluto, sem `..`, fora de
+ * pasta de sistema, sem sobrepor o checkout do Brabo — é para sempre, e é só
+ * ele que mora aqui.
  */
 export function caminhoDeWorkspaceLocalValido(caminho: string): boolean {
   if (caminho.length === 0 || caminho.includes('\0')) return false;
@@ -473,40 +494,98 @@ export class CaminhoLocalInvalidoError extends Error {
 }
 
 /**
- * Como montar a pasta — a metade da mensagem que ENSINA.
+ * Como montar a pasta — a metade da mensagem que ENSINA (ADR 0141, RN-500).
  *
  * Repete o caminho pedido de propósito: quem digitou vê o valor exato que a
  * api enxergou, que é diferente do que ele vê no host quando o mount não
  * existe.
+ *
+ * O que esta mensagem NÃO ensina mais é acrescentar uma linha de bind-mount
+ * por projeto ao `docker-compose.yml`. Esse remédio morreu com o ADR 0141: ele
+ * custava um restart de `api` + `engine` por projeto criado — todo turno de
+ * agente, socket de terminal e chamada de LLM em voo da instalação — e foi
+ * substituído por UMA base configurada uma vez pelo operador. Continuar
+ * ensinando o remédio antigo mandaria o usuário derrubar a instalação para
+ * resolver um problema que a base já resolve.
  */
 function comoMontar(caminho: string): string {
+  const base = baseDeProjetos();
   return (
-    `A pasta precisa estar montada DENTRO dos containers da api e do engine, ` +
-    `no MESMO caminho absoluto (${caminho}) — a api e o engine escrevem no ` +
-    `mesmo lugar, e um caminho que só existe no host não existe para nenhum ` +
-    `dos dois. No docker/docker-compose.yml, acrescente a mesma linha aos ` +
-    `serviços "api" e "engine": ` +
-    `"- ${caminho}:${caminho}". Depois: docker compose up -d api engine. ` +
-    `Ver docs/runbook.md, seção "Projeto no modo Local".`
+    `A pasta precisa estar DENTRO da base de projetos montados, que é a única ` +
+    `pasta do seu computador que os containers da api e do engine enxergam ` +
+    `(os dois escrevem no mesmo lugar, e um caminho que só existe no host não ` +
+    `existe para nenhum dos dois). Confirme ` +
+    `BRABO_PROJECTS_BASE=${base ?? '<pasta do seu computador>'} no .env e ` +
+    `rode: docker compose up -d api engine. O caminho pedido foi ${caminho}. ` +
+    `Ver docs/runbook.md, seção "Projeto no modo Pasta montada".`
   );
 }
 
 /**
- * A guarda da criação de um projeto no modo Local (RN-170).
+ * Por que a base de projetos montados não serve para este caminho — a
+ * mensagem ÚNICA das duas portas que aplicam a regra (ADR 0142, RN-501): a
+ * validação de criação/conversão (`validarExecutionModeEWorkspacePath`) e a
+ * materialização (`materializarWorkspaceMontado`).
+ *
+ * Única de propósito: as duas recusam pelo MESMO motivo em momentos
+ * diferentes, e duas redações divergiriam no dia em que a base ganhar uma
+ * segunda forma.
+ *
+ * A sugestão sai do BASENAME do que a pessoa digitou — se ela pediu
+ * `/home/voce/dev/loja`, o que ela quer chamar de projeto é `loja`, e
+ * `<base>/loja` é a tradução literal do pedido. Sugerir a base pelada faria a
+ * mensagem ensinar a colocar o projeto na raiz de todos eles.
+ */
+export function motivoDeForaDaBaseDeProjetos(caminho: string): string {
+  const base = baseDeProjetos();
+  if (base === null) {
+    return (
+      `O modo "Pasta montada" não está disponível nesta instalação: ` +
+      `BRABO_PROJECTS_BASE não está configurada, e sem ela NENHUMA pasta do ` +
+      `seu computador é enxergada pelos containers da api e do engine. Peça ` +
+      `ao operador para definir BRABO_PROJECTS_BASE no .env e rodar ` +
+      `"docker compose up -d api engine" — ou crie o projeto no modo ` +
+      `"container", que usa a pasta gerenciada pelo produto.`
+    );
+  }
+
+  const normalizado = normalizarSemBarraFinal(caminho);
+  const nome = normalizado.slice(normalizado.lastIndexOf('/') + 1);
+  const sugerido = nome.length > 0 ? `${base}/${nome}` : `${base}/meu-projeto`;
+
+  return (
+    `A pasta precisa ficar dentro de ${base} — é a única pasta do seu ` +
+    `computador que os containers do Brabo enxergam. ` +
+    `${JSON.stringify(normalizado)} está fora dela. Sugerido: ${sugerido}. ` +
+    `Para usar outra pasta, o operador precisa mudar BRABO_PROJECTS_BASE.`
+  );
+}
+
+/**
+ * As três perguntas de DISCO sobre a pasta de um projeto `mounted` (RN-170),
+ * e onde elas passaram a ser feitas (ADR 0142, RN-501).
+ *
+ * Chamava-se `validarCaminhoDeWorkspaceLocal` e rodava na CRIAÇÃO do projeto.
+ * Não roda mais: o requisito é que o bind-mount de um projeto montado seja
+ * materializado DEPOIS da decisão do Arquiteto, quando a Infra sobe o
+ * container — e uma criação que exige a pasta pronta torna isso impossível.
+ * A criação passou a validar só o LÉXICO mais a base (a mesma disciplina que
+ * `runner` já tinha desde a RN-423), e quem chama esta função é
+ * `materializarWorkspaceMontado`, logo abaixo.
  *
  * Devolve o caminho NORMALIZADO — é ele que vai para o banco, e não o
  * original, pelo mesmo motivo de `caminhoDeRepositorioContido` devolver o
  * normalizado: gravar uma string e ter validado outra é como a validação
  * deixa de valer no dia seguinte.
  *
- * Toca disco de propósito, e é a única função deste arquivo que toca. As três
- * perguntas — existe? é pasta? dá para escrever? — não têm resposta léxica, e
- * são justamente as que separam "vai funcionar" de "vai travar no primeiro
- * turno do primeiro agente". `access(W_OK)` responde pelo usuário do PROCESSO,
- * que é o que importa: as imagens de produção rodam non-root (ADR 0024), e uma
- * pasta do host montada com dono diferente é legível e não gravável.
+ * Toca disco de propósito. As três perguntas — existe? é pasta? dá para
+ * escrever? — não têm resposta léxica, e são justamente as que separam "vai
+ * funcionar" de "vai travar no primeiro turno do primeiro agente".
+ * `access(W_OK)` responde pelo usuário do PROCESSO, que é o que importa: as
+ * imagens de produção rodam non-root (ADR 0024), e uma pasta do host montada
+ * com dono diferente é legível e não gravável.
  */
-export function validarCaminhoDeWorkspaceLocal(caminho: string): string {
+export function validarWorkspaceMontadoEmDisco(caminho: string): string {
   const bruto = caminho.trim();
 
   if (!caminhoDeWorkspaceLocalValido(bruto)) {
@@ -559,6 +638,78 @@ export function validarCaminhoDeWorkspaceLocal(caminho: string): string {
   }
 
   return normalizado;
+}
+
+/**
+ * MATERIALIZA a pasta de um projeto `mounted` — cria o que não existe e prova
+ * que dá para trabalhar nela (ADR 0142, RN-501).
+ *
+ * É a segunda metade da inversão que este ADR faz. A criação do projeto passou
+ * a validar só o LÉXICO e a base, porque o requisito do dono do produto é que
+ * o bind-mount de um projeto montado nasça DEPOIS da decisão do Arquiteto —
+ * quando a Infra sobe o container. Adiar a verificação sem ter um lugar onde
+ * ela volte a acontecer seria só perdê-la: este é o lugar.
+ *
+ * `mkdir -p` e não `mkdir`: a pessoa digita `<base>/loja` numa base que existe
+ * mas onde nada foi criado ainda, e exigir que ela crie a pasta à mão antes de
+ * usar o produto é devolver o problema que estamos resolvendo.
+ *
+ * A recusa por estar FORA da base acontece ANTES do `mkdir`, e é a razão de
+ * esta função existir em vez de um `mkdir` solto no chamador: sem ela, um
+ * caminho gravado por fora do produto (linha adulterada no banco, projeto
+ * legado) faria a api criar pasta em qualquer lugar do filesystem que ela
+ * alcança. O léxico continua rodando primeiro, como em toda porta deste
+ * arquivo.
+ *
+ * Devolve o caminho NORMALIZADO, e LANÇA `CaminhoLocalInvalidoError` em toda
+ * recusa — quem chama decide se isso vira 400 (a conversão) ou um `failed`
+ * nomeado (a execução de `container_start`). Nunca um `Error` cru: a mensagem
+ * é a parte útil.
+ */
+export async function materializarWorkspaceMontado(
+  caminho: string,
+): Promise<string> {
+  const bruto = caminho.trim();
+
+  if (!caminhoDeWorkspaceLocalValido(bruto)) {
+    throw new CaminhoLocalInvalidoError(
+      bruto,
+      `Caminho inválido para um projeto no modo Pasta montada: ` +
+        `${JSON.stringify(bruto)}. Ele precisa ser absoluto (começar com ` +
+        `"/"), sem ".." no meio, e não pode ser a raiz do sistema, uma pasta ` +
+        `do sistema (${RAIZES_DE_SISTEMA.join(', ')}) nem se sobrepor ao ` +
+        `checkout do próprio Brabo (ADR 0055).`,
+    );
+  }
+
+  const normalizado = normalizarSemBarraFinal(bruto);
+
+  if (!dentroDaBaseDeProjetos(normalizado)) {
+    throw new CaminhoLocalInvalidoError(
+      normalizado,
+      motivoDeForaDaBaseDeProjetos(normalizado),
+    );
+  }
+
+  try {
+    await mkdir(normalizado, { recursive: true });
+  } catch {
+    // `mkdir -p` que falha com a base montada e o caminho dentro dela é
+    // permissão ou dono, nunca "faltou o mount" — e é isso que a mensagem
+    // diz, em vez de repetir a instrução de montagem que já foi cumprida.
+    throw new CaminhoLocalInvalidoError(
+      normalizado,
+      `Não consegui criar ${normalizado} de dentro da api. Confira o dono e ` +
+        `a permissão da base no host: as imagens rodam com usuário non-root ` +
+        `(ADR 0024), então uma pasta do host com outro dono chega montada ` +
+        `como somente leitura na prática. ${comoMontar(normalizado)}`,
+    );
+  }
+
+  // As três perguntas de disco de sempre (RN-170) — a pasta pode existir e
+  // ainda assim não servir (arquivo no lugar de pasta, dono diferente), e
+  // `mkdir -p` bem-sucedido não responde nenhuma delas.
+  return validarWorkspaceMontadoEmDisco(normalizado);
 }
 
 /**
