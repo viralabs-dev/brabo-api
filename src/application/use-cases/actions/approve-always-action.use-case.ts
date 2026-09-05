@@ -23,7 +23,7 @@ import { Traced } from '../../../infrastructure/observability/traced.decorator';
 /**
  * "Aprovar sempre": aprova a ação (mesmo fluxo de ApproveActionUseCase,
  * incluindo a execução se for terminal) E grava o padrão exato dela —
- * escopado ao ATOR (RN-505, plano do dono do produto, Frente 2).
+ * escopado ao ATOR (RN-509, plano do dono do produto, Frente 2).
  *
  * Dois destinos de gravação, nunca um caminho novo por cima do outro:
  * - Ator `user`, `system`, ou `agent` que NÃO é dev-de-módulo (inclusive o
