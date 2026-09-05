@@ -15,6 +15,7 @@ import { ExecuteTerminalActionUseCase } from './execute-terminal-action.use-case
 import { ExecuteGitActionUseCase } from './execute-git-action.use-case';
 import { ExecuteInfraPrUseCase } from './execute-infra-pr.use-case';
 import { ExecuteContainerStartUseCase } from './execute-container-start.use-case';
+import { ExecuteContainerStartViaRunnerUseCase } from './execute-container-start-via-runner.use-case';
 import { ExecuteContainerStopUseCase } from './execute-container-stop.use-case';
 import { ObterCicloDeVidaDoContainerUseCase } from '../containers/obter-ciclo-de-vida-do-container.use-case';
 import {
@@ -56,6 +57,7 @@ export class ProposeActionUseCase {
     private readonly executeGitAction: ExecuteGitActionUseCase,
     private readonly executeInfraPr: ExecuteInfraPrUseCase,
     private readonly executeContainerStart: ExecuteContainerStartUseCase,
+    private readonly executeContainerStartViaRunner: ExecuteContainerStartViaRunnerUseCase,
     private readonly executeContainerStop: ExecuteContainerStopUseCase,
     private readonly appendSessionEvent: AppendSessionEventUseCase,
     private readonly obterCicloDeVidaDoContainer: ObterCicloDeVidaDoContainerUseCase,
@@ -202,6 +204,21 @@ export class ProposeActionUseCase {
     // e nada subia. Pior que não ter a feature".
     if (status === 'auto_approved' && actionType === 'container_start') {
       return this.executeContainerStart.execute(projectId, sessionId, action);
+    }
+
+    // `container_start_via_runner` (RN-508) — MESMA régua de
+    // `container_start`: nunca semeado, mas configurável em
+    // `permissions.json`, e sem este branch a ação nasceria `auto_approved`
+    // e nenhum container subiria de verdade na máquina do usuário.
+    if (
+      status === 'auto_approved' &&
+      actionType === 'container_start_via_runner'
+    ) {
+      return this.executeContainerStartViaRunner.execute(
+        projectId,
+        sessionId,
+        action,
+      );
     }
 
     // `container_stop` nunca é semeado (mesma régua de `container_start`),

@@ -117,6 +117,7 @@ const proposeAction = new ProposeActionUseCase(
   undefined as never, // executeGitAction — não exercitado aqui
   undefined as never, // executeInfraPr — não exercitado aqui
   undefined as never, // executeContainerStart — não exercitado aqui
+  undefined as never, // executeContainerStartViaRunner — não exercitado aqui
   undefined as never, // executeContainerStop — não exercitado aqui
   appendSessionEvent,
   obterCicloDeVidaDoContainer,
@@ -130,6 +131,7 @@ const approveAction = new ApproveActionUseCase(
   undefined as never, // executeAdrPr — não exercitado aqui
   undefined as never, // executeInfraPr — não exercitado aqui
   undefined as never, // executeContainerStart — não exercitado aqui
+  undefined as never, // executeContainerStartViaRunner — não exercitado aqui
   undefined as never, // executeContainerStop — não exercitado aqui
   undefined as never, // executeContainerRemove — não exercitado aqui
   // executeGitAction: passthrough (o executor git de verdade é testado à parte).

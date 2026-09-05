@@ -27,6 +27,7 @@ export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
   container_start: 'ContainerStart',
   container_stop: 'ContainerStop',
   container_remove: 'ContainerRemove',
+  container_start_via_runner: 'ContainerStartViaRunner',
 };
 
 /**

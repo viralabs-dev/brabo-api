@@ -119,6 +119,7 @@ const proposeAction = new ProposeActionUseCase(
   undefined as never, // executeGitAction — não exercitado aqui
   undefined as never, // executeInfraPr — não exercitado aqui
   undefined as never, // executeContainerStart — não exercitado aqui
+  undefined as never, // executeContainerStartViaRunner — não exercitado aqui
   undefined as never, // executeContainerStop — não exercitado aqui
   appendSessionEvent,
   obterCicloDeVidaDoContainer,
@@ -132,6 +133,7 @@ const approveAction = new ApproveActionUseCase(
   undefined as never, // executeAdrPr
   undefined as never, // executeInfraPr
   undefined as never, // executeContainerStart
+  undefined as never, // executeContainerStartViaRunner
   undefined as never, // executeContainerStop
   undefined as never, // executeContainerRemove
   {
@@ -322,10 +324,10 @@ describe('ApproveAlwaysActionUseCase', () => {
     expect(file.allow).toEqual(['Terminal(pnpm test)']);
   });
 
-  // RN-505 (Frente 2): "sempre permitir" de um dev-de-módulo escopa a
+  // RN-507 (Frente 2): "sempre permitir" de um dev-de-módulo escopa a
   // `agent_autonomy`, POR AGENTE — não mais pro permissions.json de
   // projeto inteiro.
-  describe('escopo por Dev Agent de módulo (RN-505)', () => {
+  describe('escopo por Dev Agent de módulo (RN-507)', () => {
     it('caminho feliz: dev-checkout ganha agent_autonomy(projeto, dev-checkout, terminal)=auto_approve; permissions.json fica INTOCADO; dev-auth continua exigindo aprovação pra ação idêntica', async () => {
       const { project, session, user, action } =
         await setupPendingTerminalAction('echo oi', 'dev-checkout');
