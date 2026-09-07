@@ -8,6 +8,7 @@ import {
   RunnerNaoConectadoError,
   RunnerRecusouContainerError,
   type ContainerIniciadoViaRunner,
+  type DesfechoDeDesconexaoDeRunner,
   type EspecificacaoDeContainerParaRunner,
 } from '../../application/ports/api-to-engine-client.port';
 import type { TerminalExecutionResult } from '../../domain/actions/terminal-execution-result';
@@ -26,6 +27,14 @@ import { PsychologistDisabledError } from '../../domain/psychologist/psychologis
  * nada vire segmento de path extra nem quebre a URL montada.
  */
 const SEGMENTO_DE_URL_INTERNA_VALIDO = /^[A-Za-z0-9_-]{1,64}$/;
+
+/** Os desfechos que `EngineWeb.RunnerConnectionCommandController` sabe devolver. */
+const DESFECHOS_DE_DESCONEXAO: readonly DesfechoDeDesconexaoDeRunner[] = [
+  'derrubado',
+  'sem_runner',
+  'de_outro_dono',
+  'timeout',
+];
 
 function garantirSegmentoDeUrlInterna(valor: string, nome: string): string {
   if (!SEGMENTO_DE_URL_INTERNA_VALIDO.test(valor)) {
@@ -472,6 +481,47 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
       'remove',
       workspaceDirName,
     );
+  }
+
+  /**
+   * ADR 0147 ponto 6 (RN-520). Nunca engole a falha aqui: quem chama
+   * (`RevokeRunnerDeviceKeyUseCase`) é quem sabe que isto é efeito colateral
+   * de um `DELETE` 204 e trata a exceção — este client segue lançando em
+   * transporte quebrado, como todos os outros métodos dele.
+   *
+   * Desfecho desconhecido vira `timeout` em vez de `derrubado`: entre
+   * afirmar que a conexão caiu e afirmar que talvez não, a afirmação segura é
+   * a que não promete o que não se sabe.
+   */
+  @Traced('infrastructure')
+  async disconnectRunnerOfUser(
+    projectId: string,
+    userId: string,
+  ): Promise<DesfechoDeDesconexaoDeRunner> {
+    projectId = garantirSegmentoDeUrlInterna(projectId, 'projectId');
+    const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
+
+    const res = await fetch(
+      `${engineUrl}/internal/projects/${projectId}/runner/disconnect`,
+      {
+        method: 'POST',
+        headers: this.buildHeaders(),
+        body: JSON.stringify({ userId }),
+      },
+    );
+
+    if (!res.ok) {
+      throw new Error(
+        `Falha ao pedir a desconexão do runner ao engine: ${res.status} ${await res.text()}`,
+      );
+    }
+
+    const corpo = (await res.json()) as { desfecho?: string };
+    return DESFECHOS_DE_DESCONEXAO.includes(
+      corpo.desfecho as DesfechoDeDesconexaoDeRunner,
+    )
+      ? (corpo.desfecho as DesfechoDeDesconexaoDeRunner)
+      : 'timeout';
   }
 
   private async pedirOperacaoDeContainerAoRunner(

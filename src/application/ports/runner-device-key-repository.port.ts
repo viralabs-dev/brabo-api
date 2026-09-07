@@ -45,6 +45,18 @@ export abstract class RunnerDeviceKeyRepository {
   ): Promise<ChavePublicaAtiva | null>;
 
   /**
+   * Lista as chaves do PRÓPRIO usuário naquele projeto — revogadas
+   * INCLUÍDAS, mesma escolha de `listarDoUsuarioNoProjeto` do PAT: quem
+   * revogou precisa ver que revogou, e sumir com a linha faria a tela
+   * afirmar que a chave nunca existiu. Nunca devolve a JWK pública: a lista
+   * existe para revogar, e o navegador que registrou já tem a dele.
+   */
+  abstract listarDoUsuarioNoProjeto(
+    userId: string,
+    projectId: string,
+  ): Promise<ChaveDeDispositivoResumo[]>;
+
+  /**
    * Idempotente: revogar uma chave já revogada devolve a linha (sem erro).
    * `null` = não existe OU não pertence a `userId` — mesma resposta pros
    * dois casos, não vaza a existência de uma chave alheia.

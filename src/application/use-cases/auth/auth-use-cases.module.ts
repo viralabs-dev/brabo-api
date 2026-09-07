@@ -18,6 +18,7 @@ import { ResetPasswordUseCase } from './reset-password.use-case';
 import { SocialLoginCallbackUseCase } from './social-login-callback.use-case';
 import { StartSocialLoginUseCase } from './start-social-login.use-case';
 import { TokenFactory } from './token-factory';
+import { EngineHttpClientsModule } from '../../../infrastructure/http-clients/engine-http-clients.module';
 import { VerifyEmailUseCase } from './verify-email.use-case';
 import { IssuePersonalAccessTokenUseCase } from './issue-personal-access-token.use-case';
 import { ListPersonalAccessTokensUseCase } from './list-personal-access-tokens.use-case';
@@ -25,6 +26,7 @@ import { RevokePersonalAccessTokenUseCase } from './revoke-personal-access-token
 import { ListPersonalAccessTokensAsMaintainerUseCase } from './list-personal-access-tokens-as-maintainer.use-case';
 import { RevokePersonalAccessTokenAsMaintainerUseCase } from './revoke-personal-access-token-as-maintainer.use-case';
 import { RegisterRunnerDeviceKeyUseCase } from './register-runner-device-key.use-case';
+import { ListRunnerDeviceKeysUseCase } from './list-runner-device-keys.use-case';
 import { RevokeRunnerDeviceKeyUseCase } from './revoke-runner-device-key.use-case';
 
 const USE_CASES = [
@@ -45,6 +47,7 @@ const USE_CASES = [
   ListPersonalAccessTokensAsMaintainerUseCase,
   RevokePersonalAccessTokenAsMaintainerUseCase,
   RegisterRunnerDeviceKeyUseCase,
+  ListRunnerDeviceKeysUseCase,
   RevokeRunnerDeviceKeyUseCase,
 ];
 
@@ -65,6 +68,12 @@ const USE_CASES = [
  * `SocialIdentityRepository` não precisa de import próprio: é `@Global()` via
  * `DrizzleModule`, como `AuthCredentialRepository`.
  *
+ * `EngineHttpClientsModule` entrou pela RN-520 (ADR 0147 ponto 6):
+ * `RevokeRunnerDeviceKeyUseCase` passou a pedir ao engine que derrube a
+ * conexão viva do runner quando a chave é revogada — revogar só impedia
+ * ticket NOVO. É o MESMO módulo que `RunnerUseCasesModule` já importava para
+ * `RequestRunnerTicketUseCase`, e não fecha ciclo: ele não importa ninguém.
+ *
  * `MailSender` é `useFactory`, não `useClass` fixo, desde o backlog "SMTP
  * real no MailSender" (ADR 0096): `MAIL_TRANSPORT` decide entre
  * `LogMailSender` (default, inclusive em produção) e `SmtpMailSender`. A
@@ -74,7 +83,7 @@ const USE_CASES = [
  * o operador optou por `smtp`.
  */
 @Module({
-  imports: [GitInfrastructureModule],
+  imports: [GitInfrastructureModule, EngineHttpClientsModule],
   providers: [
     ...USE_CASES,
     { provide: PasswordHasher, useClass: Argon2PasswordHasher },
