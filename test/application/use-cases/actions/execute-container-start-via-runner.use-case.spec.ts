@@ -137,7 +137,15 @@ describe('ExecuteContainerStartViaRunnerUseCase — caminho feliz', () => {
 
     expect(apiToEngineClient.startContainerViaRunner).toHaveBeenCalledWith(
       'proj-1',
-      expect.objectContaining({ imagem: IMAGEM_DECIDIDA }),
+      // `projectId` junto com a imagem: ele faltava no payload, e sem ele o
+      // runner recusa a especificação INTEIRA antes de qualquer `docker run`.
+      // Quem prova isso contra o validador de verdade é
+      // `test/contract/especificacao-de-container-para-runner.contract.spec.ts`
+      // — aqui a asserção é só a do campo, na altura deste caso de uso.
+      expect.objectContaining({
+        imagem: IMAGEM_DECIDIDA,
+        projectId: 'proj-1',
+      }),
     );
     expect(transicoes.map((t) => t.to)).toEqual(['provisioning', 'running']);
     expect(gravados.at(-1)?.status).toBe('executed');
