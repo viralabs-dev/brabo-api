@@ -129,10 +129,11 @@ export class GetSessionPendingWorkUseCase {
       }
     }
 
-    // Estes cinco significam "tem trabalho rolando ou um humano precisa
+    // Estes seis significam "tem trabalho rolando ou um humano precisa
     // agir" — travado esperando desbloqueio, esperando o gate de QA/SecOps
-    // terminar, ou esperando decisão de aprovação, É trabalho pendente, é
-    // literalmente o que o usuário estava fazendo quando a sessão fechou.
+    // terminar, esperando decisão de aprovação, ou esperando alguém subir o
+    // container, É trabalho pendente, é literalmente o que o usuário estava
+    // fazendo quando a sessão fechou.
     //
     // `dev.awaiting_gate` entrou porque o gate pode morrer (bug real
     // corrigido em paralelo, o 413 nas PRs) e deixar o dev agent preso
@@ -155,6 +156,15 @@ export class GetSessionPendingWorkUseCase {
     // este sinal a sessão fica sem NADA segurando ela: o mesmo defeito da
     // RN-411, um nível mais fundo.
     //
+    // `dev.blocked_by_container` entrou pelo mesmo argumento (RN-502/ADR
+    // 0143): o agente NÃO reivindicou task porque o projeto não tem container
+    // `running` registrado, e quem sobe container é um HUMANO aprovando
+    // `container_start`. Na execução real do `exp004` cinco agentes ficaram
+    // assim e a sessão fechou 30s depois — eventos daquela sessão seguiram
+    // chegando 13 e 32 minutos mais tarde, envenenando toda métrica por
+    // sessão. O último evento VISÍVEL por agente era `dev.started`, que está
+    // deliberadamente fora desta régua.
+    //
     // `dev.idle` (sem tarefa nenhuma pra pegar, drenado de verdade) e os
     // demais tipos (`started`/`error`) ficam FORA desta régua.
     const devPendente = [...ultimoPorDevAgent.values()].find((e) =>
@@ -172,8 +182,20 @@ export class GetSessionPendingWorkUseCase {
   }
 }
 
-// Vocabulário completo emitido por `Engine.Dev.AgentIo`/`DevAgentServer` —
-// confirmado por leitura direta do código do engine, não por suposição.
+// Vocabulário emitido por `Engine.Dev.AgentIo`/`DevAgentServer`.
+//
+// Esta lista já se disse "completa, confirmada por leitura direta do código do
+// engine" — e estava certa quando foi escrita. Foi essa afirmação que
+// envelheceu: `dev.blocked_by_container` nasceu depois (RN-502/ADR 0143) e a
+// lista não acompanhou, deixando o evento INVISÍVEL aqui — a api não o via nem
+// para ignorá-lo. Numa execução real (`exp004`) cinco dev agents ficaram
+// bloqueados por container e a sessão fechou 30 segundos depois; eventos
+// daquela sessão continuaram chegando 13 e 32 minutos mais tarde.
+//
+// Quem mantém a afirmação verdadeira agora é MECANISMO, não disciplina:
+// `scripts/ci/vocabulario-de-eventos-dev.spec.ts` extrai os tipos `dev.*` de
+// `apps/engine/lib/**/*.ex` e reprova quando divergirem destas duas listas.
+// Tipo novo no engine reprova o CI nomeando qual é.
 const DEV_EVENT_TYPES = [
   'dev.started',
   'dev.working',
@@ -182,12 +204,20 @@ const DEV_EVENT_TYPES = [
   'dev.idle',
   'dev.idle_tripped',
   'dev.blocked',
+  'dev.blocked_by_container',
   'dev.error',
 ];
 
+// `dev.blocked_by_container` é espera por AÇÃO HUMANA, como `dev.idle_tripped`
+// e `dev.awaiting_approval`: o agente não reivindicou task nenhuma porque o
+// projeto não tem container `running` registrado, e quem sobe container é uma
+// pessoa aprovando `container_start` (ADR 0133/0137). Fechar a sessão por
+// inatividade da aba enquanto isso está pendurado é o defeito que os outros
+// quatro sinais já corrigiam.
 const DEV_PENDING_TYPES = new Set([
   'dev.working',
   'dev.blocked',
+  'dev.blocked_by_container',
   'dev.idle_tripped',
   'dev.awaiting_gate',
   'dev.awaiting_approval',
