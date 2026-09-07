@@ -50,6 +50,7 @@ function projeto(overrides: Partial<Project> = {}): Project {
     executionMode: 'container',
     workspacePath: null,
     workspaceVerifiedAt: null,
+    mirrorPath: null,
     createdBy: 'user-1',
     taskBudgetMicros: null,
     maxConsecutiveBlocked: null,

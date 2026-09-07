@@ -26,6 +26,15 @@ export interface EspecificacaoDeContainerParaRunner {
   pidsLimit: number;
 }
 
+/**
+ * O que o engine respondeu a `disconnectRunnerOfUser` — os quatro desfechos
+ * de `Engine.Runners.Revogacao.derrubar/2`, mais `timeout`. Nenhum deles é
+ * erro: `sem_runner` é o caso normal de quem revoga uma chave órfã, e
+ * `de_outro_dono` é a conexão de outro usuário seguindo de pé, como deve.
+ */
+export type DesfechoDeDesconexaoDeRunner =
+  'derrubado' | 'sem_runner' | 'de_outro_dono' | 'timeout';
+
 export interface ContainerIniciadoViaRunner {
   containerId: string;
   nome: string;
@@ -288,4 +297,24 @@ export abstract class ApiToEngineClient {
     projectId: string,
     workspaceDirName: string,
   ): Promise<void>;
+
+  /**
+   * Pede ao engine para DERRUBAR a conexão viva do runner de `userId` neste
+   * projeto (ADR 0147 ponto 6, RN-520). Chamado quando uma chave de
+   * dispositivo é revogada: revogar só impedia ticket NOVO, e o runner já
+   * conectado seguia executando comando aprovado com a chave revogada.
+   *
+   * O alvo é `{projeto, usuário}`, NUNCA `{chave}` — a identidade da
+   * credencial que originou o ticket morre no `PatAuthGuard` e nunca chega ao
+   * socket do engine (ver `Engine.Runners.Revogacao`). Custo declarado: um
+   * runner do MESMO usuário conectado com PAT, ou com outra chave, também
+   * cai; ele reconecta sozinho se a credencial dele ainda valer.
+   *
+   * Devolve o desfecho, para o chamador LOGAR — nunca para decidir nada. Um
+   * `sem_runner` é o caso normal de quem revoga uma chave órfã, não erro.
+   */
+  abstract disconnectRunnerOfUser(
+    projectId: string,
+    userId: string,
+  ): Promise<DesfechoDeDesconexaoDeRunner>;
 }

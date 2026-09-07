@@ -362,3 +362,82 @@ describe('HttpApiToEngineClient — o runner sobe o container (ADR 0137)', () =>
     });
   });
 });
+
+describe('HttpApiToEngineClient — a revogação derruba a conexão viva (RN-520)', () => {
+  afterEach(() => {
+    delete process.env.ENGINE_URL;
+  });
+
+  async function servidorQueResponde(corpo: unknown, status = 200) {
+    const recebido: { url?: string; body?: string } = {};
+    const server: Server = createServer((req, res) => {
+      recebido.url = req.url ?? '';
+      let dados = '';
+      req.on('data', (pedaco) => (dados += String(pedaco)));
+      req.on('end', () => {
+        recebido.body = dados;
+        res.writeHead(status, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(corpo));
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const { port } = server.address() as AddressInfo;
+    process.env.ENGINE_URL = `http://127.0.0.1:${port}`;
+    return {
+      recebido,
+      fechar: () =>
+        new Promise<void>((resolve) => {
+          server.closeAllConnections();
+          server.close(() => resolve());
+        }),
+    };
+  }
+
+  it('`projectId` malformado é recusado ANTES de tocar a rede (RN-128)', async () => {
+    process.env.ENGINE_URL = PORTA_QUE_NADA_ESCUTA;
+    const client = new HttpApiToEngineClient();
+
+    await expect(
+      client.disconnectRunnerOfUser('../../etc/passwd', 'user-1'),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('caminho feliz: bate na rota do engine com o userId no corpo e devolve o desfecho', async () => {
+    const servidor = await servidorQueResponde({ desfecho: 'derrubado' });
+    const client = new HttpApiToEngineClient();
+
+    const desfecho = await client.disconnectRunnerOfUser(PROJETO, 'user-1');
+
+    expect(desfecho).toBe('derrubado');
+    expect(servidor.recebido.url).toBe(
+      `/internal/projects/${PROJETO}/runner/disconnect`,
+    );
+    expect(JSON.parse(servidor.recebido.body ?? '{}')).toEqual({
+      userId: 'user-1',
+    });
+
+    await servidor.fechar();
+  });
+
+  it('desfecho desconhecido vira "timeout", nunca "derrubado" — não se promete o que não se sabe', async () => {
+    const servidor = await servidorQueResponde({ desfecho: 'algo_novo' });
+    const client = new HttpApiToEngineClient();
+
+    await expect(client.disconnectRunnerOfUser(PROJETO, 'user-1')).resolves.toBe(
+      'timeout',
+    );
+
+    await servidor.fechar();
+  });
+
+  it('CASO DE FALHA: engine respondendo 500 LANÇA — quem trata é o caso de uso, que não pode deixar isso derrubar o 204', async () => {
+    const servidor = await servidorQueResponde({ error: 'boom' }, 500);
+    const client = new HttpApiToEngineClient();
+
+    await expect(
+      client.disconnectRunnerOfUser(PROJETO, 'user-1'),
+    ).rejects.toThrow(/Falha ao pedir a desconexão do runner/);
+
+    await servidor.fechar();
+  });
+});

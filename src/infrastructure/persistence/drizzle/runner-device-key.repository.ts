@@ -66,6 +66,23 @@ export class DrizzleRunnerDeviceKeyRepository extends RunnerDeviceKeyRepository 
     return linha ?? null;
   }
 
+  async listarDoUsuarioNoProjeto(
+    userId: string,
+    projectId: string,
+  ): Promise<ChaveDeDispositivoResumo[]> {
+    const db = currentDb(this.rootDb);
+    const linhas = await db
+      .select()
+      .from(runnerDeviceKeys)
+      .where(
+        and(
+          eq(runnerDeviceKeys.userId, userId),
+          eq(runnerDeviceKeys.projectId, projectId),
+        ),
+      );
+    return linhas.map(paraResumo);
+  }
+
   async revogar(
     id: string,
     userId: string,

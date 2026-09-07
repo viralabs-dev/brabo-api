@@ -190,6 +190,21 @@ export class ProjectResponseDto implements Wire<Project> {
   })
   workspaceVerifiedAt!: string | null;
 
+  @ApiProperty({
+    example: null,
+    nullable: true,
+    description:
+      "The mirror destination on the USER'S machine — the folder OUTSIDE " +
+      'the mounted base where the local agent copies the work to (RN-515, ' +
+      'ADR 0147). `null` means the project has no mirror, and that is the ' +
+      'NORMAL state, never an error. Only `mounted`/`runner` can have one. ' +
+      'Set through `PUT /projects/:projectId/mirror-path`; it rides along ' +
+      'every project read so nothing needs a dedicated endpoint to learn ' +
+      'it. The value was validated LEXICALLY only — whether the folder ' +
+      'exists is known by the local agent, not by this API.',
+  })
+  mirrorPath!: string | null;
+
   @ApiProperty({ example: '01JC4Z0000USUARIO0000000001' })
   createdBy!: string;
 

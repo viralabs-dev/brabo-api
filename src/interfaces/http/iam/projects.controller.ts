@@ -26,6 +26,8 @@ import type { User } from '../../../domain/iam/user.entity';
 import { GetProjectUseCase } from '../../../application/use-cases/iam/get-project.use-case';
 import { UpdateProjectUseCase } from '../../../application/use-cases/iam/update-project.use-case';
 import { ConvertProjectExecutionModeUseCase } from '../../../application/use-cases/iam/convert-project-execution-mode.use-case';
+import { SetProjectMirrorPathUseCase } from '../../../application/use-cases/iam/set-project-mirror-path.use-case';
+import { GetProjectMirrorStateUseCase } from '../../../application/use-cases/iam/get-project-mirror-state.use-case';
 import { DeleteProjectUseCase } from '../../../application/use-cases/iam/delete-project.use-case';
 import { AddProjectMemberUseCase } from '../../../application/use-cases/iam/add-project-member.use-case';
 import { RemoveProjectMemberUseCase } from '../../../application/use-cases/iam/remove-project-member.use-case';
@@ -34,6 +36,7 @@ import { GetProjectPermissionsUseCase } from '../../../application/use-cases/iam
 import { SetProjectPermissionsUseCase } from '../../../application/use-cases/iam/set-project-permissions.use-case';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ConvertExecutionModeDto } from './dto/convert-execution-mode.dto';
+import { SetMirrorPathDto } from './dto/set-mirror-path.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { SetProjectPermissionsDto } from './dto/set-project-permissions.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
@@ -42,6 +45,7 @@ import {
   ProjectMemberResponseDto,
   ProjectResponseDto,
 } from './dto/iam.response.dto';
+import { ProjectMirrorStateResponseDto } from './dto/project-mirror-state.response.dto';
 import { PermissionsFileResponseDto } from '../actions/dto/actions.response.dto';
 
 @ApiTags('projects')
@@ -56,6 +60,8 @@ export class ProjectsController {
     private readonly getProject: GetProjectUseCase,
     private readonly updateProject: UpdateProjectUseCase,
     private readonly convertExecutionMode: ConvertProjectExecutionModeUseCase,
+    private readonly setProjectMirrorPath: SetProjectMirrorPathUseCase,
+    private readonly getProjectMirrorState: GetProjectMirrorStateUseCase,
     private readonly deleteProject: DeleteProjectUseCase,
     private readonly addProjectMember: AddProjectMemberUseCase,
     private readonly removeProjectMember: RemoveProjectMemberUseCase,
@@ -105,6 +111,63 @@ export class ProjectsController {
     @Body() dto: ConvertExecutionModeDto,
   ) {
     return this.convertExecutionMode.execute(projectId, dto);
+  }
+
+  @Put(':projectId/mirror-path')
+  @RequireRole('maintainer')
+  @ApiOperation({
+    summary: "Declares (or clears) the project's mirror destination",
+    description:
+      'The absolute path, ON THE USER MACHINE, where the local agent copies ' +
+      'the work to (RN-515, ADR 0147) — a folder OUTSIDE the mounted base, ' +
+      'which is the whole reason the mirror exists. Per project and never ' +
+      'global: one global destination would land project B artifacts in ' +
+      "project A's folder, and the user would find out from the contents, " +
+      'not from an error. `mirrorPath: null` CLEARS it and turns the mirror ' +
+      'off — the key is required, omitting it is a 400, because a body that ' +
+      'omits the field would be indistinguishable from asking to clear. ' +
+      '`null` is the NORMAL state of a project. `maintainer`, the same ' +
+      'minimum as `execution-mode` and `projects-base`: this route talks ' +
+      "about a path on the operator's own filesystem. It validates ONLY the " +
+      'LEXICAL shape and refuses, with 400, a destination inside ' +
+      '`workspacePath` or containing it (both directions of the same loop), ' +
+      'and any destination at all on a `container` project. It never ' +
+      'touches disk: the API cannot see the machine where the destination ' +
+      'will live. Writing the mirror is NOT a proposed_action — it is ' +
+      'configuration the user declared, not an agent asking to act.',
+  })
+  @ApiOkResponse({ type: ProjectResponseDto })
+  setMirrorPathRoute(
+    @Param('projectId') projectId: string,
+    @Body() dto: SetMirrorPathDto,
+  ) {
+    return this.setProjectMirrorPath.execute(projectId, dto);
+  }
+
+  @Get(':projectId/mirror-state')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'What the last mirror round did (RN-517)',
+    description:
+      'Telemetry the local agent pushed over the channel after copying the ' +
+      'work to the user folder (ADR 0147, point 7) — never the event log, ' +
+      'because a mirror round has no session and `session_events.session_id` ' +
+      'is `NOT NULL` (the same reasoning that made `rag_searches` a table). ' +
+      'THREE answers that never collapse into one (RN-088): `never` (no ' +
+      'round ever reported), `synced` (the last round copied — `filesCopied` ' +
+      'may be `0`, which means "looked and there was nothing to copy") and ' +
+      '`failed`. A failure never erases the last successful sync, and a ' +
+      'success never erases the last error: which one is CURRENT comes from ' +
+      'comparing the two timestamps, so the screen can say "failing since ' +
+      'today, last good copy was yesterday with 412 files". `lastDestination` ' +
+      'is FROZEN — it diverges from `mirrorPath` after someone changes the ' +
+      'destination, because the grant travels in the join and only changes ' +
+      'when the runner reconnects (RN-516). `viewer`, the same minimum as ' +
+      'reading the project, which already carries `mirrorPath`.',
+  })
+  @ApiOkResponse({ type: ProjectMirrorStateResponseDto })
+  mirrorStateRoute(@Param('projectId') projectId: string) {
+    return this.getProjectMirrorState.execute(projectId);
   }
 
   @Delete(':projectId')
