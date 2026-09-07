@@ -23,6 +23,7 @@ import { ListBusinessRulesUseCase } from '../../../application/use-cases/backlog
 import { ListBacklogUseCase } from '../../../application/use-cases/backlog/list-backlog.use-case';
 import { ListProductMetricsUseCase } from '../../../application/use-cases/backlog/list-product-metrics.use-case';
 import { ConfirmProjectWorkspaceUseCase } from '../../../application/use-cases/iam/confirm-project-workspace.use-case';
+import { RecordMirrorSyncUseCase } from '../../../application/use-cases/iam/record-mirror-sync.use-case';
 import { ExecutarComandoNoContainerUseCase } from '../../../application/use-cases/containers/executar-comando-no-container.use-case';
 import { SERVICE_TOKEN } from '../../../infrastructure/openapi/documento';
 import { ProjectGitRemoteResponseDto } from './dto/project-git-remote.response.dto';
@@ -33,6 +34,8 @@ import { ConfirmProjectWorkspaceInternalDto } from './dto/confirm-project-worksp
 import { ConfirmProjectWorkspaceResponseDto } from './dto/confirm-project-workspace.response.dto';
 import { ContainerExecInternalDto } from './dto/container-exec-internal.dto';
 import { ContainerExecInternalResponseDto } from './dto/container-exec-internal.response.dto';
+import { MirrorSyncResultInternalDto } from './dto/mirror-sync-result-internal.dto';
+import { MirrorSyncResultResponseDto } from './dto/mirror-sync-result.response.dto';
 
 /**
  * O que o engine precisa da api sobre um PROJETO — e não sobre uma sessão.
@@ -82,6 +85,7 @@ export class InternalProjectsController {
     private readonly listProductMetrics: ListProductMetricsUseCase,
     private readonly confirmWorkspace: ConfirmProjectWorkspaceUseCase,
     private readonly executarComandoNoContainer: ExecutarComandoNoContainerUseCase,
+    private readonly recordMirrorSync: RecordMirrorSyncUseCase,
   ) {}
 
   @Get(':projectId/git-remote')
@@ -213,5 +217,36 @@ export class InternalProjectsController {
       dto.cwd,
       dto.timeoutMs,
     );
+  }
+
+  @Post(':projectId/mirror-sync-result')
+  // Records what already happened; does not create an addressable resource.
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'The local agent reports the outcome of a mirror round (RN-517)',
+    description:
+      'Called only by the engine, after the runner pushes ' +
+      '`mirror_sync_result` over the channel — the SAME path as ' +
+      '`workspace_confirm` (runner → channel → engine → api), never a second ' +
+      'mechanism: the engine reports, it does not write the table. This is ' +
+      'TELEMETRY, not a domain event: never `session_events` (a mirror round ' +
+      'has no session and `session_id` is `NOT NULL`, the same reasoning ' +
+      'that made `rag_searches` a table) and never a `proposed_action` (the ' +
+      'mirror write is configuration the user declared, not an agent asking ' +
+      'to act). `ok` is what decides the outcome — never the presence of a ' +
+      'count or of a message: a round that copied 0 files is normal and must ' +
+      'not be indistinguishable from one that never ran. Recording never ' +
+      'breaks what it measures: the copy is already done when this is ' +
+      'called, and the engine only logs a refusal here. A project whose ' +
+      'destination was cleared meanwhile STILL records — the round happened, ' +
+      'and its error is usually what explains what went wrong.',
+  })
+  @ApiOkResponse({ type: MirrorSyncResultResponseDto })
+  @ApiNotFoundResponse({ description: 'Project does not exist.' })
+  mirrorSyncResult(
+    @Param('projectId') projectId: string,
+    @Body() dto: MirrorSyncResultInternalDto,
+  ) {
+    return this.recordMirrorSync.execute(projectId, dto);
   }
 }

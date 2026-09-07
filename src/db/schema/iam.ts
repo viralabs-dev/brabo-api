@@ -232,6 +232,72 @@ export const projects = pgTable(
   ],
 );
 
+/**
+ * A TELEMETRIA da última rodada do espelho por projeto (RN-517, ADR 0147
+ * ponto 7) — uma linha por projeto, `project_id` único, mesmo desenho de
+ * `project_containers`.
+ *
+ * ## Por que TABELA e não event log
+ *
+ * O mesmo raciocínio que fez `rag_searches` virar tabela (RN-479): o que se
+ * quer medir não tem sessão, e `session_events.session_id` é `NOT NULL`. Isto
+ * é telemetria de CONEXÃO — o agente local contando o que aconteceu na
+ * máquina do usuário —, não evento de domínio de sessão. Nunca vira
+ * `proposed_action` também: a escrita do espelho é configuração que o usuário
+ * declarou, não um agente pedindo para agir.
+ *
+ * ## Por que no agregado `iam`, ao lado de `projects`
+ *
+ * O DESTINO do espelho é `projects.mirror_path`, nesta mesma tabela e neste
+ * mesmo arquivo (RN-515), e quem o grava é `use-cases/iam/
+ * set-project-mirror-path.use-case.ts`. Esta linha é o desfecho de copiar
+ * para aquela coluna, então mora no mesmo agregado que ela — não há
+ * `domain/runners`, e criar um arquivo de schema para um agregado que não
+ * existe em `domain/*` quebraria o espelhamento que o ADR 0121 fixou.
+ *
+ * ## Três estados, e eles NUNCA colapsam (RN-088)
+ *
+ * "Nunca sincronizou" é a **linha ausente**. "Sincronizou e não copiou nada"
+ * é `last_synced_at` preenchido com `files_copied = 0`. "Falhou" é
+ * `last_error_at` mais recente que `last_synced_at`. As três são respostas
+ * diferentes, e uma coluna só não conseguiria dizer qual é.
+ *
+ * Sucesso e erro CONVIVEM: uma falha nunca limpa a última sincronização boa
+ * (que é a informação mais útil que a tela tem), e um sucesso nunca apaga o
+ * último erro — quem decide qual dos dois está VIGENTE é a comparação dos
+ * dois carimbos, em `domain/iam/mirror-state.ts`. Escrita destrutiva de um
+ * lado sobre o outro perderia informação que ninguém pode reconstruir: isto
+ * não é log, é estado.
+ *
+ * `destination` é o destino REAL daquela rodada, resolvido por `realpath` na
+ * máquina do usuário — CONGELADO na linha, como `image_version` em
+ * `project_containers` e os pesos em `rag_searches`. Ler `projects.mirror_path`
+ * na hora de mostrar diria o destino de AGORA sobre uma cópia de ontem.
+ */
+export const projectMirrorStates = pgTable('project_mirror_states', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  projectId: uuid('project_id')
+    .notNull()
+    .unique()
+    .references(() => projects.id, { onDelete: 'cascade' }),
+  // Última sincronização BEM-SUCEDIDA — nunca tocada por uma falha.
+  lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
+  // As três contagens daquela rodada bem-sucedida (`ResultadoDoEspelho` do
+  // runner): copiados, pulados (diretório/symlink/sumiu) e recusados pela
+  // guarda por arquivo. `0` é um número, não um vazio.
+  filesCopied: integer('files_copied'),
+  filesSkipped: integer('files_skipped'),
+  filesRefused: integer('files_refused'),
+  // O destino resolvido naquela rodada, congelado.
+  destination: text('destination'),
+  // Último ERRO — nunca toca as colunas de sucesso acima.
+  lastErrorAt: timestamp('last_error_at', { withTimezone: true }),
+  lastError: text('last_error'),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const projectMembers = pgTable(
   'project_members',
   {

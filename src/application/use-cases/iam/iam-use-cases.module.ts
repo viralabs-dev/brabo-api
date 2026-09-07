@@ -12,6 +12,8 @@ import { CreateProjectUseCase } from './create-project.use-case';
 import { ConfirmProjectWorkspaceUseCase } from './confirm-project-workspace.use-case';
 import { ConvertProjectExecutionModeUseCase } from './convert-project-execution-mode.use-case';
 import { SetProjectMirrorPathUseCase } from './set-project-mirror-path.use-case';
+import { RecordMirrorSyncUseCase } from './record-mirror-sync.use-case';
+import { GetProjectMirrorStateUseCase } from './get-project-mirror-state.use-case';
 import { GetProjectUseCase } from './get-project.use-case';
 import { UpdateProjectUseCase } from './update-project.use-case';
 import { DeleteProjectUseCase } from './delete-project.use-case';
@@ -46,6 +48,8 @@ const USE_CASES = [
   ConfirmProjectWorkspaceUseCase,
   ConvertProjectExecutionModeUseCase,
   SetProjectMirrorPathUseCase,
+  RecordMirrorSyncUseCase,
+  GetProjectMirrorStateUseCase,
   GetProjectUseCase,
   UpdateProjectUseCase,
   DeleteProjectUseCase,

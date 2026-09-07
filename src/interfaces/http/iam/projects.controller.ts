@@ -27,6 +27,7 @@ import { GetProjectUseCase } from '../../../application/use-cases/iam/get-projec
 import { UpdateProjectUseCase } from '../../../application/use-cases/iam/update-project.use-case';
 import { ConvertProjectExecutionModeUseCase } from '../../../application/use-cases/iam/convert-project-execution-mode.use-case';
 import { SetProjectMirrorPathUseCase } from '../../../application/use-cases/iam/set-project-mirror-path.use-case';
+import { GetProjectMirrorStateUseCase } from '../../../application/use-cases/iam/get-project-mirror-state.use-case';
 import { DeleteProjectUseCase } from '../../../application/use-cases/iam/delete-project.use-case';
 import { AddProjectMemberUseCase } from '../../../application/use-cases/iam/add-project-member.use-case';
 import { RemoveProjectMemberUseCase } from '../../../application/use-cases/iam/remove-project-member.use-case';
@@ -44,6 +45,7 @@ import {
   ProjectMemberResponseDto,
   ProjectResponseDto,
 } from './dto/iam.response.dto';
+import { ProjectMirrorStateResponseDto } from './dto/project-mirror-state.response.dto';
 import { PermissionsFileResponseDto } from '../actions/dto/actions.response.dto';
 
 @ApiTags('projects')
@@ -59,6 +61,7 @@ export class ProjectsController {
     private readonly updateProject: UpdateProjectUseCase,
     private readonly convertExecutionMode: ConvertProjectExecutionModeUseCase,
     private readonly setProjectMirrorPath: SetProjectMirrorPathUseCase,
+    private readonly getProjectMirrorState: GetProjectMirrorStateUseCase,
     private readonly deleteProject: DeleteProjectUseCase,
     private readonly addProjectMember: AddProjectMemberUseCase,
     private readonly removeProjectMember: RemoveProjectMemberUseCase,
@@ -139,6 +142,32 @@ export class ProjectsController {
     @Body() dto: SetMirrorPathDto,
   ) {
     return this.setProjectMirrorPath.execute(projectId, dto);
+  }
+
+  @Get(':projectId/mirror-state')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'What the last mirror round did (RN-517)',
+    description:
+      'Telemetry the local agent pushed over the channel after copying the ' +
+      'work to the user folder (ADR 0147, point 7) — never the event log, ' +
+      'because a mirror round has no session and `session_events.session_id` ' +
+      'is `NOT NULL` (the same reasoning that made `rag_searches` a table). ' +
+      'THREE answers that never collapse into one (RN-088): `never` (no ' +
+      'round ever reported), `synced` (the last round copied — `filesCopied` ' +
+      'may be `0`, which means "looked and there was nothing to copy") and ' +
+      '`failed`. A failure never erases the last successful sync, and a ' +
+      'success never erases the last error: which one is CURRENT comes from ' +
+      'comparing the two timestamps, so the screen can say "failing since ' +
+      'today, last good copy was yesterday with 412 files". `lastDestination` ' +
+      'is FROZEN — it diverges from `mirrorPath` after someone changes the ' +
+      'destination, because the grant travels in the join and only changes ' +
+      'when the runner reconnects (RN-516). `viewer`, the same minimum as ' +
+      'reading the project, which already carries `mirrorPath`.',
+  })
+  @ApiOkResponse({ type: ProjectMirrorStateResponseDto })
+  mirrorStateRoute(@Param('projectId') projectId: string) {
+    return this.getProjectMirrorState.execute(projectId);
   }
 
   @Delete(':projectId')

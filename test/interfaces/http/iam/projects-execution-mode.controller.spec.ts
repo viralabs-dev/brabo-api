@@ -37,6 +37,7 @@ describe('ProjectsController — conversão de execution_mode (RN-447..450)', ()
       { execute: vi.fn() } as never,
       { execute: vi.fn() } as never,
       { execute: vi.fn() } as never,
+      { execute: vi.fn() } as never,
     );
 
     const resultado = await controller.convertExecutionModeRoute('p1', {
@@ -86,6 +87,7 @@ describe('ProjectsController — destino do espelho (RN-515)', () => {
       { execute: vi.fn() } as never,
       { execute: vi.fn() } as never,
       { execute: vi.fn() } as never,
+      { execute: vi.fn() } as never,
     );
 
     const resultado = await controller.setMirrorPathRoute('p1', {
@@ -107,6 +109,7 @@ describe('ProjectsController — destino do espelho (RN-515)', () => {
       { execute: vi.fn() } as never,
       { execute: vi.fn() } as never,
       setMirrorPath as never,
+      { execute: vi.fn() } as never,
       { execute: vi.fn() } as never,
       { execute: vi.fn() } as never,
       { execute: vi.fn() } as never,
