@@ -193,6 +193,19 @@ export class ConvertProjectExecutionModeUseCase {
         // exige uma confirmação NOVA de um runner conectado, mesmo que o
         // caminho reportado acabe sendo igual ao anterior.
         workspaceVerifiedAt: null,
+        // RN-515 — o destino do espelho zera em TODA conversão, pelo mesmo
+        // motivo do campo acima e por mais um. `container` não pode ter
+        // destino nenhum (a origem vira um volume do SERVIDOR, e quem
+        // copiaria é o agente local, na máquina do usuário) — deixar a
+        // coluna preenchida ali seria o banco afirmando uma configuração
+        // que nunca vai rodar. E mesmo entre `mounted` e `runner` a
+        // conversão MOVE a origem: os dois sentidos do laço origem↔destino
+        // foram validados contra o `workspacePath` ANTIGO, e revalidá-los
+        // aqui devolveria "seu destino agora é inválido" no meio de uma
+        // transação sobre outro assunto. Limpar e deixar o usuário
+        // redeclarar (a rota é uma só, e o valor volta em toda leitura de
+        // projeto) é a recusa honesta; manter seria o laço silencioso.
+        mirrorPath: null,
       });
 
       if (!atualizado) throw new NotFoundException('Projeto não encontrado');

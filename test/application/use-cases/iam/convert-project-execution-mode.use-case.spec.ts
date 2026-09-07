@@ -40,6 +40,7 @@ function projeto(overrides: Partial<Project> = {}): Project {
     executionMode: 'container',
     workspacePath: null,
     workspaceVerifiedAt: null,
+    mirrorPath: null,
     createdBy: 'user-1',
     taskBudgetMicros: null,
     maxConsecutiveBlocked: null,
@@ -221,6 +222,29 @@ describe('ConvertProjectExecutionModeUseCase', () => {
     expect(resultado.executionMode).toBe('runner');
     expect(resultado.workspacePath).toBe('/home/alguem/projeto-x');
     expect(atual().workspaceVerifiedAt).toBeNull();
+  });
+
+  it('a conversão ZERA o destino do espelho (RN-515), mesmo entre mounted e runner', async () => {
+    // O destino foi validado contra o `workspacePath` ANTIGO — os dois
+    // sentidos do laço origem↔destino deixam de valer quando a origem muda.
+    // E em `container` ele não poderia existir de jeito nenhum: a origem vira
+    // um volume do SERVIDOR, que o agente local não enxerga.
+    const { repo, atual, chamadasUpdate } = projectRepo(
+      projeto({
+        executionMode: 'runner',
+        workspacePath: '/home/alguem/projeto-x',
+        mirrorPath: '/home/alguem/espelhos/projeto-x',
+      }),
+    );
+    const uc = useCase({ projects: repo });
+
+    await uc.execute(PROJETO, {
+      executionMode: 'runner',
+      workspacePath: '/home/alguem/outro-lugar',
+    });
+
+    expect(atual().mirrorPath).toBeNull();
+    expect(chamadasUpdate[0]).toMatchObject({ mirrorPath: null });
   });
 
   it('container -> runner com container `running`: passa por `stopped` antes de `removed`', async () => {

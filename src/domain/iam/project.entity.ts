@@ -81,6 +81,20 @@ export interface Project {
   // vira timestamp quando o primeiro runner conecta e confirma o caminho
   // (RN-423). `container`/`mounted` nunca preenchem este campo.
   workspaceVerifiedAt: Date | null;
+  // O DESTINO do espelho na máquina do usuário (RN-515, ADR 0147 ponto 4) —
+  // a pasta FORA da base montada para onde o agente local copia o trabalho.
+  // `null` é o estado NORMAL: projeto sem espelho, e o produto nunca escolhe
+  // um destino sozinho.
+  //
+  // Por PROJETO, nunca global. Só `mounted`/`runner` podem tê-lo: em
+  // `container` a origem é um volume do SERVIDOR, e quem copiaria é um
+  // processo na máquina do USUÁRIO, que não a enxerga.
+  //
+  // A api valida SÓ o LÉXICO deste caminho, e diz que só o léxico — ela não
+  // enxerga a máquina onde o destino vai existir, exatamente como em `runner`
+  // (RN-423). A metade de `realpath` da guarda (symlink que escapa do
+  // destino) é do runner, e ainda não existe quando esta coluna é escrita.
+  mirrorPath: string | null;
   createdBy: string;
   // Teto de tokens por task dos dev agents (micro-USD). Nulo = default do
   // domínio (ver DEFAULT_TASK_BUDGET_MICROS em ActivateExecutionUseCase).

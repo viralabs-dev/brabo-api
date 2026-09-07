@@ -26,6 +26,7 @@ import type { User } from '../../../domain/iam/user.entity';
 import { GetProjectUseCase } from '../../../application/use-cases/iam/get-project.use-case';
 import { UpdateProjectUseCase } from '../../../application/use-cases/iam/update-project.use-case';
 import { ConvertProjectExecutionModeUseCase } from '../../../application/use-cases/iam/convert-project-execution-mode.use-case';
+import { SetProjectMirrorPathUseCase } from '../../../application/use-cases/iam/set-project-mirror-path.use-case';
 import { DeleteProjectUseCase } from '../../../application/use-cases/iam/delete-project.use-case';
 import { AddProjectMemberUseCase } from '../../../application/use-cases/iam/add-project-member.use-case';
 import { RemoveProjectMemberUseCase } from '../../../application/use-cases/iam/remove-project-member.use-case';
@@ -34,6 +35,7 @@ import { GetProjectPermissionsUseCase } from '../../../application/use-cases/iam
 import { SetProjectPermissionsUseCase } from '../../../application/use-cases/iam/set-project-permissions.use-case';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ConvertExecutionModeDto } from './dto/convert-execution-mode.dto';
+import { SetMirrorPathDto } from './dto/set-mirror-path.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { SetProjectPermissionsDto } from './dto/set-project-permissions.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
@@ -56,6 +58,7 @@ export class ProjectsController {
     private readonly getProject: GetProjectUseCase,
     private readonly updateProject: UpdateProjectUseCase,
     private readonly convertExecutionMode: ConvertProjectExecutionModeUseCase,
+    private readonly setProjectMirrorPath: SetProjectMirrorPathUseCase,
     private readonly deleteProject: DeleteProjectUseCase,
     private readonly addProjectMember: AddProjectMemberUseCase,
     private readonly removeProjectMember: RemoveProjectMemberUseCase,
@@ -105,6 +108,37 @@ export class ProjectsController {
     @Body() dto: ConvertExecutionModeDto,
   ) {
     return this.convertExecutionMode.execute(projectId, dto);
+  }
+
+  @Put(':projectId/mirror-path')
+  @RequireRole('maintainer')
+  @ApiOperation({
+    summary: "Declares (or clears) the project's mirror destination",
+    description:
+      'The absolute path, ON THE USER MACHINE, where the local agent copies ' +
+      'the work to (RN-515, ADR 0147) — a folder OUTSIDE the mounted base, ' +
+      'which is the whole reason the mirror exists. Per project and never ' +
+      'global: one global destination would land project B artifacts in ' +
+      "project A's folder, and the user would find out from the contents, " +
+      'not from an error. `mirrorPath: null` CLEARS it and turns the mirror ' +
+      'off — the key is required, omitting it is a 400, because a body that ' +
+      'omits the field would be indistinguishable from asking to clear. ' +
+      '`null` is the NORMAL state of a project. `maintainer`, the same ' +
+      'minimum as `execution-mode` and `projects-base`: this route talks ' +
+      "about a path on the operator's own filesystem. It validates ONLY the " +
+      'LEXICAL shape and refuses, with 400, a destination inside ' +
+      '`workspacePath` or containing it (both directions of the same loop), ' +
+      'and any destination at all on a `container` project. It never ' +
+      'touches disk: the API cannot see the machine where the destination ' +
+      'will live. Writing the mirror is NOT a proposed_action — it is ' +
+      'configuration the user declared, not an agent asking to act.',
+  })
+  @ApiOkResponse({ type: ProjectResponseDto })
+  setMirrorPathRoute(
+    @Param('projectId') projectId: string,
+    @Body() dto: SetMirrorPathDto,
+  ) {
+    return this.setProjectMirrorPath.execute(projectId, dto);
   }
 
   @Delete(':projectId')

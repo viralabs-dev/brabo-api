@@ -167,6 +167,25 @@ export const projects = pgTable(
     workspaceVerifiedAt: timestamp('workspace_verified_at', {
       withTimezone: true,
     }),
+    // O DESTINO do espelho na máquina do usuário — a pasta fora da base
+    // montada para onde o agente local copia o trabalho (RN-515, ADR 0147
+    // ponto 4). NULL é o estado NORMAL, e não uma pendência: projeto sem
+    // espelho é a maioria, e o produto nunca escolhe um destino sozinho.
+    //
+    // Por PROJETO e nunca global (nem no runner, nem por variável de
+    // ambiente): um destino global faria o artefato do projeto B aterrissar
+    // na pasta do projeto A, e o usuário descobriria isso pelo CONTEÚDO, não
+    // por um erro.
+    //
+    // Sem CHECK de pareamento com `execution_mode`, ao contrário de
+    // `workspace_path` logo acima. A recusa de `container` (a origem é um
+    // volume do SERVIDOR, e quem copiaria é um processo na máquina do
+    // USUÁRIO) vive no caso de uso, e não aqui, porque `execution_mode` é
+    // CONVERSÍVEL (RN-447, ADR 0111): um CHECK faria a conversão para
+    // `container` explodir no Postgres em vez de recusar com motivo — e a
+    // ordem certa ali é decisão de produto que esta coluna não deve
+    // antecipar.
+    mirrorPath: text('mirror_path'),
     createdBy: uuid('created_by')
       .notNull()
       .references(() => users.id),

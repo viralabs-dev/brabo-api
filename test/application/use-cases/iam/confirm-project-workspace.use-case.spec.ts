@@ -18,6 +18,7 @@ function buildProject(overrides: Partial<Project> = {}): Project {
     executionMode: 'runner',
     workspacePath: '/home/voce/projetos/loja',
     workspaceVerifiedAt: null,
+    mirrorPath: null,
     createdBy: 'user-1',
     taskBudgetMicros: null,
     maxConsecutiveBlocked: null,

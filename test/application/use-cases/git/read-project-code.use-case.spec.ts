@@ -287,6 +287,7 @@ function montar(
             ? '/home/voce/projetos/loja'
             : null,
         workspaceVerifiedAt: null,
+        mirrorPath: null,
         createdBy: 'user-1',
         taskBudgetMicros: null,
         maxConsecutiveBlocked: null,

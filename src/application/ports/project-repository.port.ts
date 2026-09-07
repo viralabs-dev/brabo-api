@@ -33,6 +33,11 @@ export interface ProjectInput {
   // enviado na CRIAÇÃO (nasce implícito NULL, default da coluna); só
   // `ConfirmProjectWorkspaceUseCase` escreve aqui, via `update`.
   workspaceVerifiedAt?: Date | null;
+  // O destino do espelho na máquina do usuário (RN-515, ADR 0147) — nunca
+  // enviado na CRIAÇÃO (nasce implícito NULL, e projeto sem espelho é o
+  // normal). Escrevem aqui, via `update`, `SetProjectMirrorPathUseCase` e a
+  // conversão de modo, que o LIMPA ao entrar em `container`.
+  mirrorPath?: string | null;
 }
 
 export abstract class ProjectRepository {
