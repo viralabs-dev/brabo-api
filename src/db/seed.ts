@@ -6,6 +6,25 @@
  * HTTP, sem guards — guards só interceptam a pipeline HTTP) para
  * exercitar o mesmo caminho de código usado pela API (outbox incluso).
  *
+ * IDEMPOTENTE de ponta a ponta. Rodar de novo sobre um banco já semeado é o
+ * caso NORMAL, não a exceção: o `bootstrap.sh` do k8s chama este arquivo com
+ * `BRABO_FORCE_SEED=1` contra um cluster que pode já ter sido semeado, e quem
+ * vê `scripts/dev/reset-total.sh` falhar no meio tenta se recuperar rodando só
+ * o seed. Usuários, credenciais, modelos, curadoria, bindings e instruções já
+ * eram idempotentes (todos passam por `upsert`); o workspace, o projeto e a
+ * sessão NÃO eram, e a segunda tentativa morria em
+ * `duplicate key value violates unique constraint "workspaces_slug_unique"` —
+ * depois de já ter escrito usuários, credenciais e modelos. Ou seja: quem
+ * tentava se recuperar sozinho ficava pior do que estava, e com uma mensagem
+ * de Postgres que não aponta para nada.
+ *
+ * A regra é reaproveitar, nunca duplicar nem re-escrever: achado o registro de
+ * demonstração, o seed segue com ELE. Para a sessão isso vale também para os
+ * eventos — reencontrada a sessão, os 5 eventos NÃO são acrescentados de novo,
+ * senão cada reseed empilharia mais cinco numa timeline que existe para
+ * demonstrar cinco. Quem quer estado limpo apaga o banco
+ * (`scripts/dev/reset-total.sh`, item Docker › Reset total do bootstrap).
+ *
  * Uso: pnpm --filter api seed
  */
 import 'reflect-metadata';
@@ -22,6 +41,9 @@ import {
   ModelRepository,
   type ModelInput,
 } from '../application/ports/model-repository.port';
+import { WorkspaceRepository } from '../application/ports/workspace-repository.port';
+import { ProjectRepository } from '../application/ports/project-repository.port';
+import { SessionRepository } from '../application/ports/session-repository.port';
 import type { Model } from '../domain/llm/model.entity';
 import { UpdateModelPricingUseCase } from '../application/use-cases/llm/update-model-pricing.use-case';
 import { SetModelsActiveUseCase } from '../application/use-cases/llm/set-models-active.use-case';
@@ -54,6 +76,22 @@ const CREDENCIAL_ENV_VARS: Partial<Record<LLMProviderName, string>> = {
   bitdeer: 'BITDEER_TEST_KEY',
   vultr: 'VULTR_TEST_KEY',
 };
+
+/**
+ * Os três registros de demonstração que este arquivo cria, num lugar só — é
+ * por estes valores que a rodada seguinte os RECONHECE. Constante e não
+ * literal repetido: procurar por um slug e criar com outro produziria dois
+ * workspaces em vez de um, e o defeito só apareceria na segunda rodada.
+ */
+const WORKSPACE_SEED = { name: 'Acme Corp', slug: 'acme-corp' };
+const PROJETO_SEED = { name: 'Core API', slug: 'core-api' };
+/**
+ * `criativa` e com nome: a sessão do seed é a que demonstra o fluxo inteiro
+ * (Criativo → PO → Arquiteto), e o nome exercita o rótulo composto da RN-098
+ * já na primeira tela que alguém abre. O nome é também a identidade que a
+ * releitura procura — sessão não tem slug.
+ */
+const SESSAO_SEED = { kind: 'criativa' as const, name: 'Ideação inicial' };
 
 // Preços aproximados de mercado (micro-USD por 1M tokens) — editáveis
 // depois (ver README: "models" não tem endpoint HTTP de edição na
@@ -323,6 +361,11 @@ async function main() {
   const transitionSession = app.get(TransitionSessionUseCase);
   const appendSessionEvent = app.get(AppendSessionEventUseCase);
   const models = app.get(ModelRepository);
+  // Os três repositórios de LEITURA da idempotência — ver o docblock do topo.
+  // São os mesmos que a api usa; nenhum método novo foi preciso.
+  const workspaces = app.get(WorkspaceRepository);
+  const projects = app.get(ProjectRepository);
+  const sessions = app.get(SessionRepository);
   const updateModelPricing = app.get(UpdateModelPricingUseCase);
   const setModelsActive = app.get(SetModelsActiveUseCase);
   const setModelBinding = app.get(SetModelBindingUseCase);
@@ -362,12 +405,24 @@ async function main() {
     );
   }
 
-  const workspace = await createWorkspace.execute(owner.id, {
-    name: 'Acme Corp',
-    slug: 'acme-corp',
-  });
+  // `listForUser` e não um `findBySlug` novo: o owner é membro do workspace
+  // que ele cria (CreateWorkspaceUseCase o adiciona como `owner` na mesma
+  // transação), então ele é o caminho que já existe até este registro.
+  const workspaceExistente = (await workspaces.listForUser(owner.id))
+    .map((linha) => linha.workspace)
+    .find((w) => w.slug === WORKSPACE_SEED.slug);
+  const workspace =
+    workspaceExistente ??
+    (await createWorkspace.execute(owner.id, WORKSPACE_SEED));
+  // `addMember` é upsert (ON CONFLICT DO UPDATE do papel) — roda nos dois
+  // casos de propósito, para o papel do developer voltar ao esperado mesmo se
+  // alguém o tiver trocado na UI.
   await addWorkspaceMember.execute(workspace.id, developer.id, 'developer');
-  console.log(`✓ workspace: ${workspace.name} (${workspace.slug})`);
+  console.log(
+    workspaceExistente
+      ? `= workspace já existia: ${workspace.name} (${workspace.slug})`
+      : `✓ workspace: ${workspace.name} (${workspace.slug})`,
+  );
 
   const semeados: Model[] = [];
   let localModel: Model | undefined;
@@ -455,11 +510,17 @@ async function main() {
     `✓ binding: workspace ${workspace.slug} -> ${localModel.provider}/${localModel.name}`,
   );
 
-  const project = await createProject.execute(workspace.id, owner.id, {
-    name: 'Core API',
-    slug: 'core-api',
-  });
-  console.log(`✓ projeto: ${project.name} (${project.slug})`);
+  const projetoExistente = (await projects.listForWorkspace(workspace.id)).find(
+    (p) => p.slug === PROJETO_SEED.slug,
+  );
+  const project =
+    projetoExistente ??
+    (await createProject.execute(workspace.id, owner.id, PROJETO_SEED));
+  console.log(
+    projetoExistente
+      ? `= projeto já existia: ${project.name} (${project.slug})`
+      : `✓ projeto: ${project.name} (${project.slug})`,
+  );
 
   // Fase 3b: persona base do Criativo (seed versionado) + binding do agente
   // pro modelo local, pra ele poder conduzir a ideação numa sessão real.
@@ -503,53 +564,69 @@ async function main() {
     `✓ binding: agent psicologo-leve -> ${cheapModel.provider}/${cheapModel.name}`,
   );
 
-  // `criativa` e com nome: a sessão do seed é a que demonstra o fluxo inteiro
-  // (Criativo → PO → Arquiteto), e o nome exercita o rótulo composto da
-  // RN-098 já na primeira tela que alguém abre.
-  const session = await createSession.execute(project.id, developer.id, {
-    kind: 'criativa',
-    name: 'Ideação inicial',
-  });
-  console.log(`✓ sessão criada: ${session.id} (status=${session.status})`);
+  // Ver SESSAO_SEED, no topo. Sessão não tem slug: o NOME é a identidade que
+  // a releitura procura.
+  const sessaoExistente = (await sessions.listForProject(project.id)).find(
+    (s) => s.name === SESSAO_SEED.name,
+  );
 
-  await transitionSession.execute(project.id, session.id, 'active');
-  console.log('✓ sessão ativada');
+  const session =
+    sessaoExistente ??
+    (await createSession.execute(project.id, developer.id, SESSAO_SEED));
 
-  const eventInputs = [
-    {
-      type: 'session.activated',
-      actor: { kind: 'system' as const, id: 'system' },
-      payload: {},
-    },
-    {
-      type: 'chat.message',
-      actor: { kind: 'user' as const, id: developer.id },
-      payload: { text: 'bora começar a análise do ticket #42' },
-    },
-    {
-      type: 'agent.response',
-      actor: { kind: 'agent' as const, id: 'arquiteto' },
-      payload: { text: 'levantando requisitos...' },
-    },
-    {
-      type: 'chat.message',
-      actor: { kind: 'user' as const, id: developer.id },
-      payload: { text: 'beleza, me avisa quando tiver o esboço' },
-    },
-    {
-      type: 'agent.response',
-      actor: { kind: 'agent' as const, id: 'arquiteto' },
-      payload: { text: 'esboço pronto, aguardando revisão' },
-    },
-  ];
-
-  for (const input of eventInputs) {
-    const event = await appendSessionEvent.execute(
-      project.id,
-      session.id,
-      input,
+  // Ativação e eventos SÓ na criação, e é aqui que este arquivo teria virado
+  // meio-idempotente se a releitura parasse na linha de cima: `transition`
+  // para `active` numa sessão já ativa é recusado pela máquina de estados, e
+  // os 5 eventos são APPEND-ONLY — cada rodada acrescentaria mais cinco a uma
+  // timeline que existe para demonstrar cinco. Reencontrada a sessão, o estado
+  // de demonstração já está pronto e nada há a fazer.
+  if (sessaoExistente) {
+    console.log(
+      `= sessão já existia: ${session.id} (status=${session.status}) — ` +
+        `ativação e os 5 eventos não são refeitos`,
     );
-    console.log(`✓ evento #${event.seq}: ${event.type}`);
+  } else {
+    console.log(`✓ sessão criada: ${session.id} (status=${session.status})`);
+
+    await transitionSession.execute(project.id, session.id, 'active');
+    console.log('✓ sessão ativada');
+
+    const eventInputs = [
+      {
+        type: 'session.activated',
+        actor: { kind: 'system' as const, id: 'system' },
+        payload: {},
+      },
+      {
+        type: 'chat.message',
+        actor: { kind: 'user' as const, id: developer.id },
+        payload: { text: 'bora começar a análise do ticket #42' },
+      },
+      {
+        type: 'agent.response',
+        actor: { kind: 'agent' as const, id: 'arquiteto' },
+        payload: { text: 'levantando requisitos...' },
+      },
+      {
+        type: 'chat.message',
+        actor: { kind: 'user' as const, id: developer.id },
+        payload: { text: 'beleza, me avisa quando tiver o esboço' },
+      },
+      {
+        type: 'agent.response',
+        actor: { kind: 'agent' as const, id: 'arquiteto' },
+        payload: { text: 'esboço pronto, aguardando revisão' },
+      },
+    ];
+
+    for (const input of eventInputs) {
+      const event = await appendSessionEvent.execute(
+        project.id,
+        session.id,
+        input,
+      );
+      console.log(`✓ evento #${event.seq}: ${event.type}`);
+    }
   }
 
   console.log('\nSeed concluído.');
