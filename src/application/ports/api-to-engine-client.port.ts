@@ -13,9 +13,27 @@ import type { PosturaDeRede } from '../../domain/containers/project-container';
  * pt-BR de propósito — é o vocabulário que atravessa engine/runner desde o
  * ADR 0128/0130, e esta é só mais uma parada da mesma composição, não um
  * contrato novo.
+ *
+ * São DEZ campos, e a contagem importa: `EntradaDeEspecificacao` tem onze, e
+ * o único que não está aqui é `raizDoProjeto`. Esta interface nasceu com NOVE
+ * — sem `projectId` —, e a consequência foi que `container_start_via_runner`
+ * NUNCA subiu container nenhum desde que existe: o runner passa o mapa
+ * recebido direto a `especificacaoValidada`, que exige texto não vazio em
+ * `projectId` e recusava a especificação inteira antes de qualquer `docker
+ * run`. O dado sempre esteve à mão (`SpecDeContainer.projectId`, o MESMO que
+ * o broker recebe por `GET .../container-spec` e por isso funciona) — só não
+ * era copiado. A corrente é testada em
+ * `test/contract/especificacao-de-container-para-runner.contract.spec.ts`,
+ * contra o validador de verdade: campo que falte aqui reprova lá.
  */
 export interface EspecificacaoDeContainerParaRunner {
   workspaceDirName: string;
+  /**
+   * Vira o rótulo `brabo.project.id` do container. Barato de mandar e caro de
+   * esquecer: `especificacaoValidada` o exige como texto não vazio, e sem ele
+   * o runner recusa a especificação inteira.
+   */
+  projectId: string;
   projectSlug: string;
   workspaceId: string;
   imagem: string;

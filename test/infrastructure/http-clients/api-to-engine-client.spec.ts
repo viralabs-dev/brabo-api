@@ -196,6 +196,7 @@ describe('HttpApiToEngineClient — o runner sobe o container (ADR 0137)', () =>
 
   const SPEC = {
     workspaceDirName: 'proj-abc12345',
+    projectId: 'proj-1',
     projectSlug: 'proj-1',
     workspaceId: 'ws-1',
     imagem: 'node:22-bookworm-slim',
