@@ -88,6 +88,10 @@ export class ExecuteContainerStartViaRunnerUseCase {
           projectId,
           {
             workspaceDirName: spec.workspaceDirName,
+            // Não é decoração: `especificacaoValidada`, do lado do runner,
+            // exige `projectId` como texto não vazio. Ele faltava aqui, e por
+            // isso este caminho terminava `failed` em 100% das vezes.
+            projectId: spec.projectId,
             projectSlug: spec.projectSlug,
             workspaceId: spec.workspaceId,
             imagem: spec.imagem.image,
