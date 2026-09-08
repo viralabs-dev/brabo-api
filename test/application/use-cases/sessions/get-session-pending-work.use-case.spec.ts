@@ -401,4 +401,56 @@ describe('GetSessionPendingWorkUseCase', () => {
 
     expect(r.pending).toBe(false);
   });
+
+  // O mesmo defeito da RN-411, um TIPO mais tarde: `dev.blocked_by_container`
+  // nasceu com a RN-502/ADR 0143 (o dev agent não reivindica task antes de o
+  // container existir) e a lista da api não acompanhou — o evento ficava
+  // invisível, a api não o via nem para ignorá-lo.
+  //
+  // O cenário abaixo é o da execução real do `exp004` (sessão `f782257e`):
+  // 22:41:38 cinco dev agents emitiram `dev.started` e logo `dev.blocked_by_container`;
+  // 22:42:07 o engine fechou por `heartbeat_timeout`, 30 segundos cravados.
+  // Às 22:55 o usuário aprovou um merge e às 23:14 os cinco agentes emitiram
+  // `dev.blocked_by_container` de novo — 13 e 32 minutos DEPOIS de a sessão
+  // constar como encerrada. Os cinco estavam esperando um HUMANO subir o
+  // container, que é a definição de trabalho pendente dos outros quatro sinais.
+  it('dev agent esperando o container segura a sessão (dev.blocked_by_container)', async () => {
+    const { session } = await sessao();
+    await devEvent(session.id, 'dev-api', 'dev.started');
+    await devEvent(session.id, 'dev-api', 'dev.blocked_by_container');
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(true);
+    expect(r.motivo).toContain('dev-api');
+    expect(r.motivo).toContain('blocked_by_container');
+  });
+
+  it('os CINCO dev agents bloqueados por container do exp004 seguram a sessão', async () => {
+    const { session } = await sessao();
+    for (const modulo of ['api', 'web', 'engine', 'infra', 'docs']) {
+      await devEvent(session.id, `dev-${modulo}`, 'dev.started');
+      await devEvent(session.id, `dev-${modulo}`, 'dev.blocked_by_container');
+    }
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(true);
+    expect(r.motivo).toContain('blocked_by_container');
+  });
+
+  it('dev.blocked_by_container mais RECENTE vence um dev.idle anterior', async () => {
+    // Prova que o tipo entrou nas DUAS listas: só em `DEV_PENDING_TYPES` não
+    // bastaria (o caso de uso não o consultaria), e só em `DEV_EVENT_TYPES`
+    // ele seria lido e descartado como "último evento não-pendente" — pior
+    // que antes, porque apagaria um `dev.working` anterior.
+    const { session } = await sessao();
+    await devEvent(session.id, 'dev-api', 'dev.idle');
+    await devEvent(session.id, 'dev-api', 'dev.blocked_by_container');
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(true);
+    expect(r.motivo).toContain('blocked_by_container');
+  });
 });
