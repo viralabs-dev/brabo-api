@@ -33,10 +33,19 @@ async function criarWorkspace(ownerId: string, slug: string) {
   return row;
 }
 
-async function criarProjeto(workspaceId: string, ownerId: string, slug: string) {
+async function criarProjeto(
+  workspaceId: string,
+  ownerId: string,
+  slug: string,
+  extra: {
+    executionMode?: 'container' | 'mounted' | 'runner';
+    workspacePath?: string;
+    workspaceVerifiedAt?: Date;
+  } = {},
+) {
   const [row] = await db
     .insert(projects)
-    .values({ workspaceId, name: slug, slug, createdBy: ownerId })
+    .values({ workspaceId, name: slug, slug, createdBy: ownerId, ...extra })
     .returning();
   return row;
 }
@@ -94,7 +103,11 @@ async function gravarDecisaoDeImagem(
 async function criarAcaoDeContainer(
   projectId: string,
   sessionId: string,
-  actionType: 'container_start' | 'container_stop' | 'container_remove',
+  actionType:
+    | 'container_start'
+    | 'container_stop'
+    | 'container_remove'
+    | 'container_start_via_runner',
   status: 'pending' | 'approved' | 'executed' = 'pending',
 ) {
   const [row] = await db
@@ -122,24 +135,33 @@ afterAll(async () => {
 });
 
 describe('DrizzleContainersOverviewRepository', () => {
-  it('workspace sem projeto nenhum com ciclo de vida: lista vazia', async () => {
+  it('workspace sem projeto nenhum: lista vazia', async () => {
     const owner = await criarUsuario('vazio@brabo.dev');
     const ws = await criarWorkspace(owner.id, 'vazio');
-    await criarProjeto(ws.id, owner.id, 'sem-container');
 
     expect(await repo.listForWorkspace(ws.id)).toEqual([]);
   });
 
-  it('só entram projetos que JÁ TÊM project_containers — a régua da tela', async () => {
+  /**
+   * RN-521: a régua ANTIGA ("só quem já tem `project_containers`") escondia da
+   * tela justamente o projeto cuja primeira subida falhou antes de registrar
+   * qualquer coisa — o único projeto que precisa do caminho humano de subir.
+   */
+  it('projeto SEM project_containers entra na lista, com lifecycle null', async () => {
     const owner = await criarUsuario('regua@brabo.dev');
     const ws = await criarWorkspace(owner.id, 'regua');
-    const comContainer = await criarProjeto(ws.id, owner.id, 'com-container');
-    await criarProjeto(ws.id, owner.id, 'sem-container');
+    const comContainer = await criarProjeto(ws.id, owner.id, 'a-com-container');
+    await criarProjeto(ws.id, owner.id, 'b-sem-container');
     await criarCicloDeVida(comContainer.id, 'running', 1);
 
     const linhas = await repo.listForWorkspace(ws.id);
 
-    expect(linhas.map((l) => l.projectId)).toEqual([comContainer.id]);
+    expect(linhas).toHaveLength(2);
+    expect(linhas[0].projectSlug).toBe('a-com-container');
+    expect(linhas[0].lifecycle?.status).toBe('running');
+    expect(linhas[1].projectSlug).toBe('b-sem-container');
+    expect(linhas[1].lifecycle).toBeNull();
+    expect(linhas[1].imagem).toBeNull();
   });
 
   it('resolve a imagem CONGELADA na imageVersion, não a mais recente', async () => {
@@ -156,7 +178,7 @@ describe('DrizzleContainersOverviewRepository', () => {
     const [linha] = await repo.listForWorkspace(ws.id);
 
     expect(linha.imagem).toBe('node:20-slim');
-    expect(linha.lifecycle.imageVersion).toBe(1);
+    expect(linha.lifecycle?.imageVersion).toBe(1);
   });
 
   it('versão sem evento correspondente: imagem null, nunca inventada', async () => {
@@ -168,6 +190,41 @@ describe('DrizzleContainersOverviewRepository', () => {
     const [linha] = await repo.listForWorkspace(ws.id);
 
     expect(linha.imagem).toBeNull();
+  });
+
+  it('temImagemDecidida é o portão da RN-105 — true com QUALQUER artifact.project_image, false sem nenhum', async () => {
+    const owner = await criarUsuario('portao@brabo.dev');
+    const ws = await criarWorkspace(owner.id, 'portao');
+    const comImagem = await criarProjeto(ws.id, owner.id, 'a-com-imagem');
+    const semImagem = await criarProjeto(ws.id, owner.id, 'b-sem-imagem');
+    const sessao = await criarSessao(comImagem.id, owner.id);
+    await gravarDecisaoDeImagem(sessao.id, 1, 'node:22-bookworm-slim');
+    // Nenhum dos dois tem container: o portão é independente do ciclo de vida.
+    await criarSessao(semImagem.id, owner.id);
+
+    const linhas = await repo.listForWorkspace(ws.id);
+
+    expect(linhas[0].temImagemDecidida).toBe(true);
+    expect(linhas[0].lifecycle).toBeNull();
+    expect(linhas[1].temImagemDecidida).toBe(false);
+  });
+
+  it('propaga executionMode e workspaceVerifiedAt do projeto', async () => {
+    const owner = await criarUsuario('modo@brabo.dev');
+    const ws = await criarWorkspace(owner.id, 'modo');
+    const confirmadoEm = new Date('2026-09-01T10:00:00.000Z');
+    await criarProjeto(ws.id, owner.id, 'core', {
+      executionMode: 'runner',
+      workspacePath: '/home/dev/projetos/core',
+      workspaceVerifiedAt: confirmadoEm,
+    });
+
+    const [linha] = await repo.listForWorkspace(ws.id);
+
+    expect(linha.executionMode).toBe('runner');
+    expect(linha.workspaceVerifiedAt?.toISOString()).toBe(
+      confirmadoEm.toISOString(),
+    );
   });
 
   it('acaoPendente traz a proposed_action pendente de container, em QUALQUER sessão do projeto', async () => {
@@ -197,6 +254,35 @@ describe('DrizzleContainersOverviewRepository', () => {
     expect(linha.acaoPendente?.actionType).toBe('container_stop');
   });
 
+  /**
+   * RN-521: a tela passou a propor `container_start_via_runner` em projeto
+   * `runner`. Sem o tipo na lista, a proposta feita pela própria página não
+   * voltaria como `acaoPendente` e a linha ofereceria "Subir" de novo em cima
+   * de uma decisão já aberta.
+   */
+  it('container_start_via_runner pendente também vira acaoPendente', async () => {
+    const owner = await criarUsuario('viarunner@brabo.dev');
+    const ws = await criarWorkspace(owner.id, 'viarunner');
+    const projeto = await criarProjeto(ws.id, owner.id, 'core', {
+      executionMode: 'runner',
+      workspacePath: '/home/dev/projetos/core',
+    });
+    const sessao = await criarSessao(projeto.id, owner.id);
+
+    const acao = await criarAcaoDeContainer(
+      projeto.id,
+      sessao.id,
+      'container_start_via_runner',
+      'pending',
+    );
+
+    const [linha] = await repo.listForWorkspace(ws.id);
+
+    expect(linha.lifecycle).toBeNull();
+    expect(linha.acaoPendente?.id).toBe(acao.id);
+    expect(linha.acaoPendente?.actionType).toBe('container_start_via_runner');
+  });
+
   it('sem ação pendente: acaoPendente é null', async () => {
     const owner = await criarUsuario('semacao@brabo.dev');
     const ws = await criarWorkspace(owner.id, 'semacao');
@@ -212,8 +298,8 @@ describe('DrizzleContainersOverviewRepository', () => {
     const owner = await criarUsuario('isolado@brabo.dev');
     const a = await criarWorkspace(owner.id, 'ws-a');
     const b = await criarWorkspace(owner.id, 'ws-b');
-    const doA = await criarProjeto(a.id, owner.id, 'core');
-    const doB = await criarProjeto(b.id, owner.id, 'core');
+    const doA = await criarProjeto(a.id, owner.id, 'core-a');
+    const doB = await criarProjeto(b.id, owner.id, 'core-b');
     await criarCicloDeVida(doA.id, 'running', 1);
     await criarCicloDeVida(doB.id, 'running', 1);
 

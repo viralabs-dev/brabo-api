@@ -16,6 +16,7 @@ function linha(
     projectId,
     projectName: projectId,
     projectSlug: projectId,
+    executionMode: 'container',
     lifecycle: {
       id: `lc-${projectId}`,
       projectId,
@@ -28,7 +29,28 @@ function linha(
       statusChangedAt: new Date(),
     },
     imagem: 'node:22-bookworm-slim',
+    temImagemDecidida: true,
+    workspaceVerifiedAt: null,
     acaoPendente: null,
+  };
+}
+
+/** Projeto que NUNCA provisionou container — o terceiro estado da RN-521. */
+function linhaSemContainer(
+  projectId: string,
+  overrides: Partial<ContainerOverviewRow> = {},
+): ContainerOverviewRow {
+  return {
+    projectId,
+    projectName: projectId,
+    projectSlug: projectId,
+    executionMode: 'runner',
+    lifecycle: null,
+    imagem: null,
+    temImagemDecidida: false,
+    workspaceVerifiedAt: null,
+    acaoPendente: null,
+    ...overrides,
   };
 }
 
@@ -161,5 +183,60 @@ describe('ObterVisaoGeralDeContainersUseCase', () => {
     expect(item.registrado).toEqual(comPendencia.lifecycle);
     expect(item.imagem).toBe('node:22-bookworm-slim');
     expect(item.acaoPendente?.id).toBe('pa-1');
+  });
+
+  // --- RN-521: o TERCEIRO estado, e o orçamento que ele não gasta ---
+
+  it('projeto sem project_containers entra na lista com registrado null e motivo PRÓPRIO', async () => {
+    const { useCase, chamadasAoBroker } = build([linhaSemContainer('p-novo')]);
+
+    const [item] = await useCase.execute('ws-1');
+
+    expect(item.registrado).toBeNull();
+    expect(item.naoVerificado).toBe('sem_container_registrado');
+    // Não é `stopped` (não há status nenhum) e não é "não observado" (o broker
+    // nem foi perguntado) — os três motivos são distintos.
+    expect(item.naoObservado).toBeNull();
+    expect(item.observado).toBeNull();
+    expect(chamadasAoBroker).toEqual([]);
+  });
+
+  it('projeto sem container NUNCA consome o orçamento do broker — quem tem container real continua verificado', async () => {
+    // 25 projetos sem container ANTES dos 20 com container: se os vazios
+    // ocupassem vaga, nenhum dos reais seria verificado.
+    const vazios = Array.from({ length: 25 }, (_, i) =>
+      linhaSemContainer(`vazio-${i}`),
+    );
+    const reais = Array.from({ length: TETO_DE_VERIFICACOES_POR_CARGA }, (_, i) =>
+      linha(`real-${i}`, 'running'),
+    );
+    const { useCase, chamadasAoBroker } = build([...vazios, ...reais]);
+
+    const itens = await useCase.execute('ws-1');
+
+    expect(chamadasAoBroker.sort()).toEqual(reais.map((r) => r.projectId).sort());
+    expect(
+      itens.filter((i) => i.naoVerificado === 'teto_de_verificacoes_atingido'),
+    ).toHaveLength(0);
+    expect(
+      itens.filter((i) => i.naoVerificado === 'sem_container_registrado'),
+    ).toHaveLength(25);
+  });
+
+  it('propaga executionMode, temImagemDecidida e workspaceVerifiedAt — o que a tela usa para decidir a ação', async () => {
+    const confirmadoEm = new Date('2026-09-01T10:00:00.000Z');
+    const { useCase } = build([
+      linhaSemContainer('p-runner', {
+        executionMode: 'runner',
+        temImagemDecidida: true,
+        workspaceVerifiedAt: confirmadoEm,
+      }),
+    ]);
+
+    const [item] = await useCase.execute('ws-1');
+
+    expect(item.executionMode).toBe('runner');
+    expect(item.temImagemDecidida).toBe(true);
+    expect(item.workspaceVerifiedAt).toEqual(confirmadoEm);
   });
 });

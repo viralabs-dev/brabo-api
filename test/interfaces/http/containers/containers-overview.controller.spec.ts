@@ -9,6 +9,7 @@ function makeItem(overrides: Partial<ContainerOverviewItem> = {}): ContainerOver
     projectId: 'proj-1',
     projectName: 'core',
     projectSlug: 'core',
+    executionMode: 'container',
     registrado: {
       id: 'lc-1',
       projectId: 'proj-1',
@@ -21,6 +22,8 @@ function makeItem(overrides: Partial<ContainerOverviewItem> = {}): ContainerOver
       statusChangedAt: new Date('2026-08-01T10:05:00.000Z'),
     },
     imagem: 'node:22-bookworm-slim',
+    temImagemDecidida: true,
+    workspaceVerifiedAt: null,
     observado: null,
     naoObservado: null,
     detalheDaObservacao: null,
@@ -31,8 +34,8 @@ function makeItem(overrides: Partial<ContainerOverviewItem> = {}): ContainerOver
 }
 
 /**
- * `GET /workspaces/:workspaceId/containers` (ADR 0136, RN-495) — a página
- * global de containers, cross-projeto.
+ * `GET /workspaces/:workspaceId/containers` (ADR 0136, RN-495/RN-521) — a
+ * página global de containers, cross-projeto.
  */
 describe('ContainersOverviewController', () => {
   it('exige viewer, mesma permissão da rota por projeto', () => {
@@ -42,7 +45,7 @@ describe('ContainersOverviewController', () => {
     ).toBe('viewer');
   });
 
-  it('achata registrado/imagem/observado num único objeto por linha, datas em ISO', async () => {
+  it('aninha o registrado num objeto próprio, datas em ISO', async () => {
     const obterVisaoGeral = { execute: vi.fn().mockResolvedValue([makeItem()]) };
     const controller = new ContainersOverviewController(obterVisaoGeral as never);
 
@@ -53,13 +56,18 @@ describe('ContainersOverviewController', () => {
       projectId: 'proj-1',
       projectName: 'core',
       projectSlug: 'core',
-      status: 'running',
-      imageVersion: 1,
-      imagem: 'node:22-bookworm-slim',
-      resources: { cpus: 2, memoryMb: 4096, pidsLimit: 512 },
-      failureReason: null,
-      createdAt: '2026-08-01T10:00:00.000Z',
-      statusChangedAt: '2026-08-01T10:05:00.000Z',
+      executionMode: 'container',
+      registrado: {
+        status: 'running',
+        imageVersion: 1,
+        imagem: 'node:22-bookworm-slim',
+        resources: { cpus: 2, memoryMb: 4096, pidsLimit: 512 },
+        failureReason: null,
+        createdAt: '2026-08-01T10:00:00.000Z',
+        statusChangedAt: '2026-08-01T10:05:00.000Z',
+      },
+      temImagemDecidida: true,
+      workspaceVerifiedAt: null,
       observado: null,
       naoObservado: null,
       detalheDaObservacao: null,
@@ -67,7 +75,34 @@ describe('ContainersOverviewController', () => {
       acaoPendente: null,
     });
     // `id`/`containerId` internos não vazam na resposta.
-    expect(linha).not.toHaveProperty('id');
+    expect(linha.registrado).not.toHaveProperty('id');
+    expect(linha.registrado).not.toHaveProperty('containerId');
+  });
+
+  /** RN-521: o terceiro estado sobrevive à conversão sem virar um `status`. */
+  it('projeto que nunca provisionou vira registrado null, com motivo próprio em naoVerificado', async () => {
+    const obterVisaoGeral = {
+      execute: vi.fn().mockResolvedValue([
+        makeItem({
+          executionMode: 'runner',
+          registrado: null,
+          imagem: null,
+          temImagemDecidida: true,
+          workspaceVerifiedAt: new Date('2026-09-01T10:00:00.000Z'),
+          naoVerificado: 'sem_container_registrado',
+        }),
+      ]),
+    };
+    const controller = new ContainersOverviewController(obterVisaoGeral as never);
+
+    const [linha] = await controller.list('ws-1');
+
+    expect(linha.registrado).toBeNull();
+    expect(linha.naoVerificado).toBe('sem_container_registrado');
+    expect(linha.naoObservado).toBeNull();
+    expect(linha.executionMode).toBe('runner');
+    expect(linha.temImagemDecidida).toBe(true);
+    expect(linha.workspaceVerifiedAt).toBe('2026-09-01T10:00:00.000Z');
   });
 
   it('naoVerificado sobrevive à conversão, distinto de naoObservado', async () => {
@@ -121,7 +156,7 @@ describe('ContainersOverviewController', () => {
     });
   });
 
-  it('lista vazia quando o workspace não tem projeto com container', async () => {
+  it('lista vazia quando o workspace não tem projeto nenhum', async () => {
     const obterVisaoGeral = { execute: vi.fn().mockResolvedValue([]) };
     const controller = new ContainersOverviewController(obterVisaoGeral as never);
 
