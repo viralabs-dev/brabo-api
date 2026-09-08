@@ -7,6 +7,10 @@ import {
   CONTAINER_LIFECYCLE_STATUSES,
   type ContainerLifecycleStatus,
 } from '../../../../domain/containers/container-lifecycle';
+import {
+  PROJECT_EXECUTION_MODES,
+  type ProjectExecutionMode,
+} from '../../../../domain/iam/project.entity';
 import { ProposedActionResponseDto } from '../../actions/dto/actions.response.dto';
 
 export class RecursosDoContainerResponseDto implements RecursosDoContainer {
@@ -223,21 +227,15 @@ export class ObservacaoDeContainerResponseDto {
 }
 
 /**
- * Uma linha da página global de containers (ADR 0136, RN-495) —
- * `GET workspaces/:workspaceId/containers`. Uma por projeto do workspace que
- * já tem `project_containers`; projeto sem linha nenhuma não aparece (não é
- * "vazio", é ausente — a mesma régua da rota `lifecycle` por projeto).
+ * O REGISTRADO de uma linha da página global de containers — a linha de
+ * `project_containers` do projeto, achatada para HTTP.
+ *
+ * Existe como objeto PRÓPRIO, e não achatado no item, por causa da RN-521: o
+ * item passou a poder ter `registrado: null` (projeto que NUNCA provisionou),
+ * e espalhar sete campos anuláveis no topo faria "nunca provisionou" ser
+ * lido como um `status` a mais em vez do TERCEIRO estado que é.
  */
-export class ContainerOverviewItemResponseDto {
-  @ApiProperty({ example: '01JC4Z0000PROJETO000001' })
-  projectId!: string;
-
-  @ApiProperty({ example: 'exp002' })
-  projectName!: string;
-
-  @ApiProperty({ example: 'exp002' })
-  projectSlug!: string;
-
+export class RegistroDeContainerResponseDto {
   @ApiProperty({
     enum: CONTAINER_LIFECYCLE_STATUSES,
     example: 'running',
@@ -270,6 +268,68 @@ export class ContainerOverviewItemResponseDto {
 
   @ApiProperty({ format: 'date-time' })
   statusChangedAt!: string;
+}
+
+/**
+ * Uma linha da página global de containers (ADR 0136, RN-495/RN-521) —
+ * `GET workspaces/:workspaceId/containers`. Uma por projeto do workspace,
+ * TENHA ELE container registrado ou não: desde a RN-521 a página é o caminho
+ * humano de subir o PRIMEIRO container, e a régua antiga ("só quem já tem
+ * `project_containers`") escondia exatamente o projeto que precisa dela.
+ */
+export class ContainerOverviewItemResponseDto {
+  @ApiProperty({ example: '01JC4Z0000PROJETO000001' })
+  projectId!: string;
+
+  @ApiProperty({ example: 'exp002' })
+  projectName!: string;
+
+  @ApiProperty({ example: 'exp002' })
+  projectSlug!: string;
+
+  @ApiProperty({
+    enum: PROJECT_EXECUTION_MODES,
+    example: 'runner',
+    description:
+      "Where this project's container comes up (RN-497/503). `container` and " +
+      '`mounted` go through the broker, on the server; `runner` goes through ' +
+      "the local agent on the user's machine. It is what branches the start " +
+      'action between `container_start` and `container_start_via_runner`.',
+  })
+  executionMode!: ProjectExecutionMode;
+
+  @ApiProperty({
+    type: () => RegistroDeContainerResponseDto,
+    nullable: true,
+    description:
+      '`null` means this project NEVER provisioned a container — a THIRD ' +
+      'state, not a `status` value: it is neither `stopped` (a container that ' +
+      'existed and stopped) nor "could not be observed" (which is about the ' +
+      'daemon). Read `naoVerificado: "sem_container_registrado"` alongside it.',
+  })
+  registrado!: RegistroDeContainerResponseDto | null;
+
+  @ApiProperty({
+    example: true,
+    description:
+      'Whether ANY `artifact.project_image` exists for this project — the ' +
+      'RN-105 gate, which since RN-494/ADR 0135 applies to all THREE modes. ' +
+      '`false` means starting a container is impossible right now, and the ' +
+      'page says so instead of proposing an action that is known to fail.',
+  })
+  temImagemDecidida!: boolean;
+
+  @ApiProperty({
+    nullable: true,
+    format: 'date-time',
+    description:
+      'When a runner CONFIRMED the folder (RN-423) — only meaningful for ' +
+      '`executionMode: "runner"`. It records ONE confirmation and is never a ' +
+      'heartbeat (RN-468): non-null does NOT prove a local agent is connected ' +
+      'now. What it does prove is the negative — `null` on a `runner` project ' +
+      'means no runner ever connected.',
+  })
+  workspaceVerifiedAt!: string | null;
 
   @ApiProperty({
     type: () => ObservacaoDeContainerResponseDto,
@@ -300,6 +360,7 @@ export class ContainerOverviewItemResponseDto {
     enum: [
       'fora_do_escopo_da_verificacao',
       'teto_de_verificacoes_atingido',
+      'sem_container_registrado',
       null,
     ],
     nullable: true,
@@ -310,19 +371,25 @@ export class ContainerOverviewItemResponseDto {
       '`fora_do_escopo_da_verificacao`: status is `stopped`/`failed`/`removed`, ' +
       'where daemon confirmation does not matter. ' +
       '`teto_de_verificacoes_atingido`: eligible, but the per-load broker ' +
-      'call budget was already spent by other rows.',
+      'call budget was already spent by other rows. ' +
+      '`sem_container_registrado`: the project never provisioned one, so ' +
+      'there is nothing to observe — and it never spends a call from the ' +
+      'budget either.',
   })
   naoVerificado!:
-    'fora_do_escopo_da_verificacao' | 'teto_de_verificacoes_atingido' | null;
+    | 'fora_do_escopo_da_verificacao'
+    | 'teto_de_verificacoes_atingido'
+    | 'sem_container_registrado'
+    | null;
 
   @ApiProperty({
     type: () => ProposedActionResponseDto,
     nullable: true,
     description:
-      'The pending `container_start`/`container_stop`/`container_remove` ' +
-      'action for this project, if any — in ANY of its sessions. The page ' +
-      'renders the inline `ApprovalCard` for it instead of the action ' +
-      'button, same pattern as the PRs tab.',
+      'The pending `container_start`/`container_stop`/`container_remove`/' +
+      '`container_start_via_runner` action for this project, if any — in ANY ' +
+      'of its sessions. The page renders the inline `ApprovalCard` for it ' +
+      'instead of the action button, same pattern as the PRs tab.',
   })
   acaoPendente!: ProposedActionResponseDto | null;
 }

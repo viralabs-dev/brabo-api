@@ -13,7 +13,7 @@ import { BEARER } from '../../../infrastructure/openapi/documento';
 import { ContainerOverviewItemResponseDto } from './dto/containers.response.dto';
 
 /**
- * A página global de containers (ADR 0136, RN-495) — cross-projeto, do
+ * A página global de containers (ADR 0136, RN-495/RN-521) — cross-projeto, do
  * WORKSPACE inteiro, ao lado (não dentro) de `ContainersController`
  * (`projects/:projectId/container`, por projeto único).
  *
@@ -36,12 +36,12 @@ export class ContainersOverviewController {
   @Get()
   @RequireRole('viewer')
   @ApiOperation({
-    summary:
-      'Lists the container of every project in the workspace that already has one',
+    summary: 'Lists every project in the workspace and its container, if any',
     description:
-      'One row per project with a `project_containers` row — a project ' +
-      'that never provisioned a container is simply absent, not shown ' +
-      'empty. The observed state is asked of the broker only for rows ' +
+      'One row per project of the workspace — since RN-521 a project that ' +
+      'never provisioned a container is PRESENT with `registrado: null` ' +
+      'instead of absent, because this page is the human path to start the ' +
+      'first one. The observed state is asked of the broker only for rows ' +
       '`provisioning`/`running`, and only up to a per-load budget — see ' +
       '`naoVerificado` on rows that were skipped, and ADR 0136 for the ' +
       'reasoning.',
@@ -58,13 +58,20 @@ export class ContainersOverviewController {
       projectId: item.projectId,
       projectName: item.projectName,
       projectSlug: item.projectSlug,
-      status: item.registrado.status,
-      imageVersion: item.registrado.imageVersion,
-      imagem: item.imagem,
-      resources: item.registrado.resources,
-      failureReason: item.registrado.failureReason,
-      createdAt: item.registrado.createdAt.toISOString(),
-      statusChangedAt: item.registrado.statusChangedAt.toISOString(),
+      executionMode: item.executionMode,
+      registrado: item.registrado
+        ? {
+            status: item.registrado.status,
+            imageVersion: item.registrado.imageVersion,
+            imagem: item.imagem,
+            resources: item.registrado.resources,
+            failureReason: item.registrado.failureReason,
+            createdAt: item.registrado.createdAt.toISOString(),
+            statusChangedAt: item.registrado.statusChangedAt.toISOString(),
+          }
+        : null,
+      temImagemDecidida: item.temImagemDecidida,
+      workspaceVerifiedAt: item.workspaceVerifiedAt?.toISOString() ?? null,
       observado: item.observado,
       naoObservado: item.naoObservado,
       detalheDaObservacao: item.detalheDaObservacao,

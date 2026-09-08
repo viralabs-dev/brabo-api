@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import {
   ContainersOverviewRepository,
   type ContainerOverviewRow,
@@ -24,6 +24,11 @@ const TIPOS_DE_ACAO_DE_CONTAINER = [
   'container_start',
   'container_stop',
   'container_remove',
+  // RN-521: a tela passou a propor este tipo para projeto `runner`, então ele
+  // entra aqui pelo mesmo motivo que os outros três — sem isto, a proposta
+  // feita pela própria página não voltaria como `acaoPendente` e a linha
+  // ofereceria "Subir" de novo em cima de uma decisão já aberta.
+  'container_start_via_runner',
 ] as const;
 
 function toLifecycle(
@@ -69,7 +74,7 @@ function toProposedAction(
 }
 
 /**
- * Read model da página global de containers (ADR 0136, RN-495) — TRÊS
+ * Read model da página global de containers (ADR 0136, RN-495/RN-521) — TRÊS
  * consultas, quantos projetos forem, mesmo espírito de
  * `DrizzleProjectsSummaryRepository`.
  */
@@ -80,27 +85,39 @@ export class DrizzleContainersOverviewRepository implements ContainersOverviewRe
   async listForWorkspace(workspaceId: string): Promise<ContainerOverviewRow[]> {
     const db = currentDb(this.rootDb);
 
-    // INNER JOIN: só entra quem já tem linha de ciclo de vida — é a régua
-    // da tela ("cada projeto que já tem project_containers"), aplicada no
-    // próprio SQL em vez de filtrada depois no cliente.
+    // LEFT JOIN desde a RN-521 (era INNER): TODO projeto do workspace entra,
+    // tenha ele linha de ciclo de vida ou não. A régua antiga ("só quem já
+    // tem `project_containers`") era exatamente o que escondia da tela o
+    // projeto cuja PRIMEIRA subida falhou antes de registrar coisa nenhuma —
+    // e esse era o único projeto para o qual a tela precisava existir.
+    //
+    // Ordenado por nome no SQL, não no cliente: sem `ORDER BY`, a lista de um
+    // workspace inteiro passaria a ter ordem de heap, que muda a cada
+    // `VACUUM`. Com o INNER JOIN e um punhado de linhas isso não aparecia.
     const linhas = await db
       .select({
         projectId: projects.id,
         projectName: projects.name,
         projectSlug: projects.slug,
+        executionMode: projects.executionMode,
+        workspaceVerifiedAt: projects.workspaceVerifiedAt,
         container: projectContainers,
       })
-      .from(projectContainers)
-      .innerJoin(projects, eq(projects.id, projectContainers.projectId))
-      .where(eq(projects.workspaceId, workspaceId));
+      .from(projects)
+      .leftJoin(projectContainers, eq(projectContainers.projectId, projects.id))
+      .where(eq(projects.workspaceId, workspaceId))
+      .orderBy(asc(projects.name), asc(projects.id));
 
     if (linhas.length === 0) return [];
 
     const projectIds = linhas.map((l) => l.projectId);
 
     // Em lote: os eventos `artifact.project_image` de TODOS os projetos
-    // encontrados, para resolver a imagem-texto de cada `imageVersion`
-    // congelado (`decisaoNaVersao`, domain/containers/project-container.ts).
+    // encontrados, para DOIS usos — resolver a imagem-texto de cada
+    // `imageVersion` congelado (`decisaoNaVersao`,
+    // domain/containers/project-container.ts) e responder se o projeto TEM
+    // decisão de imagem (o portão da RN-105, que a tela consulta antes de
+    // oferecer o botão de subir).
     // `session_events` não tem `project_id` — o artefato do Arquiteto vive
     // sob uma SESSÃO — então o join por `sessions.project_id` é EXPLÍCITO
     // aqui, o mesmo que `DrizzleSessionEventRepository.listByTypeForProject`
@@ -157,18 +174,25 @@ export class DrizzleContainersOverviewRepository implements ContainersOverviewRe
     }
 
     return linhas.map((linha) => {
-      const lifecycle = toLifecycle(linha.container);
-      const decisao = decisaoNaVersao(
-        eventosPorProjeto.get(linha.projectId) ?? [],
-        lifecycle.imageVersion,
-      );
+      const lifecycle = linha.container ? toLifecycle(linha.container) : null;
+      const eventos = eventosPorProjeto.get(linha.projectId) ?? [];
+      const decisao = lifecycle
+        ? decisaoNaVersao(eventos, lifecycle.imageVersion)
+        : null;
       const acaoPendente = acaoPendenteDe.get(linha.projectId);
       return {
         projectId: linha.projectId,
         projectName: linha.projectName,
         projectSlug: linha.projectSlug,
+        executionMode: linha.executionMode,
         lifecycle,
         imagem: decisao?.image ?? null,
+        // QUALQUER evento basta: `ObterContainerDoProjetoUseCase` degrada um
+        // payload ilegível para o default em vez de recusá-lo, então "existe
+        // evento" e "existe decisão vigente" são a mesma pergunta — e é essa
+        // a pergunta do portão da RN-105.
+        temImagemDecidida: eventos.length > 0,
+        workspaceVerifiedAt: linha.workspaceVerifiedAt,
         acaoPendente: acaoPendente ? toProposedAction(acaoPendente) : null,
       };
     });

@@ -4,6 +4,7 @@ import {
   type ContainerOverviewRow,
 } from '../../ports/containers-overview-repository.port';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
+import type { ProjectExecutionMode } from '../../../domain/iam/project.entity';
 import {
   ObterEstadoObservadoDoContainerUseCase,
   type EstadoObservado,
@@ -23,7 +24,12 @@ export type MotivoDeNaoVerificacao =
   | 'fora_do_escopo_da_verificacao'
   /** Elegível (`provisioning`/`running`), mas o carregamento já perguntou
    *  ao broker o máximo de vezes que se permite de uma vez. */
-  | 'teto_de_verificacoes_atingido';
+  | 'teto_de_verificacoes_atingido'
+  /** O projeto NUNCA provisionou container (`registrado === null`, RN-521):
+   *  não há o que observar, e por isso ele não consome uma única chamada do
+   *  orçamento. Distinto de `fora_do_escopo_da_verificacao`, que fala de um
+   *  container que EXISTE e está parado. */
+  | 'sem_container_registrado';
 
 /**
  * `observado`/`naoObservado`/`detalheDaObservacao` achatados aqui, no MESMO
@@ -38,8 +44,12 @@ export interface ContainerOverviewItem {
   projectId: string;
   projectName: string;
   projectSlug: string;
+  executionMode: ProjectExecutionMode;
+  /** `null` = NUNCA provisionou (RN-521) — ver `ContainerOverviewRow.lifecycle`. */
   registrado: ContainerOverviewRow['lifecycle'];
   imagem: string | null;
+  temImagemDecidida: boolean;
+  workspaceVerifiedAt: Date | null;
   observado: EstadoObservado['observado'] | null;
   naoObservado: EstadoObservado['naoObservado'] | null;
   detalheDaObservacao: EstadoObservado['detalhe'] | null;
@@ -64,18 +74,32 @@ export interface ContainerOverviewItem {
  * automático existe ainda, só `container_start` manual por aprovação), então
  * 20 é folga generosa, não um corte apertado — e é um NÚMERO, revisável, não
  * "todos".
+ *
+ * A RN-521 alargou a LISTA (todo projeto do workspace, com container ou sem)
+ * sem alargar o ORÇAMENTO, e isso é a decisão: projeto sem `project_containers`
+ * não tem o que observar, então nunca é elegível e nunca ocupa uma vaga —
+ * quem tinha container de verdade continua sendo verificado exatamente como
+ * antes, mesmo num workspace com centenas de projetos vazios.
  */
 export const TETO_DE_VERIFICACOES_POR_CARGA = 20;
 
 const STATUS_ELEGIVEIS_PARA_VERIFICACAO = new Set(['provisioning', 'running']);
 
+function elegivelParaVerificacao(linha: ContainerOverviewRow): boolean {
+  return (
+    linha.lifecycle !== null &&
+    STATUS_ELEGIVEIS_PARA_VERIFICACAO.has(linha.lifecycle.status)
+  );
+}
+
 /**
- * A página global de containers (ADR 0136, RN-495): o REGISTRADO de todo
- * projeto do workspace que já tem `project_containers` (via
- * `ContainersOverviewRepository`, sem N+1), com o OBSERVADO pedido ao broker
- * só para quem é elegível E está dentro do teto — as duas metades nunca se
- * fundem (RN-468/486), e quem ficou de fora do teto DIZ por quê, distinto de
- * "o broker não respondeu".
+ * A página global de containers (ADR 0136, RN-495/RN-521): o REGISTRADO de
+ * todo projeto do workspace (via `ContainersOverviewRepository`, sem N+1) —
+ * inclusive o que NUNCA provisionou container, que desde a RN-521 aparece com
+ * `registrado: null` em vez de sumir da lista —, com o OBSERVADO pedido ao
+ * broker só para quem é elegível E está dentro do teto. As duas metades nunca
+ * se fundem (RN-468/486), e quem ficou de fora da pergunta DIZ por qual dos
+ * três motivos, distinto de "o broker não respondeu".
  */
 @Injectable()
 export class ObterVisaoGeralDeContainersUseCase {
@@ -88,9 +112,7 @@ export class ObterVisaoGeralDeContainersUseCase {
   async execute(workspaceId: string): Promise<ContainerOverviewItem[]> {
     const linhas = await this.overview.listForWorkspace(workspaceId);
 
-    const elegiveis = linhas.filter((l) =>
-      STATUS_ELEGIVEIS_PARA_VERIFICACAO.has(l.lifecycle.status),
-    );
+    const elegiveis = linhas.filter(elegivelParaVerificacao);
     const dentroDoTeto = new Set(
       elegiveis
         .slice(0, TETO_DE_VERIFICACOES_POR_CARGA)
@@ -111,7 +133,10 @@ export class ObterVisaoGeralDeContainersUseCase {
     const observacoes = new Map(pares);
 
     return linhas.map((linha) => {
-      if (!STATUS_ELEGIVEIS_PARA_VERIFICACAO.has(linha.lifecycle.status)) {
+      if (linha.lifecycle === null) {
+        return this.item(linha, null, 'sem_container_registrado');
+      }
+      if (!elegivelParaVerificacao(linha)) {
         return this.item(linha, null, 'fora_do_escopo_da_verificacao');
       }
       if (!dentroDoTeto.has(linha.projectId)) {
@@ -130,8 +155,11 @@ export class ObterVisaoGeralDeContainersUseCase {
       projectId: linha.projectId,
       projectName: linha.projectName,
       projectSlug: linha.projectSlug,
+      executionMode: linha.executionMode,
       registrado: linha.lifecycle,
       imagem: linha.imagem,
+      temImagemDecidida: linha.temImagemDecidida,
+      workspaceVerifiedAt: linha.workspaceVerifiedAt,
       observado: estadoObservado?.observado ?? null,
       naoObservado: estadoObservado?.naoObservado ?? null,
       detalheDaObservacao: estadoObservado?.detalhe ?? null,
