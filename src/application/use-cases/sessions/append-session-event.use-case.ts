@@ -18,6 +18,10 @@ import {
   GRAPH_PROJECTABLE_EVENT_TYPES,
   GRAPH_PROJECTION_AGGREGATE_TYPE,
 } from '../../../domain/graph/graph-projection-events';
+import {
+  ARTIFACT_PROJECTABLE_EVENT_TYPES,
+  ARTIFACT_PROJECTION_AGGREGATE_TYPE,
+} from '../../../domain/artifacts/artifact-projection-events';
 import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 export interface AppendSessionEventInput {
@@ -105,6 +109,20 @@ export class AppendSessionEventUseCase {
         await this.outbox.append({
           aggregateType: GRAPH_PROJECTION_AGGREGATE_TYPE,
           aggregateId: sessionId,
+          eventType: input.type,
+          payload: { eventId: id },
+        });
+      }
+
+      // Terceira linha possível, MESMA transação: a projeção dos artefatos em
+      // `docs/` (ADR 0148, RN-523). `aggregateId` é o PROJETO, e não a sessão
+      // como nas duas de cima — a pasta é do projeto, e o evento de origem só
+      // carrega `sessionId`; gravá-lo aqui poupa o projetor de uma consulta
+      // por artefato para descobrir algo que este método já tem em mãos.
+      if (ARTIFACT_PROJECTABLE_EVENT_TYPES.has(input.type)) {
+        await this.outbox.append({
+          aggregateType: ARTIFACT_PROJECTION_AGGREGATE_TYPE,
+          aggregateId: projectId,
           eventType: input.type,
           payload: { eventId: id },
         });

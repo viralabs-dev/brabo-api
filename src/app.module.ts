@@ -27,6 +27,7 @@ import { InternalHttpModule } from './interfaces/http/internal/internal-http.mod
 import { PsychologistHttpModule } from './interfaces/http/psychologist/psychologist-http.module';
 import { AnamneseHttpModule } from './interfaces/http/anamnese/anamnese-http.module';
 import { GraphProjectionModule } from './application/graph-projection/graph-projection.module';
+import { ArtifactProjectionModule } from './application/artifact-projection/artifact-projection.module';
 
 @Module({
   // Ordem importa: AuthHttpModule antes de IamHttpModule, para o
@@ -63,6 +64,7 @@ import { GraphProjectionModule } from './application/graph-projection/graph-proj
     // Onda 2 da fundação do grafo de conhecimento — serviço de fundo, sem
     // rota HTTP própria (ver graph-projection.module.ts).
     GraphProjectionModule,
+    ArtifactProjectionModule,
   ],
   controllers: [AppController],
   providers: [
