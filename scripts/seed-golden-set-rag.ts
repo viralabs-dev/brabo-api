@@ -86,7 +86,14 @@ import {
   DRIZZLE,
   type DrizzleDb,
 } from '../src/infrastructure/persistence/drizzle/drizzle-client';
-import { users, workspaces, projects, projectMembers } from '../src/db/schema';
+import {
+  users,
+  workspaces,
+  projects,
+  projectMembers,
+  sessions,
+} from '../src/db/schema';
+import { DecidirImagemDoProjetoUseCase } from '../src/application/use-cases/containers/decidir-imagem-do-projeto.use-case';
 import { ProvisionRepositoryUseCase } from '../src/application/use-cases/git/provision-repository.use-case';
 import { IndexProjectDocsUseCase } from '../src/application/use-cases/rag/index-project-docs.use-case';
 import { HybridSearchUseCase } from '../src/application/use-cases/rag/hybrid-search.use-case';
@@ -292,15 +299,21 @@ async function main() {
   log(`✓ workspace: ${workspace.id}`);
 
   // `execution_mode: 'runner'` (com `workspace_path` não-nulo, exigido pelo
-  // CHECK `projects_workspace_path_casa_com_modo`) — de propósito, não
-  // `container` (o default). `ReadProjectCodeUseCase.portaoDoContainer`
-  // (RN-105) recusa com 409 QUALQUER leitura de projeto `container` sem o
-  // Arquiteto ter decidido uma imagem, e este script nunca aciona o
-  // Arquiteto — não há execução nenhuma para justificar isso aqui, só
-  // indexação de documentação. RN-169/421 isentam `mounted`/`runner` do
-  // portão inteiro, exatamente para este tipo de caso: projeto sem container
-  // próprio não tem por que esperar decisão de imagem para ter o código
-  // (aqui, os docs) lido.
+  // CHECK `projects_workspace_path_casa_com_modo`).
+  //
+  // O modo foi escolhido, um dia, para ESCAPAR do portão da imagem: a RN-169/
+  // RN-421 isentavam `mounted`/`runner` de `ReadProjectCodeUseCase.
+  // portaoDoContainer` (RN-105), e assim a indexação lia o código sem
+  // ninguém decidir imagem nenhuma. Essa isenção foi REVOGADA pela RN-494
+  // (ADR 0135): o portão vale nos TRÊS modos. O seed continuou como estava e
+  // passou a morrer em 409 no `indexDocs.execute` — sem medir nada, e sem que
+  // o teste reprovasse por isso (ver a guarda em `golden-set-rag.yml`).
+  //
+  // A saída não é fugir do portão de novo, é ATRAVESSÁ-LO pelo caminho real:
+  // logo abaixo o seed decide a imagem por `DecidirImagemDoProjetoUseCase`, o
+  // MESMO caso de uso do `choose_project_image` do Arquiteto e da eleição da
+  // Infra (ADR 0133) — nunca um INSERT de artefato à mão, que faria o
+  // golden-set medir contra um estado que a produção não sabe produzir.
   const projectId = randomUUID();
   const slug = `golden-rag-${sufixo}`;
   const [project] = await db
@@ -351,6 +364,35 @@ async function main() {
   log(
     `✓ corpus commitado (${arquivos.length} arquivos, ${arquivos.reduce((n, a) => n + a.content.length, 0)} chars)`,
   );
+
+  // A decisão de imagem é evento de SESSÃO (`session_events.session_id` é
+  // NOT NULL), então o seed abre uma — `consultiva`, que é o tipo que pode
+  // menos e é o que descreve o que acontece aqui: não há execução nenhuma,
+  // só indexação de documentação.
+  const [sessao] = await db
+    .insert(sessions)
+    .values({
+      projectId: project.id,
+      createdBy: user.id,
+      kind: 'consultiva',
+      name: 'golden-set do RAG — decisão de imagem',
+    })
+    .returning();
+
+  const imagem = await app.get(DecidirImagemDoProjetoUseCase).execute(
+    project.id,
+    sessao.id,
+    {
+      image: 'node:22-bookworm-slim',
+      rationale:
+        'Corpus de documentação indexado para o golden-set de acerto da busca ' +
+        'híbrida (ADR 0132). Nada é executado neste projeto: a imagem existe ' +
+        'para satisfazer o portão da RN-494, e a menor base com Node serve.',
+      network: 'none',
+    },
+    'arquiteto',
+  );
+  log(`✓ imagem decidida: ${imagem.decisao.image} (v${imagem.version})`);
 
   const relatorioIndexacao = await indexDocs.execute(project.id);
   log(
