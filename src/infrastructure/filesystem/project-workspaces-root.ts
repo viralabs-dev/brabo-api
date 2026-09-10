@@ -6,6 +6,7 @@ import {
   normalizarCaminho,
 } from '../../domain/actions/path-scope';
 import type { ProjectWorkspaceLocation } from '../../domain/iam/project.entity';
+import { PASTA_DE_ARTEFATOS } from '../../domain/artifacts/artifact-projection-events';
 
 /**
  * A raiz dos workspaces de projeto no disco, compartilhada com o engine pelo
@@ -320,6 +321,41 @@ export function permissionsFilePath(local: ProjectWorkspaceLocation): string {
     return join(raizGerenciadaDoProjeto(local.workspaceDirName), PERMISSOES);
   }
   return join(projectScopeRoot(local), PERMISSOES);
+}
+
+/**
+ * ONDE mora a pasta `docs/` do projeto — a projeção dos artefatos em arquivo
+ * (ADR 0148, RN-523).
+ *
+ * O desvio do modo `runner` é o MESMO de `permissionsFilePath`, logo acima, e
+ * pela mesma razão física: quem ESCREVE é a api, de dentro do container dela,
+ * e um projeto `runner` é deliberadamente SEM bind-mount — `/home/voce/dev/loja`
+ * não existe ali. O canal do runner (`exec`/`exec_result`) só transporta
+ * COMANDO, não tem primitiva de escrever conteúdo em arquivo, então nem
+ * delegar a escrita resolveria sem inventar um mecanismo novo.
+ *
+ * CUSTO DECLARADO, e é o mesmo da RN-478: para projeto `runner`, `docs/` não
+ * mora ao lado do código. Quem abrir a pasta do projeto na própria máquina não
+ * vai encontrá-la — ela está em
+ * `<PROJECT_WORKSPACES_ROOT>/<workspace_dir_name>/docs/`. É uma perda REAL
+ * neste modo, porque a pasta existe justamente para ser aberta no editor junto
+ * do código; o que ela preserva é a alternativa pior, que seria a projeção
+ * simplesmente não acontecer (e o modo `runner` ficar sem memória nenhuma em
+ * arquivo) ou falhar em silêncio a cada artefato emitido.
+ *
+ * `container` e `mounted` ficam junto do código, como o `permissions.json`, e
+ * pelo mesmo motivo: ali a api alcança o caminho de verdade.
+ */
+export function pastaDeArtefatosDoProjeto(
+  local: ProjectWorkspaceLocation,
+): string {
+  if (local.executionMode === 'runner') {
+    return join(
+      raizGerenciadaDoProjeto(local.workspaceDirName),
+      PASTA_DE_ARTEFATOS,
+    );
+  }
+  return join(projectScopeRoot(local), PASTA_DE_ARTEFATOS);
 }
 
 /**
