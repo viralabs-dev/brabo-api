@@ -12,7 +12,7 @@
 # Estágio 1: dependências. Separado do build pra a camada de deps só invalidar
 # quando o lockfile/manifests mudarem, não a cada edição de código.
 # ---------------------------------------------------------------------------
-FROM node:24.11.1-alpine3.21 AS deps
+FROM node@sha256:b8f7c9056af700568c1ce76173f1c93743fb64ca1343e18cdf3a6ded8985ad3d AS deps  # 24.11.1-alpine3.21
 
 RUN corepack enable && corepack prepare pnpm@11.3.0 --activate
 
@@ -54,7 +54,7 @@ RUN pnpm --filter api --prod --legacy deploy /prod
 # ---------------------------------------------------------------------------
 # Estágio 3: runtime. Só o compilado, as deps de produção e as migrations.
 # ---------------------------------------------------------------------------
-FROM node:24.11.1-alpine3.21 AS runtime
+FROM node@sha256:b8f7c9056af700568c1ce76173f1c93743fb64ca1343e18cdf3a6ded8985ad3d AS runtime  # 24.11.1-alpine3.21
 
 # Versão do artefato (ADR 0036). `tracing.ts` já lia `BRABO_VERSION` para o
 # `service.version` do recurso OpenTelemetry, e sempre recebia o fallback "dev" —
