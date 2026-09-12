@@ -1,14 +1,27 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ListRunnerDeviceKeysUseCase } from '../../../../src/application/use-cases/auth/list-runner-device-keys.use-case';
-import type { RunnerDeviceKeyRepository } from '../../../../src/application/ports/runner-device-key-repository.port';
+import type {
+  ChaveDeDispositivoResumo,
+  RunnerDeviceKeyRepository,
+} from '../../../../src/application/ports/runner-device-key-repository.port';
 
-const ORFA = {
+const ORFA: ChaveDeDispositivoResumo = {
   id: 'device-orfa',
   name: 'laptop',
   projectId: 'proj-1',
+  especie: 'projeto',
   createdAt: new Date('2026-09-01T10:00:00Z'),
   revokedAt: null,
   lastUsedAt: null,
+};
+
+/** A de MÁQUINA serve este projeto sem pertencer a ele (RN-543). */
+const DE_MAQUINA: ChaveDeDispositivoResumo = {
+  ...ORFA,
+  id: 'device-maquina',
+  name: 'desktop',
+  projectId: null,
+  especie: 'maquina',
 };
 
 const REVOGADA = {
@@ -36,9 +49,7 @@ describe('ListRunnerDeviceKeysUseCase (RN-519)', () => {
 
   it('a chave REVOGADA continua na lista — sumir com ela faria a tela afirmar que nunca existiu', async () => {
     const deviceKeys = {
-      listarDoUsuarioNoProjeto: vi.fn(() =>
-        Promise.resolve([ORFA, REVOGADA]),
-      ),
+      listarDoUsuarioNoProjeto: vi.fn(() => Promise.resolve([ORFA, REVOGADA])),
     } as unknown as RunnerDeviceKeyRepository;
 
     const resultado = await new ListRunnerDeviceKeysUseCase(deviceKeys).execute(
@@ -53,6 +64,25 @@ describe('ListRunnerDeviceKeysUseCase (RN-519)', () => {
     // A chave ÓRFÃ é a que nunca foi usada — o sinal que a listagem existe
     // para tornar visível.
     expect(resultado[0].lastUsedAt).toBeNull();
+  });
+
+  it('a lista traz as DUAS espécies, e DIZ qual é qual (RN-543)', async () => {
+    // "Uma de máquina não é a chave do projeto X" — a consequência que o ADR
+    // 0154 declara. Sem a marca, a mesma linha apareceria em N projetos
+    // parecendo N chaves diferentes.
+    const deviceKeys = {
+      listarDoUsuarioNoProjeto: vi.fn(() =>
+        Promise.resolve([ORFA, DE_MAQUINA]),
+      ),
+    } as unknown as RunnerDeviceKeyRepository;
+
+    const resultado = await new ListRunnerDeviceKeysUseCase(deviceKeys).execute(
+      'user-1',
+      'proj-1',
+    );
+
+    expect(resultado.map((c) => c.especie)).toEqual(['projeto', 'maquina']);
+    expect(resultado[1].projectId).toBeNull();
   });
 
   it('caso de falha: repositório que rejeita propaga — a lista não inventa vazio', async () => {

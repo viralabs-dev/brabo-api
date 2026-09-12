@@ -3,6 +3,7 @@ import { RunnerUseCasesModule } from '../../../application/use-cases/runner/runn
 import { AuthUseCasesModule } from '../../../application/use-cases/auth/auth-use-cases.module';
 import { IamUseCasesModule } from '../../../application/use-cases/iam/iam-use-cases.module';
 import { RunnerTicketsController } from './runner-tickets.controller';
+import { RunnerProjectsController } from './runner-projects.controller';
 import { PersonalAccessTokensController } from './personal-access-tokens.controller';
 import { RunnerDeviceKeysController } from './runner-device-keys.controller';
 import { RunnerReleasesController } from './runner-releases.controller';
@@ -19,12 +20,14 @@ import { PatAuthGuard } from '../auth/pat-auth.guard';
   imports: [RunnerUseCasesModule, AuthUseCasesModule, IamUseCasesModule],
   controllers: [
     RunnerTicketsController,
+    RunnerProjectsController,
     PersonalAccessTokensController,
     RunnerDeviceKeysController,
     RunnerReleasesController,
   ],
-  // PatAuthGuard entra em `providers` (não `APP_GUARD`) porque só a rota
-  // `runner-ticket` o usa (`@UseGuards(PatAuthGuard)`) — diferente de
+  // PatAuthGuard entra em `providers` (não `APP_GUARD`) porque só as DUAS
+  // rotas de runner o usam (`runner-ticket` e, desde a RN-543,
+  // `GET runner/projects`, via `@UseGuards(PatAuthGuard)`) — diferente de
   // JwtAuthGuard/RolesGuard, que são globais. Tem dependências no
   // construtor (PersonalAccessTokenRepository/UserRepository/Reflector/
   // ResolveEffectiveRoleUseCase), então precisa estar registrado aqui pro
