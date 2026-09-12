@@ -21,6 +21,7 @@ import { InternalContainersController } from './internal-containers.controller';
 import { InternalRagController } from './internal-rag.controller';
 import { InternalGraphController } from './internal-graph.controller';
 import { InternalFirstAccountController } from './internal-first-account.controller';
+import { InternalMachineDeviceKeysController } from './internal-machine-device-keys.controller';
 import { AuthUseCasesModule } from '../../../application/use-cases/auth/auth-use-cases.module';
 
 @Module({
@@ -43,8 +44,9 @@ import { AuthUseCasesModule } from '../../../application/use-cases/auth/auth-use
     RagUseCasesModule,
     GraphUseCasesModule,
     IamUseCasesModule,
-    // A primeira conta da instalação (RN-546, ADR 0155) — o caso de uso mora
-    // com os outros de auth, e é de lá que ele vem.
+    // A primeira conta da instalação (RN-546, ADR 0155) e a chave de máquina
+    // do mesmo instalador (RN-552) — os dois casos de uso moram com os outros
+    // de auth, e é de lá que eles vêm.
     AuthUseCasesModule,
   ],
   controllers: [
@@ -61,6 +63,10 @@ import { AuthUseCasesModule } from '../../../application/use-cases/auth/auth-use
     // O instalador de uma linha, e só ele: a primeira conta de uma instalação
     // vazia. Recusa com 409 havendo qualquer usuário.
     InternalFirstAccountController,
+    // O passo SEGUINTE do mesmo instalador: a chave de dispositivo de máquina
+    // com que o agente local pede ticket. Recusa com 409 quando a instalação
+    // não tem exatamente um usuário, e registrar SUBSTITUI a anterior.
+    InternalMachineDeviceKeysController,
   ],
 })
 export class InternalHttpModule {}

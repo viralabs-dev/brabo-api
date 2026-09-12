@@ -28,6 +28,15 @@ export class DrizzleUserRepository implements UserRepository {
     return linhas.length > 0;
   }
 
+  async usuarioUnicoDaInstalacao(): Promise<User | null> {
+    const db = currentDb(this.rootDb);
+    // DUAS linhas, não uma: com `limit(1)` seria impossível distinguir "há
+    // exatamente um" de "há muitos", e é justamente essa distinção que a
+    // rota da chave de máquina usa para não poder ser apontada para alguém.
+    const linhas = await db.select().from(users).limit(2);
+    return linhas.length === 1 ? linhas[0] : null;
+  }
+
   async updateLocale(id: string, locale: UserLocale): Promise<User> {
     const db = currentDb(this.rootDb);
     const [row] = await db

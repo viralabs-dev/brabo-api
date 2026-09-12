@@ -26,6 +26,16 @@ export type AuthEventKind =
    */
   | 'first_account_created'
   | 'email_verified'
+  /**
+   * Uma chave de dispositivo de MÁQUINA registrada pela rota interna do
+   * instalador (RN-552, ADR 0155 ponto 4). Kind próprio porque é a ÚNICA
+   * credencial duradoura de um usuário que nasce sem esse usuário autenticar
+   * nada: quem prova é o `BRABO_SERVICE_TOKEN`, ou seja, o controle da
+   * máquina. Numa suspeita de vazamento desse segredo, é esta linha que diz
+   * quando e para quem ela foi criada — e `metadata` carrega os ids que ela
+   * SUBSTITUIU, nunca a JWK.
+   */
+  | 'machine_device_key_registered'
   // --- senha ---
   | 'password_reset_requested'
   | 'password_reset_completed'

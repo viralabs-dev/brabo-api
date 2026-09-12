@@ -182,3 +182,65 @@ describe('DrizzleRunnerDeviceKeyRepository — chave de máquina (RN-543)', () =
     expect(await repo.buscarChavePublicaAtiva(registrada.id)).toBeNull();
   });
 });
+
+/**
+ * A substituição que impede a rota do instalador de virar fábrica de chaves
+ * (RN-552). Provado contra o Postgres de verdade pelo mesmo motivo dos casos
+ * acima: o que decide é um `WHERE` com dois `IS NULL` — um diz "de máquina",
+ * o outro diz "ainda viva" —, e fake nenhum prova um `WHERE`.
+ */
+describe('DrizzleRunnerDeviceKeyRepository — substituir a chave de máquina (RN-552)', () => {
+  it('caminho feliz: revoga as de MÁQUINA ativas e devolve os ids do que caiu', async () => {
+    const { user } = await cenario();
+    const primeira = await repo.registrar({
+      userId: user.id,
+      projectId: null,
+      name: 'da-maquina',
+      publicKeyJwk: JWK,
+    });
+
+    const caidas = await repo.revogarChavesDeMaquina(user.id, 'reinstalação');
+
+    expect(caidas).toEqual([primeira.id]);
+    expect(await repo.buscarChavePublicaAtiva(primeira.id)).toBeNull();
+  });
+
+  it('CASO DE FALHA: NÃO derruba a chave de PROJETO nem a de máquina de outro usuário', async () => {
+    const { user, projetoA } = await cenario();
+    const doProjeto = await repo.registrar({
+      userId: user.id,
+      projectId: projetoA.id,
+      name: 'do-navegador',
+      publicKeyJwk: JWK,
+    });
+    const [outro] = await db
+      .insert(users)
+      .values({ keycloakSub: 'sub-outro-maquina', email: 'outro2@brabo.dev' })
+      .returning();
+    const alheia = await repo.registrar({
+      userId: outro.id,
+      projectId: null,
+      name: 'da-maquina-alheia',
+      publicKeyJwk: JWK,
+    });
+
+    expect(await repo.revogarChavesDeMaquina(user.id, 'reinstalação')).toEqual(
+      [],
+    );
+    expect(await repo.buscarChavePublicaAtiva(doProjeto.id)).not.toBeNull();
+    expect(await repo.buscarChavePublicaAtiva(alheia.id)).not.toBeNull();
+  });
+
+  it('idempotente: chamar de novo não revoga o que já estava revogado', async () => {
+    const { user } = await cenario();
+    await repo.registrar({
+      userId: user.id,
+      projectId: null,
+      name: 'da-maquina',
+      publicKeyJwk: JWK,
+    });
+
+    await repo.revogarChavesDeMaquina(user.id, 'primeira');
+    expect(await repo.revogarChavesDeMaquina(user.id, 'segunda')).toEqual([]);
+  });
+});

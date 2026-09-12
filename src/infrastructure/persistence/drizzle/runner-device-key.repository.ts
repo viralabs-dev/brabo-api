@@ -126,6 +126,27 @@ export class DrizzleRunnerDeviceKeyRepository extends RunnerDeviceKeyRepository 
     return existente ? paraResumo(existente) : null;
   }
 
+  async revogarChavesDeMaquina(
+    userId: string,
+    motivo: string,
+  ): Promise<string[]> {
+    const db = currentDb(this.rootDb);
+    const revogadas = await db
+      .update(runnerDeviceKeys)
+      .set({ revokedAt: new Date(), revokedReason: motivo })
+      .where(
+        and(
+          eq(runnerDeviceKeys.userId, userId),
+          // `IS NULL` é o que faz destas as chaves de MÁQUINA (RN-543) —
+          // as de projeto ficam intactas, de propósito.
+          isNull(runnerDeviceKeys.projectId),
+          isNull(runnerDeviceKeys.revokedAt),
+        ),
+      )
+      .returning({ id: runnerDeviceKeys.id });
+    return revogadas.map((linha) => linha.id);
+  }
+
   async tocarUso(id: string): Promise<void> {
     const db = currentDb(this.rootDb);
     await db

@@ -28,6 +28,24 @@ export abstract class UserRepository {
   abstract existeAlgumUsuario(): Promise<boolean>;
 
   /**
+   * O ÚNICO usuário desta instalação, ou `null` quando não há exatamente um
+   * (RN-552, ADR 0155 ponto 4).
+   *
+   * Irmã de `existeAlgumUsuario`, e pelo mesmo motivo: é uma pergunta sobre a
+   * INSTALAÇÃO, não sobre um usuário. Ela existe para a rota interna que
+   * registra a chave de máquina do instalador — que assim não precisa receber
+   * um `userId` de quem a chama, e portanto não pode ser APONTADA para uma
+   * vítima escolhida. Zero e "mais de um" colapsam no mesmo `null` de
+   * propósito: quem chama não decide nada com a diferença, e devolvê-la
+   * transformaria a rota num oráculo de quantas pessoas há na instalação.
+   *
+   * `LIMIT 2`, nunca `count(*)`: duas linhas bastam para distinguir "uma" de
+   * "mais de uma", e a contagem pagaria varredura para um número que ninguém
+   * lê.
+   */
+  abstract usuarioUnicoDaInstalacao(): Promise<User | null>;
+
+  /**
    * Grava a preferência de idioma (fundação de i18n, Onda 6a). Único campo de
    * `users` gravável pelo próprio dono da conta hoje — por isso um método
    * dedicado em vez de um `update` genérico, que abriria a porta para
