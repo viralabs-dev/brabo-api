@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ApiToEngineClient } from '../../ports/api-to-engine-client.port';
+import { ProjectRepository } from '../../ports/project-repository.port';
 import {
   RunnerDeviceKeyRepository,
   type ChaveDeDispositivoResumo,
@@ -31,6 +32,26 @@ import {
  * sai o alvo da desconexão. Ler da URL faria um `projectId` divergente
  * derrubar o runner de um projeto que não tem nada com esta chave.
  *
+ * ## E quando a coluna é NULA: a chave de MÁQUINA (RN-543, ADR 0154)
+ *
+ * Uma chave de máquina não nomeia projeto nenhum, e não há um `projectId` a
+ * passar ao engine. Deixar de derrubar seria reabrir exatamente o que a
+ * RN-520 fechou — a chave morre para ticket NOVO e as conexões vivas seguem
+ * executando comando aprovado —, agora em N conexões em vez de uma.
+ *
+ * Então o alvo vira PLURAL: cada projeto em modo `runner` que o dono da chave
+ * alcança, um `disconnectRunnerOfUser` por projeto. É a consequência que o
+ * ADR 0154 declarou por antecipação — *"revogar passará a derrubar todos os
+ * projetos daquela máquina"* — e ela cabe sem tocar o engine: a assinatura
+ * `{projeto, usuário}` continua byte a byte, só é chamada N vezes.
+ *
+ * A lista vem dos CANDIDATOS (`listRunnerModeReachableBy`), sem o filtro de
+ * papel que `ListRunnerProjectsUseCase` aplica, e isso é deliberado:
+ * desconectar não é decisão de autorização — é "quais conexões esta chave
+ * poderia ter criado". Sobrar um projeto onde o papel já caiu só derruba uma
+ * conexão do PRÓPRIO usuário que, nesse caso, já não podia renovar o ticket;
+ * FALTAR um deixaria de pé o que a revogação existe para matar.
+ *
  * ## A precisão que existe, e a que não existe
  *
  * O alvo é `{projeto, usuário}`, nunca `{chave}`: a identidade da credencial
@@ -48,6 +69,7 @@ export class RevokeRunnerDeviceKeyUseCase {
   constructor(
     private readonly deviceKeys: RunnerDeviceKeyRepository,
     private readonly engine: ApiToEngineClient,
+    private readonly projects: ProjectRepository,
   ) {}
 
   async execute(id: string, userId: string): Promise<ChaveDeDispositivoResumo> {
@@ -58,8 +80,36 @@ export class RevokeRunnerDeviceKeyUseCase {
     );
     if (!revogada) throw new NotFoundException('Chave não encontrada');
 
-    await this.derrubarConexaoViva(revogada.projectId, userId);
+    for (const projectId of await this.projetosAlcancados(revogada, userId)) {
+      await this.derrubarConexaoViva(projectId, userId);
+    }
     return revogada;
+  }
+
+  /**
+   * Um projeto para a chave de PROJETO; todos os projetos em modo `runner`
+   * que o dono alcança para a de MÁQUINA. Enumerar projeto NUNCA pode fazer
+   * o `DELETE` falhar, pela mesma régua da desconexão: a revogação já está
+   * gravada quando se chega aqui.
+   */
+  private async projetosAlcancados(
+    revogada: ChaveDeDispositivoResumo,
+    userId: string,
+  ): Promise<string[]> {
+    if (revogada.projectId !== null) return [revogada.projectId];
+
+    try {
+      const projetos = await this.projects.listRunnerModeReachableBy(userId);
+      return projetos.map((projeto) => projeto.id);
+    } catch (erro) {
+      this.logger.warn(
+        'Chave de dispositivo de MÁQUINA revogada, mas os projetos a ' +
+          `desconectar não puderam ser lidos: ${
+            erro instanceof Error ? erro.message : String(erro)
+          }`,
+      );
+      return [];
+    }
   }
 
   private async derrubarConexaoViva(

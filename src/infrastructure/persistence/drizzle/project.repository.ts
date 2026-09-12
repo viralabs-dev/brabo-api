@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, exists, or, sql } from 'drizzle-orm';
 import {
   ProjectRepository,
   type ProjectInput,
@@ -10,7 +10,12 @@ import type {
   ProjectMemberWithUser,
 } from '../../../domain/iam/project-member.entity';
 import type { Role } from '../../../domain/iam/role';
-import { projectMembers, projects, users } from '../../../db/schema';
+import {
+  projectMembers,
+  projects,
+  users,
+  workspaceMembers,
+} from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
@@ -43,6 +48,52 @@ export class DrizzleProjectRepository implements ProjectRepository {
       .select()
       .from(projects)
       .where(eq(projects.workspaceId, workspaceId));
+  }
+
+  /**
+   * Candidatos de `GET /runner/projects` (RN-543) — ver o docblock da porta
+   * para o que este método deliberadamente NÃO decide.
+   *
+   * Dois `exists` em `or`, e não dois `leftJoin` com `distinct`: um usuário
+   * com linha nos DOIS lugares duplicaria a linha do projeto, e `distinct`
+   * sobre `select()` de tabela inteira é caro à toa. Ordenado por nome para
+   * a resposta ser estável entre chamadas.
+   */
+  async listRunnerModeReachableBy(userId: string): Promise<Project[]> {
+    const db = currentDb(this.rootDb);
+    return db
+      .select()
+      .from(projects)
+      .where(
+        and(
+          eq(projects.executionMode, 'runner'),
+          or(
+            exists(
+              db
+                .select({ um: sql`1` })
+                .from(projectMembers)
+                .where(
+                  and(
+                    eq(projectMembers.projectId, projects.id),
+                    eq(projectMembers.userId, userId),
+                  ),
+                ),
+            ),
+            exists(
+              db
+                .select({ um: sql`1` })
+                .from(workspaceMembers)
+                .where(
+                  and(
+                    eq(workspaceMembers.workspaceId, projects.workspaceId),
+                    eq(workspaceMembers.userId, userId),
+                  ),
+                ),
+            ),
+          ),
+        ),
+      )
+      .orderBy(projects.name);
   }
 
   async update(
