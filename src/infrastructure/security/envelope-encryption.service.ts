@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   createCipheriv,
   createDecipheriv,
+  createHmac,
   randomBytes,
   scryptSync,
 } from 'node:crypto';
@@ -29,15 +30,19 @@ const PASSPHRASE_PADRAO = 'dev-master-key-change-me';
 const TAMANHO_MINIMO = 16;
 
 /**
+ * Separação de domínio da impressão digital da chave (ADR 0158). Constante e
+ * pública: o que a torna irreversível é o HMAC, nunca este rótulo ser secreto.
+ */
+const ROTULO_DA_IMPRESSAO = 'brabo-master-key-id';
+const TAMANHO_DA_IMPRESSAO = 16; // hex, 8 bytes
+
+/**
  * Envelope encryption dos segredos do usuário (chaves de LLM e tokens de git).
  *
  * ## Rotação da chave mestra (Fase 5, item 3)
  *
- * O `wrapped_dek` gravado no banco NÃO carrega identificação de qual chave o
- * embrulhou. Isso é deliberado — um identificador de chave no registro é mais
- * um metadado a manter em sincronia — mas tem uma consequência direta: com uma
- * chave só, trocar `CREDENTIALS_MASTER_KEY` torna ilegível TODA credencial
- * existente, de uma vez, sem aviso e sem caminho de volta.
+ * Trocar `CREDENTIALS_MASTER_KEY` com uma chave só torna ilegível TODA
+ * credencial existente, de uma vez, sem aviso e sem caminho de volta.
  *
  * Daí `CREDENTIALS_MASTER_KEY_PREVIOUS`: durante a rotação as duas chaves
  * coexistem, o `decrypt` tenta a atual e cai para a anterior, e o
@@ -48,6 +53,25 @@ const TAMANHO_MINIMO = 16;
  * O `encrypt` usa SEMPRE a chave atual: o que se rotaciona é o embrulho, e um
  * segredo novo já nasce na chave nova.
  *
+ * ## O `keyId`, e por que ele NÃO decide nada (ADR 0158, RN-563)
+ *
+ * Desde a RN-563 o envelope carrega a IMPRESSÃO DIGITAL da chave que o
+ * embrulhou — `HMAC-SHA256(chave derivada, rótulo)` truncado. Ela existe para
+ * responder em SQL *"quantas credenciais ainda estão na chave anterior?"*, que
+ * é o passo 2 do runbook, e para dar diagnóstico DIFERENTE a "veio de outro
+ * ambiente" e a "registro adulterado".
+ *
+ * O que ela NÃO faz, de propósito: escolher a chave. `decrypt` continua
+ * tentando a atual e caindo para a anterior, e `rewrap` continua decidindo
+ * "já está na chave atual" pela TENTATIVA. Usar o rótulo como autoridade
+ * faria uma linha rotulada "atual" cujo envelope está na chave velha ser
+ * PULADA em silêncio pelo re-embrulho — e o passo 3, que descarta a chave
+ * velha, a tornaria ilegível para sempre. O rótulo é metadado; o envelope é
+ * a verdade.
+ *
+ * `keyId` ausente/nulo é a linha gravada antes desta coluna existir. Nunca é
+ * lido como "está na chave atual".
+ *
  * Ver docs/runbook.md (seção "Rotação da chave mestra").
  */
 @Injectable()
@@ -55,6 +79,10 @@ export class EnvelopeEncryptionService implements EncryptionService {
   private readonly logger = new Logger(EnvelopeEncryptionService.name);
   private readonly masterKey: Buffer;
   private readonly previousKey: Buffer | null;
+  /** Impressão digital da chave ATUAL — o valor gravado em toda escrita. */
+  readonly keyId: string;
+  /** Impressão digital da anterior, quando publicada. */
+  readonly previousKeyId: string | null;
 
   constructor() {
     // Aceita qualquer tamanho de passphrase (não exige exatos 32 bytes);
@@ -68,15 +96,42 @@ export class EnvelopeEncryptionService implements EncryptionService {
         ? scryptSync(previous, SALT, 32)
         : null;
 
+    this.keyId = EnvelopeEncryptionService.impressaoDigital(this.masterKey);
+    this.previousKeyId = this.previousKey
+      ? EnvelopeEncryptionService.impressaoDigital(this.previousKey)
+      : null;
+
+    // O operador precisa da impressão digital corrente para a consulta de
+    // progresso do runbook — uma coluna que ninguém consegue comparar contra
+    // nada é inútil. Sair em log não barateia tentativa nenhuma: ver ADR 0158.
+    this.logger.log(`chave mestra corrente: key_id=${this.keyId}`);
+
     if (this.previousKey) {
       // Visível de propósito: rodar por tempo indeterminado com duas chaves
       // aceitas dobra a superfície de uma chave vazada. O log é o lembrete de
       // que a rotação tem que TERMINAR.
       this.logger.warn(
-        'CREDENTIALS_MASTER_KEY_PREVIOUS está definida — rotação em andamento. ' +
+        'CREDENTIALS_MASTER_KEY_PREVIOUS está definida — rotação em andamento ' +
+          `(atual key_id=${this.keyId}, anterior key_id=${this.previousKeyId}). ` +
           'Rode `node scripts/rewrap-deks.js` e remova a variável ao terminar.',
       );
     }
+  }
+
+  /**
+   * Identifica a chave sem revelá-la, e sem criar oráculo novo (ADR 0158).
+   *
+   * HMAC da chave DERIVADA, com rótulo de domínio, truncado a 8 bytes. Quem lê
+   * o banco já podia testar uma passphrase candidata contra o próprio envelope
+   * — GCM autentica —, pagando um `scrypt` por tentativa; testá-la contra esta
+   * impressão custa o MESMO `scrypt`. Não é hash da passphrase, não é derivado
+   * reversível, e não é um valor que o operador digite em lugar nenhum.
+   */
+  private static impressaoDigital(key: Buffer): string {
+    return createHmac('sha256', key)
+      .update(ROTULO_DA_IMPRESSAO)
+      .digest('hex')
+      .slice(0, TAMANHO_DA_IMPRESSAO);
   }
 
   /**
@@ -144,6 +199,10 @@ export class EnvelopeEncryptionService implements EncryptionService {
    * Usado pelo script de rotação. Devolve `null` quando o registro já está na
    * chave atual, o que é o que torna o script idempotente e permite rodá-lo
    * várias vezes sem reescrever o acervo inteiro toda vez.
+   *
+   * Quem decide "já está na chave atual" é a TENTATIVA, e não o `keyId` — ver
+   * o docblock da classe. O `keyId` entra só quando NADA abre, para dizer POR
+   * QUE (ADR 0158, RN-563).
    */
   rewrap(secret: EncryptedSecret): EncryptedSecret | null {
     let dek: Buffer;
@@ -153,10 +212,20 @@ export class EnvelopeEncryptionService implements EncryptionService {
     } catch {
       if (!this.previousKey) {
         throw new Error(
-          'registro não abre com a chave atual e CREDENTIALS_MASTER_KEY_PREVIOUS não está definida',
+          'registro não abre com a chave atual e CREDENTIALS_MASTER_KEY_PREVIOUS ' +
+            `não está definida — ${this.diagnosticoDaChave(secret)}`,
         );
       }
-      dek = this.unwrapDek(this.previousKey, secret);
+      try {
+        dek = this.unwrapDek(this.previousKey, secret);
+      } catch {
+        // A falha genérica do GCM não distingue "chave errada" de "blob
+        // corrompido", e as duas pedem ações opostas. Com o rótulo, dá para
+        // nomear o caso.
+        throw new Error(
+          `registro não abre com NENHUMA das duas chaves — ${this.diagnosticoDaChave(secret)}`,
+        );
+      }
     }
 
     const dekIv = randomBytes(IV_LENGTH);
@@ -168,10 +237,39 @@ export class EnvelopeEncryptionService implements EncryptionService {
 
     return {
       ...secret,
+      keyId: this.keyId,
       wrappedDek: wrappedDek.toString('base64'),
       dekIv: dekIv.toString('base64'),
       dekAuthTag: dekCipher.getAuthTag().toString('base64'),
     };
+  }
+
+  /**
+   * Diz o que o rótulo do registro permite dizer, e só isso. Nunca inclui
+   * material de chave nem conteúdo do segredo — só impressões digitais.
+   */
+  private diagnosticoDaChave(secret: EncryptedSecret): string {
+    const doRegistro = secret.keyId ?? null;
+    if (doRegistro === null) {
+      return 'o registro não tem key_id (gravado antes da RN-563), então não há como dizer qual chave o embrulhou';
+    }
+    if (doRegistro === this.keyId) {
+      return (
+        `o key_id do registro (${doRegistro}) diz que ele está na chave ATUAL e mesmo ` +
+        'assim o envelope não abre com ela: rótulo incoerente ou registro adulterado'
+      );
+    }
+    if (this.previousKeyId !== null && doRegistro === this.previousKeyId) {
+      return (
+        `o key_id do registro (${doRegistro}) é o da chave anterior publicada e mesmo ` +
+        'assim o envelope não abre com ela: registro adulterado'
+      );
+    }
+    const anterior = this.previousKeyId ?? 'nenhuma publicada';
+    return (
+      `o registro foi embrulhado pela chave ${doRegistro}, que não é a atual ` +
+      `(${this.keyId}) nem a anterior (${anterior}) — provavelmente veio de outro ambiente`
+    );
   }
 
   private encryptWith(key: Buffer, plaintext: string): EncryptedSecret {
@@ -194,6 +292,9 @@ export class EnvelopeEncryptionService implements EncryptionService {
     const dekAuthTag = dekCipher.getAuthTag();
 
     return {
+      // `encryptWith` só é chamado com a chave ATUAL (`encrypt`), então o
+      // rótulo é o dela. Segredo novo nasce sempre na chave nova.
+      keyId: this.keyId,
       wrappedDek: wrappedDek.toString('base64'),
       dekIv: dekIv.toString('base64'),
       dekAuthTag: dekAuthTag.toString('base64'),

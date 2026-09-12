@@ -1,7 +1,8 @@
 import { Pool } from 'pg';
-import { drizzle } from 'drizzle-orm/node-postgres';
+import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq } from 'drizzle-orm';
 import { EnvelopeEncryptionService } from '../infrastructure/security/envelope-encryption.service';
+import * as schema from '../db/schema';
 import { userCredentials, projectGitConnections } from '../db/schema';
 import type { EncryptedSecret } from '../application/ports/encryption.port';
 
@@ -30,9 +31,19 @@ import type { EncryptedSecret } from '../application/ports/encryption.port';
  * - **Um UPDATE por registro**, sem transação global: uma transação envolvendo
  *   milhares de linhas seguraria lock por minutos e daria a chance de perder
  *   tudo por um timeout no fim.
+ *
+ * ## Por que o núcleo é uma função exportada (RN-562)
+ *
+ * `reenvelopar()` está separada de `main()` para poder ser EXERCITADA por
+ * teste contra as duas tabelas de verdade. Até a RN-562 este arquivo era um
+ * `main()` disparado na carga do módulo, e por isso importá-lo de um spec
+ * rodaria a rotação: o procedimento com o pior desfecho do runbook era o
+ * único sem nenhum teste tocando nele. `main()` continua sendo a CLI —
+ * variáveis de ambiente, pool, impressão e código de saída —, e é ela, e só
+ * ela, que `node scripts/rewrap-deks.js` executa.
  */
 
-interface Resultado {
+export interface Resultado {
   tabela: string;
   total: number;
   reembrulhados: number;
@@ -40,7 +51,17 @@ interface Resultado {
   falhas: number;
 }
 
+/**
+ * O mínimo do cofre de que o reenvelopamento depende. Estreito de propósito:
+ * o que se rotaciona é o ENVELOPE, e `rewrap` é a única operação capaz de
+ * trocá-lo sem tocar no texto cifrado do segredo.
+ */
+export interface CofreDeEnvelope {
+  rewrap(secret: EncryptedSecret): EncryptedSecret | null;
+}
+
 function envelope(linha: {
+  keyId: string | null;
   wrappedDek: string;
   dekIv: string;
   dekAuthTag: string;
@@ -49,6 +70,7 @@ function envelope(linha: {
   apiKeyAuthTag: string;
 }): EncryptedSecret {
   return {
+    keyId: linha.keyId,
     wrappedDek: linha.wrappedDek,
     dekIv: linha.dekIv,
     dekAuthTag: linha.dekAuthTag,
@@ -56,6 +78,77 @@ function envelope(linha: {
     apiKeyIv: linha.apiKeyIv,
     apiKeyAuthTag: linha.apiKeyAuthTag,
   };
+}
+
+/**
+ * Percorre as DUAS tabelas com envelope e re-embrulha o que ainda estiver na
+ * chave anterior. Não abre conexão nem a fecha, não lê ambiente e não sai do
+ * processo: quem faz isso é `main()`.
+ *
+ * `reportarFalha` existe para que o chamador decida ONDE a linha ilegível é
+ * dita — a CLI manda para `stderr`, o teste coleta. A mensagem nomeia tabela
+ * e id, e NUNCA o conteúdo do registro: um segredo de usuário não sai em log
+ * nem quando o log é sobre ele não abrir.
+ */
+export async function reenvelopar(
+  db: NodePgDatabase<typeof schema>,
+  cofre: CofreDeEnvelope,
+  reportarFalha: (mensagem: string) => void = (m) => console.error(m),
+): Promise<Resultado[]> {
+  const resultados: Resultado[] = [];
+
+  for (const tabela of [userCredentials, projectGitConnections] as const) {
+    const nome =
+      tabela === userCredentials
+        ? 'user_credentials'
+        : 'project_git_connections';
+    const resultado: Resultado = {
+      tabela: nome,
+      total: 0,
+      reembrulhados: 0,
+      jaAtual: 0,
+      falhas: 0,
+    };
+
+    const linhas = await db.select().from(tabela);
+    resultado.total = linhas.length;
+
+    for (const linha of linhas) {
+      try {
+        const novo = cofre.rewrap(envelope(linha));
+        if (!novo) {
+          resultado.jaAtual += 1;
+          continue;
+        }
+        await db
+          .update(tabela)
+          .set({
+            // O rótulo vai JUNTO com o envelope, no mesmo UPDATE (ADR 0158):
+            // gravar um sem o outro produziria exatamente a incoerência que
+            // o diagnóstico existe para denunciar.
+            keyId: novo.keyId ?? null,
+            wrappedDek: novo.wrappedDek,
+            dekIv: novo.dekIv,
+            dekAuthTag: novo.dekAuthTag,
+          })
+          .where(eq(tabela.id, linha.id));
+        resultado.reembrulhados += 1;
+      } catch (error) {
+        // Uma linha ilegível não pode abortar a rotação das outras: o acervo
+        // ficaria pela metade sem que ninguém soubesse quanto faltou. O
+        // registro é contado, identificado, e o script sai com código de erro
+        // no fim.
+        resultado.falhas += 1;
+        reportarFalha(
+          `[rewrap] ${nome}#${linha.id}: ${(error as Error).message}`,
+        );
+      }
+    }
+
+    resultados.push(resultado);
+  }
+
+  return resultados;
 }
 
 async function main(): Promise<void> {
@@ -76,56 +169,11 @@ async function main(): Promise<void> {
 
   const cofre = new EnvelopeEncryptionService();
   const pool = new Pool({ connectionString: url });
-  const db = drizzle(pool);
-  const resultados: Resultado[] = [];
+  const db = drizzle(pool, { schema });
+  let resultados: Resultado[];
 
   try {
-    for (const tabela of [userCredentials, projectGitConnections] as const) {
-      const nome =
-        tabela === userCredentials
-          ? 'user_credentials'
-          : 'project_git_connections';
-      const resultado: Resultado = {
-        tabela: nome,
-        total: 0,
-        reembrulhados: 0,
-        jaAtual: 0,
-        falhas: 0,
-      };
-
-      const linhas = await db.select().from(tabela);
-      resultado.total = linhas.length;
-
-      for (const linha of linhas) {
-        try {
-          const novo = cofre.rewrap(envelope(linha));
-          if (!novo) {
-            resultado.jaAtual += 1;
-            continue;
-          }
-          await db
-            .update(tabela)
-            .set({
-              wrappedDek: novo.wrappedDek,
-              dekIv: novo.dekIv,
-              dekAuthTag: novo.dekAuthTag,
-            })
-            .where(eq(tabela.id, linha.id));
-          resultado.reembrulhados += 1;
-        } catch (error) {
-          // Uma linha ilegível não pode abortar a rotação das outras: o acervo
-          // ficaria pela metade sem que ninguém soubesse quanto faltou. O
-          // registro é contado, identificado, e o script sai com código de erro
-          // no fim.
-          resultado.falhas += 1;
-          console.error(
-            `[rewrap] ${nome}#${linha.id}: ${(error as Error).message}`,
-          );
-        }
-      }
-
-      resultados.push(resultado);
-    }
+    resultados = await reenvelopar(db, cofre);
   } finally {
     await pool.end();
   }
@@ -155,7 +203,12 @@ async function main(): Promise<void> {
   );
 }
 
-main().catch((error: unknown) => {
-  console.error('[rewrap] falhou:', error);
-  process.exit(1);
-});
+// Só a INVOCAÇÃO direta roda a rotação. Importar este módulo — o que um spec
+// faz para exercitar `reenvelopar()` — não pode disparar um UPDATE em
+// `user_credentials`.
+if (require.main === module) {
+  main().catch((error: unknown) => {
+    console.error('[rewrap] falhou:', error);
+    process.exit(1);
+  });
+}

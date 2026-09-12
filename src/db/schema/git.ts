@@ -69,6 +69,11 @@ export const projectGitConnections = pgTable(
       .notNull()
       .references(() => projects.id, { onDelete: 'cascade' }),
     provider: gitProviderEnum('provider').notNull(),
+    // Mesma coluna, mesma semântica e mesma migration de `user_credentials`
+    // (ADR 0158, RN-563): as duas tabelas compartilham o envelope e o script
+    // de rotação, e mexer numa só daria um acervo em que a consulta do
+    // runbook responde metade.
+    keyId: text('key_id'),
     wrappedDek: text('wrapped_dek').notNull(),
     dekIv: text('dek_iv').notNull(),
     dekAuthTag: text('dek_auth_tag').notNull(),
