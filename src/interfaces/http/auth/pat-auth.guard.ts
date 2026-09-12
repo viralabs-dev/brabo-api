@@ -32,7 +32,15 @@ const TTL_MAXIMO_DEVICE_KEY_SEGUNDOS = 60;
  *    `BRABO_ACCOUNT_TOKEN`).
  * 2. Chave de dispositivo (Ed25519, gerada no navegador — ver
  *    `RunnerDeviceKeysController`) — o runner assina um JWT curto (EdDSA)
- *    provando posse da privada, sem o usuário digitar nada.
+ *    provando posse da privada, sem o usuário digitar nada. Desde a RN-543
+ *    (ADR 0154) ela tem DUAS espécies: a de PROJETO, presa ao projeto que a
+ *    registrou, e a de MÁQUINA (`project_id NULL`), que vale para qualquer
+ *    projeto em que o DONO dela alcance o papel exigido. A diferença mora
+ *    inteira em `autorizarPapel`, abaixo.
+ *
+ * Desde a RN-543 este guard também atende `GET /runner/projects`, a rota
+ * pela qual o agente de máquina descobre os projetos que atende — a
+ * primeira rota `@RequirePatAuth()` SEM `:projectId` no caminho.
  *
  * `JwtAuthGuard` já retornou `true` sem tentar verificar JWT nesta rota;
  * este guard é quem estabelece `request.user` de verdade, por QUALQUER um
@@ -203,6 +211,14 @@ export class PatAuthGuard implements CanActivate {
     // Escopo de projeto ANTES de carregar o usuário — mesma ordem/mesma
     // distinção 401 vs 403 do caminho PAT: token válido pro projeto errado
     // é categoria diferente de token inválido.
+    //
+    // Isto é o CLAIM ASSINADO, não a chave: ele amarra a assinatura àquela
+    // requisição, e vale para as DUAS espécies de chave (RN-543). Numa rota
+    // sem `:projectId` no caminho (`GET /runner/projects`), o claim tem de
+    // estar AUSENTE — `undefined !== undefined` é falso, e um JWT que nomeia
+    // um projeto qualquer não passa a valer para uma rota que não pede
+    // projeto nenhum. Quem decide o alcance da CHAVE é `autorizarPapel`,
+    // abaixo.
     if (payload.projectId !== request.params.projectId) {
       throw new ForbiddenException('Token não autorizado para este projeto');
     }
@@ -228,14 +244,45 @@ export class PatAuthGuard implements CanActivate {
    * (`ProjectMember`/workspace). Cinto e suspensório: se o usuário perder
    * acesso ao projeto, a credencial para de funcionar mesmo sem ser
    * revogada explicitamente.
+   *
+   * ## `projectIdDaCredencial` nulo é a chave de MÁQUINA (RN-543, ADR 0154)
+   *
+   * A comparação abaixo continua byte a byte para toda credencial que NOMEIA
+   * um projeto — é ela, e só ela, que impede a chave do projeto A servir o
+   * projeto B. O que a RN-543 muda é que ela deixa de ter o que comparar
+   * quando a credencial não nomeia projeto nenhum: aí a autorização se
+   * resolve contra o projeto PEDIDO, que é o ADR 0154 ponto 2 ao pé da letra
+   * — *"a autorização continua sendo a de sempre, resolvida contra o projeto
+   * pedido"*. Nenhum teto novo, nenhum afrouxado: a chave de máquina não dá
+   * ao runner nada que o DONO dela já não tivesse, porque é o papel efetivo
+   * do dono no projeto pedido que decide, como sempre foi.
+   *
+   * O ramo do PAT (`validado.projectId`) não muda: `personal_access_tokens.
+   * project_id` continua `NOT NULL` e nunca chega aqui como nulo.
    */
   private async autorizarPapel(
     context: ExecutionContext,
     request: AuthenticatedRequest,
     usuario: User,
-    projectId: string,
+    projectIdDaCredencial: string | null,
   ): Promise<void> {
-    if (projectId !== request.params.projectId) {
+    const projectIdPedido = request.params.projectId as string | undefined;
+
+    if (!projectIdPedido) {
+      // Rota SEM projeto no caminho — hoje só `GET /runner/projects`, que
+      // existe justamente para o agente DESCOBRIR os projetos que atende.
+      // Uma credencial de PROJETO descreve um projeto só e não tem o que
+      // descobrir; recusá-la com a mensagem de "projeto errado" mentiria
+      // sobre o motivo, então a recusa é NOMEADA.
+      if (projectIdDaCredencial !== null) {
+        throw new ForbiddenException(
+          'Esta rota exige uma chave de dispositivo de máquina (sem projeto)',
+        );
+      }
+    } else if (
+      projectIdDaCredencial !== null &&
+      projectIdDaCredencial !== projectIdPedido
+    ) {
       throw new ForbiddenException('Token não autorizado para este projeto');
     }
 
@@ -246,9 +293,15 @@ export class PatAuthGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
     if (requiredRole) {
+      if (!projectIdPedido) {
+        // `@RequireRole` numa rota sem `:projectId` não tem contra o que
+        // resolver. Recusa em vez de deixar passar: um papel que não pôde
+        // ser verificado nunca vale como verificado.
+        throw new ForbiddenException('Papel insuficiente para esta ação');
+      }
       const effectiveRole = await this.resolveEffectiveRole.forProject(
         usuario.id,
-        projectId,
+        projectIdPedido,
       );
       if (!effectiveRole || !roleAtLeast(effectiveRole, requiredRole)) {
         throw new ForbiddenException('Papel insuficiente para esta ação');

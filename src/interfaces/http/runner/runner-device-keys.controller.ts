@@ -61,6 +61,16 @@ import { RunnerDeviceKeyListResponseDto } from './dto/runner-device-key-list.res
  * O `DELETE` continua 204 e idempotente, e continua não podendo falhar por
  * causa do engine: derrubar o runner é efeito colateral, tratado dentro do
  * caso de uso (ver `RevokeRunnerDeviceKeyUseCase`).
+ *
+ * ## As duas espécies de chave, e por que as três rotas bastam (RN-543)
+ *
+ * Desde o ADR 0154 existe a chave de MÁQUINA (`project_id` NULL), e ela cabe
+ * nestas rotas sem rota nova: o `GET` a inclui MARCADA (uma de máquina não é
+ * "a chave do projeto X"), e o `DELETE` já casava por `{id, usuário}` e nunca
+ * por projeto, então revogá-la sempre funcionou daqui. O que NÃO nasce nesta
+ * sessão é o `POST` dela: quem registra chave de máquina é o `install.sh`
+ * (ADR 0155 ponto 4), e a rota nasce no PR que tiver esse chamador — nunca
+ * antes.
  */
 @ApiTags('projetos')
 @ApiBearerAuth(BEARER)
@@ -112,7 +122,10 @@ export class RunnerDeviceKeysController {
       'REVOGADAS — sumir com a linha faria a tela afirmar que a chave ' +
       'nunca existiu. Nunca devolve a JWK pública, e a privada a api nunca ' +
       'viu. `lastUsedAt` nulo é o sinal de uma chave ÓRFÃ: registrada e ' +
-      'nunca usada por runner nenhum.',
+      'nunca usada por runner nenhum. Desde a RN-543 inclui também as ' +
+      'chaves de MÁQUINA do chamador (`especie: "maquina"`, `projectId` ' +
+      'nulo), que servem este projeto sem pertencer a ele — sem elas na ' +
+      'lista, uma chave de máquina seria invisível em toda tela.',
   })
   @ApiOkResponse({ type: [RunnerDeviceKeyListResponseDto] })
   listDeviceKeys(

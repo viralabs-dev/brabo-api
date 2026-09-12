@@ -94,6 +94,9 @@ class FakeProjects implements ProjectRepository {
   async listForWorkspace(): Promise<Project[]> {
     throw new Error('não usado neste teste');
   }
+  async listRunnerModeReachableBy(): Promise<Project[]> {
+    throw new Error('não usado neste teste');
+  }
   async update(): Promise<Project | null> {
     throw new Error('não usado neste teste');
   }

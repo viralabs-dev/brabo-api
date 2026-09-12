@@ -314,6 +314,26 @@ export const personalAccessTokens = pgTable(
  * si — por isso não há índice único em `publicKeyJwk`, ao contrário do
  * índice único em `tokenHash` do PAT, que existe porque ali a busca É pelo
  * valor apresentado.
+ *
+ * ## `project_id` NULL é a chave de MÁQUINA (RN-543, ADR 0154 ponto 1)
+ *
+ * Duas espécies, uma tabela. `project_id` preenchido = a chave de PROJETO do
+ * ADR 0118, que só serve ao projeto nomeado ali. `project_id` NULL = a chave
+ * da MÁQUINA: vale para qualquer projeto em que o DONO dela (`user_id`,
+ * que continua `NOT NULL` — o ADR recusa chave que atravesse usuários)
+ * alcance o papel que a rota exige, resolvido na hora do ticket.
+ *
+ * Tabela irmã foi considerada e recusada no ADR: `PatAuthGuard` acha a
+ * pública pelo `kid` e não precisa saber de que espécie ela é, e duas
+ * tabelas fariam DUAS buscas — a segunda esquecida exatamente uma vez.
+ *
+ * NULL e não um sentinela (`project_id = '00000000-…'`): a FK é real, e um
+ * sentinela exigiria uma linha falsa em `projects` para satisfazê-la.
+ *
+ * `runner_device_keys_project_idx` FICA como está — uma chave de máquina
+ * simplesmente não entra nele, que é o comportamento normal de um índice
+ * B-tree sobre coluna nullable, e a busca por projeto continua sendo a que
+ * o índice serve.
  */
 export const runnerDeviceKeys = pgTable(
   'runner_device_keys',
@@ -322,9 +342,10 @@ export const runnerDeviceKeys = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    projectId: uuid('project_id')
-      .notNull()
-      .references(() => projects.id, { onDelete: 'cascade' }),
+    // NULL = chave de MÁQUINA (RN-543, ADR 0154). Ver o docblock acima.
+    projectId: uuid('project_id').references(() => projects.id, {
+      onDelete: 'cascade',
+    }),
     name: text('name').notNull(),
     publicKeyJwk: text('public_key_jwk').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
