@@ -30,7 +30,10 @@ const addProjectMember = new AddProjectMemberUseCase(
   workspaceRepo,
   resolveEffectiveRole,
 );
-const removeProjectMember = new RemoveProjectMemberUseCase(projectRepo);
+const removeProjectMember = new RemoveProjectMemberUseCase(
+  projectRepo,
+  resolveEffectiveRole,
+);
 
 async function createUser(email: string) {
   const [row] = await db
@@ -208,36 +211,21 @@ describe('O que os tetos NÃO levam junto', () => {
       'maintainer',
     );
   });
+});
 
-  /**
-   * A remoção NÃO ganhou teto — é o terceiro movimento, fora dos dois que o
-   * ADR 0127 escolheu, e o ADR declara que segue possível. Estes dois casos
-   * fixam o que a decisão deixou de pé, para a próxima pessoa não achar que
-   * foi esquecimento: remover é benigno quando o papel de workspace segura a
-   * queda, e é auto-rebaixamento NÃO coberto quando não segura.
-   */
-  it('auto-remoção continua permitida: o maintainer sai da lista e cai no papel de workspace', async () => {
-    const dono = await createUser('dono8@brabo.dev');
-    const mant = await createUser('mant8@brabo.dev');
-    const workspace = await createWorkspace(dono.id, 'cyberdyne');
-    const project = await createProject(workspace.id, dono.id, 'core');
-    await db.insert(workspaceMembers).values({
-      workspaceId: workspace.id,
-      userId: mant.id,
-      role: 'maintainer',
-    });
-    await db
-      .insert(projectMembers)
-      .values({ projectId: project.id, userId: mant.id, role: 'owner' });
-
-    await removeProjectMember.execute(project.id, mant.id);
-
-    expect(await resolveEffectiveRole.forProject(mant.id, project.id)).toBe(
-      'maintainer',
-    );
-  });
-
-  it('e a remoção SEGUE podendo rebaixar quem a chamou, quando o workspace não segura — lacuna declarada no ADR 0127', async () => {
+/**
+ * A REMOÇÃO da própria linha (ADR 0156, RN-556) — o movimento que o ADR 0127
+ * declarou fora dos dois tetos e FIXOU em teste como lacuna aberta, com a
+ * frase "e a remoção SEGUE podendo rebaixar quem a chamou". Estes casos são
+ * aquele bloco INVERTIDO: o que era prova de que o buraco existia passa a ser
+ * prova de que ele fechou, e os movimentos benignos que o ADR 0127 protegia
+ * continuam aqui para que fechar não vire teto demais.
+ *
+ * A régua é a do teto 2, com o papel de WORKSPACE no lugar do papel pedido —
+ * é o papel que o ator terá depois de a linha sair.
+ */
+describe('Teto 2 pela outra porta — a remoção da própria linha', () => {
+  it('recusa (403) a auto-remoção quando o workspace NÃO segura o papel — era a lacuna declarada no ADR 0127', async () => {
     const dono = await createUser('dono9@brabo.dev');
     const mant = await createUser('mant9@brabo.dev');
     const workspace = await createWorkspace(dono.id, 'tyrell');
@@ -251,10 +239,129 @@ describe('O que os tetos NÃO levam junto', () => {
       role: 'maintainer',
     });
 
-    await removeProjectMember.execute(project.id, mant.id);
+    await expect(
+      removeProjectMember.execute(project.id, mant.id, mant.id),
+    ).rejects.toThrow(ForbiddenException);
+
+    // Nada foi removido: o efetivo continua vindo da linha de projeto.
+    expect(await resolveEffectiveRole.forProject(mant.id, project.id)).toBe(
+      'maintainer',
+    );
+  });
+
+  it('recusa (403) também o rebaixamento REVERSÍVEL — o preço declarado do teto 2, que não tem limiar', async () => {
+    const dono = await createUser('dono8@brabo.dev');
+    const mant = await createUser('mant8@brabo.dev');
+    const workspace = await createWorkspace(dono.id, 'cyberdyne');
+    const project = await createProject(workspace.id, dono.id, 'core');
+    await db.insert(workspaceMembers).values({
+      workspaceId: workspace.id,
+      userId: mant.id,
+      role: 'maintainer',
+    });
+    await db
+      .insert(projectMembers)
+      .values({ projectId: project.id, userId: mant.id, role: 'owner' });
+
+    await expect(
+      removeProjectMember.execute(project.id, mant.id, mant.id),
+    ).rejects.toThrow(ForbiddenException);
 
     expect(await resolveEffectiveRole.forProject(mant.id, project.id)).toBe(
+      'owner',
+    );
+  });
+
+  it('recusa (403) a auto-remoção de quem não tem papel NENHUM no workspace — o rebaixamento máximo', async () => {
+    const dono = await createUser('dono10@brabo.dev');
+    const mant = await createUser('mant10@brabo.dev');
+    const workspace = await createWorkspace(dono.id, 'soylent');
+    const project = await createProject(workspace.id, dono.id, 'core');
+    await db.insert(projectMembers).values({
+      projectId: project.id,
+      userId: mant.id,
+      role: 'maintainer',
+    });
+
+    await expect(
+      removeProjectMember.execute(project.id, mant.id, mant.id),
+    ).rejects.toThrow(ForbiddenException);
+
+    expect(await resolveEffectiveRole.forProject(mant.id, project.id)).toBe(
+      'maintainer',
+    );
+  });
+
+  it('auto-remoção BENIGNA continua passando: o workspace segura o mesmo papel', async () => {
+    const dono = await createUser('dono11@brabo.dev');
+    const mant = await createUser('mant11@brabo.dev');
+    const workspace = await createWorkspace(dono.id, 'weyland');
+    const project = await createProject(workspace.id, dono.id, 'core');
+    await db.insert(workspaceMembers).values({
+      workspaceId: workspace.id,
+      userId: mant.id,
+      role: 'maintainer',
+    });
+    await db.insert(projectMembers).values({
+      projectId: project.id,
+      userId: mant.id,
+      role: 'maintainer',
+    });
+
+    await removeProjectMember.execute(project.id, mant.id, mant.id);
+
+    expect(await projectRepo.findMemberRole(project.id, mant.id)).toBeNull();
+    expect(await resolveEffectiveRole.forProject(mant.id, project.id)).toBe(
+      'maintainer',
+    );
+  });
+
+  it('remover OUTRA pessoa continua passando, inclusive quando ela cai de papel', async () => {
+    const dono = await createUser('dono12@brabo.dev');
+    const dev = await createUser('dev12@brabo.dev');
+    const workspace = await createWorkspace(dono.id, 'oscorp');
+    const project = await createProject(workspace.id, dono.id, 'core');
+    await db
+      .insert(workspaceMembers)
+      .values({ workspaceId: workspace.id, userId: dev.id, role: 'viewer' });
+    await db.insert(projectMembers).values({
+      projectId: project.id,
+      userId: dev.id,
+      role: 'maintainer',
+    });
+
+    await removeProjectMember.execute(project.id, dono.id, dev.id);
+
+    expect(await resolveEffectiveRole.forProject(dev.id, project.id)).toBe(
       'viewer',
+    );
+  });
+
+  /**
+   * O teto 1 NÃO tem par na remoção, e este caso é a decisão em forma de
+   * teste: `owner` é o topo do `ROLE_ORDER`, então tirar a linha que
+   * restringia o dono num projeto sensível só pode ELEVAR o efetivo dele —
+   * é justamente como se desfaz a restrição. Um teto ali recusaria só
+   * movimentos benignos.
+   */
+  it('remover a linha que restringia o owner do WORKSPACE devolve o projeto a ele', async () => {
+    const dono = await createUser('dono13@brabo.dev');
+    const mant = await createUser('mant13@brabo.dev');
+    const workspace = await createWorkspace(dono.id, 'tessier');
+    const project = await createProject(workspace.id, dono.id, 'core');
+    await db.insert(workspaceMembers).values({
+      workspaceId: workspace.id,
+      userId: mant.id,
+      role: 'maintainer',
+    });
+    await db
+      .insert(projectMembers)
+      .values({ projectId: project.id, userId: dono.id, role: 'viewer' });
+
+    await removeProjectMember.execute(project.id, mant.id, dono.id);
+
+    expect(await resolveEffectiveRole.forProject(dono.id, project.id)).toBe(
+      'owner',
     );
   });
 });
