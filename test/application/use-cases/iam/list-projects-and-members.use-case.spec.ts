@@ -11,6 +11,8 @@ import { DrizzleProjectRepository } from '../../../../src/infrastructure/persist
 import { ListProjectsForWorkspaceUseCase } from '../../../../src/application/use-cases/iam/list-projects-for-workspace.use-case';
 import { ListProjectMembersUseCase } from '../../../../src/application/use-cases/iam/list-project-members.use-case';
 import { RemoveProjectMemberUseCase } from '../../../../src/application/use-cases/iam/remove-project-member.use-case';
+import { ResolveEffectiveRoleUseCase } from '../../../../src/application/use-cases/iam/resolve-effective-role.use-case';
+import { DrizzleWorkspaceRepository } from '../../../../src/infrastructure/persistence/drizzle/workspace.repository';
 
 const { db, pool } = createTestDb();
 const projectRepo = new DrizzleProjectRepository(db);
@@ -18,7 +20,13 @@ const listProjectsForWorkspace = new ListProjectsForWorkspaceUseCase(
   projectRepo,
 );
 const listProjectMembers = new ListProjectMembersUseCase(projectRepo);
-const removeProjectMember = new RemoveProjectMemberUseCase(projectRepo);
+const removeProjectMember = new RemoveProjectMemberUseCase(
+  projectRepo,
+  new ResolveEffectiveRoleUseCase(
+    projectRepo,
+    new DrizzleWorkspaceRepository(db),
+  ),
+);
 
 async function createUser(email: string) {
   const [row] = await db
@@ -118,7 +126,7 @@ describe('RemoveProjectMemberUseCase', () => {
       .insert(projectMembers)
       .values({ projectId: project.id, userId: dev.id, role: 'developer' });
 
-    await removeProjectMember.execute(project.id, dev.id);
+    await removeProjectMember.execute(project.id, owner.id, dev.id);
 
     const remaining = await listProjectMembers.execute(project.id);
     expect(remaining).toEqual([]);
@@ -127,6 +135,7 @@ describe('RemoveProjectMemberUseCase', () => {
   it('404 pra projeto inexistente', async () => {
     await expect(
       removeProjectMember.execute(
+        '00000000-0000-0000-0000-000000000000',
         '00000000-0000-0000-0000-000000000000',
         '00000000-0000-0000-0000-000000000000',
       ),

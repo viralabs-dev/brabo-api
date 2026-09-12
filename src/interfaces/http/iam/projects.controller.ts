@@ -233,14 +233,26 @@ export class ProjectsController {
     summary: 'Disassociates a user from the project',
     description:
       'Removes only the PROJECT association. Whoever has a role in the ' +
-      'workspace keeps seeing the project through inheritance.',
+      'workspace keeps seeing the project through inheritance — and because ' +
+      'the project role OVERRIDES the workspace one in both directions, that ' +
+      'inheritance can be LOWER than what the row granted. Removing your own ' +
+      'row is therefore refused with 403 whenever the net effect is a ' +
+      'downgrade (including when there is no workspace role at all); ' +
+      'removing it when the workspace holds the same role, and removing ' +
+      'anyone else, still work.',
   })
   @ApiNoContentResponse({ description: 'Association removed. No body.' })
+  @ApiForbiddenResponse({
+    description:
+      'Insufficient role on the project, OR the caller is removing their own ' +
+      'row and would end up with a lower role than they have today.',
+  })
   removeMember(
     @Param('projectId') projectId: string,
+    @CurrentUser() user: User,
     @Param('userId') userId: string,
   ) {
-    return this.removeProjectMember.execute(projectId, userId);
+    return this.removeProjectMember.execute(projectId, user.id, userId);
   }
 
   @Get(':projectId/permissions')
