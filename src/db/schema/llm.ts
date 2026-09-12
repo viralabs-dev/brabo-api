@@ -252,6 +252,11 @@ export const userCredentials = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     provider: credentialProviderEnum('provider').notNull(),
+    // Impressão digital da chave mestra que embrulhou este DEK (ADR 0158,
+    // RN-563). ANULÁVEL, e `null` quer dizer "gravada antes da RN-563, chave
+    // desconhecida" — nunca "está na chave atual". É OBSERVABILIDADE: quem
+    // decide se o envelope abre continua sendo o GCM, nunca este rótulo.
+    keyId: text('key_id'),
     wrappedDek: text('wrapped_dek').notNull(),
     dekIv: text('dek_iv').notNull(),
     dekAuthTag: text('dek_auth_tag').notNull(),

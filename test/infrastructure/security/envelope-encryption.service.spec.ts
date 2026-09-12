@@ -1,4 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
+import { createHash, randomBytes } from 'node:crypto';
 import { EnvelopeEncryptionService } from '../../../src/infrastructure/security/envelope-encryption.service';
 
 /** Instancia o serviço com um par de chaves explícito, isolando o ambiente. */
@@ -127,6 +128,133 @@ describe('EnvelopeEncryptionService', () => {
 
       const semFallback = comChaves('chave-nova');
       expect(() => semFallback.decrypt(secret)).toThrow();
+    });
+  });
+
+  /**
+   * O `key_id` no envelope (ADR 0158, RN-563).
+   *
+   * As chaves aqui nascem de `randomBytes` a cada rodada — nada com cara de
+   * segredo vai para o histórico do git, e o gitleaks varre branches.
+   */
+  describe('key_id da chave mestra', () => {
+    const passphrase = () => randomBytes(24).toString('hex');
+    const segredo = () => `sk-${randomBytes(16).toString('hex')}`;
+
+    it('caminho feliz: encrypt grava a impressão digital da chave atual, e ela é estável', () => {
+      const k = passphrase();
+      const a = comChaves(k);
+      const b = comChaves(k);
+
+      const envelopeA = a.encrypt(segredo());
+      expect(envelopeA.keyId).toBe(a.keyId);
+      // Determinística: a MESMA passphrase produz a MESMA impressão em outra
+      // instância, que é o que torna a consulta do runbook possível.
+      expect(b.keyId).toBe(a.keyId);
+      expect(a.keyId).toMatch(/^[0-9a-f]{16}$/);
+    });
+
+    it('chaves diferentes produzem impressões diferentes', () => {
+      expect(comChaves(passphrase()).keyId).not.toBe(
+        comChaves(passphrase()).keyId,
+      );
+    });
+
+    it('a impressão não é a passphrase nem um hash dela', () => {
+      const k = passphrase();
+      const service = comChaves(k);
+      expect(service.keyId).not.toContain(k);
+      // Não é `sha256(passphrase)`: passa pelo scrypt e por um HMAC com rótulo
+      // de domínio, então quem lê o banco não reconhece a chave por comparação
+      // com um hash barato.
+      expect(service.keyId).not.toBe(
+        createHash('sha256').update(k).digest('hex').slice(0, 16),
+      );
+    });
+
+    it('rewrap carimba a impressão da chave NOVA', () => {
+      const k1 = passphrase();
+      const k2 = passphrase();
+      const antigo = comChaves(k1).encrypt(segredo());
+
+      const durante = comChaves(k2, k1);
+      const novo = durante.rewrap(antigo);
+
+      expect(antigo.keyId).not.toBe(durante.keyId);
+      expect(novo!.keyId).toBe(durante.keyId);
+    });
+
+    it('registro SEM key_id (linha legada) é re-embrulhado normalmente e ganha o rótulo', () => {
+      const k1 = passphrase();
+      const k2 = passphrase();
+      const texto = segredo();
+      const { keyId: _descartado, ...legado } = comChaves(k1).encrypt(texto);
+
+      const durante = comChaves(k2, k1);
+      const novo = durante.rewrap(legado);
+
+      expect(novo!.keyId).toBe(durante.keyId);
+      expect(comChaves(k2).decrypt(novo!)).toBe(texto);
+    });
+
+    /**
+     * O invariante central do ADR 0158: o rótulo é OBSERVABILIDADE, e o GCM
+     * continua sendo a AUTORIDADE.
+     *
+     * Se `rewrap` acreditasse no rótulo, esta linha — que MENTE dizendo estar
+     * na chave atual — seria pulada em silêncio, não entraria na contagem de
+     * re-embrulhados, e o passo 3 do runbook (descartar a chave velha) a
+     * tornaria ilegível para sempre.
+     */
+    it('rótulo mentindo "estou na chave atual" NÃO faz o rewrap pular o registro', () => {
+      const k1 = passphrase();
+      const k2 = passphrase();
+      const texto = segredo();
+
+      const durante = comChaves(k2, k1);
+      const mentiroso = {
+        ...comChaves(k1).encrypt(texto),
+        keyId: durante.keyId,
+      };
+
+      const novo = durante.rewrap(mentiroso);
+      expect(novo).not.toBeNull();
+      expect(comChaves(k2).decrypt(novo!)).toBe(texto);
+    });
+
+    it('caso de falha: quando nenhuma chave abre, a mensagem NOMEIA a chave do registro sem vazar segredo', () => {
+      const k1 = passphrase();
+      const k2 = passphrase();
+      const outroAmbiente = passphrase();
+      const texto = segredo();
+
+      const forasteiro = comChaves(outroAmbiente);
+      const envelopeAlheio = forasteiro.encrypt(texto);
+
+      const durante = comChaves(k2, k1);
+      let mensagem = '';
+      try {
+        durante.rewrap(envelopeAlheio);
+      } catch (erro) {
+        mensagem = (erro as Error).message;
+      }
+
+      expect(mensagem).toContain('NENHUMA das duas chaves');
+      expect(mensagem).toContain(forasteiro.keyId);
+      expect(mensagem).toContain('outro ambiente');
+      // Nem a passphrase nem o segredo aparecem em lugar nenhum da mensagem.
+      for (const proibido of [k1, k2, outroAmbiente, texto]) {
+        expect(mensagem).not.toContain(proibido);
+      }
+    });
+
+    it('caso de falha: registro sem key_id que não abre é dito como "sem rótulo", não como "outro ambiente"', () => {
+      const k1 = passphrase();
+      const k2 = passphrase();
+      const { keyId: _semRotulo, ...alheio } =
+        comChaves(passphrase()).encrypt(segredo());
+
+      expect(() => comChaves(k2, k1).rewrap(alheio)).toThrow(/não tem key_id/i);
     });
   });
 
