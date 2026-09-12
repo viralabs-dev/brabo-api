@@ -191,13 +191,15 @@ export class ProjectsController {
       'both directions: associating someone as `viewer` here really does ' +
       'restrict a workspace `developer` on this project. Two movements are ' +
       'refused with 403 and cannot be enabled anywhere: downgrading a ' +
-      'workspace `owner`, and downgrading yourself.',
+      'workspace `owner`, and changing your OWN role — down or up, since ' +
+      'self-promotion is the half that escalates privilege.',
   })
   @ApiCreatedResponse({ type: ProjectMemberResponseDto })
   @ApiForbiddenResponse({
     description:
-      'Insufficient role on the project, OR one of the two downgrade caps ' +
-      "(the target is a workspace `owner`; the target is the caller and the role is lower than the caller's current one).",
+      'Insufficient role on the project, OR one of the two caps (the target ' +
+      'is a workspace `owner`; the target is the caller and the requested ' +
+      'role differs from their current effective one).',
   })
   addMember(
     @Param('projectId') projectId: string,

@@ -154,14 +154,30 @@ export class WorkspacesController {
     summary: 'Associates a user with the workspace',
     description:
       'Only `owner` can touch the member roster. The role here is inherited ' +
-      "by ALL of the workspace's projects.",
+      "by ALL of the workspace's projects. That role is NECESSARY but not " +
+      'SUFFICIENT: changing YOUR OWN role here is refused with 403 in both ' +
+      'directions, and cannot be enabled anywhere. There is no level above ' +
+      'to catch the fall and no route that removes a member, so a self ' +
+      'downgrade would be unrecoverable through the UI. Demoting ANOTHER ' +
+      '`owner` is still allowed — it is the only way ownership is revoked.',
   })
   @ApiCreatedResponse({ type: WorkspaceMemberResponseDto })
+  @ApiForbiddenResponse({
+    description:
+      'Not `owner` of the workspace, OR the target is the caller and the ' +
+      'requested role differs from their current one (self-movement cap).',
+  })
   addMember(
     @Param('workspaceId') workspaceId: string,
+    @CurrentUser() user: User,
     @Body() dto: AddMemberDto,
   ) {
-    return this.addWorkspaceMember.execute(workspaceId, dto.userId, dto.role);
+    return this.addWorkspaceMember.execute(
+      workspaceId,
+      user.id,
+      dto.userId,
+      dto.role,
+    );
   }
 
   @Post(':workspaceId/projects')

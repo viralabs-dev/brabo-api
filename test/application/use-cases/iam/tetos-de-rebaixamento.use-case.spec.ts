@@ -11,8 +11,15 @@ import {
 import { DrizzleProjectRepository } from '../../../../src/infrastructure/persistence/drizzle/project.repository';
 import { DrizzleWorkspaceRepository } from '../../../../src/infrastructure/persistence/drizzle/workspace.repository';
 import { AddProjectMemberUseCase } from '../../../../src/application/use-cases/iam/add-project-member.use-case';
+import { AddWorkspaceMemberUseCase } from '../../../../src/application/use-cases/iam/add-workspace-member.use-case';
 import { RemoveProjectMemberUseCase } from '../../../../src/application/use-cases/iam/remove-project-member.use-case';
 import { ResolveEffectiveRoleUseCase } from '../../../../src/application/use-cases/iam/resolve-effective-role.use-case';
+import {
+  MENSAGEM_TETO_AUTO_PROMOCAO,
+  MENSAGEM_TETO_AUTO_PROMOCAO_NO_WORKSPACE,
+  MENSAGEM_TETO_AUTO_REBAIXAMENTO,
+  MENSAGEM_TETO_AUTO_REBAIXAMENTO_NO_WORKSPACE,
+} from '../../../../src/domain/iam/tetos-de-rebaixamento';
 
 /**
  * Os DOIS tetos de rebaixamento (ADR 0127, RN-472) e a capacidade que eles NÃO
@@ -34,6 +41,7 @@ const removeProjectMember = new RemoveProjectMemberUseCase(
   projectRepo,
   resolveEffectiveRole,
 );
+const addWorkspaceMember = new AddWorkspaceMemberUseCase(workspaceRepo);
 
 async function createUser(email: string) {
   const [row] = await db
@@ -160,7 +168,16 @@ describe('Teto 2 — ninguém rebaixa a si mesmo', () => {
     ).rejects.toThrow(ForbiddenException);
   });
 
-  it('subir o próprio papel não é rebaixamento e continua passando', async () => {
+  /**
+   * Este teste nasceu documentando o OPOSTO — *"subir o próprio papel não é
+   * rebaixamento e continua passando"* —, fixando a auto-promoção que o ADR
+   * 0127 declarou como capacidade que ficava. O ADR 0157 (RN-557) a chama de
+   * brecha e a fecha: das duas metades do movimento sobre o próprio papel, a
+   * de cima é a que ESCALA privilégio. O bloco foi INVERTIDO em vez de
+   * apagado, e o nome guarda a origem — a mesma forma que o ADR 0156 usou
+   * para o teste de lacuna da remoção.
+   */
+  it('subir o próprio papel era permitido por ser "não rebaixamento", e passa a ser 403 (ADR 0157)', async () => {
     const dono = await createUser('dono5@brabo.dev');
     const mant = await createUser('mant5@brabo.dev');
     const workspace = await createWorkspace(dono.id, 'umbrella');
@@ -171,10 +188,51 @@ describe('Teto 2 — ninguém rebaixa a si mesmo', () => {
       role: 'maintainer',
     });
 
-    await addProjectMember.execute(project.id, mant.id, mant.id, 'owner');
+    await expect(
+      addProjectMember.execute(project.id, mant.id, mant.id, 'owner'),
+    ).rejects.toThrow(ForbiddenException);
 
+    // Nada foi gravado: o efetivo continua vindo do papel de workspace.
+    expect(await projectRepo.findMemberRole(project.id, mant.id)).toBeNull();
     expect(await resolveEffectiveRole.forProject(mant.id, project.id)).toBe(
-      'owner',
+      'maintainer',
+    );
+  });
+
+  it('a mensagem diz o SENTIDO: quem tentou se promover não recebe a frase de rebaixamento', async () => {
+    const dono = await createUser('dono14@brabo.dev');
+    const mant = await createUser('mant14@brabo.dev');
+    const workspace = await createWorkspace(dono.id, 'aperture');
+    const project = await createProject(workspace.id, dono.id, 'core');
+    await db.insert(workspaceMembers).values({
+      workspaceId: workspace.id,
+      userId: mant.id,
+      role: 'maintainer',
+    });
+
+    await expect(
+      addProjectMember.execute(project.id, mant.id, mant.id, 'owner'),
+    ).rejects.toThrow(MENSAGEM_TETO_AUTO_PROMOCAO);
+    await expect(
+      addProjectMember.execute(project.id, mant.id, mant.id, 'viewer'),
+    ).rejects.toThrow(MENSAGEM_TETO_AUTO_REBAIXAMENTO);
+  });
+
+  it('reescrever o MESMO papel é upsert idempotente, não movimento, e passa', async () => {
+    const dono = await createUser('dono15@brabo.dev');
+    const mant = await createUser('mant15@brabo.dev');
+    const workspace = await createWorkspace(dono.id, 'blackmesa');
+    const project = await createProject(workspace.id, dono.id, 'core');
+    await db.insert(workspaceMembers).values({
+      workspaceId: workspace.id,
+      userId: mant.id,
+      role: 'maintainer',
+    });
+
+    await addProjectMember.execute(project.id, mant.id, mant.id, 'maintainer');
+
+    expect(await projectRepo.findMemberRole(project.id, mant.id)).toBe(
+      'maintainer',
     );
   });
 });
@@ -362,6 +420,147 @@ describe('Teto 2 pela outra porta — a remoção da própria linha', () => {
 
     expect(await resolveEffectiveRole.forProject(dono.id, project.id)).toBe(
       'owner',
+    );
+  });
+});
+
+/**
+ * A QUARTA porta (ADR 0157, RN-557) — `POST workspaces/:workspaceId/members`,
+ * que o ADR 0127 declarou por escrito como "upsert sem teto nenhum" e o ADR
+ * 0156 reafirmou como "escopo diferente, decisão separada".
+ *
+ * É a mesma classe de defeito um escopo ACIMA e mais grave: a rota pede
+ * `owner`, e aqui não existe nível acima para segurar a queda nem rota que
+ * remova membro (`WorkspacesController` não tem `@Delete` de membro — medido).
+ * Um `owner` que se gravasse `viewer` perdia o workspace inteiro sem volta.
+ *
+ * O teto 1 NÃO tem par aqui, e o último caso deste bloco é essa decisão em
+ * forma de teste.
+ */
+describe('Teto de auto-movimento no WORKSPACE — a quarta porta', () => {
+  it('recusa (403) o owner que se rebaixa a viewer, mesmo havendo OUTRO owner', async () => {
+    const dono = await createUser('wdono1@brabo.dev');
+    const outro = await createUser('wdono2@brabo.dev');
+    const workspace = await createWorkspace(dono.id, 'ws-acme');
+    await db
+      .insert(workspaceMembers)
+      .values({ workspaceId: workspace.id, userId: outro.id, role: 'owner' });
+
+    // O teto NÃO conta owners: a contagem foi recusada de propósito (ADR
+    // 0157). Havendo outro dono, este movimento seria "seguro" e é recusado
+    // do mesmo jeito — a cláusula não tem número para envelhecer.
+    await expect(
+      addWorkspaceMember.execute(workspace.id, dono.id, dono.id, 'viewer'),
+    ).rejects.toThrow(MENSAGEM_TETO_AUTO_REBAIXAMENTO_NO_WORKSPACE);
+
+    expect(await workspaceRepo.findMemberRole(workspace.id, dono.id)).toBe(
+      'owner',
+    );
+  });
+
+  it('recusa (403) também quando ele é o ÚNICO owner — é o caso sem volta', async () => {
+    const dono = await createUser('wdono3@brabo.dev');
+    const workspace = await createWorkspace(dono.id, 'ws-globex');
+
+    await expect(
+      addWorkspaceMember.execute(workspace.id, dono.id, dono.id, 'maintainer'),
+    ).rejects.toThrow(ForbiddenException);
+
+    expect(await workspaceRepo.findMemberRole(workspace.id, dono.id)).toBe(
+      'owner',
+    );
+  });
+
+  it('recusa (403) a auto-PROMOÇÃO com a frase do sentido certo — inalcançável pela rota, aplicada mesmo assim', async () => {
+    // A rota é `@RequireRole('owner')`, então por HTTP o ator já está no topo
+    // e não há para onde subir. O caso de uso não presume o guard: é ele que
+    // fica certo no dia em que a rota mudar de mínimo.
+    const dono = await createUser('wdono4@brabo.dev');
+    const mant = await createUser('wmant4@brabo.dev');
+    const workspace = await createWorkspace(dono.id, 'ws-initech');
+    await db.insert(workspaceMembers).values({
+      workspaceId: workspace.id,
+      userId: mant.id,
+      role: 'maintainer',
+    });
+
+    await expect(
+      addWorkspaceMember.execute(workspace.id, mant.id, mant.id, 'owner'),
+    ).rejects.toThrow(MENSAGEM_TETO_AUTO_PROMOCAO_NO_WORKSPACE);
+
+    expect(await workspaceRepo.findMemberRole(workspace.id, mant.id)).toBe(
+      'maintainer',
+    );
+  });
+
+  it('a mensagem é do ESCOPO: a do workspace manda falar com outro owner, não com um maintainer', async () => {
+    const dono = await createUser('wdono5@brabo.dev');
+    const workspace = await createWorkspace(dono.id, 'ws-hooli');
+
+    await expect(
+      addWorkspaceMember.execute(workspace.id, dono.id, dono.id, 'viewer'),
+    ).rejects.toThrow(/outro owner/);
+    // E não é a frase do projeto, que fala de "outro maintainer".
+    await expect(
+      addWorkspaceMember.execute(workspace.id, dono.id, dono.id, 'viewer'),
+    ).rejects.not.toThrow(MENSAGEM_TETO_AUTO_REBAIXAMENTO);
+  });
+
+  it('reescrever o próprio papel com o MESMO valor passa: upsert idempotente não é movimento', async () => {
+    const dono = await createUser('wdono6@brabo.dev');
+    const workspace = await createWorkspace(dono.id, 'ws-umbrella');
+
+    await addWorkspaceMember.execute(workspace.id, dono.id, dono.id, 'owner');
+
+    expect(await workspaceRepo.findMemberRole(workspace.id, dono.id)).toBe(
+      'owner',
+    );
+  });
+
+  /**
+   * O teto 1 (ninguém rebaixa o `owner` do workspace) NÃO tem par neste
+   * escopo, e este caso é a decisão em forma de teste. Ele é uma regra sobre
+   * INVERSÃO DE HIERARQUIA — no projeto a linha sobrepõe a de workspace, então
+   * um `maintainer` alcança quem está ACIMA dele. Aqui o
+   * `@RequireRole('owner')` já garante que ninguém alcança alguém maior que
+   * si. Recusar faria de `owner` um estado absorvente: sem rota de remoção de
+   * membro, ninguém sairia dele por HTTP nunca.
+   */
+  it('um owner rebaixando OUTRO owner continua passando — é a única forma de revogar propriedade', async () => {
+    const dono = await createUser('wdono7@brabo.dev');
+    const outro = await createUser('wdono8@brabo.dev');
+    const workspace = await createWorkspace(dono.id, 'ws-stark');
+    await db
+      .insert(workspaceMembers)
+      .values({ workspaceId: workspace.id, userId: outro.id, role: 'owner' });
+
+    await addWorkspaceMember.execute(
+      workspace.id,
+      dono.id,
+      outro.id,
+      'developer',
+    );
+
+    expect(await workspaceRepo.findMemberRole(workspace.id, outro.id)).toBe(
+      'developer',
+    );
+    // E é reversível pela MESMA rota, por qualquer owner restante — o que não
+    // seria verdade se o teto 1 tivesse par aqui.
+    await addWorkspaceMember.execute(workspace.id, dono.id, outro.id, 'owner');
+    expect(await workspaceRepo.findMemberRole(workspace.id, outro.id)).toBe(
+      'owner',
+    );
+  });
+
+  it('associar OUTRA pessoa segue passando em qualquer papel', async () => {
+    const dono = await createUser('wdono9@brabo.dev');
+    const dev = await createUser('wdev9@brabo.dev');
+    const workspace = await createWorkspace(dono.id, 'ws-wayne');
+
+    await addWorkspaceMember.execute(workspace.id, dono.id, dev.id, 'viewer');
+
+    expect(await workspaceRepo.findMemberRole(workspace.id, dev.id)).toBe(
+      'viewer',
     );
   });
 });

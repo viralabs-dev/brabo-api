@@ -416,8 +416,16 @@ async function main() {
     (await createWorkspace.execute(owner.id, WORKSPACE_SEED));
   // `addMember` é upsert (ON CONFLICT DO UPDATE do papel) — roda nos dois
   // casos de propósito, para o papel do developer voltar ao esperado mesmo se
-  // alguém o tiver trocado na UI.
-  await addWorkspaceMember.execute(workspace.id, developer.id, 'developer');
+  // alguém o tiver trocado na UI. O `owner.id` é o ATOR (ADR 0157, RN-557): o
+  // caso de uso passou a recusar quem mexe no próprio papel, e aqui ator e
+  // alvo são pessoas diferentes de propósito — o teto não é alcançado, e o
+  // seed não ganha exceção nenhuma.
+  await addWorkspaceMember.execute(
+    workspace.id,
+    owner.id,
+    developer.id,
+    'developer',
+  );
   console.log(
     workspaceExistente
       ? `= workspace já existia: ${workspace.name} (${workspace.slug})`
