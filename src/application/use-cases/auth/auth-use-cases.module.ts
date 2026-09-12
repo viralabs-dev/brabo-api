@@ -30,6 +30,7 @@ import { ListRunnerDeviceKeysUseCase } from './list-runner-device-keys.use-case'
 import { RevokeRunnerDeviceKeyUseCase } from './revoke-runner-device-key.use-case';
 import { ProvisionarUsuarioUseCase } from './provisionar-usuario.use-case';
 import { CriarPrimeiraContaUseCase } from './criar-primeira-conta.use-case';
+import { RegistrarChaveDeMaquinaUseCase } from './registrar-chave-de-maquina.use-case';
 
 const USE_CASES = [
   TokenFactory,
@@ -53,6 +54,7 @@ const USE_CASES = [
   RevokeRunnerDeviceKeyUseCase,
   ProvisionarUsuarioUseCase,
   CriarPrimeiraContaUseCase,
+  RegistrarChaveDeMaquinaUseCase,
 ];
 
 /**

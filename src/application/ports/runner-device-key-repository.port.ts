@@ -103,6 +103,27 @@ export abstract class RunnerDeviceKeyRepository {
     motivo: string,
   ): Promise<ChaveDeDispositivoResumo | null>;
 
+  /**
+   * Revoga TODAS as chaves de MÁQUINA ativas de um usuário e devolve os ids
+   * do que revogou (RN-552, ADR 0155 ponto 4). Vazio quando não havia
+   * nenhuma — o caso normal de uma instalação nova.
+   *
+   * Existe para que registrar uma chave de máquina SUBSTITUA em vez de
+   * ACUMULAR: sem isso, a rota interna do instalador viraria fábrica de
+   * credenciais duradouras, e uma máquina reinstalada — que é caso legítimo —
+   * deixaria para trás uma chave viva que ninguém consegue alcançar (revogar
+   * pela tela pede um `projectId`, e uma instalação recém-criada não tem
+   * projeto).
+   *
+   * Só as de MÁQUINA (`project_id IS NULL`): as de PROJETO nasceram do
+   * navegador, num fluxo que esta rota não conhece, e derrubá-las seria
+   * apagar o pareamento de quem já usa o produto.
+   */
+  abstract revogarChavesDeMaquina(
+    userId: string,
+    motivo: string,
+  ): Promise<string[]>;
+
   /** Análogo ao `last_used_at` do PAT — tocado sem throttle a cada uso válido. */
   abstract tocarUso(id: string): Promise<void>;
 }
