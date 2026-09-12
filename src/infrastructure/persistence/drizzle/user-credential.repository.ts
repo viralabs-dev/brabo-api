@@ -87,6 +87,7 @@ export class DrizzleUserCredentialRepository implements UserCredentialRepository
 
 function toSecret(row: typeof userCredentials.$inferSelect): EncryptedSecret {
   return {
+    keyId: row.keyId,
     wrappedDek: row.wrappedDek,
     dekIv: row.dekIv,
     dekAuthTag: row.dekAuthTag,

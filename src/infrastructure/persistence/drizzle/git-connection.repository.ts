@@ -60,6 +60,7 @@ export class DrizzleGitConnectionRepository implements GitConnectionRepository {
       );
     if (!row) return null;
     return {
+      keyId: row.keyId,
       wrappedDek: row.wrappedDek,
       dekIv: row.dekIv,
       dekAuthTag: row.dekAuthTag,
