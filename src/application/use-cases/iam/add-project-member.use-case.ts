@@ -7,9 +7,10 @@ import { ProjectRepository } from '../../ports/project-repository.port';
 import { WorkspaceRepository } from '../../ports/workspace-repository.port';
 import { ResolveEffectiveRoleUseCase } from './resolve-effective-role.use-case';
 import {
+  MENSAGEM_TETO_AUTO_PROMOCAO,
   MENSAGEM_TETO_AUTO_REBAIXAMENTO,
   MENSAGEM_TETO_OWNER_DO_WORKSPACE,
-  ehAutoRebaixamento,
+  autoMovimentoDoProprioPapel,
   rebaixaOwnerDoWorkspace,
 } from '../../../domain/iam/tetos-de-rebaixamento';
 import type { Role } from '../../../domain/iam/role';
@@ -17,6 +18,12 @@ import type { Role } from '../../../domain/iam/role';
 /**
  * Associa (ou re-associa, é upsert) alguém ao projeto, aplicando os dois tetos
  * de rebaixamento antes de escrever (ADR 0127, RN-472).
+ *
+ * Desde o ADR 0157 (RN-557) o teto 2 recusa o movimento sobre o próprio papel
+ * nos DOIS sentidos, e não só para baixo: a auto-PROMOÇÃO que o ADR 0127
+ * declarou como capacidade que ficava é brecha, e fecha. Por isso a chamada
+ * aqui é ao classificador `autoMovimentoDoProprioPapel` e não a
+ * `ehAutoRebaixamento` — o sentido é o que escolhe a mensagem.
  *
  * Os tetos moram AQUI e não no `RolesGuard` porque o guard responde outra
  * pergunta: ele autoriza o CHAMADOR contra o `@RequireRole` da rota, e não vê
@@ -57,15 +64,17 @@ export class AddProjectMemberUseCase {
 
     const papelEfetivoDoAtorNoProjeto =
       await this.resolveEffectiveRole.forProject(atorId, projectId);
-    if (
-      ehAutoRebaixamento({
-        atorId,
-        alvoId,
-        papelEfetivoDoAtorNoProjeto,
-        papelPedidoNoProjeto: papel,
-      })
-    ) {
+    const movimento = autoMovimentoDoProprioPapel({
+      atorId,
+      alvoId,
+      papelEfetivoDoAtor: papelEfetivoDoAtorNoProjeto,
+      papelPedido: papel,
+    });
+    if (movimento === 'rebaixamento') {
       throw new ForbiddenException(MENSAGEM_TETO_AUTO_REBAIXAMENTO);
+    }
+    if (movimento === 'promocao') {
+      throw new ForbiddenException(MENSAGEM_TETO_AUTO_PROMOCAO);
     }
 
     return this.projects.addMember(projectId, alvoId, papel);

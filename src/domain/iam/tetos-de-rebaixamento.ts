@@ -1,7 +1,10 @@
 import { roleAtLeast, type Role } from './role';
 
 /**
- * Os DOIS tetos de rebaixamento de `project_members` (ADR 0127, RN-472).
+ * Os DOIS tetos de rebaixamento (ADR 0127, RN-472). Nasceram sobre
+ * `project_members` e o teto 2 alcança também `workspace_members` desde o ADR
+ * 0157 (RN-557); o teto 1 é só do projeto, pelo motivo que está no docblock
+ * de `AddWorkspaceMemberUseCase`.
  *
  * A linha de projeto SOBREPÕE a de workspace nos dois sentidos —
  * `ResolveEffectiveRoleUseCase.forProject` é `projectRole ?? workspaceRole`, e
@@ -18,10 +21,22 @@ import { roleAtLeast, type Role } from './role';
  * aprovação para cair. A FORMA é a mesma de propósito: função pura, no domínio,
  * com a mensagem ao lado da condição.
  *
- * São DOIS tetos e TRÊS portas: o ADR 0156 (RN-556) acrescentou
+ * São DOIS tetos e QUATRO portas: o ADR 0156 (RN-556) acrescentou
  * `remocaoEhAutoRebaixamento`, que é o teto 2 aplicado à REMOÇÃO da linha de
- * projeto — não um terceiro teto, e sim a mesma regra vista pela porta que o
- * ADR 0127 declarou aberta. Teto novo aqui continua sendo decisão de produto.
+ * projeto, e o ADR 0157 (RN-557) acrescentou a quarta —
+ * `POST workspaces/:workspaceId/members`, que era um upsert sem teto nenhum.
+ * Nenhuma delas é teto novo: é a mesma regra vista por mais uma porta. Teto
+ * novo aqui continua sendo decisão de produto.
+ *
+ * O ADR 0157 também alargou o teto 2 num SENTIDO: ele passa a recusar a
+ * auto-PROMOÇÃO, que o ADR 0127 tinha deixado passar por escrito. Quem sobe é
+ * promovido por outra pessoa, pela mesma razão pela qual quem desce é rebaixado
+ * por outra pessoa — o movimento sobre o próprio papel não se audita sozinho.
+ * Por isso a comparação de papéis virou UM classificador
+ * (`autoMovimentoDoProprioPapel`) que devolve o SENTIDO em vez de um booleano:
+ * o caso de uso precisa saber qual dos dois bateu para escolher a mensagem, e
+ * colapsar os dois faria quem tentou se promover receber a frase de
+ * rebaixamento.
  *
  * As funções são puras e não sabem de HTTP: quem traduz para 403 é o caso
  * de uso.
@@ -35,6 +50,31 @@ export const MENSAGEM_TETO_OWNER_DO_WORKSPACE =
 export const MENSAGEM_TETO_AUTO_REBAIXAMENTO =
   'Você não pode rebaixar a si mesmo neste projeto: desfazer exige o papel ' +
   'que você estaria abandonando. Peça a outro maintainer.';
+
+/**
+ * As TRÊS mensagens que o ADR 0157 (RN-557) acrescentou. Os nomes são
+ * assimétricos — as de projeto não ganharam sufixo `_NO_PROJETO` — porque as
+ * duas primeiras já existiam e são citadas por nome na RN-472, no ADR 0127 e em
+ * `docs/security-surface.md`: renomeá-las por simetria trocaria referência de
+ * documento por estética.
+ *
+ * Cada sentido tem frase PRÓPRIA, e cada escopo também. Quem tentou se promover
+ * não recebe a frase de rebaixamento (não foi o que ele fez), e quem esbarra no
+ * teto do workspace não é mandado falar com um `maintainer` — lá o papel que
+ * desfaz é `owner`.
+ */
+export const MENSAGEM_TETO_AUTO_PROMOCAO =
+  'Você não pode promover a si mesmo neste projeto: quem sobe é promovido ' +
+  'por outra pessoa. Peça a outro maintainer.';
+
+export const MENSAGEM_TETO_AUTO_REBAIXAMENTO_NO_WORKSPACE =
+  'Você não pode rebaixar a si mesmo neste workspace: aqui não há papel ' +
+  'acima para segurar a queda, não existe rota que remova membro, e desfazer ' +
+  'exige o owner que você estaria abandonando. Peça a outro owner.';
+
+export const MENSAGEM_TETO_AUTO_PROMOCAO_NO_WORKSPACE =
+  'Você não pode promover a si mesmo neste workspace: quem sobe é promovido ' +
+  'por outro owner.';
 
 /**
  * TETO 1 — ninguém rebaixa quem é `owner` do WORKSPACE.
@@ -54,24 +94,72 @@ export function rebaixaOwnerDoWorkspace(
   return !roleAtLeast(papelPedidoNoProjeto, 'owner');
 }
 
+/** O sentido de um movimento que alguém faz sobre o PRÓPRIO papel. */
+export type SentidoDoAutoMovimento = 'rebaixamento' | 'promocao';
+
 /**
- * TETO 2 — ninguém rebaixa a SI MESMO.
+ * TETO 2 — ninguém mexe no PRÓPRIO papel, nem para baixo nem para cima.
  *
- * A formulação é essa, sem limiar: não é "não se rebaixe abaixo de
- * `maintainer`". As duas recusam o movimento perigoso (perder o papel que
- * desfaz o próprio movimento), mas "abaixo de `maintainer`" só está certa
- * enquanto `@RequireRole('maintainer')` for o que a rota pede — é uma regra de
- * domínio que copia um número de um decorator de controller, e envelhece calada
- * se ele mudar. "Ninguém rebaixa a si mesmo" se enuncia numa cláusula, não tem
- * número para envelhecer, e é a MESMA forma do teto 1 (quem, não quanto).
+ * O ADR 0127 nasceu só com a metade de baixo ("ninguém rebaixa a si mesmo") e
+ * declarou a de cima como capacidade que ficava: *"auto-PROMOÇÃO. Um
+ * `maintainer` pode se gravar como `owner` do projeto (…) os tetos são sobre
+ * descer"*. O ADR 0157 (RN-557) REVISA essa frase. As duas metades são o mesmo
+ * movimento — uma pessoa decidindo sozinha qual autoridade tem — e a de cima é
+ * a que ESCALA privilégio, que a de baixo nunca fez. Quem sobe é promovido por
+ * outra pessoa.
  *
- * O preço é um movimento inofensivo que também cai: um `owner` se pondo como
- * `maintainer` no próprio projeto seria reversível, e passa a ser recusado.
- * Ele continua alcançável — por outro `maintainer` — e o custo de enunciar a
- * regra com exceção é maior que o de perdê-lo.
+ * A formulação continua sem limiar: não é "não se rebaixe abaixo de
+ * `maintainer`" nem "não se promova acima de X". "A si mesmo" se enuncia numa
+ * cláusula, não tem número para envelhecer quando o `@RequireRole` da rota
+ * mudar de mínimo, e é a MESMA forma do teto 1 (quem, não quanto).
  *
- * SUBIR o próprio papel não é rebaixamento e segue passando; este teto não
- * abre essa questão (ver Consequences do ADR 0127).
+ * O preço, declarado nos dois sentidos: caem junto dois movimentos inofensivos
+ * — o `owner` se pondo como `maintainer` no próprio projeto (reversível) e o
+ * `maintainer` legítimo que precisa de `owner` ali. Os dois seguem alcançáveis
+ * por outra pessoa com o papel da rota, e o custo de enunciar a regra com
+ * exceção é maior que o de perdê-los.
+ *
+ * Devolve o SENTIDO, e não um booleano, porque quem chama precisa dele para
+ * escolher a mensagem: quem tentou se promover não pode receber a frase de
+ * rebaixamento. Reescrever o MESMO papel devolve `null` — é upsert idempotente,
+ * não movimento.
+ */
+export function autoMovimentoDoProprioPapel(movimento: {
+  atorId: string;
+  alvoId: string;
+  papelEfetivoDoAtor: Role | null;
+  papelPedido: Role;
+}): SentidoDoAutoMovimento | null {
+  const { atorId, alvoId, papelEfetivoDoAtor, papelPedido } = movimento;
+
+  if (atorId !== alvoId) return null;
+  // Sem papel efetivo não há de onde descer, e qualquer papel é subida — é o
+  // caso em que a auto-promoção é máxima (de acesso nenhum a um papel). A
+  // assimetria com o `null` de `remocaoEhAutoRebaixamento` é aparente: lá o
+  // `null` é o papel DEPOIS, aqui é o de ANTES. Inalcançável pelo HTTP (o
+  // `RolesGuard` já recusou), mas a função é pura e não presume o chamador —
+  // e é por ela que a CRIAÇÃO de workspace não passa por aqui:
+  // `CreateWorkspaceUseCase` grava o criador como `owner` pelo repositório,
+  // que é uma auto-promoção legítima e a única que existe no produto.
+  if (papelEfetivoDoAtor === null) return 'promocao';
+  if (papelPedido === papelEfetivoDoAtor) return null;
+  return roleAtLeast(papelPedido, papelEfetivoDoAtor)
+    ? 'promocao'
+    : 'rebaixamento';
+}
+
+/**
+ * A metade de BAIXO do teto 2, que é a única que a REMOÇÃO enxerga.
+ *
+ * Ela sobrevive à unificação do ADR 0157 por um motivo de comportamento, não de
+ * compatibilidade: `remocaoEhAutoRebaixamento` delega a esta função, e delegar
+ * ao classificador inteiro faria a remoção passar a recusar TAMBÉM a
+ * auto-promoção — tirar a própria linha de projeto que restringia alguém eleva
+ * o efetivo dele para o papel de workspace, e esse movimento é justamente como
+ * se desfaz a restrição que o teto 1 impede de criar (ADR 0156, ponto 3).
+ * Alargar o sentido aqui de passagem mudaria uma porta que este ADR não abriu.
+ *
+ * A comparação NÃO é reescrita: é uma leitura do classificador.
  */
 export function ehAutoRebaixamento(movimento: {
   atorId: string;
@@ -82,11 +170,14 @@ export function ehAutoRebaixamento(movimento: {
   const { atorId, alvoId, papelEfetivoDoAtorNoProjeto, papelPedidoNoProjeto } =
     movimento;
 
-  if (atorId !== alvoId) return false;
-  // Sem papel efetivo não há de onde descer. Inalcançável pelo HTTP (o
-  // `RolesGuard` já recusou), mas a função é pura e não presume o chamador.
-  if (papelEfetivoDoAtorNoProjeto === null) return false;
-  return !roleAtLeast(papelPedidoNoProjeto, papelEfetivoDoAtorNoProjeto);
+  return (
+    autoMovimentoDoProprioPapel({
+      atorId,
+      alvoId,
+      papelEfetivoDoAtor: papelEfetivoDoAtorNoProjeto,
+      papelPedido: papelPedidoNoProjeto,
+    }) === 'rebaixamento'
+  );
 }
 
 export const MENSAGEM_TETO_AUTO_REBAIXAMENTO_POR_REMOCAO =
@@ -118,6 +209,10 @@ export const MENSAGEM_TETO_AUTO_REBAIXAMENTO_POR_REMOCAO =
  * linha que o restringia num projeto sensível é justamente como se desfaz essa
  * restrição. Não existe remoção que rebaixe um `owner` de workspace, então um
  * teto ali recusaria só movimentos benignos.
+ *
+ * O ADR 0157 NÃO tocou nesta porta: ele alargou o teto 2 para a auto-PROMOÇÃO
+ * nas duas rotas de associação, e a remoção continua vendo só a metade de
+ * baixo, de propósito (ver o docblock de `ehAutoRebaixamento`).
  *
  * Pura como as outras: quem traduz para 403 é o caso de uso.
  */
