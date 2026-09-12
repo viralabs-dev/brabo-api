@@ -17,6 +17,14 @@ export type AuthEventKind =
   | 'register_created'
   /** Tentativa de registro num e-mail que já existe — nada foi criado. */
   | 'register_duplicate'
+  /**
+   * A PRIMEIRA conta da instalação, criada pelo instalador pela rota interna
+   * (RN-546, ADR 0155). Kind próprio e não `register_created`: a conta nasce
+   * verificada sem e-mail nenhum ter sido enviado, e quem audita a trilha
+   * depois precisa ver isso na trilha, não descobrir pela ausência de um
+   * `email_verified` ao lado.
+   */
+  | 'first_account_created'
   | 'email_verified'
   // --- senha ---
   | 'password_reset_requested'

@@ -28,6 +28,8 @@ import { RevokePersonalAccessTokenAsMaintainerUseCase } from './revoke-personal-
 import { RegisterRunnerDeviceKeyUseCase } from './register-runner-device-key.use-case';
 import { ListRunnerDeviceKeysUseCase } from './list-runner-device-keys.use-case';
 import { RevokeRunnerDeviceKeyUseCase } from './revoke-runner-device-key.use-case';
+import { ProvisionarUsuarioUseCase } from './provisionar-usuario.use-case';
+import { CriarPrimeiraContaUseCase } from './criar-primeira-conta.use-case';
 
 const USE_CASES = [
   TokenFactory,
@@ -49,6 +51,8 @@ const USE_CASES = [
   RegisterRunnerDeviceKeyUseCase,
   ListRunnerDeviceKeysUseCase,
   RevokeRunnerDeviceKeyUseCase,
+  ProvisionarUsuarioUseCase,
+  CriarPrimeiraContaUseCase,
 ];
 
 /**

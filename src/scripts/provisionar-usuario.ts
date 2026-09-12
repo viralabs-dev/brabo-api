@@ -1,12 +1,9 @@
 import type { INestApplicationContext } from '@nestjs/common';
-import { AuthCredentialRepository } from '../application/ports/auth-credential-repository.port';
-import { PasswordHasher } from '../application/ports/password-hasher.port';
-import { UnitOfWork } from '../application/ports/unit-of-work.port';
-import { normalizarEmail } from '../domain/auth/email';
+import { ProvisionarUsuarioUseCase } from '../application/use-cases/auth/provisionar-usuario.use-case';
 import type { User } from '../domain/iam/user.entity';
 
 /**
- * Cria (ou reaproveita) um usuário com senha já verificada.
+ * Cria (ou reaproveita) um usuário com senha já verificada, PARA AUTOMAÇÃO.
  *
  * Existe porque, sem Keycloak, não há mais de onde tirar uma credencial para
  * automação: o seed de demonstração e o smoke test precisavam de um usuário
@@ -14,12 +11,24 @@ import type { User } from '../domain/iam/user.entity';
  * e-mail — que com o `MailSender` log-only não fecha sozinho.
  *
  * Isto é ferramenta de DESENVOLVIMENTO. Criar conta com senha conhecida, já
- * verificada e sem interação humana é exatamente o que não se quer em
+ * verificada e SEM INTERAÇÃO HUMANA é exatamente o que não se quer em
  * produção; daí a recusa explícita abaixo, que precisa ser burlada de
  * propósito para rodar lá.
  *
+ * ## O que esta função é hoje, e o que ela deixou de ser (ADR 0155)
+ *
+ * Ela é a RECUSA. O trio de escritas que faz a conta nascer verificada mudou
+ * para `ProvisionarUsuarioUseCase`, e aqui só sobrou o que a recusa protege:
+ * este chamador, que escolhe a senha sozinho.
+ *
+ * A separação foi o que permitiu o instalador (RN-546) criar a primeira conta
+ * em produção sem `BRABO_FORCE_SEED`. Ele não é este caso: a senha é escolhida
+ * por um humano no TTY, lida sem eco e confirmada, atrás do
+ * `BRABO_SERVICE_TOKEN`, e só quando a instalação não tem usuário nenhum.
+ * Mandá-lo se declarar "seed forçado" o faria atravessar uma regra que nunca
+ * falou dele — e afrouxaria a recusa justamente onde ela vale.
+ *
  * Idempotente: se o e-mail já existe, devolve o usuário e não mexe na senha.
- * Rodar de novo depois de alguém ter trocado a própria senha não a reverte.
  */
 export async function provisionarUsuario(
   app: INestApplicationContext,
@@ -33,52 +42,5 @@ export async function provisionarUsuario(
     );
   }
 
-  const credenciais = app.get(AuthCredentialRepository);
-  const hasher = app.get(PasswordHasher);
-  const unitOfWork = app.get(UnitOfWork);
-  const email = normalizarEmail(entrada.email);
-
-  const existente = await credenciais.findByEmail(email);
-  if (existente) {
-    return {
-      user: {
-        id: existente.userId,
-        keycloakSub: null,
-        email: existente.email,
-        name: entrada.nome,
-        // Sintético — este ramo não lê o usuário de verdade (só a
-        // credencial), e locale não interessa a nenhum chamador deste script.
-        locale: 'pt-BR',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      criado: false,
-    };
-  }
-
-  const passwordHash = await hasher.hash(entrada.senha);
-
-  return unitOfWork.runInTransaction(async () => {
-    const criada = await credenciais.criarUsuarioComCredencial({
-      email,
-      name: entrada.nome,
-      passwordHash,
-    });
-    await credenciais.marcarEmailVerificado(criada.userId);
-
-    return {
-      user: {
-        id: criada.userId,
-        keycloakSub: null,
-        email: criada.email,
-        name: entrada.nome,
-        // Sintético, mesma nota do outro ramo — a linha recém-criada usa o
-        // default do banco ('pt-BR'), e nada aqui lê o valor real.
-        locale: 'pt-BR',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      criado: true,
-    };
-  });
+  return app.get(ProvisionarUsuarioUseCase).execute(entrada);
 }

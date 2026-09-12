@@ -20,6 +20,8 @@ import { InternalProjectsController } from './internal-projects.controller';
 import { InternalContainersController } from './internal-containers.controller';
 import { InternalRagController } from './internal-rag.controller';
 import { InternalGraphController } from './internal-graph.controller';
+import { InternalFirstAccountController } from './internal-first-account.controller';
+import { AuthUseCasesModule } from '../../../application/use-cases/auth/auth-use-cases.module';
 
 @Module({
   imports: [
@@ -41,6 +43,9 @@ import { InternalGraphController } from './internal-graph.controller';
     RagUseCasesModule,
     GraphUseCasesModule,
     IamUseCasesModule,
+    // A primeira conta da instalação (RN-546, ADR 0155) — o caso de uso mora
+    // com os outros de auth, e é de lá que ele vem.
+    AuthUseCasesModule,
   ],
   controllers: [
     InternalSessionsController,
@@ -53,6 +58,9 @@ import { InternalGraphController } from './internal-graph.controller';
     InternalContainersController,
     InternalRagController,
     InternalGraphController,
+    // O instalador de uma linha, e só ele: a primeira conta de uma instalação
+    // vazia. Recusa com 409 havendo qualquer usuário.
+    InternalFirstAccountController,
   ],
 })
 export class InternalHttpModule {}
