@@ -162,7 +162,8 @@ export class DrizzleSessionEventRepository implements SessionEventRepository {
   }
 }
 
-function toEntity(row: typeof sessionEvents.$inferSelect): SessionEvent {
+/** Exportado para a reprojeção do grafo (`scripts/reprojetar-grafo.ts`), que varre a tabela por cursor e entrega o MESMO envelope ao tradutor. */
+export function toEntity(row: typeof sessionEvents.$inferSelect): SessionEvent {
   return {
     id: row.id,
     sessionId: row.sessionId,

@@ -13,6 +13,11 @@ import { RecordAnamneseProfileUseCase } from '../use-cases/graph/record-anamnese
 import { RecordInteractionUseCase } from '../use-cases/graph/record-interaction.use-case';
 import { GraphUnavailableError } from '../../domain/graph/graph-errors';
 import { GRAPH_PROJECTION_AGGREGATE_TYPE } from '../../domain/graph/graph-projection-events';
+import {
+  EVENTOS_DO_LOG_PROJETAVEIS,
+  FECHAMENTOS_DE_SESSAO,
+  GraphEventTranslator,
+} from './graph-event-translator';
 import type { OutboxEvent } from '../../domain/shared/outbox-event.entity';
 
 /** Mesmo tamanho de lote que `Engine.Outbox.Drain.run_once/0` usa do lado Elixir. */
@@ -20,7 +25,9 @@ const BATCH_LIMIT = 50;
 
 /**
  * Onda 2 da fundação do grafo de conhecimento (ver CLAUDE.md) — o
- * consumidor real que estava faltando. Drena `outbox_events` (mesma tabela
+ * consumidor real que estava faltando. É o caminho PARA FRENTE; o inverso,
+ * reconstruir o grafo varrendo o event log, é `scripts/reprojetar-grafo.ts`
+ * (RN-569), e os dois chamam o MESMO `GraphEventTranslator`. Drena `outbox_events` (mesma tabela
  * transacional que o produto já usa para tudo, `aggregate_type:
  * 'graph_projection'` — ver `domain/graph/graph-projection-events.ts` para
  * o porquê deste `aggregate_type` ser NOVO) e chama os casos de uso de
@@ -53,16 +60,28 @@ export class GraphProjector implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(GraphProjector.name);
   private timer?: NodeJS.Timeout;
   private draining = false;
+  private readonly tradutor: GraphEventTranslator;
 
   constructor(
     private readonly outbox: OutboxRepository,
     private readonly sessionEvents: SessionEventRepository,
     private readonly sessions: SessionRepository,
-    private readonly recordHandoff: RecordHandoffUseCase,
-    private readonly recordHypothesis: RecordHypothesisUseCase,
-    private readonly recordAnamneseProfile: RecordAnamneseProfileUseCase,
-    private readonly recordInteraction: RecordInteractionUseCase,
-  ) {}
+    recordHandoff: RecordHandoffUseCase,
+    recordHypothesis: RecordHypothesisUseCase,
+    recordAnamneseProfile: RecordAnamneseProfileUseCase,
+    recordInteraction: RecordInteractionUseCase,
+  ) {
+    // A superfície de injeção NÃO mudou quando a tradução saiu daqui: o
+    // tradutor é montado com as mesmas dependências, e a reprojeção monta
+    // o dela com as mesmas classes (RN-569).
+    this.tradutor = new GraphEventTranslator(
+      sessionEvents,
+      recordHandoff,
+      recordHypothesis,
+      recordAnamneseProfile,
+      recordInteraction,
+    );
+  }
 
   onModuleInit(): void {
     const intervalMs = Number(process.env.GRAPH_PROJECTOR_INTERVAL_MS ?? 2000);
@@ -114,85 +133,33 @@ export class GraphProjector implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * Chega à FONTE a partir da linha de outbox e entrega ao tradutor — a
+   * tradução em si mora em `GraphEventTranslator`, compartilhada com a
+   * reprojeção a partir do event log (`scripts/reprojetar-grafo.ts`, RN-569).
+   */
   private async project(row: OutboxEvent): Promise<void> {
-    switch (row.eventType) {
-      case 'handoff.offered':
-        return this.projectHandoff(row);
-      case 'psychologist.hypothesis_proposed':
-        return this.projectHypothesis(row);
-      case 'anamnese.profile_updated':
-        return this.projectAnamneseProfile(row);
-      case 'session.closed':
-      case 'session.closed_abnormally':
-        return this.projectSessionClosed(row);
-      default:
-        // Não deveria acontecer — só GRAPH_PROJECTABLE_EVENT_TYPES grava
-        // linha aqui. Registrado e SEM lançar: retentar um tipo sem handler
-        // pra sempre não teria efeito nenhum.
-        this.logger.warn(
-          `Tipo de evento sem handler de projeção: ${row.eventType} (outbox ${row.id})`,
-        );
+    if (FECHAMENTOS_DE_SESSAO.has(row.eventType)) {
+      return this.projectSessionClosed(row);
     }
-  }
+    if (!EVENTOS_DO_LOG_PROJETAVEIS.has(row.eventType)) {
+      // Não deveria acontecer — só GRAPH_PROJECTABLE_EVENT_TYPES grava
+      // linha aqui. Registrado e SEM lançar: retentar um tipo sem handler
+      // pra sempre não teria efeito nenhum.
+      this.logger.warn(
+        `Tipo de evento sem handler de projeção: ${row.eventType} (outbox ${row.id})`,
+      );
+      return;
+    }
 
-  private async projectHandoff(row: OutboxEvent): Promise<void> {
     const event = await this.findSourceEvent(row);
     if (!event) return;
-    const payload = event.payload as { toAgent: string };
-
-    await this.recordHandoff.execute({
-      sessionId: event.sessionId,
-      seq: event.seq,
-      fromAgent: event.actor.id,
-      toAgent: payload.toAgent,
-    });
-  }
-
-  private async projectHypothesis(row: OutboxEvent): Promise<void> {
-    const event = await this.findSourceEvent(row);
-    if (!event) return;
-    const payload = event.payload as {
-      hypothesisId: string;
-      hipotese: string;
-      evidenceEventIds: string[];
-    };
-
-    const evidenceSeqs = await this.resolveSeqs(
-      event.sessionId,
-      payload.evidenceEventIds,
-    );
-
-    await this.recordHypothesis.execute({
-      hypothesisId: payload.hypothesisId,
-      sessionId: event.sessionId,
-      descricao: payload.hipotese,
-      // Esta projeção só consome `psychologist.hypothesis_proposed` — o
-      // nascimento da hipótese. `accepted`/`dismissed` (que no domínio do
-      // Postgres têm vocabulário próprio) ainda não têm projeção; toda
-      // hipótese que chega aqui está, do ponto de vista do grafo, `ativa`.
-      // Fechar esse acompanhamento é consumo futuro, fora desta onda.
-      status: 'ativa',
-      evidenceSeqs,
-    });
-  }
-
-  private async projectAnamneseProfile(row: OutboxEvent): Promise<void> {
-    const event = await this.findSourceEvent(row);
-    if (!event) return;
-    const payload = event.payload as {
-      userId: string;
-      competency: string;
-      level: string;
-    };
-
-    await this.recordAnamneseProfile.execute({
-      userId: payload.userId,
-      dimensao: payload.competency,
-      proficiencia: payload.level,
-    });
+    await this.tradutor.projetarEvento(event);
   }
 
   private async projectSessionClosed(row: OutboxEvent): Promise<void> {
+    // Fechamento de sessão não passa por `session_events` (é transição pura),
+    // então o payload carrega o que é preciso para achar a sessão.
     const { sessionId, projectId } = row.payload as {
       sessionId: string;
       projectId: string;
@@ -201,19 +168,7 @@ export class GraphProjector implements OnModuleInit, OnModuleDestroy {
     const session = await this.sessions.findInProject(projectId, sessionId);
     if (!session) return;
 
-    // `nextSeq` é a PRÓXIMA seq a atribuir — o último seq real é `nextSeq -
-    // 1`. Sessão fechada sem nenhum evento (`nextSeq === 1`) não tem janela
-    // nenhuma pra consolidar.
-    const seqFim = session.nextSeq - 1;
-    if (seqFim < 1) return;
-
-    await this.recordInteraction.execute({
-      userId: session.createdBy,
-      projectId,
-      sessionId,
-      seqInicio: 1,
-      seqFim,
-    });
+    await this.tradutor.projetarFechamentoDeSessao(session);
   }
 
   /** `payload.eventId` (gravado por AppendSessionEventUseCase) → o envelope completo do event log. */
@@ -226,21 +181,6 @@ export class GraphProjector implements OnModuleInit, OnModuleDestroy {
       );
     }
     return event;
-  }
-
-  private async resolveSeqs(
-    sessionId: string,
-    eventIds: string[],
-  ): Promise<number[]> {
-    const seqs: number[] = [];
-    for (const id of eventIds) {
-      const event = await this.sessionEvents.findById(id);
-      // Mesma checagem de pertencimento que ProposeHypothesesUseCase já faz
-      // na escrita — aqui é defensivo (o dado já passou validado), não uma
-      // segunda regra de negócio.
-      if (event && event.sessionId === sessionId) seqs.push(event.seq);
-    }
-    return seqs;
   }
 }
 
