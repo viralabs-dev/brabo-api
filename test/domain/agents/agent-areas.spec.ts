@@ -30,7 +30,9 @@ import {
  */
 describe('as cópias derivadas não divergem da fonte (FASE 18)', () => {
   it('o arquivo do web é exatamente o que o gerador produz', () => {
-    expect(readFileSync(CAMINHO_WEB, 'utf8')).toBe(renderWeb(AGENT_AREAS));
+    expect(readFileSync(CAMINHO_WEB, 'utf8')).toBe(
+      renderWeb(AGENT_AREAS, SOLO_CONVERSATIONAL_AGENTS),
+    );
   });
 
   it('o módulo do engine é exatamente o que o gerador produz', () => {
@@ -44,7 +46,7 @@ describe('as cópias derivadas não divergem da fonte (FASE 18)', () => {
     // tem de virar alvo recusado no handoff (api), rótulo na tela (web) e
     // `Wake.subscribe` no lead (engine). Se o gerador deixasse um de fora, os
     // dois testes acima passariam felizes com a lista incompleta.
-    const web = renderWeb(AGENT_AREAS);
+    const web = renderWeb(AGENT_AREAS, SOLO_CONVERSATIONAL_AGENTS);
     const engine = renderEngine(AGENT_AREAS);
 
     for (const area of AGENT_AREAS) {
@@ -56,6 +58,37 @@ describe('as cópias derivadas não divergem da fonte (FASE 18)', () => {
         expect(engine).toContain(`"${membro}"`);
       }
     }
+  });
+});
+
+/**
+ * AT-046: `SOLO_CONVERSATIONAL_AGENTS` (ADR 0109) era um mirror MANUAL no web
+ * que nenhum teste cruzava com a api. Agora sai do mesmo gerador, e o aferidor
+ * acima (`o arquivo do web é exatamente o que o gerador produz`) passa a
+ * cobri-la — os dois casos abaixo provam que ele cobre de fato.
+ */
+describe('a lista solo sai do gerador para o web (AT-046)', () => {
+  it('todo agente solo da fonte aparece na lista gerada do web, e nenhum vai para o engine', () => {
+    const web = renderWeb(AGENT_AREAS, SOLO_CONVERSATIONAL_AGENTS);
+    const bloco = web.slice(
+      web.indexOf('export const SOLO_CONVERSATIONAL_AGENTS'),
+    );
+
+    expect(bloco).toContain('as const satisfies readonly AgentKey[]');
+    for (const agente of SOLO_CONVERSATIONAL_AGENTS) {
+      expect(bloco).toContain(`  '${agente}',`);
+    }
+    // Sem consumidor no engine: gerar ali seria mais uma cópia para envelhecer.
+    expect(renderEngine(AGENT_AREAS)).not.toContain('ux-designer');
+  });
+
+  it('uma lista solo divergente da fonte NÃO bate com o disco — o aferidor reprova', () => {
+    const emDisco = readFileSync(CAMINHO_WEB, 'utf8');
+    const semStaff = SOLO_CONVERSATIONAL_AGENTS.filter((a) => a !== 'staff');
+    const comIntruso = [...SOLO_CONVERSATIONAL_AGENTS, 'psicologo'];
+
+    expect(renderWeb(AGENT_AREAS, semStaff)).not.toBe(emDisco);
+    expect(renderWeb(AGENT_AREAS, comIntruso)).not.toBe(emDisco);
   });
 });
 
