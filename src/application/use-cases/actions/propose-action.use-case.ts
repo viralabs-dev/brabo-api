@@ -148,6 +148,10 @@ export class ProposeActionUseCase {
         rejectionReason,
       });
 
+      // SEM `reason` aqui, de propósito (RN-567): o outbox é contrato
+      // api↔engine, e nenhum consumidor do engine lê o motivo. Alargar
+      // contrato sem consumidor é o corte que o ADR 0153 nomeia — o motivo
+      // mora só no evento de SESSÃO, logo abaixo.
       await this.outbox.append({
         aggregateType: 'proposed_action',
         aggregateId: created.id,
@@ -166,6 +170,13 @@ export class ProposeActionUseCase {
       // não há como distinguir "o usuário clicou" de "a política decidiu
       // sozinha", que é exatamente a métrica que a Fase 10 quis medir e não
       // conseguiu.
+      //
+      // `reason` é o degrau seguinte (RN-567): QUAL regra decidiu — a string
+      // que `decide()` já devolve, como está, nos TRÊS desfechos. Antes ela
+      // só sobrevivia como `rejectionReason` quando a ação era negada; numa
+      // auto-aprovação o log dizia "a política decidiu" sem dizer qual.
+      // Evento gravado antes desta regra não tem o campo: AUSENTE quer dizer
+      // "não registrado", nunca "decidido sem motivo".
       await this.appendSessionEvent.execute(projectId, sessionId, {
         type: 'proposed_action.created',
         actor: input.actor,
@@ -174,6 +185,7 @@ export class ProposeActionUseCase {
           actionType,
           status,
           resolvedPolicy: decision.policy,
+          reason: decision.reason,
         },
       });
 

@@ -3,8 +3,10 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { NotFoundException } from '@nestjs/common';
+import { eq } from 'drizzle-orm';
 import { createTestDb, truncateAll } from '../../../support/test-db';
 import {
+  outboxEvents,
   projects,
   projectContainers,
   sessions,
@@ -592,5 +594,124 @@ describe('ProposeActionUseCase — piso do container ativo (ADR 0134, RN-492)', 
     expect(action.resolvedPolicy).toBe('require_approval');
     expect(action.status).toBe('pending');
     expect(fakeEngineClient.calls).toHaveLength(0);
+  });
+});
+
+// RN-567: o MOTIVO da decisão de política no evento de SESSÃO. A string é a
+// que `decide()` devolve, como está — nos três desfechos, não só na
+// auto-aprovação — e o outbox (contrato api↔engine) NÃO ganha o campo.
+describe('ProposeActionUseCase — o motivo da política no event log (RN-567)', () => {
+  async function eventoCriado(sessionId: string, actionId: string) {
+    const page = await sessionEventRepo.listPaginated(sessionId, {
+      limit: 200,
+    });
+    const evento = page.items.find(
+      (e) =>
+        e.type === 'proposed_action.created' &&
+        (e.payload as { actionId?: unknown }).actionId === actionId,
+    );
+    expect(evento).toBeTruthy();
+    return evento!.payload as Record<string, unknown>;
+  }
+
+  it('auto-aprovação grava QUAL regra decidiu em `reason`', async () => {
+    const { project, session } = await setupSession();
+    await agentAutonomyRepo.upsert(
+      project.id,
+      'dev-agent',
+      'write_file',
+      'auto_approve',
+    );
+
+    const action = await proposeAction.execute(project.id, session.id, {
+      actionType: 'write_file',
+      actor: { kind: 'agent', id: 'dev-agent' },
+      payload: { path: 'x.md', content: 'x' },
+    });
+
+    expect(action.status).toBe('auto_approved');
+    expect(await eventoCriado(session.id, action.id)).toMatchObject({
+      status: 'auto_approved',
+      resolvedPolicy: 'auto_approve',
+      reason: 'agent_autonomy: auto_approve',
+    });
+  });
+
+  it('require_approval também carrega o motivo — inclusive o de um teto absoluto', async () => {
+    const { project, session } = await setupSession('maintainer');
+
+    const padrao = await proposeAction.execute(project.id, session.id, {
+      actionType: 'write_file',
+      actor: { kind: 'agent', id: 'dev-agent' },
+      payload: { path: 'x.md', content: 'x' },
+    });
+    expect(await eventoCriado(session.id, padrao.id)).toMatchObject({
+      status: 'pending',
+      resolvedPolicy: 'require_approval',
+      reason: 'default (sem regra aplicável)',
+    });
+
+    await agentAutonomyRepo.upsert(project.id, 'dev-lead', '*', 'auto_approve');
+    const merge = await proposeAction.execute(project.id, session.id, {
+      actionType: 'git_merge',
+      actor: { kind: 'agent', id: 'dev-lead' },
+      payload: { targetBranch: 'dev' },
+    });
+    expect(await eventoCriado(session.id, merge.id)).toMatchObject({
+      status: 'pending',
+      resolvedPolicy: 'require_approval',
+      reason:
+        'trava de merge: destino em branch protegida nunca é auto-aprovável',
+    });
+  });
+
+  it('deny carrega no evento o MESMO motivo que vira `rejectionReason`', async () => {
+    const { project, session } = await setupSession('developer');
+
+    const action = await proposeAction.execute(project.id, session.id, {
+      actionType: 'git_push',
+      actor: { kind: 'user', id: 'u1' },
+      payload: {},
+    });
+
+    expect(action.status).toBe('denied');
+    expect(action.rejectionReason).toBeTruthy();
+    expect(await eventoCriado(session.id, action.id)).toMatchObject({
+      status: 'denied',
+      resolvedPolicy: 'deny',
+      reason: action.rejectionReason,
+    });
+  });
+
+  it('o outbox `proposed_action.created` NÃO ganha o campo — sem consumidor no engine (ADR 0153)', async () => {
+    const { project, session } = await setupSession();
+    await agentAutonomyRepo.upsert(
+      project.id,
+      'dev-agent',
+      'write_file',
+      'auto_approve',
+    );
+
+    const action = await proposeAction.execute(project.id, session.id, {
+      actionType: 'write_file',
+      actor: { kind: 'agent', id: 'dev-agent' },
+      payload: { path: 'x.md', content: 'x' },
+    });
+
+    const linhas = await db
+      .select()
+      .from(outboxEvents)
+      .where(eq(outboxEvents.aggregateId, action.id));
+    const criado = linhas.filter(
+      (l) => l.eventType === 'proposed_action.created',
+    );
+
+    expect(criado).toHaveLength(1);
+    expect(criado[0].payload).toEqual({
+      actionType: 'write_file',
+      status: 'auto_approved',
+      resolvedPolicy: 'auto_approve',
+    });
+    expect(criado[0].payload).not.toHaveProperty('reason');
   });
 });
