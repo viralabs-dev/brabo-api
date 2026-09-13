@@ -141,6 +141,10 @@ export function assertHandoffTargetAllowed(toAgent: string): void {
  * Lista PRÓPRIA, não derivada de `apps/web/src/lib/agents.ts` — aquele roster
  * inclui agentes de gate (qa-automacao, secops…) e o Psicólogo/Anamnese, que
  * não são endereçáveis por handoff manual (ADR 0109).
+ *
+ * A direção é daqui para lá: a cópia do web
+ * (`apps/web/src/lib/agent-areas.generated.ts`) é GERADA desta lista por
+ * `pnpm --filter api gerar:areas`, e `agent-areas.spec.ts` reprova a divergência.
  */
 export const SOLO_CONVERSATIONAL_AGENTS = [
   'criativo',

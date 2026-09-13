@@ -16,6 +16,17 @@
  * pequena e estável, e gerar arquivo é mais barato (e mais verificável em CI)
  * que fazer três runtimes lerem um registro em disco.
  *
+ * ## A lista solo, só no web
+ *
+ * `SOLO_CONVERSATIONAL_AGENTS` (ADR 0109) saiu daqui também para o web, e SÓ
+ * para o web: era um mirror MANUAL em `apps/web/src/lib/agents.ts` que nenhum
+ * teste cruzava com a api (AT-046). O engine NÃO a recebe — não há consumidor
+ * lá, e gerar arquivo sem leitor é criar mais uma coisa para ficar velha. A
+ * lista gerada sai `as const satisfies readonly AgentKey[]`: é a mesma
+ * dependência de tipo que `AREAS` já tem com `./agents` (`import type`, some
+ * na compilação, então o ciclo não existe em runtime), e um nome que o roster
+ * do web não conhece quebra o build do web em vez de passar por um cast.
+ *
  * Rodar: `pnpm --filter api gerar:areas`.
  * O teste `test/domain/agents/agent-areas.spec.ts` reprova quando o que está
  * em disco não é o que este gerador produz — é ele que torna a derivação real
@@ -25,6 +36,7 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   AGENT_AREAS,
+  SOLO_CONVERSATIONAL_AGENTS,
   type AreaDeAgentes,
 } from '../src/domain/agents/agent-areas';
 
@@ -44,7 +56,10 @@ const AVISO =
   '`apps/api/src/domain/agents/agent-areas.ts`. NÃO edite à mão: a próxima\n' +
   'geração sobrescreve, e o teste `agent-areas.spec.ts` reprova a divergência.';
 
-export function renderWeb(areas: readonly AreaDeAgentes[]): string {
+export function renderWeb(
+  areas: readonly AreaDeAgentes[],
+  solo: readonly string[],
+): string {
   const linhas = areas.map((area) => {
     const membros = area.members.map((m) => `'${m}'`).join(', ');
     return (
@@ -65,11 +80,20 @@ export function renderWeb(areas: readonly AreaDeAgentes[]): string {
     ` * membros dela são um por módulo do \`module_map\`, por projeto, e vêm de\n` +
     ` * \`agent_areas\`/\`agent_area_members\` (RN-094).\n` +
     ` */\n` +
-    `import type { AreaDef } from './agents';\n` +
+    `import type { AgentKey, AreaDef } from './agents';\n` +
     `\n` +
     `export const AREAS: Record<string, AreaDef> = {\n` +
     `${linhas.join('\n')}\n` +
-    `};\n`
+    `};\n` +
+    `\n` +
+    `/**\n` +
+    ` * Agentes conversacionais SOLO — sem área, sem subagentes (ADR 0109).\n` +
+    ` * \`satisfies\` e não anotação: um nome fora de \`AgentKey\` quebra o build\n` +
+    ` * do web, e a lista segue com os literais (nenhum cast alarga o tipo).\n` +
+    ` */\n` +
+    `export const SOLO_CONVERSATIONAL_AGENTS = [\n` +
+    `${solo.map((agente) => `  '${agente}',`).join('\n')}\n` +
+    `] as const satisfies readonly AgentKey[];\n`
   );
 }
 
@@ -127,7 +151,11 @@ export function renderEngine(areas: readonly AreaDeAgentes[]): string {
 }
 
 export function gerar(): void {
-  writeFileSync(CAMINHO_WEB, renderWeb(AGENT_AREAS), 'utf-8');
+  writeFileSync(
+    CAMINHO_WEB,
+    renderWeb(AGENT_AREAS, SOLO_CONVERSATIONAL_AGENTS),
+    'utf-8',
+  );
   writeFileSync(CAMINHO_ENGINE, renderEngine(AGENT_AREAS), 'utf-8');
 }
 
