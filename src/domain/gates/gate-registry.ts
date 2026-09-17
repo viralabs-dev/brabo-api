@@ -78,16 +78,21 @@ export interface ProblemaDeRegistro {
 }
 
 /**
- * Valida o registro. Devolve a lista de problemas — vazia quer dizer válido.
+ * Valida o que é verdade sobre o registro OLHANDO SÓ PARA ELE. Devolve a lista
+ * de problemas — vazia quer dizer válido.
  *
- * `arquivoExiste` é injetado para a regra continuar pura: o domínio afirma que
- * evidência de `teste`/`ci` tem que apontar para arquivo existente, sem saber
- * o que é um filesystem.
+ * **Sem IO, e agora sem nem a possibilidade de IO.** Até a correção do
+ * `GET /gates` esta função também recebia um `arquivoExiste` e cobrava que o
+ * arquivo de prova citado por `evidencia` estivesse no disco. Essa outra
+ * pergunta continua existindo e continua sendo cobrada — mudou de função, para
+ * `validarLocalizadores`, porque as duas não são afirmações sobre a mesma
+ * coisa: esta é sobre o CONTEÚDO do registro (vale onde quer que ele seja
+ * lido), aquela é sobre o REPOSITÓRIO (só vale dentro de um checkout). Juntas
+ * numa função só, quem lê o registro era obrigado a responder as duas, e a
+ * imagem de produção — que carrega `docs/gates.yml` e nenhum `test/`,
+ * `scripts/` ou `.github/` — respondia "não existe" para todas.
  */
-export function validarRegistro(
-  registro: GateRegistry,
-  arquivoExiste: (caminho: string) => boolean,
-): ProblemaDeRegistro[] {
+export function validarRegistro(registro: GateRegistry): ProblemaDeRegistro[] {
   const problemas: ProblemaDeRegistro[] = [];
   const vistos = new Set<string>();
 
@@ -149,23 +154,6 @@ export function validarRegistro(
     }
 
     const evidencia = gate.evidencia;
-    if (evidencia && evidencia.tipo !== 'event_log') {
-      if (!arquivoExiste(evidencia.arquivo)) {
-        problemas.push({
-          gate: gate.id,
-          tipo: 'evidencia-inexistente',
-          detalhe: `${evidencia.arquivo} não existe`,
-        });
-      }
-      if (evidencia.workflow && !arquivoExiste(evidencia.workflow)) {
-        problemas.push({
-          gate: gate.id,
-          tipo: 'evidencia-inexistente',
-          detalhe: `${evidencia.workflow} não existe`,
-        });
-      }
-    }
-
     if (evidencia?.tipo === 'event_log' && evidencia.event_types.length === 0) {
       problemas.push({
         gate: gate.id,
@@ -189,6 +177,81 @@ export function validarRegistro(
   }
 
   return problemas;
+}
+
+/** Um alvo de arquivo citado por `evidencia`, com o gate que o cita. */
+export interface Localizador {
+  gate: string;
+  tipo: 'teste' | 'ci';
+  /** Qual campo da evidência trouxe este alvo — o relatório do script usa. */
+  campo: 'arquivo' | 'workflow';
+  /** Caminho RELATIVO à raiz do repositório, como está escrito no YAML. */
+  alvo: string;
+}
+
+/**
+ * Todo alvo de arquivo que o registro cita, na ordem em que aparece.
+ *
+ * Existe como função própria porque há DOIS consumidores com necessidades
+ * diferentes — a régua (`validarLocalizadores`) e o relatório por linha do
+ * `validacao-gates.ts` —, e antes cada um enumerava os alvos por conta
+ * própria, com recortes que já divergiam.
+ */
+export function localizadoresDoRegistro(registro: GateRegistry): Localizador[] {
+  const localizadores: Localizador[] = [];
+
+  for (const gate of registro.gates) {
+    const evidencia = gate.evidencia;
+    if (!evidencia || evidencia.tipo === 'event_log') continue;
+
+    localizadores.push({
+      gate: gate.id,
+      tipo: evidencia.tipo,
+      campo: 'arquivo',
+      alvo: evidencia.arquivo,
+    });
+    if (evidencia.workflow) {
+      localizadores.push({
+        gate: gate.id,
+        tipo: evidencia.tipo,
+        campo: 'workflow',
+        alvo: evidencia.workflow,
+      });
+    }
+  }
+
+  return localizadores;
+}
+
+/**
+ * A régua do LOCALIZADOR: evidência de `teste`/`ci` aponta para arquivo que
+ * existe (RN-070). Alvo que sumiu reprova — é o mesmo modo de falha que o
+ * docmap chama de glob morto: regra que nunca dispara finge cobertura.
+ *
+ * **É afirmação sobre o REPOSITÓRIO, e por isso NÃO roda em runtime.** Quem a
+ * cobra é o teste do arquivo real (`gate-registry.spec.ts`, que roda no CI a
+ * cada PR) e a fase 2 do `validacao-gates.ts`. O loader da api NÃO a chama, e
+ * essa ausência é a correção, não um esquecimento: a imagem de produção leva
+ * `docs/gates.yml` e mais nada de `docs/` — sem `apps/api/test/`, sem
+ * `scripts/ci/`, sem `.github/` —, então cobrar os alvos ali reprovava TODOS
+ * e fazia `GET /gates` responder 500 em toda instalação. Não a mova de volta
+ * para o loader: `arquivoExiste` num processo que não tem o repositório
+ * responde sobre outra árvore.
+ *
+ * `arquivoExiste` é injetado para a regra continuar pura — o domínio afirma o
+ * que tem de existir sem saber o que é um filesystem.
+ */
+export function validarLocalizadores(
+  registro: GateRegistry,
+  arquivoExiste: (caminho: string) => boolean,
+): ProblemaDeRegistro[] {
+  return localizadoresDoRegistro(registro)
+    .filter((l) => !arquivoExiste(l.alvo))
+    .map((l) => ({
+      gate: l.gate,
+      tipo: 'evidencia-inexistente',
+      detalhe: `${l.alvo} não existe`,
+    }));
 }
 
 /**
