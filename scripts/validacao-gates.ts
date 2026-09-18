@@ -9,7 +9,10 @@
  *    script útil em CI sem Postgres.
  * 2. **Localizadores** — para gate com evidência de `teste`/`ci`, confirma que
  *    o alvo existe. Alvo que sumiu reprova, pelo mesmo motivo que o docmap
- *    reprova glob morto: regra que nunca dispara finge cobertura.
+ *    reprova glob morto: regra que nunca dispara finge cobertura. A régua é
+ *    `validarLocalizadores`, a MESMA que `gate-registry.spec.ts` cobra contra
+ *    o arquivo real — e a mesma que o loader da api NÃO roda, porque a imagem
+ *    de produção carrega o registro e nenhum dos alvos que ele cita.
  * 3. **Event log** — para gate com evidência de `event_log`, a última passagem,
  *    com event id.
  *
@@ -37,8 +40,11 @@ import {
 } from '../src/infrastructure/gates/gate-registry.loader';
 import {
   gatesCobraveis,
+  localizadoresDoRegistro,
+  validarLocalizadores,
   type EvidenciaEventLog,
   type Gate,
+  type GateRegistry,
 } from '../src/domain/gates/gate-registry';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -144,7 +150,10 @@ async function main() {
   }
   const raiz = caminho.slice(0, -CAMINHO_RELATIVO.length);
 
-  let registro;
+  // ANOTADO, não inferido: sem o tipo, `let registro;` nasce `any` e todo uso
+  // dele abaixo vira `unsafe-*` no lint. `process.exit` é `never`, então o
+  // `!` depois do catch é fato e não aposta.
+  let registro!: GateRegistry;
   try {
     registro = carregarRegistro(__dirname);
   } catch (error) {
@@ -161,25 +170,29 @@ async function main() {
   const reprovacoes: string[] = [];
 
   // --- fase 2: localizadores ----------------------------------------------
+  //
+  // Quem decide o que reprova é `validarLocalizadores`, a MESMA régua que o
+  // teste do arquivo real cobra — a fase aqui é o RELATÓRIO por linha. Antes
+  // esta fase tinha uma régua própria, e o recorte dela já divergia: só olhava
+  // gate `active`+`block`, enquanto o loader (que também cobrava, e era por
+  // isso que `GET /gates` respondia 500 na imagem) olhava todos. Passar a
+  // enumerar todos aqui é o que faz a régua do repositório ficar inteira num
+  // lugar só — `rag-acertivo`, `active` e `warn`, cita workflow e teste e
+  // nunca aparecia nesta tabela.
+  const arquivoExiste = (rel: string) => existsSync(join(raiz, rel));
+
   console.log('## Localizadores\n');
   console.log('| gate | evidência | alvo | existe |');
   console.log('|---|---|---|---|');
 
-  for (const gate of cobraveis) {
-    const evidencia = gate.evidencia;
-    if (!evidencia || evidencia.tipo === 'event_log') continue;
+  for (const l of localizadoresDoRegistro(registro)) {
+    console.log(
+      `| ${l.gate} | ${l.tipo} | \`${l.alvo}\` | ${arquivoExiste(l.alvo) ? 'sim' : '**NÃO**'} |`,
+    );
+  }
 
-    for (const alvo of [evidencia.arquivo, evidencia.workflow].filter(
-      (a): a is string => Boolean(a),
-    )) {
-      const existe = existsSync(join(raiz, alvo));
-      console.log(
-        `| ${gate.id} | ${evidencia.tipo} | \`${alvo}\` | ${existe ? 'sim' : '**NÃO**'} |`,
-      );
-      if (!existe) {
-        reprovacoes.push(`${gate.id}: o alvo \`${alvo}\` não existe`);
-      }
-    }
+  for (const problema of validarLocalizadores(registro, arquivoExiste)) {
+    reprovacoes.push(`${problema.gate ?? '(registro)'}: ${problema.detalhe}`);
   }
 
   // --- fase 3: event log --------------------------------------------------
