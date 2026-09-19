@@ -68,6 +68,10 @@ class FakeEvents {
   tipos() {
     return this.eventos.map((e) => e.type);
   }
+  // Sessão aberta: a trava da RN-581 é testada à parte.
+  garantirQueAceita() {
+    return Promise.resolve();
+  }
 }
 
 class FakeActivate {

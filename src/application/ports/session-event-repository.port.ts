@@ -57,6 +57,16 @@ export abstract class SessionEventRepository {
     sessionId: string,
     type: string,
   ): Promise<SessionEvent[]>;
+  // O evento MAIS RECENTE (maior `seq`) entre os tipos pedidos, ou `null`.
+  // Usado pelo quinto sinal de trabalho pendente (RN-581): quem falou por
+  // último na conversa. Existe em vez de `listByTypeInSession` porque esta
+  // pergunta é feita a cada heartbeat expirado durante até 8h, e trazer TODAS
+  // as respostas da sessão (texto inteiro) para ler uma só seria o custo
+  // crescendo com a conversa, a cada 30 segundos.
+  abstract findLatestOfTypesInSession(
+    sessionId: string,
+    types: readonly string[],
+  ): Promise<SessionEvent | null>;
   // Janela de tempo do projeto inteiro (Fase 4b — Anamnese analisa
   // "janelas do event log"). `actorKind` filtra interações do usuário;
   // `limit` protege contra janelas patológicas.

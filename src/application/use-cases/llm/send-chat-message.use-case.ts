@@ -14,6 +14,11 @@ import { CheckBudgetGateUseCase } from './check-budget-gate.use-case';
 import { RecordLlmUsageUseCase } from './record-llm-usage.use-case';
 import { calculateCostMicros } from '../../../domain/llm/cost-calculator';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
+import {
+  ConversaEmSessaoEncerradaError,
+  garantirQueSessaoAceitaEvento,
+} from '../../../domain/sessions/conversa-em-sessao-encerrada';
+import { conflitoDeSessaoEncerrada } from '../sessions/append-session-event.use-case';
 
 export interface SendChatMessageInput {
   projectId: string;
@@ -59,11 +64,29 @@ export class SendChatMessageUseCase {
     //    ao provider — se a sessão não existir, propaga 404 sem custo
     //    nenhum envolvido.
     await this.unitOfWork.runInTransaction(async () => {
-      const seq = await this.sessions.incrementSeq(
+      const reservado = await this.sessions.incrementSeq(
         input.projectId,
         input.sessionId,
       );
-      if (seq === null) throw new NotFoundException('Sessão não encontrada');
+      if (reservado === null) {
+        throw new NotFoundException('Sessão não encontrada');
+      }
+      // RN-581: este caminho grava `chat.message` sem passar pelo funil
+      // `AppendSessionEventUseCase`, então a trava do estado tem de estar aqui
+      // também — senão o chat humano seria a porta que o funil fechou.
+      try {
+        garantirQueSessaoAceitaEvento(
+          reservado.status,
+          'chat.message',
+          input.actor,
+        );
+      } catch (error) {
+        if (error instanceof ConversaEmSessaoEncerradaError) {
+          throw conflitoDeSessaoEncerrada(error);
+        }
+        throw error;
+      }
+      const seq = reservado.seq;
 
       await this.sessionEvents.append({
         id: ulid(),
@@ -198,10 +221,15 @@ export class SendChatMessageUseCase {
           upstreamProvider,
         });
 
-        const seq = await this.sessions.incrementSeq(
+        // A resposta de um turno que COMEÇOU com a sessão aberta entra mesmo
+        // que ela tenha fechado no meio: o ator é o modelo, não um agente
+        // conversacional, e o gasto já foi feito e medido — recusar só
+        // apagaria do log o que o metering registrou (RN-581).
+        const reservado = await this.sessions.incrementSeq(
           input.projectId,
           input.sessionId,
         );
+        const seq = reservado?.seq ?? null;
         if (seq !== null) {
           await this.sessionEvents.append({
             id: ulid(),

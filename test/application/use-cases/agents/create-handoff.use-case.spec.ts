@@ -20,6 +20,9 @@ function build() {
       eventos.push(e);
       return Promise.resolve({});
     },
+    // Sessão aberta: a trava da RN-581 é testada em
+    // `test/application/use-cases/sessions/conversa-em-sessao-encerrada.spec.ts`.
+    garantirQueAceita: () => Promise.resolve(),
   } as unknown as AppendSessionEventUseCase;
 
   return {

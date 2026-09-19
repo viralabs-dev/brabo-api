@@ -86,7 +86,7 @@ export class SessionResponseDto implements Wire<Session> {
     nullable: true,
     description:
       'Reason reported by the engine when terminating (heartbeat_timeout, ' +
-      'killed, exception…). `null` on a human close or a still-live session.',
+      'conversation_idle_timeout, killed, exception…). `null` on a human close or a still-live session.',
   })
   terminationReason!: string | null;
 

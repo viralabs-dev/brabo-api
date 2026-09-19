@@ -117,13 +117,13 @@ export class DrizzleSessionRepository implements SessionRepository {
   async incrementSeq(
     projectId: string,
     sessionId: string,
-  ): Promise<number | null> {
+  ): Promise<{ seq: number; status: SessionStatus } | null> {
     const db = currentDb(this.rootDb);
     const [row] = await db
       .update(sessions)
       .set({ nextSeq: sql`${sessions.nextSeq} + 1` })
       .where(and(eq(sessions.id, sessionId), eq(sessions.projectId, projectId)))
-      .returning({ nextSeq: sessions.nextSeq });
-    return row ? row.nextSeq - 1 : null;
+      .returning({ nextSeq: sessions.nextSeq, status: sessions.status });
+    return row ? { seq: row.nextSeq - 1, status: row.status } : null;
   }
 }
