@@ -13,6 +13,7 @@ import { ProjectRepository } from '../../ports/project-repository.port';
 import { PermissionsFileStore } from '../../ports/permissions-file-store.port';
 import { ProvisionedRepositoryRepository } from '../../ports/provisioned-repository-repository.port';
 import { HandoffRepository } from '../../ports/handoff-repository.port';
+import { ContainerRepository } from '../../ports/container-repository.port';
 import { motivoDeExecucaoSemRepositorio } from '../../../domain/execution/repositorio-para-executar';
 import { DEV_TERMINAL_ALLOW_PATTERNS } from '../../../domain/actions/dev-terminal-patterns';
 import { TransitionSessionUseCase } from '../sessions/transition-session.use-case';
@@ -99,6 +100,7 @@ export class ActivateExecutionUseCase {
     private readonly getSessionPendingWork: GetSessionPendingWorkUseCase,
     private readonly repositories: ProvisionedRepositoryRepository,
     private readonly handoffs: HandoffRepository,
+    private readonly containers: ContainerRepository,
   ) {}
 
   async execute(
@@ -274,17 +276,29 @@ export class ActivateExecutionUseCase {
 
     // Sugestão de paralelização: módulos com ≥2 tasks pegáveis têm ramos
     // independentes disponíveis — sugere um subagente extra (aceite 1-clique).
-    for (const m of moduleMap.modules) {
-      const claimable = await this.taskRepo.countClaimableByModule(
-        projectId,
-        m.name,
-      );
-      if (claimable >= 2) {
-        await this.appendEvent.execute(projectId, session.id, {
-          type: 'execution.parallelization_suggested',
-          actor: { kind: 'system', id: 'parallelization' },
-          payload: { module: m.name, availableTasks: claimable },
-        });
+    //
+    // Só quando o projeto TEM container `running` registrado (AT-104). Sem ele
+    // o dev agent não reivindica task nenhuma (`dev.blocked_by_container`,
+    // RN-502) — a mesma leitura que o engine faz —, e "há tasks pegáveis" é
+    // verdade que não vira capacidade: um agente extra num módulo cujo agente
+    // nem começa só multiplica os bloqueados (v6.1.0: três `parallelize`
+    // aprovados sobre três agentes parados). O bloqueio é do PROJETO e não do
+    // módulo, então a guarda é uma só. Custo declarado: a sugestão é emitida
+    // na ativação e não é refeita quando o container sobe depois. O teto do
+    // pedido (RN-154, `RequestParallelizationUseCase`) não é tocado.
+    if (await this.containerRodando(projectId)) {
+      for (const m of moduleMap.modules) {
+        const claimable = await this.taskRepo.countClaimableByModule(
+          projectId,
+          m.name,
+        );
+        if (claimable >= 2) {
+          await this.appendEvent.execute(projectId, session.id, {
+            type: 'execution.parallelization_suggested',
+            actor: { kind: 'system', id: 'parallelization' },
+            payload: { module: m.name, availableTasks: claimable },
+          });
+        }
       }
     }
 
@@ -298,6 +312,12 @@ export class ActivateExecutionUseCase {
     }
 
     return { sessionId: session.id, modules };
+  }
+
+  /** Mesmo predicado do engine (`ProjectContainerLifecycle.running?/1`): linha registrada `running`. */
+  private async containerRodando(projectId: string): Promise<boolean> {
+    const linha = await this.containers.findByProject(projectId);
+    return linha?.status === 'running';
   }
 
   /**
