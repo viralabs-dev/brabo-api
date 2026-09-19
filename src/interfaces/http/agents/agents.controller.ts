@@ -9,6 +9,7 @@ import {
   ApiOperation,
   ApiParam,
   ApiTags,
+  ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { User } from '../../../domain/iam/user.entity';
@@ -96,12 +97,16 @@ export class AgentsController {
   @ApiOperation({
     summary: 'Sends a message to the active agent',
     description:
-      'The response is just the acknowledgment. What the agent replies arrives ' +
-      "via the session's event log and the chat SSE — not through this call.",
+      'The response is just the acknowledgment, and it returns on ACCEPTANCE — ' +
+      "before the agent's turn ends (ADR 0163). What the agent replies arrives " +
+      "via the session's event log and channel — not through this call.",
   })
   @ApiCreatedResponse({ type: OkResponseDto })
   @ApiConflictResponse({
-    description: 'The agent is not active in this session.',
+    description:
+      'The agent is not active in this session; or it is still in the middle ' +
+      'of a turn, or waiting on an execution-plan decision — the message was ' +
+      'recorded but NOT read by the agent (ADR 0163).',
   })
   message(
     @Param('projectId') projectId: string,
@@ -144,11 +149,17 @@ export class AgentsController {
     summary: "Answers a set of the agent's structured questions",
     description:
       'Records `chat.structured_question_answered` and resends the answers to the ' +
-      'agent as a normal message. A question set can only be answered once.',
+      'agent as a normal message. A question set can only be answered once. ' +
+      "Returns on ACCEPTANCE, before the agent's turn ends (ADR 0163): the turn " +
+      'keeps running in the engine and its narration, end and failures arrive ' +
+      'through the session channel and the event log (`agent.status`, ' +
+      '`agent.response`, `agent.error`) — never through this response.',
   })
   @ApiCreatedResponse({ type: OkResponseDto })
   @ApiConflictResponse({
-    description: 'This question set has already been answered.',
+    description:
+      'This question set has already been answered; or the agent is still in ' +
+      'the middle of a turn and did not read the answers (ADR 0163).',
   })
   submitStructuredQuestionAnswer(
     @Param('projectId') projectId: string,
@@ -198,9 +209,23 @@ export class AgentsController {
     summary: 'Confirms that the discovery session with the Criativo is done',
     description:
       "It's the button that triggers the `product_brief` and the handoff to " +
-      'the PO. Records `readiness.confirmed` in the event log.',
+      'the PO. Records `readiness.confirmed` in the event log. ' +
+      "Returns on ACCEPTANCE, before the agent's turn ends (ADR 0163): the turn " +
+      'keeps running in the engine and its narration, end and failures arrive ' +
+      'through the session channel and the event log (`agent.status`, ' +
+      '`agent.response`, `agent.error`) — never through this response.',
   })
   @ApiCreatedResponse({ type: OkResponseDto })
+  @ApiConflictResponse({
+    description:
+      'The Criativo is still in the middle of a turn — the confirmation was ' +
+      'recorded but the brief did not start (ADR 0163).',
+  })
+  @ApiUnprocessableEntityResponse({
+    description:
+      'No business rule was captured in this conversation — there is nothing ' +
+      'to consolidate into a brief yet (ADR 0163).',
+  })
   readiness(
     @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
@@ -222,9 +247,20 @@ export class AgentsController {
     description:
       'Dedicated endpoint instead of reusing `readiness`, which belongs to the ' +
       'Criativo: they are two different milestones of the session, and ' +
-      'conflating them would make the event log ambiguous.',
+      'conflating them would make the event log ambiguous. ' +
+      "Returns on ACCEPTANCE, before the agent's turn ends (ADR 0163): the turn " +
+      'keeps running in the engine and its narration, end and failures arrive ' +
+      'through the session channel and the event log (`agent.status`, ' +
+      '`agent.response`, `agent.error`) — never through this response.' +
+      ' The Dev Lead handoff still comes AFTER the Infra one: the engine ' +
+      'holds it until the closing turn ends.',
   })
   @ApiCreatedResponse({ type: OkResponseDto })
+  @ApiConflictResponse({
+    description:
+      'The Arquiteto is still in the middle of a turn — the confirmation was ' +
+      'recorded but the closing turn did not start (ADR 0163).',
+  })
   handoffInfra(
     @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,

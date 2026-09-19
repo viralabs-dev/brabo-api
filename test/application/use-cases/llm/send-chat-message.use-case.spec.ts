@@ -231,6 +231,52 @@ describe('SendChatMessageUseCase', () => {
     expect(usageRows[0].modelId).toBe(model.id);
   });
 
+  it('RN-581: sessão encerrada recusa a mensagem com 409, sem chamar o provider nem gravar', async () => {
+    // Este caminho grava `chat.message` sem passar pelo funil
+    // `AppendSessionEventUseCase` — a trava do estado tem de estar nele também.
+    const { project, session, owner } = await setup();
+    await db
+      .update(sessions)
+      .set({ status: 'closed' })
+      .where(eq(sessions.id, session.id));
+    const provider = new FakeProvider([
+      { type: 'text_delta', text: 'não deveria chegar aqui' },
+    ]);
+    const useCase = new SendChatMessageUseCase(
+      unitOfWork,
+      sessionRepo,
+      sessionEventRepo,
+      outboxRepo,
+      modelRepo,
+      credentialRepo,
+      encryption,
+      registryWith(provider),
+      tokenEstimator,
+      resolveModelBinding,
+      checkBudgetGate,
+      recordLlmUsage,
+    );
+
+    await expect(
+      collect(
+        useCase.execute({
+          projectId: project.id,
+          sessionId: session.id,
+          actor: { kind: 'user', id: owner.id },
+          text: 'ainda aí?',
+        }),
+      ),
+    ).rejects.toMatchObject({ status: 409 });
+
+    expect(provider.callCount).toBe(0);
+    expect(
+      await db
+        .select()
+        .from(sessionEvents)
+        .where(eq(sessionEvents.sessionId, session.id)),
+    ).toHaveLength(0);
+  });
+
   it('bloqueio em 100%: provider nunca é chamado', async () => {
     const { project, session, owner } = await setup();
     const budget = await budgetRepo.upsertForProject(project.id, {

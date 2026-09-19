@@ -2,12 +2,48 @@ import { Injectable } from '@nestjs/common';
 import { HandoffRepository } from '../../ports/handoff-repository.port';
 import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
 import { SessionEventRepository } from '../../ports/session-event-repository.port';
+import { AGENTES_CONVERSACIONAIS } from '../../../domain/sessions/conversa-em-sessao-encerrada';
 
 export interface SessionPendingWork {
   pending: boolean;
   /** O que está pendurado, para o log do engine dizer por que não fechou. */
   motivo: string | null;
+  /**
+   * Preenchido SÓ quando a única coisa pendurada é um agente conversacional
+   * esperando o usuário (RN-581): o instante em que ele terminou o turno. É a
+   * única pendência COM TETO, e quem aplica o teto é o engine
+   * (`SESSION_CONVERSATION_IDLE_TIMEOUT_MS`) — a api diz desde quando, e não
+   * decide por quanto tempo. `null` em todo outro caso, inclusive quando há
+   * espera de conversa E um sinal sem teto: o sinal sem teto vence.
+   */
+  aguardandoUsuarioDesde: string | null;
 }
+
+/**
+ * O que fecha um TURNO de conversa, de cada lado. O mais recente dos cinco diz
+ * quem falou por último: se foi o agente, a conversa está esperando o usuário.
+ *
+ * Do lado do agente, `agent.error` conta como fim de turno de propósito: pela
+ * RN-059 o agente diz no fio o que houve, e a próxima jogada — tentar de novo,
+ * reformular — é do usuário, igual a uma resposta.
+ */
+const FALA_DO_AGENTE = [
+  'agent.response',
+  'chat.structured_question',
+  'agent.error',
+] as const;
+const FALA_DO_USUARIO = [
+  'chat.message',
+  'chat.structured_question_answered',
+] as const;
+const FIM_DE_TURNO: readonly string[] = [...FALA_DO_AGENTE, ...FALA_DO_USUARIO];
+const TIPOS_DA_FALA_DO_AGENTE: ReadonlySet<string> = new Set(FALA_DO_AGENTE);
+
+const NADA_PENDENTE: SessionPendingWork = {
+  pending: false,
+  motivo: null,
+  aguardandoUsuarioDesde: null,
+};
 
 /**
  * A sessão tem trabalho pendente?
@@ -37,6 +73,7 @@ export class GetSessionPendingWorkUseCase {
       return {
         pending: true,
         motivo: `handoff ${abertos[0].fromAgent} → ${abertos[0].toAgent} aguardando aceite`,
+        aguardandoUsuarioDesde: null,
       };
     }
 
@@ -60,6 +97,7 @@ export class GetSessionPendingWorkUseCase {
       return {
         pending: true,
         motivo: `ação ${acao.actionType} de ${acao.actor?.id ?? 'um agente'} aguardando decisão`,
+        aguardandoUsuarioDesde: null,
       };
     }
 
@@ -96,6 +134,7 @@ export class GetSessionPendingWorkUseCase {
       return {
         pending: true,
         motivo: `agente ${trabalhando.actor.id} em turno (agent.status working sem idle posterior)`,
+        aguardandoUsuarioDesde: null,
       };
     }
 
@@ -175,10 +214,46 @@ export class GetSessionPendingWorkUseCase {
       return {
         pending: true,
         motivo: `dev-agent ${devPendente.actor.id} com ${devPendente.type.replace('dev.', '')} (sem idle posterior)`,
+        aguardandoUsuarioDesde: null,
       };
     }
 
-    return { pending: false, motivo: null };
+    // QUINTO sinal (RN-581, AT-072): agente conversacional esperando o
+    // USUÁRIO. No `exp001` o heartbeat fechou a sessão 30s depois de a aba
+    // parar, com o Criativo tendo acabado de perguntar — nenhum dos quatro
+    // sinais acima o via, porque um Criativo que terminou o turno está `idle`,
+    // sem handoff, sem ação, sem `dev.*`. E a conversa seguiu escrevendo na
+    // sessão morta por quatro minutos.
+    //
+    // O sinal: a fala mais recente da conversa é do AGENTE (resposta, pergunta
+    // em formulário ou falha narrada) e o ator é um conversacional. Fala do
+    // usuário por último não é espera pelo usuário — ou o agente está em
+    // turno (terceiro sinal), ou não há ninguém esperando ninguém.
+    //
+    // É o ÚLTIMO sinal, e o único com TETO: os quatro de cima seguram a sessão
+    // enquanto existirem; este a segura por até 8h (decisão do mantenedor,
+    // 18/09), contadas do fim do turno. Por isso ele devolve o instante, e o
+    // engine decide se estourou — e é por estar por último que um handoff
+    // aberto numa conversa ociosa continua sem teto, como sempre foi.
+    const ultimaFala = await this.sessionEvents.findLatestOfTypesInSession(
+      sessionId,
+      FIM_DE_TURNO,
+    );
+    if (
+      ultimaFala &&
+      TIPOS_DA_FALA_DO_AGENTE.has(ultimaFala.type) &&
+      ultimaFala.actor.kind === 'agent' &&
+      AGENTES_CONVERSACIONAIS.has(ultimaFala.actor.id)
+    ) {
+      const desde = ultimaFala.createdAt.toISOString();
+      return {
+        pending: true,
+        motivo: `agente ${ultimaFala.actor.id} aguardando resposta do usuário desde ${desde} (${ultimaFala.type})`,
+        aguardandoUsuarioDesde: desde,
+      };
+    }
+
+    return NADA_PENDENTE;
   }
 }
 

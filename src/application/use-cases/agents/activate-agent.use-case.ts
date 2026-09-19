@@ -6,7 +6,14 @@ import {
 import { SessionRepository } from '../../ports/session-repository.port';
 import { HandoffRepository } from '../../ports/handoff-repository.port';
 import { ApiToEngineClient } from '../../ports/api-to-engine-client.port';
-import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
+import {
+  AppendSessionEventUseCase,
+  conflitoDeSessaoEncerrada,
+} from '../sessions/append-session-event.use-case';
+import {
+  ConversaEmSessaoEncerradaError,
+  garantirQueSessaoAceitaEvento,
+} from '../../../domain/sessions/conversa-em-sessao-encerrada';
 import {
   canActivateAgent,
   AgentActivationBlockedError,
@@ -37,6 +44,21 @@ export class ActivateAgentUseCase {
   ) {
     const session = await this.sessions.findInProject(projectId, sessionId);
     if (!session) throw new NotFoundException('Sessão não encontrada');
+
+    // RN-581: o engine sobe o agente ANTES de o evento ser gravado; recusar
+    // só no funil deixaria um conversacional vivo numa sessão encerrada, que é
+    // o defeito que a RN fecha pelo outro lado (parar os vivos ao fechar).
+    try {
+      garantirQueSessaoAceitaEvento(session.status, 'agent.activated', {
+        kind: 'user',
+        id: userId,
+      });
+    } catch (error) {
+      if (error instanceof ConversaEmSessaoEncerradaError) {
+        throw conflitoDeSessaoEncerrada(error);
+      }
+      throw error;
+    }
 
     const existing = await this.handoffs.findBySession(sessionId);
     if (!canActivateAgent(agent, existing)) {

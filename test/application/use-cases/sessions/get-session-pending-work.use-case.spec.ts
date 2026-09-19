@@ -454,3 +454,145 @@ describe('GetSessionPendingWorkUseCase', () => {
     expect(r.motivo).toContain('blocked_by_container');
   });
 });
+
+/**
+ * QUINTO sinal (RN-581, AT-072). No `exp001` o heartbeat fechou a sessão com o
+ * Criativo esperando resposta: um Criativo que terminou o turno está `idle`,
+ * e nenhum dos quatro sinais acima o via.
+ */
+describe('GetSessionPendingWorkUseCase — conversa esperando o usuário (RN-581)', () => {
+  const fala = (
+    sessionId: string,
+    type: string,
+    actor: { kind: 'user' | 'agent' | 'system'; id: string },
+  ) =>
+    eventos.append({
+      id: ulid(),
+      sessionId,
+      seq: ++seqCounter,
+      type,
+      actor,
+      payload: { text: 'x' },
+    });
+
+  it('Criativo respondeu e o usuário não: pendente, COM o instante do fim do turno', async () => {
+    const { user, session } = await sessao();
+    await fala(session.id, 'chat.message', { kind: 'user', id: user.id });
+    await agentStatus(session.id, 'criativo', 'working');
+    const resposta = await fala(session.id, 'agent.response', {
+      kind: 'agent',
+      id: 'criativo',
+    });
+    await agentStatus(session.id, 'criativo', 'idle');
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(true);
+    expect(r.aguardandoUsuarioDesde).toBe(resposta.createdAt.toISOString());
+    expect(r.motivo).toContain('criativo');
+    expect(r.motivo).toContain('aguardando resposta do usuário');
+  });
+
+  it('pergunta em formulário (chat.structured_question) também é espera pelo usuário', async () => {
+    const { session } = await sessao();
+    await fala(session.id, 'chat.structured_question', {
+      kind: 'agent',
+      id: 'po',
+    });
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(true);
+    expect(r.aguardandoUsuarioDesde).not.toBeNull();
+  });
+
+  it('falha narrada (agent.error) de um conversacional devolve a vez ao usuário', async () => {
+    const { session } = await sessao();
+    await fala(session.id, 'agent.error', { kind: 'agent', id: 'arquiteto' });
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(true);
+    expect(r.aguardandoUsuarioDesde).not.toBeNull();
+  });
+
+  it('o usuário falou por último: ninguém espera o usuário', async () => {
+    const { user, session } = await sessao();
+    await fala(session.id, 'agent.response', { kind: 'agent', id: 'criativo' });
+    await fala(session.id, 'chat.message', { kind: 'user', id: user.id });
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(false);
+    expect(r.aguardandoUsuarioDesde).toBeNull();
+  });
+
+  it('resposta a formulário também conta como fala do usuário', async () => {
+    const { user, session } = await sessao();
+    await fala(session.id, 'chat.structured_question', {
+      kind: 'agent',
+      id: 'criativo',
+    });
+    await fala(session.id, 'chat.structured_question_answered', {
+      kind: 'user',
+      id: user.id,
+    });
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(false);
+  });
+
+  it('agent.response de quem NÃO é conversacional (Psicólogo, dev agent) não segura', async () => {
+    const { session } = await sessao();
+    await fala(session.id, 'agent.response', {
+      kind: 'agent',
+      id: 'psicologo',
+    });
+
+    expect((await useCase.execute(session.id)).pending).toBe(false);
+
+    await fala(session.id, 'agent.response', {
+      kind: 'agent',
+      id: 'dev-http-api',
+    });
+
+    expect((await useCase.execute(session.id)).pending).toBe(false);
+  });
+
+  it('um sinal SEM teto vence a espera de conversa: o instante vem nulo', async () => {
+    // Ação pendente numa conversa ociosa continua segurando sem teto, como
+    // sempre segurou — o teto é só da espera de conversa.
+    const { project, session } = await sessao();
+    await fala(session.id, 'agent.response', { kind: 'agent', id: 'criativo' });
+    await acaoPendente(project.id, session.id);
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(true);
+    expect(r.aguardandoUsuarioDesde).toBeNull();
+    expect(r.motivo).toContain('terminal');
+  });
+
+  it('agente em turno (working) vence a espera: o instante vem nulo', async () => {
+    const { session } = await sessao();
+    await fala(session.id, 'agent.response', { kind: 'agent', id: 'criativo' });
+    await agentStatus(session.id, 'criativo', 'working');
+
+    const r = await useCase.execute(session.id);
+
+    expect(r.pending).toBe(true);
+    expect(r.aguardandoUsuarioDesde).toBeNull();
+  });
+
+  it('fala de OUTRA sessão não segura esta', async () => {
+    const { project, session } = await sessao();
+    const [outra] = await db
+      .insert(sessions)
+      .values({ projectId: project.id, createdBy: session.createdBy })
+      .returning();
+    await fala(outra.id, 'agent.response', { kind: 'agent', id: 'criativo' });
+
+    expect((await useCase.execute(session.id)).pending).toBe(false);
+  });
+});

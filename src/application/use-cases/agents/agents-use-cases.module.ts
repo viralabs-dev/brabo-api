@@ -31,8 +31,9 @@ const USE_CASES = [
 ];
 
 @Module({
-  // `GitUseCasesModule` entra pelo gatilho da RN-522: aceitar o handoff para o
-  // Dev Lead provisiona o repositório. A seta é esta e não a contrária — quem
+  // `GitUseCasesModule` entra pelo gatilho da RN-582 (antes RN-522): aceitar o
+  // handoff para o Arquiteto — e, como segunda porta, para o Dev Lead —
+  // provisiona o repositório. A seta é esta e não a contrária — quem
   // aceita o handoff depende do provisionamento, e o provisionamento não sabe
   // que handoff existe. `git-use-cases.module.ts` não importa este módulo, então
   // não há ciclo.
