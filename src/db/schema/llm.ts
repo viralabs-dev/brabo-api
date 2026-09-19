@@ -66,6 +66,17 @@ export const priceChangeSourceEnum = pgEnum('price_change_source', [
 
 export const budgetPolicyEnum = pgEnum('budget_policy', ['block', 'allow']);
 
+// O critério com que um HUB escolhe o upstream (ADR 0166, RN-583). Mora aqui
+// porque as DUAS tabelas que o chamam — `model_bindings` (a decisão) e
+// `token_usage` (o que foi ao fio) — moram aqui. Literal, e não importado de
+// `domain/llm/routing-preference.ts`: este arquivo só importa TIPO do domínio,
+// e a igualdade das duas listas é travada por teste.
+export const routingPreferenceEnum = pgEnum('routing_preference', [
+  'price',
+  'throughput',
+  'latency',
+]);
+
 // user_credentials guarda tanto chaves de LLM quanto tokens de git do
 // usuário (github/gitlab) — enum dedicado em vez de alargar llm_provider
 // (que também serve models/token_usage, LLM-only de verdade) ou
@@ -228,6 +239,11 @@ export const modelBindings = pgTable(
     modelId: uuid('model_id')
       .notNull()
       .references(() => models.id),
+    // ADR 0166. `null` = o hub decide sozinho, o comportamento de antes. NÃO
+    // cascateia à parte: viaja com o binding que vence a cascata, e só existe
+    // para provider que declara `routingPreference` (o caso de uso recusa o
+    // resto, e troca de modelo para provider sem a capability a zera).
+    routingPreference: routingPreferenceEnum('routing_preference'),
     createdBy: uuid('created_by')
       .notNull()
       .references(() => users.id),
@@ -341,6 +357,12 @@ export const tokenUsage = pgTable(
     // aviso e não é nosso para versionar. `null` = não veio de hub, ou o hub
     // não informou.
     upstreamProvider: text('upstream_provider'),
+    // O critério de roteamento que FOI AO FIO nesta chamada (ADR 0166, RN-583)
+    // — congelado como o preço (RN-044): sem ele, comparar `upstream_provider`
+    // e `latency_ms` antes e depois de ligar `throughput` exigiria reconstruir
+    // o binding daquele instante. `null` = nada foi enviado (binding sem
+    // preferência, ou provider que não a declara).
+    routingPreference: routingPreferenceEnum('routing_preference'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

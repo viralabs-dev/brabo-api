@@ -60,6 +60,8 @@ export class AnthropicProvider implements LLMProvider {
     // operação, e por isso este é o único dos nove que não vira `true` nem
     // com credencial na mão (ADR 0075).
     embeddings: false,
+    // Não é hub: não há upstreams entre os quais escolher (ADR 0166).
+    routingPreference: false,
   };
 
   constructor(

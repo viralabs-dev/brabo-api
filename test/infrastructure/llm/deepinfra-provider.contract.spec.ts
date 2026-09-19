@@ -86,7 +86,9 @@ function dialetoDeepInfra(cenario: CenarioLLM, res: ServerResponse): void {
     escrever(res, {
       choices: [
         {
-          delta: { tool_calls: [{ index: 0, function: { arguments: argumentos } }] },
+          delta: {
+            tool_calls: [{ index: 0, function: { arguments: argumentos } }],
+          },
         },
       ],
     });
@@ -136,6 +138,7 @@ describe('DeepInfraProvider — quirks (Fase 11b)', () => {
       // Nenhum smoke com credencial provou o `/embeddings` deste provider
       // (ADR 0075) — a base sabe falar o dialeto, o provider nao declara.
       embeddings: false,
+      routingPreference: false,
     });
     expect(DEEPINFRA_BASE_URL).toBe('https://api.deepinfra.com/v1/openai');
   });
@@ -193,7 +196,10 @@ describe('parseCatalogoDeepInfra', () => {
   it('sem `tags` nenhuma (ou não-array) é descartado — nunca assume "é chat" por omissão', () => {
     const catalogo = parseCatalogoDeepInfra({
       data: [
-        { id: 'sem-tags', metadata: { pricing: { input_tokens: 1, output_tokens: 1 } } },
+        {
+          id: 'sem-tags',
+          metadata: { pricing: { input_tokens: 1, output_tokens: 1 } },
+        },
       ],
     });
     expect(catalogo).toEqual([]);

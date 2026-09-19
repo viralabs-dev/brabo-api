@@ -5,11 +5,13 @@ import {
   ModelNotFitForAgentScopeError,
 } from '../../../domain/llm/model-capabilities';
 import { ScopeIdSemProjetoError } from '../../../domain/llm/binding-scope-id';
+import { RoutingPreferenceNotSupportedError } from '../../../domain/llm/routing-preference';
 
 type ErroCapturado =
   | ModelNotFitForAgentScopeError
   | ModelNotBindableError
-  | ScopeIdSemProjetoError;
+  | ScopeIdSemProjetoError
+  | RoutingPreferenceNotSupportedError;
 
 /**
  * 422, e não 400: o pedido está bem formado e o modelo referenciado existe —
@@ -33,6 +35,9 @@ type ErroCapturado =
   ModelNotFitForAgentScopeError,
   ModelNotBindableError,
   ScopeIdSemProjetoError,
+  // ADR 0166: preferência de roteamento para provider que não a declara — 422,
+  // pelo mesmo motivo das outras: a combinação é que não se sustenta.
+  RoutingPreferenceNotSupportedError,
 )
 export class LlmBindingErrorFilter implements ExceptionFilter {
   catch(exception: ErroCapturado, host: ArgumentsHost) {

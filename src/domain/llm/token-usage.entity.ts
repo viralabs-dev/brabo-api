@@ -1,4 +1,4 @@
-import type { LLMProviderName } from '@brabo/shared';
+import type { LLMProviderName, RoutingPreference } from '@brabo/shared';
 import type { Actor } from '../sessions/session-event.entity';
 import type { ModelBindingScope } from './model-binding-scope';
 
@@ -26,5 +26,10 @@ export interface TokenUsage {
   bindingOrigin: ModelBindingScope | null;
   /** Quem serviu de fato, quando a chamada passou por um hub (Fase 9b). */
   upstreamProvider: string | null;
+  /**
+   * O critério de roteamento que FOI AO FIO (ADR 0166, RN-583), congelado como
+   * o preço. `null` = nada foi enviado.
+   */
+  routingPreference: RoutingPreference | null;
   createdAt: Date;
 }

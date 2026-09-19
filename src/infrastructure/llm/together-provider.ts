@@ -93,6 +93,8 @@ export function togetherConfig(
       // Sem `TOGETHER_TEST_KEY` no ambiente nenhum smoke rodou contra o
       // `/embeddings` real (ADR 0075).
       embeddings: false,
+      // Não é hub: não há upstreams entre os quais escolher (ADR 0166).
+      routingPreference: false,
     },
     authHeaders: (apiKey) => ({
       Authorization: `Bearer ${apiKey ?? ''}`,

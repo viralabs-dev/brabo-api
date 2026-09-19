@@ -1,18 +1,16 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
 import { createTestDb, truncateAll } from '../../../support/test-db';
-import {
-  models,
-  projects,
-  users,
-  workspaces,
-} from '../../../../src/db/schema';
+import { models, projects, users, workspaces } from '../../../../src/db/schema';
 import { DrizzleModelBindingRepository } from '../../../../src/infrastructure/persistence/drizzle/model-binding.repository';
 import { DrizzleModelRepository } from '../../../../src/infrastructure/persistence/drizzle/model.repository';
 import { DrizzleWorkspaceModelRepository } from '../../../../src/infrastructure/persistence/drizzle/workspace-model.repository';
 import { DrizzleProjectRepository } from '../../../../src/infrastructure/persistence/drizzle/project.repository';
 import { SetModelBindingUseCase } from '../../../../src/application/use-cases/llm/set-model-binding.use-case';
 import { ModelNotFitForAgentScopeError } from '../../../../src/domain/llm/model-capabilities';
+import { RoutingPreferenceNotSupportedError } from '../../../../src/domain/llm/routing-preference';
+import type { LLMProvider } from '../../../../src/application/ports/llm-provider.port';
+import type { LLMProviderRegistry } from '../../../../src/application/ports/llm-provider-registry.port';
 import {
   chaveDeAgente,
   chaveDeArea,
@@ -22,11 +20,31 @@ import {
 const { db, pool } = createTestDb();
 const modelRepo = new DrizzleModelRepository(db);
 const workspaceModelRepo = new DrizzleWorkspaceModelRepository(db);
+/**
+ * Registro FALSO de providers: só as capabilities importam aqui. O OpenRouter
+ * declara `routingPreference` conforme `hubAceita` — o estado de produção é
+ * `false` (não provado, ADR 0166), e os testes que precisam do `true` ligam.
+ */
+let hubAceita = false;
+const registry: LLMProviderRegistry = {
+  get: (name) =>
+    ({
+      name,
+      capabilities: {
+        streaming: true,
+        toolCalling: true,
+        listModels: false,
+        embeddings: false,
+        routingPreference: name === 'openrouter' && hubAceita,
+      },
+    }) as unknown as LLMProvider,
+};
 const useCase = new SetModelBindingUseCase(
   new DrizzleModelBindingRepository(db),
   modelRepo,
   workspaceModelRepo,
   new DrizzleProjectRepository(db),
+  registry,
 );
 
 async function setup() {
@@ -88,6 +106,7 @@ async function setup() {
 }
 
 beforeEach(async () => {
+  hubAceita = false;
   await truncateAll(db);
 });
 
@@ -284,5 +303,103 @@ describe('SetModelBindingUseCase', () => {
     await expect(
       useCase.execute('area', 'qa', comFerramentas.id, user.id),
     ).rejects.toThrow(ScopeIdSemProjetoError);
+  });
+});
+
+describe('SetModelBindingUseCase — preferência de roteamento (ADR 0166, RN-583)', () => {
+  async function comHub() {
+    const base = await setup();
+    const [doHub] = await db
+      .insert(models)
+      .values({
+        provider: 'openrouter',
+        name: '~deepseek/deepseek-v4-flash-latest',
+        displayName: 'DeepSeek V4 Flash',
+        supportsToolCalling: true,
+      })
+      .returning();
+    await base.ativarNoWorkspace(doHub.id);
+    await base.ativarNoWorkspace(base.comFerramentas.id);
+    return { ...base, doHub };
+  }
+
+  it('caminho feliz: grava a preferência num binding de provider que declara a capability', async () => {
+    hubAceita = true;
+    const { user, project, doHub } = await comHub();
+
+    const binding = await useCase.execute(
+      'area',
+      chaveDeArea(project.id, 'dev'),
+      doHub.id,
+      user.id,
+      'throughput',
+    );
+
+    expect(binding.routingPreference).toBe('throughput');
+  });
+
+  it('falha: provider sem a capability recusa — e NADA é gravado', async () => {
+    const { user, project, doHub } = await comHub();
+    // `hubAceita = false`: o estado de produção enquanto o smoke não rodar.
+    const scopeId = chaveDeAgente(project.id, 'dev-backend');
+
+    await expect(
+      useCase.execute('agent', scopeId, doHub.id, user.id, 'throughput'),
+    ).rejects.toThrow(RoutingPreferenceNotSupportedError);
+    expect(
+      await new DrizzleModelBindingRepository(db).findOne('agent', scopeId),
+    ).toBeNull();
+  });
+
+  it('campo AUSENTE preserva o critério gravado — a troca de modelo de sempre não o apaga', async () => {
+    hubAceita = true;
+    const { user, project, doHub } = await comHub();
+    const scopeId = chaveDeAgente(project.id, 'po');
+    await useCase.execute('agent', scopeId, doHub.id, user.id, 'latency');
+
+    const regravado = await useCase.execute(
+      'agent',
+      scopeId,
+      doHub.id,
+      user.id,
+    );
+
+    expect(regravado.routingPreference).toBe('latency');
+  });
+
+  it('trocar para modelo de provider SEM a capability zera o critério em vez de recusar a troca', async () => {
+    hubAceita = true;
+    const { user, project, doHub, comFerramentas } = await comHub();
+    const scopeId = chaveDeAgente(project.id, 'po');
+    await useCase.execute('agent', scopeId, doHub.id, user.id, 'price');
+
+    const trocado = await useCase.execute(
+      'agent',
+      scopeId,
+      comFerramentas.id,
+      user.id,
+    );
+
+    expect(trocado).toMatchObject({
+      modelId: comFerramentas.id,
+      routingPreference: null,
+    });
+  });
+
+  it('`null` explícito limpa', async () => {
+    hubAceita = true;
+    const { user, project, doHub } = await comHub();
+    const scopeId = chaveDeAgente(project.id, 'po');
+    await useCase.execute('agent', scopeId, doHub.id, user.id, 'price');
+
+    const limpo = await useCase.execute(
+      'agent',
+      scopeId,
+      doHub.id,
+      user.id,
+      null,
+    );
+
+    expect(limpo.routingPreference).toBeNull();
   });
 });

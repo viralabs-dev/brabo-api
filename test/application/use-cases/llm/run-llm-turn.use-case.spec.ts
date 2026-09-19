@@ -30,7 +30,11 @@ import { RecordLlmUsageUseCase } from '../../../../src/application/use-cases/llm
 import { RunLlmTurnUseCase } from '../../../../src/application/use-cases/llm/run-llm-turn.use-case';
 import type { LLMProvider } from '../../../../src/application/ports/llm-provider.port';
 import type { LLMProviderRegistry } from '../../../../src/application/ports/llm-provider-registry.port';
-import type { ChatStreamChunk, LLMProviderName } from '@brabo/shared';
+import type {
+  ChatOptions,
+  ChatStreamChunk,
+  LLMProviderName,
+} from '@brabo/shared';
 import { BraboMetrics } from '../../../../src/infrastructure/observability/brabo-metrics';
 
 const { db, pool } = createTestDb();
@@ -74,6 +78,7 @@ class FakeProvider implements LLMProvider {
     toolCalling: true,
     listModels: false,
     embeddings: false,
+    routingPreference: false,
   };
   constructor(private readonly script: ChatStreamChunk[]) {}
   async *chat(): AsyncGenerator<ChatStreamChunk> {
@@ -89,6 +94,7 @@ class ThrowingProvider implements LLMProvider {
     toolCalling: true,
     listModels: false,
     embeddings: false,
+    routingPreference: false,
   };
   async *chat(): AsyncGenerator<ChatStreamChunk> {
     await Promise.resolve();
@@ -270,5 +276,91 @@ describe('RunLlmTurnUseCase', () => {
       .from(tokenUsage)
       .where(eq(tokenUsage.sessionId, session.id));
     expect(usageRows).toHaveLength(0);
+  });
+});
+
+describe('RunLlmTurnUseCase — preferência de roteamento (ADR 0166, RN-583)', () => {
+  /** Guarda as `ChatOptions` recebidas: é o que o adapter põe no fio. */
+  class ProviderQueAnota implements LLMProvider {
+    name: LLMProviderName = 'ollama';
+    recebidas: ChatOptions[] = [];
+    readonly capabilities;
+    constructor(aceitaRoteamento: boolean) {
+      this.capabilities = {
+        streaming: true,
+        toolCalling: true,
+        listModels: false,
+        embeddings: false,
+        routingPreference: aceitaRoteamento,
+      };
+    }
+    async *chat(
+      _messages: unknown,
+      options: ChatOptions,
+    ): AsyncGenerator<ChatStreamChunk> {
+      await Promise.resolve();
+      this.recebidas.push(options);
+      yield { type: 'text_delta', text: 'ok' };
+      yield {
+        type: 'usage',
+        inputTokens: 5,
+        outputTokens: 2,
+        estimated: false,
+        upstreamProvider: 'Baidu',
+      };
+    }
+  }
+
+  async function comPreferencia() {
+    const base = await setup();
+    await bindingRepo.upsert({
+      scope: 'workspace',
+      scopeId: base.workspace.id,
+      modelId: base.model.id,
+      routingPreference: 'throughput',
+      createdBy: base.owner.id,
+    });
+    return base;
+  }
+
+  it('caminho feliz: o critério do binding vencedor vai ao provider e congela em token_usage, ao lado do upstream', async () => {
+    const { project, session } = await comPreferencia();
+    const provider = new ProviderQueAnota(true);
+
+    await buildUseCase(provider).execute({
+      projectId: project.id,
+      sessionId: session.id,
+      agentId: 'echo',
+      messages: [{ role: 'user', content: 'oi' }],
+    });
+
+    expect(provider.recebidas[0]?.routingPreference).toBe('throughput');
+    const [linha] = await db
+      .select()
+      .from(tokenUsage)
+      .where(eq(tokenUsage.sessionId, session.id));
+    expect(linha).toMatchObject({
+      routingPreference: 'throughput',
+      upstreamProvider: 'Baidu',
+    });
+  });
+
+  it('provider sem a capability: nada vai ao fio e a linha registra null — o que não foi enviado não é procedência', async () => {
+    const { project, session } = await comPreferencia();
+    const provider = new ProviderQueAnota(false);
+
+    await buildUseCase(provider).execute({
+      projectId: project.id,
+      sessionId: session.id,
+      agentId: 'echo',
+      messages: [{ role: 'user', content: 'oi' }],
+    });
+
+    expect(provider.recebidas[0]).not.toHaveProperty('routingPreference');
+    const [linha] = await db
+      .select()
+      .from(tokenUsage)
+      .where(eq(tokenUsage.sessionId, session.id));
+    expect(linha.routingPreference).toBeNull();
   });
 });

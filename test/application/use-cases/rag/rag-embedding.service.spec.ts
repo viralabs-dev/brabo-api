@@ -13,6 +13,7 @@ class FakeEmbeddingProvider implements LLMProvider {
     toolCalling: false,
     listModels: false,
     embeddings: true,
+    routingPreference: false,
   };
   calls: string[][] = [];
 
@@ -39,6 +40,7 @@ class ThrowingEmbeddingProvider implements LLMProvider {
     toolCalling: false,
     listModels: false,
     embeddings: true,
+    routingPreference: false,
   };
 
   async *chat(): AsyncGenerator<never> {
@@ -57,6 +59,7 @@ class NoEmbedProvider implements LLMProvider {
     toolCalling: true,
     listModels: false,
     embeddings: false,
+    routingPreference: false,
   };
 
   async *chat(): AsyncGenerator<never> {
@@ -73,7 +76,10 @@ describe('RagEmbeddingService', () => {
     const provider = new FakeEmbeddingProvider();
     const service = new RagEmbeddingService(registryWith(provider));
 
-    const textos = Array.from({ length: RAG_EMBED_BATCH_SIZE + 5 }, (_, i) => `texto ${i}`);
+    const textos = Array.from(
+      { length: RAG_EMBED_BATCH_SIZE + 5 },
+      (_, i) => `texto ${i}`,
+    );
     const resultado = await service.embedMany(textos);
 
     expect(resultado.available).toBe(true);
@@ -96,7 +102,9 @@ describe('RagEmbeddingService', () => {
   });
 
   it('CASO DE FALHA: provider sem a capability degrada para available: false, sem lançar', async () => {
-    const service = new RagEmbeddingService(registryWith(new NoEmbedProvider()));
+    const service = new RagEmbeddingService(
+      registryWith(new NoEmbedProvider()),
+    );
 
     const resultado = await service.embedMany(['a', 'b']);
 
@@ -106,7 +114,9 @@ describe('RagEmbeddingService', () => {
   });
 
   it('CASO DE FALHA: provider que lança no meio do lote degrada o restante para null, sem lançar', async () => {
-    const service = new RagEmbeddingService(registryWith(new ThrowingEmbeddingProvider()));
+    const service = new RagEmbeddingService(
+      registryWith(new ThrowingEmbeddingProvider()),
+    );
 
     const resultado = await service.embedMany(['a', 'b', 'c']);
 
@@ -116,7 +126,9 @@ describe('RagEmbeddingService', () => {
   });
 
   it('embedQuery devolve o vetor único, ou null com o motivo quando indisponível', async () => {
-    const ok = new RagEmbeddingService(registryWith(new FakeEmbeddingProvider()));
+    const ok = new RagEmbeddingService(
+      registryWith(new FakeEmbeddingProvider()),
+    );
     const okResultado = await ok.embedQuery('pergunta');
     expect(okResultado.available).toBe(true);
     expect(okResultado.vector).toEqual([0, 1, 2]);

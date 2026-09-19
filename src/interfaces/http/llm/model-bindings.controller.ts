@@ -96,6 +96,7 @@ export class ModelBindingsController {
       workspaceId,
       dto.modelId,
       user.id,
+      dto.routingPreference,
     );
   }
 
@@ -120,7 +121,13 @@ export class ModelBindingsController {
     @CurrentUser() user: User,
     @Body() dto: SetModelBindingDto,
   ) {
-    return this.setBinding.execute('project', projectId, dto.modelId, user.id);
+    return this.setBinding.execute(
+      'project',
+      projectId,
+      dto.modelId,
+      user.id,
+      dto.routingPreference,
+    );
   }
 
   /** Retorna o binding RESOLVIDO (cascata aplicada) + a origem — não o binding cru de sessão. */
@@ -168,7 +175,13 @@ export class ModelBindingsController {
     @CurrentUser() user: User,
     @Body() dto: SetModelBindingDto,
   ) {
-    return this.setBinding.execute('session', sessionId, dto.modelId, user.id);
+    return this.setBinding.execute(
+      'session',
+      sessionId,
+      dto.modelId,
+      user.id,
+      dto.routingPreference,
+    );
   }
 
   /** Binding RESOLVIDO (cascata workspace→projeto→área→agente, sem sessão). */
@@ -215,6 +228,7 @@ export class ModelBindingsController {
       chaveDeAgente(projectId, agentSlug),
       dto.modelId,
       user.id,
+      dto.routingPreference,
     );
   }
 
@@ -289,6 +303,7 @@ export class ModelBindingsController {
       chaveDeArea(projectId, areaKey),
       dto.modelId,
       user.id,
+      dto.routingPreference,
     );
   }
 

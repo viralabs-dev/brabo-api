@@ -5,6 +5,7 @@ import { OpenAICompatibleProvider } from '../../../src/infrastructure/llm/openai
 import {
   OPENROUTER_BASE_URL,
   OpenRouterProvider,
+  campoDeRoteamentoOpenRouter,
   openrouterConfig,
   parseCatalogoOpenRouter,
   parseErrorFrameOpenRouter,
@@ -127,6 +128,7 @@ describe('OpenRouterProvider — quirks (Fase 11a)', () => {
       // Nenhum smoke com credencial provou o `/embeddings` deste provider
       // (ADR 0075) — a base sabe falar o dialeto, o provider nao declara.
       embeddings: false,
+      routingPreference: false,
     });
     expect(OPENROUTER_BASE_URL).toBe('https://openrouter.ai/api/v1');
   });
@@ -187,6 +189,95 @@ describe('OpenRouterProvider — quirks (Fase 11a)', () => {
 
     expect(chunks.find((c) => c.type === 'usage')).toMatchObject({
       upstreamProvider: 'openai',
+    });
+  });
+});
+
+describe('OpenRouterProvider — preferência de roteamento (ADR 0166, RN-583)', () => {
+  /**
+   * A config de PRODUÇÃO com a capability LIGADA — é o estado que o smoke com
+   * credencial real autoriza, e o único jeito de exercitar o fio enquanto a
+   * flag de produção continua `false` (não provada).
+   */
+  const comCapability = (baseUrl: string) => {
+    const base = openrouterConfig(baseUrl);
+    return new OpenAICompatibleProvider(
+      {
+        ...base,
+        capabilities: { ...base.capabilities, routingPreference: true },
+      },
+      new GptTokenizerEstimator(),
+    );
+  };
+
+  async function pedido(
+    provider: OpenAICompatibleProvider,
+    servidor: Awaited<ReturnType<typeof subirServidorFalso>>,
+    routingPreference?: 'price' | 'throughput' | 'latency',
+  ) {
+    for await (const _ of provider.chat([{ role: 'user', content: 'oi' }], {
+      model: '~deepseek/deepseek-v4-flash-latest',
+      ...(routingPreference ? { routingPreference } : {}),
+    })) {
+      // drena
+    }
+    return servidor.ultimoPedido();
+  }
+
+  it.each(['price', 'throughput', 'latency'] as const)(
+    'com a capability e preferência "%s", o corpo leva provider.sort',
+    async (preferencia) => {
+      const servidor = await subirServidorFalso(dialetoOpenRouter);
+      const corpo = await pedido(
+        comCapability(servidor.baseUrl),
+        servidor,
+        preferencia,
+      );
+      await servidor.fechar();
+
+      expect(corpo?.provider).toEqual({ sort: preferencia });
+    },
+  );
+
+  it('sem preferência no binding, NADA de provider no corpo — o comportamento de antes', async () => {
+    const servidor = await subirServidorFalso(dialetoOpenRouter);
+    const corpo = await pedido(comCapability(servidor.baseUrl), servidor);
+    await servidor.fechar();
+
+    expect(corpo).toBeDefined();
+    expect(corpo).not.toHaveProperty('provider');
+  });
+
+  it('a config de PRODUÇÃO (capability não provada) IGNORA a preferência em vez de mandá-la', async () => {
+    const servidor = await subirServidorFalso(dialetoOpenRouter);
+    const corpo = await pedido(
+      new OpenAICompatibleProvider(
+        openrouterConfig(servidor.baseUrl),
+        new GptTokenizerEstimator(),
+      ),
+      servidor,
+      'throughput',
+    );
+    await servidor.fechar();
+
+    expect(corpo).not.toHaveProperty('provider');
+  });
+
+  it('só o OpenRouter tem o fio: provider sem `campoDeRoteamento` não pode declarar a capability', () => {
+    const base = openrouterConfig('http://127.0.0.1:1');
+    expect(
+      () =>
+        new OpenAICompatibleProvider({
+          ...base,
+          campoDeRoteamento: undefined,
+          capabilities: { ...base.capabilities, routingPreference: true },
+        }),
+    ).toThrow(/routingPreference.*campoDeRoteamento/);
+  });
+
+  it('o formato é o do hub: `provider: { sort }`, e nada além do sort', () => {
+    expect(campoDeRoteamentoOpenRouter('latency')).toEqual({
+      provider: { sort: 'latency' },
     });
   });
 });

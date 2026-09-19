@@ -53,7 +53,9 @@ function dialetoBitdeer(cenario: CenarioLLM, res: ServerResponse): void {
     escrever(res, {
       choices: [
         {
-          delta: { tool_calls: [{ index: 0, function: { arguments: argumentos } }] },
+          delta: {
+            tool_calls: [{ index: 0, function: { arguments: argumentos } }],
+          },
         },
       ],
     });
@@ -103,6 +105,7 @@ describe('BitdeerProvider — quirks (Fase 11b)', () => {
       // Nenhum smoke com credencial provou o `/embeddings` deste provider
       // (ADR 0075) — a base sabe falar o dialeto, o provider nao declara.
       embeddings: false,
+      routingPreference: false,
     });
     expect(BITDEER_BASE_URL).toBe('https://api-inference.bitdeer.ai/v1');
   });

@@ -36,7 +36,13 @@ function dialetoTogether(cenario: CenarioLLM, res: ServerResponse): void {
           id,
           display_name: id,
           context_length: 131_072,
-          pricing: { input: 0.88, output: 0.88, base: 0, hourly: 0, finetune: 0 },
+          pricing: {
+            input: 0.88,
+            output: 0.88,
+            base: 0,
+            hourly: 0,
+            finetune: 0,
+          },
         })),
       }),
     );
@@ -65,7 +71,9 @@ function dialetoTogether(cenario: CenarioLLM, res: ServerResponse): void {
     escrever(res, {
       choices: [
         {
-          delta: { tool_calls: [{ index: 0, function: { arguments: argumentos } }] },
+          delta: {
+            tool_calls: [{ index: 0, function: { arguments: argumentos } }],
+          },
         },
       ],
     });
@@ -115,6 +123,7 @@ describe('TogetherProvider — quirks (Fase 11b)', () => {
       // Nenhum smoke com credencial provou o `/embeddings` deste provider
       // (ADR 0075) — a base sabe falar o dialeto, o provider nao declara.
       embeddings: false,
+      routingPreference: false,
     });
     expect(TOGETHER_BASE_URL).toBe('https://api.together.ai/v1');
   });
@@ -128,7 +137,13 @@ describe('parseCatalogoTogether', () => {
           id: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
           display_name: 'Llama 3.3 70B Instruct Turbo',
           context_length: 131_072,
-          pricing: { input: 0.88, output: 0.88, base: 0, hourly: 0, finetune: 0 },
+          pricing: {
+            input: 0.88,
+            output: 0.88,
+            base: 0,
+            hourly: 0,
+            finetune: 0,
+          },
         },
       ],
     });
@@ -164,9 +179,7 @@ describe('parseCatalogoTogether', () => {
 
   it('pricing negativo ou não-numérico é ignorado, nunca vira preço negativo gravado', () => {
     const catalogo = parseCatalogoTogether({
-      data: [
-        { id: 'modelo-1', pricing: { input: -1, output: 'grátis' } },
-      ],
+      data: [{ id: 'modelo-1', pricing: { input: -1, output: 'grátis' } }],
     });
     expect(catalogo).toEqual([{ name: 'modelo-1' }]);
   });

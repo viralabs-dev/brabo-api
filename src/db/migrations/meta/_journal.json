@@ -421,6 +421,13 @@
       "when": 1789251753464,
       "tag": "0059_key_id_no_envelope",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1789780309390,
+      "tag": "0060_preferencia_de_roteamento",
+      "breakpoints": true
     }
   ]
 }

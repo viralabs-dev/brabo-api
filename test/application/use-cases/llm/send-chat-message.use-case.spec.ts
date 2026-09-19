@@ -72,6 +72,7 @@ class FakeProvider implements LLMProvider {
     toolCalling: true,
     listModels: false,
     embeddings: false,
+    routingPreference: false,
   };
   callCount = 0;
 
@@ -93,6 +94,7 @@ class ThrowingProvider implements LLMProvider {
     toolCalling: true,
     listModels: false,
     embeddings: false,
+    routingPreference: false,
   };
   callCount = 0;
 

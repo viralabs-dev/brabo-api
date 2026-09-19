@@ -41,6 +41,7 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
         latencyMs: input.latencyMs,
         bindingOrigin: input.bindingOrigin,
         upstreamProvider: input.upstreamProvider,
+        routingPreference: input.routingPreference,
       })
       .returning();
 
@@ -60,6 +61,7 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
       latencyMs: row.latencyMs,
       bindingOrigin: row.bindingOrigin,
       upstreamProvider: row.upstreamProvider,
+      routingPreference: row.routingPreference,
       createdAt: row.createdAt,
     };
   }
