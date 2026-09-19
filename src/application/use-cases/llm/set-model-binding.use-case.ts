@@ -3,7 +3,10 @@ import { ModelBindingRepository } from '../../ports/model-binding-repository.por
 import { ModelRepository } from '../../ports/model-repository.port';
 import { WorkspaceModelRepository } from '../../ports/workspace-model-repository.port';
 import { ProjectRepository } from '../../ports/project-repository.port';
+import type { RoutingPreference } from '@brabo/shared';
+import { LLMProviderRegistry } from '../../ports/llm-provider-registry.port';
 import type { ModelBindingScope } from '../../../domain/llm/model-binding-scope';
+import { preferenciaDoBinding } from '../../../domain/llm/routing-preference';
 import {
   assertModelFitsBindingScope,
   assertModelIsBindable,
@@ -21,13 +24,20 @@ export class SetModelBindingUseCase {
     private readonly models: ModelRepository,
     private readonly workspaceModels: WorkspaceModelRepository,
     private readonly projects: ProjectRepository,
+    private readonly llmProviders: LLMProviderRegistry,
   ) {}
 
+  /**
+   * `routingPreference` (ADR 0166, ponto 3): AUSENTE preserva a gravada se o
+   * provider do modelo aceita (senão zera), `null` limpa, e valor para
+   * provider sem a capability é 422 — ver `preferenciaDoBinding`.
+   */
   async execute(
     scope: ModelBindingScope,
     scopeId: string,
     modelId: string,
     createdBy: string,
+    routingPreference?: RoutingPreference | null,
   ) {
     // Antes de tudo: `scope_id` de `agent`/`area` sem projeto (ADR 0064) é
     // binding que a cascata nunca mais encontraria — recusa em vez de gravar
@@ -53,7 +63,23 @@ export class SetModelBindingUseCase {
         : await this.workspaceModels.isActive(workspaceId, modelId),
     );
 
-    return this.bindings.upsert({ scope, scopeId, modelId, createdBy });
+    // Depois das recusas de modelo de propósito: trocar de modelo não resolve
+    // a curadoria, e a frase da preferência só faz sentido sobre um modelo
+    // que PODE ser vinculado.
+    const gravado = await this.bindings.findOne(scope, scopeId);
+    const preferencia = preferenciaDoBinding({
+      pedida: routingPreference,
+      gravada: gravado?.routingPreference ?? null,
+      provider: this.llmProviders.get(model.provider),
+    });
+
+    return this.bindings.upsert({
+      scope,
+      scopeId,
+      modelId,
+      routingPreference: preferencia,
+      createdBy,
+    });
   }
 
   /**

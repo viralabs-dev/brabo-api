@@ -10,6 +10,7 @@ import { ResolveModelBindingUseCase } from './resolve-model-binding.use-case';
 import { CheckBudgetGateUseCase } from './check-budget-gate.use-case';
 import { RecordLlmUsageUseCase } from './record-llm-usage.use-case';
 import { ResolveCredentialOwnerUseCase } from './resolve-credential-owner.use-case';
+import { preferenciaEnviada } from '../../../domain/llm/routing-preference';
 import { calculateCostMicros } from '../../../domain/llm/cost-calculator';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
 
@@ -108,6 +109,12 @@ export class RunLlmTurnUseCase {
     }
 
     const provider = this.llmProviders.get(model.provider);
+    // O critério do binding VENCEDOR, e só se este provider o declara — é o
+    // que vai ao fio e o que congela no metering (ADR 0166, RN-583).
+    const routingPreference = preferenciaEnviada(
+      binding.routingPreference,
+      provider.capabilities,
+    );
     let fullText = '';
     let toolCalls: ToolCall[] = [];
     let inputTokens = 0;
@@ -122,6 +129,7 @@ export class RunLlmTurnUseCase {
         model: model.name,
         apiKey,
         tools: input.tools,
+        ...(routingPreference ? { routingPreference } : {}),
       })) {
         if (chunk.type === 'text_delta') {
           fullText += chunk.text;
@@ -176,6 +184,7 @@ export class RunLlmTurnUseCase {
         latencyMs,
         bindingOrigin: binding.origin,
         upstreamProvider,
+        routingPreference,
       });
     });
 

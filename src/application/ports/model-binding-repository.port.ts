@@ -1,3 +1,4 @@
+import type { RoutingPreference } from '@brabo/shared';
 import type { ModelBinding } from '../../domain/llm/model-binding.entity';
 import type { ModelBindingScope } from '../../domain/llm/model-binding-scope';
 import type { ScopedBinding } from '../../domain/llm/binding-resolver';
@@ -17,6 +18,8 @@ export abstract class ModelBindingRepository {
     scope: ModelBindingScope;
     scopeId: string;
     modelId: string;
+    /** Valor FINAL, já decidido pelo caso de uso (ADR 0166, ponto 3). */
+    routingPreference: RoutingPreference | null;
     createdBy: string;
   }): Promise<ModelBinding>;
 

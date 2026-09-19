@@ -9,6 +9,7 @@ import type {
   LLMProviderCapabilities,
   LLMProviderName,
   ModeloDoCatalogo,
+  RoutingPreference,
   ToolCall,
   ToolDef,
 } from '@brabo/shared';
@@ -93,6 +94,20 @@ export type ParseErrorFrame = (
  */
 export type ParseCatalogo = (corpo: unknown) => ModeloDoCatalogo[];
 
+/**
+ * Como um HUB recebe o critério de roteamento (ADR 0166). O OpenRouter o quer
+ * em `provider: { sort }`; outro hub pode querer outro campo, e por isso o
+ * formato é da config, não da base.
+ *
+ * Só é chamado quando `capabilities.routingPreference` é `true` E o binding
+ * vencedor tem preferência. Declarar a capability sem este hook é erro de
+ * config e falha na construção — a capability afirmaria um campo que nunca
+ * iria ao fio.
+ */
+export type CampoDeRoteamento = (
+  preferencia: RoutingPreference,
+) => Record<string, unknown>;
+
 export interface OpenAICompatibleConfig {
   readonly name: LLMProviderName;
   /** Sem barra no fim — `/chat/completions` é concatenado. */
@@ -106,6 +121,8 @@ export interface OpenAICompatibleConfig {
   readonly parseCatalogo?: ParseCatalogo;
   /** Só em hubs — ver `ParseErrorFrame`. Ausente = nenhum frame é erro. */
   readonly parseErrorFrame?: ParseErrorFrame;
+  /** Só em hubs — ver `CampoDeRoteamento`. */
+  readonly campoDeRoteamento?: CampoDeRoteamento;
 }
 
 /**
@@ -131,6 +148,12 @@ export class OpenAICompatibleProvider implements LLMProvider {
   ) {
     this.name = config.name;
     this.capabilities = config.capabilities;
+    if (config.capabilities.routingPreference && !config.campoDeRoteamento) {
+      throw new Error(
+        `${config.name} declara \`routingPreference\` sem \`campoDeRoteamento\` ` +
+          '— a capability afirmaria um campo que nunca iria ao fio (ADR 0166).',
+      );
+    }
   }
 
   async *chat(
@@ -377,6 +400,13 @@ export class OpenAICompatibleProvider implements LLMProvider {
       options.tools &&
       options.tools.length > 0
         ? { tools: options.tools.map(toWireTool) }
+        : {}),
+      // Só com a capability PROVADA e com preferência no binding (ADR 0166):
+      // provider que não a declara ignora o campo em vez de falhar por ele.
+      ...(this.capabilities.routingPreference &&
+      options.routingPreference &&
+      this.config.campoDeRoteamento
+        ? this.config.campoDeRoteamento(options.routingPreference)
         : {}),
     };
   }

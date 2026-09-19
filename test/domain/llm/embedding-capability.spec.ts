@@ -12,10 +12,12 @@ const QUE_EMBEDA: LLMProviderCapabilities = {
   toolCalling: true,
   listModels: true,
   embeddings: true,
+  routingPreference: false,
 };
 const QUE_NAO_EMBEDA: LLMProviderCapabilities = {
   ...QUE_EMBEDA,
   embeddings: false,
+  routingPreference: false,
 };
 
 describe('capability de embedding em duas camadas (ADR 0075)', () => {

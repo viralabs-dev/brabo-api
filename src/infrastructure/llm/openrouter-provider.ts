@@ -1,5 +1,5 @@
 import { Injectable, Optional } from '@nestjs/common';
-import type { ModeloDoCatalogo } from '@brabo/shared';
+import type { ModeloDoCatalogo, RoutingPreference } from '@brabo/shared';
 import { TokenEstimator } from '../../application/ports/token-estimator.port';
 import {
   OpenAICompatibleProvider,
@@ -200,6 +200,19 @@ export function parseErrorFrameOpenRouter(
 }
 
 /**
+ * O critério de roteamento no formato do OpenRouter: `provider: { sort }`,
+ * com o MESMO vocabulário de `RoutingPreference` (`price`, `throughput`,
+ * `latency`). Só o `sort` — os outros campos do objeto `provider` (`order`,
+ * `only`, `ignore`, `allow_fallbacks`, `max_price`) não foram pedidos e cada
+ * um é decisão de produto própria (ADR 0166).
+ */
+export function campoDeRoteamentoOpenRouter(
+  preferencia: RoutingPreference,
+): Record<string, unknown> {
+  return { provider: { sort: preferencia } };
+}
+
+/**
  * A extração é exportada à parte, como as demais funções de config deste
  * arquivo, para a suite de contrato exercitar ESTA config apontando pro
  * servidor falso — não uma cópia escrita no teste.
@@ -221,6 +234,13 @@ export function openrouterConfig(
       // hub roteia embedding para provedores diferentes dos de chat, e a prova
       // de um endpoint não é prova do outro (ADR 0075).
       embeddings: false,
+      // NÃO PROVADO (ADR 0166, RN-583). O fio está pronto em
+      // `campoDeRoteamento` abaixo, e a doc do hub descreve `provider.sort`,
+      // mas doc não é prova: a capability só vira `true` quando
+      // `openrouter-provider.roteamento.smoke.spec.ts` rodar com
+      // `OPENROUTER_TEST_KEY` e o hub devolver o upstream escolhido. Enquanto
+      // for `false`, o binding recusa a preferência (422) e nada vai ao fio.
+      routingPreference: false,
     },
     authHeaders: (apiKey) => ({
       Authorization: `Bearer ${apiKey ?? ''}`,
@@ -238,6 +258,7 @@ export function openrouterConfig(
       typeof frame.provider === 'string' ? frame.provider : undefined,
     parseErrorFrame: parseErrorFrameOpenRouter,
     parseCatalogo: parseCatalogoOpenRouter,
+    campoDeRoteamento: campoDeRoteamentoOpenRouter,
   };
 }
 

@@ -77,6 +77,7 @@ class FakeProvider implements LLMProvider {
     toolCalling: true,
     listModels: false,
     embeddings: false,
+    routingPreference: false,
   };
   constructor(private readonly script: ChatStreamChunk[]) {}
   async *chat(): AsyncGenerator<ChatStreamChunk> {

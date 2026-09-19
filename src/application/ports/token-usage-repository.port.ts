@@ -1,4 +1,4 @@
-import type { LLMProviderName } from '@brabo/shared';
+import type { LLMProviderName, RoutingPreference } from '@brabo/shared';
 import type { TokenUsage } from '../../domain/llm/token-usage.entity';
 import type { Actor } from '../../domain/sessions/session-event.entity';
 import type { ModelBindingScope } from '../../domain/llm/model-binding-scope';
@@ -19,6 +19,8 @@ export interface RecordTokenUsageInput {
   latencyMs: number;
   bindingOrigin: ModelBindingScope | null;
   upstreamProvider: string | null;
+  /** O critério que foi ao fio (ADR 0166) — `null` quando nada foi enviado. */
+  routingPreference: RoutingPreference | null;
 }
 
 export abstract class TokenUsageRepository {

@@ -1,3 +1,4 @@
+import type { RoutingPreference } from '@brabo/shared';
 import type { ModelBindingScope } from './model-binding-scope';
 import type { ModelAvailability } from './model.entity';
 
@@ -27,11 +28,20 @@ export interface ScopedBinding {
    */
   availability: ModelAvailability;
   supportsToolCalling: boolean;
+  /** O critério do hub gravado NESTE binding (ADR 0166). */
+  routingPreference: RoutingPreference | null;
 }
 
 export interface ResolvedBinding {
   modelId: string;
   origin: ModelBindingScope;
+  /**
+   * O critério de roteamento DO BINDING QUE VENCEU (ADR 0166, ponto 2). Não
+   * cascateia à parte: um nível pulado leva o critério junto, e nenhum nível
+   * herda só o critério de outro — ele só tem sentido com o modelo com que
+   * foi escolhido.
+   */
+  routingPreference: RoutingPreference | null;
   /**
    * Escopos que a cascata PULOU por indisponibilidade ou falta de capability.
    * Existe para a UI conseguir dizer "o modelo do agente sumiu, caiu para o do
@@ -84,7 +94,12 @@ export function resolveBinding(
       continue;
     }
 
-    return { modelId: match.modelId, origin: match.scope, skipped };
+    return {
+      modelId: match.modelId,
+      origin: match.scope,
+      routingPreference: match.routingPreference,
+      skipped,
+    };
   }
 
   return null;
@@ -138,6 +153,9 @@ export function herdarModeloDeStart(
     // A origem continua sendo `agent`: quem lê "de onde veio" precisa ver que
     // veio de um agente, não inventar um escopo que não existe no banco.
     origin: 'agent',
+    // Herda o binding do Criativo INTEIRO — modelo e critério juntos, pela
+    // mesma razão da cascata (ADR 0166, ponto 2).
+    routingPreference: doCriativo.routingPreference,
     skipped: resolvido.skipped,
   };
 }

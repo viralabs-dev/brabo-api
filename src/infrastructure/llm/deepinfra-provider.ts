@@ -107,6 +107,8 @@ export function deepinfraConfig(
       // `/embeddings` real (ADR 0075). Este é o provider da PRIMEIRA reversão
       // ao vivo do ADR 0043 — o catálogo público não prova o endpoint pago.
       embeddings: false,
+      // Não é hub: não há upstreams entre os quais escolher (ADR 0166).
+      routingPreference: false,
     },
     authHeaders: (apiKey) => ({
       Authorization: `Bearer ${apiKey ?? ''}`,

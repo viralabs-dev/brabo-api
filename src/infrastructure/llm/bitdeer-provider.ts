@@ -39,6 +39,8 @@ export function bitdeerConfig(
       // endpoint, e a regra do ADR 0043 é clara sobre declarar por doc (custou
       // duas reversões ao vivo). Fica `false`, e a base recusa a chamada.
       embeddings: false,
+      // Não é hub: não há upstreams entre os quais escolher (ADR 0166).
+      routingPreference: false,
     },
     authHeaders: (apiKey) => ({
       Authorization: `Bearer ${apiKey ?? ''}`,

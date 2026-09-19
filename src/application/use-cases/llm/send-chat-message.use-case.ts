@@ -12,6 +12,7 @@ import { TokenEstimator } from '../../ports/token-estimator.port';
 import { ResolveModelBindingUseCase } from './resolve-model-binding.use-case';
 import { CheckBudgetGateUseCase } from './check-budget-gate.use-case';
 import { RecordLlmUsageUseCase } from './record-llm-usage.use-case';
+import { preferenciaEnviada } from '../../../domain/llm/routing-preference';
 import { calculateCostMicros } from '../../../domain/llm/cost-calculator';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
 
@@ -130,6 +131,12 @@ export class SendChatMessageUseCase {
 
     // 5) Chama o provider e repassa os deltas em tempo real.
     const provider = this.llmProviders.get(model.provider);
+    // O critério do binding VENCEDOR, e só se este provider o declara — é o
+    // que vai ao fio e o que congela no metering (ADR 0166, RN-583).
+    const routingPreference = preferenciaEnviada(
+      binding.routingPreference,
+      provider.capabilities,
+    );
     let fullText = '';
     let inputTokens = 0;
     let outputTokens = 0;
@@ -141,7 +148,11 @@ export class SendChatMessageUseCase {
     try {
       for await (const chunk of provider.chat(
         [{ role: 'user', content: input.text }],
-        { model: model.name, apiKey },
+        {
+          model: model.name,
+          apiKey,
+          ...(routingPreference ? { routingPreference } : {}),
+        },
       )) {
         if (chunk.type === 'text_delta') {
           fullText += chunk.text;
@@ -196,6 +207,7 @@ export class SendChatMessageUseCase {
           latencyMs,
           bindingOrigin: binding.origin,
           upstreamProvider,
+          routingPreference,
         });
 
         const seq = await this.sessions.incrementSeq(

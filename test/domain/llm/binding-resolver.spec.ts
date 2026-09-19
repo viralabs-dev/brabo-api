@@ -16,6 +16,7 @@ function candidato(
     modelId,
     availability: 'available',
     supportsToolCalling: true,
+    routingPreference: null,
     ...overrides,
   };
 }
@@ -31,6 +32,7 @@ describe('resolveBinding', () => {
     expect(resolved).toEqual({
       modelId: 'session-model',
       origin: 'session',
+      routingPreference: null,
       skipped: [],
     });
   });
@@ -44,6 +46,7 @@ describe('resolveBinding', () => {
     expect(resolved).toEqual({
       modelId: 'agent-model',
       origin: 'agent',
+      routingPreference: null,
       skipped: [],
     });
   });
@@ -60,6 +63,7 @@ describe('resolveBinding', () => {
     expect(resolved).toEqual({
       modelId: 'area-model',
       origin: 'area',
+      routingPreference: null,
       skipped: [],
     });
   });
@@ -73,6 +77,7 @@ describe('resolveBinding', () => {
     expect(resolved).toEqual({
       modelId: 'agent-model',
       origin: 'agent',
+      routingPreference: null,
       skipped: [],
     });
   });
@@ -85,7 +90,10 @@ describe('resolveBinding', () => {
     expect(resolved).toEqual({
       modelId: 'project-model',
       origin: 'project',
-      skipped: [{ scope: 'area', modelId: 'area-sumiu', reason: 'unavailable' }],
+      routingPreference: null,
+      skipped: [
+        { scope: 'area', modelId: 'area-sumiu', reason: 'unavailable' },
+      ],
     });
   });
 
@@ -100,6 +108,7 @@ describe('resolveBinding', () => {
     expect(resolved).toEqual({
       modelId: 'project-model',
       origin: 'project',
+      routingPreference: null,
       skipped: [
         { scope: 'area', modelId: 'area-tagarela', reason: 'sem_tool_calling' },
       ],
@@ -114,6 +123,7 @@ describe('resolveBinding', () => {
     expect(resolved).toEqual({
       modelId: 'project-model',
       origin: 'project',
+      routingPreference: null,
       skipped: [],
     });
   });
@@ -125,6 +135,7 @@ describe('resolveBinding', () => {
     expect(resolved).toEqual({
       modelId: 'workspace-model',
       origin: 'workspace',
+      routingPreference: null,
       skipped: [],
     });
   });
@@ -146,6 +157,7 @@ describe('resolveBinding', () => {
     expect(resolved).toEqual({
       modelId: 'workspace-model',
       origin: 'workspace',
+      routingPreference: null,
       skipped: [
         {
           scope: 'agent',
@@ -173,6 +185,7 @@ describe('resolveBinding', () => {
     expect(resolved).toEqual({
       modelId: 'workspace-com-tools',
       origin: 'workspace',
+      routingPreference: null,
       skipped: [
         { scope: 'agent', modelId: 'agent-sumiu', reason: 'unavailable' },
         {
@@ -213,6 +226,60 @@ describe('resolveBinding', () => {
  * em toda sessão aberta, e os três dev agents subiram em `llama3.2:1b`, que o
  * ADR 0020 proíbe no passo semântico.
  */
+describe('preferência de roteamento na cascata (ADR 0166, ponto 2)', () => {
+  it('viaja com o binding que VENCEU: o critério é o do nível que deu o modelo', () => {
+    const resolved = resolveBinding([
+      candidato('project', 'project-model', { routingPreference: 'price' }),
+      candidato('area', 'area-model', { routingPreference: 'throughput' }),
+    ]);
+    expect(resolved).toMatchObject({
+      modelId: 'area-model',
+      origin: 'area',
+      routingPreference: 'throughput',
+    });
+  });
+
+  it('NÃO cascateia à parte: o agente com binding próprio sem critério fica sem critério, mesmo com a área tendo um', () => {
+    const resolved = resolveBinding([
+      candidato('area', 'area-model', { routingPreference: 'throughput' }),
+      candidato('agent', 'agent-model'),
+    ]);
+    expect(resolved).toMatchObject({
+      origin: 'agent',
+      routingPreference: null,
+    });
+  });
+
+  it('o nível PULADO leva o critério junto — sobra o do nível que pousou', () => {
+    const resolved = resolveBinding(
+      [
+        candidato('agent', 'sumido', {
+          availability: 'unavailable',
+          routingPreference: 'latency',
+        }),
+        candidato('project', 'project-model'),
+      ],
+      true,
+    );
+    expect(resolved).toMatchObject({
+      modelId: 'project-model',
+      routingPreference: null,
+    });
+  });
+
+  it('a herança do Criativo leva o binding INTEIRO — modelo e critério', () => {
+    const resolvido = resolveBinding([candidato('workspace', 'llama-1b')]);
+    const criativo = candidato('agent', 'deepseek', {
+      routingPreference: 'throughput',
+    });
+    expect(herdarModeloDeStart(resolvido, criativo)).toMatchObject({
+      modelId: 'deepseek',
+      origin: 'agent',
+      routingPreference: 'throughput',
+    });
+  });
+});
+
 describe('herdarModeloDeStart', () => {
   const criativo = candidato('agent', 'deepseek');
 

@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, or } from 'drizzle-orm';
 import { ModelBindingRepository } from '../../../application/ports/model-binding-repository.port';
+import type { RoutingPreference } from '@brabo/shared';
 import type { ModelBinding } from '../../../domain/llm/model-binding.entity';
 import type { ModelBindingScope } from '../../../domain/llm/model-binding-scope';
 import type { ScopedBinding } from '../../../domain/llm/binding-resolver';
@@ -30,6 +31,7 @@ export class DrizzleModelBindingRepository implements ModelBindingRepository {
         modelId: modelBindings.modelId,
         availability: models.availability,
         supportsToolCalling: models.supportsToolCalling,
+        routingPreference: modelBindings.routingPreference,
       })
       .from(modelBindings)
       .innerJoin(models, eq(models.id, modelBindings.modelId))
@@ -64,6 +66,7 @@ export class DrizzleModelBindingRepository implements ModelBindingRepository {
     scope: ModelBindingScope;
     scopeId: string;
     modelId: string;
+    routingPreference: RoutingPreference | null;
     createdBy: string;
   }): Promise<ModelBinding> {
     const db = currentDb(this.rootDb);
@@ -72,7 +75,13 @@ export class DrizzleModelBindingRepository implements ModelBindingRepository {
       .values(input)
       .onConflictDoUpdate({
         target: [modelBindings.scope, modelBindings.scopeId],
-        set: { modelId: input.modelId, updatedAt: new Date() },
+        set: {
+          modelId: input.modelId,
+          // Já DECIDIDA pelo caso de uso (`preferenciaDoBinding`): o
+          // repositório grava o valor final, nunca interpreta ausência.
+          routingPreference: input.routingPreference,
+          updatedAt: new Date(),
+        },
       })
       .returning();
     return row;

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { LLMProviderName } from '@brabo/shared';
+import type { LLMProviderName, RoutingPreference } from '@brabo/shared';
 import { TokenUsageRepository } from '../../ports/token-usage-repository.port';
 import { BudgetRepository } from '../../ports/budget-repository.port';
 import { AgentAreaRepository } from '../../ports/agent-area-repository.port';
@@ -34,6 +34,11 @@ export interface RecordLlmUsageInput {
   bindingOrigin: ModelBindingScope | null;
   /** Só quando um hub informou quem serviu de fato (Fase 9b). */
   upstreamProvider?: string | null;
+  /**
+   * O critério de roteamento que FOI AO FIO (ADR 0166, RN-583) — nunca o que o
+   * binding guarda sem ter sido enviado. Congelado como o preço.
+   */
+  routingPreference?: RoutingPreference | null;
 }
 
 /**
@@ -85,6 +90,7 @@ export class RecordLlmUsageUseCase {
       latencyMs: input.latencyMs,
       bindingOrigin: input.bindingOrigin,
       upstreamProvider: input.upstreamProvider ?? null,
+      routingPreference: input.routingPreference ?? null,
     });
 
     const [projectBudget, sessionBudget] = await Promise.all([

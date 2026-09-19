@@ -90,6 +90,8 @@ export class OllamaProvider implements LLMProvider {
     // daemon publica `capabilities: ["embedding"]` por modelo, que é a camada
     // de MODELO da mesma decisão — ver `listModels` abaixo.
     embeddings: true,
+    // Não é hub: não há upstreams entre os quais escolher (ADR 0166).
+    routingPreference: false,
   };
 
   /**

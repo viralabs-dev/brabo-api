@@ -91,6 +91,7 @@ describe('ResolveModelBindingUseCase', () => {
     expect(resolved).toEqual({
       modelId: modelB.id,
       origin: 'session',
+      routingPreference: null,
       skipped: [],
     });
   });
@@ -113,6 +114,7 @@ describe('ResolveModelBindingUseCase', () => {
     expect(resolved).toEqual({
       modelId: modelA.id,
       origin: 'workspace',
+      routingPreference: null,
       skipped: [],
     });
   });
@@ -141,6 +143,7 @@ describe('ResolveModelBindingUseCase', () => {
     expect(resolved).toEqual({
       modelId: modelB.id,
       origin: 'agent',
+      routingPreference: null,
       skipped: [],
     });
   });
@@ -173,6 +176,7 @@ describe('ResolveModelBindingUseCase', () => {
     expect(resolved).toEqual({
       modelId: modelA.id,
       origin: 'workspace',
+      routingPreference: null,
       skipped: [{ scope: 'agent', modelId: modelB.id, reason: 'unavailable' }],
     });
   });
@@ -211,6 +215,7 @@ describe('ResolveModelBindingUseCase', () => {
     expect(resolved).toEqual({
       modelId: modelA.id,
       origin: 'workspace',
+      routingPreference: null,
       skipped: [
         { scope: 'agent', modelId: modelB.id, reason: 'sem_tool_calling' },
       ],
@@ -242,7 +247,12 @@ describe('ResolveModelBindingUseCase', () => {
     for (const agentId of ['qa', 'qa-automacao']) {
       expect(
         await resolveModelBinding.execute({ projectId: project.id, agentId }),
-      ).toEqual({ modelId: modelB.id, origin: 'area', skipped: [] });
+      ).toEqual({
+        modelId: modelB.id,
+        origin: 'area',
+        routingPreference: null,
+        skipped: [],
+      });
     }
   });
 
@@ -261,7 +271,12 @@ describe('ResolveModelBindingUseCase', () => {
         projectId: project.id,
         agentId: 'dev-api',
       }),
-    ).toEqual({ modelId: modelB.id, origin: 'area', skipped: [] });
+    ).toEqual({
+      modelId: modelB.id,
+      origin: 'area',
+      routingPreference: null,
+      skipped: [],
+    });
   });
 
   it('o agente que DIVERGIU vence o padrão da área (RN-102)', async () => {
@@ -286,13 +301,23 @@ describe('ResolveModelBindingUseCase', () => {
         projectId: project.id,
         agentId: 'qa-automacao',
       }),
-    ).toEqual({ modelId: modelB.id, origin: 'agent', skipped: [] });
+    ).toEqual({
+      modelId: modelB.id,
+      origin: 'agent',
+      routingPreference: null,
+      skipped: [],
+    });
     expect(
       await resolveModelBinding.execute({
         projectId: project.id,
         agentId: 'qa',
       }),
-    ).toEqual({ modelId: modelA.id, origin: 'area', skipped: [] });
+    ).toEqual({
+      modelId: modelA.id,
+      origin: 'area',
+      routingPreference: null,
+      skipped: [],
+    });
   });
 
   it('pergunta pela ÁREA em si, sem agente nenhum', async () => {
@@ -310,7 +335,12 @@ describe('ResolveModelBindingUseCase', () => {
         projectId: project.id,
         areaKey: 'infra',
       }),
-    ).toEqual({ modelId: modelB.id, origin: 'area', skipped: [] });
+    ).toEqual({
+      modelId: modelB.id,
+      origin: 'area',
+      routingPreference: null,
+      skipped: [],
+    });
   });
 
   it('agente SEM área nenhuma ignora o nível: o Criativo cai no projeto', async () => {
@@ -335,7 +365,12 @@ describe('ResolveModelBindingUseCase', () => {
         projectId: project.id,
         agentId: 'criativo',
       }),
-    ).toEqual({ modelId: modelA.id, origin: 'project', skipped: [] });
+    ).toEqual({
+      modelId: modelA.id,
+      origin: 'project',
+      routingPreference: null,
+      skipped: [],
+    });
   });
 
   it('o binding de agente é POR PROJETO: o vizinho não o enxerga (RN-103)', async () => {
@@ -461,7 +496,10 @@ describe('ResolveModelBindingUseCase', () => {
     // Sem `agentId` (o que a rota fazia antes da correção): cai no fallback
     // do Criativo.
     expect(
-      await resolveModelBinding.execute({ projectId: project.id, sessionId: session.id }),
+      await resolveModelBinding.execute({
+        projectId: project.id,
+        sessionId: session.id,
+      }),
     ).toMatchObject({ modelId: modelB.id, origin: 'agent' });
 
     // Com `agentId: 'po'` (a correção): resolve pro modelo do PO.

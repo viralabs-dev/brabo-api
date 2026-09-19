@@ -1,7 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
+import type { LLMProviderCapabilities } from '@brabo/shared';
+import type { CapabilitiesDoProvider } from '../../../../application/use-cases/llm/list-provider-capabilities.use-case';
+import { LLM_PROVIDER_NAMES } from '../../../../domain/llm/llm-provider-names';
 import type { MesmasChaves, Wire } from '../../shared/dto/wire';
 import { BUDGET_POLICIES } from '../../../../domain/llm/budget-threshold';
 import { MODEL_BINDING_SCOPES } from '../../../../domain/llm/model-binding-scope';
+import { PREFERENCIAS_DE_ROTEAMENTO } from '../../../../domain/llm/routing-preference';
 import {
   MODEL_AVAILABILITIES,
   type Model,
@@ -256,6 +260,17 @@ export class ModelBindingResponseDto implements Wire<ModelBinding> {
   @ApiProperty({ example: '01JC4Z0000MODELO00000000001' })
   modelId!: string;
 
+  @ApiProperty({
+    enum: PREFERENCIAS_DE_ROTEAMENTO,
+    nullable: true,
+    example: null,
+    description:
+      'How a hub picks the upstream for this binding (ADR 0166, RN-583). ' +
+      '`null` = the hub decides on its own. Only ever set for a provider that ' +
+      'declares the `routingPreference` capability.',
+  })
+  routingPreference!: Wire<ModelBinding>['routingPreference'];
+
   @ApiProperty({ example: '01JC4Z0000USUARIO0000000001' })
   createdBy!: string;
 
@@ -312,6 +327,17 @@ export class ResolvedBindingResponseDto implements Wire<ResolvedBinding> {
       '"inherited from the project" instead of showing a value with no provenance.',
   })
   origin!: Wire<ResolvedBinding>['origin'];
+
+  @ApiProperty({
+    enum: PREFERENCIAS_DE_ROTEAMENTO,
+    nullable: true,
+    example: null,
+    description:
+      'The routing preference OF THE BINDING THAT WON the cascade (ADR 0166). ' +
+      'It never cascades on its own: a skipped level takes its preference ' +
+      'with it, and no level inherits only the preference of another.',
+  })
+  routingPreference!: Wire<ResolvedBinding>['routingPreference'];
 
   @ApiProperty({
     type: [SkippedBindingResponseDto],
@@ -799,3 +825,50 @@ export class MySpendResponseDto implements Wire<MySpend> {
   porDia!: SpendPorDiaResponseDto[];
 }
 export const _chavesMySpend: MesmasChaves<MySpendResponseDto, MySpend> = true;
+
+/** A camada de PROVIDER das capabilities (ADR 0041), como o fio a mostra. */
+export class LLMProviderCapabilitiesResponseDto implements Wire<LLMProviderCapabilities> {
+  @ApiProperty({ example: true })
+  streaming!: boolean;
+
+  @ApiProperty({ example: true })
+  toolCalling!: boolean;
+
+  @ApiProperty({
+    example: true,
+    description: 'The provider can LIST its own catalog (catalog sync).',
+  })
+  listModels!: boolean;
+
+  @ApiProperty({
+    example: false,
+    description: 'Text → vector (ADR 0075). Only `true` when proven.',
+  })
+  embeddings!: boolean;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'The provider accepts a ROUTING PREFERENCE (`price`, `throughput`, ' +
+      '`latency`) to pick among the upstreams serving the same model ' +
+      '(ADR 0166). Only `true` after a smoke against the real API returned ' +
+      'the chosen upstream — reading the docs does not count.',
+  })
+  routingPreference!: boolean;
+}
+export const _chavesCapabilitiesDoProvider: MesmasChaves<
+  LLMProviderCapabilitiesResponseDto,
+  LLMProviderCapabilities
+> = true;
+
+export class ProviderCapabilitiesResponseDto implements Wire<CapabilitiesDoProvider> {
+  @ApiProperty({ enum: LLM_PROVIDER_NAMES, example: 'openrouter' })
+  provider!: Wire<CapabilitiesDoProvider>['provider'];
+
+  @ApiProperty({ type: LLMProviderCapabilitiesResponseDto })
+  capabilities!: LLMProviderCapabilitiesResponseDto;
+}
+export const _chavesProviderCapabilities: MesmasChaves<
+  ProviderCapabilitiesResponseDto,
+  CapabilitiesDoProvider
+> = true;

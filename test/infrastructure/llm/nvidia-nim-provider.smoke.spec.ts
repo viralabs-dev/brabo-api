@@ -98,6 +98,7 @@ describe.skipIf(!apiKey)(
         toolCalling: true,
         listModels: false,
         embeddings: false,
+        routingPreference: false,
       },
       // eslint-disable-next-line @typescript-eslint/require-await
       chat: async function* () {

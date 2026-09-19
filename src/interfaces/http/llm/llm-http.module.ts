@@ -10,6 +10,7 @@ import { CredentialsController } from './credentials.controller';
 import { BudgetsController } from './budgets.controller';
 import { ChatController } from './chat.controller';
 import { SpendController } from './spend.controller';
+import { ProviderCapabilitiesController } from './provider-capabilities.controller';
 
 @Module({
   imports: [LlmUseCasesModule, CredentialsUseCasesModule],
@@ -21,6 +22,7 @@ import { SpendController } from './spend.controller';
     BudgetsController,
     ChatController,
     SpendController,
+    ProviderCapabilitiesController,
   ],
 })
 export class LlmHttpModule {}
