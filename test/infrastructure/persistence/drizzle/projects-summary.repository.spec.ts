@@ -384,6 +384,41 @@ describe('DrizzleProjectsSummaryRepository', () => {
     expect(resumo.roster.gatesEverOpened).toBe(true);
   });
 
+  // AT-131 — a sessão técnica do provisionamento nasce no MEIO da fase do
+  // Arquiteto (RN-582) e não pode deslocar a sessão de trabalho.
+  it('sessão do bootstrap NÃO vira a mais recente quando há sessão de trabalho', async () => {
+    const owner = await criarUsuario('tecnica@brabo.dev');
+    const ws = await criarWorkspace(owner.id, 'tecnica');
+    const projeto = await criarProjeto(ws.id, owner.id, 'core');
+
+    const trabalho = await criarSessao(projeto.id, owner.id);
+    await db
+      .update(sessions)
+      .set({ createdAt: new Date(Date.now() - 60_000) })
+      .where(sql`${sessions.id} = ${trabalho.id}`);
+    const tecnica = await criarSessao(projeto.id, owner.id);
+    await db
+      .insert(repoBootstraps)
+      .values({ projectId: projeto.id, sessionId: tecnica.id });
+
+    const [resumo] = await repo.summarizeForWorkspace(ws.id);
+    expect(resumo.latestSessionId).toBe(trabalho.id);
+  });
+
+  it('sessão do bootstrap É a mais recente quando é a única (fluxo manual)', async () => {
+    const owner = await criarUsuario('tecnica-unica@brabo.dev');
+    const ws = await criarWorkspace(owner.id, 'tecnica-unica');
+    const projeto = await criarProjeto(ws.id, owner.id, 'core');
+
+    const tecnica = await criarSessao(projeto.id, owner.id);
+    await db
+      .insert(repoBootstraps)
+      .values({ projectId: projeto.id, sessionId: tecnica.id });
+
+    const [resumo] = await repo.summarizeForWorkspace(ws.id);
+    expect(resumo.latestSessionId).toBe(tecnica.id);
+  });
+
   /**
    * RN-409 — "N online" soma dev agents (tabela do engine) e agentes
    * conversacionais (último `agent.status` da sessão mais recente), pela

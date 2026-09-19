@@ -66,7 +66,9 @@ function build(opts?: {
    */
   repositorio?: { origin: 'created' | 'adopted' } | null;
   /** Os handoffs do projeto, lidos só para escolher a frase da recusa. */
-  handoffsDoProjeto?: { toAgent: string; status: string }[];
+  handoffsDoProjeto?: { toAgent: string; status: string; sessionId?: string }[];
+  /** Status das sessões que os handoffs citam (AT-131), por id. */
+  statusDeSessao?: Record<string, string>;
 }) {
   const started: {
     budget?: number;
@@ -102,6 +104,8 @@ function build(opts?: {
       if (opts?.sessaoOrigem?.id === sessionId) {
         return Promise.resolve(opts.sessaoOrigem);
       }
+      const status = opts?.statusDeSessao?.[sessionId];
+      if (status) return Promise.resolve({ id: sessionId, status });
       return Promise.resolve(null);
     },
   } as unknown as SessionRepository;
@@ -761,6 +765,24 @@ describe('ActivateExecutionUseCase — sem repositório, nada começa (RN-582)',
     await expect(r.useCase.execute('proj-1', 'user-1')).rejects.toThrow(
       /Aceite o handoff ao Dev Lead/,
     );
+  });
+
+  it('handoff oferecido em sessão FECHADA: a frase não manda aceitá-lo (AT-131)', async () => {
+    const r = build({
+      repositorio: null,
+      handoffsDoProjeto: [
+        { toAgent: 'arquiteto', status: 'offered', sessionId: 's-fechada' },
+      ],
+      statusDeSessao: { 's-fechada': 'closed' },
+    });
+
+    const erro: unknown = await r.useCase
+      .execute('proj-1', 'user-1')
+      .catch((e: unknown) => e);
+    expect(erro).toBeInstanceOf(ConflictException);
+    const mensagem = (erro as ConflictException).message;
+    expect(mensagem).toMatch(/sessão já encerrada/);
+    expect(mensagem).not.toMatch(/Aceite o handoff/);
   });
 
   it('repositório ADOTADO conta como repositório', async () => {

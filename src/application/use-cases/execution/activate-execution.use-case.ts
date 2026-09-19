@@ -14,7 +14,11 @@ import { PermissionsFileStore } from '../../ports/permissions-file-store.port';
 import { ProvisionedRepositoryRepository } from '../../ports/provisioned-repository-repository.port';
 import { HandoffRepository } from '../../ports/handoff-repository.port';
 import { ContainerRepository } from '../../ports/container-repository.port';
-import { motivoDeExecucaoSemRepositorio } from '../../../domain/execution/repositorio-para-executar';
+import { isTerminal } from '../../../domain/sessions/session-state-machine';
+import {
+  motivoDeExecucaoSemRepositorio,
+  type HandoffDaAtivacao,
+} from '../../../domain/execution/repositorio-para-executar';
 import { DEV_TERMINAL_ALLOW_PATTERNS } from '../../../domain/actions/dev-terminal-patterns';
 import { TransitionSessionUseCase } from '../sessions/transition-session.use-case';
 import { CreateSessionUseCase } from '../sessions/create-session.use-case';
@@ -140,9 +144,11 @@ export class ActivateExecutionUseCase {
     // falta, lida do estado dos handoffs do projeto. Repositório ADOTADO conta.
     const repositorio = await this.repositories.findByProjectId(projectId);
     if (!repositorio) {
-      const handoffsDoProjeto = await this.handoffs.findByProject(projectId);
       throw new ConflictException(
-        motivoDeExecucaoSemRepositorio(projectId, handoffsDoProjeto),
+        motivoDeExecucaoSemRepositorio(
+          projectId,
+          await this.handoffsComEstadoDaSessao(projectId),
+        ),
       );
     }
 
@@ -312,6 +318,29 @@ export class ActivateExecutionUseCase {
     }
 
     return { sessionId: session.id, modules };
+  }
+
+  /**
+   * Os handoffs do projeto + se a sessão de cada `offered` já está encerrada
+   * (AT-131). Só os `offered` são consultados — são os únicos para os quais a
+   * frase pode mandar aceitar —, uma leitura por sessão distinta. Sessão que
+   * não se acha fica sem marca (não sei = aberta).
+   */
+  private async handoffsComEstadoDaSessao(
+    projectId: string,
+  ): Promise<HandoffDaAtivacao[]> {
+    const todos = await this.handoffs.findByProject(projectId);
+    const encerrada = new Map<string, boolean>();
+    for (const h of todos) {
+      if (h.status !== 'offered' || encerrada.has(h.sessionId)) continue;
+      const sessao = await this.sessions.findInProject(projectId, h.sessionId);
+      encerrada.set(h.sessionId, sessao ? isTerminal(sessao.status) : false);
+    }
+    return todos.map((h) => ({
+      toAgent: h.toAgent,
+      status: h.status,
+      sessaoEncerrada: encerrada.get(h.sessionId) ?? false,
+    }));
   }
 
   /** Mesmo predicado do engine (`ProjectContainerLifecycle.running?/1`): linha registrada `running`. */

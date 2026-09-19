@@ -16,6 +16,17 @@ export const AGENTE_GATILHO_DO_REPOSITORIO = 'arquiteto';
 /** O agente cujo aceite é a SEGUNDA PORTA, idempotente. */
 export const AGENTE_SEGUNDA_PORTA_DO_REPOSITORIO = 'dev-lead';
 
+/**
+ * O handoff como a recusa o enxerga: ele + se a SESSÃO em que mora já está
+ * encerrada (AT-131). Aceitar handoff em sessão terminal é 409 `sessao_encerrada`
+ * (RN-581), então mandar aceitá-lo seria mandar a pessoa a um gesto que o
+ * produto recusa. `undefined` é "não sei" e conta como aberta — a mesma
+ * régua de "não sei não vira sim" da tela.
+ */
+export interface HandoffDaAtivacao extends HandoffView {
+  sessaoEncerrada?: boolean;
+}
+
 const PREFIXO =
   'Projeto sem repositório — a execução não pode começar, porque os dev ' +
   'agents trabalham em worktrees dele (RN-582).';
@@ -27,6 +38,8 @@ const PREFIXO =
  * 1. handoff ao Arquiteto `offered` → aceitá-lo provisiona (o gatilho);
  * 2. handoff ao Dev Lead `offered` → aceitá-lo provisiona (a segunda porta —
  *    é a saída do projeto que passou pelo Arquiteto antes da RN-582);
+ *    nos dois só vale se a sessão dele está ABERTA — aceite em sessão
+ *    encerrada é recusado (RN-581), e a frase o diz e aponta a página (AT-131);
  * 3. algum dos dois já `accepted` → o provisionamento automático rodou e não
  *    deixou repositório; o `repository.provision_failed` diz por quê, e o
  *    caminho é a página de provisionamento;
@@ -36,22 +49,39 @@ const PREFIXO =
  */
 export function motivoDeExecucaoSemRepositorio(
   projectId: string,
-  handoffs: readonly HandoffView[],
+  handoffs: readonly HandoffDaAtivacao[],
 ): string {
   const tem = (agente: string, status: HandoffView['status']) =>
     handoffs.some((h) => h.toAgent === agente && h.status === status);
+  const temAceitavel = (agente: string) =>
+    handoffs.some(
+      (h) =>
+        h.toAgent === agente && h.status === 'offered' && !h.sessaoEncerrada,
+    );
   const paginaDeProvisionamento = `/projects/${projectId}/provisioning?provider=local`;
 
-  if (tem(AGENTE_GATILHO_DO_REPOSITORIO, 'offered')) {
+  if (temAceitavel(AGENTE_GATILHO_DO_REPOSITORIO)) {
     return (
       `${PREFIXO} Aceite o handoff ao Arquiteto, que está oferecido: é no ` +
       'aceite dele que o repositório nasce.'
     );
   }
-  if (tem(AGENTE_SEGUNDA_PORTA_DO_REPOSITORIO, 'offered')) {
+  if (temAceitavel(AGENTE_SEGUNDA_PORTA_DO_REPOSITORIO)) {
     return (
       `${PREFIXO} Aceite o handoff ao Dev Lead, que está oferecido: o aceite ` +
       'provisiona o repositório que falta.'
+    );
+  }
+  if (
+    tem(AGENTE_GATILHO_DO_REPOSITORIO, 'offered') ||
+    tem(AGENTE_SEGUNDA_PORTA_DO_REPOSITORIO, 'offered')
+  ) {
+    // Só sobra `offered` que mora em sessão encerrada (os aceitáveis já
+    // saíram acima): o aceite ali é 409 `sessao_encerrada` (RN-581).
+    return (
+      `${PREFIXO} O handoff que o provisionaria está oferecido numa sessão ` +
+      'já encerrada, e ali o aceite é recusado (RN-581). Provisione pela ' +
+      `página de provisionamento (${paginaDeProvisionamento}).`
     );
   }
   if (

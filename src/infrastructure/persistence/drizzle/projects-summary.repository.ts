@@ -52,6 +52,17 @@ import { currentDb } from './drizzle-context';
  * `unreadEventsForWorkspace` é a segunda metade do mesmo read model, sob a
  * mesma disciplina: DUAS consultas, quantos projetos forem.
  */
+/**
+ * A sessão que o provisionamento abre (`repo_bootstraps.session_id`) é TÉCNICA:
+ * nasce no meio da fase do Arquiteto (RN-582, ADR 0165) e, ordenada só por
+ * `createdAt`, deslocava a sessão de trabalho como "a mais recente" (AT-131).
+ * Ordena por ESTA expressão antes de `createdAt`: a de trabalho vem primeiro, e
+ * a técnica só é a mais recente quando é a ÚNICA — o fluxo manual de
+ * provisionamento faz dela a sessão onde o projeto começa.
+ */
+const sessaoTecnicaDeBootstrap = () =>
+  sql`exists (select 1 from ${repoBootstraps} where ${repoBootstraps.sessionId} = ${sessions.id})`;
+
 @Injectable()
 export class DrizzleProjectsSummaryRepository implements ProjectsSummaryRepository {
   constructor(@Inject(DRIZZLE) private readonly rootDb: DrizzleDb) {}
@@ -80,7 +91,11 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
       })
       .from(sessions)
       .where(inArray(sessions.projectId, projectIds))
-      .orderBy(sessions.projectId, desc(sessions.createdAt));
+      .orderBy(
+        sessions.projectId,
+        sessaoTecnicaDeBootstrap(),
+        desc(sessions.createdAt),
+      );
 
     const sessionIds = latestSessions.map((s) => s.sessionId);
 
@@ -449,7 +464,11 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
           inArray(sessions.projectId, projectIds),
         ),
       )
-      .orderBy(sessions.projectId, desc(sessions.createdAt));
+      .orderBy(
+        sessions.projectId,
+        sessaoTecnicaDeBootstrap(),
+        desc(sessions.createdAt),
+      );
 
     if (latestSessions.length === 0) return [];
 
