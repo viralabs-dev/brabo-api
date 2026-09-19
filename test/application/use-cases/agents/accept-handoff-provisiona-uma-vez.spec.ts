@@ -210,6 +210,8 @@ async function montar() {
         eventosDoAceite.push(e.type);
         return Promise.resolve({});
       },
+      // A sessão do aceite está aberta (RN-581 só recusa sessão encerrada).
+      garantirQueAceita: () => Promise.resolve(),
     } as unknown as AppendSessionEventUseCase,
     {
       execute: (_p: string, _s: string, agente: string) => {
