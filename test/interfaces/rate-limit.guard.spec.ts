@@ -174,6 +174,38 @@ describe('RateLimitGuard', () => {
     expect(linha.total).toBe(0);
   });
 
+  // AT-093 (RN-579): a medição da instalação (v6.1.0, 14/09) deu 118 req/min
+  // de mediana e 263/min de PICO para UM navegador na tela de Sessão. O teto
+  // de produção é 300. Este teste reproduz o minuto de pico de DOIS navegadores
+  // contra o guard e o banco de verdade, com o teto de verdade — o número que
+  // o 429 no navegador do dono tinha. Não se resolve mudando o teto: o que
+  // cai é o pedido (`apps/web/src/lib/canal-vivo.ts`).
+  it('AT-093: dois navegadores no pico medido (2 × 263/min) estouram os 300 — e a mediana (2 × 118) não', async () => {
+    process.env.RATE_LIMIT_USER = '300';
+    const g = guard();
+
+    async function minuto(usuario: string, requisicoes: number) {
+      let recusadas = 0;
+      for (let i = 0; i < requisicoes; i += 1) {
+        await g
+          .canActivate(contexto({ userId: usuario }).ctx)
+          .catch((erro: unknown) => {
+            if (erro instanceof HttpException && erro.getStatus() === 429) {
+              recusadas += 1;
+              return;
+            }
+            throw erro;
+          });
+      }
+      return recusadas;
+    }
+
+    // Pico: 526 no minuto, 226 recusadas — é o 429 que cai no navegador.
+    expect(await minuto('u-pico', 2 * 263)).toBe(2 * 263 - 300);
+    // Mediana: 236 no minuto, cabe. As duas abas SÓ estouram no pico.
+    expect(await minuto('u-mediana', 2 * 118)).toBe(0);
+  });
+
   it('falha do banco LIBERA a requisição em vez de negar', async () => {
     // Este guard protege contra abuso, não contra acesso indevido — quem
     // autoriza é o JwtAuthGuard, que já rodou. Diante de um problema nosso,
