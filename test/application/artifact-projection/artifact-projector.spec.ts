@@ -49,7 +49,9 @@ class FakeOutbox implements OutboxRepository {
     limit: number,
   ): Promise<OutboxEvent[]> {
     return this.rows
-      .filter((r) => r.aggregateType === aggregateType && r.processedAt === null)
+      .filter(
+        (r) => r.aggregateType === aggregateType && r.processedAt === null,
+      )
       .slice(0, limit);
   }
 
@@ -75,6 +77,9 @@ class FakeSessionEvents implements SessionEventRepository {
     throw new Error('não usado neste teste');
   }
   async listByTypeInSession(): Promise<SessionEvent[]> {
+    throw new Error('não usado neste teste');
+  }
+  async findLatestOfTypesInSession(): Promise<SessionEvent | null> {
     throw new Error('não usado neste teste');
   }
   async listForProjectInWindow(): Promise<SessionEvent[]> {
@@ -218,7 +223,9 @@ describe('ArtifactProjector — caminho feliz', () => {
     expect(c.arquivos.escritas).toHaveLength(1);
     const [escrita] = c.arquivos.escritas;
     expect(escrita.agente).toBe('arquiteto');
-    expect(escrita.arquivo).toBe('decision_record-cache-de-sessao-em-redis-7.md');
+    expect(escrita.arquivo).toBe(
+      'decision_record-cache-de-sessao-em-redis-7.md',
+    );
     expect(escrita.conteudo).toContain('Cache de sessão em Redis');
     // O arquivo se declara derivado — quem abrir precisa saber que editar ali
     // não muda nada.
@@ -382,7 +389,9 @@ describe('ArtifactProjector — degradação', () => {
 
     expect(c.arquivos.escritas).toHaveLength(2);
     expect(c.arquivos.escritas[0].arquivo).toBe(c.arquivos.escritas[1].arquivo);
-    expect(c.arquivos.escritas[0].conteudo).toBe(c.arquivos.escritas[1].conteudo);
+    expect(c.arquivos.escritas[0].conteudo).toBe(
+      c.arquivos.escritas[1].conteudo,
+    );
   });
 
   it('só drena o próprio aggregate_type — não rouba a linha do grafo nem a do engine', async () => {

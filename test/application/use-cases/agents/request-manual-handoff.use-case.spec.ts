@@ -39,6 +39,7 @@ function build(opts?: { activations?: SessionEvent[] }) {
       eventos.push(e);
       return Promise.resolve({});
     },
+    garantirQueAceita: () => Promise.resolve(),
   } as unknown as AppendSessionEventUseCase;
 
   const createHandoff = new CreateHandoffUseCase(handoffs, appendEvent);

@@ -52,6 +52,16 @@ export class DrizzleHandoffRepository implements HandoffRepository {
     return rows.map(toEntity);
   }
 
+  async findByProject(projectId: string): Promise<Handoff[]> {
+    const db = currentDb(this.rootDb);
+    const rows = await db
+      .select()
+      .from(handoffs)
+      .where(eq(handoffs.projectId, projectId))
+      .orderBy(asc(handoffs.createdAt));
+    return rows.map(toEntity);
+  }
+
   async updateStatus(id: string, status: HandoffStatus): Promise<Handoff> {
     const db = currentDb(this.rootDb);
     const [row] = await db

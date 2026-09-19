@@ -10,13 +10,17 @@ import type { ActivateAgentUseCase } from '../../../../src/application/use-cases
 import type { ProvisionedRepository } from '../../../../src/domain/git/provisioned-repository.entity';
 
 /**
- * O aceite do handoff, e o repositório que nasce nele (RN-522).
+ * O aceite do handoff, e o repositório que nasce nele (RN-582, que revisou o
+ * gatilho da RN-522 — ADR 0165).
  *
  * O que estes casos protegem é a ORDEM e a CONTENÇÃO: criar projeto deixou de
  * provisionar (RN-541), então se este gatilho falhar em silêncio um projeto
- * fica sem repositório para sempre — e se ele derrubar o aceite, o Dev Lead
- * nunca acorda por causa de uma falha de git.
+ * fica sem repositório para sempre — e se ele derrubar o aceite, o agente
+ * nunca acorda por causa de uma falha de git. O gatilho é o Arquiteto; o Dev
+ * Lead é a segunda porta, e a idempotência das duas juntas é provada contra o
+ * banco em `accept-handoff-provisiona-uma-vez.spec.ts`.
  */
+const ordem: string[] = [];
 const PROJECT = 'p1';
 const SESSION = 's1';
 const HANDOFF = 'h1';
@@ -68,11 +72,16 @@ class FakeEvents {
   tipos() {
     return this.eventos.map((e) => e.type);
   }
+  // Sessão aberta: a trava da RN-581 é testada à parte.
+  garantirQueAceita() {
+    return Promise.resolve();
+  }
 }
 
 class FakeActivate {
   ativados: string[] = [];
   execute(_p: string, _s: string, agente: string, _u: string) {
+    ordem.push(`ativou:${agente}`);
     this.ativados.push(agente);
     return Promise.resolve({} as never);
   }
@@ -98,6 +107,7 @@ class FakeProvision {
 
   execute(projectId: string, userId: string, input: unknown) {
     if (this.erro) return Promise.reject(this.erro);
+    ordem.push('provisionou');
     this.chamadas.push({ projectId, userId, input });
     return Promise.resolve({} as never);
   }
@@ -113,6 +123,7 @@ let provision: FakeProvision;
 let uc: AcceptHandoffUseCase;
 
 beforeEach(() => {
+  ordem.length = 0;
   handoffs = new FakeHandoffs();
   autonomy = new FakeAutonomy();
   events = new FakeEvents();
@@ -131,8 +142,49 @@ beforeEach(() => {
   );
 });
 
-describe('AcceptHandoffUseCase — o repositório nasce no handoff (RN-522)', () => {
-  it('aceitar para o Dev Lead provisiona `local` com o slug do projeto', async () => {
+describe('AcceptHandoffUseCase — o repositório nasce no handoff ao Arquiteto (RN-582)', () => {
+  it('aceitar para o Arquiteto provisiona `local` com o slug do projeto', async () => {
+    handoffs.handoff = { ...handoffs.handoff, toAgent: 'arquiteto' };
+
+    await uc.execute(PROJECT, SESSION, HANDOFF, USER);
+
+    expect(provision.chamadas).toHaveLength(1);
+    expect(provision.chamadas[0]).toMatchObject({
+      projectId: PROJECT,
+      userId: USER,
+      input: { provider: 'local', name: 'loja', visibility: 'private' },
+    });
+    expect(handoffs.handoff.status).toBe('accepted');
+    expect(activate.ativados).toEqual(['arquiteto']);
+  });
+
+  // AT-092: o Arquiteto propôs `open_adr_pr` três vezes antes de o repositório
+  // existir. O efeito tem de vir ANTES de o agente acordar.
+  it('o repositório nasce ANTES de o Arquiteto acordar', async () => {
+    handoffs.handoff = { ...handoffs.handoff, toAgent: 'arquiteto' };
+
+    await uc.execute(PROJECT, SESSION, HANDOFF, USER);
+
+    expect(ordem).toEqual(['provisionou', 'ativou:arquiteto']);
+  });
+
+  it('a falha no aceite ao Arquiteto também vira evento e não derruba a ativação', async () => {
+    handoffs.handoff = { ...handoffs.handoff, toAgent: 'arquiteto' };
+    provision.erro = new Error('permissão negada: /data/git-repos/loja.git');
+
+    await uc.execute(PROJECT, SESSION, HANDOFF, USER);
+
+    expect(events.tipos()).toEqual([
+      'handoff.accepted',
+      'repository.provision_failed',
+    ]);
+    expect(activate.ativados).toEqual(['arquiteto']);
+  });
+
+  // A SEGUNDA PORTA: o gatilho antigo (RN-522) fica, idempotente. É a saída do
+  // projeto que passou pelo Arquiteto antes da RN-582 com o handoff ao Dev
+  // Lead ainda `offered` — o exp001 da AT-092.
+  it('aceitar para o Dev Lead continua provisionando `local` (segunda porta)', async () => {
     await uc.execute(PROJECT, SESSION, HANDOFF, USER);
 
     expect(provision.chamadas).toHaveLength(1);
