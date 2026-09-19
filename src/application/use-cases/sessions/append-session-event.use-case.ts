@@ -2,12 +2,14 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { ulid } from 'ulid';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { SessionRepository } from '../../ports/session-repository.port';
 import { SessionEventRepository } from '../../ports/session-event-repository.port';
 import { OutboxRepository } from '../../ports/outbox-repository.port';
+import { SessionChannelNotifier } from '../../ports/session-channel-notifier.port';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
 import {
   EVENTO_DE_EXECUCAO,
@@ -58,6 +60,8 @@ export class AppendSessionEventUseCase {
     private readonly sessions: SessionRepository,
     private readonly sessionEvents: SessionEventRepository,
     private readonly outbox: OutboxRepository,
+    // AT-157: opcional só para não quebrar quem monta o caso de uso à mão.
+    @Optional() private readonly canal?: SessionChannelNotifier,
   ) {}
 
   /**
@@ -171,6 +175,11 @@ export class AppendSessionEventUseCase {
           payload: { eventId: id },
         });
       }
+
+      // AT-157 (RN-579): o aviso ao canal da sessão de toda escrita que a api
+      // faz por conta própria. O notifier só dispara DEPOIS do commit e não
+      // avisa quando a escrita veio do engine (que já avisa pela fachada).
+      this.canal?.eventAppended(sessionId, input.type, input.actor.id);
 
       return event;
     });

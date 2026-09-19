@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { ulid } from 'ulid';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { SessionRepository } from '../../ports/session-repository.port';
 import { SessionEventRepository } from '../../ports/session-event-repository.port';
 import { OutboxRepository } from '../../ports/outbox-repository.port';
+import { SessionChannelNotifier } from '../../ports/session-channel-notifier.port';
 import { ModelRepository } from '../../ports/model-repository.port';
 import { UserCredentialRepository } from '../../ports/user-credential-repository.port';
 import { EncryptionService } from '../../ports/encryption.port';
@@ -56,6 +57,8 @@ export class SendChatMessageUseCase {
     private readonly resolveModelBinding: ResolveModelBindingUseCase,
     private readonly checkBudgetGate: CheckBudgetGateUseCase,
     private readonly recordLlmUsage: RecordLlmUsageUseCase,
+    // AT-157: avisa o canal da sessão; opcional para quem monta à mão.
+    @Optional() private readonly canal?: SessionChannelNotifier,
   ) {}
 
   async *execute(input: SendChatMessageInput): AsyncGenerator<ChatSseEvent> {
@@ -103,6 +106,11 @@ export class SendChatMessageUseCase {
         eventType: 'session_event.appended',
         payload: { seq, type: 'chat.message' },
       });
+      this.canal?.eventAppended(
+        input.sessionId,
+        'chat.message',
+        input.actor.id,
+      );
     });
 
     // 2) Resolve o binding + modelo. Sem isso, nenhuma chamada é feita.
@@ -267,6 +275,11 @@ export class SendChatMessageUseCase {
             eventType: 'session_event.appended',
             payload: { seq, type: 'agent.response' },
           });
+          this.canal?.eventAppended(
+            input.sessionId,
+            'agent.response',
+            assistantActor.id,
+          );
         }
       });
     } catch {
