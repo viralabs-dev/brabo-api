@@ -52,6 +52,9 @@ export class DrizzleSessionEventRepository implements SessionEventRepository {
     if (opts.afterSeq !== undefined && !opts.latest) {
       conditions.push(gt(sessionEvents.seq, opts.afterSeq));
     }
+    if (opts.types && opts.types.length > 0) {
+      conditions.push(inArray(sessionEvents.type, opts.types));
+    }
 
     // `latest`: pega do fim pelo banco e reverte na memória, pra devolver
     // sempre em ordem crescente. `nextCursor` é null porque não existe página

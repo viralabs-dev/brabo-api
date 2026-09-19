@@ -104,3 +104,54 @@ describe('DrizzleSessionEventRepository.listPaginated — latest (Fase 4a)', () 
     expect(semLatest.items.map((e) => e.seq)).toEqual([1, 2]);
   });
 });
+
+describe('DrizzleSessionEventRepository.listPaginated — types (RN-580)', () => {
+  async function seedMisto(sessionId: string) {
+    // 1..10 alternando dois tipos: ímpares são `chat.message`, pares `artifact.x`.
+    for (let seq = 1; seq <= 10; seq++) {
+      await repo.append({
+        id: ulid(),
+        sessionId,
+        seq,
+        type: seq % 2 === 0 ? 'artifact.x' : 'chat.message',
+        actor: { kind: 'agent', id: 'po' },
+        payload: {},
+      });
+    }
+  }
+
+  it('só devolve os tipos pedidos, e o limit conta só eles', async () => {
+    const sessionId = await seedSession();
+    await seedMisto(sessionId);
+
+    const page = await repo.listPaginated(sessionId, {
+      limit: 2,
+      types: ['artifact.x'],
+    });
+
+    expect(page.items.map((e) => e.seq)).toEqual([2, 4]);
+  });
+
+  it('com latest, devolve os MAIS RECENTES daqueles tipos, em ordem crescente', async () => {
+    // É o caso do kickoff do PO: o brief nasce no FIM da conversa do Criativo.
+    const sessionId = await seedSession();
+    await seedMisto(sessionId);
+
+    const page = await repo.listPaginated(sessionId, {
+      limit: 2,
+      latest: true,
+      types: ['artifact.x'],
+    });
+
+    expect(page.items.map((e) => e.seq)).toEqual([8, 10]);
+  });
+
+  it('lista de tipos vazia não filtra nada', async () => {
+    const sessionId = await seedSession();
+    await seedMisto(sessionId);
+
+    const page = await repo.listPaginated(sessionId, { limit: 50, types: [] });
+
+    expect(page.items).toHaveLength(10);
+  });
+});

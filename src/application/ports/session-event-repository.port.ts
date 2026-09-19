@@ -28,6 +28,14 @@ export interface ListPaginatedOptions {
    * sessão inteira, e `latest` a ignora.
    */
   latest?: boolean;
+  /**
+   * Só eventos destes tipos (RN-580). Vazio ou ausente = todos. Existe para o
+   * engine ler "o product brief e as regras" sem baixar a sessão inteira e
+   * filtrar em memória — o que, com o teto de 200, deixava de fora justamente
+   * o artefato que nasce DEPOIS do evento 200. O teto continua valendo: é o
+   * mesmo `limit`, contando só os tipos pedidos.
+   */
+  types?: string[];
 }
 
 export interface Page<T> {
