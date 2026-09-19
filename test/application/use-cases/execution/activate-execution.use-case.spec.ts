@@ -13,6 +13,7 @@ import type { ApiToEngineClient } from '../../../../src/application/ports/api-to
 import type { ProjectRepository } from '../../../../src/application/ports/project-repository.port';
 import type { PermissionsFileStore } from '../../../../src/application/ports/permissions-file-store.port';
 import type { ProvisionedRepositoryRepository } from '../../../../src/application/ports/provisioned-repository-repository.port';
+import type { ContainerRepository } from '../../../../src/application/ports/container-repository.port';
 import type { HandoffRepository } from '../../../../src/application/ports/handoff-repository.port';
 import type { TransitionSessionUseCase } from '../../../../src/application/use-cases/sessions/transition-session.use-case';
 import { CreateSessionUseCase } from '../../../../src/application/use-cases/sessions/create-session.use-case';
@@ -42,6 +43,10 @@ function build(opts?: {
   sessaoOrigem?: { id: string; status: string } | null;
   /** O que `GetSessionPendingWorkUseCase` devolve para a sessão de origem. */
   pendingWork?: { pending: boolean; motivo: string | null };
+  /** Estado registrado do container do projeto (AT-104). Default: nenhum. */
+  container?: 'running' | 'provisioning' | null;
+  /** Tasks pegáveis por módulo (AT-104). Default: 0. */
+  pegaveis?: number;
   /**
    * A LOCALIZAÇÃO do workspace do projeto (RN-169/RN-478) — o par
    * (modo, caminho) + o nome de pasta congelado. O default é o modo de
@@ -114,7 +119,7 @@ function build(opts?: {
   } as unknown as CreateSessionUseCase;
 
   const taskRepo = {
-    countClaimableByModule: () => Promise.resolve(0),
+    countClaimableByModule: () => Promise.resolve(opts?.pegaveis ?? 0),
   } as unknown as TaskRepository;
 
   const agentAutonomy = {
@@ -217,6 +222,11 @@ function build(opts?: {
     findByProject: () => Promise.resolve(opts?.handoffsDoProjeto ?? []),
   } as unknown as HandoffRepository;
 
+  const containers = {
+    findByProject: () =>
+      Promise.resolve(opts?.container ? { status: opts.container } : null),
+  } as unknown as ContainerRepository;
+
   return {
     useCase: new ActivateExecutionUseCase(
       moduleMaps,
@@ -234,6 +244,7 @@ function build(opts?: {
       getSessionPendingWork,
       repositories,
       handoffs,
+      containers,
     ),
     areasSemeadas,
     started,
@@ -767,5 +778,39 @@ describe('ActivateExecutionUseCase — sem repositório, nada começa (RN-582)',
     await r.useCase.execute('proj-1', 'user-1');
 
     expect(r.eventos.map((e) => e.type)).toContain('execution.activated');
+  });
+});
+
+describe('ActivateExecutionUseCase — sugestão de paralelização (AT-104)', () => {
+  const sugestoes = (eventos: { type: string }[]) =>
+    eventos.filter((e) => e.type === 'execution.parallelization_suggested');
+
+  it('agentes bloqueados (sem container running) e tasks pegáveis: NÃO sugere +1 agente', async () => {
+    const { useCase, eventos } = build({ pegaveis: 6, container: null });
+    await useCase.execute('proj-1', 'user-1');
+    expect(sugestoes(eventos)).toHaveLength(0);
+  });
+
+  it('container só em provisioning também não conta como capacidade', async () => {
+    const { useCase, eventos } = build({
+      pegaveis: 6,
+      container: 'provisioning',
+    });
+    await useCase.execute('proj-1', 'user-1');
+    expect(sugestoes(eventos)).toHaveLength(0);
+  });
+
+  it('com container running e ≥2 tasks pegáveis: sugere, um evento por módulo', async () => {
+    const { useCase, eventos } = build({ pegaveis: 3, container: 'running' });
+    await useCase.execute('proj-1', 'user-1');
+    const s = sugestoes(eventos);
+    expect(s).toHaveLength(MODULOS.length);
+    expect(s[0]).toMatchObject({ payload: { availableTasks: 3 } });
+  });
+
+  it('com container running e <2 tasks pegáveis: não sugere', async () => {
+    const { useCase, eventos } = build({ pegaveis: 1, container: 'running' });
+    await useCase.execute('proj-1', 'user-1');
+    expect(sugestoes(eventos)).toHaveLength(0);
   });
 });
