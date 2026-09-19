@@ -149,7 +149,7 @@ export async function reprojetarArtefatos(
             .select()
             .from(projects)
             .where(eq(projects.id, linha.projectId));
-          projeto = (row as Project | undefined) ?? null;
+          projeto = row ?? null;
           projetos.set(linha.projectId, projeto);
         }
         if (!projeto) {

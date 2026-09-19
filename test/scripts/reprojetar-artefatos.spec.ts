@@ -1,6 +1,13 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { randomBytes } from 'node:crypto';
-import { mkdtemp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import {
+  mkdtemp,
+  mkdir,
+  readdir,
+  readFile,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ulid } from 'ulid';
@@ -184,7 +191,10 @@ async function projetarParaFrente(): Promise<void> {
 }
 
 /** caminho relativo à raiz -> conteúdo. É a "medida" da pasta. */
-async function ler(pasta: string, base = pasta): Promise<Record<string, string>> {
+async function ler(
+  pasta: string,
+  base = pasta,
+): Promise<Record<string, string>> {
   const saida: Record<string, string> = {};
   let entradas;
   try {
@@ -195,7 +205,8 @@ async function ler(pasta: string, base = pasta): Promise<Record<string, string>>
   for (const e of entradas) {
     const caminho = join(pasta, e.name);
     if (e.isDirectory()) Object.assign(saida, await ler(caminho, base));
-    else saida[caminho.slice(base.length + 1)] = await readFile(caminho, 'utf-8');
+    else
+      saida[caminho.slice(base.length + 1)] = await readFile(caminho, 'utf-8');
   }
   return saida;
 }
