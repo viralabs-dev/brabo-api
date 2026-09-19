@@ -43,7 +43,9 @@ export function opcoesDaLeituraInterna(query: {
 
   const invalido = tipos?.find((t) => !TIPO_DE_EVENTO.test(t));
   if (invalido !== undefined) {
-    throw new BadRequestException(`tipo de evento inválido em types: ${invalido}`);
+    throw new BadRequestException(
+      `tipo de evento inválido em types: ${invalido}`,
+    );
   }
 
   return {
