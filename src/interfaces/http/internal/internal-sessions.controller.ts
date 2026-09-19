@@ -32,6 +32,7 @@ import { ServiceRoute } from '../auth/service-route.decorator';
 import { ReportSessionTerminationUseCase } from '../../../application/use-cases/sessions/report-session-termination.use-case';
 import { AppendSessionEventUseCase } from '../../../application/use-cases/sessions/append-session-event.use-case';
 import { ListSessionEventsUseCase } from '../../../application/use-cases/sessions/list-session-events.use-case';
+import { opcoesDaLeituraInterna } from './leitura-interna-de-eventos';
 import { RunLlmTurnUseCase } from '../../../application/use-cases/llm/run-llm-turn.use-case';
 import { StreamLlmTurnUseCase } from '../../../application/use-cases/llm/stream-llm-turn.use-case';
 import { ProposeActionUseCase } from '../../../application/use-cases/actions/propose-action.use-case';
@@ -258,31 +259,52 @@ export class InternalSessionsController {
   }
 
   /**
-   * Leitura interna dos eventos da sessão — usada pelo engine só pra
-   * REHIDRATAR o histórico de conversa de um agente (o CriativoServer) no
-   * restart. A rota humana equivalente é RBAC-guarded; esta é EngineService.
+   * Leitura interna dos eventos da sessão — usada pelo engine pra REHIDRATAR
+   * o histórico de conversa dos agentes conversacionais e pra ler os
+   * artefatos dos kickoffs (RN-580). A rota humana equivalente é
+   * RBAC-guarded; esta é EngineService. `latest` e `types` são ADITIVOS
+   * (RN-580): sem eles a resposta é a de sempre.
    */
   @Get(':sessionId/events')
   @ApiOperation({
     summary: "Paginates the session's event log for the engine",
     description:
-      "Used to REHYDRATE an agent's conversation history after a restart. The " +
-      'equivalent human route is protected by RBAC; this one, by the service token.',
+      "Used to REHYDRATE a conversational agent's history and to read the " +
+      'artifacts its kickoff needs. The equivalent human route is protected by ' +
+      'RBAC; this one, by the service token. `latest=true` returns the TAIL ' +
+      '(still in ascending `seq`) and ignores `afterSeq`; `types` restricts the ' +
+      'page to those event types. The page is capped at 200 either way (ADR 0060).',
   })
   @ApiQuery({ name: 'projectId', required: true })
   @ApiQuery({ name: 'afterSeq', required: false, example: 40 })
   @ApiQuery({ name: 'limit', required: false, example: 200 })
+  @ApiQuery({
+    name: 'latest',
+    required: false,
+    example: 'true',
+    description: 'Fetches the tail of the log; ignores `afterSeq`.',
+  })
+  @ApiQuery({
+    name: 'types',
+    required: false,
+    example: 'artifact.product_brief,artifact.business_rule',
+    description:
+      'Comma-separated event types (at most 20). Only events of these types count toward `limit`.',
+  })
   @ApiOkResponse({ type: PaginaDeEventosResponseDto })
   listEvents(
     @Param('sessionId') sessionId: string,
     @Query('projectId') projectId: string,
     @Query('afterSeq') afterSeq?: string,
     @Query('limit') limit?: string,
+    @Query('latest') latest?: string,
+    @Query('types') types?: string,
   ) {
-    return this.listSessionEvents.execute(projectId, sessionId, {
-      afterSeq: afterSeq !== undefined ? Number(afterSeq) : undefined,
-      limit: limit !== undefined ? Number(limit) : undefined,
-    });
+    return this.listSessionEvents.execute(
+      projectId,
+      sessionId,
+      opcoesDaLeituraInterna({ afterSeq, limit, latest, types }),
+    );
   }
 
   /**
