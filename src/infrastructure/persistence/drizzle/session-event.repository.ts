@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, desc, eq, gt, gte, lt } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, inArray, lt } from 'drizzle-orm';
 import {
   SessionEventRepository,
   type ListPaginatedOptions,
@@ -51,6 +51,9 @@ export class DrizzleSessionEventRepository implements SessionEventRepository {
     const conditions = [eq(sessionEvents.sessionId, sessionId)];
     if (opts.afterSeq !== undefined && !opts.latest) {
       conditions.push(gt(sessionEvents.seq, opts.afterSeq));
+    }
+    if (opts.types && opts.types.length > 0) {
+      conditions.push(inArray(sessionEvents.type, opts.types));
     }
 
     // `latest`: pega do fim pelo banco e reverte na memória, pra devolver
