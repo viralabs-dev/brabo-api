@@ -77,9 +77,16 @@ export abstract class SessionRepository {
    * retorna o seq atribuído a este evento (null se a sessão não
    * existir no projeto informado). É isso que garante seq sem gaps
    * sob escrita concorrente.
+   *
+   * Devolve também o `status` lido pelo MESMO UPDATE (RN-581): a recusa de
+   * conversa em sessão encerrada não paga uma consulta a mais no caminho mais
+   * quente do produto, e lê o estado sob o mesmo lock de linha que a
+   * transição de sessão toma (`findInProjectForUpdate`) — um evento de
+   * conversa não escorrega entre a leitura e o fechamento. Quem recusa lança
+   * DENTRO da transação, e o incremento volta junto: sem buraco no `seq`.
    */
   abstract incrementSeq(
     projectId: string,
     sessionId: string,
-  ): Promise<number | null>;
+  ): Promise<{ seq: number; status: SessionStatus } | null>;
 }
