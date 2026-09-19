@@ -5,6 +5,8 @@ import { parse } from 'yaml';
 import {
   GATES_HUMANOS_IMUTAVEIS,
   gatesCobraveis,
+  localizadoresDoRegistro,
+  validarLocalizadores,
   validarRegistro,
   type Gate,
   type GateRegistry,
@@ -33,7 +35,37 @@ function gate(id: string): Gate {
 
 describe('docs/gates.yml — o arquivo real', () => {
   it('é válido: nenhum problema acumulado', () => {
-    expect(validarRegistro(registro, existe)).toEqual([]);
+    expect(validarRegistro(registro)).toEqual([]);
+  });
+
+  /**
+   * A régua de REPOSITÓRIO, e este é o lugar onde ela roda de verdade.
+   *
+   * Até a correção do `GET /gates` ela morava dentro do loader, e a
+   * consequência foi medida na v6.1.0 instalada: a imagem de produção leva
+   * `docs/gates.yml` e mais nada de `docs/` — sem `apps/api/test/`, sem
+   * `scripts/ci/`, sem `.github/` —, então TODO alvo "não existia" e a rota
+   * respondia 500 em toda instalação. A régua saiu do runtime e ficou aqui,
+   * onde a pergunta faz sentido: um checkout, no CI, a cada PR.
+   *
+   * Se isto reprovar, o conserto NÃO é afrouxar a régua: é repor o arquivo
+   * que sumiu ou corrigir o caminho no YAML.
+   */
+  it('todo alvo de prova citado existe no repositório', () => {
+    expect(validarLocalizadores(registro, existe)).toEqual([]);
+  });
+
+  /**
+   * O corpo da régua acima só vale se ela estiver mesmo olhando para alguma
+   * coisa — uma lista vazia passaria calada, que é o modo de falha do glob
+   * morto do docmap aplicado ao próprio verificador.
+   */
+  it('a régua de localizadores tem alvos para cobrar', () => {
+    const alvos = localizadoresDoRegistro(registro);
+    expect(alvos.length).toBeGreaterThan(0);
+    expect(alvos.map((l) => l.alvo)).toContain(
+      'apps/api/test/domain/actions/decide.spec.ts',
+    );
   });
 
   it('declara os gates do fluxo que existem hoje', () => {
@@ -170,8 +202,7 @@ describe('validarRegistro — as invariantes', () => {
     return { version: 1, gates: [{ ...base, ...overrides }] };
   }
 
-  const tipos = (r: GateRegistry) =>
-    validarRegistro(r, () => true).map((p) => p.tipo);
+  const tipos = (r: GateRegistry) => validarRegistro(r).map((p) => p.tipo);
 
   // RN-070
   it('gate block sem verificacao script é recusado', () => {
@@ -227,9 +258,44 @@ describe('validarRegistro — as invariantes', () => {
       status: 'active',
       evidencia: { tipo: 'teste', arquivo: 'nao/existe.spec.ts' },
     });
-    expect(validarRegistro(r, () => false).map((p) => p.tipo)).toContain(
+    expect(validarLocalizadores(r, () => false).map((p) => p.tipo)).toContain(
       'evidencia-inexistente',
     );
+  });
+
+  /**
+   * A metade que a separação compra: `validarRegistro` não pode NEM PODER
+   * reprovar por arquivo ausente. É isto que o loader chama, e é isto que a
+   * imagem de produção — que não carrega alvo nenhum — precisa ver passar.
+   */
+  it('validarRegistro ignora o disco: alvo ausente não é problema DELE', () => {
+    const r = comGate({
+      status: 'active',
+      evidencia: { tipo: 'teste', arquivo: 'nao/existe.spec.ts' },
+    });
+    expect(tipos(r)).not.toContain('evidencia-inexistente');
+    expect(tipos(r)).toEqual([]);
+  });
+
+  it('o workflow da evidência de CI também é cobrado, não só o arquivo', () => {
+    const r = comGate({
+      status: 'active',
+      evidencia: {
+        tipo: 'ci',
+        arquivo: 'scripts/ci/existe.spec.ts',
+        workflow: '.github/workflows/sumiu.yml',
+      },
+    });
+    const existeMenosOWorkflow = (caminho: string) =>
+      !caminho.endsWith('sumiu.yml');
+
+    expect(validarLocalizadores(r, existeMenosOWorkflow)).toEqual([
+      {
+        gate: 'exemplo',
+        tipo: 'evidencia-inexistente',
+        detalhe: '.github/workflows/sumiu.yml não existe',
+      },
+    ]);
   });
 
   it('id duplicado é recusado', () => {

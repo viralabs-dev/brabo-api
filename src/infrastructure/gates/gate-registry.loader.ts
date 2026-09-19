@@ -16,6 +16,25 @@ import {
  * de produção tem outra árvore ainda. Uma variável de ambiente resolveria, e
  * seria mais uma coisa para configurar errado; subir de `__dirname` até achar
  * `docs/gates.yml` cobre os três com uma regra só.
+ *
+ * ## O que ele valida, e o que NÃO valida
+ *
+ * Só `validarRegistro` — o que é verdade sobre o CONTEÚDO do registro, e vale
+ * onde quer que ele seja lido. A outra régua, `validarLocalizadores` (o
+ * arquivo de prova que `evidencia` cita existe no disco), é afirmação sobre o
+ * REPOSITÓRIO e roda no CI: no teste do arquivo real e na fase 2 do
+ * `validacao-gates.ts`.
+ *
+ * A separação nasceu de um defeito MEDIDO na v6.1.0 instalada: `GET /gates`
+ * respondia 500 com `RegistroDeGatesInvalido` listando os onze alvos de
+ * `docs/gates.yml`, todos "não existe". Não era o registro estando errado —
+ * era a pergunta errada. A imagem de produção leva `/app/docs/gates.yml`, o
+ * `dist` achatado, `db/migrations` e `node_modules`; `apps/api/test/`,
+ * `scripts/ci/` e `.github/` nunca entram nela, então a régua de repositório
+ * reprovava TODOS os gates em TODA instalação, e a tela de gates quebrava.
+ *
+ * Nada foi afrouxado: a régua continua existindo, com os mesmos alvos, e
+ * continua reprovando alvo que sumiu — só que onde a pergunta faz sentido.
  */
 export const CAMINHO_RELATIVO = 'docs/gates.yml';
 
@@ -64,10 +83,7 @@ export function carregarRegistro(partindoDe = __dirname): GateRegistry {
   }
 
   const registro = parse(readFileSync(caminho, 'utf-8')) as GateRegistry;
-  const raiz = caminho.slice(0, -CAMINHO_RELATIVO.length);
-  const problemas = validarRegistro(registro, (rel) =>
-    existsSync(join(raiz, rel)),
-  );
+  const problemas = validarRegistro(registro);
 
   // Servir registro inválido é pior que falhar: quem consome passaria a medir
   // o gate errado sem saber.
