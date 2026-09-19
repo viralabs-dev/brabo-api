@@ -79,8 +79,13 @@ export class ExecutionController {
   })
   @ApiConflictResponse({
     description:
-      'The origin session is `consultiva` and refuses `execution.activated` ' +
-      '(RN-097). Activating twice is NOT a conflict: it is idempotent by ' +
+      'The project has no repository yet (RN-582): the dev agents work in ' +
+      'worktrees of it, so nothing starts. The message names what is missing ' +
+      '— the handoff to the Architect (or, as a second door, to the Dev Lead) ' +
+      'whose acceptance provisions it, or the provisioning page when that ' +
+      'handoff was already accepted and left no repository. Also: the origin ' +
+      'session is `consultiva` and refuses `execution.activated` (RN-097). ' +
+      'Activating twice is NOT a conflict: it is idempotent by ' +
       '`findActiveExecutionSession`, and reactivates inside the same session.',
   })
   activate(

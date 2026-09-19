@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -10,6 +11,9 @@ import { AgentAutonomyRepository } from '../../ports/agent-autonomy-repository.p
 import { ApiToEngineClient } from '../../ports/api-to-engine-client.port';
 import { ProjectRepository } from '../../ports/project-repository.port';
 import { PermissionsFileStore } from '../../ports/permissions-file-store.port';
+import { ProvisionedRepositoryRepository } from '../../ports/provisioned-repository-repository.port';
+import { HandoffRepository } from '../../ports/handoff-repository.port';
+import { motivoDeExecucaoSemRepositorio } from '../../../domain/execution/repositorio-para-executar';
 import { DEV_TERMINAL_ALLOW_PATTERNS } from '../../../domain/actions/dev-terminal-patterns';
 import { TransitionSessionUseCase } from '../sessions/transition-session.use-case';
 import { CreateSessionUseCase } from '../sessions/create-session.use-case';
@@ -67,7 +71,9 @@ const DEFAULT_TASK_BUDGET_MICROS = 500_000;
 export const DEFAULT_MAX_CONSECUTIVE_BLOCKED = 3;
 
 /**
- * Ativa a fase de execução de um projeto (Fase 4a): exige module_map vigente;
+ * Ativa a fase de execução de um projeto (Fase 4a): exige module_map vigente
+ * e repositório provisionado (RN-582 — sem ele, 409 nomeando o handoff que
+ * falta aceitar);
  * usa a sessão de execução vigente — ou cria e ativa uma, se não houver;
  * seeda as instruções + a autonomia (auto_approve nos git ops) de um dev por
  * módulo; e manda o engine subir os DevAgentServers.
@@ -91,6 +97,8 @@ export class ActivateExecutionUseCase {
     private readonly permissionsFile: PermissionsFileStore,
     private readonly seedAreas: SeedAgentAreasUseCase,
     private readonly getSessionPendingWork: GetSessionPendingWorkUseCase,
+    private readonly repositories: ProvisionedRepositoryRepository,
+    private readonly handoffs: HandoffRepository,
   ) {}
 
   async execute(
@@ -113,6 +121,26 @@ export class ActivateExecutionUseCase {
     if (!moduleMap || moduleMap.modules.length === 0) {
       throw new BadRequestException(
         'Projeto sem module_map vigente — o Arquiteto precisa definir os módulos antes de executar',
+      );
+    }
+
+    // Sem repositório, NADA começa (RN-582, ADR 0165). Os dev agents
+    // trabalham em worktrees do repositório do projeto; ativar sem ele dava
+    // 201 e deixava a execução "ativa" sem onde trabalhar, para sempre
+    // (AT-092: as três tabelas de git vazias depois de um 201). A checagem
+    // vem ANTES de qualquer efeito — persistir orçamento, semear o
+    // `permissions.json`, criar sessão —, para a recusa não deixar rastro.
+    //
+    // Recusa e não provisiona: provisionar aqui esconderia um efeito de git
+    // dentro da ativação, e os agentes ANTERIORES a ela (Arquiteto, Infra)
+    // continuariam sem repositório. Quem provisiona é o aceite do handoff ao
+    // Arquiteto, com o do Dev Lead como segunda porta — e a frase diz qual
+    // falta, lida do estado dos handoffs do projeto. Repositório ADOTADO conta.
+    const repositorio = await this.repositories.findByProjectId(projectId);
+    if (!repositorio) {
+      const handoffsDoProjeto = await this.handoffs.findByProject(projectId);
+      throw new ConflictException(
+        motivoDeExecucaoSemRepositorio(projectId, handoffsDoProjeto),
       );
     }
 
