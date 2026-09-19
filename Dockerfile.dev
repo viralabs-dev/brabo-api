@@ -41,6 +41,14 @@ WORKDIR /workspace
 RUN mkdir -p /data/git-repos /data/project-workspaces \
   && chown -R "${DEV_UID}:${DEV_GID}" /data
 
+# Os TRÊS volumes de `node_modules` (docker-compose.yml, serviço `api`) seguem a
+# mesma lição, e o defeito é o mesmo: com o volume inexistente, sem o caminho
+# aqui ele nasce `root:root 755` e o `pnpm install` do CMD morre com
+# `EACCES: mkdir '/workspace/node_modules/.pnpm'` (AT-172). O `chown` é só dos
+# pontos de montagem, vazios — nunca recursivo sobre `/workspace`.
+RUN mkdir -p /workspace/node_modules /workspace/apps/api/node_modules /workspace/packages/shared/node_modules \
+  && chown "${DEV_UID}:${DEV_GID}" /workspace/node_modules /workspace/apps/api/node_modules /workspace/packages/shared/node_modules
+
 USER ${DEV_UID}:${DEV_GID}
 
 # `--filter api...`: instala só a api e as dependências dela (incluindo
