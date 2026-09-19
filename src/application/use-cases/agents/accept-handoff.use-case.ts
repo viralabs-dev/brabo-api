@@ -109,6 +109,16 @@ export class AcceptHandoffUseCase {
       );
     }
 
+    // RN-581: antes de marcar `accepted`. Aceitar é o que ATIVA o agente
+    // seguinte; numa sessão encerrada isso subiria um conversacional que
+    // ninguém mais escuta, e o `updateStatus` abaixo não volta atrás.
+    await this.appendEvent.garantirQueAceita(
+      projectId,
+      sessionId,
+      'handoff.accepted',
+      { kind: 'user', id: userId },
+    );
+
     const accepted = await this.handoffs.updateStatus(handoffId, 'accepted');
 
     await this.appendEvent.execute(projectId, sessionId, {

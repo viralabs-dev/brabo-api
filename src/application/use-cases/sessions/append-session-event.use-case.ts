@@ -22,7 +22,28 @@ import {
   ARTIFACT_PROJECTABLE_EVENT_TYPES,
   ARTIFACT_PROJECTION_AGGREGATE_TYPE,
 } from '../../../domain/artifacts/artifact-projection-events';
+import {
+  ConversaEmSessaoEncerradaError,
+  ehEventoDeConversa,
+  garantirQueSessaoAceitaEvento,
+} from '../../../domain/sessions/conversa-em-sessao-encerrada';
 import { Traced } from '../../../infrastructure/observability/traced.decorator';
+
+/**
+ * A recusa da RN-581 como 409 NOMEADO: `reason` é o que o engine reconhece no
+ * log e a web mostra. 409 pelo mesmo motivo da trava do tipo: o corpo está
+ * certo, quem recusa é o ESTADO do recurso.
+ */
+export function conflitoDeSessaoEncerrada(
+  error: ConversaEmSessaoEncerradaError,
+): ConflictException {
+  return new ConflictException({
+    message: error.message,
+    reason: ConversaEmSessaoEncerradaError.REASON,
+    status: error.status,
+    type: error.type,
+  });
+}
 
 export interface AppendSessionEventInput {
   type: string;
@@ -51,6 +72,14 @@ export class AppendSessionEventUseCase {
    * caminhos que gravam evento — a rota do usuário e a `/internal/*` do engine
    * — passam por este método. Travar no caso de uso deixaria o outro aberto, e
    * um evento gravado por fora reescreveria calado o que a sessão é.
+   *
+   * ## A trava do estado (RN-581)
+   *
+   * Sessão `closed`/`closed_abnormally` recusa evento de CONVERSA — ver
+   * `conversa-em-sessao-encerrada.ts` para a régua e para o que continua
+   * entrando (os consumidores do fechamento). O estado vem do MESMO `UPDATE`
+   * que reserva o `seq`, sem consulta extra; a recusa lança dentro da
+   * transação, então o incremento é desfeito e o contador segue sem buraco.
    */
   @Traced('application')
   execute(
@@ -78,8 +107,23 @@ export class AppendSessionEventUseCase {
         }
       }
 
-      const seq = await this.sessions.incrementSeq(projectId, sessionId);
-      if (seq === null) throw new NotFoundException('Sessão não encontrada');
+      const reservado = await this.sessions.incrementSeq(projectId, sessionId);
+      if (reservado === null) {
+        throw new NotFoundException('Sessão não encontrada');
+      }
+      try {
+        garantirQueSessaoAceitaEvento(
+          reservado.status,
+          input.type,
+          input.actor,
+        );
+      } catch (error) {
+        if (error instanceof ConversaEmSessaoEncerradaError) {
+          throw conflitoDeSessaoEncerrada(error);
+        }
+        throw error;
+      }
+      const seq = reservado.seq;
 
       const id = ulid();
       const event = await this.sessionEvents.append({
@@ -130,5 +174,34 @@ export class AppendSessionEventUseCase {
 
       return event;
     });
+  }
+
+  /**
+   * A mesma recusa, ANTES de um efeito colateral. Existe para os casos de uso
+   * da conversa que mexem em outra coisa antes de gravar o evento — o
+   * `CreateHandoff` cria a linha do handoff, o `AcceptHandoff` a marca
+   * `accepted` —, e que sem isto deixariam o efeito gravado e só o evento
+   * recusado. Quem grava o evento primeiro (mensagem, prontidão) não precisa:
+   * o funil acima já recusa antes de o engine ser chamado.
+   *
+   * Paga uma leitura, e só quem a chama paga.
+   */
+  async garantirQueAceita(
+    projectId: string,
+    sessionId: string,
+    type: string,
+    actor: Actor,
+  ): Promise<void> {
+    if (!ehEventoDeConversa(type, actor)) return;
+    const sessao = await this.sessions.findInProject(projectId, sessionId);
+    if (!sessao) throw new NotFoundException('Sessão não encontrada');
+    try {
+      garantirQueSessaoAceitaEvento(sessao.status, type, actor);
+    } catch (error) {
+      if (error instanceof ConversaEmSessaoEncerradaError) {
+        throw conflitoDeSessaoEncerrada(error);
+      }
+      throw error;
+    }
   }
 }

@@ -113,6 +113,26 @@ export class DrizzleSessionEventRepository implements SessionEventRepository {
     return rows.map((r) => toEntity(r.session_events));
   }
 
+  async findLatestOfTypesInSession(
+    sessionId: string,
+    types: readonly string[],
+  ): Promise<SessionEvent | null> {
+    if (types.length === 0) return null;
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .select()
+      .from(sessionEvents)
+      .where(
+        and(
+          eq(sessionEvents.sessionId, sessionId),
+          inArray(sessionEvents.type, [...types]),
+        ),
+      )
+      .orderBy(desc(sessionEvents.seq))
+      .limit(1);
+    return row ? toEntity(row) : null;
+  }
+
   async listByTypeInSession(
     sessionId: string,
     type: string,

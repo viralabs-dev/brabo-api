@@ -60,6 +60,17 @@ export class CreateHandoffUseCase {
       throw error;
     }
 
+    // RN-581: a recusa de sessão encerrada vem ANTES de criar a linha — o
+    // evento é gravado depois dela, sem transação, e recusá-lo só ali deixaria
+    // um handoff `offered` órfão numa sessão que ninguém mais abre.
+    const actor: Actor = input.actor ?? { kind: 'agent', id: input.fromAgent };
+    await this.appendEvent.garantirQueAceita(
+      projectId,
+      sessionId,
+      'handoff.offered',
+      actor,
+    );
+
     const handoff = await this.handoffs.create({
       sessionId,
       projectId,
@@ -71,7 +82,7 @@ export class CreateHandoffUseCase {
 
     await this.appendEvent.execute(projectId, sessionId, {
       type: 'handoff.offered',
-      actor: input.actor ?? { kind: 'agent', id: input.fromAgent },
+      actor,
       payload: {
         handoffId: handoff.id,
         toAgent: input.toAgent,
