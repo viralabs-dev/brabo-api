@@ -392,4 +392,18 @@ export class ContainerOverviewItemResponseDto {
       'instead of the action button, same pattern as the PRs tab.',
   })
   acaoPendente!: ProposedActionResponseDto | null;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'Whether THIS INSTALLATION has a container broker configured ' +
+      '(`BROKER_URL` set, ADR 0130) — the same value on every row, because ' +
+      'it is installation configuration and not a property of the project. ' +
+      '`container` and `mounted` projects only start a container through the ' +
+      'broker (ADR 0144), so with `false` the page refuses the start button ' +
+      'for them BEFORE the click and says why (ADR 0161, RN-574); `runner` ' +
+      'projects are unaffected. It says the variable exists, never that the ' +
+      'broker answers — that is what `naoObservado` reports.',
+  })
+  brokerConfigurado!: boolean;
 }

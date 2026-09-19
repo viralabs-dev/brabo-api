@@ -24,6 +24,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { ContainerBrokerPort } from '../../../application/ports/container-broker.port';
 import type { User } from '../../../domain/iam/user.entity';
 import { RequireRole } from './require-role.decorator';
 import { CreateWorkspaceUseCase } from '../../../application/use-cases/iam/create-workspace.use-case';
@@ -85,6 +86,7 @@ export class WorkspacesController {
     private readonly getProjectsStatusForWorkspace: GetProjectsStatusForWorkspaceUseCase,
     private readonly getProjectsSummaryForWorkspace: GetProjectsSummaryForWorkspaceUseCase,
     private readonly getUnreadEventsForWorkspace: GetUnreadEventsForWorkspaceUseCase,
+    private readonly broker: ContainerBrokerPort,
   ) {}
 
   @Post()
@@ -221,6 +223,15 @@ export class WorkspacesController {
    * `WEB_ORIGIN` direto. `workspaceId` não entra no cálculo de propósito: a
    * base é da INSTALAÇÃO, não do workspace; ele está na rota porque é o que dá
    * escopo ao `RolesGuard`.
+   *
+   * `brokerConfigurado` mora AQUI e não numa rota nova (ADR 0161, RN-573):
+   * é a mesma pergunta — "que modo esta INSTALAÇÃO consegue executar?" —,
+   * feita pelo mesmo chamador (o assistente de criação), no mesmo instante.
+   * `mounted` precisa das DUAS coisas (a base para a pasta existir, o broker
+   * para o container subir, ADR 0144), e `container` precisa do broker. A
+   * fonte é `ContainerBrokerPort.configurado()`, a MESMA que decide se a
+   * leitura do estado observado pergunta ou declara ausência — uma segunda
+   * leitura de `BROKER_URL` seria a segunda fonte que um dia diverge.
    */
   @Get(':workspaceId/projects-base')
   @RequireRole('maintainer')
@@ -232,11 +243,18 @@ export class WorkspacesController {
       'state, never an error — means this installation has no ' +
       '`BRABO_PROJECTS_BASE`, so the project wizard must not offer Mounted ' +
       'mode at all. The same value for every workspace: it is installation ' +
-      'configuration, and `workspaceId` only scopes the authorization.',
+      'configuration, and `workspaceId` only scopes the authorization.\n\n' +
+      '`brokerConfigurado` answers the other half of the same question: ' +
+      '`container` and `mounted` only start a container through the broker ' +
+      '(ADR 0144), so without it the wizard does not pre-select Mounted and ' +
+      'offers Runner instead (ADR 0161, RN-573).',
   })
   @ApiOkResponse({ type: ProjectsBaseResponseDto })
   getProjectsBase(): ProjectsBaseResponseDto {
-    return { projectsBase: baseDeProjetos() };
+    return {
+      projectsBase: baseDeProjetos(),
+      brokerConfigurado: this.broker.configurado(),
+    };
   }
 
   /**

@@ -51,10 +51,11 @@ afterEach(() => {
   else process.env.BRABO_PROJECTS_BASE = originalBase;
 });
 
-/** O controller não recebe nada desta rota — todas as 12 dependências são inertes aqui. */
+/** O controller não recebe nada desta rota — todas as 13 dependências são inertes aqui. */
 function novoController(): WorkspacesController {
   const inerte = { execute: vi.fn() } as never;
   return new WorkspacesController(
+    inerte,
     inerte,
     inerte,
     inerte,

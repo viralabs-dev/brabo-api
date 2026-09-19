@@ -537,6 +537,21 @@ export class ProjectsBaseResponseDto {
       'not offer it. Never a failure — absent is a normal state.',
   })
   projectsBase!: string | null;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'Whether this installation has a container broker configured ' +
+      '(`BROKER_URL` set, ADR 0130). `container` and `mounted` projects only ' +
+      'start a container through the broker (ADR 0144), and without one ' +
+      'every dev agent is blocked forever (ADR 0143). With `false` the ' +
+      'project wizard does not pre-select Mounted, keeps Container and ' +
+      'Mounted visible but not selectable with the reason in text, and ' +
+      'pre-selects Runner (ADR 0161, RN-573). It says the variable exists, ' +
+      'never that the broker answers. Installation configuration, like ' +
+      '`projectsBase`: the same for every workspace.',
+  })
+  brokerConfigurado!: boolean;
 }
 
 /**

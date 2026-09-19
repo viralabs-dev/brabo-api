@@ -84,6 +84,7 @@ export class ContainersOverviewController {
             updatedAt: item.acaoPendente.updatedAt.toISOString(),
           }
         : null,
+      brokerConfigurado: item.brokerConfigurado,
     }));
   }
 }
