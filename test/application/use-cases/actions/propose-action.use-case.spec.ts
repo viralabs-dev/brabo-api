@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { createTestDb, truncateAll } from '../../../support/test-db';
 import {
@@ -133,6 +133,7 @@ const proposeAction = new ProposeActionUseCase(
   undefined as never, // executeContainerStop — não exercitado aqui
   appendSessionEvent,
   obterCicloDeVidaDoContainer,
+  { configurado: () => true } as never, // brokerPort
 );
 
 let workspacesRoot: string;
@@ -198,6 +199,61 @@ async function marcarContainerRunning(projectId: string) {
 }
 
 describe('ProposeActionUseCase', () => {
+  describe('sem broker na instalação (AT-105, RN-591)', () => {
+    const semBroker = new ProposeActionUseCase(
+      unitOfWork,
+      sessionRepo,
+      projectRepo,
+      proposedActionRepo,
+      agentAutonomyRepo,
+      permissionsFileStore,
+      outboxRepo,
+      resolveEffectiveRole,
+      executeTerminalAction,
+      undefined as never,
+      undefined as never,
+      undefined as never,
+      undefined as never,
+      undefined as never,
+      appendSessionEvent,
+      obterCicloDeVidaDoContainer,
+      { configurado: () => false } as never,
+    );
+
+    it.each(['container_start', 'container_stop', 'container_remove'])(
+      '%s em projeto container é recusado com 409 nomeado, sem criar proposta',
+      async (actionType) => {
+        const { project, session } = await setupSession('maintainer');
+
+        const proposta = semBroker.execute(project.id, session.id, {
+          actionType,
+          actor: { kind: 'agent', id: 'infra-lead' },
+          payload: {},
+        });
+
+        await expect(proposta).rejects.toBeInstanceOf(ConflictException);
+        await expect(proposta).rejects.toMatchObject({
+          response: { code: 'sem_broker_na_instalacao' },
+        });
+        expect(
+          await proposedActionRepo.listByProjectAndType(project.id, actionType),
+        ).toHaveLength(0);
+      },
+    );
+
+    it('com broker configurado, container_stop segue como pending', async () => {
+      const { project, session } = await setupSession('maintainer');
+
+      const action = await proposeAction.execute(project.id, session.id, {
+        actionType: 'container_stop',
+        actor: { kind: 'user', id: session.createdBy },
+        payload: {},
+      });
+
+      expect(action.status).toBe('pending');
+    });
+  });
+
   it('sem regra em permissions.json, cria a ação como pending', async () => {
     const { project, session } = await setupSession();
 

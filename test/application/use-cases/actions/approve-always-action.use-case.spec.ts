@@ -123,6 +123,7 @@ const proposeAction = new ProposeActionUseCase(
   undefined as never, // executeContainerStop — não exercitado aqui
   appendSessionEvent,
   obterCicloDeVidaDoContainer,
+  { configurado: () => true } as never, // brokerPort
 );
 const approveAction = new ApproveActionUseCase(
   unitOfWork,
