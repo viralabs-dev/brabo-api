@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { CABECALHO_SERVICE_TOKEN } from '../../interfaces/http/auth/engine-service.guard';
 import { tokenDeServicoAtual } from '../security/service-token';
 import { injectTraceHeaders } from '../observability/trace-context';
@@ -43,6 +48,23 @@ function garantirSegmentoDeUrlInterna(valor: string, nome: string): string {
     );
   }
   return valor;
+}
+
+/**
+ * A frase da recusa que o engine devolve em `{error, motivo}` (ADR 0163). Corpo
+ * fora dessa forma não vira mensagem inventada: cai numa frase genérica que
+ * diz que houve recusa, e o texto cru fica fora da resposta ao usuário.
+ */
+function mensagemDaRecusaDoEngine(texto: string): string {
+  try {
+    const corpo = JSON.parse(texto) as { error?: unknown };
+    if (typeof corpo.error === 'string' && corpo.error.trim() !== '') {
+      return corpo.error;
+    }
+  } catch {
+    // corpo não-JSON: cai no genérico abaixo
+  }
+  return 'O agente recusou o comando antes de começar o turno.';
 }
 
 /**
@@ -159,7 +181,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     agent: string,
     text: string,
   ): Promise<void> {
-    await this.postCommand(
+    await this.postComandoDeTurno(
       `/internal/sessions/${sessionId}/agent/message`,
       { projectId, agent, text },
       [['sessionId', sessionId]],
@@ -167,7 +189,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
   }
 
   async confirmReadiness(projectId: string, sessionId: string): Promise<void> {
-    await this.postCommand(
+    await this.postComandoDeTurno(
       `/internal/sessions/${sessionId}/agent/readiness`,
       { projectId },
       [['sessionId', sessionId]],
@@ -187,7 +209,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
   }
 
   async offerInfraHandoff(projectId: string, sessionId: string): Promise<void> {
-    await this.postCommand(
+    await this.postComandoDeTurno(
       `/internal/sessions/${sessionId}/agent/offer-infra-handoff`,
       { projectId },
       [['sessionId', sessionId]],
@@ -388,7 +410,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     title: string,
     reason: string,
   ): Promise<void> {
-    await this.postCommand(
+    await this.postComandoDeTurno(
       `/internal/sessions/${sessionId}/agent/revise`,
       { projectId, storyId, title, reason },
       [['sessionId', sessionId]],
@@ -549,6 +571,54 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
 
     const corpo = (await res.json()) as RespostaDeContainerViaRunner;
     lancarSeFalhou(corpo, operacao === 'stop' ? 'parar' : 'remover');
+  }
+
+  /**
+   * Comando que DISPARA um turno de agente conversacional (mensagem,
+   * prontidão, fechamento de arquitetura, devolução de história).
+   *
+   * Desde o ADR 0163 (RN-578) o engine responde AO ACEITAR — 202 com o turno
+   * ainda rodando —, e a recusa que acontece ANTES de o turno subir volta
+   * como status próprio: 409 (`turno_em_andamento`, `aguardando_aprovacao`)
+   * e 422 (`sem_regra_de_negocio`), com a frase no campo `error`. Aqui eles
+   * viram a exceção HTTP de mesmo status, com a MESMA frase, para chegar ao
+   * clique; até o ADR 0163 o engine respondia 202 a tudo e a recusa era
+   * calada. Separado de `postCommand` de propósito: os outros comandos
+   * (`execution/start`, `rearm`, `parallelize`) têm chamadores que tratam
+   * `Error` genérico, e mudar a exceção deles é outra conversa.
+   */
+  @Traced('infrastructure')
+  private async postComandoDeTurno(
+    path: string,
+    body: Record<string, unknown>,
+    segmentosDeUrl: ReadonlyArray<readonly [string, string]>,
+  ): Promise<void> {
+    for (const [nome, valor] of segmentosDeUrl) {
+      garantirSegmentoDeUrlInterna(valor, nome);
+    }
+
+    const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
+
+    const res = await fetch(`${engineUrl}${path}`, {
+      method: 'POST',
+      headers: this.buildHeaders(),
+      body: JSON.stringify(body),
+    });
+
+    if (res.ok) return;
+
+    const texto = await res.text();
+
+    if (res.status === 409 || res.status === 422) {
+      const mensagem = mensagemDaRecusaDoEngine(texto);
+      throw res.status === 409
+        ? new ConflictException(mensagem)
+        : new UnprocessableEntityException(mensagem);
+    }
+
+    throw new Error(
+      `Falha no comando ao engine (${path}): ${res.status} ${texto}`,
+    );
   }
 
   /**
