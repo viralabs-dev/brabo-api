@@ -104,7 +104,9 @@ class ProviderContado implements GitProviderContract {
   getFileContent: GitProviderContract['getFileContent'] = (i) =>
     this.conta('getFileContent', () => this.inner.getFileContent(i));
   commentOnPullRequest: GitProviderContract['commentOnPullRequest'] = (i) =>
-    this.conta('commentOnPullRequest', () => this.inner.commentOnPullRequest(i));
+    this.conta('commentOnPullRequest', () =>
+      this.inner.commentOnPullRequest(i),
+    );
   listTree: GitProviderContract['listTree'] = (i) =>
     this.conta('listTree', () => this.inner.listTree(i));
   getPullRequestDiff: GitProviderContract['getPullRequestDiff'] = (i) =>
@@ -165,7 +167,11 @@ async function montar() {
 
   const provider = new ProviderContado(new LocalGitProvider());
   const registry: GitProviderRegistry = { get: () => provider };
-  const createSession = new CreateSessionUseCase(unitOfWork, sessionRepo, outbox);
+  const createSession = new CreateSessionUseCase(
+    unitOfWork,
+    sessionRepo,
+    outbox,
+  );
   const provision = new ProvisionRepositoryUseCase(
     unitOfWork,
     new DrizzleUserCredentialRepository(db),

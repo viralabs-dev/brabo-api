@@ -103,9 +103,7 @@ function build(opts?: {
 
   const getSessionPendingWork = {
     execute: () =>
-      Promise.resolve(
-        opts?.pendingWork ?? { pending: false, motivo: null },
-      ),
+      Promise.resolve(opts?.pendingWork ?? { pending: false, motivo: null }),
   } as unknown as GetSessionPendingWorkUseCase;
 
   const createSession = {
@@ -543,9 +541,7 @@ describe('ActivateExecutionUseCase — fecha a sessão de origem (RN-135)', () =
       'sess-origem',
     );
 
-    expect(transicoes.filter((t) => t.sessionId === 'sess-origem')).toEqual(
-      [],
-    );
+    expect(transicoes.filter((t) => t.sessionId === 'sess-origem')).toEqual([]);
   });
 
   it('sessão de origem já não está active: não tenta transicionar', async () => {
@@ -564,9 +560,7 @@ describe('ActivateExecutionUseCase — fecha a sessão de origem (RN-135)', () =
       'sess-origem',
     );
 
-    expect(transicoes.filter((t) => t.sessionId === 'sess-origem')).toEqual(
-      [],
-    );
+    expect(transicoes.filter((t) => t.sessionId === 'sess-origem')).toEqual([]);
   });
 
   it('sem `originSessionId` (chamador antigo, ex. Visão Geral): nada é fechado', async () => {
@@ -726,9 +720,9 @@ describe('ActivateExecutionUseCase — sem repositório, nada começa (RN-582)',
   it('sem repositório: 409, e NENHUM efeito antes da recusa', async () => {
     const r = build({ repositorio: null, projectBudget: 1 });
 
-    await expect(r.useCase.execute('proj-1', 'user-1', 300_000)).rejects.toThrow(
-      ConflictException,
-    );
+    await expect(
+      r.useCase.execute('proj-1', 'user-1', 300_000),
+    ).rejects.toThrow(ConflictException);
 
     // A recusa vem antes de tudo: nem orçamento persistido, nem
     // permissions.json, nem sessão, nem engine, nem evento.

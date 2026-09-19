@@ -1,11 +1,6 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { createTestDb, truncateAll } from '../../support/test-db';
-import {
-  projects,
-  sessions,
-  users,
-  workspaces,
-} from '../../../src/db/schema';
+import { projects, sessions, users, workspaces } from '../../../src/db/schema';
 import { DrizzleHandoffRepository } from '../../../src/infrastructure/persistence/drizzle/handoff.repository';
 
 /**
@@ -59,8 +54,18 @@ describe('DrizzleHandoffRepository.findByProject (RN-582)', () => {
     const sPo = await novaSessao(p);
     const sArq = await novaSessao(p);
 
-    await repo.create({ sessionId: sPo, projectId: p, fromAgent: 'po', toAgent: 'arquiteto' });
-    await repo.create({ sessionId: sArq, projectId: p, fromAgent: 'arquiteto', toAgent: 'dev-lead' });
+    await repo.create({
+      sessionId: sPo,
+      projectId: p,
+      fromAgent: 'po',
+      toAgent: 'arquiteto',
+    });
+    await repo.create({
+      sessionId: sArq,
+      projectId: p,
+      fromAgent: 'arquiteto',
+      toAgent: 'dev-lead',
+    });
 
     const lidos = await repo.findByProject(p);
     expect(lidos.map((h) => h.toAgent)).toEqual(['arquiteto', 'dev-lead']);
