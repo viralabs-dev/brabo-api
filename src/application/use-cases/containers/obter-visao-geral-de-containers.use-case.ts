@@ -10,6 +10,7 @@ import {
   type EstadoObservado,
 } from './obter-estado-observado-do-container.use-case';
 import { Traced } from '../../../infrastructure/observability/traced.decorator';
+import { ContainerBrokerPort } from '../../ports/container-broker.port';
 
 /**
  * Por que uma linha não foi perguntada ao broker NESTE carregamento — nunca
@@ -56,6 +57,18 @@ export interface ContainerOverviewItem {
   naoVerificado: MotivoDeNaoVerificacao | null;
   /** A `proposed_action` pendente de container deste projeto, se houver — ver `ContainerOverviewRow.acaoPendente`. */
   acaoPendente: ProposedAction | null;
+  /**
+   * Esta INSTALAÇÃO tem broker (`BROKER_URL` definida)? (ADR 0161, RN-574)
+   *
+   * O MESMO valor em toda linha — é configuração da instalação, não do
+   * projeto —, repetido por linha e não num envelope porque a resposta desta
+   * rota é uma LISTA e trocá-la por objeto quebraria o contrato. É o que deixa
+   * a tela recusar ANTES do clique a subida de `container`/`mounted`, que só
+   * sobem pelo broker (ADR 0144): sem ele, `container_start` aprovada só pode
+   * terminar `failed` com `BrokerIndisponivelError`. Diz só se a variável
+   * existe, nunca se o broker RESPONDE — quem sabe disso é `naoObservado`.
+   */
+  brokerConfigurado: boolean;
 }
 
 /**
@@ -106,6 +119,7 @@ export class ObterVisaoGeralDeContainersUseCase {
   constructor(
     private readonly overview: ContainersOverviewRepository,
     private readonly obterEstadoObservado: ObterEstadoObservadoDoContainerUseCase,
+    private readonly broker: ContainerBrokerPort,
   ) {}
 
   @Traced('application')
@@ -131,18 +145,41 @@ export class ObterVisaoGeralDeContainersUseCase {
       ),
     );
     const observacoes = new Map(pares);
+    // Lido UMA vez por carga: é da instalação, e ler por linha poderia dar
+    // duas respostas na mesma lista se o ambiente mudasse no meio.
+    const brokerConfigurado = this.broker.configurado();
 
     return linhas.map((linha) => {
       if (linha.lifecycle === null) {
-        return this.item(linha, null, 'sem_container_registrado');
+        return this.item(
+          linha,
+          null,
+          'sem_container_registrado',
+          brokerConfigurado,
+        );
       }
       if (!elegivelParaVerificacao(linha)) {
-        return this.item(linha, null, 'fora_do_escopo_da_verificacao');
+        return this.item(
+          linha,
+          null,
+          'fora_do_escopo_da_verificacao',
+          brokerConfigurado,
+        );
       }
       if (!dentroDoTeto.has(linha.projectId)) {
-        return this.item(linha, null, 'teto_de_verificacoes_atingido');
+        return this.item(
+          linha,
+          null,
+          'teto_de_verificacoes_atingido',
+          brokerConfigurado,
+        );
       }
-      return this.item(linha, observacoes.get(linha.projectId) ?? null, null);
+      return this.item(
+        linha,
+        observacoes.get(linha.projectId) ?? null,
+        null,
+        brokerConfigurado,
+      );
     });
   }
 
@@ -150,6 +187,7 @@ export class ObterVisaoGeralDeContainersUseCase {
     linha: ContainerOverviewRow,
     estadoObservado: EstadoObservado | null,
     naoVerificado: MotivoDeNaoVerificacao | null,
+    brokerConfigurado: boolean,
   ): ContainerOverviewItem {
     return {
       projectId: linha.projectId,
@@ -165,6 +203,7 @@ export class ObterVisaoGeralDeContainersUseCase {
       detalheDaObservacao: estadoObservado?.detalhe ?? null,
       naoVerificado,
       acaoPendente: linha.acaoPendente,
+      brokerConfigurado,
     };
   }
 }

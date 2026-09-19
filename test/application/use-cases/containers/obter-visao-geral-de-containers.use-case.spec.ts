@@ -66,7 +66,11 @@ const OBSERVADO_OK: EstadoObservado = {
   detalhe: null,
 };
 
-function build(linhas: ContainerOverviewRow[], observar?: () => Promise<EstadoObservado>) {
+function build(
+  linhas: ContainerOverviewRow[],
+  observar?: () => Promise<EstadoObservado>,
+  brokerConfigurado = true,
+) {
   const chamadasAoBroker: string[] = [];
   const overview = { listForWorkspace: vi.fn(async () => linhas) };
   const obterEstadoObservado = {
@@ -78,6 +82,7 @@ function build(linhas: ContainerOverviewRow[], observar?: () => Promise<EstadoOb
   const useCase = new ObterVisaoGeralDeContainersUseCase(
     overview as never,
     obterEstadoObservado as never,
+    { configurado: () => brokerConfigurado } as never,
   );
   return { useCase, chamadasAoBroker, overview };
 }
@@ -238,5 +243,32 @@ describe('ObterVisaoGeralDeContainersUseCase', () => {
     expect(item.executionMode).toBe('runner');
     expect(item.temImagemDecidida).toBe(true);
     expect(item.workspaceVerifiedAt).toEqual(confirmadoEm);
+  });
+
+  // ADR 0161, RN-574: a tela recusa ANTES do clique a subida de
+  // `container`/`mounted` quando a instalação não tem broker — e para isso a
+  // lista tem de DIZER se tem, em toda linha, inclusive nas que nunca
+  // provisionaram (que são justamente as que a tela oferece subir).
+  it('diz em TODA linha se a instalação tem broker — sem ele, `false`', async () => {
+    const { useCase } = build(
+      [linha('p-running', 'running'), linhaSemContainer('p-novo')],
+      undefined,
+      false,
+    );
+
+    const itens = await useCase.execute('ws-1');
+
+    expect(itens.map((i) => i.brokerConfigurado)).toEqual([false, false]);
+  });
+
+  it('com broker configurado, `true` em toda linha', async () => {
+    const { useCase } = build([
+      linha('p-stopped', 'stopped'),
+      linhaSemContainer('p-novo'),
+    ]);
+
+    const itens = await useCase.execute('ws-1');
+
+    expect(itens.map((i) => i.brokerConfigurado)).toEqual([true, true]);
   });
 });
