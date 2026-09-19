@@ -16,5 +16,12 @@ export abstract class HandoffRepository {
   abstract create(input: NewHandoff): Promise<Handoff>;
   abstract findById(id: string): Promise<Handoff | null>;
   abstract findBySession(sessionId: string): Promise<Handoff[]>;
+  /**
+   * Todos os handoffs do PROJETO, de todas as sessões, em ordem de criação.
+   * Só leitura. Existe para a recusa da ativação sem repositório (RN-582)
+   * dizer QUAL handoff falta aceitar: o handoff ao Arquiteto mora na sessão
+   * do PO, e a ativação não sabe de que sessão partiu.
+   */
+  abstract findByProject(projectId: string): Promise<Handoff[]>;
   abstract updateStatus(id: string, status: HandoffStatus): Promise<Handoff>;
 }
