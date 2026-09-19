@@ -13,6 +13,7 @@ import { DomainTransitionErrorFilter } from './interfaces/http/shared/domain-tra
 import { GitProviderErrorFilter } from './interfaces/http/shared/git-provider-error.filter';
 import { LlmBindingErrorFilter } from './interfaces/http/shared/llm-binding-error.filter';
 import { HuggingFaceErrorFilter } from './interfaces/http/shared/huggingface-error.filter';
+import { etagDoCorpoVazio } from './interfaces/http/shared/etag-do-corpo-vazio';
 import { GraphErrorFilter } from './interfaces/http/shared/graph-error.filter';
 import { resolveCorsOrigins } from './infrastructure/security/cors-origins';
 import { resolveOauthStateSecret } from './infrastructure/security/oauth-state-secret';
@@ -72,6 +73,11 @@ async function bootstrap() {
   // login funcionaria e o refresh falharia, que é o modo de falha mais chato
   // possível: só aparece 15 minutos depois.
   app.use(cookieParser());
+
+  // `ETag` também para o corpo VAZIO (AT-093, RN-579): sem isto, toda rota
+  // que responde `null` — orçamento de sessão ausente, nenhuma execução
+  // ativa — nunca pode voltar 304, e é poll de 5s. Ver o docblock do arquivo.
+  app.use(etagDoCorpoVazio());
 
   // `credentials: true` com origem EXATA (nunca `*`, e o boot falha se alguém
   // tentar em produção — ver cors-origins.ts). É o que permite o browser
