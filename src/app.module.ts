@@ -1,7 +1,8 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { aplicarOrigemEngine } from './infrastructure/http-clients/origem-engine.middleware';
 import { TracePathInterceptor } from './infrastructure/observability/trace-path.interceptor';
 import { DrizzleModule } from './infrastructure/persistence/drizzle/drizzle.module';
 import { HealthModule } from './interfaces/http/health/health.module';
@@ -81,4 +82,10 @@ import { ArtifactProjectionModule } from './application/artifact-projection/arti
     { provide: APP_INTERCEPTOR, useClass: TracePathInterceptor },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  // AT-157: marca a origem "engine" nas rotas `/internal/*`, para a api não
+  // avisar em dobro o canal de uma escrita que o engine já avisa.
+  configure(consumer: MiddlewareConsumer): void {
+    aplicarOrigemEngine(consumer);
+  }
+}
