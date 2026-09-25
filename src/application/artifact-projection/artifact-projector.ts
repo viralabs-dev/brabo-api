@@ -8,15 +8,9 @@ import { OutboxRepository } from '../ports/outbox-repository.port';
 import { SessionEventRepository } from '../ports/session-event-repository.port';
 import { ProjectRepository } from '../ports/project-repository.port';
 import { ArtifactFileStore } from '../ports/artifact-file-store.port';
-import {
-  ARTIFACT_PROJECTION_AGGREGATE_TYPE,
-  nomeDeArquivoDoArtefato,
-  pastaDoAgente,
-  tipoSemPrefixo,
-  tituloDoArtefato,
-} from '../../domain/artifacts/artifact-projection-events';
+import { ARTIFACT_PROJECTION_AGGREGATE_TYPE } from '../../domain/artifacts/artifact-projection-events';
 import type { OutboxEvent } from '../../domain/shared/outbox-event.entity';
-import type { SessionEvent } from '../../domain/sessions/session-event.entity';
+import { ArtifactEventTranslator } from './artifact-event-translator';
 
 /** Mesmo tamanho de lote que `GraphProjector` e `Engine.Outbox.Drain.run_once/0`. */
 const BATCH_LIMIT = 50;
@@ -58,13 +52,17 @@ export class ArtifactProjector implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ArtifactProjector.name);
   private timer?: NodeJS.Timeout;
   private draining = false;
+  /** O MESMO tradutor que a reprojeção (`reprojetar-artefatos.ts`) chama. */
+  private readonly tradutor: ArtifactEventTranslator;
 
   constructor(
     private readonly outbox: OutboxRepository,
     private readonly sessionEvents: SessionEventRepository,
     private readonly projects: ProjectRepository,
-    private readonly arquivos: ArtifactFileStore,
-  ) {}
+    arquivos: ArtifactFileStore,
+  ) {
+    this.tradutor = new ArtifactEventTranslator(arquivos);
+  }
 
   onModuleInit(): void {
     const intervalMs = Number(
@@ -130,48 +128,8 @@ export class ArtifactProjector implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    await this.arquivos.write(
-      projeto,
-      pastaDoAgente(evento.actor.id),
-      nomeDeArquivoDoArtefato({
-        eventType: row.eventType,
-        seq: evento.seq,
-        titulo: tituloDoArtefato(evento.payload),
-      }),
-      renderizar(evento, row.eventType),
-    );
+    await this.tradutor.projetarEvento(projeto, evento, row.eventType);
   }
-}
-
-/**
- * O Markdown do artefato.
- *
- * Cabeçalho com o que a pasta sozinha não diz (tipo, agente, quando, e o `seq`
- * que liga de volta ao event log) e o payload como bloco JSON. NÃO tenta
- * formatar cada um dos treze tipos: um renderizador por tipo seria treze
- * lugares para envelhecer quando um schema mudar, e o que esta pasta precisa
- * entregar é o CONTEÚDO legível e rastreável, não uma diagramação. Um formato
- * mais rico por tipo é decisão própria, quando alguém tiver uma leitura real
- * pedindo por ela.
- */
-function renderizar(evento: SessionEvent, eventType: string): string {
-  const titulo = tituloDoArtefato(evento.payload) ?? tipoSemPrefixo(eventType);
-  return [
-    `# ${titulo}`,
-    '',
-    `- **Tipo:** \`${tipoSemPrefixo(eventType)}\``,
-    `- **Agente:** ${evento.actor.id}`,
-    `- **Quando:** ${evento.createdAt.toISOString()}`,
-    `- **Evento:** \`${evento.id}\` (seq ${evento.seq})`,
-    '',
-    '> Arquivo GERADO a partir do event log (ADR 0148). A fonte é o evento',
-    '> acima — editar aqui não muda nada, e a próxima projeção sobrescreve.',
-    '',
-    '```json',
-    JSON.stringify(evento.payload, null, 2),
-    '```',
-    '',
-  ].join('\n');
 }
 
 function describeError(error: unknown): string {
