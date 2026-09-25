@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import type {
+  ChatMessage,
   ChatOptions,
   ChatStreamChunk,
   EmbeddingOptions,
@@ -78,6 +79,24 @@ export interface LLMProviderContractHarness {
    * `capabilities.embeddings: false` — a suite não pede o que não vai usar.
    */
   modeloDeEmbedding?: string;
+  /**
+   * Onde uma mensagem `role: "system"` que chega DEPOIS de `user`/`tool` vai
+   * parar no corpo enviado (AT-161). É DIALETO, não escolha — por isso o
+   * harness declara e o contrato confere:
+   *
+   * - `fim_da_conversa`: a mensagem sai na MESMA posição, como último item de
+   *   `messages` (base compatível e Ollama — o fio tem papel `system` em
+   *   qualquer ponto da lista);
+   * - `icado_ao_topo`: o dialeto só aceita instrução de sistema no parâmetro
+   *   `system` do topo, então ela é concatenada ao fim dele e SAI do array
+   *   (Anthropic). A mensagem não se perde, mas a POSIÇÃO se perde — e o
+   *   prefixo do pedido muda a cada vez que o texto dela mudar.
+   *
+   * O que o contrato prova é o CORPO SERIALIZADO. Se o provider real aceita
+   * esse corpo é outra pergunta, e só um smoke com credencial responde
+   * (`sistema-tardio.smoke.spec.ts`, ADRs 0041/0042).
+   */
+  posicaoDoSistemaTardio: 'fim_da_conversa' | 'icado_ao_topo';
 }
 
 const FERRAMENTAS = [
@@ -117,6 +136,7 @@ export function runLLMProviderContract(
     async function rodar(
       cenario: CenarioLLM,
       opcoes: Partial<ChatOptions> = {},
+      mensagens: ChatMessage[] = [{ role: 'user', content: 'oi' }],
     ): Promise<ChatStreamChunk[]> {
       servidor = await subirServidorFalso(harness.dialeto);
       servidor.usar(cenario);
@@ -124,15 +144,12 @@ export function runLLMProviderContract(
       const provider = harness.criar(servidor.baseUrl);
       const chunks: ChatStreamChunk[] = [];
 
-      for await (const chunk of provider.chat(
-        [{ role: 'user', content: 'oi' }],
-        {
-          model: harness.modelo,
-          apiKey: 'chave-de-teste',
-          ...harness.chatOptions?.(servidor.baseUrl),
-          ...opcoes,
-        },
-      )) {
+      for await (const chunk of provider.chat(mensagens, {
+        model: harness.modelo,
+        apiKey: 'chave-de-teste',
+        ...harness.chatOptions?.(servidor.baseUrl),
+        ...opcoes,
+      })) {
         chunks.push(chunk);
       }
       return chunks;
@@ -369,6 +386,111 @@ export function runLLMProviderContract(
 
       await expect(embedar('embedding', [])).rejects.toThrow();
     });
+
+    // --- Mensagem de sistema no FIM da conversa (AT-161) ---
+    //
+    // A AT-081 propõe uma orientação efêmera em `role: "system"` ao FIM da lista
+    // enviada, a cada chamada do turno. Antes de alguém depender disso, a
+    // pergunta é por provider: a mensagem chega ao corpo? Onde? Duplicada? A
+    // conversa em volta muda de ordem? Dois casos, porque a orientação vem
+    // depois de `user` (primeira chamada do turno) E depois de `tool` (as
+    // chamadas seguintes do laço de ferramentas).
+    const SISTEMA_INICIAL = 'você é o arquiteto do projeto';
+    const SISTEMA_TARDIO = 'responda no idioma do autor da última mensagem';
+
+    const CONVERSAS_COM_SISTEMA_TARDIO: {
+      depoisDe: 'user' | 'tool';
+      mensagens: ChatMessage[];
+      /** Papéis de `messages` no fio, na ordem, SEM as de sistema. */
+      papeisSemSistema: { fimDaConversa: string[]; icadoAoTopo: string[] };
+    }[] = [
+      {
+        depoisDe: 'user',
+        mensagens: [
+          { role: 'system', content: SISTEMA_INICIAL },
+          { role: 'user', content: 'oi' },
+          { role: 'system', content: SISTEMA_TARDIO },
+        ],
+        papeisSemSistema: { fimDaConversa: ['user'], icadoAoTopo: ['user'] },
+      },
+      {
+        depoisDe: 'tool',
+        mensagens: [
+          { role: 'system', content: SISTEMA_INICIAL },
+          { role: 'user', content: 'leia o readme' },
+          {
+            role: 'assistant',
+            content: '',
+            toolCalls: [
+              {
+                id: 'call_1',
+                name: FERRAMENTA_ESPERADA.name,
+                arguments: { caminho: 'README.md' },
+              },
+            ],
+          },
+          {
+            role: 'tool',
+            content: 'conteudo',
+            toolCallId: 'call_1',
+            name: FERRAMENTA_ESPERADA.name,
+          },
+          { role: 'system', content: SISTEMA_TARDIO },
+        ],
+        papeisSemSistema: {
+          fimDaConversa: ['user', 'assistant', 'tool'],
+          // O Anthropic não tem papel `tool`: o resultado vai num turno `user`.
+          icadoAoTopo: ['user', 'assistant', 'user'],
+        },
+      },
+    ];
+
+    for (const caso of CONVERSAS_COM_SISTEMA_TARDIO) {
+      it(`system DEPOIS de ${caso.depoisDe}: chega ao corpo uma vez, onde o dialeto põe (${harness.posicaoDoSistemaTardio})`, async () => {
+        const chunks = await rodar('stream_ok', {}, caso.mensagens);
+        // O turno não pode cair por causa da mensagem — no servidor falso,
+        // que aceita qualquer corpo; o provider real é pergunta do smoke.
+        expect(chunks.some((c) => c.type === 'error')).toBe(false);
+
+        const corpo = servidor!.ultimoPedido() ?? {};
+        const serializado = JSON.stringify(corpo);
+        // Nem descartada nem duplicada, em lugar nenhum do corpo.
+        expect(serializado.split(SISTEMA_TARDIO)).toHaveLength(2);
+        expect(serializado.split(SISTEMA_INICIAL)).toHaveLength(2);
+
+        const mensagens = corpo.messages as {
+          role: string;
+          content: unknown;
+        }[];
+        expect(Array.isArray(mensagens)).toBe(true);
+        const papeis = mensagens
+          .filter((m) => m.role !== 'system')
+          .map((m) => m.role);
+
+        if (harness.posicaoDoSistemaTardio === 'fim_da_conversa') {
+          // A posição sobrevive: primeira e última, com a conversa intacta
+          // entre as duas.
+          expect(mensagens[0]).toEqual({
+            role: 'system',
+            content: SISTEMA_INICIAL,
+          });
+          expect(mensagens.at(-1)).toEqual({
+            role: 'system',
+            content: SISTEMA_TARDIO,
+          });
+          expect(papeis).toEqual(caso.papeisSemSistema.fimDaConversa);
+          expect(corpo).not.toHaveProperty('system');
+        } else {
+          // Içada: sai do array e vai para o FIM do `system` do topo, depois
+          // do prompt que já estava lá. A conversa perde a informação de
+          // ONDE a orientação estava (lacuna 2 da AT-081: o prefixo do
+          // pedido muda com o texto dela — não medido, ver AT-082).
+          expect(mensagens.some((m) => m.role === 'system')).toBe(false);
+          expect(corpo.system).toBe(`${SISTEMA_INICIAL}\n\n${SISTEMA_TARDIO}`);
+          expect(papeis).toEqual(caso.papeisSemSistema.icadoAoTopo);
+        }
+      });
+    }
 
     it('servidor mudo: estoura o teto de inatividade em vez de pendurar', async () => {
       // O caso real do ADR 0020: o provider aceitou a conexão e não mandou nem

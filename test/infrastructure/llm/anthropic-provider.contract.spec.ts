@@ -150,6 +150,7 @@ function criarProvider(baseUrl: string) {
 
 runLLMProviderContract('anthropic', () => ({
   dialeto: dialetoAnthropic,
+  posicaoDoSistemaTardio: 'icado_ao_topo',
   criar: criarProvider,
   usageFallback: 'sempre',
   timeoutEnv: 'LLM_REQUEST_TIMEOUT_MS',

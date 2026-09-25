@@ -112,6 +112,7 @@ function dialetoOllama(cenario: CenarioLLM, res: ServerResponse): void {
 
 runLLMProviderContract('ollama', () => ({
   dialeto: dialetoOllama,
+  posicaoDoSistemaTardio: 'fim_da_conversa',
   criar: () => new OllamaProvider(),
   // O Ollama recebe o endereço por opção de chamada, não pelo construtor.
   chatOptions: (baseUrl) => ({ host: baseUrl }),

@@ -81,6 +81,7 @@ function escrever(res: ServerResponse, corpo: unknown): void {
 
 runLLMProviderContract('vultr', () => ({
   dialeto: dialetoVultr,
+  posicaoDoSistemaTardio: 'fim_da_conversa',
   criar: (baseUrl) =>
     new OpenAICompatibleProvider(
       vultrConfig(baseUrl),

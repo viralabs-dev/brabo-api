@@ -102,6 +102,7 @@ function escrever(res: ServerResponse, corpo: unknown): void {
 
 runLLMProviderContract('together', () => ({
   dialeto: dialetoTogether,
+  posicaoDoSistemaTardio: 'fim_da_conversa',
   criar: (baseUrl) =>
     new OpenAICompatibleProvider(
       togetherConfig(baseUrl),

@@ -117,6 +117,7 @@ function escrever(res: ServerResponse, corpo: unknown): void {
 
 runLLMProviderContract('deepinfra', () => ({
   dialeto: dialetoDeepInfra,
+  posicaoDoSistemaTardio: 'fim_da_conversa',
   criar: (baseUrl) =>
     new OpenAICompatibleProvider(
       deepinfraConfig(baseUrl),

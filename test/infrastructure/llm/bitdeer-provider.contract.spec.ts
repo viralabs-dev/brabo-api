@@ -84,6 +84,7 @@ function escrever(res: ServerResponse, corpo: unknown): void {
 
 runLLMProviderContract('bitdeer', () => ({
   dialeto: dialetoBitdeer,
+  posicaoDoSistemaTardio: 'fim_da_conversa',
   criar: (baseUrl) =>
     new OpenAICompatibleProvider(
       bitdeerConfig(baseUrl),

@@ -84,6 +84,7 @@ function escrever(res: ServerResponse, corpo: unknown): void {
 
 runLLMProviderContract('nvidia-nim', () => ({
   dialeto: dialetoNvidiaNim,
+  posicaoDoSistemaTardio: 'fim_da_conversa',
   criar: (baseUrl) =>
     new OpenAICompatibleProvider(
       nvidiaNimConfig(baseUrl),

@@ -146,6 +146,7 @@ function escrever(res: ServerResponse, corpo: unknown): void {
 
 runLLMProviderContract('openai-compatible (base)', () => ({
   dialeto: dialetoOpenAI,
+  posicaoDoSistemaTardio: 'fim_da_conversa',
   // Usa a configuração DE PRODUÇÃO da OpenAI apontada para o servidor falso —
   // uma cópia escrita no teste passaria verde mesmo se a real divergisse.
   criar: (baseUrl) =>
@@ -174,6 +175,7 @@ runLLMProviderContract('openai-compatible (base)', () => ({
  */
 runLLMProviderContract('openai-compatible (base, embeddings ligado)', () => ({
   dialeto: dialetoOpenAI,
+  posicaoDoSistemaTardio: 'fim_da_conversa',
   criar: (baseUrl) => {
     const base = openaiConfig(baseUrl);
     return new OpenAICompatibleProvider(

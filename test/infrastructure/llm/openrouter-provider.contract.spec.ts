@@ -105,6 +105,7 @@ function escrever(res: ServerResponse, corpo: unknown): void {
 
 runLLMProviderContract('openrouter', () => ({
   dialeto: dialetoOpenRouter,
+  posicaoDoSistemaTardio: 'fim_da_conversa',
   // A config de PRODUÇÃO apontada pro servidor falso — ver o comentário em
   // `openrouterConfig` sobre por que ela é exportada à parte pra isto.
   criar: (baseUrl) =>
