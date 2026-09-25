@@ -115,6 +115,7 @@ const proposeAction = new ProposeActionUseCase(
   undefined as never, // executeContainerStop — não exercitado aqui
   appendSessionEvent,
   obterCicloDeVidaDoContainer,
+  { configurado: () => true } as never, // brokerPort
 );
 const listProposedActions = new ListProposedActionsUseCase(
   sessionRepo,
