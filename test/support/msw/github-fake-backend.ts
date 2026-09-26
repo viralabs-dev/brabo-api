@@ -107,22 +107,23 @@ export function createGithubHandlers(store: FakeRepoStore) {
     http.post(
       `${BASE}/repos/:owner/:repo/git/blobs`,
       async ({ params, request }) => {
-      const repoDoBlob = store.repos.get(fullNameFromParams(params));
-      // A Git Data API INTEIRA responde 409 num repo sem commit — não só as
-      // refs. Sem isto, o fake deixaria montar blob/tree/commit num repo vazio
-      // e o teste não conseguiria reproduzir o bootstrap morrendo.
-      if (repoDoBlob && repoDoBlob.branches.size === 0) return repositorioVazio();
-      const body = (await request.json()) as {
-        content: string;
-        encoding?: string;
-      };
-      const sha = store.nextSha();
-      const decoded =
-        body.encoding === 'base64'
-          ? Buffer.from(body.content, 'base64').toString('utf8')
-          : body.content;
-      store.blobContent.set(sha, decoded);
-      return HttpResponse.json({ sha }, { status: 201 });
+        const repoDoBlob = store.repos.get(fullNameFromParams(params));
+        // A Git Data API INTEIRA responde 409 num repo sem commit — não só as
+        // refs. Sem isto, o fake deixaria montar blob/tree/commit num repo vazio
+        // e o teste não conseguiria reproduzir o bootstrap morrendo.
+        if (repoDoBlob && repoDoBlob.branches.size === 0)
+          return repositorioVazio();
+        const body = (await request.json()) as {
+          content: string;
+          encoding?: string;
+        };
+        const sha = store.nextSha();
+        const decoded =
+          body.encoding === 'base64'
+            ? Buffer.from(body.content, 'base64').toString('utf8')
+            : body.content;
+        store.blobContent.set(sha, decoded);
+        return HttpResponse.json({ sha }, { status: 201 });
       },
     ),
 
@@ -148,9 +149,15 @@ export function createGithubHandlers(store: FakeRepoStore) {
 
         const anterior = repo.branches.get(branchName);
         const arquivos = new Map(
-          anterior ? store.treeFiles.get(store.commitTree.get(anterior.sha) ?? '') ?? [] : [],
+          anterior
+            ? (store.treeFiles.get(store.commitTree.get(anterior.sha) ?? '') ??
+                [])
+            : [],
         );
-        arquivos.set(path, Buffer.from(body.content, 'base64').toString('utf8'));
+        arquivos.set(
+          path,
+          Buffer.from(body.content, 'base64').toString('utf8'),
+        );
 
         store.treeFiles.set(treeSha, arquivos);
         store.commitTree.set(sha, treeSha);
@@ -378,8 +385,7 @@ export function createGithubHandlers(store: FakeRepoStore) {
           html_url: `https://github.com/${repo.fullName}/pull/${pr.number}`,
           user: { login: 'octocat' },
           state: pr.state === 'merged' ? 'closed' : pr.state,
-          merged_at:
-            pr.state === 'merged' ? '2026-08-04T12:00:00.000Z' : null,
+          merged_at: pr.state === 'merged' ? '2026-08-04T12:00:00.000Z' : null,
           head: { ref: pr.sourceBranch },
           base: { ref: pr.targetBranch },
           updated_at: '2026-08-04T12:00:00.000Z',
@@ -393,21 +399,18 @@ export function createGithubHandlers(store: FakeRepoStore) {
      * saem do grafo de commits que `git/commits`/Contents API populam em
      * `store.commitParents`.
      */
-    http.get(
-      `${BASE}/repos/:owner/:repo/compare/:basehead`,
-      ({ params }) => {
-        const repo = store.repos.get(fullNameFromParams(params));
-        if (!repo) return notFound();
+    http.get(`${BASE}/repos/:owner/:repo/compare/:basehead`, ({ params }) => {
+      const repo = store.repos.get(fullNameFromParams(params));
+      if (!repo) return notFound();
 
-        const [base, head] = String(params.basehead).split('...');
-        const baseSha = repo.branches.get(base)?.sha;
-        const headSha = repo.branches.get(head)?.sha;
-        if (!baseSha || !headSha) return notFound();
+      const [base, head] = String(params.basehead).split('...');
+      const baseSha = repo.branches.get(base)?.sha;
+      const headSha = repo.branches.get(head)?.sha;
+      if (!baseSha || !headSha) return notFound();
 
-        const { ahead, behind } = aheadBehind(store, baseSha, headSha);
-        return HttpResponse.json({ ahead_by: ahead, behind_by: behind });
-      },
-    ),
+      const { ahead, behind } = aheadBehind(store, baseSha, headSha);
+      return HttpResponse.json({ ahead_by: ahead, behind_by: behind });
+    }),
 
     /**
      * `blame` (FASE 26b) é a ÚNICA operação do provider que fala GraphQL — a
@@ -426,7 +429,9 @@ export function createGithubHandlers(store: FakeRepoStore) {
       if (!repo) {
         return HttpResponse.json({
           data: null,
-          errors: [{ type: 'NOT_FOUND', message: 'Could not resolve to a Repository' }],
+          errors: [
+            { type: 'NOT_FOUND', message: 'Could not resolve to a Repository' },
+          ],
         });
       }
 
@@ -440,12 +445,15 @@ export function createGithubHandlers(store: FakeRepoStore) {
       if (conteudo === undefined) {
         return HttpResponse.json({
           data: null,
-          errors: [{ type: 'NOT_FOUND', message: 'Could not resolve to a file' }],
+          errors: [
+            { type: 'NOT_FOUND', message: 'Could not resolve to a file' },
+          ],
         });
       }
 
       const brutas = conteudo.split('\n');
-      const linhas = brutas[brutas.length - 1] === '' ? brutas.slice(0, -1) : brutas;
+      const linhas =
+        brutas[brutas.length - 1] === '' ? brutas.slice(0, -1) : brutas;
 
       return HttpResponse.json({
         data: {
@@ -539,7 +547,8 @@ function repositorioVazio() {
   return HttpResponse.json(
     {
       message: 'Git Repository is empty.',
-      documentation_url: 'https://docs.github.com/rest/git/refs#get-a-reference',
+      documentation_url:
+        'https://docs.github.com/rest/git/refs#get-a-reference',
     },
     { status: 409 },
   );
@@ -555,7 +564,10 @@ function lerConteudo(store: FakeRepoStore) {
     params,
     request,
   }: {
-    params: { owner?: string | readonly string[]; repo?: string | readonly string[] };
+    params: {
+      owner?: string | readonly string[];
+      repo?: string | readonly string[];
+    };
     request: Request;
   }) => {
     const repo = store.repos.get(fullNameFromParams(params));

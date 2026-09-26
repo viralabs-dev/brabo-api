@@ -31,13 +31,18 @@ describe('cabeçalho da suite de contrato × quem realmente a chama', () => {
       // Este próprio arquivo cita o nome da função em prosa e em regex; ele
       // não é chamador.
       .filter((f) => f !== __filename)
-      .filter((f) => /\brunGitProviderContract\s*\(/.test(readFileSync(f, 'utf8')))
+      .filter((f) =>
+        /\brunGitProviderContract\s*\(/.test(readFileSync(f, 'utf8')),
+      )
       .map((f) => `test/${relative(raizDosTestes, f).split('\\').join('/')}`)
       .sort();
 
   /** Os caminhos citados na lista do moduledoc, na ordem em que aparecem. */
   const chamadoresPrometidos = (): string[] => {
-    const cabecalho = readFileSync(join(__dirname, 'git-provider.contract.ts'), 'utf8');
+    const cabecalho = readFileSync(
+      join(__dirname, 'git-provider.contract.ts'),
+      'utf8',
+    );
     return [...cabecalho.matchAll(/^ \* - `(test\/[^`]+\.spec\.ts)`/gm)]
       .map((m) => m[1])
       .sort();

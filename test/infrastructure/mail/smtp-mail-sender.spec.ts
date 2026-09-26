@@ -38,8 +38,12 @@ function criarSenderComCaptura(): {
   const transporte: Transporter = createTransport({ jsonTransport: true });
   let capturado: Capturado | undefined;
 
-  const sendMailOriginal = transporte.sendMail.bind(transporte);
-  transporte.sendMail = (async (mail: Parameters<typeof sendMailOriginal>[0]) => {
+  const sendMailOriginal = transporte.sendMail.bind(transporte) as (
+    mail: Parameters<Transporter['sendMail']>[0],
+  ) => Promise<unknown>;
+  transporte.sendMail = (async (
+    mail: Parameters<typeof sendMailOriginal>[0],
+  ) => {
     const info = await sendMailOriginal(mail);
     capturado = JSON.parse(
       String((info as { message: unknown }).message),

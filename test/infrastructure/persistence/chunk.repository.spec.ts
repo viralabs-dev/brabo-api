@@ -44,7 +44,7 @@ async function seedProjetoESessao() {
 describe('DrizzleChunkRepository', () => {
   it('grava um chunk de docs com vetor e devolve o search_vector gerado pela GENERATED ALWAYS AS', async () => {
     const { project } = await seedProjetoESessao();
-    const embedding = new Array(768).fill(0).map((_, i) => i / 768);
+    const embedding = new Array<number>(768).fill(0).map((_, i) => i / 768);
 
     const chunk = await repo.create({
       projectId: project.id,
@@ -119,8 +119,18 @@ describe('DrizzleChunkRepository', () => {
   it('deleteByScope apaga só o escopo pedido do projeto, devolvendo a contagem', async () => {
     const { project } = await seedProjetoESessao();
     await repo.createMany([
-      { projectId: project.id, scope: 'docs', sourcePath: 'docs/a.md', content: 'x' },
-      { projectId: project.id, scope: 'docs', sourcePath: 'docs/b.md', content: 'y' },
+      {
+        projectId: project.id,
+        scope: 'docs',
+        sourcePath: 'docs/a.md',
+        content: 'x',
+      },
+      {
+        projectId: project.id,
+        scope: 'docs',
+        sourcePath: 'docs/b.md',
+        content: 'y',
+      },
       {
         projectId: project.id,
         scope: 'adr',
@@ -146,11 +156,20 @@ describe('DrizzleChunkRepository', () => {
     const { project, session } = await seedProjetoESessao();
     const [outraSessao] = await db
       .insert(sessions)
-      .values({ projectId: project.id, createdBy: session.createdBy, status: 'active' })
+      .values({
+        projectId: project.id,
+        createdBy: session.createdBy,
+        status: 'active',
+      })
       .returning();
 
     await repo.createMany([
-      { projectId: project.id, scope: 'session', sessionId: session.id, content: 'da primeira' },
+      {
+        projectId: project.id,
+        scope: 'session',
+        sessionId: session.id,
+        content: 'da primeira',
+      },
       {
         projectId: project.id,
         scope: 'session',
@@ -169,9 +188,9 @@ describe('DrizzleChunkRepository', () => {
 
   it('searchByVector devolve os chunks mais próximos por cosseno, ignorando os SEM vetor', async () => {
     const { project } = await seedProjetoESessao();
-    const vetorA = new Array(768).fill(0);
+    const vetorA = new Array<number>(768).fill(0);
     vetorA[0] = 1;
-    const vetorB = new Array(768).fill(0);
+    const vetorB = new Array<number>(768).fill(0);
     vetorB[1] = 1;
 
     await repo.createMany([
@@ -197,9 +216,14 @@ describe('DrizzleChunkRepository', () => {
       },
     ]);
 
-    const resultado = await repo.searchByVector(project.id, vetorA, { limit: 10 });
+    const resultado = await repo.searchByVector(project.id, vetorA, {
+      limit: 10,
+    });
 
-    expect(resultado.map((r) => r.chunk.content)).toEqual(['conteúdo A', 'conteúdo B']);
+    expect(resultado.map((r) => r.chunk.content)).toEqual([
+      'conteúdo A',
+      'conteúdo B',
+    ]);
     expect(resultado[0].score).toBeCloseTo(1, 5);
     expect(resultado[1].score).toBeCloseTo(0, 5);
   });
@@ -213,9 +237,13 @@ describe('DrizzleChunkRepository', () => {
       content: 'sem vetor nenhum',
     });
 
-    const resultado = await repo.searchByVector(project.id, new Array(768).fill(0), {
-      limit: 10,
-    });
+    const resultado = await repo.searchByVector(
+      project.id,
+      new Array<number>(768).fill(0),
+      {
+        limit: 10,
+      },
+    );
 
     expect(resultado).toEqual([]);
   });
@@ -238,7 +266,11 @@ describe('DrizzleChunkRepository', () => {
       },
     ]);
 
-    const resultado = await repo.searchByLexicalQuery(project.id, 'engenharia', { limit: 10 });
+    const resultado = await repo.searchByLexicalQuery(
+      project.id,
+      'engenharia',
+      { limit: 10 },
+    );
 
     expect(resultado).toHaveLength(1);
     expect(resultado[0].chunk.sourcePath).toBe('docs/a.md');
@@ -255,7 +287,11 @@ describe('DrizzleChunkRepository', () => {
       content: 'um trecho qualquer sobre jardinagem',
     });
 
-    const resultado = await repo.searchByLexicalQuery(project.id, 'blockchain', { limit: 10 });
+    const resultado = await repo.searchByLexicalQuery(
+      project.id,
+      'blockchain',
+      { limit: 10 },
+    );
 
     expect(resultado).toEqual([]);
   });
