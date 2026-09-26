@@ -1,4 +1,5 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { Logger } from '@nestjs/common';
 import { Ed25519AccessTokenIssuer } from '../../../src/infrastructure/security/ed25519-access-token-issuer';
 import { decodeProtectedHeader, decodeJwt } from 'jose';
 
@@ -103,6 +104,56 @@ describe('Ed25519AccessTokenIssuer', () => {
       expect(emRotacao.keys).toHaveLength(2);
       expect(normal.keys).toHaveLength(1);
       expect(emRotacao.keys[0].kid).not.toBe(emRotacao.keys[1].kid);
+    });
+
+    it('o aviso de rotação em andamento sai UMA vez, no primeiro uso da chave anterior (runbook passo 2, RN-597)', async () => {
+      // O runbook diz "no boot"; o que o código faz é avisar na PRIMEIRA
+      // verificação ou leitura do JWKS depois do boot — a chave anterior é
+      // derivada sob demanda. Em produção isso é segundos depois de subir
+      // (o primeiro request autenticado), mas é essa a condição do aviso.
+      const aviso = vi
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => {});
+      try {
+        const emRotacao = comAmbiente(SEGREDO_A, SEGREDO_B);
+        expect(aviso).not.toHaveBeenCalled();
+
+        await emRotacao.jwks();
+        await emRotacao.jwks();
+
+        const avisosDeRotacao = aviso.mock.calls.filter(([m]) =>
+          String(m).includes('AUTH_JWT_SECRET_PREVIOUS'),
+        );
+        expect(avisosDeRotacao).toHaveLength(1);
+      } finally {
+        aviso.mockRestore();
+      }
+    });
+
+    it('fora da rotação, nenhum aviso', async () => {
+      const aviso = vi
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => {});
+      try {
+        await comAmbiente(SEGREDO_A).jwks();
+        expect(aviso).not.toHaveBeenCalled();
+      } finally {
+        aviso.mockRestore();
+      }
+    });
+
+    it('passo 3: removida a anterior, o token velho que ainda estiver circulando é recusado', async () => {
+      const antigo = comAmbiente(SEGREDO_B);
+      const { token } = await antigo.emitir({
+        userId: 'u-1',
+        email: 'a@b.dev',
+      });
+
+      const emRotacao = comAmbiente(SEGREDO_A, SEGREDO_B);
+      await expect(emRotacao.verificar(token)).resolves.toBeTruthy();
+
+      const depois = comAmbiente(SEGREDO_A);
+      await expect(depois.verificar(token)).rejects.toThrow();
     });
 
     it('_PREVIOUS igual à atual não conta como rotação', async () => {
