@@ -620,7 +620,7 @@ describe('DrizzleProjectsSummaryRepository', () => {
         await gravarEvento(s.id, 'chat.message');
       }
 
-      const original = pool.query.bind(pool);
+      const original: unknown = pool.query.bind(pool);
       let consultas = 0;
       (pool as { query: unknown }).query = (...args: unknown[]) => {
         consultas += 1;
@@ -661,7 +661,7 @@ describe('DrizzleProjectsSummaryRepository — não lidos em lote', () => {
     const sessao = await criarSessao(projeto.id, owner.id);
     await gravarEvento(sessao.id, 'chat.message');
 
-    const original = pool.query.bind(pool);
+    const original: unknown = pool.query.bind(pool);
     let consultas = 0;
     (pool as { query: unknown }).query = (...args: unknown[]) => {
       consultas += 1;
@@ -861,7 +861,7 @@ describe('DrizzleProjectsSummaryRepository — não lidos em lote', () => {
         cursores.push({ projectId: p.id, afterSeq: 0 });
       }
 
-      const original = pool.query.bind(pool);
+      const original: unknown = pool.query.bind(pool);
       let consultas = 0;
       (pool as { query: unknown }).query = (...args: unknown[]) => {
         consultas += 1;
