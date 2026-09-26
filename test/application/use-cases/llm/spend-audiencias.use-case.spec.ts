@@ -43,7 +43,10 @@ async function setup() {
     .returning();
   const [membro] = await db
     .insert(users)
-    .values({ keycloakSub: 'sub-membro-spend', email: 'membro-spend@brabo.dev' })
+    .values({
+      keycloakSub: 'sub-membro-spend',
+      email: 'membro-spend@brabo.dev',
+    })
     .returning();
   const [outro] = await db
     .insert(users)
@@ -116,12 +119,12 @@ async function setup() {
 class RepositorioEspiao {
   readonly pedidos: Array<{ dimensao: SpendDimension; temAtor: boolean }> = [];
 
-  async sumGroupedBy(
+  sumGroupedBy(
     dimensao: SpendDimension,
     escopo: SpendScope,
   ): Promise<SpendBucket[]> {
     this.pedidos.push({ dimensao, temAtor: Boolean(escopo.actor) });
-    return [];
+    return Promise.resolve([]);
   }
 }
 
@@ -196,21 +199,20 @@ describe('GetWorkspaceSpendReportUseCase — a audiência do owner', () => {
     expect(relatorio.totalMicros).toBe(1_500);
 
     // Por MODELO — a agregação que não existia. Duas linhas, a mais cara antes.
-    expect(
-      relatorio.porModelo.map((l) => [l.chave, l.costMicros]),
-    ).toEqual([
+    expect(relatorio.porModelo.map((l) => [l.chave, l.costMicros])).toEqual([
       ['caro/modelo', 1_200],
       ['barato/modelo', 300],
     ]);
 
     // Por PROJETO dentro do workspace — o join que a FK não dá de graça.
-    expect(
-      relatorio.porProjeto.map((l) => [l.rotulo, l.costMicros]),
-    ).toEqual([
+    expect(relatorio.porProjeto.map((l) => [l.rotulo, l.costMicros])).toEqual([
       ['Loja', 1_300],
       ['Portal', 200],
     ]);
-    expect(relatorio.porProjeto.map((l) => l.chave)).toEqual([loja.id, portal.id]);
+    expect(relatorio.porProjeto.map((l) => l.chave)).toEqual([
+      loja.id,
+      portal.id,
+    ]);
 
     // Por ATOR — agente e pessoa na mesma lista, distintos por `actorKind`.
     const porAtor = Object.fromEntries(
@@ -314,9 +316,9 @@ describe('GetWorkspaceSpendReportUseCase — a audiência do owner', () => {
     expect(relatorio.porAtor).toHaveLength(4);
     // A soma das duas partes é a lista inteira — nenhuma linha se perde nem
     // aparece duas vezes.
-    expect(
-      relatorio.porOwner.length + relatorio.porAgente.length,
-    ).toBe(relatorio.porAtor.length);
+    expect(relatorio.porOwner.length + relatorio.porAgente.length).toBe(
+      relatorio.porAtor.length,
+    );
     expect(relatorio.totalMicros).toBe(2_050);
   });
 

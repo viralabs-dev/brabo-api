@@ -132,7 +132,9 @@ describe('GetProjectGitRemoteUseCase', () => {
     // Só o OUTRO tem credencial. O owner (criador do workspace) não tem.
     await cadastrarToken(outro.id, 'ghp_token_do_outro');
 
-    await expect(useCase.execute(project.id)).rejects.toThrow(NotFoundException);
+    await expect(useCase.execute(project.id)).rejects.toThrow(
+      NotFoundException,
+    );
   });
 
   it('projeto sem repositório provisionado: 404 claro', async () => {

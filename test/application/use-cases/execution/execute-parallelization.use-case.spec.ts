@@ -56,7 +56,7 @@ describe('ExecuteParallelizationUseCase', () => {
     // para um módulo diferente do autorizado.
     await uc.execute(PROJECT, SESSION, acao({ payload: { module: 'web' } }));
 
-    expect(accept.chamadas[0]!.module).toBe('web');
+    expect(accept.chamadas[0].module).toBe('web');
   });
 
   it('quem consta é QUEM DECIDIU, não o lead que pediu', async () => {
@@ -66,7 +66,7 @@ describe('ExecuteParallelizationUseCase', () => {
       acao({ decidedBy: 'user-42', actor: { kind: 'agent', id: 'dev-lead' } }),
     );
 
-    expect(accept.chamadas[0]!.userId).toBe('user-42');
+    expect(accept.chamadas[0].userId).toBe('user-42');
   });
 
   it('payload sem módulo NÃO derruba a aprovação, e registra o erro', async () => {

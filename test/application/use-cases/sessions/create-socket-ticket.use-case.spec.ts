@@ -53,10 +53,12 @@ describe('CreateSocketTicketUseCase', () => {
     expect(emitido.ticket).toBeTruthy();
     expect(typeof emitido.ticket).toBe('string');
     expect(emitido.expiresAt.getTime()).toBeGreaterThan(antes);
-    expect(emitido.expiresAt.getTime()).toBeLessThanOrEqual(antes + 30_000 + 50);
+    expect(emitido.expiresAt.getTime()).toBeLessThanOrEqual(
+      antes + 30_000 + 50,
+    );
 
     expect(emitir).toHaveBeenCalledTimes(1);
-    const [novo] = emitir.mock.calls[0] as [NovoSocketTicket];
+    const [novo] = emitir.mock.calls[0];
     expect(novo.sessionId).toBe('sess-1');
     expect(novo.projectId).toBe('proj-1');
     expect(novo.userId).toBe('user-1');
@@ -69,8 +71,20 @@ describe('CreateSocketTicketUseCase', () => {
   it('dois tickets seguidos têm valores diferentes — CSPRNG, não determinístico', async () => {
     const { useCase } = buildHarness({});
 
-    const a = await useCase.execute('proj-1', 'sess-1', 'user-1', 'viewer', 'heartbeat');
-    const b = await useCase.execute('proj-1', 'sess-1', 'user-1', 'viewer', 'heartbeat');
+    const a = await useCase.execute(
+      'proj-1',
+      'sess-1',
+      'user-1',
+      'viewer',
+      'heartbeat',
+    );
+    const b = await useCase.execute(
+      'proj-1',
+      'sess-1',
+      'user-1',
+      'viewer',
+      'heartbeat',
+    );
 
     expect(a.ticket).not.toBe(b.ticket);
   });

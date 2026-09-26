@@ -58,7 +58,11 @@ describe('densificarPorDia', () => {
       2,
       new Date('2026-08-09T02:00:00Z'),
     );
-    expect(serie.at(-1)).toEqual({ dia: '2026-08-09', costMicros: 42, chamadas: 1 });
+    expect(serie.at(-1)).toEqual({
+      dia: '2026-08-09',
+      costMicros: 42,
+      chamadas: 1,
+    });
   });
 });
 

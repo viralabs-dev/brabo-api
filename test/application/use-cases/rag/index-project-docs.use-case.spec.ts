@@ -17,38 +17,40 @@ class FakeChunkRepository extends ChunkRepository {
   async create(input: NewChunk): Promise<Chunk> {
     return (await this.createMany([input]))[0];
   }
-  async createMany(inputs: NewChunk[]): Promise<Chunk[]> {
+  createMany(inputs: NewChunk[]): Promise<Chunk[]> {
     this.created.push(...inputs);
-    return inputs.map((input, i) => ({
-      id: `chunk-${this.created.length}-${i}`,
-      projectId: input.projectId,
-      scope: input.scope,
-      sessionId: input.sessionId ?? null,
-      sourcePath: input.sourcePath ?? null,
-      content: input.content,
-      embedding: input.embedding ?? null,
-      metadata: input.metadata ?? {},
-      createdAt: new Date(),
-    }));
+    return Promise.resolve(
+      inputs.map((input, i) => ({
+        id: `chunk-${this.created.length}-${i}`,
+        projectId: input.projectId,
+        scope: input.scope,
+        sessionId: input.sessionId ?? null,
+        sourcePath: input.sourcePath ?? null,
+        content: input.content,
+        embedding: input.embedding ?? null,
+        metadata: input.metadata ?? {},
+        createdAt: new Date(),
+      })),
+    );
   }
-  async findById(): Promise<Chunk | null> {
-    throw new Error('não usado neste teste');
+  findById(): Promise<Chunk | null> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async listByProject(): Promise<Chunk[]> {
-    throw new Error('não usado neste teste');
+  listByProject(): Promise<Chunk[]> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async deleteByScope(_projectId: string, scope: 'docs' | 'adr'): Promise<number> {
+  deleteByScope(_projectId: string, scope: 'docs' | 'adr'): Promise<number> {
     this.deletedScopes.push(scope);
-    return 0;
+    return Promise.resolve(0);
   }
-  async deleteBySession(): Promise<number> {
-    throw new Error('não usado neste teste');
+  deleteBySession(): Promise<number> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async searchByVector(): Promise<never[]> {
-    throw new Error('não usado neste teste');
+  searchByVector(): Promise<never[]> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async searchByLexicalQuery(): Promise<never[]> {
-    throw new Error('não usado neste teste');
+  searchByLexicalQuery(): Promise<never[]> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
 }
 
@@ -57,29 +59,42 @@ function fakeReadCode(opts: {
   files: Record<string, string>;
 }): ReadProjectCodeUseCase {
   return {
-    tree: async (_projectId: string, _ref: string | undefined, path?: string) => {
+    tree: (_projectId: string, _ref: string | undefined, path?: string) => {
       const chave = path ?? '';
       const arvore = opts.trees[chave];
-      if (!arvore) throw new NotFoundException(`sem árvore em "${chave}"`);
-      return arvore;
+      if (!arvore)
+        return Promise.reject(
+          new NotFoundException(`sem árvore em "${chave}"`),
+        );
+      return Promise.resolve(arvore);
     },
-    file: async (_projectId: string, path: string) => {
+    file: (_projectId: string, path: string) => {
       const conteudo = opts.files[path];
-      if (conteudo === undefined) throw new NotFoundException(`sem arquivo "${path}"`);
-      return { ref: 'dev', path, content: conteudo, truncated: false, bytes: conteudo.length };
+      if (conteudo === undefined)
+        return Promise.reject(new NotFoundException(`sem arquivo "${path}"`));
+      return Promise.resolve({
+        ref: 'dev',
+        path,
+        content: conteudo,
+        truncated: false,
+        bytes: conteudo.length,
+      });
     },
   } as unknown as ReadProjectCodeUseCase;
 }
 
 function embeddingServiceQueVetoriza(available: boolean) {
   return {
-    embedMany: async (texts: readonly string[]) => ({
-      vectors: available ? texts.map((_, i) => [i, i + 1]) : texts.map(() => null),
-      available,
-      reason: available ? undefined : 'provider indisponível',
-    }),
-    embedQuery: async () => {
-      throw new Error('não usado neste teste');
+    embedMany: (texts: readonly string[]) =>
+      Promise.resolve({
+        vectors: available
+          ? texts.map((_, i) => [i, i + 1])
+          : texts.map(() => null),
+        available,
+        reason: available ? undefined : 'provider indisponível',
+      }),
+    embedQuery: () => {
+      return Promise.reject(new Error('não usado neste teste'));
     },
   } as unknown as RagEmbeddingService;
 }
@@ -100,7 +115,12 @@ const ARVORE_ADR: GitTree = {
   path: 'docs/adr',
   truncated: false,
   entries: [
-    { path: 'docs/adr/0001-primeiro.md', name: '0001-primeiro.md', type: 'file', size: 20 },
+    {
+      path: 'docs/adr/0001-primeiro.md',
+      name: '0001-primeiro.md',
+      type: 'file',
+      size: 20,
+    },
   ],
 };
 
@@ -126,7 +146,11 @@ describe('IndexProjectDocsUseCase', () => {
     expect(relatorio.docsChunks).toBe(1);
     expect(relatorio.adrChunks).toBe(1);
     expect(relatorio.truncated).toBe(false);
-    expect(relatorio.embedding).toEqual({ available: true, embedded: 2, skipped: 0 });
+    expect(relatorio.embedding).toEqual({
+      available: true,
+      embedded: 2,
+      skipped: 0,
+    });
     expect(repo.deletedScopes.sort()).toEqual(['adr', 'docs']);
 
     const docChunk = repo.created.find((c) => c.scope === 'docs')!;

@@ -48,15 +48,21 @@ class FakeRagTelemetryRepository extends RagTelemetryRepository {
   busca: RagSearchRecord | null = mkBusca();
   votos: NewRagFeedback[] = [];
 
-  async recordSearch(_input: NewRagSearch): Promise<RagSearchRecord> {
-    throw new Error('não usado neste teste');
+  recordSearch(_input: NewRagSearch): Promise<RagSearchRecord> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async findSearchById(id: string): Promise<RagSearchRecord | null> {
-    return this.busca && this.busca.id === id ? this.busca : null;
+  findSearchById(id: string): Promise<RagSearchRecord | null> {
+    return Promise.resolve(
+      this.busca && this.busca.id === id ? this.busca : null,
+    );
   }
-  async recordFeedback(input: NewRagFeedback): Promise<RagFeedbackRecord> {
+  recordFeedback(input: NewRagFeedback): Promise<RagFeedbackRecord> {
     this.votos.push(input);
-    return { ...input, id: `fb-${this.votos.length}`, createdAt: new Date() };
+    return Promise.resolve({
+      ...input,
+      id: `fb-${this.votos.length}`,
+      createdAt: new Date(),
+    });
   }
 }
 
@@ -67,13 +73,13 @@ function fakeEventos() {
     payload: Record<string, unknown>;
   }[] = [];
   const uc = {
-    execute: async (
+    execute: (
       _projectId: string,
       sessionId: string,
       input: { type: string; payload: Record<string, unknown> },
     ) => {
       narrados.push({ sessionId, type: input.type, payload: input.payload });
-      return undefined;
+      return Promise.resolve(undefined);
     },
   } as unknown as AppendSessionEventUseCase;
   return { uc, narrados };

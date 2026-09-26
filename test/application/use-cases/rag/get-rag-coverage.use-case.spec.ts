@@ -12,12 +12,14 @@ import type { IndexProjectDocsUseCase } from '../../../../src/application/use-ca
 import { GetRagCoverageUseCase } from '../../../../src/application/use-cases/rag/get-rag-coverage.use-case';
 
 function fakeProjects(project: Project | null): ProjectRepository {
-  return { findById: async () => project } as unknown as ProjectRepository;
+  return {
+    findById: () => Promise.resolve(project),
+  } as unknown as ProjectRepository;
 }
 
 function fakeSessions(sessions: Session[]): SessionRepository {
   return {
-    listForProject: async () => sessions,
+    listForProject: () => Promise.resolve(sessions),
   } as unknown as SessionRepository;
 }
 
@@ -40,29 +42,29 @@ class FakeChunkRepository extends ChunkRepository {
   constructor(private readonly chunks: Chunk[]) {
     super();
   }
-  async create(): Promise<Chunk> {
-    throw new Error('não usado');
+  create(): Promise<Chunk> {
+    return Promise.reject(new Error('não usado'));
   }
-  async createMany(): Promise<Chunk[]> {
-    throw new Error('não usado');
+  createMany(): Promise<Chunk[]> {
+    return Promise.reject(new Error('não usado'));
   }
-  async findById(): Promise<Chunk | null> {
-    throw new Error('não usado');
+  findById(): Promise<Chunk | null> {
+    return Promise.reject(new Error('não usado'));
   }
-  async listByProject(): Promise<Chunk[]> {
-    return this.chunks;
+  listByProject(): Promise<Chunk[]> {
+    return Promise.resolve(this.chunks);
   }
-  async deleteByScope(): Promise<number> {
-    throw new Error('não usado');
+  deleteByScope(): Promise<number> {
+    return Promise.reject(new Error('não usado'));
   }
-  async deleteBySession(): Promise<number> {
-    throw new Error('não usado');
+  deleteBySession(): Promise<number> {
+    return Promise.reject(new Error('não usado'));
   }
-  async searchByVector(): Promise<never[]> {
-    throw new Error('não usado');
+  searchByVector(): Promise<never[]> {
+    return Promise.reject(new Error('não usado'));
   }
-  async searchByLexicalQuery(): Promise<never[]> {
-    throw new Error('não usado');
+  searchByLexicalQuery(): Promise<never[]> {
+    return Promise.reject(new Error('não usado'));
   }
 }
 
@@ -84,10 +86,11 @@ describe('GetRagCoverageUseCase', () => {
       }),
     ]);
     const indexDocs = {
-      listarArquivosMarkdown: async () => ({
-        paths: ['docs/intro.md', 'docs/sem-chunk.md', 'docs/adr/0001-a.md'],
-        truncated: false,
-      }),
+      listarArquivosMarkdown: () =>
+        Promise.resolve({
+          paths: ['docs/intro.md', 'docs/sem-chunk.md', 'docs/adr/0001-a.md'],
+          truncated: false,
+        }),
     } as unknown as IndexProjectDocsUseCase;
 
     const useCase = new GetRagCoverageUseCase(
@@ -131,7 +134,8 @@ describe('GetRagCoverageUseCase', () => {
       fakeSessions([]),
       chunks,
       {
-        listarArquivosMarkdown: async () => ({ paths: [], truncated: false }),
+        listarArquivosMarkdown: () =>
+          Promise.resolve({ paths: [], truncated: false }),
       } as unknown as IndexProjectDocsUseCase,
     );
 

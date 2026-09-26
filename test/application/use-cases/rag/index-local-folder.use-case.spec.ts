@@ -24,52 +24,55 @@ class FakeChunkRepository extends ChunkRepository {
   async create(input: NewChunk): Promise<Chunk> {
     return (await this.createMany([input]))[0];
   }
-  async createMany(inputs: NewChunk[]): Promise<Chunk[]> {
+  createMany(inputs: NewChunk[]): Promise<Chunk[]> {
     this.created.push(...inputs);
-    return inputs.map((input, i) => ({
-      id: `chunk-${this.created.length}-${i}`,
-      projectId: input.projectId,
-      scope: input.scope,
-      sessionId: input.sessionId ?? null,
-      sourcePath: input.sourcePath ?? null,
-      content: input.content,
-      embedding: input.embedding ?? null,
-      metadata: input.metadata ?? {},
-      createdAt: new Date(),
-    }));
+    return Promise.resolve(
+      inputs.map((input, i) => ({
+        id: `chunk-${this.created.length}-${i}`,
+        projectId: input.projectId,
+        scope: input.scope,
+        sessionId: input.sessionId ?? null,
+        sourcePath: input.sourcePath ?? null,
+        content: input.content,
+        embedding: input.embedding ?? null,
+        metadata: input.metadata ?? {},
+        createdAt: new Date(),
+      })),
+    );
   }
-  async findById(): Promise<Chunk | null> {
-    throw new Error('não usado neste teste');
+  findById(): Promise<Chunk | null> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async listByProject(): Promise<Chunk[]> {
-    throw new Error('não usado neste teste');
+  listByProject(): Promise<Chunk[]> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async deleteByScope(_projectId: string, scope: ChunkScope): Promise<number> {
+  deleteByScope(_projectId: string, scope: ChunkScope): Promise<number> {
     this.deletedScopes.push(scope);
-    return 0;
+    return Promise.resolve(0);
   }
-  async deleteBySession(): Promise<number> {
-    throw new Error('não usado neste teste');
+  deleteBySession(): Promise<number> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async searchByVector(): Promise<never[]> {
-    throw new Error('não usado neste teste');
+  searchByVector(): Promise<never[]> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async searchByLexicalQuery(): Promise<never[]> {
-    throw new Error('não usado neste teste');
+  searchByLexicalQuery(): Promise<never[]> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
 }
 
 function embeddingServiceQueVetoriza(available: boolean) {
   return {
-    embedMany: async (texts: readonly string[]) => ({
-      vectors: available
-        ? texts.map((_, i) => [i, i + 1])
-        : texts.map(() => null),
-      available,
-      reason: available ? undefined : 'provider indisponível',
-    }),
-    embedQuery: async () => {
-      throw new Error('não usado neste teste');
+    embedMany: (texts: readonly string[]) =>
+      Promise.resolve({
+        vectors: available
+          ? texts.map((_, i) => [i, i + 1])
+          : texts.map(() => null),
+        available,
+        reason: available ? undefined : 'provider indisponível',
+      }),
+    embedQuery: () => {
+      return Promise.reject(new Error('não usado neste teste'));
     },
   } as unknown as RagEmbeddingService;
 }

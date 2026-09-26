@@ -4,7 +4,12 @@ import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { eq } from 'drizzle-orm';
 import { createTestDb, truncateAll } from '../../../support/test-db';
-import { projects, sessions, users, workspaces } from '../../../../src/db/schema';
+import {
+  projects,
+  sessions,
+  users,
+  workspaces,
+} from '../../../../src/db/schema';
 import { DrizzleUnitOfWork } from '../../../../src/infrastructure/persistence/drizzle/drizzle-unit-of-work';
 import { DrizzleSessionRepository } from '../../../../src/infrastructure/persistence/drizzle/session.repository';
 import { DrizzleSessionEventRepository } from '../../../../src/infrastructure/persistence/drizzle/session-event.repository';
@@ -315,9 +320,9 @@ describe('o corpo das rotas de sessão', () => {
 
   it('nome acima do teto é recusado', () => {
     const gigante = 'x'.repeat(81);
-    expect(erros(CreateSessionDto, { kind: 'criativa', name: gigante })).toContain(
-      'name',
-    );
+    expect(
+      erros(CreateSessionDto, { kind: 'criativa', name: gigante }),
+    ).toContain('name');
   });
 
   it('renomear aceita `null`, recusa a ausência do campo', () => {
