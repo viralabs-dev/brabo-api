@@ -65,9 +65,9 @@ function build(opts: {
   const decidirImagemChamadas: unknown[] = [];
 
   const decidirImagem = {
-    execute: vi.fn(async (_p: string, _s: string, input: unknown) => {
+    execute: vi.fn((_p: string, _s: string, input: unknown) => {
       decidirImagemChamadas.push(input);
-      return {
+      return Promise.resolve({
         decisao: {
           image: (input as { image: string }).image,
           rationale: (input as { rationale: string }).rationale,
@@ -75,7 +75,7 @@ function build(opts: {
           resources: (input as { resources: typeof RECURSOS_PADRAO }).resources,
         },
         version: 2,
-      };
+      });
     }),
   };
 
@@ -83,8 +83,9 @@ function build(opts: {
   // ser compartilhado com `ExecuteContainerStartViaRunnerUseCase` — o fake
   // aqui reproduz a MESMA dança que o `registrarTransicao` isolado provava
   // antes da extração, só que atrás do novo caso de uso.
-  const registrarTransicao = vi.fn(async (to: string, input?: unknown) => {
+  const registrarTransicao = vi.fn((to: string, input?: unknown) => {
     transicoes.push({ to, input });
+    return Promise.resolve();
   });
 
   const subirCicloDeVida = {
@@ -103,48 +104,50 @@ function build(opts: {
     configurado: () => true,
     start:
       opts.brokerStart ??
-      (async () => ({
-        containerId: 'container-1',
-        nome: 'brabo-proj-1',
-        jaEstavaDePe: false,
-      })),
-    stop: async () => undefined,
-    remove: async () => undefined,
-    inspect: async () => null,
-    exec: async () => ({ exitCode: 0, output: '', timedOut: false }),
+      (() =>
+        Promise.resolve({
+          containerId: 'container-1',
+          nome: 'brabo-proj-1',
+          jaEstavaDePe: false,
+        })),
+    stop: () => Promise.resolve(undefined),
+    remove: () => Promise.resolve(undefined),
+    inspect: () => Promise.resolve(null),
+    exec: () => Promise.resolve({ exitCode: 0, output: '', timedOut: false }),
   };
 
   const updatesDoProjeto: Array<Record<string, unknown>> = [];
   const projects = {
-    findById: async () => ({
-      id: 'proj-1',
-      executionMode: opts.executionMode ?? 'container',
-      workspaceDirName: 'proj-1-abc12345',
-      workspacePath: opts.workspacePath ?? null,
-      slug: 'proj-1',
-      workspaceId: 'ws-1',
-    }),
-    update: vi.fn(async (_id: string, input: Record<string, unknown>) => {
+    findById: () =>
+      Promise.resolve({
+        id: 'proj-1',
+        executionMode: opts.executionMode ?? 'container',
+        workspaceDirName: 'proj-1-abc12345',
+        workspacePath: opts.workspacePath ?? null,
+        slug: 'proj-1',
+        workspaceId: 'ws-1',
+      }),
+    update: vi.fn((_id: string, input: Record<string, unknown>) => {
       updatesDoProjeto.push(input);
-      return null;
+      return Promise.resolve(null);
     }),
   };
 
   const useCase = new ExecuteContainerStartUseCase(
-    { runInTransaction: async (fn: () => unknown) => fn() } as never,
+    { runInTransaction: (fn: () => unknown) => Promise.resolve(fn()) } as never,
     {
-      updateExecutionResult: async (
+      updateExecutionResult: (
         _id: string,
         input: { status: string; executionResult: unknown },
       ) => {
         gravados.push(input);
-        return { ...makeAction(), ...input };
+        return Promise.resolve({ ...makeAction(), ...input });
       },
     } as never,
-    { execute: async () => undefined } as never,
-    { append: async () => undefined } as never,
+    { execute: () => Promise.resolve(undefined) } as never,
+    { append: () => Promise.resolve(undefined) } as never,
     {
-      execute: async () => opts.roteamento ?? roteamentoComCandidata,
+      execute: () => Promise.resolve(opts.roteamento ?? roteamentoComCandidata),
     } as never,
     decidirImagem as never,
     subirCicloDeVida as never,
@@ -238,11 +241,12 @@ describe('ExecuteContainerStartUseCase — caminho feliz', () => {
         createdAt: new Date(),
         statusChangedAt: new Date(),
       },
-      brokerStart: async () => ({
-        containerId: 'container-1',
-        nome: 'brabo-proj-1',
-        jaEstavaDePe: true,
-      }),
+      brokerStart: () =>
+        Promise.resolve({
+          containerId: 'container-1',
+          nome: 'brabo-proj-1',
+          jaEstavaDePe: true,
+        }),
     });
 
     await useCase.execute('proj-1', 'sess-1', makeAction());
@@ -289,8 +293,10 @@ describe('ExecuteContainerStartUseCase — imagem fora das candidatas', () => {
 describe('ExecuteContainerStartUseCase — recusa do broker', () => {
   it('BrokerRecusouError vira failed, nunca propaga', async () => {
     const { useCase, gravados } = build({
-      brokerStart: async () => {
-        throw new BrokerRecusouError(409, 'projeto no modo errado', 'politica');
+      brokerStart: () => {
+        return Promise.reject(
+          new BrokerRecusouError(409, 'projeto no modo errado', 'politica'),
+        );
       },
     });
 
@@ -305,8 +311,10 @@ describe('ExecuteContainerStartUseCase — recusa do broker', () => {
 
   it('BrokerIndisponivelError vira failed, nunca propaga', async () => {
     const { useCase, gravados } = build({
-      brokerStart: async () => {
-        throw new BrokerIndisponivelError('sem-resposta', 'timeout');
+      brokerStart: () => {
+        return Promise.reject(
+          new BrokerIndisponivelError('sem-resposta', 'timeout'),
+        );
       },
     });
 
@@ -355,10 +363,12 @@ describe('ExecuteContainerStartUseCase — mounted vai pelo BROKER (RN-503)', ()
       executionMode: 'mounted',
       workspacePath: dir,
       cicloAtual: null,
-      brokerStart: async () => {
-        throw new BrokerIndisponivelError(
-          'nao-configurado',
-          'BROKER_URL não está definida — o broker sobe sob profile e não sobe por padrão',
+      brokerStart: () => {
+        return Promise.reject(
+          new BrokerIndisponivelError(
+            'nao-configurado',
+            'BROKER_URL não está definida — o broker sobe sob profile e não sobe por padrão',
+          ),
         );
       },
     });
@@ -379,11 +389,13 @@ describe('ExecuteContainerStartUseCase — mounted vai pelo BROKER (RN-503)', ()
     const { useCase, gravados } = build({
       executionMode: 'mounted',
       workspacePath: dir,
-      brokerStart: async () => {
-        throw new BrokerRecusouError(
-          503,
-          'BRABO_PROJECTS_HOST_BASE não está definida neste broker',
-          'infra',
+      brokerStart: () => {
+        return Promise.reject(
+          new BrokerRecusouError(
+            503,
+            'BRABO_PROJECTS_HOST_BASE não está definida neste broker',
+            'infra',
+          ),
         );
       },
     });

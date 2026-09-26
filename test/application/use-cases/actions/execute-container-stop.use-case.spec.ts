@@ -61,51 +61,53 @@ function build(opts: {
   const transicoes: Array<{ to: string; input?: unknown }> = [];
 
   const registrarTransicao = {
-    execute: async (_p: string, to: string, input?: unknown) => {
+    execute: (_p: string, to: string, input?: unknown) => {
       transicoes.push({ to, input });
-      return makeLifecycle(to as ContainerLifecycleStatus);
+      return Promise.resolve(makeLifecycle(to as ContainerLifecycleStatus));
     },
   };
 
   const broker = {
     configurado: () => true,
-    start: async () => ({ containerId: '', nome: '', jaEstavaDePe: false }),
-    stop: opts.brokerStop ?? (async () => undefined),
-    remove: async () => undefined,
-    inspect: async () => null,
-    exec: async () => ({ exitCode: 0, output: '', timedOut: false }),
+    start: () =>
+      Promise.resolve({ containerId: '', nome: '', jaEstavaDePe: false }),
+    stop: opts.brokerStop ?? (() => Promise.resolve(undefined)),
+    remove: () => Promise.resolve(undefined),
+    inspect: () => Promise.resolve(null),
+    exec: () => Promise.resolve({ exitCode: 0, output: '', timedOut: false }),
   };
 
   const projects = {
-    findById: async () => ({
-      id: 'proj-1',
-      executionMode: opts.executionMode ?? 'container',
-      workspaceDirName: 'proj-1-abc12345',
-    }),
+    findById: () =>
+      Promise.resolve({
+        id: 'proj-1',
+        executionMode: opts.executionMode ?? 'container',
+        workspaceDirName: 'proj-1-abc12345',
+      }),
   };
 
   const apiToEngineClient = {
     stopContainerViaRunner: vi.fn(
-      opts.stopContainerViaRunner ?? (async () => undefined),
+      opts.stopContainerViaRunner ?? (() => Promise.resolve(undefined)),
     ),
   };
 
   const useCase = new ExecuteContainerStopUseCase(
-    { runInTransaction: async (fn: () => unknown) => fn() } as never,
+    { runInTransaction: (fn: () => unknown) => Promise.resolve(fn()) } as never,
     {
-      updateExecutionResult: async (
+      updateExecutionResult: (
         _id: string,
         input: { status: string; executionResult: unknown },
       ) => {
         gravados.push(input);
-        return { ...makeAction(), ...input };
+        return Promise.resolve({ ...makeAction(), ...input });
       },
     } as never,
-    { execute: async () => undefined } as never,
-    { append: async () => undefined } as never,
+    { execute: () => Promise.resolve(undefined) } as never,
+    { append: () => Promise.resolve(undefined) } as never,
     {
-      execute: async () =>
-        opts.cicloAtual === undefined ? null : opts.cicloAtual,
+      execute: () =>
+        Promise.resolve(opts.cicloAtual === undefined ? null : opts.cicloAtual),
     } as never,
     registrarTransicao as never,
     broker,
@@ -170,8 +172,10 @@ describe('ExecuteContainerStopUseCase', () => {
   it('BrokerRecusouError vira failed, nunca propaga', async () => {
     const { useCase, gravados } = build({
       cicloAtual: makeLifecycle('running'),
-      brokerStop: async () => {
-        throw new BrokerRecusouError(409, 'projeto no modo errado', 'politica');
+      brokerStop: () => {
+        return Promise.reject(
+          new BrokerRecusouError(409, 'projeto no modo errado', 'politica'),
+        );
       },
     });
 
@@ -184,8 +188,10 @@ describe('ExecuteContainerStopUseCase', () => {
   it('BrokerIndisponivelError vira failed, nunca propaga', async () => {
     const { useCase, gravados } = build({
       cicloAtual: makeLifecycle('running'),
-      brokerStop: async () => {
-        throw new BrokerIndisponivelError('sem-resposta', 'timeout');
+      brokerStop: () => {
+        return Promise.reject(
+          new BrokerIndisponivelError('sem-resposta', 'timeout'),
+        );
       },
     });
 
@@ -238,10 +244,12 @@ describe('ExecuteContainerStopUseCase — a ramificação é por DESTINO (ADR 01
     const { useCase, gravados } = build({
       executionMode: 'runner',
       cicloAtual: makeLifecycle('running'),
-      stopContainerViaRunner: async () => {
-        throw new RunnerNaoConectadoError(
-          'timeout',
-          'o runner não respondeu a tempo',
+      stopContainerViaRunner: () => {
+        return Promise.reject(
+          new RunnerNaoConectadoError(
+            'timeout',
+            'o runner não respondeu a tempo',
+          ),
         );
       },
     });
@@ -256,9 +264,11 @@ describe('ExecuteContainerStopUseCase — a ramificação é por DESTINO (ADR 01
     const { useCase, gravados } = build({
       executionMode: 'runner',
       cicloAtual: makeLifecycle('running'),
-      stopContainerViaRunner: async () => {
-        throw new RunnerRecusouContainerError(
-          'Docker indisponível na máquina do usuário',
+      stopContainerViaRunner: () => {
+        return Promise.reject(
+          new RunnerRecusouContainerError(
+            'Docker indisponível na máquina do usuário',
+          ),
         );
       },
     });

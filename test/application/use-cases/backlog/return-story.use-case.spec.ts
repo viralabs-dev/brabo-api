@@ -57,14 +57,22 @@ class FakeStories {
     ordem.push('markReturned');
     this.devolvida = { id, reason };
     return Promise.resolve(
-      makeStory({ ...this.story!, proposedReady: false, returnedReason: reason }),
+      makeStory({
+        ...this.story!,
+        proposedReady: false,
+        returnedReason: reason,
+      }),
     );
   }
 }
 
 class FakeAppend {
-  eventos: { sessionId: string; type: string; actor: unknown; payload: unknown }[] =
-    [];
+  eventos: {
+    sessionId: string;
+    type: string;
+    actor: unknown;
+    payload: unknown;
+  }[] = [];
   execute(
     _p: string,
     sessionId: string,

@@ -40,21 +40,21 @@ class FakeApiToEngineClient implements ApiToEngineClient {
   async sendAgentMessage(): Promise<void> {}
   async confirmReadiness(): Promise<void> {}
   async startExecution(): Promise<void> {}
-  async executeGitAction(): Promise<Record<string, unknown>> {
-    return {};
+  executeGitAction(): Promise<Record<string, unknown>> {
+    return Promise.resolve({});
   }
   async acceptParallelization(): Promise<void> {}
   async rearmDevAgent(): Promise<void> {}
   async reviseStory(): Promise<void> {}
   async offerInfraHandoff(): Promise<void> {}
   async reanalyzeSession(): Promise<void> {}
-  async getPsychologistStatus(): Promise<{ enabled: boolean }> {
-    return { enabled: true };
+  getPsychologistStatus(): Promise<{ enabled: boolean }> {
+    return Promise.resolve({ enabled: true });
   }
   async runAnamnese(): Promise<void> {}
   async invalidateInstructions(): Promise<void> {}
-  async requestRunnerTicket(): Promise<{ ticket: string; expiresAt: Date }> {
-    return { ticket: 'fake-ticket', expiresAt: new Date() };
+  requestRunnerTicket(): Promise<{ ticket: string; expiresAt: Date }> {
+    return Promise.resolve({ ticket: 'fake-ticket', expiresAt: new Date() });
   }
 
   executeTerminalAction(): Promise<TerminalExecutionResult> {

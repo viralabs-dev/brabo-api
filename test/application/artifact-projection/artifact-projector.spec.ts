@@ -26,7 +26,7 @@ class FakeOutbox implements OutboxRepository {
   rows: OutboxEvent[] = [];
   private seq = 0;
 
-  async append(input: {
+  append(input: {
     aggregateType: string;
     aggregateId: string;
     eventType: string;
@@ -42,83 +42,87 @@ class FakeOutbox implements OutboxRepository {
       createdAt: new Date(),
       processedAt: null,
     });
+    return Promise.resolve();
   }
 
-  async listUnprocessed(
+  listUnprocessed(
     aggregateType: string,
     limit: number,
   ): Promise<OutboxEvent[]> {
-    return this.rows
-      .filter(
-        (r) => r.aggregateType === aggregateType && r.processedAt === null,
-      )
-      .slice(0, limit);
+    return Promise.resolve(
+      this.rows
+        .filter(
+          (r) => r.aggregateType === aggregateType && r.processedAt === null,
+        )
+        .slice(0, limit),
+    );
   }
 
-  async markProcessed(id: string): Promise<void> {
+  markProcessed(id: string): Promise<void> {
     const row = this.rows.find((r) => r.id === id);
     if (row) row.processedAt = new Date();
+    return Promise.resolve();
   }
 }
 
 class FakeSessionEvents implements SessionEventRepository {
   events = new Map<string, SessionEvent>();
 
-  async append(): Promise<SessionEvent> {
-    throw new Error('não usado neste teste');
+  append(): Promise<SessionEvent> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async listPaginated(): Promise<never> {
-    throw new Error('não usado neste teste');
+  listPaginated(): Promise<never> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async findById(id: string): Promise<SessionEvent | null> {
-    return this.events.get(id) ?? null;
+  findById(id: string): Promise<SessionEvent | null> {
+    return Promise.resolve(this.events.get(id) ?? null);
   }
-  async listByTypeForProject(): Promise<SessionEvent[]> {
-    throw new Error('não usado neste teste');
+  listByTypeForProject(): Promise<SessionEvent[]> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async listByTypeInSession(): Promise<SessionEvent[]> {
-    throw new Error('não usado neste teste');
+  listByTypeInSession(): Promise<SessionEvent[]> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async findLatestOfTypesInSession(): Promise<SessionEvent | null> {
-    throw new Error('não usado neste teste');
+  findLatestOfTypesInSession(): Promise<SessionEvent | null> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async listForProjectInWindow(): Promise<SessionEvent[]> {
-    throw new Error('não usado neste teste');
+  listForProjectInWindow(): Promise<SessionEvent[]> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
 }
 
 class FakeProjects implements ProjectRepository {
   projects = new Map<string, Project>();
 
-  async create(): Promise<Project> {
-    throw new Error('não usado neste teste');
+  create(): Promise<Project> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async findById(id: string): Promise<Project | null> {
-    return this.projects.get(id) ?? null;
+  findById(id: string): Promise<Project | null> {
+    return Promise.resolve(this.projects.get(id) ?? null);
   }
-  async listForWorkspace(): Promise<Project[]> {
-    throw new Error('não usado neste teste');
+  listForWorkspace(): Promise<Project[]> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async listRunnerModeReachableBy(): Promise<Project[]> {
-    throw new Error('não usado neste teste');
+  listRunnerModeReachableBy(): Promise<Project[]> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async update(): Promise<Project | null> {
-    throw new Error('não usado neste teste');
+  update(): Promise<Project | null> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async remove(): Promise<Project | null> {
-    throw new Error('não usado neste teste');
+  remove(): Promise<Project | null> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async addMember(): Promise<never> {
-    throw new Error('não usado neste teste');
+  addMember(): Promise<never> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async findMemberRole(): Promise<never> {
-    throw new Error('não usado neste teste');
+  findMemberRole(): Promise<never> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async listMembers(): Promise<never> {
-    throw new Error('não usado neste teste');
+  listMembers(): Promise<never> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async removeMember(): Promise<void> {
-    throw new Error('não usado neste teste');
+  removeMember(): Promise<void> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
 }
 
@@ -133,14 +137,15 @@ class FakeArtifactFiles implements ArtifactFileStore {
   escritas: Escrita[] = [];
   falharCom: Error | null = null;
 
-  async write(
+  write(
     local: ProjectWorkspaceLocation,
     agente: string,
     arquivo: string,
     conteudo: string,
   ): Promise<void> {
-    if (this.falharCom) throw this.falharCom;
+    if (this.falharCom) return Promise.reject(this.falharCom);
     this.escritas.push({ local, agente, arquivo, conteudo });
+    return Promise.resolve();
   }
 }
 

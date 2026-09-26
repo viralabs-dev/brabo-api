@@ -57,8 +57,9 @@ function build(opts: {
   const gravados: { status: string; executionResult: unknown }[] = [];
   const transicoes: Array<{ to: string; input?: unknown }> = [];
 
-  const registrarTransicao = vi.fn(async (to: string, input?: unknown) => {
+  const registrarTransicao = vi.fn((to: string, input?: unknown) => {
     transicoes.push({ to, input });
+    return Promise.resolve();
   });
 
   // Mesmo racional de `execute-container-start.use-case.spec.ts`: o fake
@@ -78,47 +79,50 @@ function build(opts: {
   };
 
   const obterSpec = {
-    execute: async () =>
-      opts.spec ?? {
-        projectId: 'proj-1',
-        projectSlug: 'proj-1',
-        workspaceId: 'ws-1',
-        workspaceDirName: 'proj-1-abc12345',
-        executionMode: 'runner' as const,
-        imagem: {
-          image: IMAGEM_DECIDIDA,
-          network: 'none' as const,
-          resources: RECURSOS_PADRAO,
+    execute: () =>
+      Promise.resolve(
+        opts.spec ?? {
+          projectId: 'proj-1',
+          projectSlug: 'proj-1',
+          workspaceId: 'ws-1',
+          workspaceDirName: 'proj-1-abc12345',
+          executionMode: 'runner' as const,
+          imagem: {
+            image: IMAGEM_DECIDIDA,
+            network: 'none' as const,
+            resources: RECURSOS_PADRAO,
+          },
+          imagemVersao: 3,
         },
-        imagemVersao: 3,
-      },
+      ),
   };
 
   const startContainerViaRunner =
     opts.startContainerViaRunner ??
-    (async () => ({
-      containerId: 'container-runner-1',
-      nome: 'brabo-proj-1-abc12345',
-      jaEstavaDePe: false,
-    }));
+    (() =>
+      Promise.resolve({
+        containerId: 'container-runner-1',
+        nome: 'brabo-proj-1-abc12345',
+        jaEstavaDePe: false,
+      }));
 
   const apiToEngineClient = {
     startContainerViaRunner: vi.fn(startContainerViaRunner),
   };
 
   const useCase = new ExecuteContainerStartViaRunnerUseCase(
-    { runInTransaction: async (fn: () => unknown) => fn() } as never,
+    { runInTransaction: (fn: () => unknown) => Promise.resolve(fn()) } as never,
     {
-      updateExecutionResult: async (
+      updateExecutionResult: (
         _id: string,
         input: { status: string; executionResult: unknown },
       ) => {
         gravados.push(input);
-        return { ...makeAction(), ...input };
+        return Promise.resolve({ ...makeAction(), ...input });
       },
     } as never,
-    { execute: async () => undefined } as never,
-    { append: async () => undefined } as never,
+    { execute: () => Promise.resolve(undefined) } as never,
+    { append: () => Promise.resolve(undefined) } as never,
     obterSpec as never,
     apiToEngineClient as never,
     subirCicloDeVida as never,
@@ -167,11 +171,12 @@ describe('ExecuteContainerStartViaRunnerUseCase — caminho feliz', () => {
         createdAt: new Date(),
         statusChangedAt: new Date(),
       },
-      startContainerViaRunner: async () => ({
-        containerId: 'container-runner-1',
-        nome: 'brabo-proj-1-abc12345',
-        jaEstavaDePe: true,
-      }),
+      startContainerViaRunner: () =>
+        Promise.resolve({
+          containerId: 'container-runner-1',
+          nome: 'brabo-proj-1-abc12345',
+          jaEstavaDePe: true,
+        }),
     });
 
     await useCase.execute('proj-1', 'sess-1', makeAction());
@@ -204,10 +209,12 @@ describe('ExecuteContainerStartViaRunnerUseCase — sem imagem decidida (RN-105)
 describe('ExecuteContainerStartViaRunnerUseCase — falhas nomeadas do runner', () => {
   it('RunnerNaoConectadoError vira failed, nunca propaga', async () => {
     const { useCase, gravados, transicoes } = build({
-      startContainerViaRunner: async () => {
-        throw new RunnerNaoConectadoError(
-          'not_connected',
-          'nenhum runner conectado a este projeto',
+      startContainerViaRunner: () => {
+        return Promise.reject(
+          new RunnerNaoConectadoError(
+            'not_connected',
+            'nenhum runner conectado a este projeto',
+          ),
         );
       },
     });
@@ -226,9 +233,11 @@ describe('ExecuteContainerStartViaRunnerUseCase — falhas nomeadas do runner', 
 
   it('RunnerRecusouContainerError vira failed, nunca propaga', async () => {
     const { useCase, gravados } = build({
-      startContainerViaRunner: async () => {
-        throw new RunnerRecusouContainerError(
-          'Docker indisponível na máquina do usuário',
+      startContainerViaRunner: () => {
+        return Promise.reject(
+          new RunnerRecusouContainerError(
+            'Docker indisponível na máquina do usuário',
+          ),
         );
       },
     });
@@ -244,8 +253,8 @@ describe('ExecuteContainerStartViaRunnerUseCase — falhas nomeadas do runner', 
 
   it('erro NÃO nomeado propaga (não vira failed silencioso) — só os dois nomeados degradam', async () => {
     const { useCase } = build({
-      startContainerViaRunner: async () => {
-        throw new Error('erro de transporte inesperado');
+      startContainerViaRunner: () => {
+        return Promise.reject(new Error('erro de transporte inesperado'));
       },
     });
 
