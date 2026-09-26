@@ -4,7 +4,18 @@ import { ContainersOverviewController } from '../../../../src/interfaces/http/co
 import { REQUIRED_ROLE_KEY } from '../../../../src/interfaces/http/iam/require-role.decorator';
 import type { ContainerOverviewItem } from '../../../../src/application/use-cases/containers/obter-visao-geral-de-containers.use-case';
 
-function makeItem(overrides: Partial<ContainerOverviewItem> = {}): ContainerOverviewItem {
+/*
+ * `Controller.prototype.<método>` entra aqui como CHAVE de metadata: o
+ * `Reflector` só lê o que os decorators penduraram no método, nunca o invoca.
+ * `@typescript-eslint/unbound-method` não distingue os dois usos, então a
+ * supressão fica aqui, com o motivo (a mesma de
+ * `workspaces-project-folders.controller.spec.ts`).
+ */
+/* eslint-disable @typescript-eslint/unbound-method */
+
+function makeItem(
+  overrides: Partial<ContainerOverviewItem> = {},
+): ContainerOverviewItem {
   return {
     projectId: 'proj-1',
     projectName: 'core',
@@ -41,13 +52,20 @@ describe('ContainersOverviewController', () => {
   it('exige viewer, mesma permissão da rota por projeto', () => {
     const reflector = new Reflector();
     expect(
-      reflector.get(REQUIRED_ROLE_KEY, ContainersOverviewController.prototype.list),
+      reflector.get(
+        REQUIRED_ROLE_KEY,
+        ContainersOverviewController.prototype.list,
+      ),
     ).toBe('viewer');
   });
 
   it('aninha o registrado num objeto próprio, datas em ISO', async () => {
-    const obterVisaoGeral = { execute: vi.fn().mockResolvedValue([makeItem()]) };
-    const controller = new ContainersOverviewController(obterVisaoGeral as never);
+    const obterVisaoGeral = {
+      execute: vi.fn().mockResolvedValue([makeItem()]),
+    };
+    const controller = new ContainersOverviewController(
+      obterVisaoGeral as never,
+    );
 
     const [linha] = await controller.list('ws-1');
 
@@ -93,7 +111,9 @@ describe('ContainersOverviewController', () => {
         }),
       ]),
     };
-    const controller = new ContainersOverviewController(obterVisaoGeral as never);
+    const controller = new ContainersOverviewController(
+      obterVisaoGeral as never,
+    );
 
     const [linha] = await controller.list('ws-1');
 
@@ -109,9 +129,13 @@ describe('ContainersOverviewController', () => {
     const obterVisaoGeral = {
       execute: vi
         .fn()
-        .mockResolvedValue([makeItem({ naoVerificado: 'teto_de_verificacoes_atingido' })]),
+        .mockResolvedValue([
+          makeItem({ naoVerificado: 'teto_de_verificacoes_atingido' }),
+        ]),
     };
-    const controller = new ContainersOverviewController(obterVisaoGeral as never);
+    const controller = new ContainersOverviewController(
+      obterVisaoGeral as never,
+    );
 
     const [linha] = await controller.list('ws-1');
 
@@ -143,7 +167,9 @@ describe('ContainersOverviewController', () => {
         }),
       ]),
     };
-    const controller = new ContainersOverviewController(obterVisaoGeral as never);
+    const controller = new ContainersOverviewController(
+      obterVisaoGeral as never,
+    );
 
     const [linha] = await controller.list('ws-1');
 
@@ -158,7 +184,9 @@ describe('ContainersOverviewController', () => {
 
   it('lista vazia quando o workspace não tem projeto nenhum', async () => {
     const obterVisaoGeral = { execute: vi.fn().mockResolvedValue([]) };
-    const controller = new ContainersOverviewController(obterVisaoGeral as never);
+    const controller = new ContainersOverviewController(
+      obterVisaoGeral as never,
+    );
 
     expect(await controller.list('ws-1')).toEqual([]);
   });

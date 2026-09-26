@@ -6,6 +6,15 @@ import { AgentsController } from '../../../../src/interfaces/http/agents/agents.
 import { REQUIRED_ROLE_KEY } from '../../../../src/interfaces/http/iam/require-role.decorator';
 import { RequestManualHandoffDto } from '../../../../src/interfaces/http/agents/dto/request-manual-handoff.dto';
 
+/*
+ * `Controller.prototype.<método>` entra aqui como CHAVE de metadata: o
+ * `Reflector` só lê o que os decorators penduraram no método, nunca o invoca.
+ * `@typescript-eslint/unbound-method` não distingue os dois usos, então a
+ * supressão fica aqui, com o motivo (a mesma de
+ * `workspaces-project-folders.controller.spec.ts`).
+ */
+/* eslint-disable @typescript-eslint/unbound-method */
+
 /**
  * Handoff manual a agente à escolha (ADR 0109/RN-440): `POST
  * .../sessions/:sessionId/handoffs` é uma rota que qualquer usuário com
@@ -20,7 +29,7 @@ describe('AgentsController — POST handoffs (handoff manual, ADR 0109)', () => 
   const reflector = new Reflector();
 
   it('exige developer', () => {
-    const papel = reflector.get(
+    const papel: unknown = reflector.get(
       REQUIRED_ROLE_KEY,
       AgentsController.prototype.requestManual,
     );
@@ -28,7 +37,7 @@ describe('AgentsController — POST handoffs (handoff manual, ADR 0109)', () => 
   });
 
   it('o accept continua exigindo developer (não regrediu)', () => {
-    const papel = reflector.get(
+    const papel: unknown = reflector.get(
       REQUIRED_ROLE_KEY,
       AgentsController.prototype.accept,
     );

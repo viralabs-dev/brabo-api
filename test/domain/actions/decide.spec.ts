@@ -856,7 +856,10 @@ describe('decide — a fronteira do container (RN-106)', () => {
   it('a ação TIPADA `git_push` continua existindo — a fronteira redireciona, não bloqueia', () => {
     // O ponto inteiro da regra: o efeito não some, muda de porta. Aqui ele
     // segue pelo pipeline normal, com papel mínimo e decisão do usuário.
-    const result = decide({ actionType: 'git_push' }, ctx({ effectiveRole: 'maintainer' }));
+    const result = decide(
+      { actionType: 'git_push' },
+      ctx({ effectiveRole: 'maintainer' }),
+    );
     expect(result.policy).toBe('require_approval');
   });
 

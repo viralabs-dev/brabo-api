@@ -444,7 +444,9 @@ describe('reprojeção do grafo a partir do event log (RN-569)', () => {
       aposEvento: 'e1',
     });
     // O `--` que o pnpm repassa ao script é separador, não argumento.
-    expect(lerArgumentos(['--', '--project', 'p1'])).toEqual({ projectId: 'p1' });
+    expect(lerArgumentos(['--', '--project', 'p1'])).toEqual({
+      projectId: 'p1',
+    });
     expect(() => lerArgumentos(['--projeto', 'p1'])).toThrow(/não reconhecido/);
     expect(() => lerArgumentos(['--project'])).toThrow(/não reconhecido/);
   });

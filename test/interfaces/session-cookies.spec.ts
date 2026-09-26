@@ -182,7 +182,10 @@ describe('cookies de sessão', () => {
     const legado = limpos.find(
       (c) => c.nome === COOKIE_CSRF && c.opcoes.path === '/auth',
     );
-    expect(legado, 'o csrf de /auth precisa ser apagado no login').toBeDefined();
+    expect(
+      legado,
+      'o csrf de /auth precisa ser apagado no login',
+    ).toBeDefined();
   });
 
   /**

@@ -127,7 +127,10 @@ function rotasRegistradas(app: INestApplication): Map<string, Rota> {
         string | undefined;
       if (sufixo === undefined) continue; // não é rota
 
-      const metodo = Reflect.getMetadata(METHOD_METADATA, handler) as number;
+      const metodo = Reflect.getMetadata(
+        METHOD_METADATA,
+        handler,
+      ) as RequestMethod;
       const caminho =
         '/' +
         [base, sufixo]

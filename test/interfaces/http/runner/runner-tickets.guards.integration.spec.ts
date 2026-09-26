@@ -11,6 +11,7 @@ import { Test } from '@nestjs/testing';
 import { APP_GUARD } from '@nestjs/core';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
+import type { App } from 'supertest/types';
 import { createTestDb, truncateAll } from '../../../support/test-db';
 import {
   users,
@@ -196,7 +197,7 @@ describe('runner-ticket — JwtAuthGuard + RolesGuard + PatAuthGuard juntos (RN-
     const { project, dev } = await seed({ papelDoDev: 'developer' });
     const token = await emitirPat(dev.id, project.id);
 
-    const resposta = await request(app.getHttpServer())
+    const resposta = await request(app.getHttpServer() as App)
       .post(`/projects/${project.id}/runner-ticket`)
       .set('Authorization', `Bearer ${token}`)
       .send();
@@ -212,26 +213,30 @@ describe('runner-ticket — JwtAuthGuard + RolesGuard + PatAuthGuard juntos (RN-
     const { project, dev } = await seed({ papelDoDev: 'viewer' });
     const token = await emitirPat(dev.id, project.id);
 
-    const resposta = await request(app.getHttpServer())
+    const resposta = await request(app.getHttpServer() as App)
       .post(`/projects/${project.id}/runner-ticket`)
       .set('Authorization', `Bearer ${token}`)
       .send();
 
     expect(resposta.status).toBe(403);
-    expect(resposta.body.message).toBe('Papel insuficiente para esta ação');
+    expect((resposta.body as { message: unknown }).message).toBe(
+      'Papel insuficiente para esta ação',
+    );
   });
 
   it('PAT válido, dono do token SEM nenhum vínculo com o projeto: 403 "Papel insuficiente"', async () => {
     const { project, dev } = await seed({ papelDoDev: null });
     const token = await emitirPat(dev.id, project.id);
 
-    const resposta = await request(app.getHttpServer())
+    const resposta = await request(app.getHttpServer() as App)
       .post(`/projects/${project.id}/runner-ticket`)
       .set('Authorization', `Bearer ${token}`)
       .send();
 
     expect(resposta.status).toBe(403);
-    expect(resposta.body.message).toBe('Papel insuficiente para esta ação');
+    expect((resposta.body as { message: unknown }).message).toBe(
+      'Papel insuficiente para esta ação',
+    );
   });
 
   it('PAT válido, mas para OUTRO projeto: continua 403 "Token não autorizado para este projeto"', async () => {
@@ -241,19 +246,19 @@ describe('runner-ticket — JwtAuthGuard + RolesGuard + PatAuthGuard juntos (RN-
     const { project: outroProjeto } = await seed({ papelDoDev: 'developer' });
     const token = await emitirPat(dev.id, projetoDoToken.id);
 
-    const resposta = await request(app.getHttpServer())
+    const resposta = await request(app.getHttpServer() as App)
       .post(`/projects/${outroProjeto.id}/runner-ticket`)
       .set('Authorization', `Bearer ${token}`)
       .send();
 
     expect(resposta.status).toBe(403);
-    expect(resposta.body.message).toBe(
+    expect((resposta.body as { message: unknown }).message).toBe(
       'Token não autorizado para este projeto',
     );
   });
 
   it('token ausente: continua 401', async () => {
-    const resposta = await request(app.getHttpServer())
+    const resposta = await request(app.getHttpServer() as App)
       .post(`/projects/${PROJECT_ID_INEXISTENTE}/runner-ticket`)
       .send();
 
@@ -261,7 +266,7 @@ describe('runner-ticket — JwtAuthGuard + RolesGuard + PatAuthGuard juntos (RN-
   });
 
   it('token inválido (não é brb_...): continua 401', async () => {
-    const resposta = await request(app.getHttpServer())
+    const resposta = await request(app.getHttpServer() as App)
       .post(`/projects/${PROJECT_ID_INEXISTENTE}/runner-ticket`)
       .set('Authorization', 'Bearer nao-e-um-pat')
       .send();

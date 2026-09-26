@@ -3,6 +3,15 @@ import { Reflector } from '@nestjs/core';
 import { ProjectsController } from '../../../../src/interfaces/http/iam/projects.controller';
 import { REQUIRED_ROLE_KEY } from '../../../../src/interfaces/http/iam/require-role.decorator';
 
+/*
+ * `Controller.prototype.<método>` entra aqui como CHAVE de metadata: o
+ * `Reflector` só lê o que os decorators penduraram no método, nunca o invoca.
+ * `@typescript-eslint/unbound-method` não distingue os dois usos, então a
+ * supressão fica aqui, com o motivo (a mesma de
+ * `workspaces-project-folders.controller.spec.ts`).
+ */
+/* eslint-disable @typescript-eslint/unbound-method */
+
 /**
  * `PUT /projects/:projectId/execution-mode` — RN-447..450, ADR 0111.
  *

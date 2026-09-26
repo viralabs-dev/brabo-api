@@ -6,6 +6,15 @@ import { HuggingFaceModelsController } from '../../../../src/interfaces/http/llm
 import { REQUIRED_ROLE_KEY } from '../../../../src/interfaces/http/iam/require-role.decorator';
 import { RequestModelPullDto } from '../../../../src/interfaces/http/llm/dto/request-model-pull.dto';
 
+/*
+ * `Controller.prototype.<método>` entra aqui como CHAVE de metadata: o
+ * `Reflector` só lê o que os decorators penduraram no método, nunca o invoca.
+ * `@typescript-eslint/unbound-method` não distingue os dois usos, então a
+ * supressão fica aqui, com o motivo (a mesma de
+ * `workspaces-project-folders.controller.spec.ts`).
+ */
+/* eslint-disable @typescript-eslint/unbound-method */
+
 /**
  * Papel exigido nas quatro rotas — owner/maintainer, mesmo padrão de mutação
  * do resto do catálogo de LLM (`models.controller.ts`). `RolesGuard` já prova

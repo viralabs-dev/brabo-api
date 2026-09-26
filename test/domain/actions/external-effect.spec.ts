@@ -86,9 +86,7 @@ describe('comandoPrivilegiadoNoComando — sudo/doas, sem ação tipada equivale
   );
 
   it('um sudo escondido no fim de um composto ainda é privilegiado', () => {
-    expect(privilegiado('echo oi && sudo rm -rf /tmp/x')?.comando).toBe(
-      'sudo',
-    );
+    expect(privilegiado('echo oi && sudo rm -rf /tmp/x')?.comando).toBe('sudo');
   });
 
   it('a mensagem explica por que pede decisão humana, sem redirecionar pra ação nenhuma', () => {
