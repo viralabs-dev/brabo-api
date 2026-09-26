@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import {
+  tokenDeServicoAnterior,
   tokenDeServicoAtual,
   tokenDeServicoConfere,
 } from '../../../src/infrastructure/security/service-token';
@@ -163,5 +164,94 @@ describe('rotação do BRABO_SERVICE_TOKEN (runbook, RN-597)', () => {
     process.env.BRABO_SERVICE_TOKEN_PREVIOUS = NOVO;
     expect(tokenDeServicoConfere(NOVO)).toBe(true);
     expect(tokenDeServicoConfere(VELHO)).toBe(false);
+  });
+});
+
+/**
+ * RN-598: o anterior passa pela MESMA régua do atual. Durante a rotação ele
+ * abre `/internal/*` tanto quanto o atual, então o literal público de dev, ou
+ * um valor curto, no `_PREVIOUS` abre o mesmo buraco por outra variável. A
+ * obrigatoriedade NÃO é copiada: fora da rotação, ausente é o estado normal.
+ */
+describe('tokenDeServicoAnterior (RN-598)', () => {
+  const nodeEnvOriginal = process.env.NODE_ENV;
+  // Sem entropia de propósito, pela mesma nota do topo (Gitleaks).
+  const NOVO = 'token-novo-de-teste-nao-e-segredo';
+  const VELHO = 'token-velho-de-teste-nao-e-segredo';
+
+  afterEach(() => {
+    delete process.env.BRABO_SERVICE_TOKEN;
+    delete process.env.BRABO_SERVICE_TOKEN_PREVIOUS;
+    if (nodeEnvOriginal === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = nodeEnvOriginal;
+  });
+
+  function emProducaoCom(anterior: string | undefined) {
+    process.env.NODE_ENV = 'production';
+    process.env.BRABO_SERVICE_TOKEN = NOVO;
+    if (anterior === undefined) delete process.env.BRABO_SERVICE_TOKEN_PREVIOUS;
+    else process.env.BRABO_SERVICE_TOKEN_PREVIOUS = anterior;
+  }
+
+  it('caminho feliz: em produção, devolve o anterior válido', () => {
+    emProducaoCom(VELHO);
+    expect(tokenDeServicoAnterior()).toBe(VELHO);
+  });
+
+  it('ausente em produção NÃO derruba o boot: fora da rotação não há anterior', () => {
+    emProducaoCom(undefined);
+    expect(tokenDeServicoAnterior()).toBeNull();
+  });
+
+  it('em produção, o anterior com o valor de EXEMPLO derruba o boot, nomeando a variável', () => {
+    emProducaoCom('dev-service-token-change-me');
+    expect(() => tokenDeServicoAnterior()).toThrow(
+      /BRABO_SERVICE_TOKEN_PREVIOUS está com o valor de exemplo/,
+    );
+  });
+
+  it('em produção, o anterior curto derruba o boot, nomeando a variável', () => {
+    emProducaoCom('senha123');
+    expect(() => tokenDeServicoAnterior()).toThrow(
+      /BRABO_SERVICE_TOKEN_PREVIOUS tem 8 caracteres; o mínimo em produção/,
+    );
+  });
+
+  it('o piso vale DEPOIS do trim: espaço em volta não completa os 16', () => {
+    emProducaoCom('   senha123        ');
+    expect(() => tokenDeServicoAnterior()).toThrow(/tem 8 caracteres/);
+  });
+
+  it('espaço em volta é descartado: o anterior que confere é o valor aparado', () => {
+    emProducaoCom(`  ${VELHO}\n`);
+    expect(tokenDeServicoAnterior()).toBe(VELHO);
+    expect(tokenDeServicoConfere(VELHO)).toBe(true);
+    expect(tokenDeServicoConfere(`  ${VELHO}\n`)).toBe(false);
+  });
+
+  it('só espaço conta como ausente, sem recusa', () => {
+    emProducaoCom('   ');
+    expect(tokenDeServicoAnterior()).toBeNull();
+  });
+
+  it('igual ao atual depois do trim não é rotação', () => {
+    emProducaoCom(` ${NOVO} `);
+    expect(tokenDeServicoAnterior()).toBeNull();
+  });
+
+  it('a verificação usa a mesma função: anterior inválido não vira porta aberta', () => {
+    // O boot já teria caído. Isto fixa que a verificação passa pela MESMA
+    // função, e não por uma leitura crua da variável.
+    emProducaoCom('dev-service-token-change-me');
+    expect(() => tokenDeServicoConfere('dev-service-token-change-me')).toThrow(
+      /valor de exemplo/,
+    );
+  });
+
+  it('fora de produção, anterior curto é aceito (mesma folga do atual)', () => {
+    process.env.NODE_ENV = 'development';
+    process.env.BRABO_SERVICE_TOKEN = NOVO;
+    process.env.BRABO_SERVICE_TOKEN_PREVIOUS = ' curto ';
+    expect(tokenDeServicoAnterior()).toBe('curto');
   });
 });

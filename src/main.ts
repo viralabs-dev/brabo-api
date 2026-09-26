@@ -18,7 +18,10 @@ import { GraphErrorFilter } from './interfaces/http/shared/graph-error.filter';
 import { resolveCorsOrigins } from './infrastructure/security/cors-origins';
 import { resolveOauthStateSecret } from './infrastructure/security/oauth-state-secret';
 import { passphraseAtual } from './infrastructure/security/auth-key-material';
-import { tokenDeServicoAtual } from './infrastructure/security/service-token';
+import {
+  tokenDeServicoAnterior,
+  tokenDeServicoAtual,
+} from './infrastructure/security/service-token';
 import { helmetOptions } from './infrastructure/security/security-headers';
 import { SwaggerModule } from '@nestjs/swagger';
 import { montarDocumento } from './infrastructure/openapi/documento';
@@ -35,6 +38,9 @@ async function bootstrap() {
   resolveOauthStateSecret();
   passphraseAtual();
   tokenDeServicoAtual();
+  // O anterior também abre `/internal/*` durante a rotação, e por isso passa
+  // pela mesma régua do atual (RN-598).
+  tokenDeServicoAnterior();
 
   // `bufferLogs`: as linhas emitidas ANTES de o logger estar pronto ficam na
   // fila e são reemitidas em JSON, em vez de sair no formato default do Nest —

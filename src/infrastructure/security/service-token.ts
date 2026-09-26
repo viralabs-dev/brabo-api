@@ -27,7 +27,8 @@ import { comparaEmTempoConstante } from './auth-key-material';
  * `docker-compose.prod.yml` o supria como fallback — o caminho real de erro
  * tinha a variável DEFINIDA, com o valor errado. Em produção ela é
  * obrigatória, o literal de exemplo é recusado mesmo definido explicitamente,
- * e há um piso de 16 caracteres.
+ * e há um piso de 16 caracteres. O `_PREVIOUS`, quando definido, passa pela
+ * mesma régua (RN-598), aplicada por `exigirTokenDeProducao`.
  */
 const PADRAO_DEV = 'dev-service-token-change-me';
 const TAMANHO_MINIMO = 16;
@@ -48,9 +49,21 @@ export function tokenDeServicoAtual(): string {
     );
   }
 
+  return exigirTokenDeProducao('BRABO_SERVICE_TOKEN', bruto);
+}
+
+/**
+ * A régua de produção de QUALQUER valor que a verificação aceita: o atual e o
+ * anterior (RN-598). É uma só de propósito. Durante a rotação o anterior
+ * também abre `/internal/*`, então um anterior com o literal público de dev,
+ * ou curto demais, abre o mesmo buraco que o atual, só que por uma variável
+ * que ninguém conferia. A obrigatoriedade NÃO é compartilhada: o atual é
+ * obrigatório em produção, e o anterior fica ausente fora da rotação.
+ */
+function exigirTokenDeProducao(nome: string, bruto: string): string {
   if (bruto === PADRAO_DEV) {
     throw new Error(
-      'BRABO_SERVICE_TOKEN está com o valor de exemplo do repositório, que é ' +
+      `${nome} está com o valor de exemplo do repositório, que é ` +
         'público — em produção isso equivale a não ter autenticação nenhuma ' +
         'entre api e engine. Gere um próprio (ex.: `openssl rand -base64 32`).',
     );
@@ -58,7 +71,7 @@ export function tokenDeServicoAtual(): string {
 
   if (bruto.length < TAMANHO_MINIMO) {
     throw new Error(
-      `BRABO_SERVICE_TOKEN tem ${bruto.length} caracteres; o mínimo em ` +
+      `${nome} tem ${bruto.length} caracteres; o mínimo em ` +
         `produção é ${TAMANHO_MINIMO}. Gere um aleatório (ex.: ` +
         '`openssl rand -base64 32`).',
     );
@@ -67,10 +80,25 @@ export function tokenDeServicoAtual(): string {
   return bruto;
 }
 
-function tokenDeServicoAnterior(): string | null {
-  const anterior = process.env.BRABO_SERVICE_TOKEN_PREVIOUS;
-  if (!anterior || anterior === tokenDeServicoAtual()) return null;
-  return anterior;
+/**
+ * O token anterior, aceito só na VERIFICAÇÃO durante a rotação, e `null` fora
+ * dela. Ele passa pela MESMA régua do atual (RN-598). O espaço em volta é
+ * descartado, e um valor feito só de espaço conta como ausente. Em produção,
+ * o literal de exemplo e um valor abaixo do piso derrubam o boot: `main.ts`
+ * chama esta função logo depois de `tokenDeServicoAtual()`, pelo mesmo
+ * motivo (o primeiro uso pode demorar). Um anterior igual ao atual (depois do
+ * trim) não é rotação e vira `null`.
+ */
+export function tokenDeServicoAnterior(): string | null {
+  const bruto = (process.env.BRABO_SERVICE_TOKEN_PREVIOUS ?? '').trim();
+  if (!bruto) return null;
+
+  const anterior =
+    process.env.NODE_ENV === 'production'
+      ? exigirTokenDeProducao('BRABO_SERVICE_TOKEN_PREVIOUS', bruto)
+      : bruto;
+
+  return anterior === tokenDeServicoAtual() ? null : anterior;
 }
 
 /**
