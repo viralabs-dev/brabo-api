@@ -110,7 +110,10 @@ function acaoDeCriacao(
 describe('GetRepoBootstrapStatusUseCase', () => {
   it('sem linha nenhuma: status null, attempts 0', async () => {
     const repo = new FakeRepoBootstrapRepository();
-    const useCase = new GetRepoBootstrapStatusUseCase(repo, fakeProposedActions());
+    const useCase = new GetRepoBootstrapStatusUseCase(
+      repo,
+      fakeProposedActions(),
+    );
 
     const result = await useCase.execute('project-1');
 
@@ -142,7 +145,10 @@ describe('GetRepoBootstrapStatusUseCase', () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    const useCase = new GetRepoBootstrapStatusUseCase(repo, fakeProposedActions());
+    const useCase = new GetRepoBootstrapStatusUseCase(
+      repo,
+      fakeProposedActions(),
+    );
 
     const result = await useCase.execute('project-1');
 
@@ -177,7 +183,9 @@ describe('GetRepoBootstrapStatusUseCase', () => {
     const result = await useCase.execute('project-1');
 
     expect(result.status).toBe('provision_failed');
-    expect(result.lastError).toBe('permissão negada: /data/git-repos/exp001.git');
+    expect(result.lastError).toBe(
+      'permissão negada: /data/git-repos/exp001.git',
+    );
     expect(result.failedStep).toBeNull();
     expect(result.sessionId).toBeNull();
   });

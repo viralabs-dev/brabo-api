@@ -115,7 +115,11 @@ describe('TransitionSessionUseCase — projeção do grafo (Onda 2)', () => {
   it('closed_abnormally: mesma segunda linha, com o eventType correspondente', async () => {
     const { project, session } = await setupActiveSession();
 
-    await transitionSession.execute(project.id, session.id, 'closed_abnormally');
+    await transitionSession.execute(
+      project.id,
+      session.id,
+      'closed_abnormally',
+    );
 
     const rows = await graphProjectionRows(session.id);
     expect(rows).toHaveLength(1);

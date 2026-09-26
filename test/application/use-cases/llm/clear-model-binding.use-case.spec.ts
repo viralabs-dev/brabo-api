@@ -1,12 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
 import { createTestDb, truncateAll } from '../../../support/test-db';
-import {
-  models,
-  projects,
-  users,
-  workspaces,
-} from '../../../../src/db/schema';
+import { models, projects, users, workspaces } from '../../../../src/db/schema';
 import { DrizzleModelBindingRepository } from '../../../../src/infrastructure/persistence/drizzle/model-binding.repository';
 import { DrizzleProjectRepository } from '../../../../src/infrastructure/persistence/drizzle/project.repository';
 import { ClearModelBindingUseCase } from '../../../../src/application/use-cases/llm/clear-model-binding.use-case';

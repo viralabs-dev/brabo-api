@@ -233,10 +233,10 @@ class ProviderFalso implements GitProviderContract {
   commentOnPullRequest = naoDeveria('commentOnPullRequest');
 }
 
-function naoDeveria(metodo: string): never & (() => never) {
+function naoDeveria(metodo: string): never {
   return (() => {
     throw new Error(`A aba Code é só leitura, e chamou ${metodo}`);
-  }) as never & (() => never);
+  }) as never;
 }
 
 /**

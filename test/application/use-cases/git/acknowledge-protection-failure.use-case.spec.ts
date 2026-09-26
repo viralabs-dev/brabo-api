@@ -76,7 +76,10 @@ async function cenario() {
   return { user, project, session };
 }
 
-const falharEm = (projectId: string, step: 'protect_branches' | 'create_dev_branch') =>
+const falharEm = (
+  projectId: string,
+  step: 'protect_branches' | 'create_dev_branch',
+) =>
   bootstraps.update(projectId, {
     step,
     status: 'failed',

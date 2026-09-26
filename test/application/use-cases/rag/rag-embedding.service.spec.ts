@@ -17,19 +17,20 @@ class FakeEmbeddingProvider implements LLMProvider {
   };
   calls: string[][] = [];
 
+  // eslint-disable-next-line @typescript-eslint/require-await, require-yield
   async *chat(): AsyncGenerator<never> {
     throw new Error('não usado neste teste');
   }
 
-  async embed(inputs: readonly string[]) {
+  embed(inputs: readonly string[]) {
     this.calls.push([...inputs]);
-    return {
+    return Promise.resolve({
       vectors: inputs.map((_, i) => [i, i + 1, i + 2]),
       dimensions: 3,
       model: 'nomic-embed-text',
       inputTokens: inputs.length * 2,
       estimated: false,
-    };
+    });
   }
 }
 
@@ -43,12 +44,15 @@ class ThrowingEmbeddingProvider implements LLMProvider {
     routingPreference: false,
   };
 
+  // eslint-disable-next-line @typescript-eslint/require-await, require-yield
   async *chat(): AsyncGenerator<never> {
     throw new Error('não usado neste teste');
   }
 
-  async embed(): Promise<never> {
-    throw new LLMConnectionError('ollama', 'daemon fora do ar');
+  embed(): Promise<never> {
+    return Promise.reject(
+      new LLMConnectionError('ollama', 'daemon fora do ar'),
+    );
   }
 }
 
@@ -62,6 +66,7 @@ class NoEmbedProvider implements LLMProvider {
     routingPreference: false,
   };
 
+  // eslint-disable-next-line @typescript-eslint/require-await, require-yield
   async *chat(): AsyncGenerator<never> {
     throw new Error('não usado neste teste');
   }

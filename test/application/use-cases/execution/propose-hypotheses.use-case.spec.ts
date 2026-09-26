@@ -61,7 +61,7 @@ function buildHarness(opts: {
   session?: Session | null;
   events?: Record<string, SessionEvent | undefined>;
   existingAnalysis?: PsychologistAnalysis | null;
-  createRejectsWith?: unknown;
+  createRejectsWith?: Error;
 }) {
   const session = opts.session === undefined ? buildSession() : opts.session;
   const events = opts.events ?? { 'evt-1': buildEvent() };
@@ -268,7 +268,9 @@ describe('ProposeHypothesesUseCase', () => {
       'sess-1',
       expect.objectContaining({
         type: 'psychologist.analysis_completed',
-        payload: expect.objectContaining({ supersedesPrevious: true }),
+        payload: expect.objectContaining({
+          supersedesPrevious: true,
+        }) as unknown,
       }),
     );
     expect(result.analysisId).toBe('analysis-1');

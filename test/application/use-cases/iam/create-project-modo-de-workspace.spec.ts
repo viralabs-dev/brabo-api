@@ -131,10 +131,14 @@ describe('o projeto escolhe onde o código mora (RN-169/RN-421, ADR 0104)', () =
     });
 
     expect(projeto.executionMode).toBe('runner');
-    expect(projeto.workspacePath).toBe('/home/voce/projetos/loja-nunca-montada');
+    expect(projeto.workspacePath).toBe(
+      '/home/voce/projetos/loja-nunca-montada',
+    );
     // Nasce NÃO verificado — só a confirmação do runner preenche isto.
     expect(projeto.workspaceVerifiedAt).toBeNull();
-    expect(projectScopeRoot(projeto)).toBe('/home/voce/projetos/loja-nunca-montada');
+    expect(projectScopeRoot(projeto)).toBe(
+      '/home/voce/projetos/loja-nunca-montada',
+    );
   });
 });
 

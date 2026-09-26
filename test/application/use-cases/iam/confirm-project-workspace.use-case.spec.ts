@@ -46,7 +46,11 @@ function buildHarness(opts: { project?: Project | null }) {
   const appendEvent = { execute } as unknown as AppendSessionEventUseCase;
 
   return {
-    useCase: new ConfirmProjectWorkspaceUseCase(projects, unitOfWork, appendEvent),
+    useCase: new ConfirmProjectWorkspaceUseCase(
+      projects,
+      unitOfWork,
+      appendEvent,
+    ),
     projects,
     update,
     appendEventExecute: execute,
@@ -138,7 +142,9 @@ describe('ConfirmProjectWorkspaceUseCase', () => {
     expect(resultado.workspacePath).toBe('/home/voce/projetos/loja-nova');
     expect(update).toHaveBeenCalledWith(
       'proj-1',
-      expect.objectContaining({ workspacePath: '/home/voce/projetos/loja-nova' }),
+      expect.objectContaining({
+        workspacePath: '/home/voce/projetos/loja-nova',
+      }),
     );
   });
 
@@ -188,9 +194,15 @@ describe('ConfirmProjectWorkspaceUseCase', () => {
       runInTransaction: vi.fn((work: () => Promise<unknown>) => work()),
     } as unknown as UnitOfWork;
     const appendEvent = {
-      execute: vi.fn(() => Promise.reject(new NotFoundException('Sessão não encontrada'))),
+      execute: vi.fn(() =>
+        Promise.reject(new NotFoundException('Sessão não encontrada')),
+      ),
     } as unknown as AppendSessionEventUseCase;
-    const useCase = new ConfirmProjectWorkspaceUseCase(projects, unitOfWork, appendEvent);
+    const useCase = new ConfirmProjectWorkspaceUseCase(
+      projects,
+      unitOfWork,
+      appendEvent,
+    );
 
     const resultado = await useCase.execute('proj-1', {
       path: '/home/voce/projetos/loja',

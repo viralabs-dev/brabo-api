@@ -54,6 +54,8 @@ describe('ReanalyzeSessionUseCase', () => {
   it('outra falha de transporte sobe intocada — não é reinterpretada como "desativado"', async () => {
     engine.erro = new Error('engine fora do ar');
 
-    await expect(useCase.execute(PROJECT, SESSION)).rejects.toThrow('engine fora do ar');
+    await expect(useCase.execute(PROJECT, SESSION)).rejects.toThrow(
+      'engine fora do ar',
+    );
   });
 });

@@ -17,7 +17,9 @@ let useCase: GetPsychologistStatusUseCase;
 
 beforeEach(() => {
   engine = new FakeEngine();
-  useCase = new GetPsychologistStatusUseCase(engine as unknown as ApiToEngineClient);
+  useCase = new GetPsychologistStatusUseCase(
+    engine as unknown as ApiToEngineClient,
+  );
 });
 
 describe('GetPsychologistStatusUseCase', () => {

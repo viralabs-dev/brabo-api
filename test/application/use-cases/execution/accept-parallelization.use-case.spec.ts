@@ -80,9 +80,7 @@ function build(engineFails: boolean, opts: BuildOptions = {}) {
     listByTypeForProject: (_projectId: string, type: string) => {
       ordem.push('busca-module-map');
       expect(type).toBe('artifact.module_map');
-      return Promise.resolve(
-        (moduleMapEventIds ?? []).map((id) => ({ id })),
-      );
+      return Promise.resolve((moduleMapEventIds ?? []).map((id) => ({ id })));
     },
   } as unknown as SessionEventRepository;
 
@@ -148,7 +146,10 @@ describe('AcceptParallelizationUseCase', () => {
     await useCase.execute('proj-1', 'sess-1', 'api', 'user-1');
 
     expect(instrucoes).toEqual([
-      { agentId: 'dev-api-2', content: expect.stringContaining('dev-api-2') },
+      {
+        agentId: 'dev-api-2',
+        content: expect.stringContaining('dev-api-2') as unknown,
+      },
     ]);
     expect(autonomias.map((a) => a.type)).toEqual([
       'git_commit',
