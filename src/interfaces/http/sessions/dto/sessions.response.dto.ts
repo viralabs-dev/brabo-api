@@ -5,6 +5,7 @@ import { SESSION_KINDS } from '../../../../domain/sessions/session-kind';
 import type { Session } from '../../../../domain/sessions/session.entity';
 import type { SessionEvent } from '../../../../domain/sessions/session-event.entity';
 import type { Page } from '../../../../application/ports/session-event-repository.port';
+import type { SessaoListada } from '../../../../application/use-cases/sessions/list-sessions-for-project.use-case';
 
 /**
  * Respostas do domínio de sessões (Fase 7b, item 6).
@@ -100,6 +101,31 @@ export class SessionResponseDto implements Wire<Session> {
   traceParent!: string | null;
 }
 export const _chavesSession: MesmasChaves<SessionResponseDto, Session> = true;
+
+/**
+ * O item da LISTAGEM de sessões: a sessão mais o marcador `technical`
+ * (RN-592). Só a listagem o carrega — o GET de uma sessão e as respostas de
+ * criar/renomear/transicionar continuam devolvendo `SessionResponseDto`.
+ */
+export class SessionListItemResponseDto
+  extends SessionResponseDto
+  implements Wire<SessaoListada>
+{
+  @ApiProperty({
+    example: false,
+    description:
+      'Whether this is the TECHNICAL session opened by repository ' +
+      'provisioning (the one linked from `repo_bootstraps`), as opposed to a ' +
+      'work session. It is the link, never the name: renaming the session ' +
+      'does not change it. Screens that pick "the most recent session" skip ' +
+      'it unless it is the only one.',
+  })
+  technical!: boolean;
+}
+export const _chavesSessaoListada: MesmasChaves<
+  SessionListItemResponseDto,
+  SessaoListada
+> = true;
 
 export class SessionEventResponseDto implements Wire<SessionEvent> {
   @ApiProperty({
