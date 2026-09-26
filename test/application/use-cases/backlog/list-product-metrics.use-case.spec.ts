@@ -103,7 +103,9 @@ describe('ListProductMetricsUseCase', () => {
     const mergeEm = new Date('2026-08-01T12:00:00.000Z');
     const acoes = [
       acao('s1', 'git_commit', { updatedAt: commitEm }),
-      acao('s1', 'pr_open', { updatedAt: new Date('2026-08-01T11:00:00.000Z') }),
+      acao('s1', 'pr_open', {
+        updatedAt: new Date('2026-08-01T11:00:00.000Z'),
+      }),
       acao('s1', 'git_merge', {
         updatedAt: mergeEm,
         executionResult: { targetBranch: 'dev' },

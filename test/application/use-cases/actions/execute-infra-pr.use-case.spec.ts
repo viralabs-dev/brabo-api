@@ -35,32 +35,33 @@ function build(provider: {
   const gravados: { status: string; executionResult: unknown }[] = [];
 
   const useCase = new ExecuteInfraPrUseCase(
-    { runInTransaction: async (fn: () => unknown) => fn() } as never,
+    { runInTransaction: (fn: () => unknown) => Promise.resolve(fn()) } as never,
     {
-      updateExecutionResult: async (
+      updateExecutionResult: (
         _id: string,
         input: { status: string; executionResult: unknown },
       ) => {
         gravados.push(input);
-        return { ...makeAction(), ...input };
+        return Promise.resolve({ ...makeAction(), ...input });
       },
-      listByProjectAndType: async () => [],
+      listByProjectAndType: () => Promise.resolve([]),
     } as never,
-    { execute: async () => undefined } as never,
-    { append: async () => undefined },
+    { execute: () => Promise.resolve(undefined) } as never,
+    { append: () => Promise.resolve(undefined) },
     { get: () => provider } as never,
     {
-      findByProjectId: async () => ({
-        provider: 'local',
-        externalId: 'repo-1',
-        defaultBranch: 'main',
-      }),
+      findByProjectId: () =>
+        Promise.resolve({
+          provider: 'local',
+          externalId: 'repo-1',
+          defaultBranch: 'main',
+        }),
     } as never,
-    { findSecretByUserAndProvider: async () => null } as never,
+    { findSecretByUserAndProvider: () => Promise.resolve(null) } as never,
     { decrypt: () => '' } as never,
     {
-      findBySessionId: async () => null,
-      create: async () => undefined,
+      findBySessionId: () => Promise.resolve(null),
+      create: () => Promise.resolve(undefined),
     } as never,
   );
 

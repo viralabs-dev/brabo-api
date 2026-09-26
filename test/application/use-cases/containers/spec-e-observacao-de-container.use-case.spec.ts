@@ -58,10 +58,10 @@ function montarSpec(
   estado: EstadoDoContainer,
 ): ObterSpecDeContainerUseCase {
   const projects = {
-    findById: async () => project,
+    findById: () => Promise.resolve(project),
   } as unknown as ProjectRepository;
   const obterImagem = {
-    execute: async () => estado,
+    execute: () => Promise.resolve(estado),
   } as unknown as ObterContainerDoProjetoUseCase;
   return new ObterSpecDeContainerUseCase(projects, obterImagem);
 }
@@ -253,9 +253,9 @@ function brokerDeTeste(
 ): ContainerBrokerPort {
   return {
     configurado: () => overrides.configurado ?? true,
-    inspect: async () => {
-      if (overrides.erro !== undefined) throw overrides.erro;
-      return overrides.resultado ?? null;
+    inspect: () => {
+      if (overrides.erro !== undefined) return Promise.reject(overrides.erro);
+      return Promise.resolve(overrides.resultado ?? null);
     },
   } as unknown as ContainerBrokerPort;
 }
@@ -299,9 +299,9 @@ describe('ObterEstadoObservadoDoContainerUseCase — observado nunca herda regis
     let chamou = false;
     const broker = {
       configurado: () => false,
-      inspect: async () => {
+      inspect: () => {
         chamou = true;
-        return null;
+        return Promise.resolve(null);
       },
     } as unknown as ContainerBrokerPort;
 

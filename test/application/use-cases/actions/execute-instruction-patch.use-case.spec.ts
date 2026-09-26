@@ -156,7 +156,9 @@ describe('ExecuteInstructionPatchUseCase', () => {
       'sess-1',
       expect.objectContaining({
         type: 'instruction.patch_failed',
-        payload: expect.objectContaining({ reason: 'engine fora do ar' }),
+        payload: expect.objectContaining({
+          reason: 'engine fora do ar',
+        }) as unknown,
       }),
     );
     expect(outboxAppend).toHaveBeenCalledWith(
@@ -195,7 +197,9 @@ describe('ExecuteInstructionPatchUseCase', () => {
       'act-1',
       expect.objectContaining({
         status: 'executed',
-        executionResult: expect.objectContaining({ cacheInvalidated: false }),
+        executionResult: expect.objectContaining({
+          cacheInvalidated: false,
+        }) as unknown,
       }),
     );
   });

@@ -72,7 +72,7 @@ function build(
   brokerConfigurado = true,
 ) {
   const chamadasAoBroker: string[] = [];
-  const overview = { listForWorkspace: vi.fn(async () => linhas) };
+  const overview = { listForWorkspace: vi.fn(() => Promise.resolve(linhas)) };
   const obterEstadoObservado = {
     execute: vi.fn(async (projectId: string) => {
       chamadasAoBroker.push(projectId);
@@ -80,7 +80,7 @@ function build(
     }),
   };
   const useCase = new ObterVisaoGeralDeContainersUseCase(
-    overview as never,
+    overview,
     obterEstadoObservado as never,
     { configurado: () => brokerConfigurado } as never,
   );
@@ -122,8 +122,9 @@ describe('ObterVisaoGeralDeContainersUseCase', () => {
   });
 
   it('respeita o teto por carga — o que passa do teto vira teto_de_verificacoes_atingido, sem chamar o broker', async () => {
-    const linhas = Array.from({ length: TETO_DE_VERIFICACOES_POR_CARGA + 5 }, (_, i) =>
-      linha(`p-${i}`, 'running'),
+    const linhas = Array.from(
+      { length: TETO_DE_VERIFICACOES_POR_CARGA + 5 },
+      (_, i) => linha(`p-${i}`, 'running'),
     );
     const { useCase, chamadasAoBroker } = build(linhas);
 
@@ -143,9 +144,8 @@ describe('ObterVisaoGeralDeContainersUseCase', () => {
   });
 
   it('naoObservado do broker (recusou/sem-resposta/nao-configurado) nunca é confundido com naoVerificado', async () => {
-    const { useCase } = build(
-      [linha('p-1', 'running')],
-      async () => ({
+    const { useCase } = build([linha('p-1', 'running')], () =>
+      Promise.resolve({
         observado: null,
         naoObservado: 'broker-sem-resposta',
         detalhe: 'timeout',
@@ -212,14 +212,17 @@ describe('ObterVisaoGeralDeContainersUseCase', () => {
     const vazios = Array.from({ length: 25 }, (_, i) =>
       linhaSemContainer(`vazio-${i}`),
     );
-    const reais = Array.from({ length: TETO_DE_VERIFICACOES_POR_CARGA }, (_, i) =>
-      linha(`real-${i}`, 'running'),
+    const reais = Array.from(
+      { length: TETO_DE_VERIFICACOES_POR_CARGA },
+      (_, i) => linha(`real-${i}`, 'running'),
     );
     const { useCase, chamadasAoBroker } = build([...vazios, ...reais]);
 
     const itens = await useCase.execute('ws-1');
 
-    expect(chamadasAoBroker.sort()).toEqual(reais.map((r) => r.projectId).sort());
+    expect(chamadasAoBroker.sort()).toEqual(
+      reais.map((r) => r.projectId).sort(),
+    );
     expect(
       itens.filter((i) => i.naoVerificado === 'teto_de_verificacoes_atingido'),
     ).toHaveLength(0);

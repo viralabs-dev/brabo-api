@@ -16,7 +16,7 @@ function briefEvent(id: string, seq: number): SessionEvent {
     actor: { kind: 'agent', id: 'criativo' },
     payload: { title: 'Product Brief', summary: 'resumo', rules: [] },
     createdAt: new Date(),
-  } as SessionEvent;
+  };
 }
 
 class FakeSessionEvents {

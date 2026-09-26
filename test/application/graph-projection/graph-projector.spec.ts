@@ -41,7 +41,7 @@ class FakeOutbox implements OutboxRepository {
   rows: OutboxEvent[] = [];
   private seq = 0;
 
-  async append(input: {
+  append(input: {
     aggregateType: string;
     aggregateId: string;
     eventType: string;
@@ -57,81 +57,87 @@ class FakeOutbox implements OutboxRepository {
       createdAt: new Date(),
       processedAt: null,
     });
+    return Promise.resolve();
   }
 
-  async listUnprocessed(
+  listUnprocessed(
     aggregateType: string,
     limit: number,
   ): Promise<OutboxEvent[]> {
-    return this.rows
-      .filter(
-        (r) => r.aggregateType === aggregateType && r.processedAt === null,
-      )
-      .slice(0, limit);
+    return Promise.resolve(
+      this.rows
+        .filter(
+          (r) => r.aggregateType === aggregateType && r.processedAt === null,
+        )
+        .slice(0, limit),
+    );
   }
 
-  async markProcessed(id: string): Promise<void> {
+  markProcessed(id: string): Promise<void> {
     const row = this.rows.find((r) => r.id === id);
     if (row) row.processedAt = new Date();
+    return Promise.resolve();
   }
 }
 
 class FakeSessionEvents implements SessionEventRepository {
   events = new Map<string, SessionEvent>();
 
-  async append(): Promise<SessionEvent> {
-    throw new Error('não usado neste teste');
+  append(): Promise<SessionEvent> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async listPaginated(): Promise<never> {
-    throw new Error('não usado neste teste');
+  listPaginated(): Promise<never> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async findById(id: string): Promise<SessionEvent | null> {
-    return this.events.get(id) ?? null;
+  findById(id: string): Promise<SessionEvent | null> {
+    return Promise.resolve(this.events.get(id) ?? null);
   }
-  async listByTypeForProject(): Promise<SessionEvent[]> {
-    throw new Error('não usado neste teste');
+  listByTypeForProject(): Promise<SessionEvent[]> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async listByTypeInSession(): Promise<SessionEvent[]> {
-    throw new Error('não usado neste teste');
+  listByTypeInSession(): Promise<SessionEvent[]> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async findLatestOfTypesInSession(): Promise<SessionEvent | null> {
-    throw new Error('não usado neste teste');
+  findLatestOfTypesInSession(): Promise<SessionEvent | null> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async listForProjectInWindow(): Promise<SessionEvent[]> {
-    throw new Error('não usado neste teste');
+  listForProjectInWindow(): Promise<SessionEvent[]> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
 }
 
 class FakeSessions implements SessionRepository {
   sessions = new Map<string, Session>();
 
-  async create(): Promise<Session> {
-    throw new Error('não usado neste teste');
+  create(): Promise<Session> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async findInProject(projectId: string, sessionId: string) {
+  findInProject(projectId: string, sessionId: string) {
     const session = this.sessions.get(sessionId);
-    return session && session.projectId === projectId ? session : null;
+    return Promise.resolve(
+      session && session.projectId === projectId ? session : null,
+    );
   }
-  async listForProject(): Promise<Session[]> {
-    throw new Error('não usado neste teste');
+  listForProject(): Promise<Session[]> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async findActiveExecutionSession(): Promise<Session | null> {
-    throw new Error('não usado neste teste');
+  findActiveExecutionSession(): Promise<Session | null> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async rename(): Promise<Session | null> {
-    throw new Error('não usado neste teste');
+  rename(): Promise<Session | null> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async findInProjectForUpdate(): Promise<Session | null> {
-    throw new Error('não usado neste teste');
+  findInProjectForUpdate(): Promise<Session | null> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async updateStatus(): Promise<Session> {
-    throw new Error('não usado neste teste');
+  updateStatus(): Promise<Session> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async incrementSeq(): Promise<{
+  incrementSeq(): Promise<{
     seq: number;
     status: Session['status'];
   } | null> {
-    throw new Error('não usado neste teste');
+    return Promise.reject(new Error('não usado neste teste'));
   }
 }
 

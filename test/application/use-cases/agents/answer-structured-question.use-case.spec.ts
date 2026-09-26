@@ -56,7 +56,11 @@ function build(opts?: {
   } as unknown as SessionEventRepository;
 
   const appendEvent = {
-    execute: (_p: string, _s: string, e: { type: string; payload: unknown }) => {
+    execute: (
+      _p: string,
+      _s: string,
+      e: { type: string; payload: unknown },
+    ) => {
       eventosGravados.push(e);
       return Promise.resolve({});
     },

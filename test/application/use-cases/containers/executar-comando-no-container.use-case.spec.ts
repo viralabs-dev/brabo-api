@@ -9,27 +9,32 @@ import {
 function brokerFake(overrides: Partial<ContainerBrokerPort> = {}) {
   return {
     configurado: () => true,
-    start: async () => ({
-      containerId: 'c1',
-      nome: 'brabo-x',
-      jaEstavaDePe: false,
-    }),
-    stop: async () => undefined,
-    remove: async () => undefined,
-    inspect: async () => null,
-    exec: async () => ({ exitCode: 0, output: 'ok', timedOut: false }),
+    start: () =>
+      Promise.resolve({
+        containerId: 'c1',
+        nome: 'brabo-x',
+        jaEstavaDePe: false,
+      }),
+    stop: () => Promise.resolve(undefined),
+    remove: () => Promise.resolve(undefined),
+    inspect: () => Promise.resolve(null),
+    exec: () => Promise.resolve({ exitCode: 0, output: 'ok', timedOut: false }),
     ...overrides,
-  } as unknown as ContainerBrokerPort;
+  };
 }
 
 describe('ExecutarComandoNoContainerUseCase', () => {
   it('caminho feliz: devolve sucesso com exitCode/output/timedOut do broker', async () => {
     const broker = brokerFake({
-      exec: async (_projectId, comando, cwd, timeoutMs) => {
+      exec: (_projectId, comando, cwd, timeoutMs) => {
         expect(comando).toBe('npm test');
         expect(cwd).toBe('/work');
         expect(timeoutMs).toBe(120_000);
-        return { exitCode: 0, output: 'passou\n', timedOut: false };
+        return Promise.resolve({
+          exitCode: 0,
+          output: 'passou\n',
+          timedOut: false,
+        });
       },
     });
     const useCase = new ExecutarComandoNoContainerUseCase(broker);
@@ -51,17 +56,23 @@ describe('ExecutarComandoNoContainerUseCase', () => {
 
   it('BrokerRecusouError vira resultado tipado de falha, nunca propaga', async () => {
     const broker = brokerFake({
-      exec: async () => {
-        throw new BrokerRecusouError(
-          422,
-          'cwd "/etc" está fora de /work',
-          'politica',
+      exec: () => {
+        return Promise.reject(
+          new BrokerRecusouError(
+            422,
+            'cwd "/etc" está fora de /work',
+            'politica',
+          ),
         );
       },
     });
     const useCase = new ExecutarComandoNoContainerUseCase(broker);
 
-    const resultado = await useCase.execute('proj-1', 'cat /etc/passwd', '/etc');
+    const resultado = await useCase.execute(
+      'proj-1',
+      'cat /etc/passwd',
+      '/etc',
+    );
 
     expect(resultado).toEqual({
       sucesso: false,
@@ -71,8 +82,10 @@ describe('ExecutarComandoNoContainerUseCase', () => {
 
   it('BrokerIndisponivelError vira resultado tipado de falha, nunca propaga', async () => {
     const broker = brokerFake({
-      exec: async () => {
-        throw new BrokerIndisponivelError('sem-resposta', 'timeout');
+      exec: () => {
+        return Promise.reject(
+          new BrokerIndisponivelError('sem-resposta', 'timeout'),
+        );
       },
     });
     const useCase = new ExecutarComandoNoContainerUseCase(broker);
@@ -84,8 +97,8 @@ describe('ExecutarComandoNoContainerUseCase', () => {
 
   it('erro que NÃO é do broker (defeito real) continua propagando — não é disfarçado de falha de comando', async () => {
     const broker = brokerFake({
-      exec: async () => {
-        throw new TypeError('bug de verdade');
+      exec: () => {
+        return Promise.reject(new TypeError('bug de verdade'));
       },
     });
     const useCase = new ExecutarComandoNoContainerUseCase(broker);
@@ -99,9 +112,9 @@ describe('ExecutarComandoNoContainerUseCase', () => {
     const chamadas: Array<[string, string | undefined, number | undefined]> =
       [];
     const broker = brokerFake({
-      exec: async (_p, comando, cwd, timeoutMs) => {
+      exec: (_p, comando, cwd, timeoutMs) => {
         chamadas.push([comando, cwd, timeoutMs]);
-        return { exitCode: 0, output: '', timedOut: false };
+        return Promise.resolve({ exitCode: 0, output: '', timedOut: false });
       },
     });
     const useCase = new ExecutarComandoNoContainerUseCase(broker);

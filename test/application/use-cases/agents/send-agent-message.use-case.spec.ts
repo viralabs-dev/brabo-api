@@ -25,22 +25,29 @@ describe('SendAgentMessageUseCase (RN-587)', () => {
         return recusa ? Promise.reject(recusa) : Promise.resolve();
       },
     };
-    const uc = new SendAgentMessageUseCase(engine as never, appendEvent as never);
+    const uc = new SendAgentMessageUseCase(
+      engine as never,
+      appendEvent as never,
+    );
     return { uc, eventos, ordem };
   }
 
   it('aceite: grava o chat.message e depois pergunta ao engine', async () => {
     const { uc, eventos, ordem } = montar();
-    await expect(uc.execute('p', 's', 'po', 'oi', 'u')).resolves.toEqual({ ok: true });
+    await expect(uc.execute('p', 's', 'po', 'oi', 'u')).resolves.toEqual({
+      ok: true,
+    });
     expect(ordem).toEqual(['append', 'engine']);
     expect(eventos.map((e) => e.type)).toEqual(['chat.message']);
   });
 
   it('recusa 422 do engine: repassada, e a api não grava evento próprio', async () => {
-    const { uc, eventos } = montar(new UnprocessableEntityException('nenhum agente a leu'));
-    await expect(uc.execute('p', 's', 'infra', 'oi', 'u')).rejects.toBeInstanceOf(
-      UnprocessableEntityException,
+    const { uc, eventos } = montar(
+      new UnprocessableEntityException('nenhum agente a leu'),
     );
+    await expect(
+      uc.execute('p', 's', 'infra', 'oi', 'u'),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
     expect(eventos.map((e) => e.type)).toEqual(['chat.message']);
   });
 });

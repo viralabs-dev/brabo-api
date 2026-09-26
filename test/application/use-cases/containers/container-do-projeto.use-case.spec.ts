@@ -32,7 +32,11 @@ function montar(eventosIniciais: SessionEvent[] = []) {
     execute: (
       _projectId: string,
       sessionId: string,
-      input: { type: string; actor: { kind: string; id: string }; payload: unknown },
+      input: {
+        type: string;
+        actor: { kind: string; id: string };
+        payload: unknown;
+      },
     ) => {
       seq += 1;
       eventos.push({
@@ -94,7 +98,9 @@ describe('ObterContainerDoProjetoUseCase — o portão (RN-105)', () => {
     expect(estado.version).toBe(2);
     expect(estado.decisao?.image).toBe('node:22-bookworm-slim');
     // Histórico imutável: revisar é emitir de novo, nunca sobrescrever.
-    expect(eventos.filter((e) => e.type === EVENTO_IMAGEM_DO_PROJETO)).toHaveLength(2);
+    expect(
+      eventos.filter((e) => e.type === EVENTO_IMAGEM_DO_PROJETO),
+    ).toHaveLength(2);
   });
 
   it('a ordem não depende de o repositório devolver ordenado', async () => {
