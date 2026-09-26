@@ -83,6 +83,28 @@ describe('DrizzleAgentAutonomyRepository — precedência do curinga (RN-153)', 
     );
   });
 
+  it('resolve devolve a ORIGEM: curinga quando só ela existe, específica quando a específica vence (RN-603)', async () => {
+    const project = await criarProjeto();
+    expect(await repo.resolve(project.id, 'dev-api', 'terminal')).toBeNull();
+
+    await repo.upsert(
+      project.id,
+      'dev-api',
+      AGENT_AUTONOMY_ALL_ACTIONS,
+      'auto_approve',
+    );
+    expect(await repo.resolve(project.id, 'dev-api', 'terminal')).toEqual({
+      mode: 'auto_approve',
+      origem: 'curinga',
+    });
+
+    await repo.upsert(project.id, 'dev-api', 'terminal', 'require_approval');
+    expect(await repo.resolve(project.id, 'dev-api', 'terminal')).toEqual({
+      mode: 'require_approval',
+      origem: 'especifica',
+    });
+  });
+
   it('a curinga é por agente: outro agente sem regra continua null', async () => {
     const project = await criarProjeto();
     await repo.upsert(

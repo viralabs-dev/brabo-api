@@ -1053,3 +1053,150 @@ describe('decide — piso do container ativo do projeto', () => {
     expect(result.policy).toBe('require_approval');
   });
 });
+
+/**
+ * Modo automático libera o escopo (RN-603, ADR 0167).
+ *
+ * Decisão do dono do produto: com a curinga `"*"` em `auto_approve`, o agente
+ * roda QUALQUER comando de terminal sem aprovação, inclusive fora da pasta do
+ * projeto. Os outros tetos não mudam de sentido, e `deny` continua vencendo.
+ */
+describe('decide — modo automático libera o escopo de caminho (RN-603)', () => {
+  const RAIZ = '/home/dono/brabo-projects/exp001';
+  const automatico = (overrides: Partial<DecideContext> = {}) =>
+    ctx({
+      autonomyMode: 'auto_approve',
+      autonomyOrigin: 'curinga',
+      projectScopeRoot: RAIZ,
+      ...overrides,
+    });
+
+  it('comando fora do escopo é auto-aprovado em modo automático', () => {
+    // O caso medido no `exp001`: o dev agent roda no container, onde a pasta
+    // é `/work`, e o escopo compara com a raiz do HOST.
+    const result = decide(
+      { actionType: 'terminal', command: 'ls /work/src', cwd: '/work' },
+      automatico(),
+    );
+    expect(result.policy).toBe('auto_approve');
+  });
+
+  it('`cd` para fora + verbo sem regra (composto) também passa em modo automático', () => {
+    const result = decide(
+      {
+        actionType: 'terminal',
+        command: 'cd /work && npm test > /tmp/saida.txt',
+        cwd: '/work',
+      },
+      automatico(),
+    );
+    expect(result.policy).toBe('auto_approve');
+  });
+
+  it('`git push` continua pedindo aprovação em modo automático (RN-418)', () => {
+    const result = decide(
+      { actionType: 'terminal', command: 'cd /work && git push origin dev' },
+      automatico(),
+    );
+    expect(result.policy).toBe('require_approval');
+  });
+
+  it('`sudo` continua pedindo aprovação em modo automático (RN-418)', () => {
+    const result = decide(
+      { actionType: 'terminal', command: 'sudo apt-get install jq' },
+      automatico(),
+    );
+    expect(result.policy).toBe('require_approval');
+  });
+
+  it('`deny` do permissions.json continua vencendo em modo automático', () => {
+    const result = decide(
+      { actionType: 'terminal', command: 'rm -rf /tmp/x', cwd: '/work' },
+      automatico({
+        permissionsFile: {
+          ...EMPTY_PERMISSIONS_FILE,
+          deny: ['Terminal(rm -rf)'],
+        },
+      }),
+    );
+    expect(result.policy).toBe('deny');
+  });
+
+  it('`ask` ESCRITO no permissions.json continua pedindo em modo automático', () => {
+    const result = decide(
+      { actionType: 'terminal', command: 'cd /work && npm publish' },
+      automatico({
+        permissionsFile: {
+          ...EMPTY_PERMISSIONS_FILE,
+          ask: ['Terminal(npm publish)'],
+        },
+      }),
+    );
+    expect(result.policy).toBe('require_approval');
+  });
+
+  it('regra ESPECÍFICA `auto_approve` não é modo automático: o escopo segue valendo', () => {
+    const result = decide(
+      { actionType: 'terminal', command: 'cat /etc/passwd', cwd: RAIZ },
+      automatico({ autonomyOrigin: 'especifica' }),
+    );
+    expect(result.policy).toBe('require_approval');
+    expect(result.reason).toContain('fora da pasta do projeto');
+  });
+
+  it('regra específica `terminal: require_approval` por cima da curinga segue pedindo', () => {
+    // O repositório resolve a específica antes da curinga e devolve ela, com
+    // origem `especifica`: o modo automático não a atropela.
+    const result = decide(
+      { actionType: 'terminal', command: 'ls /work', cwd: '/work' },
+      automatico({
+        autonomyMode: 'require_approval',
+        autonomyOrigin: 'especifica',
+      }),
+    );
+    expect(result.policy).toBe('require_approval');
+  });
+
+  it('curinga DESLIGADA (`"*": require_approval`) não libera nada', () => {
+    const result = decide(
+      { actionType: 'terminal', command: 'ls /work', cwd: '/work' },
+      automatico({ autonomyMode: 'require_approval' }),
+    );
+    expect(result.policy).toBe('require_approval');
+  });
+
+  it('sem modo automático, fora do escopo continua `require_approval` (como antes)', () => {
+    const result = decide(
+      { actionType: 'terminal', command: 'ls /work', cwd: '/work' },
+      ctx({
+        permissionsFile: { ...EMPTY_PERMISSIONS_FILE, allow: ['Terminal(ls)'] },
+        projectScopeRoot: RAIZ,
+      }),
+    );
+    expect(result.policy).toBe('require_approval');
+    expect(result.reason).toContain('fora da pasta do projeto');
+  });
+
+  it('sem origem informada, `auto_approve` é tratado como regra específica', () => {
+    const result = decide(
+      { actionType: 'terminal', command: 'ls /work', cwd: '/work' },
+      automatico({ autonomyOrigin: undefined }),
+    );
+    expect(result.policy).toBe('require_approval');
+  });
+
+  it('os outros tetos não mudam em modo automático', () => {
+    const tipos = [
+      { actionType: 'git_merge' as const, targetBranch: 'dev' },
+      { actionType: 'instruction_patch' as const },
+      { actionType: 'parallelize' as const },
+      { actionType: 'raise_max_parallel' as const },
+      { actionType: 'container_remove' as const },
+    ];
+    for (const acao of tipos) {
+      expect(
+        decide(acao, automatico({ effectiveRole: 'maintainer' })).policy,
+      ).toBe('require_approval');
+    }
+  });
+});

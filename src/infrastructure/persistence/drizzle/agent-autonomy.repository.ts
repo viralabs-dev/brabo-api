@@ -1,6 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, inArray } from 'drizzle-orm';
-import { AgentAutonomyRepository } from '../../../application/ports/agent-autonomy-repository.port';
+import {
+  AgentAutonomyRepository,
+  type AutonomiaResolvida,
+} from '../../../application/ports/agent-autonomy-repository.port';
 import type { PermissionPolicy } from '../../../domain/actions/permissions-file';
 import { AGENT_AUTONOMY_ALL_ACTIONS } from '../../../domain/actions/decide';
 import { agentAutonomy } from '../../../db/schema';
@@ -16,6 +19,14 @@ export class DrizzleAgentAutonomyRepository implements AgentAutonomyRepository {
     agentId: string,
     actionType: string,
   ): Promise<PermissionPolicy | null> {
+    return (await this.resolve(projectId, agentId, actionType))?.mode ?? null;
+  }
+
+  async resolve(
+    projectId: string,
+    agentId: string,
+    actionType: string,
+  ): Promise<AutonomiaResolvida | null> {
     const db = currentDb(this.rootDb);
     // Busca a regra ESPECÍFICA e a regra CURINGA (`*`, "auto mode" — RN-153)
     // numa query só: uma linha por `actionType` distinto (a unique constraint
@@ -39,11 +50,11 @@ export class DrizzleAgentAutonomyRepository implements AgentAutonomyRepository {
         ),
       );
     const especifica = rows.find((r) => r.actionType === actionType);
-    if (especifica) return especifica.mode;
+    if (especifica) return { mode: especifica.mode, origem: 'especifica' };
     const curinga = rows.find(
       (r) => r.actionType === AGENT_AUTONOMY_ALL_ACTIONS,
     );
-    return curinga?.mode ?? null;
+    return curinga ? { mode: curinga.mode, origem: 'curinga' } : null;
   }
 
   async upsert(

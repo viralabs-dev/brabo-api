@@ -438,6 +438,75 @@ describe('ProposeActionUseCase', () => {
     expect(action.resolvedPolicy).toBe('deny');
   });
 
+  it('auto mode libera comando FORA da pasta do projeto (RN-603)', async () => {
+    const { project, session } = await setupSession();
+    await agentAutonomyRepo.upsert(project.id, 'dev-api', '*', 'auto_approve');
+
+    const action = await proposeAction.execute(project.id, session.id, {
+      actionType: 'terminal',
+      actor: { kind: 'agent', id: 'dev-api' },
+      payload: { command: 'cd /work && ls /tmp' },
+    });
+
+    expect(action.resolvedPolicy).toBe('auto_approve');
+    expect(action.status).toBe('executed');
+  });
+
+  it('auto mode DESLIGADO (curinga em require_approval) volta a pedir fora da pasta (RN-603)', async () => {
+    const { project, session } = await setupSession();
+    await agentAutonomyRepo.upsert(project.id, 'dev-api', '*', 'auto_approve');
+    await agentAutonomyRepo.upsert(
+      project.id,
+      'dev-api',
+      '*',
+      'require_approval',
+    );
+
+    const action = await proposeAction.execute(project.id, session.id, {
+      actionType: 'terminal',
+      actor: { kind: 'agent', id: 'dev-api' },
+      payload: { command: 'ls /tmp' },
+    });
+
+    expect(action.resolvedPolicy).toBe('require_approval');
+    expect(action.status).toBe('pending');
+  });
+
+  it('regra específica `terminal: require_approval` não é atropelada pela curinga auto (RN-603)', async () => {
+    const { project, session } = await setupSession();
+    await agentAutonomyRepo.upsert(project.id, 'dev-api', '*', 'auto_approve');
+    await agentAutonomyRepo.upsert(
+      project.id,
+      'dev-api',
+      'terminal',
+      'require_approval',
+    );
+
+    const action = await proposeAction.execute(project.id, session.id, {
+      actionType: 'terminal',
+      actor: { kind: 'agent', id: 'dev-api' },
+      payload: { command: 'ls /tmp' },
+    });
+
+    expect(action.resolvedPolicy).toBe('require_approval');
+    expect(action.status).toBe('pending');
+  });
+
+  it('auto mode NÃO auto-aprova `sudo` nem push, mesmo liberando o escopo (RN-418/RN-603)', async () => {
+    const { project, session } = await setupSession();
+    await agentAutonomyRepo.upsert(project.id, 'dev-api', '*', 'auto_approve');
+
+    for (const command of ['sudo ls /root', 'cd /work && git push']) {
+      const action = await proposeAction.execute(project.id, session.id, {
+        actionType: 'terminal',
+        actor: { kind: 'agent', id: 'dev-api' },
+        payload: { command },
+      });
+      expect(action.resolvedPolicy).toBe('require_approval');
+      expect(action.status).toBe('pending');
+    }
+  });
+
   it('git_merge proposto pela aba PRs (produtor real, RN-154) segue pending mesmo com "sempre permitir" já gravado em permissions.json', async () => {
     // Onda 2 do programa de abas agrupadas: a aba PRs é a PRIMEIRA a propor
     // `git_merge` de verdade, com `actor.kind: 'user'` e o payload real que o

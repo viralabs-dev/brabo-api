@@ -87,11 +87,14 @@ export const ACTION_TYPES: readonly ActionType[] = [
  *
  * A resolução do curinga (uma regra ESPECÍFICA sempre vence a curinga) mora
  * no repositório (`DrizzleAgentAutonomyRepository.findMode`), não aqui —
- * `decide()` continua recebendo só o `PermissionPolicy` já resolvido, exatamente
- * como antes do curinga existir. É por isso que os três tetos abaixo (escopo,
- * merge protegido, instruction_patch, paralelismo) valem para "auto mode" sem
- * precisar saber que ele existe: eles agem sobre `current.policy ===
- * 'auto_approve'`, não sobre a origem dela.
+ * `decide()` recebe o `PermissionPolicy` já resolvido e, desde a RN-603 (ADR
+ * 0167), também a ORIGEM dele (`autonomyOrigin`: regra específica ou curinga).
+ * Os tetos de merge protegido, instruction_patch, paralelismo, remoção de
+ * container e efeito externo/comando privilegiado continuam agindo sobre
+ * `current.policy === 'auto_approve'`, sem olhar a origem. O ÚNICO que olha é
+ * o teto de ESCOPO DE CAMINHO (ADR 0055): ele deixa de valer quando o agente
+ * está em modo automático (curinga `auto_approve`) — decisão do dono do
+ * produto, ver `modoAutomaticoDoAgente`.
  */
 export const AGENT_AUTONOMY_ALL_ACTIONS = '*' as const;
 export type AgentAutonomyActionType =
@@ -192,9 +195,25 @@ export interface DecideAction {
   cwd?: string; // só usado pra actionType === 'terminal' (escopo de caminho)
 }
 
+/**
+ * De onde veio o `autonomyMode` resolvido: da linha ESPECÍFICA do tipo de ação
+ * ou da CURINGA `"*"` ("modo automático", RN-153). Quem resolve é o
+ * repositório (`AgentAutonomyRepository.resolve`) — a precedência específica >
+ * curinga continua morando lá, uma vez só.
+ */
+export type AutonomyOrigin = 'especifica' | 'curinga';
+
 export interface DecideContext {
   effectiveRole: Role | null;
   autonomyMode: PermissionPolicy | null;
+  /**
+   * Origem de `autonomyMode` (RN-603, ADR 0167). AUSENTE equivale a
+   * `'especifica'`: quem não informa a origem mantém o veredito de antes, com
+   * o teto de escopo inteiro. Só `autonomyMode === 'auto_approve'` vindo da
+   * `'curinga'` é "modo automático" — `'*': require_approval` (o toggle
+   * desligado) e `'*': deny` não ganham poder nenhum.
+   */
+  autonomyOrigin?: AutonomyOrigin;
   permissionsFile: PermissionsFile;
   /**
    * Raiz do projeto no disco (`<workspaces_root>/<projectId>`), quando
@@ -237,6 +256,22 @@ export interface DecideContext {
 export interface Decision {
   policy: PermissionPolicy;
   reason: string;
+}
+
+/**
+ * O agente está em "modo automático" (RN-153) — a curinga `"*"` resolvida como
+ * `auto_approve`, sem regra específica do tipo por cima (se houvesse, o
+ * repositório teria devolvido ela, com origem `'especifica'`).
+ *
+ * É o que a RN-603 (ADR 0167) usa para dispensar DOIS pedidos de aprovação que
+ * não são teto de efeito, e sim ausência de opinião sobre o comando: o teto de
+ * ESCOPO DE CAMINHO e o `require_approval` que o comando composto SINTETIZA
+ * quando um segmento não tem regra. Nenhum outro teto olha para isto.
+ */
+function modoAutomaticoDoAgente(ctx: DecideContext): boolean {
+  return (
+    ctx.autonomyMode === 'auto_approve' && ctx.autonomyOrigin === 'curinga'
+  );
 }
 
 /**
@@ -292,6 +327,7 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
   }
 
   const noEscopo = terminalNoEscopo(action, ctx);
+  const modoAutomatico = modoAutomaticoDoAgente(ctx);
 
   const fileVerdict = decideFromPermissionsFile(
     action,
@@ -300,7 +336,16 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
   );
   if (fileVerdict) {
     if (fileVerdict.policy === 'deny') return fileVerdict;
-    current = fileVerdict;
+    // Modo automático (RN-603): o `require_approval` que o comando composto
+    // SINTETIZA por um segmento sem regra não é opinião de ninguém — é o
+    // arquivo sem opinião, e o arquivo sem opinião nunca rebaixa um estágio
+    // anterior (docblock de `decide`). Sem isto, `cd /work && npm test` do dev
+    // agent continuaria pedindo aprovação em modo automático. Um `ask`
+    // ESCRITO no arquivo continua valendo: é regra do usuário, e regra
+    // explícita vence a curinga, como no repositório.
+    if (!(modoAutomatico && fileVerdict.sintetizado)) {
+      current = { policy: fileVerdict.policy, reason: fileVerdict.reason };
+    }
   }
 
   // TETO DA FRONTEIRA DO CONTAINER + COMANDO PRIVILEGIADO (ADR 0065, RN-106
@@ -348,7 +393,21 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
   // o código da plataforma que executa o agente. Fora do escopo vira
   // `require_approval` e não `deny` de propósito: o agente pode ter razão
   // legítima para olhar fora, e quem decide continua sendo o usuário.
-  if (noEscopo === false && current.policy === 'auto_approve') {
+  //
+  // EXCEÇÃO (RN-603, ADR 0167): agente em MODO AUTOMÁTICO (curinga `"*"` em
+  // `auto_approve`) não passa por este teto. Decisão do dono do produto: ligar
+  // o modo automático É o usuário decidindo, de uma vez, que aquele agente
+  // pode rodar qualquer comando — inclusive fora da pasta do projeto. Medido
+  // no `exp001`: 47 de 51 pedidos depois do automático ligado vinham só daqui,
+  // porque o dev agent roda no container (`/work`) e o escopo compara com a
+  // raiz do HOST. O teto de efeito externo/privilegiado ACIMA já rodou e
+  // continua valendo; `deny` já retornou; regra específica do tipo vence a
+  // curinga no repositório. Voltar o toggle para manual restaura este teto.
+  if (
+    noEscopo === false &&
+    current.policy === 'auto_approve' &&
+    !modoAutomatico
+  ) {
     return {
       policy: 'require_approval',
       reason:
@@ -489,11 +548,18 @@ function ehCdNoEscopo(tokens: string[]): boolean {
   return tokens[0] === 'cd';
 }
 
+/**
+ * Veredito do arquivo. `sintetizado` marca o `require_approval` que NENHUMA
+ * regra escreveu: o comando composto com um segmento sem regra alguma (nem
+ * `ask`). É o único veredito que o modo automático pode ignorar (RN-603).
+ */
+type VereditoDoArquivo = Decision & { sintetizado?: true };
+
 function decideFromPermissionsFile(
   action: DecideAction,
   file: PermissionsFile,
   noEscopo: boolean,
-): Decision | null {
+): VereditoDoArquivo | null {
   const segments =
     action.actionType === 'terminal' && action.command
       ? parseCommand(action.command)
@@ -538,10 +604,12 @@ function decideFromPermissionsFile(
           'permissions.json: todos os segmentos do comando composto batem em allow',
       };
     }
+    const askEscrito = perSegment.some((v) => v?.policy === 'require_approval');
     return {
       policy: 'require_approval',
       reason:
         'permissions.json: comando composto com ao menos um segmento não coberto por allow',
+      ...(askEscrito ? {} : { sintetizado: true as const }),
     };
   }
 

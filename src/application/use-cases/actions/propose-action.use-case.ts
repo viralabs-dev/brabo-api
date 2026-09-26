@@ -105,14 +105,14 @@ export class ProposeActionUseCase {
     // container_start, projeto `mounted`/`runner`, etc.).
     const [
       effectiveRole,
-      autonomyMode,
+      autonomia,
       permissionsFile,
       containerExecutionActive,
     ] = await Promise.all([
       this.resolveEffectiveRole.forProject(session.createdBy, projectId),
       input.actor.kind === 'agent'
-        ? this.agentAutonomy.findMode(projectId, input.actor.id, actionType)
-        : Promise.resolve(null as PermissionPolicy | null),
+        ? this.agentAutonomy.resolve(projectId, input.actor.id, actionType)
+        : Promise.resolve(null),
       this.permissionsFileStore.read(project),
       actionType === 'terminal' && project.executionMode === 'container'
         ? this.obterCicloDeVidaDoContainer
@@ -140,7 +140,10 @@ export class ProposeActionUseCase {
       },
       {
         effectiveRole,
-        autonomyMode,
+        autonomyMode: autonomia?.mode ?? null,
+        // A origem (específica ou curinga) é o que deixa `decide()` reconhecer
+        // o modo automático (RN-603, ADR 0167) sem resolver precedência de novo.
+        autonomyOrigin: autonomia?.origem,
         permissionsFile,
         // A raiz do escopo de terminal (ADR 0055) deriva do MODO do projeto
         // desde o ADR 0072: pasta gerenciada no `container`, a pasta do usuário
