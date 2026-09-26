@@ -43,6 +43,7 @@ import { SocketTicketResponseDto } from './dto/socket-ticket.response.dto';
 import {
   PaginaDeEventosResponseDto,
   SessionEventResponseDto,
+  SessionListItemResponseDto,
   SessionResponseDto,
 } from './dto/sessions.response.dto';
 
@@ -122,8 +123,13 @@ export class SessionsController {
 
   @Get()
   @RequireRole('viewer')
-  @ApiOperation({ summary: "Lists the project's sessions" })
-  @ApiOkResponse({ type: [SessionResponseDto] })
+  @ApiOperation({
+    summary: "Lists the project's sessions",
+    description:
+      'Each item carries `technical`: `true` only for the session opened by ' +
+      'repository provisioning (linked from `repo_bootstraps`).',
+  })
+  @ApiOkResponse({ type: [SessionListItemResponseDto] })
   list(@Param('projectId') projectId: string) {
     return this.listSessionsForProject.execute(projectId);
   }
