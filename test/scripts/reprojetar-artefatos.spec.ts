@@ -8,6 +8,7 @@ import {
   rm,
   writeFile,
 } from 'node:fs/promises';
+import type { Dirent } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ulid } from 'ulid';
@@ -196,7 +197,7 @@ async function ler(
   base = pasta,
 ): Promise<Record<string, string>> {
   const saida: Record<string, string> = {};
-  let entradas;
+  let entradas: Dirent[];
   try {
     entradas = await readdir(pasta, { withFileTypes: true });
   } catch {

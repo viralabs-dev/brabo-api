@@ -58,9 +58,7 @@ describe('avaliarBackup', () => {
   });
 
   it('idade exatamente no limiar NÃO conta como atrasado (é `> `, não `>=`)', () => {
-    const finishedAt = new Date(
-      AGORA - BACKUP_AGE_ATRASADO_SEGUNDOS * 1000,
-    );
+    const finishedAt = new Date(AGORA - BACKUP_AGE_ATRASADO_SEGUNDOS * 1000);
     const r = avaliarBackup(
       { finishedAt, sizeBytes: 1024 },
       { status: 'ok' },

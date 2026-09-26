@@ -33,7 +33,9 @@ describe('dentroDoEscopo', () => {
     // Sem a barra final na comparação, `/…/proj-1` casaria `/…/proj-10`, que é
     // outro projeto. É o erro clássico de comparar caminho por prefixo de
     // string, e o que separa este escopo do paliativo que ele substitui.
-    expect(dentroDoEscopo('/data/project-workspaces/proj-10', RAIZ)).toBe(false);
+    expect(dentroDoEscopo('/data/project-workspaces/proj-10', RAIZ)).toBe(
+      false,
+    );
   });
 
   it('`..` NÃO escapa', () => {
@@ -93,15 +95,15 @@ describe('comandoNoEscopo', () => {
   });
 
   it('`..` que sai do escopo reprova mesmo com cwd dentro', () => {
-    expect(noEscopo('cat ../../../etc/passwd', `${RAIZ}/.worktrees/dev-api`)).toBe(
-      false,
-    );
+    expect(
+      noEscopo('cat ../../../etc/passwd', `${RAIZ}/.worktrees/dev-api`),
+    ).toBe(false);
   });
 
   it('`..` que continua dentro do escopo passa', () => {
-    expect(noEscopo('cat ../dev-web/README.md', `${RAIZ}/.worktrees/dev-api`)).toBe(
-      true,
-    );
+    expect(
+      noEscopo('cat ../dev-web/README.md', `${RAIZ}/.worktrees/dev-api`),
+    ).toBe(true);
   });
 
   it('outro projeto está fora, mesmo sendo do mesmo usuário', () => {

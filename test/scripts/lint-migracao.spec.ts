@@ -133,7 +133,7 @@ describe('lintarConteudo', () => {
     // que a migration NÃO fez `ADD COLUMN ... NOT NULL` sem default — o
     // comentário cita o padrão exatamente para dizer que foi evitado.
     const sql = [
-      "-- Adiciona nullable primeiro: um `ADD COLUMN ... NOT NULL` sem default falha",
+      '-- Adiciona nullable primeiro: um `ADD COLUMN ... NOT NULL` sem default falha',
       '-- contra uma tabela não-vazia.',
       'ALTER TABLE "projects" ADD COLUMN "workspace_dir_name" text;',
     ].join('\n');

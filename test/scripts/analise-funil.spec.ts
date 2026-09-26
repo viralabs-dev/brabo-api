@@ -45,7 +45,11 @@ describe('calcularFunil', () => {
     const funil = calcularFunil(acoes);
 
     expect(funil.etapas).toEqual([
-      { etapa: 'sessão produziu commit', sessoes: 1, taxaDaEtapaAnterior: null },
+      {
+        etapa: 'sessão produziu commit',
+        sessoes: 1,
+        taxaDaEtapaAnterior: null,
+      },
       { etapa: 'commit → PR aberta', sessoes: 1, taxaDaEtapaAnterior: 1 },
       { etapa: 'PR aberta → merge', sessoes: 0, taxaDaEtapaAnterior: 0 },
     ]);
@@ -199,10 +203,7 @@ describe('deploymentFrequencyPorDia', () => {
 
     const frequencia = deploymentFrequencyPorDia(acoes, ['dev']);
 
-    expect(frequencia.map((f) => f.dia)).toEqual([
-      '2026-08-01',
-      '2026-08-03',
-    ]);
+    expect(frequencia.map((f) => f.dia)).toEqual(['2026-08-01', '2026-08-03']);
     expect(frequencia[0].merges).toBe(2);
   });
 

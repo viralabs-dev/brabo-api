@@ -37,7 +37,9 @@ describe('normalizarTitulo', () => {
   });
 
   it('pontuação FICA', () => {
-    expect(normalizarTitulo('GET /hello')).not.toBe(normalizarTitulo('GET hello'));
+    expect(normalizarTitulo('GET /hello')).not.toBe(
+      normalizarTitulo('GET hello'),
+    );
   });
 });
 
@@ -50,7 +52,9 @@ describe('tituloDuplicado', () => {
   });
 
   it('título inédito não é duplicata', () => {
-    expect(tituloDuplicado('Outra', [story({ title: 'Endpoint público' })])).toBeNull();
+    expect(
+      tituloDuplicado('Outra', [story({ title: 'Endpoint público' })]),
+    ).toBeNull();
   });
 
   it('título vazio não colide', () => {
@@ -73,7 +77,10 @@ describe('regrasJaCobertas', () => {
 
   it('conjuntos idênticos também contam', () => {
     expect(
-      regrasJaCobertas(['r1', 'r2'], [story({ businessRuleIds: ['r2', 'r1'] })]),
+      regrasJaCobertas(
+        ['r1', 'r2'],
+        [story({ businessRuleIds: ['r2', 'r1'] })],
+      ),
     ).not.toBeNull();
   });
 
@@ -87,11 +94,15 @@ describe('regrasJaCobertas', () => {
 
   it('história sem regra citada não gera aviso', () => {
     // Tratar o conjunto vazio como subconjunto de tudo acusaria TODAS.
-    expect(regrasJaCobertas([], [story({ businessRuleIds: ['r1'] })])).toBeNull();
+    expect(
+      regrasJaCobertas([], [story({ businessRuleIds: ['r1'] })]),
+    ).toBeNull();
   });
 
   it('história existente sem regras não serve de cobertura', () => {
-    expect(regrasJaCobertas(['r1'], [story({ businessRuleIds: [] })])).toBeNull();
+    expect(
+      regrasJaCobertas(['r1'], [story({ businessRuleIds: [] })]),
+    ).toBeNull();
   });
 
   it('o par do achado R passa — sobreposição semântica não é pega aqui', () => {
@@ -99,7 +110,10 @@ describe('regrasJaCobertas', () => {
     // Está afirmado como teste para o limite ficar visível, não implícito.
     const nova = 'Endpoint público GET /hello que responde saudação imediata';
     const existentes = [
-      story({ title: 'Endpoint público de saudação determinística', businessRuleIds: ['r1'] }),
+      story({
+        title: 'Endpoint público de saudação determinística',
+        businessRuleIds: ['r1'],
+      }),
     ];
 
     expect(tituloDuplicado(nova, existentes)).toBeNull();

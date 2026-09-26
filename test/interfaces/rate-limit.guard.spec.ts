@@ -217,7 +217,7 @@ describe('RateLimitGuard', () => {
       getAllAndOverride: vi.fn().mockReturnValue(false),
     } as unknown as Reflector;
 
-    const g = new RateLimitGuard(reflector, quebrado as any);
+    const g = new RateLimitGuard(reflector, quebrado as never);
 
     await expect(g.canActivate(contexto({ userId: 'u-9' }).ctx)).resolves.toBe(
       true,

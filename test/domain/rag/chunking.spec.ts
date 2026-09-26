@@ -9,7 +9,9 @@ import {
 describe('chunkText', () => {
   it('texto que cabe no alvo vira UM pedaço só', () => {
     const pedacos = chunkText('um trecho curto qualquer.');
-    expect(pedacos).toEqual([{ content: 'um trecho curto qualquer.', index: 0 }]);
+    expect(pedacos).toEqual([
+      { content: 'um trecho curto qualquer.', index: 0 },
+    ]);
   });
 
   it('texto vazio não gera pedaço nenhum', () => {
@@ -27,7 +29,9 @@ describe('chunkText', () => {
     // Cada pedaço, exceto talvez o último, não deveria estourar MUITO o alvo
     // (a busca por quebra limpa pode empurrar um pouco, nunca dobrar).
     for (const pedaco of pedacos.slice(0, -1)) {
-      expect(pedaco.content.length).toBeLessThanOrEqual(CHUNK_TARGET_CHARS + 50);
+      expect(pedaco.content.length).toBeLessThanOrEqual(
+        CHUNK_TARGET_CHARS + 50,
+      );
     }
     // Sobreposição real: o fim de um pedaço e o começo do próximo compartilham
     // conteúdo (a não ser que o corte tenha caído numa quebra de parágrafo
@@ -38,7 +42,10 @@ describe('chunkText', () => {
 
   it('texto sem espaço nenhum (bloco patológico) ainda termina — corte bruto aceito', () => {
     const semEspaco = 'x'.repeat(5000);
-    const pedacos = chunkText(semEspaco, { targetChars: 1000, overlapChars: 100 });
+    const pedacos = chunkText(semEspaco, {
+      targetChars: 1000,
+      overlapChars: 100,
+    });
     expect(pedacos.length).toBeGreaterThan(1);
     // Reconstituído (removendo a sobreposição), o total de caracteres não
     // pode ter encolhido — chunkText nunca pode PERDER texto.
@@ -81,7 +88,13 @@ describe('splitMarkdownSections', () => {
 
 describe('chunkMarkdownDocument', () => {
   it('cada pedaço carrega o headingPath da SEÇÃO de onde veio', () => {
-    const md = ['# Doc', '## Uma', 'a'.repeat(50), '## Duas', 'b'.repeat(50)].join('\n');
+    const md = [
+      '# Doc',
+      '## Uma',
+      'a'.repeat(50),
+      '## Duas',
+      'b'.repeat(50),
+    ].join('\n');
 
     const pedacos = chunkMarkdownDocument(md);
 

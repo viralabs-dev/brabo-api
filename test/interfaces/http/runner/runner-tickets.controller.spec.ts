@@ -5,6 +5,15 @@ import { REQUIRED_ROLE_KEY } from '../../../../src/interfaces/http/iam/require-r
 import { IS_PAT_ROUTE_KEY } from '../../../../src/interfaces/http/auth/pat-route.decorator';
 import type { User } from '../../../../src/domain/iam/user.entity';
 
+/*
+ * `Controller.prototype.<método>` entra aqui como CHAVE de metadata: o
+ * `Reflector` só lê o que os decorators penduraram no método, nunca o invoca.
+ * `@typescript-eslint/unbound-method` não distingue os dois usos, então a
+ * supressão fica aqui, com o motivo (a mesma de
+ * `workspaces-project-folders.controller.spec.ts`).
+ */
+/* eslint-disable @typescript-eslint/unbound-method */
+
 const user = { id: 'user-1' } as User;
 
 describe('RunnerTicketsController', () => {

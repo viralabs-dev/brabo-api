@@ -15,7 +15,7 @@ import { UpdateProjectDto } from '../../../../src/interfaces/http/iam/dto/update
  * gravaria a raiz de escopo sem passar pela validação da criação.
  */
 function erros(Dto: new () => object, payload: object) {
-  return validateSync(plainToInstance(Dto, payload) as object, {
+  return validateSync(plainToInstance(Dto, payload), {
     whitelist: true,
     forbidNonWhitelisted: true,
   });

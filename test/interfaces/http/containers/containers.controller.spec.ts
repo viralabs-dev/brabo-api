@@ -4,6 +4,15 @@ import { ContainersController } from '../../../../src/interfaces/http/containers
 import { REQUIRED_ROLE_KEY } from '../../../../src/interfaces/http/iam/require-role.decorator';
 import type { ProjectContainerLifecycle } from '../../../../src/domain/containers/container-lifecycle';
 
+/*
+ * `Controller.prototype.<método>` entra aqui como CHAVE de metadata: o
+ * `Reflector` só lê o que os decorators penduraram no método, nunca o invoca.
+ * `@typescript-eslint/unbound-method` não distingue os dois usos, então a
+ * supressão fica aqui, com o motivo (a mesma de
+ * `workspaces-project-folders.controller.spec.ts`).
+ */
+/* eslint-disable @typescript-eslint/unbound-method */
+
 /**
  * O duplo do estado OBSERVADO (ADR 0130). O default é "não observado por falta
  * de broker", que é o estado NORMAL de quem não subiu o profile
