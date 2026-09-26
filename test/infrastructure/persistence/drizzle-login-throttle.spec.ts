@@ -17,7 +17,7 @@ async function plantarFalhaAntiga(balde: string, segundosAtras: number) {
 }
 
 async function falharVezes(balde: string, vezes: number) {
-  let ultimo;
+  let ultimo: Awaited<ReturnType<typeof throttle.registrarEContar>> | undefined;
   for (let i = 0; i < vezes; i++) {
     ultimo = await throttle.registrarEContar(balde);
   }

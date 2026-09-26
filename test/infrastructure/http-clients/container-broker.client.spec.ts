@@ -39,13 +39,13 @@ describe('HttpContainerBrokerClient', () => {
   function responder(status: number, corpo: unknown): void {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (url: string, init: RequestInit) => {
+      vi.fn((url: string, init: RequestInit) => {
         chamadas.push({ url: String(url), init });
-        return {
+        return Promise.resolve({
           ok: status >= 200 && status < 300,
           status,
-          text: async () => JSON.stringify(corpo),
-        } as Response;
+          text: () => Promise.resolve(JSON.stringify(corpo)),
+        } as Response);
       }),
     );
   }
@@ -89,9 +89,7 @@ describe('HttpContainerBrokerClient', () => {
       60_000,
     );
 
-    expect(chamadas[0]?.url).toBe(
-      'http://broker:8090/containers/proj-1/exec',
-    );
+    expect(chamadas[0]?.url).toBe('http://broker:8090/containers/proj-1/exec');
     expect(JSON.parse(chamadas[0]?.init.body as string)).toEqual({
       comando: 'npm test',
       cwd: '/work',
@@ -133,9 +131,7 @@ describe('HttpContainerBrokerClient', () => {
   it('falha de transporte vira `sem-resposta`, distinta de `nao-configurado`', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => {
-        throw new TypeError('fetch failed');
-      }),
+      vi.fn(() => Promise.reject(new TypeError('fetch failed'))),
     );
 
     const erro = await capturar(() =>

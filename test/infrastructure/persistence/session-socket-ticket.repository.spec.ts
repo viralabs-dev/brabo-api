@@ -32,7 +32,12 @@ async function seedProjetoESessao() {
     .returning();
   const [project] = await db
     .insert(projects)
-    .values({ workspaceId: ws.id, name: 'core', slug: 'core', createdBy: owner.id })
+    .values({
+      workspaceId: ws.id,
+      name: 'core',
+      slug: 'core',
+      createdBy: owner.id,
+    })
     .returning();
   const [session] = await db
     .insert(sessions)

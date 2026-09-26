@@ -191,8 +191,10 @@ export function createGitlabHandlers(store: FakeRepoStore) {
         const page = Number(url.searchParams.get('page') ?? '1');
 
         const arquivos = compararArvores(
-          repo.branches.get(pr.targetBranch)?.files ?? new Map(),
-          repo.branches.get(pr.sourceBranch)?.files ?? new Map(),
+          repo.branches.get(pr.targetBranch)?.files ??
+            new Map<string, string>(),
+          repo.branches.get(pr.sourceBranch)?.files ??
+            new Map<string, string>(),
         );
 
         return HttpResponse.json(

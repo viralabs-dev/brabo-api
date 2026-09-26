@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
+import type { App } from 'supertest/types';
 import type { Request, Response } from 'express';
 import {
   aplicarOrigemEngine,
@@ -66,8 +67,12 @@ describe('aplicarOrigemEngine (roteamento real do Nest)', () => {
     const app = modulo.createNestApplication();
     await app.init();
     try {
-      const interna = await request(app.getHttpServer()).get('/internal/sonda');
-      const publica = await request(app.getHttpServer()).get('/projects/sonda');
+      const interna = await request(app.getHttpServer() as App).get(
+        '/internal/sonda',
+      );
+      const publica = await request(app.getHttpServer() as App).get(
+        '/projects/sonda',
+      );
       expect(interna.body).toEqual({ engine: true });
       expect(publica.body).toEqual({ engine: false });
     } finally {

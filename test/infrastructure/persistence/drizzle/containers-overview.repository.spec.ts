@@ -327,7 +327,7 @@ describe('DrizzleContainersOverviewRepository', () => {
         await criarAcaoDeContainer(p.id, s.id, 'container_stop', 'pending');
       }
 
-      const original = pool.query.bind(pool);
+      const original = pool.query.bind(pool) as unknown;
       let consultas = 0;
       (pool as { query: unknown }).query = (...args: unknown[]) => {
         consultas += 1;

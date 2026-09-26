@@ -63,7 +63,7 @@ describe('DrizzlePersonalAccessTokenRepository', () => {
       const validado = await repo.validarEUsar('hash-a');
 
       expect(validado).toEqual({
-        id: expect.any(String),
+        id: expect.any(String) as unknown,
         userId: usuario.id,
         projectId: project.id,
       });
