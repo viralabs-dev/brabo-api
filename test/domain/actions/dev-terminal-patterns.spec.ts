@@ -106,9 +106,12 @@ describe('DEV_TERMINAL_ALLOW_PATTERNS — subcomandos git de leitura (achado ao 
     'git config user.email novo@exemplo.com',
     'git config --global user.name "Novo Nome"',
     'git config --global --get user.email',
-  ])('`%s` continua exigindo aprovação — mutação com a mesma palavra de comando', (comando) => {
-    expect(politicaDe(comando)).not.toBe('auto_approve');
-  });
+  ])(
+    '`%s` continua exigindo aprovação — mutação com a mesma palavra de comando',
+    (comando) => {
+      expect(politicaDe(comando)).not.toBe('auto_approve');
+    },
+  );
 
   it('comando composto real observado ao vivo não passa carona se um segmento mutar', () => {
     expect(

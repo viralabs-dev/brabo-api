@@ -55,24 +55,26 @@ function repo(
   provider: ProvisionedRepository['provider'] | null,
 ): ProvisionedRepositoryRepository {
   return {
-    findByProjectId: async () =>
-      provider === null
-        ? null
-        : ({
-            id: 'repo-1',
-            projectId: 'proj-1',
-            provider,
-            externalId: 'org/repo',
-            url: 'https://example.com/org/repo',
-            defaultBranch: 'main',
-            visibility: 'private',
-            origin: 'created',
-            provisionedBy: 'user-1',
-            createdAt: now,
-            updatedAt: now,
-          } satisfies ProvisionedRepository),
-    create: async () => {
-      throw new Error('não usado neste teste');
+    findByProjectId: () =>
+      Promise.resolve(
+        provider === null
+          ? null
+          : ({
+              id: 'repo-1',
+              projectId: 'proj-1',
+              provider,
+              externalId: 'org/repo',
+              url: 'https://example.com/org/repo',
+              defaultBranch: 'main',
+              visibility: 'private',
+              origin: 'created',
+              provisionedBy: 'user-1',
+              createdAt: now,
+              updatedAt: now,
+            } satisfies ProvisionedRepository),
+      ),
+    create: () => {
+      return Promise.reject(new Error('não usado neste teste'));
     },
   };
 }
@@ -80,7 +82,11 @@ function repo(
 const roteado: EstadoDoRoteamento = {
   status: 'roteado',
   roteamento: [
-    { modulo: 'api', imagemCandidata: 'node:22-bookworm-slim', porque: 'TS/Node' },
+    {
+      modulo: 'api',
+      imagemCandidata: 'node:22-bookworm-slim',
+      porque: 'TS/Node',
+    },
   ],
   version: 1,
   eventId: 'evt-1',
@@ -93,12 +99,16 @@ function build(
   moduleRouting: EstadoDoRoteamento = SEM_ROTEAMENTO,
 ) {
   return new GetInfraContextUseCase(
-    { findCurrent: async () => moduleMap } as unknown as ModuleMapRepository,
     {
-      listByProjectAndType: async () => adrs,
+      findCurrent: () => Promise.resolve(moduleMap),
+    } as unknown as ModuleMapRepository,
+    {
+      listByProjectAndType: () => Promise.resolve(adrs),
     } as unknown as ProposedActionRepository,
     repo(provider),
-    { execute: async () => moduleRouting } as unknown as GetModuleRoutingUseCase,
+    {
+      execute: () => Promise.resolve(moduleRouting),
+    } as unknown as GetModuleRoutingUseCase,
   );
 }
 
@@ -131,7 +141,11 @@ describe('GetInfraContextUseCase', () => {
   });
 
   it('moduleRouting é SEM_ROTEAMENTO quando o Arquiteto ainda não roteou (ADR 0131/0133)', async () => {
-    const useCase = build('local', [adrAction, naoInfraAdrAction], SEM_ROTEAMENTO);
+    const useCase = build(
+      'local',
+      [adrAction, naoInfraAdrAction],
+      SEM_ROTEAMENTO,
+    );
     const ctx = await useCase.execute('proj-1');
 
     expect(ctx.moduleRouting).toEqual(SEM_ROTEAMENTO);

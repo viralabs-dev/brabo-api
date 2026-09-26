@@ -110,32 +110,34 @@ function makeAction(): ProposedAction {
  * (`ContainerCommandController.start/2` não filtra campo nenhum).
  */
 async function payloadCompostoPelaApi(): Promise<EspecificacaoDeContainerParaRunner> {
-  const startContainerViaRunner = vi.fn(async () => ({
-    containerId: 'container-1',
-    nome: 'brabo-exp004-a1b2c3d4',
-    jaEstavaDePe: false,
-  }));
+  const startContainerViaRunner = vi.fn(() =>
+    Promise.resolve({
+      containerId: 'container-1',
+      nome: 'brabo-exp004-a1b2c3d4',
+      jaEstavaDePe: false,
+    }),
+  );
 
   const useCase = new ExecuteContainerStartViaRunnerUseCase(
-    { runInTransaction: async (fn: () => unknown) => fn() } as never,
+    { runInTransaction: (fn: () => unknown) => Promise.resolve(fn()) } as never,
     {
-      updateExecutionResult: async (
+      updateExecutionResult: (
         _id: string,
         input: { status: string; executionResult: unknown },
-      ) => ({ ...makeAction(), ...input }),
+      ) => Promise.resolve({ ...makeAction(), ...input }),
     } as never,
-    { execute: async () => undefined } as never,
-    { append: async () => undefined } as never,
-    { execute: async () => specDoProjeto() } as never,
+    { execute: () => Promise.resolve(undefined) } as never,
+    { append: () => Promise.resolve(undefined) } as never,
+    { execute: () => Promise.resolve(specDoProjeto()) } as never,
     { startContainerViaRunner } as never,
-    { execute: async () => undefined } as never,
+    { execute: () => Promise.resolve(undefined) } as never,
   );
 
   await useCase.execute('proj-exp004', 'sess-1', makeAction());
 
   expect(startContainerViaRunner).toHaveBeenCalledTimes(1);
   return startContainerViaRunner.mock
-    .calls[0]![1] as unknown as EspecificacaoDeContainerParaRunner;
+    .calls[0][1] as unknown as EspecificacaoDeContainerParaRunner;
 }
 
 describe('a corrente api -> engine -> runner de container_start_via_runner', () => {

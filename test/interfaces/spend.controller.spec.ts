@@ -6,6 +6,16 @@ import type { GetWorkspaceSpendReportUseCase } from '../../src/application/use-c
 import type { GetMySpendUseCase } from '../../src/application/use-cases/llm/get-my-spend.use-case';
 import type { User } from '../../src/domain/iam/user.entity';
 
+/*
+ * `Controller.prototype.<método>` entra aqui como CHAVE de metadata: o
+ * `Reflect.getMetadata` só lê o que os decorators penduraram no método, nunca
+ * o invoca.
+ * `@typescript-eslint/unbound-method` não distingue os dois usos, então a
+ * supressão fica aqui, com o motivo (a mesma de
+ * `workspaces-project-folders.controller.spec.ts`).
+ */
+/* eslint-disable @typescript-eslint/unbound-method */
+
 /**
  * A contenção de privacidade do ADR 0076, vista da BORDA.
  *
@@ -53,7 +63,10 @@ describe('SpendController — a rota do membro não tem eixo de provider', () =>
 
   it('o relatório com o eixo de provider exige `owner`; o do membro, `viewer`', () => {
     const papel = (metodo: keyof SpendController) =>
-      Reflect.getMetadata(REQUIRED_ROLE_KEY, SpendController.prototype[metodo]);
+      Reflect.getMetadata(
+        REQUIRED_ROLE_KEY,
+        SpendController.prototype[metodo],
+      ) as unknown;
 
     // A régua da RN-060: quem vê credencial é quem paga a conta.
     expect(papel('getWorkspaceSpendReport')).toBe('owner');

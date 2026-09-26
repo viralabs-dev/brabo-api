@@ -5,6 +5,13 @@ import { RolesGuard } from '../../src/interfaces/http/iam/roles.guard';
 import { ROLE_ORDER, type Role } from '../../src/domain/iam/role';
 import type { ResolveEffectiveRoleUseCase } from '../../src/application/use-cases/iam/resolve-effective-role.use-case';
 
+/*
+ * Os métodos lidos por `expect(...)` aqui são `vi.fn()` — o objeto é só
+ * TIPADO como a classe, e é o tipo que os faz parecer métodos para
+ * `@typescript-eslint/unbound-method`. Ninguém os chama soltos.
+ */
+/* eslint-disable @typescript-eslint/unbound-method */
+
 /**
  * A matriz de permissões, fixada em teste (Fase 7a — o corte).
  *

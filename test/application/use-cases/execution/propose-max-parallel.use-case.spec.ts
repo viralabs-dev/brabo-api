@@ -28,13 +28,7 @@ class FakeAreas {
 class FakePropose {
   chamadas: { actionType: string; actor: unknown; payload: unknown }[] = [];
   execute(_p: string, _s: string, input: never) {
-    this.chamadas.push(
-      input as unknown as {
-        actionType: string;
-        actor: unknown;
-        payload: unknown;
-      },
-    );
+    this.chamadas.push(input);
     return Promise.resolve({ id: 'act-9' } as never);
   }
 }
@@ -60,8 +54,8 @@ describe('ProposeMaxParallelUseCase', () => {
     // ONDE para ONDE, não só o destino.
     await uc.execute(PROJECT, SESSION, entrada);
 
-    expect(propose.chamadas[0]!.actionType).toBe('raise_max_parallel');
-    expect(propose.chamadas[0]!.payload).toMatchObject({
+    expect(propose.chamadas[0].actionType).toBe('raise_max_parallel');
+    expect(propose.chamadas[0].payload).toMatchObject({
       area: 'dev',
       atual: 2,
       proposto: 4,
@@ -71,7 +65,7 @@ describe('ProposeMaxParallelUseCase', () => {
   it('quem propõe é a ANAMNESE, não o usuário', async () => {
     await uc.execute(PROJECT, SESSION, entrada);
 
-    expect(propose.chamadas[0]!.actor).toEqual({
+    expect(propose.chamadas[0].actor).toEqual({
       kind: 'agent',
       id: 'anamnese',
     });

@@ -36,50 +36,51 @@ class FakeChunkRepository extends ChunkRepository {
   vectorResult: ChunkSearchCandidate[] = [];
   lexicalResult: ChunkSearchCandidate[] = [];
 
-  async create(): Promise<Chunk> {
-    throw new Error('não usado neste teste');
+  create(): Promise<Chunk> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async createMany(): Promise<Chunk[]> {
-    throw new Error('não usado neste teste');
+  createMany(): Promise<Chunk[]> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async findById(): Promise<Chunk | null> {
-    throw new Error('não usado neste teste');
+  findById(): Promise<Chunk | null> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async listByProject(): Promise<Chunk[]> {
-    throw new Error('não usado neste teste');
+  listByProject(): Promise<Chunk[]> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async deleteByScope(): Promise<number> {
-    throw new Error('não usado neste teste');
+  deleteByScope(): Promise<number> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async deleteBySession(): Promise<number> {
-    throw new Error('não usado neste teste');
+  deleteBySession(): Promise<number> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async searchByVector(
+  searchByVector(
     _projectId: string,
     _queryVector: number[],
     _opts: ChunkSearchOptions,
   ): Promise<ChunkSearchCandidate[]> {
-    return this.vectorResult;
+    return Promise.resolve(this.vectorResult);
   }
-  async searchByLexicalQuery(
+  searchByLexicalQuery(
     _projectId: string,
     _query: string,
     _opts: ChunkSearchOptions,
   ): Promise<ChunkSearchCandidate[]> {
-    return this.lexicalResult;
+    return Promise.resolve(this.lexicalResult);
   }
 }
 
 /** Um `RagEmbeddingService` de teste, sem provider nenhum por trás. */
 function embeddingServiceComVetor(vetor: number[] | null, available = true) {
   return {
-    embedQuery: async () => ({
-      vector: vetor,
-      available,
-      reason: available ? undefined : 'indisponível',
-    }),
-    embedMany: async () => {
-      throw new Error('não usado neste teste');
+    embedQuery: () =>
+      Promise.resolve({
+        vector: vetor,
+        available,
+        reason: available ? undefined : 'indisponível',
+      }),
+    embedMany: () => {
+      return Promise.reject(new Error('não usado neste teste'));
     },
   } as unknown as RagEmbeddingService;
 }
@@ -93,20 +94,21 @@ class FakeRagTelemetryRepository extends RagTelemetryRepository {
   gravadas: NewRagSearch[] = [];
   falharNoInsert = false;
 
-  async recordSearch(input: NewRagSearch): Promise<RagSearchRecord> {
-    if (this.falharNoInsert) throw new Error('rag_searches fora do ar');
+  recordSearch(input: NewRagSearch): Promise<RagSearchRecord> {
+    if (this.falharNoInsert)
+      return Promise.reject(new Error('rag_searches fora do ar'));
     this.gravadas.push(input);
-    return {
+    return Promise.resolve({
       ...input,
       id: `search-${this.gravadas.length}`,
       createdAt: new Date(),
-    };
+    });
   }
-  async findSearchById(): Promise<RagSearchRecord | null> {
-    throw new Error('não usado neste teste');
+  findSearchById(): Promise<RagSearchRecord | null> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
-  async recordFeedback(_input: NewRagFeedback): Promise<RagFeedbackRecord> {
-    throw new Error('não usado neste teste');
+  recordFeedback(_input: NewRagFeedback): Promise<RagFeedbackRecord> {
+    return Promise.reject(new Error('não usado neste teste'));
   }
 }
 
@@ -119,7 +121,7 @@ function fakeEventos() {
     payload: Record<string, unknown>;
   }[] = [];
   const uc = {
-    execute: async (
+    execute: (
       projectId: string,
       sessionId: string,
       input: { type: string; payload: Record<string, unknown> },
@@ -130,7 +132,7 @@ function fakeEventos() {
         type: input.type,
         payload: input.payload,
       });
-      return undefined;
+      return Promise.resolve(undefined);
     },
   } as unknown as AppendSessionEventUseCase;
   return { uc, narrados };

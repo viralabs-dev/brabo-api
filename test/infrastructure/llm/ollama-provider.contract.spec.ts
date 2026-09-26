@@ -32,7 +32,8 @@ function dialetoOllama(cenario: CenarioLLM, res: ServerResponse): void {
           model: name,
           modified_at: '2026-08-02T00:00:00Z',
           size: 4_683_075_271,
-          digest: '0a8c266910232fd3291e71e5ba1e058cc5af9d411192cf88b6d30e92b6e73163',
+          digest:
+            '0a8c266910232fd3291e71e5ba1e058cc5af9d411192cf88b6d30e92b6e73163',
           details: { format: 'gguf', family: 'qwen2', parameter_size: '7.6B' },
         })),
       }),

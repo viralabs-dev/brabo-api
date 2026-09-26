@@ -652,7 +652,9 @@ export function runGitProviderContract(
         externalId: repo.externalId,
         branch: 'main',
         message: 'inicial',
-        files: [{ path: 'a.txt', content: 'linha um\nlinha dois\nlinha tres\n' }],
+        files: [
+          { path: 'a.txt', content: 'linha um\nlinha dois\nlinha tres\n' },
+        ],
       });
 
       const input = { externalId: repo.externalId, ref: 'main', path: 'a.txt' };

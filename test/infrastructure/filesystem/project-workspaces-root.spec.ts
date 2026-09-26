@@ -98,9 +98,7 @@ describe('projectScopeRoot', () => {
     process.env.PROJECT_WORKSPACES_ROOT = '/var/brabo';
     expect(
       projectScopeRoot(noContainer('3f2b1c8e-0a5d-4f6b-9c1e-2d7a8b3c4d5e')),
-    ).toBe(
-      '/var/brabo/3f2b1c8e-0a5d-4f6b-9c1e-2d7a8b3c4d5e',
-    );
+    ).toBe('/var/brabo/3f2b1c8e-0a5d-4f6b-9c1e-2d7a8b3c4d5e');
   });
 
   it.each([
@@ -148,32 +146,38 @@ describe('projectScopeRoot nos modos mounted/runner', () => {
     delete process.env.PROJECT_WORKSPACES_ROOT;
   });
 
-  it.each([
-    ['mounted', montado] as const,
-    ['runner', runner] as const,
-  ])('%s — caminho feliz: a raiz é a pasta do usuário, não a gerenciada', (_nome, fabrica) => {
-    process.env.PROJECT_WORKSPACES_ROOT = '/var/brabo';
-    expect(projectScopeRoot(fabrica('/home/voce/projetos/loja'))).toBe(
-      '/home/voce/projetos/loja',
-    );
-  });
+  it.each([['mounted', montado] as const, ['runner', runner] as const])(
+    '%s — caminho feliz: a raiz é a pasta do usuário, não a gerenciada',
+    (_nome, fabrica) => {
+      process.env.PROJECT_WORKSPACES_ROOT = '/var/brabo';
+      expect(projectScopeRoot(fabrica('/home/voce/projetos/loja'))).toBe(
+        '/home/voce/projetos/loja',
+      );
+    },
+  );
 
-  it.each([
-    ['mounted', montado] as const,
-    ['runner', runner] as const,
-  ])('%s — a barra final não muda a raiz — senão o prefixo do escopo mudaria com ela', (_nome, fabrica) => {
-    expect(projectScopeRoot(fabrica('/home/voce/projetos/loja/'))).toBe(
-      '/home/voce/projetos/loja',
-    );
-  });
+  it.each([['mounted', montado] as const, ['runner', runner] as const])(
+    '%s — a barra final não muda a raiz — senão o prefixo do escopo mudaria com ela',
+    (_nome, fabrica) => {
+      expect(projectScopeRoot(fabrica('/home/voce/projetos/loja/'))).toBe(
+        '/home/voce/projetos/loja',
+      );
+    },
+  );
 
   it.each([
     ['/', 'a raiz do sistema — o escopo do agente seria o container inteiro'],
     ['/etc', 'pasta de sistema'],
-    ['/etc/meu-projeto', 'ABAIXO de pasta de sistema — escrever ali é escrever no sistema'],
+    [
+      '/etc/meu-projeto',
+      'ABAIXO de pasta de sistema — escrever ali é escrever no sistema',
+    ],
     ['/data/project-workspaces', 'a raiz gerenciada, que é mount do produto'],
     ['relativo/sem/barra', 'relativo: dependeria do cwd de QUEM resolve'],
-    ['/home/voce/../../etc', '`..` no meio: o caminho gravado não é o que se lê'],
+    [
+      '/home/voce/../../etc',
+      '`..` no meio: o caminho gravado não é o que se lê',
+    ],
     ['', 'vazio'],
   ])('RECUSA %j na derivação (mounted) — %s', (caminho) => {
     expect(() => projectScopeRoot(montado(caminho))).toThrow(
@@ -309,15 +313,15 @@ describe('projectScopeRoot NÃO segue permissionsFilePath (ADR 0055)', () => {
     delete process.env.PROJECT_WORKSPACES_ROOT;
   });
 
-  it.each([
-    ['mounted', montado] as const,
-    ['runner', runner] as const,
-  ])('%s — o escopo continua sendo a pasta do host, e as duas derivações DIVERGEM', (_nome, fabrica) => {
-    process.env.PROJECT_WORKSPACES_ROOT = '/var/brabo';
-    const projeto = fabrica('/home/voce/projetos/loja');
+  it.each([['mounted', montado] as const, ['runner', runner] as const])(
+    '%s — o escopo continua sendo a pasta do host, e as duas derivações DIVERGEM',
+    (_nome, fabrica) => {
+      process.env.PROJECT_WORKSPACES_ROOT = '/var/brabo';
+      const projeto = fabrica('/home/voce/projetos/loja');
 
-    expect(projectScopeRoot(projeto)).toBe('/home/voce/projetos/loja');
-  });
+      expect(projectScopeRoot(projeto)).toBe('/home/voce/projetos/loja');
+    },
+  );
 
   it('runner é o único modo em que as duas apontam para lugares diferentes', () => {
     process.env.PROJECT_WORKSPACES_ROOT = '/var/brabo';

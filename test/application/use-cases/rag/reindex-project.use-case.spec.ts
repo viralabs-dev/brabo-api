@@ -9,11 +9,15 @@ import type { IndexSessionUseCase } from '../../../../src/application/use-cases/
 import { ReindexProjectUseCase } from '../../../../src/application/use-cases/rag/reindex-project.use-case';
 
 function fakeProjects(project: Project | null): ProjectRepository {
-  return { findById: async () => project } as unknown as ProjectRepository;
+  return {
+    findById: () => Promise.resolve(project),
+  } as unknown as ProjectRepository;
 }
 
 function fakeSessions(sessions: Session[]): SessionRepository {
-  return { listForProject: async () => sessions } as unknown as SessionRepository;
+  return {
+    listForProject: () => Promise.resolve(sessions),
+  } as unknown as SessionRepository;
 }
 
 const PROJETO = { id: 'proj-1' } as Project;
@@ -28,21 +32,26 @@ describe('ReindexProjectUseCase', () => {
       embedding: { available: true, embedded: 2, skipped: 0 },
     };
     const chamadasDeSessao: string[] = [];
-    const indexDocs = { execute: async () => docsReport } as unknown as IndexProjectDocsUseCase;
+    const indexDocs = {
+      execute: () => Promise.resolve(docsReport),
+    } as unknown as IndexProjectDocsUseCase;
     const indexSession = {
-      execute: async (_projectId: string, sessionId: string) => {
+      execute: (_projectId: string, sessionId: string) => {
         chamadasDeSessao.push(sessionId);
-        return {
+        return Promise.resolve({
           eventsScanned: 2,
           chunksCreated: sessionId === 'sess-vazia' ? 0 : 3,
           embedding: { available: true, embedded: 3, skipped: 0 },
-        };
+        });
       },
     } as unknown as IndexSessionUseCase;
 
     const useCase = new ReindexProjectUseCase(
       fakeProjects(PROJETO),
-      fakeSessions([{ id: 'sess-1' } as Session, { id: 'sess-vazia' } as Session]),
+      fakeSessions([
+        { id: 'sess-1' } as Session,
+        { id: 'sess-vazia' } as Session,
+      ]),
       indexDocs,
       indexSession,
     );
@@ -51,26 +60,37 @@ describe('ReindexProjectUseCase', () => {
 
     expect(chamadasDeSessao).toEqual(['sess-1', 'sess-vazia']);
     expect(relatorio.docs).toEqual(docsReport);
-    expect(relatorio.sessions).toEqual({ total: 2, indexed: 1, chunksCreated: 3 });
+    expect(relatorio.sessions).toEqual({
+      total: 2,
+      indexed: 1,
+      chunksCreated: 3,
+    });
     expect(relatorio.embeddingAvailable).toBe(true);
   });
 
   it('embeddingAvailable é false quando docs OU alguma sessão não conseguiu vetorizar', async () => {
     const indexDocs = {
-      execute: async () => ({
-        filesScanned: 0,
-        docsChunks: 0,
-        adrChunks: 0,
-        truncated: false,
-        embedding: { available: true, embedded: 0, skipped: 0 },
-      }),
+      execute: () =>
+        Promise.resolve({
+          filesScanned: 0,
+          docsChunks: 0,
+          adrChunks: 0,
+          truncated: false,
+          embedding: { available: true, embedded: 0, skipped: 0 },
+        }),
     } as unknown as IndexProjectDocsUseCase;
     const indexSession = {
-      execute: async () => ({
-        eventsScanned: 1,
-        chunksCreated: 1,
-        embedding: { available: false, embedded: 0, skipped: 1, reason: 'sem provider' },
-      }),
+      execute: () =>
+        Promise.resolve({
+          eventsScanned: 1,
+          chunksCreated: 1,
+          embedding: {
+            available: false,
+            embedded: 0,
+            skipped: 1,
+            reason: 'sem provider',
+          },
+        }),
     } as unknown as IndexSessionUseCase;
 
     const useCase = new ReindexProjectUseCase(

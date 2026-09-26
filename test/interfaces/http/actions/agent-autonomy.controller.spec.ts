@@ -6,6 +6,15 @@ import { AgentAutonomyController } from '../../../../src/interfaces/http/actions
 import { REQUIRED_ROLE_KEY } from '../../../../src/interfaces/http/iam/require-role.decorator';
 import { SetAgentAutonomyDto } from '../../../../src/interfaces/http/actions/dto/set-agent-autonomy.dto';
 
+/*
+ * `Controller.prototype.<método>` entra aqui como CHAVE de metadata: o
+ * `Reflector` só lê o que os decorators penduraram no método, nunca o invoca.
+ * `@typescript-eslint/unbound-method` não distingue os dois usos, então a
+ * supressão fica aqui, com o motivo (a mesma de
+ * `workspaces-project-folders.controller.spec.ts`).
+ */
+/* eslint-disable @typescript-eslint/unbound-method */
+
 /**
  * Trava específica do "auto mode" (RN-153): o endpoint que grava a curinga
  * `actionType: "*"` é o MESMO `PUT /projects/:projectId/agent-autonomy` de
@@ -22,12 +31,18 @@ describe('AgentAutonomyController — papel exigido pra ligar/desligar o auto mo
   const reflector = new Reflector();
 
   it('GET exige maintainer', () => {
-    const papel = reflector.get(REQUIRED_ROLE_KEY, AgentAutonomyController.prototype.list);
+    const papel: unknown = reflector.get(
+      REQUIRED_ROLE_KEY,
+      AgentAutonomyController.prototype.list,
+    );
     expect(papel).toBe('maintainer');
   });
 
   it('PUT (liga a curinga "*" — auto mode) exige maintainer', () => {
-    const papel = reflector.get(REQUIRED_ROLE_KEY, AgentAutonomyController.prototype.set);
+    const papel: unknown = reflector.get(
+      REQUIRED_ROLE_KEY,
+      AgentAutonomyController.prototype.set,
+    );
     expect(papel).toBe('maintainer');
   });
 });
@@ -45,7 +60,11 @@ describe('SetAgentAutonomyDto — aceita a curinga do auto mode', () => {
 
   it('um tipo real continua válido (não regrediu)', () => {
     expect(
-      erros({ agentId: 'dev-api', actionType: 'terminal', mode: 'auto_approve' }),
+      erros({
+        agentId: 'dev-api',
+        actionType: 'terminal',
+        mode: 'auto_approve',
+      }),
     ).toHaveLength(0);
   });
 

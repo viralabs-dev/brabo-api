@@ -21,7 +21,9 @@ import {
 describe('slugDeArquivo', () => {
   it('normaliza acento, caixa e espaço', () => {
     expect(slugDeArquivo('Cache de Sessão')).toBe('cache-de-sessao');
-    expect(slugDeArquivo('  Título  com   espaços ')).toBe('titulo-com-espacos');
+    expect(slugDeArquivo('  Título  com   espaços ')).toBe(
+      'titulo-com-espacos',
+    );
   });
 
   it('não deixa separador de caminho sobreviver — nem `..`', () => {
@@ -78,8 +80,14 @@ describe('nomeDeArquivoDoArtefato', () => {
   });
 
   it('versionado não muda de nome com o seq — senão a pasta acumularia versões', () => {
-    const a = nomeDeArquivoDoArtefato({ eventType: 'artifact.c4_diagram', seq: 1 });
-    const b = nomeDeArquivoDoArtefato({ eventType: 'artifact.c4_diagram', seq: 99 });
+    const a = nomeDeArquivoDoArtefato({
+      eventType: 'artifact.c4_diagram',
+      seq: 1,
+    });
+    const b = nomeDeArquivoDoArtefato({
+      eventType: 'artifact.c4_diagram',
+      seq: 99,
+    });
     expect(a).toBe(b);
   });
 
@@ -112,10 +120,18 @@ describe('nomeDeArquivoDoArtefato', () => {
 
   it('sem título utilizável cai em `<tipo>-<seq>` — feio e verdadeiro', () => {
     expect(
-      nomeDeArquivoDoArtefato({ eventType: 'artifact.insight', seq: 8, titulo: null }),
+      nomeDeArquivoDoArtefato({
+        eventType: 'artifact.insight',
+        seq: 8,
+        titulo: null,
+      }),
     ).toBe('insight-8.md');
     expect(
-      nomeDeArquivoDoArtefato({ eventType: 'artifact.insight', seq: 8, titulo: '🚀' }),
+      nomeDeArquivoDoArtefato({
+        eventType: 'artifact.insight',
+        seq: 8,
+        titulo: '🚀',
+      }),
     ).toBe('insight-8.md');
   });
 

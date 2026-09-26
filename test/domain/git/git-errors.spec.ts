@@ -33,7 +33,8 @@ describe('cabeçalho de git-errors.ts × GitProviderContract', () => {
       .filter(ts.isInterfaceDeclaration)
       .find((i) => i.name.text === 'GitProviderContract');
 
-    if (!contrato) throw new Error('GitProviderContract não encontrada no shared');
+    if (!contrato)
+      throw new Error('GitProviderContract não encontrada no shared');
 
     // Só MÉTODOS contam como operação: `name` e `capabilities` são
     // propriedades do provider, não coisas que ele faz.
@@ -47,9 +48,10 @@ describe('cabeçalho de git-errors.ts × GitProviderContract', () => {
       join(raizDoRepo, 'apps/api/src/domain/git/git-errors.ts'),
       'utf8',
     );
-    const achado = /Erros normalizados das (\d+) operações do GitProviderContract/.exec(
-      texto,
-    );
+    const achado =
+      /Erros normalizados das (\d+) operações do GitProviderContract/.exec(
+        texto,
+      );
 
     if (!achado) throw new Error('cabeçalho de git-errors.ts mudou de forma');
 

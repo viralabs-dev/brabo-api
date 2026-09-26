@@ -59,14 +59,18 @@ describe('GithubProvider — cenários de HTTP mockados', () => {
       externalId: repo.externalId,
       branch: 'main',
       message: 'chore: template de PR',
-      files: [{ path: '.github/PULL_REQUEST_TEMPLATE.md', content: '## O quê' }],
+      files: [
+        { path: '.github/PULL_REQUEST_TEMPLATE.md', content: '## O quê' },
+      ],
     });
 
     expect(commit.branch).toBe('main');
     expect(commit.sha).toBeTruthy();
 
     // E a branch passa a existir: o commit sem pai criou o ref.
-    const branches = await provider.listBranches({ externalId: repo.externalId });
+    const branches = await provider.listBranches({
+      externalId: repo.externalId,
+    });
     expect(branches.map((b) => b.name)).toContain('main');
   });
 

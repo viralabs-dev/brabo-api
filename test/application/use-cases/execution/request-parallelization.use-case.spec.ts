@@ -102,7 +102,7 @@ describe('RequestParallelizationUseCase', () => {
     expect(r.estado).toBe('aguardando_autorizacao');
     // O ponto: nada subiu. Se `accept` rodasse, a autorização seria teatro.
     expect(accept.chamadas).toHaveLength(0);
-    expect(propose.chamadas[0]!.actionType).toBe('parallelize');
+    expect(propose.chamadas[0].actionType).toBe('parallelize');
   });
 
   it('quem PEDE é o lead, não o usuário', async () => {
@@ -112,7 +112,7 @@ describe('RequestParallelizationUseCase', () => {
 
     await uc.execute(PROJECT, SESSION, 'api', 'u1');
 
-    expect(propose.chamadas[0]!.actor).toEqual({
+    expect(propose.chamadas[0].actor).toEqual({
       kind: 'agent',
       id: 'dev-lead',
     });
@@ -121,7 +121,9 @@ describe('RequestParallelizationUseCase', () => {
   it('o teto é da SESSÃO: módulos diferentes somam', async () => {
     // Três agentes espalhados em três módulos ocupam a sessão inteira.
     // Contar por módulo diria "cada um tem 1, pode subir".
-    events.ativados = [{ sessionId: SESSION, modules: ['api', 'web', 'infra'] }];
+    events.ativados = [
+      { sessionId: SESSION, modules: ['api', 'web', 'infra'] },
+    ];
 
     const r = await uc.execute(PROJECT, SESSION, 'api', 'u1');
 
@@ -161,7 +163,9 @@ describe('RequestParallelizationUseCase', () => {
 
   it('teto maior configurado pelo usuário dispensa a autorização', async () => {
     areas.maxParallel = 5;
-    events.ativados = [{ sessionId: SESSION, modules: ['api', 'web', 'infra'] }];
+    events.ativados = [
+      { sessionId: SESSION, modules: ['api', 'web', 'infra'] },
+    ];
 
     const r = await uc.execute(PROJECT, SESSION, 'api', 'u1');
 
@@ -175,7 +179,7 @@ describe('RequestParallelizationUseCase', () => {
 
     await uc.execute(PROJECT, SESSION, 'api', 'u1');
 
-    const payload = propose.chamadas[0]!.payload as { motivo: string };
+    const payload = propose.chamadas[0].payload as { motivo: string };
     expect(payload.motivo).toContain('já tem 2');
     expect(payload.motivo).toContain('teto de 2');
   });
