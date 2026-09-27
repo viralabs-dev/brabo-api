@@ -75,12 +75,25 @@ export class BrokerRecusouError extends Error {
   }
 }
 
-/** O broker não está configurado (`BROKER_URL` vazia) ou não atendeu. */
+/**
+ * O broker não está configurado (`BROKER_URL` vazia), não atendeu, ou atendeu
+ * e não respondeu dentro do TETO daquela operação.
+ *
+ * `teto-excedido` é distinto de `sem-resposta` desde a AT-233 (RN-604): um
+ * `exec` que roda mais que o teto antigo de 5s não é o broker fora do ar, e
+ * dizê-lo assim mandava quem lê investigar a rede em vez do teto. A mensagem
+ * nomeia a operação e o número. Para quem só distingue "configurado ou não"
+ * (a leitura da tela, RN-486), `teto-excedido` continua caindo no mesmo lado
+ * de `sem-resposta` — não observado, por motivo de transporte.
+ */
+export type MotivoDeBrokerIndisponivel =
+  'nao-configurado' | 'sem-resposta' | 'teto-excedido';
+
 export class BrokerIndisponivelError extends Error {
   readonly origem = 'infra';
-  readonly motivo: 'nao-configurado' | 'sem-resposta';
+  readonly motivo: MotivoDeBrokerIndisponivel;
 
-  constructor(motivo: 'nao-configurado' | 'sem-resposta', detalhe: string) {
+  constructor(motivo: MotivoDeBrokerIndisponivel, detalhe: string) {
     super(detalhe);
     this.name = 'BrokerIndisponivelError';
     this.motivo = motivo;
