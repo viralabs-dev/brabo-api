@@ -2,12 +2,15 @@ import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  CHAMADAS_DE_CONTROLE_NO_START,
+  CONTEXTO_DO_BROKER_MS,
   CONTROLE_DO_DOCKER_MS,
   EXEC_PADRAO_DO_BROKER_MS,
   FOLGA_DO_EXEC_NO_ENGINE_MS,
   HttpContainerBrokerClient,
   TETO_DE_LEITURA_MS,
   TETO_DE_MUTACAO_MS,
+  TETO_DO_PROPOSE_ACTION_DE_CONTAINER_NO_ENGINE_MS,
   tetoDaOperacao,
 } from '../../../src/infrastructure/http-clients/container-broker.client';
 import {
@@ -136,6 +139,31 @@ describe('HttpContainerBrokerClient', () => {
     expect(erro).toBeInstanceOf(BrokerRecusouError);
     expect((erro as BrokerRecusouError).origem).toBeNull();
     expect((erro as BrokerRecusouError).status).toBe(502);
+  });
+
+  it('o pull que estoura o teto do broker chega NOMEADO e com origem `infra` (AT-234)', async () => {
+    // O corpo é o que `respostaDeErro` do broker monta para
+    // `PullExcedeuTetoError`. Antes da AT-234 este mesmo estouro chegava como
+    // 502, "código -1, sem saída de erro", e `origem: null`.
+    responder(504, {
+      erro:
+        'o `docker pull node:24-bookworm` não terminou dentro do teto de ' +
+        '30000ms e foi cancelado: parar de esperar o CLI cancela o download ' +
+        'no daemon, então a imagem continua ausente. Imagem grande não sobe ' +
+        'por este caminho — limitação declarada (AT-234, RN-605).',
+      origem: 'infra',
+    });
+
+    const erro = await capturar(() =>
+      new HttpContainerBrokerClient().start('p'),
+    );
+
+    expect(erro).toBeInstanceOf(BrokerRecusouError);
+    const recusa = erro as BrokerRecusouError;
+    expect(recusa.status).toBe(504);
+    expect(recusa.origem).toBe('infra');
+    expect(recusa.message).toContain('node:24-bookworm');
+    expect(recusa.message).toContain('foi cancelado');
   });
 
   it('falha de transporte vira `sem-resposta`, distinta de `nao-configurado`', async () => {
@@ -331,12 +359,29 @@ describe('tetoDaOperacao', () => {
     }
   });
 
-  it('as três mutações cobrem o pior caso do próprio broker', () => {
-    // contexto + ps + operação + `docker version` na falha.
-    expect(TETO_DE_MUTACAO_MS).toBeGreaterThan(3 * CONTROLE_DO_DOCKER_MS);
+  it('as três mutações cobrem o pior caso do próprio broker (RN-604/RN-605)', () => {
+    // contexto + os DOIS `ps` de `resolver` + `image inspect` + `pull` + `run`
+    // + o `docker version` de diagnóstico. A conta da AT-233 esquecia o
+    // segundo `ps` (130s de pior caso contra 105s de teto).
+    expect(CHAMADAS_DE_CONTROLE_NO_START).toBe(6);
+    expect(TETO_DE_MUTACAO_MS).toBeGreaterThan(
+      CONTEXTO_DO_BROKER_MS +
+        CHAMADAS_DE_CONTROLE_NO_START * CONTROLE_DO_DOCKER_MS,
+    );
+    expect(TETO_DE_MUTACAO_MS).toBe(195_000);
     for (const op of ['start', 'stop', 'remove'] as const) {
       expect(tetoDaOperacao(op)).toBe(TETO_DE_MUTACAO_MS);
     }
+  });
+
+  it('a cadeia é broker < api < engine também no `container_start` auto-aprovado', () => {
+    // `@teto_do_propose_action_de_container_ms` do engine
+    // (`engine_api_client.ex`): o `propose_action` de `container_start`
+    // auto-aprovado espera a api, que espera o broker. Espelho, como
+    // `FOLGA_DO_EXEC_NO_ENGINE_MS`.
+    expect(TETO_DE_MUTACAO_MS).toBeLessThan(
+      TETO_DO_PROPOSE_ACTION_DE_CONTAINER_NO_ENGINE_MS,
+    );
   });
 });
 
