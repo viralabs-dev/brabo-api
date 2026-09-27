@@ -162,8 +162,17 @@ export type OperacaoDoBroker = 'inspect' | 'exec' | 'start' | 'stop' | 'remove';
 /** `TIMEOUT_DE_EXEC_PADRAO_MS` (`packages/docker-port/src/docker-cli.ts`): o teto que o broker aplica a um `exec` que chega SEM `timeoutMs`. */
 export const EXEC_PADRAO_DO_BROKER_MS = 15_000;
 
-/** `TIMEOUT_DE_CONTROLE_MS` (`packages/docker-port/src/docker-cli.ts`): cada chamada de controle do broker ao daemon — `ps`, `run`, `start`, `stop`, `rm`, e o `docker version` que ele roda quando uma delas falha, para nomear a causa. */
+/** `TIMEOUT_DE_CONTROLE_MS` (`packages/docker-port/src/docker-cli.ts`): cada chamada de controle do broker ao daemon — `ps`, `image inspect`, `pull`, `run`, `start`, `stop`, `rm`, e o `docker version` que ele roda quando uma delas falha, para nomear a causa. */
 export const CONTROLE_DO_DOCKER_MS = 30_000;
+
+/**
+ * `CHAMADAS_DE_CONTROLE_NO_START` (`packages/docker-port/src/docker-cli.ts`):
+ * o pior caso do `start`, em série — os DOIS `ps` de `resolver` (o gerenciado
+ * e o homônimo), `image inspect`, `pull`, `run` e o `docker version` de
+ * diagnóstico. A conta da AT-233 dizia três e esquecia o segundo `ps`; o
+ * `image inspect` e o `pull` explícitos nasceram na AT-234 (RN-605).
+ */
+export const CHAMADAS_DE_CONTROLE_NO_START = 6;
 
 /** `TIMEOUT_MS` (`apps/broker/src/api-client.ts`): o broker lê o contexto do projeto NESTA api antes de toda operação. */
 export const CONTEXTO_DO_BROKER_MS = 10_000;
@@ -180,18 +189,23 @@ export const MARGEM_DE_TRANSPORTE_MS = 5_000;
 export const TETO_DE_LEITURA_MS = 5_000;
 
 /**
- * `start`/`stop`/`remove` — o pior caso que o PRÓPRIO broker se permite:
- * contexto + `ps` (resolver o container pelo nome) + a operação (`run`, onde
- * acontece o pull de imagem que ainda não está no daemon; `stop`, que inclui
- * os 10s de graça entre SIGTERM e SIGKILL; `rm --force`) + o `docker version`
- * que ele roda quando a operação falha, para dizer se o daemon caiu. Esperar
- * isso é esperar a RESPOSTA do broker, inclusive a recusa nomeada dele quando
- * o `run` estoura o teto de 30s dele — por isso o número não é "o tempo de um
- * pull": o pull mais longo que o broker aceita já está dentro. Pull que passa
- * de 30s é cortado pelo broker, não por aqui (lacuna declarada na RN-604).
+ * `start`/`stop`/`remove` — o pior caso que o PRÓPRIO broker se permite, e o
+ * maior dos três é o `start`: contexto + os dois `ps` de `resolver` + `image
+ * inspect` + `pull` (explícito desde a AT-234, sob o MESMO teto de controle) +
+ * `run` + o `docker version` que ele roda quando a última chamada falha, para
+ * dizer se o daemon caiu — 10 + 6 × 30 + 5 = 195s. `stop` (dois `ps`, o
+ * `stop` com os 10s de graça, `version`) e `remove` cabem dentro.
+ *
+ * Esperar isso é esperar a RESPOSTA do broker, inclusive a recusa nomeada
+ * dele quando o pull estoura o teto de controle (`PullExcedeuTetoError`, 504,
+ * origem `infra`): por isso o número não é "o tempo de um pull". Pull que
+ * passa de 30s é cortado e CANCELADO pelo broker, não por aqui — imagem
+ * grande não sobe por este caminho, decisão declarada na RN-605 (opção D).
  */
 export const TETO_DE_MUTACAO_MS =
-  CONTEXTO_DO_BROKER_MS + 3 * CONTROLE_DO_DOCKER_MS + MARGEM_DE_TRANSPORTE_MS;
+  CONTEXTO_DO_BROKER_MS +
+  CHAMADAS_DE_CONTROLE_NO_START * CONTROLE_DO_DOCKER_MS +
+  MARGEM_DE_TRANSPORTE_MS;
 
 /**
  * O engine espera, na chamada `container-exec` a esta api, o `timeoutMs` do
@@ -201,6 +215,17 @@ export const TETO_DE_MUTACAO_MS =
  * não conserta nada.
  */
 export const FOLGA_DO_EXEC_NO_ENGINE_MS = 90_000;
+
+/**
+ * O engine espera, no `propose_action` de `container_start`,
+ * `container_start_via_runner` e `container_stop` — que a api EXECUTA na mesma
+ * requisição quando a ação nasce auto-aprovada —, este teto
+ * (`@teto_do_propose_action_de_container_ms`,
+ * `apps/engine/lib/engine/sessions/engine_api_client.ex`). Espelho, para o
+ * teste afirmar broker < api < engine também nesse caminho (RN-605): antes ele
+ * caía no default de 15s do `Req`.
+ */
+export const TETO_DO_PROPOSE_ACTION_DE_CONTAINER_NO_ENGINE_MS = 225_000;
 
 /**
  * O teto da chamada HTTP à rota do broker, por operação.
@@ -288,7 +313,7 @@ function consequenciaDoTeto(operacao: OperacaoDoBroker): string {
     case 'remove':
       return (
         '. O efeito pode ter acontecido do lado de lá (o daemon não desfaz ' +
-        'um `run` ou um pull porque esta chamada desistiu) — confira o estado ' +
+        'um `run` porque esta chamada desistiu) — confira o estado ' +
         'observado em /containers antes de repetir.'
       );
   }
