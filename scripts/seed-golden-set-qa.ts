@@ -16,10 +16,27 @@
  * via `System.cmd`, não à mão — mas roda solto também, pra depuração.)
  *
  * PRÉ-REQUISITOS: api e engine rodando de verdade e alcançáveis (a api
- * responde `propose_action`/`append_event`/`llm-turn`; o ENGINE executa o
- * `terminal` de verdade via `/internal/actions/execute` — é ele quem roda
- * `npm test` no worktree, não este script), Ollama local respondendo. Mesma
- * exigência dos demos — ver o ADR 0123 pro porquê de isto não rodar em CI.
+ * responde `propose_action`/`append_event`/`llm-turn`; o ENGINE decide onde o
+ * `terminal` roda, via `/internal/actions/execute`), Ollama local respondendo
+ * e — desde a AT-076 — o BROKER de container de pé: `BROKER_URL` na api,
+ * `PROJECT_WORKSPACES_HOST_ROOT` no broker apontando para a MESMA pasta que
+ * `PROJECT_WORKSPACES_ROOT` da api e do engine, e a imagem
+ * `IMAGEM_DO_GOLDEN_SET_QA` já presente no daemon (a chamada api → broker tem
+ * teto de 5s, e um `docker run` que precise PUXAR a imagem passa disso).
+ *
+ * ## O container de cada caso (AT-076, RN-502)
+ *
+ * Desde a RN-502 (ADR 0143) o engine RECUSA todo comando de terminal de um
+ * projeto `container` sem container `running` REGISTRADO. Este seed nasceu
+ * antes da regra e nunca subia container, então o `npm test` do QA era
+ * recusado e o golden-set media 0/6 por construção (AT-067). Agora cada caso
+ * sobe o container de verdade, pelo caminho de produção — module_map,
+ * roteamento do Arquiteto, `container_start` proposto pela Infra e aprovado
+ * pelo dono —, e o `npm test` roda DENTRO dele, pelo broker (ADR 0134,
+ * RN-492). A recusa da RN-502 fica intacta; quem mudou foi o seed, que passou
+ * a satisfazer a pré-condição dela. Se o container não sobe, o seed LANÇA um
+ * erro nomeado com a etapa e o motivo, em vez de deixar o QA rodar contra a
+ * recusa. O porquê de cada escolha está em `golden-set-qa-container.ts`.
  *
  * ## Por que este script faz o PRÓPRIO checkout, em vez de reusar
  * `Engine.Actions.Workspace`/`Engine.Dev.WorktreeManager`
@@ -34,6 +51,13 @@
  * materializado AQUI (clone raso do bare repo já commitado, com `git
  * checkout` do branch default) e o CAMINHO viaja pronto no JSON de saída —
  * o teste Elixir só usa o caminho, nunca consulta o Postgres pra achá-lo.
+ *
+ * O caminho é a RAIZ gerenciada do projeto (`projectScopeRoot`), e isso é o
+ * que faz os três lados verem o MESMO código: o broker monta
+ * `<PROJECT_WORKSPACES_HOST_ROOT>/<workspace_dir_name>` em `/work`, e o
+ * engine traduz o `cwd` do QA (esta pasta) para `/work` antes de mandar o
+ * `exec` (`cwd_para_container/2` em `terminal_executor.ex`). Um clone fora
+ * dela faria o `npm test` rodar num `/work` vazio.
  *
  * NÃO faz limpeza — mesma postura de `demo-pr-gates.ts` (sufixo por
  * timestamp, nunca apagado).
@@ -63,6 +87,11 @@ import { SetModelsActiveUseCase } from '../src/application/use-cases/llm/set-mod
 import { CreateSessionUseCase } from '../src/application/use-cases/sessions/create-session.use-case';
 import { TransitionSessionUseCase } from '../src/application/use-cases/sessions/transition-session.use-case';
 import { SeedAgentAreasUseCase } from '../src/application/use-cases/agents/seed-agent-areas.use-case';
+import { CreateModuleMapUseCase } from '../src/application/use-cases/architecture/create-module-map.use-case';
+import { RouteModulesToInfraUseCase } from '../src/application/use-cases/architecture/route-modules-to-infra.use-case';
+import { ProposeActionUseCase } from '../src/application/use-cases/actions/propose-action.use-case';
+import { ApproveActionUseCase } from '../src/application/use-cases/actions/approve-action.use-case';
+import { ObterCicloDeVidaDoContainerUseCase } from '../src/application/use-cases/containers/obter-ciclo-de-vida-do-container.use-case';
 import { ProvisionedRepositoryRepository } from '../src/application/ports/provisioned-repository-repository.port';
 import { GitProviderRegistry } from '../src/application/ports/git-provider.port';
 import { PermissionsFileStore } from '../src/application/ports/permissions-file-store.port';
@@ -73,6 +102,11 @@ import {
   workspaceDirNameFor,
   projectScopeRoot,
 } from '../src/infrastructure/filesystem/project-workspaces-root';
+import {
+  IMAGEM_DO_GOLDEN_SET_QA,
+  subirContainerDoCaso,
+  type DependenciasDaSubida,
+} from './golden-set-qa-container';
 
 const execFileAsync = promisify(execFile);
 
@@ -358,6 +392,15 @@ async function main() {
   const createSession = app.get(CreateSessionUseCase);
   const transitionSession = app.get(TransitionSessionUseCase);
   const seedAreas = app.get(SeedAgentAreasUseCase);
+  const subida: DependenciasDaSubida = {
+    createSession,
+    transitionSession,
+    createModuleMap: app.get(CreateModuleMapUseCase),
+    routeModulesToInfra: app.get(RouteModulesToInfraUseCase),
+    proposeAction: app.get(ProposeActionUseCase),
+    approveAction: app.get(ApproveActionUseCase),
+    obterCicloDeVida: app.get(ObterCicloDeVidaDoContainerUseCase),
+  };
 
   const sufixo = Date.now();
 
@@ -504,6 +547,20 @@ async function main() {
       await permissionsFile.addPattern(projectRow, 'allow', pattern);
     }
 
+    // O container de VERDADE, pelo caminho de produção (AT-076, RN-502) —
+    // DEPOIS do clone e do `permissions.json`: o bind-mount do broker monta
+    // esta mesma pasta em `/work`, e se o daemon chegasse antes ele a criaria
+    // vazia, como `root`. Ver `golden-set-qa-container.ts`.
+    const container = await subirContainerDoCaso(subida, {
+      casoId: caso.id,
+      projectId: project.id,
+      userId: user.id,
+    });
+    log(
+      `✓ caso ${caso.id}: container ${container.containerId.slice(0, 12)} running ` +
+        `(container_start ${container.actionId}, sessão de infra ${container.infraSessionId})`,
+    );
+
     const session = await createSession.execute(project.id, user.id, {
       kind: 'criativa',
     });
@@ -514,6 +571,8 @@ async function main() {
       projectId: project.id,
       sessionId: session.id,
       worktreePath,
+      containerId: container.containerId,
+      infraSessionId: container.infraSessionId,
       story: { id: `st-${caso.id}`, title: caso.taskTitle, rf: caso.rf, rnf: [] },
       task: {
         id: `task-${caso.id}`,
@@ -528,7 +587,13 @@ async function main() {
   await app.close();
 
   // ÚNICA coisa no stdout — o teste Elixir faz `Jason.decode!` direto nele.
-  process.stdout.write(JSON.stringify({ model: MODELO_QA, cases: casosSaida }));
+  process.stdout.write(
+    JSON.stringify({
+      model: MODELO_QA,
+      image: IMAGEM_DO_GOLDEN_SET_QA,
+      cases: casosSaida,
+    }),
+  );
 }
 
 main().catch((error) => {
