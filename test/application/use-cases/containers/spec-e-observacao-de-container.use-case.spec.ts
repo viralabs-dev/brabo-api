@@ -295,6 +295,28 @@ describe('ObterEstadoObservadoDoContainerUseCase — observado nunca herda regis
     });
   });
 
+  it('`teto-excedido` no inspect cai no MESMO lado de `sem-resposta` (RN-604)', async () => {
+    // A tela distingue configurado de não configurado; o motivo novo do
+    // transporte (AT-233) não abre um terceiro valor de `naoObservado`, e o
+    // texto que o nomeia chega pelo `detalhe`.
+    const caso = new ObterEstadoObservadoDoContainerUseCase(
+      brokerDeTeste({
+        erro: new BrokerIndisponivelError(
+          'teto-excedido',
+          'o broker de container não respondeu `inspect` dentro do teto desta operação (5000ms)',
+        ),
+      }),
+    );
+
+    const resultado = await caso.execute(PROJETO);
+
+    expect(resultado).toMatchObject({
+      observado: null,
+      naoObservado: 'broker-sem-resposta',
+    });
+    expect(resultado.detalhe).toContain('`inspect`');
+  });
+
   it('sem BROKER_URL, declara a ausência e nem chama o broker', async () => {
     let chamou = false;
     const broker = {

@@ -95,6 +95,21 @@ describe('ExecutarComandoNoContainerUseCase', () => {
     expect(resultado).toEqual({ sucesso: false, motivo: 'timeout' });
   });
 
+  it('`teto-excedido` também vira falha tipada, com o texto que nomeia o teto (RN-604)', async () => {
+    const texto =
+      'o broker de container não respondeu `exec` dentro do teto desta operação (135000ms)';
+    const broker = brokerFake({
+      exec: () =>
+        Promise.reject(new BrokerIndisponivelError('teto-excedido', texto)),
+    });
+
+    const resultado = await new ExecutarComandoNoContainerUseCase(
+      broker,
+    ).execute('proj-1', 'npm test', undefined, 90_000);
+
+    expect(resultado).toEqual({ sucesso: false, motivo: texto });
+  });
+
   it('erro que NÃO é do broker (defeito real) continua propagando — não é disfarçado de falha de comando', async () => {
     const broker = brokerFake({
       exec: () => {
