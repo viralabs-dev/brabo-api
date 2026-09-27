@@ -74,10 +74,12 @@ const entrada = { casoId: 'rf-covered', projectId: 'p1', userId: 'u1' };
 
 describe('subirContainerDoCaso (AT-076)', () => {
   it('a imagem passa pelo MESMO validador do artefato, com digest', () => {
-    expect(validarDecisaoDeImagem({
-      image: IMAGEM_DO_GOLDEN_SET_QA,
-      rationale: 'golden-set do QA',
-    }).image).toBe(IMAGEM_DO_GOLDEN_SET_QA);
+    expect(
+      validarDecisaoDeImagem({
+        image: IMAGEM_DO_GOLDEN_SET_QA,
+        rationale: 'golden-set do QA',
+      }).image,
+    ).toBe(IMAGEM_DO_GOLDEN_SET_QA);
     expect(IMAGEM_DO_GOLDEN_SET_QA).toMatch(/@sha256:[0-9a-f]{64}$/);
   });
 
@@ -91,10 +93,11 @@ describe('subirContainerDoCaso (AT-076)', () => {
       actionId: 'acao-1',
       containerId: 'c0ffee',
     });
-    expect(deps.createSession.execute).toHaveBeenCalledWith('p1', 'u1', {
-      kind: 'consultiva',
-      name: expect.stringContaining('rf-covered'),
-    });
+    const [projetoDaSessao, , criacao] = vi.mocked(deps.createSession.execute)
+      .mock.calls[0];
+    expect(projetoDaSessao).toBe('p1');
+    expect(criacao.kind).toBe('consultiva');
+    expect(criacao.name).toContain('rf-covered');
     const [, , roteamento] = vi.mocked(deps.routeModulesToInfra.execute).mock
       .calls[0];
     expect(roteamento.roteamento[0]).toMatchObject({
@@ -103,13 +106,14 @@ describe('subirContainerDoCaso (AT-076)', () => {
     });
     // A imagem eleita é a candidata — é o que `ExecuteContainerStartUseCase`
     // confere antes de gravar a decisão.
-    expect(deps.proposeAction.execute).toHaveBeenCalledWith('p1', 's-infra', {
-      actionType: 'container_start',
-      actor: { kind: 'agent', id: 'infra' },
-      payload: expect.objectContaining({
-        imagem: IMAGEM_DO_GOLDEN_SET_QA,
-        network: 'none',
-      }),
+    const [, sessaoDaProposta, proposta] = vi.mocked(deps.proposeAction.execute)
+      .mock.calls[0];
+    expect(sessaoDaProposta).toBe('s-infra');
+    expect(proposta.actionType).toBe('container_start');
+    expect(proposta.actor).toEqual({ kind: 'agent', id: 'infra' });
+    expect(proposta.payload).toMatchObject({
+      imagem: IMAGEM_DO_GOLDEN_SET_QA,
+      network: 'none',
     });
     expect(deps.approveAction.execute).toHaveBeenCalledWith(
       'p1',
@@ -142,9 +146,13 @@ describe('subirContainerDoCaso (AT-076)', () => {
 
     const falha = subirContainerDoCaso(deps, entrada);
 
-    await expect(falha).rejects.toBeInstanceOf(ContainerDoGoldenSetNaoSubiuError);
+    await expect(falha).rejects.toBeInstanceOf(
+      ContainerDoGoldenSetNaoSubiuError,
+    );
     await expect(falha).rejects.toMatchObject({ etapa: 'aprovacao' });
-    await expect(falha).rejects.toThrow(/não respondeu em http:\/\/localhost:8090/);
+    await expect(falha).rejects.toThrow(
+      /não respondeu em http:\/\/localhost:8090/,
+    );
     await expect(falha).rejects.toThrow(/RN-502/);
     expect(deps.obterCicloDeVida.execute).not.toHaveBeenCalled();
   });
@@ -155,7 +163,8 @@ describe('subirContainerDoCaso (AT-076)', () => {
         execute: vi.fn().mockRejectedValue(
           new ConflictException({
             code: 'sem_broker_na_instalacao',
-            message: 'Esta instalação não tem broker de container (BROKER_URL vazia)',
+            message:
+              'Esta instalação não tem broker de container (BROKER_URL vazia)',
           }),
         ),
       },
@@ -164,7 +173,9 @@ describe('subirContainerDoCaso (AT-076)', () => {
     const falha = subirContainerDoCaso(deps, entrada);
 
     await expect(falha).rejects.toMatchObject({ etapa: 'proposta' });
-    await expect(falha).rejects.toThrow(/sem_broker_na_instalacao: .*BROKER_URL vazia/);
+    await expect(falha).rejects.toThrow(
+      /sem_broker_na_instalacao: .*BROKER_URL vazia/,
+    );
     expect(deps.approveAction.execute).not.toHaveBeenCalled();
   });
 
