@@ -8,6 +8,7 @@ import {
   afterAll,
   vi,
 } from 'vitest';
+import { createHmac, scryptSync } from 'node:crypto';
 import { eq, sql } from 'drizzle-orm';
 import { authEvents } from '../../../../src/db/schema';
 import { IssuePersonalAccessTokenUseCase } from '../../../../src/application/use-cases/auth/issue-personal-access-token.use-case';
@@ -223,18 +224,68 @@ describe('trocar o AUTH_JWT_SECRET — "nobody gets logged out"', () => {
     ).resolves.toBeTruthy();
   });
 
-  it('SEM AUTH_TOKEN_PEPPER, o pepper É o AUTH_JWT_SECRET, e trocar a chave desloga todo mundo', async () => {
-    // O default documentado em `docs/reference/configuration.md` (a coluna
-    // "default" do AUTH_TOKEN_PEPPER é `AUTH_JWT_SECRET`), e o caso dos dois
-    // composes que o produto entrega (`docker-compose.prod.yml` e
-    // `docker-compose.install.yml` não repassam AUTH_TOKEN_PEPPER à api).
-    // Aí a rotação "sem downtime" do JWT é, ao mesmo tempo, a do pepper.
+  it('SEM AUTH_TOKEN_PEPPER fora de produção, o pepper NÃO é mais o AUTH_JWT_SECRET: trocar a chave não desloga (RN-613)', async () => {
+    // Até a RN-613 este teste fixava o defeito: sem pepper, ele caía no
+    // `AUTH_JWT_SECRET` e trocar a chave rejeitava o refresh. Agora o default
+    // é do PEPPER, e o JWT rotaciona sozinho.
     delete process.env.AUTH_TOKEN_PEPPER;
     process.env.AUTH_JWT_SECRET = JWT_A;
     await contaPronta(h);
     const sessao = await h.login.execute({ email: EMAIL, senha: SENHA_BOA });
 
     process.env.AUTH_JWT_SECRET = JWT_B;
+
+    await expect(
+      h.refresh.execute({ refreshToken: sessao.refreshToken }),
+    ).resolves.toBeTruthy();
+  });
+});
+
+describe('a migração do RN-613: pepper = valor ATUAL do AUTH_JWT_SECRET', () => {
+  /**
+   * O hash que o código ANTIGO gravava numa instalação sem pepper —
+   * `scrypt(AUTH_JWT_SECRET, 'brabo-auth-token-pepper')` como chave do HMAC —,
+   * escrito aqui por extenso e não chamando `hashDeToken`: é a fórmula que o
+   * fallback removido usava, fixada, para que a prova não dependa do código
+   * que ela prova.
+   */
+  function hashDoCodigoAntigo(token: string, jwtSecret: string): string {
+    const chave = scryptSync(jwtSecret, 'brabo-auth-token-pepper', 32);
+    return createHmac('sha256', chave).update(token).digest('hex');
+  }
+
+  it('caminho feliz: um refresh emitido ANTES (pepper caindo no JWT) segue válido com o pepper igual ao JWT antigo — e o JWT rotaciona sozinho', async () => {
+    process.env.AUTH_TOKEN_PEPPER = JWT_A;
+    process.env.AUTH_JWT_SECRET = JWT_A;
+    await contaPronta(h);
+    const sessao = await h.login.execute({ email: EMAIL, senha: SENHA_BOA });
+
+    // A linha no banco é BYTE A BYTE a que o código antigo teria gravado com
+    // AUTH_JWT_SECRET=JWT_A e sem pepper — ou seja, este refresh É um refresh
+    // de antes da migração.
+    const linhas = await h.db.execute<{ token_hash: string }>(
+      sql`SELECT token_hash FROM refresh_tokens`,
+    );
+    expect(linhas.rows.map((l) => l.token_hash)).toContain(
+      hashDoCodigoAntigo(sessao.refreshToken, JWT_A),
+    );
+
+    // Passo 2 do runbook: com o pepper separado, o JWT troca e ninguém sai.
+    process.env.AUTH_JWT_SECRET = JWT_B;
+    await expect(
+      h.refresh.execute({ refreshToken: sessao.refreshToken }),
+    ).resolves.toBeTruthy();
+  });
+
+  it('a ordem errada: gerar um pepper NOVO em vez de copiar o JWT desloga quem tinha sessão', async () => {
+    // O que o runbook manda NÃO fazer, fixado: o refresh de antes (hash com
+    // o JWT_A) não é achado com um pepper qualquer.
+    process.env.AUTH_TOKEN_PEPPER = JWT_A;
+    process.env.AUTH_JWT_SECRET = JWT_A;
+    await contaPronta(h);
+    const sessao = await h.login.execute({ email: EMAIL, senha: SENHA_BOA });
+
+    process.env.AUTH_TOKEN_PEPPER = PEPPER_B;
 
     await expect(
       h.refresh.execute({ refreshToken: sessao.refreshToken }),

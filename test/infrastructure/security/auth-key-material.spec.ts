@@ -1,5 +1,8 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { passphraseAtual } from '../../../src/infrastructure/security/auth-key-material';
+import {
+  passphraseAtual,
+  pepperAtual,
+} from '../../../src/infrastructure/security/auth-key-material';
 
 /**
  * Passphrase que deriva o par Ed25519 do access token (RN-114, mesmo padrão
@@ -64,5 +67,76 @@ describe('passphraseAtual', () => {
     process.env.NODE_ENV = 'development';
     process.env.AUTH_JWT_SECRET = 'curta';
     expect(passphraseAtual()).toBe('curta');
+  });
+});
+
+/**
+ * O pepper dos hashes de token (RN-613). Antes, sem `AUTH_TOKEN_PEPPER`, ele
+ * caía no `AUTH_JWT_SECRET` em silêncio, e rotacionar o JWT deslogava todo
+ * mundo. Agora é obrigatório em produção — e a recusa diz como migrar sem
+ * deslogar ninguém, porque a correção óbvia (gerar um aleatório) é a que
+ * desloga.
+ */
+describe('pepperAtual (RN-613)', () => {
+  const nodeEnvOriginal = process.env.NODE_ENV;
+  const PEPPER_DE_TESTE = 'pepper-de-teste-nao-e-segredo';
+
+  afterEach(() => {
+    delete process.env.AUTH_TOKEN_PEPPER;
+    delete process.env.AUTH_JWT_SECRET;
+    if (nodeEnvOriginal === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = nodeEnvOriginal;
+  });
+
+  it('caminho feliz: em produção, devolve o pepper configurado', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.AUTH_TOKEN_PEPPER = PEPPER_DE_TESTE;
+    expect(pepperAtual()).toBe(PEPPER_DE_TESTE);
+  });
+
+  it('em produção, SEM o pepper, recusa — mesmo com AUTH_JWT_SECRET definido, e dizendo como migrar', () => {
+    // O caso que o fallback antigo cobria em silêncio: JWT presente, pepper
+    // ausente. A recusa é o ponto; a mensagem é o conserto.
+    process.env.NODE_ENV = 'production';
+    process.env.AUTH_JWT_SECRET = CHAVE_DE_TESTE;
+    expect(() => pepperAtual()).toThrow(
+      /AUTH_TOKEN_PEPPER é obrigatória em produção/,
+    );
+    expect(() => pepperAtual()).toThrow(
+      /valor ATUAL de AUTH_JWT_SECRET para não deslogar ninguém/,
+    );
+  });
+
+  it('em produção, espaço em volta não conta como pepper', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.AUTH_TOKEN_PEPPER = '   ';
+    expect(() => pepperAtual()).toThrow(/obrigatória em produção/);
+  });
+
+  it('em produção, os valores de EXEMPLO do repositório (o do pepper e o do JWT) derrubam o boot', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.AUTH_TOKEN_PEPPER = 'dev-auth-token-pepper-change-me';
+    expect(() => pepperAtual()).toThrow(/valor de exemplo/);
+    process.env.AUTH_TOKEN_PEPPER = 'dev-auth-jwt-secret-change-me';
+    expect(() => pepperAtual()).toThrow(/valor de exemplo/);
+  });
+
+  it('em produção, pepper curto derruba o boot', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.AUTH_TOKEN_PEPPER = 'curto';
+    expect(() => pepperAtual()).toThrow(/mínimo em produção/);
+  });
+
+  it('em produção, o pepper IGUAL ao AUTH_JWT_SECRET é aceito — é o estado de toda instalação migrada', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.AUTH_JWT_SECRET = CHAVE_DE_TESTE;
+    process.env.AUTH_TOKEN_PEPPER = CHAVE_DE_TESTE;
+    expect(pepperAtual()).toBe(CHAVE_DE_TESTE);
+  });
+
+  it('fora de produção, sem a variável, cai no default do PEPPER — nunca no AUTH_JWT_SECRET', () => {
+    process.env.NODE_ENV = 'development';
+    process.env.AUTH_JWT_SECRET = CHAVE_DE_TESTE;
+    expect(pepperAtual()).toBe('dev-auth-token-pepper-change-me');
   });
 });
