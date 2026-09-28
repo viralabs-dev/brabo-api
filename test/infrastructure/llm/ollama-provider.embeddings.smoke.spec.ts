@@ -15,7 +15,7 @@ import { OllamaProvider } from '../../../src/infrastructure/llm/ollama-provider'
  * falhar. Para rodar de verdade:
  *
  * ```bash
- * docker exec brabo-ollama-1 ollama pull nomic-embed-text
+ * docker exec brabo-dev-ollama-1 ollama pull nomic-embed-text
  * OLLAMA_EMBEDDING_SMOKE=1 pnpm --filter api test ollama-provider.embeddings
  * ```
  *
