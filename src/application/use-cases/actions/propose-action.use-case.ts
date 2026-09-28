@@ -30,7 +30,10 @@ import {
   commandFromPayload,
   cwdFromPayload,
 } from '../../../domain/actions/pattern-for-action';
-import { projectScopeRoot } from '../../../infrastructure/filesystem/project-workspaces-root';
+import {
+  projectScopeRoot,
+  raizDoEscopoNoEvento,
+} from '../../../infrastructure/filesystem/project-workspaces-root';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
 import type { ActionStatus } from '../../../domain/actions/action-state-machine';
@@ -208,6 +211,15 @@ export class ProposeActionUseCase {
           status,
           resolvedPolicy: decision.policy,
           reason: decision.reason,
+          // `scopeRoot` (RN-609): QUAL raiz o escopo de caminho comparou —
+          // só em `terminal`, o único tipo em que `decide()` consulta o
+          // escopo (`terminalNoEscopo`). O modo e um identificador RELATIVO,
+          // NUNCA o caminho absoluto: o log é lido por todo membro e, em
+          // `mounted`/`runner`, o caminho traz o `$HOME` do usuário. AUSENTE
+          // é "não registrado" (evento anterior, ou tipo sem escopo).
+          ...(actionType === 'terminal'
+            ? { scopeRoot: raizDoEscopoNoEvento(project) }
+            : {}),
         },
       });
 

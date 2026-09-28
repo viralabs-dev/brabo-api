@@ -869,3 +869,66 @@ export function caminhoDeRepositorioContido(
   while (inicio < relativo.length && relativo[inicio] === '/') inicio++;
   return relativo.slice(inicio);
 }
+
+/**
+ * A raiz do escopo de terminal (ADR 0055) como o EVENT LOG pode guardá-la
+ * (RN-609): o modo de execução e um identificador RELATIVO — nunca o caminho
+ * absoluto que `projectScopeRoot` devolve.
+ *
+ * Por que não o caminho inteiro: o `proposed_action.created` é lido por todo
+ * membro do projeto, e em `mounted`/`runner` a raiz é uma pasta da máquina do
+ * usuário, com o `$HOME` dele no caminho. Evento não se reescreve (é
+ * imutável), então o que entra ali entra para sempre — decisão do mantenedor
+ * na AT-147: segmento relativo.
+ *
+ * O que cada `ancora` diz, e por que são três e não uma:
+ * - `raiz_gerenciada` (`container`): a raiz É `<PROJECT_WORKSPACES_ROOT>/<segmento>`,
+ *   e o segmento é o `workspace_dir_name` congelado (RN-109);
+ * - `base_de_projetos` (`mounted`): o segmento é o pedaço sob
+ *   `BRABO_PROJECTS_BASE`, pela MESMA `segmentoSobABaseDeProjetos` que o
+ *   broker usa (RN-503) — nenhuma segunda régua de "relativo";
+ * - `nome_da_pasta` (`runner`): a raiz é uma pasta do HOST que o servidor não
+ *   enxerga e cuja base (a do runner, RN-529) nunca atravessa a rede. O que o
+ *   evento leva é o `workspace_dir_name` do projeto, que IDENTIFICA a pasta
+ *   sem ser relativo a nada que o servidor conheça — e a âncora diz isso;
+ * - `indisponivel` (`mounted` fora da base, sem base, ou a própria base):
+ *   `segmento: null`. Cair no caminho absoluto para "não perder informação"
+ *   seria exatamente o vazamento que esta função existe para impedir.
+ */
+export type AncoraDaRaizDoEscopo =
+  'raiz_gerenciada' | 'base_de_projetos' | 'nome_da_pasta' | 'indisponivel';
+
+export interface RaizDoEscopoNoEvento {
+  executionMode: ProjectWorkspaceLocation['executionMode'];
+  ancora: AncoraDaRaizDoEscopo;
+  segmento: string | null;
+}
+
+export function raizDoEscopoNoEvento(
+  local: ProjectWorkspaceLocation,
+): RaizDoEscopoNoEvento {
+  switch (local.executionMode) {
+    case 'container':
+      return {
+        executionMode: 'container',
+        ancora: 'raiz_gerenciada',
+        segmento: local.workspaceDirName,
+      };
+    case 'runner':
+      return {
+        executionMode: 'runner',
+        ancora: 'nome_da_pasta',
+        segmento: local.workspaceDirName,
+      };
+    case 'mounted': {
+      const relativo = segmentoSobABaseDeProjetos(local.workspacePath ?? '');
+      return relativo.ok
+        ? {
+            executionMode: 'mounted',
+            ancora: 'base_de_projetos',
+            segmento: relativo.segmento,
+          }
+        : { executionMode: 'mounted', ancora: 'indisponivel', segmento: null };
+    }
+  }
+}
