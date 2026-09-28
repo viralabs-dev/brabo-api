@@ -81,6 +81,15 @@ const MOTIVO_DA_SUBSTITUICAO =
  * nunca passa de uma. A resposta DIZ o que substituiu, em vez de deixar a
  * pessoa descobrir que algo caiu.
  *
+ * Desde a RN-611 a chave de máquina tem tela por CONTA, e a razão SECUNDÁRIA
+ * desta contenção — a órfã seria viva e INALCANÇÁVEL numa instalação sem
+ * projeto — deixou de valer. A contenção FICA, pela razão primária, que não
+ * depende de tela: o token de serviço não pode fabricar credenciais
+ * duradouras em série, e a máquina reinstalada não pode deixar para trás uma
+ * chave viva que ninguém lembra de revogar. A tela da Conta passa a MOSTRAR a
+ * substituída (revogada, com o motivo), em vez de ser o que a tornaria
+ * aceitável deixá-la viva.
+ *
  * Só as de MÁQUINA caem. As de projeto vieram do navegador, num fluxo que
  * esta rota não conhece, e derrubá-las apagaria o pareamento de quem já usa o
  * produto — o erro que a RN-545 nomeou ao recusar converter instalação alheia

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, isNull, or, sql } from 'drizzle-orm';
+import { and, desc, eq, isNull, or, sql } from 'drizzle-orm';
 import {
   RunnerDeviceKeyRepository,
   type ChaveDeDispositivoResumo,
@@ -91,6 +91,25 @@ export class DrizzleRunnerDeviceKeyRepository extends RunnerDeviceKeyRepository 
           ),
         ),
       );
+    return linhas.map(paraResumo);
+  }
+
+  async listarDeMaquinaDoUsuario(
+    userId: string,
+  ): Promise<ChaveDeDispositivoResumo[]> {
+    const db = currentDb(this.rootDb);
+    const linhas = await db
+      .select()
+      .from(runnerDeviceKeys)
+      .where(
+        and(
+          eq(runnerDeviceKeys.userId, userId),
+          // Só as de MÁQUINA (RN-611): as de projeto têm a seção do projeto
+          // delas, e é lá que o alcance de revogá-las é dito.
+          isNull(runnerDeviceKeys.projectId),
+        ),
+      )
+      .orderBy(desc(runnerDeviceKeys.createdAt));
     return linhas.map(paraResumo);
   }
 

@@ -244,3 +244,78 @@ describe('DrizzleRunnerDeviceKeyRepository — substituir a chave de máquina (R
     expect(await repo.revogarChavesDeMaquina(user.id, 'segunda')).toEqual([]);
   });
 });
+
+describe('DrizzleRunnerDeviceKeyRepository — listagem de máquina por CONTA (RN-611)', () => {
+  it('caminho feliz: traz SÓ as de máquina do usuário, revogadas incluídas, mais nova primeiro', async () => {
+    const { user, projetoA } = await cenario();
+    await repo.registrar({
+      userId: user.id,
+      projectId: projetoA.id,
+      name: 'do-projeto-a',
+      publicKeyJwk: JWK,
+    });
+    const antiga = await repo.registrar({
+      userId: user.id,
+      projectId: null,
+      name: 'maquina-antiga',
+      publicKeyJwk: JWK,
+    });
+    // Registrar substitui (RN-552): a antiga cai, e continua na lista.
+    await repo.revogarChavesDeMaquina(user.id, 'reinstalação');
+    await repo.registrar({
+      userId: user.id,
+      projectId: null,
+      name: 'maquina-nova',
+      publicKeyJwk: JWK,
+    });
+
+    const lista = await repo.listarDeMaquinaDoUsuario(user.id);
+
+    expect(lista.map((c) => c.name)).toEqual([
+      'maquina-nova',
+      'maquina-antiga',
+    ]);
+    expect(lista.every((c) => c.especie === 'maquina')).toBe(true);
+    expect(lista.find((c) => c.id === antiga.id)?.revokedAt).not.toBeNull();
+  });
+
+  it('CASO DE FALHA: a chave de máquina de OUTRO usuário nunca entra — sem visão de maintainer (RN-519)', async () => {
+    const { user } = await cenario();
+    const [outro] = await db
+      .insert(users)
+      .values({
+        keycloakSub: 'sub-outro-conta',
+        email: 'outro-conta@brabo.dev',
+      })
+      .returning();
+    await repo.registrar({
+      userId: outro.id,
+      projectId: null,
+      name: 'da-maquina-alheia',
+      publicKeyJwk: JWK,
+    });
+
+    expect(await repo.listarDeMaquinaDoUsuario(user.id)).toEqual([]);
+  });
+
+  it('funciona numa instalação SEM projeto nenhum — o caso que a rota existe para cobrir', async () => {
+    const [user] = await db
+      .insert(users)
+      .values({
+        keycloakSub: 'sub-sem-projeto',
+        email: 'sem-projeto@brabo.dev',
+      })
+      .returning();
+    await repo.registrar({
+      userId: user.id,
+      projectId: null,
+      name: 'recem-instalada',
+      publicKeyJwk: JWK,
+    });
+
+    const [chave] = await repo.listarDeMaquinaDoUsuario(user.id);
+
+    expect(chave.name).toBe('recem-instalada');
+    expect(chave.lastUsedAt).toBeNull();
+  });
+});

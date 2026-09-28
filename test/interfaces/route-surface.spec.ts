@@ -218,6 +218,8 @@ const SEM_CORPO_JSON = new Map<
     'DELETE /projects/:projectId/runner-device-keys/:deviceKeyId',
     'sem-conteudo',
   ],
+  // RN-611 — revogar a chave de MÁQUINA pela conta é 204, mesmo padrão.
+  ['DELETE /users/me/machine-device-keys/:deviceKeyId', 'sem-conteudo'],
   // Proxy do binário standalone do runner — o corpo é o ARQUIVO, nunca JSON.
   ['GET /runner-releases/binary', 'binario'],
 ]);
