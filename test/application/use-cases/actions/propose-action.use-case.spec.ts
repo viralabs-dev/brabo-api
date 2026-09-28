@@ -840,3 +840,175 @@ describe('ProposeActionUseCase — o motivo da política no event log (RN-567)',
     expect(criado[0].payload).not.toHaveProperty('reason');
   });
 });
+
+// RN-609: a RAIZ do escopo que o `decide()` comparou vai no evento de SESSÃO
+// como modo + identificador RELATIVO — nunca o caminho absoluto, que exporia
+// o `$HOME` do usuário a todo membro do projeto. Aditivo: sem o campo nos
+// tipos que não consultam escopo, e nunca no outbox.
+describe('ProposeActionUseCase — a raiz do escopo no event log (RN-609)', () => {
+  const baseOriginal = process.env.BRABO_PROJECTS_BASE;
+  afterEach(() => {
+    if (baseOriginal === undefined) delete process.env.BRABO_PROJECTS_BASE;
+    else process.env.BRABO_PROJECTS_BASE = baseOriginal;
+  });
+
+  async function eventoCriado(sessionId: string, actionId: string) {
+    const page = await sessionEventRepo.listPaginated(sessionId, {
+      limit: 200,
+    });
+    const evento = page.items.find(
+      (e) =>
+        e.type === 'proposed_action.created' &&
+        (e.payload as { actionId?: unknown }).actionId === actionId,
+    );
+    expect(evento).toBeTruthy();
+    return evento!.payload as Record<string, unknown>;
+  }
+
+  async function projetoNoModo(
+    executionMode: 'mounted' | 'runner',
+    workspacePath: string,
+  ) {
+    const ctx = await setupSession();
+    const [project] = await db
+      .update(projects)
+      .set({ executionMode, workspacePath })
+      .where(eq(projects.id, ctx.project.id))
+      .returning();
+    return { ...ctx, project };
+  }
+
+  function terminal(sessionId: string, projectId: string, command: string) {
+    return proposeAction.execute(projectId, sessionId, {
+      actionType: 'terminal',
+      actor: { kind: 'agent', id: 'dev-agent' },
+      payload: { command },
+    });
+  }
+
+  it('container: o workspace_dir_name, relativo à raiz gerenciada', async () => {
+    const { project, session } = await setupSession();
+
+    const action = await terminal(session.id, project.id, 'ls');
+
+    const payload = await eventoCriado(session.id, action.id);
+    // o motivo da RN-567 continua lá: o campo novo é ADITIVO.
+    expect(typeof payload.reason).toBe('string');
+    expect(payload.scopeRoot).toEqual({
+      executionMode: 'container',
+      ancora: 'raiz_gerenciada',
+      segmento: project.workspaceDirName,
+    });
+  });
+
+  it('mounted: o segmento sob BRABO_PROJECTS_BASE', async () => {
+    process.env.BRABO_PROJECTS_BASE = '/home/usuario/brabo';
+    const { project, session } = await projetoNoModo(
+      'mounted',
+      '/home/usuario/brabo/clientes/loja',
+    );
+
+    const action = await terminal(session.id, project.id, 'ls');
+
+    expect((await eventoCriado(session.id, action.id)).scopeRoot).toEqual({
+      executionMode: 'mounted',
+      ancora: 'base_de_projetos',
+      segmento: 'clientes/loja',
+    });
+  });
+
+  it('runner: o workspace_dir_name, nunca a pasta do host', async () => {
+    const { project, session } = await projetoNoModo(
+      'runner',
+      '/home/usuario/dev/loja',
+    );
+
+    const action = await terminal(session.id, project.id, 'ls');
+
+    expect((await eventoCriado(session.id, action.id)).scopeRoot).toEqual({
+      executionMode: 'runner',
+      ancora: 'nome_da_pasta',
+      segmento: project.workspaceDirName,
+    });
+  });
+
+  it('o caminho absoluto NUNCA vaza — nem o $HOME, nem o usuário, em nenhum modo, nem quando a raiz é inexprimível', async () => {
+    process.env.BRABO_PROJECTS_BASE = '/home/usuario/brabo';
+    const casos = [
+      ['mounted', '/home/usuario/brabo/segredo-da-loja'],
+      ['runner', '/home/usuario/dev/segredo-da-loja'],
+      // fora da base: a raiz não é exprimível como segmento, e o evento
+      // NÃO cai no caminho absoluto para "não perder informação".
+      ['mounted', '/home/usuario/legado/segredo-da-loja'],
+    ] as const;
+
+    for (const [modo, caminho] of casos) {
+      await truncateAll(db);
+      const { project, session } = await projetoNoModo(modo, caminho);
+      const action = await terminal(session.id, project.id, 'ls');
+      const payload = await eventoCriado(session.id, action.id);
+
+      const raiz = JSON.stringify(payload.scopeRoot);
+      expect(raiz).not.toContain('/home');
+      expect(raiz).not.toContain('usuario');
+      expect(raiz).not.toContain(caminho);
+      expect(JSON.stringify(payload)).not.toContain('/home/usuario');
+    }
+  });
+
+  it('mounted fora da base: `indisponivel`, com segmento nulo', async () => {
+    process.env.BRABO_PROJECTS_BASE = '/home/usuario/brabo';
+    const { project, session } = await projetoNoModo(
+      'mounted',
+      '/home/usuario/legado/loja',
+    );
+
+    const action = await terminal(session.id, project.id, 'ls');
+
+    expect((await eventoCriado(session.id, action.id)).scopeRoot).toEqual({
+      executionMode: 'mounted',
+      ancora: 'indisponivel',
+      segmento: null,
+    });
+  });
+
+  it('tipo que não consulta o escopo não ganha o campo, e o outbox nunca o carrega', async () => {
+    const { project, session } = await setupSession();
+
+    const escrita = await proposeAction.execute(project.id, session.id, {
+      actionType: 'write_file',
+      actor: { kind: 'agent', id: 'dev-agent' },
+      payload: { path: 'x.md', content: 'x' },
+    });
+    expect(await eventoCriado(session.id, escrita.id)).not.toHaveProperty(
+      'scopeRoot',
+    );
+
+    const comando = await terminal(session.id, project.id, 'ls');
+    const [linha] = await db
+      .select()
+      .from(outboxEvents)
+      .where(eq(outboxEvents.aggregateId, comando.id));
+    expect(linha.payload).not.toHaveProperty('scopeRoot');
+  });
+
+  it('evento ANTERIOR à regra (sem `scopeRoot`) continua legível pela mesma leitura', async () => {
+    const { project, session } = await setupSession();
+    // Gravado como a api gravava antes da RN-609: mesmo tipo, sem o campo.
+    await appendSessionEvent.execute(project.id, session.id, {
+      type: 'proposed_action.created',
+      actor: { kind: 'agent', id: 'dev-agent' },
+      payload: {
+        actionId: 'acao-antiga',
+        actionType: 'terminal',
+        status: 'pending',
+        resolvedPolicy: 'require_approval',
+        reason: 'default (sem regra aplicável)',
+      },
+    });
+
+    const payload = await eventoCriado(session.id, 'acao-antiga');
+    expect(payload).not.toHaveProperty('scopeRoot');
+    expect(payload.reason).toBe('default (sem regra aplicável)');
+  });
+});
