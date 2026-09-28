@@ -27,6 +27,7 @@ const user = { id: 'dono-1' } as User;
 function novoController() {
   const inerte = { execute: vi.fn() } as never;
   const remover = { execute: vi.fn() };
+  const transferir = { execute: vi.fn() };
   const controller = new WorkspacesController(
     inerte,
     inerte,
@@ -42,8 +43,9 @@ function novoController() {
     inerte,
     inerte,
     remover as never,
+    transferir as never,
   );
-  return { controller, remover };
+  return { controller, remover, transferir };
 }
 
 describe('WorkspacesController — remoção de membro', () => {
@@ -90,5 +92,25 @@ describe('WorkspacesController — remoção de membro', () => {
     await expect(
       controller.removeMember('ws-1', user, 'dono-1'),
     ).rejects.toThrow(MENSAGEM_TETO_AUTO_REMOCAO_DO_WORKSPACE);
+  });
+
+  it('a transferência de titularidade exige owner e delega ator e destino', async () => {
+    expect(
+      new Reflector().get(
+        REQUIRED_ROLE_KEY,
+        WorkspacesController.prototype.transferOwnership,
+      ),
+    ).toBe('owner');
+
+    const { controller, transferir } = novoController();
+    transferir.execute.mockResolvedValue({ createdBy: 'outro-1' });
+
+    await controller.transferOwnership('ws-1', user, { userId: 'outro-1' });
+
+    expect(transferir.execute).toHaveBeenCalledWith(
+      'ws-1',
+      'dono-1',
+      'outro-1',
+    );
   });
 });

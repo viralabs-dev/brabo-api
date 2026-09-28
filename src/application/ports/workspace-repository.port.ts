@@ -33,6 +33,15 @@ export abstract class WorkspaceRepository {
    * RN-615). Só a linha: a cascata sobre projetos e chaves é do caso de uso.
    */
   abstract removeMember(workspaceId: string, userId: string): Promise<boolean>;
+  /**
+   * Grava o TITULAR (`workspaces.created_by`) e devolve o workspace, ou `null`
+   * se não existe (ADR 0173, RN-616). Sem checagem: quem decide se o destino
+   * pode ser titular é o caso de uso.
+   */
+  abstract transferirTitularidade(
+    id: string,
+    userId: string,
+  ): Promise<Workspace | null>;
   abstract findMemberRole(
     workspaceId: string,
     userId: string,

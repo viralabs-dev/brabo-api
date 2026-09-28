@@ -69,6 +69,7 @@ function novoController(): WorkspacesController {
     inerte,
     inerte,
     inerte,
+    inerte,
   );
 }
 

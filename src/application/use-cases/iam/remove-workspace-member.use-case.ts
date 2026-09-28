@@ -1,4 +1,10 @@
-import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { ApiToEngineClient } from '../../ports/api-to-engine-client.port';
 import { PersonalAccessTokenRepository } from '../../ports/personal-access-token-repository.port';
 import { ProjectRepository } from '../../ports/project-repository.port';
@@ -9,6 +15,11 @@ import {
   MENSAGEM_TETO_AUTO_REMOCAO_DO_WORKSPACE,
   remocaoEhAutoRebaixamento,
 } from '../../../domain/iam/tetos-de-rebaixamento';
+import {
+  CODIGO_CRIADOR_DO_WORKSPACE,
+  MENSAGEM_CRIADOR_DO_WORKSPACE,
+  removeOTitular,
+} from '../../../domain/iam/titularidade-do-workspace';
 
 /**
  * O motivo gravado em `revoked_reason` pela cascata — o mesmo nas chaves de
@@ -54,11 +65,15 @@ export const MOTIVO_REVOGACAO_POR_REMOCAO_DO_WORKSPACE =
  * (`disconnectRunnerOfUser`), em `try/catch` que só loga: efeito colateral
  * nunca derruba o efeito principal.
  *
+ * **O TITULAR (`workspaces.created_by`) não sai** (RN-616): 409
+ * `criador_do_workspace` até a titularidade ser transferida a outro owner por
+ * `TransferWorkspaceOwnershipUseCase` — é dele a credencial que os agentes
+ * gastam (RN-058) e o relatório de gasto (RN-060).
+ *
  * Fica de fora, declarado no ADR: as chaves de MÁQUINA (são da conta e servem
  * outros workspaces; aqui a autorização já cai pelo papel), sessões abertas e
  * o socket de sessão já
- * conectado, e `workspaces.created_by` — que decide de quem é a chave de LLM
- * que os agentes gastam (RN-058) e NÃO muda quando o criador é removido.
+ * conectado.
  */
 @Injectable()
 export class RemoveWorkspaceMemberUseCase {
@@ -94,6 +109,19 @@ export class RemoveWorkspaceMemberUseCase {
       })
     ) {
       throw new ForbiddenException(MENSAGEM_TETO_AUTO_REMOCAO_DO_WORKSPACE);
+    }
+
+    // O TITULAR não sai enquanto for titular (RN-616): a credencial que os
+    // agentes gastam e o relatório de gasto são dele. Depois do teto, de
+    // propósito — o titular tentando se remover recebe a frase do teto, que
+    // é a que vale para qualquer um.
+    const workspace = await this.workspaces.findById(workspaceId);
+    if (!workspace) throw new NotFoundException('Workspace não encontrado');
+    if (removeOTitular(alvoId, workspace.createdBy)) {
+      throw new ConflictException({
+        code: CODIGO_CRIADOR_DO_WORKSPACE,
+        message: MENSAGEM_CRIADOR_DO_WORKSPACE,
+      });
     }
 
     await this.uow.runInTransaction(async () => {

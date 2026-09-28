@@ -10,6 +10,7 @@ import { UpdateWorkspaceUseCase } from './update-workspace.use-case';
 import { DeleteWorkspaceUseCase } from './delete-workspace.use-case';
 import { AddWorkspaceMemberUseCase } from './add-workspace-member.use-case';
 import { RemoveWorkspaceMemberUseCase } from './remove-workspace-member.use-case';
+import { TransferWorkspaceOwnershipUseCase } from './transfer-workspace-ownership.use-case';
 import { CreateProjectUseCase } from './create-project.use-case';
 import { ConfirmProjectWorkspaceUseCase } from './confirm-project-workspace.use-case';
 import { ConvertProjectExecutionModeUseCase } from './convert-project-execution-mode.use-case';
@@ -47,6 +48,7 @@ const USE_CASES = [
   DeleteWorkspaceUseCase,
   AddWorkspaceMemberUseCase,
   RemoveWorkspaceMemberUseCase,
+  TransferWorkspaceOwnershipUseCase,
   CreateProjectUseCase,
   ConfirmProjectWorkspaceUseCase,
   ConvertProjectExecutionModeUseCase,

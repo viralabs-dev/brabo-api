@@ -95,6 +95,19 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
     return removidas.length > 0;
   }
 
+  async transferirTitularidade(
+    id: string,
+    userId: string,
+  ): Promise<Workspace | null> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .update(workspaces)
+      .set({ createdBy: userId, updatedAt: new Date() })
+      .where(eq(workspaces.id, id))
+      .returning();
+    return row ?? null;
+  }
+
   async findMemberRole(
     workspaceId: string,
     userId: string,

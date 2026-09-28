@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
-import { ForbiddenException } from '@nestjs/common';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { createTestDb, truncateAll } from '../../../support/test-db';
 import {
@@ -17,6 +17,13 @@ import { DrizzleRunnerDeviceKeyRepository } from '../../../../src/infrastructure
 import { DrizzlePersonalAccessTokenRepository } from '../../../../src/infrastructure/persistence/drizzle/personal-access-token.repository';
 import { DrizzleUnitOfWork } from '../../../../src/infrastructure/persistence/drizzle/drizzle-unit-of-work';
 import type { DrizzleDb } from '../../../../src/infrastructure/persistence/drizzle/drizzle-client';
+import { TransferWorkspaceOwnershipUseCase } from '../../../../src/application/use-cases/iam/transfer-workspace-ownership.use-case';
+import {
+  CODIGO_CRIADOR_DO_WORKSPACE,
+  CODIGO_TITULAR_PRECISA_SER_OWNER,
+  MENSAGEM_CRIADOR_DO_WORKSPACE,
+  MENSAGEM_TITULAR_PRECISA_SER_OWNER,
+} from '../../../../src/domain/iam/titularidade-do-workspace';
 import {
   MOTIVO_REVOGACAO_POR_REMOCAO_DO_WORKSPACE,
   RemoveWorkspaceMemberUseCase,
@@ -39,6 +46,7 @@ const workspaceRepo = new DrizzleWorkspaceRepository(drizzleDb);
 const deviceKeyRepo = new DrizzleRunnerDeviceKeyRepository(drizzleDb);
 const patRepo = new DrizzlePersonalAccessTokenRepository(drizzleDb);
 const uow = new DrizzleUnitOfWork(drizzleDb);
+const transferir = new TransferWorkspaceOwnershipUseCase(workspaceRepo, uow);
 
 function novoEngine() {
   const disconnectRunnerOfUser = vi.fn(() => Promise.resolve('sem_runner'));
@@ -339,7 +347,9 @@ describe('RemoveWorkspaceMemberUseCase — o último owner não sai (pela cláus
     await addToWorkspace(workspace.id, b.id, 'owner');
     const caso = novoCaso(novoEngine().engine);
 
-    // B remove A — passa, e B é quem sobra.
+    // A é o TITULAR (criou): para B removê-lo, a titularidade passa antes
+    // (RN-616). Depois disso, B remove A — passa, e B é quem sobra.
+    await transferir.execute(workspace.id, a.id, b.id);
     await caso.execute(workspace.id, b.id, a.id);
     expect((await owners(workspace.id)).map((o) => o.userId)).toEqual([b.id]);
 
@@ -348,5 +358,156 @@ describe('RemoveWorkspaceMemberUseCase — o último owner não sai (pela cláus
       MENSAGEM_TETO_AUTO_REMOCAO_DO_WORKSPACE,
     );
     expect((await owners(workspace.id)).map((o) => o.userId)).toEqual([b.id]);
+  });
+});
+
+async function titular(workspaceId: string) {
+  return (await workspaceRepo.findById(workspaceId))?.createdBy;
+}
+
+async function codigoDa(promessa: Promise<unknown>) {
+  try {
+    await promessa;
+  } catch (erro) {
+    if (erro instanceof ConflictException) {
+      return (erro.getResponse() as { code: string }).code;
+    }
+    throw erro;
+  }
+  throw new Error('esperava um 409');
+}
+
+describe('RemoveWorkspaceMemberUseCase — o TITULAR não sai (RN-616)', () => {
+  it('remover o criador, outro owner pedindo, é 409 `criador_do_workspace` e nada é escrito', async () => {
+    const criador = await createUser('rw-cria1@brabo.dev');
+    const outro = await createUser('rw-cria1b@brabo.dev');
+    const workspace = await createWorkspace(criador.id, 'rw-titular1');
+    await addToWorkspace(workspace.id, outro.id, 'owner');
+    const core = await createProject(workspace.id, criador.id, 'core');
+    await db
+      .insert(projectMembers)
+      .values({ projectId: core.id, userId: criador.id, role: 'owner' });
+    const { engine, disconnectRunnerOfUser } = novoEngine();
+
+    const tentativa = novoCaso(engine).execute(
+      workspace.id,
+      outro.id,
+      criador.id,
+    );
+    await expect(tentativa).rejects.toThrow(MENSAGEM_CRIADOR_DO_WORKSPACE);
+    expect(
+      await codigoDa(
+        novoCaso(engine).execute(workspace.id, outro.id, criador.id),
+      ),
+    ).toBe(CODIGO_CRIADOR_DO_WORKSPACE);
+
+    expect(await workspaceRepo.findMemberRole(workspace.id, criador.id)).toBe(
+      'owner',
+    );
+    expect(await projectRepo.findMemberRole(core.id, criador.id)).toBe('owner');
+    expect(disconnectRunnerOfUser).not.toHaveBeenCalled();
+  });
+
+  it('o titular removendo a si mesmo recebe o 403 do teto, não o 409', async () => {
+    const criador = await createUser('rw-cria2@brabo.dev');
+    const workspace = await createWorkspace(criador.id, 'rw-titular2');
+
+    await expect(
+      novoCaso(novoEngine().engine).execute(
+        workspace.id,
+        criador.id,
+        criador.id,
+      ),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('depois de transferir a titularidade, remover o antigo criador passa', async () => {
+    const criador = await createUser('rw-cria3@brabo.dev');
+    const outro = await createUser('rw-cria3b@brabo.dev');
+    const workspace = await createWorkspace(criador.id, 'rw-titular3');
+    await addToWorkspace(workspace.id, outro.id, 'owner');
+
+    await transferir.execute(workspace.id, criador.id, outro.id);
+    expect(await titular(workspace.id)).toBe(outro.id);
+
+    await novoCaso(novoEngine().engine).execute(
+      workspace.id,
+      outro.id,
+      criador.id,
+    );
+    expect(
+      await workspaceRepo.findMemberRole(workspace.id, criador.id),
+    ).toBeNull();
+    // E o NOVO titular agora é o protegido.
+    const terceiro = await createUser('rw-cria3c@brabo.dev');
+    await addToWorkspace(workspace.id, terceiro.id, 'owner');
+    expect(
+      await codigoDa(
+        novoCaso(novoEngine().engine).execute(
+          workspace.id,
+          terceiro.id,
+          outro.id,
+        ),
+      ),
+    ).toBe(CODIGO_CRIADOR_DO_WORKSPACE);
+  });
+});
+
+describe('TransferWorkspaceOwnershipUseCase (RN-616)', () => {
+  it('transfere para outro owner e grava `created_by`', async () => {
+    const criador = await createUser('tw-cria1@brabo.dev');
+    const outro = await createUser('tw-dono1@brabo.dev');
+    const workspace = await createWorkspace(criador.id, 'tw-um');
+    await addToWorkspace(workspace.id, outro.id, 'owner');
+
+    const resultado = await transferir.execute(
+      workspace.id,
+      criador.id,
+      outro.id,
+    );
+
+    expect(resultado.createdBy).toBe(outro.id);
+    expect(await titular(workspace.id)).toBe(outro.id);
+    // Autorização não muda: os dois seguem owners.
+    expect(await workspaceRepo.findMemberRole(workspace.id, criador.id)).toBe(
+      'owner',
+    );
+  });
+
+  it('recusa (409 `titular_precisa_ser_owner`) destino que não é owner, e o titular fica', async () => {
+    const criador = await createUser('tw-cria2@brabo.dev');
+    const mant = await createUser('tw-mant2@brabo.dev');
+    const workspace = await createWorkspace(criador.id, 'tw-dois');
+    await addToWorkspace(workspace.id, mant.id, 'maintainer');
+
+    await expect(
+      transferir.execute(workspace.id, criador.id, mant.id),
+    ).rejects.toThrow(MENSAGEM_TITULAR_PRECISA_SER_OWNER);
+    expect(
+      await codigoDa(transferir.execute(workspace.id, criador.id, mant.id)),
+    ).toBe(CODIGO_TITULAR_PRECISA_SER_OWNER);
+    expect(await titular(workspace.id)).toBe(criador.id);
+  });
+
+  it('recusa também quem não é membro do workspace', async () => {
+    const criador = await createUser('tw-cria3@brabo.dev');
+    const estranho = await createUser('tw-estranho3@brabo.dev');
+    const workspace = await createWorkspace(criador.id, 'tw-tres');
+
+    expect(
+      await codigoDa(transferir.execute(workspace.id, criador.id, estranho.id)),
+    ).toBe(CODIGO_TITULAR_PRECISA_SER_OWNER);
+  });
+
+  it('transferir para o titular atual é idempotente', async () => {
+    const criador = await createUser('tw-cria4@brabo.dev');
+    const workspace = await createWorkspace(criador.id, 'tw-quatro');
+
+    const resultado = await transferir.execute(
+      workspace.id,
+      criador.id,
+      criador.id,
+    );
+    expect(resultado.createdBy).toBe(criador.id);
   });
 });
