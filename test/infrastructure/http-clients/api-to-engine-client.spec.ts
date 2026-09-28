@@ -575,22 +575,23 @@ describe('HttpApiToEngineClient — comando de turno: aceite e recusa (ADR 0163)
   it('RN-584: o destino viaja como a pessoa escolheu, e a recusa 422 do engine chega com a frase', async () => {
     const engine = await engineQueResponde(422, {
       error:
-        'O Infra Lead não conversa pelo chat: ele trabalha por proposta. A mensagem ficou registrada, mas nenhum agente a leu.',
+        'O agente "qa" não recebe mensagem de chat nesta sessão. A mensagem ficou registrada, mas nenhum agente a leu.',
       motivo: 'agente_sem_conversa',
     });
     const client = new HttpApiToEngineClient();
 
     const erro = await client
-      .sendAgentMessage(PROJETO, SESSAO, 'infra', 'sobe o container')
+      .sendAgentMessage(PROJETO, SESSAO, 'qa', 'roda os testes')
       .catch((e: unknown) => e);
 
     expect(erro).toBeInstanceOf(UnprocessableEntityException);
     expect((erro as UnprocessableEntityException).message).toMatch(
       /nenhum agente a leu/,
     );
-    // A api não troca o destino por um padrão: o `infra` chega ao engine, e é
-    // o engine — dono das cláusulas — quem recusa.
-    expect(JSON.parse(engine.corpos[0])).toMatchObject({ agent: 'infra' });
+    // A api não troca o destino por um padrão: o `qa` chega ao engine, e é
+    // o engine — dono das cláusulas — quem recusa. (Até a RN-617 o exemplo era
+    // o `infra`, que passou a conversar.)
+    expect(JSON.parse(engine.corpos[0])).toMatchObject({ agent: 'qa' });
 
     await engine.fechar();
   });
