@@ -235,6 +235,19 @@ describe('RunnerReleasesController', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('darwin-x64 (Mac Intel): 400 que aponta o npm, sem chamar o GitHub (ADR 0174)', async () => {
+    const controller = new RunnerReleasesController();
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const { res } = fakeResponse();
+
+    const recusa = controller.binary('darwin-x64', res);
+    await expect(recusa).rejects.toBeInstanceOf(BadRequestException);
+    await expect(recusa).rejects.toThrow(/npm install -g @brabo\/runner/);
+    await expect(recusa).rejects.toThrow(/ADR 0174/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('platform ausente: 400', async () => {
     const controller = new RunnerReleasesController();
     vi.stubGlobal('fetch', vi.fn());
