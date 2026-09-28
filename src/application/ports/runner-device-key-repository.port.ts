@@ -93,6 +93,24 @@ export abstract class RunnerDeviceKeyRepository {
   ): Promise<ChaveDeDispositivoResumo[]>;
 
   /**
+   * Lista SÓ as chaves de MÁQUINA (`project_id IS NULL`) do PRÓPRIO usuário,
+   * revogadas INCLUÍDAS (RN-611) — a listagem por CONTA, sem projeto nenhum.
+   *
+   * Existe porque `listarDoUsuarioNoProjeto` precisa de um projeto contra o
+   * que responder, e a instalação de uma linha cria conta e chave de máquina
+   * ANTES de qualquer projeto: ali a chave era viva e inalcançável. As de
+   * PROJETO ficam de fora de propósito — elas têm casa (a seção do projeto
+   * delas), e trazê-las para cá faria a Conta revogar pareamento de projeto
+   * sem dizer em que projeto.
+   *
+   * Filtrado por `userId` no WHERE, nunca depois: a visão de `maintainer`
+   * sobre a chave de outra pessoa continua fora (RN-519).
+   */
+  abstract listarDeMaquinaDoUsuario(
+    userId: string,
+  ): Promise<ChaveDeDispositivoResumo[]>;
+
+  /**
    * Idempotente: revogar uma chave já revogada devolve a linha (sem erro).
    * `null` = não existe OU não pertence a `userId` — mesma resposta pros
    * dois casos, não vaza a existência de uma chave alheia.
@@ -111,9 +129,10 @@ export abstract class RunnerDeviceKeyRepository {
    * Existe para que registrar uma chave de máquina SUBSTITUA em vez de
    * ACUMULAR: sem isso, a rota interna do instalador viraria fábrica de
    * credenciais duradouras, e uma máquina reinstalada — que é caso legítimo —
-   * deixaria para trás uma chave viva que ninguém consegue alcançar (revogar
-   * pela tela pede um `projectId`, e uma instalação recém-criada não tem
-   * projeto).
+   * deixaria para trás uma chave viva que ninguém lembra de revogar. Até a
+   * RN-611 ela era também INALCANÇÁVEL (revogar pela tela pedia um
+   * `projectId`, e uma instalação recém-criada não tem projeto); a Conta a
+   * alcança agora, e a substituição fica pela primeira razão.
    *
    * Só as de MÁQUINA (`project_id IS NULL`): as de PROJETO nasceram do
    * navegador, num fluxo que esta rota não conhece, e derrubá-las seria

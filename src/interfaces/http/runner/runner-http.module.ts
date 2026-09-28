@@ -6,6 +6,7 @@ import { RunnerTicketsController } from './runner-tickets.controller';
 import { RunnerProjectsController } from './runner-projects.controller';
 import { PersonalAccessTokensController } from './personal-access-tokens.controller';
 import { RunnerDeviceKeysController } from './runner-device-keys.controller';
+import { MachineDeviceKeysController } from './machine-device-keys.controller';
 import { RunnerReleasesController } from './runner-releases.controller';
 import { PatAuthGuard } from '../auth/pat-auth.guard';
 
@@ -23,6 +24,7 @@ import { PatAuthGuard } from '../auth/pat-auth.guard';
     RunnerProjectsController,
     PersonalAccessTokensController,
     RunnerDeviceKeysController,
+    MachineDeviceKeysController,
     RunnerReleasesController,
   ],
   // PatAuthGuard entra em `providers` (não `APP_GUARD`) porque só as DUAS
