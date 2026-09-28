@@ -35,6 +35,11 @@ import { normalizarEmail } from '../../domain/auth/email';
  * perda de dado. Aceitar dupla verificação em todo refresh, para sempre, por um
  * cenário que roda uma vez a cada nunca, não paga. O runbook registra a
  * consequência.
+ *
+ * E o pepper é SEU, nunca emprestado do `AUTH_JWT_SECRET` (RN-613). Até ali,
+ * sem `AUTH_TOKEN_PEPPER` ele caía na passphrase do JWT em silêncio — e a
+ * rotação "sem downtime" do JWT era, ao mesmo tempo, a do pepper: todo mundo
+ * deslogado, todo PAT morto. Ver `pepperAtual()`.
  */
 
 /**
@@ -134,9 +139,78 @@ export function passphraseAnterior(): string | null {
   return anterior;
 }
 
+/**
+ * Default de DESENVOLVIMENTO do pepper — público como o do JWT, e DISTINTO
+ * dele de propósito: se fossem o mesmo literal, trocar o `AUTH_JWT_SECRET` do
+ * dev continuaria sem mexer no pepper, mas o exemplo ensinaria que os dois são
+ * a mesma coisa.
+ */
+const PEPPER_PADRAO = 'dev-auth-token-pepper-change-me';
+
+/**
+ * A base do pepper dos hashes de token (RN-613).
+ *
+ * OBRIGATÓRIA em produção, e SEM fallback para `AUTH_JWT_SECRET`. O fallback
+ * antigo (`AUTH_TOKEN_PEPPER ?? passphraseAtual()`) fazia de toda rotação do
+ * JWT uma rotação do pepper sem ninguém ter pedido — e os composes de produção
+ * e de instalação nem repassavam a variável, então era o caminho COMUM.
+ *
+ * A recusa diz o que fazer, porque a correção óbvia ("gere um aleatório") é a
+ * que desloga todo mundo: quem já roda define o pepper com o valor ATUAL do
+ * `AUTH_JWT_SECRET`, que é exatamente o que o fallback usava — o hash não muda,
+ * os refresh tokens seguem válidos, e daí em diante o JWT rotaciona sozinho.
+ * Igual ao JWT não é recusado, e não pode ser: é o estado legítimo de toda
+ * instalação migrada.
+ *
+ * Fora de produção vale o default de desenvolvimento, pelo mesmo motivo do
+ * `passphraseAtual()` — mas o default é do PEPPER, não o do JWT.
+ */
+export function pepperAtual(): string {
+  const producao = process.env.NODE_ENV === 'production';
+  // O `trim` decide só se HÁ valor; o que vira pepper é o valor como veio. O
+  // código antigo usava `AUTH_TOKEN_PEPPER` cru quando definido, e aparar aqui
+  // mudaria o hash — e deslogaria — justamente quem já tinha feito o certo.
+  const configurado = process.env.AUTH_TOKEN_PEPPER ?? '';
+  const bruto = configurado.trim();
+
+  if (!producao) {
+    return bruto ? configurado : PEPPER_PADRAO;
+  }
+
+  if (!bruto) {
+    throw new Error(
+      'AUTH_TOKEN_PEPPER é obrigatória em produção e não cai mais no ' +
+        'AUTH_JWT_SECRET (RN-613). Instalação que já roda: defina com o valor ' +
+        'ATUAL de AUTH_JWT_SECRET para não deslogar ninguém — os refresh ' +
+        'tokens e os PATs continuam válidos, e depois o JWT pode rotacionar ' +
+        'sozinho. Instalação nova: gere um próprio (ex.: ' +
+        '`openssl rand -base64 32`). Ver docs/runbook.md, "Auth key rotation".',
+    );
+  }
+
+  if (bruto === PEPPER_PADRAO || bruto === PASSPHRASE_PADRAO) {
+    throw new Error(
+      'AUTH_TOKEN_PEPPER está com um valor de exemplo do repositório, que é ' +
+        'público — em produção isso tira do hash dos tokens a única coisa que ' +
+        'um dump do banco não tem. Gere um próprio (ex.: ' +
+        '`openssl rand -base64 32`); se a instalação já roda, ver ' +
+        'docs/runbook.md antes, porque trocar o pepper desloga todo mundo.',
+    );
+  }
+
+  if (bruto.length < TAMANHO_MINIMO) {
+    throw new Error(
+      `AUTH_TOKEN_PEPPER tem ${bruto.length} caracteres; o mínimo em produção ` +
+        `é ${TAMANHO_MINIMO}. Gere um aleatório (ex.: ` +
+        '`openssl rand -base64 32`).',
+    );
+  }
+
+  return configurado;
+}
+
 function pepper(salt: string): Buffer {
-  const base = process.env.AUTH_TOKEN_PEPPER ?? passphraseAtual();
-  return scryptSync(base, salt, 32);
+  return scryptSync(pepperAtual(), salt, 32);
 }
 
 /**

@@ -17,7 +17,10 @@ import { etagDoCorpoVazio } from './interfaces/http/shared/etag-do-corpo-vazio';
 import { GraphErrorFilter } from './interfaces/http/shared/graph-error.filter';
 import { resolveCorsOrigins } from './infrastructure/security/cors-origins';
 import { resolveOauthStateSecret } from './infrastructure/security/oauth-state-secret';
-import { passphraseAtual } from './infrastructure/security/auth-key-material';
+import {
+  passphraseAtual,
+  pepperAtual,
+} from './infrastructure/security/auth-key-material';
 import {
   tokenDeServicoAnterior,
   tokenDeServicoAtual,
@@ -37,6 +40,10 @@ async function bootstrap() {
   // esse boot, e não uma chamada eager aqui, que a exercita.
   resolveOauthStateSecret();
   passphraseAtual();
+  // O pepper deixou de cair no AUTH_JWT_SECRET (RN-613): sem ele, a api
+  // recusa AQUI, com a mensagem que diz como migrar sem deslogar ninguém —
+  // e não no primeiro login, que é quando o operador já foi embora.
+  pepperAtual();
   tokenDeServicoAtual();
   // O anterior também abre `/internal/*` durante a rotação, e por isso passa
   // pela mesma régua do atual (RN-598).
