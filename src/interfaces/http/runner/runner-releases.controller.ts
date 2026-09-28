@@ -25,13 +25,23 @@ import {
 const GITHUB_RELEASES_URL =
   'https://api.github.com/repos/daneiel/brabo/releases/latest';
 
+/**
+ * Os QUATRO alvos que `build-runner-binaries.yml` constrói — a mesma lista da
+ * matriz, e `scripts/ci/alvos-do-runner.spec.ts` reprova quando divergem.
+ * `darwin-x64` (Mac Intel) saiu no ADR 0174: sem runner Intel utilizável no
+ * Actions e com o Bun quebrando o `onData` do node-pty no `macos-15-intel`
+ * (oven-sh/bun#25822). Pedido dele não é "plataforma inválida" genérica: tem
+ * recusa própria, que aponta o caminho que existe (o pacote npm, sob Node).
+ */
 const PLATAFORMAS = [
   'linux-x64',
   'linux-arm64',
-  'darwin-x64',
   'darwin-arm64',
   'win32-x64',
 ] as const;
+
+/** Plataforma que o runner ATENDE, mas sem binário publicado (ADR 0174). */
+const SEM_BINARIO_POR_DECISAO = 'darwin-x64';
 type Plataforma = (typeof PLATAFORMAS)[number];
 
 function ehPlataformaValida(valor: string): valor is Plataforma {
@@ -216,6 +226,12 @@ export class RunnerReleasesController {
     @Query('platform') platform: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
+    if (platform === SEM_BINARIO_POR_DECISAO) {
+      throw new BadRequestException(
+        `${SEM_BINARIO_POR_DECISAO} (Mac Intel) não tem binário publicado, por ` +
+          'decisão (ADR 0174) — instale pelo npm: npm install -g @brabo/runner',
+      );
+    }
     if (!platform || !ehPlataformaValida(platform)) {
       throw new BadRequestException(
         `platform inválida — use uma de: ${PLATAFORMAS.join(', ')}`,
