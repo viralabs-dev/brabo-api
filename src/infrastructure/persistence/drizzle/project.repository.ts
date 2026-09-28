@@ -164,6 +164,33 @@ export class DrizzleProjectRepository implements ProjectRepository {
       );
   }
 
+  async removeMemberFromWorkspaceProjects(
+    workspaceId: string,
+    userId: string,
+  ): Promise<number> {
+    const db = currentDb(this.rootDb);
+    const removidas = await db
+      .delete(projectMembers)
+      .where(
+        and(
+          eq(projectMembers.userId, userId),
+          exists(
+            db
+              .select({ id: projects.id })
+              .from(projects)
+              .where(
+                and(
+                  eq(projects.id, projectMembers.projectId),
+                  eq(projects.workspaceId, workspaceId),
+                ),
+              ),
+          ),
+        ),
+      )
+      .returning({ projectId: projectMembers.projectId });
+    return removidas.length;
+  }
+
   async listMembers(projectId: string): Promise<ProjectMemberWithUser[]> {
     const db = currentDb(this.rootDb);
     return db

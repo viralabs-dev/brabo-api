@@ -17,6 +17,7 @@ import {
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -33,6 +34,7 @@ import { GetWorkspaceUseCase } from '../../../application/use-cases/iam/get-work
 import { UpdateWorkspaceUseCase } from '../../../application/use-cases/iam/update-workspace.use-case';
 import { DeleteWorkspaceUseCase } from '../../../application/use-cases/iam/delete-workspace.use-case';
 import { AddWorkspaceMemberUseCase } from '../../../application/use-cases/iam/add-workspace-member.use-case';
+import { RemoveWorkspaceMemberUseCase } from '../../../application/use-cases/iam/remove-workspace-member.use-case';
 import { CreateProjectUseCase } from '../../../application/use-cases/iam/create-project.use-case';
 import { ListProjectsForWorkspaceUseCase } from '../../../application/use-cases/iam/list-projects-for-workspace.use-case';
 import { GetWorkspaceSummaryUseCase } from '../../../application/use-cases/iam/get-workspace-summary.use-case';
@@ -87,6 +89,7 @@ export class WorkspacesController {
     private readonly getProjectsSummaryForWorkspace: GetProjectsSummaryForWorkspaceUseCase,
     private readonly getUnreadEventsForWorkspace: GetUnreadEventsForWorkspaceUseCase,
     private readonly broker: ContainerBrokerPort,
+    private readonly removeWorkspaceMember: RemoveWorkspaceMemberUseCase,
   ) {}
 
   @Post()
@@ -159,8 +162,8 @@ export class WorkspacesController {
       "by ALL of the workspace's projects. That role is NECESSARY but not " +
       'SUFFICIENT: changing YOUR OWN role here is refused with 403 in both ' +
       'directions, and cannot be enabled anywhere. There is no level above ' +
-      'to catch the fall and no route that removes a member, so a self ' +
-      'downgrade would be unrecoverable through the UI. Demoting ANOTHER ' +
+      'to catch the fall, so a self downgrade would be unrecoverable through ' +
+      'the UI. Demoting ANOTHER ' +
       '`owner` is still allowed — it is the only way ownership is revoked.',
   })
   @ApiCreatedResponse({ type: WorkspaceMemberResponseDto })
@@ -180,6 +183,47 @@ export class WorkspacesController {
       dto.userId,
       dto.role,
     );
+  }
+
+  /**
+   * A quinta porta da linha dos tetos (ADR 0173, RN-615). `owner`, o MESMO
+   * mínimo do upsert logo acima: quem mexe na lista de membros é quem a
+   * mantém. O teto (a si mesmo, nunca) e a cascata moram no caso de uso.
+   */
+  @Delete(':workspaceId/members/:userId')
+  @RequireRole('owner')
+  @HttpCode(204)
+  @ApiOperation({
+    summary: 'Disassociates a user from the workspace',
+    description:
+      'Only `owner`, like the upsert. Removes the workspace row AND, in the ' +
+      "same transaction, the user's rows in every project of this workspace " +
+      '(the project role overrides the workspace one, so leaving them would ' +
+      "keep the user inside those projects), plus the user's PROJECT device " +
+      'keys and personal access tokens in them. Afterwards the live runner ' +
+      'connection of that user in each project is dropped, best effort. ' +
+      'Machine device keys and open sessions are left alone — they stop ' +
+      'reaching this workspace because the role resolves to none.\n\n' +
+      'Removing YOURSELF is refused with 403 and cannot be enabled anywhere: ' +
+      'there is no level above to catch the fall. That same clause is what ' +
+      'protects the last `owner` — only an `owner` can call this route and ' +
+      'nobody removes themselves, so every successful call leaves at least ' +
+      'the caller as `owner`. Removing ANOTHER `owner` is allowed — it is ' +
+      'how ownership is revoked. Idempotent: a target without a workspace ' +
+      "row still has this workspace's project rows cleared, and gets `204`.",
+  })
+  @ApiNoContentResponse({ description: 'Association removed. No body.' })
+  @ApiForbiddenResponse({
+    description:
+      'Not `owner` of the workspace, OR the target is the caller ' +
+      '(self-removal cap).',
+  })
+  removeMember(
+    @Param('workspaceId') workspaceId: string,
+    @CurrentUser() user: User,
+    @Param('userId') userId: string,
+  ) {
+    return this.removeWorkspaceMember.execute(workspaceId, user.id, userId);
   }
 
   @Post(':workspaceId/projects')

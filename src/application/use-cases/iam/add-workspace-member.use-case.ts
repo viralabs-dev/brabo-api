@@ -15,9 +15,11 @@ import type { Role } from '../../../domain/iam/role';
  * chamador é sempre o topo do `ROLE_ORDER` e não havia NADA olhando para o alvo
  * nem para a relação ator↔alvo. Um `owner` se gravava `viewer` e perdia o
  * workspace inteiro — e aqui, diferente do projeto, não existe nível acima para
- * segurar a queda nem rota que remova membro: `WorkspacesController` não tem
- * `@Delete` de membro, e desfazer é esta mesma rota, que pede o `owner` recém
- * abandonado. Sem caminho de volta pela tela.
+ * segurar a queda, e desfazer é esta mesma rota, que pede o `owner` recém
+ * abandonado. Sem caminho de volta pela tela. (Quando o ADR 0157 foi escrito
+ * também não havia rota que removesse membro; desde o ADR 0173, RN-615, há
+ * `DELETE :workspaceId/members/:userId`, e ela aplica a MESMA cláusula à
+ * própria linha — ver `RemoveWorkspaceMemberUseCase`.)
  *
  * **O teto 1 não tem par aqui, e a ausência é decisão** (ADR 0157). Ele é uma
  * regra sobre INVERSÃO DE HIERARQUIA — no projeto, a linha sobrepõe a de
@@ -26,7 +28,9 @@ import type { Role } from '../../../domain/iam/role';
  * alguém de papel maior que o seu. Recusar um `owner` que rebaixa OUTRO `owner`
  * faria de `owner` um estado absorvente — sem rota de remoção, ninguém sairia
  * dele por HTTP nunca —, que é a classe de estado que o ADR 0127 nasceu para
- * eliminar.
+ * eliminar. A rota de remoção do ADR 0173 não muda a conclusão: ela também
+ * remove OUTRO `owner`, e é o `@RequireRole('owner')` que segue impedindo a
+ * inversão.
  *
  * **O teto não conta owners**, e a contagem foi recusada explicitamente: a
  * cláusula "a si mesmo" não tem número para envelhecer. E ela já produz o

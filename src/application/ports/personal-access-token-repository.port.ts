@@ -91,4 +91,16 @@ export abstract class PersonalAccessTokenRepository {
     projectId: string,
     motivo: string,
   ): Promise<PatResumo | null>;
+
+  /**
+   * Revoga os tokens ATIVOS de `userId` em todos os projetos de `workspaceId`
+   * e devolve os ids (ADR 0173, RN-615) — a cascata da remoção de membro de
+   * workspace. Todo PAT é de UM projeto (`project_id NOT NULL`), então os de
+   * outros workspaces nunca casam.
+   */
+  abstract revogarDoUsuarioNoWorkspace(
+    userId: string,
+    workspaceId: string,
+    motivo: string,
+  ): Promise<string[]>;
 }

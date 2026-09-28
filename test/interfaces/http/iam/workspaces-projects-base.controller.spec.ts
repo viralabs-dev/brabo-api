@@ -45,6 +45,7 @@ function novoController(): WorkspacesController {
     inerte,
     inerte,
     new HttpContainerBrokerClient(),
+    inerte,
   );
 }
 

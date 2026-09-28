@@ -143,6 +143,19 @@ export abstract class RunnerDeviceKeyRepository {
     motivo: string,
   ): Promise<string[]>;
 
+  /**
+   * Revoga as chaves de PROJETO ativas de `userId` nos projetos de
+   * `workspaceId` e devolve os ids (ADR 0173, RN-615) — a cascata da remoção
+   * de membro de workspace. As de MÁQUINA (`project_id IS NULL`) ficam, de
+   * propósito: são da CONTA e servem os outros workspaces da pessoa, e aqui
+   * elas já não alcançam nada, porque o papel resolve para nenhum.
+   */
+  abstract revogarChavesDeProjetoNoWorkspace(
+    userId: string,
+    workspaceId: string,
+    motivo: string,
+  ): Promise<string[]>;
+
   /** Análogo ao `last_used_at` do PAT — tocado sem throttle a cada uso válido. */
   abstract tocarUso(id: string): Promise<void>;
 }

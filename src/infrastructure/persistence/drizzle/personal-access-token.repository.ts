@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import {
   PersonalAccessTokenRepository,
   type NovoPat,
@@ -7,7 +7,7 @@ import {
   type PatResumoComDono,
   type PatValidado,
 } from '../../../application/ports/personal-access-token-repository.port';
-import { personalAccessTokens, users } from '../../../db/schema';
+import { personalAccessTokens, projects, users } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
@@ -182,5 +182,29 @@ export class DrizzlePersonalAccessTokenRepository extends PersonalAccessTokenRep
         ),
       );
     return existente ? paraResumo(existente) : null;
+  }
+
+  async revogarDoUsuarioNoWorkspace(
+    userId: string,
+    workspaceId: string,
+    motivo: string,
+  ): Promise<string[]> {
+    const db = currentDb(this.rootDb);
+    const doWorkspace = db
+      .select({ id: projects.id })
+      .from(projects)
+      .where(eq(projects.workspaceId, workspaceId));
+    const revogados = await db
+      .update(personalAccessTokens)
+      .set({ revokedAt: new Date(), revokedReason: motivo })
+      .where(
+        and(
+          eq(personalAccessTokens.userId, userId),
+          inArray(personalAccessTokens.projectId, doWorkspace),
+          sql`${personalAccessTokens.revokedAt} is null`,
+        ),
+      )
+      .returning({ id: personalAccessTokens.id });
+    return revogados.map((linha) => linha.id);
   }
 }

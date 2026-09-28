@@ -1,12 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, isNull, or, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import {
   RunnerDeviceKeyRepository,
   type ChaveDeDispositivoResumo,
   type ChavePublicaAtiva,
   type NovaChaveDeDispositivo,
 } from '../../../application/ports/runner-device-key-repository.port';
-import { runnerDeviceKeys } from '../../../db/schema';
+import { projects, runnerDeviceKeys } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
@@ -159,6 +159,32 @@ export class DrizzleRunnerDeviceKeyRepository extends RunnerDeviceKeyRepository 
           // `IS NULL` é o que faz destas as chaves de MÁQUINA (RN-543) —
           // as de projeto ficam intactas, de propósito.
           isNull(runnerDeviceKeys.projectId),
+          isNull(runnerDeviceKeys.revokedAt),
+        ),
+      )
+      .returning({ id: runnerDeviceKeys.id });
+    return revogadas.map((linha) => linha.id);
+  }
+
+  async revogarChavesDeProjetoNoWorkspace(
+    userId: string,
+    workspaceId: string,
+    motivo: string,
+  ): Promise<string[]> {
+    const db = currentDb(this.rootDb);
+    const doWorkspace = db
+      .select({ id: projects.id })
+      .from(projects)
+      .where(eq(projects.workspaceId, workspaceId));
+    const revogadas = await db
+      .update(runnerDeviceKeys)
+      .set({ revokedAt: new Date(), revokedReason: motivo })
+      .where(
+        and(
+          eq(runnerDeviceKeys.userId, userId),
+          // `inArray` sobre a subconsulta: a de MÁQUINA (`project_id` nulo)
+          // nunca casa, e é isso que a deixa de fora.
+          inArray(runnerDeviceKeys.projectId, doWorkspace),
           isNull(runnerDeviceKeys.revokedAt),
         ),
       )

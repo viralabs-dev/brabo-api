@@ -81,6 +81,20 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
     return row ?? null;
   }
 
+  async removeMember(workspaceId: string, userId: string): Promise<boolean> {
+    const db = currentDb(this.rootDb);
+    const removidas = await db
+      .delete(workspaceMembers)
+      .where(
+        and(
+          eq(workspaceMembers.workspaceId, workspaceId),
+          eq(workspaceMembers.userId, userId),
+        ),
+      )
+      .returning({ userId: workspaceMembers.userId });
+    return removidas.length > 0;
+  }
+
   async findMemberRole(
     workspaceId: string,
     userId: string,

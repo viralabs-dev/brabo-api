@@ -28,6 +28,11 @@ export abstract class WorkspaceRepository {
     input: Partial<WorkspaceInput>,
   ): Promise<Workspace | null>;
   abstract remove(id: string): Promise<Workspace | null>;
+  /**
+   * Apaga a linha de `workspace_members` e diz se havia uma (ADR 0173,
+   * RN-615). Só a linha: a cascata sobre projetos e chaves é do caso de uso.
+   */
+  abstract removeMember(workspaceId: string, userId: string): Promise<boolean>;
   abstract findMemberRole(
     workspaceId: string,
     userId: string,

@@ -28,6 +28,14 @@ import { roleAtLeast, type Role } from './role';
  * Nenhuma delas é teto novo: é a mesma regra vista por mais uma porta. Teto
  * novo aqui continua sendo decisão de produto.
  *
+ * A QUINTA porta é do ADR 0173 (RN-615): `DELETE
+ * workspaces/:workspaceId/members/:userId`, que nasceu depois que o ADR 0157
+ * recusou criá-la de passagem. Ela também não ganha régua: é
+ * `remocaoEhAutoRebaixamento` chamada com o papel de WORKSPACE no lugar do
+ * efetivo de projeto e `null` como o papel de depois — no workspace não há
+ * nível acima, então remover a própria linha é sempre queda para "nenhum
+ * acesso", o caso que aquela função já enunciava.
+ *
  * O ADR 0157 também alargou o teto 2 num SENTIDO: ele passa a recusar a
  * auto-PROMOÇÃO, que o ADR 0127 tinha deixado passar por escrito. Quem sobe é
  * promovido por outra pessoa, pela mesma razão pela qual quem desce é rebaixado
@@ -69,8 +77,19 @@ export const MENSAGEM_TETO_AUTO_PROMOCAO =
 
 export const MENSAGEM_TETO_AUTO_REBAIXAMENTO_NO_WORKSPACE =
   'Você não pode rebaixar a si mesmo neste workspace: aqui não há papel ' +
-  'acima para segurar a queda, não existe rota que remova membro, e desfazer ' +
-  'exige o owner que você estaria abandonando. Peça a outro owner.';
+  'acima para segurar a queda, e desfazer exige o owner que você estaria ' +
+  'abandonando. Peça a outro owner.';
+
+/**
+ * A frase da QUINTA porta (ADR 0173, RN-615). Própria, e não a de rebaixamento
+ * do workspace: quem clicou "remover" não pediu mudança de papel — o mesmo
+ * motivo pelo qual a remoção de projeto ganhou a dela no ADR 0156.
+ */
+export const MENSAGEM_TETO_AUTO_REMOCAO_DO_WORKSPACE =
+  'Você não pode remover a si mesmo deste workspace: aqui não há papel acima ' +
+  'para segurar a queda, e sem a linha você perde o workspace e todos os ' +
+  'projetos dele. Voltar exige o owner que você estaria abandonando. Peça a ' +
+  'outro owner.';
 
 export const MENSAGEM_TETO_AUTO_PROMOCAO_NO_WORKSPACE =
   'Você não pode promover a si mesmo neste workspace: quem sobe é promovido ' +
@@ -213,6 +232,16 @@ export const MENSAGEM_TETO_AUTO_REBAIXAMENTO_POR_REMOCAO =
  * O ADR 0157 NÃO tocou nesta porta: ele alargou o teto 2 para a auto-PROMOÇÃO
  * nas duas rotas de associação, e a remoção continua vendo só a metade de
  * baixo, de propósito (ver o docblock de `ehAutoRebaixamento`).
+ *
+ * **E a remoção de WORKSPACE passa por aqui também** (ADR 0173, RN-615), sem
+ * enunciado próprio: `RemoveWorkspaceMemberUseCase` passa o papel do ator no
+ * WORKSPACE como `papelEfetivoDoAtorNoProjeto` (é o efetivo daquele escopo, sem
+ * composição nenhuma) e `null` como `papelDoAtorNoWorkspace` — o papel de
+ * DEPOIS, que no workspace é sempre "nenhum", porque não há nível acima. É o
+ * ramo que já existia para o projeto sem linha de workspace, e é por ele que a
+ * auto-remoção do workspace é sempre recusada. Os nomes dos parâmetros ficaram
+ * os do projeto de propósito: renomeá-los mudaria as outras duas portas por uma
+ * leitura.
  *
  * Pura como as outras: quem traduz para 403 é o caso de uso.
  */

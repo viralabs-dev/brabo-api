@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { FilesystemModule } from '../../../infrastructure/filesystem/filesystem.module';
+import { EngineHttpClientsModule } from '../../../infrastructure/http-clients/engine-http-clients.module';
 import { SessionsUseCasesModule } from '../sessions/sessions-use-cases.module';
 import { ContainersUseCasesModule } from '../containers/containers-use-cases.module';
 import { CreateWorkspaceUseCase } from './create-workspace.use-case';
@@ -8,6 +9,7 @@ import { GetWorkspaceUseCase } from './get-workspace.use-case';
 import { UpdateWorkspaceUseCase } from './update-workspace.use-case';
 import { DeleteWorkspaceUseCase } from './delete-workspace.use-case';
 import { AddWorkspaceMemberUseCase } from './add-workspace-member.use-case';
+import { RemoveWorkspaceMemberUseCase } from './remove-workspace-member.use-case';
 import { CreateProjectUseCase } from './create-project.use-case';
 import { ConfirmProjectWorkspaceUseCase } from './confirm-project-workspace.use-case';
 import { ConvertProjectExecutionModeUseCase } from './convert-project-execution-mode.use-case';
@@ -44,6 +46,7 @@ const USE_CASES = [
   UpdateWorkspaceUseCase,
   DeleteWorkspaceUseCase,
   AddWorkspaceMemberUseCase,
+  RemoveWorkspaceMemberUseCase,
   CreateProjectUseCase,
   ConfirmProjectWorkspaceUseCase,
   ConvertProjectExecutionModeUseCase,
@@ -69,7 +72,14 @@ const USE_CASES = [
 ];
 
 @Module({
-  imports: [FilesystemModule, SessionsUseCasesModule, ContainersUseCasesModule],
+  imports: [
+    FilesystemModule,
+    SessionsUseCasesModule,
+    ContainersUseCasesModule,
+    // A cascata da remoção de membro de workspace derruba o runner vivo do
+    // removido (ADR 0173, RN-615), pelo mesmo cliente da RN-520.
+    EngineHttpClientsModule,
+  ],
   providers: USE_CASES,
   exports: USE_CASES,
 })
