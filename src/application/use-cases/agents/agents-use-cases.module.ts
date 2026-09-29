@@ -14,6 +14,12 @@ import { RequestManualHandoffUseCase } from './request-manual-handoff.use-case';
 import { UpsertAgentInstructionUseCase } from './upsert-agent-instruction.use-case';
 import { CancelAgentTurnUseCase } from './cancel-agent-turn.use-case';
 import { AnswerStructuredQuestionUseCase } from './answer-structured-question.use-case';
+// Provider direto, e não `imports: [IamUseCasesModule]` (o mesmo argumento do
+// `SeedAgentAreasUseCase` no sentido contrário): a resolução do idioma da
+// resposta (RN-618/RN-622) só lê dois repositórios do `DrizzleModule`, que é
+// global, e importar o módulo de IAM traria aresta nova por uma classe sem
+// estado.
+import { ResolverIdiomaDaRespostaUseCase } from '../iam/resolver-idioma-da-resposta.use-case';
 
 const USE_CASES = [
   ActivateAgentUseCase,
@@ -38,7 +44,7 @@ const USE_CASES = [
   // que handoff existe. `git-use-cases.module.ts` não importa este módulo, então
   // não há ciclo.
   imports: [SessionsUseCasesModule, GitUseCasesModule, EngineHttpClientsModule],
-  providers: USE_CASES,
+  providers: [...USE_CASES, ResolverIdiomaDaRespostaUseCase],
   exports: USE_CASES,
 })
 export class AgentsUseCasesModule {}

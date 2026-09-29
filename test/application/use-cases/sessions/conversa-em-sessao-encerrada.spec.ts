@@ -252,6 +252,9 @@ describe('casos de uso da conversa em sessão encerrada (RN-581)', () => {
     const uc = new SendAgentMessageUseCase(
       engine as unknown as ApiToEngineClient,
       append,
+      {
+        execute: () => Promise.resolve({ idioma: 'pt-BR', origem: 'conta' }),
+      } as never,
     );
 
     await expect(

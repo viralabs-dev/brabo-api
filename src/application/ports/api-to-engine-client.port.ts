@@ -131,11 +131,16 @@ export abstract class ApiToEngineClient {
   // Roteia uma mensagem do usuário pro agente ativo; o engine roda o turno no
   // harness e narra a resposta via session_events (não retorna o texto aqui —
   // o streaming vai pelo canal Phoenix e a persistência pelo event log).
+  //
+  // `idiomaDaResposta` (RN-622): o idioma em que o agente responde ao AUTOR
+  // desta mensagem, já resolvido. OPCIONAL no fio — `null` não é enviado, e o
+  // engine trata ausente como turno sem orientação (engine antigo o ignora).
   abstract sendAgentMessage(
     projectId: string,
     sessionId: string,
     agent: string,
     text: string,
+    idiomaDaResposta?: string | null,
   ): Promise<void>;
 
   // Sinaliza que o usuário confirmou prontidão; o engine instrui o Criativo a

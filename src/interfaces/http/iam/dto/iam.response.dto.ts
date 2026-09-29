@@ -213,8 +213,10 @@ export class ProjectResponseDto implements Wire<Project> {
       'and turns nobody typed (kickoff, dev agents, gates, commit messages, ' +
       'PR bodies). A canonical BCP-47 code, open list. A new project starts ' +
       "with its creator's effective response language (RN-618). Set through " +
-      '`PATCH /projects/:projectId` (`maintainer`). Not yet read by the ' +
-      'engine — the per-turn guidance that consumes it is AT-164.',
+      '`PATCH /projects/:projectId` (`maintainer`). The engine sends it to ' +
+      'the model as an ephemeral system message at the end of every LLM ' +
+      'call of a turn with no human author (RN-622); an artifact emitted ' +
+      "during a person's turn still follows that person's response language.",
   })
   language!: string;
 

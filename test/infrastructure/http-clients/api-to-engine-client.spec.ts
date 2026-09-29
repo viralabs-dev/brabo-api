@@ -523,6 +523,28 @@ describe('HttpApiToEngineClient — comando de turno: aceite e recusa (ADR 0163)
     await engine.fechar();
   });
 
+  // RN-622: o idioma do autor viaja só quando resolvido — `null` não vira
+  // chave no corpo, e o engine trata ausente como turno sem orientação.
+  it('idiomaDaResposta vai no corpo quando resolvido, e fica de fora quando null', async () => {
+    const engine = await engineQueResponde(202);
+    const client = new HttpApiToEngineClient();
+
+    await client.sendAgentMessage(PROJETO, SESSAO, 'po', 'oi', 'pt-BR');
+    await client.sendAgentMessage(PROJETO, SESSAO, 'po', 'oi', null);
+
+    expect(JSON.parse(engine.corpos[0])).toEqual({
+      projectId: PROJETO,
+      agent: 'po',
+      text: 'oi',
+      idiomaDaResposta: 'pt-BR',
+    });
+    expect(JSON.parse(engine.corpos[1])).not.toHaveProperty(
+      'idiomaDaResposta',
+    );
+
+    await engine.fechar();
+  });
+
   it('409 turno_em_andamento vira ConflictException com a frase do engine', async () => {
     const engine = await engineQueResponde(409, {
       error:
