@@ -84,6 +84,28 @@ export const users = pgTable(
     // ainda usa `navigator.language` só como sugestão de EXIBIÇÃO, nunca
     // persistida (ver `apps/web/src/lib/idioma.ts`).
     locale: userLocaleEnum('locale').notNull().default('pt-BR'),
+    // O idioma em que os AGENTES respondem a esta pessoa (RN-618, ADR 0177) —
+    // eixo DIFERENTE de `locale` logo acima, que é o da INTERFACE e nunca é
+    // alterado por esta preferência nem pela detecção. Lista ABERTA: qualquer
+    // código BCP-47 que `normalizarIdiomaBcp47` aceite, gravado CANÔNICO
+    // (`pt-br` vira `pt-BR`) — nunca um enum, porque abrir o idioma da
+    // resposta não depende de arquivo de recurso nenhum, ao contrário do da
+    // interface.
+    //
+    // NULL é "automático", e é assim que toda conta nasce (decisão do
+    // mantenedor, AT-168 resposta 3): a ausência de escolha É o automático, e
+    // um valor-sentinela aqui dividiria a coluna entre idioma e não-idioma.
+    responseLanguage: text('response_language'),
+    // O idioma DETECTADO pelas mensagens da pessoa e CONFIRMADO por ela
+    // (AT-168 respostas 4 e 6): por usuário, global, e só entra aqui depois
+    // da confirmação — a detecção sozinha não troca nada. Quem escreve é a
+    // AT-163; esta coluna existe desde a RN-618 porque é um degrau da
+    // precedência. O par é UMA coisa só (CHECK abaixo): idioma sem instante
+    // de confirmação seria detecção não confirmada fingindo ser confirmada.
+    detectedLanguage: text('detected_language'),
+    detectedLanguageConfirmedAt: timestamp('detected_language_confirmed_at', {
+      withTimezone: true,
+    }),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -96,6 +118,10 @@ export const users = pgTable(
     // "ana@brabo.dev" seriam contas distintas — e como o login busca pelo
     // e-mail em minúsculas, a segunda conta ficaria inacessível para sempre.
     uniqueIndex('users_email_lower_idx').on(sql`lower(${table.email})`),
+    check(
+      'users_idioma_detectado_so_confirmado',
+      sql`(${table.detectedLanguage} IS NULL) = (${table.detectedLanguageConfirmedAt} IS NULL)`,
+    ),
   ],
 );
 

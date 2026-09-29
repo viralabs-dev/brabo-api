@@ -47,4 +47,18 @@ export class DrizzleUserRepository implements UserRepository {
     if (!row) throw new NotFoundException('Usuário não encontrado');
     return row;
   }
+
+  async updateResponseLanguage(
+    id: string,
+    responseLanguage: string | null,
+  ): Promise<User> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .update(users)
+      .set({ responseLanguage, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    if (!row) throw new NotFoundException('Usuário não encontrado');
+    return row;
+  }
 }

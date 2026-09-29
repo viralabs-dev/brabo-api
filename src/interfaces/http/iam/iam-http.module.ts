@@ -4,6 +4,7 @@ import { RolesGuard } from './roles.guard';
 import { WorkspacesController } from './workspaces.controller';
 import { ProjectsController } from './projects.controller';
 import { UserPreferencesController } from './user-preferences.controller';
+import { SessionResponseLanguageController } from './session-response-language.controller';
 import { IamUseCasesModule } from '../../../application/use-cases/iam/iam-use-cases.module';
 import { ContainerBrokerHttpClientModule } from '../../../infrastructure/http-clients/container-broker-http-client.module';
 
@@ -16,6 +17,7 @@ import { ContainerBrokerHttpClientModule } from '../../../infrastructure/http-cl
     WorkspacesController,
     ProjectsController,
     UserPreferencesController,
+    SessionResponseLanguageController,
   ],
   providers: [{ provide: APP_GUARD, useClass: RolesGuard }],
 })

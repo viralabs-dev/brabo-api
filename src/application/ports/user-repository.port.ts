@@ -52,4 +52,16 @@ export abstract class UserRepository {
    * gravar `keycloakSub`/`email` por engano.
    */
   abstract updateLocale(id: string, locale: UserLocale): Promise<User>;
+
+  /**
+   * Grava o idioma das RESPOSTAS (RN-618) — `null` volta ao automático.
+   * Método próprio, e não um parâmetro de `updateLocale`, pelo mesmo motivo
+   * de ele existir: cada campo gravável pelo dono da conta tem a sua porta,
+   * e esta NUNCA toca `locale` (a interface não muda porque a resposta
+   * mudou).
+   */
+  abstract updateResponseLanguage(
+    id: string,
+    responseLanguage: string | null,
+  ): Promise<User>;
 }
