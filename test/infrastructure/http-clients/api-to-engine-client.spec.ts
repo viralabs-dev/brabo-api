@@ -538,9 +538,7 @@ describe('HttpApiToEngineClient — comando de turno: aceite e recusa (ADR 0163)
       text: 'oi',
       idiomaDaResposta: 'pt-BR',
     });
-    expect(JSON.parse(engine.corpos[1])).not.toHaveProperty(
-      'idiomaDaResposta',
-    );
+    expect(JSON.parse(engine.corpos[1])).not.toHaveProperty('idiomaDaResposta');
 
     await engine.fechar();
   });
