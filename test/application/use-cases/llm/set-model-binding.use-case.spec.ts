@@ -22,8 +22,10 @@ const modelRepo = new DrizzleModelRepository(db);
 const workspaceModelRepo = new DrizzleWorkspaceModelRepository(db);
 /**
  * Registro FALSO de providers: só as capabilities importam aqui. O OpenRouter
- * declara `routingPreference` conforme `hubAceita` — o estado de produção é
- * `false` (não provado, ADR 0166), e os testes que precisam do `true` ligam.
+ * declara `routingPreference` conforme `hubAceita` — em produção ele é `true`
+ * desde a prova de 2026-09-29 (ADR 0166, AT-158), mas o registro é falso de
+ * propósito: `false` aqui representa QUALQUER provider sem a capability (os
+ * outros oito), e os testes que precisam do `true` ligam.
  */
 let hubAceita = false;
 const registry: LLMProviderRegistry = {
@@ -340,7 +342,7 @@ describe('SetModelBindingUseCase — preferência de roteamento (ADR 0166, RN-58
 
   it('falha: provider sem a capability recusa — e NADA é gravado', async () => {
     const { user, project, doHub } = await comHub();
-    // `hubAceita = false`: o estado de produção enquanto o smoke não rodar.
+    // `hubAceita = false`: o provider sem a capability (os outros oito hoje).
     const scopeId = chaveDeAgente(project.id, 'dev-backend');
 
     await expect(

@@ -234,13 +234,13 @@ export function openrouterConfig(
       // hub roteia embedding para provedores diferentes dos de chat, e a prova
       // de um endpoint não é prova do outro (ADR 0075).
       embeddings: false,
-      // NÃO PROVADO (ADR 0166, RN-583). O fio está pronto em
-      // `campoDeRoteamento` abaixo, e a doc do hub descreve `provider.sort`,
-      // mas doc não é prova: a capability só vira `true` quando
-      // `openrouter-provider.roteamento.smoke.spec.ts` rodar com
-      // `OPENROUTER_TEST_KEY` e o hub devolver o upstream escolhido. Enquanto
-      // for `false`, o binding recusa a preferência (422) e nada vai ao fio.
-      routingPreference: false,
+      // PROVADO em 2026-09-29 (ADR 0166, RN-583, AT-158):
+      // `openrouter-provider.roteamento.smoke.spec.ts` rodou contra a API real
+      // e o critério mudou o upstream que serviu (`price` → DeepInfra,
+      // `throughput` → Groq, em `meta-llama/llama-3.3-70b-instruct`).
+      // A prova vale para o fio `provider.sort` e o `provider` do frame;
+      // qual upstream cada critério escolhe é decisão do hub e muda com o tempo.
+      routingPreference: true,
     },
     authHeaders: (apiKey) => ({
       Authorization: `Bearer ${apiKey ?? ''}`,
