@@ -129,7 +129,9 @@ describe('OpenRouterProvider — quirks (Fase 11a)', () => {
       // Nenhum smoke com credencial provou o `/embeddings` deste provider
       // (ADR 0075) — a base sabe falar o dialeto, o provider nao declara.
       embeddings: false,
-      routingPreference: false,
+      // Provada contra a API real em 2026-09-29
+      // (`openrouter-provider.roteamento.smoke.spec.ts`, AT-158).
+      routingPreference: true,
     });
     expect(OPENROUTER_BASE_URL).toBe('https://openrouter.ai/api/v1');
   });
@@ -196,16 +198,22 @@ describe('OpenRouterProvider — quirks (Fase 11a)', () => {
 
 describe('OpenRouterProvider — preferência de roteamento (ADR 0166, RN-583)', () => {
   /**
-   * A config de PRODUÇÃO com a capability LIGADA — é o estado que o smoke com
-   * credencial real autoriza, e o único jeito de exercitar o fio enquanto a
-   * flag de produção continua `false` (não provada).
+   * A config de PRODUÇÃO, que declara a capability desde a prova de
+   * 2026-09-29 (AT-158). `semCapability` é a mesma config com a flag
+   * DESLIGADA à força — o estado de antes da prova, e o de qualquer provider
+   * que não a declare.
    */
-  const comCapability = (baseUrl: string) => {
+  const comCapability = (baseUrl: string) =>
+    new OpenAICompatibleProvider(
+      openrouterConfig(baseUrl),
+      new GptTokenizerEstimator(),
+    );
+  const semCapability = (baseUrl: string) => {
     const base = openrouterConfig(baseUrl);
     return new OpenAICompatibleProvider(
       {
         ...base,
-        capabilities: { ...base.capabilities, routingPreference: true },
+        capabilities: { ...base.capabilities, routingPreference: false },
       },
       new GptTokenizerEstimator(),
     );
@@ -249,13 +257,10 @@ describe('OpenRouterProvider — preferência de roteamento (ADR 0166, RN-583)',
     expect(corpo).not.toHaveProperty('provider');
   });
 
-  it('a config de PRODUÇÃO (capability não provada) IGNORA a preferência em vez de mandá-la', async () => {
+  it('com a capability DESLIGADA, a preferência é IGNORADA em vez de mandada', async () => {
     const servidor = await subirServidorFalso(dialetoOpenRouter);
     const corpo = await pedido(
-      new OpenAICompatibleProvider(
-        openrouterConfig(servidor.baseUrl),
-        new GptTokenizerEstimator(),
-      ),
+      semCapability(servidor.baseUrl),
       servidor,
       'throughput',
     );

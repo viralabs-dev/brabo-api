@@ -108,7 +108,7 @@ describe('a lista e as declarações', () => {
     ]);
   });
 
-  it('nenhum dos nove declara a capability sem prova — o OpenRouter espera o smoke com credencial', () => {
+  it('só o OpenRouter declara a capability — o único provado pelo smoke com credencial (AT-158)', () => {
     const providers = [
       new AnthropicProvider(),
       new BitdeerProvider(),
@@ -124,7 +124,7 @@ describe('a lista e as declarações', () => {
     for (const provider of providers) {
       expect([provider.name, provider.capabilities.routingPreference]).toEqual([
         provider.name,
-        false,
+        provider.name === 'openrouter',
       ]);
     }
   });
