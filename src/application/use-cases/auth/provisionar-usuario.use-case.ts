@@ -65,6 +65,11 @@ export class ProvisionarUsuarioUseCase {
           // Sintético — este ramo não lê o usuário de verdade (só a
           // credencial), e locale não interessa a nenhum chamador.
           locale: 'pt-BR',
+          // Toda conta nasce no AUTOMÁTICO e sem idioma detectado (RN-618):
+          // os três são `NULL` no banco, e o sintético diz o mesmo.
+          responseLanguage: null,
+          detectedLanguage: null,
+          detectedLanguageConfirmedAt: null,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -95,6 +100,11 @@ export class ProvisionarUsuarioUseCase {
           // Sintético, mesma nota do outro ramo — a linha recém-criada usa o
           // default do banco ('pt-BR'), e nada aqui lê o valor real.
           locale: 'pt-BR',
+          // Toda conta nasce no AUTOMÁTICO e sem idioma detectado (RN-618):
+          // os três são `NULL` no banco, e o sintético diz o mesmo.
+          responseLanguage: null,
+          detectedLanguage: null,
+          detectedLanguageConfirmedAt: null,
           createdAt: new Date(),
           updatedAt: new Date(),
         },

@@ -14,6 +14,7 @@ import {
   unique,
   uniqueIndex,
   index,
+  primaryKey,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { projects, users } from './iam';
@@ -106,6 +107,34 @@ export const sessions = pgTable(
     // só cresce.
     index('sessions_status_project_idx').on(table.status, table.projectId),
   ],
+);
+
+// O idioma das respostas FIXADO por uma pessoa numa sessão (RN-618, ADR
+// 0177; AT-168 resposta 1). Vale só para ESTA pessoa NESTA sessão — é por
+// isso que a chave é o PAR, e não a sessão: dois usuários na mesma sessão
+// fixam idiomas diferentes sem um tocar o do outro. A ausência da linha é o
+// estado normal ("vale a escolha da conta").
+//
+// Tabela de CONFIGURAÇÃO, não de evento: trocar de novo é UPDATE (upsert) e
+// voltar a herdar é DELETE. A sessão apagada leva as linhas junto.
+export const sessionLanguageOverrides = pgTable(
+  'session_language_overrides',
+  {
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    // Código BCP-47 CANÔNICO, pela MESMA régua de `users.response_language`
+    // (`normalizarIdiomaBcp47`). Nunca "automático": fixar o automático numa
+    // sessão é apagar a linha.
+    language: text('language').notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.sessionId, table.userId] })],
 );
 
 export const sessionEvents = pgTable(

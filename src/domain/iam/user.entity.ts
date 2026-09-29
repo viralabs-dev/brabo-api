@@ -19,6 +19,17 @@ export interface User {
   name: string | null;
   /** Default 'pt-BR' — nunca flipar silenciosamente quem já tem conta. */
   locale: UserLocale;
+  /**
+   * O idioma em que os agentes respondem a esta pessoa (RN-618) — `null` é o
+   * AUTOMÁTICO, e é assim que toda conta nasce. Código BCP-47 canônico.
+   */
+  responseLanguage: string | null;
+  /**
+   * O idioma detectado pelas mensagens e CONFIRMADO pela pessoa (RN-618) —
+   * só existe confirmado, e os dois campos são nulos juntos.
+   */
+  detectedLanguage: string | null;
+  detectedLanguageConfirmedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

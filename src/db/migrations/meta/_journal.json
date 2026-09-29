@@ -428,6 +428,20 @@
       "when": 1789780309390,
       "tag": "0060_preferencia_de_roteamento",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1790644815256,
+      "tag": "0061_idioma_de_resposta",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1790646511139,
+      "tag": "0062_idioma_do_projeto",
+      "breakpoints": true
     }
   ]
 }

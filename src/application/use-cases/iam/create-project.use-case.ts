@@ -8,6 +8,8 @@ import {
 import { SeedAgentAreasUseCase } from '../agents/seed-agent-areas.use-case';
 import { workspaceDirNameFor } from '../../../infrastructure/filesystem/project-workspaces-root';
 import { validarExecutionModeEWorkspacePath } from '../../services/workspace-location';
+import { ResolverIdiomaDaRespostaUseCase } from './resolver-idioma-da-resposta.use-case';
+import { idiomaDoProjetoOuRecusa } from './idioma-do-projeto';
 
 @Injectable()
 export class CreateProjectUseCase {
@@ -15,6 +17,7 @@ export class CreateProjectUseCase {
     private readonly unitOfWork: UnitOfWork,
     private readonly projects: ProjectRepository,
     private readonly seedAreas: SeedAgentAreasUseCase,
+    private readonly idiomaDaResposta: ResolverIdiomaDaRespostaUseCase,
   ) {}
 
   /**
@@ -62,6 +65,14 @@ export class CreateProjectUseCase {
       input.executionMode ?? 'container',
       input.workspacePath,
     );
+    // O idioma do projeto (RN-619): o pedido, canonicalizado; sem pedido, o
+    // idioma EFETIVO das respostas de quem cria (RN-618, sem sessão) — que,
+    // sem escolha nem detecção, é o idioma da interface dele. Fora da
+    // transação pelo mesmo motivo da validação acima: recusa antes de abrir.
+    const language =
+      input.language !== undefined
+        ? idiomaDoProjetoOuRecusa(input.language)
+        : (await this.idiomaDaResposta.execute(userId)).idioma;
 
     return this.unitOfWork.runInTransaction(async () => {
       const id = randomUUID();
@@ -76,6 +87,7 @@ export class CreateProjectUseCase {
         // do banco exige o par coerente, e gravar exatamente o que foi
         // validado é o que impede a raiz derivada amanhã de ser outra.
         workspacePath,
+        language,
         // Implícito NULL (default da coluna) — `runner` só ganha
         // `workspaceVerifiedAt` quando um runner conectar e confirmar
         // (RN-423); `container`/`mounted` nunca preenchem este campo.

@@ -205,6 +205,19 @@ export class ProjectResponseDto implements Wire<Project> {
   })
   mirrorPath!: string | null;
 
+  @ApiProperty({
+    example: 'pt-BR',
+    description:
+      "The PROJECT's language (RN-619): the language of everything with no " +
+      'human author — shared artifacts (product brief, business rules, ADRs) ' +
+      'and turns nobody typed (kickoff, dev agents, gates, commit messages, ' +
+      'PR bodies). A canonical BCP-47 code, open list. A new project starts ' +
+      "with its creator's effective response language (RN-618). Set through " +
+      '`PATCH /projects/:projectId` (`maintainer`). Not yet read by the ' +
+      'engine — the per-turn guidance that consumes it is AT-164.',
+  })
+  language!: string;
+
   @ApiProperty({ example: '01JC4Z0000USUARIO0000000001' })
   createdBy!: string;
 

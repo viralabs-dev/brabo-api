@@ -84,6 +84,28 @@ export const users = pgTable(
     // ainda usa `navigator.language` só como sugestão de EXIBIÇÃO, nunca
     // persistida (ver `apps/web/src/lib/idioma.ts`).
     locale: userLocaleEnum('locale').notNull().default('pt-BR'),
+    // O idioma em que os AGENTES respondem a esta pessoa (RN-618, ADR 0177) —
+    // eixo DIFERENTE de `locale` logo acima, que é o da INTERFACE e nunca é
+    // alterado por esta preferência nem pela detecção. Lista ABERTA: qualquer
+    // código BCP-47 que `normalizarIdiomaBcp47` aceite, gravado CANÔNICO
+    // (`pt-br` vira `pt-BR`) — nunca um enum, porque abrir o idioma da
+    // resposta não depende de arquivo de recurso nenhum, ao contrário do da
+    // interface.
+    //
+    // NULL é "automático", e é assim que toda conta nasce (decisão do
+    // mantenedor, AT-168 resposta 3): a ausência de escolha É o automático, e
+    // um valor-sentinela aqui dividiria a coluna entre idioma e não-idioma.
+    responseLanguage: text('response_language'),
+    // O idioma DETECTADO pelas mensagens da pessoa e CONFIRMADO por ela
+    // (AT-168 respostas 4 e 6): por usuário, global, e só entra aqui depois
+    // da confirmação — a detecção sozinha não troca nada. Quem escreve é a
+    // AT-163; esta coluna existe desde a RN-618 porque é um degrau da
+    // precedência. O par é UMA coisa só (CHECK abaixo): idioma sem instante
+    // de confirmação seria detecção não confirmada fingindo ser confirmada.
+    detectedLanguage: text('detected_language'),
+    detectedLanguageConfirmedAt: timestamp('detected_language_confirmed_at', {
+      withTimezone: true,
+    }),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -96,6 +118,10 @@ export const users = pgTable(
     // "ana@brabo.dev" seriam contas distintas — e como o login busca pelo
     // e-mail em minúsculas, a segunda conta ficaria inacessível para sempre.
     uniqueIndex('users_email_lower_idx').on(sql`lower(${table.email})`),
+    check(
+      'users_idioma_detectado_so_confirmado',
+      sql`(${table.detectedLanguage} IS NULL) = (${table.detectedLanguageConfirmedAt} IS NULL)`,
+    ),
   ],
 );
 
@@ -186,6 +212,19 @@ export const projects = pgTable(
     // ordem certa ali é decisão de produto que esta coluna não deve
     // antecipar.
     mirrorPath: text('mirror_path'),
+    // O idioma do PROJETO (RN-619, ADR 0177; AT-168 resposta 8 e AT-169
+    // resposta 1): o de tudo que não tem um autor humano — artefato
+    // compartilhado (brief, regras, ADRs) e turno sem autor (kickoff, dev
+    // agents, gates, commit, corpo de PR). Código BCP-47 CANÔNICO pela mesma
+    // régua do idioma das respostas (`normalizarIdiomaBcp47`), lista aberta.
+    //
+    // NOT NULL: projeto sem idioma seria turno sem autor sem orientação, que é
+    // o comportamento que a decisão trocou. Quem CRIA pelo caso de uso grava o
+    // idioma efetivo de quem cria; o default `pt-BR` da coluna é só a rede de
+    // quem insere por fora dele (seed, script, fixture), pelo mesmo motivo do
+    // default de `users.locale`. Os projetos que já existiam foram gravados
+    // pela migração com o idioma do TITULAR do workspace.
+    language: text('language').notNull().default('pt-BR'),
     createdBy: uuid('created_by')
       .notNull()
       .references(() => users.id),
