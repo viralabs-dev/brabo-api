@@ -38,6 +38,10 @@ export interface ProjectInput {
   // normal). Escrevem aqui, via `update`, `SetProjectMirrorPathUseCase` e a
   // conversão de modo, que o LIMPA ao entrar em `container`.
   mirrorPath?: string | null;
+  // O idioma do projeto (RN-619) — código BCP-47 JÁ canonicalizado por quem
+  // chama (`idiomaDoProjetoOuRecusa`). Omitido na criação direta usa o
+  // default da coluna; `CreateProjectUseCase` sempre o manda.
+  language?: string;
 }
 
 export abstract class ProjectRepository {

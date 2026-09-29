@@ -212,6 +212,19 @@ export const projects = pgTable(
     // ordem certa ali é decisão de produto que esta coluna não deve
     // antecipar.
     mirrorPath: text('mirror_path'),
+    // O idioma do PROJETO (RN-619, ADR 0177; AT-168 resposta 8 e AT-169
+    // resposta 1): o de tudo que não tem um autor humano — artefato
+    // compartilhado (brief, regras, ADRs) e turno sem autor (kickoff, dev
+    // agents, gates, commit, corpo de PR). Código BCP-47 CANÔNICO pela mesma
+    // régua do idioma das respostas (`normalizarIdiomaBcp47`), lista aberta.
+    //
+    // NOT NULL: projeto sem idioma seria turno sem autor sem orientação, que é
+    // o comportamento que a decisão trocou. Quem CRIA pelo caso de uso grava o
+    // idioma efetivo de quem cria; o default `pt-BR` da coluna é só a rede de
+    // quem insere por fora dele (seed, script, fixture), pelo mesmo motivo do
+    // default de `users.locale`. Os projetos que já existiam foram gravados
+    // pela migração com o idioma do TITULAR do workspace.
+    language: text('language').notNull().default('pt-BR'),
     createdBy: uuid('created_by')
       .notNull()
       .references(() => users.id),
