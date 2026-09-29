@@ -13,6 +13,7 @@ import type { User } from '../../../domain/iam/user.entity';
 import { RequireRole } from './require-role.decorator';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import { IdiomaDaRespostaNaSessaoUseCase } from '../../../application/use-cases/iam/idioma-da-resposta-na-sessao.use-case';
+import { DetectarIdiomaDoAutorUseCase } from '../../../application/use-cases/iam/detectar-idioma-do-autor.use-case';
 import type { IdiomaDaRespostaDaPessoa } from '../../../application/use-cases/iam/resolver-idioma-da-resposta.use-case';
 import {
   SessionResponseLanguageResponseDto,
@@ -21,6 +22,7 @@ import {
 
 function paraOFio(
   r: IdiomaDaRespostaDaPessoa,
+  detectionQuestion: string | null,
 ): SessionResponseLanguageResponseDto {
   return {
     language: r.idioma,
@@ -29,6 +31,7 @@ function paraOFio(
     account: r.fontes.conta,
     detected: r.fontes.detectado,
     interfaceLocale: r.fontes.interface,
+    detectionQuestion,
   };
 }
 
@@ -53,7 +56,23 @@ function paraOFio(
 export class SessionResponseLanguageController {
   constructor(
     private readonly idiomaNaSessao: IdiomaDaRespostaNaSessaoUseCase,
+    private readonly deteccao: DetectarIdiomaDoAutorUseCase,
   ) {}
+
+  /**
+   * A resposta com a pergunta da detecção (RN-624) — que é melhor esforço e
+   * nunca lança: a leitura do idioma não cai por causa dela.
+   */
+  private async comPergunta(
+    userId: string,
+    r: IdiomaDaRespostaDaPessoa,
+  ): Promise<SessionResponseLanguageResponseDto> {
+    const pergunta = await this.deteccao.pergunta(userId, {
+      idioma: r.idioma,
+      origem: r.origem,
+    });
+    return paraOFio(r, pergunta);
+  }
 
   @Get()
   @RequireRole('viewer')
@@ -62,7 +81,9 @@ export class SessionResponseLanguageController {
     description:
       'Resolved for the CALLER, never for the session: session override > ' +
       'Account choice > detected-and-confirmed > interface language ' +
-      '(RN-618). Returns the winner, its origin and every link of the chain.',
+      '(RN-618). Returns the winner, its origin and every link of the chain — ' +
+      'and, when your recent messages point to another language and the ' +
+      'screen should ask about it, `detectionQuestion` (RN-624).',
   })
   @ApiOkResponse({ type: SessionResponseLanguageResponseDto })
   async get(
@@ -70,7 +91,8 @@ export class SessionResponseLanguageController {
     @Param('sessionId') sessionId: string,
     @CurrentUser() user: User,
   ): Promise<SessionResponseLanguageResponseDto> {
-    return paraOFio(
+    return this.comPergunta(
+      user.id,
       await this.idiomaNaSessao.ler(projectId, sessionId, user.id),
     );
   }
@@ -96,7 +118,8 @@ export class SessionResponseLanguageController {
     @CurrentUser() user: User,
     @Body() dto: SetSessionResponseLanguageDto,
   ): Promise<SessionResponseLanguageResponseDto> {
-    return paraOFio(
+    return this.comPergunta(
+      user.id,
       await this.idiomaNaSessao.definir(
         projectId,
         sessionId,

@@ -46,6 +46,7 @@ interface IdiomaDaRespostaNaSessao {
   account: string;
   detected: string | null;
   interfaceLocale: UserLocale;
+  detectionQuestion: string | null;
 }
 
 /**
@@ -80,6 +81,22 @@ export class SessionResponseLanguageResponseDto implements Wire<IdiomaDaResposta
 
   @ApiProperty({ enum: USER_LOCALES, example: 'pt-BR' })
   interfaceLocale!: UserLocale;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: 'es',
+    description:
+      'The language YOUR recent messages point to, when the screen should ' +
+      'ASK whether to use it for the answers (RN-624) — `null` means no ' +
+      'question. Detection never changes the preference by itself: only ' +
+      'answering `confirm` on `POST /users/me/preferences/detected-language` ' +
+      'does. Never asked when the effective language comes from an explicit ' +
+      'choice (this session or the Account), when it already is the detected ' +
+      'one, or when you declined this language before. Best effort: a ' +
+      'detection failure is `null`, never an error of this route.',
+  })
+  detectionQuestion!: string | null;
 }
 export const _chavesIdiomaNaSessao: MesmasChaves<
   SessionResponseLanguageResponseDto,
