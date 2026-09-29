@@ -106,3 +106,35 @@ export const _chavesPreferencias: MesmasChaves<
   UserPreferencesResponseDto,
   UserPreferences
 > = true;
+
+/**
+ * Corpo de `POST users/me/preferences/detected-language` (RN-624): a resposta
+ * da pessoa à pergunta "Detectamos que você escreve em X — usar X nas
+ * respostas?". As duas respostas são explícitas — não há "fechar sem
+ * responder" gravado; a tela que só esconde a pergunta não chama esta rota.
+ */
+export class AnswerDetectedLanguageDto {
+  @ApiProperty({
+    example: 'es',
+    maxLength: TAMANHO_MAXIMO_DO_IDIOMA,
+    description:
+      'The language the question was about — the `detectionQuestion` of ' +
+      '`GET .../sessions/:sessionId/response-language`.',
+  })
+  @IsString()
+  @MaxLength(TAMANHO_MAXIMO_DO_IDIOMA)
+  language!: string;
+
+  @ApiProperty({
+    enum: ['confirm', 'decline'],
+    example: 'confirm',
+    description:
+      '`confirm` stores it as your detected-and-confirmed language (it then ' +
+      'answers you wherever your Account is on automatic); 409 ' +
+      '`deteccao_mudou` when your messages no longer point to it. `decline` ' +
+      'stores the refusal and this language is never asked again (confirming ' +
+      'it later clears the refusal).',
+  })
+  @IsIn(['confirm', 'decline'])
+  answer!: 'confirm' | 'decline';
+}

@@ -35,6 +35,7 @@ import { GetUserPreferencesUseCase } from './get-user-preferences.use-case';
 import { UpdateUserPreferencesUseCase } from './update-user-preferences.use-case';
 import { ResolverIdiomaDaRespostaUseCase } from './resolver-idioma-da-resposta.use-case';
 import { IdiomaDaRespostaNaSessaoUseCase } from './idioma-da-resposta-na-sessao.use-case';
+import { DetectarIdiomaDoAutorUseCase } from './detectar-idioma-do-autor.use-case';
 // Provider direto, e não `imports: [AgentsUseCasesModule]`: o seeding só
 // depende do repositório de áreas (DrizzleModule é global), e importar o
 // módulo de agentes traria sessões e o cliente do engine junto — aresta nova
@@ -75,6 +76,7 @@ const USE_CASES = [
   UpdateUserPreferencesUseCase,
   ResolverIdiomaDaRespostaUseCase,
   IdiomaDaRespostaNaSessaoUseCase,
+  DetectarIdiomaDoAutorUseCase,
 ];
 
 @Module({

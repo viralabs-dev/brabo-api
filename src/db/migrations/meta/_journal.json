@@ -442,6 +442,13 @@
       "when": 1790646511139,
       "tag": "0062_idioma_do_projeto",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1790659733966,
+      "tag": "0063_deteccao_de_idioma",
+      "breakpoints": true
     }
   ]
 }

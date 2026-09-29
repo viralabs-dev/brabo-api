@@ -125,6 +125,32 @@ export const users = pgTable(
   ],
 );
 
+// Os idiomas DETECTADOS que a pessoa RECUSOU na pergunta de confirmação
+// (AT-163, RN-624): "Detectamos que você escreve em X — usar X nas
+// respostas?" → "Não". Uma linha por (pessoa, idioma), e a presença dela é o
+// que impede a MESMA pergunta de voltar — a detecção roda a cada leitura, e
+// sem isto quem escreve em espanhol de propósito mas quer respostas em
+// português seria perguntado para sempre. Confirmar o idioma mais tarde apaga
+// a linha dele (a pessoa mudou de ideia, e a recusa antiga não vale mais).
+//
+// Tabela e não coluna em `users`: é um CONJUNTO por pessoa, com o instante de
+// cada recusa, e `users` segue sem nada que a detecção não confirmou.
+export const detectedLanguageDeclines = pgTable(
+  'detected_language_declines',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    // Código BCP-47 canônico (`normalizarIdiomaBcp47`), como toda coluna de
+    // idioma da RN-618.
+    language: text('language').notNull(),
+    declinedAt: timestamp('declined_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.language] })],
+);
+
 export const workspaces = pgTable('workspaces', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),

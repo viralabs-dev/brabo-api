@@ -153,7 +153,20 @@ export const sessionEvents = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [unique().on(table.sessionId, table.seq)],
+  (table) => [
+    unique().on(table.sessionId, table.seq),
+    // A detecção de idioma do AUTOR (AT-163, RN-624) lê as últimas mensagens
+    // de UMA pessoa em TODAS as sessões — o detectado é por usuário, global
+    // (AT-168 resposta 6). Sem índice por ator essa leitura varre o event
+    // log inteiro a cada consulta da barra de idioma. PARCIAL: só os dois
+    // tipos que são evidência e só ator `user`, então ele não cresce com o
+    // resto do log (respostas de agente, ferramentas, status).
+    index('session_events_evidencia_de_idioma_idx')
+      .on(table.actorId, table.createdAt)
+      .where(
+        sql`${table.actorKind} = 'user' AND ${table.type} IN ('chat.message', 'chat.structured_question_answered')`,
+      ),
+  ],
 );
 
 export const outboxEvents = pgTable(
