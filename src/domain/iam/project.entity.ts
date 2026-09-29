@@ -95,6 +95,9 @@ export interface Project {
   // (RN-423). A metade de `realpath` da guarda (symlink que escapa do
   // destino) é do runner, e ainda não existe quando esta coluna é escrita.
   mirrorPath: string | null;
+  // O idioma do PROJETO (RN-619): o de artefato compartilhado e de turno sem
+  // autor humano. Código BCP-47 canônico, NOT NULL.
+  language: string;
   createdBy: string;
   // Teto de tokens por task dos dev agents (micro-USD). Nulo = default do
   // domínio (ver DEFAULT_TASK_BUDGET_MICROS em ActivateExecutionUseCase).
