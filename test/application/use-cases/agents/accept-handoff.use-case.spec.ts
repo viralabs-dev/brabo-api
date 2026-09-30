@@ -60,11 +60,19 @@ class FakeAutonomy {
 }
 
 class FakeEvents {
-  eventos: { type: string; payload?: Record<string, unknown> }[] = [];
+  eventos: {
+    type: string;
+    actor?: unknown;
+    payload?: Record<string, unknown>;
+  }[] = [];
   execute(
     _p: string,
     _s: string,
-    evento: { type: string; payload?: Record<string, unknown> },
+    evento: {
+      type: string;
+      actor?: unknown;
+      payload?: Record<string, unknown>;
+    },
   ) {
     this.eventos.push(evento);
     return Promise.resolve({} as never);
@@ -80,9 +88,17 @@ class FakeEvents {
 
 class FakeActivate {
   ativados: string[] = [];
-  execute(_p: string, _s: string, agente: string, _u: string) {
+  implicitos: unknown[] = [];
+  execute(
+    _p: string,
+    _s: string,
+    agente: string,
+    _u: string,
+    implicito?: unknown,
+  ) {
     ordem.push(`ativou:${agente}`);
     this.ativados.push(agente);
+    this.implicitos.push(implicito);
     return Promise.resolve({} as never);
   }
 }
@@ -297,5 +313,37 @@ describe('AcceptHandoffUseCase — o repositório nasce no handoff ao Arquiteto 
     );
     expect(provision.chamadas).toHaveLength(0);
     expect(activate.ativados).toHaveLength(0);
+  });
+
+  it('RN-658: o aceite implícito grava os MESMOS eventos, com o humano como ator e a marca no payload', async () => {
+    handoffs.handoff = { ...handoffs.handoff, toAgent: 'po' };
+    const implicito = {
+      via: 'readiness.confirmed' as const,
+      readinessEventId: 'ev-pronto',
+    };
+
+    await uc.execute(PROJECT, SESSION, HANDOFF, USER, implicito);
+
+    expect(events.eventos).toEqual([
+      {
+        type: 'handoff.accepted',
+        actor: { kind: 'user', id: USER },
+        payload: { handoffId: HANDOFF, toAgent: 'po', implicito },
+      },
+    ]);
+    expect(activate.ativados).toEqual(['po']);
+    expect(activate.implicitos).toEqual([implicito]);
+  });
+
+  it('RN-658: o aceite pelo card (sem marca) segue sem `implicito` no payload', async () => {
+    handoffs.handoff = { ...handoffs.handoff, toAgent: 'po' };
+
+    await uc.execute(PROJECT, SESSION, HANDOFF, USER);
+
+    expect(events.eventos[0]?.payload).toEqual({
+      handoffId: HANDOFF,
+      toAgent: 'po',
+    });
+    expect(activate.implicitos).toEqual([undefined]);
   });
 });

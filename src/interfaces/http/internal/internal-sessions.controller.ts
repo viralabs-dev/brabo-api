@@ -37,6 +37,7 @@ import { RunLlmTurnUseCase } from '../../../application/use-cases/llm/run-llm-tu
 import { StreamLlmTurnUseCase } from '../../../application/use-cases/llm/stream-llm-turn.use-case';
 import { ProposeActionUseCase } from '../../../application/use-cases/actions/propose-action.use-case';
 import { CreateHandoffUseCase } from '../../../application/use-cases/agents/create-handoff.use-case';
+import { AceiteImplicitoDoPoUseCase } from '../../../application/use-cases/agents/aceite-implicito-do-po.use-case';
 import { CreateEpicUseCase } from '../../../application/use-cases/backlog/create-epic.use-case';
 import { CreateStoryUseCase } from '../../../application/use-cases/backlog/create-story.use-case';
 import { CreateTaskUseCase } from '../../../application/use-cases/backlog/create-task.use-case';
@@ -155,6 +156,7 @@ export class InternalSessionsController {
     private readonly streamLlmTurn: StreamLlmTurnUseCase,
     private readonly proposeAction: ProposeActionUseCase,
     private readonly createHandoff: CreateHandoffUseCase,
+    private readonly aceiteImplicitoDoPo: AceiteImplicitoDoPoUseCase,
     private readonly createEpic: CreateEpicUseCase,
     private readonly createStory: CreateStoryUseCase,
     private readonly createTask: CreateTaskUseCase,
@@ -385,7 +387,12 @@ export class InternalSessionsController {
     summary: 'Offers a handoff from one agent to another',
     description:
       'Born as `offered`. Who accepts is a PERSON, via the human route — an ' +
-      "agent doesn't activate an agent.",
+      "agent doesn't activate an agent. The one exception is still a person's " +
+      'decision: the Creative→PO offer carrying the `product_brief` that an ' +
+      '"I\'m ready — the need is validated" click asked for is accepted on ' +
+      'behalf of whoever clicked, with that person as the actor and ' +
+      '`implicito` in the payload (RN-658, ADR 0185); the response then ' +
+      'carries `status: accepted`.',
   })
   @ApiCreatedResponse({ type: OfertaDeHandoffResponseDto })
   @ApiConflictResponse({
@@ -394,16 +401,25 @@ export class InternalSessionsController {
       'a non-closed session of the project. The `message` is the text the ' +
       'agent reads as the tool result.',
   })
-  handoff(
+  async handoff(
     @Param('sessionId') sessionId: string,
     @Body() dto: CreateHandoffInternalDto,
   ) {
-    return this.createHandoff.execute(dto.projectId, sessionId, {
+    const oferta = await this.createHandoff.execute(dto.projectId, sessionId, {
       fromAgent: dto.fromAgent,
       toAgent: dto.toAgent,
       artifactId: dto.artifactId,
       seAusente: dto.seAusente,
     });
+    // RN-658 (ADR 0185): o handoff Criativo→PO que o "Estou pronto" pediu é
+    // aceito em nome de quem clicou, pelo MESMO caso de uso do card. Fora da
+    // regra, a oferta segue `offered`, como sempre.
+    const aceito = await this.aceiteImplicitoDoPo.seCouber(
+      dto.projectId,
+      sessionId,
+      oferta,
+    );
+    return aceito ? { ...oferta, status: 'accepted' as const } : oferta;
   }
 
   /**

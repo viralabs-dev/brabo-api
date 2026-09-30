@@ -9,6 +9,7 @@ import { OfferInfraHandoffUseCase } from './offer-infra-handoff.use-case';
 import { ValidateNecessityUseCase } from './validate-necessity.use-case';
 import { CreateHandoffUseCase } from './create-handoff.use-case';
 import { AcceptHandoffUseCase } from './accept-handoff.use-case';
+import { AceiteImplicitoDoPoUseCase } from './aceite-implicito-do-po.use-case';
 import { ListHandoffsUseCase } from './list-handoffs.use-case';
 import { RequestManualHandoffUseCase } from './request-manual-handoff.use-case';
 import { UpsertAgentInstructionUseCase } from './upsert-agent-instruction.use-case';
@@ -30,6 +31,7 @@ const USE_CASES = [
   ValidateNecessityUseCase,
   CreateHandoffUseCase,
   AcceptHandoffUseCase,
+  AceiteImplicitoDoPoUseCase,
   ListHandoffsUseCase,
   RequestManualHandoffUseCase,
   UpsertAgentInstructionUseCase,

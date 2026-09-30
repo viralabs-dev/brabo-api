@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
+import type { AceiteImplicito } from '../../../domain/sessions/estou-pronto';
 import { HandoffRepository } from '../../ports/handoff-repository.port';
 import { AgentAutonomyRepository } from '../../ports/agent-autonomy-repository.port';
 import { ProjectRepository } from '../../ports/project-repository.port';
@@ -80,6 +81,12 @@ const ATOR_DO_PROVISIONAMENTO: Actor = {
  * deixou de provisionar (RN-541), e o Arquiteto é o primeiro agente que
  * precisa de onde escrever. O aceite ao Dev Lead repete a chamada, como
  * segunda porta idempotente.
+ *
+ * O aceite IMPLÍCITO (RN-658, ADR 0185) passa por aqui também, e grava os
+ * MESMOS eventos, com o MESMO ator humano (quem clicou "Estou pronto"): a
+ * única diferença é `implicito` no payload de `handoff.accepted` e de
+ * `agent.activated`, dizendo de qual clique o aceite veio. Nenhum evento novo,
+ * nenhum ator de sistema no lugar da pessoa.
  */
 @Injectable()
 export class AcceptHandoffUseCase {
@@ -98,6 +105,7 @@ export class AcceptHandoffUseCase {
     sessionId: string,
     handoffId: string,
     userId: string,
+    implicito?: AceiteImplicito,
   ) {
     const handoff = await this.handoffs.findById(handoffId);
     if (!handoff || handoff.sessionId !== sessionId) {
@@ -124,7 +132,9 @@ export class AcceptHandoffUseCase {
     await this.appendEvent.execute(projectId, sessionId, {
       type: 'handoff.accepted',
       actor: { kind: 'user', id: userId },
-      payload: { handoffId, toAgent: handoff.toAgent },
+      payload: implicito
+        ? { handoffId, toAgent: handoff.toAgent, implicito }
+        : { handoffId, toAgent: handoff.toAgent },
     });
 
     if (handoff.toAgent === 'infra') {
@@ -148,6 +158,7 @@ export class AcceptHandoffUseCase {
       sessionId,
       handoff.toAgent,
       userId,
+      implicito,
     );
 
     return accepted;
