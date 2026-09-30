@@ -7,7 +7,14 @@ import type {
   RecursosDoContainer,
 } from '../../../domain/containers/project-container';
 import type { ProjectExecutionMode } from '../../../domain/iam/project.entity';
-import { segmentoSobABaseDeProjetos } from '../../../infrastructure/filesystem/project-workspaces-root';
+import {
+  projectScopeRoot,
+  segmentoSobABaseDeProjetos,
+} from '../../../infrastructure/filesystem/project-workspaces-root';
+import {
+  LeitorDeDonoDePasta,
+  type DonoDePasta,
+} from '../../../infrastructure/filesystem/dono-de-pasta';
 import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 /**
@@ -48,6 +55,13 @@ export interface SpecDeContainer {
    * e isso não é a mesma pergunta que "onde fica a pasta".
    */
   localizacao: LocalizacaoDoProjeto;
+  /**
+   * O dono da pasta, MEDIDO aqui (ADR 0180): o uid:gid com que o broker sobe o
+   * container, para o dev agent escrever na pasta do projeto sob `--cap-drop
+   * ALL`. `null` quando não se mede (pasta inalcançável, `runner`) ou o dono é
+   * root — o container sobe como sempre.
+   */
+  usuarioDaPasta: DonoDePasta | null;
   /** `null` enquanto o Arquiteto não decidiu (RN-105). */
   imagem: {
     image: string;
@@ -97,6 +111,7 @@ export class ObterSpecDeContainerUseCase {
   constructor(
     private readonly projects: ProjectRepository,
     private readonly obterImagem: ObterContainerDoProjetoUseCase,
+    private readonly donoDePasta: LeitorDeDonoDePasta = new LeitorDeDonoDePasta(),
   ) {}
 
   @Traced('application')
@@ -105,6 +120,11 @@ export class ObterSpecDeContainerUseCase {
     if (!project) throw new NotFoundException('Projeto não encontrado');
 
     const estado = await this.obterImagem.execute(projectId);
+    const localizacao = localizacaoDoProjeto(
+      project.executionMode,
+      project.workspaceDirName,
+      project.workspacePath,
+    );
 
     return {
       projectId: project.id,
@@ -112,14 +132,28 @@ export class ObterSpecDeContainerUseCase {
       workspaceId: project.workspaceId,
       workspaceDirName: project.workspaceDirName,
       executionMode: project.executionMode,
-      localizacao: localizacaoDoProjeto(
-        project.executionMode,
-        project.workspaceDirName,
-        project.workspacePath,
-      ),
+      localizacao,
+      usuarioDaPasta: await this.medirDono(project, localizacao),
       imagem: recorteDaDecisao(estado.decisao),
       imagemVersao: estado.version,
     };
+  }
+
+  private async medirDono(
+    project: {
+      executionMode: ProjectExecutionMode;
+      workspaceDirName: string;
+      workspacePath: string | null;
+    },
+    localizacao: LocalizacaoDoProjeto,
+  ): Promise<DonoDePasta | null> {
+    // Só onde o broker de fato monta a pasta; `runner` sobe pelo runner.
+    if (localizacao.tipo === 'indisponivel') return null;
+    try {
+      return await this.donoDePasta.ler(projectScopeRoot(project));
+    } catch {
+      return null;
+    }
   }
 }
 
