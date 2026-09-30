@@ -363,6 +363,17 @@ export class RosterFactsResponseDto implements Wire<RosterFacts> {
   delegatedSubagents!: string[];
 
   @ApiProperty({
+    example: ['arquiteto', 'infra'],
+    description:
+      'Agents with at least one `agent.activated` in the session, most ' +
+      'recently activated first (by `seq`), one entry per agent (RN-630). ' +
+      'Covers the WHOLE session, not the 200-event window: the client sums ' +
+      'it to the window and trusts it only when `latestSessionId` is the ' +
+      'session it is reading.',
+  })
+  activatedAgents!: string[];
+
+  @ApiProperty({
     example: false,
     description:
       'An `accepted` handoff to `infra` exists in the most recent session.',

@@ -24,6 +24,12 @@ export interface RosterFacts {
   moduleNames: string[];
   gatesEverOpened: boolean;
   delegatedSubagents: string[];
+  /**
+   * RN-630 — agentes com `agent.activated` na sessão INTEIRA (não na janela
+   * de 200), UM por agente, o de ativação mais recente primeiro. É a fonte
+   * não janelada de "quem está ativo" e de "quem recebe o composer".
+   */
+  activatedAgents: string[];
   infraActive: boolean;
   /** ADR 0087 — mesmo critério de `infraActive`: handoff `accepted` para "ux-designer". */
   uxDesignerActive: boolean;
