@@ -6,9 +6,12 @@ import {
   type WorkspaceWithRole,
 } from '../../../application/ports/workspace-repository.port';
 import type { Workspace } from '../../../domain/iam/workspace.entity';
-import type { WorkspaceMember } from '../../../domain/iam/workspace-member.entity';
+import type {
+  WorkspaceMember,
+  WorkspaceMemberWithUser,
+} from '../../../domain/iam/workspace-member.entity';
 import type { Role } from '../../../domain/iam/role';
-import { workspaceMembers, workspaces } from '../../../db/schema';
+import { users, workspaceMembers, workspaces } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
@@ -106,6 +109,20 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
       .where(eq(workspaces.id, id))
       .returning();
     return row ?? null;
+  }
+
+  async listMembers(workspaceId: string): Promise<WorkspaceMemberWithUser[]> {
+    const db = currentDb(this.rootDb);
+    return db
+      .select({
+        userId: workspaceMembers.userId,
+        role: workspaceMembers.role,
+        name: users.name,
+        email: users.email,
+      })
+      .from(workspaceMembers)
+      .innerJoin(users, eq(users.id, workspaceMembers.userId))
+      .where(eq(workspaceMembers.workspaceId, workspaceId));
   }
 
   async findMemberRole(

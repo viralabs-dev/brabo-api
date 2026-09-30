@@ -9,7 +9,10 @@ import {
   type ProjectExecutionMode,
   type StoryPromotionMode,
 } from '../../../../domain/iam/project.entity';
-import type { WorkspaceMember } from '../../../../domain/iam/workspace-member.entity';
+import type {
+  WorkspaceMember,
+  WorkspaceMemberWithUser,
+} from '../../../../domain/iam/workspace-member.entity';
 import type {
   ProjectMember,
   ProjectMemberWithUser,
@@ -318,6 +321,35 @@ export class ProjectMemberComUsuarioResponseDto implements Wire<ProjectMemberWit
 export const _chavesMembroComUsuario: MesmasChaves<
   ProjectMemberComUsuarioResponseDto,
   ProjectMemberWithUser
+> = true;
+
+/**
+ * Membro do WORKSPACE com nome e e-mail (AT-335, RN-652) — a mesma forma da
+ * de projeto, e nada além: sem `createdAt`, sem estado de conta.
+ */
+export class WorkspaceMemberComUsuarioResponseDto
+  implements Wire<WorkspaceMemberWithUser>
+{
+  @ApiProperty({ example: '01JC4Z0000USUARIO0000000002' })
+  userId!: string;
+
+  @ApiProperty({
+    ...PAPEL,
+    description:
+      'The WORKSPACE role — what every project of the workspace inherits ' +
+      'unless a project row overrides it (RN-471).',
+  })
+  role!: Role;
+
+  @ApiProperty({ type: String, example: 'Senior Dev', nullable: true })
+  name!: string | null;
+
+  @ApiProperty({ example: 'dev@brabo.dev' })
+  email!: string;
+}
+export const _chavesMembroWsComUsuario: MesmasChaves<
+  WorkspaceMemberComUsuarioResponseDto,
+  WorkspaceMemberWithUser
 > = true;
 
 // --- Resumo do dashboard (RN-090) ---
