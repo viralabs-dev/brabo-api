@@ -50,6 +50,7 @@ import {
   GitBranchNotFoundError,
   GitNotSupportedError,
   GitPermissionDeniedError,
+  GitPullRequestAlreadyMergedError,
   GitRepoAlreadyExistsError,
   GitRepoNotFoundError,
 } from '../../domain/git/git-errors';
@@ -329,6 +330,13 @@ export class LocalGitProvider implements GitProviderContract {
         this.name,
         'mergePullRequest: PR não encontrada',
       );
+    }
+
+    // PR já mergeada é RECUSADA, como no GitHub (AT-249, RN-663) — devolvê-la
+    // sem erro fazia o executor gravar um segundo `executed` para o mesmo
+    // merge.
+    if (record.state === 'merged') {
+      throw new GitPullRequestAlreadyMergedError(repoDir, input.pullRequestId);
     }
 
     if (record.state === 'open') {

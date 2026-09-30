@@ -246,8 +246,9 @@ export class ExecuteGitActionUseCase {
    * IDEMPOTENTE por construção: `markDoneIfNotDone` é um UPDATE condicional, e
    * o evento imutável (`backlog.task_status_changed`) só é gravado quando a
    * linha de fato mudou — merge repetido da mesma PR não move de novo nem
-   * duplica evento. NÃO recusa merge de PR já mergeada nem consulta o gate
-   * (AT-249, decisão pendente): só marca `done`.
+   * duplica evento. Não consulta o gate (AT-249: gate pendente só AVISA, na
+   * tela). Merge de PR já mergeada não chega aqui: a proposta e a aprovação o
+   * recusam com 409 `pr_ja_mergeado`, e o `LocalGitProvider` também (RN-663).
    */
   private async settleMerge(
     projectId: string,
