@@ -108,6 +108,19 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
     return row ?? null;
   }
 
+  async setToolRouterEnabled(
+    id: string,
+    enabled: boolean,
+  ): Promise<Workspace | null> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .update(workspaces)
+      .set({ toolRouterEnabled: enabled, updatedAt: new Date() })
+      .where(eq(workspaces.id, id))
+      .returning();
+    return row ?? null;
+  }
+
   async findMemberRole(
     workspaceId: string,
     userId: string,

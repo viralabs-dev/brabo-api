@@ -28,6 +28,7 @@ import { SendChatMessageUseCase } from './send-chat-message.use-case';
 import { RunLlmTurnUseCase } from './run-llm-turn.use-case';
 import { ResolveCredentialOwnerUseCase } from './resolve-credential-owner.use-case';
 import { StreamLlmTurnUseCase } from './stream-llm-turn.use-case';
+import { DecidirFerramentaDoPassoUseCase } from './decidir-ferramenta-do-passo.use-case';
 import { SearchHuggingFaceModelsUseCase } from './huggingface/search-huggingface-models.use-case';
 import { RequestModelPullUseCase } from './huggingface/request-model-pull.use-case';
 import { ConfirmModelPullUseCase } from './huggingface/confirm-model-pull.use-case';
@@ -62,6 +63,7 @@ const USE_CASES = [
   RunLlmTurnUseCase,
   ResolveCredentialOwnerUseCase,
   StreamLlmTurnUseCase,
+  DecidirFerramentaDoPassoUseCase,
   SearchHuggingFaceModelsUseCase,
   RequestModelPullUseCase,
   ConfirmModelPullUseCase,

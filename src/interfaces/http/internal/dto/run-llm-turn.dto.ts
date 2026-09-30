@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 import type { ChatMessage, ToolDef } from '@brabo/shared';
 
 // Chamada interna do engine (cliente confiável, EngineServiceGuard) — a
@@ -35,4 +41,15 @@ export class RunLlmTurnDto {
   @IsOptional()
   @IsArray()
   tools?: ToolDef[];
+
+  @ApiPropertyOptional({
+    example: true,
+    description:
+      'Asks for the WHOLE tool catalog: the Jev tool router (ADR 0179) is ' +
+      'skipped for this call. The engine sets it when it repeats a step whose ' +
+      'restricted menu made the model answer without calling a tool.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  catalogoCompleto?: boolean;
 }

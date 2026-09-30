@@ -13,6 +13,7 @@ import {
   text,
   integer,
   bigint,
+  boolean,
   timestamp,
   primaryKey,
   unique,
@@ -158,6 +159,9 @@ export const workspaces = pgTable('workspaces', {
   createdBy: uuid('created_by')
     .notNull()
     .references(() => users.id),
+  // O desligador do roteamento de ferramenta pelo Jev (ADR 0179, AT-236
+  // resposta 3): ligado por padrão, e só age com provider OpenRouter.
+  toolRouterEnabled: boolean('tool_router_enabled').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -1,6 +1,10 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type { GitProviderName } from '@brabo/shared';
 import type { MesmasChaves, Wire } from '../../shared/dto/wire';
+import type {
+  MotivoDaQueda,
+  OrigemDaQueda,
+} from '../../../../domain/llm/tool-router';
 
 const GIT_PROVIDER_NAMES: readonly GitProviderName[] = [
   'local',
@@ -482,6 +486,92 @@ export class LlmUsageResponseDto {
   estimated!: boolean;
 }
 
+export class ToolRoutingResponseDto {
+  @ApiProperty({ example: 'typesafe/jev-1.13' })
+  modelo!: string;
+
+  @ApiProperty({
+    example: 9,
+    description: 'How many tools the agent had at this step.',
+  })
+  ofertadas!: number;
+
+  @ApiProperty({
+    type: [String],
+    description: 'The tool names BEFORE the router.',
+  })
+  menuAntes!: string[];
+
+  @ApiProperty({
+    type: [String],
+    description:
+      'The tool names the chat model was offered (the whole catalog on any fall).',
+  })
+  menuDepois!: string[];
+
+  @ApiProperty({ nullable: true, example: 'create_story' })
+  escolha!: string | null;
+
+  @ApiProperty({ nullable: true, example: 0.91 })
+  confianca!: number | null;
+
+  @ApiProperty({
+    nullable: true,
+    type: 'object',
+    additionalProperties: true,
+    example: { opcao: 'create_task', probabilidade: 0.06 },
+  })
+  segunda!: { opcao: string; probabilidade: number } | null;
+
+  @ApiProperty({
+    nullable: true,
+    example: 'read_file',
+    description: 'The previous tool of the same run.',
+  })
+  anterior!: string | null;
+
+  @ApiProperty({
+    description:
+      'The Jev answered AND the menu came out smaller than the catalog.',
+  })
+  aplicado!: boolean;
+
+  @ApiProperty({
+    nullable: true,
+    enum: [
+      'timeout',
+      'erro_http',
+      'erro_de_rede',
+      'resposta_invalida',
+      'escolha_fora_das_opcoes',
+      'estado_grande',
+      'colisao_de_nome',
+    ],
+  })
+  motivoDaQueda!: MotivoDaQueda | null;
+
+  @ApiProperty({ nullable: true, enum: ['infra', 'modelo', 'codigo'] })
+  origemDaQueda!: OrigemDaQueda | null;
+
+  @ApiProperty({ nullable: true })
+  detalheDaQueda!: string | null;
+
+  @ApiProperty({ example: 212 })
+  latenciaMs!: number;
+
+  @ApiProperty({
+    example: 52,
+    description: 'REAL cost of the Jev answer (`usage.cost`), in micro-USD.',
+  })
+  custoMicros!: number;
+
+  @ApiProperty({
+    description:
+      '`true` when the Jev charged but the `token_usage` row could not be written.',
+  })
+  gastoNaoRegistrado!: boolean;
+}
+
 export class LlmTurnResponseDto implements Wire<RunLlmTurnResult> {
   @ApiProperty({ type: LlmMessageResponseDto })
   message!: LlmMessageResponseDto;
@@ -508,6 +598,16 @@ export class LlmTurnResponseDto implements Wire<RunLlmTurnResult> {
       'or binding to a non-existent model).',
   })
   modelName!: string | null;
+
+  @ApiPropertyOptional({
+    type: ToolRoutingResponseDto,
+    description:
+      'The step where the Jev chose the tool (ADR 0179, RN-625). Absent when ' +
+      'the router was not consulted (provider other than OpenRouter, fewer ' +
+      'than two tools, workspace switch off). The engine narrates it as ' +
+      '`tool_router.decided`.',
+  })
+  toolRouting?: ToolRoutingResponseDto;
 }
 export const _chavesTurno: MesmasChaves<LlmTurnResponseDto, RunLlmTurnResult> =
   true;

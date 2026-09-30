@@ -350,6 +350,10 @@ export const tokenUsage = pgTable(
     })
       .notNull()
       .default(0),
+    // `true` quando o preço NÃO é de catálogo: foi derivado de `custo ÷ tokens`
+    // da própria resposta (o Jev, ADR 0179, AT-236 resposta 11). Mantém
+    // `tokens × preço = custo` (RN-044) sem fingir que existe um preço de tabela.
+    priceImplicit: boolean('price_implicit').notNull().default(false),
     latencyMs: integer('latency_ms').notNull(),
     bindingOrigin: modelBindingScopeEnum('binding_origin'),
     // Provider SUBJACENTE, quando a chamada passou por um hub que informa quem

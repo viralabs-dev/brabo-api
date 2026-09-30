@@ -26,6 +26,7 @@ import { ResolveModelBindingUseCase } from '../../../../src/application/use-case
 import { CheckBudgetGateUseCase } from '../../../../src/application/use-cases/llm/check-budget-gate.use-case';
 import { ResolveCredentialOwnerUseCase } from '../../../../src/application/use-cases/llm/resolve-credential-owner.use-case';
 import { DrizzleWorkspaceRepository } from '../../../../src/infrastructure/persistence/drizzle/workspace.repository';
+import { DecidirFerramentaDoPassoUseCase } from '../../../../src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case';
 import { RecordLlmUsageUseCase } from '../../../../src/application/use-cases/llm/record-llm-usage.use-case';
 import { RunLlmTurnUseCase } from '../../../../src/application/use-cases/llm/run-llm-turn.use-case';
 import type { LLMProvider } from '../../../../src/application/ports/llm-provider.port';
@@ -69,6 +70,21 @@ const recordLlmUsage = new RecordLlmUsageUseCase(
   // contadores vazados entre arquivos tornariam as asserções dependentes
   // da ordem de execução.
   new BraboMetrics(),
+);
+
+// Provider `ollama` nestes specs: o roteador nunca é consultado (só com
+// OpenRouter, ADR 0179). Se fosse, o Jev de mentira derrubaria o teste.
+const decidirFerramenta = new DecidirFerramentaDoPassoUseCase(
+  projectRepo,
+  new DrizzleWorkspaceRepository(db),
+  {
+    decidir: () => {
+      throw new Error('o Jev não deve ser chamado com provider != openrouter');
+    },
+  },
+  tokenEstimator,
+  unitOfWork,
+  recordLlmUsage,
 );
 
 class FakeProvider implements LLMProvider {
@@ -119,6 +135,7 @@ function buildUseCase(provider: LLMProvider) {
     checkBudgetGate,
     recordLlmUsage,
     resolveCredentialOwner,
+    decidirFerramenta,
   );
 }
 

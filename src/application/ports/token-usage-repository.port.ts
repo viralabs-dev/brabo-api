@@ -16,6 +16,8 @@ export interface RecordTokenUsageInput {
   /** O preço vigente no instante da chamada (Fase 9c, RN-044). */
   inputPricePerMillionMicros: number;
   outputPricePerMillionMicros: number;
+  /** `true` quando o preço é implícito (custo ÷ tokens da resposta), ADR 0179. */
+  priceImplicit?: boolean;
   latencyMs: number;
   bindingOrigin: ModelBindingScope | null;
   upstreamProvider: string | null;

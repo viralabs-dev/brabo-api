@@ -46,6 +46,8 @@ import { GetUnreadEventsForWorkspaceUseCase } from '../../../application/use-cas
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { AddMemberDto } from './dto/add-member.dto';
+import { SetToolRouterDto } from './dto/set-tool-router.dto';
+import { SetWorkspaceToolRouterUseCase } from '../../../application/use-cases/iam/set-workspace-tool-router.use-case';
 import { TransferOwnershipDto } from './dto/transfer-ownership.dto';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UnreadEventsDto } from './dto/unread-events.dto';
@@ -94,6 +96,7 @@ export class WorkspacesController {
     private readonly broker: ContainerBrokerPort,
     private readonly removeWorkspaceMember: RemoveWorkspaceMemberUseCase,
     private readonly transferWorkspaceOwnership: TransferWorkspaceOwnershipUseCase,
+    private readonly setWorkspaceToolRouter: SetWorkspaceToolRouterUseCase,
   ) {}
 
   @Post()
@@ -244,6 +247,30 @@ export class WorkspacesController {
    * remoção do titular manda fazer antes. `owner`, o mínimo das outras rotas
    * de membro; a regra do destino mora no caso de uso.
    */
+  /**
+   * O desligador do roteamento de ferramenta pelo Jev (ADR 0179, RN-625):
+   * `owner`, porque o gasto do Jev é da chave do titular (RN-058).
+   */
+  @Put(':workspaceId/tool-router')
+  @RequireRole('owner')
+  @ApiOperation({
+    summary: 'Turns the Jev tool routing on or off for the workspace',
+    description:
+      'On by default. When on AND the turn model is from OpenRouter, an agent ' +
+      'step with two or more tools first asks the Jev which tool fits, and the ' +
+      'chat model is offered only that tool and the previous one. The Jev never ' +
+      'approves or denies anything: an action that needs approval still does. ' +
+      'Any failure of the Jev falls back to the whole catalog. Turning it off ' +
+      'stops every call to the Jev, and its cost with them.',
+  })
+  @ApiOkResponse({ type: WorkspaceResponseDto })
+  setToolRouter(
+    @Param('workspaceId') workspaceId: string,
+    @Body() dto: SetToolRouterDto,
+  ) {
+    return this.setWorkspaceToolRouter.execute(workspaceId, dto.enabled);
+  }
+
   @Put(':workspaceId/owner-of-record')
   @RequireRole('owner')
   @ApiOperation({

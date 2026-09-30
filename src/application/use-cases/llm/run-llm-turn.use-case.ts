@@ -10,6 +10,10 @@ import { ResolveModelBindingUseCase } from './resolve-model-binding.use-case';
 import { CheckBudgetGateUseCase } from './check-budget-gate.use-case';
 import { RecordLlmUsageUseCase } from './record-llm-usage.use-case';
 import { ResolveCredentialOwnerUseCase } from './resolve-credential-owner.use-case';
+import {
+  DecidirFerramentaDoPassoUseCase,
+  type ToolRouting,
+} from './decidir-ferramenta-do-passo.use-case';
 import { preferenciaEnviada } from '../../../domain/llm/routing-preference';
 import { calculateCostMicros } from '../../../domain/llm/cost-calculator';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
@@ -20,6 +24,8 @@ export interface RunLlmTurnInput {
   agentId?: string;
   messages: ChatMessage[];
   tools?: ToolDef[];
+  /** O engine repete o passo com o catálogo inteiro quando o menu do Jev estava errado (ADR 0179). */
+  catalogoCompleto?: boolean;
 }
 
 export interface RunLlmTurnResult {
@@ -34,6 +40,12 @@ export interface RunLlmTurnResult {
   // Espelha `LlmTurnStreamEvent.modelName` (achado do problema 2) — `null`
   // quando o turno falhou antes de resolver um modelo.
   modelName: string | null;
+  /**
+   * O passo em que o Jev escolheu a ferramenta (ADR 0179, RN-625). Ausente
+   * quando o roteador não foi consultado; o engine o narra em
+   * `tool_router.decided`. Campo aditivo: engine antigo o ignora.
+   */
+  toolRouting?: ToolRouting;
 }
 
 /**
@@ -57,6 +69,7 @@ export class RunLlmTurnUseCase {
     private readonly checkBudgetGate: CheckBudgetGateUseCase,
     private readonly recordLlmUsage: RecordLlmUsageUseCase,
     private readonly resolveCredentialOwner: ResolveCredentialOwnerUseCase,
+    private readonly decidirFerramenta: DecidirFerramentaDoPassoUseCase,
   ) {}
 
   async execute(input: RunLlmTurnInput): Promise<RunLlmTurnResult> {
@@ -115,6 +128,18 @@ export class RunLlmTurnUseCase {
       binding.routingPreference,
       provider.capabilities,
     );
+    // O Jev escolhe a ferramenta do passo (ADR 0179): restringe o cardápio e
+    // NUNCA derruba o turno — em qualquer queda, `tools` segue inteiro.
+    const decisaoDoJev = await this.decidirFerramenta.decidir({
+      projectId: input.projectId,
+      sessionId: input.sessionId,
+      agentId: input.agentId,
+      provider: model.provider,
+      apiKey,
+      messages: input.messages,
+      tools: input.tools,
+      catalogoCompleto: input.catalogoCompleto,
+    });
     let fullText = '';
     let toolCalls: ToolCall[] = [];
     let inputTokens = 0;
@@ -128,7 +153,7 @@ export class RunLlmTurnUseCase {
       for await (const chunk of provider.chat(input.messages, {
         model: model.name,
         apiKey,
-        tools: input.tools,
+        tools: decisaoDoJev.tools,
         ...(routingPreference ? { routingPreference } : {}),
       })) {
         if (chunk.type === 'text_delta') {
@@ -193,6 +218,9 @@ export class RunLlmTurnUseCase {
       usage: { inputTokens, outputTokens, costMicros, estimated },
       error: streamError,
       modelName: model.name,
+      ...(decisaoDoJev.toolRouting
+        ? { toolRouting: decisaoDoJev.toolRouting }
+        : {}),
     };
   }
 }

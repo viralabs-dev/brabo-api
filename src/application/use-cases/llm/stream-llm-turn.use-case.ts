@@ -10,6 +10,10 @@ import { ResolveModelBindingUseCase } from './resolve-model-binding.use-case';
 import { CheckBudgetGateUseCase } from './check-budget-gate.use-case';
 import { RecordLlmUsageUseCase } from './record-llm-usage.use-case';
 import { ResolveCredentialOwnerUseCase } from './resolve-credential-owner.use-case';
+import {
+  DecidirFerramentaDoPassoUseCase,
+  type ToolRouting,
+} from './decidir-ferramenta-do-passo.use-case';
 import { preferenciaEnviada } from '../../../domain/llm/routing-preference';
 import { calculateCostMicros } from '../../../domain/llm/cost-calculator';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
@@ -20,6 +24,8 @@ export interface StreamLlmTurnInput {
   agentId?: string;
   messages: ChatMessage[];
   tools?: ToolDef[];
+  /** O engine repete o passo com o catálogo inteiro quando o menu do Jev estava errado (ADR 0179). */
+  catalogoCompleto?: boolean;
 }
 
 export interface LlmTurnUsage {
@@ -31,6 +37,9 @@ export interface LlmTurnUsage {
 
 export type LlmTurnStreamEvent =
   | { type: 'delta'; text: string }
+  // Antes de qualquer `delta`: o Jev está escolhendo a ferramenta (AT-236
+  // resposta 16). Aditivo — o engine ignora frame de tipo desconhecido.
+  | { type: 'tool_routing_started' }
   | {
       type: 'final';
       message: { role: 'assistant'; content: string; toolCalls: ToolCall[] };
@@ -42,6 +51,8 @@ export type LlmTurnStreamEvent =
       // resolver um modelo (`!binding`/`!model`); nos demais casos (inclusive
       // budget excedido) o binding já resolveu e o nome viaja.
       modelName: string | null;
+      /** Ver `RunLlmTurnResult.toolRouting` (ADR 0179). */
+      toolRouting?: ToolRouting;
     };
 
 /**
@@ -66,6 +77,7 @@ export class StreamLlmTurnUseCase {
     private readonly checkBudgetGate: CheckBudgetGateUseCase,
     private readonly recordLlmUsage: RecordLlmUsageUseCase,
     private readonly resolveCredentialOwner: ResolveCredentialOwnerUseCase,
+    private readonly decidirFerramenta: DecidirFerramentaDoPassoUseCase,
   ) {}
 
   async *execute(
@@ -128,6 +140,22 @@ export class StreamLlmTurnUseCase {
       binding.routingPreference,
       provider.capabilities,
     );
+    // O Jev escolhe a ferramenta do passo (ADR 0179) — nunca derruba o turno.
+    const roteamento = {
+      projectId: input.projectId,
+      sessionId: input.sessionId,
+      agentId: input.agentId,
+      provider: model.provider,
+      apiKey,
+      messages: input.messages,
+      tools: input.tools,
+      catalogoCompleto: input.catalogoCompleto,
+    };
+    const plano = await this.decidirFerramenta.preparar(roteamento);
+    if (plano) yield { type: 'tool_routing_started' };
+    const decisaoDoJev = plano
+      ? await this.decidirFerramenta.executar(plano, roteamento)
+      : { tools: input.tools, toolRouting: null };
     let fullText = '';
     let toolCalls: ToolCall[] = [];
     let inputTokens = 0;
@@ -141,7 +169,7 @@ export class StreamLlmTurnUseCase {
       for await (const chunk of provider.chat(input.messages, {
         model: model.name,
         apiKey,
-        tools: input.tools,
+        tools: decisaoDoJev.tools,
         ...(routingPreference ? { routingPreference } : {}),
       })) {
         if (chunk.type === 'text_delta') {
@@ -208,6 +236,9 @@ export class StreamLlmTurnUseCase {
       usage: { inputTokens, outputTokens, costMicros, estimated },
       error: streamError,
       modelName: model.name,
+      ...(decisaoDoJev.toolRouting
+        ? { toolRouting: decisaoDoJev.toolRouting }
+        : {}),
     };
   }
 }

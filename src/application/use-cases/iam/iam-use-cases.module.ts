@@ -40,6 +40,7 @@ import { DetectarIdiomaDoAutorUseCase } from './detectar-idioma-do-autor.use-cas
 // depende do repositório de áreas (DrizzleModule é global), e importar o
 // módulo de agentes traria sessões e o cliente do engine junto — aresta nova
 // entre IAM e agentes por causa de uma classe sem estado.
+import { SetWorkspaceToolRouterUseCase } from './set-workspace-tool-router.use-case';
 import { SeedAgentAreasUseCase } from '../agents/seed-agent-areas.use-case';
 
 const USE_CASES = [
@@ -52,6 +53,7 @@ const USE_CASES = [
   AddWorkspaceMemberUseCase,
   RemoveWorkspaceMemberUseCase,
   TransferWorkspaceOwnershipUseCase,
+  SetWorkspaceToolRouterUseCase,
   CreateProjectUseCase,
   ConfirmProjectWorkspaceUseCase,
   ConvertProjectExecutionModeUseCase,

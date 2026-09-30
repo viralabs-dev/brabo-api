@@ -60,6 +60,15 @@ export class WorkspaceResponseDto implements Wire<Workspace> {
   @ApiProperty({ example: '01JC4Z0000USUARIO0000000001' })
   createdBy!: string;
 
+  @ApiProperty({
+    example: true,
+    description:
+      'Whether the tool-routing step by the Jev (ADR 0179) runs for this ' +
+      'workspace. On by default; it only acts when the turn model is from ' +
+      'OpenRouter, so `true` on a workspace without OpenRouter does nothing.',
+  })
+  toolRouterEnabled!: boolean;
+
   @ApiProperty({ example: '2026-07-20T09:12:00.000Z', format: 'date-time' })
   createdAt!: string;
 

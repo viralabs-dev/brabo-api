@@ -22,6 +22,8 @@ export interface TokenUsage {
    */
   inputPricePerMillionMicros: number;
   outputPricePerMillionMicros: number;
+  /** O preço acima foi DERIVADO de `custo ÷ tokens` da resposta, não veio de catálogo (ADR 0179). */
+  priceImplicit: boolean;
   latencyMs: number;
   bindingOrigin: ModelBindingScope | null;
   /** Quem serviu de fato, quando a chamada passou por um hub (Fase 9b). */

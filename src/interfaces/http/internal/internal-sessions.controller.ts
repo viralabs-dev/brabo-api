@@ -334,6 +334,7 @@ export class InternalSessionsController {
       agentId: dto.agentId,
       messages: dto.messages,
       tools: dto.tools,
+      catalogoCompleto: dto.catalogoCompleto,
     });
   }
 
@@ -372,6 +373,7 @@ export class InternalSessionsController {
         agentId: dto.agentId,
         messages: dto.messages,
         tools: dto.tools,
+        catalogoCompleto: dto.catalogoCompleto,
       }),
     ).pipe(map((event) => ({ data: event })));
   }

@@ -17,7 +17,8 @@ export interface RecordLlmUsageInput {
   sessionId: string;
   actor: Actor;
   provider: LLMProviderName;
-  modelId: string;
+  /** `null` para o que não é modelo do catálogo (o Jev, ADR 0179). */
+  modelId: string | null;
   modelName: string;
   inputTokens: number;
   outputTokens: number;
@@ -30,6 +31,8 @@ export interface RecordLlmUsageInput {
    */
   inputPricePerMillionMicros: number;
   outputPricePerMillionMicros: number;
+  /** `true` quando o preço acima foi derivado de custo ÷ tokens (ADR 0179). */
+  priceImplicit?: boolean;
   latencyMs: number;
   bindingOrigin: ModelBindingScope | null;
   /** Só quando um hub informou quem serviu de fato (Fase 9b). */
@@ -87,6 +90,7 @@ export class RecordLlmUsageUseCase {
       costMicros: input.costMicros,
       inputPricePerMillionMicros: input.inputPricePerMillionMicros,
       outputPricePerMillionMicros: input.outputPricePerMillionMicros,
+      priceImplicit: input.priceImplicit ?? false,
       latencyMs: input.latencyMs,
       bindingOrigin: input.bindingOrigin,
       upstreamProvider: input.upstreamProvider ?? null,
