@@ -108,6 +108,21 @@ export type CampoDeRoteamento = (
   preferencia: RoutingPreference,
 ) => Record<string, unknown>;
 
+/**
+ * Como um provider informa o CUSTO REAL da chamada no `usage` (ADR 0188,
+ * RN-665). O OpenRouter o põe em `usage.cost`, em USD; a OpenAI não informa.
+ * Recebe o objeto `usage` cru e devolve micro-USD inteiro, ou `undefined`
+ * quando o número não está lá ou não é o custo INTEIRO da chamada — devolver
+ * um custo parcial faria o metering gravar menos do que foi cobrado, que é o
+ * defeito que o ADR existe para fechar.
+ *
+ * Só quem PROVOU o campo o configura (ADRs 0041/0042): ausente = o custo é o
+ * do catálogo, como sempre foi.
+ */
+export type ExtrairCustoReal = (
+  usage: Record<string, unknown>,
+) => number | undefined;
+
 export interface OpenAICompatibleConfig {
   readonly name: LLMProviderName;
   /** Sem barra no fim — `/chat/completions` é concatenado. */
@@ -123,6 +138,8 @@ export interface OpenAICompatibleConfig {
   readonly parseErrorFrame?: ParseErrorFrame;
   /** Só em hubs — ver `CampoDeRoteamento`. */
   readonly campoDeRoteamento?: CampoDeRoteamento;
+  /** Só quem informa custo na resposta — ver `ExtrairCustoReal`. */
+  readonly extrairCustoReal?: ExtrairCustoReal;
 }
 
 /**
@@ -191,6 +208,11 @@ export class OpenAICompatibleProvider implements LLMProvider {
     let usageRecebido = false;
     let textoAcumulado = '';
     let upstreamProvider: string | undefined;
+    // O que a RESPOSTA diz sobre si (RN-665): o modelo que serviu de fato e o
+    // id que o provider deu a ela. Vêm em todo frame do dialeto; o último
+    // visto vale, como o `upstreamProvider`.
+    let resolvedModel: string | undefined;
+    let generationId: string | undefined;
 
     try {
       for await (const payload of iterateSseData(response)) {
@@ -220,6 +242,11 @@ export class OpenAICompatibleProvider implements LLMProvider {
             frame as unknown as Record<string, unknown>,
           ) ?? upstreamProvider;
 
+        if (typeof frame.model === 'string' && frame.model) {
+          resolvedModel = frame.model;
+        }
+        if (typeof frame.id === 'string' && frame.id) generationId = frame.id;
+
         const delta = frame.choices?.[0]?.delta;
 
         if (delta?.content) {
@@ -236,12 +263,16 @@ export class OpenAICompatibleProvider implements LLMProvider {
 
         if (frame.usage) {
           usageRecebido = true;
+          const costMicros = this.config.extrairCustoReal?.(frame.usage);
           yield {
             type: 'usage',
             inputTokens: frame.usage.prompt_tokens ?? 0,
             outputTokens: frame.usage.completion_tokens ?? 0,
             estimated: false,
             ...(upstreamProvider ? { upstreamProvider } : {}),
+            ...(costMicros !== undefined ? { costMicros } : {}),
+            ...(resolvedModel ? { resolvedModel } : {}),
+            ...(generationId ? { generationId } : {}),
           };
         }
       }
@@ -262,6 +293,9 @@ export class OpenAICompatibleProvider implements LLMProvider {
         outputTokens: this.tokenEstimator.count(textoAcumulado),
         estimated: true,
         ...(upstreamProvider ? { upstreamProvider } : {}),
+        // Sem `usage` não há custo real; o modelo e o id, se vieram, valem.
+        ...(resolvedModel ? { resolvedModel } : {}),
+        ...(generationId ? { generationId } : {}),
       };
     }
   }
@@ -500,6 +534,8 @@ function toWireTool(tool: ToolDef) {
 // --- Parsing do stream ---
 
 interface FrameDeChat {
+  id?: unknown;
+  model?: unknown;
   choices?: {
     delta?: {
       content?: string;

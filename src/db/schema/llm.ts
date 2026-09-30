@@ -351,9 +351,21 @@ export const tokenUsage = pgTable(
       .notNull()
       .default(0),
     // `true` quando o preço NÃO é de catálogo: foi derivado de `custo ÷ tokens`
-    // da própria resposta (o Jev, ADR 0179, AT-236 resposta 11). Mantém
+    // da própria resposta — o Jev (ADR 0179) e, desde o ADR 0188 (RN-665), toda
+    // chamada cujo provider devolveu o custo REAL (`usage.cost`). Mantém
     // `tokens × preço = custo` (RN-044) sem fingir que existe um preço de tabela.
     priceImplicit: boolean('price_implicit').notNull().default(false),
+    // O que o preço de CATÁLOGO teria cobrado pela mesma chamada, gravado só
+    // quando `cost_micros` é o real (ADR 0188): é a distância entre a estimativa
+    // e a fatura, medida linha a linha. `null` = o número já é o do catálogo.
+    catalogCostMicros: bigint('catalog_cost_micros', { mode: 'number' }),
+    // O modelo que a RESPOSTA disse ter servido (`model` do frame) — num hub, o
+    // alias pedido resolve para uma versão datada (RN-665). `model_name`
+    // continua sendo o do catálogo, a dimensão dos relatórios.
+    resolvedModelName: text('resolved_model_name'),
+    // O id da resposta no provider (`gen-…` no OpenRouter): é por ele que
+    // `GET /generation?id=` confere a cobrança depois (RN-665).
+    generationId: text('generation_id'),
     latencyMs: integer('latency_ms').notNull(),
     bindingOrigin: modelBindingScopeEnum('binding_origin'),
     // Provider SUBJACENTE, quando a chamada passou por um hub que informa quem

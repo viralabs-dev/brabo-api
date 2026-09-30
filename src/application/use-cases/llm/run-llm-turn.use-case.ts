@@ -15,7 +15,7 @@ import {
   type ToolRouting,
 } from './decidir-ferramenta-do-passo.use-case';
 import { preferenciaEnviada } from '../../../domain/llm/routing-preference';
-import { calculateCostMicros } from '../../../domain/llm/cost-calculator';
+import { custoDaChamada } from '../../../domain/llm/custo-da-chamada';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
 
 export interface RunLlmTurnInput {
@@ -147,6 +147,11 @@ export class RunLlmTurnUseCase {
     let estimated = false;
     // Só um hub preenche isto; nos providers diretos fica null (Fase 9b).
     let upstreamProvider: string | null = null;
+    // O que a resposta disse sobre si (ADR 0188, RN-665): o custo que o
+    // provider cobrou, o modelo que serviu e o id da geração.
+    let custoRealMicros: number | null = null;
+    let resolvedModelName: string | null = null;
+    let generationId: string | null = null;
     let streamError: string | null = null;
 
     try {
@@ -165,6 +170,9 @@ export class RunLlmTurnUseCase {
           outputTokens = chunk.outputTokens;
           estimated = chunk.estimated;
           upstreamProvider = chunk.upstreamProvider ?? null;
+          custoRealMicros = chunk.costMicros ?? null;
+          resolvedModelName = chunk.resolvedModel ?? null;
+          generationId = chunk.generationId ?? null;
         } else if (chunk.type === 'error') {
           streamError = chunk.message;
         }
@@ -181,12 +189,16 @@ export class RunLlmTurnUseCase {
       outputTokens = this.tokenEstimator.count(fullText);
       estimated = true;
     }
-    const costMicros = calculateCostMicros(
+    // O custo REAL, quando o provider o devolveu, é o número; senão, o preço do
+    // catálogo congelado (ADR 0042). Decisão do dono, ADR 0188 (RN-665).
+    const custo = custoDaChamada({
       inputTokens,
       outputTokens,
-      model.inputPricePerMillionMicros,
-      model.outputPricePerMillionMicros,
-    );
+      custoRealMicros,
+      inputPricePerMillionMicros: model.inputPricePerMillionMicros,
+      outputPricePerMillionMicros: model.outputPricePerMillionMicros,
+    });
+    const { costMicros } = custo;
     const latencyMs = Date.now() - startedAt;
     const actor: Actor = { kind: 'agent', id: input.agentId ?? model.name };
 
@@ -203,9 +215,14 @@ export class RunLlmTurnUseCase {
         estimated,
         costMicros,
         // Congela o preço junto do custo: sem isso o `cost_micros` de ontem é
-        // um número sem procedência quando o preço mudar (RN-044).
-        inputPricePerMillionMicros: model.inputPricePerMillionMicros,
-        outputPricePerMillionMicros: model.outputPricePerMillionMicros,
+        // um número sem procedência quando o preço mudar (RN-044). Com custo
+        // real, o preço é o IMPLÍCITO e o do catálogo vai ao lado (ADR 0188).
+        inputPricePerMillionMicros: custo.inputPricePerMillionMicros,
+        outputPricePerMillionMicros: custo.outputPricePerMillionMicros,
+        priceImplicit: custo.priceImplicit,
+        catalogCostMicros: custo.catalogCostMicros,
+        resolvedModelName,
+        generationId,
         latencyMs,
         bindingOrigin: binding.origin,
         upstreamProvider,

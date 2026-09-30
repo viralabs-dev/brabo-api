@@ -26,6 +26,7 @@ import { GptTokenizerEstimator } from '../../../src/infrastructure/tokenization/
 import { BraboMetrics } from '../../../src/infrastructure/observability/brabo-metrics';
 import { LLMCredentialConnectionTesterImpl } from '../../../src/infrastructure/llm/llm-credential-connection-tester';
 import { OpenRouterProvider } from '../../../src/infrastructure/llm/openrouter-provider';
+import { calculateCostMicros } from '../../../src/domain/llm/cost-calculator';
 import { UpsertUserCredentialUseCase } from '../../../src/application/use-cases/llm/upsert-user-credential.use-case';
 import { TestStoredCredentialUseCase } from '../../../src/application/use-cases/credentials/test-stored-credential.use-case';
 import { SyncModelCatalogUseCase } from '../../../src/application/use-cases/llm/sync-model-catalog.use-case';
@@ -321,13 +322,28 @@ describe.skipIf(!apiKey)(
         ).toBeDefined();
         expect(uso.provider).toBe('openrouter');
         expect(uso.modelName).toBe(modeloAlvo);
-        expect(uso.inputPricePerMillionMicros).toBe(
-          ativado.inputPricePerMillionMicros,
-        );
-        expect(uso.outputPricePerMillionMicros).toBe(
-          ativado.outputPricePerMillionMicros,
-        );
         expect(uso.costMicros).toBeGreaterThanOrEqual(0);
+
+        // ADR 0188 (RN-665): o OpenRouter devolve `usage.cost` no frame final,
+        // e ele É o `cost_micros`; o preço da linha é o implícito e o que o
+        // catálogo teria cobrado vai em `catalog_cost_micros`. Se isto falhar
+        // com `priceImplicit` falso, o hub parou de mandar o custo no stream —
+        // quirk a registrar, não bug do teste.
+        expect(
+          uso.priceImplicit,
+          'OpenRouter não devolveu usage.cost no stream — ver ADR 0188',
+        ).toBe(true);
+        expect(uso.estimated).toBe(false);
+        expect(uso.catalogCostMicros).toBe(
+          calculateCostMicros(
+            uso.inputTokens,
+            uso.outputTokens,
+            ativado.inputPricePerMillionMicros,
+            ativado.outputPricePerMillionMicros,
+          ),
+        );
+        expect(uso.resolvedModelName).toBeTruthy();
+        expect(uso.generationId).toMatch(/^gen-/);
 
         // Metering por upstream_provider (Fase 9b/11a): quem SERVIU a
         // chamada, não só o vendor prefixado no id pedido. Se isto vier nulo,
