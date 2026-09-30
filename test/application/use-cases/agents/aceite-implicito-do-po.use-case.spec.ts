@@ -111,6 +111,8 @@ describe('AceiteImplicitoDoPoUseCase', () => {
         SESSION,
         'h1',
         'u1',
+        // sem aceite pelo sistema (RN-660): o implícito é da pessoa
+        undefined,
         { via: 'readiness.confirmed', readinessEventId: 'pronto' },
       ],
     ]);
