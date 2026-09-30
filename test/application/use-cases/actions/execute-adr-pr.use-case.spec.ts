@@ -39,7 +39,14 @@ function adrAction(): ProposedAction {
 class FakeProvider {
   name = 'local';
   calls: string[] = [];
-  createBranch(input: { branchName: string }) {
+  fromRef: string | undefined;
+  targetBranch: string | undefined;
+  semDev = false;
+  createBranch(input: { branchName: string; fromRef: string }) {
+    this.fromRef = input.fromRef;
+    if (this.semDev && input.fromRef === 'dev') {
+      return Promise.reject(new Error("Branch 'dev' não existe em /tmp/repo"));
+    }
     this.calls.push(`branch:${input.branchName}`);
     return Promise.resolve({ name: input.branchName });
   }
@@ -47,7 +54,8 @@ class FakeProvider {
     this.calls.push(`commit:${input.files[0].path}`);
     return Promise.resolve({ sha: 'abc', branch: 'x' });
   }
-  openPullRequest() {
+  openPullRequest(input: { targetBranch: string }) {
+    this.targetBranch = input.targetBranch;
     this.calls.push('pr');
     return Promise.resolve({
       id: 42,
@@ -128,6 +136,29 @@ describe('ExecuteAdrPrUseCase', () => {
       branch: 'feature/adr-0001-usar-postgres',
       path: 'docs/adr/0001-usar-postgres.md',
     });
+  });
+
+  // RN-664 (AT-250): a branch do ADR nasce da de TRABALHO e a PR vai para
+  // ela — não para a `defaultBranch` do repositório (`main` no fake).
+  it('a branch nasce de `dev` e a PR mira `dev`, não a defaultBranch', async () => {
+    await useCase.execute(PROJECT, SESSION, adrAction());
+
+    expect(provider.fromRef).toBe('dev');
+    expect(provider.targetBranch).toBe('dev');
+    expect(proposedActions.saved?.status).toBe('executed');
+  });
+
+  it('repositório sem `dev` → failed com o motivo do provider, sem cair na main', async () => {
+    provider.semDev = true;
+
+    await useCase.execute(PROJECT, SESSION, adrAction());
+
+    expect(proposedActions.saved?.status).toBe('failed');
+    expect(provider.fromRef).toBe('dev');
+    expect(provider.calls).toEqual([]);
+    expect(JSON.stringify(proposedActions.saved?.result)).toContain(
+      "Branch 'dev' não existe",
+    );
   });
 
   it('sem repositório provisionado → failed (não estoura)', async () => {

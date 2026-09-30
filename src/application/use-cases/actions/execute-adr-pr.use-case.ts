@@ -9,6 +9,7 @@ import { EncryptionService } from '../../ports/encryption.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
 import type { AdrPrExecutionResult } from '../../../domain/git/adr-pr-execution-result';
+import { BRANCH_DE_TRABALHO } from '../../../domain/actions/protected-branches';
 
 interface AdrPayload {
   title: string;
@@ -79,7 +80,10 @@ export class ExecuteAdrPrUseCase {
       await provider.createBranch({
         externalId: repo.externalId,
         branchName: branch,
-        fromRef: repo.defaultBranch,
+        // RN-664: a branch do ADR nasce da de TRABALHO e a PR vai para ela —
+        // as duas juntas, senão a PR carregaria a diferença entre `main` e
+        // `dev`. Sem `dev` no repositório, o provider recusa nomeando a ref.
+        fromRef: BRANCH_DE_TRABALHO,
         accessToken,
       });
       await provider.commitFiles({
@@ -92,7 +96,7 @@ export class ExecuteAdrPrUseCase {
       const pr = await provider.openPullRequest({
         externalId: repo.externalId,
         sourceBranch: branch,
-        targetBranch: repo.defaultBranch,
+        targetBranch: BRANCH_DE_TRABALHO,
         title: payload.title,
         body: `ADR proposta pelo Arquiteto.\n\nArquivo: \`${path}\``,
         accessToken,
