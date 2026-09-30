@@ -296,6 +296,112 @@ describe('RunLlmTurnUseCase', () => {
   });
 });
 
+describe('RunLlmTurnUseCase — o custo real vira o número (ADR 0188, RN-665)', () => {
+  // Preço de catálogo do uso real de 29/09: 20 000 / 600 000 micros por milhão.
+  async function comPrecoDeCatalogo(modelId: string) {
+    await db
+      .update(models)
+      .set({
+        inputPricePerMillionMicros: 20_000,
+        outputPricePerMillionMicros: 600_000,
+      })
+      .where(eq(models.id, modelId));
+  }
+
+  it('com `costMicros` na resposta: grava e devolve o custo REAL, o preço implícito, o do catálogo ao lado, o modelo resolvido e o id', async () => {
+    const { project, session, model } = await setup();
+    await comPrecoDeCatalogo(model.id);
+    const provider = new FakeProvider([
+      { type: 'text_delta', text: 'ok' },
+      {
+        type: 'usage',
+        inputTokens: 10_000,
+        outputTokens: 500,
+        estimated: false,
+        costMicros: 1_850,
+        resolvedModel: 'deepseek/deepseek-v3.2-exp',
+        generationId: 'gen-1790000000-abc',
+        upstreamProvider: 'DeepInfra',
+        cachedInputTokens: 9_000,
+        reasoningTokens: 120,
+      },
+    ]);
+
+    const result = await buildUseCase(provider).execute({
+      projectId: project.id,
+      sessionId: session.id,
+      agentId: 'echo',
+      messages: [{ role: 'user', content: 'oi' }],
+    });
+
+    // O número que o engine soma ao orçamento local do laço é o REAL.
+    expect(result.usage).toMatchObject({ costMicros: 1_850, estimated: false });
+
+    const [linha] = await db
+      .select()
+      .from(tokenUsage)
+      .where(eq(tokenUsage.sessionId, session.id));
+    expect(linha).toMatchObject({
+      costMicros: 1_850,
+      estimated: false,
+      priceImplicit: true,
+      // 10 000 × 20 000 / 1e6 + 500 × 600 000 / 1e6 = 200 + 300
+      catalogCostMicros: 500,
+      // 1 850 ÷ 10 500 tokens, por milhão
+      inputPricePerMillionMicros: 176_190,
+      outputPricePerMillionMicros: 176_190,
+      // O catálogo continua sendo a dimensão dos relatórios; o resolvido vai ao lado.
+      modelName: 'llama3.2:3b',
+      resolvedModelName: 'deepseek/deepseek-v3.2-exp',
+      generationId: 'gen-1790000000-abc',
+      upstreamProvider: 'DeepInfra',
+      // RN-666: partes da entrada/saída, sem mexer nos totais.
+      inputTokens: 10_000,
+      outputTokens: 500,
+      cachedInputTokens: 9_000,
+      reasoningTokens: 120,
+    });
+  });
+
+  it('sem `costMicros`: o preço do catálogo continua sendo o número, sem marca de implícito (ADR 0042)', async () => {
+    const { project, session, model } = await setup();
+    await comPrecoDeCatalogo(model.id);
+    const provider = new FakeProvider([
+      { type: 'text_delta', text: 'ok' },
+      {
+        type: 'usage',
+        inputTokens: 10_000,
+        outputTokens: 500,
+        estimated: false,
+      },
+    ]);
+
+    const result = await buildUseCase(provider).execute({
+      projectId: project.id,
+      sessionId: session.id,
+      agentId: 'echo',
+      messages: [{ role: 'user', content: 'oi' }],
+    });
+
+    expect(result.usage.costMicros).toBe(500);
+    const [linha] = await db
+      .select()
+      .from(tokenUsage)
+      .where(eq(tokenUsage.sessionId, session.id));
+    expect(linha).toMatchObject({
+      costMicros: 500,
+      priceImplicit: false,
+      catalogCostMicros: null,
+      inputPricePerMillionMicros: 20_000,
+      outputPricePerMillionMicros: 600_000,
+      resolvedModelName: null,
+      generationId: null,
+      cachedInputTokens: null,
+      reasoningTokens: null,
+    });
+  });
+});
+
 describe('RunLlmTurnUseCase — preferência de roteamento (ADR 0166, RN-583)', () => {
   /** Guarda as `ChatOptions` recebidas: é o que o adapter põe no fio. */
   class ProviderQueAnota implements LLMProvider {

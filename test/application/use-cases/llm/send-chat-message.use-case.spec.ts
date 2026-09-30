@@ -233,6 +233,60 @@ describe('SendChatMessageUseCase', () => {
     expect(usageRows[0].modelId).toBe(model.id);
   });
 
+  it('custo real na resposta (ADR 0188, RN-665): o `done` mostra o REAL e a linha o grava, com o modelo resolvido', async () => {
+    const { project, session, owner } = await setup();
+    const provider = new FakeProvider([
+      { type: 'text_delta', text: 'oi' },
+      {
+        type: 'usage',
+        inputTokens: 10,
+        outputTokens: 5,
+        estimated: false,
+        costMicros: 7,
+        resolvedModel: 'openai/gpt-4o-mini-2024-07-18',
+        generationId: 'gen-chat-1',
+      },
+    ]);
+    const useCase = new SendChatMessageUseCase(
+      unitOfWork,
+      sessionRepo,
+      sessionEventRepo,
+      outboxRepo,
+      modelRepo,
+      credentialRepo,
+      encryption,
+      registryWith(provider),
+      tokenEstimator,
+      resolveModelBinding,
+      checkBudgetGate,
+      recordLlmUsage,
+    );
+
+    const events = await collect(
+      useCase.execute({
+        projectId: project.id,
+        sessionId: session.id,
+        actor: { kind: 'user', id: owner.id },
+        text: 'oi',
+      }),
+    );
+
+    expect(events.find((e) => e.type === 'done')).toMatchObject({
+      costMicros: 7,
+      estimated: false,
+    });
+    const [linha] = await db
+      .select()
+      .from(tokenUsage)
+      .where(eq(tokenUsage.sessionId, session.id));
+    expect(linha).toMatchObject({
+      costMicros: 7,
+      priceImplicit: true,
+      resolvedModelName: 'openai/gpt-4o-mini-2024-07-18',
+      generationId: 'gen-chat-1',
+    });
+  });
+
   it('RN-581: sessão encerrada recusa a mensagem com 409, sem chamar o provider nem gravar', async () => {
     // Este caminho grava `chat.message` sem passar pelo funil
     // `AppendSessionEventUseCase` — a trava do estado tem de estar nele também.

@@ -221,6 +221,47 @@ describe('StreamLlmTurnUseCase', () => {
     expect(events).toHaveLength(0);
   });
 
+  it('custo real na resposta (ADR 0188, RN-665): o frame final e a linha levam o REAL, com o modelo resolvido e o id', async () => {
+    const { project, session } = await setup();
+    const provider = new FakeProvider([
+      { type: 'text_delta', text: 'ok' },
+      {
+        type: 'usage',
+        inputTokens: 1_000,
+        outputTokens: 100,
+        estimated: false,
+        costMicros: 42,
+        resolvedModel: 'deepseek/deepseek-v3.2-exp',
+        generationId: 'gen-stream-1',
+      },
+    ]);
+
+    const eventos = await coletar(
+      buildUseCase(provider).execute({
+        projectId: project.id,
+        sessionId: session.id,
+        agentId: 'criativo',
+        messages: [{ role: 'user', content: 'oi' }],
+      }),
+    );
+    const final = eventos.at(-1);
+    if (final?.type !== 'final') throw new Error('esperava um frame final');
+    // O catálogo do modelo do teste é gratuito: sem a regra, isto seria 0.
+    expect(final.usage).toMatchObject({ costMicros: 42, estimated: false });
+
+    const [linha] = await db
+      .select()
+      .from(tokenUsage)
+      .where(eq(tokenUsage.sessionId, session.id));
+    expect(linha).toMatchObject({
+      costMicros: 42,
+      priceImplicit: true,
+      catalogCostMicros: 0,
+      resolvedModelName: 'deepseek/deepseek-v3.2-exp',
+      generationId: 'gen-stream-1',
+    });
+  });
+
   it('borda: sem binding de modelo, o frame final vem com modelName nulo', async () => {
     const { project, session } = await setup();
     await db.delete(modelBindings);

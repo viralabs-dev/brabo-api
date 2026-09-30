@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   agenteDe,
   formatarDuracao,
+  formatarParteMedida,
   formatarUsd,
   sinaisDeCodigo,
   turnosMudos,
@@ -226,5 +227,30 @@ describe('formatação', () => {
     expect(formatarUsd(0)).toBe('US$ 0,00');
     expect(formatarUsd(1_811)).toBe('< US$ 0,01');
     expect(formatarUsd(1_250_000)).toBe('US$ 1,25');
+  });
+});
+
+describe('formatarParteMedida (RN-666)', () => {
+  it('parte informada em todas as chamadas: número e porcentagem do total', () => {
+    expect(
+      formatarParteMedida({
+        parte: 18_944,
+        total: 20_133,
+        medidas: 3,
+        chamadas: 3,
+      }),
+    ).toBe('18944 (94%)');
+  });
+
+  it('informada só em parte das chamadas: diz em quantas', () => {
+    expect(
+      formatarParteMedida({ parte: 50, total: 200, medidas: 1, chamadas: 4 }),
+    ).toBe('50 (25%) em 1 de 4');
+  });
+
+  it('nenhuma chamada informou: "não medido", nunca 0', () => {
+    expect(
+      formatarParteMedida({ parte: 0, total: 200, medidas: 0, chamadas: 4 }),
+    ).toBe('não medido');
   });
 });
