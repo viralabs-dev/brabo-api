@@ -49,12 +49,14 @@ export class ApproveActionUseCase {
     sessionId: string,
     actionId: string,
     decidedBy: string,
+    aoAprovar?: (aprovada: ProposedAction) => Promise<void>,
   ): Promise<ProposedAction> {
     const approved = await this.approve(
       projectId,
       sessionId,
       actionId,
       decidedBy,
+      aoAprovar,
     );
 
     if (approved.actionType === 'terminal') {
@@ -220,11 +222,19 @@ export class ApproveActionUseCase {
     return acao;
   }
 
+  /**
+   * `aoAprovar` roda DENTRO da transação da decisão, depois de
+   * `assertTransition` passar e da linha virar `approved` — e ANTES da
+   * execução. É por ele que "sempre permitir" grava o padrão junto com a
+   * decisão (RN-642): ação que já saiu de `pending` lança aqui, antes de o
+   * padrão existir, e um padrão que falha ao gravar desfaz a aprovação.
+   */
   private approve(
     projectId: string,
     sessionId: string,
     actionId: string,
     decidedBy: string,
+    aoAprovar?: (aprovada: ProposedAction) => Promise<void>,
   ) {
     return this.unitOfWork.runInTransaction(async () => {
       const session = await this.sessions.findInProject(projectId, sessionId);
@@ -272,6 +282,10 @@ export class ApproveActionUseCase {
           from: current.status,
         },
       });
+
+      // Antes do contador: se o padrão do "sempre permitir" falhar, a
+      // transação desfaz a decisão e nada foi decidido para contar.
+      if (aoAprovar) await aoAprovar(updated);
 
       // Contador e não consulta ao banco: uma ação aprovada que executa muda
       // de status para `executed`, então `count(status='approved')` subconta

@@ -12,6 +12,7 @@ import {
 } from '../../../../domain/actions/action-state-machine';
 import { ACTION_TYPES } from '../../../../domain/actions/decide';
 import type { Page } from '../../../../application/ports/proposed-action-repository.port';
+import type { ResultadoDoSempreAprovar } from '../../../../application/use-cases/actions/approve-always-action.use-case';
 
 /**
  * Respostas do pipeline de aprovação (Fase 7b, item 6).
@@ -116,6 +117,39 @@ export class ProposedActionResponseDto implements Wire<ProposedAction> {
 export const _chavesAcao: MesmasChaves<
   ProposedActionResponseDto,
   ProposedAction
+> = true;
+
+/**
+ * "Sempre permitir" diz o que o clique FEZ (RN-642): o mesmo corpo da ação,
+ * mais o nome do sucesso. Clicar numa ação que já saiu de `pending` por
+ * aprovação não é mais 409 — é `ja_aprovada`.
+ */
+export class ApproveAlwaysResponseDto
+  extends ProposedActionResponseDto
+  implements Wire<ResultadoDoSempreAprovar>
+{
+  @ApiProperty({
+    enum: ['aprovada', 'ja_aprovada'],
+    example: 'aprovada',
+    description:
+      '`aprovada`: this click approved the action. `ja_aprovada`: the action ' +
+      'had already left `pending` by an approval (a previous click, another ' +
+      'person, or the policy) — idempotent success, not an error. A DENIED ' +
+      'action is still 409 `acao_ja_recusada`.',
+  })
+  desfecho!: ResultadoDoSempreAprovar['desfecho'];
+
+  @ApiProperty({
+    example: true,
+    description:
+      'Whether this click recorded the pattern (and its `permission.granted` ' +
+      'event). `false` means it already existed; nothing was written.',
+  })
+  padraoGravado!: boolean;
+}
+export const _chavesSempreAprovar: MesmasChaves<
+  ApproveAlwaysResponseDto,
+  ResultadoDoSempreAprovar
 > = true;
 
 export class PaginaDeAcoesResponseDto implements Wire<Page<ProposedAction>> {
