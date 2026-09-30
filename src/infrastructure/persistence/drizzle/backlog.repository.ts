@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
 import {
   EpicRepository,
   StoryRepository,
@@ -282,6 +282,16 @@ export class DrizzleTaskRepository implements TaskRepository {
       .where(eq(tasks.id, id))
       .returning();
     return taskToEntity(row);
+  }
+
+  async markDoneIfNotDone(id: string): Promise<Task | null> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .update(tasks)
+      .set({ status: 'done', updatedAt: new Date() })
+      .where(and(eq(tasks.id, id), ne(tasks.status, 'done')))
+      .returning();
+    return row ? taskToEntity(row) : null;
   }
 
   async countClaimableByModule(

@@ -80,6 +80,10 @@ export abstract class TaskRepository {
     agentId: string,
   ): Promise<Task | null>;
   abstract updateStatus(id: string, status: TaskStatus): Promise<Task>;
+  // O merge da PR fecha a tarefa (AT-275, RN-628): `done` só se ainda não
+  // estava. Atômico (UPDATE ... WHERE status <> 'done') e devolve `null` se
+  // nada mudou — é isso que torna o merge repetido idempotente, sem evento.
+  abstract markDoneIfNotDone(id: string): Promise<Task | null>;
   // Quantas tasks `todo` de story `ready` estão disponíveis pro módulo — usado
   // pra sugerir paralelização (≥2 = ramos independentes disponíveis).
   abstract countClaimableByModule(
