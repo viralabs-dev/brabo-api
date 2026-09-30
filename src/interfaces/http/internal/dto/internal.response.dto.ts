@@ -473,7 +473,13 @@ export class LlmUsageResponseDto {
   @ApiProperty({ example: 340 })
   outputTokens!: number;
 
-  @ApiProperty({ example: 52700, description: 'Cost in micro-USD.' })
+  @ApiProperty({
+    example: 52700,
+    description:
+      'Cost in micro-USD: the REAL cost the provider returned when it did ' +
+      "(OpenRouter's `usage.cost`), otherwise the frozen catalog price " +
+      '(ADR 0188, RN-665).',
+  })
   costMicros!: number;
 
   @ApiProperty({
