@@ -24,6 +24,10 @@ export interface RecordTokenUsageInput {
   resolvedModelName?: string | null;
   /** O id que o provider deu à resposta (`gen-…`), RN-665. */
   generationId?: string | null;
+  /** Parte da entrada servida de cache, quando o provider disse (RN-666). */
+  cachedInputTokens?: number | null;
+  /** Parte da saída que foi raciocínio, quando o provider disse (RN-666). */
+  reasoningTokens?: number | null;
   latencyMs: number;
   bindingOrigin: ModelBindingScope | null;
   upstreamProvider: string | null;

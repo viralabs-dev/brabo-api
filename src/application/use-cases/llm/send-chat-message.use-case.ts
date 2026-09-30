@@ -179,6 +179,9 @@ export class SendChatMessageUseCase {
     let custoRealMicros: number | null = null;
     let resolvedModelName: string | null = null;
     let generationId: string | null = null;
+    // Partes da entrada/saída que o provider informou (RN-666); `null` = não disse.
+    let cachedInputTokens: number | null = null;
+    let reasoningTokens: number | null = null;
     let streamError: string | null = null;
 
     try {
@@ -201,6 +204,8 @@ export class SendChatMessageUseCase {
           custoRealMicros = chunk.costMicros ?? null;
           resolvedModelName = chunk.resolvedModel ?? null;
           generationId = chunk.generationId ?? null;
+          cachedInputTokens = chunk.cachedInputTokens ?? null;
+          reasoningTokens = chunk.reasoningTokens ?? null;
         } else if (chunk.type === 'error') {
           streamError = chunk.message;
         }
@@ -252,6 +257,8 @@ export class SendChatMessageUseCase {
           catalogCostMicros: custo.catalogCostMicros,
           resolvedModelName,
           generationId,
+          cachedInputTokens,
+          reasoningTokens,
           latencyMs,
           bindingOrigin: binding.origin,
           upstreamProvider,

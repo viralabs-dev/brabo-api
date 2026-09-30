@@ -1905,6 +1905,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "cached_input_tokens": {
+          "name": "cached_input_tokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reasoning_tokens": {
+          "name": "reasoning_tokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "latency_ms": {
           "name": "latency_ms",
           "type": "integer",

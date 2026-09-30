@@ -366,7 +366,40 @@ describe('OpenRouterProvider — custo real, modelo resolvido e id (ADR 0188, RN
       costMicros: 3_042,
       resolvedModel: 'deepseek/deepseek-v3.2-exp',
       generationId: 'gen-1790809000-Xy7kQ2',
+      // RN-666: PARTES da entrada e da saída, nunca somadas a elas.
+      cachedInputTokens: 18_944,
+      reasoningTokens: 311,
     });
+  });
+
+  it('RN-666: `usage` sem os detalhes — sem cache nem raciocínio, e "não disse" nunca vira 0', async () => {
+    const {
+      prompt_tokens_details: _p,
+      completion_tokens_details: _c,
+      ...semDetalhes
+    } = FRAMES_GRAVADOS.ultimo.usage;
+    const usage = await usageDoStream({
+      ...FRAMES_GRAVADOS.ultimo,
+      usage: semDetalhes,
+    });
+
+    expect(usage).not.toHaveProperty('cachedInputTokens');
+    expect(usage).not.toHaveProperty('reasoningTokens');
+    expect(usage).toMatchObject({ inputTokens: 20_133, costMicros: 3_042 });
+  });
+
+  it('RN-666: contagem que não é inteiro não negativo é ignorada; zero informado é zero', async () => {
+    const usage = await usageDoStream({
+      ...FRAMES_GRAVADOS.ultimo,
+      usage: {
+        ...FRAMES_GRAVADOS.ultimo.usage,
+        prompt_tokens_details: { cached_tokens: -3 },
+        completion_tokens_details: { reasoning_tokens: 0 },
+      },
+    });
+
+    expect(usage).not.toHaveProperty('cachedInputTokens');
+    expect(usage).toMatchObject({ reasoningTokens: 0 });
   });
 
   it('`is_byok: true`: o custo NÃO é lido — é a taxa do hub, não a inferência', async () => {

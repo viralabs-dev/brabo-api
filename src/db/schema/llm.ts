@@ -366,6 +366,13 @@ export const tokenUsage = pgTable(
     // O id da resposta no provider (`gen-…` no OpenRouter): é por ele que
     // `GET /generation?id=` confere a cobrança depois (RN-665).
     generationId: text('generation_id'),
+    // PARTES dos tokens que o provider informou (RN-666, AT-272): quantos da
+    // entrada vieram de CACHE (cache read, cobrado a uma fração do preço) e
+    // quantos da saída foram RACIOCÍNIO. Nunca somadas a `input_tokens` /
+    // `output_tokens`, que já as incluem. `null` = o provider não disse —
+    // diferente de 0, que é "disse que não houve".
+    cachedInputTokens: integer('cached_input_tokens'),
+    reasoningTokens: integer('reasoning_tokens'),
     latencyMs: integer('latency_ms').notNull(),
     bindingOrigin: modelBindingScopeEnum('binding_origin'),
     // Provider SUBJACENTE, quando a chamada passou por um hub que informa quem

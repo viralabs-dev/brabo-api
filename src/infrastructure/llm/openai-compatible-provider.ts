@@ -264,6 +264,15 @@ export class OpenAICompatibleProvider implements LLMProvider {
         if (frame.usage) {
           usageRecebido = true;
           const costMicros = this.config.extrairCustoReal?.(frame.usage);
+          // PARTES da entrada e da saída que o dialeto informa (RN-666): campos
+          // da própria OpenAI, lidos para todo provider — quem não os manda
+          // fica sem, e "não disse" nunca vira 0.
+          const cachedInputTokens = contagem(
+            frame.usage.prompt_tokens_details?.cached_tokens,
+          );
+          const reasoningTokens = contagem(
+            frame.usage.completion_tokens_details?.reasoning_tokens,
+          );
           yield {
             type: 'usage',
             inputTokens: frame.usage.prompt_tokens ?? 0,
@@ -273,6 +282,8 @@ export class OpenAICompatibleProvider implements LLMProvider {
             ...(costMicros !== undefined ? { costMicros } : {}),
             ...(resolvedModel ? { resolvedModel } : {}),
             ...(generationId ? { generationId } : {}),
+            ...(cachedInputTokens !== undefined ? { cachedInputTokens } : {}),
+            ...(reasoningTokens !== undefined ? { reasoningTokens } : {}),
           };
         }
       }
@@ -542,7 +553,19 @@ interface FrameDeChat {
       tool_calls?: ToolCallParcial[];
     };
   }[];
-  usage?: { prompt_tokens?: number; completion_tokens?: number };
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    prompt_tokens_details?: { cached_tokens?: unknown };
+    completion_tokens_details?: { reasoning_tokens?: unknown };
+  };
+}
+
+/** Contagem de tokens informada: inteiro finito não negativo, ou "não disse". */
+function contagem(valor: unknown): number | undefined {
+  return typeof valor === 'number' && Number.isInteger(valor) && valor >= 0
+    ? valor
+    : undefined;
 }
 
 interface ToolCallParcial {

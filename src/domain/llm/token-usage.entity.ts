@@ -37,6 +37,13 @@ export interface TokenUsage {
   resolvedModelName: string | null;
   /** O id da resposta no provider (`gen-…` no OpenRouter), RN-665. */
   generationId: string | null;
+  /**
+   * Quantos dos `inputTokens` o provider serviu de cache (cache read), e
+   * quantos dos `outputTokens` foram raciocínio (RN-666). PARTES do total,
+   * nunca somadas a ele; `null` = o provider não disse.
+   */
+  cachedInputTokens: number | null;
+  reasoningTokens: number | null;
   latencyMs: number;
   bindingOrigin: ModelBindingScope | null;
   /** Quem serviu de fato, quando a chamada passou por um hub (Fase 9b). */

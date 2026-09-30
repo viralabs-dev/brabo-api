@@ -322,6 +322,8 @@ describe('RunLlmTurnUseCase — o custo real vira o número (ADR 0188, RN-665)',
         resolvedModel: 'deepseek/deepseek-v3.2-exp',
         generationId: 'gen-1790000000-abc',
         upstreamProvider: 'DeepInfra',
+        cachedInputTokens: 9_000,
+        reasoningTokens: 120,
       },
     ]);
 
@@ -353,6 +355,11 @@ describe('RunLlmTurnUseCase — o custo real vira o número (ADR 0188, RN-665)',
       resolvedModelName: 'deepseek/deepseek-v3.2-exp',
       generationId: 'gen-1790000000-abc',
       upstreamProvider: 'DeepInfra',
+      // RN-666: partes da entrada/saída, sem mexer nos totais.
+      inputTokens: 10_000,
+      outputTokens: 500,
+      cachedInputTokens: 9_000,
+      reasoningTokens: 120,
     });
   });
 
@@ -389,6 +396,8 @@ describe('RunLlmTurnUseCase — o custo real vira o número (ADR 0188, RN-665)',
       outputPricePerMillionMicros: 600_000,
       resolvedModelName: null,
       generationId: null,
+      cachedInputTokens: null,
+      reasoningTokens: null,
     });
   });
 });

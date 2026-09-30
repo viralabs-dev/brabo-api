@@ -42,6 +42,13 @@ export interface RecordLlmUsageInput {
   resolvedModelName?: string | null;
   /** O id que o provider deu à resposta, para conferir a cobrança depois (RN-665). */
   generationId?: string | null;
+  /**
+   * Quantos dos `inputTokens` vieram de CACHE e quantos dos `outputTokens`
+   * foram raciocínio — PARTES, nunca somadas ao total (RN-666). `null` = o
+   * provider não disse, que é diferente de 0.
+   */
+  cachedInputTokens?: number | null;
+  reasoningTokens?: number | null;
   latencyMs: number;
   bindingOrigin: ModelBindingScope | null;
   /** Só quando um hub informou quem serviu de fato (Fase 9b). */
@@ -103,6 +110,8 @@ export class RecordLlmUsageUseCase {
       catalogCostMicros: input.catalogCostMicros ?? null,
       resolvedModelName: input.resolvedModelName ?? null,
       generationId: input.generationId ?? null,
+      cachedInputTokens: input.cachedInputTokens ?? null,
+      reasoningTokens: input.reasoningTokens ?? null,
       latencyMs: input.latencyMs,
       bindingOrigin: input.bindingOrigin,
       upstreamProvider: input.upstreamProvider ?? null,

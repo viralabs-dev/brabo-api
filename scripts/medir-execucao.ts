@@ -79,6 +79,28 @@ export function formatarUsd(micros: number): string {
 }
 
 /**
+ * Uma PARTE de um total de tokens (cache lido da entrada, raciocínio da saída
+ * — RN-666), só sobre as chamadas em que o provider a INFORMOU. `medidas = 0`
+ * é "não medido", nunca "0": o provider que não diz não disse que não houve.
+ * Quando só parte das chamadas informou, a célula diz em quantas — a
+ * porcentagem é sobre o total delas, e sem a ressalva pareceria do agente
+ * inteiro.
+ */
+export function formatarParteMedida(p: {
+  parte: number;
+  total: number;
+  medidas: number;
+  chamadas: number;
+}): string {
+  if (p.medidas === 0) return 'não medido';
+  const pct = p.total > 0 ? Math.round((p.parte / p.total) * 100) : 0;
+  const base = `${p.parte} (${pct}%)`;
+  return p.medidas < p.chamadas
+    ? `${base} em ${p.medidas} de ${p.chamadas}`
+    : base;
+}
+
+/**
  * Sinais de CÓDIGO num texto de agente.
  *
  * Serve a uma pergunta só: o Criativo — que conduz ideação de produto — está
@@ -276,6 +298,14 @@ async function main() {
       entrada: sql<number>`sum(${tokenUsage.inputTokens})::int`,
       saida: sql<number>`sum(${tokenUsage.outputTokens})::int`,
       micros: sql<number>`sum(${tokenUsage.costMicros})::bigint`,
+      // RN-665: em quantas o número é o custo REAL do provider.
+      comCustoReal: sql<number>`count(*) filter (where ${tokenUsage.priceImplicit})::int`,
+      // RN-666: as partes informadas, e em quantas chamadas foram informadas
+      // (`count(coluna)` não conta `null`, que é "não disse").
+      cacheLido: sql<number>`coalesce(sum(${tokenUsage.cachedInputTokens}), 0)::int`,
+      comCache: sql<number>`count(${tokenUsage.cachedInputTokens})::int`,
+      raciocinio: sql<number>`coalesce(sum(${tokenUsage.reasoningTokens}), 0)::int`,
+      comRaciocinio: sql<number>`count(${tokenUsage.reasoningTokens})::int`,
       modelo: sql<string>`max(${tokenUsage.modelName})`,
     })
     .from(tokenUsage)
@@ -404,6 +434,11 @@ interface Medida {
     entrada: number;
     saida: number;
     micros: number;
+    comCustoReal: number;
+    cacheLido: number;
+    comCache: number;
+    raciocinio: number;
+    comRaciocinio: number;
     modelo: string;
   }[];
   criativoEmCodigo: { eventId: string; sinais: string[]; trecho: string }[];
@@ -434,11 +469,25 @@ function imprimir(m: Medida) {
   if (m.custos.length === 0) {
     console.log('_nenhuma chamada de LLM com `actor_kind = agent`._');
   } else {
-    console.log('| agente | chamadas | in | out | custo | modelo |');
-    console.log('|---|---|---|---|---|---|');
+    console.log(
+      '| agente | chamadas | in | cache lido | out | raciocínio | custo | custo real em | modelo |',
+    );
+    console.log('|---|---|---|---|---|---|---|---|---|');
     for (const c of m.custos) {
+      const cache = formatarParteMedida({
+        parte: c.cacheLido,
+        total: c.entrada,
+        medidas: c.comCache,
+        chamadas: c.chamadas,
+      });
+      const raciocinio = formatarParteMedida({
+        parte: c.raciocinio,
+        total: c.saida,
+        medidas: c.comRaciocinio,
+        chamadas: c.chamadas,
+      });
       console.log(
-        `| ${c.agente} | ${c.chamadas} | ${c.entrada} | ${c.saida} | ${formatarUsd(Number(c.micros))} | ${c.modelo} |`,
+        `| ${c.agente} | ${c.chamadas} | ${c.entrada} | ${cache} | ${c.saida} | ${raciocinio} | ${formatarUsd(Number(c.micros))} | ${c.comCustoReal} de ${c.chamadas} | ${c.modelo} |`,
       );
     }
   }
