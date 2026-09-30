@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { createTestDb, truncateAll } from '../../../support/test-db';
 import { eq } from 'drizzle-orm';
 import {
@@ -409,6 +409,51 @@ describe('ApproveActionUseCase', () => {
         user.id,
       ),
     ).rejects.toThrow(NotFoundException);
+  });
+
+  it('merge de PR que OUTRA proposta já mergeou é 409 `pr_ja_mergeado`, e a ação segue pending (AT-249, RN-663)', async () => {
+    const { user, project, session } = await setupPendingAction();
+    // Duas pendentes da mesma PR, como as que nasciam antes da RN-663 — a
+    // proposta de hoje já recusa a segunda, então elas entram direto.
+    const nova = () =>
+      proposedActionRepo.create({
+        projectId: project.id,
+        sessionId: session.id,
+        actionType: 'git_merge',
+        payload: { pullRequestId: 'pr-6', targetBranch: 'dev' },
+        status: 'pending',
+        resolvedPolicy: 'require_approval',
+        actor: { kind: 'user', id: user.id },
+      });
+    const primeira = await nova();
+    const segunda = await nova();
+
+    // A irmã VIVA não impede decidir a primeira.
+    await approveAction.execute(project.id, session.id, primeira.id, user.id);
+    await proposedActionRepo.updateExecutionResult(primeira.id, {
+      status: 'executed',
+      executionResult: {
+        kind: 'git_merge',
+        pullRequestId: 'pr-6',
+        state: 'merged',
+        targetBranch: 'dev',
+      },
+    });
+
+    const aprovar = approveAction.execute(
+      project.id,
+      session.id,
+      segunda.id,
+      user.id,
+    );
+    await expect(aprovar).rejects.toBeInstanceOf(ConflictException);
+    await expect(aprovar).rejects.toMatchObject({
+      response: { code: 'pr_ja_mergeado' },
+    });
+    const [depois] = (
+      await proposedActionRepo.listByProjectAndType(project.id, 'git_merge')
+    ).filter((a) => a.id === segunda.id);
+    expect(depois.status).toBe('pending');
   });
 
   it('404 pra ação inexistente', async () => {

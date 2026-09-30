@@ -561,6 +561,97 @@ describe('ProposeActionUseCase', () => {
     expect(action.status).toBe('pending');
   });
 
+  describe('git_merge da mesma PR (AT-249, RN-663)', () => {
+    const PAYLOAD = {
+      pullRequestId: 'pr-6',
+      sourceBranch: 'feature/task-a1b2c3d4',
+      targetBranch: 'dev',
+      title: 'feat: x',
+    };
+
+    it('uma segunda proposta com a primeira ainda viva é 409 `merge_ja_proposto`, sem criar outra', async () => {
+      const { project, session } = await setupSession('maintainer');
+      const primeira = await proposeAction.execute(project.id, session.id, {
+        actionType: 'git_merge',
+        actor: { kind: 'user', id: session.createdBy },
+        payload: PAYLOAD,
+      });
+      expect(primeira.status).toBe('pending');
+
+      const segunda = proposeAction.execute(project.id, session.id, {
+        actionType: 'git_merge',
+        actor: { kind: 'user', id: session.createdBy },
+        payload: PAYLOAD,
+      });
+      await expect(segunda).rejects.toBeInstanceOf(ConflictException);
+      await expect(segunda).rejects.toMatchObject({
+        response: { code: 'merge_ja_proposto' },
+      });
+      expect(
+        await proposedActionRepo.listByProjectAndType(project.id, 'git_merge'),
+      ).toHaveLength(1);
+    });
+
+    it('PR já mergeada por uma execução anterior é 409 `pr_ja_mergeado`', async () => {
+      const { project, session } = await setupSession('maintainer');
+      const feita = await proposeAction.execute(project.id, session.id, {
+        actionType: 'git_merge',
+        actor: { kind: 'user', id: session.createdBy },
+        payload: PAYLOAD,
+      });
+      await proposedActionRepo.updateDecision(feita.id, {
+        status: 'approved',
+        decidedBy: session.createdBy,
+        decidedAt: new Date(),
+      });
+      await proposedActionRepo.updateExecutionResult(feita.id, {
+        status: 'executed',
+        executionResult: {
+          kind: 'git_merge',
+          pullRequestId: 'pr-6',
+          state: 'merged',
+          targetBranch: 'dev',
+        },
+      });
+
+      const outra = proposeAction.execute(project.id, session.id, {
+        actionType: 'git_merge',
+        actor: { kind: 'user', id: session.createdBy },
+        payload: PAYLOAD,
+      });
+      await expect(outra).rejects.toMatchObject({
+        response: { code: 'pr_ja_mergeado' },
+      });
+    });
+
+    it('proposta anterior NEGADA não impede propor de novo, e outra PR não colide', async () => {
+      const { project, session } = await setupSession('maintainer');
+      const negada = await proposeAction.execute(project.id, session.id, {
+        actionType: 'git_merge',
+        actor: { kind: 'user', id: session.createdBy },
+        payload: PAYLOAD,
+      });
+      await proposedActionRepo.updateDecision(negada.id, {
+        status: 'denied',
+        decidedBy: session.createdBy,
+        decidedAt: new Date(),
+      });
+
+      const denovo = await proposeAction.execute(project.id, session.id, {
+        actionType: 'git_merge',
+        actor: { kind: 'user', id: session.createdBy },
+        payload: PAYLOAD,
+      });
+      const outraPr = await proposeAction.execute(project.id, session.id, {
+        actionType: 'git_merge',
+        actor: { kind: 'user', id: session.createdBy },
+        payload: { ...PAYLOAD, pullRequestId: 'pr-7' },
+      });
+      expect(denovo.status).toBe('pending');
+      expect(outraPr.status).toBe('pending');
+    });
+  });
+
   it('rejeita tipo de ação desconhecido', async () => {
     const { project, session } = await setupSession();
     await expect(
