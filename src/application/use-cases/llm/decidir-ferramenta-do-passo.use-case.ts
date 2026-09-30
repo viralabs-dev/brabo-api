@@ -188,9 +188,15 @@ export class DecidirFerramentaDoPassoUseCase {
         input.messages,
       );
       const pedido = montarPedidoAoJev(estado, plano.tools);
+      const pedidoJson = JSON.stringify(pedido);
+      // Contar token custa mais que o teto vale: um pedido de centenas de
+      // milhares de caracteres nem passa pelo tokenizador (que, em texto
+      // gigante, roda por minutos e seguraria o turno). O `state` recortado
+      // e as descrições do catálogo cabem em ~12 mil caracteres; 8 caracteres
+      // por token de teto é folga larga sobre os ~4 por token do português.
       if (
-        this.tokenEstimator.count(JSON.stringify(pedido)) >
-        TETO_DO_ESTADO_EM_TOKENS
+        pedidoJson.length > TETO_DO_ESTADO_EM_TOKENS * 8 ||
+        this.tokenEstimator.count(pedidoJson) > TETO_DO_ESTADO_EM_TOKENS
       ) {
         return queda('estado_grande', null, anterior);
       }
@@ -214,7 +220,7 @@ export class DecidirFerramentaDoPassoUseCase {
         input,
         agentId: plano.agentId,
         estado,
-        pedidoJson: JSON.stringify(pedido),
+        pedidoJson,
         custoUsd,
         custoMicros,
         tokensIn,

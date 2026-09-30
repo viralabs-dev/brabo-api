@@ -18,6 +18,7 @@ import { DrizzleTokenUsageRepository } from '../../../../src/infrastructure/pers
 import { DrizzleWorkspaceRepository } from '../../../../src/infrastructure/persistence/drizzle/workspace.repository';
 import { GptTokenizerEstimator } from '../../../../src/infrastructure/tokenization/gpt-tokenizer-estimator';
 import { RecordLlmUsageUseCase } from '../../../../src/application/use-cases/llm/record-llm-usage.use-case';
+import { SeedAgentAreasUseCase } from '../../../../src/application/use-cases/agents/seed-agent-areas.use-case';
 import { DecidirFerramentaDoPassoUseCase } from '../../../../src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case';
 import type {
   DecidirFerramentaInput,
@@ -151,6 +152,8 @@ async function setup(toolRouterEnabled = true) {
       createdBy: owner.id,
     })
     .returning();
+  // As áreas nascem com o projeto no produto (RN-094); o insert cru daqui não as cria.
+  await new SeedAgentAreasUseCase(areaRepo).execute(project.id, ['dev-api']);
   const [session] = await db
     .insert(sessions)
     .values({ projectId: project.id, createdBy: owner.id })
@@ -249,18 +252,25 @@ describe('DecidirFerramentaDoPassoUseCase — quando o Jev NÃO é chamado', () 
     });
   });
 
-  it('estado que não cabe no teto: queda estado_grande, sem chamada', async () => {
-    const s = await setup();
-    const roteador = new RoteadorFalso(() => decidiu('read_file'));
-    const enorme = tool('grande');
-    enorme.description = 'palavra '.repeat(40_000);
-    const r = await montar(roteador).decidir(
-      base(s, { tools: [...CATALOGO, enorme] }),
-    );
-    expect(roteador.chamadas).toHaveLength(0);
-    expect(r.toolRouting?.motivoDaQueda).toBe('estado_grande');
-    expect(r.tools).toHaveLength(CATALOGO.length + 1);
-  });
+  it.each([
+    ['pelo tamanho em caracteres, sem tokenizar', 'palavra '.repeat(10_000)],
+    ['pelos tokens', '1234567890'.repeat(3_000)],
+  ])(
+    'estado que não cabe no teto (%s): queda estado_grande, sem chamada',
+    async (_como, descricao) => {
+      const s = await setup();
+      const roteador = new RoteadorFalso(() => decidiu('read_file'));
+      const enorme = tool('grande');
+      enorme.description = descricao;
+      const r = await montar(roteador).decidir(
+        base(s, { tools: [...CATALOGO, enorme] }),
+      );
+      expect(roteador.chamadas).toHaveLength(0);
+      expect(r.toolRouting?.motivoDaQueda).toBe('estado_grande');
+      expect(r.toolRouting?.origemDaQueda).toBe('codigo');
+      expect(r.tools).toHaveLength(CATALOGO.length + 1);
+    },
+  );
 });
 
 describe('DecidirFerramentaDoPassoUseCase — a política P3', () => {
@@ -473,17 +483,20 @@ describe('DecidirFerramentaDoPassoUseCase — o gasto do Jev (metering)', () => 
     expect(
       Math.round((l.inputTokens * l.inputPricePerMillionMicros) / 1_000_000),
     ).toBe(l.costMicros);
+    // O gasto do Jev entra no orçamento de ÁREA (ADR 0110): o ator é o próprio agente.
+    const areas = await areaRepo.listByProject(s.project.id);
+    expect(areas.find((a) => a.key === 'dev')?.spentMicros).toBe(52);
   });
 
   it('entra no orçamento como qualquer gasto (projeto e sessão)', async () => {
     const s = await setup();
     const proj = await budgetRepo.upsertForProject(s.project.id, {
       limitMicros: 1_000_000,
-      policy: 'warn',
+      policy: 'allow',
     });
     const sess = await budgetRepo.upsertForSession(s.session.id, {
       limitMicros: 1_000_000,
-      policy: 'warn',
+      policy: 'allow',
     });
     await montar(new RoteadorFalso(() => decidiu('write_file'))).decidir(
       base(s),
