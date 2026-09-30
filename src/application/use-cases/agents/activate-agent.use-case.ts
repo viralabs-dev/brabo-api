@@ -20,6 +20,7 @@ import {
   canActivateAgent,
   AgentActivationBlockedError,
 } from '../../../domain/sessions/agent-activation';
+import type { AceiteImplicito } from '../../../domain/sessions/estou-pronto';
 
 /**
  * Ativa um agente numa sessão (Fase 3b). A regra de domínio
@@ -47,6 +48,8 @@ export class ActivateAgentUseCase {
     // O aceite automático (RN-660, ADR 0186) ativa em nome do SISTEMA; sem
     // isto o `agent.activated` diria que a pessoa clicou.
     ator: Actor = { kind: 'user', id: userId },
+    /** Aceite implícito do "Estou pronto" (RN-658): vai no payload. */
+    implicito?: AceiteImplicito,
   ) {
     const session = await this.sessions.findInProject(projectId, sessionId);
     if (!session) throw new NotFoundException('Sessão não encontrada');
@@ -75,7 +78,7 @@ export class ActivateAgentUseCase {
     await this.appendEvent.execute(projectId, sessionId, {
       type: 'agent.activated',
       actor: ator,
-      payload: { agent },
+      payload: implicito ? { agent, implicito } : { agent },
     });
 
     // ADR 0182 (RN-635): ativo o agente, nenhuma oferta a ele segue acionável
