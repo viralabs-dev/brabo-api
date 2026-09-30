@@ -45,6 +45,20 @@ export interface ExecutionResultUpdate {
 export interface ListProposedActionsOptions {
   afterSeq?: number;
   limit?: number;
+  /**
+   * A CAUDA da sessão em vez do começo (AT-296, RN-637): as `limit` ações de
+   * `seq` mais alto, devolvidas em ordem crescente, ignorando `afterSeq` —
+   * o mesmo contrato do `latest` dos eventos (ADR 0021). Sem isto, numa
+   * sessão com mais de 200 ações a pendente NOVA ficava fora da primeira
+   * página e sumia do fio, dos Executores e de Aprovações.
+   */
+  latest?: boolean;
+  /**
+   * Só ações neste estado. Hoje só `pending` (AT-296): combinado com
+   * `latest`, traz as pendentes mais novas sem que as decididas ocupem a
+   * janela — e a pendente antiga, que a cauda sozinha perderia, volta junto.
+   */
+  status?: 'pending';
 }
 
 export interface Page<T> {
