@@ -177,14 +177,14 @@ export class SessionsController {
   }
 
   /**
-   * Reabrir é `maintainer`, um degrau acima de encerrar (`developer`): reabre
-   * gasto de token numa sessão que alguém já deu por terminada, e volta a
-   * pôr agentes para conversar nela. Padrão CONSERVADOR à espera do dono
-   * (ADR 0183) — baixar para `developer` é trocar esta linha e a da tela.
+   * Reabrir é `developer`, o MESMO papel de encerrar pela transição
+   * genérica: quem pode dar a sessão por terminada pode trazê-la de volta.
+   * Decisão do dono (ADR 0184, AT-337) sobre o padrão provisório
+   * `maintainer` do ADR 0183 — mudar de novo é esta linha e a da tela.
    */
   @Post(':sessionId/reopen')
   @HttpCode(200)
-  @RequireRole('maintainer')
+  @RequireRole('developer')
   @ApiOperation({
     summary: 'Reopens a closed session, keeping everything it had',
     description:
@@ -194,7 +194,8 @@ export class SessionsController {
       'A NEW event `session.reopened` records the previous `closedAt` and ' +
       '`terminationReason`, which the row clears. A session that carries ' +
       '`execution.activated` is refused (`sessao_com_execucao`): open a new ' +
-      'session and activate execution there. No time limit.',
+      'session and activate execution there. No time limit. Requires ' +
+      '`developer` (ADR 0184).',
   })
   @ApiOkResponse({ type: SessionResponseDto })
   @ApiConflictResponse({
