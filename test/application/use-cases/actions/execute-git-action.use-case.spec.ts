@@ -179,6 +179,66 @@ describe('ExecuteGitActionUseCase', () => {
     });
   });
 
+  // RN-664 (AT-250): `pr_open` sem `targetBranch` (proposto antes de o dev
+  // agent mandar o campo) mira `dev`, não a `defaultBranch` do repositório.
+  it('pr_open sem targetBranch mira `dev`, não a defaultBranch', async () => {
+    let alvo: string | undefined;
+    const uc = build({
+      provider: {
+        openPullRequest: (input: { targetBranch: string }) => {
+          alvo = input.targetBranch;
+          return Promise.resolve({
+            id: 'pr-2',
+            number: 2,
+            url: 'local://repo/pull/2',
+            sourceBranch: 'feature/x',
+            targetBranch: input.targetBranch,
+            state: 'open',
+          });
+        },
+      },
+    });
+    await uc.execute(
+      PROJECT,
+      SESSION,
+      action('pr_open', { sourceBranch: 'feature/x', title: 'X' }),
+    );
+    expect(alvo).toBe('dev');
+    expect(proposedActions.saved?.result).toMatchObject({
+      kind: 'pr_open',
+      targetBranch: 'dev',
+    });
+  });
+
+  it('pr_open com targetBranch explícito respeita o campo', async () => {
+    let alvo: string | undefined;
+    const uc = build({
+      provider: {
+        openPullRequest: (input: { targetBranch: string }) => {
+          alvo = input.targetBranch;
+          return Promise.resolve({
+            id: 'pr-3',
+            number: 3,
+            url: 'local://repo/pull/3',
+            sourceBranch: 'feature/x',
+            targetBranch: input.targetBranch,
+            state: 'open',
+          });
+        },
+      },
+    });
+    await uc.execute(
+      PROJECT,
+      SESSION,
+      action('pr_open', {
+        sourceBranch: 'feature/x',
+        targetBranch: 'dev',
+        title: 'X',
+      }),
+    );
+    expect(alvo).toBe('dev');
+  });
+
   it('sem repositório provisionado → failed (não estoura)', async () => {
     const uc = build({ provider: {}, repo: null });
     await uc.execute(PROJECT, SESSION, action('pr_open', {}));

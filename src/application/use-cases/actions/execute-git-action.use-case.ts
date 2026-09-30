@@ -12,6 +12,7 @@ import { EncryptionService } from '../../ports/encryption.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
 import type { GitActionExecutionResult } from '../../../domain/git/git-action-execution-result';
+import { BRANCH_DE_TRABALHO } from '../../../domain/actions/protected-branches';
 
 // Coerção segura de campos `unknown` (payload/resultado do engine) para
 // string — evita o `[object Object]` que o String(unknown) permitiria.
@@ -131,7 +132,10 @@ export class ExecuteGitActionUseCase {
       const pr = await provider.openPullRequest({
         externalId: repo.externalId,
         sourceBranch: str(payload.sourceBranch),
-        targetBranch: str(payload.targetBranch, repo.defaultBranch),
+        // RN-664: o dev agent manda `targetBranch: 'dev'` explícito; o default
+        // cobre a ação proposta antes disso (sem o campo), que ia para
+        // `repo.defaultBranch` (`main`) e pulava a esteira.
+        targetBranch: str(payload.targetBranch, BRANCH_DE_TRABALHO),
         title: str(payload.title, 'PR'),
         body: str(payload.body) || undefined,
         accessToken,
