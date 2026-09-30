@@ -86,7 +86,12 @@ async function criarAcaoProposta(
   return row;
 }
 
-async function gravarEvento(sessionId: string, type: string, actorId = 'po') {
+async function gravarEvento(
+  sessionId: string,
+  type: string,
+  actorId = 'po',
+  payload: Record<string, unknown> = {},
+) {
   seq += 1;
   const [row] = await db
     .insert(sessionEvents)
@@ -97,7 +102,7 @@ async function gravarEvento(sessionId: string, type: string, actorId = 'po') {
       type,
       actorKind: 'agent',
       actorId,
-      payload: {},
+      payload,
     })
     .returning();
   // `nextSeq` da sessão é o que vira `latestSeq` no resumo.
@@ -163,6 +168,7 @@ describe('DrizzleProjectsSummaryRepository', () => {
         moduleNames: [],
         gatesEverOpened: false,
         delegatedSubagents: [],
+        activatedAgents: [],
         infraActive: false,
         uxDesignerActive: false,
         staffActive: false,
@@ -289,6 +295,7 @@ describe('DrizzleProjectsSummaryRepository', () => {
       moduleNames: ['api'],
       gatesEverOpened: true,
       delegatedSubagents: ['qa-automacao'],
+      activatedAgents: [],
       infraActive: true,
       uxDesignerActive: true,
       staffActive: true,
@@ -382,6 +389,52 @@ describe('DrizzleProjectsSummaryRepository', () => {
 
     expect(resumo.latestSessionId).toBe(recente.id);
     expect(resumo.roster.gatesEverOpened).toBe(true);
+  });
+
+  // RN-630 (AT-252) — quem está ativo se lê da sessão INTEIRA. Aqui as
+  // ativações ficam ANTES de 250 eventos de ruído (fora da janela de 200 que
+  // o cliente lê), e o resumo ainda as devolve, a mais recente primeiro.
+  it('activatedAgents cobre ativações anteriores à janela de 200 eventos', async () => {
+    const owner = await criarUsuario('ativacao@brabo.dev');
+    const ws = await criarWorkspace(owner.id, 'ativacao');
+    const projeto = await criarProjeto(ws.id, owner.id, 'core');
+    const sessao = await criarSessao(projeto.id, owner.id);
+
+    await gravarEvento(sessao.id, 'agent.activated', 'system', {
+      agent: 'arquiteto',
+    });
+    await gravarEvento(sessao.id, 'agent.activated', 'system', {
+      agent: 'infra',
+    });
+    for (let i = 0; i < 250; i++) await gravarEvento(sessao.id, 'chat.message');
+    await gravarEvento(sessao.id, 'agent.activated', 'system', {
+      agent: 'arquiteto',
+    });
+
+    const [resumo] = await repo.summarizeForWorkspace(ws.id);
+
+    expect(resumo.latestSessionId).toBe(sessao.id);
+    expect(resumo.roster.activatedAgents).toEqual(['arquiteto', 'infra']);
+  });
+
+  it('activatedAgents é da sessão MAIS RECENTE: ativação de sessão antiga não vale', async () => {
+    const owner = await criarUsuario('ativacao2@brabo.dev');
+    const ws = await criarWorkspace(owner.id, 'ativacao2');
+    const projeto = await criarProjeto(ws.id, owner.id, 'core');
+    const antiga = await criarSessao(projeto.id, owner.id);
+    await db
+      .update(sessions)
+      .set({ createdAt: new Date(Date.now() - 60_000) })
+      .where(sql`${sessions.id} = ${antiga.id}`);
+    const recente = await criarSessao(projeto.id, owner.id);
+
+    await gravarEvento(antiga.id, 'agent.activated', 'system', { agent: 'po' });
+    await gravarEvento(recente.id, 'chat.message');
+
+    const [resumo] = await repo.summarizeForWorkspace(ws.id);
+
+    expect(resumo.latestSessionId).toBe(recente.id);
+    expect(resumo.roster.activatedAgents).toEqual([]);
   });
 
   // AT-131 — a sessão técnica do provisionamento nasce no MEIO da fase do

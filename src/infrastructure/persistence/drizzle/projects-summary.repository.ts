@@ -207,6 +207,11 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
           sessionId: sessionEvents.sessionId,
           executionActivated: sql<boolean>`bool_or(${sessionEvents.type} = 'execution.activated')`,
           gatesEverOpened: sql<boolean>`bool_or(${sessionEvents.type} in ('pr.gate_changed', 'infra.gate_changed'))`,
+          // RN-630 — na MESMA varredura (nenhuma ida ao banco a mais): os
+          // agentes ativados, do mais recente ao mais antigo por `seq`.
+          activatedAgents: sql<
+            string[] | null
+          >`array_agg(${sessionEvents.payload}->>'agent' order by ${sessionEvents.seq} desc) filter (where ${sessionEvents.type} = 'agent.activated' and ${sessionEvents.payload}->>'agent' is not null)`,
         })
         .from(sessionEvents)
         .where(inArray(sessionEvents.sessionId, sessionIds))
@@ -375,6 +380,7 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
         delegatedSubagents: sessionId
           ? (subagentesDe.get(sessionId) ?? [])
           : [],
+        activatedAgents: [...new Set(marco?.activatedAgents ?? [])],
         infraActive: sessionId ? infraAtivoEm.has(sessionId) : false,
         uxDesignerActive: sessionId ? uxDesignerAtivoEm.has(sessionId) : false,
         staffActive: sessionId ? staffAtivoEm.has(sessionId) : false,
