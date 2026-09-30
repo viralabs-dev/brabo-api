@@ -36,6 +36,14 @@ export interface ListPaginatedOptions {
    * mesmo `limit`, contando só os tipos pedidos.
    */
   types?: string[];
+  /**
+   * Só eventos cujo `payload.actionId` é este (AT-336, RN-614): o que a aba
+   * Aprovações pede para mostrar o motivo da política de UMA ação — o
+   * `proposed_action.created` dela — sem depender da janela que carregou. O
+   * `limit` continua valendo, contando só os que casam; o `seq` deixa de ser
+   * contíguo na resposta, então quem filtra NÃO deriva omitidos por subtração.
+   */
+  actionId?: string;
 }
 
 export interface Page<T> {
