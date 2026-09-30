@@ -112,6 +112,23 @@ export class ContainerSpecInternalResponseDto {
   localizacao!: LocalizacaoDoProjetoResponseDto;
 
   @ApiProperty({
+    type: 'object',
+    nullable: true,
+    properties: {
+      uid: { type: 'integer', example: 1000 },
+      gid: { type: 'integer', example: 1000 },
+    },
+    description:
+      'The OWNER of the project folder, measured by the api (ADR 0180): the ' +
+      'broker starts the container with `--user uid:gid` so the dev agent can ' +
+      'write to the folder under `--cap-drop ALL`. `null` when the folder ' +
+      'cannot be measured, the project is `runner`, or the owner is root — ' +
+      'the container then starts as before. Never accepted from a request to ' +
+      'the broker.',
+  })
+  usuarioDaPasta!: { uid: number; gid: number } | null;
+
+  @ApiProperty({
     type: ImagemParaOBrokerResponseDto,
     nullable: true,
     description:

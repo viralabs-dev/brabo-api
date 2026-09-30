@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { SessionsUseCasesModule } from '../sessions/sessions-use-cases.module';
 import { ContainerBrokerHttpClientModule } from '../../../infrastructure/http-clients/container-broker-http-client.module';
+import { FilesystemModule } from '../../../infrastructure/filesystem/filesystem.module';
 import { DecidirImagemDoProjetoUseCase } from './decidir-imagem-do-projeto.use-case';
 import { ObterContainerDoProjetoUseCase } from './obter-container-do-projeto.use-case';
 import { ObterCicloDeVidaDoContainerUseCase } from './obter-ciclo-de-vida-do-container.use-case';
@@ -70,7 +71,11 @@ const USE_CASES = [
  * arquivos divergiria o primeiro dia que um dos dois mudasse sozinho.
  */
 @Module({
-  imports: [SessionsUseCasesModule, ContainerBrokerHttpClientModule],
+  imports: [
+    SessionsUseCasesModule,
+    ContainerBrokerHttpClientModule,
+    FilesystemModule,
+  ],
   providers: USE_CASES,
   exports: USE_CASES,
 })
