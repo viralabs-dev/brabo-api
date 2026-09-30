@@ -27,6 +27,10 @@ import {
 } from '../../../domain/actions/decide';
 import { GIT_EXECUTED_ACTION_TYPES } from '../../../domain/actions/git-action-types';
 import {
+  pullRequestIdDoPayload,
+  recusaDeMerge,
+} from '../../../domain/actions/merge-de-pr';
+import {
   commandFromPayload,
   cwdFromPayload,
 } from '../../../domain/actions/pattern-for-action';
@@ -97,6 +101,25 @@ export class ProposeActionUseCase {
         code: 'sem_broker_na_instalacao',
         message: `Esta instalação não tem broker de container (BROKER_URL vazia): \`${actionType}\` em projeto \`${project.executionMode}\` só terminaria em falha. Use o modo \`runner\`, ou configure o broker.`,
       });
+    }
+
+    // Merge da MESMA PR (AT-249, RN-663): já mergeada ou já proposta é 409
+    // nomeado, ANTES de criar a proposta. A tela deduplicava sozinha; a api
+    // não, e no uso real a `pr-6` foi mergeada três vezes. Gate de QA
+    // pendente NÃO recusa (decisão do dono, 30/09) — a tela avisa. O teto de
+    // branch protegida (RN-418) segue em `decide()`, intocado.
+    if (actionType === 'git_merge') {
+      const pullRequestId = pullRequestIdDoPayload(input.payload);
+      if (pullRequestId !== null) {
+        const recusa = recusaDeMerge(
+          pullRequestId,
+          await this.proposedActions.listByProjectAndType(
+            projectId,
+            'git_merge',
+          ),
+        );
+        if (recusa) throw new ConflictException(recusa);
+      }
     }
 
     // Contexto todo buscado ANTES de chamar decide() — a função em si é

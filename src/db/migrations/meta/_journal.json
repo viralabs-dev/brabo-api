@@ -470,6 +470,13 @@
       "when": 1790801711650,
       "tag": "0066_roteamento_pelo_jev",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1790809923733,
+      "tag": "0067_custo_real_no_metering",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { SessionRepository } from '../../ports/session-repository.port';
 import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
@@ -18,6 +22,11 @@ import { ExecuteParallelizationUseCase } from '../execution/execute-parallelizat
 import { ExecuteMaxParallelRaiseUseCase } from '../execution/execute-max-parallel-raise.use-case';
 import { assertTransition } from '../../../domain/actions/action-state-machine';
 import { GIT_EXECUTED_ACTION_TYPES } from '../../../domain/actions/git-action-types';
+import {
+  mergeouAPr,
+  pullRequestIdDoPayload,
+  recusaDeMerge,
+} from '../../../domain/actions/merge-de-pr';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
 import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
@@ -247,6 +256,28 @@ export class ApproveActionUseCase {
       if (!current) throw new NotFoundException('Ação não encontrada');
 
       assertTransition(current.status, 'approved');
+
+      // A proposta nasceu antes de a PR ser mergeada por OUTRA (duas
+      // pendentes da mesma PR, criadas antes da RN-663, ou uma corrida):
+      // aprovar mergearia de novo. 409 nomeado, e a ação fica `pending` para
+      // quem a vê negar. Só `pr_ja_mergeado` conta aqui — uma irmã viva não
+      // impede decidir esta.
+      if (current.actionType === 'git_merge') {
+        const pullRequestId = pullRequestIdDoPayload(current.payload);
+        if (pullRequestId !== null) {
+          const recusa = recusaDeMerge(
+            pullRequestId,
+            (
+              await this.proposedActions.listByProjectAndType(
+                projectId,
+                'git_merge',
+              )
+            ).filter((a) => mergeouAPr(a, pullRequestId)),
+            actionId,
+          );
+          if (recusa) throw new ConflictException(recusa);
+        }
+      }
 
       const updated = await this.proposedActions.updateDecision(actionId, {
         status: 'approved',

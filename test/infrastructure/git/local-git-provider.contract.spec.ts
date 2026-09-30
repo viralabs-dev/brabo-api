@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { LocalGitProvider } from '../../../src/infrastructure/git/local-git-provider';
 import { runGitProviderContract } from '../../contract/git-provider.contract';
+import { GitPullRequestAlreadyMergedError } from '../../../src/domain/git/git-errors';
 
 const execFileAsync = promisify(execFile);
 
@@ -140,6 +141,32 @@ describe('LocalGitProvider — pull request local (open + merge)', () => {
     expect(merged.state).toBe('merged');
 
     // main agora aponta pro commit da feature (fast-forward).
+    const branches = await provider.listBranches({
+      externalId: repo.externalId,
+    });
+    expect(branches.find((b) => b.name === 'main')?.commitSha).toBe(featureSha);
+  });
+
+  it('mergear de novo uma PR já mergeada é recusado com erro nomeado, e o target não se move (AT-249, RN-663)', async () => {
+    const { repo, featureSha } = await repoWithFeature();
+    const pr = await provider.openPullRequest({
+      externalId: repo.externalId,
+      sourceBranch: 'feature/x',
+      targetBranch: 'main',
+      title: 'Feature X',
+    });
+    await provider.mergePullRequest({
+      externalId: repo.externalId,
+      pullRequestId: pr.id,
+    });
+
+    await expect(
+      provider.mergePullRequest({
+        externalId: repo.externalId,
+        pullRequestId: pr.id,
+      }),
+    ).rejects.toBeInstanceOf(GitPullRequestAlreadyMergedError);
+
     const branches = await provider.listBranches({
       externalId: repo.externalId,
     });

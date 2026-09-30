@@ -69,6 +69,20 @@ export class GitNotSupportedError extends Error {
   }
 }
 
+// AT-249 (RN-663): mergear uma PR que já foi mergeada. O GitHub recusa o
+// merge repetido (o `pulls.merge` lança); o `LocalGitProvider` devolvia a PR
+// mergeada sem erro, e o uso real de 29/09 teve a mesma PR "mergeada" três
+// vezes. Recusa nomeada, alinhada ao remoto.
+export class GitPullRequestAlreadyMergedError extends Error {
+  constructor(
+    readonly repoId: string,
+    readonly pullRequestId: string,
+  ) {
+    super(`PR já mergeada: ${pullRequestId}`);
+    this.name = 'GitPullRequestAlreadyMergedError';
+  }
+}
+
 // Sessão 2 (ver docs/adr/0004-git-credential-registration.md): falha no
 // teste de conexão de uma credencial de git antes de persistir — nunca
 // lançado depois de gravar nada.
