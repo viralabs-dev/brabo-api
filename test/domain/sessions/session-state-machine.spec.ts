@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
+  assertReopen,
   assertTransition,
+  canReopen,
   canTransition,
   InvalidSessionTransitionError,
   isTerminal,
@@ -35,7 +37,7 @@ describe('session-state-machine', () => {
       );
     });
 
-    it('rejeita qualquer transição para fora de um estado terminal', () => {
+    it('rejeita qualquer transição GENÉRICA para fora de um estado terminal (a reabertura é caminho próprio, ADR 0183)', () => {
       expect(() => assertTransition('closed', 'active')).toThrow(
         InvalidSessionTransitionError,
       );
@@ -46,6 +48,30 @@ describe('session-state-machine', () => {
 
     it('rejeita closing voltar para active', () => {
       expect(() => assertTransition('closing', 'active')).toThrow(
+        InvalidSessionTransitionError,
+      );
+    });
+  });
+
+  describe('reabertura (ADR 0183, RN-649)', () => {
+    it('só os terminais reabrem, e para active', () => {
+      expect(canReopen('closed')).toBe(true);
+      expect(canReopen('closed_abnormally')).toBe(true);
+      expect(() => assertReopen('closed')).not.toThrow();
+      expect(() => assertReopen('closed_abnormally')).not.toThrow();
+    });
+
+    it('closing NUNCA volta a active, nem pela reabertura', () => {
+      expect(canReopen('closing')).toBe(false);
+      expect(() => assertReopen('closing')).toThrow(
+        InvalidSessionTransitionError,
+      );
+    });
+
+    it('sessão viva não "reabre"', () => {
+      expect(canReopen('created')).toBe(false);
+      expect(canReopen('active')).toBe(false);
+      expect(() => assertReopen('active')).toThrow(
         InvalidSessionTransitionError,
       );
     });
