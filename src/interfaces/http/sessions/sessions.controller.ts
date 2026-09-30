@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -30,6 +31,7 @@ import { GetSessionUseCase } from '../../../application/use-cases/sessions/get-s
 import { ListSessionsForProjectUseCase } from '../../../application/use-cases/sessions/list-sessions-for-project.use-case';
 import { RenameSessionUseCase } from '../../../application/use-cases/sessions/rename-session.use-case';
 import { TransitionSessionUseCase } from '../../../application/use-cases/sessions/transition-session.use-case';
+import { ReopenSessionUseCase } from '../../../application/use-cases/sessions/reopen-session.use-case';
 import { AppendSessionEventUseCase } from '../../../application/use-cases/sessions/append-session-event.use-case';
 import { ListSessionEventsUseCase } from '../../../application/use-cases/sessions/list-session-events.use-case';
 import { GetSessionEventUseCase } from '../../../application/use-cases/sessions/get-session-event.use-case';
@@ -59,6 +61,7 @@ export class SessionsController {
     private readonly listSessionsForProject: ListSessionsForProjectUseCase,
     private readonly renameSession: RenameSessionUseCase,
     private readonly transitionSession: TransitionSessionUseCase,
+    private readonly reopenSession: ReopenSessionUseCase,
     private readonly appendSessionEvent: AppendSessionEventUseCase,
     private readonly listSessionEvents: ListSessionEventsUseCase,
     private readonly getSessionEvent: GetSessionEventUseCase,
@@ -171,6 +174,40 @@ export class SessionsController {
     @Body() dto: TransitionSessionDto,
   ) {
     return this.transitionSession.execute(projectId, sessionId, dto.status);
+  }
+
+  /**
+   * Reabrir é `maintainer`, um degrau acima de encerrar (`developer`): reabre
+   * gasto de token numa sessão que alguém já deu por terminada, e volta a
+   * pôr agentes para conversar nela. Padrão CONSERVADOR à espera do dono
+   * (ADR 0183) — baixar para `developer` é trocar esta linha e a da tela.
+   */
+  @Post(':sessionId/reopen')
+  @HttpCode(200)
+  @RequireRole('maintainer')
+  @ApiOperation({
+    summary: 'Reopens a closed session, keeping everything it had',
+    description:
+      'Only `closed`/`closed_abnormally` reopen, and only to `active` — ' +
+      '`closing` never goes back (ADR 0183). The session keeps its event ' +
+      'log, artifacts, answered questions and handoffs; `kind` is untouched. ' +
+      'A NEW event `session.reopened` records the previous `closedAt` and ' +
+      '`terminationReason`, which the row clears. A session that carries ' +
+      '`execution.activated` is refused (`sessao_com_execucao`): open a new ' +
+      'session and activate execution there. No time limit.',
+  })
+  @ApiOkResponse({ type: SessionResponseDto })
+  @ApiConflictResponse({
+    description:
+      'Session is not closed (`reason: sessao_nao_encerrada`), or it ' +
+      'activated execution (`reason: sessao_com_execucao`).',
+  })
+  reopen(
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.reopenSession.execute(projectId, sessionId, user.id);
   }
 
   @Get(':sessionId/events')

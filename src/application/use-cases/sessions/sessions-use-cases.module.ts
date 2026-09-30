@@ -4,6 +4,7 @@ import { GetSessionUseCase } from './get-session.use-case';
 import { ListSessionsForProjectUseCase } from './list-sessions-for-project.use-case';
 import { RenameSessionUseCase } from './rename-session.use-case';
 import { TransitionSessionUseCase } from './transition-session.use-case';
+import { ReopenSessionUseCase } from './reopen-session.use-case';
 import { AppendSessionEventUseCase } from './append-session-event.use-case';
 import { ListSessionEventsUseCase } from './list-session-events.use-case';
 import { GetSessionEventUseCase } from './get-session-event.use-case';
@@ -19,6 +20,7 @@ const USE_CASES = [
   ListSessionsForProjectUseCase,
   RenameSessionUseCase,
   TransitionSessionUseCase,
+  ReopenSessionUseCase,
   AppendSessionEventUseCase,
   ListSessionEventsUseCase,
   GetSessionEventUseCase,
