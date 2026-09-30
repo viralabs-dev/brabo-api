@@ -155,8 +155,8 @@ export class AcceptHandoffUseCase {
             criterio: peloSistema.criterio,
           }
         : implicito
-        ? { handoffId, toAgent: handoff.toAgent, implicito }
-        : { handoffId, toAgent: handoff.toAgent },
+          ? { handoffId, toAgent: handoff.toAgent, implicito }
+          : { handoffId, toAgent: handoff.toAgent },
     });
 
     if (handoff.toAgent === 'infra') {

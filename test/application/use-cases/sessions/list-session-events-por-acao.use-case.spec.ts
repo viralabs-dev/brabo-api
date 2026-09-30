@@ -2,7 +2,12 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ulid } from 'ulid';
 import { createTestDb, truncateAll } from '../../../support/test-db';
-import { projects, sessions, users, workspaces } from '../../../../src/db/schema';
+import {
+  projects,
+  sessions,
+  users,
+  workspaces,
+} from '../../../../src/db/schema';
 import { DrizzleSessionEventRepository } from '../../../../src/infrastructure/persistence/drizzle/session-event.repository';
 import { DrizzleSessionRepository } from '../../../../src/infrastructure/persistence/drizzle/session.repository';
 import { ListSessionEventsUseCase } from '../../../../src/application/use-cases/sessions/list-session-events.use-case';
@@ -37,11 +42,21 @@ async function semear() {
     .returning();
   const [projeto] = await db
     .insert(projects)
-    .values({ workspaceId: ws.id, name: 'core', slug: 'core', createdBy: dono.id })
+    .values({
+      workspaceId: ws.id,
+      name: 'core',
+      slug: 'core',
+      createdBy: dono.id,
+    })
     .returning();
   const [outroProjeto] = await db
     .insert(projects)
-    .values({ workspaceId: ws.id, name: 'web', slug: 'web', createdBy: dono.id })
+    .values({
+      workspaceId: ws.id,
+      name: 'web',
+      slug: 'web',
+      createdBy: dono.id,
+    })
     .returning();
   const [sessao] = await db
     .insert(sessions)
@@ -103,7 +118,9 @@ describe('ListSessionEventsUseCase — filtro por `actionId`', () => {
       'proposed_action.created',
       'proposed_action.approved',
     ]);
-    expect(pagina.items[0].payload).toMatchObject({ reason: 'fora do allowlist' });
+    expect(pagina.items[0].payload).toMatchObject({
+      reason: 'fora do allowlist',
+    });
   });
 
   it('não atravessa sessões: a mesma ação noutra sessão do projeto não vem', async () => {

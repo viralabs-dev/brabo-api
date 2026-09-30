@@ -328,9 +328,7 @@ export const _chavesMembroComUsuario: MesmasChaves<
  * Membro do WORKSPACE com nome e e-mail (AT-335, RN-652) — a mesma forma da
  * de projeto, e nada além: sem `createdAt`, sem estado de conta.
  */
-export class WorkspaceMemberComUsuarioResponseDto
-  implements Wire<WorkspaceMemberWithUser>
-{
+export class WorkspaceMemberComUsuarioResponseDto implements Wire<WorkspaceMemberWithUser> {
   @ApiProperty({ example: '01JC4Z0000USUARIO0000000002' })
   userId!: string;
 

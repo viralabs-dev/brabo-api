@@ -85,12 +85,22 @@ describe('ListWorkspaceMembersUseCase', () => {
 
     const membros = await listar.execute(ws.id);
 
-    expect(
-      [...membros].sort((a, b) => a.email.localeCompare(b.email)),
-    ).toEqual([
-      { userId: dono.id, role: 'owner', name: 'Dona', email: 'dona@brabo.dev' },
-      { userId: leitor.id, role: 'viewer', name: null, email: 'leitor@brabo.dev' },
-    ]);
+    expect([...membros].sort((a, b) => a.email.localeCompare(b.email))).toEqual(
+      [
+        {
+          userId: dono.id,
+          role: 'owner',
+          name: 'Dona',
+          email: 'dona@brabo.dev',
+        },
+        {
+          userId: leitor.id,
+          role: 'viewer',
+          name: null,
+          email: 'leitor@brabo.dev',
+        },
+      ],
+    );
   });
 
   it('recusa: workspace inexistente é 404', async () => {
@@ -104,8 +114,12 @@ describe('GET /workspaces/:workspaceId/members — o papel mínimo', () => {
   it('é `viewer`, o das leituras vizinhas, e não o `owner` das escritas de membro', () => {
     const reflector = new Reflector();
     expect(
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      reflector.get(REQUIRED_ROLE_KEY, WorkspacesController.prototype.listMembers),
+      reflector.get(
+        REQUIRED_ROLE_KEY,
+        // Só a referência vai ao Reflector, que lê metadado; nunca é chamada.
+        // eslint-disable-next-line @typescript-eslint/unbound-method
+        WorkspacesController.prototype.listMembers,
+      ),
     ).toBe('viewer');
   });
 
