@@ -5,6 +5,7 @@ import type { SessionRepository } from '../../../../src/application/ports/sessio
 import type { HandoffRepository } from '../../../../src/application/ports/handoff-repository.port';
 import type { ApiToEngineClient } from '../../../../src/application/ports/api-to-engine-client.port';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
+import type { CicloDeVidaDoHandoff } from '../../../../src/application/use-cases/agents/ciclo-de-vida-do-handoff.service';
 import type { Handoff } from '../../../../src/domain/sessions/handoff.entity';
 
 const PROJECT = 'p1';
@@ -61,17 +62,29 @@ let handoffs: FakeHandoffs;
 let engine: FakeEngine;
 let append: FakeAppend;
 let useCase: ActivateAgentUseCase;
+let ciclo: {
+  ativados: string[];
+  substituirOfertasAoAtivar: (p: string, a: string) => Promise<void>;
+};
 
 beforeEach(() => {
   sessions = new FakeSessions();
   handoffs = new FakeHandoffs();
   engine = new FakeEngine();
   append = new FakeAppend();
+  ciclo = {
+    ativados: [],
+    substituirOfertasAoAtivar(_p: string, agent: string) {
+      ciclo.ativados.push(agent);
+      return Promise.resolve();
+    },
+  };
   useCase = new ActivateAgentUseCase(
     sessions as unknown as SessionRepository,
     handoffs as unknown as HandoffRepository,
     engine as unknown as ApiToEngineClient,
     append as unknown as AppendSessionEventUseCase,
+    ciclo as unknown as CicloDeVidaDoHandoff,
   );
 });
 
@@ -82,6 +95,8 @@ describe('ActivateAgentUseCase', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(engine.startAgentCalls).toHaveLength(0);
     expect(append.calls).toHaveLength(0);
+    // Recusa não substitui oferta nenhuma: o agente não ficou ativo.
+    expect(ciclo.ativados).toEqual([]);
   });
 
   it('ativa o Criativo por comando do usuário (sem handoff)', async () => {
@@ -97,5 +112,11 @@ describe('ActivateAgentUseCase', () => {
     expect(res.agent).toBe('po');
     expect(engine.startAgentCalls).toEqual([{ agent: 'po' }]);
     expect(append.calls).toEqual([{ type: 'agent.activated' }]);
+  });
+
+  it('ADR 0182 (RN-635): ativar substitui as ofertas pendentes ao MESMO agente no projeto, depois do agent.activated', async () => {
+    handoffs.rows = [handoff({ toAgent: 'po', status: 'accepted' })];
+    await useCase.execute(PROJECT, SESSION, 'po', USER);
+    expect(ciclo.ativados).toEqual(['po']);
   });
 });

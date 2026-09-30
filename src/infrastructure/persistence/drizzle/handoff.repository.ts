@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import {
   HandoffRepository,
   type NewHandoff,
@@ -70,6 +70,37 @@ export class DrizzleHandoffRepository implements HandoffRepository {
       .where(eq(handoffs.id, id))
       .returning();
     return toEntity(row);
+  }
+
+  async findOfferedToAgentInProject(
+    projectId: string,
+    toAgent: string,
+  ): Promise<Handoff[]> {
+    const db = currentDb(this.rootDb);
+    const rows = await db
+      .select()
+      .from(handoffs)
+      .where(
+        and(
+          eq(handoffs.projectId, projectId),
+          eq(handoffs.toAgent, toAgent),
+          eq(handoffs.status, 'offered'),
+        ),
+      )
+      .orderBy(asc(handoffs.createdAt));
+    return rows.map(toEntity);
+  }
+
+  async travarOfertasDoDestino(
+    projectId: string,
+    toAgent: string,
+  ): Promise<void> {
+    const db = currentDb(this.rootDb);
+    // A chave é o hash de 64 bits do par — colisão só serializaria dois
+    // destinos sem relação, nunca liberaria dois pedidos ao mesmo.
+    await db.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtextextended(${`handoff:${projectId}:${toAgent}`}, 0))`,
+    );
   }
 }
 

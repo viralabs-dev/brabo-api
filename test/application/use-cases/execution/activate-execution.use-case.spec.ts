@@ -13,6 +13,7 @@ import type { ApiToEngineClient } from '../../../../src/application/ports/api-to
 import type { ProjectRepository } from '../../../../src/application/ports/project-repository.port';
 import type { PermissionsFileStore } from '../../../../src/application/ports/permissions-file-store.port';
 import type { ProvisionedRepositoryRepository } from '../../../../src/application/ports/provisioned-repository-repository.port';
+import type { CicloDeVidaDoHandoff } from '../../../../src/application/use-cases/agents/ciclo-de-vida-do-handoff.service';
 import type { ContainerRepository } from '../../../../src/application/ports/container-repository.port';
 import type { HandoffRepository } from '../../../../src/application/ports/handoff-repository.port';
 import type { TransitionSessionUseCase } from '../../../../src/application/use-cases/sessions/transition-session.use-case';
@@ -222,9 +223,19 @@ function build(opts?: {
       ),
   } as unknown as ProvisionedRepositoryRepository;
 
+  const substituidosAoAtivar: string[] = [];
   const handoffs = {
     findByProject: () => Promise.resolve(opts?.handoffsDoProjeto ?? []),
   } as unknown as HandoffRepository;
+
+  // ADR 0182: a supersessão ao ativar tem teste próprio
+  // (`ciclo-de-vida-do-handoff.spec.ts`); aqui só se registra o chamado.
+  const ciclo = {
+    substituirOfertasAoAtivar: (_p: string, agent: string) => {
+      substituidosAoAtivar.push(agent);
+      return Promise.resolve();
+    },
+  } as unknown as CicloDeVidaDoHandoff;
 
   const containers = {
     findByProject: () =>
@@ -249,6 +260,7 @@ function build(opts?: {
       repositories,
       handoffs,
       containers,
+      ciclo,
     ),
     areasSemeadas,
     started,
@@ -259,6 +271,7 @@ function build(opts?: {
     sessoesCriadas,
     sessoesAtivadas,
     transicoes,
+    substituidosAoAtivar,
   };
 }
 
@@ -834,5 +847,24 @@ describe('ActivateExecutionUseCase — sugestão de paralelização (AT-104)', (
     const { useCase, eventos } = build({ pegaveis: 1, container: 'running' });
     await useCase.execute('proj-1', 'user-1');
     expect(sugestoes(eventos)).toHaveLength(0);
+  });
+});
+
+describe('ActivateExecutionUseCase — ciclo de vida do handoff (ADR 0182)', () => {
+  it('a ativação da execução substitui ofertas pendentes a cada dev agent que ela ativa', async () => {
+    const { useCase, substituidosAoAtivar } = build();
+
+    await useCase.execute('proj-1', 'user-1');
+
+    expect(substituidosAoAtivar.length).toBeGreaterThan(0);
+    expect(substituidosAoAtivar.every((a) => a.startsWith('dev-'))).toBe(true);
+  });
+
+  it('ativação recusada (sem repositório) não substitui nada', async () => {
+    const { useCase, substituidosAoAtivar } = build({ repositorio: null });
+
+    await expect(useCase.execute('proj-1', 'user-1')).rejects.toThrow();
+
+    expect(substituidosAoAtivar).toEqual([]);
   });
 });

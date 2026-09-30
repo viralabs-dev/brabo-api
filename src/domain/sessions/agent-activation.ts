@@ -8,7 +8,11 @@
 // estados de sessão). O IO (buscar handoffs, subir o processo do agente) fica
 // no use-case.
 
-export type HandoffStatus = 'offered' | 'accepted' | 'completed' | 'rejected';
+// `superseded` (ADR 0182, RN-635): a oferta deixou de ser a vigente — o agente
+// destino foi ativado por outro caminho, ou nasceu uma oferta nova ao MESMO
+// destino no projeto que a substitui. Nunca é aceitável (só `offered` é).
+export type HandoffStatus =
+  'offered' | 'accepted' | 'completed' | 'rejected' | 'superseded';
 
 // Só o que a regra precisa de um handoff — não o registro inteiro.
 export interface HandoffView {

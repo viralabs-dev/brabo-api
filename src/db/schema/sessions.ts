@@ -40,7 +40,9 @@ export const sessionKindEnum = pgEnum('session_kind', [
 export const actorKindEnum = pgEnum('actor_kind', ['user', 'agent', 'system']);
 
 // Handoff entre agentes (Fase 3b): offered → accepted | rejected; accepted →
-// completed. Um agente só pode ser ativado numa sessão com um handoff
+// completed; offered → superseded (ADR 0182, RN-635: o destino foi ativado por
+// outro caminho, ou uma oferta nova ao mesmo destino no projeto a substituiu).
+// Um agente só pode ser ativado numa sessão com um handoff
 // `accepted` endereçado a ele (ver domain/sessions/agent-activation.ts) — o
 // Criativo é a exceção (inicia por comando do usuário). Cada transição de
 // status também vira um session_event `handoff.*` imutável.
@@ -49,6 +51,7 @@ export const handoffStatusEnum = pgEnum('handoff_status', [
   'accepted',
   'completed',
   'rejected',
+  'superseded',
 ]);
 
 export const sessions = pgTable(

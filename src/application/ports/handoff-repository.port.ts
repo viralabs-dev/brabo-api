@@ -24,4 +24,23 @@ export abstract class HandoffRepository {
    */
   abstract findByProject(projectId: string): Promise<Handoff[]>;
   abstract updateStatus(id: string, status: HandoffStatus): Promise<Handoff>;
+  /**
+   * As ofertas `offered` ao destino no PROJETO, em ordem de criação (ADR 0182,
+   * RN-635). Normalmente zero ou uma; mais de uma só em dado anterior ao ADR.
+   */
+  abstract findOfferedToAgentInProject(
+    projectId: string,
+    toAgent: string,
+  ): Promise<Handoff[]>;
+  /**
+   * Serializa, até o fim da transação CORRENTE, quem mexe nas ofertas de
+   * (projeto, destino) — lock consultivo de transação, nunca de linha: a
+   * pergunta "já há oferta?" é sobre uma linha que talvez não exista ainda.
+   * Sem transação ativa o lock soltaria na hora e não serializaria nada, então
+   * quem chama DEVE estar dentro de `UnitOfWork.runInTransaction`.
+   */
+  abstract travarOfertasDoDestino(
+    projectId: string,
+    toAgent: string,
+  ): Promise<void>;
 }

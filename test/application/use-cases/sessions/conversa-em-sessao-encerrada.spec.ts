@@ -19,6 +19,7 @@ import { AppendSessionEventUseCase } from '../../../../src/application/use-cases
 import { CreateHandoffUseCase } from '../../../../src/application/use-cases/agents/create-handoff.use-case';
 import { AcceptHandoffUseCase } from '../../../../src/application/use-cases/agents/accept-handoff.use-case';
 import { ActivateAgentUseCase } from '../../../../src/application/use-cases/agents/activate-agent.use-case';
+import { CicloDeVidaDoHandoff } from '../../../../src/application/use-cases/agents/ciclo-de-vida-do-handoff.service';
 import { SendAgentMessageUseCase } from '../../../../src/application/use-cases/agents/send-agent-message.use-case';
 import type { ApiToEngineClient } from '../../../../src/application/ports/api-to-engine-client.port';
 import type { SessionStatus } from '../../../../src/domain/sessions/session-state-machine';
@@ -36,11 +37,19 @@ import {
 const { db, pool } = createTestDb();
 const sessionRepo = new DrizzleSessionRepository(db);
 const handoffRepo = new DrizzleHandoffRepository(db);
+const unitOfWork = new DrizzleUnitOfWork(db);
 const append = new AppendSessionEventUseCase(
   new DrizzleUnitOfWork(db),
   sessionRepo,
   new DrizzleSessionEventRepository(db),
   new DrizzleOutboxRepository(db),
+);
+const ciclo = new CicloDeVidaDoHandoff(
+  handoffRepo,
+  new DrizzleSessionEventRepository(db),
+  sessionRepo,
+  append,
+  unitOfWork,
 );
 
 beforeEach(async () => {
@@ -265,7 +274,7 @@ describe('casos de uso da conversa em sessão encerrada (RN-581)', () => {
 
   it('CreateHandoff: 409 ANTES de criar a linha — nenhum handoff órfão', async () => {
     const { project, session } = await sessao('closed');
-    const uc = new CreateHandoffUseCase(handoffRepo, append);
+    const uc = new CreateHandoffUseCase(handoffRepo, append, unitOfWork, ciclo);
 
     await expect(
       uc.execute(project.id, session.id, {
@@ -323,6 +332,7 @@ describe('casos de uso da conversa em sessão encerrada (RN-581)', () => {
       handoffRepo,
       engine as unknown as ApiToEngineClient,
       append,
+      ciclo,
     );
 
     await expect(
@@ -339,6 +349,7 @@ describe('casos de uso da conversa em sessão encerrada (RN-581)', () => {
       handoffRepo,
       engine as unknown as ApiToEngineClient,
       append,
+      ciclo,
     );
 
     await uc.execute(project.id, session.id, 'criativo', user.id);
