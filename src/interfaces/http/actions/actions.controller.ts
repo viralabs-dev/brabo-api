@@ -22,6 +22,7 @@ import { ProposeActionDto } from './dto/propose-action.dto';
 import { DenyActionDto } from './dto/deny-action.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import {
+  ApproveAlwaysResponseDto,
   PaginaDeAcoesResponseDto,
   ProposedActionResponseDto,
 } from './dto/actions.response.dto';
@@ -116,11 +117,16 @@ export class ActionsController {
     description:
       'Besides releasing this action, it adds the corresponding pattern to ' +
       "the project's `allow` list — future matching actions come out " +
-      '`auto_approved` without asking. A pattern already in `deny` stays blocked.',
+      '`auto_approved` without asking. A pattern already in `deny` stays blocked. ' +
+      'The approval and the pattern are recorded in the same transaction. ' +
+      'Clicking an action that was already APPROVED is idempotent success ' +
+      '(`desfecho: ja_aprovada`), recording the pattern only if it is missing.',
   })
-  @ApiCreatedResponse({ type: ProposedActionResponseDto })
+  @ApiCreatedResponse({ type: ApproveAlwaysResponseDto })
   @ApiConflictResponse({
-    description: 'The action was already decided or executed.',
+    description:
+      'The action was already DENIED (`reason: acao_ja_recusada`); no pattern ' +
+      'is recorded.',
   })
   approveAlways(
     @Param('projectId') projectId: string,
