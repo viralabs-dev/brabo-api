@@ -770,4 +770,69 @@ describe('ApproveAlwaysActionUseCase', () => {
       }
     });
   });
+
+  // AT-320: a auditoria visual de 30/09 viu "Sempre permitir" oferecido para
+  // `git_push`. MEDIDO: a api só recusava o `git push` DIGITADO no terminal; o
+  // `git_push` TIPADO passava e gravava `GitPush()` em `allow` (ou autonomia
+  // do módulo). A lista única `TIPOS_SEM_SEMPRE_PERMITIR` fecha os dois.
+  describe('tipos do teto (AT-320)', () => {
+    it.each([
+      ['git_push', 'qa-automacao', {}],
+      ['pr_open', 'qa-automacao', {}],
+      ['git_merge', 'qa-automacao', { targetBranch: 'dev' }],
+      ['instruction_patch', 'qa-automacao', {}],
+      ['git_push', 'dev-checkout', {}],
+    ] as const)(
+      '`%s` de `%s`: 400 nomeado (`teto_do_sempre_permitir`), sem padrão, sem autonomia, a ação segue pending',
+      async (actionType, actorId, payload) => {
+        const { user, project, session } = await setupPendingTerminalAction();
+        const acao = await proposeAction.execute(project.id, session.id, {
+          actionType,
+          actor: { kind: 'agent', id: actorId },
+          payload,
+        });
+        expect(acao.status).toBe('pending');
+
+        const erro: unknown = await approveAlwaysAction
+          .execute(project.id, session.id, acao.id, user.id)
+          .catch((e: unknown) => e);
+
+        expect(erro).toBeInstanceOf(BadRequestException);
+        expect((erro as BadRequestException).getResponse()).toMatchObject({
+          reason: 'teto_do_sempre_permitir',
+          actionType,
+        });
+        const file = await permissionsFileStore.read(project);
+        expect(file.allow).toEqual([]);
+        expect(
+          await agentAutonomyRepo.findMode(project.id, actorId, actionType),
+        ).toBeNull();
+        const depois = await proposedActionRepo.findInSessionForUpdate(
+          session.id,
+          acao.id,
+        );
+        expect(depois?.status).toBe('pending');
+      },
+    );
+
+    it('regressão: tipo fora do teto (`git_commit`) continua gravando o padrão', async () => {
+      const { user, project, session } = await setupPendingTerminalAction();
+      const acao = await proposeAction.execute(project.id, session.id, {
+        actionType: 'git_commit',
+        actor: { kind: 'agent', id: 'qa-automacao' },
+        payload: {},
+      });
+
+      const r = await approveAlwaysAction.execute(
+        project.id,
+        session.id,
+        acao.id,
+        user.id,
+      );
+
+      expect(r.desfecho).toBe('aprovada');
+      const file = await permissionsFileStore.read(project);
+      expect(file.allow).toEqual(['GitCommit()']);
+    });
+  });
 });

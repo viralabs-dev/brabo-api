@@ -11,12 +11,11 @@ import { PermissionsFileStore } from '../../ports/permissions-file-store.port';
 import { AgentAutonomyRepository } from '../../ports/agent-autonomy-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { ApproveActionUseCase } from './approve-action.use-case';
+import { patternForAction } from '../../../domain/actions/pattern-for-action';
 import {
-  patternForAction,
-  commandFromPayload,
-} from '../../../domain/actions/pattern-for-action';
-import { parseCommand } from '../../../domain/actions/command-matcher';
-import { motivoDeRecusaSempreAprovar } from '../../../domain/actions/external-effect';
+  motivoDeRecusaDoSempreAprovar,
+  TETO_DO_SEMPRE_PERMITIR,
+} from '../../../domain/actions/sempre-permitir';
 import { ehDevDeModulo, DEV_LEAD } from '../../../domain/agents/agent-areas';
 import type { ActionType } from '../../../domain/actions/decide';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
@@ -70,7 +69,10 @@ import { Traced } from '../../../infrastructure/observability/traced.decorator';
  * via `POST .../approve`). Sem isto o teto de `decide()` seria decorativo:
  * um clique aqui reabriria pra sempre a porta que ele existe pra manter
  * fechada. Essa guarda roda ANTES do branch de destino, e vale pros DOIS —
- * escopar por agente não é uma segunda porta pro mesmo teto.
+ * escopar por agente não é uma segunda porta pro mesmo teto. Desde a AT-320
+ * ela cobre também os TIPOS do teto (`git_push`/`pr_open`/`git_merge` tipados,
+ * `container_remove`, `instruction_patch`, paralelismo), pela lista única
+ * `TIPOS_SEM_SEMPRE_PERMITIR` (`domain/actions/sempre-permitir.ts`).
  *
  * Sem migração: entradas antigas de "sempre permitir" gravadas para um
  * dev-de-módulo em `permissions.json` (de antes desta regra existir)
@@ -118,24 +120,22 @@ export class ApproveAlwaysActionUseCase {
     );
     if (!current) throw new NotFoundException('Ação não encontrada');
 
-    if (current.actionType === 'terminal') {
-      const command = commandFromPayload(current.payload);
-      if (command) {
-        const motivo = motivoDeRecusaSempreAprovar(parseCommand(command));
-        if (motivo) throw new BadRequestException(motivo);
-      }
-    }
-
-    // `container_remove` é a OUTRA metade do teto absoluto de `decide.ts`
-    // (ADR 0136, RN-495, mesmo molde de RN-418/ADR 0102): descarta o
-    // container e exige reprovisionar do zero, então nunca grava padrão —
-    // o clique inteiro é recusado, e quem quiser remover aprova esta
-    // instância pelo fluxo normal (`POST .../approve`).
-    if (current.actionType === 'container_remove') {
-      throw new BadRequestException(
-        'Remover o container nunca é auto-aprovável — decisão do usuário a ' +
-          'cada vez. Aprove esta instância pelo fluxo normal.',
-      );
+    // Os tetos, ANTES de qualquer leitura de estado (AT-320): o comando de
+    // terminal pelo que ele FAZ (RN-418) e os tipos de
+    // `TIPOS_SEM_SEMPRE_PERMITIR` (git tipado, `container_remove`,
+    // `instruction_patch`, paralelismo) pelo TIPO. O clique inteiro é
+    // recusado, e quem quiser aprova esta instância pelo fluxo normal
+    // (`POST .../approve`).
+    const motivo = motivoDeRecusaDoSempreAprovar(
+      current.actionType,
+      current.payload,
+    );
+    if (motivo) {
+      throw new BadRequestException({
+        message: motivo,
+        reason: TETO_DO_SEMPRE_PERMITIR,
+        actionType: current.actionType,
+      });
     }
 
     const project = await this.projects.findById(projectId);
