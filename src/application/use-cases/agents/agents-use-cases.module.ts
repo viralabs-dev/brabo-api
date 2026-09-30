@@ -14,6 +14,7 @@ import { RequestManualHandoffUseCase } from './request-manual-handoff.use-case';
 import { UpsertAgentInstructionUseCase } from './upsert-agent-instruction.use-case';
 import { CancelAgentTurnUseCase } from './cancel-agent-turn.use-case';
 import { AnswerStructuredQuestionUseCase } from './answer-structured-question.use-case';
+import { CicloDeVidaDoHandoff } from './ciclo-de-vida-do-handoff.service';
 // Provider direto, e não `imports: [IamUseCasesModule]` (o mesmo argumento do
 // `SeedAgentAreasUseCase` no sentido contrário): a resolução do idioma da
 // resposta (RN-618/RN-622) só lê dois repositórios do `DrizzleModule`, que é
@@ -34,6 +35,7 @@ const USE_CASES = [
   UpsertAgentInstructionUseCase,
   CancelAgentTurnUseCase,
   AnswerStructuredQuestionUseCase,
+  CicloDeVidaDoHandoff,
 ];
 
 @Module({

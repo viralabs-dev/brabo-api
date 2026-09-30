@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { OfferInfraHandoffUseCase } from '../../../../src/application/use-cases/agents/offer-infra-handoff.use-case';
 import type { ApiToEngineClient } from '../../../../src/application/ports/api-to-engine-client.port';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
+import type { HandoffRepository } from '../../../../src/application/ports/handoff-repository.port';
+import type { CicloDeVidaDoHandoff } from '../../../../src/application/use-cases/agents/ciclo-de-vida-do-handoff.service';
 import type { StoryRepository } from '../../../../src/application/ports/backlog-repository.port';
 import type {
   Story,
@@ -70,16 +72,36 @@ let events: FakeEvents;
 let stories: FakeStoryRepository;
 let uc: OfferInfraHandoffUseCase;
 
+// ADR 0182 (RN-635): o estado dos dois destinos no projeto.
+class FakeHandoffs {
+  pendentes = new Set<string>();
+  findOfferedToAgentInProject(_p: string, toAgent: string) {
+    return Promise.resolve(this.pendentes.has(toAgent) ? [{ toAgent }] : []);
+  }
+}
+class FakeCiclo {
+  ativos = new Set<string>();
+  sessaoOndeEstaAtivo(_p: string, agent: string) {
+    return Promise.resolve(this.ativos.has(agent) ? 's-outra' : null);
+  }
+}
+let handoffs: FakeHandoffs;
+let ciclo: FakeCiclo;
+
 beforeEach(() => {
   engine = new FakeEngine();
   events = new FakeEvents();
   stories = new FakeStoryRepository();
+  handoffs = new FakeHandoffs();
+  ciclo = new FakeCiclo();
   // Caminho feliz por padrão: pelo menos uma história promovida (RN-160).
   stories.stories = [fakeStory('ready')];
   uc = new OfferInfraHandoffUseCase(
     engine as unknown as ApiToEngineClient,
     events as unknown as AppendSessionEventUseCase,
     stories as unknown as StoryRepository,
+    handoffs as unknown as HandoffRepository,
+    ciclo as unknown as CicloDeVidaDoHandoff,
   );
 });
 
@@ -124,6 +146,34 @@ describe('OfferInfraHandoffUseCase', () => {
     await uc.execute(PROJECT, SESSION, 'user-1');
 
     expect(engine.chamadas).toEqual(['infra', 'dev']);
+    expect(events.tipos).toEqual(['architecture.readiness_confirmed']);
+  });
+
+  it('ADR 0182: segundo clique com as duas ofertas pendentes não grava nem chama o engine', async () => {
+    handoffs.pendentes = new Set(['infra', 'dev-lead']);
+
+    const r = await uc.execute(PROJECT, SESSION, 'user-1');
+
+    expect(r.desfecho).toBe('ja_oferecido');
+    expect(r.jaAtendidos).toEqual([
+      { toAgent: 'infra', motivo: 'oferta_pendente' },
+      { toAgent: 'dev-lead', motivo: 'oferta_pendente' },
+    ]);
+    expect(engine.chamadas).toEqual([]);
+    expect(events.tipos).toEqual([]);
+  });
+
+  it('ADR 0182: só aciona o destino que falta — Infra ativo, Dev Lead sem oferta', async () => {
+    ciclo.ativos = new Set(['infra']);
+
+    const r = await uc.execute(PROJECT, SESSION, 'user-1');
+
+    expect(r.desfecho).toBe('confirmado');
+    expect(r.jaAtendidos).toEqual([
+      { toAgent: 'infra', motivo: 'agente_ativo' },
+    ]);
+    // Sem turno do Arquiteto: ele só existe para oferecer ao Infra.
+    expect(engine.chamadas).toEqual(['dev']);
     expect(events.tipos).toEqual(['architecture.readiness_confirmed']);
   });
 });

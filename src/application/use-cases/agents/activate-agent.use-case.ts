@@ -6,6 +6,7 @@ import {
 import { SessionRepository } from '../../ports/session-repository.port';
 import { HandoffRepository } from '../../ports/handoff-repository.port';
 import { ApiToEngineClient } from '../../ports/api-to-engine-client.port';
+import { CicloDeVidaDoHandoff } from './ciclo-de-vida-do-handoff.service';
 import {
   AppendSessionEventUseCase,
   conflitoDeSessaoEncerrada,
@@ -34,6 +35,7 @@ export class ActivateAgentUseCase {
     private readonly handoffs: HandoffRepository,
     private readonly engineClient: ApiToEngineClient,
     private readonly appendEvent: AppendSessionEventUseCase,
+    private readonly ciclo: CicloDeVidaDoHandoff,
   ) {}
 
   async execute(
@@ -74,6 +76,12 @@ export class ActivateAgentUseCase {
       actor: { kind: 'user', id: userId },
       payload: { agent },
     });
+
+    // ADR 0182 (RN-635): ativo o agente, nenhuma oferta a ele segue acionável
+    // — em nenhuma sessão do projeto. Vale para os dois caminhos que passam
+    // por aqui: o aceite (a aceita já é `accepted` e não é tocada) e a
+    // ativação direta.
+    await this.ciclo.substituirOfertasAoAtivar(projectId, agent);
 
     return { agent, status: 'active' as const };
   }
