@@ -25,6 +25,10 @@ import type {
   ResolvedBinding,
   SkippedBinding,
 } from '../../../../domain/llm/binding-resolver';
+import type {
+  BindingResolvidoDaChave,
+  BindingsResolvidosEmLote,
+} from '../../../../application/use-cases/llm/resolve-model-bindings-em-lote.use-case';
 import type { UserCredentialMetadata } from '../../../../domain/llm/user-credential.entity';
 import type { AgentTokenUsage } from '../../../../application/ports/token-usage-repository.port';
 import type {
@@ -350,6 +354,47 @@ export class ResolvedBindingResponseDto implements Wire<ResolvedBinding> {
 export const _chavesBindingResolvido: MesmasChaves<
   ResolvedBindingResponseDto,
   ResolvedBinding
+> = true;
+
+/** Uma chave (agente ou área) do lote e o binding resolvido dela (RN-654). */
+export class BindingResolvidoDaChaveResponseDto implements Wire<BindingResolvidoDaChave> {
+  @ApiProperty({
+    example: 'dev-lead',
+    description: 'The agent slug or the area key, exactly as requested.',
+  })
+  key!: string;
+
+  @ApiProperty({
+    type: ResolvedBindingResponseDto,
+    nullable: true,
+    description:
+      'The SAME value the single-key route answers for this key — `null` ' +
+      'when no level of the cascade has a model.',
+  })
+  binding!: ResolvedBindingResponseDto | null;
+}
+export const _chavesBindingResolvidoDaChave: MesmasChaves<
+  BindingResolvidoDaChaveResponseDto,
+  BindingResolvidoDaChave
+> = true;
+
+/** O lote de bindings resolvidos de um projeto (RN-654, AT-334). */
+export class BindingsResolvidosEmLoteResponseDto implements Wire<BindingsResolvidosEmLote> {
+  @ApiProperty({
+    type: [BindingResolvidoDaChaveResponseDto],
+    description: 'One entry per requested agent, in the order requested.',
+  })
+  agents!: BindingResolvidoDaChaveResponseDto[];
+
+  @ApiProperty({
+    type: [BindingResolvidoDaChaveResponseDto],
+    description: 'One entry per requested area, in the order requested.',
+  })
+  areas!: BindingResolvidoDaChaveResponseDto[];
+}
+export const _chavesBindingsResolvidosEmLote: MesmasChaves<
+  BindingsResolvidosEmLoteResponseDto,
+  BindingsResolvidosEmLote
 > = true;
 
 /**

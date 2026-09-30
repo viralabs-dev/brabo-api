@@ -26,7 +26,7 @@ async function seedWorkspace() {
 }
 
 describe('migração 0033 — story_promotion (Fase 12c, RN-048)', () => {
-  it('projeto NOVO nasce em manual — a decisão volta ao usuário', async () => {
+  it('projeto NOVO nasce em auto desde a RN-659 (AT-313, migration 0065)', async () => {
     const { ownerId, workspaceId } = await seedWorkspace();
 
     const [project] = await db
@@ -34,7 +34,35 @@ describe('migração 0033 — story_promotion (Fase 12c, RN-048)', () => {
       .values({ workspaceId, name: 'novo', slug: 'novo', createdBy: ownerId })
       .returning();
 
-    expect(project.storyPromotion).toBe('manual');
+    expect(project.storyPromotion).toBe('auto');
+  });
+
+  it('RN-659: projeto EXISTENTE em manual não muda — só o DEFAULT mudou', async () => {
+    const { ownerId, workspaceId } = await seedWorkspace();
+    const [existente] = await db
+      .insert(projects)
+      .values({
+        workspaceId,
+        name: 'existente',
+        slug: 'existente',
+        createdBy: ownerId,
+        storyPromotion: 'manual',
+      })
+      .returning();
+
+    // Um projeto criado DEPOIS não arrasta o anterior.
+    await db.insert(projects).values({
+      workspaceId,
+      name: 'outro',
+      slug: 'outro',
+      createdBy: ownerId,
+    });
+
+    const [depois] = await db
+      .select()
+      .from(projects)
+      .where(sql`id = ${existente.id}`);
+    expect(depois.storyPromotion).toBe('manual');
   });
 
   it('a coluna é NOT NULL — o modo nunca fica implícito', async () => {
@@ -68,6 +96,9 @@ describe('migração 0033 — story_promotion (Fase 12c, RN-048)', () => {
         name: 'antigo',
         slug: 'antigo',
         createdBy: ownerId,
+        // O default da coluna ERA `manual` quando a 0033 rodou; desde a
+        // RN-659 é `auto`, então a linha pré-existente é simulada explícita.
+        storyPromotion: 'manual',
       })
       .returning();
 

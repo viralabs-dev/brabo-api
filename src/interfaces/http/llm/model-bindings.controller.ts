@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -9,6 +10,7 @@ import {
   Query,
 } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiForbiddenResponse,
   ApiNoContentResponse,
@@ -27,12 +29,19 @@ import { GetModelBindingUseCase } from '../../../application/use-cases/llm/get-m
 import { ClearModelBindingUseCase } from '../../../application/use-cases/llm/clear-model-binding.use-case';
 import { ResolveModelBindingUseCase } from '../../../application/use-cases/llm/resolve-model-binding.use-case';
 import {
+  LoteDeBindingsInvalidoError,
+  ResolveModelBindingsEmLoteUseCase,
+  TETO_DE_CHAVES_NO_LOTE,
+  lerListaDeChaves,
+} from '../../../application/use-cases/llm/resolve-model-bindings-em-lote.use-case';
+import {
   chaveDeAgente,
   chaveDeArea,
 } from '../../../domain/llm/binding-scope-id';
 import { SetModelBindingDto } from './dto/set-model-binding.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import {
+  BindingsResolvidosEmLoteResponseDto,
   ModelBindingResponseDto,
   ResolvedBindingResponseDto,
 } from './dto/llm.response.dto';
@@ -66,6 +75,7 @@ export class ModelBindingsController {
     private readonly getBinding: GetModelBindingUseCase,
     private readonly clearBinding: ClearModelBindingUseCase,
     private readonly resolveBinding: ResolveModelBindingUseCase,
+    private readonly resolveEmLote: ResolveModelBindingsEmLoteUseCase,
   ) {}
 
   @Get('workspaces/:workspaceId/model-binding')
@@ -182,6 +192,61 @@ export class ModelBindingsController {
       user.id,
       dto.routingPreference,
     );
+  }
+
+  /**
+   * Os bindings RESOLVIDOS de vários agentes e áreas numa leitura só (RN-654,
+   * AT-334). Mesmo papel mínimo das duas rotas individuais de leitura
+   * (`viewer`) e a mesma resolução — o caso de uso delega a
+   * `ResolveModelBindingUseCase` chave a chave, sem cascata própria.
+   */
+  @Get('projects/:projectId/model-bindings/resolved')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Resolves the model of several agents and areas in one read',
+    description:
+      'Batch form of `GET .../agent-bindings/:agentSlug` and ' +
+      '`GET .../area-bindings/:areaKey`: each requested key gets EXACTLY the ' +
+      'value its single-key route answers (same cascade, same origins, ' +
+      '`null` when no level has a model). It exists so the Settings tab ' +
+      'reads 20 resolved bindings with one request instead of 20 — the rate ' +
+      'limit is per USER. Keys are comma-separated, deduplicated, and a ' +
+      `malformed key or more than ${TETO_DE_CHAVES_NO_LOTE} keys in total is ` +
+      '400, never silently dropped.',
+  })
+  @ApiQuery({
+    name: 'agents',
+    required: false,
+    example: 'criativo,po,dev-lead',
+    description: 'Comma-separated agent slugs.',
+  })
+  @ApiQuery({
+    name: 'areas',
+    required: false,
+    example: 'dev,qa,infra',
+    description: 'Comma-separated area keys.',
+  })
+  @ApiOkResponse({ type: BindingsResolvidosEmLoteResponseDto })
+  @ApiBadRequestResponse({
+    description: 'A malformed key, or more keys than the batch cap.',
+  })
+  async getResolvedBindings(
+    @Param('projectId') projectId: string,
+    @Query('agents') agents?: string,
+    @Query('areas') areas?: string,
+  ) {
+    try {
+      return await this.resolveEmLote.execute({
+        projectId,
+        agentes: lerListaDeChaves(agents),
+        areas: lerListaDeChaves(areas),
+      });
+    } catch (erro) {
+      if (erro instanceof LoteDeBindingsInvalidoError) {
+        throw new BadRequestException(erro.message);
+      }
+      throw erro;
+    }
   }
 
   /** Binding RESOLVIDO (cascata workspace→projeto→área→agente, sem sessão). */

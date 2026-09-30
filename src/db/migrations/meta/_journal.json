@@ -456,6 +456,13 @@
       "when": 1790742127919,
       "tag": "0064_ciclo_de_vida_do_handoff",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1790795212024,
+      "tag": "0065_default_de_promocao_auto",
+      "breakpoints": true
     }
   ]
 }

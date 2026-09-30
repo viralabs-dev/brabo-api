@@ -3,6 +3,11 @@ import { SessionEventRepository } from '../../ports/session-event-repository.por
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 
 /**
+ * DESDE O ADR 0185 (RN-657) a tela não chama mais este caso de uso: o clique
+ * "Estou pronto — a necessidade está validada" (`ConfirmReadinessUseCase`)
+ * grava `necessity.validated` ele mesmo. A rota fica para a sessão cujo
+ * "Estou pronto" é anterior ao ADR. O texto abaixo é o desenho do ADR 0095.
+ *
  * Fecha o gate de saída `necessidade-validada` do Criativo
  * (`docs/fluxo.yml`, papel `criativo`), até aqui declarado `proposto` sem
  * mecanismo nenhum atrás (auditoria fluxo.yml × código, achado B2 — RN-406,
@@ -44,7 +49,7 @@ export class ValidateNecessityUseCase {
     const brief = briefs.at(-1);
     if (!brief) {
       throw new BadRequestException(
-        'Confirme "Estou pronto para produzir" com o Criativo antes de validar a necessidade (RN-406): nenhum product_brief foi produzido nesta sessão ainda.',
+        'Confirme "Estou pronto — a necessidade está validada" com o Criativo antes de validar a necessidade (RN-406): nenhum product_brief foi produzido nesta sessão ainda.',
       );
     }
 

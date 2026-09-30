@@ -37,6 +37,8 @@ import { RunLlmTurnUseCase } from '../../../application/use-cases/llm/run-llm-tu
 import { StreamLlmTurnUseCase } from '../../../application/use-cases/llm/stream-llm-turn.use-case';
 import { ProposeActionUseCase } from '../../../application/use-cases/actions/propose-action.use-case';
 import { CreateHandoffUseCase } from '../../../application/use-cases/agents/create-handoff.use-case';
+import { AceitarHandoffAutomaticamenteUseCase } from '../../../application/use-cases/agents/aceitar-handoff-automaticamente.use-case';
+import { AceiteImplicitoDoPoUseCase } from '../../../application/use-cases/agents/aceite-implicito-do-po.use-case';
 import { CreateEpicUseCase } from '../../../application/use-cases/backlog/create-epic.use-case';
 import { CreateStoryUseCase } from '../../../application/use-cases/backlog/create-story.use-case';
 import { CreateTaskUseCase } from '../../../application/use-cases/backlog/create-task.use-case';
@@ -98,7 +100,7 @@ import {
   SessionResponseDto,
 } from '../sessions/dto/sessions.response.dto';
 import { ProposedActionResponseDto } from '../actions/dto/actions.response.dto';
-import { OfertaDeHandoffResponseDto } from '../agents/dto/agents.response.dto';
+import { OfertaInternaDeHandoffResponseDto } from '../agents/dto/agents.response.dto';
 import {
   EpicResponseDto,
   ModuleMapResponseDto,
@@ -155,6 +157,8 @@ export class InternalSessionsController {
     private readonly streamLlmTurn: StreamLlmTurnUseCase,
     private readonly proposeAction: ProposeActionUseCase,
     private readonly createHandoff: CreateHandoffUseCase,
+    private readonly aceiteAutomatico: AceitarHandoffAutomaticamenteUseCase,
+    private readonly aceiteImplicitoDoPo: AceiteImplicitoDoPoUseCase,
     private readonly createEpic: CreateEpicUseCase,
     private readonly createStory: CreateStoryUseCase,
     private readonly createTask: CreateTaskUseCase,
@@ -385,25 +389,58 @@ export class InternalSessionsController {
     summary: 'Offers a handoff from one agent to another',
     description:
       'Born as `offered`. Who accepts is a PERSON, via the human route — an ' +
-      "agent doesn't activate an agent.",
+      "agent doesn't activate an agent. Two exceptions. The Creative→PO offer " +
+      'carrying the `product_brief` that an "I\'m ready — the need is ' +
+      'validated" click asked for is accepted on behalf of whoever clicked, ' +
+      'with that person as the actor and `implicito` in the payload (RN-658, ' +
+      "ADR 0185). The PO's handoff to the Arquiteto is accepted by the SYSTEM " +
+      'when the backlog is covered (at least one business rule, none without ' +
+      'a story) and the repository is `local` with no git credential in the ' +
+      'project (RN-660, ADR 0186); `aceiteAutomatico` says whether it happened ' +
+      'and, if not, why. Either way the response then carries `status: accepted`.',
   })
-  @ApiCreatedResponse({ type: OfertaDeHandoffResponseDto })
+  @ApiCreatedResponse({ type: OfertaInternaDeHandoffResponseDto })
   @ApiConflictResponse({
     description:
       '`agente_ja_ativo` (ADR 0182, RN-635): the target is already active in ' +
       'a non-closed session of the project. The `message` is the text the ' +
       'agent reads as the tool result.',
   })
-  handoff(
+  async handoff(
     @Param('sessionId') sessionId: string,
     @Body() dto: CreateHandoffInternalDto,
   ) {
-    return this.createHandoff.execute(dto.projectId, sessionId, {
+    const oferta = await this.createHandoff.execute(dto.projectId, sessionId, {
       fromAgent: dto.fromAgent,
       toAgent: dto.toAgent,
       artifactId: dto.artifactId,
       seAusente: dto.seAusente,
     });
+    // RN-658 (ADR 0185): o handoff Criativo→PO que o "Estou pronto" pediu é
+    // aceito em nome de quem clicou, pelo MESMO caso de uso do card. Fora da
+    // regra, a oferta segue `offered`, como sempre.
+    const aceitoImplicito = await this.aceiteImplicitoDoPo.seCouber(
+      dto.projectId,
+      sessionId,
+      oferta,
+    );
+    // RN-660 (ADR 0186): depois da transação da oferta, nunca dentro: o
+    // aceite provisiona o repositório e chama o engine, e isso não pode
+    // segurar o lock do par (projeto, destino). Os dois aceites são
+    // disjuntos (Criativo→PO × PO→Arquiteto).
+    const aceiteAutomatico = await this.aceiteAutomatico.execute(
+      dto.projectId,
+      sessionId,
+      oferta,
+    );
+    return {
+      ...oferta,
+      status:
+        aceitoImplicito || aceiteAutomatico.aceito
+          ? ('accepted' as const)
+          : oferta.status,
+      aceiteAutomatico,
+    };
   }
 
   /**
