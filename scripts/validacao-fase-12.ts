@@ -207,6 +207,9 @@ async function main() {
       name: 'validacao-fase-12',
       slug: `validacao-fase-12-${sufixo}`,
       createdBy: user.id,
+      // Desde a RN-659 (AT-313) o default de projeto novo é `auto`; esta
+      // validação exercita o fluxo MANUAL do PO, então o pede EXPLÍCITO.
+      storyPromotion: 'manual',
     })
     .returning();
   await db
@@ -215,14 +218,14 @@ async function main() {
 
   log(`projeto: ${project.id}`);
 
-  // O default do produto tem de ser `manual` SEM ninguém configurar nada — é a
-  // mudança de comportamento da 12c, e checá-la aqui evita que a validação
-  // inteira passe com um projeto que estava em `auto` por acidente.
+  // A validação inteira depende do modo MANUAL; checá-lo aqui evita que ela
+  // passe com um projeto em `auto` por acidente (o default de projeto novo é
+  // `auto` desde a RN-659, e por isso o insert acima pede `manual`).
   assertar(
     project.storyPromotion === 'manual',
-    `projeto novo nasceu em "${project.storyPromotion}"; o default da 12c é "manual"`,
+    `projeto nasceu em "${project.storyPromotion}"; esta validação pede "manual"`,
   );
-  log('✓ projeto novo nasce com promoção MANUAL (RN-048)');
+  log('✓ projeto em promoção MANUAL (RN-048)');
 
   // ================= 1. ADOÇÃO (achado #1) =================
   log('\n--- 1. adotar um repositório que JÁ EXISTE ---');

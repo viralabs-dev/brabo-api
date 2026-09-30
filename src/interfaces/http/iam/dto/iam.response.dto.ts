@@ -246,11 +246,12 @@ export class ProjectResponseDto implements Wire<Project> {
 
   @ApiProperty({
     enum: STORY_PROMOTION_MODES,
-    example: 'manual',
+    example: 'auto',
     description:
       'Who promotes a story to `ready` (Phase 12c — RN-048). `manual`: the ' +
       'PO proposes and the user decides. `auto`: automatic promotion on ' +
-      'creation (opt-in; where projects predating 12c ended up).',
+      'creation — the new-project default since RN-659; projects created ' +
+      'before it keep whatever value they had.',
   })
   storyPromotion!: StoryPromotionMode;
 

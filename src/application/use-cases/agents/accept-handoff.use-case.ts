@@ -70,6 +70,18 @@ const ATOR_DO_PROVISIONAMENTO: Actor = {
 };
 
 /**
+ * O aceite feito pelo SISTEMA em vez de uma pessoa (RN-660, ADR 0186): quem
+ * grava `handoff.accepted` e `agent.activated` passa a ser o ator de sistema, e
+ * o `criterio` que dispensou o clique vai no payload — é por ele que o aceite
+ * automático fica auditável no event log. `userId` continua sendo uma pessoa
+ * real (quem abriu a sessão): é em nome dela que o repositório é provisionado.
+ */
+export interface AceitePeloSistema {
+  ator: Actor;
+  criterio: Record<string, unknown>;
+}
+
+/**
  * O usuário aceita um handoff oferecido — transiciona offered→accepted, grava
  * `handoff.accepted` e ATIVA o agente destino (PO). A regra de ativação
  * (agent-activation) exige um handoff accepted endereçado ao agente — que
@@ -98,7 +110,9 @@ export class AcceptHandoffUseCase {
     sessionId: string,
     handoffId: string,
     userId: string,
+    peloSistema?: AceitePeloSistema,
   ) {
+    const ator: Actor = peloSistema?.ator ?? { kind: 'user', id: userId };
     const handoff = await this.handoffs.findById(handoffId);
     if (!handoff || handoff.sessionId !== sessionId) {
       throw new NotFoundException('Handoff não encontrado');
@@ -116,15 +130,23 @@ export class AcceptHandoffUseCase {
       projectId,
       sessionId,
       'handoff.accepted',
-      { kind: 'user', id: userId },
+      ator,
     );
 
     const accepted = await this.handoffs.updateStatus(handoffId, 'accepted');
 
     await this.appendEvent.execute(projectId, sessionId, {
       type: 'handoff.accepted',
-      actor: { kind: 'user', id: userId },
-      payload: { handoffId, toAgent: handoff.toAgent },
+      actor: ator,
+      payload: peloSistema
+        ? {
+            handoffId,
+            toAgent: handoff.toAgent,
+            automatico: true,
+            emNomeDe: userId,
+            criterio: peloSistema.criterio,
+          }
+        : { handoffId, toAgent: handoff.toAgent },
     });
 
     if (handoff.toAgent === 'infra') {
@@ -148,6 +170,7 @@ export class AcceptHandoffUseCase {
       sessionId,
       handoff.toAgent,
       userId,
+      peloSistema ? ator : undefined,
     );
 
     return accepted;

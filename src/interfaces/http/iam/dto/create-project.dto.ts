@@ -49,13 +49,13 @@ export class CreateProjectDto {
 
   @ApiPropertyOptional({
     enum: STORY_PROMOTION_MODES,
-    example: 'manual',
+    example: 'auto',
     description:
       'Who promotes a story from `draft` to `ready` (Phase 12c — RN-048). ' +
-      '`manual` (new-project default): the PO proposes and YOU decide, in ' +
-      'the Backlog tab. `auto`: a complete story is already born `ready`, ' +
-      'with no human step — this was the behavior up through 12c, and ' +
-      'projects created before it stayed on it. The domain validations ' +
+      '`auto` (new-project default since RN-659): a complete story is ' +
+      'already born `ready`, with no human step. `manual`: the PO proposes ' +
+      'and YOU decide, in the Backlog tab. Changing the default did not ' +
+      'rewrite any existing project. The domain validations ' +
       '(DoD/DoR/RF/rule/modules) are the SAME in both modes; the mode only ' +
       'changes who triggers it.',
   })
