@@ -449,6 +449,13 @@
       "when": 1790659733966,
       "tag": "0063_deteccao_de_idioma",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1790742127919,
+      "tag": "0064_ciclo_de_vida_do_handoff",
+      "breakpoints": true
     }
   ]
 }

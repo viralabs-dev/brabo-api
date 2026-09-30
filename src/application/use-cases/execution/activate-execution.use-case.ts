@@ -26,6 +26,7 @@ import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-
 import { GetSessionPendingWorkUseCase } from '../sessions/get-session-pending-work.use-case';
 import { UpsertAgentInstructionUseCase } from '../agents/upsert-agent-instruction.use-case';
 import { SeedAgentAreasUseCase } from '../agents/seed-agent-areas.use-case';
+import { CicloDeVidaDoHandoff } from '../agents/ciclo-de-vida-do-handoff.service';
 import { DEFAULT_MAX_GATE_CORRECTIONS } from './record-gate-verdict.use-case';
 import {
   DEFAULT_DEV_AGENT_IMPL,
@@ -105,6 +106,7 @@ export class ActivateExecutionUseCase {
     private readonly repositories: ProvisionedRepositoryRepository,
     private readonly handoffs: HandoffRepository,
     private readonly containers: ContainerRepository,
+    private readonly ciclo: CicloDeVidaDoHandoff,
   ) {}
 
   async execute(
@@ -279,6 +281,15 @@ export class ActivateExecutionUseCase {
       actor: { kind: 'user', id: userId },
       payload: { modules, devAgentImpl: impl, taskBudgetMicros: budget },
     });
+
+    // ADR 0182 (RN-635): a ativação da execução é o terceiro caminho que ATIVA
+    // agente, e ele passa pela mesma régua — oferta pendente a um `dev-<modulo>`
+    // recém-ativado deixa de ser acionável. Hoje nenhuma nasce (subagente não
+    // recebe handoff externo, ADR 0038), e a chamada existe para a regra
+    // continuar valendo no dia em que a hierarquia mudar.
+    for (const m of moduleMap.modules) {
+      await this.ciclo.substituirOfertasAoAtivar(projectId, devAgentId(m.name));
+    }
 
     // Sugestão de paralelização: módulos com ≥2 tasks pegáveis têm ramos
     // independentes disponíveis — sugere um subagente extra (aceite 1-clique).

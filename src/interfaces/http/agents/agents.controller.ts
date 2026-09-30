@@ -32,6 +32,8 @@ import { OkResponseDto } from '../shared/dto/comuns.response.dto';
 import {
   AgenteAtivadoResponseDto,
   HandoffResponseDto,
+  OfertaDeHandoffResponseDto,
+  ConfirmacaoDeArquiteturaResponseDto,
 } from './dto/agents.response.dto';
 
 /**
@@ -268,9 +270,11 @@ export class AgentsController {
       'through the session channel and the event log (`agent.status`, ' +
       '`agent.response`, `agent.error`) — never through this response.' +
       ' The Dev Lead handoff still comes AFTER the Infra one: the engine ' +
-      'holds it until the closing turn ends.',
+      'holds it until the closing turn ends. Idempotent (ADR 0182, RN-635): a ' +
+      'target that already has a pending offer or is active in the project is ' +
+      'not triggered again, and with both like that nothing is recorded.',
   })
-  @ApiCreatedResponse({ type: OkResponseDto })
+  @ApiCreatedResponse({ type: ConfirmacaoDeArquiteturaResponseDto })
   @ApiConflictResponse({
     description:
       'The Arquiteto is still in the middle of a turn — the confirmation was ' +
@@ -337,9 +341,15 @@ export class AgentsController {
       "Born as `offered`, exactly like an agent's own `offer_handoff` — " +
       'the only difference is who decided. `toAgent` has to be in the ' +
       'addressable catalog (area lead or area-less agent); a subagent or an ' +
-      'unknown slug is refused with 400.',
+      'unknown slug is refused with 400. At most one pending offer per ' +
+      '(project, target): see `desfecho` (ADR 0182, RN-635).',
   })
-  @ApiCreatedResponse({ type: HandoffResponseDto })
+  @ApiCreatedResponse({ type: OfertaDeHandoffResponseDto })
+  @ApiConflictResponse({
+    description:
+      '`agente_ja_ativo` (ADR 0182, RN-635): the target is already active in ' +
+      'a non-closed session of the project — no offer is created.',
+  })
   requestManual(
     @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,

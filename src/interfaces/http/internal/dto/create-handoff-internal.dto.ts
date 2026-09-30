@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, IsUUID } from 'class-validator';
 
 // Chamada interna do engine: o Criativo oferece o handoff ao PO ao emitir o
 // product_brief. `artifactId` é o session_events.id (ULID) do artefato.
@@ -24,4 +24,15 @@ export class CreateHandoffInternalDto {
   @IsOptional()
   @IsString()
   artifactId?: string;
+
+  @ApiPropertyOptional({
+    example: true,
+    description:
+      'Only if nobody got it yet (ADR 0182, RN-636): with a pending offer to ' +
+      'the target in ANY session of the project, return it (`desfecho: ' +
+      'ja_oferecido`) instead of replacing it. AppSec sends it.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  seAusente?: boolean;
 }

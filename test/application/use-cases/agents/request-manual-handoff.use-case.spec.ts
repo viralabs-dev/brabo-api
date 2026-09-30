@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
 import { RequestManualHandoffUseCase } from '../../../../src/application/use-cases/agents/request-manual-handoff.use-case';
 import { CreateHandoffUseCase } from '../../../../src/application/use-cases/agents/create-handoff.use-case';
+import type { UnitOfWork } from '../../../../src/application/ports/unit-of-work.port';
+import type { CicloDeVidaDoHandoff } from '../../../../src/application/use-cases/agents/ciclo-de-vida-do-handoff.service';
 import type { HandoffRepository } from '../../../../src/application/ports/handoff-repository.port';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
 import type { SessionEventRepository } from '../../../../src/application/ports/session-event-repository.port';
@@ -28,6 +30,8 @@ function build(opts?: { activations?: SessionEvent[] }) {
       criados.push(input);
       return Promise.resolve({ id: 'h-1', artifactId: null, ...input });
     },
+    travarOfertasDoDestino: () => Promise.resolve(),
+    findOfferedToAgentInProject: () => Promise.resolve([]),
   } as unknown as HandoffRepository;
 
   const appendEvent = {
@@ -42,7 +46,18 @@ function build(opts?: { activations?: SessionEvent[] }) {
     garantirQueAceita: () => Promise.resolve(),
   } as unknown as AppendSessionEventUseCase;
 
-  const createHandoff = new CreateHandoffUseCase(handoffs, appendEvent);
+  const unitOfWork: UnitOfWork = {
+    runInTransaction: <T>(work: () => Promise<T>) => work(),
+  };
+  const createHandoff = new CreateHandoffUseCase(
+    handoffs,
+    appendEvent,
+    unitOfWork,
+    {
+      sessaoOndeEstaAtivo: () => Promise.resolve(null),
+      substituir: () => Promise.resolve(),
+    } as unknown as CicloDeVidaDoHandoff,
+  );
 
   const sessionEvents = {
     listByTypeInSession: (_sessionId: string, _type: string) =>

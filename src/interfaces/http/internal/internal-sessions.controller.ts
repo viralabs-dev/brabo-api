@@ -98,7 +98,7 @@ import {
   SessionResponseDto,
 } from '../sessions/dto/sessions.response.dto';
 import { ProposedActionResponseDto } from '../actions/dto/actions.response.dto';
-import { HandoffResponseDto } from '../agents/dto/agents.response.dto';
+import { OfertaDeHandoffResponseDto } from '../agents/dto/agents.response.dto';
 import {
   EpicResponseDto,
   ModuleMapResponseDto,
@@ -387,7 +387,13 @@ export class InternalSessionsController {
       'Born as `offered`. Who accepts is a PERSON, via the human route — an ' +
       "agent doesn't activate an agent.",
   })
-  @ApiCreatedResponse({ type: HandoffResponseDto })
+  @ApiCreatedResponse({ type: OfertaDeHandoffResponseDto })
+  @ApiConflictResponse({
+    description:
+      '`agente_ja_ativo` (ADR 0182, RN-635): the target is already active in ' +
+      'a non-closed session of the project. The `message` is the text the ' +
+      'agent reads as the tool result.',
+  })
   handoff(
     @Param('sessionId') sessionId: string,
     @Body() dto: CreateHandoffInternalDto,
@@ -396,6 +402,7 @@ export class InternalSessionsController {
       fromAgent: dto.fromAgent,
       toAgent: dto.toAgent,
       artifactId: dto.artifactId,
+      seAusente: dto.seAusente,
     });
   }
 

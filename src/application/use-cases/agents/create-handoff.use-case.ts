@@ -1,5 +1,18 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
 import { HandoffRepository } from '../../ports/handoff-repository.port';
+import { UnitOfWork } from '../../ports/unit-of-work.port';
+import { CicloDeVidaDoHandoff } from './ciclo-de-vida-do-handoff.service';
+import type { Handoff } from '../../../domain/sessions/handoff.entity';
+import {
+  decidirOferta,
+  mensagemDeAgenteJaAtivo,
+  RECUSA_AGENTE_JA_ATIVO,
+  type DesfechoDaOferta,
+} from '../../../domain/sessions/ciclo-de-vida-do-handoff';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
 import {
@@ -20,7 +33,16 @@ export interface CreateHandoffInput {
    * conversa o handoff partiu, não quem pediu).
    */
   actor?: Actor;
+  /**
+   * "Só se ninguém recebeu ainda" (RN-636): com oferta pendente ao destino em
+   * QUALQUER sessão do projeto, devolve a existente sem substituir. É o modo
+   * do AppSec, que oferece um parecer por história aos mesmos três destinos.
+   */
+  seAusente?: boolean;
 }
+
+/** O handoff vigente ao destino, e como se chegou a ele (ADR 0182). */
+export type OfertaDeHandoff = Handoff & { desfecho: DesfechoDaOferta };
 
 /**
  * Cria um handoff OFFERED — chamado pelo engine (endpoint interno) quando o
@@ -34,19 +56,26 @@ export interface CreateHandoffInput {
  * string livre, então sem esta guarda um agente podia se dirigir direto a
  * `qa-automacao` e furar a hierarquia — a validação que o ADR mandou fazer e
  * que nunca tinha sido implementada (achado #12 do primeiro dogfooding).
+ *
+ * E é idempotente por (projeto, destino, `offered`) desde o ADR 0182
+ * (RN-635): nunca há duas ofertas pendentes ao mesmo destino no projeto. A
+ * regra de qual sobrevive está em `decidirOferta`; oferta a agente já ATIVO no
+ * projeto é recusada com 409 `agente_ja_ativo`, cuja frase é o que o modelo lê.
  */
 @Injectable()
 export class CreateHandoffUseCase {
   constructor(
     private readonly handoffs: HandoffRepository,
     private readonly appendEvent: AppendSessionEventUseCase,
+    private readonly unitOfWork: UnitOfWork,
+    private readonly ciclo: CicloDeVidaDoHandoff,
   ) {}
 
   async execute(
     projectId: string,
     sessionId: string,
     input: CreateHandoffInput,
-  ) {
+  ): Promise<OfertaDeHandoff> {
     // Antes do INSERT: um handoff recusado não pode deixar linha nem evento.
     // `BadRequestException` porque quem chama é o engine, por rota interna —
     // 400 diz "o pedido está errado", que é o caso, e o erro tipado viaja no
@@ -71,25 +100,76 @@ export class CreateHandoffUseCase {
       actor,
     );
 
-    const handoff = await this.handoffs.create({
-      sessionId,
-      projectId,
-      fromAgent: input.fromAgent,
-      toAgent: input.toAgent,
-      artifactId: input.artifactId ?? null,
-      status: 'offered',
-    });
+    const artifactId = input.artifactId ?? null;
 
-    await this.appendEvent.execute(projectId, sessionId, {
-      type: 'handoff.offered',
-      actor,
-      payload: {
-        handoffId: handoff.id,
+    // Uma transação, com o par (projeto, destino) travado do começo ao fim:
+    // duas abas ou um duplo clique chegam aqui ao mesmo tempo, e sem o lock os
+    // dois leriam "nenhuma pendente" e criariam uma cada.
+    return this.unitOfWork.runInTransaction(async () => {
+      await this.handoffs.travarOfertasDoDestino(projectId, input.toAgent);
+
+      const sessaoAtiva = await this.ciclo.sessaoOndeEstaAtivo(
+        projectId,
+        input.toAgent,
+      );
+      if (sessaoAtiva) {
+        throw new ConflictException({
+          message: mensagemDeAgenteJaAtivo(input.toAgent, sessaoAtiva),
+          reason: RECUSA_AGENTE_JA_ATIVO,
+          toAgent: input.toAgent,
+          sessionId: sessaoAtiva,
+        });
+      }
+
+      const pendentes = await this.handoffs.findOfferedToAgentInProject(
+        projectId,
+        input.toAgent,
+      );
+      const decisao = decidirOferta(pendentes, {
+        sessionId,
+        artifactId,
+        seAusente: input.seAusente,
+      });
+
+      if (decisao.tipo === 'reusar') {
+        await this.ciclo.substituir(
+          projectId,
+          decisao.substituir,
+          'nova_oferta',
+          decisao.vigente.id,
+        );
+        return { ...decisao.vigente, desfecho: 'ja_oferecido' as const };
+      }
+
+      const handoff = await this.handoffs.create({
+        sessionId,
+        projectId,
+        fromAgent: input.fromAgent,
         toAgent: input.toAgent,
-        artifactId: handoff.artifactId,
-      },
-    });
+        artifactId,
+        status: 'offered',
+      });
 
-    return handoff;
+      await this.ciclo.substituir(
+        projectId,
+        decisao.substituir,
+        'nova_oferta',
+        handoff.id,
+      );
+
+      await this.appendEvent.execute(projectId, sessionId, {
+        type: 'handoff.offered',
+        actor,
+        payload: {
+          handoffId: handoff.id,
+          toAgent: input.toAgent,
+          artifactId: handoff.artifactId,
+        },
+      });
+
+      const desfecho: DesfechoDaOferta =
+        decisao.substituir.length > 0 ? 'substituiu_oferta' : 'criado';
+      return { ...handoff, desfecho };
+    });
   }
 }

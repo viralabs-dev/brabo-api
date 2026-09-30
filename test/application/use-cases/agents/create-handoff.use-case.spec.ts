@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
 import { CreateHandoffUseCase } from '../../../../src/application/use-cases/agents/create-handoff.use-case';
 import type { HandoffRepository } from '../../../../src/application/ports/handoff-repository.port';
+import type { UnitOfWork } from '../../../../src/application/ports/unit-of-work.port';
+import type { CicloDeVidaDoHandoff } from '../../../../src/application/use-cases/agents/ciclo-de-vida-do-handoff.service';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
 
 function build() {
@@ -13,7 +15,19 @@ function build() {
       criados.push(input);
       return Promise.resolve({ id: 'h-1', artifactId: null, ...input });
     },
+    travarOfertasDoDestino: () => Promise.resolve(),
+    findOfferedToAgentInProject: () => Promise.resolve([]),
   } as unknown as HandoffRepository;
+
+  // O ciclo de vida (ADR 0182) tem spec própria, contra Postgres:
+  // `ciclo-de-vida-do-handoff.spec.ts`. Aqui, nenhum agente ativo.
+  const unitOfWork: UnitOfWork = {
+    runInTransaction: <T>(work: () => Promise<T>) => work(),
+  };
+  const ciclo = {
+    sessaoOndeEstaAtivo: () => Promise.resolve(null),
+    substituir: () => Promise.resolve(),
+  } as unknown as CicloDeVidaDoHandoff;
 
   const appendEvent = {
     execute: (_p: string, _s: string, e: { type: string }) => {
@@ -26,7 +40,7 @@ function build() {
   } as unknown as AppendSessionEventUseCase;
 
   return {
-    useCase: new CreateHandoffUseCase(handoffs, appendEvent),
+    useCase: new CreateHandoffUseCase(handoffs, appendEvent, unitOfWork, ciclo),
     criados,
     eventos,
   };
