@@ -1,6 +1,6 @@
 {
-  "id": "267aca79-db31-4ffb-a72f-d8c186ef229a",
-  "prevId": "54550b73-53a2-4686-9862-1b64fd3a5d8b",
+  "id": "b4251de9-a9d4-48c7-88a0-0a56483e8a35",
+  "prevId": "f5dcc899-fdb0-4d73-898e-8a190d841028",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -321,7 +321,7 @@
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "default": "'manual'"
+          "default": "'auto'"
         },
         "created_at": {
           "name": "created_at",

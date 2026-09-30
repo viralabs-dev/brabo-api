@@ -36,6 +36,7 @@ import { UpdateWorkspaceUseCase } from '../../../application/use-cases/iam/updat
 import { DeleteWorkspaceUseCase } from '../../../application/use-cases/iam/delete-workspace.use-case';
 import { AddWorkspaceMemberUseCase } from '../../../application/use-cases/iam/add-workspace-member.use-case';
 import { RemoveWorkspaceMemberUseCase } from '../../../application/use-cases/iam/remove-workspace-member.use-case';
+import { ListWorkspaceMembersUseCase } from '../../../application/use-cases/iam/list-workspace-members.use-case';
 import { TransferWorkspaceOwnershipUseCase } from '../../../application/use-cases/iam/transfer-workspace-ownership.use-case';
 import { CreateProjectUseCase } from '../../../application/use-cases/iam/create-project.use-case';
 import { ListProjectsForWorkspaceUseCase } from '../../../application/use-cases/iam/list-projects-for-workspace.use-case';
@@ -64,6 +65,7 @@ import {
   ProjectResponseDto,
   ProjectsBaseResponseDto,
   WorkspaceComPapelResponseDto,
+  WorkspaceMemberComUsuarioResponseDto,
   WorkspaceMemberResponseDto,
   WorkspaceResponseDto,
   WorkspaceSummaryResponseDto,
@@ -97,6 +99,7 @@ export class WorkspacesController {
     private readonly removeWorkspaceMember: RemoveWorkspaceMemberUseCase,
     private readonly transferWorkspaceOwnership: TransferWorkspaceOwnershipUseCase,
     private readonly setWorkspaceToolRouter: SetWorkspaceToolRouterUseCase,
+    private readonly listWorkspaceMembers: ListWorkspaceMembersUseCase,
   ) {}
 
   @Post()
@@ -190,6 +193,31 @@ export class WorkspacesController {
       dto.userId,
       dto.role,
     );
+  }
+
+  /**
+   * A LEITURA dos membros do workspace (AT-335, RN-652). `viewer`, o mínimo
+   * das leituras vizinhas (`GET :workspaceId`, `:workspaceId/projects`) e o
+   * de `GET projects/:projectId/members`, que ela completa: quem abre uma
+   * sessão precisa saber o nome de quem falou nela, e quem fala ali pode
+   * entrar só pelo papel de workspace. NÃO herda o `owner` das rotas de
+   * escrita logo abaixo — o mínimo é do ENDPOINT (RN-102), e ler a lista não
+   * é mantê-la. A forma é a da leitura de projeto: id, nome, e-mail, papel.
+   */
+  @Get(':workspaceId/members')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: "Lists the workspace's members",
+    description:
+      'Who is associated with the WORKSPACE, with the workspace role — the ' +
+      'role every project inherits unless a project row overrides it. ' +
+      'Completes `GET projects/:projectId/members`, which lists only project ' +
+      'rows: whoever reaches a project through the workspace alone shows up ' +
+      'here and not there. Only id, name, e-mail and role.',
+  })
+  @ApiOkResponse({ type: [WorkspaceMemberComUsuarioResponseDto] })
+  listMembers(@Param('workspaceId') workspaceId: string) {
+    return this.listWorkspaceMembers.execute(workspaceId);
   }
 
   /**

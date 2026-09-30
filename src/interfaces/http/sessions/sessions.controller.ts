@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -177,14 +178,14 @@ export class SessionsController {
   }
 
   /**
-   * Reabrir é `maintainer`, um degrau acima de encerrar (`developer`): reabre
-   * gasto de token numa sessão que alguém já deu por terminada, e volta a
-   * pôr agentes para conversar nela. Padrão CONSERVADOR à espera do dono
-   * (ADR 0183) — baixar para `developer` é trocar esta linha e a da tela.
+   * Reabrir é `developer`, o MESMO papel de encerrar pela transição
+   * genérica: quem pode dar a sessão por terminada pode trazê-la de volta.
+   * Decisão do dono (ADR 0184, AT-337) sobre o padrão provisório
+   * `maintainer` do ADR 0183 — mudar de novo é esta linha e a da tela.
    */
   @Post(':sessionId/reopen')
   @HttpCode(200)
-  @RequireRole('maintainer')
+  @RequireRole('developer')
   @ApiOperation({
     summary: 'Reopens a closed session, keeping everything it had',
     description:
@@ -194,7 +195,8 @@ export class SessionsController {
       'A NEW event `session.reopened` records the previous `closedAt` and ' +
       '`terminationReason`, which the row clears. A session that carries ' +
       '`execution.activated` is refused (`sessao_com_execucao`): open a new ' +
-      'session and activate execution there. No time limit.',
+      'session and activate execution there. No time limit. Requires ' +
+      '`developer` (ADR 0184).',
   })
   @ApiOkResponse({ type: SessionResponseDto })
   @ApiConflictResponse({
@@ -234,18 +236,39 @@ export class SessionsController {
     example: 'true',
     description: 'Fetches the tail of the log; ignores `afterSeq`.',
   })
+  @ApiQuery({
+    name: 'actionId',
+    required: false,
+    example: '01JC4Z0000ACAO00000000000001',
+    description:
+      'Only the events whose `payload.actionId` is this action — e.g. its ' +
+      '`proposed_action.created`, which carries the policy `reason` and ' +
+      '`scopeRoot` the action row does not keep (RN-614). Combines with the ' +
+      'other parameters; `seq` is no longer contiguous in the page, so a ' +
+      'caller filtering by action must not derive omitted counts from it. ' +
+      'An empty value is a `400`.',
+  })
   @ApiOkResponse({ type: PaginaDeEventosResponseDto })
+  @ApiBadRequestResponse({ description: '`actionId` is present but empty.' })
   listEvents(
     @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
     @Query('afterSeq') afterSeq?: string,
     @Query('limit') limit?: string,
     @Query('latest') latest?: string,
+    @Query('actionId') actionId?: string,
   ) {
+    // Vazio é pedido malformado, não "todas": um filtro que some quando o
+    // cliente manda a string errada devolveria o log inteiro para quem pediu
+    // o motivo de UMA ação.
+    if (actionId !== undefined && actionId.trim() === '') {
+      throw new BadRequestException('actionId vazio.');
+    }
     return this.listSessionEvents.execute(projectId, sessionId, {
       afterSeq: afterSeq !== undefined ? Number(afterSeq) : undefined,
       limit: limit !== undefined ? Number(limit) : undefined,
       latest: latest === 'true',
+      actionId,
     });
   }
 

@@ -27,6 +27,7 @@ import { GetProjectPermissionsUseCase } from './get-project-permissions.use-case
 import { SetProjectPermissionsUseCase } from './set-project-permissions.use-case';
 import { ListProjectsForWorkspaceUseCase } from './list-projects-for-workspace.use-case';
 import { ListProjectMembersUseCase } from './list-project-members.use-case';
+import { ListWorkspaceMembersUseCase } from './list-workspace-members.use-case';
 import { GetWorkspaceSummaryUseCase } from './get-workspace-summary.use-case';
 import { GetProjectsStatusForWorkspaceUseCase } from './get-projects-status-for-workspace.use-case';
 import { GetProjectsSummaryForWorkspaceUseCase } from './get-projects-summary-for-workspace.use-case';
@@ -70,6 +71,7 @@ const USE_CASES = [
   SetProjectPermissionsUseCase,
   ListProjectsForWorkspaceUseCase,
   ListProjectMembersUseCase,
+  ListWorkspaceMembersUseCase,
   GetWorkspaceSummaryUseCase,
   GetProjectsStatusForWorkspaceUseCase,
   GetProjectsSummaryForWorkspaceUseCase,

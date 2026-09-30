@@ -342,6 +342,9 @@ async function main() {
       name: 'validacao-real',
       slug: `validacao-real-${sufixo}`,
       createdBy: owner.id,
+      // Desde a RN-659 (AT-313) o default de projeto novo é `auto`; esta
+      // validação exercita o fluxo MANUAL do PO, então o pede EXPLÍCITO.
+      storyPromotion: 'manual',
     })
     .returning();
   await db
@@ -351,9 +354,9 @@ async function main() {
   log(`projeto: ${project.id}`);
   assertar(
     project.storyPromotion === 'manual',
-    `projeto novo nasceu em "${project.storyPromotion}"; o default é "manual"`,
+    `projeto nasceu em "${project.storyPromotion}"; esta validação pede "manual"`,
   );
-  log('✓ promoção MANUAL por default (RN-048)');
+  log('✓ promoção MANUAL, pedida explícita (RN-048, RN-659)');
 
   const adocao = await app
     .get(AdoptRepositoryUseCase)

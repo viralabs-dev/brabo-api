@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import type { Actor } from '../../../domain/sessions/session-event.entity';
 import { SessionRepository } from '../../ports/session-repository.port';
 import { HandoffRepository } from '../../ports/handoff-repository.port';
 import { ApiToEngineClient } from '../../ports/api-to-engine-client.port';
@@ -19,6 +20,7 @@ import {
   canActivateAgent,
   AgentActivationBlockedError,
 } from '../../../domain/sessions/agent-activation';
+import type { AceiteImplicito } from '../../../domain/sessions/estou-pronto';
 
 /**
  * Ativa um agente numa sessão (Fase 3b). A regra de domínio
@@ -43,6 +45,11 @@ export class ActivateAgentUseCase {
     sessionId: string,
     agent: string,
     userId: string,
+    // O aceite automático (RN-660, ADR 0186) ativa em nome do SISTEMA; sem
+    // isto o `agent.activated` diria que a pessoa clicou.
+    ator: Actor = { kind: 'user', id: userId },
+    /** Aceite implícito do "Estou pronto" (RN-658): vai no payload. */
+    implicito?: AceiteImplicito,
   ) {
     const session = await this.sessions.findInProject(projectId, sessionId);
     if (!session) throw new NotFoundException('Sessão não encontrada');
@@ -51,10 +58,7 @@ export class ActivateAgentUseCase {
     // só no funil deixaria um conversacional vivo numa sessão encerrada, que é
     // o defeito que a RN fecha pelo outro lado (parar os vivos ao fechar).
     try {
-      garantirQueSessaoAceitaEvento(session.status, 'agent.activated', {
-        kind: 'user',
-        id: userId,
-      });
+      garantirQueSessaoAceitaEvento(session.status, 'agent.activated', ator);
     } catch (error) {
       if (error instanceof ConversaEmSessaoEncerradaError) {
         throw conflitoDeSessaoEncerrada(error);
@@ -73,8 +77,8 @@ export class ActivateAgentUseCase {
 
     await this.appendEvent.execute(projectId, sessionId, {
       type: 'agent.activated',
-      actor: { kind: 'user', id: userId },
-      payload: { agent },
+      actor: ator,
+      payload: implicito ? { agent, implicito } : { agent },
     });
 
     // ADR 0182 (RN-635): ativo o agente, nenhuma oferta a ele segue acionável

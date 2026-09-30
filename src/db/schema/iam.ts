@@ -273,12 +273,15 @@ export const projects = pgTable(
     // sobreviver à reativação, não só existir como parâmetro dela.
     maxConsecutiveBlocked: integer('max_consecutive_blocked'),
     // Quem promove story a `ready` (Fase 12c, RN-048). NOT NULL com default
-    // `manual` — diferente dos dois tetos acima, que são nullable porque
-    // "nulo = default do domínio". Aqui o valor É a decisão, e uma decisão
-    // de autoridade não pode ficar implícita.
+    // — diferente dos dois tetos acima, que são nullable porque "nulo =
+    // default do domínio". Aqui o valor É a decisão, e uma decisão de
+    // autoridade não pode ficar implícita. O default de projeto NOVO é
+    // `auto` desde a RN-659 (AT-313, migration 0065): só muda o DEFAULT da
+    // coluna, nenhuma linha existente é reescrita — projeto que nasceu
+    // `manual` continua `manual` até alguém trocar em Configurações.
     storyPromotion: storyPromotionModeEnum('story_promotion')
       .notNull()
-      .default('manual'),
+      .default('auto'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

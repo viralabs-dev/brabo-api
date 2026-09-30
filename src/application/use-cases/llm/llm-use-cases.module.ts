@@ -12,6 +12,7 @@ import { GetModelBindingUseCase } from './get-model-binding.use-case';
 import { ListProviderCapabilitiesUseCase } from './list-provider-capabilities.use-case';
 import { ClearModelBindingUseCase } from './clear-model-binding.use-case';
 import { ResolveModelBindingUseCase } from './resolve-model-binding.use-case';
+import { ResolveModelBindingsEmLoteUseCase } from './resolve-model-bindings-em-lote.use-case';
 import { UpsertUserCredentialUseCase } from './upsert-user-credential.use-case';
 import { ListUserCredentialsUseCase } from './list-user-credentials.use-case';
 import { DeleteUserCredentialUseCase } from './delete-user-credential.use-case';
@@ -47,6 +48,7 @@ const USE_CASES = [
   ListProviderCapabilitiesUseCase,
   ClearModelBindingUseCase,
   ResolveModelBindingUseCase,
+  ResolveModelBindingsEmLoteUseCase,
   UpsertUserCredentialUseCase,
   ListUserCredentialsUseCase,
   DeleteUserCredentialUseCase,

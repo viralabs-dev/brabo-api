@@ -9,7 +9,10 @@ import {
   type ProjectExecutionMode,
   type StoryPromotionMode,
 } from '../../../../domain/iam/project.entity';
-import type { WorkspaceMember } from '../../../../domain/iam/workspace-member.entity';
+import type {
+  WorkspaceMember,
+  WorkspaceMemberWithUser,
+} from '../../../../domain/iam/workspace-member.entity';
 import type {
   ProjectMember,
   ProjectMemberWithUser,
@@ -252,11 +255,12 @@ export class ProjectResponseDto implements Wire<Project> {
 
   @ApiProperty({
     enum: STORY_PROMOTION_MODES,
-    example: 'manual',
+    example: 'auto',
     description:
       'Who promotes a story to `ready` (Phase 12c — RN-048). `manual`: the ' +
       'PO proposes and the user decides. `auto`: automatic promotion on ' +
-      'creation (opt-in; where projects predating 12c ended up).',
+      'creation — the new-project default since RN-659; projects created ' +
+      'before it keep whatever value they had.',
   })
   storyPromotion!: StoryPromotionMode;
 
@@ -327,6 +331,33 @@ export class ProjectMemberComUsuarioResponseDto implements Wire<ProjectMemberWit
 export const _chavesMembroComUsuario: MesmasChaves<
   ProjectMemberComUsuarioResponseDto,
   ProjectMemberWithUser
+> = true;
+
+/**
+ * Membro do WORKSPACE com nome e e-mail (AT-335, RN-652) — a mesma forma da
+ * de projeto, e nada além: sem `createdAt`, sem estado de conta.
+ */
+export class WorkspaceMemberComUsuarioResponseDto implements Wire<WorkspaceMemberWithUser> {
+  @ApiProperty({ example: '01JC4Z0000USUARIO0000000002' })
+  userId!: string;
+
+  @ApiProperty({
+    ...PAPEL,
+    description:
+      'The WORKSPACE role — what every project of the workspace inherits ' +
+      'unless a project row overrides it (RN-471).',
+  })
+  role!: Role;
+
+  @ApiProperty({ type: String, example: 'Senior Dev', nullable: true })
+  name!: string | null;
+
+  @ApiProperty({ example: 'dev@brabo.dev' })
+  email!: string;
+}
+export const _chavesMembroWsComUsuario: MesmasChaves<
+  WorkspaceMemberComUsuarioResponseDto,
+  WorkspaceMemberWithUser
 > = true;
 
 // --- Resumo do dashboard (RN-090) ---

@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { HTTP_CODE_METADATA } from '@nestjs/common/constants';
 import { SessionsController } from '../../../../src/interfaces/http/sessions/sessions.controller';
 import { REQUIRED_ROLE_KEY } from '../../../../src/interfaces/http/iam/require-role.decorator';
+import { roleAtLeast, type Role } from '../../../../src/domain/iam/role';
 
 /*
  * `Controller.prototype.<método>` entra aqui como CHAVE de metadata (mesma
@@ -11,20 +12,38 @@ import { REQUIRED_ROLE_KEY } from '../../../../src/interfaces/http/iam/require-r
 /* eslint-disable @typescript-eslint/unbound-method */
 
 /**
- * `POST /projects/:projectId/sessions/:sessionId/reopen` — ADR 0183, RN-650.
+ * `POST /projects/:projectId/sessions/:sessionId/reopen` — ADR 0183/0184,
+ * RN-650.
  *
- * `maintainer`, um degrau acima da transição genérica (`developer`): padrão
- * provisório à espera do dono.
+ * `developer`, o MESMO papel da transição genérica: decisão do dono (ADR 0184,
+ * AT-337) sobre o padrão provisório `maintainer` do ADR 0183.
  */
 describe('SessionsController — reabrir sessão (RN-650)', () => {
-  it('exige maintainer, e a transição genérica continua developer', () => {
+  it('exige developer, o mesmo papel da transição genérica', () => {
     const reflector = new Reflector();
     expect(
       reflector.get(REQUIRED_ROLE_KEY, SessionsController.prototype.reopen),
-    ).toBe('maintainer');
+    ).toBe('developer');
     expect(
       reflector.get(REQUIRED_ROLE_KEY, SessionsController.prototype.transition),
     ).toBe('developer');
+  });
+
+  /*
+   * A régua que o `RolesGuard` aplica ao papel da rota (`roleAtLeast`, a
+   * mesma função): developer, maintainer e owner passam; viewer é 403.
+   */
+  it.each<[Role, boolean]>([
+    ['viewer', false],
+    ['developer', true],
+    ['maintainer', true],
+    ['owner', true],
+  ])('%s alcança o papel da rota: %s', (papel, alcanca) => {
+    const exigido = new Reflector().get<Role>(
+      REQUIRED_ROLE_KEY,
+      SessionsController.prototype.reopen,
+    );
+    expect(roleAtLeast(papel, exigido)).toBe(alcanca);
   });
 
   it('responde 200, não o 201 padrão de @Post', () => {

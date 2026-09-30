@@ -9,12 +9,18 @@ import { OfferInfraHandoffUseCase } from './offer-infra-handoff.use-case';
 import { ValidateNecessityUseCase } from './validate-necessity.use-case';
 import { CreateHandoffUseCase } from './create-handoff.use-case';
 import { AcceptHandoffUseCase } from './accept-handoff.use-case';
+import { AceiteImplicitoDoPoUseCase } from './aceite-implicito-do-po.use-case';
 import { ListHandoffsUseCase } from './list-handoffs.use-case';
 import { RequestManualHandoffUseCase } from './request-manual-handoff.use-case';
 import { UpsertAgentInstructionUseCase } from './upsert-agent-instruction.use-case';
 import { CancelAgentTurnUseCase } from './cancel-agent-turn.use-case';
 import { AnswerStructuredQuestionUseCase } from './answer-structured-question.use-case';
 import { CicloDeVidaDoHandoff } from './ciclo-de-vida-do-handoff.service';
+import { AceitarHandoffAutomaticamenteUseCase } from './aceitar-handoff-automaticamente.use-case';
+// Provider direto pelo mesmo motivo do de baixo: o aceite automático (RN-660)
+// confere o papel de quem abriu a sessão, e a classe só lê repositórios do
+// `DrizzleModule`, que é global.
+import { ResolveEffectiveRoleUseCase } from '../iam/resolve-effective-role.use-case';
 // Provider direto, e não `imports: [IamUseCasesModule]` (o mesmo argumento do
 // `SeedAgentAreasUseCase` no sentido contrário): a resolução do idioma da
 // resposta (RN-618/RN-622) só lê dois repositórios do `DrizzleModule`, que é
@@ -30,12 +36,14 @@ const USE_CASES = [
   ValidateNecessityUseCase,
   CreateHandoffUseCase,
   AcceptHandoffUseCase,
+  AceiteImplicitoDoPoUseCase,
   ListHandoffsUseCase,
   RequestManualHandoffUseCase,
   UpsertAgentInstructionUseCase,
   CancelAgentTurnUseCase,
   AnswerStructuredQuestionUseCase,
   CicloDeVidaDoHandoff,
+  AceitarHandoffAutomaticamenteUseCase,
 ];
 
 @Module({
@@ -46,7 +54,11 @@ const USE_CASES = [
   // que handoff existe. `git-use-cases.module.ts` não importa este módulo, então
   // não há ciclo.
   imports: [SessionsUseCasesModule, GitUseCasesModule, EngineHttpClientsModule],
-  providers: [...USE_CASES, ResolverIdiomaDaRespostaUseCase],
+  providers: [
+    ...USE_CASES,
+    ResolverIdiomaDaRespostaUseCase,
+    ResolveEffectiveRoleUseCase,
+  ],
   exports: USE_CASES,
 })
 export class AgentsUseCasesModule {}

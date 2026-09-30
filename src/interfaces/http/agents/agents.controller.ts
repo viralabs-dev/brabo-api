@@ -303,7 +303,10 @@ export class AgentsController {
     description:
       'Records `necessity.validated`. Requires the Criativo to have already ' +
       'consolidated a `product_brief` in this session (RN-406) — without it, it ' +
-      'is refused: there is nothing to validate.',
+      'is refused: there is nothing to validate. Since ADR 0185 (RN-657) the ' +
+      '"I\'m ready — the need is validated" click (`POST .../readiness`) ' +
+      'records this event itself, and the web no longer calls this route; it ' +
+      'stays for sessions whose readiness click predates that ADR.',
   })
   @ApiCreatedResponse({ type: OkResponseDto })
   validateNecessityHandoff(

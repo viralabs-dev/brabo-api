@@ -60,11 +60,19 @@ class FakeAutonomy {
 }
 
 class FakeEvents {
-  eventos: { type: string; payload?: Record<string, unknown> }[] = [];
+  eventos: {
+    type: string;
+    actor?: { kind: string; id: string };
+    payload?: Record<string, unknown>;
+  }[] = [];
   execute(
     _p: string,
     _s: string,
-    evento: { type: string; payload?: Record<string, unknown> },
+    evento: {
+      type: string;
+      actor?: { kind: string; id: string };
+      payload?: Record<string, unknown>;
+    },
   ) {
     this.eventos.push(evento);
     return Promise.resolve({} as never);
@@ -80,9 +88,20 @@ class FakeEvents {
 
 class FakeActivate {
   ativados: string[] = [];
-  execute(_p: string, _s: string, agente: string, _u: string) {
+  atores: unknown[] = [];
+  implicitos: unknown[] = [];
+  execute(
+    _p: string,
+    _s: string,
+    agente: string,
+    _u: string,
+    ator?: unknown,
+    implicito?: unknown,
+  ) {
     ordem.push(`ativou:${agente}`);
     this.ativados.push(agente);
+    this.atores.push(ator);
+    this.implicitos.push(implicito);
     return Promise.resolve({} as never);
   }
 }
@@ -297,5 +316,78 @@ describe('AcceptHandoffUseCase — o repositório nasce no handoff ao Arquiteto 
     );
     expect(provision.chamadas).toHaveLength(0);
     expect(activate.ativados).toHaveLength(0);
+  });
+
+  it('RN-658: o aceite implícito grava os MESMOS eventos, com o humano como ator e a marca no payload', async () => {
+    handoffs.handoff = { ...handoffs.handoff, toAgent: 'po' };
+    const implicito = {
+      via: 'readiness.confirmed' as const,
+      readinessEventId: 'ev-pronto',
+    };
+
+    await uc.execute(PROJECT, SESSION, HANDOFF, USER, undefined, implicito);
+
+    expect(events.eventos).toEqual([
+      {
+        type: 'handoff.accepted',
+        actor: { kind: 'user', id: USER },
+        payload: { handoffId: HANDOFF, toAgent: 'po', implicito },
+      },
+    ]);
+    expect(activate.ativados).toEqual(['po']);
+    expect(activate.implicitos).toEqual([implicito]);
+  });
+
+  it('RN-658: o aceite pelo card (sem marca) segue sem `implicito` no payload', async () => {
+    handoffs.handoff = { ...handoffs.handoff, toAgent: 'po' };
+
+    await uc.execute(PROJECT, SESSION, HANDOFF, USER);
+
+    expect(events.eventos[0]?.payload).toEqual({
+      handoffId: HANDOFF,
+      toAgent: 'po',
+    });
+    expect(activate.implicitos).toEqual([undefined]);
+  });
+});
+
+describe('AcceptHandoffUseCase — aceite pelo SISTEMA (RN-660, ADR 0186)', () => {
+  const SISTEMA = { kind: 'system', id: 'handoff-auto-accept' };
+  const CRITERIO = {
+    regras: 3,
+    cobertas: 3,
+    repositorio: 'a_provisionar_local',
+  };
+
+  it('grava `handoff.accepted` com o ator de sistema e o critério, e provisiona ANTES de ativar', async () => {
+    handoffs.handoff = { ...handoffs.handoff, toAgent: 'arquiteto' };
+
+    await uc.execute(PROJECT, SESSION, HANDOFF, USER, {
+      ator: SISTEMA as never,
+      criterio: CRITERIO,
+    });
+
+    const aceito = events.eventos.find((e) => e.type === 'handoff.accepted');
+    expect(aceito?.actor).toEqual(SISTEMA);
+    expect(aceito?.payload).toMatchObject({
+      automatico: true,
+      emNomeDe: USER,
+      criterio: CRITERIO,
+    });
+    // O repositório continua nascendo aqui, em nome da pessoa, antes do agente.
+    expect(ordem).toEqual(['provisionou', 'ativou:arquiteto']);
+    expect(provision.chamadas[0].userId).toBe(USER);
+    expect(activate.atores).toEqual([SISTEMA]);
+  });
+
+  it('o aceite HUMANO segue gravando a pessoa como ator, sem `automatico`', async () => {
+    handoffs.handoff = { ...handoffs.handoff, toAgent: 'arquiteto' };
+
+    await uc.execute(PROJECT, SESSION, HANDOFF, USER);
+
+    const aceito = events.eventos.find((e) => e.type === 'handoff.accepted');
+    expect(aceito?.actor).toEqual({ kind: 'user', id: USER });
+    expect(aceito?.payload).not.toHaveProperty('automatico');
+    expect(activate.atores).toEqual([undefined]);
   });
 });

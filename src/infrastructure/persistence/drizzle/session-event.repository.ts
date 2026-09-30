@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, desc, eq, gt, gte, inArray, lt } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, inArray, lt, sql } from 'drizzle-orm';
 import {
   SessionEventRepository,
   type ListPaginatedOptions,
@@ -54,6 +54,14 @@ export class DrizzleSessionEventRepository implements SessionEventRepository {
     }
     if (opts.types && opts.types.length > 0) {
       conditions.push(inArray(sessionEvents.type, opts.types));
+    }
+    // Parametrizado, e sempre DENTRO da sessão (a condição acima): o índice
+    // único `(session_id, seq)` recorta a sessão e o predicado do JSON só roda
+    // sobre as linhas dela — sem índice novo, sem migration.
+    if (opts.actionId !== undefined) {
+      conditions.push(
+        sql`${sessionEvents.payload}->>'actionId' = ${opts.actionId}`,
+      );
     }
 
     // `latest`: pega do fim pelo banco e reverte na memória, pra devolver
