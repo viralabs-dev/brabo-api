@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, gt, gte, isNotNull, lt } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, isNotNull, lt } from 'drizzle-orm';
 import {
   ProposedActionRepository,
   type DecideProposedAction,
@@ -100,8 +100,24 @@ export class DrizzleProposedActionRepository implements ProposedActionRepository
     const db = currentDb(this.rootDb);
     const limit = Math.min(opts.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
     const conditions = [eq(proposedActions.sessionId, sessionId)];
-    if (opts.afterSeq !== undefined) {
+    if (opts.afterSeq !== undefined && !opts.latest) {
       conditions.push(gt(proposedActions.seq, opts.afterSeq));
+    }
+    if (opts.status !== undefined) {
+      conditions.push(eq(proposedActions.status, opts.status));
+    }
+
+    // `latest` (AT-296, RN-637): do fim pelo banco, revertido na memória para
+    // sair em ordem crescente — o mesmo contrato do `latest` dos eventos. Sem
+    // `nextCursor`: não há página "mais nova" que a cauda.
+    if (opts.latest) {
+      const cauda = await db
+        .select()
+        .from(proposedActions)
+        .where(and(...conditions))
+        .orderBy(desc(proposedActions.seq))
+        .limit(limit);
+      return { items: cauda.reverse().map(toEntity), nextCursor: null };
     }
 
     const rows = await db
