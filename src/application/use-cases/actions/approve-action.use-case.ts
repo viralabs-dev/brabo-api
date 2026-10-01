@@ -20,6 +20,7 @@ import { ExecuteInstructionPatchUseCase } from './execute-instruction-patch.use-
 import { ExecuteGitActionUseCase } from './execute-git-action.use-case';
 import { ExecuteParallelizationUseCase } from '../execution/execute-parallelization.use-case';
 import { ExecuteMaxParallelRaiseUseCase } from '../execution/execute-max-parallel-raise.use-case';
+import { ExecuteExecutionPlanUseCase } from '../execution/execute-execution-plan.use-case';
 import { assertTransition } from '../../../domain/actions/action-state-machine';
 import { GIT_EXECUTED_ACTION_TYPES } from '../../../domain/actions/git-action-types';
 import {
@@ -50,6 +51,7 @@ export class ApproveActionUseCase {
     private readonly executeInstructionPatch: ExecuteInstructionPatchUseCase,
     private readonly metrics: BraboMetrics,
     private readonly appendSessionEvent: AppendSessionEventUseCase,
+    private readonly executeExecutionPlan: ExecuteExecutionPlanUseCase,
   ) {}
 
   @Traced('application')
@@ -176,6 +178,18 @@ export class ApproveActionUseCase {
           sessionId,
           approved,
         ),
+      );
+    }
+
+    // AT-263 (RN-677, ADR 0194): aprovar o plano do Dev Lead ATIVA a
+    // execução e grava o módulo de cada tarefa (RN-678). Antes ele ficava
+    // `approved` para sempre, sem consumidor, e a ativação vinha encadeada no
+    // aceite do handoff (RN-161, revisada).
+    if (approved.actionType === 'propose_execution_plan') {
+      return this.avisarQuemEsperava(
+        projectId,
+        sessionId,
+        await this.executeExecutionPlan.execute(projectId, sessionId, approved),
       );
     }
 
