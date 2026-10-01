@@ -26,37 +26,41 @@ const GITHUB_RELEASES_URL =
   'https://api.github.com/repos/daneiel/brabo/releases/latest';
 
 /**
- * Os QUATRO alvos que `build-runner-binaries.yml` constrói — a mesma lista da
+ * Os TRÊS alvos que `build-runner-binaries.yml` constrói — a mesma lista da
  * matriz, e `scripts/ci/alvos-do-runner.spec.ts` reprova quando divergem.
  * `darwin-x64` (Mac Intel) saiu no ADR 0174: sem runner Intel utilizável no
  * Actions e com o Bun quebrando o `onData` do node-pty no `macos-15-intel`
- * (oven-sh/bun#25822). Pedido dele não é "plataforma inválida" genérica: tem
- * recusa própria, que aponta o caminho que existe (o pacote npm, sob Node).
+ * (oven-sh/bun#25822). `win32-x64` saiu no ADR 0187: sob o Bun o pipe de
+ * saída do ConPTY fecha depois do primeiro pedaço. Pedido de um deles não é
+ * "plataforma inválida" genérica: tem recusa própria, que aponta o caminho que
+ * existe (o pacote npm, sob Node).
  */
-const PLATAFORMAS = [
-  'linux-x64',
-  'linux-arm64',
-  'darwin-arm64',
-  'win32-x64',
-] as const;
+const PLATAFORMAS = ['linux-x64', 'linux-arm64', 'darwin-arm64'] as const;
 
-/** Plataforma que o runner ATENDE, mas sem binário publicado (ADR 0174). */
-const SEM_BINARIO_POR_DECISAO = 'darwin-x64';
+/**
+ * Plataformas que o runner ATENDE, mas sem binário publicado, por decisão —
+ * cada uma com o nome legível e o ADR que a tirou.
+ */
+const SEM_BINARIO_POR_DECISAO: Readonly<
+  Record<string, { nome: string; adr: string }>
+> = {
+  'darwin-x64': { nome: 'Mac Intel', adr: 'ADR 0174' },
+  'win32-x64': { nome: 'Windows', adr: 'ADR 0187' },
+};
 type Plataforma = (typeof PLATAFORMAS)[number];
 
 function ehPlataformaValida(valor: string): valor is Plataforma {
   return (PLATAFORMAS as readonly string[]).includes(valor);
 }
 
+// Os nomes com `.exe` saíram com o `win32-x64` (ADR 0187): os três alvos que
+// sobram são Unix. Religar o Windows devolve o ramo do `.exe` aqui e no nome
+// do arquivo baixado.
 function nomeDoAsset(plataforma: Plataforma): string {
-  return plataforma === 'win32-x64'
-    ? 'brabo-runner-win32-x64.exe'
-    : `brabo-runner-${plataforma}`;
+  return `brabo-runner-${plataforma}`;
 }
 
-function nomeDoArquivoBaixado(plataforma: Plataforma): string {
-  return plataforma === 'win32-x64' ? 'brabo-runner.exe' : 'brabo-runner';
-}
+const NOME_DO_ARQUIVO_BAIXADO = 'brabo-runner';
 
 interface CacheDeAssets {
   buscadoEm: number;
@@ -226,10 +230,16 @@ export class RunnerReleasesController {
     @Query('platform') platform: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
-    if (platform === SEM_BINARIO_POR_DECISAO) {
+    // `Object.hasOwn`, nunca o índice puro: `?platform=constructor` acharia o
+    // protótipo e sairia como "sem binário por decisão".
+    const decisao =
+      platform && Object.hasOwn(SEM_BINARIO_POR_DECISAO, platform)
+        ? SEM_BINARIO_POR_DECISAO[platform]
+        : undefined;
+    if (platform && decisao) {
       throw new BadRequestException(
-        `${SEM_BINARIO_POR_DECISAO} (Mac Intel) não tem binário publicado, por ` +
-          'decisão (ADR 0174) — instale pelo npm: npm install -g @brabo/runner',
+        `${platform} (${decisao.nome}) não tem binário publicado, por ` +
+          `decisão (${decisao.adr}) — instale pelo npm: npm install -g @brabo/runner`,
       );
     }
     if (!platform || !ehPlataformaValida(platform)) {
@@ -274,7 +284,7 @@ export class RunnerReleasesController {
     }
 
     const pasta = await mkdtemp(join(tmpdir(), 'brabo-runner-'));
-    const caminho = join(pasta, nomeDoArquivoBaixado(platform));
+    const caminho = join(pasta, NOME_DO_ARQUIVO_BAIXADO);
     try {
       const hashObtido = await this.baixarConferindo(assetUrl, caminho);
       if (hashObtido !== hashEsperado) {
@@ -288,7 +298,7 @@ export class RunnerReleasesController {
       res.setHeader('Content-Type', 'application/octet-stream');
       res.setHeader(
         'Content-Disposition',
-        `attachment; filename="${nomeDoArquivoBaixado(platform)}"`,
+        `attachment; filename="${NOME_DO_ARQUIVO_BAIXADO}"`,
       );
       // RFC 9530. Diz o que foi conferido, e é o que permite a quem recebe
       // repetir a conta sem confiar na nossa palavra.
