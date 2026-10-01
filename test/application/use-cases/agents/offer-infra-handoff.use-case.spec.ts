@@ -15,16 +15,9 @@ const SESSION = 's1';
 
 class FakeEngine {
   chamadas: string[] = [];
-  falharDev = false;
 
   offerInfraHandoff() {
     this.chamadas.push('infra');
-    return Promise.resolve();
-  }
-
-  offerDevHandoff() {
-    if (this.falharDev) return Promise.reject(new Error('dev-lead fora do ar'));
-    this.chamadas.push('dev');
     return Promise.resolve();
   }
 }
@@ -106,29 +99,18 @@ beforeEach(() => {
 });
 
 describe('OfferInfraHandoffUseCase', () => {
-  it('a confirmação de arquitetura pronta entrega às DUAS áreas', async () => {
-    // FASE 14d: a cadeia vira Arquiteto → Dev Lead → execução. Antes não havia
-    // ninguém entre o fim da arquitetura e o botão de ativar.
+  // RN-672 (AT-262, ADR 0190): o Dev Lead deixou de ser destino desta
+  // confirmação — quem o oferece é a Infra, com o container `running`.
+  it('a confirmação de arquitetura pronta entrega SÓ à Infra', async () => {
     await uc.execute(PROJECT, SESSION, 'user-1');
 
-    expect(engine.chamadas).toEqual(['infra', 'dev']);
+    expect(engine.chamadas).toEqual(['infra']);
   });
 
   it('grava o marco de arquitetura pronta antes de sinalizar', async () => {
     await uc.execute(PROJECT, SESSION, 'user-1');
 
     expect(events.tipos).toEqual(['architecture.readiness_confirmed']);
-  });
-
-  it('Infra vem PRIMEIRO: uma falha do Dev Lead não desfaz o que já foi aceito', async () => {
-    // As duas chamadas são independentes de propósito. O event log é imutável
-    // — um handoff de Infra já ofertado não teria como ser retratado se a
-    // ordem fosse a inversa e o dev falhasse depois.
-    engine.falharDev = true;
-
-    await expect(uc.execute(PROJECT, SESSION, 'user-1')).rejects.toThrow();
-
-    expect(engine.chamadas).toEqual(['infra']);
   });
 
   it('RN-160 revalidada no backend: zero história promovida recusa ANTES de qualquer efeito colateral', async () => {
@@ -145,35 +127,35 @@ describe('OfferInfraHandoffUseCase', () => {
 
     await uc.execute(PROJECT, SESSION, 'user-1');
 
-    expect(engine.chamadas).toEqual(['infra', 'dev']);
+    expect(engine.chamadas).toEqual(['infra']);
     expect(events.tipos).toEqual(['architecture.readiness_confirmed']);
   });
 
-  it('ADR 0182: segundo clique com as duas ofertas pendentes não grava nem chama o engine', async () => {
-    handoffs.pendentes = new Set(['infra', 'dev-lead']);
+  it('ADR 0182: segundo clique com a oferta à Infra pendente não grava nem chama o engine', async () => {
+    handoffs.pendentes = new Set(['infra']);
 
     const r = await uc.execute(PROJECT, SESSION, 'user-1');
 
     expect(r.desfecho).toBe('ja_oferecido');
     expect(r.jaAtendidos).toEqual([
       { toAgent: 'infra', motivo: 'oferta_pendente' },
-      { toAgent: 'dev-lead', motivo: 'oferta_pendente' },
     ]);
     expect(engine.chamadas).toEqual([]);
     expect(events.tipos).toEqual([]);
   });
 
-  it('ADR 0182: só aciona o destino que falta — Infra ativo, Dev Lead sem oferta', async () => {
+  it('ADR 0182: Infra já ativa é `ja_oferecido`, e o Dev Lead nunca é acionado daqui (RN-672)', async () => {
     ciclo.ativos = new Set(['infra']);
+    // Nem uma oferta pendente ao Dev Lead muda nada: ele não é destino.
+    handoffs.pendentes = new Set(['dev-lead']);
 
     const r = await uc.execute(PROJECT, SESSION, 'user-1');
 
-    expect(r.desfecho).toBe('confirmado');
+    expect(r.desfecho).toBe('ja_oferecido');
     expect(r.jaAtendidos).toEqual([
       { toAgent: 'infra', motivo: 'agente_ativo' },
     ]);
-    // Sem turno do Arquiteto: ele só existe para oferecer ao Infra.
-    expect(engine.chamadas).toEqual(['dev']);
-    expect(events.tipos).toEqual(['architecture.readiness_confirmed']);
+    expect(engine.chamadas).toEqual([]);
+    expect(events.tipos).toEqual([]);
   });
 });

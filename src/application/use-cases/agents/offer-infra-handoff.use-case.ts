@@ -5,8 +5,14 @@ import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-
 import { HandoffRepository } from '../../ports/handoff-repository.port';
 import { CicloDeVidaDoHandoff } from './ciclo-de-vida-do-handoff.service';
 
-/** Os dois destinos que a confirmação de arquitetura pronta alcança. */
-const ALVOS_DA_CONFIRMACAO = ['infra', 'dev-lead'] as const;
+/**
+ * O destino que a confirmação de arquitetura pronta alcança. Era também o Dev
+ * Lead (FASE 14d, ADR 0053); desde a RN-672 (AT-262, ADR 0190) o Dev Lead é
+ * oferecido PELA INFRA, quando o container do projeto chega em `running`
+ * (`Engine.Infra.InfraLeadServer`) — oferecê-lo daqui o deixava aceitável
+ * antes de existir onde os dev agents rodam (RN-502).
+ */
+const ALVOS_DA_CONFIRMACAO = ['infra'] as const;
 type AlvoDaConfirmacao = (typeof ALVOS_DA_CONFIRMACAO)[number];
 
 /** Por que um destino NÃO foi acionado de novo (ADR 0182, RN-635). */
@@ -18,9 +24,9 @@ export interface AlvoJaAtendido {
 export interface ResultadoDaConfirmacaoDeArquitetura {
   ok: true;
   /**
-   * `confirmado`: pelo menos um destino foi acionado. `ja_oferecido`: os dois
-   * já tinham oferta pendente ou estavam ativos — nada foi gravado nem pedido
-   * ao engine (o duplo clique, a segunda aba).
+   * `confirmado`: a Infra foi acionada. `ja_oferecido`: ela já tinha oferta
+   * pendente ou estava ativa — nada foi gravado nem pedido ao engine (o duplo
+   * clique, a segunda aba).
    */
   desfecho: 'confirmado' | 'ja_oferecido';
   jaAtendidos: AlvoJaAtendido[];
@@ -82,17 +88,6 @@ export class OfferInfraHandoffUseCase {
 
     if (!atendido('infra')) {
       await this.engineClient.offerInfraHandoff(projectId, sessionId);
-    }
-
-    // FASE 14d (ADR 0053): a MESMA confirmação também entrega ao Dev Lead. A
-    // cadeia vira Arquiteto → Dev Lead → execução, e antes disto não havia
-    // ninguém entre o fim da arquitetura e o botão de ativar.
-    //
-    // Chamadas SEPARADAS, e a de dev vem depois: são duas áreas com desfechos
-    // independentes, e uma falha do Dev Lead não pode desfazer o handoff de
-    // Infra que já foi aceito — o event log não retrata.
-    if (!atendido('dev-lead')) {
-      await this.engineClient.offerDevHandoff(projectId, sessionId);
     }
 
     return { ok: true, desfecho: 'confirmado', jaAtendidos };

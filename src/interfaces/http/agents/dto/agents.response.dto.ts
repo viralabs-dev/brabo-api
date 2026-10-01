@@ -131,8 +131,8 @@ export class OfertaInternaDeHandoffResponseDto extends OfertaDeHandoffResponseDt
 
 /** Why a target of the architecture confirmation was not triggered again. */
 export class AlvoJaAtendidoResponseDto {
-  @ApiProperty({ enum: ['infra', 'dev-lead'], example: 'infra' })
-  toAgent!: 'infra' | 'dev-lead';
+  @ApiProperty({ enum: ['infra'], example: 'infra' })
+  toAgent!: 'infra';
 
   @ApiProperty({ enum: ['oferta_pendente', 'agente_ativo'] })
   motivo!: 'oferta_pendente' | 'agente_ativo';
@@ -146,9 +146,11 @@ export class ConfirmacaoDeArquiteturaResponseDto {
   @ApiProperty({
     enum: ['confirmado', 'ja_oferecido'],
     description:
-      '`confirmado`: at least one target was triggered. `ja_oferecido`: both ' +
-      'targets already had a pending offer or were active in the project — ' +
-      'nothing was recorded nor asked of the engine (double click, second tab).',
+      '`confirmado`: the Infra was triggered. `ja_oferecido`: it already had a ' +
+      'pending offer or was active in the project — nothing was recorded nor ' +
+      'asked of the engine (double click, second tab). The Dev Lead is no ' +
+      'longer a target here: the Infra offers it once the container is ' +
+      '`running` (RN-672).',
   })
   desfecho!: ResultadoDaConfirmacaoDeArquitetura['desfecho'];
 
@@ -163,4 +165,43 @@ export class AgenteAtivadoResponseDto {
 
   @ApiProperty({ example: 'active', enum: ['active'] })
   status!: 'active';
+}
+
+/**
+ * O aceite de uma mensagem ao agente (RN-673, ADR 0191): com turno em curso a
+ * mensagem não é mais recusada — entra na fila do agente e é lida no fim dele.
+ */
+export class MensagemAoAgenteResponseDto {
+  @ApiProperty({
+    example: true,
+    description: 'Always `true`; failure becomes an HTTP error.',
+  })
+  ok!: true;
+
+  @ApiProperty({
+    example: '01JC4Z0000EVENTO000000000001',
+    description:
+      'Id of the `chat.message` event recorded for this message — the id that ' +
+      'cancels it while it waits in the queue.',
+  })
+  mensagemId!: string;
+
+  @ApiProperty({
+    enum: ['lida', 'enfileirada'],
+    example: 'enfileirada',
+    description:
+      '`lida`: the agent started a turn with it right away. `enfileirada`: the ' +
+      'agent was mid-turn, so the message joined its queue and will be read, ' +
+      'together with any others queued, in ONE turn when the current one ends ' +
+      '(RN-673). The session log carries `chat.message_queued` / ' +
+      '`chat.message_delivered` / `chat.message_cancelled`.',
+  })
+  entrega!: 'lida' | 'enfileirada';
+
+  @ApiPropertyOptional({
+    example: 2,
+    description:
+      'Position in the queue (1 = next). Present only when `entrega` is `enfileirada`.',
+  })
+  posicao?: number;
 }

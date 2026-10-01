@@ -17,6 +17,7 @@ import { RequireRole } from '../iam/require-role.decorator';
 import { ActivateAgentUseCase } from '../../../application/use-cases/agents/activate-agent.use-case';
 import { SendAgentMessageUseCase } from '../../../application/use-cases/agents/send-agent-message.use-case';
 import { CancelAgentTurnUseCase } from '../../../application/use-cases/agents/cancel-agent-turn.use-case';
+import { CancelQueuedAgentMessageUseCase } from '../../../application/use-cases/agents/cancel-queued-agent-message.use-case';
 import { ConfirmReadinessUseCase } from '../../../application/use-cases/agents/confirm-readiness.use-case';
 import { OfferInfraHandoffUseCase } from '../../../application/use-cases/agents/offer-infra-handoff.use-case';
 import { ValidateNecessityUseCase } from '../../../application/use-cases/agents/validate-necessity.use-case';
@@ -34,6 +35,7 @@ import {
   HandoffResponseDto,
   OfertaDeHandoffResponseDto,
   ConfirmacaoDeArquiteturaResponseDto,
+  MensagemAoAgenteResponseDto,
 } from './dto/agents.response.dto';
 
 /**
@@ -52,6 +54,7 @@ export class AgentsController {
     private readonly activateAgent: ActivateAgentUseCase,
     private readonly sendAgentMessage: SendAgentMessageUseCase,
     private readonly cancelAgentTurn: CancelAgentTurnUseCase,
+    private readonly cancelQueuedMessage: CancelQueuedAgentMessageUseCase,
     private readonly confirmReadiness: ConfirmReadinessUseCase,
     private readonly offerInfraHandoff: OfferInfraHandoffUseCase,
     private readonly validateNecessity: ValidateNecessityUseCase,
@@ -105,14 +108,19 @@ export class AgentsController {
     description:
       'The response is just the acknowledgment, and it returns on ACCEPTANCE — ' +
       "before the agent's turn ends (ADR 0163). What the agent replies arrives " +
-      "via the session's event log and channel — not through this call.",
+      "via the session's event log and channel — not through this call. If the " +
+      "agent is mid-turn, the message is NOT refused: it joins the agent's " +
+      'queue (`entrega: "enfileirada"`) and is read, with any others queued, in ' +
+      'one turn when the current one ends; it can be cancelled while it waits ' +
+      '(RN-673, ADR 0191).',
   })
-  @ApiCreatedResponse({ type: OkResponseDto })
+  @ApiCreatedResponse({ type: MensagemAoAgenteResponseDto })
   @ApiConflictResponse({
     description:
-      'The agent is not active in this session; or it is still in the middle ' +
-      'of a turn, or waiting on an execution-plan decision — the message was ' +
-      'recorded but NOT read by the agent (ADR 0163).',
+      'The agent is not active in this session; or it is waiting on an ' +
+      'execution-plan decision; or its queue already holds 10 messages ' +
+      '(`fila_de_mensagens_cheia`) — the message was recorded but NOT read by ' +
+      'the agent (ADR 0163, RN-673).',
   })
   @ApiUnprocessableEntityResponse({
     description:
@@ -192,6 +200,50 @@ export class AgentsController {
       agent,
       questionSetId,
       dto.answers,
+      user.id,
+    );
+  }
+
+  @Post('agents/:agent/messages/:messageId/cancel')
+  @RequireRole('developer')
+  @ApiParam({
+    name: 'agent',
+    example: 'po',
+    description: 'Slug of the agent whose queue holds the message.',
+  })
+  @ApiParam({
+    name: 'messageId',
+    example: '01JC4Z0000EVENTO000000000001',
+    description:
+      'Id of the `chat.message` event (the `mensagemId` the message route returned).',
+  })
+  @ApiOperation({
+    summary: "Cancels one message waiting in the agent's queue",
+    description:
+      'A message sent while the agent is mid-turn waits in a queue and is read ' +
+      'when the turn ends (RN-673). While it waits, the person who SENT it can ' +
+      'cancel it: the engine removes it from the queue and records ' +
+      '`chat.message_cancelled`; it is never shown to the model. Someone ' +
+      "else's message is 403.",
+  })
+  @ApiCreatedResponse({ type: OkResponseDto })
+  @ApiConflictResponse({
+    description:
+      'The message is no longer queued — the agent already read it, or it was ' +
+      'already cancelled; or the session is closed (RN-581).',
+  })
+  cancelQueued(
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @Param('agent') agent: string,
+    @Param('messageId') messageId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.cancelQueuedMessage.execute(
+      projectId,
+      sessionId,
+      agent,
+      messageId,
       user.id,
     );
   }

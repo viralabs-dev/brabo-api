@@ -125,27 +125,30 @@ export class ProposeActionUseCase {
     // Contexto todo buscado ANTES de chamar decide() — a função em si é
     // pura (ver domain/actions/decide.ts), zero IO.
     //
-    // `containerExecutionActive` (ADR 0134/RN-492) só consulta o ciclo de
-    // vida do container quando a pergunta pode fazer diferença — terminal
-    // num projeto `container` — poupando a query em todo o resto (git_push,
-    // container_start, projeto `mounted`/`runner`, etc.).
-    const [
-      effectiveRole,
-      autonomia,
-      permissionsFile,
-      containerExecutionActive,
-    ] = await Promise.all([
-      this.resolveEffectiveRole.forProject(session.createdBy, projectId),
-      input.actor.kind === 'agent'
-        ? this.agentAutonomy.resolve(projectId, input.actor.id, actionType)
-        : Promise.resolve(null),
-      this.permissionsFileStore.read(project),
-      actionType === 'terminal' && project.executionMode === 'container'
-        ? this.obterCicloDeVidaDoContainer
-            .execute(projectId)
-            .then((ciclo) => ciclo?.status === 'running')
-        : Promise.resolve(false),
-    ]);
+    // O ciclo de vida do container só é consultado quando a pergunta pode
+    // fazer diferença — terminal num projeto `container` ou `mounted` —,
+    // poupando a query em todo o resto (git_push, container_start, `runner`).
+    // Dele saem DOIS fatos distintos: ONDE o comando roda
+    // (`execucaoNoContainer`, a raiz do escopo — RN-669, os dois modos que o
+    // engine executa pelo broker, RN-502) e o PISO de auto-aprovação
+    // (`containerExecutionActive`, ADR 0134/RN-493 — só `container`).
+    const [effectiveRole, autonomia, permissionsFile, execucaoNoContainer] =
+      await Promise.all([
+        this.resolveEffectiveRole.forProject(session.createdBy, projectId),
+        input.actor.kind === 'agent'
+          ? this.agentAutonomy.resolve(projectId, input.actor.id, actionType)
+          : Promise.resolve(null),
+        this.permissionsFileStore.read(project),
+        actionType === 'terminal' &&
+        (project.executionMode === 'container' ||
+          project.executionMode === 'mounted')
+          ? this.obterCicloDeVidaDoContainer
+              .execute(projectId)
+              .then((ciclo) => ciclo?.status === 'running')
+          : Promise.resolve(false),
+      ]);
+    const containerExecutionActive =
+      execucaoNoContainer && project.executionMode === 'container';
 
     const command =
       actionType === 'terminal' ? commandFromPayload(input.payload) : undefined;
@@ -176,6 +179,7 @@ export class ProposeActionUseCase {
         // no `local` (RN-169).
         projectScopeRoot: projectScopeRoot(project),
         containerExecutionActive,
+        execucaoNoContainer,
       },
     );
 
@@ -264,19 +268,20 @@ export class ProposeActionUseCase {
       return this.executeInfraPr.execute(projectId, sessionId, action);
     }
 
-    // `container_start` nunca é semeado para auto-aprovação
-    // (`INFRA_AUTONOMY_SEEDS`, accept-handoff.use-case.ts) — mas um
-    // `maintainer` PODE configurar `permissions.json` para auto-aprovar
-    // mesmo assim, e sem este branch a ação nasceria `auto_approved` e nunca
-    // chamaria o broker: mesma lição do comentário de `parallelize` em
-    // `approve-action.use-case.ts` — "sem isto a ação nascia, era aprovada —
-    // e nada subia. Pior que não ter a feature".
+    // `container_start` é semeado `auto_approve` para a Infra no aceite do
+    // handoff desde o ADR 0190 (RN-671, `INFRA_AUTONOMY_SEEDS`,
+    // accept-handoff.use-case.ts), e um `maintainer` também PODE configurar
+    // `permissions.json` para auto-aprovar. Este branch é o que faz a subida
+    // do servidor no aceite acontecer de verdade: sem ele a ação nasceria
+    // `auto_approved` e nunca chamaria o broker — mesma lição do comentário de
+    // `parallelize` em `approve-action.use-case.ts` — "sem isto a ação nascia,
+    // era aprovada — e nada subia. Pior que não ter a feature".
     if (status === 'auto_approved' && actionType === 'container_start') {
       return this.executeContainerStart.execute(projectId, sessionId, action);
     }
 
-    // `container_start_via_runner` (RN-508) — MESMA régua de
-    // `container_start`: nunca semeado, mas configurável em
+    // `container_start_via_runner` (RN-508) — nunca semeado (o ADR 0190 só
+    // semeou `container_start`), mas configurável em
     // `permissions.json`, e sem este branch a ação nasceria `auto_approved`
     // e nenhum container subiria de verdade na máquina do usuário.
     if (
@@ -290,7 +295,7 @@ export class ProposeActionUseCase {
       );
     }
 
-    // `container_stop` nunca é semeado (mesma régua de `container_start`),
+    // `container_stop` nunca é semeado (o ADR 0190 só semeou `container_start`),
     // mas PODE ser configurado em `permissions.json` — sem este branch a
     // ação nasceria `auto_approved` e nunca pararia nada de verdade.
     // `container_remove` NÃO precisa do branch gêmeo: o teto absoluto de

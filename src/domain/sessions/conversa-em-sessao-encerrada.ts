@@ -67,6 +67,9 @@ export const AGENTES_CONVERSACIONAIS: ReadonlySet<string> = new Set([
 export const TIPOS_DA_CONVERSA: ReadonlySet<string> = new Set([
   // o usuário fala (SendAgentMessage e o chat humano stateless)
   'chat.message',
+  // e cancela a fala que esperava na fila do agente (RN-673) — o engine grava
+  // em nome do USUÁRIO, então a cláusula do ator não pegaria
+  'chat.message_cancelled',
   // o agente pergunta em formulário; o usuário responde
   'chat.structured_question',
   'chat.structured_question_answered',

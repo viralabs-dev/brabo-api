@@ -93,6 +93,14 @@ export class RunnerRecusouContainerError extends Error {
   }
 }
 
+/**
+ * O que o engine fez com a mensagem (RN-673, ADR 0191): `lida` — subiu o turno
+ * na hora; `enfileirada` — havia turno em curso e ela entrou na fila do agente,
+ * na `posicao` dada, para ser lida (junto com as outras) no fim dele.
+ */
+export type EntregaDaMensagem =
+  { entrega: 'lida' } | { entrega: 'enfileirada'; posicao: number };
+
 export abstract class ApiToEngineClient {
   abstract startSession(
     sessionId: string,
@@ -135,12 +143,32 @@ export abstract class ApiToEngineClient {
   // `idiomaDaResposta` (RN-622): o idioma em que o agente responde ao AUTOR
   // desta mensagem, já resolvido. OPCIONAL no fio — `null` não é enviado, e o
   // engine trata ausente como turno sem orientação (engine antigo o ignora).
+  //
+  // `mensagemId` (RN-673): o id do `chat.message` que a api acabou de gravar —
+  // é por ele que a mensagem que entrar na fila pode ser cancelada. Desde a
+  // RN-673 a mensagem com turno em curso NÃO é mais 409: entra na fila, e a
+  // resposta diz qual dos dois aconteceu.
   abstract sendAgentMessage(
     projectId: string,
     sessionId: string,
     agent: string,
     text: string,
     idiomaDaResposta?: string | null,
+    mensagemId?: string | null,
+  ): Promise<EntregaDaMensagem>;
+
+  /**
+   * Cancela UMA mensagem que espera na fila do agente (RN-673). Quem decide se
+   * ela ainda está na fila é o processo do agente no engine; já lida ou já
+   * cancelada vira `ConflictException` com a frase do engine. `userId` é quem
+   * cancela — a api já conferiu que é quem a enviou.
+   */
+  abstract cancelQueuedMessage(
+    projectId: string,
+    sessionId: string,
+    agent: string,
+    mensagemId: string,
+    userId: string,
   ): Promise<void>;
 
   // Sinaliza que o usuário confirmou prontidão; o engine instrui o Criativo a
@@ -226,9 +254,6 @@ export abstract class ApiToEngineClient {
     projectId: string,
     sessionId: string,
   ): Promise<void>;
-
-  /** FASE 14d: o Dev Lead recebe da MESMA confirmação de arquitetura pronta. */
-  abstract offerDevHandoff(projectId: string, sessionId: string): Promise<void>;
 
   // Reprocessamento explícito da análise do Psicólogo (Fase 4b) — o
   // engine enfileira o job do PsychologistWorker com triggeredBy:

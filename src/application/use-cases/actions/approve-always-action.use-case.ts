@@ -11,7 +11,7 @@ import { PermissionsFileStore } from '../../ports/permissions-file-store.port';
 import { AgentAutonomyRepository } from '../../ports/agent-autonomy-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { ApproveActionUseCase } from './approve-action.use-case';
-import { patternForAction } from '../../../domain/actions/pattern-for-action';
+import { patternsForAction } from '../../../domain/actions/pattern-for-action';
 import {
   motivoDeRecusaDoSempreAprovar,
   TETO_DO_SEMPRE_PERMITIR,
@@ -93,7 +93,7 @@ export const ACAO_JA_RECUSADA = 'acao_ja_recusada';
 
 type DestinoDoPadrao =
   | { tipo: 'agente'; agentId: string; actionType: string }
-  | { tipo: 'arquivo'; pattern: string };
+  | { tipo: 'arquivo'; patterns: string[] };
 
 @Injectable()
 export class ApproveAlwaysActionUseCase {
@@ -248,7 +248,9 @@ export class ApproveAlwaysActionUseCase {
     // ser o outro. `pattern` só existe pro caminho de `permissions.json`
     // (é o padrão de texto gravado no arquivo); o caminho de `agent_autonomy`
     // não tem padrão nenhum pra mostrar, só o par (agente, tipo de ação).
-    let payload: { pattern: string } | { agentId: string; actionType: string };
+    let payload:
+      | { pattern: string; patterns: string[] }
+      | { agentId: string; actionType: string };
 
     if (destino.tipo === 'agente') {
       const vigente = await this.agentAutonomy.resolve(
@@ -256,9 +258,11 @@ export class ApproveAlwaysActionUseCase {
         destino.agentId,
         destino.actionType,
       );
-      if (vigente?.origem === 'especifica' && vigente.mode === 'auto_approve') {
-        return false;
-      }
+      // Pela linha ESPECÍFICA, e não pelo modo resolvido: com a curinga
+      // ligada o modo resolvido é `auto_approve` sem que o padrão do agente
+      // exista, e o clique continua gravando-o — é ele que fica valendo se o
+      // toggle voltar para manual (RN-670).
+      if (vigente?.especifica === 'auto_approve') return false;
       await this.agentAutonomy.upsert(
         projectId,
         destino.agentId,
@@ -267,14 +271,17 @@ export class ApproveAlwaysActionUseCase {
       );
       payload = { agentId: destino.agentId, actionType: destino.actionType };
     } else {
+      // RN-675: um padrão por SEGMENTO (verbo + subcomando). Só os que
+      // faltam são gravados e narrados; se nenhum falta, é o clique repetido.
       const arquivo = await this.permissionsFileStore.read(project);
-      if (arquivo.allow.includes(destino.pattern)) return false;
-      await this.permissionsFileStore.addPattern(
-        project,
-        'allow',
-        destino.pattern,
-      );
-      payload = { pattern: destino.pattern };
+      const faltam = destino.patterns.filter((p) => !arquivo.allow.includes(p));
+      if (faltam.length === 0) return false;
+      for (const pattern of faltam) {
+        await this.permissionsFileStore.addPattern(project, 'allow', pattern);
+      }
+      // `pattern` segue sendo UMA string (a timeline a mostra como está);
+      // `patterns` é a lista do que este clique gravou.
+      payload = { pattern: faltam.join(', '), patterns: faltam };
     }
 
     await this.appendSessionEvent.execute(projectId, sessionId, {
@@ -305,7 +312,7 @@ function destinoDoPadrao(current: ProposedAction): DestinoDoPadrao {
   }
   return {
     tipo: 'arquivo',
-    pattern: patternForAction(
+    patterns: patternsForAction(
       current.actionType as ActionType,
       current.payload,
     ),
