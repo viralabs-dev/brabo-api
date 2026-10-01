@@ -13,7 +13,9 @@ describe('SendAgentMessageUseCase (RN-587)', () => {
     recusa?: Error,
     idioma: () => Promise<unknown> = () =>
       Promise.resolve({ idioma: 'pt-BR', origem: 'conta' }),
+    entrega: unknown = { entrega: 'lida' },
   ) {
+    const ids: Array<string | null | undefined> = [];
     const eventos: Array<{ type: string; payload?: Record<string, unknown> }> =
       [];
     const ordem: string[] = [];
@@ -26,7 +28,7 @@ describe('SendAgentMessageUseCase (RN-587)', () => {
       ) => {
         eventos.push(e);
         ordem.push('append');
-        return Promise.resolve();
+        return Promise.resolve({ id: 'evt-1' });
       },
     };
     const engine = {
@@ -36,10 +38,12 @@ describe('SendAgentMessageUseCase (RN-587)', () => {
         _a: string,
         _t: string,
         idiomaDaResposta?: string | null,
+        mensagemId?: string | null,
       ) => {
         ordem.push('engine');
         enviados.push(idiomaDaResposta);
-        return recusa ? Promise.reject(recusa) : Promise.resolve();
+        ids.push(mensagemId);
+        return recusa ? Promise.reject(recusa) : Promise.resolve(entrega);
       },
     };
     const resolver = { execute: vi.fn(idioma) };
@@ -48,16 +52,36 @@ describe('SendAgentMessageUseCase (RN-587)', () => {
       appendEvent as never,
       resolver as never,
     );
-    return { uc, eventos, ordem, enviados, resolver };
+    return { uc, eventos, ordem, enviados, resolver, ids };
   }
 
-  it('aceite: grava o chat.message e depois pergunta ao engine', async () => {
-    const { uc, eventos, ordem } = montar();
+  it('aceite: grava o chat.message e depois pergunta ao engine, com o id dele', async () => {
+    const { uc, eventos, ordem, ids } = montar();
     await expect(uc.execute('p', 's', 'po', 'oi', 'u')).resolves.toEqual({
       ok: true,
+      mensagemId: 'evt-1',
+      entrega: 'lida',
     });
     expect(ordem).toEqual(['append', 'engine']);
     expect(eventos.map((e) => e.type)).toEqual(['chat.message']);
+    // RN-673: o id do chat.message vai ao engine — é por ele que a mensagem
+    // que entrar na fila é marcada entregue ou cancelada.
+    expect(ids).toEqual(['evt-1']);
+  });
+
+  // RN-673 (ADR 0191): com turno em curso a mensagem entra na fila do agente,
+  // e a resposta diz isso — nunca mais 409 `turno_em_andamento`.
+  it('turno em curso: a resposta diz que a mensagem entrou na fila, e em que posição', async () => {
+    const { uc } = montar(undefined, undefined, {
+      entrega: 'enfileirada',
+      posicao: 2,
+    });
+    await expect(uc.execute('p', 's', 'po', 'Continue', 'u')).resolves.toEqual({
+      ok: true,
+      mensagemId: 'evt-1',
+      entrega: 'enfileirada',
+      posicao: 2,
+    });
   });
 
   it('recusa 422 do engine: repassada, e a api não grava evento próprio', async () => {
@@ -88,7 +112,7 @@ describe('SendAgentMessageUseCase — idioma da resposta (RN-622)', () => {
           i?: string | null,
         ) => {
           enviados.push(i);
-          return Promise.resolve();
+          return Promise.resolve({ entrega: 'lida' });
         },
       } as never,
       {
@@ -98,7 +122,7 @@ describe('SendAgentMessageUseCase — idioma da resposta (RN-622)', () => {
           e: { payload: Record<string, unknown> },
         ) => {
           eventos.push(e);
-          return Promise.resolve();
+          return Promise.resolve({ id: 'evt-2' });
         },
       } as never,
       resolver as never,
@@ -129,6 +153,8 @@ describe('SendAgentMessageUseCase — idioma da resposta (RN-622)', () => {
 
     await expect(uc.execute('p', 's', 'po', 'oi', 'u')).resolves.toEqual({
       ok: true,
+      mensagemId: 'evt-2',
+      entrega: 'lida',
     });
     expect(enviados).toEqual([null]);
     expect(eventos[0].payload).toEqual({ text: 'oi' });

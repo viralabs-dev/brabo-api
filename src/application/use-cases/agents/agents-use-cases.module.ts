@@ -14,6 +14,7 @@ import { ListHandoffsUseCase } from './list-handoffs.use-case';
 import { RequestManualHandoffUseCase } from './request-manual-handoff.use-case';
 import { UpsertAgentInstructionUseCase } from './upsert-agent-instruction.use-case';
 import { CancelAgentTurnUseCase } from './cancel-agent-turn.use-case';
+import { CancelQueuedAgentMessageUseCase } from './cancel-queued-agent-message.use-case';
 import { AnswerStructuredQuestionUseCase } from './answer-structured-question.use-case';
 import { CicloDeVidaDoHandoff } from './ciclo-de-vida-do-handoff.service';
 import { AceitarHandoffAutomaticamenteUseCase } from './aceitar-handoff-automaticamente.use-case';
@@ -41,6 +42,7 @@ const USE_CASES = [
   RequestManualHandoffUseCase,
   UpsertAgentInstructionUseCase,
   CancelAgentTurnUseCase,
+  CancelQueuedAgentMessageUseCase,
   AnswerStructuredQuestionUseCase,
   CicloDeVidaDoHandoff,
   AceitarHandoffAutomaticamenteUseCase,
