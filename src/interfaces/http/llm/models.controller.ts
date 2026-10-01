@@ -15,6 +15,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiUnprocessableEntityResponse,
   getSchemaPath,
 } from '@nestjs/swagger';
 import { ListModelsUseCase } from '../../../application/use-cases/llm/list-models.use-case';
@@ -175,6 +176,12 @@ export class ModelsController {
   @ApiOkResponse({ type: [ModelComCuradoriaResponseDto] })
   @ApiForbiddenResponse({ description: 'Requires `owner` on the workspace.' })
   @ApiNotFoundResponse({ description: "Some id in the batch doesn't exist." })
+  @ApiUnprocessableEntityResponse({
+    description:
+      'Activating an OpenRouter free-routing alias (`~…`) — `code: ' +
+      '"alias_de_roteamento_livre"`, with the `modelIds` refused. The whole ' +
+      'batch is refused. Deactivating one is always allowed (AT-271, RN-679).',
+  })
   activate(
     @Param('workspaceId') workspaceId: string,
     @CurrentUser() user: User,

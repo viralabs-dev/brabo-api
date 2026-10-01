@@ -188,6 +188,18 @@ export class ModelComCuradoriaResponseDto
       'empty list means "nobody has an opinion", not "not fit for it".',
   })
   uses!: UsoDeModelo[];
+
+  @ApiProperty({
+    example: false,
+    description:
+      'OpenRouter free-routing alias (an id starting with `~`): the catalog ' +
+      'price is a showcase price and the bill comes from whichever upstream ' +
+      'served the call. Curation refuses to ACTIVATE it (422 ' +
+      '`alias_de_roteamento_livre`); one activated before the rule stays ' +
+      'active, marked by this flag, and once deactivated it cannot come back. ' +
+      'Derived from provider and name on read, never stored.',
+  })
+  freeRoutingAlias!: boolean;
 }
 export const _chavesModelComCuradoria: MesmasChaves<
   ModelComCuradoriaResponseDto,

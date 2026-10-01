@@ -1,13 +1,20 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
 import { createTestDb, truncateAll } from '../../../support/test-db';
-import { models, projects, users, workspaces } from '../../../../src/db/schema';
+import {
+  models,
+  projects,
+  users,
+  workspaceModels,
+  workspaces,
+} from '../../../../src/db/schema';
 import { DrizzleModelRepository } from '../../../../src/infrastructure/persistence/drizzle/model.repository';
 import { DrizzleWorkspaceModelRepository } from '../../../../src/infrastructure/persistence/drizzle/workspace-model.repository';
 import { DrizzleProjectRepository } from '../../../../src/infrastructure/persistence/drizzle/project.repository';
 import { SetModelsActiveUseCase } from '../../../../src/application/use-cases/llm/set-models-active.use-case';
 import { ListModelCatalogUseCase } from '../../../../src/application/use-cases/llm/list-model-catalog.use-case';
 import { ListModelsUseCase } from '../../../../src/application/use-cases/llm/list-models.use-case';
+import { AliasDeRoteamentoLivreError } from '../../../../src/domain/llm/alias-de-roteamento-livre';
 
 const { db, pool } = createTestDb();
 const repo = new DrizzleModelRepository(db);
@@ -161,5 +168,126 @@ describe('SetModelsActiveUseCase', () => {
     ).rejects.toThrow(NotFoundException);
 
     expect(await workspaceRepo.isActive(ws.id, descoberto.id)).toBe(false);
+  });
+});
+
+/**
+ * AT-271, RN-679 — decisão do dono (01/10): o alias de roteamento livre do
+ * OpenRouter (`~…`) não entra na curadoria. Preço de vitrine, cobrança pelo
+ * upstream que atender.
+ */
+describe('SetModelsActiveUseCase — alias de roteamento livre (RN-679)', () => {
+  async function comAlias() {
+    const base = await setup();
+    const [alias] = await db
+      .insert(models)
+      .values({
+        provider: 'openrouter',
+        name: '~deepseek/deepseek-flash-latest',
+        displayName: 'DeepSeek Flash (latest)',
+      })
+      .returning();
+    const [fixo] = await db
+      .insert(models)
+      .values({
+        provider: 'openrouter',
+        name: 'deepseek/deepseek-v4.1-flash',
+        displayName: 'DeepSeek V4.1 Flash',
+      })
+      .returning();
+    return { ...base, alias, fixo };
+  }
+
+  it('falha: ativar o alias `~` recusa o lote INTEIRO, com código e ids', async () => {
+    const { dono, ws, alias, fixo } = await comAlias();
+
+    const erro = await setActive
+      .execute({
+        workspaceId: ws.id,
+        modelIds: [fixo.id, alias.id],
+        isActive: true,
+        curatedBy: dono.id,
+      })
+      .catch((e: unknown) => e);
+
+    expect(erro).toBeInstanceOf(AliasDeRoteamentoLivreError);
+    expect((erro as AliasDeRoteamentoLivreError).code).toBe(
+      'alias_de_roteamento_livre',
+    );
+    expect(
+      (erro as AliasDeRoteamentoLivreError).models.map((m) => m.id),
+    ).toEqual([alias.id]);
+    expect((erro as Error).message).toContain(
+      '~deepseek/deepseek-flash-latest',
+    );
+    // Nem o modelo de upstream fixo do mesmo lote foi ligado.
+    expect(await workspaceRepo.isActive(ws.id, fixo.id)).toBe(false);
+    expect(await workspaceRepo.isActive(ws.id, alias.id)).toBe(false);
+  });
+
+  it('caminho feliz: modelo de upstream fixo do OpenRouter ativa, e sai sem a marca', async () => {
+    const { dono, ws, fixo } = await comAlias();
+
+    const [ativado] = await setActive.execute({
+      workspaceId: ws.id,
+      modelIds: [fixo.id],
+      isActive: true,
+      curatedBy: dono.id,
+    });
+
+    expect(ativado.isActive).toBe(true);
+    expect(ativado.freeRoutingAlias).toBe(false);
+  });
+
+  it('o `~` só é alias no OpenRouter: o mesmo nome noutro provider ativa', async () => {
+    const { dono, ws } = await setup();
+    const [outro] = await db
+      .insert(models)
+      .values({ provider: 'openai', name: '~nome-raro', displayName: 'Raro' })
+      .returning();
+
+    const [ativado] = await setActive.execute({
+      workspaceId: ws.id,
+      modelIds: [outro.id],
+      isActive: true,
+      curatedBy: dono.id,
+    });
+    expect(ativado.isActive).toBe(true);
+    expect(ativado.freeRoutingAlias).toBe(false);
+  });
+
+  it('alias já curado ANTES da regra: segue ativo, sai marcado, desliga, e não volta', async () => {
+    const { dono, ws, alias } = await comAlias();
+    // O estado do banco de quem curou antes da regra: linha ativa gravada
+    // direto, porque a rota não deixa mais criá-la.
+    await db.insert(workspaceModels).values({
+      workspaceId: ws.id,
+      modelId: alias.id,
+      isActive: true,
+      curatedBy: dono.id,
+    });
+
+    const catalogo = await listCatalog.execute(ws.id);
+    const linha = catalogo.cloud.openrouter.find((m) => m.id === alias.id);
+    expect(linha?.isActive).toBe(true);
+    expect(linha?.freeRoutingAlias).toBe(true);
+
+    const [desligado] = await setActive.execute({
+      workspaceId: ws.id,
+      modelIds: [alias.id],
+      isActive: false,
+      curatedBy: dono.id,
+    });
+    expect(desligado.isActive).toBe(false);
+
+    await expect(
+      setActive.execute({
+        workspaceId: ws.id,
+        modelIds: [alias.id],
+        isActive: true,
+        curatedBy: dono.id,
+      }),
+    ).rejects.toThrow(AliasDeRoteamentoLivreError);
+    expect(await workspaceRepo.isActive(ws.id, alias.id)).toBe(false);
   });
 });
