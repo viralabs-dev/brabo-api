@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { createTestDb, truncateAll } from '../../../support/test-db';
 import {
@@ -134,6 +138,7 @@ const proposeAction = new ProposeActionUseCase(
   appendSessionEvent,
   obterCicloDeVidaDoContainer,
   { configurado: () => true } as never, // brokerPort
+  undefined as never, // executeExecutionPlan — não exercitado aqui
 );
 
 let workspacesRoot: string;
@@ -218,6 +223,7 @@ describe('ProposeActionUseCase', () => {
       appendSessionEvent,
       obterCicloDeVidaDoContainer,
       { configurado: () => false } as never,
+      undefined as never, // executeExecutionPlan — não exercitado aqui
     );
 
     it.each(['container_start', 'container_stop', 'container_remove'])(
@@ -250,6 +256,69 @@ describe('ProposeActionUseCase', () => {
         payload: {},
       });
 
+      expect(action.status).toBe('pending');
+    });
+  });
+
+  // AT-274 (RN-678): o plano do Dev Lead com tarefa sem módulo é recusado na
+  // PROPOSTA — 400 nomeado, sem criar a ação, e o texto chega ao Dev Lead.
+  describe('plano de execução (RN-678)', () => {
+    function comPlano(recusa: string | null) {
+      return new ProposeActionUseCase(
+        unitOfWork,
+        sessionRepo,
+        projectRepo,
+        proposedActionRepo,
+        agentAutonomyRepo,
+        permissionsFileStore,
+        outboxRepo,
+        resolveEffectiveRole,
+        executeTerminalAction,
+        undefined as never,
+        undefined as never,
+        undefined as never,
+        undefined as never,
+        undefined as never,
+        appendSessionEvent,
+        obterCicloDeVidaDoContainer,
+        { configurado: () => true } as never,
+        { recusaNaProposta: () => Promise.resolve(recusa) } as never,
+      );
+    }
+
+    it('tarefa sem módulo: 400 `plano_de_execucao_invalido`, sem proposta', async () => {
+      const { project, session } = await setupSession('maintainer');
+      const proposta = comPlano('A tarefa t1 está sem módulo').execute(
+        project.id,
+        session.id,
+        {
+          actionType: 'propose_execution_plan',
+          actor: { kind: 'agent', id: 'dev-lead' },
+          payload: { resumo: 'r', modulos: [], tarefas: [{ taskId: 't1' }] },
+        },
+      );
+      await expect(proposta).rejects.toBeInstanceOf(BadRequestException);
+      await expect(proposta).rejects.toMatchObject({
+        response: {
+          code: 'plano_de_execucao_invalido',
+          message: 'A tarefa t1 está sem módulo',
+        },
+      });
+      expect(
+        await proposedActionRepo.listByProjectAndType(
+          project.id,
+          'propose_execution_plan',
+        ),
+      ).toHaveLength(0);
+    });
+
+    it('plano válido nasce pending (aprovar é o que ativa)', async () => {
+      const { project, session } = await setupSession('maintainer');
+      const action = await comPlano(null).execute(project.id, session.id, {
+        actionType: 'propose_execution_plan',
+        actor: { kind: 'agent', id: 'dev-lead' },
+        payload: { resumo: 'r', modulos: [], tarefas: [] },
+      });
       expect(action.status).toBe('pending');
     });
   });

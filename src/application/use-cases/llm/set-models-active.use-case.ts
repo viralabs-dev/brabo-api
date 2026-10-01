@@ -2,6 +2,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ModelRepository } from '../../ports/model-repository.port';
 import { WorkspaceModelRepository } from '../../ports/workspace-model-repository.port';
 import type { ModelComCuradoria } from '../../../domain/llm/model.entity';
+import {
+  AliasDeRoteamentoLivreError,
+  ehAliasDeRoteamentoLivre,
+} from '../../../domain/llm/alias-de-roteamento-livre';
 
 export interface SetModelsActiveInput {
   workspaceId: string;
@@ -42,6 +46,17 @@ export class SetModelsActiveUseCase {
       throw new NotFoundException(
         `Modelo não encontrado: ${faltando.join(', ')}`,
       );
+    }
+
+    // AT-271, RN-679: alias `~` do OpenRouter não ENTRA na curadoria — preço
+    // de vitrine, cobrança pelo upstream que atender. Só a ativação recusa:
+    // desligar um alias curado antes da regra continua sendo a saída dele.
+    if (input.isActive) {
+      const aliases = encontrados.filter(
+        (m): m is NonNullable<typeof m> =>
+          m !== null && ehAliasDeRoteamentoLivre(m),
+      );
+      if (aliases.length > 0) throw new AliasDeRoteamentoLivreError(aliases);
     }
 
     await this.workspaceModels.setActive(input);

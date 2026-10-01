@@ -135,6 +135,7 @@ const proposeAction = new ProposeActionUseCase(
   appendSessionEvent,
   obterCicloDeVidaDoContainer,
   { configurado: () => true } as never, // brokerPort
+  undefined as never, // executeExecutionPlan — não exercitado aqui
 );
 const approveAction = new ApproveActionUseCase(
   unitOfWork,
@@ -156,6 +157,7 @@ const approveAction = new ApproveActionUseCase(
   undefined as never, // executeInstructionPatch — não exercitado aqui,
   new BraboMetrics(),
   appendSessionEvent,
+  undefined as never, // executeExecutionPlan — não exercitado aqui
 );
 const approveAlwaysAction = new ApproveAlwaysActionUseCase(
   proposedActionRepo,
@@ -518,6 +520,7 @@ describe('ApproveAlwaysActionUseCase', () => {
         outboxRepo,
         new BraboMetrics(),
         appendSessionEvent,
+        undefined, // executeExecutionPlan — não exercitado aqui
       );
     }
 

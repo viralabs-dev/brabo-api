@@ -67,4 +67,10 @@ export interface ModelComCuradoria extends Model {
    * nada" (ver `model-uses.ts`).
    */
   uses: UsoDeModelo[];
+  /**
+   * Alias de roteamento livre do OpenRouter (`~…`, AT-271, RN-679): DERIVADO
+   * de `provider`+`name` na leitura, nunca gravado. A curadoria recusa
+   * ativá-lo; um que já estava ativo segue ativo e sai marcado por isto.
+   */
+  freeRoutingAlias: boolean;
 }
