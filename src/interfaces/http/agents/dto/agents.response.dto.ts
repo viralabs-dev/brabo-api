@@ -172,7 +172,10 @@ export class AgenteAtivadoResponseDto {
  * mensagem não é mais recusada — entra na fila do agente e é lida no fim dele.
  */
 export class MensagemAoAgenteResponseDto {
-  @ApiProperty({ example: true, description: 'Always `true`; failure becomes an HTTP error.' })
+  @ApiProperty({
+    example: true,
+    description: 'Always `true`; failure becomes an HTTP error.',
+  })
   ok!: true;
 
   @ApiProperty({
@@ -197,7 +200,8 @@ export class MensagemAoAgenteResponseDto {
 
   @ApiPropertyOptional({
     example: 2,
-    description: 'Position in the queue (1 = next). Present only when `entrega` is `enfileirada`.',
+    description:
+      'Position in the queue (1 = next). Present only when `entrega` is `enfileirada`.',
   })
   posicao?: number;
 }

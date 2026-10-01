@@ -40,9 +40,11 @@ describe('CancelQueuedAgentMessageUseCase (RN-673)', () => {
   it('quem enviou cancela: confere a sessão aberta e pede ao engine', async () => {
     const { uc, engine, appendEvent } = montar(mensagemDe('u-1'));
 
-    await expect(uc.execute('p1', 's1', 'po', 'evt-1', 'u-1')).resolves.toEqual({
-      ok: true,
-    });
+    await expect(uc.execute('p1', 's1', 'po', 'evt-1', 'u-1')).resolves.toEqual(
+      {
+        ok: true,
+      },
+    );
     expect(appendEvent.garantirQueAceita).toHaveBeenCalledWith(
       'p1',
       's1',
@@ -74,7 +76,13 @@ describe('CancelQueuedAgentMessageUseCase (RN-673)', () => {
 
   it('mensagem de outra sessão, ou que não é chat.message: 404', async () => {
     await expect(
-      montar(mensagemDe('u-1', 'outra-sessao')).uc.execute('p1', 's1', 'po', 'evt-1', 'u-1'),
+      montar(mensagemDe('u-1', 'outra-sessao')).uc.execute(
+        'p1',
+        's1',
+        'po',
+        'evt-1',
+        'u-1',
+      ),
     ).rejects.toBeInstanceOf(NotFoundException);
 
     await expect(
@@ -95,7 +103,9 @@ describe('CancelQueuedAgentMessageUseCase (RN-673)', () => {
   it('já lida pelo agente: a recusa 409 do engine é repassada sem ser engolida', async () => {
     const { uc } = montar(mensagemDe('u-1'), {
       engine: () =>
-        Promise.reject(new ConflictException('Esta mensagem não está mais na fila')),
+        Promise.reject(
+          new ConflictException('Esta mensagem não está mais na fila'),
+        ),
     });
 
     await expect(

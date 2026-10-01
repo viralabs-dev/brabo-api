@@ -109,7 +109,7 @@ export class AgentsController {
       'The response is just the acknowledgment, and it returns on ACCEPTANCE — ' +
       "before the agent's turn ends (ADR 0163). What the agent replies arrives " +
       "via the session's event log and channel — not through this call. If the " +
-      'agent is mid-turn, the message is NOT refused: it joins the agent\'s ' +
+      "agent is mid-turn, the message is NOT refused: it joins the agent's " +
       'queue (`entrega: "enfileirada"`) and is read, with any others queued, in ' +
       'one turn when the current one ends; it can be cancelled while it waits ' +
       '(RN-673, ADR 0191).',

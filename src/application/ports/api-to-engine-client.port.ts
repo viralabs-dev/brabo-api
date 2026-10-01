@@ -99,8 +99,7 @@ export class RunnerRecusouContainerError extends Error {
  * na `posicao` dada, para ser lida (junto com as outras) no fim dele.
  */
 export type EntregaDaMensagem =
-  | { entrega: 'lida' }
-  | { entrega: 'enfileirada'; posicao: number };
+  { entrega: 'lida' } | { entrega: 'enfileirada'; posicao: number };
 
 export abstract class ApiToEngineClient {
   abstract startSession(

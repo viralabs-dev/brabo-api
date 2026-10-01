@@ -553,7 +553,8 @@ describe('HttpApiToEngineClient — comando de turno: aceite e recusa (ADR 0163)
 
   it('cancelar mensagem da fila: 409 do engine (já lida) vira ConflictException com a frase dele', async () => {
     const engine = await engineQueResponde(409, {
-      error: 'Esta mensagem não está mais na fila — ela já foi lida pelo agente.',
+      error:
+        'Esta mensagem não está mais na fila — ela já foi lida pelo agente.',
       motivo: 'mensagem_fora_da_fila',
     });
     const client = new HttpApiToEngineClient();
@@ -563,7 +564,9 @@ describe('HttpApiToEngineClient — comando de turno: aceite e recusa (ADR 0163)
       .catch((e: unknown) => e);
 
     expect(erro).toBeInstanceOf(ConflictException);
-    expect((erro as ConflictException).message).toMatch(/não está mais na fila/);
+    expect((erro as ConflictException).message).toMatch(
+      /não está mais na fila/,
+    );
     expect(engine.urls).toEqual([
       `/internal/sessions/${SESSAO}/agent/queued-message/cancel`,
     ]);
