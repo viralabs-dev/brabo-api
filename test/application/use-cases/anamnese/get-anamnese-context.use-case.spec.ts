@@ -49,7 +49,7 @@ function buildHarness(
   } = {},
 ) {
   const projects = {
-    listMembers: () =>
+    listEffectiveMembers: () =>
       Promise.resolve([
         { userId: 'user-1', name: 'Dani', email: 'd@x.dev', role: 'owner' },
         { userId: 'user-2', name: 'Outro', email: 'o@x.dev', role: 'viewer' },

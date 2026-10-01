@@ -4,6 +4,7 @@ import { RecordHandoffUseCase } from '../../../src/application/use-cases/graph/r
 import { RecordHypothesisUseCase } from '../../../src/application/use-cases/graph/record-hypothesis.use-case';
 import { RecordAnamneseProfileUseCase } from '../../../src/application/use-cases/graph/record-anamnese-profile.use-case';
 import { RecordInteractionUseCase } from '../../../src/application/use-cases/graph/record-interaction.use-case';
+import { RecordProfileFactUseCase } from '../../../src/application/use-cases/graph/record-profile-fact.use-case';
 import { GraphUnavailableError } from '../../../src/domain/graph/graph-errors';
 import { GRAPH_PROJECTION_AGGREGATE_TYPE } from '../../../src/domain/graph/graph-projection-events';
 import type {
@@ -156,6 +157,7 @@ function buildProjector(opts: {
     new RecordHypothesisUseCase(graph),
     new RecordAnamneseProfileUseCase(graph),
     new RecordInteractionUseCase(graph),
+    new RecordProfileFactUseCase(graph),
   );
 }
 
@@ -323,6 +325,74 @@ describe('GraphProjector', () => {
     expect(outbox.rows[0].processedAt).not.toBeNull();
   });
 
+  async function projetarAceite(payload: Record<string, unknown>) {
+    const outbox = new FakeOutbox();
+    const sessionEvents = new FakeSessionEvents();
+    const sessions = new FakeSessions();
+    sessionEvents.events.set(
+      'evt-aceite',
+      makeEvent({
+        id: 'evt-aceite',
+        sessionId: 'sess-1',
+        seq: 12,
+        type: 'psychologist.hypothesis_accepted',
+        actor: { kind: 'user', id: 'user-1' },
+        payload,
+        createdAt: new Date('2026-10-01T10:00:00.000Z'),
+      }),
+    );
+    await outbox.append({
+      aggregateType: GRAPH_PROJECTION_AGGREGATE_TYPE,
+      aggregateId: 'sess-1',
+      eventType: 'psychologist.hypothesis_accepted',
+      payload: { eventId: 'evt-aceite' },
+    });
+    const run = vi.fn<GraphTx['run']>().mockResolvedValue({ records: [] });
+    const projector = buildProjector({
+      graphRun: run,
+      outbox,
+      sessionEvents,
+      sessions,
+    });
+    await projector.drainOnce();
+    return { run, outbox };
+  }
+
+  it('RN-680: projeta o aceite da PRÓPRIA pessoa como fato do perfil', async () => {
+    const { run, outbox } = await projetarAceite({
+      hypothesisId: 'hyp-1',
+      agenteAlvo: 'po',
+      projectId: 'proj-1',
+      sujeito: 'user-1',
+      hipotese: 'prefere uma pergunta por vez',
+      sugestao: 'o PO pergunta uma coisa de cada vez',
+      fatoDoPerfil: true,
+    });
+
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(run.mock.calls[0][0]).toContain('FatoDoPerfil');
+    expect(run.mock.calls[0][1]).toEqual({
+      hypothesisId: 'hyp-1',
+      userId: 'user-1',
+      projectId: 'proj-1',
+      agenteAlvo: 'po',
+      hipotese: 'prefere uma pergunta por vez',
+      sugestao: 'o PO pergunta uma coisa de cada vez',
+      aceitoEm: '2026-10-01T10:00:00.000Z',
+    });
+    expect(outbox.rows[0].processedAt).not.toBeNull();
+  });
+
+  it('RN-680: aceite sem fatoDoPerfil (de terceiro, ou anterior à RN) não grava nada, e a linha conclui', async () => {
+    const { run, outbox } = await projetarAceite({
+      hypothesisId: 'hyp-1',
+      agenteAlvo: 'po',
+    });
+
+    expect(run).not.toHaveBeenCalled();
+    expect(outbox.rows[0].processedAt).not.toBeNull();
+  });
+
   it('projeta session.closed consolidando a Interacao com a janela inteira de seq', async () => {
     const outbox = new FakeOutbox();
     const sessionEvents = new FakeSessionEvents();
@@ -398,6 +468,7 @@ describe('GraphProjector', () => {
       new RecordHypothesisUseCase(graph),
       new RecordAnamneseProfileUseCase(graph),
       new RecordInteractionUseCase(graph),
+      new RecordProfileFactUseCase(graph),
     );
 
     await projector.drainOnce();
@@ -435,6 +506,7 @@ describe('GraphProjector', () => {
       new RecordHypothesisUseCase(unavailableGraphStore()),
       new RecordAnamneseProfileUseCase(unavailableGraphStore()),
       new RecordInteractionUseCase(unavailableGraphStore()),
+      new RecordProfileFactUseCase(unavailableGraphStore()),
     );
     await down.drainOnce();
     expect(outbox.rows[0].processedAt).toBeNull();

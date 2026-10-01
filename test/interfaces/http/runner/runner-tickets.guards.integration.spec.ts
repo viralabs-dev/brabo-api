@@ -72,9 +72,14 @@ const patRepo = new DrizzlePersonalAccessTokenRepository(db);
 
 describe('runner-ticket — JwtAuthGuard + RolesGuard + PatAuthGuard juntos (RN-439)', () => {
   let app: INestApplication;
+  let requestRunnerTicket: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     await truncateAll(db);
+    requestRunnerTicket = vi.fn().mockResolvedValue({
+      ticket: 'ticket-bruto',
+      expiresAt: new Date('2026-08-22T12:00:30.000Z'),
+    });
 
     const moduleRef = await Test.createTestingModule({
       controllers: [RunnerTicketsController],
@@ -113,12 +118,7 @@ describe('runner-ticket — JwtAuthGuard + RolesGuard + PatAuthGuard juntos (RN-
         { provide: TokenVerifier, useValue: { verify: vi.fn() } },
         {
           provide: ApiToEngineClient,
-          useValue: {
-            requestRunnerTicket: vi.fn().mockResolvedValue({
-              ticket: 'ticket-bruto',
-              expiresAt: new Date('2026-08-22T12:00:30.000Z'),
-            }),
-          },
+          useValue: { requestRunnerTicket },
         },
       ],
     }).compile();
@@ -207,6 +207,25 @@ describe('runner-ticket — JwtAuthGuard + RolesGuard + PatAuthGuard juntos (RN-
       ticket: 'ticket-bruto',
       expiresAt: '2026-08-22T12:00:30.000Z',
     });
+  });
+
+  it('ADR 0201 (RN-685): o ticket é pedido ao engine COM a credencial que autenticou — o PAT, pelo id da linha', async () => {
+    const { project, dev } = await seed({ papelDoDev: 'developer' });
+    const token = await emitirPat(dev.id, project.id);
+    const [linha] = await patRepo.listarDoUsuarioNoProjeto(dev.id, project.id);
+
+    await request(app.getHttpServer() as App)
+      .post(`/projects/${project.id}/runner-ticket`)
+      .set('Authorization', `Bearer ${token}`)
+      .send()
+      .expect(201);
+
+    expect(requestRunnerTicket).toHaveBeenCalledWith(
+      project.id,
+      dev.id,
+      'runner',
+      { tipo: 'pat', id: linha.id },
+    );
   });
 
   it('PAT válido, mas o dono do token NÃO tem papel developer no projeto (viewer): 403 "Papel insuficiente"', async () => {

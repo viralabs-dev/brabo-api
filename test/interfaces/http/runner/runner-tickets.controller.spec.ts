@@ -68,12 +68,17 @@ describe('RunnerTicketsController', () => {
     };
     const controller = new RunnerTicketsController(requestTicket as never);
 
-    const resposta = await controller.runnerTicket('projeto-1', user);
+    const resposta = await controller.runnerTicket('projeto-1', user, {
+      credencialDeDispositivo: { tipo: 'device_key', id: 'kid-1' },
+    } as never);
 
+    // A credencial que o `PatAuthGuard` pôs na requisição segue para o
+    // ticket (ADR 0201, RN-685).
     expect(requestTicket.execute).toHaveBeenCalledWith(
       'projeto-1',
       'user-1',
       'runner',
+      { tipo: 'device_key', id: 'kid-1' },
     );
     expect(resposta).toEqual({
       ticket: 'bruto-runner',

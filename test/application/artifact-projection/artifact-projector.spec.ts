@@ -121,6 +121,9 @@ class FakeProjects implements ProjectRepository {
   listMembers(): Promise<never> {
     return Promise.reject(new Error('não usado neste teste'));
   }
+  listEffectiveMembers(): Promise<never> {
+    return Promise.reject(new Error('não usado neste teste'));
+  }
   removeMember(): Promise<void> {
     return Promise.reject(new Error('não usado neste teste'));
   }

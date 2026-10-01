@@ -99,7 +99,12 @@ export class PersonalAccessTokensController {
   @HttpCode(204)
   @ApiOperation({
     summary: 'Revoga um Personal Access Token próprio',
-    description: 'Idempotente — revogar de novo não é erro.',
+    description:
+      'Idempotente — revogar de novo não é erro. Desde a RN-685 (ADR 0201) ' +
+      'também DERRUBA as conexões de runner abertas com ESTE token, e só ' +
+      'elas — a chave de dispositivo do mesmo usuário fica de pé —, e anula ' +
+      'os tickets dele ainda não usados. Engine fora do ar NÃO faz a ' +
+      'revogação falhar.',
   })
   @ApiNoContentResponse({ description: 'Token revogado. Sem corpo.' })
   async revokePat(
@@ -131,7 +136,8 @@ export class PersonalAccessTokensController {
     summary: 'Revoga o Personal Access Token de QUALQUER usuário no projeto',
     description:
       'Resposta a incidente — dev desligado com token vazando (RN-427). ' +
-      'Idempotente — revogar de novo não é erro.',
+      'Idempotente — revogar de novo não é erro. Desde a RN-685 (ADR 0201) ' +
+      'também DERRUBA o runner já conectado com este token, e só ele.',
   })
   @ApiNoContentResponse({ description: 'Token revogado. Sem corpo.' })
   async revokePatAsMaintainer(

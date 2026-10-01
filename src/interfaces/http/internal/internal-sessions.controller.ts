@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Logger,
   MessageEvent,
   Param,
@@ -46,6 +47,7 @@ import { CreateModuleMapUseCase } from '../../../application/use-cases/architect
 import { AssignStoryModulesUseCase } from '../../../application/use-cases/architecture/assign-story-modules.use-case';
 import { CreateC4DiagramUseCase } from '../../../application/use-cases/architecture/create-c4-diagram.use-case';
 import { RouteModulesToInfraUseCase } from '../../../application/use-cases/architecture/route-modules-to-infra.use-case';
+import { DeclareModuleContractsUseCase } from '../../../application/use-cases/architecture/declare-module-contracts.use-case';
 import { DecidirImagemDoProjetoUseCase } from '../../../application/use-cases/containers/decidir-imagem-do-projeto.use-case';
 import { ClaimNextTaskUseCase } from '../../../application/use-cases/execution/claim-next-task.use-case';
 import { MarkTaskUseCase } from '../../../application/use-cases/execution/mark-task.use-case';
@@ -84,11 +86,19 @@ import { CreateActionInternalDto } from './dto/create-action-internal.dto';
 import { CreateHandoffInternalDto } from './dto/create-handoff-internal.dto';
 import { CreateEpicInternalDto } from './dto/create-epic-internal.dto';
 import { CreateStoryInternalDto } from './dto/create-story-internal.dto';
+import {
+  CreatedStoryResponseDto,
+  SemanticDuplicateCheckInternalDto,
+  SemanticDuplicateCheckResponseDto,
+} from './dto/semantic-duplicate-internal.dto';
+import { VerificarDuplicataSemanticaUseCase } from '../../../application/use-cases/backlog/verificar-duplicata-semantica.use-case';
 import { CreateTaskInternalDto } from './dto/create-task-internal.dto';
 import { CreateModuleMapInternalDto } from './dto/create-module-map-internal.dto';
 import { AssignStoryModulesInternalDto } from './dto/assign-story-modules-internal.dto';
 import { CreateC4DiagramInternalDto } from './dto/create-c4-diagram-internal.dto';
 import { RouteModulesToInfraInternalDto } from './dto/route-modules-to-infra-internal.dto';
+import { DeclareModuleContractsInternalDto } from './dto/declare-module-contracts-internal.dto';
+import { ContratosDeclaradosResponseDto } from './dto/module-contracts.response.dto';
 import { DecideProjectImageInternalDto } from './dto/decide-project-image-internal.dto';
 import { ImagemDecididaResponseDto } from '../containers/dto/containers.response.dto';
 import { ClaimTaskInternalDto } from './dto/claim-task-internal.dto';
@@ -165,6 +175,7 @@ export class InternalSessionsController {
     private readonly createModuleMap: CreateModuleMapUseCase,
     private readonly createC4Diagram: CreateC4DiagramUseCase,
     private readonly routeModulesToInfra: RouteModulesToInfraUseCase,
+    private readonly declareModuleContracts: DeclareModuleContractsUseCase,
     private readonly assignStoryModules: AssignStoryModulesUseCase,
     private readonly decidirImagem: DecidirImagemDoProjetoUseCase,
     private readonly claimNextTask: ClaimNextTaskUseCase,
@@ -183,6 +194,7 @@ export class InternalSessionsController {
     private readonly recordProficiency: RecordProficiencyUseCase,
     private readonly proposeInstructionPatch: ProposeInstructionPatchUseCase,
     private readonly proposeMaxParallel: ProposeMaxParallelUseCase,
+    private readonly duplicataSemantica: VerificarDuplicataSemanticaUseCase,
   ) {}
 
   /**
@@ -470,9 +482,10 @@ export class InternalSessionsController {
     description:
       '`businessRuleIds` is what feeds the rule→story coverage. Each id has to ' +
       'reference an `artifact.business_rule` event that EXISTS — validation ' +
-      'rejects a made-up id.',
+      'rejects a made-up id. The response also carries `semanticDuplicate` ' +
+      '(RN-681): an embedding-based WARNING against the project stories, never a refusal.',
   })
-  @ApiCreatedResponse({ type: StoryResponseDto })
+  @ApiCreatedResponse({ type: CreatedStoryResponseDto })
   story(
     @Param('sessionId') sessionId: string,
     @Body() dto: CreateStoryInternalDto,
@@ -486,6 +499,38 @@ export class InternalSessionsController {
       dod: dto.dod,
       dor: dto.dor,
       businessRuleIds: dto.businessRuleIds,
+    });
+  }
+
+  /**
+   * A duplicata SEMÂNTICA de regra de negócio (RN-681, ADR 0198). O engine
+   * chama DEPOIS de gravar o `artifact.business_rule` (a regra é evento, não
+   * linha da api) e devolve `message` ao modelo como parte do resultado de
+   * `emit_artifact`. Nunca recusa: a regra já existe. Ela mesma sai da
+   * comparação pelo título normalizado (a RN-080 o faz único no projeto).
+   */
+  @Post(':sessionId/semantic-duplicate-check')
+  @HttpCode(200)
+  @ApiOperation({
+    summary:
+      'Warns when a just-written business rule looks like an existing one',
+    description:
+      'Embeds the title and the titles of the project rules (the 100 most recent) with the RAG ' +
+      'embedding model and warns at cosine ≥ the threshold. Never refuses. Without an embedding ' +
+      'provider the check is SKIPPED with the reason, also narrated in the event log. The ' +
+      'embedding spend is metered as its own `token_usage` row (actor `system`/`duplicata-semantica`).',
+  })
+  @ApiOkResponse({ type: SemanticDuplicateCheckResponseDto })
+  semanticDuplicateCheck(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: SemanticDuplicateCheckInternalDto,
+  ) {
+    return this.duplicataSemantica.execute({
+      projectId: dto.projectId,
+      sessionId,
+      kind: dto.kind,
+      itemId: null,
+      title: dto.title,
     });
   }
 
@@ -589,6 +634,38 @@ export class InternalSessionsController {
   ) {
     return this.routeModulesToInfra.execute(dto.projectId, sessionId, {
       roteamento: dto.roteamento,
+    });
+  }
+
+  /**
+   * Ferramenta `declare_module_contracts` do Arquiteto (ADR 0200, RN-684): o
+   * que cada módulo EXPÕE a quem depende dele. É o que os dev agents leem
+   * (`GET internal/projects/:projectId/module-contracts`) em vez de abrir o
+   * worktree de outro módulo.
+   */
+  @Post(':sessionId/module-contracts')
+  @ApiOperation({
+    summary: 'Declares a new version of the contracts between modules',
+    description:
+      'The artifact IS the `artifact.module_contracts` event: immutable, ' +
+      'versioned, and with an author, alongside `artifact.module_map`. Each ' +
+      'call carries the WHOLE list and replaces the previous version. What a ' +
+      "module consumes is not written here: it is the current module_map's " +
+      '`dependsOn`.',
+  })
+  @ApiCreatedResponse({ type: ContratosDeclaradosResponseDto })
+  @ApiBadRequestResponse({
+    description:
+      'Empty list, repeated module, module outside the current module_map ' +
+      '(or no module_map), a module with an empty or oversized `expoe`, an ' +
+      'item with an unknown `tipo`, or a missing/oversized `assinatura`.',
+  })
+  moduleContracts(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: DeclareModuleContractsInternalDto,
+  ) {
+    return this.declareModuleContracts.execute(dto.projectId, sessionId, {
+      contratos: dto.contratos,
     });
   }
 

@@ -13,6 +13,19 @@ import {
   tituloDuplicado,
 } from '../../../domain/backlog/story-overlap';
 import type { Story } from '../../../domain/backlog/backlog.entity';
+import {
+  VerificarDuplicataSemanticaUseCase,
+  type SemanticDuplicateCheckResult,
+} from './verificar-duplicata-semantica.use-case';
+
+/**
+ * A história criada + o desfecho da checagem de duplicata SEMÂNTICA
+ * (RN-681): é por aqui que o aviso volta ao PO como resultado da
+ * ferramenta, e nunca como recusa.
+ */
+export type CreatedStory = Story & {
+  semanticDuplicate: SemanticDuplicateCheckResult;
+};
 
 export interface CreateStoryInput {
   epicId: string;
@@ -37,7 +50,8 @@ export interface CreateStoryInput {
  * outra história) não impede a criação: vira `backlog.story_overlap_warned`
  * no event log. Ver `domain/backlog/story-overlap.ts` para por que uma é
  * recusa e a outra é aviso — e para o que este mecanismo declaradamente
- * NÃO pega.
+ * NÃO pega. Essa metade — o par do achado R — é a checagem SEMÂNTICA da
+ * RN-681 (`VerificarDuplicataSemanticaUseCase`), que também só avisa.
  *
  * O que acontece DEPOIS de criar depende do modo do projeto (Fase 12c —
  * RN-048):
@@ -58,13 +72,14 @@ export class CreateStoryUseCase {
     private readonly appendEvent: AppendSessionEventUseCase,
     private readonly projects: ProjectRepository,
     private readonly moduleMaps: ModuleMapRepository,
+    private readonly duplicataSemantica: VerificarDuplicataSemanticaUseCase,
   ) {}
 
   async execute(
     projectId: string,
     sessionId: string,
     input: CreateStoryInput,
-  ): Promise<Story> {
+  ): Promise<CreatedStory> {
     const epic = await this.epics.findById(input.epicId);
     if (!epic || epic.projectId !== projectId) {
       throw new BadRequestException(
@@ -172,6 +187,17 @@ export class CreateStoryUseCase {
       });
     }
 
-    return story;
+    // RN-681: a metade que o título exato e a justificativa não pegam. Roda
+    // DEPOIS de criar e nunca lança — a história existe com ou sem aviso, e
+    // a checagem que não pôde rodar diz por quê (ADR 0198).
+    const semanticDuplicate = await this.duplicataSemantica.execute({
+      projectId,
+      sessionId,
+      kind: 'story',
+      itemId: story.id,
+      title: story.title,
+    });
+
+    return { ...story, semanticDuplicate };
   }
 }

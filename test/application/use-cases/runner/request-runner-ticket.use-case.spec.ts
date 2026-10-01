@@ -93,6 +93,7 @@ describe('RequestRunnerTicketUseCase', () => {
       'proj-1',
       'user-1',
       'runner',
+      null,
     );
   });
 
@@ -108,6 +109,7 @@ describe('RequestRunnerTicketUseCase', () => {
       'proj-1',
       'user-1',
       'terminal',
+      null,
     );
   });
 
@@ -125,6 +127,7 @@ describe('RequestRunnerTicketUseCase', () => {
       'proj-1',
       'user-1',
       'terminal',
+      null,
     );
   });
 
@@ -137,5 +140,46 @@ describe('RequestRunnerTicketUseCase', () => {
     await expect(useCase.execute('proj-1', 'user-1', 'runner')).rejects.toThrow(
       /Projeto não encontrado/i,
     );
+  });
+
+  describe('a credencial que pediu o ticket (ADR 0201, RN-685)', () => {
+    it('kind "runner": a credencial autenticada viaja até o engine', async () => {
+      const { useCase, requestRunnerTicket } = buildHarness({
+        project: buildProject({
+          executionMode: 'runner',
+          workspacePath: '/pasta',
+        }),
+      });
+
+      await useCase.execute('proj-1', 'user-1', 'runner', {
+        tipo: 'device_key',
+        id: 'kid-1',
+      });
+
+      expect(requestRunnerTicket).toHaveBeenCalledWith(
+        'proj-1',
+        'user-1',
+        'runner',
+        { tipo: 'device_key', id: 'kid-1' },
+      );
+    });
+
+    it('CASO DE FALHA: kind "terminal" NUNCA leva credencial de dispositivo, mesmo se alguém passar uma', async () => {
+      const { useCase, requestRunnerTicket } = buildHarness({
+        project: buildProject({ executionMode: 'container' }),
+      });
+
+      await useCase.execute('proj-1', 'user-1', 'terminal', {
+        tipo: 'pat',
+        id: 'pat-1',
+      });
+
+      expect(requestRunnerTicket).toHaveBeenCalledWith(
+        'proj-1',
+        'user-1',
+        'terminal',
+        null,
+      );
+    });
   });
 });

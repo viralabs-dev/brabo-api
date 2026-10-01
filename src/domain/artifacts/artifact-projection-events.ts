@@ -48,6 +48,7 @@ export const ARTIFACT_PROJECTABLE_EVENT_TYPES: ReadonlySet<string> = new Set([
   'artifact.product_brief',
   'artifact.module_map',
   'artifact.module_routing',
+  'artifact.module_contracts',
   'artifact.project_image',
   'artifact.c4_diagram',
   'artifact.prototipo_navegavel',
@@ -61,7 +62,7 @@ export const ARTIFACT_PROJECTABLE_EVENT_TYPES: ReadonlySet<string> = new Set([
  * Os tipos VERSIONADOS — os que têm um "vigente" que se substitui.
  *
  * A distinção não é estética, é a diferença entre dois modos de gravar. Estes
- * quatro são lidos por REDUÇÃO ao maior `version` (ver
+ * cinco são lidos por REDUÇÃO ao maior `version` (ver
  * `obter-container-do-projeto.use-case.ts` e `get-c4-diagram.use-case.ts`), e
  * o histórico deles continua inteiro no event log — a pasta mostra o VIGENTE,
  * então o arquivo é o mesmo e é sobrescrito. Os demais são append-only por
@@ -76,6 +77,7 @@ export const ARTIFACT_PROJECTABLE_EVENT_TYPES: ReadonlySet<string> = new Set([
 export const TIPOS_DE_ARTEFATO_VERSIONADOS: ReadonlySet<string> = new Set([
   'artifact.module_map',
   'artifact.module_routing',
+  'artifact.module_contracts',
   'artifact.project_image',
   'artifact.c4_diagram',
 ]);

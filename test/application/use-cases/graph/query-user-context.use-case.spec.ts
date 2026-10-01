@@ -45,6 +45,22 @@ describe('QueryUserContextUseCase', () => {
             toAgent: 'arquiteto',
           }),
         ],
+      })
+      .mockResolvedValueOnce({
+        records: [
+          fakeRecord({
+            total: 1,
+            fatos: [
+              {
+                hypothesisId: 'hyp-9',
+                agenteAlvo: 'po',
+                hipotese: 'prefere uma pergunta por vez',
+                sugestao: 'o PO pergunta uma coisa de cada vez',
+                aceitoEm: '2026-10-01T10:00:00.000Z',
+              },
+            ],
+          }),
+        ],
       });
     const useCase = new QueryUserContextUseCase(fakeGraphStore({ run }));
 
@@ -67,7 +83,32 @@ describe('QueryUserContextUseCase', () => {
     expect(resultado.recentHandoffs).toEqual([
       { sessionId: 'sess-1', seq: 42, fromAgent: 'po', toAgent: 'arquiteto' },
     ]);
-    expect(run).toHaveBeenCalledTimes(3);
+    expect(resultado.facts).toEqual([
+      {
+        hypothesisId: 'hyp-9',
+        agenteAlvo: 'po',
+        hipotese: 'prefere uma pergunta por vez',
+        sugestao: 'o PO pergunta uma coisa de cada vez',
+        aceitoEm: '2026-10-01T10:00:00.000Z',
+      },
+    ]);
+    expect(resultado.factsTotal).toBe(1);
+    expect(run).toHaveBeenCalledTimes(4);
+  });
+
+  it('RN-680: os fatos são lidos ESCOPADOS ao projeto e com o teto pedido', async () => {
+    const run = vi.fn().mockResolvedValue({ records: [] });
+    const useCase = new QueryUserContextUseCase(fakeGraphStore({ run }));
+
+    await useCase.execute({ userId: 'u-1', projectId: 'p-1', factLimit: 3 });
+
+    const [cypher, params] = run.mock.calls[3] as [
+      string,
+      Record<string, unknown>,
+    ];
+    expect(cypher).toContain('FatoDoPerfil');
+    expect(cypher).toContain(':NO_PROJETO]->(:Projeto {id: $projectId})');
+    expect(params).toEqual({ userId: 'u-1', projectId: 'p-1', factLimit: 3 });
   });
 
   it('caminho feliz: usuário sem nada no grafo devolve listas vazias, não erro', async () => {
@@ -83,6 +124,8 @@ describe('QueryUserContextUseCase', () => {
       hypotheses: [],
       profiles: [],
       recentHandoffs: [],
+      facts: [],
+      factsTotal: 0,
     });
   });
 

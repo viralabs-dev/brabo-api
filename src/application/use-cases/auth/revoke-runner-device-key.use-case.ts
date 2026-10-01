@@ -8,7 +8,9 @@ import {
 
 /**
  * Revoga a PRÓPRIA chave — mesmo desenho de `RevokePersonalAccessTokenUseCase`
- * — e, desde a RN-520 (ADR 0147 ponto 6), alcança também a CONEXÃO VIVA.
+ * — e alcança também a CONEXÃO VIVA (RN-520, ADR 0147 ponto 6). Desde o
+ * ADR 0201 (RN-685) o alvo dessa queda é a CHAVE, e não mais o par
+ * `{projeto, usuário}`.
  *
  * ## As duas metades, e por que só uma delas pode falhar
  *
@@ -25,42 +27,36 @@ import {
  * contrário deixaria uma janela em que o runner cai e reconecta com a chave
  * ainda válida.
  *
- * ## O projeto vem da LINHA revogada, nunca da URL
+ * ## O alvo é a CHAVE (ADR 0201)
  *
- * O `projectId` da rota é ignorado no `DELETE` desde sempre (`_projectId` no
- * controller) — o que amarra a chave a um projeto é a coluna, e é dela que
- * sai o alvo da desconexão. Ler da URL faria um `projectId` divergente
- * derrubar o runner de um projeto que não tem nada com esta chave.
+ * O ticket do socket guarda, desde o ADR 0201, QUAL credencial o pediu (o
+ * `kid`, que é o id do registro — RN-475). Então a queda pede ao engine UMA
+ * coisa: derrubar toda conexão aberta com ESTA chave, em qualquer projeto, e
+ * anular os tickets dela ainda não usados (`disconnectRunnerCredential`).
+ * Outro runner do mesmo usuário, aberto com outra chave ou com PAT, fica de
+ * pé — era o custo que a RN-520 declarava, e é o que esta revisão fecha.
  *
- * ## E quando a coluna é NULA: a chave de MÁQUINA (RN-543, ADR 0154)
+ * Para a chave de MÁQUINA (RN-543, ADR 0154) isso deixa de ser o par
+ * `{projeto, usuário}` aplicado N vezes: o engine pergunta a TODO runner
+ * conectado com que credencial ele nasceu, então a chave cai em todo projeto
+ * em que abriu conexão — inclusive num que a lista abaixo não tenha.
  *
- * Uma chave de máquina não nomeia projeto nenhum, e não há um `projectId` a
- * passar ao engine. Deixar de derrubar seria reabrir exatamente o que a
- * RN-520 fechou — a chave morre para ticket NOVO e as conexões vivas seguem
- * executando comando aprovado —, agora em N conexões em vez de uma.
+ * ## Para que a lista de projetos ainda serve
  *
- * Então o alvo vira PLURAL: cada projeto em modo `runner` que o dono da chave
- * alcança, um `disconnectRunnerOfUser` por projeto. É a consequência que o
- * ADR 0154 declarou por antecipação — *"revogar passará a derrubar todos os
- * projetos daquela máquina"* — e ela cabe sem tocar o engine: a assinatura
- * `{projeto, usuário}` continua byte a byte, só é chamada N vezes.
+ * Para duas coisas de TRANSIÇÃO, nenhuma delas o alvo:
  *
- * A lista vem dos CANDIDATOS (`listRunnerModeReachableBy`), sem o filtro de
- * papel que `ListRunnerProjectsUseCase` aplica, e isso é deliberado:
- * desconectar não é decisão de autorização — é "quais conexões esta chave
- * poderia ter criado". Sobrar um projeto onde o papel já caiu só derruba uma
- * conexão do PRÓPRIO usuário que, nesse caso, já não podia renovar o ticket;
- * FALTAR um deixaria de pé o que a revogação existe para matar.
+ * 1. a conexão LEGADA — aberta com ticket emitido antes do ADR 0201, sem
+ *    credencial gravada — cai pelo par usuário/projeto, e só nos projetos
+ *    desta lista (`alcanceLegado`);
+ * 2. o PLANO B: se o engine não atende o pedido por chave (um engine anterior
+ *    a esta rota responde 404 durante o rollout), a queda volta ao alvo
+ *    antigo, um `disconnectRunnerOfUser` por projeto. Derrubar a mais
+ *    é reversível — o runner reconecta com a credencial que ainda vale —;
+ *    deixar de derrubar reabriria a RN-519.
  *
- * ## A precisão que existe, e a que não existe
- *
- * O alvo é `{projeto, usuário}`, nunca `{chave}`: a identidade da credencial
- * que originou o ticket do socket morre no `PatAuthGuard` e nunca chega ao
- * engine (`Engine.Runners.SocketTicket` guarda `project_id`/`user_id`/`kind`
- * e nada mais). Custo DECLARADO: um runner do mesmo usuário conectado com
- * PAT, ou com outra chave do mesmo projeto, também cai — e reconecta sozinho,
- * porque a rodada seguinte pede um ticket novo e a credencial que ainda vale
- * ganha um. Quem foi revogado não ganha.
+ * A lista é um projeto para a chave de PROJETO, e os CANDIDATOS
+ * (`listRunnerModeReachableBy`) para a de MÁQUINA, sem o filtro de papel:
+ * desconectar não é decisão de autorização.
  */
 @Injectable()
 export class RevokeRunnerDeviceKeyUseCase {
@@ -80,9 +76,8 @@ export class RevokeRunnerDeviceKeyUseCase {
     );
     if (!revogada) throw new NotFoundException('Chave não encontrada');
 
-    for (const projectId of await this.projetosAlcancados(revogada, userId)) {
-      await this.derrubarConexaoViva(projectId, userId);
-    }
+    const projetos = await this.projetosAlcancados(revogada, userId);
+    await this.derrubarConexoesDaChave(revogada.id, userId, projetos);
     return revogada;
   }
 
@@ -90,7 +85,8 @@ export class RevokeRunnerDeviceKeyUseCase {
    * Um projeto para a chave de PROJETO; todos os projetos em modo `runner`
    * que o dono alcança para a de MÁQUINA. Enumerar projeto NUNCA pode fazer
    * o `DELETE` falhar, pela mesma régua da desconexão: a revogação já está
-   * gravada quando se chega aqui.
+   * gravada quando se chega aqui — e, desde o ADR 0201, uma lista vazia não
+   * impede a queda por chave, só o alcance legado e o plano B.
    */
   private async projetosAlcancados(
     revogada: ChaveDeDispositivoResumo,
@@ -103,16 +99,42 @@ export class RevokeRunnerDeviceKeyUseCase {
       return projetos.map((projeto) => projeto.id);
     } catch (erro) {
       this.logger.warn(
-        'Chave de dispositivo de MÁQUINA revogada, mas os projetos a ' +
-          `desconectar não puderam ser lidos: ${
-            erro instanceof Error ? erro.message : String(erro)
-          }`,
+        'Chave de dispositivo de MÁQUINA revogada, mas os projetos do ' +
+          `alcance legado não puderam ser lidos: ${mensagemDe(erro)}`,
       );
       return [];
     }
   }
 
-  private async derrubarConexaoViva(
+  private async derrubarConexoesDaChave(
+    chaveId: string,
+    userId: string,
+    projetos: string[],
+  ): Promise<void> {
+    try {
+      const balanco = await this.engine.disconnectRunnerCredential(
+        { tipo: 'device_key', id: chaveId },
+        { userId, projectIds: projetos },
+      );
+      this.logger.log(
+        `Chave de dispositivo ${chaveId} revogada: ${balanco.derrubados} ` +
+          `conexão(ões) dela derrubada(s), ${balanco.legados} legada(s), ` +
+          `${balanco.ticketsAnulados} ticket(s) pendente(s) anulado(s), ` +
+          `${balanco.semResposta} runner(s) sem resposta`,
+      );
+    } catch (erro) {
+      this.logger.warn(
+        `Chave de dispositivo ${chaveId} revogada, mas o engine não atendeu ` +
+          `a desconexão por chave (${mensagemDe(erro)}); caindo no alvo ` +
+          'antigo, {projeto, usuário}, para não deixar a conexão de pé',
+      );
+      for (const projectId of projetos) {
+        await this.derrubarPeloPar(projectId, userId);
+      }
+    }
+  }
+
+  private async derrubarPeloPar(
     projectId: string,
     userId: string,
   ): Promise<void> {
@@ -122,15 +144,17 @@ export class RevokeRunnerDeviceKeyUseCase {
         userId,
       );
       this.logger.log(
-        `Chave de dispositivo revogada em ${projectId}: desconexão do runner — ${desfecho}`,
+        `Chave de dispositivo revogada em ${projectId}: desconexão do runner pelo par — ${desfecho}`,
       );
     } catch (erro) {
       this.logger.warn(
         `Chave de dispositivo revogada em ${projectId}, mas a desconexão do ` +
-          `runner não pôde ser pedida ao engine: ${
-            erro instanceof Error ? erro.message : String(erro)
-          }`,
+          `runner não pôde ser pedida ao engine: ${mensagemDe(erro)}`,
       );
     }
   }
+}
+
+function mensagemDe(erro: unknown): string {
+  return erro instanceof Error ? erro.message : String(erro);
 }

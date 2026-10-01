@@ -16,6 +16,7 @@ import {
   users,
   workspaceMembers,
 } from '../../../db/schema';
+import { membrosEfetivos } from '../../../domain/iam/membros-efetivos';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
@@ -203,5 +204,29 @@ export class DrizzleProjectRepository implements ProjectRepository {
       .from(projectMembers)
       .innerJoin(users, eq(users.id, projectMembers.userId))
       .where(eq(projectMembers.projectId, projectId));
+  }
+
+  async listEffectiveMembers(
+    projectId: string,
+  ): Promise<ProjectMemberWithUser[]> {
+    const db = currentDb(this.rootDb);
+    const [doProjeto, doWorkspace] = await Promise.all([
+      this.listMembers(projectId),
+      db
+        .select({
+          userId: workspaceMembers.userId,
+          role: workspaceMembers.role,
+          name: users.name,
+          email: users.email,
+        })
+        .from(workspaceMembers)
+        .innerJoin(users, eq(users.id, workspaceMembers.userId))
+        .innerJoin(
+          projects,
+          eq(projects.workspaceId, workspaceMembers.workspaceId),
+        )
+        .where(eq(projects.id, projectId)),
+    ]);
+    return membrosEfetivos(doProjeto, doWorkspace);
   }
 }

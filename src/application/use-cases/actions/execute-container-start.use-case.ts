@@ -7,6 +7,13 @@ import { GetModuleRoutingUseCase } from '../architecture/get-module-routing.use-
 import { DecidirImagemDoProjetoUseCase } from '../containers/decidir-imagem-do-projeto.use-case';
 import { SubirCicloDeVidaDoContainerUseCase } from '../containers/subir-ciclo-de-vida-do-container.use-case';
 import { ProjectRepository } from '../../ports/project-repository.port';
+import { ModuleMapRepository } from '../../ports/module-map-repository.port';
+import {
+  derivarRecursosMinimos,
+  explicarRecursosMinimos,
+  resolverRecursosDaSubida,
+  validarSomaNoTeto,
+} from '../../../domain/containers/recursos-minimos';
 import {
   BrokerIndisponivelError,
   BrokerRecusouError,
@@ -27,7 +34,8 @@ import {
 interface ContainerStartPayload {
   imagem: string;
   network: PosturaDeRede;
-  resources: RecursosDoContainer;
+  /** Parcial ou vazio: o campo omitido vira o mínimo derivado (RN-683). */
+  resources?: Partial<RecursosDoContainer>;
   rationale: string;
 }
 
@@ -78,6 +86,15 @@ interface ContainerStartPayload {
  * prova que dá para escrever nela e carimba `workspace_verified_at`. Falhar
  * nisso é `failed` nomeado como todo o resto, e o ciclo de vida NÃO chega a
  * ser marcado `provisioning`.
+ *
+ * ## E os recursos saem do `module_map` (AT-261, RN-683, ADR 0199)
+ *
+ * Campo de `resources` omitido — e a subida do servidor no aceite (ADR 0190)
+ * omite todos — vira o MENOR recurso elegível, derivado do que o Arquiteto
+ * declarou por módulo no mapa vigente (`recursos-minimos.ts`: a soma, com piso
+ * no padrão de hoje enquanto houver módulo sem declaração). Pedido abaixo do
+ * mínimo é `failed` nomeado; acima vale até o teto de sempre. De onde veio
+ * cada número vai escrito no `rationale` do artefato.
  */
 @Injectable()
 export class ExecuteContainerStartUseCase {
@@ -91,6 +108,7 @@ export class ExecuteContainerStartUseCase {
     private readonly subirCicloDeVida: SubirCicloDeVidaDoContainerUseCase,
     private readonly brokerPort: ContainerBrokerPort,
     private readonly projects: ProjectRepository,
+    private readonly moduleMaps: ModuleMapRepository,
   ) {}
 
   async execute(
@@ -149,14 +167,26 @@ export class ExecuteContainerStartUseCase {
     }
 
     try {
+      // RN-683: o mínimo vem do mapa VIGENTE — o mesmo que o roteamento de
+      // cima candidatou. Sem mapa, a derivação sobre zero módulos é o padrão.
+      const mapa = await this.moduleMaps.findCurrent(projectId);
+      const minimo = derivarRecursosMinimos(mapa?.modules ?? []);
+      validarSomaNoTeto(minimo);
+      const resources = resolverRecursosDaSubida(payload.resources, minimo);
+
       const decidida = await this.decidirImagem.execute(
         projectId,
         sessionId,
         {
           image: payload.imagem,
-          rationale: `Eleita entre as candidatas do roteamento do Arquiteto: ${payload.rationale}`,
+          rationale:
+            `Eleita entre as candidatas do roteamento do Arquiteto: ${payload.rationale} ` +
+            `Recursos mínimos (RN-683): ${explicarRecursosMinimos(minimo)}` +
+            (mapa
+              ? ` — module_map v${mapa.version}.`
+              : ' — sem module_map vigente.'),
           network: payload.network,
-          resources: payload.resources,
+          resources,
         },
         'infra-lead',
       );

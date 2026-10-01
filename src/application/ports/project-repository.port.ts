@@ -89,6 +89,16 @@ export abstract class ProjectRepository {
     userId: string,
   ): Promise<Role | null>;
   abstract listMembers(projectId: string): Promise<ProjectMemberWithUser[]>;
+  /**
+   * Os membros EFETIVOS do projeto (RN-471): a linha de `project_members` de
+   * cada um, ou, sem ela, a de `workspace_members` do workspace do projeto —
+   * `membrosEfetivos` (`domain/iam/membros-efetivos.ts`). `listMembers`
+   * continua devolvendo só as linhas de projeto, que é o que a tela de
+   * Membros edita (RN-680).
+   */
+  abstract listEffectiveMembers(
+    projectId: string,
+  ): Promise<ProjectMemberWithUser[]>;
   abstract removeMember(projectId: string, userId: string): Promise<void>;
   /**
    * Apaga as linhas de `project_members` de `userId` em TODOS os projetos do
