@@ -9,6 +9,7 @@ import {
   isUsoDeModelo,
   type UsoDeModelo,
 } from '../../../domain/llm/model-uses';
+import { ehAliasDeRoteamentoLivre } from '../../../domain/llm/alias-de-roteamento-livre';
 import { models, workspaceModels } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
@@ -63,6 +64,7 @@ export class DrizzleWorkspaceModelRepository implements WorkspaceModelRepository
       // banco e é filtrado na leitura, em vez de vazar como valor inválido
       // para um tipo que promete o contrário.
       uses: (l.uses ?? []).filter(isUsoDeModelo),
+      freeRoutingAlias: ehAliasDeRoteamentoLivre(l.model),
     }));
   }
 
