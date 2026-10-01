@@ -16,6 +16,7 @@ import type {
 } from '../../../../domain/backlog/coverage';
 import type { ModuleMap } from '../../../../domain/architecture/module-map.entity';
 import type { ModuleNode } from '../../../../domain/architecture/module-graph';
+import { RecursosDoContainerResponseDto } from '../../containers/dto/containers.response.dto';
 import type {
   AdrRef,
   Architecture,
@@ -311,6 +312,17 @@ export class ModuleNodeResponseDto implements Wire<ModuleNode> {
       'Names of other modules. A cycle here gets the map REJECTED on write.',
   })
   dependsOn!: string[];
+
+  @ApiProperty({
+    type: RecursosDoContainerResponseDto,
+    required: false,
+    description:
+      'What THIS module needs alone inside the project container (RN-683, ADR ' +
+      '0199). Absent when the Architect did not declare it. The Infra starts ' +
+      'the container with the SUM over modules, floored at the default while ' +
+      'any module is undeclared.',
+  })
+  resources?: RecursosDoContainerResponseDto;
 }
 export const _chavesModuleNode: MesmasChaves<
   ModuleNodeResponseDto,

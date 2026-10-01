@@ -12,6 +12,7 @@ import type { ProposedAction } from '../../../../src/domain/actions/proposed-act
 import type { EstadoDoRoteamento } from '../../../../src/domain/architecture/module-routing';
 import type { ProjectContainerLifecycle } from '../../../../src/domain/containers/container-lifecycle';
 import type { ProjectExecutionMode } from '../../../../src/domain/iam/project.entity';
+import type { ModuleNode } from '../../../../src/domain/architecture/module-graph';
 
 const IMAGEM_CANDIDATA = 'node:22-bookworm-slim';
 
@@ -59,6 +60,7 @@ function build(opts: {
   }>;
   executionMode?: ProjectExecutionMode;
   workspacePath?: string | null;
+  modulos?: ModuleNode[] | null;
 }) {
   const gravados: { status: string; executionResult: unknown }[] = [];
   const transicoes: Array<{ to: string; input?: unknown }> = [];
@@ -153,6 +155,14 @@ function build(opts: {
     subirCicloDeVida as never,
     broker,
     projects as never,
+    {
+      findCurrent: () =>
+        Promise.resolve(
+          opts.modulos
+            ? { id: 'mm-1', version: 3, modules: opts.modulos }
+            : null,
+        ),
+    } as never,
   );
 
   return {
@@ -492,5 +502,122 @@ describe('ExecuteContainerStartUseCase — materialização do `mounted` (RN-501
 
     expect(updatesDoProjeto).toEqual([]);
     expect(transicoes.map((t) => t.to)).toEqual(['provisioning', 'running']);
+  });
+});
+
+describe('ExecuteContainerStartUseCase — recursos mínimos do module_map (RN-683)', () => {
+  const modulo = (
+    name: string,
+    resources?: ModuleNode['resources'],
+  ): ModuleNode => ({
+    name,
+    stack: 'Node',
+    responsibility: 'x',
+    dependsOn: [],
+    ...(resources ? { resources } : {}),
+  });
+
+  const acaoSemRecursos = (resources: Record<string, number> = {}) =>
+    makeAction({
+      payload: {
+        imagem: IMAGEM_CANDIDATA,
+        network: 'none',
+        resources,
+        rationale: 'Eleita pelo servidor.',
+      },
+    });
+
+  it('subida sem `resources` (a do servidor, ADR 0190) sobe com a SOMA declarada, dita no rationale', async () => {
+    const { useCase, decidirImagemChamadas, gravados } = build({
+      cicloAtual: null,
+      modulos: [
+        modulo('api', { cpus: 1, memoryMb: 1024, pidsLimit: 128 }),
+        modulo('web', { cpus: 0.5, memoryMb: 512, pidsLimit: 64 }),
+      ],
+    });
+
+    await useCase.execute('proj-1', 'sess-1', acaoSemRecursos());
+
+    const input = decidirImagemChamadas[0] as {
+      resources: unknown;
+      rationale: string;
+    };
+    expect(input.resources).toEqual({
+      cpus: 1.5,
+      memoryMb: 1536,
+      pidsLimit: 192,
+    });
+    expect(input.rationale).toContain('Recursos mínimos (RN-683)');
+    expect(input.rationale).toContain('(api, web)');
+    expect(input.rationale).toContain('module_map v3');
+    expect(gravados.at(-1)?.status).toBe('executed');
+  });
+
+  it('módulo sem declaração: piso no padrão de hoje, e o módulo é NOMEADO', async () => {
+    const { useCase, decidirImagemChamadas } = build({
+      cicloAtual: null,
+      modulos: [
+        modulo('api', { cpus: 1, memoryMb: 1024, pidsLimit: 128 }),
+        modulo('worker'),
+      ],
+    });
+
+    await useCase.execute('proj-1', 'sess-1', acaoSemRecursos());
+
+    const input = decidirImagemChamadas[0] as {
+      resources: unknown;
+      rationale: string;
+    };
+    expect(input.resources).toEqual(RECURSOS_PADRAO);
+    expect(input.rationale).toContain('worker não declarou recurso');
+  });
+
+  it('pedido ACIMA do mínimo vale; o campo omitido vira o mínimo', async () => {
+    const { useCase, decidirImagemChamadas } = build({
+      cicloAtual: null,
+      modulos: [modulo('api', { cpus: 1, memoryMb: 1024, pidsLimit: 128 })],
+    });
+
+    await useCase.execute('proj-1', 'sess-1', acaoSemRecursos({ cpus: 3 }));
+
+    expect(
+      (decidirImagemChamadas[0] as { resources: unknown }).resources,
+    ).toEqual({ cpus: 3, memoryMb: 1024, pidsLimit: 128 });
+  });
+
+  it('pedido ABAIXO do mínimo: failed nomeado, sem gravar decisão nem subir', async () => {
+    const { useCase, decidirImagem, gravados, transicoes } = build({
+      cicloAtual: null,
+      modulos: [modulo('api', { cpus: 1, memoryMb: 2048, pidsLimit: 128 })],
+    });
+
+    await useCase.execute(
+      'proj-1',
+      'sess-1',
+      acaoSemRecursos({ memoryMb: 512 }),
+    );
+
+    expect(decidirImagem.execute).not.toHaveBeenCalled();
+    expect(transicoes).toEqual([]);
+    expect(gravados.at(-1)?.status).toBe('failed');
+    expect(
+      (gravados.at(-1)?.executionResult as { motivo: string }).motivo,
+    ).toContain('abaixo do mínimo de 2048');
+  });
+
+  it('sem module_map vigente: o padrão de hoje, dito', async () => {
+    const { useCase, decidirImagemChamadas } = build({
+      cicloAtual: null,
+      modulos: null,
+    });
+
+    await useCase.execute('proj-1', 'sess-1', acaoSemRecursos());
+
+    const input = decidirImagemChamadas[0] as {
+      resources: unknown;
+      rationale: string;
+    };
+    expect(input.resources).toEqual(RECURSOS_PADRAO);
+    expect(input.rationale).toContain('sem module_map vigente');
   });
 });
