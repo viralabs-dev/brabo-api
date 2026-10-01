@@ -1,15 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { GraphStore } from '../../../infrastructure/graph/graph-store';
-import type { UserContext } from '../../../domain/graph/graph-types';
+import type {
+  UserContext,
+  UserContextFact,
+} from '../../../domain/graph/graph-types';
 
 export interface QueryUserContextInput {
   userId: string;
   projectId: string;
   /** Teto de handoffs recentes devolvidos — leitura contida, mesma régua do resto do produto (ADR 0060). */
   handoffLimit?: number;
+  /** Teto de fatos do perfil devolvidos (RN-680) — o total vem junto, em `factsTotal`. */
+  factLimit?: number;
 }
 
 const HANDOFF_LIMIT_DEFAULT = 10;
+export const FACT_LIMIT_DEFAULT = 5;
 
 /**
  * Composição de leitura para "o que o grafo sabe sobre este usuário neste
@@ -29,6 +35,7 @@ export class QueryUserContextUseCase {
 
   async execute(input: QueryUserContextInput): Promise<UserContext> {
     const limit = input.handoffLimit ?? HANDOFF_LIMIT_DEFAULT;
+    const factLimit = input.factLimit ?? FACT_LIMIT_DEFAULT;
 
     return this.graph.executeRead(async (tx) => {
       const hipoteses = await tx.run(
@@ -54,7 +61,39 @@ export class QueryUserContextUseCase {
         { userId: input.userId, projectId: input.projectId, limit },
       );
 
+      // RN-680 (ADR 0196): os FATOS do perfil — hipóteses que a pessoa aceitou —
+      // escopados ao PROJETO pedido (um fato de outro projeto, talvez de outro
+      // workspace, nunca entra aqui), os mais recentes primeiro, com teto, e o
+      // total ao lado para quem mostra o recorte dizer que é recorte.
+      const fatos = await tx.run(
+        `MATCH (f:FatoDoPerfil)-[:SOBRE]->(:Usuario {id: $userId}),
+               (f)-[:NO_PROJETO]->(:Projeto {id: $projectId})
+         WITH f ORDER BY f.aceitoEm DESC
+         WITH collect(f) AS todos
+         RETURN size(todos) AS total,
+                [x IN todos[0..toInteger($factLimit)] | {
+                  hypothesisId: x.hypothesisId, agenteAlvo: x.agenteAlvo,
+                  hipotese: x.hipotese, sugestao: x.sugestao, aceitoEm: x.aceitoEm
+                }] AS fatos`,
+        { userId: input.userId, projectId: input.projectId, factLimit },
+      );
+      const linhaDeFatos = fatos.records[0];
+      const totalDeFatos = linhaDeFatos
+        ? Number(linhaDeFatos.get<unknown>('total'))
+        : 0;
+      const listaDeFatos = linhaDeFatos
+        ? linhaDeFatos.get<UserContextFact[]>('fatos')
+        : [];
+
       return {
+        facts: listaDeFatos.map((f) => ({
+          hypothesisId: String(f.hypothesisId),
+          agenteAlvo: String(f.agenteAlvo),
+          hipotese: String(f.hipotese),
+          sugestao: String(f.sugestao),
+          aceitoEm: String(f.aceitoEm),
+        })),
+        factsTotal: Number.isFinite(totalDeFatos) ? totalDeFatos : 0,
         hypotheses: hipoteses.records.map((r) => ({
           id: r.get<string>('id'),
           descricao: r.get<string>('descricao'),

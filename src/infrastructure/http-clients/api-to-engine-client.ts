@@ -202,6 +202,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     text: string,
     idiomaDaResposta: string | null = null,
     mensagemId: string | null = null,
+    perfilDoAutor: string | null = null,
   ): Promise<EntregaDaMensagem> {
     const corpo = await this.postComandoDeTurno(
       `/internal/sessions/${sessionId}/agent/message`,
@@ -211,6 +212,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
         text,
         ...(idiomaDaResposta ? { idiomaDaResposta } : {}),
         ...(mensagemId ? { mensagemId } : {}),
+        ...(perfilDoAutor ? { perfilDoAutor } : {}),
       },
       [['sessionId', sessionId]],
     );

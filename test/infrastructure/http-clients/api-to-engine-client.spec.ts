@@ -600,6 +600,25 @@ describe('HttpApiToEngineClient — comando de turno: aceite e recusa (ADR 0163)
     await engine.fechar();
   });
 
+  // RN-680: os fatos do perfil do autor seguem a MESMA regra do idioma.
+  it('perfilDoAutor vai no corpo quando há fatos, e fica de fora quando null', async () => {
+    const engine = await engineQueResponde(202);
+    const client = new HttpApiToEngineClient();
+
+    await client.sendAgentMessage(PROJETO, SESSAO, 'po', 'oi', null, 'Fatos…');
+    await client.sendAgentMessage(PROJETO, SESSAO, 'po', 'oi', 'pt-BR', null);
+
+    expect(JSON.parse(engine.corpos[0])).toEqual({
+      projectId: PROJETO,
+      agent: 'po',
+      text: 'oi',
+      perfilDoAutor: 'Fatos…',
+    });
+    expect(JSON.parse(engine.corpos[1])).not.toHaveProperty('perfilDoAutor');
+
+    await engine.fechar();
+  });
+
   it('409 turno_em_andamento vira ConflictException com a frase do engine', async () => {
     const engine = await engineQueResponde(409, {
       error:

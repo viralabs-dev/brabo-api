@@ -58,7 +58,7 @@ export class RecordProficiencyUseCase {
 
   async execute(projectId: string, input: RecordProficiencyInput) {
     const [members, moduleMap, optedOut] = await Promise.all([
-      this.projects.listMembers(projectId),
+      this.projects.listEffectiveMembers(projectId),
       this.moduleMaps.findCurrent(projectId),
       this.optOuts.listOptedOutUserIds(projectId),
     ]);

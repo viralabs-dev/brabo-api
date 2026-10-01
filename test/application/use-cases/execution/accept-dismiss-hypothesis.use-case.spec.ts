@@ -4,6 +4,7 @@ import { DismissHypothesisUseCase } from '../../../../src/application/use-cases/
 import type { UnitOfWork } from '../../../../src/application/ports/unit-of-work.port';
 import type { PsychologistHypothesisRepository } from '../../../../src/application/ports/psychologist-hypothesis-repository.port';
 import type { AnamneseQueueRepository } from '../../../../src/application/ports/anamnese-repository.port';
+import type { SessionRepository } from '../../../../src/application/ports/session-repository.port';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
 import type { PsychologistHypothesis } from '../../../../src/domain/psychologist/psychologist-hypothesis.entity';
 
@@ -38,6 +39,8 @@ function buildHarness(
     hypothesis?: PsychologistHypothesis | null;
     // false simula a corrida: o CAS não casa porque outra ação já decidiu.
     casWins?: boolean;
+    // Autor da sessão analisada (RN-680). `null` = sessão não encontrada.
+    sessionAuthor?: string | null;
   } = {},
 ) {
   const hypothesis =
@@ -72,12 +75,24 @@ function buildHarness(
     enqueueHypothesis,
   } as unknown as AnamneseQueueRepository;
 
+  const sessionAuthor =
+    opts.sessionAuthor === undefined ? 'user-9' : opts.sessionAuthor;
+  const sessions = {
+    findInProject: () =>
+      Promise.resolve(
+        sessionAuthor === null
+          ? null
+          : { id: 'sess-1', projectId: 'proj-1', createdBy: sessionAuthor },
+      ),
+  } as unknown as SessionRepository;
+
   return {
     accept: new AcceptHypothesisUseCase(
       unitOfWork,
       hypotheses,
       appendSessionEvent,
       anamneseQueue,
+      sessions,
     ),
     dismiss: new DismissHypothesisUseCase(
       unitOfWork,
@@ -115,6 +130,49 @@ describe('AcceptHypothesisUseCase', () => {
     );
 
     // Loop fechado: a hipótese aceita entra na fila da Anamnese.
+    expect(enqueueHypothesis).toHaveBeenCalledWith('proj-1', 'hyp-1');
+  });
+
+  it('RN-680: aceita pelo PRÓPRIO autor da sessão, o aceite carrega o fato do perfil', async () => {
+    const { accept, appendEvent } = buildHarness({ sessionAuthor: 'user-9' });
+
+    await accept.execute('proj-1', 'hyp-1', 'user-9');
+
+    expect(appendEvent).toHaveBeenCalledWith('proj-1', 'sess-1', {
+      type: 'psychologist.hypothesis_accepted',
+      actor: { kind: 'user', id: 'user-9' },
+      payload: {
+        hypothesisId: 'hyp-1',
+        agenteAlvo: 'dev-api',
+        projectId: 'proj-1',
+        sujeito: 'user-9',
+        hipotese: 'hipótese',
+        sugestao: 'sugestão',
+        fatoDoPerfil: true,
+      },
+    });
+  });
+
+  it('RN-680: aceita por OUTRA pessoa, não vira fato — e o payload diz por quê', async () => {
+    const { accept, appendEvent, enqueueHypothesis } = buildHarness({
+      sessionAuthor: 'autora-da-sessao',
+    });
+
+    await accept.execute('proj-1', 'hyp-1', 'user-9');
+
+    expect(appendEvent).toHaveBeenCalledWith(
+      'proj-1',
+      'sess-1',
+      expect.objectContaining({
+        type: 'psychologist.hypothesis_accepted',
+        payload: expect.objectContaining({
+          sujeito: 'autora-da-sessao',
+          fatoDoPerfil: false,
+          motivoSemFato: 'aceita_por_quem_nao_e_o_sujeito',
+        }),
+      }),
+    );
+    // O resto do aceite não muda: a fila da Anamnese continua recebendo.
     expect(enqueueHypothesis).toHaveBeenCalledWith('proj-1', 'hyp-1');
   });
 

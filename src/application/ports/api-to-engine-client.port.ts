@@ -155,6 +155,10 @@ export abstract class ApiToEngineClient {
     text: string,
     idiomaDaResposta?: string | null,
     mensagemId?: string | null,
+    // RN-680 (ADR 0196): os fatos do perfil do AUTOR neste projeto, já
+    // montados e com teto (`textoDoPerfilDoAutor`). OPCIONAL no fio, como o
+    // idioma — `null` não é enviado, e engine antigo o ignora.
+    perfilDoAutor?: string | null,
   ): Promise<EntregaDaMensagem>;
 
   /**

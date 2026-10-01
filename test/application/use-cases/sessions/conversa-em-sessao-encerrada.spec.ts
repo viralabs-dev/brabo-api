@@ -264,6 +264,9 @@ describe('casos de uso da conversa em sessão encerrada (RN-581)', () => {
       {
         execute: () => Promise.resolve({ idioma: 'pt-BR', origem: 'conta' }),
       } as never,
+      {
+        execute: () => Promise.resolve({ facts: [], factsTotal: 0 }),
+      } as never,
     );
 
     await expect(

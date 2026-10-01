@@ -58,6 +58,9 @@ const CONSTRAINTS: readonly string[] = [
   // Só constraints de propriedade ÚNICA (não compostas/NODE KEY, que exigem
   // Neo4j Enterprise) — mesma restrição das quatro acima.
   'CREATE CONSTRAINT interacao_sessionid_unico IF NOT EXISTS FOR (i:Interacao) REQUIRE i.sessionId IS UNIQUE',
+  // RN-680 (ADR 0196): o fato do perfil é chaveado pela hipótese aceita, e o
+  // MERGE dele é o que torna a reprojeção idempotente — mesma razão da de cima.
+  'CREATE CONSTRAINT fato_do_perfil_hipotese_unico IF NOT EXISTS FOR (f:FatoDoPerfil) REQUIRE f.hypothesisId IS UNIQUE',
 ];
 
 /**

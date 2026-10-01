@@ -34,10 +34,11 @@ export class ListProficiencyProfilesUseCase {
       role !== null && ROLES_QUE_VEEM_O_TIME.includes(role)
         ? this.profiles.listByProject(projectId)
         : this.profiles.listByUser(projectId, requestedBy),
-      this.projects.listMembers(projectId),
+      this.projects.listEffectiveMembers(projectId),
     ]);
 
-    // `listMembers` já traz name/email — não precisa de consulta nova.
+    // `listEffectiveMembers` já traz name/email (e o dono do workspace sem
+    // linha de projeto, RN-680) — não precisa de consulta nova.
     const porUsuario = new Map(members.map((m) => [m.userId, m]));
 
     return rows.map((profile) => {
