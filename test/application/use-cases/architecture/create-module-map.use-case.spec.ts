@@ -185,3 +185,50 @@ describe('CreateModuleMapUseCase', () => {
     expect(append.calls).toContain('backlog.story_demoted');
   });
 });
+
+describe('CreateModuleMapUseCase — recursos por módulo (RN-683, ADR 0199)', () => {
+  it('grava o `resources` declarado e omite o do módulo que não declarou', async () => {
+    const map = await useCase.execute(PROJECT, SESSION, {
+      modules: [
+        {
+          ...mod('api'),
+          resources: { cpus: 1, memoryMb: 1024, pidsLimit: 128 },
+        },
+        mod('web', ['api']),
+      ],
+    });
+    expect(map.modules[0].resources).toEqual({
+      cpus: 1,
+      memoryMb: 1024,
+      pidsLimit: 128,
+    });
+    expect('resources' in map.modules[1]).toBe(false);
+  });
+
+  it('recusa declaração pela METADE — nada é criado', async () => {
+    await expect(
+      useCase.execute(PROJECT, SESSION, {
+        modules: [{ ...mod('api'), resources: { cpus: 1 } as never }],
+      }),
+    ).rejects.toThrow(/declare os três/);
+    expect(maps.created).toBeNull();
+  });
+
+  it('recusa quando a SOMA passa do teto, porque os módulos dividem um container', async () => {
+    await expect(
+      useCase.execute(PROJECT, SESSION, {
+        modules: [
+          {
+            ...mod('a'),
+            resources: { cpus: 5, memoryMb: 1024, pidsLimit: 64 },
+          },
+          {
+            ...mod('b'),
+            resources: { cpus: 4, memoryMb: 1024, pidsLimit: 64 },
+          },
+        ],
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(maps.created).toBeNull();
+  });
+});

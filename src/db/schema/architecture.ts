@@ -57,7 +57,9 @@ export const infraArtifacts = pgTable(
 // contra ciclos de dependência. Cada emissão é uma linha nova; o **vigente** é
 // o de maior `version` do projeto (histórico imutável, sem UPDATE). Usado pela
 // validação cruzada story↔módulos. `modules` = [{name, stack, responsibility,
-// dependsOn: string[]}] (dependsOn referencia `name` de outro módulo).
+// dependsOn: string[], resources?}] (dependsOn referencia `name` de outro
+// módulo; `resources` é o que o módulo declara precisar — ADR 0199, RN-683 —,
+// campo do JSON sem migration).
 export const moduleMaps = pgTable(
   'module_maps',
   {
@@ -75,6 +77,7 @@ export const moduleMaps = pgTable(
           stack: string;
           responsibility: string;
           dependsOn: string[];
+          resources?: { cpus: number; memoryMb: number; pidsLimit: number };
         }[]
       >()
       .notNull()

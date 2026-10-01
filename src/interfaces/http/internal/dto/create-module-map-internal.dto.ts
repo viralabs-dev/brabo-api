@@ -18,10 +18,14 @@ export class CreateModuleMapInternalDto {
         stack: 'NestJS',
         responsibility: 'Rules and HTTP',
         dependsOn: ['db'],
+        resources: { cpus: 1, memoryMb: 1024, pidsLimit: 256 },
       },
     ],
     description:
-      'Module graph. A CYCLE makes the map get rejected with 400 — the validation is domain-level.',
+      'Module graph. A CYCLE makes the map get rejected with 400 — the validation is domain-level. ' +
+      'Each module may declare `resources` (cpus, memoryMb, pidsLimit — all three or none); a ' +
+      'partial declaration, a value above the container ceiling, or a SUM over modules above it ' +
+      'is also 400 (RN-683).',
   })
   @IsArray()
   modules!: ModuleNode[];

@@ -1,13 +1,21 @@
 // Grafo de dependência de módulos (Fase 3b — Arquiteto). Um module_map é
-// {modules:[{name, stack, responsibility, dependsOn[]}]}; `dependsOn`
-// referencia o `name` de outro módulo. O mapa é rejeitado se tiver um ciclo de
-// dependência. Puro, sem IO.
+// {modules:[{name, stack, responsibility, dependsOn[], resources?}]};
+// `dependsOn` referencia o `name` de outro módulo. O mapa é rejeitado se tiver
+// um ciclo de dependência. Puro, sem IO.
+
+import type { RecursosDoContainer } from '../containers/project-container';
 
 export interface ModuleNode {
   name: string;
   stack: string;
   responsibility: string;
   dependsOn: string[];
+  /**
+   * O que ESTE módulo precisa sozinho dentro do container (ADR 0199, RN-683).
+   * Opcional: mapas anteriores não o têm, e módulo sem declaração conta com o
+   * padrão de hoje na derivação do mínimo (`recursos-minimos.ts`).
+   */
+  resources?: RecursosDoContainer;
 }
 
 export class ModuleCycleError extends Error {
