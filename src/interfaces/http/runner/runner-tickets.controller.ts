@@ -1,4 +1,4 @@
-import { Controller, Post, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Param, Req, UseGuards } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -13,6 +13,7 @@ import type { User } from '../../../domain/iam/user.entity';
 import { RequireRole } from '../iam/require-role.decorator';
 import { RequirePatAuth } from '../auth/pat-route.decorator';
 import { PatAuthGuard } from '../auth/pat-auth.guard';
+import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import { RequestRunnerTicketUseCase } from '../../../application/use-cases/runner/request-runner-ticket.use-case';
 import { RunnerTicketResponseDto } from './dto/runner-ticket.response.dto';
@@ -66,9 +67,12 @@ export class RunnerTicketsController {
   runnerTicket(
     @Param('projectId') projectId: string,
     @CurrentUser() user: User,
+    @Req() request: AuthenticatedRequest,
   ) {
+    // A credencial que o `PatAuthGuard` autenticou vai para a linha do
+    // ticket (ADR 0201, RN-685) — é ela que a revogação compara depois.
     return this.requestTicket
-      .execute(projectId, user.id, 'runner')
+      .execute(projectId, user.id, 'runner', request.credencialDeDispositivo)
       .then(paraResposta);
   }
 

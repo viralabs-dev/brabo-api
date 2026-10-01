@@ -463,6 +463,116 @@ describe('HttpApiToEngineClient — a revogação derruba a conexão viva (RN-52
 
     await servidor.fechar();
   });
+
+  describe('o alvo é a CREDENCIAL (ADR 0201, RN-685)', () => {
+    it('requestRunnerTicket leva a credencial no corpo — os dois campos juntos', async () => {
+      const servidor = await servidorQueResponde({
+        ticket: 't',
+        expiresAt: new Date().toISOString(),
+      });
+      const client = new HttpApiToEngineClient();
+
+      await client.requestRunnerTicket(PROJETO, 'user-1', 'runner', {
+        tipo: 'device_key',
+        id: 'kid-1',
+      });
+
+      expect(JSON.parse(servidor.recebido.body ?? '{}')).toEqual({
+        userId: 'user-1',
+        kind: 'runner',
+        credentialKind: 'device_key',
+        credentialId: 'kid-1',
+      });
+
+      await servidor.fechar();
+    });
+
+    it('requestRunnerTicket sem credencial manda o corpo de sempre', async () => {
+      const servidor = await servidorQueResponde({
+        ticket: 't',
+        expiresAt: new Date().toISOString(),
+      });
+      const client = new HttpApiToEngineClient();
+
+      await client.requestRunnerTicket(PROJETO, 'user-1', 'terminal', null);
+
+      expect(JSON.parse(servidor.recebido.body ?? '{}')).toEqual({
+        userId: 'user-1',
+        kind: 'terminal',
+      });
+
+      await servidor.fechar();
+    });
+
+    it('disconnectRunnerCredential: caminho feliz — rota sem projeto, credencial e alcance legado no corpo, balanço de volta', async () => {
+      const servidor = await servidorQueResponde({
+        derrubados: 2,
+        legados: 1,
+        intocados: 3,
+        semResposta: 0,
+        ticketsAnulados: 1,
+      });
+      const client = new HttpApiToEngineClient();
+
+      const balanco = await client.disconnectRunnerCredential(
+        { tipo: 'device_key', id: 'kid-1' },
+        { userId: 'user-1', projectIds: [PROJETO] },
+      );
+
+      expect(balanco).toEqual({
+        derrubados: 2,
+        legados: 1,
+        intocados: 3,
+        semResposta: 0,
+        ticketsAnulados: 1,
+      });
+      expect(servidor.recebido.url).toBe(
+        '/internal/runner/disconnect-credential',
+      );
+      expect(JSON.parse(servidor.recebido.body ?? '{}')).toEqual({
+        credentialKind: 'device_key',
+        credentialId: 'kid-1',
+        userId: 'user-1',
+        projectIds: [PROJETO],
+      });
+
+      await servidor.fechar();
+    });
+
+    it('disconnectRunnerCredential sem alcance legado manda userId nulo e lista vazia; campo estranho vira 0', async () => {
+      const servidor = await servidorQueResponde({ derrubados: 'muitos' });
+      const client = new HttpApiToEngineClient();
+
+      const balanco = await client.disconnectRunnerCredential(
+        { tipo: 'pat', id: 'pat-1' },
+        null,
+      );
+
+      expect(balanco.derrubados).toBe(0);
+      expect(JSON.parse(servidor.recebido.body ?? '{}')).toEqual({
+        credentialKind: 'pat',
+        credentialId: 'pat-1',
+        userId: null,
+        projectIds: [],
+      });
+
+      await servidor.fechar();
+    });
+
+    it('CASO DE FALHA: engine anterior à rota (404) LANÇA — é o sinal para o caso de uso cair no plano B', async () => {
+      const servidor = await servidorQueResponde({ errors: 'Not Found' }, 404);
+      const client = new HttpApiToEngineClient();
+
+      await expect(
+        client.disconnectRunnerCredential(
+          { tipo: 'device_key', id: 'kid-1' },
+          null,
+        ),
+      ).rejects.toThrow(/Falha ao pedir a desconexão da credencial.*404/);
+
+      await servidor.fechar();
+    });
+  });
 });
 
 /**

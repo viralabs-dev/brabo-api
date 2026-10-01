@@ -1,6 +1,7 @@
 import type { Request } from 'express';
 import type { User } from '../../../domain/iam/user.entity';
 import type { Role } from '../../../domain/iam/role';
+import type { CredencialDeDispositivo } from '../../../application/ports/api-to-engine-client.port';
 
 /**
  * O que os guards prometem aos controllers.
@@ -15,4 +16,11 @@ import type { Role } from '../../../domain/iam/role';
 export interface AuthenticatedRequest extends Request {
   user: User;
   effectiveRole?: Role;
+  /**
+   * QUAL credencial de dispositivo autenticou esta requisição — só o
+   * `PatAuthGuard` a preenche, e só nas rotas `@RequirePatAuth()`. Viaja até a
+   * linha do ticket do runner para a revogação mirar a CHAVE e não o par
+   * `{projeto, usuário}` (ADR 0201, RN-685).
+   */
+  credencialDeDispositivo?: CredencialDeDispositivo;
 }

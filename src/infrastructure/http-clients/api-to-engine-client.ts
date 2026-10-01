@@ -14,6 +14,8 @@ import {
   RunnerNaoConectadoError,
   RunnerRecusouContainerError,
   type ContainerIniciadoViaRunner,
+  type BalancoDeRevogacaoDeCredencial,
+  type CredencialDeDispositivo,
   type DesfechoDeDesconexaoDeRunner,
   type EspecificacaoDeContainerParaRunner,
 } from '../../application/ports/api-to-engine-client.port';
@@ -365,16 +367,28 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     projectId: string,
     userId: string,
     kind: 'runner' | 'terminal',
+    credencial?: CredencialDeDispositivo | null,
   ): Promise<{ ticket: string; expiresAt: Date }> {
     projectId = garantirSegmentoDeUrlInterna(projectId, 'projectId');
     const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
+
+    // ADR 0201: os dois campos só viajam juntos. Um engine anterior a esta
+    // mudança ignora o que não conhece, e o ticket sai como sempre saiu.
+    const pedido = credencial
+      ? {
+          userId,
+          kind,
+          credentialKind: credencial.tipo,
+          credentialId: credencial.id,
+        }
+      : { userId, kind };
 
     const res = await fetch(
       `${engineUrl}/internal/projects/${projectId}/runner-tickets`,
       {
         method: 'POST',
         headers: this.buildHeaders(),
-        body: JSON.stringify({ userId, kind }),
+        body: JSON.stringify(pedido),
       },
     );
 
@@ -579,6 +593,47 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     )
       ? (corpo.desfecho as DesfechoDeDesconexaoDeRunner)
       : 'timeout';
+  }
+
+  @Traced('infrastructure')
+  async disconnectRunnerCredential(
+    credencial: CredencialDeDispositivo,
+    alcanceLegado: { userId: string; projectIds: string[] } | null,
+  ): Promise<BalancoDeRevogacaoDeCredencial> {
+    const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
+
+    const res = await fetch(
+      `${engineUrl}/internal/runner/disconnect-credential`,
+      {
+        method: 'POST',
+        headers: this.buildHeaders(),
+        body: JSON.stringify({
+          credentialKind: credencial.tipo,
+          credentialId: credencial.id,
+          userId: alcanceLegado?.userId ?? null,
+          projectIds: alcanceLegado?.projectIds ?? [],
+        }),
+      },
+    );
+
+    if (!res.ok) {
+      throw new Error(
+        `Falha ao pedir a desconexão da credencial ao engine: ${res.status} ${await res.text()}`,
+      );
+    }
+
+    const corpo = (await res.json()) as Partial<
+      Record<keyof BalancoDeRevogacaoDeCredencial, unknown>
+    >;
+    const numero = (valor: unknown): number =>
+      typeof valor === 'number' && Number.isFinite(valor) ? valor : 0;
+    return {
+      derrubados: numero(corpo.derrubados),
+      legados: numero(corpo.legados),
+      intocados: numero(corpo.intocados),
+      semResposta: numero(corpo.semResposta),
+      ticketsAnulados: numero(corpo.ticketsAnulados),
+    };
   }
 
   private async pedirOperacaoDeContainerAoRunner(
