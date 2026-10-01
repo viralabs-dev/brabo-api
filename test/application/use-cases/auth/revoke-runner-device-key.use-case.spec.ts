@@ -2,7 +2,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
 import { RevokeRunnerDeviceKeyUseCase } from '../../../../src/application/use-cases/auth/revoke-runner-device-key.use-case';
 import type { RunnerDeviceKeyRepository } from '../../../../src/application/ports/runner-device-key-repository.port';
-import type { ApiToEngineClient } from '../../../../src/application/ports/api-to-engine-client.port';
+import type {
+  ApiToEngineClient,
+  BalancoDeRevogacaoDeCredencial,
+} from '../../../../src/application/ports/api-to-engine-client.port';
 import type { ProjectRepository } from '../../../../src/application/ports/project-repository.port';
 import type { ChaveDeDispositivoResumo } from '../../../../src/application/ports/runner-device-key-repository.port';
 import type { Project } from '../../../../src/domain/iam/project.entity';
@@ -24,30 +27,46 @@ const RESUMO_DE_MAQUINA: ChaveDeDispositivoResumo = {
   especie: 'maquina',
 };
 
+const BALANCO: BalancoDeRevogacaoDeCredencial = {
+  derrubados: 1,
+  legados: 0,
+  intocados: 0,
+  semResposta: 0,
+  ticketsAnulados: 0,
+};
+
 function projeto(id: string): Project {
   return { id } as Project;
 }
 
 function montar(opts?: {
   revogar?: () => Promise<ChaveDeDispositivoResumo | null>;
-  disconnect?: () => Promise<'derrubado' | 'sem_runner' | 'de_outro_dono'>;
+  porChave?: () => Promise<BalancoDeRevogacaoDeCredencial>;
+  peloPar?: () => Promise<'derrubado' | 'sem_runner' | 'de_outro_dono'>;
   projetosDoUsuario?: () => Promise<Project[]>;
 }) {
   const revogar = vi.fn(opts?.revogar ?? (() => Promise.resolve(RESUMO)));
+  const disconnectRunnerCredential = vi.fn(
+    opts?.porChave ?? (() => Promise.resolve(BALANCO)),
+  );
   const disconnectRunnerOfUser = vi.fn(
-    opts?.disconnect ?? (() => Promise.resolve('derrubado' as const)),
+    opts?.peloPar ?? (() => Promise.resolve('derrubado' as const)),
   );
   const listRunnerModeReachableBy = vi.fn(
     opts?.projetosDoUsuario ?? (() => Promise.resolve([])),
   );
   const deviceKeys = { revogar } as unknown as RunnerDeviceKeyRepository;
-  const engine = { disconnectRunnerOfUser } as unknown as ApiToEngineClient;
+  const engine = {
+    disconnectRunnerCredential,
+    disconnectRunnerOfUser,
+  } as unknown as ApiToEngineClient;
   const projects = {
     listRunnerModeReachableBy,
   } as unknown as ProjectRepository;
   return {
     useCase: new RevokeRunnerDeviceKeyUseCase(deviceKeys, engine, projects),
     revogar,
+    disconnectRunnerCredential,
     disconnectRunnerOfUser,
     listRunnerModeReachableBy,
   };
@@ -68,28 +87,31 @@ describe('RevokeRunnerDeviceKeyUseCase', () => {
   });
 
   it('repositório devolve null (não existe ou não é do usuário): 404', async () => {
-    const { useCase, disconnectRunnerOfUser } = montar({
-      revogar: () => Promise.resolve(null),
-    });
+    const { useCase, disconnectRunnerCredential, disconnectRunnerOfUser } =
+      montar({ revogar: () => Promise.resolve(null) });
 
     await expect(
       useCase.execute('device-alheio', 'user-1'),
     ).rejects.toBeInstanceOf(NotFoundException);
-    // Nada revogado, nada a derrubar — nunca derrubar o runner de um projeto
-    // por causa de uma chave que não é do chamador.
+    // Nada revogado, nada a derrubar — nunca derrubar o runner de ninguém por
+    // causa de uma chave que não é do chamador.
+    expect(disconnectRunnerCredential).not.toHaveBeenCalled();
     expect(disconnectRunnerOfUser).not.toHaveBeenCalled();
   });
 
-  describe('a revogação alcança a conexão viva (RN-520)', () => {
-    it('pede ao engine que derrube o runner, com o projeto da LINHA revogada — nunca o da URL', async () => {
-      const { useCase, disconnectRunnerOfUser } = montar();
+  describe('o alvo da queda é a CHAVE (ADR 0201, RN-685)', () => {
+    it('pede ao engine que derrube as conexões DESTA chave, e só elas — nunca o par {projeto, usuário}', async () => {
+      const { useCase, disconnectRunnerCredential, disconnectRunnerOfUser } =
+        montar();
 
       await useCase.execute('device-1', 'user-1');
 
-      expect(disconnectRunnerOfUser).toHaveBeenCalledWith(
-        'proj-da-linha',
-        'user-1',
+      expect(disconnectRunnerCredential).toHaveBeenCalledWith(
+        { tipo: 'device_key', id: 'device-1' },
+        // O alcance legado é o projeto da LINHA revogada — nunca o da URL.
+        { userId: 'user-1', projectIds: ['proj-da-linha'] },
       );
+      expect(disconnectRunnerOfUser).not.toHaveBeenCalled();
     });
 
     it('revoga PRIMEIRO, derruba depois — o contrário deixaria janela para reconectar com a chave viva', async () => {
@@ -98,13 +120,13 @@ describe('RevokeRunnerDeviceKeyUseCase', () => {
         ordem.push('revogar');
         return Promise.resolve(RESUMO);
       });
-      const disconnectRunnerOfUser = vi.fn(() => {
+      const disconnectRunnerCredential = vi.fn(() => {
         ordem.push('derrubar');
-        return Promise.resolve('derrubado' as const);
+        return Promise.resolve(BALANCO);
       });
       const useCase = new RevokeRunnerDeviceKeyUseCase(
         { revogar } as unknown as RunnerDeviceKeyRepository,
-        { disconnectRunnerOfUser } as unknown as ApiToEngineClient,
+        { disconnectRunnerCredential } as unknown as ApiToEngineClient,
         {
           listRunnerModeReachableBy: () => Promise.resolve([]),
         } as unknown as ProjectRepository,
@@ -115,24 +137,15 @@ describe('RevokeRunnerDeviceKeyUseCase', () => {
       expect(ordem).toEqual(['revogar', 'derrubar']);
     });
 
-    it('CASO DE FALHA: engine fora do ar não derruba a revogação nem vira exceção', async () => {
-      const { useCase, disconnectRunnerOfUser } = montar({
-        disconnect: () => Promise.reject(new Error('ECONNREFUSED')),
-      });
-
-      await expect(useCase.execute('device-1', 'user-1')).resolves.toBe(RESUMO);
-      expect(disconnectRunnerOfUser).toHaveBeenCalledOnce();
-    });
-
-    it('nenhum runner conectado é desfecho NORMAL — o caso de quem revoga uma chave órfã', async () => {
+    it('nenhuma conexão derrubada é desfecho NORMAL — o caso de quem revoga uma chave órfã', async () => {
       const { useCase } = montar({
-        disconnect: () => Promise.resolve('sem_runner' as const),
+        porChave: () => Promise.resolve({ ...BALANCO, derrubados: 0 }),
       });
 
       await expect(useCase.execute('device-1', 'user-1')).resolves.toBe(RESUMO);
     });
 
-    it('chave de PROJETO nunca pergunta a lista de projetos — o alvo vem da linha', async () => {
+    it('chave de PROJETO nunca pergunta a lista de projetos — o alcance legado vem da linha', async () => {
       const { useCase, listRunnerModeReachableBy } = montar();
 
       await useCase.execute('device-1', 'user-1');
@@ -141,27 +154,59 @@ describe('RevokeRunnerDeviceKeyUseCase', () => {
     });
   });
 
-  describe('chave de MÁQUINA: o alvo da desconexão vira PLURAL (RN-543)', () => {
-    it('derruba o runner em CADA projeto em modo runner que o dono alcança', async () => {
-      const { useCase, disconnectRunnerOfUser, listRunnerModeReachableBy } =
-        montar({
-          revogar: () => Promise.resolve(RESUMO_DE_MAQUINA),
-          projetosDoUsuario: () =>
-            Promise.resolve([projeto('proj-a'), projeto('proj-b')]),
-        });
+  describe('CASO DE FALHA: o engine não atende o pedido por chave', () => {
+    it('cai no alvo antigo, {projeto, usuário}, em vez de deixar a conexão de pé (RN-519)', async () => {
+      const { useCase, disconnectRunnerOfUser } = montar({
+        porChave: () =>
+          Promise.reject(new Error('Falha ...: 404 rota inexistente')),
+      });
+
+      await expect(useCase.execute('device-1', 'user-1')).resolves.toBe(RESUMO);
+      expect(disconnectRunnerOfUser).toHaveBeenCalledWith(
+        'proj-da-linha',
+        'user-1',
+      );
+    });
+
+    it('engine fora do ar nas DUAS rotas não derruba a revogação nem vira exceção', async () => {
+      const { useCase, disconnectRunnerOfUser } = montar({
+        porChave: () => Promise.reject(new Error('ECONNREFUSED')),
+        peloPar: () => Promise.reject(new Error('ECONNREFUSED')),
+      });
+
+      await expect(useCase.execute('device-1', 'user-1')).resolves.toBe(RESUMO);
+      expect(disconnectRunnerOfUser).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('chave de MÁQUINA (RN-543): UM pedido por chave, não o par aplicado N vezes', () => {
+    it('um pedido só, com os projetos candidatos como alcance LEGADO', async () => {
+      const {
+        useCase,
+        disconnectRunnerCredential,
+        disconnectRunnerOfUser,
+        listRunnerModeReachableBy,
+      } = montar({
+        revogar: () => Promise.resolve(RESUMO_DE_MAQUINA),
+        projetosDoUsuario: () =>
+          Promise.resolve([projeto('proj-a'), projeto('proj-b')]),
+      });
 
       await expect(useCase.execute('device-1', 'user-1')).resolves.toBe(
         RESUMO_DE_MAQUINA,
       );
 
       expect(listRunnerModeReachableBy).toHaveBeenCalledWith('user-1');
-      expect(disconnectRunnerOfUser).toHaveBeenCalledTimes(2);
-      expect(disconnectRunnerOfUser).toHaveBeenCalledWith('proj-a', 'user-1');
-      expect(disconnectRunnerOfUser).toHaveBeenCalledWith('proj-b', 'user-1');
+      expect(disconnectRunnerCredential).toHaveBeenCalledOnce();
+      expect(disconnectRunnerCredential).toHaveBeenCalledWith(
+        { tipo: 'device_key', id: 'device-1' },
+        { userId: 'user-1', projectIds: ['proj-a', 'proj-b'] },
+      );
+      expect(disconnectRunnerOfUser).not.toHaveBeenCalled();
     });
 
-    it('CASO DE FALHA: não conseguir LISTAR os projetos não derruba a revogação', async () => {
-      const { useCase, disconnectRunnerOfUser } = montar({
+    it('não conseguir LISTAR os projetos não impede a queda por chave — só o alcance legado fica vazio', async () => {
+      const { useCase, disconnectRunnerCredential } = montar({
         revogar: () => Promise.resolve(RESUMO_DE_MAQUINA),
         projetosDoUsuario: () => Promise.reject(new Error('banco fora')),
       });
@@ -169,18 +214,25 @@ describe('RevokeRunnerDeviceKeyUseCase', () => {
       await expect(useCase.execute('device-1', 'user-1')).resolves.toBe(
         RESUMO_DE_MAQUINA,
       );
-      expect(disconnectRunnerOfUser).not.toHaveBeenCalled();
+      expect(disconnectRunnerCredential).toHaveBeenCalledWith(
+        { tipo: 'device_key', id: 'device-1' },
+        { userId: 'user-1', projectIds: [] },
+      );
     });
 
-    it('nenhum projeto em modo runner: revoga e não pede desconexão nenhuma', async () => {
+    it('plano B da máquina: o par aplicado em CADA projeto candidato', async () => {
       const { useCase, disconnectRunnerOfUser } = montar({
         revogar: () => Promise.resolve(RESUMO_DE_MAQUINA),
+        projetosDoUsuario: () =>
+          Promise.resolve([projeto('proj-a'), projeto('proj-b')]),
+        porChave: () => Promise.reject(new Error('404')),
       });
 
-      await expect(useCase.execute('device-1', 'user-1')).resolves.toBe(
-        RESUMO_DE_MAQUINA,
-      );
-      expect(disconnectRunnerOfUser).not.toHaveBeenCalled();
+      await useCase.execute('device-1', 'user-1');
+
+      expect(disconnectRunnerOfUser).toHaveBeenCalledTimes(2);
+      expect(disconnectRunnerOfUser).toHaveBeenCalledWith('proj-a', 'user-1');
+      expect(disconnectRunnerOfUser).toHaveBeenCalledWith('proj-b', 'user-1');
     });
   });
 });

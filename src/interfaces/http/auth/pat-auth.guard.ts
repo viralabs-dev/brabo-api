@@ -146,6 +146,9 @@ export class PatAuthGuard implements CanActivate {
 
     const usuario = await this.carregarUsuarioOuFalhar(validado.userId);
     await this.autorizarPapel(context, request, usuario, validado.projectId);
+    // ADR 0201 (RN-685): a identidade da credencial deixa de morrer aqui —
+    // segue para o ticket, e a revogação do PAT derruba só o que ele abriu.
+    request.credencialDeDispositivo = { tipo: 'pat', id: validado.id };
     return true;
   }
 
@@ -228,6 +231,9 @@ export class PatAuthGuard implements CanActivate {
     const usuario = await this.carregarUsuarioOuFalhar(chave.userId);
     await this.autorizarPapel(context, request, usuario, chave.projectId);
     await this.deviceKeys.tocarUso(chave.id);
+    // ADR 0201 (RN-685): o `kid` É o id do registro (RN-475) — é por ele que
+    // o ticket fica sabendo de qual chave nasceu.
+    request.credencialDeDispositivo = { tipo: 'device_key', id: chave.id };
     return true;
   }
 

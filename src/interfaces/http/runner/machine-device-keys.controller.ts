@@ -37,10 +37,10 @@ import { RunnerDeviceKeyListResponseDto } from './dto/runner-device-key-list.res
  *
  * ## O que revogar derruba
  *
- * O mesmo que a rota por projeto sempre derrubou para uma chave de máquina:
- * `RevokeMachineDeviceKeyUseCase` delega a `RevokeRunnerDeviceKeyUseCase`,
- * que desconecta o dono em cada projeto em modo `runner` que ele alcança. O
- * alvo continua `{projeto, usuário}` e nunca `{chave}` (RN-520).
+ * O mesmo que a rota por projeto derruba para uma chave de máquina:
+ * `RevokeMachineDeviceKeyUseCase` delega a `RevokeRunnerDeviceKeyUseCase`.
+ * Desde o ADR 0201 (RN-685) o alvo é a CHAVE: caem as conexões abertas com
+ * ela, em todo projeto, e nenhuma outra do mesmo dono.
  */
 @ApiTags('users')
 @ApiBearerAuth(BEARER)
@@ -77,12 +77,13 @@ export class MachineDeviceKeysController {
     description:
       'Idempotent — revoking again is not an error. Same revocation as ' +
       '`DELETE /projects/{projectId}/runner-device-keys/{deviceKeyId}`: it ' +
-      'also drops the caller’s local agent in EVERY project in runner mode ' +
-      'they reach (RN-520/RN-543). The target is `{project, user}`, never ' +
-      '`{key}`: another runner of the same user in those projects falls ' +
-      'too, and reconnects if its credential is still valid. With no ' +
-      'project yet, it only records the revocation. A PROJECT key, a key ' +
-      'that does not exist and another user’s key all answer the same 404.',
+      'also drops the LIVE connections opened with this key, in EVERY ' +
+      'project (RN-520/RN-543). Since RN-685 (ADR 0201) the target is the ' +
+      'KEY: another runner of the same user, connected with a PAT or with ' +
+      'another key, stays up. The key’s still-unused tickets are voided. ' +
+      'With no project yet there is no connection to drop. A PROJECT key, ' +
+      'a key that does not exist and another user’s key all answer the ' +
+      'same 404.',
   })
   @ApiNoContentResponse({ description: 'Key revoked. No body.' })
   @ApiNotFoundResponse({

@@ -60,7 +60,8 @@ import { RunnerDeviceKeyListResponseDto } from './dto/runner-device-key-list.res
  *
  * O `DELETE` continua 204 e idempotente, e continua não podendo falhar por
  * causa do engine: derrubar o runner é efeito colateral, tratado dentro do
- * caso de uso (ver `RevokeRunnerDeviceKeyUseCase`).
+ * caso de uso (ver `RevokeRunnerDeviceKeyUseCase`). Desde o ADR 0201
+ * (RN-685) o alvo dessa queda é a CHAVE, e não o par `{projeto, usuário}`.
  *
  * ## As duas espécies de chave, e por que as três rotas bastam (RN-543)
  *
@@ -142,13 +143,13 @@ export class RunnerDeviceKeysController {
     summary: 'Revoga uma chave de dispositivo própria',
     description:
       'Idempotente — revogar de novo não é erro. Desde a RN-520 também ' +
-      'DERRUBA o runner conectado deste usuário no projeto da chave: antes, ' +
-      'revogar só impedia ticket NOVO, e um runner já conectado seguia ' +
-      'executando comando aprovado. O alvo é `{projeto, usuário}` e não ' +
-      '`{chave}` — um runner do MESMO usuário conectado com PAT ou com ' +
-      'outra chave também cai, e reconecta sozinho se a credencial dele ' +
-      'ainda valer. Engine fora do ar ou nenhum runner conectado NÃO fazem ' +
-      'a revogação falhar.',
+      'DERRUBA a conexão viva: antes, revogar só impedia ticket NOVO, e um ' +
+      'runner já conectado seguia executando comando aprovado. Desde a ' +
+      'RN-685 (ADR 0201) o alvo é a CHAVE: caem só as conexões abertas com ' +
+      'ela — em todo projeto, se for de máquina —, e outro runner do mesmo ' +
+      'usuário, conectado com PAT ou com outra chave, fica de pé. Os ' +
+      'tickets dela ainda não usados são anulados. Engine fora do ar ou ' +
+      'nenhum runner conectado NÃO fazem a revogação falhar.',
   })
   @ApiNoContentResponse({ description: 'Chave revogada. Sem corpo.' })
   async revokeDeviceKey(

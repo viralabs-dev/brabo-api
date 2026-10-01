@@ -16,9 +16,10 @@ import type { Project } from '../../../../src/domain/iam/project.entity';
  *
  * A revogação aqui é a MESMA de `RevokeRunnerDeviceKeyUseCase` — por isso ela
  * entra de VERDADE, com repositório, engine e projetos de mentira: o que se
- * prova é o que a porta da Conta derruba DE FATO (um `disconnectRunnerOfUser`
- * por projeto em modo runner, alvo `{projeto, usuário}`), e um dublê do caso
- * de uso provaria só o dublê.
+ * prova é o que a porta da Conta derruba DE FATO (desde o ADR 0201, UM
+ * `disconnectRunnerCredential` com a CHAVE como alvo, e os projetos em modo
+ * runner só como alcance legado), e um dublê do caso de uso provaria só o
+ * dublê.
  */
 
 const DE_MAQUINA: ChaveDeDispositivoResumo = {
@@ -53,7 +54,19 @@ function montar(opts: {
   const disconnectRunnerOfUser = vi.fn(() =>
     Promise.resolve('derrubado' as const),
   );
-  const engine = { disconnectRunnerOfUser } as unknown as ApiToEngineClient;
+  const disconnectRunnerCredential = vi.fn(() =>
+    Promise.resolve({
+      derrubados: 1,
+      legados: 0,
+      intocados: 0,
+      semResposta: 0,
+      ticketsAnulados: 0,
+    }),
+  );
+  const engine = {
+    disconnectRunnerOfUser,
+    disconnectRunnerCredential,
+  } as unknown as ApiToEngineClient;
   const listRunnerModeReachableBy = vi.fn(() =>
     Promise.resolve((opts.projetos ?? []).map((id) => ({ id }) as Project)),
   );
@@ -71,6 +84,7 @@ function montar(opts: {
     listarDeMaquinaDoUsuario,
     revogar,
     disconnectRunnerOfUser,
+    disconnectRunnerCredential,
   };
 }
 
@@ -110,8 +124,13 @@ describe('ListMachineDeviceKeysUseCase (RN-611)', () => {
 });
 
 describe('RevokeMachineDeviceKeyUseCase (RN-611)', () => {
-  it('caminho feliz: revoga e derruba o agente em CADA projeto em modo runner — alvo {projeto, usuário}', async () => {
-    const { revogarPelaConta, revogar, disconnectRunnerOfUser } = montar({
+  it('caminho feliz: revoga e derruba as conexões DESTA chave — alvo a CHAVE, não {projeto, usuário} (ADR 0201)', async () => {
+    const {
+      revogarPelaConta,
+      revogar,
+      disconnectRunnerOfUser,
+      disconnectRunnerCredential,
+    } = montar({
       minhas: [DE_MAQUINA],
       projetos: ['proj-a', 'proj-b'],
     });
@@ -123,16 +142,23 @@ describe('RevokeMachineDeviceKeyUseCase (RN-611)', () => {
       'user-1',
       'user_requested',
     );
-    // A assinatura do engine NÃO mudou: continua {projeto, usuário}, só que
-    // chamada uma vez por projeto. Nenhuma chamada nomeia a chave.
-    expect(disconnectRunnerOfUser.mock.calls).toEqual([
-      ['proj-a', 'user-1'],
-      ['proj-b', 'user-1'],
+    // UM pedido, que NOMEIA a chave; os projetos vão só como alcance legado.
+    expect(disconnectRunnerCredential.mock.calls).toEqual([
+      [
+        { tipo: 'device_key', id: 'key-maquina' },
+        { userId: 'user-1', projectIds: ['proj-a', 'proj-b'] },
+      ],
     ]);
+    expect(disconnectRunnerOfUser).not.toHaveBeenCalled();
   });
 
-  it('instalação SEM projeto: grava a revogação e não tem conexão nenhuma a derrubar', async () => {
-    const { revogarPelaConta, revogar, disconnectRunnerOfUser } = montar({
+  it('instalação SEM projeto: grava a revogação e ainda pede a queda por chave — o agente que espera não tem conexão, e o ticket pendente é anulado', async () => {
+    const {
+      revogarPelaConta,
+      revogar,
+      disconnectRunnerOfUser,
+      disconnectRunnerCredential,
+    } = montar({
       minhas: [DE_MAQUINA],
       projetos: [],
     });
@@ -140,6 +166,10 @@ describe('RevokeMachineDeviceKeyUseCase (RN-611)', () => {
     await revogarPelaConta.execute('key-maquina', 'user-1');
 
     expect(revogar).toHaveBeenCalledTimes(1);
+    expect(disconnectRunnerCredential).toHaveBeenCalledWith(
+      { tipo: 'device_key', id: 'key-maquina' },
+      { userId: 'user-1', projectIds: [] },
+    );
     expect(disconnectRunnerOfUser).not.toHaveBeenCalled();
   });
 
@@ -147,7 +177,12 @@ describe('RevokeMachineDeviceKeyUseCase (RN-611)', () => {
     // O repositório de mentira só conhece as do chamador — é o WHERE por
     // `userId` que o de verdade faz. A chave de outra pessoa e a chave de
     // PROJETO do próprio usuário caem na MESMA resposta.
-    const { revogarPelaConta, revogar, disconnectRunnerOfUser } = montar({
+    const {
+      revogarPelaConta,
+      revogar,
+      disconnectRunnerOfUser,
+      disconnectRunnerCredential,
+    } = montar({
       minhas: [DE_MAQUINA],
       projetos: ['proj-a'],
     });
@@ -157,6 +192,7 @@ describe('RevokeMachineDeviceKeyUseCase (RN-611)', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(revogar).not.toHaveBeenCalled();
     expect(disconnectRunnerOfUser).not.toHaveBeenCalled();
+    expect(disconnectRunnerCredential).not.toHaveBeenCalled();
   });
 
   it('idempotente: revogar a já revogada não é erro', async () => {
