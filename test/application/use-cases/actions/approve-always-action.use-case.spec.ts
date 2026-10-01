@@ -611,7 +611,12 @@ describe('ApproveAlwaysActionUseCase', () => {
         (e) => e.type === 'permission.granted',
       );
       expect(concessoes).toEqual([
-        expect.objectContaining({ payload: { pattern: 'Terminal(echo oi)' } }),
+        expect.objectContaining({
+          payload: {
+            pattern: 'Terminal(echo oi)',
+            patterns: ['Terminal(echo oi)'],
+          },
+        }),
       ]);
     });
 
@@ -919,5 +924,64 @@ describe('ApproveAlwaysActionUseCase — "Sempre permitir" não desliga o piloto
     });
     expect(depois.resolvedPolicy).toBe('require_approval');
     expect(depois.status).toBe('pending');
+  });
+});
+
+/**
+ * AT-257 (RN-675): "Sempre permitir" grava VERBO + SUBCOMANDO, um padrão por
+ * segmento. Antes gravava o comando inteiro, byte a byte — 173 cliques no uso
+ * real de 29/09, porque o próximo comando nunca era igual — e o composto virava
+ * UM padrão que só casava o primeiro segmento.
+ */
+describe('ApproveAlwaysActionUseCase — a unidade do padrão é verbo + subcomando (RN-675)', () => {
+  it('o clique num composto libera o PRÓXIMO composto com os mesmos verbos e subcomandos', async () => {
+    const { project, session, user, action } = await setupPendingTerminalAction(
+      'cd src/app && npm test',
+    );
+    await approveAlwaysAction.execute(
+      project.id,
+      session.id,
+      action.id,
+      user.id,
+    );
+
+    const file = await permissionsFileStore.read(project);
+    expect(file.allow).toEqual(['Terminal(cd)', 'Terminal(npm test)']);
+
+    const depois = await proposeAction.execute(project.id, session.id, {
+      actionType: 'terminal',
+      actor: { kind: 'agent', id: 'qa-automacao' },
+      payload: { command: 'cd lib/core && npm test -- --coverage' },
+    });
+    expect(depois.resolvedPolicy).toBe('auto_approve');
+  });
+
+  it('caso de falha: outro subcomando do mesmo verbo continua pedindo', async () => {
+    const { project, session, user, action } =
+      await setupPendingTerminalAction('npm test');
+    await approveAlwaysAction.execute(
+      project.id,
+      session.id,
+      action.id,
+      user.id,
+    );
+
+    const depois = await proposeAction.execute(project.id, session.id, {
+      actionType: 'terminal',
+      actor: { kind: 'agent', id: 'qa-automacao' },
+      payload: { command: 'npm install left-pad' },
+    });
+    expect(depois.resolvedPolicy).toBe('require_approval');
+  });
+
+  it('o teto da RN-418 segue recusando o clique inteiro num composto que empurra', async () => {
+    const { project, session, user, action } = await setupPendingTerminalAction(
+      'npm test && git push origin dev',
+    );
+    await expect(
+      approveAlwaysAction.execute(project.id, session.id, action.id, user.id),
+    ).rejects.toThrow(BadRequestException);
+    const file = await permissionsFileStore.read(project);
+    expect(file.allow).toEqual([]);
   });
 });

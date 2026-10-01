@@ -383,7 +383,7 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
   // event log, decidida caso a caso, a recusá-la sem deixar rastro. Isso só é
   // seguro porque a fresta que o `deny` original tapava à força — "sempre
   // permitir" gravando o padrão em `allow` e abrindo a porta pra sempre — foi
-  // fechada na FONTE: `ApproveAlwaysActionUseCase`/`patternForAction` recusam
+  // fechada na FONTE: `ApproveAlwaysActionUseCase`/`patternsForAction` recusam
   // gravar padrão pra ação com efeito externo git ou comando privilegiado
   // (ver approve-always-action.use-case.ts). Sem essa fresta fechada, este
   // teto viraria decorativo do mesmo jeito que os outros tetos alertam: um
