@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { parseCommand } from '../../../src/domain/actions/command-matcher';
 import {
   comandoNoEscopo,
+  comandoNoEscopoDoContainer,
+  cwdNoContainer,
+  PONTO_DE_MONTAGEM_DO_CONTAINER,
   dentroDoEscopo,
   normalizarCaminho,
   tokensDeCaminho,
@@ -183,5 +188,76 @@ describe('comandoNoEscopo', () => {
 
       expect(Date.now() - inicio).toBeLessThan(1000);
     });
+  });
+});
+
+/**
+ * A raiz do escopo dentro do container (RN-669, ADR 0189, AT-258).
+ */
+describe('cwdNoContainer — a mesma tradução que o engine faz', () => {
+  it('a raiz do projeto vira /work, e o que está sob ela vira /work/...', () => {
+    expect(cwdNoContainer(RAIZ, RAIZ)).toBe('/work');
+    expect(cwdNoContainer(`${RAIZ}/`, RAIZ)).toBe('/work');
+    expect(cwdNoContainer(`${RAIZ}/.worktrees/dev-api`, RAIZ)).toBe(
+      '/work/.worktrees/dev-api',
+    );
+  });
+
+  it('o que está FORA da raiz segue como veio — nunca é fabricado um /work', () => {
+    expect(cwdNoContainer('/data/project-workspaces/proj-10', RAIZ)).toBe(
+      '/data/project-workspaces/proj-10',
+    );
+    expect(cwdNoContainer(`${RAIZ}/../proj-2`, RAIZ)).toBe(
+      '/data/project-workspaces/proj-2',
+    );
+  });
+});
+
+describe('comandoNoEscopoDoContainer (RN-669)', () => {
+  const noContainer = (cmd: string, cwd?: string) =>
+    comandoNoEscopoDoContainer(parseCommand(cmd), cwd, RAIZ);
+
+  it('/work, os .worktrees e o /tmp do container estão dentro', () => {
+    expect(noContainer('ls /work/src')).toBe(true);
+    expect(
+      noContainer(
+        'cat /work/.worktrees/dev-api/x',
+        `${RAIZ}/.worktrees/dev-api`,
+      ),
+    ).toBe(true);
+    expect(noContainer('npm test > /tmp/saida.txt', RAIZ)).toBe(true);
+    expect(noContainer('ls ../../src', `${RAIZ}/.worktrees/dev-api`)).toBe(
+      true,
+    );
+  });
+
+  it('fora de /work e /tmp segue fora — inclusive `..` que escapa do /tmp', () => {
+    expect(noContainer('cat /etc/passwd')).toBe(false);
+    expect(noContainer('ls /tmp/../etc')).toBe(false);
+    expect(noContainer('ls /workspace/apps')).toBe(false);
+    expect(noContainer('ls', '/data/project-workspaces/proj-2')).toBe(false);
+  });
+});
+
+describe('comandoNoEscopo com várias raízes', () => {
+  it('cada caminho precisa estar em ALGUMA raiz; nenhum pode ficar fora de todas', () => {
+    const raizes = ['/work', '/tmp'];
+    expect(
+      comandoNoEscopo(parseCommand('cp /work/a /tmp/b'), '/work', raizes),
+    ).toBe(true);
+    expect(
+      comandoNoEscopo(parseCommand('cp /work/a /etc/b'), '/work', raizes),
+    ).toBe(false);
+  });
+});
+
+describe('PONTO_DE_MONTAGEM_DO_CONTAINER é cópia travada da porta de Docker', () => {
+  it('bate com `PONTO_DE_MONTAGEM` de packages/docker-port', () => {
+    const fonte = readFileSync(
+      join(__dirname, '../../../../../packages/docker-port/src/docker-port.ts'),
+      'utf8',
+    );
+    const casou = /export const PONTO_DE_MONTAGEM = '([^']+)'/.exec(fonte);
+    expect(casou?.[1]).toBe(PONTO_DE_MONTAGEM_DO_CONTAINER);
   });
 });

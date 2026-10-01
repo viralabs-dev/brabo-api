@@ -2,7 +2,7 @@ import { roleAtLeast, type Role } from '../iam/role';
 import type { PermissionPolicy, PermissionsFile } from './permissions-file';
 import { matchesPattern, parseCommand } from './command-matcher';
 import { isProtectedBranch } from './protected-branches';
-import { comandoNoEscopo } from './path-scope';
+import { comandoNoEscopo, comandoNoEscopoDoContainer } from './path-scope';
 import {
   efeitoExternoNoComando,
   mensagemDeEfeitoExterno,
@@ -95,6 +95,11 @@ export const ACTION_TYPES: readonly ActionType[] = [
  * o teto de ESCOPO DE CAMINHO (ADR 0055): ele deixa de valer quando o agente
  * está em modo automático (curinga `auto_approve`) — decisão do dono do
  * produto, ver `modoAutomaticoDoAgente`.
+ *
+ * Desde a RN-670 (ADR 0189) o modo automático é o PILOTO AUTOMÁTICO: aprova
+ * tudo, inclusive `git commit` e branch LOCAL, menos os tetos absolutos — e
+ * "Sempre permitir" gravando `terminal: auto_approve` por cima não o desliga
+ * (o repositório resolve essa específica como a curinga).
  */
 export const AGENT_AUTONOMY_ALL_ACTIONS = '*' as const;
 export type AgentAutonomyActionType =
@@ -245,12 +250,27 @@ export interface DecideContext {
    * Docker somado à validação de `/work` que o BROKER já faz
    * (`DiretorioForaDoEscopoError`, `apps/broker/src/operacoes.ts`) — e o
    * teto de escopo abaixo continua rodando por cima, como defesa em
-   * profundidade, sobre os MESMOS caminhos de host de sempre (o `cwd`/
-   * `command` que chegam aqui nunca são traduzidos para `/work` — essa
-   * tradução acontece só depois, no engine, ao montar a chamada pro
-   * broker).
+   * profundidade — desde a RN-669 contra a pasta REAL de execução (`/work` +
+   * `/tmp` do container, ver `execucaoNoContainer`), com o `cwd` de host
+   * traduzido aqui como o engine o traduz ao montar a chamada pro broker.
    */
   containerExecutionActive?: boolean;
+  /**
+   * `true` quando o comando de terminal vai rodar DENTRO de um container
+   * `running` REGISTRADO — projeto `container` ou `mounted` (RN-502: sem ele,
+   * o engine recusa e o comando não roda em lugar nenhum). Muda a RAIZ do
+   * teto de escopo (RN-669, ADR 0189): `/work` (onde moram a pasta e os
+   * `.worktrees` do projeto) mais o `/tmp` do container, com o `cwd` de host
+   * traduzido para `/work` como o engine traduz. Ausente/`false` mantém a
+   * raiz de sempre, a pasta do projeto no host — e ali `/tmp` fica fora.
+   *
+   * Distinto de `containerExecutionActive` de propósito: aquele é o PISO de
+   * auto-aprovação, e é só do modo `container` (RN-493); este é ONDE o
+   * comando roda, e vale também para `mounted`. `runner` nunca o recebe: a
+   * escolha host-vs-container é interna ao runner (ADR 0137, RN-558), e a
+   * api não sabe se um runner reiniciado está roteando para o host.
+   */
+  execucaoNoContainer?: boolean;
 }
 
 export interface Decision {
@@ -259,9 +279,11 @@ export interface Decision {
 }
 
 /**
- * O agente está em "modo automático" (RN-153) — a curinga `"*"` resolvida como
- * `auto_approve`, sem regra específica do tipo por cima (se houvesse, o
- * repositório teria devolvido ela, com origem `'especifica'`).
+ * O agente está em "modo automático" (RN-153) — o PILOTO AUTOMÁTICO desde a
+ * RN-670 —: a curinga `"*"` resolvida como `auto_approve`. Uma regra
+ * específica que diga OUTRA coisa vence no repositório, com origem
+ * `'especifica'`; uma específica `auto_approve` (o que "Sempre permitir"
+ * grava) resolve como a curinga e NÃO desliga o piloto (RN-670, ADR 0189).
  *
  * É o que a RN-603 (ADR 0167) usa para dispensar DOIS pedidos de aprovação que
  * não são teto de efeito, e sim ausência de opinião sobre o comando: o teto de
@@ -403,6 +425,11 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
   // raiz do HOST. O teto de efeito externo/privilegiado ACIMA já rodou e
   // continua valendo; `deny` já retornou; regra específica do tipo vence a
   // curinga no repositório. Voltar o toggle para manual restaura este teto.
+  //
+  // Mantida pela decisão do dono de 01/10 (ADR 0189): a garantia é a
+  // contenção do container, que nunca monta o checkout nem os arquivos do
+  // Brabo — e a comparação com a raiz do HOST, que gerava os falsos
+  // positivos, foi corrigida para quem NÃO está no piloto (RN-669).
   if (
     noEscopo === false &&
     current.policy === 'auto_approve' &&
@@ -535,6 +562,19 @@ function terminalNoEscopo(
 ): boolean | null {
   if (action.actionType !== 'terminal' || !ctx.projectScopeRoot) return null;
   if (!action.command) return null;
+
+  // RN-669 (ADR 0189, AT-258): com o comando rodando DENTRO do container, o
+  // escopo compara com a pasta REAL de execução (`/work` + `/tmp` do
+  // container), e não com a raiz do host — que é onde o comando NÃO roda. Era
+  // daqui que vinham os 37 "escopo" do uso real de 29/09: `/work/...` e
+  // `/tmp` comparados com `/home/<usuario>/projetos-brabo/<projeto>`.
+  if (ctx.execucaoNoContainer) {
+    return comandoNoEscopoDoContainer(
+      parseCommand(action.command),
+      action.cwd,
+      ctx.projectScopeRoot,
+    );
+  }
 
   return comandoNoEscopo(
     parseCommand(action.command),

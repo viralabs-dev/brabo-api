@@ -256,9 +256,11 @@ export class ApproveAlwaysActionUseCase {
         destino.agentId,
         destino.actionType,
       );
-      if (vigente?.origem === 'especifica' && vigente.mode === 'auto_approve') {
-        return false;
-      }
+      // Pela linha ESPECÍFICA, e não pelo modo resolvido: com a curinga
+      // ligada o modo resolvido é `auto_approve` sem que o padrão do agente
+      // exista, e o clique continua gravando-o — é ele que fica valendo se o
+      // toggle voltar para manual (RN-670).
+      if (vigente?.especifica === 'auto_approve') return false;
       await this.agentAutonomy.upsert(
         projectId,
         destino.agentId,

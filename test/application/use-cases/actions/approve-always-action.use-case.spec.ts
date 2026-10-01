@@ -41,6 +41,7 @@ import type { PermissionsFileStore } from '../../../../src/application/ports/per
 import type { ApiToEngineClient } from '../../../../src/application/ports/api-to-engine-client.port';
 import type { TerminalExecutionResult } from '../../../../src/domain/actions/terminal-execution-result';
 import { BraboMetrics } from '../../../../src/infrastructure/observability/brabo-metrics';
+import { AGENT_AUTONOMY_ALL_ACTIONS } from '../../../../src/domain/actions/decide';
 
 const { db, pool } = createTestDb();
 const unitOfWork = new DrizzleUnitOfWork(db);
@@ -834,5 +835,89 @@ describe('ApproveAlwaysActionUseCase', () => {
       const file = await permissionsFileStore.read(project);
       expect(file.allow).toEqual(['GitCommit()']);
     });
+  });
+});
+
+/**
+ * AT-255 (RN-670, ADR 0189) — o cenário MEDIDO no uso real de 29/09, como
+ * teste de não-regressão: o modo automático ligado (curinga `*:
+ * auto_approve`) e, depois, "Sempre permitir" num dev agent. O clique grava
+ * `terminal: auto_approve` para o agente (RN-509) e, até aqui, essa linha
+ * SOMBREAVA a curinga: o repositório a devolvia com origem `especifica`, e o
+ * composto sintetizado e o escopo voltavam a pedir aprovação — 97 + 37
+ * pedidos no uso real, com o piloto "ligado" na tela.
+ */
+describe('ApproveAlwaysActionUseCase — "Sempre permitir" não desliga o piloto (RN-670)', () => {
+  it('curinga ligada + sempre permitir: composto sem regra e caminho fora da pasta seguem sem pedido de aprovação', async () => {
+    // A pendência nasce ANTES de a curinga ser ligada — é como ela existia no
+    // uso real (o clique foi sobre o que tinha ficado na fila).
+    const { project, session, user, action } = await setupPendingTerminalAction(
+      'cd /work && npm test',
+      'dev-api',
+    );
+    expect(action.status).toBe('pending');
+
+    await agentAutonomyRepo.upsert(
+      project.id,
+      'dev-api',
+      AGENT_AUTONOMY_ALL_ACTIONS,
+      'auto_approve',
+    );
+    await approveAlwaysAction.execute(
+      project.id,
+      session.id,
+      action.id,
+      user.id,
+    );
+
+    // O clique continua gravando a específica — ela é o que fica valendo se
+    // o toggle voltar para manual.
+    const linhas = await agentAutonomyRepo.listForProject(project.id);
+    expect(linhas).toContainEqual({
+      agentId: 'dev-api',
+      actionType: 'terminal',
+      mode: 'auto_approve',
+    });
+
+    const depois = await proposeAction.execute(project.id, session.id, {
+      actionType: 'terminal',
+      actor: { kind: 'agent', id: 'dev-api' },
+      payload: { command: 'cd /work && npm test > /tmp/saida.txt' },
+    });
+    expect(depois.resolvedPolicy).toBe('auto_approve');
+    expect(depois.status).toBe('executed');
+  });
+
+  it('caso de falha: com o toggle de volta em manual, a específica gravada pelo clique segue com o escopo', async () => {
+    const { project, session, user, action } = await setupPendingTerminalAction(
+      'cd /work && npm test',
+      'dev-api',
+    );
+    await agentAutonomyRepo.upsert(
+      project.id,
+      'dev-api',
+      AGENT_AUTONOMY_ALL_ACTIONS,
+      'auto_approve',
+    );
+    await approveAlwaysAction.execute(
+      project.id,
+      session.id,
+      action.id,
+      user.id,
+    );
+    await agentAutonomyRepo.upsert(
+      project.id,
+      'dev-api',
+      AGENT_AUTONOMY_ALL_ACTIONS,
+      'require_approval',
+    );
+
+    const depois = await proposeAction.execute(project.id, session.id, {
+      actionType: 'terminal',
+      actor: { kind: 'agent', id: 'dev-api' },
+      payload: { command: 'cat /etc/passwd' },
+    });
+    expect(depois.resolvedPolicy).toBe('require_approval');
+    expect(depois.status).toBe('pending');
   });
 });

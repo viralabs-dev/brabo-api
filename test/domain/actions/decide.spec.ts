@@ -1200,3 +1200,167 @@ describe('decide — modo automático libera o escopo de caminho (RN-603)', () =
     }
   });
 });
+
+/**
+ * O piloto automático (RN-670, ADR 0189): a curinga `*: auto_approve` aprova
+ * TUDO, inclusive o composto sintetizado e caminho fora da pasta (RN-603,
+ * mantida), MENOS os tetos absolutos. `git commit` e branch LOCAL entram
+ * livres — decisão do dono de 01/10.
+ */
+describe('decide — piloto automático: commit e branch local livres (RN-670)', () => {
+  const RAIZ = '/data/project-workspaces/loja-f52be111';
+  const piloto = (overrides: Partial<DecideContext> = {}) =>
+    ctx({
+      autonomyMode: 'auto_approve',
+      autonomyOrigin: 'curinga',
+      projectScopeRoot: RAIZ,
+      ...overrides,
+    });
+
+  it.each([
+    'cd /work && git add -A && git commit -m "feat: x"',
+    'git checkout -b feature/x',
+    'git switch -c feature/x',
+    'git branch feature/x',
+    'git add . && git commit --amend --no-edit',
+  ])('`%s` é auto-aprovado no piloto', (command) => {
+    expect(
+      decide({ actionType: 'terminal', command, cwd: '/work' }, piloto())
+        .policy,
+    ).toBe('auto_approve');
+  });
+
+  it('as ações tipadas de commit e branch local também', () => {
+    for (const actionType of ['git_commit', 'git_branch_create'] as const) {
+      expect(
+        decide({ actionType }, piloto({ effectiveRole: 'maintainer' })).policy,
+      ).toBe('auto_approve');
+    }
+  });
+
+  it.each([
+    'git push origin feature/x',
+    'git merge feature/x',
+    'gh pr create --fill',
+    'kubectl apply -f k8s/',
+    'doas rm -rf /work/node_modules',
+  ])('`%s` segue pedindo aprovação no piloto (teto absoluto)', (command) => {
+    expect(
+      decide({ actionType: 'terminal', command, cwd: '/work' }, piloto())
+        .policy,
+    ).toBe('require_approval');
+  });
+
+  it('a curinga DESLIGADA não aprova o commit sozinha', () => {
+    expect(
+      decide(
+        { actionType: 'terminal', command: 'git commit -m x', cwd: RAIZ },
+        piloto({ autonomyMode: 'require_approval' }),
+      ).policy,
+    ).toBe('require_approval');
+  });
+});
+
+/**
+ * A raiz do escopo é a pasta REAL de execução (RN-669, ADR 0189). Com um
+ * container `running` registrado (`container`/`mounted`), o comando roda
+ * DENTRO dele: a raiz é `/work` (o ponto de montagem, onde moram também os
+ * `.worktrees` do projeto) mais o `/tmp` do container. O `cwd` chega como
+ * caminho do HOST e é traduzido para `/work` como o engine traduz. Sem
+ * container, a raiz é a pasta do projeto no host, e `/tmp` fica FORA.
+ * Isto vale para a regra específica `terminal` — o piloto não passa pelo
+ * escopo (RN-603).
+ */
+describe('decide — escopo de caminho na pasta real de execução (RN-669)', () => {
+  const RAIZ = '/data/project-workspaces/loja-f52be111';
+  const WORKTREE = `${RAIZ}/.worktrees/dev-api`;
+  const especifica = (overrides: Partial<DecideContext> = {}) =>
+    ctx({
+      autonomyMode: 'auto_approve',
+      autonomyOrigin: 'especifica',
+      projectScopeRoot: RAIZ,
+      ...overrides,
+    });
+
+  it.each([
+    ['ls /work/src', WORKTREE],
+    ['cat /work/.worktrees/dev-api/package.json', WORKTREE],
+    ['ls /tmp', WORKTREE],
+    ['npm test > /tmp/saida.txt', RAIZ],
+    ['ls ../../src', WORKTREE],
+  ])(
+    'com container de pé, `%s` (cwd %s) está dentro do escopo',
+    (command, cwd) => {
+      const r = decide(
+        { actionType: 'terminal', command, cwd },
+        especifica({ execucaoNoContainer: true }),
+      );
+      expect(r.policy).toBe('auto_approve');
+    },
+  );
+
+  it('com container de pé, `cd /work/...` deixa de reprovar o composto (allow no verbo)', () => {
+    const r = decide(
+      {
+        actionType: 'terminal',
+        command: 'cd /work/.worktrees/dev-api && npm test',
+        cwd: WORKTREE,
+      },
+      ctx({
+        projectScopeRoot: RAIZ,
+        execucaoNoContainer: true,
+        containerExecutionActive: true,
+        permissionsFile: {
+          ...EMPTY_PERMISSIONS_FILE,
+          allow: ['Terminal(npm test)'],
+        },
+      }),
+    );
+    expect(r.policy).toBe('auto_approve');
+  });
+
+  it.each([
+    'cat /etc/passwd',
+    `cat ${RAIZ}/../outro-projeto/segredo`,
+    'ls /workspace/apps/engine',
+    'ls /tmp/../etc',
+  ])('com container de pé, `%s` segue FORA do escopo', (command) => {
+    const r = decide(
+      { actionType: 'terminal', command, cwd: WORKTREE },
+      especifica({ execucaoNoContainer: true }),
+    );
+    expect(r.policy).toBe('require_approval');
+    expect(r.reason).toContain('fora da pasta do projeto');
+  });
+
+  it.each(['ls /tmp', 'ls /work/src'])(
+    'SEM container, `%s` está fora (a raiz é a pasta do host, e o /tmp do host não conta)',
+    (command) => {
+      const r = decide(
+        { actionType: 'terminal', command, cwd: RAIZ },
+        especifica({ execucaoNoContainer: false }),
+      );
+      expect(r.policy).toBe('require_approval');
+    },
+  );
+
+  it('SEM container, caminho dentro da pasta do host continua dentro', () => {
+    const r = decide(
+      { actionType: 'terminal', command: `ls ${RAIZ}/src`, cwd: WORKTREE },
+      especifica(),
+    );
+    expect(r.policy).toBe('auto_approve');
+  });
+
+  it('com container de pé, cwd de HOST fora da pasta do projeto segue fora (não é traduzido)', () => {
+    const r = decide(
+      {
+        actionType: 'terminal',
+        command: 'ls',
+        cwd: '/data/project-workspaces/outro-projeto',
+      },
+      especifica({ execucaoNoContainer: true }),
+    );
+    expect(r.policy).toBe('require_approval');
+  });
+});
