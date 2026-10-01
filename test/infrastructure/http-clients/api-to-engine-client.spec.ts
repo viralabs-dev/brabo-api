@@ -6,7 +6,10 @@ import {
   ConflictException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { HttpApiToEngineClient } from '../../../src/infrastructure/http-clients/api-to-engine-client';
+import {
+  HttpApiToEngineClient,
+  entregaDaResposta,
+} from '../../../src/infrastructure/http-clients/api-to-engine-client';
 import {
   RunnerNaoConectadoError,
   RunnerRecusouContainerError,
@@ -511,14 +514,65 @@ describe('HttpApiToEngineClient — comando de turno: aceite e recusa (ADR 0163)
     };
   }
 
-  it('202 é o aceite: resolve sem corpo', async () => {
+  it('202 sem corpo é o aceite de sempre: a mensagem foi lida', async () => {
     const engine = await engineQueResponde(202);
     const client = new HttpApiToEngineClient();
 
     await expect(
       client.sendAgentMessage(PROJETO, SESSAO, 'po', 'oi'),
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({ entrega: 'lida' });
     expect(engine.urls).toEqual([`/internal/sessions/${SESSAO}/agent/message`]);
+
+    await engine.fechar();
+  });
+
+  // RN-673 (ADR 0191): com turno em curso o engine responde 202 COM corpo — a
+  // mensagem entrou na fila. O id do chat.message vai no pedido.
+  it('202 com corpo de fila: enfileirada, na posição dada; o mensagemId vai no pedido', async () => {
+    const engine = await engineQueResponde(202, {
+      entrega: 'enfileirada',
+      posicao: 3,
+    });
+    const client = new HttpApiToEngineClient();
+
+    await expect(
+      client.sendAgentMessage(PROJETO, SESSAO, 'po', 'Continue', null, 'evt-9'),
+    ).resolves.toEqual({ entrega: 'enfileirada', posicao: 3 });
+    expect(JSON.parse(engine.corpos[0])).toMatchObject({ mensagemId: 'evt-9' });
+
+    await engine.fechar();
+  });
+
+  it('corpo que não se lê como fila (engine antigo, JSON estranho) é o aceite de sempre', () => {
+    expect(entregaDaResposta('')).toEqual({ entrega: 'lida' });
+    expect(entregaDaResposta('não é json')).toEqual({ entrega: 'lida' });
+    expect(entregaDaResposta('{"entrega":"enfileirada"}')).toEqual({
+      entrega: 'lida',
+    });
+  });
+
+  it('cancelar mensagem da fila: 409 do engine (já lida) vira ConflictException com a frase dele', async () => {
+    const engine = await engineQueResponde(409, {
+      error: 'Esta mensagem não está mais na fila — ela já foi lida pelo agente.',
+      motivo: 'mensagem_fora_da_fila',
+    });
+    const client = new HttpApiToEngineClient();
+
+    const erro = await client
+      .cancelQueuedMessage(PROJETO, SESSAO, 'po', 'evt-9', 'u-1')
+      .catch((e: unknown) => e);
+
+    expect(erro).toBeInstanceOf(ConflictException);
+    expect((erro as ConflictException).message).toMatch(/não está mais na fila/);
+    expect(engine.urls).toEqual([
+      `/internal/sessions/${SESSAO}/agent/queued-message/cancel`,
+    ]);
+    expect(JSON.parse(engine.corpos[0])).toEqual({
+      projectId: PROJETO,
+      agent: 'po',
+      mensagemId: 'evt-9',
+      userId: 'u-1',
+    });
 
     await engine.fechar();
   });

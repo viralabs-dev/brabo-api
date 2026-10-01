@@ -10,6 +10,7 @@ import { injectTraceHeaders } from '../observability/trace-context';
 import { Traced } from '../observability/traced.decorator';
 import {
   ApiToEngineClient,
+  type EntregaDaMensagem,
   RunnerNaoConectadoError,
   RunnerRecusouContainerError,
   type ContainerIniciadoViaRunner,
@@ -55,6 +56,25 @@ function garantirSegmentoDeUrlInterna(valor: string, nome: string): string {
  * fora dessa forma não vira mensagem inventada: cai numa frase genérica que
  * diz que houve recusa, e o texto cru fica fora da resposta ao usuário.
  */
+/**
+ * O aceite da mensagem (RN-673): 202 sem corpo é "lida" (o turno subiu); 202
+ * com `{entrega: "enfileirada", posicao}` é "esperando na fila". Corpo que não
+ * se lê como fila vira "lida" — é o que o engine anterior à fila sempre quis
+ * dizer com 202.
+ */
+export function entregaDaResposta(corpo: string): EntregaDaMensagem {
+  if (!corpo) return { entrega: 'lida' };
+  try {
+    const lido = JSON.parse(corpo) as { entrega?: unknown; posicao?: unknown };
+    if (lido.entrega === 'enfileirada' && typeof lido.posicao === 'number') {
+      return { entrega: 'enfileirada', posicao: lido.posicao };
+    }
+  } catch {
+    // corpo não-JSON: o aceite de sempre
+  }
+  return { entrega: 'lida' };
+}
+
 function mensagemDaRecusaDoEngine(texto: string): string {
   try {
     const corpo = JSON.parse(texto) as { error?: unknown };
@@ -181,12 +201,32 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     agent: string,
     text: string,
     idiomaDaResposta: string | null = null,
+    mensagemId: string | null = null,
+  ): Promise<EntregaDaMensagem> {
+    const corpo = await this.postComandoDeTurno(
+      `/internal/sessions/${sessionId}/agent/message`,
+      {
+        projectId,
+        agent,
+        text,
+        ...(idiomaDaResposta ? { idiomaDaResposta } : {}),
+        ...(mensagemId ? { mensagemId } : {}),
+      },
+      [['sessionId', sessionId]],
+    );
+    return entregaDaResposta(corpo);
+  }
+
+  async cancelQueuedMessage(
+    projectId: string,
+    sessionId: string,
+    agent: string,
+    mensagemId: string,
+    userId: string,
   ): Promise<void> {
     await this.postComandoDeTurno(
-      `/internal/sessions/${sessionId}/agent/message`,
-      idiomaDaResposta
-        ? { projectId, agent, text, idiomaDaResposta }
-        : { projectId, agent, text },
+      `/internal/sessions/${sessionId}/agent/queued-message/cancel`,
+      { projectId, agent, mensagemId, userId },
       [['sessionId', sessionId]],
     );
   }
@@ -595,7 +635,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     path: string,
     body: Record<string, unknown>,
     segmentosDeUrl: ReadonlyArray<readonly [string, string]>,
-  ): Promise<void> {
+  ): Promise<string> {
     for (const [nome, valor] of segmentosDeUrl) {
       garantirSegmentoDeUrlInterna(valor, nome);
     }
@@ -608,7 +648,9 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
       body: JSON.stringify(body),
     });
 
-    if (res.ok) return;
+    // O corpo do aceite volta para quem precisa dele (RN-673: a mensagem que
+    // entrou na fila responde 202 COM corpo); os outros comandos o ignoram.
+    if (res.ok) return await res.text();
 
     const texto = await res.text();
 
