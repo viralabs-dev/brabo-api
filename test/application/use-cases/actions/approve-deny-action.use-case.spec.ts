@@ -122,6 +122,7 @@ const proposeAction = new ProposeActionUseCase(
   appendSessionEvent,
   obterCicloDeVidaDoContainer,
   { configurado: () => true } as never, // brokerPort
+  undefined as never, // executeExecutionPlan — não exercitado aqui
 );
 const approveAction = new ApproveActionUseCase(
   unitOfWork,
@@ -144,6 +145,7 @@ const approveAction = new ApproveActionUseCase(
   undefined as never, // executeInstructionPatch — não exercitado aqui,
   new BraboMetrics(),
   appendSessionEvent,
+  undefined as never, // executeExecutionPlan — não exercitado aqui
 );
 const denyAction = new DenyActionUseCase(
   unitOfWork,
@@ -152,6 +154,7 @@ const denyAction = new DenyActionUseCase(
   outboxRepo,
   new BraboMetrics(),
   appendSessionEvent,
+  undefined, // executeExecutionPlan — não exercitado aqui
 );
 
 let workspacesRoot: string;
@@ -388,6 +391,71 @@ describe('ApproveActionUseCase', () => {
     expect(approved.status).toBe('approved');
     expect(approved.decidedBy).toBe(user.id);
     expect(approved.decidedAt).not.toBeNull();
+  });
+
+  // AT-263 (RN-677, ADR 0194): aprovar o plano do Dev Lead deixa de ser uma
+  // aprovação sem consumidor — vai ao executor que atribui módulos e ATIVA a
+  // execução, e o desfecho dele é o que o Dev Lead recebe.
+  it('aprovar `propose_execution_plan` chama o executor do plano e avisa o Dev Lead com o desfecho dele', async () => {
+    const { user, project, session } = await setupPendingAction();
+    const plano = await proposedActionRepo.create({
+      projectId: project.id,
+      sessionId: session.id,
+      actionType: 'propose_execution_plan',
+      payload: { resumo: 'r', modulos: [], tarefas: [] },
+      status: 'pending',
+      resolvedPolicy: 'require_approval',
+      actor: { kind: 'agent', id: 'dev-lead' },
+    });
+    const chamadas: string[] = [];
+    const comExecutor = new ApproveActionUseCase(
+      unitOfWork,
+      sessionRepo,
+      proposedActionRepo,
+      outboxRepo,
+      executeTerminalAction,
+      undefined as never,
+      undefined as never,
+      undefined as never,
+      undefined as never,
+      undefined as never,
+      undefined as never,
+      undefined as never,
+      undefined as never,
+      undefined as never,
+      undefined as never,
+      new BraboMetrics(),
+      appendSessionEvent,
+      {
+        execute: (
+          _p: string,
+          _s: string,
+          a: { id: string; status: string },
+        ) => {
+          chamadas.push(a.id);
+          return Promise.resolve({ ...a, status: 'executed' });
+        },
+      } as never,
+    );
+
+    const out = await comExecutor.execute(
+      project.id,
+      session.id,
+      plano.id,
+      user.id,
+    );
+
+    expect(chamadas).toEqual([plano.id]);
+    expect(out.status).toBe('executed');
+    const [aviso] = await db
+      .select()
+      .from(outboxEvents)
+      .where(eq(outboxEvents.eventType, 'task.action_settled'));
+    expect(aviso.payload).toMatchObject({
+      agentId: 'dev-lead',
+      actionType: 'propose_execution_plan',
+      status: 'executed',
+    });
   });
 
   it('rejeita aprovar uma ação já decidida', async () => {

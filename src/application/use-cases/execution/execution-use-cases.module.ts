@@ -14,6 +14,7 @@ import { SetAreaBudgetUseCase } from './set-area-budget.use-case';
 import { ExecuteParallelizationUseCase } from './execute-parallelization.use-case';
 import { ProposeMaxParallelUseCase } from './propose-max-parallel.use-case';
 import { ExecuteMaxParallelRaiseUseCase } from './execute-max-parallel-raise.use-case';
+import { ExecuteExecutionPlanUseCase } from './execute-execution-plan.use-case';
 import { ActionsUseCasesModule } from '../actions/actions-use-cases.module';
 import { ClaimNextTaskUseCase } from './claim-next-task.use-case';
 import { MarkTaskUseCase } from './mark-task.use-case';
@@ -58,6 +59,7 @@ const USE_CASES = [
   ExecuteParallelizationUseCase,
   ProposeMaxParallelUseCase,
   ExecuteMaxParallelRaiseUseCase,
+  ExecuteExecutionPlanUseCase,
   ClaimNextTaskUseCase,
   MarkTaskUseCase,
   GetDevTaskContextUseCase,

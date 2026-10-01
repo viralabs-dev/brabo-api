@@ -221,6 +221,29 @@ export class DrizzleTaskRepository implements TaskRepository {
     return rows[0] ? taskToEntity(rows[0].task) : null;
   }
 
+  async findInProjectByIds(projectId: string, ids: string[]): Promise<Task[]> {
+    if (ids.length === 0) return [];
+    const db = currentDb(this.rootDb);
+    const rows = await db
+      .select({ task: tasks })
+      .from(tasks)
+      .innerJoin(stories, eq(stories.id, tasks.storyId))
+      .where(and(eq(stories.projectId, projectId), inArray(tasks.id, ids)));
+    return rows.map((r) => taskToEntity(r.task));
+  }
+
+  async assignModules(
+    assignments: ReadonlyArray<{ taskId: string; module: string }>,
+  ): Promise<void> {
+    const db = currentDb(this.rootDb);
+    for (const { taskId, module } of assignments) {
+      await db
+        .update(tasks)
+        .set({ module, updatedAt: new Date() })
+        .where(eq(tasks.id, taskId));
+    }
+  }
+
   async claimNext(
     projectId: string,
     module: string,
@@ -246,14 +269,14 @@ export class DrizzleTaskRepository implements TaskRepository {
         JOIN stories s ON s.id = t.story_id
         WHERE s.project_id = ${projectId}
           AND s.status = 'ready'
-          AND s.module_ids ? ${module}
+          AND ${daTarefaDoModulo(module)}
           AND t.status = 'todo'
           AND t.blocked = false
         ORDER BY t.created_at
         FOR UPDATE OF t SKIP LOCKED
         LIMIT 1
       )
-      RETURNING id, story_id, title, description, status, assigned_to, blocked, blocked_reason, blocked_origin, gate_status, gate_correction_count, created_at, updated_at
+      RETURNING id, story_id, title, description, status, assigned_to, blocked, blocked_reason, blocked_origin, gate_status, gate_correction_count, module, created_at, updated_at
     `);
     const row = result.rows[0] as Record<string, unknown> | undefined;
     if (!row) return null;
@@ -269,6 +292,7 @@ export class DrizzleTaskRepository implements TaskRepository {
       blockedOrigin: (row.blocked_origin as Task['blockedOrigin']) ?? null,
       gateStatus: (row.gate_status as PrGateStatus | null) ?? null,
       gateCorrectionCount: Number(row.gate_correction_count ?? 0),
+      module: (row.module as string | null) ?? null,
       createdAt: row.created_at as Date,
       updatedAt: row.updated_at as Date,
     };
@@ -304,7 +328,7 @@ export class DrizzleTaskRepository implements TaskRepository {
       JOIN stories s ON s.id = t.story_id
       WHERE s.project_id = ${projectId}
         AND s.status = 'ready'
-        AND s.module_ids ? ${module}
+        AND ${daTarefaDoModulo(module)}
         AND t.status = 'todo'
         AND t.blocked = false
     `);
@@ -449,7 +473,23 @@ function taskToEntity(row: typeof tasks.$inferSelect): Task {
     blockedOrigin: row.blockedOrigin,
     gateStatus: row.gateStatus as PrGateStatus | null,
     gateCorrectionCount: row.gateCorrectionCount,
+    module: row.module,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+}
+
+/**
+ * QUAL tarefa é do dev de `module` (AT-274, RN-678) — o MESMO predicado no
+ * claim e na contagem que sugere paralelização, para os dois nunca
+ * discordarem. A tarefa com módulo (atribuído pelo Dev Lead no plano aprovado)
+ * é de quem tem aquele módulo, e de mais ninguém: os `module_ids` da story
+ * deixam de decidir, porque uma story com dois módulos deixava qualquer um dos
+ * dois devs pegar qualquer tarefa (uso real de 29/09). A tarefa SEM módulo só
+ * é pegável quando a story tem UM módulo, e é este — aí "o dev daquele módulo"
+ * não é ambíguo, e é o caminho de quem ativou pela Visão Geral sem plano.
+ * Tarefa sem módulo de story com vários espera o próximo plano.
+ */
+function daTarefaDoModulo(module: string) {
+  return sql`(t.module = ${module} OR (t.module IS NULL AND jsonb_array_length(s.module_ids) = 1 AND s.module_ids ? ${module}))`;
 }

@@ -477,6 +477,13 @@
       "when": 1790809923733,
       "tag": "0067_custo_real_no_metering",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1790815344427,
+      "tag": "0068_modulo_da_tarefa",
+      "breakpoints": true
     }
   ]
 }

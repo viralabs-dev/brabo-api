@@ -27,6 +27,7 @@ const task: Task = {
   blockedOrigin: null,
   gateStatus: null,
   gateCorrectionCount: 0,
+  module: null,
   createdAt: now,
   updatedAt: now,
 };

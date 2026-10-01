@@ -19,6 +19,7 @@ import { ExecuteContainerStartUseCase } from './execute-container-start.use-case
 import { ExecuteContainerStartViaRunnerUseCase } from './execute-container-start-via-runner.use-case';
 import { ExecuteContainerStopUseCase } from './execute-container-stop.use-case';
 import { ContainerBrokerPort } from '../../ports/container-broker.port';
+import { ExecuteExecutionPlanUseCase } from '../execution/execute-execution-plan.use-case';
 import { ObterCicloDeVidaDoContainerUseCase } from '../containers/obter-ciclo-de-vida-do-container.use-case';
 import {
   decide,
@@ -71,6 +72,7 @@ export class ProposeActionUseCase {
     private readonly appendSessionEvent: AppendSessionEventUseCase,
     private readonly obterCicloDeVidaDoContainer: ObterCicloDeVidaDoContainerUseCase,
     private readonly brokerPort: ContainerBrokerPort,
+    private readonly executeExecutionPlan: ExecuteExecutionPlanUseCase,
   ) {}
 
   @Traced('application')
@@ -119,6 +121,24 @@ export class ProposeActionUseCase {
           ),
         );
         if (recusa) throw new ConflictException(recusa);
+      }
+    }
+
+    // O plano do Dev Lead é CONTRATO desde a RN-678 (AT-274, ADR 0194): toda
+    // tarefa citada tem módulo, e o módulo está no `module_map` vigente. A
+    // recusa é 400 NOMEADO antes de criar a proposta — o texto chega ao Dev
+    // Lead como resultado da ferramenta, e ele corrige o plano em vez de o
+    // humano aprovar um plano que a execução não saberia distribuir.
+    if (actionType === 'propose_execution_plan') {
+      const recusa = await this.executeExecutionPlan.recusaNaProposta(
+        projectId,
+        input.payload,
+      );
+      if (recusa) {
+        throw new BadRequestException({
+          code: 'plano_de_execucao_invalido',
+          message: recusa,
+        });
       }
     }
 
@@ -299,6 +319,14 @@ export class ProposeActionUseCase {
     // seria código morto que a suíte não teria como exercitar.
     if (status === 'auto_approved' && actionType === 'container_stop') {
       return this.executeContainerStop.execute(projectId, sessionId, action);
+    }
+
+    // AT-263 (RN-677): o plano auto-aprovado (o `maintainer` PODE configurar —
+    // `propose_execution_plan` não está nos tetos absolutos de `decide.ts`)
+    // ativa a execução aqui, pela mesma razão dos branches acima: sem isto a
+    // ação nasceria `auto_approved` e nada subiria.
+    if (status === 'auto_approved' && actionType === 'propose_execution_plan') {
+      return this.executeExecutionPlan.execute(projectId, sessionId, action);
     }
 
     return action;

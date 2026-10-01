@@ -32,6 +32,7 @@ function makeTask(overrides: Partial<Task> = {}): Task {
     blockedOrigin: null,
     gateStatus: null,
     gateCorrectionCount: 0,
+    module: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,

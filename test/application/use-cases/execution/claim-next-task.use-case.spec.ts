@@ -24,6 +24,7 @@ async function seed(opts: {
   storyStatus: 'draft' | 'ready';
   moduleIds: string[];
   taskCount: number;
+  taskModule?: string | null;
 }) {
   const [owner] = await db
     .insert(users)
@@ -62,7 +63,11 @@ async function seed(opts: {
     })
     .returning();
   for (let i = 0; i < opts.taskCount; i++) {
-    await db.insert(tasks).values({ storyId: story.id, title: `task-${i}` });
+    await db.insert(tasks).values({
+      storyId: story.id,
+      title: `task-${i}`,
+      module: opts.taskModule ?? null,
+    });
   }
   return { projectId: project.id, sessionId: session.id };
 }
@@ -116,6 +121,65 @@ describe('ClaimNextTaskUseCase', () => {
     expect(
       await useCase.execute(projectId, sessionId, 'api', 'dev-api'),
     ).toBeNull();
+  });
+
+  // AT-274 (RN-678): o módulo é o da TAREFA, atribuído pelo Dev Lead no plano.
+  it('story com DOIS módulos: só o dev do módulo da TAREFA a pega', async () => {
+    const { projectId, sessionId } = await seed({
+      storyStatus: 'ready',
+      moduleIds: ['board-engine', 'input-keyboard'],
+      taskCount: 1,
+      taskModule: 'board-engine',
+    });
+    expect(
+      await useCase.execute(
+        projectId,
+        sessionId,
+        'input-keyboard',
+        'dev-input-keyboard',
+      ),
+    ).toBeNull();
+    const pega = await useCase.execute(
+      projectId,
+      sessionId,
+      'board-engine',
+      'dev-board-engine',
+    );
+    expect(pega?.module).toBe('board-engine');
+    expect(pega?.assignedTo).toBe('dev-board-engine');
+  });
+
+  it('tarefa SEM módulo de story com vários módulos não é pegável por nenhum (espera o plano)', async () => {
+    const { projectId, sessionId } = await seed({
+      storyStatus: 'ready',
+      moduleIds: ['board-engine', 'input-keyboard'],
+      taskCount: 1,
+    });
+    expect(
+      await useCase.execute(projectId, sessionId, 'board-engine', 'dev-a'),
+    ).toBeNull();
+    expect(
+      await useCase.execute(projectId, sessionId, 'input-keyboard', 'dev-b'),
+    ).toBeNull();
+    expect(
+      await taskRepo.countClaimableByModule(projectId, 'board-engine'),
+    ).toBe(0);
+  });
+
+  it('o módulo da tarefa vence os module_ids da story', async () => {
+    const { projectId, sessionId } = await seed({
+      storyStatus: 'ready',
+      moduleIds: ['api'],
+      taskCount: 1,
+      taskModule: 'web',
+    });
+    expect(
+      await useCase.execute(projectId, sessionId, 'api', 'dev-api'),
+    ).toBeNull();
+    expect(await taskRepo.countClaimableByModule(projectId, 'web')).toBe(1);
+    expect(
+      await useCase.execute(projectId, sessionId, 'web', 'dev-web'),
+    ).not.toBeNull();
   });
 
   it('concorrência real: N claims simultâneos nunca pegam a mesma task', async () => {

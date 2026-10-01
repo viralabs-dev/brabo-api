@@ -55,6 +55,9 @@ export interface Task {
   blockedOrigin: FailureOrigin | null;
   gateStatus: PrGateStatus | null;
   gateCorrectionCount: number;
+  // AT-274 (RN-678): o módulo que o Dev Lead atribuiu no plano aprovado —
+  // `null` enquanto nenhum plano a atribuiu.
+  module: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

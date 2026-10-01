@@ -172,6 +172,12 @@ export const tasks = pgTable(
     // zera a cada avanço de gate, incrementa a cada changes_requested.
     gateStatus: text('gate_status'),
     gateCorrectionCount: integer('gate_correction_count').notNull().default(0),
+    // AT-274 (RN-678, ADR 0194): o MÓDULO da tarefa, atribuído pelo Dev Lead
+    // no plano de execução (`propose_execution_plan`) e gravado quando o plano
+    // é aprovado. É ele, e não os `module_ids` da story (que podem ser
+    // vários), que decide QUAL `dev-<modulo>` pega a tarefa — ver `claimNext`.
+    // NULLABLE: tarefa criada antes de um plano não tem módulo até o próximo.
+    module: text('module'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

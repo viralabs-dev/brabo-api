@@ -34,6 +34,7 @@ function buildTask(overrides: Partial<Task> = {}): Task {
     blockedOrigin: null,
     gateStatus: 'awaiting_qa',
     gateCorrectionCount: 0,
+    module: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,
@@ -99,6 +100,7 @@ function buildHarness(opts: {
         ...(task as Task),
         gateStatus,
         gateCorrectionCount: correctionCount,
+        module: null,
       }),
   );
 
