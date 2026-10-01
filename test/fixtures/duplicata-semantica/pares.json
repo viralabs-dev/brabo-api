@@ -1,0 +1,47 @@
+{
+  "_sobre": "Pares de calibração do limiar da duplicata semântica (RN-681, ADR 0198). `duplicata` = o aviso TEM de sair; `distinta` = o aviso NÃO pode sair. Os vetores ficam em vetores.json, gravados por apps/api/scripts/gravar-vetores-de-duplicata.ts contra o Ollama real — nunca à mão.",
+  "duplicata": [
+    {
+      "origem": "achado R",
+      "a": "Endpoint público de saudação determinística",
+      "b": "Endpoint GET /hello público que devolve saudação imediata"
+    },
+    {
+      "origem": "paráfrase",
+      "a": "Cadastro de usuário com e-mail",
+      "b": "Registrar novo usuário a partir do e-mail"
+    },
+    {
+      "origem": "paráfrase",
+      "a": "Limite de 50 itens no carrinho",
+      "b": "O carrinho aceita no máximo 50 produtos"
+    }
+  ],
+  "distinta": [
+    {
+      "origem": "mesmo recurso, outra operação",
+      "a": "Endpoint público de saudação determinística",
+      "b": "Endpoint autenticado de exclusão de conta"
+    },
+    {
+      "origem": "mesmo assunto, outra capacidade",
+      "a": "Endpoint público de saudação determinística",
+      "b": "Métricas de latência do endpoint de saudação"
+    },
+    {
+      "origem": "mesmo canal, outro fluxo",
+      "a": "Cadastro de usuário com e-mail",
+      "b": "Recuperação de senha por e-mail"
+    },
+    {
+      "origem": "mesmo domínio, outra regra",
+      "a": "Limite de 50 itens no carrinho",
+      "b": "Frete grátis acima de 200 reais"
+    },
+    {
+      "origem": "mesma palavra, outra regra",
+      "a": "Saudação com nome",
+      "b": "Saudação no idioma de quem chama"
+    }
+  ]
+}

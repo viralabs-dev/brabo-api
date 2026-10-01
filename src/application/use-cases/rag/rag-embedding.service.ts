@@ -13,6 +13,21 @@ export interface EmbedManyResult {
   /** `false` quando o provider de embedding falhou — ver RN-233. */
   available: boolean;
   reason?: string;
+  /**
+   * O que o provider DISSE ter consumido, somado sobre os lotes que
+   * responderam (ADR 0198). A indexação e a busca ignoram — o gasto delas
+   * segue fora do metering pelo corte do ADR 0075 —; a checagem de duplicata
+   * semântica (RN-681) é quem o grava, porque acontece dentro de sessão.
+   */
+  uso?: UsoDeEmbedding;
+}
+
+export interface UsoDeEmbedding {
+  inputTokens: number;
+  /** `true` se algum lote veio sem contagem do provider (RN-041). */
+  estimated: boolean;
+  /** O modelo que o provider disse ter usado (nem sempre o pedido). */
+  model: string;
 }
 
 export interface EmbedQueryResult {
@@ -68,6 +83,11 @@ export class RagEmbeddingService {
     }
 
     const vetores: (number[] | null)[] = [];
+    const uso: UsoDeEmbedding = {
+      inputTokens: 0,
+      estimated: false,
+      model: RAG_EMBEDDING_MODEL,
+    };
     for (
       let inicio = 0;
       inicio < texts.length;
@@ -79,6 +99,9 @@ export class RagEmbeddingService {
           model: RAG_EMBEDDING_MODEL,
         });
         for (const vetor of resultado.vectors) vetores.push([...vetor]);
+        uso.inputTokens += resultado.inputTokens;
+        uso.estimated = uso.estimated || resultado.estimated;
+        uso.model = resultado.model;
       } catch (erro) {
         const motivo = descreverErro(erro);
         this.logger.warn(
@@ -88,10 +111,10 @@ export class RagEmbeddingService {
         // puxado) — repetir lote a lote só multiplicaria o timeout. O
         // restante deste lote e de todos os seguintes fica sem vetor.
         for (let i = inicio; i < texts.length; i++) vetores.push(null);
-        return { vectors: vetores, available: false, reason: motivo };
+        return { vectors: vetores, available: false, reason: motivo, uso };
       }
     }
-    return { vectors: vetores, available: true };
+    return { vectors: vetores, available: true, uso };
   }
 
   async embedQuery(text: string): Promise<EmbedQueryResult> {
