@@ -6,7 +6,9 @@ import type { Story } from './backlog.entity';
  * O que isto não é: um juiz de sinônimos. "Endpoint público de saudação
  * determinística" e "Endpoint público GET /hello que responde saudação
  * imediata" — o par exato do achado — continuam passando como distintos,
- * porque separá-los é julgamento e não cabe num `if`.
+ * porque separá-los é julgamento e não cabe num `if`. Quem os aproxima é a
+ * checagem SEMÂNTICA da RN-681 (`duplicata-semantica.ts`, embedding com
+ * limiar), que também só avisa — este arquivo continua mecânico.
  *
  * O que sobra é o que dá para afirmar sem modelo, e são duas coisas
  * diferentes, com respostas diferentes de propósito:
