@@ -175,7 +175,8 @@ describe('AcceptParallelizationUseCase', () => {
     await useCase.execute('proj-1', 'sess-1', 'api', 'user-1');
 
     expect(instrucoes).toEqual([]);
-    expect(autonomias).toHaveLength(3);
+    // RN-689: só o commit — push e PR estão no teto da RN-418.
+    expect(autonomias.map((a) => a.type)).toEqual(['git_commit']);
   });
 
   describe('delegação Dev Lead → dev (área dev, ADR 0094)', () => {
