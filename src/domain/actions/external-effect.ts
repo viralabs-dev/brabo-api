@@ -226,6 +226,24 @@ function casaPrefixo(prefixo: string[], tokens: string[]): boolean {
   return alvo === prefixo.length;
 }
 
+/**
+ * Um PADRÃO de "Sempre permitir" (os tokens que ele casaria por prefixo)
+ * alcança um teto da RN-418? (RN-675.) Alcança quando é verbo privilegiado ou
+ * quando é PREFIXO de uma regra de efeito externo — `git` e `git remote`
+ * cobririam, por casamento de prefixo, `git push` e `git remote add`. A regra
+ * dentro do padrão (`git push origin`) nem chega aqui: o clique sobre esse
+ * comando é recusado inteiro antes (`motivoDeRecusaSempreAprovar`).
+ */
+export function padraoAlcancaTeto(tokens: readonly string[]): boolean {
+  if (tokens.length === 0) return false;
+  if (VERBOS_PRIVILEGIADOS.includes(tokens[0])) return true;
+  return REGRAS.some(
+    (r) =>
+      tokens.length <= r.prefixo.length &&
+      tokens.every((token, i) => token === r.prefixo[i]),
+  );
+}
+
 /** A mensagem que o agente lê. Diz o que fazer, não só o que não fazer. */
 export function mensagemDeEfeitoExterno(efeito: EfeitoExterno): string {
   return (

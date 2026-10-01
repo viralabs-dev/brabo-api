@@ -125,27 +125,30 @@ export class ProposeActionUseCase {
     // Contexto todo buscado ANTES de chamar decide() — a função em si é
     // pura (ver domain/actions/decide.ts), zero IO.
     //
-    // `containerExecutionActive` (ADR 0134/RN-492) só consulta o ciclo de
-    // vida do container quando a pergunta pode fazer diferença — terminal
-    // num projeto `container` — poupando a query em todo o resto (git_push,
-    // container_start, projeto `mounted`/`runner`, etc.).
-    const [
-      effectiveRole,
-      autonomia,
-      permissionsFile,
-      containerExecutionActive,
-    ] = await Promise.all([
-      this.resolveEffectiveRole.forProject(session.createdBy, projectId),
-      input.actor.kind === 'agent'
-        ? this.agentAutonomy.resolve(projectId, input.actor.id, actionType)
-        : Promise.resolve(null),
-      this.permissionsFileStore.read(project),
-      actionType === 'terminal' && project.executionMode === 'container'
-        ? this.obterCicloDeVidaDoContainer
-            .execute(projectId)
-            .then((ciclo) => ciclo?.status === 'running')
-        : Promise.resolve(false),
-    ]);
+    // O ciclo de vida do container só é consultado quando a pergunta pode
+    // fazer diferença — terminal num projeto `container` ou `mounted` —,
+    // poupando a query em todo o resto (git_push, container_start, `runner`).
+    // Dele saem DOIS fatos distintos: ONDE o comando roda
+    // (`execucaoNoContainer`, a raiz do escopo — RN-669, os dois modos que o
+    // engine executa pelo broker, RN-502) e o PISO de auto-aprovação
+    // (`containerExecutionActive`, ADR 0134/RN-493 — só `container`).
+    const [effectiveRole, autonomia, permissionsFile, execucaoNoContainer] =
+      await Promise.all([
+        this.resolveEffectiveRole.forProject(session.createdBy, projectId),
+        input.actor.kind === 'agent'
+          ? this.agentAutonomy.resolve(projectId, input.actor.id, actionType)
+          : Promise.resolve(null),
+        this.permissionsFileStore.read(project),
+        actionType === 'terminal' &&
+        (project.executionMode === 'container' ||
+          project.executionMode === 'mounted')
+          ? this.obterCicloDeVidaDoContainer
+              .execute(projectId)
+              .then((ciclo) => ciclo?.status === 'running')
+          : Promise.resolve(false),
+      ]);
+    const containerExecutionActive =
+      execucaoNoContainer && project.executionMode === 'container';
 
     const command =
       actionType === 'terminal' ? commandFromPayload(input.payload) : undefined;
@@ -176,6 +179,7 @@ export class ProposeActionUseCase {
         // no `local` (RN-169).
         projectScopeRoot: projectScopeRoot(project),
         containerExecutionActive,
+        execucaoNoContainer,
       },
     );
 

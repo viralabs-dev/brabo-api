@@ -112,14 +112,76 @@ export function tokensDeCaminho(segmentos: string[][]): string[] {
 export function comandoNoEscopo(
   segmentos: string[][],
   cwd: string | undefined,
-  raiz: string,
+  raiz: string | readonly string[],
 ): boolean {
+  const raizes = typeof raiz === 'string' ? [raiz] : raiz;
+  const dentro = (caminho: string) =>
+    raizes.some((r) => dentroDoEscopo(caminho, r));
   // Sem `cwd` o executor roda no workspace compartilhado do projeto, que é a
-  // própria raiz — dentro do escopo por construção.
-  const base = cwd ?? raiz;
-  if (!dentroDoEscopo(base, raiz)) return false;
+  // PRIMEIRA raiz — dentro do escopo por construção.
+  const base = cwd ?? raizes[0];
+  if (base === undefined || !dentro(base)) return false;
 
   return tokensDeCaminho(segmentos).every((token) =>
-    dentroDoEscopo(normalizarCaminho(token, base), raiz),
+    dentro(normalizarCaminho(token, base)),
   );
+}
+
+/**
+ * O ponto de montagem do container do projeto — CÓPIA de `PONTO_DE_MONTAGEM`
+ * (`packages/docker-port/src/docker-port.ts`), porque a api não consome a
+ * porta de Docker (`api-nao-consome-docker-port.spec.ts`). A cópia é travada
+ * por teste contra a fonte (`path-scope.spec.ts`), como a do engine
+ * (`@ponto_de_montagem` em `terminal_executor.ex`).
+ */
+export const PONTO_DE_MONTAGEM_DO_CONTAINER = '/work';
+
+/** O `/tmp` do PRÓPRIO container — não o do host (RN-669). */
+export const TMP_DO_CONTAINER = '/tmp';
+
+/**
+ * O `cwd` de HOST traduzido para dentro do container — a MESMA tradução que o
+ * engine faz antes de chamar o broker (`cwd_para_container/2` em
+ * `apps/engine/lib/engine/actions/terminal_executor.ex`): a raiz do projeto
+ * vira `/work`, o que está sob ela (os `.worktrees` dos dev agents inclusive)
+ * vira `/work/...`, e o que está FORA dela segue como veio — o engine também
+ * não adivinha, e o broker recusa o que não estiver em `/work`.
+ *
+ * Em `mounted` a tradução é bijetiva: o bind-mount é a identidade da pasta do
+ * projeto (ADR 0141/0144), e `/work/x` é exatamente `<pasta>/x`.
+ */
+export function cwdNoContainer(cwd: string, raizNoHost: string): string {
+  const c = semBarraFinal(normalizarCaminho(cwd)) || '/';
+  const r = semBarraFinal(posix.normalize(raizNoHost));
+  if (c === r) return PONTO_DE_MONTAGEM_DO_CONTAINER;
+  if (r.length > 0 && c.startsWith(`${r}/`)) {
+    return PONTO_DE_MONTAGEM_DO_CONTAINER + c.slice(r.length);
+  }
+  return c;
+}
+
+/**
+ * O escopo de um comando que roda DENTRO do container do projeto (RN-669, ADR
+ * 0189, AT-258). Raízes: `/work` — o ponto de montagem, onde moram a pasta do
+ * projeto e os `.worktrees` dos dev agents — e o `/tmp` do container. O `cwd`
+ * chega como caminho do HOST e é traduzido antes (`cwdNoContainer`); sem `cwd`
+ * o comando roda em `/work`.
+ *
+ * Por que `/tmp` entra aqui e não no host: dentro do container ele é do
+ * container, descartável e de mais ninguém; no host é compartilhado com tudo
+ * o que roda na máquina — inclusive o próprio Brabo.
+ */
+export function comandoNoEscopoDoContainer(
+  segmentos: string[][],
+  cwd: string | undefined,
+  raizNoHost: string,
+): boolean {
+  const base =
+    cwd === undefined
+      ? PONTO_DE_MONTAGEM_DO_CONTAINER
+      : cwdNoContainer(cwd, raizNoHost);
+  return comandoNoEscopo(segmentos, base, [
+    PONTO_DE_MONTAGEM_DO_CONTAINER,
+    TMP_DO_CONTAINER,
+  ]);
 }

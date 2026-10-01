@@ -30,9 +30,9 @@ export class DrizzleAgentAutonomyRepository implements AgentAutonomyRepository {
     const db = currentDb(this.rootDb);
     // Busca a regra ESPECÍFICA e a regra CURINGA (`*`, "auto mode" — RN-153)
     // numa query só: uma linha por `actionType` distinto (a unique constraint
-    // do schema garante no máximo duas linhas aqui). A específica sempre
-    // vence — é o que deixa "auto mode ligado, mas este tipo em deny" fazer o
-    // que a frase diz.
+    // do schema garante no máximo duas linhas aqui). A específica vence — é o
+    // que deixa "auto mode ligado, mas este tipo em deny" fazer o que a frase
+    // diz —, salvo quando ela diz o MESMO `auto_approve` da curinga (abaixo).
     const rows = await db
       .select({
         actionType: agentAutonomy.actionType,
@@ -50,11 +50,37 @@ export class DrizzleAgentAutonomyRepository implements AgentAutonomyRepository {
         ),
       );
     const especifica = rows.find((r) => r.actionType === actionType);
-    if (especifica) return { mode: especifica.mode, origem: 'especifica' };
     const curinga = rows.find(
       (r) => r.actionType === AGENT_AUTONOMY_ALL_ACTIONS,
     );
-    return curinga ? { mode: curinga.mode, origem: 'curinga' } : null;
+    const modoEspecifico = especifica?.mode ?? null;
+
+    // PILOTO AUTOMÁTICO (RN-670, ADR 0189, AT-255): específica `auto_approve`
+    // sob curinga `auto_approve` resolve como a CURINGA. É o que "Sempre
+    // permitir" de dev agent grava (RN-509), e até aqui essa linha sombreava a
+    // curinga com origem `especifica` — `decide()` deixava de reconhecer o
+    // modo automático e o composto sintetizado e o escopo voltavam a pedir
+    // aprovação (uso real de 29/09: 97 + 37 pedidos com o piloto "ligado").
+    // A específica não perde nada com isso: ela não dá a este tipo um modo
+    // que a curinga não dê. E continua vencendo quando diz OUTRA coisa
+    // (`require_approval`/`deny`), ou quando a curinga está desligada.
+    if (modoEspecifico === 'auto_approve' && curinga?.mode === 'auto_approve') {
+      return {
+        mode: 'auto_approve',
+        origem: 'curinga',
+        especifica: modoEspecifico,
+      };
+    }
+    if (especifica) {
+      return {
+        mode: especifica.mode,
+        origem: 'especifica',
+        especifica: modoEspecifico,
+      };
+    }
+    return curinga
+      ? { mode: curinga.mode, origem: 'curinga', especifica: null }
+      : null;
   }
 
   async upsert(

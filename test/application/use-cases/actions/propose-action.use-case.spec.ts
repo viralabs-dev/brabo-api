@@ -1103,3 +1103,77 @@ describe('ProposeActionUseCase — a raiz do escopo no event log (RN-609)', () =
     expect(payload.reason).toBe('default (sem regra aplicável)');
   });
 });
+
+/**
+ * A raiz do escopo é a pasta REAL de execução (RN-669, ADR 0189, AT-258): com
+ * container `running` registrado, `container` E `mounted` comparam com `/work`
+ * + `/tmp` do container; sem ele, com a pasta do projeto no host. O PISO de
+ * auto-aprovação (RN-493) continua só do modo `container`.
+ */
+describe('ProposeActionUseCase — escopo na pasta real de execução (RN-669)', () => {
+  const baseOriginal = process.env.BRABO_PROJECTS_BASE;
+  afterEach(() => {
+    if (baseOriginal === undefined) delete process.env.BRABO_PROJECTS_BASE;
+    else process.env.BRABO_PROJECTS_BASE = baseOriginal;
+  });
+
+  async function projetoMontado() {
+    process.env.BRABO_PROJECTS_BASE = '/home/usuario/brabo';
+    const ctx = await setupSession();
+    const [project] = await db
+      .update(projects)
+      .set({
+        executionMode: 'mounted',
+        workspacePath: '/home/usuario/brabo/loja',
+      })
+      .where(eq(projects.id, ctx.project.id))
+      .returning();
+    await agentAutonomyRepo.upsert(
+      project.id,
+      'dev-api',
+      'terminal',
+      'auto_approve',
+    );
+    return { ...ctx, project };
+  }
+
+  function terminal(projectId: string, sessionId: string, command: string) {
+    return proposeAction.execute(projectId, sessionId, {
+      actionType: 'terminal',
+      actor: { kind: 'agent', id: 'dev-api' },
+      payload: { command, cwd: '/home/usuario/brabo/loja/.worktrees/dev-api' },
+    });
+  }
+
+  it('mounted com container de pé: `/work` e `/tmp` estão dentro, para a regra específica', async () => {
+    const { project, session } = await projetoMontado();
+    await marcarContainerRunning(project.id);
+
+    for (const command of ['ls /work/src', 'npm test > /tmp/saida.txt']) {
+      const action = await terminal(project.id, session.id, command);
+      expect(action.resolvedPolicy).toBe('auto_approve');
+    }
+  });
+
+  it('mounted SEM container: `/tmp` e `/work` seguem fora (a raiz é a pasta do host)', async () => {
+    const { project, session } = await projetoMontado();
+
+    for (const command of ['ls /tmp', 'ls /work/src']) {
+      const action = await terminal(project.id, session.id, command);
+      expect(action.resolvedPolicy).toBe('require_approval');
+      expect(action.status).toBe('pending');
+    }
+  });
+
+  it('mounted com container de pé NÃO ganha o piso do modo container (RN-493)', async () => {
+    const { project, session } = await projetoMontado();
+    await marcarContainerRunning(project.id);
+
+    const action = await proposeAction.execute(project.id, session.id, {
+      actionType: 'terminal',
+      actor: { kind: 'agent', id: 'qa-automacao' },
+      payload: { command: 'npm test' },
+    });
+    expect(action.resolvedPolicy).toBe('require_approval');
+  });
+});

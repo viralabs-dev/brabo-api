@@ -96,12 +96,53 @@ describe('DrizzleAgentAutonomyRepository — precedência do curinga (RN-153)', 
     expect(await repo.resolve(project.id, 'dev-api', 'terminal')).toEqual({
       mode: 'auto_approve',
       origem: 'curinga',
+      especifica: null,
     });
 
     await repo.upsert(project.id, 'dev-api', 'terminal', 'require_approval');
     expect(await repo.resolve(project.id, 'dev-api', 'terminal')).toEqual({
       mode: 'require_approval',
       origem: 'especifica',
+      especifica: 'require_approval',
+    });
+  });
+
+  // AT-255 (RN-670, ADR 0189): o cenário MEDIDO no uso real de 29/09 — a
+  // curinga ligada nos sete devs e, segundos depois, "Sempre permitir"
+  // gravando `terminal: auto_approve` por cima. A específica tinha o MESMO
+  // modo da curinga e mesmo assim a sombreava, com origem `especifica`, e o
+  // piloto perdia as isenções de escopo e de composto sintetizado.
+  it('específica `auto_approve` sob curinga `auto_approve` resolve como CURINGA: o piloto não se desliga (RN-670)', async () => {
+    const project = await criarProjeto();
+    await repo.upsert(
+      project.id,
+      'dev-api',
+      AGENT_AUTONOMY_ALL_ACTIONS,
+      'auto_approve',
+    );
+    await repo.upsert(project.id, 'dev-api', 'terminal', 'auto_approve');
+
+    expect(await repo.resolve(project.id, 'dev-api', 'terminal')).toEqual({
+      mode: 'auto_approve',
+      origem: 'curinga',
+      especifica: 'auto_approve',
+    });
+  });
+
+  it('com a curinga DESLIGADA, a específica `auto_approve` volta a ser só ela (o escopo vale de novo)', async () => {
+    const project = await criarProjeto();
+    await repo.upsert(
+      project.id,
+      'dev-api',
+      AGENT_AUTONOMY_ALL_ACTIONS,
+      'require_approval',
+    );
+    await repo.upsert(project.id, 'dev-api', 'terminal', 'auto_approve');
+
+    expect(await repo.resolve(project.id, 'dev-api', 'terminal')).toEqual({
+      mode: 'auto_approve',
+      origem: 'especifica',
+      especifica: 'auto_approve',
     });
   });
 

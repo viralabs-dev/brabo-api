@@ -41,6 +41,7 @@ import type { PermissionsFileStore } from '../../../../src/application/ports/per
 import type { ApiToEngineClient } from '../../../../src/application/ports/api-to-engine-client.port';
 import type { TerminalExecutionResult } from '../../../../src/domain/actions/terminal-execution-result';
 import { BraboMetrics } from '../../../../src/infrastructure/observability/brabo-metrics';
+import { AGENT_AUTONOMY_ALL_ACTIONS } from '../../../../src/domain/actions/decide';
 
 const { db, pool } = createTestDb();
 const unitOfWork = new DrizzleUnitOfWork(db);
@@ -610,7 +611,12 @@ describe('ApproveAlwaysActionUseCase', () => {
         (e) => e.type === 'permission.granted',
       );
       expect(concessoes).toEqual([
-        expect.objectContaining({ payload: { pattern: 'Terminal(echo oi)' } }),
+        expect.objectContaining({
+          payload: {
+            pattern: 'Terminal(echo oi)',
+            patterns: ['Terminal(echo oi)'],
+          },
+        }),
       ]);
     });
 
@@ -834,5 +840,148 @@ describe('ApproveAlwaysActionUseCase', () => {
       const file = await permissionsFileStore.read(project);
       expect(file.allow).toEqual(['GitCommit()']);
     });
+  });
+});
+
+/**
+ * AT-255 (RN-670, ADR 0189) — o cenário MEDIDO no uso real de 29/09, como
+ * teste de não-regressão: o modo automático ligado (curinga `*:
+ * auto_approve`) e, depois, "Sempre permitir" num dev agent. O clique grava
+ * `terminal: auto_approve` para o agente (RN-509) e, até aqui, essa linha
+ * SOMBREAVA a curinga: o repositório a devolvia com origem `especifica`, e o
+ * composto sintetizado e o escopo voltavam a pedir aprovação — 97 + 37
+ * pedidos no uso real, com o piloto "ligado" na tela.
+ */
+describe('ApproveAlwaysActionUseCase — "Sempre permitir" não desliga o piloto (RN-670)', () => {
+  it('curinga ligada + sempre permitir: composto sem regra e caminho fora da pasta seguem sem pedido de aprovação', async () => {
+    // A pendência nasce ANTES de a curinga ser ligada — é como ela existia no
+    // uso real (o clique foi sobre o que tinha ficado na fila).
+    const { project, session, user, action } = await setupPendingTerminalAction(
+      'cd /work && npm test',
+      'dev-api',
+    );
+    expect(action.status).toBe('pending');
+
+    await agentAutonomyRepo.upsert(
+      project.id,
+      'dev-api',
+      AGENT_AUTONOMY_ALL_ACTIONS,
+      'auto_approve',
+    );
+    await approveAlwaysAction.execute(
+      project.id,
+      session.id,
+      action.id,
+      user.id,
+    );
+
+    // O clique continua gravando a específica — ela é o que fica valendo se
+    // o toggle voltar para manual.
+    const linhas = await agentAutonomyRepo.listForProject(project.id);
+    expect(linhas).toContainEqual({
+      agentId: 'dev-api',
+      actionType: 'terminal',
+      mode: 'auto_approve',
+    });
+
+    const depois = await proposeAction.execute(project.id, session.id, {
+      actionType: 'terminal',
+      actor: { kind: 'agent', id: 'dev-api' },
+      payload: { command: 'cd /work && npm test > /tmp/saida.txt' },
+    });
+    expect(depois.resolvedPolicy).toBe('auto_approve');
+    expect(depois.status).toBe('executed');
+  });
+
+  it('caso de falha: com o toggle de volta em manual, a específica gravada pelo clique segue com o escopo', async () => {
+    const { project, session, user, action } = await setupPendingTerminalAction(
+      'cd /work && npm test',
+      'dev-api',
+    );
+    await agentAutonomyRepo.upsert(
+      project.id,
+      'dev-api',
+      AGENT_AUTONOMY_ALL_ACTIONS,
+      'auto_approve',
+    );
+    await approveAlwaysAction.execute(
+      project.id,
+      session.id,
+      action.id,
+      user.id,
+    );
+    await agentAutonomyRepo.upsert(
+      project.id,
+      'dev-api',
+      AGENT_AUTONOMY_ALL_ACTIONS,
+      'require_approval',
+    );
+
+    const depois = await proposeAction.execute(project.id, session.id, {
+      actionType: 'terminal',
+      actor: { kind: 'agent', id: 'dev-api' },
+      payload: { command: 'cat /etc/passwd' },
+    });
+    expect(depois.resolvedPolicy).toBe('require_approval');
+    expect(depois.status).toBe('pending');
+  });
+});
+
+/**
+ * AT-257 (RN-675): "Sempre permitir" grava VERBO + SUBCOMANDO, um padrão por
+ * segmento. Antes gravava o comando inteiro, byte a byte — 173 cliques no uso
+ * real de 29/09, porque o próximo comando nunca era igual — e o composto virava
+ * UM padrão que só casava o primeiro segmento.
+ */
+describe('ApproveAlwaysActionUseCase — a unidade do padrão é verbo + subcomando (RN-675)', () => {
+  it('o clique num composto libera o PRÓXIMO composto com os mesmos verbos e subcomandos', async () => {
+    const { project, session, user, action } = await setupPendingTerminalAction(
+      'cd src/app && npm test',
+    );
+    await approveAlwaysAction.execute(
+      project.id,
+      session.id,
+      action.id,
+      user.id,
+    );
+
+    const file = await permissionsFileStore.read(project);
+    expect(file.allow).toEqual(['Terminal(cd)', 'Terminal(npm test)']);
+
+    const depois = await proposeAction.execute(project.id, session.id, {
+      actionType: 'terminal',
+      actor: { kind: 'agent', id: 'qa-automacao' },
+      payload: { command: 'cd lib/core && npm test -- --coverage' },
+    });
+    expect(depois.resolvedPolicy).toBe('auto_approve');
+  });
+
+  it('caso de falha: outro subcomando do mesmo verbo continua pedindo', async () => {
+    const { project, session, user, action } =
+      await setupPendingTerminalAction('npm test');
+    await approveAlwaysAction.execute(
+      project.id,
+      session.id,
+      action.id,
+      user.id,
+    );
+
+    const depois = await proposeAction.execute(project.id, session.id, {
+      actionType: 'terminal',
+      actor: { kind: 'agent', id: 'qa-automacao' },
+      payload: { command: 'npm install left-pad' },
+    });
+    expect(depois.resolvedPolicy).toBe('require_approval');
+  });
+
+  it('o teto da RN-418 segue recusando o clique inteiro num composto que empurra', async () => {
+    const { project, session, user, action } = await setupPendingTerminalAction(
+      'npm test && git push origin dev',
+    );
+    await expect(
+      approveAlwaysAction.execute(project.id, session.id, action.id, user.id),
+    ).rejects.toThrow(BadRequestException);
+    const file = await permissionsFileStore.read(project);
+    expect(file.allow).toEqual([]);
   });
 });
