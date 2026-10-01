@@ -47,6 +47,7 @@ import { CreateModuleMapUseCase } from '../../../application/use-cases/architect
 import { AssignStoryModulesUseCase } from '../../../application/use-cases/architecture/assign-story-modules.use-case';
 import { CreateC4DiagramUseCase } from '../../../application/use-cases/architecture/create-c4-diagram.use-case';
 import { RouteModulesToInfraUseCase } from '../../../application/use-cases/architecture/route-modules-to-infra.use-case';
+import { DeclareModuleContractsUseCase } from '../../../application/use-cases/architecture/declare-module-contracts.use-case';
 import { DecidirImagemDoProjetoUseCase } from '../../../application/use-cases/containers/decidir-imagem-do-projeto.use-case';
 import { ClaimNextTaskUseCase } from '../../../application/use-cases/execution/claim-next-task.use-case';
 import { MarkTaskUseCase } from '../../../application/use-cases/execution/mark-task.use-case';
@@ -96,6 +97,8 @@ import { CreateModuleMapInternalDto } from './dto/create-module-map-internal.dto
 import { AssignStoryModulesInternalDto } from './dto/assign-story-modules-internal.dto';
 import { CreateC4DiagramInternalDto } from './dto/create-c4-diagram-internal.dto';
 import { RouteModulesToInfraInternalDto } from './dto/route-modules-to-infra-internal.dto';
+import { DeclareModuleContractsInternalDto } from './dto/declare-module-contracts-internal.dto';
+import { ContratosDeclaradosResponseDto } from './dto/module-contracts.response.dto';
 import { DecideProjectImageInternalDto } from './dto/decide-project-image-internal.dto';
 import { ImagemDecididaResponseDto } from '../containers/dto/containers.response.dto';
 import { ClaimTaskInternalDto } from './dto/claim-task-internal.dto';
@@ -172,6 +175,7 @@ export class InternalSessionsController {
     private readonly createModuleMap: CreateModuleMapUseCase,
     private readonly createC4Diagram: CreateC4DiagramUseCase,
     private readonly routeModulesToInfra: RouteModulesToInfraUseCase,
+    private readonly declareModuleContracts: DeclareModuleContractsUseCase,
     private readonly assignStoryModules: AssignStoryModulesUseCase,
     private readonly decidirImagem: DecidirImagemDoProjetoUseCase,
     private readonly claimNextTask: ClaimNextTaskUseCase,
@@ -630,6 +634,38 @@ export class InternalSessionsController {
   ) {
     return this.routeModulesToInfra.execute(dto.projectId, sessionId, {
       roteamento: dto.roteamento,
+    });
+  }
+
+  /**
+   * Ferramenta `declare_module_contracts` do Arquiteto (ADR 0200, RN-684): o
+   * que cada módulo EXPÕE a quem depende dele. É o que os dev agents leem
+   * (`GET internal/projects/:projectId/module-contracts`) em vez de abrir o
+   * worktree de outro módulo.
+   */
+  @Post(':sessionId/module-contracts')
+  @ApiOperation({
+    summary: 'Declares a new version of the contracts between modules',
+    description:
+      'The artifact IS the `artifact.module_contracts` event: immutable, ' +
+      'versioned, and with an author, alongside `artifact.module_map`. Each ' +
+      'call carries the WHOLE list and replaces the previous version. What a ' +
+      "module consumes is not written here: it is the current module_map's " +
+      '`dependsOn`.',
+  })
+  @ApiCreatedResponse({ type: ContratosDeclaradosResponseDto })
+  @ApiBadRequestResponse({
+    description:
+      'Empty list, repeated module, module outside the current module_map ' +
+      '(or no module_map), a module with an empty or oversized `expoe`, an ' +
+      'item with an unknown `tipo`, or a missing/oversized `assinatura`.',
+  })
+  moduleContracts(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: DeclareModuleContractsInternalDto,
+  ) {
+    return this.declareModuleContracts.execute(dto.projectId, sessionId, {
+      contratos: dto.contratos,
     });
   }
 
