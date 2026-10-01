@@ -11,6 +11,7 @@ import { RecordHandoffUseCase } from '../use-cases/graph/record-handoff.use-case
 import { RecordHypothesisUseCase } from '../use-cases/graph/record-hypothesis.use-case';
 import { RecordAnamneseProfileUseCase } from '../use-cases/graph/record-anamnese-profile.use-case';
 import { RecordInteractionUseCase } from '../use-cases/graph/record-interaction.use-case';
+import { RecordProfileFactUseCase } from '../use-cases/graph/record-profile-fact.use-case';
 import { GraphUnavailableError } from '../../domain/graph/graph-errors';
 import { GRAPH_PROJECTION_AGGREGATE_TYPE } from '../../domain/graph/graph-projection-events';
 import {
@@ -70,6 +71,7 @@ export class GraphProjector implements OnModuleInit, OnModuleDestroy {
     recordHypothesis: RecordHypothesisUseCase,
     recordAnamneseProfile: RecordAnamneseProfileUseCase,
     recordInteraction: RecordInteractionUseCase,
+    recordProfileFact: RecordProfileFactUseCase,
   ) {
     // A superfície de injeção NÃO mudou quando a tradução saiu daqui: o
     // tradutor é montado com as mesmas dependências, e a reprojeção monta
@@ -80,6 +82,7 @@ export class GraphProjector implements OnModuleInit, OnModuleDestroy {
       recordHypothesis,
       recordAnamneseProfile,
       recordInteraction,
+      recordProfileFact,
     );
   }
 

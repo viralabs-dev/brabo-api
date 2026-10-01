@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { SessionsUseCasesModule } from '../sessions/sessions-use-cases.module';
 import { GitUseCasesModule } from '../git/git-use-cases.module';
 import { EngineHttpClientsModule } from '../../../infrastructure/http-clients/engine-http-clients.module';
+// RN-680 (ADR 0196): a mensagem ao agente leva os fatos do perfil do autor,
+// lidos do grafo por `QueryUserContextUseCase`.
+import { GraphUseCasesModule } from '../graph/graph-use-cases.module';
 import { ActivateAgentUseCase } from './activate-agent.use-case';
 import { SendAgentMessageUseCase } from './send-agent-message.use-case';
 import { ConfirmReadinessUseCase } from './confirm-readiness.use-case';
@@ -53,7 +56,12 @@ const USE_CASES = [
   // aceita o handoff depende do provisionamento, e o provisionamento não sabe
   // que handoff existe. `git-use-cases.module.ts` não importa este módulo, então
   // não há ciclo.
-  imports: [SessionsUseCasesModule, GitUseCasesModule, EngineHttpClientsModule],
+  imports: [
+    SessionsUseCasesModule,
+    GitUseCasesModule,
+    EngineHttpClientsModule,
+    GraphUseCasesModule,
+  ],
   providers: [
     ...USE_CASES,
     ResolverIdiomaDaRespostaUseCase,

@@ -46,7 +46,7 @@ function buildHarness(
   } as unknown as UnitOfWork;
 
   const projects = {
-    listMembers: () =>
+    listEffectiveMembers: () =>
       Promise.resolve([
         { userId: 'user-1', name: 'Dani', email: 'd@x.dev', role: 'owner' },
       ]),

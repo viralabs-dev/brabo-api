@@ -36,6 +36,7 @@ export const GRAPH_PROJECTABLE_EVENT_TYPES: ReadonlySet<string> = new Set([
   'handoff.offered',
   'psychologist.hypothesis_proposed',
   'anamnese.profile_updated',
+  'psychologist.hypothesis_accepted',
   'session.closed',
   'session.closed_abnormally',
 ]);

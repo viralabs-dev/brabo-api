@@ -18,6 +18,7 @@ import { RecordHandoffUseCase } from '../application/use-cases/graph/record-hand
 import { RecordHypothesisUseCase } from '../application/use-cases/graph/record-hypothesis.use-case';
 import { RecordAnamneseProfileUseCase } from '../application/use-cases/graph/record-anamnese-profile.use-case';
 import { RecordInteractionUseCase } from '../application/use-cases/graph/record-interaction.use-case';
+import { RecordProfileFactUseCase } from '../application/use-cases/graph/record-profile-fact.use-case';
 
 /**
  * Reconstrói o grafo de conhecimento (Neo4j) a partir do event log — o
@@ -131,6 +132,7 @@ export function montarTradutor(
     new RecordHypothesisUseCase(grafo),
     new RecordAnamneseProfileUseCase(grafo),
     new RecordInteractionUseCase(grafo),
+    new RecordProfileFactUseCase(grafo),
   );
 }
 

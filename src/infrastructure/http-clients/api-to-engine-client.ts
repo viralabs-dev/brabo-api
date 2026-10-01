@@ -181,12 +181,17 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     agent: string,
     text: string,
     idiomaDaResposta: string | null = null,
+    perfilDoAutor: string | null = null,
   ): Promise<void> {
     await this.postComandoDeTurno(
       `/internal/sessions/${sessionId}/agent/message`,
-      idiomaDaResposta
-        ? { projectId, agent, text, idiomaDaResposta }
-        : { projectId, agent, text },
+      {
+        projectId,
+        agent,
+        text,
+        ...(idiomaDaResposta ? { idiomaDaResposta } : {}),
+        ...(perfilDoAutor ? { perfilDoAutor } : {}),
+      },
       [['sessionId', sessionId]],
     );
   }

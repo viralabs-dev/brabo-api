@@ -45,7 +45,7 @@ function buildHarness(role: Role | null, membros = MEMBROS) {
   const optOuts = { optOut, optIn } as unknown as AnamneseOptOutRepository;
 
   const projects = {
-    listMembers: () => Promise.resolve(membros),
+    listEffectiveMembers: () => Promise.resolve(membros),
   } as unknown as ProjectRepository;
 
   const resolveEffectiveRole = {
