@@ -131,8 +131,8 @@ export class OfertaInternaDeHandoffResponseDto extends OfertaDeHandoffResponseDt
 
 /** Why a target of the architecture confirmation was not triggered again. */
 export class AlvoJaAtendidoResponseDto {
-  @ApiProperty({ enum: ['infra', 'dev-lead'], example: 'infra' })
-  toAgent!: 'infra' | 'dev-lead';
+  @ApiProperty({ enum: ['infra'], example: 'infra' })
+  toAgent!: 'infra';
 
   @ApiProperty({ enum: ['oferta_pendente', 'agente_ativo'] })
   motivo!: 'oferta_pendente' | 'agente_ativo';
@@ -146,9 +146,11 @@ export class ConfirmacaoDeArquiteturaResponseDto {
   @ApiProperty({
     enum: ['confirmado', 'ja_oferecido'],
     description:
-      '`confirmado`: at least one target was triggered. `ja_oferecido`: both ' +
-      'targets already had a pending offer or were active in the project — ' +
-      'nothing was recorded nor asked of the engine (double click, second tab).',
+      '`confirmado`: the Infra was triggered. `ja_oferecido`: it already had a ' +
+      'pending offer or was active in the project — nothing was recorded nor ' +
+      'asked of the engine (double click, second tab). The Dev Lead is no ' +
+      'longer a target here: the Infra offers it once the container is ' +
+      '`running` (RN-672).',
   })
   desfecho!: ResultadoDaConfirmacaoDeArquitetura['desfecho'];
 

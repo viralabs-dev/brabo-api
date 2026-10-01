@@ -219,14 +219,6 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     );
   }
 
-  async offerDevHandoff(projectId: string, sessionId: string): Promise<void> {
-    await this.postCommand(
-      `/internal/sessions/${sessionId}/agent/offer-dev-handoff`,
-      { projectId },
-      [['sessionId', sessionId]],
-    );
-  }
-
   /**
    * Não usa `postCommand`: precisa distinguir o 503 ("Psicólogo desativado
    * globalmente", RN — ver `PsychologistDisabledError`) de qualquer outra
