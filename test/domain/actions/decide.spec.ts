@@ -1364,3 +1364,84 @@ describe('decide — escopo de caminho na pasta real de execução (RN-669)', ()
     expect(r.policy).toBe('require_approval');
   });
 });
+
+/**
+ * RN-689 (AT-347): o teto de efeito externo da RN-418 vale também para as
+ * ações TIPADAS `git_push` e `pr_open` — decisão do dono de 01/10. Até aqui
+ * ele só olhava `actionType === 'terminal'`, e as tipadas, com o papel mínimo
+ * cumprido, nasciam `auto_approved` por qualquer um dos três estágios.
+ * (`deploy` não é tipo de `proposed_action`: não há o que tetar.)
+ */
+describe('decide — o teto da RN-418 nas ações tipadas (RN-689)', () => {
+  const TIPADAS = ['git_push', 'pr_open'] as const;
+
+  for (const tipo of TIPADAS) {
+    it(`\`${tipo}\` com o curinga do piloto automático pede aprovação`, () => {
+      const r = decide(
+        { actionType: tipo },
+        ctx({
+          effectiveRole: 'maintainer',
+          autonomyMode: 'auto_approve',
+          autonomyOrigin: 'curinga',
+        }),
+      );
+      expect(r.policy).toBe('require_approval');
+      expect(r.reason).toMatch(/RN-418/);
+      expect(r.reason).toContain(tipo);
+    });
+
+    it(`\`${tipo}\` com regra ESPECÍFICA em auto_approve pede aprovação`, () => {
+      const r = decide(
+        { actionType: tipo },
+        ctx({
+          effectiveRole: 'owner',
+          autonomyMode: 'auto_approve',
+          autonomyOrigin: 'especifica',
+        }),
+      );
+      expect(r.policy).toBe('require_approval');
+    });
+
+    it(`\`${tipo}\` com allow no permissions.json pede aprovação`, () => {
+      const r = decide(
+        { actionType: tipo },
+        ctx({
+          effectiveRole: 'maintainer',
+          permissionsFile: {
+            ...EMPTY_PERMISSIONS_FILE,
+            allow: ['GitPush()', 'PrOpen()'],
+          },
+        }),
+      );
+      expect(r.policy).toBe('require_approval');
+    });
+
+    it(`\`${tipo}\`: deny continua vencendo o teto`, () => {
+      const r = decide(
+        { actionType: tipo },
+        ctx({ effectiveRole: 'maintainer', autonomyMode: 'deny' }),
+      );
+      expect(r.policy).toBe('deny');
+    });
+  }
+
+  it('`git_commit` NÃO entra no teto — fica na máquina (RN-670)', () => {
+    const r = decide(
+      { actionType: 'git_commit' },
+      ctx({ autonomyMode: 'auto_approve', autonomyOrigin: 'curinga' }),
+    );
+    expect(r.policy).toBe('auto_approve');
+  });
+
+  it('`git_merge` para branch NÃO protegida segue fora deste teto (tem o próprio)', () => {
+    const r = decide(
+      { actionType: 'git_merge', targetBranch: 'feature/x' },
+      ctx({
+        effectiveRole: 'maintainer',
+        autonomyMode: 'auto_approve',
+        autonomyOrigin: 'curinga',
+      }),
+    );
+    expect(r.policy).toBe('auto_approve');
+  });
+});

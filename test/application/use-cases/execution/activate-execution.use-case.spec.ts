@@ -476,8 +476,10 @@ describe('ActivateExecutionUseCase — terminal do dev', () => {
     await useCase.execute('proj-1', 'user-1');
 
     expect(autonomias.map((a) => a.type)).not.toContain('git_merge');
+    // RN-689: push e PR estão no teto da RN-418 — semeá-los seria gravar
+    // autonomia que `decide()` nunca honra.
     expect(new Set(autonomias.map((a) => a.type))).toEqual(
-      new Set(['git_commit', 'git_push', 'pr_open']),
+      new Set(['git_commit']),
     );
   });
 

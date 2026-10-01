@@ -8,6 +8,8 @@ import {
   mensagemDeEfeitoExterno,
   comandoPrivilegiadoNoComando,
   mensagemDeComandoPrivilegiado,
+  ehAcaoTipadaComEfeitoExterno,
+  mensagemDoTetoDaAcaoTipada,
 } from './external-effect';
 
 export type ActionType =
@@ -392,6 +394,23 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
   // git com efeito externo continua tendo ação TIPADA pra redirecionar
   // (`git_push`/`pr_open`/`git_merge`/`deploy`); `sudo`/`doas` não têm — a
   // mensagem só explica por que aquele comando pede decisão humana.
+  //
+  // Desde a RN-689 (AT-347, decisão do dono de 01/10) o teto vale também pela
+  // porta TIPADA: `git_push` e `pr_open` nunca são auto-aprováveis — nem pelo
+  // curinga do piloto automático (RN-670), nem por regra específica (a
+  // semeadura da ativação dos dev agents incluída), nem por `permissions.json`.
+  // Até aqui só o COMANDO era tetado, e a ação para a qual a mensagem dele
+  // redireciona nascia `auto_approved`. `deny` já retornou acima e continua
+  // vencendo. `git_merge` fica com o teto próprio, logo abaixo.
+  if (
+    ehAcaoTipadaComEfeitoExterno(action.actionType) &&
+    current.policy === 'auto_approve'
+  ) {
+    return {
+      policy: 'require_approval',
+      reason: mensagemDoTetoDaAcaoTipada(action.actionType),
+    };
+  }
   if (action.actionType === 'terminal' && action.command) {
     const tokens = parseCommand(action.command);
     const efeito = efeitoExternoNoComando(tokens);

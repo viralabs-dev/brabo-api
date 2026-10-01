@@ -62,9 +62,13 @@ export function devAgentInstruction(
   );
 }
 
-// Ações git que o dev auto-aprova (o demo abre PRs sem clique). `git_merge`
-// NUNCA entra aqui — a trava de merge o mantém manual.
-export const DEV_AUTO_GIT_ACTIONS = ['git_commit', 'git_push', 'pr_open'];
+// Ações git que o dev auto-aprova. Só o commit, que fica na máquina: desde a
+// RN-689 (AT-347) `git_push` e `pr_open` estão no teto de efeito externo da
+// RN-418 (`decide.ts`), e semeá-las em `auto_approve` gravaria uma autonomia
+// que nunca vale — a PR do dev agent passa pela decisão do usuário, e o agente
+// espera em `awaiting_approval` até o `task.pr_settled` (Fase 12e). `git_merge`
+// NUNCA entrou aqui — a trava de merge o mantém manual.
+export const DEV_AUTO_GIT_ACTIONS = ['git_commit'];
 
 // Orçamento de tokens por task (Fase 4a) quando não configurado na ativação
 // — US$0,50 em micro-USD. "Configurável por projeto" é satisfeito no

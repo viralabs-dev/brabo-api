@@ -950,6 +950,34 @@ describe('ProposeActionUseCase — o motivo da política no event log (RN-567)',
     });
   });
 
+  it('`git_push`/`pr_open` tipados nascem pendentes mesmo com autonomia curinga E específica — teto da RN-418 (RN-689)', async () => {
+    const { project, session } = await setupSession('maintainer');
+    // As duas fontes de autonomia que o dev agent pode ter: o curinga do
+    // piloto (RN-670) e a linha específica que a ativação semeava até a
+    // RN-689. Nenhuma promove a ação tipada.
+    await agentAutonomyRepo.upsert(project.id, 'dev-api', '*', 'auto_approve');
+    await agentAutonomyRepo.upsert(
+      project.id,
+      'dev-api',
+      'git_push',
+      'auto_approve',
+    );
+
+    for (const actionType of ['git_push', 'pr_open'] as const) {
+      const action = await proposeAction.execute(project.id, session.id, {
+        actionType,
+        actor: { kind: 'agent', id: 'dev-api' },
+        payload: { branch: 'dev-api/t1' },
+      });
+      expect(action.status).toBe('pending');
+      expect(await eventoCriado(session.id, action.id)).toMatchObject({
+        status: 'pending',
+        resolvedPolicy: 'require_approval',
+        reason: expect.stringContaining('RN-418') as unknown,
+      });
+    }
+  });
+
   it('deny carrega no evento o MESMO motivo que vira `rejectionReason`', async () => {
     const { project, session } = await setupSession('developer');
 

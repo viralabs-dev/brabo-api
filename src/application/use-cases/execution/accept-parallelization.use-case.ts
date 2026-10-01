@@ -38,10 +38,9 @@ export class AcceptParallelizationUseCase {
   ) {
     // O subagente extra precisa das MESMAS instruções e da MESMA autonomia do
     // agente base ANTES de existir: sem linha em agent_autonomy, decide() cai
-    // no default `require_approval` e tudo que ele propõe (git_commit/
-    // git_push/pr_open) fica pendente — um "aceite de um clique" que na
-    // prática pede três aprovações manuais por task. `git_merge` continua de
-    // fora: a trava de merge o mantém manual.
+    // no default `require_approval` e até o `git_commit` fica pendente. O
+    // push e a PR pedem decisão do usuário de qualquer jeito (teto da RN-418,
+    // RN-689); `git_merge` continua de fora: a trava de merge o mantém manual.
     const agentId = extraDevAgentId(module);
     const moduleMap = await this.moduleMaps.findCurrent(projectId);
     const node = moduleMap?.modules.find((m) => m.name === module);
