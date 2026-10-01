@@ -182,10 +182,11 @@ describe('SendAgentMessageUseCase — fatos do perfil (RN-680)', () => {
           _a: string,
           _t: string,
           _i?: string | null,
+          _m?: string | null,
           perfil?: string | null,
         ) => {
           perfis.push(perfil);
-          return Promise.resolve();
+          return Promise.resolve({ entrega: 'lida' as const });
         },
       } as never,
       {
@@ -195,7 +196,7 @@ describe('SendAgentMessageUseCase — fatos do perfil (RN-680)', () => {
           e: { payload: Record<string, unknown> },
         ) => {
           eventos.push(e);
-          return Promise.resolve();
+          return Promise.resolve({ id: 'evt-1' });
         },
       } as never,
       { execute: () => Promise.reject(new Error('sem idioma')) } as never,
@@ -237,6 +238,8 @@ describe('SendAgentMessageUseCase — fatos do perfil (RN-680)', () => {
 
     await expect(uc.execute('p', 's', 'po', 'oi', 'u')).resolves.toEqual({
       ok: true,
+      mensagemId: 'evt-1',
+      entrega: 'lida',
     });
     expect(perfis).toEqual([null]);
     expect(eventos[0].payload).toEqual({ text: 'oi' });

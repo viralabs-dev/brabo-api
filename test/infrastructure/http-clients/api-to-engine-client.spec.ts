@@ -605,8 +605,24 @@ describe('HttpApiToEngineClient — comando de turno: aceite e recusa (ADR 0163)
     const engine = await engineQueResponde(202);
     const client = new HttpApiToEngineClient();
 
-    await client.sendAgentMessage(PROJETO, SESSAO, 'po', 'oi', null, 'Fatos…');
-    await client.sendAgentMessage(PROJETO, SESSAO, 'po', 'oi', 'pt-BR', null);
+    await client.sendAgentMessage(
+      PROJETO,
+      SESSAO,
+      'po',
+      'oi',
+      null,
+      null,
+      'Fatos…',
+    );
+    await client.sendAgentMessage(
+      PROJETO,
+      SESSAO,
+      'po',
+      'oi',
+      'pt-BR',
+      null,
+      null,
+    );
 
     expect(JSON.parse(engine.corpos[0])).toEqual({
       projectId: PROJETO,
