@@ -1,15 +1,6 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Delete,
-  Param,
-  Body,
-  HttpCode,
-} from '@nestjs/common';
+import { Controller, Get, Delete, Param, HttpCode } from '@nestjs/common';
 import {
   ApiBearerAuth,
-  ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
@@ -21,29 +12,34 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import type { User } from '../../../domain/iam/user.entity';
 import { RequireRole } from '../iam/require-role.decorator';
 import { BEARER } from '../../../infrastructure/openapi/documento';
-import { RegisterRunnerDeviceKeyUseCase } from '../../../application/use-cases/auth/register-runner-device-key.use-case';
 import { ListRunnerDeviceKeysUseCase } from '../../../application/use-cases/auth/list-runner-device-keys.use-case';
 import { RevokeRunnerDeviceKeyUseCase } from '../../../application/use-cases/auth/revoke-runner-device-key.use-case';
-import { RegisterRunnerDeviceKeyRequestDto } from './dto/register-runner-device-key.request.dto';
-import { RunnerDeviceKeyResponseDto } from './dto/runner-device-key.response.dto';
 import { RunnerDeviceKeyListResponseDto } from './dto/runner-device-key-list.response.dto';
 
 /**
- * Gestão de chaves de dispositivo do runner (Ed25519, gerada no navegador) —
- * a segunda forma de autenticar `POST /projects/:projectId/runner-ticket`,
- * ao lado do Personal Access Token (`PersonalAccessTokensController`).
+ * Gestão de chaves de dispositivo do runner (Ed25519) — a segunda forma de
+ * autenticar `POST /projects/:projectId/runner-ticket`, ao lado do Personal
+ * Access Token (`PersonalAccessTokensController`).
  *
- * Autenticado por JWT DE SESSÃO normal — diferente de `runner-ticket`, quem
- * chama aqui É um browser: o usuário já logado registrando a chave do
- * dispositivo que está prestes a baixar e rodar o binário do runner
- * (`RunnerReleasesController`). Papel mínimo `developer`, mesma régua de
- * `PersonalAccessTokensController` — registrar uma credencial não pode ser
- * mais fácil que usar a capacidade que ela concede.
+ * Autenticado por JWT DE SESSÃO normal: quem chama aqui é a TELA (a seção de
+ * chaves das Configurações e o reconhecimento do `RunnerOnboardingPanel`).
+ * Papel mínimo `developer`, mesma régua de `PersonalAccessTokensController`.
  *
- * ## Três rotas, e o que continua fora (RN-519/RN-520, ADR 0147 ponto 6)
+ * ## O `POST` saiu (ADR 0203, RN-687)
  *
- * `@Post()`, `@Get()` e `@Delete(':deviceKeyId')`, as três `developer` e as
- * três escopadas ao PRÓPRIO usuário. A listagem entrou porque **ninguém
+ * Até o ADR 0203 havia uma terceira rota, `POST`, que registrava a chave de
+ * PROJETO gerada no navegador pelo fluxo do ADR 0118. Aposentado aquele fluxo,
+ * ela ficou sem chamador e saiu junto — quem cria chave hoje é o terminal
+ * (`brabo-runner device-key create`, RN-551) e quem a registra é o
+ * `install.sh`, pela rota interna de MÁQUINA (RN-552). As chaves de projeto
+ * JÁ registradas continuam valendo e aparecem aqui: o `GET` as lista e o
+ * `DELETE` as revoga, e o `PatAuthGuard` segue aceitando-as no ticket. Um
+ * runner configurado pelo navegador antes do ADR 0203 não quebra.
+ *
+ * ## As duas rotas, e o que continua fora (RN-519/RN-520, ADR 0147 ponto 6)
+ *
+ * `@Get()` e `@Delete(':deviceKeyId')`, as duas `developer` e as duas
+ * escopadas ao PRÓPRIO usuário. A listagem entrou porque **ninguém
  * revoga o que não consegue ver**: até ela existir, este controller tinha
  * `@Post()` e `@Delete()` e nada mais, e uma chave órfã — aba fechada no meio
  * do fluxo do ADR 0118 — era invisível e permanente, sem tela nenhuma onde
@@ -54,7 +50,7 @@ import { RunnerDeviceKeyListResponseDto } from './dto/runner-device-key-list.res
  * `@Delete(':tokenId/admin')`, listar/revogar de qualquer usuário do
  * projeto). Aquelas duas nasceram de resposta a incidente — dev desligado
  * com um segredo COMPARTILHADO circulando —, e chave de dispositivo não é
- * esse bicho: a metade privada nunca sai do navegador que a gerou, então não
+ * esse bicho: a metade privada nunca sai da máquina que a gerou, então não
  * há segredo a conter na mão de outro. O que a `@Delete` daqui ganhou em
  * troca é ALCANCE — ela derruba a conexão viva, não só o ticket seguinte.
  *
@@ -63,15 +59,14 @@ import { RunnerDeviceKeyListResponseDto } from './dto/runner-device-key-list.res
  * caso de uso (ver `RevokeRunnerDeviceKeyUseCase`). Desde o ADR 0201
  * (RN-685) o alvo dessa queda é a CHAVE, e não o par `{projeto, usuário}`.
  *
- * ## As duas espécies de chave, e por que as três rotas bastam (RN-543)
+ * ## As duas espécies de chave, e por que estas rotas bastam (RN-543)
  *
  * Desde o ADR 0154 existe a chave de MÁQUINA (`project_id` NULL), e ela cabe
  * nestas rotas sem rota nova: o `GET` a inclui MARCADA (uma de máquina não é
  * "a chave do projeto X"), e o `DELETE` já casava por `{id, usuário}` e nunca
- * por projeto, então revogá-la sempre funcionou daqui. O que NÃO nasce nesta
- * sessão é o `POST` dela: quem registra chave de máquina é o `install.sh`
- * (ADR 0155 ponto 4), e a rota nasce no PR que tiver esse chamador — nunca
- * antes.
+ * por projeto, então revogá-la sempre funcionou daqui. Quem registra chave
+ * de máquina é o `install.sh`, pela rota INTERNA
+ * (`InternalMachineDeviceKeysController`, RN-552) — nunca por aqui.
  */
 @ApiTags('projetos')
 @ApiBearerAuth(BEARER)
@@ -80,39 +75,9 @@ import { RunnerDeviceKeyListResponseDto } from './dto/runner-device-key-list.res
 @Controller('projects/:projectId/runner-device-keys')
 export class RunnerDeviceKeysController {
   constructor(
-    private readonly register: RegisterRunnerDeviceKeyUseCase,
     private readonly list: ListRunnerDeviceKeysUseCase,
     private readonly revoke: RevokeRunnerDeviceKeyUseCase,
   ) {}
-
-  @Post()
-  @RequireRole('developer')
-  @ApiOperation({
-    summary: 'Registra a chave pública de um dispositivo do runner local',
-    description:
-      'A chave PRIVADA nunca sai do navegador — só a JWK pública (Ed25519, ' +
-      'RFC 8037) chega aqui. Use o `id` desta resposta como `kid` no header ' +
-      'do JWT que o runner assina pra pedir ticket em `POST ' +
-      '.../runner-ticket`.',
-  })
-  @ApiCreatedResponse({ type: RunnerDeviceKeyResponseDto })
-  async registerDeviceKey(
-    @Param('projectId') projectId: string,
-    @CurrentUser() user: User,
-    @Body() dto: RegisterRunnerDeviceKeyRequestDto,
-  ): Promise<RunnerDeviceKeyResponseDto> {
-    const registrada = await this.register.execute({
-      userId: user.id,
-      projectId,
-      name: dto.name,
-      publicKeyJwk: dto.publicKeyJwk,
-    });
-    return {
-      id: registrada.id,
-      name: registrada.name,
-      createdAt: registrada.createdAt.toISOString(),
-    };
-  }
 
   @Get()
   @RequireRole('developer')
