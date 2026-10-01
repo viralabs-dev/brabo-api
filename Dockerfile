@@ -110,6 +110,21 @@ VOLUME ["/data/project-workspaces", "/data/git-repos"]
 
 WORKDIR /app
 
+# A oferta escrita de fonte viaja DENTRO da imagem, na MESMA forma da do engine
+# (`docker/engine/Dockerfile.prod`, AT-020): o mesmo `THIRD_PARTY_NOTICES.md`,
+# no mesmo caminho, do root e só leitura (0644), copiado ANTES do `USER`. Por
+# decisão do mantenedor (AT-120), TODA imagem publicada a carrega — nenhuma é
+# declarada dispensada. Quem faz `docker pull` não tem o repositório.
+# A PASTA nasce antes, e por um `RUN`, não pelo `COPY`: o BuildKit aplica o
+# `--chmod` também às pastas que o `COPY` cria, e `/usr/share/doc/brabo` nascia
+# `0644` — sem o bit de execução, ninguém além do root a atravessa, e o `cat`
+# como o `USER` da imagem dava "Permission denied" (medido na AT-120, inclusive
+# na imagem do engine). Com a pasta já existente em `0755`, o `COPY` só cria o
+# arquivo.
+RUN install -d -m 0755 /usr/share/doc/brabo
+COPY --chown=root:root --chmod=0644 THIRD_PARTY_NOTICES.md \
+     /usr/share/doc/brabo/THIRD_PARTY_NOTICES.md
+
 # `node` (uid 1000) já vem na imagem oficial — não criamos usuário novo.
 COPY --from=build --chown=node:node /prod/node_modules ./node_modules
 COPY --from=build --chown=node:node /repo/apps/api/dist ./
