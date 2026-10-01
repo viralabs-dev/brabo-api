@@ -139,8 +139,8 @@ describe('AcceptParallelizationUseCase', () => {
   });
 
   it('seeda instrução e autonomia do dev extra ANTES de subi-lo no engine', async () => {
-    // Sem autonomia, decide() cai em require_approval e o "aceite de um
-    // clique" viraria três aprovações manuais por task.
+    // Sem autonomia, decide() cai em require_approval e até o commit pediria
+    // aprovação. Push e PR pedem de qualquer jeito (RN-689).
     const { useCase, ordem, autonomias, instrucoes } = build(false);
 
     await useCase.execute('proj-1', 'sess-1', 'api', 'user-1');
@@ -151,11 +151,7 @@ describe('AcceptParallelizationUseCase', () => {
         content: expect.stringContaining('dev-api-2') as unknown,
       },
     ]);
-    expect(autonomias.map((a) => a.type)).toEqual([
-      'git_commit',
-      'git_push',
-      'pr_open',
-    ]);
+    expect(autonomias.map((a) => a.type)).toEqual(['git_commit']);
     expect(autonomias.every((a) => a.agentId === 'dev-api-2')).toBe(true);
     expect(autonomias.every((a) => a.mode === 'auto_approve')).toBe(true);
 
@@ -179,7 +175,8 @@ describe('AcceptParallelizationUseCase', () => {
     await useCase.execute('proj-1', 'sess-1', 'api', 'user-1');
 
     expect(instrucoes).toEqual([]);
-    expect(autonomias).toHaveLength(3);
+    // RN-689: só o commit — push e PR estão no teto da RN-418.
+    expect(autonomias.map((a) => a.type)).toEqual(['git_commit']);
   });
 
   describe('delegação Dev Lead → dev (área dev, ADR 0094)', () => {

@@ -21,10 +21,11 @@ import type { ActionType } from './decide';
  *   (RN-154). Ali o padrão gravado seria INERTE (o teto roda depois do
  *   arquivo) — gravá-lo só faria a tela prometer o que não acontece.
  *
- * NÃO muda `decide()` nem a semeadura: `DEV_AUTO_GIT_ACTIONS` continua dando
- * `auto_approve` a `git_commit`/`git_push`/`pr_open` por `dev-<modulo>` na
- * ativação (ADR 0053). O que se fecha é o CLIQUE humano criar autonomia nova
- * para esses tipos, não a autonomia que a ativação já concede.
+ * Quando nasceu, isto NÃO mudava `decide()` nem a semeadura. Desde a RN-689
+ * (AT-347) mudam os dois: `git_push`/`pr_open` estão no teto de `decide()`
+ * (`ehAcaoTipadaComEfeitoExterno`) e a ativação semeia só `git_commit`
+ * (`DEV_AUTO_GIT_ACTIONS`). Esta lista continua sendo a fonte do botão
+ * escondido — o padrão gravado para esses dois seria, agora, INERTE.
  */
 export const TIPOS_SEM_SEMPRE_PERMITIR: readonly ActionType[] = [
   'git_push',
