@@ -106,6 +106,18 @@ describe('RagEmbeddingService', () => {
     expect(provider.calls).toHaveLength(0);
   });
 
+  it('CASO DE FALHA: entrada que não é array (um objeto com length enorme) não vira laço nem chamada ao provider', async () => {
+    const provider = new FakeEmbeddingProvider();
+    const service = new RagEmbeddingService(registryWith(provider));
+
+    const resultado = await service.embedMany({
+      length: 1e9,
+    } as unknown as readonly string[]);
+
+    expect(resultado).toEqual({ vectors: [], available: true });
+    expect(provider.calls).toHaveLength(0);
+  });
+
   it('CASO DE FALHA: provider sem a capability degrada para available: false, sem lançar', async () => {
     const service = new RagEmbeddingService(
       registryWith(new NoEmbedProvider()),
