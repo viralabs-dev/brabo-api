@@ -8,10 +8,9 @@ import type { MesmasChaves, Wire } from '../../shared/dto/wire';
 /**
  * O formato de LISTA da chave de dispositivo (RN-519) — irmão de
  * `PersonalAccessTokenResponseDto`, e por isso com as duas travas de tipo
- * (`Wire`/`MesmasChaves`), ao contrário do
- * `RunnerDeviceKeyResponseDto` do registro, que é deliberadamente mais
- * enxuto: ali o navegador acabou de criar a chave e já sabe tudo sobre ela;
- * aqui a lista é a ÚNICA fonte do que existe.
+ * (`Wire`/`MesmasChaves`). Desde o ADR 0203 a lista é a ÚNICA resposta
+ * pública sobre chave de dispositivo — o registro pelo navegador, que tinha
+ * resposta própria e mais enxuta, saiu junto com o fluxo do ADR 0118.
  *
  * Nunca inclui a JWK pública. Ela não é segredo, mas também não serve pra
  * nada nesta tela — o que a lista existe pra permitir é revogar, e pra isso

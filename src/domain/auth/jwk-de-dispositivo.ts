@@ -9,7 +9,9 @@
  * e duas cópias da mesma checagem divergiriam no primeiro dia em que uma delas
  * mudasse. Mesmo motivo pelo qual a política de senha do instalador é a do
  * domínio (ADR 0155 ponto 3): quem valida é o mesmo código, chamado dos dois
- * lugares.
+ * lugares. Desde o ADR 0203 (RN-687) o registrador do navegador SAIU — o
+ * `install.sh` é o único que sobrou —, e a régua fica aqui assim mesmo: ela
+ * é sobre a FORMA da chave, não sobre quem a manda.
  *
  * ## A validação é MÍNIMA de propósito, com uma exceção
  *

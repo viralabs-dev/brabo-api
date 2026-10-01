@@ -17,31 +17,36 @@ import type { User } from '../../../../src/domain/iam/user.entity';
 const user = { id: 'user-1' } as User;
 
 function controller() {
-  const register = { execute: vi.fn() };
   const list = { execute: vi.fn() };
   const revoke = { execute: vi.fn() };
   return {
-    controller: new RunnerDeviceKeysController(
-      register as never,
-      list as never,
-      revoke as never,
-    ),
-    register,
+    controller: new RunnerDeviceKeysController(list as never, revoke as never),
     list,
     revoke,
   };
 }
 
 describe('RunnerDeviceKeysController', () => {
-  it('as TRÊS rotas exigem developer — mesma régua de runner-ticket e do PAT', () => {
+  it('as DUAS rotas exigem developer — mesma régua de runner-ticket e do PAT', () => {
     const reflector = new Reflector();
     for (const handler of [
-      RunnerDeviceKeysController.prototype.registerDeviceKey,
       RunnerDeviceKeysController.prototype.listDeviceKeys,
       RunnerDeviceKeysController.prototype.revokeDeviceKey,
     ]) {
       expect(reflector.get(REQUIRED_ROLE_KEY, handler)).toBe('developer');
     }
+  });
+
+  it('o registro pelo navegador SAIU (ADR 0203, RN-687): não há handler de POST nem rota que o alcance', () => {
+    const metodos = Object.getOwnPropertyNames(
+      RunnerDeviceKeysController.prototype,
+    );
+    expect(metodos).not.toContain('registerDeviceKey');
+    expect(metodos.sort()).toEqual([
+      'constructor',
+      'listDeviceKeys',
+      'revokeDeviceKey',
+    ]);
   });
 
   it('revokeDeviceKey continua 204 depois de passar a derrubar a conexão viva (RN-520)', () => {
