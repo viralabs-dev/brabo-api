@@ -22,6 +22,7 @@ import { GetProjectGitRemoteUseCase } from '../../../application/use-cases/git/g
 import { ListBusinessRulesUseCase } from '../../../application/use-cases/backlog/list-business-rules.use-case';
 import { ListBacklogUseCase } from '../../../application/use-cases/backlog/list-backlog.use-case';
 import { ListProductMetricsUseCase } from '../../../application/use-cases/backlog/list-product-metrics.use-case';
+import { ListModuleContractsUseCase } from '../../../application/use-cases/architecture/list-module-contracts.use-case';
 import { ConfirmProjectWorkspaceUseCase } from '../../../application/use-cases/iam/confirm-project-workspace.use-case';
 import { RecordMirrorSyncUseCase } from '../../../application/use-cases/iam/record-mirror-sync.use-case';
 import { ExecutarComandoNoContainerUseCase } from '../../../application/use-cases/containers/executar-comando-no-container.use-case';
@@ -30,6 +31,7 @@ import { ProjectGitRemoteResponseDto } from './dto/project-git-remote.response.d
 import { ProjectBusinessRulesResponseDto } from './dto/internal.response.dto';
 import { EpicComHistoriasResponseDto } from '../backlog/dto/backlog.response.dto';
 import { ProductMetricsResponseDto } from './dto/product-metrics.response.dto';
+import { ContratosDoProjetoResponseDto } from './dto/module-contracts.response.dto';
 import { ConfirmProjectWorkspaceInternalDto } from './dto/confirm-project-workspace-internal.dto';
 import { ConfirmProjectWorkspaceResponseDto } from './dto/confirm-project-workspace.response.dto';
 import { ContainerExecInternalDto } from './dto/container-exec-internal.dto';
@@ -58,6 +60,8 @@ import { MirrorSyncResultResponseDto } from './dto/mirror-sync-result.response.d
  *    já tinha criado. As três são LEITURA e por isso não viram
  *    `proposed_action`; o que elas devem é ser contidas, e são: escopo
  *    fechado no projeto, sem parâmetro de busca e sem paginação a explorar.
+ *    Desde a RN-684 (ADR 0200) os dev agents leem por aqui também o contrato
+ *    entre módulos, sob a mesma régua.
  * 3. `container-exec` (ADR 0134, RN-492): o engine pede pra RODAR um comando
  *    de terminal DENTRO do container real do projeto, quando
  *    `Engine.Actions.TerminalExecutor` decidiu que é o caso — este
@@ -83,6 +87,7 @@ export class InternalProjectsController {
     private readonly listBusinessRules: ListBusinessRulesUseCase,
     private readonly listBacklog: ListBacklogUseCase,
     private readonly listProductMetrics: ListProductMetricsUseCase,
+    private readonly listModuleContracts: ListModuleContractsUseCase,
     private readonly confirmWorkspace: ConfirmProjectWorkspaceUseCase,
     private readonly executarComandoNoContainer: ExecutarComandoNoContainerUseCase,
     private readonly recordMirrorSync: RecordMirrorSyncUseCase,
@@ -156,6 +161,22 @@ export class InternalProjectsController {
   @ApiNotFoundResponse({ description: 'Project does not exist.' })
   productMetrics(@Param('projectId') projectId: string) {
     return this.listProductMetrics.execute(projectId);
+  }
+
+  @Get(':projectId/module-contracts')
+  @ApiOperation({
+    summary: 'The contracts between modules, for a dev agent to read (RN-684)',
+    description:
+      'One entry per module of the CURRENT module_map: what it consumes ' +
+      "(`dependeDe`, the map's `dependsOn`) and what it exposes (`expoe`, " +
+      "from the Architect's current `artifact.module_contracts`, or `null` " +
+      'when none was declared). It is what a dev agent reads instead of ' +
+      "opening another module's worktree (ADR 0200). A project with no " +
+      'contract responds `200` with `status: sem_contratos`.',
+  })
+  @ApiOkResponse({ type: ContratosDoProjetoResponseDto })
+  moduleContracts(@Param('projectId') projectId: string) {
+    return this.listModuleContracts.execute(projectId);
   }
 
   @Post(':projectId/workspace-verification')

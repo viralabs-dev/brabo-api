@@ -58,6 +58,7 @@ function contexto(opcoes: {
     params: Record<string, string>;
     user?: unknown;
     effectiveRole?: unknown;
+    credencialDeDispositivo?: unknown;
   };
 
   const ctx = {
@@ -168,6 +169,11 @@ describe('PatAuthGuard', () => {
 
     await expect(g.canActivate(ctx)).resolves.toBe(true);
     expect((request.user as User).id).toBe('user-1');
+    // ADR 0201 (RN-685): a identidade da credencial segue para o ticket.
+    expect(request.credencialDeDispositivo).toEqual({
+      tipo: 'pat',
+      id: 'pat-1',
+    });
   });
 
   it('valida contra o HASH do token, nunca o token bruto (RN-439)', async () => {
@@ -366,6 +372,12 @@ describe('PatAuthGuard', () => {
       await expect(g.canActivate(ctx)).resolves.toBe(true);
       expect((request.user as User).id).toBe('user-1');
       expect(deviceKeys.tocarUso).toHaveBeenCalledWith('device-1');
+      // ADR 0201 (RN-685): o `kid` é o id do registro, e é ele que vai
+      // para o ticket — nunca um valor derivado.
+      expect(request.credencialDeDispositivo).toEqual({
+        tipo: 'device_key',
+        id: 'device-1',
+      });
     });
 
     it('assinatura inválida (JWT assinado com OUTRA chave privada): 401', async () => {
@@ -376,7 +388,7 @@ describe('PatAuthGuard', () => {
         kid: 'device-1',
         projectId: 'proj-1',
       });
-      const { ctx } = contexto({
+      const { ctx, request } = contexto({
         authorization: `Bearer ${token}`,
         projectId: 'proj-1',
       });
@@ -392,6 +404,8 @@ describe('PatAuthGuard', () => {
 
       await expect(g.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
       expect(deviceKeys.tocarUso).not.toHaveBeenCalled();
+      // Credencial recusada não vira credencial do ticket (ADR 0201).
+      expect(request.credencialDeDispositivo).toBeUndefined();
     });
 
     it('chave revogada (buscarChavePublicaAtiva devolve null): 401', async () => {

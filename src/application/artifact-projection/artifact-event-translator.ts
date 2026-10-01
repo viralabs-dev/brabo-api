@@ -44,7 +44,7 @@ export class ArtifactEventTranslator {
  *
  * Cabeçalho com o que a pasta sozinha não diz (tipo, agente, quando, e o `seq`
  * que liga de volta ao event log) e o payload como bloco JSON. NÃO tenta
- * formatar cada um dos treze tipos: um renderizador por tipo seria treze
+ * formatar cada um dos catorze tipos: um renderizador por tipo seria catorze
  * lugares para envelhecer quando um schema mudar, e o que esta pasta precisa
  * entregar é o CONTEÚDO legível e rastreável, não uma diagramação. Um formato
  * mais rico por tipo é decisão própria, quando alguém tiver uma leitura real

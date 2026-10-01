@@ -10,15 +10,12 @@ import { RevokeRunnerDeviceKeyUseCase } from './revoke-runner-device-key.use-cas
  *
  * ## Nenhuma revogação nova: é a MESMA, com uma porta mais estreita
  *
- * Quem revoga de fato é `RevokeRunnerDeviceKeyUseCase`, sem mudança — a
- * gravação por `{id, usuário}` e, para a chave de máquina, a desconexão
- * PLURAL que ele já fazia: um `disconnectRunnerOfUser` por projeto em modo
- * `runner` que o dono alcança (RN-520/RN-543). O alvo da desconexão continua
- * `{projeto, usuário}` e nunca `{chave}`: esta rota não o muda, e mudar é
- * frente própria, com ADR (AT-013). Numa instalação SEM projeto a lista de
- * projetos é vazia, então a revogação só grava a linha — e é o que basta: o
- * agente de máquina que espera o primeiro projeto (RN-550) não tem conexão
- * nenhuma a derrubar, e o próximo ticket que ele pedir é recusado.
+ * Quem revoga de fato é `RevokeRunnerDeviceKeyUseCase` — a gravação por
+ * `{id, usuário}` e, desde o ADR 0201 (RN-685), a queda cujo alvo é a CHAVE:
+ * toda conexão aberta com ela, em qualquer projeto, e nenhuma outra do mesmo
+ * dono. Numa instalação SEM projeto não há conexão a derrubar — o agente de
+ * máquina que espera o primeiro projeto (RN-550) só consulta a lista —, e o
+ * próximo ticket que ele pedir é recusado.
  *
  * ## A porta mais estreita
  *

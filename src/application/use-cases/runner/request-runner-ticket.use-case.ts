@@ -3,7 +3,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ApiToEngineClient } from '../../ports/api-to-engine-client.port';
+import {
+  ApiToEngineClient,
+  type CredencialDeDispositivo,
+} from '../../ports/api-to-engine-client.port';
 import { ProjectRepository } from '../../ports/project-repository.port';
 
 /** Os dois papéis que um ticket de `/runner` pode carregar — ver `Engine.Runners.SocketTicket`. */
@@ -34,6 +37,13 @@ export interface RunnerTicketEmitido {
  * container de sempre — o roteamento pro runner em
  * `Engine.Actions.TerminalExecutor` só entra em jogo quando HÁ um runner
  * conectado E o workspace já foi verificado, RN-423).
+ *
+ * ## A credencial vai junto (ADR 0201, RN-685)
+ *
+ * O ticket de `runner` leva QUAL credencial o pediu — a chave de dispositivo
+ * pelo `kid` ou o PAT — para a revogação dela derrubar só as conexões que ela
+ * abriu. O de `terminal` nunca leva: é a aba da web, autenticada por sessão, e
+ * uma credencial de dispositivo ali seria inventada.
  */
 @Injectable()
 export class RequestRunnerTicketUseCase {
@@ -46,6 +56,7 @@ export class RequestRunnerTicketUseCase {
     projectId: string,
     userId: string,
     kind: RunnerTicketKind,
+    credencial?: CredencialDeDispositivo,
   ): Promise<RunnerTicketEmitido> {
     const project = await this.projects.findById(projectId);
     if (!project) throw new NotFoundException('Projeto não encontrado');
@@ -65,6 +76,7 @@ export class RequestRunnerTicketUseCase {
       projectId,
       userId,
       kind,
+      kind === 'runner' ? (credencial ?? null) : null,
     );
 
     return { ticket, expiresAt, engineWsUrl: engineWsUrlPublico() };

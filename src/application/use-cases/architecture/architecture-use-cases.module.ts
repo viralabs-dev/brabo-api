@@ -7,6 +7,9 @@ import { CreateC4DiagramUseCase } from './create-c4-diagram.use-case';
 import { GetC4DiagramUseCase } from './get-c4-diagram.use-case';
 import { RouteModulesToInfraUseCase } from './route-modules-to-infra.use-case';
 import { GetModuleRoutingUseCase } from './get-module-routing.use-case';
+import { DeclareModuleContractsUseCase } from './declare-module-contracts.use-case';
+import { GetModuleContractsUseCase } from './get-module-contracts.use-case';
+import { ListModuleContractsUseCase } from './list-module-contracts.use-case';
 
 const USE_CASES = [
   CreateModuleMapUseCase,
@@ -16,6 +19,9 @@ const USE_CASES = [
   GetC4DiagramUseCase,
   RouteModulesToInfraUseCase,
   GetModuleRoutingUseCase,
+  DeclareModuleContractsUseCase,
+  GetModuleContractsUseCase,
+  ListModuleContractsUseCase,
 ];
 
 @Module({
