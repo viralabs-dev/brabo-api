@@ -24,12 +24,24 @@ import {
 // PR de verdade ainda precisa ser mergeada manualmente no provider). O
 // terminal genérico fica negado por policy — defesa em profundidade além
 // da estrutural (o tool registry do InfraAgent nunca inclui `Terminal`).
+//
+// `container_start` nasce `auto_approve` desde o ADR 0190 (RN-671, decisão do
+// dono em 01/10), revisando o "nunca semeado" do ADR 0133: no aceite, o
+// SERVIDOR do Infra Lead propõe a subida sozinho quando há roteamento
+// (`subir_no_aceite/2`, `infra_lead_server.ex`), e a semente é o que a faz
+// executar sem um segundo clique. Nenhum teto se move: o papel mínimo segue
+// `maintainer` (o efetivo de quem abriu a sessão, em `decide()`), as recusas
+// por modo/estado do engine (RN-566/RN-610) e por broker ausente da api
+// (RN-591) continuam ANTES da autonomia, e só esta ação entra —
+// `container_start_via_runner` e `container_stop` seguem configuráveis e
+// nunca semeados, e `container_remove` segue no teto absoluto (RN-495).
 const INFRA_AUTONOMY_SEEDS: ReadonlyArray<{
   actionType: string;
   policy: 'auto_approve' | 'deny';
 }> = [
   { actionType: 'open_infra_pr', policy: 'auto_approve' },
   { actionType: 'terminal', policy: 'deny' },
+  { actionType: 'container_start', policy: 'auto_approve' },
 ];
 
 // Quem recebe os handoffs cujo aceite provisiona o repositório (RN-582,

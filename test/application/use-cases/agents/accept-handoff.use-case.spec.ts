@@ -53,8 +53,10 @@ class FakeHandoffs {
 
 class FakeAutonomy {
   upserts: string[] = [];
-  upsert(_p: string, agente: string, tipo: string, _policy: string) {
+  politicas = new Map<string, string>();
+  upsert(_p: string, agente: string, tipo: string, policy: string) {
     this.upserts.push(`${agente}:${tipo}`);
+    this.politicas.set(`${agente}:${tipo}`, policy);
     return Promise.resolve({} as never);
   }
 }
@@ -233,8 +235,41 @@ describe('AcceptHandoffUseCase — o repositório nasce no handoff ao Arquiteto 
 
     await uc.execute(PROJECT, SESSION, HANDOFF, USER);
 
-    expect(autonomy.upserts).toEqual(['infra:open_infra_pr', 'infra:terminal']);
+    expect(autonomy.upserts).toEqual([
+      'infra:open_infra_pr',
+      'infra:terminal',
+      'infra:container_start',
+    ]);
     expect(provision.chamadas).toHaveLength(0);
+  });
+
+  // RN-671 (ADR 0190, AT-260): `container_start` nasce `auto_approve` no aceite
+  // da Infra — é o que deixa a subida que o servidor propõe executar sem um
+  // segundo clique. As outras ações de container NÃO entram: a decisão do dono
+  // é sobre a subida, e `container_remove` segue no teto absoluto.
+  it('o aceite da Infra semeia `container_start: auto_approve`, e só ele entre as de container', async () => {
+    handoffs.handoff = { ...handoffs.handoff, toAgent: 'infra' };
+
+    await uc.execute(PROJECT, SESSION, HANDOFF, USER);
+
+    expect(autonomy.politicas.get('infra:container_start')).toBe(
+      'auto_approve',
+    );
+    for (const outra of [
+      'container_start_via_runner',
+      'container_stop',
+      'container_remove',
+    ]) {
+      expect(autonomy.upserts).not.toContain(`infra:${outra}`);
+    }
+  });
+
+  it('aceitar para OUTRO agente não semeia `container_start`', async () => {
+    handoffs.handoff = { ...handoffs.handoff, toAgent: 'arquiteto' };
+
+    await uc.execute(PROJECT, SESSION, HANDOFF, USER);
+
+    expect(autonomy.upserts).not.toContain('infra:container_start');
   });
 
   // O caso de falha que dá sentido ao desenho: sem transação, o aceite já está
