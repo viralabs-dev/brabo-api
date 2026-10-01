@@ -44,6 +44,26 @@ export interface AnamneseProfileRecord {
   proficiencia: string;
 }
 
+/**
+ * Uma hipótese do Psicólogo que a PRÓPRIA pessoa aceitou, e que por isso vira
+ * fato do perfil dela (RN-680, ADR 0196). Nasce da tradução de
+ * `psychologist.hypothesis_accepted` com `fatoDoPerfil: true` — nunca de uma
+ * escrita direta —, então `grafo:reprojetar` a reconstrói do event log.
+ */
+export interface ProfileFactRecord {
+  /** Chave natural: a hipótese aceita (`psychologist_hypotheses.id`). */
+  hypothesisId: string;
+  /** O sujeito: o autor da sessão analisada, que é também quem aceitou. */
+  userId: string;
+  /** O fato vale para ESTE projeto — a leitura é escopada a ele (ADR 0060). */
+  projectId: string;
+  agenteAlvo: string;
+  hipotese: string;
+  sugestao: string;
+  /** ISO 8601 — instante do evento de aceite; ordena a leitura (mais recente primeiro). */
+  aceitoEm: string;
+}
+
 export interface HandoffRecord {
   sessionId: string;
   seq: number;
@@ -70,8 +90,20 @@ export interface UserContextProfile {
   proficiencia: string;
 }
 
+export interface UserContextFact {
+  hypothesisId: string;
+  agenteAlvo: string;
+  hipotese: string;
+  sugestao: string;
+  aceitoEm: string;
+}
+
 export interface UserContext {
   hypotheses: UserContextHypothesis[];
   profiles: UserContextProfile[];
   recentHandoffs: UserContextHandoff[];
+  /** Fatos do perfil (hipóteses aceitas pela pessoa NESTE projeto), os mais recentes primeiro, até o teto. */
+  facts: UserContextFact[];
+  /** Quantos fatos existem ao todo — `facts.length < factsTotal` é recorte, e quem mostra diz (RN-180). */
+  factsTotal: number;
 }

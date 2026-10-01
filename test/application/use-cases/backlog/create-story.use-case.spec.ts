@@ -9,6 +9,7 @@ import type { SessionEventRepository } from '../../../../src/application/ports/s
 import type { ProjectRepository } from '../../../../src/application/ports/project-repository.port';
 import type { ModuleMapRepository } from '../../../../src/application/ports/module-map-repository.port';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
+import type { VerificarDuplicataSemanticaUseCase } from '../../../../src/application/use-cases/backlog/verificar-duplicata-semantica.use-case';
 import type {
   Story,
   Epic,
@@ -136,7 +137,23 @@ let events: FakeEvents;
 let append: FakeAppend;
 let projects: FakeProjects;
 let moduleMaps: FakeModuleMaps;
+let duplicata: FakeDuplicata;
 let useCase: CreateStoryUseCase;
+
+// A checagem semântica (RN-681) tem spec própria; aqui interessa só que a
+// criação a chama DEPOIS de gravar, com o id gravado, e devolve o desfecho.
+class FakeDuplicata {
+  chamadas: { kind: string; itemId: string; title: string }[] = [];
+  resposta: unknown = { status: 'nothing_to_compare', message: null };
+  execute(input: { kind: string; itemId: string; title: string }) {
+    this.chamadas.push({
+      kind: input.kind,
+      itemId: input.itemId,
+      title: input.title,
+    });
+    return Promise.resolve(this.resposta);
+  }
+}
 
 function build() {
   return new CreateStoryUseCase(
@@ -146,6 +163,7 @@ function build() {
     append as unknown as AppendSessionEventUseCase,
     projects as unknown as ProjectRepository,
     moduleMaps as unknown as ModuleMapRepository,
+    duplicata as unknown as VerificarDuplicataSemanticaUseCase,
   );
 }
 
@@ -156,6 +174,7 @@ beforeEach(() => {
   append = new FakeAppend();
   projects = new FakeProjects();
   moduleMaps = new FakeModuleMaps();
+  duplicata = new FakeDuplicata();
   // Os testes herdados da Fase 3b descrevem o modo `auto` — que era o único
   // comportamento até a 12c. Ficam como estão, provando que o opt-in não
   // mudou nada para quem o escolhe.
@@ -390,6 +409,54 @@ describe('CreateStoryUseCase', () => {
 
       expect(story).not.toBeNull();
       expect(append.calls).not.toContain('backlog.story_overlap_warned');
+    });
+  });
+
+  // RN-681 (AT-171): o par do achado R, que o título e a justificativa não
+  // ligam, é o que a checagem SEMÂNTICA existe para pegar — e ela só avisa.
+  describe('duplicata semântica (RN-681)', () => {
+    it('chama a checagem com a história GRAVADA e devolve o aviso — a história existe', async () => {
+      duplicata.resposta = {
+        status: 'warned',
+        similarTo: {
+          id: 'story-velha',
+          title: 'Endpoint público de saudação determinística',
+        },
+        similarity: 0.91,
+        threshold: 0.8,
+        compared: 1,
+        total: 1,
+        message: 'AVISO (não é recusa): ...',
+      };
+
+      const story = await useCase.execute(PROJECT, SESSION, {
+        epicId: 'epic-1',
+        title: 'Endpoint GET /hello público que devolve saudação imediata',
+      });
+
+      expect(stories.created).not.toBeNull();
+      expect(duplicata.chamadas).toEqual([
+        {
+          kind: 'story',
+          itemId: 'story-1',
+          title: 'Endpoint GET /hello público que devolve saudação imediata',
+        },
+      ]);
+      expect(story.semanticDuplicate.status).toBe('warned');
+    });
+
+    it('título idêntico continua RECUSADO antes — a checagem semântica nem roda', async () => {
+      stories.existentes = [
+        makeStory({ id: 'story-velha', title: 'Endpoint público de saudação' }),
+      ];
+
+      await expect(
+        useCase.execute(PROJECT, SESSION, {
+          epicId: 'epic-1',
+          title: 'Endpoint público de saudação',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(duplicata.chamadas).toHaveLength(0);
     });
   });
 });

@@ -2,6 +2,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { UnprocessableEntityException } from '@nestjs/common';
 import { SendAgentMessageUseCase } from '../../../../src/application/use-cases/agents/send-agent-message.use-case';
 
+const semFatos = {
+  execute: () => Promise.resolve({ facts: [], factsTotal: 0 }),
+};
+
 // RN-587 (AT-132). A api grava o chat.message ANTES de perguntar ao engine
 // (o engine lê o log; a mensagem tem de ser durável com ele fora do ar). A
 // recusa do engine é o ÚNICO validador do destinatário — a api não tem lista
@@ -51,6 +55,7 @@ describe('SendAgentMessageUseCase (RN-587)', () => {
       engine as never,
       appendEvent as never,
       resolver as never,
+      semFatos as never,
     );
     return { uc, eventos, ordem, enviados, resolver, ids };
   }
@@ -126,6 +131,7 @@ describe('SendAgentMessageUseCase — idioma da resposta (RN-622)', () => {
         },
       } as never,
       resolver as never,
+      semFatos as never,
     );
     return { uc, eventos, enviados, resolver };
   }
@@ -157,6 +163,85 @@ describe('SendAgentMessageUseCase — idioma da resposta (RN-622)', () => {
       entrega: 'lida',
     });
     expect(enviados).toEqual([null]);
+    expect(eventos[0].payload).toEqual({ text: 'oi' });
+  });
+});
+
+// RN-680 (ADR 0196): os fatos do perfil do AUTOR neste projeto viajam com a
+// mensagem até o engine; o chat.message registra QUANTOS foram.
+describe('SendAgentMessageUseCase — fatos do perfil (RN-680)', () => {
+  function montar(contexto: () => Promise<unknown>) {
+    const eventos: Array<{ payload: Record<string, unknown> }> = [];
+    const perfis: Array<string | null | undefined> = [];
+    const leitor = { execute: vi.fn(contexto) };
+    const uc = new SendAgentMessageUseCase(
+      {
+        sendAgentMessage: (
+          _p: string,
+          _s: string,
+          _a: string,
+          _t: string,
+          _i?: string | null,
+          _m?: string | null,
+          perfil?: string | null,
+        ) => {
+          perfis.push(perfil);
+          return Promise.resolve({ entrega: 'lida' as const });
+        },
+      } as never,
+      {
+        execute: (
+          _p: string,
+          _s: string,
+          e: { payload: Record<string, unknown> },
+        ) => {
+          eventos.push(e);
+          return Promise.resolve({ id: 'evt-1' });
+        },
+      } as never,
+      { execute: () => Promise.reject(new Error('sem idioma')) } as never,
+      leitor as never,
+    );
+    return { uc, eventos, perfis, leitor };
+  }
+
+  it('lê pelo AUTOR e pelo PROJETO, e manda o texto ao engine', async () => {
+    const { uc, eventos, perfis, leitor } = montar(() =>
+      Promise.resolve({
+        facts: [
+          {
+            hypothesisId: 'h1',
+            agenteAlvo: 'po',
+            hipotese: 'prefere uma pergunta por vez',
+            sugestao: 'perguntar uma coisa de cada vez',
+            aceitoEm: '2026-10-01T10:00:00.000Z',
+          },
+        ],
+        factsTotal: 1,
+      }),
+    );
+
+    await uc.execute('proj-1', 's', 'po', 'oi', 'autor-1');
+
+    expect(leitor.execute).toHaveBeenCalledWith({
+      userId: 'autor-1',
+      projectId: 'proj-1',
+    });
+    expect(perfis[0]).toContain('prefere uma pergunta por vez');
+    expect(eventos[0].payload).toEqual({ text: 'oi', fatosDoPerfil: 1 });
+  });
+
+  it('grafo fora do ar não derruba a mensagem: vai sem perfil', async () => {
+    const { uc, eventos, perfis } = montar(() =>
+      Promise.reject(new Error('Neo4j fora do ar')),
+    );
+
+    await expect(uc.execute('p', 's', 'po', 'oi', 'u')).resolves.toEqual({
+      ok: true,
+      mensagemId: 'evt-1',
+      entrega: 'lida',
+    });
+    expect(perfis).toEqual([null]);
     expect(eventos[0].payload).toEqual({ text: 'oi' });
   });
 });

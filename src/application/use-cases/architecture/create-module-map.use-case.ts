@@ -12,6 +12,12 @@ import {
   type ModuleNode,
 } from '../../../domain/architecture/module-graph';
 import { missingModules } from '../../../domain/architecture/module-resolution';
+import {
+  derivarRecursosMinimos,
+  RecursosDoModuloInvalidosError,
+  validarRecursosDoModulo,
+  validarSomaNoTeto,
+} from '../../../domain/containers/recursos-minimos';
 
 export interface CreateModuleMapInput {
   modules: ModuleNode[];
@@ -23,6 +29,12 @@ export interface CreateModuleMapInput {
  * novo mapa, REVALIDA todas as stories `ready`: as que passam a referenciar um
  * módulo que sumiu são rebaixadas a `draft` (com evento — que é a notificação
  * no feed). Emite `artifact.module_map`.
+ *
+ * Desde a RN-683 (ADR 0199) cada módulo pode declarar `resources` — o que ele
+ * precisa sozinho dentro do container —, e é daí que a Infra deriva o mínimo
+ * da subida. A declaração é validada AQUI (os três campos ou nenhum, cada um
+ * no teto, e a SOMA no teto, porque todos dividem um container): a recusa
+ * volta ao Arquiteto, que é quem pode corrigir, e não estoura depois na subida.
  */
 @Injectable()
 export class CreateModuleMapUseCase {
@@ -37,10 +49,16 @@ export class CreateModuleMapUseCase {
     sessionId: string,
     input: CreateModuleMapInput,
   ) {
+    let modules: ModuleNode[];
     try {
       assertNoCycle(input.modules);
+      modules = input.modules.map(normalizarModulo);
+      validarSomaNoTeto(derivarRecursosMinimos(modules));
     } catch (e) {
-      if (e instanceof ModuleCycleError) {
+      if (
+        e instanceof ModuleCycleError ||
+        e instanceof RecursosDoModuloInvalidosError
+      ) {
         throw new BadRequestException(e.message);
       }
       throw e;
@@ -72,7 +90,7 @@ export class CreateModuleMapUseCase {
     const map = await this.moduleMaps.create({
       projectId,
       sessionId,
-      modules: input.modules,
+      modules,
       version: (current?.version ?? 0) + 1,
     });
 
@@ -109,4 +127,17 @@ export class CreateModuleMapUseCase {
 
     return map;
   }
+}
+
+// Grava só os campos do contrato, e `resources` só quando declarado — o JSON do
+// mapa não guarda o que o modelo mandou a mais, nem `resources: null`.
+function normalizarModulo(m: ModuleNode): ModuleNode {
+  const resources = validarRecursosDoModulo(m.name, m.resources);
+  return {
+    name: m.name,
+    stack: m.stack,
+    responsibility: m.responsibility,
+    dependsOn: m.dependsOn ?? [],
+    ...(resources ? { resources } : {}),
+  };
 }

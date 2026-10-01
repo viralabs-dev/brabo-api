@@ -3,6 +3,7 @@ import type { RecordHandoffUseCase } from '../use-cases/graph/record-handoff.use
 import type { RecordHypothesisUseCase } from '../use-cases/graph/record-hypothesis.use-case';
 import type { RecordAnamneseProfileUseCase } from '../use-cases/graph/record-anamnese-profile.use-case';
 import type { RecordInteractionUseCase } from '../use-cases/graph/record-interaction.use-case';
+import type { RecordProfileFactUseCase } from '../use-cases/graph/record-profile-fact.use-case';
 import type { SessionEvent } from '../../domain/sessions/session-event.entity';
 import type { Session } from '../../domain/sessions/session.entity';
 
@@ -16,6 +17,10 @@ export const EVENTOS_DO_LOG_PROJETAVEIS: ReadonlySet<string> = new Set([
   'handoff.offered',
   'psychologist.hypothesis_proposed',
   'anamnese.profile_updated',
+  // RN-680 (ADR 0196): a hipótese que a PRÓPRIA pessoa aceitou vira fato do
+  // perfil dela. Aceite sem `fatoDoPerfil: true` (de terceiro, ou gravado
+  // antes da RN-680) é traduzido para NADA — fica só registrado no log.
+  'psychologist.hypothesis_accepted',
 ]);
 
 /**
@@ -60,6 +65,7 @@ export class GraphEventTranslator {
     private readonly recordHypothesis: RecordHypothesisUseCase,
     private readonly recordAnamneseProfile: RecordAnamneseProfileUseCase,
     private readonly recordInteraction: RecordInteractionUseCase,
+    private readonly recordProfileFact: RecordProfileFactUseCase,
   ) {}
 
   /**
@@ -76,6 +82,9 @@ export class GraphEventTranslator {
         return true;
       case 'anamnese.profile_updated':
         await this.projectAnamneseProfile(event);
+        return true;
+      case 'psychologist.hypothesis_accepted':
+        await this.projectProfileFact(event);
         return true;
       default:
         return false;
@@ -149,6 +158,45 @@ export class GraphEventTranslator {
       userId: payload.userId,
       dimensao: payload.competency,
       proficiencia: payload.level,
+    });
+  }
+
+  /**
+   * O aceite vira fato SÓ com `fatoDoPerfil: true` e os campos que o fato
+   * carrega — o evento é autossuficiente, e a reprojeção não precisa ler
+   * `psychologist_hypotheses`. Os aceites gravados antes da RN-680 só tinham
+   * `{hypothesisId, agenteAlvo}` e ficam de fora: o tipo É projetável (por
+   * isso devolve `true`), mas este evento não tem o que projetar.
+   */
+  private async projectProfileFact(event: SessionEvent): Promise<void> {
+    const payload = event.payload as {
+      hypothesisId?: unknown;
+      agenteAlvo?: unknown;
+      fatoDoPerfil?: unknown;
+      sujeito?: unknown;
+      projectId?: unknown;
+      hipotese?: unknown;
+      sugestao?: unknown;
+    };
+    if (payload.fatoDoPerfil !== true) return;
+    const campos = [
+      payload.hypothesisId,
+      payload.agenteAlvo,
+      payload.sujeito,
+      payload.projectId,
+      payload.hipotese,
+      payload.sugestao,
+    ];
+    if (!campos.every((c) => typeof c === 'string' && c !== '')) return;
+
+    await this.recordProfileFact.execute({
+      hypothesisId: payload.hypothesisId as string,
+      userId: payload.sujeito as string,
+      projectId: payload.projectId as string,
+      agenteAlvo: payload.agenteAlvo as string,
+      hipotese: payload.hipotese as string,
+      sugestao: payload.sugestao as string,
+      aceitoEm: event.createdAt.toISOString(),
     });
   }
 

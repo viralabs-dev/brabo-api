@@ -32,6 +32,7 @@ import { RecordHandoffUseCase } from '../../src/application/use-cases/graph/reco
 import { RecordHypothesisUseCase } from '../../src/application/use-cases/graph/record-hypothesis.use-case';
 import { RecordAnamneseProfileUseCase } from '../../src/application/use-cases/graph/record-anamnese-profile.use-case';
 import { RecordInteractionUseCase } from '../../src/application/use-cases/graph/record-interaction.use-case';
+import { RecordProfileFactUseCase } from '../../src/application/use-cases/graph/record-profile-fact.use-case';
 
 /**
  * A reprojeção do grafo a partir do event log (BRB-018, RN-569).
@@ -296,6 +297,7 @@ async function projetarParaFrente(grafo: GraphStore): Promise<void> {
     new RecordHypothesisUseCase(grafo),
     new RecordAnamneseProfileUseCase(grafo),
     new RecordInteractionUseCase(grafo),
+    new RecordProfileFactUseCase(grafo),
   );
   await projetor.drainOnce();
   const pendentes = await db

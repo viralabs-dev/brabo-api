@@ -7,6 +7,7 @@ import { RecordHypothesisUseCase } from './record-hypothesis.use-case';
 import { RecordAnamneseProfileUseCase } from './record-anamnese-profile.use-case';
 import { RecordHandoffUseCase } from './record-handoff.use-case';
 import { QueryUserContextUseCase } from './query-user-context.use-case';
+import { RecordProfileFactUseCase } from './record-profile-fact.use-case';
 
 const USE_CASES = [
   UpsertPromptTemplateUseCase,
@@ -16,6 +17,7 @@ const USE_CASES = [
   RecordAnamneseProfileUseCase,
   RecordHandoffUseCase,
   QueryUserContextUseCase,
+  RecordProfileFactUseCase,
 ];
 
 /**

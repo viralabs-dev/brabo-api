@@ -95,7 +95,7 @@ export class GetAnamneseContextUseCase {
   async execute(projectId: string): Promise<AnamneseContext> {
     const [members, moduleMap, optedOut, pending, currentProfiles, lastRun] =
       await Promise.all([
-        this.projects.listMembers(projectId),
+        this.projects.listEffectiveMembers(projectId),
         this.moduleMaps.findCurrent(projectId),
         this.optOuts.listOptedOutUserIds(projectId),
         this.queue.listPending(projectId),
