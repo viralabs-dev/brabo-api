@@ -169,7 +169,7 @@ describe('AcceptHypothesisUseCase', () => {
           sujeito: 'autora-da-sessao',
           fatoDoPerfil: false,
           motivoSemFato: 'aceita_por_quem_nao_e_o_sujeito',
-        }),
+        }) as unknown,
       }),
     );
     // O resto do aceite não muda: a fila da Anamnese continua recebendo.

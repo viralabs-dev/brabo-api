@@ -221,7 +221,10 @@ export class DrizzleProjectRepository implements ProjectRepository {
         })
         .from(workspaceMembers)
         .innerJoin(users, eq(users.id, workspaceMembers.userId))
-        .innerJoin(projects, eq(projects.workspaceId, workspaceMembers.workspaceId))
+        .innerJoin(
+          projects,
+          eq(projects.workspaceId, workspaceMembers.workspaceId),
+        )
         .where(eq(projects.id, projectId)),
     ]);
     return membrosEfetivos(doProjeto, doWorkspace);

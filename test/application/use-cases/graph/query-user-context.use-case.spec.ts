@@ -102,7 +102,10 @@ describe('QueryUserContextUseCase', () => {
 
     await useCase.execute({ userId: 'u-1', projectId: 'p-1', factLimit: 3 });
 
-    const [cypher, params] = run.mock.calls[3] as [string, Record<string, unknown>];
+    const [cypher, params] = run.mock.calls[3] as [
+      string,
+      Record<string, unknown>,
+    ];
     expect(cypher).toContain('FatoDoPerfil');
     expect(cypher).toContain(':NO_PROJETO]->(:Projeto {id: $projectId})');
     expect(params).toEqual({ userId: 'u-1', projectId: 'p-1', factLimit: 3 });
