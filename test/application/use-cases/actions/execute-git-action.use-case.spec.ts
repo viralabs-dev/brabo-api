@@ -42,8 +42,12 @@ function action(
 const unitOfWork = {
   runInTransaction: <T>(fn: () => Promise<T>) => fn(),
 } as never;
+let outboxRows: Array<{ eventType: string; payload: unknown }> = [];
 const outbox = {
-  append: () => Promise.resolve(),
+  append: (row: { eventType: string; payload: unknown }) => {
+    outboxRows.push(row);
+    return Promise.resolve();
+  },
 } as unknown as OutboxRepository;
 let eventos: Array<{ type: string; payload: unknown }> = [];
 const append = {
@@ -62,6 +66,11 @@ class FakeTasks {
     if (this.feitas.has(id)) return Promise.resolve(null);
     this.feitas.add(id);
     return Promise.resolve({ id, status: 'done' });
+  }
+  emRevisao = new Set<string>(['t1']);
+  reabrirPorConflitoDeMerge(id: string) {
+    if (!this.emRevisao.delete(id)) return Promise.resolve(null);
+    return Promise.resolve({ id, status: 'in_progress' });
   }
 }
 let tasks: FakeTasks;
@@ -105,6 +114,7 @@ function build(overrides: {
   proposedActions = new FakeProposedActions();
   tasks = new FakeTasks();
   eventos = [];
+  outboxRows = [];
   return new ExecuteGitActionUseCase(
     unitOfWork,
     proposedActions as unknown as ProposedActionRepository,
@@ -425,6 +435,53 @@ describe('ExecuteGitActionUseCase', () => {
         taskId: 't1',
         conflictingFiles: ['package.json'],
       });
+      // RN-715: a tarefa volta ao dono, e a outbox o acorda com o motivo.
+      expect(
+        eventos.find((e) => e.type === 'backlog.task_status_changed')?.payload,
+      ).toMatchObject({
+        taskId: 't1',
+        status: 'in_progress',
+        cause: 'merge_conflict',
+      });
+      expect(outboxRows).toHaveLength(1);
+      expect(outboxRows[0].eventType).toBe('task.merge_conflict');
+      expect(outboxRows[0].payload).toMatchObject({
+        taskId: 't1',
+        agentId: 'dev-api',
+        pullRequestId: 'pr-6',
+        conflictingFiles: ['package.json'],
+      });
+    });
+
+    it('RN-715: tarefa que já não está em revisão não é reaberta nem acorda ninguém', async () => {
+      const uc = build({
+        provider: {
+          mergePullRequest: () =>
+            Promise.reject(
+              new GitMergeConflictError('/tmp/repo', 'pr-6', ['package.json']),
+            ),
+        },
+      });
+      tasks.emRevisao.clear();
+      const pr = action('pr_open', { storyTaskId: 't1' });
+      pr.executionResult = {
+        kind: 'pr_open',
+        pullRequestUrl: 'local://x',
+        pullRequestId: 'pr-6',
+        sourceBranch: 'feature/x',
+        targetBranch: 'dev',
+      };
+      proposedActions.prOpens = [pr];
+      await uc.execute(
+        PROJECT,
+        SESSION,
+        action('git_merge', { pullRequestId: 'pr-6' }),
+      );
+      expect(proposedActions.saved?.status).toBe('failed');
+      expect(
+        eventos.some((e) => e.type === 'backlog.task_status_changed'),
+      ).toBe(false);
+      expect(outboxRows).toEqual([]);
     });
 
     it('falha que não é conflito não grava arquivos nem evento de conflito', async () => {
