@@ -170,7 +170,10 @@ describe('SendAgentMessageUseCase — idioma da resposta (RN-622)', () => {
 // RN-680 (ADR 0196): os fatos do perfil do AUTOR neste projeto viajam com a
 // mensagem até o engine; o chat.message registra QUANTOS foram.
 describe('SendAgentMessageUseCase — fatos do perfil (RN-680)', () => {
-  function montar(contexto: () => Promise<unknown>) {
+  function montar(
+    contexto: () => Promise<unknown>,
+    proficiencias: () => Promise<unknown> = () => Promise.resolve([]),
+  ) {
     const eventos: Array<{ payload: Record<string, unknown> }> = [];
     const perfis: Array<string | null | undefined> = [];
     const leitor = { execute: vi.fn(contexto) };
@@ -201,6 +204,7 @@ describe('SendAgentMessageUseCase — fatos do perfil (RN-680)', () => {
       } as never,
       { execute: () => Promise.reject(new Error('sem idioma')) } as never,
       leitor as never,
+      { listByUser: vi.fn(proficiencias) } as never,
     );
     return { uc, eventos, perfis, leitor };
   }
@@ -243,5 +247,39 @@ describe('SendAgentMessageUseCase — fatos do perfil (RN-680)', () => {
     });
     expect(perfis).toEqual([null]);
     expect(eventos[0].payload).toEqual({ text: 'oi' });
+  });
+
+  // RN-696 (AT-356): o NÍVEL por competência que a Anamnese derivou vai pelo
+  // mesmo texto — só `competência: nível`, nunca o rationale.
+  it('leva o nível por competência ao engine, sem o rationale', async () => {
+    const { uc, eventos, perfis } = montar(
+      () => Promise.resolve({ facts: [], factsTotal: 0 }),
+      () =>
+        Promise.resolve([
+          {
+            competency: 'arquitetura',
+            level: 'avancado',
+            rationale: 'SEGREDO-DO-RATIONALE',
+          },
+        ]),
+    );
+
+    await uc.execute('p', 's', 'criativo', 'oi', 'u');
+
+    expect(perfis[0]).toContain('- arquitetura: avancado');
+    expect(perfis[0]).not.toContain('SEGREDO-DO-RATIONALE');
+    expect(eventos[0].payload).toEqual({ text: 'oi' });
+  });
+
+  it('falha ao ler a proficiência não derruba a mensagem', async () => {
+    const { uc, perfis } = montar(
+      () => Promise.resolve({ facts: [], factsTotal: 0 }),
+      () => Promise.reject(new Error('banco fora')),
+    );
+
+    await expect(uc.execute('p', 's', 'po', 'oi', 'u')).resolves.toMatchObject({
+      ok: true,
+    });
+    expect(perfis).toEqual([null]);
   });
 });

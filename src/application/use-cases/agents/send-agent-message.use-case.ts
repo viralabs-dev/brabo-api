@@ -6,7 +6,12 @@ import {
   type IdiomaDaRespostaDaPessoa,
 } from '../iam/resolver-idioma-da-resposta.use-case';
 import { QueryUserContextUseCase } from '../graph/query-user-context.use-case';
-import { textoDoPerfilDoAutor } from '../../../domain/graph/perfil-do-autor';
+import {
+  TETO_DO_TEXTO,
+  textoDoPerfilDoAutor,
+} from '../../../domain/graph/perfil-do-autor';
+import { textoDaProficienciaDoAutor } from '../../../domain/anamnese/proficiencia-do-autor';
+import { ProficiencyProfileRepository } from '../../ports/proficiency-profile-repository.port';
 
 /**
  * Mensagem do usuário para um agente ATIVO na sessão (Fase 3b). Grava o
@@ -38,6 +43,12 @@ import { textoDoPerfilDoAutor } from '../../../domain/graph/perfil-do-autor';
  * ao engine como `perfilDoAutor`, que os acrescenta como mensagem de sistema
  * EFÊMERA nas chamadas do turno, como o idioma. Mesma régua de falha: grafo
  * fora do ar (ou Neo4j não configurado) vira log, e o turno segue sem eles.
+ *
+ * Desde a RN-696 (AT-356) o MESMO texto leva também o NÍVEL por competência
+ * que a Anamnese derivou para este autor neste projeto (`proficiency_profiles`,
+ * só `competência: nível`, nunca o rationale) — é por ele que o Criativo e o PO
+ * calibram quantas perguntas fazem. Leitura independente da do grafo: uma
+ * falha não apaga a outra.
  */
 @Injectable()
 export class SendAgentMessageUseCase {
@@ -48,6 +59,7 @@ export class SendAgentMessageUseCase {
     private readonly appendEvent: AppendSessionEventUseCase,
     private readonly idiomaDaResposta: ResolverIdiomaDaRespostaUseCase,
     private readonly contextoDoUsuario: QueryUserContextUseCase,
+    private readonly proficiencias: ProficiencyProfileRepository,
   ) {}
 
   async execute(
@@ -74,7 +86,9 @@ export class SendAgentMessageUseCase {
         ...(idioma ? { idiomaAlvo: idioma.idioma, origem: idioma.origem } : {}),
         // RN-680: QUANTOS fatos do perfil foram ao modelo neste turno — o
         // texto não, que já mora no grafo e no aceite de cada hipótese.
-        ...(perfil ? { fatosDoPerfil: perfil.quantos } : {}),
+        ...(perfil && perfil.quantos > 0
+          ? { fatosDoPerfil: perfil.quantos }
+          : {}),
       },
     });
 
@@ -95,6 +109,44 @@ export class SendAgentMessageUseCase {
   }
 
   private async resolverPerfil(
+    userId: string,
+    projectId: string,
+  ): Promise<{ texto: string; quantos: number } | null> {
+    const [fatos, proficiencia] = await Promise.all([
+      this.resolverFatos(userId, projectId),
+      this.resolverProficiencia(userId, projectId),
+    ]);
+    const partes = [fatos?.texto, proficiencia].filter(
+      (t): t is string => typeof t === 'string' && t !== '',
+    );
+    if (partes.length === 0) return null;
+    const texto = partes.join('\n\n');
+    return {
+      texto:
+        texto.length > TETO_DO_TEXTO
+          ? `${texto.slice(0, TETO_DO_TEXTO - 1)}…`
+          : texto,
+      quantos: fatos?.quantos ?? 0,
+    };
+  }
+
+  // RN-696: melhor esforço, como os fatos — falha vira log, o turno segue.
+  private async resolverProficiencia(
+    userId: string,
+    projectId: string,
+  ): Promise<string | null> {
+    try {
+      const perfis = await this.proficiencias.listByUser(projectId, userId);
+      return textoDaProficienciaDoAutor(perfis);
+    } catch (erro) {
+      this.logger.warn(
+        `proficiência do autor não lida para o projeto ${projectId}: o turno segue sem ela (${erro instanceof Error ? erro.message : String(erro)})`,
+      );
+      return null;
+    }
+  }
+
+  private async resolverFatos(
     userId: string,
     projectId: string,
   ): Promise<{ texto: string; quantos: number } | null> {
