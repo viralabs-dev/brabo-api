@@ -48,7 +48,7 @@ function harness(
       ? Promise.reject(opts.ativacaoFalha)
       : Promise.resolve({
           sessionId: 'sess-exec',
-          modules: ['board-engine', 'input-keyboard'],
+          modules: ['board-engine'],
         }),
   );
   const useCase = new ExecuteExecutionPlanUseCase(
@@ -113,14 +113,27 @@ describe('ExecuteExecutionPlanUseCase (RN-677/RN-678)', () => {
 
     expect(h.atribuicoes).toEqual([{ taskId: T1, module: 'board-engine' }]);
     // Quem aprovou ativa; sem `originSessionId` — a sessão do Dev Lead fica.
-    expect(h.activate).toHaveBeenCalledWith('proj-1', 'maint-1');
+    // AT-381 (RN-709): só o módulo com tarefa sobe agente.
+    expect(h.activate).toHaveBeenCalledWith(
+      'proj-1',
+      'maint-1',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      ['board-engine'],
+    );
     expect(out.status).toBe('executed');
     expect(h.resultados[0]).toEqual({
       status: 'executed',
       executionResult: {
         sessaoDeExecucao: 'sess-exec',
-        modulos: ['board-engine', 'input-keyboard'],
+        modulos: ['board-engine'],
         tarefasAtribuidas: 1,
+        tarefasPorModulo: { 'board-engine': 1 },
+        modulosSemTarefa: ['input-keyboard'],
       },
     });
     expect(h.eventos.map((e) => e.type)).toEqual(['execution.plan_applied']);
@@ -129,7 +142,10 @@ describe('ExecuteExecutionPlanUseCase (RN-677/RN-678)', () => {
   it('auto-aprovado (sem decisor): quem ativa é quem abriu a sessão', async () => {
     const h = harness({ sessaoCriadaPor: 'dono-da-sessao' });
     await h.useCase.execute('proj-1', 'sess-dev-lead', acao(PLANO_BOM, null));
-    expect(h.activate).toHaveBeenCalledWith('proj-1', 'dono-da-sessao');
+    expect(h.activate.mock.calls[0]?.slice(0, 2)).toEqual([
+      'proj-1',
+      'dono-da-sessao',
+    ]);
   });
 
   it('módulo fora do module_map na APROVAÇÃO: failed com motivo, nada gravado, nada ativado', async () => {

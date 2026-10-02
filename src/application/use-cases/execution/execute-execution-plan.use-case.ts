@@ -119,15 +119,39 @@ export class ExecuteExecutionPlanUseCase {
         });
       }
 
+      // AT-381 (RN-709): só módulo com ≥ 1 tarefa ganha agente — um
+      // `dev-<modulo>` sem tarefa sobe, fica ocioso e conta como execução.
+      const tarefasPorModulo: Record<string, number> = {};
+      for (const t of plano.tarefas) {
+        tarefasPorModulo[t.modulo] = (tarefasPorModulo[t.modulo] ?? 0) + 1;
+      }
+      const modulosDoMapa = (
+        (await this.moduleMaps.findCurrent(projectId))?.modules ?? []
+      ).map((m) => m.name);
+      const modulosSemTarefa =
+        plano.tarefas.length === 0
+          ? []
+          : modulosDoMapa.filter((m) => !(m in tarefasPorModulo));
+
       const ativacao = await this.activateExecution.execute(
         projectId,
         quemAtiva,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        // Plano sem `tarefas` (forma anterior à RN-678) sobe o mapa inteiro.
+        plano.tarefas.length > 0 ? Object.keys(tarefasPorModulo) : undefined,
       );
 
       return this.registrar(projectId, sessionId, action.id, 'executed', {
         sessaoDeExecucao: ativacao.sessionId,
         modulos: ativacao.modules,
         tarefasAtribuidas: plano.tarefas.length,
+        tarefasPorModulo,
+        modulosSemTarefa,
       });
     } catch (erro) {
       return this.registrar(projectId, sessionId, action.id, 'failed', {

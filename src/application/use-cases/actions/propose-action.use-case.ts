@@ -45,6 +45,7 @@ import type { ActionStatus } from '../../../domain/actions/action-state-machine'
 import type { PermissionPolicy } from '../../../domain/actions/permissions-file';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
 import { Traced } from '../../../infrastructure/observability/traced.decorator';
+import { DEFAULT_TASK_BUDGET_MICROS } from '../execution/activate-execution.use-case';
 
 export interface ProposeActionInput {
   actionType: string;
@@ -203,6 +204,18 @@ export class ProposeActionUseCase {
       },
     );
 
+    // AT-381 (RN-709): o plano leva o orçamento por tarefa VIGENTE — o mesmo
+    // que a ativação usará —, para o cartão mostrar a estimativa antes do
+    // clique. É teto por tarefa, não preço.
+    const payloadDaProposta =
+      actionType === 'propose_execution_plan'
+        ? {
+            ...((input.payload ?? {}) as Record<string, unknown>),
+            orcamentoPorTarefaMicros:
+              project.taskBudgetMicros ?? DEFAULT_TASK_BUDGET_MICROS,
+          }
+        : input.payload;
+
     const { status, rejectionReason } = initialStatusFor(
       decision.policy,
       decision.reason,
@@ -213,7 +226,7 @@ export class ProposeActionUseCase {
         projectId,
         sessionId,
         actionType,
-        payload: input.payload,
+        payload: payloadDaProposta,
         status,
         resolvedPolicy: decision.policy,
         actor: input.actor,
