@@ -12,7 +12,17 @@ ARG DEV_GID=1000
 # binário por padrão.
 RUN apk add --no-cache git
 
-RUN corepack enable && corepack prepare pnpm@11.3.0 --activate
+# pnpm sem corepack (AT-360): o Node 25+ não traz corepack. Tarball do registry
+# conferido contra o sha512 GRAVADO aqui (`npm view pnpm@<v> dist.integrity`, em
+# hex), instalado em /usr/local/bin. A versão bate com o `packageManager` do
+# package.json, então o pnpm nunca tenta baixar outra em runtime.
+ARG PNPM_VERSION=11.3.0
+ARG PNPM_SHA512=2c403d6594527287672b1f7056343a1f7c3634036a67ffabfcc2b3d7595d843768f8787148d1b57cf7956c90606bbd192857c363af19e96d2d0ec9ec5741d215
+RUN npm pack "pnpm@${PNPM_VERSION}" --silent \
+  && printf "%s  %s\n" "${PNPM_SHA512}" "pnpm-${PNPM_VERSION}.tgz" > /tmp/pnpm.sha512 \
+  && sha512sum -c /tmp/pnpm.sha512 && rm /tmp/pnpm.sha512 \
+  && npm i -g "./pnpm-${PNPM_VERSION}.tgz" \
+  && rm "pnpm-${PNPM_VERSION}.tgz"
 
 # Só cria grupo/usuário quando o UID/GID pedido diverge do que a imagem já
 # tem — `node:24-alpine` já vem com o usuário "node" em 1000:1000, o default
