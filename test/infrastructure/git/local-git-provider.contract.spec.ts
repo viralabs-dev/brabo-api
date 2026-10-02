@@ -150,6 +150,27 @@ describe('LocalGitProvider — pull request local (open + merge)', () => {
     expect(branches.find((b) => b.name === 'main')?.commitSha).toBe(featureSha);
   });
 
+  it('grava o autor ao abrir e o devolve na listagem; sem autor segue null (RN-705)', async () => {
+    const { repo } = await repoWithFeature();
+    await provider.openPullRequest({
+      externalId: repo.externalId,
+      sourceBranch: 'feature/x',
+      targetBranch: 'main',
+      title: 'Com autor',
+      author: 'dev-api[bot]',
+    });
+    await provider.openPullRequest({
+      externalId: repo.externalId,
+      sourceBranch: 'feature/x',
+      targetBranch: 'main',
+      title: 'Sem autor',
+    });
+    const lista = await provider.listPullRequests({
+      externalId: repo.externalId,
+    });
+    expect(lista.items.map((p) => p.author)).toEqual(['dev-api[bot]', null]);
+  });
+
   it('mergear de novo uma PR já mergeada é recusado com erro nomeado, e o target não se move (AT-249, RN-663)', async () => {
     const { repo, featureSha } = await repoWithFeature();
     const pr = await provider.openPullRequest({

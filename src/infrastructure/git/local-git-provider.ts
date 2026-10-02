@@ -311,6 +311,7 @@ export class LocalGitProvider implements GitProviderContract {
       sourceBranch: input.sourceBranch,
       targetBranch: input.targetBranch,
       state: 'open',
+      ...(input.author ? { author: input.author } : {}),
     };
     store.push(record);
     await writePrStore(repoDir, store);
@@ -544,9 +545,10 @@ export class LocalGitProvider implements GitProviderContract {
         number: pr.number,
         title: pr.title,
         url: `local://${basename(repoDir)}/pull/${pr.number}`,
-        // O store local não tem conceito de autor — não há usuário
-        // autenticado por trás de um bare repo em disco.
-        author: null,
+        // Não há usuário autenticado por trás de um bare repo em disco: o
+        // autor é o que o executor gravou ao abrir (RN-705, `<agente>[bot]`).
+        // PR aberta antes disso segue sem autor.
+        author: pr.author ?? null,
         state: pr.state,
         sourceBranch: pr.sourceBranch,
         targetBranch: pr.targetBranch,
@@ -711,6 +713,7 @@ interface StoredPr {
   targetBranch: string;
   state: 'open' | 'merged' | 'closed';
   comments?: string[];
+  author?: string;
 }
 
 function prStorePath(repoDir: string): string {
