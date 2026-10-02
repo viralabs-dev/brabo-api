@@ -210,7 +210,7 @@ export class ProposeActionUseCase {
     const payloadDaProposta =
       actionType === 'propose_execution_plan'
         ? {
-            ...((input.payload ?? {}) as Record<string, unknown>),
+            ...(input.payload ?? {}),
             orcamentoPorTarefaMicros:
               project.taskBudgetMicros ?? DEFAULT_TASK_BUDGET_MICROS,
           }
