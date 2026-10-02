@@ -328,16 +328,74 @@ export class ExecuteGitActionUseCase {
     }
   }
 
+  /**
+   * RN-715: devolve a tarefa da PR em conflito ao dev agent que a abriu.
+   * Só move quem está `in_review` (merge repetido não reabre de novo), e a
+   * linha de outbox só nasce quando a tarefa de fato voltou e há DONO — PR
+   * aberta por humano não tem a quem acordar. Quem decide o desfecho de um
+   * dono que não está vivo é o engine (`DevAgentWakeWorker`), que bloqueia a
+   * tarefa com o motivo nomeado.
+   */
+  private async devolverAoDono(
+    projectId: string,
+    sessionId: string,
+    actionId: string,
+    c: {
+      taskId: string;
+      agentId: string | null;
+      pullRequestId: string;
+      conflictingFiles: string[];
+    },
+  ) {
+    const task = await this.tasks.reabrirPorConflitoDeMerge(c.taskId);
+    if (!task) return;
+    await this.appendSessionEvent.execute(projectId, sessionId, {
+      type: 'backlog.task_status_changed',
+      actor: { kind: 'system', id: 'git-executor' },
+      payload: {
+        taskId: c.taskId,
+        status: 'in_progress',
+        cause: 'merge_conflict',
+        pullRequestId: c.pullRequestId,
+        actionId,
+      },
+    });
+    if (!c.agentId) return;
+    await this.outbox.append({
+      aggregateType: 'task',
+      aggregateId: c.taskId,
+      eventType: 'task.merge_conflict',
+      payload: {
+        projectId,
+        sessionId,
+        taskId: c.taskId,
+        agentId: c.agentId,
+        pullRequestId: c.pullRequestId,
+        conflictingFiles: c.conflictingFiles,
+      },
+    });
+  }
+
   /** As tarefas cujo `pr_open` abriu esta PR (`storyTaskId` no payload). */
   private async tarefasDaPr(
     projectId: string,
     pullRequestId: string,
   ): Promise<Set<string>> {
+    return new Set(
+      (await this.donosDasTarefasDaPr(projectId, pullRequestId)).keys(),
+    );
+  }
+
+  /** Tarefa da PR → agente que propôs o `pr_open` dela (RN-715). */
+  private async donosDasTarefasDaPr(
+    projectId: string,
+    pullRequestId: string,
+  ): Promise<Map<string, string | null>> {
     const prActions = await this.proposedActions.listByProjectAndType(
       projectId,
       'pr_open',
     );
-    const taskIds = new Set<string>();
+    const donos = new Map<string, string | null>();
     for (const a of prActions) {
       const r = a.executionResult;
       const taskId = (a.payload as { storyTaskId?: unknown }).storyTaskId;
@@ -349,10 +407,10 @@ export class ExecuteGitActionUseCase {
         r.pullRequestId === pullRequestId &&
         typeof taskId === 'string'
       ) {
-        taskIds.add(taskId);
+        donos.set(taskId, a.actor?.kind === 'agent' ? a.actor.id : null);
       }
     }
-    return taskIds;
+    return donos;
   }
 
   private markFailed(
@@ -377,13 +435,16 @@ export class ExecuteGitActionUseCase {
 
       // RN-705: o conflito de merge vira evento NOMEADO na tarefa da PR —
       // antes a tarefa ficava `in_review` sem nada dizer que o merge falhou.
+      // RN-715: e a tarefa VOLTA ao dev agent que abriu a PR — `in_progress`,
+      // gate zerado, e `task.merge_conflict` na outbox acorda o dono para
+      // integrar a `dev` na branch e reenviar; os gates julgam de novo.
       const falha = resultadoDaFalha(action, error);
       if (falha.kind === 'git_merge' && falha.conflictingFiles) {
-        const taskIds = await this.tarefasDaPr(
+        const donos = await this.donosDasTarefasDaPr(
           projectId,
           falha.pullRequestId ?? '',
         );
-        for (const taskId of taskIds) {
+        for (const [taskId, agentId] of donos) {
           await this.appendSessionEvent.execute(projectId, sessionId, {
             type: 'backlog.task_merge_conflict',
             actor: { kind: 'system', id: 'git-executor' },
@@ -393,6 +454,12 @@ export class ExecuteGitActionUseCase {
               conflictingFiles: falha.conflictingFiles,
               actionId: action.id,
             },
+          });
+          await this.devolverAoDono(projectId, sessionId, action.id, {
+            taskId,
+            agentId,
+            pullRequestId: falha.pullRequestId ?? '',
+            conflictingFiles: falha.conflictingFiles,
           });
         }
       }

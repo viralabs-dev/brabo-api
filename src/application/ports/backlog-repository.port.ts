@@ -98,6 +98,11 @@ export abstract class TaskRepository {
   // estava. Atômico (UPDATE ... WHERE status <> 'done') e devolve `null` se
   // nada mudou — é isso que torna o merge repetido idempotente, sem evento.
   abstract markDoneIfNotDone(id: string): Promise<Task | null>;
+  // O merge recusado por conflito devolve a tarefa ao dev agent (RN-715):
+  // `in_review` → `in_progress` e `gate_status` zerado (os vereditos antigos
+  // não valem para a branch rebaseada). Só a partir de `in_review`; devolve
+  // `null` se nada mudou.
+  abstract reabrirPorConflitoDeMerge(id: string): Promise<Task | null>;
   // Quantas tasks `todo` de story `ready` estão disponíveis pro módulo — usado
   // pra sugerir paralelização (≥2 = ramos independentes disponíveis).
   abstract countClaimableByModule(

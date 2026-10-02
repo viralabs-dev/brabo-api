@@ -318,6 +318,21 @@ export class DrizzleTaskRepository implements TaskRepository {
     return row ? taskToEntity(row) : null;
   }
 
+  async reabrirPorConflitoDeMerge(id: string): Promise<Task | null> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .update(tasks)
+      .set({
+        status: 'in_progress',
+        gateStatus: null,
+        gateCorrectionCount: 0,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(tasks.id, id), eq(tasks.status, 'in_review')))
+      .returning();
+    return row ? taskToEntity(row) : null;
+  }
+
   async countClaimableByModule(
     projectId: string,
     module: string,
