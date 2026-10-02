@@ -36,6 +36,11 @@ function buildHarness(
     events?: Record<string, string>;
     // sessões que pertencem ao projeto
     sessionsInProject?: string[];
+    // autor e tipo de cada evento; ausente = mensagem da própria user-1
+    meta?: Record<
+      string,
+      { type: string; actor: { kind: string; id: string } }
+    >;
   } = {},
 ) {
   const events = opts.events ?? { 'evt-1': 'sess-1' };
@@ -63,7 +68,18 @@ function buildHarness(
 
   const sessionEvents = {
     findById: (id: string) =>
-      Promise.resolve(events[id] ? { id, sessionId: events[id] } : null),
+      Promise.resolve(
+        events[id]
+          ? {
+              id,
+              sessionId: events[id],
+              ...(opts.meta?.[id] ?? {
+                type: 'chat.message',
+                actor: { kind: 'user', id: 'user-1' },
+              }),
+            }
+          : null,
+      ),
   } as unknown as SessionEventRepository;
 
   const sessions = {
@@ -236,6 +252,32 @@ describe('RecordProficiencyUseCase', () => {
         input([buildDraft({ evidenceEventIds: ['evt-x'] })]),
       ),
     ).rejects.toThrow();
+    expect(upsertMany).not.toHaveBeenCalled();
+  });
+
+  it('RN-716: evidência só de aprovação não grava perfil nem profile_updated', async () => {
+    const { useCase, upsertMany } = buildHarness({
+      stacks: ['NestJS'],
+      events: { 'evt-adr': 'sess-1' },
+      meta: {
+        'evt-adr': {
+          type: 'proposed_action.approved',
+          actor: { kind: 'user', id: 'user-1' },
+        },
+      },
+    });
+
+    await expect(
+      useCase.execute(
+        'proj-1',
+        input([
+          buildDraft({
+            competency: 'arquitetura',
+            evidenceEventIds: ['evt-adr'],
+          }),
+        ]),
+      ),
+    ).rejects.toThrow('NÃO OBSERVADA');
     expect(upsertMany).not.toHaveBeenCalled();
   });
 });

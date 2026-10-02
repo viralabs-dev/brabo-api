@@ -23,20 +23,58 @@ export interface ProficiencyDraft {
   evidenceEventIds: string[];
 }
 
+/**
+ * O que o chamador sabe de cada evento citado como evidência: quem o
+ * escreveu e o tipo. É o que permite separar OBSERVAÇÃO de AUSÊNCIA (RN-716).
+ */
+export interface EvidenceEventInfo {
+  type: string;
+  actorKind: string;
+  actorId: string;
+}
+
+/**
+ * Cliques de aprovação: dizem que a pessoa CONFIOU (ou teve pressa), nunca
+ * que domina o conteúdo aprovado. Não contam como evidência de competência
+ * (RN-716, AT-376: "aprova 2 ADRs sem hesitar" virava arquitetura avançada).
+ */
+export const EVENTOS_DE_APROVACAO_SEM_LEITURA: readonly string[] = [
+  'proposed_action.approved',
+  'handoff.accepted',
+  'readiness.confirmed',
+];
+
+/**
+ * Evidência que OBSERVA a pessoa: evento escrito por ELA e que não é um
+ * clique de aprovação. Evento de outro ator (o agente que mexeu no git, a
+ * infra que subiu container) é ausência de oportunidade para a pessoa, não
+ * evidência de pouco conhecimento.
+ */
+export function ehEvidenciaObservadaDaPessoa(
+  info: EvidenceEventInfo,
+  userId: string,
+): boolean {
+  return (
+    info.actorKind === 'user' &&
+    info.actorId === userId &&
+    !EVENTOS_DE_APROVACAO_SEM_LEITURA.includes(info.type)
+  );
+}
+
 export type ProficiencyBatchValidation =
   { ok: true } | { ok: false; reason: string };
 
 /**
  * `catalog` vem de deriveCatalog(stacks) — é o guarda-corpo que impede
- * qualquer competência sensível. `knownEventIds` são os ids que existem
- * de verdade no event log do projeto. `allowedUserIds` são os membros
+ * qualquer competência sensível. `knownEventIds` mapeia os ids que existem
+ * de verdade no event log do projeto para autor e tipo (RN-716). `allowedUserIds` são os membros
  * NÃO opted-out: um usuário que apagou o perfil não pode voltar a ser
  * perfilado por um lote do modelo.
  */
 export function validateProficiencyBatch(
   drafts: ProficiencyDraft[],
   catalog: Set<string>,
-  knownEventIds: Set<string>,
+  knownEventIds: Map<string, EvidenceEventInfo>,
   allowedUserIds: Set<string>,
 ): ProficiencyBatchValidation {
   if (drafts.length === 0) {
@@ -89,6 +127,25 @@ export function validateProficiencyBatch(
       return {
         ok: false,
         reason: `${label}: evidência "${invalidId}" não corresponde a um evento real deste projeto`,
+      };
+    }
+
+    // RN-716: competência NÃO OBSERVADA não ganha nível. Sem um evento da
+    // própria pessoa interagindo com o conteúdo, o estado é "não observado",
+    // e ele não grava perfil nenhum — nem "iniciante".
+    const observada = draft.evidenceEventIds.some((id) => {
+      const info = knownEventIds.get(id);
+      return (
+        info !== undefined && ehEvidenciaObservadaDaPessoa(info, draft.userId)
+      );
+    });
+    if (!observada) {
+      return {
+        ok: false,
+        reason:
+          `${label}: competência NÃO OBSERVADA — nenhuma evidência é uma interação da própria pessoa com o conteúdo ` +
+          `(eventos de outros atores são ausência de oportunidade, e aprovar sem abrir é confiança, não domínio). ` +
+          `Retire este perfil do lote; se nada sobrar, encerre com skip_proficiency`,
       };
     }
   }

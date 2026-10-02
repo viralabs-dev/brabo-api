@@ -16,6 +16,7 @@ import {
 } from '../../../domain/anamnese/competency-catalog';
 import { validateProficiencyBatch } from '../../../domain/anamnese/proficiency-validation';
 import type {
+  EvidenceEventInfo,
   ProficiencyDraft,
   ProficiencyLevel,
 } from '../../../domain/anamnese/proficiency-validation';
@@ -154,13 +155,13 @@ export class RecordProficiencyUseCase {
   private async resolveKnownEventIds(
     projectId: string,
     drafts: ProficiencyDraft[],
-  ): Promise<Set<string>> {
+  ): Promise<Map<string, EvidenceEventInfo>> {
     const referenced = new Set<string>();
     for (const draft of drafts) {
       for (const id of draft.evidenceEventIds) referenced.add(id);
     }
 
-    const known = new Set<string>();
+    const known = new Map<string, EvidenceEventInfo>();
     await Promise.all(
       Array.from(referenced).map(async (id) => {
         const event = await this.sessionEvents.findById(id);
@@ -169,7 +170,13 @@ export class RecordProficiencyUseCase {
           projectId,
           event.sessionId,
         );
-        if (session) known.add(id);
+        if (session) {
+          known.set(id, {
+            type: event.type,
+            actorKind: event.actor.kind,
+            actorId: event.actor.id,
+          });
+        }
       }),
     );
     return known;
