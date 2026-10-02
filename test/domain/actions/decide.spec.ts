@@ -1093,12 +1093,14 @@ describe('decide — modo automático libera o escopo de caminho (RN-603)', () =
     expect(result.policy).toBe('auto_approve');
   });
 
-  it('`git push` continua pedindo aprovação em modo automático (RN-418)', () => {
+  // Invertido pela RN-713 (ADR 0204): o nome guarda a origem (RN-418).
+  it('`git push` continua pedindo aprovação em modo automático (RN-418) — até a RN-713, que o libera', () => {
     const result = decide(
       { actionType: 'terminal', command: 'cd /work && git push origin dev' },
       automatico(),
     );
-    expect(result.policy).toBe('require_approval');
+    expect(result.policy).toBe('auto_approve');
+    expect(result.reason).toMatch(/modo automático \(RN-713\)/);
   });
 
   it('`sudo` continua pedindo aprovação em modo automático (RN-418)', () => {
@@ -1238,10 +1240,21 @@ describe('decide — piloto automático: commit e branch local livres (RN-670)',
     }
   });
 
+  // RN-713 (ADR 0204): push e PR saíram desta lista — o piloto os libera.
+  it.each(['git push origin feature/x', 'gh pr create --fill'])(
+    '`%s` é auto-aprovado no piloto (RN-713)',
+    (command) => {
+      expect(
+        decide({ actionType: 'terminal', command, cwd: '/work' }, piloto())
+          .policy,
+      ).toBe('auto_approve');
+    },
+  );
+
   it.each([
-    'git push origin feature/x',
     'git merge feature/x',
-    'gh pr create --fill',
+    'gh pr merge 3',
+    'sudo apt-get install jq',
     'kubectl apply -f k8s/',
     'doas rm -rf /work/node_modules',
   ])('`%s` segue pedindo aprovação no piloto (teto absoluto)', (command) => {
@@ -1376,7 +1389,9 @@ describe('decide — o teto da RN-418 nas ações tipadas (RN-689)', () => {
   const TIPADAS = ['git_push', 'pr_open'] as const;
 
   for (const tipo of TIPADAS) {
-    it(`\`${tipo}\` com o curinga do piloto automático pede aprovação`, () => {
+    // Invertido pela RN-713 (ADR 0204, decisão do dono de 02/10): o nome
+    // guarda a origem (RN-689); o modo automático passou a liberar push/PR.
+    it(`\`${tipo}\` com o curinga do piloto automático pede aprovação — até a RN-713, que o auto-aprova`, () => {
       const r = decide(
         { actionType: tipo },
         ctx({
@@ -1385,9 +1400,21 @@ describe('decide — o teto da RN-418 nas ações tipadas (RN-689)', () => {
           autonomyOrigin: 'curinga',
         }),
       );
-      expect(r.policy).toBe('require_approval');
-      expect(r.reason).toMatch(/RN-418/);
+      expect(r.policy).toBe('auto_approve');
+      expect(r.reason).toMatch(/RN-713/);
       expect(r.reason).toContain(tipo);
+    });
+
+    it(`\`${tipo}\` com o curinga em require_approval (toggle manual) pede aprovação`, () => {
+      const r = decide(
+        { actionType: tipo },
+        ctx({
+          effectiveRole: 'maintainer',
+          autonomyMode: 'require_approval',
+          autonomyOrigin: 'curinga',
+        }),
+      );
+      expect(r.policy).toBe('require_approval');
     });
 
     it(`\`${tipo}\` com regra ESPECÍFICA em auto_approve pede aprovação`, () => {

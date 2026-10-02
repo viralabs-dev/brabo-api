@@ -287,6 +287,20 @@ export function mensagemDoTetoDaAcaoTipada(
   );
 }
 
+/**
+ * O motivo da política quando o MODO AUTOMÁTICO libera push/PR (RN-713, ADR
+ * 0204) — o `reason` que vai no `proposed_action.created` (RN-567).
+ */
+export function mensagemDoModoAutomaticoNoEfeitoExterno(
+  actionType: AcaoTipadaComEfeitoExterno,
+): string {
+  return (
+    `modo automático (RN-713): "${actionType}" auto-aprovado porque o agente ` +
+    `está em modo automático — só a curinga libera push/PR; merge em ` +
+    `branch protegida e sudo continuam com o usuário.`
+  );
+}
+
 /** A mensagem que o agente lê. Diz o que fazer, não só o que não fazer. */
 export function mensagemDeEfeitoExterno(efeito: EfeitoExterno): string {
   return (
