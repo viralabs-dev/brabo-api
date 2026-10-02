@@ -83,6 +83,26 @@ export class GitPullRequestAlreadyMergedError extends Error {
   }
 }
 
+// AT-377 (RN-704): o merge da PR não se completa sem resolução humana — a
+// fonte e o alvo divergiram e mexem nas mesmas linhas. Nada muda na ref do
+// alvo e a PR continua aberta; a lista nomeia os arquivos em conflito.
+export class GitMergeConflictError extends Error {
+  constructor(
+    readonly repoId: string,
+    readonly pullRequestId: string,
+    readonly conflictingFiles: string[],
+  ) {
+    super(
+      `conflito de merge na PR ${pullRequestId}: ${
+        conflictingFiles.length > 0
+          ? conflictingFiles.join(', ')
+          : 'arquivos não identificados'
+      } — resolva o conflito na branch da PR e tente de novo`,
+    );
+    this.name = 'GitMergeConflictError';
+  }
+}
+
 // Sessão 2 (ver docs/adr/0004-git-credential-registration.md): falha no
 // teste de conexão de uma credencial de git antes de persistir — nunca
 // lançado depois de gravar nada.

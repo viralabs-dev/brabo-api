@@ -51,6 +51,7 @@ import {
   GitNotSupportedError,
   GitPermissionDeniedError,
   GitPullRequestAlreadyMergedError,
+  GitMergeConflictError,
   GitRepoAlreadyExistsError,
   GitRepoNotFoundError,
 } from '../../domain/git/git-errors';
@@ -344,14 +345,24 @@ export class LocalGitProvider implements GitProviderContract {
       if (sourceSha === null) {
         throw new GitBranchNotFoundError(repoDir, record.sourceBranch);
       }
-      // Merge local simplista: avança o target pro commit da branch da PR
-      // (fast-forward). Suficiente pro fluxo self-contained dos dev agents;
-      // divergência real do target não é exercitada aqui.
-      await execGit(repoDir, [
-        'update-ref',
-        `refs/heads/${record.targetBranch}`,
-        sourceSha,
-      ]);
+      const targetSha = await resolveRef(repoDir, record.targetBranch);
+      if (targetSha === null) {
+        throw new GitBranchNotFoundError(repoDir, record.targetBranch);
+      }
+      // AT-377 (RN-704): merge DE VERDADE no repositório bare. Antes era
+      // `update-ref` puro, que com o alvo divergido descartava o que já
+      // estava nele (o merge anterior sumia, sem erro).
+      const newSha = await mergeShas(repoDir, record, targetSha, sourceSha);
+      // `update-ref` com o valor antigo esperado: se outro merge moveu o
+      // alvo no meio, falha em vez de sobrescrever.
+      if (newSha !== targetSha) {
+        await execGit(repoDir, [
+          'update-ref',
+          `refs/heads/${record.targetBranch}`,
+          newSha,
+          targetSha,
+        ]);
+      }
       record.state = 'merged';
       await writePrStore(repoDir, store);
     }
@@ -742,6 +753,89 @@ async function initBareRepo(path: string): Promise<void> {
     'HEAD',
     'refs/heads/main',
   ]);
+}
+
+const IDENTIDADE_DO_BOT = {
+  GIT_AUTHOR_NAME: 'Brabo Bot',
+  GIT_AUTHOR_EMAIL: 'bot@brabo.dev',
+  GIT_COMMITTER_NAME: 'Brabo Bot',
+  GIT_COMMITTER_EMAIL: 'bot@brabo.dev',
+};
+
+// Devolve o sha que o alvo deve passar a ter. Alvo ancestral da fonte (ou
+// igual) → fast-forward; fonte já contida no alvo → nada muda; divergiram →
+// commit de merge com os dois pais, montado por `merge-tree --write-tree`
+// (git >= 2.38), sem worktree. Conflito → `GitMergeConflictError`.
+async function mergeShas(
+  repoDir: string,
+  record: StoredPr,
+  targetSha: string,
+  sourceSha: string,
+): Promise<string> {
+  if (await isAncestor(repoDir, targetSha, sourceSha)) return sourceSha;
+  if (await isAncestor(repoDir, sourceSha, targetSha)) return targetSha;
+
+  let treeSha: string;
+  try {
+    const { stdout } = await execGit(repoDir, [
+      'merge-tree',
+      '--write-tree',
+      '--name-only',
+      '--no-messages',
+      targetSha,
+      sourceSha,
+    ]);
+    treeSha = stdout.split('\n')[0].trim();
+  } catch (error) {
+    const e = error as { code?: number; stdout?: string };
+    if (e.code === 1 && typeof e.stdout === 'string') {
+      // Saída 1 = conflito: 1ª linha é a árvore, depois os arquivos.
+      const files = e.stdout
+        .split('\n')
+        .slice(1)
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0);
+      throw new GitMergeConflictError(repoDir, record.id, [...new Set(files)]);
+    }
+    throw error;
+  }
+
+  const { stdout } = await execFileAsync(
+    'git',
+    [
+      '--git-dir',
+      repoDir,
+      'commit-tree',
+      treeSha,
+      '-p',
+      targetSha,
+      '-p',
+      sourceSha,
+      '-m',
+      `Merge pull request #${record.number} from ${record.sourceBranch}\n\n${record.title}`,
+    ],
+    { env: { ...process.env, ...IDENTIDADE_DO_BOT } },
+  );
+  return stdout.trim();
+}
+
+async function isAncestor(
+  repoDir: string,
+  ancestor: string,
+  descendant: string,
+): Promise<boolean> {
+  try {
+    await execGit(repoDir, [
+      'merge-base',
+      '--is-ancestor',
+      ancestor,
+      descendant,
+    ]);
+    return true;
+  } catch (error) {
+    if ((error as { code?: number }).code === 1) return false;
+    throw error;
+  }
 }
 
 async function execGit(repoDir: string, args: string[]) {
