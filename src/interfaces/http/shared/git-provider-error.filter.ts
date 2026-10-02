@@ -7,6 +7,7 @@ import {
 import {
   GitBranchAlreadyExistsError,
   GitBranchNotFoundError,
+  GitMergeConflictError,
   GitNotSupportedError,
   GitPermissionDeniedError,
   GitRepoAlreadyExistsError,
@@ -21,6 +22,7 @@ type CaughtError =
   | GitRepoAlreadyExistsError
   | GitBranchAlreadyExistsError
   | GitPermissionDeniedError
+  | GitMergeConflictError
   | GitNotSupportedError;
 
 // `GitCredentialConnectionTestFailedError` saiu daqui no ADR 0050: com o
@@ -43,6 +45,7 @@ type CaughtError =
   GitRepoAlreadyExistsError,
   GitBranchAlreadyExistsError,
   GitPermissionDeniedError,
+  GitMergeConflictError,
   GitNotSupportedError,
 )
 export class GitProviderErrorFilter implements ExceptionFilter {
@@ -83,6 +86,11 @@ function statusFor(exception: CaughtError): { status: number; error: string } {
     exception instanceof GitBranchAlreadyExistsError
   ) {
     return { status: 409, error: 'Conflict' };
+  }
+  // GitMergeConflictError (RN-704): o merge conflita com o alvo — 409
+  // nomeado, a PR segue aberta e a ref intacta.
+  if (exception instanceof GitMergeConflictError) {
+    return { status: 409, error: 'merge_conflict' };
   }
   if (exception instanceof GitPermissionDeniedError) {
     return { status: 403, error: 'Forbidden' };

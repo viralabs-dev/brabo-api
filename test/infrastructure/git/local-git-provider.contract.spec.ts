@@ -6,7 +6,10 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { LocalGitProvider } from '../../../src/infrastructure/git/local-git-provider';
 import { runGitProviderContract } from '../../contract/git-provider.contract';
-import { GitPullRequestAlreadyMergedError } from '../../../src/domain/git/git-errors';
+import {
+  GitMergeConflictError,
+  GitPullRequestAlreadyMergedError,
+} from '../../../src/domain/git/git-errors';
 
 const execFileAsync = promisify(execFile);
 
@@ -171,6 +174,116 @@ describe('LocalGitProvider — pull request local (open + merge)', () => {
       externalId: repo.externalId,
     });
     expect(branches.find((b) => b.name === 'main')?.commitSha).toBe(featureSha);
+  });
+
+  async function duasPrsDoMesmoBase(b1: string, b2: string) {
+    const repo = await provider.createRepo({
+      name: 'diverge',
+      visibility: 'private',
+    });
+    const id = repo.externalId;
+    await provider.commitFiles({
+      externalId: id,
+      branch: 'main',
+      message: 'base',
+      files: [{ path: 'a.txt', content: 'a' }],
+    });
+    await provider.createBranch({
+      externalId: id,
+      branchName: 'feature/um',
+      fromRef: 'main',
+    });
+    await provider.createBranch({
+      externalId: id,
+      branchName: 'feature/dois',
+      fromRef: 'main',
+    });
+    const c1 = await provider.commitFiles({
+      externalId: id,
+      branch: 'feature/um',
+      message: 'um',
+      files: [{ path: b1, content: 'um' }],
+    });
+    const c2 = await provider.commitFiles({
+      externalId: id,
+      branch: 'feature/dois',
+      message: 'dois',
+      files: [{ path: b2, content: 'dois' }],
+    });
+    const pr1 = await provider.openPullRequest({
+      externalId: id,
+      sourceBranch: 'feature/um',
+      targetBranch: 'main',
+      title: 'Um',
+    });
+    const pr2 = await provider.openPullRequest({
+      externalId: id,
+      sourceBranch: 'feature/dois',
+      targetBranch: 'main',
+      title: 'Dois',
+    });
+    return { id, c1, c2, pr1, pr2 };
+  }
+
+  async function ehAncestral(id: string, a: string, b: string) {
+    try {
+      await execFileAsync('git', [
+        '--git-dir',
+        id,
+        'merge-base',
+        '--is-ancestor',
+        a,
+        b,
+      ]);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  it('duas PRs divergentes sem conflito: os dois commits ficam no alvo, por commit de merge (AT-377, RN-704)', async () => {
+    const { id, c1, c2, pr1, pr2 } = await duasPrsDoMesmoBase('b.txt', 'c.txt');
+    await provider.mergePullRequest({ externalId: id, pullRequestId: pr1.id });
+    const merged = await provider.mergePullRequest({
+      externalId: id,
+      pullRequestId: pr2.id,
+    });
+    expect(merged.state).toBe('merged');
+
+    const main = (await provider.listBranches({ externalId: id })).find(
+      (b) => b.name === 'main',
+    )!.commitSha;
+    expect(await ehAncestral(id, c1.sha, main)).toBe(true);
+    expect(await ehAncestral(id, c2.sha, main)).toBe(true);
+    const { stdout } = await execFileAsync('git', [
+      '--git-dir',
+      id,
+      'log',
+      '-1',
+      '--format=%P%n%s',
+      main,
+    ]);
+    const [pais, assunto] = stdout.trim().split('\n');
+    expect(pais.split(' ')).toHaveLength(2);
+    expect(assunto).toBe('Merge pull request #2 from feature/dois');
+  });
+
+  it('conflito: recusa nomeada com os arquivos, alvo intacto e PR aberta (AT-377, RN-704)', async () => {
+    const { id, c1, pr1, pr2 } = await duasPrsDoMesmoBase('a.txt', 'a.txt');
+    await provider.mergePullRequest({ externalId: id, pullRequestId: pr1.id });
+
+    const erro = await provider
+      .mergePullRequest({ externalId: id, pullRequestId: pr2.id })
+      .catch((e: unknown) => e);
+    expect(erro).toBeInstanceOf(GitMergeConflictError);
+    expect((erro as GitMergeConflictError).conflictingFiles).toEqual(['a.txt']);
+
+    const main = (await provider.listBranches({ externalId: id })).find(
+      (b) => b.name === 'main',
+    )!.commitSha;
+    expect(main).toBe(c1.sha);
+    const prs = await provider.listPullRequests({ externalId: id });
+    expect(prs.items.find((p) => p.number === pr2.number)?.state).toBe('open');
   });
 
   it('openPullRequest rejeita branch inexistente', async () => {
