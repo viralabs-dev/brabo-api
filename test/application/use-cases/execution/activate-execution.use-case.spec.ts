@@ -870,3 +870,36 @@ describe('ActivateExecutionUseCase — ciclo de vida do handoff (ADR 0182)', () 
     expect(substituidosAoAtivar).toEqual([]);
   });
 });
+
+describe('ActivateExecutionUseCase — módulos do plano (AT-381, RN-709)', () => {
+  function comPlano(useCase: ActivateExecutionUseCase, modulos: string[]) {
+    return useCase.execute(
+      'proj-1',
+      'user-1',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      modulos,
+    );
+  }
+
+  it('módulo sem tarefa no plano não ganha agente', async () => {
+    const { useCase, autonomias } = build();
+    const out = await comPlano(useCase, ['api']);
+    expect(out.modules).toEqual(['api']);
+    expect(new Set(autonomias.map((a) => a.agentId))).toEqual(
+      new Set(['dev-api']),
+    );
+  });
+
+  it('plano sem módulo do module_map: recusa, nenhum agente sobe', async () => {
+    const { useCase, autonomias } = build();
+    await expect(comPlano(useCase, ['inexistente'])).rejects.toThrow(
+      /nenhum dev agent subiria/,
+    );
+    expect(autonomias).toEqual([]);
+  });
+});

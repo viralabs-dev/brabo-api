@@ -320,6 +320,12 @@ describe('ProposeActionUseCase', () => {
         payload: { resumo: 'r', modulos: [], tarefas: [] },
       });
       expect(action.status).toBe('pending');
+      // AT-381 (RN-709): o orçamento por tarefa vigente viaja no payload,
+      // para o cartão mostrar a estimativa (default US$ 0,50).
+      expect(
+        (action.payload as { orcamentoPorTarefaMicros?: number })
+          .orcamentoPorTarefaMicros,
+      ).toBe(500_000);
     });
   });
 

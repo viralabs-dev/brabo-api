@@ -35,9 +35,18 @@ describe('motivoDeRecusaDoSempreAprovar (AT-320)', () => {
     ).toBeNull();
   });
 
-  it('tipo fora do teto passa (`git_commit`, `container_start`, `open_adr_pr`)', () => {
-    for (const tipo of ['git_commit', 'container_start', 'open_adr_pr']) {
+  it('tipo fora do teto passa (`git_commit`, `container_start`)', () => {
+    for (const tipo of ['git_commit', 'container_start']) {
       expect(motivoDeRecusaDoSempreAprovar(tipo, {})).toBeNull();
+    }
+  });
+
+  // AT-371 (RN-709): abrir PR de ADR/infra publica no provider — a mesma
+  // metade tipada do teto da RN-418 que `pr_open`. Antes este teste fixava
+  // `open_adr_pr` passando.
+  it('PR de ADR e de infra recusam, como `pr_open`', () => {
+    for (const tipo of ['open_adr_pr', 'open_infra_pr']) {
+      expect(motivoDeRecusaDoSempreAprovar(tipo, {})).toMatch(/RN-418/);
     }
   });
 

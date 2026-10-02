@@ -8,6 +8,11 @@ export interface ExecutionPlanExecutionResult {
   sessaoDeExecucao: string | null;
   modulos: string[];
   tarefasAtribuidas: number;
+  // AT-381 (RN-709): o resumo CALCULADO do plano — tarefas por módulo — e os
+  // módulos do `module_map` que ficaram sem tarefa e por isso sem agente. É o
+  // que o Dev Lead cita ao narrar, em vez de recontar de memória.
+  tarefasPorModulo?: Record<string, number>;
+  modulosSemTarefa?: string[];
   // Só no `failed`: o motivo nomeado (a mesma frase da recusa da ativação).
   motivo?: string;
 }

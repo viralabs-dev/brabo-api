@@ -73,7 +73,7 @@ export const DEV_AUTO_GIT_ACTIONS = ['git_commit'];
 // Orçamento de tokens por task (Fase 4a) quando não configurado na ativação
 // — US$0,50 em micro-USD. "Configurável por projeto" é satisfeito no
 // próprio ato de ativar (ver `execute`); sem tabela nova.
-const DEFAULT_TASK_BUDGET_MICROS = 500_000;
+export const DEFAULT_TASK_BUDGET_MICROS = 500_000;
 
 // Circuit breaker por dev agent (Fase 12b — RN-047): tasks consecutivas
 // terminando blocked até o agente parar em idle_tripped. Mesmo espírito do
@@ -126,13 +126,30 @@ export class ActivateExecutionUseCase {
     // Visão Geral) não fecha sessão nenhuma: o comportamento sem este
     // parâmetro é IDÊNTICO ao de antes dele existir.
     originSessionId?: string,
+    // Os módulos que o plano aprovado cobre com ≥ 1 tarefa (AT-381, RN-709).
+    // Omitido (o botão "Ativar execução"), sobe um agente por módulo do
+    // `module_map`, como sempre; passado, módulo sem tarefa NÃO ganha agente.
+    modulosDoPlano?: readonly string[],
   ) {
     const maxCorrections = maxGateCorrections ?? DEFAULT_MAX_GATE_CORRECTIONS;
     const impl = devAgentImpl ?? DEFAULT_DEV_AGENT_IMPL;
-    const moduleMap = await this.moduleMaps.findCurrent(projectId);
-    if (!moduleMap || moduleMap.modules.length === 0) {
+    const mapaVigente = await this.moduleMaps.findCurrent(projectId);
+    if (!mapaVigente || mapaVigente.modules.length === 0) {
       throw new BadRequestException(
         'Projeto sem module_map vigente — o Arquiteto precisa definir os módulos antes de executar',
+      );
+    }
+    const moduleMap = modulosDoPlano
+      ? {
+          ...mapaVigente,
+          modules: mapaVigente.modules.filter((m) =>
+            modulosDoPlano.includes(m.name),
+          ),
+        }
+      : mapaVigente;
+    if (moduleMap.modules.length === 0) {
+      throw new BadRequestException(
+        'O plano não tem tarefa em nenhum módulo do module_map vigente — nenhum dev agent subiria',
       );
     }
 
