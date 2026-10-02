@@ -6,7 +6,17 @@ import {
 } from '../../../src/domain/anamnese/proficiency-validation';
 
 const catalog = deriveCatalog(['NestJS']);
-const knownEventIds = new Set(['evt-1', 'evt-2']);
+const knownEventIds = new Map([
+  ['evt-1', { type: 'chat.message', actorKind: 'user', actorId: 'user-1' }],
+  ['evt-2', { type: 'chat.message', actorKind: 'user', actorId: 'user-1' }],
+  // RN-716: o agente mexeu no git — a pessoa não teve oportunidade.
+  ['evt-agente', { type: 'tool.call', actorKind: 'agent', actorId: 'dev-api' }],
+  // RN-716: aprovar sem abrir é confiança, não domínio.
+  [
+    'evt-aprovou',
+    { type: 'proposed_action.approved', actorKind: 'user', actorId: 'user-1' },
+  ],
+]);
 const allowedUserIds = new Set(['user-1']);
 
 function draft(overrides: Partial<ProficiencyDraft> = {}): ProficiencyDraft {
@@ -81,5 +91,29 @@ describe('validateProficiencyBatch', () => {
       draft({ competency: 'git' }),
     ]);
     expect(result.ok).toBe(false);
+  });
+
+  it('RN-716: só evidência de outro ator é "não observado" e não grava nível', () => {
+    const result = validate([
+      draft({
+        competency: 'git',
+        level: 'iniciante',
+        evidenceEventIds: ['evt-agente'],
+      }),
+    ]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toContain('NÃO OBSERVADA');
+  });
+
+  it('RN-716: aprovação sem leitura não é evidência de competência', () => {
+    const result = validate([draft({ evidenceEventIds: ['evt-aprovou'] })]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toContain('confiança, não domínio');
+  });
+
+  it('RN-716: aprovação ao lado de interação da pessoa passa', () => {
+    expect(
+      validate([draft({ evidenceEventIds: ['evt-aprovou', 'evt-1'] })]).ok,
+    ).toBe(true);
   });
 });
