@@ -1,3 +1,4 @@
+import { MENSAGEM_SEM_MODELO } from '../../../domain/llm/binding-resolver';
 import { Injectable } from '@nestjs/common';
 import type { ChatMessage, ToolCall, ToolDef } from '@brabo/shared';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
@@ -94,7 +95,7 @@ export class StreamLlmTurnUseCase {
       exigeToolCalling: (input.tools?.length ?? 0) > 0,
     });
     if (!binding) {
-      yield finalError('Nenhum modelo vinculado para esta sessão');
+      yield finalError(MENSAGEM_SEM_MODELO);
       return;
     }
     const model = await this.models.findById(binding.modelId);

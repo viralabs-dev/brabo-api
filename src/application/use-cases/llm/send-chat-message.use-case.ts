@@ -1,3 +1,4 @@
+import { MENSAGEM_SEM_MODELO } from '../../../domain/llm/binding-resolver';
 import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { ulid } from 'ulid';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
@@ -122,7 +123,7 @@ export class SendChatMessageUseCase {
     if (!binding) {
       yield {
         type: 'error',
-        message: 'Nenhum modelo vinculado para esta sessão',
+        message: MENSAGEM_SEM_MODELO,
       };
       return;
     }
