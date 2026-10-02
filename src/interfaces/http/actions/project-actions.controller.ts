@@ -45,10 +45,12 @@ export class ProjectActionsController {
     summary:
       'Lists the PENDING actions of the whole project, across any session',
     description:
-      'Only `status=pending` is supported today (omitting it also counts as ' +
-      'pending). `actionType` filters by type — e.g. `git_merge`, for the PRs ' +
-      'tab to find the merge proposal for a PR without knowing which session ' +
-      'created it.',
+      '`status` is `pending` (the default) or `failed`. `actionType` filters ' +
+      'by type — e.g. `git_merge`, for the PRs tab to find the merge proposal ' +
+      'for a PR without knowing which session created it. `status=failed` ' +
+      'REQUIRES `actionType` and lists the actions whose execution failed — ' +
+      'the PRs tab reads the last refused merge of each PR from it (a merge ' +
+      'conflict carries `executionResult.conflictingFiles`).',
   })
   @ApiQuery({ name: 'status', required: false, example: 'pending' })
   @ApiQuery({ name: 'actionType', required: false, example: 'git_merge' })
@@ -58,9 +60,18 @@ export class ProjectActionsController {
     @Query('status') status?: string,
     @Query('actionType') actionType?: string,
   ) {
-    if (status !== undefined && status !== 'pending') {
-      throw new BadRequestException('Só "status=pending" é suportado hoje.');
+    if (status !== undefined && status !== 'pending' && status !== 'failed') {
+      throw new BadRequestException(
+        'Só "status=pending" e "status=failed" são suportados.',
+      );
     }
-    return this.listProjectPendingActions.execute(projectId, actionType);
+    if (status === 'failed' && !actionType) {
+      throw new BadRequestException('"status=failed" exige "actionType".');
+    }
+    return this.listProjectPendingActions.execute(
+      projectId,
+      actionType,
+      status ?? 'pending',
+    );
   }
 }

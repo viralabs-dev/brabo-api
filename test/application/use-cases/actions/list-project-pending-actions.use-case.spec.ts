@@ -165,4 +165,42 @@ describe('ListProjectPendingActionsUseCase', () => {
       listProjectPendingActions.execute('00000000-0000-0000-0000-000000000000'),
     ).rejects.toThrow(NotFoundException);
   });
+
+  it('RN-705: status=failed devolve só as ações FALHAS do tipo (a recusa de merge)', async () => {
+    const { project, sessaoAntiga } = await setupProjectComDuasSessoes();
+    const base = {
+      projectId: project.id,
+      sessionId: sessaoAntiga.id,
+      actionType: 'git_merge' as const,
+      payload: { pullRequestId: 'pr-6', targetBranch: 'dev' },
+      resolvedPolicy: 'require_approval' as const,
+      actorKind: 'user' as const,
+      actorId: 'user-1',
+    };
+    await db.insert(proposedActions).values([
+      { ...base, status: 'pending' },
+      {
+        ...base,
+        status: 'failed',
+        executionResult: {
+          kind: 'git_merge',
+          failed: true,
+          error: 'conflito',
+          pullRequestId: 'pr-6',
+          conflictingFiles: ['package.json'],
+        },
+      },
+    ]);
+
+    const falhas = await listProjectPendingActions.execute(
+      project.id,
+      'git_merge',
+      'failed',
+    );
+    expect(falhas).toHaveLength(1);
+    expect(falhas[0].status).toBe('failed');
+    expect(falhas[0].executionResult).toMatchObject({
+      conflictingFiles: ['package.json'],
+    });
+  });
 });

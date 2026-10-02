@@ -11,6 +11,7 @@ import type { EncryptionService } from '../../../../src/application/ports/encryp
 import type { TaskRepository } from '../../../../src/application/ports/backlog-repository.port';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
 import type { ProposedAction } from '../../../../src/domain/actions/proposed-action.entity';
+import { GitMergeConflictError } from '../../../../src/domain/git/git-errors';
 
 const PROJECT = 'p1';
 const SESSION = 's1';
@@ -382,6 +383,70 @@ describe('ExecuteGitActionUseCase', () => {
       );
       expect(proposedActions.saved?.status).toBe('executed');
       expect(tasks.chamadas).toEqual([]);
+    });
+  });
+
+  describe('RN-705: a falha grava o kind da AÇÃO e o conflito vira evento', () => {
+    it('conflito de merge → kind git_merge, arquivos no resultado e evento na tarefa', async () => {
+      const uc = build({
+        provider: {
+          mergePullRequest: () =>
+            Promise.reject(
+              new GitMergeConflictError('/tmp/repo', 'pr-6', ['package.json']),
+            ),
+        },
+      });
+      const pr = action('pr_open', { storyTaskId: 't1' });
+      pr.executionResult = {
+        kind: 'pr_open',
+        pullRequestUrl: 'local://x',
+        pullRequestId: 'pr-6',
+        sourceBranch: 'feature/x',
+        targetBranch: 'dev',
+      };
+      proposedActions.prOpens = [pr];
+      await uc.execute(
+        PROJECT,
+        SESSION,
+        action('git_merge', { pullRequestId: 'pr-6' }),
+      );
+      expect(proposedActions.saved?.status).toBe('failed');
+      expect(proposedActions.saved?.result).toMatchObject({
+        kind: 'git_merge',
+        failed: true,
+        pullRequestId: 'pr-6',
+        conflictingFiles: ['package.json'],
+      });
+      const evs = eventos.filter(
+        (e) => e.type === 'backlog.task_merge_conflict',
+      );
+      expect(evs).toHaveLength(1);
+      expect(evs[0].payload).toMatchObject({
+        taskId: 't1',
+        conflictingFiles: ['package.json'],
+      });
+    });
+
+    it('falha que não é conflito não grava arquivos nem evento de conflito', async () => {
+      const uc = build({
+        provider: {
+          mergePullRequest: () => Promise.reject(new Error('rede fora')),
+        },
+      });
+      await uc.execute(
+        PROJECT,
+        SESSION,
+        action('git_merge', { pullRequestId: 'pr-6' }),
+      );
+      expect(proposedActions.saved?.result).toEqual({
+        kind: 'git_merge',
+        failed: true,
+        error: 'rede fora',
+        pullRequestId: 'pr-6',
+      });
+      expect(
+        eventos.some((e) => e.type === 'backlog.task_merge_conflict'),
+      ).toBe(false);
     });
   });
 });

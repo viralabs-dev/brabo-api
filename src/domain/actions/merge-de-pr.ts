@@ -48,6 +48,7 @@ export function mergeouAPr(
     r !== null &&
     'kind' in r &&
     r.kind === 'git_merge' &&
+    'state' in r &&
     r.state === 'merged' &&
     pullRequestIdDoPayload(acao.payload) === pullRequestId
   );

@@ -11,13 +11,49 @@ import { TaskRepository } from '../../ports/backlog-repository.port';
 import { EncryptionService } from '../../ports/encryption.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
-import type { GitActionExecutionResult } from '../../../domain/git/git-action-execution-result';
+import type {
+  GitActionExecutionResult,
+  GitActionFailureResult,
+} from '../../../domain/git/git-action-execution-result';
+import { GitMergeConflictError } from '../../../domain/git/git-errors';
 import { BRANCH_DE_TRABALHO } from '../../../domain/actions/protected-branches';
 
 // Coerção segura de campos `unknown` (payload/resultado do engine) para
 // string — evita o `[object Object]` que o String(unknown) permitiria.
 function str(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback;
+}
+
+const KINDS_DE_ACAO_GIT = new Set([
+  'git_commit',
+  'git_push',
+  'pr_open',
+  'git_merge',
+]);
+
+/**
+ * O resultado gravado na ação que falhou (RN-705): o `kind` é o tipo da ação
+ * (antes era sempre `git_push`), com o motivo e, no conflito de merge, os
+ * arquivos — é daí que a aba PRs lê a última recusa de merge de cada PR.
+ */
+export function resultadoDaFalha(
+  action: ProposedAction,
+  error: unknown,
+): GitActionFailureResult {
+  const kind = KINDS_DE_ACAO_GIT.has(action.actionType)
+    ? (action.actionType as GitActionFailureResult['kind'])
+    : 'git_push';
+  const resultado: GitActionFailureResult = {
+    kind,
+    failed: true,
+    error: error instanceof Error ? error.message : String(error),
+  };
+  const prId = (action.payload as { pullRequestId?: unknown }).pullRequestId;
+  if (typeof prId === 'string') resultado.pullRequestId = prId;
+  if (error instanceof GitMergeConflictError) {
+    resultado.conflictingFiles = error.conflictingFiles;
+  }
+  return resultado;
 }
 
 /**
@@ -63,7 +99,7 @@ export class ExecuteGitActionUseCase {
           },
         })
         .catch(() => undefined);
-      return this.markFailed(projectId, sessionId, action);
+      return this.markFailed(projectId, sessionId, action, error);
     }
   }
 
@@ -139,6 +175,12 @@ export class ExecuteGitActionUseCase {
         title: str(payload.title, 'PR'),
         body: str(payload.body) || undefined,
         accessToken,
+        // RN-705: o provider local grava o autor (`<agente>[bot]`, a mesma
+        // identidade dos commits dos agentes).
+        author:
+          action.actor?.kind === 'agent' && action.actor.id
+            ? `${action.actor.id}[bot]`
+            : undefined,
       });
       return {
         kind: 'pr_open',
@@ -260,26 +302,14 @@ export class ExecuteGitActionUseCase {
     actionId: string,
     result: GitActionExecutionResult,
   ) {
-    if (result.kind !== 'git_merge' || result.state !== 'merged') return;
+    if (
+      result.kind !== 'git_merge' ||
+      !('state' in result) ||
+      result.state !== 'merged'
+    )
+      return;
 
-    const prActions = await this.proposedActions.listByProjectAndType(
-      projectId,
-      'pr_open',
-    );
-    const taskIds = new Set<string>();
-    for (const a of prActions) {
-      const r = a.executionResult;
-      const taskId = (a.payload as { storyTaskId?: unknown }).storyTaskId;
-      if (
-        r &&
-        'kind' in r &&
-        r.kind === 'pr_open' &&
-        r.pullRequestId === result.pullRequestId &&
-        typeof taskId === 'string'
-      ) {
-        taskIds.add(taskId);
-      }
-    }
+    const taskIds = await this.tarefasDaPr(projectId, result.pullRequestId);
 
     for (const taskId of taskIds) {
       const task = await this.tasks.markDoneIfNotDone(taskId);
@@ -298,17 +328,45 @@ export class ExecuteGitActionUseCase {
     }
   }
 
+  /** As tarefas cujo `pr_open` abriu esta PR (`storyTaskId` no payload). */
+  private async tarefasDaPr(
+    projectId: string,
+    pullRequestId: string,
+  ): Promise<Set<string>> {
+    const prActions = await this.proposedActions.listByProjectAndType(
+      projectId,
+      'pr_open',
+    );
+    const taskIds = new Set<string>();
+    for (const a of prActions) {
+      const r = a.executionResult;
+      const taskId = (a.payload as { storyTaskId?: unknown }).storyTaskId;
+      if (
+        r &&
+        'kind' in r &&
+        r.kind === 'pr_open' &&
+        'pullRequestUrl' in r &&
+        r.pullRequestId === pullRequestId &&
+        typeof taskId === 'string'
+      ) {
+        taskIds.add(taskId);
+      }
+    }
+    return taskIds;
+  }
+
   private markFailed(
     projectId: string,
     sessionId: string,
     action: ProposedAction,
+    error: unknown,
   ) {
     return this.unitOfWork.runInTransaction(async () => {
       const updated = await this.proposedActions.updateExecutionResult(
         action.id,
         {
           status: 'failed',
-          executionResult: { kind: 'git_push', branch: '' },
+          executionResult: resultadoDaFalha(action, error),
         },
       );
 
@@ -316,6 +374,28 @@ export class ExecuteGitActionUseCase {
       // esperaria em `awaiting_approval` para sempre por um gate que nunca
       // vai abrir.
       await this.settlePrOpen(projectId, sessionId, updated, false);
+
+      // RN-705: o conflito de merge vira evento NOMEADO na tarefa da PR —
+      // antes a tarefa ficava `in_review` sem nada dizer que o merge falhou.
+      const falha = resultadoDaFalha(action, error);
+      if (falha.kind === 'git_merge' && falha.conflictingFiles) {
+        const taskIds = await this.tarefasDaPr(
+          projectId,
+          falha.pullRequestId ?? '',
+        );
+        for (const taskId of taskIds) {
+          await this.appendSessionEvent.execute(projectId, sessionId, {
+            type: 'backlog.task_merge_conflict',
+            actor: { kind: 'system', id: 'git-executor' },
+            payload: {
+              taskId,
+              pullRequestId: falha.pullRequestId,
+              conflictingFiles: falha.conflictingFiles,
+              actionId: action.id,
+            },
+          });
+        }
+      }
 
       return updated;
     });
