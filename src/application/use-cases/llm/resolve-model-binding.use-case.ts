@@ -11,7 +11,7 @@ import {
   chaveDeAgente,
   chaveDeArea,
 } from '../../../domain/llm/binding-scope-id';
-import { areaDo } from '../../../domain/agents/agent-areas';
+import { areaDo, leadDoSubagente } from '../../../domain/agents/agent-areas';
 import type { ModelBindingScope } from '../../../domain/llm/model-binding-scope';
 
 export interface ResolveModelBindingInput {
@@ -67,6 +67,28 @@ export class ResolveModelBindingUseCase {
     const exigeToolCalling = input.exigeToolCalling ?? false;
     const candidates = await this.bindings.findCandidates(scopeIds);
     const resolvido = resolveBinding(candidates, exigeToolCalling);
+
+    // RN-703: subagente sem modelo próprio (nem de área/projeto) herda o
+    // binding RESOLVIDO do lead dele — "aplicar a todos os agentes" grava só
+    // os 17 do catálogo, e o `appsec`/`dev-<modulo>` ficavam sem nada. Vale
+    // também sobre o default GLOBAL do workspace, pela mesma razão da herança
+    // do Criativo: ninguém o escolheu para este projeto.
+    const lead = input.agentId ? leadDoSubagente(input.agentId) : undefined;
+    if (lead && (!resolvido || resolvido.origin === 'workspace')) {
+      const doLead = await this.execute({
+        projectId: input.projectId,
+        sessionId: input.sessionId,
+        agentId: lead,
+        exigeToolCalling,
+      });
+      if (doLead && doLead.origin !== 'workspace') {
+        return {
+          ...doLead,
+          skipped: [...(resolvido?.skipped ?? []), ...doLead.skipped],
+          herdadoDoLead: doLead.herdadoDoLead ?? lead,
+        };
+      }
+    }
 
     // Quem já É o Criativo não herda de si mesmo — e quem tem binding de agente
     // próprio nem chega aqui, porque a cascata não pousou em `workspace`.

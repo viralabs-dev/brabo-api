@@ -528,4 +528,51 @@ describe('ResolveModelBindingUseCase', () => {
     });
     expect(resolved).toBeNull();
   });
+
+  // RN-703 (AT-367): "aplicar a todos os agentes" grava só os 17 do catálogo.
+  it('subagente sem modelo herda o do LEAD e diz de quem (RN-703)', async () => {
+    const { user, project, modelA, modelB } = await setup();
+    for (const [agente, modelo] of [
+      ['secops', modelA],
+      ['dev-lead', modelB],
+    ] as const) {
+      await bindingRepo.upsert({
+        scope: 'agent',
+        scopeId: chaveDeAgente(project.id, agente),
+        modelId: modelo.id,
+        createdBy: user.id,
+      });
+    }
+
+    expect(
+      await resolveModelBinding.execute({
+        projectId: project.id,
+        agentId: 'appsec',
+      }),
+    ).toEqual({
+      modelId: modelA.id,
+      origin: 'agent',
+      routingPreference: null,
+      skipped: [],
+      herdadoDoLead: 'secops',
+    });
+    expect(
+      (
+        await resolveModelBinding.execute({
+          projectId: project.id,
+          agentId: 'dev-api',
+        })
+      )?.herdadoDoLead,
+    ).toBe('dev-lead');
+  });
+
+  it('falha: lead também sem modelo e sem nada acima segue null (RN-703)', async () => {
+    const { project } = await setup();
+    expect(
+      await resolveModelBinding.execute({
+        projectId: project.id,
+        agentId: 'appsec',
+      }),
+    ).toBeNull();
+  });
 });

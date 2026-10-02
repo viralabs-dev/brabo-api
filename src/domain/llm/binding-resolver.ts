@@ -48,7 +48,24 @@ export interface ResolvedBinding {
    * projeto" em vez de trocar o modelo em silêncio (RN-043).
    */
   skipped: SkippedBinding[];
+  /**
+   * Presente quando o valor NÃO é do agente perguntado: ele não tinha modelo
+   * em nível nenhum (ou só o default global do workspace) e herdou o binding
+   * RESOLVIDO do lead da área dele (RN-703). `origin` continua sendo a do
+   * binding do lead — este campo diz de QUEM, para a tela não afirmar que o
+   * subagente tem configuração própria (RN-470).
+   */
+  herdadoDoLead?: string;
 }
+
+/**
+ * O que a falha "sem modelo" diz, com o conserto (RN-703): antes a frase
+ * parava em "Nenhum modelo vinculado para esta sessão", e quem a lia no fio
+ * não sabia onde configurar.
+ */
+export const MENSAGEM_SEM_MODELO =
+  'Nenhum modelo vinculado para esta sessão. Configure um em Configurações › ' +
+  'Modelos: no agente, na área dele ou no projeto.';
 
 export interface SkippedBinding {
   scope: ModelBindingScope;

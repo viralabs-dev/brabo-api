@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type { LLMProviderCapabilities } from '@brabo/shared';
 import type { CapabilitiesDoProvider } from '../../../../application/use-cases/llm/list-provider-capabilities.use-case';
 import { LLM_PROVIDER_NAMES } from '../../../../domain/llm/llm-provider-names';
@@ -362,6 +362,15 @@ export class ResolvedBindingResponseDto implements Wire<ResolvedBinding> {
       'Empty on the normal path.',
   })
   skipped!: SkippedBindingResponseDto[];
+
+  @ApiPropertyOptional({
+    example: 'secops',
+    description:
+      'Present when the agent asked about had no model of its own (nor of its ' +
+      'area or project) and inherited the RESOLVED binding of its area lead ' +
+      '(RN-703). `origin` is then the origin of the lead binding.',
+  })
+  herdadoDoLead?: string;
 }
 export const _chavesBindingResolvido: MesmasChaves<
   ResolvedBindingResponseDto,

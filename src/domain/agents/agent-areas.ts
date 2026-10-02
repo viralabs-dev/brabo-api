@@ -103,6 +103,28 @@ function ehMembroDe(area: AreaDeAgentes, agentId: string): boolean {
   return area.ehMembro ? area.ehMembro(agentId) : false;
 }
 
+/**
+ * Subagentes que o ENGINE roda por dentro de um lead mas que não são membros
+ * de área do catálogo (não recebem handoff, então não entram em
+ * `AGENT_AREAS`): o `appsec` roda dentro do gate do `secops`, e a
+ * `qa-estrategia` dentro do `qa`. Servem SÓ para a herança de modelo da
+ * RN-703 — endereçamento de handoff continua lendo `AGENT_AREAS`.
+ */
+const LEAD_DE_SUBAGENTE_FORA_DE_AREA: Readonly<Record<string, string>> = {
+  appsec: 'secops',
+  'qa-estrategia': 'qa',
+};
+
+/**
+ * O lead de quem um subagente herda o modelo quando não tem nenhum (RN-703):
+ * o lead da área do catálogo, ou o da tabela acima. `undefined` para lead e
+ * agente sem área.
+ */
+export function leadDoSubagente(agentId: string): string | undefined {
+  const area = AGENT_AREAS.find((a) => ehMembroDe(a, agentId));
+  return area?.lead ?? LEAD_DE_SUBAGENTE_FORA_DE_AREA[agentId];
+}
+
 /** `true` quando o agente é subagente de uma área (membro, não lead). */
 export function ehSubagente(agentId: string): boolean {
   return AGENT_AREAS.some((area) => ehMembroDe(area, agentId));
