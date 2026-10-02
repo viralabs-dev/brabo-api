@@ -19,7 +19,8 @@ RUN apk add --no-cache git
 ARG PNPM_VERSION=11.3.0
 ARG PNPM_SHA512=2c403d6594527287672b1f7056343a1f7c3634036a67ffabfcc2b3d7595d843768f8787148d1b57cf7956c90606bbd192857c363af19e96d2d0ec9ec5741d215
 RUN npm pack "pnpm@${PNPM_VERSION}" --silent \
-  && echo "${PNPM_SHA512}  pnpm-${PNPM_VERSION}.tgz" | sha512sum -c - \
+  && printf "%s  %s\n" "${PNPM_SHA512}" "pnpm-${PNPM_VERSION}.tgz" > /tmp/pnpm.sha512 \
+  && sha512sum -c /tmp/pnpm.sha512 && rm /tmp/pnpm.sha512 \
   && npm i -g "./pnpm-${PNPM_VERSION}.tgz" \
   && rm "pnpm-${PNPM_VERSION}.tgz"
 
