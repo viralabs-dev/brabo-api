@@ -567,11 +567,20 @@ describe('ProposeActionUseCase', () => {
     expect(action.status).toBe('pending');
   });
 
+  // Desde a RN-713 o push saiu desta lista (o modo automático o libera);
+  // o nome guarda a origem.
   it('auto mode NÃO auto-aprova `sudo` nem push, mesmo liberando o escopo (RN-418/RN-603)', async () => {
     const { project, session } = await setupSession();
     await agentAutonomyRepo.upsert(project.id, 'dev-api', '*', 'auto_approve');
 
-    for (const command of ['sudo ls /root', 'cd /work && git push']) {
+    const push = await proposeAction.execute(project.id, session.id, {
+      actionType: 'terminal',
+      actor: { kind: 'agent', id: 'dev-api' },
+      payload: { command: 'cd /work && git push' },
+    });
+    expect(push.resolvedPolicy).toBe('auto_approve');
+
+    for (const command of ['sudo ls /root', 'git merge dev']) {
       const action = await proposeAction.execute(project.id, session.id, {
         actionType: 'terminal',
         actor: { kind: 'agent', id: 'dev-api' },
@@ -956,20 +965,17 @@ describe('ProposeActionUseCase — o motivo da política no event log (RN-567)',
     });
   });
 
-  it('`git_push`/`pr_open` tipados nascem pendentes mesmo com autonomia curinga E específica — teto da RN-418 (RN-689)', async () => {
+  // RN-713 (ADR 0204): a curinga (modo automático) passou a liberar push/PR;
+  // o nome guarda a origem (RN-689) e o teste segue fixando a ESPECÍFICA.
+  it('`git_push`/`pr_open` tipados nascem pendentes mesmo com autonomia curinga E específica — teto da RN-418 (RN-689); só a específica, desde a RN-713', async () => {
     const { project, session } = await setupSession('maintainer');
-    // As duas fontes de autonomia que o dev agent pode ter: o curinga do
-    // piloto (RN-670) e a linha específica que a ativação semeava até a
-    // RN-689. Nenhuma promove a ação tipada.
-    await agentAutonomyRepo.upsert(project.id, 'dev-api', '*', 'auto_approve');
-    await agentAutonomyRepo.upsert(
-      project.id,
-      'dev-api',
-      'git_push',
-      'auto_approve',
-    );
-
     for (const actionType of ['git_push', 'pr_open'] as const) {
+      await agentAutonomyRepo.upsert(
+        project.id,
+        'dev-api',
+        actionType,
+        'auto_approve',
+      );
       const action = await proposeAction.execute(project.id, session.id, {
         actionType,
         actor: { kind: 'agent', id: 'dev-api' },
@@ -980,6 +986,52 @@ describe('ProposeActionUseCase — o motivo da política no event log (RN-567)',
         status: 'pending',
         resolvedPolicy: 'require_approval',
         reason: expect.stringContaining('RN-418') as unknown,
+      });
+    }
+  });
+
+  it('`git_push`/`pr_open` tipados são auto-aprovados no modo automático, com o motivo no evento (RN-713)', async () => {
+    const { project, session } = await setupSession('maintainer');
+    await agentAutonomyRepo.upsert(project.id, 'dev-api', '*', 'auto_approve');
+
+    const executados: string[] = [];
+    const comGit = new ProposeActionUseCase(
+      unitOfWork,
+      sessionRepo,
+      projectRepo,
+      proposedActionRepo,
+      agentAutonomyRepo,
+      permissionsFileStore,
+      outboxRepo,
+      resolveEffectiveRole,
+      executeTerminalAction,
+      {
+        execute: (_p: string, _s: string, a: { id: string }) => {
+          executados.push(a.id);
+          return Promise.resolve(a);
+        },
+      } as never,
+      undefined as never,
+      undefined as never,
+      undefined as never,
+      undefined as never,
+      appendSessionEvent,
+      obterCicloDeVidaDoContainer,
+      { configurado: () => true } as never,
+      undefined as never,
+    );
+
+    for (const actionType of ['git_push', 'pr_open'] as const) {
+      const action = await comGit.execute(project.id, session.id, {
+        actionType,
+        actor: { kind: 'agent', id: 'dev-api' },
+        payload: { branch: 'dev-api/t1' },
+      });
+      expect(action.status).toBe('auto_approved');
+      expect(executados).toContain(action.id);
+      expect(await eventoCriado(session.id, action.id)).toMatchObject({
+        resolvedPolicy: 'auto_approve',
+        reason: expect.stringContaining('modo automático') as unknown,
       });
     }
   });

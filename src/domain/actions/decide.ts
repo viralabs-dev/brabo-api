@@ -10,6 +10,7 @@ import {
   mensagemDeComandoPrivilegiado,
   ehAcaoTipadaComEfeitoExterno,
   mensagemDoTetoDaAcaoTipada,
+  mensagemDoModoAutomaticoNoEfeitoExterno,
 } from './external-effect';
 
 export type ActionType =
@@ -402,10 +403,23 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
   // Até aqui só o COMANDO era tetado, e a ação para a qual a mensagem dele
   // redireciona nascia `auto_approved`. `deny` já retornou acima e continua
   // vencendo. `git_merge` fica com o teto próprio, logo abaixo.
+  //
+  // Desde a RN-713 (ADR 0204, decisão do dono de 02/10) o MODO AUTOMÁTICO do
+  // agente — a curinga `"*"` em `auto_approve`, e SÓ ela — libera `git_push` e
+  // `pr_open`, tipados ou pelo comando de terminal (`git push`, `gh pr
+  // create`…). Regra específica, "Sempre permitir" e `permissions.json`
+  // continuam sem liberar; merge (`git_merge`), deploy e `sudo`/`doas` seguem
+  // teto absoluto mesmo no modo automático.
   if (
     ehAcaoTipadaComEfeitoExterno(action.actionType) &&
     current.policy === 'auto_approve'
   ) {
+    if (modoAutomatico) {
+      return {
+        policy: 'auto_approve',
+        reason: mensagemDoModoAutomaticoNoEfeitoExterno(action.actionType),
+      };
+    }
     return {
       policy: 'require_approval',
       reason: mensagemDoTetoDaAcaoTipada(action.actionType),
@@ -415,6 +429,18 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
     const tokens = parseCommand(action.command);
     const efeito = efeitoExternoNoComando(tokens);
     const privilegiado = comandoPrivilegiadoNoComando(tokens);
+    if (
+      efeito &&
+      !privilegiado &&
+      modoAutomatico &&
+      current.policy === 'auto_approve' &&
+      ehAcaoTipadaComEfeitoExterno(efeito.acaoTipada)
+    ) {
+      return {
+        policy: 'auto_approve',
+        reason: mensagemDoModoAutomaticoNoEfeitoExterno(efeito.acaoTipada),
+      };
+    }
     if ((efeito || privilegiado) && current.policy === 'auto_approve') {
       return {
         policy: 'require_approval',
