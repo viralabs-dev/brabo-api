@@ -54,6 +54,12 @@ export interface RunLlmTurnResult {
   // quando o turno falhou antes de resolver um modelo.
   modelName: string | null;
   /**
+   * A resposta foi CORTADA pelo teto de saída (`finish_reason: "length"` /
+   * `stop_reason: "max_tokens"`, RN-737). Presente só quando verdadeiro: o
+   * texto e os argumentos de `toolCalls` vêm truncados. Campo aditivo.
+   */
+  truncated?: true;
+  /**
    * O passo em que o Jev escolheu a ferramenta (ADR 0179, RN-625). Ausente
    * quando o roteador não foi consultado; o engine o narra em
    * `tool_router.decided`. Campo aditivo: engine antigo o ignora.
@@ -169,6 +175,8 @@ export class RunLlmTurnUseCase {
     let cachedInputTokens: number | null = null;
     let reasoningTokens: number | null = null;
     let streamError: string | null = null;
+    // O provider disse que o teto de saída cortou a resposta (RN-737).
+    let truncated = false;
     let streamErrorCode: LLMErrorCode | null = null;
 
     try {
@@ -192,6 +200,8 @@ export class RunLlmTurnUseCase {
           generationId = chunk.generationId ?? null;
           cachedInputTokens = chunk.cachedInputTokens ?? null;
           reasoningTokens = chunk.reasoningTokens ?? null;
+        } else if (chunk.type === 'truncated') {
+          truncated = true;
         } else if (chunk.type === 'error') {
           streamError = chunk.message;
           streamErrorCode = chunk.code;
@@ -259,6 +269,7 @@ export class RunLlmTurnUseCase {
       error: streamError,
       errorCode: streamErrorCode,
       modelName: model.name,
+      ...(truncated ? { truncated: true as const } : {}),
       ...(decisaoDoJev.toolRouting
         ? { toolRouting: decisaoDoJev.toolRouting }
         : {}),

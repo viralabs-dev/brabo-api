@@ -620,6 +620,16 @@ export class LlmTurnResponseDto implements Wire<RunLlmTurnResult> {
   modelName!: string | null;
 
   @ApiPropertyOptional({
+    enum: [true],
+    description:
+      'Present (always `true`) only when the provider cut the response at the ' +
+      'output cap (`finish_reason: "length"` / `stop_reason: "max_tokens"`, ' +
+      'RN-737): the text and the `toolCalls` arguments are truncated. The ' +
+      'engine refuses to run a truncated tool call and narrates the cut.',
+  })
+  truncated?: true;
+
+  @ApiPropertyOptional({
     type: ToolRoutingResponseDto,
     description:
       'The step where the Jev chose the tool (ADR 0179, RN-625). Absent when ' +
@@ -661,6 +671,14 @@ export class LlmTurnStreamEventResponseDto {
       'before resolving a model.',
   })
   modelName?: string | null;
+
+  @ApiPropertyOptional({
+    enum: [true],
+    description:
+      'Only on the `final` frame, and only when the provider cut the response ' +
+      'at the output cap (RN-737).',
+  })
+  truncated?: true;
 }
 
 // ------------------------------------------------------------------------- gates
