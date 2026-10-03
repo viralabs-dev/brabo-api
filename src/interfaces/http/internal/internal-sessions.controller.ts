@@ -42,6 +42,7 @@ import { AceitarHandoffAutomaticamenteUseCase } from '../../../application/use-c
 import { AceiteImplicitoDoPoUseCase } from '../../../application/use-cases/agents/aceite-implicito-do-po.use-case';
 import { CreateEpicUseCase } from '../../../application/use-cases/backlog/create-epic.use-case';
 import { CreateStoryUseCase } from '../../../application/use-cases/backlog/create-story.use-case';
+import { CompleteStoryUseCase } from '../../../application/use-cases/backlog/complete-story.use-case';
 import { CreateTaskUseCase } from '../../../application/use-cases/backlog/create-task.use-case';
 import { CreateModuleMapUseCase } from '../../../application/use-cases/architecture/create-module-map.use-case';
 import { AssignStoryModulesUseCase } from '../../../application/use-cases/architecture/assign-story-modules.use-case';
@@ -85,7 +86,10 @@ import { StreamLlmTurnDto } from './dto/stream-llm-turn.dto';
 import { CreateActionInternalDto } from './dto/create-action-internal.dto';
 import { CreateHandoffInternalDto } from './dto/create-handoff-internal.dto';
 import { CreateEpicInternalDto } from './dto/create-epic-internal.dto';
-import { CreateStoryInternalDto } from './dto/create-story-internal.dto';
+import {
+  CompleteStoryInternalDto,
+  CreateStoryInternalDto,
+} from './dto/create-story-internal.dto';
 import {
   CreatedStoryResponseDto,
   SemanticDuplicateCheckInternalDto,
@@ -171,6 +175,7 @@ export class InternalSessionsController {
     private readonly aceiteImplicitoDoPo: AceiteImplicitoDoPoUseCase,
     private readonly createEpic: CreateEpicUseCase,
     private readonly createStory: CreateStoryUseCase,
+    private readonly completeStory: CompleteStoryUseCase,
     private readonly createTask: CreateTaskUseCase,
     private readonly createModuleMap: CreateModuleMapUseCase,
     private readonly createC4Diagram: CreateC4DiagramUseCase,
@@ -493,6 +498,42 @@ export class InternalSessionsController {
     return this.createStory.execute(dto.projectId, sessionId, {
       epicId: dto.epicId,
       title: dto.title,
+      description: dto.description,
+      rf: dto.rf,
+      rnf: dto.rnf,
+      dod: dto.dod,
+      dor: dto.dor,
+      businessRuleIds: dto.businessRuleIds,
+    });
+  }
+
+  /**
+   * Ferramenta complete_story do PO (RN-720): completa uma história `draft`
+   * existente — liga regras e preenche RF/DoD/DoR — e a promove pelo MESMO
+   * critério de create_story, sem recriá-la.
+   */
+  @Post(':sessionId/stories/:storyId/complete')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Completes an existing draft story instead of re-creating it',
+    description:
+      '`businessRuleIds` is ADDED to the rules already linked; non-empty lists replace the ' +
+      'current ones and omitted lists stay. After writing, the story is promoted by the SAME ' +
+      'criterion as story creation (`ready` in `auto` mode, `proposedReady` in `manual`) (RN-720).',
+  })
+  @ApiOkResponse({ type: StoryResponseDto })
+  @ApiNotFoundResponse({ description: 'Story is not in this project.' })
+  @ApiConflictResponse({ description: 'Story is no longer `draft`.' })
+  @ApiBadRequestResponse({
+    description: 'A business_rule_id does not reference an existing rule.',
+  })
+  completeStoryRoute(
+    @Param('sessionId') sessionId: string,
+    @Param('storyId') storyId: string,
+    @Body() dto: CompleteStoryInternalDto,
+  ) {
+    return this.completeStory.execute(dto.projectId, sessionId, {
+      storyId,
       description: dto.description,
       rf: dto.rf,
       rnf: dto.rnf,

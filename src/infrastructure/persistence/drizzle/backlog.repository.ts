@@ -6,6 +6,7 @@ import {
   TaskRepository,
   type NewEpic,
   type NewStory,
+  type StoryContent,
   type NewTask,
 } from '../../../application/ports/backlog-repository.port';
 import type {
@@ -118,6 +119,16 @@ export class DrizzleStoryRepository implements StoryRepository {
     const [row] = await db
       .update(stories)
       .set({ moduleIds, updatedAt: new Date() })
+      .where(eq(stories.id, id))
+      .returning();
+    return storyToEntity(row);
+  }
+
+  async updateContent(id: string, content: StoryContent): Promise<Story> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .update(stories)
+      .set({ ...content, updatedAt: new Date() })
       .where(eq(stories.id, id))
       .returning();
     return storyToEntity(row);
