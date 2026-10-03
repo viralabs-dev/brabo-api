@@ -278,6 +278,7 @@ const DEV_EVENT_TYPES = [
   'dev.awaiting_approval',
   'dev.idle',
   'dev.idle_tripped',
+  'dev.credit_exhausted',
   'dev.blocked',
   'dev.blocked_by_container',
   'dev.error',
@@ -294,6 +295,8 @@ const DEV_PENDING_TYPES = new Set([
   'dev.blocked',
   'dev.blocked_by_container',
   'dev.idle_tripped',
+  // RN-726: pausado por crédito do provedor, à espera do Rearmar humano.
+  'dev.credit_exhausted',
   'dev.awaiting_gate',
   'dev.awaiting_approval',
 ]);
