@@ -23,12 +23,25 @@ import type { Story } from './backlog.entity';
  * existem porque uma roda no PO (api) e a outra no Criativo (engine).
  */
 export function normalizarTitulo(titulo: string): string {
-  return titulo
+  return decodificarEscapesLiterais(titulo)
     .toLowerCase()
     .normalize('NFD')
     .replace(/\p{Mn}/gu, '')
     .replace(/\s+/gu, ' ')
     .trim();
+}
+
+/**
+ * Decodifica escape LITERAL (`ó`, par surrogate, `\n`, `\t`) que o modelo
+ * mandou dentro de texto (RN-725): o título gravado escapado antes da AT-405
+ * tem de casar com o mesmo título escrito normal.
+ */
+export function decodificarEscapesLiterais(texto: string): string {
+  return texto
+    .replace(/\\u([0-9a-fA-F]{4})/g, (_m, h: string) =>
+      String.fromCharCode(parseInt(h, 16)),
+    )
+    .replace(/\\([nt])/g, (_m, c: string) => (c === 'n' ? '\n' : '\t'));
 }
 
 /** A primeira história do projeto com o mesmo título, se houver. */

@@ -6,6 +6,20 @@ import {
 } from '../../../src/domain/backlog/story-overlap';
 import type { Story } from '../../../src/domain/backlog/backlog.entity';
 
+describe('normalizarTitulo com escape literal (RN-725)', () => {
+  it('o título escapado casa com o normal', () => {
+    expect(normalizarTitulo('Gerar c\\u00f3digo aleat\\u00f3rio')).toBe(
+      normalizarTitulo('Gerar código aleatório'),
+    );
+  });
+
+  it('título diferente continua diferente', () => {
+    expect(normalizarTitulo('hist\\u00f3rico')).not.toBe(
+      normalizarTitulo('historia'),
+    );
+  });
+});
+
 function story(overrides: Partial<Story> = {}): Story {
   return {
     id: 'story-1',
