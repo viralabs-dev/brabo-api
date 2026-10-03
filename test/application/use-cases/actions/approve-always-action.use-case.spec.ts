@@ -97,6 +97,9 @@ class FakeApiToEngineClient implements ApiToEngineClient {
   getPsychologistStatus(): Promise<{ enabled: boolean }> {
     return Promise.resolve({ enabled: true });
   }
+  resumeParkedGate(): Promise<void> {
+    return Promise.resolve();
+  }
   async runAnamnese(): Promise<void> {}
   async invalidateInstructions(): Promise<void> {}
   requestRunnerTicket(): Promise<{ ticket: string; expiresAt: Date }> {

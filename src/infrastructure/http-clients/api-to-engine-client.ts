@@ -22,6 +22,7 @@ import {
 import type { TerminalExecutionResult } from '../../domain/actions/terminal-execution-result';
 import type { DevAgentImpl } from '../../domain/execution/dev-agent-impl';
 import { AnamneseDisabledError } from '../../domain/anamnese/anamnese-disabled.error';
+import { GateNaoEstacionadoError } from '../../domain/gates/gate-nao-estacionado.error';
 import { PsychologistDisabledError } from '../../domain/psychologist/psychologist-disabled.error';
 
 /**
@@ -342,6 +343,37 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     if (!res.ok) {
       throw new Error(
         `Falha no comando ao engine (anamnese/run): ${res.status} ${await res.text()}`,
+      );
+    }
+  }
+
+  /** RN-724: distingue o 409 `gate_nao_estacionado` de falha de transporte. */
+  async resumeParkedGate(
+    projectId: string,
+    taskId: string,
+    gate: string,
+  ): Promise<void> {
+    projectId = garantirSegmentoDeUrlInterna(projectId, 'projectId');
+    taskId = garantirSegmentoDeUrlInterna(taskId, 'taskId');
+    gate = garantirSegmentoDeUrlInterna(gate, 'gate');
+    const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
+
+    const res = await fetch(
+      `${engineUrl}/internal/projects/${projectId}/tasks/${taskId}/gates/${gate}/resume`,
+      {
+        method: 'POST',
+        headers: this.buildHeaders(),
+        body: JSON.stringify({}),
+      },
+    );
+
+    if (res.status === 409) {
+      throw new GateNaoEstacionadoError();
+    }
+
+    if (!res.ok) {
+      throw new Error(
+        `Falha no comando ao engine (gates/resume): ${res.status} ${await res.text()}`,
       );
     }
   }
