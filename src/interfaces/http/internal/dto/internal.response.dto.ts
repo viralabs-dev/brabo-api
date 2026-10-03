@@ -1,3 +1,4 @@
+import type { LLMErrorCode } from '@brabo/shared';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type { GitProviderName } from '@brabo/shared';
 import type { MesmasChaves, Wire } from '../../shared/dto/wire';
@@ -594,6 +595,19 @@ export class LlmTurnResponseDto implements Wire<RunLlmTurnResult> {
       'spent, even while failing.',
   })
   error!: string | null;
+
+  @ApiProperty({
+    example: null,
+    nullable: true,
+    description:
+      "The provider failure's normalized `code` (ADR 0041) — `auth`, " +
+      '`rate_limit`, `insufficient_credit` (HTTP 402, RN-730), ' +
+      '`model_not_found`, `context_length`, `timeout`, `connection` or ' +
+      '`upstream`. `null` with no error, or when the error is not the ' +
+      "provider's (budget, missing binding). Decide by this, never by " +
+      'the text of `error`.',
+  })
+  errorCode!: LLMErrorCode | null;
 
   @ApiProperty({
     example: 'llama3.2:3b',

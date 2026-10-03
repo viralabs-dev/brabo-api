@@ -21,6 +21,10 @@ export type CenarioLLM =
   | 'erro_401'
   | 'erro_404'
   | 'erro_429'
+  /** Conta sem crédito no provider (RN-730). */
+  | 'erro_402'
+  /** Falha genérica do provider — segue `upstream`. */
+  | 'erro_500'
   | 'erro_413'
   /** Aceita a conexão e nunca responde — nem headers. */
   | 'mudo'
@@ -100,6 +104,8 @@ export const STATUS_DO_CENARIO: Partial<Record<CenarioLLM, number>> = {
   erro_401: 401,
   erro_404: 404,
   erro_429: 429,
+  erro_402: 402,
+  erro_500: 500,
   erro_413: 413,
 };
 
