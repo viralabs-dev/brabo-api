@@ -64,6 +64,8 @@ export type LlmTurnStreamEvent =
       // resolver um modelo (`!binding`/`!model`); nos demais casos (inclusive
       // budget excedido) o binding já resolveu e o nome viaja.
       modelName: string | null;
+      /** Ver `RunLlmTurnResult.truncated` (RN-737). */
+      truncated?: true;
       /** Ver `RunLlmTurnResult.toolRouting` (ADR 0179). */
       toolRouting?: ToolRouting;
     };
@@ -185,6 +187,8 @@ export class StreamLlmTurnUseCase {
     let cachedInputTokens: number | null = null;
     let reasoningTokens: number | null = null;
     let streamError: string | null = null;
+    // O provider disse que o teto de saída cortou a resposta (RN-737).
+    let truncated = false;
     let streamErrorCode: LLMErrorCode | null = null;
 
     try {
@@ -209,6 +213,8 @@ export class StreamLlmTurnUseCase {
           generationId = chunk.generationId ?? null;
           cachedInputTokens = chunk.cachedInputTokens ?? null;
           reasoningTokens = chunk.reasoningTokens ?? null;
+        } else if (chunk.type === 'truncated') {
+          truncated = true;
         } else if (chunk.type === 'error') {
           streamError = chunk.message;
           streamErrorCode = chunk.code;
@@ -277,6 +283,7 @@ export class StreamLlmTurnUseCase {
       error: streamError,
       errorCode: streamErrorCode,
       modelName: model.name,
+      ...(truncated ? { truncated: true as const } : {}),
       ...(decisaoDoJev.toolRouting
         ? { toolRouting: decisaoDoJev.toolRouting }
         : {}),

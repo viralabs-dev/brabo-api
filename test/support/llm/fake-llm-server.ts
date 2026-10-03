@@ -18,6 +18,11 @@ export type CenarioLLM =
   | 'sem_usage'
   /** O modelo pede uma ferramenta. */
   | 'tool_call'
+  /**
+   * Texto normal, mas fechado pelo TETO de saída (`finish_reason: "length"` /
+   * `stop_reason: "max_tokens"`, RN-737).
+   */
+  | 'cortado'
   | 'erro_401'
   | 'erro_404'
   | 'erro_429'

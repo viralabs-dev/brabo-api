@@ -213,6 +213,8 @@ export class OpenAICompatibleProvider implements LLMProvider {
 
     const emAndamento = new Map<number, ToolCallEmMontagem>();
     let usageRecebido = false;
+    // `finish_reason: "length"` (RN-737): o teto de saída cortou a resposta.
+    let cortadaPeloTeto = false;
     let textoAcumulado = '';
     let upstreamProvider: string | undefined;
     // O que a RESPOSTA diz sobre si (RN-665): o modelo que serviu de fato e o
@@ -253,6 +255,10 @@ export class OpenAICompatibleProvider implements LLMProvider {
           resolvedModel = frame.model;
         }
         if (typeof frame.id === 'string' && frame.id) generationId = frame.id;
+
+        if (frame.choices?.[0]?.finish_reason === 'length') {
+          cortadaPeloTeto = true;
+        }
 
         const delta = frame.choices?.[0]?.delta;
 
@@ -301,6 +307,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
 
     const toolCalls = finalizar(emAndamento);
     if (toolCalls.length > 0) yield { type: 'tool_calls', toolCalls };
+    if (cortadaPeloTeto) yield { type: 'truncated' };
 
     if (!usageRecebido && this.tokenEstimator) {
       yield {
@@ -559,6 +566,7 @@ interface FrameDeChat {
       content?: string;
       tool_calls?: ToolCallParcial[];
     };
+    finish_reason?: unknown;
   }[];
   usage?: {
     prompt_tokens?: number;

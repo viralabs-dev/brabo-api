@@ -129,6 +129,10 @@ function dialetoOpenAI(cenario: CenarioLLM, res: ServerResponse): void {
   res.write(segundo.slice(0, 20));
   res.write(segundo.slice(20));
 
+  if (cenario === 'cortado') {
+    escrever(res, { choices: [{ delta: {}, finish_reason: 'length' }] });
+  }
+
   if (cenario === 'com_usage') {
     escrever(res, {
       choices: [],
@@ -158,6 +162,7 @@ runLLMProviderContract('openai-compatible (base)', () => ({
       new GptTokenizerEstimator(),
     ),
   usageFallback: 'estimated',
+  sinalizaCorte: true,
   timeoutEnv: 'LLM_REQUEST_TIMEOUT_MS',
   temFerramentasNoPedido: (body) => Array.isArray(body.tools),
   modelo: 'gpt-4o-mini',
@@ -187,6 +192,7 @@ runLLMProviderContract('openai-compatible (base, embeddings ligado)', () => ({
     );
   },
   usageFallback: 'estimated',
+  sinalizaCorte: true,
   timeoutEnv: 'LLM_REQUEST_TIMEOUT_MS',
   temFerramentasNoPedido: (body) => Array.isArray(body.tools),
   modelo: 'gpt-4o-mini',

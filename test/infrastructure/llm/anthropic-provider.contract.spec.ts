@@ -133,7 +133,10 @@ function dialetoAnthropic(cenario: CenarioLLM, res: ServerResponse): void {
 function fechar(res: ServerResponse, cenario: CenarioLLM): void {
   evento(res, 'message_delta', {
     type: 'message_delta',
-    delta: { stop_reason: 'end_turn', stop_sequence: null },
+    delta: {
+      stop_reason: cenario === 'cortado' ? 'max_tokens' : 'end_turn',
+      stop_sequence: null,
+    },
     usage: {
       output_tokens: cenario === 'com_usage' ? USAGE_ESPERADO.outputTokens : 0,
     },
@@ -153,6 +156,7 @@ runLLMProviderContract('anthropic', () => ({
   posicaoDoSistemaTardio: 'icado_ao_topo',
   criar: criarProvider,
   usageFallback: 'sempre',
+  sinalizaCorte: true,
   timeoutEnv: 'LLM_REQUEST_TIMEOUT_MS',
   temFerramentasNoPedido: (body) => Array.isArray(body.tools),
   modelo: 'claude-sonnet-5',

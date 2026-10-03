@@ -53,6 +53,11 @@ export interface LLMProviderContractHarness {
    *   `message_start`, e um cenário "sem usage" ali seria protocolo inválido).
    */
   usageFallback: 'estimated' | 'nenhum' | 'sempre';
+  /**
+   * O dialeto deste harness sabe fechar a resposta pelo teto de saída
+   * (cenário `cortado`, RN-737). Ausente = o cenário não é exercitado.
+   */
+  sinalizaCorte?: boolean;
   /** Env var que regula o teto de INATIVIDADE deste provider. */
   timeoutEnv: string;
   /**
@@ -185,6 +190,21 @@ export function runLLMProviderContract(
       const chunks = await rodar('stream_ok');
 
       expect(textoDe(chunks)).toBe(TEXTO_ESPERADO);
+      expect(chunks.some((c) => c.type === 'error')).toBe(false);
+    });
+
+    it('resposta normal não traz o sinal de corte (RN-737)', async () => {
+      const chunks = await rodar('stream_ok');
+      expect(chunks.some((c) => c.type === 'truncated')).toBe(false);
+    });
+
+    it('resposta cortada pelo teto de saída emite o sinal truncated (RN-737)', async () => {
+      if (!harness.sinalizaCorte) return;
+      const chunks = await rodar('cortado');
+      expect(textoDe(chunks)).toBe(TEXTO_ESPERADO);
+      expect(chunks.filter((c) => c.type === 'truncated')).toEqual([
+        { type: 'truncated' },
+      ]);
       expect(chunks.some((c) => c.type === 'error')).toBe(false);
     });
 
