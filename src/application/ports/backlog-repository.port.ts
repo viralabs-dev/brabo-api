@@ -28,6 +28,15 @@ export interface NewStory {
   dor?: string[];
 }
 
+export interface StoryContent {
+  description: string;
+  rf: string[];
+  rnf: string[];
+  businessRuleIds: string[];
+  dod: string[];
+  dor: string[];
+}
+
 export interface NewTask {
   storyId: string;
   title: string;
@@ -46,6 +55,11 @@ export abstract class StoryRepository {
   abstract findByProject(projectId: string): Promise<Story[]>;
   abstract updateStatus(id: string, status: StoryStatus): Promise<Story>;
   abstract updateModules(id: string, moduleIds: string[]): Promise<Story>;
+  /**
+   * Completa os campos de uma história existente (RN-720): o PO liga regras e
+   * preenche RF/DoD/DoR sem recriar a história.
+   */
+  abstract updateContent(id: string, content: StoryContent): Promise<Story>;
   // Fase 12c (RN-048). `proposedReady` liga ao criar em modo `manual` e
   // desliga tanto na promoção quanto na recusa — sempre junto do fato que a
   // resolveu, para nunca sobrar uma story "aguardando" que já foi decidida.
