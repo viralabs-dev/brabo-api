@@ -1,4 +1,4 @@
-FROM node:24-alpine@sha256:50c8e8ca1d27439048670df5883f32d57cf81cff6233222c893fd0d9884cbd81
+FROM node:26-alpine@sha256:0b36e8c136b94cd4fcf02188228e76c31ad5872eef3fec8cbd2eee500cfd9e80
 
 # UID/GID do usuário que roda o container — casam com o dono do bind mount
 # no host (ver docker-compose.yml `build.args` e .env.example), pra tudo que
@@ -25,7 +25,7 @@ RUN npm pack "pnpm@${PNPM_VERSION}" --silent \
   && rm "pnpm-${PNPM_VERSION}.tgz"
 
 # Só cria grupo/usuário quando o UID/GID pedido diverge do que a imagem já
-# tem — `node:24-alpine` já vem com o usuário "node" em 1000:1000, o default
+# tem — `node:26-alpine` já vem com o usuário "node" em 1000:1000, o default
 # mais comum, e recriar um grupo/usuário nesse UID quebraria o build
 # (`addgroup`/`adduser` recusam ID já em uso). USER abaixo referencia o par
 # numérico, não o nome — não importa se quem acabou dono dele foi "node" ou
