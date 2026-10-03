@@ -92,9 +92,7 @@ class UnreachableEngineClient implements ApiToEngineClient {
   }
 
   resumeParkedGate(): Promise<void> {
-
     return Promise.resolve();
-
   }
 
   runAnamnese(): Promise<void> {
