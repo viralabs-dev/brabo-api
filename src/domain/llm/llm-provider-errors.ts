@@ -34,6 +34,11 @@ export class LLMRateLimitError extends LLMProviderError {
   readonly code = 'rate_limit' as const;
 }
 
+/** A conta no provider está sem crédito (402) — RN-730. */
+export class LLMInsufficientCreditError extends LLMProviderError {
+  readonly code = 'insufficient_credit' as const;
+}
+
 export class LLMModelNotFoundError extends LLMProviderError {
   readonly code = 'model_not_found' as const;
 }
@@ -85,6 +90,12 @@ export function normalizeHttpStatus(
     return new LLMAuthError(
       provider,
       `credencial rejeitada por ${provider} (${status})${sufixo}`,
+    );
+  }
+  if (status === 402) {
+    return new LLMInsufficientCreditError(
+      provider,
+      `crédito insuficiente em ${provider} (402)${sufixo}`,
     );
   }
   if (status === 404) {

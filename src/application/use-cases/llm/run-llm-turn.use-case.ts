@@ -1,6 +1,12 @@
 import { MENSAGEM_SEM_MODELO } from '../../../domain/llm/binding-resolver';
 import { Injectable } from '@nestjs/common';
-import type { ChatMessage, ToolCall, ToolDef } from '@brabo/shared';
+import type {
+  ChatMessage,
+  LLMErrorCode,
+  ToolCall,
+  ToolDef,
+} from '@brabo/shared';
+import { LLMProviderError } from '../../../domain/llm/llm-provider-errors';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { ModelRepository } from '../../ports/model-repository.port';
 import { UserCredentialRepository } from '../../ports/user-credential-repository.port';
@@ -38,6 +44,12 @@ export interface RunLlmTurnResult {
     estimated: boolean;
   };
   error: string | null;
+  /**
+   * O `code` normalizado do erro do provider (ADR 0041), quando o erro veio
+   * dele; `null` sem erro ou com erro que não é do provider. O engine decide
+   * crédito esgotado por ele (RN-730). Campo aditivo.
+   */
+  errorCode: LLMErrorCode | null;
   // Espelha `LlmTurnStreamEvent.modelName` (achado do problema 2) — `null`
   // quando o turno falhou antes de resolver um modelo.
   modelName: string | null;
@@ -157,6 +169,7 @@ export class RunLlmTurnUseCase {
     let cachedInputTokens: number | null = null;
     let reasoningTokens: number | null = null;
     let streamError: string | null = null;
+    let streamErrorCode: LLMErrorCode | null = null;
 
     try {
       for await (const chunk of provider.chat(input.messages, {
@@ -181,10 +194,12 @@ export class RunLlmTurnUseCase {
           reasoningTokens = chunk.reasoningTokens ?? null;
         } else if (chunk.type === 'error') {
           streamError = chunk.message;
+          streamErrorCode = chunk.code;
         }
       }
     } catch (error) {
       streamError = (error as Error).message;
+      if (error instanceof LLMProviderError) streamErrorCode = error.code;
     }
 
     // Metering OBRIGATÓRIO — mesmo com erro do provider.
@@ -242,6 +257,7 @@ export class RunLlmTurnUseCase {
       message: { role: 'assistant', content: fullText, toolCalls },
       usage: { inputTokens, outputTokens, costMicros, estimated },
       error: streamError,
+      errorCode: streamErrorCode,
       modelName: model.name,
       ...(decisaoDoJev.toolRouting
         ? { toolRouting: decisaoDoJev.toolRouting }
@@ -258,6 +274,7 @@ function errorResult(
     message: { role: 'assistant', content: '', toolCalls: [] },
     usage: { inputTokens: 0, outputTokens: 0, costMicros: 0, estimated: true },
     error: message,
+    errorCode: null,
     modelName,
   };
 }

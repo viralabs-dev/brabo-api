@@ -263,6 +263,10 @@ export function runLLMProviderContract(
       { cenario: 'erro_404', code: 'model_not_found' },
       { cenario: 'erro_429', code: 'rate_limit' },
       { cenario: 'erro_413', code: 'context_length' },
+      // RN-730: o 402 é crédito esgotado, com code próprio; os outros
+      // status sem nome continuam `upstream`.
+      { cenario: 'erro_402', code: 'insufficient_credit' },
+      { cenario: 'erro_500', code: 'upstream' },
     ];
 
     for (const { cenario, code } of ERROS) {

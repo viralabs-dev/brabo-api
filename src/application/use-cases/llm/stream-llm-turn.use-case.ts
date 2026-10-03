@@ -1,6 +1,12 @@
 import { MENSAGEM_SEM_MODELO } from '../../../domain/llm/binding-resolver';
 import { Injectable } from '@nestjs/common';
-import type { ChatMessage, ToolCall, ToolDef } from '@brabo/shared';
+import type {
+  ChatMessage,
+  LLMErrorCode,
+  ToolCall,
+  ToolDef,
+} from '@brabo/shared';
+import { LLMProviderError } from '../../../domain/llm/llm-provider-errors';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { ModelRepository } from '../../ports/model-repository.port';
 import { UserCredentialRepository } from '../../ports/user-credential-repository.port';
@@ -46,6 +52,12 @@ export type LlmTurnStreamEvent =
       message: { role: 'assistant'; content: string; toolCalls: ToolCall[] };
       usage: LlmTurnUsage;
       error: string | null;
+      /**
+       * O `code` normalizado do erro do provider (ADR 0041), quando o erro veio
+       * dele; `null` sem erro ou com erro que não é do provider. O engine decide
+       * crédito esgotado por ele (RN-730). Campo aditivo.
+       */
+      errorCode: LLMErrorCode | null;
       // Nome do modelo que gerou a resposta (achado do problema 2) — antes só
       // vivia em `token_usage`, sem vínculo com o evento `agent.response`
       // específico que ele produziu. `null` quando o turno falhou ANTES de
@@ -173,6 +185,7 @@ export class StreamLlmTurnUseCase {
     let cachedInputTokens: number | null = null;
     let reasoningTokens: number | null = null;
     let streamError: string | null = null;
+    let streamErrorCode: LLMErrorCode | null = null;
 
     try {
       for await (const chunk of provider.chat(input.messages, {
@@ -198,10 +211,12 @@ export class StreamLlmTurnUseCase {
           reasoningTokens = chunk.reasoningTokens ?? null;
         } else if (chunk.type === 'error') {
           streamError = chunk.message;
+          streamErrorCode = chunk.code;
         }
       }
     } catch (error) {
       streamError = (error as Error).message;
+      if (error instanceof LLMProviderError) streamErrorCode = error.code;
     }
 
     // Metering OBRIGATÓRIO — mesmo com erro do provider.
@@ -260,6 +275,7 @@ export class StreamLlmTurnUseCase {
       message: { role: 'assistant', content: fullText, toolCalls },
       usage: { inputTokens, outputTokens, costMicros, estimated },
       error: streamError,
+      errorCode: streamErrorCode,
       modelName: model.name,
       ...(decisaoDoJev.toolRouting
         ? { toolRouting: decisaoDoJev.toolRouting }
@@ -277,6 +293,7 @@ function finalError(
     message: { role: 'assistant', content: '', toolCalls: [] },
     usage: { inputTokens: 0, outputTokens: 0, costMicros: 0, estimated: true },
     error: message,
+    errorCode: null,
     modelName,
   };
 }
