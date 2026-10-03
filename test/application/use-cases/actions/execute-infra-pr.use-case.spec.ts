@@ -135,3 +135,40 @@ describe('ExecuteInfraPrUseCase — criação de branch idempotente', () => {
     expect(gravados.at(-1)?.status).toBe('failed');
   });
 });
+
+describe('ExecuteInfraPrUseCase — base e autor da PR (RN-729)', () => {
+  it('a branch nasce de dev, a PR mira dev e leva infra[bot]', async () => {
+    const provider = {
+      createBranch: vi.fn().mockResolvedValue(undefined),
+      commitFiles: vi.fn().mockResolvedValue(undefined),
+      openPullRequest: vi
+        .fn()
+        .mockResolvedValue({ id: 1, url: 'local://repo/pull/1' }),
+    };
+    const { useCase, gravados } = build(provider);
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+
+    expect(provider.createBranch).toHaveBeenCalledWith(
+      expect.objectContaining({ fromRef: 'dev' }),
+    );
+    expect(provider.openPullRequest).toHaveBeenCalledWith(
+      expect.objectContaining({ targetBranch: 'dev', author: 'infra[bot]' }),
+    );
+    expect(gravados.at(-1)?.status).toBe('executed');
+  });
+
+  it('repositório sem dev falha nomeado, sem cair na default', async () => {
+    const provider = {
+      createBranch: vi
+        .fn()
+        .mockRejectedValue(new Error('ref não encontrada: dev')),
+      commitFiles: vi.fn(),
+      openPullRequest: vi.fn(),
+    };
+    const { useCase, gravados } = build(provider);
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+
+    expect(provider.openPullRequest).not.toHaveBeenCalled();
+    expect(gravados.at(-1)?.status).toBe('failed');
+  });
+});

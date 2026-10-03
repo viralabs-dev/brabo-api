@@ -9,6 +9,7 @@ import { UserCredentialRepository } from '../../ports/user-credential-repository
 import { EncryptionService } from '../../ports/encryption.port';
 import { InfraArtifactRepository } from '../../ports/infra-artifact-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
+import { BRANCH_DE_TRABALHO } from '../../../domain/actions/protected-branches';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
 import type { InfraPrExecutionResult } from '../../../domain/git/infra-pr-execution-result';
 
@@ -145,7 +146,11 @@ export class ExecuteInfraPrUseCase {
           await provider.createBranch({
             externalId: repo.externalId,
             branchName: branch,
-            fromRef: repo.defaultBranch,
+            // RN-729: a PR de infra segue a RN-664 — nasce de `dev` e mira
+            // `dev`, senão o Dockerfile mergeado nunca chega ao worktree do
+            // dev agent (que nasce de `dev`). Sem `dev`, o provider recusa
+            // nomeando a ref, sem queda para a default.
+            fromRef: BRANCH_DE_TRABALHO,
             accessToken,
           });
         } catch (error) {
@@ -178,8 +183,13 @@ export class ExecuteInfraPrUseCase {
       const pr = await provider.openPullRequest({
         externalId: repo.externalId,
         sourceBranch: branch,
-        targetBranch: repo.defaultBranch,
+        targetBranch: BRANCH_DE_TRABALHO,
         title: payload.title,
+        // RN-729: a PR leva a identidade do agente (`<agente>[bot]`, RN-705).
+        author:
+          action.actor?.kind === 'agent' && action.actor.id
+            ? `${action.actor.id}[bot]`
+            : 'infra[bot]',
         body: `Artefatos de infra propostos pelo InfraAgent.\n\nArquivos:\n${paths.map((p) => `- \`${p}\``).join('\n')}`,
         accessToken,
       });
