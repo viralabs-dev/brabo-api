@@ -35,6 +35,13 @@ export class CreateTaskUseCase {
         `História "${input.storyId}" não encontrada neste projeto`,
       );
     }
+    // RN-727: história arquivada saiu do jogo — tarefa nova nela não seria
+    // pegável por ninguém.
+    if (story.archivedAt) {
+      throw new BadRequestException(
+        `A história "${story.title}" está arquivada — não recebe tarefa nova`,
+      );
+    }
 
     // Criação e wake na MESMA transação (D7): commitar a task sem a linha de
     // outbox deixaria uma task pegável que ninguém foi avisado que existe.

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   StoryRepository,
   TaskRepository,
@@ -59,6 +63,14 @@ export class TransitionStoryUseCase {
     const story = await this.stories.findById(storyId);
     if (!story || story.projectId !== projectId) {
       throw new NotFoundException('História não encontrada');
+    }
+    // RN-727: arquivada não volta ao jogo por transição (nem por promoção,
+    // que passa por aqui).
+    if (story.archivedAt) {
+      throw new ConflictException({
+        message: `A história "${story.title}" está arquivada.`,
+        reason: 'historia_arquivada',
+      });
     }
 
     if (to === 'ready') {

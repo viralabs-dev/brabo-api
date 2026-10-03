@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsArray,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 
 // Chamada interna do engine (ferramenta create_story do PO). Validação leve
 // de propósito (cliente confiável); a validação de negócio (regra existe,
@@ -94,4 +100,36 @@ export class CompleteStoryInternalDto {
   @IsOptional()
   @IsArray()
   businessRuleIds?: string[];
+}
+
+// Ferramenta update_story do PO (RN-727): corrige título e/ou descrição de
+// uma história draft sem tarefa em execução. Campo omitido fica.
+export class UpdateStoryInternalDto {
+  @ApiProperty({ format: 'uuid', example: '01JC4Z0000PROJETO0000000001' })
+  @IsUUID()
+  projectId!: string;
+
+  @ApiPropertyOptional({ example: 'Register a user' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  title?: string;
+
+  @ApiPropertyOptional({ example: 'As a visitor, I want to sign up.' })
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
+// Ferramenta archive_story do PO (RN-727): arquiva uma história draft sem
+// tarefa em execução — ela e as tarefas saem do jogo, nada é apagado.
+export class ArchiveStoryInternalDto {
+  @ApiProperty({ format: 'uuid', example: '01JC4Z0000PROJETO0000000001' })
+  @IsUUID()
+  projectId!: string;
+
+  @ApiPropertyOptional({ example: 'Duplicate of "Register a user".' })
+  @IsOptional()
+  @IsString()
+  reason?: string;
 }

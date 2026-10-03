@@ -34,6 +34,10 @@ export interface Story {
   // Por que o usuário devolveu a story ao PO, e quando.
   returnedReason: string | null;
   returnedAt: Date | null;
+  // RN-727 (ADR 0212): arquivada sai do backlog, da cobertura, do plano e do
+  // claim. `null` é a história no jogo.
+  archivedAt: Date | null;
+  archivedReason: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
