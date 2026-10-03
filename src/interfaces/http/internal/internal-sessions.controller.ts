@@ -75,6 +75,7 @@ import {
   ProposeInstructionPatchInternalDto,
   ProposeMaxParallelInternalDto,
   RecordProficiencyInternalDto,
+  CloseAnamneseWindowInternalDto,
 } from './dto/record-proficiency-internal.dto';
 import { OpenGateInternalDto } from './dto/open-gate-internal.dto';
 import { ReportSessionTerminationDto } from './dto/report-session-termination.dto';
@@ -1123,6 +1124,31 @@ export class InternalSessionsController {
       windowTo: new Date(dto.windowTo),
       eventCount: dto.eventCount,
       profiles: dto.profiles,
+    });
+  }
+
+  /**
+   * Rodada da Anamnese que avaliou a janela e encerrou sem perfil
+   * (`skip_proficiency`) fecha a janela mesmo assim (RN-722).
+   */
+  @Post(':sessionId/anamnese-window')
+  @ApiOperation({
+    summary: 'Closes the Anamnese window of a round that emitted no profile',
+    description:
+      'Records an anamnese run with zero profiles so the next round starts at ' +
+      'windowTo — without it, the window never advanced and every tick paid ' +
+      'for a new round over the same material.',
+  })
+  @ApiCreatedResponse({ type: RecordProficiencyResponseDto })
+  anamneseWindow(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: CloseAnamneseWindowInternalDto,
+  ) {
+    return this.recordProficiency.fecharJanelaSemPerfil(dto.projectId, {
+      sessionId,
+      windowFrom: new Date(dto.windowFrom),
+      windowTo: new Date(dto.windowTo),
+      eventCount: dto.eventCount,
     });
   }
 

@@ -151,3 +151,26 @@ export class ProposeMaxParallelInternalDto {
   @IsString()
   rationale!: string;
 }
+
+/**
+ * A janela que a rodada avaliou e fechou sem perfil (RN-722) — mesmos três
+ * campos da janela de `RecordProficiencyInternalDto`, sem `profiles`.
+ */
+export class CloseAnamneseWindowInternalDto {
+  @ApiProperty({ format: 'uuid', example: '01JC4Z0000PROJETO0000000001' })
+  @IsUUID()
+  projectId!: string;
+
+  @ApiProperty({ example: '2026-07-27T12:00:00.000Z', format: 'date-time' })
+  @IsDateString()
+  windowFrom!: string;
+
+  @ApiProperty({ example: '2026-07-27T12:15:00.000Z', format: 'date-time' })
+  @IsDateString()
+  windowTo!: string;
+
+  @ApiProperty({ example: 12 })
+  @IsInt()
+  @Min(0)
+  eventCount!: number;
+}
