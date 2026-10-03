@@ -134,8 +134,14 @@ function pareceContexto(body: string | undefined): boolean {
  * O corpo de erro vai junto da mensagem porque sem ele "429" não diz se o
  * problema é por minuto ou por dia — mas ele é truncado: alguns providers
  * devolvem uma página HTML inteira, e isso acabaria num evento de sessão.
+ *
+ * O teto era 200 e cortava o JSON do OpenRouter antes do `metadata.reason`
+ * (medido no TP-01, 03/10: `…"code":402,"metadata":{"reason":"in…`), que é o
+ * que diz a NATUREZA do erro. 4 000 cabe o corpo JSON de todo provider medido
+ * e ainda segura a página HTML (RN-739). A frase da bolha NÃO cresce com ele:
+ * o engine a corta à parte (`FalhaDeTurno.mensagem/2`, RN-733).
  */
-const LIMITE_DO_DETALHE = 200;
+export const LIMITE_DO_DETALHE = 4_000;
 
 function resumo(body: string | undefined): string {
   if (!body) return '';
