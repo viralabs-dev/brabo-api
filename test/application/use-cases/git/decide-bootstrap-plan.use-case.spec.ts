@@ -67,6 +67,7 @@ class UnreachableEngineClient implements ApiToEngineClient {
   offerInfraHandoff = () => this.boom();
   reanalyzeSession = () => this.boom();
   getPsychologistStatus = () => this.boom();
+  resumeParkedGate = () => this.boom();
   runAnamnese = () => this.boom();
   invalidateInstructions = () => this.boom();
   requestRunnerTicket = () => this.boom();

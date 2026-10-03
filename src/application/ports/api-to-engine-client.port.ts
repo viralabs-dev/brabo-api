@@ -330,6 +330,15 @@ export abstract class ApiToEngineClient {
    * docs/explanation/backlog.md); o chamador decide o que fazer com isso.
    */
   abstract runAnamnese(projectId: string): Promise<void>;
+  /**
+   * Retoma por gesto humano o ciclo de gate ESTACIONADO (ADR 0207, RN-724).
+   * Lança `GateNaoEstacionadoError` quando o engine recusa (409).
+   */
+  abstract resumeParkedGate(
+    projectId: string,
+    taskId: string,
+    gate: string,
+  ): Promise<void>;
   abstract invalidateInstructions(
     projectId: string,
     agent: string,
