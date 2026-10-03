@@ -16,6 +16,7 @@ import { CreateTaskUseCase } from './create-task.use-case';
 import { TransitionStoryUseCase } from './transition-story.use-case';
 import { PromoteStoriesUseCase } from './promote-stories.use-case';
 import { ReturnStoryUseCase } from './return-story.use-case';
+import { CorrigirHistoriaUseCase } from './corrigir-historia.use-case';
 import { ListBacklogUseCase } from './list-backlog.use-case';
 import { GetCoverageUseCase } from './get-coverage.use-case';
 import { ListBusinessRulesUseCase } from './list-business-rules.use-case';
@@ -29,6 +30,7 @@ const USE_CASES = [
   TransitionStoryUseCase,
   PromoteStoriesUseCase,
   ReturnStoryUseCase,
+  CorrigirHistoriaUseCase,
   ListBacklogUseCase,
   GetCoverageUseCase,
   ListBusinessRulesUseCase,

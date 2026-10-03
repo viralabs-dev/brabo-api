@@ -9,7 +9,10 @@ import {
   users,
   workspaces,
 } from '../../../../src/db/schema';
-import { DrizzleTaskRepository } from '../../../../src/infrastructure/persistence/drizzle/backlog.repository';
+import {
+  DrizzleStoryRepository,
+  DrizzleTaskRepository,
+} from '../../../../src/infrastructure/persistence/drizzle/backlog.repository';
 import { ClaimNextTaskUseCase } from '../../../../src/application/use-cases/execution/claim-next-task.use-case';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
 
@@ -25,6 +28,7 @@ async function seed(opts: {
   moduleIds: string[];
   taskCount: number;
   taskModule?: string | null;
+  archived?: boolean;
 }) {
   const [owner] = await db
     .insert(users)
@@ -60,6 +64,7 @@ async function seed(opts: {
       title: 's',
       status: opts.storyStatus,
       moduleIds: opts.moduleIds,
+      archivedAt: opts.archived ? new Date() : null,
     })
     .returning();
   for (let i = 0; i < opts.taskCount; i++) {
@@ -69,7 +74,7 @@ async function seed(opts: {
       module: opts.taskModule ?? null,
     });
   }
-  return { projectId: project.id, sessionId: session.id };
+  return { projectId: project.id, sessionId: session.id, storyId: story.id };
 }
 
 beforeEach(async () => {
@@ -110,6 +115,29 @@ describe('ClaimNextTaskUseCase', () => {
     expect(
       await useCase.execute(projectId, sessionId, 'api', 'dev-api'),
     ).toBeNull();
+  });
+
+  // RN-727: história arquivada sai do claim, da contagem, do plano e do
+  // backlog — e as tarefas dela junto.
+  it('não pega task de story ARQUIVADA, nem a conta, nem a lista', async () => {
+    const { projectId, sessionId, storyId } = await seed({
+      storyStatus: 'ready',
+      moduleIds: ['api'],
+      taskCount: 1,
+      archived: true,
+    });
+    expect(
+      await useCase.execute(projectId, sessionId, 'api', 'dev-api'),
+    ).toBeNull();
+    expect(await taskRepo.countClaimableByModule(projectId, 'api')).toBe(0);
+    const [task] = await taskRepo.findByStoryIds([storyId]);
+    expect(await taskRepo.findInProjectByIds(projectId, [task.id])).toEqual([]);
+    const storyRepo = new DrizzleStoryRepository(db);
+    expect(await storyRepo.findByProject(projectId)).toEqual([]);
+    // A linha continua lá: arquivar não apaga.
+    expect((await storyRepo.findById(storyId))?.archivedAt).toBeInstanceOf(
+      Date,
+    );
   });
 
   it('não pega task de módulo diferente', async () => {

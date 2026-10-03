@@ -52,7 +52,15 @@ export abstract class EpicRepository {
 export abstract class StoryRepository {
   abstract create(input: NewStory): Promise<Story>;
   abstract findById(id: string): Promise<Story | null>;
+  // As NÃO arquivadas (RN-727): é a leitura do backlog e da cobertura.
   abstract findByProject(projectId: string): Promise<Story[]>;
+  // RN-727: o título/descrição corrigidos e o arquivamento (que também tira a história da
+  // fila de promoção). `findById` continua achando a arquivada.
+  abstract updateText(
+    id: string,
+    text: { title: string; description: string },
+  ): Promise<Story>;
+  abstract archive(id: string, reason: string | null): Promise<Story>;
   abstract updateStatus(id: string, status: StoryStatus): Promise<Story>;
   abstract updateModules(id: string, moduleIds: string[]): Promise<Story>;
   /**

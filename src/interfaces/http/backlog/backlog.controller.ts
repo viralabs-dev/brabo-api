@@ -1,6 +1,16 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
+import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
@@ -15,6 +25,7 @@ import { ListBacklogUseCase } from '../../../application/use-cases/backlog/list-
 import { GetCoverageUseCase } from '../../../application/use-cases/backlog/get-coverage.use-case';
 import { PromoteStoriesUseCase } from '../../../application/use-cases/backlog/promote-stories.use-case';
 import { ReturnStoryUseCase } from '../../../application/use-cases/backlog/return-story.use-case';
+import { CorrigirHistoriaUseCase } from '../../../application/use-cases/backlog/corrigir-historia.use-case';
 import { GetArchitectureUseCase } from '../../../application/use-cases/architecture/get-architecture.use-case';
 import { ListInfraArtifactsUseCase } from '../../../application/use-cases/execution/list-infra-artifacts.use-case';
 import { BEARER } from '../../../infrastructure/openapi/documento';
@@ -24,11 +35,14 @@ import {
   CoverageReportResponseDto,
   EpicComHistoriasResponseDto,
   InfraArtifactResponseDto,
+  StoryResponseDto,
 } from './dto/backlog.response.dto';
 import {
   PromoteStoriesDto,
   PromoteStoriesResponseDto,
   ReturnStoryDto,
+  ArchiveStoryDto,
+  UpdateStoryTitleDto,
 } from './dto/promote-stories.dto';
 
 /**
@@ -37,9 +51,10 @@ import {
  * (module_map + ADRs + pendências de validação cruzada).
  *
  * Era só leitura até a Fase 12c — quem escrevia backlog eram os agentes, pelas
- * rotas `/internal/*`. As duas rotas de escrita que existem aqui são as ÚNICAS
- * decisões de backlog que pertencem ao usuário e não a um agente: promover uma
- * história proposta, ou devolvê-la ao PO (RN-048).
+ * rotas `/internal/*`. As rotas de escrita daqui são as decisões de backlog
+ * que pertencem ao usuário e não a um agente: promover uma história proposta,
+ * devolvê-la ao PO (RN-048) e, desde a RN-727, corrigir o título e arquivar
+ * uma história `draft` — todas com o mesmo papel mínimo, `developer`.
  */
 @ApiTags('backlog')
 @ApiBearerAuth(BEARER)
@@ -54,6 +69,7 @@ export class BacklogController {
     private readonly listInfraArtifacts: ListInfraArtifactsUseCase,
     private readonly promoteStories: PromoteStoriesUseCase,
     private readonly returnStory: ReturnStoryUseCase,
+    private readonly corrigirHistoria: CorrigirHistoriaUseCase,
   ) {}
 
   @Get('backlog')
@@ -61,7 +77,8 @@ export class BacklogController {
   @ApiOperation({
     summary: 'Returns the epic → story → task tree',
     description:
-      'Nested and complete, in a single call. This is READ-ONLY: backlog is ' +
+      'Nested and complete, in a single call. ARCHIVED stories (RN-727) are not ' +
+      'listed. Backlog is ' +
       'written by agents, through the `/internal/*` routes.',
   })
   @ApiOkResponse({ type: [EpicComHistoriasResponseDto] })
@@ -150,5 +167,66 @@ export class BacklogController {
     @CurrentUser() user: User,
   ) {
     return this.returnStory.execute(projectId, storyId, dto.reason, user.id);
+  }
+
+  @Patch('stories/:storyId/title')
+  @RequireRole('developer')
+  @ApiOperation({
+    summary: 'Corrects the title of a draft story (RN-727)',
+    description:
+      'Only a `draft` story with no task in execution (`in_progress`/`in_review`). ' +
+      'Writes `backlog.story_updated` with the previous and the new title. Same ' +
+      'role as the other backlog writes (promote/return).',
+  })
+  @ApiOkResponse({ type: StoryResponseDto })
+  @ApiBadRequestResponse({ description: 'Empty title or over 200 characters.' })
+  @ApiConflictResponse({
+    description:
+      'Named refusal (`reason`): `historia_arquivada`, `historia_nao_draft` or ' +
+      '`historia_com_tarefa_em_execucao`.',
+  })
+  updateTitle(
+    @Param('projectId') projectId: string,
+    @Param('storyId') storyId: string,
+    @Body() dto: UpdateStoryTitleDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.corrigirHistoria.editar(
+      projectId,
+      storyId,
+      { title: dto.title },
+      { kind: 'user', id: user.id },
+    );
+  }
+
+  @Post('stories/:storyId/archive')
+  @HttpCode(200)
+  @RequireRole('developer')
+  @ApiOperation({
+    summary: 'Archives a draft story (RN-727)',
+    description:
+      'The story leaves the backlog, the coverage, the promotion queue, the Dev ' +
+      "Lead's plan and the claim — and so do its tasks. Nothing is deleted: the " +
+      'row stays with `archivedAt`, and `backlog.story_archived` records who, why ' +
+      'and which tasks. Only a `draft` story with no task in execution.',
+  })
+  @ApiOkResponse({ type: StoryResponseDto })
+  @ApiConflictResponse({
+    description:
+      'Named refusal (`reason`): `historia_arquivada`, `historia_nao_draft` or ' +
+      '`historia_com_tarefa_em_execucao`.',
+  })
+  archive(
+    @Param('projectId') projectId: string,
+    @Param('storyId') storyId: string,
+    @Body() dto: ArchiveStoryDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.corrigirHistoria.arquivar(
+      projectId,
+      storyId,
+      dto.reason ?? null,
+      { kind: 'user', id: user.id },
+    );
   }
 }

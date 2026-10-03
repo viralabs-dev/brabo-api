@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import {
   EpicRepository,
   StoryRepository,
@@ -99,9 +99,39 @@ export class DrizzleStoryRepository implements StoryRepository {
     const rows = await db
       .select()
       .from(stories)
-      .where(eq(stories.projectId, projectId))
+      // RN-727: arquivada sai do backlog e, por esta leitura, da cobertura.
+      .where(and(eq(stories.projectId, projectId), isNull(stories.archivedAt)))
       .orderBy(asc(stories.createdAt));
     return rows.map(storyToEntity);
+  }
+
+  async updateText(
+    id: string,
+    text: { title: string; description: string },
+  ): Promise<Story> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .update(stories)
+      .set({ ...text, updatedAt: new Date() })
+      .where(eq(stories.id, id))
+      .returning();
+    return storyToEntity(row);
+  }
+
+  async archive(id: string, reason: string | null): Promise<Story> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .update(stories)
+      .set({
+        // Sai também da fila de promoção na MESMA escrita (RN-048/RN-727).
+        proposedReady: false,
+        archivedAt: new Date(),
+        archivedReason: reason,
+        updatedAt: new Date(),
+      })
+      .where(eq(stories.id, id))
+      .returning();
+    return storyToEntity(row);
   }
 
   async updateStatus(id: string, status: StoryStatus): Promise<Story> {
@@ -168,7 +198,11 @@ export class DrizzleStoryRepository implements StoryRepository {
       .select()
       .from(stories)
       .where(
-        and(eq(stories.projectId, projectId), eq(stories.proposedReady, true)),
+        and(
+          eq(stories.projectId, projectId),
+          eq(stories.proposedReady, true),
+          isNull(stories.archivedAt),
+        ),
       )
       .orderBy(asc(stories.createdAt));
     return rows.map(storyToEntity);
@@ -239,7 +273,14 @@ export class DrizzleTaskRepository implements TaskRepository {
       .select({ task: tasks })
       .from(tasks)
       .innerJoin(stories, eq(stories.id, tasks.storyId))
-      .where(and(eq(stories.projectId, projectId), inArray(tasks.id, ids)));
+      .where(
+        and(
+          eq(stories.projectId, projectId),
+          inArray(tasks.id, ids),
+          // RN-727: tarefa de história arquivada não entra no plano.
+          isNull(stories.archivedAt),
+        ),
+      );
     return rows.map((r) => taskToEntity(r.task));
   }
 
@@ -280,6 +321,7 @@ export class DrizzleTaskRepository implements TaskRepository {
         JOIN stories s ON s.id = t.story_id
         WHERE s.project_id = ${projectId}
           AND s.status = 'ready'
+          AND s.archived_at IS NULL
           AND ${daTarefaDoModulo(module)}
           AND t.status = 'todo'
           AND t.blocked = false
@@ -354,6 +396,7 @@ export class DrizzleTaskRepository implements TaskRepository {
       JOIN stories s ON s.id = t.story_id
       WHERE s.project_id = ${projectId}
         AND s.status = 'ready'
+        AND s.archived_at IS NULL
         AND ${daTarefaDoModulo(module)}
         AND t.status = 'todo'
         AND t.blocked = false
@@ -480,6 +523,8 @@ function storyToEntity(row: typeof stories.$inferSelect): Story {
     proposedReady: row.proposedReady,
     returnedReason: row.returnedReason,
     returnedAt: row.returnedAt,
+    archivedAt: row.archivedAt,
+    archivedReason: row.archivedReason,
     status: row.status,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

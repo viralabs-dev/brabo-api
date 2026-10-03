@@ -88,9 +88,12 @@ import { CreateActionInternalDto } from './dto/create-action-internal.dto';
 import { CreateHandoffInternalDto } from './dto/create-handoff-internal.dto';
 import { CreateEpicInternalDto } from './dto/create-epic-internal.dto';
 import {
+  ArchiveStoryInternalDto,
   CompleteStoryInternalDto,
   CreateStoryInternalDto,
+  UpdateStoryInternalDto,
 } from './dto/create-story-internal.dto';
+import { CorrigirHistoriaUseCase } from '../../../application/use-cases/backlog/corrigir-historia.use-case';
 import {
   CreatedStoryResponseDto,
   SemanticDuplicateCheckInternalDto,
@@ -177,6 +180,7 @@ export class InternalSessionsController {
     private readonly createEpic: CreateEpicUseCase,
     private readonly createStory: CreateStoryUseCase,
     private readonly completeStory: CompleteStoryUseCase,
+    private readonly corrigirHistoria: CorrigirHistoriaUseCase,
     private readonly createTask: CreateTaskUseCase,
     private readonly createModuleMap: CreateModuleMapUseCase,
     private readonly createC4Diagram: CreateC4DiagramUseCase,
@@ -542,6 +546,70 @@ export class InternalSessionsController {
       dor: dto.dor,
       businessRuleIds: dto.businessRuleIds,
     });
+  }
+
+  /**
+   * Ferramenta update_story do PO (RN-727): corrige título e/ou descrição de
+   * uma história `draft` sem tarefa em execução — a MESMA régua da aba Backlog.
+   */
+  @Post(':sessionId/stories/:storyId/update')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Corrects the title and/or description of a draft story',
+    description:
+      'Only a `draft` story with no task in execution; writes `backlog.story_updated` ' +
+      'with the PO as actor (RN-727).',
+  })
+  @ApiOkResponse({ type: StoryResponseDto })
+  @ApiNotFoundResponse({ description: 'Story is not in this project.' })
+  @ApiConflictResponse({
+    description:
+      'Named refusal (`reason`): `historia_arquivada`, `historia_nao_draft` or ' +
+      '`historia_com_tarefa_em_execucao`.',
+  })
+  @ApiBadRequestResponse({ description: 'No field, or an empty title.' })
+  updateStoryRoute(
+    @Param('storyId') storyId: string,
+    @Body() dto: UpdateStoryInternalDto,
+  ) {
+    return this.corrigirHistoria.editar(
+      dto.projectId,
+      storyId,
+      { title: dto.title, description: dto.description },
+      { kind: 'agent', id: 'po' },
+    );
+  }
+
+  /**
+   * Ferramenta archive_story do PO (RN-727): arquiva uma história `draft` sem
+   * tarefa em execução. Ela e as tarefas saem do backlog, da cobertura, do
+   * plano e do claim; nada é apagado.
+   */
+  @Post(':sessionId/stories/:storyId/archive')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Archives a draft story',
+    description:
+      'The story and its tasks leave the backlog, coverage, plan and claim; the row ' +
+      'stays and `backlog.story_archived` records it, with the PO as actor (RN-727).',
+  })
+  @ApiOkResponse({ type: StoryResponseDto })
+  @ApiNotFoundResponse({ description: 'Story is not in this project.' })
+  @ApiConflictResponse({
+    description:
+      'Named refusal (`reason`): `historia_arquivada`, `historia_nao_draft` or ' +
+      '`historia_com_tarefa_em_execucao`.',
+  })
+  archiveStoryRoute(
+    @Param('storyId') storyId: string,
+    @Body() dto: ArchiveStoryInternalDto,
+  ) {
+    return this.corrigirHistoria.arquivar(
+      dto.projectId,
+      storyId,
+      dto.reason ?? null,
+      { kind: 'agent', id: 'po' },
+    );
   }
 
   /**

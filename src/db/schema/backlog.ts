@@ -123,6 +123,13 @@ export const stories = pgTable(
     // garante que a recusa não se perdeu.
     returnedReason: text('returned_reason'),
     returnedAt: timestamp('returned_at', { withTimezone: true }),
+    // A história ARQUIVADA (RN-727, ADR 0212): sai do backlog, da cobertura,
+    // do plano e do claim, sem apagar nada — a linha fica, as tarefas dela
+    // ficam, e o `backlog.story_archived` guarda quem e por quê. Coluna e não
+    // valor novo em `story_status`: arquivar não é passo da máquina de
+    // estados (só `draft` arquiva), e o enum decide claimabilidade.
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+    archivedReason: text('archived_reason'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

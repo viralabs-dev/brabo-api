@@ -1,5 +1,12 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { ArrayNotEmpty, IsArray, IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  ArrayNotEmpty,
+  IsArray,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import type { MesmasChaves, Wire } from '../../shared/dto/wire';
 import type {
   PromocaoRecusada,
@@ -80,4 +87,27 @@ export class ReturnStoryDto {
   @IsString()
   @IsNotEmpty()
   reason!: string;
+}
+
+/** O título corrigido de uma história `draft` (RN-727). */
+export class UpdateStoryTitleDto {
+  @ApiProperty({
+    example: 'Register a user',
+    description: 'Trimmed; 1 to 200 characters.',
+  })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  title!: string;
+}
+
+/** Arquivar uma história `draft` (RN-727); o motivo é opcional. */
+export class ArchiveStoryDto {
+  @ApiPropertyOptional({
+    example: 'Duplicate of "Register a user".',
+    description: 'Optional; recorded in `backlog.story_archived`.',
+  })
+  @IsOptional()
+  @IsString()
+  reason?: string;
 }

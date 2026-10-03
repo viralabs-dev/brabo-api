@@ -215,6 +215,25 @@ export class StoryResponseDto implements Wire<Story> {
   })
   returnedAt!: string | null;
 
+  @ApiProperty({
+    example: null,
+    format: 'date-time',
+    description:
+      'When the story was ARCHIVED (RN-727). Archived stories leave the backlog, ' +
+      'the coverage, the plan and the claim; `null` is a story in play.',
+    nullable: true,
+    type: String,
+  })
+  archivedAt!: string | null;
+
+  @ApiProperty({
+    example: null,
+    description: 'Why it was archived, when someone said (RN-727).',
+    nullable: true,
+    type: String,
+  })
+  archivedReason!: string | null;
+
   @ApiProperty({ example: '2026-07-25T09:00:00.000Z', format: 'date-time' })
   createdAt!: string;
 

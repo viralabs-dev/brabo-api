@@ -59,6 +59,12 @@ export class CompleteStoryUseCase {
         `História "${input.storyId}" não encontrada neste projeto`,
       );
     }
+    if (atual.archivedAt) {
+      throw new ConflictException({
+        message: `A história "${atual.title}" está arquivada.`,
+        reason: 'historia_arquivada',
+      });
+    }
     if (atual.status !== 'draft') {
       throw new ConflictException(
         `A história "${atual.title}" está ${atual.status} — só história draft é completada`,
