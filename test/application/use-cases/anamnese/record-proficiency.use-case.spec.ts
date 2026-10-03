@@ -280,4 +280,30 @@ describe('RecordProficiencyUseCase', () => {
     ).rejects.toThrow('NÃO OBSERVADA');
     expect(upsertMany).not.toHaveBeenCalled();
   });
+
+  describe('fecharJanelaSemPerfil (RN-722)', () => {
+    it('grava a rodada com zero perfis e não narra nada', async () => {
+      const h = buildHarness();
+      const { profiles: _p, ...janela } = input([]);
+      const r = await h.useCase.fecharJanelaSemPerfil('proj-1', janela);
+      expect(r).toEqual({ runId: 'run-1', profiles: [] });
+      expect(h.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectId: 'proj-1',
+          windowTo: janela.windowTo,
+          profileCount: 0,
+        }),
+      );
+      expect(h.appendEvent).not.toHaveBeenCalled();
+    });
+
+    it('recusa sessão de outro projeto, sem gravar rodada', async () => {
+      const h = buildHarness({ sessionsInProject: [] });
+      const { profiles: _p, ...janela } = input([]);
+      await expect(
+        h.useCase.fecharJanelaSemPerfil('proj-1', janela),
+      ).rejects.toThrow(/não pertence/);
+      expect(h.create).not.toHaveBeenCalled();
+    });
+  });
 });
