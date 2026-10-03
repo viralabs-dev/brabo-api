@@ -31,6 +31,13 @@ import {
 } from './http-stream';
 
 /**
+ * Teto de saída quando quem chama não define (RN-734) — o MESMO
+ * `DEFAULT_MAX_TOKENS` do `anthropic-provider.ts`, para os agentes terem o
+ * mesmo teto em qualquer dialeto.
+ */
+export const MAX_TOKENS_PADRAO = 4096;
+
+/**
  * Teto de inatividade dos providers de API (o Ollama tem o seu, porque um
  * modelo local tem outra ordem de grandeza de latência de primeiro token).
  */
@@ -433,9 +440,9 @@ export class OpenAICompatibleProvider implements LLMProvider {
       model: options.model,
       messages: messages.map(toWireMessage),
       stream: true,
-      ...(options.maxTokens !== undefined
-        ? { [flags.maxTokensField]: options.maxTokens }
-        : {}),
+      // SEMPRE explícito (RN-734): sem o campo, o OpenRouter reserva o
+      // crédito da saída MÁXIMA do modelo por chamada e recusa com 402.
+      [flags.maxTokensField]: options.maxTokens ?? MAX_TOKENS_PADRAO,
       ...(flags.streamOptionsIncludeUsage
         ? { stream_options: { include_usage: true } }
         : {}),

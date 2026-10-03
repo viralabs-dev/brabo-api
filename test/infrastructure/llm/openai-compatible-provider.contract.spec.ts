@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { ServerResponse } from 'node:http';
-import { OpenAICompatibleProvider } from '../../../src/infrastructure/llm/openai-compatible-provider';
+import {
+  MAX_TOKENS_PADRAO,
+  OpenAICompatibleProvider,
+} from '../../../src/infrastructure/llm/openai-compatible-provider';
 import { openaiConfig } from '../../../src/infrastructure/llm/openai-provider';
 import { GptTokenizerEstimator } from '../../../src/infrastructure/tokenization/gpt-tokenizer-estimator';
 import { runLLMProviderContract } from '../../contract/llm-provider.contract';
@@ -226,6 +229,45 @@ describe('OpenAICompatibleProvider — particularidades da base', () => {
     }
 
     expect(servidor.ultimoPedido()).not.toHaveProperty('stream_options');
+    await servidor.fechar();
+  });
+
+  it('max_tokens vai SEMPRE: o padrão sem maxTokens, o do chamador com (RN-734)', async () => {
+    const servidor = await subirServidorFalso(dialetoOpenAI);
+    const base = openaiConfig(servidor.baseUrl);
+    const p = new OpenAICompatibleProvider({
+      ...base,
+      flags: { ...base.flags, maxTokensField: 'max_tokens' },
+    });
+    for await (const _ of p.chat([{ role: 'user', content: 'oi' }], {
+      model: 'm',
+    })) {
+      // drena
+    }
+    expect(servidor.ultimoPedido()).toMatchObject({
+      max_tokens: MAX_TOKENS_PADRAO,
+    });
+    for await (const _ of p.chat([{ role: 'user', content: 'oi' }], {
+      model: 'm',
+      maxTokens: 123,
+    })) {
+      // drena
+    }
+    expect(servidor.ultimoPedido()).toMatchObject({ max_tokens: 123 });
+
+    const nova = new OpenAICompatibleProvider({
+      ...base,
+      flags: { ...base.flags, maxTokensField: 'max_completion_tokens' },
+    });
+    for await (const _ of nova.chat([{ role: 'user', content: 'oi' }], {
+      model: 'm',
+    })) {
+      // drena
+    }
+    expect(servidor.ultimoPedido()).toMatchObject({
+      max_completion_tokens: MAX_TOKENS_PADRAO,
+    });
+    expect(servidor.ultimoPedido()).not.toHaveProperty('max_tokens');
     await servidor.fechar();
   });
 
