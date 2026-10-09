@@ -108,6 +108,9 @@ export class RecordGateVerdictUseCase {
           'ciclo de correção esgotado (gate)',
           input.resumo,
           `${input.gate}-agent`,
+          // RN-762 (AT-450): o teto de correções é decisão de configuração,
+          // não falha real — origem `politica` (RN-059, ADR 0020).
+          'politica',
         );
         nextAction = 'blocked';
       } else {
