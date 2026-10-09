@@ -197,6 +197,7 @@ export class StreamLlmTurnUseCase {
         apiKey,
         tools: decisaoDoJev.tools,
         ...(routingPreference ? { routingPreference } : {}),
+        ...(model.supportsReasoning ? { reasoning: true } : {}),
       })) {
         if (chunk.type === 'text_delta') {
           fullText += chunk.text;

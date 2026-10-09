@@ -192,6 +192,7 @@ export class SendChatMessageUseCase {
           model: model.name,
           apiKey,
           ...(routingPreference ? { routingPreference } : {}),
+          ...(model.supportsReasoning ? { reasoning: true } : {}),
         },
       )) {
         if (chunk.type === 'text_delta') {

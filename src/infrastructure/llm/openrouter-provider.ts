@@ -213,6 +213,20 @@ export function campoDeRoteamentoOpenRouter(
 }
 
 /**
+ * O teto de raciocínio no formato do OpenRouter: `reasoning: { max_tokens }`
+ * (https://openrouter.ai/docs/use-cases/reasoning-tokens). Pela doc, o
+ * `max_tokens` da chamada tem de ser MAIOR que o do raciocínio, para sobrar
+ * saída — daí a soma em `buildBody` (RN-741). Modelo que só aceita `effort`
+ * recebe a conversão do próprio hub. Nunca `exclude`/`enabled: false`: o
+ * raciocínio não é desligado em silêncio.
+ */
+export function campoDeRaciocinioOpenRouter(
+  orcamento: number,
+): Record<string, unknown> {
+  return { reasoning: { max_tokens: orcamento } };
+}
+
+/**
  * O custo REAL da chamada, que o OpenRouter devolve em `usage.cost` (USD, número
  * decimal) no frame final do stream (ADR 0188, RN-665). Vira micro-USD inteiro
  * pelo mesmo arredondamento do resto do metering.
@@ -284,6 +298,9 @@ export function openrouterConfig(
     parseErrorFrame: parseErrorFrameOpenRouter,
     parseCatalogo: parseCatalogoOpenRouter,
     campoDeRoteamento: campoDeRoteamentoOpenRouter,
+    // Teto de raciocínio para modelo do catálogo com `supports_reasoning`
+    // (RN-741). Forma lida da doc; a prova com credencial é TODO(humano).
+    campoDeRaciocinio: campoDeRaciocinioOpenRouter,
     // O custo que o hub cobrou vira o número do metering (ADR 0188, RN-665).
     // Provado pela resposta GRAVADA na suíte de contrato (a forma de
     // `usage.cost` medida nas chamadas reais da medição de idioma, AT-163);

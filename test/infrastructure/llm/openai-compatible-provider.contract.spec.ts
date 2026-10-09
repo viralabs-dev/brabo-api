@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import type { ServerResponse } from 'node:http';
 import {
   MAX_TOKENS_PADRAO,
+  ORCAMENTO_DE_RACIOCINIO,
   OpenAICompatibleProvider,
 } from '../../../src/infrastructure/llm/openai-compatible-provider';
+import { campoDeRaciocinioOpenRouter } from '../../../src/infrastructure/llm/openrouter-provider';
 import { openaiConfig } from '../../../src/infrastructure/llm/openai-provider';
 import { GptTokenizerEstimator } from '../../../src/infrastructure/tokenization/gpt-tokenizer-estimator';
 import { runLLMProviderContract } from '../../contract/llm-provider.contract';
@@ -275,6 +277,67 @@ describe('OpenAICompatibleProvider — particularidades da base', () => {
     });
     expect(servidor.ultimoPedido()).not.toHaveProperty('max_tokens');
     await servidor.fechar();
+  });
+
+  describe('raciocínio com orçamento próprio (RN-741)', () => {
+    async function pedido(
+      p: OpenAICompatibleProvider,
+      opcoes: { reasoning?: boolean; maxTokens?: number },
+      servidor: { ultimoPedido: () => unknown },
+    ) {
+      for await (const _ of p.chat([{ role: 'user', content: 'oi' }], {
+        model: 'm',
+        ...opcoes,
+      })) {
+        // drena
+      }
+      return servidor.ultimoPedido() as Record<string, unknown>;
+    }
+
+    it('modelo que raciocina: manda o orçamento e soma ao teto da saída visível', async () => {
+      const servidor = await subirServidorFalso(dialetoOpenAI);
+      const base = openaiConfig(servidor.baseUrl);
+      const p = new OpenAICompatibleProvider({
+        ...base,
+        flags: { ...base.flags, maxTokensField: 'max_tokens' },
+        campoDeRaciocinio: campoDeRaciocinioOpenRouter,
+      });
+      expect(await pedido(p, { reasoning: true }, servidor)).toMatchObject({
+        max_tokens: MAX_TOKENS_PADRAO + ORCAMENTO_DE_RACIOCINIO,
+        reasoning: { max_tokens: ORCAMENTO_DE_RACIOCINIO },
+      });
+      expect(
+        await pedido(p, { reasoning: true, maxTokens: 100 }, servidor),
+      ).toMatchObject({ max_tokens: 100 + ORCAMENTO_DE_RACIOCINIO });
+      await servidor.fechar();
+    });
+
+    it('modelo sem raciocínio: o corpo fica como antes, sem `reasoning`', async () => {
+      const servidor = await subirServidorFalso(dialetoOpenAI);
+      const base = openaiConfig(servidor.baseUrl);
+      const p = new OpenAICompatibleProvider({
+        ...base,
+        flags: { ...base.flags, maxTokensField: 'max_tokens' },
+        campoDeRaciocinio: campoDeRaciocinioOpenRouter,
+      });
+      const corpo = await pedido(p, {}, servidor);
+      expect(corpo.max_tokens).toBe(MAX_TOKENS_PADRAO);
+      expect(corpo).not.toHaveProperty('reasoning');
+      await servidor.fechar();
+    });
+
+    it('falha: provider sem campo de raciocínio não inventa orçamento nem soma o teto', async () => {
+      const servidor = await subirServidorFalso(dialetoOpenAI);
+      const base = openaiConfig(servidor.baseUrl);
+      const p = new OpenAICompatibleProvider({
+        ...base,
+        flags: { ...base.flags, maxTokensField: 'max_tokens' },
+      });
+      const corpo = await pedido(p, { reasoning: true }, servidor);
+      expect(corpo.max_tokens).toBe(MAX_TOKENS_PADRAO);
+      expect(corpo).not.toHaveProperty('reasoning');
+      await servidor.fechar();
+    });
   });
 
   it('hub: o provider subjacente sai no chunk de usage (Fase 9b)', async () => {

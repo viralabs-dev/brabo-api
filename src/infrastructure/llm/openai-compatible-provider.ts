@@ -38,6 +38,16 @@ import {
 export const MAX_TOKENS_PADRAO = 4096;
 
 /**
+ * Orçamento EXPLÍCITO de raciocínio para modelo que raciocina (RN-741). Sem
+ * ele, o `anthropic/claude-haiku-5.5` via OpenRouter gastou os 4096 do teto
+ * inteiro em raciocínio (`reasoning_tokens = output_tokens = 4096`, TP-01 de
+ * 08/10) e a chamada de ferramenta nunca saiu. O raciocínio NÃO é desligado:
+ * ele ganha um teto próprio, e o `max_tokens` enviado passa a ser
+ * saída visível + este orçamento — a saída visível continua com o teto dela.
+ */
+export const ORCAMENTO_DE_RACIOCINIO = 4096;
+
+/**
  * Teto de inatividade dos providers de API (o Ollama tem o seu, porque um
  * modelo local tem outra ordem de grandeza de latência de primeiro token).
  */
@@ -147,7 +157,15 @@ export interface OpenAICompatibleConfig {
   readonly campoDeRoteamento?: CampoDeRoteamento;
   /** Só quem informa custo na resposta — ver `ExtrairCustoReal`. */
   readonly extrairCustoReal?: ExtrairCustoReal;
+  /** Só quem aceita teto de raciocínio — ver `CampoDeRaciocinio`. */
+  readonly campoDeRaciocinio?: CampoDeRaciocinio;
 }
+
+/**
+ * Como dizer ao provider o teto de tokens de RACIOCÍNIO (RN-741). Ausente = o
+ * provider não recebe orçamento e o `max_tokens` fica como sempre foi.
+ */
+export type CampoDeRaciocinio = (orcamento: number) => Record<string, unknown>;
 
 /**
  * Base configurável para todo provider que fala o dialeto `/chat/completions`
@@ -442,6 +460,14 @@ export class OpenAICompatibleProvider implements LLMProvider {
 
   private buildBody(messages: ChatMessage[], options: ChatOptions) {
     const { flags } = this.config;
+    const saidaVisivel = options.maxTokens ?? MAX_TOKENS_PADRAO;
+    // Modelo que raciocina ganha orçamento PRÓPRIO, somado ao teto (RN-741):
+    // o raciocínio conta dentro do `max_tokens`, e sem isso ele pode gastá-lo
+    // inteiro antes do texto e da tool call.
+    const raciocinio =
+      options.reasoning && this.config.campoDeRaciocinio
+        ? this.config.campoDeRaciocinio(ORCAMENTO_DE_RACIOCINIO)
+        : undefined;
 
     return {
       model: options.model,
@@ -449,7 +475,10 @@ export class OpenAICompatibleProvider implements LLMProvider {
       stream: true,
       // SEMPRE explícito (RN-734): sem o campo, o OpenRouter reserva o
       // crédito da saída MÁXIMA do modelo por chamada e recusa com 402.
-      [flags.maxTokensField]: options.maxTokens ?? MAX_TOKENS_PADRAO,
+      [flags.maxTokensField]: raciocinio
+        ? saidaVisivel + ORCAMENTO_DE_RACIOCINIO
+        : saidaVisivel,
+      ...(raciocinio ?? {}),
       ...(flags.streamOptionsIncludeUsage
         ? { stream_options: { include_usage: true } }
         : {}),
