@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { planBootstrap } from '../../../../src/application/use-cases/git/bootstrap-plan';
 import {
   BRANCHING_POLICY_PATH,
+  GITIGNORE_PATH,
   PR_TEMPLATE_PATH,
 } from '../../../../src/application/use-cases/git/bootstrap-templates';
 import {
@@ -39,11 +40,11 @@ describe('planBootstrap — o dry-run da adoção', () => {
     expect(resultado.generatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
-  it('repo vazio: planeja os 2 arquivos, as 2 branches e as 3 proteções', async () => {
+  it('repo vazio: planeja os 3 arquivos, as 2 branches e as 3 proteções', async () => {
     const { plano } = planejar(semNada);
     const { steps } = await plano;
 
-    expect(steps.filter((s) => s.actionType === 'git_commit')).toHaveLength(2);
+    expect(steps.filter((s) => s.actionType === 'git_commit')).toHaveLength(3);
     expect(
       steps
         .filter((s) => s.actionType === 'git_branch_create')
@@ -117,7 +118,11 @@ describe('planBootstrap — o dry-run da adoção', () => {
         { name: 'qa', protected: true },
         { name: 'rc', protected: true },
       ],
-      arquivosCanonicos: [PR_TEMPLATE_PATH, BRANCHING_POLICY_PATH],
+      arquivosCanonicos: [
+        PR_TEMPLATE_PATH,
+        BRANCHING_POLICY_PATH,
+        GITIGNORE_PATH,
+      ],
     });
     const { steps, diagnostics } = await plano;
 
@@ -162,7 +167,24 @@ describe('planBootstrap — o dry-run da adoção', () => {
     const caminhos = steps
       .filter((s) => s.actionType === 'git_commit')
       .map((s) => s.payload.path);
-    expect(caminhos).toEqual([BRANCHING_POLICY_PATH]);
+    expect(caminhos).toEqual([BRANCHING_POLICY_PATH, GITIGNORE_PATH]);
+  });
+
+  // RN-761 (AT-446): o `.gitignore` base só entra quando o repositório não
+  // tem um — o do usuário, diferente do template, nunca é sobrescrito.
+  it('`.gitignore` do usuário não entra no plano', async () => {
+    const { plano } = planejar({
+      branches: [{ name: 'main' }],
+      arquivosCanonicos: [PR_TEMPLATE_PATH, BRANCHING_POLICY_PATH],
+      arquivosDoUsuario: { [GITIGNORE_PATH]: 'dist/\n' },
+    });
+    const { steps } = await plano;
+
+    expect(
+      steps
+        .filter((s) => s.actionType === 'git_commit')
+        .map((s) => s.payload.path),
+    ).toEqual([]);
   });
 
   it('provider sem capability de proteção degrada com diagnóstico, não com erro', async () => {
@@ -190,7 +212,11 @@ describe('planBootstrap — o dry-run da adoção', () => {
         { name: 'dev', protected: true },
         { name: 'qa', protected: true },
       ],
-      arquivosCanonicos: [PR_TEMPLATE_PATH, BRANCHING_POLICY_PATH],
+      arquivosCanonicos: [
+        PR_TEMPLATE_PATH,
+        BRANCHING_POLICY_PATH,
+        GITIGNORE_PATH,
+      ],
     });
     const { steps, diagnostics } = await plano;
 

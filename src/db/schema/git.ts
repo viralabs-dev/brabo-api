@@ -25,6 +25,8 @@ export const bootstrapStepEnum = pgEnum('bootstrap_step', [
   'protect_branches',
   'commit_pr_template',
   'commit_branching_policy',
+  // RN-761 (AT-446): o repositório nasce com um `.gitignore` base.
+  'commit_gitignore',
 ]);
 
 export const bootstrapStatusEnum = pgEnum('bootstrap_status', [

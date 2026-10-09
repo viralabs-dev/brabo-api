@@ -5,8 +5,10 @@ import type {
 } from '@brabo/shared';
 import {
   branchingPolicyContent,
+  gitignoreContent,
   prTemplateContent,
   BRANCHING_POLICY_PATH,
+  GITIGNORE_PATH,
   PR_TEMPLATE_PATH,
 } from '../../../src/application/use-cases/git/bootstrap-templates';
 
@@ -14,6 +16,8 @@ export interface RepoEstadoFalso {
   branches: { name: string; protected?: boolean }[];
   /** Caminhos cujo conteúdo já é EXATAMENTE o do template. */
   arquivosCanonicos?: string[];
+  /** Conteúdo PRÓPRIO do usuário, que não é o do template (RN-761). */
+  arquivosDoUsuario?: Record<string, string>;
   capabilities?: Partial<GitProviderCapabilities>;
 }
 
@@ -64,6 +68,8 @@ export class ReadOnlyGitProvider implements GitProviderContract {
 
   getFileContent(input: { path: string }): Promise<string | null> {
     this.leituras.push(`getFileContent:${input.path}`);
+    const doUsuario = this.estado.arquivosDoUsuario?.[input.path];
+    if (doUsuario !== undefined) return Promise.resolve(doUsuario);
     if (!this.estado.arquivosCanonicos?.includes(input.path)) {
       return Promise.resolve(null);
     }
@@ -73,6 +79,9 @@ export class ReadOnlyGitProvider implements GitProviderContract {
     }
     if (input.path === BRANCHING_POLICY_PATH) {
       return Promise.resolve(branchingPolicyContent());
+    }
+    if (input.path === GITIGNORE_PATH) {
+      return Promise.resolve(gitignoreContent());
     }
     return Promise.resolve(null);
   }
