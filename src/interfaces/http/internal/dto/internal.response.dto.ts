@@ -155,6 +155,15 @@ export class DevTaskContextResponseDto implements Wire<DevTaskContext> {
       'sibling task is an observation, never a rejection (RN-765).',
   })
   siblingTasks!: DevContextSiblingTaskResponseDto[];
+
+  @ApiProperty({
+    description:
+      'Whether this is the FIRST task of the module: the oldest ' +
+      '`backlog.task_claimed` of the project for `module` is this task. The ' +
+      'engine gives it twice the per-task budget (RN-774). `false` without ' +
+      '`module`.',
+  })
+  primeiraDoModulo!: boolean;
 }
 export const _chavesCtxDev: MesmasChaves<
   DevTaskContextResponseDto,
