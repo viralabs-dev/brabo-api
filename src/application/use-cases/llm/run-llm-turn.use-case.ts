@@ -180,7 +180,7 @@ export class RunLlmTurnUseCase {
     let streamErrorCode: LLMErrorCode | null = null;
 
     try {
-      for await (const chunk of provider.chat(input.messages, {
+      for await (const chunk of provider.chat(decisaoDoJev.messages, {
         model: model.name,
         apiKey,
         tools: decisaoDoJev.tools,
