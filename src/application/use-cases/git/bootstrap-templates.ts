@@ -6,6 +6,32 @@
 
 export const PR_TEMPLATE_PATH = '.github/pull_request_template.md';
 export const BRANCHING_POLICY_PATH = 'docs/branching-policy.md';
+export const GITIGNORE_PATH = '.gitignore';
+
+/**
+ * RN-761 (AT-446): os diretórios de dependência instalada e de build que o
+ * repositório nunca deve versionar. É a MESMA lista que o engine exclui do
+ * commit do dev agent (`Engine.Actions.DiretoriosDeDependencia`) e que os
+ * gates acusam — as três cópias são conferidas por teste.
+ */
+export const DIRETORIOS_DE_DEPENDENCIA = [
+  'node_modules',
+  'deps',
+  '_build',
+  '.venv',
+  'venv',
+  '__pycache__',
+  'vendor',
+  'target',
+] as const;
+
+export function gitignoreContent(): string {
+  return `# Gerado pelo bootstrap do Brabo: dependências instaladas e build não
+# entram no repositório. Edite à vontade.
+${DIRETORIOS_DE_DEPENDENCIA.map((d) => `${d}/`).join('\n')}
+.env
+`;
+}
 
 export function prTemplateContent(): string {
   return `## O que muda
