@@ -25,6 +25,7 @@ import type {
   DevContextAdr,
   DevContextBusinessRule,
   DevTaskContext,
+  DevContextSiblingTask,
 } from '../../../../application/use-cases/execution/get-dev-task-context.use-case';
 import type {
   InfraContext,
@@ -113,6 +114,21 @@ export const _chavesAdrDev: MesmasChaves<
   DevContextAdr
 > = true;
 
+export class DevContextSiblingTaskResponseDto implements Wire<DevContextSiblingTask> {
+  @ApiProperty({ example: '01J0000000000000000000000' })
+  id!: string;
+
+  @ApiProperty({ example: 'Expose POST /login returning a JWT' })
+  title!: string;
+
+  @ApiProperty({ example: 'todo' })
+  status!: string;
+}
+export const _chavesIrmaDev: MesmasChaves<
+  DevContextSiblingTaskResponseDto,
+  DevContextSiblingTask
+> = true;
+
 export class DevTaskContextResponseDto implements Wire<DevTaskContext> {
   @ApiProperty({ type: TaskResponseDto })
   task!: TaskResponseDto;
@@ -130,6 +146,15 @@ export class DevTaskContextResponseDto implements Wire<DevTaskContext> {
       "ones that cite this agent's module.",
   })
   adrs!: DevContextAdrResponseDto[];
+
+  @ApiProperty({
+    type: [DevContextSiblingTaskResponseDto],
+    description:
+      'The other tasks of the same story, with their status. The QA gate ' +
+      'judges the delivery by what belongs to THIS task; a requirement of a ' +
+      'sibling task is an observation, never a rejection (RN-765).',
+  })
+  siblingTasks!: DevContextSiblingTaskResponseDto[];
 }
 export const _chavesCtxDev: MesmasChaves<
   DevTaskContextResponseDto,

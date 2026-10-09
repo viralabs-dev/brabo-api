@@ -170,7 +170,7 @@ export class StreamLlmTurnUseCase {
     if (plano) yield { type: 'tool_routing_started' };
     const decisaoDoJev = plano
       ? await this.decidirFerramenta.executar(plano, roteamento)
-      : { tools: input.tools, toolRouting: null };
+      : { tools: input.tools, toolRouting: null, messages: input.messages };
     let fullText = '';
     let toolCalls: ToolCall[] = [];
     let inputTokens = 0;
@@ -192,7 +192,7 @@ export class StreamLlmTurnUseCase {
     let streamErrorCode: LLMErrorCode | null = null;
 
     try {
-      for await (const chunk of provider.chat(input.messages, {
+      for await (const chunk of provider.chat(decisaoDoJev.messages, {
         model: model.name,
         apiKey,
         tools: decisaoDoJev.tools,
