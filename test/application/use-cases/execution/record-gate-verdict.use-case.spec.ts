@@ -253,6 +253,8 @@ describe('RecordGateVerdictUseCase', () => {
       'ciclo de correção esgotado (gate)',
       'ainda falhando',
       'qa-agent',
+      // RN-762 (AT-450): sem isto o `backlog.task_blocked` saía `origin: null`.
+      'politica',
     );
     expect(updateGateStatus).not.toHaveBeenCalled();
   });
