@@ -98,6 +98,12 @@ export class ExecuteAdrPrUseCase {
         sourceBranch: branch,
         targetBranch: BRANCH_DE_TRABALHO,
         title: payload.title,
+        // AT-455: a PR de ADR leva a identidade do agente, como a de infra
+        // (RN-729) — sem isso a aba PRs dizia "autor desconhecido".
+        author:
+          action.actor?.kind === 'agent' && action.actor.id
+            ? `${action.actor.id}[bot]`
+            : 'arquiteto[bot]',
         body: `ADR proposta pelo Arquiteto.\n\nArquivo: \`${path}\``,
         accessToken,
       });
