@@ -36,11 +36,33 @@ export function appliesToModule(
   return adrModules.includes(module);
 }
 
+/**
+ * AT-448 (RN-765): as OUTRAS tarefas da mesma história, com o status — o
+ * recorte que o gate de QA precisa para julgar a entrega pelo que é DESTA
+ * tarefa, e não reprovar por um RF que é de uma irmã ainda pendente.
+ */
+export interface DevContextSiblingTask {
+  id: string;
+  title: string;
+  status: string;
+}
+
 export interface DevTaskContext {
   task: Task;
   story: Story;
   businessRules: DevContextBusinessRule[];
   adrs: DevContextAdr[];
+  siblingTasks: DevContextSiblingTask[];
+}
+
+/** As irmãs da tarefa, sem ela mesma, na ordem do repositório. Pura. */
+export function tarefasIrmas(
+  task: Pick<Task, 'id'>,
+  daHistoria: Pick<Task, 'id' | 'title' | 'status'>[],
+): DevContextSiblingTask[] {
+  return daHistoria
+    .filter((t) => t.id !== task.id)
+    .map((t) => ({ id: t.id, title: t.title, status: t.status }));
 }
 
 /**
@@ -82,9 +104,10 @@ export class GetDevTaskContextUseCase {
       );
     }
 
-    const [businessRules, adrActions] = await Promise.all([
+    const [businessRules, adrActions, daHistoria] = await Promise.all([
       this.resolveBusinessRules(story.businessRuleIds),
       this.proposedActions.listByProjectAndType(projectId, 'open_adr_pr'),
+      this.tasks.findByStoryIds([story.id]),
     ]);
 
     const adrs: DevContextAdr[] = adrActions
@@ -105,7 +128,13 @@ export class GetDevTaskContextUseCase {
       .filter((adr) => appliesToModule(adr.modules, module))
       .map(({ modules: _modules, ...adr }) => adr);
 
-    return { task, story, businessRules, adrs };
+    return {
+      task,
+      story,
+      businessRules,
+      adrs,
+      siblingTasks: tarefasIrmas(task, daHistoria),
+    };
   }
 
   private async resolveBusinessRules(

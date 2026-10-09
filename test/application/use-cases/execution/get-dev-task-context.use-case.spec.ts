@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { GetDevTaskContextUseCase } from '../../../../src/application/use-cases/execution/get-dev-task-context.use-case';
+import {
+  GetDevTaskContextUseCase,
+  tarefasIrmas,
+} from '../../../../src/application/use-cases/execution/get-dev-task-context.use-case';
 import type {
   StoryRepository,
   TaskRepository,
@@ -115,6 +118,11 @@ function buildUseCase(overrides?: {
             ? task
             : null,
       ),
+    findByStoryIds: () =>
+      Promise.resolve([
+        task,
+        { ...task, id: 'task-2', title: 'Login com JWT', status: 'todo' },
+      ]),
   } as unknown as TaskRepository;
 
   const stories = {
@@ -146,6 +154,17 @@ function buildUseCase(overrides?: {
 }
 
 describe('GetDevTaskContextUseCase', () => {
+  it('RN-765: traz as tarefas irmãs da história, sem a própria', async () => {
+    const ctx = await buildUseCase().execute('proj-1', 'task-1');
+    expect(ctx.siblingTasks).toEqual([
+      { id: 'task-2', title: 'Login com JWT', status: 'todo' },
+    ]);
+  });
+
+  it('RN-765: história de uma tarefa só não tem irmã', () => {
+    expect(tarefasIrmas(task, [task])).toEqual([]);
+  });
+
   it('monta o contexto: story completa, regras resolvidas (ignora id inválido), e ADRs do projeto', async () => {
     const useCase = buildUseCase();
 
