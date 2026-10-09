@@ -491,6 +491,13 @@
       "when": 1791003576140,
       "tag": "0069_historia_arquivada",
       "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1791548490585,
+      "tag": "0070_gitignore_no_bootstrap",
+      "breakpoints": true
     }
   ]
 }

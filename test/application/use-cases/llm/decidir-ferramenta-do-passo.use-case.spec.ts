@@ -529,3 +529,102 @@ describe('DecidirFerramentaDoPassoUseCase — o gasto do Jev (metering)', () => 
     expect(await db.select().from(tokenUsage)).toHaveLength(0);
   });
 });
+
+/** Uma execução do agente com UMA ferramenta anterior, para o recorte P3 morder. */
+const execucaoCom = (agente: string, anterior: string): ChatMessage[] => [
+  { role: 'system', content: `Você é o ${agente}.` },
+  { role: 'user', content: 'siga' },
+  {
+    role: 'assistant',
+    content: '',
+    toolCalls: [{ id: 'c1', name: anterior, arguments: {} }],
+  },
+  { role: 'tool', content: 'ok', toolCallId: 'c1' },
+];
+
+describe('DecidirFerramentaDoPassoUseCase — o recorte não vira incapacidade (AT-445)', () => {
+  const PO = [
+    'listar_backlog',
+    'listar_regras',
+    'create_story',
+    'create_task',
+    'emit_artifact',
+    'offer_handoff',
+  ].map(tool);
+  const ARQUITETO = [
+    'create_module_map',
+    'assign_story_modules',
+    'choose_project_image',
+    'create_c4_diagram',
+    'route_modules_to_infra',
+    'declare_module_contracts',
+    'propose_adr',
+    'emit_insight',
+    'emit_artifact',
+  ].map(tool);
+
+  it('PO com o menu do Jev ["listar_backlog","create_story"]: `create_task` continua no menu e o aviso chega', async () => {
+    const s = await setup();
+    const msgs = execucaoCom('po', 'listar_backlog');
+    const r = await montar(
+      new RoteadorFalso(() => decidiu('create_story')),
+    ).decidir(base(s, { agentId: 'po', tools: PO, messages: msgs }));
+
+    expect(r.tools?.map((t) => t.name)).toEqual([
+      'listar_backlog',
+      'create_story',
+      'create_task',
+    ]);
+    expect(r.toolRouting?.aplicado).toBe(true);
+    const aviso = r.messages.at(-1)!;
+    expect(aviso.role).toBe('system');
+    expect(aviso.content).toContain('recorte');
+    expect(aviso.content).toContain('seguem disponíveis');
+    // Efêmero: o array do pedido (o histórico do agente) não é tocado.
+    expect(r.messages).toHaveLength(5);
+    expect(msgs).toHaveLength(4);
+  });
+
+  it('Arquiteto com 2 de 9 pelo Jev: as cinco de artefato (mapa, roteamento, contratos, ADR, C4) nunca saem', async () => {
+    const s = await setup();
+    const r = await montar(
+      new RoteadorFalso(() => decidiu('assign_story_modules')),
+    ).decidir(
+      base(s, {
+        agentId: 'arquiteto',
+        tools: ARQUITETO,
+        messages: execucaoCom('arquiteto', 'choose_project_image'),
+      }),
+    );
+    expect(r.tools?.map((t) => t.name)).toEqual([
+      'create_module_map',
+      'assign_story_modules',
+      'choose_project_image',
+      'create_c4_diagram',
+      'route_modules_to_infra',
+      'declare_module_contracts',
+      'propose_adr',
+    ]);
+    expect(r.messages.at(-1)!.content).toContain('as outras 2 seguem');
+  });
+
+  it('o Jev diz responder (sem recorte): nenhum aviso, mensagens intactas', async () => {
+    const s = await setup();
+    const msgs = execucaoCom('po', 'listar_backlog');
+    const r = await montar(
+      new RoteadorFalso(() => decidiu(RESPONDER_SEM_FERRAMENTA)),
+    ).decidir(base(s, { agentId: 'po', tools: PO, messages: msgs }));
+    expect(r.toolRouting?.aplicado).toBe(false);
+    expect(r.messages).toBe(msgs);
+  });
+
+  it('queda do Jev: catálogo inteiro e nenhum aviso', async () => {
+    const s = await setup();
+    const msgs = execucaoCom('po', 'listar_backlog');
+    const r = await montar(new RoteadorFalso(() => cai('timeout'))).decidir(
+      base(s, { agentId: 'po', tools: PO, messages: msgs }),
+    );
+    expect(r.tools).toHaveLength(PO.length);
+    expect(r.messages).toBe(msgs);
+  });
+});

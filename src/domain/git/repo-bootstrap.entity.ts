@@ -19,6 +19,7 @@
 export const BOOTSTRAP_STEPS = [
   'commit_pr_template',
   'commit_branching_policy',
+  'commit_gitignore',
   'create_dev_branch',
   'create_qa_branch',
   'create_rc_branch',

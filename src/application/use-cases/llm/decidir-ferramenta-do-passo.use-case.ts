@@ -11,6 +11,8 @@ import {
   MODELO_DO_JEV,
   ORIGEM_DA_QUEDA,
   TETO_DO_ESTADO_EM_TOKENS,
+  avisoDeRecorte,
+  menuComPiso,
   menuP3,
   microUsdDe,
   montarPedidoAoJev,
@@ -72,6 +74,12 @@ export interface DecisaoDoPasso {
   /** As ferramentas que o provider de chat recebe (o catálogo inteiro em qualquer queda). */
   tools: ToolDef[] | undefined;
   toolRouting: ToolRouting | null;
+  /**
+   * As mensagens que o provider recebe neste passo: as do pedido, mais o aviso
+   * EFÊMERO de recorte no fim quando o menu foi aplicado (RN-759). Nunca volta
+   * ao histórico do agente.
+   */
+  messages: ChatMessage[];
 }
 
 /**
@@ -137,7 +145,7 @@ export class DecidirFerramentaDoPassoUseCase {
     const plano = await this.preparar(input);
     return plano
       ? this.executar(plano, input)
-      : { tools: input.tools, toolRouting: null };
+      : { tools: input.tools, toolRouting: null, messages: input.messages };
   }
 
   async executar(
@@ -169,6 +177,7 @@ export class DecidirFerramentaDoPassoUseCase {
       extra: Partial<ToolRouting> = {},
     ): DecisaoDoPasso => ({
       tools: plano.tools,
+      messages: input.messages,
       toolRouting: {
         ...base,
         anterior,
@@ -236,13 +245,24 @@ export class DecidirFerramentaDoPassoUseCase {
         });
       }
 
-      const menu = menuP3(nomes, r.resposta.escolha, anterior);
+      const menu = menuComPiso(
+        nomes,
+        menuP3(nomes, r.resposta.escolha, anterior),
+        plano.agentId,
+      );
       const efetivas = plano.tools.filter((t) => menu.includes(t.name));
+      const aplicado = efetivas.length < plano.tools.length;
       const segunda = Object.entries(r.resposta.probabilidades)
         .filter(([opcao]) => opcao !== r.resposta.escolha)
         .sort((a, b) => b[1] - a[1])[0];
       return {
         tools: efetivas,
+        messages: aplicado
+          ? [
+              ...input.messages,
+              avisoDeRecorte(menu, plano.tools.length - efetivas.length),
+            ]
+          : input.messages,
         toolRouting: {
           ...base,
           menuDepois: efetivas.map((t) => t.name),
@@ -252,7 +272,7 @@ export class DecidirFerramentaDoPassoUseCase {
             ? { opcao: segunda[0], probabilidade: segunda[1] }
             : null,
           anterior,
-          aplicado: efetivas.length < plano.tools.length,
+          aplicado,
           latenciaMs: r.latenciaMs,
           custoMicros,
           gastoNaoRegistrado,

@@ -41,6 +41,7 @@ class FakeProvider {
   calls: string[] = [];
   fromRef: string | undefined;
   targetBranch: string | undefined;
+  author: string | undefined;
   semDev = false;
   createBranch(input: { branchName: string; fromRef: string }) {
     this.fromRef = input.fromRef;
@@ -54,7 +55,8 @@ class FakeProvider {
     this.calls.push(`commit:${input.files[0].path}`);
     return Promise.resolve({ sha: 'abc', branch: 'x' });
   }
-  openPullRequest(input: { targetBranch: string }) {
+  openPullRequest(input: { targetBranch: string; author?: string }) {
+    this.author = input.author;
     this.targetBranch = input.targetBranch;
     this.calls.push('pr');
     return Promise.resolve({
@@ -145,6 +147,8 @@ describe('ExecuteAdrPrUseCase', () => {
 
     expect(provider.fromRef).toBe('dev');
     expect(provider.targetBranch).toBe('dev');
+    // AT-455: a PR de ADR leva a identidade do agente, como a de infra.
+    expect(provider.author).toBe('arquiteto[bot]');
     expect(proposedActions.saved?.status).toBe('executed');
   });
 

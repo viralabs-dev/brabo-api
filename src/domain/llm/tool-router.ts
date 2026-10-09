@@ -289,3 +289,62 @@ export function precoImplicitoPorMilhao(
 ): number {
   return tokens > 0 ? Math.round((costMicros / tokens) * 1_000_000) : 0;
 }
+
+/**
+ * O PISO do menu (AT-445, RN-758): ferramentas de OBRIGAÇÃO do agente que o
+ * recorte do Jev nunca tira. Sem elas o agente lia a ausência como
+ * incapacidade — o PO sem `create_task` fechava com histórias sem tarefa, o
+ * Arquiteto sem as de artefato fechava sem roteamento, contratos, ADR nem C4.
+ * É uma lista ESTÁTICA por agente: a api não tem sinal barato de qual
+ * obrigação está pendente neste passo, então o piso vale sempre que o menu é
+ * recortado. Só entra o que está no catálogo do passo — o piso nunca
+ * acrescenta ferramenta que o agente não tinha (P3 intacto).
+ */
+export const PISO_DO_MENU: Readonly<Record<string, readonly string[]>> = {
+  po: ['create_story', 'create_task'],
+  arquiteto: [
+    'create_module_map',
+    'route_modules_to_infra',
+    'declare_module_contracts',
+    'propose_adr',
+    'create_c4_diagram',
+  ],
+};
+/**
+ * Os dev agents ficam SEM piso, de propósito: a obrigação deles muda a cada
+ * passo (ler, editar, testar) e um piso fixo desfaria o recorte. Para eles vale
+ * só o aviso de recorte (RN-759).
+ */
+export function pisoDoMenu(agentId: string): readonly string[] {
+  return PISO_DO_MENU[agentId] ?? [];
+}
+
+/** O menu P3 com o piso do agente somado, na ordem do catálogo. */
+export function menuComPiso(
+  catalogo: readonly string[],
+  menu: readonly string[],
+  agentId: string,
+): string[] {
+  const dentro = new Set([...menu, ...pisoDoMenu(agentId)]);
+  return catalogo.filter((n) => dentro.has(n));
+}
+
+/**
+ * A mensagem `system` EFÊMERA do passo recortado (AT-445, RN-759): vai só na
+ * chamada ao provider deste passo, nunca no histórico. Diz que o menu é um
+ * RECORTE do passo, e não o que o agente sabe fazer.
+ */
+export function avisoDeRecorte(
+  menuDepois: readonly string[],
+  ocultas: number,
+): ChatMessage {
+  return {
+    role: 'system',
+    content:
+      `Neste passo você recebeu um recorte de ${menuDepois.length} das suas ferramentas ` +
+      `(${menuDepois.join(', ')}); as outras ${ocultas} seguem disponíveis e voltam ` +
+      'nas próximas voltas deste turno. Não conclua que não tem uma ferramenta ' +
+      'por ela não estar neste recorte, nem encerre o turno esperando por ela: ' +
+      'faça o passo atual e ela volta no seguinte.',
+  };
+}

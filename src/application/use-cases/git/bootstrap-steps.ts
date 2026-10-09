@@ -3,8 +3,10 @@ import { GitBranchAlreadyExistsError } from '../../../domain/git/git-errors';
 import type { BootstrapStepName } from '../../../domain/git/repo-bootstrap.entity';
 import {
   BRANCHING_POLICY_PATH,
+  GITIGNORE_PATH,
   PR_TEMPLATE_PATH,
   branchingPolicyContent,
+  gitignoreContent,
   prTemplateContent,
 } from './bootstrap-templates';
 
@@ -158,6 +160,8 @@ function commitFileStep(
   path: string,
   content: () => string,
   commitMessage: string,
+  // RN-761: só cria o arquivo; um existente, mesmo diferente, é do usuário.
+  soSeAusente = false,
 ): BootstrapStep {
   return {
     step,
@@ -170,6 +174,7 @@ function commitFileStep(
         accessToken: ctx.accessToken,
       });
       if (current === canonical) return [];
+      if (soSeAusente && current !== null) return [];
 
       return [
         {
@@ -214,6 +219,15 @@ export const BOOTSTRAP_STEP_SEQUENCE: readonly BootstrapStep[] = [
     BRANCHING_POLICY_PATH,
     branchingPolicyContent,
     'docs: adiciona política de branching',
+  ),
+  // RN-761 (AT-446): o `.gitignore` base entra em `main` antes de `dev`
+  // nascer, então toda branch de trabalho já o herda.
+  commitFileStep(
+    'commit_gitignore',
+    GITIGNORE_PATH,
+    gitignoreContent,
+    'chore: adiciona .gitignore base',
+    true,
   ),
   createBranchStep('create_dev_branch', 'dev', 'main'),
   createBranchStep('create_qa_branch', 'qa', 'dev'),
