@@ -304,6 +304,11 @@ export const PISO_DO_MENU: Readonly<Record<string, readonly string[]>> = {
   po: ['create_story', 'create_task'],
   arquiteto: [
     'create_module_map',
+    // Obrigações do kickoff do Arquiteto que faltavam (AT-481, RN-809): sem
+    // elas ele encerrava dizendo que a ferramenta "não está disponível nesta
+    // etapa", com histórias sem módulo e imagem nunca decidida.
+    'assign_story_modules',
+    'choose_project_image',
     'route_modules_to_infra',
     'declare_module_contracts',
     'propose_adr',
