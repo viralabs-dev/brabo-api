@@ -18,6 +18,8 @@ export interface PrOpenExecutionResult {
   pullRequestId: string;
   sourceBranch: string;
   targetBranch: string;
+  /** RN-812: a PR aberta da mesma branch foi reaproveitada, não aberta. */
+  reaproveitada?: boolean;
 }
 
 export interface GitMergeExecutionResult {
