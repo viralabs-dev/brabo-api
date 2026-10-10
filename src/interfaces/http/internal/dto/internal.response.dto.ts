@@ -1,3 +1,4 @@
+import { ContratoDeModuloResponseDto } from './module-contracts.response.dto';
 import type { LLMErrorCode } from '@brabo/shared';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type { GitProviderName } from '@brabo/shared';
@@ -191,6 +192,18 @@ export class DevTaskContextResponseDto implements Wire<DevTaskContext> {
       'than `moduleOpenTasks.length` when the list was cut.',
   })
   moduleOpenTasksTotal!: number;
+
+  @ApiProperty({
+    type: ContratoDeModuloResponseDto,
+    nullable: true,
+    description:
+      'The current contract of the task module (`artifact.module_contracts`) ' +
+      '— the source of the INTERFACE for the QA gate. When the story and the ' +
+      'contract diverge, the verdict names the divergence instead of ' +
+      'rejecting the dev that followed the contract (RN-786). `null` without ' +
+      'a resolvable module or contract.',
+  })
+  moduleContract!: ContratoDeModuloResponseDto | null;
 
   @ApiProperty({
     description:

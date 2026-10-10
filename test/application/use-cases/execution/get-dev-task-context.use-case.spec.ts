@@ -4,6 +4,7 @@ import {
   ehPrimeiraTarefaDoModulo,
   tarefasIrmas,
   tarefasAbertasDoModulo,
+  moduloDoContrato,
 } from '../../../../src/application/use-cases/execution/get-dev-task-context.use-case';
 import type {
   StoryRepository,
@@ -113,6 +114,7 @@ function buildUseCase(overrides?: {
   claims?: Array<{ payload: unknown }>;
   historias?: Story[];
   tarefasDeOutras?: Task[];
+  contratos?: SessionEvent[];
 }) {
   const tasks = {
     findById: (id: string) =>
@@ -150,7 +152,12 @@ function buildUseCase(overrides?: {
   const sessionEvents = {
     findById: (id: string) =>
       Promise.resolve(id === ruleEvent.id ? ruleEvent : null),
-    listByTypeForProject: () => Promise.resolve(overrides?.claims ?? []),
+    listByTypeForProject: (_p: string, tipo: string) =>
+      Promise.resolve(
+        tipo === 'artifact.module_contracts'
+          ? (overrides?.contratos ?? [])
+          : (overrides?.claims ?? []),
+      ),
   } as unknown as SessionEventRepository;
 
   const proposedActions = {
@@ -213,6 +220,47 @@ describe('GetDevTaskContextUseCase', () => {
     expect(ctx.siblingTasks).toEqual([
       { id: 'task-2', title: 'Login com JWT', status: 'todo' },
     ]);
+  });
+
+  describe('RN-786: o contrato do módulo vai ao gate de QA', () => {
+    const contratos: SessionEvent = {
+      ...ruleEvent,
+      id: 'contratos-1',
+      seq: 9,
+      type: 'artifact.module_contracts',
+      payload: {
+        version: 1,
+        contratos: [
+          {
+            modulo: 'api',
+            expoe: [{ tipo: 'rota', assinatura: 'GET /panel', descricao: 'p' }],
+          },
+          { modulo: 'web', expoe: [] },
+        ],
+      },
+    };
+
+    it('traz o contrato do módulo da história', async () => {
+      const ctx = await buildUseCase({ contratos: [contratos] }).execute(
+        'proj-1',
+        'task-1',
+      );
+      expect(ctx.moduleContract).toEqual({
+        modulo: 'api',
+        expoe: [{ tipo: 'rota', assinatura: 'GET /panel', descricao: 'p' }],
+      });
+    });
+
+    it('sem contrato declarado, ou módulo ambíguo, null', async () => {
+      const ctx = await buildUseCase().execute('proj-1', 'task-1');
+      expect(ctx.moduleContract).toBeNull();
+      expect(
+        moduloDoContrato({ module: null }, { moduleIds: ['api', 'web'] }),
+      ).toBeNull();
+      expect(
+        moduloDoContrato({ module: 'web' }, { moduleIds: ['api'] }, 'api'),
+      ).toBe('web');
+    });
   });
 
   describe('RN-785: tarefas abertas de outras histórias do módulo', () => {
