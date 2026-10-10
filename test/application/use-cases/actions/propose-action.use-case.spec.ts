@@ -329,6 +329,11 @@ describe('ProposeActionUseCase', () => {
         (action.payload as { orcamentoPorTarefaMicros?: number })
           .orcamentoPorTarefaMicros,
       ).toBe(500_000);
+      // RN-802 (AT-473): e o multiplicador da primeira de cada módulo.
+      expect(
+        (action.payload as { multiplicadorDaPrimeiraDoModulo?: number })
+          .multiplicadorDaPrimeiraDoModulo,
+      ).toBe(2);
     });
   });
 
