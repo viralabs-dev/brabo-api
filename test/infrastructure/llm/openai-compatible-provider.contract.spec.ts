@@ -5,7 +5,7 @@ import {
   ORCAMENTO_DE_RACIOCINIO,
   OpenAICompatibleProvider,
 } from '../../../src/infrastructure/llm/openai-compatible-provider';
-import { campoDeRaciocinioOpenRouter } from '../../../src/infrastructure/llm/openrouter-provider';
+import { campoDeRaciocinioDesligadoOpenRouter } from '../../../src/infrastructure/llm/openrouter-provider';
 import { openaiConfig } from '../../../src/infrastructure/llm/openai-provider';
 import { GptTokenizerEstimator } from '../../../src/infrastructure/tokenization/gpt-tokenizer-estimator';
 import { runLLMProviderContract } from '../../contract/llm-provider.contract';
@@ -282,7 +282,11 @@ describe('OpenAICompatibleProvider — particularidades da base', () => {
   describe('raciocínio com orçamento próprio (RN-741)', () => {
     async function pedido(
       p: OpenAICompatibleProvider,
-      opcoes: { reasoning?: boolean; maxTokens?: number },
+      opcoes: {
+        reasoning?: boolean;
+        reasoningOff?: boolean;
+        maxTokens?: number;
+      },
       servidor: { ultimoPedido: () => unknown },
     ) {
       for await (const _ of p.chat([{ role: 'user', content: 'oi' }], {
@@ -294,21 +298,53 @@ describe('OpenAICompatibleProvider — particularidades da base', () => {
       return servidor.ultimoPedido() as Record<string, unknown>;
     }
 
-    it('modelo que raciocina: manda o orçamento e soma ao teto da saída visível', async () => {
+    it('modelo que raciocina: folga no teto e NENHUM campo de raciocínio (RN-782)', async () => {
       const servidor = await subirServidorFalso(dialetoOpenAI);
       const base = openaiConfig(servidor.baseUrl);
       const p = new OpenAICompatibleProvider({
         ...base,
         flags: { ...base.flags, maxTokensField: 'max_tokens' },
-        campoDeRaciocinio: campoDeRaciocinioOpenRouter,
+        campoDeRaciocinioDesligado: campoDeRaciocinioDesligadoOpenRouter,
       });
-      expect(await pedido(p, { reasoning: true }, servidor)).toMatchObject({
+      const corpo = await pedido(p, { reasoning: true }, servidor);
+      expect(corpo).toEqual({
+        model: 'm',
+        messages: [{ role: 'user', content: 'oi' }],
+        stream: true,
         max_tokens: MAX_TOKENS_PADRAO + ORCAMENTO_DE_RACIOCINIO,
-        reasoning: { max_tokens: ORCAMENTO_DE_RACIOCINIO },
+        stream_options: { include_usage: true },
       });
       expect(
         await pedido(p, { reasoning: true, maxTokens: 100 }, servidor),
       ).toMatchObject({ max_tokens: 100 + ORCAMENTO_DE_RACIOCINIO });
+      await servidor.fechar();
+    });
+
+    it('dev agent: raciocínio desligado explícito, com a folga (RN-783)', async () => {
+      const servidor = await subirServidorFalso(dialetoOpenAI);
+      const base = openaiConfig(servidor.baseUrl);
+      const p = new OpenAICompatibleProvider({
+        ...base,
+        flags: { ...base.flags, maxTokensField: 'max_tokens' },
+        campoDeRaciocinioDesligado: campoDeRaciocinioDesligadoOpenRouter,
+      });
+      const corpo = await pedido(
+        p,
+        { reasoning: true, reasoningOff: true },
+        servidor,
+      );
+      expect(corpo).toEqual({
+        model: 'm',
+        messages: [{ role: 'user', content: 'oi' }],
+        stream: true,
+        max_tokens: MAX_TOKENS_PADRAO + ORCAMENTO_DE_RACIOCINIO,
+        reasoning: { enabled: false },
+        stream_options: { include_usage: true },
+      });
+      // Sem `reasoning: true` (modelo não raciocina), o desligado não vai.
+      const semModelo = await pedido(p, { reasoningOff: true }, servidor);
+      expect(semModelo).not.toHaveProperty('reasoning');
+      expect(semModelo.max_tokens).toBe(MAX_TOKENS_PADRAO);
       await servidor.fechar();
     });
 
@@ -318,7 +354,7 @@ describe('OpenAICompatibleProvider — particularidades da base', () => {
       const p = new OpenAICompatibleProvider({
         ...base,
         flags: { ...base.flags, maxTokensField: 'max_tokens' },
-        campoDeRaciocinio: campoDeRaciocinioOpenRouter,
+        campoDeRaciocinioDesligado: campoDeRaciocinioDesligadoOpenRouter,
       });
       const corpo = await pedido(p, {}, servidor);
       expect(corpo.max_tokens).toBe(MAX_TOKENS_PADRAO);

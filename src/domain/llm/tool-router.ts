@@ -308,6 +308,10 @@ export const PISO_DO_MENU: Readonly<Record<string, readonly string[]>> = {
     'declare_module_contracts',
     'propose_adr',
     'create_c4_diagram',
+    // Leituras de ESTADO (AT-460, RN-784, decisão do dono): sem elas o
+    // Arquiteto afirmava ADR "pendente" e backlog "sem tarefas" de memória.
+    'listar_adrs_propostas',
+    'listar_backlog',
   ],
 };
 /**
