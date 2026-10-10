@@ -51,7 +51,9 @@ export class UnblockTaskUseCase {
             projectId,
             sessionId,
             taskId: task.id,
-            modules: story.moduleIds,
+            // RN-777 (AT-457): o claim é pelo módulo da TAREFA (RN-678), então
+            // é o dev desse módulo que acorda; sem módulo, os da história.
+            modules: task.module ? [task.module] : story.moduleIds,
             cause: 'task_unblocked',
           },
         });

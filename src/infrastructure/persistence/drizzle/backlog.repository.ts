@@ -8,6 +8,7 @@ import {
   type NewStory,
   type StoryContent,
   type NewTask,
+  type TarefaPendenteDaExecucao,
 } from '../../../application/ports/backlog-repository.port';
 import type {
   Epic,
@@ -212,6 +213,54 @@ export class DrizzleStoryRepository implements StoryRepository {
 @Injectable()
 export class DrizzleTaskRepository implements TaskRepository {
   constructor(@Inject(DRIZZLE) private readonly rootDb: DrizzleDb) {}
+
+  // RN-776: a sessão só responde se for a de execução VIGENTE do projeto — a
+  // `active` mais recente com `execution.activated`, a mesma régua de
+  // `DrizzleSessionRepository.findActiveExecutionSession`.
+  async findPendenteDaExecucao(
+    sessionId: string,
+  ): Promise<TarefaPendenteDaExecucao | null> {
+    const db = currentDb(this.rootDb);
+    const result = await db.execute(sql`
+      WITH vigente AS (
+        SELECT s.id, s.project_id
+          FROM sessions s
+          JOIN sessions alvo ON alvo.id = ${sessionId}
+                            AND alvo.project_id = s.project_id
+         WHERE s.status = 'active'
+           AND EXISTS (SELECT 1 FROM session_events e
+                        WHERE e.session_id = s.id
+                          AND e.type = 'execution.activated')
+         ORDER BY s.created_at DESC, s.id DESC
+         LIMIT 1
+      )
+      SELECT t.id AS task_id,
+             CASE
+               WHEN t.blocked THEN 'bloqueada'
+               WHEN t.gate_status = 'awaiting_user' THEN 'aguardando_merge'
+               ELSE 'conflito_de_merge'
+             END AS motivo
+        FROM tasks t
+        JOIN stories st ON st.id = t.story_id AND st.archived_at IS NULL
+        JOIN vigente v ON v.project_id = st.project_id AND v.id = ${sessionId}
+       WHERE t.status <> 'done'
+         AND (
+           t.blocked
+           OR t.gate_status = 'awaiting_user'
+           OR (t.status = 'in_progress' AND EXISTS (
+                SELECT 1 FROM session_events e
+                 WHERE e.session_id = v.id
+                   AND e.type = 'backlog.task_merge_conflict'
+                   AND e.payload->>'taskId' = t.id::text))
+         )
+       ORDER BY t.blocked DESC, t.created_at ASC
+       LIMIT 1
+    `);
+    const row = result.rows[0] as
+      | { task_id: string; motivo: TarefaPendenteDaExecucao['motivo'] }
+      | undefined;
+    return row ? { taskId: row.task_id, motivo: row.motivo } : null;
+  }
 
   async create(input: NewTask): Promise<Task> {
     const db = currentDb(this.rootDb);

@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { ulid } from 'ulid';
+import { eq } from 'drizzle-orm';
 import { createTestDb, truncateAll } from '../../../support/test-db';
 import {
+  epics,
+  stories,
+  tasks,
   projects,
   sessions,
   users,
@@ -11,6 +15,7 @@ import {
 import { DrizzleHandoffRepository } from '../../../../src/infrastructure/persistence/drizzle/handoff.repository';
 import { DrizzleProposedActionRepository } from '../../../../src/infrastructure/persistence/drizzle/proposed-action.repository';
 import { DrizzleSessionEventRepository } from '../../../../src/infrastructure/persistence/drizzle/session-event.repository';
+import { DrizzleTaskRepository } from '../../../../src/infrastructure/persistence/drizzle/backlog.repository';
 import { GetSessionPendingWorkUseCase } from '../../../../src/application/use-cases/sessions/get-session-pending-work.use-case';
 
 /**
@@ -39,6 +44,7 @@ const useCase = new GetSessionPendingWorkUseCase(
   new DrizzleHandoffRepository(db),
   acoes,
   eventos,
+  new DrizzleTaskRepository(db),
 );
 
 beforeEach(async () => {
@@ -594,5 +600,105 @@ describe('GetSessionPendingWorkUseCase — conversa esperando o usuário (RN-581
     await fala(outra.id, 'agent.response', { kind: 'agent', id: 'criativo' });
 
     expect((await useCase.execute(session.id)).pending).toBe(false);
+  });
+
+  describe('RN-776 (AT-457): tarefa da execução esperando alguém', () => {
+    async function execucaoComTarefa(
+      campos: Partial<typeof tasks.$inferInsert> = {},
+    ) {
+      const ctx = await sessao();
+      await db
+        .update(sessions)
+        .set({ status: 'active' })
+        .where(eq(sessions.id, ctx.session.id));
+      await devEvent(ctx.session.id, 'user', 'execution.activated');
+      // O dev agent drenou de verdade: `dev.idle` é o último dele, como no TP-01.
+      await devEvent(ctx.session.id, 'dev-api', 'dev.idle');
+      const [epic] = await db
+        .insert(epics)
+        .values({
+          projectId: ctx.project.id,
+          sessionId: ctx.session.id,
+          title: 'e',
+        })
+        .returning();
+      const [story] = await db
+        .insert(stories)
+        .values({
+          epicId: epic.id,
+          projectId: ctx.project.id,
+          sessionId: ctx.session.id,
+          title: 's',
+          status: 'ready',
+        })
+        .returning();
+      const [task] = await db
+        .insert(tasks)
+        .values({ storyId: story.id, title: 't', ...campos })
+        .returning();
+      return { ...ctx, task };
+    }
+
+    it('tarefa BLOQUEADA segura a sessão de execução', async () => {
+      const { session, task } = await execucaoComTarefa({ blocked: true });
+
+      const r = await useCase.execute(session.id);
+
+      expect(r.pending).toBe(true);
+      expect(r.motivo).toBe(
+        `tarefa ${task.id} bloqueada aguardando desbloqueio`,
+      );
+      expect(r.aguardandoUsuarioDesde).toBeNull();
+    });
+
+    it('PR em awaiting_user segura a sessão de execução', async () => {
+      const { session } = await execucaoComTarefa({
+        status: 'in_review',
+        gateStatus: 'awaiting_user',
+      });
+
+      const r = await useCase.execute(session.id);
+
+      expect(r.pending).toBe(true);
+      expect(r.motivo).toContain('aguardando o merge do usuário');
+    });
+
+    it('tarefa devolvida por conflito de merge segura a sessão', async () => {
+      const { session, task } = await execucaoComTarefa({
+        status: 'in_progress',
+      });
+      await eventos.append({
+        id: ulid(),
+        sessionId: session.id,
+        seq: ++seqCounter,
+        type: 'backlog.task_merge_conflict',
+        actor: { kind: 'system', id: 'executor-de-merge' },
+        payload: { taskId: task.id },
+      });
+
+      const r = await useCase.execute(session.id);
+
+      expect(r.motivo).toContain('devolvida por conflito de merge');
+    });
+
+    it('sem tarefa esperando, a execução drenada fecha como hoje', async () => {
+      const { session } = await execucaoComTarefa({ status: 'done' });
+
+      expect((await useCase.execute(session.id)).pending).toBe(false);
+    });
+
+    it('sessão de execução ANTIGA não é segurada pela tarefa do projeto', async () => {
+      const { project, user, session } = await execucaoComTarefa({
+        blocked: true,
+      });
+      const [nova] = await db
+        .insert(sessions)
+        .values({ projectId: project.id, createdBy: user.id, status: 'active' })
+        .returning();
+      await devEvent(nova.id, 'user', 'execution.activated');
+
+      expect((await useCase.execute(session.id)).pending).toBe(false);
+      expect((await useCase.execute(nova.id)).pending).toBe(true);
+    });
   });
 });
