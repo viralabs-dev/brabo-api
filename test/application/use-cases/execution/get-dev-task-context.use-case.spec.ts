@@ -3,6 +3,8 @@ import {
   GetDevTaskContextUseCase,
   ehPrimeiraTarefaDoModulo,
   tarefasIrmas,
+  tarefasAbertasDoModulo,
+  moduloDoContrato,
 } from '../../../../src/application/use-cases/execution/get-dev-task-context.use-case';
 import type {
   StoryRepository,
@@ -110,6 +112,9 @@ function buildUseCase(overrides?: {
   story?: Story | null;
   adrs?: ProposedAction[];
   claims?: Array<{ payload: unknown }>;
+  historias?: Story[];
+  tarefasDeOutras?: Task[];
+  contratos?: SessionEvent[];
 }) {
   const tasks = {
     findById: (id: string) =>
@@ -120,11 +125,15 @@ function buildUseCase(overrides?: {
             ? task
             : null,
       ),
-    findByStoryIds: () =>
-      Promise.resolve([
-        task,
-        { ...task, id: 'task-2', title: 'Login com JWT', status: 'todo' },
-      ]),
+    findByStoryIds: (ids: string[]) =>
+      Promise.resolve(
+        ids.includes(story.id)
+          ? [
+              task,
+              { ...task, id: 'task-2', title: 'Login com JWT', status: 'todo' },
+            ]
+          : (overrides?.tarefasDeOutras ?? []),
+      ),
   } as unknown as TaskRepository;
 
   const stories = {
@@ -136,12 +145,19 @@ function buildUseCase(overrides?: {
             ? story
             : null,
       ),
+    findByProject: () =>
+      Promise.resolve([story, ...(overrides?.historias ?? [])]),
   } as unknown as StoryRepository;
 
   const sessionEvents = {
     findById: (id: string) =>
       Promise.resolve(id === ruleEvent.id ? ruleEvent : null),
-    listByTypeForProject: () => Promise.resolve(overrides?.claims ?? []),
+    listByTypeForProject: (_p: string, tipo: string) =>
+      Promise.resolve(
+        tipo === 'artifact.module_contracts'
+          ? (overrides?.contratos ?? [])
+          : (overrides?.claims ?? []),
+      ),
   } as unknown as SessionEventRepository;
 
   const proposedActions = {
@@ -204,6 +220,98 @@ describe('GetDevTaskContextUseCase', () => {
     expect(ctx.siblingTasks).toEqual([
       { id: 'task-2', title: 'Login com JWT', status: 'todo' },
     ]);
+  });
+
+  describe('RN-786: o contrato do módulo vai ao gate de QA', () => {
+    const contratos: SessionEvent = {
+      ...ruleEvent,
+      id: 'contratos-1',
+      seq: 9,
+      type: 'artifact.module_contracts',
+      payload: {
+        version: 1,
+        contratos: [
+          {
+            modulo: 'api',
+            expoe: [{ tipo: 'rota', assinatura: 'GET /panel', descricao: 'p' }],
+          },
+          { modulo: 'web', expoe: [] },
+        ],
+      },
+    };
+
+    it('traz o contrato do módulo da história', async () => {
+      const ctx = await buildUseCase({ contratos: [contratos] }).execute(
+        'proj-1',
+        'task-1',
+      );
+      expect(ctx.moduleContract).toEqual({
+        modulo: 'api',
+        expoe: [{ tipo: 'rota', assinatura: 'GET /panel', descricao: 'p' }],
+      });
+    });
+
+    it('sem contrato declarado, ou módulo ambíguo, null', async () => {
+      const ctx = await buildUseCase().execute('proj-1', 'task-1');
+      expect(ctx.moduleContract).toBeNull();
+      expect(
+        moduloDoContrato({ module: null }, { moduleIds: ['api', 'web'] }),
+      ).toBeNull();
+      expect(
+        moduloDoContrato({ module: 'web' }, { moduleIds: ['api'] }, 'api'),
+      ).toBe('web');
+    });
+  });
+
+  describe('RN-785: tarefas abertas de outras histórias do módulo', () => {
+    const rotas: Story = {
+      ...story,
+      id: 'story-2',
+      title: 'Criar links',
+      moduleIds: ['api'],
+      archivedAt: null,
+    };
+    const web: Story = { ...rotas, id: 'story-3', moduleIds: ['web'] };
+    const t = (id: string, storyId: string, status: Task['status']): Task => ({
+      ...task,
+      id,
+      storyId,
+      title: `Tarefa ${id}`,
+      status,
+    });
+
+    it('traz a tarefa não concluída da outra história do mesmo módulo', async () => {
+      const ctx = await buildUseCase({
+        historias: [rotas, web],
+        tarefasDeOutras: [
+          t('t-rota', 'story-2', 'todo'),
+          t('t-feita', 'story-2', 'done'),
+          t('t-web', 'story-3', 'todo'),
+        ],
+      }).execute('proj-1', 'task-1', 'api');
+      expect(ctx.moduleOpenTasks).toEqual([
+        {
+          id: 't-rota',
+          title: 'Tarefa t-rota',
+          status: 'todo',
+          storyTitle: 'Criar links',
+        },
+      ]);
+      expect(ctx.moduleOpenTasksTotal).toBe(1);
+    });
+
+    it('história arquivada fica fora, e o teto diz o total real', () => {
+      const muitas = Array.from({ length: 25 }, (_, i) =>
+        t(`t${i}`, 'story-2', 'todo'),
+      );
+      const r = tarefasAbertasDoModulo(task, story, 'api', [rotas], muitas);
+      expect(r.itens).toHaveLength(20);
+      expect(r.total).toBe(25);
+      const arquivada = { ...rotas, archivedAt: new Date() };
+      expect(
+        tarefasAbertasDoModulo(task, story, 'api', [arquivada], muitas).total,
+      ).toBe(0);
+    });
   });
 
   it('RN-765: história de uma tarefa só não tem irmã', () => {
