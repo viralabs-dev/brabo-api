@@ -608,6 +608,29 @@ describe('DecidirFerramentaDoPassoUseCase — o recorte não vira incapacidade (
     expect(r.messages.at(-1)!.content).toContain('as outras 2 seguem');
   });
 
+  it('Arquiteto recortado pelo Jev: as leituras de estado (ADRs propostas, backlog) continuam no menu (RN-784)', async () => {
+    const s = await setup();
+    const r = await montar(
+      new RoteadorFalso(() => decidiu('assign_story_modules')),
+    ).decidir(
+      base(s, {
+        agentId: 'arquiteto',
+        tools: [
+          ...ARQUITETO,
+          tool('listar_adrs_propostas'),
+          tool('listar_backlog'),
+        ],
+        messages: execucaoCom('arquiteto', 'choose_project_image'),
+      }),
+    );
+    const nomes = r.tools?.map((t) => t.name) ?? [];
+    expect(r.toolRouting?.aplicado).toBe(true);
+    expect(nomes).toContain('listar_adrs_propostas');
+    expect(nomes).toContain('listar_backlog');
+    // Ainda é recorte: o que não é piso nem escolhido sai.
+    expect(nomes).not.toContain('emit_insight');
+  });
+
   it('o Jev diz responder (sem recorte): nenhum aviso, mensagens intactas', async () => {
     const s = await setup();
     const msgs = execucaoCom('po', 'listar_backlog');

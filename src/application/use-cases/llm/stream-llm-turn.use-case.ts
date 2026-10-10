@@ -23,6 +23,7 @@ import {
 } from './decidir-ferramenta-do-passo.use-case';
 import { preferenciaEnviada } from '../../../domain/llm/routing-preference';
 import { custoDaChamada } from '../../../domain/llm/custo-da-chamada';
+import { opcoesDeRaciocinio } from '../../../domain/llm/raciocinio-do-agente';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
 
 export interface StreamLlmTurnInput {
@@ -197,7 +198,7 @@ export class StreamLlmTurnUseCase {
         apiKey,
         tools: decisaoDoJev.tools,
         ...(routingPreference ? { routingPreference } : {}),
-        ...(model.supportsReasoning ? { reasoning: true } : {}),
+        ...opcoesDeRaciocinio(model.supportsReasoning, input.agentId),
       })) {
         if (chunk.type === 'text_delta') {
           fullText += chunk.text;
