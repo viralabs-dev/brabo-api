@@ -8,6 +8,7 @@ import { ReopenSessionUseCase } from './reopen-session.use-case';
 import { AppendSessionEventUseCase } from './append-session-event.use-case';
 import { ListSessionEventsUseCase } from './list-session-events.use-case';
 import { GetSessionEventUseCase } from './get-session-event.use-case';
+import { GetSessionContextSummaryUseCase } from './get-session-context-summary.use-case';
 import { GetProjectEventUseCase } from './get-project-event.use-case';
 import { ReportSessionTerminationUseCase } from './report-session-termination.use-case';
 import { GetSessionPendingWorkUseCase } from './get-session-pending-work.use-case';
@@ -25,6 +26,7 @@ const USE_CASES = [
   ListSessionEventsUseCase,
   GetSessionEventUseCase,
   GetProjectEventUseCase,
+  GetSessionContextSummaryUseCase,
   ReportSessionTerminationUseCase,
   GetSessionPendingWorkUseCase,
   CreateSocketTicketUseCase,

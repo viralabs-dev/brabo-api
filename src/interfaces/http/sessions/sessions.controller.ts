@@ -36,6 +36,8 @@ import { ReopenSessionUseCase } from '../../../application/use-cases/sessions/re
 import { AppendSessionEventUseCase } from '../../../application/use-cases/sessions/append-session-event.use-case';
 import { ListSessionEventsUseCase } from '../../../application/use-cases/sessions/list-session-events.use-case';
 import { GetSessionEventUseCase } from '../../../application/use-cases/sessions/get-session-event.use-case';
+import { GetSessionContextSummaryUseCase } from '../../../application/use-cases/sessions/get-session-context-summary.use-case';
+import { SessionContextSummaryResponseDto } from './dto/session-context-summary.response.dto';
 import { CreateSocketTicketUseCase } from '../../../application/use-cases/sessions/create-socket-ticket.use-case';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { RenameSessionDto } from './dto/rename-session.dto';
@@ -67,6 +69,7 @@ export class SessionsController {
     private readonly listSessionEvents: ListSessionEventsUseCase,
     private readonly getSessionEvent: GetSessionEventUseCase,
     private readonly createSocketTicket: CreateSocketTicketUseCase,
+    private readonly getSessionContextSummary: GetSessionContextSummaryUseCase,
   ) {}
 
   @Post()
@@ -270,6 +273,29 @@ export class SessionsController {
       latest: latest === 'true',
       actionId,
     });
+  }
+
+  /**
+   * RN-827 (AT-498): o painel "Contexto da sessão" lê caudas de 200; este
+   * agregado conta a sessão INTEIRA no servidor e a tela o soma à janela.
+   */
+  @Get(':sessionId/context-summary')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Counts the whole session for the context panel',
+    description:
+      'Business rules, decision records and artifacts per agent counted over ' +
+      'the WHOLE session log (the screen reads a 200-event tail), plus the ' +
+      'files touched by `git_commit`/`git_push` in this session and in the ' +
+      'execution session its approved Dev Lead plan activated (RN-828). ' +
+      'Read only; no new table.',
+  })
+  @ApiOkResponse({ type: SessionContextSummaryResponseDto })
+  contextSummary(
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+  ) {
+    return this.getSessionContextSummary.execute(projectId, sessionId);
   }
 
   /**
