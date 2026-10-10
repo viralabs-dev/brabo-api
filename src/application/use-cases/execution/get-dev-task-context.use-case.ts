@@ -6,6 +6,8 @@ import {
 import { SessionEventRepository } from '../../ports/session-event-repository.port';
 import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
 import type { Story, Task } from '../../../domain/backlog/backlog.entity';
+import type { ContratoDeModulo } from '../../../domain/architecture/module-contracts';
+import { GetModuleContractsUseCase } from '../architecture/get-module-contracts.use-case';
 
 export interface DevContextBusinessRule {
   title: string;
@@ -70,6 +72,9 @@ export interface DevTaskContext {
   siblingTasks: DevContextSiblingTask[];
   moduleOpenTasks: DevContextModuleOpenTask[];
   moduleOpenTasksTotal: number;
+  // AT-462 (RN-786): o contrato vigente do módulo — a fonte da INTERFACE
+  // para o gate de QA. `null` sem módulo resolvível ou sem contrato.
+  moduleContract: ContratoDeModulo | null;
   // AT-433 (RN-774): esta é a PRIMEIRA tarefa do módulo — o engine dá a ela
   // o teto de 2× (`Engine.Dev.TetoDaTarefa`). `false` sem `module`.
   primeiraDoModulo: boolean;
@@ -151,6 +156,23 @@ export function tarefasAbertasDoModulo(
 }
 
 /**
+ * AT-462 (RN-786): o módulo cuja interface vale para a tarefa — o dela, senão
+ * o pedido, senão o único da história. Mais de um na história e nenhum na
+ * tarefa é ambíguo: `null`. Pura.
+ */
+export function moduloDoContrato(
+  task: Pick<Task, 'module'>,
+  story: Pick<Story, 'moduleIds'>,
+  module?: string,
+): string | null {
+  return (
+    task.module ??
+    module ??
+    (story.moduleIds.length === 1 ? story.moduleIds[0] : null)
+  );
+}
+
+/**
  * Monta o contexto rico que o DevAgent usa pra implementar a task (camadas
  * `regras_negocio`/`estado_tarefa` do harness): a story completa (RF/RNF/DoD/
  * DoR), as regras de negócio referenciadas (resolvidas via session_events
@@ -201,6 +223,17 @@ export class GetDevTaskContextUseCase {
         : Promise.resolve([]),
     ]);
 
+    const modulo = moduloDoContrato(task, story, module);
+    const contratos = modulo
+      ? await new GetModuleContractsUseCase(this.sessionEvents).execute(
+          projectId,
+        )
+      : null;
+    const moduleContract =
+      contratos?.status === 'declarados'
+        ? (contratos.contratos.find((c) => c.modulo === modulo) ?? null)
+        : null;
+
     const historias = await this.stories.findByProject(projectId);
     const outras = historias.filter((h) => h.id !== story.id);
     const doModulo = tarefasAbertasDoModulo(
@@ -239,6 +272,7 @@ export class GetDevTaskContextUseCase {
       siblingTasks: tarefasIrmas(task, daHistoria),
       moduleOpenTasks: doModulo.itens,
       moduleOpenTasksTotal: doModulo.total,
+      moduleContract,
       primeiraDoModulo: ehPrimeiraTarefaDoModulo(claims, task.id, module),
     };
   }
