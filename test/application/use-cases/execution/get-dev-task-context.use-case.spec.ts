@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   GetDevTaskContextUseCase,
+  ehPrimeiraTarefaDoModulo,
   tarefasIrmas,
 } from '../../../../src/application/use-cases/execution/get-dev-task-context.use-case';
 import type {
@@ -108,6 +109,7 @@ function buildUseCase(overrides?: {
   task?: Task | null;
   story?: Story | null;
   adrs?: ProposedAction[];
+  claims?: Array<{ payload: unknown }>;
 }) {
   const tasks = {
     findById: (id: string) =>
@@ -139,6 +141,7 @@ function buildUseCase(overrides?: {
   const sessionEvents = {
     findById: (id: string) =>
       Promise.resolve(id === ruleEvent.id ? ruleEvent : null),
+    listByTypeForProject: () => Promise.resolve(overrides?.claims ?? []),
   } as unknown as SessionEventRepository;
 
   const proposedActions = {
@@ -154,6 +157,48 @@ function buildUseCase(overrides?: {
 }
 
 describe('GetDevTaskContextUseCase', () => {
+  describe('RN-774: primeira tarefa do módulo', () => {
+    const claim = (taskId: string, module: string) => ({
+      payload: { taskId, module, title: 't' },
+    });
+
+    it('é a primeira quando o claim mais antigo do módulo é dela', async () => {
+      const ctx = await buildUseCase({
+        claims: [claim('task-x', 'web'), claim('task-1', 'api')],
+      }).execute('proj-1', 'task-1', 'api');
+      expect(ctx.primeiraDoModulo).toBe(true);
+    });
+
+    it('não é a primeira quando outra tarefa do módulo foi reivindicada antes', async () => {
+      const ctx = await buildUseCase({
+        claims: [claim('task-0', 'api'), claim('task-1', 'api')],
+      }).execute('proj-1', 'task-1', 'api');
+      expect(ctx.primeiraDoModulo).toBe(false);
+    });
+
+    it('reivindicada de novo depois de bloqueada, continua a primeira', () => {
+      expect(
+        ehPrimeiraTarefaDoModulo(
+          [
+            claim('task-1', 'api'),
+            claim('task-2', 'api'),
+            claim('task-1', 'api'),
+          ],
+          'task-1',
+          'api',
+        ),
+      ).toBe(true);
+    });
+
+    it('sem módulo ou sem claim nenhum, falso (teto normal)', async () => {
+      expect(ehPrimeiraTarefaDoModulo([claim('task-1', 'api')], 'task-1')).toBe(
+        false,
+      );
+      const ctx = await buildUseCase().execute('proj-1', 'task-1', 'api');
+      expect(ctx.primeiraDoModulo).toBe(false);
+    });
+  });
+
   it('RN-765: traz as tarefas irmãs da história, sem a própria', async () => {
     const ctx = await buildUseCase().execute('proj-1', 'task-1');
     expect(ctx.siblingTasks).toEqual([

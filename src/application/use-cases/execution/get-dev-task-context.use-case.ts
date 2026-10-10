@@ -53,6 +53,28 @@ export interface DevTaskContext {
   businessRules: DevContextBusinessRule[];
   adrs: DevContextAdr[];
   siblingTasks: DevContextSiblingTask[];
+  // AT-433 (RN-774): esta é a PRIMEIRA tarefa do módulo — o engine dá a ela
+  // o teto de 2× (`Engine.Dev.TetoDaTarefa`). `false` sem `module`.
+  primeiraDoModulo: boolean;
+}
+
+/**
+ * AT-433 (RN-774): a tarefa é a PRIMEIRA do módulo quando o `backlog.task_claimed`
+ * mais antigo do projeto para esse módulo é dela. Pelo log, e não pelo estado
+ * da tarefa, porque bloquear zera `assigned_to` e o reinício do engine perde a
+ * memória do processo: o log é a única fonte que não muda. Sem nenhum claim do
+ * módulo, `false` — o teto normal é o conservador. Pura.
+ */
+export function ehPrimeiraTarefaDoModulo(
+  claims: ReadonlyArray<{ payload: unknown }>,
+  taskId: string,
+  module?: string,
+): boolean {
+  if (!module) return false;
+  const primeiro = claims.find(
+    (c) => (c.payload as { module?: unknown })?.module === module,
+  );
+  return (primeiro?.payload as { taskId?: unknown })?.taskId === taskId;
 }
 
 /** As irmãs da tarefa, sem ela mesma, na ordem do repositório. Pura. */
@@ -104,10 +126,16 @@ export class GetDevTaskContextUseCase {
       );
     }
 
-    const [businessRules, adrActions, daHistoria] = await Promise.all([
+    const [businessRules, adrActions, daHistoria, claims] = await Promise.all([
       this.resolveBusinessRules(story.businessRuleIds),
       this.proposedActions.listByProjectAndType(projectId, 'open_adr_pr'),
       this.tasks.findByStoryIds([story.id]),
+      module
+        ? this.sessionEvents.listByTypeForProject(
+            projectId,
+            'backlog.task_claimed',
+          )
+        : Promise.resolve([]),
     ]);
 
     const adrs: DevContextAdr[] = adrActions
@@ -134,6 +162,7 @@ export class GetDevTaskContextUseCase {
       businessRules,
       adrs,
       siblingTasks: tarefasIrmas(task, daHistoria),
+      primeiraDoModulo: ehPrimeiraTarefaDoModulo(claims, task.id, module),
     };
   }
 
