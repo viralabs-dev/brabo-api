@@ -157,15 +157,17 @@ export interface OpenAICompatibleConfig {
   readonly campoDeRoteamento?: CampoDeRoteamento;
   /** Só quem informa custo na resposta — ver `ExtrairCustoReal`. */
   readonly extrairCustoReal?: ExtrairCustoReal;
-  /** Só quem aceita teto de raciocínio — ver `CampoDeRaciocinio`. */
-  readonly campoDeRaciocinio?: CampoDeRaciocinio;
+  /** Só quem sabe controlar o raciocínio — ver `CampoDeRaciocinioDesligado`. */
+  readonly campoDeRaciocinioDesligado?: CampoDeRaciocinioDesligado;
 }
 
 /**
- * Como dizer ao provider o teto de tokens de RACIOCÍNIO (RN-741). Ausente = o
- * provider não recebe orçamento e o `max_tokens` fica como sempre foi.
+ * Como dizer ao provider que o raciocínio vai DESLIGADO (RN-783). A presença
+ * dele também é o que liga a folga de `ORCAMENTO_DE_RACIOCINIO` no `max_tokens`
+ * (RN-741/782). Ausente = o provider não controla raciocínio e o `max_tokens`
+ * fica como sempre foi.
  */
-export type CampoDeRaciocinio = (orcamento: number) => Record<string, unknown>;
+export type CampoDeRaciocinioDesligado = () => Record<string, unknown>;
 
 /**
  * Base configurável para todo provider que fala o dialeto `/chat/completions`
@@ -461,12 +463,16 @@ export class OpenAICompatibleProvider implements LLMProvider {
   private buildBody(messages: ChatMessage[], options: ChatOptions) {
     const { flags } = this.config;
     const saidaVisivel = options.maxTokens ?? MAX_TOKENS_PADRAO;
-    // Modelo que raciocina ganha orçamento PRÓPRIO, somado ao teto (RN-741):
-    // o raciocínio conta dentro do `max_tokens`, e sem isso ele pode gastá-lo
-    // inteiro antes do texto e da tool call.
+    // Modelo que raciocina ganha FOLGA no teto (RN-741): o raciocínio conta
+    // dentro do `max_tokens`, e sem isso ele pode gastá-lo inteiro antes do
+    // texto e da tool call. Campo de raciocínio NÃO vai por aceitar o
+    // parâmetro (RN-782): só o "desligado" explícito dos dev agents (RN-783).
+    const controla = Boolean(
+      options.reasoning && this.config.campoDeRaciocinioDesligado,
+    );
     const raciocinio =
-      options.reasoning && this.config.campoDeRaciocinio
-        ? this.config.campoDeRaciocinio(ORCAMENTO_DE_RACIOCINIO)
+      controla && options.reasoningOff
+        ? this.config.campoDeRaciocinioDesligado?.()
         : undefined;
 
     return {
@@ -475,7 +481,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
       stream: true,
       // SEMPRE explícito (RN-734): sem o campo, o OpenRouter reserva o
       // crédito da saída MÁXIMA do modelo por chamada e recusa com 402.
-      [flags.maxTokensField]: raciocinio
+      [flags.maxTokensField]: controla
         ? saidaVisivel + ORCAMENTO_DE_RACIOCINIO
         : saidaVisivel,
       ...(raciocinio ?? {}),
