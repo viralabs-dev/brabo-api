@@ -4,6 +4,7 @@ import { ProposedActionRepository } from '../../ports/proposed-action-repository
 import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { ApiToEngineClient } from '../../ports/api-to-engine-client.port';
 import { GitProviderRegistry } from '../../ports/git-provider.port';
+import type { GitProviderContract, GitPullRequestSummary } from '@brabo/shared';
 import { ProvisionedRepositoryRepository } from '../../ports/provisioned-repository-repository.port';
 import { UserCredentialRepository } from '../../ports/user-credential-repository.port';
 import { ResolveCredentialOwnerUseCase } from '../llm/resolve-credential-owner.use-case';
@@ -22,6 +23,38 @@ import { BRANCH_DE_TRABALHO } from '../../../domain/actions/protected-branches';
 // string — evita o `[object Object]` que o String(unknown) permitiria.
 function str(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback;
+}
+
+/**
+ * RN-812 (AT-485): a PR ABERTA da mesma origem e destino, se o provider sabe
+ * listar. Falha ao listar não impede abrir — o caminho de sempre segue.
+ */
+async function prAbertaDaBranch(
+  provider: GitProviderContract,
+  externalId: string,
+  sourceBranch: string,
+  targetBranch: string,
+  accessToken: string | undefined,
+): Promise<GitPullRequestSummary | null> {
+  if (typeof provider.listPullRequests !== 'function') return null;
+  if (provider.capabilities?.pullRequestsList === false) return null;
+  try {
+    const lista = await provider.listPullRequests({
+      externalId,
+      state: 'open',
+      accessToken,
+    });
+    return (
+      lista.items.find(
+        (pr) =>
+          pr.state === 'open' &&
+          pr.sourceBranch === sourceBranch &&
+          pr.targetBranch === targetBranch,
+      ) ?? null
+    );
+  } catch {
+    return null;
+  }
 }
 
 const KINDS_DE_ACAO_GIT = new Set([
@@ -165,6 +198,26 @@ export class ExecuteGitActionUseCase {
     }
 
     if (action.actionType === 'pr_open') {
+      // RN-812 (AT-485): a tarefa reaberta depois de bloqueio propunha uma
+      // SEGUNDA PR da mesma branch com a primeira aberta. A PR aberta da
+      // mesma origem e destino é reaproveitada — o push já a atualizou.
+      const aberta = await prAbertaDaBranch(
+        provider,
+        repo.externalId,
+        str(payload.sourceBranch),
+        str(payload.targetBranch, BRANCH_DE_TRABALHO),
+        accessToken,
+      );
+      if (aberta) {
+        return {
+          kind: 'pr_open',
+          pullRequestUrl: aberta.url,
+          pullRequestId: aberta.id,
+          sourceBranch: aberta.sourceBranch,
+          targetBranch: aberta.targetBranch,
+          reaproveitada: true,
+        };
+      }
       const pr = await provider.openPullRequest({
         externalId: repo.externalId,
         sourceBranch: str(payload.sourceBranch),

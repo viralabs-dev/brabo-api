@@ -190,6 +190,71 @@ describe('ExecuteGitActionUseCase', () => {
     });
   });
 
+  // RN-812 (AT-485): a tarefa reaberta não abre uma segunda PR da branch.
+  it('pr_open com PR aberta da mesma branch → reaproveita, sem abrir outra', async () => {
+    let abriu = false;
+    const uc = build({
+      provider: {
+        listPullRequests: () =>
+          Promise.resolve({
+            items: [
+              {
+                id: 'pr-8',
+                number: 8,
+                url: 'local://repo/pull/8',
+                state: 'open',
+                sourceBranch: 'feature/x',
+                targetBranch: 'dev',
+              },
+            ],
+            truncated: false,
+          }),
+        openPullRequest: () => {
+          abriu = true;
+          return Promise.reject(new Error('não devia abrir'));
+        },
+      },
+    });
+    await uc.execute(
+      PROJECT,
+      SESSION,
+      action('pr_open', { sourceBranch: 'feature/x', targetBranch: 'dev' }),
+    );
+    expect(abriu).toBe(false);
+    expect(proposedActions.saved?.status).toBe('executed');
+    expect(proposedActions.saved?.result).toMatchObject({
+      kind: 'pr_open',
+      pullRequestId: 'pr-8',
+      reaproveitada: true,
+    });
+  });
+
+  it('pr_open: listar PRs falha → abre a PR como sempre', async () => {
+    const uc = build({
+      provider: {
+        listPullRequests: () => Promise.reject(new Error('rede')),
+        openPullRequest: () =>
+          Promise.resolve({
+            id: 'pr-9',
+            number: 9,
+            url: 'local://repo/pull/9',
+            sourceBranch: 'feature/x',
+            targetBranch: 'dev',
+            state: 'open',
+          }),
+      },
+    });
+    await uc.execute(
+      PROJECT,
+      SESSION,
+      action('pr_open', { sourceBranch: 'feature/x', targetBranch: 'dev' }),
+    );
+    expect(proposedActions.saved?.result).toMatchObject({
+      pullRequestId: 'pr-9',
+    });
+    expect(proposedActions.saved?.result).not.toHaveProperty('reaproveitada');
+  });
+
   // RN-664 (AT-250): `pr_open` sem `targetBranch` (proposto antes de o dev
   // agent mandar o campo) mira `dev`, não a `defaultBranch` do repositório.
   it('pr_open sem targetBranch mira `dev`, não a defaultBranch', async () => {
