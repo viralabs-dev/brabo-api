@@ -75,6 +75,13 @@ export const DEV_AUTO_GIT_ACTIONS = ['git_commit'];
 // próprio ato de ativar (ver `execute`); sem tabela nova.
 export const DEFAULT_TASK_BUDGET_MICROS = 500_000;
 
+// RN-774/RN-802 (AT-473): a primeira tarefa de cada módulo vale este múltiplo
+// do teto por tarefa. Quem APLICA é o engine (`Engine.Dev.TetoDaTarefa`,
+// `@multiplicador_da_primeira`); este espelho existe só para a api levar o
+// número no payload do plano e a tela não copiar a constante. Cópia declarada:
+// mudar um exige mudar o outro (o teste do engine e o desta api fixam 2).
+export const MULTIPLICADOR_DA_PRIMEIRA_TAREFA_DO_MODULO = 2;
+
 // Circuit breaker por dev agent (Fase 12b — RN-047): tasks consecutivas
 // terminando blocked até o agente parar em idle_tripped. Mesmo espírito do
 // teto acima — conservador por padrão, configurável por projeto.
