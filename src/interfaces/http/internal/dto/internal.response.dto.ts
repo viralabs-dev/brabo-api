@@ -26,6 +26,7 @@ import type {
   DevContextBusinessRule,
   DevTaskContext,
   DevContextSiblingTask,
+  DevContextModuleOpenTask,
 } from '../../../../application/use-cases/execution/get-dev-task-context.use-case';
 import type {
   InfraContext,
@@ -129,6 +130,24 @@ export const _chavesIrmaDev: MesmasChaves<
   DevContextSiblingTask
 > = true;
 
+export class DevContextModuleOpenTaskResponseDto implements Wire<DevContextModuleOpenTask> {
+  @ApiProperty({ example: '01J0000000000000000000000' })
+  id!: string;
+
+  @ApiProperty({ example: 'Expose POST /links' })
+  title!: string;
+
+  @ApiProperty({ example: 'todo' })
+  status!: string;
+
+  @ApiProperty({ example: 'Members create short links' })
+  storyTitle!: string;
+}
+export const _chavesTarefaAbertaDoModulo: MesmasChaves<
+  DevContextModuleOpenTaskResponseDto,
+  DevContextModuleOpenTask
+> = true;
+
 export class DevTaskContextResponseDto implements Wire<DevTaskContext> {
   @ApiProperty({ type: TaskResponseDto })
   task!: TaskResponseDto;
@@ -155,6 +174,23 @@ export class DevTaskContextResponseDto implements Wire<DevTaskContext> {
       'sibling task is an observation, never a rejection (RN-765).',
   })
   siblingTasks!: DevContextSiblingTaskResponseDto[];
+
+  @ApiProperty({
+    type: [DevContextModuleOpenTaskResponseDto],
+    description:
+      'Tasks of OTHER stories of the same module that are not done yet, ' +
+      'with the story title (at most 20). A requirement that depends on ' +
+      'what another story will deliver is an observation for the QA gate, ' +
+      'never a rejection (RN-785).',
+  })
+  moduleOpenTasks!: DevContextModuleOpenTaskResponseDto[];
+
+  @ApiProperty({
+    description:
+      'Real number of open tasks of the module in other stories — larger ' +
+      'than `moduleOpenTasks.length` when the list was cut.',
+  })
+  moduleOpenTasksTotal!: number;
 
   @ApiProperty({
     description:

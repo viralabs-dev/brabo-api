@@ -47,12 +47,29 @@ export interface DevContextSiblingTask {
   status: string;
 }
 
+/**
+ * AT-461 (RN-785): tarefa NÃO concluída de OUTRA história do mesmo módulo —
+ * o que o gate de QA precisa para não reprovar a entrega por uma rota ou
+ * tela que outra história ainda vai entregar.
+ */
+export interface DevContextModuleOpenTask {
+  id: string;
+  title: string;
+  status: string;
+  storyTitle: string;
+}
+
+/** Teto da leitura (ADR 0060): o total real vai em `moduleOpenTasksTotal`. */
+export const TETO_DE_TAREFAS_ABERTAS_DO_MODULO = 20;
+
 export interface DevTaskContext {
   task: Task;
   story: Story;
   businessRules: DevContextBusinessRule[];
   adrs: DevContextAdr[];
   siblingTasks: DevContextSiblingTask[];
+  moduleOpenTasks: DevContextModuleOpenTask[];
+  moduleOpenTasksTotal: number;
   // AT-433 (RN-774): esta é a PRIMEIRA tarefa do módulo — o engine dá a ela
   // o teto de 2× (`Engine.Dev.TetoDaTarefa`). `false` sem `module`.
   primeiraDoModulo: boolean;
@@ -85,6 +102,52 @@ export function tarefasIrmas(
   return daHistoria
     .filter((t) => t.id !== task.id)
     .map((t) => ({ id: t.id, title: t.title, status: t.status }));
+}
+
+/**
+ * AT-461 (RN-785): as tarefas não concluídas das OUTRAS histórias do mesmo
+ * módulo, com o título da história. O módulo é o da tarefa (`tasks.module`),
+ * senão o pedido, senão os da história; história arquivada fica fora. Teto de
+ * `TETO_DE_TAREFAS_ABERTAS_DO_MODULO`, com o total real ao lado. Pura.
+ */
+export function tarefasAbertasDoModulo(
+  task: Pick<Task, 'storyId' | 'module'>,
+  story: Pick<Story, 'moduleIds'>,
+  module: string | undefined,
+  historias: Pick<Story, 'id' | 'title' | 'moduleIds' | 'archivedAt'>[],
+  tarefas: Pick<Task, 'id' | 'title' | 'status' | 'storyId' | 'module'>[],
+): { itens: DevContextModuleOpenTask[]; total: number } {
+  const modulos = new Set(
+    task.module ? [task.module] : module ? [module] : story.moduleIds,
+  );
+  if (modulos.size === 0) return { itens: [], total: 0 };
+  const porId = new Map(
+    historias
+      .filter(
+        (h) =>
+          h.id !== task.storyId &&
+          h.archivedAt === null &&
+          h.moduleIds.some((m) => modulos.has(m)),
+      )
+      .map((h) => [h.id, h]),
+  );
+  const abertas = tarefas
+    .filter(
+      (t) =>
+        porId.has(t.storyId) &&
+        t.status !== 'done' &&
+        (t.module === null || modulos.has(t.module)),
+    )
+    .map((t) => ({
+      id: t.id,
+      title: t.title,
+      status: t.status,
+      storyTitle: porId.get(t.storyId)!.title,
+    }));
+  return {
+    itens: abertas.slice(0, TETO_DE_TAREFAS_ABERTAS_DO_MODULO),
+    total: abertas.length,
+  };
 }
 
 /**
@@ -138,6 +201,18 @@ export class GetDevTaskContextUseCase {
         : Promise.resolve([]),
     ]);
 
+    const historias = await this.stories.findByProject(projectId);
+    const outras = historias.filter((h) => h.id !== story.id);
+    const doModulo = tarefasAbertasDoModulo(
+      task,
+      story,
+      module,
+      outras,
+      outras.length > 0
+        ? await this.tasks.findByStoryIds(outras.map((h) => h.id))
+        : [],
+    );
+
     const adrs: DevContextAdr[] = adrActions
       .map((a) => {
         const payload = a.payload as {
@@ -162,6 +237,8 @@ export class GetDevTaskContextUseCase {
       businessRules,
       adrs,
       siblingTasks: tarefasIrmas(task, daHistoria),
+      moduleOpenTasks: doModulo.itens,
+      moduleOpenTasksTotal: doModulo.total,
       primeiraDoModulo: ehPrimeiraTarefaDoModulo(claims, task.id, module),
     };
   }
