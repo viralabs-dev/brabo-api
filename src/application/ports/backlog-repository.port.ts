@@ -80,6 +80,11 @@ export abstract class StoryRepository {
   abstract listProposedReady(projectId: string): Promise<Story[]>;
 }
 
+export interface TarefaPendenteDaExecucao {
+  taskId: string;
+  motivo: 'bloqueada' | 'aguardando_merge' | 'conflito_de_merge';
+}
+
 export abstract class TaskRepository {
   abstract create(input: NewTask): Promise<Task>;
   abstract findById(id: string): Promise<Task | null>;
@@ -125,6 +130,15 @@ export abstract class TaskRepository {
   // não valem para a branch rebaseada). Só a partir de `in_review`; devolve
   // `null` se nada mudou.
   abstract reabrirPorConflitoDeMerge(id: string): Promise<Task | null>;
+  // RN-776 (AT-457): a primeira tarefa da EXECUÇÃO VIGENTE que ainda espera
+  // alguém — bloqueada, com PR em `awaiting_user`, ou devolvida por conflito
+  // de merge (`backlog.task_merge_conflict` nesta sessão) e ainda
+  // `in_progress`. Só responde quando `sessionId` é a sessão de execução
+  // vigente do projeto (`findActiveExecutionSession`): sessão de execução
+  // antiga não segura nada, senão a tarefa a seguraria para sempre.
+  abstract findPendenteDaExecucao(
+    sessionId: string,
+  ): Promise<TarefaPendenteDaExecucao | null>;
   // Quantas tasks `todo` de story `ready` estão disponíveis pro módulo — usado
   // pra sugerir paralelização (≥2 = ramos independentes disponíveis).
   abstract countClaimableByModule(

@@ -141,6 +141,18 @@ describe('UnblockTaskUseCase', () => {
       });
     });
 
+    it('RN-777: tarefa com módulo acorda o dev DESSE módulo', async () => {
+      tasks.unblocked = makeTask({ id: 'task-1', module: 'web' });
+      stories.story = makeStory({ status: 'ready', moduleIds: ['api', 'web'] });
+
+      await useCase.execute(PROJECT, SESSION, 'task-1', USER);
+
+      expect(outbox.calls[0]).toMatchObject({
+        eventType: 'task.became_claimable',
+        payload: { modules: ['web'], cause: 'task_unblocked' },
+      });
+    });
+
     it('story draft: NÃO emite outbox — desbloquear não a torna pegável ainda', async () => {
       stories.story = makeStory({ status: 'draft' });
 
