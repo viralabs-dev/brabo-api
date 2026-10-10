@@ -45,7 +45,10 @@ import type { ActionStatus } from '../../../domain/actions/action-state-machine'
 import type { PermissionPolicy } from '../../../domain/actions/permissions-file';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
 import { Traced } from '../../../infrastructure/observability/traced.decorator';
-import { DEFAULT_TASK_BUDGET_MICROS } from '../execution/activate-execution.use-case';
+import {
+  DEFAULT_TASK_BUDGET_MICROS,
+  MULTIPLICADOR_DA_PRIMEIRA_TAREFA_DO_MODULO,
+} from '../execution/activate-execution.use-case';
 
 export interface ProposeActionInput {
   actionType: string;
@@ -213,6 +216,9 @@ export class ProposeActionUseCase {
             ...(input.payload ?? {}),
             orcamentoPorTarefaMicros:
               project.taskBudgetMicros ?? DEFAULT_TASK_BUDGET_MICROS,
+            // RN-802 (AT-473): a primeira de cada módulo vale o dobro (RN-774).
+            multiplicadorDaPrimeiraDoModulo:
+              MULTIPLICADOR_DA_PRIMEIRA_TAREFA_DO_MODULO,
           }
         : input.payload;
 
