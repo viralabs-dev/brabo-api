@@ -106,6 +106,8 @@ import { DrizzleChunkRepository } from './chunk.repository';
 import { DrizzleRagTelemetryRepository } from './rag-telemetry.repository';
 import { DrizzleContainerRepository } from './container.repository';
 import { DrizzleMirrorStateRepository } from './mirror-state.repository';
+import { SessionContextSummaryRepository } from '../../../application/ports/session-context-summary-repository.port';
+import { DrizzleSessionContextSummaryRepository } from './session-context-summary.repository';
 import { DrizzleContainersOverviewRepository } from './containers-overview.repository';
 import { DrizzleAgentAreaRepository } from './agent-area.repository';
 import { DrizzleInfraArtifactRepository } from './infra-artifact.repository';
@@ -249,6 +251,10 @@ const { db, pool } = createDrizzleClient();
       provide: ContainersOverviewRepository,
       useClass: DrizzleContainersOverviewRepository,
     },
+    {
+      provide: SessionContextSummaryRepository,
+      useClass: DrizzleSessionContextSummaryRepository,
+    },
     { provide: AgentAreaRepository, useClass: DrizzleAgentAreaRepository },
     {
       provide: InfraArtifactRepository,
@@ -328,6 +334,7 @@ const { db, pool } = createDrizzleClient();
     ContainerRepository,
     MirrorStateRepository,
     ContainersOverviewRepository,
+    SessionContextSummaryRepository,
     InfraArtifactRepository,
     PsychologistAnalysisRepository,
     PsychologistHypothesisRepository,
