@@ -631,6 +631,24 @@ describe('DecidirFerramentaDoPassoUseCase — o recorte não vira incapacidade (
     expect(nomes).not.toContain('emit_insight');
   });
 
+  it('Arquiteto recortado pelo Jev sem `assign_story_modules`/`choose_project_image`: as duas continuam no menu (RN-809)', async () => {
+    const s = await setup();
+    const r = await montar(
+      new RoteadorFalso(() => decidiu('create_c4_diagram')),
+    ).decidir(
+      base(s, {
+        agentId: 'arquiteto',
+        tools: ARQUITETO,
+        messages: execucaoCom('arquiteto', 'create_module_map'),
+      }),
+    );
+    const nomes = r.tools?.map((t) => t.name) ?? [];
+    expect(r.toolRouting?.aplicado).toBe(true);
+    expect(nomes).toContain('assign_story_modules');
+    expect(nomes).toContain('choose_project_image');
+    expect(nomes).not.toContain('emit_insight');
+  });
+
   it('o Jev diz responder (sem recorte): nenhum aviso, mensagens intactas', async () => {
     const s = await setup();
     const msgs = execucaoCom('po', 'listar_backlog');
