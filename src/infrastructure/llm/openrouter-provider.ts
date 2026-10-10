@@ -213,17 +213,19 @@ export function campoDeRoteamentoOpenRouter(
 }
 
 /**
- * O teto de raciocínio no formato do OpenRouter: `reasoning: { max_tokens }`
- * (https://openrouter.ai/docs/use-cases/reasoning-tokens). Pela doc, o
- * `max_tokens` da chamada tem de ser MAIOR que o do raciocínio, para sobrar
- * saída — daí a soma em `buildBody` (RN-741). Modelo que só aceita `effort`
- * recebe a conversão do próprio hub. Nunca `exclude`/`enabled: false`: o
- * raciocínio não é desligado em silêncio.
+ * O raciocínio DESLIGADO no formato do OpenRouter: `reasoning: { enabled:
+ * false }` (RN-783). Medido em 10/10 (AT-467): `reasoning: { max_tokens }` é
+ * IGNORADO pelo `anthropic/claude-haiku-5.5` (pedido 1024, gastou 8192 só de
+ * raciocínio) e LIGA raciocínio no `anthropic/claude-haiku-4.5`, que sem o campo
+ * não raciocina (74% das chamadas, 2,8× o custo). Só `enabled: false` segurou:
+ * 0 de 8 respostas cortadas e −42% de custo no Haiku 5.5. Por isso o teto não
+ * é mandado nunca (RN-782) e o "desligado" só vai para os dev agents.
  */
-export function campoDeRaciocinioOpenRouter(
-  orcamento: number,
-): Record<string, unknown> {
-  return { reasoning: { max_tokens: orcamento } };
+export function campoDeRaciocinioDesligadoOpenRouter(): Record<
+  string,
+  unknown
+> {
+  return { reasoning: { enabled: false } };
 }
 
 /**
@@ -298,9 +300,10 @@ export function openrouterConfig(
     parseErrorFrame: parseErrorFrameOpenRouter,
     parseCatalogo: parseCatalogoOpenRouter,
     campoDeRoteamento: campoDeRoteamentoOpenRouter,
-    // Teto de raciocínio para modelo do catálogo com `supports_reasoning`
-    // (RN-741). Forma lida da doc; a prova com credencial é TODO(humano).
-    campoDeRaciocinio: campoDeRaciocinioOpenRouter,
+    // Raciocínio desligado para os dev agents (RN-783) e folga no teto para
+    // modelo com `supports_reasoning` (RN-741/782). Provado com credencial na
+    // medição paga de 10/10 (AT-467).
+    campoDeRaciocinioDesligado: campoDeRaciocinioDesligadoOpenRouter,
     // O custo que o hub cobrou vira o número do metering (ADR 0188, RN-665).
     // Provado pela resposta GRAVADA na suíte de contrato (a forma de
     // `usage.cost` medida nas chamadas reais da medição de idioma, AT-163);
