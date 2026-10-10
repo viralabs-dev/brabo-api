@@ -308,6 +308,8 @@ const DEV_EVENT_TYPES = [
   'dev.blocked',
   'dev.blocked_by_container',
   'dev.error',
+  // RN-797: a task fechou como "já na dev" — desfecho, não espera humana.
+  'dev.task_already_in_dev',
 ];
 
 // `dev.blocked_by_container` é espera por AÇÃO HUMANA, como `dev.idle_tripped`
