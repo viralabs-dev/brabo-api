@@ -326,6 +326,15 @@ export const PISO_DO_MENU: Readonly<Record<string, readonly string[]>> = {
     'listar_adrs_propostas',
     'listar_backlog',
   ],
+  // Agentes de GATE (AT-509, RN-840): a ferramenta de PARECER de cada um, e
+  // só a dele. Sem ela o passo recortado deixava o gate sem veredito — o QA
+  // de Automação rodou a suíte e parou sem `emit_qa_verdict`, com a tarefa
+  // pronta bloqueada por origem `modelo`. Ids e nomes literais, conferidos
+  // contra o engine por teste (`tool-router-piso-dos-gates.spec.ts`).
+  'qa-automacao': ['emit_qa_verdict'],
+  'qa-performance-seguranca': ['emit_perf_seguranca_verdict'],
+  'qa-estrategia': ['emit_plano_de_teste'],
+  appsec: ['emit_threat_model'],
 };
 /**
  * O piso dos dev agents de EXECUÇÃO (`dev-<modulo>`, nunca o `dev-lead`):
