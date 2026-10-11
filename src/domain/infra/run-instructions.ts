@@ -86,6 +86,11 @@ export function recusaDoRun(run: unknown): string | null {
     if (!TIPOS_DE_URL.includes(u.kind as TipoDeUrl)) {
       return `\`run.urls[${i}].kind\` deve ser \`api_docs\` ou \`web\`.`;
     }
+    // RN-863 (AT-524): `api_docs` é a UI Swagger em `/docs`, nunca rota de
+    // negócio — mesma régua de `Engine.Infra.InstrucoesDeExecucao.validar/1`.
+    if (u.kind === 'api_docs' && !u.url.endsWith('/docs')) {
+      return `\`run.urls[${i}].url\` de \`api_docs\` deve terminar em \`/docs\` (a UI Swagger), nunca uma rota de negócio.`;
+    }
   }
   return null;
 }
