@@ -357,13 +357,49 @@ export function pisoDoMenu(agentId: string): readonly string[] {
   return [];
 }
 
+/**
+ * O piso do passo de CORREÇÃO do dev agent (AT-523, RN-857): quando o turno é
+ * a correção pedida por um gate (ou o conflito de merge, RN-715), o passo
+ * precisa de ESCRITA e de `terminal` — o recorte só de leitura levava o dev a
+ * `report_blocked` dizendo que não tinha como editar. Não é piso fixo de todo
+ * passo (RN-759): vale só quando a última mensagem `user` do pedido é a do
+ * parecer que o engine monta (`correction_message/1` em `dev_agent_server.ex`).
+ */
+export const PISO_DA_CORRECAO_DO_DEV: readonly string[] = [
+  'write_file',
+  'terminal',
+];
+/** Os trechos fixos das duas mensagens de correção do engine. */
+export const MARCAS_DA_CORRECAO: readonly string[] = [
+  'pediu correção nesta PR',
+  'foi recusado por conflito com a',
+];
+
+/** Se a última mensagem `user` do passo é o parecer de correção de um gate. */
+export function ehPassoDeCorrecao(
+  mensagens: readonly { role: string; content?: unknown }[],
+): boolean {
+  for (let i = mensagens.length - 1; i >= 0; i--) {
+    const m = mensagens[i];
+    if (m.role !== 'user') continue;
+    const texto = typeof m.content === 'string' ? m.content : '';
+    return MARCAS_DA_CORRECAO.some((marca) => texto.includes(marca));
+  }
+  return false;
+}
+
 /** O menu P3 com o piso do agente somado, na ordem do catálogo. */
 export function menuComPiso(
   catalogo: readonly string[],
   menu: readonly string[],
   agentId: string,
+  mensagens: readonly { role: string; content?: unknown }[] = [],
 ): string[] {
-  const dentro = new Set([...menu, ...pisoDoMenu(agentId)]);
+  const correcao =
+    pisoDoMenu(agentId) === PISO_DOS_DEV_AGENTS && ehPassoDeCorrecao(mensagens)
+      ? PISO_DA_CORRECAO_DO_DEV
+      : [];
+  const dentro = new Set([...menu, ...pisoDoMenu(agentId), ...correcao]);
   return catalogo.filter((n) => dentro.has(n));
 }
 
