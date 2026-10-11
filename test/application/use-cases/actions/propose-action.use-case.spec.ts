@@ -1340,3 +1340,54 @@ describe('ProposeActionUseCase — escopo na pasta real de execução (RN-669)',
     expect(action.resolvedPolicy).toBe('require_approval');
   });
 });
+
+describe('run da PR de infra (RN-852)', () => {
+  const run = {
+    command: 'cp .env.example .env && docker compose up --build',
+    urls: [
+      {
+        label: 'Swagger',
+        url: 'http://localhost:8080/docs',
+        kind: 'api_docs',
+      },
+    ],
+    envExample: true,
+  };
+  const propor = (projectId: string, sessionId: string, r: unknown) =>
+    proposeAction.execute(projectId, sessionId, {
+      actionType: 'open_infra_pr',
+      actor: { kind: 'agent', id: 'infra-lead' },
+      payload: { title: 't', files: [], ...(r ? { run: r } : {}) },
+    });
+
+  it('sem `run`: 400 `run_invalido`, sem proposta', async () => {
+    const { project, session } = await setupSession('maintainer');
+    await expect(propor(project.id, session.id, null)).rejects.toMatchObject({
+      response: { code: 'run_invalido' },
+    });
+    expect(
+      await proposedActionRepo.listByProjectAndType(
+        project.id,
+        'open_infra_pr',
+      ),
+    ).toHaveLength(0);
+  });
+
+  it('URL fora de localhost: 400 nomeando o campo', async () => {
+    const { project, session } = await setupSession('maintainer');
+    const proposta = propor(project.id, session.id, {
+      ...run,
+      urls: [{ label: 'x', url: 'https://example.com', kind: 'web' }],
+    });
+    await expect(proposta).rejects.toBeInstanceOf(BadRequestException);
+    await expect(proposta).rejects.toMatchObject({
+      response: { code: 'run_invalido', message: /run\.urls\[0\]\.url/ },
+    });
+  });
+
+  it('`run` válido: a proposta nasce', async () => {
+    const { project, session } = await setupSession('maintainer');
+    const action = await propor(project.id, session.id, run);
+    expect((action.payload as { run: unknown }).run).toEqual(run);
+  });
+});

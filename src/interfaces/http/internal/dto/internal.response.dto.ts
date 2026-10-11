@@ -1,3 +1,4 @@
+import { DecisaoDeImagemResponseDto } from '../../containers/dto/containers.response.dto';
 import { ContratoDeModuloResponseDto } from './module-contracts.response.dto';
 import type { LLMErrorCode } from '@brabo/shared';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -289,6 +290,16 @@ export class InfraContextResponseDto implements Wire<InfraContext> {
       'anything yet.',
   })
   moduleRouting!: EstadoDoRoteamentoResponseDto;
+
+  @ApiProperty({
+    type: DecisaoDeImagemResponseDto,
+    nullable: true,
+    description:
+      'RN-852: the CURRENT artifact.project_image decision (image, network, ' +
+      'resources) — the FROM of the Dockerfile and the network the Infra ' +
+      'compose respects. null when no image has been decided.',
+  })
+  projectImage!: DecisaoDeImagemResponseDto | null;
 }
 export const _chavesCtxInfra: MesmasChaves<
   InfraContextResponseDto,

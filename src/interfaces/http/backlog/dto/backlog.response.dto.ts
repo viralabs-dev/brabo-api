@@ -16,6 +16,7 @@ import type {
 } from '../../../../domain/backlog/coverage';
 import type { ModuleMap } from '../../../../domain/architecture/module-map.entity';
 import type { ModuleNode } from '../../../../domain/architecture/module-graph';
+import type { InstrucoesVigentes } from '../../../../application/use-cases/execution/get-run-instructions.use-case';
 import { RecursosDoContainerResponseDto } from '../../containers/dto/containers.response.dto';
 import type {
   AdrRef,
@@ -637,4 +638,52 @@ export class InfraArtifactResponseDto implements Wire<InfraArtifact> {
 export const _chavesInfraArtifact: MesmasChaves<
   InfraArtifactResponseDto,
   InfraArtifact
+> = true;
+
+// ------------------------------------------------------- run instructions
+
+/** RN-852: uma URL que o compose da Infra abre na máquina do usuário. */
+export class UrlDeExecucaoResponseDto {
+  @ApiProperty({ example: 'Swagger', maxLength: 60 })
+  label!: string;
+
+  @ApiProperty({ example: 'http://localhost:8080/docs' })
+  url!: string;
+
+  @ApiProperty({ enum: ['api_docs', 'web'], example: 'api_docs' })
+  kind!: 'api_docs' | 'web';
+}
+
+/**
+ * RN-852 (ADR 0213): o `artifact.run_instructions` vigente. DECLARADO pela
+ * Infra na PR dela, nunca verificado na máquina de quem lê (RN-468).
+ */
+export class RunInstructionsResponseDto implements Wire<InstrucoesVigentes> {
+  @ApiProperty({ example: 'cp .env.example .env && docker compose up --build' })
+  command!: string;
+
+  @ApiProperty({ type: [UrlDeExecucaoResponseDto] })
+  urls!: UrlDeExecucaoResponseDto[];
+
+  @ApiProperty({
+    example: true,
+    description: 'The PR commits a `.env.example` to copy before running.',
+  })
+  envExample!: boolean;
+
+  @ApiProperty({ example: 'http://localhost:3000/git/acme/pulls/3' })
+  prUrl!: string;
+
+  @ApiProperty({ example: 1 })
+  version!: number;
+
+  @ApiProperty({ example: '01JC4Z0000EVENTORUNINSTRUC01' })
+  eventId!: string;
+
+  @ApiProperty({ example: '2026-10-11T12:00:00.000Z' })
+  declaredAt!: string;
+}
+export const _chavesRunInstructions: MesmasChaves<
+  RunInstructionsResponseDto,
+  InstrucoesVigentes
 > = true;
