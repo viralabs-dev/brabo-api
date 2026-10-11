@@ -80,4 +80,17 @@ describe('pr-gate-state-machine', () => {
       nextGateStatus('awaiting_user', 'secops', 'approved', 0, 3),
     ).toThrow(InvalidGateActionError);
   });
+
+  // RN-860 (ADR 0214): esperar o usuário não consome ciclo de correção.
+  it('needs_user_decision mantém o gate e NÃO incrementa o contador, nem no teto', () => {
+    expect(
+      nextGateStatus('awaiting_qa', 'qa', 'needs_user_decision', 3, 3),
+    ).toEqual({ status: 'awaiting_qa', correctionCount: 3 });
+  });
+
+  it('needs_user_decision de gate que não é o dono do status segue inválido', () => {
+    expect(() =>
+      nextGateStatus('awaiting_secops', 'qa', 'needs_user_decision', 0, 3),
+    ).toThrow(InvalidGateActionError);
+  });
 });

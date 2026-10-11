@@ -5,7 +5,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CompleteStoryUseCase } from '../../../../src/application/use-cases/backlog/complete-story.use-case';
-import type { StoryRepository } from '../../../../src/application/ports/backlog-repository.port';
+import type {
+  StoryRepository,
+  TaskRepository,
+} from '../../../../src/application/ports/backlog-repository.port';
+import type { PerguntasEmAbertoUseCase } from '../../../../src/application/use-cases/backlog/perguntas-em-aberto.use-case';
 import type { SessionEventRepository } from '../../../../src/application/ports/session-event-repository.port';
 import type { ProjectRepository } from '../../../../src/application/ports/project-repository.port';
 import type { ModuleMapRepository } from '../../../../src/application/ports/module-map-repository.port';
@@ -88,6 +92,13 @@ describe('CompleteStoryUseCase (RN-720)', () => {
       {
         findCurrent: () => Promise.resolve(null),
       } as unknown as ModuleMapRepository,
+      {
+        findByStoryIds: () => Promise.resolve([]),
+      } as unknown as TaskRepository,
+      {
+        foiRespondida: (_p: string, q: string) =>
+          Promise.resolve(q === 'q-respondida'),
+      } as unknown as PerguntasEmAbertoUseCase,
     );
   });
 
@@ -145,5 +156,30 @@ describe('CompleteStoryUseCase (RN-720)', () => {
     await expect(
       useCase.execute(PROJECT, SESSION, completa),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  // RN-859 (ADR 0214): o PO corrige RF/DoR de história ready pela resposta.
+  it('história ready com pergunta respondida tem RF/DoR corrigidos e segue ready', async () => {
+    stories.story = makeStory({ status: 'ready' });
+    const story = await useCase.execute(PROJECT, SESSION, {
+      storyId: 'story-1',
+      dor: ['404 para código inexistente'],
+      questionId: 'q-respondida',
+    });
+    expect(story.status).toBe('ready');
+    expect(story.dor).toEqual(['404 para código inexistente']);
+    expect(eventos).toEqual(['backlog.story_completed']);
+  });
+
+  it('história ready com pergunta ainda aberta é recusada', async () => {
+    stories.story = makeStory({ status: 'ready' });
+    await expect(
+      useCase.execute(PROJECT, SESSION, {
+        storyId: 'story-1',
+        dor: ['x'],
+        questionId: 'q-aberta',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(stories.story?.dor).toEqual([]);
   });
 });

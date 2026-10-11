@@ -3,6 +3,7 @@ import { BacklogUseCasesModule } from '../../../application/use-cases/backlog/ba
 import { ArchitectureUseCasesModule } from '../../../application/use-cases/architecture/architecture-use-cases.module';
 import { ExecutionUseCasesModule } from '../../../application/use-cases/execution/execution-use-cases.module';
 import { BacklogController } from './backlog.controller';
+import { OpenQuestionsController } from './open-questions.controller';
 
 @Module({
   imports: [
@@ -10,6 +11,6 @@ import { BacklogController } from './backlog.controller';
     ArchitectureUseCasesModule,
     ExecutionUseCasesModule,
   ],
-  controllers: [BacklogController],
+  controllers: [BacklogController, OpenQuestionsController],
 })
 export class BacklogHttpModule {}

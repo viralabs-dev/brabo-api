@@ -5,6 +5,8 @@ import {
   tarefasIrmas,
   tarefasAbertasDoModulo,
   moduloDoContrato,
+  decisoesDaTarefa,
+  TETO_DE_DECISOES_NO_CONTEXTO,
 } from '../../../../src/application/use-cases/execution/get-dev-task-context.use-case';
 import type {
   StoryRepository,
@@ -115,6 +117,7 @@ function buildUseCase(overrides?: {
   historias?: Story[];
   tarefasDeOutras?: Task[];
   contratos?: SessionEvent[];
+  decisoes?: Array<{ id: string; payload: unknown; createdAt: Date }>;
 }) {
   const tasks = {
     findById: (id: string) =>
@@ -156,7 +159,9 @@ function buildUseCase(overrides?: {
       Promise.resolve(
         tipo === 'artifact.module_contracts'
           ? (overrides?.contratos ?? [])
-          : (overrides?.claims ?? []),
+          : tipo === 'artifact.decision_record'
+            ? (overrides?.decisoes ?? [])
+            : (overrides?.claims ?? []),
       ),
   } as unknown as SessionEventRepository;
 
@@ -414,5 +419,56 @@ describe('GetDevTaskContextUseCase', () => {
     await expect(useCase.execute('proj-1', 'task-1')).rejects.toThrow(
       /não encontrada/,
     );
+  });
+
+  // RN-859 (AT-521): a decisão do usuário chega ao dev e ao QA.
+  describe('RN-859: decisões ligadas por afeta', () => {
+    const decisao = (
+      id: string,
+      afeta: Record<string, string[]>,
+      quando: number,
+      choice = '404',
+    ) => ({
+      id,
+      payload: {
+        context: 'Código inexistente?',
+        choice,
+        questionId: `q-${id}`,
+        afeta,
+      },
+      createdAt: new Date(quando),
+    });
+
+    it('devolve só as que afetam a tarefa, a história ou uma regra dela, mais recentes primeiro', async () => {
+      const ctx = await buildUseCase({
+        decisoes: [
+          decisao('d1', { tarefas: ['task-1'] }, 1),
+          decisao('d2', { historias: ['outra'] }, 2),
+          decisao('d3', { regras: ['rule-1'] }, 3),
+        ],
+      }).execute('proj-1', 'task-1');
+      expect(ctx.decisoes.map((d) => d.id)).toEqual(['d3', 'd1']);
+      expect(ctx.decisoes[0]).toMatchObject({
+        questionId: 'q-d3',
+        pergunta: 'Código inexistente?',
+        decisao: '404',
+      });
+    });
+
+    it('decisão sem afeta não entra; teto de 10 e texto cortado em 1 500', () => {
+      const muitas = Array.from({ length: 12 }, (_, i) =>
+        decisao(`d${i}`, { tarefas: ['t'] }, i, 'x'.repeat(2000)),
+      );
+      const r = decisoesDaTarefa(
+        [
+          ...muitas,
+          { id: 'sem', payload: { choice: 'y' }, createdAt: new Date(99) },
+        ],
+        { regras: [], historias: [], tarefas: ['t'] },
+      );
+      expect(r).toHaveLength(TETO_DE_DECISOES_NO_CONTEXTO);
+      expect(r[0].decisao).toHaveLength(1500);
+      expect(r.some((d) => d.id === 'sem')).toBe(false);
+    });
   });
 });

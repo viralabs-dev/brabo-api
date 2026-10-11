@@ -100,6 +100,16 @@ export class CompleteStoryInternalDto {
   @IsOptional()
   @IsArray()
   businessRuleIds?: string[];
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'RN-859 (ADR 0214): an open question the user ALREADY answered — only ' +
+      'then a `ready` story (no task in execution) can be corrected.',
+  })
+  @IsOptional()
+  @IsUUID()
+  questionId?: string;
 }
 
 // Ferramenta update_story do PO (RN-727): corrige título e/ou descrição de
@@ -119,6 +129,16 @@ export class UpdateStoryInternalDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'RN-859 (ADR 0214): an open question the user ALREADY answered — only ' +
+      'then a `ready` story (no task in execution) can be corrected.',
+  })
+  @IsOptional()
+  @IsUUID()
+  questionId?: string;
 }
 
 // Ferramenta archive_story do PO (RN-727): arquiva uma história draft sem

@@ -4,7 +4,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { StoryRepository } from '../../ports/backlog-repository.port';
+import {
+  StoryRepository,
+  TaskRepository,
+} from '../../ports/backlog-repository.port';
+import { PerguntasEmAbertoUseCase } from './perguntas-em-aberto.use-case';
+import { recusaDeCorrecaoDeHistoria } from '../../../domain/backlog/correcao-de-historia';
 import { SessionEventRepository } from '../../ports/session-event-repository.port';
 import { ModuleMapRepository } from '../../ports/module-map-repository.port';
 import { ProjectRepository } from '../../ports/project-repository.port';
@@ -20,6 +25,11 @@ export interface CompleteStoryInput {
   dod?: string[];
   dor?: string[];
   businessRuleIds?: string[];
+  /**
+   * RN-859 (ADR 0214): a pergunta em aberto, JÁ RESPONDIDA, que motiva
+   * corrigir RF/DoR de uma história `ready` (sem tarefa em execução).
+   */
+  questionId?: string;
 }
 
 /**
@@ -46,6 +56,8 @@ export class CompleteStoryUseCase {
     private readonly appendEvent: AppendSessionEventUseCase,
     private readonly projects: ProjectRepository,
     private readonly moduleMaps: ModuleMapRepository,
+    private readonly tasks: TaskRepository,
+    private readonly perguntas: PerguntasEmAbertoUseCase,
   ) {}
 
   async execute(
@@ -65,7 +77,22 @@ export class CompleteStoryUseCase {
         reason: 'historia_arquivada',
       });
     }
-    if (atual.status !== 'draft') {
+    // RN-859: história `ready` só se corrige citando uma pergunta que o
+    // usuário já respondeu — a MESMA régua de `update_story`.
+    const corrigindoReady = atual.status === 'ready' && !!input.questionId;
+    if (corrigindoReady) {
+      const recusa = recusaDeCorrecaoDeHistoria(
+        atual,
+        await this.tasks.findByStoryIds([atual.id]),
+        {
+          respostaDoUsuario: await this.perguntas.foiRespondida(
+            projectId,
+            input.questionId!,
+          ),
+        },
+      );
+      if (recusa) throw new ConflictException(recusa);
+    } else if (atual.status !== 'draft') {
       throw new ConflictException(
         `A história "${atual.title}" está ${atual.status} — só história draft é completada`,
       );
@@ -94,6 +121,22 @@ export class CompleteStoryUseCase {
       dor: ou(input.dor, atual.dor),
       businessRuleIds: [...atual.businessRuleIds, ...novas],
     });
+
+    if (corrigindoReady) {
+      // Já `ready`: não há o que promover; o evento diz o que motivou.
+      await this.appendEvent.execute(projectId, sessionId, {
+        type: 'backlog.story_completed',
+        actor: { kind: 'agent', id: 'po' },
+        payload: {
+          storyId: story.id,
+          title: story.title,
+          status: story.status,
+          businessRuleIds: story.businessRuleIds,
+          questionId: input.questionId,
+        },
+      });
+      return story;
+    }
 
     const project = await this.projects.findById(projectId);
     const modo = project?.storyPromotion ?? 'manual';

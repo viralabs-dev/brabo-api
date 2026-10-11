@@ -27,6 +27,7 @@ import type {
   DevContextAdr,
   DevContextBusinessRule,
   DevTaskContext,
+  DevContextDecisao,
   DevContextSiblingTask,
   DevContextModuleOpenTask,
 } from '../../../../application/use-cases/execution/get-dev-task-context.use-case';
@@ -81,6 +82,8 @@ import type {
  */
 
 const GATE_NEXT_ACTIONS = ['correct', 'run_secops', 'done', 'blocked'] as const;
+// RN-860: só o gate de PR de tarefa espera o usuário.
+const TASK_GATE_NEXT_ACTIONS = [...GATE_NEXT_ACTIONS, 'await_user'] as const;
 
 // ---------------------------------------------------------------- dev context
 
@@ -214,6 +217,24 @@ export class DevTaskContextResponseDto implements Wire<DevTaskContext> {
       '`module`.',
   })
   primeiraDoModulo!: boolean;
+
+  @ApiProperty({
+    type: () => [DevContextDecisaoResponseDto],
+    description:
+      "RN-859: the user's decisions tied to this task, its story or its rules " +
+      'by `afeta` — they win over RF/DoR on conflict. Newest first, at most 10, ' +
+      'each text cut at 1,500 characters.',
+  })
+  decisoes!: DevContextDecisaoResponseDto[];
+}
+
+export class DevContextDecisaoResponseDto implements Wire<DevContextDecisao> {
+  @ApiProperty() id!: string;
+  @ApiProperty({ type: String, nullable: true }) questionId!: string | null;
+  @ApiProperty({ description: 'The question that was decided.' })
+  pergunta!: string;
+  @ApiProperty({ description: "The user's decision." }) decisao!: string;
+  @ApiProperty({ format: 'date-time' }) decididaEm!: string;
 }
 export const _chavesCtxDev: MesmasChaves<
   DevTaskContextResponseDto,
@@ -779,17 +800,24 @@ export class LlmTurnStreamEventResponseDto {
 
 export class GateVerdictResponseDto implements Wire<RecordGateVerdictResult> {
   @ApiProperty({
-    enum: GATE_NEXT_ACTIONS,
+    enum: TASK_GATE_NEXT_ACTIONS,
     example: 'run_secops',
     description:
       'What happens next. `correct` returns to dev; `run_secops` advances ' +
-      'the gate; `done` releases it to the user; `blocked` means the ' +
+      'the gate; `done` releases it to the user; `await_user` parks the ' +
+      'cycle until the open question is answered (RN-860); `blocked` means the ' +
       'correction cap ran out and only a human can unblock it.',
   })
   nextAction!: Wire<RecordGateVerdictResult>['nextAction'];
 
   @ApiProperty({ type: TaskResponseDto })
   task!: TaskResponseDto;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'With `await_user`: the open question the cycle waits on.',
+  })
+  openQuestionId?: string;
 }
 export const _chavesGate: MesmasChaves<
   GateVerdictResponseDto,

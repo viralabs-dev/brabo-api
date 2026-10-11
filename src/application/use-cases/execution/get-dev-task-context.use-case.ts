@@ -7,6 +7,10 @@ import { SessionEventRepository } from '../../ports/session-event-repository.por
 import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
 import type { Story, Task } from '../../../domain/backlog/backlog.entity';
 import type { ContratoDeModulo } from '../../../domain/architecture/module-contracts';
+import {
+  afetaAlgum,
+  type AfetaDaPergunta,
+} from '../../../domain/open-questions/pergunta-em-aberto';
 import { GetModuleContractsUseCase } from '../architecture/get-module-contracts.use-case';
 
 export interface DevContextBusinessRule {
@@ -78,6 +82,64 @@ export interface DevTaskContext {
   // AT-433 (RN-774): esta é a PRIMEIRA tarefa do módulo — o engine dá a ela
   // o teto de 2× (`Engine.Dev.TetoDaTarefa`). `false` sem `module`.
   primeiraDoModulo: boolean;
+  /**
+   * RN-859 (AT-521): as decisões do usuário ligadas a esta tarefa, à história
+   * ou às regras dela por `afeta` — vencem RF/DoR quando conflitam. Mais
+   * recentes primeiro, teto de 10, cada uma cortada em 1 500 caracteres.
+   */
+  decisoes: DevContextDecisao[];
+}
+
+export interface DevContextDecisao {
+  id: string;
+  questionId: string | null;
+  pergunta: string;
+  decisao: string;
+  decididaEm: string;
+}
+
+export const TETO_DE_DECISOES_NO_CONTEXTO = 10;
+export const TETO_DO_TEXTO_DA_DECISAO = 1500;
+
+function cortar(texto: string, teto: number): string {
+  return texto.length > teto ? `${texto.slice(0, teto - 1)}…` : texto;
+}
+
+/**
+ * As decisões (`artifact.decision_record`) cujo `afeta` toca a tarefa, a
+ * história ou uma regra da história (RN-859). Pura.
+ */
+export function decisoesDaTarefa(
+  eventos: ReadonlyArray<{
+    id: string;
+    payload: unknown;
+    createdAt: Date;
+  }>,
+  alvo: { regras: string[]; historias: string[]; tarefas: string[] },
+): DevContextDecisao[] {
+  return eventos
+    .filter((e) =>
+      afetaAlgum(
+        (e.payload as { afeta?: Partial<AfetaDaPergunta> })?.afeta,
+        alvo,
+      ),
+    )
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, TETO_DE_DECISOES_NO_CONTEXTO)
+    .map((e) => {
+      const p = e.payload as {
+        context?: string;
+        choice?: string;
+        questionId?: string;
+      };
+      return {
+        id: e.id,
+        questionId: p.questionId ?? null,
+        pergunta: cortar(p.context ?? '', TETO_DO_TEXTO_DA_DECISAO),
+        decisao: cortar(p.choice ?? '', TETO_DO_TEXTO_DA_DECISAO),
+        decididaEm: e.createdAt.toISOString(),
+      };
+    });
 }
 
 /**
@@ -211,17 +273,22 @@ export class GetDevTaskContextUseCase {
       );
     }
 
-    const [businessRules, adrActions, daHistoria, claims] = await Promise.all([
-      this.resolveBusinessRules(story.businessRuleIds),
-      this.proposedActions.listByProjectAndType(projectId, 'open_adr_pr'),
-      this.tasks.findByStoryIds([story.id]),
-      module
-        ? this.sessionEvents.listByTypeForProject(
-            projectId,
-            'backlog.task_claimed',
-          )
-        : Promise.resolve([]),
-    ]);
+    const [businessRules, adrActions, daHistoria, claims, decisoes] =
+      await Promise.all([
+        this.resolveBusinessRules(story.businessRuleIds),
+        this.proposedActions.listByProjectAndType(projectId, 'open_adr_pr'),
+        this.tasks.findByStoryIds([story.id]),
+        module
+          ? this.sessionEvents.listByTypeForProject(
+              projectId,
+              'backlog.task_claimed',
+            )
+          : Promise.resolve([]),
+        this.sessionEvents.listByTypeForProject(
+          projectId,
+          'artifact.decision_record',
+        ),
+      ]);
 
     const modulo = moduloDoContrato(task, story, module);
     const contratos = modulo
@@ -274,6 +341,11 @@ export class GetDevTaskContextUseCase {
       moduleOpenTasksTotal: doModulo.total,
       moduleContract,
       primeiraDoModulo: ehPrimeiraTarefaDoModulo(claims, task.id, module),
+      decisoes: decisoesDaTarefa(decisoes, {
+        regras: story.businessRuleIds,
+        historias: [story.id],
+        tarefas: [task.id],
+      }),
     };
   }
 
