@@ -14,6 +14,7 @@ import { DrizzleSessionRepository } from '../../../../src/infrastructure/persist
 import { DrizzleSessionEventRepository } from '../../../../src/infrastructure/persistence/drizzle/session-event.repository';
 import { DrizzleOutboxRepository } from '../../../../src/infrastructure/persistence/drizzle/outbox.repository';
 import { runComoEngine } from '../../../../src/infrastructure/persistence/drizzle/drizzle-context';
+import { runComoEfeitoDeAcao } from '../../../../src/application/efeito-de-acao';
 import { HttpSessionChannelNotifier } from '../../../../src/infrastructure/http-clients/session-channel-notifier';
 import { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
 
@@ -190,6 +191,25 @@ describe('aviso ao canal da sessão (escrita da api)', () => {
     await esperarAvisos(1, 200);
 
     expect(avisos).toHaveLength(0);
+  });
+
+  it('AT-516: efeito de ação executada dentro de /internal avisa o canal, uma vez', async () => {
+    const { project, session, user } = await setupSession();
+
+    await runComoEngine(() =>
+      runComoEfeitoDeAcao(() =>
+        appendSessionEvent.execute(project.id, session.id, {
+          type: 'infra.pr_opened',
+          actor: { kind: 'agent', id: user.id },
+          payload: {},
+        }),
+      ),
+    );
+    await esperarAvisos(1);
+    await esperarAvisos(2, 200);
+
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0].corpo.type).toBe('infra.pr_opened');
   });
 
   it('engine fora do ar: a escrita segue confirmada e nada estoura', async () => {

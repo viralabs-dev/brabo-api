@@ -8,6 +8,8 @@ import {
   veioDoEngine,
 } from '../persistence/drizzle/drizzle-context';
 
+import { ehEfeitoDeAcao } from '../../application/efeito-de-acao';
+
 const TETO_DA_CHAMADA_MS = 2000;
 
 /**
@@ -66,7 +68,9 @@ export class HttpSessionChannelNotifier extends SessionChannelNotifier {
     type: string,
     actorId: string | undefined,
   ): void {
-    if (veioDoEngine()) return;
+    // AT-516 (RN-848): dentro de `/internal/*` só o evento que o engine pediu
+    // fica sem aviso; o efeito de ação executada pela api avisa.
+    if (veioDoEngine() && !ehEfeitoDeAcao()) return;
     const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
     const url = urlDoAvisoDeEvento(engineUrl, sessionId);
     if (url === null) return;

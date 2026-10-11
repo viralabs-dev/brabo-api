@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { runComoEfeitoDeAcao } from '../../efeito-de-acao';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { SessionRepository } from '../../ports/session-repository.port';
 import { ProjectRepository } from '../../ports/project-repository.port';
@@ -292,6 +293,26 @@ export class ProposeActionUseCase {
       return created;
     });
 
+    // AT-516 (RN-848): o que a execução grava é EFEITO local da ação, e o
+    // canal da sessão é avisado mesmo dentro do pedido interno do engine.
+    return runComoEfeitoDeAcao(() =>
+      this.executarSeAutoAprovada(
+        projectId,
+        sessionId,
+        action,
+        status,
+        actionType,
+      ),
+    );
+  }
+
+  private async executarSeAutoAprovada(
+    projectId: string,
+    sessionId: string,
+    action: ProposedAction,
+    status: ProposedAction['status'],
+    actionType: ActionType,
+  ): Promise<ProposedAction> {
     if (status === 'auto_approved' && actionType === 'terminal') {
       return this.executeTerminalAction.execute(projectId, sessionId, action);
     }
