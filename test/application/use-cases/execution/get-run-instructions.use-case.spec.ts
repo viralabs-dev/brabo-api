@@ -62,7 +62,13 @@ describe('recusaDoRun (RN-852)', () => {
     [
       {
         ...run,
-        urls: [{ label: 'API', url: 'http://localhost:8080/links', kind: 'api_docs' }],
+        urls: [
+          {
+            label: 'API',
+            url: 'http://localhost:8080/links',
+            kind: 'api_docs',
+          },
+        ],
       },
       /\/docs/,
     ],
@@ -75,7 +81,13 @@ describe('recusaDoRun (RN-852)', () => {
     expect(
       recusaDoRun({
         ...run,
-        urls: [{ label: 'Swagger', url: 'http://localhost:8080/docs', kind: 'api_docs' }],
+        urls: [
+          {
+            label: 'Swagger',
+            url: 'http://localhost:8080/docs',
+            kind: 'api_docs',
+          },
+        ],
       }),
     ).toBeNull();
   });
