@@ -51,6 +51,7 @@ import { RouteModulesToInfraUseCase } from '../../../application/use-cases/archi
 import { DeclareModuleContractsUseCase } from '../../../application/use-cases/architecture/declare-module-contracts.use-case';
 import { DecidirImagemDoProjetoUseCase } from '../../../application/use-cases/containers/decidir-imagem-do-projeto.use-case';
 import { ClaimNextTaskUseCase } from '../../../application/use-cases/execution/claim-next-task.use-case';
+import { TarefaEmCursoDeDevResponseDto } from './dto/tarefa-em-curso-de-dev.response.dto';
 import { ListTarefasEmCursoDeDevUseCase } from '../../../application/use-cases/execution/list-tarefas-em-curso-de-dev.use-case';
 import { MarkTaskUseCase } from '../../../application/use-cases/execution/mark-task.use-case';
 import { GetDevTaskContextUseCase } from '../../../application/use-cases/execution/get-dev-task-context.use-case';
@@ -868,6 +869,7 @@ export class InternalSessionsController {
       'execution session. Used by the engine when stopping an execution, to ' +
       'block the ones no live dev agent holds.',
   })
+  @ApiOkResponse({ type: TarefaEmCursoDeDevResponseDto, isArray: true })
   tarefasEmCursoDeDev(@Param('sessionId') sessionId: string) {
     return this.listTarefasEmCursoDeDev.execute(sessionId);
   }

@@ -249,6 +249,7 @@ export class DecidirFerramentaDoPassoUseCase {
         nomes,
         menuP3(nomes, r.resposta.escolha, anterior),
         plano.agentId,
+        input.messages,
       );
       const efetivas = plano.tools.filter((t) => menu.includes(t.name));
       const aplicado = efetivas.length < plano.tools.length;
