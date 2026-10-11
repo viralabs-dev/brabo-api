@@ -353,6 +353,9 @@ export class LocalGitProvider implements GitProviderContract {
       // AT-377 (RN-704): merge DE VERDADE no repositório bare. Antes era
       // `update-ref` puro, que com o alvo divergido descartava o que já
       // estava nele (o merge anterior sumia, sem erro).
+      const baseSha = (
+        await execGit(repoDir, ['merge-base', targetSha, sourceSha])
+      ).stdout.trim();
       const newSha = await mergeShas(repoDir, record, targetSha, sourceSha);
       // `update-ref` com o valor antigo esperado: se outro merge moveu o
       // alvo no meio, falha em vez de sobrescrever.
@@ -365,6 +368,11 @@ export class LocalGitProvider implements GitProviderContract {
         ]);
       }
       record.state = 'merged';
+      // AT-518 (RN-847): depois do merge, `target...source` é vazio (a merge
+      // base passa a ser a própria ponta da branch). Os dois SHAs gravados
+      // aqui são o que o diff da PR mergeada passa a ler.
+      record.mergedBaseSha = baseSha;
+      record.mergedHeadSha = sourceSha;
       await writePrStore(repoDir, store);
     }
 
@@ -455,7 +463,7 @@ export class LocalGitProvider implements GitProviderContract {
     // `a...b` é o diff contra a MERGE BASE, não contra a ponta do target —
     // é o que a plataforma mostra numa PR. Contra a ponta, commits que
     // entraram no target depois da branch apareceriam invertidos no diff.
-    const range = `${record.targetBranch}...${record.sourceBranch}`;
+    const range = await rangeDoDiff(repoDir, record);
 
     const numstat = await execGit(repoDir, [
       'diff',
@@ -712,6 +720,9 @@ interface StoredPr {
   sourceBranch: string;
   targetBranch: string;
   state: 'open' | 'merged' | 'closed';
+  /** Merge base e ponta da origem no instante do merge (AT-518, RN-847). */
+  mergedBaseSha?: string;
+  mergedHeadSha?: string;
   comments?: string[];
   author?: string;
 }
@@ -839,6 +850,35 @@ async function isAncestor(
     if ((error as { code?: number }).code === 1) return false;
     throw error;
   }
+}
+
+/**
+ * RN-847 (AT-518) — o intervalo do diff de uma PR. Aberta: `target...source`.
+ * Mergeada: os SHAs gravados no merge; PR mergeada antes deles existirem cai
+ * no commit de merge do alvo cujo 2º pai é a ponta da origem (`p1...source`).
+ * Mergeada por fast-forward sem SHAs gravados não tem como ser reconstruída e
+ * segue com o intervalo de sempre (vazio).
+ */
+async function rangeDoDiff(repoDir: string, record: StoredPr): Promise<string> {
+  const aberto = `${record.targetBranch}...${record.sourceBranch}`;
+  if (record.state !== 'merged') return aberto;
+  if (record.mergedBaseSha && record.mergedHeadSha) {
+    return `${record.mergedBaseSha}...${record.mergedHeadSha}`;
+  }
+  const ponta = await resolveRef(repoDir, record.sourceBranch);
+  if (ponta === null) return aberto;
+  const { stdout } = await execGit(repoDir, [
+    'log',
+    '--first-parent',
+    '--merges',
+    '--format=%P',
+    record.targetBranch,
+  ]);
+  for (const linha of stdout.split('\n')) {
+    const [p1, p2] = linha.trim().split(' ');
+    if (p2 === ponta) return `${p1}...${ponta}`;
+  }
+  return aberto;
 }
 
 async function execGit(repoDir: string, args: string[]) {
