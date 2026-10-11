@@ -35,8 +35,10 @@ import {
   CoverageReportResponseDto,
   EpicComHistoriasResponseDto,
   InfraArtifactResponseDto,
+  RunInstructionsResponseDto,
   StoryResponseDto,
 } from './dto/backlog.response.dto';
+import { GetRunInstructionsUseCase } from '../../../application/use-cases/execution/get-run-instructions.use-case';
 import {
   PromoteStoriesDto,
   PromoteStoriesResponseDto,
@@ -70,6 +72,7 @@ export class BacklogController {
     private readonly promoteStories: PromoteStoriesUseCase,
     private readonly returnStory: ReturnStoryUseCase,
     private readonly corrigirHistoria: CorrigirHistoriaUseCase,
+    private readonly getRunInstructions: GetRunInstructionsUseCase,
   ) {}
 
   @Get('backlog')
@@ -125,6 +128,20 @@ export class BacklogController {
   @ApiOkResponse({ type: [InfraArtifactResponseDto] })
   infraArtifacts(@Param('projectId') projectId: string) {
     return this.listInfraArtifacts.execute(projectId);
+  }
+
+  @Get('run-instructions')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Returns how to run the deliverable on your machine',
+    description:
+      'RN-852 (ADR 0213): the current `artifact.run_instructions`, emitted ' +
+      'when an `open_infra_pr` with `run` executes. DECLARED by the Infra ' +
+      "agent, never verified on the reader's machine. `null` when there is none.",
+  })
+  @ApiOkResponse({ type: RunInstructionsResponseDto })
+  runInstructions(@Param('projectId') projectId: string) {
+    return this.getRunInstructions.execute(projectId);
   }
 
   @Post('stories/promote')

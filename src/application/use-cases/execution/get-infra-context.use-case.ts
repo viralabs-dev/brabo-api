@@ -6,6 +6,8 @@ import { ProvisionedRepositoryRepository } from '../../ports/provisioned-reposit
 import type { ModuleMap } from '../../../domain/architecture/module-map.entity';
 import { GetModuleRoutingUseCase } from '../architecture/get-module-routing.use-case';
 import type { EstadoDoRoteamento } from '../../../domain/architecture/module-routing';
+import { ObterContainerDoProjetoUseCase } from '../containers/obter-container-do-projeto.use-case';
+import type { DecisaoDeImagem } from '../../../domain/containers/project-container';
 
 export interface InfraContextAdr {
   title: string;
@@ -27,6 +29,10 @@ export interface InfraContext {
   // imagem que vai propor subir de verdade (`container_start`, ADR 0130).
   // `SEM_ROTEAMENTO` quando o Arquiteto ainda não roteou nada.
   moduleRouting: EstadoDoRoteamento;
+  // RN-852 (AT-517): a decisão VIGENTE de `artifact.project_image` (imagem,
+  // rede, recursos) — o `FROM` do Dockerfile e a rede que o compose da Infra
+  // respeita. `null` sem decisão.
+  projectImage: DecisaoDeImagem | null;
 }
 
 /**
@@ -46,15 +52,18 @@ export class GetInfraContextUseCase {
     private readonly proposedActions: ProposedActionRepository,
     private readonly provisionedRepositories: ProvisionedRepositoryRepository,
     private readonly getModuleRouting: GetModuleRoutingUseCase,
+    private readonly obterContainer: ObterContainerDoProjetoUseCase,
   ) {}
 
   async execute(projectId: string): Promise<InfraContext> {
-    const [moduleMap, adrActions, repo, moduleRouting] = await Promise.all([
-      this.moduleMaps.findCurrent(projectId),
-      this.proposedActions.listByProjectAndType(projectId, 'open_adr_pr'),
-      this.provisionedRepositories.findByProjectId(projectId),
-      this.getModuleRouting.execute(projectId),
-    ]);
+    const [moduleMap, adrActions, repo, moduleRouting, imagem] =
+      await Promise.all([
+        this.moduleMaps.findCurrent(projectId),
+        this.proposedActions.listByProjectAndType(projectId, 'open_adr_pr'),
+        this.provisionedRepositories.findByProjectId(projectId),
+        this.getModuleRouting.execute(projectId),
+        this.obterContainer.execute(projectId),
+      ]);
 
     const adrs: InfraContextAdr[] = adrActions
       .map((a) => {
@@ -77,6 +86,7 @@ export class GetInfraContextUseCase {
       adrs,
       gitProvider: repo?.provider ?? null,
       moduleRouting,
+      projectImage: imagem.status === 'decidido' ? imagem.decisao : null,
     };
   }
 }

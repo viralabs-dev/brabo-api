@@ -6,6 +6,14 @@ import {
 import { GitBranchAlreadyExistsError } from '../../../../src/domain/git/git-errors';
 import type { ProposedAction } from '../../../../src/domain/actions/proposed-action.entity';
 
+const RUN = {
+  command: 'cp .env.example .env && docker compose up --build',
+  urls: [
+    { label: 'Swagger', url: 'http://localhost:8080/docs', kind: 'api_docs' },
+  ],
+  envExample: true,
+};
+
 function makeAction(): ProposedAction {
   return {
     id: 'pa-1',
@@ -16,6 +24,7 @@ function makeAction(): ProposedAction {
     payload: {
       title: 'infra setup',
       files: [{ path: 'api/Dockerfile', content: 'FROM node:24-alpine' }],
+      run: RUN,
     },
     status: 'auto_approved',
     resolvedPolicy: 'auto_approve',
@@ -33,6 +42,7 @@ function build(provider: {
   openPullRequest: ReturnType<typeof vi.fn>;
 }) {
   const gravados: { status: string; executionResult: unknown }[] = [];
+  const eventos: { type: string; payload: unknown }[] = [];
 
   const useCase = new ExecuteInfraPrUseCase(
     { runInTransaction: (fn: () => unknown) => Promise.resolve(fn()) } as never,
@@ -46,7 +56,16 @@ function build(provider: {
       },
       listByProjectAndType: () => Promise.resolve([]),
     } as never,
-    { execute: () => Promise.resolve(undefined) } as never,
+    {
+      execute: (
+        _p: string,
+        _s: string,
+        e: { type: string; payload: unknown },
+      ) => {
+        eventos.push(e);
+        return Promise.resolve(undefined);
+      },
+    } as never,
     { append: () => Promise.resolve(undefined) },
     { get: () => provider } as never,
     {
@@ -63,9 +82,13 @@ function build(provider: {
       findBySessionId: () => Promise.resolve(null),
       create: () => Promise.resolve(undefined),
     } as never,
+    {
+      listByTypeForProject: () =>
+        Promise.resolve([{ payload: { version: 3 }, seq: 1 }]),
+    } as never,
   );
 
-  return { useCase, gravados };
+  return { useCase, gravados, eventos };
 }
 
 describe('normalizeInfraPath', () => {
@@ -170,5 +193,44 @@ describe('ExecuteInfraPrUseCase — base e autor da PR (RN-729)', () => {
 
     expect(provider.openPullRequest).not.toHaveBeenCalled();
     expect(gravados.at(-1)?.status).toBe('failed');
+  });
+});
+
+describe('ExecuteInfraPrUseCase — instruções de execução (RN-852)', () => {
+  const okProvider = () => ({
+    createBranch: vi.fn().mockResolvedValue(undefined),
+    commitFiles: vi.fn().mockResolvedValue(undefined),
+    openPullRequest: vi
+      .fn()
+      .mockResolvedValue({ id: 1, url: 'local://repo/pull/1' }),
+  });
+
+  it('PR aberta emite artifact.run_instructions com prUrl e versão seguinte', async () => {
+    const { useCase, eventos } = build(okProvider());
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+    const artefato = eventos.find(
+      (e) => e.type === 'artifact.run_instructions',
+    );
+    expect(artefato?.payload).toEqual({
+      ...RUN,
+      prUrl: 'local://repo/pull/1',
+      version: 4,
+    });
+  });
+
+  it('`run` inválido na execução falha sem commitar nem emitir', async () => {
+    const provider = okProvider();
+    const { useCase, gravados, eventos } = build(provider);
+    const action = makeAction();
+    (action.payload as Record<string, unknown>).run = {
+      ...RUN,
+      urls: [{ label: 'x', url: 'http://10.0.0.1:80/', kind: 'web' }],
+    };
+    await useCase.execute('proj-1', 'sess-1', action);
+    expect(provider.commitFiles).not.toHaveBeenCalled();
+    expect(gravados.at(-1)?.status).toBe('failed');
+    expect(eventos.some((e) => e.type === 'artifact.run_instructions')).toBe(
+      false,
+    );
   });
 });

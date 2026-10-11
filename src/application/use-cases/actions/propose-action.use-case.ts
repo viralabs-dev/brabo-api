@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { recusaDoRun } from '../../../domain/infra/run-instructions';
 import { runComoEfeitoDeAcao } from '../../efeito-de-acao';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { SessionRepository } from '../../ports/session-repository.port';
@@ -142,6 +143,21 @@ export class ProposeActionUseCase {
       if (recusa) {
         throw new BadRequestException({
           code: 'plano_de_execucao_invalido',
+          message: recusa,
+        });
+      }
+    }
+
+    // RN-852 (AT-517, ADR 0213): a PR de infra declara COMO rodar o
+    // entregável (`run`), com a MESMA régua do engine. Recusa é 400 nomeado
+    // antes de criar a proposta, e o texto volta ao Infra Lead.
+    if (actionType === 'open_infra_pr') {
+      const recusa = recusaDoRun(
+        (input.payload as { run?: unknown } | null)?.run,
+      );
+      if (recusa) {
+        throw new BadRequestException({
+          code: 'run_invalido',
           message: recusa,
         });
       }

@@ -6,6 +6,12 @@ import type { ProvisionedRepositoryRepository } from '../../../../src/applicatio
 import type { ModuleMap } from '../../../../src/domain/architecture/module-map.entity';
 import type { ProposedAction } from '../../../../src/domain/actions/proposed-action.entity';
 import type { ProvisionedRepository } from '../../../../src/domain/git/provisioned-repository.entity';
+import type { ObterContainerDoProjetoUseCase } from '../../../../src/application/use-cases/containers/obter-container-do-projeto.use-case';
+import {
+  RECURSOS_PADRAO,
+  SEM_DECISAO,
+  type EstadoDoContainer,
+} from '../../../../src/domain/containers/project-container';
 import type { GetModuleRoutingUseCase } from '../../../../src/application/use-cases/architecture/get-module-routing.use-case';
 import {
   SEM_ROTEAMENTO,
@@ -97,6 +103,7 @@ function build(
   provider: ProvisionedRepository['provider'] | null,
   adrs: ProposedAction[] = [adrAction, naoInfraAdrAction],
   moduleRouting: EstadoDoRoteamento = SEM_ROTEAMENTO,
+  imagem: EstadoDoContainer = SEM_DECISAO,
 ) {
   return new GetInfraContextUseCase(
     {
@@ -109,10 +116,35 @@ function build(
     {
       execute: () => Promise.resolve(moduleRouting),
     } as unknown as GetModuleRoutingUseCase,
+    {
+      execute: () => Promise.resolve(imagem),
+    } as unknown as ObterContainerDoProjetoUseCase,
   );
 }
 
 describe('GetInfraContextUseCase', () => {
+  it('RN-852: projectImage é a decisão vigente de artifact.project_image', async () => {
+    const decisao = {
+      image: 'node:22-bookworm-slim',
+      rationale: 'TS',
+      network: 'egress' as const,
+      resources: RECURSOS_PADRAO,
+    };
+    const ctx = await build('local', [], SEM_ROTEAMENTO, {
+      status: 'decidido',
+      decisao,
+      version: 2,
+      eventId: 'e',
+      decidedAt: now.toISOString(),
+    }).execute('proj-1');
+    expect(ctx.projectImage).toEqual(decisao);
+  });
+
+  it('RN-852: projectImage é null sem decisão de imagem', async () => {
+    const ctx = await build('local').execute('proj-1');
+    expect(ctx.projectImage).toBeNull();
+  });
+
   it('gitProvider vem do repositório provisionado do projeto', async () => {
     const useCase = build('github');
     const ctx = await useCase.execute('proj-1');
