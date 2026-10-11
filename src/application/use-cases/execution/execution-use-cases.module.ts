@@ -17,6 +17,7 @@ import { ExecuteMaxParallelRaiseUseCase } from './execute-max-parallel-raise.use
 import { ExecuteExecutionPlanUseCase } from './execute-execution-plan.use-case';
 import { ActionsUseCasesModule } from '../actions/actions-use-cases.module';
 import { ClaimNextTaskUseCase } from './claim-next-task.use-case';
+import { ListTarefasEmCursoDeDevUseCase } from './list-tarefas-em-curso-de-dev.use-case';
 import { MarkTaskUseCase } from './mark-task.use-case';
 import { GetDevTaskContextUseCase } from './get-dev-task-context.use-case';
 import { MarkTaskBlockedUseCase } from './mark-task-blocked.use-case';
@@ -63,6 +64,7 @@ const USE_CASES = [
   ExecuteMaxParallelRaiseUseCase,
   ExecuteExecutionPlanUseCase,
   ClaimNextTaskUseCase,
+  ListTarefasEmCursoDeDevUseCase,
   MarkTaskUseCase,
   GetDevTaskContextUseCase,
   MarkTaskBlockedUseCase,

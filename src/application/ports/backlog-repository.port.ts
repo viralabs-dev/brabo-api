@@ -82,7 +82,19 @@ export abstract class StoryRepository {
 
 export interface TarefaPendenteDaExecucao {
   taskId: string;
-  motivo: 'bloqueada' | 'aguardando_merge' | 'conflito_de_merge';
+  motivo:
+    | 'bloqueada'
+    | 'aguardando_merge'
+    | 'conflito_de_merge'
+    // RN-856: dev da execução segurando a tarefa, ou fila do módulo dele.
+    | 'em_curso_de_dev'
+    | 'a_fazer_de_modulo_com_dev';
+}
+
+export interface TarefaEmCursoDeDev {
+  projectId: string;
+  taskId: string;
+  assignedTo: string;
 }
 
 export abstract class TaskRepository {
@@ -136,6 +148,9 @@ export abstract class TaskRepository {
   // `in_progress`. Só responde quando `sessionId` é a sessão de execução
   // vigente do projeto (`findActiveExecutionSession`): sessão de execução
   // antiga não segura nada, senão a tarefa a seguraria para sempre.
+  // RN-856: `in_progress` com dono `dev-*`, fora de gate e não bloqueada, do
+  // projeto da sessão — vazio quando a sessão não é de execução.
+  abstract listEmCursoDeDev(sessionId: string): Promise<TarefaEmCursoDeDev[]>;
   abstract findPendenteDaExecucao(
     sessionId: string,
   ): Promise<TarefaPendenteDaExecucao | null>;

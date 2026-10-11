@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { eq } from 'drizzle-orm';
 import { createTestDb, truncateAll } from '../../../support/test-db';
 import {
   epics,
@@ -95,7 +96,8 @@ describe('ClaimNextTaskUseCase', () => {
 
     const t1 = await useCase.execute(projectId, sessionId, 'api', 'dev-api');
     const t2 = await useCase.execute(projectId, sessionId, 'api', 'dev-api-2');
-    const t3 = await useCase.execute(projectId, sessionId, 'api', 'dev-api');
+    // Um TERCEIRO dev: o `dev-api` retomaria a própria t1 (RN-856).
+    const t3 = await useCase.execute(projectId, sessionId, 'api', 'dev-api-3');
 
     expect(t1).not.toBeNull();
     expect(t2).not.toBeNull();
@@ -104,6 +106,55 @@ describe('ClaimNextTaskUseCase', () => {
     expect(t1!.assignedTo).toBe('dev-api');
     expect(t2!.assignedTo).toBe('dev-api-2');
     expect(t3).toBeNull(); // esgotado
+  });
+
+  // RN-856 (AT-522): o dev religado retoma a SUA tarefa `in_progress` órfã
+  // antes de procurar a fila `todo`.
+  it('retoma a in_progress que já é DELE antes da fila todo', async () => {
+    const { projectId, sessionId, storyId } = await seed({
+      storyStatus: 'ready',
+      moduleIds: ['api'],
+      taskCount: 2,
+    });
+    const [primeira, segunda] = await taskRepo.findByStoryIds([storyId]);
+    await db
+      .update(tasks)
+      .set({ status: 'in_progress', assignedTo: 'dev-api' })
+      .where(eq(tasks.id, segunda.id));
+
+    const pega = await useCase.execute(projectId, sessionId, 'api', 'dev-api');
+
+    expect(pega?.id).toBe(segunda.id);
+    expect(pega?.status).toBe('in_progress');
+    // A do OUTRO dev não é retomada por este; ele vai à fila.
+    const outro = await useCase.execute(
+      projectId,
+      sessionId,
+      'api',
+      'dev-api-2',
+    );
+    expect(outro?.id).toBe(primeira.id);
+  });
+
+  it('não retoma a in_progress dele que está em gate', async () => {
+    const { projectId, sessionId, storyId } = await seed({
+      storyStatus: 'ready',
+      moduleIds: ['api'],
+      taskCount: 1,
+    });
+    const [t] = await taskRepo.findByStoryIds([storyId]);
+    await db
+      .update(tasks)
+      .set({
+        status: 'in_progress',
+        assignedTo: 'dev-api',
+        gateStatus: 'awaiting_qa',
+      })
+      .where(eq(tasks.id, t.id));
+
+    expect(
+      await useCase.execute(projectId, sessionId, 'api', 'dev-api'),
+    ).toBeNull();
   });
 
   it('não pega task de story que não está ready', async () => {
