@@ -545,6 +545,7 @@ export class InternalSessionsController {
       dod: dto.dod,
       dor: dto.dor,
       businessRuleIds: dto.businessRuleIds,
+      questionId: dto.questionId,
     });
   }
 
@@ -558,7 +559,8 @@ export class InternalSessionsController {
     summary: 'Corrects the title and/or description of a draft story',
     description:
       'Only a `draft` story with no task in execution; writes `backlog.story_updated` ' +
-      'with the PO as actor (RN-727).',
+      'with the PO as actor (RN-727). A `ready` one too when `questionId` cites an ' +
+      'open question the user already answered (RN-859).',
   })
   @ApiOkResponse({ type: StoryResponseDto })
   @ApiNotFoundResponse({ description: 'Story is not in this project.' })
@@ -577,6 +579,7 @@ export class InternalSessionsController {
       storyId,
       { title: dto.title, description: dto.description },
       { kind: 'agent', id: 'po' },
+      dto.questionId,
     );
   }
 
@@ -1039,7 +1042,8 @@ export class InternalSessionsController {
     description:
       "The response's `nextAction` is what the engine obeys: `correct` returns " +
       'to dev, `run_secops` advances the gate, `done` releases it to the user, ' +
-      'and `blocked` means the correction cap ran out. MERGE is never automatic ' +
+      '`await_user` parks the cycle until the open question is answered ' +
+      '(RN-860, no correction counted), and `blocked` means the correction cap ran out. MERGE is never automatic ' +
       "— `done` only means it's the human's turn.",
   })
   @ApiCreatedResponse({ type: GateVerdictResponseDto })
@@ -1056,6 +1060,9 @@ export class InternalSessionsController {
         veredito: dto.veredito,
         resumo: dto.resumo,
         itens: dto.itens,
+        pergunta: dto.pergunta,
+        sugestao: dto.sugestao,
+        openQuestionId: dto.openQuestionId,
       },
       dto.maxCorrections,
     );

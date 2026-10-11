@@ -10,6 +10,7 @@ import {
 } from '../../ports/backlog-repository.port';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
+import { PerguntasEmAbertoUseCase } from './perguntas-em-aberto.use-case';
 import { recusaDeCorrecaoDeHistoria } from '../../../domain/backlog/correcao-de-historia';
 import type { Story } from '../../../domain/backlog/backlog.entity';
 
@@ -37,6 +38,7 @@ export class CorrigirHistoriaUseCase {
     private readonly tasks: TaskRepository,
     private readonly appendEvent: AppendSessionEventUseCase,
     private readonly unitOfWork: UnitOfWork,
+    private readonly perguntas: PerguntasEmAbertoUseCase,
   ) {}
 
   /**
@@ -49,6 +51,8 @@ export class CorrigirHistoriaUseCase {
     storyId: string,
     campos: { title?: string; description?: string },
     ator: AtorDaCorrecao,
+    /** RN-859: a pergunta respondida que destrava a história `ready`. */
+    questionId?: string,
   ): Promise<Story> {
     const titulo = campos.title?.trim();
     if (
@@ -62,7 +66,7 @@ export class CorrigirHistoriaUseCase {
     if (titulo === undefined && campos.description === undefined) {
       throw new BadRequestException('Informe o título ou a descrição.');
     }
-    const { story } = await this.corrigivel(projectId, storyId);
+    const { story } = await this.corrigivel(projectId, storyId, questionId);
     const novo = {
       title: titulo ?? story.title,
       description: campos.description ?? story.description,
@@ -81,6 +85,7 @@ export class CorrigirHistoriaUseCase {
           previousTitle: story.title,
           title: novo.title,
           descriptionChanged: novo.description !== story.description,
+          ...(questionId ? { questionId } : {}),
         },
       });
       return atualizada;
@@ -114,7 +119,20 @@ export class CorrigirHistoriaUseCase {
     });
   }
 
-  private async corrigivel(projectId: string, storyId: string) {
+  /**
+   * RN-859: `true` só quando o pedido cita uma pergunta deste projeto que o
+   * usuário já respondeu. Pergunta inexistente ou aberta não destrava nada.
+   */
+  async respostaDoUsuario(projectId: string, questionId?: string) {
+    if (!questionId) return false;
+    return this.perguntas.foiRespondida(projectId, questionId);
+  }
+
+  private async corrigivel(
+    projectId: string,
+    storyId: string,
+    questionId?: string,
+  ) {
     const story = await this.stories.findById(storyId);
     if (!story || story.projectId !== projectId) {
       throw new NotFoundException(
@@ -122,7 +140,9 @@ export class CorrigirHistoriaUseCase {
       );
     }
     const tarefas = await this.tasks.findByStoryIds([storyId]);
-    const recusa = recusaDeCorrecaoDeHistoria(story, tarefas);
+    const recusa = recusaDeCorrecaoDeHistoria(story, tarefas, {
+      respostaDoUsuario: await this.respostaDoUsuario(projectId, questionId),
+    });
     if (recusa) throw new ConflictException(recusa);
     return { story, tarefas };
   }

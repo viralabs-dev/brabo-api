@@ -15,7 +15,10 @@ export const PR_GATE_STATUSES = [
 export type PrGateStatus = (typeof PR_GATE_STATUSES)[number];
 
 export type GateName = 'qa' | 'secops';
-export type GateVerdict = 'approved' | 'changes_requested';
+// `needs_user_decision` (RN-860, ADR 0214): o gate não julga — espera a
+// resposta do usuário a uma pergunta em aberto. NÃO consome ciclo de correção.
+export type GateVerdict =
+  'approved' | 'changes_requested' | 'needs_user_decision';
 
 type ActiveGateStatus = Exclude<PrGateStatus, 'awaiting_user'>;
 
@@ -70,6 +73,12 @@ export function nextGateStatus(
 
   if (verdict === 'approved') {
     return { status: NEXT_STATUS_ON_APPROVAL[current], correctionCount: 0 };
+  }
+
+  // RN-860: esperar o usuário não é reprovação — o MESMO gate, o MESMO
+  // contador. Quem perguntou não errou, e o dev não tem o que corrigir.
+  if (verdict === 'needs_user_decision') {
+    return { status: current, correctionCount };
   }
 
   const nextCount = correctionCount + 1;

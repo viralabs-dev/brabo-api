@@ -9,6 +9,7 @@ import type {
   StoryRepository,
   TaskRepository,
 } from '../../../../src/application/ports/backlog-repository.port';
+import type { PerguntasEmAbertoUseCase } from '../../../../src/application/use-cases/backlog/perguntas-em-aberto.use-case';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
 import type {
   Story,
@@ -110,6 +111,10 @@ beforeEach(() => {
     tasks as unknown as TaskRepository,
     append as unknown as AppendSessionEventUseCase,
     uow,
+    {
+      foiRespondida: (_p: string, q: string) =>
+        Promise.resolve(q === 'q-respondida'),
+    } as unknown as PerguntasEmAbertoUseCase,
   );
 });
 
@@ -215,5 +220,55 @@ describe('CorrigirHistoriaUseCase (RN-727)', () => {
     await expect(
       useCase.arquivar('p1', 'st-1', null, { kind: 'user', id: 'u1' }),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  // RN-859 (ADR 0214): a resposta do usuário destrava a história `ready`.
+  it('história ready citando pergunta RESPONDIDA é corrigida, e o evento a cita', async () => {
+    story = makeStory({ status: 'ready' });
+    await useCase.editar(
+      'p1',
+      'st-1',
+      { description: '404 para código inexistente' },
+      { kind: 'agent', id: 'po' },
+      'q-respondida',
+    );
+    expect(gravado).toMatchObject({
+      description: '404 para código inexistente',
+    });
+    expect(eventos[0].payload).toMatchObject({ questionId: 'q-respondida' });
+  });
+
+  it('história ready citando pergunta AINDA ABERTA segue recusada', async () => {
+    story = makeStory({ status: 'ready' });
+    const erro = await useCase
+      .editar(
+        'p1',
+        'st-1',
+        { title: 'x' },
+        { kind: 'agent', id: 'po' },
+        'q-aberta',
+      )
+      .catch((e: unknown) => e);
+    expect((erro as ConflictException).getResponse()).toMatchObject({
+      reason: 'historia_nao_draft',
+    });
+    expect(gravado).toBeNull();
+  });
+
+  it('história ready com tarefa em revisão segue recusada mesmo com a resposta', async () => {
+    story = makeStory({ status: 'ready' });
+    tarefas = [makeTask('in_review')];
+    const erro = await useCase
+      .editar(
+        'p1',
+        'st-1',
+        { title: 'x' },
+        { kind: 'agent', id: 'po' },
+        'q-respondida',
+      )
+      .catch((e: unknown) => e);
+    expect((erro as ConflictException).getResponse()).toMatchObject({
+      reason: 'historia_com_tarefa_em_execucao',
+    });
   });
 });

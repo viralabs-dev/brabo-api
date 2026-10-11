@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -29,6 +30,10 @@ import {
   ehEventoDeConversa,
   garantirQueSessaoAceitaEvento,
 } from '../../../domain/sessions/conversa-em-sessao-encerrada';
+import {
+  EVENTO_PERGUNTA_EM_ABERTO,
+  validarPerguntaEmAberto,
+} from '../../../domain/open-questions/pergunta-em-aberto';
 import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 /**
@@ -91,6 +96,17 @@ export class AppendSessionEventUseCase {
     sessionId: string,
     input: AppendSessionEventInput,
   ) {
+    // RN-858: a pergunta em aberto entra no log só no formato do contrato —
+    // os dois caminhos (engine por `/internal/*` e a api) passam por aqui.
+    if (input.type === EVENTO_PERGUNTA_EM_ABERTO) {
+      const validada = validarPerguntaEmAberto(input.payload);
+      if (!validada.ok) {
+        throw new BadRequestException(
+          `artifact.open_question inválido: ${validada.motivo}`,
+        );
+      }
+      input = { ...input, payload: { ...validada.valor } };
+    }
     return this.unitOfWork.runInTransaction(async () => {
       // A leitura extra é paga só pelo evento de execução. Todo append
       // pagá-la seria uma consulta a mais no caminho mais quente do produto

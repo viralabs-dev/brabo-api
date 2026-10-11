@@ -17,12 +17,17 @@ import {
   type GateVerdict,
 } from '../../../domain/execution/pr-gate-state-machine';
 import type { Task } from '../../../domain/backlog/backlog.entity';
+import { EVENTO_PERGUNTA_EM_ABERTO } from '../../../domain/open-questions/pergunta-em-aberto';
+import { randomUUID } from 'node:crypto';
 
 // Configurável na ativação (ActivateExecutionUseCase), mesmo espírito do
 // DEFAULT_TASK_BUDGET_MICROS: um teto sensato quando o usuário não escolhe.
 export const DEFAULT_MAX_GATE_CORRECTIONS = 3;
 
-export type GateNextAction = 'correct' | 'run_secops' | 'done' | 'blocked';
+// `await_user` (RN-860): o ciclo espera a resposta do usuário a uma pergunta
+// em aberto — o engine o ESTACIONA (ADR 0207) e a resposta o religa.
+export type GateNextAction =
+  'correct' | 'run_secops' | 'done' | 'blocked' | 'await_user';
 
 export interface RecordGateVerdictInput {
   taskId: string;
@@ -30,11 +35,18 @@ export interface RecordGateVerdictInput {
   veredito: GateVerdict;
   resumo: string;
   itens: string[];
+  /** RN-860: com `needs_user_decision`, a pergunta nova… */
+  pergunta?: string;
+  sugestao?: string;
+  /** …ou uma pergunta em aberto que já existe. */
+  openQuestionId?: string;
 }
 
 export interface RecordGateVerdictResult {
   nextAction: GateNextAction;
   task: Task;
+  /** RN-860: a pergunta que o ciclo espera, com `await_user`. */
+  openQuestionId?: string;
 }
 
 /**
@@ -79,6 +91,20 @@ export class RecordGateVerdictUseCase {
     // Fase 12b precisa acordar com o outbox `task.gate_resolved`.
     const agentId = task.assignedTo;
 
+    const esperaUsuario = input.veredito === 'needs_user_decision';
+    if (esperaUsuario) {
+      if (input.gate !== 'qa') {
+        throw new BadRequestException(
+          '`needs_user_decision` é veredito só do gate de QA',
+        );
+      }
+      if (!input.openQuestionId && !input.pergunta?.trim()) {
+        throw new BadRequestException(
+          '`needs_user_decision` exige `pergunta` (ou `openQuestionId`)',
+        );
+      }
+    }
+
     const transition = nextGateStatus(
       task.gateStatus,
       input.gate,
@@ -99,8 +125,40 @@ export class RecordGateVerdictUseCase {
     return this.unitOfWork.runInTransaction(async () => {
       let updatedTask: Task;
       let nextAction: GateNextAction;
+      let openQuestionId: string | undefined;
 
-      if (transition.status === 'blocked') {
+      if (esperaUsuario) {
+        // RN-860: grava a pergunta (autor `qa-agent`, afeta a tarefa) e o
+        // ciclo espera — sem contar correção, sem bloqueio `politica`.
+        openQuestionId = input.openQuestionId;
+        if (!openQuestionId) {
+          openQuestionId = randomUUID();
+          await this.appendEvent.execute(projectId, sessionId, {
+            type: EVENTO_PERGUNTA_EM_ABERTO,
+            actor: { kind: 'agent', id: 'qa-agent' },
+            payload: {
+              questionId: openQuestionId,
+              pergunta: input.pergunta!.trim(),
+              ...(input.sugestao?.trim()
+                ? { sugestao: input.sugestao.trim() }
+                : {}),
+              afeta: {
+                regras: [],
+                historias: [task.storyId],
+                tarefas: [task.id],
+              },
+              autor: 'qa-agent',
+              sessionId,
+            },
+          });
+        }
+        updatedTask = await this.tasks.updateGateStatus(
+          task.id,
+          transition.status as Exclude<typeof transition.status, 'blocked'>,
+          transition.correctionCount,
+        );
+        nextAction = 'await_user';
+      } else if (transition.status === 'blocked') {
         updatedTask = await this.markTaskBlocked.execute(
           projectId,
           sessionId,
@@ -136,6 +194,8 @@ export class RecordGateVerdictUseCase {
           veredito: input.veredito,
           gateStatus: updatedTask.gateStatus,
           blocked: updatedTask.blocked,
+          // RN-860: a tela mostra a tarefa como "esperando você".
+          ...(esperaUsuario ? { esperandoUsuario: true, openQuestionId } : {}),
         },
       });
 
@@ -167,7 +227,11 @@ export class RecordGateVerdictUseCase {
         });
       }
 
-      return { nextAction, task: updatedTask };
+      return {
+        nextAction,
+        task: updatedTask,
+        ...(openQuestionId ? { openQuestionId } : {}),
+      };
     });
   }
 
@@ -217,7 +281,11 @@ export class RecordGateVerdictUseCase {
 function commentBody(input: RecordGateVerdictInput): string {
   const gateLabel = input.gate === 'qa' ? 'QA' : 'SecOps';
   const veredictoLabel =
-    input.veredito === 'approved' ? 'Aprovado ✅' : 'Mudanças solicitadas ⚠️';
+    input.veredito === 'approved'
+      ? 'Aprovado ✅'
+      : input.veredito === 'needs_user_decision'
+        ? 'Esperando decisão do usuário ⏸️'
+        : 'Mudanças solicitadas ⚠️';
   const itens =
     input.itens.length > 0
       ? '\n' + input.itens.map((i) => `- ${i}`).join('\n')

@@ -33,6 +33,13 @@ export interface RecusaDeCorrecao {
 export function recusaDeCorrecaoDeHistoria(
   story: Pick<Story, 'title' | 'status' | 'archivedAt'>,
   tarefas: ReadonlyArray<Pick<Task, 'status'>>,
+  /**
+   * RN-859 (ADR 0214, revisa o ADR 0212): o pedido cita uma pergunta em
+   * aberto JÁ RESPONDIDA pelo usuário. Só então a história `ready` também é
+   * corrigível — a resposta do usuário é o motivo que destrava a edição. A
+   * trava de tarefa em execução continua valendo.
+   */
+  opcoes: { respostaDoUsuario?: boolean } = {},
 ): RecusaDeCorrecao | null {
   if (story.archivedAt) {
     return {
@@ -40,12 +47,16 @@ export function recusaDeCorrecaoDeHistoria(
       message: `A história "${story.title}" já está arquivada.`,
     };
   }
-  if (story.status !== 'draft') {
+  const corrigivel =
+    story.status === 'draft' ||
+    (story.status === 'ready' && opcoes.respostaDoUsuario === true);
+  if (!corrigivel) {
     return {
       reason: 'historia_nao_draft',
       message:
         `A história "${story.title}" está "${story.status}" — só história ` +
-        'draft é editada ou arquivada.',
+        'draft é editada ou arquivada (a ready, só citando uma pergunta ' +
+        'respondida pelo usuário).',
     };
   }
   const emExecucao = tarefas.filter((t) =>

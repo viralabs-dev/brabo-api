@@ -7,6 +7,7 @@ import {
   IsUUID,
   IsInt,
   Min,
+  MaxLength,
 } from 'class-validator';
 
 export class RecordGateVerdictInternalDto {
@@ -23,11 +24,14 @@ export class RecordGateVerdictInternalDto {
   gate!: 'qa' | 'secops';
 
   @ApiProperty({
-    enum: ['approved', 'changes_requested'],
+    enum: ['approved', 'changes_requested', 'needs_user_decision'],
     example: 'changes_requested',
+    description:
+      '`needs_user_decision` (QA only, RN-860): the cycle waits for the ' +
+      "user's answer to an open question — it does not count as a correction.",
   })
-  @IsIn(['approved', 'changes_requested'])
-  veredito!: 'approved' | 'changes_requested';
+  @IsIn(['approved', 'changes_requested', 'needs_user_decision'])
+  veredito!: 'approved' | 'changes_requested' | 'needs_user_decision';
 
   @ApiProperty({
     example: 'Missing tests for the insufficient-stock path.',
@@ -42,6 +46,34 @@ export class RecordGateVerdictInternalDto {
   @IsArray()
   @IsString({ each: true })
   itens!: string[];
+
+  @ApiPropertyOptional({
+    example: 'Should a non-existent code answer 404?',
+    description:
+      'With `needs_user_decision`: the new open question (up to 500 chars).',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  pergunta?: string;
+
+  @ApiPropertyOptional({
+    example: '404 with a plain message.',
+    description: "With `needs_user_decision`: the agent's suggestion.",
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  sugestao?: string;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'With `needs_user_decision`: an EXISTING open question instead of a new one.',
+  })
+  @IsOptional()
+  @IsUUID()
+  openQuestionId?: string;
 
   @ApiPropertyOptional({
     example: 3,
