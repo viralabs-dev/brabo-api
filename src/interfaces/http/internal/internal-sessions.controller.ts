@@ -56,6 +56,8 @@ import { ListTarefasEmCursoDeDevUseCase } from '../../../application/use-cases/e
 import { MarkTaskUseCase } from '../../../application/use-cases/execution/mark-task.use-case';
 import { GetDevTaskContextUseCase } from '../../../application/use-cases/execution/get-dev-task-context.use-case';
 import { MarkTaskBlockedUseCase } from '../../../application/use-cases/execution/mark-task-blocked.use-case';
+import { UnblockTaskUseCase } from '../../../application/use-cases/execution/unblock-task.use-case';
+import { UnblockTaskInternalDto } from './dto/unblock-task-internal.dto';
 import { RecordGateVerdictUseCase } from '../../../application/use-cases/execution/record-gate-verdict.use-case';
 import { RecordDelegationUseCase } from '../../../application/use-cases/execution/record-delegation.use-case';
 import { OpenGateUseCase } from '../../../application/use-cases/execution/open-gate.use-case';
@@ -195,6 +197,7 @@ export class InternalSessionsController {
     private readonly markTask: MarkTaskUseCase,
     private readonly getDevTaskContext: GetDevTaskContextUseCase,
     private readonly markTaskBlocked: MarkTaskBlockedUseCase,
+    private readonly unblockTask: UnblockTaskUseCase,
     private readonly recordGateVerdict: RecordGateVerdictUseCase,
     private readonly recordDelegation: RecordDelegationUseCase,
     private readonly openGate: OpenGateUseCase,
@@ -1046,6 +1049,34 @@ export class InternalSessionsController {
       dto.diagnosis,
       dto.agentId,
       dto.origin,
+    );
+  }
+
+  /**
+   * RN-864 (AT-525): a retomada automática de uma task bloqueada por falha
+   * PASSAGEIRA de rede/provedor. O MESMO caso de uso do "Desbloquear" humano,
+   * com ator `system` — e no-op se a task já não está bloqueada.
+   */
+  @Post(':sessionId/tasks/:taskId/unblock')
+  @ApiOperation({
+    summary: 'Unblocks a task after a transient network/provider failure',
+    description:
+      'Called by the engine retry job (up to 3 times, after 1, 3 and 10 min). ' +
+      'Same use case as the human unblock, with a `system` actor; a task that ' +
+      'is no longer blocked is left untouched.',
+  })
+  @ApiCreatedResponse({ type: TaskResponseDto })
+  unblockTaskAutomatically(
+    @Param('sessionId') sessionId: string,
+    @Param('taskId') taskId: string,
+    @Body() dto: UnblockTaskInternalDto,
+  ) {
+    return this.unblockTask.execute(
+      dto.projectId,
+      sessionId,
+      taskId,
+      dto.agentId,
+      { kind: 'system' },
     );
   }
 

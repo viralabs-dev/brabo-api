@@ -65,7 +65,13 @@ function makeStory(overrides: Partial<Story> = {}): Story {
 
 class FakeTasks {
   unblocked: Task = makeTask();
+  atual: Task | null = makeTask({ blocked: true });
+  unblockCalls = 0;
+  findById() {
+    return Promise.resolve(this.atual);
+  }
   unblock(_id: string) {
+    this.unblockCalls += 1;
     return Promise.resolve(this.unblocked);
   }
 }
@@ -167,6 +173,31 @@ describe('UnblockTaskUseCase', () => {
       await expect(
         useCase.execute(PROJECT, SESSION, 'task-1', USER),
       ).resolves.toBeTruthy();
+      expect(outbox.calls).toEqual([]);
+    });
+  });
+
+  // RN-864 (AT-525): a retomada automática do engine, ator `system`.
+  describe('retomada automática (RN-864)', () => {
+    it('task bloqueada: desbloqueia pelo mesmo caminho e emite o wake', async () => {
+      await useCase.execute(PROJECT, SESSION, 'task-1', 'dev-api', {
+        kind: 'system',
+      });
+
+      expect(tasks.unblockCalls).toBe(1);
+      expect(append.calls).toEqual(['backlog.task_unblocked']);
+      expect(outbox.calls).toHaveLength(1);
+    });
+
+    it('task já desbloqueada por uma pessoa: no-op, sem evento nem wake', async () => {
+      tasks.atual = makeTask({ blocked: false, status: 'in_progress' });
+
+      await useCase.execute(PROJECT, SESSION, 'task-1', 'dev-api', {
+        kind: 'system',
+      });
+
+      expect(tasks.unblockCalls).toBe(0);
+      expect(append.calls).toEqual([]);
       expect(outbox.calls).toEqual([]);
     });
   });
