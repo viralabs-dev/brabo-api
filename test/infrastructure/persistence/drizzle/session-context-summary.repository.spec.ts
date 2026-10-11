@@ -25,7 +25,12 @@ async function sessao() {
   return row.id;
 }
 
-async function evento(sessionId: string, type: string, actorId: string) {
+async function evento(
+  sessionId: string,
+  type: string,
+  actorId: string,
+  payload: Record<string, unknown> = {},
+) {
   seq += 1;
   await db.insert(sessionEvents).values({
     id: `evt-${seq}`,
@@ -34,7 +39,7 @@ async function evento(sessionId: string, type: string, actorId: string) {
     type,
     actorKind: 'agent',
     actorId,
-    payload: {},
+    payload,
   });
 }
 
@@ -145,5 +150,72 @@ describe('DrizzleSessionContextSummaryRepository (RN-827/828)', () => {
     expect(r.arquivosTocados.itens.some((f) => f.path === 'alheio.ts')).toBe(
       false,
     );
+  });
+
+  it('RN-844: devolve os ITENS de regra e decisão fora de qualquer cauda, com teto de 50', async () => {
+    const s = await sessao();
+    for (let i = 0; i < 55; i++)
+      await evento(s, 'artifact.business_rule', 'po', {
+        title: `Regra ${i}`,
+        description: 'd',
+        origin: ['a', 'b'],
+      });
+    await evento(s, 'artifact.decision_record', 'criativo', {
+      choice: 'SQLite',
+      context: 'um módulo só',
+    });
+    for (let i = 0; i < 250; i++) await evento(s, 'agent.status', 'po');
+
+    const r = await repo.resumir(projectId, s);
+
+    expect(r.regras).toBe(55);
+    expect(r.itensDeRegras).toHaveLength(50);
+    expect(r.itensDeRegras[0]).toMatchObject({
+      titulo: 'Regra 54',
+      descricao: 'd',
+      origens: 2,
+      actorId: 'po',
+    });
+    expect(r.itensDeDecisoes).toEqual([
+      expect.objectContaining({
+        escolha: 'SQLite',
+        contexto: 'um módulo só',
+        actorId: 'criativo',
+      }),
+    ]);
+  });
+
+  it('RN-844: lista as PRs executadas da sessão e da execução ligada, a mais recente primeiro, com teto', async () => {
+    const criativa = await sessao();
+    const execucao = await sessao();
+    const alheia = await sessao();
+    await acao(criativa, 'open_adr_pr', 'arquiteto', {
+      status: 'executed',
+      executionResult: { pullRequestId: 'pr-1' },
+    });
+    await acao(criativa, 'propose_execution_plan', 'dev-lead', {
+      status: 'executed',
+      executionResult: { sessaoDeExecucao: execucao },
+    });
+    await acao(execucao, 'pr_open', 'dev-api', {
+      status: 'executed',
+      executionResult: { pullRequestId: 'pr-2' },
+    });
+    await acao(execucao, 'pr_open', 'dev-api'); // pendente: não conta
+    await acao(alheia, 'pr_open', 'dev-api', {
+      status: 'executed',
+      executionResult: { pullRequestId: 'pr-9' },
+    });
+
+    const { sessoesLidas } = await repo.resumir(projectId, criativa);
+    const todas = await repo.prsDasSessoes(projectId, sessoesLidas, 20);
+    expect(todas.total).toBe(2);
+    expect(todas.itens.map((p) => p.pullRequestId)).toEqual(['pr-2', 'pr-1']);
+
+    const cortada = await repo.prsDasSessoes(projectId, sessoesLidas, 1);
+    expect(cortada).toMatchObject({
+      total: 2,
+      itens: [{ pullRequestId: 'pr-2' }],
+    });
   });
 });

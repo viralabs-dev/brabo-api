@@ -17,6 +17,7 @@ import { GetBootstrapPlanUseCase } from './get-bootstrap-plan.use-case';
 import { GetProjectGitRemoteUseCase } from './get-project-git-remote.use-case';
 import { AcknowledgeProtectionFailureUseCase } from './acknowledge-protection-failure.use-case';
 import { ReadProjectCodeUseCase } from './read-project-code.use-case';
+import { ResumirContextoDaSessaoUseCase } from './resumir-contexto-da-sessao.use-case';
 import { GitReadCache } from '../../../domain/git/git-read-cache';
 
 const USE_CASES = [
@@ -31,6 +32,7 @@ const USE_CASES = [
   GetProvisionedRepositoryUseCase,
   GetRepoBootstrapStatusUseCase,
   ReadProjectCodeUseCase,
+  ResumirContextoDaSessaoUseCase,
   RegisterGitCredentialUseCase,
   // Colaborador, não caso de uso: o executor do bootstrap, extraído na
   // Fase 12a pra ser compartilhado com a adoção sem que ela precise

@@ -3,6 +3,8 @@ import type { MesmasChaves, Wire } from '../../shared/dto/wire';
 import type {
   ArquivoTocado,
   ArtefatosDoAgente,
+  ItemDeDecisao,
+  ItemDeRegra,
   ResumoDoContextoDaSessao,
 } from '../../../../application/ports/session-context-summary-repository.port';
 
@@ -41,6 +43,54 @@ export const _chavesArquivo: MesmasChaves<
   ArquivoTocado
 > = true;
 
+/** RN-844 — o mínimo para o cartão de uma regra. */
+export class ItemDeRegraResponseDto implements Wire<ItemDeRegra> {
+  @ApiProperty({ example: 'evt_01JC4Z' })
+  eventId!: string;
+
+  @ApiProperty({ example: 42 })
+  seq!: number;
+
+  @ApiProperty({ example: 'po' })
+  actorId!: string;
+
+  @ApiProperty({ type: String, nullable: true, example: 'Login exige e-mail' })
+  titulo!: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  descricao!: string | null;
+
+  @ApiProperty({
+    example: 2,
+    description: 'How many origin references the rule cites.',
+  })
+  origens!: number;
+}
+export const _chavesRegra: MesmasChaves<ItemDeRegraResponseDto, ItemDeRegra> =
+  true;
+
+/** RN-844 — uma decisão registrada. */
+export class ItemDeDecisaoResponseDto implements Wire<ItemDeDecisao> {
+  @ApiProperty({ example: 'evt_01JC4Z' })
+  eventId!: string;
+
+  @ApiProperty({ example: 43 })
+  seq!: number;
+
+  @ApiProperty({ example: 'criativo' })
+  actorId!: string;
+
+  @ApiProperty({ type: String, nullable: true, example: 'SQLite em arquivo' })
+  escolha!: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  contexto!: string | null;
+}
+export const _chavesDecisao: MesmasChaves<
+  ItemDeDecisaoResponseDto,
+  ItemDeDecisao
+> = true;
+
 export class ArquivosTocadosResponseDto {
   @ApiProperty({
     type: [ArquivoTocadoResponseDto],
@@ -53,6 +103,13 @@ export class ArquivosTocadosResponseDto {
     description: 'Real total, even when `itens` was cut.',
   })
   total!: number;
+
+  @ApiProperty({
+    example: 0,
+    description:
+      'PRs of the read sessions whose files were NOT read: past the 20-PR cap, or the provider refused the diff (RN-844).',
+  })
+  prsNaoLidas!: number;
 }
 
 export class SessionContextSummaryResponseDto implements Wire<ResumoDoContextoDaSessao> {
@@ -75,13 +132,27 @@ export class SessionContextSummaryResponseDto implements Wire<ResumoDoContextoDa
   })
   decisoes!: number;
 
+  @ApiProperty({
+    type: [ItemDeRegraResponseDto],
+    description:
+      'Latest business rules of the session, capped at 50; the total is `regras` (RN-844).',
+  })
+  itensDeRegras!: ItemDeRegraResponseDto[];
+
+  @ApiProperty({
+    type: [ItemDeDecisaoResponseDto],
+    description:
+      'Latest decision records of the session, capped at 50; the total is `decisoes` (RN-844).',
+  })
+  itensDeDecisoes!: ItemDeDecisaoResponseDto[];
+
   @ApiProperty({ type: [ArtefatosDoAgenteResponseDto] })
   artefatosPorAgente!: ArtefatosDoAgenteResponseDto[];
 
   @ApiProperty({
     type: ArquivosTocadosResponseDto,
     description:
-      'Files from `git_commit`/`git_push` actions of this session and of the linked execution session.',
+      'Files of the PRs opened in this session and in the linked execution session (read from the PR diff, RN-844), then files from `git_commit`/`git_push` payloads.',
   })
   arquivosTocados!: ArquivosTocadosResponseDto;
 }
