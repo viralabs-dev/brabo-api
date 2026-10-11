@@ -296,7 +296,13 @@ export class ProposeActionUseCase {
     // AT-516 (RN-848): o que a execução grava é EFEITO local da ação, e o
     // canal da sessão é avisado mesmo dentro do pedido interno do engine.
     return runComoEfeitoDeAcao(() =>
-      this.executarSeAutoAprovada(projectId, sessionId, action, status, actionType),
+      this.executarSeAutoAprovada(
+        projectId,
+        sessionId,
+        action,
+        status,
+        actionType,
+      ),
     );
   }
 
