@@ -19,4 +19,21 @@ describe('opcoesDeRaciocinio (RN-782/783)', () => {
     expect(opcoesDeRaciocinio(false, 'dev-backend')).toEqual({});
     expect(opcoesDeRaciocinio(false, 'criativo')).toEqual({});
   });
+
+  it('QA de Automação desliga; QA-estratégia e outros gates não (RN-838)', () => {
+    expect(opcoesDeRaciocinio(true, 'qa-automacao')).toEqual({
+      reasoning: true,
+      reasoningOff: true,
+    });
+    expect(opcoesDeRaciocinio(true, 'qa-estrategia')).toEqual({
+      reasoning: true,
+    });
+    expect(opcoesDeRaciocinio(true, 'qa-performance-seguranca')).toEqual({
+      reasoning: true,
+    });
+  });
+
+  it('falha: QA de Automação com modelo sem supportsReasoning não manda nada', () => {
+    expect(opcoesDeRaciocinio(false, 'qa-automacao')).toEqual({});
+  });
 });

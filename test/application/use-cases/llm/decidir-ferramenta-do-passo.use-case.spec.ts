@@ -279,12 +279,17 @@ describe('DecidirFerramentaDoPassoUseCase — a política P3', () => {
     const roteador = new RoteadorFalso(() => decidiu('write_file'));
     const r = await montar(roteador).decidir(base(s));
 
-    expect(r.tools?.map((t) => t.name)).toEqual(['read_file', 'write_file']);
+    // `report_done` é piso do dev agent (RN-839): o recorte nunca o tira.
+    expect(r.tools?.map((t) => t.name)).toEqual([
+      'read_file',
+      'write_file',
+      'report_done',
+    ]);
     expect(r.toolRouting).toMatchObject({
       modelo: 'typesafe/jev-1.13',
       ofertadas: 4,
       menuAntes: ['read_file', 'write_file', 'terminal', 'report_done'],
-      menuDepois: ['read_file', 'write_file'],
+      menuDepois: ['read_file', 'write_file', 'report_done'],
       escolha: 'write_file',
       confianca: 0.9,
       anterior: 'read_file',
@@ -341,12 +346,12 @@ describe('DecidirFerramentaDoPassoUseCase — a política P3', () => {
     });
   });
 
-  it('escolha = anterior: menu de UMA ferramenta', async () => {
+  it('escolha = anterior: menu de UMA ferramenta, mais o piso do dev agent (RN-839)', async () => {
     const s = await setup();
     const r = await montar(
       new RoteadorFalso(() => decidiu('read_file')),
     ).decidir(base(s));
-    expect(r.tools?.map((t) => t.name)).toEqual(['read_file']);
+    expect(r.tools?.map((t) => t.name)).toEqual(['read_file', 'report_done']);
   });
 
   it('a política não muda: o Jev só devolve um SUBCONJUNTO de ToolDef do catálogo, sem tocar em aprovação', async () => {
@@ -443,7 +448,12 @@ describe('DecidirFerramentaDoPassoUseCase — o turno nunca falha por causa do J
       new RoteadorFalso(() => decidiu('write_file')),
       unitQueFalha,
     ).decidir(base(s));
-    expect(r.tools?.map((t) => t.name)).toEqual(['read_file', 'write_file']);
+    // `report_done` é piso do dev agent (RN-839): o recorte nunca o tira.
+    expect(r.tools?.map((t) => t.name)).toEqual([
+      'read_file',
+      'write_file',
+      'report_done',
+    ]);
     expect(r.toolRouting).toMatchObject({
       aplicado: true,
       gastoNaoRegistrado: true,
