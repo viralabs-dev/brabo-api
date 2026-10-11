@@ -59,11 +59,24 @@ describe('recusaDoRun (RN-852)', () => {
       { ...run, urls: [{ ...run.urls[0], url: 'https://localhost:1/' }] },
       /url/,
     ],
+    [
+      {
+        ...run,
+        urls: [{ label: 'API', url: 'http://localhost:8080/links', kind: 'api_docs' }],
+      },
+      /\/docs/,
+    ],
   ])('recusa %j', (r, motivo) => {
     expect(recusaDoRun(r)).toMatch(motivo);
   });
 
   it('aceita o formato do contrato', () => {
     expect(recusaDoRun(run)).toBeNull();
+    expect(
+      recusaDoRun({
+        ...run,
+        urls: [{ label: 'Swagger', url: 'http://localhost:8080/docs', kind: 'api_docs' }],
+      }),
+    ).toBeNull();
   });
 });
