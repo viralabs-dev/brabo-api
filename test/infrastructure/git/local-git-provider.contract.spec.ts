@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { chmod, mkdtemp, rm } from 'node:fs/promises';
+import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -305,6 +305,61 @@ describe('LocalGitProvider — pull request local (open + merge)', () => {
     expect(main).toBe(c1.sha);
     const prs = await provider.listPullRequests({ externalId: id });
     expect(prs.items.find((p) => p.number === pr2.number)?.state).toBe('open');
+  });
+
+  it('PR mergeada por fast-forward devolve os arquivos que mudou (AT-518, RN-847)', async () => {
+    const { repo } = await repoWithFeature();
+    const pr = await provider.openPullRequest({
+      externalId: repo.externalId,
+      sourceBranch: 'feature/x',
+      targetBranch: 'main',
+      title: 'Feature X',
+    });
+    await provider.mergePullRequest({
+      externalId: repo.externalId,
+      pullRequestId: pr.id,
+    });
+    const diff = await provider.getPullRequestDiff({
+      externalId: repo.externalId,
+      pullRequestId: pr.id,
+    });
+    expect(diff?.files.map((f) => f.path)).toEqual(['b.txt']);
+  });
+
+  it('PR mergeada por commit de merge devolve só os arquivos dela (AT-518, RN-847)', async () => {
+    const { id, pr1, pr2 } = await duasPrsDoMesmoBase('b.txt', 'c.txt');
+    await provider.mergePullRequest({ externalId: id, pullRequestId: pr1.id });
+    await provider.mergePullRequest({ externalId: id, pullRequestId: pr2.id });
+    const d1 = await provider.getPullRequestDiff({
+      externalId: id,
+      pullRequestId: pr1.id,
+    });
+    const d2 = await provider.getPullRequestDiff({
+      externalId: id,
+      pullRequestId: pr2.id,
+    });
+    expect(d1?.files.map((f) => f.path)).toEqual(['b.txt']);
+    expect(d2?.files.map((f) => f.path)).toEqual(['c.txt']);
+  });
+
+  it('PR mergeada antes de os SHAs serem gravados acha o commit de merge (AT-518, RN-847)', async () => {
+    const { id, pr1, pr2 } = await duasPrsDoMesmoBase('b.txt', 'c.txt');
+    await provider.mergePullRequest({ externalId: id, pullRequestId: pr1.id });
+    await provider.mergePullRequest({ externalId: id, pullRequestId: pr2.id });
+    const caminho = join(id, 'brabo-prs.json');
+    const store = JSON.parse(await readFile(caminho, 'utf8')) as Array<
+      Record<string, unknown>
+    >;
+    for (const pr of store) {
+      delete pr.mergedBaseSha;
+      delete pr.mergedHeadSha;
+    }
+    await writeFile(caminho, JSON.stringify(store));
+    const d2 = await provider.getPullRequestDiff({
+      externalId: id,
+      pullRequestId: pr2.id,
+    });
+    expect(d2?.files.map((f) => f.path)).toEqual(['c.txt']);
   });
 
   it('openPullRequest rejeita branch inexistente', async () => {
