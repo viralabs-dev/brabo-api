@@ -9,6 +9,7 @@ import {
   type StoryContent,
   type NewTask,
   type TarefaPendenteDaExecucao,
+  type TarefaEmCursoDeDev,
 } from '../../../application/ports/backlog-repository.port';
 import type {
   Epic,
@@ -217,6 +218,37 @@ export class DrizzleTaskRepository implements TaskRepository {
   // RN-776: a sessão só responde se for a de execução VIGENTE do projeto — a
   // `active` mais recente com `execution.activated`, a mesma régua de
   // `DrizzleSessionRepository.findActiveExecutionSession`.
+  async listEmCursoDeDev(sessionId: string): Promise<TarefaEmCursoDeDev[]> {
+    const db = currentDb(this.rootDb);
+    // Só de sessão de EXECUÇÃO: encerrar uma consultiva do mesmo projeto não
+    // pode bloquear o trabalho dos dev agents.
+    const result = await db.execute(sql`
+      SELECT s.project_id, t.id AS task_id, t.assigned_to
+        FROM tasks t
+        JOIN stories s ON s.id = t.story_id AND s.archived_at IS NULL
+        JOIN sessions se ON se.id = ${sessionId} AND se.project_id = s.project_id
+       WHERE EXISTS (SELECT 1 FROM session_events e
+                      WHERE e.session_id = se.id
+                        AND e.type = 'execution.activated')
+         AND t.status = 'in_progress'
+         AND t.blocked = false
+         AND t.gate_status IS NULL
+         AND t.assigned_to LIKE 'dev-%'
+       ORDER BY t.created_at
+    `);
+    return (
+      result.rows as {
+        project_id: string;
+        task_id: string;
+        assigned_to: string;
+      }[]
+    ).map((r) => ({
+      projectId: r.project_id,
+      taskId: r.task_id,
+      assignedTo: r.assigned_to,
+    }));
+  }
+
   async findPendenteDaExecucao(
     sessionId: string,
   ): Promise<TarefaPendenteDaExecucao | null> {
@@ -233,12 +265,30 @@ export class DrizzleTaskRepository implements TaskRepository {
                           AND e.type = 'execution.activated')
          ORDER BY s.created_at DESC, s.id DESC
          LIMIT 1
+      ),
+      -- RN-856 (AT-522): os dev agents DESTA execução são os atores de
+      -- evento dev.* da sessão vigente — a mesma fonte que o quarto sinal
+      -- lê. É deles a tarefa in_progress e é dos módulos deles a todo
+      -- que, recém-desbloqueada, ainda não foi pega.
+      devs AS (
+        SELECT DISTINCT e.actor_id
+          FROM session_events e
+          JOIN vigente v ON v.id = e.session_id
+         WHERE e.actor_kind = 'agent'
+           AND e.type LIKE 'dev.%'
       )
       SELECT t.id AS task_id,
              CASE
                WHEN t.blocked THEN 'bloqueada'
                WHEN t.gate_status = 'awaiting_user' THEN 'aguardando_merge'
-               ELSE 'conflito_de_merge'
+               WHEN t.status = 'in_progress' AND EXISTS (
+                      SELECT 1 FROM session_events e
+                       WHERE e.session_id = v.id
+                         AND e.type = 'backlog.task_merge_conflict'
+                         AND e.payload->>'taskId' = t.id::text)
+                 THEN 'conflito_de_merge'
+               WHEN t.status = 'in_progress' THEN 'em_curso_de_dev'
+               ELSE 'a_fazer_de_modulo_com_dev'
              END AS motivo
         FROM tasks t
         JOIN stories st ON st.id = t.story_id AND st.archived_at IS NULL
@@ -252,6 +302,11 @@ export class DrizzleTaskRepository implements TaskRepository {
                  WHERE e.session_id = v.id
                    AND e.type = 'backlog.task_merge_conflict'
                    AND e.payload->>'taskId' = t.id::text))
+           OR (t.status = 'in_progress'
+               AND t.assigned_to IN (SELECT actor_id FROM devs))
+           OR (t.status = 'todo' AND st.status = 'ready'
+               AND t.module IS NOT NULL
+               AND 'dev-' || t.module IN (SELECT actor_id FROM devs))
          )
        ORDER BY t.blocked DESC, t.created_at ASC
        LIMIT 1
@@ -362,6 +417,13 @@ export class DrizzleTaskRepository implements TaskRepository {
     // concorrência).
     // `db.execute` retorna as colunas cruas (snake_case), não o mapeamento
     // camelCase do Drizzle — daí o mapeamento manual abaixo.
+    //
+    // RN-856 (AT-522): ANTES da fila `todo`, a tarefa `in_progress` que já é
+    // DESTE agente (mesmo `assigned_to`), fora de gate e não bloqueada — a
+    // que ficou órfã quando a execução anterior parou o processo sem
+    // devolvê-la. Sem isso o dev religado gravava "sem tarefa disponível" e
+    // a tarefa ficava presa com um dono que não existe. A branch dela, se
+    // existir e não estiver mergeada, é retomada pelo `WorktreeManager`.
     const result = await db.execute(sql`
       UPDATE tasks
       SET status = 'in_progress', assigned_to = ${agentId}, updated_at = now()
@@ -369,12 +431,17 @@ export class DrizzleTaskRepository implements TaskRepository {
         SELECT t.id FROM tasks t
         JOIN stories s ON s.id = t.story_id
         WHERE s.project_id = ${projectId}
-          AND s.status = 'ready'
           AND s.archived_at IS NULL
-          AND ${daTarefaDoModulo(module)}
-          AND t.status = 'todo'
           AND t.blocked = false
-        ORDER BY t.created_at
+          AND (
+            (t.status = 'in_progress'
+              AND t.assigned_to = ${agentId}
+              AND t.gate_status IS NULL)
+            OR (s.status = 'ready'
+              AND ${daTarefaDoModulo(module)}
+              AND t.status = 'todo')
+          )
+        ORDER BY (t.status = 'in_progress') DESC, t.created_at
         FOR UPDATE OF t SKIP LOCKED
         LIMIT 1
       )

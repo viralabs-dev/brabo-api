@@ -687,6 +687,65 @@ describe('GetSessionPendingWorkUseCase — conversa esperando o usuário (RN-581
       expect((await useCase.execute(session.id)).pending).toBe(false);
     });
 
+    // RN-856 (AT-522): o TP-01 (14ª) mediu o intervalo de 1 s entre o
+    // "Desbloquear" (a tarefa volta a `todo`, sem dono) e o claim do dev — e o
+    // heartbeat encerrou a sessão nele.
+    it('tarefa recém-desbloqueada (todo) do módulo de um dev da execução segura a sessão', async () => {
+      const { session, task } = await execucaoComTarefa({ module: 'api' });
+
+      const r = await useCase.execute(session.id);
+
+      expect(r.pending).toBe(true);
+      expect(r.motivo).toBe(
+        `tarefa ${task.id} a fazer no módulo de um dev agent da execução`,
+      );
+    });
+
+    it('tarefa todo de módulo SEM dev na execução não segura', async () => {
+      const { session } = await execucaoComTarefa({ module: 'web' });
+
+      expect((await useCase.execute(session.id)).pending).toBe(false);
+    });
+
+    it('tarefa in_progress atribuída a dev da execução segura a sessão', async () => {
+      const { session, task } = await execucaoComTarefa({
+        status: 'in_progress',
+        assignedTo: 'dev-api',
+      });
+
+      const r = await useCase.execute(session.id);
+
+      expect(r.motivo).toBe(
+        `tarefa ${task.id} em curso com um dev agent da execução`,
+      );
+    });
+
+    it('tarefa in_progress de agente que NÃO é da execução não segura', async () => {
+      const { session } = await execucaoComTarefa({
+        status: 'in_progress',
+        assignedTo: 'dev-outro',
+      });
+
+      expect((await useCase.execute(session.id)).pending).toBe(false);
+    });
+
+    it('listEmCursoDeDev lista a in_progress de dev só para sessão de EXECUÇÃO', async () => {
+      const repo = new DrizzleTaskRepository(db);
+      const { project, user, session, task } = await execucaoComTarefa({
+        status: 'in_progress',
+        assignedTo: 'dev-api',
+      });
+      const [consultiva] = await db
+        .insert(sessions)
+        .values({ projectId: project.id, createdBy: user.id })
+        .returning();
+
+      expect(await repo.listEmCursoDeDev(session.id)).toEqual([
+        { projectId: project.id, taskId: task.id, assignedTo: 'dev-api' },
+      ]);
+      expect(await repo.listEmCursoDeDev(consultiva.id)).toEqual([]);
+    });
+
     it('sessão de execução ANTIGA não é segurada pela tarefa do projeto', async () => {
       const { project, user, session } = await execucaoComTarefa({
         blocked: true,

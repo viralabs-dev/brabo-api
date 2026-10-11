@@ -51,6 +51,7 @@ import { RouteModulesToInfraUseCase } from '../../../application/use-cases/archi
 import { DeclareModuleContractsUseCase } from '../../../application/use-cases/architecture/declare-module-contracts.use-case';
 import { DecidirImagemDoProjetoUseCase } from '../../../application/use-cases/containers/decidir-imagem-do-projeto.use-case';
 import { ClaimNextTaskUseCase } from '../../../application/use-cases/execution/claim-next-task.use-case';
+import { ListTarefasEmCursoDeDevUseCase } from '../../../application/use-cases/execution/list-tarefas-em-curso-de-dev.use-case';
 import { MarkTaskUseCase } from '../../../application/use-cases/execution/mark-task.use-case';
 import { GetDevTaskContextUseCase } from '../../../application/use-cases/execution/get-dev-task-context.use-case';
 import { MarkTaskBlockedUseCase } from '../../../application/use-cases/execution/mark-task-blocked.use-case';
@@ -189,6 +190,7 @@ export class InternalSessionsController {
     private readonly assignStoryModules: AssignStoryModulesUseCase,
     private readonly decidirImagem: DecidirImagemDoProjetoUseCase,
     private readonly claimNextTask: ClaimNextTaskUseCase,
+    private readonly listTarefasEmCursoDeDev: ListTarefasEmCursoDeDevUseCase,
     private readonly markTask: MarkTaskUseCase,
     private readonly getDevTaskContext: GetDevTaskContextUseCase,
     private readonly markTaskBlocked: MarkTaskBlockedUseCase,
@@ -854,6 +856,20 @@ export class InternalSessionsController {
       dto.module,
       dto.agentId,
     );
+  }
+
+  // RN-856 (AT-522): o encerramento da execução bloqueia a órfã que nenhum
+  // processo segura — esta é a lista de onde ele a tira.
+  @Get(':sessionId/tasks/in-progress-by-dev')
+  @ApiOperation({
+    summary: "Lists the project's in-progress tasks held by a dev agent",
+    description:
+      'Not blocked and outside the PR gates; empty unless the session is an ' +
+      'execution session. Used by the engine when stopping an execution, to ' +
+      'block the ones no live dev agent holds.',
+  })
+  tarefasEmCursoDeDev(@Param('sessionId') sessionId: string) {
+    return this.listTarefasEmCursoDeDev.execute(sessionId);
   }
 
   @Post(':sessionId/tasks/:taskId/status')
