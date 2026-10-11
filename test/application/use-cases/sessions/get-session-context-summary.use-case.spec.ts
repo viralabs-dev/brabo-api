@@ -8,8 +8,10 @@ describe('GetSessionContextSummaryUseCase (RN-827)', () => {
     sessoesLidas: ['s1'],
     regras: 11,
     decisoes: 6,
+    itensDeRegras: [],
+    itensDeDecisoes: [],
     artefatosPorAgente: [],
-    arquivosTocados: { itens: [], total: 0 },
+    arquivosTocados: { itens: [], total: 0, prsNaoLidas: 0 },
   };
 
   it('devolve o agregado da sessão do projeto', async () => {

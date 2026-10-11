@@ -3,6 +3,8 @@ import { sql } from 'drizzle-orm';
 import {
   SessionContextSummaryRepository,
   TETO_DE_ARQUIVOS_TOCADOS,
+  TETO_DE_ITENS_DO_CONTEXTO,
+  type PrDaSessao,
   type ResumoDoContextoDaSessao,
 } from '../../../application/ports/session-context-summary-repository.port';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
@@ -48,7 +50,7 @@ export class DrizzleSessionContextSummaryRepository extends SessionContextSummar
       sql`, `,
     );
 
-    const [eventos, prs, arquivos] = await Promise.all([
+    const [eventos, prs, arquivos, itens] = await Promise.all([
       db.execute(sql`
         select type, actor_id, count(*)::int as total
         from session_events
@@ -84,6 +86,19 @@ export class DrizzleSessionContextSummaryRepository extends SessionContextSummar
         order by a.seq desc, f->>'path'
         limit ${TETO_DE_ARQUIVOS_TOCADOS}
       `),
+      // RN-844: os ITENS de regra e decisão, não só o número — com eles a
+      // lista do painel não depende da janela de 200 eventos. Teto por tipo.
+      db.execute(sql`
+        select * from (
+          select id, seq, type, actor_id, payload,
+                 row_number() over (partition by type order by seq desc) as n
+          from session_events
+          where session_id = ${sessionId}
+            and type in ('artifact.business_rule', 'artifact.decision_record')
+        ) t
+        where n <= ${TETO_DE_ITENS_DO_CONTEXTO}
+        order by seq desc
+      `),
     ]);
 
     let regras = 0;
@@ -112,10 +127,42 @@ export class DrizzleSessionContextSummaryRepository extends SessionContextSummar
       total: number;
     }[];
 
+    const contarOrigens = (v: unknown) => (Array.isArray(v) ? v.length : 0);
+    const texto = (v: unknown) =>
+      typeof v === 'string' && v.trim().length > 0 ? v : null;
+    const linhasDeItens = itens.rows as {
+      id: string;
+      seq: string | number;
+      type: string;
+      actor_id: string;
+      payload: Record<string, unknown> | null;
+    }[];
+    const itensDeRegras = linhasDeItens
+      .filter((l) => l.type === 'artifact.business_rule')
+      .map((l) => ({
+        eventId: l.id,
+        seq: Number(l.seq),
+        actorId: l.actor_id,
+        titulo: texto(l.payload?.title),
+        descricao: texto(l.payload?.description),
+        origens: contarOrigens(l.payload?.origin),
+      }));
+    const itensDeDecisoes = linhasDeItens
+      .filter((l) => l.type === 'artifact.decision_record')
+      .map((l) => ({
+        eventId: l.id,
+        seq: Number(l.seq),
+        actorId: l.actor_id,
+        escolha: texto(l.payload?.choice),
+        contexto: texto(l.payload?.context),
+      }));
+
     return {
       sessoesLidas,
       regras,
       decisoes,
+      itensDeRegras,
+      itensDeDecisoes,
       artefatosPorAgente: [...porAgente.entries()]
         .map(([actorId, quantos]) => ({ actorId, quantos }))
         .sort(
@@ -129,7 +176,38 @@ export class DrizzleSessionContextSummaryRepository extends SessionContextSummar
           deletions: l.deletions,
         })),
         total: linhas[0]?.total ?? 0,
+        prsNaoLidas: 0,
       },
+    };
+  }
+
+  async prsDasSessoes(
+    projectId: string,
+    sessoes: string[],
+    teto: number,
+  ): Promise<{ itens: PrDaSessao[]; total: number }> {
+    if (sessoes.length === 0) return { itens: [], total: 0 };
+    const db = currentDb(this.rootDb);
+    const lista = sql.join(
+      sessoes.map((id) => sql`${id}::uuid`),
+      sql`, `,
+    );
+    const r = await db.execute(sql`
+      select id, execution_result->>'pullRequestId' as pr,
+             count(*) over ()::int as total
+      from proposed_actions
+      where project_id = ${projectId}
+        and session_id in (${lista})
+        and action_type in ('pr_open', 'open_adr_pr', 'open_infra_pr')
+        and status = 'executed'
+        and execution_result->>'pullRequestId' is not null
+      order by seq desc
+      limit ${teto}
+    `);
+    const linhas = r.rows as { id: string; pr: string; total: number }[];
+    return {
+      itens: linhas.map((l) => ({ actionId: l.id, pullRequestId: l.pr })),
+      total: linhas[0]?.total ?? 0,
     };
   }
 }

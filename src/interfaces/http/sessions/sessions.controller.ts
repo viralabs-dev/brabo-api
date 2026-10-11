@@ -36,7 +36,7 @@ import { ReopenSessionUseCase } from '../../../application/use-cases/sessions/re
 import { AppendSessionEventUseCase } from '../../../application/use-cases/sessions/append-session-event.use-case';
 import { ListSessionEventsUseCase } from '../../../application/use-cases/sessions/list-session-events.use-case';
 import { GetSessionEventUseCase } from '../../../application/use-cases/sessions/get-session-event.use-case';
-import { GetSessionContextSummaryUseCase } from '../../../application/use-cases/sessions/get-session-context-summary.use-case';
+import { ResumirContextoDaSessaoUseCase } from '../../../application/use-cases/git/resumir-contexto-da-sessao.use-case';
 import { SessionContextSummaryResponseDto } from './dto/session-context-summary.response.dto';
 import { CreateSocketTicketUseCase } from '../../../application/use-cases/sessions/create-socket-ticket.use-case';
 import { CreateSessionDto } from './dto/create-session.dto';
@@ -69,7 +69,7 @@ export class SessionsController {
     private readonly listSessionEvents: ListSessionEventsUseCase,
     private readonly getSessionEvent: GetSessionEventUseCase,
     private readonly createSocketTicket: CreateSocketTicketUseCase,
-    private readonly getSessionContextSummary: GetSessionContextSummaryUseCase,
+    private readonly getSessionContextSummary: ResumirContextoDaSessaoUseCase,
   ) {}
 
   @Post()
@@ -288,7 +288,11 @@ export class SessionsController {
       'the WHOLE session log (the screen reads a 200-event tail), plus the ' +
       'files touched by `git_commit`/`git_push` in this session and in the ' +
       'execution session its approved Dev Lead plan activated (RN-828). ' +
-      'Read only; no new table.',
+      'Since RN-844 it also returns the ITEMS of rules and decisions (latest ' +
+      '50 each; the totals stay in `regras`/`decisoes`) and the files of the ' +
+      'PRs opened in those sessions, read from the same diff the PRs tab ' +
+      'reads, for at most 20 PRs per call; `prsNaoLidas` says how many were ' +
+      'left out or failed. Read only; no new table.',
   })
   @ApiOkResponse({ type: SessionContextSummaryResponseDto })
   contextSummary(
