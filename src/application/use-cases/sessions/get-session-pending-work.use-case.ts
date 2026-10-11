@@ -44,6 +44,10 @@ const MOTIVO_DA_TAREFA = {
   bloqueada: 'bloqueada aguardando desbloqueio',
   aguardando_merge: 'com PR aguardando o merge do usuário',
   conflito_de_merge: 'devolvida por conflito de merge',
+  // RN-856 (AT-522): o desbloqueio põe a tarefa em `todo` e o dev a pega um
+  // instante depois — entre os dois, nada mais segurava a sessão.
+  em_curso_de_dev: 'em curso com um dev agent da execução',
+  a_fazer_de_modulo_com_dev: 'a fazer no módulo de um dev agent da execução',
 } as const;
 
 const NADA_PENDENTE: SessionPendingWork = {
