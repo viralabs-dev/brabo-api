@@ -13,7 +13,14 @@
  *       usage: { input_tokens, output_tokens, cost } }
  */
 import type { ChatMessage, ToolDef } from '@brabo/shared';
-import { DEV_LEAD } from '../agents/agent-areas';
+
+/**
+ * Id do Dev Lead. Fonte: `DEV_LEAD` em `../agents/agent-areas`. Cópia local de
+ * propósito: importar `agent-areas.ts` aqui puxa parameter properties para o
+ * typecheck dos scripts (`erasableSyntaxOnly`), que importa este arquivo.
+ * `test/domain/llm/tool-router-dev-lead.spec.ts` reprova a divergência.
+ */
+export const ID_DO_DEV_LEAD = 'dev-lead';
 
 export const ENDPOINT_DO_JEV = 'https://openrouter.ai/api/alpha/decisions';
 /** Pin (AT-236 resposta 5): o bump é por PR, nunca por alias. */
@@ -335,7 +342,7 @@ export const PISO_DOS_DEV_AGENTS: readonly string[] = [
 export function pisoDoMenu(agentId: string): readonly string[] {
   const proprio = PISO_DO_MENU[agentId];
   if (proprio) return proprio;
-  if (agentId.startsWith('dev-') && agentId !== DEV_LEAD) {
+  if (agentId.startsWith('dev-') && agentId !== ID_DO_DEV_LEAD) {
     return PISO_DOS_DEV_AGENTS;
   }
   return [];
