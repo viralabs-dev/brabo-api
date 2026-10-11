@@ -14,6 +14,14 @@
  */
 import type { ChatMessage, ToolDef } from '@brabo/shared';
 
+/**
+ * Id do Dev Lead. Fonte: `DEV_LEAD` em `../agents/agent-areas`. Cópia local de
+ * propósito: importar `agent-areas.ts` aqui puxa parameter properties para o
+ * typecheck dos scripts (`erasableSyntaxOnly`), que importa este arquivo.
+ * `test/domain/llm/tool-router-dev-lead.spec.ts` reprova a divergência.
+ */
+export const ID_DO_DEV_LEAD = 'dev-lead';
+
 export const ENDPOINT_DO_JEV = 'https://openrouter.ai/api/alpha/decisions';
 /** Pin (AT-236 resposta 5): o bump é por PR, nunca por alias. */
 export const MODELO_DO_JEV = 'typesafe/jev-1.13';
@@ -320,12 +328,24 @@ export const PISO_DO_MENU: Readonly<Record<string, readonly string[]>> = {
   ],
 };
 /**
- * Os dev agents ficam SEM piso, de propósito: a obrigação deles muda a cada
- * passo (ler, editar, testar) e um piso fixo desfaria o recorte. Para eles vale
- * só o aviso de recorte (RN-759).
+ * O piso dos dev agents de EXECUÇÃO (`dev-<modulo>`, nunca o `dev-lead`):
+ * só as duas ferramentas de DESFECHO da task (AT-499, RN-839, decisão do dono
+ * de 10/10). O resto do passo deles (ler, editar, testar) muda a cada volta e
+ * segue SEM piso — um piso maior desfaria o recorte; para isso vale o aviso de
+ * recorte (RN-759).
  */
+export const PISO_DOS_DEV_AGENTS: readonly string[] = [
+  'report_done',
+  'report_blocked',
+];
+
 export function pisoDoMenu(agentId: string): readonly string[] {
-  return PISO_DO_MENU[agentId] ?? [];
+  const proprio = PISO_DO_MENU[agentId];
+  if (proprio) return proprio;
+  if (agentId.startsWith('dev-') && agentId !== ID_DO_DEV_LEAD) {
+    return PISO_DOS_DEV_AGENTS;
+  }
+  return [];
 }
 
 /** O menu P3 com o piso do agente somado, na ordem do catálogo. */
