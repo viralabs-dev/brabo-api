@@ -32,6 +32,7 @@ import {
 } from '../../../domain/sessions/conversa-em-sessao-encerrada';
 import {
   EVENTO_PERGUNTA_EM_ABERTO,
+  resolverRegrasDoAfeta,
   validarPerguntaEmAberto,
 } from '../../../domain/open-questions/pergunta-em-aberto';
 import { Traced } from '../../../infrastructure/observability/traced.decorator';
@@ -91,7 +92,7 @@ export class AppendSessionEventUseCase {
    * transação, então o incremento é desfeito e o contador segue sem buraco.
    */
   @Traced('application')
-  execute(
+  async execute(
     projectId: string,
     sessionId: string,
     input: AppendSessionEventInput,
@@ -105,7 +106,35 @@ export class AppendSessionEventUseCase {
           `artifact.open_question inválido: ${validada.motivo}`,
         );
       }
-      input = { ...input, payload: { ...validada.valor } };
+      // RN-871 (AT-526): `afeta.regras` com TÍTULO vira o id da regra; o
+      // que não é id nem título exato de regra do projeto é recusado.
+      let valor = validada.valor;
+      if (valor.afeta.regras.length) {
+        const regras = await this.sessionEvents.listByTypeForProject(
+          projectId,
+          'artifact.business_rule',
+        );
+        const resolvidas = resolverRegrasDoAfeta(
+          valor.afeta.regras,
+          regras.map((r) => ({
+            id: r.id,
+            title: ((t: unknown) => (typeof t === 'string' ? t : ''))(
+              (r.payload as { title?: unknown })?.title,
+            ),
+            createdAt: r.createdAt,
+          })),
+        );
+        if (!resolvidas.ok) {
+          throw new BadRequestException(
+            `artifact.open_question inválido: ${resolvidas.motivo}`,
+          );
+        }
+        valor = {
+          ...valor,
+          afeta: { ...valor.afeta, regras: resolvidas.regras },
+        };
+      }
+      input = { ...input, payload: { ...valor } };
     }
     return this.unitOfWork.runInTransaction(async () => {
       // A leitura extra é paga só pelo evento de execução. Todo append

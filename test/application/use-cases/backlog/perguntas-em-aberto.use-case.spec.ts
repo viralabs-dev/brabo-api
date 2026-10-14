@@ -212,3 +212,64 @@ describe('artifact.open_question: o payload do contrato (RN-858)', () => {
     ).rejects.toThrow(BadRequestException);
   });
 });
+
+// RN-871 (AT-526): `afeta.regras` com TÍTULO de regra vira o id.
+describe('artifact.open_question: afeta.regras por título (RN-871)', () => {
+  const regra = {
+    id: 'rn-1',
+    type: 'artifact.business_rule',
+    payload: { title: 'Expiração do link' },
+    createdAt: new Date(1),
+  };
+  function funil(gravados: unknown[]) {
+    return new AppendSessionEventUseCase(
+      {
+        runInTransaction: (fn: () => unknown) => {
+          gravados.push('tx');
+          return fn();
+        },
+      } as never,
+      {
+        incrementSeq: () => Promise.resolve({ seq: 1, status: 'active' }),
+      } as never,
+      {
+        listByTypeForProject: (_p: string, tipo: string) =>
+          Promise.resolve(tipo === 'artifact.business_rule' ? [regra] : []),
+        append: (e: { payload: unknown }) => {
+          gravados.push(e.payload);
+          return Promise.resolve({ ...e, id: 'ev', createdAt: new Date() });
+        },
+      } as never,
+      { append: () => Promise.resolve() } as never,
+    );
+  }
+
+  it('título exato é convertido para o id da regra', async () => {
+    const gravados: unknown[] = [];
+    await funil(gravados)
+      .execute('p1', 's1', {
+        type: 'artifact.open_question',
+        actor: { kind: 'agent', id: 'criativo' },
+        payload: pergunta({
+          afeta: { regras: ['Expiração do link', 'rn-1'] },
+        }).payload,
+      })
+      .catch(() => undefined);
+    const payload = gravados.find(
+      (g) => typeof g === 'object' && g !== null && 'afeta' in g,
+    ) as { afeta: { regras: string[] } } | undefined;
+    expect(payload?.afeta.regras).toEqual(['rn-1']);
+  });
+
+  it('texto que não é id nem título de regra: 400 sem escrita', async () => {
+    const gravados: unknown[] = [];
+    await expect(
+      funil(gravados).execute('p1', 's1', {
+        type: 'artifact.open_question',
+        actor: { kind: 'agent', id: 'criativo' },
+        payload: pergunta({ afeta: { regras: ['cliques'] } }).payload,
+      }),
+    ).rejects.toThrow(/não é id nem título exato.*"cliques"/);
+    expect(gravados).toEqual([]);
+  });
+});

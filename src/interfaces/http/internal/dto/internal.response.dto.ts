@@ -226,6 +226,15 @@ export class DevTaskContextResponseDto implements Wire<DevTaskContext> {
       'each text cut at 1,500 characters.',
   })
   decisoes!: DevContextDecisaoResponseDto[];
+
+  @ApiProperty({
+    type: () => [DevContextDecisaoResponseDto],
+    description:
+      "RN-872 (ADR 0215): the project's OTHER decisions — those whose " +
+      '`afeta` does not touch this task. Separate section, inside the SAME ' +
+      'cap of 10 as `decisoes` (task decisions take the cap first), newest first.',
+  })
+  decisoesDoProjeto!: DevContextDecisaoResponseDto[];
 }
 
 export class DevContextDecisaoResponseDto implements Wire<DevContextDecisao> {

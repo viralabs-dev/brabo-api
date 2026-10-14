@@ -88,6 +88,12 @@ export interface DevTaskContext {
    * recentes primeiro, teto de 10, cada uma cortada em 1 500 caracteres.
    */
   decisoes: DevContextDecisao[];
+  /**
+   * RN-872 (AT-526, ADR 0215): as OUTRAS decisões do projeto — as que não
+   * tocam esta tarefa. Seção separada, depois das da tarefa, dentro do MESMO
+   * teto de 10 (as da tarefa vêm primeiro e comem o teto antes).
+   */
+  decisoesDoProjeto: DevContextDecisao[];
 }
 
 export interface DevContextDecisao {
@@ -105,41 +111,65 @@ function cortar(texto: string, teto: number): string {
   return texto.length > teto ? `${texto.slice(0, teto - 1)}…` : texto;
 }
 
+type EventoDeDecisao = { id: string; payload: unknown; createdAt: Date };
+
 /**
  * As decisões (`artifact.decision_record`) cujo `afeta` toca a tarefa, a
- * história ou uma regra da história (RN-859). Pura.
+ * história ou uma regra da história (RN-859). Em `alvo.regras` entram os ids
+ * E os títulos das regras da história: decisão gravada antes da RN-871 tem
+ * TÍTULO em `afeta.regras`. Pura.
  */
 export function decisoesDaTarefa(
-  eventos: ReadonlyArray<{
-    id: string;
-    payload: unknown;
-    createdAt: Date;
-  }>,
+  eventos: ReadonlyArray<EventoDeDecisao>,
   alvo: { regras: string[]; historias: string[]; tarefas: string[] },
 ): DevContextDecisao[] {
-  return eventos
-    .filter((e) =>
-      afetaAlgum(
-        (e.payload as { afeta?: Partial<AfetaDaPergunta> })?.afeta,
-        alvo,
-      ),
-    )
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-    .slice(0, TETO_DE_DECISOES_NO_CONTEXTO)
-    .map((e) => {
-      const p = e.payload as {
-        context?: string;
-        choice?: string;
-        questionId?: string;
-      };
-      return {
-        id: e.id,
-        questionId: p.questionId ?? null,
-        pergunta: cortar(p.context ?? '', TETO_DO_TEXTO_DA_DECISAO),
-        decisao: cortar(p.choice ?? '', TETO_DO_TEXTO_DA_DECISAO),
-        decididaEm: e.createdAt.toISOString(),
-      };
-    });
+  return decisoesDoContexto(eventos, alvo).decisoes;
+}
+
+/**
+ * RN-872 (ADR 0215): as decisões em duas listas — as que tocam a tarefa
+ * (`decisoes`) e as demais do projeto (`decisoesDoProjeto`) —, mais recentes
+ * primeiro, as da tarefa comendo o teto de 10 antes. Pura.
+ */
+export function decisoesDoContexto(
+  eventos: ReadonlyArray<EventoDeDecisao>,
+  alvo: { regras: string[]; historias: string[]; tarefas: string[] },
+): { decisoes: DevContextDecisao[]; decisoesDoProjeto: DevContextDecisao[] } {
+  const ordenadas = [...eventos].sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+  );
+  const toca = (e: EventoDeDecisao) =>
+    afetaAlgum(
+      (e.payload as { afeta?: Partial<AfetaDaPergunta> })?.afeta,
+      alvo,
+    );
+  const daTarefa = ordenadas
+    .filter(toca)
+    .slice(0, TETO_DE_DECISOES_NO_CONTEXTO);
+  const doProjeto = ordenadas
+    .filter((e) => !toca(e))
+    .slice(0, TETO_DE_DECISOES_NO_CONTEXTO - daTarefa.length);
+  return {
+    decisoes: daTarefa.map(paraDecisao),
+    decisoesDoProjeto: doProjeto.map(paraDecisao),
+  };
+}
+
+function paraDecisao(e: EventoDeDecisao): DevContextDecisao {
+  {
+    const p = e.payload as {
+      context?: string;
+      choice?: string;
+      questionId?: string;
+    };
+    return {
+      id: e.id,
+      questionId: p.questionId ?? null,
+      pergunta: cortar(p.context ?? '', TETO_DO_TEXTO_DA_DECISAO),
+      decisao: cortar(p.choice ?? '', TETO_DO_TEXTO_DA_DECISAO),
+      decididaEm: e.createdAt.toISOString(),
+    };
+  }
 }
 
 /**
@@ -341,8 +371,11 @@ export class GetDevTaskContextUseCase {
       moduleOpenTasksTotal: doModulo.total,
       moduleContract,
       primeiraDoModulo: ehPrimeiraTarefaDoModulo(claims, task.id, module),
-      decisoes: decisoesDaTarefa(decisoes, {
-        regras: story.businessRuleIds,
+      ...decisoesDoContexto(decisoes, {
+        regras: [
+          ...story.businessRuleIds,
+          ...businessRules.map((r) => r.title),
+        ],
         historias: [story.id],
         tarefas: [task.id],
       }),

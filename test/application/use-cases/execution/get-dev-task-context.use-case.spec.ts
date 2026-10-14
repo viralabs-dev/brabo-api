@@ -6,6 +6,7 @@ import {
   tarefasAbertasDoModulo,
   moduloDoContrato,
   decisoesDaTarefa,
+  decisoesDoContexto,
   TETO_DE_DECISOES_NO_CONTEXTO,
 } from '../../../../src/application/use-cases/execution/get-dev-task-context.use-case';
 import type {
@@ -469,6 +470,43 @@ describe('GetDevTaskContextUseCase', () => {
       expect(r).toHaveLength(TETO_DE_DECISOES_NO_CONTEXTO);
       expect(r[0].decisao).toHaveLength(1500);
       expect(r.some((d) => d.id === 'sem')).toBe(false);
+    });
+  });
+
+  // RN-872 (ADR 0215): as outras decisões do projeto, em seção separada.
+  describe('decisões do projeto (RN-872)', () => {
+    const decisao = (id: string, afeta: unknown, quando: number) => ({
+      id,
+      payload: { context: 'q', choice: 'c', afeta },
+      createdAt: new Date(quando),
+    });
+
+    it('as que não tocam a tarefa vêm em decisoesDoProjeto; teto de 10 somado, as da tarefa primeiro', () => {
+      const daTarefa = Array.from({ length: 4 }, (_, i) =>
+        decisao(`t${i}`, { tarefas: ['t'] }, i),
+      );
+      const outras = Array.from({ length: 9 }, (_, i) =>
+        decisao(`o${i}`, { historias: ['outra'] }, 100 + i),
+      );
+      const r = decisoesDoContexto([...outras, ...daTarefa], {
+        regras: [],
+        historias: [],
+        tarefas: ['t'],
+      });
+      expect(r.decisoes.map((d) => d.id)).toEqual(['t3', 't2', 't1', 't0']);
+      expect(r.decisoesDoProjeto).toHaveLength(6);
+      expect(r.decisoesDoProjeto[0].id).toBe('o8');
+    });
+
+    it('decisão legada com TÍTULO de regra em afeta.regras casa pelo título', async () => {
+      const ctx = await buildUseCase({
+        decisoes: [
+          decisao('leg', { regras: ['E-mail único'] }, 1),
+          decisao('fora', { regras: ['Outra regra'] }, 2),
+        ],
+      }).execute('proj-1', 'task-1');
+      expect(ctx.decisoes.map((d) => d.id)).toEqual(['leg']);
+      expect(ctx.decisoesDoProjeto.map((d) => d.id)).toEqual(['fora']);
     });
   });
 });
