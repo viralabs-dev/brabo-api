@@ -4,6 +4,37 @@ import {
   normalizeHttpStatus,
 } from '../../../src/domain/llm/llm-provider-errors';
 
+// RN-886 (AT-534): o 403 de orçamento do OpenRouter (TP-01, 14/10).
+const CORPO_403_ORCAMENTO = JSON.stringify({
+  error: {
+    message: 'Budget limit exceeded (monthly limit)',
+    code: 403,
+    metadata: {
+      limit_source: 'openrouter_guardrail_budget',
+      limit_usd: 30,
+      spend_usd: 30.02,
+      resets_at: '2026-11-01T00:00:00.000Z',
+    },
+  },
+});
+
+describe('normalizeHttpStatus — 403 de orçamento (RN-886)', () => {
+  it('o 403 de orçamento vira insufficient_credit com o corpo inteiro', () => {
+    const erro = normalizeHttpStatus('openrouter', 403, CORPO_403_ORCAMENTO);
+    expect(erro.code).toBe('insufficient_credit');
+    expect(erro.message).toContain('"resets_at":"2026-11-01T00:00:00.000Z"');
+  });
+
+  it('403 sem marcador de orçamento continua credencial rejeitada', () => {
+    const erro = normalizeHttpStatus(
+      'openrouter',
+      403,
+      '{"error":"forbidden"}',
+    );
+    expect(erro.code).toBe('auth');
+  });
+});
+
 // RN-739: o corpo do 402 medido no TP-01 (03/10) com o `metadata` inteiro.
 const CORPO_402 = JSON.stringify({
   error: {

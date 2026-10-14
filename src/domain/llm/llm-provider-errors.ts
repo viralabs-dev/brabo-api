@@ -86,6 +86,16 @@ export function normalizeHttpStatus(
   const detalhe = resumo(body);
   const sufixo = detalhe ? `: ${detalhe}` : '';
 
+  // RN-886 (AT-534): o 403 de ORÇAMENTO do OpenRouter (guardrail mensal da
+  // chave, `limit_source: openrouter_guardrail_budget`) não é credencial
+  // rejeitada — é falta de saldo autorizado, a MESMA natureza do 402. Vai pelo
+  // mesmo `insufficient_credit` (RN-730), sem código novo no contrato.
+  if (status === 403 && pareceOrcamento(body)) {
+    return new LLMInsufficientCreditError(
+      provider,
+      `orçamento da chave esgotado em ${provider} (403)${sufixo}`,
+    );
+  }
   if (status === 401 || status === 403) {
     return new LLMAuthError(
       provider,
@@ -120,6 +130,11 @@ export function normalizeHttpStatus(
     provider,
     `${provider} respondeu com status ${status}${sufixo}`,
   );
+}
+
+function pareceOrcamento(body: string | undefined): boolean {
+  if (!body) return false;
+  return /budget limit exceeded|guardrail_budget/i.test(body);
 }
 
 function pareceContexto(body: string | undefined): boolean {
