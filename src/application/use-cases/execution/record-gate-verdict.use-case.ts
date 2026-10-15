@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -17,7 +18,12 @@ import {
   type GateVerdict,
 } from '../../../domain/execution/pr-gate-state-machine';
 import type { Task } from '../../../domain/backlog/backlog.entity';
-import { EVENTO_PERGUNTA_EM_ABERTO } from '../../../domain/open-questions/pergunta-em-aberto';
+import { SessionEventRepository } from '../../ports/session-event-repository.port';
+import {
+  EVENTO_PERGUNTA_EM_ABERTO,
+  EVENTO_PERGUNTA_RESPONDIDA,
+  estadoDaPergunta,
+} from '../../../domain/open-questions/pergunta-em-aberto';
 import { randomUUID } from 'node:crypto';
 
 // Configurável na ativação (ActivateExecutionUseCase), mesmo espírito do
@@ -68,7 +74,42 @@ export class RecordGateVerdictUseCase {
     private readonly markTaskBlocked: MarkTaskBlockedUseCase,
     private readonly outbox: OutboxRepository,
     private readonly unitOfWork: UnitOfWork,
+    private readonly sessionEvents: SessionEventRepository,
   ) {}
+
+  /**
+   * RN-870 (AT-526): o `openQuestionId` do veredito tem de existir NESTE
+   * projeto e estar ABERTO — senão o ciclo estacionaria esperando uma
+   * resposta que nunca vem. Roda antes de qualquer escrita.
+   */
+  private async exigirPerguntaAberta(projectId: string, questionId: string) {
+    const [perguntas, respostas] = await Promise.all([
+      this.sessionEvents.listByTypeForProject(
+        projectId,
+        EVENTO_PERGUNTA_EM_ABERTO,
+      ),
+      this.sessionEvents.listByTypeForProject(
+        projectId,
+        EVENTO_PERGUNTA_RESPONDIDA,
+      ),
+    ]);
+    const r = estadoDaPergunta(questionId, perguntas, respostas);
+    if (r.estado === 'inexistente') {
+      throw new NotFoundException({
+        message: `Pergunta em aberto "${questionId}" não encontrada neste projeto`,
+        reason: 'pergunta_nao_encontrada',
+      });
+    }
+    if (r.estado === 'respondida') {
+      throw new ConflictException({
+        message:
+          `A pergunta "${questionId}" já foi respondida pelo usuário — ` +
+          `siga a decisão em vez de perguntar de novo: ${r.resposta}`,
+        reason: 'pergunta_ja_respondida',
+        decisao: r.resposta,
+      });
+    }
+  }
 
   async execute(
     projectId: string,
@@ -102,6 +143,9 @@ export class RecordGateVerdictUseCase {
         throw new BadRequestException(
           '`needs_user_decision` exige `pergunta` (ou `openQuestionId`)',
         );
+      }
+      if (input.openQuestionId) {
+        await this.exigirPerguntaAberta(projectId, input.openQuestionId);
       }
     }
 

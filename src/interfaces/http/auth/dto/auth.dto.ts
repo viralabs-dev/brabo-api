@@ -107,7 +107,7 @@ export class SessaoResponseDto {
 
   @ApiProperty({
     example: 'pt-BR',
-    enum: ['pt-BR', 'en'],
+    enum: ['pt-BR', 'en', 'ru', 'zh-Hans'],
     description:
       "The user's language preference (i18n foundation, Wave 6a). It comes " +
       'here — and not in a separate call — so the web app never needs an ' +

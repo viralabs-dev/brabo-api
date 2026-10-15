@@ -145,3 +145,63 @@ export function afetaAlgum(
     bate(afeta.tarefas, alvo.tarefas)
   );
 }
+
+/**
+ * RN-870 (AT-526): o estado de uma pergunta pelo log do projeto — inexistente
+ * (ou de outro projeto, que é a mesma coisa vista daqui), aberta ou já
+ * respondida, com o texto da decisão. Pura.
+ */
+export function estadoDaPergunta(
+  questionId: string,
+  perguntas: ReadonlyArray<{ payload: unknown }>,
+  respostas: ReadonlyArray<{ payload: unknown }>,
+):
+  | { estado: 'inexistente' }
+  | { estado: 'aberta' }
+  | { estado: 'respondida'; resposta: string } {
+  const doId = (e: { payload: unknown }) =>
+    (e.payload as { questionId?: unknown })?.questionId === questionId;
+  if (!perguntas.some(doId)) return { estado: 'inexistente' };
+  const resposta = respostas.find(doId);
+  if (!resposta) return { estado: 'aberta' };
+  const texto = (resposta.payload as { resposta?: unknown }).resposta;
+  return {
+    estado: 'respondida',
+    resposta: typeof texto === 'string' ? texto : '',
+  };
+}
+
+/**
+ * RN-871 (AT-526): `afeta.regras` aceita o id de um `artifact.business_rule`
+ * do projeto ou o TÍTULO exato de um — que vira o id (o mais recente, se o
+ * título se repete). O que não resolve é recusa nomeada. Pura.
+ */
+export function resolverRegrasDoAfeta(
+  regras: string[],
+  doProjeto: ReadonlyArray<{ id: string; title: string; createdAt: Date }>,
+): { ok: true; regras: string[] } | { ok: false; motivo: string } {
+  const ids = new Set(doProjeto.map((r) => r.id));
+  const recentes = [...doProjeto].sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+  );
+  const resolvidas: string[] = [];
+  const faltam: string[] = [];
+  for (const r of regras) {
+    if (ids.has(r)) {
+      resolvidas.push(r);
+      continue;
+    }
+    const porTitulo = recentes.find((x) => x.title === r);
+    if (porTitulo) resolvidas.push(porTitulo.id);
+    else faltam.push(r);
+  }
+  if (faltam.length) {
+    return {
+      ok: false,
+      motivo: `\`afeta.regras\` não é id nem título exato de regra de negócio do projeto: ${faltam
+        .map((f) => `"${f}"`)
+        .join(', ')}`,
+    };
+  }
+  return { ok: true, regras: [...new Set(resolvidas)] };
+}

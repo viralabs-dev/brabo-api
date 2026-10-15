@@ -4,6 +4,7 @@ import { TokenEstimator } from '../../application/ports/token-estimator.port';
 import {
   OpenAICompatibleProvider,
   type OpenAICompatibleConfig,
+  type WireMessage,
 } from './openai-compatible-provider';
 import {
   LLMAuthError,
@@ -254,6 +255,71 @@ export function extrairCustoRealOpenRouter(
 }
 
 /**
+ * Os PONTOS DE CACHE de prompt no formato do OpenRouter (RN-892): o conteúdo
+ * da mensagem vira `[{ type: 'text', text, cache_control: { type: 'ephemeral' } }]`.
+ * Fonte pública: https://openrouter.ai/docs/features/prompt-caching (seção
+ * Anthropic Claude: `cache_control` em blocos de conteúdo de texto, no máximo
+ * QUATRO pontos por chamada, TTL de 5 min; OpenAI, DeepSeek e Gemini 2.5
+ * cacheiam sozinhos, sem ponto).
+ *
+ * Camada de MODELO: só `anthropic/*` recebe ponto; os demais voltam intactos.
+ *
+ * DOIS pontos, sobre o que é ESTÁVEL entre chamadas do mesmo agente:
+ *  1. a última mensagem `system` do PREFIXO (as instruções — e, por ordem de
+ *     prefixo da Anthropic, as ferramentas antes delas);
+ *  2. a última mensagem `user`/`tool` ANTES da cauda de `system` do fim — o
+ *     histórico inteiro até ali.
+ * A cauda de `system` do FIM (idioma RN-622, ambiente RN-706, fluxo RN-711,
+ * perfil RN-680) fica DEPOIS do último ponto, de propósito: muda por chamada e
+ * não pode invalidar o prefixo. A ordem das mensagens NUNCA muda.
+ */
+export function marcarCacheDePromptOpenRouter(
+  mensagens: WireMessage[],
+  modelo: string,
+): WireMessage[] {
+  if (!modelo.startsWith('anthropic/')) return mensagens;
+
+  let inicioDaCauda = mensagens.length;
+  while (inicioDaCauda > 0 && mensagens[inicioDaCauda - 1].role === 'system') {
+    inicioDaCauda -= 1;
+  }
+
+  const pontos = new Set<number>();
+  let fimDoPrefixo = -1;
+  while (
+    fimDoPrefixo + 1 < inicioDaCauda &&
+    mensagens[fimDoPrefixo + 1].role === 'system'
+  ) {
+    fimDoPrefixo += 1;
+  }
+  if (fimDoPrefixo >= 0) pontos.add(fimDoPrefixo);
+
+  for (let i = inicioDaCauda - 1; i > fimDoPrefixo; i -= 1) {
+    const { role } = mensagens[i];
+    if (role === 'user' || role === 'tool') {
+      pontos.add(i);
+      break;
+    }
+  }
+
+  return mensagens.map((m, i) => {
+    if (!pontos.has(i) || typeof m.content !== 'string' || !m.content) {
+      return m;
+    }
+    return {
+      ...m,
+      content: [
+        {
+          type: 'text',
+          text: m.content,
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
+    };
+  });
+}
+
+/**
  * A extração é exportada à parte, como as demais funções de config deste
  * arquivo, para a suite de contrato exercitar ESTA config apontando pro
  * servidor falso — não uma cópia escrita no teste.
@@ -282,6 +348,9 @@ export function openrouterConfig(
       // A prova vale para o fio `provider.sort` e o `provider` do frame;
       // qual upstream cada critério escolhe é decisão do hub e muda com o tempo.
       routingPreference: true,
+      // `false` até o smoke `openrouter-provider.cache.smoke.spec.ts` rodar
+      // com credencial e mostrar `cached_tokens` > 0 (RN-892, ADRs 0041/0042).
+      promptCaching: false,
     },
     authHeaders: (apiKey) => ({
       Authorization: `Bearer ${apiKey ?? ''}`,
@@ -309,6 +378,9 @@ export function openrouterConfig(
     // `usage.cost` medida nas chamadas reais da medição de idioma, AT-163);
     // a prova com credencial, em stream, é o smoke `openrouter-provider.smoke`.
     extrairCustoReal: extrairCustoRealOpenRouter,
+    // Pontos de cache de prompt (RN-892) — inerte enquanto a capability for
+    // `false`.
+    marcarCacheDePrompt: marcarCacheDePromptOpenRouter,
   };
 }
 

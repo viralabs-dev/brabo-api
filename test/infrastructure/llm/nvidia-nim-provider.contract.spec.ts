@@ -107,6 +107,7 @@ describe('NvidiaNimProvider — quirks (Fase 11b)', () => {
       // (ADR 0075) — a base sabe falar o dialeto, o provider nao declara.
       embeddings: false,
       routingPreference: false,
+      promptCaching: false,
     });
     expect(NVIDIA_NIM_BASE_URL).toBe('https://integrate.api.nvidia.com/v1');
   });
