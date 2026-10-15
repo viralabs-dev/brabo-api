@@ -134,7 +134,9 @@ describe('OpenRouterProvider — quirks (Fase 11a)', () => {
       // Provada contra a API real em 2026-09-29
       // (`openrouter-provider.roteamento.smoke.spec.ts`, AT-158).
       routingPreference: true,
-      promptCaching: false,
+      // Provada contra a API real em 2026-10-15
+      // (`openrouter-provider.cache.smoke.spec.ts`, RN-892, AT-543).
+      promptCaching: true,
     });
     expect(OPENROUTER_BASE_URL).toBe('https://openrouter.ai/api/v1');
   });
@@ -688,7 +690,7 @@ describe('OpenRouterProvider — pontos de cache de prompt (RN-892)', () => {
     expect(corpo.messages[5].content).toBe('ambiente do agente');
   });
 
-  it('desligada (o padrão de hoje), o corpo é byte a byte o de antes', async () => {
+  it('desligada, o corpo é byte a byte o de antes', async () => {
     const ligadaOutroModelo = await corpoDe(true, 'openai/gpt-5');
     const desligada = await corpoDe(false, 'openai/gpt-5');
     expect(JSON.stringify(desligada)).toBe(JSON.stringify(ligadaOutroModelo));
@@ -699,7 +701,11 @@ describe('OpenRouterProvider — pontos de cache de prompt (RN-892)', () => {
     expect(
       desligadaAnthropic.messages.every((m) => typeof m.content === 'string'),
     ).toBe(true);
-    expect(openrouterConfig().capabilities.promptCaching).toBe(false);
+  });
+
+  it('a capability do OpenRouter está LIGADA (provada pelo smoke de 15/10) — voltar a false reprova', () => {
+    expect(openrouterConfig().capabilities.promptCaching).toBe(true);
+    expect(new OpenRouterProvider().capabilities.promptCaching).toBe(true);
   });
 
   it('declarar a capability sem o hook falha na construção', () => {
