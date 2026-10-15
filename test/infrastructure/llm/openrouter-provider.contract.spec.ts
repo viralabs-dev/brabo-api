@@ -6,6 +6,7 @@ import {
   OPENROUTER_BASE_URL,
   OpenRouterProvider,
   campoDeRoteamentoOpenRouter,
+  marcarCacheDePromptOpenRouter,
   extrairCustoRealOpenRouter,
   openrouterConfig,
   parseCatalogoOpenRouter,
@@ -133,6 +134,7 @@ describe('OpenRouterProvider — quirks (Fase 11a)', () => {
       // Provada contra a API real em 2026-09-29
       // (`openrouter-provider.roteamento.smoke.spec.ts`, AT-158).
       routingPreference: true,
+      promptCaching: false,
     });
     expect(OPENROUTER_BASE_URL).toBe('https://openrouter.ai/api/v1');
   });
@@ -634,3 +636,91 @@ async function subirServidorFalsoComHeaders(
       }),
   };
 }
+
+describe('OpenRouterProvider — pontos de cache de prompt (RN-892)', () => {
+  const CONVERSA = [
+    { role: 'system' as const, content: 'instruções do agente' },
+    { role: 'user' as const, content: 'pedido' },
+    { role: 'assistant' as const, content: 'resposta' },
+    { role: 'user' as const, content: 'segundo pedido' },
+    { role: 'system' as const, content: 'idioma da resposta: pt-BR' },
+    { role: 'system' as const, content: 'ambiente do agente' },
+  ];
+
+  const provider = (baseUrl: string, ligada: boolean) => {
+    const base = openrouterConfig(baseUrl);
+    return new OpenAICompatibleProvider(
+      {
+        ...base,
+        capabilities: { ...base.capabilities, promptCaching: ligada },
+      },
+      new GptTokenizerEstimator(),
+    );
+  };
+
+  async function corpoDe(ligada: boolean, model: string) {
+    const servidor = await subirServidorFalso(dialetoOpenRouter);
+    for await (const _ of provider(servidor.baseUrl, ligada).chat(CONVERSA, {
+      model,
+    })) {
+      // drena
+    }
+    const corpo = servidor.ultimoPedido();
+    await servidor.fechar();
+    return corpo as unknown as {
+      messages: { role: string; content: unknown }[];
+    };
+  }
+
+  const marcado = (text: string) => [
+    { type: 'text', text, cache_control: { type: 'ephemeral' } },
+  ];
+
+  it('ligada, num modelo anthropic: ponto nas instruções e no fim do histórico, efêmeras do fim DEPOIS e intactas', async () => {
+    const corpo = await corpoDe(true, 'anthropic/claude-haiku-5.5');
+    expect(corpo.messages.map((m) => m.role)).toEqual(
+      CONVERSA.map((m) => m.role),
+    );
+    expect(corpo.messages[0].content).toEqual(marcado('instruções do agente'));
+    expect(corpo.messages[1].content).toBe('pedido');
+    expect(corpo.messages[3].content).toEqual(marcado('segundo pedido'));
+    expect(corpo.messages[4].content).toBe('idioma da resposta: pt-BR');
+    expect(corpo.messages[5].content).toBe('ambiente do agente');
+  });
+
+  it('desligada (o padrão de hoje), o corpo é byte a byte o de antes', async () => {
+    const ligadaOutroModelo = await corpoDe(true, 'openai/gpt-5');
+    const desligada = await corpoDe(false, 'openai/gpt-5');
+    expect(JSON.stringify(desligada)).toBe(JSON.stringify(ligadaOutroModelo));
+    const desligadaAnthropic = await corpoDe(
+      false,
+      'anthropic/claude-haiku-5.5',
+    );
+    expect(
+      desligadaAnthropic.messages.every((m) => typeof m.content === 'string'),
+    ).toBe(true);
+    expect(openrouterConfig().capabilities.promptCaching).toBe(false);
+  });
+
+  it('declarar a capability sem o hook falha na construção', () => {
+    const base = openrouterConfig('http://127.0.0.1:1');
+    expect(
+      () =>
+        new OpenAICompatibleProvider({
+          ...base,
+          marcarCacheDePrompt: undefined,
+          capabilities: { ...base.capabilities, promptCaching: true },
+        }),
+    ).toThrow(/promptCaching.*marcarCacheDePrompt/);
+  });
+
+  it('chamada só de mensagens efêmeras não ganha ponto nenhum', () => {
+    const entrada = [
+      { role: 'system', content: 'a' },
+      { role: 'system', content: 'b' },
+    ];
+    expect(marcarCacheDePromptOpenRouter(entrada, 'anthropic/x')).toEqual(
+      entrada,
+    );
+  });
+});

@@ -107,6 +107,7 @@ describe('BitdeerProvider — quirks (Fase 11b)', () => {
       // (ADR 0075) — a base sabe falar o dialeto, o provider nao declara.
       embeddings: false,
       routingPreference: false,
+      promptCaching: false,
     });
     expect(BITDEER_BASE_URL).toBe('https://api-inference.bitdeer.ai/v1');
   });

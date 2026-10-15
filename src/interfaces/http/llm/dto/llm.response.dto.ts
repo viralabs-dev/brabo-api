@@ -921,6 +921,16 @@ export class LLMProviderCapabilitiesResponseDto implements Wire<LLMProviderCapab
       'the chosen upstream — reading the docs does not count.',
   })
   routingPreference!: boolean;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'The provider accepts explicit PROMPT-CACHE breakpoints ' +
+      '(`cache_control`) on the stable prefix of a call (RN-892). Only ' +
+      '`true` after a smoke against the real API showed cached input ' +
+      'tokens on a repeated call.',
+  })
+  promptCaching!: boolean;
 }
 export const _chavesCapabilitiesDoProvider: MesmasChaves<
   LLMProviderCapabilitiesResponseDto,
