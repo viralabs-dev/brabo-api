@@ -348,9 +348,11 @@ export function openrouterConfig(
       // A prova vale para o fio `provider.sort` e o `provider` do frame;
       // qual upstream cada critério escolhe é decisão do hub e muda com o tempo.
       routingPreference: true,
-      // `false` até o smoke `openrouter-provider.cache.smoke.spec.ts` rodar
-      // com credencial e mostrar `cached_tokens` > 0 (RN-892, ADRs 0041/0042).
-      promptCaching: false,
+      // PROVADO em 2026-10-15 (RN-892, AT-543):
+      // `openrouter-provider.cache.smoke.spec.ts` rodou contra a API real e a
+      // segunda chamada a `anthropic/claude-haiku-5.5` voltou com
+      // `cached_input_tokens=8011`. O hook segue limitando o ponto a `anthropic/*`.
+      promptCaching: true,
     },
     authHeaders: (apiKey) => ({
       Authorization: `Bearer ${apiKey ?? ''}`,
