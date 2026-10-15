@@ -63,11 +63,16 @@ export const projectExecutionModeEnum = pgEnum('project_execution_mode', [
   'runner',
 ]);
 
-// Idioma da interface (fundação de i18n, Onda 6a). Fechado a dois valores de
+// Idioma da interface (fundação de i18n, Onda 6a; quatro desde o ADR 0216, RN-891). Fechado de
 // propósito — abrir para qualquer BCP-47 exigiria arquivo de recurso e
 // validação de fallback que a extração de strings (etapa separada) ainda não
 // tem. `pt-BR` é o default: nunca flipar silenciosamente quem já tem conta.
-export const userLocaleEnum = pgEnum('user_locale', ['pt-BR', 'en']);
+export const userLocaleEnum = pgEnum('user_locale', [
+  'pt-BR',
+  'en',
+  'ru',
+  'zh-Hans',
+]);
 
 export const users = pgTable(
   'users',
