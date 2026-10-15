@@ -42,6 +42,7 @@ class ProviderFalso extends LLMProvider {
     listModels: true,
     embeddings: true,
     routingPreference: false,
+    promptCaching: false,
   };
   chaveRecebida: string | undefined = undefined;
   entradasRecebidas: readonly string[] = [];
@@ -85,6 +86,7 @@ class ProviderSemCatalogo extends LLMProvider {
     listModels: false,
     embeddings: false,
     routingPreference: false,
+    promptCaching: false,
   };
 
   // eslint-disable-next-line @typescript-eslint/require-await

@@ -31,6 +31,7 @@ export function openaiConfig(
       embeddings: false,
       // Não é hub: não há upstreams entre os quais escolher (ADR 0166).
       routingPreference: false,
+      promptCaching: false,
     },
     authHeaders: (apiKey) => ({ Authorization: `Bearer ${apiKey ?? ''}` }),
     flags: {

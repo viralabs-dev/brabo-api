@@ -95,6 +95,7 @@ class FakeProvider implements LLMProvider {
     listModels: false,
     embeddings: false,
     routingPreference: false,
+    promptCaching: false,
   };
   constructor(private readonly script: ChatStreamChunk[]) {}
   async *chat(): AsyncGenerator<ChatStreamChunk> {
@@ -111,6 +112,7 @@ class ThrowingProvider implements LLMProvider {
     listModels: false,
     embeddings: false,
     routingPreference: false,
+    promptCaching: false,
   };
   async *chat(): AsyncGenerator<ChatStreamChunk> {
     await Promise.resolve();
