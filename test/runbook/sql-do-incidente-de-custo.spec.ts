@@ -28,17 +28,11 @@ import {
  */
 
 const RAIZ = join(__dirname, '..', '..', '..', '..');
+// Desde o ADR 0216 a fonte é `docs/` (pt-BR, padrão); a cópia pt-BR em
+// `website/i18n/pt-BR/` saiu. Tradução que vier em `website/i18n/<locale>/`
+// entra aqui quando existir.
 const ARQUIVOS = {
-  en: join(RAIZ, 'docs', 'runbook.md'),
-  'pt-BR': join(
-    RAIZ,
-    'website',
-    'i18n',
-    'pt-BR',
-    'docusaurus-plugin-content-docs',
-    'current',
-    'runbook.md',
-  ),
+  fonte: join(RAIZ, 'docs', 'runbook.md'),
 } as const;
 
 /** Os blocos ```sql da seção `{#incidente-de-custo}`, em ordem. */
