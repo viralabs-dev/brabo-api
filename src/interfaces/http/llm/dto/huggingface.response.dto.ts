@@ -9,7 +9,7 @@ import {
 export class HuggingFaceModelResponseDto implements Wire<HuggingFaceModel> {
   @ApiProperty({
     example: 'meta-llama/Llama-3.1-8B-Instruct-GGUF',
-    description: '`<publisher>/<modelo>` no Hugging Face Hub.',
+    description: '`<publisher>/<model>` on the Hugging Face Hub.',
   })
   repoId!: string;
 
@@ -25,10 +25,10 @@ export class HuggingFaceModelResponseDto implements Wire<HuggingFaceModel> {
   @ApiProperty({
     example: true,
     description:
-      'O publisher está no allowlist curado de fabricantes conhecidos ' +
-      '(`domain/llm/huggingface-official-publishers.ts`). `false` é ' +
-      'qualquer reupload de terceiro — a tela mostra o aviso de segurança ' +
-      'quando `includeCommunity=true` trouxe este resultado.',
+      'The publisher is in the curated allowlist of known vendors ' +
+      '(`domain/llm/huggingface-official-publishers.ts`). `false` is ' +
+      'any third-party reupload — the screen shows the security warning ' +
+      'when `includeCommunity=true` brought this result.',
   })
   official!: boolean;
 }
@@ -54,8 +54,8 @@ export class ModelPullRequestResponseDto implements Wire<ModelPullRequest> {
     example: null,
     nullable: true,
     description:
-      'Só presente quando o Hub publicou `usedStorage` na busca — nunca ' +
-      'estimado por palpite.',
+      'Present only when the Hub published `usedStorage` in the search — ' +
+      'never guessed.',
   })
   estimatedSizeBytes!: number | null;
 
@@ -64,8 +64,8 @@ export class ModelPullRequestResponseDto implements Wire<ModelPullRequest> {
     example: 'pending_confirmation',
     description:
       '`pending_confirmation` → `confirmed` → `pulling` → `active` | ' +
-      '`failed`. Os dois primeiros estados SÃO a segunda confirmação ' +
-      'explícita que o produto exige antes de qualquer download rodar.',
+      '`failed`. The first two states ARE the second explicit confirmation ' +
+      'the product requires before any download runs.',
   })
   status!: Wire<ModelPullRequest>['status'];
 
@@ -73,7 +73,7 @@ export class ModelPullRequestResponseDto implements Wire<ModelPullRequest> {
     example: null,
     nullable: true,
     format: 'date-time',
-    description: 'Quando o clique de confirmação aconteceu.',
+    description: 'When the confirmation click happened.',
   })
   confirmedAt!: string | null;
 
@@ -81,8 +81,8 @@ export class ModelPullRequestResponseDto implements Wire<ModelPullRequest> {
     example: null,
     nullable: true,
     description:
-      'Só em `failed`, prefixado pela origem (infra | modelo | código | ' +
-      'política) — nunca falha calada.',
+      'Only in `failed`, prefixed by the origin (infra | model | code | ' +
+      'policy) — never a silent failure.',
   })
   failedReason!: string | null;
 

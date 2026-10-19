@@ -40,7 +40,7 @@ export class RecordGateVerdictInternalDto {
   resumo!: string;
 
   @ApiProperty({
-    example: ['No test for a non-existent SKU'],
+    example: ['No test for a nonexistent SKU'],
     description: 'What needs to change, item by item.',
   })
   @IsArray()
@@ -48,7 +48,7 @@ export class RecordGateVerdictInternalDto {
   itens!: string[];
 
   @ApiPropertyOptional({
-    example: 'Should a non-existent code answer 404?',
+    example: 'Should a nonexistent code answer 404?',
     description:
       'With `needs_user_decision`: the new open question (up to 500 chars).',
   })

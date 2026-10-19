@@ -183,7 +183,7 @@ export class StoryResponseDto implements Wire<Story> {
     example: ['api'],
     description:
       'Modules from the `module_map` that the story touches. A story with ' +
-      'no module, or with a non-existent module, becomes an architecture ' +
+      'no module, or with a nonexistent module, becomes an architecture ' +
       'pending item.',
   })
   moduleIds!: string[];

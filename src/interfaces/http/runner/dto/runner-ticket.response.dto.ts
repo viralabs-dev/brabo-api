@@ -11,22 +11,22 @@ import { ApiProperty } from '@nestjs/swagger';
 export class RunnerTicketResponseDto {
   @ApiProperty({
     description:
-      'Token opaco de uso único, base64url. TTL de 30s: some depois do ' +
-      'primeiro `connect/3` bem-sucedido no socket `/runner`, ou quando expira.',
+      'Opaque single-use token, base64url. 30s TTL: gone after the first ' +
+      'successful `connect/3` on the `/runner` socket, or when it expires.',
   })
   ticket!: string;
 
   @ApiProperty({
     example: '2026-08-09T12:00:30.000Z',
-    description: 'Quando o ticket expira (ISO 8601).',
+    description: 'When the ticket expires (ISO 8601).',
   })
   expiresAt!: string;
 
   @ApiProperty({
     example: 'ws://localhost:4000/runner',
     description:
-      'URL pública do socket Phoenix `/runner`, já em ws(s):// — pronta para ' +
-      'o cliente (runner CLI ou web) abrir a conexão com `{ticket}` nos params.',
+      'Public URL of the Phoenix `/runner` socket, already in ws(s):// — ready ' +
+      'for the client (runner CLI or web) to open the connection with `{ticket}` in the params.',
   })
   engineWsUrl!: string;
 }

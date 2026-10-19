@@ -38,10 +38,10 @@ import { RunnerTicketResponseDto } from './dto/runner-ticket.response.dto';
  *   mínimo `viewer`, JWT de sessão normal, mesma régua das outras leituras
  *   da aba Code (`containers.controller.ts`).
  */
-@ApiTags('projetos')
+@ApiTags('projects')
 @ApiBearerAuth(BEARER)
-@ApiForbiddenResponse({ description: 'Papel insuficiente no projeto.' })
-@ApiNotFoundResponse({ description: 'Projeto não encontrado.' })
+@ApiForbiddenResponse({ description: 'Insufficient role on the project.' })
+@ApiNotFoundResponse({ description: 'Project not found.' })
 @Controller('projects/:projectId')
 export class RunnerTicketsController {
   constructor(private readonly requestTicket: RequestRunnerTicketUseCase) {}
@@ -51,18 +51,18 @@ export class RunnerTicketsController {
   @UseGuards(PatAuthGuard)
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Emite um ticket de uso único para o runner local conectar',
+    summary: 'Issues a single-use ticket for the local runner to connect',
     description:
-      'Autentica `connect/3` do socket Phoenix `/runner` (tópico ' +
-      '`terminal:<projectId>`, papel "runner") — NÃO é o JWT reaproveitado, ' +
-      'e esta rota em si só aceita um Personal Access Token no lugar do JWT ' +
-      'de sessão (ADR 0105). TTL de 30s e uso único. Recusa com 400 se o ' +
-      'projeto não estiver no modo "runner" (RN-421): o runner não tem o ' +
-      'que servir num projeto cujo código mora no container gerenciado.',
+      'Authenticates `connect/3` of the Phoenix socket `/runner` (topic ' +
+      '`terminal:<projectId>`, role "runner") — it is NOT the reused JWT, ' +
+      'and this route itself only accepts a Personal Access Token instead of ' +
+      'the session JWT (ADR 0105). 30s TTL and single use. Refuses with 400 ' +
+      'if the project is not in "runner" mode (RN-421): the runner has ' +
+      'nothing to serve in a project whose code lives in the managed container.',
   })
   @ApiCreatedResponse({ type: RunnerTicketResponseDto })
   @ApiBadRequestResponse({
-    description: 'Projeto não está no modo "runner".',
+    description: 'Project is not in "runner" mode.',
   })
   runnerTicket(
     @Param('projectId') projectId: string,
@@ -79,11 +79,11 @@ export class RunnerTicketsController {
   @Post('terminal-ticket')
   @RequireRole('viewer')
   @ApiOperation({
-    summary: 'Emite um ticket de uso único para a aba Terminal da web',
+    summary: 'Issues a single-use ticket for the web Terminal tab',
     description:
-      'Mesmo socket `/runner`, mesmo tópico, papel "terminal" — quem VÊ o ' +
-      'terminal (o comando em si só roda de verdade se houver um runner ' +
-      'conectado). Vale para qualquer modo de projeto.',
+      'Same `/runner` socket, same topic, role "terminal" — whoever SEES the ' +
+      'terminal (the command itself only really runs if a runner is ' +
+      'connected). Valid for any project mode.',
   })
   @ApiCreatedResponse({ type: RunnerTicketResponseDto })
   terminalTicket(

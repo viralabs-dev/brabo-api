@@ -11,33 +11,33 @@ export class ContainerExecInternalResponseDto {
   @ApiProperty({
     example: true,
     description:
-      '`false` quando o broker recusou ou não respondeu — os outros campos ' +
-      'ficam ausentes e `motivo` explica.',
+      '`false` when the broker refused or did not answer — the other fields ' +
+      'are absent and `motivo` explains.',
   })
   sucesso!: boolean;
 
   @ApiPropertyOptional({
     example: 0,
-    description: 'Presente só quando `sucesso: true`.',
+    description: 'Present only when `sucesso: true`.',
   })
   exitCode?: number;
 
   @ApiPropertyOptional({
     example: 'ok\n',
-    description: 'Presente só quando `sucesso: true`.',
+    description: 'Present only when `sucesso: true`.',
   })
   output?: string;
 
   @ApiPropertyOptional({
     example: false,
-    description: 'Presente só quando `sucesso: true`.',
+    description: 'Present only when `sucesso: true`.',
   })
   timedOut?: boolean;
 
   @ApiPropertyOptional({
     example:
       'o broker de container não respondeu em http://broker:8090: timeout',
-    description: 'Presente só quando `sucesso: false`.',
+    description: 'Present only when `sucesso: false`.',
   })
   motivo?: string;
 }

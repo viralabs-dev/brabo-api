@@ -11,7 +11,7 @@ import {
 export class IssuePatRequestDto {
   @ApiProperty({
     example: 'laptop',
-    description: 'Nome pra você reconhecer este token depois — não é único.',
+    description: 'A name for you to recognize this token later — not unique.',
   })
   @IsString()
   @MinLength(1)
@@ -21,7 +21,7 @@ export class IssuePatRequestDto {
   @ApiPropertyOptional({
     example: 90,
     description:
-      'Expira em N dias. Omitido = sem expiração (revogável a qualquer hora, mas nunca expira sozinho).',
+      'Expires in N days. Omitted = no expiration (revocable at any time, but never expires on its own).',
   })
   @IsOptional()
   @IsInt()

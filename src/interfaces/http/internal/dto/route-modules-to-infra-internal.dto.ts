@@ -21,7 +21,7 @@ import {
 export class RoteamentoDeModuloInternalDto {
   @ApiProperty({
     example: 'checkout-api',
-    description: 'Nome do módulo — precisa existir no module_map vigente.',
+    description: 'Module name — must exist in the current module_map.',
   })
   @IsString()
   modulo!: string;

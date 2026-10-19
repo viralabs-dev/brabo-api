@@ -17,8 +17,8 @@ export class ConvertExecutionModeDto {
     enum: PROJECT_EXECUTION_MODES,
     example: 'runner',
     description:
-      'O novo modo de execução. Pode repetir o modo atual do projeto — ' +
-      'nesse caso, só `workspacePath` muda de verdade.',
+      'The new execution mode. It may repeat the current project mode — ' +
+      'in that case, only `workspacePath` really changes.',
   })
   @IsIn(PROJECT_EXECUTION_MODES)
   executionMode!: ProjectExecutionMode;
@@ -26,12 +26,12 @@ export class ConvertExecutionModeDto {
   @ApiPropertyOptional({
     example: '/home/you/projects/store',
     description:
-      'O caminho absoluto da pasta do usuário — obrigatório quando ' +
-      '`executionMode` é `mounted` ou `runner`, recusado quando é ' +
-      '`container`. Mesma validação da criação (RN-170/RN-422/RN-423): em ' +
-      '`mounted`, precisa existir e ser gravável de dentro do container; ' +
-      'em `runner`, só o formato é validado agora — a confirmação de ' +
-      'verdade vem do runner conectando de novo.',
+      'The absolute path of the user folder — required when ' +
+      '`executionMode` is `mounted` or `runner`, refused when it is ' +
+      '`container`. Same validation as creation (RN-170/RN-422/RN-423): in ' +
+      '`mounted`, it must exist and be writable from inside the container; ' +
+      'in `runner`, only the format is validated now — the real ' +
+      'confirmation comes from the runner connecting again.',
   })
   @IsOptional()
   @IsString()

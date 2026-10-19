@@ -68,10 +68,10 @@ import { RunnerDeviceKeyListResponseDto } from './dto/runner-device-key-list.res
  * de máquina é o `install.sh`, pela rota INTERNA
  * (`InternalMachineDeviceKeysController`, RN-552) — nunca por aqui.
  */
-@ApiTags('projetos')
+@ApiTags('projects')
 @ApiBearerAuth(BEARER)
-@ApiForbiddenResponse({ description: 'Papel insuficiente no projeto.' })
-@ApiNotFoundResponse({ description: 'Projeto não encontrado.' })
+@ApiForbiddenResponse({ description: 'Insufficient role on the project.' })
+@ApiNotFoundResponse({ description: 'Project not found.' })
 @Controller('projects/:projectId/runner-device-keys')
 export class RunnerDeviceKeysController {
   constructor(
@@ -82,16 +82,16 @@ export class RunnerDeviceKeysController {
   @Get()
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Lista as próprias chaves de dispositivo deste projeto',
+    summary: 'Lists your own device keys for this project',
     description:
-      'Ninguém revoga o que não consegue ver (RN-519). Inclui as já ' +
-      'REVOGADAS — sumir com a linha faria a tela afirmar que a chave ' +
-      'nunca existiu. Nunca devolve a JWK pública, e a privada a api nunca ' +
-      'viu. `lastUsedAt` nulo é o sinal de uma chave ÓRFÃ: registrada e ' +
-      'nunca usada por runner nenhum. Desde a RN-543 inclui também as ' +
-      'chaves de MÁQUINA do chamador (`especie: "maquina"`, `projectId` ' +
-      'nulo), que servem este projeto sem pertencer a ele — sem elas na ' +
-      'lista, uma chave de máquina seria invisível em toda tela.',
+      'Nobody revokes what they cannot see (RN-519). Includes the already ' +
+      'REVOKED ones — dropping the row would make the screen claim the key ' +
+      'never existed. Never returns the public JWK, and the api never saw ' +
+      'the private one. A null `lastUsedAt` is the sign of an ORPHAN key: ' +
+      'registered and never used by any runner. Since RN-543 it also ' +
+      'includes the caller\'s MACHINE keys (`especie: "maquina"`, null ' +
+      '`projectId`), which serve this project without belonging to it — ' +
+      'without them in the list, a machine key would be invisible on every screen.',
   })
   @ApiOkResponse({ type: [RunnerDeviceKeyListResponseDto] })
   listDeviceKeys(
@@ -105,18 +105,19 @@ export class RunnerDeviceKeysController {
   @RequireRole('developer')
   @HttpCode(204)
   @ApiOperation({
-    summary: 'Revoga uma chave de dispositivo própria',
+    summary: 'Revokes one of your own device keys',
     description:
-      'Idempotente — revogar de novo não é erro. Desde a RN-520 também ' +
-      'DERRUBA a conexão viva: antes, revogar só impedia ticket NOVO, e um ' +
-      'runner já conectado seguia executando comando aprovado. Desde a ' +
-      'RN-685 (ADR 0201) o alvo é a CHAVE: caem só as conexões abertas com ' +
-      'ela — em todo projeto, se for de máquina —, e outro runner do mesmo ' +
-      'usuário, conectado com PAT ou com outra chave, fica de pé. Os ' +
-      'tickets dela ainda não usados são anulados. Engine fora do ar ou ' +
-      'nenhum runner conectado NÃO fazem a revogação falhar.',
+      'Idempotent — revoking again is not an error. Since RN-520 it also ' +
+      'DROPS the live connection: before, revoking only prevented a NEW ' +
+      'ticket, and an already connected runner kept running approved ' +
+      'commands. Since RN-685 (ADR 0201) the target is the KEY: only the ' +
+      'connections opened with it drop — in every project, if it is a ' +
+      'machine key —, and another runner of the same user, connected with a ' +
+      'PAT or another key, stays up. Its still-unused tickets are voided. ' +
+      'The engine being down or no runner connected does NOT make the ' +
+      'revocation fail.',
   })
-  @ApiNoContentResponse({ description: 'Chave revogada. Sem corpo.' })
+  @ApiNoContentResponse({ description: 'Key revoked. No body.' })
   async revokeDeviceKey(
     @Param('projectId') _projectId: string,
     @Param('deviceKeyId') deviceKeyId: string,
