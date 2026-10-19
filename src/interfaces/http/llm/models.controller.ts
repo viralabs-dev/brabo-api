@@ -171,7 +171,7 @@ export class ModelsController {
       "Owner's curation, APPLYING ONLY TO THIS WORKSPACE (ADR 0049). Only " +
       'touches `isActive` — `availability` is what the sync observed at the ' +
       'provider, is global, and does not change here. Whole batch or nothing: ' +
-      'a non-existent id fails the call without applying any row.',
+      'a nonexistent id fails the call without applying any row.',
   })
   @ApiOkResponse({ type: [ModelComCuradoriaResponseDto] })
   @ApiForbiddenResponse({ description: 'Requires `owner` on the workspace.' })

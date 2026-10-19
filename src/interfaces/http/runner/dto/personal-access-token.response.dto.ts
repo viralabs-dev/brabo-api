@@ -19,7 +19,7 @@ export class PersonalAccessTokenResponseDto implements Wire<PatResumo> {
   @ApiProperty({
     example: null,
     nullable: true,
-    description: 'Nulo = sem expiração.',
+    description: 'Null = no expiration.',
   })
   expiresAt!: string | null;
 
@@ -29,7 +29,7 @@ export class PersonalAccessTokenResponseDto implements Wire<PatResumo> {
   @ApiProperty({
     example: null,
     nullable: true,
-    description: 'Nulo = nunca usado.',
+    description: 'Null = never used.',
   })
   lastUsedAt!: string | null;
 }

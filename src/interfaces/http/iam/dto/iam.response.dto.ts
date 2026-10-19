@@ -316,9 +316,9 @@ export class ProjectMemberComUsuarioResponseDto implements Wire<ProjectMemberWit
   @ApiProperty({
     ...PAPEL,
     description:
-      'EFFECTIVE role: the higher of the project one and the one inherited ' +
-      "from the workspace. Whoever is workspace `owner` isn't downgraded by " +
-      'a lesser project association.',
+      'EFFECTIVE role: the project role when there is one, otherwise the ' +
+      'one inherited from the workspace (RN-471) — the project role OVERRIDES ' +
+      'the workspace one in both directions, higher or lower.',
   })
   role!: Role;
 

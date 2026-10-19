@@ -197,21 +197,22 @@ export class RunnerReleasesController {
   @Get('binary')
   @Public()
   @ApiOperation({
-    summary: 'Baixa o binário standalone do runner local pra plataforma pedida',
+    summary:
+      'Downloads the standalone local runner binary for the requested platform',
     description:
-      'Proxy de GitHub Releases — `platform` aceita só ' +
-      `${PLATAFORMAS.join(', ')}. Sem autenticação: o binário não é segredo. ` +
-      'Os bytes são conferidos contra o `checksums.txt` da mesma Release ' +
-      'antes de qualquer coisa ser respondida (ADR 0149, RN-525); a rota ' +
-      'NÃO verifica a assinatura do manifesto — isso é integridade, não ' +
-      'procedência, e quem verifica assinatura é o `install.sh`.',
+      'GitHub Releases proxy — `platform` accepts only ' +
+      `${PLATAFORMAS.join(', ')}. No authentication: the binary is not a secret. ` +
+      'The bytes are checked against the `checksums.txt` of the same Release ' +
+      'before anything is answered (ADR 0149, RN-525); the route does NOT ' +
+      'verify the manifest signature — that is integrity, not provenance, ' +
+      'and whoever verifies the signature is `install.sh`.',
   })
   @ApiResponse({
     status: 200,
     description:
-      'O binário do runner, em stream, com o sha256 já conferido contra o ' +
-      'manifesto. Não é JSON: `Content-Type: application/octet-stream`. O ' +
-      'header `Content-Digest` repete o hash conferido (RFC 9530).',
+      'The runner binary, streamed, with the sha256 already checked against ' +
+      'the manifest. Not JSON: `Content-Type: application/octet-stream`. The ' +
+      '`Content-Digest` header repeats the checked hash (RFC 9530).',
     content: {
       'application/octet-stream': {
         schema: { type: 'string', format: 'binary' },
@@ -221,10 +222,10 @@ export class RunnerReleasesController {
   @ApiResponse({
     status: 502,
     description:
-      'Recusa nomeada — nunca bytes com aviso. O corpo traz `motivo`: ' +
+      'Named refusal — never bytes with a warning. The body carries `motivo`: ' +
       '`plataforma_nao_publicada`, `release_sem_manifesto`, ' +
       '`manifesto_nao_cobre_a_plataforma`, `manifesto_ilegivel`, ' +
-      '`download_falhou` ou `hash_divergente`.',
+      '`download_falhou` or `hash_divergente`.',
   })
   async binary(
     @Query('platform') platform: string | undefined,

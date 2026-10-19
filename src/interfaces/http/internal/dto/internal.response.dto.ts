@@ -739,7 +739,7 @@ export class LlmTurnResponseDto implements Wire<RunLlmTurnResult> {
     description:
       'Name of the model that generated the response (finding from problem 2) ' +
       '— `null` when the turn failed before resolving a model (no binding, ' +
-      'or binding to a non-existent model).',
+      'or binding to a nonexistent model).',
   })
   modelName!: string | null;
 

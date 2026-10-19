@@ -44,7 +44,7 @@ import { RunnerProjectResponseDto } from './dto/runner-project.response.dto';
  * se abstém em rota `@RequirePatAuth()`, e a chave pública que `PatAuthGuard`
  * verifica vem de `runner_device_keys`, nunca do emissor de sessão.
  */
-@ApiTags('projetos')
+@ApiTags('projects')
 @ApiBearerAuth(BEARER)
 @Controller('runner')
 export class RunnerProjectsController {
@@ -54,22 +54,21 @@ export class RunnerProjectsController {
   @RequirePatAuth()
   @UseGuards(PatAuthGuard)
   @ApiOperation({
-    summary: 'Lista os projetos em modo "runner" que este agente local atende',
+    summary: 'Lists the projects in "runner" mode that this local agent serves',
     description:
-      'Autenticada por uma chave de dispositivo de MÁQUINA (ADR 0154) — ' +
-      'NUNCA por JWT de sessão, e nunca por uma credencial presa a um ' +
-      'projeto, que responde 403. Devolve os projetos em `execution_mode: ' +
-      '"runner"` nos quais o dono da chave alcança pelo menos `developer` ' +
-      '(o mesmo mínimo de `POST .../runner-ticket`), com o nome da pasta e ' +
-      'o estado de verificação de cada um. O agente pergunta em vez de ' +
-      'varrer o disco: a base da máquina é do usuário e pode ter pasta que ' +
-      'não é projeto nenhum.',
+      'Authenticated by a MACHINE device key (ADR 0154) — NEVER by a ' +
+      'session JWT, and never by a credential bound to a project, which ' +
+      'answers 403. Returns the projects in `execution_mode: "runner"` in ' +
+      'which the key owner reaches at least `developer` (the same minimum ' +
+      'as `POST .../runner-ticket`), with the folder name and verification ' +
+      'state of each. The agent asks instead of scanning the disk: the ' +
+      'machine base belongs to the user and may hold folders that are not projects.',
   })
   @ApiOkResponse({ type: [RunnerProjectResponseDto] })
   @ApiForbiddenResponse({
     description:
-      'A credencial apresentada está presa a um projeto — esta rota exige ' +
-      'uma chave de dispositivo de máquina.',
+      'The presented credential is bound to a project — this route requires ' +
+      'a machine device key.',
   })
   async listRunnerProjects(
     @CurrentUser() user: User,

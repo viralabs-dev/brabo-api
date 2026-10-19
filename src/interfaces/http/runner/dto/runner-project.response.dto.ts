@@ -24,8 +24,8 @@ export class RunnerProjectResponseDto implements Wire<ProjetoAtendidoPeloRunner>
   @ApiProperty({
     example: 'brabo-01jc4z',
     description:
-      'O nome da pasta do projeto (RN-109) — segmento relativo sob a base ' +
-      'da máquina, nunca um caminho absoluto.',
+      'The project folder name (RN-109) — a relative segment under the ' +
+      'machine base, never an absolute path.',
   })
   workspaceDirName!: string;
 
@@ -33,9 +33,9 @@ export class RunnerProjectResponseDto implements Wire<ProjetoAtendidoPeloRunner>
     example: null,
     nullable: true,
     description:
-      'Quando o runner confirmou a pasta pela primeira vez (RN-423). Nulo = ' +
-      'nunca confirmada. É registro de uma confirmação, não batimento ' +
-      '(RN-468): não diz que a pasta está de pé agora.',
+      'When the runner first confirmed the folder (RN-423). Null = never ' +
+      'confirmed. It records a confirmation, not a heartbeat (RN-468): it ' +
+      'does not say the folder is up now.',
   })
   workspaceVerifiedAt!: string | null;
 }

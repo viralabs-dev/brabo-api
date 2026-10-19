@@ -259,11 +259,6 @@ const TAGS_PERMITIDAS = [
   // Fundação de i18n (Onda 6a) — preferência de idioma do próprio usuário.
   // Não é 'credentials': não guarda segredo nenhum.
   'users',
-  // `runner-tickets.controller.ts`/`personal-access-tokens.controller.ts`
-  // (ADR 0103/0105) ficam FORA da tradução de docs por enquanto — outra
-  // frente mexe nesses arquivos exatos ao mesmo tempo. `projetos` some
-  // daqui quando a próxima passada de i18n os alcançar.
-  'projetos',
 ];
 
 /** `/projects/{id}` (OpenAPI) → `/projects/:id` (Nest), para as chaves baterem. */

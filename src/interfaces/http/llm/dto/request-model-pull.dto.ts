@@ -17,7 +17,7 @@ import {
 export class RequestModelPullDto {
   @ApiProperty({
     example: 'meta-llama/Llama-3.1-8B-Instruct-GGUF',
-    description: '`<publisher>/<modelo>` no Hugging Face Hub.',
+    description: '`<publisher>/<model>` on the Hugging Face Hub.',
   })
   @IsString()
   @MinLength(3)
@@ -27,8 +27,8 @@ export class RequestModelPullDto {
     required: false,
     example: 4900000000,
     description:
-      'Vem da busca quando o Hub publicou o tamanho — nunca estimado por ' +
-      'palpite no cliente.',
+      'Comes from the search when the Hub published the size — never ' +
+      'guessed by the client.',
   })
   @IsOptional()
   @IsInt()

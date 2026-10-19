@@ -35,8 +35,8 @@ export class RunnerDeviceKeyListResponseDto implements Wire<ChaveDeDispositivoRe
     example: '01JC4Z0000PROJETO000000001',
     nullable: true,
     description:
-      'Nulo = chave de MÁQUINA (ADR 0154): vale para qualquer projeto do ' +
-      'dono dela, e não só para este. Ver `especie`.',
+      'Null = MACHINE key (ADR 0154): valid for any project of its owner, ' +
+      'not only this one. See `especie`.',
   })
   projectId!: string | null;
 
@@ -44,9 +44,9 @@ export class RunnerDeviceKeyListResponseDto implements Wire<ChaveDeDispositivoRe
     enum: ['projeto', 'maquina'],
     example: 'projeto',
     description:
-      '`projeto` = presa ao projeto desta rota (ADR 0118). `maquina` = ' +
-      'descreve a MÁQUINA (ADR 0154) e aparece na listagem de todo projeto ' +
-      'que ela atende — revogá-la derruba o agente local em todos eles.',
+      '`projeto` = bound to the project of this route (ADR 0118). `maquina` = ' +
+      'describes the MACHINE (ADR 0154) and appears in the listing of every ' +
+      'project it serves — revoking it drops the local agent in all of them.',
   })
   especie!: EspecieDeChaveDeDispositivo;
 
@@ -56,7 +56,7 @@ export class RunnerDeviceKeyListResponseDto implements Wire<ChaveDeDispositivoRe
   @ApiProperty({
     example: null,
     nullable: true,
-    description: 'Nulo = ativa. Revogada continua aparecendo na lista.',
+    description: 'Null = active. A revoked key keeps appearing in the list.',
   })
   revokedAt!: string | null;
 
@@ -64,8 +64,8 @@ export class RunnerDeviceKeyListResponseDto implements Wire<ChaveDeDispositivoRe
     example: null,
     nullable: true,
     description:
-      'Nulo = nunca usada — o sinal de uma chave órfã (aba fechada no ' +
-      'meio do fluxo de configuração automática do runner).',
+      'Null = never used — the sign of an orphan key (tab closed in the ' +
+      'middle of the runner automatic setup flow).',
   })
   lastUsedAt!: string | null;
 }

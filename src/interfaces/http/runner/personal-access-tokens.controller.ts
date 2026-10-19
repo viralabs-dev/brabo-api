@@ -46,10 +46,10 @@ import { PersonalAccessTokenAdminResponseDto } from './dto/personal-access-token
  * resto do produto para autorização por nível (`OfferInfraHandoffUseCase`,
  * por exemplo).
  */
-@ApiTags('projetos')
+@ApiTags('projects')
 @ApiBearerAuth(BEARER)
-@ApiForbiddenResponse({ description: 'Papel insuficiente no projeto.' })
-@ApiNotFoundResponse({ description: 'Projeto não encontrado.' })
+@ApiForbiddenResponse({ description: 'Insufficient role on the project.' })
+@ApiNotFoundResponse({ description: 'Project not found.' })
 @Controller('projects/:projectId/personal-access-tokens')
 export class PersonalAccessTokensController {
   constructor(
@@ -63,11 +63,11 @@ export class PersonalAccessTokensController {
   @Post()
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Emite um Personal Access Token pro runner local',
+    summary: 'Issues a Personal Access Token for the local runner',
     description:
-      'O token bruto (`brb_...`) só aparece NESTA resposta — não fica ' +
-      'recuperável depois, só o hash é guardado. Use em `--token`/' +
-      '`BRABO_ACCOUNT_TOKEN` do `brabo-runner`.',
+      'The raw token (`brb_...`) appears only in THIS response — it is not ' +
+      'recoverable later, only the hash is stored. Use it in `--token`/' +
+      '`BRABO_ACCOUNT_TOKEN` of `brabo-runner`.',
   })
   @ApiCreatedResponse({ type: IssuePatResponseDto })
   issuePat(
@@ -86,8 +86,8 @@ export class PersonalAccessTokensController {
   @Get()
   @RequireRole('developer')
   @ApiOperation({
-    summary: 'Lista os próprios Personal Access Tokens deste projeto',
-    description: 'Nunca inclui o token bruto — só o que já foi emitido.',
+    summary: 'Lists your own Personal Access Tokens for this project',
+    description: 'Never includes the raw token — only what was already issued.',
   })
   @ApiOkResponse({ type: [PersonalAccessTokenResponseDto] })
   listPats(@Param('projectId') projectId: string, @CurrentUser() user: User) {
@@ -98,15 +98,15 @@ export class PersonalAccessTokensController {
   @RequireRole('developer')
   @HttpCode(204)
   @ApiOperation({
-    summary: 'Revoga um Personal Access Token próprio',
+    summary: 'Revokes one of your own Personal Access Tokens',
     description:
-      'Idempotente — revogar de novo não é erro. Desde a RN-685 (ADR 0201) ' +
-      'também DERRUBA as conexões de runner abertas com ESTE token, e só ' +
-      'elas — a chave de dispositivo do mesmo usuário fica de pé —, e anula ' +
-      'os tickets dele ainda não usados. Engine fora do ar NÃO faz a ' +
-      'revogação falhar.',
+      'Idempotent — revoking again is not an error. Since RN-685 (ADR 0201) ' +
+      'it also DROPS the runner connections opened with THIS token, and only ' +
+      "those — the same user's device key stays up —, and voids its " +
+      'still-unused tickets. The engine being down does NOT make the ' +
+      'revocation fail.',
   })
-  @ApiNoContentResponse({ description: 'Token revogado. Sem corpo.' })
+  @ApiNoContentResponse({ description: 'Token revoked. No body.' })
   async revokePat(
     @Param('projectId') _projectId: string,
     @Param('tokenId') tokenId: string,
@@ -118,11 +118,10 @@ export class PersonalAccessTokensController {
   @Get('all')
   @RequireRole('maintainer')
   @ApiOperation({
-    summary:
-      'Lista TODOS os Personal Access Tokens do projeto, de qualquer usuário',
+    summary: 'Lists ALL Personal Access Tokens of the project, from any user',
     description:
-      'Visão de `maintainer` para resposta a incidente (RN-427) — inclui ' +
-      'o dono de cada token. Nunca inclui o token bruto.',
+      'The `maintainer` view for incident response (RN-427) — includes ' +
+      'the owner of each token. Never includes the raw token.',
   })
   @ApiOkResponse({ type: [PersonalAccessTokenAdminResponseDto] })
   listAllPats(@Param('projectId') projectId: string) {
@@ -133,13 +132,13 @@ export class PersonalAccessTokensController {
   @RequireRole('maintainer')
   @HttpCode(204)
   @ApiOperation({
-    summary: 'Revoga o Personal Access Token de QUALQUER usuário no projeto',
+    summary: 'Revokes the Personal Access Token of ANY user in the project',
     description:
-      'Resposta a incidente — dev desligado com token vazando (RN-427). ' +
-      'Idempotente — revogar de novo não é erro. Desde a RN-685 (ADR 0201) ' +
-      'também DERRUBA o runner já conectado com este token, e só ele.',
+      'Incident response — a departed dev with a leaking token (RN-427). ' +
+      'Idempotent — revoking again is not an error. Since RN-685 (ADR 0201) ' +
+      'it also DROPS the runner already connected with this token, and only it.',
   })
-  @ApiNoContentResponse({ description: 'Token revogado. Sem corpo.' })
+  @ApiNoContentResponse({ description: 'Token revoked. No body.' })
   async revokePatAsMaintainer(
     @Param('projectId') projectId: string,
     @Param('tokenId') tokenId: string,
