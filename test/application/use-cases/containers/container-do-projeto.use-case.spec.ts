@@ -3,6 +3,7 @@ import { BadRequestException } from '@nestjs/common';
 import { DecidirImagemDoProjetoUseCase } from '../../../../src/application/use-cases/containers/decidir-imagem-do-projeto.use-case';
 import { ObterContainerDoProjetoUseCase } from '../../../../src/application/use-cases/containers/obter-container-do-projeto.use-case';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
+import type { ModuleMapRepository } from '../../../../src/application/ports/module-map-repository.port';
 import type { ContainerRepository } from '../../../../src/application/ports/container-repository.port';
 import type { SessionEventRepository } from '../../../../src/application/ports/session-event-repository.port';
 import type { SessionEvent } from '../../../../src/domain/sessions/session-event.entity';
@@ -23,6 +24,7 @@ const RATIONALE = 'o module_map é TypeScript sobre Node 22';
 function montar(
   eventosIniciais: SessionEvent[] = [],
   registrado: { status: string; imageVersion: number } | null = null,
+  stacks: string[] | null = null,
 ) {
   const eventos = [...eventosIniciais];
   let seq = eventos.length;
@@ -57,9 +59,21 @@ function montar(
   } as unknown as AppendSessionEventUseCase;
 
   const obter = new ObterContainerDoProjetoUseCase(repo);
-  const decidir = new DecidirImagemDoProjetoUseCase(append, obter, {
-    findByProject: () => Promise.resolve(registrado),
-  } as unknown as ContainerRepository);
+  const decidir = new DecidirImagemDoProjetoUseCase(
+    append,
+    obter,
+    {
+      findByProject: () => Promise.resolve(registrado),
+    } as unknown as ContainerRepository,
+    {
+      findCurrent: () =>
+        Promise.resolve(
+          stacks && {
+            modules: stacks.map((stack, i) => ({ name: `m${i}`, stack })),
+          },
+        ),
+    } as unknown as ModuleMapRepository,
+  );
 
   return { obter, decidir, eventos };
 }
@@ -209,5 +223,34 @@ describe('DecidirImagemDoProjetoUseCase — container de pé (RN-902)', () => {
     expect(
       (await decidir.execute(PROJETO, SESSAO, entrada)).containerDePe,
     ).toBeNull();
+  });
+});
+
+describe('DecidirImagemDoProjetoUseCase — rede none x stack (RN-906)', () => {
+  const entrada = (network?: 'none' | 'egress') => ({
+    image: 'node:22-bookworm-slim',
+    rationale: RATIONALE,
+    ...(network ? { network } : {}),
+  });
+
+  it('recusa none com stack Node nos DOIS chamadores, nomeando módulo e termo, sem gravar', async () => {
+    const { decidir, eventos } = montar([], null, ['Node.js + Express']);
+    await expect(decidir.execute(PROJETO, SESSAO, entrada())).rejects.toThrow(
+      /"m0".*node/s,
+    );
+    await expect(
+      decidir.execute(PROJETO, SESSAO, entrada(), 'infra-lead'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(eventos).toHaveLength(0);
+  });
+
+  it('aceita egress, stack que não casa e ausência de mapa', async () => {
+    const a = montar([], null, ['Node.js']);
+    await a.decidir.execute(PROJETO, SESSAO, entrada('egress'));
+    const b = montar([], null, ['HTML estático', 'MongoDB']);
+    await b.decidir.execute(PROJETO, SESSAO, entrada());
+    const c = montar();
+    await c.decidir.execute(PROJETO, SESSAO, entrada());
+    expect(a.eventos.length + b.eventos.length + c.eventos.length).toBe(3);
   });
 });
