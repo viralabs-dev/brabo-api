@@ -44,11 +44,14 @@ export function decodificarEscapesLiterais(texto: string): string {
     .replace(/\\([nt])/g, (_m, c: string) => (c === 'n' ? '\n' : '\t'));
 }
 
-/** A primeira história do projeto com o mesmo título, se houver. */
-export function tituloDuplicado(
+/**
+ * A primeira história (ou épico, RN-894) do projeto com o mesmo título, se
+ * houver.
+ */
+export function tituloDuplicado<T extends Pick<Story, 'title'>>(
   titulo: string,
-  existentes: readonly Story[],
-): Story | null {
+  existentes: readonly T[],
+): T | null {
   const alvo = normalizarTitulo(titulo);
   if (alvo === '') return null;
 
