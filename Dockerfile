@@ -12,7 +12,7 @@
 # Estágio 1: dependências. Separado do build pra a camada de deps só invalidar
 # quando o lockfile/manifests mudarem, não a cada edição de código.
 # ---------------------------------------------------------------------------
-FROM node:26.11.1-alpine3.24@sha256:143494b1da2945f061539253adc65e4f1569ddf07da2d384c022c791a9d90a4a AS deps
+FROM node:26.12.0-alpine3.24@sha256:6f08a523443ddedf52941874c203475b0ad503e859ad70cb26ab8be9a517dbd5 AS deps
 
 # pnpm sem corepack (AT-360): o Node 25+ não traz corepack. Tarball do registry
 # conferido contra o sha512 GRAVADO aqui (`npm view pnpm@<v> dist.integrity`, em
@@ -64,7 +64,7 @@ RUN pnpm --filter api --prod --legacy deploy /prod
 # ---------------------------------------------------------------------------
 # Estágio 3: runtime. Só o compilado, as deps de produção e as migrations.
 # ---------------------------------------------------------------------------
-FROM node:26.11.1-alpine3.24@sha256:143494b1da2945f061539253adc65e4f1569ddf07da2d384c022c791a9d90a4a AS runtime
+FROM node:26.12.0-alpine3.24@sha256:6f08a523443ddedf52941874c203475b0ad503e859ad70cb26ab8be9a517dbd5 AS runtime
 
 # Versão do artefato (ADR 0036). `tracing.ts` já lia `BRABO_VERSION` para o
 # `service.version` do recurso OpenTelemetry, e sempre recebia o fallback "dev" —
