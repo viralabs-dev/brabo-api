@@ -128,6 +128,12 @@ function containerRepo(inicial: ProjectContainerLifecycle | null = null) {
         ...(patch.failureReason !== undefined
           ? { failureReason: patch.failureReason }
           : {}),
+        ...(patch.imageVersion !== undefined
+          ? { imageVersion: patch.imageVersion }
+          : {}),
+        ...(patch.resources !== undefined
+          ? { resources: patch.resources }
+          : {}),
       };
       return Promise.resolve(atual);
     },
@@ -302,6 +308,63 @@ describe('RegistrarTransicaoDeContainerUseCase', () => {
       expect(atual()?.status).toBe('provisioning');
     },
   );
+
+  // RN-902 — recriar congela a decisão vigente; reaproveitar o parado não.
+  it.each(['removed', 'failed'] as const)(
+    '`%s -> provisioning` recongela versão e recursos da decisão vigente',
+    async (inicial) => {
+      const { repo, atual } = containerRepo(
+        linha({ status: inicial, imageVersion: 2 }),
+      );
+      const useCase = new RegistrarTransicaoDeContainerUseCase(
+        unitOfWork,
+        projectRepo(projeto()),
+        repo,
+        obterImagemDecidida(3),
+        outbox,
+      );
+
+      await useCase.execute(PROJETO, 'provisioning');
+
+      expect(atual()?.imageVersion).toBe(3);
+    },
+  );
+
+  it('`failed -> provisioning` sem decisão vigente é 409 e não toca na linha', async () => {
+    const { repo, atual } = containerRepo(
+      linha({ status: 'failed', imageVersion: 2 }),
+    );
+    const useCase = new RegistrarTransicaoDeContainerUseCase(
+      unitOfWork,
+      projectRepo(projeto()),
+      repo,
+      obterImagemSemDecisao(),
+      outbox,
+    );
+
+    await expect(useCase.execute(PROJETO, 'provisioning')).rejects.toThrow(
+      ConflictException,
+    );
+    expect(atual()?.status).toBe('failed');
+    expect(atual()?.imageVersion).toBe(2);
+  });
+
+  it('`stopped -> running` mantém a versão congelada (o container reaproveitado é o antigo)', async () => {
+    const { repo, atual } = containerRepo(
+      linha({ status: 'stopped', imageVersion: 2 }),
+    );
+    const useCase = new RegistrarTransicaoDeContainerUseCase(
+      unitOfWork,
+      projectRepo(projeto()),
+      repo,
+      obterImagemDecidida(3),
+      outbox,
+    );
+
+    await useCase.execute(PROJETO, 'running');
+
+    expect(atual()?.imageVersion).toBe(2);
+  });
 
   it('sem decisão de imagem do Arquiteto, não há o que provisionar (RN-105)', async () => {
     const { repo } = containerRepo(null);

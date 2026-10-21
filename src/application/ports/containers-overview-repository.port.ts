@@ -67,6 +67,17 @@ export interface ContainerOverviewRow {
    * raros e a tela mostra uma decisão de cada vez.
    */
   acaoPendente: ProposedAction | null;
+  /** A decisão de imagem VIGENTE (maior versão), ou `null` sem decisão. */
+  decisaoVigente: {
+    version: number;
+    image: string;
+    network: 'none' | 'egress';
+  } | null;
+  /**
+   * O container registrado (`running`/`stopped`/`provisioning`) tem conteúdo
+   * diferente da decisão vigente (RN-902) — só recriar aplica a nova.
+   */
+  imagemDesatualizada: boolean;
 }
 
 /**

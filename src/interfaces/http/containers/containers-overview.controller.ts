@@ -84,6 +84,8 @@ export class ContainersOverviewController {
             updatedAt: item.acaoPendente.updatedAt.toISOString(),
           }
         : null,
+      decisaoVigente: item.decisaoVigente,
+      imagemDesatualizada: item.imagemDesatualizada,
       brokerConfigurado: item.brokerConfigurado,
     }));
   }

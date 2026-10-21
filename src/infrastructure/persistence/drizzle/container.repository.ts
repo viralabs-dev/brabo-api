@@ -97,6 +97,16 @@ export class DrizzleContainerRepository implements ContainerRepository {
         ...(patch.failureReason !== undefined
           ? { failureReason: patch.failureReason }
           : {}),
+        ...(patch.imageVersion !== undefined
+          ? { imageVersion: patch.imageVersion }
+          : {}),
+        ...(patch.resources !== undefined
+          ? {
+              cpus: patch.resources.cpus,
+              memoryMb: patch.resources.memoryMb,
+              pidsLimit: patch.resources.pidsLimit,
+            }
+          : {}),
       })
       .where(eq(projectContainers.id, id))
       .returning();

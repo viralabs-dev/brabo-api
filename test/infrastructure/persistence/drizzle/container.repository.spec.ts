@@ -85,6 +85,30 @@ describe('DrizzleContainerRepository', () => {
     expect(falhou.containerId).toBe('docker-abc');
   });
 
+  it('updateStatus recongela imageVersion/resources só quando informados (RN-902)', async () => {
+    const project = await criarProjeto();
+    const criada = await repo.create({
+      projectId: project.id,
+      imageVersion: 1,
+      resources: RECURSOS_PADRAO,
+    });
+
+    const intacta = await repo.updateStatus(criada.id, 'running');
+    expect(intacta.imageVersion).toBe(1);
+    expect(intacta.resources).toEqual(RECURSOS_PADRAO);
+
+    const nova = await repo.updateStatus(criada.id, 'stopped', {
+      imageVersion: 3,
+      resources: { cpus: 4, memoryMb: 8192, pidsLimit: 1024 },
+    });
+    expect(nova.imageVersion).toBe(3);
+    expect(nova.resources).toEqual({
+      cpus: 4,
+      memoryMb: 8192,
+      pidsLimit: 1024,
+    });
+  });
+
   it('só uma linha por projeto — create duplicado viola a constraint única', async () => {
     const project = await criarProjeto();
     await repo.create({

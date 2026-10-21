@@ -322,3 +322,34 @@ export function decisaoNaVersao(
     };
   }
 }
+
+/** A decisão de maior versão entre os eventos (a vigente), com a versão. */
+export function decisaoVigenteDosEventos(
+  eventos: { payload: unknown }[],
+): { version: number; decisao: DecisaoDeImagem } | null {
+  if (eventos.length === 0) return null;
+  const version = Math.max(...eventos.map((e) => versaoDoPayload(e.payload)));
+  const decisao = decisaoNaVersao(eventos, version);
+  return decisao ? { version, decisao } : null;
+}
+
+/**
+ * O container de pé (RN-902) está desatualizado em relação à decisão
+ * vigente? Compara CONTEÚDO (imagem, rede, recursos) e não o número da
+ * versão: a eleição da Infra a cada subida grava v+1 com o mesmo conteúdo, e
+ * comparar números acusaria todo `stopped → running`.
+ */
+export function containerDivergeDaDecisao(
+  congelada: { image: string; network: PosturaDeRede } | null,
+  recursosCongelados: RecursosDoContainer,
+  vigente: DecisaoDeImagem | null,
+): boolean {
+  if (!congelada || !vigente) return false;
+  return (
+    congelada.image !== vigente.image ||
+    congelada.network !== vigente.network ||
+    recursosCongelados.cpus !== vigente.resources.cpus ||
+    recursosCongelados.memoryMb !== vigente.resources.memoryMb ||
+    recursosCongelados.pidsLimit !== vigente.resources.pidsLimit
+  );
+}

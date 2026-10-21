@@ -90,6 +90,17 @@ export class RegistrarTransicaoDeContainerUseCase {
     return this.unitOfWork.runInTransaction(async () => {
       const atual = await this.containers.findByProjectForUpdate(projectId);
 
+      const decisaoVigente = async () => {
+        const imagem = await this.obterImagem.execute(projectId);
+        if (imagem.status !== 'decidido' || !imagem.decisao) {
+          throw new ConflictException(
+            'O Arquiteto ainda não decidiu a imagem deste projeto (RN-105) — ' +
+              'não há o que provisionar.',
+          );
+        }
+        return { version: imagem.version, resources: imagem.decisao.resources };
+      };
+
       if (!atual) {
         if (to !== 'provisioning') {
           throw new ConflictException(
@@ -98,18 +109,11 @@ export class RegistrarTransicaoDeContainerUseCase {
           );
         }
 
-        const imagem = await this.obterImagem.execute(projectId);
-        if (imagem.status !== 'decidido' || !imagem.decisao) {
-          throw new ConflictException(
-            'O Arquiteto ainda não decidiu a imagem deste projeto (RN-105) — ' +
-              'não há o que provisionar.',
-          );
-        }
-
+        const d = await decisaoVigente();
         return this.containers.create({
           projectId,
-          imageVersion: imagem.version,
-          resources: imagem.decisao.resources,
+          imageVersion: d.version,
+          resources: d.resources,
         });
       }
 
@@ -122,9 +126,15 @@ export class RegistrarTransicaoDeContainerUseCase {
         throw e;
       }
 
+      // Recriar (RN-902): o container novo nasce da decisão VIGENTE, então a
+      // linha a recongela; `stopped → running` reaproveita o antigo e não.
+      const recongelar = to === 'provisioning' ? await decisaoVigente() : null;
+
       const atualizado = await this.containers.updateStatus(atual.id, to, {
         containerId: input.containerId,
         failureReason: input.failureReason,
+        imageVersion: recongelar?.version,
+        resources: recongelar?.resources,
       });
 
       await this.avisarQueOContainerSubiu(projectId, to);

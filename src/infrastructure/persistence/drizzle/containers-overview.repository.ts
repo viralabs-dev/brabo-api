@@ -6,7 +6,9 @@ import {
 } from '../../../application/ports/containers-overview-repository.port';
 import {
   EVENTO_IMAGEM_DO_PROJETO,
+  containerDivergeDaDecisao,
   decisaoNaVersao,
+  decisaoVigenteDosEventos,
 } from '../../../domain/containers/project-container';
 import type { ProjectContainerLifecycle } from '../../../domain/containers/container-lifecycle';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
@@ -179,6 +181,10 @@ export class DrizzleContainersOverviewRepository implements ContainersOverviewRe
       const decisao = lifecycle
         ? decisaoNaVersao(eventos, lifecycle.imageVersion)
         : null;
+      const vigente = decisaoVigenteDosEventos(eventos);
+      const registradoDePe =
+        lifecycle !== null &&
+        ['running', 'stopped', 'provisioning'].includes(lifecycle.status);
       const acaoPendente = acaoPendenteDe.get(linha.projectId);
       return {
         projectId: linha.projectId,
@@ -194,6 +200,20 @@ export class DrizzleContainersOverviewRepository implements ContainersOverviewRe
         temImagemDecidida: eventos.length > 0,
         workspaceVerifiedAt: linha.workspaceVerifiedAt,
         acaoPendente: acaoPendente ? toProposedAction(acaoPendente) : null,
+        decisaoVigente: vigente
+          ? {
+              version: vigente.version,
+              image: vigente.decisao.image,
+              network: vigente.decisao.network,
+            }
+          : null,
+        imagemDesatualizada:
+          registradoDePe &&
+          containerDivergeDaDecisao(
+            decisao,
+            lifecycle.resources,
+            vigente?.decisao ?? null,
+          ),
       };
     });
   }

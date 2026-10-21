@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  containerDivergeDaDecisao,
+  decisaoVigenteDosEventos,
   ImagemInvalidaError,
   RECURSOS_MAXIMOS,
   RECURSOS_PADRAO,
@@ -104,5 +106,55 @@ describe('validarDecisaoDeImagem', () => {
         resources: { cpus: valor },
       }),
     ).toThrow(ImagemInvalidaError);
+  });
+});
+
+describe('containerDivergeDaDecisao (RN-902)', () => {
+  const vigente = {
+    image: 'node:22',
+    rationale: RATIONALE,
+    network: 'none' as const,
+    resources: RECURSOS_PADRAO,
+  };
+
+  it('mesmo conteúdo em versões diferentes não diverge', () => {
+    expect(
+      containerDivergeDaDecisao(
+        { image: 'node:22', network: 'none' },
+        RECURSOS_PADRAO,
+        vigente,
+      ),
+    ).toBe(false);
+  });
+
+  it('rede diferente ou recursos diferentes divergem', () => {
+    expect(
+      containerDivergeDaDecisao(
+        { image: 'node:22', network: 'egress' },
+        RECURSOS_PADRAO,
+        vigente,
+      ),
+    ).toBe(true);
+    expect(
+      containerDivergeDaDecisao(
+        { image: 'node:22', network: 'none' },
+        { ...RECURSOS_PADRAO, cpus: 1 },
+        vigente,
+      ),
+    ).toBe(true);
+  });
+
+  it('sem decisão congelada ou vigente não acusa', () => {
+    expect(containerDivergeDaDecisao(null, RECURSOS_PADRAO, vigente)).toBe(
+      false,
+    );
+    expect(
+      containerDivergeDaDecisao(
+        { image: 'x:1', network: 'none' },
+        RECURSOS_PADRAO,
+        null,
+      ),
+    ).toBe(false);
+    expect(decisaoVigenteDosEventos([])).toBeNull();
   });
 });

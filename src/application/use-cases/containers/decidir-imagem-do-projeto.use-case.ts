@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
+import { ContainerRepository } from '../../ports/container-repository.port';
 import { ObterContainerDoProjetoUseCase } from './obter-container-do-projeto.use-case';
 import {
   EVENTO_IMAGEM_DO_PROJETO,
@@ -12,6 +13,11 @@ import {
 export interface ImagemDecidida {
   decisao: DecisaoDeImagem;
   version: number;
+  /**
+   * O container registrado `running`/`stopped` (RN-902): a decisão nova NÃO o
+   * muda — só vale ao recriá-lo. `null` sem container de pé.
+   */
+  containerDePe: { status: 'running' | 'stopped'; imageVersion: number } | null;
 }
 
 /**
@@ -43,6 +49,7 @@ export class DecidirImagemDoProjetoUseCase {
   constructor(
     private readonly appendEvent: AppendSessionEventUseCase,
     private readonly obterContainer: ObterContainerDoProjetoUseCase,
+    private readonly containers: ContainerRepository,
   ) {}
 
   async execute(
@@ -72,6 +79,13 @@ export class DecidirImagemDoProjetoUseCase {
       payload: { ...decisao, version },
     });
 
-    return { decisao, version };
+    const registrado = await this.containers.findByProject(projectId);
+    const containerDePe =
+      registrado &&
+      (registrado.status === 'running' || registrado.status === 'stopped')
+        ? { status: registrado.status, imageVersion: registrado.imageVersion }
+        : null;
+
+    return { decisao, version, containerDePe };
   }
 }
