@@ -270,6 +270,24 @@ describe('ExecuteContainerStartUseCase — caminho feliz', () => {
   });
 });
 
+describe('ExecuteContainerStartUseCase — recusa de rede (RN-906)', () => {
+  it('termina failed com o motivo da recusa, sem chamar o broker', async () => {
+    const { useCase, gravados, decidirImagem, broker } = build({});
+    decidirImagem.execute.mockRejectedValueOnce(
+      new Error('Rede "none" recusada: o módulo "api" tem stack "Node.js"'),
+    );
+    const brokerStart = vi.spyOn(broker, 'start');
+
+    await useCase.execute('proj-1', 'sess-1', makeAction());
+
+    expect(brokerStart).not.toHaveBeenCalled();
+    expect(gravados.at(-1)?.status).toBe('failed');
+    expect(
+      (gravados.at(-1)?.executionResult as { motivo: string }).motivo,
+    ).toContain('Rede "none" recusada');
+  });
+});
+
 describe('ExecuteContainerStartUseCase — imagem fora das candidatas', () => {
   it('recusa sem chamar DecidirImagemDoProjetoUseCase nem o broker', async () => {
     const { useCase, gravados, decidirImagem, broker } = build({
