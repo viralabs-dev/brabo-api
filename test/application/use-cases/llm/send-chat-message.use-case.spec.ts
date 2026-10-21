@@ -73,6 +73,8 @@ class FakeProvider implements LLMProvider {
     listModels: false,
     embeddings: false,
     routingPreference: false,
+    stickySession: false,
+    promptCaching: false,
   };
   callCount = 0;
 
@@ -95,6 +97,8 @@ class ThrowingProvider implements LLMProvider {
     listModels: false,
     embeddings: false,
     routingPreference: false,
+    stickySession: false,
+    promptCaching: false,
   };
   callCount = 0;
 

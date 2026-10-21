@@ -23,6 +23,8 @@ const BASE: LLMProviderCapabilities = {
   listModels: true,
   embeddings: false,
   routingPreference: false,
+  stickySession: false,
+  promptCaching: false,
 };
 const HUB = {
   name: 'openrouter' as const,

@@ -95,6 +95,8 @@ class FakeProvider implements LLMProvider {
     listModels: false,
     embeddings: false,
     routingPreference: false,
+    stickySession: false,
+    promptCaching: false,
   };
   constructor(private readonly script: ChatStreamChunk[]) {}
   async *chat(): AsyncGenerator<ChatStreamChunk> {
@@ -111,6 +113,8 @@ class ThrowingProvider implements LLMProvider {
     listModels: false,
     embeddings: false,
     routingPreference: false,
+    stickySession: false,
+    promptCaching: false,
   };
   async *chat(): AsyncGenerator<ChatStreamChunk> {
     await Promise.resolve();
@@ -415,6 +419,7 @@ describe('RunLlmTurnUseCase — preferência de roteamento (ADR 0166, RN-583)', 
         listModels: false,
         embeddings: false,
         routingPreference: aceitaRoteamento,
+        stickySession: false,
       };
     }
     async *chat(
@@ -458,6 +463,7 @@ describe('RunLlmTurnUseCase — preferência de roteamento (ADR 0166, RN-583)', 
     });
 
     expect(provider.recebidas[0]?.routingPreference).toBe('throughput');
+    expect(provider.recebidas[0]?.sessionKey).toBe(`brabo:${session.id}:echo`);
     const [linha] = await db
       .select()
       .from(tokenUsage)

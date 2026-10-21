@@ -213,6 +213,13 @@ export function campoDeRoteamentoOpenRouter(
   return { provider: { sort: preferencia } };
 }
 
+/** A chave de sessão no formato do OpenRouter: `session_id` (ADR 0221). */
+export function campoDeSessaoOpenRouter(
+  chave: string,
+): Record<string, unknown> {
+  return { session_id: chave };
+}
+
 /**
  * O raciocínio DESLIGADO no formato do OpenRouter: `reasoning: { enabled:
  * false }` (RN-783). Medido em 10/10 (AT-467): `reasoning: { max_tokens }` é
@@ -348,6 +355,11 @@ export function openrouterConfig(
       // A prova vale para o fio `provider.sort` e o `provider` do frame;
       // qual upstream cada critério escolhe é decisão do hub e muda com o tempo.
       routingPreference: true,
+      // PROVADO em 2026-10-21 (ADR 0221, RN-907, AT-580):
+      // `openrouter-provider.sessao.smoke.spec.ts` rodou contra a API real em
+      // `deepseek/deepseek-v4.1-flash`: com `session_id`, 6 de 6 chamadas no
+      // MESMO upstream (Together); sem ele, 4 upstreams em 6.
+      stickySession: true,
       // PROVADO em 2026-10-15 (RN-892, AT-543):
       // `openrouter-provider.cache.smoke.spec.ts` rodou contra a API real e a
       // segunda chamada a `anthropic/claude-haiku-5.5` voltou com
@@ -371,6 +383,7 @@ export function openrouterConfig(
     parseErrorFrame: parseErrorFrameOpenRouter,
     parseCatalogo: parseCatalogoOpenRouter,
     campoDeRoteamento: campoDeRoteamentoOpenRouter,
+    campoDeSessao: campoDeSessaoOpenRouter,
     // Raciocínio desligado para os dev agents (RN-783) e folga no teto para
     // modelo com `supports_reasoning` (RN-741/782). Provado com credencial na
     // medição paga de 10/10 (AT-467).

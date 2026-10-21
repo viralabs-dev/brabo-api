@@ -34,6 +34,8 @@ export class ListProviderCapabilitiesUseCase {
           listModels: c.listModels,
           embeddings: c.embeddings,
           routingPreference: c.routingPreference,
+          stickySession: c.stickySession,
+          promptCaching: c.promptCaching,
         },
       };
     });
