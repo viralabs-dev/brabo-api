@@ -92,6 +92,8 @@ export class OllamaProvider implements LLMProvider {
     embeddings: true,
     // Não é hub: não há upstreams entre os quais escolher (ADR 0166).
     routingPreference: false,
+    stickySession: false,
+    promptCaching: false,
   };
 
   /**

@@ -79,3 +79,12 @@ export function preferenciaEnviada(
   if (!capabilities.routingPreference) return null;
   return doBinding ?? null;
 }
+
+/**
+ * A chave que prende a conversa de UM agente numa SESSAO ao upstream que a
+ * atendeu (ADR 0221, RN-907): por agente + sessao, porque cada agente tem
+ * prefixo proprio (instrucoes + ferramentas).
+ */
+export function chaveDeSessao(sessionId: string, agentId?: string): string {
+  return agentId ? `brabo:${sessionId}:${agentId}` : `brabo:${sessionId}`;
+}
