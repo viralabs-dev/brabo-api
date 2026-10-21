@@ -40,6 +40,8 @@ function makeItem(
     detalheDaObservacao: null,
     naoVerificado: null,
     acaoPendente: null,
+    decisaoVigente: null,
+    imagemDesatualizada: false,
     ...overrides,
   };
 }
@@ -91,6 +93,8 @@ describe('ContainersOverviewController', () => {
       detalheDaObservacao: null,
       naoVerificado: null,
       acaoPendente: null,
+      decisaoVigente: null,
+      imagemDesatualizada: false,
     });
     // `id`/`containerId` internos não vazam na resposta.
     expect(linha.registrado).not.toHaveProperty('id');

@@ -181,6 +181,30 @@ describe('DrizzleContainersOverviewRepository', () => {
     expect(linha.lifecycle?.imageVersion).toBe(1);
   });
 
+  it('imagemDesatualizada compara CONTEÚDO: imagem nova acusa, v+1 igual não (RN-902)', async () => {
+    const owner = await criarUsuario('desatualizada@brabo.dev');
+    const ws = await criarWorkspace(owner.id, 'desatualizada');
+    const diverge = await criarProjeto(ws.id, owner.id, 'diverge');
+    const igual = await criarProjeto(ws.id, owner.id, 'igual');
+    const s1 = await criarSessao(diverge.id, owner.id);
+    const s2 = await criarSessao(igual.id, owner.id);
+
+    await gravarDecisaoDeImagem(s1.id, 1, 'node:20-slim');
+    await gravarDecisaoDeImagem(s1.id, 2, 'node:22-bookworm-slim');
+    await criarCicloDeVida(diverge.id, 'running', 1);
+    await gravarDecisaoDeImagem(s2.id, 1, 'node:22-bookworm-slim');
+    await gravarDecisaoDeImagem(s2.id, 2, 'node:22-bookworm-slim');
+    await criarCicloDeVida(igual.id, 'running', 1);
+
+    const linhas = await repo.listForWorkspace(ws.id);
+    const d = linhas.find((l) => l.projectId === diverge.id)!;
+    const i = linhas.find((l) => l.projectId === igual.id)!;
+
+    expect(d.imagemDesatualizada).toBe(true);
+    expect(d.decisaoVigente?.version).toBe(2);
+    expect(i.imagemDesatualizada).toBe(false);
+  });
+
   it('versão sem evento correspondente: imagem null, nunca inventada', async () => {
     const owner = await criarUsuario('semevento@brabo.dev');
     const ws = await criarWorkspace(owner.id, 'semevento');

@@ -101,6 +101,19 @@ export class ImagemDecididaResponseDto {
 
   @ApiProperty({ example: 1 })
   version!: number;
+
+  @ApiProperty({
+    nullable: true,
+    example: { status: 'running', imageVersion: 2 },
+    description:
+      'The `running`/`stopped` container registered for the project, or null. ' +
+      'The new decision does NOT change it: it only applies once the ' +
+      'container is recreated (stop, remove, start).',
+  })
+  containerDePe!: {
+    status: 'running' | 'stopped';
+    imageVersion: number;
+  } | null;
 }
 
 /**
@@ -392,6 +405,26 @@ export class ContainerOverviewItemResponseDto {
       'instead of the action button, same pattern as the PRs tab.',
   })
   acaoPendente!: ProposedActionResponseDto | null;
+
+  @ApiProperty({
+    nullable: true,
+    example: { version: 3, image: 'node:22', network: 'egress' },
+    description: 'The current (highest version) image decision, or null.',
+  })
+  decisaoVigente!: {
+    version: number;
+    image: string;
+    network: 'none' | 'egress';
+  } | null;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'The registered container (running/stopped/provisioning) differs in ' +
+      'CONTENT (image, network, resources) from the current decision; only ' +
+      'recreating it (stop, remove, start) applies the new one.',
+  })
+  imagemDesatualizada!: boolean;
 
   @ApiProperty({
     example: false,

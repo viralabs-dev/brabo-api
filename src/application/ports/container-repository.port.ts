@@ -14,6 +14,9 @@ export interface UpdateContainerLifecycleInput {
   /** `undefined` não mexe na coluna; `null` limpa explicitamente. */
   containerId?: string | null;
   failureReason?: string | null;
+  /** Recongelam a decisão ao recriar (`removed|failed → provisioning`, RN-902). */
+  imageVersion?: number;
+  resources?: { cpus: number; memoryMb: number; pidsLimit: number };
 }
 
 /**

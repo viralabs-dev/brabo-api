@@ -32,6 +32,8 @@ function linha(
     temImagemDecidida: true,
     workspaceVerifiedAt: null,
     acaoPendente: null,
+    decisaoVigente: null,
+    imagemDesatualizada: false,
   };
 }
 
@@ -50,6 +52,8 @@ function linhaSemContainer(
     temImagemDecidida: false,
     workspaceVerifiedAt: null,
     acaoPendente: null,
+    decisaoVigente: null,
+    imagemDesatualizada: false,
     ...overrides,
   };
 }
@@ -188,6 +192,19 @@ describe('ObterVisaoGeralDeContainersUseCase', () => {
     expect(item.registrado).toEqual(comPendencia.lifecycle);
     expect(item.imagem).toBe('node:22-bookworm-slim');
     expect(item.acaoPendente?.id).toBe('pa-1');
+  });
+
+  it('propaga decisaoVigente e imagemDesatualizada (RN-902)', async () => {
+    const { useCase } = build([
+      {
+        ...linha('p-1', 'stopped'),
+        decisaoVigente: { version: 3, image: 'node:22', network: 'egress' },
+        imagemDesatualizada: true,
+      },
+    ]);
+    const [item] = await useCase.execute('ws-1');
+    expect(item.imagemDesatualizada).toBe(true);
+    expect(item.decisaoVigente?.version).toBe(3);
   });
 
   // --- RN-521: o TERCEIRO estado, e o orçamento que ele não gasta ---

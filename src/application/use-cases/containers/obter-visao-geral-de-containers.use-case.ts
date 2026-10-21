@@ -57,6 +57,8 @@ export interface ContainerOverviewItem {
   naoVerificado: MotivoDeNaoVerificacao | null;
   /** A `proposed_action` pendente de container deste projeto, se houver — ver `ContainerOverviewRow.acaoPendente`. */
   acaoPendente: ProposedAction | null;
+  decisaoVigente: ContainerOverviewRow['decisaoVigente'];
+  imagemDesatualizada: boolean;
   /**
    * Esta INSTALAÇÃO tem broker (`BROKER_URL` definida)? (ADR 0161, RN-574)
    *
@@ -203,6 +205,8 @@ export class ObterVisaoGeralDeContainersUseCase {
       detalheDaObservacao: estadoObservado?.detalhe ?? null,
       naoVerificado,
       acaoPendente: linha.acaoPendente,
+      decisaoVigente: linha.decisaoVigente,
+      imagemDesatualizada: linha.imagemDesatualizada,
       brokerConfigurado,
     };
   }
