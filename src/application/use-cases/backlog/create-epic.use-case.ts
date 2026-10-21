@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { EpicRepository } from '../../ports/backlog-repository.port';
+import { tituloDuplicado } from '../../../domain/backlog/story-overlap';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 
 export interface CreateEpicInput {
@@ -10,6 +11,8 @@ export interface CreateEpicInput {
 /**
  * Cria um épico — chamado pela ferramenta create_epic do PO (via endpoint
  * interno). Registra `backlog.epic_created` no event log (narrativa do PO).
+ * Título igual a outro épico do projeto é recusado com o id do existente
+ * (RN-894, a mesma régua da história no achado R).
  */
 @Injectable()
 export class CreateEpicUseCase {
@@ -19,6 +22,17 @@ export class CreateEpicUseCase {
   ) {}
 
   async execute(projectId: string, sessionId: string, input: CreateEpicInput) {
+    const existente = tituloDuplicado(
+      input.title,
+      await this.epics.findByProject(projectId),
+    );
+    if (existente) {
+      throw new BadRequestException(
+        `Já existe o épico «${existente.title}» (id ${existente.id}) neste projeto — ` +
+          `use este id em epic_id`,
+      );
+    }
+
     const epic = await this.epics.create({
       projectId,
       sessionId,
