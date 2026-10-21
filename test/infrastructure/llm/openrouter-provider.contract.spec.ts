@@ -6,6 +6,7 @@ import {
   OPENROUTER_BASE_URL,
   OpenRouterProvider,
   campoDeRoteamentoOpenRouter,
+  campoDeSessaoOpenRouter,
   marcarCacheDePromptOpenRouter,
   extrairCustoRealOpenRouter,
   openrouterConfig,
@@ -134,6 +135,9 @@ describe('OpenRouterProvider — quirks (Fase 11a)', () => {
       // Provada contra a API real em 2026-09-29
       // (`openrouter-provider.roteamento.smoke.spec.ts`, AT-158).
       routingPreference: true,
+      // Provada contra a API real em 2026-10-21
+      // (`openrouter-provider.sessao.smoke.spec.ts`, ADR 0221, AT-580).
+      stickySession: true,
       // Provada contra a API real em 2026-10-15
       // (`openrouter-provider.cache.smoke.spec.ts`, RN-892, AT-543).
       promptCaching: true,
@@ -728,5 +732,70 @@ describe('OpenRouterProvider — pontos de cache de prompt (RN-892)', () => {
     expect(marcarCacheDePromptOpenRouter(entrada, 'anthropic/x')).toEqual(
       entrada,
     );
+  });
+});
+
+describe('OpenRouterProvider — chave de sessão (ADR 0221, RN-907)', () => {
+  const comSticky = (baseUrl: string) =>
+    new OpenAICompatibleProvider(
+      openrouterConfig(baseUrl),
+      new GptTokenizerEstimator(),
+    );
+  const semSticky = (baseUrl: string) => {
+    const base = openrouterConfig(baseUrl);
+    return new OpenAICompatibleProvider(
+      { ...base, capabilities: { ...base.capabilities, stickySession: false } },
+      new GptTokenizerEstimator(),
+    );
+  };
+  async function corpoCom(
+    provider: OpenAICompatibleProvider,
+    servidor: Awaited<ReturnType<typeof subirServidorFalso>>,
+    sessionKey?: string,
+  ) {
+    for await (const _ of provider.chat([{ role: 'user', content: 'oi' }], {
+      model: '~deepseek/deepseek-v4-flash-latest',
+      ...(sessionKey ? { sessionKey } : {}),
+    })) {
+      // drena
+    }
+    return servidor.ultimoPedido();
+  }
+
+  it('com a capability e a chave, o corpo leva session_id', async () => {
+    const servidor = await subirServidorFalso(dialetoOpenRouter);
+    const corpo = await corpoCom(
+      comSticky(servidor.baseUrl),
+      servidor,
+      'brabo:s1:dev-api',
+    );
+    await servidor.fechar();
+    expect(corpo?.session_id).toBe('brabo:s1:dev-api');
+  });
+
+  it('sem a chave, ou com a capability desligada, NADA de session_id', async () => {
+    const servidor = await subirServidorFalso(dialetoOpenRouter);
+    const semChave = await corpoCom(comSticky(servidor.baseUrl), servidor);
+    const desligada = await corpoCom(
+      semSticky(servidor.baseUrl),
+      servidor,
+      'brabo:s1:dev-api',
+    );
+    await servidor.fechar();
+    expect(semChave).not.toHaveProperty('session_id');
+    expect(desligada).not.toHaveProperty('session_id');
+  });
+
+  it('capability sem `campoDeSessao` falha na construção; o formato é session_id', () => {
+    const base = openrouterConfig('http://127.0.0.1:1');
+    expect(
+      () =>
+        new OpenAICompatibleProvider({
+          ...base,
+          campoDeSessao: undefined,
+          capabilities: { ...base.capabilities, stickySession: true },
+        }),
+    ).toThrow(/stickySession.*campoDeSessao/);
+    expect(campoDeSessaoOpenRouter('k')).toEqual({ session_id: 'k' });
   });
 });

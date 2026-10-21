@@ -125,6 +125,9 @@ export type CampoDeRoteamento = (
   preferencia: RoutingPreference,
 ) => Record<string, unknown>;
 
+/** Como um hub recebe a chave de sessão (ADR 0221). Capability sem hook falha na construção. */
+export type CampoDeSessao = (chave: string) => Record<string, unknown>;
+
 /**
  * Como um provider informa o CUSTO REAL da chamada no `usage` (ADR 0188,
  * RN-665). O OpenRouter o põe em `usage.cost`, em USD; a OpenAI não informa.
@@ -155,11 +158,27 @@ export interface OpenAICompatibleConfig {
   readonly parseErrorFrame?: ParseErrorFrame;
   /** Só em hubs — ver `CampoDeRoteamento`. */
   readonly campoDeRoteamento?: CampoDeRoteamento;
+  /** Só em hubs — ver `CampoDeSessao`. */
+  readonly campoDeSessao?: CampoDeSessao;
   /** Só quem informa custo na resposta — ver `ExtrairCustoReal`. */
   readonly extrairCustoReal?: ExtrairCustoReal;
   /** Só quem sabe controlar o raciocínio — ver `CampoDeRaciocinioDesligado`. */
   readonly campoDeRaciocinioDesligado?: CampoDeRaciocinioDesligado;
+  /** Só quem aceita ponto de cache explícito — ver `MarcarCacheDePrompt`. */
+  readonly marcarCacheDePrompt?: MarcarCacheDePrompt;
 }
+
+/**
+ * Como um provider recebe os PONTOS DE CACHE de prompt (RN-892). Recebe as
+ * mensagens já no formato do fio e o modelo, e devolve as mensagens com o
+ * ponto marcado — ou as MESMAS, quando o modelo não precisa de ponto explícito
+ * (a camada de modelo da capability). Só é chamado com
+ * `capabilities.promptCaching` `true`.
+ */
+export type MarcarCacheDePrompt = (
+  mensagens: WireMessage[],
+  modelo: string,
+) => WireMessage[];
 
 /**
  * Como dizer ao provider que o raciocínio vai DESLIGADO (RN-783). A presença
@@ -196,6 +215,18 @@ export class OpenAICompatibleProvider implements LLMProvider {
       throw new Error(
         `${config.name} declara \`routingPreference\` sem \`campoDeRoteamento\` ` +
           '— a capability afirmaria um campo que nunca iria ao fio (ADR 0166).',
+      );
+    }
+    if (config.capabilities.stickySession && !config.campoDeSessao) {
+      throw new Error(
+        `${config.name} declara \`stickySession\` sem \`campoDeSessao\` ` +
+          '— a capability afirmaria um campo que nunca iria ao fio (ADR 0221).',
+      );
+    }
+    if (config.capabilities.promptCaching && !config.marcarCacheDePrompt) {
+      throw new Error(
+        `${config.name} declara \`promptCaching\` sem \`marcarCacheDePrompt\` ` +
+          '— a capability afirmaria um ponto de cache que nunca iria ao fio (RN-892).',
       );
     }
   }
@@ -475,9 +506,17 @@ export class OpenAICompatibleProvider implements LLMProvider {
         ? this.config.campoDeRaciocinioDesligado?.()
         : undefined;
 
+    const noFio = messages.map(toWireMessage);
+    // Só com a capability PROVADA (RN-892): desligada, o corpo é byte a byte
+    // o de antes.
+    const mensagens =
+      this.capabilities.promptCaching && this.config.marcarCacheDePrompt
+        ? this.config.marcarCacheDePrompt(noFio, options.model)
+        : noFio;
+
     return {
       model: options.model,
-      messages: messages.map(toWireMessage),
+      messages: mensagens,
       stream: true,
       // SEMPRE explícito (RN-734): sem o campo, o OpenRouter reserva o
       // crédito da saída MÁXIMA do modelo por chamada e recusa com 402.
@@ -501,6 +540,12 @@ export class OpenAICompatibleProvider implements LLMProvider {
       options.routingPreference &&
       this.config.campoDeRoteamento
         ? this.config.campoDeRoteamento(options.routingPreference)
+        : {}),
+      // Só com a capability PROVADA e com chave (ADR 0221).
+      ...(this.capabilities.stickySession &&
+      options.sessionKey &&
+      this.config.campoDeSessao
+        ? this.config.campoDeSessao(options.sessionKey)
         : {}),
     };
   }
@@ -540,9 +585,16 @@ export function parseCatalogoPadrao(corpo: unknown): ModeloDoCatalogo[] {
 
 // --- Mapeamento para o formato de fio ---
 
-interface WireMessage {
+/** Bloco de conteúdo com ponto de cache (RN-892) — só a forma que marcamos. */
+export interface WireContentPart {
+  type: 'text';
+  text: string;
+  cache_control?: { type: 'ephemeral' };
+}
+
+export interface WireMessage {
   role: string;
-  content: string;
+  content: string | WireContentPart[];
   tool_call_id?: string;
   name?: string;
   tool_calls?: {

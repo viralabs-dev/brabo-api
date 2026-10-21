@@ -94,10 +94,17 @@ class FakeProvider implements LLMProvider {
     listModels: false,
     embeddings: false,
     routingPreference: false,
+    stickySession: false,
+    promptCaching: false,
   };
   constructor(private readonly script: ChatStreamChunk[]) {}
-  async *chat(): AsyncGenerator<ChatStreamChunk> {
+  recebidas: unknown[] = [];
+  async *chat(
+    _m?: unknown,
+    options?: unknown,
+  ): AsyncGenerator<ChatStreamChunk> {
     await Promise.resolve();
+    this.recebidas.push(options);
     for (const chunk of this.script) yield chunk;
   }
 }
@@ -181,6 +188,25 @@ afterAll(async () => {
 });
 
 describe('StreamLlmTurnUseCase', () => {
+  it('a chave de sessão do agente vai ao provider (ADR 0221, RN-907): com e sem agentId', async () => {
+    const { project, session } = await setup();
+    const provider = new FakeProvider([
+      { type: 'usage', inputTokens: 1, outputTokens: 1, estimated: false },
+    ]);
+    const base = {
+      projectId: project.id,
+      sessionId: session.id,
+      messages: [{ role: 'user' as const, content: 'oi' }],
+    };
+    await coletar(
+      buildUseCase(provider).execute({ ...base, agentId: 'criativo' }),
+    );
+    await coletar(buildUseCase(provider).execute(base));
+    expect(
+      provider.recebidas.map((o) => (o as { sessionKey?: string }).sessionKey),
+    ).toEqual([`brabo:${session.id}:criativo`, `brabo:${session.id}`]);
+  });
+
   it('caminho feliz: o frame final carrega o nome do modelo (RN-146)', async () => {
     const { project, session } = await setup();
     const provider = new FakeProvider([

@@ -21,7 +21,10 @@ import {
   DecidirFerramentaDoPassoUseCase,
   type ToolRouting,
 } from './decidir-ferramenta-do-passo.use-case';
-import { preferenciaEnviada } from '../../../domain/llm/routing-preference';
+import {
+  chaveDeSessao,
+  preferenciaEnviada,
+} from '../../../domain/llm/routing-preference';
 import { custoDaChamada } from '../../../domain/llm/custo-da-chamada';
 import { opcoesDeRaciocinio } from '../../../domain/llm/raciocinio-do-agente';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
@@ -186,6 +189,7 @@ export class RunLlmTurnUseCase {
         apiKey,
         tools: decisaoDoJev.tools,
         ...(routingPreference ? { routingPreference } : {}),
+        sessionKey: chaveDeSessao(input.sessionId, input.agentId),
         ...opcoesDeRaciocinio(model.supportsReasoning, input.agentId),
       })) {
         if (chunk.type === 'text_delta') {

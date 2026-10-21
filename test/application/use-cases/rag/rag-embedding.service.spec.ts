@@ -14,6 +14,8 @@ class FakeEmbeddingProvider implements LLMProvider {
     listModels: false,
     embeddings: true,
     routingPreference: false,
+    stickySession: false,
+    promptCaching: false,
   };
   calls: string[][] = [];
 
@@ -42,6 +44,8 @@ class ThrowingEmbeddingProvider implements LLMProvider {
     listModels: false,
     embeddings: true,
     routingPreference: false,
+    stickySession: false,
+    promptCaching: false,
   };
 
   // eslint-disable-next-line @typescript-eslint/require-await, require-yield
@@ -64,6 +68,8 @@ class NoEmbedProvider implements LLMProvider {
     listModels: false,
     embeddings: false,
     routingPreference: false,
+    stickySession: false,
+    promptCaching: false,
   };
 
   // eslint-disable-next-line @typescript-eslint/require-await, require-yield
