@@ -196,6 +196,37 @@ export function validarDecisaoDeImagem(
 }
 
 /**
+ * Ecossistemas que BAIXAM dependências na instalação (RN-906). Lista FECHADA,
+ * comparada por PALAVRA inteira ("mongo" não casa "go"). Sem exceção
+ * configurável; termo novo entra aqui, com teste.
+ */
+// prettier-ignore
+export const TERMOS_DE_STACK_QUE_BAIXA_DEPENDENCIA: readonly string[] = [
+  'node', 'nodejs', 'npm', 'pnpm', 'yarn', 'bun', 'deno',
+  'python', 'pip', 'poetry', 'uv',
+  'elixir', 'mix', 'phoenix', 'erlang',
+  'go', 'golang', 'rust', 'cargo',
+  'ruby', 'bundler', 'rails',
+  'java', 'maven', 'gradle', 'kotlin',
+  'php', 'composer', 'dotnet', 'nuget',
+];
+
+/** Primeiro módulo cuja `stack` casa um termo da lista, ou `null`. */
+export function stackQueBaixaDependencias(
+  modules: ReadonlyArray<{ name: string; stack: string }>,
+): { modulo: string; stack: string; termo: string } | null {
+  for (const m of modules) {
+    // Palavras = corridas de letras/dígitos: "Node.js" -> node, js.
+    const palavras = new Set(m.stack.toLowerCase().split(/[^a-z0-9]+/));
+    const termo = TERMOS_DE_STACK_QUE_BAIXA_DEPENDENCIA.find((t) =>
+      palavras.has(t),
+    );
+    if (termo) return { modulo: m.name, stack: m.stack, termo };
+  }
+  return null;
+}
+
+/**
  * Descreve um valor `unknown` para MENSAGEM de erro, sem o `no-base-to-string`
  * do `String(objeto)` — que produziria `[object Object]` e esconderia
  * justamente o que o modelo mandou de errado.
