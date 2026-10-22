@@ -9,6 +9,7 @@ import { NVIDIA_NIM_BASE_URL } from './nvidia-nim-provider';
 import { TOGETHER_BASE_URL } from './together-provider';
 import { BITDEER_BASE_URL } from './bitdeer-provider';
 import { VULTR_BASE_URL } from './vultr-provider';
+import { nineRouterBaseUrl } from './nine-router-provider';
 
 /**
  * Base URL default de cada provider com teste declarado — chave nova por
@@ -24,6 +25,13 @@ const BASE_URL_PADRAO: Partial<Record<LLMProviderName, string>> = {
   bitdeer: BITDEER_BASE_URL,
   vultr: VULTR_BASE_URL,
 };
+
+/** O 9Router tem URL por instalação (ADR 0222): lida a cada uso, não no import. */
+function baseUrlPadraoDe(provider: LLMProviderName): string | undefined {
+  return provider === '9router'
+    ? nineRouterBaseUrl()
+    : BASE_URL_PADRAO[provider];
+}
 
 /**
  * Um teste por provider, best-effort — ver o port pra por que "sem teste
@@ -47,13 +55,13 @@ export class LLMCredentialConnectionTesterImpl implements LLMCredentialConnectio
 
   supports(provider: LLMProviderName): boolean {
     return Boolean(
-      this.baseUrlOverrides[provider] ?? BASE_URL_PADRAO[provider],
+      this.baseUrlOverrides[provider] ?? baseUrlPadraoDe(provider),
     );
   }
 
   async test(provider: LLMProviderName, apiKey: string): Promise<void> {
     const baseUrl =
-      this.baseUrlOverrides[provider] ?? BASE_URL_PADRAO[provider];
+      this.baseUrlOverrides[provider] ?? baseUrlPadraoDe(provider);
     if (!baseUrl) return; // sem teste declarado — ver o port
 
     try {

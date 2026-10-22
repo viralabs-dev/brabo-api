@@ -15,6 +15,7 @@ import { OllamaProvider } from '../../../src/infrastructure/llm/ollama-provider'
 import { OpenAIProvider } from '../../../src/infrastructure/llm/openai-provider';
 import { OpenRouterProvider } from '../../../src/infrastructure/llm/openrouter-provider';
 import { TogetherProvider } from '../../../src/infrastructure/llm/together-provider';
+import { NineRouterProvider } from '../../../src/infrastructure/llm/nine-router-provider';
 import { VultrProvider } from '../../../src/infrastructure/llm/vultr-provider';
 
 const BASE: LLMProviderCapabilities = {
@@ -121,8 +122,9 @@ describe('a lista e as declarações', () => {
       new OpenRouterProvider(),
       new TogetherProvider(),
       new VultrProvider(),
+      new NineRouterProvider(),
     ];
-    expect(providers).toHaveLength(9);
+    expect(providers).toHaveLength(10);
     for (const provider of providers) {
       expect([provider.name, provider.capabilities.routingPreference]).toEqual([
         provider.name,
