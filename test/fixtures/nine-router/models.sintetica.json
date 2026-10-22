@@ -1,0 +1,26 @@
+{
+  "_aviso": "FIXTURE SINTETICA: formato descrito no levantamento da AT-576 (21/10), NAO capturada do 9Router real. Troque por captura quando houver.",
+  "object": "list",
+  "data": [
+    {
+      "id": "kgw/kilo-auto/free",
+      "object": "model",
+      "owned_by": "kgw",
+      "name": "Kilo Auto Free",
+      "capabilities": { "tools": true, "reasoning": false, "thinkingCanDisable": false, "maxOutput": 8192, "contextWindow": 131072 }
+    },
+    {
+      "id": "bzl/auto:free",
+      "object": "model",
+      "owned_by": "bzl",
+      "capabilities": { "tools": true, "reasoning": true, "thinkingCanDisable": true, "maxOutput": 16384, "contextWindow": 200000 }
+    },
+    {
+      "id": "kimchi/modelo-sem-tools",
+      "object": "model",
+      "capabilities": { "tools": false }
+    },
+    { "id": "mmf/mimo-auto", "object": "model" },
+    { "object": "model", "name": "sem id" }
+  ]
+}
