@@ -152,13 +152,25 @@ describe('RequestParallelizationUseCase', () => {
     expect(r.estado).toBe('executado');
   });
 
-  it('projeto sem área de dev usa o default 2', async () => {
+  it('projeto sem área de dev usa o padrão do catálogo (5)', async () => {
     areas.maxParallel = null;
-    events.ativados = [{ sessionId: SESSION, modules: ['api', 'web'] }];
+    events.ativados = [
+      { sessionId: SESSION, modules: ['a', 'b', 'c', 'd', 'e'] },
+    ];
 
     const r = await uc.execute(PROJECT, SESSION, 'api', 'u1');
 
+    // 5 ativos + 1 pedido = 6 > 5: acima do teto, precisa de autorização.
     expect(r.estado).toBe('aguardando_autorizacao');
+  });
+
+  it('projeto sem área de dev, com 4 ativos, ainda cabe no padrão 5', async () => {
+    areas.maxParallel = null;
+    events.ativados = [{ sessionId: SESSION, modules: ['a', 'b', 'c', 'd'] }];
+
+    const r = await uc.execute(PROJECT, SESSION, 'api', 'u1');
+
+    expect(r.estado).toBe('executado');
   });
 
   it('teto maior configurado pelo usuário dispensa a autorização', async () => {

@@ -58,15 +58,15 @@ export class DrizzleAgentAreaRepository implements AgentAreaRepository {
     // seeding roda de novo a cada ativação de execução. Sem esta guarda, um
     // `max_parallel` que o usuário subiu para 5 voltaria para 2 sozinho — o
     // produto desfazendo a decisão dele em silêncio.
+    // O valor de nascença (AT-599) entra SÓ no INSERT: fora do `set` abaixo.
+    const nascer = input.maxParallel ?? input.maxParallelAoNascer;
     const [area] = await db
       .insert(agentAreas)
       .values({
         projectId: input.projectId,
         key: input.key,
         leadAgentId: input.leadAgentId,
-        ...(input.maxParallel != null
-          ? { maxParallel: input.maxParallel }
-          : {}),
+        ...(nascer != null ? { maxParallel: nascer } : {}),
       })
       .onConflictDoUpdate({
         target: [agentAreas.projectId, agentAreas.key],

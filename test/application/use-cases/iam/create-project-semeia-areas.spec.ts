@@ -103,7 +103,7 @@ describe('projeto recém-criado TEM áreas (RN-094)', () => {
     expect(porChave.get('dev')?.members).toEqual([]);
   });
 
-  it('o teto de cada área nasce no default da coluna — a criação não decide gasto', async () => {
+  it('o teto de cada área nasce com o catálogo (AT-599): dev 5, qa 4, infra 2', async () => {
     const { ownerId, workspaceId } = await workspace();
 
     const projeto = await criarProjeto.execute(workspaceId, ownerId, {
@@ -116,7 +116,10 @@ describe('projeto recém-criado TEM áreas (RN-094)', () => {
     // O `toHaveLength` não é decoração: `every` sobre lista VAZIA é `true`, e
     // sem ele este teste sobreviveria a remover o seeding inteiro.
     expect(gravadas).toHaveLength(AGENT_AREAS.length);
-    expect(gravadas.every((a) => a.maxParallel === 2)).toBe(true);
+    const teto = Object.fromEntries(
+      gravadas.map((a) => [a.key, a.maxParallel]),
+    );
+    expect(teto).toEqual({ dev: 5, qa: 4, infra: 2 });
   });
 
   it('seeding que falha derruba a criação inteira — projeto quebrado não nasce', async () => {

@@ -107,3 +107,63 @@ describe('DrizzleAgentAreaRepository — budget de área (ADR 0110, RN-443)', ()
     });
   });
 });
+
+describe('upsert — teto de nascença (AT-599)', () => {
+  async function projetoSemArea() {
+    const [user] = await db
+      .insert(users)
+      .values({ keycloakSub: 'sub-nascenca', email: 'nascenca@brabo.dev' })
+      .returning();
+    const [workspace] = await db
+      .insert(workspaces)
+      .values({ name: 'acme', slug: 'acme-n', createdBy: user.id })
+      .returning();
+    const [project] = await db
+      .insert(projects)
+      .values({
+        workspaceId: workspace.id,
+        name: 'core',
+        slug: 'core-n',
+        createdBy: user.id,
+      })
+      .returning();
+    return project;
+  }
+
+  const semear = (
+    projectId: string,
+    extra: { maxParallelAoNascer?: number; maxParallel?: number },
+  ) =>
+    repo.upsert({
+      projectId,
+      key: 'dev',
+      leadAgentId: 'dev-lead',
+      members: [],
+      ...extra,
+    });
+
+  it('a área nova nasce com o valor de nascença', async () => {
+    const project = await projetoSemArea();
+    const area = await semear(project.id, { maxParallelAoNascer: 5 });
+    expect(area.maxParallel).toBe(5);
+  });
+
+  it('semear de novo NÃO desfaz o teto que o usuário alterou', async () => {
+    const project = await projetoSemArea();
+    await semear(project.id, { maxParallelAoNascer: 5 });
+    await repo.setMaxParallel(project.id, 'dev', 3);
+
+    const depois = await semear(project.id, { maxParallelAoNascer: 5 });
+
+    expect(depois.maxParallel).toBe(3);
+  });
+
+  it('valor explícito de maxParallel continua sobrescrevendo', async () => {
+    const project = await projetoSemArea();
+    await semear(project.id, { maxParallelAoNascer: 5 });
+
+    const area = await semear(project.id, { maxParallel: 4 });
+
+    expect(area.maxParallel).toBe(4);
+  });
+});
