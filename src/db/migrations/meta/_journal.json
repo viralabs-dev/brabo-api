@@ -526,6 +526,13 @@
       "when": 1792800000000,
       "tag": "0074_orcamento_de_raciocinio",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1792886400000,
+      "tag": "0075_raciocinio_abortado",
+      "breakpoints": true
     }
   ]
 }

@@ -372,6 +372,9 @@ export const tokenUsage = pgTable(
     // O id da resposta no provider (`gen-…` no OpenRouter): é por ele que
     // `GET /generation?id=` confere a cobrança depois (RN-665).
     generationId: text('generation_id'),
+    // `true` = `cost_micros` é ESTIMATIVA de stream abortado pelo orçamento de
+    // raciocínio (ADR 0224, RN-915); o reconciliador troca pelo custo real.
+    custoAReconciliar: boolean('custo_a_reconciliar').notNull().default(false),
     // PARTES dos tokens que o provider informou (RN-666, AT-272): quantos da
     // entrada vieram de CACHE (cache read, cobrado a uma fração do preço) e
     // quantos da saída foram RACIOCÍNIO. Nunca somadas a `input_tokens` /

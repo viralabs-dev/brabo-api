@@ -21,6 +21,55 @@ import { currentDb } from './drizzle-context';
 export class DrizzleTokenUsageRepository implements TokenUsageRepository {
   constructor(@Inject(DRIZZLE) private readonly rootDb: DrizzleDb) {}
 
+  async listarACorrigir(desde: Date, limite: number) {
+    const db = currentDb(this.rootDb);
+    const rows = await db
+      .select({
+        id: tokenUsage.id,
+        projectId: sessions.projectId,
+        provider: tokenUsage.provider,
+        generationId: tokenUsage.generationId,
+        costMicros: tokenUsage.costMicros,
+        inputTokens: tokenUsage.inputTokens,
+        outputTokens: tokenUsage.outputTokens,
+      })
+      .from(tokenUsage)
+      .innerJoin(sessions, eq(sessions.id, tokenUsage.sessionId))
+      .where(
+        and(
+          eq(tokenUsage.custoAReconciliar, true),
+          gte(tokenUsage.createdAt, desde),
+        ),
+      )
+      .orderBy(tokenUsage.createdAt)
+      .limit(limite);
+    return rows.flatMap((r) =>
+      r.generationId ? [{ ...r, generationId: r.generationId }] : [],
+    );
+  }
+
+  async aplicarCustoReal(
+    id: string,
+    custoRealMicros: number,
+    precoImplicitoPorMilhao: number,
+  ): Promise<boolean> {
+    const db = currentDb(this.rootDb);
+    const res = await db
+      .update(tokenUsage)
+      .set({
+        // O catálogo/estimativa de antes vira a referência, como no ADR 0188.
+        catalogCostMicros: tokenUsage.costMicros,
+        costMicros: custoRealMicros,
+        inputPricePerMillionMicros: precoImplicitoPorMilhao,
+        outputPricePerMillionMicros: precoImplicitoPorMilhao,
+        priceImplicit: true,
+        custoAReconciliar: false,
+      })
+      .where(and(eq(tokenUsage.id, id), eq(tokenUsage.custoAReconciliar, true)))
+      .returning({ id: tokenUsage.id });
+    return res.length > 0;
+  }
+
   async record(input: RecordTokenUsageInput): Promise<TokenUsage> {
     const db = currentDb(this.rootDb);
     const [row] = await db
@@ -39,6 +88,7 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
         inputPricePerMillionMicros: input.inputPricePerMillionMicros,
         outputPricePerMillionMicros: input.outputPricePerMillionMicros,
         priceImplicit: input.priceImplicit ?? false,
+        custoAReconciliar: input.custoAReconciliar ?? false,
         catalogCostMicros: input.catalogCostMicros ?? null,
         resolvedModelName: input.resolvedModelName ?? null,
         generationId: input.generationId ?? null,
