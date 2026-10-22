@@ -202,7 +202,11 @@ export class StreamLlmTurnUseCase {
         tools: decisaoDoJev.tools,
         ...(routingPreference ? { routingPreference } : {}),
         sessionKey: chaveDeSessao(input.sessionId, input.agentId),
-        ...opcoesDeRaciocinio(model.supportsReasoning, input.agentId),
+        ...opcoesDeRaciocinio(
+          model.supportsReasoning,
+          input.agentId,
+          model.reasoningBudget,
+        ),
       })) {
         if (chunk.type === 'text_delta') {
           fullText += chunk.text;

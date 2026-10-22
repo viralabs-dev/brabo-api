@@ -143,6 +143,10 @@ export const models = pgTable(
      */
     supportsReasoning: boolean('supports_reasoning').notNull().default(false),
     generatesImage: boolean('generates_image').notNull().default(false),
+    // Curado à mão, nunca descoberto (ADR 0223): `reasoning.max_tokens` que o
+    // modelo RESPEITA, provado por smoke. NULL = não provado. O upsert do sync
+    // não o toca.
+    reasoningBudget: integer('reasoning_budget'),
     // Preço digitado à mão a partir da doc do provider, em vez de vindo de
     // sync (Fase 9b). Quem sincroniza preço na Fase 9c NÃO pode sobrescrever
     // uma linha marcada aqui sem decisão explícita: o número manual costuma

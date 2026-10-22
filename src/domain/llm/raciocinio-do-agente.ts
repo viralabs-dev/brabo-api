@@ -11,6 +11,8 @@ export const QA_AUTOMACAO = 'qa-automacao';
  * - Modelo com `supportsReasoning`: `reasoning: true` — a FOLGA no
  *   `max_tokens` (RN-741), e nenhum campo de raciocínio (RN-782: aceitar o
  *   parâmetro não é pedir raciocínio).
+ * - Modelo com `reasoningBudget` provado (ADR 0223, RN-913): além da folga,
+ *   `reasoningBudget: N`, que o provider manda como `reasoning.max_tokens`.
  * - Dev agent de execução (`dev-<modulo>`, decisão do dono de 10/10) e o QA
  *   de Automação (`qa-automacao`, RN-838): além disso, `reasoningOff: true` —
  *   o raciocínio vai DESLIGADO (RN-783).
@@ -18,10 +20,13 @@ export const QA_AUTOMACAO = 'qa-automacao';
 export function opcoesDeRaciocinio(
   supportsReasoning: boolean,
   agentId: string | undefined,
-): { reasoning?: true; reasoningOff?: true } {
+  reasoningBudget?: number | null,
+): { reasoning?: true; reasoningOff?: true; reasoningBudget?: number } {
   if (!supportsReasoning) return {};
-  return raciocinioDesligadoParaOAgente(agentId)
-    ? { reasoning: true, reasoningOff: true }
+  if (raciocinioDesligadoParaOAgente(agentId))
+    return { reasoning: true, reasoningOff: true };
+  return reasoningBudget
+    ? { reasoning: true, reasoningBudget }
     : { reasoning: true };
 }
 

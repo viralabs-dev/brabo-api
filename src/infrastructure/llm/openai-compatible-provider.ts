@@ -501,10 +501,14 @@ export class OpenAICompatibleProvider implements LLMProvider {
     const controla = Boolean(
       options.reasoning && this.config.campoDeRaciocinioDesligado,
     );
+    const orcamento =
+      controla && !options.reasoningOff ? options.reasoningBudget : undefined;
     const raciocinio =
       controla && options.reasoningOff
         ? this.config.campoDeRaciocinioDesligado?.()
-        : undefined;
+        : orcamento
+          ? { reasoning: { max_tokens: orcamento } }
+          : undefined;
 
     const noFio = messages.map(toWireMessage);
     // Só com a capability PROVADA (RN-892): desligada, o corpo é byte a byte
@@ -521,7 +525,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
       // SEMPRE explícito (RN-734): sem o campo, o OpenRouter reserva o
       // crédito da saída MÁXIMA do modelo por chamada e recusa com 402.
       [flags.maxTokensField]: controla
-        ? saidaVisivel + ORCAMENTO_DE_RACIOCINIO
+        ? saidaVisivel + (orcamento ?? ORCAMENTO_DE_RACIOCINIO)
         : saidaVisivel,
       ...(raciocinio ?? {}),
       ...(flags.streamOptionsIncludeUsage

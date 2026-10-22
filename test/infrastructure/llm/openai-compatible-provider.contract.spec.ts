@@ -285,6 +285,7 @@ describe('OpenAICompatibleProvider — particularidades da base', () => {
       opcoes: {
         reasoning?: boolean;
         reasoningOff?: boolean;
+        reasoningBudget?: number;
         maxTokens?: number;
       },
       servidor: { ultimoPedido: () => unknown },
@@ -317,6 +318,37 @@ describe('OpenAICompatibleProvider — particularidades da base', () => {
       expect(
         await pedido(p, { reasoning: true, maxTokens: 100 }, servidor),
       ).toMatchObject({ max_tokens: 100 + ORCAMENTO_DE_RACIOCINIO });
+      await servidor.fechar();
+    });
+
+    it('modelo com orçamento de raciocínio: reasoning.max_tokens e teto somado (RN-913)', async () => {
+      const servidor = await subirServidorFalso(dialetoOpenAI);
+      const base = openaiConfig(servidor.baseUrl);
+      const p = new OpenAICompatibleProvider({
+        ...base,
+        flags: { ...base.flags, maxTokensField: 'max_tokens' },
+        campoDeRaciocinioDesligado: campoDeRaciocinioDesligadoOpenRouter,
+      });
+      const corpo = await pedido(
+        p,
+        { reasoning: true, reasoningBudget: 2048 },
+        servidor,
+      );
+      expect(corpo).toEqual({
+        model: 'm',
+        messages: [{ role: 'user', content: 'oi' }],
+        stream: true,
+        max_tokens: MAX_TOKENS_PADRAO + 2048,
+        reasoning: { max_tokens: 2048 },
+        stream_options: { include_usage: true },
+      });
+      // Falha: com o desligado explícito o orçamento não vai.
+      const off = await pedido(
+        p,
+        { reasoning: true, reasoningOff: true, reasoningBudget: 2048 },
+        servidor,
+      );
+      expect(off.reasoning).toEqual({ enabled: false });
       await servidor.fechar();
     });
 
