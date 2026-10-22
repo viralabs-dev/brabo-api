@@ -321,7 +321,7 @@ describe('OpenAICompatibleProvider — particularidades da base', () => {
       await servidor.fechar();
     });
 
-    it('modelo com orçamento de raciocínio: reasoning.max_tokens e teto somado (RN-913)', async () => {
+    it('modelo com orçamento de raciocínio: reasoning.max_tokens e teto somado (RN-914)', async () => {
       const servidor = await subirServidorFalso(dialetoOpenAI);
       const base = openaiConfig(servidor.baseUrl);
       const p = new OpenAICompatibleProvider({

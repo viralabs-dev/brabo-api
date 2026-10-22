@@ -15,7 +15,7 @@ describe('opcoesDeRaciocinio (RN-782/783)', () => {
     expect(opcoesDeRaciocinio(true, undefined)).toEqual({ reasoning: true });
   });
 
-  it('orçamento provado do modelo entra; dev agent e modelo sem raciocínio não (RN-913)', () => {
+  it('orçamento provado do modelo entra; dev agent e modelo sem raciocínio não (RN-914)', () => {
     expect(opcoesDeRaciocinio(true, 'po', 2048)).toEqual({
       reasoning: true,
       reasoningBudget: 2048,
