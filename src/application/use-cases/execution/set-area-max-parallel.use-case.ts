@@ -4,7 +4,7 @@ import { AgentAreaRepository } from '../../ports/agent-area-repository.port';
 /**
  * O teto de paralelismo de uma área, decidido pelo usuário (FASE 14d, item 3).
  *
- * O default é `2` e vive no schema. Isto é a única forma de mudá-lo — não há
+ * O valor inicial vem do catálogo (AT-599); a coluna tem `default(2)` só para INSERT cru. Isto é a única forma de mudá-lo — não há
  * caminho automático, e é de propósito: o teto é o que separa "o lead decide"
  * de "o lead gasta". Um produto que sobe o próprio teto de gasto é exatamente
  * o que o pipeline de aprovação existe para impedir.

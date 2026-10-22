@@ -7,9 +7,10 @@ import {
   decidirParalelismo,
   motivoDoPedido,
 } from '../../../domain/execution/paralelismo';
+import { maxParallelPadraoDa } from '../../../domain/agents/agent-areas';
 
-/** Teto usado quando o projeto ainda não tem área de dev registrada. */
-export const MAX_PARALLEL_PADRAO = 2;
+/** Teto usado quando o projeto ainda não tem área de dev registrada (AT-599). */
+export const MAX_PARALLEL_PADRAO = maxParallelPadraoDa('dev');
 
 /**
  * O pedido de paralelismo do LEAD (ADR 0053, FASE 14d).

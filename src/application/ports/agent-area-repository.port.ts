@@ -19,6 +19,8 @@ export interface UpsertAreaInput {
   members: string[];
   /** Omitido preserva o valor atual — o teto é do usuário, não do seeding. */
   maxParallel?: number;
+  /** Valor inicial, usado SÓ no INSERT (AT-599). Nunca sobrescreve. */
+  maxParallelAoNascer?: number;
 }
 
 /**

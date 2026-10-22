@@ -31,6 +31,12 @@ export interface AreaDeAgentes {
   lead: string;
   members: readonly string[];
   /**
+   * Teto de paralelismo que a área NASCE com (AT-599, RN-909). Vale só no
+   * INSERT de `agent_areas`: quem já tem a linha mantém o que decidiu, exceto
+   * pela migração 0073, que aplicou este valor a todos os projetos.
+   */
+  maxParallelPadrao: number;
+  /**
    * Predicado de membro, para a área cujos membros NÃO são enumeráveis.
    *
    * Só a área de `dev` usa: os membros dela são um por módulo do `module_map`,
@@ -64,6 +70,7 @@ export const AGENT_AREAS: readonly AreaDeAgentes[] = [
     label: 'Dev',
     lead: DEV_LEAD,
     members: [],
+    maxParallelPadrao: 5,
     ehMembro: ehDevDeModulo,
   },
   {
@@ -71,14 +78,23 @@ export const AGENT_AREAS: readonly AreaDeAgentes[] = [
     label: 'QA',
     lead: 'qa',
     members: ['qa-automacao', 'qa-performance-seguranca'],
+    maxParallelPadrao: 4,
   },
   {
     key: 'infra',
     label: 'Infra',
     lead: 'infra',
     members: ['infra-workflows'],
+    maxParallelPadrao: 2,
   },
 ];
+
+/** Teto de paralelismo que uma área nasce com (AT-599). */
+export function maxParallelPadraoDa(key: string): number {
+  const area = AGENT_AREAS.find((a) => a.key === key);
+  if (!area) throw new Error(`área sem catálogo: ${key}`);
+  return area.maxParallelPadrao;
+}
 
 /** Área do agente, se houver — como LEAD ou como membro. */
 export function areaDo(agentId: string): AreaDeAgentes | undefined {

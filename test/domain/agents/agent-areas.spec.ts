@@ -8,6 +8,7 @@ import {
   assertHandoffTargetAllowed,
   ehSubagente,
   HandoffToSubagentError,
+  maxParallelPadraoDa,
 } from '../../../src/domain/agents/agent-areas';
 import {
   CAMINHO_ENGINE,
@@ -188,5 +189,20 @@ describe('addressableAgents (ADR 0109)', () => {
 
   it('inclui o Staff (ADR 0088) — o caso real que motivou esta feature', () => {
     expect(addressableAgents()).toContain('staff');
+  });
+});
+
+describe('teto de paralelismo que a área nasce com (AT-599)', () => {
+  it('dev 5, qa 4, infra 2 — e toda área declara o seu', () => {
+    expect(AGENT_AREAS.map((a) => [a.key, a.maxParallelPadrao])).toEqual([
+      ['dev', 5],
+      ['qa', 4],
+      ['infra', 2],
+    ]);
+  });
+
+  it('maxParallelPadraoDa falha nomeado para área fora do catálogo', () => {
+    expect(maxParallelPadraoDa('dev')).toBe(5);
+    expect(() => maxParallelPadraoDa('nao-existe')).toThrow(/nao-existe/);
   });
 });

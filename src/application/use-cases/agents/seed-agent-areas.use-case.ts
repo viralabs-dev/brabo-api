@@ -24,9 +24,8 @@ import { AGENT_AREAS } from '../../../domain/agents/agent-areas';
  *   ser desconhecidos — um por módulo do `module_map`, decidido pelo
  *   Arquiteto. Só a ativação sabe quais são.
  *
- * O `upsert` é idempotente e NÃO toca `max_parallel` quando ele é omitido, que
- * é sempre o caso aqui: o teto é decisão do usuário, e semear de novo não pode
- * desfazê-la.
+ * O `upsert` é idempotente. O teto inicial de cada área (AT-599) entra só no
+ * INSERT; semear de novo não toca o valor que o usuário já decidiu.
  */
 @Injectable()
 export class SeedAgentAreasUseCase {
@@ -50,6 +49,8 @@ export class SeedAgentAreasUseCase {
           // `ehMembro` é o que distingue área dinâmica de área enumerável: quem
           // tem predicado não tem lista em código, e os membros vêm de fora.
           members: area.ehMembro ? [...membrosDeDev] : [...area.members],
+          // Só o INSERT usa (AT-599): semear de novo não desfaz o teto.
+          maxParallelAoNascer: area.maxParallelPadrao,
         }),
       );
     }

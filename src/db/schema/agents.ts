@@ -90,7 +90,8 @@ export const agentAutonomy = pgTable(
  * cada projeto. O que não é enumerável em código passa a ser dado.
  *
  * `max_parallel` é o teto que o LEAD pode usar sem perguntar — não o teto do
- * que o usuário pode aprovar. Default 2, configurável por lead.
+ * que o usuário pode aprovar. Nasce com o valor do catálogo (AT-599: dev 5,
+ * qa 4, infra 2); o `default(2)` da coluna só cobre INSERT cru. Configurável por lead.
  *
  * O teto é da SESSÃO, não do módulo. Contar por módulo permitiria N módulos ×
  * 2 agentes sem autorização nenhuma, que é o buraco de hoje com outro nome.
