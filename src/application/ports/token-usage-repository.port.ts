@@ -18,6 +18,8 @@ export interface RecordTokenUsageInput {
   outputPricePerMillionMicros: number;
   /** `true` quando o preço é implícito (custo real ÷ tokens), ADR 0179/0188. */
   priceImplicit?: boolean;
+  /** Estimativa de stream abortado, a reconciliar (ADR 0224, RN-915). */
+  custoAReconciliar?: boolean;
   /** O que o catálogo teria cobrado, quando `costMicros` é o real (RN-665). */
   catalogCostMicros?: number | null;
   /** O modelo que a resposta disse ter servido (RN-665). */
@@ -35,7 +37,29 @@ export interface RecordTokenUsageInput {
   routingPreference: RoutingPreference | null;
 }
 
+/** Linha com custo estimado esperando o custo real, com o projeto para achar a chave. */
+export interface CustoAReconciliar {
+  id: string;
+  projectId: string;
+  provider: LLMProviderName;
+  generationId: string;
+  costMicros: number;
+  inputTokens: number;
+  outputTokens: number;
+}
+
 export abstract class TokenUsageRepository {
+  /** Linhas `custo_a_reconciliar` desde `desde`, mais antigas primeiro. */
+  abstract listarACorrigir(
+    desde: Date,
+    limite: number,
+  ): Promise<CustoAReconciliar[]>;
+  /** Troca a estimativa pelo custo real; só atua se a linha ainda estiver marcada. */
+  abstract aplicarCustoReal(
+    id: string,
+    custoRealMicros: number,
+    precoImplicitoPorMilhao: number,
+  ): Promise<boolean>;
   abstract record(input: RecordTokenUsageInput): Promise<TokenUsage>;
   // Soma de costMicros pra uma sessão, filtrado por actor id (Fase 4b —
   // Psicólogo: custo da análise, somando ['psicologo','psicologo-leve'],

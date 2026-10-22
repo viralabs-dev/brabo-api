@@ -171,3 +171,44 @@ describe('DrizzleTokenUsageRepository.sumByProjectGroupedByAgentLast30Days', () 
     );
   });
 });
+
+describe('DrizzleTokenUsageRepository: reconciliação do custo estimado (RN-915)', () => {
+  it('lista só a marcada e troca uma única vez', async () => {
+    const { sessionId, modelId } = await seed();
+    const base = {
+      sessionId,
+      actor: { kind: 'agent' as const, id: 'po' },
+      provider: 'openrouter' as const,
+      modelId,
+      modelName: 'm',
+      inputTokens: 100,
+      outputTokens: 400,
+      estimated: true,
+      costMicros: 900,
+      inputPricePerMillionMicros: 0,
+      outputPricePerMillionMicros: 0,
+      latencyMs: 1,
+      bindingOrigin: 'project' as const,
+      upstreamProvider: null,
+      routingPreference: null,
+    };
+    await repo.record({
+      ...base,
+      generationId: 'gen-a',
+      custoAReconciliar: true,
+      priceImplicit: true,
+    });
+    await repo.record({ ...base, generationId: 'gen-b' });
+
+    const desde = new Date(Date.now() - 3600_000);
+    const pendentes = await repo.listarACorrigir(desde, 10);
+    expect(pendentes.map((p) => p.generationId)).toEqual(['gen-a']);
+
+    expect(await repo.aplicarCustoReal(pendentes[0].id, 321, 642000)).toBe(
+      true,
+    );
+    // idempotente: a linha já não está marcada
+    expect(await repo.aplicarCustoReal(pendentes[0].id, 999, 1)).toBe(false);
+    expect(await repo.listarACorrigir(desde, 10)).toEqual([]);
+  });
+});

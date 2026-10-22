@@ -267,6 +267,16 @@ export class OpenAICompatibleProvider implements LLMProvider {
     // `finish_reason: "length"` (RN-737): o teto de saída cortou a resposta.
     let cortadaPeloTeto = false;
     let textoAcumulado = '';
+    // ADR 0224 (RN-915): o raciocínio é contado no stream (`delta.reasoning`,
+    // caracteres/4) e a conexão é abortada ao passar do orçamento do modelo.
+    const limiteDeRaciocinio =
+      options.reasoning &&
+      !options.reasoningOff &&
+      this.config.campoDeRaciocinioDesligado
+        ? options.reasoningBudget
+        : undefined;
+    let caracteresDeRaciocinio = 0;
+    let abortadoPeloRaciocinio = false;
     let upstreamProvider: string | undefined;
     // O que a RESPOSTA diz sobre si (RN-665): o modelo que serviu de fato e o
     // id que o provider deu a ela. Vêm em todo frame do dialeto; o último
@@ -318,6 +328,14 @@ export class OpenAICompatibleProvider implements LLMProvider {
           yield { type: 'text_delta', text: delta.content };
         }
 
+        if (limiteDeRaciocinio && typeof delta?.reasoning === 'string') {
+          caracteresDeRaciocinio += delta.reasoning.length;
+          if (caracteresDeRaciocinio / 4 > limiteDeRaciocinio) {
+            abortadoPeloRaciocinio = true;
+            break;
+          }
+        }
+
         // `tool_calls` chega FATIADO: o primeiro frame traz id e nome, e os
         // seguintes trazem pedaços da string de `arguments`. Só dá para
         // desserializar quando o stream fecha.
@@ -353,6 +371,27 @@ export class OpenAICompatibleProvider implements LLMProvider {
       }
     } catch (error) {
       yield toErrorChunk(error, this.name);
+      return;
+    }
+
+    if (abortadoPeloRaciocinio) {
+      response.destroy(); // a cobrança para no que já foi gerado
+      yield { type: 'truncated', motivo: 'raciocinio' };
+      // Sem `usage` na resposta abortada: tokens = caracteres/4 (ADR 0224).
+      const entrada = messages.map((m) => m.content).join('\n');
+      yield {
+        type: 'usage',
+        inputTokens:
+          this.tokenEstimator?.count(entrada) ?? Math.ceil(entrada.length / 4),
+        outputTokens: Math.ceil(
+          (caracteresDeRaciocinio + textoAcumulado.length) / 4,
+        ),
+        estimated: true,
+        abortadoPeloRaciocinio: true,
+        ...(upstreamProvider ? { upstreamProvider } : {}),
+        ...(resolvedModel ? { resolvedModel } : {}),
+        ...(generationId ? { generationId } : {}),
+      };
       return;
     }
 
@@ -655,6 +694,7 @@ interface FrameDeChat {
   choices?: {
     delta?: {
       content?: string;
+      reasoning?: unknown;
       tool_calls?: ToolCallParcial[];
     };
     finish_reason?: unknown;

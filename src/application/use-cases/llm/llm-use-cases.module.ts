@@ -25,6 +25,7 @@ import { GetWorkspaceSpendReportUseCase } from './get-workspace-spend-report.use
 import { GetMySpendUseCase } from './get-my-spend.use-case';
 import { CheckBudgetGateUseCase } from './check-budget-gate.use-case';
 import { RecordLlmUsageUseCase } from './record-llm-usage.use-case';
+import { ReconciliarCustoEstimadoUseCase } from './reconciliar-custo-estimado.use-case';
 import { SendChatMessageUseCase } from './send-chat-message.use-case';
 import { GarantirDestinatarioDoChatUseCase } from './garantir-destinatario-do-chat.use-case';
 import { RunLlmTurnUseCase } from './run-llm-turn.use-case';
@@ -62,6 +63,7 @@ const USE_CASES = [
   GetMySpendUseCase,
   CheckBudgetGateUseCase,
   RecordLlmUsageUseCase,
+  ReconciliarCustoEstimadoUseCase,
   SendChatMessageUseCase,
   GarantirDestinatarioDoChatUseCase,
   RunLlmTurnUseCase,

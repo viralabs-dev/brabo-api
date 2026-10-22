@@ -175,6 +175,8 @@ export class RunLlmTurnUseCase {
     let custoRealMicros: number | null = null;
     let resolvedModelName: string | null = null;
     let generationId: string | null = null;
+    // Stream abortado pelo orçamento de raciocínio: custo é estimativa (ADR 0224).
+    let abortado = false;
     // Partes da entrada/saída que o provider informou (RN-666); `null` = não disse.
     let cachedInputTokens: number | null = null;
     let reasoningTokens: number | null = null;
@@ -208,6 +210,7 @@ export class RunLlmTurnUseCase {
           custoRealMicros = chunk.costMicros ?? null;
           resolvedModelName = chunk.resolvedModel ?? null;
           generationId = chunk.generationId ?? null;
+          abortado = chunk.abortadoPeloRaciocinio === true;
           cachedInputTokens = chunk.cachedInputTokens ?? null;
           reasoningTokens = chunk.reasoningTokens ?? null;
         } else if (chunk.type === 'truncated') {
@@ -260,7 +263,8 @@ export class RunLlmTurnUseCase {
         // real, o preço é o IMPLÍCITO e o do catálogo vai ao lado (ADR 0188).
         inputPricePerMillionMicros: custo.inputPricePerMillionMicros,
         outputPricePerMillionMicros: custo.outputPricePerMillionMicros,
-        priceImplicit: custo.priceImplicit,
+        priceImplicit: custo.priceImplicit || abortado,
+        custoAReconciliar: abortado && generationId !== null,
         catalogCostMicros: custo.catalogCostMicros,
         resolvedModelName,
         generationId,
