@@ -12,6 +12,7 @@ import {
 import { DrizzleModelRepository } from '../../../src/infrastructure/persistence/drizzle/model.repository';
 import { DrizzleModelBindingRepository } from '../../../src/infrastructure/persistence/drizzle/model-binding.repository';
 import { DrizzleUserCredentialRepository } from '../../../src/infrastructure/persistence/drizzle/user-credential.repository';
+import { DrizzleWorkspaceModelRepository } from '../../../src/infrastructure/persistence/drizzle/workspace-model.repository';
 import { DrizzleProjectRepository } from '../../../src/infrastructure/persistence/drizzle/project.repository';
 import { DrizzleBudgetRepository } from '../../../src/infrastructure/persistence/drizzle/budget.repository';
 import { DrizzleAgentAreaRepository } from '../../../src/infrastructure/persistence/drizzle/agent-area.repository';
@@ -52,13 +53,13 @@ import type { LLMProviderRegistry } from '../../../src/application/ports/llm-pro
  * declarada é respeitada (`pulado: 'sem_capability'`), não pra descobrir
  * modelo nenhum.
  *
- * `NVIDIA_NIM_TEST_MODEL` (default `meta/llama-3.2-3b-instruct`, o menor dos
- * três semeados) escolhe o modelo curado e usado no turno de chat. O turno
+ * `NVIDIA_NIM_TEST_MODEL` (default `nvidia/nemotron-3.5-lightning-30b-a3b`,
+ * gratuito e com tool calling provado em 22/10) escolhe o modelo curado e usado no turno de chat. O turno
  * gasta uma fração de centavo de verdade na chave informada.
  */
 const apiKey = process.env.NVIDIA_NIM_TEST_KEY;
 const modeloAlvo =
-  process.env.NVIDIA_NIM_TEST_MODEL ?? 'meta/llama-3.2-3b-instruct';
+  process.env.NVIDIA_NIM_TEST_MODEL ?? 'nvidia/nemotron-3.5-lightning-30b-a3b';
 
 if (!apiKey) {
   console.warn(
@@ -67,7 +68,7 @@ if (!apiKey) {
       'NVIDIA_NIM_TEST_KEY (chave `nvapi-...`, com algum crédito) para ' +
       'habilitar esta suite manualmente — é o aceite que a Fase 11b exige ' +
       'antes de fechar (CLAUDE.md). Opcionalmente, NVIDIA_NIM_TEST_MODEL ' +
-      'escolhe o modelo curado (default: meta/llama-3.2-3b-instruct).',
+      'escolhe o modelo curado (default: nvidia/nemotron-3.5-lightning-30b-a3b).',
   );
 }
 
@@ -79,6 +80,7 @@ describe.skipIf(!apiKey)(
     const modelRepo = new DrizzleModelRepository(db);
     const bindingRepo = new DrizzleModelBindingRepository(db);
     const credentialRepo = new DrizzleUserCredentialRepository(db);
+    const workspaceModelRepo = new DrizzleWorkspaceModelRepository(db);
     const projectRepo = new DrizzleProjectRepository(db);
     const budgetRepo = new DrizzleBudgetRepository(db);
     const areaRepo = new DrizzleAgentAreaRepository(db);
@@ -133,8 +135,17 @@ describe.skipIf(!apiKey)(
       encryption,
       registry,
     );
-    const setModelsActive = new SetModelsActiveUseCase(modelRepo);
-    const setModelBinding = new SetModelBindingUseCase(bindingRepo, modelRepo);
+    const setModelsActive = new SetModelsActiveUseCase(
+      modelRepo,
+      workspaceModelRepo,
+    );
+    const setModelBinding = new SetModelBindingUseCase(
+      bindingRepo,
+      modelRepo,
+      workspaceModelRepo,
+      projectRepo,
+      registry,
+    );
     const resolveModelBinding = new ResolveModelBindingUseCase(
       bindingRepo,
       projectRepo,
@@ -233,13 +244,16 @@ describe.skipIf(!apiKey)(
           outputPricePerMillionMicros: 50_000,
           supportsToolCalling: false,
           manualPricing: true,
-          isActive: false,
         });
-        expect(inserido.isActive).toBe(false);
+        expect(
+          await workspaceModelRepo.isActive(workspace.id, inserido.id),
+        ).toBe(false);
 
         const [ativado] = await setModelsActive.execute({
+          workspaceId: workspace.id,
           modelIds: [inserido.id],
           isActive: true,
+          curatedBy: owner.id,
         });
         expect(ativado.isActive).toBe(true);
 
@@ -296,6 +310,48 @@ describe.skipIf(!apiKey)(
         // NIM não é hub — sem `extrairUpstreamProvider` na config, o campo
         // fica nulo (diferente do OpenRouter).
         expect(uso.upstreamProvider).toBeNull();
+
+        // 5) Streaming e tool calling PROVADOS direto no provider (AT-575):
+        //    as capabilities declaradas só valem com prova (ADRs 0041/0042).
+        const chunks: {
+          type: string;
+          text?: string;
+          toolCalls?: { name: string }[];
+        }[] = [];
+        for await (const c of nvidiaNim.chat(
+          [
+            {
+              role: 'user',
+              content: 'What is the weather in Paris? Use the tool.',
+            },
+          ],
+          {
+            model: modeloAlvo,
+            apiKey: apiKey!,
+            maxTokens: 200,
+            tools: [
+              {
+                name: 'get_weather',
+                description: 'Get weather',
+                parameters: {
+                  type: 'object',
+                  properties: { city: { type: 'string' } },
+                  required: ['city'],
+                },
+              },
+            ],
+          },
+        )) {
+          chunks.push(c);
+        }
+        expect(
+          chunks.find((c) => c.type === 'error'),
+          JSON.stringify(chunks),
+        ).toBeUndefined();
+        expect(
+          chunks.some((c) => c.type === 'tool_calls'),
+          `sem tool_calls: ${JSON.stringify(chunks)}`,
+        ).toBe(true);
       },
     );
   },
