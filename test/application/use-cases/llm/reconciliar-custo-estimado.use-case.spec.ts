@@ -23,7 +23,9 @@ describe('ReconciliarCustoEstimadoUseCase', () => {
   const caso = () =>
     new ReconciliarCustoEstimadoUseCase(
       usage as never,
-      { findSecretByUserAndProvider: () => Promise.resolve('segredo') } as never,
+      {
+        findSecretByUserAndProvider: () => Promise.resolve('segredo'),
+      } as never,
       { decrypt: () => 'sk-x' } as never,
       { execute: () => Promise.resolve('dono') } as never,
     );

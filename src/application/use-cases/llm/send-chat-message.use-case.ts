@@ -264,7 +264,7 @@ export class SendChatMessageUseCase {
           inputPricePerMillionMicros: custo.inputPricePerMillionMicros,
           outputPricePerMillionMicros: custo.outputPricePerMillionMicros,
           priceImplicit: custo.priceImplicit || abortado,
-        custoAReconciliar: abortado && generationId !== null,
+          custoAReconciliar: abortado && generationId !== null,
           catalogCostMicros: custo.catalogCostMicros,
           resolvedModelName,
           generationId,
