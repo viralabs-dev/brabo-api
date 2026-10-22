@@ -15,6 +15,19 @@ describe('opcoesDeRaciocinio (RN-782/783)', () => {
     expect(opcoesDeRaciocinio(true, undefined)).toEqual({ reasoning: true });
   });
 
+  it('orçamento provado do modelo entra; dev agent e modelo sem raciocínio não (RN-914)', () => {
+    expect(opcoesDeRaciocinio(true, 'po', 2048)).toEqual({
+      reasoning: true,
+      reasoningBudget: 2048,
+    });
+    expect(opcoesDeRaciocinio(true, 'po', null)).toEqual({ reasoning: true });
+    expect(opcoesDeRaciocinio(true, 'dev-backend', 2048)).toEqual({
+      reasoning: true,
+      reasoningOff: true,
+    });
+    expect(opcoesDeRaciocinio(false, 'po', 2048)).toEqual({});
+  });
+
   it('falha: modelo sem supportsReasoning não manda nada, nem para dev-*', () => {
     expect(opcoesDeRaciocinio(false, 'dev-backend')).toEqual({});
     expect(opcoesDeRaciocinio(false, 'criativo')).toEqual({});

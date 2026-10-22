@@ -193,7 +193,11 @@ export class SendChatMessageUseCase {
           model: model.name,
           apiKey,
           ...(routingPreference ? { routingPreference } : {}),
-          ...opcoesDeRaciocinio(model.supportsReasoning, input.agentId),
+          ...opcoesDeRaciocinio(
+            model.supportsReasoning,
+            input.agentId,
+            model.reasoningBudget,
+          ),
         },
       )) {
         if (chunk.type === 'text_delta') {

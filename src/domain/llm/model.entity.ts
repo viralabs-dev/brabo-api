@@ -28,6 +28,11 @@ export interface Model {
   supportsReasoning: boolean;
   generatesImage: boolean;
   /**
+   * Orçamento de raciocínio (tokens), curado à mão e PROVADO por medição (ADR
+   * 0223); `null` = não provado. O sync nunca o escreve.
+   */
+  reasoningBudget: number | null;
+  /**
    * Preço digitado da doc do provider, não sincronizado (Fase 9b). O sync da
    * Fase 9c não sobrescreve linha marcada sem decisão explícita.
    */

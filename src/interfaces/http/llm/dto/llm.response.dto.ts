@@ -123,6 +123,16 @@ export class ModelResponseDto implements Wire<Model> {
   generatesImage!: boolean;
 
   @ApiProperty({
+    type: Number,
+    nullable: true,
+    example: 2048,
+    description:
+      'Reasoning budget (tokens) the model is PROVEN to respect, curated by ' +
+      'hand (ADR 0223). Null = not proven; the field is not sent.',
+  })
+  reasoningBudget!: number | null;
+
+  @ApiProperty({
     example: true,
     description:
       "Price typed in from the provider's docs, not synced. The price sync " +

@@ -519,6 +519,13 @@
       "when": 1792700000000,
       "tag": "0073_paralelismo_padrao_por_area",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1792800000000,
+      "tag": "0074_orcamento_de_raciocinio",
+      "breakpoints": true
     }
   ]
 }
