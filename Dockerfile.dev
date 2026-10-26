@@ -1,4 +1,4 @@
-FROM node:26-alpine@sha256:143494b1da2945f061539253adc65e4f1569ddf07da2d384c022c791a9d90a4a
+FROM node:26-alpine@sha256:40cd011b55415bc894e45b02fdd5a5dfde056921b7d23a64c74f80497af48797
 
 # UID/GID do usuário que roda o container — casam com o dono do bind mount
 # no host (ver docker-compose.yml `build.args` e .env.example), pra tudo que
