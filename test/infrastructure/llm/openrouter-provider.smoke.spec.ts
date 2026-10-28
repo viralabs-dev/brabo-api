@@ -109,6 +109,7 @@ describe.skipIf(!apiKey)(
         embeddings: false,
         routingPreference: false,
         stickySession: false,
+        priceCeiling: false,
         promptCaching: false,
       },
       // eslint-disable-next-line @typescript-eslint/require-await

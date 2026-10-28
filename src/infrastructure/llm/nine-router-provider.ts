@@ -94,6 +94,7 @@ export function nineRouterConfig(
       embeddings: false,
       routingPreference: false,
       stickySession: false,
+      priceCeiling: false,
       promptCaching: false,
     },
     authHeaders: (apiKey) => ({

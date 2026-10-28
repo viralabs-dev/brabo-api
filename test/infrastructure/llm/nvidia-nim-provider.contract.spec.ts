@@ -108,6 +108,7 @@ describe('NvidiaNimProvider — quirks (Fase 11b)', () => {
       embeddings: false,
       routingPreference: false,
       stickySession: false,
+      priceCeiling: false,
       promptCaching: false,
     });
     expect(NVIDIA_NIM_BASE_URL).toBe('https://integrate.api.nvidia.com/v1');

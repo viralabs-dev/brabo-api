@@ -63,6 +63,7 @@ export class AnthropicProvider implements LLMProvider {
     // Não é hub: não há upstreams entre os quais escolher (ADR 0166).
     routingPreference: false,
     stickySession: false,
+    priceCeiling: false,
     promptCaching: false,
   };
 

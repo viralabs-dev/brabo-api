@@ -126,6 +126,7 @@ describe('TogetherProvider — quirks (Fase 11b)', () => {
       embeddings: false,
       routingPreference: false,
       stickySession: false,
+      priceCeiling: false,
       promptCaching: false,
     });
     expect(TOGETHER_BASE_URL).toBe('https://api.together.ai/v1');

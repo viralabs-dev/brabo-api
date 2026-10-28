@@ -108,6 +108,7 @@ describe('BitdeerProvider — quirks (Fase 11b)', () => {
       embeddings: false,
       routingPreference: false,
       stickySession: false,
+      priceCeiling: false,
       promptCaching: false,
     });
     expect(BITDEER_BASE_URL).toBe('https://api-inference.bitdeer.ai/v1');
