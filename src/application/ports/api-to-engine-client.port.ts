@@ -339,6 +339,16 @@ export abstract class ApiToEngineClient {
     taskId: string,
     gate: string,
   ): Promise<void>;
+  /**
+   * Retoma por gesto humano o turno que o reinício do engine interrompeu
+   * (AT-582, ADR 0226). Lança `TurnoNaoRetomavelError` quando o engine recusa
+   * (409, com o `motivo` nomeado).
+   */
+  abstract resumeAgentTurn(
+    projectId: string,
+    sessionId: string,
+    agent: string,
+  ): Promise<void>;
   abstract invalidateInstructions(
     projectId: string,
     agent: string,

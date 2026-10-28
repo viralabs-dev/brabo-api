@@ -12,6 +12,7 @@ import { GetSessionContextSummaryUseCase } from './get-session-context-summary.u
 import { GetProjectEventUseCase } from './get-project-event.use-case';
 import { ReportSessionTerminationUseCase } from './report-session-termination.use-case';
 import { GetSessionPendingWorkUseCase } from './get-session-pending-work.use-case';
+import { ResumeAgentTurnUseCase } from './resume-agent-turn.use-case';
 import { CreateSocketTicketUseCase } from './create-socket-ticket.use-case';
 import { EngineHttpClientsModule } from '../../../infrastructure/http-clients/engine-http-clients.module';
 
@@ -30,6 +31,7 @@ const USE_CASES = [
   ReportSessionTerminationUseCase,
   GetSessionPendingWorkUseCase,
   CreateSocketTicketUseCase,
+  ResumeAgentTurnUseCase,
 ];
 
 @Module({
