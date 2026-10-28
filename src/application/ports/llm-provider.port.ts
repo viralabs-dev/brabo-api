@@ -20,6 +20,8 @@ export abstract class LLMProvider {
    * `models`): um modelo pode ser mais pobre que o provider, nunca mais rico.
    */
   abstract readonly capabilities: LLMProviderCapabilities;
+  /** Só o provider que sabe desligar o raciocínio (RN-783) declara `true` (RN-916). */
+  readonly aceitaRaciocinioDesligado?: boolean;
   abstract chat(
     messages: ChatMessage[],
     options: ChatOptions,

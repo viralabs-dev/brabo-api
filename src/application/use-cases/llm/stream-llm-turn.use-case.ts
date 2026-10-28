@@ -26,7 +26,10 @@ import {
   preferenciaEnviada,
 } from '../../../domain/llm/routing-preference';
 import { custoDaChamada } from '../../../domain/llm/custo-da-chamada';
-import { opcoesDeRaciocinio } from '../../../domain/llm/raciocinio-do-agente';
+import {
+  devoRetentarSemRaciocinio,
+  opcoesDeRaciocinio,
+} from '../../../domain/llm/raciocinio-do-agente';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
 
 export interface StreamLlmTurnInput {
@@ -175,133 +178,154 @@ export class StreamLlmTurnUseCase {
     const decisaoDoJev = plano
       ? await this.decidirFerramenta.executar(plano, roteamento)
       : { tools: input.tools, toolRouting: null, messages: input.messages };
-    let fullText = '';
-    let toolCalls: ToolCall[] = [];
-    let inputTokens = 0;
-    let outputTokens = 0;
-    let estimated = false;
-    // Só um hub preenche isto; nos providers diretos fica null (Fase 9b).
-    let upstreamProvider: string | null = null;
-    // O que a resposta disse sobre si (ADR 0188, RN-665): o custo que o
-    // provider cobrou, o modelo que serviu e o id da geração.
-    let custoRealMicros: number | null = null;
-    let resolvedModelName: string | null = null;
-    let generationId: string | null = null;
-    // Stream abortado pelo orçamento de raciocínio: custo é estimativa (ADR 0224).
-    let abortado = false;
-    // Partes da entrada/saída que o provider informou (RN-666); `null` = não disse.
-    let cachedInputTokens: number | null = null;
-    let reasoningTokens: number | null = null;
-    let streamError: string | null = null;
-    // O provider disse que o teto de saída cortou a resposta (RN-737).
-    let truncated = false;
-    let streamErrorCode: LLMErrorCode | null = null;
+    const opcoes = opcoesDeRaciocinio(
+      model.supportsReasoning,
+      input.agentId,
+      model.reasoningBudget,
+    );
+    // AT-587 (RN-916): no máximo DUAS chamadas; a segunda com o raciocínio desligado.
+    for (let tentativa = 0; ; tentativa++) {
+      const semRaciocinio = tentativa > 0;
+      let fullText = '';
+      let toolCalls: ToolCall[] = [];
+      let inputTokens = 0;
+      let outputTokens = 0;
+      let estimated = false;
+      // Só um hub preenche isto; nos providers diretos fica null (Fase 9b).
+      let upstreamProvider: string | null = null;
+      // O que a resposta disse sobre si (ADR 0188, RN-665): o custo que o
+      // provider cobrou, o modelo que serviu e o id da geração.
+      let custoRealMicros: number | null = null;
+      let resolvedModelName: string | null = null;
+      let generationId: string | null = null;
+      // Stream abortado pelo orçamento de raciocínio: custo é estimativa (ADR 0224).
+      let abortado = false;
+      // Partes da entrada/saída que o provider informou (RN-666); `null` = não disse.
+      let cachedInputTokens: number | null = null;
+      let reasoningTokens: number | null = null;
+      let streamError: string | null = null;
+      // O provider disse que o teto de saída cortou a resposta (RN-737).
+      let truncated = false;
+      let streamErrorCode: LLMErrorCode | null = null;
 
-    try {
-      for await (const chunk of provider.chat(decisaoDoJev.messages, {
-        model: model.name,
-        apiKey,
-        tools: decisaoDoJev.tools,
-        ...(routingPreference ? { routingPreference } : {}),
-        sessionKey: chaveDeSessao(input.sessionId, input.agentId),
-        ...opcoesDeRaciocinio(
-          model.supportsReasoning,
-          input.agentId,
-          model.reasoningBudget,
-        ),
-      })) {
-        if (chunk.type === 'text_delta') {
-          fullText += chunk.text;
-          yield { type: 'delta', text: chunk.text };
-        } else if (chunk.type === 'tool_calls') {
-          toolCalls = toolCalls.concat(chunk.toolCalls);
-        } else if (chunk.type === 'usage') {
-          inputTokens = chunk.inputTokens;
-          outputTokens = chunk.outputTokens;
-          estimated = chunk.estimated;
-          upstreamProvider = chunk.upstreamProvider ?? null;
-          custoRealMicros = chunk.costMicros ?? null;
-          resolvedModelName = chunk.resolvedModel ?? null;
-          generationId = chunk.generationId ?? null;
-          abortado = chunk.abortadoPeloRaciocinio === true;
-          cachedInputTokens = chunk.cachedInputTokens ?? null;
-          reasoningTokens = chunk.reasoningTokens ?? null;
-        } else if (chunk.type === 'truncated') {
-          truncated = true;
-        } else if (chunk.type === 'error') {
-          streamError = chunk.message;
-          streamErrorCode = chunk.code;
+      try {
+        for await (const chunk of provider.chat(decisaoDoJev.messages, {
+          model: model.name,
+          apiKey,
+          tools: decisaoDoJev.tools,
+          ...(routingPreference ? { routingPreference } : {}),
+          sessionKey: chaveDeSessao(input.sessionId, input.agentId),
+          ...opcoes,
+          ...(semRaciocinio ? { reasoningOff: true as const } : {}),
+        })) {
+          if (chunk.type === 'text_delta') {
+            fullText += chunk.text;
+            yield { type: 'delta', text: chunk.text };
+          } else if (chunk.type === 'tool_calls') {
+            toolCalls = toolCalls.concat(chunk.toolCalls);
+          } else if (chunk.type === 'usage') {
+            inputTokens = chunk.inputTokens;
+            outputTokens = chunk.outputTokens;
+            estimated = chunk.estimated;
+            upstreamProvider = chunk.upstreamProvider ?? null;
+            custoRealMicros = chunk.costMicros ?? null;
+            resolvedModelName = chunk.resolvedModel ?? null;
+            generationId = chunk.generationId ?? null;
+            abortado = chunk.abortadoPeloRaciocinio === true;
+            cachedInputTokens = chunk.cachedInputTokens ?? null;
+            reasoningTokens = chunk.reasoningTokens ?? null;
+          } else if (chunk.type === 'truncated') {
+            truncated = true;
+          } else if (chunk.type === 'error') {
+            streamError = chunk.message;
+            streamErrorCode = chunk.code;
+          }
         }
+      } catch (error) {
+        streamError = (error as Error).message;
+        if (error instanceof LLMProviderError) streamErrorCode = error.code;
       }
-    } catch (error) {
-      streamError = (error as Error).message;
-      if (error instanceof LLMProviderError) streamErrorCode = error.code;
-    }
 
-    // Metering OBRIGATÓRIO — mesmo com erro do provider.
-    if (inputTokens === 0 && outputTokens === 0) {
-      inputTokens = this.tokenEstimator.count(
-        input.messages.map((m) => m.content).join('\n'),
-      );
-      outputTokens = this.tokenEstimator.count(fullText);
-      estimated = true;
-    }
-    // O custo REAL, quando o provider o devolveu, é o número; senão, o preço do
-    // catálogo congelado (ADR 0042). Decisão do dono, ADR 0188 (RN-665).
-    const custo = custoDaChamada({
-      inputTokens,
-      outputTokens,
-      custoRealMicros,
-      inputPricePerMillionMicros: model.inputPricePerMillionMicros,
-      outputPricePerMillionMicros: model.outputPricePerMillionMicros,
-    });
-    const { costMicros } = custo;
-    const latencyMs = Date.now() - startedAt;
-    const actor: Actor = { kind: 'agent', id: input.agentId ?? model.name };
-
-    await this.unitOfWork.runInTransaction(async () => {
-      await this.recordLlmUsage.execute({
-        projectId: input.projectId,
-        sessionId: input.sessionId,
-        actor,
-        provider: model.provider,
-        modelId: model.id,
-        modelName: model.name,
+      // Metering OBRIGATÓRIO — mesmo com erro do provider.
+      if (inputTokens === 0 && outputTokens === 0) {
+        inputTokens = this.tokenEstimator.count(
+          input.messages.map((m) => m.content).join('\n'),
+        );
+        outputTokens = this.tokenEstimator.count(fullText);
+        estimated = true;
+      }
+      // O custo REAL, quando o provider o devolveu, é o número; senão, o preço do
+      // catálogo congelado (ADR 0042). Decisão do dono, ADR 0188 (RN-665).
+      const custo = custoDaChamada({
         inputTokens,
         outputTokens,
-        estimated,
-        costMicros,
-        // Congela o preço junto do custo: sem isso o `cost_micros` de ontem é
-        // um número sem procedência quando o preço mudar (RN-044). Com custo
-        // real, o preço é o IMPLÍCITO e o do catálogo vai ao lado (ADR 0188).
-        inputPricePerMillionMicros: custo.inputPricePerMillionMicros,
-        outputPricePerMillionMicros: custo.outputPricePerMillionMicros,
-        priceImplicit: custo.priceImplicit || abortado,
-        custoAReconciliar: abortado && generationId !== null,
-        catalogCostMicros: custo.catalogCostMicros,
-        resolvedModelName,
-        generationId,
-        cachedInputTokens,
-        reasoningTokens,
-        latencyMs,
-        bindingOrigin: binding.origin,
-        upstreamProvider,
-        routingPreference,
+        custoRealMicros,
+        inputPricePerMillionMicros: model.inputPricePerMillionMicros,
+        outputPricePerMillionMicros: model.outputPricePerMillionMicros,
       });
-    });
+      const { costMicros } = custo;
+      const latencyMs = Date.now() - startedAt;
+      const actor: Actor = { kind: 'agent', id: input.agentId ?? model.name };
 
-    yield {
-      type: 'final',
-      message: { role: 'assistant', content: fullText, toolCalls },
-      usage: { inputTokens, outputTokens, costMicros, estimated },
-      error: streamError,
-      errorCode: streamErrorCode,
-      modelName: model.name,
-      ...(truncated ? { truncated: true as const } : {}),
-      ...(decisaoDoJev.toolRouting
-        ? { toolRouting: decisaoDoJev.toolRouting }
-        : {}),
-    };
+      await this.unitOfWork.runInTransaction(async () => {
+        await this.recordLlmUsage.execute({
+          projectId: input.projectId,
+          sessionId: input.sessionId,
+          actor,
+          provider: model.provider,
+          modelId: model.id,
+          modelName: model.name,
+          inputTokens,
+          outputTokens,
+          estimated,
+          costMicros,
+          // Congela o preço junto do custo: sem isso o `cost_micros` de ontem é
+          // um número sem procedência quando o preço mudar (RN-044). Com custo
+          // real, o preço é o IMPLÍCITO e o do catálogo vai ao lado (ADR 0188).
+          inputPricePerMillionMicros: custo.inputPricePerMillionMicros,
+          outputPricePerMillionMicros: custo.outputPricePerMillionMicros,
+          priceImplicit: custo.priceImplicit || abortado,
+          custoAReconciliar: abortado && generationId !== null,
+          catalogCostMicros: custo.catalogCostMicros,
+          resolvedModelName,
+          generationId,
+          cachedInputTokens,
+          reasoningTokens,
+          latencyMs,
+          bindingOrigin: binding.origin,
+          upstreamProvider,
+          routingPreference,
+        });
+      });
+
+      if (
+        !semRaciocinio &&
+        devoRetentarSemRaciocinio({
+          opcoes,
+          aceitaRaciocinioDesligado: provider.aceitaRaciocinioDesligado,
+          truncated: truncated,
+          texto: fullText,
+          toolCalls: toolCalls.length,
+          abortado,
+          reasoningTokens,
+        })
+      ) {
+        continue;
+      }
+      yield {
+        type: 'final',
+        message: { role: 'assistant', content: fullText, toolCalls },
+        usage: { inputTokens, outputTokens, costMicros, estimated },
+        error: streamError,
+        errorCode: streamErrorCode,
+        modelName: model.name,
+        ...(truncated ? { truncated: true as const } : {}),
+        ...(decisaoDoJev.toolRouting
+          ? { toolRouting: decisaoDoJev.toolRouting }
+          : {}),
+      };
+      return;
+    }
   }
 }
 
