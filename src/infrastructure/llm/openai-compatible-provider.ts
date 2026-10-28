@@ -13,6 +13,7 @@ import type {
   ToolCall,
   ToolDef,
 } from '@brabo/shared';
+import { ORCAMENTO_DE_RACIOCINIO_PADRAO } from '../../domain/llm/raciocinio-do-agente';
 import { LLMProvider } from '../../application/ports/llm-provider.port';
 import type { TokenEstimator } from '../../application/ports/token-estimator.port';
 import {
@@ -45,7 +46,7 @@ export const MAX_TOKENS_PADRAO = 4096;
  * ele ganha um teto próprio, e o `max_tokens` enviado passa a ser
  * saída visível + este orçamento — a saída visível continua com o teto dela.
  */
-export const ORCAMENTO_DE_RACIOCINIO = 4096;
+export const ORCAMENTO_DE_RACIOCINIO = ORCAMENTO_DE_RACIOCINIO_PADRAO;
 
 /**
  * Teto de inatividade dos providers de API (o Ollama tem o seu, porque um
@@ -199,6 +200,8 @@ export type CampoDeRaciocinioDesligado = () => Record<string, unknown>;
 export class OpenAICompatibleProvider implements LLMProvider {
   readonly name: LLMProviderName;
   readonly capabilities: LLMProviderCapabilities;
+  /** Sabe mandar o raciocínio desligado (RN-783); a retentativa da RN-916 exige. */
+  readonly aceitaRaciocinioDesligado: boolean;
 
   constructor(
     protected readonly config: OpenAICompatibleConfig,
@@ -211,6 +214,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
   ) {
     this.name = config.name;
     this.capabilities = config.capabilities;
+    this.aceitaRaciocinioDesligado = Boolean(config.campoDeRaciocinioDesligado);
     if (config.capabilities.routingPreference && !config.campoDeRoteamento) {
       throw new Error(
         `${config.name} declara \`routingPreference\` sem \`campoDeRoteamento\` ` +

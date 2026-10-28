@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { opcoesDeRaciocinio } from '../../../src/domain/llm/raciocinio-do-agente';
+import {
+  devoRetentarSemRaciocinio,
+  opcoesDeRaciocinio,
+} from '../../../src/domain/llm/raciocinio-do-agente';
 
 describe('opcoesDeRaciocinio (RN-782/783)', () => {
   it('dev agent de execução com modelo que raciocina: desligado explícito', () => {
@@ -48,5 +51,60 @@ describe('opcoesDeRaciocinio (RN-782/783)', () => {
 
   it('falha: QA de Automação com modelo sem supportsReasoning não manda nada', () => {
     expect(opcoesDeRaciocinio(false, 'qa-automacao')).toEqual({});
+  });
+});
+
+describe('devoRetentarSemRaciocinio (AT-587, RN-916)', () => {
+  const base = {
+    opcoes: { reasoning: true as const },
+    aceitaRaciocinioDesligado: true,
+    truncated: true,
+    texto: '',
+    toolCalls: 0,
+    abortado: false,
+    reasoningTokens: 4096,
+  };
+
+  it('truncada, vazia e com o raciocínio no orçamento: retenta', () => {
+    expect(devoRetentarSemRaciocinio(base)).toBe(true);
+    // folga: 3840 = 4096 - 256 ainda conta; 3839 não
+    expect(devoRetentarSemRaciocinio({ ...base, reasoningTokens: 3840 })).toBe(
+      true,
+    );
+    expect(devoRetentarSemRaciocinio({ ...base, reasoningTokens: 3839 })).toBe(
+      false,
+    );
+  });
+
+  it('o orçamento do modelo vale no lugar do padrão; o aborto da RN-915 retenta', () => {
+    const opcoes = { reasoning: true as const, reasoningBudget: 2048 };
+    expect(
+      devoRetentarSemRaciocinio({ ...base, opcoes, reasoningTokens: 1800 }),
+    ).toBe(true);
+    expect(
+      devoRetentarSemRaciocinio({
+        ...base,
+        reasoningTokens: null,
+        abortado: true,
+      }),
+    ).toBe(true);
+  });
+
+  it('falha: com texto, com tool call, sem corte, sem aceite ou já desligado, não retenta', () => {
+    expect(devoRetentarSemRaciocinio({ ...base, texto: 'x' })).toBe(false);
+    expect(devoRetentarSemRaciocinio({ ...base, toolCalls: 1 })).toBe(false);
+    expect(devoRetentarSemRaciocinio({ ...base, truncated: false })).toBe(
+      false,
+    );
+    expect(
+      devoRetentarSemRaciocinio({ ...base, aceitaRaciocinioDesligado: false }),
+    ).toBe(false);
+    expect(
+      devoRetentarSemRaciocinio({
+        ...base,
+        opcoes: { reasoning: true, reasoningOff: true },
+      }),
+    ).toBe(false);
+    expect(devoRetentarSemRaciocinio({ ...base, opcoes: {} })).toBe(false);
   });
 });

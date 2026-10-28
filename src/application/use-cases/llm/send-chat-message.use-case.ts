@@ -16,7 +16,10 @@ import { CheckBudgetGateUseCase } from './check-budget-gate.use-case';
 import { RecordLlmUsageUseCase } from './record-llm-usage.use-case';
 import { preferenciaEnviada } from '../../../domain/llm/routing-preference';
 import { custoDaChamada } from '../../../domain/llm/custo-da-chamada';
-import { opcoesDeRaciocinio } from '../../../domain/llm/raciocinio-do-agente';
+import {
+  devoRetentarSemRaciocinio,
+  opcoesDeRaciocinio,
+} from '../../../domain/llm/raciocinio-do-agente';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
 import {
   ConversaEmSessaoEncerradaError,
@@ -170,6 +173,15 @@ export class SendChatMessageUseCase {
       binding.routingPreference,
       provider.capabilities,
     );
+    const opcoes = opcoesDeRaciocinio(
+      model.supportsReasoning,
+      input.agentId,
+      model.reasoningBudget,
+    );
+    const assistantActor: Actor = { kind: 'agent', id: model.name };
+    let costMicros = 0;
+    let registrar: () => Promise<unknown> = () => Promise.resolve();
+    // AT-587 (RN-916): no máximo DUAS chamadas; a segunda com o raciocínio desligado.
     let fullText = '';
     let inputTokens = 0;
     let outputTokens = 0;
@@ -187,67 +199,80 @@ export class SendChatMessageUseCase {
     let cachedInputTokens: number | null = null;
     let reasoningTokens: number | null = null;
     let streamError: string | null = null;
+    let truncated = false;
+    for (let tentativa = 0; ; tentativa++) {
+      const semRaciocinio = tentativa > 0;
+      fullText = '';
+      inputTokens = 0;
+      outputTokens = 0;
+      estimated = false;
+      upstreamProvider = null;
+      custoRealMicros = null;
+      resolvedModelName = null;
+      generationId = null;
+      abortado = false;
+      cachedInputTokens = null;
+      reasoningTokens = null;
+      streamError = null;
+      truncated = false;
 
-    try {
-      for await (const chunk of provider.chat(
-        [{ role: 'user', content: input.text }],
-        {
-          model: model.name,
-          apiKey,
-          ...(routingPreference ? { routingPreference } : {}),
-          ...opcoesDeRaciocinio(
-            model.supportsReasoning,
-            input.agentId,
-            model.reasoningBudget,
-          ),
-        },
-      )) {
-        if (chunk.type === 'text_delta') {
-          fullText += chunk.text;
-          yield { type: 'delta', text: chunk.text };
-        } else if (chunk.type === 'usage') {
-          inputTokens = chunk.inputTokens;
-          outputTokens = chunk.outputTokens;
-          estimated = chunk.estimated;
-          upstreamProvider = chunk.upstreamProvider ?? null;
-          custoRealMicros = chunk.costMicros ?? null;
-          resolvedModelName = chunk.resolvedModel ?? null;
-          generationId = chunk.generationId ?? null;
-          abortado = chunk.abortadoPeloRaciocinio === true;
-          cachedInputTokens = chunk.cachedInputTokens ?? null;
-          reasoningTokens = chunk.reasoningTokens ?? null;
-        } else if (chunk.type === 'error') {
-          streamError = chunk.message;
+      try {
+        for await (const chunk of provider.chat(
+          [{ role: 'user', content: input.text }],
+          {
+            model: model.name,
+            apiKey,
+            ...(routingPreference ? { routingPreference } : {}),
+            ...opcoes,
+            ...(semRaciocinio ? { reasoningOff: true as const } : {}),
+          },
+        )) {
+          if (chunk.type === 'text_delta') {
+            fullText += chunk.text;
+            yield { type: 'delta', text: chunk.text };
+          } else if (chunk.type === 'usage') {
+            inputTokens = chunk.inputTokens;
+            outputTokens = chunk.outputTokens;
+            estimated = chunk.estimated;
+            upstreamProvider = chunk.upstreamProvider ?? null;
+            custoRealMicros = chunk.costMicros ?? null;
+            resolvedModelName = chunk.resolvedModel ?? null;
+            generationId = chunk.generationId ?? null;
+            abortado = chunk.abortadoPeloRaciocinio === true;
+            cachedInputTokens = chunk.cachedInputTokens ?? null;
+            reasoningTokens = chunk.reasoningTokens ?? null;
+          } else if (chunk.type === 'truncated') {
+            truncated = true;
+          } else if (chunk.type === 'error') {
+            streamError = chunk.message;
+          }
         }
+      } catch (error) {
+        streamError = (error as Error).message;
       }
-    } catch (error) {
-      streamError = (error as Error).message;
-    }
 
-    // 6) Metering OBRIGATÓRIO — roda mesmo com erro do provider (o
-    //    generator chega aqui de qualquer forma, dado que o loop acima
-    //    não propaga exceção pra fora do try).
-    if (inputTokens === 0 && outputTokens === 0) {
-      inputTokens = this.tokenEstimator.count(input.text);
-      outputTokens = this.tokenEstimator.count(fullText);
-      estimated = true;
-    }
-    // O custo REAL, quando o provider o devolveu, é o número; senão, o preço do
-    // catálogo congelado (ADR 0042). Decisão do dono, ADR 0188 (RN-665).
-    const custo = custoDaChamada({
-      inputTokens,
-      outputTokens,
-      custoRealMicros,
-      inputPricePerMillionMicros: model.inputPricePerMillionMicros,
-      outputPricePerMillionMicros: model.outputPricePerMillionMicros,
-    });
-    const { costMicros } = custo;
-    const latencyMs = Date.now() - startedAt;
-    const assistantActor: Actor = { kind: 'agent', id: model.name };
+      // 6) Metering OBRIGATÓRIO — roda mesmo com erro do provider (o
+      //    generator chega aqui de qualquer forma, dado que o loop acima
+      //    não propaga exceção pra fora do try).
+      if (inputTokens === 0 && outputTokens === 0) {
+        inputTokens = this.tokenEstimator.count(input.text);
+        outputTokens = this.tokenEstimator.count(fullText);
+        estimated = true;
+      }
+      // O custo REAL, quando o provider o devolveu, é o número; senão, o preço do
+      // catálogo congelado (ADR 0042). Decisão do dono, ADR 0188 (RN-665).
+      const custo = custoDaChamada({
+        inputTokens,
+        outputTokens,
+        custoRealMicros,
+        inputPricePerMillionMicros: model.inputPricePerMillionMicros,
+        outputPricePerMillionMicros: model.outputPricePerMillionMicros,
+      });
+      costMicros = custo.costMicros;
+      const latencyMs = Date.now() - startedAt;
 
-    try {
-      await this.unitOfWork.runInTransaction(async () => {
-        await this.recordLlmUsage.execute({
+      registrar = () =>
+        this.recordLlmUsage.execute({
           projectId: input.projectId,
           sessionId: input.sessionId,
           actor: assistantActor,
@@ -275,6 +300,27 @@ export class SendChatMessageUseCase {
           upstreamProvider,
           routingPreference,
         });
+      if (
+        !semRaciocinio &&
+        devoRetentarSemRaciocinio({
+          opcoes,
+          aceitaRaciocinioDesligado: provider.aceitaRaciocinioDesligado,
+          truncated,
+          texto: fullText,
+          toolCalls: 0,
+          abortado,
+          reasoningTokens,
+        })
+      ) {
+        await this.unitOfWork.runInTransaction(registrar);
+        continue;
+      }
+      break;
+    }
+
+    try {
+      await this.unitOfWork.runInTransaction(async () => {
+        await registrar();
 
         // A resposta de um turno que COMEÇOU com a sessão aberta entra mesmo
         // que ela tenha fechado no meio: o ator é o modelo, não um agente
