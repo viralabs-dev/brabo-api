@@ -9,6 +9,7 @@ import {
 import { GptTokenizerEstimator } from '../../../src/infrastructure/tokenization/gpt-tokenizer-estimator';
 import { runLLMProviderContract } from '../../contract/llm-provider.contract';
 import {
+  CATALOGO_ESPERADO,
   FERRAMENTA_ESPERADA,
   PEDACOS_DO_TEXTO,
   STATUS_DO_CENARIO,
@@ -17,13 +18,26 @@ import {
 
 /**
  * NIM (hospedado) fala `/chat/completions` no dialeto OpenAI padrão — sem
- * campo de hub, sem catálogo (`listModels: false`, ver `nvidiaNimConfig`), e
+ * campo de hub, catálogo sem preço (`listModels: true`, ver `nvidiaNimConfig`), e
  * sem confirmação de `stream_options.include_usage` para o endpoint
- * hospedado — por isso o cenário `catalogo` nem é exercitado aqui, e o
- * dialeto nunca precisa simular usage vindo do servidor além do que o
+ * hospedado — por isso o dialeto nunca precisa simular usage vindo do servidor além do que o
  * cenário `com_usage` compartilhado já cobre.
  */
 function dialetoNvidiaNim(cenario: CenarioLLM, res: ServerResponse): void {
+  if (cenario === 'catalogo') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(
+      JSON.stringify({
+        object: 'list',
+        data: CATALOGO_ESPERADO.map((id) => ({
+          id,
+          object: 'model',
+          owned_by: 'nvidia',
+        })),
+      }),
+    );
+    return;
+  }
   const status = STATUS_DO_CENARIO[cenario];
   if (status) {
     res.writeHead(status, { 'Content-Type': 'application/json' });
@@ -97,12 +111,12 @@ runLLMProviderContract('nvidia-nim', () => ({
 }));
 
 describe('NvidiaNimProvider — quirks (Fase 11b)', () => {
-  it('declara listModels: false — catálogo hospedado não tem preço confirmado em doc nenhuma', () => {
+  it('declara listModels: true — provado contra o /v1/models real (smoke)', () => {
     const provider = new NvidiaNimProvider();
     expect(provider.capabilities).toEqual({
       streaming: true,
       toolCalling: true,
-      listModels: false,
+      listModels: true,
       // Nenhum smoke com credencial provou o `/embeddings` deste provider
       // (ADR 0075) — a base sabe falar o dialeto, o provider nao declara.
       embeddings: false,
@@ -112,13 +126,6 @@ describe('NvidiaNimProvider — quirks (Fase 11b)', () => {
       promptCaching: false,
     });
     expect(NVIDIA_NIM_BASE_URL).toBe('https://integrate.api.nvidia.com/v1');
-  });
-
-  it('listModels lança em vez de devolver lista vazia — RN-043 não pode ler isso como "sumiu tudo"', async () => {
-    const provider = new NvidiaNimProvider();
-    await expect(provider.listModels?.('nvapi-teste')).rejects.toThrow(
-      /não declara a capability `listModels`/,
-    );
   });
 
   it('Authorization Bearer vai no cabeçalho, sem header próprio nenhum (diferente do hub OpenRouter)', async () => {

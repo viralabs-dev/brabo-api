@@ -45,13 +45,9 @@ import type { LLMProviderRegistry } from '../../../src/application/ports/llm-pro
  * Smoke test MANUAL, opcional, contra a API real da NVIDIA NIM (hospedada) —
  * nunca roda em CI por padrão (sem `NVIDIA_NIM_TEST_KEY`, o describe inteiro
  * é pulado com um aviso). Mesmo molde do smoke do OpenRouter (Fase 11a),
- * ADAPTADO: NIM declara `listModels: false` (sem catálogo confirmado com
- * preço), então não há "sync populando o catálogo" de verdade — a curadoria
- * parte de um modelo inserido manualmente, exatamente como um owner faria em
- * produção rodando o seed (`apps/api/src/db/seed.ts`) e depois curando na
- * tela. O passo de sync AINDA roda, mas só pra confirmar que a capability
- * declarada é respeitada (`pulado: 'sem_capability'`), não pra descobrir
- * modelo nenhum.
+ * `listModels: true` é PROVADO aqui (AT-575): o sync lista o
+ * `GET /v1/models` real e os modelos entram no catálogo (sem preço; o NIM
+ * hospedado é gratuito), e a curadoria ativa um deles.
  *
  * `NVIDIA_NIM_TEST_MODEL` (default `nvidia/nemotron-3.5-lightning-30b-a3b`,
  * gratuito e com tool calling provado em 22/10) escolhe o modelo curado e usado no turno de chat. O turno
@@ -221,9 +217,7 @@ describe.skipIf(!apiKey)(
           await testStoredCredential.execute(owner.id, 'nvidia-nim'),
         ).toEqual({ resultado: 'ok' });
 
-        // 2) Sync — confirma que a capability declarada é respeitada: NIM é
-        //    PULADO por `sem_capability`, nunca tenta um catálogo que a doc
-        //    não confirma ter preço.
+        // 2) Sync — PROVA de `listModels`: lista o catálogo REAL, sem preço.
         const syncResult = await syncCatalog.execute();
         const relatorioNim = syncResult.porProvider.find(
           (p) => p.provider === 'nvidia-nim',
@@ -232,27 +226,23 @@ describe.skipIf(!apiKey)(
           relatorioNim,
           `relatório do sync não trouxe 'nvidia-nim': ${JSON.stringify(syncResult.porProvider)}`,
         ).toBeDefined();
-        expect(relatorioNim?.pulado).toBe('sem_capability');
-
-        // 3) Curadoria manual — sem sync, o modelo entra igual a um owner
-        //    rodando o seed (`db/seed.ts`) e depois ativando na tela: insere
-        //    INATIVO (mesma regra da RN-043), então ativa explicitamente.
-        const inserido = await modelRepo.upsertByProviderAndName({
-          provider: 'nvidia-nim',
-          name: modeloAlvo,
-          displayName: modeloAlvo,
-          inputPricePerMillionMicros: 50_000,
-          outputPricePerMillionMicros: 50_000,
-          supportsToolCalling: false,
-          manualPricing: true,
-        });
+        expect(relatorioNim?.pulado).toBeUndefined();
+        expect(relatorioNim?.descobertos).toBeGreaterThan(0);
+        const doCatalogo = await modelRepo.listByProvider('nvidia-nim');
+        console.info(
+          `[smoke] nvidia-nim listModels: ${doCatalogo.length} modelos; ` +
+            `${modeloAlvo} presente: ${doCatalogo.some((m) => m.name === modeloAlvo)}`,
+        );
+        const inserido = doCatalogo.find((m) => m.name === modeloAlvo);
+        expect(inserido, `${modeloAlvo} não veio do /v1/models`).toBeDefined();
         expect(
-          await workspaceModelRepo.isActive(workspace.id, inserido.id),
+          await workspaceModelRepo.isActive(workspace.id, inserido!.id),
         ).toBe(false);
 
+        // 3) Curadoria — ativa o modelo descoberto, explicitamente (RN-043).
         const [ativado] = await setModelsActive.execute({
           workspaceId: workspace.id,
-          modelIds: [inserido.id],
+          modelIds: [inserido!.id],
           isActive: true,
           curatedBy: owner.id,
         });
@@ -261,7 +251,7 @@ describe.skipIf(!apiKey)(
         await setModelBinding.execute(
           'workspace',
           workspace.id,
-          inserido.id,
+          inserido!.id,
           owner.id,
         );
 
