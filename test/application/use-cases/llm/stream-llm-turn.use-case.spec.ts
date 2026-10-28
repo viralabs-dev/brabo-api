@@ -307,4 +307,54 @@ describe('StreamLlmTurnUseCase', () => {
     expect(final.error).toMatch(/modelo vinculado/i);
     expect(final.modelName).toBeNull();
   });
+
+  it('truncada por raciocínio: retenta UMA vez sem raciocínio, as duas no metering (AT-587, RN-916)', async () => {
+    const { project, session, model } = await setup();
+    await db
+      .update(models)
+      .set({ supportsReasoning: true })
+      .where(eq(models.id, model.id));
+    const cortada: ChatStreamChunk[] = [
+      { type: 'truncated' },
+      {
+        type: 'usage',
+        inputTokens: 10,
+        outputTokens: 4096,
+        estimated: false,
+        reasoningTokens: 4096,
+      },
+    ];
+    const ok: ChatStreamChunk[] = [
+      { type: 'text_delta', text: 'pronto' },
+      { type: 'usage', inputTokens: 10, outputTokens: 2, estimated: false },
+    ];
+    const roteiros = [cortada, ok, cortada];
+    const provider = new FakeProvider([]);
+    Object.assign(provider, { aceitaRaciocinioDesligado: true });
+    provider.chat = async function* (_m?: unknown, options?: unknown) {
+      await Promise.resolve();
+      const n = provider.recebidas.push(options) - 1;
+      for (const chunk of roteiros[n]) yield chunk;
+    };
+    const eventos = await coletar(
+      buildUseCase(provider).execute({
+        projectId: project.id,
+        sessionId: session.id,
+        agentId: 'po',
+        messages: [{ role: 'user', content: 'oi' }],
+      }),
+    );
+    const final = eventos.at(-1);
+    if (final?.type !== 'final') throw new Error('esperava um frame final');
+    expect(final.message.content).toBe('pronto');
+    expect(provider.recebidas).toHaveLength(2);
+    expect(
+      (provider.recebidas[1] as { reasoningOff?: boolean }).reasoningOff,
+    ).toBe(true);
+    const linhas = await db
+      .select()
+      .from(tokenUsage)
+      .where(eq(tokenUsage.sessionId, session.id));
+    expect(linhas).toHaveLength(2);
+  });
 });
