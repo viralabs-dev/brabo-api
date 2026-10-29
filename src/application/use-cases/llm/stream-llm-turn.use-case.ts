@@ -1,5 +1,5 @@
 import { MENSAGEM_SEM_MODELO } from '../../../domain/llm/binding-resolver';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import type {
   ChatMessage,
   LLMErrorCode,
@@ -24,6 +24,9 @@ import {
 import {
   chaveDeSessao,
   preferenciaEnviada,
+  tetoDePreco,
+  devoRetentarSemTeto,
+  FATOR_DO_TETO_DE_PRECO,
 } from '../../../domain/llm/routing-preference';
 import { custoDaChamada } from '../../../domain/llm/custo-da-chamada';
 import {
@@ -86,6 +89,8 @@ export type LlmTurnStreamEvent =
  * grava token_usage OBRIGATÓRIO), e NÃO grava session_events — o engine é dono
  * da narrativa no event log.
  */
+const teto_logger = new Logger('TetoDePreco');
+
 @Injectable()
 export class StreamLlmTurnUseCase {
   constructor(
@@ -162,6 +167,8 @@ export class StreamLlmTurnUseCase {
       binding.routingPreference,
       provider.capabilities,
     );
+    // ADR 0225 (RN-917): teto de preço por chamada, só no hub que o declara.
+    const teto = tetoDePreco(model, provider.capabilities);
     // O Jev escolhe a ferramenta do passo (ADR 0179) — nunca derruba o turno.
     const roteamento = {
       projectId: input.projectId,
@@ -184,8 +191,10 @@ export class StreamLlmTurnUseCase {
       model.reasoningBudget,
     );
     // AT-587 (RN-916): no máximo DUAS chamadas; a segunda com o raciocínio desligado.
-    for (let tentativa = 0; ; tentativa++) {
-      const semRaciocinio = tentativa > 0;
+    let semRaciocinio = false;
+    let semTeto = false;
+    for (;;) {
+      const comTeto = teto !== null && !semTeto;
       let fullText = '';
       let toolCalls: ToolCall[] = [];
       let inputTokens = 0;
@@ -217,6 +226,7 @@ export class StreamLlmTurnUseCase {
           sessionKey: chaveDeSessao(input.sessionId, input.agentId),
           ...opcoes,
           ...(semRaciocinio ? { reasoningOff: true as const } : {}),
+          ...(comTeto ? { priceCeiling: teto } : {}),
         })) {
           if (chunk.type === 'text_delta') {
             fullText += chunk.text;
@@ -295,9 +305,19 @@ export class StreamLlmTurnUseCase {
           bindingOrigin: binding.origin,
           upstreamProvider,
           routingPreference,
+          priceCeilingFactor: comTeto ? FATOR_DO_TETO_DE_PRECO : null,
         });
       });
 
+      // ADR 0225 (RN-917): nenhum upstream coube no teto — repete UMA vez sem
+      // teto (a linha desta chamada grava o fator nulo); o turno não falha.
+      if (devoRetentarSemTeto({ comTeto, errorCode: streamErrorCode })) {
+        teto_logger.warn(
+          `${model.provider}/${model.name}: nenhum upstream cabe no teto de preço; repetindo sem teto`,
+        );
+        semTeto = true;
+        continue;
+      }
       if (
         !semRaciocinio &&
         devoRetentarSemRaciocinio({
@@ -310,6 +330,7 @@ export class StreamLlmTurnUseCase {
           reasoningTokens,
         })
       ) {
+        semRaciocinio = true;
         continue;
       }
       yield {

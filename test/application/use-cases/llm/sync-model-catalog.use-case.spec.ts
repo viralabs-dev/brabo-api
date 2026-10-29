@@ -130,6 +130,7 @@ function registryApontadoPara(baseUrl: string): LLMProviderRegistry {
       embeddings: false,
       routingPreference: false,
       stickySession: false,
+      priceCeiling: false,
       promptCaching: false,
     },
     // eslint-disable-next-line @typescript-eslint/require-await

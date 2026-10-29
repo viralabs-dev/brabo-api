@@ -35,6 +35,8 @@ export interface RecordTokenUsageInput {
   upstreamProvider: string | null;
   /** O critério que foi ao fio (ADR 0166) — `null` quando nada foi enviado. */
   routingPreference: RoutingPreference | null;
+  /** O fator do teto de preço que foi ao fio (ADR 0225) — `null` = nada enviado. */
+  priceCeilingFactor: number | null;
 }
 
 /** Linha com custo estimado esperando o custo real, com o projeto para achar a chave. */

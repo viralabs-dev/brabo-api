@@ -43,6 +43,11 @@ export class LLMModelNotFoundError extends LLMProviderError {
   readonly code = 'model_not_found' as const;
 }
 
+/** Nenhum upstream do hub cabe no teto de preço enviado (404 com teto, ADR 0225). */
+export class LLMPriceCeilingError extends LLMProviderError {
+  readonly code = 'price_ceiling' as const;
+}
+
 export class LLMContextLengthExceededError extends LLMProviderError {
   readonly code = 'context_length' as const;
 }

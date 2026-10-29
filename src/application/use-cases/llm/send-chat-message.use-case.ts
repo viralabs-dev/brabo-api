@@ -1,5 +1,11 @@
 import { MENSAGEM_SEM_MODELO } from '../../../domain/llm/binding-resolver';
-import { Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { LLMProviderError } from '../../../domain/llm/llm-provider-errors';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { ulid } from 'ulid';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { SessionRepository } from '../../ports/session-repository.port';
@@ -14,7 +20,12 @@ import { TokenEstimator } from '../../ports/token-estimator.port';
 import { ResolveModelBindingUseCase } from './resolve-model-binding.use-case';
 import { CheckBudgetGateUseCase } from './check-budget-gate.use-case';
 import { RecordLlmUsageUseCase } from './record-llm-usage.use-case';
-import { preferenciaEnviada } from '../../../domain/llm/routing-preference';
+import {
+  preferenciaEnviada,
+  tetoDePreco,
+  devoRetentarSemTeto,
+  FATOR_DO_TETO_DE_PRECO,
+} from '../../../domain/llm/routing-preference';
 import { custoDaChamada } from '../../../domain/llm/custo-da-chamada';
 import {
   devoRetentarSemRaciocinio,
@@ -46,6 +57,8 @@ export type ChatSseEvent =
     }
   | { type: 'error'; message: string }
   | { type: 'metering_failed'; message: string };
+
+const teto_logger = new Logger('TetoDePreco');
 
 @Injectable()
 export class SendChatMessageUseCase {
@@ -173,6 +186,8 @@ export class SendChatMessageUseCase {
       binding.routingPreference,
       provider.capabilities,
     );
+    // ADR 0225 (RN-917): teto de preço por chamada, só no hub que o declara.
+    const teto = tetoDePreco(model, provider.capabilities);
     const opcoes = opcoesDeRaciocinio(
       model.supportsReasoning,
       input.agentId,
@@ -199,9 +214,12 @@ export class SendChatMessageUseCase {
     let cachedInputTokens: number | null = null;
     let reasoningTokens: number | null = null;
     let streamError: string | null = null;
+    let streamErrorCode: string | null = null;
     let truncated = false;
-    for (let tentativa = 0; ; tentativa++) {
-      const semRaciocinio = tentativa > 0;
+    let semRaciocinio = false;
+    let semTeto = false;
+    for (;;) {
+      const comTeto = teto !== null && !semTeto;
       fullText = '';
       inputTokens = 0;
       outputTokens = 0;
@@ -214,6 +232,7 @@ export class SendChatMessageUseCase {
       cachedInputTokens = null;
       reasoningTokens = null;
       streamError = null;
+      streamErrorCode = null;
       truncated = false;
 
       try {
@@ -225,6 +244,7 @@ export class SendChatMessageUseCase {
             ...(routingPreference ? { routingPreference } : {}),
             ...opcoes,
             ...(semRaciocinio ? { reasoningOff: true as const } : {}),
+            ...(comTeto ? { priceCeiling: teto } : {}),
           },
         )) {
           if (chunk.type === 'text_delta') {
@@ -245,10 +265,12 @@ export class SendChatMessageUseCase {
             truncated = true;
           } else if (chunk.type === 'error') {
             streamError = chunk.message;
+            streamErrorCode = chunk.code;
           }
         }
       } catch (error) {
         streamError = (error as Error).message;
+        if (error instanceof LLMProviderError) streamErrorCode = error.code;
       }
 
       // 6) Metering OBRIGATÓRIO — roda mesmo com erro do provider (o
@@ -299,7 +321,18 @@ export class SendChatMessageUseCase {
           bindingOrigin: binding.origin,
           upstreamProvider,
           routingPreference,
+          priceCeilingFactor: comTeto ? FATOR_DO_TETO_DE_PRECO : null,
         });
+      // ADR 0225 (RN-917): nenhum upstream coube no teto — repete UMA vez sem
+      // teto (a linha desta chamada grava o fator nulo); o turno não falha.
+      if (devoRetentarSemTeto({ comTeto, errorCode: streamErrorCode })) {
+        await this.unitOfWork.runInTransaction(registrar);
+        teto_logger.warn(
+          `${model.provider}/${model.name}: nenhum upstream cabe no teto de preço; repetindo sem teto`,
+        );
+        semTeto = true;
+        continue;
+      }
       if (
         !semRaciocinio &&
         devoRetentarSemRaciocinio({
@@ -313,6 +346,7 @@ export class SendChatMessageUseCase {
         })
       ) {
         await this.unitOfWork.runInTransaction(registrar);
+        semRaciocinio = true;
         continue;
       }
       break;

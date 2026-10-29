@@ -13,13 +13,12 @@ import {
 export const NVIDIA_NIM_BASE_URL = 'https://integrate.api.nvidia.com/v1';
 
 /**
- * Doc oficial verificada nesta sessão (WebFetch/WebSearch): `GET /v1/models`
- * existe (`id`/`object`/`created`/`owned_by`) mas NENHUMA doc encontrada traz
- * preço por token — catálogo real, porém inutilizável para o custo por
- * modelo que o metering exige (regra de capabilities em duas camadas, ADR
- * 0041). `listModels: false` é a resposta honesta; o provider vive de seed
- * manual (`apps/api/src/db/seed.ts`) até alguém confirmar um endpoint de
- * preço, se existir um dia.
+ * `listModels: true`, PROVADO em 28/10/2026 contra `GET /v1/models` real
+ * (`nvidia-nim-provider.smoke.spec.ts`: 84 modelos, `id`/`object`/`created`/
+ * `owned_by`). O catálogo NÃO traz preço — o parser padrão basta, o sync grava
+ * preço 0 com `manual_pricing` (resolverPreco) e o NIM hospedado é gratuito de
+ * prototipação, então o custo real é 0. Sem `listModels` os modelos nunca
+ * entravam no catálogo e a curadoria (ADR 0042) não tinha o que ativar.
  *
  * Tool calling é suportado só por MODELOS específicos, não pela API inteira
  * — mas isso não é um flag de config: `capabilities.toolCalling` só controla
@@ -37,7 +36,7 @@ export function nvidiaNimConfig(
     capabilities: {
       streaming: true,
       toolCalling: true,
-      listModels: false,
+      listModels: true,
       // Sem `NVIDIA_NIM_TEST_KEY` no ambiente nenhum smoke rodou contra o
       // `/embeddings` real (ADR 0075) — declarar por doc é o que o ADR 0043
       // proíbe.
@@ -45,6 +44,7 @@ export function nvidiaNimConfig(
       // Não é hub: não há upstreams entre os quais escolher (ADR 0166).
       routingPreference: false,
       stickySession: false,
+      priceCeiling: false,
       promptCaching: false,
     },
     authHeaders: (apiKey) => ({
@@ -63,7 +63,7 @@ export function nvidiaNimConfig(
 
 /**
  * NVIDIA NIM (hospedado), o primeiro dos cinco da Fase 11b sobre a base
- * OpenAI-compatível (CLAUDE.md, ADR 0041/0042). `listModels: false` — ver o
+ * OpenAI-compatível (CLAUDE.md, ADR 0041/0042). `listModels: true` — ver o
  * comentário em `nvidiaNimConfig`.
  */
 @Injectable()

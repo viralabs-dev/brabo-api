@@ -98,6 +98,7 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
         bindingOrigin: input.bindingOrigin,
         upstreamProvider: input.upstreamProvider,
         routingPreference: input.routingPreference,
+        priceCeilingFactor: input.priceCeilingFactor,
       })
       .returning();
 
@@ -124,6 +125,7 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
       bindingOrigin: row.bindingOrigin,
       upstreamProvider: row.upstreamProvider,
       routingPreference: row.routingPreference,
+      priceCeilingFactor: row.priceCeilingFactor,
       createdAt: row.createdAt,
     };
   }

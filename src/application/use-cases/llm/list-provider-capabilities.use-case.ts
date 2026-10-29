@@ -35,6 +35,7 @@ export class ListProviderCapabilitiesUseCase {
           embeddings: c.embeddings,
           routingPreference: c.routingPreference,
           stickySession: c.stickySession,
+          priceCeiling: c.priceCeiling,
           promptCaching: c.promptCaching,
         },
       };

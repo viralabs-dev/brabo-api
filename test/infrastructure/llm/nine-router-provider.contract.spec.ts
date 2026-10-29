@@ -119,6 +119,7 @@ describe('NineRouterProvider (AT-576a, ADR 0222)', () => {
       embeddings: false,
       routingPreference: false,
       stickySession: false,
+      priceCeiling: false,
       promptCaching: false,
     });
   });

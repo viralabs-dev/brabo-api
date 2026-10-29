@@ -5,6 +5,8 @@ import {
   RoutingPreferenceNotSupportedError,
   preferenciaDoBinding,
   preferenciaEnviada,
+  tetoDePreco,
+  devoRetentarSemTeto,
 } from '../../../src/domain/llm/routing-preference';
 import { routingPreferenceEnum } from '../../../src/db/schema';
 import { AnthropicProvider } from '../../../src/infrastructure/llm/anthropic-provider';
@@ -25,6 +27,7 @@ const BASE: LLMProviderCapabilities = {
   embeddings: false,
   routingPreference: false,
   stickySession: false,
+  priceCeiling: false,
   promptCaching: false,
 };
 const HUB = {
@@ -129,6 +132,64 @@ describe('a lista e as declarações', () => {
       expect([provider.name, provider.capabilities.routingPreference]).toEqual([
         provider.name,
         provider.name === 'openrouter',
+      ]);
+    }
+  });
+});
+
+describe('teto de preço (ADR 0225, RN-917)', () => {
+  const PRECO = {
+    inputPricePerMillionMicros: 140_000,
+    outputPricePerMillionMicros: 420_000,
+  };
+  const comTeto = { ...BASE, priceCeiling: true };
+
+  it('catálogo × 1,5 por ponta', () => {
+    expect(tetoDePreco(PRECO, comTeto)).toEqual({
+      inputPerMillionMicros: 210_000,
+      outputPerMillionMicros: 630_000,
+    });
+  });
+
+  it('sem a capability, ou com preço 0 em qualquer ponta, nada é enviado', () => {
+    expect(tetoDePreco(PRECO, { ...BASE, priceCeiling: false })).toBeNull();
+    expect(
+      tetoDePreco({ ...PRECO, inputPricePerMillionMicros: 0 }, comTeto),
+    ).toBeNull();
+    expect(
+      tetoDePreco({ ...PRECO, outputPricePerMillionMicros: 0 }, comTeto),
+    ).toBeNull();
+  });
+
+  it('só repete quando a chamada ia COM teto e o erro é price_ceiling', () => {
+    expect(
+      devoRetentarSemTeto({ comTeto: true, errorCode: 'price_ceiling' }),
+    ).toBe(true);
+    expect(
+      devoRetentarSemTeto({ comTeto: false, errorCode: 'price_ceiling' }),
+    ).toBe(false);
+    expect(
+      devoRetentarSemTeto({ comTeto: true, errorCode: 'model_not_found' }),
+    ).toBe(false);
+  });
+
+  it('só o OpenRouter declara a capability', () => {
+    const providers = [
+      new AnthropicProvider(),
+      new BitdeerProvider(),
+      new DeepInfraProvider(),
+      new NvidiaNimProvider(),
+      new OllamaProvider(),
+      new OpenAIProvider(),
+      new OpenRouterProvider(),
+      new TogetherProvider(),
+      new VultrProvider(),
+      new NineRouterProvider(),
+    ];
+    for (const p of providers) {
+      expect([p.name, p.capabilities.priceCeiling]).toEqual([
+        p.name,
+        p.name === 'openrouter',
       ]);
     }
   });
