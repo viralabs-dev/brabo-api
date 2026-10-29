@@ -30,6 +30,8 @@ describe('run.qa (AT-612, RN-935)', () => {
           ...servico,
           env: { POSTGRES_DB: 'app' },
           tmpfs: ['/var/lib/x'],
+          user: '70:70',
+          command: ['httpd', '-f', '-p', '9000'],
           shared: true,
         },
       ],
@@ -56,6 +58,19 @@ describe('run.qa (AT-612, RN-935)', () => {
       { services: [{ ...servico, env: { A: 'x\ny' } }] },
     ],
     ['env com nome minúsculo', { services: [{ ...servico, env: { a: 'x' } }] }],
+    ['user root', { services: [{ ...servico, user: '0:0' }] }],
+    ['user só uid', { services: [{ ...servico, user: '70' }] }],
+    ['user gid 0', { services: [{ ...servico, user: '70:0' }] }],
+    ['command vazio', { services: [{ ...servico, command: [] }] }],
+    ['command com quebra', { services: [{ ...servico, command: ['a\nb'] }] }],
+    [
+      'command com 17 itens',
+      { services: [{ ...servico, command: Array(17).fill('a') }] },
+    ],
+    [
+      'command com argumento de 201',
+      { services: [{ ...servico, command: ['a'.repeat(201)] }] },
+    ],
     ['tmpfs relativo', { services: [{ ...servico, tmpfs: ['x'] }] }],
     [
       'tmpfs demais',
@@ -77,5 +92,13 @@ describe('chave da instância de QA', () => {
     ).toBe('id');
     expect(formaDaReferenciaDeTarefa('a1b2c3d4')).toBe('chave');
     expect(formaDaReferenciaDeTarefa('x')).toBe('invalida');
+  });
+});
+
+describe('run.qa user/command nulos (AT-612, RN-941)', () => {
+  it('null equivale a ausente e some da saída', () => {
+    const qa = { services: [{ ...servico, user: null, command: null }] };
+    expect(recusaDoRun({ ...base, qa })).toBeNull();
+    expect(normalizarRun({ ...base, qa }).qa).toEqual({ services: [servico] });
   });
 });
