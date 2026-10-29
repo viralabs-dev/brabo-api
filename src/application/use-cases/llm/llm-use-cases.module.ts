@@ -30,6 +30,7 @@ import { ReconciliarCustoEstimadoUseCase } from './reconciliar-custo-estimado.us
 import { SendChatMessageUseCase } from './send-chat-message.use-case';
 import { GarantirDestinatarioDoChatUseCase } from './garantir-destinatario-do-chat.use-case';
 import { RunLlmTurnUseCase } from './run-llm-turn.use-case';
+import { ListCredentialedProvidersUseCase } from './list-credentialed-providers.use-case';
 import { ResolveCredentialOwnerUseCase } from './resolve-credential-owner.use-case';
 import { StreamLlmTurnUseCase } from './stream-llm-turn.use-case';
 import { DecidirFerramentaDoPassoUseCase } from './decidir-ferramenta-do-passo.use-case';
@@ -55,6 +56,7 @@ const USE_CASES = [
   UpsertUserCredentialUseCase,
   ImportRunnerLlmCredentialUseCase,
   ListUserCredentialsUseCase,
+  ListCredentialedProvidersUseCase,
   DeleteUserCredentialUseCase,
   UpsertBudgetUseCase,
   GetBudgetUseCase,
