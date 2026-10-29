@@ -658,6 +658,14 @@ export class UrlDeExecucaoResponseDto {
  * RN-852 (ADR 0213): o `artifact.run_instructions` vigente. DECLARADO pela
  * Infra na PR dela, nunca verificado na máquina de quem lê (RN-468).
  */
+export class AppDeExecucaoResponseDto {
+  @ApiProperty({ example: 'npm start' })
+  command!: string;
+
+  @ApiProperty({ example: 3000 })
+  port!: number;
+}
+
 export class RunInstructionsResponseDto implements Wire<InstrucoesVigentes> {
   @ApiProperty({ example: 'cp .env.example .env && docker compose up --build' })
   command!: string;
@@ -670,6 +678,14 @@ export class RunInstructionsResponseDto implements Wire<InstrucoesVigentes> {
     description: 'The PR commits a `.env.example` to copy before running.',
   })
   envExample!: boolean;
+
+  @ApiProperty({
+    required: false,
+    type: AppDeExecucaoResponseDto,
+    description:
+      'AT-610 (ADR 0228): the command the container runs to start the app and the port it listens on. Absent when the Infra did not declare it.',
+  })
+  app?: AppDeExecucaoResponseDto;
 
   @ApiProperty({ example: 'http://localhost:3000/git/acme/pulls/3' })
   prUrl!: string;

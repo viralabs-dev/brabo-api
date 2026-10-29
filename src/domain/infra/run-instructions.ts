@@ -27,10 +27,18 @@ export interface UrlDeExecucao {
   kind: TipoDeUrl;
 }
 
+/** AT-610 (ADR 0228, RN-933): o comando que o container executa para subir o APP e a porta onde ele escuta. */
+export interface AppDeExecucao {
+  command: string;
+  port: number;
+}
+
 export interface Run {
   command: string;
   urls: UrlDeExecucao[];
   envExample: boolean;
+  /** Opcional: sem ele, `run` é byte a byte o de antes. */
+  app?: AppDeExecucao;
 }
 
 export interface InstrucoesDeExecucao extends Run {
@@ -64,6 +72,30 @@ export function recusaDoRun(run: unknown): string | null {
     r.urls.length > MAXIMO_DE_URLS
   ) {
     return `\`run.urls\` deve ter de 1 a ${MAXIMO_DE_URLS} itens.`;
+  }
+  if (r.app !== undefined && r.app !== null) {
+    if (typeof r.app !== 'object' || Array.isArray(r.app)) {
+      return '`run.app` deve ser um objeto `{command, port}`.';
+    }
+    const a = r.app as Record<string, unknown>;
+    if (typeof a.command !== 'string' || a.command.trim() === '') {
+      return '`run.app.command` deve ser texto não vazio.';
+    }
+    // Code points, como o engine (graphemes): acento/emoji não divergem na fronteira.
+    if ([...a.command].length > TETO_DO_COMANDO) {
+      return `\`run.app.command\` passa de ${TETO_DO_COMANDO} caracteres.`;
+    }
+    if (/[\n\r\0]/.test(a.command)) {
+      return '`run.app.command` deve ter uma linha só (sem quebra de linha nem NUL).';
+    }
+    if (
+      typeof a.port !== 'number' ||
+      !Number.isInteger(a.port) ||
+      a.port < 1024 ||
+      a.port > 65535
+    ) {
+      return '`run.app.port` deve ser inteiro de 1024 a 65535.';
+    }
   }
   for (const [i, item] of (r.urls as unknown[]).entries()) {
     if (typeof item !== 'object' || item === null) {
@@ -102,5 +134,6 @@ export function normalizarRun(run: unknown): Run {
     command: r.command,
     envExample: r.envExample,
     urls: r.urls.map(({ label, url, kind }) => ({ label, url, kind })),
+    ...(r.app ? { app: { command: r.app.command, port: r.app.port } } : {}),
   };
 }

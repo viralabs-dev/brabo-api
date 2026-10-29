@@ -1472,3 +1472,37 @@ describe('decide — o teto da RN-418 nas ações tipadas (RN-689)', () => {
     expect(r.policy).toBe('auto_approve');
   });
 });
+
+describe('decide — run.app na PR de infra e container_recreate (AT-610/608)', () => {
+  const infra = { actionType: 'open_infra_pr' as const };
+  const comApp = { ...infra, comAppDeclarado: true };
+  const base = {
+    effectiveRole: 'maintainer' as const,
+    autonomyMode: 'auto_approve' as const,
+  };
+
+  it('sem app + regra específica: auto_approve', () => {
+    expect(
+      decide(infra, ctx({ ...base, autonomyOrigin: 'especifica' })).policy,
+    ).toBe('auto_approve');
+  });
+  it('com app + regra específica: require_approval', () => {
+    const r = decide(comApp, ctx({ ...base, autonomyOrigin: 'especifica' }));
+    expect(r.policy).toBe('require_approval');
+    expect(r.reason).toMatch(/run\.app/);
+  });
+  it('com app + curinga (piloto automático): auto_approve', () => {
+    expect(
+      decide(comApp, ctx({ ...base, autonomyOrigin: 'curinga' })).policy,
+    ).toBe('auto_approve');
+  });
+  it('container_recreate nunca é auto-aprovável, nem com a curinga', () => {
+    const recriar = { actionType: 'container_recreate' as const };
+    expect(
+      decide(recriar, ctx({ ...base, autonomyOrigin: 'curinga' })).policy,
+    ).toBe('require_approval');
+    expect(decide(recriar, ctx({ effectiveRole: 'developer' })).policy).toBe(
+      'deny',
+    );
+  });
+});

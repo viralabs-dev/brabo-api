@@ -34,6 +34,7 @@ export type ActionType =
   | 'container_start'
   | 'container_stop'
   | 'container_remove'
+  | 'container_recreate'
   | 'container_start_via_runner';
 
 export const ACTION_TYPES: readonly ActionType[] = [
@@ -72,6 +73,9 @@ export const ACTION_TYPES: readonly ActionType[] = [
   // linha da tela. Mesmo broker, mesma tabela `project_containers`.
   'container_stop',
   'container_remove',
+  // AT-608 (ADR 0228): recriar = remover + subir com a rede/comando novos.
+  // Só humano, no MESMO teto absoluto de `container_remove`.
+  'container_recreate',
   // RN-508 (ADR 0145): segundo tipo pra subir o container real do projeto —
   // exclusivo de `execution_mode: runner` (o Infra Lead consulta isso
   // LOCALMENTE, no engine, antes de propor; `decide()` aqui não olha modo,
@@ -176,6 +180,7 @@ const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
   // `container_remove` entra nele.
   container_stop: 'maintainer',
   container_remove: 'maintainer',
+  container_recreate: 'maintainer',
   // RN-508 (ADR 0145): MESMO calibre de `container_start` — quem responde
   // pelo projeto autoriza o gasto, seja ele elegido pela Infra (broker) ou
   // simplesmente subido pelo runner do usuário. Não entra em teto absoluto
@@ -198,6 +203,8 @@ export const BUILTIN_DENY_PATTERNS: readonly string[] = [
 
 export interface DecideAction {
   actionType: ActionType;
+  /** `open_infra_pr` com `run.app` no payload (AT-610). */
+  comAppDeclarado?: boolean;
   command?: string; // só usado (e obrigatório em espírito) pra actionType === 'terminal'
   targetBranch?: string; // só usado pra actionType === 'git_merge' (trava de merge)
   cwd?: string; // só usado pra actionType === 'terminal' (escopo de caminho)
@@ -580,7 +587,8 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
   // merge em branch protegida — decisão que o usuário toma a cada vez, nunca
   // uma vez só configurando o arquivo.
   if (
-    action.actionType === 'container_remove' &&
+    (action.actionType === 'container_remove' ||
+      action.actionType === 'container_recreate') &&
     current.policy === 'auto_approve'
   ) {
     return {
@@ -588,6 +596,24 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
       reason:
         'remover o container nunca é auto-aprovável: descarta o que existe e ' +
         'exige reprovisionar do zero — decisão do usuário a cada vez',
+    };
+  }
+
+  // AT-610 (ADR 0228, RN-933): a PR de infra que traz `run.app` coloca um
+  // comando na máquina do usuário. A regra ESPECÍFICA `open_infra_pr:
+  // auto_approve` (a semente do aceite) não basta; só a CURINGA (piloto
+  // automático) dispensa o clique. Mesma origem de autonomia da RN-603.
+  if (
+    action.actionType === 'open_infra_pr' &&
+    action.comAppDeclarado === true &&
+    current.policy === 'auto_approve' &&
+    !modoAutomaticoDoAgente(ctx)
+  ) {
+    return {
+      policy: 'require_approval',
+      reason:
+        'a PR de infra declara o comando do app (`run.app`): só o modo ' +
+        'automático do agente dispensa a sua aprovação',
     };
   }
 

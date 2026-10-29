@@ -15,6 +15,9 @@ import {
   LeitorDeDonoDePasta,
   type DonoDePasta,
 } from '../../../infrastructure/filesystem/dono-de-pasta';
+import { GetRunInstructionsUseCase } from '../execution/get-run-instructions.use-case';
+import { ObterRedeDoContainerUseCase } from './obter-rede-do-container.use-case';
+import type { RedeDoContainer } from '../../../domain/containers/rede-do-container';
 import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 /**
@@ -70,6 +73,12 @@ export interface SpecDeContainer {
   } | null;
   /** Versão do artefato vigente; 0 quando não há decisão. */
   imagemVersao: number;
+  /** AT-610: `run.app.command` vigente, ou `null`. */
+  comandoDoApp: string | null;
+  /** AT-608: do `artifact.container_network` vigente, ou `null`. */
+  ports: RedeDoContainer['ports'] | null;
+  dns: string[] | null;
+  extraHosts: RedeDoContainer['extraHosts'] | null;
 }
 
 /**
@@ -111,6 +120,8 @@ export class ObterSpecDeContainerUseCase {
   constructor(
     private readonly projects: ProjectRepository,
     private readonly obterImagem: ObterContainerDoProjetoUseCase,
+    private readonly runInstructions: GetRunInstructionsUseCase,
+    private readonly redeDoContainer: ObterRedeDoContainerUseCase,
     private readonly donoDePasta: LeitorDeDonoDePasta = new LeitorDeDonoDePasta(),
   ) {}
 
@@ -126,6 +137,15 @@ export class ObterSpecDeContainerUseCase {
       project.workspacePath,
     );
 
+    // `runner` fica de fora (ADR 0228: o runner vem depois).
+    const doServidor = project.executionMode !== 'runner';
+    const rede = doServidor
+      ? await this.redeDoContainer.execute(projectId)
+      : null;
+    const run = doServidor
+      ? await this.runInstructions.execute(projectId)
+      : null;
+
     return {
       projectId: project.id,
       projectSlug: project.slug,
@@ -136,6 +156,10 @@ export class ObterSpecDeContainerUseCase {
       usuarioDaPasta: await this.medirDono(project, localizacao),
       imagem: recorteDaDecisao(estado.decisao),
       imagemVersao: estado.version,
+      comandoDoApp: run?.app?.command ?? null,
+      ports: rede?.ports ?? null,
+      dns: rede?.dns ?? null,
+      extraHosts: rede?.extraHosts ?? null,
     };
   }
 
