@@ -14,6 +14,7 @@ import { ExecuteAdrPrUseCase } from './execute-adr-pr.use-case';
 import { ExecuteInfraPrUseCase } from './execute-infra-pr.use-case';
 import { ExecuteContainerStartUseCase } from './execute-container-start.use-case';
 import { ExecuteContainerStartViaRunnerUseCase } from './execute-container-start-via-runner.use-case';
+import { ExecuteQaEnvironmentStartUseCase } from './execute-qa-environment-start.use-case';
 import { ExecuteContainerStopUseCase } from './execute-container-stop.use-case';
 import { ExecuteContainerRemoveUseCase } from './execute-container-remove.use-case';
 import { ExecuteContainerRecreateUseCase } from './execute-container-recreate.use-case';
@@ -54,6 +55,7 @@ export class ApproveActionUseCase {
     private readonly appendSessionEvent: AppendSessionEventUseCase,
     private readonly executeExecutionPlan: ExecuteExecutionPlanUseCase,
     private readonly executeContainerRecreate: ExecuteContainerRecreateUseCase,
+    private readonly executeQaStart?: ExecuteQaEnvironmentStartUseCase,
   ) {}
 
   @Traced('application')
@@ -121,6 +123,14 @@ export class ApproveActionUseCase {
           sessionId,
           approved,
         ),
+      );
+    }
+
+    if (approved.actionType === 'qa_environment_start') {
+      return this.avisarQuemEsperava(
+        projectId,
+        sessionId,
+        await this.executeQaStart!.execute(projectId, sessionId, approved),
       );
     }
 

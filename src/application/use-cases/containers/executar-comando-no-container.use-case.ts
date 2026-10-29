@@ -4,6 +4,7 @@ import {
   BrokerRecusouError,
   ContainerBrokerPort,
 } from '../../ports/container-broker.port';
+import { InstanciaDeQaUseCase } from './instancia-de-qa.use-case';
 import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 export interface ExecucaoNoContainerOk {
@@ -50,7 +51,10 @@ export type ResultadoDeExecucaoNoContainer =
  */
 @Injectable()
 export class ExecutarComandoNoContainerUseCase {
-  constructor(private readonly brokerPort: ContainerBrokerPort) {}
+  constructor(
+    private readonly brokerPort: ContainerBrokerPort,
+    private readonly qa?: InstanciaDeQaUseCase,
+  ) {}
 
   @Traced('application')
   async execute(
@@ -58,7 +62,12 @@ export class ExecutarComandoNoContainerUseCase {
     comando: string,
     cwd?: string,
     timeoutMs?: number,
+    alvoQaTaskId?: string,
   ): Promise<ResultadoDeExecucaoNoContainer> {
+    // AT-612: `alvo` vem do engine (ctx do gate), nunca do modelo.
+    if (alvoQaTaskId !== undefined && this.qa) {
+      return this.qa.exec(projectId, alvoQaTaskId, comando, cwd, timeoutMs);
+    }
     try {
       const resultado = await this.brokerPort.exec(
         projectId,

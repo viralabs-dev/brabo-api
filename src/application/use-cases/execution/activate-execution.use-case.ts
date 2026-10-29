@@ -294,6 +294,14 @@ export class ActivateExecutionUseCase {
       }
     }
 
+    // AT-612 (RN-936): o QA de automação sobe a própria instância sem clique.
+    await this.agentAutonomy.upsert(
+      projectId,
+      'qa-automacao',
+      'qa_environment_start',
+      'auto_approve',
+    );
+
     await this.engineClient.startExecution(
       projectId,
       session.id,

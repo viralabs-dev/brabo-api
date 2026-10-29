@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { InstanciaDeQaUseCase } from '../containers/instancia-de-qa.use-case';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { ProposedActionRepository } from '../../ports/proposed-action-repository.port';
 import { OutboxRepository } from '../../ports/outbox-repository.port';
@@ -27,7 +28,45 @@ export class ExecuteTerminalActionUseCase {
     private readonly appendSessionEvent: AppendSessionEventUseCase,
     private readonly outbox: OutboxRepository,
     private readonly engineClient: ApiToEngineClient,
+    private readonly instanciaDeQa?: InstanciaDeQaUseCase,
   ) {}
+
+  private readonly logger = new Logger(ExecuteTerminalActionUseCase.name);
+
+  /**
+   * AT-612 (RN-938): `payload.alvo` só vale para o `qa-automacao` e para tarefa
+   * DO PROJETO da ação; senão é descartado em log nomeado.
+   */
+  private async alvoDeQa(
+    projectId: string,
+    action: ProposedAction,
+  ): Promise<{ qa: true; taskId: string } | undefined> {
+    const alvo = (
+      action.payload as { alvo?: { qa?: unknown; taskId?: unknown } } | null
+    )?.alvo;
+    if (alvo === undefined || alvo === null) return undefined;
+    const motivo =
+      action.actor.id !== 'qa-automacao'
+        ? 'ator não é o qa-automacao'
+        : alvo.qa !== true || typeof alvo.taskId !== 'string'
+          ? 'alvo malformado'
+          : null;
+    if (motivo === null && this.instanciaDeQa) {
+      try {
+        const taskId = await this.instanciaDeQa.resolverTarefa(
+          projectId,
+          alvo.taskId as string,
+        );
+        return { qa: true, taskId };
+      } catch {
+        /* tarefa fora do projeto: cai no descarte */
+      }
+    }
+    this.logger.warn(
+      `terminal.alvo_de_qa_descartado action=${action.id} ator=${action.actor.id}: ${motivo ?? 'tarefa não pertence ao projeto'}`,
+    );
+    return undefined;
+  }
 
   async execute(
     projectId: string,
@@ -45,6 +84,7 @@ export class ExecuteTerminalActionUseCase {
         action.id,
         command,
         cwd,
+        await this.alvoDeQa(projectId, action),
       );
     } catch (error) {
       return this.recordResult(projectId, sessionId, action.id, 'failed', {

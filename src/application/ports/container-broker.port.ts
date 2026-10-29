@@ -121,4 +121,18 @@ export abstract class ContainerBrokerPort {
     cwd?: string,
     timeoutMs?: number,
   ): Promise<ResultadoDeExecNoContainer>;
+
+  /** AT-612 (ADR 0229): a instância de QA efêmera. `chave` = `chaveDeQa(taskId)`. */
+  abstract startQa(
+    projectId: string,
+    chave: string,
+  ): Promise<ContainerIniciadoPeloBroker>;
+  abstract removeQa(projectId: string, chave: string): Promise<void>;
+  abstract execQa(
+    projectId: string,
+    chave: string,
+    comando: string,
+    cwd?: string,
+    timeoutMs?: number,
+  ): Promise<ResultadoDeExecNoContainer>;
 }

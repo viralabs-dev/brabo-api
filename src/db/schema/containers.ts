@@ -11,7 +11,10 @@ import {
   doublePrecision,
   timestamp,
   index,
+  unique,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { projects } from './iam';
 
 // Ciclo de vida do container de um projeto (ADR 0081 — fecha o corte
@@ -68,4 +71,40 @@ export const projectContainers = pgTable(
       .defaultNow(),
   },
   (table) => [index('project_containers_status_idx').on(table.status)],
+);
+
+// AT-612 (ADR 0229, RN-935): a instância de QA efêmera de uma TAREFA. Uma
+// linha por (projeto, tarefa); o teto de 1 ativa por projeto é regra do caso de
+// uso, sob lock da linha do projeto. `task_id` é texto: a tarefa mora em
+// outra tabela e a instância sobrevive à linha dela no log.
+export const qaEnvironmentStatusEnum = pgEnum('qa_environment_status', [
+  'provisioning',
+  'running',
+  'failed',
+  'removed',
+]);
+
+export const projectQaEnvironments = pgTable(
+  'project_qa_environments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    taskId: uuid('task_id').notNull(),
+    status: qaEnvironmentStatusEnum('status').notNull().default('provisioning'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique('project_qa_environments_project_task_uq').on(t.projectId, t.taskId),
+    // O teto de 1 instância ativa por projeto, no banco (RN-935).
+    uniqueIndex('project_qa_environments_one_active_idx')
+      .on(t.projectId)
+      .where(sql`${t.status} in ('provisioning', 'running')`),
+  ],
 );

@@ -237,6 +237,7 @@ export class InternalProjectsController {
       dto.comando,
       dto.cwd,
       dto.timeoutMs,
+      dto.alvo?.taskId,
     );
   }
 

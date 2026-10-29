@@ -34,6 +34,8 @@ import { ModuleMapRepository } from '../../../application/ports/module-map-repos
 import { ChunkRepository } from '../../../application/ports/chunk-repository.port';
 import { RagTelemetryRepository } from '../../../application/ports/rag-telemetry-repository.port';
 import { ContainersOverviewRepository } from '../../../application/ports/containers-overview-repository.port';
+import { QaEnvironmentRepository } from '../../../application/ports/qa-environment-repository.port';
+import { DrizzleQaEnvironmentRepository } from './qa-environment.repository';
 import { ContainerRepository } from '../../../application/ports/container-repository.port';
 import { MirrorStateRepository } from '../../../application/ports/mirror-state-repository.port';
 import { ProjectsSummaryRepository } from '../../../application/ports/projects-summary-repository.port';
@@ -246,6 +248,10 @@ const { db, pool } = createDrizzleClient();
       useClass: DrizzleRagTelemetryRepository,
     },
     { provide: ContainerRepository, useClass: DrizzleContainerRepository },
+    {
+      provide: QaEnvironmentRepository,
+      useClass: DrizzleQaEnvironmentRepository,
+    },
     { provide: MirrorStateRepository, useClass: DrizzleMirrorStateRepository },
     {
       provide: ContainersOverviewRepository,
@@ -332,6 +338,7 @@ const { db, pool } = createDrizzleClient();
     ChunkRepository,
     RagTelemetryRepository,
     ContainerRepository,
+    QaEnvironmentRepository,
     MirrorStateRepository,
     ContainersOverviewRepository,
     SessionContextSummaryRepository,

@@ -30,6 +30,8 @@ import { ContainersUseCasesModule } from '../containers/containers-use-cases.mod
 import { ArchitectureUseCasesModule } from '../architecture/architecture-use-cases.module';
 import { ContainerBrokerHttpClientModule } from '../../../infrastructure/http-clients/container-broker-http-client.module';
 
+import { ExecuteQaEnvironmentStartUseCase } from './execute-qa-environment-start.use-case';
+
 const USE_CASES = [
   ProposeActionUseCase,
   ApproveActionUseCase,
@@ -41,6 +43,7 @@ const USE_CASES = [
   ExecuteContainerStartUseCase,
   ExecuteContainerStartViaRunnerUseCase,
   ExecuteContainerStopUseCase,
+  ExecuteQaEnvironmentStartUseCase,
   ExecuteContainerRemoveUseCase,
   ExecuteContainerRecreateUseCase,
   ExecuteInstructionPatchUseCase,

@@ -18,6 +18,7 @@ import { InternalModelsController } from './internal-models.controller';
 import { InternalGatesController } from './internal-gates.controller';
 import { InternalProjectsController } from './internal-projects.controller';
 import { InternalContainersController } from './internal-containers.controller';
+import { InternalQaEnvironmentsController } from './internal-qa-environments.controller';
 import { InternalRagController } from './internal-rag.controller';
 import { InternalGraphController } from './internal-graph.controller';
 import { InternalFirstAccountController } from './internal-first-account.controller';
@@ -58,6 +59,7 @@ import { AuthUseCasesModule } from '../../../application/use-cases/auth/auth-use
     // O broker de container (ADR 0130) — a rota que ele LÊ para compor a
     // especificação ele mesmo, em vez de recebê-la pronta.
     InternalContainersController,
+    InternalQaEnvironmentsController,
     InternalRagController,
     InternalGraphController,
     // O instalador de uma linha, e só ele: a primeira conta de uma instalação

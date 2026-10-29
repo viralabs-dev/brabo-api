@@ -478,9 +478,13 @@ describe('ActivateExecutionUseCase — terminal do dev', () => {
     expect(autonomias.map((a) => a.type)).not.toContain('git_merge');
     // RN-689: push e PR estão no teto da RN-418 — semeá-los seria gravar
     // autonomia que `decide()` nunca honra.
-    expect(new Set(autonomias.map((a) => a.type))).toEqual(
-      new Set(['git_commit']),
-    );
+    expect(
+      new Set(
+        autonomias
+          .filter((a) => a.agentId.startsWith('dev-'))
+          .map((a) => a.type),
+      ),
+    ).toEqual(new Set(['git_commit']));
   });
 
   it('seeda autonomia pra cada dev do module_map', async () => {
@@ -488,9 +492,23 @@ describe('ActivateExecutionUseCase — terminal do dev', () => {
 
     await useCase.execute('proj-1', 'user-1');
 
-    expect(new Set(autonomias.map((a) => a.agentId))).toEqual(
-      new Set(['dev-api', 'dev-web']),
-    );
+    expect(
+      new Set(
+        autonomias
+          .filter((a) => a.agentId.startsWith('dev-'))
+          .map((a) => a.agentId),
+      ),
+    ).toEqual(new Set(['dev-api', 'dev-web']));
+  });
+
+  it('AT-612 (RN-936): semeia só qa_environment_start para o qa-automacao', async () => {
+    const { useCase, autonomias } = build();
+
+    await useCase.execute('proj-1', 'user-1');
+
+    expect(
+      autonomias.filter((a) => a.agentId === 'qa-automacao').map((a) => a.type),
+    ).toEqual(['qa_environment_start']);
   });
 });
 
@@ -890,9 +908,13 @@ describe('ActivateExecutionUseCase — módulos do plano (AT-381, RN-709)', () =
     const { useCase, autonomias } = build();
     const out = await comPlano(useCase, ['api']);
     expect(out.modules).toEqual(['api']);
-    expect(new Set(autonomias.map((a) => a.agentId))).toEqual(
-      new Set(['dev-api']),
-    );
+    expect(
+      new Set(
+        autonomias
+          .filter((a) => a.agentId.startsWith('dev-'))
+          .map((a) => a.agentId),
+      ),
+    ).toEqual(new Set(['dev-api']));
   });
 
   it('plano sem módulo do module_map: recusa, nenhum agente sobe', async () => {
