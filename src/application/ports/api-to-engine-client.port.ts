@@ -158,6 +158,7 @@ export abstract class ApiToEngineClient {
     actionId: string,
     command: string,
     cwd?: string,
+    alvo?: { qa: true; taskId: string },
   ): Promise<TerminalExecutionResult>;
 
   // --- Agentes conversacionais (Fase 3b) ---

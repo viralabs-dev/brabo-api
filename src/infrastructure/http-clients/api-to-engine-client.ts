@@ -169,13 +169,21 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     actionId: string,
     command: string,
     cwd?: string,
+    alvo?: { qa: true; taskId: string },
   ): Promise<TerminalExecutionResult> {
     const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
 
     const res = await fetch(`${engineUrl}/internal/actions/execute`, {
       method: 'POST',
       headers: this.buildHeaders(),
-      body: JSON.stringify({ projectId, sessionId, actionId, command, cwd }),
+      body: JSON.stringify({
+        projectId,
+        sessionId,
+        actionId,
+        command,
+        cwd,
+        ...(alvo ? { alvo } : {}),
+      }),
     });
 
     if (!res.ok) {
