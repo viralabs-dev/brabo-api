@@ -5,7 +5,7 @@ import { WorkspaceRepository } from '../../ports/workspace-repository.port';
 import { LLM_PROVIDER_NAMES_COM_CREDENCIAL } from '../../../domain/llm/llm-provider-names';
 
 /**
- * Quais providers de LLM têm chave do TITULAR do workspace (RN-925) — a mesma
+ * Quais providers de LLM têm chave do TITULAR do workspace (RN-926) — a mesma
  * pessoa cuja credencial os agentes gastam (RN-058, `workspaces.created_by`).
  * Só os NOMES: nunca id, data nem segredo. `ollama` não tem credencial e fica
  * de fora; token de git (`github`/`gitlab`) também.
