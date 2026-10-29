@@ -205,6 +205,11 @@ export class ProposeActionUseCase {
         actionType,
         command,
         targetBranch,
+        comAppDeclarado:
+          actionType === 'open_infra_pr' &&
+          Boolean(
+            (input.payload as { run?: { app?: unknown } } | null)?.run?.app,
+          ),
         cwd:
           actionType === 'terminal' ? cwdFromPayload(input.payload) : undefined,
       },
@@ -399,6 +404,7 @@ const ACOES_DO_BROKER: ActionType[] = [
   'container_start',
   'container_stop',
   'container_remove',
+  'container_recreate',
 ];
 
 function initialStatusFor(

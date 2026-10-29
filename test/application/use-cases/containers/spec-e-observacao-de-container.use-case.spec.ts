@@ -57,6 +57,19 @@ const DECIDIDO: EstadoDoContainer = {
   decidedAt: '2026-08-02T00:00:00Z',
 };
 
+const RUN = {
+  execute: () => Promise.resolve({ app: { command: 'npm start', port: 3000 } }),
+} as never;
+const REDE = {
+  execute: () =>
+    Promise.resolve({
+      ports: [{ host: 8080, container: 3000, protocol: 'tcp' }],
+      dns: ['1.1.1.1'],
+      extraHosts: [{ name: 'api.local', ip: '10.0.0.5' }],
+      version: 2,
+    }),
+} as never;
+
 function montarSpec(
   project: Project | null,
   estado: EstadoDoContainer,
@@ -67,7 +80,7 @@ function montarSpec(
   const obterImagem = {
     execute: () => Promise.resolve(estado),
   } as unknown as ObterContainerDoProjetoUseCase;
-  return new ObterSpecDeContainerUseCase(projects, obterImagem);
+  return new ObterSpecDeContainerUseCase(projects, obterImagem, RUN, REDE);
 }
 
 describe('ObterSpecDeContainerUseCase — o dono da pasta (ADR 0180)', () => {
@@ -92,7 +105,13 @@ describe('ObterSpecDeContainerUseCase — o dono da pasta (ADR 0180)', () => {
         return Promise.resolve(dono);
       },
     };
-    return new ObterSpecDeContainerUseCase(projects, obterImagem, leitor);
+    return new ObterSpecDeContainerUseCase(
+      projects,
+      obterImagem,
+      RUN,
+      REDE,
+      leitor,
+    );
   }
 
   it('devolve o dono medido da pasta gerenciada', async () => {
@@ -127,6 +146,8 @@ describe('ObterSpecDeContainerUseCase — o dono da pasta (ADR 0180)', () => {
     const r = await new ObterSpecDeContainerUseCase(
       projects,
       obterImagem,
+      RUN,
+      REDE,
       leitor,
     ).execute(PROJETO);
     expect(r.usuarioDaPasta).toBeNull();
@@ -166,6 +187,10 @@ describe('ObterSpecDeContainerUseCase — o que o broker lê', () => {
         resources: RECURSOS_PADRAO,
       },
       imagemVersao: 3,
+      comandoDoApp: 'npm start',
+      ports: [{ host: 8080, container: 3000, protocol: 'tcp' }],
+      dns: ['1.1.1.1'],
+      extraHosts: [{ name: 'api.local', ip: '10.0.0.5' }],
     });
   });
 
@@ -437,5 +462,31 @@ describe('ObterEstadoObservadoDoContainerUseCase — observado nunca herda regis
       naoObservado: 'broker-recusou',
       detalhe: 'projeto no modo "runner"',
     });
+  });
+});
+
+describe('ObterSpecDeContainerUseCase — comando do app e rede (AT-610/608)', () => {
+  it('devolve comandoDoApp, ports, dns e extraHosts vigentes', async () => {
+    const r = await montarSpec(
+      projeto({ executionMode: 'container' }),
+      DECIDIDO,
+    ).execute(PROJETO);
+    expect(r.comandoDoApp).toBe('npm start');
+    expect(r.ports).toEqual([{ host: 8080, container: 3000, protocol: 'tcp' }]);
+    expect(r.dns).toEqual(['1.1.1.1']);
+    expect(r.extraHosts).toEqual([{ name: 'api.local', ip: '10.0.0.5' }]);
+  });
+
+  it('projeto runner devolve tudo null', async () => {
+    const r = await montarSpec(
+      projeto({ executionMode: 'runner', workspacePath: '/home/a/x' }),
+      DECIDIDO,
+    ).execute(PROJETO);
+    expect([r.comandoDoApp, r.ports, r.dns, r.extraHosts]).toEqual([
+      null,
+      null,
+      null,
+      null,
+    ]);
   });
 });

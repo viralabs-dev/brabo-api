@@ -34,6 +34,7 @@ export const TIPOS_SEM_SEMPRE_PERMITIR: readonly ActionType[] = [
   'open_infra_pr',
   'git_merge',
   'container_remove',
+  'container_recreate',
   'instruction_patch',
   'parallelize',
   'raise_max_parallel',
@@ -51,6 +52,8 @@ const MOTIVO_POR_TIPO: Record<string, string> = {
     'merge é decisão a cada vez — em branch protegida, nunca automatizável',
   container_remove:
     'remover o container descarta o que existe e exige reprovisionar do zero',
+  container_recreate:
+    'recriar o container remove o que existe e o sobe com outra rede/comando',
   instruction_patch:
     'mudar a instrução de um agente pede revisar o diff a cada vez',
   parallelize: 'gastar com mais agentes é decisão sua a cada vez',

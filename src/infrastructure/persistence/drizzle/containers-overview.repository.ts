@@ -26,6 +26,7 @@ const TIPOS_DE_ACAO_DE_CONTAINER = [
   'container_start',
   'container_stop',
   'container_remove',
+  'container_recreate',
   // RN-521: a tela passou a propor este tipo para projeto `runner`, então ele
   // entra aqui pelo mesmo motivo que os outros três — sem isto, a proposta
   // feita pela própria página não voltaria como `acaoPendente` e a linha

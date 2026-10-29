@@ -12,7 +12,14 @@ import { ExecutarComandoNoContainerUseCase } from './executar-comando-no-contain
 import { ObterVisaoGeralDeContainersUseCase } from './obter-visao-geral-de-containers.use-case';
 import { SubirCicloDeVidaDoContainerUseCase } from './subir-ciclo-de-vida-do-container.use-case';
 
+import { ObterRedeDoContainerUseCase } from './obter-rede-do-container.use-case';
+import { DeclararRedeDoContainerUseCase } from './declarar-rede-do-container.use-case';
+import { GetRunInstructionsUseCase } from '../execution/get-run-instructions.use-case';
+
 const USE_CASES = [
+  ObterRedeDoContainerUseCase,
+  DeclararRedeDoContainerUseCase,
+  GetRunInstructionsUseCase,
   DecidirImagemDoProjetoUseCase,
   ObterContainerDoProjetoUseCase,
   ObterCicloDeVidaDoContainerUseCase,

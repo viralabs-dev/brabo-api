@@ -39,6 +39,7 @@ export class GetRunInstructionsUseCase {
       command: p.command as string,
       urls: p.urls as InstrucoesDeExecucao['urls'],
       envExample: p.envExample as boolean,
+      ...(p.app ? { app: p.app as InstrucoesDeExecucao['app'] } : {}),
       prUrl: typeof p.prUrl === 'string' ? p.prUrl : '',
       version: versao(p),
       eventId: vigente.id,

@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Body, Controller, Get, Param, Put } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiForbiddenResponse,
@@ -6,6 +6,14 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { CurrentUser } from '../auth/current-user.decorator';
+import type { User } from '../../../domain/iam/user.entity';
+import { ObterRedeDoContainerUseCase } from '../../../application/use-cases/containers/obter-rede-do-container.use-case';
+import { DeclararRedeDoContainerUseCase } from '../../../application/use-cases/containers/declarar-rede-do-container.use-case';
+import {
+  DeclararRedeDto,
+  RedeDoContainerResponseDto,
+} from './dto/rede-do-container.dto';
 import { RequireRole } from '../iam/require-role.decorator';
 import { ObterContainerDoProjetoUseCase } from '../../../application/use-cases/containers/obter-container-do-projeto.use-case';
 import { ObterCicloDeVidaDoContainerUseCase } from '../../../application/use-cases/containers/obter-ciclo-de-vida-do-container.use-case';
@@ -48,7 +56,45 @@ export class ContainersController {
     private readonly obter: ObterContainerDoProjetoUseCase,
     private readonly obterCicloDeVida: ObterCicloDeVidaDoContainerUseCase,
     private readonly obterEstadoObservado: ObterEstadoObservadoDoContainerUseCase,
+    private readonly obterRede: ObterRedeDoContainerUseCase,
+    private readonly declararRede: DeclararRedeDoContainerUseCase,
   ) {}
+
+  @Get('network')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Declared network of the container (artifact.container_network)',
+    description:
+      'The current declaration (ports on 127.0.0.1, DNS, extra hosts), or ' +
+      '`null`. It is what was DECLARED; it only takes effect when the ' +
+      'container is recreated (`container_recreate`).',
+  })
+  @ApiOkResponse({
+    type: RedeDoContainerResponseDto,
+    description: 'Or `null`.',
+  })
+  rede(@Param('projectId') projectId: string) {
+    return this.obterRede.execute(projectId);
+  }
+
+  @Put('network')
+  @RequireRole('maintainer')
+  @ApiOperation({
+    summary: 'Declares the container network (human only)',
+    description:
+      'Emits a new version of `artifact.container_network` (the current one ' +
+      'replaces the previous). Not an external effect: nothing changes in ' +
+      'Docker until a `container_recreate` is approved (AT-608, RN-931). 400 ' +
+      '`rede_invalida` names the field.',
+  })
+  @ApiOkResponse({ type: RedeDoContainerResponseDto })
+  declarar(
+    @Param('projectId') projectId: string,
+    @CurrentUser() user: User,
+    @Body() dto: DeclararRedeDto,
+  ) {
+    return this.declararRede.execute(projectId, user.id, dto);
+  }
 
   @Get()
   @RequireRole('viewer')

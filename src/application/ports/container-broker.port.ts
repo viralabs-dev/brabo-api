@@ -41,6 +41,13 @@ export interface ObservacaoDeContainer {
   imagem: string;
   /** ISO-8601, ou `null` quando o container nunca subiu. */
   iniciadoEm: string | null;
+  /** ADR 0228: o que o daemon diz estar publicado (o OBSERVADO; o declarado é outra coluna). */
+  portasPublicadas?: Array<{
+    ip: string;
+    host: number;
+    container: number;
+    protocolo?: string;
+  }>;
 }
 
 export interface ContainerIniciadoPeloBroker {

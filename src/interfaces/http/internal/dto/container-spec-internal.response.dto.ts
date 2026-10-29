@@ -145,4 +145,51 @@ export class ContainerSpecInternalResponseDto {
       'up on the container as the `brabo.image.version` label.',
   })
   imagemVersao!: number;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      'AT-610 (ADR 0228): the app command declared by the Infra in `run.app` ' +
+      '(`artifact.run_instructions`), or `null`. Always `null` for `runner`.',
+  })
+  comandoDoApp!: string | null;
+
+  @ApiProperty({
+    type: 'array',
+    nullable: true,
+    items: {
+      type: 'object',
+      properties: {
+        host: { type: 'integer', example: 8080 },
+        container: { type: 'integer', example: 3000 },
+        protocol: { type: 'string', example: 'tcp' },
+      },
+    },
+    description:
+      'AT-608: ports declared in `artifact.container_network`, published on ' +
+      '127.0.0.1 only. `null` when undeclared or `runner`.',
+  })
+  ports!: Array<{ host: number; container: number; protocol: 'tcp' }> | null;
+
+  @ApiProperty({
+    type: [String],
+    nullable: true,
+    description: 'AT-608: DNS servers (literal IPs), or `null`.',
+  })
+  dns!: string[] | null;
+
+  @ApiProperty({
+    type: 'array',
+    nullable: true,
+    items: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', example: 'api.local' },
+        ip: { type: 'string', example: '10.0.0.5' },
+      },
+    },
+    description: 'AT-608: `--add-host` entries (IPv4), or `null`.',
+  })
+  extraHosts!: Array<{ name: string; ip: string }> | null;
 }
