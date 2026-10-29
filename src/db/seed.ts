@@ -348,27 +348,9 @@ const MODEL_SEEDS: ModelInput[] = [
     supportsToolCalling: false,
     manualPricing: true,
   },
-  // OpenCode Zen (AT-568, ADR 0227) — SÓ os dois modelos grátis de retenção
-  // zero e sem treino; os demais entram por curadoria manual (ADR 0042).
-  // `supportsToolCalling` fica `false` até o smoke provar.
-  {
-    provider: 'opencode-zen',
-    name: 'deepseek-v4.1-flash-free',
-    displayName: 'DeepSeek V4.1 Flash Free (OpenCode Zen)',
-    inputPricePerMillionMicros: 0,
-    outputPricePerMillionMicros: 0,
-    supportsToolCalling: false,
-    manualPricing: true,
-  },
-  {
-    provider: 'opencode-zen',
-    name: 'glm-5.3-flash-free',
-    displayName: 'GLM 5.3 Flash Free (OpenCode Zen)',
-    inputPricePerMillionMicros: 0,
-    outputPricePerMillionMicros: 0,
-    supportsToolCalling: false,
-    manualPricing: true,
-  },
+  // OpenCode Zen (AT-568, ADR 0227): SEM modelo semeado. Medido em 29/10/2026:
+  // os grátis (`*-free`) respondem 429 FreeUsageLimitError por API de terceiro
+  // (só valem dentro do cliente OpenCode). Modelos pagos entram por curadoria manual.
 ];
 
 async function main() {
