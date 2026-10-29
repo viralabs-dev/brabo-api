@@ -25,6 +25,8 @@ import { SetModelUsesUseCase } from '../../../application/use-cases/llm/set-mode
 import { SyncModelCatalogUseCase } from '../../../application/use-cases/llm/sync-model-catalog.use-case';
 import { UpdateModelPricingUseCase } from '../../../application/use-cases/llm/update-model-pricing.use-case';
 import { ListModelPriceChangesUseCase } from '../../../application/use-cases/llm/list-model-price-changes.use-case';
+import { ListCredentialedProvidersUseCase } from '../../../application/use-cases/llm/list-credentialed-providers.use-case';
+import { CredentialedProvidersResponseDto } from './dto/llm.response.dto';
 import { RequireRole } from '../iam/require-role.decorator';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import {
@@ -68,7 +70,22 @@ export class ModelsController {
     private readonly syncCatalog: SyncModelCatalogUseCase,
     private readonly updateModelPricing: UpdateModelPricingUseCase,
     private readonly listPriceChanges: ListModelPriceChangesUseCase,
+    private readonly listCredentialed: ListCredentialedProvidersUseCase,
   ) {}
+
+  @Get('workspaces/:workspaceId/llm-providers/credentialed')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'Lists the LLM providers the workspace owner has a key for',
+    description:
+      'The owner of record (`workspaces.created_by`) is whose key the agents ' +
+      'spend (RN-058). Only provider NAMES — never a secret, id or date. ' +
+      '`ollama` (local, no key) never appears.',
+  })
+  @ApiOkResponse({ type: CredentialedProvidersResponseDto })
+  credentialed(@Param('workspaceId') workspaceId: string) {
+    return this.listCredentialed.execute(workspaceId);
+  }
 
   /**
    * O schema é declarado à mão, e não por `type:`, porque a forma é

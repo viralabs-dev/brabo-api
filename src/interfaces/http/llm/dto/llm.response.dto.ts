@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type { LLMProviderCapabilities } from '@brabo/shared';
 import type { CapabilitiesDoProvider } from '../../../../application/use-cases/llm/list-provider-capabilities.use-case';
+import type { LLMProviderName } from '@brabo/shared';
 import { LLM_PROVIDER_NAMES } from '../../../../domain/llm/llm-provider-names';
 import type { MesmasChaves, Wire } from '../../shared/dto/wire';
 import { BUDGET_POLICIES } from '../../../../domain/llm/budget-threshold';
@@ -236,6 +237,17 @@ export class UserCredentialResponseDto implements Wire<UserCredentialMetadata> {
   @ApiProperty({ example: '2026-07-10T10:00:00.000Z', format: 'date-time' })
   updatedAt!: string;
 }
+export class CredentialedProvidersResponseDto {
+  @ApiProperty({
+    enum: LLM_PROVIDER_NAMES,
+    isArray: true,
+    example: ['anthropic', 'openrouter'],
+    description:
+      'LLM providers the workspace owner of record has a key for. Names only; `ollama` never appears.',
+  })
+  providers!: LLMProviderName[];
+}
+
 export const _chavesCredencial: MesmasChaves<
   UserCredentialResponseDto,
   UserCredentialMetadata
