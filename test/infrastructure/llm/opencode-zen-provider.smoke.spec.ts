@@ -7,6 +7,7 @@ import { openCodeZenConfig } from '../../../src/infrastructure/llm/opencode-zen-
  * Smoke MANUAL do OpenCode Zen (AT-568, ADR 0227) — a prova que `toolCalling`
  * e `streamOptionsIncludeUsage` exigem antes de virarem `true` (ADR 0041).
  * PULA sem `OPENCODE_ZEN_TEST_KEY`. Só modelos `-free` (custo US$ 0).
+ * Resultado em 29/10/2026: 429 `FreeUsageLimitError` (grátis só vale no cliente OpenCode).
  *
  * Prova: stream de texto; tool call em `deepseek-v4.1-flash-free` e
  * `glm-5.3-flash-free`; `usage` no stream COM `stream_options` ligado.
