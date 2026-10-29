@@ -14,6 +14,7 @@ import { ClearModelBindingUseCase } from './clear-model-binding.use-case';
 import { ResolveModelBindingUseCase } from './resolve-model-binding.use-case';
 import { ResolveModelBindingsEmLoteUseCase } from './resolve-model-bindings-em-lote.use-case';
 import { UpsertUserCredentialUseCase } from './upsert-user-credential.use-case';
+import { ImportRunnerLlmCredentialUseCase } from './import-runner-llm-credential.use-case';
 import { ListUserCredentialsUseCase } from './list-user-credentials.use-case';
 import { DeleteUserCredentialUseCase } from './delete-user-credential.use-case';
 import { UpsertBudgetUseCase } from './upsert-budget.use-case';
@@ -53,6 +54,7 @@ const USE_CASES = [
   ResolveModelBindingUseCase,
   ResolveModelBindingsEmLoteUseCase,
   UpsertUserCredentialUseCase,
+  ImportRunnerLlmCredentialUseCase,
   ListUserCredentialsUseCase,
   ListCredentialedProvidersUseCase,
   DeleteUserCredentialUseCase,
