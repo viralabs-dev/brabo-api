@@ -75,6 +75,7 @@ const CREDENCIAL_ENV_VARS: Partial<Record<LLMProviderName, string>> = {
   deepinfra: 'DEEPINFRA_TEST_KEY',
   bitdeer: 'BITDEER_TEST_KEY',
   vultr: 'VULTR_TEST_KEY',
+  'opencode-zen': 'OPENCODE_ZEN_TEST_KEY',
 };
 
 /**
@@ -344,6 +345,27 @@ const MODEL_SEEDS: ModelInput[] = [
     displayName: 'DeepSeek R1 Distill Llama 70B (Vultr)',
     inputPricePerMillionMicros: 550_000,
     outputPricePerMillionMicros: 2_750_000,
+    supportsToolCalling: false,
+    manualPricing: true,
+  },
+  // OpenCode Zen (AT-568, ADR 0227) — SÓ os dois modelos grátis de retenção
+  // zero e sem treino; os demais entram por curadoria manual (ADR 0042).
+  // `supportsToolCalling` fica `false` até o smoke provar.
+  {
+    provider: 'opencode-zen',
+    name: 'deepseek-v4.1-flash-free',
+    displayName: 'DeepSeek V4.1 Flash Free (OpenCode Zen)',
+    inputPricePerMillionMicros: 0,
+    outputPricePerMillionMicros: 0,
+    supportsToolCalling: false,
+    manualPricing: true,
+  },
+  {
+    provider: 'opencode-zen',
+    name: 'glm-5.3-flash-free',
+    displayName: 'GLM 5.3 Flash Free (OpenCode Zen)',
+    inputPricePerMillionMicros: 0,
+    outputPricePerMillionMicros: 0,
     supportsToolCalling: false,
     manualPricing: true,
   },
