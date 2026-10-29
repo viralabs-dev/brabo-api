@@ -11,6 +11,28 @@ function ctx(overrides: Partial<DecideContext> = {}): DecideContext {
   };
 }
 
+describe('qa_environment_start (AT-612, RN-936)', () => {
+  it('semeada auto_approve, um developer a executa sem clique', () => {
+    const r = decide(
+      { actionType: 'qa_environment_start' },
+      ctx({ autonomyMode: 'auto_approve' }),
+    );
+    expect(r.policy).toBe('auto_approve');
+  });
+
+  it('sem a semente pede aprovação, e viewer é negado', () => {
+    expect(decide({ actionType: 'qa_environment_start' }, ctx()).policy).toBe(
+      'require_approval',
+    );
+    expect(
+      decide(
+        { actionType: 'qa_environment_start' },
+        ctx({ effectiveRole: 'viewer', autonomyMode: 'auto_approve' }),
+      ).policy,
+    ).toBe('deny');
+  });
+});
+
 describe('decide', () => {
   it('sem regra em nenhum estágio, cai em require_approval (pending)', () => {
     const result = decide(

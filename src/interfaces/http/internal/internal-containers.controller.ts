@@ -1,9 +1,17 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
@@ -67,9 +75,20 @@ export class InternalContainersController {
       'travels is `localizacao` (RN-503) — which of the two broker roots to ' +
       'use, plus the relative segment that root does not cover.',
   })
+  @ApiQuery({ name: 'papel', required: false, enum: ['qa'] })
+  @ApiQuery({ name: 'task', required: false })
   @ApiOkResponse({ type: ContainerSpecInternalResponseDto })
   @ApiNotFoundResponse({ description: 'Project not found.' })
-  containerSpec(@Param('projectId') projectId: string) {
-    return this.obterSpec.execute(projectId);
+  containerSpec(
+    @Param('projectId') projectId: string,
+    @Query('papel') papel?: string,
+    @Query('task') task?: string,
+  ) {
+    if (papel === undefined) return this.obterSpec.execute(projectId);
+    // AT-612: `task` = id completo ou a chave de 8 (o broker da `dev` manda a chave).
+    if (papel !== 'qa' || !task) {
+      throw new BadRequestException('`papel=qa` exige `task`');
+    }
+    return this.obterSpec.execute(projectId, task);
   }
 }

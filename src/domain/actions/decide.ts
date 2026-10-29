@@ -35,7 +35,8 @@ export type ActionType =
   | 'container_stop'
   | 'container_remove'
   | 'container_recreate'
-  | 'container_start_via_runner';
+  | 'container_start_via_runner'
+  | 'qa_environment_start';
 
 export const ACTION_TYPES: readonly ActionType[] = [
   'terminal',
@@ -84,6 +85,8 @@ export const ACTION_TYPES: readonly ActionType[] = [
   // nunca alcança a pasta de um projeto `runner`, então não há roteamento
   // do Arquiteto contra o qual eleger.
   'container_start_via_runner',
+  // AT-612 (ADR 0229, RN-936): o QA sobe a instância efêmera da tarefa.
+  'qa_environment_start',
 ];
 
 /**
@@ -188,6 +191,9 @@ const MIN_ROLE_FOR_ACTION_TYPE: Record<ActionType, Role> = {
   // não é o mais destrutivo dos quatro (essa régua é só de
   // `container_remove`).
   container_start_via_runner: 'maintainer',
+  // AT-612: efêmera, contida e do gate de QA — `developer`, o papel de quem
+  // abre a sessão que dispara o gate. Fora do teto de `container_remove`.
+  qa_environment_start: 'developer',
 };
 
 // Rede de segurança padrão, sempre ativa, independente do permissions.json

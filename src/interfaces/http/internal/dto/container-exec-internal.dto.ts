@@ -1,5 +1,27 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsPositive, IsString } from 'class-validator';
+import {
+  Equals,
+  IsBoolean,
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsPositive,
+  IsString,
+  IsUUID,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class AlvoQaInternalDto {
+  @ApiProperty({ example: true })
+  @IsBoolean()
+  @Equals(true)
+  qa!: true;
+
+  @ApiProperty({ format: 'uuid' })
+  @IsUUID()
+  taskId!: string;
+}
 
 export class ContainerExecInternalDto {
   @ApiProperty({
@@ -32,4 +54,15 @@ export class ContainerExecInternalDto {
   @IsInt()
   @IsPositive()
   timeoutMs?: number;
+
+  @ApiPropertyOptional({
+    type: AlvoQaInternalDto,
+    description:
+      'AT-612: run in the task QA instance instead of the work container. Set by the engine from the gate context, never by the model.',
+  })
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => AlvoQaInternalDto)
+  alvo?: AlvoQaInternalDto;
 }

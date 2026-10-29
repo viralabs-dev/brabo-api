@@ -97,6 +97,42 @@ export class HttpContainerBrokerClient extends ContainerBrokerPort {
     );
   }
 
+  @Traced('infrastructure')
+  async startQa(
+    projectId: string,
+    chave: string,
+  ): Promise<ContainerIniciadoPeloBroker> {
+    return this.chamar<ContainerIniciadoPeloBroker>(
+      'start',
+      'POST',
+      `/containers/${segmento(projectId)}/qa/${segmento(chave)}/start`,
+    );
+  }
+
+  async removeQa(projectId: string, chave: string): Promise<void> {
+    await this.chamar(
+      'remove',
+      'POST',
+      `/containers/${segmento(projectId)}/qa/${segmento(chave)}/remove`,
+    );
+  }
+
+  async execQa(
+    projectId: string,
+    chave: string,
+    comando: string,
+    cwd?: string,
+    timeoutMs?: number,
+  ): Promise<ResultadoDeExecNoContainer> {
+    return this.chamar<ResultadoDeExecNoContainer>(
+      'exec',
+      'POST',
+      `/containers/${segmento(projectId)}/qa/${segmento(chave)}/exec`,
+      { comando, cwd, timeoutMs },
+      timeoutMs,
+    );
+  }
+
   private async chamar<T>(
     operacao: OperacaoDoBroker,
     metodo: string,

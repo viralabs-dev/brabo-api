@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { RecursosDoContainerResponseDto } from '../../containers/dto/containers.response.dto';
 import type { PosturaDeRede } from '../../../../domain/containers/project-container';
 import type { ProjectExecutionMode } from '../../../../domain/iam/project.entity';
@@ -192,4 +192,15 @@ export class ContainerSpecInternalResponseDto {
     description: 'AT-608: `--add-host` entries (IPv4), or `null`.',
   })
   extraHosts!: Array<{ name: string; ip: string }> | null;
+
+  @ApiPropertyOptional({
+    type: 'object',
+    properties: {
+      chave: { type: 'string', example: 'a1b2c3d4' },
+      services: { type: 'array', items: { type: 'object' } },
+    },
+    description:
+      'AT-612 (ADR 0229): ONLY with `papel=qa`. `chave` = 8 first [a-z0-9] of the task id; `services` = `run.qa.services` declared by the Infra (image with digest, env, tmpfs, shared).',
+  })
+  qa?: { chave: string; services: unknown[] };
 }

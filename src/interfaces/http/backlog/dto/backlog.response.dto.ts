@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import type { ServicoDeQa } from '../../../../domain/infra/run-instructions';
 import type { MesmasChaves, Wire } from '../../shared/dto/wire';
 import { STORY_STATUSES } from '../../../../domain/backlog/story-state-machine';
 import { PR_GATE_STATUSES } from '../../../../domain/execution/pr-gate-state-machine';
@@ -686,6 +687,14 @@ export class RunInstructionsResponseDto implements Wire<InstrucoesVigentes> {
       'AT-610 (ADR 0228): the command the container runs to start the app and the port it listens on. Absent when the Infra did not declare it.',
   })
   app?: AppDeExecucaoResponseDto;
+
+  @ApiProperty({
+    required: false,
+    type: Object,
+    description:
+      'AT-612 (ADR 0229): the infra services of the ephemeral QA instance declared by the Infra (`run.qa`). Absent when none.',
+  })
+  qa?: { services: ServicoDeQa[] };
 
   @ApiProperty({ example: 'http://localhost:3000/git/acme/pulls/3' })
   prUrl!: string;

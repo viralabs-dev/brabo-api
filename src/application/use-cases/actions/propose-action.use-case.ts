@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ExecuteQaEnvironmentStartUseCase } from './execute-qa-environment-start.use-case';
 import { recusaDoRun } from '../../../domain/infra/run-instructions';
 import { runComoEfeitoDeAcao } from '../../efeito-de-acao';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
@@ -79,6 +80,7 @@ export class ProposeActionUseCase {
     private readonly obterCicloDeVidaDoContainer: ObterCicloDeVidaDoContainerUseCase,
     private readonly brokerPort: ContainerBrokerPort,
     private readonly executeExecutionPlan: ExecuteExecutionPlanUseCase,
+    private readonly executeQaStart?: ExecuteQaEnvironmentStartUseCase,
   ) {}
 
   @Traced('application')
@@ -383,6 +385,10 @@ export class ProposeActionUseCase {
     // `decide.ts` garante que ele nunca resolve `auto_approve`, então este
     // `status === 'auto_approved'` nunca é `true` para ele — um branch aqui
     // seria código morto que a suíte não teria como exercitar.
+    if (status === 'auto_approved' && actionType === 'qa_environment_start') {
+      return this.executeQaStart!.execute(projectId, sessionId, action);
+    }
+
     if (status === 'auto_approved' && actionType === 'container_stop') {
       return this.executeContainerStop.execute(projectId, sessionId, action);
     }
@@ -405,6 +411,7 @@ const ACOES_DO_BROKER: ActionType[] = [
   'container_stop',
   'container_remove',
   'container_recreate',
+  'qa_environment_start',
 ];
 
 function initialStatusFor(

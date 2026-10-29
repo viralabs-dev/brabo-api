@@ -18,6 +18,9 @@ import {
 import { GetRunInstructionsUseCase } from '../execution/get-run-instructions.use-case';
 import { ObterRedeDoContainerUseCase } from './obter-rede-do-container.use-case';
 import type { RedeDoContainer } from '../../../domain/containers/rede-do-container';
+import { InstanciaDeQaUseCase } from './instancia-de-qa.use-case';
+import { chaveDeQa } from '../../../domain/containers/instancia-de-qa';
+import type { ServicoDeQa } from '../../../domain/infra/run-instructions';
 import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 /**
@@ -79,6 +82,8 @@ export interface SpecDeContainer {
   ports: RedeDoContainer['ports'] | null;
   dns: string[] | null;
   extraHosts: RedeDoContainer['extraHosts'] | null;
+  /** AT-612: presente SÓ com `papel=qa`. */
+  qa?: { chave: string; services: ServicoDeQa[] };
 }
 
 /**
@@ -123,10 +128,11 @@ export class ObterSpecDeContainerUseCase {
     private readonly runInstructions: GetRunInstructionsUseCase,
     private readonly redeDoContainer: ObterRedeDoContainerUseCase,
     private readonly donoDePasta: LeitorDeDonoDePasta = new LeitorDeDonoDePasta(),
+    private readonly instanciaDeQa?: InstanciaDeQaUseCase,
   ) {}
 
   @Traced('application')
-  async execute(projectId: string): Promise<SpecDeContainer> {
+  async execute(projectId: string, qaTask?: string): Promise<SpecDeContainer> {
     const project = await this.projects.findById(projectId);
     if (!project) throw new NotFoundException('Projeto não encontrado');
 
@@ -146,6 +152,12 @@ export class ObterSpecDeContainerUseCase {
       ? await this.runInstructions.execute(projectId)
       : null;
 
+    // AT-612: a tarefa é validada DENTRO do projeto (404 de outro projeto).
+    const taskId =
+      qaTask === undefined || !this.instanciaDeQa
+        ? undefined
+        : await this.instanciaDeQa.resolverTarefa(projectId, qaTask);
+
     return {
       projectId: project.id,
       projectSlug: project.slug,
@@ -156,10 +168,18 @@ export class ObterSpecDeContainerUseCase {
       usuarioDaPasta: await this.medirDono(project, localizacao),
       imagem: recorteDaDecisao(estado.decisao),
       imagemVersao: estado.version,
-      comandoDoApp: run?.app?.command ?? null,
-      ports: rede?.ports ?? null,
+      comandoDoApp: taskId ? null : (run?.app?.command ?? null),
+      ports: taskId ? null : (rede?.ports ?? null),
       dns: rede?.dns ?? null,
       extraHosts: rede?.extraHosts ?? null,
+      ...(taskId
+        ? {
+            qa: {
+              chave: chaveDeQa(taskId),
+              services: run?.qa?.services ?? [],
+            },
+          }
+        : {}),
     };
   }
 

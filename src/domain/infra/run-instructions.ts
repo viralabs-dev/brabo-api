@@ -33,12 +33,32 @@ export interface AppDeExecucao {
   port: number;
 }
 
+/** AT-612 (ADR 0229, RN-936): um serviço de infra da instância de QA, declarado pela Infra. */
+export interface ServicoDeQa {
+  name: string;
+  image: string;
+  env?: Record<string, string>;
+  tmpfs?: string[];
+  shared?: boolean;
+}
+
+export interface QaDeExecucao {
+  services: ServicoDeQa[];
+}
+
+export const MAXIMO_DE_SERVICOS_DE_QA = 6;
+const NOME_DE_SERVICO = /^[a-z][a-z0-9-]{0,31}$/;
+const IMAGEM_COM_DIGEST = /^[^\s@]+@sha256:[0-9a-f]{64}$/;
+const NOME_DE_ENV = /^[A-Z_][A-Z0-9_]*$/;
+
 export interface Run {
   command: string;
   urls: UrlDeExecucao[];
   envExample: boolean;
   /** Opcional: sem ele, `run` é byte a byte o de antes. */
   app?: AppDeExecucao;
+  /** AT-612: serviços da instância de QA. Ausente = sem infra extra. */
+  qa?: QaDeExecucao;
 }
 
 export interface InstrucoesDeExecucao extends Run {
@@ -97,6 +117,10 @@ export function recusaDoRun(run: unknown): string | null {
       return '`run.app.port` deve ser inteiro de 1024 a 65535.';
     }
   }
+  if (r.qa !== undefined && r.qa !== null) {
+    const recusa = recusaDoQa(r.qa);
+    if (recusa) return recusa;
+  }
   for (const [i, item] of (r.urls as unknown[]).entries()) {
     if (typeof item !== 'object' || item === null) {
       return `\`run.urls[${i}]\` deve ser \`{label, url, kind}\`.`;
@@ -127,6 +151,64 @@ export function recusaDoRun(run: unknown): string | null {
   return null;
 }
 
+/** `null` quando `run.qa` é válido (AT-612). Mesma régua na proposta e na execução. */
+export function recusaDoQa(qa: unknown): string | null {
+  if (typeof qa !== 'object' || qa === null || Array.isArray(qa)) {
+    return '`run.qa` deve ser um objeto `{services}`.';
+  }
+  const services = (qa as Record<string, unknown>).services;
+  if (!Array.isArray(services) || services.length > MAXIMO_DE_SERVICOS_DE_QA) {
+    return `\`run.qa.services\` deve ser uma lista de até ${MAXIMO_DE_SERVICOS_DE_QA} serviços.`;
+  }
+  const nomes = new Set<string>();
+  for (const [i, item] of services.entries()) {
+    const ref = `run.qa.services[${i}]`;
+    if (typeof item !== 'object' || item === null || Array.isArray(item)) {
+      return `\`${ref}\` deve ser \`{name, image, env?, tmpfs?, shared?}\`.`;
+    }
+    const s = item as Record<string, unknown>;
+    if (typeof s.name !== 'string' || !NOME_DE_SERVICO.test(s.name)) {
+      return `\`${ref}.name\` deve casar [a-z][a-z0-9-]{0,31}.`;
+    }
+    if (nomes.has(s.name)) return `\`${ref}.name\` repetido: "${s.name}".`;
+    nomes.add(s.name);
+    if (typeof s.image !== 'string' || !IMAGEM_COM_DIGEST.test(s.image)) {
+      return `\`${ref}.image\` deve trazer digest (@sha256:<64 hex>).`;
+    }
+    if (s.env !== undefined) {
+      if (typeof s.env !== 'object' || s.env === null || Array.isArray(s.env)) {
+        return `\`${ref}.env\` deve ser um objeto nome → texto.`;
+      }
+      const pares = Object.entries(s.env as Record<string, unknown>);
+      if (pares.length > 20) return `\`${ref}.env\` passa de 20 variáveis.`;
+      for (const [k, v] of pares) {
+        if (!NOME_DE_ENV.test(k)) {
+          return `\`${ref}.env\` tem nome inválido: "${k}".`;
+        }
+        if (typeof v !== 'string' || /[\n\r\0]/.test(v)) {
+          return `\`${ref}.env.${k}\` deve ser texto de uma linha.`;
+        }
+      }
+    }
+    if (s.tmpfs !== undefined) {
+      if (
+        !Array.isArray(s.tmpfs) ||
+        s.tmpfs.length > 3 ||
+        s.tmpfs.some(
+          (t) =>
+            typeof t !== 'string' || !t.startsWith('/') || /[\s,:]/.test(t),
+        )
+      ) {
+        return `\`${ref}.tmpfs\` deve ter até 3 caminhos absolutos.`;
+      }
+    }
+    if (s.shared !== undefined && typeof s.shared !== 'boolean') {
+      return `\`${ref}.shared\` deve ser booleano.`;
+    }
+  }
+  return null;
+}
+
 /** Só chame depois de `recusaDoRun(run) === null`. */
 export function normalizarRun(run: unknown): Run {
   const r = run as Run;
@@ -135,5 +217,20 @@ export function normalizarRun(run: unknown): Run {
     envExample: r.envExample,
     urls: r.urls.map(({ label, url, kind }) => ({ label, url, kind })),
     ...(r.app ? { app: { command: r.app.command, port: r.app.port } } : {}),
+    ...(r.qa
+      ? {
+          qa: {
+            services: r.qa.services.map(
+              ({ name, image, env, tmpfs, shared }) => ({
+                name,
+                image,
+                ...(env ? { env } : {}),
+                ...(tmpfs ? { tmpfs } : {}),
+                ...(shared !== undefined ? { shared } : {}),
+              }),
+            ),
+          },
+        }
+      : {}),
   };
 }
