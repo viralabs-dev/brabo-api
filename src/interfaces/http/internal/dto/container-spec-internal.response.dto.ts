@@ -200,7 +200,7 @@ export class ContainerSpecInternalResponseDto {
       services: { type: 'array', items: { type: 'object' } },
     },
     description:
-      'AT-612 (ADR 0229): ONLY with `papel=qa`. `chave` = 8 first [a-z0-9] of the task id; `services` = `run.qa.services` declared by the Infra (image with digest, env, tmpfs, shared).',
+      'AT-612 (ADR 0229): ONLY with `papel=qa`. `chave` = 8 first [a-z0-9] of the task id; `services` = `run.qa.services` declared by the Infra (image with digest, env, tmpfs, user `<uid>:<gid>` never 0, command argv after the image, shared).',
   })
   qa?: { chave: string; services: unknown[] };
 }

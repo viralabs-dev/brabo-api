@@ -39,6 +39,10 @@ export interface ServicoDeQa {
   image: string;
   env?: Record<string, string>;
   tmpfs?: string[];
+  /** AT-612 (RN-941): `"<uid>:<gid>"` inteiros, nunca 0. */
+  user?: string;
+  /** AT-612 (RN-941): argumentos depois da imagem. */
+  command?: string[];
   shared?: boolean;
 }
 
@@ -47,6 +51,7 @@ export interface QaDeExecucao {
 }
 
 export const MAXIMO_DE_SERVICOS_DE_QA = 6;
+const USUARIO_DE_SERVICO = /^[1-9][0-9]{0,9}:[1-9][0-9]{0,9}$/;
 const NOME_DE_SERVICO = /^[a-z][a-z0-9-]{0,31}$/;
 const IMAGEM_COM_DIGEST = /^[^\s@]+@sha256:[0-9a-f]{64}$/;
 const NOME_DE_ENV = /^[A-Z_][A-Z0-9_]*$/;
@@ -164,7 +169,7 @@ export function recusaDoQa(qa: unknown): string | null {
   for (const [i, item] of services.entries()) {
     const ref = `run.qa.services[${i}]`;
     if (typeof item !== 'object' || item === null || Array.isArray(item)) {
-      return `\`${ref}\` deve ser \`{name, image, env?, tmpfs?, shared?}\`.`;
+      return `\`${ref}\` deve ser \`{name, image, env?, tmpfs?, user?, command?, shared?}\`.`;
     }
     const s = item as Record<string, unknown>;
     if (typeof s.name !== 'string' || !NOME_DE_SERVICO.test(s.name)) {
@@ -202,6 +207,28 @@ export function recusaDoQa(qa: unknown): string | null {
         return `\`${ref}.tmpfs\` deve ter até 3 caminhos absolutos.`;
       }
     }
+    if (
+      s.user != null &&
+      !(typeof s.user === 'string' && USUARIO_DE_SERVICO.test(s.user))
+    ) {
+      return `\`${ref}.user\` deve ser "<uid>:<gid>" com inteiros diferentes de 0.`;
+    }
+    if (s.command != null) {
+      if (
+        !Array.isArray(s.command) ||
+        s.command.length === 0 ||
+        s.command.length > 16 ||
+        s.command.some(
+          (a) =>
+            typeof a !== 'string' ||
+            a.length === 0 ||
+            a.length > 200 ||
+            /[\n\r\0]/.test(a),
+        )
+      ) {
+        return `\`${ref}.command\` deve ter de 1 a 16 argumentos de texto (até 200 caracteres, uma linha).`;
+      }
+    }
     if (s.shared !== undefined && typeof s.shared !== 'boolean') {
       return `\`${ref}.shared\` deve ser booleano.`;
     }
@@ -221,11 +248,13 @@ export function normalizarRun(run: unknown): Run {
       ? {
           qa: {
             services: r.qa.services.map(
-              ({ name, image, env, tmpfs, shared }) => ({
+              ({ name, image, env, tmpfs, user, command, shared }) => ({
                 name,
                 image,
                 ...(env ? { env } : {}),
                 ...(tmpfs ? { tmpfs } : {}),
+                ...(user ? { user } : {}),
+                ...(command ? { command } : {}),
                 ...(shared !== undefined ? { shared } : {}),
               }),
             ),
