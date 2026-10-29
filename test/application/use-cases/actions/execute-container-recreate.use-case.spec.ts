@@ -76,7 +76,7 @@ function build(opts: {
 
 const ACAO = { id: 'a1' } as never;
 
-describe('ExecuteContainerRecreateUseCase (AT-608, RN-933)', () => {
+describe('ExecuteContainerRecreateUseCase (AT-608, RN-934)', () => {
   it('remove + start passando por stopped, removed e running', async () => {
     const { uc, chamadas, gravados } = build({});
     await uc.execute('p', 's', ACAO);

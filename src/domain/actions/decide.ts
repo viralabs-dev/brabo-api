@@ -599,7 +599,7 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
     };
   }
 
-  // AT-610 (ADR 0228, RN-932): a PR de infra que traz `run.app` coloca um
+  // AT-610 (ADR 0228, RN-933): a PR de infra que traz `run.app` coloca um
   // comando na máquina do usuário. A regra ESPECÍFICA `open_infra_pr:
   // auto_approve` (a semente do aceite) não basta; só a CURINGA (piloto
   // automático) dispensa o clique. Mesma origem de autonomia da RN-603.

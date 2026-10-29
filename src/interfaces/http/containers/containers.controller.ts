@@ -84,7 +84,7 @@ export class ContainersController {
     description:
       'Emits a new version of `artifact.container_network` (the current one ' +
       'replaces the previous). Not an external effect: nothing changes in ' +
-      'Docker until a `container_recreate` is approved (AT-608, RN-931). 400 ' +
+      'Docker until a `container_recreate` is approved (AT-608, RN-932). 400 ' +
       '`rede_invalida` names the field.',
   })
   @ApiOkResponse({ type: RedeDoContainerResponseDto })

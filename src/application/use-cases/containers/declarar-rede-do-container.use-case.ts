@@ -17,7 +17,7 @@ import {
 } from '../../../domain/containers/rede-do-container';
 
 /**
- * Um humano (`maintainer`) declara a rede do container (AT-608, RN-931). Emite
+ * Um humano (`maintainer`) declara a rede do container (AT-608, RN-932). Emite
  * nova versão de `artifact.container_network` na sessão mais recente do
  * projeto (o log é por sessão). NÃO é efeito externo: só vale ao recriar.
  */

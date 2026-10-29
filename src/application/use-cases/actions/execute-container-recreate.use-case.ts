@@ -16,7 +16,7 @@ import type { ContainerStopOuRemoveExecutionResult } from '../../../domain/conta
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
 
 /**
- * Executa `container_recreate` aprovado (AT-608, ADR 0228, RN-933): `remove` +
+ * Executa `container_recreate` aprovado (AT-608, ADR 0228, RN-934): `remove` +
  * `start` pelo broker, para o container passar a valer com o comando do app e
  * a rede declarados (a spec só muda em container RECRIADO — o `start` é
  * idempotente). Passa pela máquina de estados de `project_containers`

@@ -1,5 +1,5 @@
 /**
- * A rede declarada do container do projeto (AT-608, ADR 0228, RN-931):
+ * A rede declarada do container do projeto (AT-608, ADR 0228, RN-932):
  * `artifact.container_network` — versionado, sem tabela, o vigente substitui
  * (o desenho de `artifact.project_image`). Escrever isto NÃO é efeito externo;
  * só vale no container RECRIADO (`container_recreate`).

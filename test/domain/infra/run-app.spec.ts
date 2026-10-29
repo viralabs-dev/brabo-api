@@ -10,7 +10,7 @@ const base = {
   urls: [{ label: 'Web', url: 'http://localhost:3000', kind: 'web' }],
 };
 
-describe('run.app (AT-610, RN-932)', () => {
+describe('run.app (AT-610, RN-933)', () => {
   it('sem app ou com app null: válido e sem a chave na saída', () => {
     expect(recusaDoRun(base)).toBeNull();
     expect(recusaDoRun({ ...base, app: null })).toBeNull();

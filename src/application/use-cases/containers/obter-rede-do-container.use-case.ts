@@ -13,7 +13,7 @@ export interface RedeVigente extends RedeDoContainer {
 }
 
 /**
- * O `artifact.container_network` vigente (AT-608, RN-931): o de maior
+ * O `artifact.container_network` vigente (AT-608, RN-932): o de maior
  * `version`, desempate por `seq`. `null` sem declaração; payload que não valida
  * mais é ignorado (nunca se passa ao broker o que a régua recusa).
  */

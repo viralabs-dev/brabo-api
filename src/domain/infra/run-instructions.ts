@@ -27,7 +27,7 @@ export interface UrlDeExecucao {
   kind: TipoDeUrl;
 }
 
-/** AT-610 (ADR 0228, RN-932): o comando que o container executa para subir o APP e a porta onde ele escuta. */
+/** AT-610 (ADR 0228, RN-933): o comando que o container executa para subir o APP e a porta onde ele escuta. */
 export interface AppDeExecucao {
   command: string;
   port: number;

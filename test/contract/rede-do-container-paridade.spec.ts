@@ -20,7 +20,7 @@ const ok = (f: () => unknown) => {
 };
 
 /** A régua da api (artefato) tem de aceitar/recusar o mesmo que a do docker-port. */
-describe('rede do container — paridade com o docker-port (AT-608, RN-931)', () => {
+describe('rede do container — paridade com o docker-port (AT-608, RN-932)', () => {
   const portas: P[][] = [
     [{ host: 8080, container: 3000, protocol: 'tcp' }],
     [{ host: 80, container: 3000, protocol: 'tcp' }],

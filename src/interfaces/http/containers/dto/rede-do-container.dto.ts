@@ -11,7 +11,7 @@ class HostExtraDto {
   @ApiProperty({ example: '10.0.0.5' }) ip!: string;
 }
 
-/** Corpo de `PUT .../container/network` (AT-608, RN-931). A régua fina é do domínio (400 `rede_invalida` nomeando o campo). */
+/** Corpo de `PUT .../container/network` (AT-608, RN-932). A régua fina é do domínio (400 `rede_invalida` nomeando o campo). */
 export class DeclararRedeDto {
   @ApiProperty({
     type: [PortaDto],
