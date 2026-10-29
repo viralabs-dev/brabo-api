@@ -3,6 +3,8 @@ import { RunnerUseCasesModule } from '../../../application/use-cases/runner/runn
 import { AuthUseCasesModule } from '../../../application/use-cases/auth/auth-use-cases.module';
 import { IamUseCasesModule } from '../../../application/use-cases/iam/iam-use-cases.module';
 import { RunnerTicketsController } from './runner-tickets.controller';
+import { LlmUseCasesModule } from '../../../application/use-cases/llm/llm-use-cases.module';
+import { RunnerLlmCredentialsController } from './runner-llm-credentials.controller';
 import { RunnerProjectsController } from './runner-projects.controller';
 import { PersonalAccessTokensController } from './personal-access-tokens.controller';
 import { RunnerDeviceKeysController } from './runner-device-keys.controller';
@@ -18,10 +20,16 @@ import { PatAuthGuard } from '../auth/pat-auth.guard';
   // padrão. IamUseCasesModule entrou pela RN-439: `PatAuthGuard` passou a
   // aplicar `@RequireRole` ele mesmo (ver o docblock do guard) e precisa de
   // `ResolveEffectiveRoleUseCase`, que mora lá.
-  imports: [RunnerUseCasesModule, AuthUseCasesModule, IamUseCasesModule],
+  imports: [
+    RunnerUseCasesModule,
+    AuthUseCasesModule,
+    IamUseCasesModule,
+    LlmUseCasesModule,
+  ],
   controllers: [
     RunnerTicketsController,
     RunnerProjectsController,
+    RunnerLlmCredentialsController,
     PersonalAccessTokensController,
     RunnerDeviceKeysController,
     MachineDeviceKeysController,
