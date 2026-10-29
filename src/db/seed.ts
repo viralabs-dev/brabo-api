@@ -75,6 +75,7 @@ const CREDENCIAL_ENV_VARS: Partial<Record<LLMProviderName, string>> = {
   deepinfra: 'DEEPINFRA_TEST_KEY',
   bitdeer: 'BITDEER_TEST_KEY',
   vultr: 'VULTR_TEST_KEY',
+  'opencode-zen': 'OPENCODE_ZEN_TEST_KEY',
 };
 
 /**
@@ -347,6 +348,9 @@ const MODEL_SEEDS: ModelInput[] = [
     supportsToolCalling: false,
     manualPricing: true,
   },
+  // OpenCode Zen (AT-568, ADR 0227): SEM modelo semeado. Medido em 29/10/2026:
+  // os grátis (`*-free`) respondem 429 FreeUsageLimitError por API de terceiro
+  // (só valem dentro do cliente OpenCode). Modelos pagos entram por curadoria manual.
 ];
 
 async function main() {

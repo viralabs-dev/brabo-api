@@ -18,6 +18,7 @@ import { OpenAIProvider } from '../../../src/infrastructure/llm/openai-provider'
 import { OpenRouterProvider } from '../../../src/infrastructure/llm/openrouter-provider';
 import { TogetherProvider } from '../../../src/infrastructure/llm/together-provider';
 import { NineRouterProvider } from '../../../src/infrastructure/llm/nine-router-provider';
+import { OpenCodeZenProvider } from '../../../src/infrastructure/llm/opencode-zen-provider';
 import { VultrProvider } from '../../../src/infrastructure/llm/vultr-provider';
 
 const BASE: LLMProviderCapabilities = {
@@ -126,8 +127,9 @@ describe('a lista e as declarações', () => {
       new TogetherProvider(),
       new VultrProvider(),
       new NineRouterProvider(),
+      new OpenCodeZenProvider(),
     ];
-    expect(providers).toHaveLength(10);
+    expect(providers).toHaveLength(11);
     for (const provider of providers) {
       expect([provider.name, provider.capabilities.routingPreference]).toEqual([
         provider.name,

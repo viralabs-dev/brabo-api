@@ -20,6 +20,7 @@ import { DeepInfraProvider } from '../../../src/infrastructure/llm/deepinfra-pro
 import { BitdeerProvider } from '../../../src/infrastructure/llm/bitdeer-provider';
 import { VultrProvider } from '../../../src/infrastructure/llm/vultr-provider';
 import { NineRouterProvider } from '../../../src/infrastructure/llm/nine-router-provider';
+import { OpenCodeZenProvider } from '../../../src/infrastructure/llm/opencode-zen-provider';
 
 /**
  * O decorator de tracing é o ÚNICO caminho até um provider: o registry envolve
@@ -212,6 +213,7 @@ describe('TracedLLMProvider', () => {
       new BitdeerProvider(),
       new VultrProvider(),
       new NineRouterProvider(),
+      new OpenCodeZenProvider(),
     ];
 
     for (const provider of reais) {

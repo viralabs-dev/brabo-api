@@ -35,6 +35,7 @@ export const llmProviderEnum = pgEnum('llm_provider', [
   'bitdeer',
   'vultr',
   '9router',
+  'opencode-zen',
 ]);
 
 // workspace < project < area < agent < session, do menos pro mais específico —
@@ -95,6 +96,7 @@ export const credentialProviderEnum = pgEnum('credential_provider', [
   'bitdeer',
   'vultr',
   '9router',
+  'opencode-zen',
   'github',
   'gitlab',
 ]);
