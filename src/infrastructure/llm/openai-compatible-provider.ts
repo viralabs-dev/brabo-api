@@ -19,6 +19,7 @@ import type { TokenEstimator } from '../../application/ports/token-estimator.por
 import {
   LLMProviderError,
   LLMUpstreamError,
+  LLMPriceCeilingError,
   normalizeHttpStatus,
 } from '../../domain/llm/llm-provider-errors';
 import { extrairVetoresOpenAI, montarEmbedding } from './embedding-result';
@@ -130,6 +131,16 @@ export type CampoDeRoteamento = (
 export type CampoDeSessao = (chave: string) => Record<string, unknown>;
 
 /**
+ * Como um hub recebe o TETO DE PREÇO por chamada (ADR 0225). Capability sem
+ * hook falha na construção. O objeto `provider` que ele devolve é MESCLADO com
+ * o do `campoDeRoteamento`, nunca espalhado por cima (apagaria o `sort`).
+ */
+export type CampoDeTetoDePreco = (teto: {
+  inputPerMillionMicros: number;
+  outputPerMillionMicros: number;
+}) => Record<string, unknown>;
+
+/**
  * Como um provider informa o CUSTO REAL da chamada no `usage` (ADR 0188,
  * RN-665). O OpenRouter o põe em `usage.cost`, em USD; a OpenAI não informa.
  * Recebe o objeto `usage` cru e devolve micro-USD inteiro, ou `undefined`
@@ -161,6 +172,8 @@ export interface OpenAICompatibleConfig {
   readonly campoDeRoteamento?: CampoDeRoteamento;
   /** Só em hubs — ver `CampoDeSessao`. */
   readonly campoDeSessao?: CampoDeSessao;
+  /** Só em hubs — ver `CampoDeTetoDePreco`. */
+  readonly campoDeTetoDePreco?: CampoDeTetoDePreco;
   /** Só quem informa custo na resposta — ver `ExtrairCustoReal`. */
   readonly extrairCustoReal?: ExtrairCustoReal;
   /** Só quem sabe controlar o raciocínio — ver `CampoDeRaciocinioDesligado`. */
@@ -227,6 +240,12 @@ export class OpenAICompatibleProvider implements LLMProvider {
           '— a capability afirmaria um campo que nunca iria ao fio (ADR 0221).',
       );
     }
+    if (config.capabilities.priceCeiling && !config.campoDeTetoDePreco) {
+      throw new Error(
+        `${config.name} declara \`priceCeiling\` sem \`campoDeTetoDePreco\` ` +
+          '— a capability afirmaria um campo que nunca iria ao fio (ADR 0225).',
+      );
+    }
     if (config.capabilities.promptCaching && !config.marcarCacheDePrompt) {
       throw new Error(
         `${config.name} declara \`promptCaching\` sem \`marcarCacheDePrompt\` ` +
@@ -259,10 +278,16 @@ export class OpenAICompatibleProvider implements LLMProvider {
     const status = response.statusCode ?? 0;
     if (status < 200 || status >= 300) {
       const corpoDoErro = await readBody(response);
-      yield toErrorChunk(
-        normalizeHttpStatus(this.name, status, corpoDoErro),
-        this.name,
-      );
+      // 404 COM teto enviado não é "modelo não encontrado" (ADR 0225): o modelo
+      // existe, só nenhum upstream cabe no teto.
+      const erro =
+        status === 404 && this.capabilities.priceCeiling && options.priceCeiling
+          ? new LLMPriceCeilingError(
+              this.name,
+              `nenhum upstream de ${this.name} cabe no teto de preço (404)`,
+            )
+          : normalizeHttpStatus(this.name, status, corpoDoErro);
+      yield toErrorChunk(erro, this.name);
       return;
     }
 
@@ -534,6 +559,42 @@ export class OpenAICompatibleProvider implements LLMProvider {
     });
   }
 
+  /**
+   * Os campos de HUB do corpo: roteamento (ADR 0166), sessão (ADR 0221) e teto
+   * de preço (ADR 0225). Cada um só com a capability PROVADA; provider que não
+   * a declara ignora o campo em vez de falhar por ele. O objeto `provider` de
+   * roteamento e o do teto são MESCLADOS: espalhá-los lado a lado deixaria o
+   * último apagar o `sort`.
+   */
+  private camposDoHub(options: ChatOptions): Record<string, unknown> {
+    const c = this.config;
+    const parte = [
+      this.capabilities.routingPreference &&
+      options.routingPreference &&
+      c.campoDeRoteamento
+        ? c.campoDeRoteamento(options.routingPreference)
+        : {},
+      this.capabilities.stickySession && options.sessionKey && c.campoDeSessao
+        ? c.campoDeSessao(options.sessionKey)
+        : {},
+      this.capabilities.priceCeiling &&
+      options.priceCeiling &&
+      c.campoDeTetoDePreco
+        ? c.campoDeTetoDePreco(options.priceCeiling)
+        : {},
+    ];
+    const corpo: Record<string, unknown> = {};
+    for (const p of parte) {
+      const { provider, ...resto } = p as {
+        provider?: Record<string, unknown>;
+      };
+      Object.assign(corpo, resto);
+      if (provider)
+        corpo.provider = { ...(corpo.provider as object), ...provider };
+    }
+    return corpo;
+  }
+
   private buildBody(messages: ChatMessage[], options: ChatOptions) {
     const { flags } = this.config;
     const saidaVisivel = options.maxTokens ?? MAX_TOKENS_PADRAO;
@@ -581,19 +642,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
       options.tools.length > 0
         ? { tools: options.tools.map(toWireTool) }
         : {}),
-      // Só com a capability PROVADA e com preferência no binding (ADR 0166):
-      // provider que não a declara ignora o campo em vez de falhar por ele.
-      ...(this.capabilities.routingPreference &&
-      options.routingPreference &&
-      this.config.campoDeRoteamento
-        ? this.config.campoDeRoteamento(options.routingPreference)
-        : {}),
-      // Só com a capability PROVADA e com chave (ADR 0221).
-      ...(this.capabilities.stickySession &&
-      options.sessionKey &&
-      this.config.campoDeSessao
-        ? this.config.campoDeSessao(options.sessionKey)
-        : {}),
+      ...this.camposDoHub(options),
     };
   }
 }

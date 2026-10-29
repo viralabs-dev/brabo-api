@@ -15,6 +15,7 @@ class FakeEmbeddingProvider implements LLMProvider {
     embeddings: true,
     routingPreference: false,
     stickySession: false,
+    priceCeiling: false,
     promptCaching: false,
   };
   calls: string[][] = [];
@@ -45,6 +46,7 @@ class ThrowingEmbeddingProvider implements LLMProvider {
     embeddings: true,
     routingPreference: false,
     stickySession: false,
+    priceCeiling: false,
     promptCaching: false,
   };
 
@@ -69,6 +71,7 @@ class NoEmbedProvider implements LLMProvider {
     embeddings: false,
     routingPreference: false,
     stickySession: false,
+    priceCeiling: false,
     promptCaching: false,
   };
 

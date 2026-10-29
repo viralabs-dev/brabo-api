@@ -11,6 +11,7 @@ import {
   uuid,
   text,
   integer,
+  real,
   bigint,
   boolean,
   timestamp,
@@ -395,6 +396,11 @@ export const tokenUsage = pgTable(
     // o binding daquele instante. `null` = nada foi enviado (binding sem
     // preferência, ou provider que não a declara).
     routingPreference: routingPreferenceEnum('routing_preference'),
+    // O fator do teto de preço que FOI AO FIO (`provider.max_price` = catálogo ×
+    // fator, ADR 0225, RN-917), congelado como o `routing_preference`. `null` =
+    // nada foi enviado (provider sem a capability, preço 0, ou a repetição sem
+    // teto depois do 404).
+    priceCeilingFactor: real('price_ceiling_factor'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

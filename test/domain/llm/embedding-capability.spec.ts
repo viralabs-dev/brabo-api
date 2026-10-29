@@ -14,6 +14,7 @@ const QUE_EMBEDA: LLMProviderCapabilities = {
   embeddings: true,
   routingPreference: false,
   stickySession: false,
+  priceCeiling: false,
   promptCaching: false,
 };
 const QUE_NAO_EMBEDA: LLMProviderCapabilities = {
@@ -21,6 +22,7 @@ const QUE_NAO_EMBEDA: LLMProviderCapabilities = {
   embeddings: false,
   routingPreference: false,
   stickySession: false,
+  priceCeiling: false,
   promptCaching: false,
 };
 

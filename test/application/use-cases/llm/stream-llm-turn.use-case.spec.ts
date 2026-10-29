@@ -95,6 +95,7 @@ class FakeProvider implements LLMProvider {
     embeddings: false,
     routingPreference: false,
     stickySession: false,
+    priceCeiling: false,
     promptCaching: false,
   };
   constructor(private readonly script: ChatStreamChunk[]) {}
@@ -356,5 +357,60 @@ describe('StreamLlmTurnUseCase', () => {
       .from(tokenUsage)
       .where(eq(tokenUsage.sessionId, session.id));
     expect(linhas).toHaveLength(2);
+  });
+  it('404 por nenhum upstream no teto: repete UMA vez sem teto, fator nulo na segunda linha (AT-606, RN-917)', async () => {
+    const { project, session, model } = await setup();
+    await db
+      .update(models)
+      .set({
+        inputPricePerMillionMicros: 140_000,
+        outputPricePerMillionMicros: 420_000,
+      })
+      .where(eq(models.id, model.id));
+    const recusa: ChatStreamChunk[] = [
+      {
+        type: 'error',
+        code: 'price_ceiling',
+        message: 'nenhum upstream cabe no teto de preço (404)',
+      },
+    ];
+    const ok: ChatStreamChunk[] = [
+      { type: 'text_delta', text: 'pronto' },
+      { type: 'usage', inputTokens: 10, outputTokens: 2, estimated: false },
+    ];
+    const roteiros = [recusa, ok];
+    const provider = new FakeProvider([]);
+    Object.assign(provider.capabilities, { priceCeiling: true });
+    provider.chat = async function* (_m?: unknown, options?: unknown) {
+      await Promise.resolve();
+      const n = provider.recebidas.push(options) - 1;
+      for (const chunk of roteiros[n]) yield chunk;
+    };
+    const eventos = await coletar(
+      buildUseCase(provider).execute({
+        projectId: project.id,
+        sessionId: session.id,
+        agentId: 'po',
+        messages: [{ role: 'user', content: 'oi' }],
+      }),
+    );
+    const final = eventos.at(-1);
+    if (final?.type !== 'final') throw new Error('esperava um frame final');
+    expect(final.error).toBeNull();
+    expect(final.message.content).toBe('pronto');
+    expect(provider.recebidas).toHaveLength(2);
+    expect(provider.recebidas[0]).toMatchObject({
+      priceCeiling: {
+        inputPerMillionMicros: 210_000,
+        outputPerMillionMicros: 630_000,
+      },
+    });
+    expect(provider.recebidas[1]).not.toHaveProperty('priceCeiling');
+    const linhas = await db
+      .select()
+      .from(tokenUsage)
+      .where(eq(tokenUsage.sessionId, session.id))
+      .orderBy(tokenUsage.createdAt);
+    expect(linhas.map((l) => l.priceCeilingFactor)).toEqual([1.5, null]);
   });
 });

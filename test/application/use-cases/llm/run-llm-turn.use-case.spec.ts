@@ -96,6 +96,7 @@ class FakeProvider implements LLMProvider {
     embeddings: false,
     routingPreference: false,
     stickySession: false,
+    priceCeiling: false,
     promptCaching: false,
   };
   constructor(private readonly script: ChatStreamChunk[]) {}
@@ -114,6 +115,7 @@ class ThrowingProvider implements LLMProvider {
     embeddings: false,
     routingPreference: false,
     stickySession: false,
+    priceCeiling: false,
     promptCaching: false,
   };
   async *chat(): AsyncGenerator<ChatStreamChunk> {
@@ -420,6 +422,7 @@ describe('RunLlmTurnUseCase — preferência de roteamento (ADR 0166, RN-583)', 
         embeddings: false,
         routingPreference: aceitaRoteamento,
         stickySession: false,
+        priceCeiling: false,
       };
     }
     async *chat(

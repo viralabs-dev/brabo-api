@@ -44,6 +44,7 @@ class ProviderFalso extends LLMProvider {
     embeddings: true,
     routingPreference: false,
     stickySession: false,
+    priceCeiling: false,
     promptCaching: false,
   };
   chaveRecebida: string | undefined = undefined;
@@ -89,6 +90,7 @@ class ProviderSemCatalogo extends LLMProvider {
     embeddings: false,
     routingPreference: false,
     stickySession: false,
+    priceCeiling: false,
     promptCaching: false,
   };
 

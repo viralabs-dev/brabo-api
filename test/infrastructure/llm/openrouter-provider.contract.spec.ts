@@ -7,6 +7,7 @@ import {
   OpenRouterProvider,
   campoDeRoteamentoOpenRouter,
   campoDeSessaoOpenRouter,
+  campoDeTetoDePrecoOpenRouter,
   marcarCacheDePromptOpenRouter,
   extrairCustoRealOpenRouter,
   openrouterConfig,
@@ -138,6 +139,9 @@ describe('OpenRouterProvider — quirks (Fase 11a)', () => {
       // Provada contra a API real em 2026-10-21
       // (`openrouter-provider.sessao.smoke.spec.ts`, ADR 0221, AT-580).
       stickySession: true,
+      // Provada contra a API real em 2026-10-28
+      // (`openrouter-provider.teto.smoke.spec.ts`, ADR 0225, AT-606).
+      priceCeiling: true,
       // Provada contra a API real em 2026-10-15
       // (`openrouter-provider.cache.smoke.spec.ts`, RN-892, AT-543).
       promptCaching: true,
@@ -797,5 +801,93 @@ describe('OpenRouterProvider — chave de sessão (ADR 0221, RN-907)', () => {
         }),
     ).toThrow(/stickySession.*campoDeSessao/);
     expect(campoDeSessaoOpenRouter('k')).toEqual({ session_id: 'k' });
+  });
+});
+
+describe('OpenRouterProvider — teto de preço (ADR 0225, RN-917)', () => {
+  const TETO = {
+    inputPerMillionMicros: 210_000,
+    outputPerMillionMicros: 630_000,
+  };
+  const criar = (baseUrl: string, priceCeiling = true) => {
+    const base = openrouterConfig(baseUrl);
+    return new OpenAICompatibleProvider(
+      { ...base, capabilities: { ...base.capabilities, priceCeiling } },
+      new GptTokenizerEstimator(),
+    );
+  };
+  async function drenar(
+    provider: OpenAICompatibleProvider,
+    extra: Record<string, unknown>,
+  ) {
+    const chunks: ChatStreamChunk[] = [];
+    for await (const c of provider.chat([{ role: 'user', content: 'oi' }], {
+      model: 'deepseek/deepseek-v4.1-flash',
+      ...extra,
+    })) {
+      chunks.push(c);
+    }
+    return chunks;
+  }
+
+  it('o formato é provider.max_price em US$ por milhão', () => {
+    expect(campoDeTetoDePrecoOpenRouter(TETO)).toEqual({
+      provider: { max_price: { prompt: 0.21, completion: 0.63 } },
+    });
+  });
+
+  it('com sort E teto, o objeto provider é MESCLADO (o sort não some)', async () => {
+    const servidor = await subirServidorFalso(dialetoOpenRouter);
+    await drenar(criar(servidor.baseUrl), {
+      routingPreference: 'price',
+      priceCeiling: TETO,
+    });
+    const corpo = servidor.ultimoPedido();
+    await servidor.fechar();
+    expect(corpo?.provider).toEqual({
+      sort: 'price',
+      max_price: { prompt: 0.21, completion: 0.63 },
+    });
+  });
+
+  it('sem a capability, ou sem teto, NADA de max_price', async () => {
+    const servidor = await subirServidorFalso(dialetoOpenRouter);
+    await drenar(criar(servidor.baseUrl, false), { priceCeiling: TETO });
+    const desligada = servidor.ultimoPedido();
+    await drenar(criar(servidor.baseUrl), { routingPreference: 'price' });
+    const semTeto = servidor.ultimoPedido();
+    await servidor.fechar();
+    expect(desligada).not.toHaveProperty('provider');
+    expect(semTeto?.provider).toEqual({ sort: 'price' });
+  });
+
+  it('404 COM teto vira price_ceiling; 404 sem teto segue model_not_found', async () => {
+    const servidor = await subirServidorFalso(dialetoOpenRouter);
+    servidor.usar('erro_404');
+    const comTeto = await drenar(criar(servidor.baseUrl), {
+      priceCeiling: TETO,
+    });
+    const semTeto = await drenar(criar(servidor.baseUrl), {});
+    await servidor.fechar();
+    expect(comTeto.at(-1)).toMatchObject({
+      type: 'error',
+      code: 'price_ceiling',
+    });
+    expect(semTeto.at(-1)).toMatchObject({
+      type: 'error',
+      code: 'model_not_found',
+    });
+  });
+
+  it('capability sem `campoDeTetoDePreco` falha na construção', () => {
+    const base = openrouterConfig('http://127.0.0.1:1');
+    expect(
+      () =>
+        new OpenAICompatibleProvider({
+          ...base,
+          campoDeTetoDePreco: undefined,
+          capabilities: { ...base.capabilities, priceCeiling: true },
+        }),
+    ).toThrow(/priceCeiling.*campoDeTetoDePreco/);
   });
 });

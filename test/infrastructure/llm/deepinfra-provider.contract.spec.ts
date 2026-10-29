@@ -141,6 +141,7 @@ describe('DeepInfraProvider — quirks (Fase 11b)', () => {
       embeddings: false,
       routingPreference: false,
       stickySession: false,
+      priceCeiling: false,
       promptCaching: false,
     });
     expect(DEEPINFRA_BASE_URL).toBe('https://api.deepinfra.com/v1/openai');

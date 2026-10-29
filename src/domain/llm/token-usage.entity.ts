@@ -53,5 +53,7 @@ export interface TokenUsage {
    * o preço. `null` = nada foi enviado.
    */
   routingPreference: RoutingPreference | null;
+  /** O fator do teto de preço que FOI AO FIO (ADR 0225), congelado como o preço. */
+  priceCeilingFactor: number | null;
   createdAt: Date;
 }
