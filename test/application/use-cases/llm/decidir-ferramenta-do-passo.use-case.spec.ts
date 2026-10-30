@@ -595,6 +595,34 @@ describe('DecidirFerramentaDoPassoUseCase — o recorte não vira incapacidade (
     expect(msgs).toHaveLength(4);
   });
 
+  it('PO recortado pelo Jev mantém `declare_open_question` (AT-615, RN-942)', async () => {
+    const s = await setup();
+    const r = await montar(
+      new RoteadorFalso(() => decidiu('create_story')),
+    ).decidir(
+      base(s, {
+        agentId: 'po',
+        tools: [...PO, tool('declare_open_question')],
+        messages: execucaoCom('po', 'listar_backlog'),
+      }),
+    );
+    expect(r.tools?.map((t) => t.name)).toContain('declare_open_question');
+  });
+
+  it('o piso do PO não acrescenta `declare_open_question` que o catálogo não tinha (AT-615)', async () => {
+    const s = await setup();
+    const r = await montar(
+      new RoteadorFalso(() => decidiu('create_story')),
+    ).decidir(
+      base(s, {
+        agentId: 'po',
+        tools: PO,
+        messages: execucaoCom('po', 'listar_backlog'),
+      }),
+    );
+    expect(r.tools?.map((t) => t.name)).not.toContain('declare_open_question');
+  });
+
   it('Arquiteto com 2 de 9 pelo Jev: as cinco de artefato (mapa, roteamento, contratos, ADR, C4) nunca saem', async () => {
     const s = await setup();
     const r = await montar(

@@ -309,7 +309,8 @@ export function precoImplicitoPorMilhao(
  * acrescenta ferramenta que o agente não tinha (P3 intacto).
  */
 export const PISO_DO_MENU: Readonly<Record<string, readonly string[]>> = {
-  po: ['create_story', 'create_task'],
+  // AT-615 (RN-942): a regra 3 do PO manda declarar a dúvida, e o recorte a tirava.
+  po: ['create_story', 'create_task', 'declare_open_question'],
   arquiteto: [
     'create_module_map',
     // Obrigações do kickoff do Arquiteto que faltavam (AT-481, RN-809): sem
