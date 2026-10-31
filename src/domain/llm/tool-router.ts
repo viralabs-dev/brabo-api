@@ -417,9 +417,9 @@ export function avisoDeRecorte(
     role: 'system',
     content:
       `Neste passo você recebeu um recorte de ${menuDepois.length} das suas ferramentas ` +
-      `(${menuDepois.join(', ')}); as outras ${ocultas} seguem disponíveis e voltam ` +
-      'nas próximas voltas deste turno. Não conclua que não tem uma ferramenta ' +
-      'por ela não estar neste recorte, nem encerre o turno esperando por ela: ' +
-      'faça o passo atual e ela volta no seguinte.',
+      `(${menuDepois.join(', ')}); as outras ${ocultas} seguem disponíveis e podem ser ` +
+      'pedidas neste mesmo passo. Não conclua que não tem uma ferramenta por ela não ' +
+      'estar neste recorte, nem encerre o turno esperando por ela: se precisar de uma ' +
+      'delas, responda sem ferramenta e este passo é refeito com o catálogo completo.',
   };
 }
