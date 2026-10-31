@@ -180,6 +180,14 @@ export interface OpenAICompatibleConfig {
   readonly campoDeRaciocinioDesligado?: CampoDeRaciocinioDesligado;
   /** Só quem aceita ponto de cache explícito — ver `MarcarCacheDePrompt`. */
   readonly marcarCacheDePrompt?: MarcarCacheDePrompt;
+  /**
+   * Só quem devolve `usage` que o próprio gateway distorce (AT-638, RN-958):
+   * recebe o `usage` cru do frame e devolve o que vale gravar. Ausente = o
+   * `usage` é lido como veio, como sempre foi.
+   */
+  readonly normalizarUsage?: (
+    usage: Record<string, unknown>,
+  ) => Record<string, unknown>;
 }
 
 /**
@@ -374,20 +382,22 @@ export class OpenAICompatibleProvider implements LLMProvider {
 
         if (frame.usage) {
           usageRecebido = true;
-          const costMicros = this.config.extrairCustoReal?.(frame.usage);
+          const usage = (this.config.normalizarUsage?.(frame.usage) ??
+            frame.usage) as NonNullable<FrameDeChat['usage']>;
+          const costMicros = this.config.extrairCustoReal?.(usage);
           // PARTES da entrada e da saída que o dialeto informa (RN-666): campos
           // da própria OpenAI, lidos para todo provider — quem não os manda
           // fica sem, e "não disse" nunca vira 0.
           const cachedInputTokens = contagem(
-            frame.usage.prompt_tokens_details?.cached_tokens,
+            usage.prompt_tokens_details?.cached_tokens,
           );
           const reasoningTokens = contagem(
-            frame.usage.completion_tokens_details?.reasoning_tokens,
+            usage.completion_tokens_details?.reasoning_tokens,
           );
           yield {
             type: 'usage',
-            inputTokens: frame.usage.prompt_tokens ?? 0,
-            outputTokens: frame.usage.completion_tokens ?? 0,
+            inputTokens: usage.prompt_tokens ?? 0,
+            outputTokens: usage.completion_tokens ?? 0,
             estimated: false,
             ...(upstreamProvider ? { upstreamProvider } : {}),
             ...(costMicros !== undefined ? { costMicros } : {}),

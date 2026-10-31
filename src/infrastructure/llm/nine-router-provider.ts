@@ -1,6 +1,12 @@
-import { Injectable, Optional } from '@nestjs/common';
-import type { ModeloDoCatalogo } from '@brabo/shared';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import type {
+  ChatMessage,
+  ChatOptions,
+  ChatStreamChunk,
+  ModeloDoCatalogo,
+} from '@brabo/shared';
 import { TokenEstimator } from '../../application/ports/token-estimator.port';
+import { getJson } from './http-stream';
 import {
   OpenAICompatibleProvider,
   type OpenAICompatibleConfig,
@@ -76,6 +82,69 @@ export function parseCatalogo9Router(corpo: unknown): ModeloDoCatalogo[] {
 }
 
 /**
+ * O 9Router 0.5.112 SOMA 2 000 a `prompt_tokens` no frame final (`O9`, no
+ * bundle dele), inclusive sobre o usage estimado (AT-638, RN-958). Só as
+ * versões nesta tabela são corrigidas: subtrair numa versão que consertou o
+ * bug gravaria MENOS do que foi cobrado.
+ */
+export const INFLACAO_DE_PROMPT_POR_VERSAO: Readonly<Record<string, number>> = {
+  '0.5.112': 2000,
+};
+
+const TETO_DA_VERSAO_MS = 2000;
+const logger = new Logger('NineRouterProvider');
+const avisadas = new Set<string>();
+
+/** `currentVersion` de `GET <origem>/api/version` (público), ou `undefined`. */
+export async function versaoDo9Router(
+  baseUrl: string,
+): Promise<string | undefined> {
+  try {
+    const { status, body } = await getJson({
+      url: `${new URL(baseUrl).origin}/api/version`,
+      headers: {},
+      timeoutMs: TETO_DA_VERSAO_MS,
+      timeoutEnvName: 'timeout fixo de 2 s da versão',
+      provider: '9router',
+    });
+    if (status !== 200) return undefined;
+    const v = (JSON.parse(body) as { currentVersion?: unknown }).currentVersion;
+    return typeof v === 'string' && v ? v : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function normalizarUsage9Router(
+  usage: Record<string, unknown>,
+  versao: string | undefined,
+): Record<string, unknown> {
+  const saida = { ...usage };
+  const inflacao = versao ? INFLACAO_DE_PROMPT_POR_VERSAO[versao] : undefined;
+  if (inflacao !== undefined && typeof saida.prompt_tokens === 'number') {
+    saida.prompt_tokens = Math.max(0, saida.prompt_tokens - inflacao);
+  } else if (inflacao === undefined && !avisadas.has(versao ?? '?')) {
+    avisadas.add(versao ?? '?');
+    logger.warn(
+      `9Router ${versao ?? 'de versão ilegível'} sem correção de usage conhecida: gravado como veio`,
+    );
+  }
+  // `cached_tokens` vem no TOPO do usage; a base lê o aninhado.
+  const topo = saida.cached_tokens;
+  const detalhes = saida.prompt_tokens_details as
+    { cached_tokens?: unknown } | undefined;
+  if (
+    typeof topo === 'number' &&
+    Number.isInteger(topo) &&
+    topo >= 0 &&
+    detalhes?.cached_tokens === undefined
+  ) {
+    saida.prompt_tokens_details = { ...detalhes, cached_tokens: topo };
+  }
+  return saida;
+}
+
+/**
  * `streaming: true` é o que a suite de contrato exige de TODO provider (a base
  * só fala SSE). As demais ficam `false` além do `listModels`: nenhum smoke
  * com chave rodou ainda (ADR 0041) — o 9Router depende mais de prova que os
@@ -86,6 +155,7 @@ export function parseCatalogo9Router(corpo: unknown): ModeloDoCatalogo[] {
  */
 export function nineRouterConfig(
   baseUrl: string = nineRouterBaseUrl(),
+  versao: () => string | undefined = () => undefined,
 ): OpenAICompatibleConfig {
   return {
     name: '9router',
@@ -109,12 +179,33 @@ export function nineRouterConfig(
       maxTokensField: 'max_tokens',
     },
     parseCatalogo: parseCatalogo9Router,
+    normalizarUsage: (usage) => normalizarUsage9Router(usage, versao()),
   };
 }
 
 @Injectable()
 export class NineRouterProvider extends OpenAICompatibleProvider {
+  private readonly versao: { valor?: string; ate: number };
+
   constructor(@Optional() tokenEstimator?: TokenEstimator) {
-    super(nineRouterConfig(), tokenEstimator);
+    const versao: { valor?: string; ate: number } = { ate: 0 };
+    super(
+      nineRouterConfig(undefined, () => versao.valor),
+      tokenEstimator,
+    );
+    this.versao = versao;
+  }
+
+  /** Versão lida antes do stream: cache de 5 min no sucesso, 1 min na falha. */
+  async *chat(
+    messages: ChatMessage[],
+    options: ChatOptions,
+  ): AsyncGenerator<ChatStreamChunk> {
+    if (Date.now() >= this.versao.ate) {
+      const v = await versaoDo9Router(nineRouterBaseUrl());
+      this.versao.valor = v;
+      this.versao.ate = Date.now() + (v ? 300_000 : 60_000);
+    }
+    yield* super.chat(messages, options);
   }
 }

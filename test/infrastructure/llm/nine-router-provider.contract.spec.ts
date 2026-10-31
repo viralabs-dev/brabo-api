@@ -1,6 +1,9 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { Logger } from '@nestjs/common';
 import { createServer } from 'node:http';
 import type { ServerResponse } from 'node:http';
+import { openaiConfig } from '../../../src/infrastructure/llm/openai-provider';
+import { openrouterConfig } from '../../../src/infrastructure/llm/openrouter-provider';
 import { OpenAICompatibleProvider } from '../../../src/infrastructure/llm/openai-compatible-provider';
 import {
   NINE_ROUTER_BASE_URL_PADRAO,
@@ -189,5 +192,109 @@ describe('parseCatalogo9Router (fixture SINTÉTICA)', () => {
   it('corpo sem `data` vira vazio, sem exceção', () => {
     expect(parseCatalogo9Router({})).toEqual([]);
     expect(parseCatalogo9Router(null)).toEqual([]);
+  });
+});
+
+describe('NineRouterProvider: usage corrigido (AT-638, RN-958)', () => {
+  afterEach(() => {
+    delete process.env.NINE_ROUTER_BASE_URL;
+    vi.restoreAllMocks();
+  });
+
+  /** `versao`: corpo/status de /api/version; `usage`: o frame final do stream. */
+  async function usageDe(
+    versao: { status: number; corpo: string } | 'lento',
+    usage: Record<string, unknown>,
+  ) {
+    const servidor = createServer((req, res) => {
+      if (req.url === '/api/version') {
+        if (versao === 'lento') return; // nunca responde: estoura os 2 s
+        res.writeHead(versao.status);
+        res.end(versao.corpo);
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+      escrever(res, { choices: [{ delta: { content: 'ok' } }] });
+      escrever(res, { choices: [], usage });
+      res.write('data: [DONE]\n\n');
+      res.end();
+    });
+    await new Promise<void>((r) => servidor.listen(0, '127.0.0.1', r));
+    try {
+      const porta = (servidor.address() as { port: number }).port;
+      process.env.NINE_ROUTER_BASE_URL = `http://127.0.0.1:${porta}/v1`;
+      const chunks = [];
+      for await (const c of new NineRouterProvider().chat(
+        [{ role: 'user', content: 'oi' }],
+        { model: 'cc/x', apiKey: 'k' },
+      )) {
+        chunks.push(c);
+      }
+      return chunks.find((c) => c.type === 'usage');
+    } finally {
+      servidor.closeAllConnections();
+      servidor.close();
+    }
+  }
+  const v = (currentVersion: string) => ({
+    status: 200,
+    corpo: JSON.stringify({ currentVersion }),
+  });
+
+  it('0.5.112: subtrai 2 000 do prompt_tokens', async () => {
+    expect(
+      await usageDe(v('0.5.112'), {
+        prompt_tokens: 2039,
+        completion_tokens: 4,
+      }),
+    ).toMatchObject({ inputTokens: 39, outputTokens: 4 });
+  });
+
+  it('0.5.112: piso em 0', async () => {
+    expect(await usageDe(v('0.5.112'), { prompt_tokens: 1500 })).toMatchObject({
+      inputTokens: 0,
+    });
+  });
+
+  it('outra versão: grava como veio e avisa', async () => {
+    const aviso = vi.spyOn(Logger.prototype, 'warn');
+    expect(await usageDe(v('0.5.113'), { prompt_tokens: 2039 })).toMatchObject({
+      inputTokens: 2039,
+    });
+    expect(aviso).toHaveBeenCalledWith(expect.stringContaining('0.5.113'));
+  });
+
+  it.each([
+    ['404', { status: 404, corpo: '' }],
+    ['corpo inválido', { status: 200, corpo: 'nao-json' }],
+    ['sem currentVersion', { status: 200, corpo: '{}' }],
+  ] as const)(
+    '/api/version %s: não subtrai nem derruba o turno',
+    async (_n, ver) => {
+      expect(await usageDe(ver, { prompt_tokens: 2039 })).toMatchObject({
+        inputTokens: 2039,
+      });
+    },
+  );
+
+  it('/api/version lento: estoura em 2 s, não subtrai', async () => {
+    expect(await usageDe('lento', { prompt_tokens: 2039 })).toMatchObject({
+      inputTokens: 2039,
+    });
+  }, 10_000);
+
+  it('cached_tokens do topo vira cachedInputTokens; ausente continua ausente', async () => {
+    const com = await usageDe(v('0.5.112'), {
+      prompt_tokens: 3000,
+      cached_tokens: 1720,
+    });
+    expect(com).toMatchObject({ cachedInputTokens: 1720 });
+    const sem = await usageDe(v('0.5.112'), { prompt_tokens: 3000 });
+    expect(sem).not.toHaveProperty('cachedInputTokens');
+  });
+
+  it('outros providers não configuram o hook (nada muda)', () => {
+    expect(openaiConfig().normalizarUsage).toBeUndefined();
+    expect(openrouterConfig().normalizarUsage).toBeUndefined();
   });
 });

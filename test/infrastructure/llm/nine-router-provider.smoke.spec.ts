@@ -3,6 +3,7 @@ import type { ChatMessage, ChatStreamChunk, ToolDef } from '@brabo/shared';
 import { OpenAICompatibleProvider } from '../../../src/infrastructure/llm/openai-compatible-provider';
 import {
   NINE_ROUTER_TOKEN_SAVER_HEADER,
+  NineRouterProvider,
   nineRouterBaseUrl,
   nineRouterConfig,
 } from '../../../src/infrastructure/llm/nine-router-provider';
@@ -138,6 +139,18 @@ describe.skipIf(!apiKey || !modelo)(
       console.log('[smoke] cabeçalhos x-*:', JSON.stringify(cabecalhos));
       expect(resp.status).toBe(200);
       expect(NINE_ROUTER_TOKEN_SAVER_HEADER).toBe('x-9router-token-saver');
+    }, 120_000);
+
+    it('NineRouterProvider: "ok" sai sem os 2 000 inventados (AT-638, RN-958)', async () => {
+      const chunks = await coletar(
+        new NineRouterProvider().chat(
+          [{ role: 'user', content: 'Responda só: ok' }],
+          { model: modelo as string, apiKey, maxTokens: 16 },
+        ),
+      );
+      const uso = chunks.find((c) => c.type === 'usage');
+      console.log('[smoke] usage gravado:', JSON.stringify(uso));
+      expect(uso?.type === 'usage' && uso.inputTokens).toBeLessThan(100);
     }, 120_000);
   },
 );
