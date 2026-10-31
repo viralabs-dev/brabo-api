@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { GraphProjector } from '../../../src/application/graph-projection/graph-projector';
 import { RecordHandoffUseCase } from '../../../src/application/use-cases/graph/record-handoff.use-case';
@@ -28,12 +29,12 @@ function fakeGraphStore(run: GraphTx['run']): GraphStore {
   } as unknown as GraphStore;
 }
 
-function unavailableGraphStore(): GraphStore {
+function unavailableGraphStore(causa?: unknown): GraphStore {
   return {
     executeWrite: () =>
-      Promise.reject(new GraphUnavailableError('Neo4j fora do ar.')),
+      Promise.reject(new GraphUnavailableError('Neo4j fora do ar.', causa)),
     executeRead: () =>
-      Promise.reject(new GraphUnavailableError('Neo4j fora do ar.')),
+      Promise.reject(new GraphUnavailableError('Neo4j fora do ar.', causa)),
   } as unknown as GraphStore;
 }
 
@@ -474,6 +475,48 @@ describe('GraphProjector', () => {
     await projector.drainOnce();
 
     expect(outbox.rows[0].processedAt).toBeNull();
+  });
+
+  it('RN-960: o aviso de indisponível diz a causa', async () => {
+    const aviso = vi.spyOn(Logger.prototype, 'warn').mockImplementation();
+    const outbox = new FakeOutbox();
+    const sessionEvents = new FakeSessionEvents();
+    sessionEvents.events.set(
+      'evt-handoff',
+      makeEvent({
+        id: 'evt-handoff',
+        sessionId: 'sess-1',
+        seq: 1,
+        type: 'handoff.offered',
+        payload: { toAgent: 'arquiteto' },
+      }),
+    );
+    await outbox.append({
+      aggregateType: GRAPH_PROJECTION_AGGREGATE_TYPE,
+      aggregateId: 'sess-1',
+      eventType: 'handoff.offered',
+      payload: { eventId: 'evt-handoff' },
+    });
+    const graph = unavailableGraphStore(
+      new Error('Failed to connect to server'),
+    );
+    const projector = new GraphProjector(
+      outbox,
+      sessionEvents,
+      new FakeSessions(),
+      new RecordHandoffUseCase(graph),
+      new RecordHypothesisUseCase(graph),
+      new RecordAnamneseProfileUseCase(graph),
+      new RecordInteractionUseCase(graph),
+      new RecordProfileFactUseCase(graph),
+    );
+
+    await projector.drainOnce();
+
+    expect(aviso).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to connect to server'),
+    );
+    aviso.mockRestore();
   });
 
   it('degradação: um item indisponível não impede o retry — o próximo drainOnce processa quando o grafo volta', async () => {

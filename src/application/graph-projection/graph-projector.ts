@@ -119,7 +119,7 @@ export class GraphProjector implements OnModuleInit, OnModuleDestroy {
         } catch (error) {
           if (error instanceof GraphUnavailableError) {
             this.logger.warn(
-              `Neo4j indisponível — outbox ${row.id} (${row.eventType}) ` +
+              `Neo4j indisponível (${describeError(error.cause ?? error)}) — outbox ${row.id} (${row.eventType}) ` +
                 'permanece para retry; parando o ciclo (o resto do lote ' +
                 'falharia pelo mesmo motivo).',
             );
