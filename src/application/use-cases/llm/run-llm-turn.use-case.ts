@@ -33,6 +33,7 @@ import {
   devoRetentarSemRaciocinio,
   opcoesDeRaciocinio,
 } from '../../../domain/llm/raciocinio-do-agente';
+import { marcacaoDeChamadaEmTexto } from '../../../domain/llm/chamada-em-texto';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
 
 export interface RunLlmTurnInput {
@@ -181,6 +182,8 @@ export class RunLlmTurnUseCase {
     // AT-587 (RN-916): no máximo DUAS chamadas; a segunda com o raciocínio desligado.
     let semRaciocinio = false;
     let semTeto = false;
+    let semChamadaEmTexto = false;
+    const nomesDeFerramenta = (decisaoDoJev.tools ?? []).map((t) => t.name);
     for (;;) {
       const comTeto = teto !== null && !semTeto;
       let fullText = '';
@@ -305,6 +308,23 @@ export class RunLlmTurnUseCase {
         semTeto = true;
         continue;
       }
+      // AT-633 (RN-949): a chamada veio escrita como TEXTO — UMA retentativa,
+      // flag própria; na segunda, falha NOMEADA (origem modelo) e o texto cru
+      // nunca sai da api.
+      const marcador =
+        toolCalls.length === 0
+          ? marcacaoDeChamadaEmTexto(fullText, nomesDeFerramenta)
+          : null;
+      if (marcador && !semChamadaEmTexto) {
+        semChamadaEmTexto = true;
+        continue;
+      }
+      if (marcador) {
+        return {
+          ...falhaDeChamadaEmTexto(model.name, marcador),
+          usage: { inputTokens, outputTokens, costMicros, estimated },
+        };
+      }
       if (
         !semRaciocinio &&
         devoRetentarSemRaciocinio({
@@ -344,6 +364,16 @@ function errorResult(
     usage: { inputTokens: 0, outputTokens: 0, costMicros: 0, estimated: true },
     error: message,
     errorCode: null,
+    modelName,
+  };
+}
+
+/** AT-633 (RN-949): a segunda resposta também veio com a chamada escrita como texto. */
+function falhaDeChamadaEmTexto(modelName: string, marcador: string) {
+  return {
+    message: { role: 'assistant' as const, content: '', toolCalls: [] },
+    error: `O modelo ${modelName} escreveu a chamada de ferramenta como texto (${marcador}) em vez de usar o canal de ferramentas, duas vezes seguidas.`,
+    errorCode: 'tool_call_as_text' as LLMErrorCode,
     modelName,
   };
 }

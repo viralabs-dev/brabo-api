@@ -575,4 +575,73 @@ describe('RunLlmTurnUseCase — retentativa sem raciocínio (AT-587, RN-916)', (
     expect(provider.opcoesRecebidas).toHaveLength(1);
     expect(linhas).toHaveLength(1);
   });
+
+  describe('chamada escrita como texto (AT-633, RN-949)', () => {
+    const XML =
+      'Registrei.\n<invoke name="read_file">\n<parameter name="path">a</parameter>\n</invoke>';
+    const ferramentas = [
+      { name: 'read_file', description: 'lê', parameters: {} },
+    ];
+    const usage: ChatStreamChunk = {
+      type: 'usage',
+      inputTokens: 5,
+      outputTokens: 2,
+      estimated: false,
+    };
+    function comRoteiros(roteiros: ChatStreamChunk[][]) {
+      const provider = new FakeProvider([]);
+      let n = 0;
+      provider.chat = async function* () {
+        await Promise.resolve();
+        for (const c of roteiros[n++]) yield c;
+      };
+      return { provider, chamadas: () => n };
+    }
+
+    it('duas vezes: erro tool_call_as_text, content vazio, 2 linhas de uso, nenhum <invoke> sai', async () => {
+      const { project, session } = await setup();
+      const { provider, chamadas } = comRoteiros([
+        [{ type: 'text_delta', text: XML }, usage],
+        [{ type: 'text_delta', text: XML }, usage],
+      ]);
+      const r = await buildUseCase(provider).execute({
+        projectId: project.id,
+        sessionId: session.id,
+        agentId: 'po',
+        messages: [{ role: 'user', content: 'oi' }],
+        tools: ferramentas,
+      });
+      expect(r.errorCode).toBe('tool_call_as_text');
+      expect(r.message.content).toBe('');
+      expect(r.error).toContain('llama3.2:3b');
+      const linhas = await db
+        .select()
+        .from(tokenUsage)
+        .where(eq(tokenUsage.sessionId, session.id));
+      expect(linhas).toHaveLength(2);
+      expect(chamadas()).toBe(2);
+    });
+
+    it('segunda resposta limpa: resposta normal e 2 linhas de uso', async () => {
+      const { project, session } = await setup();
+      const { provider } = comRoteiros([
+        [{ type: 'text_delta', text: XML }, usage],
+        [{ type: 'text_delta', text: 'pronto' }, usage],
+      ]);
+      const r = await buildUseCase(provider).execute({
+        projectId: project.id,
+        sessionId: session.id,
+        agentId: 'po',
+        messages: [{ role: 'user', content: 'oi' }],
+        tools: ferramentas,
+      });
+      expect(r.error).toBeNull();
+      expect(r.message.content).toBe('pronto');
+      const linhas = await db
+        .select()
+        .from(tokenUsage)
+        .where(eq(tokenUsage.sessionId, session.id));
+      expect(linhas).toHaveLength(2);
+    });
+  });
 });
