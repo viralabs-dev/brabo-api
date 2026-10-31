@@ -413,4 +413,85 @@ describe('StreamLlmTurnUseCase', () => {
       .orderBy(tokenUsage.createdAt);
     expect(linhas.map((l) => l.priceCeilingFactor)).toEqual([1.5, null]);
   });
+
+  describe('chamada escrita como texto (AT-633, RN-949)', () => {
+    const XML =
+      'Registrei.\n<invoke name="read_file">\n<parameter name="path">a</parameter>\n</invoke>';
+    const ferramentas = [
+      { name: 'read_file', description: 'lê', parameters: {} },
+    ];
+    const usage: ChatStreamChunk = {
+      type: 'usage',
+      inputTokens: 5,
+      outputTokens: 2,
+      estimated: false,
+    };
+    function comRoteiros(roteiros: ChatStreamChunk[][]) {
+      const provider = new FakeProvider([]);
+      let n = 0;
+      provider.chat = async function* () {
+        await Promise.resolve();
+        for (const c of roteiros[n++]) yield c;
+      };
+      return { provider, chamadas: () => n };
+    }
+
+    it('duas vezes: erro tool_call_as_text, content vazio, 2 linhas de uso, nenhum <invoke> sai', async () => {
+      const { project, session } = await setup();
+      const { provider, chamadas } = comRoteiros([
+        [{ type: 'text_delta', text: XML }, usage],
+        [{ type: 'text_delta', text: XML }, usage],
+      ]);
+      const eventos = await coletar(
+        buildUseCase(provider).execute({
+          projectId: project.id,
+          sessionId: session.id,
+          agentId: 'po',
+          messages: [{ role: 'user', content: 'oi' }],
+          tools: ferramentas,
+        }),
+      );
+      const final = eventos.at(-1);
+      if (final?.type !== 'final') throw new Error('esperava final');
+      expect(final.errorCode).toBe('tool_call_as_text');
+      expect(final.message.content).toBe('');
+      expect(final.error).toContain('llama3.2:3b');
+      const deltas = eventos.flatMap((e) =>
+        e.type === 'delta' ? [e.text] : [],
+      );
+      expect(deltas.join('')).not.toContain('<invoke');
+      const linhas = await db
+        .select()
+        .from(tokenUsage)
+        .where(eq(tokenUsage.sessionId, session.id));
+      expect(linhas).toHaveLength(2);
+      expect(chamadas()).toBe(2);
+    });
+
+    it('segunda resposta limpa: resposta normal e 2 linhas de uso', async () => {
+      const { project, session } = await setup();
+      const { provider } = comRoteiros([
+        [{ type: 'text_delta', text: XML }, usage],
+        [{ type: 'text_delta', text: 'pronto' }, usage],
+      ]);
+      const eventos = await coletar(
+        buildUseCase(provider).execute({
+          projectId: project.id,
+          sessionId: session.id,
+          agentId: 'po',
+          messages: [{ role: 'user', content: 'oi' }],
+          tools: ferramentas,
+        }),
+      );
+      const final = eventos.at(-1);
+      if (final?.type !== 'final') throw new Error('esperava final');
+      expect(final.error).toBeNull();
+      expect(final.message.content).toBe('pronto');
+      const linhas = await db
+        .select()
+        .from(tokenUsage)
+        .where(eq(tokenUsage.sessionId, session.id));
+      expect(linhas).toHaveLength(2);
+    });
+  });
 });
