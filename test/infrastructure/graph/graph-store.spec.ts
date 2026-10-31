@@ -96,6 +96,32 @@ describe('GraphStore', () => {
     ).rejects.toBeInstanceOf(GraphUnavailableError);
   });
 
+  it('RN-960: boot sem Neo4j reconecta na operação seguinte, no máximo 1× por 30 s', async () => {
+    configurarEnv();
+    verifyConnectivity.mockRejectedValue(new Error('fora do ar'));
+    const agora = vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
+    const store = new GraphStore();
+    await store.onModuleInit();
+    const chamadasAoBoot = driverFactory.mock.calls.length;
+
+    // Dentro dos 30 s: não tenta de novo, mesmo que o Neo4j já tenha voltado.
+    verifyConnectivity.mockResolvedValue(undefined);
+    agora.mockReturnValue(1_010_000);
+    await expect(
+      store.executeRead(() => Promise.resolve('x')),
+    ).rejects.toBeInstanceOf(GraphUnavailableError);
+    expect(driverFactory.mock.calls.length).toBe(chamadasAoBoot);
+
+    // Passados os 30 s: reconecta e a operação executa.
+    agora.mockReturnValue(1_031_000);
+    executeRead.mockImplementation((fn: (tx: unknown) => unknown) => fn({}));
+    await expect(store.executeRead(() => Promise.resolve('ok'))).resolves.toBe(
+      'ok',
+    );
+    expect(store.disponivel).toBe(true);
+    agora.mockRestore();
+  });
+
   it('conexão bem-sucedida: fica disponível e roda o bootstrap de constraints', async () => {
     configurarEnv();
     verifyConnectivity.mockResolvedValue(undefined);

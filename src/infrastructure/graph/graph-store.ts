@@ -88,12 +88,28 @@ const CONSTRAINTS: readonly string[] = [
  * erro de sintaxe Cypher ou de constraint violada, que são bugs, não
  * indisponibilidade.
  */
+const INTERVALO_DE_RECONEXAO_MS = 30_000;
+
 @Injectable()
 export class GraphStore implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(GraphStore.name);
   private driver: Driver | null = null;
 
+  private ultimaTentativa = 0;
+
   async onModuleInit(): Promise<void> {
+    await this.conectar();
+  }
+
+  /** RN-960: no máximo uma reconexão a cada 30 s depois de boot sem Neo4j. */
+  private async reconectarSeNecessario(): Promise<void> {
+    if (this.driver || !resolverConfigNeo4j()) return;
+    if (Date.now() - this.ultimaTentativa < INTERVALO_DE_RECONEXAO_MS) return;
+    await this.conectar();
+  }
+
+  private async conectar(): Promise<void> {
+    this.ultimaTentativa = Date.now();
     const config = resolverConfigNeo4j();
     if (!config) {
       this.logger.warn(
@@ -159,6 +175,7 @@ export class GraphStore implements OnModuleInit, OnModuleDestroy {
   private async executar<T>(
     work: (session: Session) => Promise<T>,
   ): Promise<T> {
+    await this.reconectarSeNecessario();
     if (!this.driver) {
       throw new GraphUnavailableError(
         'Neo4j não está configurado ou não conectou nesta instância.',
