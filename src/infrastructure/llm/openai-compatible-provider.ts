@@ -188,6 +188,14 @@ export interface OpenAICompatibleConfig {
   readonly normalizarUsage?: (
     usage: Record<string, unknown>,
   ) => Record<string, unknown>;
+  /**
+   * Só gateway que embrulha o erro do upstream noutro status (AT-639, RN-959):
+   * `undefined` = a classificação padrão por status.
+   */
+  readonly classificarErroHttp?: (
+    status: number,
+    corpo: string,
+  ) => LLMProviderError | undefined;
 }
 
 /**
@@ -294,7 +302,8 @@ export class OpenAICompatibleProvider implements LLMProvider {
               this.name,
               `nenhum upstream de ${this.name} cabe no teto de preço (404)`,
             )
-          : normalizeHttpStatus(this.name, status, corpoDoErro);
+          : (this.config.classificarErroHttp?.(status, corpoDoErro) ??
+            normalizeHttpStatus(this.name, status, corpoDoErro));
       yield toErrorChunk(erro, this.name);
       return;
     }
