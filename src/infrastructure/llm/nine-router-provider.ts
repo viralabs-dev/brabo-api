@@ -79,7 +79,10 @@ export function parseCatalogo9Router(corpo: unknown): ModeloDoCatalogo[] {
  * `streaming: true` é o que a suite de contrato exige de TODO provider (a base
  * só fala SSE). As demais ficam `false` além do `listModels`: nenhum smoke
  * com chave rodou ainda (ADR 0041) — o 9Router depende mais de prova que os
- * outros, porque o upstream muda por combo.
+ * outros, porque o upstream muda por combo. EXCETO `toolCalling: true`
+ * (RN-950), PROVADO por smoke com chave real em 2026-10-31: 3/3 chamadas em
+ * `cc/claude-haiku-5-5` devolveram `tool_calls` estruturado, 10/10 consistente
+ * a temperatura 0 e laço de 3 voltas íntegro.
  */
 export function nineRouterConfig(
   baseUrl: string = nineRouterBaseUrl(),
@@ -89,7 +92,7 @@ export function nineRouterConfig(
     baseUrl,
     capabilities: {
       streaming: true,
-      toolCalling: false,
+      toolCalling: true,
       listModels: true,
       embeddings: false,
       routingPreference: false,

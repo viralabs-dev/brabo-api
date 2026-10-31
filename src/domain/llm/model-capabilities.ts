@@ -12,11 +12,18 @@ import type { ModelBindingScope } from './model-binding-scope';
  * acaso de propósito, e é isso que a regra recusa.
  */
 export class ModelNotFitForAgentScopeError extends Error {
-  constructor(readonly model: Model) {
+  constructor(
+    readonly model: Model,
+    readonly causa: 'modelo' | 'provider' = 'modelo',
+  ) {
     super(
-      `Modelo "${model.displayName}" não faz tool calling nativo e não pode ` +
-        `ser vinculado a um agente. Use o filtro "aptos para agentes" no ` +
-        `seletor de modelos.`,
+      causa === 'provider'
+        ? `O provider "${model.provider}" não declara tool calling e o modelo ` +
+            `"${model.displayName}" não pode ser vinculado a um agente. ` +
+            `Escolha um modelo de provider que faça tool calling.`
+        : `Modelo "${model.displayName}" não faz tool calling nativo e não pode ` +
+            `ser vinculado a um agente. Use o filtro "aptos para agentes" no ` +
+            `seletor de modelos.`,
     );
     this.name = 'ModelNotFitForAgentScopeError';
   }
@@ -88,9 +95,14 @@ export function assertModelIsBindable(
 export function assertModelFitsBindingScope(
   model: Model,
   scope: ModelBindingScope,
+  /** Capability do PROVIDER (ADR 0041, segunda camada, RN-950). */
+  providerToolCalling: boolean = true,
 ): void {
   const exigeFerramentas = scope === 'agent' || scope === 'area';
   if (exigeFerramentas && !model.supportsToolCalling) {
     throw new ModelNotFitForAgentScopeError(model);
+  }
+  if (exigeFerramentas && !providerToolCalling) {
+    throw new ModelNotFitForAgentScopeError(model, 'provider');
   }
 }

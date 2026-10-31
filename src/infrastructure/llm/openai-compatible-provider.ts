@@ -617,6 +617,12 @@ export class OpenAICompatibleProvider implements LLMProvider {
     const noFio = messages.map(toWireMessage);
     // Só com a capability PROVADA (RN-892): desligada, o corpo é byte a byte
     // o de antes.
+    if ((options.tools?.length ?? 0) > 0 && !this.capabilities.toolCalling) {
+      throw new Error(
+        `O provider "${this.name}" não declara tool calling (RN-950): ` +
+          `as ferramentas pedidas não seriam enviadas.`,
+      );
+    }
     const mensagens =
       this.capabilities.promptCaching && this.config.marcarCacheDePrompt
         ? this.config.marcarCacheDePrompt(noFio, options.model)
@@ -636,10 +642,9 @@ export class OpenAICompatibleProvider implements LLMProvider {
         ? { stream_options: { include_usage: true } }
         : {}),
       // Mandar `tools: []` faz alguns compatíveis responderem 400 — só inclui
-      // quando há ferramenta, e só quando o provider declara saber usá-las.
-      ...(this.capabilities.toolCalling &&
-      options.tools &&
-      options.tools.length > 0
+      // quando há ferramenta. Ferramenta pedida a provider sem a capability
+      // LANÇA (RN-950): descartar calado foi o XML no fio da AT-637.
+      ...(options.tools && options.tools.length > 0
         ? { tools: options.tools.map(toWireTool) }
         : {}),
       ...this.camposDoHub(options),

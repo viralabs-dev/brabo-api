@@ -111,10 +111,10 @@ describe('NineRouterProvider (AT-576a, ADR 0222)', () => {
     delete process.env.NINE_ROUTER_BASE_URL;
   });
 
-  it('capabilities: streaming (exigido pelo contrato) e listModels; o resto false até o smoke com chave', () => {
+  it('capabilities: streaming (exigido pelo contrato) e listModels; toolCalling provado por smoke (31/10, RN-950); o resto false até o smoke com chave', () => {
     expect(new NineRouterProvider().capabilities).toEqual({
       streaming: true,
-      toolCalling: false,
+      toolCalling: true,
       listModels: true,
       embeddings: false,
       routingPreference: false,
