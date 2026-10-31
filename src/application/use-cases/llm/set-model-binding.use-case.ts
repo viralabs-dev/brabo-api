@@ -50,7 +50,11 @@ export class SetModelBindingUseCase {
     // Fase 9a (RN-040): um agente sem tool calling nativo falharia só lá na
     // frente, no ToolLoop, como "o modelo parou" — a lição do ADR 0020 é não
     // deixar a origem da falha para descobrir por eliminação.
-    assertModelFitsBindingScope(model, scope);
+    assertModelFitsBindingScope(
+      model,
+      scope,
+      this.llmProviders.get(model.provider).capabilities.toolCalling,
+    );
 
     // Fase 9c (RN-043): binding NOVO só para modelo que o owner ativou e que o
     // sync ainda enxerga no provider. Os bindings antigos ficam de pé — quem

@@ -79,3 +79,21 @@ describe('assertModelFitsBindingScope (RN-040)', () => {
     }
   });
 });
+
+describe('assertModelFitsBindingScope — capability do provider (RN-950)', () => {
+  it('recusa agent/area quando o provider não declara tool calling', () => {
+    for (const scope of ['agent', 'area'] as const) {
+      expect(() => assertModelFitsBindingScope(modelo(), scope, false)).toThrow(
+        /provider "openai" não declara tool calling/,
+      );
+    }
+  });
+
+  it('workspace/project/session seguem livres com provider sem tool calling', () => {
+    for (const scope of ['workspace', 'project', 'session'] as const) {
+      expect(() =>
+        assertModelFitsBindingScope(modelo(), scope, false),
+      ).not.toThrow();
+    }
+  });
+});

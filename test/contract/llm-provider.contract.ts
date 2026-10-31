@@ -244,12 +244,11 @@ export function runLLMProviderContract(
 
     it('tool calling: respeita capabilities.toolCalling', async () => {
       if (!capabilities.toolCalling) {
-        // Provider chat-only: oferecer ferramentas não pode DERRUBAR o turno —
-        // o texto continua chegando (mesma degradação por capability que o
-        // contrato de git aplica em `capabilities.pullRequests`).
-        const chunks = await rodar('stream_ok', { tools: FERRAMENTAS });
-        expect(textoDe(chunks)).toBe(TEXTO_ESPERADO);
-        expect(chunks.some((c) => c.type === 'tool_calls')).toBe(false);
+        // Provider chat-only: pedir ferramentas LANÇA nomeado (RN-950), nunca
+        // descarta calado — foi o XML no fio da AT-637.
+        await expect(
+          rodar('stream_ok', { tools: FERRAMENTAS }),
+        ).rejects.toThrow(/não declara tool calling/);
         return;
       }
 
