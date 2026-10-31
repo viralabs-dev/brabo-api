@@ -83,6 +83,7 @@ export class DrizzleModelRepository implements ModelRepository {
     input: {
       inputPricePerMillionMicros: number;
       outputPricePerMillionMicros: number;
+      manualPricing?: boolean;
     },
   ): Promise<Model> {
     const db = currentDb(this.rootDb);

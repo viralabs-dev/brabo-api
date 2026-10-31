@@ -47,6 +47,8 @@ export class UpdateModelPricingUseCase {
       const depois = await this.models.updatePricing(input.modelId, {
         inputPricePerMillionMicros: input.inputPricePerMillionMicros,
         outputPricePerMillionMicros: input.outputPricePerMillionMicros,
+        // Edição humana protege o número do sync (RN-964); o sync não mexe na marca.
+        ...(input.source === 'manual' && { manualPricing: true }),
       });
 
       // Na MESMA transação: preço trocado sem linha de auditoria é exatamente
