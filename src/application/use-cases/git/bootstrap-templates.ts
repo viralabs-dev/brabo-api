@@ -25,10 +25,21 @@ export const DIRETORIOS_DE_DEPENDENCIA = [
   'target',
 ] as const;
 
+/** RN-948 (AT-623): arquivos de dados em tempo de execução; mesma lista do engine. */
+export const ARQUIVOS_DE_DADOS = [
+  '*.db',
+  '*.db-*',
+  '*.sqlite',
+  '*.sqlite-*',
+  '*.sqlite3',
+  '*.sqlite3-*',
+] as const;
+
 export function gitignoreContent(): string {
   return `# Gerado pelo bootstrap do Brabo: dependências instaladas e build não
 # entram no repositório. Edite à vontade.
 ${DIRETORIOS_DE_DEPENDENCIA.map((d) => `${d}/`).join('\n')}
+${ARQUIVOS_DE_DADOS.join('\n')}
 .env
 `;
 }

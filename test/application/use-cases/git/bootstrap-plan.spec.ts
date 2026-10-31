@@ -3,6 +3,7 @@ import { planBootstrap } from '../../../../src/application/use-cases/git/bootstr
 import {
   BRANCHING_POLICY_PATH,
   GITIGNORE_PATH,
+  gitignoreContent,
   PR_TEMPLATE_PATH,
 } from '../../../../src/application/use-cases/git/bootstrap-templates';
 import {
@@ -172,6 +173,20 @@ describe('planBootstrap — o dry-run da adoção', () => {
 
   // RN-761 (AT-446): o `.gitignore` base só entra quando o repositório não
   // tem um — o do usuário, diferente do template, nunca é sobrescrito.
+  it('RN-948: o `.gitignore` base traz os seis padrões de arquivo de dados', () => {
+    const linhas = gitignoreContent().split('\n');
+    for (const p of [
+      '*.db',
+      '*.db-*',
+      '*.sqlite',
+      '*.sqlite-*',
+      '*.sqlite3',
+      '*.sqlite3-*',
+    ]) {
+      expect(linhas).toContain(p);
+    }
+  });
+
   it('`.gitignore` do usuário não entra no plano', async () => {
     const { plano } = planejar({
       branches: [{ name: 'main' }],
