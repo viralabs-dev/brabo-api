@@ -298,3 +298,55 @@ describe('NineRouterProvider: usage corrigido (AT-638, RN-958)', () => {
     expect(openrouterConfig().normalizarUsage).toBeUndefined();
   });
 });
+
+describe('NineRouterProvider: 503 que embrulha 4xx (AT-639, RN-959)', () => {
+  afterEach(() => {
+    delete process.env.NINE_ROUTER_BASE_URL;
+  });
+
+  async function codigoDe(mensagem: string): Promise<string | undefined> {
+    const servidor = createServer((req, res) => {
+      if (req.url === '/api/version') {
+        res.writeHead(404);
+        res.end();
+        return;
+      }
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: { message: mensagem } }));
+    });
+    await new Promise<void>((r) => servidor.listen(0, '127.0.0.1', r));
+    try {
+      const porta = (servidor.address() as { port: number }).port;
+      process.env.NINE_ROUTER_BASE_URL = `http://127.0.0.1:${porta}/v1`;
+      for await (const c of new NineRouterProvider().chat(
+        [{ role: 'user', content: 'oi' }],
+        { model: 'cc/x', apiKey: 'k' },
+      )) {
+        if (c.type === 'error') return c.code;
+      }
+      return undefined;
+    } finally {
+      servidor.closeAllConnections();
+      servidor.close();
+    }
+  }
+
+  it.each([
+    ['[404]', 'model_not_found'],
+    ['[429]', 'rate_limit'],
+    ['[402]', 'insufficient_credit'],
+    ['[401]', 'auth'],
+  ])('503 com %s dentro vira %s', async (interno, code) => {
+    expect(await codigoDe(`[cc/x] ${interno}: model: x (reset after 2m)`)).toBe(
+      code,
+    );
+  });
+
+  it.each([
+    ['sem status interno', '[cc/x] indisponível (reset after 2m)'],
+    ['5xx interno', '[cc/x] [502]: bad gateway (reset after 2m)'],
+    ['sem reset after', '[cc/x] [404]: model: x'],
+  ])('503 %s segue upstream', async (_n, msg) => {
+    expect(await codigoDe(msg)).toBe('upstream');
+  });
+});

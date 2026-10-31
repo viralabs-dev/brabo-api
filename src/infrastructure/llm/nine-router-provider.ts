@@ -6,6 +6,7 @@ import type {
   ModeloDoCatalogo,
 } from '@brabo/shared';
 import { TokenEstimator } from '../../application/ports/token-estimator.port';
+import { normalizeHttpStatus } from '../../domain/llm/llm-provider-errors';
 import { getJson } from './http-stream';
 import {
   OpenAICompatibleProvider,
@@ -145,6 +146,20 @@ function normalizarUsage9Router(
 }
 
 /**
+ * O 9Router devolve 503 `[<status>]: <msg> (reset after Ns)` quando TODAS as
+ * contas estão em cooldown por um 4xx do upstream (AT-639, RN-959). Classifica
+ * pelo status de dentro; 5xx de dentro ou ausente segue `upstream` passageiro.
+ */
+export function classificarErro9Router(
+  status: number,
+  corpo: string,
+): ReturnType<NonNullable<OpenAICompatibleConfig['classificarErroHttp']>> {
+  if (status !== 503 || !/reset after/i.test(corpo)) return undefined;
+  const interno = Number(/\[(4\d\d)\]:/.exec(corpo)?.[1]);
+  return interno ? normalizeHttpStatus('9router', interno, corpo) : undefined;
+}
+
+/**
  * `streaming: true` é o que a suite de contrato exige de TODO provider (a base
  * só fala SSE). As demais ficam `false` além do `listModels`: nenhum smoke
  * com chave rodou ainda (ADR 0041) — o 9Router depende mais de prova que os
@@ -179,6 +194,7 @@ export function nineRouterConfig(
       maxTokensField: 'max_tokens',
     },
     parseCatalogo: parseCatalogo9Router,
+    classificarErroHttp: classificarErro9Router,
     normalizarUsage: (usage) => normalizarUsage9Router(usage, versao()),
   };
 }
