@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   TokenUsageRepository,
   type SpendScopeAmplo,
 } from '../../ports/token-usage-repository.port';
+import { ProjectRepository } from '../../ports/project-repository.port';
 import { WorkspaceRepository } from '../../ports/workspace-repository.port';
 import {
   comoLinhas,
@@ -17,7 +18,11 @@ export interface WorkspaceSpendReport {
   /** Dono das chaves — quem banca os agentes deste workspace (RN-058). */
   ownerId: string;
   dias: number;
+  /** Recorte por projeto, quando pedido (RN-952); `null` = workspace inteiro. */
+  projectId: string | null;
   totalMicros: number;
+  /** Parte do total de modelos `subscription`, separada do US$ pago (RN-954). */
+  assinaturaMicros: number;
   inputTokens: number;
   outputTokens: number;
   chamadas: number;
@@ -28,6 +33,8 @@ export interface WorkspaceSpendReport {
    */
   porProvider: SpendLinha[];
   porProjeto: SpendLinha[];
+  /** Por SESSÃO (RN-952). */
+  porSessao: SpendLinha[];
   porAtor: SpendLinha[];
   /**
    * As linhas de PESSOA (`actor_kind = 'user'`). O handoff chama este bloco de
@@ -74,26 +81,44 @@ export class GetWorkspaceSpendReportUseCase {
   constructor(
     private readonly tokenUsage: TokenUsageRepository,
     private readonly workspaces: WorkspaceRepository,
+    private readonly projects: ProjectRepository,
   ) {}
 
   async execute(
     workspaceId: string,
     dias: number,
     agora = new Date(),
+    projectId?: string,
   ): Promise<WorkspaceSpendReport> {
+    // Projeto de OUTRO workspace é 404, igual a inexistente: o filtro por
+    // projeto não pode virar leitura entre workspaces (RN-952).
+    if (projectId) {
+      const projeto = await this.projects.findById(projectId);
+      if (!projeto || projeto.workspaceId !== workspaceId) {
+        throw new NotFoundException('Projeto não encontrado');
+      }
+    }
     // Escopo AMPLO — sem ator. É esta ausência que abre o eixo de provider, e
     // é ela que o tipo do port cobra (ADR 0076, RN-187).
-    const escopo: SpendScopeAmplo = { workspaceId, dias };
+    const escopo: SpendScopeAmplo = { workspaceId, projectId, dias };
 
-    const [workspace, porModelo, porProvider, porProjeto, porAtor, porDia] =
-      await Promise.all([
-        this.workspaces.findById(workspaceId),
-        this.tokenUsage.sumGroupedBy('model', escopo),
-        this.tokenUsage.sumGroupedBy('provider', escopo),
-        this.tokenUsage.sumGroupedBy('project', escopo),
-        this.tokenUsage.sumGroupedBy('actor', escopo),
-        this.tokenUsage.sumGroupedBy('day', escopo),
-      ]);
+    const [
+      workspace,
+      porModelo,
+      porProvider,
+      porProjeto,
+      porSessao,
+      porAtor,
+      porDia,
+    ] = await Promise.all([
+      this.workspaces.findById(workspaceId),
+      this.tokenUsage.sumGroupedBy('model', escopo),
+      this.tokenUsage.sumGroupedBy('provider', escopo),
+      this.tokenUsage.sumGroupedBy('project', escopo),
+      this.tokenUsage.sumGroupedBy('session', escopo),
+      this.tokenUsage.sumGroupedBy('actor', escopo),
+      this.tokenUsage.sumGroupedBy('day', escopo),
+    ]);
 
     // O total sai do recorte por ATOR e não da soma das quatro: qualquer um dos
     // quatro cobre as mesmas linhas, e somar mais de um daria o gasto contado
@@ -104,13 +129,16 @@ export class GetWorkspaceSpendReportUseCase {
       workspaceId,
       ownerId: workspace?.createdBy ?? '',
       dias,
+      projectId: projectId ?? null,
       totalMicros: totais.costMicros,
+      assinaturaMicros: totais.assinaturaMicros,
       inputTokens: totais.inputTokens,
       outputTokens: totais.outputTokens,
       chamadas: totais.chamadas,
       porModelo: comoLinhas(porModelo),
       porProvider: comoLinhas(porProvider),
       porProjeto: comoLinhas(porProjeto),
+      porSessao: comoLinhas(porSessao),
       porAtor: comoLinhas(porAtor),
       // A partição preserva a ordem por custo que o SQL já deu. `actor_kind`
       // que não seja pessoa nem agente (hoje, `system`) não entra em nenhum dos

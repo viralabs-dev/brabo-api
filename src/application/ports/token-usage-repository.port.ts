@@ -213,6 +213,8 @@ export interface SpendBucket {
   /** Só a dimensão `actor` preenche — nas outras é `null`. */
   actorKind: string | null;
   costMicros: number;
+  /** Parte de `costMicros` de modelos com a marca curada `subscription` (RN-954). */
+  assinaturaMicros: number;
   inputTokens: number;
   outputTokens: number;
   chamadas: number;

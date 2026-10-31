@@ -13,7 +13,7 @@ import type {
   SpendDimension,
   SpendScope,
 } from '../../../application/ports/token-usage-repository.port';
-import { projects, sessions, tokenUsage } from '../../../db/schema';
+import { models, projects, sessions, tokenUsage } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
@@ -354,6 +354,7 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
         rotulo,
         actorKind,
         costMicros: custo,
+        assinaturaMicros: sql<string>`coalesce(sum(${tokenUsage.costMicros}) filter (where ${models.billing} = 'subscription'), 0)`,
         inputTokens: sql<string>`coalesce(sum(${tokenUsage.inputTokens}), 0)`,
         outputTokens: sql<string>`coalesce(sum(${tokenUsage.outputTokens}), 0)`,
         chamadas: sql<string>`count(*)`,
@@ -361,6 +362,7 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
       .from(tokenUsage)
       .innerJoin(sessions, eq(sessions.id, tokenUsage.sessionId))
       .innerJoin(projects, eq(projects.id, sessions.projectId))
+      .leftJoin(models, eq(models.id, tokenUsage.modelId))
       .where(and(...condicoes))
       .groupBy(chave, rotulo, actorKind)
       // Série temporal cresce da esquerda para a direita; ranking desce do
@@ -373,6 +375,7 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
       rotulo: row.rotulo,
       actorKind: row.actorKind,
       costMicros: Number(row.costMicros),
+      assinaturaMicros: Number(row.assinaturaMicros),
       inputTokens: Number(row.inputTokens),
       outputTokens: Number(row.outputTokens),
       chamadas: Number(row.chamadas),

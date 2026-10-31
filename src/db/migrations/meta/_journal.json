@@ -554,6 +554,13 @@
       "when": 1793255540501,
       "tag": "0078_instancia_de_qa",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1793479220880,
+      "tag": "0079_marca_de_cobranca",
+      "breakpoints": true
     }
   ]
 }
