@@ -1,5 +1,9 @@
 import type { LLMProviderName } from '@brabo/shared';
-import type { Model, ModelAvailability } from '../../domain/llm/model.entity';
+import type {
+  Model,
+  ModelAvailability,
+  ModelBilling,
+} from '../../domain/llm/model.entity';
 
 export interface ModelInput {
   provider: LLMProviderName;
@@ -47,4 +51,5 @@ export abstract class ModelRepository {
       outputPricePerMillionMicros: number;
     },
   ): Promise<Model>;
+  abstract setBilling(id: string, billing: ModelBilling): Promise<Model>;
 }

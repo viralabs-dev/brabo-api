@@ -6,6 +6,8 @@ export interface SpendLinha {
   rotulo: string | null;
   actorKind: string | null;
   costMicros: number;
+  /** Parte de `costMicros` de modelo marcado `subscription` (RN-954). */
+  assinaturaMicros: number;
   inputTokens: number;
   outputTokens: number;
   chamadas: number;
@@ -21,6 +23,7 @@ export interface SpendPorDia {
 
 export interface SpendTotais {
   costMicros: number;
+  assinaturaMicros: number;
   inputTokens: number;
   outputTokens: number;
   chamadas: number;
@@ -30,11 +33,18 @@ export function somarTotais(linhas: SpendBucket[]): SpendTotais {
   return linhas.reduce<SpendTotais>(
     (total, linha) => ({
       costMicros: total.costMicros + linha.costMicros,
+      assinaturaMicros: total.assinaturaMicros + linha.assinaturaMicros,
       inputTokens: total.inputTokens + linha.inputTokens,
       outputTokens: total.outputTokens + linha.outputTokens,
       chamadas: total.chamadas + linha.chamadas,
     }),
-    { costMicros: 0, inputTokens: 0, outputTokens: 0, chamadas: 0 },
+    {
+      costMicros: 0,
+      assinaturaMicros: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      chamadas: 0,
+    },
   );
 }
 
@@ -81,6 +91,7 @@ export function comoLinhas(buckets: SpendBucket[]): SpendLinha[] {
     rotulo: b.rotulo,
     actorKind: b.actorKind,
     costMicros: b.costMicros,
+    assinaturaMicros: b.assinaturaMicros,
     inputTokens: b.inputTokens,
     outputTokens: b.outputTokens,
     chamadas: b.chamadas,

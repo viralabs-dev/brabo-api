@@ -6,6 +6,7 @@ import { SetModelsActiveUseCase } from './set-models-active.use-case';
 import { SetModelUsesUseCase } from './set-model-uses.use-case';
 import { SyncModelCatalogUseCase } from './sync-model-catalog.use-case';
 import { UpdateModelPricingUseCase } from './update-model-pricing.use-case';
+import { UpdateModelBillingUseCase } from './update-model-billing.use-case';
 import { ListModelPriceChangesUseCase } from './list-model-price-changes.use-case';
 import { SetModelBindingUseCase } from './set-model-binding.use-case';
 import { GetModelBindingUseCase } from './get-model-binding.use-case';
@@ -24,6 +25,8 @@ import { GetProjectAgentCostsUseCase } from './get-project-agent-costs.use-case'
 import { GetCredentialSpendUseCase } from './get-credential-spend.use-case';
 import { GetWorkspaceSpendReportUseCase } from './get-workspace-spend-report.use-case';
 import { GetMySpendUseCase } from './get-my-spend.use-case';
+import { GetMyWorkspaceSpendUseCase } from './get-my-workspace-spend.use-case';
+import { GetProjectSpendTeamUseCase } from './get-project-spend-team.use-case';
 import { CheckBudgetGateUseCase } from './check-budget-gate.use-case';
 import { RecordLlmUsageUseCase } from './record-llm-usage.use-case';
 import { ReconciliarCustoEstimadoUseCase } from './reconciliar-custo-estimado.use-case';
@@ -46,6 +49,7 @@ const USE_CASES = [
   SetModelUsesUseCase,
   SyncModelCatalogUseCase,
   UpdateModelPricingUseCase,
+  UpdateModelBillingUseCase,
   ListModelPriceChangesUseCase,
   SetModelBindingUseCase,
   GetModelBindingUseCase,
@@ -65,6 +69,8 @@ const USE_CASES = [
   GetCredentialSpendUseCase,
   GetWorkspaceSpendReportUseCase,
   GetMySpendUseCase,
+  GetMyWorkspaceSpendUseCase,
+  GetProjectSpendTeamUseCase,
   CheckBudgetGateUseCase,
   RecordLlmUsageUseCase,
   ReconciliarCustoEstimadoUseCase,

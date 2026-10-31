@@ -4,6 +4,9 @@ import type { UsoDeModelo } from './model-uses';
 export const MODEL_AVAILABILITIES = ['available', 'unavailable'] as const;
 export type ModelAvailability = (typeof MODEL_AVAILABILITIES)[number];
 
+export const MODEL_BILLINGS = ['api', 'subscription', 'free'] as const;
+export type ModelBilling = (typeof MODEL_BILLINGS)[number];
+
 export interface Model {
   id: string;
   provider: LLMProviderName;
@@ -44,6 +47,8 @@ export interface Model {
    * continua valendo.
    */
   availability: ModelAvailability;
+  /** Marca CURADA de cobrança (AT-632, RN-954); o sync não a toca. */
+  billing: ModelBilling;
   lastSeenAt: Date | null;
   createdAt: Date;
   updatedAt: Date;

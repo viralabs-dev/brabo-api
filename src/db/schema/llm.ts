@@ -56,6 +56,13 @@ export const modelBindingScopeEnum = pgEnum('model_binding_scope', [
 // diferente de `is_active`, que é a curadoria do owner. Um modelo pode estar
 // ativo E indisponível: é esse cruzamento que gera aviso no binding. Manter os
 // dois separados é o que preserva a escolha do owner quando o modelo volta.
+// Marca CURADA de cobrança (AT-632, RN-954): nunca descoberta pelo sync.
+export const modelBillingEnum = pgEnum('model_billing', [
+  'api',
+  'subscription',
+  'free',
+]);
+
 export const modelAvailabilityEnum = pgEnum('model_availability', [
   'available',
   'unavailable',
@@ -164,6 +171,8 @@ export const models = pgTable(
     availability: modelAvailabilityEnum('availability')
       .notNull()
       .default('available'),
+    // Curada à mão (AT-632): `subscription` = assento (o custo não é US$ pago).
+    billing: modelBillingEnum('billing').notNull().default('api'),
     /** Última vez que o sync viu este modelo no catálogo remoto. */
     lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true })
