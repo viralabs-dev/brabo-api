@@ -14,6 +14,7 @@ function bucket(chave: string, costMicros: number, chamadas = 1): SpendBucket {
     rotulo: null,
     actorKind: null,
     costMicros,
+    assinaturaMicros: 0,
     inputTokens: 10,
     outputTokens: 5,
     chamadas,
@@ -70,6 +71,7 @@ describe('somarTotais', () => {
   it('soma custo, tokens e chamadas', () => {
     expect(somarTotais([bucket('a', 100, 2), bucket('b', 50, 3)])).toEqual({
       costMicros: 150,
+      assinaturaMicros: 0,
       inputTokens: 20,
       outputTokens: 10,
       chamadas: 5,

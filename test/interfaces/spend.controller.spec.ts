@@ -4,6 +4,8 @@ import { SpendController } from '../../src/interfaces/http/llm/spend.controller'
 import { REQUIRED_ROLE_KEY } from '../../src/interfaces/http/iam/require-role.decorator';
 import type { GetWorkspaceSpendReportUseCase } from '../../src/application/use-cases/llm/get-workspace-spend-report.use-case';
 import type { GetMySpendUseCase } from '../../src/application/use-cases/llm/get-my-spend.use-case';
+import type { GetMyWorkspaceSpendUseCase } from '../../src/application/use-cases/llm/get-my-workspace-spend.use-case';
+import type { GetProjectSpendTeamUseCase } from '../../src/application/use-cases/llm/get-project-spend-team.use-case';
 import type { User } from '../../src/domain/iam/user.entity';
 
 /*
@@ -71,6 +73,8 @@ describe('SpendController — a rota do membro não tem eixo de provider', () =>
     // A régua da RN-060: quem vê credencial é quem paga a conta.
     expect(papel('getWorkspaceSpendReport')).toBe('owner');
     expect(papel('getMySpend')).toBe('viewer');
+    expect(papel('getMyWorkspaceSpend')).toBe('viewer');
+    expect(papel('getProjectSpendTeam')).toBe('viewer');
   });
 
   it('o ator do relatório do membro sai do token, nunca do que veio na requisição', async () => {
@@ -83,6 +87,8 @@ describe('SpendController — a rota do membro não tem eixo de provider', () =>
           return Promise.resolve(null);
         },
       } as unknown as GetMySpendUseCase,
+      {} as GetMyWorkspaceSpendUseCase,
+      {} as GetProjectSpendTeamUseCase,
     );
 
     await controller.getMySpend(

@@ -37,6 +37,8 @@ import {
 import { SetModelsActiveDto } from './dto/set-models-active.dto';
 import { SetModelUsesDto } from './dto/set-model-uses.dto';
 import { UpdateModelPricingDto } from './dto/update-model-pricing.dto';
+import { UpdateModelBillingDto } from './dto/update-model-billing.dto';
+import { UpdateModelBillingUseCase } from '../../../application/use-cases/llm/update-model-billing.use-case';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { User } from '../../../domain/iam/user.entity';
 import { SyncModelCatalogResponseDto } from '../internal/dto/model-sync.response.dto';
@@ -69,6 +71,7 @@ export class ModelsController {
     private readonly setModelUses: SetModelUsesUseCase,
     private readonly syncCatalog: SyncModelCatalogUseCase,
     private readonly updateModelPricing: UpdateModelPricingUseCase,
+    private readonly updateModelBilling: UpdateModelBillingUseCase,
     private readonly listPriceChanges: ListModelPriceChangesUseCase,
     private readonly listCredentialed: ListCredentialedProvidersUseCase,
   ) {}
@@ -282,6 +285,25 @@ export class ModelsController {
       source: 'manual',
       changedBy: user.id,
     });
+  }
+
+  @Patch('workspaces/:workspaceId/models/:modelId/billing')
+  @RequireRole('owner')
+  @ApiOperation({
+    summary: "Sets a model's curated billing mark (api | subscription | free)",
+    description:
+      'Same curation level as the pricing route. `subscription` makes the ' +
+      'spend report show the cost apart from the US$ paid (RN-954). Never ' +
+      're-prices the past.',
+  })
+  @ApiOkResponse({ type: ModelResponseDto })
+  @ApiForbiddenResponse({ description: 'Requires `owner` on the workspace.' })
+  @ApiNotFoundResponse({ description: 'Model not found.' })
+  updateBilling(
+    @Param('modelId') modelId: string,
+    @Body() dto: UpdateModelBillingDto,
+  ) {
+    return this.updateModelBilling.execute(modelId, dto.billing);
   }
 
   @Get('workspaces/:workspaceId/models/:modelId/price-changes')

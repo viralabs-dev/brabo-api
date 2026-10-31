@@ -2,6 +2,7 @@ import { Controller, Get, Param, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiForbiddenResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
@@ -12,6 +13,8 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import type { User } from '../../../domain/iam/user.entity';
 import { GetWorkspaceSpendReportUseCase } from '../../../application/use-cases/llm/get-workspace-spend-report.use-case';
 import { GetMySpendUseCase } from '../../../application/use-cases/llm/get-my-spend.use-case';
+import { GetMyWorkspaceSpendUseCase } from '../../../application/use-cases/llm/get-my-workspace-spend.use-case';
+import { GetProjectSpendTeamUseCase } from '../../../application/use-cases/llm/get-project-spend-team.use-case';
 import {
   DIAS_MAXIMO,
   DIAS_PADRAO,
@@ -20,6 +23,8 @@ import {
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import {
   MySpendResponseDto,
+  MyWorkspaceSpendResponseDto,
+  ProjectSpendTeamResponseDto,
   WorkspaceSpendReportResponseDto,
 } from './dto/llm.response.dto';
 
@@ -49,6 +54,8 @@ export class SpendController {
   constructor(
     private readonly workspaceSpend: GetWorkspaceSpendReportUseCase,
     private readonly mySpend: GetMySpendUseCase,
+    private readonly myWorkspaceSpend: GetMyWorkspaceSpendUseCase,
+    private readonly projectTeamSpend: GetProjectSpendTeamUseCase,
   ) {}
 
   @Get('workspaces/:workspaceId/spend-report')
@@ -72,13 +79,76 @@ export class SpendController {
     required: false,
     description: `Sliding window. Default ${DIAS_PADRAO}, max ${DIAS_MAXIMO}.`,
   })
+  @ApiQuery({
+    name: 'projectId',
+    required: false,
+    description:
+      'Slice to ONE project of this workspace (RN-952). A project from ' +
+      'another workspace answers 404.',
+  })
   @ApiOkResponse({ type: WorkspaceSpendReportResponseDto })
   @ApiForbiddenResponse({ description: 'Requires `owner` on the workspace.' })
+  @ApiNotFoundResponse({ description: 'Project not in this workspace.' })
   getWorkspaceSpendReport(
     @Param('workspaceId') workspaceId: string,
     @Query('dias') dias?: string,
+    @Query('projectId') projectId?: string,
   ) {
-    return this.workspaceSpend.execute(workspaceId, janelaValida(dias));
+    return this.workspaceSpend.execute(
+      workspaceId,
+      janelaValida(dias),
+      new Date(),
+      projectId || undefined,
+    );
+  }
+
+  // O ator vem do TOKEN; sem dimensão na rota (escopo de ator, RN-187).
+  @Get('workspaces/:workspaceId/spend/me')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: 'My own consumption in this workspace, summed by project',
+    description:
+      "The non-owner's global page (RN-953). Only the caller's rows, by " +
+      'PROJECT and by day, without provider or credential.',
+  })
+  @ApiQuery({
+    name: 'dias',
+    required: false,
+    description: `Sliding window. Default ${DIAS_PADRAO}, max ${DIAS_MAXIMO}.`,
+  })
+  @ApiOkResponse({ type: MyWorkspaceSpendResponseDto })
+  getMyWorkspaceSpend(
+    @Param('workspaceId') workspaceId: string,
+    @CurrentUser() user: User,
+    @Query('dias') dias?: string,
+  ) {
+    return this.myWorkspaceSpend.execute(
+      workspaceId,
+      user.id,
+      janelaValida(dias),
+    );
+  }
+
+  @Get('projects/:projectId/spend/team')
+  @RequireRole('viewer')
+  @ApiOperation({
+    summary: "The project's total spend and cost by agent and area",
+    description:
+      "The MEMBER's view of the PROJECT (RN-953, ADR 0233, revising 0063): " +
+      'total and cost per agent/area, NEVER provider or credential — the ' +
+      'route has no dimension parameter and never asks for `provider`.',
+  })
+  @ApiQuery({
+    name: 'dias',
+    required: false,
+    description: `Sliding window. Default ${DIAS_PADRAO}, max ${DIAS_MAXIMO}.`,
+  })
+  @ApiOkResponse({ type: ProjectSpendTeamResponseDto })
+  getProjectSpendTeam(
+    @Param('projectId') projectId: string,
+    @Query('dias') dias?: string,
+  ) {
+    return this.projectTeamSpend.execute(projectId, janelaValida(dias));
   }
 
   // O ator vem do TOKEN, nunca da rota: não existe forma de pedir o consumo de

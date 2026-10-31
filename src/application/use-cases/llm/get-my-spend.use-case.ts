@@ -17,6 +17,7 @@ export interface MySpend {
   /** O ator cujas linhas — e só as dele — compõem este relatório. */
   actorId: string;
   totalMicros: number;
+  assinaturaMicros: number;
   inputTokens: number;
   outputTokens: number;
   chamadas: number;
@@ -88,6 +89,7 @@ export class GetMySpendUseCase {
       dias,
       actorId: userId,
       totalMicros: totais.costMicros,
+      assinaturaMicros: totais.assinaturaMicros,
       inputTokens: totais.inputTokens,
       outputTokens: totais.outputTokens,
       chamadas: totais.chamadas,

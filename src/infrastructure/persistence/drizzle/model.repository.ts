@@ -8,6 +8,7 @@ import {
 import type {
   Model,
   ModelAvailability,
+  ModelBilling,
 } from '../../../domain/llm/model.entity';
 import { models } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
@@ -88,6 +89,16 @@ export class DrizzleModelRepository implements ModelRepository {
     const [row] = await db
       .update(models)
       .set({ ...input, updatedAt: new Date() })
+      .where(eq(models.id, id))
+      .returning();
+    return row;
+  }
+
+  async setBilling(id: string, billing: ModelBilling): Promise<Model> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .update(models)
+      .set({ billing, updatedAt: new Date() })
       .where(eq(models.id, id))
       .returning();
     return row;

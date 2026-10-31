@@ -1,4 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { eq } from 'drizzle-orm';
 import { createTestDb, truncateAll } from '../../../support/test-db';
 import {
   models,
@@ -16,6 +17,9 @@ import type {
   SpendScopeDeAtor,
   TokenUsageRepository,
 } from '../../../../src/application/ports/token-usage-repository.port';
+import { DrizzleProjectRepository } from '../../../../src/infrastructure/persistence/drizzle/project.repository';
+import { GetMyWorkspaceSpendUseCase } from '../../../../src/application/use-cases/llm/get-my-workspace-spend.use-case';
+import { GetProjectSpendTeamUseCase } from '../../../../src/application/use-cases/llm/get-project-spend-team.use-case';
 import { DrizzleWorkspaceRepository } from '../../../../src/infrastructure/persistence/drizzle/workspace.repository';
 import { GetWorkspaceSpendReportUseCase } from '../../../../src/application/use-cases/llm/get-workspace-spend-report.use-case';
 import { GetMySpendUseCase } from '../../../../src/application/use-cases/llm/get-my-spend.use-case';
@@ -25,6 +29,7 @@ const tokenUsageRepo = new DrizzleTokenUsageRepository(db);
 const relatorioDoOwner = new GetWorkspaceSpendReportUseCase(
   tokenUsageRepo,
   new DrizzleWorkspaceRepository(db),
+  new DrizzleProjectRepository(db),
 );
 const meuConsumo = new GetMySpendUseCase(tokenUsageRepo);
 
@@ -566,5 +571,161 @@ describe('GetMySpendUseCase — a audiência do membro', () => {
       dimensao: 'provider',
       temAtor: false,
     });
+  });
+});
+
+describe('AT-632 — gasto global e por projeto', () => {
+  it('?projectId recorta o relatório do owner e traz a dimensão sessão (RN-952)', async () => {
+    const { ws, loja, portal, sessaoA, sessaoB, sessaoPortal, modelo } =
+      await setup();
+    for (const [sessionId, costMicros] of [
+      [sessaoA.id, 100],
+      [sessaoB.id, 50],
+      [sessaoPortal.id, 999],
+    ] as const) {
+      await gasto({
+        sessionId,
+        modelId: modelo.id,
+        actorKind: 'agent',
+        actorId: 'criativo',
+        costMicros,
+      });
+    }
+
+    const r = await relatorioDoOwner.execute(ws.id, 30, new Date(), loja.id);
+
+    expect(r.projectId).toBe(loja.id);
+    expect(r.totalMicros).toBe(150);
+    expect(r.porSessao.map((l) => l.chave).sort()).toEqual(
+      [sessaoA.id, sessaoB.id].sort(),
+    );
+    expect(r.porProjeto.map((l) => l.chave)).toEqual([loja.id]);
+    expect(portal.id).not.toBe(loja.id);
+  });
+
+  it('projeto de OUTRO workspace é 404, não leitura cruzada (RN-952)', async () => {
+    const { ws, dono } = await setup();
+    const [outroWs] = await db
+      .insert(workspaces)
+      .values({ name: 'Outra', slug: 'outra-632', createdBy: dono.id })
+      .returning();
+    const [alheio] = await db
+      .insert(projects)
+      .values({
+        workspaceId: outroWs.id,
+        name: 'Alheio',
+        slug: 'alheio-632',
+        createdBy: dono.id,
+      })
+      .returning();
+
+    await expect(
+      relatorioDoOwner.execute(ws.id, 30, new Date(), alheio.id),
+    ).rejects.toThrow('Projeto não encontrado');
+  });
+
+  it('a marca `subscription` separa assinaturaMicros do total (RN-954)', async () => {
+    const { ws, sessaoA, modelo } = await setup();
+    await db
+      .update(models)
+      .set({ billing: 'subscription' })
+      .where(eq(models.id, modelo.id));
+    await gasto({
+      sessionId: sessaoA.id,
+      modelId: modelo.id,
+      actorKind: 'agent',
+      actorId: 'criativo',
+      costMicros: 700,
+    });
+    const [pago] = await db
+      .insert(models)
+      .values({ provider: 'openrouter', name: 'pago/modelo', displayName: 'P' })
+      .returning();
+    await gasto({
+      sessionId: sessaoA.id,
+      modelId: pago.id,
+      actorKind: 'agent',
+      actorId: 'criativo',
+      costMicros: 300,
+    });
+
+    const r = await relatorioDoOwner.execute(ws.id, 30);
+    expect(r.totalMicros).toBe(1_000);
+    expect(r.assinaturaMicros).toBe(700);
+  });
+
+  it('o membro vê total e custo por agente/área do projeto, sem provider (RN-953)', async () => {
+    const { loja, sessaoA, sessaoPortal, modelo, membro } = await setup();
+    await gasto({
+      sessionId: sessaoA.id,
+      modelId: modelo.id,
+      actorKind: 'agent',
+      actorId: 'criativo',
+      costMicros: 400,
+    });
+    await gasto({
+      sessionId: sessaoA.id,
+      modelId: modelo.id,
+      actorKind: 'user',
+      actorId: membro.id,
+      costMicros: 100,
+    });
+    await gasto({
+      sessionId: sessaoPortal.id,
+      modelId: modelo.id,
+      actorKind: 'agent',
+      actorId: 'criativo',
+      costMicros: 999,
+    });
+
+    const r = await new GetProjectSpendTeamUseCase(tokenUsageRepo).execute(
+      loja.id,
+      30,
+    );
+
+    expect(r.totalMicros).toBe(500);
+    expect(r.porAgente.map((l) => [l.chave, l.costMicros])).toEqual([
+      ['criativo', 400],
+    ]);
+    expect(r.porArea.reduce((n, l) => n + l.costMicros, 0)).toBe(400);
+    expect(JSON.stringify(r)).not.toContain('provider');
+  });
+
+  it('spend/me do workspace soma o PRÓPRIO consumo por projeto e só ele (RN-953)', async () => {
+    const { ws, loja, portal, sessaoA, sessaoPortal, modelo, membro, dono } =
+      await setup();
+    await gasto({
+      sessionId: sessaoA.id,
+      modelId: modelo.id,
+      actorKind: 'user',
+      actorId: membro.id,
+      costMicros: 30,
+    });
+    await gasto({
+      sessionId: sessaoPortal.id,
+      modelId: modelo.id,
+      actorKind: 'user',
+      actorId: membro.id,
+      costMicros: 20,
+    });
+    await gasto({
+      sessionId: sessaoA.id,
+      modelId: modelo.id,
+      actorKind: 'user',
+      actorId: dono.id,
+      costMicros: 7_000,
+    });
+
+    const r = await new GetMyWorkspaceSpendUseCase(tokenUsageRepo).execute(
+      ws.id,
+      membro.id,
+      30,
+    );
+
+    expect(r.totalMicros).toBe(50);
+    expect(r.porProjeto.map((l) => l.chave).sort()).toEqual(
+      [loja.id, portal.id].sort(),
+    );
+    expect(JSON.stringify(r)).not.toContain('provider');
   });
 });

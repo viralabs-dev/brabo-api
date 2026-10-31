@@ -9,6 +9,7 @@ import { MODEL_BINDING_SCOPES } from '../../../../domain/llm/model-binding-scope
 import { PREFERENCIAS_DE_ROTEAMENTO } from '../../../../domain/llm/routing-preference';
 import {
   MODEL_AVAILABILITIES,
+  MODEL_BILLINGS,
   type Model,
   type ModelComCuradoria,
 } from '../../../../domain/llm/model.entity';
@@ -38,6 +39,8 @@ import type {
 } from '../../../../application/use-cases/llm/spend-report';
 import type { WorkspaceSpendReport } from '../../../../application/use-cases/llm/get-workspace-spend-report.use-case';
 import type { MySpend } from '../../../../application/use-cases/llm/get-my-spend.use-case';
+import type { MyWorkspaceSpend } from '../../../../application/use-cases/llm/get-my-workspace-spend.use-case';
+import type { ProjectSpendTeam } from '../../../../application/use-cases/llm/get-project-spend-team.use-case';
 
 /**
  * Respostas de modelos, credenciais, bindings e orçamento (Fase 7b, item 6).
@@ -150,6 +153,15 @@ export class ModelResponseDto implements Wire<Model> {
       'is never deleted, because bindings and cost history point to it.',
   })
   availability!: Wire<Model>['availability'];
+
+  @ApiProperty({
+    enum: MODEL_BILLINGS,
+    example: 'api',
+    description:
+      'CURATED billing mark (AT-632, RN-954): `subscription` is a seat — its ' +
+      'cost is shown apart from the US$ paid. Never set by sync.',
+  })
+  billing!: Wire<Model>['billing'];
 
   @ApiProperty({
     example: '2026-07-30T03:00:00.000Z',
@@ -757,6 +769,14 @@ export class SpendLinhaResponseDto implements Wire<SpendLinha> {
   @ApiProperty({ example: 1_250_000 })
   costMicros!: number;
 
+  @ApiProperty({
+    example: 0,
+    description:
+      'Part of the cost from models curated as `subscription` (RN-954): a ' +
+      'seat, shown apart from the US$ paid (`cost - subscription`).',
+  })
+  assinaturaMicros!: number;
+
   @ApiProperty({ example: 120_000 })
   inputTokens!: number;
 
@@ -807,8 +827,24 @@ export class WorkspaceSpendReportResponseDto implements Wire<WorkspaceSpendRepor
   @ApiProperty({ example: 30, description: 'Sliding window, in days.' })
   dias!: number;
 
+  @ApiProperty({
+    format: 'uuid',
+    nullable: true,
+    description:
+      'The `?projectId=` slice asked for (RN-952); `null` = whole workspace.',
+  })
+  projectId!: string | null;
+
   @ApiProperty({ example: 1_250_000 })
   totalMicros!: number;
+
+  @ApiProperty({
+    example: 0,
+    description:
+      'Part of the cost from models curated as `subscription` (RN-954): a ' +
+      'seat, shown apart from the US$ paid (`cost - subscription`).',
+  })
+  assinaturaMicros!: number;
 
   @ApiProperty({ example: 120_000 })
   inputTokens!: number;
@@ -843,6 +879,12 @@ export class WorkspaceSpendReportResponseDto implements Wire<WorkspaceSpendRepor
     description: 'By PROJECT within the workspace.',
   })
   porProjeto!: SpendLinhaResponseDto[];
+
+  @ApiProperty({
+    type: [SpendLinhaResponseDto],
+    description: 'By SESSION (RN-952).',
+  })
+  porSessao!: SpendLinhaResponseDto[];
 
   @ApiProperty({
     type: [SpendLinhaResponseDto],
@@ -897,6 +939,14 @@ export class MySpendResponseDto implements Wire<MySpend> {
   @ApiProperty({ example: 1_250_000 })
   totalMicros!: number;
 
+  @ApiProperty({
+    example: 0,
+    description:
+      'Part of the cost from models curated as `subscription` (RN-954): a ' +
+      'seat, shown apart from the US$ paid (`cost - subscription`).',
+  })
+  assinaturaMicros!: number;
+
   @ApiProperty({ example: 120_000 })
   inputTokens!: number;
 
@@ -913,6 +963,80 @@ export class MySpendResponseDto implements Wire<MySpend> {
   porDia!: SpendPorDiaResponseDto[];
 }
 export const _chavesMySpend: MesmasChaves<MySpendResponseDto, MySpend> = true;
+
+/** O gasto do PROJETO para o membro: total e por agente/área, sem provider (RN-953). */
+export class ProjectSpendTeamResponseDto implements Wire<ProjectSpendTeam> {
+  @ApiProperty({ format: 'uuid' })
+  projectId!: string;
+
+  @ApiProperty({ example: 30 })
+  dias!: number;
+
+  @ApiProperty({ example: 1_250_000 })
+  totalMicros!: number;
+
+  @ApiProperty({ example: 0, description: 'Seat part of the total (RN-954).' })
+  assinaturaMicros!: number;
+
+  @ApiProperty({ example: 120_000 })
+  inputTokens!: number;
+
+  @ApiProperty({ example: 35_000 })
+  outputTokens!: number;
+
+  @ApiProperty({ example: 42 })
+  chamadas!: number;
+
+  @ApiProperty({ type: [SpendLinhaResponseDto], description: 'By AGENT.' })
+  porAgente!: SpendLinhaResponseDto[];
+
+  @ApiProperty({
+    type: [SpendLinhaResponseDto],
+    description: 'By catalog AREA of the agent; `sem-area` when none.',
+  })
+  porArea!: SpendLinhaResponseDto[];
+}
+export const _chavesProjectSpendTeam: MesmasChaves<
+  ProjectSpendTeamResponseDto,
+  ProjectSpendTeam
+> = true;
+
+/** O consumo PRÓPRIO no workspace, por projeto, sem provider (RN-953). */
+export class MyWorkspaceSpendResponseDto implements Wire<MyWorkspaceSpend> {
+  @ApiProperty({ format: 'uuid' })
+  workspaceId!: string;
+
+  @ApiProperty({ example: 30 })
+  dias!: number;
+
+  @ApiProperty({ format: 'uuid', description: 'Always whoever called.' })
+  actorId!: string;
+
+  @ApiProperty({ example: 1_250_000 })
+  totalMicros!: number;
+
+  @ApiProperty({ example: 0, description: 'Seat part of the total (RN-954).' })
+  assinaturaMicros!: number;
+
+  @ApiProperty({ example: 120_000 })
+  inputTokens!: number;
+
+  @ApiProperty({ example: 35_000 })
+  outputTokens!: number;
+
+  @ApiProperty({ example: 42 })
+  chamadas!: number;
+
+  @ApiProperty({ type: [SpendLinhaResponseDto], description: 'By PROJECT.' })
+  porProjeto!: SpendLinhaResponseDto[];
+
+  @ApiProperty({ type: [SpendPorDiaResponseDto] })
+  porDia!: SpendPorDiaResponseDto[];
+}
+export const _chavesMyWorkspaceSpend: MesmasChaves<
+  MyWorkspaceSpendResponseDto,
+  MyWorkspaceSpend
+> = true;
 
 /** A camada de PROVIDER das capabilities (ADR 0041), como o fio a mostra. */
 export class LLMProviderCapabilitiesResponseDto implements Wire<LLMProviderCapabilities> {
