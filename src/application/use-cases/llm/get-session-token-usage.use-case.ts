@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   TokenUsageRepository,
-  type AgentTokenUsage,
+  type SessionAgentTokenUsage,
 } from '../../ports/token-usage-repository.port';
 
 /**
@@ -20,7 +20,7 @@ import {
 export class GetSessionTokenUsageUseCase {
   constructor(private readonly tokenUsage: TokenUsageRepository) {}
 
-  execute(sessionId: string): Promise<AgentTokenUsage[]> {
+  execute(sessionId: string): Promise<SessionAgentTokenUsage[]> {
     return this.tokenUsage.sumBySessionGroupedByActor(sessionId);
   }
 }

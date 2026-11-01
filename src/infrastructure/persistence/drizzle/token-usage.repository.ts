@@ -1,8 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, ne, sql } from 'drizzle-orm';
 import {
   TokenUsageRepository,
   type AgentTokenUsage,
+  type SessionAgentTokenUsage,
   type RecordTokenUsageInput,
   type WorkspaceTokenUsageSummary,
 } from '../../../application/ports/token-usage-repository.port';
@@ -13,6 +14,7 @@ import type {
   SpendDimension,
   SpendScope,
 } from '../../../application/ports/token-usage-repository.port';
+import { MODELO_DO_JEV } from '../../../domain/llm/tool-router';
 import { models, projects, sessions, tokenUsage } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
@@ -152,7 +154,7 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
 
   async sumBySessionGroupedByActor(
     sessionId: string,
-  ): Promise<AgentTokenUsage[]> {
+  ): Promise<SessionAgentTokenUsage[]> {
     const db = currentDb(this.rootDb);
     const rows = await db
       .select({
@@ -165,12 +167,42 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
       .where(eq(tokenUsage.sessionId, sessionId))
       .groupBy(tokenUsage.actorId);
 
-    return rows.map((row) => ({
-      actorId: row.actorId,
-      costMicros: Number(row.costMicros),
-      inputTokens: Number(row.inputTokens),
-      outputTokens: Number(row.outputTokens),
-    }));
+    // Última chamada por ator (AT-654, RN-969): sem as linhas do Jev (ele grava
+    // em nome do agente) e com a janela do modelo DAQUELA chamada.
+    const ultimas = await db
+      .selectDistinctOn([tokenUsage.actorId], {
+        actorId: tokenUsage.actorId,
+        inputTokens: tokenUsage.inputTokens,
+        modelName: tokenUsage.modelName,
+        contextWindow: models.contextWindow,
+      })
+      .from(tokenUsage)
+      .leftJoin(models, eq(models.id, tokenUsage.modelId))
+      .where(
+        and(
+          eq(tokenUsage.sessionId, sessionId),
+          ne(tokenUsage.modelName, MODELO_DO_JEV),
+        ),
+      )
+      .orderBy(tokenUsage.actorId, desc(tokenUsage.createdAt));
+    const porAtor = new Map(ultimas.map((u) => [u.actorId, u]));
+
+    return rows.map((row) => {
+      const u = porAtor.get(row.actorId);
+      return {
+        actorId: row.actorId,
+        costMicros: Number(row.costMicros),
+        inputTokens: Number(row.inputTokens),
+        outputTokens: Number(row.outputTokens),
+        lastCall: u
+          ? {
+              inputTokens: u.inputTokens,
+              modelName: u.modelName,
+              contextWindow: u.contextWindow,
+            }
+          : null,
+      };
+    });
   }
 
   async summarizeForWorkspaceThisMonth(

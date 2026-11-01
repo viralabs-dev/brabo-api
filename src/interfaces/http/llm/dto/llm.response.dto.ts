@@ -32,7 +32,10 @@ import type {
   BindingsResolvidosEmLote,
 } from '../../../../application/use-cases/llm/resolve-model-bindings-em-lote.use-case';
 import type { UserCredentialMetadata } from '../../../../domain/llm/user-credential.entity';
-import type { AgentTokenUsage } from '../../../../application/ports/token-usage-repository.port';
+import type {
+  AgentTokenUsage,
+  SessionAgentTokenUsage,
+} from '../../../../application/ports/token-usage-repository.port';
 import type {
   SpendLinha,
   SpendPorDia,
@@ -576,6 +579,40 @@ export class AgentTokenUsageResponseDto implements Wire<AgentTokenUsage> {
 export const _chavesUsoPorAgente: MesmasChaves<
   AgentTokenUsageResponseDto,
   AgentTokenUsage
+> = true;
+
+export class LastCallResponseDto {
+  @ApiProperty({ example: 42000, description: 'Input tokens of that call.' })
+  inputTokens!: number;
+
+  @ApiProperty({ example: 'qwen2.5-coder:7b' })
+  modelName!: string;
+
+  @ApiProperty({
+    example: 128000,
+    type: Number,
+    nullable: true,
+    description: "The model's context window, or null when unknown.",
+  })
+  contextWindow!: number | null;
+}
+
+/** Consumo do agente na sessão + a última chamada dele (fora o Jev). */
+export class SessionAgentTokenUsageResponseDto
+  extends AgentTokenUsageResponseDto
+  implements Wire<SessionAgentTokenUsage>
+{
+  @ApiProperty({
+    type: LastCallResponseDto,
+    nullable: true,
+    description:
+      "The agent's latest call in the session (Jev excluded); null when none.",
+  })
+  lastCall!: LastCallResponseDto | null;
+}
+export const _chavesUsoPorAgenteDaSessao: MesmasChaves<
+  SessionAgentTokenUsageResponseDto,
+  SessionAgentTokenUsage
 > = true;
 
 /**

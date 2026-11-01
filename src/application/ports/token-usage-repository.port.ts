@@ -77,7 +77,7 @@ export abstract class TokenUsageRepository {
   // enunciado pede. Ver ADR 0021.
   abstract sumBySessionGroupedByActor(
     sessionId: string,
-  ): Promise<AgentTokenUsage[]>;
+  ): Promise<SessionAgentTokenUsage[]>;
   // Resumo do workspace pro dashboard de projetos (Fase de fidelidade da
   // UI): "M agentes" e o gasto do mês, numa query só. `actorKind = 'agent'`
   // é filtro OBRIGATÓRIO — sem ele um `user` mandando chat ou um `system`
@@ -236,6 +236,15 @@ export interface AgentTokenUsage {
   costMicros: number;
   inputTokens: number;
   outputTokens: number;
+}
+
+/** A soma do agente na sessão + a última chamada dele (fora o Jev), AT-654. */
+export interface SessionAgentTokenUsage extends AgentTokenUsage {
+  lastCall: {
+    inputTokens: number;
+    modelName: string;
+    contextWindow: number | null;
+  } | null;
 }
 
 export interface WorkspaceTokenUsageSummary {

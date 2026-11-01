@@ -9,6 +9,7 @@ import {
   users,
   workspaces,
 } from '../../../src/db/schema';
+import { MODELO_DO_JEV } from '../../../src/domain/llm/tool-router';
 import { DrizzleTokenUsageRepository } from '../../../src/infrastructure/persistence/drizzle/token-usage.repository';
 
 const { db, pool } = createTestDb();
@@ -96,6 +97,68 @@ describe('DrizzleTokenUsageRepository.sumBySessionGroupedByActor (Fase 4a)', () 
     expect(porAgente['dev-core'].inputTokens).toBe(20);
     expect(porAgente['dev-core'].outputTokens).toBe(10);
     expect(porAgente['qa'].costMicros).toBe(70);
+  });
+
+  it('lastCall: última chamada do agente, sem o Jev, com a janela do modelo (RN-969)', async () => {
+    const { sessionId, modelId } = await seed();
+    await db
+      .update(models)
+      .set({ contextWindow: 32000 })
+      .where(eq(models.id, modelId));
+    const chamada = (
+      actorId: string,
+      inputTokens: number,
+      modelName = 'qwen2.5-coder:7b',
+    ) =>
+      repo.record({
+        sessionId,
+        actor: { kind: 'agent', id: actorId },
+        provider: 'ollama',
+        modelId: modelName === MODELO_DO_JEV ? null : modelId,
+        modelName,
+        inputTokens,
+        outputTokens: 1,
+        estimated: false,
+        costMicros: 1,
+        latencyMs: 1,
+        bindingOrigin: 'project',
+      });
+    await chamada('dev-core', 100);
+    await chamada('dev-core', 900);
+    await chamada('dev-core', 5, MODELO_DO_JEV); // mais recente, mas é do Jev
+    await chamada('so-jev', 7, MODELO_DO_JEV);
+    const [m2] = await db
+      .insert(models)
+      .values({ provider: 'ollama', name: 'sem-janela', displayName: 'S' })
+      .returning();
+    await repo.record({
+      sessionId,
+      actor: { kind: 'agent', id: 'qa' },
+      provider: 'ollama',
+      modelId: m2.id,
+      modelName: 'sem-janela',
+      inputTokens: 33,
+      outputTokens: 1,
+      estimated: false,
+      costMicros: 1,
+      latencyMs: 1,
+      bindingOrigin: 'project',
+    });
+
+    const por = Object.fromEntries(
+      (await repo.sumBySessionGroupedByActor(sessionId)).map((l) => [
+        l.actorId,
+        l,
+      ]),
+    );
+    expect(por['dev-core'].lastCall).toEqual({
+      inputTokens: 900,
+      modelName: 'qwen2.5-coder:7b',
+      contextWindow: 32000,
+    });
+    expect(por['dev-core'].inputTokens).toBe(1005); // a soma não muda
+    expect(por['qa'].lastCall?.contextWindow).toBeNull();
+    expect(por['so-jev'].lastCall).toBeNull();
   });
 
   it('sessão sem consumo devolve lista vazia, não erro', async () => {
