@@ -49,6 +49,7 @@ export abstract class ModelRepository {
     input: {
       inputPricePerMillionMicros: number;
       outputPricePerMillionMicros: number;
+      manualPricing?: boolean;
     },
   ): Promise<Model>;
   abstract setBilling(id: string, billing: ModelBilling): Promise<Model>;
