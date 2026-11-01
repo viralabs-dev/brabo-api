@@ -17,6 +17,7 @@ import { UpsertBudgetDto } from './dto/upsert-budget.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import {
   AgentTokenUsageResponseDto,
+  SessionAgentTokenUsageResponseDto,
   BudgetResponseDto,
   CredentialSpendResponseDto,
 } from './dto/llm.response.dto';
@@ -98,7 +99,7 @@ export class BudgetsController {
       'the team panel had no way to show the cost per card. Same role ' +
       'required as the session budget.',
   })
-  @ApiOkResponse({ type: [AgentTokenUsageResponseDto] })
+  @ApiOkResponse({ type: [SessionAgentTokenUsageResponseDto] })
   getSessionTokenUsage(@Param('sessionId') sessionId: string) {
     return this.getSessionTokenUsageUseCase.execute(sessionId);
   }
