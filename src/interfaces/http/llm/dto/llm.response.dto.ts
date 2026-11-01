@@ -224,6 +224,54 @@ export class ModelComCuradoriaResponseDto
   })
   freeRoutingAlias!: boolean;
 }
+export class PrecoSugeridoResponseDto {
+  @ApiProperty({ example: 'Anthropic' }) fabricante!: string;
+  @ApiProperty({ example: 100000, description: 'micro-USD per 1M tokens.' })
+  entradaMicros!: number;
+  @ApiProperty({ example: 500000, description: 'micro-USD per 1M tokens.' })
+  saidaMicros!: number;
+  @ApiProperty({
+    example: 'https://docs.claude.com/en/docs/about-claude/pricing.md',
+  })
+  fonte!: string;
+  @ApiProperty({
+    example: '2026-11-01',
+    description: 'Date the row was checked.',
+  })
+  conferidoEm!: string;
+  @ApiPropertyOptional({ example: 'Prompt up to 100,000 tokens.' })
+  observacao?: string;
+}
+
+export class SugestaoDoCatalogoResponseDto {
+  @ApiProperty({
+    enum: MODEL_BILLINGS,
+    nullable: true,
+    description: 'Suggested billing band (9Router alias). Null: no suggestion.',
+  })
+  cobranca!: ModelComCuradoria['billing'] | null;
+
+  @ApiProperty({
+    type: PrecoSugeridoResponseDto,
+    nullable: true,
+    description: 'Manufacturer list price; null when the table has no row.',
+  })
+  preco!: PrecoSugeridoResponseDto | null;
+}
+
+/** Linha da curadoria: o modelo COM a sugestão de faixa e preço (AT-640, RN-965). */
+export class ModeloDoCatalogoResponseDto extends ModelComCuradoriaResponseDto {
+  @ApiProperty({
+    type: SugestaoDoCatalogoResponseDto,
+    nullable: true,
+    description:
+      'SUGGESTION only (derived on read, never stored): billing band from the ' +
+      '9Router alias and the manufacturer price from a curated table. Applying ' +
+      'it is a curation gesture. Null for OpenRouter and unlisted ids.',
+  })
+  sugestao!: SugestaoDoCatalogoResponseDto | null;
+}
+
 export const _chavesModelComCuradoria: MesmasChaves<
   ModelComCuradoriaResponseDto,
   ModelComCuradoria

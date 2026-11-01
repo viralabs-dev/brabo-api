@@ -3,10 +3,18 @@ import type { ModelCategory } from '@brabo/shared';
 import { WorkspaceModelRepository } from '../../ports/workspace-model-repository.port';
 import { categoryForProvider } from '../../../domain/llm/model-category';
 import type { ModelComCuradoria } from '../../../domain/llm/model.entity';
+import {
+  sugestaoDoModelo,
+  type SugestaoDoCatalogo,
+} from '../../../domain/llm/sugestao-do-catalogo';
+
+export type ModeloDoCatalogo = ModelComCuradoria & {
+  sugestao: SugestaoDoCatalogo | null;
+};
 
 export type CatalogoPorCategoria = Record<
   ModelCategory,
-  Record<string, ModelComCuradoria[]>
+  Record<string, ModeloDoCatalogo[]>
 >;
 
 /**
@@ -33,7 +41,10 @@ export class ListModelCatalogUseCase {
     for (const model of todos) {
       const category: ModelCategory = categoryForProvider(model.provider);
       grouped[category][model.provider] ??= [];
-      grouped[category][model.provider].push(model);
+      grouped[category][model.provider].push({
+        ...model,
+        sugestao: sugestaoDoModelo(model.provider, model.name),
+      });
     }
 
     return grouped;

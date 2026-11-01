@@ -31,6 +31,7 @@ import { RequireRole } from '../iam/require-role.decorator';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import {
   ModelComCuradoriaResponseDto,
+  ModeloDoCatalogoResponseDto,
   ModelPriceChangeResponseDto,
   ModelResponseDto,
 } from './dto/llm.response.dto';
@@ -150,7 +151,7 @@ export class ModelsController {
       '0049); `availability` is global, because it is what the sync observed ' +
       'at the provider.',
   })
-  @ApiExtraModels(ModelComCuradoriaResponseDto)
+  @ApiExtraModels(ModeloDoCatalogoResponseDto)
   @ApiForbiddenResponse({ description: 'Insufficient role on the workspace.' })
   @ApiOkResponse({
     schema: {
@@ -160,14 +161,14 @@ export class ModelsController {
           type: 'object',
           additionalProperties: {
             type: 'array',
-            items: { $ref: getSchemaPath(ModelComCuradoriaResponseDto) },
+            items: { $ref: getSchemaPath(ModeloDoCatalogoResponseDto) },
           },
         },
         cloud: {
           type: 'object',
           additionalProperties: {
             type: 'array',
-            items: { $ref: getSchemaPath(ModelComCuradoriaResponseDto) },
+            items: { $ref: getSchemaPath(ModeloDoCatalogoResponseDto) },
           },
         },
       },
