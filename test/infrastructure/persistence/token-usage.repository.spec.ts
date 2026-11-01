@@ -161,6 +161,33 @@ describe('DrizzleTokenUsageRepository.sumBySessionGroupedByActor (Fase 4a)', () 
     expect(por['so-jev'].lastCall).toBeNull();
   });
 
+  it('lastCall: empate em created_at desempata por id DESC, de forma determinística', async () => {
+    const { sessionId, modelId } = await seed();
+    const base = {
+      sessionId,
+      actorKind: 'agent' as const,
+      actorId: 'dev-core',
+      provider: 'ollama' as const,
+      modelId,
+      modelName: 'qwen2.5-coder:7b',
+      outputTokens: 1,
+      costMicros: 1,
+      latencyMs: 1,
+      bindingOrigin: 'project' as const,
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+    };
+    const linhas = await db
+      .insert(tokenUsage)
+      .values([
+        { ...base, inputTokens: 111 },
+        { ...base, inputTokens: 222 },
+      ])
+      .returning();
+    const vencedora = linhas.reduce((a, b) => (a.id > b.id ? a : b));
+    const [r] = await repo.sumBySessionGroupedByActor(sessionId);
+    expect(r.lastCall?.inputTokens).toBe(vencedora.inputTokens);
+  });
+
   it('sessão sem consumo devolve lista vazia, não erro', async () => {
     const { sessionId } = await seed();
     expect(await repo.sumBySessionGroupedByActor(sessionId)).toEqual([]);

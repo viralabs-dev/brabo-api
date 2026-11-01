@@ -184,7 +184,12 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
           ne(tokenUsage.modelName, MODELO_DO_JEV),
         ),
       )
-      .orderBy(tokenUsage.actorId, desc(tokenUsage.createdAt));
+      // `id` é uuid aleatório (sem coluna monotônica): desempata de forma estável, não "cronológica".
+      .orderBy(
+        tokenUsage.actorId,
+        desc(tokenUsage.createdAt),
+        desc(tokenUsage.id),
+      );
     const porAtor = new Map(ultimas.map((u) => [u.actorId, u]));
 
     return rows.map((row) => {
