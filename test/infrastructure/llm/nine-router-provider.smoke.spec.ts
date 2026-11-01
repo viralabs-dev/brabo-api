@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import type { ChatMessage, ChatStreamChunk, ToolDef } from '@brabo/shared';
 import { OpenAICompatibleProvider } from '../../../src/infrastructure/llm/openai-compatible-provider';
@@ -13,8 +14,10 @@ import {
  * `toolCalling` exige antes de virar `true` (ADR 0041). PULA sem
  * `NINE_ROUTER_TEST_KEY` ou `NINE_ROUTER_TEST_MODEL`.
  *
- * Decisão do dono (22/10): só modelo `free`/`auto:free` — as conexões de
- * assinatura gastam cota real. `NINE_ROUTER_BASE_URL` aponta o 9Router.
+ * Decisão do dono (31/10, 9Router só com modelo GRÁTIS): use um modelo grátis
+ * real, `bzl/auto:free` ou `ollama/*`. NUNCA o combo `smoke-test` nem `cc/*`/
+ * `cx/*` (conta de assinatura gasta cota real). `NINE_ROUTER_BASE_URL` precisa
+ * de esquema e porta, p.ex. `http://localhost:20128/v1`.
  *
  * Prova: stream, tool call, `usage`, que o `tool_result` chega INTACTO ao
  * modelo (Token Saver desligado) e qual cabeçalho da resposta diz o upstream
@@ -41,8 +44,10 @@ const FERRAMENTA: ToolDef = {
   },
 };
 
-// Longo e com repetição: é o tipo de texto que um compressor de tool_result mexeria.
-const SEGREDO = `CODIGO-${'ABCDEFGH-'.repeat(40)}FIM`;
+// Aleatório e sem repetição: modelo erra a CONTAGEM de blocos idênticos ao
+// copiar (AT-629), então o segredo não pode repetir. Ainda longo o bastante
+// para um compressor de tool_result mexer nele.
+const SEGREDO = `CODIGO-${Array.from({ length: 30 }, () => randomBytes(4).toString('hex')).join('-')}-FIM`;
 
 async function coletar(
   gen: AsyncIterable<ChatStreamChunk>,
@@ -117,7 +122,7 @@ describe.skipIf(!apiKey || !modelo)(
         .map((c) => (c.type === 'text_delta' ? c.text : ''))
         .join('');
       // Intacto: o modelo devolve o segredo inteiro. Se comprimido, falta pedaço.
-      expect(texto).toContain(SEGREDO);
+      expect(texto.trim()).toBe(SEGREDO);
     }, 180_000);
 
     it('imprime os cabeçalhos da resposta (qual diz o upstream?)', async () => {
