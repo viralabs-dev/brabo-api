@@ -30,9 +30,10 @@ export function nineRouterBaseUrl(): string {
  * algo diferente do que o harness gravou no log. O Brabo pede desligado em
  * toda chamada.
  *
- * TODO(humano): o NOME do cabeçalho vem do build do 9Router v0.5.104; o
- * VALOR aceito (`off`) não foi achado na fonte. O smoke confere se o
- * `tool_result` chega intacto — é ele que diz se o valor vale.
+ * Medido no 9Router 0.5.112 (bundle, `chunks/8895.js`): `off`, sem caixa,
+ * desliga RTK, Headroom, Caveman e Ponytail JUNTOS; o Custom Prompt não passa
+ * por esse cabeçalho. A medição da AT-631 confirmou o efeito ("ok" sem ele =
+ * 1 262 tokens). Ver RN-966.
  */
 export const NINE_ROUTER_TOKEN_SAVER_HEADER = 'x-9router-token-saver';
 export const NINE_ROUTER_TOKEN_SAVER_OFF = 'off';
@@ -48,8 +49,8 @@ interface LinhaDoCatalogo9Router {
 }
 
 /**
- * `GET /v1/models` do 9Router: `{ data: [{ id, capabilities: { tools,
- * reasoning, thinkingCanDisable, maxOutput, contextWindow } }] }`. Sem preço:
+ * `GET /v1/models` do 9Router: `{ data: [{ id, <campo capabilities> com tools,
+ * reasoning, thinkingCanDisable, maxOutput, contextWindow }] }`. Sem preço:
  * ele vem da curadoria manual (ADR 0042) — por decisão do dono, o preço
  * público da API equivalente, mesmo para modelo de assinatura.
  */
