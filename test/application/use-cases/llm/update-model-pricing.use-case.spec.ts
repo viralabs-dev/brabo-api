@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
+import { eq } from 'drizzle-orm';
 import { createTestDb, truncateAll } from '../../../support/test-db';
 import {
   models,
@@ -198,6 +199,48 @@ describe('UpdateModelPricingUseCase', () => {
 
     const [linha] = await priceChangeRepo.listByModel(model.id);
     expect(linha).toMatchObject({ source: 'sync', changedBy: null });
+  });
+
+  it('edição manual marca manual_pricing: o sync seguinte não desfaz o preço (RN-964)', async () => {
+    const { user, model } = await setup();
+    // Modelo descoberto COM preço: nasce não-manual, como o sync o deixa.
+    await db
+      .update(models)
+      .set({ manualPricing: false })
+      .where(eq(models.id, model.id));
+
+    await useCase.execute({
+      modelId: model.id,
+      inputPricePerMillionMicros: PRECO_NOVO.entrada,
+      outputPricePerMillionMicros: PRECO_NOVO.saida,
+      source: 'manual',
+      changedBy: user.id,
+    });
+
+    const gravado = await modelRepo.findById(model.id);
+    expect(gravado).toMatchObject({
+      manualPricing: true,
+      inputPricePerMillionMicros: PRECO_NOVO.entrada,
+      outputPricePerMillionMicros: PRECO_NOVO.saida,
+    });
+  });
+
+  it('falha: edição de origem sync NÃO marca manual_pricing', async () => {
+    const { model } = await setup();
+    await db
+      .update(models)
+      .set({ manualPricing: false })
+      .where(eq(models.id, model.id));
+
+    await useCase.execute({
+      modelId: model.id,
+      inputPricePerMillionMicros: PRECO_NOVO.entrada,
+      outputPricePerMillionMicros: PRECO_NOVO.saida,
+      source: 'sync',
+      changedBy: null,
+    });
+
+    expect((await modelRepo.findById(model.id))?.manualPricing).toBe(false);
   });
 
   it('falha: modelo inexistente é 404 e não grava auditoria', async () => {
