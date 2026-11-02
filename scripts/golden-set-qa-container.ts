@@ -158,6 +158,8 @@ export async function subirContainerDoCaso(
           stack: 'Node.js puro (node:test), sem dependências',
           responsibility: 'o código e a suíte do caso do golden-set',
           dependsOn: [],
+          // Sem isto o mínimo cai no piso (RN-683) e a proposta abaixo dele é recusada.
+          resources: RECURSOS,
         },
       ],
     }),
