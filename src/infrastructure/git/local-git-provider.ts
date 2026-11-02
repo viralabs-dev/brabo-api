@@ -881,8 +881,14 @@ async function rangeDoDiff(repoDir: string, record: StoredPr): Promise<string> {
   return aberto;
 }
 
+// shortcut: 64 MiB de stdout por chamada (o padrão do Node é 1 MiB e estourava em
+// show/blame/diff de arquivo grande), trocar por stream quando houver arquivo maior.
+const GIT_MAX_BUFFER = 64 * 1024 * 1024;
+
 async function execGit(repoDir: string, args: string[]) {
-  return execFileAsync('git', ['--git-dir', repoDir, ...args]);
+  return execFileAsync('git', ['--git-dir', repoDir, ...args], {
+    maxBuffer: GIT_MAX_BUFFER,
+  });
 }
 
 async function assertBareRepo(repoDir: string): Promise<void> {

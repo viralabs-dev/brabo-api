@@ -36,6 +36,8 @@ import type {
   ChatStreamChunk,
   LLMProviderName,
 } from '@brabo/shared';
+import { OpenRouterProvider } from '../../../../src/infrastructure/llm/openrouter-provider';
+import { subirServidorFalso } from '../../../support/llm/fake-llm-server';
 import { BraboMetrics } from '../../../../src/infrastructure/observability/brabo-metrics';
 
 const { db, pool } = createTestDb();
@@ -643,5 +645,79 @@ describe('RunLlmTurnUseCase — retentativa sem raciocínio (AT-587, RN-916)', (
         .where(eq(tokenUsage.sessionId, session.id));
       expect(linhas).toHaveLength(2);
     });
+  });
+});
+
+// AT-618 parte 2: o caso medido no TP-01 (21ª/22ª) — `qa-estrategia` pelo
+// OpenRouter REAL (fake só no HTTP), só raciocínio, `finish_reason: "length"`.
+describe('RunLlmTurnUseCase — RN-916 com o stream do OpenRouter (AT-618)', () => {
+  const sse = (res: import('node:http').ServerResponse, frames: object[]) => {
+    res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+    for (const f of frames) res.write(`data: ${JSON.stringify(f)}\n\n`);
+    res.write('data: [DONE]\n\n');
+    res.end();
+  };
+
+  it('qa-estrategia: resposta só de raciocínio cortada por length retenta UMA vez com o raciocínio desligado', async () => {
+    let chamadas = 0;
+    const servidor = await subirServidorFalso((_c, res) => {
+      chamadas += 1;
+      if (chamadas > 1) {
+        sse(res, [
+          { choices: [{ delta: { content: 'plano' } }] },
+          {
+            choices: [{ delta: {}, finish_reason: 'stop' }],
+            usage: { prompt_tokens: 100, completion_tokens: 50 },
+          },
+        ]);
+        return;
+      }
+      sse(res, [
+        { choices: [{ delta: { reasoning: 'pensando...' } }] },
+        { choices: [{ delta: {}, finish_reason: 'length' }] },
+        {
+          choices: [],
+          usage: {
+            prompt_tokens: 100,
+            completion_tokens: 8192,
+            completion_tokens_details: { reasoning_tokens: 8192 },
+          },
+        },
+      ]);
+    });
+    try {
+      const { owner, project, session, model } = await setup();
+      await db
+        .update(models)
+        .set({
+          provider: 'openrouter',
+          name: 'anthropic/claude-haiku-5.5',
+          supportsReasoning: true,
+        })
+        .where(eq(models.id, model.id));
+      await credentialRepo.upsert(
+        owner.id,
+        'openrouter',
+        encryption.encrypt('sk-teste'),
+      );
+      const provider = new OpenRouterProvider(tokenEstimator);
+      (provider as unknown as { config: { baseUrl: string } }).config = {
+        ...(provider as unknown as { config: object }).config,
+        baseUrl: servidor.baseUrl,
+      };
+
+      const result = await buildUseCase(provider).execute({
+        projectId: project.id,
+        sessionId: session.id,
+        agentId: 'qa-estrategia',
+        messages: [{ role: 'user', content: 'plano' }],
+      });
+
+      // AT-618: se isto falha, a retentativa não disparou (causa em aberto).
+      expect(chamadas).toBe(2);
+      expect(result.message.content).toBe('plano');
+    } finally {
+      await servidor.fechar();
+    }
   });
 });

@@ -83,6 +83,52 @@ describe('LocalGitProvider — commitFiles preserva árvore entre commits', () =
   });
 });
 
+describe('LocalGitProvider — arquivo acima de 1 MiB (AT-667)', () => {
+  let root: string;
+  let provider: LocalGitProvider;
+
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), 'brabo-git-repos-test-'));
+    process.env.GIT_LOCAL_REPOS_ROOT = root;
+    provider = new LocalGitProvider();
+  });
+
+  afterEach(async () => {
+    await chmod(root, 0o700).catch(() => {});
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('getFileContent devolve o conteúdo inteiro e blame não lança', async () => {
+    const repo = await provider.createRepo({
+      name: 'arquivo-grande',
+      visibility: 'private',
+    });
+    const content = 'linha de teste do arquivo grande\n'.repeat(
+      Math.ceil((1.5 * 1024 * 1024) / 33),
+    );
+    await provider.commitFiles({
+      externalId: repo.externalId,
+      branch: 'main',
+      message: 'grande',
+      files: [{ path: 'grande.txt', content }],
+    });
+
+    const lido = await provider.getFileContent({
+      externalId: repo.externalId,
+      branch: 'main',
+      path: 'grande.txt',
+    });
+    expect(lido).toBe(content);
+    await expect(
+      provider.blame({
+        externalId: repo.externalId,
+        ref: 'main',
+        path: 'grande.txt',
+      }),
+    ).resolves.not.toBeNull();
+  });
+});
+
 // Fase 4a: PR local (store no sidecar + merge via git). O contrato genérico
 // cobre openPullRequest (state 'open'); o merge de verdade é local-específico.
 describe('LocalGitProvider — pull request local (open + merge)', () => {
