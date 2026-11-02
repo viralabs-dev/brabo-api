@@ -6,6 +6,10 @@ import {
   subirContainerDoCaso,
   type DependenciasDaSubida,
 } from '../../scripts/golden-set-qa-container';
+import {
+  derivarRecursosMinimos,
+  resolverRecursosDaSubida,
+} from '../../src/domain/containers/recursos-minimos';
 import { validarDecisaoDeImagem } from '../../src/domain/containers/project-container';
 import type { ProposedAction } from '../../src/domain/actions/proposed-action.entity';
 
@@ -121,6 +125,17 @@ describe('subirContainerDoCaso (AT-076)', () => {
       'acao-1',
       'u1',
     );
+  });
+
+  it('os recursos da proposta não ficam abaixo do mínimo derivado do module_map do seed', async () => {
+    const deps = dependencias();
+    await subirContainerDoCaso(deps, entrada);
+    const [, , mapa] = vi.mocked(deps.createModuleMap.execute).mock.calls[0];
+    const [, , proposta] = vi.mocked(deps.proposeAction.execute).mock.calls[0];
+    const minimo = derivarRecursosMinimos(mapa.modules);
+    expect(() =>
+      resolverRecursosDaSubida(proposta.payload.resources, minimo),
+    ).not.toThrow();
   });
 
   it('broker indisponível vira erro NOMEADO com o motivo do produto, não seed verde', async () => {
