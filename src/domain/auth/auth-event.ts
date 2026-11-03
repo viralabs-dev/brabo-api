@@ -25,6 +25,8 @@ export type AuthEventKind =
    * `email_verified` ao lado.
    */
   | 'first_account_created'
+  /** Sessão emitida pelo acesso rápido por papel, só no ambiente local (AT-722). */
+  | 'dev_login'
   | 'email_verified'
   /**
    * Uma chave de dispositivo de MÁQUINA registrada pela rota interna do
