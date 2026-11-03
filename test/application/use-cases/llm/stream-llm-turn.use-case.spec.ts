@@ -128,7 +128,7 @@ function buildUseCase(provider: LLMProvider) {
     recordLlmUsage,
     resolveCredentialOwner,
     decidirFerramenta,
-    { find: async () => null } as never,
+    { find: () => Promise.resolve(null) } as never,
   );
 }
 
