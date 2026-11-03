@@ -4,6 +4,7 @@ import {
   Injectable,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import type { ReferenciaDeAnexo } from '../../domain/sessions/anexos';
 import { CABECALHO_SERVICE_TOKEN } from '../../interfaces/http/auth/engine-service.guard';
 import { tokenDeServicoAtual } from '../security/service-token';
 import { injectTraceHeaders } from '../observability/trace-context';
@@ -215,6 +216,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     idiomaDaResposta: string | null = null,
     mensagemId: string | null = null,
     perfilDoAutor: string | null = null,
+    anexos: ReferenciaDeAnexo[] = [],
   ): Promise<EntregaDaMensagem> {
     const corpo = await this.postComandoDeTurno(
       `/internal/sessions/${sessionId}/agent/message`,
@@ -225,6 +227,7 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
         ...(idiomaDaResposta ? { idiomaDaResposta } : {}),
         ...(mensagemId ? { mensagemId } : {}),
         ...(perfilDoAutor ? { perfilDoAutor } : {}),
+        ...(anexos.length > 0 ? { anexos } : {}),
       },
       [['sessionId', sessionId]],
     );

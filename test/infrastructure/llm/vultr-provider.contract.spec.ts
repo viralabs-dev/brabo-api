@@ -107,6 +107,7 @@ describe('VultrProvider — quirks (Fase 11b)', () => {
       stickySession: false,
       priceCeiling: false,
       promptCaching: false,
+      vision: false,
     });
     expect(VULTR_BASE_URL).toBe('https://api.vultrinference.com/v1');
   });

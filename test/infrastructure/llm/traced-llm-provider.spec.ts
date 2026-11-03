@@ -47,6 +47,7 @@ class ProviderFalso extends LLMProvider {
     stickySession: false,
     priceCeiling: false,
     promptCaching: false,
+    vision: false,
   };
   chaveRecebida: string | undefined = undefined;
   entradasRecebidas: readonly string[] = [];
@@ -93,6 +94,7 @@ class ProviderSemCatalogo extends LLMProvider {
     stickySession: false,
     priceCeiling: false,
     promptCaching: false,
+    vision: false,
   };
 
   // eslint-disable-next-line @typescript-eslint/require-await

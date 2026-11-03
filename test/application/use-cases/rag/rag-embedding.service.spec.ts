@@ -17,6 +17,7 @@ class FakeEmbeddingProvider implements LLMProvider {
     stickySession: false,
     priceCeiling: false,
     promptCaching: false,
+    vision: false,
   };
   calls: string[][] = [];
 
@@ -48,6 +49,7 @@ class ThrowingEmbeddingProvider implements LLMProvider {
     stickySession: false,
     priceCeiling: false,
     promptCaching: false,
+    vision: false,
   };
 
   // eslint-disable-next-line @typescript-eslint/require-await, require-yield
@@ -73,6 +75,7 @@ class NoEmbedProvider implements LLMProvider {
     stickySession: false,
     priceCeiling: false,
     promptCaching: false,
+    vision: false,
   };
 
   // eslint-disable-next-line @typescript-eslint/require-await, require-yield

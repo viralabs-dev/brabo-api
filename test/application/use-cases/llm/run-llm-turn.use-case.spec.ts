@@ -100,6 +100,7 @@ class FakeProvider implements LLMProvider {
     stickySession: false,
     priceCeiling: false,
     promptCaching: false,
+    vision: false,
   };
   constructor(private readonly script: ChatStreamChunk[]) {}
   async *chat(): AsyncGenerator<ChatStreamChunk> {
@@ -119,6 +120,7 @@ class ThrowingProvider implements LLMProvider {
     stickySession: false,
     priceCeiling: false,
     promptCaching: false,
+    vision: false,
   };
   async *chat(): AsyncGenerator<ChatStreamChunk> {
     await Promise.resolve();
@@ -144,6 +146,7 @@ function buildUseCase(provider: LLMProvider) {
     recordLlmUsage,
     resolveCredentialOwner,
     decidirFerramenta,
+    { find: () => Promise.resolve(null) } as never,
   );
 }
 

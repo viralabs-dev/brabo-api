@@ -1,4 +1,6 @@
 import { Global, Module, OnModuleDestroy } from '@nestjs/common';
+import { ChatAttachmentRepository } from '../../../application/ports/chat-attachment-repository.port';
+import { DrizzleChatAttachmentRepository } from './chat-attachment.repository';
 import { UnitOfWork } from '../../../application/ports/unit-of-work.port';
 import { UserRepository } from '../../../application/ports/user-repository.port';
 import { SessionLanguageOverrideRepository } from '../../../application/ports/session-language-override-repository.port';
@@ -279,6 +281,10 @@ const { db, pool } = createDrizzleClient();
       useClass: DrizzleAgentInstructionVersionRepository,
     },
     {
+      provide: ChatAttachmentRepository,
+      useClass: DrizzleChatAttachmentRepository,
+    },
+    {
       provide: ProficiencyProfileRepository,
       useClass: DrizzleProficiencyProfileRepository,
     },
@@ -346,6 +352,7 @@ const { db, pool } = createDrizzleClient();
     PsychologistAnalysisRepository,
     PsychologistHypothesisRepository,
     AgentInstructionVersionRepository,
+    ChatAttachmentRepository,
     ProficiencyProfileRepository,
     AnamneseOptOutRepository,
     AnamneseQueueRepository,

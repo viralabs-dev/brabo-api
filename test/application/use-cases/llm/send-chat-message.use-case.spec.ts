@@ -76,6 +76,7 @@ class FakeProvider implements LLMProvider {
     stickySession: false,
     priceCeiling: false,
     promptCaching: false,
+    vision: false,
   };
   callCount = 0;
 
@@ -101,6 +102,7 @@ class ThrowingProvider implements LLMProvider {
     stickySession: false,
     priceCeiling: false,
     promptCaching: false,
+    vision: false,
   };
   callCount = 0;
 

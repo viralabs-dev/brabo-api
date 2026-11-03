@@ -97,6 +97,7 @@ describe.skipIf(!apiKey)(
         stickySession: false,
         priceCeiling: false,
         promptCaching: false,
+        vision: false,
       },
       // eslint-disable-next-line @typescript-eslint/require-await
       chat: async function* () {

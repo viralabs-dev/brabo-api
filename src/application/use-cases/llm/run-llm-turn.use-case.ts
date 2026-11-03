@@ -1,12 +1,13 @@
 import { MENSAGEM_SEM_MODELO } from '../../../domain/llm/binding-resolver';
 import { Injectable, Logger } from '@nestjs/common';
-import type {
-  ChatMessage,
-  LLMErrorCode,
-  ToolCall,
-  ToolDef,
-} from '@brabo/shared';
+import type { LLMErrorCode, ToolCall, ToolDef } from '@brabo/shared';
 import { LLMProviderError } from '../../../domain/llm/llm-provider-errors';
+import { ChatAttachmentRepository } from '../../ports/chat-attachment-repository.port';
+import {
+  resolverAnexos,
+  textoDoConteudo,
+  type MensagemDeEntrada,
+} from '../../../domain/llm/anexos-no-turno';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { ModelRepository } from '../../ports/model-repository.port';
 import { UserCredentialRepository } from '../../ports/user-credential-repository.port';
@@ -40,7 +41,7 @@ export interface RunLlmTurnInput {
   projectId: string;
   sessionId: string;
   agentId?: string;
-  messages: ChatMessage[];
+  messages: MensagemDeEntrada[];
   tools?: ToolDef[];
   /** O engine repete o passo com o catálogo inteiro quando o menu do Jev estava errado (ADR 0179). */
   catalogoCompleto?: boolean;
@@ -102,6 +103,7 @@ export class RunLlmTurnUseCase {
     private readonly recordLlmUsage: RecordLlmUsageUseCase,
     private readonly resolveCredentialOwner: ResolveCredentialOwnerUseCase,
     private readonly decidirFerramenta: DecidirFerramentaDoPassoUseCase,
+    private readonly anexos: ChatAttachmentRepository,
   ) {}
 
   async execute(input: RunLlmTurnInput): Promise<RunLlmTurnResult> {
@@ -154,6 +156,14 @@ export class RunLlmTurnUseCase {
     }
 
     const provider = this.llmProviders.get(model.provider);
+    // RN-989: imagem só com as DUAS camadas de visão; senão vira texto de aviso.
+    const mensagens = await resolverAnexos(input.messages, {
+      visao: provider.capabilities.vision && model.supportsVision,
+      carregar: async (id) => {
+        const a = await this.anexos.find(input.projectId, input.sessionId, id);
+        return a && { nome: a.nome, mime: a.mime, bytes: a.bytes };
+      },
+    });
     // O critério do binding VENCEDOR, e só se este provider o declara — é o
     // que vai ao fio e o que congela no metering (ADR 0166, RN-583).
     const routingPreference = preferenciaEnviada(
@@ -170,7 +180,7 @@ export class RunLlmTurnUseCase {
       agentId: input.agentId,
       provider: model.provider,
       apiKey,
-      messages: input.messages,
+      messages: mensagens,
       tools: input.tools,
       catalogoCompleto: input.catalogoCompleto,
     });
@@ -249,7 +259,7 @@ export class RunLlmTurnUseCase {
       // Metering OBRIGATÓRIO — mesmo com erro do provider.
       if (inputTokens === 0 && outputTokens === 0) {
         inputTokens = this.tokenEstimator.count(
-          input.messages.map((m) => m.content).join('\n'),
+          mensagens.map((m) => textoDoConteudo(m.content)).join('\n'),
         );
         outputTokens = this.tokenEstimator.count(fullText);
         estimated = true;

@@ -112,6 +112,7 @@ export function deepinfraConfig(
       stickySession: false,
       priceCeiling: false,
       promptCaching: false,
+      vision: false,
     },
     authHeaders: (apiKey) => ({
       Authorization: `Bearer ${apiKey ?? ''}`,

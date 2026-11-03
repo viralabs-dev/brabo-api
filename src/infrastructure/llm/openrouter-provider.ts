@@ -389,6 +389,10 @@ export function openrouterConfig(
       // segunda chamada a `anthropic/claude-haiku-5.5` voltou com
       // `cached_input_tokens=8011`. O hook segue limitando o ponto a `anthropic/*`.
       promptCaching: true,
+      // PROVADO em 2026-11-03 (AT-715, RN-989, ADR 0246):
+      // `openrouter-provider.visao.smoke.spec.ts` rodou contra a API real com
+      // `google/gemini-2.5-flash` e um PNG 8x8 vermelho; o modelo respondeu "red".
+      vision: true,
     },
     authHeaders: (apiKey) => ({
       Authorization: `Bearer ${apiKey ?? ''}`,

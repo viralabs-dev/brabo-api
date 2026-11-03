@@ -37,6 +37,7 @@ export class ListProviderCapabilitiesUseCase {
           stickySession: c.stickySession,
           priceCeiling: c.priceCeiling,
           promptCaching: c.promptCaching,
+          vision: c.vision,
         },
       };
     });

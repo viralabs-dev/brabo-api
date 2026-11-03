@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { textoDoConteudo } from '../../domain/llm/anexos-no-turno';
 import { type IncomingMessage } from 'node:http';
 import { Injectable } from '@nestjs/common';
 import type {
@@ -95,6 +96,7 @@ export class OllamaProvider implements LLMProvider {
     stickySession: false,
     priceCeiling: false,
     promptCaching: false,
+    vision: false,
   };
 
   /**
@@ -244,7 +246,18 @@ export class OllamaProvider implements LLMProvider {
 
     const body = JSON.stringify({
       model: options.model,
-      messages,
+      // AT-715: imagem vai em `images` (base64 puro), o texto em `content`.
+      messages: messages.map((m) =>
+        typeof m.content === 'string'
+          ? m
+          : {
+              ...m,
+              content: textoDoConteudo(m.content),
+              images: m.content.flatMap((p) =>
+                p.type === 'image' ? [p.base64] : [],
+              ),
+            },
+      ),
       stream: true,
       // Ollama só aceita `tools` quando há alguma; mandar [] em modelos
       // sem suporte pode dar erro, então só inclui quando há tools.

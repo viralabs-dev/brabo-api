@@ -11,6 +11,7 @@ import {
   textoDoPerfilDoAutor,
 } from '../../../domain/graph/perfil-do-autor';
 import { textoDaProficienciaDoAutor } from '../../../domain/anamnese/proficiencia-do-autor';
+import { AnexosDoChatUseCase } from '../sessions/anexos-do-chat.use-case';
 import { ProficiencyProfileRepository } from '../../ports/proficiency-profile-repository.port';
 
 /**
@@ -60,6 +61,7 @@ export class SendAgentMessageUseCase {
     private readonly idiomaDaResposta: ResolverIdiomaDaRespostaUseCase,
     private readonly contextoDoUsuario: QueryUserContextUseCase,
     private readonly proficiencias: ProficiencyProfileRepository,
+    private readonly anexosDoChat: AnexosDoChatUseCase,
   ) {}
 
   async execute(
@@ -68,7 +70,18 @@ export class SendAgentMessageUseCase {
     agent: string,
     text: string,
     userId: string,
+    anexosIds: string[] = [],
   ) {
+    // RN-987: valida ANTES de gravar; o evento guarda só a referência.
+    const anexos =
+      anexosIds.length > 0
+        ? await this.anexosDoChat.referencias(
+            projectId,
+            sessionId,
+            userId,
+            anexosIds,
+          )
+        : [];
     const [idioma, perfil] = await Promise.all([
       this.resolverIdioma(userId, sessionId),
       this.resolverPerfil(userId, projectId),
@@ -83,6 +96,7 @@ export class SendAgentMessageUseCase {
       actor: { kind: 'user', id: userId },
       payload: {
         text,
+        ...(anexos.length > 0 ? { anexos } : {}),
         ...(idioma ? { idiomaAlvo: idioma.idioma, origem: idioma.origem } : {}),
         // RN-680: QUANTOS fatos do perfil foram ao modelo neste turno — o
         // texto não, que já mora no grafo e no aceite de cada hipótese.
@@ -103,6 +117,7 @@ export class SendAgentMessageUseCase {
       idioma?.idioma ?? null,
       mensagem.id,
       perfil?.texto ?? null,
+      anexos,
     );
 
     return { ok: true as const, mensagemId: mensagem.id, ...entrega };
