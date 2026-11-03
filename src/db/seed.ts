@@ -56,6 +56,8 @@ import {
 } from './seeds/criativo-instructions';
 import type { LLMProviderName } from '@brabo/shared';
 import { UpsertUserCredentialUseCase } from '../application/use-cases/llm/upsert-user-credential.use-case';
+import { ROLE_ORDER, type Role } from '../domain/iam/role';
+import type { User } from '../domain/iam/user.entity';
 
 /**
  * Credenciais de provider pré-salvas (opcional): reaproveita as MESMAS
@@ -85,6 +87,12 @@ const CREDENCIAL_ENV_VARS: Partial<Record<LLMProviderName, string>> = {
  * workspaces em vez de um, e o defeito só apareceria na segunda rodada.
  */
 const WORKSPACE_SEED = { name: 'Acme Corp', slug: 'acme-corp' };
+const NOMES_DAS_CONTAS_DO_SEED: Record<Role, string> = {
+  owner: 'Dona da Casa',
+  maintainer: 'Mantenedora',
+  developer: 'Dev Sênior',
+  viewer: 'Leitora',
+};
 const PROJETO_SEED = { name: 'Core API', slug: 'core-api' };
 /**
  * `criativa` e com nome: a sessão do seed é a que demonstra o fluxo inteiro
@@ -381,18 +389,22 @@ async function main() {
   // de semear. `provisionarUsuario` recusa rodar em produção.
   const senhaSeed = process.env.BRABO_SEED_PASSWORD ?? 'brabo12345678';
 
-  const { user: owner } = await provisionarUsuario(app, {
-    email: 'owner@brabo.dev',
-    nome: 'Dona da Casa',
-    senha: senhaSeed,
-  });
-  const { user: developer } = await provisionarUsuario(app, {
-    email: 'dev@brabo.dev',
-    nome: 'Dev Sênior',
-    senha: senhaSeed,
-  });
+  // Uma conta por papel do ROLE_ORDER, em `<papel>@brabo.dev`. Cada uma é
+  // reaproveitada pelo e-mail (provisionarUsuario é idempotente): rodar de
+  // novo não duplica nada, e a senha não é mexida.
+  const contas = {} as Record<Role, User>;
+  for (const papel of ROLE_ORDER) {
+    const { user } = await provisionarUsuario(app, {
+      email: `${papel}@brabo.dev`,
+      nome: NOMES_DAS_CONTAS_DO_SEED[papel],
+      senha: senhaSeed,
+    });
+    contas[papel] = user;
+  }
+  const owner = contas.owner;
+  const developer = contas.developer;
   console.log(
-    `✓ usuários: ${owner.email} (owner), ${developer.email} (developer) — senha: ${senhaSeed}`,
+    `✓ usuários: ${ROLE_ORDER.map((papel) => `${contas[papel].email} (${papel})`).join(', ')} — senha: ${senhaSeed}`,
   );
 
   // A chave que um agente gasta é a do OWNER do workspace (RN-058) — é dele
@@ -424,12 +436,17 @@ async function main() {
   // caso de uso passou a recusar quem mexe no próprio papel, e aqui ator e
   // alvo são pessoas diferentes de propósito — o teto não é alcançado, e o
   // seed não ganha exceção nenhuma.
-  await addWorkspaceMember.execute(
-    workspace.id,
-    owner.id,
-    developer.id,
-    'developer',
-  );
+  // O owner já entra como titular do workspace (CreateWorkspaceUseCase); os
+  // demais entram com o próprio papel.
+  for (const papel of ROLE_ORDER) {
+    if (papel === 'owner') continue;
+    await addWorkspaceMember.execute(
+      workspace.id,
+      owner.id,
+      contas[papel].id,
+      papel,
+    );
+  }
   console.log(
     workspaceExistente
       ? `= workspace já existia: ${workspace.name} (${workspace.slug})`
