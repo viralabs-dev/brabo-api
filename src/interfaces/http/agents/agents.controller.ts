@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
 import {
+  ApiAcceptedResponse,
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -26,6 +27,10 @@ import { ListHandoffsUseCase } from '../../../application/use-cases/agents/list-
 import { RequestManualHandoffUseCase } from '../../../application/use-cases/agents/request-manual-handoff.use-case';
 import { AnswerStructuredQuestionUseCase } from '../../../application/use-cases/agents/answer-structured-question.use-case';
 import { SendAgentMessageDto } from './dto/send-agent-message.dto';
+import {
+  MensagemAosAgentesResponseDto,
+  SendMessageToAgentsDto,
+} from './dto/send-message-to-agents.dto';
 import { AnswerStructuredQuestionDto } from './dto/answer-structured-question.dto';
 import { RequestManualHandoffDto } from './dto/request-manual-handoff.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
@@ -90,6 +95,37 @@ export class AgentsController {
     @CurrentUser() user: User,
   ) {
     return this.activateAgent.execute(projectId, sessionId, agent, user.id);
+  }
+
+  @Post('messages')
+  @HttpCode(202)
+  @RequireRole('developer')
+  @ApiOperation({
+    summary: 'Sends one message to several agents (AT-717, ADR 0247)',
+    description:
+      'Records ONE `chat.message` with `destinatarios` and delivers it to each ' +
+      'agent the way the single-agent route does (turn, queue RN-673, named ' +
+      'refusal). An agent that cannot take it is `recusada` in `entregas` and ' +
+      'the others still go. A closed session is 409 `sessao_encerrada`.',
+  })
+  @ApiAcceptedResponse({ type: MensagemAosAgentesResponseDto })
+  @ApiConflictResponse({
+    description: 'The session is closed (`sessao_encerrada`, RN-581).',
+  })
+  messages(
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @CurrentUser() user: User,
+    @Body() dto: SendMessageToAgentsDto,
+  ) {
+    return this.sendAgentMessage.executeVarios(
+      projectId,
+      sessionId,
+      dto.destinatarios,
+      dto.text,
+      user.id,
+      dto.anexos ?? [],
+    );
   }
 
   @Post('agents/:agent/message')
