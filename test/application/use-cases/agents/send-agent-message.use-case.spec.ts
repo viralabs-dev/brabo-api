@@ -146,6 +146,7 @@ describe('SendAgentMessageUseCase — idioma da resposta (RN-622)', () => {
     expect(resolver.execute).toHaveBeenCalledWith('autor-1', 'sessao-1');
     expect(enviados).toEqual(['es-MX']);
     expect(eventos[0].payload).toEqual({
+      destinatarios: ['po'],
       text: 'hola',
       idiomaAlvo: 'es-MX',
       origem: 'sessao',
@@ -163,7 +164,10 @@ describe('SendAgentMessageUseCase — idioma da resposta (RN-622)', () => {
       entrega: 'lida',
     });
     expect(enviados).toEqual([null]);
-    expect(eventos[0].payload).toEqual({ text: 'oi' });
+    expect(eventos[0].payload).toEqual({
+      destinatarios: ['po'],
+      text: 'oi',
+    });
   });
 });
 
@@ -232,7 +236,11 @@ describe('SendAgentMessageUseCase — fatos do perfil (RN-680)', () => {
       projectId: 'proj-1',
     });
     expect(perfis[0]).toContain('prefere uma pergunta por vez');
-    expect(eventos[0].payload).toEqual({ text: 'oi', fatosDoPerfil: 1 });
+    expect(eventos[0].payload).toEqual({
+      destinatarios: ['po'],
+      text: 'oi',
+      fatosDoPerfil: 1,
+    });
   });
 
   it('grafo fora do ar não derruba a mensagem: vai sem perfil', async () => {
@@ -246,7 +254,10 @@ describe('SendAgentMessageUseCase — fatos do perfil (RN-680)', () => {
       entrega: 'lida',
     });
     expect(perfis).toEqual([null]);
-    expect(eventos[0].payload).toEqual({ text: 'oi' });
+    expect(eventos[0].payload).toEqual({
+      destinatarios: ['po'],
+      text: 'oi',
+    });
   });
 
   // RN-696 (AT-356): o NÍVEL por competência que a Anamnese derivou vai pelo
@@ -268,7 +279,10 @@ describe('SendAgentMessageUseCase — fatos do perfil (RN-680)', () => {
 
     expect(perfis[0]).toContain('- arquitetura: avancado');
     expect(perfis[0]).not.toContain('SEGREDO-DO-RATIONALE');
-    expect(eventos[0].payload).toEqual({ text: 'oi' });
+    expect(eventos[0].payload).toEqual({
+      destinatarios: ['criativo'],
+      text: 'oi',
+    });
   });
 
   it('falha ao ler a proficiência não derruba a mensagem', async () => {

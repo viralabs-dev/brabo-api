@@ -72,6 +72,71 @@ export class SendAgentMessageUseCase {
     userId: string,
     anexosIds: string[] = [],
   ) {
+    const m = await this.gravar(
+      projectId,
+      sessionId,
+      [agent],
+      text,
+      userId,
+      anexosIds,
+    );
+    // RN-673: o id do `chat.message` vai junto — com turno em curso a
+    // mensagem entra na FILA do agente, e é por esse id que ela é marcada
+    // entregue ou cancelada no log.
+    const entrega = await this.entregar(projectId, sessionId, agent, text, m);
+    return { ok: true as const, mensagemId: m.id, ...entrega };
+  }
+
+  /**
+   * AT-717 (ADR 0247, RN-991): UMA mensagem, vários destinatários. Grava UM
+   * `chat.message` com `destinatarios` e entrega a cada agente pelo MESMO
+   * caminho do envio a um só (turno, fila RN-673, recusa nomeada do engine).
+   * Quem o engine recusa vira `recusada` com o motivo, sem derrubar os outros.
+   */
+  async executeVarios(
+    projectId: string,
+    sessionId: string,
+    destinatarios: string[],
+    text: string,
+    userId: string,
+    anexosIds: string[] = [],
+  ) {
+    const unicos = [...new Set(destinatarios)];
+    const m = await this.gravar(
+      projectId,
+      sessionId,
+      unicos,
+      text,
+      userId,
+      anexosIds,
+    );
+    const entregas = await Promise.all(
+      unicos.map(async (agente) => {
+        try {
+          const e = await this.entregar(projectId, sessionId, agente, text, m);
+          return e.entrega === 'enfileirada'
+            ? { agente, entrega: 'enfileirada' as const }
+            : { agente, entrega: 'turno' as const };
+        } catch (erro) {
+          return {
+            agente,
+            entrega: 'recusada' as const,
+            motivo: erro instanceof Error ? erro.message : String(erro),
+          };
+        }
+      }),
+    );
+    return { mensagemId: m.id, entregas };
+  }
+
+  private async gravar(
+    projectId: string,
+    sessionId: string,
+    destinatarios: string[],
+    text: string,
+    userId: string,
+    anexosIds: string[],
+  ) {
     // RN-987: valida ANTES de gravar; o evento guarda só a referência.
     const anexos =
       anexosIds.length > 0
@@ -96,6 +161,8 @@ export class SendAgentMessageUseCase {
       actor: { kind: 'user', id: userId },
       payload: {
         text,
+        // RN-991: a quem a mensagem foi — o log passa a dizer.
+        destinatarios,
         ...(anexos.length > 0 ? { anexos } : {}),
         ...(idioma ? { idiomaAlvo: idioma.idioma, origem: idioma.origem } : {}),
         // RN-680: QUANTOS fatos do perfil foram ao modelo neste turno — o
@@ -105,22 +172,26 @@ export class SendAgentMessageUseCase {
           : {}),
       },
     });
+    return { id: mensagem.id, idioma, perfil, anexos };
+  }
 
-    // RN-673: o id do `chat.message` vai junto — com turno em curso a
-    // mensagem entra na FILA do agente, e é por esse id que ela é marcada
-    // entregue ou cancelada no log.
-    const entrega = await this.engineClient.sendAgentMessage(
+  private entregar(
+    projectId: string,
+    sessionId: string,
+    agent: string,
+    text: string,
+    m: Awaited<ReturnType<SendAgentMessageUseCase['gravar']>>,
+  ) {
+    return this.engineClient.sendAgentMessage(
       projectId,
       sessionId,
       agent,
       text,
-      idioma?.idioma ?? null,
-      mensagem.id,
-      perfil?.texto ?? null,
-      anexos,
+      m.idioma?.idioma ?? null,
+      m.id,
+      m.perfil?.texto ?? null,
+      m.anexos,
     );
-
-    return { ok: true as const, mensagemId: mensagem.id, ...entrega };
   }
 
   private async resolverPerfil(
