@@ -50,7 +50,21 @@ export interface RagFeedbackRecord extends NewRagFeedback {
   createdAt: Date;
 }
 
+export interface NewSourceClick {
+  projectId: string;
+  sessionId: string | null;
+  eventId: string;
+  tipo: string;
+  ref: string | null;
+  searchId: string | null;
+  chunkId: string | null;
+  userId: string;
+}
+
 export abstract class RagTelemetryRepository {
+  /** O clique numa fonte (RN-983). NÃO é voto: nunca toca `rag_feedback`. */
+  abstract recordSourceClick(input: NewSourceClick): Promise<{ id: string }>;
+
   /** Grava UMA busca. Quem chama trata a falha — ela nunca derruba a busca. */
   abstract recordSearch(input: NewRagSearch): Promise<RagSearchRecord>;
 

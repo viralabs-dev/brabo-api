@@ -11,7 +11,10 @@ import { GetRagCoverageUseCase } from './get-rag-coverage.use-case';
 import { HybridSearchUseCase } from './hybrid-search.use-case';
 import { RecordRagFeedbackUseCase } from './record-rag-feedback.use-case';
 
+import { RecordSourceClickUseCase } from './record-source-click.use-case';
+
 const USE_CASES = [
+  RecordSourceClickUseCase,
   RagEmbeddingService,
   IndexProjectDocsUseCase,
   IndexSessionUseCase,

@@ -143,3 +143,46 @@ export class RagFeedbackRequestDto {
   @IsIn(RAG_VERDICTS)
   verdict!: RagVerdict;
 }
+
+const TIPOS_DE_FONTE = [
+  'rag',
+  'arquivo',
+  'historia',
+  'regra',
+  'adr',
+  'backlog',
+  'metricas',
+  'contratos',
+] as const;
+
+/** O clique numa fonte consultada (RN-983) — não é voto. */
+export class SourceClickRequestDto {
+  @ApiProperty({ format: 'uuid', required: false })
+  @IsOptional()
+  @IsUUID()
+  sessionId?: string;
+
+  @ApiProperty({ format: 'uuid', description: 'The `agent.response` event.' })
+  @IsUUID()
+  eventId!: string;
+
+  @ApiProperty({ enum: TIPOS_DE_FONTE })
+  @IsIn(TIPOS_DE_FONTE)
+  tipo!: (typeof TIPOS_DE_FONTE)[number];
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  ref?: string;
+
+  @ApiProperty({ format: 'uuid', required: false })
+  @IsOptional()
+  @IsUUID()
+  searchId?: string;
+
+  @ApiProperty({ format: 'uuid', required: false })
+  @IsOptional()
+  @IsUUID()
+  chunkId?: string;
+}
