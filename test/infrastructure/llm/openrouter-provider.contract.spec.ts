@@ -145,6 +145,7 @@ describe('OpenRouterProvider — quirks (Fase 11a)', () => {
       // Provada contra a API real em 2026-10-15
       // (`openrouter-provider.cache.smoke.spec.ts`, RN-892, AT-543).
       promptCaching: true,
+      vision: false,
     });
     expect(OPENROUTER_BASE_URL).toBe('https://openrouter.ai/api/v1');
   });

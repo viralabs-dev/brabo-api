@@ -1181,6 +1181,14 @@ export class LLMProviderCapabilitiesResponseDto implements Wire<LLMProviderCapab
       'tokens on a repeated call.',
   })
   promptCaching!: boolean;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'The provider accepts images in message content (AT-715, ADR 0246). Only ' +
+      '`true` after a smoke against the real API described a known image.',
+  })
+  vision!: boolean;
 }
 export const _chavesCapabilitiesDoProvider: MesmasChaves<
   LLMProviderCapabilitiesResponseDto,

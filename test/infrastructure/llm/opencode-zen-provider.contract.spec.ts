@@ -100,6 +100,7 @@ describe('OpenCodeZenProvider (AT-568, ADR 0227)', () => {
       stickySession: false,
       priceCeiling: false,
       promptCaching: false,
+      vision: false,
     });
     expect(OPENCODE_ZEN_BASE_URL).toBe(
       'https://opencode.ai/inference/openai/v1',

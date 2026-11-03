@@ -1,4 +1,5 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
+import { textoDoConteudo } from '../../domain/llm/anexos-no-turno';
 import Anthropic from '@anthropic-ai/sdk';
 import type {
   ChatMessage,
@@ -65,6 +66,7 @@ export class AnthropicProvider implements LLMProvider {
     stickySession: false,
     priceCeiling: false,
     promptCaching: false,
+    vision: false,
   };
 
   constructor(
@@ -147,7 +149,7 @@ export class AnthropicProvider implements LLMProvider {
     const systemPrompt =
       messages
         .filter((message) => message.role === 'system')
-        .map((message) => message.content)
+        .map((message) => textoDoConteudo(message.content))
         .join('\n\n') || undefined;
 
     const conversation = toConversation(
@@ -237,6 +239,10 @@ export class AnthropicProvider implements LLMProvider {
 
 type BlocoDeConteudo =
   | { type: 'text'; text: string }
+  | {
+      type: 'image';
+      source: { type: 'base64'; media_type: 'image/png'; data: string };
+    }
   | { type: 'tool_use'; id: string; name: string; input: unknown }
   | { type: 'tool_result'; tool_use_id: string; content: string };
 
@@ -260,7 +266,7 @@ function toConversation(messages: ChatMessage[]): TurnoAnthropic[] {
       const bloco: BlocoDeConteudo = {
         type: 'tool_result',
         tool_use_id: message.toolCallId ?? '',
-        content: message.content,
+        content: textoDoConteudo(message.content),
       };
 
       const ultimo = turnos.at(-1);
@@ -274,8 +280,8 @@ function toConversation(messages: ChatMessage[]): TurnoAnthropic[] {
 
     if (message.role === 'assistant' && message.toolCalls?.length) {
       const blocos: BlocoDeConteudo[] = [];
-      if (message.content) {
-        blocos.push({ type: 'text', text: message.content });
+      if (message.content.length > 0) {
+        blocos.push({ type: 'text', text: textoDoConteudo(message.content) });
       }
       for (const chamada of message.toolCalls) {
         blocos.push({
@@ -291,7 +297,21 @@ function toConversation(messages: ChatMessage[]): TurnoAnthropic[] {
 
     turnos.push({
       role: message.role as 'user' | 'assistant',
-      content: message.content,
+      content:
+        typeof message.content === 'string'
+          ? message.content
+          : message.content.map((p) =>
+              p.type === 'text'
+                ? p
+                : {
+                    type: 'image' as const,
+                    source: {
+                      type: 'base64' as const,
+                      media_type: p.mime as 'image/png',
+                      data: p.base64,
+                    },
+                  },
+            ),
     });
   }
 

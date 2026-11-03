@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { textoDoConteudo } from '../../domain/llm/anexos-no-turno';
 import type { IncomingMessage } from 'node:http';
 import type {
   ChatMessage,
@@ -426,7 +427,9 @@ export class OpenAICompatibleProvider implements LLMProvider {
       response.destroy(); // a cobrança para no que já foi gerado
       yield { type: 'truncated', motivo: 'raciocinio' };
       // Sem `usage` na resposta abortada: tokens = caracteres/4 (ADR 0224).
-      const entrada = messages.map((m) => m.content).join('\n');
+      const entrada = messages
+        .map((m) => textoDoConteudo(m.content))
+        .join('\n');
       yield {
         type: 'usage',
         inputTokens:
@@ -451,7 +454,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
       yield {
         type: 'usage',
         inputTokens: this.tokenEstimator.count(
-          messages.map((m) => m.content).join('\n'),
+          messages.map((m) => textoDoConteudo(m.content)).join('\n'),
         ),
         outputTokens: this.tokenEstimator.count(textoAcumulado),
         estimated: true,
@@ -706,11 +709,9 @@ export function parseCatalogoPadrao(corpo: unknown): ModeloDoCatalogo[] {
 // --- Mapeamento para o formato de fio ---
 
 /** Bloco de conteúdo com ponto de cache (RN-892) — só a forma que marcamos. */
-export interface WireContentPart {
-  type: 'text';
-  text: string;
-  cache_control?: { type: 'ephemeral' };
-}
+export type WireContentPart =
+  | { type: 'text'; text: string; cache_control?: { type: 'ephemeral' } }
+  | { type: 'image_url'; image_url: { url: string } };
 
 export interface WireMessage {
   role: string;
@@ -728,7 +729,7 @@ function toWireMessage(message: ChatMessage): WireMessage {
   if (message.role === 'tool') {
     return {
       role: 'tool',
-      content: message.content,
+      content: textoDoConteudo(message.content),
       tool_call_id: message.toolCallId ?? '',
       ...(message.name ? { name: message.name } : {}),
     };
@@ -737,7 +738,7 @@ function toWireMessage(message: ChatMessage): WireMessage {
   if (message.role === 'assistant' && message.toolCalls?.length) {
     return {
       role: 'assistant',
-      content: message.content,
+      content: textoDoConteudo(message.content),
       tool_calls: message.toolCalls.map((chamada) => ({
         id: chamada.id,
         type: 'function' as const,
@@ -749,7 +750,21 @@ function toWireMessage(message: ChatMessage): WireMessage {
     };
   }
 
-  return { role: message.role, content: message.content };
+  if (typeof message.content === 'string') {
+    return { role: message.role, content: message.content };
+  }
+  // AT-715: conteúdo multimodal no formato OpenAI (imagem = data URL).
+  return {
+    role: message.role,
+    content: message.content.map((p) =>
+      p.type === 'text'
+        ? p
+        : {
+            type: 'image_url' as const,
+            image_url: { url: `data:${p.mime};base64,${p.base64}` },
+          },
+    ),
+  };
 }
 
 function toWireTool(tool: ToolDef) {

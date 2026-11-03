@@ -13,6 +13,7 @@
  *       usage: { input_tokens, output_tokens, cost } }
  */
 import type { ChatMessage, ToolDef } from '@brabo/shared';
+import { textoDoConteudo } from './anexos-no-turno';
 
 /**
  * Id do Dev Lead. Fonte: `DEV_LEAD` em `../agents/agent-areas`. Cópia local de
@@ -226,7 +227,7 @@ export function recortarEstado(
   const resultados = new Map<string, string>();
   for (const m of execucao) {
     if (m.role === 'tool' && m.toolCallId) {
-      resultados.set(m.toolCallId, m.content);
+      resultados.set(m.toolCallId, textoDoConteudo(m.content));
     }
   }
   const entradas: EstadoParaOJev['passos_recentes'] = [];
@@ -248,10 +249,13 @@ export function recortarEstado(
     estado: {
       agente,
       pedido: cortar(
-        idxPedido >= 0 ? messages[idxPedido].content : '',
+        idxPedido >= 0 ? textoDoConteudo(messages[idxPedido].content) : '',
         CORTE_DO_PEDIDO,
       ),
-      contexto: cortar(sistema?.content ?? '', CORTE_DO_CONTEXTO),
+      contexto: cortar(
+        textoDoConteudo(sistema?.content ?? ''),
+        CORTE_DO_CONTEXTO,
+      ),
       passos_recentes: entradas.slice(-PASSOS_RECENTES),
     },
     anterior: entradas.at(-1)?.ferramenta ?? null,

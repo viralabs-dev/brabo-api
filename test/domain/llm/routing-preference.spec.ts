@@ -30,6 +30,7 @@ const BASE: LLMProviderCapabilities = {
   stickySession: false,
   priceCeiling: false,
   promptCaching: false,
+  vision: false,
 };
 const HUB = {
   name: 'openrouter' as const,

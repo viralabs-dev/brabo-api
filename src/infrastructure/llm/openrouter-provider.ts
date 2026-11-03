@@ -389,6 +389,7 @@ export function openrouterConfig(
       // segunda chamada a `anthropic/claude-haiku-5.5` voltou com
       // `cached_input_tokens=8011`. O hook segue limitando o ponto a `anthropic/*`.
       promptCaching: true,
+      vision: false,
     },
     authHeaders: (apiKey) => ({
       Authorization: `Bearer ${apiKey ?? ''}`,

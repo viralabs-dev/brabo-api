@@ -128,6 +128,7 @@ describe('TogetherProvider — quirks (Fase 11b)', () => {
       stickySession: false,
       priceCeiling: false,
       promptCaching: false,
+      vision: false,
     });
     expect(TOGETHER_BASE_URL).toBe('https://api.together.ai/v1');
   });

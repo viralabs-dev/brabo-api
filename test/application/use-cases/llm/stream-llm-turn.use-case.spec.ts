@@ -97,6 +97,7 @@ class FakeProvider implements LLMProvider {
     stickySession: false,
     priceCeiling: false,
     promptCaching: false,
+    vision: false,
   };
   constructor(private readonly script: ChatStreamChunk[]) {}
   recebidas: unknown[] = [];
@@ -127,6 +128,7 @@ function buildUseCase(provider: LLMProvider) {
     recordLlmUsage,
     resolveCredentialOwner,
     decidirFerramenta,
+    { find: async () => null } as never,
   );
 }
 
