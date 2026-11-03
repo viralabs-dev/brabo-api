@@ -81,6 +81,15 @@ ARG BRABO_VERSION=dev
 ENV NODE_ENV=production \
     BRABO_VERSION=$BRABO_VERSION
 
+# Ambiente da imagem (AT-722). Gravado em ARQUIVO e não em `ENV`: `environment:`
+# do compose e `-e` sobrescrevem ENV, arquivo não. A api só liga o acesso rápido
+# se `BRABO_AMBIENTE=local` E este arquivo estiver vazio-de-restrição (ausente ou
+# `local`); imagem das Actions o traz com `dev`/`prd`. Vazio quando o arg não vem.
+ARG BRABO_AMBIENTE=
+RUN mkdir -p /app \
+ && printf "%s" "$BRABO_AMBIENTE" > /app/AMBIENTE_DA_IMAGEM \
+ && chmod 0644 /app/AMBIENTE_DA_IMAGEM
+
 # `wget` (do busybox) já existe na imagem base e é o que o HEALTHCHECK usa —
 # nada a instalar. Não instalamos git aqui: quem faz operação de git é o
 # engine (Engine.Actions.GitExecutor); a api só cria o bare repo via
