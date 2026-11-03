@@ -9,6 +9,7 @@ import {
   uuid,
   text,
   integer,
+  boolean,
   jsonb,
   timestamp,
   unique,
@@ -279,6 +280,8 @@ export const sessionSocketTickets = pgTable(
     // mesmo padrão de `account_tokens.consumed_at`). Reuso tem que achar a
     // linha já marcada e falhar.
     consumedAt: timestamp('consumed_at', { withTimezone: true }),
+    // AT-676 (RN-993): o engine filtra o raciocínio do canal por esta marca.
+    podeVerRaciocinio: boolean('pode_ver_raciocinio').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

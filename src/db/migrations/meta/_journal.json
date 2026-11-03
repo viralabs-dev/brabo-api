@@ -575,6 +575,13 @@
       "when": 1793710510343,
       "tag": "0081_anexos_do_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1793749320020,
+      "tag": "0082_married_hannibal_king",
+      "breakpoints": true
     }
   ]
 }

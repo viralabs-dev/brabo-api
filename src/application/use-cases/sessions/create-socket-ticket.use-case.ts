@@ -7,6 +7,7 @@ import {
 import { SessionRepository } from '../../ports/session-repository.port';
 import { SessionSocketTicketRepository } from '../../ports/session-socket-ticket-repository.port';
 import { roleAtLeast, type Role } from '../../../domain/iam/role';
+import { podeVerRaciocinio } from '../../../domain/sessions/raciocinio-do-evento';
 import {
   minRoleForSocketTicketScope,
   type SocketTicketScope,
@@ -65,6 +66,7 @@ export class CreateSocketTicketUseCase {
       scope,
       ticketHash,
       expiresAt,
+      podeVerRaciocinio: podeVerRaciocinio(effectiveRole),
     });
 
     return { ticket: bruto, expiresAt };

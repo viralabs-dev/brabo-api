@@ -1,0 +1,1 @@
+ALTER TABLE "session_socket_tickets" ADD COLUMN "pode_ver_raciocinio" boolean DEFAULT false NOT NULL;
