@@ -15,6 +15,7 @@ import {
   uniqueIndex,
   index,
   primaryKey,
+  customType,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { projects, users } from './iam';
@@ -288,4 +289,38 @@ export const sessionSocketTickets = pgTable(
     // A poda apaga por tempo — mesmo padrão de refresh_tokens_expires_idx.
     index('session_socket_tickets_expires_idx').on(table.expiresAt),
   ],
+);
+
+// AT-715 (ADR 0246, RN-986..988) — anexos do chat. Os BYTES moram aqui, nunca
+// no event log: o `chat.message` guarda só a referência `{id, nome, mime,
+// tamanho}`. Sem UPDATE; morre junto com a sessão (cascade).
+const bytea = customType<{ data: Buffer }>({
+  dataType() {
+    return 'bytea';
+  },
+});
+
+export const chatAttachments = pgTable(
+  'chat_attachments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    autorId: uuid('autor_id')
+      .notNull()
+      .references(() => users.id),
+    nome: text('nome').notNull(),
+    // Conferido pelos BYTES (domain/sessions/anexos.ts), nunca pelo cabeçalho.
+    mime: text('mime').notNull(),
+    tamanho: integer('tamanho').notNull(),
+    bytes: bytea('bytes').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index('chat_attachments_session_idx').on(t.sessionId)],
 );

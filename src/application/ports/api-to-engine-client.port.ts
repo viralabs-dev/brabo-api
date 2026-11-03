@@ -1,3 +1,4 @@
+import type { ReferenciaDeAnexo } from '../../domain/sessions/anexos';
 import type { TerminalExecutionResult } from '../../domain/actions/terminal-execution-result';
 import type { DevAgentImpl } from '../../domain/execution/dev-agent-impl';
 import type { PosturaDeRede } from '../../domain/containers/project-container';
@@ -193,6 +194,9 @@ export abstract class ApiToEngineClient {
     // montados e com teto (`textoDoPerfilDoAutor`). OPCIONAL no fio, como o
     // idioma — `null` não é enviado, e engine antigo o ignora.
     perfilDoAutor?: string | null,
+    // RN-987 (AT-715): referências `{id, nome, mime, tamanho}` dos anexos da
+    // mensagem — nunca bytes. OPCIONAL no fio: lista vazia não é enviada.
+    anexos?: ReferenciaDeAnexo[],
   ): Promise<EntregaDaMensagem>;
 
   /**

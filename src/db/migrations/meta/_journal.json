@@ -568,6 +568,13 @@
       "when": 1793706384921,
       "tag": "0080_cliques_de_fonte",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1793710510343,
+      "tag": "0081_anexos_do_chat",
+      "breakpoints": true
     }
   ]
 }

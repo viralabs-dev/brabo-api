@@ -14,6 +14,7 @@ import { ReportSessionTerminationUseCase } from './report-session-termination.us
 import { GetSessionPendingWorkUseCase } from './get-session-pending-work.use-case';
 import { ResumeAgentTurnUseCase } from './resume-agent-turn.use-case';
 import { CreateSocketTicketUseCase } from './create-socket-ticket.use-case';
+import { AnexosDoChatUseCase } from './anexos-do-chat.use-case';
 import { EngineHttpClientsModule } from '../../../infrastructure/http-clients/engine-http-clients.module';
 
 const USE_CASES = [
@@ -32,6 +33,7 @@ const USE_CASES = [
   GetSessionPendingWorkUseCase,
   CreateSocketTicketUseCase,
   ResumeAgentTurnUseCase,
+  AnexosDoChatUseCase,
 ];
 
 @Module({

@@ -141,6 +141,7 @@ export class AgentsController {
       agent,
       dto.text,
       user.id,
+      dto.anexos ?? [],
     );
   }
 

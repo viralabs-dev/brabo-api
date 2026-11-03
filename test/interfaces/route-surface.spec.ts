@@ -223,6 +223,10 @@ const SEM_CORPO_JSON = new Map<
   ['DELETE /users/me/machine-device-keys/:deviceKeyId', 'sem-conteudo'],
   // Proxy do binário standalone do runner — o corpo é o ARQUIVO, nunca JSON.
   ['GET /runner-releases/binary', 'binario'],
+  [
+    'GET /projects/:projectId/sessions/:sessionId/attachments/:attachmentId',
+    'binario',
+  ],
 ]);
 
 /**
