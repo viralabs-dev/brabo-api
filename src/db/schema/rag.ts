@@ -288,3 +288,36 @@ export const ragFeedback = pgTable(
     ),
   ],
 );
+
+/**
+ * O clique numa fonte do bloco "Consultado neste turno" (RN-983, AT-716).
+ * NÃO é voto e NÃO alimenta `rag_feedback`: clique mede curiosidade, e o único
+ * sinal de verdade do RAG segue sendo o voto (RN-480). Escopo de PROJETO, como
+ * `rag_searches`; `session_id`/`event_id` ficam congelados sem FK, para o
+ * clique sobreviver à limpeza de eventos.
+ */
+export const sourceClicks = pgTable(
+  'source_clicks',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    sessionId: uuid('session_id'),
+    eventId: uuid('event_id').notNull(),
+    tipo: text('tipo').notNull(),
+    ref: text('ref'),
+    searchId: uuid('search_id'),
+    chunkId: uuid('chunk_id'),
+    userId: text('user_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('source_clicks_project_created_idx').on(
+      table.projectId,
+      table.createdAt,
+    ),
+  ],
+);
