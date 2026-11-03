@@ -103,6 +103,7 @@ describe('VultrProvider — quirks (Fase 11b)', () => {
       // Nenhum smoke com credencial provou o `/embeddings` deste provider
       // (ADR 0075) — a base sabe falar o dialeto, o provider nao declara.
       embeddings: false,
+      reasoningText: false,
       routingPreference: false,
       stickySession: false,
       priceCeiling: false,

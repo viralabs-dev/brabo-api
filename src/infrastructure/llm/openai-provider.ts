@@ -29,6 +29,7 @@ export function openaiConfig(
       // acessa aquele endpoint. Vira `true` no commit em que um smoke com
       // credencial real passar — não antes (ADR 0043/0075).
       embeddings: false,
+      reasoningText: false,
       // Não é hub: não há upstreams entre os quais escolher (ADR 0166).
       routingPreference: false,
       stickySession: false,

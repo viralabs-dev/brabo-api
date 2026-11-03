@@ -375,6 +375,19 @@ export class OpenAICompatibleProvider implements LLMProvider {
           yield { type: 'text_delta', text: delta.content };
         }
 
+        // AT-676: o TEXTO do raciocínio sai como chunk próprio, nunca no
+        // `content`. `reasoning` é o OpenRouter; `reasoning_content`, o dialeto
+        // DeepSeek/vLLM (Together, DeepInfra, NIM).
+        const textoDoRaciocinio =
+          typeof delta?.reasoning === 'string' && delta.reasoning
+            ? delta.reasoning
+            : typeof delta?.reasoning_content === 'string'
+              ? delta.reasoning_content
+              : '';
+        if (textoDoRaciocinio) {
+          yield { type: 'reasoning', text: textoDoRaciocinio };
+        }
+
         if (limiteDeRaciocinio && typeof delta?.reasoning === 'string') {
           caracteresDeRaciocinio += delta.reasoning.length;
           if (caracteresDeRaciocinio / 4 > limiteDeRaciocinio) {
@@ -787,6 +800,7 @@ interface FrameDeChat {
     delta?: {
       content?: string;
       reasoning?: unknown;
+      reasoning_content?: unknown;
       tool_calls?: ToolCallParcial[];
     };
     finish_reason?: unknown;

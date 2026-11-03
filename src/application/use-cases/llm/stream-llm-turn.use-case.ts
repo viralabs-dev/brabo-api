@@ -1,6 +1,11 @@
 import { MENSAGEM_SEM_MODELO } from '../../../domain/llm/binding-resolver';
 import { Injectable, Logger } from '@nestjs/common';
-import type { LLMErrorCode, ToolCall, ToolDef } from '@brabo/shared';
+import type {
+  LLMErrorCode,
+  ThinkingBlock,
+  ToolCall,
+  ToolDef,
+} from '@brabo/shared';
 import { LLMProviderError } from '../../../domain/llm/llm-provider-errors';
 import { ChatAttachmentRepository } from '../../ports/chat-attachment-repository.port';
 import {
@@ -59,12 +64,22 @@ export interface LlmTurnUsage {
 
 export type LlmTurnStreamEvent =
   | { type: 'delta'; text: string }
+  // AT-676: pedaço do raciocínio, AO VIVO. Nunca entra no `content`.
+  | { type: 'raciocinio'; text: string }
   // Antes de qualquer `delta`: o Jev está escolhendo a ferramenta (AT-236
   // resposta 16). Aditivo — o engine ignora frame de tipo desconhecido.
   | { type: 'tool_routing_started' }
   | {
       type: 'final';
-      message: { role: 'assistant'; content: string; toolCalls: ToolCall[] };
+      message: {
+        role: 'assistant';
+        content: string;
+        toolCalls: ToolCall[];
+        /** Blocos assinados da Anthropic: o engine os devolve no laço (AT-676). */
+        thinkingBlocks?: ThinkingBlock[];
+      };
+      /** O raciocínio INTEIRO do passo, sem corte (AT-676, ADR 0248). Ausente quando não houve. */
+      raciocinio?: string;
       usage: LlmTurnUsage;
       error: string | null;
       /**
@@ -213,6 +228,9 @@ export class StreamLlmTurnUseCase {
       const comTeto = teto !== null && !semTeto;
       let fullText = '';
       let toolCalls: ToolCall[] = [];
+      // AT-676: texto do raciocínio (fora do `content`) e blocos assinados da Anthropic.
+      let raciocinio = '';
+      let thinkingBlocks: ThinkingBlock[] = [];
       let inputTokens = 0;
       let outputTokens = 0;
       let estimated = false;
@@ -263,8 +281,12 @@ export class StreamLlmTurnUseCase {
                 emitido = ate;
               }
             }
+          } else if (chunk.type === 'reasoning') {
+            raciocinio += chunk.text;
+            yield { type: 'raciocinio', text: chunk.text };
           } else if (chunk.type === 'tool_calls') {
             toolCalls = toolCalls.concat(chunk.toolCalls);
+            thinkingBlocks = thinkingBlocks.concat(chunk.thinkingBlocks ?? []);
           } else if (chunk.type === 'usage') {
             inputTokens = chunk.inputTokens;
             outputTokens = chunk.outputTokens;
@@ -390,7 +412,13 @@ export class StreamLlmTurnUseCase {
       }
       yield {
         type: 'final',
-        message: { role: 'assistant', content: fullText, toolCalls },
+        message: {
+          role: 'assistant',
+          content: fullText,
+          toolCalls,
+          ...(thinkingBlocks.length > 0 ? { thinkingBlocks } : {}),
+        },
+        ...(raciocinio ? { raciocinio } : {}),
         usage: { inputTokens, outputTokens, costMicros, estimated },
         error: streamError,
         errorCode: streamErrorCode,

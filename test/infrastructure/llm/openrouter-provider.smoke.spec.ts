@@ -107,6 +107,7 @@ describe.skipIf(!apiKey)(
         toolCalling: true,
         listModels: false,
         embeddings: false,
+        reasoningText: false,
         routingPreference: false,
         stickySession: false,
         priceCeiling: false,

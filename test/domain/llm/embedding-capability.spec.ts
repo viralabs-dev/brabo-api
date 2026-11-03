@@ -12,6 +12,7 @@ const QUE_EMBEDA: LLMProviderCapabilities = {
   toolCalling: true,
   listModels: true,
   embeddings: true,
+  reasoningText: false,
   routingPreference: false,
   stickySession: false,
   priceCeiling: false,
@@ -21,6 +22,7 @@ const QUE_EMBEDA: LLMProviderCapabilities = {
 const QUE_NAO_EMBEDA: LLMProviderCapabilities = {
   ...QUE_EMBEDA,
   embeddings: false,
+  reasoningText: false,
   routingPreference: false,
   stickySession: false,
   priceCeiling: false,

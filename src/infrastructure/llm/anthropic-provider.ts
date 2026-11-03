@@ -8,6 +8,7 @@ import type {
   LLMProviderCapabilities,
   LLMProviderName,
   ModeloDoCatalogo,
+  ThinkingBlock,
   ToolCall,
   ToolDef,
 } from '@brabo/shared';
@@ -61,6 +62,7 @@ export class AnthropicProvider implements LLMProvider {
     // operação, e por isso este é o único dos nove que não vira `true` nem
     // com credencial na mão (ADR 0075).
     embeddings: false,
+    reasoningText: false,
     // Não é hub: não há upstreams entre os quais escolher (ADR 0166).
     routingPreference: false,
     stickySession: false,
@@ -162,9 +164,25 @@ export class AnthropicProvider implements LLMProvider {
     );
 
     try {
+      // AT-676: `thinking` só quando o modelo raciocina e o raciocínio não foi
+      // desligado. `budget_tokens` >= 1024 e < `max_tokens`, então o teto de
+      // saída passa a ser a saída visível + o orçamento (como no OpenRouter).
+      const orcamentoDePensamento =
+        options.reasoning && !options.reasoningOff
+          ? Math.max(1024, options.reasoningBudget ?? 2048)
+          : 0;
       const stream = client.messages.stream({
         model: options.model,
-        max_tokens: options.maxTokens ?? DEFAULT_MAX_TOKENS,
+        max_tokens:
+          (options.maxTokens ?? DEFAULT_MAX_TOKENS) + orcamentoDePensamento,
+        ...(orcamentoDePensamento
+          ? {
+              thinking: {
+                type: 'enabled' as const,
+                budget_tokens: orcamentoDePensamento,
+              },
+            }
+          : {}),
         system: systemPrompt,
         messages: conversation,
         ...(options.tools && options.tools.length > 0
@@ -189,6 +207,13 @@ export class AnthropicProvider implements LLMProvider {
         ) {
           yield { type: 'text_delta', text: event.delta.text };
         }
+        if (
+          event.type === 'content_block_delta' &&
+          event.delta.type === 'thinking_delta' &&
+          event.delta.thinking
+        ) {
+          yield { type: 'reasoning', text: event.delta.thinking };
+        }
       }
 
       // Os blocos `tool_use` vêm fatiados em `input_json_delta`; o SDK já
@@ -198,7 +223,15 @@ export class AnthropicProvider implements LLMProvider {
       const finalMessage = await stream.finalMessage();
 
       const toolCalls = toToolCalls(finalMessage.content);
-      if (toolCalls.length > 0) yield { type: 'tool_calls', toolCalls };
+      // Os blocos de pensamento voltam INTACTOS no mesmo chunk das chamadas:
+      // a API exige reenviá-los no turno `assistant` com `tool_use`.
+      const thinkingBlocks = toThinkingBlocks(finalMessage.content);
+      if (toolCalls.length > 0)
+        yield {
+          type: 'tool_calls',
+          toolCalls,
+          ...(thinkingBlocks.length > 0 ? { thinkingBlocks } : {}),
+        };
       // `stop_reason: "max_tokens"` (RN-737): o teto de saída cortou a resposta.
       if (finalMessage.stop_reason === 'max_tokens')
         yield { type: 'truncated' };
@@ -244,6 +277,7 @@ type BlocoDeConteudo =
       source: { type: 'base64'; media_type: 'image/png'; data: string };
     }
   | { type: 'tool_use'; id: string; name: string; input: unknown }
+  | ThinkingBlock
   | { type: 'tool_result'; tool_use_id: string; content: string };
 
 interface TurnoAnthropic {
@@ -279,7 +313,8 @@ function toConversation(messages: ChatMessage[]): TurnoAnthropic[] {
     }
 
     if (message.role === 'assistant' && message.toolCalls?.length) {
-      const blocos: BlocoDeConteudo[] = [];
+      // Pensamento ANTES de texto e `tool_use` (ordem exigida pela API).
+      const blocos: BlocoDeConteudo[] = [...(message.thinkingBlocks ?? [])];
       if (message.content.length > 0) {
         blocos.push({ type: 'text', text: textoDoConteudo(message.content) });
       }
@@ -346,4 +381,11 @@ function toToolCalls(content: { type: string }[]): ToolCall[] {
           ? (bloco.input as Record<string, unknown>)
           : {},
     }));
+}
+
+function toThinkingBlocks(content: { type: string }[]): ThinkingBlock[] {
+  return content.filter(
+    (bloco): bloco is ThinkingBlock =>
+      bloco.type === 'thinking' || bloco.type === 'redacted_thinking',
+  );
 }

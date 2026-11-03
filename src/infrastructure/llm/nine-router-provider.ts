@@ -181,6 +181,7 @@ export function nineRouterConfig(
       toolCalling: true,
       listModels: true,
       embeddings: false,
+      reasoningText: false,
       routingPreference: false,
       stickySession: false,
       priceCeiling: false,

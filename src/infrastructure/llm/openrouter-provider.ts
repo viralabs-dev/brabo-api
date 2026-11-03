@@ -367,6 +367,7 @@ export function openrouterConfig(
       // hub roteia embedding para provedores diferentes dos de chat, e a prova
       // de um endpoint não é prova do outro (ADR 0075).
       embeddings: false,
+      reasoningText: false,
       // PROVADO em 2026-09-29 (ADR 0166, RN-583, AT-158):
       // `openrouter-provider.roteamento.smoke.spec.ts` rodou contra a API real
       // e o critério mudou o upstream que serviu (`price` → DeepInfra,

@@ -26,6 +26,7 @@ const BASE: LLMProviderCapabilities = {
   toolCalling: true,
   listModels: true,
   embeddings: false,
+  reasoningText: false,
   routingPreference: false,
   stickySession: false,
   priceCeiling: false,

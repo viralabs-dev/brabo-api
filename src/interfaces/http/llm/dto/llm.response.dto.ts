@@ -1146,6 +1146,14 @@ export class LLMProviderCapabilitiesResponseDto implements Wire<LLMProviderCapab
   @ApiProperty({
     example: false,
     description:
+      'The provider returns the reasoning TEXT as a `reasoning` chunk (AT-676, ' +
+      'ADR 0248). Only `true` after a smoke against the real API.',
+  })
+  reasoningText!: boolean;
+
+  @ApiProperty({
+    example: false,
+    description:
       'The provider accepts a ROUTING PREFERENCE (`price`, `throughput`, ' +
       '`latency`) to pick among the upstreams serving the same model ' +
       '(ADR 0166). Only `true` after a smoke against the real API returned ' +

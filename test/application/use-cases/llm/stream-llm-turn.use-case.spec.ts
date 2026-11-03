@@ -93,6 +93,7 @@ class FakeProvider implements LLMProvider {
     toolCalling: true,
     listModels: false,
     embeddings: false,
+    reasoningText: false,
     routingPreference: false,
     stickySession: false,
     priceCeiling: false,
@@ -248,6 +249,37 @@ describe('StreamLlmTurnUseCase', () => {
       .from(sessionEvents)
       .where(eq(sessionEvents.sessionId, session.id));
     expect(events).toHaveLength(0);
+  });
+
+  it('raciocínio (AT-676): frame ao vivo, final com o texto inteiro, content intacto', async () => {
+    const { project, session } = await setup();
+    const blocos = [
+      { type: 'thinking' as const, thinking: 'ab', signature: 'S' },
+    ];
+    const provider = new FakeProvider([
+      { type: 'reasoning', text: 'pen' },
+      { type: 'reasoning', text: 'sando' },
+      { type: 'text_delta', text: 'Oi' },
+      { type: 'tool_calls', toolCalls: [], thinkingBlocks: blocos },
+      { type: 'usage', inputTokens: 10, outputTokens: 3, estimated: false },
+    ]);
+    const eventos = await coletar(
+      buildUseCase(provider).execute({
+        projectId: project.id,
+        sessionId: session.id,
+        agentId: 'criativo',
+        messages: [{ role: 'user', content: 'oi' }],
+      }),
+    );
+    expect(eventos.filter((e) => e.type === 'raciocinio')).toEqual([
+      { type: 'raciocinio', text: 'pen' },
+      { type: 'raciocinio', text: 'sando' },
+    ]);
+    const final = eventos.at(-1);
+    if (final?.type !== 'final') throw new Error('esperava final');
+    expect(final.raciocinio).toBe('pensando');
+    expect(final.message.content).toBe('Oi');
+    expect(final.message.thinkingBlocks).toEqual(blocos);
   });
 
   it('custo real na resposta (ADR 0188, RN-665): o frame final e a linha levam o REAL, com o modelo resolvido e o id', async () => {
