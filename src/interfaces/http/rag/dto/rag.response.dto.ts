@@ -262,3 +262,7 @@ export const _chavesCoverage: MesmasChaves<
   RagCoverageResponseDto,
   Wire<RagCoverage>
 > = true;
+
+export class SourceClickResponseDto {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+}

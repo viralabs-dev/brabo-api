@@ -3,17 +3,24 @@ import { eq } from 'drizzle-orm';
 import {
   RagTelemetryRepository,
   type NewRagFeedback,
+  type NewSourceClick,
   type NewRagSearch,
   type RagFeedbackRecord,
   type RagSearchRecord,
 } from '../../../application/ports/rag-telemetry-repository.port';
-import { ragFeedback, ragSearches } from '../../../db/schema';
+import { ragFeedback, ragSearches, sourceClicks } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
 @Injectable()
 export class DrizzleRagTelemetryRepository implements RagTelemetryRepository {
   constructor(@Inject(DRIZZLE) private readonly rootDb: DrizzleDb) {}
+
+  async recordSourceClick(input: NewSourceClick): Promise<{ id: string }> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db.insert(sourceClicks).values(input).returning();
+    return { id: row.id };
+  }
 
   async recordSearch(input: NewRagSearch): Promise<RagSearchRecord> {
     const db = currentDb(this.rootDb);
