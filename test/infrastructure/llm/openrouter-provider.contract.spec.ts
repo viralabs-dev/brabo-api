@@ -133,6 +133,7 @@ describe('OpenRouterProvider — quirks (Fase 11a)', () => {
       // Nenhum smoke com credencial provou o `/embeddings` deste provider
       // (ADR 0075) — a base sabe falar o dialeto, o provider nao declara.
       embeddings: false,
+      reasoningText: true,
       // Provada contra a API real em 2026-09-29
       // (`openrouter-provider.roteamento.smoke.spec.ts`, AT-158).
       routingPreference: true,

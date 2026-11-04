@@ -14,7 +14,7 @@ import { openrouterConfig } from '../../../src/infrastructure/llm/openrouter-pro
  */
 const apiKey = process.env.OPENROUTER_TEST_KEY;
 const modelo =
-  process.env.OPENROUTER_TEST_RACIOCINIO_MODEL ?? 'deepseek/deepseek-r1';
+  process.env.OPENROUTER_TEST_RACIOCINIO_MODEL ?? 'deepseek/deepseek-r1-0528';
 
 if (!apiKey) {
   console.warn(

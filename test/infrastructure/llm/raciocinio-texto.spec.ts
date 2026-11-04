@@ -292,13 +292,9 @@ describe('Anthropic: thinking por geração do modelo (AT-676)', () => {
 });
 
 describe('capability reasoningText', () => {
-  it('é false em todos até haver smoke', () => {
-    for (const p of [
-      new AnthropicProvider(),
-      new OpenRouterProvider(),
-      new OllamaProvider(),
-    ]) {
-      expect(p.capabilities.reasoningText).toBe(false);
-    }
+  it('é true só na Anthropic e no OpenRouter (provados em 03/11, AT-676)', () => {
+    expect(new AnthropicProvider().capabilities.reasoningText).toBe(true);
+    expect(new OpenRouterProvider().capabilities.reasoningText).toBe(true);
+    expect(new OllamaProvider().capabilities.reasoningText).toBe(false);
   });
 });

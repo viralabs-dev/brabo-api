@@ -62,7 +62,9 @@ export class AnthropicProvider implements LLMProvider {
     // operação, e por isso este é o único dos nove que não vira `true` nem
     // com credencial na mão (ADR 0075).
     embeddings: false,
-    reasoningText: false,
+    // PROVADO em 2026-11-03 (AT-676, RN-993): `anthropic-provider.raciocinio.smoke.spec.ts`
+    // com claude-haiku-5-5 e claude-sonnet-5-5. Na Anthropic o texto é o RESUMO do raciocínio.
+    reasoningText: true,
     // Não é hub: não há upstreams entre os quais escolher (ADR 0166).
     routingPreference: false,
     stickySession: false,
