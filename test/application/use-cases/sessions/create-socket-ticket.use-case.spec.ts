@@ -89,6 +89,21 @@ describe('CreateSocketTicketUseCase', () => {
     expect(a.ticket).not.toBe(b.ticket);
   });
 
+  it('RN-993: developer gera ticket com podeVerRaciocinio true, viewer com false', async () => {
+    const dev = buildHarness({});
+    await dev.useCase.execute(
+      'proj-1',
+      'sess-1',
+      'u',
+      'developer',
+      'heartbeat',
+    );
+    expect(dev.emitir.mock.calls[0][0].podeVerRaciocinio).toBe(true);
+    const vw = buildHarness({});
+    await vw.useCase.execute('proj-1', 'sess-1', 'u', 'viewer', 'heartbeat');
+    expect(vw.emitir.mock.calls[0][0].podeVerRaciocinio).toBe(false);
+  });
+
   it('viewer pedindo escopo terminal: 403, papel insuficiente', async () => {
     const { useCase, emitir } = buildHarness({});
 
