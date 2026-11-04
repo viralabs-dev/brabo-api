@@ -12,6 +12,7 @@ import { Traced } from '../observability/traced.decorator';
 import {
   ApiToEngineClient,
   type EntregaDaMensagem,
+  type CatalogoDoEngine,
   RunnerNaoConectadoError,
   RunnerRecusouContainerError,
   type ContainerIniciadoViaRunner,
@@ -274,6 +275,21 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
       { projectId },
       [['sessionId', sessionId]],
     );
+  }
+
+  async getAgentCatalog(): Promise<CatalogoDoEngine> {
+    const engineUrl = process.env.ENGINE_URL ?? 'http://localhost:4000';
+    const res = await fetch(`${engineUrl}/internal/agents/catalog`, {
+      method: 'GET',
+      headers: this.buildHeaders(),
+    });
+    if (!res.ok) {
+      throw new Error(
+        `Falha na leitura ao engine (agents/catalog): ${res.status} ${await res.text()}`,
+      );
+    }
+    const corpo = (await res.json()) as Partial<CatalogoDoEngine>;
+    return { agentes: Array.isArray(corpo.agentes) ? corpo.agentes : [] };
   }
 
   /**

@@ -32,7 +32,10 @@ import { ResolveEffectiveRoleUseCase } from '../iam/resolve-effective-role.use-c
 // estado.
 import { ResolverIdiomaDaRespostaUseCase } from '../iam/resolver-idioma-da-resposta.use-case';
 
+import { GetAgentCatalogUseCase } from './get-agent-catalog.use-case';
+
 const USE_CASES = [
+  GetAgentCatalogUseCase,
   ActivateAgentUseCase,
   SendAgentMessageUseCase,
   ConfirmReadinessUseCase,
