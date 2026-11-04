@@ -1,5 +1,5 @@
 /**
- * Mede a passagem dos gates declarados em `docs/gates.yml` (FASE 15a, ADR 0054).
+ * Mede a passagem dos gates declarados em `apps/api/config/gates.yml` (FASE 15a, ADR 0054).
  *
  * Uso: pnpm --filter api validacao:gates [--projeto <uuid>] [--sem-banco]
  *

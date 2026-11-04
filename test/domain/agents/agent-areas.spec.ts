@@ -12,6 +12,8 @@ import {
 } from '../../../src/domain/agents/agent-areas';
 import {
   CAMINHO_ENGINE,
+  CAMINHO_JSON,
+  jsonDasAreas,
   CAMINHO_WEB,
   renderEngine,
   renderWeb,
@@ -30,6 +32,10 @@ import {
  * uma intenção escrita no comentário.
  */
 describe('as cópias derivadas não divergem da fonte (FASE 18)', () => {
+  it('o areas.json do contrato é exatamente o que a fonte exporta (AT-692)', () => {
+    expect(readFileSync(CAMINHO_JSON, 'utf8')).toBe(jsonDasAreas());
+  });
+
   it('o arquivo do web é exatamente o que o gerador produz', () => {
     expect(readFileSync(CAMINHO_WEB, 'utf8')).toBe(
       renderWeb(AGENT_AREAS, SOLO_CONVERSATIONAL_AGENTS),

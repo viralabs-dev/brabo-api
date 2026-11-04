@@ -7,7 +7,7 @@ import {
 } from '../../domain/gates/gate-registry';
 
 /**
- * Lê `docs/gates.yml`. O domínio valida; aqui só acontece o IO.
+ * Lê `config/gates.yml`. O domínio valida; aqui só acontece o IO.
  *
  * ## O caminho é descoberto, não configurado
  *
@@ -15,7 +15,7 @@ import {
  * script rodam de `apps/api` sob ts-node, o build roda de `dist/`, e a imagem
  * de produção tem outra árvore ainda. Uma variável de ambiente resolveria, e
  * seria mais uma coisa para configurar errado; subir de `__dirname` até achar
- * `docs/gates.yml` cobre os três com uma regra só.
+ * `config/gates.yml` cobre os três com uma regra só.
  *
  * ## O que ele valida, e o que NÃO valida
  *
@@ -27,8 +27,8 @@ import {
  *
  * A separação nasceu de um defeito MEDIDO na v6.1.0 instalada: `GET /gates`
  * respondia 500 com `RegistroDeGatesInvalido` listando os onze alvos de
- * `docs/gates.yml`, todos "não existe". Não era o registro estando errado —
- * era a pergunta errada. A imagem de produção leva `/app/docs/gates.yml`, o
+ * `config/gates.yml`, todos "não existe". Não era o registro estando errado —
+ * era a pergunta errada. A imagem de produção leva `/app/config/gates.yml`, o
  * `dist` achatado, `db/migrations` e `node_modules`; `apps/api/test/`,
  * `scripts/ci/` e `.github/` nunca entram nela, então a régua de repositório
  * reprovava TODOS os gates em TODA instalação, e a tela de gates quebrava.
@@ -36,7 +36,7 @@ import {
  * Nada foi afrouxado: a régua continua existindo, com os mesmos alvos, e
  * continua reprovando alvo que sumiu — só que onde a pergunta faz sentido.
  */
-export const CAMINHO_RELATIVO = 'docs/gates.yml';
+export const CAMINHO_RELATIVO = 'config/gates.yml';
 
 /** Sobe do diretório dado até achar o registro. `null` se não achar. */
 export function acharRegistro(
@@ -58,7 +58,7 @@ export function acharRegistro(
 
 export class RegistroDeGatesInvalido extends Error {
   constructor(readonly problemas: string[]) {
-    super(`docs/gates.yml inválido:\n  - ${problemas.join('\n  - ')}`);
+    super(`config/gates.yml inválido:\n  - ${problemas.join('\n  - ')}`);
     this.name = 'RegistroDeGatesInvalido';
   }
 }
