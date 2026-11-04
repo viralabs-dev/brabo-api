@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { ChatStreamChunk } from '@brabo/shared';
-import { AnthropicProvider } from '../../../src/infrastructure/llm/anthropic-provider';
+import {
+  AnthropicProvider,
+  pensamentoAdaptativo,
+} from '../../../src/infrastructure/llm/anthropic-provider';
 import { OpenAICompatibleProvider } from '../../../src/infrastructure/llm/openai-compatible-provider';
 import { openaiConfig } from '../../../src/infrastructure/llm/openai-provider';
 import { OpenRouterProvider } from '../../../src/infrastructure/llm/openrouter-provider';
@@ -155,7 +158,7 @@ describe('Anthropic: thinking', () => {
     });
     const chunks = await coletar(
       p.chat([{ role: 'user', content: 'x' }], {
-        model: 'c',
+        model: 'claude-haiku-4-5',
         apiKey: 'k',
         reasoning: true,
         reasoningBudget: 2000,
@@ -222,6 +225,69 @@ describe('Anthropic: thinking', () => {
     );
     expect(corpo?.thinking).toBeUndefined();
     expect(corpo?.max_tokens).toBe(4096);
+  });
+});
+
+describe('Anthropic: thinking por geração do modelo (AT-676)', () => {
+  async function corpoEnviado(opcoes: object): Promise<Corpo | undefined> {
+    let corpo: Corpo | undefined;
+    servidor = createServer((req, res) => {
+      let b = '';
+      req.on('data', (d) => (b += d));
+      req.on('end', () => {
+        corpo = JSON.parse(b) as Corpo;
+        res.writeHead(500);
+        res.end('{}');
+      });
+    });
+    await new Promise<void>((r) => servidor!.listen(0, r));
+    const p = new AnthropicProvider({
+      baseURL: `http://127.0.0.1:${porta()}`,
+      maxRetries: 0,
+    });
+    await coletar(
+      p.chat([{ role: 'user', content: 'x' }], {
+        apiKey: 'k',
+        ...opcoes,
+      } as never),
+    );
+    return corpo;
+  }
+
+  it('modelo atual: adaptive + summarized, sem budget_tokens', async () => {
+    const c = await corpoEnviado({
+      model: 'claude-sonnet-5-5',
+      reasoning: true,
+    });
+    expect(c?.thinking).toEqual({ type: 'adaptive', display: 'summarized' });
+    expect(c?.max_tokens).toBe(4096);
+  });
+
+  it('modelo antigo: enabled + budget_tokens', async () => {
+    const c = await corpoEnviado({
+      model: 'claude-haiku-4-5',
+      reasoning: true,
+    });
+    expect(c?.thinking).toEqual({ type: 'enabled', budget_tokens: 2048 });
+  });
+
+  it('reasoningOff não manda thinking, nem no modelo atual', async () => {
+    const c = await corpoEnviado({
+      model: 'claude-sonnet-5-5',
+      reasoning: true,
+      reasoningOff: true,
+    });
+    expect(c?.thinking).toBeUndefined();
+  });
+
+  it.each([
+    ['claude-opus-4-6', true],
+    ['claude-sonnet-5-5', true],
+    ['claude-sonnet-4-5-20250929', false],
+    ['claude-opus-4-1-20250805', false],
+    ['claude-3-7-sonnet', false],
+  ])('pensamentoAdaptativo(%s) = %s', (m, esperado) => {
+    expect(pensamentoAdaptativo(m)).toBe(esperado);
   });
 });
 
