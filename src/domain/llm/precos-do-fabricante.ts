@@ -51,6 +51,13 @@ function claude(
 // Conferido em 01/11/2026 na tabela "Model pricing" da página (colunas
 // Base Input / Output). Só entra o que está nela.
 export const PRECOS_DO_FABRICANTE: readonly PrecoDoFabricante[] = [
+  claude('Claude Fable 5.1', ['claude-fable-5-1'], 10, 50),
+  claude('Claude Fable 5', ['claude-fable-5'], 10, 50),
+  claude('Claude Opus 4.8', ['claude-opus-4-8'], 5, 25),
+  claude('Claude Opus 4.7', ['claude-opus-4-7'], 5, 25),
+  claude('Claude Opus 4.6', ['claude-opus-4-6'], 5, 25),
+  claude('Claude Sonnet 5', ['claude-sonnet-5'], 2, 10),
+  claude('Claude Sonnet 4.6', ['claude-sonnet-4-6'], 3, 15),
   claude('Claude Opus 5.5', ['claude-opus-5-5', 'claude-opus-5.5'], 4, 20),
   claude('Claude Opus 5', ['claude-opus-5'], 5, 25),
   claude(

@@ -1,3 +1,4 @@
+import { precoDoFabricante } from '../../domain/llm/precos-do-fabricante';
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { textoDoConteudo } from '../../domain/llm/anexos-no-turno';
 import Anthropic from '@anthropic-ai/sdk';
@@ -91,10 +92,10 @@ export class AnthropicProvider implements LLMProvider {
    *    o SDK mantém.
    * 2. **`max_input_tokens` é a janela de contexto**, e é o único campo que o
    *    catálogo do Brabo consegue aproveitar além do id e do nome legível.
-   * 3. **Preço NÃO vem** nesta resposta. Por isso `inputPricePerMillionMicros`
-   *    e o par de saída ficam ausentes, e o modelo entra no catálogo sem
+   * 3. **Preço NÃO vem** nesta resposta. O preço sai de `precoDoFabricante`
+   *    (tabela única da RN-965, ADR 0251, RN-997); modelo FORA da tabela entra sem
    *    preço em vez de com preço inventado (RN-042 — o custo gravado tem que
-   *    ser reproduzível).
+   *    ser reproduzível). O raciocínio vem de `capabilities.thinking` do SDK.
    *
    * Erro LANÇA, como o contrato exige: lista vazia seria lida pelo sync como
    * "sumiram todos" e indisponibilizaria o catálogo inteiro (RN-043).
@@ -125,6 +126,12 @@ export class AnthropicProvider implements LLMProvider {
             : {}),
           // Todo modelo servido pela Messages API aceita `tools`.
           supportsToolCalling: true,
+          // shortcut: `capabilities` vem nulo em modelo antigo; aí vale a família
+          // (todo Claude 4+ raciocina), rever quando o SDK sempre preencher.
+          supportsReasoning:
+            modelo.capabilities?.thinking?.supported ??
+            !/^claude-3/.test(modelo.id),
+          ...precoDeLista(modelo.id),
         });
       }
 
@@ -402,6 +409,21 @@ function toThinkingBlocks(content: { type: string }[]): ThinkingBlock[] {
     (bloco): bloco is ThinkingBlock =>
       bloco.type === 'thinking' || bloco.type === 'redacted_thinking',
   );
+}
+
+/** Preço da tabela única do fabricante (RN-965); casa o id com e sem sufixo de data. */
+function precoDeLista(id: string): {
+  inputPricePerMillionMicros?: number;
+  outputPricePerMillionMicros?: number;
+} {
+  const p =
+    precoDoFabricante(id) ?? precoDoFabricante(id.replace(/-\d{8}$/, ''));
+  return p
+    ? {
+        inputPricePerMillionMicros: p.entradaMicros,
+        outputPricePerMillionMicros: p.saidaMicros,
+      }
+    : {};
 }
 
 /** Modelos antigos (3.x e 4.0..4.5, com ou sem data) seguem em `enabled` + budget; o resto, adaptive. */
