@@ -1,6 +1,6 @@
 import { DecisaoDeImagemResponseDto } from '../../containers/dto/containers.response.dto';
 import { ContratoDeModuloResponseDto } from './module-contracts.response.dto';
-import type { LLMErrorCode } from '@brabo/shared';
+import type { LLMErrorCode, ThinkingBlock } from '@brabo/shared';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type { GitProviderName } from '@brabo/shared';
 import type { MesmasChaves, Wire } from '../../shared/dto/wire';
@@ -589,6 +589,15 @@ export class LlmMessageResponseDto {
 
   @ApiProperty({ type: [ToolCallResponseDto] })
   toolCalls!: ToolCallResponseDto[];
+
+  @ApiPropertyOptional({
+    type: 'array',
+    items: { type: 'object', additionalProperties: true },
+    description:
+      'Anthropic thinking blocks (signed, opaque). The engine sends them back ' +
+      'untouched on the `assistant` message that asked for tools (AT-676).',
+  })
+  thinkingBlocks?: ThinkingBlock[];
 }
 
 export class LlmUsageResponseDto {
@@ -744,6 +753,14 @@ export class LlmTurnResponseDto implements Wire<RunLlmTurnResult> {
   modelName!: string | null;
 
   @ApiPropertyOptional({
+    description:
+      'The model reasoning text for the step, whole, never in `content` and ' +
+      'never sent back to the model (AT-676, ADR 0249). Absent when none. The ' +
+      'engine stores it as `agent.response.payload.raciocinio`.',
+  })
+  raciocinio?: string;
+
+  @ApiPropertyOptional({
     enum: [true],
     description:
       'Present (always `true`) only when the provider cut the response at the ' +
@@ -769,15 +786,22 @@ export const _chavesTurno: MesmasChaves<LlmTurnResponseDto, RunLlmTurnResult> =
 /** A frame of the LLM turn stream (`llm-turn-stream`). */
 export class LlmTurnStreamEventResponseDto {
   @ApiProperty({
-    enum: ['delta', 'done', 'error'],
+    enum: ['delta', 'raciocinio', 'done', 'error'],
     example: 'delta',
     description:
       '`delta` carries `text`; `done` closes with `usage`; `error` carries `message`.',
   })
-  type!: 'delta' | 'done' | 'error';
+  type!: 'delta' | 'raciocinio' | 'done' | 'error';
 
   @ApiProperty({ example: "I'll read the", required: false })
   text?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Only on the `final` frame (AT-676): the whole reasoning of the step. A ' +
+      '`raciocinio` frame carries a live piece in `text`.',
+  })
+  raciocinio?: string;
 
   @ApiProperty({ type: LlmUsageResponseDto, required: false })
   usage?: LlmUsageResponseDto;
