@@ -31,7 +31,13 @@ describe.skipIf(!apiKey)(
     it('devolve chunk `reasoning` com texto e o `content` fica sem ele', async () => {
       const chunks: ChatStreamChunk[] = [];
       for await (const c of provider.chat(
-        [{ role: 'user', content: 'Quanto é 17 x 23? Responda só o número.' }],
+        [
+          {
+            role: 'user',
+            content:
+              'Quanto é 4817 x 3923? Pense passo a passo antes e responda só o número.',
+          },
+        ],
         {
           model: modelo,
           apiKey,
@@ -54,7 +60,7 @@ describe.skipIf(!apiKey)(
         `[smoke] ${modelo}: raciocínio ${raciocinio.length} caracteres, resposta ${JSON.stringify(texto.trim())}`,
       );
       expect(raciocinio.length).toBeGreaterThan(0);
-      expect(texto).toContain('391');
+      expect(texto.replace(/\D/g, '')).toContain('18897091');
       expect(texto).not.toContain(raciocinio.slice(0, 40));
     });
   },
