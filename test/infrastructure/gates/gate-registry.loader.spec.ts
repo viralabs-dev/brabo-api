@@ -25,32 +25,32 @@ import {
  *
  * O defeito que este arquivo existe para impedir foi medido na v6.1.0
  * instalada: `GET /gates` respondia 500 repetidas vezes com
- * `RegistroDeGatesInvalido` listando os onze alvos de `docs/gates.yml`, todos
+ * `RegistroDeGatesInvalido` listando os onze alvos de `config/gates.yml`, todos
  * "não existe" — em TODA instalação, não numa borda.
  *
  * A causa não era o registro: era a pergunta. `docker/api/Dockerfile.prod`
  * copia para `/app` o `dist` achatado, `node_modules`, `db/migrations` e
- * `docs/gates.yml`. NÃO copia `apps/api/test/`, `scripts/ci/` nem `.github/` —
+ * `config/gates.yml`. NÃO copia `apps/api/test/`, `scripts/ci/` nem `.github/` —
  * e eram esses os alvos que o loader cobrava. A régua "o arquivo de prova
  * existe" é afirmação sobre o REPOSITÓRIO, e mudou de lugar
  * (`validarLocalizadores`, cobrada por `gate-registry.spec.ts` e pela fase 2
  * do `validacao-gates.ts`).
  *
- * A fixture abaixo REPRODUZ essa árvore: uma raiz com `docs/gates.yml` e mais
+ * A fixture abaixo REPRODUZ essa árvore: uma raiz com `config/gates.yml` e mais
  * nada. Nenhum mock — se alguém devolver a checagem ao loader, este arquivo
  * fica vermelho com a mesma mensagem que a instalação deu.
  */
 
-const RAIZ_DO_REPO = join(__dirname, '../../../../..');
-const YAML_REAL = readFileSync(join(RAIZ_DO_REPO, 'docs/gates.yml'), 'utf-8');
+const CONFIG_DA_API = join(__dirname, '../../../config');
+const YAML_REAL = readFileSync(join(CONFIG_DA_API, 'gates.yml'), 'utf-8');
 
 let raizFalsa: string;
 
-/** `/app/docs/gates.yml` e nada mais — a árvore da imagem, em disco. */
+/** `/app/config/gates.yml` e nada mais — a árvore da imagem, em disco. */
 function montarArvoreDaImagem(conteudo = YAML_REAL): string {
   const raiz = mkdtempSync(join(tmpdir(), 'brabo-gates-'));
-  mkdirSync(join(raiz, 'docs'), { recursive: true });
-  writeFileSync(join(raiz, 'docs/gates.yml'), conteudo);
+  mkdirSync(join(raiz, 'config'), { recursive: true });
+  writeFileSync(join(raiz, 'config/gates.yml'), conteudo);
   // O `dist` achatado que o Dockerfile.prod copia: é de dentro dele que o
   // loader sobe procurando o registro.
   mkdirSync(join(raiz, 'infrastructure/gates'), { recursive: true });
@@ -112,7 +112,7 @@ describe('carregarRegistro na árvore da imagem de produção', () => {
     const semRegistro = mkdtempSync(join(tmpdir(), 'brabo-sem-gates-'));
     try {
       expect(() => carregarRegistro(semRegistro)).toThrow(
-        /docs\/gates\.yml não encontrado/,
+        /config\/gates\.yml não encontrado/,
       );
     } finally {
       rmSync(semRegistro, { recursive: true, force: true });

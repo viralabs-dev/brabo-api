@@ -22,7 +22,7 @@ import {
  */
 
 const RAIZ = join(__dirname, '../../../../..');
-const CAMINHO = join(RAIZ, 'docs/gates.yml');
+const CAMINHO = join(__dirname, '../../../config/gates.yml');
 
 const registro = parse(readFileSync(CAMINHO, 'utf-8')) as GateRegistry;
 const existe = (caminho: string) => existsSync(join(RAIZ, caminho));
@@ -33,7 +33,7 @@ function gate(id: string): Gate {
   return encontrado;
 }
 
-describe('docs/gates.yml — o arquivo real', () => {
+describe('config/gates.yml — o arquivo real', () => {
   it('é válido: nenhum problema acumulado', () => {
     expect(validarRegistro(registro)).toEqual([]);
   });
@@ -43,7 +43,7 @@ describe('docs/gates.yml — o arquivo real', () => {
    *
    * Até a correção do `GET /gates` ela morava dentro do loader, e a
    * consequência foi medida na v6.1.0 instalada: a imagem de produção leva
-   * `docs/gates.yml` e mais nada de `docs/` — sem `apps/api/test/`, sem
+   * `config/gates.yml` e mais nada — sem `apps/api/test/`, sem
    * `scripts/ci/`, sem `.github/` —, então TODO alvo "não existia" e a rota
    * respondia 500 em toda instalação. A régua saiu do runtime e ficou aqui,
    * onde a pergunta faz sentido: um checkout, no CI, a cada PR.

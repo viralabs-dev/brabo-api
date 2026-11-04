@@ -45,10 +45,6 @@ FROM deps AS build
 
 COPY apps/api apps/api
 COPY packages/shared packages/shared
-# O registro de gates viaja com a imagem porque a api o LÊ em runtime
-# (`GET /internal/gates`). Só o arquivo — `docs/` inteiro entraria no contexto
-# de build sem necessidade.
-COPY docs/gates.yml docs/gates.yml
 
 RUN pnpm --filter api build
 
@@ -153,8 +149,8 @@ COPY --from=build --chown=node:node /repo/apps/api/src/db/migrations ./db/migrat
 # Mesmo motivo, mesmo remédio: o registro de gates é YAML, não passa pelo tsc,
 # e `GET /internal/gates` o lê do disco em runtime. Sem esta linha a rota
 # responderia erro só em produção — o loader sobe de `__dirname` até achar
-# `docs/gates.yml`, e aqui ele acha em `/app/docs/gates.yml`.
-COPY --from=build --chown=node:node /repo/docs/gates.yml ./docs/gates.yml
+# `config/gates.yml`, e aqui ele acha em `/app/config/gates.yml`.
+COPY --from=build --chown=node:node /repo/apps/api/config/gates.yml ./config/gates.yml
 
 USER node
 

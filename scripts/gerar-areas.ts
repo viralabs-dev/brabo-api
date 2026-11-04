@@ -32,7 +32,7 @@
  * em disco não é o que este gerador produz — é ele que torna a derivação real
  * em vez de combinada.
  */
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   AGENT_AREAS,
@@ -41,6 +41,9 @@ import {
 } from '../src/domain/agents/agent-areas';
 
 const RAIZ = join(__dirname, '../../..');
+
+/** O contrato neutro (AT-692): web e engine geram a cópia deles DESTE arquivo. */
+export const CAMINHO_JSON = join(RAIZ, 'packages/contracts/areas.json');
 
 export const CAMINHO_WEB = join(
   RAIZ,
@@ -150,17 +153,27 @@ export function renderEngine(areas: readonly AreaDeAgentes[]): string {
   );
 }
 
-export function gerar(): void {
-  writeFileSync(
-    CAMINHO_WEB,
-    renderWeb(AGENT_AREAS, SOLO_CONVERSATIONAL_AGENTS),
-    'utf-8',
+export function jsonDasAreas(): string {
+  return (
+    JSON.stringify(
+      { areas: AGENT_AREAS, solo: SOLO_CONVERSATIONAL_AGENTS },
+      null,
+      2,
+    ) + '\n'
   );
-  writeFileSync(CAMINHO_ENGINE, renderEngine(AGENT_AREAS), 'utf-8');
+}
+
+export function gerar(): void {
+  writeFileSync(CAMINHO_JSON, jsonDasAreas(), 'utf-8');
+  // web e engine nascem do JSON, nunca do `.ts` — é o que o `brabo-contracts`
+  // vai entregar a eles quando os repositórios se separarem.
+  const { areas, solo } = JSON.parse(readFileSync(CAMINHO_JSON, 'utf-8'));
+  writeFileSync(CAMINHO_WEB, renderWeb(areas, solo), 'utf-8');
+  writeFileSync(CAMINHO_ENGINE, renderEngine(areas), 'utf-8');
 }
 
 if (require.main === module) {
   gerar();
   // eslint-disable-next-line no-console
-  console.log(`gerado:\n  ${CAMINHO_WEB}\n  ${CAMINHO_ENGINE}`);
+  console.log(`gerado:\n  ${CAMINHO_JSON}\n  ${CAMINHO_WEB}\n  ${CAMINHO_ENGINE}`);
 }

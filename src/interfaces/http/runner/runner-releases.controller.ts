@@ -22,8 +22,10 @@ import {
   type MotivoDaRecusa,
 } from './checksums';
 
-const GITHUB_RELEASES_URL =
-  'https://api.github.com/repos/daneiel/brabo/releases/latest';
+// Lida a cada chamada: o repositório da Release do runner vem do ambiente
+// (AT-691); o padrão é o repositório de hoje.
+const urlDasReleases = (): string =>
+  `https://api.github.com/repos/${process.env.BRABO_RUNNER_RELEASES_REPO ?? 'daneiel/brabo'}/releases/latest`;
 
 /**
  * Os TRÊS alvos que `build-runner-binaries.yml` constrói — a mesma lista da
@@ -443,7 +445,7 @@ export class RunnerReleasesController {
 
     let resp: globalThis.Response;
     try {
-      resp = await fetch(GITHUB_RELEASES_URL, {
+      resp = await fetch(urlDasReleases(), {
         headers: {
           Accept: 'application/vnd.github+json',
           'User-Agent': 'brabo-api',

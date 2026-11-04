@@ -48,9 +48,9 @@ describe('parseArgs', () => {
 });
 
 describe('acharRegistro', () => {
-  it('sobe até achar docs/gates.yml', () => {
+  it('sobe até achar config/gates.yml', () => {
     // Do diretório deste teste, a raiz do repo está quatro níveis acima.
-    expect(acharRegistro(__dirname)).toMatch(/docs\/gates\.yml$/);
+    expect(acharRegistro(__dirname)).toMatch(/config\/gates\.yml$/);
   });
 
   it('devolve null quando não existe em lugar nenhum acima', () => {
