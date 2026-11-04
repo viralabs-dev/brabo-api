@@ -91,10 +91,10 @@ export class AnthropicProvider implements LLMProvider {
    *    o SDK mantém.
    * 2. **`max_input_tokens` é a janela de contexto**, e é o único campo que o
    *    catálogo do Brabo consegue aproveitar além do id e do nome legível.
-   * 3. **Preço NÃO vem** nesta resposta. Por isso `inputPricePerMillionMicros`
-   *    e o par de saída ficam ausentes, e o modelo entra no catálogo sem
+   * 3. **Preço NÃO vem** nesta resposta. O preço sai de `PRECO_DE_LISTA_ANTHROPIC`
+   *    (tabela datada, ADR 0251, RN-997); modelo FORA da tabela entra sem
    *    preço em vez de com preço inventado (RN-042 — o custo gravado tem que
-   *    ser reproduzível).
+   *    ser reproduzível). O raciocínio vem de `capabilities.thinking` do SDK.
    *
    * Erro LANÇA, como o contrato exige: lista vazia seria lida pelo sync como
    * "sumiram todos" e indisponibilizaria o catálogo inteiro (RN-043).
@@ -125,6 +125,12 @@ export class AnthropicProvider implements LLMProvider {
             : {}),
           // Todo modelo servido pela Messages API aceita `tools`.
           supportsToolCalling: true,
+          // shortcut: `capabilities` vem nulo em modelo antigo; aí vale a família
+          // (todo Claude 4+ raciocina), rever quando o SDK sempre preencher.
+          supportsReasoning:
+            modelo.capabilities?.thinking?.supported ??
+            !/^claude-3/.test(modelo.id),
+          ...precoDeLista(modelo.id),
         });
       }
 
@@ -402,6 +408,41 @@ function toThinkingBlocks(content: { type: string }[]): ThinkingBlock[] {
     (bloco): bloco is ThinkingBlock =>
       bloco.type === 'thinking' || bloco.type === 'redacted_thinking',
   );
+}
+
+/**
+ * Preço de lista da Anthropic, fonte de 2026-10-06, em micro-USD por milhão de
+ * tokens [entrada, saída]. A `/v1/models` não informa preço (ADR 0251, RN-997).
+ */
+export const PRECO_DE_LISTA_ANTHROPIC: Record<string, [number, number]> = {
+  'claude-fable-5-1': [10_000_000, 50_000_000],
+  'claude-fable-5': [10_000_000, 50_000_000],
+  'claude-opus-5-5': [4_000_000, 20_000_000],
+  'claude-opus-5': [5_000_000, 25_000_000],
+  'claude-opus-4-8': [5_000_000, 25_000_000],
+  'claude-opus-4-7': [5_000_000, 25_000_000],
+  'claude-opus-4-6': [5_000_000, 25_000_000],
+  'claude-opus-4-5': [5_000_000, 25_000_000],
+  'claude-sonnet-5-5': [2_000_000, 10_000_000],
+  'claude-sonnet-5': [2_000_000, 10_000_000],
+  'claude-sonnet-4-6': [3_000_000, 15_000_000],
+  'claude-sonnet-4-5': [3_000_000, 15_000_000],
+  'claude-haiku-5-5': [100_000, 500_000],
+  'claude-haiku-4-5': [1_000_000, 5_000_000],
+};
+
+/** Casa pelo ID sem o sufixo de data (`-20251001`); fora da tabela, sem preço. */
+export function precoDeLista(id: string): {
+  inputPricePerMillionMicros?: number;
+  outputPricePerMillionMicros?: number;
+} {
+  const par = PRECO_DE_LISTA_ANTHROPIC[id.replace(/-\d{8}$/, '')];
+  return par
+    ? {
+        inputPricePerMillionMicros: par[0],
+        outputPricePerMillionMicros: par[1],
+      }
+    : {};
 }
 
 /** Modelos antigos (3.x e 4.0..4.5, com ou sem data) seguem em `enabled` + budget; o resto, adaptive. */
