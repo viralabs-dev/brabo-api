@@ -320,6 +320,13 @@ export abstract class ApiToEngineClient {
    */
   abstract getPsychologistStatus(): Promise<{ enabled: boolean }>;
 
+  /**
+   * Catálogo de identidade e ferramentas por agente (AT-686, RN-995), lido de
+   * `GET /internal/agents/catalog`. Lança se o engine não responde: quem
+   * chama decide o que dizer (nunca "sem ferramentas").
+   */
+  abstract getAgentCatalog(): Promise<CatalogoDoEngine>;
+
   // Descarta o cache de instruções do agente no engine (Fase 4b) —
   // depois de um instruction_patch aprovado ou de um rollback, senão os
   // agentes seguem servindo o conteúdo antigo em memória. Best-effort:
@@ -447,4 +454,13 @@ export abstract class ApiToEngineClient {
     credencial: CredencialDeDispositivo,
     alcanceLegado: { userId: string; projectIds: string[] } | null,
   ): Promise<BalancoDeRevogacaoDeCredencial>;
+}
+
+/** Contrato da rota interna do engine (AT-686). Sem `parameters` de propósito. */
+export interface CatalogoDoEngine {
+  agentes: Array<{
+    agente: string;
+    identidade: string | null;
+    ferramentas: Array<{ nome: string; descricao: string }>;
+  }>;
 }
