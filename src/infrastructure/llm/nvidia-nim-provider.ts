@@ -41,6 +41,7 @@ export function nvidiaNimConfig(
       // `/embeddings` real (ADR 0075) — declarar por doc é o que o ADR 0043
       // proíbe.
       embeddings: false,
+      reasoningText: false,
       // Não é hub: não há upstreams entre os quais escolher (ADR 0166).
       routingPreference: false,
       stickySession: false,

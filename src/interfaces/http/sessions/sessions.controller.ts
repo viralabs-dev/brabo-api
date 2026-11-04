@@ -34,6 +34,10 @@ import { RenameSessionUseCase } from '../../../application/use-cases/sessions/re
 import { TransitionSessionUseCase } from '../../../application/use-cases/sessions/transition-session.use-case';
 import { ReopenSessionUseCase } from '../../../application/use-cases/sessions/reopen-session.use-case';
 import { AppendSessionEventUseCase } from '../../../application/use-cases/sessions/append-session-event.use-case';
+import {
+  filtrarRaciocinio,
+  filtrarRaciocinioDaLista,
+} from '../../../domain/sessions/raciocinio-do-evento';
 import { ListSessionEventsUseCase } from '../../../application/use-cases/sessions/list-session-events.use-case';
 import { GetSessionEventUseCase } from '../../../application/use-cases/sessions/get-session-event.use-case';
 import { ResumirContextoDaSessaoUseCase } from '../../../application/use-cases/git/resumir-contexto-da-sessao.use-case';
@@ -260,6 +264,7 @@ export class SessionsController {
     @Query('limit') limit?: string,
     @Query('latest') latest?: string,
     @Query('actionId') actionId?: string,
+    @Req() request?: AuthenticatedRequest,
   ) {
     // Vazio é pedido malformado, não "todas": um filtro que some quando o
     // cliente manda a string errada devolveria o log inteiro para quem pediu
@@ -267,12 +272,18 @@ export class SessionsController {
     if (actionId !== undefined && actionId.trim() === '') {
       throw new BadRequestException('actionId vazio.');
     }
-    return this.listSessionEvents.execute(projectId, sessionId, {
-      afterSeq: afterSeq !== undefined ? Number(afterSeq) : undefined,
-      limit: limit !== undefined ? Number(limit) : undefined,
-      latest: latest === 'true',
-      actionId,
-    });
+    // Filtro único de saída: `payload.raciocinio` só para `developer`+ (RN-993).
+    return this.listSessionEvents
+      .execute(projectId, sessionId, {
+        afterSeq: afterSeq !== undefined ? Number(afterSeq) : undefined,
+        limit: limit !== undefined ? Number(limit) : undefined,
+        latest: latest === 'true',
+        actionId,
+      })
+      .then((pagina) => ({
+        ...pagina,
+        items: filtrarRaciocinioDaLista(pagina.items, request?.effectiveRole),
+      }));
   }
 
   /**
@@ -320,8 +331,11 @@ export class SessionsController {
     @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
     @Param('eventId') eventId: string,
+    @Req() request?: AuthenticatedRequest,
   ) {
-    return this.getSessionEvent.execute(projectId, sessionId, eventId);
+    return this.getSessionEvent
+      .execute(projectId, sessionId, eventId)
+      .then((e) => filtrarRaciocinio(e, request?.effectiveRole));
   }
 
   @Post(':sessionId/events')

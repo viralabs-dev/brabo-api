@@ -33,6 +33,7 @@ export class ListProviderCapabilitiesUseCase {
           toolCalling: c.toolCalling,
           listModels: c.listModels,
           embeddings: c.embeddings,
+          reasoningText: c.reasoningText,
           routingPreference: c.routingPreference,
           stickySession: c.stickySession,
           priceCeiling: c.priceCeiling,

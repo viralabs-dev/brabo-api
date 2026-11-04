@@ -120,6 +120,7 @@ describe('NineRouterProvider (AT-576a, ADR 0222)', () => {
       toolCalling: true,
       listModels: true,
       embeddings: false,
+      reasoningText: false,
       routingPreference: false,
       stickySession: false,
       priceCeiling: false,

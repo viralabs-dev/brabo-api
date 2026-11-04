@@ -37,6 +37,7 @@ const registry: LLMProviderRegistry = {
         toolCalling: true,
         listModels: false,
         embeddings: false,
+        reasoningText: false,
         routingPreference: name === 'openrouter' && hubAceita,
       },
     }) as unknown as LLMProvider,

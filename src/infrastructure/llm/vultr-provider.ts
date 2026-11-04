@@ -40,6 +40,7 @@ export function vultrConfig(
       // ao vivo do ADR 0043 — aqui menos que em qualquer outro se declara
       // capability por leitura.
       embeddings: false,
+      reasoningText: false,
       // Não é hub: não há upstreams entre os quais escolher (ADR 0166).
       routingPreference: false,
       stickySession: false,

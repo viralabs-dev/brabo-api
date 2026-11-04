@@ -128,6 +128,7 @@ function registryApontadoPara(baseUrl: string): LLMProviderRegistry {
       toolCalling: true,
       listModels: false,
       embeddings: false,
+      reasoningText: false,
       routingPreference: false,
       stickySession: false,
       priceCeiling: false,

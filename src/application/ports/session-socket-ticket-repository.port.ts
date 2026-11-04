@@ -8,6 +8,8 @@ export interface NovoSocketTicket {
   /** SHA-256 puro do token bruto — ver comentário em `db/schema.ts`. */
   ticketHash: string;
   expiresAt: Date;
+  /** `podeVerRaciocinio(papelEfetivo)` — RN-993. */
+  podeVerRaciocinio: boolean;
 }
 
 /**

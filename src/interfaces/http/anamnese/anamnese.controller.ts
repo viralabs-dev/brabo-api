@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Post,
+  Req,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -29,6 +30,8 @@ import {
 import { ListInstructionVersionsUseCase } from '../../../application/use-cases/instructions/list-instruction-versions.use-case';
 import { RollbackInstructionUseCase } from '../../../application/use-cases/instructions/rollback-instruction.use-case';
 import { ListProjectInstructionVersionsUseCase } from '../../../application/use-cases/instructions/list-instruction-versions.use-case';
+import { filtrarRaciocinio } from '../../../domain/sessions/raciocinio-do-evento';
+import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { GetProjectEventUseCase } from '../../../application/use-cases/sessions/get-project-event.use-case';
 import { RunAnamneseUseCase } from '../../../application/use-cases/anamnese/run-anamnese.use-case';
 import { BEARER } from '../../../infrastructure/openapi/documento';
@@ -129,8 +132,11 @@ export class AnamneseController {
   event(
     @Param('projectId') projectId: string,
     @Param('eventId') eventId: string,
+    @Req() request?: AuthenticatedRequest,
   ) {
-    return this.getProjectEvent.execute(projectId, eventId);
+    return this.getProjectEvent
+      .execute(projectId, eventId)
+      .then((e) => filtrarRaciocinio(e, request?.effectiveRole));
   }
 
   /**

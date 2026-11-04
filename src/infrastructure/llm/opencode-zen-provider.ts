@@ -32,6 +32,7 @@ export function openCodeZenConfig(
       toolCalling: false,
       listModels: false,
       embeddings: false,
+      reasoningText: false,
       routingPreference: false,
       stickySession: false,
       priceCeiling: false,

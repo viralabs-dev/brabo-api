@@ -21,6 +21,7 @@ export class DrizzleSessionSocketTicketRepository extends SessionSocketTicketRep
       userId: novo.userId,
       scope: novo.scope,
       ticketHash: novo.ticketHash,
+      podeVerRaciocinio: novo.podeVerRaciocinio,
       expiresAt: novo.expiresAt,
     });
   }
