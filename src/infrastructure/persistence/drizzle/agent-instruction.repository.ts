@@ -30,6 +30,14 @@ export class DrizzleAgentInstructionRepository implements AgentInstructionReposi
     return row ? toEntity(row) : null;
   }
 
+  async listByProject(projectId: string): Promise<AgentInstruction[]> {
+    const rows = await currentDb(this.rootDb)
+      .select()
+      .from(agentInstructions)
+      .where(eq(agentInstructions.projectId, projectId));
+    return rows.map(toEntity);
+  }
+
   async upsert(input: {
     projectId: string;
     agent: string;

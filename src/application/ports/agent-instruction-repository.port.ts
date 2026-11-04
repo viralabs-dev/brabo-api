@@ -14,6 +14,9 @@ export abstract class AgentInstructionRepository {
     agent: string,
   ): Promise<AgentInstruction | null>;
 
+  // Todas as instruções vigentes do projeto (uma linha ativa por agente).
+  abstract listByProject(projectId: string): Promise<AgentInstruction[]>;
+
   // Idempotente por (projectId, agent). Insere se não existe; se existe e o
   // conteúdo mudou, atualiza e bumpa a version; se o conteúdo é idêntico, não
   // toca (retorna a linha atual). O engine só LÊ esta tabela.
