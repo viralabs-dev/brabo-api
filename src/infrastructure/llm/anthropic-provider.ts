@@ -1,3 +1,4 @@
+import { precoDoFabricante } from '../../domain/llm/precos-do-fabricante';
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { textoDoConteudo } from '../../domain/llm/anexos-no-turno';
 import Anthropic from '@anthropic-ai/sdk';
@@ -91,8 +92,8 @@ export class AnthropicProvider implements LLMProvider {
    *    o SDK mantém.
    * 2. **`max_input_tokens` é a janela de contexto**, e é o único campo que o
    *    catálogo do Brabo consegue aproveitar além do id e do nome legível.
-   * 3. **Preço NÃO vem** nesta resposta. O preço sai de `PRECO_DE_LISTA_ANTHROPIC`
-   *    (tabela datada, ADR 0251, RN-997); modelo FORA da tabela entra sem
+   * 3. **Preço NÃO vem** nesta resposta. O preço sai de `precoDoFabricante`
+   *    (tabela única da RN-965, ADR 0251, RN-997); modelo FORA da tabela entra sem
    *    preço em vez de com preço inventado (RN-042 — o custo gravado tem que
    *    ser reproduzível). O raciocínio vem de `capabilities.thinking` do SDK.
    *
@@ -410,37 +411,17 @@ function toThinkingBlocks(content: { type: string }[]): ThinkingBlock[] {
   );
 }
 
-/**
- * Preço de lista da Anthropic, fonte de 2026-10-06, em micro-USD por milhão de
- * tokens [entrada, saída]. A `/v1/models` não informa preço (ADR 0251, RN-997).
- */
-export const PRECO_DE_LISTA_ANTHROPIC: Record<string, [number, number]> = {
-  'claude-fable-5-1': [10_000_000, 50_000_000],
-  'claude-fable-5': [10_000_000, 50_000_000],
-  'claude-opus-5-5': [4_000_000, 20_000_000],
-  'claude-opus-5': [5_000_000, 25_000_000],
-  'claude-opus-4-8': [5_000_000, 25_000_000],
-  'claude-opus-4-7': [5_000_000, 25_000_000],
-  'claude-opus-4-6': [5_000_000, 25_000_000],
-  'claude-opus-4-5': [5_000_000, 25_000_000],
-  'claude-sonnet-5-5': [2_000_000, 10_000_000],
-  'claude-sonnet-5': [2_000_000, 10_000_000],
-  'claude-sonnet-4-6': [3_000_000, 15_000_000],
-  'claude-sonnet-4-5': [3_000_000, 15_000_000],
-  'claude-haiku-5-5': [100_000, 500_000],
-  'claude-haiku-4-5': [1_000_000, 5_000_000],
-};
-
-/** Casa pelo ID sem o sufixo de data (`-20251001`); fora da tabela, sem preço. */
-export function precoDeLista(id: string): {
+/** Preço da tabela única do fabricante (RN-965); casa o id com e sem sufixo de data. */
+function precoDeLista(id: string): {
   inputPricePerMillionMicros?: number;
   outputPricePerMillionMicros?: number;
 } {
-  const par = PRECO_DE_LISTA_ANTHROPIC[id.replace(/-\d{8}$/, '')];
-  return par
+  const p =
+    precoDoFabricante(id) ?? precoDoFabricante(id.replace(/-\d{8}$/, ''));
+  return p
     ? {
-        inputPricePerMillionMicros: par[0],
-        outputPricePerMillionMicros: par[1],
+        inputPricePerMillionMicros: p.entradaMicros,
+        outputPricePerMillionMicros: p.saidaMicros,
       }
     : {};
 }
