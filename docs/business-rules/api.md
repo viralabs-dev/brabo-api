@@ -11074,175 +11074,176 @@ toggle back to manual restores approval.
 - **Architectural decision:** [ADR 0204](../adr/0204-modo-automatico-libera-push-e-pr.md)
 - **Origin:** AT-385, owner's decision on 02/10
 
-## O instalador oferece os modelos locais, e não confunde o dev com uma instalação (RN-691, RN-692)
+## The installer offers the local models, and does not confuse dev with an installation (RN-691, RN-692) {#o-instalador-oferece-os-modelos-locais-e-nao-confunde-o-dev-com-uma-instalacao-rn-691-rn-692-1}
 
-### RN-715 — O conflito de merge devolve a tarefa ao dev agent dono, e os gates julgam de novo {#rn-715}
+### RN-715 — A merge conflict returns the task to the owning dev agent, and the gates judge again {#rn-715}
 
-- **Regra:** quando o merge aprovado de uma PR é recusado por conflito com a
-  `dev` (`GitMergeConflictError`, [RN-704](#rn-704)), cada tarefa da PR que
-  está `in_review` volta a `in_progress` com `gate_status` zerado (os vereditos
-  antigos de QA/SecOps não valem para a branch que vai mudar), grava
-  `backlog.task_status_changed` com `cause: merge_conflict` e põe
-  `task.merge_conflict` na outbox, com o agente que propôs o `pr_open` (o
-  DONO), a PR e os arquivos em conflito. O engine entrega ao dono pelo
-  `Engine.Dev.Wake`; livre, ele READOTA a branch da PR (`WorktreeManager.adopt/3`,
-  a mesma `garantir_base`, sem perder os commits) e roda o laço de CORREÇÃO com
-  o motivo no texto: trazer `origin/dev` por `git fetch`/`git merge`, resolver
-  os arquivos, rodar a suite. No `report_done` propõe commit e push pelo
-  caminho de sempre (a política de aprovação vigente decide) e o gate RECOMEÇA
-  do QA (`open_gate` + QA), sem `pr_open` novo — a PR é a mesma branch.
-  Nenhum estado novo de tarefa: `in_progress` com a causa no evento.
-- **Desfechos nomeados:** dono sem linha em `dev_agent_states` — a tarefa é
-  BLOQUEADA (`conflito de merge sem dev agent para resolvê-lo`, origem `infra`);
-  dono com o disjuntor aberto (`idle_tripped`) — bloqueada, origem `politica`;
-  a branch não volta (`adopt` falha) — bloqueada, origem `infra`. Dono ocupado
-  (`working`/`awaiting_gate`/`awaiting_approval`) recebe o conflito de novo em
-  30 s. A recusa do merge ([RN-705](#rn-705)) não depende de nada disso: a
-  ação já está `failed`, com o motivo, antes de o engine agir. Tarefa que já
-  não está `in_review` (merge repetido) não é reaberta nem acorda ninguém, e
-  PR aberta por humano não tem dono a acordar.
-- **Medição (AT-383, 02/10, loja-teste):** a #6 terminou `failed` por conflito
-  em `package.json`, e a tarefa ficou `in_review` sem ninguém para resolvê-lo.
-- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:392` (`devolverAoDono`),
+- **Rule:** when the approved merge of a PR is refused because of a conflict with
+  `dev` (`GitMergeConflictError`, [RN-704](#rn-704)), each task of the PR that is
+  `in_review` goes back to `in_progress` with `gate_status` zeroed (the old
+  QA/SecOps verdicts do not hold for the branch that is about to change), records
+  `backlog.task_status_changed` with `cause: merge_conflict` and puts
+  `task.merge_conflict` in the outbox, with the agent that proposed the `pr_open`
+  (the OWNER), the PR and the conflicting files. The engine delivers it to the
+  owner through `Engine.Dev.Wake`; when free, it RE-ADOPTS the PR's branch
+  (`WorktreeManager.adopt/3`, the same `garantir_base`, without losing the
+  commits) and runs the CORRECTION loop with the reason in the text: bring in
+  `origin/dev` through `git fetch`/`git merge`, resolve the files, run the suite.
+  At `report_done` it proposes commit and push through the usual path (the
+  current approval policy decides) and the gate RESTARTS from QA (`open_gate` +
+  QA), with no new `pr_open` — the PR is the same branch. No new task state:
+  `in_progress` with the cause in the event.
+- **Named outcomes:** an owner with no row in `dev_agent_states` — the task is
+  BLOCKED (`conflito de merge sem dev agent para resolvê-lo`, origin `infra`); an
+  owner with the breaker open (`idle_tripped`) — blocked, origin `politica`; the
+  branch does not come back (`adopt` fails) — blocked, origin `infra`. A busy owner
+  (`working`/`awaiting_gate`/`awaiting_approval`) receives the conflict again in
+  30 s. The merge refusal ([RN-705](#rn-705)) does not depend on any of this: the
+  action is already `failed`, with the reason, before the engine acts. A task that
+  is no longer `in_review` (repeated merge) is neither reopened nor wakes anyone,
+  and a PR opened by a human has no owner to wake.
+- **Measurement (AT-383, 02/10, test shop):** #6 ended `failed` because of a
+  conflict in `package.json`, and the task stayed `in_review` with nobody to
+  resolve it.
+- **Where:** `src/application/use-cases/actions/execute-git-action.use-case.ts:392` (`devolverAoDono`),
   `src/infrastructure/persistence/drizzle/backlog.repository.ts:490` (`reabrirPorConflitoDeMerge`),
   `apps/engine/lib/engine/workers/dev_agent_wake_worker.ex:151` (`task.merge_conflict`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:350` (`handle_info`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:831` (`trigger_gate_recheck`),
   `apps/engine/lib/engine/dev/worktree_manager.ex:47` (`adopt`)
-- **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("conflito de merge → kind git_merge, arquivos no
-  resultado e evento na tarefa"; falha: "RN-715: tarefa que já não está em
+- **Test:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("conflito de merge → kind git_merge, arquivos no
+  resultado e evento na tarefa"; failure: "RN-715: tarefa que já não está em
   revisão não é reaberta nem acorda ninguém"),
   `apps/engine/test/engine/dev/dev_agent_server_test.exs` (describe "conflito
-  de merge (RN-715)": readota, motivo no turno, commit+push sem PR nova, gate
-  reabre do QA; falhas: branch que não volta e disjuntor aberto),
+  de merge (RN-715)": re-adopts, reason in the turn, commit+push with no new PR,
+  gate reopens from QA; failures: branch that does not come back and open
+  breaker),
   `apps/engine/test/engine/workers/dev_agent_wake_worker_test.exs` ("dono que
   não existe: bloqueia a task com motivo nomeado, nada calado"),
   `apps/engine/test/engine/dev/worktree_manager_test.exs` ("readotar a branch
   da PR preserva os commits dela")
-- **Lacuna declarada:** a reentrega ao dono ocupado mora em memória — restart
-  do engine nessa janela a perde, e a tarefa fica `in_progress` até
-  intervenção (mesma família da lacuna do `Engine.Dev.Wake`, ADR 0045). O
-  agente integra a `dev` por MERGE, não rebase: o push forçado que o rebase
-  exigiria não existe no executor de git. O `NoopDevAgentServer` não trata o
-  conflito.
-- **Origem:** AT-383
+- **Declared gap:** the redelivery to a busy owner lives in memory — an engine
+  restart in that window loses it, and the task stays `in_progress` until
+  intervention (same family as the gap of `Engine.Dev.Wake`, ADR 0045). The agent
+  integrates `dev` by MERGE, not rebase: the force push that a rebase would
+  require does not exist in the git executor. `NoopDevAgentServer` does not handle
+  the conflict.
+- **Origin:** AT-383
 
-### RN-716 — A Anamnese não grava nível sobre o que não observou, e aprovar não é dominar {#rn-716}
+### RN-716 — Anamnesis does not record a level for what it did not observe, and approving is not mastering {#rn-716}
 
-- **Regra:** um perfil de proficiência só é gravado quando a evidência inclui
-  ao menos um evento escrito pela PRÓPRIA pessoa perfilada que não seja clique
-  de aprovação (`proposed_action.approved`, `handoff.accepted`,
-  `readiness.confirmed`). Evidência só de outros atores é "não observado" —
-  ausência de oportunidade, nunca pouco conhecimento —, e "não observado" é
-  estado próprio: o lote é recusado com motivo nomeado, nada é gravado e
-  nenhum `anamnese.profile_updated` nasce. Aprovação ao lado de uma interação
-  da pessoa continua aceita. A mensagem da pessoa que repara falha de agente é
-  desvio do AGENTE e não traço dela: o prompt diz isso, e o registro mora na
-  [RN-717](engine.md#rn-717).
-- **Medição (AT-376):** na loja-teste de 02/10, "Git → iniciante" e "Infra →
-  iniciante" sem a pessoa ter interagido com nenhum dos dois, e "aprova 2 ADRs
-  sem hesitar" como arquitetura avançada.
-- **Onde:** `src/domain/anamnese/proficiency-validation.ts:53`
+- **Rule:** a proficiency profile is only recorded when the evidence includes at
+  least one event written by the profiled PERSON themself that is not an approval
+  click (`proposed_action.approved`, `handoff.accepted`, `readiness.confirmed`).
+  Evidence only from other actors is "not observed" — absence of opportunity,
+  never little knowledge —, and "not observed" is a state of its own: the batch is
+  refused with a named reason, nothing is recorded and no
+  `anamnese.profile_updated` is born. An approval next to an interaction by the
+  person is still accepted. The message of the person who points out an agent
+  failure is a deviation of the AGENT and not a trait of theirs: the prompt says
+  so, and the record lives in [RN-717](engine.md#rn-717).
+- **Measurement (AT-376):** in the test shop of 02/10, "Git → beginner" and
+  "Infra → beginner" without the person having interacted with either, and
+  "approves 2 ADRs without hesitating" as advanced architecture.
+- **Where:** `src/domain/anamnese/proficiency-validation.ts:53`
   (`ehEvidenciaObservadaDaPessoa`), `src/domain/anamnese/proficiency-validation.ts:74`
   (`validateProficiencyBatch`), `src/application/use-cases/anamnese/record-proficiency.use-case.ts:189`
-  (`resolveKnownEventIds`), regras no kickoff (`prompts/anamnese-kickoff.md`
-  v3 e o fallback inline de `anamnese_worker.ex`)
-- **Teste:** `test/domain/anamnese/proficiency-validation.spec.ts`
-  ("RN-716: aprovação ao lado de interação da pessoa passa"; falhas: "só
+  (`resolveKnownEventIds`), rules in the kickoff (`prompts/anamnese-kickoff.md`
+  v3 and the inline fallback of `anamnese_worker.ex`)
+- **Test:** `test/domain/anamnese/proficiency-validation.spec.ts`
+  ("RN-716: aprovação ao lado de interação da pessoa passa"; failures: "só
   evidência de outro ator é \"não observado\"", "aprovação sem leitura não é
   evidência"), `test/application/use-cases/anamnese/record-proficiency.use-case.spec.ts`
   ("evidência só de aprovação não grava perfil nem profile_updated")
-- **Lacuna declarada:** reconhecer a mensagem de REPARO no lote de perfil é do
-  modelo (prompt); o código não classifica texto de mensagem.
-- **Origem:** AT-376
+- **Declared gap:** recognizing the REPAIR message in the profile batch is up to
+  the model (prompt); the code does not classify message text.
+- **Origin:** AT-376
 
-## Uma chave de cache, uma pergunta (RN-718)
+## One cache key, one question (RN-718) {#uma-chave-de-cache-uma-pergunta-rn-718}
 
-### RN-720 — O PO completa a história que já existe, e não oferece o handoff ao Arquiteto com regra descoberta {#rn-720}
+### RN-720 — The PO completes the story that already exists, and does not offer the handoff to the Architect with an uncovered rule {#rn-720}
 
-**Contexto:** no uso real da loja-teste-2 (02/10) o PO criou doze histórias
-sem regra ligada, leu em `listar_regras_de_negocio` que sete das oito regras
-estavam SEM cobertura, escreveu que não tinha ferramenta para editar história
-e chamou `offer_handoff` ao Arquiteto assim mesmo — afirmando no fio que a
-cobertura estava completa e que o sistema aceitaria sozinho. O aceite
-automático da [RN-660](#rn-660) não aconteceu (o critério não fechava), e a
-história que ele recriou disparou o aviso de duplicata semântica
+**Context:** in the real use of test-shop-2 (02/10) the PO created twelve stories
+with no linked rule, read in `listar_regras_de_negocio` that seven of the eight
+rules had NO coverage, wrote that it had no tool to edit a story and called
+`offer_handoff` to the Architect anyway — stating in the thread that the coverage
+was complete and that the system would accept on its own. The automatic
+acceptance of [RN-660](#rn-660) did not happen (the criterion did not close), and
+the story it recreated triggered the semantic-duplicate warning
 ([RN-681](#rn-681)).
 
-**A regra:**
+**The rule:**
 
-1. O PO tem `complete_story`: completa uma história `draft` EXISTENTE do
-   projeto — os `business_rule_ids` informados são SOMADOS aos já ligados
-   (completar nunca desliga regra; id que não é `artifact.business_rule` é
-   400), listas informadas e não vazias substituem as atuais e as omitidas
-   ficam. História que não é `draft` é 409; de outro projeto, 404. Depois de
-   gravar, a promoção segue o MESMO critério de `create_story`
-   (`isPromotable`; `auto` vai a `ready`, `manual` liga `proposedReady`), e a
-   escrita grava `backlog.story_completed`.
-2. `offer_handoff` do PO ao Arquiteto é RECUSADO, sem criar oferta, enquanto
-   houver regra sem história ou história `draft` incompleta (sem
-   `proposedReady`) — e o resultado lista as duas, com id e título, e manda
-   completar com `complete_story`. A cobertura é a da api
-   (`computeCoverage`, a mesma do aceite automático), nunca uma segunda conta
-   no engine; falha de leitura não vira recusa. Os outros agentes e destinos
-   não passam pela checagem.
-3. Quando o `emit_artifact` de `business_rule` do PO volta com o aviso de
-   semelhança (`status: warned`), o resultado acrescenta que a regra parece
-   ALTERAR uma existente e que ele deve perguntar ao usuário
-   (`ask_structured_questions`) qual vale antes de seguir (AT-389: o usuário
-   disse "taxa fixa de R$ 10", o Criativo registrou "R$ 10 por pedido" e o PO
-   emitiu "R$ 10 por torrefador"). A regra já gravada não é desfeita; o aviso
-   continua aviso.
+1. The PO has `complete_story`: it completes an EXISTING `draft` story of the
+   project — the `business_rule_ids` given are ADDED to those already linked
+   (completing never unlinks a rule; an id that is not an
+   `artifact.business_rule` is 400), lists given and non-empty replace the current
+   ones and omitted ones stay. A story that is not `draft` is 409; from another
+   project, 404. After writing, promotion follows the SAME criterion as
+   `create_story` (`isPromotable`; `auto` goes to `ready`, `manual` sets
+   `proposedReady`), and the write records `backlog.story_completed`.
+2. The PO's `offer_handoff` to the Architect is REFUSED, without creating an
+   offer, while there is a rule without a story or an incomplete `draft` story
+   (without `proposedReady`) — and the result lists both, with id and title, and
+   says to complete with `complete_story`. The coverage is the api's
+   (`computeCoverage`, the same as the automatic acceptance), never a second
+   calculation in the engine; a read failure does not become a refusal. Other
+   agents and destinations do not go through the check.
+3. When the PO's `emit_artifact` of a `business_rule` returns with the similarity
+   warning (`status: warned`), the result adds that the rule looks like it CHANGES
+   an existing one and that it should ask the user (`ask_structured_questions`)
+   which one holds before going on (AT-389: the user said "flat fee of R$ 10", the
+   Creative recorded "R$ 10 per order" and the PO emitted "R$ 10 per roaster").
+   The rule already recorded is not undone; the warning remains a warning.
 
-O kickoff do PO diz as três coisas.
+The PO's kickoff states the three things.
 
-- **Onde:** `src/application/use-cases/backlog/complete-story.use-case.ts:52`
+- **Where:** `src/application/use-cases/backlog/complete-story.use-case.ts:52`
   (`CompleteStoryUseCase`);
   `src/interfaces/http/internal/internal-sessions.controller.ts:541`
   (`completeStoryRoute`); `apps/engine/lib/engine/harness/tools/complete_story.ex:47`
   (`run`); `apps/engine/lib/engine/harness/tools/offer_handoff.ex:52`
   (`recusa_por_cobertura`); `apps/engine/lib/engine/harness/tools/emit_artifact.ex:188`
   (`pergunte_antes`)
-- **Teste:** `test/application/use-cases/backlog/complete-story.use-case.spec.ts`
-  (liga a regra e propõe a promoção; `auto` vai a `ready`; regra inexistente,
-  outro projeto e história `ready` recusados);
+- **Test:** `test/application/use-cases/backlog/complete-story.use-case.spec.ts`
+  (links the rule and proposes promotion; `auto` goes to `ready`; nonexistent
+  rule, another project and `ready` story refused);
   `apps/engine/test/engine/harness/tools/offer_handoff_test.exs` (describe
-  "cobertura (RN-720)": recusa com a lista, cobertura completa oferta e o
-  aceite automático segue); `apps/engine/test/engine/harness/tools/complete_story_test.exs`;
-  `apps/engine/test/engine/harness/duplicata_semantica_test.exs` (o aviso no
-  PO manda perguntar; fora do PO ou sem aviso, não)
-- **Lacuna declarada:** o servidor do PO continua oferecendo sozinho no fim
-  do turno pela RN-700, que já exigia cobertura; a recusa aqui é da
-  FERRAMENTA. Se a duplicata semântica avisou no caso real da loja-teste-2 não
-  foi medido nesta mudança (o banco daquela execução não foi lido).
-- **Origem:** AT-388, AT-389
+  "cobertura (RN-720)": refuses with the list, complete coverage offers and the
+  automatic acceptance follows); `apps/engine/test/engine/harness/tools/complete_story_test.exs`;
+  `apps/engine/test/engine/harness/duplicata_semantica_test.exs` (the warning on
+  the PO says to ask; outside the PO or without a warning, it does not)
+- **Declared gap:** the PO's server still offers on its own at the end of the turn
+  through RN-700, which already required coverage; the refusal here belongs to the
+  TOOL. Whether the semantic duplicate warned in the real case of test-shop-2 was
+  not measured in this change (that run's database was not read).
+- **Origin:** AT-388, AT-389
 
-## A Anamnese não paga duas vezes pela mesma janela, e o resgate de gate não reinicia ciclo que espera alguém (RN-722)
+## Anamnesis does not pay twice for the same window, and the gate rescue does not restart a cycle that is waiting for someone (RN-722) {#a-anamnese-nao-paga-duas-vezes-pela-mesma-janela-e-o-resgate-de-gate-nao-reinicia-ciclo-que-espera-alguem-rn-722}
 
-### RN-727 — A história draft se corrige e se arquiva, pelo PO e pelo usuário, sem apagar nada {#rn-727}
+### RN-727 — A draft story is corrected and archived, by the PO and by the user, without erasing anything {#rn-727}
 
-- **Regra:** uma história `draft` SEM tarefa em execução (`in_progress` ou
-  `in_review`) pode ter o título corrigido e pode ser ARQUIVADA — pelo PO
-  (ferramentas `update_story`, que também corrige a descrição, e
-  `archive_story`) e pelo usuário na aba Backlog ("Editar título" e
-  "Arquivar", com confirmação). As duas portas passam pela MESMA régua
-  (`recusaDeCorrecaoDeHistoria`), e a recusa é 409 NOMEADO: `historia_arquivada`,
-  `historia_nao_draft` ou `historia_com_tarefa_em_execucao`, com a frase que o
-  modelo e o toast mostram. Arquivar NÃO apaga: a linha de `stories` ganha
+- **Rule:** a `draft` story WITHOUT a task in execution (`in_progress` or
+  `in_review`) can have its title corrected and can be ARCHIVED — by the PO (tools
+  `update_story`, which also corrects the description, and `archive_story`) and by
+  the user in the Backlog tab ("Edit title" and "Archive", with confirmation). The
+  two doors go through the SAME yardstick (`recusaDeCorrecaoDeHistoria`), and the
+  refusal is a NAMED 409: `historia_arquivada`, `historia_nao_draft` or
+  `historia_com_tarefa_em_execucao`, with the sentence that the model and the
+  toast show. Archiving does NOT erase: the `stories` row gains
   `archived_at`/`archived_reason` (migration `0069`,
-  [ADR 0212](../adr/0212-historia-arquivada.md)), as tarefas ficam, e o evento
-  NOVO `backlog.story_archived` guarda quem, por quê e quais tarefas; a edição
-  grava `backlog.story_updated` com o título anterior. A história arquivada
-  sai do backlog (`listar_backlog` incluído — o PO não a vê para não
-  completá-la de novo), da cobertura (`computeCoverage` lê só as não
-  arquivadas), da fila de promoção, do plano do Dev Lead e do claim, e as
-  tarefas dela saem junto, pela história; transição, `complete_story` e
-  `create_task` recusam história arquivada. O papel mínimo do usuário é o das
-  outras escritas de backlog (promover/devolver, RN-048): `developer`; abaixo
-  dele os botões ficam inertes com o motivo em texto, e o mesmo vale para
-  história fora de `draft` ou com tarefa em execução. Cada história mostra
-  quantas tarefas tem.
-- **Onde:** `src/domain/backlog/correcao-de-historia.ts:33`
+  [ADR 0212](../adr/0212-historia-arquivada.md)), the tasks stay, and the NEW
+  event `backlog.story_archived` stores who, why and which tasks; editing records
+  `backlog.story_updated` with the previous title. The archived story leaves the
+  backlog (`listar_backlog` included — the PO does not see it so as not to
+  complete it again), the coverage (`computeCoverage` reads only the non-archived),
+  the promotion queue, the Dev Lead's plan and the claim, and its tasks leave with
+  it, through the story; transition, `complete_story` and `create_task` refuse an
+  archived story. The user's minimum role is that of the other backlog writes
+  (promote/return, RN-048): `developer`; below it the buttons are inert with the
+  reason in text, and the same goes for a story outside `draft` or with a task in
+  execution. Each story shows how many tasks it has.
+- **Where:** `src/domain/backlog/correcao-de-historia.ts:33`
   (`recusaDeCorrecaoDeHistoria`),
   `src/application/use-cases/backlog/corrigir-historia.use-case.ts:47`
   (`editar`), `:95` (`arquivar`),
@@ -11255,58 +11256,57 @@ O kickoff do PO diz as três coisas.
   `apps/engine/lib/engine/harness/tools/update_story.ex:45` (`run`),
   `apps/engine/lib/engine/harness/tools/archive_story.ex:38` (`run`),
   `apps/web/src/routes/ProjectBacklogTab.tsx:80` (`motivoDeCorrecaoInerte`)
-- **Teste:** `test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts`
-  (feliz: título e arquivo com evento; falha: tarefa `in_progress`/`in_review`
-  é 409 `historia_com_tarefa_em_execucao` sem escrita),
+- **Test:** `test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts`
+  (happy: title and archive with event; failure: an `in_progress`/`in_review`
+  task is 409 `historia_com_tarefa_em_execucao` with no write),
   `test/application/use-cases/execution/claim-next-task.use-case.spec.ts`
-  ("não pega task de story ARQUIVADA, nem a conta, nem a lista", contra
+  ("não pega task de story ARQUIVADA, nem a conta, nem a lista", against
   Postgres), `test/interfaces/http/backlog/backlog-corrigir-historia.controller.spec.ts`
-  (o papel das duas rotas é o de promover; `viewer` não alcança),
-  `apps/engine/test/engine/harness/tools/corrigir_historia_test.exs` (a recusa
-  nomeada chega ao modelo), `apps/web/src/routes/ProjectBacklogTab.test.tsx`
-  ("corrigir história (RN-727)": feliz, tarefa em execução e papel abaixo de
-  `developer` deixam inerte com o motivo)
-- **Origem:** AT-406 (TP-01 de 03/10: o PO criou duas histórias duplicadas,
-  chamou `delete_story` e recebeu "ferramenta desconhecida"; as duplicatas
-  ganharam tarefa e entraram no plano), decisão do dono de 03/10 ("PO e
-  usuário")
+  (the role of the two routes is that of promoting; `viewer` does not reach),
+  `apps/engine/test/engine/harness/tools/corrigir_historia_test.exs` (the named
+  refusal reaches the model), `apps/web/src/routes/ProjectBacklogTab.test.tsx`
+  ("corrigir história (RN-727)": happy, task in execution and role below
+  `developer` leave it inert with the reason)
+- **Origin:** AT-406 (TP-01 of 03/10: the PO created two duplicate stories, called
+  `delete_story` and received "unknown tool"; the duplicates gained tasks and
+  entered the plan), owner's decision of 03/10 ("PO and user")
 
-### RN-729 — A PR de infra mira `dev` e diz onde mergear; a sidebar abre só o projeto aberto {#rn-729}
+### RN-729 — The infra PR targets `dev` and says where to merge; the sidebar opens only the open project {#rn-729}
 
-- **Regra:** quatro cláusulas medidas no TP-01 (03/10).
-  (1) A PR de infra (`open_infra_pr`) segue a [RN-664](engine.md#rn-664): a branch
-  `feature/infra-setup` nasce de `dev` e a PR mira `dev` — o worktree do dev
-  agent nasce de `dev`, então o Dockerfile mergeado em `main` nunca chegava a
-  ele. Repositório sem `dev` falha nomeado pelo provider, sem queda para a
-  default. A PR leva o autor `<agente>[bot]` (`infra[bot]` quando o ator não é
-  agente), a mesma identidade da [RN-705](#rn-705). Em Aprovações, cada PR de
-  infra em revisão ganha "Mergear na aba PRs", que troca a moldura para a aba
-  PRs (onde o merge mora). (2) Abrir um projeto RECOLHE os outros na sidebar
-  e rola a lista até ele; no Dashboard nenhum fica forçado expandido; o
-  chevron segue alternando à mão. (3) Os campos de texto do assistente "Novo
-  projeto" (nome, caminho, repositório adotado) levam `SEM_AUTOFILL`, o mesmo
-  conjunto da [RN-693](web.md#rn-693). (4) Decidir um merge na aba PRs invalida a
-  fila inteira de pendentes do projeto, então o contador "PRs" da sidebar não
-  segue mostrando o merge já executado até o próximo poll; e o lead de QA (ou
-  SecOps) deixa de dizer "trabalhando" quando, depois do último parecer, um
-  subagente da área registra `delegation.failed` — passa a `falhou`. Nenhuma
-  query nem poll novo.
-- **Onde:** `src/application/use-cases/actions/execute-infra-pr.use-case.ts:71`
+- **Rule:** four clauses measured in TP-01 (03/10).
+  (1) The infra PR (`open_infra_pr`) follows [RN-664](engine.md#rn-664): the
+  `feature/infra-setup` branch is born from `dev` and the PR targets `dev` — the
+  dev agent's worktree is born from `dev`, so the Dockerfile merged into `main`
+  never reached it. A repository without `dev` fails named by the provider, with no
+  fallback to the default. The PR carries the author `<agente>[bot]`
+  (`infra[bot]` when the actor is not an agent), the same identity as
+  [RN-705](#rn-705). In Approvals, each infra PR in review gains "Merge in the PRs
+  tab", which switches the frame to the PRs tab (where the merge lives). (2) Opening
+  a project COLLAPSES the others in the sidebar and scrolls the list to it; on the
+  Dashboard none is forced expanded; the chevron still toggles by hand. (3) The
+  text fields of the "New project" wizard (name, path, adopted repository) carry
+  `SEM_AUTOFILL`, the same set as [RN-693](web.md#rn-693). (4) Deciding a merge in
+  the PRs tab invalidates the project's whole pending queue, so the sidebar's "PRs"
+  counter does not keep showing the already-executed merge until the next poll; and
+  the QA (or SecOps) lead stops saying "working" when, after the last opinion, an
+  area subagent records `delegation.failed` — it becomes `failed`. No new query nor
+  poll.
+- **Where:** `src/application/use-cases/actions/execute-infra-pr.use-case.ts:71`
   (`ExecuteInfraPrUseCase`),
   `apps/web/src/routes/ProjectApprovalsTab.tsx:106` (`ProjectApprovalsTab`),
   `apps/web/src/routes/Shell.tsx:562` (`idDoProjetoAtual`),
   `apps/web/src/routes/NewProjectWizard.tsx:155` (`NewProjectWizard`),
   `apps/web/src/routes/ProjectPrsTab.tsx:141` (`invalidateMergeActions`),
   `apps/web/src/lib/agent-status.ts:222` (`gateStatus`)
-- **Teste:** `test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts`
-  ("a branch nasce de dev, a PR mira dev e leva infra[bot]"; falha:
+- **Test:** `test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts`
+  ("a branch nasce de dev, a PR mira dev e leva infra[bot]"; failure:
   "repositório sem dev falha nomeado, sem cair na default"),
   `apps/web/src/routes/Shell.test.tsx` ("abrir um projeto recolhe o visitado
   antes e rola até o aberto", "no Dashboard nenhum projeto fica forçado
   expandido"), `apps/web/src/routes/NewProjectWizard.test.tsx` ("o campo de
   nome não convida o autofill"), `apps/web/src/lib/agent-status.test.ts`
   ("delegação falhada depois do parecer encerra o trabalhando")
-- **Origem:** AT-411, AT-412, AT-413, AT-415
+- **Origin:** AT-411, AT-412, AT-413, AT-415
 
 ### RN-730 — The provider's 402 has its own `code`, and it is that which decides exhausted credit {#rn-730}
 
@@ -11339,31 +11339,31 @@ O kickoff do PO diz as três coisas.
   é crédito, mesmo com a frase; sem code, o texto é a rede")
 - **Origin:** AT-416 (the declared gap of RN-726)
 
-### RN-734 — O caminho OpenAI-compatível manda o teto de saída SEMPRE {#rn-734}
+### RN-734 — The OpenAI-compatible path ALWAYS sends the output ceiling {#rn-734}
 
-- **Regra:** toda chamada de chat pelo dialeto `/chat/completions` (os
-  providers que nascem de `OpenAICompatibleProvider`, OpenRouter incluído)
-  leva o campo de teto de saída — `max_tokens` ou `max_completion_tokens`,
-  conforme `maxTokensField` — mesmo quando quem chama não define
-  `maxTokens`. Sem definição, o valor é `MAX_TOKENS_PADRAO` (4096), o MESMO
-  `DEFAULT_MAX_TOKENS` do `anthropic-provider.ts`, para o agente ter o mesmo
-  teto nos dois dialetos. O motivo é a RESERVA de crédito: sem o campo, o
-  OpenRouter reserva por chamada a saída MÁXIMA do modelo e recusa com 402
-  ("would exceed your available credits given your current in-flight
-  requests") com saldo que cobriria a chamada real. Hoje nenhum chamador
-  (engine → `llm-turn`) define `maxTokens`, então o padrão vale para todos
-  os agentes. A resposta cortada pelo teto (`finish_reason: "length"`) é
-  lida e narrada desde a [RN-737](#rn-737) (a RN-698 narra o teto de
-  ITERAÇÕES, não o de tokens). Hipótese NÃO medida com chave real: que a
-  reserva explica o 402 do TP-01.
-- **Onde:** `src/infrastructure/llm/openai-compatible-provider.ts:38`
+- **Rule:** every chat call through the `/chat/completions` dialect (the providers
+  born from `OpenAICompatibleProvider`, OpenRouter included) carries the output
+  ceiling field — `max_tokens` or `max_completion_tokens`, according to
+  `maxTokensField` — even when the caller does not set `maxTokens`. With no
+  setting, the value is `MAX_TOKENS_PADRAO` (4096), the SAME `DEFAULT_MAX_TOKENS`
+  of `anthropic-provider.ts`, so that the agent has the same ceiling in both
+  dialects. The reason is credit RESERVATION: without the field, OpenRouter
+  reserves per call the model's MAXIMUM output and refuses with 402 ("would exceed
+  your available credits given your current in-flight requests") with a balance
+  that would cover the real call. Today no caller (engine → `llm-turn`) sets
+  `maxTokens`, so the default applies to all agents. A response cut by the ceiling
+  (`finish_reason: "length"`) is read and narrated since
+  [RN-737](#rn-737) (RN-698 narrates the ITERATIONS ceiling, not the tokens one).
+  Hypothesis NOT measured with a real key: that the reservation explains the 402
+  in TP-01.
+- **Where:** `src/infrastructure/llm/openai-compatible-provider.ts:38`
   (`MAX_TOKENS_PADRAO`), `:634` (`flags`)
-- **Teste:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
-  (sem `maxTokens` o corpo leva `max_tokens: 4096`; com `maxTokens: 123` leva
-  123; com `maxTokensField: 'max_completion_tokens'` o campo muda e
-  `max_tokens` não vai)
-- **Origem:** AT-419 (TP-01 de 03/10: US$ 1,79 livres e 402 na chamada do Dev
-  Lead e na do dev agent)
+- **Test:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
+  (without `maxTokens` the body carries `max_tokens: 4096`; with `maxTokens: 123`
+  it carries 123; with `maxTokensField: 'max_completion_tokens'` the field changes
+  and `max_tokens` is not sent)
+- **Origin:** AT-419 (TP-01 of 03/10: US$ 1.79 free and a 402 on the Dev Lead's
+  call and on the dev agent's)
 
 ### RN-737 — An answer cut by the output ceiling is flagged, not executed, and stated {#rn-737}
 
