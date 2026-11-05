@@ -4242,8 +4242,7 @@ classify by these two fields and only them; a `bucket_key` outside the
 break if a future `RateLimitGuard` writes another format. Asking for an "IP
 ranking by route" would be inventing a dimension the table never kept.
 
-## O papel `dbre` vira dois scripts mecânicos (RN-400..403, ADR 0093)
-
+## The `dbre` role becomes two mechanical scripts (RN-400..403, ADR 0093) {#o-papel-dbre-vira-dois-scripts-mecanicos-rn-400-403-adr-0093}
 ### RN-400 — The migration opinion is STATIC SQL analysis, and ignores the risk pattern when it appears only in a comment {#rn-400}
 
 `lintarConteudo` (the pure core of `lint-migracao.ts`) scans each `.sql` of
@@ -4270,13 +4269,12 @@ sentence describing why it wasn't used.
   padrão de risco quando ele aparece só em COMENTÁRIO"
 - **ADR:** [0093](../adr/0093-dbre-linter-de-migracao-e-relatorio-de-backup.md)
 
-## Auditoria fluxo.yml × código — Onda 2: RN-160 no backend e delegação Dev Lead → dev (RN-404/405, ADR 0094)
+## fluxo.yml × code audit — Wave 2: RN-160 in the backend and Dev Lead → dev delegation (RN-404/405, ADR 0094) {#auditoria-fluxo-yml-codigo-onda-2-rn-160-no-backend-e-delegacao-dev-lead-dev-rn-404-405-adr-0094}
 
-Fecha os dois últimos achados da auditoria (seção D,
-`docs/explanation/auditoria-fluxo-vs-codigo.md`): B6 (RN-160 garantida só no
-cliente) e B1 (a delegação Dev Lead → `dev-<modulo>` declarada pelo ADR 0053
-item 5 e nunca implementada).
-
+Closes the last two findings of the audit (section D,
+`docs/explanation/auditoria-fluxo-vs-codigo.md`): B6 (RN-160 guaranteed only on
+the client) and B1 (the Dev Lead → `dev-<modulo>` delegation declared by ADR
+0053 item 5 and never implemented).
 ### RN-404 — "Confirm architecture ready" (RN-160) is revalidated in the BACKEND, not only disabled in the UI {#rn-404}
 
 [RN-160](web.md#rn-160) guaranteed the rule ("at least 1 promoted story before the
@@ -4301,8 +4299,7 @@ lighter — it doesn't need to build the epic→story→task tree to answer
   recorded; with at least one `ready`/`in_progress`/`done`, it follows the normal flow
 - **ADR:** [0094](../adr/0094-delegacao-dev-lead-vira-dado.md)
 
-## Auditoria fluxo.yml × código — Onda 6 (última): o gate `necessidade-validada` (RN-406, ADR 0095)
-
+## fluxo.yml × code audit — Wave 6 (last): the `necessidade-validada` gate (RN-406, ADR 0095) {#auditoria-fluxo-yml-codigo-onda-6-ultima-o-gate-necessidade-validada-rn-406-adr-0095}
 ### RN-408 — `MAIL_TRANSPORT=smtp` gates boot by the RN-114 pattern, without the public default {#rn-408}
 
 Closes the backlog item "Real SMTP in MailSender" ([ADR 0096](../adr/0096-smtp-real-no-mailsender.md)).
@@ -4354,21 +4351,20 @@ same graph assembly).
 
 ---
 
-## Workspace pessoal automático no cadastro (RN-410)
+## Automatic personal workspace at sign-up (RN-410) {#workspace-pessoal-automatico-no-cadastro-rn-410}
 
-Achado navegando o produto depois de um reset de banco: o botão "Novo
-projeto"/"+" do dashboard não fazia NADA, sem erro nenhum. A causa raiz
-estava em duas camadas. A visível: `Dashboard.tsx` só abre o
-`NewProjectWizard` quando `useCurrentWorkspace()` acha um workspace
-(`list[0]?.workspace` de `GET /workspaces`); sem nenhum, o clique não tem
-onde ir. A funda: `RegisterUseCase` criava usuário e credencial mas NUNCA
-um workspace, e o mesmo valia para `SocialLoginCallbackUseCase` no ramo
-que provisiona conta nova — TODO cadastro novo, por senha ou por login
-social, caía nessa parede. Só não tinha aparecido antes porque
-`db/seed.ts` sempre cria um workspace junto dos dados de demonstração, e
-nenhuma tela do produto chama `createWorkspace` (a rota, o caso de uso e
-o client HTTP existem — só não têm chamador nenhum na UI).
-
+A finding while navigating the product after a database reset: the dashboard's
+"New project"/"+" button did NOTHING, with no error at all. The root cause was
+in two layers. The visible one: `Dashboard.tsx` only opens the
+`NewProjectWizard` when `useCurrentWorkspace()` finds a workspace
+(`list[0]?.workspace` of `GET /workspaces`); with none, the click has nowhere
+to go. The deep one: `RegisterUseCase` created the user and the credential but
+NEVER a workspace, and the same was true of `SocialLoginCallbackUseCase` in the
+branch that provisions a new account — EVERY new sign-up, by password or by
+social login, hit that wall. It had only not shown up before because
+`db/seed.ts` always creates a workspace along with the demo data, and no
+product screen calls `createWorkspace` (the route, the use case and the HTTP
+client exist — they just have no caller in the UI).
 ### RN-410 — Every NEW account is born with a personal workspace, in the SAME transaction as the account {#rn-410}
 
 `RegisterUseCase` (e-mail/password registration) and `SocialLoginCallbackUseCase`
@@ -4413,8 +4409,7 @@ literal `workspace-<8 chars>`, never to an empty string.
 - **Origin:** found by real use, navigating the product — not a planned
   backlog item
 
-## "N agentes online" no dashboard — status AO VIVO, nunca presença histórica (RN-409, ADR 0097)
-
+## "N agents online" on the dashboard — LIVE status, never historical presence (RN-409, ADR 0097) {#n-agentes-online-no-dashboard-status-ao-vivo-nunca-presenca-historica-rn-409-adr-0097}
 ### RN-412 — `dev.awaiting_gate`/`dev.awaiting_approval` hold the session; the effective compaction window is consistent with the transport {#rn-412}
 
 Found by real USE ("on PRs it's always blowing up with entity too
@@ -4540,68 +4535,66 @@ retries on its own in the next cycle, with no intervention.
 
 ---
 
-### RN-418 — Efeito externo git e comando privilegiado (sudo/doas) viram teto absoluto, nunca `deny` {#rn-418}
+### RN-418 — External git effect and privileged command (sudo/doas) become an absolute ceiling, never `deny` {#rn-418}
 
-**Revisada pela [RN-713](#rn-713)** (AT-385, 02/10): com o modo automático
-(a curinga em `auto_approve`), push e PR são auto-aprovados.
+**Revised by [RN-713](#rn-713)** (AT-385, 02/10): with automatic mode (the
+wildcard in `auto_approve`), push and PR are auto-approved.
 
-**Revisada pela [RN-689](#rn-689)** (AT-347, decisão do dono de 01/10): o teto
-abaixo vale também para as ações TIPADAS `git_push` e `pr_open`, que até ali
-só tinham o papel mínimo e nasciam `auto_approved` pelo curinga, por regra
-específica ou por `permissions.json`. O resto desta entrada continua valendo.
+**Revised by [RN-689](#rn-689)** (AT-347, owner's decision of 01/10): the
+ceiling below also applies to the TYPED actions `git_push` and `pr_open`, which
+until then only had the minimum role and were born `auto_approved` by the
+wildcard, by a specific rule or by `permissions.json`. The rest of this entry
+remains in force.
 
-Revisa a [RN-106](#rn-106) por decisão GLOBAL e explícita do dono do
-produto: `git push`, abertura de PR, deploy (a mesma detecção por
-prefixo que a RN-106 já tinha) e `sudo`/`doas` (novo — casados por VERBO
-em `comandoPrivilegiadoNoComando`, varrendo todos os segmentos do
-comando) deixam de ser `deny` incondicional e viram TETO ABSOLUTO —
-`require_approval` incondicional, no MESMO bloco final e MESMO padrão de
-código dos outros tetos (merge protegida, `instruction_patch`,
-`parallelize`/`raise_max_parallel`, escopo de caminho):
-`current.policy === 'auto_approve'` → sobrescrito. Nunca auto-aprovável
-por `agent_autonomy` (inclusive o curinga `"*"` do modo automático) nem
-por `permissions.json`.
+Revises [RN-106](#rn-106) by a GLOBAL and explicit decision of the product
+owner: `git push`, PR opening, deploy (the same prefix detection that RN-106
+already had) and `sudo`/`doas` (new — matched by VERB in
+`comandoPrivilegiadoNoComando`, scanning every segment of the command) stop
+being an unconditional `deny` and become an ABSOLUTE CEILING — unconditional
+`require_approval`, in the SAME final block and SAME code pattern as the other
+ceilings (protected merge, `instruction_patch`,
+`parallelize`/`raise_max_parallel`, path scope):
+`current.policy === 'auto_approve'` → overwritten. Never auto-approvable by
+`agent_autonomy` (including the `"*"` wildcard of automatic mode) nor by
+`permissions.json`.
 
-A condição que torna isto seguro — sem a qual o teto seria decorativo —
-é a metade que fecha "sempre permitir" NA FONTE:
-`ApproveAlwaysActionUseCase`/`patternsForAction` recusam gravar padrão em
-`allow` pra ação de terminal com efeito externo git ou comando
-privilegiado. A instância específica ainda pode ser aprovada pelo fluxo
-normal (`ApproveActionUseCase`); só o clique que gravaria um padrão pra
-sempre é recusado, com mensagem clara. É o mesmo argumento que a RN-106
-original usava pra justificar `deny` — resolvido na origem, não mais
-bloqueando o sintoma.
+The condition that makes this safe — without which the ceiling would be
+decorative — is the half that closes "always allow" AT THE SOURCE:
+`ApproveAlwaysActionUseCase`/`patternsForAction` refuse to write an `allow`
+pattern for a terminal action with an external git effect or a privileged
+command. The specific instance can still be approved by the normal flow
+(`ApproveActionUseCase`); only the click that would write a pattern forever is
+refused, with a clear message. It is the same argument RN-106 originally used to
+justify `deny` — resolved at the origin, no longer blocking the symptom.
 
-Um aviso automático de segurança sinalizou esta mudança durante a
-implementação (reescrever uma regra que o produto documentava como
-`deny` absoluto merece escrutínio) — o dono do produto confirmou
-explicitamente, depois de revisar, que a decisão era essa.
+An automatic security warning flagged this change during implementation
+(rewriting a rule the product documented as an absolute `deny` deserves
+scrutiny) — the product owner explicitly confirmed, after reviewing, that this
+was the decision.
 
-- **Onde:** `src/domain/actions/decide.ts` (bloco de tetos
-  absolutos), `src/domain/actions/external-effect.ts`
+- **Where:** `src/domain/actions/decide.ts` (absolute-ceilings block),
+  `src/domain/actions/external-effect.ts`
   (`comandoPrivilegiadoNoComando`, `mensagemDeComandoPrivilegiado`),
   `src/application/use-cases/actions/approve-always-action.use-case.ts`
-- **Teste:** `decide.spec.ts` (`git push` com auto mode `"*"` E com
-  `allow` casando no `permissions.json` resolvem pra `require_approval`;
-  `sudo` idem; os tetos anteriores continuam intactos — regressão
-  completa); `approve-always-action.use-case.spec.ts` ("sempre permitir"
-  sobre git com efeito externo/sudo não grava padrão; comando comum
-  continua gravando normalmente — regressão); `external-effect.spec.ts`
-- **Origem:** ver [ADR 0102](../adr/0102-revisao-do-adr-0065-teto-absoluto-substitui-deny.md)
+- **Test:** `decide.spec.ts` (`git push` with auto mode `"*"` AND with an
+  `allow` matching in `permissions.json` resolve to `require_approval`;
+  `sudo` likewise; the earlier ceilings remain intact — full regression);
+  `approve-always-action.use-case.spec.ts` ("always allow" on git with an
+  external effect/sudo does not write a pattern; an ordinary command still
+  writes normally — regression); `external-effect.spec.ts`
+- **Origin:** see [ADR 0102](../adr/0102-revisao-do-adr-0065-teto-absoluto-substitui-deny.md)
 
 ---
+## ADR 0104 Wave 1 — `execution_mode` with three values, workspace verified by the runner {#onda-1-do-adr-0104-execution-mode-em-tres-valores-workspace-verificado-pelo-runner}
 
-## Onda 1 do ADR 0104 — `execution_mode` em três valores, workspace verificado pelo runner
-
-O ADR 0072 (RN-169/RN-170) e o ADR 0103 (RN-419/RN-420) nunca se falaram: o
-runner reusava a mesma flag `workspace_mode == 'local'` sem bind-mount
-nenhum, então usar o runner de verdade continuava exigindo passar pela
-validação de PASTA MONTADA. O ADR 0104 reconcilia os dois. Migração `0048`
-recria o enum (`project_workspace_mode` → `project_execution_mode`,
-`local` → `mounted`) numa transação só — `ALTER TYPE ... ADD VALUE` não
-pode ser referenciado na mesma transação em que foi adicionado — e soma
+ADR 0072 (RN-169/RN-170) and ADR 0103 (RN-419/RN-420) never talked to each
+other: the runner reused the same `workspace_mode == 'local'` flag with no
+bind-mount at all, so really using the runner still required going through the
+MOUNTED FOLDER validation. ADR 0104 reconciles the two. Migration `0048`
+recreates the enum (`project_workspace_mode` → `project_execution_mode`,
+`local` → `mounted`) in a single transaction — `ALTER TYPE ... ADD VALUE`
+cannot be referenced in the same transaction in which it was added — and adds
 `workspace_verified_at` (nullable).
-
 ### RN-421 — `execution_mode` has THREE values: `container`/`mounted`/`runner` {#rn-421}
 
 `projects.workspace_mode` (two values) became `projects.execution_mode`
@@ -4858,8 +4851,7 @@ RN-096 already fixed for other types).
 
 ---
 
-## O explorador de pasta do Runner vira três colunas, e a criação de um projeto `runner` deixa de esperar o passo final (RN-436/436)
-
+## The Runner folder explorer becomes three columns, and creating a `runner` project stops waiting for the final step (RN-436/436) {#o-explorador-de-pasta-do-runner-vira-tres-colunas-e-a-criacao-de-um-projeto-runner-deixa-de-esperar-o-passo-final-rn-436-436}
 ### RN-439 — `POST .../runner-ticket` authenticates AND authorizes in the SAME guard; `RolesGuard` (global) abstains on an `@RequirePatAuth()` route {#rn-439}
 
 `POST /projects/:projectId/runner-ticket` answered `403 "Não autenticado"`
@@ -5173,19 +5165,17 @@ no-op (RN-447) is the only exception — nothing changes, so nothing resets.
 
 ---
 
-## Pasta local anexada vira o quarto escopo do índice RAG, lido pelo NAVEGADOR (RN-455..457, ADR 0113)
+## An attached local folder becomes the fourth scope of the RAG index, read by the BROWSER (RN-455..457, ADR 0113) {#pasta-local-anexada-vira-o-quarto-escopo-do-indice-rag-lido-pelo-navegador-rn-455-457-adr-0113}
 
-Pedido do dono do produto: anexar uma pasta da PRÓPRIA máquina do usuário a
-um projeto como referência de leitura para os agentes — sem exigir o CLI
-`brabo-runner` (ADR 0103), diferente de `execution_mode: runner`
-(ADR 0104), que precisa de um caminho de HOST real porque roteia comando
-para lá. O navegador lê o CONTEÚDO dos arquivos (`File.text()`) e o caminho
-RELATIVO dentro da pasta escolhida (`File.webkitRelativePath`) — nunca um
-caminho absoluto de máquina, porque a API de `File` do navegador não expõe
-um, para nenhum site. O que atravessa a rede é texto que o navegador já
-tinha o direito de ler, o mesmo modelo de confiança de qualquer upload de
-arquivo comum.
-
+A request from the product owner: attach a folder from the user's OWN machine
+to a project as reading reference for the agents — without requiring the
+`brabo-runner` CLI (ADR 0103), unlike `execution_mode: runner` (ADR 0104),
+which needs a real HOST path because it routes commands there. The browser
+reads the CONTENT of the files (`File.text()`) and the RELATIVE path inside the
+chosen folder (`File.webkitRelativePath`) — never an absolute machine path,
+because the browser's `File` API does not expose one, to any site. What crosses
+the network is text the browser already had the right to read, the same trust
+model as any ordinary file upload.
 ### RN-455 — `chunks.scope` gains `'local'`, reusing the entire RAG pipeline {#rn-455}
 
 `ChunkScope` goes from `'docs' | 'adr' | 'session'` to include `'local'`
@@ -5309,96 +5299,92 @@ never a preference the user turns on once and forgets is on.
 - **ADR:** [0115](../adr/0115-pedido-de-pull-de-modelo-huggingface-tabela-propria.md)
 - **Origin:** product owner's request
 
-## Configuração do runner pelo navegador (RN-464..466, ADR 0118)
+## Runner configuration by the browser (RN-464..466, ADR 0118) {#configuracao-do-runner-pelo-navegador-rn-464-466-adr-0118}
+### RN-464 — Runner device key: self-service registration/revocation; NO maintainer view in this round (declared cut) {#rn-464}
 
-### RN-464 — Chave de dispositivo do runner: registro/revogação self-service; SEM visão de maintainer nesta rodada (corte declarado) {#rn-464}
+> **Revised by [RN-687](web.md#rn-687) ([ADR 0203](../adr/0203-aposenta-o-fluxo-do-runner-pelo-navegador.md), 01/10):**
+> the browser flow was RETIRED, and `POST .../runner-device-keys` left with
+> it — along with `RegisterRunnerDeviceKeyUseCase` and its test, cited below as
+> they were. `GET`/`DELETE` and self-service revocation remain; the new key is
+> born in the terminal (RN-551) and who registers it is the installer (RN-552).
+> The project keys already registered remain valid and revocable.
 
-> **Revisada pela [RN-687](web.md#rn-687) ([ADR 0203](../adr/0203-aposenta-o-fluxo-do-runner-pelo-navegador.md), 01/10):**
-> o fluxo do navegador foi APOSENTADO, e o `POST .../runner-device-keys` saiu
-> com ele — junto com `RegisterRunnerDeviceKeyUseCase` e o teste dele, citados
-> abaixo como eram. Ficam `GET`/`DELETE` e a revogação self-service; a chave
-> nova nasce no terminal (RN-551) e quem a registra é o instalador (RN-552). As
-> chaves de projeto já registradas continuam valendo e revogáveis.
+`runner_device_keys` stores only the PUBLIC Ed25519 key of a runner device —
+generated in the browser, never the private one. `POST/DELETE
+.../runner-device-keys` require minimum role `developer` and are authenticated
+by the normal SESSION JWT (unlike `runner-ticket`: the caller here is the
+already-logged-in browser registering its own device, not the runner running
+without a session). `RegisterRunnerDeviceKeyUseCase` validates only the minimal
+SHAPE of the JWK (`kty:"OKP"`, `crv:"Ed25519"`, `x` present) — the deep
+validation (is it really a valid Ed25519 point) is left to `jose.importJWK` at
+the time of use, in RN-465. `RevokeRunnerDeviceKeyUseCase` is IDEMPOTENT and
+scoped to the calling `userId` — same design as `revogar()` of RN-426 — and
+returns 404 both for a nonexistent key and for another user's key, the same
+discipline of not leaking existence.
 
-`runner_device_keys` guarda só a chave PÚBLICA Ed25519 de um dispositivo do
-runner — gerada no navegador, nunca a privada. `POST/DELETE
-.../runner-device-keys` exigem papel mínimo `developer` e são autenticadas
-pelo JWT DE SESSÃO normal (diferente de `runner-ticket`: quem chama aqui é o
-navegador já logado registrando o próprio dispositivo, não o runner rodando
-sem sessão). `RegisterRunnerDeviceKeyUseCase` valida só a FORMA mínima da
-JWK (`kty:"OKP"`, `crv:"Ed25519"`, `x` presente) — a validação profunda (é
-mesmo um ponto Ed25519 válido) fica pro `jose.importJWK` no momento de usar,
-na RN-465. `RevokeRunnerDeviceKeyUseCase` é IDEMPOTENTE e escopado ao
-`userId` chamador — mesmo desenho de `revogar()` da RN-426 — e devolve 404
-tanto para chave inexistente quanto para chave de outro usuário, mesma
-disciplina de não vazar existência.
+**Declared asymmetry with the PAT**: unlike RN-427 (`maintainer` revokes the
+PAT of ANY user of the project, incident response), the device key does NOT
+today have an equivalent `maintainer` route — only self-revocation. The
+docblock of `RunnerDeviceKeysController` declares this explicitly as a cut of
+this round, not an oversight: extending the same RN-427 pattern to device keys
+is direct future work, if it comes to be requested.
 
-**Assimetria declarada com o PAT**: ao contrário da RN-427 (`maintainer`
-revoga o PAT de QUALQUER usuário do projeto, resposta a incidente), a chave
-de dispositivo NÃO tem hoje uma rota equivalente de `maintainer` — só
-autorevogação. O docblock de `RunnerDeviceKeysController` declara isto
-explicitamente como corte desta rodada, não esquecimento: estender o mesmo
-padrão da RN-427 para chaves de dispositivo é trabalho futuro direto, se
-vier a ser pedido.
-
-- **Onde:** `src/db/schema/auth.ts:338` (`runnerDeviceKeys`),
+- **Where:** `src/db/schema/auth.ts:338` (`runnerDeviceKeys`),
   `src/application/use-cases/auth/register-runner-device-key.use-case.ts`,
   `src/application/use-cases/auth/revoke-runner-device-key.use-case.ts`,
   `src/interfaces/http/runner/runner-device-keys.controller.ts`
-- **Teste:** `test/application/use-cases/auth/register-runner-device-key.use-case.spec.ts`,
+- **Test:** `test/application/use-cases/auth/register-runner-device-key.use-case.spec.ts`,
   `test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
 - **ADR:** [0118](../adr/0118-configuracao-automatica-do-runner-pelo-navegador.md)
-- **Origem:** pedido do dono do produto
+- **Origin:** request from the product owner
+### RN-465 — `POST .../runner-ticket` accepts a PAT OR a device key (Ed25519, TTL ≤60s) — a second form of DEVICE credential, never dual-auth with a session JWT (distinction from RN-439) {#rn-465}
 
-### RN-465 — `POST .../runner-ticket` aceita PAT OU chave de dispositivo (Ed25519, TTL ≤60s) — segunda forma de credencial de DISPOSITIVO, nunca dual-auth com JWT de sessão (distinção da RN-439) {#rn-465}
+> **Revised by [RN-687](web.md#rn-687) ([ADR 0203](../adr/0203-aposenta-o-fluxo-do-runner-pelo-navegador.md), 01/10):**
+> nothing in this RN changed in the guard — the `PatAuthGuard` still accepts the
+> JWT of a PROJECT key, and that is why a runner configured by the browser
+> before ADR 0203 does not break. What ceased to exist is creating a NEW project
+> key: the browser no longer generates the pair.
 
-> **Revisada pela [RN-687](web.md#rn-687) ([ADR 0203](../adr/0203-aposenta-o-fluxo-do-runner-pelo-navegador.md), 01/10):**
-> nada desta RN mudou no guard — o `PatAuthGuard` continua aceitando o JWT de
-> uma chave de PROJETO, e é por isso que um runner configurado pelo navegador
-> antes do ADR 0203 não quebra. O que deixou de existir é criar uma chave de
-> projeto NOVA: o navegador não gera mais o par.
+`PatAuthGuard` gained a second path, next to the unchanged PAT (`brb_...`): a
+bearer in compact JWT format (three segments) is treated as a device key. The
+guard reads the header's `kid` (without verifying the signature yet), looks up
+the corresponding ACTIVE public key in `runner_device_keys`, and only then
+verifies the EdDSA signature with `jose.importJWK`/`jwtVerify`. A short and
+MANDATORY TTL: `exp - iat` cannot exceed 60s — checked against the token's
+SIGNED lifetime, not against "now", closing the replay window of a leaked JWT
+from the moment it was signed. The `userId`/`projectId` used to authorize always
+come from the RECORD saved in the database, never from a JWT claim — the token
+only needs to prove possession of the private key, never claim who the owner is.
+`projectId` is checked TWICE (the JWT claim against the route, and the key's
+registered project against the route) — the same 401 vs 403 discipline the PAT
+path already uses: a valid token/key for the WRONG project is a different
+category from an invalid token/key. The runner signs this JWT in
+`assinarTicketComChaveDeDispositivo` (`apps/runner/src/auth.ts`), with the
+private JWK already LOADED in memory — never reading a file there, preserving
+the "no file I/O" guarantee of `auth.ts` (what reads the file is the separate
+module of RN-466).
 
-`PatAuthGuard` ganhou um segundo caminho, ao lado do PAT (`brb_...`)
-inalterado: um bearer no formato de JWT compacto (três segmentos) é tratado
-como chave de dispositivo. O guard lê o `kid` do header (sem verificar
-assinatura ainda), busca a chave pública ATIVA correspondente em
-`runner_device_keys`, e só então verifica a assinatura EdDSA com
-`jose.importJWK`/`jwtVerify`. TTL curto e OBRIGATÓRIO: `exp - iat` não pode
-passar de 60s — checado contra a vida ASSINADA do token, não contra "agora",
-fechando a janela de replay de um JWT vazado a partir do momento em que foi
-assinado. `userId`/`projectId` usados para autorizar vêm sempre do REGISTRO
-salvo no banco, nunca de claim do JWT — o token só precisa provar posse da
-privada, nunca afirmar quem é o dono. `projectId` é conferido DUAS vezes
-(claim do JWT contra a rota, e projeto registrado da chave contra a rota) —
-mesma disciplina 401 vs 403 que o caminho PAT já usa: token/chave válida
-para o projeto ERRADO é categoria diferente de token/chave inválida. O
-runner assina esse JWT em `assinarTicketComChaveDeDispositivo`
-(`apps/runner/src/auth.ts`), com a JWK privada já CARREGADA em memória —
-nunca lendo arquivo ali, preservando a garantia "sem I/O de arquivo" de
-`auth.ts` (quem lê o arquivo é o módulo separado da RN-466).
+**This does NOT reopen RN-439**: RN-439 settled the guarantee that
+`runner-ticket` never accepts the LOGIN JWT as a credential — it still stands.
+The device key is a DIFFERENT JWT, self-signed by the runner itself with a key
+whose private part the api never saw, with no user `sub` at all — just a second
+way of proving "I am the device of such-and-such user in this project", as
+scoped as the PAT it complements. Accepting the session JWT here would make
+`RolesGuard`/`@RequireRole` authorize that user for everything their role
+allows in the rest of the api, blowing the `runner:project:<id>` scope —
+exactly what RN-439 prevented.
 
-**Isto NÃO reabre a RN-439**: a RN-439 fechou a garantia de que
-`runner-ticket` nunca aceita o JWT de LOGIN como credencial — ela continua
-de pé. A chave de dispositivo é um JWT DIFERENTE, autoassinado pelo próprio
-runner com uma chave que a api nunca viu a privada, sem `sub` de usuário
-nenhum — só uma segunda forma de provar "sou o dispositivo de tal usuário
-neste projeto", tão escopada quanto o PAT que ela complementa. Aceitar o JWT
-de sessão aqui faria `RolesGuard`/`@RequireRole` autorizar esse usuário pra
-tudo que o papel dele permite no resto da api, estourando o escopo
-`runner:project:<id>` — exatamente o que a RN-439 impediu.
-
-- **Onde:** `src/interfaces/http/auth/pat-auth.guard.ts:104-216`
+- **Where:** `src/interfaces/http/auth/pat-auth.guard.ts:104-216`
   (`autenticarChaveDeDispositivo`), `apps/runner/src/auth.ts:143-188`
   (`assinarTicketComChaveDeDispositivo`, `obterTicketDoRunnerComCredencial`)
-- **Teste:** `test/interfaces/pat-auth.guard.spec.ts` (describe
-  "chave de dispositivo (JWT EdDSA autoassinado, ao lado do PAT)" — caminho
-  feliz, assinatura inválida, chave revogada, `projectId` do claim não bate
-  com a rota, chave registrada em outro projeto, TTL longo demais, `kid` sem
-  chave correspondente), `apps/runner/src/auth.spec.ts` (describe
+- **Test:** `test/interfaces/pat-auth.guard.spec.ts` (describe
+  "chave de dispositivo (JWT EdDSA autoassinado, ao lado do PAT)" — happy path,
+  invalid signature, revoked key, the claim's `projectId` does not match the
+  route, key registered in another project, TTL too long, `kid` with no
+  matching key), `apps/runner/src/auth.spec.ts` (describe
   "assinarTicketComChaveDeDispositivo"/"obterTicketDoRunnerComCredencial")
 - **ADR:** [0118](../adr/0118-configuracao-automatica-do-runner-pelo-navegador.md)
-- **Origem:** pedido do dono do produto
-
+- **Origin:** request from the product owner
 ## Os dois tetos de rebaixamento em `project_members` (RN-472)
 
 ### RN-472 — Nobody downgrades the workspace `owner`, and nobody downgrades themselves {#rn-472}
@@ -5490,8 +5476,7 @@ api's sentence that says which ceiling was hit.
 
 ---
 
-## O `kid` é o vínculo, e a recusa tem nome (RN-475)
-
+## The `kid` is the link, and the refusal has a name (RN-475) {#o-kid-e-o-vinculo-e-a-recusa-tem-nome-rn-475}
 ### RN-477 — Provisioning that fails SAYS it failed, and the wait for it has a ceiling {#rn-477}
 
 Repository provisioning runs **entirely inside the POST** — there's no
@@ -6084,8 +6069,7 @@ what lets the screen swap the three action buttons for the inline
 - **Architectural decision:** [ADR 0136](../adr/0136-pagina-global-de-containers.md)
 - **Origin:** the product owner's plan, Part 1 / PR 1.8
 
-## A base única dos projetos montados (RN-500)
-
+## The single base of mounted projects (RN-500) {#a-base-unica-dos-projetos-montados-rn-500}
 ### RN-500 — There's ONE base for mounted projects, it's mounted by identity, and absent means "don't offer the mode" {#rn-500}
 
 `BRABO_PROJECTS_BASE` is the **only** folder of the operator's computer that
@@ -6154,8 +6138,7 @@ in the next RN.
 
 ---
 
-## A pasta montada nasce quando o container sobe (RN-501)
-
+## The mounted folder is born when the container comes up (RN-501) {#a-pasta-montada-nasce-quando-o-container-sobe-rn-501}
 ### RN-501 — `mounted` validates only the LEXICON and the base at creation; the folder is MATERIALIZED later, by whoever has authority over the disk {#rn-501}
 
 Creating a `mounted` project **stopped touching disk**. It requires two
@@ -6256,8 +6239,7 @@ screen asserting what it doesn't know.
 
 ---
 
-## Projeto montado sobe container pelo BROKER (RN-503)
-
+## A mounted project brings up its container through the BROKER (RN-503) {#projeto-montado-sobe-container-pelo-broker-rn-503}
 ### RN-503 — A `mounted` project brings up a container through the BROKER, and what crosses the network is a discriminated locator — never an absolute path {#rn-503}
 
 A project in Mounted folder mode **couldn't get any container** until now, and
@@ -6364,8 +6346,7 @@ image, the gap declared since RN-494.
 
 ---
 
-## O artefato de decisão dos conversacionais (RN-505)
-
+## The decision artifact of the conversational agents (RN-505) {#o-artefato-de-decisao-dos-conversacionais-rn-505}
 ### RN-508 — `container_start_via_runner`: a second action type to bring up the container, exclusive to `runner`, and the Infra Lead refuses blind proposals BEFORE proposing {#rn-508}
 
 `container_start` (ADR 0130/0133) requires `imagem`/`network`/`resources`/
@@ -6455,8 +6436,7 @@ side without the other fails.
 
 ---
 
-## O navegador de pastas servido pela api (RN-504)
-
+## The folder browser served by the api (RN-504) {#o-navegador-de-pastas-servido-pela-api-rn-504}
 ### RN-509 — A module Dev Agent's "Always allow" scopes to `agent_autonomy`, PER AGENT — no longer the whole project's `permissions.json` {#rn-509}
 
 `ApproveAlwaysActionUseCase` always wrote to `permissions.json/allow` —
@@ -6530,8 +6510,7 @@ gap.
 
 ---
 
-## O destino do espelho é por projeto (RN-515)
-
+## The mirror destination is per project (RN-515) {#o-destino-do-espelho-e-por-projeto-rn-515}
 ### RN-515 — The mirror destination is declared PER PROJECT and is never global; `null` is the normal state; and the api validates ONLY the lexicon, saying it is only the lexicon {#rn-515}
 
 The `espelho` capability ([RN-514](engine.md#rn-514), [ADR 0147](../adr/0147-agente-local-com-capacidades.md))
@@ -6635,8 +6614,7 @@ queue of routine approvals.
 
 ---
 
-## O estado do espelho é visível, e os três estados não colapsam (RN-517)
-
+## The mirror state is visible, and the three states do not collapse (RN-517) {#o-estado-do-espelho-e-visivel-e-os-tres-estados-nao-colapsam-rn-517}
 ### RN-517 — The outcome of each mirror round comes back through the channel and becomes TELEMETRY in its own table; "never synced", "synced and copied nothing" and "failed" are THREE answers, and success and error coexist {#rn-517}
 
 Session 8 of PHASE 28 and **point 7** of
@@ -6775,8 +6753,7 @@ capability.
 
 ---
 
-## A revogação de chave de dispositivo deixa de ser cega, e alcança a conexão viva (RN-519..520)
-
+## Device key revocation stops being blind, and reaches the live connection (RN-519..520) {#a-revogacao-de-chave-de-dispositivo-deixa-de-ser-cega-e-alcanca-a-conexao-viva-rn-519-520}
 ### RN-519 — Nobody revokes what they cannot see: the device key gains a listing for its OWN owner, and the `maintainer` view stays out by DECISION {#rn-519}
 
 Session 7 of PHASE 28 and **point 6** of
@@ -7068,8 +7045,7 @@ repairable defect (it ends in a toast), not the invisible one.
   is no presence signal in the api), and the role read is the workspace one, not the
   project's effective one
 
-## O repositório nasce no handoff para o Dev Lead (RN-522)
-
+## The repository is born at the handoff to the Dev Lead (RN-522) {#o-repositorio-nasce-no-handoff-para-o-dev-lead-rn-522}
 ### RN-522 — The repository is provisioned on ACCEPTING the Arquiteto → Dev Lead handoff, always `local`, and the failure never takes down the acceptance {#rn-522}
 
 > **Revised by [RN-582](#rn-582) ([ADR 0165](../adr/0165-o-repositorio-nasce-no-handoff-ao-arquiteto.md)):**
@@ -7140,8 +7116,7 @@ interrupted bootstrap completes.
 - **Origin:** request of the product owner — *"o gatilho deve vir quando o arquiteto
   passar o handoff para o desenvolvedor iniciar o desenvolvimento"*
 
-## A chave de MÁQUINA que o instalador registra (RN-552)
-
+## The MACHINE key that the installer registers (RN-552) {#a-chave-de-maquina-que-o-instalador-registra-rn-552}
 ### RN-552 — An internal route registers the MACHINE device key, for the installation's SOLE user, and registering REPLACES {#rn-552}
 
 Session 7 of [PHASE 30](../explanation/fase-30-runner-por-maquina.md), closing
@@ -7273,8 +7248,7 @@ point 1) — and **no migration**, because the column is already nullable since
 - **ADR:** [0155](../adr/0155-a-primeira-conta-nasce-no-terminal.md) point 4, on
   the kind created by [0154](../adr/0154-chave-de-dispositivo-de-maquina.md)
 
-## O teto de auto-rebaixamento também na REMOÇÃO (RN-556)
-
+## The self-demotion ceiling also on REMOVAL (RN-556) {#o-teto-de-auto-rebaixamento-tambem-na-remocao-rn-556}
 ### RN-556 — Removing one's own `project_members` row is refused with 403 when the net effect is a demotion {#rn-556}
 
 > **About the number.** The jump from [RN-542](produto.md#rn-542) to 556 is deliberate: the
@@ -7364,8 +7338,7 @@ client — but computing only it would produce the half-gate ADR 0127 refused.
 
 ---
 
-## A rotação da chave mestra deixa de ser tentativa e erro (RN-562, RN-563)
-
+## Master key rotation stops being trial and error (RN-562, RN-563) {#a-rotacao-da-chave-mestra-deixa-de-ser-tentativa-e-erro-rn-562-rn-563}
 ### RN-562 — Master key rotation is proven end to end, in both tables {#rn-562}
 
 The procedure with the worst outcome in the [Runbook](../runbook.md#rotacao-da-chave-mestra)
@@ -7727,8 +7700,7 @@ installation without a broker remains possible by the agent.
 
 ---
 
-## O broker de container na instalação, com consentimento (RN-575)
-
+## The container broker on the installation, with consent (RN-575) {#o-broker-de-container-na-instalacao-com-consentimento-rn-575}
 ### RN-581 — The conversation in progress holds the session for up to 8h, and the closed session refuses conversation {#rn-581}
 
 In `exp001` the heartbeat closed the session 30 seconds after the tab stopped, with
@@ -7904,8 +7876,7 @@ closed session keep showing the api's message.
 - **Origin:** AT-072 — `exp001`; the maintainer's decisions on 2026-09-18 (8h
   ceiling and its own cause; a closed session refuses conversation, named)
 
-## O repositório nasce no aceite do handoff ao Arquiteto, e a execução não começa sem ele (RN-582)
-
+## The repository is born at the acceptance of the handoff to the Architect, and execution does not start without it (RN-582) {#o-repositorio-nasce-no-aceite-do-handoff-ao-arquiteto-e-a-execucao-nao-comeca-sem-ele-rn-582}
 ### RN-582 — Accepting the handoff to the Arquiteto provisions the repository; accepting to the Dev Lead is the second, idempotent door; and `execution/activate` without a repository is a named 409 {#rn-582}
 
 It revises the TRIGGER of [RN-522](#rn-522), which fulfilled the promise of
