@@ -11904,44 +11904,44 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   add a tool outside the catalog)
 - **Origin:** AT-509 (TP-01, 12th run)
 
-### RN-844 — O painel de contexto lista as regras, as decisões e os arquivos das PRs da sessão inteira {#rn-844}
+### RN-844 — The context panel lists the rules, the decisions and the PR files of the whole session {#rn-844}
 
-- **Regra:** extensão da [RN-827](#rn-827) e da [RN-828](#rn-828). O agregado
-  `GET .../sessions/:sessionId/context-summary` devolve, além dos números, os
-  ITENS: as regras de negócio (`itensDeRegras`: título, descrição e quantas
-  origens cita) e as decisões registradas (`itensDeDecisoes`: escolha e
-  contexto) da sessão, as mais recentes primeiro, até 50 de cada
-  (`TETO_DE_ITENS_DO_CONTEXTO`); o total segue em `regras`/`decisoes`. Com o
-  agregado, o painel lista esses itens em vez da janela de 200 eventos — a
-  regra que ficou antes da janela continua aparecendo — e o recorte diz
-  "Mostrando as N mais recentes de M". "Arquivos tocados" passa a incluir os
-  arquivos das PRs (`pr_open`/`open_adr_pr`/`open_infra_pr` executadas, com
-  `pullRequestId`) da sessão e da sessão de execução ligada, lidos do MESMO
-  diff da aba PRs (`ReadProjectCodeUseCase.pullRequestDiff`), antes dos
-  arquivos de payload de commit, no teto de 100 com o total real. Leitura
-  contida ([ADR 0060](../adr/0060-superficie-de-leitura-de-codigo.md)): sem parâmetro
-  livre, no máximo 20 diffs por chamada (`TETO_DE_PRS_LIDAS`); PR além do teto
-  ou cujo diff falhou entra em `prsNaoLidas`, e a tela diz quantas ficaram de
-  fora. Com o agregado e nada a listar, o vazio diz o que não houve (nenhum
-  arquivo em PR nem commit desta sessão ou da execução ligada), nunca "Nada
-  ainda". O caso de uso mora no módulo de git porque é ele que lê o
-  repositório; sessão de outro projeto continua 404 sem ler PR nenhuma.
-- **Onde:** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:140`
+- **Rule:** an extension of [RN-827](#rn-827) and [RN-828](#rn-828). The aggregate
+  `GET .../sessions/:sessionId/context-summary` returns, besides the numbers, the
+  ITEMS: the session's business rules (`itensDeRegras`: title, description and how
+  many origins it cites) and recorded decisions (`itensDeDecisoes`: choice and
+  context), most recent first, up to 50 of each (`TETO_DE_ITENS_DO_CONTEXTO`); the
+  total stays in `regras`/`decisoes`. With the aggregate, the panel lists these
+  items instead of the window of 200 events — a rule that fell before the window
+  still shows up — and the cut says "Showing the N most recent of M". "Files
+  touched" now includes the files of the PRs (executed
+  `pr_open`/`open_adr_pr`/`open_infra_pr`, with `pullRequestId`) of the session and
+  of the linked execution session, read from the SAME diff as the PRs tab
+  (`ReadProjectCodeUseCase.pullRequestDiff`), before the commit-payload files, at
+  the ceiling of 100 with the real total. A contained read
+  ([ADR 0060](../adr/0060-superficie-de-leitura-de-codigo.md)): no free parameter, at
+  most 20 diffs per call (`TETO_DE_PRS_LIDAS`); a PR beyond the ceiling or whose
+  diff failed enters `prsNaoLidas`, and the screen says how many were left out. With
+  the aggregate and nothing to list, the empty state says what did not happen (no
+  file in a PR or commit of this session or the linked execution), never "Nothing
+  yet". The use case lives in the git module because it is the one that reads the
+  repository; a session of another project is still 404 without reading any PR.
+- **Where:** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:140`
   (`itensDeRegras`), `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:184`
   (`prsDasSessoes`), `src/application/use-cases/git/resumir-contexto-da-sessao.use-case.ts:37`
   (`prs`), `apps/web/src/routes/ContextAside.tsx:197` (`businessRules`),
   `apps/web/src/routes/ContextAside.tsx:222` (`decisoes`)
-- **Teste:** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
+- **Test:** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
   ("RN-844: devolve os ITENS de regra e decisão fora de qualquer cauda, com
   teto de 50"; "RN-844: lista as PRs executadas da sessão e da execução
   ligada…"), `test/application/use-cases/git/resumir-contexto-da-sessao.use-case.spec.ts`
-  ("lê os arquivos das PRs das sessões lidas…"; falhas: "corta no teto de
-  arquivos, conta PR fora do teto e diff que falhou em prsNaoLidas" e "sessão
+  ("lê os arquivos das PRs das sessões lidas…"; failures: "corta no teto de
+  arquivos, conta PR fora do teto e diff que falhou em prsNaoLidas" and "sessão
   de outro projeto é 404 e não lê PR nenhuma"),
   `apps/web/src/routes/ContextAside.sessao-inteira.test.tsx` ("…lista os itens
   do servidor (RN-844)"; "agregado sem arquivo diz O QUE não houve…")
-- **Origem:** AT-513 (TP-01 de 11/10: 9 regras sem lista, "mostrando 1 de 4"
-  decisões e "Arquivos tocados: Nada ainda" com 12 PRs mergeadas)
+- **Origin:** AT-513 (TP-01 of 11/10: 9 rules without a list, "showing 1 of 4"
+  decisions and "Files touched: Nothing yet" with 12 merged PRs)
 
 ### RN-847 — A merged PR keeps stating the files it changed {#rn-847}
 
@@ -12306,137 +12306,142 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   no inglês"); `apps/web/src/lib/i18n-paridade.test.ts`
 - **Origin:** AT-548, ADR 0216 (items 1–4)
 
-### RN-892 — O prefixo estável da chamada vai marcado para o cache de prompt, e a capability é ligada só no OpenRouter, provada {#rn-892}
+### RN-892 — The call's stable prefix is marked for the prompt cache, and the capability is turned on only in OpenRouter, proven {#rn-892}
 
-Medido no TP-01 (15/10): o `anthropic/claude-haiku-5.5` pelo OpenRouter
-recebeu 8,40 M tokens de entrada com **0** em cache, e a entrada foi US$ 0,84
-dos US$ 1,02. Modelos Anthropic só leem do cache o prefixo marcado com
-`cache_control: { type: "ephemeral" }` num bloco de conteúdo de texto (até
-quatro pontos, TTL de 5 min — https://openrouter.ai/docs/features/prompt-caching).
+Measured in TP-01 (15/10): `anthropic/claude-haiku-5.5` through OpenRouter
+received 8.40 M input tokens with **0** cached, and the input was US$ 0.84 of
+the US$ 1.02. Anthropic models only read from the cache the prefix marked with
+`cache_control: { type: "ephemeral" }` on a text content block (up to four
+points, 5 min TTL — https://openrouter.ai/docs/features/prompt-caching).
 
-1. **Capability de provider, obrigatória.** `LLMProviderCapabilities.promptCaching`
-   é `true` no OpenRouter e (RN-1008) na Anthropic direta, e `false` nos outros sete. Declará-la sem o hook `marcarCacheDePrompt`
-   falha na construção. Desligada, o corpo é byte a byte o de antes.
-2. **Camada de modelo na config.** No OpenRouter só `anthropic/*` recebe ponto;
-   os demais cacheiam sozinhos e voltam intactos.
-3. **Dois pontos, sobre o que não muda.** A última `system` do prefixo
-   (instruções, e as ferramentas antes delas) e a última `user`/`tool` antes
-   da cauda de `system` do fim. A cauda — idioma (RN-622), ambiente (RN-706),
-   fluxo (RN-711), perfil (RN-680) — fica DEPOIS do último ponto, e a ordem
-   das mensagens nunca muda.
-4. **Prova (ADRs 0041/0042).** Em 2026-10-15 o smoke rodou com credencial
-   real (`OPENROUTER_TEST_KEY=… pnpm --filter api exec vitest run
-   test/infrastructure/llm/openrouter-provider.cache.smoke.spec.ts`) e a
-   segunda chamada a `anthropic/claude-haiku-5.5` voltou com
-   `cached_input_tokens=8011`; só então a capability do OpenRouter passou a
-   `true`. Ligar outro provider exige o smoke equivalente. O ganho aparece no
-   metering pela [RN-666](#rn-666).
+1. **Provider capability, mandatory.** `LLMProviderCapabilities.promptCaching`
+   is `true` on OpenRouter and (RN-1008) on direct Anthropic, and `false` on the
+   other seven. Declaring it without the `marcarCacheDePrompt` hook fails at
+   construction. When off, the body is byte for byte what it was before.
+2. **Model layer in the config.** On OpenRouter only `anthropic/*` gets a point;
+   the others cache on their own and come back intact.
+3. **Two points, over what does not change.** The last `system` of the prefix
+   (instructions, and the tools before them) and the last `user`/`tool` before the
+   final `system` tail. The tail — language (RN-622), environment (RN-706), flow
+   (RN-711), profile (RN-680) — stays AFTER the last point, and the order of the
+   messages never changes.
+4. **Proof (ADRs 0041/0042).** On 2026-10-15 the smoke ran with a real credential
+   (`OPENROUTER_TEST_KEY=… pnpm --filter api exec vitest run
+   test/infrastructure/llm/openrouter-provider.cache.smoke.spec.ts`) and the
+   second call to `anthropic/claude-haiku-5.5` came back with
+   `cached_input_tokens=8011`; only then did OpenRouter's capability become
+   `true`. Turning on another provider requires the equivalent smoke. The gain
+   shows up in the metering through [RN-666](#rn-666).
 
-- **Código:** `src/infrastructure/llm/openrouter-provider.ts:302` (`marcarCacheDePromptOpenRouter`);
+- **Code:** `src/infrastructure/llm/openrouter-provider.ts:302` (`marcarCacheDePromptOpenRouter`);
   `src/infrastructure/llm/openai-compatible-provider.ts:661` (`mensagens`)
-- **Teste:** `test/infrastructure/llm/openrouter-provider.contract.spec.ts` ("pontos de cache de prompt (RN-892)": ligada marca os dois pontos; desligada é byte a byte; capability sem hook falha — caso de falha)
-- **Origem:** AT-543
+- **Test:** `test/infrastructure/llm/openrouter-provider.contract.spec.ts` ("pontos de cache de prompt (RN-892)": on marks the two points; off is byte for byte; a capability without the hook fails — failure case)
+- **Origin:** AT-543
 
-### RN-894 — Épico com o mesmo título de outro do projeto é recusado {#rn-894}
+### RN-894 — An epic with the same title as another in the project is refused {#rn-894}
 
-- **Regra:** `create_epic` recusa (400) o épico cujo título, normalizado,
-  é igual ao de outro épico do MESMO projeto, e a recusa devolve ao modelo o
-  id do existente: "Já existe o épico «título» (id …) neste projeto — use
-  este id em epic_id". A régua é a MESMA da história (achado R,
-  `tituloDuplicado`), sem segunda cópia. A duplicata SEMÂNTICA
-  ([RN-681](#rn-681)) não vale para épico: só título
-  igual. Nada é criado nem gravado no event log quando recusa.
-- **Onde:** `src/application/use-cases/backlog/create-epic.use-case.ts:25` (`tituloDuplicado`)
-- **Teste:** `test/application/use-cases/backlog/create-epic.use-case.spec.ts:41`
-  (cria sem título igual) e `:49` (recusa o título igual com o id do existente)
-- **Origem:** AT-581
+- **Rule:** `create_epic` refuses (400) the epic whose normalized title is equal
+  to that of another epic of the SAME project, and the refusal gives the model the
+  id of the existing one: "The epic «title» (id …) already exists in this
+  project — use this id in epic_id". The yardstick is the SAME as the story's
+  (finding R, `tituloDuplicado`), with no second copy. The SEMANTIC duplicate
+  ([RN-681](#rn-681)) does not apply to an epic: only an equal title. Nothing is
+  created nor written to the event log when it refuses.
+- **Where:** `src/application/use-cases/backlog/create-epic.use-case.ts:25` (`tituloDuplicado`)
+- **Test:** `test/application/use-cases/backlog/create-epic.use-case.spec.ts:41`
+  (creates without an equal title) and `:49` (refuses the equal title with the
+  existing one's id)
+- **Origin:** AT-581
 
-### RN-902 — Recriar o container congela a decisão de imagem vigente, e a imagem desatualizada é avisada {#rn-902}
+### RN-902 — Recreating the container freezes the current image decision, and an outdated image is warned about {#rn-902}
 
-- **Regra:** a transição `removed → provisioning` e `failed → provisioning`
-  RELÊ a decisão de imagem vigente e regrava `imageVersion` e `resources` da
-  linha de `project_containers` (antes só a criação da linha os congelava, e a
-  coluna Imagem seguia na versão antiga depois de Remover → Subir). Sem decisão
-  vigente é 409 ([RN-105](#rn-105)). `stopped → running` NÃO muda a versão: o
-  container reaproveitado é o antigo. A página `/containers` ganha
-  `decisaoVigente` e `imagemDesatualizada` por linha — a divergência compara
-  CONTEÚDO (imagem, rede, recursos), nunca o número da versão, porque a eleição
-  da Infra grava v+1 com o mesmo conteúdo a cada subida — e, com
-  `running`/`stopped`/`provisioning` divergente, a linha diz em texto "Parar →
-  Remover → Subir de novo" e passa a dizer por que "Subir de novo" não aplica a
-  imagem nova. O resultado de `choose_project_image` traz `containerDePe` e o
-  texto avisa que a decisão só vale ao recriar o container. "Recriar" numa só
-  ação NÃO existe; nenhum teto de aprovação muda ([RN-495](#rn-495)).
-- **Onde:** `src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts:131`
+- **Rule:** the transition `removed → provisioning` and `failed → provisioning`
+  RE-READS the current image decision and rewrites `imageVersion` and `resources`
+  of the `project_containers` row (before, only the row's creation froze them, and
+  the Image column stayed on the old version after Remove → Bring up). Without a
+  current decision it is 409 ([RN-105](#rn-105)). `stopped → running` does NOT
+  change the version: the reused container is the old one. The `/containers` page
+  gains `decisaoVigente` and `imagemDesatualizada` per row — the divergence
+  compares CONTENT (image, network, resources), never the version number, because
+  Infra's election writes v+1 with the same content at each bring-up — and, with a
+  divergent `running`/`stopped`/`provisioning`, the row says in text "Stop →
+  Remove → Bring up again" and now says why "Bring up again" does not apply the
+  new image. The result of `choose_project_image` carries `containerDePe` and the
+  text warns that the decision only holds when the container is recreated.
+  "Recreate" in a single action does NOT exist; no approval ceiling changes
+  ([RN-495](#rn-495)).
+- **Where:** `src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts:131`
   (`recongelar`), `src/domain/containers/project-container.ts:373`
   (`containerDivergeDaDecisao`),
   `apps/engine/lib/engine/harness/tools/choose_project_image.ex:99`
   (`mensagem_de_fixada`)
-- **Teste:** `test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
+- **Test:** `test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
   ("recongela versão e recursos", "sem decisão vigente é 409", "mantém a versão
   congelada"); `test/domain/containers/project-container.spec.ts`
   (`containerDivergeDaDecisao`);
   `test/infrastructure/persistence/drizzle/containers-overview.repository.spec.ts`
   ("imagemDesatualizada compara CONTEÚDO");
-  `apps/web/src/routes/ContainersPage.test.tsx` (aviso e motivo);
+  `apps/web/src/routes/ContainersPage.test.tsx` (warning and reason);
   `apps/engine/test/engine/harness/tools/choose_project_image_test.exs`
-- **Origem:** AT-595 (TP-01 20ª: a decisão v3 `egress` não alcançou o container
-  v2 `none` e a coluna Imagem seguiu em v2)
+- **Origin:** AT-595 (TP-01 20th: the v3 `egress` decision did not reach the v2
+  `none` container and the Image column stayed at v2)
 
-### RN-906 — A api recusa a rede `none` quando a stack de um módulo baixa dependências {#rn-906}
+### RN-906 — The api refuses the `none` network when a module's stack downloads dependencies {#rn-906}
 
-- **Regra:** ao decidir a imagem do projeto, se a rede é `none` e algum módulo
-  do `module_map` vigente tem `stack` que casa, por PALAVRA inteira, com a lista
-  fechada de ecossistemas que baixam dependências (node, npm, pnpm, yarn, python,
-  pip, elixir, mix, go, rust, cargo, ruby, java, maven, gradle, php, dotnet...),
-  a api responde 400 nomeando o módulo, a stack e o termo, e pede `egress`. Nada
-  é gravado e a rede nunca é trocada sozinha: `egress` é autorização do usuário.
-  Vale para o Arquiteto (`choose_project_image`) e para a eleição da Infra, que
-  passam pelo mesmo caso de uso (na Infra, o `container_start` termina `failed`
-  com o motivo, sem chamar o broker). Sem `module_map` ou com stack que não casa,
-  segue só o aviso da RN-735. Sem exceção configurável. Revisa a RN-735 (aviso →
-  recusa nesse caso).
-- **Onde:** `src/application/use-cases/containers/decidir-imagem-do-projeto.use-case.ts:80`
+- **Rule:** when deciding the project's image, if the network is `none` and some
+  module of the current `module_map` has a `stack` that matches, by whole WORD, the
+  closed list of ecosystems that download dependencies (node, npm, pnpm, yarn,
+  python, pip, elixir, mix, go, rust, cargo, ruby, java, maven, gradle, php,
+  dotnet...), the api answers 400 naming the module, the stack and the term, and
+  asks for `egress`. Nothing is recorded and the network is never switched on its
+  own: `egress` is the user's authorization. It applies to the Architect
+  (`choose_project_image`) and to Infra's election, which go through the same use
+  case (in Infra, `container_start` ends `failed` with the reason, without calling
+  the broker). Without a `module_map` or with a stack that does not match, only the
+  warning of RN-735 follows. No configurable exception. Revises RN-735 (warning →
+  refusal in that case).
+- **Where:** `src/application/use-cases/containers/decidir-imagem-do-projeto.use-case.ts:80`
   (`stackQueBaixaDependencias`)
-- **Teste:** `test/application/use-cases/containers/container-do-projeto.use-case.spec.ts`
-  (recusa nos dois chamadores; `egress`, stack que não casa e sem mapa passam);
-  `test/domain/containers/project-container.spec.ts` (casamento por palavra);
+- **Test:** `test/application/use-cases/containers/container-do-projeto.use-case.spec.ts`
+  (refusal in both callers; `egress`, a stack that does not match and no map pass);
+  `test/domain/containers/project-container.spec.ts` (word matching);
   `test/application/use-cases/actions/execute-container-start.use-case.spec.ts`
-- **Origem:** AT-593 (EP-031).
+- **Origin:** AT-593 (EP-031).
 
-### RN-907 — O OpenRouter recebe uma chave de sessão por agente, e a conversa fica presa ao upstream que a atendeu {#rn-907}
+### RN-907 — OpenRouter receives a session key per agent, and the conversation stays pinned to the upstream that served it {#rn-907}
 
-Sem chave, o hub trata cada tarefa do dev agent (outra primeira mensagem) como
-conversa nova e sorteia outro upstream — 17 no TP-01 da 18ª rodada, com o
-acerto de cache caindo. O Brabo agora manda a chave.
+Without a key, the hub treats each dev agent task (another first message) as a
+new conversation and draws another upstream — 17 in TP-01 of the 18th round, with
+the cache hit rate falling. Brabo now sends the key.
 
-1. **Formato.** `session_id` = `brabo:<sessionId>:<agentId>`, e `brabo:<sessionId>`
-   sem agente — por agente + sessão, nunca por projeto. É montada pelos dois
-   casos de uso de turno e viaja em `ChatOptions.sessionKey`.
-2. **Capability de provider, obrigatória.** `LLMProviderCapabilities.stickySession`
-   é `true` só no OpenRouter e `false` nos outros oito; declará-la sem o hook
-   `campoDeSessao` falha na construção. Desligada, ou sem chave, o corpo é byte a
-   byte o de antes.
-3. **Prova (ADRs 0041/0042).** Em 2026-10-21 o smoke rodou com credencial real em
-   `deepseek/deepseek-v4.1-flash`: com a chave, 6 de 6 chamadas no mesmo upstream
-   (Together); sem ela, 4 upstreams em 6. Ligar outro provider exige o smoke
-   equivalente.
-4. **Sem tabela.** A chave é derivável de `token_usage` (`session_id` + `actor_id`),
-   e o efeito se mede em `upstream_provider`, `cached_input_tokens` e `cost_micros`
-   (RN-665/666). `provider.order`/`allow_fallbacks` ficam fora (ADR 0221).
+1. **Format.** `session_id` = `brabo:<sessionId>:<agentId>`, and
+   `brabo:<sessionId>` without an agent — per agent + session, never per project.
+   It is built by the two turn use cases and travels in `ChatOptions.sessionKey`.
+2. **Provider capability, mandatory.** `LLMProviderCapabilities.stickySession` is
+   `true` only on OpenRouter and `false` on the other eight; declaring it without
+   the `campoDeSessao` hook fails at construction. When off, or without a key, the
+   body is byte for byte what it was before.
+3. **Proof (ADRs 0041/0042).** On 2026-10-21 the smoke ran with a real credential
+   on `deepseek/deepseek-v4.1-flash`: with the key, 6 of 6 calls on the same
+   upstream (Together); without it, 4 upstreams in 6. Turning on another provider
+   requires the equivalent smoke.
+4. **No table.** The key is derivable from `token_usage` (`session_id` +
+   `actor_id`), and the effect is measured in `upstream_provider`,
+   `cached_input_tokens` and `cost_micros` (RN-665/666).
+   `provider.order`/`allow_fallbacks` stay out (ADR 0221).
 
-- **Código:** `src/infrastructure/llm/openrouter-provider.ts:236` (`campoDeSessaoOpenRouter`);
+- **Code:** `src/infrastructure/llm/openrouter-provider.ts:236` (`campoDeSessaoOpenRouter`);
   `src/domain/llm/routing-preference.ts:88` (`chaveDeSessao`);
   `src/application/use-cases/llm/run-llm-turn.use-case.ts:243` (`chaveDeSessao`)
-- **Teste:** `test/infrastructure/llm/openrouter-provider.contract.spec.ts` ("chave de sessão (ADR 0221, RN-907)": com capability e chave leva `session_id`; sem chave ou desligada não leva; capability sem hook falha — caso de falha); `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts`; `run-llm-turn.use-case.spec.ts`; smoke `openrouter-provider.sessao.smoke.spec.ts`
-- **Origem:** AT-580; ADR [0221](../adr/0221-upstream-preso-por-sessao.md)
+- **Test:** `test/infrastructure/llm/openrouter-provider.contract.spec.ts` ("chave de sessão (ADR 0221, RN-907)": with capability and key it carries `session_id`; without a key or off it does not; a capability without the hook fails — failure case); `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts`; `run-llm-turn.use-case.spec.ts`; smoke `openrouter-provider.sessao.smoke.spec.ts`
+- **Origin:** AT-580; ADR [0221](../adr/0221-upstream-preso-por-sessao.md)
 
-### RN-909 — O 9Router é o 10º provider: URL por instalação, credencial obrigatória, preço público de curadoria {#rn-909}
+### RN-909 — 9Router is the 10th provider: URL per installation, mandatory credential, public curated price {#rn-909}
 
-- **Regra:** o provider `9router` fala com um gateway na máquina do dono. A URL base é `NINE_ROUTER_BASE_URL` (padrão `http://host.docker.internal:20128/v1`), lida a cada uso pelo provider e pelo teste de conexão (`GET /models` com a chave). A credencial é obrigatória. As capabilities de provider são `false` (só `listModels`, `streaming` e, desde a [RN-950](#rn-950), `toolCalling`, provado por smoke com chave) até um smoke com chave provar o resto (ADR 0041). O preço dos modelos não é descoberto: entra por curadoria manual e, por decisão do dono, modelo de assinatura registra o preço público da API equivalente, não zero. O provider manda `x-9router-token-saver: off` em toda chamada, para o 9Router não comprimir o `tool_result`.
-- **Onde:** `src/infrastructure/llm/nine-router-provider.ts:171` (`nineRouterConfig`)
-- **Teste:** `test/infrastructure/llm/nine-router-provider.contract.spec.ts:109` (capabilities, URL do ambiente, cabeçalho, teste de conexão, parse da fixture sintética); smoke manual em `nine-router-provider.smoke.spec.ts`.
-- **Origem:** AT-576a (EP-026), ADR 0222, decisão do dono de 22/10.
+- **Rule:** the `9router` provider talks to a gateway on the owner's machine. The base URL is `NINE_ROUTER_BASE_URL` (default `http://host.docker.internal:20128/v1`), read at each use by the provider and by the connection test (`GET /models` with the key). The credential is mandatory. The provider capabilities are `false` (only `listModels`, `streaming` and, since [RN-950](#rn-950), `toolCalling`, proven by a smoke with a key) until a smoke with a key proves the rest (ADR 0041). The models' price is not discovered: it enters by manual curation and, by the owner's decision, a subscription model records the public price of the equivalent API, not zero. The provider sends `x-9router-token-saver: off` on every call, so that 9Router does not compress the `tool_result`.
+- **Where:** `src/infrastructure/llm/nine-router-provider.ts:171` (`nineRouterConfig`)
+- **Test:** `test/infrastructure/llm/nine-router-provider.contract.spec.ts:109` (capabilities, environment URL, header, connection test, parse of the synthetic fixture); manual smoke in `nine-router-provider.smoke.spec.ts`.
+- **Origin:** AT-576a (EP-026), ADR 0222, owner's decision of 22/10.
 
 ### RN-910 — The default ceiling per area is 5 in dev, 4 in qa and 2 in infra {#rn-910}
 
