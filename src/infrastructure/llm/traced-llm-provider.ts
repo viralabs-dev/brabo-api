@@ -63,11 +63,19 @@ export class TracedLLMProvider extends LLMProvider {
     options: EmbeddingOptions,
   ) => Promise<EmbeddingResult>;
 
+  /**
+   * Capability opcional (RN-916): sem repassá-la, `provider.aceitaRaciocinioDesligado`
+   * era `undefined` para todo provider envolvido e a retentativa sem raciocínio
+   * nunca rodava em produção (RN-1001).
+   */
+  readonly aceitaRaciocinioDesligado?: boolean;
+
   constructor(
     private readonly inner: LLMProvider,
     private readonly metrics: BraboMetrics,
   ) {
     super();
+    this.aceitaRaciocinioDesligado = inner.aceitaRaciocinioDesligado;
     if (inner.listModels) {
       this.listModels = (apiKey?: string) => inner.listModels!(apiKey);
     }
