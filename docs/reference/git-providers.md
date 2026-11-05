@@ -1,32 +1,32 @@
 ---
 id: git-providers
-title: Providers de git
-sidebar_label: Providers de git
+title: Git Providers
+sidebar_label: Git Providers
 sidebar_position: 5
-description: O contrato de quinze operações que torna Local, GitHub e GitLab intercambiáveis, com capabilities, erros normalizados e política de retry.
+description: The fifteen-operation contract that makes Local, GitHub, and GitLab interchangeable, with capabilities, normalized errors, and retry policy.
 keywords: [git, GitProvider, GitHub, GitLab, capabilities, retry]
+idioma_original: en
 ---
 
-# Providers de git
+# Git Providers
 
-O Brabo trabalha em cima de um repositório git de verdade, e três backends
-cumprem esse papel: **Local** (repositórios bare em disco), **GitHub** e
-**GitLab**. O código de domínio não sabe qual está em uso — ele fala com um
-contrato único.
+Brabo works on top of a real git repository, and three backends serve that
+role: **Local** (bare repos on disk), **GitHub**, and **GitLab**. The domain
+code doesn't know which one is in use — it speaks to a single contract.
 
-Decisões nos ADRs [0001](../adr/0001-git-provider-contract-shape.md) a
-[0005](../adr/0005-repo-bootstrap-idempotent-steps.md) e
+Decisions in ADRs [0001](../adr/0001-git-provider-contract-shape.md) through
+[0005](../adr/0005-repo-bootstrap-idempotent-steps.md) and
 [0028](../adr/0028-protecao-de-branch-divergencia-entre-providers.md).
 
-## O contrato
+## The contract
 
-`GitProviderContract`, em `packages/shared/src/index.ts`. O contrato tem **quinze operações** —
-a décima entrou na Fase 4a, com os gates de PR; a 11ª e a 12ª na FASE 26, com
-a aba Código (só leitura); a 13ª, a 14ª e a 15ª na FASE 26b, a fundação das
-pendências declaradas dessa mesma aba (blame, PRs navegáveis, branch rica —
-ainda sem tela que as consuma):
+`GitProviderContract`, in `packages/shared/src/index.ts`. The contract has **fifteen operations** —
+the tenth entered in Phase 4a, with the PR gates; the 11th and 12th in PHASE 26, with
+the Code tab (read-only); the 13th, 14th, and 15th in PHASE 26b, the foundation of
+that same tab's declared pending items (blame, navigable PRs, rich branch —
+no UI consuming them yet):
 
-| operação | devolve |
+| operation | returns |
 |---|---|
 | `createRepo` | `GitRepo` |
 | `getRepo` | `GitRepo` |
@@ -34,101 +34,102 @@ ainda sem tela que as consuma):
 | `protectBranch` | — |
 | `listBranches` | `GitBranch[]` |
 | `commitFiles` | `GitCommitResult` |
-| `getFileContent` | `string \| null` — `null` se o arquivo (ou a branch) não existe |
+| `getFileContent` | `string \| null` — `null` if the file (or the branch) doesn't exist |
 | `openPullRequest` | `GitPullRequest` |
-| `mergePullRequest` | `GitPullRequest` — PR já mergeada é recusada (`GitPullRequestAlreadyMergedError` no `local`; o GitHub recusa ele mesmo o merge repetido), [RN-663](../business-rules/api.md#rn-663). No `local` é um merge de verdade: fast-forward quando o alvo é ancestral, senão um commit de merge com dois pais; conflito lança `GitMergeConflictError` (arquivos listados, ref alvo intocada, PR continua aberta, HTTP 409 `merge_conflict`). GitHub/GitLab recusam o merge com conflito pela própria API, sem tradução, [RN-704](../business-rules/api.md#rn-704) |
-| `commentOnPullRequest` | — (veredito de QA/SecOps na PR) |
-| `listTree` | `GitTree \| null` — `null` se a ref ou o caminho não existem |
-| `getPullRequestDiff` | `GitPullRequestDiff \| null` — `null` se a PR não existe |
-| `blame` | `GitBlame \| null` — `null` se o arquivo (ou a ref) não existe |
-| `listPullRequests` | `GitPullRequestList` — resumo por PR, não `GitPullRequest[]` |
-| `listBranchesDetailed` | `GitBranchDetailList` — `ahead`/`behind`/PR associada por branch |
+| `mergePullRequest` | `GitPullRequest` — a PR already merged is refused (`GitPullRequestAlreadyMergedError` in `local`; GitHub refuses the repeated merge itself), [RN-663](../business-rules/api.md#rn-663). In `local` it is a real merge: fast-forward when the target is an ancestor, otherwise a two-parent merge commit; a conflict throws `GitMergeConflictError` (files listed, target ref untouched, PR stays open, HTTP 409 `merge_conflict`). GitHub/GitLab refuse a conflicting merge through their own API, untranslated, [RN-704](../business-rules/api.md#rn-704) |
+| `commentOnPullRequest` | — (QA/SecOps verdict on the PR) |
+| `listTree` | `GitTree \| null` — `null` if the ref or the path don't exist |
+| `getPullRequestDiff` | `GitPullRequestDiff \| null` — `null` if the PR doesn't exist |
+| `blame` | `GitBlame \| null` — `null` if the file (or the ref) doesn't exist |
+| `listPullRequests` | `GitPullRequestList` — summary per PR, not `GitPullRequest[]` |
+| `listBranchesDetailed` | `GitBranchDetailList` — `ahead`/`behind`/associated PR per branch |
 
-Mais dois campos: `name` e `capabilities`.
+Two more fields: `name` and `capabilities`.
 
-### As duas operações de leitura (FASE 26)
+### The two read operations (PHASE 26)
 
-`listTree` lista **um nível** da árvore, nunca a árvore inteira: a aba Código
-navega sob demanda, e pedir tudo num repositório grande é o amplificador de
-tráfego que a fase proíbe. `path` ausente ou `""` é a raiz; cada entrada traz o
-`path` completo e o `name` (a folha).
+`listTree` lists **one level** of the tree, never the whole tree: the Code tab
+navigates on demand, and asking for everything in a large repository is the
+traffic amplifier the phase forbids. A missing or `""` `path` is the root; each
+entry carries the full `path` and `name` (the leaf).
 
-`getPullRequestDiff` normaliza o diff em `status`
-(`added|modified|removed|renamed`), `additions`, `deletions` e `patch`. O
-`patch` é `string | null`, e a distinção importa: `null` quer dizer **não
-voltou** (binário, ou patch grande demais para a resposta), enquanto `""`
-quereria dizer "voltou vazio". Fundir os dois faria a tela dizer "sem
-mudanças" para um binário alterado.
+`getPullRequestDiff` normalizes the diff into `status`
+(`added|modified|removed|renamed`), `additions`, `deletions`, and `patch`. The
+`patch` is `string | null`, and the distinction matters: `null` means **it
+didn't come back** (binary, or a patch too large for the response), while `""`
+would mean "it came back empty". Collapsing the two would make the screen say
+"no changes" for a changed binary.
 
-As duas ausências seguem o vocabulário que `getFileContent` já usava — `null`,
-não exceção — para a aba Código tratar "não existe" de um jeito só.
+Both absences follow the vocabulary `getFileContent` already used — `null`,
+not an exception — so the Code tab treats "doesn't exist" in a single way.
 
-**Tetos.** As duas cortam, e avisam por `truncated: true`. Os números moram em
-`src/domain/git/git-read-limits.ts` (1000 entradas por nível, 300
-arquivos por diff) e **não** em `packages/shared`, que é 100% tipos — um
-`export const` ali sobrevive ao `tsc` e quebra o boot da api em produção
-(guardado por `test/packages-shared-so-tipos.spec.ts`).
+**Ceilings.** Both cut off, and warn via `truncated: true`. The numbers live in
+`src/domain/git/git-read-limits.ts` (1000 entries per level, 300
+files per diff) and **not** in `packages/shared`, which is 100% types — an
+`export const` there survives `tsc` and breaks the api's boot in production
+(guarded by `test/packages-shared-so-tipos.spec.ts`).
 
-### As três operações de fundação (FASE 26b — RN-110/111/112)
+### The three foundation operations (PHASE 26b — RN-110/111/112)
 
-Fundação para as três pendências declaradas da aba Código (blame, dropdown de
-branch rico, lista de PRs navegável) — a tela de cada uma é onda posterior, em
-três agentes separados. As três seguem o vocabulário de ausência que
-`getFileContent`/`listTree`/`getPullRequestDiff` já usavam: `null`, nunca
-exceção, quando o recurso não existe.
+Foundation for the three declared pending items of the Code tab (blame, rich
+branch dropdown, navigable PR list) — the UI for each is a later wave, in
+three separate agents. All three follow the absence vocabulary
+`getFileContent`/`listTree`/`getPullRequestDiff` already used: `null`, never
+an exception, when the resource doesn't exist.
 
-`blame(ref, path)` anota cada linha com o commit que a tocou por último —
-sha, autor, data, primeira linha da mensagem. É a **única** operação que fala
-GraphQL: a API REST do GitHub não tem blame, só a API GraphQL
-(`repository.object(expression:).blame(path:)`). O GitLab usa
-`RepositoryFiles.allFileBlames`; o Local usa `git blame --porcelain`. Ela corta
-em `GIT_BLAME_LINE_LIMIT` (2000 linhas). O Local lê a saída do `git` com teto de
-64 MiB por chamada (`GIT_MAX_BUFFER`); o padrão do Node, 1 MiB, derrubava
-`show`, `blame` e o diff de arquivo maior que isso.
+`blame(ref, path)` annotates each line with the commit that last touched it —
+sha, author, date, first line of the message. It's the **only** operation
+that speaks GraphQL: GitHub's REST API has no blame, only the GraphQL API
+(`repository.object(expression:).blame(path:)`). GitLab uses
+`RepositoryFiles.allFileBlames`; Local uses `git blame --porcelain`. It cuts
+off at `GIT_BLAME_LINE_LIMIT` (2000 lines). Local reads the output of `git` with a
+ceiling of 64 MiB per call (`GIT_MAX_BUFFER`); Node's default, 1 MiB, broke
+`show`, `blame`, and the diff of any file larger than that.
 
-`listPullRequests(state?)` devolve `GitPullRequestSummary[]` — id, número,
-título, autor, estado, branches, `updatedAt` — **não** `GitPullRequest[]`, que
-é o tipo de ESCRITA (abrir/mergear) e nunca teve título nem autor. O `local`
-lista do MESMO armazenamento lateral de PRs da Fase 4a. Corta em
-`GIT_PR_LIST_LIMIT` (100, uma página, sem paginação seguinte).
+`listPullRequests(state?)` returns `GitPullRequestSummary[]` — id, number,
+title, author, state, branches, `updatedAt` — **not** `GitPullRequest[]`,
+which is the WRITE type (open/merge) and never had a title or author. `local`
+lists from the SAME sidecar PR store from Phase 4a. It cuts off at
+`GIT_PR_LIST_LIMIT` (100, one page, no follow-up pagination).
 
-`listBranchesDetailed(defaultBranch)` é operação **própria**, não extensão de
-`listBranches` — veja na tabela de capabilities abaixo o porquê. Cada branch
-enriquecida ganha `ahead`/`behind` (relativos a `defaultBranch`, que o
-CHAMADOR já sabe e passa — perguntá-la de novo ao provider seria uma chamada a
-mais) e a PR associada aberta, se houver. `null` nos dois números quando o
-provider não consegue calcular (branch órfã, histórico sem relação) —
-degradação honesta, nunca número inventado. Corta em
+`listBranchesDetailed(defaultBranch)` is its **own** operation, not an
+extension of `listBranches` — see the capabilities table below for why. Each
+enriched branch gets `ahead`/`behind` (relative to `defaultBranch`, which the
+CALLER already knows and passes — asking the provider for it again would be
+one more call) and the open associated PR, if any. `null` in both numbers
+when the provider can't compute it (orphan branch, unrelated history) —
+honest degradation, never a made-up number. It cuts off at
 `GIT_BRANCH_DETAIL_LIMIT` (30 branches).
 
-### O teto da CHAMADA e o teto do CONSUMO (FASE 26b)
+### The CALL ceiling, and the CONSUMPTION ceiling (PHASE 26b)
 
-Os dois números acima limitam o que um provider devolve em **uma** chamada. A
-superfície HTTP que os consome tem tetos próprios, no mesmo arquivo, e eles
-respondem outra pergunta: quantas CHAMADAS um único pedido do cliente pode
-disparar. `listTree` é barato uma vez e caro mil vezes.
+The two numbers above limit what a provider returns in **one** call. The HTTP
+surface that consumes them has its own ceilings, in the same file, and they
+answer a different question: how many CALLS a single client request can
+trigger. `listTree` is cheap once and expensive a thousand times.
 
-O que força a distinção é a **busca da aba Código**, que **não é operação
-deste contrato** — nenhum dos três providers a tem. GitHub e GitLab têm busca
-de código de plataforma, com semântica e limites próprios; o
-`LocalGitProvider` é um repositório bare e não tem nada parecido. Declará-la
-aqui seria ou uma 13ª operação com capability `false` no local (uma aba que
-some num provider), ou o vocabulário de uma plataforma vazando para o contrato
-normalizado que existe justamente para impedir isso.
+What forces the distinction is the **Code tab search**, which is **not an
+operation of this contract** — none of the three providers has it. GitHub and
+GitLab have platform-level code search, with their own semantics and limits;
+`LocalGitProvider` is a bare repo and has nothing like that. Declaring it here
+would mean either a 13th operation with capability `false` on local (a tab
+that disappears on one provider), or a platform's vocabulary leaking into the
+normalized contract that exists precisely to prevent that.
 
-Então ela fica **composta na camada de aplicação**
-(`application/use-cases/git/read-project-code.use-case.ts`), em cima de
-`listTree` + `getFileContent`, com três orçamentos — diretórios percorridos,
-arquivos abertos e ocorrências devolvidas — mais um cache de TTL curto
-(`domain/git/git-read-cache.ts`) para navegar e buscar não repetirem as mesmas
-chamadas. Quem paga é a credencial do **owner do workspace**
+So it stays **composed at the application layer**
+(`application/use-cases/git/read-project-code.use-case.ts`), on top of
+`listTree` + `getFileContent`, with three budgets — directories traversed,
+files opened, and matches returned — plus a short-TTL cache
+(`domain/git/git-read-cache.ts`) so browsing and searching don't repeat the
+same calls. Who pays is the **workspace owner's** credential
 ([RN-058](../business-rules/api.md#rn-058)/[RN-082](../business-rules/api.md#rn-082)),
-e o rate limit é o do provider — veja a [RN-095](../business-rules/api.md#rn-095)
-e o [ADR 0060](../adr/0060-superficie-de-leitura-de-codigo.md).
+and the rate limit is the provider's — see [RN-095](../business-rules/api.md#rn-095)
+and [ADR 0060](../adr/0060-superficie-de-leitura-de-codigo.md).
 
 ## Capabilities
 
-Nem todo backend faz tudo, e isso é **declarado**, não descoberto na falha:
+Not every backend does everything, and that's **declared**, not discovered on
+failure:
 
 ```ts
 interface GitProviderCapabilities {
@@ -148,250 +149,257 @@ interface GitProviderCapabilities {
 | GitHub | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | GitLab | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-As duas capabilities da FASE 26, e as três da FASE 26b, são `true` nos três
-porque a **suíte de contrato as exercita nos três** — é o mesmo critério dos
-ADRs 0041/0042, que vale também para git: capability só é declarada depois de
-provada, e sem prova declara-se `false` e degrada. O Local as cumpre com
-`git ls-tree`/`git diff`/`git blame --porcelain`/`git rev-list --left-right
---count` no repositório bare, sem plataforma nenhuma por trás — é o único dos
-três providers testado contra git REAL (`local-git-provider.contract.spec.ts`);
-GitHub e GitLab rodam contra os backends falsos do msw, e os smokes reais
-(`{github,gitlab}-provider.smoke.spec.ts`) continuam pulados sem
-`GITHUB_TEST_TOKEN`/`GITLAB_TEST_TOKEN` no ambiente — a mesma situação já
-documentada na FASE 13a para os providers de LLM.
+The two PHASE 26 capabilities, and the three from PHASE 26b, are `true` on all
+three because the **contract suite exercises them on all three** — it's the
+same criterion from ADRs 0041/0042, which also applies to git: a capability
+is only declared once proven, and without proof it's declared `false` and
+degrades. Local fulfills them with `git ls-tree`/`git diff`/`git blame
+--porcelain`/`git rev-list --left-right --count` on the bare repo, with no
+platform behind it at all — it's the only one of the three providers tested
+against REAL git (`local-git-provider.contract.spec.ts`); GitHub and GitLab
+run against msw's fake backends, and the real smoke tests
+(`{github,gitlab}-provider.smoke.spec.ts`) remain skipped without
+`GITHUB_TEST_TOKEN`/`GITLAB_TEST_TOKEN` in the environment — the same
+situation already documented in PHASE 13a for the LLM providers.
 
-`pullRequestsList` merece nota à parte: a suposição original era que o `local`
-não teria PRs, "conceito de repositório único não tem PR" — ela não se
-sustentou. O armazenamento lateral de PRs da Fase 4a (autossuficiente para os
-dev agents) já é a fonte, e as três capabilities do `local` terminaram `true`.
+`pullRequestsList` deserves a separate note: the original assumption was that
+`local` wouldn't have PRs, "single-repository concept has no PR" — that
+didn't hold up. The sidecar PR store from Phase 4a (self-contained for the
+dev agents) is already the source, and all three `local` capabilities ended
+up `true`.
 
-Uma degradação declarada, e ela é de DADO, não de operação: o GitLab não traz o
-tamanho do arquivo na listagem da árvore (`RepositoryTreeSchema` não tem esse
-campo, e pedi-lo por entrada custaria um request por arquivo), então `size`
-volta `null` ali. A operação existe e funciona; o que falta é uma coluna.
+One declared degradation, and it's about DATA, not about the operation: GitLab
+doesn't bring file size in the tree listing (`RepositoryTreeSchema` has no
+such field, and asking for it per entry would cost one request per file), so
+`size` comes back `null` there. The operation exists and works; what's
+missing is a column.
 
-O provider Local implementa PRs internamente (não há servidor para hospedá-las,
-mas o fluxo existe) e **não** implementa proteção de branch — não há
-plataforma para aplicá-la. Chamar `protectBranch` nele lança
-`GitNotSupportedError`, um erro explícito, nunca um no-op silencioso
+The Local provider implements PRs internally (there's no server to host
+them, but the flow exists) and does **not** implement branch protection —
+there's no platform to apply it. Calling `protectBranch` on it raises
+`GitNotSupportedError`, an explicit error, never a silent no-op
 ([RN-028](../business-rules/contracts.md#rn-028)).
 
-> **Capability não é o portão.** A proteção de branch da plataforma é defesa
-> em profundidade. O que impede um merge indevido é o **teto no domínio**, que
-> funciona igual nos três providers, inclusive no Local, que não tem proteção
-> nenhuma ([RN-006](../business-rules/api.md#rn-006)). O
+> **Capability isn't the gate.** Platform branch protection is defense in
+> depth. What prevents an improper merge is the **domain-level ceiling**,
+> which works the same way on all three providers, including Local, which has
+> no protection at all ([RN-006](../business-rules/api.md#rn-006)). The
 > [ADR 0028](../adr/0028-protecao-de-branch-divergencia-entre-providers.md)
-> documenta a divergência entre GitHub e GitLab e por que ela não muda a
-> garantia.
+> documents the divergence between GitHub and GitLab and why it doesn't
+> change the guarantee.
 
-## Erros normalizados
+## Normalized errors
 
-Cada provider traduz o erro da própria plataforma para uma destas classes. O
-domínio nunca vê um 422 do GitHub nem um `fatal:` do git:
+Each provider translates its own platform's error into one of these classes.
+The domain never sees a GitHub 422 or a git `fatal:`:
 
-| erro | quando |
+| error | when |
 |---|---|
-| `GitRepoAlreadyExistsError` | criar repositório que já existe |
-| `GitRepoNotFoundError` | repositório não existe ou sem acesso |
-| `GitBranchNotFoundError` | branch não existe |
-| `GitBranchAlreadyExistsError` | criar branch que já existe |
-| `GitPermissionDeniedError` | credencial válida, permissão insuficiente |
-| `GitNotSupportedError` | operação fora das `capabilities` daquele provider |
-| `GitCredentialConnectionTestFailedError` | o teste de conexão da credencial falhou — **não** chega ao HTTP: `TestStoredCredentialUseCase` o captura e devolve `refused` ([ADR 0050](../adr/0050-credencial-sempre-cifrada-verificacao-explicita.md)) |
-| `GitProviderAuthError` | credencial inválida ou expirada |
-| `InvalidOauthStateError` | o `state` do OAuth não confere |
+| `GitRepoAlreadyExistsError` | creating a repository that already exists |
+| `GitRepoNotFoundError` | repository doesn't exist or no access |
+| `GitBranchNotFoundError` | branch doesn't exist |
+| `GitBranchAlreadyExistsError` | creating a branch that already exists |
+| `GitPermissionDeniedError` | valid credential, insufficient permission |
+| `GitNotSupportedError` | operation outside that provider's `capabilities` |
+| `GitCredentialConnectionTestFailedError` | credential connection test failed — **doesn't** reach HTTP: `TestStoredCredentialUseCase` catches it and returns `refused` ([ADR 0050](../adr/0050-credencial-sempre-cifrada-verificacao-explicita.md)) |
+| `GitProviderAuthError` | invalid or expired credential |
+| `InvalidOauthStateError` | OAuth `state` doesn't match |
 
-**Não há classe base comum**, e isso foi decidido, não esquecido: o
-[ADR 0002](../adr/0002-git-error-normalization.md) registra que um `GitError`
-abstrato foi considerado e rejeitado por não se pagar enquanto nenhum filtro
-HTTP precisa dele.
+**There is no common base class**, and that was decided, not forgotten: the
+[ADR 0002](../adr/0002-git-error-normalization.md) records that an abstract
+`GitError` was considered and rejected for not paying for itself while no
+single HTTP filter needs it.
 
-A distinção que mais importa na prática é `GitPermissionDeniedError` contra
-`GitProviderAuthError`: o primeiro quer dizer "o token é válido mas não pode
-fazer isto", o segundo "o token não funciona". Confundir os dois manda o
-usuário se autenticar de novo quando o problema era escopo.
+The distinction that matters most in practice is `GitPermissionDeniedError`
+versus `GitProviderAuthError`: the first means "the token is valid but can't
+do this", the second "the token doesn't work". Confusing the two sends the
+user to re-authenticate when the problem was scope.
 
 ## Retry
 
-**Só em leitura, nunca em mutação**
+**Only on reads, never on mutations**
 ([ADR 0003](../adr/0003-git-provider-retry-policy.md)).
 
-O algoritmo é o Full Jitter, da AWS:
-`sleep = random(0, min(maxDelay, base · 2^attempt))`, com 4 tentativas por
-padrão. `src/infrastructure/git/retry.ts`.
+The algorithm is Full Jitter, AWS's:
+`sleep = random(0, min(maxDelay, base · 2^attempt))`, with 4 attempts by
+default. `src/infrastructure/git/retry.ts`.
 
-A assimetria é a decisão inteira: repetir um `listBranches` que estourou o
-tempo é inofensivo; repetir um `commitFiles` que pode ter passado cria commit
-duplicado. Quando não há como saber se a mutação aconteceu, a resposta certa é
-falhar e deixar um humano olhar.
+The asymmetry is the whole decision: retrying a `listBranches` that timed out
+is harmless; retrying a `commitFiles` that may have gone through creates a
+duplicate commit. When there's no way to know whether the mutation happened,
+the right answer is to fail and let a human look.
 
-## A suíte de contrato
+## The contract suite
 
-Uma suíte única — `test/contract/git-provider.contract.ts` — roda
-contra os **três** providers. É ela que garante que "funciona no Local" não
-vire "funciona só no Local".
+A single suite — `test/contract/git-provider.contract.ts` — runs
+against all **three** providers. It's what guarantees that "works on Local"
+doesn't become "works only on Local".
 
-É também o mecanismo que mantém as `capabilities` honestas: um provider que
-declara `protectBranch: true` precisa passar nos testes de proteção; um que
-declara `false` precisa lançar `GitNotSupportedError`. Declarar errado quebra a
-suíte nos dois sentidos.
+It's also the mechanism that keeps `capabilities` honest: a provider that
+declares `protectBranch: true` needs to pass the protection tests; one that
+declares `false` needs to raise `GitNotSupportedError`. Declaring it wrong
+breaks the suite in both directions.
 
-Duas guardas acompanham a suíte, em
-`test/contract/git-provider-contract-callers.spec.ts`. A primeira
-confere que o cabeçalho da suíte lista exatamente quem a invoca. A segunda é o
-item 33 da FASE 26: **operação do contrato sem consumidor em `src/` reprova o
-CI** — uma operação que os três providers implementam e ninguém chama é peso
-permanente, e nada prova que ela funciona no caminho real.
+Two guardrails accompany the suite, in
+`test/contract/git-provider-contract-callers.spec.ts`. The first
+checks that the suite's header lists exactly who invokes it. The second is
+item 33 of PHASE 26: **a contract operation with no consumer in `src/` fails
+CI** — an operation all three providers implement and nobody calls is
+permanent weight, and nothing proves it works on the real path.
 
-A válvula para uma fase entregar contrato antes das rotas é estreita e
-nomeada: o mapa `SEM_CONSUMIDOR_AINDA`, com a fase que vai consumi-la escrita
-ao lado de cada operação. Ela se fecha sozinha — assim que a operação ganha
-consumidor, a entrada passa a **reprovar**, obrigando quem escreveu a rota a
-apagá-la.
+The escape hatch for a phase to deliver a contract before the routes is
+narrow and named: the `SEM_CONSUMIDOR_AINDA` map, with the phase that will
+consume it written next to each operation. It closes itself — as soon as the
+operation gets a consumer, the entry starts to **fail**, forcing whoever
+wrote the route to delete it.
 
-**O mapa está vazio desde a FASE 26b**, e foi esvaziado pelo mecanismo, não
-pela memória de alguém: assim que
-`application/use-cases/git/read-project-code.use-case.ts` passou a chamar
-`listTree` e `getPullRequestDiff`, o segundo teste reprovou apontando as duas
-entradas pelo nome. Vazio, e não removido — a válvula continua disponível para
-o próximo contrato que nascer antes do consumidor.
+**The map has been empty since PHASE 26b**, and it was emptied by the
+mechanism, not by anyone's memory: as soon as
+`application/use-cases/git/read-project-code.use-case.ts` started calling
+`listTree` and `getPullRequestDiff`, the second test failed pointing at the
+two entries by name. Empty, and not removed — the escape hatch remains
+available for the next contract that's born before its consumer.
 
-:::caution O falso tem de mentir do mesmo jeito que o remoto
-A suíte roda contra backends falsos (msw) para os providers remotos, e um falso
-mais GENEROSO que a API real deixa a suíte verde enquanto o produto quebra. Foi
-o que aconteceu com o repositório vazio: o falso do GitHub respondia `404` para
-uma ref inexistente, o GitHub de verdade responde
-**`409 Git Repository is empty`**, e o bootstrap morria no primeiríssimo passo
-de todo projeto GitHub novo — com a suíte inteira verde. Ao acrescentar um caso
-ao falso, confira a resposta contra a API viva, não contra o que parece
-razoável.
+:::caution The fake has to lie the same way the remote does
+The suite runs against fake backends (msw) for the remote providers, and a
+fake that's more GENEROUS than the real API leaves the suite green while the
+product breaks. That's what happened with the empty repository: GitHub's fake
+responded `404` to a nonexistent ref, GitHub actually responds
+**`409 Git Repository is empty`**, and bootstrap died on the very first step
+of every new GitHub project — with the whole suite green. When adding a case
+to the fake, check the response against the live API, not against what seems
+reasonable.
 :::
 
-### O primeiro commit num repositório vazio
+### The first commit in an empty repository
 
-Um repositório GitHub recém-criado não tem commit nenhum (`auto_init: false`),
-e ali a **Git Data API inteira** responde `409` — refs, blobs, trees, commits.
-Não há como montar o primeiro commit por ela. O que funciona é a Contents API
-(`PUT /repos/:owner/:repo/contents/:path`), que cria arquivo, commit e branch
-de uma vez; é o que `commitFiles` usa quando detecta que o repositório está
-vazio.
+A freshly created GitHub repository has no commit at all (`auto_init: false`),
+and there the **entire Git Data API** responds `409` — refs, blobs, trees,
+commits. There's no way to assemble the first commit through it. What works
+is the Contents API (`PUT /repos/:owner/:repo/contents/:path`), which creates
+the file, commit, and branch all at once; it's what `commitFiles` uses when
+it detects the repo is empty.
 
-Com **um** arquivo — o caso do bootstrap, que commita um por passo — sai
-exatamente um commit, como o contrato promete. Com mais de um, o primeiro nasce
-pela Contents API (é ele que cria a branch) e o resto entra num segundo commit
-pelo caminho normal: dois commits em vez de um, degradação declarada porque a
-alternativa seria recusar o commit inicial com vários arquivos.
+With **one** file — bootstrap's case, which commits one per step — you get
+exactly one commit, as the contract promises. With more than one, the first
+is born via the Contents API (it's the one that creates the branch) and the
+rest go into a second commit via the normal path: two commits instead of one,
+a declared degradation because the alternative would be refusing the initial
+multi-file commit.
 
-O `LocalGitProvider` não passa por nada disso: o `git init --bare` dele aceita
-o primeiro commit pelo caminho de sempre.
+`LocalGitProvider` doesn't go through any of this: its `git init --bare`
+accepts the first commit via the usual path.
 
-## Bootstrap do Gitflow
+## Gitflow bootstrap
 
-Cinco passos que preparam o repositório do projeto: branches permanentes
-(`dev`, `qa`, `main`), proteções onde o provider as suporta, e arquivos base.
+Five steps that prepare the project's repository: permanent branches
+(`dev`, `qa`, `main`), protections where the provider supports them, and base
+files.
 
-Eram seis: havia um passo `create_rc_branch`, que criava o degrau `rc` entre
-`qa` e `main`. O degrau saiu da política pelo
-[ADR 0030](../adr/0030-politica-de-branches-mecanizada.md) e o passo saiu do
-bootstrap depois, quando se notou o descompasso — o produto criava, protegia e
-**documentava no repositório do usuário** uma escada de quatro degraus que ele
-mesmo tinha abandonado. O valor `create_rc_branch` continua no enum
-`bootstrap_step` do banco: bootstraps antigos têm linhas com ele, e um passo
-que aconteceu de verdade não se apaga.
+There used to be six: there was a `create_rc_branch` step, which created the
+`rc` rung between `qa` and `main`. The rung left the policy via
+[ADR 0030](../adr/0030-politica-de-branches-mecanizada.md) and the step left
+bootstrap afterward, once the mismatch was noticed — the product was
+creating, protecting, and **documenting in the user's repository** a
+four-rung ladder it had itself abandoned. The `create_rc_branch` value
+remains in the database's `bootstrap_step` enum: old bootstraps have rows
+with it, and a step that actually happened doesn't get erased.
 
-Duas propriedades, as duas testadas
+Two properties, both tested
 ([ADR 0005](../adr/0005-repo-bootstrap-idempotent-steps.md),
 [RN-029](../business-rules/api.md#rn-029)):
 
-**Idempotente** — cada passo confere antes de agir. Rodar duas vezes não
-duplica nada.
+**Idempotent** — each step checks before acting. Running it twice doesn't
+duplicate anything.
 
-**Retomável** — falhou no passo 4? A retomada começa no 4, não no 1.
+**Resumable** — failed on step 4? The resume starts at 4, not at 1.
 
-Cada passo emite seu próprio evento, e há cinco desfechos possíveis:
+Each step emits its own event, and there are five possible outcomes:
 
-| evento | quer dizer |
+| event | means |
 |---|---|
-| `bootstrap.step_started` | começou |
-| `bootstrap.step_completed` | fez o trabalho |
-| `bootstrap.step_skipped` | já estava feito — **isto é sucesso** |
-| `bootstrap.step_degraded` | concluiu sem uma capability (proteção de branch no Local) |
-| `bootstrap.step_failed` | falhou; a retomada começa aqui |
+| `bootstrap.step_started` | started |
+| `bootstrap.step_completed` | did the work |
+| `bootstrap.step_skipped` | was already done — **this is success** |
+| `bootstrap.step_degraded` | completed without a capability (branch protection on Local) |
+| `bootstrap.step_failed` | failed; the resume starts here |
 
-`skipped` e `degraded` existem separados de `completed` de propósito: um
-bootstrap que pulou tudo porque o repositório já estava pronto é um desfecho
-diferente de um que fez tudo, e um que rodou sem proteção de branch é
-diferente dos dois. Fundir os três em "ok" perderia exatamente a informação
-que alguém vai querer depois.
+`skipped` and `degraded` exist separately from `completed` on purpose: a
+bootstrap that skipped everything because the repository was already ready is
+a different outcome from one that did everything, and one that ran without
+branch protection is different from both. Collapsing all three into "ok"
+would lose exactly the information someone will want later.
 
-## Adotar um repositório existente (Fase 12a)
+## Adopting an existing repository (Phase 12a)
 
-Um projeto pode apontar para um repositório que **já existe**, em vez de criar
-um. `project_repositories.origin` diz qual dos dois foi
+A project can point to a repository that **already exists**, instead of
+creating one. `project_repositories.origin` says which of the two it was
 ([RN-046](../business-rules/api.md#rn-046)).
 
-A adoção usa **só o que o contrato já tinha**: `getRepo` valida o acesso —
-existia desde a Fase 2 e nenhum caso de uso a chamava — e o diagnóstico usa
-`listBranches` e `getFileContent`. **Nenhum método novo entrou no contrato, e a
-suíte de contrato ficou intocada.**
+Adoption uses **only what the contract already had**: `getRepo` validates
+access — it had existed since Phase 2 and no use case called it — and the
+diagnostic uses `listBranches` and `getFileContent`. **No new method entered
+the contract, and the contract suite was left untouched.**
 
-O bootstrap NÃO roda na adoção. O que sai é um **plano**: a lista serializada
-do que ele faria, obtida chamando o `check()` de cada passo — o mesmo que dá a
-idempotência — sem executar nada. O usuário então aprova o plano inteiro, ou
-adota como está e dispensa o bootstrap
+Bootstrap does NOT run on adoption. What comes out is a **plan**: the
+serialized list of what it would do, obtained by calling each step's
+`check()` — the same one that gives idempotency — without executing anything.
+The user then either approves the whole plan, or adopts as-is and dismisses
+bootstrap
 ([RN-045](../business-rules/api.md#rn-045)).
 
-| evento | quer dizer |
+| event | means |
 |---|---|
-| `bootstrap.repository_adopted` | o repositório passou a ser do projeto; nada nele foi mudado |
-| `bootstrap.plan_approved` | o usuário aprovou — **só a partir daqui o bootstrap roda num repositório adotado** |
-| `bootstrap.adopted_as_is` | o usuário dispensou o bootstrap; o plano fica guardado como prova do que não foi aplicado |
+| `bootstrap.repository_adopted` | the repository became the project's; nothing in it was changed |
+| `bootstrap.plan_approved` | the user approved it — **only from here does bootstrap run on an adopted repo** |
+| `bootstrap.adopted_as_is` | the user dismissed bootstrap; the plan stays stored as evidence of what wasn't applied |
 
-**Proteção divergente é presença × ausência, e só isso.** O contrato expõe
-`GitBranch.protected` como booleano, e o
+**Divergent protection is presence × absence, and only that.** The contract
+exposes `GitBranch.protected` as a boolean, and
 [ADR 0028](../adr/0028-protecao-de-branch-divergencia-entre-providers.md)
-adiou uma `ProtectionPolicy` normalizada — então o plano consegue dizer "`qa`
-está desprotegida → aplicaria" e "`main` já está protegida → não toca", mas não
-consegue dizer que a proteção existente exige dois revisores e a nossa exigiria
-um. Branch com proteção PARCIAL conta como desprotegida, e pode ser
-sobrescrita — sempre dentro de um plano aprovado.
+deferred a normalized `ProtectionPolicy` — so the plan can say "`qa` is
+unprotected → would apply" and "`main` is already protected → won't touch",
+but it can't say that the existing protection requires two reviewers and ours
+would require one. A branch with PARTIAL protection counts as unprotected,
+and can be overwritten — always within an approved plan.
 
-Branch que o template não conhece (`develop`, `release/*`) vira
-**diagnóstico informativo** e nunca é tocada: um repositório adotado tem a
-política que tiver.
+A branch the template doesn't know about (`develop`, `release/*`) becomes an
+**informational diagnostic** and is never touched: an adopted repository has
+whatever policy it has.
 
-Decisão no [ADR 0044](../adr/0044-adocao-de-repositorio-existente.md).
+Decision in [ADR 0044](../adr/0044-adocao-de-repositorio-existente.md).
 
-## Credenciais
+## Credentials
 
-Tokens de git são segredos de usuário: criptografados com envelope encryption,
-uma DEK por registro, nunca em texto puro no banco nem em logs. A tabela é
-`project_git_connections`, e ela participa da rotação da chave mestra junto com
-as credenciais de LLM — veja o
+Git tokens are user secrets: encrypted with envelope encryption, one DEK per
+record, never in plaintext in the database or in logs. The table is
+`project_git_connections`, and it takes part in the master key rotation
+alongside LLM credentials — see the
 [runbook](../runbook.md#rotacao-da-chave-mestra).
 
-O cadastro usa um enum próprio no banco (`credential_provider`), unido aos
-providers de LLM **só no nível do tipo TypeScript**, sem misturar os enums
+Registration uses a dedicated database enum (`credential_provider`), joined
+with the LLM providers **only at the TypeScript type level**, without mixing
+the enums
 ([ADR 0004](../adr/0004-git-credential-registration.md)).
 
-Dois caminhos de conexão: **PAT** (token colado) e **OAuth** (GitHub e
-GitLab). O OAuth exige `GITHUB_OAUTH_CLIENT_ID`/`_SECRET` ou o par do GitLab
-configurado; sem eles, só PAT
-([configuração](configuration.md#git)).
+Two connection paths: **PAT** (pasted token) and **OAuth** (GitHub and
+GitLab). OAuth requires `GITHUB_OAUTH_CLIENT_ID`/`_SECRET` or the GitLab
+pair configured; without them, PAT only
+([configuration](configuration.md#git)).
 
-## O que não existe
+## What doesn't exist
 
-Bitbucket e um `GenericGitProvider` estão **fora de escopo** — não são backlog
-esquecido, são decisão. Acrescentar um provider novo é implementar todas as
-quinze operações, declarando as capabilities com honestidade, e passar na
-suíte de contrato.
+Bitbucket and a `GenericGitProvider` are **out of scope** — they aren't
+forgotten backlog, they're a decision. Adding a new provider means that you
+implement all fifteen operations, declaring the capabilities honestly, and
+pass the contract suite.
 
-**Escrever pela aba Código também não existe.** As sete operações de leitura
+**Writing from the Code tab also doesn't exist.** The seven read operations
 (`listTree`, `getPullRequestDiff`, `blame`, `listPullRequests`,
-`listBranchesDetailed`, mais `getFileContent` e a busca composta) são só
-leitura, e é isso. Salvar arquivo pela aba é fase futura, e quando vier,
-escrever é efeito externo: nasce como `proposed_action`, como toda mutação de
-git. O que torna isso verificável em vez de só intenção é que o
-`CodeController` não tem **um único** verbo de escrita — nenhum `@Post`,
-nenhum `@Put`, nenhum `@Patch`, nenhum `@Delete` — mesmo depois de a FASE 26b
-acrescentar três rotas a ele.
+`listBranchesDetailed`, plus `getFileContent` and the composed search) are
+read-only, and that's all. Saving a file from the tab is a future phase, and
+when it comes, writing is an external effect: it's born as a
+`proposed_action`, like every git mutation. What makes this verifiable
+instead of just an intention is that `CodeController` doesn't have **a
+single** write verb — no `@Post`, no `@Put`, no `@Patch`, no
+`@Delete` — even after PHASE 26b added three routes to it.
