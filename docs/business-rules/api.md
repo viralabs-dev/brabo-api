@@ -6,6 +6,7 @@ description: 'The business rules hosted at the api root.'
 keywords: [business rules, api]
 idioma_original: en
 ---
+
 # API
 
 ## Session
@@ -314,7 +315,7 @@ hypothesis: one wins, the other gets a conflict — not 500, not silence.
 - **Test:** `test/domain/psychologist/hypothesis-lifecycle.spec.ts`
 - **Origin:** [ADR 0022](../adr/0022-fechamento-4b-psicologo.md) §7
 
-### RN-024 — The Anamnese only profiles competencies from the catalog — a structural guardrail {#rn-024}
+### RN-024 — The Anamnesis only profiles competencies from the catalog — a structural guardrail {#rn-024}
 
 Process competencies are **six**, closed: `git`, `agile`, `arquitetura`,
 `testes`, `seguranca`, `infra`. Plus the technical stacks derived from the
@@ -324,7 +325,7 @@ write path**: it's a domain error, not a prompt instruction.
 - **Where:** `src/domain/anamnese/competency-catalog.ts:16`
 - **Test:** `test/domain/anamnese/competency-catalog.spec.ts`
 - **Origin:** [ADR 0016](../adr/0016-anamnese-proficiencia-patches-instrucao.md) §1
-- **Why:** the Anamnese profiles **technical competence**, not the person. The limit
+- **Why:** the Anamnesis profiles **technical competence**, not the person. The limit
   is structural because a prompt instruction is not a guarantee.
 
 ### RN-025 — Deleting the profile really deletes it, and the opt-out prevents re-derivation {#rn-025}
@@ -504,23 +505,23 @@ verification, so that rotation has no unavailability window.
   when it decides, the `EngineServiceGuard` has not run yet.
 - **Origin:** [ADR 0032](../adr/0032-corte-do-keycloak-e-sessao-em-cookie.md)
 
-### RN-038 — Agente contado no resumo do workspace = gastou tokens este mês {#rn-038}
+### RN-038 — Agent counted in the workspace summary = spent tokens this month {#rn-038}
 
-O resumo do dashboard de projetos ("N projetos ativos · M agentes · gasto
-este mês") conta como "agente" quem tem pelo menos uma linha em
-`token_usage` com `actor_kind = 'agent'` no mês corrente, somando todos os
-projetos do workspace. Sem o filtro de `actor_kind`, um `user` mandando
-chat ou um `system` registrando uso inflaria a contagem — `token_usage`
-grava para qualquer tipo de ator, não só agente. O corte por mês usa
-`created_at >= date_trunc('month', now())`; um agente que trabalhou só no
-mês anterior não conta, mesmo que ainda apareça no roster de alguma
-sessão. A contagem naturalmente inclui as subespecialidades de área da
-Fase 8 (`qa-automacao`, `qa-performance-seguranca`, `infra-workflows`):
-cada uma tem seu próprio `actor_id` quando gasta tokens.
+The projects dashboard summary ("N active projects · M agents · spend
+this month") counts as an "agent" whoever has at least one row in
+`token_usage` with `actor_kind = 'agent'` in the current month, summing all the
+workspace's projects. Without the `actor_kind` filter, a `user` sending
+chat or a `system` recording usage would inflate the count — `token_usage`
+records for any kind of actor, not only agents. The monthly cut uses
+`created_at >= date_trunc('month', now())`; an agent that worked only in the
+previous month does not count, even if it still appears in some session's
+roster. The count naturally includes the area sub-specialties of
+Phase 8 (`qa-automacao`, `qa-performance-seguranca`, `infra-workflows`):
+each one has its own `actor_id` when it spends tokens.
 
-- **Onde:** `src/infrastructure/persistence/drizzle/token-usage.repository.ts`
+- **Where:** `src/infrastructure/persistence/drizzle/token-usage.repository.ts`
   (`summarizeForWorkspaceThisMonth`)
-- **Teste:** `test/application/use-cases/iam/get-workspace-summary.use-case.spec.ts`
+- **Test:** `test/application/use-cases/iam/get-workspace-summary.use-case.spec.ts`
 
 ---
 
@@ -1435,9 +1436,7 @@ the `actor_kind` column and stays outside the declarative vocabulary.
   the loader that deliberately calls only the first is
   `src/infrastructure/gates/gate-registry.loader.ts`
 - **Test:** `test/domain/gates/gate-registry.spec.ts`
-  (`é válido: nenhum problema acumulado`; `todo alvo de prova citado
-  existe no repositório`; `validarRegistro ignora o disco: alvo ausente
-  não é problema DELE`; `nenhum par (event_types + filtro) se repete
+  (`é válido: nenhum problema acumulado`; `todo alvo de prova citado existe no repositório`; `validarRegistro ignora o disco: alvo ausente não é problema DELE`; `nenhum par (event_types + filtro) se repete
   entre gates`) and
   `test/infrastructure/gates/gate-registry.loader.spec.ts`
   (`carrega o registro real sem exigir os alvos que a imagem não leva`,
@@ -1745,8 +1744,7 @@ Three edge decisions, all so the screen **degrades** instead of vanishing:
 - **Where:** `apps/web/src/components/PrGateTimeline.tsx` (`etapasDaEsteira`),
   reading `GET /gates` (`src/interfaces/http/gates/gates.controller.ts`)
 - **Test:** `apps/web/src/components/PrGateTimeline.test.ts`
-  (`gate que SAI do registro some da tela`, `gate de PR que a tela ainda não
-  sabe desenhar é IGNORADO`, `sem registro, mostra a esteira completa`)
+  (`gate que SAI do registro some da tela`, `gate de PR que a tela ainda não sabe desenhar é IGNORADO`, `sem registro, mostra a esteira completa`)
 - **Origin:** [ADR 0054](../adr/0054-gates-como-registro-declarativo.md), PHASE 15b
 
 ### RN-086 — Spending on more agents is never self-approved {#rn-086}
@@ -1794,11 +1792,10 @@ spot — it is the number you read when deciding.
   `test/application/use-cases/execution/propose-max-parallel.use-case.spec.ts`,
   `execute-max-parallel-raise.use-case.spec.ts`,
   `apps/engine/test/engine/anamnese/tools_test.exs` and
-  `test/engine/workers/anamnese_worker_test.exs` (`duas aprovacoes NAO sao
-  rotina`, `uma NEGACAO derruba o sinal`)
+  `test/engine/workers/anamnese_worker_test.exs` (`duas aprovacoes NAO sao rotina`, `uma NEGACAO derruba o sinal`)
 - **Origin:** [ADR 0053](../adr/0053-dev-lead-e-paralelismo-autorizado.md), PHASE 14d
 
-## Painel de projetos
+## Projects dashboard {#painel-de-projetos}
 
 ### RN-090 — The dashboard reads the workspace, not one project at a time {#rn-090}
 
@@ -2130,7 +2127,7 @@ anything.
 - **Test:** `test/application/use-cases/sessions/session-kind-e-nome.spec.ts`
 - **Origin:** [ADR 0061](../adr/0061-tipo-da-sessao-na-criacao.md)
 
-## Painel de projetos
+## Projects dashboard {#painel-de-projetos-1}
 
 ### RN-100 — The bell's order is SQL's, not the front end's {#rn-100}
 
@@ -2447,9 +2444,9 @@ Inside the project container the agent is free (ADR 0065): the verb allowlist
 of [ADR 0055](../adr/0055-escopo-de-caminho-na-politica-de-terminal.md) does not
 converge (findings Z and AD — verb, form and invocation are distinct spaces), and the
 way out is the wall, not a longer list. But three effects cross the
-wall and reach the world, and the user's decision was verbatim: *"agente livre
-para o que quiser desde que não seja comandos de git ligado ao deploy e ao PR —
-estas ações ainda devem ser humanas"*.
+wall and reach the world, and the user's decision was verbatim: *"agent free
+to do whatever it wants as long as it is not git commands tied to deploy and PR —
+these actions must still be human"*.
 
 `decide()` recognizes `git push`, `git remote add/set-url`, `git merge`, the provider
 CLIs (`gh pr create`, `gh pr merge`, `glab mr create/merge`, releases and
@@ -2698,20 +2695,20 @@ autonomy, `startExecution`, `execution.activated`):
 
 A failure or pending state here NEVER propagates to whoever called
 `execute()`: the
-ativação da execução já aconteceu e é o efeito principal; fechar o chat de
-origem é um efeito colateral *best-effort*.
+execution activation has already happened and is the main effect; closing the
+origin chat is a *best-effort* side effect.
 
 - **Onde:** `src/application/use-cases/execution/activate-execution.use-case.ts`
   (`closeOriginSession`), `src/interfaces/http/execution/dto/activate-execution.dto.ts`
   (`originSessionId`), `src/interfaces/http/execution/execution.controller.ts`
 - **Teste:** `test/application/use-cases/execution/activate-execution.use-case.spec.ts`,
-  describe `fecha a sessão de origem (RN-135)` — fecha sem pendência,
-  NÃO fecha com pendência, NÃO fecha sessão já não-`active`, chamador
-  antigo sem o parâmetro não fecha nada, e nunca fecha a própria sessão de
-  execução mesmo se `originSessionId` coincidir com ela
-- **Origem:** achado de investigação de código — sessão criativa com
-  execução ativada continuava `active` na lista mesmo com 35 eventos de
-  dev agents dentro dela
+  describe `fecha a sessão de origem (RN-135)` — closes without a pending item,
+  does NOT close with a pending item, does NOT close a session that is already not `active`,
+  an old caller without the parameter closes nothing, and it never closes the execution
+  session itself even if `originSessionId` coincides with it
+- **Origin:** a finding of code investigation — a creative session with
+  execution activated stayed `active` in the list even with 35 events from
+  dev agents inside it
 
 ### RN-139 — The Executors tab reads the CURRENT execution session, never the project's most recent one {#rn-139}
 
@@ -2734,8 +2731,7 @@ the SAME criterion over HTTP, instead of duplicating it in the front:
 - `ProjectExecutorsTab` swaps `useLatestSession` for `useActiveExecutionSession`
   (a new hook over the route above) as the source of the session the whole tab reads;
 - the tab header always shows WHICH session is being displayed — its
-  label (hashtag + name) linking to `SessionPage`, or "Nenhuma execução
-  ativa" when `null` — never implicit again. The three states of
+  label (hashtag + name) linking to `SessionPage`, or "Nenhuma execução ativa" when `null` — never implicit again. The three states of
   [RN-088](web.md#rn-088) apply to the session fetch itself: loading, error
   (with `trace_id`) and empty (`null`) are three distinct renders, never an
   `if (!sessão) return null` that collapses them.
@@ -3044,8 +3040,7 @@ representative type — turning off is writing the same wildcard as
   `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts`
   (`findMode` with precedence specific > wildcard),
   `src/interfaces/http/actions/dto/set-agent-autonomy.dto.ts`
-  (accepts `"*"`), `apps/web/src/components/ApprovalCard.tsx` ("Modo
-  automático" button), `apps/web/src/components/AgentTeamGrid.tsx` (the toggle
+  (accepts `"*"`), `apps/web/src/components/ApprovalCard.tsx` ("Modo automático" button), `apps/web/src/components/AgentTeamGrid.tsx` (the toggle
   starts prioritizing the wildcard), `apps/web/src/routes/ProjectApprovalsTab.tsx`
   and `apps/web/src/routes/SessionPage.tsx` (`handleActivateAutoMode`, role
   gate via `useCurrentWorkspaceWithRole`)
@@ -3296,8 +3291,7 @@ without answering a question the two separate lists do not already answer.
   (the `GROUP BY`), `src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:112`,
   `src/interfaces/http/llm/spend.controller.ts:56`
 - **Test:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
-  ("quebra por PROVIDER, e o mesmo nome de modelo em dois providers segue UMA
-  linha")
+  ("quebra por PROVIDER, e o mesmo nome de modelo em dois providers segue UMA linha")
 - **Origin:** [ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
 
 ### RN-187 — The member's view does not reach `provider`, and the TYPE is what guarantees it {#rn-187}
@@ -3328,8 +3322,7 @@ explicit act **at this point** — never an oversight in another file.
   `src/interfaces/http/llm/spend.controller.ts:98`
 - **Test:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
   ("não compila pedir `provider` com escopo de ator" — a `@ts-expect-error` that
-  `tsc` fails as an UNUSED directive if the barrier falls; and "só pede as
-  dimensões `session` e `day`"),
+  `tsc` fails as an UNUSED directive if the barrier falls; and "só pede as dimensões `session` e `day`"),
   `test/interfaces/spend.controller.spec.ts` (the member's route accepts
   `dias` and nothing else)
 - **Origin:** [ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
@@ -3513,8 +3506,7 @@ data that already exists.
 
 - **Where:** `apps/web/src/lib/spend.ts` (`alertaDeOrcamento`)
 - **Test:** `apps/web/src/lib/spend.test.ts` (describe "alertaDeOrcamento
-  (RN-213)"); `apps/web/src/routes/ProjectSpendTab.test.tsx` (describe "o
-  orçamento do projeto")
+  (RN-213)"); `apps/web/src/routes/ProjectSpendTab.test.tsx` (describe "o orçamento do projeto")
 
 ### RN-219 — The three scopes of the chunk index are honest, and mutually exclusive by CHECK {#rn-219}
 
@@ -3533,8 +3525,7 @@ the same use case every time.
 - **Where:** `src/db/schema/rag.ts` (`chunkScopeEnum` and the two CHECKs
   of the `chunks` table)
 - **Test:** `test/infrastructure/persistence/chunk.repository.spec.ts`
-  ("recusa chunk de docs sem source_path — o CHECK da migração 0045, não
-  validação de aplicação")
+  ("recusa chunk de docs sem source_path — o CHECK da migração 0045, não validação de aplicação")
 - **ADR:** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
 
 ### RN-220 — Vector and lexical search live on the same row, never in separate tables {#rn-220}
@@ -3562,8 +3553,7 @@ exists).
 
 - **Where:** `src/db/schema/rag.ts` (`search_vector` column)
 - **Test:** `test/infrastructure/persistence/chunk.repository.spec.ts`
-  ("grava um chunk de docs com vetor e devolve o search_vector gerado pela
-  GENERATED ALWAYS AS")
+  ("grava um chunk de docs com vetor e devolve o search_vector gerado pela GENERATED ALWAYS AS")
 - **ADR:** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
 
 ### RN-222 — The vector dimension is documented, not guessed, and `embedding` arrives after the chunk {#rn-222}
@@ -3691,10 +3681,8 @@ the lexical signal and `vectorAvailable: false` warns.
 - **Where:** `src/application/use-cases/rag/rag-embedding.service.ts`
   (lines 53-58)
 - **Test:** `test/application/use-cases/rag/rag-embedding.service.spec.ts`
-  — "CASO DE FALHA: provider sem a capability..." and "CASO DE FALHA: provider
-  que lança no meio do lote..."; `index-project-docs.use-case.spec.ts`/
-  `index-session.use-case.spec.ts` — "CASO DE FALHA: provider de embedding
-  indisponível grava os chunks SEM vetor..."; `hybrid-search.use-case.spec.ts`
+  — "CASO DE FALHA: provider sem a capability..." and "CASO DE FALHA: provider que lança no meio do lote..."; `index-project-docs.use-case.spec.ts`/
+  `index-session.use-case.spec.ts` — "CASO DE FALHA: provider de embedding indisponível grava os chunks SEM vetor..."; `hybrid-search.use-case.spec.ts`
   — "quando o embedding está indisponível, degrada para busca só léxica"
 - **ADR:** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
@@ -3827,8 +3815,7 @@ retroactively change what an already provisioned instance promises.
 
 - **Where:** `src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
 - **Test:** `test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
-  — "a primeira transição (provisioning) cria a linha…" and "sem decisão de
-  imagem do Arquiteto, não há o que provisionar"
+  — "a primeira transição (provisioning) cria a linha…" and "sem decisão de imagem do Arquiteto, não há o que provisionar"
 - **ADR:** [0081](../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
 ### RN-246 — A project in `local` mode has no container lifecycle {#rn-246}
@@ -3873,7 +3860,7 @@ intent was X").
   — "create nasce em `provisioning`, com a versão e os recursos passados"
 - **ADR:** [0081](../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
-## PROGRAMA 28 — Onda 5, frente G3: a tela do Chat RAG (RN-252..254, ADR 0082)
+## PROGRAM 28 — Wave 5, front G3: the RAG Chat screen (RN-252..254, ADR 0082) {#programa-28-onda-5-frente-g3-a-tela-do-chat-rag-rn-252-254-adr-0082}
 
 ### RN-267 — `GET /projects/:projectId/container/lifecycle` is the first HTTP exposure of the container lifecycle {#rn-267}
 
@@ -4284,8 +4271,7 @@ sentence describing why it wasn't used.
 - **Where:** `scripts/lint-migracao.ts` (`REGRAS`, line 75;
   `lintarConteudo`, line 126)
 - **Test:** `test/scripts/lint-migracao.spec.ts` — each pattern
-  individually, a combination of several in the same migration, and "ignora o
-  padrão de risco quando ele aparece só em COMENTÁRIO"
+  individually, a combination of several in the same migration, and "ignora o padrão de risco quando ele aparece só em COMENTÁRIO"
 - **ADR:** [0093](../adr/0093-dbre-linter-de-migracao-e-relatorio-de-backup.md)
 
 ## fluxo.yml × code audit — Wave 2: RN-160 in the backend and Dev Lead → dev delegation (RN-404/405, ADR 0094) {#auditoria-fluxo-yml-codigo-onda-2-rn-160-no-backend-e-delegacao-dev-lead-dev-rn-404-405-adr-0094}
@@ -4743,8 +4729,7 @@ real worst case (up to 10 attempts in a row, the runner's ceiling).
 - **Where:** `src/infrastructure/persistence/drizzle/personal-access-token.repository.ts`
   (`validarEUsar`), `src/interfaces/http/auth/pat-auth.guard.ts`
 - **Test:** `test/infrastructure/persistence/personal-access-token.repository.spec.ts`
-  (nonexistent/revoked/expired → `null`; "toca `last_used_at` sempre
-  que válido, sem throttle" — regression of the bug above),
+  (nonexistent/revoked/expired → `null`; "toca `last_used_at` sempre que válido, sem throttle" — regression of the bug above),
   `test/interfaces/pat-auth.guard.spec.ts` (wrong scope → 403,
   not 401)
 - **Architectural decision:**
@@ -4952,7 +4937,7 @@ is the CLOSED catalog — area leads (`AGENT_AREAS.map(a => a.lead)`) ∪
 
 `SOLO_CONVERSATIONAL_AGENTS` is its OWN list, not derived from the
 `apps/web/src/lib/agents.ts` roster (which also lists gate agents and the
-Psicólogo/Anamnese, none addressable by handoff). The direction of the derivation
+Psychologist/Anamnesis, none addressable by handoff). The direction of the derivation
 is from the api to the web: since AT-046 the web's copy is no longer a MANUAL
 mirror and comes out of the SAME generator as the areas (`pnpm --filter api gerar:areas`,
 Phase 18), in `apps/web/src/lib/agent-areas.generated.ts`, which `agents.ts`
@@ -5266,7 +5251,7 @@ real value EXISTS and is cheap to compute (the same `todosOsChunks` that
 - **ADR:** [0113](../adr/0113-pasta-local-anexada-via-navegador-vira-chunks-scope-local.md)
 - **Origin:** product owner's request
 
-## Ollama nativo no bootstrap dev e pull de modelo Hugging Face (RN-461..463, ADR 0114/0115)
+## Native Ollama in the dev bootstrap and Hugging Face model pull (RN-461..463, ADR 0114/0115) {#ollama-nativo-no-bootstrap-dev-e-pull-de-modelo-hugging-face-rn-461-463-adr-0114-0115}
 
 ### RN-462 — A Hugging Face model pull requires explicit two-step confirmation; it never runs on its own {#rn-462}
 
@@ -5415,7 +5400,7 @@ exactly what RN-439 prevented.
 - **ADR:** [0118](../adr/0118-configuracao-automatica-do-runner-pelo-navegador.md)
 - **Origin:** request from the product owner
 
-## Os dois tetos de rebaixamento em `project_members` (RN-472)
+## The two demotion ceilings in `project_members` (RN-472) {#os-dois-tetos-de-rebaixamento-em-project-members-rn-472}
 
 ### RN-472 — Nobody downgrades the workspace `owner`, and nobody downgrades themselves {#rn-472}
 
@@ -5574,7 +5559,7 @@ to the provisioning screen, which only redirected on `provision_failed`.
   development Docker volume that was born `root`) was recorded only in
   `proposed_actions.execution_result`, which no screen reads
 
-## A busca do RAG deixa rastro, e o rastro congela os pesos (RN-479..481)
+## The RAG search leaves a trail, and the trail freezes the weights (RN-479..481) {#a-busca-do-rag-deixa-rastro-e-o-rastro-congela-os-pesos-rn-479-481}
 
 ### RN-478 — `permissions.json` lives where the api REACHES, the terminal scope points to the HOST {#rn-478}
 
@@ -5816,8 +5801,7 @@ the sweep by `brabo.managed=true`, and the page that consumes it doesn't exist y
 
 ### RN-487 — The Arquiteto routes module by module, but only NOMINATES — the Infra elects {#rn-487}
 
-`route_modules_to_infra` produces ONE list — one item `{modulo, imagemCandidata,
-porque}` per module of the current `module_map` — and it becomes the
+`route_modules_to_infra` produces ONE list — one item `{modulo, imagemCandidata, porque}` per module of the current `module_map` — and it becomes the
 `artifact.module_routing` event, with no table: the same design as `artifact.module_map`/
 `artifact.project_image`/`artifact.c4_diagram`, the event IS the artifact.
 
@@ -6027,8 +6011,7 @@ the container that already exists.
   `apps/web/src/lib/aprovacoes.ts`, `apps/web/src/components/ApprovalCard.tsx`
   (`podeSemprePermitir`)
 - **Test:**
-  `test/domain/actions/decide.spec.ts` ("container_stop, a página
-  global de containers" — CAN auto_approve; "teto de container_remove" —
+  `test/domain/actions/decide.spec.ts` ("container_stop, a página global de containers" — CAN auto_approve; "teto de container_remove" —
   NEVER can),
   `test/application/use-cases/actions/execute-container-stop.use-case.spec.ts`,
   `test/application/use-cases/actions/execute-container-remove.use-case.spec.ts`
@@ -6259,8 +6242,7 @@ screen asserting what it doesn't know.
   and `:334`
 - **Test:**
   `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
-  (`describe('materializarWorkspaceMontado')` and the non-regression "projeto
-  mounted LEGADO, FORA da base, continua resolvendo sem lançar");
+  (`describe('materializarWorkspaceMontado')` and the non-regression "projeto mounted LEGADO, FORA da base, continua resolvendo sem lançar");
   `test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`
   (`describe('mounted valida só o léxico + a base na criação')`);
   `test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`;
@@ -6428,8 +6410,7 @@ only the runner knows — TEN, not nine. It was born with nine, without `project
 the consequence was that this path NEVER brought up any container since it
 existed: the engine passes the map on opaquely, the runner hands it to
 `especificacaoValidada`, which requires `projectId` as non-empty text, and the action
-ended `failed` with *"especificação de container recusada em `projectId`:
-esperava texto não vazio, recebi undefined"* — and from there the CORRECT block of
+ended `failed` with *"especificação de container recusada em `projectId`: esperava texto não vazio, recebi undefined"* — and from there the CORRECT block of
 [RN-507](runner.md#rn-507)/[RN-502](engine.md#rn-502) did the rest, with no dev agent
 claiming a task. The data always existed (`SpecDeContainer.projectId`, the
 same one the BROKER receives through `GET .../container-spec`, and that's why only
@@ -6458,8 +6439,7 @@ side without the other fails.
   `test/application/use-cases/actions/execute-container-start.use-case.spec.ts`,
   `test/application/use-cases/actions/
   execute-container-start-via-runner.use-case.spec.ts` (new),
-  `test/contract/
-  especificacao-de-container-para-runner.contract.spec.ts` (the CHAIN —
+  `test/contract/ especificacao-de-container-para-runner.contract.spec.ts` (the CHAIN —
   the payload composed by the api against the real `especificacaoValidada`),
   `apps/web/src/lib/aprovacoes.test.ts`,
   `apps/engine/test/engine/infra/tools/
@@ -7103,8 +7083,7 @@ The moment is **accepting the handoff from the Arquiteto to the Dev Lead**, and 
 execution activation. They are DISTINCT instants, in this order: accepting the handoff
 activates the Dev Lead; activating execution is when the dev agents start claiming
 tasks. It is at the first that "development has started" becomes true, and it is
-what the product owner asked for — *"quando o arquiteto passar o handoff para o
-desenvolvedor iniciar o desenvolvimento"*.
+what the product owner asked for — *"quando o arquiteto passar o handoff para o desenvolvedor iniciar o desenvolvimento"*.
 
 The branch lives in `AcceptHandoffUseCase`, next to the `'infra'` branch that already existed
 and for the same ordering reason: the effect happens **before** `activateAgent`, so
@@ -7147,14 +7126,10 @@ interrupted bootstrap completes.
   `agents`, so there is no cycle)
 - **Test:**
   `test/application/use-cases/agents/accept-handoff.use-case.spec.ts`
-  — happy path ("aceitar para o Dev Lead provisiona `local` com o slug do
-  projeto"), the two failure cases ("provisionamento que falha NÃO derruba o
-  aceite nem a ativação" and "a falha vira evento nomeado, com origem e a mensagem
-  real"), and the limits ("aceitar para OUTRO agente não provisiona nada",
+  — happy path ("aceitar para o Dev Lead provisiona `local` com o slug do projeto"), the two failure cases ("provisionamento que falha NÃO derruba o aceite nem a ativação" and "a falha vira evento nomeado, com origem e a mensagem real"), and the limits ("aceitar para OUTRO agente não provisiona nada",
   "projeto que ADOTOU repositório não provisiona, e isso não é falha",
   "repositório já CRIADO cai no caso de uso, que é idempotente por desenho")
-- **Origin:** request of the product owner — *"o gatilho deve vir quando o arquiteto
-  passar o handoff para o desenvolvedor iniciar o desenvolvimento"*
+- **Origin:** request of the product owner — *"o gatilho deve vir quando o arquiteto passar o handoff para o desenvolvedor iniciar o desenvolvimento"*
 
 ## The MACHINE key that the installer registers (RN-552) {#a-chave-de-maquina-que-o-instalador-registra-rn-552}
 
@@ -7498,7 +7473,7 @@ that already existed now names BOTH.
 
 ---
 
-## A chave de dispositivo ganha tela, e a tela diz o alcance de revogar (RN-561)
+## The device key gains a screen, and the screen states the reach of revoking (RN-561) {#a-chave-de-dispositivo-ganha-tela-e-a-tela-diz-o-alcance-de-revogar-rn-561}
 
 ### RN-567 — `proposed_action.created` says WHICH rule decided: the `reason` of `decide()` now survives when the action passes {#rn-567}
 
@@ -7765,13 +7740,13 @@ the engine — looked at the session's state before writing.
    user's side) is the AGENT's, and the actor is a conversational one. `agent.error` counts as
    end of turn on purpose: by [RN-059](engine.md#rn-059) the
    agent says in the thread what happened, and the next move is the user's. Speech from someone who
-   does not converse (Psicólogo, dev agent) does not hold.
+   does not converse (Psychologist, dev agent) does not hold.
 2. **It is the only signal with a CEILING: 8 hours**, counted from the END of the agent's turn
    (the `created_at` of that event), not from the last heartbeat. The api returns the
    instant (`aguardandoUsuarioDesde`) and the engine applies the ceiling
    (`SESSION_CONVERSATION_IDLE_TIMEOUT_MS`, default `28800000`). Past it, the
    session closes `closed` with its OWN cause, `conversation_idle_timeout` — not
-   `heartbeat_timeout`, because whoever reads `termination_reason` (the Psicólogo, a
+   `heartbeat_timeout`, because whoever reads `termination_reason` (the Psychologist, a
    per-session metric) needs to separate the tab that vanished from the conversation nobody
    resumed. The `TerminationClassifier` reads it as `:timeout`: the api knows six
    causes in the hypotheses, and opening a seventh would be changing that contract.
@@ -7803,8 +7778,8 @@ the engine — looked at the session's state before writing.
    `architecture.readiness_confirmed`), OR the ACTOR is a conversational agent (the
    six plus `dev-lead` and `infra`). An ALLOWLIST by type was measured
    and refused: those who legitimately write to a closed session are the
-   CONSUMERS of the closing — the Psicólogo runs a `ToolLoop` against it and writes
-   `tool.call`, `agent.response`, `agent.error`; the Anamnese writes its own
+   CONSUMERS of the closing — the Psychologist runs a `ToolLoop` against it and writes
+   `tool.call`, `agent.response`, `agent.error`; the Anamnesis writes its own
    outcomes —, and they speak the SAME generic vocabulary as the Criativo. The type is
    the same; who differs is the actor.
 7. **The human decision about an action keeps coming in.** `action.approved`/
@@ -7899,7 +7874,7 @@ closed session keep showing the api's message.
   (`parar_conversacionais`); `apps/engine/config/runtime.exs:79`
 - **Test:** `test/application/use-cases/sessions/conversa-em-sessao-encerrada.spec.ts:144`
   (a closed session refuses `chat.message` with a named 409 — failure case),
-  `:167` (no event and no `seq` consumed), `:183` (Psicólogo and Anamnese
+  `:167` (no event and no `seq` consumed), `:183` (Psychologist and Anamnesis
   keep coming in), `:211` (a decision about an action keeps coming in), `:223`
   (an active session accepts — happy path), `:244` (`closing` accepts), `:258`
   (`SendAgentMessage` does not call the engine), `:263` (no orphan handoff),
@@ -8026,16 +8001,12 @@ repository, not that of each session, and did not change.
   of [RN-577](engine.md#rn-577), which named the old trigger and changes along with it)
 - **Test:**
   `test/application/use-cases/agents/accept-handoff.use-case.spec.ts`
-  ("aceitar para o Arquiteto provisiona `local` com o slug do projeto", "o
-  repositório nasce ANTES de o Arquiteto acordar", "aceitar para o Dev Lead
-  continua provisionando `local` (segunda porta)");
+  ("aceitar para o Arquiteto provisiona `local` com o slug do projeto", "o repositório nasce ANTES de o Arquiteto acordar", "aceitar para o Dev Lead continua provisionando `local` (segunda porta)");
   `test/application/use-cases/agents/accept-handoff-provisiona-uma-vez.spec.ts`
   (the two doors against the database: "UM createRepo, UMA linha, nenhuma falha", and
   "o exp001: Arquiteto aceito SEM repositório, e a segunda porta provisiona");
   `test/application/use-cases/execution/activate-execution.use-case.spec.ts:725`
-  ("sem repositório: 409, e NENHUM efeito antes da recusa", "a frase nomeia o
-  handoff ao Dev Lead pendente — a saída do exp001", "repositório ADOTADO conta
-  como repositório"); `test/domain/execution/repositorio-para-executar.spec.ts`;
+  ("sem repositório: 409, e NENHUM efeito antes da recusa", "a frase nomeia o handoff ao Dev Lead pendente — a saída do exp001", "repositório ADOTADO conta como repositório"); `test/domain/execution/repositorio-para-executar.spec.ts`;
   `test/infrastructure/persistence/handoff-por-projeto.repository.spec.ts`;
   `apps/web/src/routes/ProjectOverviewTab.test.tsx:409`, `:427` and `:440`;
   `apps/web/src/routes/SessionPage.handoff-devlead-e-colapso.test.tsx:575`;
@@ -8294,8 +8265,7 @@ has a consequence, not a procedure: every refresh token in circulation, every op
 e-mail verification and password reset link, and every personal
 access token (PAT) can no longer be found, because the hash recomputed with the
 new pepper does not match the stored one. The refused refresh records
-`refresh_unknown` (and not `refresh_reuse_detected`), the link says "Link inválido
-ou expirado", and the lockout buckets change key — a locked account unlocks. The
+`refresh_unknown` (and not `refresh_reuse_detected`), the link says "Link inválido ou expirado", and the lockout buckets change key — a locked account unlocks. The
 PASSWORD survives (argon2id with per-record salt, no pepper): changing the pepper
 costs a login, never an account, and the api starts normally with the new value.
 
@@ -8392,8 +8362,7 @@ which does not release the scope.
   (`autonomyOrigin`), `apps/web/src/components/AgentTeamGrid.tsx:114`
   (`autonomyHint`), `apps/web/src/components/ApprovalCard.tsx:313` (the note
   in both variants)
-- **Test:** `test/domain/actions/decide.spec.ts` ("modo automático
-  libera o escopo de caminho (RN-603)": out of scope and compound auto-approve;
+- **Test:** `test/domain/actions/decide.spec.ts` ("modo automático libera o escopo de caminho (RN-603)": out of scope and compound auto-approve;
   push/`sudo`/`deny`/written `ask` remain; a specific rule and a wildcard
   turned off do not release; the other ceilings do not change),
   `test/application/use-cases/actions/propose-action.use-case.spec.ts`
@@ -8686,8 +8655,7 @@ bucket) no longer falls back to `AUTH_JWT_SECRET`. The silent fallback
 (`AUTH_TOKEN_PEPPER ?? passphraseAtual()`) turned every "zero-downtime"
 JWT rotation into a pepper change, and it was the COMMON path: the production
 and installation composes did not even pass the variable through. In production the api REFUSES
-to start without it, and the refusal states the fix — *"defina com o valor ATUAL de
-AUTH_JWT_SECRET para não deslogar ninguém"* —, because the obvious fix (generating
+to start without it, and the refusal states the fix — *"defina com o valor ATUAL de AUTH_JWT_SECRET para não deslogar ninguém"* —, because the obvious fix (generating
 a random one) is the one that logs everyone out. With the pepper equal to the old JWT the
 hash is byte for byte the previous one, refresh tokens and PATs remain valid, and
 from then on the JWT rotates on its own. A pepper equal to the JWT is NOT refused: it is the
@@ -8710,8 +8678,7 @@ overwritten, and its pepper is kept — or, without a pepper, it is born with it
 - **Test:** `test/infrastructure/security/auth-key-material.spec.ts`
   (describe "pepperAtual (RN-613)": refusal without pepper even with JWT, the
   message, the examples, the floor, equal to the JWT accepted, the dev default);
-  `test/application/use-cases/auth/rotacao-dos-segredos.spec.ts` (describe "a
-  migração do RN-613": the refresh stored with the OLD formula remains valid with the
+  `test/application/use-cases/auth/rotacao-dos-segredos.spec.ts` (describe "a migração do RN-613": the refresh stored with the OLD formula remains valid with the
   pepper equal to the old JWT and survives the JWT change; the
   `AUTH_JWT_SECRET` describe: without pepper outside production, changing the JWT does not log out);
   `scripts/dev/install-env.spec.ts` (describe "o AUTH_TOKEN_PEPPER do
@@ -8743,10 +8710,7 @@ actor's WORKSPACE role as today's effective one and `null` as the AFTER role —
 workspace there is no level above to catch the fall, so removing one's own
 row is always a fall to "no access", the branch the function already stated
 for a project without a workspace row. Removing ONESELF is **always 403**, with
-its own sentence: *"Você não pode remover a si mesmo deste workspace: aqui não há
-papel acima para segurar a queda, e sem a linha você perde o workspace e todos
-os projetos dele. Voltar exige o owner que você estaria abandonando. Peça a
-outro owner."*
+its own sentence: *"Você não pode remover a si mesmo deste workspace: aqui não há papel acima para segurar a queda, e sem a linha você perde o workspace e todos os projetos dele. Voltar exige o owner que você estaria abandonando. Peça a outro owner."*
 
 **The last owner, by the SAME clause.** Only `owner` calls the route; nobody removes
 themselves; so every successful removal leaves at least the CALLER as
@@ -8822,18 +8786,12 @@ agents spending the credential of someone no longer in the workspace. The column
 be called, in the rule, the **holder**.
 
 **The refusal.** `DELETE /workspaces/:workspaceId/members/:userId` with target = holder
-is **409** with `code: "criador_do_workspace"`: *"Não é possível remover o titular
-do workspace: a credencial de LLM que os agentes gastam, a de git das ações de
-agente e o relatório de gasto são dele (RN-058/RN-060). Transfira antes a
-titularidade para outro owner (PUT /workspaces/:workspaceId/owner-of-record) e
-remova depois."* RN-615's ceiling comes first: the holder trying to remove themselves
+is **409** with `code: "criador_do_workspace"`: *"Não é possível remover o titular do workspace: a credencial de LLM que os agentes gastam, a de git das ações de agente e o relatório de gasto são dele (RN-058/RN-060). Transfira antes a titularidade para outro owner (PUT /workspaces/:workspaceId/owner-of-record) e remova depois."* RN-615's ceiling comes first: the holder trying to remove themselves
 gets the self-removal 403.
 
 **The transfer.** `PUT /workspaces/:workspaceId/owner-of-record`, `owner`,
 body `{ userId }`, answers the workspace (200). The destination must ALREADY be `owner`
-of the workspace, otherwise **409** `titular_precisa_ser_owner` (*"A titularidade só vai
-para quem já é owner deste workspace: o titular paga o que os agentes gastam
-(RN-058). Promova a pessoa a owner antes, ou escolha outro owner."*). It writes
+of the workspace, otherwise **409** `titular_precisa_ser_owner` (*"A titularidade só vai para quem já é owner deste workspace: o titular paga o que os agentes gastam (RN-058). Promova a pessoa a owner antes, ou escolha outro owner."*). It writes
 `created_by` in a transaction with the role read; transferring to the current
 holder is idempotent. Any `owner` can transfer, including to ANOTHER
 owner who did not ask — declared, it is the same authority that removes owners.
@@ -8841,8 +8799,7 @@ owner who did not ask — declared, it is the same authority that removes owners
 **The spend, from the commit on.** `ResolveCredentialOwnerUseCase` returns the new
 holder: the agent turn looks for THEIR credential for the model's provider,
 and git actions for their git credential. Without a credential, the outcome is the one that
-already existed — the turn ends with *"Nenhuma credencial cadastrada para
-<provider>"* and the git remote read fails naming whose credential is
+already existed — the turn ends with *"Nenhuma credencial cadastrada para <provider>"* and the git remote read fails naming whose credential is
 missing. The transfer does NOT check this beforehand (declared in the ADR). The recorded
 spend does not move: `token_usage` does not keep the holder, and the whole report,
 history included, comes to belong to the new holder. No domain event: there remains
@@ -9055,8 +9012,7 @@ question on the screen where the language is already shown and corrected.
    again. What is stored is the language and the person's decision — never country,
    nationality or proficiency.
 6. **Where the question appears.** In a small card anchored just below the
-   language indicator of the session bar ([RN-620](web.md#rn-620)): "Detectamos que
-   você escreve em espanhol (es) — usar espanhol (es) nas respostas?", with
+   language indicator of the session bar ([RN-620](web.md#rn-620)): "Detectamos que você escreve em espanhol (es) — usar espanhol (es) nas respostas?", with
    "Usar", "Não" and "Agora não". No modal, without covering the composer; "Agora não"
    only hides it on this screen, without writing, and the question comes back on the next read.
    Sending a message (or answering a form) rereads the indicator, because the
@@ -9270,7 +9226,7 @@ an offer to an already active agent stayed actionable forever (AT-291,
 with a ceiling of 200, and `usePendingActions` never paginated: from the
 201st action of a session on — which a real execution easily reaches, a dev agent
 proposes dozens of commands per task — the NEW pending one was outside the only
-page read and vanished from the thread, the Executores and Aprovações (AT-296), precisely
+page read and vanished from the thread, the Executors and Approvals (AT-296), precisely
 when someone was waiting for it.
 
 **The rule:**
@@ -9416,7 +9372,7 @@ path. The GENERIC transition keeps refusing `closed → active` with 409, and
    `SessionLifecycleWorker` reads the session's `status` and ignores, with a log, the
    `session.closed`/`session.closed_abnormally` job of a session the api already says is
    non-terminal.
-7. **The Psicólogo's second automatic analysis stays blocked** by the
+7. **The Psychologist's second automatic analysis stays blocked** by the
    `alreadyAnalyzed` that already existed; manual reprocessing continues. The second
    graph consolidation extends the window of the same `Interacao`.
 
@@ -9476,11 +9432,11 @@ with the cause of the previous closing when it was recorded.
   `apps/web/src/lib/activity.test.ts` ("reabertura de sessão")
 - **Origin:** AT-071; role decided in AT-337
 
-## Acompanhar ao vivo sem martelar (RN-639)
+## Following live without hammering (RN-639) {#acompanhar-ao-vivo-sem-martelar-rn-639}
 
 ### RN-654 — The resolved bindings of all agents and areas come in a single read {#rn-654}
 
-[RN-645](web.md#rn-645) measured 49 requests on loading the Configurações tab, and 20
+[RN-645](web.md#rn-645) measured 49 requests on loading the Settings tab, and 20
 of them were the RESOLVED binding of each agent (17) and of each area (3), one route
 per key. Three sections read those keys — models per agent, models per area
 and best models per capability —, and the 300 req/min ceiling is the USER's
@@ -9492,8 +9448,7 @@ and best models per capability —, and the 300 req/min ceiling is the USER's
    returns `{ agents: [{ key, binding }], areas: [{ key, binding }] }`, in the
    requested order and without repetition. Each `binding` is EXACTLY what the
    individual route would respond for that key (`GET .../agent-bindings/:slug`,
-   `GET .../area-bindings/:key`): the same cascade `workspace › projeto › área ›
-   agente` without a session, the same origins the screen turns into a chain
+   `GET .../area-bindings/:key`): the same cascade `workspace › projeto › área › agente` without a session, the same origins the screen turns into a chain
    ([RN-470](web.md#rn-470)), the Criativo inheritance, and `null` when no level has a
    model. There is no new cascade: the use case calls `ResolveModelBindingUseCase`
    key by key, with the input the individual route would pass.
@@ -9506,8 +9461,8 @@ and best models per capability —, and the 300 req/min ceiling is the USER's
    the ceiling is 400 naming the reason, never a key silently discarded — the response
    would assert about fewer keys than the screen requested.
 4. **The web reads the batch through ONE `queryKey`** (`['model-bindings-resolved',
-   projectId]`), served by one request to the three Configurações sections and,
-   since AT-339, also to the Visão geral and the Executores tab
+   projectId]`), served by one request to the three Settings sections and,
+   since AT-339, also to the Overview and the Executors tab
    (`useBindingsDosAgentes`): the roster agents the catalog knows come from
    that SAME key — the cache one tab warmed serves the other without a
    request —, and those the catalog does not know (the `dev-<modulo>`) come from ONE
@@ -9524,10 +9479,10 @@ and best models per capability —, and the 300 req/min ceiling is the USER's
 
 **Numbers:** the tab load dropped from 49 to 30 requests
 (`configuracoes.orcamento.test.tsx`, on `dev` at 94e5dc721d); the idle minute
-stays at 64, all from the frame. In AT-339, the Executores tab load dropped
-from 29 to 27 and the Visão geral's from 33 to 31 (`duas-abas.orcamento.test.tsx`,
+stays at 64, all from the frame. In AT-339, the Executors tab load dropped
+from 29 to 27 and the Overview's from 33 to 31 (`duas-abas.orcamento.test.tsx`,
 with the base roster of three agents — with team and modules, the drop is one per
-card), and going from Configurações to the Visão geral stopped fetching any
+card), and going from Settings to the Overview stopped fetching any
 binding (before, 3).
 
 **What this rule does NOT close:** the per-key routes still exist in the api
@@ -9555,7 +9510,7 @@ not measured on a real project, and declared.
   render from ONE call, without a per-key route), `:182` (the batch failure is
   stated and no row becomes "sem modelo"), `:217` (reading, not "sem modelo");
   `apps/web/src/routes/configuracoes.orcamento.test.tsx:233` (the load reads the
-  batch once and fits in 30), `:279` (going to the Visão geral does not fetch a
+  batch once and fits in 30), `:279` (going to the Overview does not fetch a
   binding); `apps/web/src/routes/ProjectOverviewTab.test.tsx:472` (the card's
   model comes from ONE batch read, without a per-agent route), `:493` (the refused
   batch does not invent a model nor fall back to the per-agent route);
@@ -9564,7 +9519,7 @@ not measured on a real project, and declared.
   leave the card without a model); `apps/web/src/routes/duas-abas.orcamento.test.tsx:334`
   (the load of the two tabs reads the batch once and fits in 27 and 31)
 - **Origin:** AT-334 (owner decision on the gap declared in
-  [RN-645](web.md#rn-645)); AT-339 (the Visão geral and the Executores tab in the batch)
+  [RN-645](web.md#rn-645)); AT-339 (the Overview and the Executors tab in the batch)
 
 ## Reading the workspace members (RN-655) {#a-leitura-dos-membros-do-workspace-rn-655}
 
@@ -9602,10 +9557,10 @@ read exists to name, and the write routes remain API-only.
 
 ## The policy reason on each Approvals card (RN-656) {#o-motivo-da-politica-em-cada-cartao-de-aprovacoes-rn-656}
 
-### RN-656 — The session events read filters by `actionId`, and each card of the Aprovações tab reads its own reason through it {#rn-656}
+### RN-656 — The session events read filters by `actionId`, and each card of the Approvals tab reads its own reason through it {#rn-656}
 
 The action does not keep the policy reason: it lives in `proposed_action.created`
-([RN-567](#rn-567), [RN-609](#rn-609)). The Aprovações tab reads the
+([RN-567](#rn-567), [RN-609](#rn-609)). The Approvals tab reads the
 PROJECT queue ([RN-638](web.md#rn-638)) and the log of ONE session, so since AT-333 it
 said in a single note how many actions were left without a reason ([RN-614](web.md#rn-614)).
 Owner decision (AT-336): each card shows its OWN.
@@ -9635,10 +9590,10 @@ responds WITHOUT the event gives the "motivo não registrado" sentence (never si
 read that FAILS leaves the card silent, and that one, and only that one, is what the top
 note counts (*"de N das M ações abaixo"*). Since AT-340 the cards of the
 pending items from OTHER sessions in the chat ([RN-626](web.md#rn-626),
-`PendenciasDeOutrasSessoes`, also in the Executores tab) go through the SAME hook and
+`PendenciasDeOutrasSessoes`, also in the Executors tab) go through the SAME hook and
 the SAME cache: every action there is from another session, so none is covered
 by the screen's log and each one reads by action — only the DRAWN ones, within the
-block's card ceiling, and one the Aprovações tab already read costs nothing there (and
+block's card ceiling, and one the Approvals tab already read costs nothing there (and
 vice versa). A read that fails also silences the card and is stated once, at the top
 of the block. The "needs you" panel does NOT use this path: it reads no
 log and opening it does not trigger a query, so the card there stays silent, as
@@ -10277,7 +10232,7 @@ timeline).
 - **Origin:** AT-257 (item A11 of the analysis of the real use of 29/09) and
   AT-170 (EP-025), owner's decision of 01/10
 
-## O git credenciado roda no host do runner (RN-676)
+## The credentialed git runs on the runner's host (RN-676) {#o-git-credenciado-roda-no-host-do-runner-rn-676}
 
 ### RN-677 — Accepting the Dev Lead only brings it in to plan; APPROVING its plan is what activates execution {#rn-677}
 
@@ -10594,7 +10549,7 @@ does not change.
 - **Origin:** AT-254 (item A8 of the analysis of the real use of 2026-09-29),
   owner's decision of 01/10
 
-## O plano de teste nasce depois da entrega do dev (RN-674, ADR 0192)
+## The test plan is born after the dev's delivery (RN-674, ADR 0192) {#o-plano-de-teste-nasce-depois-da-entrega-do-dev-rn-674-adr-0192}
 
 ### RN-683 — Infra brings up the container with the SMALLEST eligible resource, derived from what the Architect declares per module in the `module_map` {#rn-683}
 
@@ -10815,8 +10770,7 @@ falls"*. The label changes, not the behavior.
   `apps/web/src/routes/MachineDeviceKeysSection.tsx:202`
 - **Test:**
   `test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
-  (`describe "o alvo da queda é a CHAVE"` — happy path; `describe "CASO DE
-  FALHA: o engine não atende o pedido por chave"` — plan B by the pair; the
+  (`describe "o alvo da queda é a CHAVE"` — happy path; `describe "CASO DE FALHA: o engine não atende o pedido por chave"` — plan B by the pair; the
   machine in one request only);
   `test/application/use-cases/auth/machine-device-keys.use-case.spec.ts`;
   `test/application/use-cases/auth/revoke-personal-access-token.use-case.spec.ts`
@@ -10989,10 +10943,7 @@ where to configure it.
 - **Where:** `src/infrastructure/git/local-git-provider.ts:783` (`mergeShas`),
   `src/domain/git/git-errors.ts:89` (`GitMergeConflictError`),
   `src/interfaces/http/shared/git-provider-error.filter.ts`
-- **Test:** `test/infrastructure/git/local-git-provider.contract.spec.ts`
-  ("duas PRs divergentes sem conflito: os dois commits ficam no alvo, por
-  commit de merge"; failure case: "conflito: recusa nomeada com os arquivos,
-  alvo intacto e PR aberta")
+- **Test:** `test/infrastructure/git/local-git-provider.contract.spec.ts` ("duas PRs divergentes sem conflito: os dois commits ficam no alvo, por commit de merge"; failure case: "conflito: recusa nomeada com os arquivos, alvo intacto e PR aberta")
 - **Declared gap:** GitHub and GitLab refuse the conflicting merge through their
   own API (405/406), without translation to `GitMergeConflictError`.
 - **Origin:** AT-377
@@ -11024,13 +10975,7 @@ where to configure it.
   `src/application/use-cases/actions/list-project-pending-actions.use-case.ts:22` (`execute`),
   `apps/web/src/routes/ProjectPrsTab.tsx:69` (`ultimaRecusaDeMerge`),
   `apps/web/src/lib/canal-vivo.ts:134` (`alvosDoEvento`)
-- **Test:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
-  ("conflito de merge → kind git_merge, arquivos no resultado e evento na
-  tarefa"; failure case: "falha que não é conflito não grava arquivos nem
-  evento de conflito"), `apps/web/src/routes/ProjectPrsTab.test.tsx` ("conflito
-  de merge: mostra motivo e arquivos..."; "recusa de OUTRA PR não aparece
-  nesta"), `test/infrastructure/git/local-git-provider.contract.spec.ts`
-  ("grava o autor ao abrir...")
+- **Test:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("conflito de merge → kind git_merge, arquivos no resultado e evento na tarefa"; failure case: "falha que não é conflito não grava arquivos nem evento de conflito"), `apps/web/src/routes/ProjectPrsTab.test.tsx` ("conflito de merge: mostra motivo e arquivos..."; "recusa de OUTRA PR não aparece nesta"), `test/infrastructure/git/local-git-provider.contract.spec.ts` ("grava o autor ao abrir...")
 - **Declared gap (closed in [RN-715](#rn-715)):** the conflict does NOT wake the
   task's dev agent to rebase and resend. The path the QA uses
   (`DevAgentServer.correct/3`) only acts with the agent in `:awaiting_gate` ON THE
@@ -11115,17 +11060,7 @@ toggle back to manual restores approval.
   `apps/engine/lib/engine/dev/dev_agent_server.ex:350` (`handle_info`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:831` (`trigger_gate_recheck`),
   `apps/engine/lib/engine/dev/worktree_manager.ex:47` (`adopt`)
-- **Test:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("conflito de merge → kind git_merge, arquivos no
-  resultado e evento na tarefa"; failure: "RN-715: tarefa que já não está em
-  revisão não é reaberta nem acorda ninguém"),
-  `apps/engine/test/engine/dev/dev_agent_server_test.exs` (describe "conflito
-  de merge (RN-715)": re-adopts, reason in the turn, commit+push with no new PR,
-  gate reopens from QA; failures: branch that does not come back and open
-  breaker),
-  `apps/engine/test/engine/workers/dev_agent_wake_worker_test.exs` ("dono que
-  não existe: bloqueia a task com motivo nomeado, nada calado"),
-  `apps/engine/test/engine/dev/worktree_manager_test.exs` ("readotar a branch
-  da PR preserva os commits dela")
+- **Test:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("conflito de merge → kind git_merge, arquivos no resultado e evento na tarefa"; failure: "RN-715: tarefa que já não está em revisão não é reaberta nem acorda ninguém"), `apps/engine/test/engine/dev/dev_agent_server_test.exs` (describe "conflito de merge (RN-715)": re-adopts, reason in the turn, commit+push with no new PR, gate reopens from QA; failures: branch that does not come back and open breaker), `apps/engine/test/engine/workers/dev_agent_wake_worker_test.exs` ("dono que não existe: bloqueia a task com motivo nomeado, nada calado"), `apps/engine/test/engine/dev/worktree_manager_test.exs` ("readotar a branch da PR preserva os commits dela")
 - **Declared gap:** the redelivery to a busy owner lives in memory — an engine
   restart in that window loses it, and the task stays `in_progress` until
   intervention (same family as the gap of `Engine.Dev.Wake`, ADR 0045). The agent
@@ -11154,11 +11089,7 @@ toggle back to manual restores approval.
   (`validateProficiencyBatch`), `src/application/use-cases/anamnese/record-proficiency.use-case.ts:189`
   (`resolveKnownEventIds`), rules in the kickoff (`prompts/anamnese-kickoff.md`
   v3 and the inline fallback of `anamnese_worker.ex`)
-- **Test:** `test/domain/anamnese/proficiency-validation.spec.ts`
-  ("RN-716: aprovação ao lado de interação da pessoa passa"; failures: "só
-  evidência de outro ator é \"não observado\"", "aprovação sem leitura não é
-  evidência"), `test/application/use-cases/anamnese/record-proficiency.use-case.spec.ts`
-  ("evidência só de aprovação não grava perfil nem profile_updated")
+- **Test:** `test/domain/anamnese/proficiency-validation.spec.ts` ("RN-716: aprovação ao lado de interação da pessoa passa"; failures: "só evidência de outro ator é \"não observado\"", "aprovação sem leitura não é evidência"), `test/application/use-cases/anamnese/record-proficiency.use-case.spec.ts` ("evidência só de aprovação não grava perfil nem profile_updated")
 - **Declared gap:** recognizing the REPAIR message in the profile batch is up to
   the model (prompt); the code does not classify message text.
 - **Origin:** AT-376
@@ -11305,10 +11236,7 @@ The PO's kickoff states the three things.
 - **Test:** `test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts`
   ("a branch nasce de dev, a PR mira dev e leva infra[bot]"; failure:
   "repositório sem dev falha nomeado, sem cair na default"),
-  `apps/web/src/routes/Shell.test.tsx` ("abrir um projeto recolhe o visitado
-  antes e rola até o aberto", "no Dashboard nenhum projeto fica forçado
-  expandido"), `apps/web/src/routes/NewProjectWizard.test.tsx` ("o campo de
-  nome não convida o autofill"), `apps/web/src/lib/agent-status.test.ts`
+  `apps/web/src/routes/Shell.test.tsx` ("abrir um projeto recolhe o visitado antes e rola até o aberto", "no Dashboard nenhum projeto fica forçado expandido"), `apps/web/src/routes/NewProjectWizard.test.tsx` ("o campo de nome não convida o autofill"), `apps/web/src/lib/agent-status.test.ts`
   ("delegação falhada depois do parecer encerra o trabalhando")
 - **Origin:** AT-411, AT-412, AT-413, AT-415
 
@@ -11335,12 +11263,9 @@ The PO's kickoff states the three things.
   `:71` (`origem`), `apps/engine/lib/engine/harness/tool_loop.ex:168`
   (`last_error_code`), `apps/engine/lib/engine/dev/dev_agent_server.ex:902`
   (`handle_outcome`)
-- **Test:** `test/contract/llm-provider.contract.ts` (`erro_402 vira
-  chunk de erro com code "insufficient_credit"`; failure: `erro_500` stays
+- **Test:** `test/contract/llm-provider.contract.ts` (`erro_402 vira chunk de erro com code "insufficient_credit"`; failure: `erro_500` stays
   `upstream`), run by all provider contract suites;
-  `apps/engine/test/engine/agents/falha_de_turno_test.exs` ("insufficient_credit
-  é crédito esgotado e origem infra, sem frase nenhuma"; failure: "outro code não
-  é crédito, mesmo com a frase; sem code, o texto é a rede")
+  `apps/engine/test/engine/agents/falha_de_turno_test.exs` ("insufficient_credit é crédito esgotado e origem infra, sem frase nenhuma"; failure: "outro code não é crédito, mesmo com a frase; sem code, o texto é a rede")
 - **Origin:** AT-416 (the declared gap of RN-726)
 
 ### RN-734 — The OpenAI-compatible path ALWAYS sends the output ceiling {#rn-734}
@@ -11378,11 +11303,9 @@ The PO's kickoff states the three things.
   `final` frame of `llm-turn-stream` (additive field; absent in the normal case).
   The engine notes the signal in the turn's process, on every LLM call: (a) the
   tool call of a cut answer is NOT executed — it goes back to the loop
-  as a named error ("a resposta foi cortada pelo limite de tokens… Reenvie o
-  argumento em partes menores"), which the model reads and fixes (RN-163); (b) the
+  as a named error ("a resposta foi cortada pelo limite de tokens… Reenvie o argumento em partes menores"), which the model reads and fixes (RN-163); (b) the
   cut text closing gains, AFTER the model's text and without rewriting it,
-  the line in the turn's language (RN-622, mold of RN-731): `pt*` "Resposta
-  cortada pelo limite de tamanho.", any other — or none — "Response cut
+  the line in the turn's language (RN-622, mold of RN-731): `pt*` "Resposta cortada pelo limite de tamanho.", any other — or none — "Response cut
   off by the length limit.". Ollama does not read the stop reason (out of
   scope, declared).
 - **Where:** `src/infrastructure/llm/openai-compatible-provider.ts:314`
@@ -11396,9 +11319,7 @@ The PO's kickoff states the three things.
   `:89` (`descarregar`),
   `apps/engine/lib/engine/harness/argumentos_de_ferramenta.ex:26` (`executar`),
   `apps/engine/lib/engine/agents/texto_do_turno.ex:65` (`payload_do_turno`)
-- **Test:** `test/contract/llm-provider.contract.ts` ("resposta
-  cortada pelo teto de saída emite o sinal truncated" and "resposta normal não
-  traz o sinal de corte", run with a fake server by the
+- **Test:** `test/contract/llm-provider.contract.ts` ("resposta cortada pelo teto de saída emite o sinal truncated" and "resposta normal não traz o sinal de corte", run with a fake server by the
   OpenAI-compatible and Anthropic harnesses),
   `apps/engine/test/engine/harness/resposta_cortada_test.exs` (a tool of a
   cut answer does not run and returns a named error; a normal answer runs; a cut
@@ -11455,7 +11376,7 @@ The PO's kickoff states the three things.
 ### RN-752 — A merged infra PR leaves "PRs de infra em revisão" {#rn-752}
 
 - **Rule:** the `GET .../infra-artifacts` read (the "PRs de infra em
-  revisão" section of the Aprovações tab) does not return the infra artifact whose PR has already been
+  revisão" section of the Approvals tab) does not return the infra artifact whose PR has already been
   merged. The artifact's gate ends in `awaiting_user` and nothing moves it after
   the merge; instead of a new column, the yardstick is DERIVED: the artifact's PR is the
   `pullRequestId` of the result of the `open_infra_pr` that opened it (`prActionId`),
@@ -11513,8 +11434,7 @@ The PO's kickoff states the three things.
 - **Test:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
   (the notice arrives as the last message with a cut; without a cut and on fallback, the
   messages are the request's)
-- **Origin:** AT-445 (the dev agent blocked a task "sem ferramenta para
-  editar arquivos" while having `write_file`)
+- **Origin:** AT-445 (the dev agent blocked a task "sem ferramenta para editar arquivos" while having `write_file`)
 
 ### RN-761 — An installed dependency does not enter the repository: base `.gitignore`, a commit that excludes it and a gate that flags it {#rn-761}
 
@@ -11550,8 +11470,7 @@ The PO's kickoff states the three things.
   (the empty repository plans the 3 files; the user's `.gitignore` does not enter
   the plan), `test/application/use-cases/git/provision-repository.use-case.spec.ts`
   (the local one converges the 6 steps),
-  `apps/engine/test/engine/actions/git_executor_test.exs` (`commit exclui
-  diretórios de dependência mesmo sem .gitignore`),
+  `apps/engine/test/engine/actions/git_executor_test.exs` (`commit exclui diretórios de dependência mesmo sem .gitignore`),
   `apps/engine/test/engine/actions/diretorios_de_dependencia_test.exs` (the list
   is the same as the api's; SecOps flags `node_modules`)
 - **Origin:** AT-446 (TP-01 of 09/10: a PR with 1,453 files, 1,437 in
@@ -11677,7 +11596,7 @@ The PO's kickoff states the three things.
   cut and −42% cost. Conversational agents and gates do not change (no field), and a
   model without `supportsReasoning` sends nothing. It is not silent: the help of the
   model catalog's "thinking" facet says that in the execution dev agents and,
-  since RN-838, in the Automação QA reasoning goes switched off (the chosen minimum; the selector and the bubble do not change).
+  since RN-838, in the QA Automation reasoning goes switched off (the chosen minimum; the selector and the bubble do not change).
 - **Where:** `src/domain/llm/raciocinio-do-agente.ts:23`
   (`raciocinioDesligadoParaOAgente`), `src/infrastructure/llm/openrouter-provider.ts:251`
   (`campoDeRaciocinioDesligadoOpenRouter`)
@@ -11697,8 +11616,7 @@ The PO's kickoff states the three things.
   is in the step's catalog.
 - **Where:** `src/domain/llm/tool-router.ts:315` (`PISO_DO_MENU`)
 - **Test:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
-  (`Arquiteto recortado pelo Jev: as leituras de estado (ADRs propostas,
-  backlog) continuam no menu (RN-784)`)
+  (`Arquiteto recortado pelo Jev: as leituras de estado (ADRs propostas, backlog) continuam no menu (RN-784)`)
 - **Origin:** AT-460 (TP-01 of 09/10: Jev removed from the Architect's menu the
   reads of AT-454)
 
@@ -11780,18 +11698,10 @@ not consulted at proposal. Changing one requires changing the other.
 
 ### RN-809 — The Arquiteto's module and image obligations enter the Jev's floor {#rn-809}
 
-- **Rule:** extends [RN-758](#rn-758) and [RN-784](#rn-784). The
-  Arquiteto's floor gains `assign_story_modules` and `choose_project_image`, steps 2 and
-  3 of its kickoff (`arquiteto_server.ex`): the Jev's cut never removes them, and the
-  Arquiteto does not end saying the tool "não está disponível nesta
-  etapa" with stories without a module and an undecided image. `emit_insight` (step
-  8, tension record) and `emit_artifact` stay out of the floor: they are not
-  obligations of the stage. It still holds that the floor only gives back what is in the
-  step's catalog.
+- **Rule:** extends [RN-758](#rn-758) and [RN-784](#rn-784). The Arquiteto's floor gains `assign_story_modules` and `choose_project_image`, steps 2 and 3 of its kickoff (`arquiteto_server.ex`): the Jev's cut never removes them, and the Arquiteto does not end saying the tool "não está disponível nesta etapa" with stories without a module and an undecided image. `emit_insight` (step 8, tension record) and `emit_artifact` stay out of the floor: they are not obligations of the stage. It still holds that the floor only gives back what is in the step's catalog.
 - **Where:** `src/domain/llm/tool-router.ts:315` (`PISO_DO_MENU`)
 - **Test:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
-  (`Arquiteto recortado pelo Jev sem assign_story_modules/choose_project_image:
-  as duas continuam no menu (RN-809)`)
+  (`Arquiteto recortado pelo Jev sem assign_story_modules/choose_project_image: as duas continuam no menu (RN-809)`)
 - **Origin:** AT-481 (TP-01: the cut left 7 of 11 tools and the
   Arquiteto did not distribute the stories by module)
 
@@ -11834,13 +11744,7 @@ not consulted at proposal. Changing one requires changing the other.
   (`resumir`), `apps/web/src/lib/contexto-da-sessao.ts:15`
   (`useContextoDaSessaoInteira`), `apps/web/src/lib/contexto-da-sessao.ts:34`
   (`totalDaSessao`), `apps/web/src/routes/ContextAside.tsx:174` (`resumo`)
-- **Test:** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
-  ("conta a sessão INTEIRA, além de qualquer cauda de 200…"),
-  `test/application/use-cases/sessions/get-session-context-summary.use-case.spec.ts`
-  (failure: "sessão de outro projeto é 404 e não lê nada"),
-  `apps/web/src/routes/ContextAside.sessao-inteira.test.tsx` ("com o agregado
-  maior que a janela, mostra o total da sessão…"; failure: "sem o agregado, os
-  arquivos dizem \"não li\"…")
+- **Test:** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts` ("conta a sessão INTEIRA, além de qualquer cauda de 200…"), `test/application/use-cases/sessions/get-session-context-summary.use-case.spec.ts` (failure: "sessão de outro projeto é 404 e não lê nada"), `apps/web/src/routes/ContextAside.sessao-inteira.test.tsx` ("com o agregado maior que a janela, mostra o total da sessão…"; failure: "sem o agregado, os arquivos dizem \"não li\"…")
 - **Origin:** AT-498 (TP-01 of 10/10: a 301-event session showed 0 rules
   out of 11 and 2 decisions out of 6)
 
@@ -11855,12 +11759,10 @@ not consulted at proposal. Changing one requires changing the other.
   `total` states the real number; the screen declares the cut when it cuts.
 - **Where:** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:31`
   (`ligadas`), `apps/web/src/routes/ContextAside.tsx:366` (`filesTouched`)
-- **Test:** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
-  ("…e soma os arquivos da execução ligada"; failure: "corta a lista de arquivos
-  no teto e devolve o total real; não lê sessão sem ligação")
+- **Test:** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts` ("…e soma os arquivos da execução ligada"; failure: "corta a lista de arquivos no teto e devolve o total real; não lê sessão sem ligação")
 - **Origin:** AT-498
 
-### RN-838 — The Automação QA runs with reasoning switched off {#rn-838}
+### RN-838 — The QA Automation runs with reasoning switched off {#rn-838}
 
 - **Rule:** extends [RN-783](#rn-783) (owner decision of 10/10). The
   `qa-automacao` gate now gets the same treatment as the execution dev agents:
@@ -11886,9 +11788,7 @@ not consulted at proposal. Changing one requires changing the other.
   floor, it only gives back what is in the step's catalog.
 - **Where:** `src/domain/llm/tool-router.ts:356` (`pisoDoMenu`)
 - **Test:** `test/domain/llm/piso-dos-dev-agents.spec.ts`
-  (`recorte que deixa só \`terminal\` para dev-api: report_done e
-  report_blocked continuam`; `falha: dev-lead e outro agente não ganham as
-  ferramentas de desfecho`)
+  (`recorte que deixa só \`terminal\` para dev-api: report_done e report_blocked continuam`; `falha: dev-lead e outro agente não ganham as ferramentas de desfecho`)
 - **Origin:** AT-499 (follow-up, owner decision of 10/10)
 
 ### RN-840 — each gate agent's verdict tool enters the Jev's floor {#rn-840}
@@ -11936,15 +11836,7 @@ not consulted at proposal. Changing one requires changing the other.
   (`prsDasSessoes`), `src/application/use-cases/git/resumir-contexto-da-sessao.use-case.ts:37`
   (`prs`), `apps/web/src/routes/ContextAside.tsx:197` (`businessRules`),
   `apps/web/src/routes/ContextAside.tsx:222` (`decisoes`)
-- **Test:** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
-  ("RN-844: devolve os ITENS de regra e decisão fora de qualquer cauda, com
-  teto de 50"; "RN-844: lista as PRs executadas da sessão e da execução
-  ligada…"), `test/application/use-cases/git/resumir-contexto-da-sessao.use-case.spec.ts`
-  ("lê os arquivos das PRs das sessões lidas…"; failures: "corta no teto de
-  arquivos, conta PR fora do teto e diff que falhou em prsNaoLidas" and "sessão
-  de outro projeto é 404 e não lê PR nenhuma"),
-  `apps/web/src/routes/ContextAside.sessao-inteira.test.tsx` ("…lista os itens
-  do servidor (RN-844)"; "agregado sem arquivo diz O QUE não houve…")
+- **Test:** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts` ("RN-844: devolve os ITENS de regra e decisão fora de qualquer cauda, com teto de 50"; "RN-844: lista as PRs executadas da sessão e da execução ligada…"), `test/application/use-cases/git/resumir-contexto-da-sessao.use-case.spec.ts` ("lê os arquivos das PRs das sessões lidas…"; failures: "corta no teto de arquivos, conta PR fora do teto e diff que falhou em prsNaoLidas" and "sessão de outro projeto é 404 e não lê PR nenhuma"), `apps/web/src/routes/ContextAside.sessao-inteira.test.tsx` ("…lista os itens do servidor (RN-844)"; "agregado sem arquivo diz O QUE não houve…")
 - **Origin:** AT-513 (TP-01 of 11/10: 9 rules without a list, "showing 1 of 4"
   decisions and "Files touched: Nothing yet" with 12 merged PRs)
 
@@ -11970,18 +11862,7 @@ not consulted at proposal. Changing one requires changing the other.
   (`mergedBaseSha`), `src/infrastructure/git/local-git-provider.ts:862`
   (`rangeDoDiff`), `apps/web/src/lib/canal-vivo.ts:221` (`prs`),
   `apps/web/src/components/PendenciasDeOutrasSessoes.tsx:105` (`invalidateQueries`)
-- **Test:** `test/infrastructure/git/local-git-provider.contract.spec.ts`
-  ("PR mergeada por fast-forward devolve os arquivos que mudou"; "PR mergeada
-  por commit de merge devolve só os arquivos dela"; "PR mergeada antes de os
-  SHAs serem gravados acha o commit de merge"),
-  `apps/web/src/lib/contexto-da-sessao.test.tsx` ("o merge que chega pelo canal
-  relê o resumo"; "CASO DE FALHA: evento que não mexe em PR não relê o
-  resumo"), `apps/web/src/components/PendenciasDeOutrasSessoes.test.tsx`
-  ("RN-841: a tarefa que entra em awaiting_user relê as PRs…"). The read failure
-  adding to `prsNaoLidas` stays covered by
-  `test/application/use-cases/git/resumir-contexto-da-sessao.use-case.spec.ts`
-  ("corta no teto de arquivos, conta PR fora do teto e diff que falhou em
-  prsNaoLidas").
+- **Test:** `test/infrastructure/git/local-git-provider.contract.spec.ts` ("PR mergeada por fast-forward devolve os arquivos que mudou"; "PR mergeada por commit de merge devolve só os arquivos dela"; "PR mergeada antes de os SHAs serem gravados acha o commit de merge"), `apps/web/src/lib/contexto-da-sessao.test.tsx` ("o merge que chega pelo canal relê o resumo"; "CASO DE FALHA: evento que não mexe em PR não relê o resumo"), `apps/web/src/components/PendenciasDeOutrasSessoes.test.tsx` ("RN-841: a tarefa que entra em awaiting_user relê as PRs…"). The read failure adding to `prsNaoLidas` stays covered by `test/application/use-cases/git/resumir-contexto-da-sessao.use-case.spec.ts` ("corta no teto de arquivos, conta PR fora do teto e diff que falhou em prsNaoLidas").
 - **Origin:** AT-518 (TP-01, 13th: "Nenhum arquivo nas PRs nem nos commits"
   with 14 merged PRs, and the tab not rereading the summary)
 
@@ -12001,10 +11882,7 @@ not consulted at proposal. Changing one requires changing the other.
   (`runComoEfeitoDeAcao`),
   `src/infrastructure/http-clients/session-channel-notifier.ts:73`
   (`ehEfeitoDeAcao`)
-- **Test:** `test/application/use-cases/sessions/aviso-ao-canal-da-sessao.spec.ts`
-  ("AT-516: efeito de ação executada dentro de /internal avisa o canal, uma
-  vez"; failure/regression: "escrita vinda do engine (/internal) não é avisada de
-  novo pela api")
+- **Test:** `test/application/use-cases/sessions/aviso-ao-canal-da-sessao.spec.ts` ("AT-516: efeito de ação executada dentro de /internal avisa o canal, uma vez"; failure/regression: "escrita vinda do engine (/internal) não é avisada de novo pela api")
 - **Origin:** AT-516 (the auto-approved infra PR only entered the chat's "PRs prontas"
   ~5 min later, through the fallback poll)
 
@@ -12034,17 +11912,7 @@ not consulted at proposal. Changing one requires changing the other.
   (`execute`),
   `src/application/use-cases/execution/get-infra-context.use-case.ts:89`
   (`projectImage`)
-- **Test:** `test/application/use-cases/actions/propose-action.use-case.spec.ts`
-  ("sem `run`: 400 `run_invalido`, sem proposta"; "URL fora de localhost: 400
-  nomeando o campo"; "`run` válido: a proposta nasce"),
-  `test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts`
-  ("PR aberta emite artifact.run_instructions com prUrl e versão seguinte";
-  failure: "`run` inválido na execução falha sem commitar nem emitir"),
-  `test/application/use-cases/execution/get-run-instructions.use-case.spec.ts`
-  ("devolve o vigente — o de maior version"; "null sem artefato, e o de outro
-  projeto não vaza"),
-  `test/application/use-cases/execution/get-infra-context.use-case.spec.ts`
-  ("RN-852: projectImage é a decisão vigente…"; "…null sem decisão de imagem")
+- **Test:** `test/application/use-cases/actions/propose-action.use-case.spec.ts` ("sem `run`: 400 `run_invalido`, sem proposta"; "URL fora de localhost: 400 nomeando o campo"; "`run` válido: a proposta nasce"), `test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts` ("PR aberta emite artifact.run_instructions com prUrl e versão seguinte"; failure: "`run` inválido na execução falha sem commitar nem emitir"), `test/application/use-cases/execution/get-run-instructions.use-case.spec.ts` ("devolve o vigente — o de maior version"; "null sem artefato, e o de outro projeto não vaza"), `test/application/use-cases/execution/get-infra-context.use-case.spec.ts` ("RN-852: projectImage é a decisão vigente…"; "…null sem decisão de imagem")
 - **Origin:** AT-517 (the TP-01 deliverable did not say how to run it on the
   user's machine)
 
@@ -12069,16 +11937,7 @@ not consulted at proposal. Changing one requires changing the other.
   `src/application/use-cases/sessions/get-session-pending-work.use-case.ts:49`
   (`em_curso_de_dev`),
   `apps/engine/lib/engine/dev/encerramento_da_sessao.ex:133` (`bloquear_orfas`)
-- **Test:** `test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts`
-  ("tarefa recém-desbloqueada (todo) do módulo de um dev da execução segura a
-  sessão"; "tarefa todo de módulo SEM dev na execução não segura"; "tarefa
-  in_progress atribuída a dev da execução segura a sessão"; "listEmCursoDeDev
-  lista a in_progress de dev só para sessão de EXECUÇÃO"),
-  `test/application/use-cases/execution/claim-next-task.use-case.spec.ts`
-  ("retoma a in_progress que já é DELE antes da fila todo"; "não retoma a
-  in_progress dele que está em gate"),
-  `apps/engine/test/engine/dev/encerramento_da_sessao_test.exs` ("bloqueia a
-  task em curso ÓRFÃ…"; "sem nenhuma linha, a órfã também é bloqueada…")
+- **Test:** `test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts` ("tarefa recém-desbloqueada (todo) do módulo de um dev da execução segura a sessão"; "tarefa todo de módulo SEM dev na execução não segura"; "tarefa in_progress atribuída a dev da execução segura a sessão"; "listEmCursoDeDev lista a in_progress de dev só para sessão de EXECUÇÃO"), `test/application/use-cases/execution/claim-next-task.use-case.spec.ts` ("retoma a in_progress que já é DELE antes da fila todo"; "não retoma a in_progress dele que está em gate"), `apps/engine/test/engine/dev/encerramento_da_sessao_test.exs` ("bloqueia a task em curso ÓRFÃ…"; "sem nenhuma linha, a órfã também é bloqueada…")
 - **Origin:** AT-522 (TP-01, 14th: session `538a0ba5` closed 1 s after the
   unblock, an `in_progress` task stuck on `dev-api` without a process)
 
@@ -12095,18 +11954,14 @@ not consulted at proposal. Changing one requires changing the other.
 - **Where:** `src/domain/llm/tool-router.ts:373` (`PISO_DA_CORRECAO_DO_DEV`),
   `:384` (`ehPassoDeCorrecao`), `:397` (`menuComPiso`),
   `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:248` (`menuComPiso`)
-- **Test:** `test/domain/llm/tool-router-correcao-do-dev.spec.ts`
-  ("dev agent em correção recebe write_file e terminal"; "passo comum de
-  leitura do dev não alarga"; "outro agente com a mesma mensagem não ganha";
-  "as marcas existem no texto que o engine monta")
+- **Test:** `test/domain/llm/tool-router-correcao-do-dev.spec.ts` ("dev agent em correção recebe write_file e terminal"; "passo comum de leitura do dev não alarga"; "outro agente com a mesma mensagem não ganha"; "as marcas existem no texto que o engine monta")
 - **Origin:** AT-523
 
 ### RN-858 — An agent's open question is a durable record, and only the session author answers it {#rn-858}
 
 - **Rule:** the doubt an agent leaves for the user becomes the
   `artifact.open_question` event (append-only, in the log of the session where it is born) with
-  `{questionId (uuid), pergunta (até 500), sugestao (até 300, opcional),
-  afeta: {regras, historias, tarefas}, autor, sessionId}` — the events funnel
+  `{questionId (uuid), pergunta (até 500), sugestao (até 300, opcional), afeta: {regras, historias, tarefas}, autor, sessionId}` — the events funnel
   refuses with 400 a payload outside that shape, whether it comes from the engine or the
   api. It closes with `open_question.answered` `{questionId, resposta,
   aceitouSugestao, decisionEventId, respondidaPor}`; the STATUS comes from the log
@@ -12133,13 +11988,7 @@ not consulted at proposal. Changing one requires changing the other.
   (`listar`), `:106` (`responder`), `:273` (`resumeParkedGate`),
   `src/interfaces/http/backlog/open-questions.controller.ts:51`
   (`list`), `:81` (`answer`)
-- **Test:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
-  ("o autor responde: decision_record (ator usuário, com questionId) e
-  answered, e o gate é religado"; "aceitar a sugestão grava a sugestão como
-  escolha"; failures: "quem não é o autor da sessão recebe 403
-  so_o_autor_da_sessao, sem escrever"; "já respondida é 409
-  pergunta_ja_respondida"; "pergunta de outro projeto é 404"; "o funil de
-  eventos recusa com 400 antes de qualquer escrita")
+- **Test:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts` ("o autor responde: decision_record (ator usuário, com questionId) e answered, e o gate é religado"; "aceitar a sugestão grava a sugestão como escolha"; failures: "quem não é o autor da sessão recebe 403 so_o_autor_da_sessao, sem escrever"; "já respondida é 409 pergunta_ja_respondida"; "pergunta de outro projeto é 404"; "o funil de eventos recusa com 400 antes de qualquer escrita")
 - **Origin:** AT-521 (TP-01: four questions from the Criativo vanished from the field of
   view and the flow went on without answers)
 
@@ -12168,18 +12017,7 @@ not consulted at proposal. Changing one requires changing the other.
   (`respostaDoUsuario`),
   `src/application/use-cases/backlog/complete-story.use-case.ts:82`
   (`corrigindoReady`)
-- **Test:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
-  ("devolve só as que afetam a tarefa, a história ou uma regra dela, mais
-  recentes primeiro"; "decisão sem afeta não entra; teto de 10 e texto cortado
-  em 1 500"),
-  `test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts`
-  ("história ready citando pergunta RESPONDIDA é corrigida, e o evento a
-  cita"; failures: "história ready citando pergunta AINDA ABERTA segue
-  recusada"; "história ready com tarefa em revisão segue recusada mesmo com a
-  resposta"),
-  `test/application/use-cases/backlog/complete-story.use-case.spec.ts`
-  ("história ready com pergunta respondida tem RF/DoR corrigidos e segue
-  ready"; "história ready com pergunta ainda aberta é recusada")
+- **Test:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts` ("devolve só as que afetam a tarefa, a história ou uma regra dela, mais recentes primeiro"; "decisão sem afeta não entra; teto de 10 e texto cortado em 1 500"), `test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts` ("história ready citando pergunta RESPONDIDA é corrigida, e o evento a cita"; failures: "história ready citando pergunta AINDA ABERTA segue recusada"; "história ready com tarefa em revisão segue recusada mesmo com a resposta"), `test/application/use-cases/backlog/complete-story.use-case.spec.ts` ("história ready com pergunta respondida tem RF/DoR corrigidos e segue ready"; "história ready com pergunta ainda aberta é recusada")
 - **Origin:** AT-521 (QA failed three times reading the DoR of a `ready`
   story nobody could correct, after the user had already decided)
 
@@ -12202,14 +12040,8 @@ not consulted at proposal. Changing one requires changing the other.
   (`nextGateStatus`),
   `src/application/use-cases/execution/record-gate-verdict.use-case.ts:135`
   (`esperaUsuario`), `:171` (`nextAction`)
-- **Test:** `test/domain/execution/pr-gate-state-machine.spec.ts`
-  ("needs_user_decision mantém o gate e NÃO incrementa o contador, nem no
-  teto"),
-  `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
-  ("needs_user_decision no teto: grava a pergunta, não conta correção, não
-  bloqueia"; failure: "needs_user_decision sem pergunta nem openQuestionId é
-  recusado")
-- **Origin:** AT-521 (the Automação QA failed four times "not confirmed
+- **Test:** `test/domain/execution/pr-gate-state-machine.spec.ts` ("needs_user_decision mantém o gate e NÃO incrementa o contador, nem no teto"), `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts` ("needs_user_decision no teto: grava a pergunta, não conta correção, não bloqueia"; failure: "needs_user_decision sem pergunta nem openQuestionId é recusado")
+- **Origin:** AT-521 (the QA Automation failed four times "not confirmed
   by the user" until the cycle ran out)
 
 ### RN-870 — The verdict only waits for a question that exists and is open {#rn-870}
@@ -12224,10 +12056,7 @@ not consulted at proposal. Changing one requires changing the other.
 - **Where:** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:85`
   (`exigirPerguntaAberta`), `src/domain/open-questions/pergunta-em-aberto.ts:154`
   (`estadoDaPergunta`)
-- **Test:** `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
-  ("pergunta aberta: estaciona sem gravar outra"; failure: "inexistente ou de
-  outro projeto: 404 nomeado, sem escrita", "já respondida: 409 com a decisão,
-  sem escrita nem pr.gate_changed")
+- **Test:** `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts` ("pergunta aberta: estaciona sem gravar outra"; failure: "inexistente ou de outro projeto: 404 nomeado, sem escrita", "já respondida: 409 com a decisão, sem escrita nem pr.gate_changed")
 - **Origin:** AT-526, ADR 0215
 
 ### RN-871 — `afeta.regras` accepts the rule's exact title and stores the id {#rn-871}
@@ -12242,11 +12071,7 @@ not consulted at proposal. Changing one requires changing the other.
   (`resolverRegrasDoAfeta`), `src/application/use-cases/sessions/append-session-event.use-case.ts:117`
   (`resolverRegrasDoAfeta`), `src/application/use-cases/execution/get-dev-task-context.use-case.ts:134`
   (`decisoesDoContexto`)
-- **Test:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
-  ("título exato é convertido para o id da regra"; failure: "texto que não é id
-  nem título de regra: 400 sem escrita"),
-  `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
-  ("decisão legada com TÍTULO de regra em afeta.regras casa pelo título")
+- **Test:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts` ("título exato é convertido para o id da regra"; failure: "texto que não é id nem título de regra: 400 sem escrita"), `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts` ("decisão legada com TÍTULO de regra em afeta.regras casa pelo título")
 - **Origin:** AT-526, ADR 0215
 
 ### RN-872 — The project's other decisions reach the dev and QA, in their own section {#rn-872}
@@ -12260,9 +12085,7 @@ not consulted at proposal. Changing one requires changing the other.
 - **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:134`
   (`decisoesDoContexto`), `src/interfaces/http/internal/dto/internal.response.dto.ts:237`
   (`decisoesDoProjeto`)
-- **Test:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
-  ("as que não tocam a tarefa vêm em decisoesDoProjeto; teto de 10 somado, as
-  da tarefa primeiro")
+- **Test:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts` ("as que não tocam a tarefa vêm em decisoesDoProjeto; teto de 10 somado, as da tarefa primeiro")
 - **Origin:** AT-526, ADR 0215
 
 ### RN-886 — OpenRouter's budget 403 is exhausted credit, with limit, spend and reset {#rn-886}
@@ -12283,11 +12106,7 @@ not consulted at proposal. Changing one requires changing the other.
   (`orcamento_esgotado`), `:226` (`frase_de_orcamento`), `:163`
   (`credito_esgotado?`); `apps/engine/lib/engine/dev/dev_agent_server.ex:957`
   (`motivo_de_credito`)
-- **Test:** `test/domain/llm/llm-provider-errors.spec.ts` ("o 403 de
-  orçamento vira insufficient_credit com o corpo inteiro"; failure: "403 sem
-  marcador de orçamento continua credencial rejeitada");
-  `apps/engine/test/engine/agents/falha_de_turno_test.exs` ("RN-886: o 403 de
-  orçamento do OpenRouter")
+- **Test:** `test/domain/llm/llm-provider-errors.spec.ts` ("o 403 de orçamento vira insufficient_credit com o corpo inteiro"; failure: "403 sem marcador de orçamento continua credencial rejeitada"); `apps/engine/test/engine/agents/falha_de_turno_test.exs` ("RN-886: o 403 de orçamento do OpenRouter")
 - **Origin:** AT-534
 
 ### RN-891 — The interface has four languages, with pt-BR as default and fallback {#rn-891}
