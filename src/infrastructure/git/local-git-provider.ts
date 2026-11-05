@@ -969,7 +969,7 @@ function isAlreadyExists(error: unknown): boolean {
 // rodando `git blame` contra um bare repo de verdade antes de entrar aqui.
 function isMissingRefOrPath(error: unknown): boolean {
   const stderr = (error as { stderr?: string })?.stderr ?? '';
-  return /does not exist in|invalid object name|not a valid object name|no such path|bad revision/i.test(
+  return /does not exist in|exists on disk, but not in|invalid object name|not a valid object name|no such path|bad revision/i.test(
     stderr,
   );
 }
