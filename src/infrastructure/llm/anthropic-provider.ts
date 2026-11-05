@@ -24,6 +24,8 @@ import { LLM_TIMEOUT_ENV, toErrorChunk } from './openai-compatible-provider';
 import { timeoutFromEnv } from './http-stream';
 
 const DEFAULT_MAX_TOKENS = 4096;
+/** A folga do raciocínio no `max_tokens` quando o modelo não declara orçamento (RN-741). */
+const FOLGA_DE_RACIOCINIO_PADRAO = 4096;
 const DEFAULT_TIMEOUT_MS = 300_000;
 
 /** Token de DI para os overrides que só a suite de contrato usa. */
@@ -73,6 +75,9 @@ export class AnthropicProvider implements LLMProvider {
     promptCaching: false,
     vision: false,
   };
+  // AT-739: Haiku 5.5 desliga, Sonnet 5.5 pensa só entre ferramentas, Opus 5.5
+  // REDUZ (`effort: low`) — ver `raciocinioDesligado`. RN-916.
+  readonly aceitaRaciocinioDesligado = true;
 
   constructor(
     @Optional()
@@ -173,37 +178,11 @@ export class AnthropicProvider implements LLMProvider {
     );
 
     try {
-      // AT-676: `thinking` só quando o modelo raciocina e o raciocínio não foi
-      // desligado (sem `thinking` nenhum: `disabled` é 400 nos 5.5). Modelo
-      // atual: adaptive + `display: summarized` (o padrão omitted devolve texto
-      // vazio) e SEM `budget_tokens`; o texto é um RESUMO, nunca o bruto.
-      // Modelo antigo: `enabled`, `budget_tokens` >= 1024 e < `max_tokens`.
-      const pensa = !!options.reasoning && !options.reasoningOff;
-      const adaptativo = pensamentoAdaptativo(options.model);
-      const orcamentoDePensamento =
-        pensa && !adaptativo
-          ? Math.max(1024, options.reasoningBudget ?? 2048)
-          : 0;
+      // AT-676/AT-739: o corpo de raciocínio sai de `corpoDeRaciocinio`, por
+      // geração e, com o raciocínio desligado, por modelo.
       const stream = client.messages.stream({
         model: options.model,
-        max_tokens:
-          (options.maxTokens ?? DEFAULT_MAX_TOKENS) + orcamentoDePensamento,
-        ...(pensa && adaptativo
-          ? {
-              thinking: {
-                type: 'adaptive' as const,
-                display: 'summarized' as const,
-              },
-            }
-          : {}),
-        ...(orcamentoDePensamento
-          ? {
-              thinking: {
-                type: 'enabled' as const,
-                budget_tokens: orcamentoDePensamento,
-              },
-            }
-          : {}),
+        ...corpoDeRaciocinio(options),
         system: systemPrompt,
         messages: conversation,
         ...(options.tools && options.tools.length > 0
@@ -221,7 +200,13 @@ export class AnthropicProvider implements LLMProvider {
           ),
       );
 
+      // O SDK 0.113 não copia `output_tokens_details` do `message_delta` para a
+      // mensagem final; o último `message_delta` é a fonte (RN-666).
+      let detalhesDaSaida: unknown;
       for await (const event of eventos) {
+        if (event.type === 'message_delta')
+          detalhesDaSaida =
+            event.usage.output_tokens_details ?? detalhesDaSaida;
         if (
           event.type === 'content_block_delta' &&
           event.delta.type === 'text_delta'
@@ -262,6 +247,9 @@ export class AnthropicProvider implements LLMProvider {
         inputTokens: finalMessage.usage.input_tokens,
         outputTokens: finalMessage.usage.output_tokens,
         estimated: false,
+        ...tokensDeRaciocinio(
+          detalhesDaSaida ?? finalMessage.usage.output_tokens_details,
+        ),
       };
     } catch (error) {
       yield toErrorChunk(this.normalize(error), this.name);
@@ -429,4 +417,84 @@ function precoDeLista(id: string): {
 /** Modelos antigos (3.x e 4.0..4.5, com ou sem data) seguem em `enabled` + budget; o resto, adaptive. */
 export function pensamentoAdaptativo(modelo: string): boolean {
   return !/^claude-3|^claude-[a-z]+-4(-[0-5])?(-\d{8})?$/.test(modelo);
+}
+
+/**
+ * O que o corpo da Messages API leva de raciocínio (AT-676, AT-739).
+ *
+ * - Sem `reasoning`: nada, `max_tokens` puro.
+ * - Modelo antigo ligado: `enabled` + `budget_tokens` (>= 1024), somado ao teto.
+ * - Modelo adaptativo ligado: `adaptive` + `display: summarized` (o padrão
+ *   omitted devolve texto vazio), sem `budget_tokens`; o `max_tokens` ganha a
+ *   folga da RN-741, porque no adaptativo o teto é TOTAL (raciocínio + texto).
+ * - Desligado (`reasoningOff`, RN-783): `raciocinioDesligado` por modelo.
+ */
+export function corpoDeRaciocinio(options: ChatOptions): {
+  max_tokens: number;
+  thinking?: Anthropic.ThinkingConfigParam;
+  output_config?: Anthropic.OutputConfig;
+} {
+  const teto = options.maxTokens ?? DEFAULT_MAX_TOKENS;
+  const folga = options.reasoningBudget ?? FOLGA_DE_RACIOCINIO_PADRAO;
+  if (!options.reasoning) return { max_tokens: teto };
+  const adaptativo = pensamentoAdaptativo(options.model);
+  // Modelo antigo sem `thinking` não pensa: omitir já é desligar.
+  if (options.reasoningOff && !adaptativo) return { max_tokens: teto };
+  if (options.reasoningOff) {
+    const { pensaAinda, ...corpo } = raciocinioDesligado(options.model);
+    return { max_tokens: teto + (pensaAinda ? folga : 0), ...corpo };
+  }
+  if (!adaptativo) {
+    const orcamento = Math.max(1024, options.reasoningBudget ?? 2048);
+    return {
+      max_tokens: teto + orcamento,
+      thinking: { type: 'enabled', budget_tokens: orcamento },
+    };
+  }
+  return {
+    max_tokens: teto + folga,
+    thinking: { type: 'adaptive', display: 'summarized' },
+  };
+}
+
+/**
+ * Como DESLIGAR o raciocínio num modelo adaptativo, por modelo (AT-739,
+ * decisão do dono de 05/11, provado no smoke). `thinking: disabled` é 400 no
+ * Sonnet 5.5 e no Opus 5.5, mas NÃO no Haiku 5.5. Omitir o `thinking` nos 5.5
+ * é o adaptativo no esforço padrão — não desliga nada.
+ *
+ * - Haiku 5.5: `disabled` — desligado de verdade.
+ * - Sonnet 5.5: `between_tools` — pensa só entre chamadas de ferramenta.
+ * - Opus 5.5: `effort: low` — REDUZIDO, não desligado (declarado).
+ * - Desconhecido: nada (o padrão do modelo), com a folga — reduzir exige prova.
+ *
+ * `pensaAinda` diz se o modelo ainda pode pensar, e decide a folga.
+ */
+export function raciocinioDesligado(modelo: string): {
+  thinking?: Anthropic.ThinkingConfigParam;
+  output_config?: Anthropic.OutputConfig;
+  pensaAinda: boolean;
+} {
+  if (/^claude-haiku-5-5/.test(modelo))
+    return { thinking: { type: 'disabled' }, pensaAinda: false };
+  if (/^claude-sonnet-5-5/.test(modelo))
+    // O SDK 0.113 ainda não tipa `between_tools`.
+    return {
+      thinking: {
+        type: 'between_tools',
+      } as unknown as Anthropic.ThinkingConfigParam,
+      pensaAinda: true,
+    };
+  if (/^claude-opus-5-5/.test(modelo))
+    return { output_config: { effort: 'low' }, pensaAinda: true };
+  return { pensaAinda: true };
+}
+
+/** `thinking_tokens` só quando é inteiro >= 0; senão omitido, e a coluna fica NULL (RN-666). */
+function tokensDeRaciocinio(detalhes: unknown): { reasoningTokens?: number } {
+  const n = (detalhes as { thinking_tokens?: unknown } | null | undefined)
+    ?.thinking_tokens;
+  return typeof n === 'number' && Number.isInteger(n) && n >= 0
+    ? { reasoningTokens: n }
+    : {};
 }
