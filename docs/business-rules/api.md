@@ -12774,6 +12774,20 @@ na instalação responde 409.
 - **Test:** `apps/api/test/infrastructure/llm/traced-llm-provider.spec.ts` (keeps `true`, stays `undefined`, and the real `LLMProviderRegistryImpl.get('anthropic')` returns `true`)
 - **Origin:** AT-743 (EP-030)
 
+### RN-1002 — The agent closes the open question the user answered in chat; the human answer and the agent share one core {#rn-1002}
+
+- **Rule:** extends [RN-858](#rn-858)/[RN-860](#rn-860) (ADR 0214, owner decision of 05/11: the agent closes). `POST /internal/projects/:projectId/open-questions/:questionId/answer` (service token) takes `{ sessionId, agentId, resposta?, messageEventId? }` and writes the SAME `artifact.decision_record` + `open_question.answered` pair as the click, through one shared core (`fechar`), then resumes the parked QA gate of each affected task. `respondidaPor` is the author of the chat session (`sessionId`); the agent goes in `viaAgente` (and `messageEventId` when sent). Without `resposta` the question suggestion is the answer; with neither, 400. Unknown question, a question of another project, or a session outside the project: 404. Already closed: `200 { status: 'already_answered' }`, never 409 (idempotent for the agent). The human `responder` is unchanged (`so_o_autor_da_sessao`, 409).
+- **Where:** `apps/api/src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts` (`responderPeloAgente`, `fechar`), `apps/api/src/interfaces/http/internal/internal-open-questions.controller.ts`.
+- **Test:** `apps/api/test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts` (closes with `decision_record`, 404 for another project, second call `already_answered`).
+- **Origin:** AT-741 (EP-030), finding 4 of the TP-01 of 05/11; engine side is RN-1003.
+
+### RN-1007 — Claude Haiku 5.5 on Anthropic direct has a curated reasoning allowance of 12288 tokens {#rn-1007}
+
+- **Rule:** revises [RN-1000](#rn-1000), whose adaptive allowance defaults to 4096 when `models.reasoning_budget` is NULL. At the default, a reasoning gate on `claude-haiku-5-5` got `max_tokens` 4096 + 4096 = 8192 total and was cut off while still thinking (TP-01 round 25, `qa-estrategia`: 8192 of 8192 output tokens spent reasoning), including a cut WITH text that [RN-916](#rn-916) does not retry. Curated data per [ADR 0223](../adr/0223-orcamento-de-raciocinio-por-modelo.md): migration `0083` sets `reasoning_budget = 12288` on the `anthropic` / `claude-haiku-5-5` catalog row, so adaptive `max_tokens` = visible output + 12288 (16384 at the default 4096). No code change: `corpoDeRaciocinio` already reads `reasoningBudget`. The migration is idempotent and touches no other model (not the same name under another provider, not other Anthropic models). With NULL the allowance falls back to 4096 (8192 total). Not adopted: `effort: low` on the gates (the docs warn the agent skips checks) and turning the budget into `effort`.
+- **Code:** `apps/api/src/db/migrations/0083_folga_do_haiku_5_5.sql`, `apps/api/src/infrastructure/llm/anthropic-provider.ts` (`corpoDeRaciocinio`)
+- **Test:** `apps/api/test/db/folga-do-haiku-migration.spec.ts` (only that row, idempotent), `apps/api/test/infrastructure/llm/raciocinio-texto.spec.ts` (12288 gives 16384 and `adaptive`; NULL gives 8192), `apps/api/test/infrastructure/llm/anthropic-provider.folga.smoke.spec.ts` (manual, paid, skipped without a key)
+- **Origin:** AT-743 (EP-030), owner decision of 05/11 (allowance 12288, ceiling 16384).
+
 ### RN-1004 — The Dev Lead's execution plan is refused when a module with no task is a dependency of a module that has one {#rn-1004}
 
 - **Rule:** extends [RN-678](#rn-678). `lerPlanoDeExecucao` now receives the current `module_map` WITH each module's `dependsOn`, not just the names. After the per-task checks, if a module with NO task in the plan appears in the `dependsOn` of a module that HAS a task, the plan is refused with 400 `plano_de_execucao_invalido`, naming the pair: "deploy depende de api, que ficou sem tarefa — crie a tarefa de fundação de api". A leaf module without a task stays legitimate ([RN-709](#rn-709)); the check runs at proposal and at approval, like the rest of the reading.

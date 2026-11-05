@@ -143,6 +143,88 @@ export class PerguntasEmAbertoUseCase {
       );
     }
 
+    const { decisao, fechamento } = await this.fechar(
+      projectId,
+      pergunta,
+      userId,
+      escolhida,
+    );
+
+    return {
+      ...pergunta,
+      status: 'answered',
+      autorDaSessao: sessao.createdBy,
+      resposta: {
+        texto: escolhida.resposta,
+        aceitouSugestao: escolhida.aceitouSugestao,
+        decisionEventId: decisao.id,
+        respondidaPor: userId,
+        respondidaEm: fechamento.createdAt.toISOString(),
+      },
+    };
+  }
+
+  /**
+   * O agente fecha a pergunta que o usuário respondeu pelo chat (AT-741,
+   * RN-1002). Idempotente: já fechada devolve `already_answered`, nunca 409.
+   * `respondidaPor` é o autor da sessão do chat; o agente fica em `viaAgente`.
+   */
+  async responderPeloAgente(
+    projectId: string,
+    questionId: string,
+    corpo: {
+      sessionId: string;
+      agentId: string;
+      resposta?: string;
+      messageEventId?: string;
+    },
+  ): Promise<{ status: 'answered' | 'already_answered'; questionId: string }> {
+    const pergunta = (await this.todas(projectId)).find(
+      (p) => p.questionId === questionId,
+    );
+    if (!pergunta) {
+      throw new NotFoundException(
+        `Pergunta "${questionId}" não encontrada neste projeto`,
+      );
+    }
+    if (pergunta.status === 'answered') {
+      return { status: 'already_answered', questionId };
+    }
+    const sessao = await this.sessions.findInProject(
+      projectId,
+      corpo.sessionId,
+    );
+    if (!sessao) {
+      throw new NotFoundException(
+        `Sessão "${corpo.sessionId}" não encontrada neste projeto`,
+      );
+    }
+    // Sem `resposta`, vale a sugestão da pergunta.
+    const escolhida = respostaEscolhida(pergunta.sugestao ?? undefined, {
+      resposta: corpo.resposta,
+      aceitarSugestao: !corpo.resposta?.trim(),
+    });
+    if (!escolhida) {
+      throw new BadRequestException(
+        'Sem resposta válida (até 2000 caracteres) e a pergunta não tem sugestão.',
+      );
+    }
+    await this.fechar(projectId, pergunta, sessao.createdBy, escolhida, {
+      viaAgente: corpo.agentId,
+      ...(corpo.messageEventId && { messageEventId: corpo.messageEventId }),
+    });
+    return { status: 'answered', questionId };
+  }
+
+  /** Núcleo comum das duas portas: o par decisão + fechamento e o gate (RN-858/860). */
+  private async fechar(
+    projectId: string,
+    pergunta: PerguntaEmAberto,
+    userId: string,
+    escolhida: { resposta: string; aceitouSugestao: boolean },
+    extra: Record<string, string> = {},
+  ) {
+    const questionId = pergunta.questionId;
     const ator = { kind: 'user' as const, id: userId };
     const { decisao, fechamento } = await this.unitOfWork.runInTransaction(
       async () => {
@@ -159,6 +241,7 @@ export class PerguntasEmAbertoUseCase {
               consequences: descreverAfeta(pergunta.afeta),
               questionId,
               afeta: pergunta.afeta,
+              ...extra,
             },
           },
         );
@@ -174,6 +257,7 @@ export class PerguntasEmAbertoUseCase {
               aceitouSugestao: escolhida.aceitouSugestao,
               decisionEventId: decisao.id,
               respondidaPor: userId,
+              ...extra,
             },
           },
         );
@@ -196,18 +280,7 @@ export class PerguntasEmAbertoUseCase {
       }
     }
 
-    return {
-      ...pergunta,
-      status: 'answered',
-      autorDaSessao: sessao.createdBy,
-      resposta: {
-        texto: escolhida.resposta,
-        aceitouSugestao: escolhida.aceitouSugestao,
-        decisionEventId: decisao.id,
-        respondidaPor: userId,
-        respondidaEm: fechamento.createdAt.toISOString(),
-      },
-    };
+    return { decisao, fechamento };
   }
 
   private async todas(projectId: string): Promise<PerguntaEmAberto[]> {
