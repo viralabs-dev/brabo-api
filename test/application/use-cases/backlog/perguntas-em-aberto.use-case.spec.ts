@@ -272,4 +272,56 @@ describe('artifact.open_question: afeta.regras por título (RN-871)', () => {
     ).rejects.toThrow(/não é id nem título exato.*"cliques"/);
     expect(gravados).toEqual([]);
   });
+
+  describe('responderPeloAgente (RN-1002)', () => {
+    const corpo = { sessionId: 's-origem', agentId: 'criativo' };
+
+    it('fecha a pergunta: grava decision_record e answered, e religa o gate', async () => {
+      const r = await useCase.responderPeloAgente('p1', Q, {
+        ...corpo,
+        resposta: '404',
+        messageEventId: 'ev-chat',
+      });
+      expect(r).toEqual({ status: 'answered', questionId: Q });
+      const decisao = eventos.find(
+        (e) => e.type === 'artifact.decision_record',
+      )!;
+      expect(decisao.actor).toEqual({ kind: 'user', id: 'autor' });
+      expect(decisao.payload).toMatchObject({
+        choice: '404',
+        questionId: Q,
+        viaAgente: 'criativo',
+        messageEventId: 'ev-chat',
+      });
+      expect((await useCase.listar('p1', 'open')).total).toBe(0);
+      expect(resumeParkedGate).toHaveBeenCalledWith('p1', 't-1', 'qa');
+    });
+
+    it('sem resposta vale a sugestão', async () => {
+      await useCase.responderPeloAgente('p1', Q, corpo);
+      const fechou = eventos.find((e) => e.type === 'open_question.answered')!;
+      expect(fechou.payload).toMatchObject({
+        resposta: '404 com mensagem curta',
+        aceitouSugestao: true,
+      });
+    });
+
+    it('404 para pergunta de outro projeto', async () => {
+      await expect(
+        useCase.responderPeloAgente('p2', Q, { ...corpo, resposta: 'x' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(eventos).toHaveLength(1);
+    });
+
+    it('a segunda chamada devolve already_answered, sem gravar de novo', async () => {
+      await useCase.responderPeloAgente('p1', Q, { ...corpo, resposta: 'a' });
+      const n = eventos.length;
+      const r = await useCase.responderPeloAgente('p1', Q, {
+        ...corpo,
+        resposta: 'b',
+      });
+      expect(r.status).toBe('already_answered');
+      expect(eventos).toHaveLength(n);
+    });
+  });
 });
