@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The root `README.md` and `THIRD_PARTY_NOTICES.md` are English-only (AT-745), with the same content; the notices shipped in the images now read in English.
 - The api docs are English-only (AT-745): `docs/` is now the English source with `idioma_original: en`, the `docs/i18n/` translations and the `openapi-textos.json` catalogs (the `brabo` reads its own since brabo#27) are removed, and the generated `providers-capabilities` block is in English.
 - Re-anchors one `file:line` reference in `docs/business-rules/api.md` (`propose-action.use-case.spec.ts`, `mounted`).
 - `backlog.task_created` records the real actor (AT-742): `POST /internal/sessions/:sessionId/tasks` accepts optional `agentRole` (`po` | `dev_lead`, 400 otherwise; default `po`), so the Dev Lead's foundation task (RN-1006) is no longer logged as created by the PO.
