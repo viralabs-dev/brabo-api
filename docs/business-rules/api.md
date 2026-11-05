@@ -12783,7 +12783,7 @@ na instalação responde 409.
 
 ### RN-1004 — The Dev Lead's execution plan is refused when a module with no task is a dependency of a module that has one {#rn-1004}
 
-- **Rule:** extends [RN-678](#rn-678). `lerPlanoDeExecucao` now receives the current `module_map` WITH each module's `dependsOn`, not just the names. After the per-task checks, if a module with NO task in the plan appears in the `dependsOn` of a module that HAS a task, the plan is refused with 400 `plano_de_execucao_invalido`, naming the pair: "deploy depende de api, que ficou sem tarefa — crie a tarefa de fundação de api". A leaf module without a task stays legitimate ([RN-709](#rn-709)); the check runs at proposal and at approval, like the rest of the reading.
+- **Rule:** extends [RN-678](#rn-678). `lerPlanoDeExecucao` now receives the current `module_map` WITH each module's `dependsOn`, not just the names. After the per-task checks, if a module with NO task in the plan appears in the `dependsOn` of a module that HAS a task, the plan is refused with 400 `plano_de_execucao_invalido`, naming the pair: "deploy depende de api, que ficou sem tarefa — crie a tarefa de fundação de api". A leaf module without a task stays legitimate ([RN-709](web.md#rn-709)); the check runs at proposal and at approval, like the rest of the reading.
 - **Code:** `apps/api/src/domain/execution/plano-de-execucao.ts` (`lerPlanoDeExecucao`), `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts` (`lerPlano`)
 - **Test:** `apps/api/test/domain/execution/plano-de-execucao.spec.ts` (`fundação com dono`: the plan without `db`/`api` is refused naming `deploy` -> `api`; with a task in `db`, `api` and `deploy` it passes)
 - **Origin:** AT-742 (EP-030), TP-01 finding 9 of 05/11; ADR 0259.
