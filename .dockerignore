@@ -1,0 +1,15 @@
+node_modules
+dist
+coverage
+.vitest-reports
+.git
+.github
+.env
+.env.*
+docs
+test
+scripts
+contracts
+*.md
+!THIRD_PARTY_NOTICES.md
+Dockerfile*

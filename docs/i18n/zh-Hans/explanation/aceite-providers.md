@@ -144,7 +144,7 @@ OLLAMA_EMBEDDING_SMOKE=1 pnpm --filter api test ollama-provider.embeddings
 | Bitdeer | `bitdeer-provider.smoke.spec.ts` | `BITDEER_TEST_KEY` | `moonshotai/Kimi-K2.5` | ❌ 跳过 | 环境中缺少 key | — |
 | Vultr | `vultr-provider.smoke.spec.ts` | `VULTR_TEST_KEY` | `kimi-k2-instruct` | ❌ 跳过 | 环境中缺少 key | — |
 
-这些文件位于 `apps/api/test/infrastructure/llm/`。默认模型可以通过 `<PROVIDER>_TEST_MODEL` 覆盖——
+这些文件位于 `test/infrastructure/llm/`。默认模型可以通过 `<PROVIDER>_TEST_MODEL` 覆盖——
 在账户无权访问该列中的模型时很有用。
 
 ## 关闭每一行要花多少钱 {#quanto-custa-fechar-cada-linha}

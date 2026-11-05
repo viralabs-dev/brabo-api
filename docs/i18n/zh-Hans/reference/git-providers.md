@@ -52,7 +52,7 @@ Brabo 工作在一个真实的 git 仓库之上，有三个后端承担这一角
 两种缺失沿用 `getFileContent` 已有的词汇——`null`，而不是异常——让代码标签页以同一种方式处理“不存在”。
 
 **上限。** 两者都会截断，并通过 `truncated: true` 告知。数字放在
-`apps/api/src/domain/git/git-read-limits.ts`（每层 1000 个条目，每个 diff 300 个文件），而**不**放在 `packages/shared`，后者 100% 只有类型——在那里写一个 `export const` 能通过 `tsc`，却会在生产环境中让 api 启动失败（由 `apps/api/test/packages-shared-so-tipos.spec.ts` 守护）。
+`src/domain/git/git-read-limits.ts`（每层 1000 个条目，每个 diff 300 个文件），而**不**放在 `packages/shared`，后者 100% 只有类型——在那里写一个 `export const` 能通过 `tsc`，却会在生产环境中让 api 启动失败（由 `test/packages-shared-so-tipos.spec.ts` 守护）。
 
 ### 三个基础操作（FASE 26b — RN-110/111/112）
 
@@ -151,18 +151,18 @@ Local provider 在内部实现了 PR（没有服务器托管它们，但流程�
 （[ADR 0003](../adr/0003-git-provider-retry-policy.md)）。
 
 算法是 AWS 的 Full Jitter：
-`sleep = random(0, min(maxDelay, base · 2^attempt))`，默认 4 次尝试。`apps/api/src/infrastructure/git/retry.ts`。
+`sleep = random(0, min(maxDelay, base · 2^attempt))`，默认 4 次尝试。`src/infrastructure/git/retry.ts`。
 
 这种不对称就是整个决策：重试一个超时的 `listBranches` 无害；重试一个可能已经成功的 `commitFiles` 会产生重复提交。无法知道变更是否发生时，正确的做法是失败并让人来查看。
 
 ## 契约测试套件
 
-一个统一的套件——`apps/api/test/contract/git-provider.contract.ts`——针对**三个** provider 运行。正是它保证“在 Local 中能用”不会变成“只在 Local 中能用”。
+一个统一的套件——`test/contract/git-provider.contract.ts`——针对**三个** provider 运行。正是它保证“在 Local 中能用”不会变成“只在 Local 中能用”。
 
 它也是让 `capabilities` 保持诚实的机制：声明 `protectBranch: true` 的 provider 必须通过保护测试；声明 `false` 的必须抛出 `GitNotSupportedError`。声明错误会在两个方向上都让套件失败。
 
 套件附带两道守卫，位于
-`apps/api/test/contract/git-provider-contract-callers.spec.ts`。第一道检查套件头部是否恰好列出调用它的地方。第二道是 FASE 26 的第 33 项：**在 `src/` 中没有消费者的契约操作会让 CI 失败**——一个三个 provider 都实现却无人调用的操作是永久的负担，也没有任何东西证明它在真实路径上可用。
+`test/contract/git-provider-contract-callers.spec.ts`。第一道检查套件头部是否恰好列出调用它的地方。第二道是 FASE 26 的第 33 项：**在 `src/` 中没有消费者的契约操作会让 CI 失败**——一个三个 provider 都实现却无人调用的操作是永久的负担，也没有任何东西证明它在真实路径上可用。
 
 让某个阶段先交付契约、后交付路由的阀门既窄又有名字：映射 `SEM_CONSUMIDOR_AINDA`，每个操作旁边写着将要消费它的阶段。它会自行关闭——操作一旦有了消费者，该条目就会**失败**，迫使编写路由的人删除它。
 

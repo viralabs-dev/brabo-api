@@ -9,7 +9,7 @@ justification for the ones left open. Decisions in
 [ADR 0027](adr/0027-fase5-backup-hardening-release.md).
 
 > **This document is the source of truth for a test**, not a copy of one.
-> `apps/api/test/interfaces/route-surface.spec.ts` boots the application,
+> `test/interfaces/route-surface.spec.ts` boots the application,
 > enumerates the routes **registered at runtime**, and compares them
 > against the table below. A new route with no row here **fails the
 > test**; a row whose classification differs from the real annotation
@@ -1056,7 +1056,7 @@ reason in the URL.
   `redact` list: if it landed in a logged error body, it would go to
   Loki in plain text and with retention. `serviceToken`, `privateKey`,
   `encryptedDek`, and `dek` were added at the same time. The full list is
-  in `apps/api/src/infrastructure/observability/logger.config.ts`, and
+  in `src/infrastructure/observability/logger.config.ts`, and
   there's a test asserting each path — the list is a contract, not a
   convenience.
 - **CORS's `allowedHeaders` is explicit**, and the list needs to contain

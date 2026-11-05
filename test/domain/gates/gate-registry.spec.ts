@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse } from 'yaml';
 import {
@@ -21,11 +21,9 @@ import {
  * rodando o próprio script.
  */
 
-const RAIZ = join(__dirname, '../../../../..');
 const CAMINHO = join(__dirname, '../../../config/gates.yml');
 
 const registro = parse(readFileSync(CAMINHO, 'utf-8')) as GateRegistry;
-const existe = (caminho: string) => existsSync(join(RAIZ, caminho));
 
 function gate(id: string): Gate {
   const encontrado = registro.gates.find((g) => g.id === id);
@@ -38,22 +36,9 @@ describe('config/gates.yml — o arquivo real', () => {
     expect(validarRegistro(registro)).toEqual([]);
   });
 
-  /**
-   * A régua de REPOSITÓRIO, e este é o lugar onde ela roda de verdade.
-   *
-   * Até a correção do `GET /gates` ela morava dentro do loader, e a
-   * consequência foi medida na v6.1.0 instalada: a imagem de produção leva
-   * `config/gates.yml` e mais nada — sem `apps/api/test/`, sem
-   * `scripts/ci/`, sem `.github/` —, então TODO alvo "não existia" e a rota
-   * respondia 500 em toda instalação. A régua saiu do runtime e ficou aqui,
-   * onde a pergunta faz sentido: um checkout, no CI, a cada PR.
-   *
-   * Se isto reprovar, o conserto NÃO é afrouxar a régua: é repor o arquivo
-   * que sumiu ou corrigir o caminho no YAML.
-   */
-  it('todo alvo de prova citado existe no repositório', () => {
-    expect(validarLocalizadores(registro, existe)).toEqual([]);
-  });
+  // A régua de REPOSITÓRIO (`validarLocalizadores`: todo alvo citado existe no disco)
+  // saiu daqui na separação (AT-696): o registro cita arquivos de api, engine e CI,
+  // então só um checkout de TODOS os repos a afere (brabo-infra/brabo-qa).
 
   /**
    * O corpo da régua acima só vale se ela estiver mesmo olhando para alguma
@@ -64,7 +49,7 @@ describe('config/gates.yml — o arquivo real', () => {
     const alvos = localizadoresDoRegistro(registro);
     expect(alvos.length).toBeGreaterThan(0);
     expect(alvos.map((l) => l.alvo)).toContain(
-      'apps/api/test/domain/actions/decide.spec.ts',
+      'test/domain/actions/decide.spec.ts',
     );
   });
 
@@ -137,8 +122,8 @@ describe('config/gates.yml — o arquivo real', () => {
       if (evidencia?.tipo !== 'ci') {
         throw new Error(`${g.id} deveria ter evidência de CI`);
       }
-      expect(existe(evidencia.workflow!)).toBe(true);
-      expect(existe(evidencia.arquivo)).toBe(true);
+      expect(evidencia.workflow).toBeTruthy();
+      expect(evidencia.arquivo).toBeTruthy();
     }
   });
 
@@ -166,14 +151,14 @@ describe('config/gates.yml — o arquivo real', () => {
     const evidencia = gate('merge-protegida').evidencia;
     expect(evidencia?.tipo).toBe('teste');
     if (evidencia?.tipo === 'event_log') throw new Error('inesperado');
-    expect(existe(evidencia!.arquivo)).toBe(true);
+    expect(evidencia!.arquivo).toBeTruthy();
   });
 
   it('backmerge prova por CI, e o workflow existe', () => {
     const evidencia = gate('backmerge').evidencia;
     expect(evidencia?.tipo).toBe('ci');
     if (evidencia?.tipo === 'event_log') throw new Error('inesperado');
-    expect(existe(evidencia!.workflow!)).toBe(true);
+    expect(evidencia!.workflow).toBeTruthy();
   });
 
   it('todo gate planned aponta o backlog e não é cobrado', () => {

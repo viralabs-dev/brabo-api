@@ -1059,7 +1059,7 @@
     },
     "/internal/projects/{projectId}/product-metrics": {
       "get": {
-        "description": "The SAME report as the `analise:funil` script (ADR 0089) — session → commit → PR → merge funnel, real lead time and real deployment frequency — through the same pure functions and the same query (`apps/api/src/application/services/funil-metrics.ts`), so the two never diverge from the same fact. Closes `docs/fluxo.yml` (role `po`, input `metricas-de-produto`, previously `status: lacuna`) (RN-407).",
+        "description": "The SAME report as the `analise:funil` script (ADR 0089) — session → commit → PR → merge funnel, real lead time and real deployment frequency — through the same pure functions and the same query (`src/application/services/funil-metrics.ts`), so the two never diverge from the same fact. Closes `docs/fluxo.yml` (role `po`, input `metricas-de-produto`, previously `status: lacuna`) (RN-407).",
         "operationId": "InternalProjectsController_productMetrics",
         "parameters": [
           {
@@ -16687,7 +16687,7 @@
           },
           "path": {
             "type": "string",
-            "example": "apps/api/src/main.ts"
+            "example": "src/main.ts"
           },
           "lines": {
             "type": "array",
@@ -16831,7 +16831,7 @@
         "properties": {
           "path": {
             "type": "string",
-            "example": "apps/api/src/main.ts",
+            "example": "src/main.ts",
             "description": "Path AFTER the change (for `removed`, what disappeared)."
           },
           "previousPath": {
@@ -16908,7 +16908,7 @@
           },
           "path": {
             "type": "string",
-            "example": "apps/api/src/main.ts"
+            "example": "src/main.ts"
           },
           "content": {
             "type": "string",
@@ -17020,7 +17020,7 @@
         "properties": {
           "path": {
             "type": "string",
-            "example": "apps/api/src/main.ts"
+            "example": "src/main.ts"
           },
           "line": {
             "type": "number",
@@ -17086,7 +17086,7 @@
         "properties": {
           "path": {
             "type": "string",
-            "example": "apps/api/src/main.ts",
+            "example": "src/main.ts",
             "description": "Full path from the repository's root."
           },
           "name": {

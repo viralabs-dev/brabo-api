@@ -237,7 +237,7 @@ into approval.
 ## What activating execution seeds
 
 Activating execution writes the `DEV_TERMINAL_ALLOW_PATTERNS` patterns
-(`apps/api/src/domain/actions/dev-terminal-patterns.ts`) into the project's
+(`src/domain/actions/dev-terminal-patterns.ts`) into the project's
 `allow`. There are two families:
 
 - **reading the worktree itself** — `ls`, `pwd`, `find`, `cat`, `head`,
@@ -445,7 +445,7 @@ The historical reason for the `deny` was concrete: "always allow" writes
 the pattern into `allow`, and a single click would be enough to reopen the
 door forever. That gap was closed AT THE SOURCE, not worked around:
 `ApproveAlwaysActionUseCase`/`patternsForAction`
-(`apps/api/src/application/use-cases/actions/approve-always-action.use-case.ts`)
+(`src/application/use-cases/actions/approve-always-action.use-case.ts`)
 REFUSE to write a pattern into `allow` for a terminal action with git
 external effect or a privileged command — the user still approves the
 specific instance through the normal flow, but "always allow" never writes
@@ -505,7 +505,7 @@ an action that was already approved.
 `git push` command was refused; a typed `git_push` action went through and
 wrote `GitPush()` into `allow`. "Always allow" now refuses, by type, the
 single list `TIPOS_SEM_SEMPRE_PERMITIR`
-(`apps/api/src/domain/actions/sempre-permitir.ts`): `git_push`, `pr_open`,
+(`src/domain/actions/sempre-permitir.ts`): `git_push`, `pr_open`,
 `git_merge`, `container_remove`, `instruction_patch`, `parallelize` and
 `raise_max_parallel` — `400` with `reason: "teto_do_sempre_permitir"`. The
 approval card hides the button for the same list (a copy checked against

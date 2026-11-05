@@ -18,7 +18,7 @@ API Anthropic, — и не должен знать.
 
 ## Контракт
 
-`LLMProvider` (`apps/api/src/application/ports/llm-provider.port.ts`) имеет одну
+`LLMProvider` (`src/application/ports/llm-provider.port.ts`) имеет одну
 ОБЯЗАТЕЛЬНУЮ операцию, и она всегда потоковая:
 
 ```ts
@@ -109,26 +109,26 @@ workspace ([RN-057](../business-rules/api.md#rn-057)) — это не capability
 
 > ⚠️ Блок сгенерирован `pnpm docs:generate`. Не редактируйте вручную — следующая сборка его перезапишет.
 
-Прочитано из литералов `capabilities` в `apps/api/src/infrastructure/llm/` — провайдеров: **11**.
+Прочитано из литералов `capabilities` в `src/infrastructure/llm/` — провайдеров: **11**.
 
 | провайдер | streaming | tool calling | list_models | embeddings | предпочтение маршрутизации | учётные данные | происхождение моделей | особенности кратко | источник |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `9router` | да | да | да | нет | нет | API-ключ | sync | URL por instalação; Credencial obrigatória; Preço = curadoria manual; Capabilities `false`; Usage corrigido; Token Saver desligado; Raciocínio redigido no OAuth do Claude; Camuflagem das ferramentas no OAuth do Claude; Qual upstream serviu | `apps/api/src/infrastructure/llm/nine-router-provider.ts` |
-| `anthropic` | да | да | да | нет | нет | API-ключ | sync + seed | — | `apps/api/src/infrastructure/llm/anthropic-provider.ts` |
-| `bitdeer` | да | да | нет | нет | нет | API-ключ | seed | `Authorization: Bearer <chave>` CONFIRMADO; `GET /v1/models` existe e é autenticado; Três ids REAIS de modelo confirmados; Nenhuma peculiaridade de stream/erro confirmada | `apps/api/src/infrastructure/llm/bitdeer-provider.ts` |
-| `deepinfra` | да | да | да | нет | нет | API-ключ | sync + seed | O catálogo é PÚBLICO — sem autenticação nenhuma; `stream_options.include_usage` confirmado como suportado; Erro no formato padrão | `apps/api/src/infrastructure/llm/deepinfra-provider.ts` |
-| `nvidia-nim` | да | да | да | нет | нет | API-ключ | sync + seed | Sem cabeçalho dedicado; Tool calling é POR MODELO, não por API; `stream_options.include_usage` não confirmado | `apps/api/src/infrastructure/llm/nvidia-nim-provider.ts` |
-| `ollama` | да | да | да | да | нет | нет (локально) | sync + seed | — | `apps/api/src/infrastructure/llm/ollama-provider.ts` |
-| `openai` | да | да | да | нет | нет | API-ключ | sync + seed | — | `apps/api/src/infrastructure/llm/openai-provider.ts` |
-| `opencode-zen` | да | нет | нет | нет | нет | API-ключ | seed | Sem teste de conexão da credencial; Capabilities `false` | `apps/api/src/infrastructure/llm/opencode-zen-provider.ts` |
-| `openrouter` | да | да | да | нет | да | API-ключ | sync | Cabeçalhos próprios; Id de modelo prefixado pelo upstream; Catálogo com preço na própria linha; Erro NO MEIO do stream; Custo real em `usage.cost`; Alias de roteamento livre (`~…`) é sincronizado mas não pode ser curado | `apps/api/src/infrastructure/llm/openrouter-provider.ts` |
-| `together` | да | да | да | нет | нет | API-ключ | sync + seed | Unidade de preço NÃO documentada explicitamente pela Together; Ids com namespace; `stream_options.include_usage` não confirmado; 429 leva `error_type: dynamic_request_limited \| dynamic_token_limited` | `apps/api/src/infrastructure/llm/together-provider.ts` |
-| `vultr` | да | да | нет | нет | нет | API-ключ | seed | Tool calling CONFIRMADO com exemplo real; Sufixo `-normalize` | `apps/api/src/infrastructure/llm/vultr-provider.ts` |
+| `9router` | да | да | да | нет | нет | API-ключ | sync | URL por instalação; Credencial obrigatória; Preço = curadoria manual; Capabilities `false`; Usage corrigido; Token Saver desligado; Raciocínio redigido no OAuth do Claude; Camuflagem das ferramentas no OAuth do Claude; Qual upstream serviu | `src/infrastructure/llm/nine-router-provider.ts` |
+| `anthropic` | да | да | да | нет | нет | API-ключ | sync + seed | — | `src/infrastructure/llm/anthropic-provider.ts` |
+| `bitdeer` | да | да | нет | нет | нет | API-ключ | seed | `Authorization: Bearer <chave>` CONFIRMADO; `GET /v1/models` existe e é autenticado; Três ids REAIS de modelo confirmados; Nenhuma peculiaridade de stream/erro confirmada | `src/infrastructure/llm/bitdeer-provider.ts` |
+| `deepinfra` | да | да | да | нет | нет | API-ключ | sync + seed | O catálogo é PÚBLICO — sem autenticação nenhuma; `stream_options.include_usage` confirmado como suportado; Erro no formato padrão | `src/infrastructure/llm/deepinfra-provider.ts` |
+| `nvidia-nim` | да | да | да | нет | нет | API-ключ | sync + seed | Sem cabeçalho dedicado; Tool calling é POR MODELO, não por API; `stream_options.include_usage` não confirmado | `src/infrastructure/llm/nvidia-nim-provider.ts` |
+| `ollama` | да | да | да | да | нет | нет (локально) | sync + seed | — | `src/infrastructure/llm/ollama-provider.ts` |
+| `openai` | да | да | да | нет | нет | API-ключ | sync + seed | — | `src/infrastructure/llm/openai-provider.ts` |
+| `opencode-zen` | да | нет | нет | нет | нет | API-ключ | seed | Sem teste de conexão da credencial; Capabilities `false` | `src/infrastructure/llm/opencode-zen-provider.ts` |
+| `openrouter` | да | да | да | нет | да | API-ключ | sync | Cabeçalhos próprios; Id de modelo prefixado pelo upstream; Catálogo com preço na própria linha; Erro NO MEIO do stream; Custo real em `usage.cost`; Alias de roteamento livre (`~…`) é sincronizado mas não pode ser curado | `src/infrastructure/llm/openrouter-provider.ts` |
+| `together` | да | да | да | нет | нет | API-ключ | sync + seed | Unidade de preço NÃO documentada explicitamente pela Together; Ids com namespace; `stream_options.include_usage` não confirmado; 429 leva `error_type: dynamic_request_limited \| dynamic_token_limited` | `src/infrastructure/llm/together-provider.ts` |
+| `vultr` | да | да | нет | нет | нет | API-ключ | seed | Tool calling CONFIRMADO com exemplo real; Sufixo `-normalize` | `src/infrastructure/llm/vultr-provider.ts` |
 
 Провайдер без `list_models` ПРОПУСКАЕТСЯ синхронизацией каталога, с причиной
 в отчёте — это никогда не считается «каталог вернулся пустым».
 «Происхождение моделей»: `sync` находит сам, `seed` приходит только через
-`apps/api/src/db/seed.ts`, `sync + seed` — оба (seed лишь начальная загрузка
+`src/db/seed.ts`, `sync + seed` — оба (seed лишь начальная загрузка
 до первой синхронизации). «Особенности кратко» — это жирные МЕТКИ из
 раздела провайдера ниже; объяснение каждой живёт там, а не здесь.
 «embeddings» — возможность из ADR 0075, и она `да` только с ДОКАЗАТЕЛЬСТВОМ
@@ -215,7 +215,7 @@ workspace A, включая модель, включал её и для B
 
 `workspace_models.uses` хранит кураторство ПО ИСПОЛЬЗОВАНИЮ — `codigo`,
 `documentacao`, `analise`, `imagem`, `conversa` — закрытый словарь в
-`apps/api/src/domain/llm/model-uses.ts`. Этого не публикует ни один каталог:
+`src/domain/llm/model-uses.ts`. Этого не публикует ни один каталог:
 provider объявляет capability, но какая модель хорошо работает с кодом **для
 этой команды**, выясняется только использованием.
 
@@ -397,7 +397,7 @@ ADR 0075 — относится к волне, которая реализует
 
 Никто ничего не решает, сопоставляя подстроку сообщения поставщика: решение
 принимается по `code` chunk. Классы находятся в
-`apps/api/src/domain/llm/llm-provider-errors.ts`.
+`src/domain/llm/llm-provider-errors.ts`.
 
 | статус provider | `code` | означает |
 | --- | --- | --- |
@@ -500,7 +500,7 @@ provider Anthropic). Без поля OpenRouter резервирует кред�
 это сообщение попадает в **сериализованном теле**: каждый harness объявляет
 `posicaoDoSistemaTardio`, и контракт проверяет его в обеих позициях, а также то,
 что текст появляется ровно один раз и остальная часть разговора сохраняет
-порядок (`apps/api/test/contract/llm-provider.contract.ts`).
+порядок (`test/contract/llm-provider.contract.ts`).
 
 | provider | адаптер | куда попадает поздний `system` |
 | --- | --- | --- |
@@ -511,7 +511,7 @@ provider Anthropic). Без поля OpenRouter резервирует кред�
 Ни один адаптер его не отбрасывает и не дублирует. Чего фальшивый сервер не
 может сказать — принимает ли РЕАЛЬНЫЙ provider такое тело: он принимает что
 угодно. Это отдельный ручной smoke,
-`apps/api/test/infrastructure/llm/sistema-tardio.smoke.spec.ts`, по одному
+`test/infrastructure/llm/sistema-tardio.smoke.spec.ts`, по одному
 `describe` на provider, каждый обусловлен тем же ключом, что и smoke приёмки
 (плюс `ANTHROPIC_TEST_KEY`; Ollama — через `OLLAMA_SISTEMA_TARDIO_SMOKE=1`).
 Какие уже прогонялись, записано в
@@ -528,7 +528,7 @@ provider **не доказан** в отношении приёма поздне
 ## OpenRouter — первый hub (Фаза 11a)
 
 `OpenRouterProvider` — это `OpenAICompatibleProvider` с `openrouterConfig()`
-(`apps/api/src/infrastructure/llm/openrouter-provider.ts`). Он объявляет
+(`src/infrastructure/llm/openrouter-provider.ts`). Он объявляет
 `listModels: true` — единственный фрагмент кода, который меняется при включении
 capability, это конфигурация; `SyncModelCatalogUseCase` уже заботится об
 остальном.
@@ -593,7 +593,7 @@ API (`github-provider.smoke.spec.ts`, `gitlab-provider.smoke.spec.ts`).
 ## NVIDIA NIM (Фаза 11b)
 
 `NvidiaNimProvider` — это `OpenAICompatibleProvider` с `nvidiaNimConfig()`
-(`apps/api/src/infrastructure/llm/nvidia-nim-provider.ts`), направленный на
+(`src/infrastructure/llm/nvidia-nim-provider.ts`), направленный на
 **хостируемый** endpoint (`integrate.api.nvidia.com`) — не на самостоятельно
 размещаемый контейнер, который является другим продуктом с другим адресом.
 
@@ -602,7 +602,7 @@ API (`github-provider.smoke.spec.ts`, `gitlab-provider.smoke.spec.ts`).
   одна найденная документация не даёт цену за токен — настоящий каталог, но
   бесполезный для стоимости по модели, которую требует metering (capabilities в
   два слоя, ADR 0041). Provider живёт на **ручном seed**
-  (`apps/api/src/db/seed.ts`), пока кто-нибудь не подтвердит endpoint цены, если
+  (`src/db/seed.ts`), пока кто-нибудь не подтвердит endpoint цены, если
   он существует;
 - **Без отдельного заголовка**: `Authorization: Bearer nvapi-...` — стандартный
   bearer, у ключа лишь префикс `nvapi-` по соглашению NVIDIA;
@@ -645,7 +645,7 @@ hour in the cloud.» Единица — GPU/час, а не токен.
 ## Together AI (Фаза 11b)
 
 `TogetherProvider` — это `OpenAICompatibleProvider` с `togetherConfig()`
-(`apps/api/src/infrastructure/llm/together-provider.ts`).
+(`src/infrastructure/llm/together-provider.ts`).
 
 - **`listModels: true`**: `GET /v1/models` документирован с `pricing:
   {input, output, cached_input, base, hourly, finetune}` — используются только
@@ -676,7 +676,7 @@ hour in the cloud.» Единица — GPU/час, а не токен.
 ## DeepInfra (Фаза 11b)
 
 `DeepInfraProvider` — это `OpenAICompatibleProvider` с `deepinfraConfig()`
-(`apps/api/src/infrastructure/llm/deepinfra-provider.ts`), `baseUrl`
+(`src/infrastructure/llm/deepinfra-provider.ts`), `baseUrl`
 `https://api.deepinfra.com/v1/openai` (поверхность, совместимая с OpenAI, — у
 DeepInfra есть и нативные endpoints вне её, здесь не используемые).
 
@@ -712,7 +712,7 @@ DeepInfra есть и нативные endpoints вне её, здесь не и
 ## Bitdeer (Фаза 11b)
 
 `BitdeerProvider` — это `OpenAICompatibleProvider` с `bitdeerConfig()`
-(`apps/api/src/infrastructure/llm/bitdeer-provider.ts`) — самая поверхностная
+(`src/infrastructure/llm/bitdeer-provider.ts`) — самая поверхностная
 публичная документация из пяти в этой фазе.
 
 - **`listModels: false`**: никакого формата каталога/цены публично не найдено
@@ -730,7 +730,7 @@ DeepInfra есть и нативные endpoints вне её, здесь не и
 - **Три РЕАЛЬНЫХ id модели подтверждены** в примерах конфигурации из блога самой
   Bitdeer (не витринные имена): `moonshotai/Kimi-K2.5`,
   `zai-org/GLM-5`, `nvidia/NVIDIA-Nemotron-3-Super-120B-A12B` — засеяны в
-  `apps/api/src/db/seed.ts` с ОЦЕНОЧНОЙ ценой (рынок модели/семейства у других
+  `src/db/seed.ts` с ОЦЕНОЧНОЙ ценой (рынок модели/семейства у других
   providers, не подтверждено самой Bitdeer);
 - **Ни одной особенности потока/ошибки не подтверждено** — заявление Bitdeer об
   «OpenAI REST API standards» не сопровождалось реальным примером
@@ -745,7 +745,7 @@ DeepInfra есть и нативные endpoints вне её, здесь не и
 ## Vultr Serverless Inference (Фаза 11b)
 
 `VultrProvider` — это `OpenAICompatibleProvider` с `vultrConfig()`
-(`apps/api/src/infrastructure/llm/vultr-provider.ts`) — единственный из пяти, у
+(`src/infrastructure/llm/vultr-provider.ts`) — единственный из пяти, у
 которого решение по `listModels` **изменилось в ходе реализации** по сравнению с
 исходным планом.
 
@@ -787,7 +787,7 @@ DeepInfra есть и нативные endpoints вне её, здесь не и
 
 `manual_pricing` остаётся `true`, и это не противоречие: флаг означает «цена
 введена человеком по документации, а не пришла из синхронизации»
-(`apps/api/src/db/schema.ts`). Изменилось то, что число теперь — от самого
+(`src/db/schema.ts`). Изменилось то, что число теперь — от самого
 provider, а не рыночное сравнение.
 :::
 
@@ -845,7 +845,7 @@ sum(rate(brabo_llm_cost_micros_total{provider="openai"}[1h]))
 
 ## Контрактный набор
 
-`apps/api/test/contract/llm-provider.contract.ts` прогоняет одну и ту же батарею
+`test/contract/llm-provider.contract.ts` прогоняет одну и ту же батарею
 против любой реализации, как набор git делает с Фазы 2. Суть в разделении:
 **контракт владеет утверждениями, harness владеет диалектом.**
 

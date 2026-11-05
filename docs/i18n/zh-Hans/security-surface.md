@@ -8,7 +8,7 @@ traducao_de: 2f301391630d5be632e27036026760d416d43da1
 [ADR 0027](adr/0027-fase5-backup-hardening-release.md)。
 
 > **本文档是一个测试的事实来源**，而不是某个测试的副本。
-> `apps/api/test/interfaces/route-surface.spec.ts` 启动应用，
+> `test/interfaces/route-surface.spec.ts` 启动应用，
 > 枚举**运行时注册**的路由，并与下方表格比对。没有对应行的新路由**会让测试失败**；
 > 分类与实际注解不符的行**会让测试失败**；孤立的行（不匹配任何路由）**会让测试失败**。
 > 文档不会悄无声息地过时。
@@ -336,7 +336,7 @@ traducao_de: 2f301391630d5be632e27036026760d416d43da1
   （[ADR 0035](adr/0035-observabilidade-legivel-e-trace-sem-coletor.md)）。
   它承载 api↔engine 的全部流量，却**不在** pino 的 `redact` 列表中：如果它落入被记录的错误体，就会以明文并带着保留期进入 Loki。`serviceToken`、`privateKey`、
   `encryptedDek` 和 `dek` 一并加入。完整列表在
-  `apps/api/src/infrastructure/observability/logger.config.ts`，并有一个测试断言每条路径——这个列表是契约，而不是方便。
+  `src/infrastructure/observability/logger.config.ts`，并有一个测试断言每条路径——这个列表是契约，而不是方便。
 - **CORS 的 `allowedHeaders` 是显式的**，列表必须包含 web 发送的每个请求头：`Content-Type`、`Authorization`、
   `X-CSRF-Token` 和 `traceparent`。缺一个不会让任何测试失败（没有测试做预检），却会让浏览器出错。
 - **engine 只在健康检查路由上有 CORS**

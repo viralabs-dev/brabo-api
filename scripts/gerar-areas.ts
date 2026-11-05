@@ -32,27 +32,18 @@
  * em disco não é o que este gerador produz — é ele que torna a derivação real
  * em vez de combinada.
  */
-import { readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import {
   AGENT_AREAS,
   SOLO_CONVERSATIONAL_AGENTS,
   type AreaDeAgentes,
 } from '../src/domain/agents/agent-areas';
 
-const RAIZ = join(__dirname, '../../..');
-
-/** O contrato neutro (AT-692): web e engine geram a cópia deles DESTE arquivo. */
-export const CAMINHO_JSON = join(RAIZ, 'packages/contracts/areas.json');
-
-export const CAMINHO_WEB = join(
-  RAIZ,
-  'apps/web/src/lib/agent-areas.generated.ts',
-);
-export const CAMINHO_ENGINE = join(
-  RAIZ,
-  'apps/engine/lib/engine/agents/areas.ex',
-);
+/** O contrato neutro (AT-692): web e engine geram a cópia deles DESTE arquivo.
+ * Depois da separação (AT-696) a api é a FONTE e publica o JSON aqui; quem o leva
+ * ao `brabo-contracts` (`packages/contracts/areas.json`) é a tag de lá. */
+export const CAMINHO_JSON = join(__dirname, '../contracts/areas.json');
 
 const AVISO =
   'GERADO por `pnpm --filter api gerar:areas` a partir de\n' +
@@ -164,16 +155,13 @@ export function jsonDasAreas(): string {
 }
 
 export function gerar(): void {
+  mkdirSync(dirname(CAMINHO_JSON), { recursive: true });
   writeFileSync(CAMINHO_JSON, jsonDasAreas(), 'utf-8');
-  // web e engine nascem do JSON, nunca do `.ts` — é o que o `brabo-contracts`
-  // vai entregar a eles quando os repositórios se separarem.
-  const { areas, solo } = JSON.parse(readFileSync(CAMINHO_JSON, 'utf-8'));
-  writeFileSync(CAMINHO_WEB, renderWeb(areas, solo), 'utf-8');
-  writeFileSync(CAMINHO_ENGINE, renderEngine(areas), 'utf-8');
 }
 
 if (require.main === module) {
   gerar();
   // eslint-disable-next-line no-console
-  console.log(`gerado:\n  ${CAMINHO_JSON}\n  ${CAMINHO_WEB}\n  ${CAMINHO_ENGINE}`);
+  console.log(`gerado:
+  ${CAMINHO_JSON}`);
 }

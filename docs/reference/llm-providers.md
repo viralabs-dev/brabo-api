@@ -18,7 +18,7 @@ com o teto de inatividade herdado do [ADR 0020](../adr/0020-destravar-gates-qa-s
 
 ## O contrato
 
-`LLMProvider` (`apps/api/src/application/ports/llm-provider.port.ts`) tem uma
+`LLMProvider` (`src/application/ports/llm-provider.port.ts`) tem uma
 operação OBRIGATÓRIA, e ela é sempre streaming:
 
 ```ts
@@ -112,26 +112,26 @@ do nome do modelo seria um palpite vestido de dado.
 
 > ⚠️ Bloco gerado por `pnpm docs:generate`. Não edite à mão — o próximo build o sobrescreve.
 
-Lido dos literais `capabilities` em `apps/api/src/infrastructure/llm/` — **11 providers**.
+Lido dos literais `capabilities` em `src/infrastructure/llm/` — **11 providers**.
 
 | provider | streaming | tool calling | list_models | embeddings | preferência de roteamento | credencial | origem dos modelos | quirks resumidos | fonte |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `9router` | sim | sim | sim | não | não | chave de API | sync | URL por instalação; Credencial obrigatória; Preço = curadoria manual; Capabilities `false`; Usage corrigido; Token Saver desligado; Raciocínio redigido no OAuth do Claude; Camuflagem das ferramentas no OAuth do Claude; Qual upstream serviu | `apps/api/src/infrastructure/llm/nine-router-provider.ts` |
-| `anthropic` | sim | sim | sim | não | não | chave de API | sync + seed | — | `apps/api/src/infrastructure/llm/anthropic-provider.ts` |
-| `bitdeer` | sim | sim | não | não | não | chave de API | seed | `Authorization: Bearer <chave>` CONFIRMADO; `GET /v1/models` existe e é autenticado; Três ids REAIS de modelo confirmados; Nenhuma peculiaridade de stream/erro confirmada | `apps/api/src/infrastructure/llm/bitdeer-provider.ts` |
-| `deepinfra` | sim | sim | sim | não | não | chave de API | sync + seed | O catálogo é PÚBLICO — sem autenticação nenhuma; `stream_options.include_usage` confirmado como suportado; Erro no formato padrão | `apps/api/src/infrastructure/llm/deepinfra-provider.ts` |
-| `nvidia-nim` | sim | sim | sim | não | não | chave de API | sync + seed | Sem cabeçalho dedicado; Tool calling é POR MODELO, não por API; `stream_options.include_usage` não confirmado | `apps/api/src/infrastructure/llm/nvidia-nim-provider.ts` |
-| `ollama` | sim | sim | sim | sim | não | nenhuma (local) | sync + seed | — | `apps/api/src/infrastructure/llm/ollama-provider.ts` |
-| `openai` | sim | sim | sim | não | não | chave de API | sync + seed | — | `apps/api/src/infrastructure/llm/openai-provider.ts` |
-| `opencode-zen` | sim | não | não | não | não | chave de API | seed | Sem teste de conexão da credencial; Capabilities `false` | `apps/api/src/infrastructure/llm/opencode-zen-provider.ts` |
-| `openrouter` | sim | sim | sim | não | sim | chave de API | sync | Cabeçalhos próprios; Id de modelo prefixado pelo upstream; Catálogo com preço na própria linha; Erro NO MEIO do stream; Custo real em `usage.cost`; Alias de roteamento livre (`~…`) é sincronizado mas não pode ser curado | `apps/api/src/infrastructure/llm/openrouter-provider.ts` |
-| `together` | sim | sim | sim | não | não | chave de API | sync + seed | Unidade de preço NÃO documentada explicitamente pela Together; Ids com namespace; `stream_options.include_usage` não confirmado; 429 leva `error_type: dynamic_request_limited \| dynamic_token_limited` | `apps/api/src/infrastructure/llm/together-provider.ts` |
-| `vultr` | sim | sim | não | não | não | chave de API | seed | Tool calling CONFIRMADO com exemplo real; Sufixo `-normalize` | `apps/api/src/infrastructure/llm/vultr-provider.ts` |
+| `9router` | sim | sim | sim | não | não | chave de API | sync | URL por instalação; Credencial obrigatória; Preço = curadoria manual; Capabilities `false`; Usage corrigido; Token Saver desligado; Raciocínio redigido no OAuth do Claude; Camuflagem das ferramentas no OAuth do Claude; Qual upstream serviu | `src/infrastructure/llm/nine-router-provider.ts` |
+| `anthropic` | sim | sim | sim | não | não | chave de API | sync + seed | — | `src/infrastructure/llm/anthropic-provider.ts` |
+| `bitdeer` | sim | sim | não | não | não | chave de API | seed | `Authorization: Bearer <chave>` CONFIRMADO; `GET /v1/models` existe e é autenticado; Três ids REAIS de modelo confirmados; Nenhuma peculiaridade de stream/erro confirmada | `src/infrastructure/llm/bitdeer-provider.ts` |
+| `deepinfra` | sim | sim | sim | não | não | chave de API | sync + seed | O catálogo é PÚBLICO — sem autenticação nenhuma; `stream_options.include_usage` confirmado como suportado; Erro no formato padrão | `src/infrastructure/llm/deepinfra-provider.ts` |
+| `nvidia-nim` | sim | sim | sim | não | não | chave de API | sync + seed | Sem cabeçalho dedicado; Tool calling é POR MODELO, não por API; `stream_options.include_usage` não confirmado | `src/infrastructure/llm/nvidia-nim-provider.ts` |
+| `ollama` | sim | sim | sim | sim | não | nenhuma (local) | sync + seed | — | `src/infrastructure/llm/ollama-provider.ts` |
+| `openai` | sim | sim | sim | não | não | chave de API | sync + seed | — | `src/infrastructure/llm/openai-provider.ts` |
+| `opencode-zen` | sim | não | não | não | não | chave de API | seed | Sem teste de conexão da credencial; Capabilities `false` | `src/infrastructure/llm/opencode-zen-provider.ts` |
+| `openrouter` | sim | sim | sim | não | sim | chave de API | sync | Cabeçalhos próprios; Id de modelo prefixado pelo upstream; Catálogo com preço na própria linha; Erro NO MEIO do stream; Custo real em `usage.cost`; Alias de roteamento livre (`~…`) é sincronizado mas não pode ser curado | `src/infrastructure/llm/openrouter-provider.ts` |
+| `together` | sim | sim | sim | não | não | chave de API | sync + seed | Unidade de preço NÃO documentada explicitamente pela Together; Ids com namespace; `stream_options.include_usage` não confirmado; 429 leva `error_type: dynamic_request_limited \| dynamic_token_limited` | `src/infrastructure/llm/together-provider.ts` |
+| `vultr` | sim | sim | não | não | não | chave de API | seed | Tool calling CONFIRMADO com exemplo real; Sufixo `-normalize` | `src/infrastructure/llm/vultr-provider.ts` |
 
 Provider sem `list_models` é PULADO pela sincronização do catálogo, com o motivo
 no relatório — nunca tratado como "o catálogo voltou vazio".
 "Origem dos modelos": `sync` descobre sozinho, `seed` só entra por
-`apps/api/src/db/seed.ts`, `sync + seed` tem os dois (o seed é só o bootstrap
+`src/db/seed.ts`, `sync + seed` tem os dois (o seed é só o bootstrap
 antes da primeira sincronização). "Quirks resumidos" são os RÓTULOS em negrito da
 seção de prosa do provider abaixo — o porquê de cada um mora lá, não aqui.
 "embeddings" é a capability do ADR 0075, e só é `sim` com PROVA de execução:
@@ -202,7 +202,7 @@ de escrever uma linha de código:
   sem preço, em vez de com um inventado, quando o id não está na tabela.
   Desde a [RN-965](../business-rules/api.md#rn-965) a tela de curadoria
   SUGERE o preço que o fabricante publica (tabela curada
-  `apps/api/src/domain/llm/precos-do-fabricante.ts`, cada linha com link e
+  `src/domain/llm/precos-do-fabricante.ts`, cada linha com link e
   data da fonte), e quem aplica é o `owner`; a mesma tabela vale para o
   modelo da Anthropic servido por outro provider (o `cc/` do 9Router, por
   exemplo), por igualdade exata do id. No 9Router a sugestão traz também a
@@ -246,7 +246,7 @@ coluna nenhuma que a sincronização pudesse atropelar.
 
 `workspace_models.uses` guarda a curadoria POR USO — `codigo`, `documentacao`,
 `analise`, `imagem`, `conversa` — um vocabulário fechado em
-`apps/api/src/domain/llm/model-uses.ts`. É o que nenhum catálogo publica: o
+`src/domain/llm/model-uses.ts`. É o que nenhum catálogo publica: o
 provider declara a capability, mas qual modelo rende bem em código **para este
 time** só se descobre usando.
 
@@ -426,7 +426,7 @@ ADR 0075 — pertence à onda que implementa o consumidor.
 
 Ninguém decide nada casando substring da mensagem do fornecedor: a decisão é
 tomada pelo `code` do chunk. As classes moram em
-`apps/api/src/domain/llm/llm-provider-errors.ts`.
+`src/domain/llm/llm-provider-errors.ts`.
 
 | status do provider | `code` | quer dizer |
 | --- | --- | --- |
@@ -539,7 +539,7 @@ nas seguintes. A suite de contrato responde, para cada um dos onze providers,
 onde essa mensagem pousa no **corpo serializado**: cada harness declara
 `posicaoDoSistemaTardio` e o contrato a confere nas duas posições, além de o
 texto aparecer exatamente uma vez e o resto da conversa manter a ordem
-(`apps/api/test/contract/llm-provider.contract.ts`).
+(`test/contract/llm-provider.contract.ts`).
 
 | provider | adaptador | onde o `system` tardio pousa |
 | --- | --- | --- |
@@ -549,7 +549,7 @@ texto aparecer exatamente uma vez e o resto da conversa manter a ordem
 
 Nenhum adaptador a descarta nem a duplica. O que o servidor falso não sabe
 dizer é se o provider REAL aceita esse corpo — ele aceita qualquer coisa. Isso
-é um smoke manual à parte, `apps/api/test/infrastructure/llm/sistema-tardio.smoke.spec.ts`,
+é um smoke manual à parte, `test/infrastructure/llm/sistema-tardio.smoke.spec.ts`,
 um `describe` por provider, cada um condicionado à mesma chave que os smokes de
 aceite usam (mais `ANTHROPIC_TEST_KEY`; o Ollama por
 `OLLAMA_SISTEMA_TARDIO_SMOKE=1`). Quais já rodaram está registrado no
@@ -566,7 +566,7 @@ prompt caching que o prefixo teria. Cache não é observável no produto hoje
 ## OpenRouter — o primeiro hub (Fase 11a)
 
 `OpenRouterProvider` é `OpenAICompatibleProvider` com `openrouterConfig()`
-(`apps/api/src/infrastructure/llm/openrouter-provider.ts`). Ele declara
+(`src/infrastructure/llm/openrouter-provider.ts`). Ele declara
 `listModels: true` — a única peça de código que muda quando uma capability liga
 é a configuração; o `SyncModelCatalogUseCase` já cuida do resto.
 
@@ -629,7 +629,7 @@ um aviso. Mesmo molde dos smokes de git contra API real
 ## NVIDIA NIM (Fase 11b)
 
 `NvidiaNimProvider` é `OpenAICompatibleProvider` com `nvidiaNimConfig()`
-(`apps/api/src/infrastructure/llm/nvidia-nim-provider.ts`), apontado para o
+(`src/infrastructure/llm/nvidia-nim-provider.ts`), apontado para o
 endpoint **hospedado** (`integrate.api.nvidia.com`) — não o container
 auto-hospedado, que é outro produto com outro endereço.
 
@@ -679,7 +679,7 @@ confere que o modelo curado veio do `/v1/models`.
 ## Together AI (Fase 11b)
 
 `TogetherProvider` é `OpenAICompatibleProvider` com `togetherConfig()`
-(`apps/api/src/infrastructure/llm/together-provider.ts`).
+(`src/infrastructure/llm/together-provider.ts`).
 
 - **`listModels: true`**: `GET /v1/models` documentado com `pricing:
   {input, output, cached_input, base, hourly, finetune}` — só `input`/
@@ -709,7 +709,7 @@ O teste de aceite com credencial real mora em
 ## DeepInfra (Fase 11b)
 
 `DeepInfraProvider` é `OpenAICompatibleProvider` com `deepinfraConfig()`
-(`apps/api/src/infrastructure/llm/deepinfra-provider.ts`), `baseUrl`
+(`src/infrastructure/llm/deepinfra-provider.ts`), `baseUrl`
 `https://api.deepinfra.com/v1/openai` (a superfície OpenAI-compatível — a
 DeepInfra também tem endpoints nativos fora dela, não usados aqui).
 
@@ -745,7 +745,7 @@ valida nada; só o passo de CHAT descobriria uma chave ruim.
 ## Bitdeer (Fase 11b)
 
 `BitdeerProvider` é `OpenAICompatibleProvider` com `bitdeerConfig()`
-(`apps/api/src/infrastructure/llm/bitdeer-provider.ts`) — a doc pública mais
+(`src/infrastructure/llm/bitdeer-provider.ts`) — a doc pública mais
 rasa dos cinco desta fase.
 
 - **`listModels: false`**: nenhum formato de catálogo/preço foi encontrado
@@ -764,7 +764,7 @@ rasa dos cinco desta fase.
 - **Três ids REAIS de modelo confirmados** em exemplos de configuração do
   próprio blog da Bitdeer (não nomes de vitrine): `moonshotai/Kimi-K2.5`,
   `zai-org/GLM-5`, `nvidia/NVIDIA-Nemotron-3-Super-120B-A12B` — semeados em
-  `apps/api/src/db/seed.ts` com preço ESTIMADO (mercado do modelo/família em
+  `src/db/seed.ts` com preço ESTIMADO (mercado do modelo/família em
   outros providers, não confirmado pela própria Bitdeer);
 - **Nenhuma peculiaridade de stream/erro confirmada** — a afirmação de
   "OpenAI REST API standards" da Bitdeer não veio acompanhada de um exemplo
@@ -779,7 +779,7 @@ O teste de aceite com credencial real mora em
 ## Vultr Serverless Inference (Fase 11b)
 
 `VultrProvider` é `OpenAICompatibleProvider` com `vultrConfig()`
-(`apps/api/src/infrastructure/llm/vultr-provider.ts`) — o único dos cinco em
+(`src/infrastructure/llm/vultr-provider.ts`) — o único dos cinco em
 que a decisão de `listModels` **mudou durante a implementação** em relação ao
 plano original.
 
@@ -820,7 +820,7 @@ agente que escreve código.
 
 `manual_pricing` continua `true`, e não é contradição: a flag quer dizer "preço
 digitado por uma pessoa lendo a doc, em vez de vir da sincronização"
-(`apps/api/src/db/schema.ts`). O que mudou é que o número agora é o do próprio
+(`src/db/schema.ts`). O que mudou é que o número agora é o do próprio
 provider, não uma comparação de mercado.
 :::
 
@@ -831,7 +831,7 @@ O teste de aceite com credencial real mora em
 ## 9Router (AT-576a, ADR 0222)
 
 `NineRouterProvider` é `OpenAICompatibleProvider` com `nineRouterConfig()`
-(`apps/api/src/infrastructure/llm/nine-router-provider.ts`) — o décimo
+(`src/infrastructure/llm/nine-router-provider.ts`) — o décimo
 provider (ADR 0043 era o dos nove). O 9Router é um gateway local do dono
 (`github.com/decolua/9router`), com endpoint OpenAI-compatível e painel na
 mesma porta, e roteia por **combos** (nome estável → lista de modelos/contas com
@@ -846,7 +846,7 @@ fallback).
   teste de conexão é `GET /models` com a chave, na URL do ambiente;
 - **`listModels: true`**, com `parseCatalogo9Router`: lê `capabilities` do
   `GET /v1/models` (tools, reasoning, janela de contexto). A fixture de teste
-  (`apps/api/test/fixtures/nine-router/models.sintetica.json`) é **SINTÉTICA**,
+  (`test/fixtures/nine-router/models.sintetica.json`) é **SINTÉTICA**,
   montada do formato descrito no levantamento, não capturada do 9Router real;
 - **Preço = curadoria manual** (ADR 0042): a resposta não traz preço nem
   `usage.cost` (não achado no build v0.5.104). Por decisão do dono (22/10), o
@@ -872,7 +872,7 @@ O aceite com chave real mora em
 ## OpenCode Zen (AT-568, ADR 0227)
 
 `OpenCodeZenProvider` é `OpenAICompatibleProvider` com `openCodeZenConfig()`
-(`apps/api/src/infrastructure/llm/opencode-zen-provider.ts`) — o décimo primeiro
+(`src/infrastructure/llm/opencode-zen-provider.ts`) — o décimo primeiro
 provider. A doc pública do Zen mostra três dialetos; só o `/chat/completions`
 (`https://opencode.ai/inference/openai/v1`) cabe na base. Os modelos de
 `/responses`, `/v1/messages` e Google, e o Jev do Zen, ficam fora.
@@ -947,7 +947,7 @@ partir dessa mesma métrica.
 
 ## A suite de contrato
 
-`apps/api/test/contract/llm-provider.contract.ts` roda a mesma bateria contra
+`test/contract/llm-provider.contract.ts` roda a mesma bateria contra
 qualquer implementação, como a suite de git faz desde a Fase 2. A divisão é o
 ponto: **o contrato é dono das asserções, o harness é dono do dialeto.**
 

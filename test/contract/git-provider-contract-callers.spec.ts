@@ -85,7 +85,7 @@ describe('cabeçalho da suite de contrato × quem realmente a chama', () => {
  * nascer antes do seu consumidor — com a mesma obrigação de fechar.
  */
 describe('operações do GitProviderContract × quem as consome em src/', () => {
-  const raizDoRepo = join(__dirname, '../../../..');
+  const raizDoRepo = join(__dirname, '../..');
   const raizDoSrc = join(__dirname, '../../src');
 
   /**
@@ -109,7 +109,7 @@ describe('operações do GitProviderContract × quem as consome em src/', () => 
   const operacoesDoContrato = (): string[] => {
     const fonte = ts.createSourceFile(
       'index.ts',
-      readFileSync(join(raizDoRepo, 'packages/shared/src/index.ts'), 'utf8'),
+      readFileSync(join(raizDoRepo, 'node_modules/@brabo/shared/src/index.ts'), 'utf8'),
       ts.ScriptTarget.ESNext,
       true,
     );

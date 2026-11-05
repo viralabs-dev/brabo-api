@@ -64,10 +64,10 @@ Both absences follow the vocabulary `getFileContent` already used — `null`,
 not an exception — so the Code tab treats "doesn't exist" in a single way.
 
 **Ceilings.** Both cut off, and warn via `truncated: true`. The numbers live in
-`apps/api/src/domain/git/git-read-limits.ts` (1000 entries per level, 300
+`src/domain/git/git-read-limits.ts` (1000 entries per level, 300
 files per diff) and **not** in `packages/shared`, which is 100% types — an
 `export const` there survives `tsc` and breaks the api's boot in production
-(guarded by `apps/api/test/packages-shared-so-tipos.spec.ts`).
+(guarded by `test/packages-shared-so-tipos.spec.ts`).
 
 ### The three foundation operations (PHASE 26b — RN-110/111/112)
 
@@ -220,7 +220,7 @@ user to re-authenticate when the problem was scope.
 
 The algorithm is Full Jitter, AWS's:
 `sleep = random(0, min(maxDelay, base · 2^attempt))`, with 4 attempts by
-default. `apps/api/src/infrastructure/git/retry.ts`.
+default. `src/infrastructure/git/retry.ts`.
 
 The asymmetry is the whole decision: retrying a `listBranches` that timed out
 is harmless; retrying a `commitFiles` that may have gone through creates a
@@ -229,7 +229,7 @@ the right answer is to fail and let a human look.
 
 ## The contract suite
 
-A single suite — `apps/api/test/contract/git-provider.contract.ts` — runs
+A single suite — `test/contract/git-provider.contract.ts` — runs
 against all **three** providers. It's what guarantees that "works on Local"
 doesn't become "works only on Local".
 
@@ -239,7 +239,7 @@ declares `false` needs to raise `GitNotSupportedError`. Declaring it wrong
 breaks the suite in both directions.
 
 Two guardrails accompany the suite, in
-`apps/api/test/contract/git-provider-contract-callers.spec.ts`. The first
+`test/contract/git-provider-contract-callers.spec.ts`. The first
 checks that the suite's header lists exactly who invokes it. The second is
 item 33 of PHASE 26: **a contract operation with no consumer in `src/` fails
 CI** — an operation all three providers implement and nobody calls is

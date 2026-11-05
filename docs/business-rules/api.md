@@ -55,7 +55,7 @@ stateDiagram-v2
   closed_abnormally --> [*]
 ```
 
-- **Where:** `apps/api/src/domain/sessions/session-state-machine.ts:29`
+- **Where:** `src/domain/sessions/session-state-machine.ts:29`
 - **Test:** `test/domain/sessions/session-state-machine.spec.ts`
 - **Edge case:** `closing` is a **transient** state. A session stuck there
   means the drain started and didn't complete — there's an alert for that,
@@ -66,7 +66,7 @@ stateDiagram-v2
 There's never an `UPDATE` on `session_events`. `seq` is unique per session
 (`unique(session_id, seq)`) and has no gaps: it starts at 1 and is contiguous.
 
-- **Where:** `apps/api/src/db/schema/sessions.ts` (table `session_events`)
+- **Where:** `src/db/schema/sessions.ts` (table `session_events`)
 - **Test:** verified on restore — `docker/backup/restore.sh` fails if
   `count(*) ≠ max(seq) − min(seq) + 1` or `min(seq) ≠ 1`
 - **Why:** it's what makes the Psychologist's evidence traceable and the
@@ -95,7 +95,7 @@ stateDiagram-v2
   failed --> [*]
 ```
 
-- **Where:** `apps/api/src/domain/actions/action-state-machine.ts:36`
+- **Where:** `src/domain/actions/action-state-machine.ts:36`
 - **Test:** `test/domain/actions/action-state-machine.spec.ts`
 - **Edge case:** an approved action that executed becomes `executed`,
   **not** still `approved`. Counting approvals by `status = 'approved'`
@@ -108,7 +108,7 @@ Order: **(a) IAM → (b) `agent_autonomy` → (c) `permissions.json`**. Each
 stage can only **raise** permissiveness; a silent stage never lowers the
 previous one. `deny` at any stage returns immediately.
 
-- **Where:** `apps/api/src/domain/actions/decide.ts:118`
+- **Where:** `src/domain/actions/decide.ts:118`
 - **Test:** `test/domain/actions/decide.spec.ts` (10 KB — the largest in
   the domain)
 
@@ -117,7 +117,7 @@ previous one. `deny` at any stage returns immediately.
 Before any policy, IAM: each `ActionType` requires a minimum effective
 role. Without it, `deny` with an explicit reason.
 
-- **Where:** `apps/api/src/domain/actions/decide.ts:115` (`MIN_ROLE_FOR_ACTION_TYPE`)
+- **Where:** `src/domain/actions/decide.ts:115` (`MIN_ROLE_FOR_ACTION_TYPE`)
 - **Test:** `test/domain/actions/decide.spec.ts`
 
 ### RN-006 — Ceiling: merge into a protected branch is never auto-approvable {#rn-006}
@@ -134,7 +134,7 @@ stopped creating it ([RN-029](#rn-029)). This list decides what the lock
 the branch: protecting one that doesn't exist costs nothing; unprotecting
 one that exists costs dearly.
 
-- **Where:** `apps/api/src/domain/actions/decide.ts:511` (`isProtectedBranch`, o teto da trava de merge) + `protected-branches.ts:4`
+- **Where:** `src/domain/actions/decide.ts:511` (`isProtectedBranch`, o teto da trava de merge) + `protected-branches.ts:4`
 - **Test:** `test/domain/actions/decide.spec.ts`
 - **Origin:** [ADR 0011](../adr/0011-infra-dev-agents-worktrees-merge-lock.md) §1
 - **Note:** the equivalent protection **on the platform** (GitHub/GitLab)
@@ -147,7 +147,7 @@ Changing an agent's instruction always requires a human decision. The
 feature's value is in the human seeing the diff; auto-approving would be
 the agent rewriting itself.
 
-- **Where:** `apps/api/src/domain/actions/decide.ts:168`
+- **Where:** `src/domain/actions/decide.ts:168`
 - **Test:** `test/domain/actions/decide.spec.ts`
 - **Origin:** [ADR 0016](../adr/0016-anamnese-proficiencia-patches-instrucao.md) §8
 
@@ -156,7 +156,7 @@ the agent rewriting itself.
 `permissions.json` matches a terminal command by structured pattern, with
 the command properly tokenized — not by `includes()`.
 
-- **Where:** `apps/api/src/domain/actions/command-matcher.ts`
+- **Where:** `src/domain/actions/command-matcher.ts`
 - **Test:** `test/domain/actions/command-matcher.spec.ts`
 
 ---
@@ -179,7 +179,7 @@ stateDiagram-v2
   done --> [*]
 ```
 
-- **Where:** `apps/api/src/domain/backlog/story-state-machine.ts:27`
+- **Where:** `src/domain/backlog/story-state-machine.ts:27`
 - **Test:** `test/domain/backlog/story-state-machine.spec.ts`
 
 ### RN-010 — `draft → ready` requires four things, validated in the domain {#rn-010}
@@ -193,7 +193,7 @@ For a story to become `ready` it needs, **all of them**:
 
 The error names **exactly what's missing**, not a generic "invalid".
 
-- **Where:** `apps/api/src/domain/backlog/story-readiness.ts:39`
+- **Where:** `src/domain/backlog/story-readiness.ts:39`
 - **Test:** `test/domain/backlog/story-readiness.spec.ts`
 - **Origin:** [ADR 0009](../adr/0009-agente-po-backlog-rastreabilidade.md) §3
 - **Why:** it's what stops the PO from dumping a vague story into the dev
@@ -204,12 +204,12 @@ The error names **exactly what's missing**, not a generic "invalid".
 Rule→story coverage is computed, and what has no story shows up as
 **pending** — information, not a failure.
 
-- **Where:** `apps/api/src/domain/backlog/coverage.ts`
+- **Where:** `src/domain/backlog/coverage.ts`
 - **Test:** `test/domain/backlog/coverage.spec.ts`
 
 ### RN-013 — The module graph cannot have a cycle {#rn-013}
 
-- **Where:** `apps/api/src/domain/architecture/module-graph.ts`
+- **Where:** `src/domain/architecture/module-graph.ts`
 - **Test:** `test/domain/architecture/module-graph.spec.ts`
 
 ---
@@ -232,7 +232,7 @@ stateDiagram-v2
   awaiting_user --> [*]: merge is the human's
 ```
 
-- **Where:** `apps/api/src/domain/execution/pr-gate-state-machine.ts:24`
+- **Where:** `src/domain/execution/pr-gate-state-machine.ts:24`
 - **Test:** `test/domain/execution/pr-gate-state-machine.spec.ts`
 - **Origin:** [ADR 0013](../adr/0013-gates-qa-secops-pr.md) §1
 - **Edge case:** `awaiting_user` is terminal **by design** — the system
@@ -251,7 +251,7 @@ still consumes exactly ONE lap. See
 [RN-036](engine.md#rn-036).
 
 - **Where:** `DEFAULT_MAX_GATE_CORRECTIONS = 3` in
-  `apps/api/src/application/use-cases/execution/record-gate-verdict.use-case.ts:21`;
+  `src/application/use-cases/execution/record-gate-verdict.use-case.ts:21`;
   applied in `activate-execution.use-case.ts:89` and, in the engine, in
   `qa_lead_server.ex:268` and `secops_agent_server.ex:142`
 - **Test:** `apps/engine/test/engine/gates/qa_automacao_agent_test.exs`
@@ -266,7 +266,7 @@ still consumes exactly ONE lap. See
 Um `budget` referencia um projeto ou uma sessão, nunca os dois — garantido
 por um `check` no banco de dados, não só no código.
 
-- **Onde:** `apps/api/src/db/schema/llm.ts` (`budgets_scope_check`)
+- **Onde:** `src/db/schema/llm.ts` (`budgets_scope_check`)
 - **Teste:** a constraint é a garantia
 
 ### RN-018 — Notificação de orçamento em 70%, 90% e 100%, sem repetir {#rn-018}
@@ -274,12 +274,12 @@ por um `check` no banco de dados, não só no código.
 Cada limiar dispara **uma vez**; o último notificado fica persistido em
 `budgets.last_threshold_notified`.
 
-- **Onde:** `apps/api/src/domain/llm/budget-threshold.ts:1`
+- **Onde:** `src/domain/llm/budget-threshold.ts:1`
 - **Teste:** `test/domain/llm/budget-threshold.spec.ts`
 
 ### RN-019 — `policy = 'block'` recusa a chamada; `'allow'` só registra {#rn-019}
 
-- **Onde:** `apps/api/src/domain/llm/budget-threshold.ts:4`
+- **Onde:** `src/domain/llm/budget-threshold.ts:4`
 - **Caso de borda:** um projeto em `allow` **não se detém** no teto. É a
   causa mais comum de "o orçamento não segurou" — veja o
   [runbook](../runbook.md).
@@ -290,7 +290,7 @@ Cada limiar dispara **uma vez**; o último notificado fica persistido em
 existir. `area` entrou na FASE 23 — veja a [RN-102](#rn-102) para a posição
 dela e o que muda para quem já leu esta cascata.
 
-- **Onde:** `apps/api/src/domain/llm/binding-resolver.ts`
+- **Onde:** `src/domain/llm/binding-resolver.ts`
 - **Teste:** `test/domain/llm/binding-resolver.spec.ts`
 
 ## Psicólogo e Anamnese
@@ -301,7 +301,7 @@ Os `evidenceEventIds` precisam apontar para eventos **que existem e pertencem à
 sessão analisada**. A validação é atômica por lote: um id inválido reprova o
 lote inteiro.
 
-- **Onde:** `apps/api/src/domain/psychologist/hypothesis-evidence.ts`
+- **Onde:** `src/domain/psychologist/hypothesis-evidence.ts`
 - **Teste:** `test/domain/psychologist/hypothesis-evidence.spec.ts`
 - **Origem:** [ADR 0015](../adr/0015-psicologo-real-toolloop-hipoteses-evidencia.md) §3
 
@@ -310,7 +310,7 @@ lote inteiro.
 `proposed → accepted | dismissed`. Duas decisões concorrentes sobre a mesma
 hipótese: uma vence, a outra recebe conflito — não 500, não silêncio.
 
-- **Onde:** `apps/api/src/domain/psychologist/hypothesis-lifecycle.ts`
+- **Onde:** `src/domain/psychologist/hypothesis-lifecycle.ts`
 - **Teste:** `test/domain/psychologist/hypothesis-lifecycle.spec.ts`
 - **Origem:** [ADR 0022](../adr/0022-fechamento-4b-psicologo.md) §7
 
@@ -321,7 +321,7 @@ Competências de processo são **seis**, fechadas: `git`, `agile`, `arquitetura`
 `module_map`. Qualquer outra coisa — "ansiedade", "saúde mental" — **não tem
 caminho de escrita**: é erro no domínio, não instrução de prompt.
 
-- **Onde:** `apps/api/src/domain/anamnese/competency-catalog.ts:16`
+- **Onde:** `src/domain/anamnese/competency-catalog.ts:16`
 - **Teste:** `test/domain/anamnese/competency-catalog.spec.ts`
 - **Origem:** [ADR 0016](../adr/0016-anamnese-proficiencia-patches-instrucao.md) §1
 - **Por quê:** a Anamnese perfila **competência técnica**, não pessoa. O limite
@@ -329,7 +329,7 @@ caminho de escrita**: é erro no domínio, não instrução de prompt.
 
 ### RN-025 — Apagar o perfil apaga de verdade, e o opt-out impede a re-derivação {#rn-025}
 
-- **Onde:** `apps/api/src/domain/anamnese/proficiency-profile.entity.ts` +
+- **Onde:** `src/domain/anamnese/proficiency-profile.entity.ts` +
   tabela `anamnese_opt_outs`
 - **Origem:** [ADR 0016](../adr/0016-anamnese-proficiencia-patches-instrucao.md) §2
 
@@ -340,7 +340,7 @@ reindentar o mesmo patch não o transforma em proposta nova. Não há tabela de
 dedup — a fonte é o próprio histórico de `proposed_action` com `actionType =
 instruction_patch` e `status = denied`.
 
-- **Onde:** `apps/api/src/domain/instructions/patch-dedup.ts:22`
+- **Onde:** `src/domain/instructions/patch-dedup.ts:22`
 - **Teste:** `test/domain/instructions/patch-dedup.spec.ts`
 
 ### RN-027 — Rollback de instrução é operação **para frente** {#rn-027}
@@ -348,7 +348,7 @@ instruction_patch` e `status = denied`.
 Reverter cria uma versão nova com o conteúdo antigo; não apaga histórico. A
 tabela de versões é append-only.
 
-- **Onde:** `apps/api/src/domain/instructions/`
+- **Onde:** `src/domain/instructions/`
 - **Origem:** [ADR 0016](../adr/0016-anamnese-proficiencia-patches-instrucao.md) §4
 
 ---
@@ -368,7 +368,7 @@ dogfooding). O valor `create_rc_branch` continua no enum `bootstrap_step`:
 linhas antigas o referenciam, e passo que aconteceu de verdade não se apaga do
 histórico.
 
-- **Onde:** `apps/api/src/application/use-cases/git/bootstrap-steps.ts` +
+- **Onde:** `src/application/use-cases/git/bootstrap-steps.ts` +
   `domain/git/repo-bootstrap.entity.ts` (`RETIRED_BOOTSTRAP_STEPS`)
 - **Teste:** `test/domain/git/repo-bootstrap-status.spec.ts`
 - **Origem:** [ADR 0005](../adr/0005-repo-bootstrap-idempotent-steps.md)
@@ -387,7 +387,7 @@ O usuário legítimo é deslogado junto. Isso é o comportamento correto, não u
 defeito: do lado do servidor, um duplo-submit do cliente e um replay de ladrão
 são idênticos.
 
-- **Onde:** `apps/api/src/domain/auth/refresh-token.ts:50` +
+- **Onde:** `src/domain/auth/refresh-token.ts:50` +
   `application/use-cases/auth/refresh.use-case.ts:98`
 - **Teste:** `test/application/use-cases/auth/rotacao-e-reuso.spec.ts`
 - **Borda:** quem apresenta um token de família **já revogada** é vítima a
@@ -407,7 +407,7 @@ A chave do balde é o **e-mail normalizado**, nunca o id do usuário. Com id, o
 balde só existiria depois de encontrar a conta, e o próprio lockout viraria
 oráculo de existência.
 
-- **Onde:** `apps/api/src/domain/auth/lockout-policy.ts:97` +
+- **Onde:** `src/domain/auth/lockout-policy.ts:97` +
   `infrastructure/persistence/drizzle/drizzle-login-throttle.ts:74`
 - **Teste:** `test/application/use-cases/auth/lockout.spec.ts`
 - **Borda:** enquanto bloqueado, a tentativa **não** é registrada. Se fosse, um
@@ -425,7 +425,7 @@ conta bloqueada devolvem o mesmo 401 e gastam o mesmo tempo — o ramo sem conta
 verifica contra um hash dummy gerado com **os mesmos parâmetros** do real. No
 registro e no pedido de reset, endereço conhecido e desconhecido devolvem 202.
 
-- **Onde:** `apps/api/src/application/use-cases/auth/login.use-case.ts:79` +
+- **Onde:** `src/application/use-cases/auth/login.use-case.ts:79` +
   `register.use-case.ts:74`
 - **Teste:** `test/application/use-cases/auth/enumeracao.spec.ts`
 - **Borda:** a checagem de bloqueio por e-mail roda **depois** do argon2, não
@@ -451,7 +451,7 @@ Zero linhas cobre inexistente, de outro propósito, já consumido, invalidado e
 expirado — todos com a mesma resposta. Pedir um link novo invalida o anterior.
 Concluir um reset revoga **todas** as sessões do usuário e não emite tokens.
 
-- **Onde:** `apps/api/src/infrastructure/persistence/drizzle/account-token.repository.ts:76`
+- **Onde:** `src/infrastructure/persistence/drizzle/account-token.repository.ts:76`
 - **Teste:** `test/application/use-cases/auth/tokens-de-conta.spec.ts`
 - **Borda:** dois envios simultâneos não passam os dois. A corrida é o caso
   **normal**, não a exceção: scanner de e-mail corporativo abre todo link de
@@ -471,7 +471,7 @@ resposta. O access token, de 15 minutos, fica em memória no cliente e viaja no
 `/auth/refresh` e `/auth/logout` exigem `X-CSRF-Token` igual ao cookie
 `brabo_csrf`, comparado em tempo constante.
 
-- **Onde:** `apps/api/src/interfaces/http/auth/session-cookies.ts:53` +
+- **Onde:** `src/interfaces/http/auth/session-cookies.ts:53` +
   `interfaces/http/auth/auth.controller.ts`
 - **Teste:** `test/interfaces/session-cookies.spec.ts`
 - **Borda:** falha de CSRF é **403**, não 401. Com 401 o cliente tentaria
@@ -490,7 +490,7 @@ fora do rate limit. Quem autentica é o `EngineServiceGuard`, comparando
 segredo vale nos dois sentidos, e `BRABO_SERVICE_TOKEN_PREVIOUS` é aceito só na
 verificação, para a rotação não ter janela de indisponibilidade.
 
-- **Onde:** `apps/api/src/interfaces/http/auth/engine-service.guard.ts:44` +
+- **Onde:** `src/interfaces/http/auth/engine-service.guard.ts:44` +
   `infrastructure/security/service-token.ts` +
   `apps/engine/lib/engine_web/plugs/verify_service_token.ex`
 - **Teste:** `apps/engine/test/engine_web/plugs/verify_service_token_test.exs`,
@@ -518,7 +518,7 @@ sessão. A contagem naturalmente inclui as subespecialidades de área da
 Fase 8 (`qa-automacao`, `qa-performance-seguranca`, `infra-workflows`):
 cada uma tem seu próprio `actor_id` quando gasta tokens.
 
-- **Onde:** `apps/api/src/infrastructure/persistence/drizzle/token-usage.repository.ts`
+- **Onde:** `src/infrastructure/persistence/drizzle/token-usage.repository.ts`
   (`summarizeForWorkspaceThisMonth`)
 - **Teste:** `test/application/use-cases/iam/get-workspace-summary.use-case.spec.ts`
 
@@ -578,7 +578,7 @@ Fase 9a. Desde o [ADR 0064](../adr/0064-escopo-de-area-na-cascata-e-o-binding-de
 do modelo de uma área é um agente dela ([RN-102](#rn-102)) —, e é por isso que
 são DUAS as telas que ligam o filtro.
 
-- **Onde:** `apps/api/src/domain/llm/model-capabilities.ts:38`;
+- **Onde:** `src/domain/llm/model-capabilities.ts:38`;
   `apps/web/src/components/ModelPicker.tsx` (o filtro e o aviso de vigente
   escondido), `apps/web/src/routes/settings/ModelsSection.tsx` (quem o liga,
   no seletor do agente e no do lead que segue a área)
@@ -604,7 +604,7 @@ Anthropic não pode omitir a contagem, porque `usage` é obrigatório no
 `message_start` do protocolo dele. As três respostas estão em
 [docs/reference/llm-providers.md](../reference/llm-providers.md#normalized-divergences).
 
-- **Onde:** `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:167`
+- **Onde:** `src/infrastructure/llm/openai-compatible-provider.ts:167`
 - **Teste:** `test/contract/llm-provider.contract.ts` (cenário
   `sem_usage`, rodado contra os três providers)
 - **Origem:** [ADR 0041](../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
@@ -621,7 +621,7 @@ Nas métricas, o rótulo `upstream_provider` repete o próprio provider quando
 não há hub, de modo que `sum by (upstream_provider)` continua somando o
 custo inteiro.
 
-- **Onde:** `apps/api/src/application/use-cases/llm/record-llm-usage.use-case.ts:73`
+- **Onde:** `src/application/use-cases/llm/record-llm-usage.use-case.ts:73`
 - **Teste:** `test/application/use-cases/llm/record-llm-usage.use-case.spec.ts`
 - **Origem:** [ADR 0041](../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
 
@@ -662,9 +662,9 @@ Três consequências no resto do sistema:
   falha (`infra` | `modelo`) no relatório — nunca diagnóstico por
   eliminação.
 
-- **Onde:** `apps/api/src/application/use-cases/llm/sync-model-catalog.use-case.ts:160`,
-  `apps/api/src/domain/llm/binding-resolver.ts:63`,
-  `apps/api/src/domain/llm/model-capabilities.ts:49`
+- **Onde:** `src/application/use-cases/llm/sync-model-catalog.use-case.ts:160`,
+  `src/domain/llm/binding-resolver.ts:63`,
+  `src/domain/llm/model-capabilities.ts:49`
 - **Teste:** `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts`,
   `test/domain/llm/binding-resolver.spec.ts`,
   `test/application/use-cases/llm/set-model-binding.use-case.spec.ts`
@@ -693,9 +693,9 @@ desde a Fase 9c) e o `seed.ts` (que roda num banco já semeado —
 em silêncio). Ambos agora auditam, com o seed reaproveitando o próprio
 `UpdateModelPricingUseCase`.
 
-- **Onde:** `apps/api/src/application/use-cases/llm/update-model-pricing.use-case.ts:44`,
-  `apps/api/src/application/use-cases/llm/sync-model-catalog.use-case.ts:213`,
-  `apps/api/src/db/seed.ts:376`
+- **Onde:** `src/application/use-cases/llm/update-model-pricing.use-case.ts:44`,
+  `src/application/use-cases/llm/sync-model-catalog.use-case.ts:213`,
+  `src/db/seed.ts:376`
 - **Teste:** `test/application/use-cases/llm/update-model-pricing.use-case.spec.ts`,
   `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts`
 - **Origem:** [ADR 0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
@@ -739,9 +739,9 @@ adiou uma `ProtectionPolicy` normalizada). Uma branch com proteção PARCIAL
 conta como "desprotegida" e pode ser sobrescrita — mas só dentro de um plano
 aprovado.
 
-- **Onde:** `apps/api/src/application/use-cases/git/decide-bootstrap-plan.use-case.ts`,
-  `apps/api/src/application/use-cases/git/bootstrap-plan.ts`,
-  `apps/api/src/application/use-cases/git/bootstrap-steps.ts:112`
+- **Onde:** `src/application/use-cases/git/decide-bootstrap-plan.use-case.ts`,
+  `src/application/use-cases/git/bootstrap-plan.ts`,
+  `src/application/use-cases/git/bootstrap-steps.ts:112`
 - **Teste:** `test/application/use-cases/git/decide-bootstrap-plan.use-case.spec.ts`,
   `test/application/use-cases/git/bootstrap-plan.spec.ts`
 - **Origem:** [ADR 0044](../adr/0044-adocao-de-repositorio-existente.md)
@@ -763,8 +763,8 @@ O backfill da migration `0031` marca tudo que já existia como `created`, e
 pode ser cego quanto a isso: a adoção não existia antes dela, então não há
 linha adotada para classificar errado.
 
-- **Onde:** `apps/api/src/db/schema/git.ts`, `apps/api/src/db/migrations/0031_special_winter_soldier.sql`,
-  `apps/api/src/domain/git/repo-bootstrap.entity.ts`
+- **Onde:** `src/db/schema/git.ts`, `src/db/migrations/0031_special_winter_soldier.sql`,
+  `src/domain/git/repo-bootstrap.entity.ts`
 - **Teste:** `test/application/use-cases/git/adopt-repository.use-case.spec.ts`
 - **Origem:** [ADR 0044](../adr/0044-adocao-de-repositorio-existente.md)
 
@@ -822,10 +822,10 @@ A migration `0033` faz um backfill **dirigido**, não cego: a coluna nasce
 vale para quem vier depois; um projeto em andamento não pode parar de
 produzir por causa de um deploy.
 
-- **Onde:** `apps/api/src/domain/backlog/story-promotion.ts`,
-  `apps/api/src/db/migrations/0033_absurd_domino.sql`,
-  `apps/api/src/application/use-cases/backlog/promote-stories.use-case.ts`,
-  `apps/api/src/application/use-cases/backlog/return-story.use-case.ts`,
+- **Onde:** `src/domain/backlog/story-promotion.ts`,
+  `src/db/migrations/0033_absurd_domino.sql`,
+  `src/application/use-cases/backlog/promote-stories.use-case.ts`,
+  `src/application/use-cases/backlog/return-story.use-case.ts`,
   `apps/engine/lib/engine/agents/po_server.ex` (`revision_message/1`)
 - **Teste:** `test/domain/backlog/story-promotion.spec.ts` (simetria),
   `test/db/story-promotion-migration.spec.ts` (backfill dirigido),
@@ -857,7 +857,7 @@ repositório emite direto para o outbox. Essas mutações já são narradas por
 `bootstrap.step_*` na mesma sessão, e duplicá-las contaria o mesmo fato duas
 vezes numa métrica de aprovação.
 
-- **Onde:** `apps/api/src/application/use-cases/actions/propose-action.use-case.ts`,
+- **Onde:** `src/application/use-cases/actions/propose-action.use-case.ts`,
   `.../approve-action.use-case.ts`, `.../deny-action.use-case.ts`
 - **Teste:** `test/application/use-cases/actions/approve-deny-action.use-case.spec.ts`
   (describe `the decision in the event log`)
@@ -886,8 +886,8 @@ e é ela quem mantém a linha em dia); descoberto **sem** preço, `true` — a
 linha está esperando alguém digitar um, e marcá-la já protege esse número do
 primeiro catálogo que resolver informar um preço.
 
-- **Onde:** `apps/api/src/application/use-cases/llm/sync-model-catalog.use-case.ts`
-  (`resolverPreco`), `apps/api/src/db/schema/llm.ts:137`
+- **Onde:** `src/application/use-cases/llm/sync-model-catalog.use-case.ts`
+  (`resolverPreco`), `src/db/schema/llm.ts:137`
 - **Teste:** `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts`
   (`manually typed price beats a catalog that REPORTS a price`)
 - **Origem:** [ADR 0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
@@ -919,9 +919,9 @@ Três regras derivadas:
    checagem recebe `null` e confere só a disponibilidade, deixando a lacuna
    explícita em vez de adivinhar um workspace.
 
-- **Onde:** `apps/api/src/db/schema/llm.ts` (`workspace_models`),
-  `apps/api/src/application/use-cases/llm/set-models-active.use-case.ts`,
-  `apps/api/src/application/use-cases/llm/set-model-binding.use-case.ts`
+- **Onde:** `src/db/schema/llm.ts` (`workspace_models`),
+  `src/application/use-cases/llm/set-models-active.use-case.ts`,
+  `src/application/use-cases/llm/set-model-binding.use-case.ts`
   (`workspaceDoEscopo`)
 - **Teste:** `test/application/use-cases/llm/set-models-active.use-case.spec.ts`
   (`activating in one workspace does NOT turn on the model in its neighbor`)
@@ -961,8 +961,8 @@ incondicionalmente, e para um agente em `awaiting_gate` significaria largar o
 worktree que o gate está varrendo — além de contornar o circuit breaker com
 um clique.
 
-- **Onde:** `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts`,
-  `apps/api/src/infrastructure/persistence/drizzle/session.repository.ts`
+- **Onde:** `src/application/use-cases/execution/activate-execution.use-case.ts`,
+  `src/infrastructure/persistence/drizzle/session.repository.ts`
   (`findActiveExecutionSession`),
   `apps/engine/lib/engine_web/controllers/execution_command_controller.ex`
   (`acordar/4`)
@@ -1001,7 +1001,7 @@ free string, so until now nothing stopped an agent from breaching the
 hierarchy.
 
 **Area, lead, and members have ONE source** since PHASE 18:
-`apps/api/src/domain/agents/agent-areas.ts`. The list used to be
+`src/domain/agents/agent-areas.ts`. The list used to be
 hand-written in three places (api, web, engine) and the test only
 compared api against web — the engine silently diverged. Now
 `apps/web/src/lib/agent-areas.generated.ts` and
@@ -1013,9 +1013,9 @@ for it.
 The list is still the CATALOG; `agent_areas` is the per-project STATE
 (RN-094), and the two answer different questions.
 
-- **Where:** `apps/api/src/domain/agents/agent-areas.ts`
+- **Where:** `src/domain/agents/agent-areas.ts`
   (`assertHandoffTargetAllowed`, `HandoffToSubagentError`),
-  `apps/api/src/application/use-cases/agents/create-handoff.use-case.ts`
+  `src/application/use-cases/agents/create-handoff.use-case.ts`
 - **Test:** `test/domain/agents/agent-areas.spec.ts` (the rule + the check
   that the derived copies don't diverge from the source),
   `test/application/use-cases/agents/create-handoff.use-case.spec.ts`
@@ -1064,10 +1064,10 @@ e devolve resultado, com 200. A única exceção é não existir credencial para
 (usuário, provider) — 404, porque aí não há o que testar.
 
 - **Onde:**
-  `apps/api/src/application/use-cases/credentials/test-stored-credential.use-case.ts`,
-  `apps/api/src/application/use-cases/llm/upsert-user-credential.use-case.ts`,
-  `apps/api/src/application/use-cases/git/register-git-credential.use-case.ts`,
-  `apps/api/src/application/ports/llm-credential-connection-tester.port.ts`
+  `src/application/use-cases/credentials/test-stored-credential.use-case.ts`,
+  `src/application/use-cases/llm/upsert-user-credential.use-case.ts`,
+  `src/application/use-cases/git/register-git-credential.use-case.ts`,
+  `src/application/ports/llm-credential-connection-tester.port.ts`
   (`supports`)
 - **Teste:**
   `test/application/use-cases/credentials/test-stored-credential.use-case.spec.ts`
@@ -1102,10 +1102,10 @@ parser OMITE o campo quando o provider se cala, e `undefined` preserva o valor
 local. Por isso a tela usa as facetas só como filtro POSITIVO e nunca escreve
 "não lê imagem" — `false` aqui quer dizer "o provider não declarou".
 
-- **Onde:** `apps/api/src/infrastructure/llm/openrouter-provider.ts`
+- **Onde:** `src/infrastructure/llm/openrouter-provider.ts`
   (`temModalidade`, `parseCatalogoOpenRouter`),
-  `apps/api/src/application/use-cases/llm/sync-model-catalog.use-case.ts`,
-  `apps/api/src/db/schema/llm.ts` (`models`)
+  `src/application/use-cases/llm/sync-model-catalog.use-case.ts`,
+  `src/db/schema/llm.ts` (`models`)
 - **Teste:**
   `test/infrastructure/llm/openrouter-provider.contract.spec.ts`
   (`modalidade não declarada OMITE o campo em vez de afirmar false`);
@@ -1135,11 +1135,11 @@ Duas regras que mantêm os eixos separados:
 A lista de usos **substitui** a anterior, não soma: lista vazia é como se
 desmarca tudo, e é um estado legítimo — "ninguém opinou" não é "não serve".
 
-- **Onde:** `apps/api/src/domain/llm/model-uses.ts`,
-  `apps/api/src/db/schema/llm.ts` (`workspace_models.uses`),
-  `apps/api/src/infrastructure/persistence/drizzle/workspace-model.repository.ts`
+- **Onde:** `src/domain/llm/model-uses.ts`,
+  `src/db/schema/llm.ts` (`workspace_models.uses`),
+  `src/infrastructure/persistence/drizzle/workspace-model.repository.ts`
   (`setUses`),
-  `apps/api/src/application/use-cases/llm/set-model-uses.use-case.ts`
+  `src/application/use-cases/llm/set-model-uses.use-case.ts`
 - **Teste:** `test/application/use-cases/llm/set-model-uses.use-case.spec.ts`
   (`marcar uso NÃO liga o modelo — a linha nova nasce inativa`,
   `trocar o uso não desliga o que já estava ligado`,
@@ -1170,9 +1170,9 @@ O chat humano nunca teve o defeito: ele usa `actor.id`, que é o usuário de
 verdade.
 
 - **Onde:**
-  `apps/api/src/application/use-cases/llm/resolve-credential-owner.use-case.ts`,
-  `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts`,
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts`
+  `src/application/use-cases/llm/resolve-credential-owner.use-case.ts`,
+  `src/application/use-cases/llm/stream-llm-turn.use-case.ts`,
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts`
 - **Teste:** `test/application/use-cases/llm/resolve-credential-owner.use-case.spec.ts`
   (o owner vence quem criou o projeto; a chave encontrada é a dele; projeto
   inexistente é 404 e não erro de banco)
@@ -1202,8 +1202,8 @@ Nenhum segredo atravessa: a resposta tem provider, tokens e custo — nunca a
 chave, nem cifrada ([ADR 0050](../adr/0050-credencial-sempre-cifrada-verificacao-explicita.md)).
 
 - **Onde:**
-  `apps/api/src/application/use-cases/llm/get-credential-spend.use-case.ts`,
-  `apps/api/src/interfaces/http/llm/budgets.controller.ts`,
+  `src/application/use-cases/llm/get-credential-spend.use-case.ts`,
+  `src/interfaces/http/llm/budgets.controller.ts`,
   `apps/web/src/components/CredentialSpendSection.tsx`
 - **Teste:** `test/application/use-cases/llm/get-credential-spend.use-case.spec.ts`
   (agrupa por provider; separa agente de pessoa; chave removida fica marcada);
@@ -1229,7 +1229,7 @@ dele. É por isso que o turno **não** termina quando o mapa é emitido — o
 Arquiteto ainda tem três passos pela frente (vincular histórias, propor um
 ADR, registrar tensões), e terminar ali mataria os três.
 
-- **Onde:** `apps/api/src/application/use-cases/architecture/create-module-map.use-case.ts`
+- **Onde:** `src/application/use-cases/architecture/create-module-map.use-case.ts`
 - **Teste:** `test/application/use-cases/architecture/create-module-map.use-case.spec.ts`
   (`refuses the SECOND map of the same session`; e o versionamento entre
   sessões continua provado ao lado)
@@ -1268,8 +1268,8 @@ módulo**, a arquitetura desenhada não seria a construída.
 O laço da [RN-065](#rn-065) era um sintoma disso: o Arquiteto reemitia o mapa
 justamente para tentar fixar nomes que não conseguia ler.
 
-- **Onde:** `apps/api/src/application/use-cases/architecture/assign-story-modules.use-case.ts`,
-  `apps/api/src/application/use-cases/architecture/create-module-map.use-case.ts`,
+- **Onde:** `src/application/use-cases/architecture/assign-story-modules.use-case.ts`,
+  `src/application/use-cases/architecture/create-module-map.use-case.ts`,
   `apps/engine/lib/engine/harness/tools/create_module_map.ex`
 - **Teste:** `test/application/use-cases/architecture/assign-story-modules.use-case.spec.ts`
   (`the refusal lists the VALID modules`; `with no module_map, it directs
@@ -1305,7 +1305,7 @@ sessão aberta pela rota normal tinha o evento, a linha de estado e `JOINED`.
 O teste é sobre a FONTE de propósito: um teste de comportamento provaria um
 caminho por vez, e o defeito aqui é o caminho em que ninguém pensou.
 
-- **Onde:** `apps/api/src/application/use-cases/sessions/create-session.use-case.ts`
+- **Onde:** `src/application/use-cases/sessions/create-session.use-case.ts`
   (o dono), `git/provision-repository.use-case.ts`,
   `git/adopt-repository.use-case.ts`,
   `execution/activate-execution.use-case.ts` (os chamadores)
@@ -1344,7 +1344,7 @@ modelo inventa comandos. A correção estrutural — o agente ESPERAR a decisão
 vez de queimar iterações — está no
 [ADR 0052](../adr/0052-dev-agent-espera-aprovacao-no-meio-do-laco.md).
 
-- **Onde:** `apps/api/src/domain/actions/dev-terminal-patterns.ts`,
+- **Onde:** `src/domain/actions/dev-terminal-patterns.ts`,
   semeado por `application/use-cases/execution/activate-execution.use-case.ts`
 - **Teste:** `test/domain/actions/dev-terminal-patterns.spec.ts`
   (`allows ls -la`; `a composite command doesn't hitch a ride on the
@@ -1353,7 +1353,7 @@ vez de queimar iterações — está no
 
 ### RN-070 — Todo gate declarado aponta para a evidência que o prova {#rn-070}
 
-Nenhuma entrada de `apps/api/config/gates.yml` existe sem `evidencia`, e o registro não
+Nenhuma entrada de `config/gates.yml` existe sem `evidencia`, e o registro não
 pode afirmar mais do que verifica: um gate `block` exige `verificacao:
 script`, e um gate `planned` não carrega evidência de algo que ainda não
 aconteceu.
@@ -1376,7 +1376,7 @@ As duas costumavam ser uma função só, e isso custou um defeito de produção,
 medido na v6.1.0 instalada: `GET /gates` devolvia `500` com
 `RegistroDeGatesInvalido` listando os onze alvos como ausentes — doze 5xx em
 cerca de 55 minutos, em toda instalação. A imagem de produção leva
-`/app/config/gates.yml` e mais nada; `apps/api/test/`, `scripts/ci/`
+`/app/config/gates.yml` e mais nada; `test/`, `scripts/ci/`
 e `.github/` nunca entram nela. A regra não foi afrouxada — foi movida para
 onde a pergunta existe. Não a ponha de volta no loader: `arquivoExiste` num
 processo que não tem repositório responde sobre outra árvore.
@@ -1401,17 +1401,17 @@ O filtro só alcança o PAYLOAD, de propósito: aceitar uma coluna arbitrária
 abriria a consulta inteira. Quem promoveu uma story (humano ou o PO) mora na
 coluna `actor_kind` e fica fora do vocabulário declarativo.
 
-- **Onde:** `apps/api/src/domain/gates/gate-registry.ts`
+- **Onde:** `src/domain/gates/gate-registry.ts`
   (`validarRegistro` e `validarLocalizadores`), registrado em
-  `apps/api/config/gates.yml`, medido em `apps/api/scripts/validacao-gates.ts`;
+  `config/gates.yml`, medido em `scripts/validacao-gates.ts`;
   o loader que deliberadamente chama só a primeira é
-  `apps/api/src/infrastructure/gates/gate-registry.loader.ts`
-- **Teste:** `apps/api/test/domain/gates/gate-registry.spec.ts`
+  `src/infrastructure/gates/gate-registry.loader.ts`
+- **Teste:** `test/domain/gates/gate-registry.spec.ts`
   (`é válido: nenhum problema acumulado`; `todo alvo de prova citado
   existe no repositório`; `validarRegistro ignora o disco: alvo ausente
   não é problema DELE`; `nenhum par (event_types + filtro) se repete
   entre gates`) e
-  `apps/api/test/infrastructure/gates/gate-registry.loader.spec.ts`
+  `test/infrastructure/gates/gate-registry.loader.spec.ts`
   (`carrega o registro real sem exigir os alvos que a imagem não leva`,
   contra uma raiz reconstruída como a árvore da imagem de produção)
 - **Origem:** FASE 15a (ADR 0054); a divisão em duas camadas veio do 500 de
@@ -1435,12 +1435,12 @@ autonomia ligada.
 O contrário também reprova: um id na lista sem gate correspondente é uma
 regra morta, apontando para nada.
 
-- **Onde:** `apps/api/src/domain/gates/gate-registry.ts`
+- **Onde:** `src/domain/gates/gate-registry.ts`
   (`GATES_HUMANOS_IMUTAVEIS`); o teto em
-  `apps/api/src/domain/actions/decide.ts`
-- **Teste:** `apps/api/test/domain/gates/gate-registry.spec.ts`
+  `src/domain/actions/decide.ts`
+- **Teste:** `test/domain/gates/gate-registry.spec.ts`
   (`%s cannot have aprovacao_humana false`); o teto em
-  `apps/api/test/domain/actions/decide.spec.ts`
+  `test/domain/actions/decide.spec.ts`
 - **Origem:** FASE 15a (ADR 0054)
 
 ### RN-072 — Sem escolha explícita, o modelo é o do agente Criativo {#rn-072}
@@ -1467,10 +1467,10 @@ um modelo local pequeno no passo semântico. Numa execução real foi preciso
 trocar o modelo à mão em cada sessão aberta, e os três dev agents subiram em
 `llama3.2:1b` sem que ninguém tivesse pedido.
 
-- **Onde:** `apps/api/src/domain/llm/binding-resolver.ts`
+- **Onde:** `src/domain/llm/binding-resolver.ts`
   (`herdarModeloDeStart`), aplicado em
   `application/use-cases/llm/resolve-model-binding.use-case.ts`
-- **Teste:** `apps/api/test/domain/llm/binding-resolver.spec.ts`
+- **Teste:** `test/domain/llm/binding-resolver.spec.ts`
   (`fills the gap`; `does NOT override %s's explicit choice`)
 - **Origem:** achados B e O da execução real (FASE 13c, fase A)
 
@@ -1516,12 +1516,12 @@ equivalente inclusive no caso degenerado — a raiz `/` vira string vazia nos
 dois, e é isso que faz `startsWith('/')` valer para todo caminho absoluto.
 Quem for "simplificar" de volta para regex reabre o alerta.
 
-- **Onde:** `apps/api/src/domain/actions/path-scope.ts`,
+- **Onde:** `src/domain/actions/path-scope.ts`,
   `domain/actions/decide.ts` (teto do escopo e o `cd` no escopo),
   raiz derivada em
   `infrastructure/filesystem/project-workspaces-root.ts`
-- **Teste:** `apps/api/test/domain/actions/path-scope.spec.ts` e
-  `apps/api/test/domain/actions/decide.spec.ts`
+- **Teste:** `test/domain/actions/path-scope.spec.ts` e
+  `test/domain/actions/decide.spec.ts`
   (describe `decide — escopo de caminho`)
 - **Origem:** [ADR 0055](../adr/0055-escopo-de-caminho-na-politica-de-terminal.md),
   achado U, Fase F do [backlog](../explanation/backlog.md)
@@ -1557,10 +1557,10 @@ A decisão vai para o event log com o **usuário** como ator e o erro original n
 payload: seguir sem proteção é escolha dele, e quem ler depois precisa saber o
 que exatamente foi dispensado.
 
-- **Onde:** `apps/api/src/application/use-cases/git/acknowledge-protection-failure.use-case.ts`,
+- **Onde:** `src/application/use-cases/git/acknowledge-protection-failure.use-case.ts`,
   rota em `interfaces/http/git/git.controller.ts`, botão em
   `apps/web/src/routes/ProvisioningPage.tsx`
-- **Teste:** `apps/api/test/application/use-cases/git/acknowledge-protection-failure.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/git/acknowledge-protection-failure.use-case.spec.ts`
   (destrava; a decisão no log com o ator; e a recusa para falha anterior)
 - **Origem:** achado D, Fase D do [backlog](../explanation/backlog.md)
 
@@ -1589,10 +1589,10 @@ afirmando isso, para o limite ficar visível em vez de implícito.
 Desde a [RN-681](#rn-681) o par é AVISADO por embedding — continua passando,
 e o teste que afirma o limite DESTE mecanismo segue valendo.
 
-- **Onde:** `apps/api/src/domain/backlog/story-overlap.ts`,
-  `apps/api/src/application/use-cases/backlog/create-story.use-case.ts`
-- **Teste:** `apps/api/test/domain/backlog/story-overlap.spec.ts`,
-  `apps/api/test/application/use-cases/backlog/create-story.use-case.spec.ts`
+- **Onde:** `src/domain/backlog/story-overlap.ts`,
+  `src/application/use-cases/backlog/create-story.use-case.ts`
+- **Teste:** `test/domain/backlog/story-overlap.spec.ts`,
+  `test/application/use-cases/backlog/create-story.use-case.spec.ts`
 - **Origem:** achado R, Fase E do [backlog](../explanation/backlog.md)
 
 ### RN-082 — A credencial de git de uma ação é a do OWNER do workspace {#rn-082}
@@ -1620,9 +1620,9 @@ regras de divergirem com o tempo: **quem banca a conta banca os agentes**, e
 isso não muda conforme quem clica. Por isso o resolvedor é REUSADO em vez de
 reimplementado.
 
-- **Onde:** `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts`,
+- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts`,
   reusando `application/use-cases/llm/resolve-credential-owner.use-case.ts`
-- **Teste:** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   (`pr_open` auto-aprovado, com `decidedBy: null`, pede a credencial do owner)
 - **Origem:** achado AA, [validação real da 13b](../explanation/validacao-real.md)
 
@@ -1670,16 +1670,16 @@ continua aguardando: a ação carrega no payload o teto vigente quando foi criad
 e reinterpretá-la sob o teto novo mudaria o que você está prestes a decidir
 depois de ler.
 
-- **Onde:** `apps/api/src/domain/execution/paralelismo.ts` (a regra pura),
+- **Onde:** `src/domain/execution/paralelismo.ts` (a regra pura),
   `application/use-cases/execution/request-parallelization.use-case.ts`,
   `application/use-cases/execution/set-area-max-parallel.use-case.ts`,
   exposto em `interfaces/http/execution/execution.controller.ts` e configurado
   em `apps/web/src/routes/settings/ParallelismSection.tsx`
-- **Teste:** `apps/api/test/domain/execution/paralelismo.spec.ts`,
+- **Teste:** `test/domain/execution/paralelismo.spec.ts`,
   `test/application/use-cases/execution/request-parallelization.use-case.spec.ts`,
   `test/application/use-cases/execution/set-area-max-parallel.use-case.spec.ts`
   e `apps/web/src/routes/ProjectSettingsTab.test.tsx` (`ParallelismSection`)
-- **Gate:** `apps/api/config/gates.yml` (`paralelismo-autorizado`) — `status: active`
+- **Gate:** `config/gates.yml` (`paralelismo-autorizado`) — `status: active`
   desde a auditoria fluxo.yml × código (achado A1/B5); o mecanismo em si não
   mudou, só o registro que ficou `planned` por engano desde a FASE 14d, ver
   [gates.md](../explanation/gates.md#a-registry-can-age-in-the-wrong-direction--stale-not-inactive)
@@ -1688,7 +1688,7 @@ depois de ler.
 ### RN-084 — A esteira exibida deriva do registro de gates {#rn-084}
 
 O painel do time mostra a etapa em que uma PR está **derivando-a de
-`apps/api/config/gates.yml`**, não de uma lista escrita na tela. Gate que sai do registro
+`config/gates.yml`**, não de uma lista escrita na tela. Gate que sai do registro
 some da esteira; gate `planned` nunca aparece.
 
 **A regra existe por uma forma específica de envelhecimento.** Antes da FASE
@@ -1709,7 +1709,7 @@ Três decisões de borda, todas para a tela **degradar** em vez de sumir:
   uma esteira genérica informa mais que nada.
 
 - **Onde:** `apps/web/src/components/PrGateTimeline.tsx` (`etapasDaEsteira`),
-  lendo `GET /gates` (`apps/api/src/interfaces/http/gates/gates.controller.ts`)
+  lendo `GET /gates` (`src/interfaces/http/gates/gates.controller.ts`)
 - **Teste:** `apps/web/src/components/PrGateTimeline.test.ts`
   (`gate que SAI do registro some da tela`, `gate de PR que a tela ainda não
   sabe desenhar é IGNORADO`, `sem registro, mostra a esteira completa`)
@@ -1749,12 +1749,12 @@ uma fila que o usuário precisa ler.
 Aprovar aplica o valor do **payload**, não um recalculado na hora — é o número
 que você leu ao decidir.
 
-- **Onde:** `apps/api/src/domain/actions/decide.ts` (o teto),
+- **Onde:** `src/domain/actions/decide.ts` (o teto),
   `application/use-cases/execution/propose-max-parallel.use-case.ts`,
   `execute-max-parallel-raise.use-case.ts`,
   `apps/engine/lib/engine/anamnese/tools/propose_max_parallel.ex` e o limiar em
   `apps/engine/lib/engine/workers/anamnese_worker.ex` (`nota_de_paralelismo/1`)
-- **Teste:** `apps/api/test/domain/actions/decide.spec.ts`
+- **Teste:** `test/domain/actions/decide.spec.ts`
   (`decide — teto do paralelismo`),
   `test/application/use-cases/execution/propose-max-parallel.use-case.spec.ts`,
   `execute-max-parallel-raise.use-case.spec.ts`,
@@ -1800,15 +1800,15 @@ perdia chips em sessão longa (ver
 `deriveAgentRoster` sempre disse "já abriu alguma vez".
 
 - **Onde:**
-  `apps/api/src/application/ports/projects-summary-repository.port.ts`,
-  `apps/api/src/infrastructure/persistence/drizzle/projects-summary.repository.ts`,
-  `apps/api/src/interfaces/http/iam/workspaces.controller.ts`
+  `src/application/ports/projects-summary-repository.port.ts`,
+  `src/infrastructure/persistence/drizzle/projects-summary.repository.ts`,
+  `src/interfaces/http/iam/workspaces.controller.ts`
   (`getProjectsSummary`), `apps/web/src/lib/hooks.ts` (`useProjectsSummary`),
   `apps/web/src/lib/agent-status.ts` (`rosterFromFacts`),
   `apps/web/src/routes/Dashboard.tsx`, `apps/web/src/routes/Shell.tsx`
 - **Teste:** `apps/web/src/routes/Dashboard.fanout.test.tsx` (30 projetos
   custam o mesmo que 3; nenhum endpoint por projeto é chamado);
-  `apps/api/test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
   (o número de consultas ao banco não cresce com N);
   `apps/web/src/lib/agent-status.test.ts` (os fatos da api produzem os mesmos
   chips que o event log)
@@ -1858,16 +1858,16 @@ ele vem do armazenamento local de quem chama e pode ser sobra de um workspace
 antigo.
 
 - **Onde:**
-  `apps/api/src/application/ports/projects-summary-repository.port.ts`
+  `src/application/ports/projects-summary-repository.port.ts`
   (`unreadEventsForWorkspace`),
-  `apps/api/src/infrastructure/persistence/drizzle/projects-summary.repository.ts`,
-  `apps/api/src/interfaces/http/iam/workspaces.controller.ts`
-  (`getUnreadEvents`), `apps/api/src/interfaces/http/iam/dto/unread-events.dto.ts`,
+  `src/infrastructure/persistence/drizzle/projects-summary.repository.ts`,
+  `src/interfaces/http/iam/workspaces.controller.ts`
+  (`getUnreadEvents`), `src/interfaces/http/iam/dto/unread-events.dto.ts`,
   `apps/web/src/lib/notifications.ts` (`useNotificationGroups`),
   `apps/web/src/lib/api-client.ts` (`getUnreadEvents`)
 - **Teste:** `apps/web/src/routes/Dashboard.fanout.test.tsx` (com a gaveta
   ABERTA: uma requisição, e 30 projetos custam o mesmo que 3);
-  `apps/api/test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
   (o número de consultas ao banco não cresce com N; mapa vazio, corte por
   projeto, teto por projeto e isolamento de workspace)
 - **Origem:** residual medido da [RN-090](#rn-090) — 286 req/min com a gaveta
@@ -1896,9 +1896,9 @@ concordar, e checagem duplicada é checagem que um dia diverge.
 
 O caminho feliz não muda — todo id real é UUID vindo do banco.
 
-- **Onde:** `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
+- **Onde:** `src/infrastructure/filesystem/project-workspaces-root.ts`
   (`projectScopeRoot`)
-- **Teste:** `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+- **Teste:** `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
 - **Origem:** [ADR 0058](../adr/0058-csp-fechado-na-api-e-escopo-de-projeto-contido.md),
   alertas `js/path-injection` do CodeQL
 
@@ -1925,9 +1925,9 @@ A resolução fica em função única, e não em cada chamador, pela mesma razã
 [RN-092](#rn-092) — eram duas cópias do mesmo literal, e cópias divergem.
 Divergindo aqui, o callback recusaria todo `state` legítimo.
 
-- **Onde:** `apps/api/src/infrastructure/security/oauth-state-secret.ts`
-  (`resolveOauthStateSecret`), chamada no boot em `apps/api/src/main.ts`
-- **Teste:** `apps/api/test/infrastructure/security/oauth-state-secret.spec.ts`
+- **Onde:** `src/infrastructure/security/oauth-state-secret.ts`
+  (`resolveOauthStateSecret`), chamada no boot em `src/main.ts`
+- **Teste:** `test/infrastructure/security/oauth-state-secret.spec.ts`
 - **Origem:** [ADR 0059](../adr/0059-segredo-do-state-de-oauth-sem-default.md)
 
 ### RN-094 — A área de agentes nasce com o projeto {#rn-094}
@@ -1966,11 +1966,11 @@ CONFLICT DO NOTHING` nas duas tabelas. Sem ela, o defeito ficaria corrigido só
 para quem começasse do zero.
 
 - **Onde:**
-  `apps/api/src/application/use-cases/agents/seed-agent-areas.use-case.ts`,
+  `src/application/use-cases/agents/seed-agent-areas.use-case.ts`,
   chamado por `application/use-cases/iam/create-project.use-case.ts` e
   `application/use-cases/execution/activate-execution.use-case.ts`;
-  lista canônica em `apps/api/src/domain/agents/agent-areas.ts`;
-  backfill em `apps/api/src/db/migrations/0038_wandering_lila_cheney.sql`
+  lista canônica em `src/domain/agents/agent-areas.ts`;
+  backfill em `src/db/migrations/0038_wandering_lila_cheney.sql`
 - **Teste:**
   `test/application/use-cases/iam/create-project-semeia-areas.spec.ts` (o
   caminho, contra o banco, incluindo a falha que derruba a criação),
@@ -2027,19 +2027,19 @@ verdade. O congelamento da fase é o outro lado disso: a aba é só leitura, e
 escrita — quando vier — nasce `proposed_action`.
 
 - **Onde:**
-  `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
+  `src/infrastructure/filesystem/project-workspaces-root.ts`
   (`caminhoDeRepositorioContido`),
-  `apps/api/src/application/use-cases/git/read-project-code.use-case.ts`,
-  `apps/api/src/domain/git/git-read-limits.ts`,
-  `apps/api/src/domain/git/git-read-cache.ts`,
-  `apps/api/src/interfaces/http/git/code.controller.ts`
+  `src/application/use-cases/git/read-project-code.use-case.ts`,
+  `src/domain/git/git-read-limits.ts`,
+  `src/domain/git/git-read-cache.ts`,
+  `src/interfaces/http/git/code.controller.ts`
 - **Teste:**
-  `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+  `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   (a contenção isolada),
-  `apps/api/test/application/use-cases/git/read-project-code.use-case.spec.ts`
+  `test/application/use-cases/git/read-project-code.use-case.spec.ts`
   (o caminho malicioso recusado nas três rotas **antes** de o provider ser
   chamado, e cada um dos três orçamentos parando a busca),
-  `apps/api/test/domain/git/git-read-cache.spec.ts`
+  `test/domain/git/git-read-cache.spec.ts`
 - **Origem:** FASE 26b, item 34 do programa 16–26; a contenção estende a
   [RN-092](#rn-092) ([ADR 0058](../adr/0058-csp-fechado-na-api-e-escopo-de-projeto-contido.md))
 
@@ -2087,11 +2087,11 @@ sessions where dev agents are working — waking them up as `consultiva` would
 make reactivating an in-progress project fail without anyone having decided
 anything.
 
-- **Where:** `apps/api/src/domain/sessions/session-kind.ts:50`
-  (`podeAtivarExecucao`), `apps/api/src/db/schema/sessions.ts:68` (the column),
-  `apps/api/src/application/use-cases/sessions/append-session-event.use-case.ts:53`
+- **Where:** `src/domain/sessions/session-kind.ts:50`
+  (`podeAtivarExecucao`), `src/db/schema/sessions.ts:68` (the column),
+  `src/application/use-cases/sessions/append-session-event.use-case.ts:53`
   (the guard)
-- **Test:** `apps/api/test/application/use-cases/sessions/session-kind-e-nome.spec.ts`
+- **Test:** `test/application/use-cases/sessions/session-kind-e-nome.spec.ts`
 - **Origin:** [ADR 0061](../adr/0061-tipo-da-sessao-na-criacao.md)
 
 ## Painel de projetos
@@ -2134,15 +2134,15 @@ Como a semântica do corte não mudou, **não há ADR** nesta regra: o que mudou
 foi qual janela a consulta escolhe e o que a gaveta declara sobre ela.
 
 - **Onde:**
-  `apps/api/src/infrastructure/persistence/drizzle/projects-summary.repository.ts`
+  `src/infrastructure/persistence/drizzle/projects-summary.repository.ts`
   (`unreadEventsForWorkspace`),
-  `apps/api/src/application/ports/projects-summary-repository.port.ts`,
-  `apps/api/src/interfaces/http/iam/dto/iam.response.dto.ts`
+  `src/application/ports/projects-summary-repository.port.ts`,
+  `src/interfaces/http/iam/dto/iam.response.dto.ts`
   (`ProjectUnreadEventsResponseDto`),
   `apps/web/src/lib/notifications.ts` (`useNotificationGroups`),
   `apps/web/src/components/NotificationBell.tsx`
 - **Teste:**
-  `apps/api/test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
   ("com mais não lidos que o teto, voltam os MAIS RECENTES, do novo para o
   velho" — afirma o CONJUNTO antes da ordem);
   `apps/web/src/components/NotificationBell.test.tsx` (renderiza na ordem
@@ -2195,12 +2195,12 @@ providers servindo o mesmo nome de modelo continuam caindo numa linha só na
 dimensão `model`.
 
 - **Onde:**
-  `apps/api/src/application/use-cases/llm/get-my-spend.use-case.ts`,
-  `apps/api/src/application/use-cases/llm/get-workspace-spend-report.use-case.ts`,
-  `apps/api/src/application/ports/token-usage-repository.port.ts`,
-  `apps/api/src/interfaces/http/llm/spend.controller.ts`,
+  `src/application/use-cases/llm/get-my-spend.use-case.ts`,
+  `src/application/use-cases/llm/get-workspace-spend-report.use-case.ts`,
+  `src/application/ports/token-usage-repository.port.ts`,
+  `src/interfaces/http/llm/spend.controller.ts`,
   `apps/web/src/routes/ProjectSpendTab.tsx`
-- **Teste:** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
   (o membro não enxerga linha de outro ator, nem de agente, nem do owner; o
   filtro é pelo par `(kind, id)`; a resposta não carrega provider);
   `apps/web/src/routes/ProjectSpendTab.test.tsx`
@@ -2289,18 +2289,18 @@ só numa seção seria pior que a lacuna.
 > ler "SOBREPÕE nos dois sentidos" acima: é literal, e três descrições de OpenAPI
 > afirmam o contrário — ver a RN-471.
 
-- **Onde:** `apps/api/src/domain/llm/binding-resolver.ts` (precedência),
-  `apps/api/src/domain/llm/model-capabilities.ts` (capability de `area`),
-  `apps/api/src/application/use-cases/llm/resolve-model-binding.use-case.ts`
+- **Onde:** `src/domain/llm/binding-resolver.ts` (precedência),
+  `src/domain/llm/model-capabilities.ts` (capability de `area`),
+  `src/application/use-cases/llm/resolve-model-binding.use-case.ts`
   (a área do agente sai do catálogo `agent-areas.ts`, sem round-trip ao
-  banco), `apps/api/src/application/use-cases/llm/clear-model-binding.use-case.ts`,
-  `apps/api/src/interfaces/http/llm/model-bindings.controller.ts`
+  banco), `src/application/use-cases/llm/clear-model-binding.use-case.ts`,
+  `src/interfaces/http/llm/model-bindings.controller.ts`
   (`area-bindings`, `DELETE` em `agent-bindings` e `area-bindings`),
   `apps/web/src/routes/settings/ModelsSection.tsx` (coluna Origem com
   "voltar a herdar"; desde a RN-912 o apagar da área é desmarcar a caixa do
   lead, e o gate de `maintainer` segue sobre `roleAtLeast` sem mudar de
   mínimo),
-  `apps/api/src/interfaces/http/llm/model-bindings.controller.ts:273` e `:301`
+  `src/interfaces/http/llm/model-bindings.controller.ts:273` e `:301`
   (`developer` nos dois endpoints de agente — estas linhas NÃO mudaram),
   `apps/web/src/lib/roles.ts:49` (`roleAtLeast` — a comparação que faltava),
   `apps/web/src/routes/settings/ModelsSection.tsx:93` (`podeEditar`, e por que
@@ -2348,10 +2348,10 @@ resolvia antes da mudança) e apaga o formato antigo; é ESPALHAR e não
 apagar porque a linha global nunca guardou informação de a quem "pertencia" —
 inventar um projeto dono seria inventar dado que não existia.
 
-- **Onde:** `apps/api/src/domain/llm/binding-scope-id.ts` (formato e
-  validação), `apps/api/src/application/use-cases/llm/set-model-binding.use-case.ts`
+- **Onde:** `src/domain/llm/binding-scope-id.ts` (formato e
+  validação), `src/application/use-cases/llm/set-model-binding.use-case.ts`
   (`workspaceDoEscopo` passou a derivar o workspace de `agent`/`area` também —
-  a curadoria da RN-043 não era verificável neles antes), `apps/api/src/db/migrations/0040_tearful_night_nurse.sql`
+  a curadoria da RN-043 não era verificável neles antes), `src/db/migrations/0040_tearful_night_nurse.sql`
 - **Teste:** `test/domain/llm/binding-scope-id.spec.ts`,
   `test/application/use-cases/llm/set-model-binding.use-case.spec.ts`,
   `test/application/use-cases/llm/resolve-model-binding.use-case.spec.ts`
@@ -2381,15 +2381,15 @@ O artefato não tem tabela: é o próprio evento no event log, versionado
 jeito que `artifact.module_map`. Revisar a imagem é emitir uma versão nova,
 nunca sobrescrever a anterior.
 
-- **Onde:** `apps/api/src/domain/containers/project-container.ts`,
-  `apps/api/src/application/use-cases/containers/decidir-imagem-do-projeto.use-case.ts`,
-  `apps/api/src/application/use-cases/containers/obter-container-do-projeto.use-case.ts`,
-  `apps/api/src/application/use-cases/git/read-project-code.use-case.ts` (método
+- **Onde:** `src/domain/containers/project-container.ts`,
+  `src/application/use-cases/containers/decidir-imagem-do-projeto.use-case.ts`,
+  `src/application/use-cases/containers/obter-container-do-projeto.use-case.ts`,
+  `src/application/use-cases/git/read-project-code.use-case.ts` (método
   `portaoDoContainer`), `apps/engine/lib/engine/harness/tools/choose_project_image.ex`
 - **Teste:**
-  `apps/api/test/domain/containers/project-container.spec.ts`,
-  `apps/api/test/application/use-cases/containers/container-do-projeto.use-case.spec.ts`,
-  `apps/api/test/application/use-cases/git/read-project-code.use-case.spec.ts`
+  `test/domain/containers/project-container.spec.ts`,
+  `test/application/use-cases/containers/container-do-projeto.use-case.spec.ts`,
+  `test/application/use-cases/git/read-project-code.use-case.spec.ts`
   (bloco "o portão do container")
 - **Borda:** 409 e não 403 — nada está errado com quem pediu nem com a
   permissão dele; o recurso ainda não existe NESTE ESTADO. E não é 404: a aba
@@ -2428,10 +2428,10 @@ mínimo próprio e registra no event log o que foi empurrado e para onde. É o
 caminho que o dev agent já usa (`agent_io.ex` propõe `git_push`); o que muda é
 que agora está garantido por `deny`, não só combinado por convenção.
 
-- **Onde:** `apps/api/src/domain/actions/external-effect.ts`,
-  `apps/api/src/domain/actions/decide.ts` (bloco "FRONTEIRA DO CONTAINER")
-- **Teste:** `apps/api/test/domain/actions/external-effect.spec.ts`,
-  `apps/api/test/domain/actions/decide.spec.ts` (describe "a fronteira do
+- **Onde:** `src/domain/actions/external-effect.ts`,
+  `src/domain/actions/decide.ts` (bloco "FRONTEIRA DO CONTAINER")
+- **Teste:** `test/domain/actions/external-effect.spec.ts`,
+  `test/domain/actions/decide.spec.ts` (describe "a fronteira do
   container")
 - **Borda:** a fronteira NÃO se sobrepõe à trava de merge em branch protegida
   (RN-014, sempre manual) nem ao escopo de caminho (RN-095/ADR 0055) — as três
@@ -2444,7 +2444,7 @@ A pasta física de um projeto em `PROJECT_WORKSPACES_ROOT` era o UUID puro —
 ilegível ao abrir no disco. `projects.workspace_dir_name` (NOT NULL, UNIQUE)
 passou a guardar o nome de verdade: `<slug>-<8 chars do id>` para projeto
 NOVO (`workspaceDirNameFor` em
-`apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`), gerado
+`src/infrastructure/filesystem/project-workspaces-root.ts`), gerado
 em código — o id nasce de `crypto.randomUUID()` no
 `CreateProjectUseCase`, não do `defaultRandom()` do Postgres, porque o nome
 da pasta precisa do id ANTES do insert. Os 8 caracteres seguem a mesma
@@ -2476,22 +2476,22 @@ leitura contra o mesmo banco — é o que garante que RN-075 (escopo de
 terminal) e RN-092 (leitura de código) continuam apontando para a MESMA
 pasta que o engine realmente usa.
 
-- **Onde:** `apps/api/src/db/schema/iam.ts` (`projects.workspaceDirName`),
-  `apps/api/src/db/migrations/0042_tough_captain_midlands.sql`,
-  `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
+- **Onde:** `src/db/schema/iam.ts` (`projects.workspaceDirName`),
+  `src/db/migrations/0042_tough_captain_midlands.sql`,
+  `src/infrastructure/filesystem/project-workspaces-root.ts`
   (`workspaceDirNameFor`, `projectScopeRoot`),
-  `apps/api/src/application/use-cases/iam/create-project.use-case.ts`,
+  `src/application/use-cases/iam/create-project.use-case.ts`,
   `apps/engine/lib/engine/projects/project.ex`
   (`workspace_dir_name/1`, `all_workspace_dirs/0`),
   `apps/engine/lib/engine/actions/workspace.ex` (`workspace_dir/1,2`),
   `apps/engine/lib/engine/dev/worktree_cleanup.ex`
 - **Teste:**
-  `apps/api/test/db/workspace-dir-name-migration.spec.ts` (trigger, backfill
+  `test/db/workspace-dir-name-migration.spec.ts` (trigger, backfill
   equivalente, unicidade),
-  `apps/api/test/application/use-cases/iam/create-project-semeia-areas.spec.ts`
+  `test/application/use-cases/iam/create-project-semeia-areas.spec.ts`
   (`workspaceDirName` nasce `<slug>-<8 chars>`, dois projetos com o mesmo
   slug em workspaces diferentes não colidem de pasta),
-  `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+  `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
 - **Borda:** o teto de paralelismo e o gate de merge não mudam — RN-109 é só
   NOME de pasta, nunca política. Renomear o slug depois da criação não
   renomeia a pasta; a pasta só se lê pelo `workspace_dir_name` gravado.
@@ -2535,19 +2535,19 @@ Vale a mesma razão do ADR 0059 para rejeitar o literal, e não só o vazio: o
 caminho real de erro as variáveis estavam **definidas** — uma verificação de
 "não vazia" passaria por cima do defeito inteiro.
 
-- **Onde:** `apps/api/src/infrastructure/security/auth-key-material.ts`
-  (`passphraseAtual`), `apps/api/src/infrastructure/security/service-token.ts`
+- **Onde:** `src/infrastructure/security/auth-key-material.ts`
+  (`passphraseAtual`), `src/infrastructure/security/service-token.ts`
   (`tokenDeServicoAtual`) e
-  `apps/api/src/infrastructure/security/envelope-encryption.service.ts`
+  `src/infrastructure/security/envelope-encryption.service.ts`
   (`EnvelopeEncryptionService`, checagem no construtor) — os dois primeiros
-  chamados no boot em `apps/api/src/main.ts`, o terceiro exercitado quando o
+  chamados no boot em `src/main.ts`, o terceiro exercitado quando o
   `NestFactory.create` monta o grafo de providers. `SECRET_KEY_BASE` em
   `apps/engine/config/runtime.exs` (inalterado) com o fallback removido de
   `docker/docker-compose.prod.yml`
-- **Teste:** `apps/api/test/infrastructure/security/auth-key-material.spec.ts`,
-  `apps/api/test/infrastructure/security/service-token.spec.ts` e o describe
+- **Teste:** `test/infrastructure/security/auth-key-material.spec.ts`,
+  `test/infrastructure/security/service-token.spec.ts` e o describe
   `validação de produção` em
-  `apps/api/test/infrastructure/security/envelope-encryption.service.spec.ts`
+  `test/infrastructure/security/envelope-encryption.service.spec.ts`
 - **Origem:** [ADR 0059](../adr/0059-segredo-do-state-de-oauth-sem-default.md)
 
 ### RN-127 — `ref`/`path` da aba Code recusam chegar como ARRAY, não só como caminho fora do escopo {#rn-127}
@@ -2575,14 +2575,14 @@ a função central não decide o tipo de erro, só a forma da checagem.
 
 O caminho feliz não muda: todo `ref`/`path` legítimo já era string.
 
-- **Onde:** `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
+- **Onde:** `src/infrastructure/filesystem/project-workspaces-root.ts`
   (`garantirQueryEscalar`, usada em `caminhoDeRepositorioContido`),
-  `apps/api/src/application/use-cases/git/read-project-code.use-case.ts`
+  `src/application/use-cases/git/read-project-code.use-case.ts`
   (`alvo`, `ref`)
 - **Teste:**
-  `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+  `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   (`garantirQueryEscalar` isolada e `caminhoDeRepositorioContido` recusando
-  array), `apps/api/test/application/use-cases/git/read-project-code.use-case.spec.ts`
+  array), `test/application/use-cases/git/read-project-code.use-case.spec.ts`
   (`ref`/`path` como array são 400 em `tree`, que todas as outras rotas
   reusam via `alvo`)
 - **Origem:** alerta CRÍTICO do CodeQL (confusão de tipo em query param HTTP)
@@ -2618,9 +2618,9 @@ interpolam id em URL, não só os que o CodeQL reportou:
 O caminho feliz não muda: `sessionId`/`projectId` são sempre UUID vindo do
 banco, e `agent`/`agentId` são sempre slug curto.
 
-- **Onde:** `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts`
+- **Onde:** `src/infrastructure/http-clients/api-to-engine-client.ts`
   (`garantirSegmentoDeUrlInterna`, `postCommand`)
-- **Teste:** `apps/api/test/infrastructure/http-clients/api-to-engine-client.spec.ts`
+- **Teste:** `test/infrastructure/http-clients/api-to-engine-client.spec.ts`
   (id malformado é recusado ANTES de tocar a rede — provado apontando
   `ENGINE_URL` pra uma porta que nada escuta — e o caminho feliz chega a
   fazer a requisição)
@@ -2661,10 +2661,10 @@ Uma falha ou estado pendente aqui NUNCA se propaga a quem chamou `execute()`: a
 ativação da execução já aconteceu e é o efeito principal; fechar o chat de
 origem é um efeito colateral *best-effort*.
 
-- **Onde:** `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts`
-  (`closeOriginSession`), `apps/api/src/interfaces/http/execution/dto/activate-execution.dto.ts`
-  (`originSessionId`), `apps/api/src/interfaces/http/execution/execution.controller.ts`
-- **Teste:** `apps/api/test/application/use-cases/execution/activate-execution.use-case.spec.ts`,
+- **Onde:** `src/application/use-cases/execution/activate-execution.use-case.ts`
+  (`closeOriginSession`), `src/interfaces/http/execution/dto/activate-execution.dto.ts`
+  (`originSessionId`), `src/interfaces/http/execution/execution.controller.ts`
+- **Teste:** `test/application/use-cases/execution/activate-execution.use-case.spec.ts`,
   describe `fecha a sessão de origem (RN-135)` — fecha sem pendência,
   NÃO fecha com pendência, NÃO fecha sessão já não-`active`, chamador
   antigo sem o parâmetro não fecha nada, e nunca fecha a própria sessão de
@@ -2701,8 +2701,8 @@ o MESMO critério por HTTP, em vez de duplicá-lo no front:
   `if (!sessão) return null` que os colapsa.
 
 - **Onde:**
-  `apps/api/src/application/use-cases/execution/get-active-execution-session.use-case.ts`,
-  `apps/api/src/interfaces/http/execution/execution.controller.ts` (`getSession`),
+  `src/application/use-cases/execution/get-active-execution-session.use-case.ts`,
+  `src/interfaces/http/execution/execution.controller.ts` (`getSession`),
   `apps/web/src/lib/hooks.ts` (`useActiveExecutionSession`),
   `apps/web/src/routes/ProjectExecutorsTab.tsx`
 - **Teste:**
@@ -2758,7 +2758,7 @@ independentemente do que vem depois:
   limitação que já bloqueia um `git branch` solto. `--global`/`--system`
   nunca foram ancorados.
 
-- **Onde:** `apps/api/src/domain/actions/dev-terminal-patterns.ts`
+- **Onde:** `src/domain/actions/dev-terminal-patterns.ts`
 - **Teste:** `test/domain/actions/dev-terminal-patterns.spec.ts` (describe
   `read-only git subcommands (found live)` — cobre a cadeia composta
   observada ao vivo sendo auto-aprovada, e cada variante mutante com a MESMA
@@ -2796,7 +2796,7 @@ mesmo raciocínio que já vale para "Ativar execução" no card do Dev Lead
 ([RN-137](web.md#rn-137)) — quando este card existe, o Arquiteto já decidiu a
 arquitetura.
 
-- **Onde:** `apps/api/src/interfaces/http/agents/agents.controller.ts`
+- **Onde:** `src/interfaces/http/agents/agents.controller.ts`
   (`handoffInfra`, rota preexistente), `apps/web/src/lib/api-client.ts`
   (`confirmArchitectureReadiness`), `apps/web/src/routes/SessionPage.tsx`
   (`arquitetoActive`, `arquiteturaJaDeclarada`, `handleArchitectureReadiness`,
@@ -2836,15 +2836,15 @@ A mudança atravessa as três camadas, todas com o MESMO nome de campo
    o rótulo genérico `"modelo"`, nunca para `undefined`/`null` na tela; o
    mesmo padrão que `text === ''` já usa para resposta anterior à RN-059.
 
-- **Onde:** `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts`
-  (`LlmTurnStreamEvent`), `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts`
-  (`RunLlmTurnResult`), `apps/api/src/interfaces/http/internal/dto/internal.response.dto.ts`
+- **Onde:** `src/application/use-cases/llm/stream-llm-turn.use-case.ts`
+  (`LlmTurnStreamEvent`), `src/application/use-cases/llm/run-llm-turn.use-case.ts`
+  (`RunLlmTurnResult`), `src/interfaces/http/internal/dto/internal.response.dto.ts`
   (`LlmTurnResponseDto`/`LlmTurnStreamEventResponseDto`),
   `apps/engine/lib/engine/agents/{criativo,po,arquiteto,dev_lead}_server.ex`
   (`emit_response/3`), `apps/web/src/routes/SessionPage.tsx` (bloco
   `agent.response` da timeline)
-- **Teste:** `apps/api/test/application/use-cases/llm/run-llm-turn.use-case.spec.ts`,
-  `apps/api/test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts`,
+  `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts`
   (`modelName` no caminho feliz, no erro do provider e sem binding),
   `apps/engine/test/engine/agents/{criativo,po,arquiteto,dev_lead}_server_test.exs`
   (`agent.response` carrega o nome do modelo; borda do frame sem a chave),
@@ -2883,18 +2883,18 @@ O artefato `artifact.c4_diagram` é versionado no event log sem tabela
 própria — mesmo desenho de `artifact.project_image` (ADR 0065): o vigente é
 o de maior `version`, e revisar é gerar de novo, nunca sobrescrever.
 
-- **Onde:** `apps/api/src/domain/architecture/c4-diagram.ts`
+- **Onde:** `src/domain/architecture/c4-diagram.ts`
   (`gerarDiagramaContexto`/`gerarDiagramaContainer`, puras),
-  `apps/api/src/application/use-cases/architecture/create-c4-diagram.use-case.ts`,
-  `apps/api/src/application/use-cases/architecture/get-c4-diagram.use-case.ts`,
+  `src/application/use-cases/architecture/create-c4-diagram.use-case.ts`,
+  `src/application/use-cases/architecture/get-c4-diagram.use-case.ts`,
   `apps/engine/lib/engine/harness/tools/create_c4_diagram.ex`,
   `apps/web/src/components/C4DiagramView.tsx` (renderização, três estados —
   RN-088), `apps/web/src/lib/mermaid-render.ts` (o `mermaid` fica isolado
   aqui, `import()` dinâmico)
-- **Teste:** `apps/api/test/domain/architecture/c4-diagram.spec.ts` (sintaxe
+- **Teste:** `test/domain/architecture/c4-diagram.spec.ts` (sintaxe
   Mermaid válida a partir de um `module_map` de exemplo, aresta pendurada
   ignorada, ids deduplicados),
-  `apps/api/test/application/use-cases/architecture/create-c4-diagram.use-case.spec.ts`
+  `test/application/use-cases/architecture/create-c4-diagram.use-case.spec.ts`
   (sem module_map recusa com 400 e não grava nada; Container reflete os
   módulos/dependências reais; versiona ao reemitir),
   `apps/engine/test/engine/harness/tools/create_c4_diagram_test.exs`,
@@ -2931,14 +2931,14 @@ o prop `unreadCount` de `ProjectCard` nunca tinha chamador (`ProjectCardContaine
 não o passava), e virou `pendingApprovalsCount` com o mesmo valor da sidebar
 — duas telas, um número, uma fonte.
 
-- **Onde:** `apps/api/src/application/ports/projects-summary-repository.port.ts`
+- **Onde:** `src/application/ports/projects-summary-repository.port.ts`
   (`ProjectCardSummary.pendingApprovalsCount`),
-  `apps/api/src/infrastructure/persistence/drizzle/projects-summary.repository.ts`
+  `src/infrastructure/persistence/drizzle/projects-summary.repository.ts`
   (`summarizeForWorkspace`, consulta agregada sobre `proposed_actions`),
   `apps/web/src/routes/Shell.tsx`, `apps/web/src/routes/Dashboard.tsx`,
   `apps/web/src/components/ProjectCard.tsx`
 - **Teste:**
-  `apps/api/test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
   (`pendingApprovalsCount soma o projeto INTEIRO...`, só `pending` conta, não
   vaza entre projetos, número de consultas continua constante),
   `apps/web/src/routes/Shell.test.tsx` (badge de aprovações pendentes)
@@ -2957,7 +2957,7 @@ não o passava), e virou `pendingApprovalsCount` com o mesmo valor da sidebar
 Antes deste RN, `agent_autonomy` só sabia conceder autonomia por
 `(projeto, agente, TIPO de ação)` — uma linha por tipo, upsert de UMA regra
 por vez (`SetAgentAutonomyUseCase`,
-`apps/api/src/application/use-cases/actions/set-agent-autonomy.use-case.ts`).
+`src/application/use-cases/actions/set-agent-autonomy.use-case.ts`).
 Confiar amplamente num agente exigia uma linha por tipo — `terminal`,
 `write_file`, `pr_open`… — e tipo novo nascia sem regra, de volta a
 `require_approval`.
@@ -2965,14 +2965,14 @@ Confiar amplamente num agente exigia uma linha por tipo — `terminal`,
 "Auto mode" é o valor especial `actionType: "*"` na MESMA tabela e no MESMO
 endpoint (`PUT /projects/:projectId/agent-autonomy`) — não é mecanismo novo,
 é a coluna existente (`agent_autonomy.action_type`, `text` livre, sem enum
-nem FK — `apps/api/src/db/schema/agents.ts`) aceitando um valor a mais. A curinga
+nem FK — `src/db/schema/agents.ts`) aceitando um valor a mais. A curinga
 significa "autonomia pra qualquer tipo de ação DESTE agente" e é resolvida
 em `DrizzleAgentAutonomyRepository.findMode`
-(`apps/api/src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts`):
+(`src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts`):
 busca a regra ESPECÍFICA e a curinga na mesma consulta, e a específica
 sempre vence — gravar `terminal: deny` com `"*": auto_approve` já ligado
 continua negando `terminal` desse agente, e liberando o resto. `decide()`
-(`apps/api/src/domain/actions/decide.ts`) não muda: ele recebe o
+(`src/domain/actions/decide.ts`) não muda: ele recebe o
 `PermissionPolicy` já resolvido em `ctx.autonomyMode`, exatamente como antes
 da curinga existir — é por isso que os tetos absolutos valem sem precisar
 saber que "auto mode" existe (ver [RN-154](#rn-154)).
@@ -2996,24 +2996,24 @@ representativo — desligar é gravar a mesma curinga como
 `require_approval`, e o toggle no card do agente é exatamente esse
 "desligar".
 
-- **Onde:** `apps/api/src/domain/actions/decide.ts`
+- **Onde:** `src/domain/actions/decide.ts`
   (`AGENT_AUTONOMY_ALL_ACTIONS`, `AgentAutonomyActionType`),
-  `apps/api/src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts`
+  `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts`
   (`findMode` com precedência específica > curinga),
-  `apps/api/src/interfaces/http/actions/dto/set-agent-autonomy.dto.ts`
+  `src/interfaces/http/actions/dto/set-agent-autonomy.dto.ts`
   (aceita `"*"`), `apps/web/src/components/ApprovalCard.tsx` (botão "Modo
   automático"), `apps/web/src/components/AgentTeamGrid.tsx` (toggle
   passa a priorizar a curinga), `apps/web/src/routes/ProjectApprovalsTab.tsx`
   e `apps/web/src/routes/SessionPage.tsx` (`handleActivateAutoMode`, gate de
   papel via `useCurrentWorkspaceWithRole`)
 - **Teste:**
-  `apps/api/test/infrastructure/persistence/drizzle/agent-autonomy.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/agent-autonomy.repository.spec.ts`
   (precedência específica > curinga; curinga é por agente; desligar é
   regravar a curinga como `require_approval`),
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts`
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts`
   (auto mode auto-aprova ação comum SEM bater em `permissions.json`; regra
   específica em `deny` vence a curinga),
-  `apps/api/test/interfaces/http/actions/agent-autonomy.controller.spec.ts`
+  `test/interfaces/http/actions/agent-autonomy.controller.spec.ts`
   (`PUT`/`GET` continuam exigindo `maintainer`; DTO aceita `"*"` e recusa
   string fora da lista), `apps/web/src/components/ApprovalCard.test.tsx`
   (botão some sem `onActivateAutoMode`; clique chama o callback; nota
@@ -3057,10 +3057,10 @@ inserir a checagem da curinga ANTES dos tetos e reabrir a porta; por isso
 (antes de `decide()` rodar), e `decide()` em si não ganhou nenhuma linha
 nova — só o suficiente pra não ter onde a curinga furar.
 
-- **Onde:** `apps/api/src/domain/actions/decide.ts` (os três blocos de teto,
+- **Onde:** `src/domain/actions/decide.ts` (os três blocos de teto,
   linhas ~207–258, inalterados por esta feature)
 - **Teste:**
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts`
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts`
   ("auto mode NÃO auto-aprova merge em branch protegida", "... instruction_patch",
   "... parallelize/raise_max_parallel" — os três com `agent_autonomy` "*"
   gravado como `auto_approve` e o veredito continuando `require_approval`)
@@ -3077,7 +3077,7 @@ sessão). Para ações, é o `seq` do evento `proposed_action.created` correlato
 `action.seq`, que é `bigserial` único e global de toda a tabela
 `proposed_actions`, compartilhado por todas as sessões e projetos do
 sistema, e portanto incomparável com `event.seq` (contraste deliberado, ver
-`apps/api/src/db/schema/actions.ts`). Comparar os dois direto produzia ordem
+`src/db/schema/actions.ts`). Comparar os dois direto produzia ordem
 imprevisível toda vez que um `ApprovalCard` entrava na mistura com eventos
 normais. Ações sem esse vínculo (só o bootstrap de Gitflow —
 `git_repo_create`/`git_branch_create`, que gravam apenas outbox) degradam
@@ -3140,24 +3140,24 @@ Duas consequências explícitas do modo `local`:
 CÓDIGO mora em disco, o outro onde o REPOSITÓRIO git vive, e as duas escolhas
 são ortogonais.
 
-- **Onde:** `apps/api/src/db/schema/iam.ts` (`projects`),
-  `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
-  (`projectScopeRoot`), `apps/api/src/domain/iam/project.entity.ts`,
-  `apps/api/src/application/use-cases/git/read-project-code.use-case.ts`
+- **Onde:** `src/db/schema/iam.ts` (`projects`),
+  `src/infrastructure/filesystem/project-workspaces-root.ts`
+  (`projectScopeRoot`), `src/domain/iam/project.entity.ts`,
+  `src/application/use-cases/git/read-project-code.use-case.ts`
   (`portaoDoContainer`), `apps/web/src/routes/ProjectCodeTab.tsx`,
   `apps/engine/lib/engine/projects/project.ex`,
   `apps/engine/lib/engine/actions/workspace.ex` (`workspace_dir/2`),
   `apps/engine/lib/engine/dev/worktree_cleanup.ex` (que era a segunda
   derivação escrita à mão, e passou a usar a única),
   `apps/web/src/routes/NewProjectWizard.tsx`
-- **Teste:** `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+- **Teste:** `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   (describe "projectScopeRoot no modo local"),
-  `apps/api/test/infrastructure/filesystem/fs-permissions-file-store.spec.ts`
+  `test/infrastructure/filesystem/fs-permissions-file-store.spec.ts`
   (o permissions.json na pasta do usuário),
-  `apps/api/test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`,
-  `apps/api/test/application/use-cases/git/read-project-code.use-case.spec.ts`
+  `test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`,
+  `test/application/use-cases/git/read-project-code.use-case.spec.ts`
   (projeto Local não passa pelo portão),
-  `apps/api/test/interfaces/http/iam/project-dto-modo-de-workspace.spec.ts`
+  `test/interfaces/http/iam/project-dto-modo-de-workspace.spec.ts`
   (o modo é congelado: PATCH não o muda),
   `apps/web/src/routes/ProjectCodeTab.test.tsx` (a tela também dispensa o gate),
   `apps/engine/test/engine/actions/workspace_test.exs`
@@ -3212,14 +3212,14 @@ serviços e a linha (`- <caminho>:<caminho>`), com o ponteiro para
 engine não enxerga: ela valida o que ela vê, e não tem como saber o que está
 montado no outro container.
 
-- **Onde:** `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
+- **Onde:** `src/infrastructure/filesystem/project-workspaces-root.ts`
   (`validarCaminhoDeWorkspaceLocal`, `CaminhoLocalInvalidoError`),
-  `apps/api/src/application/use-cases/iam/create-project.use-case.ts`
-  (`caminhoValidado`), `apps/api/src/interfaces/http/iam/dto/create-project.dto.ts`,
+  `src/application/use-cases/iam/create-project.use-case.ts`
+  (`caminhoValidado`), `src/interfaces/http/iam/dto/create-project.dto.ts`,
   `apps/web/src/lib/wizard.ts` (`caminhoLocalParecePlausivel`)
-- **Teste:** `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+- **Teste:** `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   (describe "validarCaminhoDeWorkspaceLocal"),
-  `apps/api/test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`
+  `test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`
   (describe "a criação RECUSA o caminho que travaria depois"),
   `apps/web/src/lib/wizard.test.ts`, `apps/web/src/routes/NewProjectWizard.test.tsx`
 - **Decisão arquitetural:** [ADR 0072](../adr/0072-projeto-local-ou-container.md)
@@ -3247,12 +3247,12 @@ continuam numa linha só. Quem quer a quebra por credencial tem a lista própria
 e cruzar as duas dimensões multiplicaria as linhas do ranking sem responder
 pergunta que as duas listas separadas já não respondam.
 
-- **Onde:** `apps/api/src/application/ports/token-usage-repository.port.ts:150`
+- **Onde:** `src/application/ports/token-usage-repository.port.ts:150`
   (`SpendDimension`),
-  `apps/api/src/infrastructure/persistence/drizzle/token-usage.repository.ts:255`
-  (o `GROUP BY`), `apps/api/src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:112`,
-  `apps/api/src/interfaces/http/llm/spend.controller.ts:56`
-- **Teste:** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
+  `src/infrastructure/persistence/drizzle/token-usage.repository.ts:255`
+  (o `GROUP BY`), `src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:112`,
+  `src/interfaces/http/llm/spend.controller.ts:56`
+- **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
   ("quebra por PROVIDER, e o mesmo nome de modelo em dois providers segue UMA
   linha")
 - **Origem:** [ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
@@ -3280,15 +3280,15 @@ chegar ao handler.
 nasce alcançável pelas duas audiências, e tirá-la do alcance do membro vira ato
 explícito **neste ponto** — nunca um esquecimento em outro arquivo.
 
-- **Onde:** `apps/api/src/application/ports/token-usage-repository.port.ts:121`
+- **Onde:** `src/application/ports/token-usage-repository.port.ts:121`
   (as duas sobrecargas), `:147` (`SpendDimensionDoAtor`), `:163`/`:173` (os dois
-  escopos), `apps/api/src/application/use-cases/llm/get-my-spend.use-case.ts:73`,
-  `apps/api/src/interfaces/http/llm/spend.controller.ts:98`
-- **Teste:** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
+  escopos), `src/application/use-cases/llm/get-my-spend.use-case.ts:73`,
+  `src/interfaces/http/llm/spend.controller.ts:98`
+- **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
   ("não compila pedir `provider` com escopo de ator" — um `@ts-expect-error` que
   o `tsc` reprova como diretiva NÃO USADA se a barreira cair; e "só pede as
   dimensões `session` e `day`"),
-  `apps/api/test/interfaces/spend.controller.spec.ts` (a rota do membro aceita
+  `test/interfaces/spend.controller.spec.ts` (a rota do membro aceita
   `dias` e mais nada)
 - **Origem:** [ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
 
@@ -3311,8 +3311,8 @@ O rótulo "Por owner" é do handoff de design e vale pela [RN-058](#rn-058) — 
 chave do owner que todas essas linhas gastam. Quem é o dono do workspace
 continua sendo o campo `ownerId`, não o `actorKind` de cada linha.
 
-- **Onde:** `apps/api/src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:120`
-- **Teste:** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
+- **Onde:** `src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:120`
+- **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
   ("separa PESSOA de AGENTE em dois blocos, sem perder a lista por ator")
 - **Origem:** [ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
 
@@ -3344,8 +3344,8 @@ aqui não há nada a preservar — ou o provider devolveu os vetores e cobrou,
 ou não devolveu e não cobrou. É a mesma escolha do `listModels`, e a
 taxonomia é a mesma: nenhum `LLMErrorCode` novo.
 
-- **Onde:** `apps/api/src/application/ports/llm-provider.port.ts:61`,
-  `apps/api/src/infrastructure/llm/embedding-result.ts:26`
+- **Onde:** `src/application/ports/llm-provider.port.ts:61`,
+  `src/infrastructure/llm/embedding-result.ts:26`
 - **Teste:** `test/contract/llm-provider.contract.ts` (cinco casos, rodados
   contra todo provider que declara a capability)
 - **Origem:** [ADR 0075](../adr/0075-embeddings-no-contrato-de-llm-provider.md)
@@ -3373,8 +3373,8 @@ nunca permissão, e a ação certa para quem lê é sincronizar o catálogo em v
 de trocar de modelo. Deduzir a capability pelo NOME do modelo é proibido:
 seria um palpite vestido de dado.
 
-- **Onde:** `apps/api/src/domain/llm/embedding-capability.ts:64`,
-  `apps/api/src/infrastructure/llm/ollama-provider.ts:319`
+- **Onde:** `src/domain/llm/embedding-capability.ts:64`,
+  `src/infrastructure/llm/ollama-provider.ts:319`
 - **Teste:** `test/domain/llm/embedding-capability.spec.ts`,
   `test/infrastructure/llm/ollama-provider.spec.ts`
 - **Origem:** [ADR 0075](../adr/0075-embeddings-no-contrato-de-llm-provider.md)
@@ -3403,8 +3403,8 @@ existir: muda uma linha do literal, e o parsing já está exercitado. Um
 provider que declara `false` e ainda expõe o método **recusa a chamada**
 antes de tocar a rede.
 
-- **Onde:** `apps/api/src/infrastructure/llm/ollama-provider.ts:73`,
-  `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:325`
+- **Onde:** `src/infrastructure/llm/ollama-provider.ts:73`,
+  `src/infrastructure/llm/openai-compatible-provider.ts:325`
 - **Teste:** `test/contract/llm-provider.contract.ts`,
   `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`,
   `test/infrastructure/llm/ollama-provider.embeddings.smoke.spec.ts`
@@ -3422,7 +3422,7 @@ grupo visual de dois níveis.
 
 A "instância" não é um contador renumerado (`-01`/`-02`) — é o `agent_id`
 REAL que o produto já escreve: `devAgentId`/`extraDevAgentId`
-(`apps/api/src/application/use-cases/execution/activate-execution.use-case.ts:27-38`)
+(`src/application/use-cases/execution/activate-execution.use-case.ts:27-38`)
 produzem `dev-<modulo>` e `dev-<modulo>-2` (sufixo sempre exatamente `-2`,
 porque o teto é DOIS por módulo, [RN-154](#rn-154)). Um ramo só vira
 "instância extra" de outro se o agente-base (sem o sufixo) TAMBÉM tiver um
@@ -3456,7 +3456,7 @@ aberta, ex.: `dev-backend/dev-backend-2`).
 ### RN-213 — Alerta de custo é leitura de `lastThresholdNotified`, nunca recálculo {#rn-213}
 
 `alertaDeOrcamento` não reimplementa `crossedThresholds`
-(`apps/api/src/domain/llm/budget-threshold.ts`): lê o campo que o backend
+(`src/domain/llm/budget-threshold.ts`): lê o campo que o backend
 já grava no momento em que uma chamada real cruza 70/90/100%, e só decide
 a cor (`warning` abaixo de 90, `danger` a partir de 90) e se o texto deve
 avisar bloqueio ativo (`policy === 'block' && spentMicros >=
@@ -3482,9 +3482,9 @@ padrão de `projects.workspace_mode`/`workspace_path` (ADR 0072): `scope =
 escrever esta tabela é um pipeline (Onda 4) que não necessariamente passa
 pelo mesmo caso de uso toda vez.
 
-- **Onde:** `apps/api/src/db/schema/rag.ts` (`chunkScopeEnum` e os dois CHECK
+- **Onde:** `src/db/schema/rag.ts` (`chunkScopeEnum` e os dois CHECK
   da tabela `chunks`)
-- **Teste:** `apps/api/test/infrastructure/persistence/chunk.repository.spec.ts`
+- **Teste:** `test/infrastructure/persistence/chunk.repository.spec.ts`
   ("recusa chunk de docs sem source_path — o CHECK da migração 0045, não
   validação de aplicação")
 - **ADR:** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
@@ -3498,8 +3498,8 @@ para as duas divergirem — um trecho com vetor mas sem entrada léxica, ou
 vice-versa — sem nenhum mecanismo do banco impedindo. Uma linha, uma fonte
 de verdade para as duas metades da busca.
 
-- **Onde:** `apps/api/src/db/schema/rag.ts` (tabela `chunks`)
-- **Teste:** `apps/api/test/infrastructure/persistence/chunk.repository.spec.ts`
+- **Onde:** `src/db/schema/rag.ts` (tabela `chunks`)
+- **Teste:** `test/infrastructure/persistence/chunk.repository.spec.ts`
   (as três specs escrevem e leem as duas colunas na mesma linha)
 - **ADR:** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
 
@@ -3512,8 +3512,8 @@ transação do `INSERT`, sem depender de nenhum provider de LLM responder
 (diferente de `embedding`, que só chega quando um pipeline de indexação
 existir).
 
-- **Onde:** `apps/api/src/db/schema/rag.ts` (coluna `search_vector`)
-- **Teste:** `apps/api/test/infrastructure/persistence/chunk.repository.spec.ts`
+- **Onde:** `src/db/schema/rag.ts` (coluna `search_vector`)
+- **Teste:** `test/infrastructure/persistence/chunk.repository.spec.ts`
   ("grava um chunk de docs com vetor e devolve o search_vector gerado pela
   GENERATED ALWAYS AS")
 - **ADR:** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
@@ -3530,8 +3530,8 @@ não existe (Onda 4) — sem isso, chunking teria que esperar embedding,
 misturando duas falhas de natureza diferente (parsing de documento contra
 chamada de rede a um provider) numa escrita atômica só.
 
-- **Onde:** `apps/api/src/db/schema/rag.ts` (coluna `embedding`)
-- **Teste:** `apps/api/test/infrastructure/persistence/chunk.repository.spec.ts`
+- **Onde:** `src/db/schema/rag.ts` (coluna `embedding`)
+- **Teste:** `test/infrastructure/persistence/chunk.repository.spec.ts`
   ("grava um chunk de docs com vetor..." grava com `embedding` preenchido;
   as outras duas specs gravam sem ele, confirmando a nulabilidade)
 - **ADR:** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md); [RN-191](#rn-191)
@@ -3546,7 +3546,7 @@ treino — bom desde a primeira linha. `vector_cosine_ops` porque é a
 métrica que embeddings de texto geralmente esperam (o ranking de
 similaridade não deveria mudar com a magnitude do vetor).
 
-- **Onde:** `apps/api/src/db/migrations/0045_shallow_randall.sql`
+- **Onde:** `src/db/migrations/0045_shallow_randall.sql`
   (`chunks_embedding_idx`)
 - **ADR:** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
 
@@ -3562,7 +3562,7 @@ critério do CLAUDE.md para nascer em `breaking/` em vez de
 `feature/`/`bugfix/`.
 
 - **Onde:** branch `breaking/tabela-de-chunks`,
-  `apps/api/src/db/migrations/0045_shallow_randall.sql` (comentário que
+  `src/db/migrations/0045_shallow_randall.sql` (comentário que
   documenta a decisão dentro da própria migration)
 - **ADR:** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
 
@@ -3575,9 +3575,9 @@ ele. `createMany` existe porque uma indexação recorta N trechos de um
 documento/sessão de uma vez, evitando N round-trips por documento
 indexado.
 
-- **Onde:** `apps/api/src/application/ports/chunk-repository.port.ts`,
-  `apps/api/src/infrastructure/persistence/drizzle/chunk.repository.ts`
-- **Teste:** `apps/api/test/infrastructure/persistence/chunk.repository.spec.ts`
+- **Onde:** `src/application/ports/chunk-repository.port.ts`,
+  `src/infrastructure/persistence/drizzle/chunk.repository.ts`
+- **Teste:** `test/infrastructure/persistence/chunk.repository.spec.ts`
   ("createMany grava um lote e listByProject filtra por escopo, sem
   misturar docs e session")
 - **ADR:** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
@@ -3604,9 +3604,9 @@ HNSW ou GIN). `deleteByScope` é tipado `Exclude<ChunkScope, 'session'>`:
 apagar `session` por projeto inteiro apagaria sessões que não estão sendo
 reindexadas agora, então sessão só apaga por `deleteBySession`.
 
-- **Onde:** `apps/api/src/application/ports/chunk-repository.port.ts`
-  (linhas 105-146), `apps/api/src/infrastructure/persistence/drizzle/chunk.repository.ts`
-- **Teste:** `apps/api/test/infrastructure/persistence/chunk.repository.spec.ts`
+- **Onde:** `src/application/ports/chunk-repository.port.ts`
+  (linhas 105-146), `src/infrastructure/persistence/drizzle/chunk.repository.ts`
+- **Teste:** `test/infrastructure/persistence/chunk.repository.spec.ts`
   — describes "Onda 4 (G2)" (delete por escopo/sessão, busca por
   vetor/léxico, caso feliz e vazio de cada um)
 - **ADR:** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
@@ -3621,11 +3621,11 @@ Brabo enquanto produto. `session` indexa só dois tipos de evento
 `agent.status`, `agent.error`...) é mecanismo/falha, não conhecimento
 citável.
 
-- **Onde:** `apps/api/src/application/use-cases/rag/index-project-docs.use-case.ts`
-  (linhas 16-17, 64), `apps/api/src/application/use-cases/rag/index-session.use-case.ts`
+- **Onde:** `src/application/use-cases/rag/index-project-docs.use-case.ts`
+  (linhas 16-17, 64), `src/application/use-cases/rag/index-session.use-case.ts`
   (linha 29, 45)
-- **Teste:** `apps/api/test/application/use-cases/rag/index-project-docs.use-case.spec.ts`,
-  `apps/api/test/application/use-cases/rag/index-session.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/rag/index-project-docs.use-case.spec.ts`,
+  `test/application/use-cases/rag/index-session.use-case.spec.ts`
   (casos felizes + "projeto sem docs/" + "evento sem payload.text é
   ignorado")
 - **ADR:** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
@@ -3640,9 +3640,9 @@ indexação declara a lacuna (`embedding: { available, embedded, skipped,
 reason }`). A mesma degradação vale na busca: `HybridSearchUseCase` roda só
 com o sinal léxico e `vectorAvailable: false` avisa.
 
-- **Onde:** `apps/api/src/application/use-cases/rag/rag-embedding.service.ts`
+- **Onde:** `src/application/use-cases/rag/rag-embedding.service.ts`
   (linhas 53-58)
-- **Teste:** `apps/api/test/application/use-cases/rag/rag-embedding.service.spec.ts`
+- **Teste:** `test/application/use-cases/rag/rag-embedding.service.spec.ts`
   — "CASO DE FALHA: provider sem a capability..." e "CASO DE FALHA: provider
   que lança no meio do lote..."; `index-project-docs.use-case.spec.ts`/
   `index-session.use-case.spec.ts` — "CASO DE FALHA: provider de embedding
@@ -3663,12 +3663,12 @@ documentado. A citação (`HybridSearchHit`) expõe
 achou o chunk)/`origin` como união discriminada por `kind` (`file` com
 `sourcePath`/`headingPath`, `session` com `sessionId`/`eventId`).
 
-- **Onde:** `apps/api/src/application/use-cases/rag/hybrid-search.use-case.ts`
-  (linhas 44-113), `apps/api/src/domain/rag/rag-search-limits.ts`
-  (linhas 60-93), `apps/api/src/domain/rag/rag-citation.ts` (linhas 12-71)
-- **Teste:** `apps/api/test/application/use-cases/rag/hybrid-search.use-case.spec.ts`
+- **Onde:** `src/application/use-cases/rag/hybrid-search.use-case.ts`
+  (linhas 44-113), `src/domain/rag/rag-search-limits.ts`
+  (linhas 60-93), `src/domain/rag/rag-citation.ts` (linhas 12-71)
+- **Teste:** `test/application/use-cases/rag/hybrid-search.use-case.spec.ts`
   (fusão/ordenação/limiar, query fora da faixa, degradação léxico-only,
-  origin de sessão) e `apps/api/test/infrastructure/persistence/chunk.repository.spec.ts`
+  origin de sessão) e `test/infrastructure/persistence/chunk.repository.spec.ts`
   (as consultas SQL de fato, contra pgvector/tsvector real)
 - **ADR:** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
@@ -3683,9 +3683,9 @@ partida ajustável, não calibrados contra dado real de qualidade de
 recuperação (não existe, ainda, um corpo de perguntas reais rodado contra
 este índice).
 
-- **Onde:** `apps/api/src/domain/rag/chunking.ts` (linhas 30-31, 53 em
+- **Onde:** `src/domain/rag/chunking.ts` (linhas 30-31, 53 em
   diante)
-- **Teste:** `apps/api/test/domain/rag/chunking.spec.ts` (texto que
+- **Teste:** `test/domain/rag/chunking.spec.ts` (texto que
   cabe/não cabe, texto vazio, sobreposição real, texto patológico sem
   espaço, headings aninhados, markdown sem heading)
 - **ADR:** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
@@ -3698,9 +3698,9 @@ cada indexação apagando o escopo/sessão antes de recriar — rodar duas vezes
 seguidas não duplica. Disparado por `POST /projects/:projectId/rag/reindex`,
 `role:maintainer`.
 
-- **Onde:** `apps/api/src/application/use-cases/rag/reindex-project.use-case.ts`
+- **Onde:** `src/application/use-cases/rag/reindex-project.use-case.ts`
   (linha 36)
-- **Teste:** `apps/api/test/application/use-cases/rag/reindex-project.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/rag/reindex-project.use-case.spec.ts`
   (agrega docs+sessões, embeddingAvailable falso quando qualquer rodada
   falha, projeto inexistente)
 - **ADR:** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
@@ -3713,9 +3713,9 @@ chunk. Não existe coluna de timestamp de indexação por escopo, e a
 resposta não inclui nenhum "reindexado há Xmin" — um número chutado
 mentiria (mesma régua do ADR 0042 para nota de modelo).
 
-- **Onde:** `apps/api/src/application/use-cases/rag/get-rag-coverage.use-case.ts`
+- **Onde:** `src/application/use-cases/rag/get-rag-coverage.use-case.ts`
   (linha 47)
-- **Teste:** `apps/api/test/application/use-cases/rag/get-rag-coverage.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/rag/get-rag-coverage.use-case.spec.ts`
 - **ADR:** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
 ### RN-238 — As três rotas HTTP do RAG dividem papel por quem MUDA o que o produto gasta {#rn-238}
@@ -3726,9 +3726,9 @@ chamadas ao repositório do projeto e ao provider de embedding — mesma
 régua "muda o que o produto gasta sem perguntar" do teto de paralelismo de
 área (RN-083).
 
-- **Onde:** `apps/api/src/interfaces/http/rag/rag.controller.ts` (linhas
+- **Onde:** `src/interfaces/http/rag/rag.controller.ts` (linhas
   50, 57, 81, 98), `docs/security-surface.md`
-- **Teste:** `apps/api/test/interfaces/route-surface.spec.ts`
+- **Teste:** `test/interfaces/route-surface.spec.ts`
   (classificação de papel, tags fechadas, metadados OpenAPI das três
   rotas)
 - **ADR:** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
@@ -3747,9 +3747,9 @@ hoje, e conceder isso é decisão de segurança fora do escopo desta regra.
 Um orquestrador real, quando existir, CONSOME esta tabela depois de agir
 de verdade — nunca o contrário.
 
-- **Onde:** `apps/api/src/domain/containers/container-lifecycle.ts`,
-  `apps/api/src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
-- **Teste:** `apps/api/test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
+- **Onde:** `src/domain/containers/container-lifecycle.ts`,
+  `src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
+- **Teste:** `test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
 - **ADR:** [0081](../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
 ### RN-244 — A máquina de estados do container: só `removed` sai reprovisionando {#rn-244}
@@ -3762,9 +3762,9 @@ Transição fora da tabela lança `InvalidContainerTransitionError`, que o
 caso de uso traduz para 409 — mesmo formato de `session-state-machine.ts`
 e `pr-gate-state-machine.ts`.
 
-- **Onde:** `apps/api/src/domain/containers/container-lifecycle.ts`
+- **Onde:** `src/domain/containers/container-lifecycle.ts`
   (`ALLOWED_TRANSITIONS`)
-- **Teste:** `apps/api/test/domain/containers/container-lifecycle.spec.ts`
+- **Teste:** `test/domain/containers/container-lifecycle.spec.ts`
 - **ADR:** [0081](../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
 ### RN-245 — A primeira transição exige a imagem já decidida, e CONGELA versão e recursos {#rn-245}
@@ -3777,8 +3777,8 @@ naquele instante são CONGELADOS na linha nova (`image_version`, `cpus`,
 `memory_mb`, `pids_limit`): uma revisão posterior do artefato não muda
 retroativamente o que uma instância já provisionada promete.
 
-- **Onde:** `apps/api/src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
-- **Teste:** `apps/api/test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
+- **Onde:** `src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
+- **Teste:** `test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
   — "a primeira transição (provisioning) cria a linha…" e "sem decisão de
   imagem do Arquiteto, não há o que provisionar"
 - **ADR:** [0081](../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
@@ -3790,8 +3790,8 @@ container do AGENTE de sempre — não sobe container próprio. Pedir
 qualquer transição para um projeto `local` é recusado com 400 ANTES de
 tocar a tabela, na origem, não filtrado depois na UI.
 
-- **Onde:** `apps/api/src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
-- **Teste:** `apps/api/test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
+- **Onde:** `src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
+- **Teste:** `test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
   — "projeto em modo `local` não tem ciclo de vida de container (ADR 0072)"
 - **ADR:** [0081](../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
@@ -3803,8 +3803,8 @@ BANCO (`project_containers_project_id_unique`), não só no caso de uso:
 `create` chamado duas vezes para o mesmo projeto falha na escrita, nunca
 produz uma segunda linha silenciosa.
 
-- **Onde:** `apps/api/src/db/migrations/0046_chilly_forgotten_one.sql`
-- **Teste:** `apps/api/test/infrastructure/persistence/drizzle/container.repository.spec.ts`
+- **Onde:** `src/db/migrations/0046_chilly_forgotten_one.sql`
+- **Teste:** `test/infrastructure/persistence/drizzle/container.repository.spec.ts`
   — "só uma linha por projeto — create duplicado viola a constraint única"
 - **ADR:** [0081](../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
@@ -3820,8 +3820,8 @@ enquanto a tabela não mentir sobre APLICAR (nenhuma tela ou resposta de
 API hoje afirma "o container está limitado a X" — só "a intenção
 registrada era X").
 
-- **Onde:** `apps/api/src/db/schema/containers.ts` (`projectContainers`)
-- **Teste:** `apps/api/test/infrastructure/persistence/drizzle/container.repository.spec.ts`
+- **Onde:** `src/db/schema/containers.ts` (`projectContainers`)
+- **Teste:** `test/infrastructure/persistence/drizzle/container.repository.spec.ts`
   — "create nasce em `provisioning`, com a versão e os recursos passados"
 - **ADR:** [0081](../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
@@ -3842,10 +3842,10 @@ produto (RN-243). Mesma permissão da rota irmã (`GET
 /projects/:projectId/container`): `viewer`, GET, sem `@Post` — quem
 transicionaria o ciclo de vida é um orquestrador que ainda não existe.
 
-- **Onde:** `apps/api/src/interfaces/http/containers/containers.controller.ts`
-  (`cicloDeVida`), `apps/api/src/interfaces/http/containers/dto/containers.response.dto.ts`
+- **Onde:** `src/interfaces/http/containers/containers.controller.ts`
+  (`cicloDeVida`), `src/interfaces/http/containers/dto/containers.response.dto.ts`
   (`CicloDeVidaDoContainerResponseDto`)
-- **Teste:** `apps/api/test/interfaces/http/containers/containers.controller.spec.ts`
+- **Teste:** `test/interfaces/http/containers/containers.controller.spec.ts`
 - **Borda:** `id`/`projectId`/`containerId` da linha interna NÃO vazam na
   resposta — o contrato HTTP não é a mesma forma que a linha do banco.
 - **ADR:** [0083](../adr/0083-terminal-mostra-estado-real-do-container.md)
@@ -3861,8 +3861,8 @@ duas → provisiona conta nova ([RN-278](#rn-278)). A chave de busca do
 primeiro passo é sempre `providerUserId`, nunca e-mail — evita que trocar
 o e-mail no provider "perca" o vínculo.
 
-- **Onde:** `apps/api/src/application/use-cases/auth/social-login-callback.use-case.ts`
-- **Teste:** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **Onde:** `src/application/use-cases/auth/social-login-callback.use-case.ts`
+- **Teste:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — os sete casos de `SocialLoginCallbackUseCase`
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -3876,8 +3876,8 @@ a MESMA chave HMAC do `state` de "conectar git ao projeto X"
 recusado aqui: sem o discriminante, aceitá-lo equivaleria a logar como o
 `userId` de quem iniciou aquela conexão — escalação de privilégio.
 
-- **Onde:** `apps/api/src/domain/auth/social-oauth-state.ts`
-- **Teste:** `apps/api/test/domain/auth/social-oauth-state.spec.ts`
+- **Onde:** `src/domain/auth/social-oauth-state.ts`
+- **Teste:** `test/domain/auth/social-oauth-state.spec.ts`
   — "RN-273: rejeita um state do fluxo de CONEXÃO de git, mesma chave"
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -3893,9 +3893,9 @@ quem já tem `alguem@empresa.com` na Brabo não pediu para um GitHub
 alheio, com aquele endereço só DIGITADO, herdar a conta. A recusa é
 `403`, e nenhum vínculo é gravado.
 
-- **Onde:** `apps/api/src/application/use-cases/auth/social-login-callback.use-case.ts`
+- **Onde:** `src/application/use-cases/auth/social-login-callback.use-case.ts`
   (`vincularAContaExistente`)
-- **Teste:** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — "RECUSA vincular quando o e-mail bate mas NÃO está verificado pelo provider"
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -3910,9 +3910,9 @@ correspondente) sem reduzir risco nenhum — o pior caso é uma conta nova
 com um e-mail não comprovado, o mesmo risco que o registro por senha já
 aceita implicitamente até o clique no link de verificação.
 
-- **Onde:** `apps/api/src/application/use-cases/auth/social-login-callback.use-case.ts`
+- **Onde:** `src/application/use-cases/auth/social-login-callback.use-case.ts`
   (`provisionarContaNova`)
-- **Teste:** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — "provisiona conta nova mesmo com e-mail NÃO verificado"
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -3925,9 +3925,9 @@ faria uma troca de e-mail no GitHub "perder" o vínculo de quem já tinha
 conta, ou pior, herdar silenciosamente o vínculo de outra pessoa que
 reusou aquele endereço depois.
 
-- **Onde:** `apps/api/src/db/migrations/0047_complete_hannibal_king.sql`,
-  `apps/api/src/application/ports/social-identity-repository.port.ts`
-- **Teste:** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **Onde:** `src/db/migrations/0047_complete_hannibal_king.sql`,
+  `src/application/ports/social-identity-repository.port.ts`
+- **Teste:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — "identidade já conhecida: login direto, sem criar segunda linha"
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -3939,10 +3939,10 @@ pede. Entrar na conta não deveria conceder acesso a repositório nenhum;
 os dois fluxos reusam o MESMO app OAuth (RN-281) mas pedem autorizações
 diferentes, decididas na hora da autorização, não na configuração do app.
 
-- **Onde:** `apps/api/src/infrastructure/git/github-oauth-client.ts`,
-  `apps/api/src/infrastructure/git/gitlab-oauth-client.ts`
+- **Onde:** `src/infrastructure/git/github-oauth-client.ts`,
+  `src/infrastructure/git/gitlab-oauth-client.ts`
   (`buildLoginAuthorizeUrl`)
-- **Teste:** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — "StartSocialLoginUseCase › caminho feliz"
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -3954,10 +3954,10 @@ para "conta sem senha ainda" (ver RN-032 e `migracao-keycloak.spec.ts`).
 `LoginUseCase` e `ResetPasswordUseCase` já tratam esse estado; não foi
 necessário um segundo mecanismo de "senha pendente" para o login social.
 
-- **Onde:** `apps/api/src/application/ports/auth-credential-repository.port.ts`
+- **Onde:** `src/application/ports/auth-credential-repository.port.ts`
   (`criarUsuarioSemCredencial`),
-  `apps/api/src/infrastructure/persistence/drizzle/auth-credential.repository.ts`
-- **Teste:** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+  `src/infrastructure/persistence/drizzle/auth-credential.repository.ts`
+- **Teste:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — "caminho feliz: provisiona um usuário NOVO, sem senha (RN-278)"
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -3971,9 +3971,9 @@ o clique no link de verificação provaria — não faz sentido a conta
 continuar bloqueada do login por senha (RN-032) depois de provar posse
 do e-mail por outro caminho igualmente forte.
 
-- **Onde:** `apps/api/src/application/use-cases/auth/social-login-callback.use-case.ts`
+- **Onde:** `src/application/use-cases/auth/social-login-callback.use-case.ts`
   (`vincularAContaExistente`)
-- **Teste:** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — "vincula a conta existente (…) e marca o e-mail dela como verificado (RN-274/279)"
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -3984,9 +3984,9 @@ preenchido é recusada com `403`, tanto no login direto (identidade já
 conhecida) quanto na tentativa de vincular. Desabilitar uma conta não
 pode ser contornado trocando de método de entrada.
 
-- **Onde:** `apps/api/src/application/use-cases/auth/social-login-callback.use-case.ts`
+- **Onde:** `src/application/use-cases/auth/social-login-callback.use-case.ts`
   (`entrarComIdentidadeConhecida`, `vincularAContaExistente`)
-- **Teste:** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — "recusa login de identidade vinculada a conta DESABILITADA"
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -4002,7 +4002,7 @@ em `.env.example` — é essa exigência, não uma env var nova, que justifica
 o branch nascer `breaking/`.
 
 - **Onde:** `.env.example`,
-  `apps/api/src/application/use-cases/auth/start-social-login.use-case.ts`
+  `src/application/use-cases/auth/start-social-login.use-case.ts`
 - **Teste:** manual (cadastro no app OAuth) — não há como testar
   automaticamente uma configuração externa ao produto
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
@@ -4016,9 +4016,9 @@ chamado em toda carga de página) troca o refresh recém-gravado por um
 access token — nenhum código novo do lado do cliente além dos botões e o
 alias de rota de erro.
 
-- **Onde:** `apps/api/src/interfaces/http/auth/auth.controller.ts`
+- **Onde:** `src/interfaces/http/auth/auth.controller.ts`
   (`oauthCallback`)
-- **Teste:** `apps/api/test/interfaces/route-surface.spec.ts` — cobre a
+- **Teste:** `test/interfaces/route-surface.spec.ts` — cobre a
   classificação pública e os metadados OpenAPI da rota; o fluxo completo
   de cookie→boot é E2E, fora do escopo de teste de unidade
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
@@ -4031,9 +4031,9 @@ desabilitada, e-mail não verificado) redireciona para
 motivo real. Mesmo padrão do callback de conexão de git
 (`WEB_ORIGIN/git-error`).
 
-- **Onde:** `apps/api/src/interfaces/http/auth/auth.controller.ts`
+- **Onde:** `src/interfaces/http/auth/auth.controller.ts`
   (`oauthCallback`, bloco `catch`)
-- **Teste:** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — cobre os desfechos de falha que o controller mapeia para o mesmo
   redirect genérico
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
@@ -4045,7 +4045,7 @@ motivo real. Mesmo padrão do callback de conexão de git
 Decisão consciente do dono do produto de ANTECIPAR a construção dos papéis
 `analytics` e `delivery-metricas` (`packages/contracts/fluxo.yml`, `status: proposto`) sem
 esperar o gatilho orgânico que cada um já declarava. Os dois viram um SCRIPT
-só — `apps/api/scripts/analise-funil.ts` — no mesmo formato de
+só — `scripts/analise-funil.ts` — no mesmo formato de
 `medir-execucao.ts` (Fase 13b): `NestFactory.createApplicationContext`,
 `--projeto <uuid>` obrigatório, leitura pura via Drizzle, sem escrita
 nenhuma. A forma é a que o próprio fluxo já prescrevia: `analytics` é
@@ -4062,9 +4062,9 @@ arquivo é a mesma de `medir-execucao.ts`: sem ela, importar o módulo no
 teste subiria o Nest inteiro e derrubaria o processo no `process.exit` do
 parser de argumentos.
 
-- **Onde:** `apps/api/scripts/analise-funil.ts:64-73` (`lerOpcoes`),
+- **Onde:** `scripts/analise-funil.ts:64-73` (`lerOpcoes`),
   `:256-319` (`main`), `:390` (guarda de execução)
-- **Teste:** `apps/api/test/scripts/analise-funil.spec.ts` (só as funções
+- **Teste:** `test/scripts/analise-funil.spec.ts` (só as funções
   puras — a parte que fala com o banco é exercitada por execução real,
   mesmo padrão de `medir-execucao.spec.ts`)
 - **ADR:** [0089](../adr/0089-analytics-e-delivery-metricas-como-relatorio.md)
@@ -4085,9 +4085,9 @@ outro contexto (RN-042). Merge cujo `updated_at` precede o do commit (duas
 levas na mesma sessão, ou dado incoerente) é descartado, nunca vira lead
 time negativo.
 
-- **Onde:** `apps/api/scripts/analise-funil.ts:115-160` (`calcularFunil`),
+- **Onde:** `scripts/analise-funil.ts:115-160` (`calcularFunil`),
   `:170-193` (`calcularLeadTimes`)
-- **Teste:** `apps/api/test/scripts/analise-funil.spec.ts` (describe
+- **Teste:** `test/scripts/analise-funil.spec.ts` (describe
   "calcularFunil", "calcularLeadTimes")
 - **ADR:** [0089](../adr/0089-analytics-e-delivery-metricas-como-relatorio.md)
 
@@ -4095,9 +4095,9 @@ time negativo.
 
 `deploymentFrequencyPorDia` só conta `git_merge` `executed` cujo
 `executionResult.targetBranch` está em `PROTECTED_BRANCHES`
-(`apps/api/src/domain/actions/protected-branches.ts`) — merge numa branch de
+(`src/domain/actions/protected-branches.ts`) — merge numa branch de
 feature não é deploy. Cruza por REFERÊNCIA com o gate `backmerge`
-(`apps/api/config/gates.yml`): a evidência dele é CI, em `.release/gate.json`, fora do
+(`config/gates.yml`): a evidência dele é CI, em `.release/gate.json`, fora do
 alcance de um script que só lê o banco, então não há junção de dado, só o
 mesmo recorte de branch que o gate observa.
 
@@ -4116,9 +4116,9 @@ vez de um número aproximado:
    `secops-runtime`/`platform` (`status: proposto`/`planned`, ativação
    sincronizada com `DEPLOY_ENABLED`).
 
-- **Onde:** `apps/api/scripts/analise-funil.ts:220-247`
+- **Onde:** `scripts/analise-funil.ts:220-247`
   (`deploymentFrequencyPorDia`), `:372-386` (seção "Não medido" impressa)
-- **Teste:** `apps/api/test/scripts/analise-funil.spec.ts` (describe
+- **Teste:** `test/scripts/analise-funil.spec.ts` (describe
   "deploymentFrequencyPorDia")
 - **ADR:** [0089](../adr/0089-analytics-e-delivery-metricas-como-relatorio.md)
 
@@ -4128,7 +4128,7 @@ vez de um número aproximado:
 
 ### RN-340 — O gate `implementavel` decide a story ANTES do dev agent escrever código {#rn-340}
 
-`apps/api/config/gates.yml` declarava o gate `implementavel` (dono `dev-lead`) desde a
+`config/gates.yml` declarava o gate `implementavel` (dono `dev-lead`) desde a
 FASE 14d com `status: planned` — nunca ativado. O [ADR 0090](../adr/0090-qa-estrategia-e-appsec-segundo-momento.md)
 ativa: a ferramenta `assess_implementability` do Dev Lead propõe o **parecer
 de implementabilidade** de uma story (`implementavel`/`inviavel` +
@@ -4165,13 +4165,13 @@ desfechos, papel mínimo, fora dos tetos absolutos) segue igual.
 
 - **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex`
   (`run_assessment/2`, `spec_assess_implementability/0`),
-  `dev_lead_server.ex` (`run_tool/3`); `apps/api/src/domain/actions/decide.ts`
-  (`assess_implementability`); `apps/api/config/gates.yml` (`implementavel`,
+  `dev_lead_server.ex` (`run_tool/3`); `src/domain/actions/decide.ts`
+  (`assess_implementability`); `config/gates.yml` (`implementavel`,
   `status: active`)
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_tools_test.exs`
   (describe "assess_implementability"), `dev_lead_server_test.exs`
   (describe "suspensão em aprovação" — os dois testes novos),
-  `apps/api/test/domain/actions/decide.spec.ts` (describe "parecer de
+  `test/domain/actions/decide.spec.ts` (describe "parecer de
   implementabilidade do Dev Lead")
 - **Origem:** [ADR 0090](../adr/0090-qa-estrategia-e-appsec-segundo-momento.md)
 
@@ -4189,7 +4189,7 @@ SCRIPT (`pnpm --filter api relatorio:seguranca-runtime`), não agente LLM nem
 ### RN-375 — O relatório declara a janela, nunca finge um histórico maior {#rn-375}
 
 `DomainGaugesCollector.pruneRateLimit`
-(`apps/api/src/infrastructure/observability/domain-gauges.collector.ts:177-186`)
+(`src/infrastructure/observability/domain-gauges.collector.ts:177-186`)
 apaga hits mais velhos que `2 × RATE_LIMIT_WINDOW_MS` (240s com o default de
 60s), a cada `METRICS_GAUGE_INTERVAL_MS` (15s por padrão) — a tabela nunca
 guarda mais que uns poucos minutos. `relatorio-seguranca-runtime.ts` imprime
@@ -4202,10 +4202,10 @@ apagados — nunca "não houve mais hits que isso".
 ### RN-376 — O ranking trabalha só com o que `bucket_key` guarda: balde e quando {#rn-376}
 
 `RateLimitGuard.registrarEContar`
-(`apps/api/src/interfaces/http/shared/rate-limit.guard.ts:150-170`) grava só
+(`src/interfaces/http/shared/rate-limit.guard.ts:150-170`) grava só
 `bucket_key` (`user:<uuid>` ou `ip:<endereço>`) e `occurred_at` — NÃO há
 rota, método HTTP nem motivo do bloqueio. `rankingDeBaldes` e
-`interpretarBalde` (`apps/api/scripts/relatorio-seguranca-runtime.ts`)
+`interpretarBalde` (`scripts/relatorio-seguranca-runtime.ts`)
 classificam por esses dois campos e só eles; um `bucket_key` fora do formato
 `user:`/`ip:` cai em `desconhecido` em vez de estourar, para o script não
 quebrar se um `RateLimitGuard` futuro gravar outro formato. Pedir "ranking de
@@ -4216,7 +4216,7 @@ IP por rota" seria inventar dimensão que a tabela nunca guardou.
 ### RN-400 — O parecer de migração é análise ESTÁTICA de SQL, e ignora o padrão de risco quando ele só aparece em comentário {#rn-400}
 
 `lintarConteudo` (o núcleo puro de `lint-migracao.ts`) varre cada `.sql` de
-`apps/api/src/db/migrations/` linha a linha, sem depender de `--projeto`
+`src/db/migrations/` linha a linha, sem depender de `--projeto`
 nem de banco — o risco que ele acha é de SCHEMA, não de carga, e por isso
 não depende de volume real de dados nenhum (o critério de separação que
 `packages/contracts/fluxo.yml` já declarava para o papel). Cinco padrões, cada um com a
@@ -4232,9 +4232,9 @@ repositório explica em prosa, no próprio SQL, por que um padrão foi
 EVITADO — analisar o texto do comentário acharia o padrão exatamente na
 frase que descreve por que ele não foi usado.
 
-- **Onde:** `apps/api/scripts/lint-migracao.ts` (`REGRAS`, linha 75;
+- **Onde:** `scripts/lint-migracao.ts` (`REGRAS`, linha 75;
   `lintarConteudo`, linha 126)
-- **Teste:** `apps/api/test/scripts/lint-migracao.spec.ts` — cada padrão
+- **Teste:** `test/scripts/lint-migracao.spec.ts` — cada padrão
   individualmente, combinação de vários na mesma migration, e "ignora o
   padrão de risco quando ele aparece só em COMENTÁRIO"
 - **ADR:** [0093](../adr/0093-dbre-linter-de-migracao-e-relatorio-de-backup.md)
@@ -4263,9 +4263,9 @@ pode deixar rastro de handoff meio-ofertado no event log, que é imutável.
 leve — não precisa montar a árvore épico→história→tarefa para responder
 "existe alguma não-draft?".
 
-- **Onde:** `apps/api/src/application/use-cases/agents/offer-infra-handoff.use-case.ts`
+- **Onde:** `src/application/use-cases/agents/offer-infra-handoff.use-case.ts`
   (linhas 27-34, a checagem; injeção de `StoryRepository` no construtor)
-- **Teste:** `apps/api/test/application/use-cases/agents/offer-infra-handoff.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/agents/offer-infra-handoff.use-case.spec.ts`
   — zero história promovida recusa com ZERO chamada ao engine e ZERO evento
   gravado; com ao menos uma `ready`/`in_progress`/`done`, segue o fluxo normal
 - **ADR:** [0094](../adr/0094-delegacao-dev-lead-vira-dado.md)
@@ -4308,15 +4308,15 @@ ainda acontece no boot — mesmo desenho que `CREDENTIALS_MASTER_KEY` já usa
 (validada no construtor de `EnvelopeEncryptionService`, exercitado pela
 mesma montagem de grafo).
 
-- **Onde:** `apps/api/src/infrastructure/mail/smtp-config.ts`
+- **Onde:** `src/infrastructure/mail/smtp-config.ts`
   (`resolverConfigSmtp`, `resolverModoDeTransporte`),
-  `apps/api/src/infrastructure/mail/smtp-mail-sender.ts` (`SmtpMailSender`,
+  `src/infrastructure/mail/smtp-mail-sender.ts` (`SmtpMailSender`,
   chama `resolverConfigSmtp()` no construtor),
-  `apps/api/src/application/use-cases/auth/auth-use-cases.module.ts`
+  `src/application/use-cases/auth/auth-use-cases.module.ts`
   (`useFactory` do `MailSender`)
-- **Teste:** `apps/api/test/infrastructure/mail/smtp-config.spec.ts`
+- **Teste:** `test/infrastructure/mail/smtp-config.spec.ts`
   (mesmo padrão de `auth-key-material.spec.ts`/`service-token.spec.ts`),
-  `apps/api/test/infrastructure/mail/smtp-mail-sender.spec.ts`
+  `test/infrastructure/mail/smtp-mail-sender.spec.ts`
 - **Origem:** [ADR 0096](../adr/0096-smtp-real-no-mailsender.md), estendendo o
   padrão da [RN-114](#rn-114) (que por sua vez estende o
   [ADR 0059](../adr/0059-segredo-do-state-de-oauth-sem-default.md))
@@ -4350,7 +4350,7 @@ falhar no meio.
 
 Nome e slug saem de UMA função pura,
 `nomeESlugDoWorkspacePessoal(nome, email, userId)`
-(`apps/api/src/domain/auth/personal-workspace.ts`), reusada pelos dois
+(`src/domain/auth/personal-workspace.ts`), reusada pelos dois
 pontos de criação — para a regra não divergir em dois arquivos, o mesmo
 motivo por trás de `normalizarEmail`/`exigirSenhaValida` morarem no
 domínio. O nome usa o `nome` informado (login social usa o login do
@@ -4363,18 +4363,18 @@ cadastros com nome ou local-part iguais colidiriam sem o sufixo. Nome ou
 e-mail sem NENHUM caractere alfanumérico degradam para o literal
 `workspace-<8 chars>`, nunca para uma string vazia.
 
-- **Onde:** `apps/api/src/domain/auth/personal-workspace.ts`
+- **Onde:** `src/domain/auth/personal-workspace.ts`
   (`nomeESlugDoWorkspacePessoal`),
-  `apps/api/src/application/use-cases/auth/register.use-case.ts`,
-  `apps/api/src/application/use-cases/auth/social-login-callback.use-case.ts`
+  `src/application/use-cases/auth/register.use-case.ts`,
+  `src/application/use-cases/auth/social-login-callback.use-case.ts`
   (método `provisionarContaNova`)
-- **Teste:** `apps/api/test/domain/auth/personal-workspace.spec.ts` (nome
+- **Teste:** `test/domain/auth/personal-workspace.spec.ts` (nome
   com/sem `nome`, fallback para o local-part do e-mail, acento/maiúscula
   virando kebab-case ASCII, fallback `workspace-<id>` sem caractere
   alfanumérico nenhum, slug sempre único por conta do sufixo);
-  `apps/api/test/application/use-cases/auth/register.use-case.spec.ts`
+  `test/application/use-cases/auth/register.use-case.spec.ts`
   (conta nova ganha workspace com o usuário como `owner`, e-mail duplicado
-  não cria um segundo); `apps/api/test/application/use-cases/auth/
+  não cria um segundo); `test/application/use-cases/auth/
   social-login-callback.use-case.spec.ts` (mesma prova no ramo que
   provisiona conta nova via login social)
 - **ADR:** nenhum — correção de um caminho que devia ter feito isso desde
@@ -4400,7 +4400,7 @@ LLM** — ver [ADR 0098](../adr/0098-limites-de-transporte-e-janela-efetiva-de-c
 Duas correções, as duas necessárias (uma sem a outra só adia o
 estouro):
 
-1. `apps/api/src/main.ts` nunca configurou limite de body do Express —
+1. `src/main.ts` nunca configurou limite de body do Express —
    valia o default de 100 KB, o gargalo mais estreito no sentido
    engine→api (o Phoenix aceita até 8 MB). `POST
    /internal/sessions/:sessionId/llm-turn` reenvia o histórico INTEIRO
@@ -4450,11 +4450,11 @@ DECLARADO como limitação conhecida, não corrigido aqui — corrigi-lo
 exigiria mudar a assinatura de `deriveAgentRoster`/`rosterFactsFromEvents`,
 fora do escopo desta correção.
 
-- **Onde:** `apps/api/src/main.ts`, `apps/engine/lib/engine/harness/context_manager.ex`,
+- **Onde:** `src/main.ts`, `apps/engine/lib/engine/harness/context_manager.ex`,
   `apps/engine/lib/engine/harness/tokenizer.ex`,
-  `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts`,
+  `src/application/use-cases/sessions/get-session-pending-work.use-case.ts`,
   `apps/web/src/routes/ProjectExecutorsTab.tsx`, `apps/web/src/routes/ProjectOverviewTab.tsx`
-- **Teste:** `apps/api/test/main.spec.ts` (body de 1 MB aceito; acima do
+- **Teste:** `test/main.spec.ts` (body de 1 MB aceito; acima do
   limite → 413); `apps/engine/test/engine/harness/context_manager_test.exs`
   (toolCalls pesados disparam compactação; `:pinned` sobrevive; teto de
   transporte força compactação mesmo com janela de modelo grande);
@@ -4494,9 +4494,9 @@ faixa). `GraphUnavailableError` no meio de um lote PARA o ciclo inteiro
 (o resto falharia pelo mesmo motivo) — a linha fica não-processada e
 tenta de novo sozinha no próximo ciclo, sem intervenção.
 
-- **Onde:** `apps/api/src/application/graph-projection/graph-projector.ts`;
-  `apps/api/src/domain/graph/graph-projection-events.ts`;
-  `apps/api/src/application/use-cases/sessions/append-session-event.use-case.ts`,
+- **Onde:** `src/application/graph-projection/graph-projector.ts`;
+  `src/domain/graph/graph-projection-events.ts`;
+  `src/application/use-cases/sessions/append-session-event.use-case.ts`,
   `transition-session.use-case.ts`
 - **Teste:** `graph-projector.spec.ts` (caminho feliz dos quatro tipos;
   resolução evidência→seq de hipótese; `GraphUnavailableError` deixa a
@@ -4546,10 +4546,10 @@ implementação (reescrever uma regra que o produto documentava como
 `deny` absoluto merece escrutínio) — o dono do produto confirmou
 explicitamente, depois de revisar, que a decisão era essa.
 
-- **Onde:** `apps/api/src/domain/actions/decide.ts` (bloco de tetos
-  absolutos), `apps/api/src/domain/actions/external-effect.ts`
+- **Onde:** `src/domain/actions/decide.ts` (bloco de tetos
+  absolutos), `src/domain/actions/external-effect.ts`
   (`comandoPrivilegiadoNoComando`, `mensagemDeComandoPrivilegiado`),
-  `apps/api/src/application/use-cases/actions/approve-always-action.use-case.ts`
+  `src/application/use-cases/actions/approve-always-action.use-case.ts`
 - **Teste:** `decide.spec.ts` (`git push` com auto mode `"*"` E com
   `allow` casando no `permissions.json` resolvem pra `require_approval`;
   `sudo` idem; os tetos anteriores continuam intactos — regressão
@@ -4587,12 +4587,12 @@ raiz pela MESMA regra nos dois modos não-`container`: o caminho do usuário
 muda entre `mounted` e `runner` não é ONDE a raiz fica — é QUANDO/QUEM
 confirma que ela existe de verdade ([RN-422](#rn-422)/[RN-423](runner.md#rn-423)).
 
-- **Onde:** `apps/api/src/db/migrations/0048_quiet_iron_fist.sql`,
-  `apps/api/src/db/schema/iam.ts` (`projectExecutionModeEnum`),
-  `apps/api/src/domain/iam/project.entity.ts` (`PROJECT_EXECUTION_MODES`),
-  `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
+- **Onde:** `src/db/migrations/0048_quiet_iron_fist.sql`,
+  `src/db/schema/iam.ts` (`projectExecutionModeEnum`),
+  `src/domain/iam/project.entity.ts` (`PROJECT_EXECUTION_MODES`),
+  `src/infrastructure/filesystem/project-workspaces-root.ts`
   (`projectScopeRoot`), `apps/engine/lib/engine/projects/project.ex`
-- **Teste:** `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+- **Teste:** `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   (describe "projectScopeRoot nos modos mounted/runner"),
   `apps/engine/test/engine/projects/project_test.exs`
 - **Decisão arquitetural:**
@@ -4617,11 +4617,11 @@ dele sem tocar disco: a criação de projeto `runner` e a confirmação do
 runner ([RN-423](runner.md#rn-423)) — a mesma função, nunca duas cópias que um dia
 divergem.
 
-- **Onde:** `apps/api/src/application/use-cases/iam/create-project.use-case.ts`
-  (`caminhoValidado`), `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
-  (`caminhoDeWorkspaceLocalValido`, exportada), `apps/api/src/interfaces/http/iam/dto/create-project.dto.ts`
-- **Teste:** `apps/api/test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`
-  (bloco `runner`), `apps/api/test/interfaces/http/iam/project-dto-modo-de-workspace.spec.ts`,
+- **Onde:** `src/application/use-cases/iam/create-project.use-case.ts`
+  (`caminhoValidado`), `src/infrastructure/filesystem/project-workspaces-root.ts`
+  (`caminhoDeWorkspaceLocalValido`, exportada), `src/interfaces/http/iam/dto/create-project.dto.ts`
+- **Teste:** `test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`
+  (bloco `runner`), `test/interfaces/http/iam/project-dto-modo-de-workspace.spec.ts`,
   `apps/web/src/lib/wizard.test.ts` (`canAdvanceFromWorkspace` para `runner`)
 - **Decisão arquitetural:**
   [ADR 0104](../adr/0104-execution-mode-tres-valores-e-workspace-verificado-pelo-runner.md)
@@ -4652,15 +4652,15 @@ o prefixo `brb_` e popular `request.user` direto, pra QUALQUER rota. Isso
 autorizaria o PAT a tudo que o papel do usuário permite no resto da api —
 o escopo "só pede ticket de runner" viraria decorativo.
 
-- **Onde:** `apps/api/src/interfaces/http/auth/pat-route.decorator.ts`
+- **Onde:** `src/interfaces/http/auth/pat-route.decorator.ts`
   (`IS_PAT_ROUTE_KEY`/`@RequirePatAuth()`),
-  `apps/api/src/interfaces/http/auth/jwt-auth.guard.ts` (o terceiro
-  early-out), `apps/api/src/interfaces/http/auth/pat-auth.guard.ts`
-  (`PatAuthGuard`), `apps/api/src/interfaces/http/runner/runner-tickets.controller.ts`
+  `src/interfaces/http/auth/jwt-auth.guard.ts` (o terceiro
+  early-out), `src/interfaces/http/auth/pat-auth.guard.ts`
+  (`PatAuthGuard`), `src/interfaces/http/runner/runner-tickets.controller.ts`
   (`runnerTicket`, o único handler marcado)
-- **Teste:** `apps/api/test/interfaces/pat-auth.guard.spec.ts`,
-  `apps/api/test/interfaces/jwt-auth.guard.spec.ts` (`@RequirePatAuth()`
-  passa sem tentar `verify()`), `apps/api/test/interfaces/http/runner/runner-tickets.controller.spec.ts`
+- **Teste:** `test/interfaces/pat-auth.guard.spec.ts`,
+  `test/interfaces/jwt-auth.guard.spec.ts` (`@RequirePatAuth()`
+  passa sem tentar `verify()`), `test/interfaces/http/runner/runner-tickets.controller.spec.ts`
   (`runnerTicket` tem o decorator, `terminalTicket` não)
 - **Decisão arquitetural:**
   [ADR 0105](../adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
@@ -4691,12 +4691,12 @@ reconecta em segundos, não minutos. O custo de não throttlar é um
 `UPDATE` de uma linha por índice único a cada chamada — irrelevante no
 pior caso real (até 10 tentativas seguidas, teto do runner).
 
-- **Onde:** `apps/api/src/infrastructure/persistence/drizzle/personal-access-token.repository.ts`
-  (`validarEUsar`), `apps/api/src/interfaces/http/auth/pat-auth.guard.ts`
-- **Teste:** `apps/api/test/infrastructure/persistence/personal-access-token.repository.spec.ts`
+- **Onde:** `src/infrastructure/persistence/drizzle/personal-access-token.repository.ts`
+  (`validarEUsar`), `src/interfaces/http/auth/pat-auth.guard.ts`
+- **Teste:** `test/infrastructure/persistence/personal-access-token.repository.spec.ts`
   (inexistente/revogado/expirado → `null`; "toca `last_used_at` sempre
   que válido, sem throttle" — regressão do bug acima),
-  `apps/api/test/interfaces/pat-auth.guard.spec.ts` (escopo errado → 403,
+  `test/interfaces/pat-auth.guard.spec.ts` (escopo errado → 403,
   não 401)
 - **Decisão arquitetural:**
   [ADR 0105](../adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
@@ -4722,13 +4722,13 @@ o caso de resposta a incidente (dev desligado com token vazando) — que
 esta seção declarava fora de escopo saiu do backlog e está implementado.
 Esta régua (autorevogação, escopo por `userId`) não mudou em nada.
 
-- **Onde:** `apps/api/src/application/use-cases/auth/list-personal-access-tokens.use-case.ts`
-  (`ListPersonalAccessTokensUseCase`), `apps/api/src/application/use-cases/auth/revoke-personal-access-token.use-case.ts`,
-  `apps/api/src/infrastructure/persistence/drizzle/personal-access-token.repository.ts`
+- **Onde:** `src/application/use-cases/auth/list-personal-access-tokens.use-case.ts`
+  (`ListPersonalAccessTokensUseCase`), `src/application/use-cases/auth/revoke-personal-access-token.use-case.ts`,
+  `src/infrastructure/persistence/drizzle/personal-access-token.repository.ts`
   (`listarDoUsuarioNoProjeto`, `revogar`)
-- **Teste:** `apps/api/test/application/use-cases/auth/list-personal-access-tokens.use-case.spec.ts`,
-  `apps/api/test/application/use-cases/auth/revoke-personal-access-token.use-case.spec.ts`,
-  `apps/api/test/infrastructure/persistence/personal-access-token.repository.spec.ts`
+- **Teste:** `test/application/use-cases/auth/list-personal-access-tokens.use-case.spec.ts`,
+  `test/application/use-cases/auth/revoke-personal-access-token.use-case.spec.ts`,
+  `test/infrastructure/persistence/personal-access-token.repository.spec.ts`
   (revogar token de outro usuário → `null`)
 - **Decisão arquitetural:**
   [ADR 0105](../adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
@@ -4767,19 +4767,19 @@ nenhuma (token não existe OU é de outro projeto), devolve `null` — a
 MESMA resposta (404) pros dois casos, mesma disciplina de não vazar
 existência que a RN-426 já aplicava.
 
-- **Onde:** `apps/api/src/application/use-cases/auth/list-personal-access-tokens-as-maintainer.use-case.ts`,
-  `apps/api/src/application/use-cases/auth/revoke-personal-access-token-as-maintainer.use-case.ts`,
-  `apps/api/src/infrastructure/persistence/drizzle/personal-access-token.repository.ts`
+- **Onde:** `src/application/use-cases/auth/list-personal-access-tokens-as-maintainer.use-case.ts`,
+  `src/application/use-cases/auth/revoke-personal-access-token-as-maintainer.use-case.ts`,
+  `src/infrastructure/persistence/drizzle/personal-access-token.repository.ts`
   (`listarDoProjeto`, `revogarComoMaintainer`),
-  `apps/api/src/interfaces/http/runner/personal-access-tokens.controller.ts`
+  `src/interfaces/http/runner/personal-access-tokens.controller.ts`
   (`listAllPats`, `revokePatAsMaintainer`),
   `apps/web/src/routes/settings/PersonalAccessTokensSection.tsx`
   (sub-lista visível só para `owner`/`maintainer`)
-- **Teste:** `apps/api/test/application/use-cases/auth/list-personal-access-tokens-as-maintainer.use-case.spec.ts`,
-  `apps/api/test/application/use-cases/auth/revoke-personal-access-token-as-maintainer.use-case.spec.ts`,
-  `apps/api/test/infrastructure/persistence/personal-access-token.repository.spec.ts`
+- **Teste:** `test/application/use-cases/auth/list-personal-access-tokens-as-maintainer.use-case.spec.ts`,
+  `test/application/use-cases/auth/revoke-personal-access-token-as-maintainer.use-case.spec.ts`,
+  `test/infrastructure/persistence/personal-access-token.repository.spec.ts`
   (`listarDoProjeto`/`revogarComoMaintainer`),
-  `apps/api/test/interfaces/http/runner/personal-access-tokens.controller.spec.ts`,
+  `test/interfaces/http/runner/personal-access-tokens.controller.spec.ts`,
   `apps/web/src/routes/ProjectSettingsTab.test.tsx`
 - **Decisão arquitetural:**
   [ADR 0105](../adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
@@ -4807,10 +4807,10 @@ absoluta independente de quem propõe. `git_merge` ganhou corpo próprio no
 card de aprovação em vez do despejo de JSON cru (mesmo defeito que a
 RN-096 já corrigiu para outros tipos).
 
-- **Onde:** `apps/api/src/application/ports/proposed-action-repository.port.ts`,
-  `apps/api/src/infrastructure/persistence/drizzle/proposed-action.repository.ts`,
-  `apps/api/src/application/use-cases/actions/list-project-pending-actions.use-case.ts`,
-  `apps/api/src/interfaces/http/actions/project-actions.controller.ts`
+- **Onde:** `src/application/ports/proposed-action-repository.port.ts`,
+  `src/infrastructure/persistence/drizzle/proposed-action.repository.ts`,
+  `src/application/use-cases/actions/list-project-pending-actions.use-case.ts`,
+  `src/interfaces/http/actions/project-actions.controller.ts`
   (`GET /projects/:projectId/actions?status=pending&actionType=`),
   `apps/web/src/routes/ProjectPrsTab.tsx`, `apps/web/src/components/ApprovalCard.tsx`
 - **Teste:** `list-project-pending-actions.use-case.spec.ts` (ação pendente
@@ -4866,15 +4866,15 @@ Enquanto `RolesGuard` recusava tudo antes, este segundo bug nunca chegava a
 se manifestar — corrigir só o primeiro teria trocado um 403 sempre por um
 401 sempre, e o runner continuaria nunca conectando de verdade.
 
-- **Onde:** `apps/api/src/interfaces/http/iam/roles.guard.ts` (desvio
-  `IS_PAT_ROUTE_KEY`); `apps/api/src/interfaces/http/auth/pat-auth.guard.ts`
-  (autorização por papel + hash do token); `apps/api/src/interfaces/http/runner/runner-http.module.ts`
+- **Onde:** `src/interfaces/http/iam/roles.guard.ts` (desvio
+  `IS_PAT_ROUTE_KEY`); `src/interfaces/http/auth/pat-auth.guard.ts`
+  (autorização por papel + hash do token); `src/interfaces/http/runner/runner-http.module.ts`
   (`IamUseCasesModule` importado, pelo `ResolveEffectiveRoleUseCase` que
   `PatAuthGuard` passou a precisar); comentário corrigido em
-  `apps/api/src/interfaces/http/runner/runner-tickets.controller.ts`
-- **Teste:** `apps/api/test/interfaces/pat-auth.guard.spec.ts` (autorização
-  por papel isolada + hash do token); `apps/api/test/interfaces/roles.guard.spec.ts`
-  (desvio `IS_PAT_ROUTE_KEY`); `apps/api/test/interfaces/http/runner/runner-tickets.guards.integration.spec.ts`
+  `src/interfaces/http/runner/runner-tickets.controller.ts`
+- **Teste:** `test/interfaces/pat-auth.guard.spec.ts` (autorização
+  por papel isolada + hash do token); `test/interfaces/roles.guard.spec.ts`
+  (desvio `IS_PAT_ROUTE_KEY`); `test/interfaces/http/runner/runner-tickets.guards.integration.spec.ts`
   (NOVO — sobe `JwtAuthGuard`+`RolesGuard`+`PatAuthGuard` num Nest real, com
   `supertest`, na MESMA ordem relativa do `AppModule`: é o teste que
   faltava, porque cada guard só era exercitado isolado antes disto).
@@ -4895,7 +4895,7 @@ Handoff manual a agente à escolha (backlog, ADR 0109): `assertHandoffTargetAllo
 alvo passaria por ela sem erro, porque uma AGENTE só cita alvos que ele já
 conhece pela própria instrução. Isso deixa de ser verdade quando quem
 escolhe é um HUMANO, num `<select>` alimentado por um cliente que pode
-divergir do backend. `addressableAgents()` (`apps/api/src/domain/agents/agent-areas.ts`)
+divergir do backend. `addressableAgents()` (`src/domain/agents/agent-areas.ts`)
 é o catálogo FECHADO — leads de área (`AGENT_AREAS.map(a => a.lead)`) ∪
 `SOLO_CONVERSATIONAL_AGENTS` (`criativo`, `po`, `arquiteto`, `ux-designer`,
 `staff`) — e `RequestManualHandoffUseCase` recusa com 400 qualquer
@@ -4914,15 +4914,15 @@ NÃO recebe a lista (não há consumidor lá). Mesmo com as duas cópias
 travadas, quem decide o que é aceito continua sendo o
 `RequestManualHandoffUseCase`.
 
-- **Onde:** `apps/api/src/domain/agents/agent-areas.ts` (`addressableAgents`,
-  `SOLO_CONVERSATIONAL_AGENTS`); `apps/api/src/application/use-cases/agents/request-manual-handoff.use-case.ts`;
-  `apps/api/scripts/gerar-areas.ts` (`renderWeb`, que escreve a lista no
+- **Onde:** `src/domain/agents/agent-areas.ts` (`addressableAgents`,
+  `SOLO_CONVERSATIONAL_AGENTS`); `src/application/use-cases/agents/request-manual-handoff.use-case.ts`;
+  `scripts/gerar-areas.ts` (`renderWeb`, que escreve a lista no
   web); `apps/web/src/lib/agent-areas.generated.ts` (cópia GERADA,
   reexportada por `apps/web/src/lib/agents.ts`)
-- **Teste:** `apps/api/test/domain/agents/agent-areas.spec.ts`
+- **Teste:** `test/domain/agents/agent-areas.spec.ts`
   (`describe('addressableAgents (ADR 0109)')` e
   `describe('a lista solo sai do gerador para o web (AT-046)')`, mais o
-  aferidor de frescor do arquivo do web); `apps/api/test/application/use-cases/agents/request-manual-handoff.use-case.spec.ts`
+  aferidor de frescor do arquivo do web); `test/application/use-cases/agents/request-manual-handoff.use-case.spec.ts`
   (recusa subagente E recusa agente desconhecido); `apps/web/src/lib/agents.test.ts`
 - **ADR:** [0109](../adr/0109-handoff-manual-a-agente-a-escolha.md)
 - **Origem:** backlog do modelo de time — item aberto desde a FASE 13c,
@@ -4958,16 +4958,16 @@ existiam em `agent_command_controller.ex` (ADR 0087/0088), verificado por
 leitura ANTES de escrever qualquer linha de web, e nenhuma delas tinha
 caminho humano até si.
 
-- **Onde:** `apps/api/src/interfaces/http/agents/agents.controller.ts`
-  (`requestManual`); `apps/api/src/interfaces/http/agents/dto/request-manual-handoff.dto.ts`;
-  `apps/api/src/application/use-cases/agents/create-handoff.use-case.ts`
+- **Onde:** `src/interfaces/http/agents/agents.controller.ts`
+  (`requestManual`); `src/interfaces/http/agents/dto/request-manual-handoff.dto.ts`;
+  `src/application/use-cases/agents/create-handoff.use-case.ts`
   (`actor?: Actor`); `apps/web/src/routes/SessionPage.tsx`
   (`AGENTES_DE_CHAT`, `.manualHandoffRow`, `handleRequestManualHandoff`);
   `apps/web/src/lib/api-client.ts` (`requestManualHandoff`)
-- **Teste:** `apps/api/test/interfaces/http/agents/agents.controller.spec.ts`
-  (papel exigido); `apps/api/test/application/use-cases/agents/request-manual-handoff.use-case.spec.ts`
+- **Teste:** `test/interfaces/http/agents/agents.controller.spec.ts`
+  (papel exigido); `test/application/use-cases/agents/request-manual-handoff.use-case.spec.ts`
   (`fromAgent` derivado, sentinela `"usuario"`, `actor: user`);
-  `docs/security-surface.md` + `apps/api/test/interfaces/route-surface.spec.ts`
+  `docs/security-surface.md` + `test/interfaces/route-surface.spec.ts`
   (classificação `role:developer` em runtime)
 - **ADR:** [0109](../adr/0109-handoff-manual-a-agente-a-escolha.md)
 - **Origem:** backlog do modelo de time (ver RN-440)
@@ -5005,23 +5005,23 @@ sessão pra gravar — mesmo raciocínio já registrado em
 aceita `null` como valor válido (`ValidateIf`, não `IsOptional`), mesmo
 padrão de `RenameSessionDto`.
 
-- **Onde:** `apps/api/src/db/schema/agents.ts` (`agentAreas`, colunas
-  `budgetMicros`/`spentMicros` e os dois CHECK); `apps/api/src/domain/llm/area-budget.ts`
-  (`isAreaBudgetExceeded`); `apps/api/src/application/use-cases/llm/check-budget-gate.use-case.ts`;
-  `apps/api/src/application/use-cases/llm/record-llm-usage.use-case.ts`;
-  `apps/api/src/application/use-cases/execution/set-area-budget.use-case.ts`;
-  `apps/api/src/infrastructure/persistence/drizzle/agent-area.repository.ts`
-  (`setBudget`/`incrementSpent`); `apps/api/src/interfaces/http/execution/execution.controller.ts`
+- **Onde:** `src/db/schema/agents.ts` (`agentAreas`, colunas
+  `budgetMicros`/`spentMicros` e os dois CHECK); `src/domain/llm/area-budget.ts`
+  (`isAreaBudgetExceeded`); `src/application/use-cases/llm/check-budget-gate.use-case.ts`;
+  `src/application/use-cases/llm/record-llm-usage.use-case.ts`;
+  `src/application/use-cases/execution/set-area-budget.use-case.ts`;
+  `src/infrastructure/persistence/drizzle/agent-area.repository.ts`
+  (`setBudget`/`incrementSpent`); `src/interfaces/http/execution/execution.controller.ts`
   (`PUT agent-areas/:key/budget`); `apps/web/src/routes/settings/BudgetSection.tsx`
-- **Teste:** `apps/api/test/application/use-cases/llm/check-budget-gate.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/llm/check-budget-gate.use-case.spec.ts`
   (describe `budget de área — aditivo, não cascata`: área excedida bloqueia
   com projeto/sessão OK e vice-versa, sem teto nunca bloqueia, agente sem
-  área não é afetado); `apps/api/test/application/use-cases/llm/record-llm-usage.use-case.spec.ts`
+  área não é afetado); `test/application/use-cases/llm/record-llm-usage.use-case.spec.ts`
   (describe `gasto por área`: incrementa pro membro e pro lead, não faz
   nada nocivo sem área, soma sem teto configurado);
-  `apps/api/test/application/use-cases/execution/set-area-budget.use-case.spec.ts`
+  `test/application/use-cases/execution/set-area-budget.use-case.spec.ts`
   (grava, limpa com `null`, recusa negativo/NaN/Infinity, zero é válido);
-  `apps/api/test/infrastructure/persistence/drizzle/agent-area.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/agent-area.repository.spec.ts`
   (`setBudget`/`incrementSpent`, atomicidade sob concorrência)
 - **ADR:** [0110](../adr/0110-budget-por-area-aditivo-nao-cascata.md)
 - **Origem:** item de backlog aprovado pelo dono do produto numa sessão de
@@ -5057,12 +5057,12 @@ Mesmo (modo, caminho) de hoje é NO-OP: a checagem de dev agent nem roda —
 reenviar o formulário sem mudar nada não deveria custar uma varredura de
 agentes ativos.
 
-- **Onde:** `apps/api/src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`;
-  `apps/api/src/application/ports/dev-agent-activity.port.ts`;
-  `apps/api/src/infrastructure/persistence/drizzle/dev-agent-activity.repository.ts`
-- **Teste:** `apps/api/test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
+- **Onde:** `src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`;
+  `src/application/ports/dev-agent-activity.port.ts`;
+  `src/infrastructure/persistence/drizzle/dev-agent-activity.repository.ts`
+- **Teste:** `test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
   (recusa com dev agent ativo, sem gravar nada; no-op não checa);
-  `apps/api/test/infrastructure/persistence/drizzle/dev-agent-activity.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/dev-agent-activity.repository.spec.ts`
   (`idle` não conta, todo o resto conta, isolamento entre projetos)
 - **ADR:** [0111](../adr/0111-conversao-de-execution-mode-de-projeto-existente.md)
 - **Origem:** correção registrada em `docs/explanation/backlog.md` durante
@@ -5088,9 +5088,9 @@ muda essa propriedade existente, só a relocaliza de forma consistente —
 sem caso especial para `runner` além de usar `move()` como qualquer outro
 par.
 
-- **Onde:** `apps/api/src/application/ports/permissions-file-store.port.ts`
-  (`move`); `apps/api/src/infrastructure/filesystem/fs-permissions-file-store.ts`
-- **Teste:** `apps/api/test/infrastructure/filesystem/fs-permissions-file-store.spec.ts`
+- **Onde:** `src/application/ports/permissions-file-store.port.ts`
+  (`move`); `src/infrastructure/filesystem/fs-permissions-file-store.ts`
+- **Teste:** `test/infrastructure/filesystem/fs-permissions-file-store.spec.ts`
   (conteúdo sobrevive e é apagado da origem; origem sem arquivo grava vazio
   sem lançar; `from === to` é no-op)
 - **ADR:** [0111](../adr/0111-conversao-de-execution-mode-de-projeto-existente.md)
@@ -5116,9 +5116,9 @@ valem a partir daí, como para qualquer projeto `container` — nunca um
 atalho que pula o portão porque o projeto "já tinha código em algum
 lugar".
 
-- **Onde:** `apps/api/src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`
+- **Onde:** `src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`
   (`removerContainerSeExistir`)
-- **Teste:** `apps/api/test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
   (`running` passa por `stopped`; `provisioning` vai direto; sem linha,
   nenhuma transição; entrar em `container` nunca dispara transição)
 - **ADR:** [0111](../adr/0111-conversao-de-execution-mode-de-projeto-existente.md)
@@ -5136,8 +5136,8 @@ verificação que aconteceu sob um par DIFERENTE, e carregá-lo adiante
 afirmaria uma confirmação que nunca aconteceu para o estado novo. O
 no-op (RN-447) é a única exceção — nada muda, então nada zera.
 
-- **Onde:** `apps/api/src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`
-- **Teste:** `apps/api/test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
+- **Onde:** `src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`
+- **Teste:** `test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
   (`runner -> container` zera; no-op preserva)
 - **ADR:** [0111](../adr/0111-conversao-de-execution-mode-de-projeto-existente.md)
 
@@ -5168,12 +5168,12 @@ não precisou de nenhum ramo novo: um chunk `local` carrega `sourcePath`
 exatamente como `docs`/`adr`, então cai no `kind: 'file'` que a citação já
 sabia renderizar.
 
-- **Onde:** `apps/api/src/db/schema/rag.ts` (`chunkScopeEnum`),
-  `apps/api/src/db/migrations/0052_chunks_local_scope.sql`,
-  `apps/api/src/application/ports/chunk-repository.port.ts` (`ChunkScope`),
-  `apps/api/src/application/use-cases/rag/index-local-folder.use-case.ts`
-- **Teste:** `apps/api/test/application/use-cases/rag/index-local-folder.use-case.spec.ts`
-  (caminho feliz e full rebuild), `apps/api/test/interfaces/http/rag/rag.controller.spec.ts`
+- **Onde:** `src/db/schema/rag.ts` (`chunkScopeEnum`),
+  `src/db/migrations/0052_chunks_local_scope.sql`,
+  `src/application/ports/chunk-repository.port.ts` (`ChunkScope`),
+  `src/application/use-cases/rag/index-local-folder.use-case.ts`
+- **Teste:** `test/application/use-cases/rag/index-local-folder.use-case.spec.ts`
+  (caminho feliz e full rebuild), `test/interfaces/http/rag/rag.controller.spec.ts`
 - **ADR:** [0113](../adr/0113-pasta-local-anexada-via-navegador-vira-chunks-scope-local.md)
 - **Origem:** pedido do dono do produto
 
@@ -5193,11 +5193,11 @@ separado. Os dois casos de uso carregam comentário cruzado explicando o
 porquê, para uma "correção" futura não religar os dois e apagar
 silenciosamente o material do usuário.
 
-- **Onde:** `apps/api/src/interfaces/http/rag/rag.controller.ts`
+- **Onde:** `src/interfaces/http/rag/rag.controller.ts`
   (`anexarPastaLocal`, `@RequireRole('maintainer')`),
-  `apps/api/src/application/use-cases/rag/reindex-project.use-case.ts`
+  `src/application/use-cases/rag/reindex-project.use-case.ts`
   (comentário "Por que `local` NÃO entra aqui")
-- **Teste:** `apps/api/test/interfaces/http/rag/rag.controller.spec.ts`
+- **Teste:** `test/interfaces/http/rag/rag.controller.spec.ts`
 - **ADR:** [0113](../adr/0113-pasta-local-anexada-via-navegador-vira-chunks-scope-local.md)
 - **Origem:** pedido do dono do produto
 
@@ -5212,9 +5212,9 @@ indexado AGORA (`filesIndexed`, `folderName`) e `lastAttachedAt`, um
 valor real EXISTE e é barato de calcular (mesmo `todosOsChunks` que
 `GetRagCoverageUseCase` já busca).
 
-- **Onde:** `apps/api/src/application/use-cases/rag/get-rag-coverage.use-case.ts`
+- **Onde:** `src/application/use-cases/rag/get-rag-coverage.use-case.ts`
   (`RagLocalCoverage`), `apps/web/src/components/rag/RagCoveragePanel.tsx`
-- **Teste:** `apps/api/test/application/use-cases/rag/get-rag-coverage.use-case.spec.ts`,
+- **Teste:** `test/application/use-cases/rag/get-rag-coverage.use-case.spec.ts`,
   `apps/web/src/components/rag/RagCoveragePanel.test.tsx`
 - **ADR:** [0113](../adr/0113-pasta-local-anexada-via-navegador-vira-chunks-scope-local.md)
 - **Origem:** pedido do dono do produto
@@ -5234,15 +5234,15 @@ do Ollama durante o pull marca o pedido `failed` com `failedReason`
 prefixado pela origem (`infra`/`modelo`/`código`, vocabulário do ADR
 0020) — nunca falha silenciosa, e nada é ativado no catálogo quando falha.
 
-- **Onde:** `apps/api/src/application/use-cases/llm/huggingface/request-model-pull.use-case.ts:23`
+- **Onde:** `src/application/use-cases/llm/huggingface/request-model-pull.use-case.ts:23`
   (`RequestModelPullUseCase`),
-  `apps/api/src/application/use-cases/llm/huggingface/confirm-model-pull.use-case.ts:45`
+  `src/application/use-cases/llm/huggingface/confirm-model-pull.use-case.ts:45`
   (`ConfirmModelPullUseCase`),
-  `apps/api/src/interfaces/http/llm/huggingface-models.controller.ts:109-165`
+  `src/interfaces/http/llm/huggingface-models.controller.ts:109-165`
   (as duas rotas, `role:maintainer`)
-- **Teste:** `apps/api/test/application/use-cases/llm/huggingface/request-model-pull.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/llm/huggingface/request-model-pull.use-case.spec.ts`
   (cria em `pending_confirmation`, nada além disso),
-  `apps/api/test/application/use-cases/llm/huggingface/confirm-model-pull.use-case.spec.ts`
+  `test/application/use-cases/llm/huggingface/confirm-model-pull.use-case.spec.ts`
   (caminho feliz ativa no catálogo; falha do Ollama marca `failed` com a
   origem certa — `modelo`/`infra`; recusa reconfirmar um pedido que já
   saiu de `pending_confirmation`; 404 para pedido inexistente no
@@ -5264,15 +5264,15 @@ segurança (`Alert tone="danger"`) — o opt-in e o aviso são o mesmo gesto,
 nunca uma preferência que o usuário liga uma vez e esquece que está
 ligada.
 
-- **Onde:** `apps/api/src/domain/llm/huggingface-official-publishers.ts:17-41`
+- **Onde:** `src/domain/llm/huggingface-official-publishers.ts:17-41`
   (`HUGGINGFACE_OFFICIAL_PUBLISHERS`/`isOfficialPublisher`),
-  `apps/api/src/application/use-cases/llm/huggingface/search-huggingface-models.use-case.ts:28-39`
+  `src/application/use-cases/llm/huggingface/search-huggingface-models.use-case.ts:28-39`
   (filtro por padrão), `apps/web/src/components/HuggingFaceModelBrowser.tsx:190-203`
   (toggle + `Alert` de aviso)
-- **Teste:** `apps/api/test/domain/huggingface/huggingface-official-publishers.spec.ts`
+- **Teste:** `test/domain/huggingface/huggingface-official-publishers.spec.ts`
   (reconhece publisher do allowlist; recusa reupload de terceiro;
   sensível a caixa; `repoId` sem `/` nunca casa),
-  `apps/api/test/application/use-cases/llm/huggingface/search-huggingface-models.use-case.spec.ts`
+  `test/application/use-cases/llm/huggingface/search-huggingface-models.use-case.spec.ts`
   (só oficiais por padrão; `includeCommunity` traz todos marcados),
   `apps/web/src/components/HuggingFaceModelBrowser.test.tsx`
   (toggle nasce desligado e só mostra o aviso quando ligado; busca respeita
@@ -5312,12 +5312,12 @@ explicitamente como corte desta rodada, não esquecimento: estender o mesmo
 padrão da RN-427 para chaves de dispositivo é trabalho futuro direto, se
 vier a ser pedido.
 
-- **Onde:** `apps/api/src/db/schema/auth.ts:338` (`runnerDeviceKeys`),
-  `apps/api/src/application/use-cases/auth/register-runner-device-key.use-case.ts`,
-  `apps/api/src/application/use-cases/auth/revoke-runner-device-key.use-case.ts`,
-  `apps/api/src/interfaces/http/runner/runner-device-keys.controller.ts`
-- **Teste:** `apps/api/test/application/use-cases/auth/register-runner-device-key.use-case.spec.ts`,
-  `apps/api/test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
+- **Onde:** `src/db/schema/auth.ts:338` (`runnerDeviceKeys`),
+  `src/application/use-cases/auth/register-runner-device-key.use-case.ts`,
+  `src/application/use-cases/auth/revoke-runner-device-key.use-case.ts`,
+  `src/interfaces/http/runner/runner-device-keys.controller.ts`
+- **Teste:** `test/application/use-cases/auth/register-runner-device-key.use-case.spec.ts`,
+  `test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
 - **ADR:** [0118](../adr/0118-configuracao-automatica-do-runner-pelo-navegador.md)
 - **Origem:** pedido do dono do produto
 
@@ -5358,10 +5358,10 @@ de sessão aqui faria `RolesGuard`/`@RequireRole` autorizar esse usuário pra
 tudo que o papel dele permite no resto da api, estourando o escopo
 `runner:project:<id>` — exatamente o que a RN-439 impediu.
 
-- **Onde:** `apps/api/src/interfaces/http/auth/pat-auth.guard.ts:104-216`
+- **Onde:** `src/interfaces/http/auth/pat-auth.guard.ts:104-216`
   (`autenticarChaveDeDispositivo`), `apps/runner/src/auth.ts:143-188`
   (`assinarTicketComChaveDeDispositivo`, `obterTicketDoRunnerComCredencial`)
-- **Teste:** `apps/api/test/interfaces/pat-auth.guard.spec.ts` (describe
+- **Teste:** `test/interfaces/pat-auth.guard.spec.ts` (describe
   "chave de dispositivo (JWT EdDSA autoassinado, ao lado do PAT)" — caminho
   feliz, assinatura inválida, chave revogada, `projectId` do claim não bate
   com a rota, chave registrada em outro projeto, TTL longo demais, `kid` sem
@@ -5439,17 +5439,17 @@ segunda fonte de papel contra a qual a RN-471 escreve. Enquanto isso,
 `handleRoleChange` já mostra `mensagemDaApi(erro, …)` num toast (RN-471), e é a
 frase da api que diz qual teto bateu.
 
-- **Onde:** `apps/api/src/domain/iam/tetos-de-rebaixamento.ts`
+- **Onde:** `src/domain/iam/tetos-de-rebaixamento.ts`
   (`rebaixaOwnerDoWorkspace`, `ehAutoRebaixamento` e as duas mensagens),
-  `apps/api/src/application/use-cases/iam/add-project-member.use-case.ts`
+  `src/application/use-cases/iam/add-project-member.use-case.ts`
   (onde os dois são aplicados, antes do upsert),
-  `apps/api/src/interfaces/http/iam/projects.controller.ts` (o `@CurrentUser()`
+  `src/interfaces/http/iam/projects.controller.ts` (o `@CurrentUser()`
   que dá o ator, e as duas descrições corrigidas),
-  `apps/api/src/interfaces/http/iam/dto/add-member.dto.ts` (a terceira),
-  `apps/api/src/application/use-cases/iam/resolve-effective-role.use-case.ts`
+  `src/interfaces/http/iam/dto/add-member.dto.ts` (a terceira),
+  `src/application/use-cases/iam/resolve-effective-role.use-case.ts`
   (INTOCADO — `projectRole ?? workspaceRole` segue como está),
-  `apps/api/src/db/schema/iam.ts` (`workspaces.created_by` × `workspace_members.role`)
-- **Teste:** `apps/api/test/application/use-cases/iam/tetos-de-rebaixamento.use-case.spec.ts`
+  `src/db/schema/iam.ts` (`workspaces.created_by` × `workspace_members.role`)
+- **Teste:** `test/application/use-cases/iam/tetos-de-rebaixamento.use-case.spec.ts`
   (os dois tetos recusando; `owner` de workspace recebendo `owner` de projeto
   passa; auto-rebaixamento também quando o papel do ator vem da linha de
   projeto; auto-promoção passa; as DUAS capacidades legítimas preservadas —
@@ -5507,19 +5507,19 @@ falhadas junto com as linhas de bootstrap, então um projeto que falhou antes de
 existir cursor deixa de aparecer sem badge nenhum — e o clique volta a levar
 para a tela de provisionamento, que só desviava em `provision_failed`.
 
-- **Onde:** `apps/api/src/application/use-cases/git/bootstrap-runner.ts:181`
+- **Onde:** `src/application/use-cases/git/bootstrap-runner.ts:181`
   (o `catch` da etapa, único lugar que declara o fracasso),
-  `apps/api/src/domain/git/repo-bootstrap-status.ts:29` (o segundo argumento),
-  `apps/api/src/application/use-cases/git/get-repo-bootstrap-status.use-case.ts:59`
+  `src/domain/git/repo-bootstrap-status.ts:29` (o segundo argumento),
+  `src/application/use-cases/git/get-repo-bootstrap-status.use-case.ts:59`
   (a falha de criação lida da `proposed_action`),
-  `apps/api/src/infrastructure/persistence/drizzle/projects-summary.repository.ts`
+  `src/infrastructure/persistence/drizzle/projects-summary.repository.ts`
   (o badge do card), `apps/web/src/routes/ProvisioningPage.tsx` (motivo, retry
   e teto)
 - **Teste:**
-  `apps/api/test/application/use-cases/git/provision-repository.use-case.spec.ts`
+  `test/application/use-cases/git/provision-repository.use-case.spec.ts`
   (falha no CHECK vira `failed` com motivo e evento; falha ao CRIAR não deixa
   linha mas o status reporta, com `failedStep` nulo),
-  `apps/api/test/domain/git/repo-bootstrap-status.spec.ts` (sem linha com falha
+  `test/domain/git/repo-bootstrap-status.spec.ts` (sem linha com falha
   de criação; com linha a falha antiga é ignorada; `pending` puro),
   `apps/web/src/routes/ProvisioningPage.test.tsx` (o motivo aparece; o retry
   existe sem `provision_failed`; a espera para e diz o que não sabe; título sem
@@ -5592,23 +5592,23 @@ caminho que a execução em container substitui; o que muda agora é só a
 **mensagem**, que nomeia a causa em vez de repassar "permissão negada" cru.
 
 - **Onde:**
-  `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts:231`
+  `src/infrastructure/filesystem/project-workspaces-root.ts:231`
   (`projectScopeRoot`, inalterada) e `:319` (`permissionsFilePath`, a segunda
   derivação), com `LocalizacaoDeProjetoInvalidaError` em `:219`,
-  `apps/api/src/infrastructure/filesystem/fs-permissions-file-store.ts:77`
+  `src/infrastructure/filesystem/fs-permissions-file-store.ts:77`
   (o único chamador do caminho do arquivo),
-  `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts:176`
-  (o 400), `apps/api/src/interfaces/http/execution/execution.controller.ts:74`
+  `src/application/use-cases/execution/activate-execution.use-case.ts:176`
+  (o 400), `src/interfaces/http/execution/execution.controller.ts:74`
   (a anotação de OpenAPI, que prometia 409 para dois casos que nunca foram
   409), `apps/web/src/routes/ProjectOverviewTab.tsx:485`
   (`mensagemDaApi`), `apps/engine/lib/engine/actions/workspace.ex:61`
   (a mensagem da lacuna que fica)
 - **Teste:**
-  `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+  `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   (`permissionsFilePath` nos três modos; e a **não-regressão** de
   `projectScopeRoot` continuar devolvendo o caminho do host em
   `runner`/`mounted` — unificar as duas de volta quebraria o ADR 0055),
-  `apps/api/test/application/use-cases/execution/activate-execution.use-case.spec.ts`
+  `test/application/use-cases/execution/activate-execution.use-case.spec.ts`
   (com o `FsPermissionsFileStore` DE VERDADE: o arquivo cai na raiz gerenciada
   e a pasta do host fica intocada; linha incoerente vira 400 que ensina),
   `apps/web/src/routes/ProjectOverviewTab.test.tsx` (a mensagem da api na
@@ -5621,7 +5621,7 @@ caminho que a execução em container substitui; o que muda agora é só a
 
 ### RN-479 — Toda busca híbrida grava uma linha em `rag_searches`, com os pesos CONGELADOS; e a telemetria nunca derruba a busca {#rn-479}
 
-`apps/api/src/domain/rag/rag-search-limits.ts` declara, no próprio comentário,
+`src/domain/rag/rag-search-limits.ts` declara, no próprio comentário,
 que **nenhum** dos quatro números da busca híbrida (os dois pesos, o limiar e o
 número de candidatos) vem de calibração com dado real. Não vinha porque não
 havia como: a busca não deixava rastro nenhum — nem linha de tabela, nem evento.
@@ -5665,13 +5665,13 @@ escondida: `vector_available` é um fato sobre o PROVIDER — é ele que faz
 `medir:rag` reprovar —, e `degraded` é a palavra do CONTRATO com o engine, cuja
 definição pode crescer.
 
-- **Onde:** `apps/api/src/domain/rag/rag-telemetry.ts` (`pesosVigentes`,
-  `RagSearchHitTelemetry`), `apps/api/src/db/schema/rag.ts` (`ragSearches`),
-  `apps/api/src/application/use-cases/rag/hybrid-search.use-case.ts`
+- **Onde:** `src/domain/rag/rag-telemetry.ts` (`pesosVigentes`,
+  `RagSearchHitTelemetry`), `src/db/schema/rag.ts` (`ragSearches`),
+  `src/application/use-cases/rag/hybrid-search.use-case.ts`
   (`registrarBusca`),
-  `apps/api/src/infrastructure/persistence/drizzle/rag-telemetry.repository.ts`
+  `src/infrastructure/persistence/drizzle/rag-telemetry.repository.ts`
 - **Teste:**
-  `apps/api/test/application/use-cases/rag/hybrid-search.use-case.spec.ts`
+  `test/application/use-cases/rag/hybrid-search.use-case.spec.ts`
   (a linha gravada com rank e pesos; os pesos serem CÓPIA e não o mesmo objeto;
   a busca da aba sem sessão; e o CASO DE FALHA — insert que falha não derruba a
   busca e devolve `searchId: null`)
@@ -5711,13 +5711,13 @@ configura nada). A ferramenta do agente é `:direct`, nunca `proposed_action`:
 dar nota a um trecho não é efeito externo, e transformá-la em ação a aprovar
 encheria a fila de ruído.
 
-- **Onde:** `apps/api/src/db/schema/rag.ts` (`ragFeedback`, `ragVerdictEnum`),
-  `apps/api/src/application/use-cases/rag/record-rag-feedback.use-case.ts`,
+- **Onde:** `src/db/schema/rag.ts` (`ragFeedback`, `ragVerdictEnum`),
+  `src/application/use-cases/rag/record-rag-feedback.use-case.ts`,
   `apps/engine/lib/engine/harness/tools/rag_feedback.ex`,
   `apps/web/src/components/rag/RagCitationCard.tsx` (os dois controles, onde o
   score já está)
 - **Teste:**
-  `apps/api/test/application/use-cases/rag/record-rag-feedback.use-case.spec.ts`
+  `test/application/use-cases/rag/record-rag-feedback.use-case.spec.ts`
   (o rank devolvido; e os três CASOS DE FALHA — `searchId` desconhecido,
   `chunkId` fora dos hits, busca de outro projeto),
   `apps/engine/test/engine/harness/tools/rag_feedback_test.exs` (a recusa
@@ -5725,7 +5725,7 @@ encheria a fila de ruído.
   registro nos seis agentes que já tinham `rag_search`),
   `apps/web/src/components/rag/RagCitationCard.test.tsx` (os três estados do
   controle, e a ausência dele sem `searchId`),
-  `apps/api/test/scripts/medir-rag.spec.ts` (`precision@k` sobre o julgado)
+  `test/scripts/medir-rag.spec.ts` (`precision@k` sobre o julgado)
 - **ADR:** [0129](../adr/0129-telemetria-de-busca-do-rag-como-tabela.md)
 - **Origem:** plano do dono do produto, Parte 2 / Etapa 1
 
@@ -5757,14 +5757,14 @@ de vida não aparece nessa rota — ela lê o registrado primeiro. Quem acha ór
 a varredura por `brabo.managed=true`, e a página que a consome ainda não existe.
 
 - **Onde:**
-  `apps/api/src/application/use-cases/containers/obter-estado-observado-do-container.use-case.ts`
+  `src/application/use-cases/containers/obter-estado-observado-do-container.use-case.ts`
   (os três motivos e o `null` que não é motivo),
-  `apps/api/src/interfaces/http/containers/containers.controller.ts` (a rota que
+  `src/interfaces/http/containers/containers.controller.ts` (a rota que
   devolve os dois),
-  `apps/api/src/application/ports/container-broker.port.ts` (o `null` de
+  `src/application/ports/container-broker.port.ts` (o `null` de
   `inspect` é ausência; a falha LANÇA)
 - **Teste:**
-  `apps/api/test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts`
+  `test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts`
   ("olhei e não há" e "não consegui olhar" não colapsam; sem `BROKER_URL` o
   broker nem é chamado; recusa vira motivo com detalhe, nunca exceção)
 - **ADR:** [0130](../adr/0130-broker-de-container.md)
@@ -5811,19 +5811,19 @@ Infra Lead, com `proposed_action` própria, num PR à parte. O que existe aqui
 sobre ela — mesmo sequenciamento que já valeu para o `module_map` existir
 antes de `create_c4_diagram` precisar dele.
 
-- **Onde:** `apps/api/src/domain/architecture/module-routing.ts`
+- **Onde:** `src/domain/architecture/module-routing.ts`
   (`validarRoteamento`, `EVENTO_MODULE_ROUTING`),
-  `apps/api/src/application/use-cases/architecture/route-modules-to-infra.use-case.ts`,
-  `apps/api/src/application/use-cases/architecture/get-module-routing.use-case.ts`,
-  `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts`
+  `src/application/use-cases/architecture/route-modules-to-infra.use-case.ts`,
+  `src/application/use-cases/architecture/get-module-routing.use-case.ts`,
+  `src/interfaces/http/internal/internal-sessions.controller.ts`
   (`POST .../module-routing`),
   `apps/engine/lib/engine/harness/tools/route_modules_to_infra.ex`,
   `apps/engine/lib/engine/agents/arquiteto_server.ex` (`build_kickoff/1`, passo 4)
 - **Teste:**
-  `apps/api/test/domain/architecture/module-routing.spec.ts` (lista vazia,
+  `test/domain/architecture/module-routing.spec.ts` (lista vazia,
   módulo repetido, e a delegação a `validarDecisaoDeImagem` — `latest` e
   `rationale` curto),
-  `apps/api/test/application/use-cases/architecture/route-modules-to-infra.use-case.spec.ts`
+  `test/application/use-cases/architecture/route-modules-to-infra.use-case.spec.ts`
   (caminho feliz com dois módulos; sem module_map vigente; módulo fora do
   mapa; versionamento ao rotear de novo),
   `apps/engine/test/engine/harness/tools/route_modules_to_infra_test.exs`
@@ -5834,7 +5834,7 @@ antes de `create_c4_diagram` precisar dele.
 
 ### RN-490 — O golden-set de acerto do RAG mede por CAMINHO DE ARQUIVO, no TOP-5, nunca por chunk exato ou rank 1 {#rn-490}
 
-O gate `rag-acertivo` (`apps/api/config/gates.yml`) mede se a busca híbrida devolve o
+O gate `rag-acertivo` (`config/gates.yml`) mede se a busca híbrida devolve o
 arquivo certo para 17 perguntas compostas a partir de RNs/ADRs reais deste
 repositório (golden-set, molde do ADR 0123 aplicado ao RAG). O critério de
 "acertou" tem duas decisões deliberadas, e as duas evitam medir a pergunta
@@ -5875,11 +5875,11 @@ CONTINUA valendo como está: ela protege o `mix test` comum (e a máquina de
 qualquer desenvolvedor com Ollama de pé), nunca o novo workflow, que invoca
 a tag explicitamente, do mesmo jeito que sempre foi preciso.
 
-- **Onde:** `apps/api/src/domain/rag/golden-set-criterio.ts`,
-  `apps/api/scripts/seed-golden-set-rag.ts`,
+- **Onde:** `src/domain/rag/golden-set-criterio.ts`,
+  `scripts/seed-golden-set-rag.ts`,
   `apps/engine/test/engine/rag/rag_golden_test.exs`,
   `apps/engine/test/fixtures/golden_set_rag/floor.json`
-- **Teste:** `apps/api/test/domain/rag/golden-set-criterio.spec.ts`
+- **Teste:** `test/domain/rag/golden-set-criterio.spec.ts`
 - **ADR:** [0132](../adr/0132-golden-set-de-acerto-do-rag.md)
 - **Origem:** plano do dono do produto, Parte 2 / Etapa 2
 
@@ -5908,16 +5908,16 @@ processo fisicamente não atravessa, somado à validação de `/work` que o
 broker já faz (`DiretorioForaDoEscopoError`). É defesa em profundidade — o
 escopo léxico não é substituído, é redundante.
 
-- **Onde:** `apps/api/src/domain/actions/decide.ts`
+- **Onde:** `src/domain/actions/decide.ts`
   (`DecideContext.containerExecutionActive`, o `current` inicial
-  condicional), `apps/api/src/application/use-cases/actions/propose-action.use-case.ts`
-- **Teste:** `apps/api/test/domain/actions/decide.spec.ts` (describe "decide
+  condicional), `src/application/use-cases/actions/propose-action.use-case.ts`
+- **Teste:** `test/domain/actions/decide.spec.ts` (describe "decide
   — piso do container ativo do projeto": auto-aprova sem regra nenhuma;
   inalterado sem `containerExecutionActive`; não afeta ação não-terminal;
   `agent_autonomy`/`permissions.json` explícitos rebaixam o piso; IAM
   insuficiente nega antes do piso; escopo continua vencendo por cima;
   git push/sudo continuam `require_approval`),
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts`
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts`
   (describe "piso do container ativo": terminal auto-aprova e EXECUTA com
   container running; não afeta `container_start`; sem linha `running`,
   inalterado; deny embutido/git push/sudo continuam vencendo)
@@ -5970,27 +5970,27 @@ reusa `DecidirImagemDoProjetoUseCase` para emitir uma nova versão de
 `artifact.project_image`. `stop`/`remove` só pedem ao broker para agir sobre
 o container que já existe.
 
-- **Onde:** `apps/api/src/domain/actions/decide.ts` (`ACTION_TYPES`,
+- **Onde:** `src/domain/actions/decide.ts` (`ACTION_TYPES`,
   `MIN_ROLE_FOR_ACTION_TYPE`, teto absoluto de `container_remove`),
-  `apps/api/src/domain/actions/command-matcher.ts` (`ACTION_TYPE_LABELS`),
-  `apps/api/src/domain/containers/container-stop-remove-execution-result.ts`,
-  `apps/api/src/application/use-cases/actions/execute-container-stop.use-case.ts`,
-  `apps/api/src/application/use-cases/actions/execute-container-remove.use-case.ts`,
-  `apps/api/src/application/use-cases/actions/approve-action.use-case.ts`,
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts`,
-  `apps/api/src/application/use-cases/actions/approve-always-action.use-case.ts`,
+  `src/domain/actions/command-matcher.ts` (`ACTION_TYPE_LABELS`),
+  `src/domain/containers/container-stop-remove-execution-result.ts`,
+  `src/application/use-cases/actions/execute-container-stop.use-case.ts`,
+  `src/application/use-cases/actions/execute-container-remove.use-case.ts`,
+  `src/application/use-cases/actions/approve-action.use-case.ts`,
+  `src/application/use-cases/actions/propose-action.use-case.ts`,
+  `src/application/use-cases/actions/approve-always-action.use-case.ts`,
   `apps/web/src/lib/aprovacoes.ts`, `apps/web/src/components/ApprovalCard.tsx`
   (`podeSemprePermitir`)
 - **Teste:**
-  `apps/api/test/domain/actions/decide.spec.ts` ("container_stop, a página
+  `test/domain/actions/decide.spec.ts` ("container_stop, a página
   global de containers" — CONSEGUE auto_approve; "teto de container_remove" —
   NUNCA consegue),
-  `apps/api/test/application/use-cases/actions/execute-container-stop.use-case.spec.ts`,
-  `apps/api/test/application/use-cases/actions/execute-container-remove.use-case.spec.ts`
+  `test/application/use-cases/actions/execute-container-stop.use-case.spec.ts`,
+  `test/application/use-cases/actions/execute-container-remove.use-case.spec.ts`
   (os dois hops a partir de `running`; um hop só a partir de `stopped`/
   `failed`; idempotência; `BrokerRecusouError`/`BrokerIndisponivelError`
   nunca propagam),
-  `apps/api/test/application/use-cases/actions/approve-always-action.use-case.spec.ts`,
+  `test/application/use-cases/actions/approve-always-action.use-case.spec.ts`,
   `apps/web/src/lib/aprovacoes.test.ts`,
   `apps/web/src/routes/ContainersPage.test.tsx`
 - **Decisão arquitetural:** [ADR 0136](../adr/0136-pagina-global-de-containers.md)
@@ -6035,22 +6035,22 @@ leitura em lote**, batida por `projectId IN (...)` como as outras duas — é
 o que permite a tela trocar os três botões de ação pelo `ApprovalCard`
 inline sem uma quarta consulta por projeto.
 
-- **Onde:** `apps/api/src/application/ports/containers-overview-repository.port.ts`,
-  `apps/api/src/infrastructure/persistence/drizzle/containers-overview.repository.ts`,
-  `apps/api/src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts`,
-  `apps/api/src/domain/containers/project-container.ts` (`decisaoNaVersao`,
-  `versaoDoPayload`), `apps/api/src/interfaces/http/containers/containers-overview.controller.ts`,
+- **Onde:** `src/application/ports/containers-overview-repository.port.ts`,
+  `src/infrastructure/persistence/drizzle/containers-overview.repository.ts`,
+  `src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts`,
+  `src/domain/containers/project-container.ts` (`decisaoNaVersao`,
+  `versaoDoPayload`), `src/interfaces/http/containers/containers-overview.controller.ts`,
   `apps/web/src/routes/ContainersPage.tsx`, `apps/web/src/lib/hooks.ts`
   (`useContainersOverview`)
 - **Teste:**
-  `apps/api/test/infrastructure/persistence/drizzle/containers-overview.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/containers-overview.repository.spec.ts`
   (só entra projeto com `project_containers`; imagem CONGELADA, não a
   vigente; `acaoPendente` cross-sessão; número de consultas não cresce com a
   quantidade de projetos),
-  `apps/api/test/application/use-cases/containers/obter-visao-geral-de-containers.use-case.spec.ts`
+  `test/application/use-cases/containers/obter-visao-geral-de-containers.use-case.spec.ts`
   (elegibilidade por status; teto por carga; `naoObservado` nunca confundido
   com `naoVerificado`),
-  `apps/api/test/interfaces/http/containers/containers-overview.controller.spec.ts`,
+  `test/interfaces/http/containers/containers-overview.controller.spec.ts`,
   `apps/web/src/routes/ContainersPage.test.tsx`
 - **Decisão arquitetural:** [ADR 0136](../adr/0136-pagina-global-de-containers.md)
 - **Origem:** plano do dono do produto, Parte 1 / PR 1.8
@@ -6110,14 +6110,14 @@ aquele predicado roda em toda LEITURA, e projeto montado legado fora da base
 passaria a explodir ao ser lido. A base é regra de CRIAÇÃO e CONVERSÃO, e entra
 na RN seguinte.
 
-- **Onde:** `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts:67`
+- **Onde:** `src/infrastructure/filesystem/project-workspaces-root.ts:67`
   (`baseDeProjetos`) e `:92` (`dentroDaBaseDeProjetos`);
-  `apps/api/src/interfaces/http/iam/workspaces.controller.ts:197`
+  `src/interfaces/http/iam/workspaces.controller.ts:197`
   (`GET :workspaceId/projects-base`); `scripts/dev/base-de-projetos.mjs` e a
   chamada em `scripts/dev/preflight.mjs`; `docker/docker-compose.yml` e
   `docker/docker-compose.prod.yml` (serviços `api`, `engine`, `broker`)
 - **Teste:**
-  `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+  `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   (`describe('baseDeProjetos / dentroDaBaseDeProjetos')`) e
   `scripts/dev/base-de-projetos.spec.ts`
 - **ADR:** [0141](../adr/0141-base-unica-dos-projetos-montados.md)
@@ -6203,23 +6203,23 @@ satisfeito. Adiar a **verificação** nunca toca o invariante de **pareamento**.
 DIZER — uma tela que mostra um caminho sem dizer que ele ainda não existe é uma
 tela afirmando o que não sabe.
 
-- **Onde:** `apps/api/src/application/services/workspace-location.ts:93`
+- **Onde:** `src/application/services/workspace-location.ts:93`
   (léxico) e `:108` (base);
-  `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts:575`
+  `src/infrastructure/filesystem/project-workspaces-root.ts:575`
   (`motivoDeForaDaBaseDeProjetos`), `:624`
   (`validarWorkspaceMontadoEmDisco`, o antigo `validarCaminhoDeWorkspaceLocal`)
   e `:705` (`materializarWorkspaceMontado`);
-  `apps/api/src/application/use-cases/iam/convert-project-execution-mode.use-case.ts:139`;
-  `apps/api/src/application/use-cases/actions/execute-container-start.use-case.ts:133`
+  `src/application/use-cases/iam/convert-project-execution-mode.use-case.ts:139`;
+  `src/application/use-cases/actions/execute-container-start.use-case.ts:133`
   e `:334`
 - **Teste:**
-  `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+  `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   (`describe('materializarWorkspaceMontado')` e a não-regressão "projeto
   mounted LEGADO, FORA da base, continua resolvendo sem lançar");
-  `apps/api/test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`
+  `test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`
   (`describe('mounted valida só o léxico + a base na criação')`);
-  `apps/api/test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`;
-  `apps/api/test/application/use-cases/actions/execute-container-start.use-case.spec.ts`
+  `test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`;
+  `test/application/use-cases/actions/execute-container-start.use-case.spec.ts`
   (`describe` "ExecuteContainerStartUseCase — materialização do mounted")
 - **ADR:** [0142](../adr/0142-validacao-de-workspace-montado-adiada.md), que
   referencia [0141](../adr/0141-base-unica-dos-projetos-montados.md)
@@ -6309,12 +6309,12 @@ segue podendo propor para um projeto sem runner conectado e sem imagem
 decidida, a lacuna declarada desde a RN-494.
 
 - **Onde:**
-  `apps/api/src/application/use-cases/containers/obter-spec-de-container.use-case.ts`
+  `src/application/use-cases/containers/obter-spec-de-container.use-case.ts`
   (`LocalizacaoDoProjeto`, `localizacaoDoProjeto`);
-  `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
+  `src/infrastructure/filesystem/project-workspaces-root.ts`
   (`segmentoSobABaseDeProjetos`);
-  `apps/api/src/interfaces/http/internal/dto/container-spec-internal.response.dto.ts`;
-  `apps/api/src/application/use-cases/actions/execute-container-start.use-case.ts`,
+  `src/interfaces/http/internal/dto/container-spec-internal.response.dto.ts`;
+  `src/application/use-cases/actions/execute-container-start.use-case.ts`,
   `…/execute-container-stop.use-case.ts`, `…/execute-container-remove.use-case.ts`
   (a ramificação `!== 'runner'`);
   `packages/docker-port/src/docker-port.ts` (`segmentoDeProjetoValidado`);
@@ -6323,9 +6323,9 @@ decidida, a lacuna declarada desde a RN-494.
   `garantirModoSuportado`, `BaseDeProjetosNaoConfiguradaError`,
   `LocalizacaoIndisponivelError`)
 - **Teste:**
-  `apps/api/test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts`
+  `test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts`
   (`describe('… o localizador discriminado (RN-503)')`);
-  `apps/api/test/application/use-cases/actions/execute-container-{start,stop,remove}.use-case.spec.ts`;
+  `test/application/use-cases/actions/execute-container-{start,stop,remove}.use-case.spec.ts`;
   `packages/docker-port/src/docker-port.spec.ts`
   (`describe('segmentoDeProjetoValidado')`); `apps/broker/src/operacoes.spec.ts`
   e `apps/broker/src/config.spec.ts`
@@ -6360,7 +6360,7 @@ BROKER (RN-503). O código extraído vira
 `ExecuteContainerStartViaRunnerUseCase`, mesmo arquivo-irmão. A dança de
 ciclo de vida (`provisioning -> running`) que os dois caminhos compartilhavam
 por cópia vira `SubirCicloDeVidaDoContainerUseCase`
-(`apps/api/.../containers/`) — extraída para não duplicar o racional da
+(`.../containers/`) — extraída para não duplicar o racional da
 máquina de estados nos dois arquivos.
 
 **O Infra Lead consulta LOCALMENTE, sem HTTP, antes de propor.** A tool nova
@@ -6397,23 +6397,23 @@ que `ExecuteContainerStartViaRunnerUseCase` compõe, atravessando o
 campos: `raizDoProjeto` é o único que a api não manda, então campo novo de um
 lado sem o outro reprova.
 
-- **Onde:** `apps/api/src/domain/actions/decide.ts` (`container_start_via_runner`);
-  `apps/api/src/application/use-cases/actions/
+- **Onde:** `src/domain/actions/decide.ts` (`container_start_via_runner`);
+  `src/application/use-cases/actions/
   execute-container-start-via-runner.use-case.ts` (novo);
-  `apps/api/src/application/use-cases/containers/
+  `src/application/use-cases/containers/
   subir-ciclo-de-vida-do-container.use-case.ts` (novo);
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts`;
-  `apps/api/src/application/use-cases/actions/approve-action.use-case.ts`;
-  `apps/api/src/application/ports/api-to-engine-client.port.ts`
+  `src/application/use-cases/actions/propose-action.use-case.ts`;
+  `src/application/use-cases/actions/approve-action.use-case.ts`;
+  `src/application/ports/api-to-engine-client.port.ts`
   (`EspecificacaoDeContainerParaRunner`, os dez campos);
   `apps/web/src/lib/aprovacoes.ts`;
   `apps/engine/lib/engine/infra/tools/propose_container_start_via_runner.ex`
   (novo); `apps/engine/lib/engine/infra/infra_lead_server.ex`
 - **Teste:**
-  `apps/api/test/application/use-cases/actions/execute-container-start.use-case.spec.ts`,
-  `apps/api/test/application/use-cases/actions/
+  `test/application/use-cases/actions/execute-container-start.use-case.spec.ts`,
+  `test/application/use-cases/actions/
   execute-container-start-via-runner.use-case.spec.ts` (novo),
-  `apps/api/test/contract/
+  `test/contract/
   especificacao-de-container-para-runner.contract.spec.ts` (a CORRENTE —
   o payload composto pela api contra o `especificacaoValidada` de verdade),
   `apps/web/src/lib/aprovacoes.test.ts`,
@@ -6485,13 +6485,13 @@ tipo dali pra frente. Decisão consciente do dono do produto, não lacuna
 esquecida.
 
 - **Onde:**
-  `apps/api/src/application/use-cases/actions/approve-always-action.use-case.ts`
-  (o branch `ehAgenteDeModulo`), `apps/api/src/domain/agents/agent-areas.ts`
+  `src/application/use-cases/actions/approve-always-action.use-case.ts`
+  (o branch `ehAgenteDeModulo`), `src/domain/agents/agent-areas.ts`
   (`ehDevDeModulo`, `DEV_LEAD` — consumidos, não alterados),
-  `apps/api/src/application/ports/agent-autonomy-repository.port.ts`
+  `src/application/ports/agent-autonomy-repository.port.ts`
   (`upsert`, já existente, sem método novo)
 - **Teste:**
-  `apps/api/test/application/use-cases/actions/approve-always-action.use-case.spec.ts`
+  `test/application/use-cases/actions/approve-always-action.use-case.spec.ts`
   (descreve `escopo por Dev Agent de módulo (RN-509)`: caminho feliz
   `dev-checkout` grava `agent_autonomy` e não vaza pra `dev-auth`; os DOIS
   tetos absolutos recusando o clique inteiro pra um ator dev-de-módulo;
@@ -6572,32 +6572,32 @@ disso, e sincronizar por comando de terminal cairia no escopo do
 [ADR 0055](../adr/0055-escopo-de-caminho-na-politica-de-terminal.md) e viraria
 fila de aprovações rotineiras.
 
-- **Onde:** `apps/api/src/db/schema/iam.ts` (coluna `mirror_path`, nullable,
+- **Onde:** `src/db/schema/iam.ts` (coluna `mirror_path`, nullable,
   sem CHECK — a recusa de `container` mora no caso de uso porque o modo é
-  CONVERSÍVEL); `apps/api/src/db/migrations/0056_lovely_firelord.sql`;
-  `apps/api/src/domain/iam/project.entity.ts` (`mirrorPath`);
-  `apps/api/src/application/services/workspace-location.ts`
+  CONVERSÍVEL); `src/db/migrations/0056_lovely_firelord.sql`;
+  `src/domain/iam/project.entity.ts` (`mirrorPath`);
+  `src/application/services/workspace-location.ts`
   (`validarDestinoDeEspelho` — o léxico reusado, a recusa de `container` e os
   dois sentidos do laço);
-  `apps/api/src/application/use-cases/iam/set-project-mirror-path.use-case.ts`;
-  `apps/api/src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`
+  `src/application/use-cases/iam/set-project-mirror-path.use-case.ts`;
+  `src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`
   (a conversão zerando o destino);
-  `apps/api/src/interfaces/http/iam/dto/set-mirror-path.dto.ts` (`@IsDefined`
+  `src/interfaces/http/iam/dto/set-mirror-path.dto.ts` (`@IsDefined`
   + `@ValidateIf`, nunca `@IsOptional`, que colapsaria `null` e `undefined`);
-  `apps/api/src/interfaces/http/iam/projects.controller.ts`
+  `src/interfaces/http/iam/projects.controller.ts`
   (`PUT :projectId/mirror-path`, `maintainer`);
-  `apps/api/src/interfaces/http/iam/dto/iam.response.dto.ts`
+  `src/interfaces/http/iam/dto/iam.response.dto.ts`
 - **Teste:**
-  `apps/api/test/application/use-cases/iam/set-project-mirror-path.use-case.spec.ts`
+  `test/application/use-cases/iam/set-project-mirror-path.use-case.spec.ts`
   (grava, normaliza, limpa, limpa mesmo em `container`, recusa
   não-absoluto/`..`/raiz/pasta de sistema/checkout do Brabo, os dois sentidos
   do laço, `/base-outra` vs `/base` NÃO sendo dentro, `container` recusado,
-  404); `apps/api/test/interfaces/http/iam/projects-execution-mode.controller.spec.ts`
+  404); `test/interfaces/http/iam/projects-execution-mode.controller.spec.ts`
   (`describe "destino do espelho (RN-515)"` — `maintainer` e o repasse de
   `null`);
-  `apps/api/test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
+  `test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
   (a conversão zerando o destino);
-  `apps/api/test/interfaces/route-surface.spec.ts` (a rota classificada em
+  `test/interfaces/route-surface.spec.ts` (a rota classificada em
   `docs/security-surface.md`)
 - **ADR:** [0147](../adr/0147-agente-local-com-capacidades.md), ponto 4
 - **Origem:** FASE 28, sessão 6 (metade A — onde o destino mora; a cópia, o
@@ -6697,19 +6697,19 @@ exigir `maintainer` aqui trancaria informação para quem já a vê no mesmo
 projeto, que é o pior dos dois defeitos porque é invisível para quem perdeu a
 capacidade.
 
-- **Onde:** `apps/api/src/db/schema/iam.ts` (`project_mirror_states`, no
+- **Onde:** `src/db/schema/iam.ts` (`project_mirror_states`, no
   agregado `iam` porque é lá que o destino mora — não há `domain/runners`);
-  `apps/api/src/db/migrations/0057_brave_silver_centurion.sql`;
-  `apps/api/src/domain/iam/mirror-state.ts` (`deriveMirrorSyncStatus`, a regra
-  dos três estados, pura); `apps/api/src/application/ports/mirror-state-repository.port.ts`
+  `src/db/migrations/0057_brave_silver_centurion.sql`;
+  `src/domain/iam/mirror-state.ts` (`deriveMirrorSyncStatus`, a regra
+  dos três estados, pura); `src/application/ports/mirror-state-repository.port.ts`
   (DOIS métodos de escrita, não um upsert com tudo opcional — é o que torna a
   disjunção um invariante do tipo, não uma convenção do chamador);
-  `apps/api/src/infrastructure/persistence/drizzle/mirror-state.repository.ts`;
-  `apps/api/src/application/use-cases/iam/record-mirror-sync.use-case.ts` e
+  `src/infrastructure/persistence/drizzle/mirror-state.repository.ts`;
+  `src/application/use-cases/iam/record-mirror-sync.use-case.ts` e
   `.../get-project-mirror-state.use-case.ts`;
-  `apps/api/src/interfaces/http/internal/internal-projects.controller.ts`
+  `src/interfaces/http/internal/internal-projects.controller.ts`
   (`POST .../mirror-sync-result`);
-  `apps/api/src/interfaces/http/iam/projects.controller.ts`
+  `src/interfaces/http/iam/projects.controller.ts`
   (`GET .../mirror-state`, `viewer`);
   `apps/engine/lib/engine/sessions/engine_api_client.ex`
   (`report_mirror_sync/2`);
@@ -6719,11 +6719,11 @@ capacidade.
   `enviarMirrorSyncResult`); `apps/runner/src/index.ts` (`tratarMirrorSync`
   reporta as três saídas); `apps/web/src/components/AmbienteDoProjeto.tsx`
 - **Teste:**
-  `apps/api/test/application/use-cases/iam/mirror-sync-telemetry.use-case.spec.ts`
+  `test/application/use-cases/iam/mirror-sync-telemetry.use-case.spec.ts`
   (os três estados na função pura e na leitura; erro que não apaga o sucesso;
   destino trocado; contagem 0; mensagem sem texto e mensagem longa; projeto
   sem destino que ainda registra);
-  `apps/api/test/infrastructure/persistence/drizzle/mirror-state.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/mirror-state.repository.spec.ts`
   (o invariante das colunas disjuntas contra o banco de verdade — um fake
   provaria o fake);
   `apps/engine/test/engine_web/channels/terminal_channel_test.exs`
@@ -6786,20 +6786,20 @@ dev desligado com um segredo COMPARTILHADO circulando. Chave de dispositivo não
 segredo na mão de outro a conter. O que a `DELETE` daqui ganhou em troca foi
 ALCANCE ([RN-520](#rn-520)), não amplitude.
 
-- **Onde:** `apps/api/src/interfaces/http/runner/runner-device-keys.controller.ts:99`
+- **Onde:** `src/interfaces/http/runner/runner-device-keys.controller.ts:99`
   (`@Get()`, `listDeviceKeys`, `developer`);
-  `apps/api/src/application/use-cases/auth/list-runner-device-keys.use-case.ts:24`;
-  `apps/api/src/application/ports/runner-device-key-repository.port.ts:90`
+  `src/application/use-cases/auth/list-runner-device-keys.use-case.ts:24`;
+  `src/application/ports/runner-device-key-repository.port.ts:90`
   (`listarDoUsuarioNoProjeto`);
-  `apps/api/src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:69`;
-  `apps/api/src/interfaces/http/runner/dto/runner-device-key-list.response.dto.ts:19`
+  `src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:69`;
+  `src/interfaces/http/runner/dto/runner-device-key-list.response.dto.ts:19`
   (as DUAS travas de tipo, `Wire`/`MesmasChaves`, ao contrário do DTO do
   registro)
 - **Teste:**
-  `apps/api/test/application/use-cases/auth/list-runner-device-keys.use-case.spec.ts`
+  `test/application/use-cases/auth/list-runner-device-keys.use-case.spec.ts`
   (delegação com `userId`/`projectId` na ordem certa; a revogada que fica na
   lista; a órfã com `lastUsedAt` nulo; repositório que rejeita e propaga);
-  `apps/api/test/interfaces/http/runner/runner-device-keys.controller.spec.ts`
+  `test/interfaces/http/runner/runner-device-keys.controller.spec.ts`
   (as TRÊS rotas em `developer`; a delegação; a rota que não devolve lista
   vazia por engano)
 - **ADR:** [0147](../adr/0147-agente-local-com-capacidades.md), ponto 6
@@ -6883,11 +6883,11 @@ URL: o `projectId` da rota já era ignorado no `DELETE`, e lê-lo aqui faria um
 `projectId` divergente derrubar o runner de um projeto que não tem nada com esta
 chave.
 
-- **Onde:** `apps/api/src/application/use-cases/auth/revoke-runner-device-key.use-case.ts:63`
+- **Onde:** `src/application/use-cases/auth/revoke-runner-device-key.use-case.ts:63`
   (a ordem, o projeto da linha e o `try/catch` que só loga);
-  `apps/api/src/application/ports/api-to-engine-client.port.ts:433`
+  `src/application/ports/api-to-engine-client.port.ts:433`
   (`disconnectRunnerOfUser`, `DesfechoDeDesconexaoDeRunner`);
-  `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts:477`;
+  `src/infrastructure/http-clients/api-to-engine-client.ts:477`;
   `apps/engine/lib/engine/runners/revogacao.ex:92` (`derrubar/3`);
   `apps/engine/lib/engine_web/channels/terminal_channel.ex:697`
   (`handle_info({:derrubar_por_revogacao, …})`);
@@ -6896,11 +6896,11 @@ chave.
   `apps/engine/lib/engine_web/controllers/runner_connection_command_controller.ex:27`;
   `apps/engine/lib/engine_web/router.ex:86`
 - **Teste:**
-  `apps/api/test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
+  `test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
   (`describe "a revogação alcança a conexão viva"` — o projeto da linha; a
   ordem revoga→derruba; engine fora do ar que não derruba a revogação; 404 que
   não derruba ninguém);
-  `apps/api/test/infrastructure/http-clients/api-to-engine-client.spec.ts`
+  `test/infrastructure/http-clients/api-to-engine-client.spec.ts`
   (a rota e o corpo; desfecho desconhecido virando `timeout`; 500 que LANÇA,
   para o caso de uso tratar);
   `apps/engine/test/engine/runners/revogacao_test.exs` (sem runner; o dono; o
@@ -7005,25 +7005,25 @@ quem foi REBAIXADO num projeto ainda vê o botão e recebe 403, que é o defeito
 reparável (termina em toast), não o invisível.
 
 - **Onde:**
-  `apps/api/src/infrastructure/persistence/drizzle/containers-overview.repository.ts:96`
+  `src/infrastructure/persistence/drizzle/containers-overview.repository.ts:96`
   (o LEFT JOIN, o `ORDER BY` e `temImagemDecidida`);
-  `apps/api/src/application/ports/containers-overview-repository.port.ts:20`
+  `src/application/ports/containers-overview-repository.port.ts:20`
   (`executionMode`/`lifecycle` nulo/`temImagemDecidida`/`workspaceVerifiedAt`);
-  `apps/api/src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts:33`
+  `src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts:33`
   (`sem_container_registrado`) e `:101` (`elegivelParaVerificacao`, que é o que
   mantém o orçamento intacto);
-  `apps/api/src/interfaces/http/containers/containers-overview.controller.ts:60`;
+  `src/interfaces/http/containers/containers-overview.controller.ts:60`;
   `apps/web/src/routes/containers-subida.ts:114` (`decidirSubida`, a regra
   inteira, pura);
   `apps/web/src/routes/ContainersPage.tsx:119` (os dois payloads)
 - **Teste:**
-  `apps/api/test/application/use-cases/containers/obter-visao-geral-de-containers.use-case.spec.ts`
+  `test/application/use-cases/containers/obter-visao-geral-de-containers.use-case.spec.ts`
   (o terceiro estado com motivo próprio; 25 projetos vazios que NÃO empurram
   para fora da verificação os 20 com container real);
-  `apps/api/test/infrastructure/persistence/drizzle/containers-overview.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/containers-overview.repository.spec.ts`
   (projeto sem `project_containers` na lista; `temImagemDecidida`;
   `container_start_via_runner` pendente; as TRÊS consultas que não crescem);
-  `apps/api/test/interfaces/http/containers/containers-overview.controller.spec.ts`
+  `test/interfaces/http/containers/containers-overview.controller.spec.ts`
   (o `registrado` aninhado e o `null` que sobrevive à conversão);
   `apps/web/src/routes/containers-subida.test.ts` (a ramificação por modo, as
   três recusas, a ressalva, a hierarquia de papel);
@@ -7094,14 +7094,14 @@ idempotente por desenho ("rodar de novo não falha"), e é assim que um bootstra
 interrompido se completa.
 
 - **Onde:**
-  `apps/api/src/application/use-cases/agents/accept-handoff.use-case.ts` — o
+  `src/application/use-cases/agents/accept-handoff.use-case.ts` — o
   ramo `dev-lead` no `execute` e o método privado `provisionarRepositorio`, com
   o `try/catch` e a saída antecipada do repositório adotado;
-  `apps/api/src/application/use-cases/agents/agents-use-cases.module.ts` (o
+  `src/application/use-cases/agents/agents-use-cases.module.ts` (o
   import de `GitUseCasesModule` — a seta é `agents → git`, e `git` não importa
   `agents`, então não há ciclo)
 - **Teste:**
-  `apps/api/test/application/use-cases/agents/accept-handoff.use-case.spec.ts`
+  `test/application/use-cases/agents/accept-handoff.use-case.spec.ts`
   — caminho feliz ("aceitar para o Dev Lead provisiona `local` com o slug do
   projeto"), os dois casos de falha ("provisionamento que falha NÃO derruba o
   aceite nem a ativação" e "a falha vira evento nomeado, com origem e a mensagem
@@ -7214,33 +7214,33 @@ uma linha de `runner_device_keys` com `project_id NULL`, [ADR 0154](../adr/0154-
 ponto 1) — e **nenhuma migration**, porque a coluna já é nullable desde a
 [RN-543](produto.md#rn-543).
 
-- **Código:** `apps/api/src/interfaces/http/internal/internal-machine-device-keys.controller.ts:87`
+- **Código:** `src/interfaces/http/internal/internal-machine-device-keys.controller.ts:87`
   (o `@Post()` da rota, e o docblock com a escolha de credencial),
-  `apps/api/src/application/use-cases/auth/registrar-chave-de-maquina.use-case.ts:122`
+  `src/application/use-cases/auth/registrar-chave-de-maquina.use-case.ts:122`
   (o dono resolvido), `:124` (o `409`), `:136` (a substituição antes do
   registro) e `:146` (`projectId: null`, o que faz dela uma chave de máquina),
-  `apps/api/src/domain/auth/jwk-de-dispositivo.ts:33` (a régua única) e `:59`
+  `src/domain/auth/jwk-de-dispositivo.ts:33` (a régua única) e `:59`
   (a recusa da privada),
-  `apps/api/src/infrastructure/persistence/drizzle/user.repository.ts:31`
+  `src/infrastructure/persistence/drizzle/user.repository.ts:31`
   (`usuarioUnicoDaInstalacao`, `LIMIT 2`),
-  `apps/api/src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:148`
+  `src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:148`
   (`revogarChavesDeMaquina`, os dois `IS NULL`),
-  `apps/api/src/domain/auth/auth-event.ts` (`machine_device_key_registered`),
-  `apps/api/src/interfaces/http/internal/dto/machine-device-key-internal.dto.ts`
+  `src/domain/auth/auth-event.ts` (`machine_device_key_registered`),
+  `src/interfaces/http/internal/dto/machine-device-key-internal.dto.ts`
   e `…/machine-device-key-internal.response.dto.ts`
-- **Teste:** `apps/api/test/application/use-cases/auth/registrar-chave-de-maquina.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/auth/registrar-chave-de-maquina.use-case.spec.ts`
   (caminho feliz com `projectId` nulo e dono resolvido; o `409` sem usuário
   único, sem escrever nada; a substituição ANTES do registro; a privada
   recusada antes de abrir transação; a trilha sem a JWK);
-  `apps/api/test/domain/auth/jwk-de-dispositivo.spec.ts` (a régua única, com o
+  `test/domain/auth/jwk-de-dispositivo.spec.ts` (a régua única, com o
   `d` e a precedência da curva);
-  `apps/api/test/interfaces/http/internal/internal-machine-device-keys.controller.spec.ts`
+  `test/interfaces/http/internal/internal-machine-device-keys.controller.spec.ts`
   (o contrato da resposta, o corpo SEM dono, e as três do guard);
-  `apps/api/test/infrastructure/persistence/drizzle/user.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/user.repository.spec.ts`
   (um usuário devolve; dois devolvem `null`, nunca "o primeiro");
-  `apps/api/test/infrastructure/persistence/drizzle/runner-device-key.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/runner-device-key.repository.spec.ts`
   (a substituição contra o Postgres de verdade, e o que ela NÃO derruba);
-  `apps/api/test/interfaces/route-surface.spec.ts` (a rota classificada)
+  `test/interfaces/route-surface.spec.ts` (a rota classificada)
 - **ADR:** [0155](../adr/0155-a-primeira-conta-nasce-no-terminal.md) ponto 4, sobre
   a espécie criada pelo [0154](../adr/0154-chave-de-dispositivo-de-maquina.md)
 
@@ -7311,17 +7311,17 @@ mostra `mensagemDaApi(erro, …)` num toast ([RN-471](web.md#rn-471)), então a 
 api chega sem uma linha de web. Diferente do teto 1, este gate É calculável no
 cliente — mas calcular só ele produziria o meio-gate que o ADR 0127 recusou.
 
-- **Código:** `apps/api/src/domain/iam/tetos-de-rebaixamento.ts`
+- **Código:** `src/domain/iam/tetos-de-rebaixamento.ts`
   (`remocaoEhAutoRebaixamento` e `MENSAGEM_TETO_AUTO_REBAIXAMENTO_POR_REMOCAO`,
   mais o comentário que diz por que o teto 1 não tem par),
-  `apps/api/src/application/use-cases/iam/remove-project-member.use-case.ts`
+  `src/application/use-cases/iam/remove-project-member.use-case.ts`
   (a assinatura com `atorId` e as duas leituras de papel),
-  `apps/api/src/interfaces/http/iam/projects.controller.ts`
+  `src/interfaces/http/iam/projects.controller.ts`
   (`@CurrentUser()` no `@Delete(':projectId/members/:userId')`, a descrição
   corrigida e o `@ApiForbiddenResponse`),
-  `apps/api/src/application/use-cases/iam/resolve-effective-role.use-case.ts`
+  `src/application/use-cases/iam/resolve-effective-role.use-case.ts`
   (INTOCADO — `projectRole ?? workspaceRole` segue como está)
-- **Teste:** `apps/api/test/application/use-cases/iam/tetos-de-rebaixamento.use-case.spec.ts`,
+- **Teste:** `test/application/use-cases/iam/tetos-de-rebaixamento.use-case.spec.ts`,
   bloco *"Teto 2 pela outra porta — a remoção da própria linha"* (as três
   recusas; a auto-remoção benigna; remover outra pessoa; e a remoção que
   devolve o projeto ao `owner` do workspace). O primeiro deles é o teste de
@@ -7371,10 +7371,10 @@ sob `require.main === module`. O nome do script e a invocação do runbook
 `randomBytes` a cada rodada. Passphrase constante em fixture é string com cara
 de segredo indo para o histórico, e o gitleaks varre branches.
 
-- **Código:** `apps/api/src/scripts/rewrap-deks.ts:93` (`reenvelopar`, a função
+- **Código:** `src/scripts/rewrap-deks.ts:93` (`reenvelopar`, a função
   exportada), `:100` (a lista das duas tabelas, que é o que o teste fixa),
   `:209` (o `require.main === module` que impede a importação de rotacionar)
-- **Teste:** `apps/api/test/scripts/rewrap-deks.spec.ts` — o caminho feliz
+- **Teste:** `test/scripts/rewrap-deks.spec.ts` — o caminho feliz
   (a sequência K1 → K1+K2 → reenvelopa → só K2), a idempotência, e o caso de
   falha da linha de outro ambiente, que também assere que o relato NÃO carrega
   segredo nenhum
@@ -7432,20 +7432,20 @@ risco sobre todas as credenciais.
 contra nada: a api a registra no boot em uma linha, e a advertência de rotação
 que já existia passa a nomear as DUAS.
 
-- **Código:** `apps/api/src/infrastructure/security/envelope-encryption.service.ts:130`
+- **Código:** `src/infrastructure/security/envelope-encryption.service.ts:130`
   (`impressaoDigital`), `:107` (a linha de boot), `:113` (a advertência com as
   duas), `:226` (o diagnóstico de `rewrap`), `:251` (`diagnosticoDaChave`);
-  `apps/api/src/db/schema/llm.ts:259` e `apps/api/src/db/schema/git.ts:76`
+  `src/db/schema/llm.ts:259` e `src/db/schema/git.ts:76`
   (a coluna nas duas tabelas); migration
-  `apps/api/src/db/migrations/0059_key_id_no_envelope.sql`
+  `src/db/migrations/0059_key_id_no_envelope.sql`
 - **Teste:** o describe `key_id da chave mestra` em
-  `apps/api/test/infrastructure/security/envelope-encryption.service.spec.ts`
+  `test/infrastructure/security/envelope-encryption.service.spec.ts`
   — o caminho feliz (impressão estável e determinística, gravada por `encrypt`
   e por `rewrap`), **a prova de que o rótulo não decide** (linha mentirosa é
   re-embrulhada), a linha legada sem rótulo, e os dois casos de falha
   (mensagem que nomeia a chave sem vazar segredo; "sem rótulo" dito como tal).
   A consulta em SQL de verdade está em
-  `apps/api/test/scripts/rewrap-deks.spec.ts`, incluindo o caso da linha `NULL`
+  `test/scripts/rewrap-deks.spec.ts`, incluindo o caso da linha `NULL`
   contando como pendente
 - **ADR:** [0158](../adr/0158-o-id-da-chave-mestra-gravado-no-envelope.md)
 - **Origem:** AT-034 (EP-015/HS-022), finding `BRB-016`
@@ -7502,12 +7502,12 @@ do `permissions.json` repetem os TOKENS do comando no texto (o `label` de
 `matchAgainstFile`) — o mesmo comando que já mora em
 `proposed_actions.payload` e no card de aprovação.
 
-- **Código:** `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:264`
+- **Código:** `src/application/use-cases/actions/propose-action.use-case.ts:264`
   (`reason` no payload do evento de sessão), `:223` (o comentário do outbox
   sem o campo), `:227` (o payload do outbox, intacto), `:356` (o
   `rejectionReason`, que continua só no `deny`);
-  `apps/api/src/domain/actions/decide.ts:292` (`Decision`, a fonte da string)
-- **Teste:** `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:902`
+  `src/domain/actions/decide.ts:292` (`Decision`, a fonte da string)
+- **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:902`
   (caminho feliz: auto-aprovação grava `agent_autonomy: auto_approve`),
   `:948` (`require_approval` pelo default e pelo teto da trava de merge),
   `:1047` (`deny` com o mesmo texto do `rejectionReason`), `:999` (o outbox
@@ -7526,7 +7526,7 @@ porque pode ser reconstruído* — cujo mecanismo não existia: `grep` por
 `application/graph-projection/` só tinha o projetor PARA FRENTE. Enquanto não
 existisse, o grafo não era descartável: era perdido.
 
-**A regra:** `apps/api/src/scripts/reprojetar-grafo.ts`
+**A regra:** `src/scripts/reprojetar-grafo.ts`
 (`pnpm --filter api grafo:reprojetar`; `node scripts/reprojetar-grafo.js` na
 imagem) reconstrói o grafo varrendo a fonte. Cinco decisões, cada uma com
 motivo:
@@ -7564,25 +7564,25 @@ a rodada total restaura o último global. Não há medição de tempo em event l
 grande (a única rodada real foi o compose de dev, 98 eventos, 2,5 s), e a prova
 no cluster local que o BRB-018 pede não foi feita — ele segue aberto.
 
-- **Código:** `apps/api/src/application/graph-projection/graph-event-translator.ts:15`
+- **Código:** `src/application/graph-projection/graph-event-translator.ts:15`
   (`EVENTOS_DO_LOG_PROJETAVEIS`), `:31` (`FECHAMENTOS_DE_SESSAO`), `:56` (o
   tradutor), `:75` (`projetarEvento`), `:99` (`projetarFechamentoDeSessao`);
-  `apps/api/src/application/graph-projection/graph-projector.ts:77` (o projetor
+  `src/application/graph-projection/graph-projector.ts:77` (o projetor
   monta o MESMO tradutor), `:141` (chega à fonte pela outbox e delega);
-  `apps/api/src/scripts/reprojetar-grafo.ts:124` (`montarTradutor`), `:145`
+  `src/scripts/reprojetar-grafo.ts:124` (`montarTradutor`), `:145`
   (`reprojetarGrafo`), `:154` (a recusa antes de ler), `:163` e `:169` (projeto
   inexistente), `:187` (a fase dos eventos, por cursor), `:213` (a interrupção
   nomeada), `:218` (a falha contada sem abortar o resto), `:230` (a fase das
   sessões fechadas), `:301` (`lerArgumentos`), `:370` (só a invocação direta
-  reprojeta); `apps/api/package.json:44` (`grafo:reprojetar`); `Makefile:61`
+  reprojeta); `package.json:44` (`grafo:reprojetar`); `Makefile:61`
   (`test-reprojecao`)
-- **Teste:** `apps/api/test/scripts/reprojetar-grafo.spec.ts:349` (projetor para
+- **Teste:** `test/scripts/reprojetar-grafo.spec.ts:349` (projetor para
   frente → apaga o subgrafo → reprojeta o log inteiro → mesma contagem de nós e
   arestas e mesma lista de chaves; a segunda rodada idêntica; a outbox intacta),
   `:394` (por projeto), `:417` (projeto inexistente, nada gravado — caso de
   falha), `:432` (grafo indisponível é erro nomeado — caso de falha), `:441`
   (argumento desconhecido recusado), `:452` (o tradutor cobre exatamente os tipos
-  projetáveis); `apps/api/test/application/graph-projection/graph-projector.spec.ts`
+  projetáveis); `test/application/graph-projection/graph-projector.spec.ts`
   (o projetor para frente, inalterado, sobre o tradutor extraído). Os quatro
   primeiros exigem Neo4j de pé e PULAM sem ele — a CI do api não sobe Neo4j.
 - **Origem:** AT-032 (BRB-018) — a premissa do ADR 0152 sem mecanismo
@@ -7627,16 +7627,16 @@ compose de desenvolvimento, que sobe o broker por padrão ([RN-512](infra.md#rn-
 deixa `BROKER_URL` vazia até alguém a pôr no `.env`, o aviso aparece — e está
 certo, porque sem a variável a api nunca chama o broker.
 
-- **Código:** `apps/api/src/interfaces/http/iam/workspaces.controller.ts:404`
+- **Código:** `src/interfaces/http/iam/workspaces.controller.ts:404`
   (`getProjectsBase`, `:256` o campo novo),
-  `apps/api/src/interfaces/http/iam/dto/iam.response.dto.ts:554`,
-  `apps/api/src/interfaces/http/iam/iam-http.module.ts` (o módulo do broker
+  `src/interfaces/http/iam/dto/iam.response.dto.ts:554`,
+  `src/interfaces/http/iam/iam-http.module.ts` (o módulo do broker
   importado só pela pergunta `configurado()`);
   `apps/web/src/routes/NewProjectWizard.tsx:257` (`brokerConfirmado`), `:260`
   (`semBrokerConfirmado`), `:270` (`modoExecutavel`), `:283` (o modo vigente),
   `:716` (o card inerte), `:728` (o motivo em texto);
   `apps/web/src/locales/{pt-BR,en}/newProject.json` (`workspace.noBroker`)
-- **Teste:** `apps/api/test/interfaces/http/iam/workspaces-projects-base.controller.spec.ts:59`
+- **Teste:** `test/interfaces/http/iam/workspaces-projects-base.controller.spec.ts:59`
   (com `BROKER_URL`, `true`), `:69` (sem, `false` mesmo com base — caso de
   falha), `:79` (só espaço conta como ausente), `:52` (o mínimo continua
   `maintainer`); `apps/web/src/routes/NewProjectWizard.test.tsx:504` (sem
@@ -7678,14 +7678,14 @@ e o caso não foi medido), e o Infra Lead continua sem saber de broker ausente
 — ele recusa por MODO ([RN-566](engine.md#rn-566)), e propor `container_start` numa
 instalação sem broker continua possível pelo agente.
 
-- **Código:** `apps/api/src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts:71`
+- **Código:** `src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts:71`
   (o campo), `:150` (lido uma vez por carga);
-  `apps/api/src/interfaces/http/containers/dto/containers.response.dto.ts:408`;
+  `src/interfaces/http/containers/dto/containers.response.dto.ts:408`;
   `apps/web/src/routes/containers-subida.ts:33` (o motivo), `:94`
   (`usaBroker`), `:122` (a recusa);
   `apps/web/src/locales/{pt-BR,en}/containers.json`
   (`actions.bloqueio.sem_broker_na_instalacao`)
-- **Teste:** `apps/api/test/application/use-cases/containers/obter-visao-geral-de-containers.use-case.spec.ts:252`
+- **Teste:** `test/application/use-cases/containers/obter-visao-geral-de-containers.use-case.spec.ts:252`
   (sem broker, `false` em toda linha — caso de falha), `:264` (com broker,
   `true`); `apps/web/src/routes/containers-subida.test.ts:54` (`container` e
   `mounted` recusam antes da imagem), `:75` (`runner` não é afetado), `:84`
@@ -7821,20 +7821,20 @@ fechada seguem mostrando a mensagem da api.
 
 - **Código:** `apps/web/src/lib/sessao-encerrada.ts`
   (`ehRecusaDeSessaoEncerrada`, `sessaoEhTerminal`);
-  `apps/api/src/domain/sessions/conversa-em-sessao-encerrada.ts:56`
+  `src/domain/sessions/conversa-em-sessao-encerrada.ts:56`
   (`AGENTES_CONVERSACIONAIS`), `:67` (`TIPOS_DA_CONVERSA`), `:95`
   (`ehEventoDeConversa`), `:117` (`garantirQueSessaoAceitaEvento`);
-  `apps/api/src/application/use-cases/sessions/append-session-event.use-case.ts:44`
+  `src/application/use-cases/sessions/append-session-event.use-case.ts:44`
   (`conflitoDeSessaoEncerrada`), `:114` (o estado no mesmo `UPDATE` do `seq`),
   `:241` (`garantirQueAceita`);
-  `apps/api/src/infrastructure/persistence/drizzle/session.repository.ts:117`
+  `src/infrastructure/persistence/drizzle/session.repository.ts:117`
   (`incrementSeq`);
-  `apps/api/src/application/use-cases/llm/send-chat-message.use-case.ts:78`
-  (o chat humano); `apps/api/src/application/use-cases/agents/create-handoff.use-case.ts:67`,
+  `src/application/use-cases/llm/send-chat-message.use-case.ts:78`
+  (o chat humano); `src/application/use-cases/agents/create-handoff.use-case.ts:67`,
   `accept-handoff.use-case.ts:90`, `activate-agent.use-case.ts:52`;
-  `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts:30`
+  `src/application/use-cases/sessions/get-session-pending-work.use-case.ts:30`
   (`FALA_DO_AGENTE`), `:238` (o quinto sinal);
-  `apps/api/src/infrastructure/persistence/drizzle/session-event.repository.ts:124`
+  `src/infrastructure/persistence/drizzle/session-event.repository.ts:124`
   (`findLatestOfTypesInSession`);
   `apps/engine/lib/engine/sessions/session_server.ex:115` (a pendência com
   instante), `:141` (`handle_info` do relógio próprio, AT-152), `:168`
@@ -7851,14 +7851,14 @@ fechada seguem mostrando a mensagem da api.
   `apps/engine/lib/engine/agents/turno_assincrono.ex:471` (`abandonar`);
   `apps/engine/lib/engine/workers/session_lifecycle_worker.ex:88`
   (`parar_conversacionais`); `apps/engine/config/runtime.exs:79`
-- **Teste:** `apps/api/test/application/use-cases/sessions/conversa-em-sessao-encerrada.spec.ts:144`
+- **Teste:** `test/application/use-cases/sessions/conversa-em-sessao-encerrada.spec.ts:144`
   (sessão encerrada recusa `chat.message` com 409 nomeado — caso de falha),
   `:167` (sem evento e sem `seq` consumido), `:183` (Psicólogo e Anamnese
   continuam entrando), `:211` (decisão sobre ação continua entrando), `:223`
   (sessão ativa aceita — caminho feliz), `:244` (`closing` aceita), `:258`
   (`SendAgentMessage` não chama o engine), `:263` (nenhum handoff órfão),
   `:276` (o aceite não ativa ninguém), `:309` (a ativação não sobe o
-  agente); `apps/api/test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts:478`
+  agente); `test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts:478`
   (o Criativo respondeu: pendente com o instante), `:519` (o usuário falou por
   último), `:546` (quem não conversa não segura), `:563` (sinal sem teto vence);
   `apps/engine/test/engine/sessions/session_lifecycle_test.exs:87` (dentro do
@@ -7965,32 +7965,32 @@ NÃO coberto: a Visão Geral e o card do handoff na sessão lêem o estado do
 repositório, não o de cada sessão, e não mudaram.
 
 - **Onde:**
-  `apps/api/src/application/use-cases/agents/accept-handoff.use-case.ts:66`
+  `src/application/use-cases/agents/accept-handoff.use-case.ts:66`
   (`AGENTES_QUE_PROVISIONAM_O_REPOSITORIO`, gatilho e segunda porta) e `:141`
   (o ramo, antes de `activateAgent`);
-  `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts:143`
+  `src/application/use-cases/execution/activate-execution.use-case.ts:143`
   (a recusa, antes de qualquer efeito);
-  `apps/api/src/domain/execution/repositorio-para-executar.ts:50`
+  `src/domain/execution/repositorio-para-executar.ts:50`
   (`motivoDeExecucaoSemRepositorio`, e os dois nomes de agente que o aceite
-  também usa); `apps/api/src/infrastructure/persistence/drizzle/handoff.repository.ts:55`
+  também usa); `src/infrastructure/persistence/drizzle/handoff.repository.ts:55`
   (`findByProject`); `apps/web/src/routes/ProjectOverviewTab.tsx:369` e `:511`;
   `apps/web/src/routes/SessionPage.tsx:147`; `apps/web/src/routes/session-timeline-montagem.tsx:495`;
   `apps/web/src/lib/session-acoes-de-handoff.ts:122`;
   `apps/engine/lib/engine/projects/project_repository.ex:74` (o texto da recusa
   da [RN-577](engine.md#rn-577), que nomeava o gatilho antigo e muda junto)
 - **Teste:**
-  `apps/api/test/application/use-cases/agents/accept-handoff.use-case.spec.ts`
+  `test/application/use-cases/agents/accept-handoff.use-case.spec.ts`
   ("aceitar para o Arquiteto provisiona `local` com o slug do projeto", "o
   repositório nasce ANTES de o Arquiteto acordar", "aceitar para o Dev Lead
   continua provisionando `local` (segunda porta)");
-  `apps/api/test/application/use-cases/agents/accept-handoff-provisiona-uma-vez.spec.ts`
+  `test/application/use-cases/agents/accept-handoff-provisiona-uma-vez.spec.ts`
   (as duas portas contra o banco: "UM createRepo, UMA linha, nenhuma falha", e
   "o exp001: Arquiteto aceito SEM repositório, e a segunda porta provisiona");
-  `apps/api/test/application/use-cases/execution/activate-execution.use-case.spec.ts:725`
+  `test/application/use-cases/execution/activate-execution.use-case.spec.ts:725`
   ("sem repositório: 409, e NENHUM efeito antes da recusa", "a frase nomeia o
   handoff ao Dev Lead pendente — a saída do exp001", "repositório ADOTADO conta
-  como repositório"); `apps/api/test/domain/execution/repositorio-para-executar.spec.ts`;
-  `apps/api/test/infrastructure/persistence/handoff-por-projeto.repository.spec.ts`;
+  como repositório"); `test/domain/execution/repositorio-para-executar.spec.ts`;
+  `test/infrastructure/persistence/handoff-por-projeto.repository.spec.ts`;
   `apps/web/src/routes/ProjectOverviewTab.test.tsx:409`, `:427` e `:440`;
   `apps/web/src/routes/SessionPage.handoff-devlead-e-colapso.test.tsx:575`;
   `apps/engine/test/engine/agents/arquiteto_server_test.exs:134` e
@@ -8038,12 +8038,12 @@ comportamento de sempre, nada vai ao fio e o hub decide sozinho.
    fio. O que a prova NÃO afirma: qual upstream cada critério escolhe — isso
    é decisão do hub e muda com o tempo.
 
-- **Onde:** `apps/api/src/domain/llm/routing-preference.ts:56` (escrita),
-  `apps/api/src/domain/llm/routing-preference.ts:75` (o que vai ao fio),
-  `apps/api/src/domain/llm/binding-resolver.ts:100` (viaja com o binding),
-  `apps/api/src/application/use-cases/llm/record-llm-usage.use-case.ts:118`
+- **Onde:** `src/domain/llm/routing-preference.ts:56` (escrita),
+  `src/domain/llm/routing-preference.ts:75` (o que vai ao fio),
+  `src/domain/llm/binding-resolver.ts:100` (viaja com o binding),
+  `src/application/use-cases/llm/record-llm-usage.use-case.ts:118`
   (congela no metering),
-  `apps/api/src/infrastructure/llm/openrouter-provider.ts:353` (`openrouterConfig`,
+  `src/infrastructure/llm/openrouter-provider.ts:353` (`openrouterConfig`,
   a capability provada)
 - **Teste:** `test/domain/llm/routing-preference.spec.ts`,
   `test/application/use-cases/llm/set-model-binding.use-case.spec.ts`,
@@ -8062,7 +8062,7 @@ num segundo consumidor. Medido por leitura do código: um restore do Postgres, a
 perda do volume `project_workspaces` e a conversão de `execution_mode` (que não
 toca `docs/`) deixam a pasta ausente ou no lugar antigo, e nada a reescreve.
 
-**A regra:** `apps/api/src/scripts/reprojetar-artefatos.ts`
+**A regra:** `src/scripts/reprojetar-artefatos.ts`
 (`pnpm --filter api artefatos:reprojetar`; `node scripts/reprojetar-artefatos.js`
 na imagem) varre `session_events` e reescreve a pasta. Como na RN-569:
 
@@ -8093,20 +8093,20 @@ ATUAL do projeto, e precisa enxergar o mesmo disco que a api; (c) não recria
 foram arquivo; (d) sem medição de tempo em event log grande; (e) NÃO entra em
 backup — é derivada, o argumento do [ADR 0152](../adr/0152-backup-de-volumes-contra-compose.md).
 
-- **Código:** `apps/api/src/application/artifact-projection/artifact-event-translator.ts:21`
+- **Código:** `src/application/artifact-projection/artifact-event-translator.ts:21`
   (`ArtifactEventTranslator`), `:24` (`projetarEvento`);
-  `apps/api/src/application/artifact-projection/artifact-projector.ts:64`
+  `src/application/artifact-projection/artifact-projector.ts:64`
   (o projetor monta o MESMO tradutor), `:131` (delega);
-  `apps/api/src/scripts/reprojetar-artefatos.ts:96` (`reprojetarArtefatos`),
+  `src/scripts/reprojetar-artefatos.ts:96` (`reprojetarArtefatos`),
   `:115` (o tradutor), `:137` (varredura por cursor sobre `session_events`),
   `:163` (a falha contada sem abortar), `:185` (`lerArgumentos`), `:241` (só a
-  invocação direta reprojeta); `apps/api/package.json:45` (`artefatos:reprojetar`)
-- **Teste:** `apps/api/test/scripts/reprojetar-artefatos.spec.ts:215` (projetor
+  invocação direta reprojeta); `package.json:45` (`artefatos:reprojetar`)
+- **Teste:** `test/scripts/reprojetar-artefatos.spec.ts:215` (projetor
   para frente → apaga a pasta → reprojeta → mesmos caminhos e conteúdos; segunda
   rodada idêntica; outbox intacta), `:254` (nunca apaga), `:265` (por projeto),
   `:275` (projeto inexistente — caso de falha), `:289` (falha de escrita contada
   sem abortar o resto — caso de falha), `:314` (argumento desconhecido);
-  `apps/api/test/application/artifact-projection/artifact-projector.spec.ts`
+  `test/application/artifact-projection/artifact-projector.spec.ts`
   (o projetor para frente, inalterado, sobre o tradutor extraído)
 - **Origem:** AT-128 — a lacuna que o ADR 0148 declarou (custo 3)
 
@@ -8150,13 +8150,13 @@ quem chama sem ser o agente, o que é o desejado — a aprovação só terminari
 `failed`; e o `PUT execution-mode` continua aceitando a conversão por chamada
 direta.
 
-- **Código:** `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:90`
+- **Código:** `src/application/use-cases/actions/propose-action.use-case.ts:90`
   (recusa 409), `apps/web/src/routes/containers-subida.ts:181`
   (`semBrokerParaCicloDeVida`) e `:192` (`conversaoSemBroker`),
   `apps/web/src/routes/settings/ExecutionModeSection.tsx` (botão inerte),
   `apps/engine/lib/engine/infra/infra_lead_server.ex:886`
   (`motivo_da_recusa_da_api`)
-- **Teste:** `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:207`
+- **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:207`
   (409 nas três ações, e `container_stop` segue `pending` com broker),
   `apps/web/src/routes/containers-subida.test.ts` (as duas funções, três
   estados), `apps/web/src/routes/settings/conversao-de-modo.test.tsx`,
@@ -8193,11 +8193,11 @@ e o resumo do workspace discordarem de qual era a sessão de trabalho.
 consultar o estado da sessão de cada handoff (a lacuna que a RN-582 declarou);
 decidir se passam a consultá-lo é decisão à parte, fora desta regra.
 
-- **Código:** `apps/api/src/application/use-cases/sessions/list-sessions-for-project.use-case.ts:30`
-  (`execute`), `apps/api/src/interfaces/http/sessions/dto/sessions.response.dto.ts:110`
+- **Código:** `src/application/use-cases/sessions/list-sessions-for-project.use-case.ts:30`
+  (`execute`), `src/interfaces/http/sessions/dto/sessions.response.dto.ts:110`
   (`SessionListItemResponseDto`), `apps/web/src/lib/hooks.ts:147`
   (`sessaoMaisRecente`)
-- **Teste:** `apps/api/test/application/use-cases/sessions/list-sessions-for-project.use-case.spec.ts:81`
+- **Teste:** `test/application/use-cases/sessions/list-sessions-for-project.use-case.spec.ts:81`
   (vínculo e não nome; técnica de outro projeto não marca),
   `apps/web/src/lib/sessao-mais-recente.test.ts:28` (renomeada continua fora) e
   `:36` (trabalho chamada `git-bootstrap` não é técnica)
@@ -8218,9 +8218,9 @@ eternamente no meio de uma. Vazia é o mesmo que ausente nos três leitores.
 
 - **Onde:** `docker/docker-compose.yml`, `docker/docker-compose.prod.yml` e
   `docker/docker-compose.install.yml` (serviços `api`, `engine` e `broker`);
-  os leitores são `apps/api/src/infrastructure/security/auth-key-material.ts:136`
-  (`passphraseAnterior`), `apps/api/src/infrastructure/security/service-token.ts:92`
-  (`tokenDeServicoAnterior`), `apps/api/src/infrastructure/security/envelope-encryption.service.ts:93`,
+  os leitores são `src/infrastructure/security/auth-key-material.ts:136`
+  (`passphraseAnterior`), `src/infrastructure/security/service-token.ts:92`
+  (`tokenDeServicoAnterior`), `src/infrastructure/security/envelope-encryption.service.ts:93`,
   `apps/engine/config/runtime.exs:70` e `apps/broker/src/config.ts:85`
 - **Teste:** `scripts/ci/previous-nos-composes.spec.ts` — DERIVA do código dos
   três serviços a lista de `_PREVIOUS` lidas e reprova a que faltar, ou vier
@@ -8258,9 +8258,9 @@ Até a [RN-613](#rn-613), o pepper sem valor próprio caía no
 consequências acima. Desde ela o pepper é obrigatório em produção e nunca
 emprestado do JWT.
 
-- **Onde:** `apps/api/src/infrastructure/security/auth-key-material.ts:212`
+- **Onde:** `src/infrastructure/security/auth-key-material.ts:212`
   (`pepper`), `:228` (`hashDeToken`), `:247` (`baldeDeEmail`);
-  `apps/api/src/interfaces/http/auth/pat-auth.guard.ts:142`
+  `src/interfaces/http/auth/pat-auth.guard.ts:142`
 - **Teste:** `test/application/use-cases/auth/rotacao-dos-segredos.spec.ts`,
   contra o Postgres de teste
 - **Borda:** o ALVO de "trocar" inclui o erro de quem separa o pepper do JWT
@@ -8284,9 +8284,9 @@ tivesse lido este repositório, e sem dar erro nenhum. A obrigatoriedade é a
 anterior ausente é o estado normal. Um anterior igual ao atual (depois do
 trim) continua não contando como rotação.
 
-- **Onde:** `apps/api/src/infrastructure/security/service-token.ts:63`
+- **Onde:** `src/infrastructure/security/service-token.ts:63`
   (`exigirTokenDeProducao`), `:92` (`tokenDeServicoAnterior`);
-  `apps/api/src/main.ts:50` (`tokenDeServicoAnterior`), que roda no boot ao lado do atual
+  `src/main.ts:50` (`tokenDeServicoAnterior`), que roda no boot ao lado do atual
 - **Teste:** `test/infrastructure/security/service-token.spec.ts` (describe
   "tokenDeServicoAnterior (RN-598)")
 - **Borda:** esta RN é o lado da api. O engine e o broker aplicam a mesma
@@ -8336,23 +8336,23 @@ e o card do agente mostra uma frase sob o toggle — só quando a CURINGA está
 ligada, porque o toggle sobre o tipo representativo grava regra específica,
 que não libera o escopo.
 
-- **Onde:** `apps/api/src/domain/actions/decide.ts:309` (`modoAutomaticoDoAgente`),
-  `apps/api/src/domain/actions/decide.ts:370` (o veredito sintetizado do
-  composto ignorado), `apps/api/src/domain/actions/decide.ts:455` (o teto de
+- **Onde:** `src/domain/actions/decide.ts:309` (`modoAutomaticoDoAgente`),
+  `src/domain/actions/decide.ts:370` (o veredito sintetizado do
+  composto ignorado), `src/domain/actions/decide.ts:455` (o teto de
   escopo pulado),
-  `apps/api/src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
+  `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
   (`resolve`, com a origem),
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:221`
+  `src/application/use-cases/actions/propose-action.use-case.ts:221`
   (`autonomyOrigin`), `apps/web/src/components/AgentTeamGrid.tsx:114`
   (`autonomyHint`), `apps/web/src/components/ApprovalCard.tsx:313` (a nota
   nas duas variantes)
-- **Teste:** `apps/api/test/domain/actions/decide.spec.ts` ("modo automático
+- **Teste:** `test/domain/actions/decide.spec.ts` ("modo automático
   libera o escopo de caminho (RN-603)": fora do escopo e composto auto-aprovam;
   push/`sudo`/`deny`/`ask` escrito seguem; regra específica e curinga
   desligada não liberam; os outros tetos não mudam),
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts`
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts`
   (ponta a ponta com o repositório real),
-  `apps/api/test/infrastructure/persistence/drizzle/agent-autonomy.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/agent-autonomy.repository.spec.ts`
   (`resolve` devolve a origem), `apps/web/src/components/AgentTeamGrid.test.tsx`,
   `apps/web/src/components/AgentCard.test.tsx`,
   `apps/web/src/components/ApprovalCard.test.tsx`
@@ -8432,21 +8432,21 @@ pacote da porta de Docker. Nada muda na contenção do broker ([ADR
   sai `teto-excedido`, com o nome certo.
 
 - **Código:**
-  `apps/api/src/infrastructure/http-clients/container-broker.client.ts:276` (`tetoDaOperacao`),
+  `src/infrastructure/http-clients/container-broker.client.ts:276` (`tetoDaOperacao`),
   `:241` (`TETO_DE_MUTACAO_MS`), `:253` (`FOLGA_DO_EXEC_NO_ENGINE_MS`),
   `:306` (`erroDeTransporte`);
-  `apps/api/src/application/ports/container-broker.port.ts:96` (`MotivoDeBrokerIndisponivel`);
+  `src/application/ports/container-broker.port.ts:96` (`MotivoDeBrokerIndisponivel`);
   `apps/engine/lib/engine/sessions/engine_api_client.ex:2048` (`teto_do_container_exec_ms`)
 
   `apps/engine/lib/engine/sessions/engine_api_client.ex:2048` (`teto_do_container_exec_ms`)
-- **Teste:** `apps/api/test/infrastructure/http-clients/container-broker.client.spec.ts:286`
+- **Teste:** `test/infrastructure/http-clients/container-broker.client.spec.ts:286`
   (a reprodução, contra um broker `node:http` que demora 6 s), `:182` (o
   teto de cada operação no `AbortSignal`), `:204` e `:229` (`teto-excedido`
   nomeando operação e número), `:245` (o teto do undici), `:330` (describe
   `tetoDaOperacao`, incluindo a ordem broker < api < engine);
-  `apps/api/test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts:298`
+  `test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts:298`
   (a tela continua dizendo `broker-sem-resposta`);
-  `apps/api/test/application/use-cases/containers/executar-comando-no-container.use-case.spec.ts:98`;
+  `test/application/use-cases/containers/executar-comando-no-container.use-case.spec.ts:98`;
   `apps/engine/test/engine/sessions/engine_api_client_container_exec_test.exs:72`
   (a reprodução do lado do engine, HTTP real com Bandit), `:91` (a folga
   espelhada na api)
@@ -8504,19 +8504,19 @@ dizendo o que era verdade então, que é o ponto. E a separação entre escopo e
 `permissions.json` ([RN-478](#rn-478)) não entra no campo: ele descreve a
 raiz do ESCOPO, nunca onde o arquivo de política mora.
 
-- **Código:** `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts:907`
+- **Código:** `src/infrastructure/filesystem/project-workspaces-root.ts:907`
   (`raizDoEscopoNoEvento`), `:901` (`RaizDoEscopoNoEvento`), `:117`
   (`segmentoSobABaseDeProjetos`, reusada);
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:302`
+  `src/application/use-cases/actions/propose-action.use-case.ts:302`
   (`scopeRoot` só em `terminal`);
-  `apps/api/src/domain/actions/decide.ts:636` (`terminalNoEscopo`, o único
+  `src/domain/actions/decide.ts:636` (`terminalNoEscopo`, o único
   consumidor do escopo)
-- **Teste:** `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:1143`
+- **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:1143`
   (`container`), `:1123` (`mounted`), `:1123` (`runner`), `:1123` (o caminho
   absoluto sob `/home/usuario/…` NUNCA vaza, nos três casos, inclusive fora
   da base), `:1213` (`indisponivel`), `:1163` (outro tipo e o outbox sem o
   campo), `:1183` (evento anterior, sem o campo, pela mesma leitura);
-  `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts:772`
+  `test/infrastructure/filesystem/project-workspaces-root.spec.ts:772`
   (a função pura, nos três modos e nos três casos de `indisponivel`)
 - **ADR:** [0055](../adr/0055-escopo-de-caminho-na-politica-de-terminal.md) (ponto 7)
 - **Origem:** AT-147 (EP-025/HS-043)
@@ -8597,14 +8597,14 @@ PREFIXO (todo projeto no cache) e a da Conta sempre, e as DUAS telas de
 revogação a chamam — antes, revogar pela seção do projeto invalidava só a do
 projeto aberto, e as outras listas seguiam anunciando a revogada.
 
-- **Código:** `apps/api/src/interfaces/http/runner/machine-device-keys.controller.ts:48`
+- **Código:** `src/interfaces/http/runner/machine-device-keys.controller.ts:48`
   (`MachineDeviceKeysController`), `:69` (`listMachineDeviceKeys`), `:93`
   (`revokeMachineDeviceKey`);
-  `apps/api/src/application/use-cases/auth/list-machine-device-keys.use-case.ts:33`
+  `src/application/use-cases/auth/list-machine-device-keys.use-case.ts:33`
   (`ListMachineDeviceKeysUseCase`);
-  `apps/api/src/application/use-cases/auth/revoke-machine-device-key.use-case.ts:33`
+  `src/application/use-cases/auth/revoke-machine-device-key.use-case.ts:33`
   (`RevokeMachineDeviceKeyUseCase`);
-  `apps/api/src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:97`
+  `src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:97`
   (`listarDeMaquinaDoUsuario`);
   `apps/web/src/routes/MachineDeviceKeysSection.tsx:73`
   (`MachineDeviceKeysSection`);
@@ -8612,20 +8612,20 @@ projeto aberto, e as outras listas seguiam anunciando a revogada.
   (`invalidarChavesDeDispositivo`);
   `apps/web/src/lib/api-client.ts:455` (`listMachineDeviceKeys`);
   `apps/web/src/locales/{en,pt-BR}/machineKeys.json`
-- **Teste:** `apps/api/test/application/use-cases/auth/machine-device-keys.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/auth/machine-device-keys.use-case.spec.ts`
   (a lista só pelo usuário, a revogada incluída; a revogação REAL derrubando
   `{projeto, usuário}` em cada projeto; sem projeto, só grava; a chave fora das
   do chamador é 404 sem revogar nada);
-  `apps/api/test/interfaces/http/runner/machine-device-keys.controller.spec.ts`
+  `test/interfaces/http/runner/machine-device-keys.controller.spec.ts`
   (sem `@RequireRole`, 204, `userId` do JWT, o 404 propagado);
-  `apps/api/test/infrastructure/persistence/drizzle/runner-device-key.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/runner-device-key.repository.spec.ts`
   (contra o Postgres: só as de máquina do usuário, a substituída revogada na
   lista, a de outro usuário fora, instalação sem projeto);
   `apps/web/src/routes/MachineDeviceKeysSection.test.tsx` (lista, os cinco
   estados, a confirmação com o alcance, a invalidação da Conta E de todo
   projeto — provada também sobre uma entrada de projeto no cache —, a falha com
   a frase da api, e os dois idiomas);
-  `apps/api/test/interfaces/route-surface.spec.ts` (as duas rotas classificadas
+  `test/interfaces/route-surface.spec.ts` (as duas rotas classificadas
   `jwt` em `docs/security-surface.md`)
 - **Fica declarado e NÃO fecha:** (1) o alvo da revogação continua
   `{projeto, usuário}` (RN-520, AT-013); (2) a visão de `maintainer` continua
@@ -8655,8 +8655,8 @@ havendo um `.env` anterior na pasta, ele é LIDO (nunca executado) antes de ser
 sobrescrito, e o pepper dele é mantido — ou, sem pepper, nasce com o
 `AUTH_JWT_SECRET` dele. O terminal diz de onde o valor veio, nunca o valor.
 
-- **Onde:** `apps/api/src/infrastructure/security/auth-key-material.ts:168`
-  (`pepperAtual`), `:212` (`pepper`); `apps/api/src/main.ts:46` (a checagem de
+- **Onde:** `src/infrastructure/security/auth-key-material.ts:168`
+  (`pepperAtual`), `:212` (`pepper`); `src/main.ts:46` (a checagem de
   boot); `install.sh:702` (`valor_no_env_anterior`), `:734` (`gerar_segredos`),
   `:831` (`dizer_a_origem_do_pepper`); a variável nos três composes
   (`docker/docker-compose.yml`, `docker-compose.prod.yml`,
@@ -8733,30 +8733,30 @@ o ticket novo é recusado); tela (não existe seção de membros de workspace no
 `apps/web`). O TITULAR (`workspaces.created_by`) não sai por esta rota — é a
 [RN-616](#rn-616).
 
-- **Código:** `apps/api/src/interfaces/http/iam/workspaces.controller.ts:262`
+- **Código:** `src/interfaces/http/iam/workspaces.controller.ts:262`
   (`removeMember`);
-  `apps/api/src/application/use-cases/iam/remove-workspace-member.use-case.ts:79`
+  `src/application/use-cases/iam/remove-workspace-member.use-case.ts:79`
   (`RemoveWorkspaceMemberUseCase`);
-  `apps/api/src/domain/iam/tetos-de-rebaixamento.ts:88`
+  `src/domain/iam/tetos-de-rebaixamento.ts:88`
   (`MENSAGEM_TETO_AUTO_REMOCAO_DO_WORKSPACE`), `:248`
   (`remocaoEhAutoRebaixamento`);
-  `apps/api/src/infrastructure/persistence/drizzle/workspace.repository.ts:84`
+  `src/infrastructure/persistence/drizzle/workspace.repository.ts:84`
   (`removeMember`);
-  `apps/api/src/infrastructure/persistence/drizzle/project.repository.ts:167`
+  `src/infrastructure/persistence/drizzle/project.repository.ts:167`
   (`removeMemberFromWorkspaceProjects`);
-  `apps/api/src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:169`
+  `src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:169`
   (`revogarChavesDeProjetoNoWorkspace`);
-  `apps/api/src/infrastructure/persistence/drizzle/personal-access-token.repository.ts:187`
+  `src/infrastructure/persistence/drizzle/personal-access-token.repository.ts:187`
   (`revogarDoUsuarioNoWorkspace`)
 - **Teste:**
-  `apps/api/test/application/use-cases/iam/remove-workspace-member.use-case.spec.ts`
+  `test/application/use-cases/iam/remove-workspace-member.use-case.spec.ts`
   (contra o Postgres: remove outro membro com a cascata inteira e nada fora do
   workspace; remove outro owner; engine fora do ar não derruba; idempotente;
   recusa a si mesmo sem escrever nada; frase própria; o owner único não sai; com
   dois owners, quem remove fica);
-  `apps/api/test/interfaces/http/iam/workspaces-members.controller.spec.ts`
+  `test/interfaces/http/iam/workspaces-members.controller.spec.ts`
   (`owner` nas duas rotas de membro, 204, a ordem ator/alvo, o 403 propagado);
-  `apps/api/test/interfaces/route-surface.spec.ts` (a rota classificada em
+  `test/interfaces/route-surface.spec.ts` (a rota classificada em
   `docs/security-surface.md`)
 - **ADR:** [0173](../adr/0173-remocao-de-membro-de-workspace.md)
 - **Origem:** AT-115 (EP-002/HS-006)
@@ -8802,25 +8802,25 @@ registrado não se move: `token_usage` não guarda titular, e o relatório intei
 histórico incluído, passa a ser do novo titular. Sem evento de domínio: fica
 uma linha de log com de/para/quem.
 
-- **Código:** `apps/api/src/domain/iam/titularidade-do-workspace.ts:22`
+- **Código:** `src/domain/iam/titularidade-do-workspace.ts:22`
   (`CODIGO_CRIADOR_DO_WORKSPACE`), `:38` (`removeOTitular`);
-  `apps/api/src/application/use-cases/iam/remove-workspace-member.use-case.ts:120`
+  `src/application/use-cases/iam/remove-workspace-member.use-case.ts:120`
   (`removeOTitular`);
-  `apps/api/src/application/use-cases/iam/transfer-workspace-ownership.use-case.ts:39`
+  `src/application/use-cases/iam/transfer-workspace-ownership.use-case.ts:39`
   (`TransferWorkspaceOwnershipUseCase`);
-  `apps/api/src/infrastructure/persistence/drizzle/workspace.repository.ts:98`
+  `src/infrastructure/persistence/drizzle/workspace.repository.ts:98`
   (`transferirTitularidade`);
-  `apps/api/src/interfaces/http/iam/workspaces.controller.ts:324`
+  `src/interfaces/http/iam/workspaces.controller.ts:324`
   (`transferOwnership`)
 - **Teste:**
-  `apps/api/test/application/use-cases/iam/remove-workspace-member.use-case.spec.ts`
+  `test/application/use-cases/iam/remove-workspace-member.use-case.spec.ts`
   (`describe` "o TITULAR não sai": o 409 com código e nada escrito; o titular
   removendo a si mesmo recebe o 403; depois de transferir, remover o antigo
   criador passa e o novo titular vira o protegido — e `describe`
   "TransferWorkspaceOwnershipUseCase": para owner grava `created_by`; para
   `maintainer` e para não-membro é 409 `titular_precisa_ser_owner`; para o
   titular atual é idempotente);
-  `apps/api/test/interfaces/http/iam/workspaces-members.controller.spec.ts`
+  `test/interfaces/http/iam/workspaces-members.controller.spec.ts`
   (`owner` e a delegação da transferência)
 - **ADR:** [0173](../adr/0173-remocao-de-membro-de-workspace.md), ponto 7
 - **Origem:** AT-115 (EP-002/HS-006)
@@ -8872,25 +8872,25 @@ api chama `ResolverIdiomaDaRespostaUseCase` com o AUTOR de cada mensagem a um
 agente e a sessão, e o engine põe a orientação no fim de cada chamada de LLM
 daquele turno. A Conta deixou de dizer que o valor "ainda não chega".
 
-- **Código:** `apps/api/src/domain/iam/idioma-de-resposta.ts:56`
+- **Código:** `src/domain/iam/idioma-de-resposta.ts:56`
   (`normalizarIdiomaBcp47`), `:118` (`resolverIdiomaDaResposta`);
-  `apps/api/src/db/schema/iam.ts:104` (`responseLanguage`), `:111`
+  `src/db/schema/iam.ts:104` (`responseLanguage`), `:111`
   (`detectedLanguage`), `:128` (`users_idioma_detectado_so_confirmado`);
-  `apps/api/src/db/schema/sessions.ts:124` (`sessionLanguageOverrides`);
-  `apps/api/src/application/use-cases/iam/resolver-idioma-da-resposta.use-case.ts:44`
+  `src/db/schema/sessions.ts:124` (`sessionLanguageOverrides`);
+  `src/application/use-cases/iam/resolver-idioma-da-resposta.use-case.ts:44`
   (`ResolverIdiomaDaRespostaUseCase`);
-  `apps/api/src/application/use-cases/iam/update-user-preferences.use-case.ts:25`
+  `src/application/use-cases/iam/update-user-preferences.use-case.ts:25`
   (`idiomaDaRespostaOuRecusa`), `:47` (`UpdateUserPreferencesUseCase`);
-  `apps/api/src/application/use-cases/iam/idioma-da-resposta-na-sessao.use-case.ts:19`
+  `src/application/use-cases/iam/idioma-da-resposta-na-sessao.use-case.ts:19`
   (`IdiomaDaRespostaNaSessaoUseCase`);
   `apps/web/src/routes/ResponseLanguageSection.tsx`
-- **Teste:** `apps/api/test/domain/iam/idioma-de-resposta.spec.ts:12` (a
+- **Teste:** `test/domain/iam/idioma-de-resposta.spec.ts:12` (a
   régua, e o que ela recusa — caso de falha), `:40` (a precedência);
-  `apps/api/test/application/use-cases/iam/idioma-da-resposta.use-case.spec.ts:96`
+  `test/application/use-cases/iam/idioma-da-resposta.use-case.spec.ts:96`
   (conta nova no automático), `:124` (grava canônico, não toca a interface),
   `:158` (inválido não grava nada — caso de falha), `:188` (o override não
   alcança o outro participante), `:209` (404 de sessão de outro projeto);
-  `apps/api/test/infrastructure/persistence/session-language-override.repository.spec.ts:73`
+  `test/infrastructure/persistence/session-language-override.repository.spec.ts:73`
   (o CHECK no banco), `:93` (upsert pelo par);
   `apps/web/src/routes/ResponseLanguageSection.test.tsx:76` (efetivo com
   origem, sem o aviso antigo de "ainda não chega"), `:115` (código
@@ -8936,16 +8936,16 @@ toda chamada de LLM de turno SEM autor humano, e desde a [RN-623](engine.md#rn-6
 também como idioma do artefato compartilhado que um agente grava DURANTE um
 turno com autor humano — a divergência que esta regra declarava fechou.
 
-- **Código:** `apps/api/src/db/schema/iam.ts:262` (`language`);
-  `apps/api/src/db/migrations/0062_idioma_do_projeto.sql` (o backfill);
-  `apps/api/src/application/use-cases/iam/idioma-do-projeto.ts:13`
+- **Código:** `src/db/schema/iam.ts:262` (`language`);
+  `src/db/migrations/0062_idioma_do_projeto.sql` (o backfill);
+  `src/application/use-cases/iam/idioma-do-projeto.ts:13`
   (`idiomaDoProjetoOuRecusa`);
-  `apps/api/src/application/use-cases/iam/create-project.use-case.ts:72`
-  (`language`); `apps/api/src/application/use-cases/iam/update-project.use-case.ts:18`
+  `src/application/use-cases/iam/create-project.use-case.ts:72`
+  (`language`); `src/application/use-cases/iam/update-project.use-case.ts:18`
   (`idiomaDoProjetoOuRecusa`);
-  `apps/api/src/interfaces/http/iam/dto/iam.response.dto.ts:233`
+  `src/interfaces/http/iam/dto/iam.response.dto.ts:233`
   (`language`); `apps/web/src/routes/settings/ProjectLanguageSection.tsx`
-- **Teste:** `apps/api/test/application/use-cases/iam/idioma-do-projeto.use-case.spec.ts:63`
+- **Teste:** `test/application/use-cases/iam/idioma-do-projeto.use-case.spec.ts:63`
   (nasce com o idioma de quem cria), `:74` (a escolha da conta vence a
   interface), `:100` (inválido e `automatico` — caso de falha, o projeto não
   nasce), `:132` (PATCH inválido não muda nada), `:152` (a migração grava o
@@ -8965,7 +8965,7 @@ pergunta na tela onde o idioma já é mostrado e corrigido.
 1. **A régua é UMA, e mora na api.** A heurística da AT-080, medida pela
    AT-160 (marcadores contrastivos de `pt`/`es`/`en`, a limpeza de código, log,
    citação, URL e identificador), saiu de `scripts/idioma/` para
-   `apps/api/src/domain/iam/heuristica-de-idioma.ts`, e o instrumento a
+   `src/domain/iam/heuristica-de-idioma.ts`, e o instrumento a
    REEXPORTA de lá — o que o produto roda é o que o instrumento mede. A regra
    de O QUE é evidência (só ator `user`; no formulário, só as respostas, e o
    eco com os rótulos do agente pulado) também é uma só, `evidenciasDoAutor`,
@@ -9033,32 +9033,32 @@ arquivo da heurística não pode ter `import`: o instrumento o executa por type
 stripping, e `scripts/idioma/` tem tsconfig próprio sem `verbatimModuleSyntax`
 para aceitar os `export` de um módulo CommonJS.
 
-- **Código:** `apps/api/src/domain/iam/heuristica-de-idioma.ts:175`
+- **Código:** `src/domain/iam/heuristica-de-idioma.ts:175`
   (`PARAMETROS_PROVISORIOS`), `:457` (`evidenciasDoAutor`), `:500`
   (`mensagensNecessarias`), `:520` (`idiomaConcordante`);
-  `apps/api/src/domain/iam/deteccao-de-idioma.ts:43` (`idiomaAPerguntar`);
-  `apps/api/src/application/use-cases/iam/detectar-idioma-do-autor.use-case.ts:57`
+  `src/domain/iam/deteccao-de-idioma.ts:43` (`idiomaAPerguntar`);
+  `src/application/use-cases/iam/detectar-idioma-do-autor.use-case.ts:57`
   (`DetectarIdiomaDoAutorUseCase`), `:66` (`detectar`), `:88` (`pergunta`),
   `:123` (`responder`);
-  `apps/api/src/infrastructure/persistence/drizzle/deteccao-de-idioma.repository.ts:27`
+  `src/infrastructure/persistence/drizzle/deteccao-de-idioma.repository.ts:27`
   (`ultimasEvidencias`), `:75` (`confirmar`);
-  `apps/api/src/db/schema/iam.ts:144` (`detectedLanguageDeclines`);
-  `apps/api/src/db/schema/sessions.ts:168`
+  `src/db/schema/iam.ts:144` (`detectedLanguageDeclines`);
+  `src/db/schema/sessions.ts:168`
   (`session_events_evidencia_de_idioma_idx`);
-  `apps/api/src/interfaces/http/iam/session-response-language.controller.ts:66`
-  (`comPergunta`); `apps/api/src/interfaces/http/iam/user-preferences.controller.ts:94`
+  `src/interfaces/http/iam/session-response-language.controller.ts:66`
+  (`comPergunta`); `src/interfaces/http/iam/user-preferences.controller.ts:94`
   (`answerDetected`); `apps/web/src/routes/SessionLanguageIndicator.tsx`;
   `scripts/idioma/heuristica.ts` (a reexportação)
-- **Teste:** `apps/api/test/domain/iam/deteccao-de-idioma.spec.ts:29` (os
+- **Teste:** `test/domain/iam/deteccao-de-idioma.spec.ts:29` (os
   provisórios), `:42` (duas avaliações concordam), `:48` (uma só não basta),
   `:52` (indeterminado não aponta — caso de falha), `:77` (o eco do formulário
   pulado), `:105`..`:158` (quando pergunta);
-  `apps/api/test/application/use-cases/iam/detectar-idioma-do-autor.use-case.spec.ts:109`
+  `test/application/use-cases/iam/detectar-idioma-do-autor.use-case.spec.ts:109`
   (pergunta sem gravar), `:116` (confirmar), `:131` (recusar não pergunta de
   novo), `:142` (indeterminado não pergunta — caso de falha), `:148` (Conta
   explícita), `:159` (erro na detecção vira "sem pergunta" — caso de falha),
   `:169` (409 `deteccao_mudou`);
-  `apps/api/test/infrastructure/persistence/deteccao-de-idioma.repository.spec.ts:87`
+  `test/infrastructure/persistence/deteccao-de-idioma.repository.spec.ts:87`
   (só o autor, todas as sessões), `:166` (o índice parcial), `:200` (o par e a
   recusa apagada); `apps/web/src/routes/SessionLanguageIndicator.test.tsx:117`
   ("Usar"), `:148` ("Não"), `:162` ("Agora não" não grava), `:172` (409 vira
@@ -9092,10 +9092,10 @@ seguiram em `in_review` (AT-275).
    proposta repetida) veio depois, na [RN-663](#rn-663), antes de o merge
    chegar aqui; o gate pendente, por decisão do dono, é só aviso na tela.
 
-- **Onde:** `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:295`
-  (`settleMerge`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:480`
+- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:295`
+  (`settleMerge`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:480`
   (`markDoneIfNotDone`)
-- **Teste:** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   ("git_merge marca a tarefa como done": feliz, repetido, PR aberta/merge
   falho, PR sem tarefa)
 - **Origem:** AT-275
@@ -9139,10 +9139,10 @@ AT-251/AT-253 passarem a consumir `roster.activatedAgents`.
 > com a guarda da mesma sessão. `criativoActive`/`arquitetoActive`
 > (`session-readiness.ts`) seguem lendo só a janela.
 
-- **Onde vive:** `apps/api/src/infrastructure/persistence/drizzle/projects-summary.repository.ts:212`
-  (`activatedAgents`); `apps/api/src/application/ports/projects-summary-repository.port.ts:32`
+- **Onde vive:** `src/infrastructure/persistence/drizzle/projects-summary.repository.ts:212`
+  (`activatedAgents`); `src/application/ports/projects-summary-repository.port.ts:32`
   (`activatedAgents`)
-- **Testes:** `apps/api/test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
+- **Testes:** `test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
   ("activatedAgents cobre ativações anteriores à janela de 200 eventos" e
   "activatedAgents é da sessão MAIS RECENTE: ativação de sessão antiga não vale")
 - **Origem:** AT-252
@@ -9181,32 +9181,32 @@ oferta a agente já ativo ficava acionável para sempre (AT-291,
    ativo; com os dois assim, não grava nem chama o engine
    (`desfecho: ja_oferecido`, `jaAtendidos` com o motivo de cada um).
 
-- **Onde:** `apps/api/src/domain/sessions/ciclo-de-vida-do-handoff.ts:71`
+- **Onde:** `src/domain/sessions/ciclo-de-vida-do-handoff.ts:71`
   (`decidirOferta`), `:104` (`mensagemDeAgenteJaAtivo`);
-  `apps/api/src/application/use-cases/agents/ciclo-de-vida-do-handoff.service.ts:43`
+  `src/application/use-cases/agents/ciclo-de-vida-do-handoff.service.ts:43`
   (`sessaoOndeEstaAtivo`), `:71` (`substituir`), `:97`
   (`substituirOfertasAoAtivar`);
-  `apps/api/src/application/use-cases/agents/create-handoff.use-case.ts:109`
+  `src/application/use-cases/agents/create-handoff.use-case.ts:109`
   (`travarOfertasDoDestino`);
-  `apps/api/src/infrastructure/persistence/drizzle/handoff.repository.ts:94`
+  `src/infrastructure/persistence/drizzle/handoff.repository.ts:94`
   (`travarOfertasDoDestino`);
-  `apps/api/src/application/use-cases/agents/activate-agent.use-case.ts:88`
+  `src/application/use-cases/agents/activate-agent.use-case.ts:88`
   (`substituirOfertasAoAtivar`);
-  `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts:327`
+  `src/application/use-cases/execution/activate-execution.use-case.ts:327`
   (`substituirOfertasAoAtivar`);
-  `apps/api/src/application/use-cases/agents/offer-infra-handoff.use-case.ts:96`
+  `src/application/use-cases/agents/offer-infra-handoff.use-case.ts:96`
   (`jaAtendido`);
   `apps/engine/lib/engine/harness/tools/offer_handoff.ex:132`
   (`agente_ja_ativo`); `apps/engine/lib/engine/agents/falha_de_turno.ex:67`
-  (`agente_ja_ativo`); `apps/api/src/db/migrations/0064_ciclo_de_vida_do_handoff.sql`
-- **Teste:** `apps/api/test/application/use-cases/agents/ciclo-de-vida-do-handoff.spec.ts`
+  (`agente_ja_ativo`); `src/db/migrations/0064_ciclo_de_vida_do_handoff.sql`
+- **Teste:** `test/application/use-cases/agents/ciclo-de-vida-do-handoff.spec.ts`
   (contra Postgres: repetida na mesma sessão, duplo clique concorrente,
   artefato novo, outra sessão encerrada, dado de antes do ADR, agente ativo e
   ativo em sessão encerrada, ativação que substitui e ativação recusada);
-  `apps/api/test/application/use-cases/agents/offer-infra-handoff.use-case.spec.ts`
+  `test/application/use-cases/agents/offer-infra-handoff.use-case.spec.ts`
   ("ADR 0182: segundo clique…", "ADR 0182: só aciona o destino que falta…");
-  `apps/api/test/application/use-cases/agents/activate-agent.use-case.spec.ts`;
-  `apps/api/test/application/use-cases/execution/activate-execution.use-case.spec.ts`
+  `test/application/use-cases/agents/activate-agent.use-case.spec.ts`;
+  `test/application/use-cases/execution/activate-execution.use-case.spec.ts`
   ("ciclo de vida do handoff");
   `apps/engine/test/engine/harness/tools/offer_handoff_test.exs`;
   `apps/engine/test/engine/agents/falha_de_turno_test.exs`;
@@ -9245,19 +9245,19 @@ de DECIDIDO continua sendo a cauda — ação decidida antiga, fora das 200 mais
 novas, não aparece no fio. Pendentes do PROJETO inteiro são outra leitura
 ([RN-638](web.md#rn-638)).
 
-- **Código:** `apps/api/src/infrastructure/persistence/drizzle/proposed-action.repository.ts:96`
+- **Código:** `src/infrastructure/persistence/drizzle/proposed-action.repository.ts:96`
   (`listPaginated`), `:113` (o ramo `latest`);
-  `apps/api/src/interfaces/http/actions/actions.controller.ts:105` (`list`),
+  `src/interfaces/http/actions/actions.controller.ts:105` (`list`),
   `:114` (a recusa de `status`);
-  `apps/api/src/application/ports/proposed-action-repository.port.ts`
+  `src/application/ports/proposed-action-repository.port.ts`
   (`ListProposedActionsOptions`);
   `apps/web/src/lib/acoes-da-sessao.ts:48` (`buscarAcoesDaSessao`), `:30`
   (`juntarCaudaEPendentes`); `apps/web/src/lib/hooks.ts:432`
   (`usePendingActions`)
-- **Teste:** `apps/api/test/infrastructure/persistence/proposed-action-latest.repository.spec.ts`
+- **Teste:** `test/infrastructure/persistence/proposed-action-latest.repository.spec.ts`
   (sem `latest` a pendente nova fica de fora — o defeito; com `latest` ela
   está na cauda; `status=pending` devolve a antiga; e não traz outra sessão);
-  `apps/api/test/interfaces/http/actions/actions-list.controller.spec.ts`
+  `test/interfaces/http/actions/actions-list.controller.spec.ts`
   (repasse dos parâmetros e o 400 — caso de falha);
   `apps/web/src/lib/acoes-da-sessao.test.ts` (sessão curta numa requisição;
   cauda cheia com 250 ações devolve a pendente 3 e a 250; leitura de pendentes
@@ -9314,17 +9314,17 @@ lançava 409 com o padrão JÁ gravado e SEM o evento `permission.granted`.
    `git_push`/`pr_open` estão no teto de `decide()` e a ativação semeia só
    `git_commit` —, e o padrão que o clique gravaria para eles seria inerte.
 
-- **Onde:** `apps/api/src/application/use-cases/actions/approve-always-action.use-case.ts:109`
+- **Onde:** `src/application/use-cases/actions/approve-always-action.use-case.ts:109`
   (`execute`), `:190` (`cliqueSobreAcaoJaDecidida`), `:240`
-  (`gravarPadraoSeFaltar`), `apps/api/src/application/use-cases/actions/approve-action.use-case.ts:279`
-  (`approve`), `apps/api/src/domain/actions/sempre-permitir.ts:30`
+  (`gravarPadraoSeFaltar`), `src/application/use-cases/actions/approve-action.use-case.ts:279`
+  (`approve`), `src/domain/actions/sempre-permitir.ts:30`
   (`TIPOS_SEM_SEMPRE_PERMITIR`), `:65` (`motivoDeRecusaDoSempreAprovar`),
   `apps/web/src/lib/sempre-permitir.ts:15` (`TIPOS_SEM_SEMPRE_PERMITIR`)
-- **Teste:** `apps/api/test/application/use-cases/actions/approve-always-action.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/actions/approve-always-action.use-case.spec.ts`
   ("ordem e idempotência (RN-642)": clique duplo, cliques concorrentes, ação
   aprovada por outro caminho, recusada → 409 nomeado sem padrão, padrão que
   falha desfaz a aprovação, tetos com a ação já aprovada; "tipos do teto
-  (AT-320)"), `apps/api/test/domain/actions/sempre-permitir.spec.ts`,
+  (AT-320)"), `test/domain/actions/sempre-permitir.spec.ts`,
   `apps/web/src/lib/sempre-permitir.test.ts` (a cópia do web igual à da api),
   `apps/web/src/components/ApprovalCard.test.tsx` (git tipado sem o botão)
 - **Origem:** AT-310, AT-320
@@ -9366,19 +9366,19 @@ próprio. A transição GENÉRICA continua recusando `closed → active` com 409
    `alreadyAnalyzed` que já existia; o reprocessamento manual segue. A segunda
    consolidação do grafo estende a janela da mesma `Interacao`.
 
-- **Onde:** `apps/api/src/domain/sessions/session-state-machine.ts:66`
+- **Onde:** `src/domain/sessions/session-state-machine.ts:66`
   (`canReopen`), `:70` (`assertReopen`);
-  `apps/api/src/domain/sessions/reabertura-de-sessao.ts:24`
+  `src/domain/sessions/reabertura-de-sessao.ts:24`
   (`SessaoComExecucaoNaoReabreError`), `:44`
   (`garantirQueSessaoSemExecucaoReabre`), `:58` (`payloadDaReabertura`);
-  `apps/api/src/application/use-cases/sessions/reopen-session.use-case.ts:53`
+  `src/application/use-cases/sessions/reopen-session.use-case.ts:53`
   (`execute`), `:96` (`garantirQuePodeReabrir`);
   `apps/engine/lib/engine/workers/session_lifecycle_worker.ex:59`
   (`encerrar_se_ainda_encerrada`);
   `apps/engine/lib/engine/sessions/project_session.ex:48` (`status`)
-- **Teste:** `apps/api/test/domain/sessions/session-state-machine.spec.ts:56`
+- **Teste:** `test/domain/sessions/session-state-machine.spec.ts:56`
   (só terminais reabrem; `closing` nunca volta);
-  `apps/api/test/application/use-cases/sessions/reopen-session.use-case.spec.ts:121`
+  `test/application/use-cases/sessions/reopen-session.use-case.spec.ts:121`
   (`closed` reabre, log preservado, `session.reopened` com o fechamento
   anterior — caminho feliz), `:151` (`closed_abnormally`), `:163` (a conversa
   volta a entrar), `:186` (`closing` é 409 sem engine nem evento — caso de
@@ -9407,12 +9407,12 @@ motivo é dito em TEXTO. A recusa da api (409 de sessão com execução, 403) vi
 toast com a frase dela. O fio narra `session.reopened` como "sessão reaberta",
 com a causa do fechamento anterior quando ela foi gravada.
 
-- **Onde:** `apps/api/src/interfaces/http/sessions/sessions.controller.ts:214`
+- **Onde:** `src/interfaces/http/sessions/sessions.controller.ts:214`
   (`reopen`); `apps/web/src/lib/api-client.ts:634` (`reopenSession`);
   `apps/web/src/routes/SessionPage.tsx:158` (`podeReabrir`);
   `apps/web/src/lib/session-acoes-da-sessao.ts:77` (`handleReopen`); `apps/web/src/routes/SessionComposer.tsx:383` (o botão);
   `apps/web/src/lib/activity.ts:633` (a frase do fio)
-- **Teste:** `apps/api/test/interfaces/http/sessions/sessions-reopen.controller.spec.ts:22`
+- **Teste:** `test/interfaces/http/sessions/sessions-reopen.controller.spec.ts:22`
   (`developer`, o mesmo da transição genérica), `:36` (viewer não alcança o
   papel da rota; developer, maintainer e owner alcançam), `:49` (200);
   `apps/web/src/routes/SessionPage.reabrir-sessao.test.tsx:143` (developer
@@ -9481,10 +9481,10 @@ nenhum (antes, 3).
 seria recusado pelo formato do lote, e a leitura dos extras falharia inteira —
 não medido em projeto real, e declarado.
 
-- **Código:** `apps/api/src/application/use-cases/llm/resolve-model-bindings-em-lote.use-case.ts:12`
+- **Código:** `src/application/use-cases/llm/resolve-model-bindings-em-lote.use-case.ts:12`
   (`TETO_DE_CHAVES_NO_LOTE`), `:37` (`lerListaDeChaves`), `:77`
   (`ResolveModelBindingsEmLoteUseCase`);
-  `apps/api/src/interfaces/http/llm/model-bindings.controller.ts:233`
+  `src/interfaces/http/llm/model-bindings.controller.ts:233`
   (`getResolvedBindings`); `apps/web/src/lib/api-client.ts:1217`
   (`getResolvedModelBindings`); `apps/web/src/lib/bindings-resolvidos.ts:43`
   (`invalidarBindingsResolvidos`), `:69` (`useBindingsResolvidos`), `:111`
@@ -9493,7 +9493,7 @@ não medido em projeto real, e declarado.
   `apps/web/src/components/AgentTeamGrid.tsx:46` (`bindingDoAgente`);
   `apps/web/src/routes/settings/LeituraDosBindings.tsx:19`
   (`AvisoDeBindingsNaoLidos`), `:40` (`MarcaDeBindingNaoLido`)
-- **Teste:** `apps/api/test/interfaces/http/llm/model-bindings-em-lote.integration.spec.ts:182`
+- **Teste:** `test/interfaces/http/llm/model-bindings-em-lote.integration.spec.ts:182`
   (caminho feliz contra Postgres: viewer lê o lote, e cada chave é igual à
   rota individual), `:256` (recusa por papel, o mesmo 403 da rota
   individual), `:275` (chave malformada), `:287` (lote acima do teto);
@@ -9533,14 +9533,14 @@ estado de conta. Workspace inexistente é 404, e quem não é membro é recusado
 pelo `RolesGuard` (403). Continua não havendo TELA de membros de workspace: a
 leitura existe para nomear, e as rotas de escrita seguem sendo de API.
 
-- **Código:** `apps/api/src/interfaces/http/iam/workspaces.controller.ts:216`
+- **Código:** `src/interfaces/http/iam/workspaces.controller.ts:216`
   (`listMembers`);
-  `apps/api/src/application/use-cases/iam/list-workspace-members.use-case.ts:16`
+  `src/application/use-cases/iam/list-workspace-members.use-case.ts:16`
   (`execute`);
-  `apps/api/src/infrastructure/persistence/drizzle/workspace.repository.ts:127`
+  `src/infrastructure/persistence/drizzle/workspace.repository.ts:127`
   (`listMembers`)
 - **Teste:**
-  `apps/api/test/application/use-cases/iam/list-workspace-members.use-case.spec.ts:75`
+  `test/application/use-cases/iam/list-workspace-members.use-case.spec.ts:75`
   (a forma da resposta, contra Postgres — caminho feliz), `:96` (workspace
   inexistente é 404), `:104` (o mínimo é `viewer`), `:112` (`viewer` passa pelo
   guard), `:125` (quem não é membro recebe 403)
@@ -9590,9 +9590,9 @@ do bloco. O painel "precisa de você" NÃO usa este caminho: ele não lê log
 nenhum e abrir não dispara consulta, então o cartão ali segue calado, como a
 [RN-614](web.md#rn-614) já dizia — decisão, não lacuna. Nenhum teto muda.
 
-- **Código:** `apps/api/src/interfaces/http/sessions/sessions.controller.ts:260`
+- **Código:** `src/interfaces/http/sessions/sessions.controller.ts:260`
   (`listEvents`);
-  `apps/api/src/infrastructure/persistence/drizzle/session-event.repository.ts:61`
+  `src/infrastructure/persistence/drizzle/session-event.repository.ts:61`
   (o filtro);
   `apps/web/src/lib/decisao-da-politica-queries.ts:35` (`useDecisoesDaPolitica`);
   `apps/web/src/routes/ProjectApprovalsTab.tsx:307` (quem o chama), `:481` (a
@@ -9600,7 +9600,7 @@ nenhum e abrir não dispara consulta, então o cartão ali segue calado, como a
   `apps/web/src/components/PendenciasDeOutrasSessoes.tsx:74` (o chat chama o
   mesmo hook), `:145` (o motivo em cada cartão), `:181` (a nota da falha)
 - **Teste:**
-  `apps/api/test/application/use-cases/sessions/list-session-events-por-acao.use-case.spec.ts:80`
+  `test/application/use-cases/sessions/list-session-events-por-acao.use-case.spec.ts:80`
   (só os eventos da ação, com o motivo — caminho feliz, contra Postgres),
   `:109` (não atravessa sessões), `:123` (sessão de outro projeto é 404),
   `:134` (`actionId` vazio é 400);
@@ -9638,17 +9638,17 @@ exigia separado — a pessoa declara as duas coisas, com as palavras das duas.
 
 A recusa do engine (409 turno em curso, 422 sem regra de negócio) sobe ANTES
 do passo 3: sem turno aceito não há brief a caminho, e a necessidade NÃO fica
-validada. O gate segue `warn` (`apps/api/config/gates.yml`) — nada a jusante o consulta.
+validada. O gate segue `warn` (`config/gates.yml`) — nada a jusante o consulta.
 A tela não tem mais o botão "Confirmar necessidade validada"; o título do
 botão habilitado diz o que o clique fecha, e o aviso de sucesso diz que o PO
 entra quando o resumo ficar pronto.
 
-- **Código:** `apps/api/src/application/use-cases/agents/confirm-readiness.use-case.ts:26` (`ConfirmReadinessUseCase`),
+- **Código:** `src/application/use-cases/agents/confirm-readiness.use-case.ts:26` (`ConfirmReadinessUseCase`),
   `:42` (`necessity.validated`);
-  `apps/api/src/domain/sessions/estou-pronto.ts:27` (`MARCA_DO_ESTOU_PRONTO`);
+  `src/domain/sessions/estou-pronto.ts:27` (`MARCA_DO_ESTOU_PRONTO`);
   `apps/web/src/routes/SessionComposer.tsx:315` (o título do botão);
   `apps/web/src/lib/session-acoes-da-sessao.ts:143` (`handleReadiness`)
-- **Teste:** `apps/api/test/application/use-cases/agents/confirm-readiness.use-case.spec.ts:49`
+- **Teste:** `test/application/use-cases/agents/confirm-readiness.use-case.spec.ts:49`
   (os dois eventos, com a marca e o brief por vir — caminho feliz), `:72`
   (422 do engine: só a prontidão fica gravada — caso de falha);
   `apps/web/src/routes/SessionPage.estou-pronto.test.tsx:150` (um clique,
@@ -9694,17 +9694,17 @@ vale e o Criativo segue recebendo. Nenhum teto se move: aceitar o PO não
 provisiona repositório (só o Arquiteto e o Dev Lead, [RN-582](#rn-582)), não
 faz merge nem push.
 
-- **Código:** `apps/api/src/domain/sessions/estou-pronto.ts:62` (`decidirAceiteImplicitoDoPo`);
-  `apps/api/src/application/use-cases/agents/aceite-implicito-do-po.use-case.ts:37` (`AceiteImplicitoDoPoUseCase`),
+- **Código:** `src/domain/sessions/estou-pronto.ts:62` (`decidirAceiteImplicitoDoPo`);
+  `src/application/use-cases/agents/aceite-implicito-do-po.use-case.ts:37` (`AceiteImplicitoDoPoUseCase`),
   `:45` (`seCouber`);
-  `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts:414` (`handoff`);
-  `apps/api/src/application/use-cases/agents/accept-handoff.use-case.ts:135` (`implicito` no `handoff.accepted`);
-  `apps/api/src/application/use-cases/agents/activate-agent.use-case.ts:80` (`implicito` no `agent.activated`)
-- **Teste:** `apps/api/test/application/use-cases/agents/aceite-implicito-do-po.use-case.spec.ts:105`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:414` (`handoff`);
+  `src/application/use-cases/agents/accept-handoff.use-case.ts:135` (`implicito` no `handoff.accepted`);
+  `src/application/use-cases/agents/activate-agent.use-case.ts:80` (`implicito` no `agent.activated`)
+- **Teste:** `test/application/use-cases/agents/aceite-implicito-do-po.use-case.spec.ts:105`
   (aceita em nome de quem clicou — caminho feliz), `:129` (falha do aceite
   vira `agent.error` e não sobe — caso de falha), `:120`, `:146`;
-  `apps/api/test/domain/sessions/estou-pronto.spec.ts:58`, `:72`, `:83`, `:94`;
-  `apps/api/test/application/use-cases/agents/accept-handoff.use-case.spec.ts:318`
+  `test/domain/sessions/estou-pronto.spec.ts:58`, `:72`, `:83`, `:94`;
+  `test/application/use-cases/agents/accept-handoff.use-case.spec.ts:318`
   (mesmos eventos, ator humano e marca), `:338` (sem marca pelo card)
 - **ADR:** [0185](../adr/0185-estou-pronto-fecha-os-dois-gates.md)
 - **Origem:** AT-312 (levantamento da AT-309, passo 4)
@@ -9729,11 +9729,11 @@ vale só para aquele projeto. Os dois scripts de validação que exercitam o flu
 manual (`validacao-fase-12.ts`, `validacao-real.ts`) passam a pedir `manual`
 explícito.
 
-- **Código:** `apps/api/src/db/schema/iam.ts:287` (`storyPromotion`);
-  `apps/api/src/db/migrations/0065_default_de_promocao_auto.sql`;
+- **Código:** `src/db/schema/iam.ts:287` (`storyPromotion`);
+  `src/db/migrations/0065_default_de_promocao_auto.sql`;
   `apps/web/src/routes/NewProjectWizard.tsx:978` (a linha do Confirmar);
   `apps/web/src/routes/settings/PromotionSection.tsx:75` (a nota do default)
-- **Teste:** `apps/api/test/db/story-promotion-migration.spec.ts:29` (projeto
+- **Teste:** `test/db/story-promotion-migration.spec.ts:29` (projeto
   novo nasce `auto` — caminho feliz), `:40` (projeto existente em `manual` não
   muda — caso de falha); `apps/web/src/routes/NewProjectWizard.test.tsx:254`
   (o Confirmar diz o valor); `apps/web/src/routes/ProjectSettingsTab.test.tsx:625`
@@ -9773,23 +9773,23 @@ aceite feito, a ferramenta `offer_handoff` diz ao PO que o Arquiteto já foi
 ativado. Repositório remoto ou com credencial continua pedindo o clique, e o
 handoff manual (ADR 0109) também.
 
-- **Código:** `apps/api/src/domain/sessions/aceite-automatico-do-handoff.ts:81`
+- **Código:** `src/domain/sessions/aceite-automatico-do-handoff.ts:81`
   (`decidirAceiteAutomatico`), `:74` (`backlogCoberto`);
-  `apps/api/src/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.ts:44`
+  `src/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.ts:44`
   (`AceitarHandoffAutomaticamenteUseCase`);
-  `apps/api/src/application/use-cases/agents/accept-handoff.use-case.ts:91`
+  `src/application/use-cases/agents/accept-handoff.use-case.ts:91`
   (`AceitePeloSistema`);
-  `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts:414`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:414`
   (`handoff`); `apps/engine/lib/engine/harness/tools/offer_handoff.ex:59`;
   `apps/web/src/routes/session-timeline-montagem.tsx:604` (o aviso no fio)
-- **Teste:** `apps/api/test/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.spec.ts:73`
+- **Teste:** `test/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.spec.ts:73`
   (backlog coberto e sem repositório: aceita pelo sistema — caminho feliz),
   `:89` (regra sem história: não aceita e não grava nada — caso de falha),
   `:99` (repositório remoto), `:109` (conexão de git), `:128` (falha vira
   `handoff.auto_accept_failed`);
-  `apps/api/test/domain/sessions/aceite-automatico-do-handoff.spec.ts:37`,
+  `test/domain/sessions/aceite-automatico-do-handoff.spec.ts:37`,
   `:49` (cada motivo de recusa);
-  `apps/api/test/application/use-cases/agents/accept-handoff.use-case.spec.ts:323`
+  `test/application/use-cases/agents/accept-handoff.use-case.spec.ts:323`
   (ator de sistema, critério e provisionamento antes de ativar);
   `apps/web/src/routes/SessionPage.handoff-aceite-automatico.test.tsx:174`,
   `:196`; `apps/engine/test/engine/harness/tools/offer_handoff_test.exs:38`
@@ -9830,25 +9830,25 @@ segundo `executed` para o mesmo merge.
    Declarado: duas propostas simultâneas da mesma PR não são serializadas (não
    há trava por PR), e é a regra 2 que segura a segunda.
 
-- **Código:** `apps/api/src/domain/actions/merge-de-pr.ts:56` (`recusaDeMerge`),
+- **Código:** `src/domain/actions/merge-de-pr.ts:56` (`recusaDeMerge`),
   `:40` (`mergeouAPr`);
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:124` (`recusaDeMerge`);
-  `apps/api/src/application/use-cases/actions/approve-action.use-case.ts:306` (`recusaDeMerge`);
-  `apps/api/src/infrastructure/git/local-git-provider.ts:339` (`GitPullRequestAlreadyMergedError`);
+  `src/application/use-cases/actions/propose-action.use-case.ts:124` (`recusaDeMerge`);
+  `src/application/use-cases/actions/approve-action.use-case.ts:306` (`recusaDeMerge`);
+  `src/infrastructure/git/local-git-provider.ts:339` (`GitPullRequestAlreadyMergedError`);
   `apps/web/src/lib/gate-do-merge.ts:19` (`gatePendenteNoMerge`);
   `apps/web/src/routes/ProjectPrsTab.tsx:236` (`gatePendenteNoMerge`);
   `apps/web/src/routes/session-timeline-montagem.tsx:1249` (`gatePendenteNoMerge`)
   `apps/web/src/routes/ProjectPrsTab.tsx:236` (`gatePendenteNoMerge`);
   `apps/web/src/routes/session-timeline-montagem.tsx:1249` (`gatePendenteNoMerge`)
-- **Teste:** `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:664`
+- **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:664`
   (`merge_ja_proposto`), `:687` (`pr_ja_mergeado` — caso de falha), `:696`
 
   `apps/web/src/routes/session-timeline-montagem.tsx:1249` (`gatePendenteNoMerge`)
-- **Teste:** `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:664`
+- **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:664`
   (`merge_ja_proposto`), `:687` (`pr_ja_mergeado` — caso de falha), `:696`
   (negada não bloqueia, outra PR não colide — caminho feliz);
-  `apps/api/test/application/use-cases/actions/approve-deny-action.use-case.spec.ts:473`;
-  `apps/api/test/infrastructure/git/local-git-provider.contract.spec.ts:150`;
+  `test/application/use-cases/actions/approve-deny-action.use-case.spec.ts:473`;
+  `test/infrastructure/git/local-git-provider.contract.spec.ts:150`;
   `apps/web/src/routes/ProjectPrsTab.test.tsx:266`, `:300`, `:315`;
   `apps/web/src/routes/MergearNoChat.test.tsx:135`, `:148`;
   `apps/web/src/lib/gate-do-merge.test.ts:5`, `:18`
@@ -9888,13 +9888,13 @@ gasto somam. Sem ele, o preço congelado do catálogo produz o número, como no
    e com `is_byok: true` o custo NÃO é lido: é a taxa do hub, e a inferência é
    cobrada por fora — a linha cai no catálogo.
 
-- **Onde:** `apps/api/src/domain/llm/custo-da-chamada.ts:43` (`custoDaChamada`),
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:288` (`custoDaChamada`),
-  `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:327` (`custoDaChamada`),
-  `apps/api/src/application/use-cases/llm/send-chat-message.use-case.ts:286` (`custoDaChamada`),
-  `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:410` (`extrairCustoReal`),
-  `apps/api/src/infrastructure/llm/openrouter-provider.ts:272` (`extrairCustoRealOpenRouter`),
-  `apps/api/src/db/schema/llm.ts:375` (`priceImplicit`)
+- **Onde:** `src/domain/llm/custo-da-chamada.ts:43` (`custoDaChamada`),
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:288` (`custoDaChamada`),
+  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:327` (`custoDaChamada`),
+  `src/application/use-cases/llm/send-chat-message.use-case.ts:286` (`custoDaChamada`),
+  `src/infrastructure/llm/openai-compatible-provider.ts:410` (`extrairCustoReal`),
+  `src/infrastructure/llm/openrouter-provider.ts:272` (`extrairCustoRealOpenRouter`),
+  `src/db/schema/llm.ts:375` (`priceImplicit`)
 - **Teste:** `test/domain/llm/custo-da-chamada.spec.ts`,
   `test/infrastructure/llm/openrouter-provider.contract.spec.ts` (resposta
   gravada: custo, modelo resolvido, id; BYOK; sem `cost`; provider sem o
@@ -9930,12 +9930,12 @@ foram raciocínio).
    no protocolo dele (`cache_read_input_tokens`) e isso NÃO é lido aqui — fica
    `null`, declarado; o Ollama não informa.
 
-- **Onde:** `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:414` (`cachedInputTokens`),
-  `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:817` (`contagem`),
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:230` (`cachedInputTokens`),
-  `apps/api/src/application/use-cases/llm/record-llm-usage.use-case.ts:121` (`cachedInputTokens`),
-  `apps/api/src/db/schema/llm.ts:395` (`cachedInputTokens`),
-  `apps/api/scripts/medir-execucao.ts:89` (`formatarParteMedida`)
+- **Onde:** `src/infrastructure/llm/openai-compatible-provider.ts:414` (`cachedInputTokens`),
+  `src/infrastructure/llm/openai-compatible-provider.ts:817` (`contagem`),
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:230` (`cachedInputTokens`),
+  `src/application/use-cases/llm/record-llm-usage.use-case.ts:121` (`cachedInputTokens`),
+  `src/db/schema/llm.ts:395` (`cachedInputTokens`),
+  `scripts/medir-execucao.ts:89` (`formatarParteMedida`)
 - **Teste:** `test/infrastructure/llm/openrouter-provider.contract.spec.ts`
   (resposta gravada com as duas partes; sem os detalhes; valor inválido e
   zero), `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts`,
@@ -9969,19 +9969,19 @@ Argumento de comando com caminho de HOST passa a contar como fora quando há
 container — o engine traduz só o `cwd`, e dentro do container esse caminho não
 existe.
 
-- **Código:** `apps/api/src/domain/actions/path-scope.ts:153` (`cwdNoContainer`),
+- **Código:** `src/domain/actions/path-scope.ts:153` (`cwdNoContainer`),
   `:174` (`comandoNoEscopoDoContainer`), `:112` (`comandoNoEscopo`, agora com
   várias raízes), `:137` (`PONTO_DE_MONTAGEM_DO_CONTAINER`);
-  `apps/api/src/domain/actions/decide.ts:289` (`execucaoNoContainer`), `:648`
+  `src/domain/actions/decide.ts:289` (`execucaoNoContainer`), `:648`
   (`execucaoNoContainer`, em `terminalNoEscopo`);
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:174`
+  `src/application/use-cases/actions/propose-action.use-case.ts:174`
   (`containerExecutionActive`, separado de `execucaoNoContainer`)
-- **Teste:** `apps/api/test/domain/actions/decide.spec.ts:1274` (com container
+- **Teste:** `test/domain/actions/decide.spec.ts:1274` (com container
   `/work`, `.worktrees`, `/tmp` e `..` dentro — caminho feliz; `/etc`, outro
   projeto, `/workspace`, `/tmp/../etc` fora; sem container `/tmp` e `/work`
-  fora — casos de falha); `apps/api/test/domain/actions/path-scope.spec.ts:216`
+  fora — casos de falha); `test/domain/actions/path-scope.spec.ts:216`
   (e a cópia de `/work` travada contra `packages/docker-port`);
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:1141`
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts:1141`
   (o modo `mounted` com e sem container, e sem o piso)
 - **Origem:** AT-258 (item A12 da análise do uso real de 29/09), decisão do
   dono de 01/10, [ADR 0189](../adr/0189-o-piloto-automatico.md)
@@ -10017,21 +10017,21 @@ lugares onde o modo é ligado: o cartão de lote dos Executores
 ([RN-661](web.md#rn-661), aberta), o `ApprovalCard` e o toggle do card do agente
 (recolhida). O "não libera" é o texto que a RN-661 já tinha, reusado.
 
-- **Código:** `apps/api/src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
+- **Código:** `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
   (`resolve`), `:67` (`modoEspecifico`, a exceção do piloto);
-  `apps/api/src/application/ports/agent-autonomy-repository.port.ts:5`
+  `src/application/ports/agent-autonomy-repository.port.ts:5`
   (`AutonomiaResolvida`, com `especifica`);
-  `apps/api/src/application/use-cases/actions/approve-always-action.use-case.ts:263`
-  (`especifica`); `apps/api/src/domain/actions/decide.ts:309`
+  `src/application/use-cases/actions/approve-always-action.use-case.ts:263`
+  (`especifica`); `src/domain/actions/decide.ts:309`
   (`modoAutomaticoDoAgente`); `apps/web/src/components/OQueOPilotoLibera.tsx:16`
   (`OQueOPilotoLibera`); `apps/web/src/components/ApprovalCard.tsx:434`,
   `apps/web/src/components/AgentCard.tsx:164`,
   `apps/web/src/components/ModoAutomaticoDoTime.tsx:134`
-- **Teste:** `apps/api/test/application/use-cases/actions/approve-always-action.use-case.spec.ts:850`
+- **Teste:** `test/application/use-cases/actions/approve-always-action.use-case.spec.ts:850`
   (o cenário medido: curinga + "Sempre permitir" segue sem pedido — caminho
   feliz; toggle em manual volta ao escopo — caso de falha);
-  `apps/api/test/infrastructure/persistence/drizzle/agent-autonomy.repository.spec.ts:115`;
-  `apps/api/test/domain/actions/decide.spec.ts:1210` (commit e branch local
+  `test/infrastructure/persistence/drizzle/agent-autonomy.repository.spec.ts:115`;
+  `test/domain/actions/decide.spec.ts:1210` (commit e branch local
   livres; push, merge, PR, deploy e `doas` seguem pedindo);
   `apps/broker/src/contencao-do-brabo.spec.ts:105` (a contenção);
   `apps/web/src/components/ModoAutomaticoDoTime.test.tsx:86`,
@@ -10082,7 +10082,7 @@ muda (ela propõe como humano, e a autonomia de agente não vale para ela).
 Declarado: o toggle manual/auto do card escreve a curinga, e a regra específica
 vence — pôr a Infra em "manual" não desliga esta semente.
 
-- **Código:** `apps/api/src/application/use-cases/agents/accept-handoff.use-case.ts:38`
+- **Código:** `src/application/use-cases/agents/accept-handoff.use-case.ts:38`
   (`INFRA_AUTONOMY_SEEDS`);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:259` (`handle_cast`),
   `:710` (`propor_container_start`), `:791` (`subir_no_aceite`), `:794`
@@ -10090,7 +10090,7 @@ vence — pôr a Infra em "manual" não desliga esta semente.
 
   `:626` (`propor_container_start`), `:707` (`subir_no_aceite`), `:759`
   (`eleger_candidata`), `:1319` (`passo_da_subida`)
-- **Teste:** `apps/api/test/application/use-cases/agents/accept-handoff.use-case.spec.ts:250`
+- **Teste:** `test/application/use-cases/agents/accept-handoff.use-case.spec.ts:250`
   (a semente, e só ela — caminho feliz), `:267` (outro agente não semeia —
   caso de falha);
   `apps/engine/test/engine/infra/infra_lead_server_test.exs:1263` (o servidor
@@ -10138,7 +10138,7 @@ ativação de execução encadeada no aceite (RN-161). Declarado: o aviso do
 outbox é at-most-once, como o `Engine.Dev.Wake`; sem Infra Lead de pé naquele
 instante, a oferta espera o fim do próximo turno dele.
 
-- **Código:** `apps/api/src/application/use-cases/agents/offer-infra-handoff.use-case.ts:15`
+- **Código:** `src/application/use-cases/agents/offer-infra-handoff.use-case.ts:15`
   (`ALVOS_DA_CONFIRMACAO`);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:1169` (`oferecer_ao_dev_lead`),
   `:1164` (`concluir`), `:368` (`handle_info`), `:1075`
@@ -10156,7 +10156,7 @@ instante, a oferta espera o fim do próximo turno dele.
   não oferece mais ao Dev Lead);
   `apps/engine/test/engine/workers/infra_oferece_dev_lead_worker_test.exs:9`;
   `apps/engine/test/engine/outbox/drain_test.exs:266`;
-  `apps/api/test/application/use-cases/agents/offer-infra-handoff.use-case.spec.ts:104`,
+  `test/application/use-cases/agents/offer-infra-handoff.use-case.spec.ts:104`,
   `:147`
 - **Origem:** AT-262 (item A16 da análise do uso real de 29/09)
 
@@ -10199,16 +10199,16 @@ para `agent_autonomy` ([RN-509](#rn-509)), sem padrão. Só os padrões que
 FALTAM são gravados e narrados; o `permission.granted` leva `patterns` (a lista
 gravada) e `pattern` (a mesma lista unida por vírgula, para a timeline).
 
-- **Código:** `apps/api/src/domain/actions/pattern-for-action.ts:22`
+- **Código:** `src/domain/actions/pattern-for-action.ts:22`
   (`patternsForAction`), `:62` (`unidadeDoSegmento`), `:43` (`SUBCOMANDO`);
-  `apps/api/src/domain/actions/external-effect.ts:237` (`padraoAlcancaTeto`);
-  `apps/api/src/application/use-cases/actions/approve-always-action.use-case.ts:277`
+  `src/domain/actions/external-effect.ts:237` (`padraoAlcancaTeto`);
+  `src/application/use-cases/actions/approve-always-action.use-case.ts:277`
   (`faltam`), `:315` (`patternsForAction`)
-- **Teste:** `apps/api/test/domain/actions/pattern-for-action.spec.ts:18`
+- **Teste:** `test/domain/actions/pattern-for-action.spec.ts:18`
   (a unidade, caminho feliz), `:103` (segmento que é prefixo de teto não grava
-  nada — caso de falha); `apps/api/test/domain/actions/external-effect.spec.ts:11`
+  nada — caso de falha); `test/domain/actions/external-effect.spec.ts:11`
   (`padraoAlcancaTeto`);
-  `apps/api/test/application/use-cases/actions/approve-always-action.use-case.spec.ts:936`
+  `test/application/use-cases/actions/approve-always-action.use-case.spec.ts:936`
   (o clique num composto libera o próximo com os mesmos verbos; outro
   subcomando continua pedindo; composto que empurra segue recusado);
   `apps/web/src/components/ApprovalCard.test.tsx:253` (a nota diz a unidade)
@@ -10265,19 +10265,19 @@ handoff às 06:45:01 — o web encadeava a ativação para `maintainer`/`owner`
    ativação falhou: …"), nunca "plano registrado". Falhar não desfaz a
    aprovação: a decisão do humano já está gravada.
 
-- **Onde:** `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts:89`
-  (`execute`); `apps/api/src/application/use-cases/actions/approve-action.use-case.ts:216`
-  (`executeExecutionPlan`); `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:401`
+- **Onde:** `src/application/use-cases/execution/execute-execution-plan.use-case.ts:89`
+  (`execute`); `src/application/use-cases/actions/approve-action.use-case.ts:216`
+  (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:401`
   (`executeExecutionPlan`); `apps/web/src/lib/session-acoes-de-handoff.ts:91`
   (`handleAcceptHandoff`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:220`
   (`classificar`); `apps/engine/lib/engine/agents/dev_lead_server.ex:711`
   (`texto_do_desfecho`); `apps/web/src/lib/aprovacoes.ts:327`
   (`propose_execution_plan`)
-- **Teste:** `apps/api/test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts:106`
+- **Teste:** `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts:106`
   (aprovado ativa como quem aprovou — caminho feliz), `:129` (auto-aprovado:
   quem abriu a sessão), `:151` (ativação recusada por falta de repositório
   vira `failed` com a frase — caso de falha);
-  `apps/api/test/application/use-cases/actions/approve-deny-action.use-case.spec.ts:399`
+  `test/application/use-cases/actions/approve-deny-action.use-case.spec.ts:399`
   (aprovar chama o executor e avisa o Dev Lead);
   `apps/web/src/routes/SessionPage.handoff-devlead-e-colapso.test.tsx:396`
   (aceitar não ativa, nos três papéis), `:416` (o atalho explícito continua);
@@ -10328,24 +10328,24 @@ HISTÓRIA (acordar um dev a mais não pega nada, só gasta uma consulta); e o
 módulo do `module_map`, como antes, e o paralelismo extra continua pelo
 `parallelize` ([RN-083](#rn-083)).
 
-- **Onde:** `apps/api/src/domain/execution/plano-de-execucao.ts:33`
-  (`lerPlanoDeExecucao`); `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:680`
+- **Onde:** `src/domain/execution/plano-de-execucao.ts:33`
+  (`lerPlanoDeExecucao`); `src/infrastructure/persistence/drizzle/backlog.repository.ts:680`
   (`daTarefaDoModulo`), `:403` (`claimNext`), `:391` (`assignModules`);
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:141`
-  (`recusaNaProposta`); `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts:67`
-  (`recusaNaProposta`); `apps/api/src/db/schema/backlog.ts:187` (`module`);
+  `src/application/use-cases/actions/propose-action.use-case.ts:141`
+  (`recusaNaProposta`); `src/application/use-cases/execution/execute-execution-plan.use-case.ts:67`
+  (`recusaNaProposta`); `src/db/schema/backlog.ts:187` (`module`);
   `apps/engine/lib/engine/agents/dev_lead_tools.ex:372`
   (`tarefas_do_backlog`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:204`
   (`erro_da_proposta`)
-- **Teste:** `apps/api/test/domain/execution/plano-de-execucao.spec.ts:22`
+- **Teste:** `test/domain/execution/plano-de-execucao.spec.ts:22`
   (caminho feliz), `:41` (tarefa sem módulo — caso de falha), `:49` (módulo
   fora do `module_map`), `:80` (repetida e de outro projeto);
-  `apps/api/test/application/use-cases/execution/claim-next-task.use-case.spec.ts:127`
+  `test/application/use-cases/execution/claim-next-task.use-case.spec.ts:127`
   (história com dois módulos: só o dev do módulo da tarefa), `:152` (sem
   módulo e vários módulos: ninguém), `:169` (o módulo da tarefa vence);
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:289`
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts:289`
   (400 nomeado, sem proposta);
-  `apps/api/test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts:135`
+  `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts:135`
   (módulo fora do mapa na aprovação: nada gravado, nada ativado);
   `apps/engine/test/engine/agents/dev_lead_tools_test.exs:110`, `:118`;
   `apps/engine/test/engine/agents/dev_lead_server_test.exs:131`
@@ -10386,11 +10386,11 @@ signifique alguma coisa. A alternativa — preçar por upstream — foi recusada
    reescrito. Binding NOVO para um alias ainda ativo não é recusado aqui: a
    regra é da curadoria, e o binding segue a [RN-043](#rn-043).
 
-- **Onde:** `apps/api/src/domain/llm/alias-de-roteamento-livre.ts:23` (`ehAliasDeRoteamentoLivre`),
+- **Onde:** `src/domain/llm/alias-de-roteamento-livre.ts:23` (`ehAliasDeRoteamentoLivre`),
   `:41` (`AliasDeRoteamentoLivreError`),
-  `apps/api/src/application/use-cases/llm/set-models-active.use-case.ts:59` (`AliasDeRoteamentoLivreError`),
-  `apps/api/src/infrastructure/persistence/drizzle/workspace-model.repository.ts:67` (`freeRoutingAlias`),
-  `apps/api/src/interfaces/http/shared/llm-binding-error.filter.ts:60` (`code`),
+  `src/application/use-cases/llm/set-models-active.use-case.ts:59` (`AliasDeRoteamentoLivreError`),
+  `src/infrastructure/persistence/drizzle/workspace-model.repository.ts:67` (`freeRoutingAlias`),
+  `src/interfaces/http/shared/llm-binding-error.filter.ts:60` (`code`),
   `apps/web/src/components/ModelCatalogSection.tsx:606` (`recusaDeAliasLivre`)
 - **Teste:** `test/application/use-cases/llm/set-models-active.use-case.spec.ts`
   (lote recusado inteiro com código e ids; upstream fixo ativa; `~` fora do
@@ -10430,14 +10430,14 @@ embedding do RAG, e AVISA quando a mais próxima está a partir do limiar.
 5. **Tetos:** as 100 existentes mais recentes (o resultado diz quantas de
    quantas quando corta) e 10 s de relógio para a checagem inteira.
 
-- **Onde:** `apps/api/src/domain/backlog/duplicata-semantica.ts:35` (`LIMIAR_DE_DUPLICATA_SEMANTICA`),
+- **Onde:** `src/domain/backlog/duplicata-semantica.ts:35` (`LIMIAR_DE_DUPLICATA_SEMANTICA`),
   `:44` (`TETO_DE_COMPARACOES_DE_DUPLICATA`), `:53` (`TETO_DE_TEMPO_DA_CHECAGEM_MS`),
   `:107` (`ehDuplicataSemantica`),
-  `apps/api/src/application/use-cases/backlog/verificar-duplicata-semantica.use-case.ts:111` (`VerificarDuplicataSemanticaUseCase`),
+  `src/application/use-cases/backlog/verificar-duplicata-semantica.use-case.ts:111` (`VerificarDuplicataSemanticaUseCase`),
   `:241` (`medir`), `:285` (`narrar`), `:349` (`fraseParaOAgente`),
-  `apps/api/src/application/use-cases/backlog/create-story.use-case.ts:193` (`semanticDuplicate`),
-  `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts:640` (`semanticDuplicateCheck`),
-  `apps/api/src/application/use-cases/rag/rag-embedding.service.ts:106` (`uso`),
+  `src/application/use-cases/backlog/create-story.use-case.ts:193` (`semanticDuplicate`),
+  `src/interfaces/http/internal/internal-sessions.controller.ts:640` (`semanticDuplicateCheck`),
+  `src/application/use-cases/rag/rag-embedding.service.ts:106` (`uso`),
   `apps/engine/lib/engine/harness/tools/emit_artifact.ex` (`aviso_semantico`),
   `apps/engine/lib/engine/harness/tools/create_story.ex` (`aviso_semantico`)
 - **Teste:** `test/application/use-cases/backlog/verificar-duplicata-semantica.use-case.spec.ts`
@@ -10505,17 +10505,17 @@ isso a recusa da api mora na ROTA, e o caso de uso não muda.
   sobre a consultiva sem agente, e fechar a rota inteira é decisão à parte.
 - O chat livre com histórico, a outra opção da AT-254, não foi feito.
 
-- **Código:** `apps/api/src/domain/sessions/chat-sem-destinatario.ts:24`
+- **Código:** `src/domain/sessions/chat-sem-destinatario.ts:24`
   (`chatSemDestinatarioRecusado`), `:17` (`MOTIVO_CHAT_SEM_DESTINATARIO`);
-  `apps/api/src/application/use-cases/llm/garantir-destinatario-do-chat.use-case.ts:27`
+  `src/application/use-cases/llm/garantir-destinatario-do-chat.use-case.ts:27`
   (`GarantirDestinatarioDoChatUseCase`);
-  `apps/api/src/interfaces/http/llm/chat.controller.ts:82` (`chat`);
+  `src/interfaces/http/llm/chat.controller.ts:82` (`chat`);
   `apps/web/src/lib/session-destinatario.ts:347` (`agentesParaChamar`);
   `apps/web/src/routes/SessionPage.tsx:684` (`handleSend`);
   `apps/web/src/routes/SessionComposer.tsx:276`
-- **Teste:** `apps/api/test/application/use-cases/llm/garantir-destinatario-do-chat.use-case.spec.ts:82`
+- **Teste:** `test/application/use-cases/llm/garantir-destinatario-do-chat.use-case.spec.ts:82`
   (consultiva sem agente — caso de falha), `:96`, `:113`, `:120`;
-  `apps/api/test/interfaces/http/llm/chat.controller.spec.ts:56` (422 como
+  `test/interfaces/http/llm/chat.controller.spec.ts:56` (422 como
   resposta HTTP), `:79` (caminho feliz);
   `apps/web/src/routes/SessionPage.destinatario-do-chat.test.tsx:458` (não
   envia — caso de falha), `:471` (lista e Chamar — caminho feliz);
@@ -10560,23 +10560,23 @@ Fora, declarado: `choose_project_image` (o Arquiteto decide a imagem e os
 recursos dele) e `container_start_via_runner` (sobe a imagem já decidida) não
 mudam; a recusa abaixo do mínimo acontece na execução, não ao propor.
 
-- **Código:** `apps/api/src/domain/containers/recursos-minimos.ts:70`
+- **Código:** `src/domain/containers/recursos-minimos.ts:70`
   (`validarRecursosDoModulo`), `:108` (`derivarRecursosMinimos`), `:150`
   (`validarSomaNoTeto`), `:171` (`resolverRecursosDaSubida`), `:206`
   (`explicarRecursosMinimos`);
-  `apps/api/src/application/use-cases/architecture/create-module-map.use-case.ts:134`
+  `src/application/use-cases/architecture/create-module-map.use-case.ts:134`
   (`normalizarModulo`);
-  `apps/api/src/application/use-cases/actions/execute-container-start.use-case.ts:175`
+  `src/application/use-cases/actions/execute-container-start.use-case.ts:175`
   (`resolverRecursosDaSubida`);
   `apps/engine/lib/engine/harness/tools/create_module_map.ex:103` (`normalize`);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:805`
   (`rationale_do_servidor`)
-- **Teste:** `apps/api/test/domain/containers/recursos-minimos.spec.ts:18`
+- **Teste:** `test/domain/containers/recursos-minimos.spec.ts:18`
   (soma — caminho feliz), `:35` (mapa antigo = padrão), `:41` (piso e nomeado),
   `:54` (soma acima do teto — caso de falha), `:94` (abaixo do mínimo);
-  `apps/api/test/application/use-cases/architecture/create-module-map.use-case.spec.ts:190`
+  `test/application/use-cases/architecture/create-module-map.use-case.spec.ts:190`
   (grava), `:208` (pela metade — caso de falha), `:217` (soma no teto);
-  `apps/api/test/application/use-cases/actions/execute-container-start.use-case.spec.ts:530`
+  `test/application/use-cases/actions/execute-container-start.use-case.spec.ts:530`
   (subida do servidor com a soma), `:556` (sem declaração), `:575` (acima),
   `:588` (abaixo — caso de falha), `:608` (sem mapa);
   `apps/engine/test/engine/harness/tools/create_module_map_test.exs:94`, `:109`;
@@ -10618,17 +10618,17 @@ lendo o worktree de outros módulos para descobrir a interface deles: o
    ferramenta manda implementar pelo que a story e a task dizem e, se faltar
    interface, `report_blocked` nomeando o módulo — nunca reler o worktree.
 
-- **Código:** `apps/api/src/domain/architecture/module-contracts.ts:110`
+- **Código:** `src/domain/architecture/module-contracts.ts:110`
   (`validarContratos`);
-  `apps/api/src/application/use-cases/architecture/declare-module-contracts.use-case.ts:55`
+  `src/application/use-cases/architecture/declare-module-contracts.use-case.ts:55`
   (`execute`), `:80` (`missingModules`);
-  `apps/api/src/application/use-cases/architecture/get-module-contracts.use-case.ts:23`
+  `src/application/use-cases/architecture/get-module-contracts.use-case.ts:23`
   (`execute`);
-  `apps/api/src/application/use-cases/architecture/list-module-contracts.use-case.ts:42`
+  `src/application/use-cases/architecture/list-module-contracts.use-case.ts:42`
   (`execute`);
-  `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts:779`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:779`
   (`moduleContracts`);
-  `apps/api/src/interfaces/http/internal/internal-projects.controller.ts:178`
+  `src/interfaces/http/internal/internal-projects.controller.ts:178`
   (`moduleContracts`);
   `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex:91` (`run`);
   `apps/engine/lib/engine/harness/tools/listar_contratos_de_modulos.ex:43`
@@ -10636,7 +10636,7 @@ lendo o worktree de outros módulos para descobrir a interface deles: o
   `apps/engine/lib/engine/dev/tools.ex:36` (`ListarContratosDeModulos`);
   `apps/engine/lib/engine/dev/dev_agent_server.ex:497` (`module`), `:501`;
   `apps/engine/lib/engine/agents/arquiteto_server.ex:112`, `:335`, `:399`
-- **Teste:** `apps/api/test/application/use-cases/architecture/module-contracts.use-case.spec.ts:173`
+- **Teste:** `test/application/use-cases/architecture/module-contracts.use-case.spec.ts:173`
   (grava a versão 1 — caminho feliz), `:185` (a vigente substitui), `:210`
   (módulo fora do mapa — caso de falha), `:222` (sem `module_map`), `:123`
   (as recusas de domínio), `:239` e `:257` (a leitura do dev);
@@ -10707,18 +10707,18 @@ de dispositivo em Configurações e chaves de máquina na Conta — troca *"outr
 runner seu também cai"* por *"só cai o que se conectou com ESTA chave"*. Muda o
 rótulo, não o comportamento.
 
-- **Onde:** `apps/api/src/interfaces/http/auth/pat-auth.guard.ts:151`
+- **Onde:** `src/interfaces/http/auth/pat-auth.guard.ts:151`
   (`credencialDeDispositivo`, o PAT), `:236` (`credencialDeDispositivo`, a
   chave);
-  `apps/api/src/interfaces/http/runner/runner-tickets.controller.ts:67`
+  `src/interfaces/http/runner/runner-tickets.controller.ts:67`
   (`runnerTicket`);
-  `apps/api/src/application/use-cases/runner/request-runner-ticket.use-case.ts:55`
+  `src/application/use-cases/runner/request-runner-ticket.use-case.ts:55`
   (`execute`);
-  `apps/api/src/application/use-cases/auth/revoke-runner-device-key.use-case.ts:71`
+  `src/application/use-cases/auth/revoke-runner-device-key.use-case.ts:71`
   (`execute`), `:109` (`derrubarConexoesDaChave`);
-  `apps/api/src/application/use-cases/auth/derrubar-conexoes-do-pat.ts:21`
+  `src/application/use-cases/auth/derrubar-conexoes-do-pat.ts:21`
   (`derrubarConexoesDoPat`);
-  `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts:693`
+  `src/infrastructure/http-clients/api-to-engine-client.ts:693`
   (`disconnectRunnerCredential`);
   `apps/engine/lib/engine/runners/socket_ticket.ex:107` (`emitir`), `:207`
   (`anular_pendentes_da_credencial`);
@@ -10733,20 +10733,20 @@ rótulo, não o comportamento.
   `apps/web/src/routes/settings/RunnerDeviceKeysSection.tsx:346`,
   `apps/web/src/routes/MachineDeviceKeysSection.tsx:202`
 - **Teste:**
-  `apps/api/test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
+  `test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
   (`describe "o alvo da queda é a CHAVE"` — caminho feliz; `describe "CASO DE
   FALHA: o engine não atende o pedido por chave"` — o plano B pelo par; a
   máquina num pedido só);
-  `apps/api/test/application/use-cases/auth/machine-device-keys.use-case.spec.ts`;
-  `apps/api/test/application/use-cases/auth/revoke-personal-access-token.use-case.spec.ts`
+  `test/application/use-cases/auth/machine-device-keys.use-case.spec.ts`;
+  `test/application/use-cases/auth/revoke-personal-access-token.use-case.spec.ts`
   e `revoke-personal-access-token-as-maintainer.use-case.spec.ts`;
-  `apps/api/test/interfaces/pat-auth.guard.spec.ts` (a credencial anotada nos
+  `test/interfaces/pat-auth.guard.spec.ts` (a credencial anotada nos
   dois caminhos, e não anotada na recusa);
-  `apps/api/test/interfaces/http/runner/runner-tickets.guards.integration.spec.ts`
+  `test/interfaces/http/runner/runner-tickets.guards.integration.spec.ts`
   (o PAT real até o pedido ao engine);
-  `apps/api/test/application/use-cases/runner/request-runner-ticket.use-case.spec.ts`
+  `test/application/use-cases/runner/request-runner-ticket.use-case.spec.ts`
   (o `terminal` nunca leva credencial);
-  `apps/api/test/infrastructure/http-clients/api-to-engine-client.spec.ts`
+  `test/infrastructure/http-clients/api-to-engine-client.spec.ts`
   (`describe "o alvo é a CREDENCIAL"`, inclusive o 404 que LANÇA);
   `apps/engine/test/engine_web/channels/terminal_channel_test.exs`
   (`describe "revogação por CREDENCIAL"` — o canal real que cai, o PAT do mesmo
@@ -10809,20 +10809,20 @@ bootstrap (`git_repo_create`/`git_branch_create`/`git_branch_protect`, que não
 passam por `decide()`); e `deploy`, que não é tipo de `proposed_action` — só
 existe como destino da mensagem do comando de terminal.
 
-- **Onde:** `apps/api/src/domain/actions/decide.ts:427` (`ehAcaoTipadaComEfeitoExterno`);
-  `apps/api/src/domain/actions/external-effect.ts:258`
+- **Onde:** `src/domain/actions/decide.ts:427` (`ehAcaoTipadaComEfeitoExterno`);
+  `src/domain/actions/external-effect.ts:258`
   (`ACOES_TIPADAS_COM_EFEITO_EXTERNO`), `:266` (`ehAcaoTipadaComEfeitoExterno`),
   `:280` (`mensagemDoTetoDaAcaoTipada`);
-  `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts:71`
+  `src/application/use-cases/execution/activate-execution.use-case.ts:71`
   (`DEV_AUTO_GIT_ACTIONS`)
-- **Teste:** `apps/api/test/domain/actions/decide.spec.ts:1375` (os dois tipos
+- **Teste:** `test/domain/actions/decide.spec.ts:1375` (os dois tipos
   com curinga, regra específica e `allow` saem `require_approval`; `deny`
   continua vencendo — caso de falha; `git_commit` e `git_merge` para branch
-  não protegida ficam fora); `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:953`
+  não protegida ficam fora); `test/application/use-cases/actions/propose-action.use-case.spec.ts:953`
   (com Postgres: nascem `pending` com o motivo no evento);
-  `apps/api/test/application/use-cases/execution/activate-execution.use-case.spec.ts:473`
+  `test/application/use-cases/execution/activate-execution.use-case.spec.ts:473`
   e `accept-parallelization.use-case.spec.ts:141` (semeiam só `git_commit`);
-  `apps/api/test/application/use-cases/actions/approve-always-action.use-case.spec.ts:795`
+  `test/application/use-cases/actions/approve-always-action.use-case.spec.ts:795`
   ("sempre permitir" recusado, 400 `teto_do_sempre_permitir`)
 - **Origem:** AT-347, decisão do dono em 01/10
 
@@ -10851,13 +10851,13 @@ melhoria do produto, separado do perfil da pessoa.
 > (Staff? uma tela de melhorias?) e por quanto tempo vive? É fronteira nova de
 > dado e pede ADR (0205 reservado).
 
-- **Onde:** `apps/api/src/domain/anamnese/proficiencia-do-autor.ts:22`
+- **Onde:** `src/domain/anamnese/proficiencia-do-autor.ts:22`
   (`textoDaProficienciaDoAutor`);
-  `apps/api/src/application/use-cases/agents/send-agent-message.use-case.ts:152`
+  `src/application/use-cases/agents/send-agent-message.use-case.ts:152`
   (`resolverPerfil`), `:203` (`resolverProficiencia`)
-- **Teste:** `apps/api/test/application/use-cases/agents/send-agent-message.use-case.spec.ts:254`
+- **Teste:** `test/application/use-cases/agents/send-agent-message.use-case.spec.ts:254`
   (o nível vai, o rationale não), `:274` (leitura falha, a mensagem segue —
-  caso de falha); `apps/api/test/domain/anamnese/proficiencia-do-autor.spec.ts`
+  caso de falha); `test/domain/anamnese/proficiencia-do-autor.spec.ts`
 - **Origem:** AT-356 (metade 1)
 
 ### RN-703 — Subagente sem modelo herda o modelo resolvido do lead da área {#rn-703}
@@ -10878,10 +10878,10 @@ configuração própria). O filtro de tool calling (RN-040) vale na resolução 
 lead como na do subagente. Se ainda assim não há modelo, a mensagem de falha
 diz onde configurar.
 
-- **Onde:** `apps/api/src/application/use-cases/llm/resolve-model-binding.use-case.ts:76`
-  (`leadDoSubagente`); `apps/api/src/domain/agents/agent-areas.ts:139` (`leadDoSubagente`);
-  `apps/api/src/domain/llm/binding-resolver.ts:66` (`MENSAGEM_SEM_MODELO`)
-- **Teste:** `apps/api/test/application/use-cases/llm/resolve-model-binding.use-case.spec.ts`
+- **Onde:** `src/application/use-cases/llm/resolve-model-binding.use-case.ts:76`
+  (`leadDoSubagente`); `src/domain/agents/agent-areas.ts:139` (`leadDoSubagente`);
+  `src/domain/llm/binding-resolver.ts:66` (`MENSAGEM_SEM_MODELO`)
+- **Teste:** `test/application/use-cases/llm/resolve-model-binding.use-case.spec.ts`
   (`appsec` herda do `secops` e `dev-api` do `dev-lead`; lead também sem modelo
   segue `null` — caso de falha)
 - **Origem:** AT-367
@@ -10904,10 +10904,10 @@ diz onde configurar.
 - **Medição (AT-377):** duas PRs do mesmo commit base (#3 e #4) mergeadas em
   sequência: a `dev` ficou só com a #4, e os commits da #3 deixaram de ser
   ancestrais dela. O `update-ref` antigo era um reset forçado.
-- **Onde:** `apps/api/src/infrastructure/git/local-git-provider.ts:783` (`mergeShas`),
-  `apps/api/src/domain/git/git-errors.ts:89` (`GitMergeConflictError`),
-  `apps/api/src/interfaces/http/shared/git-provider-error.filter.ts`
-- **Teste:** `apps/api/test/infrastructure/git/local-git-provider.contract.spec.ts`
+- **Onde:** `src/infrastructure/git/local-git-provider.ts:783` (`mergeShas`),
+  `src/domain/git/git-errors.ts:89` (`GitMergeConflictError`),
+  `src/interfaces/http/shared/git-provider-error.filter.ts`
+- **Teste:** `test/infrastructure/git/local-git-provider.contract.spec.ts`
   ("duas PRs divergentes sem conflito: os dois commits ficam no alvo, por
   commit de merge"; caso de falha: "conflito: recusa nomeada com os arquivos,
   alvo intacto e PR aberta")
@@ -10937,16 +10937,16 @@ diz onde configurar.
   "Merge", sem texto nenhum; a ação gravou `kind: git_push`. Depois de um merge
   executado, a PR seguia em "Abertas" até recarregar, o card mostrava o UUID do
   usuário e `#pr-3`, e toda PR local era "autor desconhecido".
-- **Onde:** `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:72` (`resultadoDaFalha`),
-  `apps/api/src/application/use-cases/actions/list-project-pending-actions.use-case.ts:22` (`execute`),
+- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:72` (`resultadoDaFalha`),
+  `src/application/use-cases/actions/list-project-pending-actions.use-case.ts:22` (`execute`),
   `apps/web/src/routes/ProjectPrsTab.tsx:69` (`ultimaRecusaDeMerge`),
   `apps/web/src/lib/canal-vivo.ts:134` (`alvosDoEvento`)
-- **Teste:** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   ("conflito de merge → kind git_merge, arquivos no resultado e evento na
   tarefa"; caso de falha: "falha que não é conflito não grava arquivos nem
   evento de conflito"), `apps/web/src/routes/ProjectPrsTab.test.tsx` ("conflito
   de merge: mostra motivo e arquivos..."; "recusa de OUTRA PR não aparece
-  nesta"), `apps/api/test/infrastructure/git/local-git-provider.contract.spec.ts`
+  nesta"), `test/infrastructure/git/local-git-provider.contract.spec.ts`
   ("grava o autor ao abrir...")
 - **Lacuna declarada (fechada na [RN-715](#rn-715)):** o conflito NÃO acorda o dev agent da tarefa para
   rebasear e reenviar. O caminho que o QA usa (`DevAgentServer.correct/3`) só
@@ -10980,15 +10980,15 @@ protegida, e `git merge`/`gh pr merge` pelo terminal), deploy, `sudo`/`doas`,
 `container_remove`, `instruction_patch` e paralelismo. O toggle em manual
 restaura a aprovação.
 
-- **Onde:** `apps/api/src/domain/actions/decide.ts:309` (`modoAutomaticoDoAgente`),
-  `:324` (`decide`); `apps/api/src/domain/actions/external-effect.ts:294`
+- **Onde:** `src/domain/actions/decide.ts:309` (`modoAutomaticoDoAgente`),
+  `:324` (`decide`); `src/domain/actions/external-effect.ts:294`
   (`mensagemDoModoAutomaticoNoEfeitoExterno`);
   `apps/web/src/components/OQueOPilotoLibera.tsx`
-- **Teste:** `apps/api/test/domain/actions/decide.spec.ts` (o piloto libera
+- **Teste:** `test/domain/actions/decide.spec.ts` (o piloto libera
   `git push`/`gh pr create` e os tipados; `git merge`, `gh pr merge` e `sudo`
   seguem `require_approval`; específica e `allow` sem curinga seguem no teto;
   curinga em `require_approval` pede aprovação — casos de falha);
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts`
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts`
   (com Postgres: auto-aprovados e executados, motivo no evento; específica
   sozinha nasce `pending`); `apps/web/src/components/ModoAutomaticoDoTime.test.tsx`,
   `AgentCard.test.tsx`, `ApprovalCard.test.tsx` (a tela diz que push e PR são
@@ -11025,13 +11025,13 @@ restaura a aprovação.
   PR aberta por humano não tem dono a acordar.
 - **Medição (AT-383, 02/10, loja-teste):** a #6 terminou `failed` por conflito
   em `package.json`, e a tarefa ficou `in_review` sem ninguém para resolvê-lo.
-- **Onde:** `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:392` (`devolverAoDono`),
-  `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:490` (`reabrirPorConflitoDeMerge`),
+- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:392` (`devolverAoDono`),
+  `src/infrastructure/persistence/drizzle/backlog.repository.ts:490` (`reabrirPorConflitoDeMerge`),
   `apps/engine/lib/engine/workers/dev_agent_wake_worker.ex:151` (`task.merge_conflict`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:350` (`handle_info`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:831` (`trigger_gate_recheck`),
   `apps/engine/lib/engine/dev/worktree_manager.ex:47` (`adopt`)
-- **Teste:** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("conflito de merge → kind git_merge, arquivos no
+- **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("conflito de merge → kind git_merge, arquivos no
   resultado e evento na tarefa"; falha: "RN-715: tarefa que já não está em
   revisão não é reaberta nem acorda ninguém"),
   `apps/engine/test/engine/dev/dev_agent_server_test.exs` (describe "conflito
@@ -11064,15 +11064,15 @@ restaura a aprovação.
 - **Medição (AT-376):** na loja-teste de 02/10, "Git → iniciante" e "Infra →
   iniciante" sem a pessoa ter interagido com nenhum dos dois, e "aprova 2 ADRs
   sem hesitar" como arquitetura avançada.
-- **Onde:** `apps/api/src/domain/anamnese/proficiency-validation.ts:53`
-  (`ehEvidenciaObservadaDaPessoa`), `apps/api/src/domain/anamnese/proficiency-validation.ts:74`
-  (`validateProficiencyBatch`), `apps/api/src/application/use-cases/anamnese/record-proficiency.use-case.ts:189`
+- **Onde:** `src/domain/anamnese/proficiency-validation.ts:53`
+  (`ehEvidenciaObservadaDaPessoa`), `src/domain/anamnese/proficiency-validation.ts:74`
+  (`validateProficiencyBatch`), `src/application/use-cases/anamnese/record-proficiency.use-case.ts:189`
   (`resolveKnownEventIds`), regras no kickoff (`prompts/anamnese-kickoff.md`
   v3 e o fallback inline de `anamnese_worker.ex`)
-- **Teste:** `apps/api/test/domain/anamnese/proficiency-validation.spec.ts`
+- **Teste:** `test/domain/anamnese/proficiency-validation.spec.ts`
   ("RN-716: aprovação ao lado de interação da pessoa passa"; falhas: "só
   evidência de outro ator é \"não observado\"", "aprovação sem leitura não é
-  evidência"), `apps/api/test/application/use-cases/anamnese/record-proficiency.use-case.spec.ts`
+  evidência"), `test/application/use-cases/anamnese/record-proficiency.use-case.spec.ts`
   ("evidência só de aprovação não grava perfil nem profile_updated")
 - **Lacuna declarada:** reconhecer a mensagem de REPARO no lote de perfil é do
   modelo (prompt); o código não classifica texto de mensagem.
@@ -11118,14 +11118,14 @@ história que ele recriou disparou o aviso de duplicata semântica
 
 O kickoff do PO diz as três coisas.
 
-- **Onde:** `apps/api/src/application/use-cases/backlog/complete-story.use-case.ts:52`
+- **Onde:** `src/application/use-cases/backlog/complete-story.use-case.ts:52`
   (`CompleteStoryUseCase`);
-  `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts:541`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:541`
   (`completeStoryRoute`); `apps/engine/lib/engine/harness/tools/complete_story.ex:47`
   (`run`); `apps/engine/lib/engine/harness/tools/offer_handoff.ex:52`
   (`recusa_por_cobertura`); `apps/engine/lib/engine/harness/tools/emit_artifact.ex:188`
   (`pergunte_antes`)
-- **Teste:** `apps/api/test/application/use-cases/backlog/complete-story.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/backlog/complete-story.use-case.spec.ts`
   (liga a regra e propõe a promoção; `auto` vai a `ready`; regra inexistente,
   outro projeto e história `ready` recusados);
   `apps/engine/test/engine/harness/tools/offer_handoff_test.exs` (describe
@@ -11164,25 +11164,25 @@ O kickoff do PO diz as três coisas.
   dele os botões ficam inertes com o motivo em texto, e o mesmo vale para
   história fora de `draft` ou com tarefa em execução. Cada história mostra
   quantas tarefas tem.
-- **Onde:** `apps/api/src/domain/backlog/correcao-de-historia.ts:33`
+- **Onde:** `src/domain/backlog/correcao-de-historia.ts:33`
   (`recusaDeCorrecaoDeHistoria`),
-  `apps/api/src/application/use-cases/backlog/corrigir-historia.use-case.ts:47`
+  `src/application/use-cases/backlog/corrigir-historia.use-case.ts:47`
   (`editar`), `:95` (`arquivar`),
-  `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:97`
+  `src/infrastructure/persistence/drizzle/backlog.repository.ts:97`
   (`findByProject`), `:403` (`claimNext`),
-  `apps/api/src/interfaces/http/backlog/backlog.controller.ts:205`
+  `src/interfaces/http/backlog/backlog.controller.ts:205`
   (`updateTitle`), `:219` (`archive`),
-  `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts:576`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:576`
   (`updateStoryRoute`), `:609` (`archiveStoryRoute`),
   `apps/engine/lib/engine/harness/tools/update_story.ex:45` (`run`),
   `apps/engine/lib/engine/harness/tools/archive_story.ex:38` (`run`),
   `apps/web/src/routes/ProjectBacklogTab.tsx:80` (`motivoDeCorrecaoInerte`)
-- **Teste:** `apps/api/test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts`
   (feliz: título e arquivo com evento; falha: tarefa `in_progress`/`in_review`
   é 409 `historia_com_tarefa_em_execucao` sem escrita),
-  `apps/api/test/application/use-cases/execution/claim-next-task.use-case.spec.ts`
+  `test/application/use-cases/execution/claim-next-task.use-case.spec.ts`
   ("não pega task de story ARQUIVADA, nem a conta, nem a lista", contra
-  Postgres), `apps/api/test/interfaces/http/backlog/backlog-corrigir-historia.controller.spec.ts`
+  Postgres), `test/interfaces/http/backlog/backlog-corrigir-historia.controller.spec.ts`
   (o papel das duas rotas é o de promover; `viewer` não alcança),
   `apps/engine/test/engine/harness/tools/corrigir_historia_test.exs` (a recusa
   nomeada chega ao modelo), `apps/web/src/routes/ProjectBacklogTab.test.tsx`
@@ -11213,14 +11213,14 @@ O kickoff do PO diz as três coisas.
   SecOps) deixa de dizer "trabalhando" quando, depois do último parecer, um
   subagente da área registra `delegation.failed` — passa a `falhou`. Nenhuma
   query nem poll novo.
-- **Onde:** `apps/api/src/application/use-cases/actions/execute-infra-pr.use-case.ts:71`
+- **Onde:** `src/application/use-cases/actions/execute-infra-pr.use-case.ts:71`
   (`ExecuteInfraPrUseCase`),
   `apps/web/src/routes/ProjectApprovalsTab.tsx:106` (`ProjectApprovalsTab`),
   `apps/web/src/routes/Shell.tsx:562` (`idDoProjetoAtual`),
   `apps/web/src/routes/NewProjectWizard.tsx:155` (`NewProjectWizard`),
   `apps/web/src/routes/ProjectPrsTab.tsx:141` (`invalidateMergeActions`),
   `apps/web/src/lib/agent-status.ts:222` (`gateStatus`)
-- **Teste:** `apps/api/test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts`
   ("a branch nasce de dev, a PR mira dev e leva infra[bot]"; falha:
   "repositório sem dev falha nomeado, sem cair na default"),
   `apps/web/src/routes/Shell.test.tsx` ("abrir um projeto recolhe o visitado
@@ -11243,17 +11243,17 @@ O kickoff do PO diz as três coisas.
   o frame `{:final, texto, code}` dos conversacionais dá origem `infra` pelo
   código. O reconhecimento por texto da RN-726 fica só como REDE: api anterior
   ao campo, e caminho que só leva a mensagem.
-- **Onde:** `apps/api/src/domain/llm/llm-provider-errors.ts:38`
+- **Onde:** `src/domain/llm/llm-provider-errors.ts:38`
   (`LLMInsufficientCreditError`), `:86` (`normalizeHttpStatus`),
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:270`
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:270`
   (`streamErrorCode`),
-  `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:305`
+  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:305`
   (`streamErrorCode`),
   `apps/engine/lib/engine/agents/falha_de_turno.ex:91` (`credito_esgotado?`),
   `:71` (`origem`), `apps/engine/lib/engine/harness/tool_loop.ex:168`
   (`last_error_code`), `apps/engine/lib/engine/dev/dev_agent_server.ex:902`
   (`handle_outcome`)
-- **Teste:** `apps/api/test/contract/llm-provider.contract.ts` (`erro_402 vira
+- **Teste:** `test/contract/llm-provider.contract.ts` (`erro_402 vira
   chunk de erro com code "insufficient_credit"`; falha: `erro_500` segue
   `upstream`), rodado por todas as suítes de contrato de provider;
   `apps/engine/test/engine/agents/falha_de_turno_test.exs` ("insufficient_credit
@@ -11278,9 +11278,9 @@ O kickoff do PO diz as três coisas.
   lida e narrada desde a [RN-737](#rn-737) (a RN-698 narra o teto de
   ITERAÇÕES, não o de tokens). Hipótese NÃO medida com chave real: que a
   reserva explica o 402 do TP-01.
-- **Onde:** `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:38`
+- **Onde:** `src/infrastructure/llm/openai-compatible-provider.ts:38`
   (`MAX_TOKENS_PADRAO`), `:634` (`flags`)
-- **Teste:** `apps/api/test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
+- **Teste:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
   (sem `maxTokens` o corpo leva `max_tokens: 4096`; com `maxTokens: 123` leva
   123; com `maxTokensField: 'max_completion_tokens'` o campo muda e
   `max_tokens` não vai)
@@ -11303,18 +11303,18 @@ O kickoff do PO diz as três coisas.
   cortada pelo limite de tamanho.", qualquer outro — ou nenhum — "Response cut
   off by the length limit.". O Ollama não lê o motivo de parada (fora do
   escopo, declarado).
-- **Onde:** `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:314`
+- **Onde:** `src/infrastructure/llm/openai-compatible-provider.ts:314`
   (`cortadaPeloTeto`),
-  `apps/api/src/infrastructure/llm/anthropic-provider.ts:243` (`finalMessage`),
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:234`
+  `src/infrastructure/llm/anthropic-provider.ts:243` (`finalMessage`),
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:234`
   (`truncated`),
-  `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:301`
+  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:301`
   (`truncated`),
   `apps/engine/lib/engine/harness/resposta_cortada.ex:43` (`registrar`),
   `:89` (`descarregar`),
   `apps/engine/lib/engine/harness/argumentos_de_ferramenta.ex:26` (`executar`),
   `apps/engine/lib/engine/agents/texto_do_turno.ex:65` (`payload_do_turno`)
-- **Teste:** `apps/api/test/contract/llm-provider.contract.ts` ("resposta
+- **Teste:** `test/contract/llm-provider.contract.ts` ("resposta
   cortada pelo teto de saída emite o sinal truncated" e "resposta normal não
   traz o sinal de corte", rodados com servidor falso pelos harnesses
   OpenAI-compatível e Anthropic),
@@ -11332,10 +11332,10 @@ O kickoff do PO diz as três coisas.
   do `agent.error` (`FalhaDeTurno.diagnostico/1`, RN-733). A frase da bolha
   NÃO cresce com ela: fora do caso de crédito (que já tem frase curta), o
   texto narrado entra na bolha cortado em 300 caracteres com "…".
-- **Onde:** `apps/api/src/domain/llm/llm-provider-errors.ts:164`
+- **Onde:** `src/domain/llm/llm-provider-errors.ts:164`
   (`LIMITE_DO_DETALHE`), `apps/engine/lib/engine/agents/falha_de_turno.ex:284`
   (`@teto_da_bolha`), `:289` (`curto`)
-- **Teste:** `apps/api/test/domain/llm/llm-provider-errors.spec.ts` (o 402
+- **Teste:** `test/domain/llm/llm-provider-errors.spec.ts` (o 402
   leva `"metadata":{"reason":"insufficient_credits"` inteiro; corpo acima do
   teto corta), `apps/engine/test/engine/agents/falha_de_turno_test.exs`
   (RN-739: o `reason` contém o `metadata`; erro longo corta na bolha e não no
@@ -11361,9 +11361,9 @@ O kickoff do PO diz as três coisas.
   **Revisada pela [RN-782](#rn-782)/[RN-783](#rn-783) (AT-467):** a medição
   com credencial de 10/10 mostrou que o Haiku 5.5 IGNORA `reasoning.max_tokens`;
   o campo deixou de ser enviado e a folga no `max_tokens` ficou.
-- **Onde:** `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:48`
+- **Onde:** `src/infrastructure/llm/openai-compatible-provider.ts:48`
   (`ORCAMENTO_DE_RACIOCINIO`), `:640` (`controla`)
-- **Teste:** `apps/api/test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
+- **Teste:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
   (`raciocínio com orçamento próprio (RN-741)`: orçamento e teto somado; sem
   raciocínio o corpo não muda; provider sem campo não inventa orçamento)
 - **Origem:** AT-427 (TP-01, 08/10: `anthropic/claude-haiku-5.5` com
@@ -11381,9 +11381,9 @@ O kickoff do PO diz as três coisas.
   `pullRequestId` que fecha as tarefas (RN-628). Merge que falhou ou ainda
   pende não tira nada da lista. O aviso de "PR de infra pronta para merge" no
   fio ou no painel "precisa de você" NÃO foi feito aqui.
-- **Onde:** `apps/api/src/application/use-cases/execution/list-infra-artifacts.use-case.ts:26`
+- **Onde:** `src/application/use-cases/execution/list-infra-artifacts.use-case.ts:26`
   (`execute`)
-- **Teste:** `apps/api/test/application/use-cases/execution/list-infra-artifacts.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/execution/list-infra-artifacts.use-case.spec.ts`
   (merge executado tira a PR; merge falho ou pendente a mantém)
 - **Origem:** AT-436 (TP-01: depois de "Merge" → "Aprovar" na aba PRs, a PR
   seguia com Dev ✓ QA ✓ SecOps ✓ e "Você" pendente)
@@ -11401,10 +11401,10 @@ O kickoff do PO diz as três coisas.
   naquele passo, então ele vale sempre que há recorte. Os dev agents ficam
   sem piso, de propósito (a obrigação deles muda a cada passo; para eles vale
   só a [RN-759](#rn-759)) — salvo `report_done`/`report_blocked`, que entram no piso deles desde a [RN-839](#rn-839).
-- **Onde:** `apps/api/src/domain/llm/tool-router.ts:397` (`menuComPiso`) e
-  `apps/api/src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:248`
+- **Onde:** `src/domain/llm/tool-router.ts:397` (`menuComPiso`) e
+  `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:248`
   (`menuComPiso`)
-- **Teste:** `apps/api/test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
   (o PO com o menu `["listar_backlog","create_story"]` mantém `create_task`;
   o Arquiteto com 2 de 9 mantém as cinco de artefato)
 - **Origem:** AT-445 (TP-01 de 09/10: o PO sem `create_task` respondeu "Não
@@ -11423,10 +11423,10 @@ O kickoff do PO diz as três coisas.
   porque só a api sabe o menu depois do Jev. Não aplicar o recorte na volta
   que fecha o turno foi avaliado e não feito: a api não sabe antes da
   resposta que a volta será a última.
-- **Onde:** `apps/api/src/domain/llm/tool-router.ts:416` (`avisoDeRecorte`) e
-  `apps/api/src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:263`
+- **Onde:** `src/domain/llm/tool-router.ts:416` (`avisoDeRecorte`) e
+  `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:263`
   (`avisoDeRecorte`)
-- **Teste:** `apps/api/test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
   (o aviso chega como última mensagem com recorte; sem recorte e em queda, as
   mensagens são as do pedido)
 - **Origem:** AT-445 (o dev agent bloqueou uma tarefa "sem ferramenta para
@@ -11455,15 +11455,15 @@ O kickoff do PO diz as três coisas.
   commit (a exclusão não estagia remoção); o projeto já bootstrapado só ganha
   o `.gitignore` se o bootstrap rodar de novo; no modo `runner` o commit roda
   pelo mesmo `GitExecutor` e a mesma exclusão vale onde o engine executa git.
-- **Onde:** `apps/api/src/application/use-cases/git/bootstrap-templates.ts:38`
-  (`gitignoreContent`), `apps/api/src/application/use-cases/git/bootstrap-steps.ts:164`
+- **Onde:** `src/application/use-cases/git/bootstrap-templates.ts:38`
+  (`gitignoreContent`), `src/application/use-cases/git/bootstrap-steps.ts:164`
   (`soSeAusente`), `apps/engine/lib/engine/actions/diretorios_de_dependencia.ex:37`
   (`argumentos_do_add`), `:47` (`commitados`),
   `apps/engine/lib/engine/gates/secops_agent_server.ex:162`
   (`dependencias_commitadas`)
-- **Teste:** `apps/api/test/application/use-cases/git/bootstrap-plan.spec.ts`
+- **Teste:** `test/application/use-cases/git/bootstrap-plan.spec.ts`
   (o repositório vazio planeja os 3 arquivos; `.gitignore` do usuário não entra
-  no plano), `apps/api/test/application/use-cases/git/provision-repository.use-case.spec.ts`
+  no plano), `test/application/use-cases/git/provision-repository.use-case.spec.ts`
   (o local converge os 6 passos),
   `apps/engine/test/engine/actions/git_executor_test.exs` (`commit exclui
   diretórios de dependência mesmo sem .gitignore`),
@@ -11481,9 +11481,9 @@ O kickoff do PO diz as três coisas.
   RN-059). Antes saía `origin: null`. O bloqueio de artefato de infra pelo
   mesmo motivo (`infra.artifact_blocked`) não tem campo de origem e fica como
   está, declarado.
-- **Onde:** `apps/api/src/application/use-cases/execution/record-gate-verdict.use-case.ts:215`
+- **Onde:** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:215`
   (`politica`)
-- **Teste:** `apps/api/test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
   (o ciclo esgotado chama `MarkTaskBlockedUseCase` com `'politica'`; o veredito
   aprovado não bloqueia)
 - **Origem:** AT-450 (TP-01 de 09/10: `backlog.task_blocked` com
@@ -11506,7 +11506,7 @@ O kickoff do PO diz as três coisas.
   tem piso de `12rem` POR COLUNA e cresce por fração, com o contêiner em
   `min-content` — com `max-content` ela ficava da largura do texto sem quebra
   (medido no Chromium: 2 236px num balão de 708px) e a última coluna sumia.
-- **Onde:** `apps/api/src/application/use-cases/actions/execute-adr-pr.use-case.ts:96`
+- **Onde:** `src/application/use-cases/actions/execute-adr-pr.use-case.ts:96`
   (`openPullRequest`); `apps/engine/lib/engine/infra/infra_lead_server.ex:1599`
   (`gravar_texto_do_turno`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1188`
   (`propose_pr`); `apps/web/src/lib/session-destinatario.ts:228`
@@ -11514,7 +11514,7 @@ O kickoff do PO diz as três coisas.
   (`tipoDaSessao`); `apps/web/src/routes/NewProjectWizard.tsx:1143`
   (`quebraPorSegmento`); `apps/web/src/components/ui/MarkdownMessage.tsx:178`
   (`TabelaMarkdown`)
-- **Teste:** `apps/api/test/application/use-cases/actions/execute-adr-pr.use-case.spec.ts`,
+- **Teste:** `test/application/use-cases/actions/execute-adr-pr.use-case.spec.ts`,
   `apps/engine/test/engine/infra/infra_lead_server_test.exs` ("agent.response
   carrega o nome do modelo"), `apps/engine/test/engine/dev/dev_agent_server_test.exs`
   (fluxo feliz), `apps/web/src/lib/session-destinatario.test.ts`,
@@ -11533,10 +11533,10 @@ O kickoff do PO diz as três coisas.
   vem antes do sinal da conversa ociosa ([RN-581](#rn-581)), que continua
   o único com teto. Sessão de execução ANTIGA do mesmo projeto não é segurada
   pela tarefa: a tarefa é do projeto, e sem esse recorte ela ficaria imortal.
-- **Onde:** `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts:242`
-  (`findPendenteDaExecucao`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:252`
+- **Onde:** `src/application/use-cases/sessions/get-session-pending-work.use-case.ts:242`
+  (`findPendenteDaExecucao`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:252`
   (`findPendenteDaExecucao`)
-- **Teste:** `apps/api/test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts`
   (bloqueada, PR esperando merge e conflito seguram; sem nada, fecha; sessão
   de execução antiga não é segurada)
 - **Origem:** AT-457 (TP-01 de 09/10: as duas sessões de execução fecharam
@@ -11551,9 +11551,9 @@ O kickoff do PO diz as três coisas.
   já acorda o dono ([RN-715](#rn-715)); com a sessão de execução de pé
   ([RN-776](#rn-776)), o dono continua com linha em `dev_agent_states` para
   ser acordado.
-- **Onde:** `apps/api/src/application/use-cases/execution/unblock-task.use-case.ts:68`
+- **Onde:** `src/application/use-cases/execution/unblock-task.use-case.ts:68`
   (`modules`)
-- **Teste:** `apps/api/test/application/use-cases/execution/unblock-task.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/execution/unblock-task.use-case.spec.ts`
   (tarefa com módulo acorda o dev desse módulo)
 - **Origem:** AT-457
 
@@ -11571,13 +11571,13 @@ O kickoff do PO diz as três coisas.
   raciocínio). A decisão do que pedir mora num ponto só, `opcoesDeRaciocinio`,
   chamado pelos três casos de uso de turno. O TODO(humano) da RN-741 fecha com
   essa medição.
-- **Onde:** `apps/api/src/domain/llm/raciocinio-do-agente.ts:18`
-  (`opcoesDeRaciocinio`), `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:640`
-  (`controla`), `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:200`
+- **Onde:** `src/domain/llm/raciocinio-do-agente.ts:18`
+  (`opcoesDeRaciocinio`), `src/infrastructure/llm/openai-compatible-provider.ts:640`
+  (`controla`), `src/application/use-cases/llm/run-llm-turn.use-case.ts:200`
   (`opcoesDeRaciocinio`)
-- **Teste:** `apps/api/test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
+- **Teste:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
   (`modelo que raciocina: folga no teto e NENHUM campo de raciocínio (RN-782)`,
-  corpo byte a byte), `apps/api/test/domain/llm/raciocinio-do-agente.spec.ts`
+  corpo byte a byte), `test/domain/llm/raciocinio-do-agente.spec.ts`
 - **Origem:** AT-467 (medição paga de 10/10)
 
 ### RN-783 — Os dev agents de execução rodam com o raciocínio desligado {#rn-783}
@@ -11591,12 +11591,12 @@ O kickoff do PO diz as três coisas.
   modelo sem `supportsReasoning` não manda nada. Não é silencioso: a ajuda da
   faceta "thinking" do catálogo de modelos diz que nos dev agents de execução e,
   desde a RN-838, no QA de Automação o raciocínio vai desligado (o mínimo escolhido; o seletor e a bolha não mudam).
-- **Onde:** `apps/api/src/domain/llm/raciocinio-do-agente.ts:23`
-  (`raciocinioDesligadoParaOAgente`), `apps/api/src/infrastructure/llm/openrouter-provider.ts:251`
+- **Onde:** `src/domain/llm/raciocinio-do-agente.ts:23`
+  (`raciocinioDesligadoParaOAgente`), `src/infrastructure/llm/openrouter-provider.ts:251`
   (`campoDeRaciocinioDesligadoOpenRouter`)
-- **Teste:** `apps/api/test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
+- **Teste:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
   (`dev agent: raciocínio desligado explícito, com a folga (RN-783)`),
-  `apps/api/test/domain/llm/raciocinio-do-agente.spec.ts` (dev-* desliga;
+  `test/domain/llm/raciocinio-do-agente.spec.ts` (dev-* desliga;
   criativo e dev-lead só a folga; sem `supportsReasoning`, nada)
 - **Origem:** AT-467 (decisão do dono de 10/10)
 
@@ -11607,8 +11607,8 @@ O kickoff do PO diz as três coisas.
   o recorte do Jev nunca as tira, para o Arquiteto não afirmar status de ADR
   nem tarefas do backlog sem poder consultá-los ([RN-773](engine.md#rn-773)). Continua
   valendo que o piso só devolve o que está no catálogo do passo.
-- **Onde:** `apps/api/src/domain/llm/tool-router.ts:315` (`PISO_DO_MENU`)
-- **Teste:** `apps/api/test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
+- **Onde:** `src/domain/llm/tool-router.ts:315` (`PISO_DO_MENU`)
+- **Teste:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
   (`Arquiteto recortado pelo Jev: as leituras de estado (ADRs propostas,
   backlog) continuam no menu (RN-784)`)
 - **Origem:** AT-460 (TP-01 de 09/10: o Jev tirou do menu do Arquiteto as
@@ -11625,10 +11625,10 @@ O kickoff do PO diz as três coisas.
   `moduleOpenTasksTotal` e o corte dito no recorte. Requisito da entrega que
   depende do que outra história ainda vai entregar (uma rota, uma tela) vai ao
   `resumo` como observação e não reprova. A régua é de PROMPT, como na RN-765.
-- **Onde:** `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:210`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:210`
   (`tarefasAbertasDoModulo`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
   (`texto`)
-- **Teste:** `apps/api/test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   (só a tarefa aberta da outra história do mesmo módulo; arquivada fora; teto
   com o total real) e `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
   (as tarefas abertas e o corte no texto). O golden-set do QA não ganhou caso
@@ -11650,13 +11650,13 @@ O kickoff do PO diz as três coisas.
   diz Y), para o usuário e o Arquiteto. Régua de PROMPT, como a
   [RN-765](engine.md#rn-765). Desde a [RN-792](engine.md#rn-792) o Arquiteto confere o contrato
   contra as rotas citadas nas histórias ao declará-lo.
-- **Onde:** `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:255`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:255`
   (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:66`
 
-- **Onde:** `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:255`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:255`
   (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:70`
   (`secao_do_contrato`)
-- **Teste:** `apps/api/test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   (o contrato do módulo da história; sem contrato ou módulo ambíguo, `null`) e
   `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs` (a seção do
   contrato com a régua da divergência; sem contrato, sem seção)
@@ -11680,11 +11680,11 @@ O multiplicador é APLICADO só no engine (`Engine.Dev.TetoDaTarefa`); a api tem
 um espelho declarado, porque a tela não deve copiar a constante e o engine não
 é consultado na proposta. Mudar um exige mudar o outro.
 
-- **Onde:** `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts:83` (`MULTIPLICADOR_DA_PRIMEIRA_TAREFA_DO_MODULO`);
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:242` (`multiplicadorDaPrimeiraDoModulo`);
+- **Onde:** `src/application/use-cases/execution/activate-execution.use-case.ts:83` (`MULTIPLICADOR_DA_PRIMEIRA_TAREFA_DO_MODULO`);
+  `src/application/use-cases/actions/propose-action.use-case.ts:242` (`multiplicadorDaPrimeiraDoModulo`);
   `apps/web/src/lib/aprovacoes.ts:350` (`multiplicador`)
 - **Teste:** `apps/web/src/lib/aprovacoes.test.ts` (it "RN-802 (AT-473)": 8 tarefas, 1 módulo → US$ 4,50; 3 tarefas, 2 módulos → US$ 2,50; sem orçamento, sem número — caso de falha);
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts` ("plano válido nasce pending")
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts` ("plano válido nasce pending")
 - **Origem:** AT-473
 
 ### RN-809 — As obrigações de módulo e imagem do Arquiteto entram no piso do Jev {#rn-809}
@@ -11697,8 +11697,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   8, registro de tensão) e `emit_artifact` ficam fora do piso: não são
   obrigação da etapa. Continua valendo que o piso só devolve o que está no
   catálogo do passo.
-- **Onde:** `apps/api/src/domain/llm/tool-router.ts:315` (`PISO_DO_MENU`)
-- **Teste:** `apps/api/test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
+- **Onde:** `src/domain/llm/tool-router.ts:315` (`PISO_DO_MENU`)
+- **Teste:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
   (`Arquiteto recortado pelo Jev sem assign_story_modules/choose_project_image:
   as duas continuam no menu (RN-809)`)
 - **Origem:** AT-481 (TP-01: o recorte deixou 7 de 11 ferramentas e o
@@ -11715,10 +11715,10 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   as duas. Provider sem a listagem, ou listagem que falha, não impede abrir: o
   caminho de sempre segue. Fica como estava a PR da branch que a [RN-797](engine.md#rn-797)
   fecha como "já na dev": essa não é fechada no provider.
-- **Onde:** `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:32`
-  (`prAbertaDaBranch`), `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:204`
+- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:32`
+  (`prAbertaDaBranch`), `src/application/use-cases/actions/execute-git-action.use-case.ts:204`
   (`prAbertaDaBranch`)
-- **Teste:** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   ("pr_open com PR aberta da mesma branch → reaproveita, sem abrir outra";
   "pr_open: listar PRs falha → abre a PR como sempre")
 - **Origem:** AT-485 (TP-01 de 10/10)
@@ -11739,13 +11739,13 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   leu, nunca "Nada ainda". O agregado NÃO polla ([RN-579](engine.md#rn-579),
   [RN-632](web.md#rn-632)): é relido quando a janela vê um artefato ou uma ação de
   commit/PR nova (a chave da query), no foco e na remontagem.
-- **Onde:** `apps/api/src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:22`
+- **Onde:** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:22`
   (`resumir`), `apps/web/src/lib/contexto-da-sessao.ts:15`
   (`useContextoDaSessaoInteira`), `apps/web/src/lib/contexto-da-sessao.ts:34`
   (`totalDaSessao`), `apps/web/src/routes/ContextAside.tsx:174` (`resumo`)
-- **Teste:** `apps/api/test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
+- **Teste:** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
   ("conta a sessão INTEIRA, além de qualquer cauda de 200…"),
-  `apps/api/test/application/use-cases/sessions/get-session-context-summary.use-case.spec.ts`
+  `test/application/use-cases/sessions/get-session-context-summary.use-case.spec.ts`
   (falha: "sessão de outro projeto é 404 e não lê nada"),
   `apps/web/src/routes/ContextAside.sessao-inteira.test.tsx` ("com o agregado
   maior que a janela, mostra o total da sessão…"; falha: "sem o agregado, os
@@ -11762,9 +11762,9 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   do mesmo projeto. Sessão sem essa ligação não entra. A lista vem do mais
   recente para o mais antigo, cortada em 100 (`TETO_DE_ARQUIVOS_TOCADOS`), e o
   `total` diz o número real; a tela declara o recorte quando ele corta.
-- **Onde:** `apps/api/src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:31`
+- **Onde:** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:31`
   (`ligadas`), `apps/web/src/routes/ContextAside.tsx:366` (`filesTouched`)
-- **Teste:** `apps/api/test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
+- **Teste:** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
   ("…e soma os arquivos da execução ligada"; falha: "corta a lista de arquivos
   no teto e devolve o total real; não lê sessão sem ligação")
 - **Origem:** AT-498
@@ -11778,9 +11778,9 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   [RN-782](#rn-782). O QA-estratégia (`qa-estrategia`) e os demais gates não
   mudam. Medição que motivou: o raciocínio dos gates subiu de 44 mil para 211
   mil tokens por rodada, e o custo deles de US$ 0,15 para US$ 0,55.
-- **Onde:** `apps/api/src/domain/llm/raciocinio-do-agente.ts:39`
+- **Onde:** `src/domain/llm/raciocinio-do-agente.ts:39`
   (`raciocinioDesligadoParaOAgente`)
-- **Teste:** `apps/api/test/domain/llm/raciocinio-do-agente.spec.ts`
+- **Teste:** `test/domain/llm/raciocinio-do-agente.spec.ts`
   (`QA de Automação desliga; QA-estratégia e outros gates não (RN-838)`;
   `falha: QA de Automação com modelo sem supportsReasoning não manda nada`)
 - **Origem:** AT-504 (decisão do dono de 10/10)
@@ -11793,8 +11793,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   o recorte do Jev nunca tira `report_done` nem `report_blocked`. O resto do
   passo deles segue recortável, com o aviso de recorte da RN-759. Como todo
   piso, ele só devolve o que está no catálogo do passo.
-- **Onde:** `apps/api/src/domain/llm/tool-router.ts:356` (`pisoDoMenu`)
-- **Teste:** `apps/api/test/domain/llm/piso-dos-dev-agents.spec.ts`
+- **Onde:** `src/domain/llm/tool-router.ts:356` (`pisoDoMenu`)
+- **Teste:** `test/domain/llm/piso-dos-dev-agents.spec.ts`
   (`recorte que deixa só \`terminal\` para dev-api: report_done e
   report_blocked continuam`; `falha: dev-lead e outro agente não ganham as
   ferramentas de desfecho`)
@@ -11810,8 +11810,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   veredito, com a delegação falhando por origem `modelo` e a tarefa pronta
   bloqueada. Agente fora dos gates não ganha ferramenta de parecer, e o piso
   só devolve o que está no catálogo do passo.
-- **Onde:** `apps/api/src/domain/llm/tool-router.ts:315` (`PISO_DO_MENU`)
-- **Teste:** `apps/api/test/domain/llm/tool-router-piso-dos-gates.spec.ts`
+- **Onde:** `src/domain/llm/tool-router.ts:315` (`PISO_DO_MENU`)
+- **Teste:** `test/domain/llm/tool-router-piso-dos-gates.spec.ts`
   (ids e ferramentas conferidos contra os `.ex` do engine; recorte que deixa
   só `terminal`/`read_file` termina com o parecer; falha: `criativo`,
   `dev-api` e `dev-lead` não ganham ferramenta de parecer; o piso não
@@ -11840,15 +11840,15 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   arquivo em PR nem commit desta sessão ou da execução ligada), nunca "Nada
   ainda". O caso de uso mora no módulo de git porque é ele que lê o
   repositório; sessão de outro projeto continua 404 sem ler PR nenhuma.
-- **Onde:** `apps/api/src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:140`
-  (`itensDeRegras`), `apps/api/src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:184`
-  (`prsDasSessoes`), `apps/api/src/application/use-cases/git/resumir-contexto-da-sessao.use-case.ts:37`
+- **Onde:** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:140`
+  (`itensDeRegras`), `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:184`
+  (`prsDasSessoes`), `src/application/use-cases/git/resumir-contexto-da-sessao.use-case.ts:37`
   (`prs`), `apps/web/src/routes/ContextAside.tsx:197` (`businessRules`),
   `apps/web/src/routes/ContextAside.tsx:222` (`decisoes`)
-- **Teste:** `apps/api/test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
+- **Teste:** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
   ("RN-844: devolve os ITENS de regra e decisão fora de qualquer cauda, com
   teto de 50"; "RN-844: lista as PRs executadas da sessão e da execução
-  ligada…"), `apps/api/test/application/use-cases/git/resumir-contexto-da-sessao.use-case.spec.ts`
+  ligada…"), `test/application/use-cases/git/resumir-contexto-da-sessao.use-case.spec.ts`
   ("lê os arquivos das PRs das sessões lidas…"; falhas: "corta no teto de
   arquivos, conta PR fora do teto e diff que falhou em prsNaoLidas" e "sessão
   de outro projeto é 404 e não lê PR nenhuma"),
@@ -11875,11 +11875,11 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   nos MESMOS gatilhos que releem a lista de PRs ([RN-841](web.md#rn-841)): o alvo
   `prs` do canal (com a janela de 2 s dele, sem busca a mais) e a mudança da
   assinatura do backlog, por prefixo `['session-context-summary', projectId]`.
-- **Onde:** `apps/api/src/infrastructure/git/local-git-provider.ts:374`
-  (`mergedBaseSha`), `apps/api/src/infrastructure/git/local-git-provider.ts:862`
+- **Onde:** `src/infrastructure/git/local-git-provider.ts:374`
+  (`mergedBaseSha`), `src/infrastructure/git/local-git-provider.ts:862`
   (`rangeDoDiff`), `apps/web/src/lib/canal-vivo.ts:221` (`prs`),
   `apps/web/src/components/PendenciasDeOutrasSessoes.tsx:105` (`invalidateQueries`)
-- **Teste:** `apps/api/test/infrastructure/git/local-git-provider.contract.spec.ts`
+- **Teste:** `test/infrastructure/git/local-git-provider.contract.spec.ts`
   ("PR mergeada por fast-forward devolve os arquivos que mudou"; "PR mergeada
   por commit de merge devolve só os arquivos dela"; "PR mergeada antes de os
   SHAs serem gravados acha o commit de merge"),
@@ -11888,7 +11888,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   resumo"), `apps/web/src/components/PendenciasDeOutrasSessoes.test.tsx`
   ("RN-841: a tarefa que entra em awaiting_user relê as PRs…"). A falha de
   leitura somando em `prsNaoLidas` segue coberta por
-  `apps/api/test/application/use-cases/git/resumir-contexto-da-sessao.use-case.spec.ts`
+  `test/application/use-cases/git/resumir-contexto-da-sessao.use-case.spec.ts`
   ("corta no teto de arquivos, conta PR fora do teto e diff que falhou em
   prsNaoLidas").
 - **Origem:** AT-518 (TP-01, 13ª: "Nenhum arquivo nas PRs nem nos commits"
@@ -11905,12 +11905,12 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `runComoEfeitoDeAcao`, e o notifier só fica calado com origem engine SEM essa
   marca. O evento que o engine pediu (inclusive o `proposed_action.created`)
   continua sem aviso da api, para não sair em dobro.
-- **Onde:** `apps/api/src/application/efeito-de-acao.ts:18` (`ehEfeitoDeAcao`),
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:319`
+- **Onde:** `src/application/efeito-de-acao.ts:18` (`ehEfeitoDeAcao`),
+  `src/application/use-cases/actions/propose-action.use-case.ts:319`
   (`runComoEfeitoDeAcao`),
-  `apps/api/src/infrastructure/http-clients/session-channel-notifier.ts:73`
+  `src/infrastructure/http-clients/session-channel-notifier.ts:73`
   (`ehEfeitoDeAcao`)
-- **Teste:** `apps/api/test/application/use-cases/sessions/aviso-ao-canal-da-sessao.spec.ts`
+- **Teste:** `test/application/use-cases/sessions/aviso-ao-canal-da-sessao.spec.ts`
   ("AT-516: efeito de ação executada dentro de /internal avisa o canal, uma
   vez"; falha/regressão: "escrita vinda do engine (/internal) não é avisada de
   novo pela api")
@@ -11934,25 +11934,25 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   Infra, nunca verificado na máquina de quem lê (RN-468). E o contexto da
   Infra (`/internal/.../infra-context`) passa a levar `projectImage`, a
   decisão vigente de imagem, rede e recursos, `null` sem decisão.
-- **Onde:** `apps/api/src/domain/infra/run-instructions.ts:77` (`recusaDoRun`),
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:155`
+- **Onde:** `src/domain/infra/run-instructions.ts:77` (`recusaDoRun`),
+  `src/application/use-cases/actions/propose-action.use-case.ts:155`
   (`recusaDoRun`),
-  `apps/api/src/application/use-cases/actions/execute-infra-pr.use-case.ts:111`
+  `src/application/use-cases/actions/execute-infra-pr.use-case.ts:111`
   (`recusaDoRun`), `:328` (`EVENTO_INSTRUCOES_DE_EXECUCAO`),
-  `apps/api/src/application/use-cases/execution/get-run-instructions.use-case.ts:26`
+  `src/application/use-cases/execution/get-run-instructions.use-case.ts:26`
   (`execute`),
-  `apps/api/src/application/use-cases/execution/get-infra-context.use-case.ts:89`
+  `src/application/use-cases/execution/get-infra-context.use-case.ts:89`
   (`projectImage`)
-- **Teste:** `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts`
   ("sem `run`: 400 `run_invalido`, sem proposta"; "URL fora de localhost: 400
   nomeando o campo"; "`run` válido: a proposta nasce"),
-  `apps/api/test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts`
+  `test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts`
   ("PR aberta emite artifact.run_instructions com prUrl e versão seguinte";
   falha: "`run` inválido na execução falha sem commitar nem emitir"),
-  `apps/api/test/application/use-cases/execution/get-run-instructions.use-case.spec.ts`
+  `test/application/use-cases/execution/get-run-instructions.use-case.spec.ts`
   ("devolve o vigente — o de maior version"; "null sem artefato, e o de outro
   projeto não vaza"),
-  `apps/api/test/application/use-cases/execution/get-infra-context.use-case.spec.ts`
+  `test/application/use-cases/execution/get-infra-context.use-case.spec.ts`
   ("RN-852: projectImage é a decisão vigente…"; "…null sem decisão de imagem")
 - **Origem:** AT-517 (o entregável do TP-01 não dizia como rodar na máquina
   do usuário)
@@ -11973,17 +11973,17 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   que nenhuma linha de `dev_agent_states` segura, com o mesmo motivo e origem
   `politica`; a lista só vem para sessão de EXECUÇÃO, então encerrar uma
   consultiva do mesmo projeto não bloqueia nada.
-- **Onde:** `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:252`
+- **Onde:** `src/infrastructure/persistence/drizzle/backlog.repository.ts:252`
   (`findPendenteDaExecucao`), `:403` (`claimNext`), `:221` (`listEmCursoDeDev`),
-  `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts:49`
+  `src/application/use-cases/sessions/get-session-pending-work.use-case.ts:49`
   (`em_curso_de_dev`),
   `apps/engine/lib/engine/dev/encerramento_da_sessao.ex:133` (`bloquear_orfas`)
-- **Teste:** `apps/api/test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts`
   ("tarefa recém-desbloqueada (todo) do módulo de um dev da execução segura a
   sessão"; "tarefa todo de módulo SEM dev na execução não segura"; "tarefa
   in_progress atribuída a dev da execução segura a sessão"; "listEmCursoDeDev
   lista a in_progress de dev só para sessão de EXECUÇÃO"),
-  `apps/api/test/application/use-cases/execution/claim-next-task.use-case.spec.ts`
+  `test/application/use-cases/execution/claim-next-task.use-case.spec.ts`
   ("retoma a in_progress que já é DELE antes da fila todo"; "não retoma a
   in_progress dele que está em gate"),
   `apps/engine/test/engine/dev/encerramento_da_sessao_test.exs` ("bloqueia a
@@ -12001,10 +12001,10 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   (RN-839). O critério é o texto que a api já recebe, sem campo novo; o piso
   fixo de todo passo não alarga (RN-759), outro agente não ganha, e o piso só
   acrescenta o que está no catálogo do passo (P3).
-- **Onde:** `apps/api/src/domain/llm/tool-router.ts:373` (`PISO_DA_CORRECAO_DO_DEV`),
+- **Onde:** `src/domain/llm/tool-router.ts:373` (`PISO_DA_CORRECAO_DO_DEV`),
   `:384` (`ehPassoDeCorrecao`), `:397` (`menuComPiso`),
-  `apps/api/src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:248` (`menuComPiso`)
-- **Teste:** `apps/api/test/domain/llm/tool-router-correcao-do-dev.spec.ts`
+  `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:248` (`menuComPiso`)
+- **Teste:** `test/domain/llm/tool-router-correcao-do-dev.spec.ts`
   ("dev agent em correção recebe write_file e terminal"; "passo comum de
   leitura do dev não alarga"; "outro agente com a mesma mensagem não ganha";
   "as marcas existem no texto que o engine monta")
@@ -12034,15 +12034,15 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   ao engine para retomar o gate de QA ESTACIONADO de cada tarefa afetada
   (caminho da RN-724) — melhor esforço: gate que não estava estacionado ou
   engine fora do ar não desfaz a resposta. ADR 0214.
-- **Onde:** `apps/api/src/domain/open-questions/pergunta-em-aberto.ts:44`
+- **Onde:** `src/domain/open-questions/pergunta-em-aberto.ts:44`
   (`validarPerguntaEmAberto`), `:112` (`respostaEscolhida`),
-  `apps/api/src/application/use-cases/sessions/append-session-event.use-case.ts:101`
+  `src/application/use-cases/sessions/append-session-event.use-case.ts:101`
   (`EVENTO_PERGUNTA_EM_ABERTO`),
-  `apps/api/src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:72`
+  `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:72`
   (`listar`), `:106` (`responder`), `:189` (`resumeParkedGate`),
-  `apps/api/src/interfaces/http/backlog/open-questions.controller.ts:51`
+  `src/interfaces/http/backlog/open-questions.controller.ts:51`
   (`list`), `:81` (`answer`)
-- **Teste:** `apps/api/test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
   ("o autor responde: decision_record (ator usuário, com questionId) e
   answered, e o gate é religado"; "aceitar a sugestão grava a sugestão como
   escolha"; falhas: "quem não é o autor da sessão recebe 403
@@ -12069,24 +12069,24 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   (título/descrição, o evento o leva) e `complete_story` (RF/DoD/DoR; a
   história segue `ready`, sem nova promoção, e `backlog.story_completed` leva
   o `questionId`).
-- **Onde:** `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:122`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:122`
   (`decisoesDaTarefa`), `:374` (`decisoesDoContexto`),
-  `apps/api/src/domain/backlog/correcao-de-historia.ts:33`
+  `src/domain/backlog/correcao-de-historia.ts:33`
   (`recusaDeCorrecaoDeHistoria`),
-  `apps/api/src/application/use-cases/backlog/corrigir-historia.use-case.ts:126`
+  `src/application/use-cases/backlog/corrigir-historia.use-case.ts:126`
   (`respostaDoUsuario`),
-  `apps/api/src/application/use-cases/backlog/complete-story.use-case.ts:82`
+  `src/application/use-cases/backlog/complete-story.use-case.ts:82`
   (`corrigindoReady`)
-- **Teste:** `apps/api/test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   ("devolve só as que afetam a tarefa, a história ou uma regra dela, mais
   recentes primeiro"; "decisão sem afeta não entra; teto de 10 e texto cortado
   em 1 500"),
-  `apps/api/test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts`
+  `test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts`
   ("história ready citando pergunta RESPONDIDA é corrigida, e o evento a
   cita"; falhas: "história ready citando pergunta AINDA ABERTA segue
   recusada"; "história ready com tarefa em revisão segue recusada mesmo com a
   resposta"),
-  `apps/api/test/application/use-cases/backlog/complete-story.use-case.spec.ts`
+  `test/application/use-cases/backlog/complete-story.use-case.spec.ts`
   ("história ready com pergunta respondida tem RF/DoR corrigidos e segue
   ready"; "história ready com pergunta ainda aberta é recusada")
 - **Origem:** AT-521 (o QA reprovou três vezes lendo a DoR de uma história
@@ -12107,14 +12107,14 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   "await_user"` com o `openQuestionId` — o engine estaciona o ciclo (ADR 0207)
   e a resposta à pergunta o religa (RN-858). Nenhuma linha de outbox nasce
   nesse desfecho. ADR 0214.
-- **Onde:** `apps/api/src/domain/execution/pr-gate-state-machine.ts:63`
+- **Onde:** `src/domain/execution/pr-gate-state-machine.ts:63`
   (`nextGateStatus`),
-  `apps/api/src/application/use-cases/execution/record-gate-verdict.use-case.ts:135`
+  `src/application/use-cases/execution/record-gate-verdict.use-case.ts:135`
   (`esperaUsuario`), `:171` (`nextAction`)
-- **Teste:** `apps/api/test/domain/execution/pr-gate-state-machine.spec.ts`
+- **Teste:** `test/domain/execution/pr-gate-state-machine.spec.ts`
   ("needs_user_decision mantém o gate e NÃO incrementa o contador, nem no
   teto"),
-  `apps/api/test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
+  `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
   ("needs_user_decision no teto: grava a pergunta, não conta correção, não
   bloqueia"; falha: "needs_user_decision sem pergunta nem openQuestionId é
   recusado")
@@ -12130,10 +12130,10 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `reason: "pergunta_nao_encontrada"`. Já respondida: 409
   `reason: "pergunta_ja_respondida"` com a decisão do usuário em `decisao` —
   sem escrita e sem `pr.gate_changed`. O estado sai do log (RN-858).
-- **Onde:** `apps/api/src/application/use-cases/execution/record-gate-verdict.use-case.ts:85`
-  (`exigirPerguntaAberta`), `apps/api/src/domain/open-questions/pergunta-em-aberto.ts:154`
+- **Onde:** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:85`
+  (`exigirPerguntaAberta`), `src/domain/open-questions/pergunta-em-aberto.ts:154`
   (`estadoDaPergunta`)
-- **Teste:** `apps/api/test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
   ("pergunta aberta: estaciona sem gravar outra"; falha: "inexistente ou de
   outro projeto: 404 nomeado, sem escrita", "já respondida: 409 com a decisão,
   sem escrita nem pr.gate_changed")
@@ -12147,14 +12147,14 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   não é id nem título exato é recusado com 400 nomeando os valores. No contexto
   do dev, `decisoes` casa também pelo título das regras da história, para as
   decisões gravadas antes desta regra.
-- **Onde:** `apps/api/src/domain/open-questions/pergunta-em-aberto.ts:179`
-  (`resolverRegrasDoAfeta`), `apps/api/src/application/use-cases/sessions/append-session-event.use-case.ts:117`
-  (`resolverRegrasDoAfeta`), `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:134`
+- **Onde:** `src/domain/open-questions/pergunta-em-aberto.ts:179`
+  (`resolverRegrasDoAfeta`), `src/application/use-cases/sessions/append-session-event.use-case.ts:117`
+  (`resolverRegrasDoAfeta`), `src/application/use-cases/execution/get-dev-task-context.use-case.ts:134`
   (`decisoesDoContexto`)
-- **Teste:** `apps/api/test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
   ("título exato é convertido para o id da regra"; falha: "texto que não é id
   nem título de regra: 400 sem escrita"),
-  `apps/api/test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
+  `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   ("decisão legada com TÍTULO de regra em afeta.regras casa pelo título")
 - **Origem:** AT-526, ADR 0215
 
@@ -12166,10 +12166,10 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   formato. O teto de 10 é COMPARTILHADO — as da tarefa vêm primeiro e consomem
   o teto antes. Revisa a frase "decisão sem `afeta` não entra" do ADR 0214 para
   esta lista. O campo é aditivo (o engine que não o conhece o ignora).
-- **Onde:** `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:134`
-  (`decisoesDoContexto`), `apps/api/src/interfaces/http/internal/dto/internal.response.dto.ts:237`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:134`
+  (`decisoesDoContexto`), `src/interfaces/http/internal/dto/internal.response.dto.ts:237`
   (`decisoesDoProjeto`)
-- **Teste:** `apps/api/test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   ("as que não tocam a tarefa vêm em decisoesDoProjeto; teto de 10 somado, as
   da tarefa primeiro")
 - **Origem:** AT-526, ADR 0215
@@ -12187,12 +12187,12 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   orçamento; o dev bloqueia a tarefa com essa frase no motivo, em vez de
   "parou sem concluir nem reportar bloqueio" com origem `codigo`. 403 sem o
   marcador segue `auth`.
-- **Onde:** `apps/api/src/domain/llm/llm-provider-errors.ts:86` (`normalizeHttpStatus`),
+- **Onde:** `src/domain/llm/llm-provider-errors.ts:86` (`normalizeHttpStatus`),
   `:140` (`pareceOrcamento`); `apps/engine/lib/engine/agents/falha_de_turno.ex:212`
   (`orcamento_esgotado`), `:226` (`frase_de_orcamento`), `:163`
   (`credito_esgotado?`); `apps/engine/lib/engine/dev/dev_agent_server.ex:957`
   (`motivo_de_credito`)
-- **Teste:** `apps/api/test/domain/llm/llm-provider-errors.spec.ts` ("o 403 de
+- **Teste:** `test/domain/llm/llm-provider-errors.spec.ts` ("o 403 de
   orçamento vira insufficient_credit com o corpo inteiro"; falha: "403 sem
   marcador de orçamento continua credencial rejeitada");
   `apps/engine/test/engine/agents/falha_de_turno_test.exs` ("RN-886: o 403 de
@@ -12211,10 +12211,10 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   a tela cai no pt-BR e o seletor da Conta, com os rótulos nativos, diz
   "tradução em andamento". `<html lang>` acompanha o idioma ativo. A paridade
   de chaves compara cada locale existente com a fonte pt-BR.
-- **Onde:** `apps/api/src/domain/iam/user.entity.ts:8` (`USER_LOCALES`),
+- **Onde:** `src/domain/iam/user.entity.ts:8` (`USER_LOCALES`),
   `apps/web/src/lib/idioma.ts:65` (`resolverIdiomaDoNavegador`),
   `apps/web/src/lib/i18n.ts:72` (`fallbackLng`)
-- **Teste:** `apps/api/test/interfaces/http/iam/user-preferences-locale.dto.spec.ts`
+- **Teste:** `test/interfaces/http/iam/user-preferences-locale.dto.spec.ts`
   ("aceita pt-BR, en, ru e zh-Hans"; "recusa idioma fora da lista");
   `apps/web/src/lib/idioma.test.ts` ("idioma sem catálogo cai no pt-BR, nunca
   no inglês"); `apps/web/src/lib/i18n-paridade.test.ts`
@@ -12246,9 +12246,9 @@ quatro pontos, TTL de 5 min — https://openrouter.ai/docs/features/prompt-cachi
    `true`. Ligar outro provider exige o smoke equivalente. O ganho aparece no
    metering pela [RN-666](#rn-666).
 
-- **Código:** `apps/api/src/infrastructure/llm/openrouter-provider.ts:302` (`marcarCacheDePromptOpenRouter`);
-  `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:661` (`mensagens`)
-- **Teste:** `apps/api/test/infrastructure/llm/openrouter-provider.contract.spec.ts` ("pontos de cache de prompt (RN-892)": ligada marca os dois pontos; desligada é byte a byte; capability sem hook falha — caso de falha)
+- **Código:** `src/infrastructure/llm/openrouter-provider.ts:302` (`marcarCacheDePromptOpenRouter`);
+  `src/infrastructure/llm/openai-compatible-provider.ts:661` (`mensagens`)
+- **Teste:** `test/infrastructure/llm/openrouter-provider.contract.spec.ts` ("pontos de cache de prompt (RN-892)": ligada marca os dois pontos; desligada é byte a byte; capability sem hook falha — caso de falha)
 - **Origem:** AT-543
 
 ### RN-894 — Épico com o mesmo título de outro do projeto é recusado {#rn-894}
@@ -12260,8 +12260,8 @@ quatro pontos, TTL de 5 min — https://openrouter.ai/docs/features/prompt-cachi
   `tituloDuplicado`), sem segunda cópia. A duplicata SEMÂNTICA
   ([RN-681](#rn-681)) não vale para épico: só título
   igual. Nada é criado nem gravado no event log quando recusa.
-- **Onde:** `apps/api/src/application/use-cases/backlog/create-epic.use-case.ts:25` (`tituloDuplicado`)
-- **Teste:** `apps/api/test/application/use-cases/backlog/create-epic.use-case.spec.ts:41`
+- **Onde:** `src/application/use-cases/backlog/create-epic.use-case.ts:25` (`tituloDuplicado`)
+- **Teste:** `test/application/use-cases/backlog/create-epic.use-case.spec.ts:41`
   (cria sem título igual) e `:49` (recusa o título igual com o id do existente)
 - **Origem:** AT-581
 
@@ -12281,16 +12281,16 @@ quatro pontos, TTL de 5 min — https://openrouter.ai/docs/features/prompt-cachi
   imagem nova. O resultado de `choose_project_image` traz `containerDePe` e o
   texto avisa que a decisão só vale ao recriar o container. "Recriar" numa só
   ação NÃO existe; nenhum teto de aprovação muda ([RN-495](#rn-495)).
-- **Onde:** `apps/api/src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts:131`
-  (`recongelar`), `apps/api/src/domain/containers/project-container.ts:373`
+- **Onde:** `src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts:131`
+  (`recongelar`), `src/domain/containers/project-container.ts:373`
   (`containerDivergeDaDecisao`),
   `apps/engine/lib/engine/harness/tools/choose_project_image.ex:99`
   (`mensagem_de_fixada`)
-- **Teste:** `apps/api/test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
   ("recongela versão e recursos", "sem decisão vigente é 409", "mantém a versão
-  congelada"); `apps/api/test/domain/containers/project-container.spec.ts`
+  congelada"); `test/domain/containers/project-container.spec.ts`
   (`containerDivergeDaDecisao`);
-  `apps/api/test/infrastructure/persistence/drizzle/containers-overview.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/containers-overview.repository.spec.ts`
   ("imagemDesatualizada compara CONTEÚDO");
   `apps/web/src/routes/ContainersPage.test.tsx` (aviso e motivo);
   `apps/engine/test/engine/harness/tools/choose_project_image_test.exs`
@@ -12310,12 +12310,12 @@ quatro pontos, TTL de 5 min — https://openrouter.ai/docs/features/prompt-cachi
   com o motivo, sem chamar o broker). Sem `module_map` ou com stack que não casa,
   segue só o aviso da RN-735. Sem exceção configurável. Revisa a RN-735 (aviso →
   recusa nesse caso).
-- **Onde:** `apps/api/src/application/use-cases/containers/decidir-imagem-do-projeto.use-case.ts:80`
+- **Onde:** `src/application/use-cases/containers/decidir-imagem-do-projeto.use-case.ts:80`
   (`stackQueBaixaDependencias`)
-- **Teste:** `apps/api/test/application/use-cases/containers/container-do-projeto.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/containers/container-do-projeto.use-case.spec.ts`
   (recusa nos dois chamadores; `egress`, stack que não casa e sem mapa passam);
-  `apps/api/test/domain/containers/project-container.spec.ts` (casamento por palavra);
-  `apps/api/test/application/use-cases/actions/execute-container-start.use-case.spec.ts`
+  `test/domain/containers/project-container.spec.ts` (casamento por palavra);
+  `test/application/use-cases/actions/execute-container-start.use-case.spec.ts`
 - **Origem:** AT-593 (EP-031).
 
 ### RN-907 — O OpenRouter recebe uma chave de sessão por agente, e a conversa fica presa ao upstream que a atendeu {#rn-907}
@@ -12339,17 +12339,17 @@ acerto de cache caindo. O Brabo agora manda a chave.
    e o efeito se mede em `upstream_provider`, `cached_input_tokens` e `cost_micros`
    (RN-665/666). `provider.order`/`allow_fallbacks` ficam fora (ADR 0221).
 
-- **Código:** `apps/api/src/infrastructure/llm/openrouter-provider.ts:236` (`campoDeSessaoOpenRouter`);
-  `apps/api/src/domain/llm/routing-preference.ts:88` (`chaveDeSessao`);
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:243` (`chaveDeSessao`)
-- **Teste:** `apps/api/test/infrastructure/llm/openrouter-provider.contract.spec.ts` ("chave de sessão (ADR 0221, RN-907)": com capability e chave leva `session_id`; sem chave ou desligada não leva; capability sem hook falha — caso de falha); `apps/api/test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts`; `run-llm-turn.use-case.spec.ts`; smoke `openrouter-provider.sessao.smoke.spec.ts`
+- **Código:** `src/infrastructure/llm/openrouter-provider.ts:236` (`campoDeSessaoOpenRouter`);
+  `src/domain/llm/routing-preference.ts:88` (`chaveDeSessao`);
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:243` (`chaveDeSessao`)
+- **Teste:** `test/infrastructure/llm/openrouter-provider.contract.spec.ts` ("chave de sessão (ADR 0221, RN-907)": com capability e chave leva `session_id`; sem chave ou desligada não leva; capability sem hook falha — caso de falha); `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts`; `run-llm-turn.use-case.spec.ts`; smoke `openrouter-provider.sessao.smoke.spec.ts`
 - **Origem:** AT-580; ADR [0221](../adr/0221-upstream-preso-por-sessao.md)
 
 ### RN-909 — O 9Router é o 10º provider: URL por instalação, credencial obrigatória, preço público de curadoria {#rn-909}
 
 - **Regra:** o provider `9router` fala com um gateway na máquina do dono. A URL base é `NINE_ROUTER_BASE_URL` (padrão `http://host.docker.internal:20128/v1`), lida a cada uso pelo provider e pelo teste de conexão (`GET /models` com a chave). A credencial é obrigatória. As capabilities de provider são `false` (só `listModels`, `streaming` e, desde a [RN-950](#rn-950), `toolCalling`, provado por smoke com chave) até um smoke com chave provar o resto (ADR 0041). O preço dos modelos não é descoberto: entra por curadoria manual e, por decisão do dono, modelo de assinatura registra o preço público da API equivalente, não zero. O provider manda `x-9router-token-saver: off` em toda chamada, para o 9Router não comprimir o `tool_result`.
-- **Onde:** `apps/api/src/infrastructure/llm/nine-router-provider.ts:171` (`nineRouterConfig`)
-- **Teste:** `apps/api/test/infrastructure/llm/nine-router-provider.contract.spec.ts:109` (capabilities, URL do ambiente, cabeçalho, teste de conexão, parse da fixture sintética); smoke manual em `nine-router-provider.smoke.spec.ts`.
+- **Onde:** `src/infrastructure/llm/nine-router-provider.ts:171` (`nineRouterConfig`)
+- **Teste:** `test/infrastructure/llm/nine-router-provider.contract.spec.ts:109` (capabilities, URL do ambiente, cabeçalho, teste de conexão, parse da fixture sintética); smoke manual em `nine-router-provider.smoke.spec.ts`.
 - **Origem:** AT-576a (EP-026), ADR 0222, decisão do dono de 22/10.
 
 ### RN-910 — O teto padrão por área é 5 no dev, 4 no qa e 2 na infra {#rn-910}
@@ -12370,11 +12370,11 @@ propósito se perde.
 - **Só o INSERT usa o valor de catálogo.** Semear de novo não toca a linha
   (RN-094). A coluna continua `default(2)`: esse valor só aparece num INSERT cru,
   fora do caso de uso.
-- **Onde:** `apps/api/src/domain/agents/agent-areas.ts:73` (`maxParallelPadrao`);
-  `apps/api/src/application/use-cases/agents/seed-agent-areas.use-case.ts:53`
-  (`maxParallelAoNascer`); `apps/api/src/infrastructure/persistence/drizzle/agent-area.repository.ts:62`
-  (`nascer`); `apps/api/src/application/use-cases/execution/request-parallelization.use-case.ts:13`
-  (`MAX_PARALLEL_PADRAO`); migração `apps/api/src/db/migrations/0073_paralelismo_padrao_por_area.sql`.
+- **Onde:** `src/domain/agents/agent-areas.ts:73` (`maxParallelPadrao`);
+  `src/application/use-cases/agents/seed-agent-areas.use-case.ts:53`
+  (`maxParallelAoNascer`); `src/infrastructure/persistence/drizzle/agent-area.repository.ts:62`
+  (`nascer`); `src/application/use-cases/execution/request-parallelization.use-case.ts:13`
+  (`MAX_PARALLEL_PADRAO`); migração `src/db/migrations/0073_paralelismo_padrao_por_area.sql`.
 - **Teste:** `test/application/use-cases/iam/create-project-semeia-areas.spec.ts`
   (projeto novo nasce com 5/4/2), `test/infrastructure/persistence/drizzle/agent-area.repository.spec.ts`
   (semear de novo não desfaz o teto alterado), `test/db/paralelismo-padrao-migration.spec.ts`
@@ -12384,8 +12384,8 @@ propósito se perde.
 ### RN-914 — O orçamento de raciocínio é por modelo, só para quem o respeita {#rn-914}
 
 - **Regra:** revisa a [RN-782](#rn-782) ([ADR 0223](../adr/0223-orcamento-de-raciocinio-por-modelo.md)). Modelo com `models.reasoning_budget` preenchido (curado à mão, nunca pelo sync) e `supportsReasoning` manda `reasoning: { max_tokens: N }` e `max_tokens` = saída visível + N ([RN-741](#rn-741)); só no provider que sabe controlar o raciocínio (hoje o OpenRouter) e nunca no agente com raciocínio desligado ([RN-783](#rn-783)). Hoje só `qwen/qwen3.7-flash` (N = 2048), provado em 22/10: 1024 pedidos, 1024 gastos. Modelo sem orçamento segue a RN-782, corpo byte a byte. `deepseek/deepseek-v4.1-flash` fica sem orçamento: `reasoning.max_tokens`, `effort` e `reasoning_effort` foram ignorados (8192 de raciocínio). `effort` nunca é enviado. O limite contém o raciocínio mas não garante a tool call.
-- **Onde:** `apps/api/src/domain/llm/raciocinio-do-agente.ts:18` (`opcoesDeRaciocinio`), `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:640` (`controla`), `apps/api/src/db/schema/llm.ts:159` (`reasoningBudget`), `apps/api/src/db/migrations/0074_orcamento_de_raciocinio.sql`
-- **Teste:** `apps/api/test/infrastructure/llm/openai-compatible-provider.contract.spec.ts` (`modelo com orçamento de raciocínio (RN-914)`), `apps/api/test/domain/llm/raciocinio-do-agente.spec.ts`
+- **Onde:** `src/domain/llm/raciocinio-do-agente.ts:18` (`opcoesDeRaciocinio`), `src/infrastructure/llm/openai-compatible-provider.ts:640` (`controla`), `src/db/schema/llm.ts:159` (`reasoningBudget`), `src/db/migrations/0074_orcamento_de_raciocinio.sql`
+- **Teste:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts` (`modelo com orçamento de raciocínio (RN-914)`), `test/domain/llm/raciocinio-do-agente.spec.ts`
 - **Origem:** AT-569 (medição paga de 22/10, `~/brabo-gravacoes/raciocinio-smoke-2026-10-22/resultados.jsonl`)
 
 ### RN-915 — O raciocínio é contado no stream e abortado no limite; o custo abortado é estimado e depois reconciliado {#rn-915}
@@ -12404,11 +12404,11 @@ Complementa a [RN-914](#rn-914) ([ADR 0224](../adr/0224-raciocinio-abortado-no-s
    24 h; 404 ou erro deixam a linha como está. A estimativa vai para `catalog_cost_micros`.
    O `spentMicros` de budget/área não é corrigido.
 
-- **Código:** `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:391` (`limiteDeRaciocinio`);
-  `apps/api/src/application/use-cases/llm/reconciliar-custo-estimado.use-case.ts:57` (`execute`)
-- **Teste:** `apps/api/test/infrastructure/llm/raciocinio-abortado.spec.ts` (aborta e estima; sem orçamento não conta);
-  `apps/api/test/application/use-cases/llm/reconciliar-custo-estimado.use-case.spec.ts` (200 troca, 404 mantém);
-  `apps/api/test/infrastructure/persistence/token-usage.repository.spec.ts` (troca uma única vez)
+- **Código:** `src/infrastructure/llm/openai-compatible-provider.ts:391` (`limiteDeRaciocinio`);
+  `src/application/use-cases/llm/reconciliar-custo-estimado.use-case.ts:57` (`execute`)
+- **Teste:** `test/infrastructure/llm/raciocinio-abortado.spec.ts` (aborta e estima; sem orçamento não conta);
+  `test/application/use-cases/llm/reconciliar-custo-estimado.use-case.spec.ts` (200 troca, 404 mantém);
+  `test/infrastructure/persistence/token-usage.repository.spec.ts` (troca uma única vez)
 - **Origem:** AT-589; ADR [0224](../adr/0224-raciocinio-abortado-no-stream.md)
 
 ### RN-916 — Resposta cortada pelo raciocínio é retentada UMA vez com o raciocínio desligado {#rn-916}
@@ -12420,9 +12420,9 @@ Revisa a [RN-782](#rn-782) e a [RN-783](#rn-783) (o desligado deixa de ser só d
 3. **Metering.** As DUAS chamadas gravam linha em `token_usage`; a primeira, ao preço/custo que o provider informou (ou a estimativa abortada da RN-915, com reconciliação).
 4. **Não retenta** sem raciocínio pedido, com o raciocínio já desligado (dev agents, RN-783) ou com provider que não sabe desligá-lo (`aceitaRaciocinioDesligado`, hoje só o OpenRouter): ali o desfecho segue o de antes.
 
-- **Código:** `apps/api/src/domain/llm/raciocinio-do-agente.ts:66` (`devoRetentarSemRaciocinio`);
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:359` (`devoRetentarSemRaciocinio`)
-- **Teste:** `apps/api/test/domain/llm/raciocinio-do-agente.spec.ts` (folga, aborto e as recusas); `apps/api/test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` (retenta e grava duas linhas; segunda truncada não tem terceira; truncada com texto não retenta); `apps/api/test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` (idem no stream)
+- **Código:** `src/domain/llm/raciocinio-do-agente.ts:66` (`devoRetentarSemRaciocinio`);
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:359` (`devoRetentarSemRaciocinio`)
+- **Teste:** `test/domain/llm/raciocinio-do-agente.spec.ts` (folga, aborto e as recusas); `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` (retenta e grava duas linhas; segunda truncada não tem terceira; truncada com texto não retenta); `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` (idem no stream)
 - **Origem:** AT-587
 
 ### RN-917 — O OpenRouter recebe um teto de preço por chamada, e sem upstream no teto a chamada repete UMA vez sem ele {#rn-917}
@@ -12434,92 +12434,92 @@ Revisa a [RN-583](#rn-583) (o `sort` deixa de ser o único campo de `provider` q
 3. **Sem upstream no teto.** O 404 de uma chamada que levava teto é o erro `LLMPriceCeilingError` (`code: price_ceiling`), nunca `LLMModelNotFoundError`. Os três caminhos de turno (`run-llm-turn`, `stream-llm-turn`, `send-chat-message`) repetem a chamada UMA vez sem teto, avisam no log e não falham o turno; nunca há terceira por este motivo.
 4. **Metering.** `token_usage.price_ceiling_factor` congela o fator que FOI AO FIO (`null` = nada enviado, inclusive na repetição sem teto), no molde do `routing_preference`.
 
-- **Código:** `apps/api/src/domain/llm/routing-preference.ts:108` (`tetoDePreco`); `apps/api/src/domain/llm/routing-preference.ts:132` (`devoRetentarSemTeto`); `apps/api/src/infrastructure/llm/openrouter-provider.ts:221` (`campoDeTetoDePrecoOpenRouter`); `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:604` (`camposDoHub`); `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:372` (`devoRetentarSemTeto`); `apps/api/src/db/schema/llm.ts:414` (`priceCeilingFactor`)
-- **Teste:** `apps/api/test/domain/llm/routing-preference.spec.ts` (fator, preço 0, só o OpenRouter declara); `apps/api/test/infrastructure/llm/openrouter-provider.contract.spec.ts` (`sort` e teto mesclados no corpo, sem capability nada vai, 404 com teto é `price_ceiling` e sem teto segue `model_not_found`); `apps/api/test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` (repete uma vez sem teto, fator `[1.5, null]` no metering); `apps/api/test/infrastructure/llm/openrouter-provider.teto.smoke.spec.ts` (manual, API real)
+- **Código:** `src/domain/llm/routing-preference.ts:108` (`tetoDePreco`); `src/domain/llm/routing-preference.ts:132` (`devoRetentarSemTeto`); `src/infrastructure/llm/openrouter-provider.ts:221` (`campoDeTetoDePrecoOpenRouter`); `src/infrastructure/llm/openai-compatible-provider.ts:604` (`camposDoHub`); `src/application/use-cases/llm/stream-llm-turn.use-case.ts:372` (`devoRetentarSemTeto`); `src/db/schema/llm.ts:414` (`priceCeilingFactor`)
+- **Teste:** `test/domain/llm/routing-preference.spec.ts` (fator, preço 0, só o OpenRouter declara); `test/infrastructure/llm/openrouter-provider.contract.spec.ts` (`sort` e teto mesclados no corpo, sem capability nada vai, 404 com teto é `price_ceiling` e sem teto segue `model_not_found`); `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` (repete uma vez sem teto, fator `[1.5, null]` no metering); `test/infrastructure/llm/openrouter-provider.teto.smoke.spec.ts` (manual, API real)
 - **Origem:** AT-606; ADR [0225](../adr/0225-teto-de-preco-do-upstream-no-openrouter.md)
 
 ### RN-921 — O botão "Retomar" do fio é gesto humano, sem teto, e só vale para o turno interrompido {#rn-921}
 
 - **Regra:** o `agent.error` com `reason: turno_interrompido_por_reinicio` ganha no fio o cartão `RetomarTurnoInterrompido` (objetivo e passos do último plano, "Parou em", botão). O clique chama `POST /projects/:projectId/sessions/:sessionId/agents/:agent/resume` (`developer`; 200 `{ok:true}`; 404 sessão alheia; 409 `turno_nao_interrompido` quando o último desfecho do agente não é a interrupção ou há turno em curso; 409 `agente_sem_retomada`), que pede ao engine `POST /internal/sessions/:sessionId/agent/resume`: ele grava `agent.turn_resumed` com `automatica: false` e manda `:retomar_turno_interrompido` à MESMA `TurnoAssincrono`. Sem teto: cada clique é uma retomada. O cartão some quando algo segue o erro, e a retomada automática vira uma linha discreta. O "sem desfecho" do diário NÃO aparece na tela (o evento não o traz).
-- **Onde:** `apps/api/src/interfaces/http/sessions/agent-resume.controller.ts:23` (`AgentResumeController`), `apps/api/src/application/use-cases/sessions/resume-agent-turn.use-case.ts:29` (`execute`), `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:638` (`resume`), `apps/web/src/routes/RetomarTurnoInterrompido.tsx:23` (`ehTurnoInterrompido`)
-- **Teste:** `apps/api/test/interfaces/http/sessions/agent-resume.controller.spec.ts` (feliz, duas recusas 409, 404, papel); `apps/web/src/routes/RetomarTurnoInterrompido.test.tsx`; ExUnit do `agent_command_controller`
+- **Onde:** `src/interfaces/http/sessions/agent-resume.controller.ts:23` (`AgentResumeController`), `src/application/use-cases/sessions/resume-agent-turn.use-case.ts:29` (`execute`), `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:638` (`resume`), `apps/web/src/routes/RetomarTurnoInterrompido.tsx:23` (`ehTurnoInterrompido`)
+- **Teste:** `test/interfaces/http/sessions/agent-resume.controller.spec.ts` (feliz, duas recusas 409, 404, papel); `apps/web/src/routes/RetomarTurnoInterrompido.test.tsx`; ExUnit do `agent_command_controller`
 - **Origem:** AT-582 (EP-031); [ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
 ### RN-926 — A rota de providers com chave devolve só os nomes, e a chave é a do TITULAR {#rn-926}
 
 - **Regra:** `GET workspaces/:workspaceId/llm-providers/credentialed` (`viewer`, o mínimo da leitura de membros, [RN-655](#rn-655)) devolve `{ providers: LLMProviderName[] }` com os providers de LLM em que o TITULAR do workspace (`workspaces.created_by`, a pessoa cuja credencial os agentes gastam, [RN-058](#rn-058)) tem credencial cadastrada. Só nomes, na ordem da lista canônica: nunca segredo, id, data nem `key_id`. `ollama` não tem credencial e nunca aparece; token de git (`github`/`gitlab`) também não. Credencial de outro membro não conta. É a fonte de "tem chave" das telas de providers e do catálogo (AT-607); a tela vem depois.
-- **Onde:** `apps/api/src/application/use-cases/llm/list-credentialed-providers.use-case.ts:20` (`execute`), `apps/api/src/interfaces/http/llm/models.controller.ts:80` (`credentialed`)
-- **Teste:** `apps/api/test/application/use-cases/llm/list-credentialed-providers.use-case.spec.ts:44` (`titular com duas chaves: só os dois nomes`; a chave de outro membro não conta)
+- **Onde:** `src/application/use-cases/llm/list-credentialed-providers.use-case.ts:20` (`execute`), `src/interfaces/http/llm/models.controller.ts:80` (`credentialed`)
+- **Teste:** `test/application/use-cases/llm/list-credentialed-providers.use-case.spec.ts:44` (`titular com duas chaves: só os dois nomes`; a chave de outro membro não conta)
 - **Origem:** AT-607 (EP-026).
 
 ### RN-927 — O runner grava a chave de API de LLM do usuário por `POST /runner/llm-credentials`, só com chave de máquina, sem sobrescrever sem confirmação {#rn-927}
 
 - **Regra:** `POST /runner/llm-credentials` (`@RequirePatAuth()`, `PatAuthGuard`) recebe `{ provider, apiKey, origem, substituir? }` e delega ao mesmo `UpsertUserCredentialUseCase` (envelope com `key_id`, ADR 0158) para o usuário dono da credencial. Rota sem `:projectId`: o guard recusa com 403 credencial amarrada a projeto, e todo PAT é de projeto, então só a chave de dispositivo de MÁQUINA entra (a primeira rota em que ela escreve segredo de usuário). Provider fora de `LLM_PROVIDER_NAMES_COM_CREDENCIAL` é 400; credencial existente do provider sem `substituir: true` é 409 `credencial_existente`, sem tocar a existente. A resposta é `{ provider, substituida }`. O valor nunca vai a log (a auditoria leva provider e `origem`), URL, evento, exceção nem resposta, e a rota não testa a conexão (ADR 0050). Só chave de API é importável; token de login por assinatura não (ADR 0230).
-- **Onde:** `apps/api/src/application/use-cases/llm/import-runner-llm-credential.use-case.ts:22` (`execute`), `apps/api/src/interfaces/http/runner/runner-llm-credentials.controller.ts:33` (`RunnerLlmCredentialsController`)
-- **Teste:** `apps/api/test/application/use-cases/llm/import-runner-llm-credential.use-case.spec.ts` (grava cifrado com `key_id` sem o valor em log/resposta; 409 sem substituir; substituir; provider inválido); 401/403 do guard em `apps/api/test/interfaces/pat-auth.guard.spec.ts`; `route-surface.spec.ts`
+- **Onde:** `src/application/use-cases/llm/import-runner-llm-credential.use-case.ts:22` (`execute`), `src/interfaces/http/runner/runner-llm-credentials.controller.ts:33` (`RunnerLlmCredentialsController`)
+- **Teste:** `test/application/use-cases/llm/import-runner-llm-credential.use-case.spec.ts` (grava cifrado com `key_id` sem o valor em log/resposta; 409 sem substituir; substituir; provider inválido); 401/403 do guard em `test/interfaces/pat-auth.guard.spec.ts`; `route-surface.spec.ts`
 - **Origem:** AT-611 (EP-026), ADR 0230.
 
 ### RN-932 — A rede do container é artefato declarado por humano e só vale no container recriado {#rn-932}
 
 - **Regra:** `artifact.container_network` (`{ ports[{host,container,protocol:'tcp'}], dns[], extraHosts[{name,ip}] }`) é versionado, sem tabela, e o vigente é o de maior `version`. Só um humano `maintainer` o escreve (`PUT /projects/:projectId/container/network`; `GET` é `viewer`), com a MESMA régua do docker-port (host 1024-65535 fora das portas da instalação, até 10 portas sem duplicata, até 3 DNS por IP literal, até 10 hosts com IPv4 e nome fora dos reservados); recusa é 400 `rede_invalida` nomeando o campo. Escrever NÃO é efeito externo. A `container-spec` devolve `ports`, `dns` e `extraHosts` (ou `null`; `runner` sempre `null`, runner depois) e a mudança só vale em container recriado (RN-934). A api não importa o docker-port, então a régua é espelhada e a paridade é provada por teste.
-- **Onde:** `apps/api/src/domain/containers/rede-do-container.ts:86` (`validarRedeDoContainer`), `apps/api/src/interfaces/http/containers/containers.controller.ts:91` (`declarar`), `apps/api/src/application/use-cases/containers/obter-spec-de-container.use-case.ts:135` (`execute`).
-- **Teste:** `apps/api/test/contract/rede-do-container-paridade.spec.ts` (paridade com o docker-port), `apps/api/test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts` (spec devolve a rede; `runner` tudo `null`).
+- **Onde:** `src/domain/containers/rede-do-container.ts:86` (`validarRedeDoContainer`), `src/interfaces/http/containers/containers.controller.ts:91` (`declarar`), `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:135` (`execute`).
+- **Teste:** `test/contract/rede-do-container-paridade.spec.ts` (paridade com o docker-port), `test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts` (spec devolve a rede; `runner` tudo `null`).
 - **Origem:** AT-608 (EP-030), ADR 0228.
 
 ### RN-933 — `run.app` declara o comando do app e só o piloto automático dispensa a aprovação da PR de infra {#rn-933}
 
 - **Regra:** `run` de `open_infra_pr` aceita `app: { command, port }` opcional (comando de até 300 code points, uma linha, sem NUL; porta 1024-65535; `null` equivale a ausente, como no engine) validado na proposta e na execução; sem `app`, tudo é byte a byte o de antes. Com `run.app`, a regra ESPECÍFICA `open_infra_pr: auto_approve` (a semente do aceite) NÃO basta e a decisão vira `require_approval`; só a CURINGA `auto_approve` do agente (piloto automático, RN-603/RN-670) auto-aprova. A `container-spec` devolve `comandoDoApp` do `run.app.command` vigente, ou `null`.
-- **Onde:** `apps/api/src/domain/infra/run-instructions.ts:77` (`recusaDoRun`), `apps/api/src/domain/actions/decide.ts:614` (`comAppDeclarado`), `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:208` (`comAppDeclarado`), `apps/api/src/application/use-cases/containers/obter-spec-de-container.use-case.ts:171` (`comandoDoApp`).
-- **Teste:** `apps/api/test/domain/infra/run-app.spec.ts`, `apps/api/test/domain/actions/decide.spec.ts` (sem app + específica = auto; com app + específica = aprovação; com app + curinga = auto).
+- **Onde:** `src/domain/infra/run-instructions.ts:77` (`recusaDoRun`), `src/domain/actions/decide.ts:614` (`comAppDeclarado`), `src/application/use-cases/actions/propose-action.use-case.ts:208` (`comAppDeclarado`), `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:171` (`comandoDoApp`).
+- **Teste:** `test/domain/infra/run-app.spec.ts`, `test/domain/actions/decide.spec.ts` (sem app + específica = auto; com app + específica = aprovação; com app + curinga = auto).
 - **Origem:** AT-610 (EP-030), ADR 0228.
 
 ### RN-934 — `container_recreate` remove e sobe de novo, no teto absoluto de `container_remove` {#rn-934}
 
 - **Regra:** `container_recreate` (`maintainer`) é `proposed_action` nunca auto-aprovável, nem com a curinga, e "sempre permitir" é recusado na fonte (mesma lista de `container_remove`). A execução faz `remove` e `start` pelo broker passando por `running -> stopped -> removed -> provisioning -> running`; recusa ou indisponibilidade do broker vira `failed` nomeado (se a subida falha, o motivo diz que o container já foi removido). `runner` é recusado nomeando "runner depois". A frase em `aprovacoes.ts` existe e o teste do web reprova tipo sem frase.
-- **Onde:** `apps/api/src/domain/actions/decide.ts:597` (`container_recreate`), `apps/api/src/application/use-cases/actions/execute-container-recreate.use-case.ts:44` (`execute`), `apps/web/src/lib/aprovacoes.ts:117` (`container_recreate`).
-- **Teste:** `apps/api/test/application/use-cases/actions/execute-container-recreate.use-case.spec.ts`, `apps/api/test/domain/actions/decide.spec.ts` (teto), `apps/web/src/lib/aprovacoes.test.ts`.
+- **Onde:** `src/domain/actions/decide.ts:597` (`container_recreate`), `src/application/use-cases/actions/execute-container-recreate.use-case.ts:44` (`execute`), `apps/web/src/lib/aprovacoes.ts:117` (`container_recreate`).
+- **Teste:** `test/application/use-cases/actions/execute-container-recreate.use-case.spec.ts`, `test/domain/actions/decide.spec.ts` (teto), `apps/web/src/lib/aprovacoes.test.ts`.
 - **Origem:** AT-608 (EP-030), ADR 0228.
 
 ### RN-935 — A Infra declara os serviços da instância de QA (`run.qa`), e a api guarda uma instância por tarefa com teto de 1 por projeto {#rn-935}
 
 - **Regra:** `open_infra_pr` aceita `run.qa = { services: [...] }` (opcional, `null` = ausente; até 6 serviços de nome único `[a-z][a-z0-9-]{0,31}`; `image` COM digest `@sha256:<64 hex>`; `env` até 20 variáveis `[A-Z_][A-Z0-9_]*` de uma linha; `tmpfs` até 3 caminhos absolutos; `shared` booleano). A mesma régua vale na proposta (400 `run_invalido`) e na execução, e quem declara é a Infra, não um catálogo do produto (decisão do dono, 29/10). A instância de uma tarefa é uma linha de `project_qa_environments` (`provisioning|running|failed|removed`, único `(projeto, tarefa)`), e um índice parcial único garante no banco UMA ativa por projeto: subir a de outra tarefa com uma ativa é 409 `instancia_de_qa_ocupada`. `runner` é recusado (409 `qa_nao_suporta_runner`, "runner depois"). A chave do container é o `chaveDeQa(taskId)` (8 primeiros `[a-z0-9]` do id, sem hífen), calculada só pela api.
-- **Onde:** `apps/api/src/domain/infra/run-instructions.ts:160` (`recusaDoQa`), `apps/api/src/domain/containers/instancia-de-qa.ts:15` (`chaveDeQa`), `apps/api/src/db/schema/containers.ts:87` (`projectQaEnvironments`), `apps/api/src/application/use-cases/containers/instancia-de-qa.use-case.ts:80` (`start`).
-- **Teste:** `apps/api/test/domain/infra/run-qa.spec.ts`, `apps/api/test/application/use-cases/containers/instancia-de-qa.use-case.spec.ts`.
+- **Onde:** `src/domain/infra/run-instructions.ts:160` (`recusaDoQa`), `src/domain/containers/instancia-de-qa.ts:15` (`chaveDeQa`), `src/db/schema/containers.ts:87` (`projectQaEnvironments`), `src/application/use-cases/containers/instancia-de-qa.use-case.ts:80` (`start`).
+- **Teste:** `test/domain/infra/run-qa.spec.ts`, `test/application/use-cases/containers/instancia-de-qa.use-case.spec.ts`.
 - **Origem:** AT-612 (EP-030), ADR 0229.
 
 ### RN-936 — Subir a instância de QA é a ação `qa_environment_start`, semeada `auto_approve` para o QA; remover é automático e fora do teto do `container_remove` {#rn-936}
 
 - **Regra:** `qa_environment_start` (`developer`, payload `{ taskId }`) é `proposed_action` semeada `auto_approve` para `qa-automacao` na ativação da execução; ao ser auto-aprovada ou aprovada, a api sobe a instância pelo broker (`failed` nomeado se o teto está ocupado, se o projeto é `runner` ou se o broker recusa). A REMOÇÃO não é proposta: `POST /internal/projects/:projectId/qa-environments/:taskId/remove` é idempotente e só alcança o que o broker rotula `brabo.papel=qa`, então não entra no teto absoluto de `container_remove`/`container_recreate`. O `container-exec` aceita `alvo: { qa: true, taskId }` vindo do engine (nunca do modelo) para rodar na instância; sem instância `running` devolve `sucesso: false`. A frase do tipo existe em `aprovacoes.ts` e o teste do web reprova tipo sem frase.
-- **Onde:** `apps/api/src/domain/actions/decide.ts:196` (`qa_environment_start`), `apps/api/src/application/use-cases/actions/execute-qa-environment-start.use-case.ts:25` (`execute`), `apps/api/src/application/use-cases/containers/instancia-de-qa.use-case.ts:120` (`remove`), `apps/web/src/lib/aprovacoes.ts:438` (`qa_environment_start`).
-- **Teste:** `apps/api/test/application/use-cases/containers/instancia-de-qa.use-case.spec.ts`, `apps/api/test/domain/actions/decide.spec.ts`, `apps/web/src/lib/aprovacoes.test.ts`.
+- **Onde:** `src/domain/actions/decide.ts:196` (`qa_environment_start`), `src/application/use-cases/actions/execute-qa-environment-start.use-case.ts:25` (`execute`), `src/application/use-cases/containers/instancia-de-qa.use-case.ts:120` (`remove`), `apps/web/src/lib/aprovacoes.ts:438` (`qa_environment_start`).
+- **Teste:** `test/application/use-cases/containers/instancia-de-qa.use-case.spec.ts`, `test/domain/actions/decide.spec.ts`, `apps/web/src/lib/aprovacoes.test.ts`.
 - **Origem:** AT-612 (EP-030), ADR 0229.
 
 ### RN-937 — A `container-spec` de QA e a limpeza de órfãs {#rn-937}
 
 - **Regra:** `GET /internal/projects/:id/container-spec?papel=qa&task=<ref>` devolve o contexto normal com `comandoDoApp: null`, `ports: null` e `qa: { chave, services }` (os de `run.qa`, `[]` se ausentes). `task` é o id completo OU a chave de 8 (o broker da `dev` manda a chave), resolvido DENTRO do projeto: tarefa inexistente ou de outro projeto é 404, chave ambígua é 409 `tarefa_ambigua`. `POST /internal/qa-environments/sweep` recebe do engine os `taskIdsEmVoo` e remove toda instância ativa ou `failed` fora dessa lista. Lacuna declarada: o broker ainda não tem operação para remover o serviço compartilhado nem a rede `brabo-qa-<wd>`, que ficam até essa operação existir.
-- **Onde:** `apps/api/src/application/use-cases/containers/obter-spec-de-container.use-case.ts:135` (`execute`), `apps/api/src/application/use-cases/containers/instancia-de-qa.use-case.ts:140` (`limparOrfas`), `apps/api/src/interfaces/http/internal/internal-qa-environments.controller.ts:90` (`sweep`).
-- **Teste:** `apps/api/test/application/use-cases/containers/instancia-de-qa.use-case.spec.ts`.
+- **Onde:** `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:135` (`execute`), `src/application/use-cases/containers/instancia-de-qa.use-case.ts:140` (`limparOrfas`), `src/interfaces/http/internal/internal-qa-environments.controller.ts:90` (`sweep`).
+- **Teste:** `test/application/use-cases/containers/instancia-de-qa.use-case.spec.ts`.
 - **Origem:** AT-612 (EP-030), ADR 0229.
 
 ### RN-938 — O `terminal` só vai para a instância de QA quando o ator é o `qa-automacao` e a tarefa é do projeto {#rn-938}
 
 - **Regra:** a api repassa `payload.alvo = { qa: true, taskId }` de uma `proposed_action` `terminal` ao `/internal/actions/execute` do engine SOMENTE se o ator da ação é `qa-automacao` e o `taskId` pertence ao projeto da ação. Em qualquer outro caso (outro agente, `alvo` malformado, tarefa de outro projeto) o `alvo` é descartado com o aviso `terminal.alvo_de_qa_descartado` no log e o comando segue pelo caminho de sempre: nenhum outro agente desvia comando para a instância de QA.
-- **Onde:** `apps/api/src/application/use-cases/actions/execute-terminal-action.use-case.ts:40` (`alvoDeQa`), `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts:166` (`executeTerminalAction`).
-- **Teste:** `apps/api/test/application/use-cases/actions/alvo-de-qa-no-terminal.spec.ts`.
+- **Onde:** `src/application/use-cases/actions/execute-terminal-action.use-case.ts:40` (`alvoDeQa`), `src/infrastructure/http-clients/api-to-engine-client.ts:166` (`executeTerminalAction`).
+- **Teste:** `test/application/use-cases/actions/alvo-de-qa-no-terminal.spec.ts`.
 - **Origem:** AT-612 (EP-030), ADR 0229.
 
 ### RN-942 — O recorte do Jev nunca tira do PO a ferramenta de declarar dúvida {#rn-942}
 
 - **Regra:** estende a [RN-758](#rn-758). O piso do PO ganha `declare_open_question`, porque a regra 3 das obrigações do PO manda declarar a dúvida em vez de inventar ou omitir, e o recorte do Jev ([RN-625](engine.md#rn-625)) a tirava de todo passo depois do primeiro: o PO punha a lacuna na borda da história e nenhuma `artifact.open_question` nascia. Continua valendo que o piso só devolve o que está no catálogo do passo.
-- **Onde:** `apps/api/src/domain/llm/tool-router.ts:315` (`PISO_DO_MENU`).
-- **Teste:** `apps/api/test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts` (PO recortado mantém `declare_open_question`; catálogo sem ela não a ganha).
+- **Onde:** `src/domain/llm/tool-router.ts:315` (`PISO_DO_MENU`).
+- **Teste:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts` (PO recortado mantém `declare_open_question`; catálogo sem ela não a ganha).
 - **Origem:** AT-615 (EP-030).
 
 ### RN-948 — Higiene do entregável: banco SQLite fora do commit, pasta dos comandos dita, rotas do README preservadas {#rn-948}
 
 - **Regra:** estende a [RN-761](#rn-761), a [RN-900](engine.md#rn-900) e as [RN-706](engine.md#rn-706)/[RN-850](engine.md#rn-850). Três partes, sem gate novo. (1) Segunda lista, `ARQUIVOS_DE_DADOS` (`*.db`, `*.db-*`, `*.sqlite`, `*.sqlite-*`, `*.sqlite3`, `*.sqlite3-*`), nas MESMAS três camadas da RN-761: o `.gitignore` base do bootstrap, a exclusão `:(exclude,glob)**/<padrão>` no `git add` do dev agent e um achado próprio do SecOps ("arquivo de dados em tempo de execução commitado", que nomeia o caminho). O teste que cruza as listas da api e do engine cruza as duas. (2) A mensagem de ambiente do agente com módulo diz que `npm`/`pip`/`mix` rodam na pasta do módulo na MESMA chamada, nunca `cd … 2>/dev/null;` (o `cd` falho caía na raiz e deixou um `package-lock.json` vazio), dentro do teto de 1.500 caracteres. (3) O kickoff do dev nomeia o `README.md` da RAIZ, sem repetir a seção em README de pasta, e `write_file` recusa reescrever um README que perde cabeçalho de rota (`### GET /links`) presente no antigo, no molde da RN-900. Declarado: repositório já bootstrapado não ganha o `.gitignore` novo; fixture `.db` intencional fica fora do commit (renomeie para versioná-la); a guarda não cobre escrita pelo `terminal`. Fora desta RN: `expires_at` × `expiresAt`.
-- **Onde:** `apps/api/src/application/use-cases/git/bootstrap-templates.ts:29` (`ARQUIVOS_DE_DADOS`), `apps/engine/lib/engine/actions/diretorios_de_dependencia.ex:37` (`argumentos_do_add`), `apps/engine/lib/engine/gates/secops_agent_server.ex:162` (`dependencias_commitadas`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:178` (`modulo`), `apps/engine/lib/engine/harness/tools/write_file.ex:62` (`recusa_de_secao_perdida`), `apps/engine/lib/engine/dev/dev_agent_server.ex:604` (`initial_message`).
-- **Teste:** `apps/engine/test/engine/actions/diretorios_de_dependencia_test.exs` (lista cruzada com a api, add real que estagia só `src/a.js`, SecOps nomeia o `.db`), `apps/api/test/application/use-cases/git/bootstrap-plan.spec.ts` (os seis padrões no `.gitignore`), `apps/engine/test/engine/harness/ambiente_do_agente_test.exs`, `apps/engine/test/engine/harness/tools/write_file_test.exs`, `apps/engine/test/engine/dev/report_done_instrucao_test.exs`.
+- **Onde:** `src/application/use-cases/git/bootstrap-templates.ts:29` (`ARQUIVOS_DE_DADOS`), `apps/engine/lib/engine/actions/diretorios_de_dependencia.ex:37` (`argumentos_do_add`), `apps/engine/lib/engine/gates/secops_agent_server.ex:162` (`dependencias_commitadas`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:178` (`modulo`), `apps/engine/lib/engine/harness/tools/write_file.ex:62` (`recusa_de_secao_perdida`), `apps/engine/lib/engine/dev/dev_agent_server.ex:604` (`initial_message`).
+- **Teste:** `apps/engine/test/engine/actions/diretorios_de_dependencia_test.exs` (lista cruzada com a api, add real que estagia só `src/a.js`, SecOps nomeia o `.db`), `test/application/use-cases/git/bootstrap-plan.spec.ts` (os seis padrões no `.gitignore`), `apps/engine/test/engine/harness/ambiente_do_agente_test.exs`, `apps/engine/test/engine/harness/tools/write_file_test.exs`, `apps/engine/test/engine/dev/report_done_instrucao_test.exs`.
 - **Origem:** AT-623 (EP-031), entregável `entregavel3` (commits 956fa5c, 8e593b0).
 
 ### RN-949 — Chamada de ferramenta escrita como texto não vira resposta no fio {#rn-949}
@@ -12539,14 +12539,14 @@ Revisa a [RN-583](#rn-583) (o `sort` deixa de ser o único campo de `provider` q
   se parseia nem se executa o XML (RN-040: resgate não é licença). Limite
   declarado: o prefixo legítimo da 1ª tentativa fica na bolha em curso até o
   turno fechar.
-- **Onde:** `apps/api/src/domain/llm/chamada-em-texto.ts:10`
+- **Onde:** `src/domain/llm/chamada-em-texto.ts:10`
   (`marcacaoDeChamadaEmTexto`),
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:347`
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:347`
   (`semChamadaEmTexto`),
-  `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:386`
+  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:386`
   (`semChamadaEmTexto`)
-- **Teste:** `apps/api/test/domain/llm/chamada-em-texto.spec.ts`,
-  `apps/api/test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` e
+- **Teste:** `test/domain/llm/chamada-em-texto.spec.ts`,
+  `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` e
   `stream-llm-turn.use-case.spec.ts` (`chamada escrita como texto`: duas vezes
   falha nomeada com 2 linhas de uso; segunda limpa responde)
 - **Origem:** AT-633 (sessão `2b5161d0`, seq 4: `<invoke name="emit_artifact">`
@@ -12555,8 +12555,8 @@ Revisa a [RN-583](#rn-583) (o `sort` deixa de ser o único campo de `provider` q
 ### RN-950 — O 9Router recebe as ferramentas, o vínculo confere a capability do provider e ferramenta sem capability lança {#rn-950}
 
 - **Regra:** revisa a [RN-909](#rn-909) e completa a [RN-040](#rn-040) com a SEGUNDA camada do ADR 0041. (1) `nineRouterConfig` declara `toolCalling: true`, provado por smoke com chave real em 31/10: 3/3 chamadas em `cc/claude-haiku-5-5` voltaram com `tool_calls` estruturado, 10/10 consistente a temperatura 0 e laço de 3 voltas íntegro. Antes, a capability `false` fazia o `buildBody` descartar `tools` em silêncio e o Criativo escrevia a chamada como XML no fio (AT-637). (2) `assertModelFitsBindingScope` confere também o PROVIDER nos escopos `agent` e `area`: vínculo cujo provider declara `toolCalling: false` é recusado com 422 (`ModelNotFitForAgentScopeError`, causa `provider`), com frase própria. `workspace`, `project` e `session` seguem livres. (3) `buildBody` com ferramentas pedidas e capability `false` LANÇA erro nomeado em vez de descartar. Providers afetados: só o `opencode-zen` tem `toolCalling: false` além do 9Router de antes; vínculos novos de agente/área a ele passam a ser 422 e o chat sem ferramenta segue igual. Vínculo antigo a ele continua gravado e o turno do agente falha nomeado.
-- **Onde:** `apps/api/src/infrastructure/llm/nine-router-provider.ts:171` (`nineRouterConfig`), `apps/api/src/domain/llm/model-capabilities.ts:95` (`assertModelFitsBindingScope`), `apps/api/src/application/use-cases/llm/set-model-binding.use-case.ts:56` (`toolCalling`), `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:633` (`buildBody`)
-- **Teste:** `apps/api/test/domain/llm/model-capabilities.spec.ts` (recusa por provider em `agent`/`area`; escopos livres), `apps/api/test/infrastructure/llm/nine-router-provider.contract.spec.ts` (capability `true`), `apps/api/test/contract/llm-provider.contract.ts` (provider sem capability lança nomeado); smoke manual em `nine-router-provider.smoke.spec.ts`.
+- **Onde:** `src/infrastructure/llm/nine-router-provider.ts:171` (`nineRouterConfig`), `src/domain/llm/model-capabilities.ts:95` (`assertModelFitsBindingScope`), `src/application/use-cases/llm/set-model-binding.use-case.ts:56` (`toolCalling`), `src/infrastructure/llm/openai-compatible-provider.ts:633` (`buildBody`)
+- **Teste:** `test/domain/llm/model-capabilities.spec.ts` (recusa por provider em `agent`/`area`; escopos livres), `test/infrastructure/llm/nine-router-provider.contract.spec.ts` (capability `true`), `test/contract/llm-provider.contract.ts` (provider sem capability lança nomeado); smoke manual em `nine-router-provider.smoke.spec.ts`.
 - **Origem:** AT-637 (EP-026), TP-01 de 31/10 e medição da AT-631.
 
 ### RN-952 — O relatório do owner recorta por projeto e por sessão, e o membro vê o total do projeto sem credencial {#rn-952}
@@ -12566,8 +12566,8 @@ Revisa a [RN-101](#rn-101) (o membro deixa de ver SÓ o próprio consumo) e conv
 1. **Recorte.** `GET workspaces/:workspaceId/spend-report?projectId=` (`owner`) limita o relatório a UM projeto e devolve também `porSessao`. Projeto de outro workspace é 404, igual a inexistente: o filtro nunca vira leitura entre workspaces.
 2. **Membro.** `GET projects/:projectId/spend/team` (`viewer`) devolve o total do projeto e o custo por agente (`porAgente`) e por área do catálogo (`porArea`, `sem-area` quando não há). Nunca provider nem credencial: a rota não tem parâmetro de dimensão e o caso de uso só pede `actor` (ADR [0233](../adr/0233-membro-ve-o-gasto-do-projeto-sem-credencial.md), que revisa o [0063](../adr/0063-duas-audiencias-para-o-mesmo-gasto.md)).
 
-- **Código:** `apps/api/src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:98` (`NotFoundException`); `apps/api/src/application/use-cases/llm/get-project-spend-team.use-case.ts:29` (`GetProjectSpendTeamUseCase`); `apps/api/src/interfaces/http/llm/spend.controller.ts:147` (`getProjectSpendTeam`)
-- **Teste:** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (recorte por projeto com sessão, 404 entre workspaces, membro sem provider); `apps/api/test/interfaces/spend.controller.spec.ts` (papéis das rotas)
+- **Código:** `src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:98` (`NotFoundException`); `src/application/use-cases/llm/get-project-spend-team.use-case.ts:29` (`GetProjectSpendTeamUseCase`); `src/interfaces/http/llm/spend.controller.ts:147` (`getProjectSpendTeam`)
+- **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (recorte por projeto com sessão, 404 entre workspaces, membro sem provider); `test/interfaces/spend.controller.spec.ts` (papéis das rotas)
 - **Origem:** AT-632
 
 ### RN-953 — O não-owner vê o PRÓPRIO consumo no workspace, somado por projeto {#rn-953}
@@ -12576,8 +12576,8 @@ Convive com a [RN-101](#rn-101): o ator vem do token, nunca da rota.
 
 `GET workspaces/:workspaceId/spend/me` (`viewer`) devolve só as linhas do chamador, por projeto e por dia. Escopo de ator: a dimensão `provider` não compila (RN-187), e a rota não tem parâmetro de dimensão.
 
-- **Código:** `apps/api/src/application/use-cases/llm/get-my-workspace-spend.use-case.ts:32` (`GetMyWorkspaceSpendUseCase`); `apps/api/src/interfaces/http/llm/spend.controller.ts:120` (`getMyWorkspaceSpend`)
-- **Teste:** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (soma por projeto, nunca a linha de outro ator)
+- **Código:** `src/application/use-cases/llm/get-my-workspace-spend.use-case.ts:32` (`GetMyWorkspaceSpendUseCase`); `src/interfaces/http/llm/spend.controller.ts:120` (`getMyWorkspaceSpend`)
+- **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (soma por projeto, nunca a linha de outro ator)
 - **Origem:** AT-632
 
 ### RN-954 — A cobrança do modelo é uma marca CURADA, e a assinatura é separada do US$ pago {#rn-954}
@@ -12587,8 +12587,8 @@ Convive com a [RN-665](#rn-665) (custo real do OpenRouter) e o preço congelado 
 1. **Marca.** `models.billing` é `api` (padrão), `subscription` ou `free`, gravada pela curadoria em `PATCH workspaces/:workspaceId/models/:modelId/billing` (`owner`, o nível de `…/pricing`). O sync nunca a toca e a linha de `token_usage` não muda.
 2. **Relatório.** Todo bucket e o total ganham `assinaturaMicros` = soma do custo dos modelos `subscription`, contida em `costMicros`; o pago em US$ é `costMicros − assinaturaMicros`.
 
-- **Código:** `apps/api/src/db/schema/llm.ts:175` (`modelBillingEnum`); `apps/api/src/infrastructure/persistence/drizzle/token-usage.repository.ts:394` (`assinaturaMicros`); `apps/api/src/interfaces/http/llm/models.controller.ts:302` (`updateBilling`)
-- **Teste:** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (assinatura separada do pago)
+- **Código:** `src/db/schema/llm.ts:175` (`modelBillingEnum`); `src/infrastructure/persistence/drizzle/token-usage.repository.ts:394` (`assinaturaMicros`); `src/interfaces/http/llm/models.controller.ts:302` (`updateBilling`)
+- **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (assinatura separada do pago)
 - **Origem:** AT-632
 
 ### RN-958 — O usage do 9Router é corrigido no provider: −2 000 só na 0.5.112, e o cache do topo conta {#rn-958}
@@ -12601,29 +12601,29 @@ Completa a [RN-666](#rn-666) (item 4) para o 9Router. A 0.5.112 SOMA 2 000 a `pr
 4. **Declarado, não remendado.** Em `cc/*` o 9Router descarta `cache_read_input_tokens` ao filtrar o usage no stream, então o cache desse upstream NÃO chega ao Brabo; `cache_creation` não tem coluna; o caminho sem stream não existe na base.
 5. **Hook opcional** `normalizarUsage` em `OpenAICompatibleConfig`: só o 9Router o configura; os demais providers leem o usage como sempre.
 
-- **Código:** `apps/api/src/infrastructure/llm/nine-router-provider.ts:118` (`normalizarUsage9Router`); `:99` (`versaoDo9Router`); `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:188` (`normalizarUsage`)
-- **Teste:** `apps/api/test/infrastructure/llm/nine-router-provider.contract.spec.ts` (versão 0.5.112, outra, 404, lenta, corpo inválido, piso, cache do topo, outros providers sem o hook)
+- **Código:** `src/infrastructure/llm/nine-router-provider.ts:118` (`normalizarUsage9Router`); `:99` (`versaoDo9Router`); `src/infrastructure/llm/openai-compatible-provider.ts:188` (`normalizarUsage`)
+- **Teste:** `test/infrastructure/llm/nine-router-provider.contract.spec.ts` (versão 0.5.112, outra, 404, lenta, corpo inválido, piso, cache do topo, outros providers sem o hook)
 - **Origem:** AT-638
 
 ### RN-959 — O 503 do 9Router que embrulha um 4xx do upstream é classificado pelo status de dentro {#rn-959}
 
 - **Regra:** completa a [RN-864](engine.md#rn-864) e a RN-909. Quando todas as contas do 9Router estão em cooldown por um 4xx do upstream, ele responde 503 com `[<status>]: <msg> (reset after Ns)`. O provider lê o status de dentro: 404 vira `model_not_found`, 401/403 `auth`, 402 `insufficient_credit` (RN-730), 429 `rate_limit`. 5xx de dentro, ausente ou corpo sem `reset after` seguem `upstream` passageiro. A forma do corpo vem da leitura do bundle do 9Router 0.5.112; o smoke com chave a confirma.
-- **Onde:** `apps/api/src/infrastructure/llm/nine-router-provider.ts:153` (`classificarErro9Router`), aplicado por `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:305` (`classificarErroHttp`).
-- **Teste:** `apps/api/test/infrastructure/llm/nine-router-provider.contract.spec.ts` (503 com cada status interno e os três casos que seguem `upstream`); `apps/engine/test/engine/agents/falha_de_turno_test.exs` (`model_not_found` não é passageira).
+- **Onde:** `src/infrastructure/llm/nine-router-provider.ts:153` (`classificarErro9Router`), aplicado por `src/infrastructure/llm/openai-compatible-provider.ts:305` (`classificarErroHttp`).
+- **Teste:** `test/infrastructure/llm/nine-router-provider.contract.spec.ts` (503 com cada status interno e os três casos que seguem `upstream`); `apps/engine/test/engine/agents/falha_de_turno_test.exs` (`model_not_found` não é passageira).
 - **Origem:** AT-639 (EP-026).
 
 ### RN-960 — O `GraphStore` reconecta depois de boot sem Neo4j, e o aviso diz a causa {#rn-960}
 
 - **Regra:** refina o ADR 0099. Boot em que o Neo4j ainda não respondia deixava o driver `null` para a vida do processo. Agora, com config presente, a operação seguinte tenta conectar de novo, no máximo uma vez a cada 30 s; sem config nunca tenta, e `onModuleInit` segue sem lançar. O aviso do `GraphProjector` inclui a causa do erro do driver.
-- **Onde:** `apps/api/src/infrastructure/graph/graph-store.ts:105` (`reconectarSeNecessario`), `apps/api/src/application/graph-projection/graph-projector.ts:106` (`drainOnce`).
-- **Teste:** `apps/api/test/infrastructure/graph/graph-store.spec.ts` ("RN-960"), `apps/api/test/application/graph-projection/graph-projector.spec.ts` ("RN-960").
+- **Onde:** `src/infrastructure/graph/graph-store.ts:105` (`reconectarSeNecessario`), `src/application/graph-projection/graph-projector.ts:106` (`drainOnce`).
+- **Teste:** `test/infrastructure/graph/graph-store.spec.ts` ("RN-960"), `test/application/graph-projection/graph-projector.spec.ts` ("RN-960").
 - **Origem:** AT-642 (EP-030).
 
 ### RN-961 — O aviso de recorte diz que as ferramentas fora dele podem ser pedidas neste passo {#rn-961}
 
 - **Regra:** revisa a [RN-759](#rn-759) (decisão do dono de 31/10, AT-643). O aviso `system` efêmero do passo recortado não diz mais que as ferramentas fora do recorte "voltam nas próximas voltas" nem que ela "volta no seguinte": o recorte é do PASSO, e a RN-759 mandava o agente esperar por um passo que, para o modelo, pode não vir. O texto novo diz a verdade do ADR 0179: as demais seguem disponíveis e podem ser pedidas neste mesmo passo, e o agente não deve concluir que não tem a ferramenta nem encerrar o turno esperando por ela; se precisar de uma delas e responder sem ferramenta, o passo é refeito com o catálogo completo (a repetição da regra 10 do ADR 0179, pelo mecanismo que a fachada já tem). Não muda o piso, a política do Jev nem a montagem do menu: só o texto do aviso.
-- **Onde:** `apps/api/src/domain/llm/tool-router.ts:416` (`avisoDeRecorte`).
-- **Teste:** `apps/api/test/domain/llm/aviso-de-recorte.spec.ts` (fixa o texto novo e reprova o antigo, "voltam nas próximas voltas" e "volta no seguinte").
+- **Onde:** `src/domain/llm/tool-router.ts:416` (`avisoDeRecorte`).
+- **Teste:** `test/domain/llm/aviso-de-recorte.spec.ts` (fixa o texto novo e reprova o antigo, "voltam nas próximas voltas" e "volta no seguinte").
 - **Origem:** AT-643 (EP-030): o `write_file` e o `terminal` saíam do menu do dev no Jev, e o aviso mandava esperar por uma volta que o modelo não tinha como pedir.
 
 ### RN-964 — O preço e a cobrança são curados na tela de Providers, e a edição manual protege o número do sync {#rn-964}
@@ -12635,8 +12635,8 @@ Completa a [RN-044](#rn-044) (o caminho manual passa a marcar `manual_pricing`),
 3. **Preço igual ao vigente segue no-op** (RN-044): não grava marca nova nem linha de auditoria.
 4. **Escopo.** `models` é GLOBAL da instalação: o preço vale para todos os workspaces. A tela diz isso em texto.
 
-- **Código:** `apps/api/src/application/use-cases/llm/update-model-pricing.use-case.ts:51` (`manualPricing`); `apps/api/src/application/use-cases/llm/sync-model-catalog.use-case.ts:286` (`resolverPreco`)
-- **Teste:** `apps/api/test/application/use-cases/llm/update-model-pricing.use-case.spec.ts` (edição manual marca `manualPricing`; origem sync não marca)
+- **Código:** `src/application/use-cases/llm/update-model-pricing.use-case.ts:51` (`manualPricing`); `src/application/use-cases/llm/sync-model-catalog.use-case.ts:286` (`resolverPreco`)
+- **Teste:** `test/application/use-cases/llm/update-model-pricing.use-case.spec.ts` (edição manual marca `manualPricing`; origem sync não marca)
 - **Origem:** AT-634
 
 ### RN-965 — O catálogo sugere o preço do FABRICANTE do modelo e a faixa de cobrança do 9Router, e quem aplica é o humano {#rn-965}
@@ -12648,15 +12648,15 @@ Completa a [RN-964](#rn-964) (curadoria de preço na tela) e a [RN-954](#rn-954)
 3. **Faixa pelo alias do 9Router 0.5.112**, calculada na leitura e sem gravar: `cc`/`cx` → `subscription`; alias `ollama` ou id terminado em `:free`, `/free` ou `-free` → `free`; o resto → `api`. Sem credencial do painel.
 4. **Sugestão, não escrita.** A rota de curadoria devolve `sugestao` por modelo; nada é gravado sozinho (ADR 0042). Quem aplica é o `owner`, pela tela da [RN-964](#rn-964).
 
-- **Código:** `apps/api/src/domain/llm/sugestao-do-catalogo.ts:18` (`sugestaoDoModelo`); `apps/api/src/domain/llm/precos-do-fabricante.ts:96` (`precoDoFabricante`)
-- **Teste:** `apps/api/test/domain/llm/sugestao-do-catalogo.spec.ts` (alias, grátis, assinatura, openrouter sem sugestão, igualdade exata); `apps/api/test/domain/llm/precos-do-fabricante.spec.ts` (id repetido, data futura, preço inválido, link fora do domínio)
+- **Código:** `src/domain/llm/sugestao-do-catalogo.ts:18` (`sugestaoDoModelo`); `src/domain/llm/precos-do-fabricante.ts:96` (`precoDoFabricante`)
+- **Teste:** `test/domain/llm/sugestao-do-catalogo.spec.ts` (alias, grátis, assinatura, openrouter sem sugestão, igualdade exata); `test/domain/llm/precos-do-fabricante.spec.ts` (id repetido, data futura, preço inválido, link fora do domínio)
 - **Origem:** AT-640
 
 ### RN-966 — O 9Router 0.5.112 faz três coisas por trás: `off` desliga RTK/Headroom/Caveman/Ponytail e não o Custom Prompt; o OAuth do Claude redige o raciocínio; e camufla as ferramentas {#rn-966}
 
 - **Regra:** completa a [RN-909](#rn-909) com o que o build 0.5.112 do 9Router faz por trás do gateway, medido no bundle e declarado sem código novo. (1) O cabeçalho `x-9router-token-saver` com valor `off` (sem caixa) desliga, juntos, o RTK, o Headroom, o Caveman e o Ponytail; o Custom Prompt NÃO passa por ele e segue como o painel o deixou. O provider manda o cabeçalho em toda chamada, e o efeito é confirmado pela medição da AT-631 (`ok` sem ele = 1 262 tokens). (2) Para a conta OAuth do Claude (`cc/*`) o 9Router manda `redact-thinking-2026-02-12` em `Anthropic-Beta`: o pensamento volta redigido e sem `reasoning_tokens`, então a contagem de raciocínio do stream ([RN-915](#rn-915)) e a retentativa sem raciocínio ([RN-916](#rn-916)) ficam cegas nesse caminho, e `reasoning_tokens` grava ausente ("não disse", [RN-666](#rn-666)). (3) Com token `sk-ant-oat` o 9Router renomeia as ferramentas, acrescenta cerca de 20 ferramentas falsas do Claude Code e envia cabeçalhos de Claude Code; não há configuração que desligue isso. O Brabo não corrige nem desliga a camuflagem: o risco é o modelo chamar uma ferramenta falsa e os termos de uso, e por isso o TP-01 voltou ao OpenRouter.
-- **Onde:** `apps/api/src/infrastructure/llm/nine-router-provider.ts:38` (`NINE_ROUTER_TOKEN_SAVER_HEADER`), `apps/api/src/infrastructure/llm/nine-router-provider.ts:172` (`nineRouterConfig`)
-- **Teste:** `apps/api/test/infrastructure/llm/nine-router-provider.contract.spec.ts:140` (cabeçalho `off` fixado no contrato). Os efeitos (2) e (3) vivem no bundle do 9Router, não no repositório: não há teste deles, e o smoke com chave é o único que os exercitaria.
+- **Onde:** `src/infrastructure/llm/nine-router-provider.ts:38` (`NINE_ROUTER_TOKEN_SAVER_HEADER`), `src/infrastructure/llm/nine-router-provider.ts:172` (`nineRouterConfig`)
+- **Teste:** `test/infrastructure/llm/nine-router-provider.contract.spec.ts:140` (cabeçalho `off` fixado no contrato). Os efeitos (2) e (3) vivem no bundle do 9Router, não no repositório: não há teste deles, e o smoke com chave é o único que os exercitaria.
 - **Origem:** AT-641 (EP-026), levantamento de 31/10 sobre o 9Router 0.5.112 (`chunks/8895.js`, `chunks/8499.js`, `chunks/2380.js`, `chunks/2598.js`), derivado da AT-631.
 
 ### RN-969 — A ocupação da janela do agente na sessão é o `input_tokens` da última chamada dele, fora o Jev {#rn-969}
@@ -12669,15 +12669,15 @@ Completa a [RN-101](#rn-101) (consumo por agente) sem rota nova: `GET projects/:
 4. **As somas não mudam**, e nenhuma requisição nova nasce (RN-632).
 5. **Onde a tela mostra (decisão do dono, 02/11).** Na topbar da Sessão, ao lado do medidor de orçamento, do agente DESTINATÁRIO do composer: gatilho em porcentagem (`—` com janela nula, nunca 0%) e cartão "N de M tokens na última chamada · modelo". Lê a MESMA `queryKey` `['session-token-usage', …]` de `session-destinatario.ts`, sem poll próprio; sem chamada, sem destinatário ou 403, nada aparece.
 
-- **Código:** `apps/api/src/infrastructure/persistence/drizzle/token-usage.repository.ts:155` (`sumBySessionGroupedByActor`); `apps/web/src/routes/JanelaDoAgente.tsx:12` (`JanelaDoAgente`); `apps/web/src/lib/session-destinatario.ts:223` (o `actorId` é o mesmo id que alimenta as opções do destinatário)
-- **Teste:** `apps/api/test/infrastructure/persistence/token-usage.repository.spec.ts` (lastCall: última chamada, Jev ignorado, janela nula, ator só com Jev); `apps/web/src/routes/SessionTopbar.test.tsx` (porcentagem, janela nula, sem chamada)
+- **Código:** `src/infrastructure/persistence/drizzle/token-usage.repository.ts:155` (`sumBySessionGroupedByActor`); `apps/web/src/routes/JanelaDoAgente.tsx:12` (`JanelaDoAgente`); `apps/web/src/lib/session-destinatario.ts:223` (o `actorId` é o mesmo id que alimenta as opções do destinatário)
+- **Teste:** `test/infrastructure/persistence/token-usage.repository.spec.ts` (lastCall: última chamada, Jev ignorado, janela nula, ator só com Jev); `apps/web/src/routes/SessionTopbar.test.tsx` (porcentagem, janela nula, sem chamada)
 - **Origem:** AT-654
 
 ### RN-983 — O clique numa fonte consultada é gravado em tabela própria e nunca é voto {#rn-983}
 
 - **Regra:** o clique num link do bloco "Consultado neste turno" (RN-982) vira uma linha em `source_clicks`, de escopo de PROJETO como `rag_searches` (RN-479): `projectId`, `sessionId` (anulável), `eventId` (o `agent.response`), `tipo`, `ref`/`searchId`/`chunkId` e o usuário que clicou, congelados sem FK de sessão/evento. NÃO é voto: o único sinal de verdade do RAG segue sendo o `rag_feedback` (RN-480), que esta tabela nunca alimenta, porque clique mede curiosidade. `POST /projects/:projectId/source-clicks` é `viewer` (quem lê pode clicar). Gravar a medição nunca derruba o que ela mede: a falha vira log de origem `infra` e `null` explícito, e o clique navega do mesmo jeito. No web, o clique dispara o POST sem esperar a resposta (um POST por clique, sem poll nem query nova, RN-579); fonte que é só texto não grava.
-- **Onde:** `apps/api/src/application/use-cases/rag/record-source-click.use-case.ts:18` (`execute`), `apps/api/src/db/schema/rag.ts:299` (`sourceClicks`), `apps/api/src/interfaces/http/rag/source-clicks.controller.ts:36` (`registrar`), `apps/web/src/lib/api-client.ts:1456` (`sendSourceClick`).
-- **Teste:** `apps/api/test/application/use-cases/rag/record-source-click.use-case.spec.ts`, `apps/web/src/components/ai-elements/sources.test.tsx` ("RN-983"), `apps/api/test/interfaces/route-surface.spec.ts`.
+- **Onde:** `src/application/use-cases/rag/record-source-click.use-case.ts:18` (`execute`), `src/db/schema/rag.ts:299` (`sourceClicks`), `src/interfaces/http/rag/source-clicks.controller.ts:36` (`registrar`), `apps/web/src/lib/api-client.ts:1456` (`sendSourceClick`).
+- **Teste:** `test/application/use-cases/rag/record-source-click.use-case.spec.ts`, `apps/web/src/components/ai-elements/sources.test.tsx` ("RN-983"), `test/interfaces/route-surface.spec.ts`.
 - **Origem:** AT-716 fatia 4 (EP-031).
 
 ### RN-984 — O acesso rápido por papel só existe com `BRABO_AMBIENTE=local` {#rn-984}
@@ -12693,68 +12693,68 @@ na instalação, garante as contas com senha ALEATÓRIA descartada num workspace
 próprio (a RN-546 fica intacta: não há senha conhecida). Sem nenhum usuário
 na instalação responde 409.
 
-- **Onde:** `apps/api/src/infrastructure/security/ambiente.ts:13`
-  (`acessoRapidoLigado`), `apps/api/src/interfaces/http/acesso-rapido/acesso-rapido.controller.ts:34`
-  (`AcessoRapidoController`), `apps/api/src/application/use-cases/acesso-rapido/acesso-rapido.use-case.ts:27`
+- **Onde:** `src/infrastructure/security/ambiente.ts:13`
+  (`acessoRapidoLigado`), `src/interfaces/http/acesso-rapido/acesso-rapido.controller.ts:34`
+  (`AcessoRapidoController`), `src/application/use-cases/acesso-rapido/acesso-rapido.use-case.ts:27`
   (`AcessoRapidoUseCase`)
-- **Teste:** `apps/api/test/infrastructure/security/ambiente.spec.ts`,
-  `apps/api/test/interfaces/http/acesso-rapido/acesso-rapido.http.spec.ts`,
-  `apps/api/test/application/use-cases/acesso-rapido/acesso-rapido.use-case.spec.ts`,
+- **Teste:** `test/infrastructure/security/ambiente.spec.ts`,
+  `test/interfaces/http/acesso-rapido/acesso-rapido.http.spec.ts`,
+  `test/application/use-cases/acesso-rapido/acesso-rapido.use-case.spec.ts`,
   `scripts/ci/ambiente-nas-actions.spec.ts`, `e2e/testes/autenticacao.spec.ts`
 
 ### RN-986 — O anexo do chat aceita texto/código e imagem, com tipo pelos bytes e tetos {#rn-986}
 
 - **Regra:** `POST /projects/:projectId/sessions/:sessionId/attachments` (`developer`, JSON `{nome, base64}`) guarda o arquivo em `chat_attachments`. O MIME sai dos BYTES, nunca do nome nem do cabeçalho: png, jpeg, gif e webp pela assinatura; texto/código se for UTF-8 válido e sem byte NUL (`text/plain`); o resto é 415. Tetos: 5 MB por imagem e 512 KB por texto, acima disso 413 (rejeita, nunca trunca). Sessão encerrada recusa com o 409 `sessao_encerrada` da RN-581. JSON com base64 em vez de multipart porque 5 MB viram ~6,7 MB e cabem no corpo de 10 MB (`main.ts`), sem parser novo. Sem antivírus, lacuna declarada em `docs/security-surface.md` e no ADR 0246.
-- **Onde:** `apps/api/src/domain/sessions/anexos.ts:32` (`classificarAnexo`), `apps/api/src/application/use-cases/sessions/anexos-do-chat.use-case.ts:37` (`enviar`), `apps/api/src/interfaces/http/sessions/attachments.controller.ts:54` (`enviar`), `apps/api/src/db/schema/sessions.ts:303` (`chatAttachments`).
-- **Teste:** `apps/api/test/application/use-cases/sessions/anexos-do-chat.use-case.spec.ts` ("RN-986"), `apps/api/test/interfaces/route-surface.spec.ts`.
+- **Onde:** `src/domain/sessions/anexos.ts:32` (`classificarAnexo`), `src/application/use-cases/sessions/anexos-do-chat.use-case.ts:37` (`enviar`), `src/interfaces/http/sessions/attachments.controller.ts:54` (`enviar`), `src/db/schema/sessions.ts:303` (`chatAttachments`).
+- **Teste:** `test/application/use-cases/sessions/anexos-do-chat.use-case.spec.ts` ("RN-986"), `test/interfaces/route-surface.spec.ts`.
 - **Origem:** AT-715 fatia 1, lane L1 (EP-031), ADR 0246.
 
 ### RN-987 — O `chat.message` guarda só a referência do anexo, nunca os bytes {#rn-987}
 
 - **Regra:** `POST .../agents/:agent/message` aceita `anexos?: string[]` (ids), no máximo 4, todos da MESMA sessão e do MESMO autor — senão 400. O evento grava `anexos: [{id, nome, mime, tamanho}]`; o log é append-only e não incha com bytes. A mesma lista de referências viaja ao engine em `anexos` (omitida quando vazia). Quem precisa dos bytes (L2, a api na chamada ao provider) os lê pelo `ChatAttachmentRepository`.
-- **Onde:** `apps/api/src/application/use-cases/sessions/anexos-do-chat.use-case.ts:91` (`referencias`), `apps/api/src/application/use-cases/agents/send-agent-message.use-case.ts:67` (`execute`), `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts:210` (`sendAgentMessage`), `apps/api/src/interfaces/http/agents/dto/send-agent-message.dto.ts:34` (`anexos`).
-- **Teste:** `apps/api/test/application/use-cases/sessions/anexos-do-chat.use-case.spec.ts` ("RN-987").
+- **Onde:** `src/application/use-cases/sessions/anexos-do-chat.use-case.ts:91` (`referencias`), `src/application/use-cases/agents/send-agent-message.use-case.ts:67` (`execute`), `src/infrastructure/http-clients/api-to-engine-client.ts:210` (`sendAgentMessage`), `src/interfaces/http/agents/dto/send-agent-message.dto.ts:34` (`anexos`).
+- **Teste:** `test/application/use-cases/sessions/anexos-do-chat.use-case.spec.ts` ("RN-987").
 - **Origem:** AT-715 fatia 1, lane L1 (EP-031), ADR 0246.
 
 ### RN-988 — Todo `viewer` do projeto lê o anexo, escopado a projeto e sessão {#rn-988}
 
 - **Regra:** `GET .../attachments/:attachmentId` (`viewer`) devolve os bytes com o `Content-Type` gravado, `X-Content-Type-Options: nosniff` e `Content-Disposition: attachment` para o que não é imagem. A consulta casa id, projeto E sessão: anexo de outra sessão ou projeto é 404, igual ao inexistente. Quem vê o evento vê o anexo (decisão do dono, 02/11). Os anexos morrem com a sessão (cascade).
-- **Onde:** `apps/api/src/application/use-cases/sessions/anexos-do-chat.use-case.ts:80` (`ler`), `apps/api/src/interfaces/http/sessions/attachments.controller.ts:87` (`ler`).
-- **Teste:** `apps/api/test/application/use-cases/sessions/anexos-do-chat.use-case.spec.ts` ("RN-988"), `apps/api/test/interfaces/route-surface.spec.ts`.
+- **Onde:** `src/application/use-cases/sessions/anexos-do-chat.use-case.ts:80` (`ler`), `src/interfaces/http/sessions/attachments.controller.ts:87` (`ler`).
+- **Teste:** `test/application/use-cases/sessions/anexos-do-chat.use-case.spec.ts` ("RN-988"), `test/interfaces/route-surface.spec.ts`.
 - **Origem:** AT-715 fatia 1, lane L1 (EP-031), ADR 0246.
 
 ### RN-989 — Imagem só vai a modelo com visão provada; sem ela, o agente é avisado {#rn-989}
 
-- **Regra:** o `llm-turn` aceita no `content` de uma mensagem uma lista de partes `{type:'text',text}` e `{type:'anexo',id}` (o engine manda o id, nunca bytes). A api troca o id pelo anexo da MESMA sessão (`ChatAttachmentRepository.find`): imagem vira parte `image` (data URL no formato OpenAI) SÓ quando o provider declara `capabilities.vision` E o modelo tem `supports_vision` — as duas camadas do ADR 0041; `vision` nasce `false` em todos e só vira `true` com smoke real: hoje é `true` SÓ no OpenRouter, PROVADO em 2026-11-03 por `apps/api/test/infrastructure/llm/openrouter-provider.visao.smoke.spec.ts` (AT-715) com `google/gemini-2.5-flash` e um PNG 8x8 vermelho — o modelo respondeu "red". Os outros dez seguem `false`. Sem as duas, a imagem não sai da api e entra no lugar o texto `[imagem <nome> não enviada: o modelo atual não lê imagem]`, que é o aviso ao agente. Anexo de texto vai delimitado (`[anexo: <nome>]` … `[fim do anexo: <nome>]`) com ou sem visão; id que não resolve vira `[anexo <id> indisponível]`. Texto puro continua `string`. Os tokens da imagem entram no metering pelo `usage` do provider (ADR 0188), sem código novo.
-- **Onde:** `apps/api/src/domain/llm/anexos-no-turno.ts:23` (`resolverAnexos`), `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:173` (`resolverAnexos`), `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:186` (`resolverAnexos`).
-- **Teste:** `apps/api/test/domain/llm/anexos-no-turno.spec.ts`, `apps/api/test/infrastructure/llm/openai-compatible-provider.visao.spec.ts`; prova da capability: `apps/api/test/infrastructure/llm/openrouter-provider.visao.smoke.spec.ts` (manual, com credencial).
+- **Regra:** o `llm-turn` aceita no `content` de uma mensagem uma lista de partes `{type:'text',text}` e `{type:'anexo',id}` (o engine manda o id, nunca bytes). A api troca o id pelo anexo da MESMA sessão (`ChatAttachmentRepository.find`): imagem vira parte `image` (data URL no formato OpenAI) SÓ quando o provider declara `capabilities.vision` E o modelo tem `supports_vision` — as duas camadas do ADR 0041; `vision` nasce `false` em todos e só vira `true` com smoke real: hoje é `true` SÓ no OpenRouter, PROVADO em 2026-11-03 por `test/infrastructure/llm/openrouter-provider.visao.smoke.spec.ts` (AT-715) com `google/gemini-2.5-flash` e um PNG 8x8 vermelho — o modelo respondeu "red". Os outros dez seguem `false`. Sem as duas, a imagem não sai da api e entra no lugar o texto `[imagem <nome> não enviada: o modelo atual não lê imagem]`, que é o aviso ao agente. Anexo de texto vai delimitado (`[anexo: <nome>]` … `[fim do anexo: <nome>]`) com ou sem visão; id que não resolve vira `[anexo <id> indisponível]`. Texto puro continua `string`. Os tokens da imagem entram no metering pelo `usage` do provider (ADR 0188), sem código novo.
+- **Onde:** `src/domain/llm/anexos-no-turno.ts:23` (`resolverAnexos`), `src/application/use-cases/llm/run-llm-turn.use-case.ts:173` (`resolverAnexos`), `src/application/use-cases/llm/stream-llm-turn.use-case.ts:186` (`resolverAnexos`).
+- **Teste:** `test/domain/llm/anexos-no-turno.spec.ts`, `test/infrastructure/llm/openai-compatible-provider.visao.spec.ts`; prova da capability: `test/infrastructure/llm/openrouter-provider.visao.smoke.spec.ts` (manual, com credencial).
 - **Origem:** AT-715 fatia 1, lane L2 (EP-031), ADR 0246.
 
 ### RN-991 — Uma mensagem pode ter vários destinatários, e o log diz quais {#rn-991}
 
 - **Regra:** `POST /projects/:projectId/sessions/:sessionId/messages` (`developer`) recebe `destinatarios` (1 a 7) e grava UM `chat.message` com `payload.destinatarios`; a rota de um agente só grava `[agent]`. Cada agente recebe a entrega com o MESMO `mensagemId`, pelo caminho de sempre (turno, fila RN-673, recusa nomeada do engine). Quem o engine recusa vem como `recusada` com `motivo`, sem derrubar os outros; sessão encerrada é 409 `sessao_encerrada` (RN-581). Com o `mensagemId` repartido, `chat.message_delivered` e `chat.message_cancelled` só fecham a cópia do agente a que se referem. Revisa a RN-584/631.
-- **Onde:** `apps/api/src/application/use-cases/agents/send-agent-message.use-case.ts:96` (`executeVarios`), `apps/api/src/interfaces/http/agents/agents.controller.ts:115` (`messages`), `apps/engine/lib/engine/agents/fila_de_mensagens.ex:76` (`pendentes`).
-- **Teste:** `apps/api/test/application/use-cases/agents/send-message-to-agents.use-case.spec.ts`, `apps/engine/test/engine/agents/fila_de_mensagens_test.exs`.
+- **Onde:** `src/application/use-cases/agents/send-agent-message.use-case.ts:96` (`executeVarios`), `src/interfaces/http/agents/agents.controller.ts:115` (`messages`), `apps/engine/lib/engine/agents/fila_de_mensagens.ex:76` (`pendentes`).
+- **Teste:** `test/application/use-cases/agents/send-message-to-agents.use-case.spec.ts`, `apps/engine/test/engine/agents/fila_de_mensagens_test.exs`.
 - **Origem:** AT-717 (EP-031), ADR 0247.
 
 ### RN-993 — O raciocínio do modelo é gravado inteiro fora do `content`, aparece ao vivo e só `developer` ou mais o lê; nunca volta ao modelo {#rn-993}
 
-- **Regra:** o provider devolve o TEXTO do raciocínio como chunk `reasoning` (`delta.reasoning` do OpenRouter, `delta.reasoning_content` do dialeto DeepSeek/vLLM, `thinking_delta` da Anthropic) e nunca no `content`. O `stream-llm-turn` repassa cada pedaço como frame `raciocinio` e o frame `final` leva `raciocinio` com o texto INTEIRO do passo, sem corte; o `llm-turn` sem stream devolve o mesmo campo. A Anthropic recebe `thinking` quando o modelo raciocina e o raciocínio não foi desligado: `adaptive` com `display: "summarized"` e sem `budget_tokens` nos modelos atuais (4.6 em diante e a família 5; o `display` padrão devolveria texto vazio, e o texto que chega é um RESUMO, nunca o bruto), `enabled` com `budget_tokens` nos antigos (`pensamentoAdaptativo`, `apps/api/src/infrastructure/llm/anthropic-provider.ts:406`); `reasoningOff` não manda `thinking`. Os blocos `thinking` assinados voltam em `message.thinkingBlocks` para o engine devolvê-los intactos no turno `assistant` que pediu ferramentas. O engine grava o texto em `agent.response.payload.raciocinio` (lane do engine) e ele não entra na reidratação, no RAG nem no grafo. As leituras de evento da sessão (`GET .../events`, `GET .../events/:eventId` e o evento por id da Anamnese) tiram `payload.raciocinio` de `agent.response` para papel efetivo abaixo de `developer` (`projectRole ?? workspaceRole`, RN-471), por UM filtro de saída. A capability `reasoningText` é `false` em todos os providers até haver smoke com credencial (ADR 0041).
+- **Regra:** o provider devolve o TEXTO do raciocínio como chunk `reasoning` (`delta.reasoning` do OpenRouter, `delta.reasoning_content` do dialeto DeepSeek/vLLM, `thinking_delta` da Anthropic) e nunca no `content`. O `stream-llm-turn` repassa cada pedaço como frame `raciocinio` e o frame `final` leva `raciocinio` com o texto INTEIRO do passo, sem corte; o `llm-turn` sem stream devolve o mesmo campo. A Anthropic recebe `thinking` quando o modelo raciocina e o raciocínio não foi desligado: `adaptive` com `display: "summarized"` e sem `budget_tokens` nos modelos atuais (4.6 em diante e a família 5; o `display` padrão devolveria texto vazio, e o texto que chega é um RESUMO, nunca o bruto), `enabled` com `budget_tokens` nos antigos (`pensamentoAdaptativo`, `src/infrastructure/llm/anthropic-provider.ts:406`); `reasoningOff` não manda `thinking`. Os blocos `thinking` assinados voltam em `message.thinkingBlocks` para o engine devolvê-los intactos no turno `assistant` que pediu ferramentas. O engine grava o texto em `agent.response.payload.raciocinio` (lane do engine) e ele não entra na reidratação, no RAG nem no grafo. As leituras de evento da sessão (`GET .../events`, `GET .../events/:eventId` e o evento por id da Anamnese) tiram `payload.raciocinio` de `agent.response` para papel efetivo abaixo de `developer` (`projectRole ?? workspaceRole`, RN-471), por UM filtro de saída. A capability `reasoningText` é `false` em todos os providers até haver smoke com credencial (ADR 0041).
 - **Capability:** `reasoningText` é `true` só na Anthropic e no OpenRouter, PROVADA com credencial real em 2026-11-03: `anthropic-provider.raciocinio.smoke.spec.ts` (`claude-haiku-5-5` e `claude-sonnet-5-5`, saída 0 nos dois; o texto é o RESUMO do raciocínio, `display: summarized`, nunca o bruto) e `openrouter-provider.raciocinio.smoke.spec.ts` (`deepseek/deepseek-r1-0528`, o `deepseek/deepseek-r1` saiu do OpenRouter e dá 404). Os outros nove providers seguem `false`; ligar outro exige o smoke equivalente com credencial.
-- **Onde:** `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:381` (`textoDoRaciocinio`), `apps/api/src/infrastructure/llm/anthropic-provider.ts:406` (`toThinkingBlocks`), `apps/api/src/domain/sessions/raciocinio-do-evento.ts:16` (`filtrarRaciocinio`), `apps/api/src/interfaces/http/sessions/sessions.controller.ts:260` (`listEvents`), `:333` (`getEvent`), `apps/api/src/application/use-cases/sessions/create-socket-ticket.use-case.ts:69` (`podeVerRaciocinio` no ticket do socket, coluna `session_socket_tickets.pode_ver_raciocinio`, que o engine lê ao consumi-lo, RN-108). Engine (AT-676): o `RaciocinioDoTurno` acumula o raciocínio do turno e `TextoDoTurno.payload_do_turno` o grava como `raciocinio`/`raciocinioTotal` fora do `content`; devolve os `thinkingBlocks` na mensagem `assistant` com `toolCalls` (`apps/engine/lib/engine/agents/raciocinio_do_turno.ex:34` (`anexar_blocos`)); o frame `raciocinio` do stream vira o evento efêmero `agent.reasoning_delta` (`apps/engine/lib/engine/sessions/engine_api_client.ex:1827` (`consume_sse`)); e o `intercept` do canal `session:<id>` só entrega o delta, e só deixa `raciocinio` no `agent.response`, ao socket cujo ticket tem `pode_ver_raciocinio` (`apps/engine/lib/engine_web/channels/session_channel.ex:42` (`handle_out`)). Coluna ausente ou nula conta como falso.
-- **Teste:** `apps/api/test/infrastructure/llm/raciocinio-texto.spec.ts` (os dois campos, `thinking_delta`, adaptive/summarized × enabled por modelo, blocos devolvidos no corpo seguinte, `reasoningText` falso), `apps/api/test/domain/sessions/raciocinio-do-evento.spec.ts` (`viewer` não recebe, `developer`+ recebe), `apps/api/test/application/use-cases/sessions/create-socket-ticket.use-case.spec.ts` (ticket `true` para `developer`, `false` para `viewer`), `apps/api/test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` e `run-llm-turn.use-case.spec.ts` (frame `raciocinio`, `final` com o texto inteiro, `content` intacto); smoke manual `openrouter-provider.raciocinio.smoke.spec.ts`. Engine: `apps/engine/test/engine/agents/raciocinio_do_turno_test.exs` (frame acumula e `final` substitui, payload com `content` intacto, reidratação sem raciocínio, `thinkingBlocks` na 2ª chamada) e `apps/engine/test/engine_web/channels/session_channel_test.exs` (`intercept` com e sem a flag).
+- **Onde:** `src/infrastructure/llm/openai-compatible-provider.ts:381` (`textoDoRaciocinio`), `src/infrastructure/llm/anthropic-provider.ts:406` (`toThinkingBlocks`), `src/domain/sessions/raciocinio-do-evento.ts:16` (`filtrarRaciocinio`), `src/interfaces/http/sessions/sessions.controller.ts:260` (`listEvents`), `:333` (`getEvent`), `src/application/use-cases/sessions/create-socket-ticket.use-case.ts:69` (`podeVerRaciocinio` no ticket do socket, coluna `session_socket_tickets.pode_ver_raciocinio`, que o engine lê ao consumi-lo, RN-108). Engine (AT-676): o `RaciocinioDoTurno` acumula o raciocínio do turno e `TextoDoTurno.payload_do_turno` o grava como `raciocinio`/`raciocinioTotal` fora do `content`; devolve os `thinkingBlocks` na mensagem `assistant` com `toolCalls` (`apps/engine/lib/engine/agents/raciocinio_do_turno.ex:34` (`anexar_blocos`)); o frame `raciocinio` do stream vira o evento efêmero `agent.reasoning_delta` (`apps/engine/lib/engine/sessions/engine_api_client.ex:1827` (`consume_sse`)); e o `intercept` do canal `session:<id>` só entrega o delta, e só deixa `raciocinio` no `agent.response`, ao socket cujo ticket tem `pode_ver_raciocinio` (`apps/engine/lib/engine_web/channels/session_channel.ex:42` (`handle_out`)). Coluna ausente ou nula conta como falso.
+- **Teste:** `test/infrastructure/llm/raciocinio-texto.spec.ts` (os dois campos, `thinking_delta`, adaptive/summarized × enabled por modelo, blocos devolvidos no corpo seguinte, `reasoningText` falso), `test/domain/sessions/raciocinio-do-evento.spec.ts` (`viewer` não recebe, `developer`+ recebe), `test/application/use-cases/sessions/create-socket-ticket.use-case.spec.ts` (ticket `true` para `developer`, `false` para `viewer`), `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` e `run-llm-turn.use-case.spec.ts` (frame `raciocinio`, `final` com o texto inteiro, `content` intacto); smoke manual `openrouter-provider.raciocinio.smoke.spec.ts`. Engine: `apps/engine/test/engine/agents/raciocinio_do_turno_test.exs` (frame acumula e `final` substitui, payload com `content` intacto, reidratação sem raciocínio, `thinkingBlocks` na 2ª chamada) e `apps/engine/test/engine_web/channels/session_channel_test.exs` (`intercept` com e sem a flag).
 - **Origem:** AT-676 (EP-031), lane api; ADR 0249.
 
 ### RN-995 — O catálogo do agente vem do engine e é só leitura: identidade e ferramentas do engine, instrução vigente do banco, sem prompt composto e sem schema, e engine fora do ar é "não sei", nunca "sem ferramentas" {#rn-995}
 
 - **Regra:** `GET /projects/:projectId/agent-catalog` (`viewer`, RN-102) devolve, por agente, a identidade do código, a instrução VIGENTE do projeto (`agent_instructions`, só a versão atual) e as ferramentas (`nome` e `descricao`, o texto em pt-BR que o modelo lê; os outros idiomas caem nele, ADR 0216). A fonte das ferramentas e da identidade é o engine, por `GET /internal/agents/catalog` (service token) — uma fonte só, sem cópia na api. Não expõe `parameters` (o JSON schema), o prompt composto do turno, o template do grafo nem credencial ou modelo. É o catálogo COMPLETO: o recorte por passo do Jev (RN-625) pode mostrar menos ao modelo. Leitura contida (ADR 0060): uma chamada ao engine e uma consulta ao banco, sem parâmetro livre; `conteudo` corta em 8 000 caracteres com `conteudoTotal` (molde da RN-589) e `descricao` em 1 000. Engine fora do ar: `identidade` e `ferramentas` vêm `null` com `motivoSemCatalogo: 'engine_indisponivel'` e as instruções do banco continuam vindo (RN-470). Os dev agents por módulo (`dev-api`) herdam a entrada única `dev-*` do engine. No engine: `GET /internal/agents/catalog` (service token, sem parâmetro) devolve, por agente, a identidade do código e as ferramentas (`nome`, `descricao` até 1 000 caracteres). A fonte é o `tool_specs/0` de cada um dos sete conversacionais e os registros de execução e de gate; nada é copiado. Não devolve `parameters`, o prompt composto nem o template do grafo. É o catálogo COMPLETO: o Jev (RN-625) recorta o menu por passo. Psicólogo e Anamnese ficam fora.
-- **Onde:** `apps/api/src/application/use-cases/agents/get-agent-catalog.use-case.ts:39` (`execute`), `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts:280` (`getAgentCatalog`), `apps/api/src/interfaces/http/agents/agent-catalog.controller.ts:32` (`get`); lado do engine: lane E1 da AT-686 (`Engine.Agents.CatalogoDeFerramentas`); engine: `apps/engine/lib/engine/agents/catalogo_de_ferramentas.ex:38` (`listar`), `apps/engine/lib/engine_web/controllers/agent_catalog_controller.ex:9` (`index`), `apps/engine/lib/engine_web/router.ex:79`, `apps/engine/lib/engine/agents/po_server.ex:824` (`tool_specs`).
-- **Teste:** `apps/api/test/application/use-cases/agents/get-agent-catalog.use-case.spec.ts` (junção, tetos, `dev-*`, engine fora), `apps/api/test/interfaces/route-surface.spec.ts` (a rota e o papel); engine: `apps/engine/test/engine/agents/catalogo_de_ferramentas_test.exs` (bate com cada fonte, teto da descrição, 401 sem token e 200 com).
+- **Onde:** `src/application/use-cases/agents/get-agent-catalog.use-case.ts:39` (`execute`), `src/infrastructure/http-clients/api-to-engine-client.ts:280` (`getAgentCatalog`), `src/interfaces/http/agents/agent-catalog.controller.ts:32` (`get`); lado do engine: lane E1 da AT-686 (`Engine.Agents.CatalogoDeFerramentas`); engine: `apps/engine/lib/engine/agents/catalogo_de_ferramentas.ex:38` (`listar`), `apps/engine/lib/engine_web/controllers/agent_catalog_controller.ex:9` (`index`), `apps/engine/lib/engine_web/router.ex:79`, `apps/engine/lib/engine/agents/po_server.ex:824` (`tool_specs`).
+- **Teste:** `test/application/use-cases/agents/get-agent-catalog.use-case.spec.ts` (junção, tetos, `dev-*`, engine fora), `test/interfaces/route-surface.spec.ts` (a rota e o papel); engine: `apps/engine/test/engine/agents/catalogo_de_ferramentas_test.exs` (bate com cada fonte, teto da descrição, 401 sem token e 200 com).
 - **Origem:** AT-686 (EP-031), lanes A1 (api) e E1 (engine).
 
 ### RN-997 — O catálogo da Anthropic nasce com preço de lista datado e `supportsReasoning` do SDK; preço manual nunca é sobrescrito {#rn-997}
 
 - **Regra:** a `/v1/models` da Anthropic não informa preço, e o modelo sincronizado nascia com preço 0 (gasto de custo zero, sem aviso). O `listModels` devolve o preço da tabela ÚNICA do fabricante da [RN-965](#rn-965) (`precoDoFabricante`, micro-USD por milhão), casando pelo ID e, se não achar, pelo ID sem o sufixo de data (`-AAAAMMDD`); ID fora da tabela segue sem preço ([RN-042](#rn-042)). `supportsReasoning` vem de `capabilities.thinking.supported` do SDK; com `capabilities` nulo vale a família (todo `claude-` que não seja 3.x raciocina). O sync trata o preço como já tratava (RN-044): linha `manual_pricing` vence sempre, e modelo novo COM preço de lista nasce `manual_pricing = false`. O preço congelado no metering não muda. Linha antiga já `manual_pricing = true` (nascida sem preço) segue como está: corrigi-la é a curadoria do `owner`.
-- **Onde:** `apps/api/src/infrastructure/llm/anthropic-provider.ts:415` (`precoDeLista`), `apps/api/src/domain/llm/precos-do-fabricante.ts` (`PRECOS_DO_FABRICANTE`, `precoDoFabricante`), `apps/api/src/application/use-cases/llm/sync-model-catalog.use-case.ts` (`resolverPreco`).
-- **Teste:** `apps/api/test/infrastructure/llm/anthropic-provider.catalogo.spec.ts` (preço com e sem sufixo de data, ID desconhecido sem preço, `supportsReasoning`); `apps/api/test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts` (preço manual não é sobrescrito).
+- **Onde:** `src/infrastructure/llm/anthropic-provider.ts:415` (`precoDeLista`), `src/domain/llm/precos-do-fabricante.ts` (`PRECOS_DO_FABRICANTE`, `precoDoFabricante`), `src/application/use-cases/llm/sync-model-catalog.use-case.ts` (`resolverPreco`).
+- **Teste:** `test/infrastructure/llm/anthropic-provider.catalogo.spec.ts` (preço com e sem sufixo de data, ID desconhecido sem preço, `supportsReasoning`); `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts` (preço manual não é sobrescrito).
 - **Origem:** pedido do dono de 03/11; ADR 0251 (referencia o [0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)).

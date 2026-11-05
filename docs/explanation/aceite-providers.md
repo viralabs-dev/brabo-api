@@ -174,7 +174,7 @@ desta rodada é **US$ 0,00**.
 | 9Router | `nine-router-provider.smoke.spec.ts` | `NINE_ROUTER_TEST_KEY` + `NINE_ROUTER_TEST_MODEL` | sem default (só `free`/`auto:free`) | ❌ pulado | chave ausente no ambiente | — |
 | OpenCode Zen | `opencode-zen-provider.smoke.spec.ts` | `OPENCODE_ZEN_TEST_KEY` | `deepseek-v4.1-flash-free`, `glm-5.3-flash-free` | ❌ recusado | rodou em 29/10/2026: 429 `FreeUsageLimitError` (grátis só no cliente OpenCode) | — |
 
-Os arquivos vivem em `apps/api/test/infrastructure/llm/`. O modelo default é
+Os arquivos vivem em `test/infrastructure/llm/`. O modelo default é
 sobrescrevível por `<PROVIDER>_TEST_MODEL` — útil quando a conta não tem acesso
 ao modelo da coluna.
 

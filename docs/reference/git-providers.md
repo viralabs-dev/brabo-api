@@ -64,10 +64,10 @@ As duas ausências seguem o vocabulário que `getFileContent` já usava — `nul
 não exceção — para a aba Código tratar "não existe" de um jeito só.
 
 **Tetos.** As duas cortam, e avisam por `truncated: true`. Os números moram em
-`apps/api/src/domain/git/git-read-limits.ts` (1000 entradas por nível, 300
+`src/domain/git/git-read-limits.ts` (1000 entradas por nível, 300
 arquivos por diff) e **não** em `packages/shared`, que é 100% tipos — um
 `export const` ali sobrevive ao `tsc` e quebra o boot da api em produção
-(guardado por `apps/api/test/packages-shared-so-tipos.spec.ts`).
+(guardado por `test/packages-shared-so-tipos.spec.ts`).
 
 ### As três operações de fundação (FASE 26b — RN-110/111/112)
 
@@ -218,7 +218,7 @@ usuário se autenticar de novo quando o problema era escopo.
 
 O algoritmo é o Full Jitter, da AWS:
 `sleep = random(0, min(maxDelay, base · 2^attempt))`, com 4 tentativas por
-padrão. `apps/api/src/infrastructure/git/retry.ts`.
+padrão. `src/infrastructure/git/retry.ts`.
 
 A assimetria é a decisão inteira: repetir um `listBranches` que estourou o
 tempo é inofensivo; repetir um `commitFiles` que pode ter passado cria commit
@@ -227,7 +227,7 @@ falhar e deixar um humano olhar.
 
 ## A suíte de contrato
 
-Uma suíte única — `apps/api/test/contract/git-provider.contract.ts` — roda
+Uma suíte única — `test/contract/git-provider.contract.ts` — roda
 contra os **três** providers. É ela que garante que "funciona no Local" não
 vire "funciona só no Local".
 
@@ -237,7 +237,7 @@ declara `false` precisa lançar `GitNotSupportedError`. Declarar errado quebra a
 suíte nos dois sentidos.
 
 Duas guardas acompanham a suíte, em
-`apps/api/test/contract/git-provider-contract-callers.spec.ts`. A primeira
+`test/contract/git-provider-contract-callers.spec.ts`. A primeira
 confere que o cabeçalho da suíte lista exatamente quem a invoca. A segunda é o
 item 33 da FASE 26: **operação do contrato sem consumidor em `src/` reprova o
 CI** — uma operação que os três providers implementam e ninguém chama é peso

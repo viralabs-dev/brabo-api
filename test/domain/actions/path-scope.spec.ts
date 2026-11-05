@@ -1,12 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { parseCommand } from '../../../src/domain/actions/command-matcher';
 import {
   comandoNoEscopo,
   comandoNoEscopoDoContainer,
   cwdNoContainer,
-  PONTO_DE_MONTAGEM_DO_CONTAINER,
   dentroDoEscopo,
   normalizarCaminho,
   tokensDeCaminho,
@@ -248,16 +245,5 @@ describe('comandoNoEscopo com várias raízes', () => {
     expect(
       comandoNoEscopo(parseCommand('cp /work/a /etc/b'), '/work', raizes),
     ).toBe(false);
-  });
-});
-
-describe('PONTO_DE_MONTAGEM_DO_CONTAINER é cópia travada da porta de Docker', () => {
-  it('bate com `PONTO_DE_MONTAGEM` de packages/docker-port', () => {
-    const fonte = readFileSync(
-      join(__dirname, '../../../../../packages/docker-port/src/docker-port.ts'),
-      'utf8',
-    );
-    const casou = /export const PONTO_DE_MONTAGEM = '([^']+)'/.exec(fonte);
-    expect(casou?.[1]).toBe(PONTO_DE_MONTAGEM_DO_CONTAINER);
   });
 });

@@ -19,12 +19,12 @@ import ts from 'typescript';
  * drift silencioso de novo.
  */
 describe('cabeçalho de git-errors.ts × GitProviderContract', () => {
-  const raizDoRepo = join(__dirname, '../../../../..');
+  const raizDoRepo = join(__dirname, '../../..');
 
   const operacoesDoContrato = (): string[] => {
     const fonte = ts.createSourceFile(
       'index.ts',
-      readFileSync(join(raizDoRepo, 'packages/shared/src/index.ts'), 'utf8'),
+      readFileSync(join(raizDoRepo, 'node_modules/@brabo/shared/src/index.ts'), 'utf8'),
       ts.ScriptTarget.ESNext,
       true,
     );
@@ -45,7 +45,7 @@ describe('cabeçalho de git-errors.ts × GitProviderContract', () => {
 
   const contagemNoComentario = (): number => {
     const texto = readFileSync(
-      join(raizDoRepo, 'apps/api/src/domain/git/git-errors.ts'),
+      join(raizDoRepo, 'src/domain/git/git-errors.ts'),
       'utf8',
     );
     const achado =

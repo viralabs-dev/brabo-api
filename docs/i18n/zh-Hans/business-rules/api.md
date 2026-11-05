@@ -48,7 +48,7 @@ stateDiagram-v2
   closed_abnormally --> [*]
 ```
 
-- **位置：** `apps/api/src/domain/sessions/session-state-machine.ts:29`
+- **位置：** `src/domain/sessions/session-state-machine.ts:29`
 - **测试：** `test/domain/sessions/session-state-machine.spec.ts`
 - **边界情况：** `closing` 是**过渡**状态。卡在那里的会话意味着排空已开始但未完成——对此有告警，见[运维手册](../runbook.md)。
 
@@ -56,7 +56,7 @@ stateDiagram-v2
 
 `session_events` 上永远没有 `UPDATE`。`seq` 在每个会话内唯一（`unique(session_id, seq)`）且没有空洞：从 1 开始并连续。
 
-- **位置：** `apps/api/src/db/schema/sessions.ts`（表 `session_events`）
+- **位置：** `src/db/schema/sessions.ts`（表 `session_events`）
 - **测试：** 在恢复时校验——如果
   `count(*) ≠ max(seq) − min(seq) + 1` 或 `min(seq) ≠ 1`，`docker/backup/restore.sh` 会失败
 - **原因：** 正是它让 Psicólogo 的证据可追溯、让备份可校验。需要变化的状态存放在旁边它自己的表里。
@@ -83,7 +83,7 @@ stateDiagram-v2
   failed --> [*]
 ```
 
-- **位置：** `apps/api/src/domain/actions/action-state-machine.ts:36`
+- **位置：** `src/domain/actions/action-state-machine.ts:36`
 - **测试：** `test/domain/actions/action-state-machine.spec.ts`
 - **边界情况：** 已批准并执行的操作变为 `executed`，**而不是**仍然是 `approved`。按 `status = 'approved'` 统计批准数会得到错误的数字——正确的标准是 `decided_by IS NOT
   NULL`。
@@ -92,14 +92,14 @@ stateDiagram-v2
 
 顺序：**(a) IAM → (b) `agent_autonomy` → (c) `permissions.json`**。每个阶段只能**提高**宽松度；沉默的阶段永远不会降低前一个阶段。任何阶段的 `deny` 都立即返回。
 
-- **位置：** `apps/api/src/domain/actions/decide.ts:118`
+- **位置：** `src/domain/actions/decide.ts:118`
 - **测试：** `test/domain/actions/decide.spec.ts`（10 KB——领域中最大的）
 
 ### RN-005 — 每种操作类型的最低角色 {#rn-005}
 
 在任何策略之前是 IAM：每个 `ActionType` 都要求一个最低有效角色。不满足时，`deny` 并给出明确理由。
 
-- **位置：** `apps/api/src/domain/actions/decide.ts:110`（`MIN_ROLE_FOR_ACTION_TYPE`）
+- **位置：** `src/domain/actions/decide.ts:110`（`MIN_ROLE_FOR_ACTION_TYPE`）
 - **测试：** `test/domain/actions/decide.spec.ts`
 
 ### RN-006 — 上限：合并到受保护分支永远不可自动批准 {#rn-006}
@@ -108,7 +108,7 @@ stateDiagram-v2
 
 `rc` 即使在该步骤离开策略（[ADR 0030](../adr/0030-politica-de-branches-mecanizada.md)）且引导程序不再创建它（[RN-029](#rn-029)）之后仍留在列表中。这个列表决定锁**拒绝**什么，而由早期版本引导的仓库仍然有这个分支：保护一个不存在的分支没有代价；取消保护一个存在的分支代价高昂。
 
-- **位置：** `apps/api/src/domain/actions/decide.ts:498`（`isProtectedBranch`，合并锁的上限）+ `protected-branches.ts:4`
+- **位置：** `src/domain/actions/decide.ts:498`（`isProtectedBranch`，合并锁的上限）+ `protected-branches.ts:4`
 - **测试：** `test/domain/actions/decide.spec.ts`
 - **来源：** [ADR 0011](../adr/0011-infra-dev-agents-worktrees-merge-lock.md) §1
 - **注：** **平台上**（GitHub/GitLab）的等效保护在不同提供方之间存在差异，并不是 gate——见
@@ -118,7 +118,7 @@ stateDiagram-v2
 
 修改智能体的指令总是需要人的决定。该功能的价值在于人看到 diff；自动批准就等于智能体在改写自己。
 
-- **位置：** `apps/api/src/domain/actions/decide.ts:168`
+- **位置：** `src/domain/actions/decide.ts:168`
 - **测试：** `test/domain/actions/decide.spec.ts`
 - **来源：** [ADR 0016](../adr/0016-anamnese-proficiencia-patches-instrucao.md) §8
 
@@ -126,7 +126,7 @@ stateDiagram-v2
 
 `permissions.json` 以结构化模式匹配终端命令，命令经过正确的分词——而不是用 `includes()`。
 
-- **位置：** `apps/api/src/domain/actions/command-matcher.ts`
+- **位置：** `src/domain/actions/command-matcher.ts`
 - **测试：** `test/domain/actions/command-matcher.spec.ts`
 
 ---
@@ -149,7 +149,7 @@ stateDiagram-v2
   done --> [*]
 ```
 
-- **位置：** `apps/api/src/domain/backlog/story-state-machine.ts:27`
+- **位置：** `src/domain/backlog/story-state-machine.ts:27`
 - **测试：** `test/domain/backlog/story-state-machine.spec.ts`
 
 ### RN-010 — `draft → ready` 需要四样东西，在领域中校验 {#rn-010}
@@ -163,7 +163,7 @@ stateDiagram-v2
 
 错误会**准确说出缺少什么**，而不是笼统的“无效”。
 
-- **位置：** `apps/api/src/domain/backlog/story-readiness.ts:39`
+- **位置：** `src/domain/backlog/story-readiness.ts:39`
 - **测试：** `test/domain/backlog/story-readiness.spec.ts`
 - **来源：** [ADR 0009](../adr/0009-agente-po-backlog-rastreabilidade.md) §3
 - **原因：** 正是它阻止 PO 把一个含糊的用户故事丢进 dev 队列。
@@ -172,12 +172,12 @@ stateDiagram-v2
 
 规则→用户故事的覆盖是计算出来的，没有用户故事的会显示为**待处理**——是信息，不是失败。
 
-- **位置：** `apps/api/src/domain/backlog/coverage.ts`
+- **位置：** `src/domain/backlog/coverage.ts`
 - **测试：** `test/domain/backlog/coverage.spec.ts`
 
 ### RN-013 — 模块图不能有环 {#rn-013}
 
-- **位置：** `apps/api/src/domain/architecture/module-graph.ts`
+- **位置：** `src/domain/architecture/module-graph.ts`
 - **测试：** `test/domain/architecture/module-graph.spec.ts`
 
 ---
@@ -198,7 +198,7 @@ stateDiagram-v2
   awaiting_user --> [*]: merge is the human's
 ```
 
-- **位置：** `apps/api/src/domain/execution/pr-gate-state-machine.ts:24`
+- **位置：** `src/domain/execution/pr-gate-state-machine.ts:24`
 - **测试：** `test/domain/execution/pr-gate-state-machine.spec.ts`
 - **来源：** [ADR 0013](../adr/0013-gates-qa-secops-pr.md) §1
 - **边界情况：** `awaiting_user` **按设计**是终止状态——系统永远不合并（RN-006）。
@@ -211,7 +211,7 @@ stateDiagram-v2
 [RN-036](engine.md#rn-036)。
 
 - **位置：** `DEFAULT_MAX_GATE_CORRECTIONS = 3`，位于
-  `apps/api/src/application/use-cases/execution/record-gate-verdict.use-case.ts:21`；
+  `src/application/use-cases/execution/record-gate-verdict.use-case.ts:21`；
   在 `activate-execution.use-case.ts:89` 中应用，在 engine 中于
   `qa_lead_server.ex:268` 和 `secops_agent_server.ex:142` 中应用
 - **测试：** `apps/engine/test/engine/gates/qa_automacao_agent_test.exs`
@@ -224,7 +224,7 @@ stateDiagram-v2
 
 一个 `budget` 引用一个项目或一个会话，绝不同时引用两者——由数据库中的 `check` 保证，而不只是代码。
 
-- **位置：** `apps/api/src/db/schema/llm.ts`（`budgets_scope_check`）
+- **位置：** `src/db/schema/llm.ts`（`budgets_scope_check`）
 - **测试：** 约束本身就是保证
 
 ### RN-018 — 预算在 70%、90% 和 100% 时通知，不重复 {#rn-018}
@@ -232,12 +232,12 @@ stateDiagram-v2
 每个阈值**只触发一次**；最后一次通知的阈值持久化在
 `budgets.last_threshold_notified` 中。
 
-- **位置：** `apps/api/src/domain/llm/budget-threshold.ts:1`
+- **位置：** `src/domain/llm/budget-threshold.ts:1`
 - **测试：** `test/domain/llm/budget-threshold.spec.ts`
 
 ### RN-019 — `policy = 'block'` 拒绝调用；`'allow'` 只做记录 {#rn-019}
 
-- **位置：** `apps/api/src/domain/llm/budget-threshold.ts:4`
+- **位置：** `src/domain/llm/budget-threshold.ts:4`
 - **边界情况：** 处于 `allow` 的项目在达到上限时**不会停下**。这是"预算没拦住"最常见的原因——见
   [runbook](../runbook.md)。
 
@@ -245,7 +245,7 @@ stateDiagram-v2
 
 `session > agent > area > project > workspace`。第一个存在的胜出。`area` 在 FASE 23 加入——关于它的位置，以及对已经读过这个级联的人有什么变化，见 [RN-102](#rn-102)。
 
-- **位置：** `apps/api/src/domain/llm/binding-resolver.ts`
+- **位置：** `src/domain/llm/binding-resolver.ts`
 - **测试：** `test/domain/llm/binding-resolver.spec.ts`
 
 ## Psicólogo 与 Anamnese
@@ -254,7 +254,7 @@ stateDiagram-v2
 
 `evidenceEventIds` 必须指向**存在且属于被分析会话**的事件。校验按批次原子进行：一个无效 id 使整批失败。
 
-- **位置：** `apps/api/src/domain/psychologist/hypothesis-evidence.ts`
+- **位置：** `src/domain/psychologist/hypothesis-evidence.ts`
 - **测试：** `test/domain/psychologist/hypothesis-evidence.spec.ts`
 - **来源：** [ADR 0015](../adr/0015-psicologo-real-toolloop-hipoteses-evidencia.md) §3
 
@@ -262,7 +262,7 @@ stateDiagram-v2
 
 `proposed → accepted | dismissed`。对同一假设的两个并发决定：一个胜出，另一个收到冲突——不是 500，也不是沉默。
 
-- **位置：** `apps/api/src/domain/psychologist/hypothesis-lifecycle.ts`
+- **位置：** `src/domain/psychologist/hypothesis-lifecycle.ts`
 - **测试：** `test/domain/psychologist/hypothesis-lifecycle.spec.ts`
 - **来源：** [ADR 0022](../adr/0022-fechamento-4b-psicologo.md) §7
 
@@ -272,14 +272,14 @@ stateDiagram-v2
 `testes`、`seguranca`、`infra`。再加上从
 `module_map` 推导出的技术栈。任何其他东西——“焦虑”、“心理健康”——**没有写入路径**：它是领域中的错误，而不是提示词指令。
 
-- **位置：** `apps/api/src/domain/anamnese/competency-catalog.ts:16`
+- **位置：** `src/domain/anamnese/competency-catalog.ts:16`
 - **测试：** `test/domain/anamnese/competency-catalog.spec.ts`
 - **来源：** [ADR 0016](../adr/0016-anamnese-proficiencia-patches-instrucao.md) §1
 - **原因：** Anamnese 画像的是**技术能力**，而不是人。限制是结构性的，因为提示词指令不是保证。
 
 ### RN-025 — 删除画像就是真正删除，而 opt-out 阻止重新推导 {#rn-025}
 
-- **位置：** `apps/api/src/domain/anamnese/proficiency-profile.entity.ts` +
+- **位置：** `src/domain/anamnese/proficiency-profile.entity.ts` +
   表 `anamnese_opt_outs`
 - **来源：** [ADR 0016](../adr/0016-anamnese-proficiencia-patches-instrucao.md) §2
 
@@ -288,14 +288,14 @@ stateDiagram-v2
 比较针对的是**规范化**后的内容，而不是字面文本：重新缩进同一个补丁不会把它变成新提议。没有去重表——来源是 `actionType =
 instruction_patch` 且 `status = denied` 的 `proposed_action` 自身的历史。
 
-- **位置：** `apps/api/src/domain/instructions/patch-dedup.ts:22`
+- **位置：** `src/domain/instructions/patch-dedup.ts:22`
 - **测试：** `test/domain/instructions/patch-dedup.spec.ts`
 
 ### RN-027 — 指令回滚是**向前**的操作 {#rn-027}
 
 回退会用旧内容创建一个新版本；不删除历史。版本表只追加。
 
-- **位置：** `apps/api/src/domain/instructions/`
+- **位置：** `src/domain/instructions/`
 - **来源：** [ADR 0016](../adr/0016-anamnese-proficiencia-patches-instrucao.md) §4
 
 ---
@@ -309,7 +309,7 @@ instruction_patch` 且 `status = denied` 的 `proposed_action` 自身的历史�
 过去是六个。第六个创建 `rc` 分支，这是
 [ADR 0030](../adr/0030-politica-de-branches-mecanizada.md) 从策略中移除的一级——引导程序继续创建、保护并**在用户的仓库中记录**一个产品早已放弃的阶梯（第一次 dogfooding 的第 3 号发现）。值 `create_rc_branch` 仍保留在 `bootstrap_step` 枚举中：旧行引用了它，而真实发生过的步骤不会从历史中抹去。
 
-- **位置：** `apps/api/src/application/use-cases/git/bootstrap-steps.ts` +
+- **位置：** `src/application/use-cases/git/bootstrap-steps.ts` +
   `domain/git/repo-bootstrap.entity.ts`（`RETIRED_BOOTSTRAP_STEPS`）
 - **测试：** `test/domain/git/repo-bootstrap-status.spec.ts`
 - **来源：** [ADR 0005](../adr/0005-repo-bootstrap-idempotent-steps.md)
@@ -322,7 +322,7 @@ instruction_patch` 且 `status = denied` 的 `proposed_action` 自身的历史�
 
 合法用户也会一并被登出。这是正确的行为，而不是缺陷：在服务器一侧，客户端的重复提交与窃贼的重放是完全相同的。
 
-- **位置：** `apps/api/src/domain/auth/refresh-token.ts:50` +
+- **位置：** `src/domain/auth/refresh-token.ts:50` +
   `application/use-cases/auth/refresh.use-case.ts:98`
 - **测试：** `test/application/use-cases/auth/rotacao-e-reuso.spec.ts`
 - **边界情况：** 出示**已被吊销**家族的 token 的人是下游受害者，而不是新的盗用：记录 `refresh_revoked`，**不**触发第二次级联。没有这个区分，在事件期间合法用户的每个标签页都会产生一次误报。
@@ -335,7 +335,7 @@ Postgres 中 15 分钟的滑动窗口，不用 Redis。每次尝试两个桶，�
 
 桶的键是**规范化后的邮箱**，绝不是用户 id。用 id 的话，桶只有在找到账户之后才会存在，锁定本身就会成为账户存在性的预言机。
 
-- **位置：** `apps/api/src/domain/auth/lockout-policy.ts:97` +
+- **位置：** `src/domain/auth/lockout-policy.ts:97` +
   `infrastructure/persistence/drizzle/drizzle-login-throttle.ts:74`
 - **测试：** `test/application/use-cases/auth/lockout.spec.ts`
 - **边界情况：** 处于锁定期间，尝试**不**被记录。如果被记录，攻击者只要不断尝试就能让受害者的账户永远被锁住——锁定会变成针对它所保护之人的拒绝服务。
@@ -346,7 +346,7 @@ Postgres 中 15 分钟的滑动窗口，不用 Redis。每次尝试两个桶，�
 
 任何不同于统一失败的响应，都只有在一次成功的密码校验**之后**才可能得到。在登录中，不存在的邮箱、错误的密码和被锁定的账户返回相同的 401，耗费相同的时间——没有账户的分支会对照一个用与真实哈希**相同参数**生成的虚拟哈希进行校验。在注册和重置请求中，已知和未知的地址都返回 202。
 
-- **位置：** `apps/api/src/application/use-cases/auth/login.use-case.ts:79` +
+- **位置：** `src/application/use-cases/auth/login.use-case.ts:79` +
   `register.use-case.ts:74`
 - **测试：** `test/application/use-cases/auth/enumeracao.spec.ts`
 - **边界情况：** 按邮箱的锁定检查在 argon2 **之后**运行，而不是之前。提前退出是任何审阅者都会建议的优化，而它恰恰就是泄漏——如果有人引入它，测试会变红。
@@ -360,7 +360,7 @@ Postgres 中 15 分钟的滑动窗口，不用 Redis。每次尝试两个桶，�
 
 通过带 `returning` 的条件 UPDATE 消耗：UPDATE 本身就是防护。零行涵盖不存在、用途不同、已消耗、已作废和已过期——都给出相同的响应。请求新链接会作废之前的链接。完成重置会吊销用户的**所有**会话，并且不签发 token。
 
-- **位置：** `apps/api/src/infrastructure/persistence/drizzle/account-token.repository.ts:76`
+- **位置：** `src/infrastructure/persistence/drizzle/account-token.repository.ts:76`
 - **测试：** `test/application/use-cases/auth/tokens-de-conta.spec.ts`
 - **边界情况：** 两次同时提交不会都通过。竞争是**正常**情形，而不是例外：企业邮件扫描器会打开每封邮件中的每个链接，因此机器人通常在人点击之前就消耗了 token。
 - **原因：** 重置刻意不签发会话——直接通过邮件收到的链接登录，会让攻破邮箱等同于接管账户，而没有第二步。
@@ -375,7 +375,7 @@ refresh token 放在 cookie `brabo_refresh` 中（`httpOnly`、`SameSite=Strict`
 `/auth/refresh` 和 `/auth/logout` 要求 `X-CSRF-Token` 等于 cookie
 `brabo_csrf`，以常数时间比较。
 
-- **位置：** `apps/api/src/interfaces/http/auth/session-cookies.ts:53` +
+- **位置：** `src/interfaces/http/auth/session-cookies.ts:53` +
   `interfaces/http/auth/auth.controller.ts`
 - **测试：** `test/interfaces/session-cookies.spec.ts`
 - **边界情况：** CSRF 失败是 **403**，不是 401。如果是 401，客户端会尝试续期会话并陷入循环——凭据是好的，错的是请求。
@@ -387,7 +387,7 @@ refresh token 放在 cookie `brabo_refresh` 中（`httpOnly`、`SameSite=Strict`
 32 条 `/internal/*` 路由都是 `@ServiceRoute()`：它们位于用户 JWT 之外，也位于速率限制之外。认证的是 `EngineServiceGuard`，以常数时间比较
 `X-Brabo-Service-Token` 与 `BRABO_SERVICE_TOKEN`。同一个秘密在两个方向上都有效，`BRABO_SERVICE_TOKEN_PREVIOUS` 只在校验时被接受，使轮换没有不可用的窗口。
 
-- **位置：** `apps/api/src/interfaces/http/auth/engine-service.guard.ts:44` +
+- **位置：** `src/interfaces/http/auth/engine-service.guard.ts:44` +
   `infrastructure/security/service-token.ts` +
   `apps/engine/lib/engine_web/plugs/verify_service_token.ex`
 - **测试：** `apps/engine/test/engine_web/plugs/verify_service_token_test.exs`、
@@ -402,7 +402,7 @@ refresh token 放在 cookie `brabo_refresh` 中（`httpOnly`、`SameSite=Strict`
 项目仪表板的摘要（"N 个活跃项目 · M 个 agent · 本月花费"）把在当月 `token_usage` 中至少有一行 `actor_kind = 'agent'` 的执行者计为"agent"，汇总 workspace 的所有项目。没有 `actor_kind` 过滤器，发送聊天的 `user` 或记录使用的 `system` 会让计数膨胀——`token_usage` 为任何类型的执行者记录，而不只是 agent。按月截断使用
 `created_at >= date_trunc('month', now())`；只在上个月工作过的 agent 不计入，即使它仍出现在某个会话的名册中。计数自然包括 Fase 8 的区域子专业（`qa-automacao`、`qa-performance-seguranca`、`infra-workflows`）：每个在花费 token 时都有自己的 `actor_id`。
 
-- **位置：** `apps/api/src/infrastructure/persistence/drizzle/token-usage.repository.ts`
+- **位置：** `src/infrastructure/persistence/drizzle/token-usage.repository.ts`
   （`summarizeForWorkspaceThisMonth`）
 - **测试：** `test/application/use-cases/iam/get-workspace-summary.use-case.spec.ts`
 
@@ -428,7 +428,7 @@ engine 的 `ToolCallRecovery` 会挽回模型以散文写出的调用，但它�
 **事实更正，而不是对上文的更正：**"Only `agent` validates" 描述的是 Fase 9a。自 [ADR 0064](../adr/0064-escopo-de-area-na-cascata-e-o-binding-de-agente-global.md) 起，
 `area` 进入*同一*校验——它不是通用回退，区域模型唯一的消费者是该区域的 agent（[RN-102](#rn-102)）——，这就是打开过滤器的界面有*两个*的原因。
 
-- **位置：** `apps/api/src/domain/llm/model-capabilities.ts:38`；
+- **位置：** `src/domain/llm/model-capabilities.ts:38`；
   `apps/web/src/components/ModelPicker.tsx`（过滤器和隐藏现行模型的提示），`apps/web/src/routes/settings/ModelsSection.tsx`、
   `apps/web/src/routes/settings/ModelsSection.tsx`（打开它的界面）
 - **测试：** `test/domain/llm/model-capabilities.spec.ts`、
@@ -446,7 +446,7 @@ engine 的 `ToolCallRecovery` 会挽回模型以散文写出的调用，但它�
 `message_start` 里是必需的。三种响应见
 [docs/reference/llm-providers.md](../reference/llm-providers.md#normalized-divergences)。
 
-- **位置：** `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:167`
+- **位置：** `src/infrastructure/llm/openai-compatible-provider.ts:167`
 - **测试：** `test/contract/llm-provider.contract.ts`（场景
   `sem_usage`，针对三个提供方运行）
 - **来源：** [ADR 0041](../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
@@ -457,7 +457,7 @@ engine 的 `ToolCallRecovery` 会挽回模型以散文写出的调用，但它�
 
 在指标中，没有 hub 时 `upstream_provider` 标签重复提供方本身，因此 `sum by (upstream_provider)` 仍然汇总全部成本。
 
-- **位置：** `apps/api/src/application/use-cases/llm/record-llm-usage.use-case.ts:73`
+- **位置：** `src/application/use-cases/llm/record-llm-usage.use-case.ts:73`
 - **测试：** `test/application/use-cases/llm/record-llm-usage.use-case.spec.ts`
 - **来源：** [ADR 0041](../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
 
@@ -480,9 +480,9 @@ engine 的 `ToolCallRecovery` 会挽回模型以散文写出的调用，但它�
   `supports_tool_calling`。没有这一点，回退会让 agent 落在只能聊天的模型上，悄无声息地违反 [RN-040](#rn-040)；
 - **失败的提供方不会让任何东西变得不可用**：401 是"我不知道那里有什么"，而不是"那里什么都没有"。该提供方被跳过，报告中带有失败的*来源*（`infra` | `modelo`）——绝不是排除法诊断。
 
-- **位置：** `apps/api/src/application/use-cases/llm/sync-model-catalog.use-case.ts:160`,
-  `apps/api/src/domain/llm/binding-resolver.ts:63`,
-  `apps/api/src/domain/llm/model-capabilities.ts:49`
+- **位置：** `src/application/use-cases/llm/sync-model-catalog.use-case.ts:160`,
+  `src/domain/llm/binding-resolver.ts:63`,
+  `src/domain/llm/model-capabilities.ts:49`
 - **测试：** `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts`,
   `test/domain/llm/binding-resolver.spec.ts`,
   `test/application/use-cases/llm/set-model-binding.use-case.spec.ts`
@@ -496,9 +496,9 @@ engine 的 `ToolCallRecovery` 会挽回模型以散文写出的调用，但它�
 
 规则适用于**所有**改变价格的路径，而不只是界面的那条。过去有两种写入会逃过它：目录同步（它通过 `upsert` 改变价格，从未产生领域自 Fase 9c 起就声明的 `sync` 来源）和 `seed.ts`（它在已经 seed 过的数据库上运行——k8s 的 `bootstrap.sh` 中的 `BRABO_FORCE_SEED=1`——因此会悄无声息地修正价格）。两者现在都会审计，seed 复用 `UpdateModelPricingUseCase` 本身。
 
-- **位置：** `apps/api/src/application/use-cases/llm/update-model-pricing.use-case.ts:44`,
-  `apps/api/src/application/use-cases/llm/sync-model-catalog.use-case.ts:213`,
-  `apps/api/src/db/seed.ts:376`
+- **位置：** `src/application/use-cases/llm/update-model-pricing.use-case.ts:44`,
+  `src/application/use-cases/llm/sync-model-catalog.use-case.ts:213`,
+  `src/db/seed.ts:376`
 - **测试：** `test/application/use-cases/llm/update-model-pricing.use-case.spec.ts`,
   `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts`
 - **来源：** [ADR 0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
@@ -522,9 +522,9 @@ engine 的 `ToolCallRecovery` 会挽回模型以散文写出的调用，但它�
 **已知限制：**这里的"保护不一致"是有 × 无，因为契约只暴露这么多（`GitBranch.protected` 是布尔值，而
 [ADR 0028](../adr/0028-protecao-de-branch-divergencia-entre-providers.md) 推迟了规范化的 `ProtectionPolicy`）。*部分*保护的分支被算作"未保护"，可能被覆盖——但只在已批准的计划之内。
 
-- **位置：** `apps/api/src/application/use-cases/git/decide-bootstrap-plan.use-case.ts`,
-  `apps/api/src/application/use-cases/git/bootstrap-plan.ts`,
-  `apps/api/src/application/use-cases/git/bootstrap-steps.ts:112`
+- **位置：** `src/application/use-cases/git/decide-bootstrap-plan.use-case.ts`,
+  `src/application/use-cases/git/bootstrap-plan.ts`,
+  `src/application/use-cases/git/bootstrap-steps.ts:112`
 - **测试：** `test/application/use-cases/git/decide-bootstrap-plan.use-case.spec.ts`,
   `test/application/use-cases/git/bootstrap-plan.spec.ts`
 - **来源：** [ADR 0044](../adr/0044-adocao-de-repositorio-existente.md)
@@ -538,8 +538,8 @@ engine 的 `ToolCallRecovery` 会挽回模型以散文写出的调用，但它�
 
 迁移 `0031` 的回填把所有已存在的都标记为 `created`，并且可以在这一点上盲目：在它之前不存在采纳，因此没有被采纳的行会被错误分类。
 
-- **位置：** `apps/api/src/db/schema/git.ts`, `apps/api/src/db/migrations/0031_special_winter_soldier.sql`,
-  `apps/api/src/domain/git/repo-bootstrap.entity.ts`
+- **位置：** `src/db/schema/git.ts`, `src/db/migrations/0031_special_winter_soldier.sql`,
+  `src/domain/git/repo-bootstrap.entity.ts`
 - **测试：** `test/application/use-cases/git/adopt-repository.use-case.spec.ts`
 - **来源：** [ADR 0044](../adr/0044-adocao-de-repositorio-existente.md)
 
@@ -566,10 +566,10 @@ engine 的 `ToolCallRecovery` 会挽回模型以散文写出的调用，但它�
 
 迁移 `0033` 做的是*有针对性*的回填，而不是盲目的：列以 `manual` 诞生，所有已存在的项目都被移到 `auto`。新的默认值适用于之后来的项目；进行中的项目不能因为一次部署而停止产出。
 
-- **位置：** `apps/api/src/domain/backlog/story-promotion.ts`,
-  `apps/api/src/db/migrations/0033_absurd_domino.sql`,
-  `apps/api/src/application/use-cases/backlog/promote-stories.use-case.ts`,
-  `apps/api/src/application/use-cases/backlog/return-story.use-case.ts`,
+- **位置：** `src/domain/backlog/story-promotion.ts`,
+  `src/db/migrations/0033_absurd_domino.sql`,
+  `src/application/use-cases/backlog/promote-stories.use-case.ts`,
+  `src/application/use-cases/backlog/return-story.use-case.ts`,
   `apps/engine/lib/engine/agents/po_server.ex` (`revision_message/1`)
 - **测试：** `test/domain/backlog/story-promotion.spec.ts`（对称性），
   `test/db/story-promotion-migration.spec.ts`（有针对性的回填），
@@ -588,7 +588,7 @@ engine 的 `ToolCallRecovery` 会挽回模型以散文写出的调用，但它�
 
 出于决定而被排除在外的：仓库 bootstrap 直接向 outbox 发出的 `proposed_action.created`。这些变更已经由同一会话中的 `bootstrap.step_*` 叙述，重复它们会在批准指标中把同一事实计算两次。
 
-- **位置：** `apps/api/src/application/use-cases/actions/propose-action.use-case.ts`,
+- **位置：** `src/application/use-cases/actions/propose-action.use-case.ts`,
   `.../approve-action.use-case.ts`, `.../deny-action.use-case.ts`
 - **测试：** `test/application/use-cases/actions/approve-deny-action.use-case.spec.ts`
   （describe `the decision in the event log`）
@@ -603,8 +603,8 @@ engine 的 `ToolCallRecovery` 会挽回模型以散文写出的调用，但它�
 
 新模型诞生时，标志来自目录，而不是固定的默认值：**有**价格被发现时，`manual_pricing = false`（来源是同步，由它保持该行最新）；**没有**价格被发现时，`true`——这一行在等人输入一个价格，标记它就已经保护了这个数字，免受第一个决定提供价格的目录覆盖。
 
-- **位置：** `apps/api/src/application/use-cases/llm/sync-model-catalog.use-case.ts`
-  （`resolverPreco`），`apps/api/src/db/schema/llm.ts:137`
+- **位置：** `src/application/use-cases/llm/sync-model-catalog.use-case.ts`
+  （`resolverPreco`），`src/db/schema/llm.ts:137`
 - **测试：** `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts`
   (`manually typed price beats a catalog that REPORTS a price`)
 - **来源：** [ADR 0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
@@ -621,9 +621,9 @@ engine 的 `ToolCallRecovery` 会挽回模型以散文写出的调用，但它�
 2. **停用是 `UPDATE`，不是 `DELETE`。** 删除这一行也会删除是谁、在何时作出的决定。读取把两种情况都视为未激活；记录是为审计者而存在的。
 3. **`agent` 和 `session` 范围不检查策展。** 两者都没有 workspace 锚点——agent 的 binding 是按全局 slug 的。检查收到 `null`，只核对可用性，让缺口显式存在，而不是猜一个 workspace。
 
-- **位置：** `apps/api/src/db/schema/llm.ts`（`workspace_models`），
-  `apps/api/src/application/use-cases/llm/set-models-active.use-case.ts`,
-  `apps/api/src/application/use-cases/llm/set-model-binding.use-case.ts`
+- **位置：** `src/db/schema/llm.ts`（`workspace_models`），
+  `src/application/use-cases/llm/set-models-active.use-case.ts`,
+  `src/application/use-cases/llm/set-model-binding.use-case.ts`
   (`workspaceDoEscopo`)
 - **测试：** `test/application/use-cases/llm/set-models-active.use-case.spec.ts`
   (`activating in one workspace does NOT turn on the model in its neighbor`)
@@ -647,8 +647,8 @@ engine 的 `ToolCallRecovery` 会挽回模型以散文写出的调用，但它�
 
 向所有 agent 触发 `:work` 会比缺陷更糟：它无条件领取任务，对处于 `awaiting_gate` 的 agent 而言，意味着丢下 gate 正在扫描的 worktree——而且一次点击就绕过了熔断器。
 
-- **位置：** `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts`,
-  `apps/api/src/infrastructure/persistence/drizzle/session.repository.ts`
+- **位置：** `src/application/use-cases/execution/activate-execution.use-case.ts`,
+  `src/infrastructure/persistence/drizzle/session.repository.ts`
   (`findActiveExecutionSession`),
   `apps/engine/lib/engine_web/controllers/execution_command_controller.ex`
   (`acordar/4`)
@@ -677,7 +677,7 @@ ADR 0038 要求了这项校验，并点名了位置——
 `toAgent` 的地方——但它从未被实现（第一次 dogfooding 的第 12 号发现）。engine 的 `offer_handoff` 把 `to_agent` 作为自由字符串原样传递，因此直到现在都没有任何东西阻止智能体违反层级。
 
 **领域、lead 和成员只有一个来源**，自 FASE 18 起：
-`apps/api/src/domain/agents/agent-areas.ts`。该列表过去在三处（api、web、engine）手写，而测试只比较 api 与 web——engine 悄悄地产生了分歧。现在
+`src/domain/agents/agent-areas.ts`。该列表过去在三处（api、web、engine）手写，而测试只比较 api 与 web——engine 悄悄地产生了分歧。现在
 `apps/web/src/lib/agent-areas.generated.ts` 和
 `apps/engine/lib/engine/agents/areas.ex` 由
 `pnpm --filter api gerar:areas` 生成，测试会使磁盘上过时的内容失败。
@@ -686,9 +686,9 @@ ADR 0038 要求了这项校验，并点名了位置——
 该列表仍是**目录**；`agent_areas` 是每个项目的**状态**
 （RN-094），两者回答不同的问题。
 
-- **位置：** `apps/api/src/domain/agents/agent-areas.ts`
+- **位置：** `src/domain/agents/agent-areas.ts`
   （`assertHandoffTargetAllowed`、`HandoffToSubagentError`）、
-  `apps/api/src/application/use-cases/agents/create-handoff.use-case.ts`
+  `src/application/use-cases/agents/create-handoff.use-case.ts`
 - **测试：** `test/domain/agents/agent-areas.spec.ts`（规则 + 检查派生副本不偏离来源）、
   `test/application/use-cases/agents/create-handoff.use-case.spec.ts`
   （拒绝时没有行也没有事件）
@@ -726,10 +726,10 @@ ADR 0038 要求了这项校验，并点名了位置——
 并以 200 返回结果。唯一的例外是（用户，提供方）没有凭据——404，因为那时没有什么可测试的。
 
 - **位置：**
-  `apps/api/src/application/use-cases/credentials/test-stored-credential.use-case.ts`、
-  `apps/api/src/application/use-cases/llm/upsert-user-credential.use-case.ts`、
-  `apps/api/src/application/use-cases/git/register-git-credential.use-case.ts`、
-  `apps/api/src/application/ports/llm-credential-connection-tester.port.ts`
+  `src/application/use-cases/credentials/test-stored-credential.use-case.ts`、
+  `src/application/use-cases/llm/upsert-user-credential.use-case.ts`、
+  `src/application/use-cases/git/register-git-credential.use-case.ts`、
+  `src/application/ports/llm-credential-connection-tester.port.ts`
   （`supports`）
 - **测试：**
   `test/application/use-cases/credentials/test-stored-credential.use-case.spec.ts`
@@ -754,10 +754,10 @@ ADR 0038 要求了这项校验，并点名了位置——
 **没有声明不等于声明没有**
 （[ADR 0041](../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)）：当提供方沉默时，解析器*省略*该字段，`undefined` 保留本地值。因此界面只把分面用作*正向*过滤器，从不写"不能读图"——这里的 `false` 意味着"提供方没有声明"。
 
-- **位置：** `apps/api/src/infrastructure/llm/openrouter-provider.ts`
+- **位置：** `src/infrastructure/llm/openrouter-provider.ts`
   （`temModalidade`、`parseCatalogoOpenRouter`），
-  `apps/api/src/application/use-cases/llm/sync-model-catalog.use-case.ts`,
-  `apps/api/src/db/schema/llm.ts`（`models`）
+  `src/application/use-cases/llm/sync-model-catalog.use-case.ts`,
+  `src/db/schema/llm.ts`（`models`）
 - **测试：**
   `test/infrastructure/llm/openrouter-provider.contract.spec.ts`
   （`modalidade não declarada OMITE o campo em vez de afirmar false`）；
@@ -780,11 +780,11 @@ ADR 0038 要求了这项校验，并点名了位置——
 
 用途列表**替换**之前的，而不是相加：空列表就是全部取消标记的方式，并且是一个正当的状态——"没有人发表意见"不等于"没用"。
 
-- **位置：** `apps/api/src/domain/llm/model-uses.ts`,
-  `apps/api/src/db/schema/llm.ts`（`workspace_models.uses`），
-  `apps/api/src/infrastructure/persistence/drizzle/workspace-model.repository.ts`
+- **位置：** `src/domain/llm/model-uses.ts`,
+  `src/db/schema/llm.ts`（`workspace_models.uses`），
+  `src/infrastructure/persistence/drizzle/workspace-model.repository.ts`
   （`setUses`），
-  `apps/api/src/application/use-cases/llm/set-model-uses.use-case.ts`
+  `src/application/use-cases/llm/set-model-uses.use-case.ts`
 - **测试：** `test/application/use-cases/llm/set-model-uses.use-case.spec.ts`
   （`marcar uso NÃO liga o modelo — a linha nova nasce inativa`、
   `trocar o uso não desliga o que já estava ligado`、
@@ -802,9 +802,9 @@ LLM 凭据属于一个人（`user_credentials.user_id`），而 agent 不是人�
 人工聊天从未有过这个缺陷：它使用 `actor.id`，那是真正的用户。
 
 - **位置：**
-  `apps/api/src/application/use-cases/llm/resolve-credential-owner.use-case.ts`,
-  `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts`,
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts`
+  `src/application/use-cases/llm/resolve-credential-owner.use-case.ts`,
+  `src/application/use-cases/llm/stream-llm-turn.use-case.ts`,
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts`
 - **测试：** `test/application/use-cases/llm/resolve-credential-owner.use-case.spec.ts`
   （owner 胜过创建项目的人；找到的密钥是他的；不存在的项目是 404 而不是数据库错误）
 - **来源：** FASE 13b 的真实执行
@@ -823,8 +823,8 @@ LLM 凭据属于一个人（`user_credentials.user_id`），而 agent 不是人�
 没有任何秘密穿过：响应包含提供方、token 和成本——绝不包含密钥，即使是加密的也不包含（[ADR 0050](../adr/0050-credencial-sempre-cifrada-verificacao-explicita.md)）。
 
 - **位置：**
-  `apps/api/src/application/use-cases/llm/get-credential-spend.use-case.ts`,
-  `apps/api/src/interfaces/http/llm/budgets.controller.ts`,
+  `src/application/use-cases/llm/get-credential-spend.use-case.ts`,
+  `src/interfaces/http/llm/budgets.controller.ts`,
   `apps/web/src/components/CredentialSpendSection.tsx`
 - **测试：** `test/application/use-cases/llm/get-credential-spend.use-case.spec.ts`
   （按提供方分组；把 agent 与人分开；已移除的密钥带标记保留）；
@@ -839,7 +839,7 @@ LLM 凭据属于一个人（`user_credentials.user_id`），而 agent 不是人�
 
 拒绝通过工具结果回到模型（[RN-061](engine.md#rn-061)）：它读到已经存在一个，就进入 `assign_story_modules`，即其 kickoff 的第 2 步。这就是回合在映射发出时**不**结束的原因——Arquiteto 还有三个步骤（关联故事、提议 ADR、记录张力），在那里结束会扼杀这三步。
 
-- **位置：** `apps/api/src/application/use-cases/architecture/create-module-map.use-case.ts`
+- **位置：** `src/application/use-cases/architecture/create-module-map.use-case.ts`
 - **测试：** `test/application/use-cases/architecture/create-module-map.use-case.spec.ts`
   （`refuses the SECOND map of the same session`；跨会话的版本化在旁边继续得到证明）
 - **来源：** FASE 13b 的真实执行
@@ -864,8 +864,8 @@ vinculadas a módulos com sucesso"*。由于执行会**为每个模块启动一�
 
 [RN-065](#rn-065) 的循环是这一点的症状：Arquiteto 重新发出映射，正是为了试图固定它无法读取的名称。
 
-- **位置：** `apps/api/src/application/use-cases/architecture/assign-story-modules.use-case.ts`,
-  `apps/api/src/application/use-cases/architecture/create-module-map.use-case.ts`,
+- **位置：** `src/application/use-cases/architecture/assign-story-modules.use-case.ts`,
+  `src/application/use-cases/architecture/create-module-map.use-case.ts`,
   `apps/engine/lib/engine/harness/tools/create_module_map.ex`
 - **测试：** `test/application/use-cases/architecture/assign-story-modules.use-case.spec.ts`
   （`the refusal lists the VALID modules`；`with no module_map, it directs
@@ -891,7 +891,7 @@ vinculadas a módulos com sucesso"*。由于执行会**为每个模块启动一�
 
 测试刻意针对*源码*：行为测试一次只能证明一条路径，而这里的缺陷是没有人想到的那条路径。
 
-- **位置：** `apps/api/src/application/use-cases/sessions/create-session.use-case.ts`
+- **位置：** `src/application/use-cases/sessions/create-session.use-case.ts`
   （所有者），`git/provision-repository.use-case.ts`,
   `git/adopt-repository.use-case.ts`,
   `execution/activate-execution.use-case.ts`（调用者）
@@ -914,7 +914,7 @@ vinculadas a módulos com sucesso"*。由于执行会**为每个模块启动一�
 允许列表是缓解，不是解决方案：它是预期命令的列表，而模型会发明命令。结构性的修正——agent *等待*决定，而不是烧掉迭代——见
 [ADR 0052](../adr/0052-dev-agent-espera-aprovacao-no-meio-do-laco.md)。
 
-- **位置：** `apps/api/src/domain/actions/dev-terminal-patterns.ts`，
+- **位置：** `src/domain/actions/dev-terminal-patterns.ts`，
   由 `application/use-cases/execution/activate-execution.use-case.ts` 植入
 - **测试：** `test/domain/actions/dev-terminal-patterns.spec.ts`
   （`allows ls -la`；`a composite command doesn't hitch a ride on the
@@ -931,7 +931,7 @@ script`，`planned` gate 不携带尚未发生之事的证据。
 **最后这一断言是关于*仓库*的，从不在运行时评估。** 注册表分两层校验：`validarRegistro`（内容——`block` 需要 `script`，四个人工 gate 仍是人工的，`active` 需要证据，没有重复 id，没有孤立的 `entrada`）在文件被读取的任何地方都有效，也是 api 的 loader 所调用的；`validarLocalizadores`（目标文件在磁盘上）只有在 checkout 之内才有意义，由真实文件的测试和 `validacao-gates.ts` 的第 2 阶段来要求。
 
 两者过去是同一个函数，这造成了一个生产缺陷，在已安装的 v6.1.0 中测得：`GET /gates` 返回 `500`，`RegistroDeGatesInvalido` 列出全部十一个目标缺失——大约 55 分钟内十二次 5xx，在每个安装中都是如此。生产镜像带有
-`/app/docs/gates.yml`，而 `docs/` 中别无其他；`apps/api/test/`、`scripts/ci/`
+`/app/docs/gates.yml`，而 `docs/` 中别无其他；`test/`、`scripts/ci/`
 和 `.github/` 从不进入镜像。规则没有被放宽——它被移到了问题存在的地方。不要把它放回 loader：在一个没有仓库的进程中，`arquivoExiste` 回答的是另一棵树。
 
 界面掩盖了这一点：[RN-084](#rn-084) 让 `PrGateTimeline` 在路由失败时回落到完整流水线，因此 500 只出现在 api 的日志中。
@@ -944,17 +944,17 @@ script`，`planned` gate 不携带尚未发生之事的证据。
 
 过滤器只能触及 *PAYLOAD*，这是刻意的：接受任意列会打开整个查询。谁晋升了 story（人或 PO）存在于 `actor_kind` 列中，不在声明式词汇之内。
 
-- **位置：** `apps/api/src/domain/gates/gate-registry.ts`
+- **位置：** `src/domain/gates/gate-registry.ts`
   （`validarRegistro` 和 `validarLocalizadores`），登记在
-  `docs/gates.yml`，在 `apps/api/scripts/validacao-gates.ts` 中测量；
+  `docs/gates.yml`，在 `scripts/validacao-gates.ts` 中测量；
   刻意只调用第一个的 loader 是
-  `apps/api/src/infrastructure/gates/gate-registry.loader.ts`
-- **测试：** `apps/api/test/domain/gates/gate-registry.spec.ts`
+  `src/infrastructure/gates/gate-registry.loader.ts`
+- **测试：** `test/domain/gates/gate-registry.spec.ts`
   （`é válido: nenhum problema acumulado`；`todo alvo de prova citado
   existe no repositório`；`validarRegistro ignora o disco: alvo ausente
   não é problema DELE`；`nenhum par (event_types + filtro) se repete
   entre gates`）和
-  `apps/api/test/infrastructure/gates/gate-registry.loader.spec.ts`
+  `test/infrastructure/gates/gate-registry.loader.spec.ts`
   （`carrega o registro real sem exigir os alvos que a imagem não leva`，
   针对按生产镜像目录树重建的根）
 - **来源：** FASE 15a（ADR 0054）；两层划分来自在已安装的 v6.1.0 中测得的
@@ -969,12 +969,12 @@ script`，`planned` gate 不携带尚未发生之事的证据。
 
 反过来也会失败：列表中没有对应 gate 的 id 是一条死规则，指向虚无。
 
-- **位置：** `apps/api/src/domain/gates/gate-registry.ts`
+- **位置：** `src/domain/gates/gate-registry.ts`
   （`GATES_HUMANOS_IMUTAVEIS`）；上限在
-  `apps/api/src/domain/actions/decide.ts`
-- **测试：** `apps/api/test/domain/gates/gate-registry.spec.ts`
+  `src/domain/actions/decide.ts`
+- **测试：** `test/domain/gates/gate-registry.spec.ts`
   （`%s cannot have aprovacao_humana false`）；上限在
-  `apps/api/test/domain/actions/decide.spec.ts`
+  `test/domain/actions/decide.spec.ts`
 - **来源：** FASE 15a（ADR 0054）
 
 ### RN-072 — 没有显式选择时，模型是 Criativo agent 的模型 {#rn-072}
@@ -988,10 +988,10 @@ Criativo agent 始终是项目的入口：第一次对话就是与它进行的�
 这修复的是：workspace 的默认值是全局的，往往是一个小的本地模型。新会话和 dev agent——它们没有自己的 binding——会诞生在它上面，而 [ADR 0020](../adr/0020-destravar-gates-qa-secops.md) 禁止在语义步骤中使用小的本地模型。在一次真实执行中，必须在每个打开的会话中手动更换模型，三个 dev agent 在没有任何人要求的情况下运行在
 `llama3.2:1b` 上。
 
-- **位置：** `apps/api/src/domain/llm/binding-resolver.ts`
+- **位置：** `src/domain/llm/binding-resolver.ts`
   （`herdarModeloDeStart`），应用于
   `application/use-cases/llm/resolve-model-binding.use-case.ts`
-- **测试：** `apps/api/test/domain/llm/binding-resolver.spec.ts`
+- **测试：** `test/domain/llm/binding-resolver.spec.ts`
   （`fills the gap`；`does NOT override %s's explicit choice`）
 - **来源：** 真实执行的发现 B 和 O（FASE 13c，阶段 A）
 
@@ -1017,12 +1017,12 @@ Criativo agent 始终是项目的入口：第一次对话就是与它进行的�
 **刻意不对输入使用正则。** 去掉根目录末尾的斜杠原来是 `.replace(/\/+$/, '')`，CodeQL 指出了多项式 ReDoS
 （`js/polynomial-redos`，HIGH）：该模式迫使引擎尝试每个起始位置并扫描到末尾，退化为 O(n²)。现在是 O(n) 扫描，包括在退化情形下也等价——根目录 `/` 在两者中都变为空字符串，正是这一点让 `startsWith('/')` 对所有绝对路径成立。谁要是把它"简化"回正则，就会重新打开这条警报。
 
-- **位置：** `apps/api/src/domain/actions/path-scope.ts`,
+- **位置：** `src/domain/actions/path-scope.ts`,
   `domain/actions/decide.ts`（范围上限和范围内的 `cd`），
   根目录推导于
   `infrastructure/filesystem/project-workspaces-root.ts`
-- **测试：** `apps/api/test/domain/actions/path-scope.spec.ts` 和
-  `apps/api/test/domain/actions/decide.spec.ts`
+- **测试：** `test/domain/actions/path-scope.spec.ts` 和
+  `test/domain/actions/decide.spec.ts`
   （describe `decide — escopo de caminho`）
 - **来源：** [ADR 0055](../adr/0055-escopo-de-caminho-na-politica-de-terminal.md)，
   发现 U，[backlog](../explanation/backlog.md) 的 Fase F
@@ -1041,10 +1041,10 @@ Criativo agent 始终是项目的入口：第一次对话就是与它进行的�
 
 决定以**用户**为执行者、原始错误放在 payload 中进入事件日志：不带保护继续是他的选择，之后阅读的人需要知道究竟豁免了什么。
 
-- **位置：** `apps/api/src/application/use-cases/git/acknowledge-protection-failure.use-case.ts`,
+- **位置：** `src/application/use-cases/git/acknowledge-protection-failure.use-case.ts`,
   路由在 `interfaces/http/git/git.controller.ts`，按钮在
   `apps/web/src/routes/ProvisioningPage.tsx`
-- **测试：** `apps/api/test/application/use-cases/git/acknowledge-protection-failure.use-case.spec.ts`
+- **测试：** `test/application/use-cases/git/acknowledge-protection-failure.use-case.spec.ts`
   （解锁；带执行者的日志中的决定；以及对先前失败的拒绝）
 - **来源：** 发现 D，[backlog](../explanation/backlog.md) 的 Fase D
 
@@ -1062,10 +1062,10 @@ Criativo agent 始终是项目的入口：第一次对话就是与它进行的�
 responde saudação imediata" 以不同的标题和理由覆盖同一个端点——没有任何机械的东西把它们联系起来，它们继续通过。有测试断言这一点，让界限可见而不是隐含。
 自 [RN-681](#rn-681) 起，这一对会通过 embedding 被*警告*——仍然通过，断言*这个*机制界限的测试依然有效。
 
-- **位置：** `apps/api/src/domain/backlog/story-overlap.ts`,
-  `apps/api/src/application/use-cases/backlog/create-story.use-case.ts`
-- **测试：** `apps/api/test/domain/backlog/story-overlap.spec.ts`,
-  `apps/api/test/application/use-cases/backlog/create-story.use-case.spec.ts`
+- **位置：** `src/domain/backlog/story-overlap.ts`,
+  `src/application/use-cases/backlog/create-story.use-case.ts`
+- **测试：** `test/domain/backlog/story-overlap.spec.ts`,
+  `test/application/use-cases/backlog/create-story.use-case.spec.ts`
 - **来源：** 发现 R，[backlog](../explanation/backlog.md) 的 Fase E
 
 ### RN-082 — 动作的 git 凭据是 workspace *OWNER* 的 {#rn-082}
@@ -1081,9 +1081,9 @@ responde saudação imediata" 以不同的标题和理由覆盖同一个端点�
 
 原则与 RN-058 相同，值得重复，因为正是它防止两条规则随时间分歧：**付账的人为 agent 买单**，这不随点击者而变化。这就是解析器被*复用*而不是重新实现的原因。
 
-- **位置：** `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts`，
+- **位置：** `src/application/use-cases/actions/execute-git-action.use-case.ts`，
   复用 `application/use-cases/llm/resolve-credential-owner.use-case.ts`
-- **测试：** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
+- **测试：** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   （自动批准的 `pr_open`，带 `decidedBy: null`，请求 owner 的凭据）
 - **来源：** 发现 AA，[13b 的真实验证](../explanation/validacao-real.md)
 
@@ -1106,12 +1106,12 @@ responde saudação imediata" 以不同的标题和理由覆盖同一个端点�
 
 改变上限对*之后*的请求有效。已经在等待决定的保持等待：动作在 payload 中带着它被创建时现行的上限，用新上限重新解读它，会改变你读完之后即将决定的东西。
 
-- **位置：** `apps/api/src/domain/execution/paralelismo.ts`（纯规则），
+- **位置：** `src/domain/execution/paralelismo.ts`（纯规则），
   `application/use-cases/execution/request-parallelization.use-case.ts`,
   `application/use-cases/execution/set-area-max-parallel.use-case.ts`，
   在 `interfaces/http/execution/execution.controller.ts` 中暴露，在
   `apps/web/src/routes/settings/ParallelismSection.tsx` 中配置
-- **测试：** `apps/api/test/domain/execution/paralelismo.spec.ts`,
+- **测试：** `test/domain/execution/paralelismo.spec.ts`,
   `test/application/use-cases/execution/request-parallelization.use-case.spec.ts`,
   `test/application/use-cases/execution/set-area-max-parallel.use-case.spec.ts`
   以及 `apps/web/src/routes/ProjectSettingsTab.test.tsx`（`ParallelismSection`）
@@ -1134,7 +1134,7 @@ responde saudação imediata" 以不同的标题和理由覆盖同一个端点�
 - **没有注册表**（路由失败）时，显示完整流水线而不是空白——一条通用流水线比什么都没有提供更多信息。
 
 - **位置：** `apps/web/src/components/PrGateTimeline.tsx`（`etapasDaEsteira`），
-  读取 `GET /gates`（`apps/api/src/interfaces/http/gates/gates.controller.ts`）
+  读取 `GET /gates`（`src/interfaces/http/gates/gates.controller.ts`）
 - **测试：** `apps/web/src/components/PrGateTimeline.test.ts`
   （`gate que SAI do registro some da tela`、`gate de PR que a tela ainda não
   sabe desenhar é IGNORADO`、`sem registro, mostra a esteira completa`）
@@ -1160,12 +1160,12 @@ responde saudação imediata" 以不同的标题和理由覆盖同一个端点�
 
 批准应用的是 **payload** 中的值，而不是当时重新计算的值——那是你在作决定时读到的数字。
 
-- **位置：** `apps/api/src/domain/actions/decide.ts`（上限），
+- **位置：** `src/domain/actions/decide.ts`（上限），
   `application/use-cases/execution/propose-max-parallel.use-case.ts`,
   `execute-max-parallel-raise.use-case.ts`,
   `apps/engine/lib/engine/anamnese/tools/propose_max_parallel.ex`，阈值在
   `apps/engine/lib/engine/workers/anamnese_worker.ex`（`nota_de_paralelismo/1`）
-- **测试：** `apps/api/test/domain/actions/decide.spec.ts`
+- **测试：** `test/domain/actions/decide.spec.ts`
   （`decide — teto do paralelismo`），
   `test/application/use-cases/execution/propose-max-parallel.use-case.spec.ts`,
   `execute-max-parallel-raise.use-case.spec.ts`,
@@ -1197,14 +1197,14 @@ responde saudação imediata" 以不同的标题和理由覆盖同一个端点�
 `deriveAgentRoster` 的文本一直说的是“曾经打开过”。
 
 - **位置：**
-  `apps/api/src/application/ports/projects-summary-repository.port.ts`、
-  `apps/api/src/infrastructure/persistence/drizzle/projects-summary.repository.ts`、
-  `apps/api/src/interfaces/http/iam/workspaces.controller.ts`
+  `src/application/ports/projects-summary-repository.port.ts`、
+  `src/infrastructure/persistence/drizzle/projects-summary.repository.ts`、
+  `src/interfaces/http/iam/workspaces.controller.ts`
   （`getProjectsSummary`）、`apps/web/src/lib/hooks.ts`（`useProjectsSummary`）、
   `apps/web/src/lib/agent-status.ts`（`rosterFromFacts`）、
   `apps/web/src/routes/Dashboard.tsx`、`apps/web/src/routes/Shell.tsx`
 - **测试：** `apps/web/src/routes/Dashboard.fanout.test.tsx`（30 个项目的花费与 3 个相同；不调用任何按项目的端点）；
-  `apps/api/test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
   （数据库查询次数不随 N 增长）；
   `apps/web/src/lib/agent-status.test.ts`（api 的事实产生与事件日志相同的标签）
 - **来源：** 在浏览器中测量的 23 个项目的仪表盘——之前 3,824 req/min，之后 12
@@ -1235,15 +1235,15 @@ responde saudação imediata" 以不同的标题和理由覆盖同一个端点�
 指向其他工作区项目的游标会被**忽略**，而不是拒绝：它来自调用方的本地存储，可能是旧工作区的残留。
 
 - **位置：**
-  `apps/api/src/application/ports/projects-summary-repository.port.ts`
+  `src/application/ports/projects-summary-repository.port.ts`
   （`unreadEventsForWorkspace`）、
-  `apps/api/src/infrastructure/persistence/drizzle/projects-summary.repository.ts`、
-  `apps/api/src/interfaces/http/iam/workspaces.controller.ts`
-  （`getUnreadEvents`）、`apps/api/src/interfaces/http/iam/dto/unread-events.dto.ts`、
+  `src/infrastructure/persistence/drizzle/projects-summary.repository.ts`、
+  `src/interfaces/http/iam/workspaces.controller.ts`
+  （`getUnreadEvents`）、`src/interfaces/http/iam/dto/unread-events.dto.ts`、
   `apps/web/src/lib/notifications.ts`（`useNotificationGroups`）、
   `apps/web/src/lib/api-client.ts`（`getUnreadEvents`）
 - **测试：** `apps/web/src/routes/Dashboard.fanout.test.tsx`（抽屉**打开**时：一次请求，30 个项目的花费与 3 个相同）；
-  `apps/api/test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
   （数据库查询次数不随 N 增长；空映射、按项目分界、按项目上限和工作区隔离）
 - **来源：** [RN-090](#rn-090) 测得的残余——在 23 个项目的工作区中抽屉打开时 286 req/min
 
@@ -1260,9 +1260,9 @@ responde saudação imediata" 以不同的标题和理由覆盖同一个端点�
 
 正常路径不变——每个真实 id 都是来自数据库的 UUID。
 
-- **位置：** `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
+- **位置：** `src/infrastructure/filesystem/project-workspaces-root.ts`
   (`projectScopeRoot`)
-- **测试：** `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+- **测试：** `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
 - **来源：** [ADR 0058](../adr/0058-csp-fechado-na-api-e-escopo-de-projeto-contido.md)，
   CodeQL 的 `js/path-injection` 警报
 
@@ -1276,9 +1276,9 @@ responde saudação imediata" 以不同的标题和理由覆盖同一个端点�
 
 解析位于唯一的函数中，而不是每个调用者中，理由与 [RN-092](#rn-092) 相同——原来是同一字面量的两份副本，而副本会分歧。在这里分歧的话，回调会拒绝所有合法的 `state`。
 
-- **位置：** `apps/api/src/infrastructure/security/oauth-state-secret.ts`
-  （`resolveOauthStateSecret`），在 `apps/api/src/main.ts` 启动时调用
-- **测试：** `apps/api/test/infrastructure/security/oauth-state-secret.spec.ts`
+- **位置：** `src/infrastructure/security/oauth-state-secret.ts`
+  （`resolveOauthStateSecret`），在 `src/main.ts` 启动时调用
+- **测试：** `test/infrastructure/security/oauth-state-secret.spec.ts`
 - **来源：** [ADR 0059](../adr/0059-segredo-do-state-de-oauth-sem-default.md)
 
 ### RN-094 — agent 区域与项目一同诞生 {#rn-094}
@@ -1295,11 +1295,11 @@ responde saudação imediata" 以不同的标题和理由覆盖同一个端点�
 CONFLICT DO NOTHING`。没有它，缺陷只会对从零开始的人得到修正。
 
 - **位置：**
-  `apps/api/src/application/use-cases/agents/seed-agent-areas.use-case.ts`，
+  `src/application/use-cases/agents/seed-agent-areas.use-case.ts`，
   由 `application/use-cases/iam/create-project.use-case.ts` 和
   `application/use-cases/execution/activate-execution.use-case.ts` 调用；
-  规范列表在 `apps/api/src/domain/agents/agent-areas.ts`；
-  回填在 `apps/api/src/db/migrations/0038_wandering_lila_cheney.sql`
+  规范列表在 `src/domain/agents/agent-areas.ts`；
+  回填在 `src/db/migrations/0038_wandering_lila_cheney.sql`
 - **测试：**
   `test/application/use-cases/iam/create-project-semeia-areas.spec.ts`（针对数据库的路径，包括让创建失败的那种失败），
   `test/db/agent-areas-backfill.spec.ts`（真正运行的迁移，运行两次）以及 `test/application/use-cases/execution/activate-execution.use-case.spec.ts`
@@ -1327,18 +1327,18 @@ CONFLICT DO NOTHING`。没有它，缺陷只会对从零开始的人得到修正
 **读取不会变成 `proposed_action`。** 读取不是外部效果，把它变成审批动作会让队列充满噪音，直到再也没有人去读真正的那些。阶段的冻结是这件事的另一面：标签页只读，而写入——当它到来时——以 `proposed_action` 的形式诞生。
 
 - **位置：**
-  `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
+  `src/infrastructure/filesystem/project-workspaces-root.ts`
   （`caminhoDeRepositorioContido`），
-  `apps/api/src/application/use-cases/git/read-project-code.use-case.ts`,
-  `apps/api/src/domain/git/git-read-limits.ts`,
-  `apps/api/src/domain/git/git-read-cache.ts`,
-  `apps/api/src/interfaces/http/git/code.controller.ts`
+  `src/application/use-cases/git/read-project-code.use-case.ts`,
+  `src/domain/git/git-read-limits.ts`,
+  `src/domain/git/git-read-cache.ts`,
+  `src/interfaces/http/git/code.controller.ts`
 - **测试：**
-  `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+  `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   （单独的约束），
-  `apps/api/test/application/use-cases/git/read-project-code.use-case.spec.ts`
+  `test/application/use-cases/git/read-project-code.use-case.spec.ts`
   （恶意路径在三条路由上于调用提供方**之前**被拒绝，以及三个预算各自让搜索停下），
-  `apps/api/test/domain/git/git-read-cache.spec.ts`
+  `test/domain/git/git-read-cache.spec.ts`
 - **来源：** FASE 26b，16–26 计划的第 34 项；约束扩展了
   [RN-092](#rn-092)（[ADR 0058](../adr/0058-csp-fechado-na-api-e-escopo-de-projeto-contido.md)）
 
@@ -1358,11 +1358,11 @@ CONFLICT DO NOTHING`。没有它，缺陷只会对从零开始的人得到修正
 
 该列的 DEFAULT 是 `consultiva`——能做的事**更少**的那种：通过不经过路由的路径到达的行（迁移、维护 SQL）不会因此获得执行的权利。迁移的**回填**则相反，而且是有意为之，依据 0033 的推理：在它运行的那一刻，每个会话都早于这一区分，其中一些是 dev agent 正在工作的会话——把它们唤醒为 `consultiva` 会让重新激活一个进行中的项目失败，而没有任何人做出过任何决定。
 
-- **位置：** `apps/api/src/domain/sessions/session-kind.ts:50`
-  （`podeAtivarExecucao`）、`apps/api/src/db/schema/sessions.ts:68`（该列）、
-  `apps/api/src/application/use-cases/sessions/append-session-event.use-case.ts:53`
+- **位置：** `src/domain/sessions/session-kind.ts:50`
+  （`podeAtivarExecucao`）、`src/db/schema/sessions.ts:68`（该列）、
+  `src/application/use-cases/sessions/append-session-event.use-case.ts:53`
   （守卫）
-- **测试：** `apps/api/test/application/use-cases/sessions/session-kind-e-nome.spec.ts`
+- **测试：** `test/application/use-cases/sessions/session-kind-e-nome.spec.ts`
 - **来源：** [ADR 0061](../adr/0061-tipo-da-sessao-na-criacao.md)
 
 ## 项目面板
@@ -1387,15 +1387,15 @@ CONFLICT DO NOTHING`。没有它，缺陷只会对从零开始的人得到修正
 由于分界的语义没有改变，这条规则**没有 ADR**：改变的是查询选择哪个窗口，以及抽屉对它的声明。
 
 - **位置：**
-  `apps/api/src/infrastructure/persistence/drizzle/projects-summary.repository.ts`
+  `src/infrastructure/persistence/drizzle/projects-summary.repository.ts`
   （`unreadEventsForWorkspace`）、
-  `apps/api/src/application/ports/projects-summary-repository.port.ts`、
-  `apps/api/src/interfaces/http/iam/dto/iam.response.dto.ts`
+  `src/application/ports/projects-summary-repository.port.ts`、
+  `src/interfaces/http/iam/dto/iam.response.dto.ts`
   （`ProjectUnreadEventsResponseDto`）、
   `apps/web/src/lib/notifications.ts`（`useNotificationGroups`）、
   `apps/web/src/components/NotificationBell.tsx`
 - **测试：**
-  `apps/api/test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
   （"com mais não lidos que o teto, voltam os MAIS RECENTES, do novo para o
   velho"——先断言**集合**再断言顺序）；
   `apps/web/src/components/NotificationBell.test.tsx`（按收到的顺序渲染，不重新排序；计数是总数；按钮说出标记多少条）；
@@ -1425,12 +1425,12 @@ CONFLICT DO NOTHING`。没有它，缺陷只会对从零开始的人得到修正
 `session`、`day`），约束改变的是形式而不是力度：约束它的是*类型*——见 [RN-186](#rn-186) 和 [RN-187](#rn-187)。没有改变的是，提供同一模型名称的两个提供方，在 `model` 维度上仍然落在同一行。
 
 - **位置：**
-  `apps/api/src/application/use-cases/llm/get-my-spend.use-case.ts`,
-  `apps/api/src/application/use-cases/llm/get-workspace-spend-report.use-case.ts`,
-  `apps/api/src/application/ports/token-usage-repository.port.ts`,
-  `apps/api/src/interfaces/http/llm/spend.controller.ts`,
+  `src/application/use-cases/llm/get-my-spend.use-case.ts`,
+  `src/application/use-cases/llm/get-workspace-spend-report.use-case.ts`,
+  `src/application/ports/token-usage-repository.port.ts`,
+  `src/interfaces/http/llm/spend.controller.ts`,
   `apps/web/src/routes/ProjectSpendTab.tsx`
-- **测试：** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
+- **测试：** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
   （成员看不到其他执行者的行，也看不到 agent 或 owner 的行；过滤按 `(kind, id)` 这一对进行；响应不携带提供方）；
   `apps/web/src/routes/ProjectSpendTab.test.tsx`
 - **来源：** [ADR 0063](../adr/0063-duas-audiencias-para-o-mesmo-gasto.md)（FASE 22），
@@ -1460,14 +1460,14 @@ workspace`。`area` 位于 agent 和项目*之间*——它是一个区域的 le
 > **附加说明（[RN-471](web.md#rn-471)）：** 上一段的缺口是*一个*，而不是每个部分一个，在界面*已经*按项目查询角色的地方，它被关闭而不是被声明。**成员**部分获取
 > `listProjectMembers`，它一次性为所有人执行 `findMemberRole`，并组合出 `projectRole ?? workspaceRole`——正是 `forProject` 所做的。这不是本段所拒绝的第二个角色来源：而是*同一*组合，来自该部分手头已有的数据。两个模型部分因为没有这些数据，继续使用近似。阅读上面的"在两个方向上*覆盖*"时要小心：它是字面意思，而有三处 OpenAPI 描述声称相反——见 RN-471。
 
-- **位置：** `apps/api/src/domain/llm/binding-resolver.ts`（优先级），
-  `apps/api/src/domain/llm/model-capabilities.ts`（`area` 的能力），
-  `apps/api/src/application/use-cases/llm/resolve-model-binding.use-case.ts`
-  （agent 的区域来自 `agent-areas.ts` 目录，无需往返数据库），`apps/api/src/application/use-cases/llm/clear-model-binding.use-case.ts`,
-  `apps/api/src/interfaces/http/llm/model-bindings.controller.ts`
+- **位置：** `src/domain/llm/binding-resolver.ts`（优先级），
+  `src/domain/llm/model-capabilities.ts`（`area` 的能力），
+  `src/application/use-cases/llm/resolve-model-binding.use-case.ts`
+  （agent 的区域来自 `agent-areas.ts` 目录，无需往返数据库），`src/application/use-cases/llm/clear-model-binding.use-case.ts`,
+  `src/interfaces/http/llm/model-bindings.controller.ts`
   （`area-bindings`，`agent-bindings` 和 `area-bindings` 上的 `DELETE`），
   `apps/web/src/routes/settings/ModelsSection.tsx`（带"恢复继承"的来源列，以及基于 `roleAtLeast` 重写、最低要求不变的 `maintainer` 闸门），
-  `apps/api/src/interfaces/http/llm/model-bindings.controller.ts:273` 和 `:301`
+  `src/interfaces/http/llm/model-bindings.controller.ts:273` 和 `:301`
   （两个 agent 端点上的 `developer`——这些行*没有*改变），
   `apps/web/src/lib/roles.ts:49`（`roleAtLeast`——缺失的比较），
   `apps/web/src/routes/settings/ModelsSection.tsx:89`（`podeEditar`，以及为什么是
@@ -1490,8 +1490,8 @@ workspace`。`area` 位于 agent 和项目*之间*——它是一个区域的 le
 
 没有项目的 `scope_id`（旧格式）在写入时被*拒绝*，而不是被接受后忽略：写入它会创建一个级联再也找不到的 binding——不可见，而不是一个错误。迁移 0040 把每个现有的全局 agent binding 展开为每个项目一行（保留每个项目在变更之前解析的结果），并删除旧格式；之所以是*展开*而不是删除，是因为全局行从未保存它"属于"谁的信息——编造一个所有者项目就是编造原本不存在的数据。
 
-- **位置：** `apps/api/src/domain/llm/binding-scope-id.ts`（格式和校验），`apps/api/src/application/use-cases/llm/set-model-binding.use-case.ts`
-  （`workspaceDoEscopo` 也开始从 `agent`/`area` 推导 workspace——在此之前 RN-043 的策展在它们上无法核对），`apps/api/src/db/migrations/0040_tearful_night_nurse.sql`
+- **位置：** `src/domain/llm/binding-scope-id.ts`（格式和校验），`src/application/use-cases/llm/set-model-binding.use-case.ts`
+  （`workspaceDoEscopo` 也开始从 `agent`/`area` 推导 workspace——在此之前 RN-043 的策展在它们上无法核对），`src/db/migrations/0040_tearful_night_nurse.sql`
 - **测试：** `test/domain/llm/binding-scope-id.spec.ts`,
   `test/application/use-cases/llm/set-model-binding.use-case.spec.ts`,
   `test/application/use-cases/llm/resolve-model-binding.use-case.spec.ts`
@@ -1506,15 +1506,15 @@ workspace`。`area` 位于 agent 和项目*之间*——它是一个区域的 le
 
 工件没有表：它就是事件日志中的事件本身，带版本（每次发出 `version` 递增，现行的是 `version` 最大的），与 `artifact.module_map` 方式相同。修订镜像就是发出一个新版本，绝不覆盖之前的。
 
-- **位置：** `apps/api/src/domain/containers/project-container.ts`,
-  `apps/api/src/application/use-cases/containers/decidir-imagem-do-projeto.use-case.ts`,
-  `apps/api/src/application/use-cases/containers/obter-container-do-projeto.use-case.ts`,
-  `apps/api/src/application/use-cases/git/read-project-code.use-case.ts`（方法
+- **位置：** `src/domain/containers/project-container.ts`,
+  `src/application/use-cases/containers/decidir-imagem-do-projeto.use-case.ts`,
+  `src/application/use-cases/containers/obter-container-do-projeto.use-case.ts`,
+  `src/application/use-cases/git/read-project-code.use-case.ts`（方法
   `portaoDoContainer`），`apps/engine/lib/engine/harness/tools/choose_project_image.ex`
 - **测试：**
-  `apps/api/test/domain/containers/project-container.spec.ts`,
-  `apps/api/test/application/use-cases/containers/container-do-projeto.use-case.spec.ts`,
-  `apps/api/test/application/use-cases/git/read-project-code.use-case.spec.ts`
+  `test/domain/containers/project-container.spec.ts`,
+  `test/application/use-cases/containers/container-do-projeto.use-case.spec.ts`,
+  `test/application/use-cases/git/read-project-code.use-case.spec.ts`
   （"o portão do container" 块）
 - **边界情况：** 409 而不是 403——请求者及其权限都没有任何问题；资源在*这个状态*下还不存在。也不是 404：标签页存在，只是尚未开放。消息说明缺少什么，让界面显示原因而不是一个无声的错误（RN-088）。
 - **来源：** [ADR 0065](../adr/0065-container-por-projeto-a-fronteira-deixa-de-ser-politica.md)
@@ -1532,17 +1532,17 @@ upgrade`、`terraform apply`、`docker push`、`npm publish`、……），忽�
 
 拒绝并不剥夺 agent 的能力：消息会重定向到*类型化*动作（`git_push`、`git_merge`、`pr_open`）——它以 `proposed_action` 诞生，有自己的最低角色，并在事件日志中记录推送了什么、推送到哪里。这是 dev agent 已经在用的路径（`agent_io.ex` 提议 `git_push`）；变化在于现在由 `deny` 保证，而不只是约定俗成。
 
-- **位置：** `apps/api/src/domain/actions/external-effect.ts`,
-  `apps/api/src/domain/actions/decide.ts`（"FRONTEIRA DO CONTAINER" 块）
-- **测试：** `apps/api/test/domain/actions/external-effect.spec.ts`,
-  `apps/api/test/domain/actions/decide.spec.ts`（describe "a fronteira do
+- **位置：** `src/domain/actions/external-effect.ts`,
+  `src/domain/actions/decide.ts`（"FRONTEIRA DO CONTAINER" 块）
+- **测试：** `test/domain/actions/external-effect.spec.ts`,
+  `test/domain/actions/decide.spec.ts`（describe "a fronteira do
   container"）
 - **边界情况：** 边界*不*覆盖受保护分支上的合并锁（RN-014，总是手动），也不覆盖路径范围（RN-095/ADR 0055）——三条规则共存，各自出于不同原因否决。
 - **来源：** [ADR 0065](../adr/0065-container-por-projeto-a-fronteira-deixa-de-ser-politica.md)
 
 ### RN-109 — workspace 的文件夹名在创建时冻结，旧项目保留 UUID {#rn-109}
 
-项目在 `PROJECT_WORKSPACES_ROOT` 中的物理文件夹原来是纯 UUID——在磁盘上打开时无法辨认。`projects.workspace_dir_name`（NOT NULL，UNIQUE）开始保存真正的名称：*新*项目为 `<slug>-<id 的 8 个字符>`（`apps/api/src/infrastructure/filesystem/project-workspaces-root.ts` 中的 `workspaceDirNameFor`），在代码中生成——id 来自 `CreateProjectUseCase` 中的 `crypto.randomUUID()`，而不是 Postgres 的 `defaultRandom()`，因为文件夹名在插入*之前*就需要 id。8 个字符遵循与会话标签相同的约定（`apps/web/src/lib/session-label.ts`）。
+项目在 `PROJECT_WORKSPACES_ROOT` 中的物理文件夹原来是纯 UUID——在磁盘上打开时无法辨认。`projects.workspace_dir_name`（NOT NULL，UNIQUE）开始保存真正的名称：*新*项目为 `<slug>-<id 的 8 个字符>`（`src/infrastructure/filesystem/project-workspaces-root.ts` 中的 `workspaceDirNameFor`），在代码中生成——id 来自 `CreateProjectUseCase` 中的 `crypto.randomUUID()`，而不是 Postgres 的 `defaultRandom()`，因为文件夹名在插入*之前*就需要 id。8 个字符遵循与会话标签相同的约定（`apps/web/src/lib/session-label.ts`）。
 
 名称在创建时*冻结*，从不重新计算：`UpdateProjectUseCase` 允许之后编辑 `slug`，而这*不*触碰 `workspace_dir_name`——重新安排物理文件夹（其中可能有打开的工作树和 agent 的 worktree）是真实的风险，这个决定在构造上避免了它，而不是靠调用者的自律。
 
@@ -1551,20 +1551,20 @@ upgrade`、`terraform apply`、`docker push`、`npm publish`、……），忽�
 从名称推导路径（`projectScopeRoot`，RN-092/RN-075）开始接收 `workspace_dir_name`，而不是原始的 `projectId`——同样的字符集校验，同样的纯粹性。engine 读取*同一*列（`Engine.Projects.Project.workspace_dir_name/1`）来解析
 `Engine.Actions.Workspace.workspace_dir/1`，从不根据 id 重新计算名称：两种推导（api 和 engine）实际上是针对同一数据库的同一读取——这保证了 RN-075（终端范围）和 RN-092（代码读取）继续指向 engine 真正使用的*同一个*文件夹。
 
-- **位置：** `apps/api/src/db/schema/iam.ts`（`projects.workspaceDirName`），
-  `apps/api/src/db/migrations/0042_tough_captain_midlands.sql`,
-  `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
+- **位置：** `src/db/schema/iam.ts`（`projects.workspaceDirName`），
+  `src/db/migrations/0042_tough_captain_midlands.sql`,
+  `src/infrastructure/filesystem/project-workspaces-root.ts`
   （`workspaceDirNameFor`、`projectScopeRoot`），
-  `apps/api/src/application/use-cases/iam/create-project.use-case.ts`,
+  `src/application/use-cases/iam/create-project.use-case.ts`,
   `apps/engine/lib/engine/projects/project.ex`
   （`workspace_dir_name/1`、`all_workspace_dirs/0`），
   `apps/engine/lib/engine/actions/workspace.ex`（`workspace_dir/1,2`），
   `apps/engine/lib/engine/dev/worktree_cleanup.ex`
 - **测试：**
-  `apps/api/test/db/workspace-dir-name-migration.spec.ts`（触发器、等价回填、唯一性），
-  `apps/api/test/application/use-cases/iam/create-project-semeia-areas.spec.ts`
+  `test/db/workspace-dir-name-migration.spec.ts`（触发器、等价回填、唯一性），
+  `test/application/use-cases/iam/create-project-semeia-areas.spec.ts`
   （`workspaceDirName` 以 `<slug>-<8 chars>` 诞生，不同 workspace 中 slug 相同的两个项目文件夹不冲突），
-  `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+  `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
 - **边界情况：** 并行上限和合并 gate 不变——RN-109 只是文件夹的*名称*，绝不是策略。创建后重命名 slug 不会重命名文件夹；文件夹只通过已写入的 `workspace_dir_name` 读取。
 - **来源：** ADR 0066（修订 ADR 0055）。
 
@@ -1584,17 +1584,17 @@ upgrade`、`terraform apply`、`docker push`、`npm publish`、……），忽�
 
 拒绝字面量而不只是空值，理由与 ADR 0059 相同：`docker-compose.prod.yml` 把四个字面量作为回退值提供，因此在真实的出错路径上这些变量是**已定义的**——一个"非空"检查会对整个缺陷视而不见。
 
-- **位置：** `apps/api/src/infrastructure/security/auth-key-material.ts`
-  （`passphraseAtual`），`apps/api/src/infrastructure/security/service-token.ts`
+- **位置：** `src/infrastructure/security/auth-key-material.ts`
+  （`passphraseAtual`），`src/infrastructure/security/service-token.ts`
   （`tokenDeServicoAtual`）和
-  `apps/api/src/infrastructure/security/envelope-encryption.service.ts`
-  （`EnvelopeEncryptionService`，在构造函数中检查）——前两个在 `apps/api/src/main.ts` 启动时调用，第三个在
+  `src/infrastructure/security/envelope-encryption.service.ts`
+  （`EnvelopeEncryptionService`，在构造函数中检查）——前两个在 `src/main.ts` 启动时调用，第三个在
   `NestFactory.create` 装配 provider 图时被执行。`SECRET_KEY_BASE` 在
   `apps/engine/config/runtime.exs`（未改变），回退值已从
   `docker/docker-compose.prod.yml` 中移除
-- **测试：** `apps/api/test/infrastructure/security/auth-key-material.spec.ts`,
-  `apps/api/test/infrastructure/security/service-token.spec.ts` 以及
-  `apps/api/test/infrastructure/security/envelope-encryption.service.spec.ts` 中的 describe
+- **测试：** `test/infrastructure/security/auth-key-material.spec.ts`,
+  `test/infrastructure/security/service-token.spec.ts` 以及
+  `test/infrastructure/security/envelope-encryption.service.spec.ts` 中的 describe
   `validação de produção`
 - **来源：** [ADR 0059](../adr/0059-segredo-do-state-de-oauth-sem-default.md)
 
@@ -1611,13 +1611,13 @@ upgrade`、`terraform apply`、`docker push`、`npm publish`、……），忽�
 
 正常路径不变：每个合法的 `ref`/`path` 本来就是字符串。
 
-- **位置：** `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
+- **位置：** `src/infrastructure/filesystem/project-workspaces-root.ts`
   （`garantirQueryEscalar`，用于 `caminhoDeRepositorioContido`），
-  `apps/api/src/application/use-cases/git/read-project-code.use-case.ts`
+  `src/application/use-cases/git/read-project-code.use-case.ts`
   （`alvo`，`ref`）
 - **测试：**
-  `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
-  （单独的 `garantirQueryEscalar`，以及拒绝数组的 `caminhoDeRepositorioContido`），`apps/api/test/application/use-cases/git/read-project-code.use-case.spec.ts`
+  `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+  （单独的 `garantirQueryEscalar`，以及拒绝数组的 `caminhoDeRepositorioContido`），`test/application/use-cases/git/read-project-code.use-case.spec.ts`
   （作为数组的 `ref`/`path` 在 `tree` 上是 400，所有其他路由通过 `alvo` 复用它）
 - **来源：** CodeQL 的*严重*警报（HTTP 查询参数的类型混淆），阻塞了 qa→main 的晋升，在 PR #256 期间发现；扩展了
   [RN-095](#rn-095)
@@ -1638,9 +1638,9 @@ upgrade`、`terraform apply`、`docker push`、`npm publish`、……），忽�
 
 正常路径不变：`sessionId`/`projectId` 总是来自数据库的 UUID，`agent`/`agentId` 总是短 slug。
 
-- **位置：** `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts`
+- **位置：** `src/infrastructure/http-clients/api-to-engine-client.ts`
   （`garantirSegmentoDeUrlInterna`、`postCommand`）
-- **测试：** `apps/api/test/infrastructure/http-clients/api-to-engine-client.spec.ts`
+- **测试：** `test/infrastructure/http-clients/api-to-engine-client.spec.ts`
   （格式错误的 id 在接触网络*之前*被拒绝——通过把 `ENGINE_URL` 指向一个没有监听的端口来证明——而正常路径会真正发出请求）
 - **来源：** CodeQL 的*严重*警报（用未校验的值构造的内部请求 URL），阻塞了 qa→main 的晋升，在 PR #256 期间发现；与 [RN-092](#rn-092) 同一模式
 
@@ -1658,10 +1658,10 @@ upgrade`、`terraform apply`、`docker push`、`npm publish`、……），忽�
 
 这里的失败或待定状态*绝不*传播给调用 `execute()` 的人：执行的激活已经发生，是主要效果；关闭来源聊天是*尽力而为*的附带效果。
 
-- **位置：** `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts`
-  （`closeOriginSession`），`apps/api/src/interfaces/http/execution/dto/activate-execution.dto.ts`
-  （`originSessionId`），`apps/api/src/interfaces/http/execution/execution.controller.ts`
-- **测试：** `apps/api/test/application/use-cases/execution/activate-execution.use-case.spec.ts`，
+- **位置：** `src/application/use-cases/execution/activate-execution.use-case.ts`
+  （`closeOriginSession`），`src/interfaces/http/execution/dto/activate-execution.dto.ts`
+  （`originSessionId`），`src/interfaces/http/execution/execution.controller.ts`
+- **测试：** `test/application/use-cases/execution/activate-execution.use-case.spec.ts`，
   describe `fecha a sessão de origem (RN-135)`——没有待定时关闭，有待定时*不*关闭，*不*关闭已经不是 `active` 的会话，不带参数的旧调用者什么都不关闭，即使 `originSessionId` 与之一致也从不关闭自身的执行会话
 - **来源：** 代码调查中的发现——已激活执行的创意会话在列表中仍为 `active`，即使其中有 35 个 dev agent 事件
 
@@ -1678,8 +1678,8 @@ upgrade`、`terraform apply`、`docker push`、`npm publish`、……），忽�
 - 标签页头部总是显示正在显示*哪个*会话——它的标签（hashtag + 名称）链接到 `SessionPage`，或在 `null` 时显示"没有活跃的执行"——再也不是隐含的。[RN-088](web.md#rn-088) 的三种状态适用于会话本身的获取：加载中、错误（带 `trace_id`）和空（`null`）是三种不同的渲染，绝不是把它们合并的 `if (!sessão) return null`。
 
 - **位置：**
-  `apps/api/src/application/use-cases/execution/get-active-execution-session.use-case.ts`,
-  `apps/api/src/interfaces/http/execution/execution.controller.ts`（`getSession`），
+  `src/application/use-cases/execution/get-active-execution-session.use-case.ts`,
+  `src/interfaces/http/execution/execution.controller.ts`（`getSession`），
   `apps/web/src/lib/hooks.ts`（`useActiveExecutionSession`），
   `apps/web/src/routes/ProjectExecutorsTab.tsx`
 - **测试：**
@@ -1709,7 +1709,7 @@ branch nome-nova`（创建）或单独的 `git branch`——模式看不到它�
 - `git config`——只接纳了 `--get`，因为它是 git 本身保证无论后面跟什么都是读取的唯一标志（一个键，或一个键 + 值模式）。*不带* `--get` 的 `git config user.name`/`git config
   user.email` 被刻意排除：键之后的第二个 token（`git config user.name "novo valor"`）是*写入*，而前缀匹配在不发明新的参数计数解析器的情况下，无法区分"没有多余 token"和"多一个 token"——这与已经阻止单独 `git branch` 的限制相同。`--global`/`--system` 从未被锚定。
 
-- **位置：** `apps/api/src/domain/actions/dev-terminal-patterns.ts`
+- **位置：** `src/domain/actions/dev-terminal-patterns.ts`
 - **测试：** `test/domain/actions/dev-terminal-patterns.spec.ts`（describe
   `read-only git subcommands (found live)`——覆盖实时观察到的复合链被自动批准，以及每个使用*相同*命令词的变更变体——`git branch -D`、`git remote add`、`git worktree add`、
   `git config --global user.name`——仍处于 `require_approval`）
@@ -1725,7 +1725,7 @@ branch nome-nova`（创建）或单独的 `git branch`——模式看不到它�
 
 与 Criativo 不同，Arquiteto *没有*在缺少 `module_map` 时阻止确认的服务器护栏——`ArquitetoServer.offer_infra_handoff` 不拒绝任何东西，这与 `CriativoServer.confirm_readiness`（[RN-142](engine.md#rn-142)）不同。按钮只在 `streaming` 期间禁用；不在这里复制概览页的 `disabled={!hasModuleMap}` 是刻意的决定，理由与 Dev Lead 卡片上的"激活执行"（[RN-137](web.md#rn-137)）已经适用的相同——当这张卡片存在时，Arquiteto 已经决定了架构。
 
-- **位置：** `apps/api/src/interfaces/http/agents/agents.controller.ts`
+- **位置：** `src/interfaces/http/agents/agents.controller.ts`
   （`handoffInfra`，已有路由），`apps/web/src/lib/api-client.ts`
   （`confirmArchitectureReadiness`），`apps/web/src/routes/SessionPage.tsx`
   （`arquitetoActive`、`arquiteturaJaDeclarada`、`handleArchitectureReadiness`、
@@ -1749,15 +1749,15 @@ branch nome-nova`（创建）或单独的 `git branch`——模式看不到它�
    model_name}`）。
 3. **web**——`SessionPage.tsx` 读取 `event.payload.modelName`。在这次变更之前*写入*的事件没有这个键（`undefined`），而 api 没有解析出任何模型的回合会写入 `null`——两者都降级为通用标签 `"modelo"`，绝不会在界面上显示 `undefined`/`null`；与 `text === ''` 已经用于 RN-059 之前的响应的模式相同。
 
-- **位置：** `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts`
-  （`LlmTurnStreamEvent`），`apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts`
-  （`RunLlmTurnResult`），`apps/api/src/interfaces/http/internal/dto/internal.response.dto.ts`
+- **位置：** `src/application/use-cases/llm/stream-llm-turn.use-case.ts`
+  （`LlmTurnStreamEvent`），`src/application/use-cases/llm/run-llm-turn.use-case.ts`
+  （`RunLlmTurnResult`），`src/interfaces/http/internal/dto/internal.response.dto.ts`
   （`LlmTurnResponseDto`/`LlmTurnStreamEventResponseDto`），
   `apps/engine/lib/engine/agents/{criativo,po,arquiteto,dev_lead}_server.ex`
   （`emit_response/3`），`apps/web/src/routes/SessionPage.tsx`（时间线的
   `agent.response` 块）
-- **测试：** `apps/api/test/application/use-cases/llm/run-llm-turn.use-case.spec.ts`,
-  `apps/api/test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts`
+- **测试：** `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts`,
+  `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts`
   （正常路径、提供方错误和没有 binding 时的 `modelName`），
   `apps/engine/test/engine/agents/{criativo,po,arquiteto,dev_lead}_server_test.exs`
   （`agent.response` 携带模型名称；没有该键的帧这一边界情况），
@@ -1775,15 +1775,15 @@ branch nome-nova`（创建）或单独的 `git branch`——模式看不到它�
 
 `artifact.c4_diagram` 工件在事件日志中带版本，没有自己的表——与 `artifact.project_image`（ADR 0065）的设计相同：现行的是 `version` 最大的，修订就是重新生成，绝不覆盖。
 
-- **位置：** `apps/api/src/domain/architecture/c4-diagram.ts`
+- **位置：** `src/domain/architecture/c4-diagram.ts`
   （`gerarDiagramaContexto`/`gerarDiagramaContainer`，纯函数），
-  `apps/api/src/application/use-cases/architecture/create-c4-diagram.use-case.ts`,
-  `apps/api/src/application/use-cases/architecture/get-c4-diagram.use-case.ts`,
+  `src/application/use-cases/architecture/create-c4-diagram.use-case.ts`,
+  `src/application/use-cases/architecture/get-c4-diagram.use-case.ts`,
   `apps/engine/lib/engine/harness/tools/create_c4_diagram.ex`,
   `apps/web/src/components/C4DiagramView.tsx`（渲染，三种状态——
   RN-088），`apps/web/src/lib/mermaid-render.ts`（`mermaid` 被隔离在这里，动态 `import()`）
-- **测试：** `apps/api/test/domain/architecture/c4-diagram.spec.ts`（从示例 `module_map` 生成有效的 Mermaid 语法，忽略悬空边，id 去重），
-  `apps/api/test/application/use-cases/architecture/create-c4-diagram.use-case.spec.ts`
+- **测试：** `test/domain/architecture/c4-diagram.spec.ts`（从示例 `module_map` 生成有效的 Mermaid 语法，忽略悬空边，id 去重），
+  `test/application/use-cases/architecture/create-c4-diagram.use-case.spec.ts`
   （没有 module_map 时以 400 拒绝且不写入任何东西；Container 反映真实的模块/依赖；重新发出时版本化），
   `apps/engine/test/engine/harness/tools/create_c4_diagram_test.exs`,
   `apps/web/src/components/C4DiagramView.test.tsx`（成功变成 SVG，语法错误变成可读的 Alert 而不破坏界面，空图不尝试渲染）
@@ -1798,14 +1798,14 @@ RN-090）新增了 `pendingApprovalsCount`：对 `status = 'pending'` 的 `propo
 
 `Shell.tsx` 不再导入 `useProjectsUnread`——它在那里唯一的消费者就是这个徽章。`Dashboard.tsx`/`ProjectCard.tsx` 获得了同样的连线：`ProjectCard` 的 `unreadCount` prop 从未有调用者（`ProjectCardContainer` 没有传它），它变成了 `pendingApprovalsCount`，值与侧边栏相同——两个界面，一个数字，一个来源。
 
-- **位置：** `apps/api/src/application/ports/projects-summary-repository.port.ts`
+- **位置：** `src/application/ports/projects-summary-repository.port.ts`
   （`ProjectCardSummary.pendingApprovalsCount`），
-  `apps/api/src/infrastructure/persistence/drizzle/projects-summary.repository.ts`
+  `src/infrastructure/persistence/drizzle/projects-summary.repository.ts`
   （`summarizeForWorkspace`，对 `proposed_actions` 的聚合查询），
   `apps/web/src/routes/Shell.tsx`，`apps/web/src/routes/Dashboard.tsx`,
   `apps/web/src/components/ProjectCard.tsx`
 - **测试：**
-  `apps/api/test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
   （`pendingApprovalsCount soma o projeto INTEIRO...`，只计算 `pending`，不在项目之间泄漏，查询次数保持恒定），
   `apps/web/src/routes/Shell.test.tsx`（待批准徽章）
 - **来源：** 用户浏览应用时的发现——侧边栏徽章显示"392"，而同一项目的审批标签页中真实数字是"8"
@@ -1817,27 +1817,27 @@ RN-090）新增了 `pendingApprovalsCount`：对 `status = 'pending'` 的 `propo
 > **由 [RN-603](#rn-603) 修订**（ADR 0167）：`decide()` 开始同时接收自主权的*来源*，自动模式（处于 `auto_approve` 的通配符）不再经过路径范围上限。下面关于 `decide()` "不变"的内容描述的是原始设计。
 
 在这条 RN 之前，`agent_autonomy` 只知道按 `(项目, agent, 动作类型)` 授予自主权——每种类型一行，一次 upsert *一条*规则（`SetAgentAutonomyUseCase`，
-`apps/api/src/application/use-cases/actions/set-agent-autonomy.use-case.ts`）。广泛信任一个 agent 需要每种类型一行——`terminal`、`write_file`、`pr_open`……——而新类型诞生时没有规则，回到 `require_approval`。
+`src/application/use-cases/actions/set-agent-autonomy.use-case.ts`）。广泛信任一个 agent 需要每种类型一行——`terminal`、`write_file`、`pr_open`……——而新类型诞生时没有规则，回到 `require_approval`。
 
-"自动模式"是*同一*张表和*同一*端点（`PUT /projects/:projectId/agent-autonomy`）中的特殊值 `actionType: "*"`——不是新机制，而是现有的列（`agent_autonomy.action_type`，自由 `text`，没有枚举也没有外键——`apps/api/src/db/schema/agents.ts`）多接受一个值。通配符意味着"此 agent 的任何动作类型都有自主权"，在 `DrizzleAgentAutonomyRepository.findMode` 中解析（`apps/api/src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts`）：在同一查询中查找*具体*规则和通配符，具体规则总是胜出——在 `"*": auto_approve` 已打开的情况下写入 `terminal: deny`，仍会拒绝该 agent 的 `terminal`，而放行其余。`decide()`（`apps/api/src/domain/actions/decide.ts`）不变：它在 `ctx.autonomyMode` 中接收已解析的 `PermissionPolicy`，与通配符出现之前完全一样——这就是绝对上限无需知道"自动模式"存在就能生效的原因（见 [RN-154](#rn-154)）。
+"自动模式"是*同一*张表和*同一*端点（`PUT /projects/:projectId/agent-autonomy`）中的特殊值 `actionType: "*"`——不是新机制，而是现有的列（`agent_autonomy.action_type`，自由 `text`，没有枚举也没有外键——`src/db/schema/agents.ts`）多接受一个值。通配符意味着"此 agent 的任何动作类型都有自主权"，在 `DrizzleAgentAutonomyRepository.findMode` 中解析（`src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts`）：在同一查询中查找*具体*规则和通配符，具体规则总是胜出——在 `"*": auto_approve` 已打开的情况下写入 `terminal: deny`，仍会拒绝该 agent 的 `terminal`，而放行其余。`decide()`（`src/domain/actions/decide.ts`）不变：它在 `ctx.autonomyMode` 中接收已解析的 `PermissionPolicy`，与通配符出现之前完全一样——这就是绝对上限无需知道"自动模式"存在就能生效的原因（见 [RN-154](#rn-154)）。
 
 `ApprovalCard`（`apps/web/src/components/ApprovalCard.tsx`）在"始终允许"旁边新增了"自动模式"按钮，只在以下情况下可见：(a) 动作处于 `pending`，(b) 提议者是 *AGENT*（`actor.kind === 'agent'`——没有可授予用户的 agent 自主权）以及 (c) 调用方（`ProjectApprovalsTab.tsx`/`SessionPage.tsx`）已经确认在 workspace 中拥有 `maintainer`/`owner` 角色——与端点的要求相同（`@RequireRole('maintainer')`，未改变）。对没有该角色的人，`onActivateAutoMode` prop 为 `undefined`——卡片*隐藏*按钮，而不是显示为禁用，检查位于调用方而不在卡片中（展示型组件，没有自己的查询）。
 
 **关闭**复用 agent 卡片已有的手动/自动开关（Fase 8d）——没有新界面。`AgentTeamGrid.tsx` 开始在代表性规则*之前*查找 agent 的通配符规则（`autonomyActionTypeFor`）：如果存在，卡片的开关反映并编辑*通配符*，而不再是代表性类型——关闭就是把同一通配符写为 `require_approval`，而 agent 卡片上的开关正是这个"关闭"。
 
-- **位置：** `apps/api/src/domain/actions/decide.ts`
+- **位置：** `src/domain/actions/decide.ts`
   （`AGENT_AUTONOMY_ALL_ACTIONS`、`AgentAutonomyActionType`），
-  `apps/api/src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts`
+  `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts`
   （具体 > 通配符优先级的 `findMode`），
-  `apps/api/src/interfaces/http/actions/dto/set-agent-autonomy.dto.ts`
+  `src/interfaces/http/actions/dto/set-agent-autonomy.dto.ts`
   （接受 `"*"`），`apps/web/src/components/ApprovalCard.tsx`（"自动模式"按钮），`apps/web/src/components/AgentTeamGrid.tsx`（开关开始优先考虑通配符），`apps/web/src/routes/ProjectApprovalsTab.tsx`
   和 `apps/web/src/routes/SessionPage.tsx`（`handleActivateAutoMode`，通过 `useCurrentWorkspaceWithRole` 的角色闸门）
 - **测试：**
-  `apps/api/test/infrastructure/persistence/drizzle/agent-autonomy.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/agent-autonomy.repository.spec.ts`
   （具体 > 通配符优先级；通配符按 agent；关闭就是把通配符重写为 `require_approval`），
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts`
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts`
   （自动模式在*不*查询 `permissions.json` 的情况下自动批准普通动作；处于 `deny` 的具体规则胜过通配符），
-  `apps/api/test/interfaces/http/actions/agent-autonomy.controller.spec.ts`
+  `test/interfaces/http/actions/agent-autonomy.controller.spec.ts`
   （`PUT`/`GET` 仍要求 `maintainer`；DTO 接受 `"*"` 并拒绝列表之外的字符串），`apps/web/src/components/ApprovalCard.test.tsx`
   （没有 `onActivateAutoMode` 时按钮消失；点击调用回调；说明解释仍需决定的上限）
 - **来源：** 用户的请求——"始终允许"只写入一个具体的命令模式，而 `agent_autonomy` 一次只覆盖一种动作类型；缺的是一键广泛信任一个 agent
@@ -1854,9 +1854,9 @@ RN-090）新增了 `pendingApprovalsCount`：对 `status = 'pending'` 的 `propo
 
 证明是靠*构造*，而不是逐个情形：由于三个上限只检查 `current.policy === 'auto_approve'`——从不检查来源——，而"自动模式"只能通过具体 `agent_autonomy` 规则本来就使用的*同一*路径（`ctx.autonomyMode`）到达 `current.policy === 'auto_approve'`，已经约束 `agent_autonomy` 的上限无需新代码就继续约束通配符。真正的风险不在上限——而在于有人在把 `agent_autonomy` 泛化为接受 `"*"` 时，把通配符检查插到上限*之前*，重新打开这扇门；因此 `AGENT_AUTONOMY_ALL_ACTIONS` 完全在*仓储*中解析（在 `decide()` 运行之前），`decide()` 本身没有增加任何一行——恰好足以让通配符没有地方可以突破。
 
-- **位置：** `apps/api/src/domain/actions/decide.ts`（三个上限块，约第 207–258 行，未被这个功能改变）
+- **位置：** `src/domain/actions/decide.ts`（三个上限块，约第 207–258 行，未被这个功能改变）
 - **测试：**
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts`
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts`
   （"auto mode NÃO auto-aprova merge em branch protegida"、"... instruction_patch"、
   "... parallelize/raise_max_parallel"——三者都把 `agent_autonomy` "*" 写为 `auto_approve`，裁决仍为 `require_approval`）
 - **来源：** 用户在请求"自动模式"时确认的设计约束——三个上限是不能倒退的保证
@@ -1864,7 +1864,7 @@ RN-090）新增了 `pendingApprovalsCount`：对 `status = 'pending'` 的 `propo
 ### RN-155 — 时间线排序使用 `proposed_action.created` 关联，绝不使用原始的 `action.seq` {#rn-155}
 
 `SessionPage.tsx` 的 `timeline` 按单一可比较的数值轴对事件和提议动作排序。对事件而言是 `event.seq`（无间隙，按会话）。对动作而言是相关的 `proposed_action.created` 事件的 `seq`（通过 `payload.actionId === action.id` 找到，由 `ProposeActionUseCase` 在创建动作的*同一*事务中写入）——绝不是 `action.seq`，它是整张 `proposed_actions` 表唯一且全局的 `bigserial`，由系统的所有会话和项目共享，因此与 `event.seq` 不可比较（刻意的对比，见
-`apps/api/src/db/schema/actions.ts`）。直接比较两者会在每次 `ApprovalCard` 与普通事件混在一起时产生不可预测的顺序。没有这种关联的动作（只有 Gitflow 的 bootstrap——
+`src/db/schema/actions.ts`）。直接比较两者会在每次 `ApprovalCard` 与普通事件混在一起时产生不可预测的顺序。没有这种关联的动作（只有 Gitflow 的 bootstrap——
 `git_repo_create`/`git_branch_create`，它们只写 outbox）降级为按 `createdAt` 插值的位置，锚定在之前的最后一个事件上。
 
 - **位置：** `apps/web/src/routes/SessionPage.tsx`（`ordemDaAcaoNaTimeline`）
@@ -1894,23 +1894,23 @@ RN-090）新增了 `pendingApprovalsCount`：对 `status = 'pending'` 的 `propo
 
 `workspace_mode` 不要与 `GitProviderName` `'local'` 混淆：一个说的是*代码*在磁盘上的位置，另一个说的是 git *仓库*的位置，两种选择是正交的。
 
-- **位置：** `apps/api/src/db/schema/iam.ts`（`projects`），
-  `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
-  （`projectScopeRoot`），`apps/api/src/domain/iam/project.entity.ts`,
-  `apps/api/src/application/use-cases/git/read-project-code.use-case.ts`
+- **位置：** `src/db/schema/iam.ts`（`projects`），
+  `src/infrastructure/filesystem/project-workspaces-root.ts`
+  （`projectScopeRoot`），`src/domain/iam/project.entity.ts`,
+  `src/application/use-cases/git/read-project-code.use-case.ts`
   （`portaoDoContainer`），`apps/web/src/routes/ProjectCodeTab.tsx`,
   `apps/engine/lib/engine/projects/project.ex`,
   `apps/engine/lib/engine/actions/workspace.ex`（`workspace_dir/2`），
   `apps/engine/lib/engine/dev/worktree_cleanup.ex`（它原是手写的第二个推导，改为使用唯一的那个），
   `apps/web/src/routes/NewProjectWizard.tsx`
-- **测试：** `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+- **测试：** `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   （describe "projectScopeRoot no modo local"），
-  `apps/api/test/infrastructure/filesystem/fs-permissions-file-store.spec.ts`
+  `test/infrastructure/filesystem/fs-permissions-file-store.spec.ts`
   （用户文件夹中的 permissions.json），
-  `apps/api/test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`,
-  `apps/api/test/application/use-cases/git/read-project-code.use-case.spec.ts`
+  `test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`,
+  `test/application/use-cases/git/read-project-code.use-case.spec.ts`
   （本地项目不经过闸门），
-  `apps/api/test/interfaces/http/iam/project-dto-modo-de-workspace.spec.ts`
+  `test/interfaces/http/iam/project-dto-modo-de-workspace.spec.ts`
   （模式被冻结：PATCH 不改变它），
   `apps/web/src/routes/ProjectCodeTab.test.tsx`（界面也豁免 gate），
   `apps/engine/test/engine/actions/workspace_test.exs`
@@ -1940,14 +1940,14 @@ RN-090）新增了 `pendingApprovalsCount`：对 `status = 'pending'` 的 `propo
 文件夹缺失的拒绝会附带挂载说明——文件、两个服务以及那一行（`- <caminho>:<caminho>`），并指向
 [runbook](../runbook.md)。只在 api 中挂载会产生一个 api 接受而 engine 看不到的项目：api 校验的是它看到的东西，无从得知另一个容器中挂载了什么。
 
-- **位置：** `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
+- **位置：** `src/infrastructure/filesystem/project-workspaces-root.ts`
   （`validarCaminhoDeWorkspaceLocal`、`CaminhoLocalInvalidoError`），
-  `apps/api/src/application/use-cases/iam/create-project.use-case.ts`
-  （`caminhoValidado`），`apps/api/src/interfaces/http/iam/dto/create-project.dto.ts`,
+  `src/application/use-cases/iam/create-project.use-case.ts`
+  （`caminhoValidado`），`src/interfaces/http/iam/dto/create-project.dto.ts`,
   `apps/web/src/lib/wizard.ts`（`caminhoLocalParecePlausivel`）
-- **测试：** `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+- **测试：** `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   （describe "validarCaminhoDeWorkspaceLocal"），
-  `apps/api/test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`
+  `test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`
   （describe "a criação RECUSA o caminho que travaria depois"），
   `apps/web/src/lib/wizard.test.ts`, `apps/web/src/routes/NewProjectWizard.test.tsx`
 - **架构决策：** [ADR 0072](../adr/0072-projeto-local-ou-container.md)
@@ -1966,12 +1966,12 @@ RN-090）新增了 `pendingApprovalsCount`：对 `status = 'pending'` 的 `propo
 
 `model` 维度**没有改变**：提供同一模型名称的两个提供方仍然在同一行。想要按凭据拆分的人有专门的列表，而交叉两个维度会让排名的行数成倍增加，却回答不了两个单独列表回答不了的问题。
 
-- **位置：** `apps/api/src/application/ports/token-usage-repository.port.ts:137`
+- **位置：** `src/application/ports/token-usage-repository.port.ts:137`
   （`SpendDimension`），
-  `apps/api/src/infrastructure/persistence/drizzle/token-usage.repository.ts:255`
-  （`GROUP BY`），`apps/api/src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:112`,
-  `apps/api/src/interfaces/http/llm/spend.controller.ts:56`
-- **测试：** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
+  `src/infrastructure/persistence/drizzle/token-usage.repository.ts:255`
+  （`GROUP BY`），`src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:112`,
+  `src/interfaces/http/llm/spend.controller.ts:56`
+- **测试：** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
   （"quebra por PROVIDER, e o mesmo nome de modelo em dois providers segue UMA
   linha"）
 - **来源：** [ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
@@ -1988,13 +1988,13 @@ RN-090）新增了 `pendingApprovalsCount`：对 `status = 'pending'` 的 `propo
 
 用 `Exclude` 而不是第二个手写列表是刻意的：新维度诞生时两类受众都能触及，而把它移出成员的触及范围，会成为*在这一处*的显式行为——绝不是另一个文件中的遗忘。
 
-- **位置：** `apps/api/src/application/ports/token-usage-repository.port.ts:121`
-  （两个重载），`:147`（`SpendDimensionDoAtor`），`:163`/`:173`（两个范围），`apps/api/src/application/use-cases/llm/get-my-spend.use-case.ts:73`,
-  `apps/api/src/interfaces/http/llm/spend.controller.ts:98`
-- **测试：** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
+- **位置：** `src/application/ports/token-usage-repository.port.ts:121`
+  （两个重载），`:147`（`SpendDimensionDoAtor`），`:163`/`:173`（两个范围），`src/application/use-cases/llm/get-my-spend.use-case.ts:73`,
+  `src/interfaces/http/llm/spend.controller.ts:98`
+- **测试：** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
   （"não compila pedir `provider` com escopo de ator"——一个 `@ts-expect-error`，如果屏障倒下，`tsc` 会把它作为*未使用*的指令拒绝；以及 "só pede as
   dimensões `session` e `day`"），
-  `apps/api/test/interfaces/spend.controller.spec.ts`（成员的路由只接受 `dias`，别无其他）
+  `test/interfaces/spend.controller.spec.ts`（成员的路由只接受 `dias`，别无其他）
 - **来源：** [ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
 
 ### RN-188 — 人与 agent 是按执行者列表的划分，不多做查询 {#rn-188}
@@ -2007,8 +2007,8 @@ owner 的报告除了保持完整的 `porAtor` 之外，还带有 `porOwner`（`
 
 "按 owner"这个标签来自设计 handoff，依据 [RN-058](#rn-058) 成立——所有这些行花的都是 owner 的密钥。workspace 的所有者是谁，仍然由 `ownerId` 字段决定，而不是每行的 `actorKind`。
 
-- **位置：** `apps/api/src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:120`
-- **测试：** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
+- **位置：** `src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:120`
+- **测试：** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
   （"separa PESSOA de AGENTE em dois blocos, sem perder a lista por ator"）
 - **来源：** [ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
 
@@ -2022,8 +2022,8 @@ owner 的报告除了保持完整的 `porAtor` 之外，还带有 `porOwner`（`
 
 错误被**抛出**，按 `code` 规范化，而不是像 `chat` 中那样变成一个 chunk。chunk 的理由是保留进行中回合的花费；这里没有什么可保留——要么提供方返回了向量并收费，要么没有返回也没有收费。这与 `listModels` 的选择相同，分类法也相同：没有新的 `LLMErrorCode`。
 
-- **位置：** `apps/api/src/application/ports/llm-provider.port.ts:61`,
-  `apps/api/src/infrastructure/llm/embedding-result.ts:26`
+- **位置：** `src/application/ports/llm-provider.port.ts:61`,
+  `src/infrastructure/llm/embedding-result.ts:26`
 - **测试：** `test/contract/llm-provider.contract.ts`（五个用例，针对每个声明该能力的提供方运行）
 - **来源：** [ADR 0075](../adr/0075-embeddings-no-contrato-de-llm-provider.md)
 
@@ -2038,8 +2038,8 @@ owner 的报告除了保持完整的 `porAtor` 之外，还带有 `porOwner`（`
 `assertCanEmbed` 按最利于失败的顺序检查两者：先检查提供方，因为换模型修不好一个不做 embedding 的提供方。**没有声明**的模型也会被拒绝，消息不同——缺失意味着"提供方没说"
 （[ADR 0041](../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)），绝不是许可，读者应该做的是同步目录而不是换模型。禁止根据模型*名称*推断能力：那是穿着数据外衣的猜测。
 
-- **位置：** `apps/api/src/domain/llm/embedding-capability.ts:64`,
-  `apps/api/src/infrastructure/llm/ollama-provider.ts:319`
+- **位置：** `src/domain/llm/embedding-capability.ts:64`,
+  `src/infrastructure/llm/ollama-provider.ts:319`
 - **测试：** `test/domain/llm/embedding-capability.spec.ts`,
   `test/infrastructure/llm/ollama-provider.spec.ts`
 - **来源：** [ADR 0075](../adr/0075-embeddings-no-contrato-de-llm-provider.md)
@@ -2055,8 +2055,8 @@ owner 的报告除了保持完整的 `porAtor` 之外，还带有 `porOwner`（`
 
 OpenAI 兼容基类的*方言*单独证明，契约套件在打开能力的情况下对它再运行一次。正是这一点让某个提供方在它的密钥出现的那天变为 `true` 变得廉价：改字面量中的一行，解析已经被演练过。声明 `false` 却仍然暴露该方法的提供方会在接触网络之前**拒绝调用**。
 
-- **位置：** `apps/api/src/infrastructure/llm/ollama-provider.ts:73`,
-  `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:325`
+- **位置：** `src/infrastructure/llm/ollama-provider.ts:73`,
+  `src/infrastructure/llm/openai-compatible-provider.ts:325`
 - **测试：** `test/contract/llm-provider.contract.ts`,
   `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`,
   `test/infrastructure/llm/ollama-provider.embeddings.smoke.spec.ts`
@@ -2068,7 +2068,7 @@ OpenAI 兼容基类的*方言*单独证明，契约套件在打开能力的情�
 侧边栏的活动部分与 `AgentTimelineTree.tsx`/`timeline-tree.ts`（已经用于项目概览）是同一套分组逻辑，搬到了一个新地方——而不是重写。`montarArvore` 本来就按 `evento.actor.id` 分组；新内容是 `agruparPorInstancia`（`apps/web/src/lib/timeline-tree.ts`），它决定哪些分支构成两级的视觉分组。
 
 "实例"不是重新编号的计数器（`-01`/`-02`）——它是产品已经写入的*真实* `agent_id`：`devAgentId`/`extraDevAgentId`
-（`apps/api/src/application/use-cases/execution/activate-execution.use-case.ts:27-38`）产生 `dev-<modulo>` 和 `dev-<modulo>-2`（后缀总是恰好 `-2`，因为上限是每个模块*两个*，[RN-154](#rn-154)）。只有当基础 agent（去掉后缀）在同一列表中*也*有分支时，一个分支才成为另一个的"额外实例"——否则它就是 agent 本身。只有一个实例的 agent 直接展开到事件；有两个时，会显示第二层，每个实例一行，各有自己的计数——复用 `read-state.ts` 中已经为树的新增计数器存在的 `getAgentLastSeenSeq`/`setAgentLastSeenSeq`。
+（`src/application/use-cases/execution/activate-execution.use-case.ts:27-38`）产生 `dev-<modulo>` 和 `dev-<modulo>-2`（后缀总是恰好 `-2`，因为上限是每个模块*两个*，[RN-154](#rn-154)）。只有当基础 agent（去掉后缀）在同一列表中*也*有分支时，一个分支才成为另一个的"额外实例"——否则它就是 agent 本身。只有一个实例的 agent 直接展开到事件；有两个时，会显示第二层，每个实例一行，各有自己的计数——复用 `read-state.ts` 中已经为树的新增计数器存在的 `getAgentLastSeenSeq`/`setAgentLastSeenSeq`。
 
 范围：只有*当前*路由的项目（`pathname`），而不是 workspace 的所有项目——聚合所有项目需要*每个*项目一次事件查询，与 RN-090/091 在仪表板中关闭的同一类 N+1。复用 `AgentTimelineTree`/`SessionPage` 已经使用的*同一对* hook（`useActiveExecutionSession` + `useSessionEvents`，相同的 `queryKey`）——两个界面同时挂载时零新请求。
 
@@ -2087,7 +2087,7 @@ OpenAI 兼容基类的*方言*单独证明，契约套件在打开能力的情�
 ### RN-213 — 成本警报读取 `lastThresholdNotified`，绝不重新计算 {#rn-213}
 
 `alertaDeOrcamento` 不重新实现 `crossedThresholds`
-（`apps/api/src/domain/llm/budget-threshold.ts`）：它读取后端在真实调用越过 70/90/100% 时已经写入的字段，只决定颜色（低于 90 为 `warning`，从 90 起为 `danger`）以及文本是否应提示阻止已生效（`policy === 'block' && spentMicros >=
+（`src/domain/llm/budget-threshold.ts`）：它读取后端在真实调用越过 70/90/100% 时已经写入的字段，只决定颜色（低于 90 为 `warning`，从 90 起为 `danger`）以及文本是否应提示阻止已生效（`policy === 'block' && spentMicros >=
 limitMicros`）。没有新的业务规则——纯粹是对已有数据的呈现。
 
 - **位置：** `apps/web/src/lib/spend.ts`（`alertaDeOrcamento`）
@@ -2100,8 +2100,8 @@ limitMicros`）。没有新的业务规则——纯粹是对已有数据的呈�
 Chat RAG 的索引只覆盖产品已经知道来源的三种文本源：`docs`、`adr` 和 `session`。源代码和 Pull Request 被刻意排除——在没有每次 `push` 都重新索引的 watcher 的情况下索引它们，会让索引在覆盖范围上撒谎，这与 ADR 0042 已经对模型能力拒绝的错误同类。`session_id`/`source_path` 通过 CHECK 而不是应用约定相互排斥，与 `projects.workspace_mode`/`workspace_path`（ADR 0072）相同的模式：`scope =
 'session'` 要求 `session_id` 并拒绝 `source_path`；`docs`/`adr` 要求 `source_path` 并拒绝 `session_id`。锁放在数据库中，因为将要写这张表的是一个流水线（Onda 4），它不一定每次都经过同一个用例。
 
-- **位置：** `apps/api/src/db/schema/rag.ts`（`chunkScopeEnum` 以及 `chunks` 表的两个 CHECK）
-- **测试：** `apps/api/test/infrastructure/persistence/chunk.repository.spec.ts`
+- **位置：** `src/db/schema/rag.ts`（`chunkScopeEnum` 以及 `chunks` 表的两个 CHECK）
+- **测试：** `test/infrastructure/persistence/chunk.repository.spec.ts`
   （"recusa chunk de docs sem source_path — o CHECK da migração 0045, não
   validação de aplicação"）
 - **ADR：** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
@@ -2110,8 +2110,8 @@ Chat RAG 的索引只覆盖产品已经知道来源的三种文本源：`docs`�
 
 `chunks.embedding`（pgvector）和 `chunks.search_vector`（tsvector）是*同一*张表的姊妹列，而不是通过 `chunk_id` 关联的两张表。分开需要在每次混合搜索（Onda 4）中做 JOIN，并为两者分歧留下空间——一个有向量却没有词法条目的片段，或者反过来——而数据库中没有任何机制阻止。一行，就是搜索两半的唯一事实来源。
 
-- **位置：** `apps/api/src/db/schema/rag.ts`（`chunks` 表）
-- **测试：** `apps/api/test/infrastructure/persistence/chunk.repository.spec.ts`
+- **位置：** `src/db/schema/rag.ts`（`chunks` 表）
+- **测试：** `test/infrastructure/persistence/chunk.repository.spec.ts`
   （三个 spec 都在同一行中写入和读取两列）
 - **ADR：** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
 
@@ -2120,8 +2120,8 @@ Chat RAG 的索引只覆盖产品已经知道来源的三种文本源：`docs`�
 `search_vector` 是 `GENERATED ALWAYS AS (to_tsvector('portuguese', content))
 STORED`。没有任何用例、仓储或脚本写入它——Postgres 在构造上使它与 `content` 保持一致，在 `INSERT` 的同一事务中就绪，不依赖任何 LLM 提供方响应（与 `embedding` 不同，后者只有在索引流水线存在时才会到来）。
 
-- **位置：** `apps/api/src/db/schema/rag.ts`（`search_vector` 列）
-- **测试：** `apps/api/test/infrastructure/persistence/chunk.repository.spec.ts`
+- **位置：** `src/db/schema/rag.ts`（`search_vector` 列）
+- **测试：** `test/infrastructure/persistence/chunk.repository.spec.ts`
   （"grava um chunk de docs com vetor e devolve o search_vector gerado pela
   GENERATED ALWAYS AS"）
 - **ADR：** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
@@ -2131,8 +2131,8 @@ STORED`。没有任何用例、仓储或脚本写入它——Postgres 在构造�
 `chunks.embedding` 是 `vector(768)`——Ollama 的 `nomic-embed-text` 的真实维度，这是目前唯一声明 `capabilities.embeddings:
 true` 的提供方（RN-191，ADR 0075）。向量索引的维度是*固定*的：未来更换 embedding 模型是新的迁移，绝不是运行时参数。该列可为空：这张表保存 *CHUNK*（切分后的文本），而*向量*可以之后通过一个尚不存在的异步索引流水线（Onda 4）到来——没有这一点，分块就得等待 embedding，把两种性质不同的失败（文档解析与对提供方的网络调用）混进一次原子写入中。
 
-- **位置：** `apps/api/src/db/schema/rag.ts`（`embedding` 列）
-- **测试：** `apps/api/test/infrastructure/persistence/chunk.repository.spec.ts`
+- **位置：** `src/db/schema/rag.ts`（`embedding` 列）
+- **测试：** `test/infrastructure/persistence/chunk.repository.spec.ts`
   （"grava um chunk de docs com vetor..." 写入时填充了 `embedding`；另外两个 spec 不带它写入，确认了可空性）
 - **ADR：** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)；[RN-191](#rn-191)
 
@@ -2140,7 +2140,7 @@ true` 的提供方（RN-191，ADR 0075）。向量索引的维度是*固定*的�
 
 IVFFlat 需要已经加载的行来训练列表（`lists`），在空表上构建会很差——而这恰恰是这张表诞生时的状态，还没有索引流水线（Onda 4）。HNSW 逐次插入地增量构建图，没有训练步骤——从第一行起就很好。使用 `vector_cosine_ops`，因为这是文本 embedding 通常期望的度量（相似度排名不应随向量的模长变化）。
 
-- **位置：** `apps/api/src/db/migrations/0045_shallow_randall.sql`
+- **位置：** `src/db/migrations/0045_shallow_randall.sql`
   （`chunks_embedding_idx`）
 - **ADR：** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
 
@@ -2151,16 +2151,16 @@ EXTENSION vector;`），而不是产品的 bug——这正是 CLAUDE.md 中诞�
 `feature/`/`bugfix/` 的标准。
 
 - **位置：** 分支 `breaking/tabela-de-chunks`，
-  `apps/api/src/db/migrations/0045_shallow_randall.sql`（在迁移本身内部记录该决定的注释）
+  `src/db/migrations/0045_shallow_randall.sql`（在迁移本身内部记录该决定的注释）
 - **ADR：** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
 
 ### RN-226 — `ChunkRepository` 只覆盖基本的写入/读取；`createMany` 是批量操作 {#rn-226}
 
 端口只有 `create`、`createMany`、`findById` 和 `listByProject`——混合搜索（向量 + 词法、权重、阈值）属于 Onda 4（G2），刻意*不*放在这里：端口保存数据，用例决定拿它做什么。`createMany` 之所以存在，是因为一次索引会一次性把一个文档/会话切成 N 个片段，避免每个被索引的文档 N 次往返。
 
-- **位置：** `apps/api/src/application/ports/chunk-repository.port.ts`,
-  `apps/api/src/infrastructure/persistence/drizzle/chunk.repository.ts`
-- **测试：** `apps/api/test/infrastructure/persistence/chunk.repository.spec.ts`
+- **位置：** `src/application/ports/chunk-repository.port.ts`,
+  `src/infrastructure/persistence/drizzle/chunk.repository.ts`
+- **测试：** `test/infrastructure/persistence/chunk.repository.spec.ts`
   （"createMany grava um lote e listByProject filtra por escopo, sem
   misturar docs e session"）
 - **ADR：** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
@@ -2180,9 +2180,9 @@ first-party auth 的 RN 位于
 第 3 波的端口（RN-226）只覆盖基本的写入/读取。第 4 波加入了 `deleteByScope`/`deleteBySession`（用于通过完全重建实现的幂等重新索引——删除再重建，永不 UPDATE）以及
 `searchByVector`/`searchByLexicalQuery`（混合检索的两半，各自是独立的查询，利用为其建立的索引——HNSW 或 GIN）。`deleteByScope` 的类型是 `Exclude<ChunkScope, 'session'>`：按整个项目删除 `session` 会删除此刻并未被重新索引的会话，因此会话只能通过 `deleteBySession` 删除。
 
-- **位置：** `apps/api/src/application/ports/chunk-repository.port.ts`
-  （第 105-146 行）、`apps/api/src/infrastructure/persistence/drizzle/chunk.repository.ts`
-- **测试：** `apps/api/test/infrastructure/persistence/chunk.repository.spec.ts`
+- **位置：** `src/application/ports/chunk-repository.port.ts`
+  （第 105-146 行）、`src/infrastructure/persistence/drizzle/chunk.repository.ts`
+- **测试：** `test/infrastructure/persistence/chunk.repository.spec.ts`
   ——describe "Onda 4 (G2)"（按范围/会话删除、按向量/词法检索，每一项的正常情况和空情况）
 - **ADR：** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
@@ -2192,11 +2192,11 @@ first-party auth 的 RN 位于
 （`chat.message`、`agent.response`）；事件日志的其余部分（`tool.call`、
 `agent.status`、`agent.error`……）是机制/失败，不是可引用的知识。
 
-- **位置：** `apps/api/src/application/use-cases/rag/index-project-docs.use-case.ts`
-  （第 16-17、64 行）、`apps/api/src/application/use-cases/rag/index-session.use-case.ts`
+- **位置：** `src/application/use-cases/rag/index-project-docs.use-case.ts`
+  （第 16-17、64 行）、`src/application/use-cases/rag/index-session.use-case.ts`
   （第 29、45 行）
-- **测试：** `apps/api/test/application/use-cases/rag/index-project-docs.use-case.spec.ts`、
-  `apps/api/test/application/use-cases/rag/index-session.use-case.spec.ts`
+- **测试：** `test/application/use-cases/rag/index-project-docs.use-case.spec.ts`、
+  `test/application/use-cases/rag/index-session.use-case.spec.ts`
   （正常情况 + "projeto sem docs/" + "evento sem payload.text é
   ignorado"）
 - **ADR：** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
@@ -2208,9 +2208,9 @@ first-party auth 的 RN 位于
 `GENERATED ALWAYS AS`，不依赖任何提供方），索引报告声明这一缺口（`embedding: { available, embedded, skipped,
 reason }`）。同样的降级也适用于检索：`HybridSearchUseCase` 只用词法信号运行，并以 `vectorAvailable: false` 提示。
 
-- **位置：** `apps/api/src/application/use-cases/rag/rag-embedding.service.ts`
+- **位置：** `src/application/use-cases/rag/rag-embedding.service.ts`
   （第 53-58 行）
-- **测试：** `apps/api/test/application/use-cases/rag/rag-embedding.service.spec.ts`
+- **测试：** `test/application/use-cases/rag/rag-embedding.service.spec.ts`
   ——"CASO DE FALHA: provider sem a capability..." 和 "CASO DE FALHA: provider
   que lança no meio do lote..."；`index-project-docs.use-case.spec.ts`/
   `index-session.use-case.spec.ts`——"CASO DE FALHA: provider de embedding
@@ -2225,11 +2225,11 @@ reason }`）。同样的降级也适用于检索：`HybridSearchUseCase` 只用�
 `chunkId`/`content`/分开的分数（当该信号未找到分块时为 `null`，而不是零）/`origin`，后者是按 `kind` 区分的联合（`file` 带
 `sourcePath`/`headingPath`，`session` 带 `sessionId`/`eventId`）。
 
-- **位置：** `apps/api/src/application/use-cases/rag/hybrid-search.use-case.ts`
-  （第 44-113 行）、`apps/api/src/domain/rag/rag-search-limits.ts`
-  （第 60-93 行）、`apps/api/src/domain/rag/rag-citation.ts`（第 12-71 行）
-- **测试：** `apps/api/test/application/use-cases/rag/hybrid-search.use-case.spec.ts`
-  （融合/排序/阈值、超出范围的查询、仅词法降级、会话 origin）和 `apps/api/test/infrastructure/persistence/chunk.repository.spec.ts`
+- **位置：** `src/application/use-cases/rag/hybrid-search.use-case.ts`
+  （第 44-113 行）、`src/domain/rag/rag-search-limits.ts`
+  （第 60-93 行）、`src/domain/rag/rag-citation.ts`（第 12-71 行）
+- **测试：** `test/application/use-cases/rag/hybrid-search.use-case.spec.ts`
+  （融合/排序/阈值、超出范围的查询、仅词法降级、会话 origin）和 `test/infrastructure/persistence/chunk.repository.spec.ts`
   （真正的 SQL 查询，针对真实的 pgvector/tsvector）
 - **ADR：** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
@@ -2238,8 +2238,8 @@ reason }`）。同样的降级也适用于检索：`HybridSearchUseCase` 只用�
 `CHUNK_TARGET_CHARS = 1200`（葡萄牙语约 300 个 token），
 `CHUNK_OVERLAP_CHARS = 150`（12.5%），在 200 个字符的窗口内优先在段落换行处切分，其次在单词处。Markdown（`docs`/`adr`）先按**标题**划分，再按大小切割，保留 `headingPath`。这些数字被记录为可调整的起点，没有针对检索质量的真实数据进行校准（目前还不存在一组在此索引上运行过的真实问题）。
 
-- **位置：** `apps/api/src/domain/rag/chunking.ts`（第 30-31 行，第 53 行起）
-- **测试：** `apps/api/test/domain/rag/chunking.spec.ts`（放得下/放不下的文本、空文本、真实重叠、没有空格的病态文本、嵌套标题、没有标题的 markdown）
+- **位置：** `src/domain/rag/chunking.ts`（第 30-31 行，第 53 行起）
+- **测试：** `test/domain/rag/chunking.spec.ts`（放得下/放不下的文本、空文本、真实重叠、没有空格的病态文本、嵌套标题、没有标题的 markdown）
 - **ADR：** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
 ### RN-236 — 重新索引总是**手动**的，幂等的完全重建 {#rn-236}
@@ -2248,9 +2248,9 @@ reason }`）。同样的降级也适用于检索：`HybridSearchUseCase` 只用�
 对 `docs`/`adr` 运行一次，并对项目的每个会话运行一次 `IndexSessionUseCase`，每次索引都先删除范围/会话再重建——连续运行两次不会重复。由 `POST /projects/:projectId/rag/reindex` 触发，
 `role:maintainer`。
 
-- **位置：** `apps/api/src/application/use-cases/rag/reindex-project.use-case.ts`
+- **位置：** `src/application/use-cases/rag/reindex-project.use-case.ts`
   （第 36 行）
-- **测试：** `apps/api/test/application/use-cases/rag/reindex-project.use-case.spec.ts`
+- **测试：** `test/application/use-cases/rag/reindex-project.use-case.spec.ts`
   （汇总 docs+会话，任一轮失败时 embeddingAvailable 为假，项目不存在）
 - **ADR：** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
@@ -2258,18 +2258,18 @@ reason }`）。同样的降级也适用于检索：`HybridSearchUseCase` 只用�
 
 `GetRagCoverageUseCase` 统计项目仓库中真实的 `.md` 文件数与其中有分块的数量，以及项目会话数与其中有分块的数量。不存在按范围的索引时间戳列，响应也不包含任何“Xmin 前重新索引”——猜出来的数字会撒谎（与 ADR 0042 对模型说明采用的标准相同）。
 
-- **位置：** `apps/api/src/application/use-cases/rag/get-rag-coverage.use-case.ts`
+- **位置：** `src/application/use-cases/rag/get-rag-coverage.use-case.ts`
   （第 47 行）
-- **测试：** `apps/api/test/application/use-cases/rag/get-rag-coverage.use-case.spec.ts`
+- **测试：** `test/application/use-cases/rag/get-rag-coverage.use-case.spec.ts`
 - **ADR：** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
 ### RN-238 — RAG 的三个 HTTP 路由按谁**改变**产品的花费来划分角色 {#rn-238}
 
 `POST .../rag/search` 和 `GET .../rag/coverage` 是 `role:viewer`（纯读取）；`POST .../rag/reindex` 是 `role:maintainer`，因为它会触发对项目仓库和 embedding 提供方的 N 次调用——与领域并行上限（RN-083）相同的“不经询问就改变产品花费”标准。
 
-- **位置：** `apps/api/src/interfaces/http/rag/rag.controller.ts`（第
+- **位置：** `src/interfaces/http/rag/rag.controller.ts`（第
   50、57、81、98 行）、`docs/security-surface.md`
-- **测试：** `apps/api/test/interfaces/route-surface.spec.ts`
+- **测试：** `test/interfaces/route-surface.spec.ts`
   （角色分类、封闭标签、三个路由的 OpenAPI 元数据）
 - **ADR：** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
@@ -2282,9 +2282,9 @@ reason }`）。同样的降级也适用于检索：`HybridSearchUseCase` 只用�
 `RegistrarTransicaoDeContainerUseCase` 和
 `ObterCicloDeVidaDoContainerUseCase` 都不调用 Docker 守护进程：如今产品的任何服务都不挂载 `/var/run/docker.sock`，也不以 `privileged` 运行，而授予这些是本规则范围之外的安全决定。真正的编排器出现时，会在真正行动之后**消费**这张表——永远不是反过来。
 
-- **位置：** `apps/api/src/domain/containers/container-lifecycle.ts`、
-  `apps/api/src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
-- **测试：** `apps/api/test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
+- **位置：** `src/domain/containers/container-lifecycle.ts`、
+  `src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
+- **测试：** `test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
 - **ADR：** [0081](../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
 ### RN-244 — 容器的状态机：只有 `removed` 通过重新开通离开 {#rn-244}
@@ -2293,9 +2293,9 @@ reason }`）。同样的降级也适用于检索：`HybridSearchUseCase` 只用�
 `provisioning`/`running`/`stopped` 到达，`removed → provisioning` 是 `removed` 的**唯一**出口——没有任何状态是真正的终止状态，因为项目可以用 Arquiteto 修订过的镜像重新开通。表外的转换抛出 `InvalidContainerTransitionError`，用例将其转换为 409——与 `session-state-machine.ts`
 和 `pr-gate-state-machine.ts` 的格式相同。
 
-- **位置：** `apps/api/src/domain/containers/container-lifecycle.ts`
+- **位置：** `src/domain/containers/container-lifecycle.ts`
   （`ALLOWED_TRANSITIONS`）
-- **测试：** `apps/api/test/domain/containers/container-lifecycle.spec.ts`
+- **测试：** `test/domain/containers/container-lifecycle.spec.ts`
 - **ADR：** [0081](../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
 ### RN-245 — 第一次转换要求镜像已确定，并**冻结**版本和资源 {#rn-245}
@@ -2303,8 +2303,8 @@ reason }`）。同样的降级也适用于检索：`HybridSearchUseCase` 只用�
 在第一次以 `to: 'provisioning'` 调用之前不存在任何行，而且只有当 Arquiteto 已经确定了项目镜像时（RN-105）它才被接受——与已经保护 Code 标签页的门槛相同，在源头应用而不是复制。那一刻 `artifact.project_image` 的版本和声明的资源被**冻结**在新行中（`image_version`、`cpus`、
 `memory_mb`、`pids_limit`）：之后对制品的修订不会追溯性地改变已开通实例所承诺的内容。
 
-- **位置：** `apps/api/src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
-- **测试：** `apps/api/test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
+- **位置：** `src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
+- **测试：** `test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
   ——"a primeira transição (provisioning) cria a linha…" 和 "sem decisão de
   imagem do Arquiteto, não há o que provisionar"
 - **ADR：** [0081](../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
@@ -2313,8 +2313,8 @@ reason }`）。同样的降级也适用于检索：`HybridSearchUseCase` 只用�
 
 `workspace_mode: 'local'` 的项目（ADR 0072，RN-169）运行在一贯的**智能体**容器中——不启动自己的容器。对 `local` 项目请求任何转换都会在触碰表**之前**以 400 拒绝，在源头拒绝，而不是之后在 UI 中过滤。
 
-- **位置：** `apps/api/src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
-- **测试：** `apps/api/test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
+- **位置：** `src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
+- **测试：** `test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
   ——"projeto em modo `local` não tem ciclo de vida de container (ADR 0072)"
 - **ADR：** [0081](../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
@@ -2322,8 +2322,8 @@ reason }`）。同样的降级也适用于检索：`HybridSearchUseCase` 只用�
 
 每个项目同一时间只存在**一个**当前容器——与 engine 中 `dev_agent_states` 的设计相同（ADR 0045）。唯一约束位于**数据库**（`project_containers_project_id_unique`），而不只在用例中：对同一项目调用两次 `create` 会在写入时失败，永远不会静默产生第二行。
 
-- **位置：** `apps/api/src/db/migrations/0046_chilly_forgotten_one.sql`
-- **测试：** `apps/api/test/infrastructure/persistence/drizzle/container.repository.spec.ts`
+- **位置：** `src/db/migrations/0046_chilly_forgotten_one.sql`
+- **测试：** `test/infrastructure/persistence/drizzle/container.repository.spec.ts`
   ——"só uma linha por projeto — create duplicado viola a constraint única"
 - **ADR：** [0081](../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
@@ -2332,8 +2332,8 @@ reason }`）。同样的降级也适用于检索：`HybridSearchUseCase` 只用�
 `cpus`/`memory_mb`/`pids_limit` 记录开通时 Arquiteto 的制品所承诺的内容，但如今没有任何进程让内核遵守这个上限——没有编排器在调用 `docker run
 --cpus … --memory … --pids-limit …`。字段仍然诞生，因为把列推迟到编排器存在时，会迫使在它到来那天写一个修正迁移；只要表不对**施加**撒谎，声明而不施加就是诚实的（如今没有任何屏幕或 API 响应断言“容器被限制为 X”——只说“记录的意图是 X”）。
 
-- **位置：** `apps/api/src/db/schema/containers.ts`（`projectContainers`）
-- **测试：** `apps/api/test/infrastructure/persistence/drizzle/container.repository.spec.ts`
+- **位置：** `src/db/schema/containers.ts`（`projectContainers`）
+- **测试：** `test/infrastructure/persistence/drizzle/container.repository.spec.ts`
   ——"create nasce em `provisioning`, com a versão e os recursos passados"
 - **ADR：** [0081](../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
@@ -2347,10 +2347,10 @@ ADR 0081 有意创建了没有路由的 `ObterCicloDeVidaDoContainerUseCase`
 （`status`/`imageVersion`/`resources`/`failureReason`/`statusChangedAt`），**从不**与 Docker 守护进程核对，因为产品中不存在 Docker 客户端（RN-243）。与兄弟路由（`GET
 /projects/:projectId/container`）权限相同：`viewer`、GET、没有 `@Post`——会转换生命周期的是一个尚不存在的编排器。
 
-- **位置：** `apps/api/src/interfaces/http/containers/containers.controller.ts`
-  （`cicloDeVida`）、`apps/api/src/interfaces/http/containers/dto/containers.response.dto.ts`
+- **位置：** `src/interfaces/http/containers/containers.controller.ts`
+  （`cicloDeVida`）、`src/interfaces/http/containers/dto/containers.response.dto.ts`
   （`CicloDeVidaDoContainerResponseDto`）
-- **测试：** `apps/api/test/interfaces/http/containers/containers.controller.spec.ts`
+- **测试：** `test/interfaces/http/containers/containers.controller.spec.ts`
 - **边界情况：** 内部行的 `id`/`projectId`/`containerId` **不会**泄漏到响应中——HTTP 契约与数据库行不是同一形状。
 - **ADR：** [0083](../adr/0083-terminal-mostra-estado-real-do-container.md)
   （修订 [0081](../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)）
@@ -2360,8 +2360,8 @@ ADR 0081 有意创建了没有路由的 `ObterCicloDeVidaDoContainerUseCase`
 `SocialLoginCallbackUseCase` 分三步解析提供方的身份，按此顺序，绝不打乱：`(provider, providerUserId)`
 已关联 → 直接登录；没有关联但邮箱与一个现有账户匹配 → 按 [RN-274](#rn-274)/[RN-275](#rn-275) 决定；两者都不是 → 开通新账户（[RN-278](#rn-278)）。第一步的查找键总是 `providerUserId`，从不是邮箱——避免在提供方更换邮箱时“丢失”关联。
 
-- **位置：** `apps/api/src/application/use-cases/auth/social-login-callback.use-case.ts`
-- **测试：** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **位置：** `src/application/use-cases/auth/social-login-callback.use-case.ts`
+- **测试：** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   ——`SocialLoginCallbackUseCase` 的七个用例
 - **ADR：** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -2373,8 +2373,8 @@ ADR 0081 有意创建了没有路由的 `ObterCicloDeVidaDoContainerUseCase`
 `state`，即使签名有效，在这里也会被拒绝：没有这个判别字段，接受它就等于以发起那次连接的人的
 `userId` 登录——权限提升。
 
-- **位置：** `apps/api/src/domain/auth/social-oauth-state.ts`
-- **测试：** `apps/api/test/domain/auth/social-oauth-state.spec.ts`
+- **位置：** `src/domain/auth/social-oauth-state.ts`
+- **测试：** `test/domain/auth/social-oauth-state.spec.ts`
   ——"RN-273: rejeita um state do fluxo de CONEXÃO de git, mesma chave"
 - **ADR：** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -2384,9 +2384,9 @@ ADR 0081 有意创建了没有路由的 `ObterCicloDeVidaDoContainerUseCase`
 `confirmed_at`。输入了但未验证的邮箱不是身份证明：任何人都可以在 OAuth 提供方注册别人的邮箱。不做这项检查就接受关联会打开账户接管——已经在 Brabo 拥有 `alguem@empresa.com` 的人，并没有要求让一个仅仅**输入**了该地址的他人 GitHub 继承这个账户。拒绝是
 `403`，不保存任何关联。
 
-- **位置：** `apps/api/src/application/use-cases/auth/social-login-callback.use-case.ts`
+- **位置：** `src/application/use-cases/auth/social-login-callback.use-case.ts`
   （`vincularAContaExistente`）
-- **测试：** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **测试：** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   ——"RECUSA vincular quando o e-mail bate mas NÃO está verificado pelo provider"
 - **ADR：** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -2394,9 +2394,9 @@ ADR 0081 有意创建了没有路由的 `ObterCicloDeVidaDoContainerUseCase`
 
 RN-274 的邮箱验证保护的是一个已经存在的账户；当没有对应账户时，就没有什么需要保护，只有一个即将诞生的新账户。在这种情况下要求已验证邮箱会让常见路径代价更高（大多数 GitHub 用户有已验证邮箱，但不是全部，因此拒绝登录只会带来摩擦而没有相应的安全收益），却不降低任何风险——最坏情况是一个带有未证实邮箱的新账户，与密码注册在点击验证链接之前已经隐含接受的风险相同。
 
-- **位置：** `apps/api/src/application/use-cases/auth/social-login-callback.use-case.ts`
+- **位置：** `src/application/use-cases/auth/social-login-callback.use-case.ts`
   （`provisionarContaNova`）
-- **测试：** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **测试：** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   ——"provisiona conta nova mesmo com e-mail NÃO verificado"
 - **ADR：** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -2404,9 +2404,9 @@ RN-274 的邮箱验证保护的是一个已经存在的账户；当没有对应�
 
 `social_identities` 在 `(provider, provider_user_id)` 上有唯一索引——提供方**数字**的、稳定的 id。邮箱和登录名（用户名）可能在提供方处不经通知就更换主人或值；用它们作为键会让在 GitHub 上更换邮箱的人“丢失”已有账户的关联，或者更糟，让之后重新使用该地址的另一个人静默继承关联。
 
-- **位置：** `apps/api/src/db/migrations/0047_complete_hannibal_king.sql`、
-  `apps/api/src/application/ports/social-identity-repository.port.ts`
-- **测试：** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **位置：** `src/db/migrations/0047_complete_hannibal_king.sql`、
+  `src/application/ports/social-identity-repository.port.ts`
+- **测试：** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   ——"identidade já conhecida: login direto, sem criar segunda linha"
 - **ADR：** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -2415,10 +2415,10 @@ RN-274 的邮箱验证保护的是一个已经存在的账户；当没有对应�
 `buildLoginAuthorizeUrl` 请求 `read:user user:email`（GitHub）和
 `read_user`（GitLab）——从不请求 git **连接**流程所请求的 `repo`/`api`。登录账户不应授予对任何仓库的访问；两个流程复用**同一个** OAuth 应用（RN-281），但请求不同的授权，在授权时决定，而不是在应用配置中决定。
 
-- **位置：** `apps/api/src/infrastructure/git/github-oauth-client.ts`、
-  `apps/api/src/infrastructure/git/gitlab-oauth-client.ts`
+- **位置：** `src/infrastructure/git/github-oauth-client.ts`、
+  `src/infrastructure/git/gitlab-oauth-client.ts`
   （`buildLoginAuthorizeUrl`）
-- **测试：** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **测试：** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   ——"StartSocialLoginUseCase › caminho feliz"
 - **ADR：** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -2427,10 +2427,10 @@ RN-274 的邮箱验证保护的是一个已经存在的账户；当没有对应�
 通过社交登录开通会在 `users` 中写入一行，而在
 `auth_credentials` 中**不**写入任何行——与 Keycloak 迁移已经为“尚无密码的账户”留下的组合相同（见 RN-032 和 `migracao-keycloak.spec.ts`）。`LoginUseCase` 和 `ResetPasswordUseCase` 已经处理这种状态；社交登录不需要第二套“待定密码”机制。
 
-- **位置：** `apps/api/src/application/ports/auth-credential-repository.port.ts`
+- **位置：** `src/application/ports/auth-credential-repository.port.ts`
   （`criarUsuarioSemCredencial`）、
-  `apps/api/src/infrastructure/persistence/drizzle/auth-credential.repository.ts`
-- **测试：** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+  `src/infrastructure/persistence/drizzle/auth-credential.repository.ts`
+- **测试：** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   ——"caminho feliz: provisiona um usuário NOVO, sem senha (RN-278)"
 - **ADR：** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -2438,9 +2438,9 @@ RN-274 的邮箱验证保护的是一个已经存在的账户；当没有对应�
 
 当一个通过密码注册（且从未验证）的账户被关联到一个提供方标记邮箱为已验证的社交身份时，该账户会作为副作用获得填充的 `emailVerifiedAt`。提供方刚刚通过一条独立的途径证明了点击验证链接所能证明的完全相同的事——在通过另一条同样强的途径证明了对邮箱的拥有之后，账户继续被禁止密码登录（RN-032）就说不通了。
 
-- **位置：** `apps/api/src/application/use-cases/auth/social-login-callback.use-case.ts`
+- **位置：** `src/application/use-cases/auth/social-login-callback.use-case.ts`
   （`vincularAContaExistente`）
-- **测试：** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **测试：** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   ——"vincula a conta existente (…) e marca o e-mail dela como verificado (RN-274/279)"
 - **ADR：** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -2448,9 +2448,9 @@ RN-274 的邮箱验证保护的是一个已经存在的账户；当没有对应�
 
 关联到 `auth_credentials.disabled_at` 已填充的账户的社交身份会被以 `403` 拒绝，无论是直接登录（已知身份）还是尝试关联时。禁用账户不能通过更换登录方式来绕过。
 
-- **位置：** `apps/api/src/application/use-cases/auth/social-login-callback.use-case.ts`
+- **位置：** `src/application/use-cases/auth/social-login-callback.use-case.ts`
   （`entrarComIdentidadeConhecida`、`vincularAContaExistente`）
-- **测试：** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **测试：** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   ——"recusa login de identidade vinculada a conta DESABILITADA"
 - **ADR：** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -2461,7 +2461,7 @@ RN-274 的邮箱验证保护的是一个已经存在的账户；当没有对应�
 `/git/oauth/<provider>/callback`）和 `scope`（RN-277）——两者都在请求时决定。**运维人员**的操作仍然是必要的（在每个提供方的应用中注册第二个回调 URL），记录在 `.env.example` 中——正是这一要求，而不是新的环境变量，证明分支应以 `breaking/` 诞生。
 
 - **位置：** `.env.example`、
-  `apps/api/src/application/use-cases/auth/start-social-login.use-case.ts`
+  `src/application/use-cases/auth/start-social-login.use-case.ts`
 - **测试：** 手动（在 OAuth 应用中注册）——无法自动测试产品外部的配置
 - **ADR：** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -2470,9 +2470,9 @@ RN-274 的邮箱验证保护的是一个已经存在的账户；当没有对应�
 `GET /auth/oauth/:provider/callback` 写入会话 cookie
 （`definirCookiesDeSessao`，与密码登录**相同**的函数）并重定向到 `WEB_ORIGIN/`。web 的启动（`restaurarSessao()`，每次页面加载都会调用）用刚写入的 refresh 换取 access token——除了按钮和错误路由别名之外，客户端没有新代码。
 
-- **位置：** `apps/api/src/interfaces/http/auth/auth.controller.ts`
+- **位置：** `src/interfaces/http/auth/auth.controller.ts`
   （`oauthCallback`）
-- **测试：** `apps/api/test/interfaces/route-surface.spec.ts`——覆盖该路由的公开分类和 OpenAPI 元数据；cookie→启动的完整流程是 E2E，超出单元测试范围
+- **测试：** `test/interfaces/route-surface.spec.ts`——覆盖该路由的公开分类和 OpenAPI 元数据；cookie→启动的完整流程是 E2E，超出单元测试范围
 - **ADR：** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
 ### RN-283 — 社交登录回调失败不会在 URL 中泄漏原因 {#rn-283}
@@ -2481,9 +2481,9 @@ RN-274 的邮箱验证保护的是一个已经存在的账户；当没有对应�
 `WEB_ORIGIN/login?oauth_error=1`——一个单一的通用信号，从不是真实原因。与 git 连接回调的模式相同
 （`WEB_ORIGIN/git-error`）。
 
-- **位置：** `apps/api/src/interfaces/http/auth/auth.controller.ts`
+- **位置：** `src/interfaces/http/auth/auth.controller.ts`
   （`oauthCallback`，`catch` 块）
-- **测试：** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **测试：** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   ——覆盖控制器映射到同一通用重定向的各种失败结果
 - **ADR：** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -2492,7 +2492,7 @@ RN-274 的邮箱验证保护的是一个已经存在的账户；当没有对应�
 ## Analytics 与 delivery-metricas：两个角色变成**报告**（RN-320..322，ADR 0089）
 
 产品负责人有意识地决定**提前**构建
-`analytics` 和 `delivery-metricas` 角色（`docs/fluxo.yml`，`status: proposto`），而不等待各自早已声明的自然触发条件。两者变成**一个**脚本——`apps/api/scripts/analise-funil.ts`——与
+`analytics` 和 `delivery-metricas` 角色（`docs/fluxo.yml`，`status: proposto`），而不等待各自早已声明的自然触发条件。两者变成**一个**脚本——`scripts/analise-funil.ts`——与
 `medir-execucao.ts`（第 13b 阶段）格式相同：`NestFactory.createApplicationContext`、必填的
 `--projeto <uuid>`、通过 Drizzle 纯读取，没有任何写入。形式正是流程本身早已规定的：`analytics` “被 `medicao` 吸收”，`delivery-metricas` “永远不变成智能体”——没有 GenServer，没有 LLM 智能体。
 
@@ -2502,9 +2502,9 @@ RN-274 的邮箱验证保护的是一个已经存在的账户；当没有对应�
 git_merge)` 筛选）和 `projects`，从不写入。文件末尾的守卫
 `if (process.argv[1]?.endsWith('analise-funil.ts')) void main();` 与 `medir-execucao.ts` 相同：没有它，在测试中导入该模块会启动整个 Nest，并在参数解析器的 `process.exit` 中搞垮进程。
 
-- **位置：** `apps/api/scripts/analise-funil.ts:64-73`（`lerOpcoes`）、
+- **位置：** `scripts/analise-funil.ts:64-73`（`lerOpcoes`）、
   `:256-319`（`main`）、`:390`（执行守卫）
-- **测试：** `apps/api/test/scripts/analise-funil.spec.ts`（只测纯函数——与数据库交互的部分通过真实运行来检验，与 `medir-execucao.spec.ts` 模式相同）
+- **测试：** `test/scripts/analise-funil.spec.ts`（只测纯函数——与数据库交互的部分通过真实运行来检验，与 `medir-execucao.spec.ts` 模式相同）
 - **ADR：** [0089](../adr/0089-analytics-e-delivery-metricas-como-relatorio.md)
 
 ### RN-321 — 漏斗按阶段统计**会话**，只算 `executed` 的操作，前置时间使用执行的 `updated_at` {#rn-321}
@@ -2513,16 +2513,16 @@ git_merge)` 筛选）和 `projects`，从不写入。文件末尾的守卫
 `pr_open` 和 `git_merge`——一个有三次提交的会话在其到达的每个阶段只计一次，永远不是三次。一个阶段的转化率是 `sessões-da-etapa / sessões-da-etapa-anterior`，当分母为零时为
 `null`（不是 `0`，也不是 `Infinity`）——没有“从”什么转化可以测量。`calcularLeadTimes` 使用 `proposed_actions` 行的 `updated_at`，而不是 `created_at`：它是 `ExecuteGitActionUseCase#record` 真正写入 `execution_result` 的时刻（`updateExecutionResult` 会更新 `updatedAt`），而不是操作被**提议**的时刻——与 `token_usage`/冻结价格在另一个上下文中已经做出的区分相同（RN-042）。`updated_at` 早于提交的合并（同一会话中的两批，或不一致的数据）会被丢弃，永远不会变成负的前置时间。
 
-- **位置：** `apps/api/scripts/analise-funil.ts:115-160`（`calcularFunil`）、
+- **位置：** `scripts/analise-funil.ts:115-160`（`calcularFunil`）、
   `:170-193`（`calcularLeadTimes`）
-- **测试：** `apps/api/test/scripts/analise-funil.spec.ts`（describe
+- **测试：** `test/scripts/analise-funil.spec.ts`（describe
   "calcularFunil"、"calcularLeadTimes"）
 - **ADR：** [0089](../adr/0089-analytics-e-delivery-metricas-como-relatorio.md)
 
 ### RN-322 — 真实的部署频率筛选合并到**受保护**分支的操作；三项指标被**声明**为缺失，从不近似 {#rn-322}
 
 `deploymentFrequencyPorDia` 只统计 `executionResult.targetBranch` 在 `PROTECTED_BRANCHES`
-（`apps/api/src/domain/actions/protected-branches.ts`）中的 `executed` `git_merge`——合并到功能分支不是部署。它通过**引用**与 `backmerge` gate
+（`src/domain/actions/protected-branches.ts`）中的 `executed` `git_merge`——合并到功能分支不是部署。它通过**引用**与 `backmerge` gate
 （`docs/gates.yml`）交叉：后者的证据是 CI，位于 `.release/gate.json`，超出只读数据库的脚本的范围，因此没有数据连接，只有该 gate 观察的相同分支切片。
 
 三项指标以一个“有意不测量”小节代替近似数字离开报告：
@@ -2533,9 +2533,9 @@ git_merge)` 筛选）和 `projects`，从不写入。文件末尾的守卫
 3. **MTTR 和变更失败率。** 需要真实生产**事故**的信号——与 `docs/fluxo.yml` 为
    `secops-runtime`/`platform` 已经记录的依赖相同（`status: proposto`/`planned`，激活与 `DEPLOY_ENABLED` 同步）。
 
-- **位置：** `apps/api/scripts/analise-funil.ts:220-247`
+- **位置：** `scripts/analise-funil.ts:220-247`
   （`deploymentFrequencyPorDia`）、`:372-386`（打印的“Não medido”小节）
-- **测试：** `apps/api/test/scripts/analise-funil.spec.ts`（describe
+- **测试：** `test/scripts/analise-funil.spec.ts`（describe
   "deploymentFrequencyPorDia"）
 - **ADR：** [0089](../adr/0089-analytics-e-delivery-metricas-como-relatorio.md)
 
@@ -2563,13 +2563,13 @@ git_merge)` 筛选）和 `projects`，从不写入。文件末尾的守卫
 
 - **位置：** `apps/engine/lib/engine/agents/dev_lead_tools.ex`
   （`run_assessment/2`、`spec_assess_implementability/0`）、
-  `dev_lead_server.ex`（`run_tool/3`）；`apps/api/src/domain/actions/decide.ts`
+  `dev_lead_server.ex`（`run_tool/3`）；`src/domain/actions/decide.ts`
   （`assess_implementability`）；`docs/gates.yml`（`implementavel`、
   `status: active`）
 - **测试：** `apps/engine/test/engine/agents/dev_lead_tools_test.exs`
   （describe "assess_implementability"）、`dev_lead_server_test.exs`
   （describe "suspensão em aprovação"——两个新测试）、
-  `apps/api/test/domain/actions/decide.spec.ts`（describe "parecer de
+  `test/domain/actions/decide.spec.ts`（describe "parecer de
   implementabilidade do Dev Lead"）
 - **来源：** [ADR 0090](../adr/0090-qa-estrategia-e-appsec-segundo-momento.md)
 
@@ -2583,31 +2583,31 @@ ativo)”。这个触发条件没有触发——没有生产流量。如今存�
 ### RN-375 — 报告声明时间窗口，从不假装有更长的历史 {#rn-375}
 
 `DomainGaugesCollector.pruneRateLimit`
-（`apps/api/src/infrastructure/observability/domain-gauges.collector.ts:177-186`）
+（`src/infrastructure/observability/domain-gauges.collector.ts:177-186`）
 每隔 `METRICS_GAUGE_INTERVAL_MS`（默认 15 秒）删除早于 `2 × RATE_LIMIT_WINDOW_MS`（默认 60 秒时为 240 秒）的命中——表中从不保存超过几分钟的数据。`relatorio-seguranca-runtime.ts` 打印**两个**窗口，从不只打印一个：**配置的**窗口（修剪的理论上限）和**观察到的**窗口（数据实际覆盖的范围，从读到的第一个到最后一个
 `occurred_at`）。当两者一致时，报告明确说明这是修剪的迹象——更早的命中可能存在过并已被删除——从不说“命中次数不超过这些”。
 
 ### RN-376 — 排名只使用 `bucket_key` 保存的东西：桶和时间 {#rn-376}
 
 `RateLimitGuard.registrarEContar`
-（`apps/api/src/interfaces/http/shared/rate-limit.guard.ts:150-170`）只写入
+（`src/interfaces/http/shared/rate-limit.guard.ts:150-170`）只写入
 `bucket_key`（`user:<uuid>` 或 `ip:<endereço>`）和 `occurred_at`——**没有**路由、HTTP 方法，也没有阻塞原因。`rankingDeBaldes` 和
-`interpretarBalde`（`apps/api/scripts/relatorio-seguranca-runtime.ts`）只按这两个字段分类；不符合 `user:`/`ip:` 格式的 `bucket_key` 落入 `desconhecido` 而不是崩溃，这样如果未来的 `RateLimitGuard` 写入其他格式，脚本也不会坏。要求“按路由的 IP 排名”就是在发明一个表从未保存过的维度。
+`interpretarBalde`（`scripts/relatorio-seguranca-runtime.ts`）只按这两个字段分类；不符合 `user:`/`ip:` 格式的 `bucket_key` 落入 `desconhecido` 而不是崩溃，这样如果未来的 `RateLimitGuard` 写入其他格式，脚本也不会坏。要求“按路由的 IP 排名”就是在发明一个表从未保存过的维度。
 
 ## `dbre` 角色变成两个机械脚本（RN-400..403，ADR 0093）
 
 ### RN-400 — 迁移意见是 SQL 的**静态**分析，当风险模式只出现在注释中时忽略它 {#rn-400}
 
 `lintarConteudo`（`lint-migracao.ts` 的纯核心）逐行扫描
-`apps/api/src/db/migrations/` 中的每个 `.sql`，不依赖 `--projeto`
+`src/db/migrations/` 中的每个 `.sql`，不依赖 `--projeto`
 也不依赖数据库——它发现的风险是 **SCHEMA** 层面的，而不是负载层面的，因此不依赖任何真实的数据量（`docs/fluxo.yml` 早已为该角色声明的拆分标准）。五种模式，每一种都在发现中附带理由：`DROP TABLE`/`TRUNCATE`（完全丢失，不可逆）、`DROP COLUMN`（丢失该列，不可逆）、
 `ALTER COLUMN ... TYPE`/`SET DATA TYPE`（可能重写整张表），以及没有 `DEFAULT` 的 `ADD COLUMN ... NOT NULL`（对非空表会失败——这正是 `0042_tough_captain_midlands.sql` 有意识避免的模式，采用先可空、再回填、再 `SET NOT NULL`）。
 
 以 `--` 开头的行（注释）被有意忽略：这个仓库在 SQL 本身中用文字解释为什么**避免**某个模式——分析注释文本会恰好在描述为什么没有使用它的那句话中发现该模式。
 
-- **位置：** `apps/api/scripts/lint-migracao.ts`（`REGRAS`，第 75 行；
+- **位置：** `scripts/lint-migracao.ts`（`REGRAS`，第 75 行；
   `lintarConteudo`，第 126 行）
-- **测试：** `apps/api/test/scripts/lint-migracao.spec.ts`——每种模式单独测试、同一迁移中多种模式的组合，以及 "ignora o
+- **测试：** `test/scripts/lint-migracao.spec.ts`——每种模式单独测试、同一迁移中多种模式的组合，以及 "ignora o
   padrão de risco quando ele aparece só em COMENTÁRIO"
 - **ADR：** [0093](../adr/0093-dbre-linter-de-migracao-e-relatorio-de-backup.md)
 
@@ -2624,9 +2624,9 @@ ativo)”。这个触发条件没有触发——没有生产流量。如今存�
 `StoryRepository.findByProject(projectId)`，当项目中**没有**任何用户故事满足 `status !== 'draft'` 时以 `BadRequestException` 拒绝——检查发生在写入 `architecture.readiness_confirmed` **之前**，也在任何对 engine 的调用**之前**（`offerInfraHandoff`；`offerDevHandoff` 在
 [RN-672](#rn-672) 中被移除）：一次拒绝不能在不可变的事件日志中留下半提供的 handoff 痕迹。选择 `StoryRepository`（而不是 `ListBacklogUseCase`）是因为它更轻——回答“是否存在任何非 draft？”不需要组装 史诗→用户故事→任务 的树。
 
-- **位置：** `apps/api/src/application/use-cases/agents/offer-infra-handoff.use-case.ts`
+- **位置：** `src/application/use-cases/agents/offer-infra-handoff.use-case.ts`
   （第 27-34 行，检查；在构造函数中注入 `StoryRepository`）
-- **测试：** `apps/api/test/application/use-cases/agents/offer-infra-handoff.use-case.spec.ts`
+- **测试：** `test/application/use-cases/agents/offer-infra-handoff.use-case.spec.ts`
   ——零个已晋升用户故事时拒绝，对 engine **零**调用，**零**事件写入；至少有一个 `ready`/`in_progress`/`done` 时，按正常流程进行
 - **ADR：** [0094](../adr/0094-delegacao-dev-lead-vira-dado.md)
 
@@ -2643,14 +2643,14 @@ ativo)”。这个触发条件没有触发——没有生产流量。如今存�
 
 校验在 `SmtpMailSender` 的构造函数中运行，由 Nest 组装 provider 图（`NestFactory.create()`）时 `AuthUseCasesModule` 的 `useFactory` 触发——而不是像原始 RN-114 的四个密钥那样在 `main.ts` 中急切调用。区别是有意的：那四个保护的是**任何**请求随时都可能触及的路径，因此在启动前失败很重要。`SmtpMailSender` 只在运维人员选择 `smtp` 时才实例化，而 `AuthUseCasesModule` 是无条件导入的（经由 `AuthHttpModule`），所以校验仍然发生在启动时——与 `CREDENTIALS_MASTER_KEY` 已经使用的设计相同（在 `EnvelopeEncryptionService` 的构造函数中校验，由同一次图组装触发）。
 
-- **位置：** `apps/api/src/infrastructure/mail/smtp-config.ts`
+- **位置：** `src/infrastructure/mail/smtp-config.ts`
   （`resolverConfigSmtp`、`resolverModoDeTransporte`）、
-  `apps/api/src/infrastructure/mail/smtp-mail-sender.ts`（`SmtpMailSender`，在构造函数中调用 `resolverConfigSmtp()`）、
-  `apps/api/src/application/use-cases/auth/auth-use-cases.module.ts`
+  `src/infrastructure/mail/smtp-mail-sender.ts`（`SmtpMailSender`，在构造函数中调用 `resolverConfigSmtp()`）、
+  `src/application/use-cases/auth/auth-use-cases.module.ts`
   （`MailSender` 的 `useFactory`）
-- **测试：** `apps/api/test/infrastructure/mail/smtp-config.spec.ts`
+- **测试：** `test/infrastructure/mail/smtp-config.spec.ts`
   （与 `auth-key-material.spec.ts`/`service-token.spec.ts` 相同的模式）、
-  `apps/api/test/infrastructure/mail/smtp-mail-sender.spec.ts`
+  `test/infrastructure/mail/smtp-mail-sender.spec.ts`
 - **来源：** [ADR 0096](../adr/0096-smtp-real-no-mailsender.md)，扩展了
   [RN-114](#rn-114) 的模式（而后者又扩展了
   [ADR 0059](../adr/0059-segredo-do-state-de-oauth-sem-default.md)）
@@ -2669,19 +2669,19 @@ ativo)”。这个触发条件没有触发——没有生产流量。如今存�
 
 名称和 slug 出自**一个**纯函数，
 `nomeESlugDoWorkspacePessoal(nome, email, userId)`
-（`apps/api/src/domain/auth/personal-workspace.ts`），两个创建点共同复用——这样规则不会在两个文件中产生分歧，这也是 `normalizarEmail`/`exigirSenhaValida` 位于领域中的原因。名称使用提供的 `nome`（社交登录使用提供方的登录名），没有名称时以邮箱的本地部分作为后备——两者都从不编造。slug 是同一文本的 kebab-case，**总是**以
+（`src/domain/auth/personal-workspace.ts`），两个创建点共同复用——这样规则不会在两个文件中产生分歧，这也是 `normalizarEmail`/`exigirSenhaValida` 位于领域中的原因。名称使用提供的 `nome`（社交登录使用提供方的登录名），没有名称时以邮箱的本地部分作为后备——两者都从不编造。slug 是同一文本的 kebab-case，**总是**以
 `userId.slice(0, 8)` 为后缀（与
 `extraDevAgentId`/`workspaceDirName`/会话标签相同的模式）：`workspaces.slug`
 在数据库中是 `UNIQUE`，而产品中没有任何东西做冲突重试，所以两个名称或本地部分相同的注册在没有后缀时会冲突。没有**任何**字母数字字符的名称或邮箱降级为字面值 `workspace-<8 chars>`，从不降级为空字符串。
 
-- **位置：** `apps/api/src/domain/auth/personal-workspace.ts`
+- **位置：** `src/domain/auth/personal-workspace.ts`
   （`nomeESlugDoWorkspacePessoal`）、
-  `apps/api/src/application/use-cases/auth/register.use-case.ts`、
-  `apps/api/src/application/use-cases/auth/social-login-callback.use-case.ts`
+  `src/application/use-cases/auth/register.use-case.ts`、
+  `src/application/use-cases/auth/social-login-callback.use-case.ts`
   （方法 `provisionarContaNova`）
-- **测试：** `apps/api/test/domain/auth/personal-workspace.spec.ts`（有/无 `nome` 的名称、回退到邮箱的本地部分、重音/大写变成 ASCII kebab-case、没有任何字母数字字符时回退为 `workspace-<id>`、由于后缀 slug 总是唯一）；
-  `apps/api/test/application/use-cases/auth/register.use-case.spec.ts`
-  （新账户获得以该用户为 `owner` 的工作区，重复邮箱不会创建第二个）；`apps/api/test/application/use-cases/auth/
+- **测试：** `test/domain/auth/personal-workspace.spec.ts`（有/无 `nome` 的名称、回退到邮箱的本地部分、重音/大写变成 ASCII kebab-case、没有任何字母数字字符时回退为 `workspace-<id>`、由于后缀 slug 总是唯一）；
+  `test/application/use-cases/auth/register.use-case.spec.ts`
+  （新账户获得以该用户为 `owner` 的工作区，重复邮箱不会创建第二个）；`test/application/use-cases/auth/
   social-login-callback.use-case.spec.ts`（在通过社交登录开通新账户的分支中做同样的证明）
 - **ADR：** 无——修正一条本应从一开始就这样做的路径，不是新的结构性决定
 - **来源：** 通过真实使用、浏览产品发现——不是计划中的 backlog 项
@@ -2695,7 +2695,7 @@ large”），有两个相互串联的缺陷。QA/SecOps 的 gate 以 `413 reque
 
 **413 的原因来自 Brabo 自己的 api，从不来自 LLM 提供方**——见 [ADR 0098](../adr/0098-limites-de-transporte-e-janela-efetiva-de-compactacao.md)。两项修正，两者都是必要的（只做一项只会推迟溢出）：
 
-1. `apps/api/src/main.ts` 从未配置 Express 的请求体限制——使用的是 100 KB 的默认值，这是 engine→api 方向上最窄的瓶颈（Phoenix 接受最多 8 MB）。`POST
+1. `src/main.ts` 从未配置 Express 的请求体限制——使用的是 100 KB 的默认值，这是 engine→api 方向上最窄的瓶颈（Phoenix 接受最多 8 MB）。`POST
    /internal/sessions/:sessionId/llm-turn` 在 `ToolLoop` 的每次迭代中重新发送**整个**对话历史，3-4 个 32 KiB 的工具结果（RN-150 的单项上限）加起来就已超过 100 KB。
    `API_JSON_BODY_LIMIT`（默认 `10mb`）关闭了这一端。
 2. `Engine.Harness.ContextManager.Default` 有两个缺陷，使得在请求体溢出之前压缩无法触发：
@@ -2715,11 +2715,11 @@ large”），有两个相互串联的缺陷。QA/SecOps 的 gate 以 `413 reque
 （`ProjectCardSummary.roster.executionActivated`）——`ProjectExecutorsTab.tsx`
 和 `ProjectOverviewTab.tsx` 改为消费它，而不是从窗口推导。`gatesEverOpened` 患有**同一类**缺陷，被**声明**为已知限制，没有在这里修正——修正它需要改变 `deriveAgentRoster`/`rosterFactsFromEvents` 的签名，超出这次修正的范围。
 
-- **位置：** `apps/api/src/main.ts`、`apps/engine/lib/engine/harness/context_manager.ex`、
+- **位置：** `src/main.ts`、`apps/engine/lib/engine/harness/context_manager.ex`、
   `apps/engine/lib/engine/harness/tokenizer.ex`、
-  `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts`、
+  `src/application/use-cases/sessions/get-session-pending-work.use-case.ts`、
   `apps/web/src/routes/ProjectExecutorsTab.tsx`、`apps/web/src/routes/ProjectOverviewTab.tsx`
-- **测试：** `apps/api/test/main.spec.ts`（接受 1 MB 的请求体；超过限制 → 413）；`apps/engine/test/engine/harness/context_manager_test.exs`
+- **测试：** `test/main.spec.ts`（接受 1 MB 的请求体；超过限制 → 413）；`apps/engine/test/engine/harness/context_manager_test.exs`
   （繁重的 toolCalls 触发压缩；`:pinned` 留存；即使模型窗口很大，传输上限也会强制压缩）；
   `get-session-pending-work.use-case.spec.ts`（最后一个事件为
   `dev.awaiting_gate`/`dev.awaiting_approval` → `pending: true`）；
@@ -2743,9 +2743,9 @@ large”），有两个相互串联的缺陷。QA/SecOps 的 gate 以 `413 reque
 `DomainGaugesCollector` 相同的形式），调用上一阶段基础中已有的写入用例——幂等性位于**它们**之中（按类型的自然键：`Hipotese.id`、`Handoff(sessionId,seq)`、
 `PerfilAnamnese(userId,dimensao)`、`Interacao.sessionId` 带范围扩展）。批次中途的 `GraphUnavailableError` 会**停止**整个周期（其余部分会因同样的原因失败）——该行保持未处理状态，并在下一个周期自行重试，无需干预。
 
-- **位置：** `apps/api/src/application/graph-projection/graph-projector.ts`；
-  `apps/api/src/domain/graph/graph-projection-events.ts`；
-  `apps/api/src/application/use-cases/sessions/append-session-event.use-case.ts`、
+- **位置：** `src/application/graph-projection/graph-projector.ts`；
+  `src/domain/graph/graph-projection-events.ts`；
+  `src/application/use-cases/sessions/append-session-event.use-case.ts`、
   `transition-session.use-case.ts`
 - **测试：** `graph-projector.spec.ts`（四种类型的正常路径；假设的 证据→seq 解析；`GraphUnavailableError` 使该行不被标记并停止周期；下一个周期成功重新处理；把**同一**行处理两次不会在图中重复）；
   `append-session-event.use-case.spec.ts`/
@@ -2770,9 +2770,9 @@ large”），有两个相互串联的缺陷。QA/SecOps 的 gate 以 `413 reque
 
 在实现过程中，一个自动安全提示标记了这次变更（改写一条产品记录为绝对 `deny` 的规则值得审视）——产品负责人在审阅后明确确认这就是决定。
 
-- **位置：** `apps/api/src/domain/actions/decide.ts`（绝对上限块）、`apps/api/src/domain/actions/external-effect.ts`
+- **位置：** `src/domain/actions/decide.ts`（绝对上限块）、`src/domain/actions/external-effect.ts`
   （`comandoPrivilegiadoNoComando`、`mensagemDeComandoPrivilegiado`）、
-  `apps/api/src/application/use-cases/actions/approve-always-action.use-case.ts`
+  `src/application/use-cases/actions/approve-always-action.use-case.ts`
 - **测试：** `decide.spec.ts`（带自动模式 `"*"` **以及**在 `permissions.json` 中匹配 `allow` 的 `git push` 解析为 `require_approval`；
   `sudo` 同上；之前的上限保持完好——完整回归）；`approve-always-action.use-case.spec.ts`（对带外部效果的 git/sudo 的“总是允许”不写入模式；普通命令继续正常写入——回归）；`external-effect.spec.ts`
 - **来源：** 见 [ADR 0102](../adr/0102-revisao-do-adr-0065-teto-absoluto-substitui-deny.md)
@@ -2794,12 +2794,12 @@ ADR 0072（RN-169/RN-170）和 ADR 0103（RN-419/RN-420）从未互相对话：r
 
 `projectScopeRoot`/`Project.workspace_dir_name`（api 和 engine）在两种非 `container` 模式中按**相同**的规则推导根目录：用户的路径就是根，通过开头的斜杠与受管文件夹名称区分。`mounted` 和 `runner` 之间改变的不是根在**哪里**——而是**何时/由谁**确认它真的存在（[RN-422](#rn-422)/[RN-423](runner.md#rn-423)）。
 
-- **位置：** `apps/api/src/db/migrations/0048_quiet_iron_fist.sql`、
-  `apps/api/src/db/schema/iam.ts`（`projectExecutionModeEnum`）、
-  `apps/api/src/domain/iam/project.entity.ts`（`PROJECT_EXECUTION_MODES`）、
-  `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
+- **位置：** `src/db/migrations/0048_quiet_iron_fist.sql`、
+  `src/db/schema/iam.ts`（`projectExecutionModeEnum`）、
+  `src/domain/iam/project.entity.ts`（`PROJECT_EXECUTION_MODES`）、
+  `src/infrastructure/filesystem/project-workspaces-root.ts`
   （`projectScopeRoot`）、`apps/engine/lib/engine/projects/project.ex`
-- **测试：** `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+- **测试：** `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   （describe "projectScopeRoot nos modos mounted/runner"）、
   `apps/engine/test/engine/projects/project_test.exs`
 - **架构决策：**
@@ -2814,11 +2814,11 @@ ADR 0072（RN-169/RN-170）和 ADR 0103（RN-419/RN-420）从未互相对话：r
 `caminhoDeWorkspaceLocalValido`（词法谓词）从
 `project-workspaces-root.ts` **导出**，以便在两个需要它而不触碰磁盘的地方复用：`runner` 项目的创建和 runner 的确认（[RN-423](runner.md#rn-423)）——同一个函数，从不是有一天会分歧的两个副本。
 
-- **位置：** `apps/api/src/application/use-cases/iam/create-project.use-case.ts`
-  （`caminhoValidado`）、`apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
-  （`caminhoDeWorkspaceLocalValido`，已导出）、`apps/api/src/interfaces/http/iam/dto/create-project.dto.ts`
-- **测试：** `apps/api/test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`
-  （`runner` 块）、`apps/api/test/interfaces/http/iam/project-dto-modo-de-workspace.spec.ts`、
+- **位置：** `src/application/use-cases/iam/create-project.use-case.ts`
+  （`caminhoValidado`）、`src/infrastructure/filesystem/project-workspaces-root.ts`
+  （`caminhoDeWorkspaceLocalValido`，已导出）、`src/interfaces/http/iam/dto/create-project.dto.ts`
+- **测试：** `test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`
+  （`runner` 块）、`test/interfaces/http/iam/project-dto-modo-de-workspace.spec.ts`、
   `apps/web/src/lib/wizard.test.ts`（针对 `runner` 的 `canAdvanceFromWorkspace`）
 - **架构决策：**
   [ADR 0104](../adr/0104-execution-mode-tres-valores-e-workspace-verificado-pelo-runner.md)
@@ -2838,14 +2838,14 @@ ADR 0072（RN-169/RN-170）和 ADR 0103（RN-419/RN-420）从未互相对话：r
 考虑过并被拒绝的替代方案：全局 `JwtAuthGuard` 识别
 `brb_` 前缀并直接填充 `request.user`，用于**任何**路由。那会授权 PAT 访问 api 其余部分中用户角色所允许的一切——“只请求 runner ticket”的范围就成了摆设。
 
-- **位置：** `apps/api/src/interfaces/http/auth/pat-route.decorator.ts`
+- **位置：** `src/interfaces/http/auth/pat-route.decorator.ts`
   （`IS_PAT_ROUTE_KEY`/`@RequirePatAuth()`）、
-  `apps/api/src/interfaces/http/auth/jwt-auth.guard.ts`（第三个提前返回）、`apps/api/src/interfaces/http/auth/pat-auth.guard.ts`
-  （`PatAuthGuard`）、`apps/api/src/interfaces/http/runner/runner-tickets.controller.ts`
+  `src/interfaces/http/auth/jwt-auth.guard.ts`（第三个提前返回）、`src/interfaces/http/auth/pat-auth.guard.ts`
+  （`PatAuthGuard`）、`src/interfaces/http/runner/runner-tickets.controller.ts`
   （`runnerTicket`，唯一被标记的处理器）
-- **测试：** `apps/api/test/interfaces/pat-auth.guard.spec.ts`、
-  `apps/api/test/interfaces/jwt-auth.guard.spec.ts`（`@RequirePatAuth()`
-  不尝试 `verify()` 即通过）、`apps/api/test/interfaces/http/runner/runner-tickets.controller.spec.ts`
+- **测试：** `test/interfaces/pat-auth.guard.spec.ts`、
+  `test/interfaces/jwt-auth.guard.spec.ts`（`@RequirePatAuth()`
+  不尝试 `verify()` 即通过）、`test/interfaces/http/runner/runner-tickets.controller.spec.ts`
   （`runnerTicket` 有该装饰器，`terminalTicket` 没有）
 - **架构决策：**
   [ADR 0105](../adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
@@ -2863,12 +2863,12 @@ now()) RETURNING id, user_id, project_id`。零行返回 `null`，守卫对“�
 
 `last_used_at` 在**同一个**校验查询中**无条件**更新——从不在同一个 `WHERE` 中加节流（例如“只在 `last_used_at` 为 `NULL` 或超过 5 分钟时”）。在那里加节流是一个真实的缺陷：一个在 5 分钟内被出示两次的 PAT 第二次会落在 `WHERE` 之外（因为 `last_used_at` “太新鲜”），查询会对一个**有效**令牌返回零行——以 401 拒绝一次合法的重连。runner 的重试循环以秒而不是分钟为单位重连。不节流的代价是每次调用通过唯一索引对一行做一次 `UPDATE`——在真实的最坏情况下（最多连续 10 次尝试，runner 的上限）无关紧要。
 
-- **位置：** `apps/api/src/infrastructure/persistence/drizzle/personal-access-token.repository.ts`
-  （`validarEUsar`）、`apps/api/src/interfaces/http/auth/pat-auth.guard.ts`
-- **测试：** `apps/api/test/infrastructure/persistence/personal-access-token.repository.spec.ts`
+- **位置：** `src/infrastructure/persistence/drizzle/personal-access-token.repository.ts`
+  （`validarEUsar`）、`src/interfaces/http/auth/pat-auth.guard.ts`
+- **测试：** `test/infrastructure/persistence/personal-access-token.repository.spec.ts`
   （不存在/已撤销/已过期 → `null`；"toca `last_used_at` sempre
   que válido, sem throttle"——上述缺陷的回归测试）、
-  `apps/api/test/interfaces/pat-auth.guard.spec.ts`（范围错误 → 403，不是 401）
+  `test/interfaces/pat-auth.guard.spec.ts`（范围错误 → 403，不是 401）
 - **架构决策：**
   [ADR 0105](../adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
 
@@ -2881,13 +2881,13 @@ now()) RETURNING id, user_id, project_id`。零行返回 `null`，守卫对“�
 
 **已由 RN-427 关闭**：`maintainer` 撤销其他用户的 PAT——事故响应的情况（已离职的开发者令牌泄漏）——本节曾声明为范围之外，现已离开 backlog 并实现。本标准（自我撤销、按 `userId` 限定范围）没有任何改变。
 
-- **位置：** `apps/api/src/application/use-cases/auth/list-personal-access-tokens.use-case.ts`
-  （`ListPersonalAccessTokensUseCase`）、`apps/api/src/application/use-cases/auth/revoke-personal-access-token.use-case.ts`、
-  `apps/api/src/infrastructure/persistence/drizzle/personal-access-token.repository.ts`
+- **位置：** `src/application/use-cases/auth/list-personal-access-tokens.use-case.ts`
+  （`ListPersonalAccessTokensUseCase`）、`src/application/use-cases/auth/revoke-personal-access-token.use-case.ts`、
+  `src/infrastructure/persistence/drizzle/personal-access-token.repository.ts`
   （`listarDoUsuarioNoProjeto`、`revogar`）
-- **测试：** `apps/api/test/application/use-cases/auth/list-personal-access-tokens.use-case.spec.ts`、
-  `apps/api/test/application/use-cases/auth/revoke-personal-access-token.use-case.spec.ts`、
-  `apps/api/test/infrastructure/persistence/personal-access-token.repository.spec.ts`
+- **测试：** `test/application/use-cases/auth/list-personal-access-tokens.use-case.spec.ts`、
+  `test/application/use-cases/auth/revoke-personal-access-token.use-case.spec.ts`、
+  `test/infrastructure/persistence/personal-access-token.repository.spec.ts`
   （撤销其他用户的令牌 → `null`）
 - **架构决策：**
   [ADR 0105](../adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
@@ -2909,19 +2909,19 @@ now()) RETURNING id, user_id, project_id`。零行返回 `null`，守卫对“�
 `revogarComoMaintainer(id, projectId, motivo)` 与 `revogar()` 是相同的幂等设计——条件 `UPDATE`，在 `UPDATE` 找不到行时接一个决胜 `SELECT`——但 `WHERE` 比较的是
 `project_id`，从不是 `user_id`：`maintainer` 撤销**他所在项目内**任何主人的令牌，从不撤销其他项目的令牌。一行都没有时（令牌不存在**或**属于其他项目），返回 `null`——两种情况**相同**的响应（404），与 RN-426 已经应用的不泄露存在性的纪律相同。
 
-- **位置：** `apps/api/src/application/use-cases/auth/list-personal-access-tokens-as-maintainer.use-case.ts`、
-  `apps/api/src/application/use-cases/auth/revoke-personal-access-token-as-maintainer.use-case.ts`、
-  `apps/api/src/infrastructure/persistence/drizzle/personal-access-token.repository.ts`
+- **位置：** `src/application/use-cases/auth/list-personal-access-tokens-as-maintainer.use-case.ts`、
+  `src/application/use-cases/auth/revoke-personal-access-token-as-maintainer.use-case.ts`、
+  `src/infrastructure/persistence/drizzle/personal-access-token.repository.ts`
   （`listarDoProjeto`、`revogarComoMaintainer`）、
-  `apps/api/src/interfaces/http/runner/personal-access-tokens.controller.ts`
+  `src/interfaces/http/runner/personal-access-tokens.controller.ts`
   （`listAllPats`、`revokePatAsMaintainer`）、
   `apps/web/src/routes/settings/PersonalAccessTokensSection.tsx`
   （只对 `owner`/`maintainer` 可见的子列表）
-- **测试：** `apps/api/test/application/use-cases/auth/list-personal-access-tokens-as-maintainer.use-case.spec.ts`、
-  `apps/api/test/application/use-cases/auth/revoke-personal-access-token-as-maintainer.use-case.spec.ts`、
-  `apps/api/test/infrastructure/persistence/personal-access-token.repository.spec.ts`
+- **测试：** `test/application/use-cases/auth/list-personal-access-tokens-as-maintainer.use-case.spec.ts`、
+  `test/application/use-cases/auth/revoke-personal-access-token-as-maintainer.use-case.spec.ts`、
+  `test/infrastructure/persistence/personal-access-token.repository.spec.ts`
   （`listarDoProjeto`/`revogarComoMaintainer`）、
-  `apps/api/test/interfaces/http/runner/personal-access-tokens.controller.spec.ts`、
+  `test/interfaces/http/runner/personal-access-tokens.controller.spec.ts`、
   `apps/web/src/routes/ProjectSettingsTab.test.tsx`
 - **架构决策：**
   [ADR 0105](../adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
@@ -2939,10 +2939,10 @@ now()) RETURNING id, user_id, project_id`。零行返回 `null`，守卫对“�
 PR 标签页是 UI 中第一个真正产生 `git_merge` 的地方（`actor.kind:
 'user'`）；`decide.ts` 中受保护分支的锁（RN-154）无论由谁提议都保持绝对。`git_merge` 在审批卡片中获得了自己的主体，而不是原始 JSON 的倾倒（与 RN-096 已为其他类型修正的缺陷相同）。
 
-- **位置：** `apps/api/src/application/ports/proposed-action-repository.port.ts`、
-  `apps/api/src/infrastructure/persistence/drizzle/proposed-action.repository.ts`、
-  `apps/api/src/application/use-cases/actions/list-project-pending-actions.use-case.ts`、
-  `apps/api/src/interfaces/http/actions/project-actions.controller.ts`
+- **位置：** `src/application/ports/proposed-action-repository.port.ts`、
+  `src/infrastructure/persistence/drizzle/proposed-action.repository.ts`、
+  `src/application/use-cases/actions/list-project-pending-actions.use-case.ts`、
+  `src/interfaces/http/actions/project-actions.controller.ts`
   （`GET /projects/:projectId/actions?status=pending&actionType=`）、
   `apps/web/src/routes/ProjectPrsTab.tsx`、`apps/web/src/components/ApprovalCard.tsx`
 - **测试：** `list-project-pending-actions.use-case.spec.ts`（在项目范围内找到旧会话的待处理操作；按 actionType 筛选；从不返回已决定的操作）；`propose-action.use-case.spec.ts`（带 PR 标签页真实 payload 的 git_merge 即使在 `GitMerge()` 处于 allow、且通配符 agent_autonomy 开启时也保持 pending）；`ProjectPrsTab.test.tsx`（多个会话的 PR 一起出现；决定使用操作的 sessionId，而不是最近会话的）；`ApprovalCard.test.tsx`（`git_merge` 自己的主体）
@@ -2967,12 +2967,12 @@ PR 标签页是 UI 中第一个真正产生 `git_merge` 的地方（`actor.kind:
 在 `validarEUsar` 中把**原始**令牌直接与 `personal_access_tokens.token_hash` 比较——而后者总是期望**哈希**（`hashDeToken`，HMAC-SHA256+
 pepper，与 `TokenFactory`/`IssuePersonalAccessTokenUseCase` 用来写入的相同）。修正为 `this.tokens.validarEUsar(hashDeToken(token))`。在 `RolesGuard` 先拒绝一切的时候，这第二个缺陷从未表现出来——只修正第一个会把“总是 403”换成“总是 401”，runner 仍然永远无法真正连接。
 
-- **位置：** `apps/api/src/interfaces/http/iam/roles.guard.ts`（`IS_PAT_ROUTE_KEY` 绕过）；`apps/api/src/interfaces/http/auth/pat-auth.guard.ts`
-  （按角色授权 + 令牌哈希）；`apps/api/src/interfaces/http/runner/runner-http.module.ts`
+- **位置：** `src/interfaces/http/iam/roles.guard.ts`（`IS_PAT_ROUTE_KEY` 绕过）；`src/interfaces/http/auth/pat-auth.guard.ts`
+  （按角色授权 + 令牌哈希）；`src/interfaces/http/runner/runner-http.module.ts`
   （导入 `IamUseCasesModule`，为 `PatAuthGuard` 新需要的 `ResolveEffectiveRoleUseCase`）；在
-  `apps/api/src/interfaces/http/runner/runner-tickets.controller.ts` 中修正了注释
-- **测试：** `apps/api/test/interfaces/pat-auth.guard.spec.ts`（单独的按角色授权 + 令牌哈希）；`apps/api/test/interfaces/roles.guard.spec.ts`
-  （`IS_PAT_ROUTE_KEY` 绕过）；`apps/api/test/interfaces/http/runner/runner-tickets.guards.integration.spec.ts`
+  `src/interfaces/http/runner/runner-tickets.controller.ts` 中修正了注释
+- **测试：** `test/interfaces/pat-auth.guard.spec.ts`（单独的按角色授权 + 令牌哈希）；`test/interfaces/roles.guard.spec.ts`
+  （`IS_PAT_ROUTE_KEY` 绕过）；`test/interfaces/http/runner/runner-tickets.guards.integration.spec.ts`
   （**新增**——在真实的 Nest 中以 `supertest` 启动 `JwtAuthGuard`+`RolesGuard`+`PatAuthGuard`，相对顺序与 `AppModule` **相同**：这是缺失的测试，因为在此之前每个守卫都只被单独测试）。也经**现场**验证：`brabo-runner` 使用修正后签发的 PAT 真正连接到了一个真实的 `runner` 项目
 - **ADR：** [0105](../adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
   ——对那里已作决定（PAT 认证这个路由）的实现中缺陷的修正，不是新决定
@@ -2981,7 +2981,7 @@ pepper，与 `TokenFactory`/`IssuePersonalAccessTokenUseCase` 用来写入的相
 ### RN-440 — `addressableAgents()` 是手动 handoff 的**封闭**目录，比 `assertHandoffTargetAllowed` 更严格 {#rn-440}
 
 向任选智能体的手动 handoff（backlog，ADR 0109）：`assertHandoffTargetAllowed`
-（ADR 0038）只拒绝领域的**子智能体**——一个把“abc”作为目标的智能体会毫无错误地通过它，因为智能体只会引用它通过自己的指令已经知道的目标。当做选择的是**人**、在一个由可能与后端产生分歧的客户端供数的 `<select>` 中选择时，这就不再成立。`addressableAgents()`（`apps/api/src/domain/agents/agent-areas.ts`）
+（ADR 0038）只拒绝领域的**子智能体**——一个把“abc”作为目标的智能体会毫无错误地通过它，因为智能体只会引用它通过自己的指令已经知道的目标。当做选择的是**人**、在一个由可能与后端产生分歧的客户端供数的 `<select>` 中选择时，这就不再成立。`addressableAgents()`（`src/domain/agents/agent-areas.ts`）
 是**封闭**目录——领域 lead（`AGENT_AREAS.map(a => a.lead)`）∪
 `SOLO_CONVERSATIONAL_AGENTS`（`criativo`、`po`、`arquiteto`、`ux-designer`、
 `staff`）——`RequestManualHandoffUseCase` 在调用 `CreateHandoffUseCase` **之前**以 400 拒绝其外的任何 `toAgent`。
@@ -2990,12 +2990,12 @@ pepper，与 `TokenFactory`/`IssuePersonalAccessTokenUseCase` 用来写入的相
 `apps/web/src/lib/agents.ts` 派生的（后者也列出 gate 智能体和 Psicólogo/Anamnese，它们都不能通过 handoff 寻址）。派生方向是从 api 到 web：自 AT-046 起，web 的副本不再是**手动**镜像，而是出自领域的**同一个**生成器（`pnpm --filter api gerar:areas`，第 18 阶段），位于 `apps/web/src/lib/agent-areas.generated.ts`，`agents.ts` 只是重新导出它。当磁盘与生成器的产物不一致时，`agent-areas.spec.ts` 会失败，生成的列表以 `as const satisfies readonly AgentKey[]` 输出——web 名册不认识的名字会让 web 的构建失败。engine **不**接收这个列表（那里没有消费者）。即使两个副本都已锁定，决定接受什么的仍然是
 `RequestManualHandoffUseCase`。
 
-- **位置：** `apps/api/src/domain/agents/agent-areas.ts`（`addressableAgents`、
-  `SOLO_CONVERSATIONAL_AGENTS`）；`apps/api/src/application/use-cases/agents/request-manual-handoff.use-case.ts`；
-  `apps/api/scripts/gerar-areas.ts`（`renderWeb`，把列表写入 web）；`apps/web/src/lib/agent-areas.generated.ts`（**生成**的副本，由 `apps/web/src/lib/agents.ts` 重新导出）
-- **测试：** `apps/api/test/domain/agents/agent-areas.spec.ts`
+- **位置：** `src/domain/agents/agent-areas.ts`（`addressableAgents`、
+  `SOLO_CONVERSATIONAL_AGENTS`）；`src/application/use-cases/agents/request-manual-handoff.use-case.ts`；
+  `scripts/gerar-areas.ts`（`renderWeb`，把列表写入 web）；`apps/web/src/lib/agent-areas.generated.ts`（**生成**的副本，由 `apps/web/src/lib/agents.ts` 重新导出）
+- **测试：** `test/domain/agents/agent-areas.spec.ts`
   （`describe('addressableAgents (ADR 0109)')` 和
-  `describe('a lista solo sai do gerador para o web (AT-046)')`，外加 web 文件的新鲜度检查器）；`apps/api/test/application/use-cases/agents/request-manual-handoff.use-case.spec.ts`
+  `describe('a lista solo sai do gerador para o web (AT-046)')`，外加 web 文件的新鲜度检查器）；`test/application/use-cases/agents/request-manual-handoff.use-case.spec.ts`
   （拒绝子智能体**并**拒绝未知智能体）；`apps/web/src/lib/agents.test.ts`
 - **ADR：** [0109](../adr/0109-handoff-manual-a-agente-a-escolha.md)
 - **来源：** 团队模型的 backlog——自 FASE 13c 起开放的一项，由 Staff（ADR 0088）和 UX Designer（ADR 0087）的真实案例关闭，两者的 engine 管线都已就绪，却没有任何通往它们的人工路径
@@ -3014,16 +3014,16 @@ userId}`——`CreateHandoffInput` 为此获得了可选字段 `actor?: Actor`�
 `developer` 角色，与 `handoffs/:handoffId/accept` 相同（RN-136：在此屏幕中**对话**的人）。`ux-designer` 和 `staff` 在同一次变更中进入了 `AGENTES_DE_CHAT`
 （`SessionPage.tsx`）——`message/2` 的两个子句早已存在于 `agent_command_controller.ex` 中（ADR 0087/0088），在编写任何一行 web 代码**之前**通过阅读确认，而两者都没有通往自己的人工路径。
 
-- **位置：** `apps/api/src/interfaces/http/agents/agents.controller.ts`
-  （`requestManual`）；`apps/api/src/interfaces/http/agents/dto/request-manual-handoff.dto.ts`；
-  `apps/api/src/application/use-cases/agents/create-handoff.use-case.ts`
+- **位置：** `src/interfaces/http/agents/agents.controller.ts`
+  （`requestManual`）；`src/interfaces/http/agents/dto/request-manual-handoff.dto.ts`；
+  `src/application/use-cases/agents/create-handoff.use-case.ts`
   （`actor?: Actor`）；`apps/web/src/routes/SessionPage.tsx`
   （`AGENTES_DE_CHAT`、`.manualHandoffRow`、`handleRequestManualHandoff`）；
   `apps/web/src/lib/api-client.ts`（`requestManualHandoff`）
-- **测试：** `apps/api/test/interfaces/http/agents/agents.controller.spec.ts`
-  （所需角色）；`apps/api/test/application/use-cases/agents/request-manual-handoff.use-case.spec.ts`
+- **测试：** `test/interfaces/http/agents/agents.controller.spec.ts`
+  （所需角色）；`test/application/use-cases/agents/request-manual-handoff.use-case.spec.ts`
   （派生的 `fromAgent`、哨兵 `"usuario"`、`actor: user`）；
-  `docs/security-surface.md` + `apps/api/test/interfaces/route-surface.spec.ts`
+  `docs/security-surface.md` + `test/interfaces/route-surface.spec.ts`
   （运行时的 `role:developer` 分类）
 - **ADR：** [0109](../adr/0109-handoff-manual-a-agente-a-escolha.md)
 - **来源：** 团队模型的 backlog（见 RN-440）
@@ -3043,20 +3043,20 @@ userId}`——`CreateHandoffInput` 为此获得了可选字段 `actor?: Actor`�
 `BudgetsController` 相同的约定），并且不发出领域事件（项目配置，没有可写入的会话——与
 `SetAreaMaxParallelUseCase` 中已记录的推理相同）。`null` **清除**上限——一个接受 `null` 作为有效值的必填字段（`ValidateIf`，不是 `IsOptional`），与 `RenameSessionDto` 的模式相同。
 
-- **位置：** `apps/api/src/db/schema/agents.ts`（`agentAreas`，列
-  `budgetMicros`/`spentMicros` 和两个 CHECK）；`apps/api/src/domain/llm/area-budget.ts`
-  （`isAreaBudgetExceeded`）；`apps/api/src/application/use-cases/llm/check-budget-gate.use-case.ts`；
-  `apps/api/src/application/use-cases/llm/record-llm-usage.use-case.ts`；
-  `apps/api/src/application/use-cases/execution/set-area-budget.use-case.ts`；
-  `apps/api/src/infrastructure/persistence/drizzle/agent-area.repository.ts`
-  （`setBudget`/`incrementSpent`）；`apps/api/src/interfaces/http/execution/execution.controller.ts`
+- **位置：** `src/db/schema/agents.ts`（`agentAreas`，列
+  `budgetMicros`/`spentMicros` 和两个 CHECK）；`src/domain/llm/area-budget.ts`
+  （`isAreaBudgetExceeded`）；`src/application/use-cases/llm/check-budget-gate.use-case.ts`；
+  `src/application/use-cases/llm/record-llm-usage.use-case.ts`；
+  `src/application/use-cases/execution/set-area-budget.use-case.ts`；
+  `src/infrastructure/persistence/drizzle/agent-area.repository.ts`
+  （`setBudget`/`incrementSpent`）；`src/interfaces/http/execution/execution.controller.ts`
   （`PUT agent-areas/:key/budget`）；`apps/web/src/routes/settings/BudgetSection.tsx`
-- **测试：** `apps/api/test/application/use-cases/llm/check-budget-gate.use-case.spec.ts`
-  （describe `budget de área — aditivo, não cascata`：领域超支时即使项目/会话正常也阻断，反之亦然，没有上限永不阻断，没有领域的智能体不受影响）；`apps/api/test/application/use-cases/llm/record-llm-usage.use-case.spec.ts`
+- **测试：** `test/application/use-cases/llm/check-budget-gate.use-case.spec.ts`
+  （describe `budget de área — aditivo, não cascata`：领域超支时即使项目/会话正常也阻断，反之亦然，没有上限永不阻断，没有领域的智能体不受影响）；`test/application/use-cases/llm/record-llm-usage.use-case.spec.ts`
   （describe `gasto por área`：为成员和 lead 递增，没有领域时不做任何有害的事，没有配置上限也累加）；
-  `apps/api/test/application/use-cases/execution/set-area-budget.use-case.spec.ts`
+  `test/application/use-cases/execution/set-area-budget.use-case.spec.ts`
   （写入、用 `null` 清除、拒绝负数/NaN/Infinity、零有效）；
-  `apps/api/test/infrastructure/persistence/drizzle/agent-area.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/agent-area.repository.spec.ts`
   （`setBudget`/`incrementSpent`，并发下的原子性）
 - **ADR：** [0110](../adr/0110-budget-por-area-aditivo-nao-cascata.md)
 - **来源：** 产品负责人在一次明确的规划会话中批准的 backlog 项——`docs/explanation/backlog.md`，“Older
@@ -3075,12 +3075,12 @@ userId}`——`CreateHandoffInput` 为此获得了可选字段 `actor?: Actor`�
 
 与当前相同的（模式，路径）是**空操作**：dev agent 检查甚至不会运行——不做任何改动重新提交表单，不应该付出扫描活动智能体的代价。
 
-- **位置：** `apps/api/src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`；
-  `apps/api/src/application/ports/dev-agent-activity.port.ts`；
-  `apps/api/src/infrastructure/persistence/drizzle/dev-agent-activity.repository.ts`
-- **测试：** `apps/api/test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
+- **位置：** `src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`；
+  `src/application/ports/dev-agent-activity.port.ts`；
+  `src/infrastructure/persistence/drizzle/dev-agent-activity.repository.ts`
+- **测试：** `test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
   （有活动 dev agent 时拒绝，不写入任何东西；空操作不检查）；
-  `apps/api/test/infrastructure/persistence/drizzle/dev-agent-activity.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/dev-agent-activity.repository.spec.ts`
   （`idle` 不计入，其余全部计入，项目之间隔离）
 - **ADR：** [0111](../adr/0111-conversao-de-execution-mode-de-projeto-existente.md)
 - **来源：** 在实现 runner 第 1 波（ADR 0104）期间记录在 `docs/explanation/backlog.md` 中的修正，在这第 2 波中关闭
@@ -3094,9 +3094,9 @@ userId}`——`CreateHandoffInput` 为此获得了可选字段 `actor?: Actor`�
 
 通过阅读 `projectScopeRoot`（`project-workspaces-root.ts`）确认：对于 `mounted`/`runner`，根**就是** `workspacePath`，被当作 **API 容器内**的路径——在 `runner` 中，这在这次交付**之前**就已如此（没有 bind-mount，文件位于一个只在**字符串**上与用户真实文件夹相同、与之断开的文件夹中）。转换不改变这一既有属性，只是一致地重新定位它——除了像任何其他组合一样使用 `move()` 之外，`runner` 没有特殊情况。
 
-- **位置：** `apps/api/src/application/ports/permissions-file-store.port.ts`
-  （`move`）；`apps/api/src/infrastructure/filesystem/fs-permissions-file-store.ts`
-- **测试：** `apps/api/test/infrastructure/filesystem/fs-permissions-file-store.spec.ts`
+- **位置：** `src/application/ports/permissions-file-store.port.ts`
+  （`move`）；`src/infrastructure/filesystem/fs-permissions-file-store.ts`
+- **测试：** `test/infrastructure/filesystem/fs-permissions-file-store.spec.ts`
   （内容存续并从源头删除；源头没有文件时写入空内容而不抛出；`from === to` 是空操作）
 - **ADR：** [0111](../adr/0111-conversao-de-execution-mode-de-projeto-existente.md)
 
@@ -3110,9 +3110,9 @@ userId}`——`CreateHandoffInput` 为此获得了可选字段 `actor?: Actor`�
 
 从 `mounted`/`runner` 进入 `container` **不会**自动开通任何东西——从那时起，Arquiteto 的镜像门槛（RN-105）和正常的生命周期生效，与任何 `container` 项目一样——从不是因为项目“在某处已经有代码”就跳过门槛的捷径。
 
-- **位置：** `apps/api/src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`
+- **位置：** `src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`
   （`removerContainerSeExistir`）
-- **测试：** `apps/api/test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
+- **测试：** `test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
   （`running` 经过 `stopped`；`provisioning` 直接去；没有行时不转换；进入 `container` 从不触发转换）
 - **ADR：** [0111](../adr/0111-conversao-de-execution-mode-de-projeto-existente.md)
 
@@ -3122,8 +3122,8 @@ userId}`——`CreateHandoffInput` 为此获得了可选字段 `actor?: Actor`�
 
 它只在 `execution_mode: 'runner'` 中有意义（RN-423）：一个证明**已连接**的 runner 在真实宿主机上确认了路径的时间戳。任何真正改变（模式，路径）组合的转换——包括以看似相同的路径再次落到 `runner` 的转换——都会清零该字段，强制进行**新**的确认：旧时间戳证明的是在**不同**组合下发生的验证，把它带下去就是断言一次从未对新状态发生过的确认。空操作（RN-447）是唯一的例外——什么都没变，所以什么都不清零。
 
-- **位置：** `apps/api/src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`
-- **测试：** `apps/api/test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
+- **位置：** `src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`
+- **测试：** `test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
   （`runner -> container` 清零；空操作保留）
 - **ADR：** [0111](../adr/0111-conversao-de-execution-mode-de-projeto-existente.md)
 
@@ -3140,12 +3140,12 @@ userId}`——`CreateHandoffInput` 为此获得了可选字段 `actor?: Actor`�
 `ChunkScope` 从 `'docs' | 'adr' | 'session'` 扩展为包含 `'local'`
 （迁移 `0052`，`ALTER TYPE ... ADD VALUE`）——附加的，没有数据迁移，没有新 CHECK：`chunks` 的两个 CHECK（迁移 `0045`）本就写成“是 `session` 或不是”，因此 `local` 与 `docs`/`adr` 落在同一边（有 `source_path`，没有 `session_id`），除了枚举值之外无需任何改动。`origemDoChunk`（`domain/rag/rag-citation.ts`）不需要任何新分支：`local` 分块与 `docs`/`adr` 一样携带 `sourcePath`，因此落入引用早已知道如何渲染的 `kind: 'file'`。
 
-- **位置：** `apps/api/src/db/schema/rag.ts`（`chunkScopeEnum`）、
-  `apps/api/src/db/migrations/0052_chunks_local_scope.sql`、
-  `apps/api/src/application/ports/chunk-repository.port.ts`（`ChunkScope`）、
-  `apps/api/src/application/use-cases/rag/index-local-folder.use-case.ts`
-- **测试：** `apps/api/test/application/use-cases/rag/index-local-folder.use-case.spec.ts`
-  （正常路径和完全重建）、`apps/api/test/interfaces/http/rag/rag.controller.spec.ts`
+- **位置：** `src/db/schema/rag.ts`（`chunkScopeEnum`）、
+  `src/db/migrations/0052_chunks_local_scope.sql`、
+  `src/application/ports/chunk-repository.port.ts`（`ChunkScope`）、
+  `src/application/use-cases/rag/index-local-folder.use-case.ts`
+- **测试：** `test/application/use-cases/rag/index-local-folder.use-case.spec.ts`
+  （正常路径和完全重建）、`test/interfaces/http/rag/rag.controller.spec.ts`
 - **ADR：** [0113](../adr/0113-pasta-local-anexada-via-navegador-vira-chunks-scope-local.md)
 - **来源：** 产品负责人的请求
 
@@ -3154,11 +3154,11 @@ userId}`——`CreateHandoffInput` 为此获得了可选字段 `actor?: Actor`�
 `POST .../rag/local` 要求 `maintainer`，与 `POST .../rag/reindex`
 （RN-238）相同的标准：两者都调用 embedding 提供方，并替换项目已经索引的内容。`ReindexProjectUseCase` **没有**被扩展为覆盖 `local`——它通过读取**服务器**能够重访的来源（项目仓库、事件日志）来重新索引，而 `local` 没有任何可重访的来源：文本只存在于附加者的浏览器中，服务器从未保存任何宿主机路径（根本没有）。在通用按钮中调用 `deleteByScope(projectId, 'local')` 会删除附加的参考而无法重建——重新附加文件夹（新的上传）**就是**重新同步的机制，并且是一个有意分开的按钮。两个用例都带有相互引用的注释说明原因，以免未来的“修正”把两者重新连起来，悄悄删掉用户的材料。
 
-- **位置：** `apps/api/src/interfaces/http/rag/rag.controller.ts`
+- **位置：** `src/interfaces/http/rag/rag.controller.ts`
   （`anexarPastaLocal`，`@RequireRole('maintainer')`）、
-  `apps/api/src/application/use-cases/rag/reindex-project.use-case.ts`
+  `src/application/use-cases/rag/reindex-project.use-case.ts`
   （注释“Por que `local` NÃO entra aqui”）
-- **测试：** `apps/api/test/interfaces/http/rag/rag.controller.spec.ts`
+- **测试：** `test/interfaces/http/rag/rag.controller.spec.ts`
 - **ADR：** [0113](../adr/0113-pasta-local-anexada-via-navegador-vira-chunks-scope-local.md)
 - **来源：** 产品负责人的请求
 
@@ -3166,9 +3166,9 @@ userId}`——`CreateHandoffInput` 为此获得了可选字段 `actor?: Actor`�
 
 `RagCoverage.local` 不复用 `RagFileCoverage`（RN-237，ADR 0080）：没有可比较的“仓库中的总数”——附加的文件夹没有服务器可以重新计数的总数。`RagLocalCoverage` 显示**现在**被索引的内容（`filesIndexed`、`folderName`）和 `lastAttachedAt`，即该范围上的一个**真实**的 `MAX(chunks.created_at)`——这是对“从不显示猜出来的‘Xmin 前重新索引’”规则的唯一声明的例外，因为这里真实的值**存在**且计算廉价（与 `GetRagCoverageUseCase` 已经获取的 `todosOsChunks` 相同）。
 
-- **位置：** `apps/api/src/application/use-cases/rag/get-rag-coverage.use-case.ts`
+- **位置：** `src/application/use-cases/rag/get-rag-coverage.use-case.ts`
   （`RagLocalCoverage`）、`apps/web/src/components/rag/RagCoveragePanel.tsx`
-- **测试：** `apps/api/test/application/use-cases/rag/get-rag-coverage.use-case.spec.ts`、
+- **测试：** `test/application/use-cases/rag/get-rag-coverage.use-case.spec.ts`、
   `apps/web/src/components/rag/RagCoveragePanel.test.tsx`
 - **ADR：** [0113](../adr/0113-pasta-local-anexada-via-navegador-vira-chunks-scope-local.md)
 - **来源：** 产品负责人的请求
@@ -3184,15 +3184,15 @@ userId}`——`CreateHandoffInput` 为此获得了可选字段 `actor?: Actor`�
 `ConfirmModelPullUseCase` **拒绝**（409）确认一个已不处于 `pending_confirmation` 的请求——状态转换**就是**第二次确认，而不是另外的标志，因此不可重复执行。拉取过程中 Ollama 的失败会把请求标记为 `failed`，其 `failedReason` 以来源为前缀（`infra`/`modelo`/`código`，ADR
 0020 的词汇）——从不静默失败，失败时目录中不激活任何东西。
 
-- **位置：** `apps/api/src/application/use-cases/llm/huggingface/request-model-pull.use-case.ts:23`
+- **位置：** `src/application/use-cases/llm/huggingface/request-model-pull.use-case.ts:23`
   （`RequestModelPullUseCase`）、
-  `apps/api/src/application/use-cases/llm/huggingface/confirm-model-pull.use-case.ts:45`
+  `src/application/use-cases/llm/huggingface/confirm-model-pull.use-case.ts:45`
   （`ConfirmModelPullUseCase`）、
-  `apps/api/src/interfaces/http/llm/huggingface-models.controller.ts:109-165`
+  `src/interfaces/http/llm/huggingface-models.controller.ts:109-165`
   （两个路由，`role:maintainer`）
-- **测试：** `apps/api/test/application/use-cases/llm/huggingface/request-model-pull.use-case.spec.ts`
+- **测试：** `test/application/use-cases/llm/huggingface/request-model-pull.use-case.spec.ts`
   （以 `pending_confirmation` 创建，除此之外什么都不做）、
-  `apps/api/test/application/use-cases/llm/huggingface/confirm-model-pull.use-case.spec.ts`
+  `test/application/use-cases/llm/huggingface/confirm-model-pull.use-case.spec.ts`
   （正常路径在目录中激活；Ollama 失败时以正确的来源标记 `failed`——`modelo`/`infra`；拒绝重新确认已离开 `pending_confirmation` 的请求；工作区中不存在的请求返回 404）
 - **ADR：** [0115](../adr/0115-pedido-de-pull-de-modelo-huggingface-tabela-propria.md)
 - **来源：** 产品负责人的请求
@@ -3205,14 +3205,14 @@ userId}`——`CreateHandoffInput` 为此获得了可选字段 `actor?: Actor`�
 `openai`、`nvidia`），按**大小写完全一致**比较——小写的重新上传（`qwen/...`）不会继承官方组织（`Qwen/...`）的标识。`includeCommunity=true` 带来其余所有结果，每个结果都标记
 `official: true|false`，从不隐藏这一区分。在屏幕上，社区开关生来**关闭**，开启时显示安全警告（`Alert tone="danger"`）——选择加入和警告是同一个动作，从不是用户开一次就忘了它还开着的偏好。
 
-- **位置：** `apps/api/src/domain/llm/huggingface-official-publishers.ts:17-41`
+- **位置：** `src/domain/llm/huggingface-official-publishers.ts:17-41`
   （`HUGGINGFACE_OFFICIAL_PUBLISHERS`/`isOfficialPublisher`）、
-  `apps/api/src/application/use-cases/llm/huggingface/search-huggingface-models.use-case.ts:28-39`
+  `src/application/use-cases/llm/huggingface/search-huggingface-models.use-case.ts:28-39`
   （默认筛选）、`apps/web/src/components/HuggingFaceModelBrowser.tsx:190-203`
   （开关 + 警告 `Alert`）
-- **测试：** `apps/api/test/domain/huggingface/huggingface-official-publishers.spec.ts`
+- **测试：** `test/domain/huggingface/huggingface-official-publishers.spec.ts`
   （识别允许列表中的发布者；拒绝第三方的重新上传；区分大小写；没有 `/` 的 `repoId` 从不匹配）、
-  `apps/api/test/application/use-cases/llm/huggingface/search-huggingface-models.use-case.spec.ts`
+  `test/application/use-cases/llm/huggingface/search-huggingface-models.use-case.spec.ts`
   （默认只有官方；`includeCommunity` 带来全部并标记）、
   `apps/web/src/components/HuggingFaceModelBrowser.test.tsx`
   （开关生来关闭，只在开启时显示警告；搜索遵守 `includeCommunity`）
@@ -3232,12 +3232,12 @@ userId}`——`CreateHandoffInput` 为此获得了可选字段 `actor?: Actor`�
 
 **与 PAT 的声明的不对称**：与 RN-427（`maintainer` 撤销项目中**任何**用户的 PAT，事故响应）不同，设备密钥如今**没有**等效的 `maintainer` 路由——只有自我撤销。`RunnerDeviceKeysController` 的 docblock 明确声明这是这一轮的切口，而不是遗忘：如果有需要，把 RN-427 的同一模式扩展到设备密钥是直接的未来工作。
 
-- **位置：** `apps/api/src/db/schema/auth.ts:338`（`runnerDeviceKeys`）、
-  `apps/api/src/application/use-cases/auth/register-runner-device-key.use-case.ts`、
-  `apps/api/src/application/use-cases/auth/revoke-runner-device-key.use-case.ts`、
-  `apps/api/src/interfaces/http/runner/runner-device-keys.controller.ts`
-- **测试：** `apps/api/test/application/use-cases/auth/register-runner-device-key.use-case.spec.ts`、
-  `apps/api/test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
+- **位置：** `src/db/schema/auth.ts:338`（`runnerDeviceKeys`）、
+  `src/application/use-cases/auth/register-runner-device-key.use-case.ts`、
+  `src/application/use-cases/auth/revoke-runner-device-key.use-case.ts`、
+  `src/interfaces/http/runner/runner-device-keys.controller.ts`
+- **测试：** `test/application/use-cases/auth/register-runner-device-key.use-case.spec.ts`、
+  `test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
 - **ADR：** [0118](../adr/0118-configuracao-automatica-do-runner-pelo-navegador.md)
 - **来源：** 产品负责人的请求
 
@@ -3254,10 +3254,10 @@ userId}`——`CreateHandoffInput` 为此获得了可选字段 `actor?: Actor`�
 **这并不重新打开 RN-439**：RN-439 确立了 `runner-ticket` 从不接受**登录** JWT 作为凭据的保证——它依然成立。设备密钥是一个**不同**的 JWT，由 runner 自己用一个 api 从未见过私钥的密钥自签名，没有任何用户的 `sub`——只是证明“我是某个用户在这个项目中的设备”的第二种形式，与它所补充的 PAT 一样限定范围。在这里接受会话 JWT 会让 `RolesGuard`/`@RequireRole` 授权该用户在 api 其余部分中做他角色允许的一切，突破
 `runner:project:<id>` 的范围——这正是 RN-439 所阻止的。
 
-- **位置：** `apps/api/src/interfaces/http/auth/pat-auth.guard.ts:104-216`
+- **位置：** `src/interfaces/http/auth/pat-auth.guard.ts:104-216`
   （`autenticarChaveDeDispositivo`）、`apps/runner/src/auth.ts:143-188`
   （`assinarTicketComChaveDeDispositivo`、`obterTicketDoRunnerComCredencial`）
-- **测试：** `apps/api/test/interfaces/pat-auth.guard.spec.ts`（describe
+- **测试：** `test/interfaces/pat-auth.guard.spec.ts`（describe
   "chave de dispositivo (JWT EdDSA autoassinado, ao lado do PAT)"——正常路径、无效签名、已撤销的密钥、声明中的 `projectId` 与路由不符、注册在另一个项目的密钥、TTL 过长、没有对应密钥的 `kid`）、`apps/runner/src/auth.spec.ts`（describe
   "assinarTicketComChaveDeDispositivo"/"obterTicketDoRunnerComCredencial"）
 - **ADR：** [0118](../adr/0118-configuracao-automatica-do-runner-pelo-navegador.md)
@@ -3293,16 +3293,16 @@ userId}`——`CreateHandoffInput` 为此获得了可选字段 `actor?: Actor`�
 
 **屏幕留待以后，而拒绝会显示出来。** `MembersSection` 能自己计算上限 2，但计算不了上限 1：`listProjectMembers` 返回的是**项目行**的角色，而目标的工作区角色不在客户端的能力范围内。半个门槛会是一个对一种拒绝诚实、对另一种沉默的 `Select`——正是 RN-471 反对的第二个角色来源。与此同时，`handleRoleChange` 已经在 toast 中显示 `mensagemDaApi(erro, …)`（RN-471），而说明撞上了哪个上限的正是 api 的句子。
 
-- **位置：** `apps/api/src/domain/iam/tetos-de-rebaixamento.ts`
+- **位置：** `src/domain/iam/tetos-de-rebaixamento.ts`
   （`rebaixaOwnerDoWorkspace`、`ehAutoRebaixamento` 以及两条消息）、
-  `apps/api/src/application/use-cases/iam/add-project-member.use-case.ts`
+  `src/application/use-cases/iam/add-project-member.use-case.ts`
   （在 upsert 之前应用两者的地方）、
-  `apps/api/src/interfaces/http/iam/projects.controller.ts`（提供参与者的 `@CurrentUser()`，以及两处已修正的描述）、
-  `apps/api/src/interfaces/http/iam/dto/add-member.dto.ts`（第三处）、
-  `apps/api/src/application/use-cases/iam/resolve-effective-role.use-case.ts`
+  `src/interfaces/http/iam/projects.controller.ts`（提供参与者的 `@CurrentUser()`，以及两处已修正的描述）、
+  `src/interfaces/http/iam/dto/add-member.dto.ts`（第三处）、
+  `src/application/use-cases/iam/resolve-effective-role.use-case.ts`
   （**未动**——`projectRole ?? workspaceRole` 保持原样）、
-  `apps/api/src/db/schema/iam.ts`（`workspaces.created_by` × `workspace_members.role`）
-- **测试：** `apps/api/test/application/use-cases/iam/tetos-de-rebaixamento.use-case.spec.ts`
+  `src/db/schema/iam.ts`（`workspaces.created_by` × `workspace_members.role`）
+- **测试：** `test/application/use-cases/iam/tetos-de-rebaixamento.use-case.spec.ts`
   （两个上限都拒绝；工作区 `owner` 获得项目 `owner` 通过；参与者角色来自项目行时也会自我降级；自我提升通过；**两项**合法能力得以保留——降级他人，以及工作区 `viewer` 在项目中成为 `maintainer`；允许自我移除；以及仍会降级调用者的移除，作为声明的缺口被固定）
 - **来源：** [ADR 0127](../adr/0127-tetos-de-rebaixamento-em-project-members.md)，基于 #444 评审中记录在 RN-471 里的发现
 
@@ -3328,17 +3328,17 @@ bootstrapQuery”，这在上面两条路径中都是假的——改为保存 ap
 
 **仪表盘卡片知道。** 读模型与引导行一起查询失败的 `git_repo_create` 操作，因此一个在游标存在之前就失败的项目不再毫无徽章地出现——点击会重新引向开通屏幕，而过去它只在 `provision_failed` 时才跳转。
 
-- **位置：** `apps/api/src/application/use-cases/git/bootstrap-runner.ts:181`
+- **位置：** `src/application/use-cases/git/bootstrap-runner.ts:181`
   （该步骤的 `catch`，唯一声明失败的地方）、
-  `apps/api/src/domain/git/repo-bootstrap-status.ts:29`（第二个参数）、
-  `apps/api/src/application/use-cases/git/get-repo-bootstrap-status.use-case.ts:59`
+  `src/domain/git/repo-bootstrap-status.ts:29`（第二个参数）、
+  `src/application/use-cases/git/get-repo-bootstrap-status.use-case.ts:59`
   （从 `proposed_action` 读取的创建失败）、
-  `apps/api/src/infrastructure/persistence/drizzle/projects-summary.repository.ts`
+  `src/infrastructure/persistence/drizzle/projects-summary.repository.ts`
   （卡片的徽章）、`apps/web/src/routes/ProvisioningPage.tsx`（原因、重试和上限）
 - **测试：**
-  `apps/api/test/application/use-cases/git/provision-repository.use-case.spec.ts`
+  `test/application/use-cases/git/provision-repository.use-case.spec.ts`
   （CHECK 中的失败变成带原因和事件的 `failed`；**创建**失败不留下行，但状态会报告，`failedStep` 为空）、
-  `apps/api/test/domain/git/repo-bootstrap-status.spec.ts`（没有行且有创建失败；有行时忽略旧的失败；纯 `pending`）、
+  `test/domain/git/repo-bootstrap-status.spec.ts`（没有行且有创建失败；有行时忽略旧的失败；纯 `pending`）、
   `apps/web/src/routes/ProvisioningPage.test.tsx`（原因出现；没有 `provision_failed` 时重试存在；等待停止并说出它不知道的；没有步骤的标题不编造一个）
 - **来源：** 产品负责人的真实使用——开通永远停留在“待处理”，而原因（`permissão negada: /data/git-repos/exp001.git`，一个以 `root` 诞生的开发 Docker 卷）只记录在
   `proposed_actions.execution_result` 中，没有任何屏幕读取它
@@ -3371,19 +3371,19 @@ bootstrapQuery”，这在上面两条路径中都是假的——改为保存 ap
 `File.mkdir_p!(workspace_dir(project_id))`，在 `runner` 项目中那是宿主机路径——dev agent 的工作树无处诞生。它不会变成 500（`ensure_remoto/2` 的 `rescue` 返回 `{:error, …}`），而是变成一个不工作的 dev agent。单独修正它就是通过一条将被容器内执行取代的路径在宿主机上物化工作树；现在改变的只是**消息**，它点名原因，而不是原样转发“permissão negada”。
 
 - **位置：**
-  `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts:231`
+  `src/infrastructure/filesystem/project-workspaces-root.ts:231`
   （`projectScopeRoot`，未变）和 `:319`（`permissionsFilePath`，第二个推导），`LocalizacaoDeProjetoInvalidaError` 在 `:219`、
-  `apps/api/src/infrastructure/filesystem/fs-permissions-file-store.ts:77`
+  `src/infrastructure/filesystem/fs-permissions-file-store.ts:77`
   （文件路径的唯一调用方）、
-  `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts:176`
-  （400）、`apps/api/src/interfaces/http/execution/execution.controller.ts:74`
+  `src/application/use-cases/execution/activate-execution.use-case.ts:176`
+  （400）、`src/interfaces/http/execution/execution.controller.ts:74`
   （OpenAPI 注解，它曾为两种从来不是 409 的情况承诺 409）、`apps/web/src/routes/ProjectOverviewTab.tsx:473`
   （`mensagemDaApi`）、`apps/engine/lib/engine/actions/workspace.ex:61`
   （留下的缺口的消息）
 - **测试：**
-  `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+  `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   （三种模式下的 `permissionsFilePath`；以及 `projectScopeRoot` 在 `runner`/`mounted` 中继续返回宿主机路径的**非回归**——把两者重新合并会破坏 ADR 0055）、
-  `apps/api/test/application/use-cases/execution/activate-execution.use-case.spec.ts`
+  `test/application/use-cases/execution/activate-execution.use-case.spec.ts`
   （使用**真正**的 `FsPermissionsFileStore`：文件落在受管根目录，宿主机文件夹保持不动；不一致的行变成能教人的 400）、
   `apps/web/src/routes/ProjectOverviewTab.test.tsx`（屏幕上 api 的消息）、`apps/engine/test/engine/actions/workspace_runner_test.exs`（在 `runner` 项目中失败点名原因，在其他模式中原样通过）
 - **来源：** 产品负责人的真实使用——项目 `exp002` 中“激活执行”返回 500
@@ -3392,7 +3392,7 @@ bootstrapQuery”，这在上面两条路径中都是假的——改为保存 ap
 
 ### RN-479 — 每次混合检索都在 `rag_searches` 中写入一行，权重被**冻结**；遥测永远不让检索失败 {#rn-479}
 
-`apps/api/src/domain/rag/rag-search-limits.ts` 在自己的注释中声明，混合检索的四个数字（两个权重、阈值和候选数）**没有一个**来自真实数据的校准。之所以没有，是因为无从校准：检索不留任何痕迹——没有表行，也没有事件。不测量就校准，只是用一个猜测换另一个。
+`src/domain/rag/rag-search-limits.ts` 在自己的注释中声明，混合检索的四个数字（两个权重、阈值和候选数）**没有一个**来自真实数据的校准。之所以没有，是因为无从校准：检索不留任何痕迹——没有表行，也没有事件。不测量就校准，只是用一个猜测换另一个。
 
 `HybridSearchUseCase` 改为在每次检索时记录它返回了什么（`hits`，带每个片段的从 1 开始的**排名**）、在什么条件下（`degraded`/`vector_available`）、用了多久（`latency_ms`）、谁检索的（`actor_kind`/`actor_id`），以及在哪个会话中——或者**不在任何**会话中。
 
@@ -3407,13 +3407,13 @@ bootstrapQuery”，这在上面两条路径中都是假的——改为保存 ap
 
 `degraded` 和 `vector_available` 有意是两列，如今的冗余（`degraded = !vector_available`）在 schema 中被声明而不是隐藏：`vector_available` 是关于**提供方**的事实——正是它让 `medir:rag` 失败——而 `degraded` 是与 engine 的**契约**中的词，其定义可能会扩展。
 
-- **位置：** `apps/api/src/domain/rag/rag-telemetry.ts`（`pesosVigentes`、
-  `RagSearchHitTelemetry`）、`apps/api/src/db/schema/rag.ts`（`ragSearches`）、
-  `apps/api/src/application/use-cases/rag/hybrid-search.use-case.ts`
+- **位置：** `src/domain/rag/rag-telemetry.ts`（`pesosVigentes`、
+  `RagSearchHitTelemetry`）、`src/db/schema/rag.ts`（`ragSearches`）、
+  `src/application/use-cases/rag/hybrid-search.use-case.ts`
   （`registrarBusca`）、
-  `apps/api/src/infrastructure/persistence/drizzle/rag-telemetry.repository.ts`
+  `src/infrastructure/persistence/drizzle/rag-telemetry.repository.ts`
 - **测试：**
-  `apps/api/test/application/use-cases/rag/hybrid-search.use-case.spec.ts`
+  `test/application/use-cases/rag/hybrid-search.use-case.spec.ts`
   （写入的带排名和权重的行；权重是**副本**而不是同一对象；标签页中没有会话的检索；以及**失败用例**——失败的 insert 不让检索失败，并返回 `searchId: null`）
 - **ADR：** [0129](../adr/0129-telemetria-de-busca-do-rag-como-tabela.md)——为什么是**表**而不是事件，以及为什么权重被冻结；
   [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)，这条 RN **不**修订它的数字：它提供了之后修订它们的仪器
@@ -3432,16 +3432,16 @@ actor_id)`，配合 `onConflictDoUpdate`）：改变主意会覆盖自己的投�
 
 角色是 `viewer`，与 `search` **相同**——能读取结果的人就能评判它（[RN-102](#rn-102)：最低要求属于端点，投票既不花钱也不配置任何东西）。智能体的工具是 `:direct`，从不是 `proposed_action`：给片段打分不是外部效果，把它变成待批准的操作会让队列充满噪音。
 
-- **位置：** `apps/api/src/db/schema/rag.ts`（`ragFeedback`、`ragVerdictEnum`）、
-  `apps/api/src/application/use-cases/rag/record-rag-feedback.use-case.ts`、
+- **位置：** `src/db/schema/rag.ts`（`ragFeedback`、`ragVerdictEnum`）、
+  `src/application/use-cases/rag/record-rag-feedback.use-case.ts`、
   `apps/engine/lib/engine/harness/tools/rag_feedback.ex`、
   `apps/web/src/components/rag/RagCitationCard.tsx`（两个控件，位于分数已在的位置）
 - **测试：**
-  `apps/api/test/application/use-cases/rag/record-rag-feedback.use-case.spec.ts`
+  `test/application/use-cases/rag/record-rag-feedback.use-case.spec.ts`
   （返回的排名；以及三个**失败用例**——未知的 `searchId`、不在命中结果中的 `chunkId`、另一个项目的检索）、
   `apps/engine/test/engine/harness/tools/rag_feedback_test.exs`（拒绝以带 api 消息的工具结果返回，从不崩溃；`:direct`；以及在已有 `rag_search` 的六个智能体中的注册）、
   `apps/web/src/components/rag/RagCitationCard.test.tsx`（控件的三种状态，以及没有 `searchId` 时控件的缺失）、
-  `apps/api/test/scripts/medir-rag.spec.ts`（基于已评判内容的 `precision@k`）
+  `test/scripts/medir-rag.spec.ts`（基于已评判内容的 `precision@k`）
 - **ADR：** [0129](../adr/0129-telemetria-de-busca-do-rag-como-tabela.md)
 - **来源：** 产品负责人的计划，第 2 部分 / 第 1 步
 
@@ -3459,12 +3459,12 @@ actor_id)`，配合 `onConflictDoUpdate`）：改变主意会覆盖自己的投�
 **声明的缺口：** 从未有过生命周期行的项目的孤立容器不会出现在这条路由中——它先读取记录的内容。找到孤立容器的是按 `brabo.managed=true` 的扫描，而消费它的页面尚不存在。
 
 - **位置：**
-  `apps/api/src/application/use-cases/containers/obter-estado-observado-do-container.use-case.ts`
+  `src/application/use-cases/containers/obter-estado-observado-do-container.use-case.ts`
   （三种原因，以及不是原因的 `null`）、
-  `apps/api/src/interfaces/http/containers/containers.controller.ts`（返回两者的路由）、
-  `apps/api/src/application/ports/container-broker.port.ts`（`inspect` 的 `null` 是缺失；失败会**抛出**）
+  `src/interfaces/http/containers/containers.controller.ts`（返回两者的路由）、
+  `src/application/ports/container-broker.port.ts`（`inspect` 的 `null` 是缺失；失败会**抛出**）
 - **测试：**
-  `apps/api/test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts`
+  `test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts`
   （“看了，没有”和“没能看”不折叠；没有 `BROKER_URL` 时根本不调用 broker；拒绝变成带细节的原因，从不是异常）
 - **ADR：** [0130](../adr/0130-broker-de-container.md)
 
@@ -3485,17 +3485,17 @@ porque}`——它变成事件 `artifact.module_routing`，没有表：与 `artif
 
 **Arquiteto 提出候选，Infra 选出——而这次交付只是提出候选的那一半。** 在候选中**选出**（或全部拒绝）的那一半属于 Infra Lead，有自己的 `proposed_action`，在单独的 PR 中。这里存在的是事件日志中可审计的列表，在 Infra 拥有对它采取行动的工具之前——与 `module_map` 在 `create_c4_diagram` 需要它之前就已存在时所遵循的顺序相同。
 
-- **位置：** `apps/api/src/domain/architecture/module-routing.ts`
+- **位置：** `src/domain/architecture/module-routing.ts`
   （`validarRoteamento`、`EVENTO_MODULE_ROUTING`）、
-  `apps/api/src/application/use-cases/architecture/route-modules-to-infra.use-case.ts`、
-  `apps/api/src/application/use-cases/architecture/get-module-routing.use-case.ts`、
-  `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts`
+  `src/application/use-cases/architecture/route-modules-to-infra.use-case.ts`、
+  `src/application/use-cases/architecture/get-module-routing.use-case.ts`、
+  `src/interfaces/http/internal/internal-sessions.controller.ts`
   （`POST .../module-routing`）、
   `apps/engine/lib/engine/harness/tools/route_modules_to_infra.ex`、
   `apps/engine/lib/engine/agents/arquiteto_server.ex`（`build_kickoff/1`，第 4 步）
 - **测试：**
-  `apps/api/test/domain/architecture/module-routing.spec.ts`（空列表、重复模块，以及对 `validarDecisaoDeImagem` 的委托——`latest` 和过短的 `rationale`）、
-  `apps/api/test/application/use-cases/architecture/route-modules-to-infra.use-case.spec.ts`
+  `test/domain/architecture/module-routing.spec.ts`（空列表、重复模块，以及对 `validarDecisaoDeImagem` 的委托——`latest` 和过短的 `rationale`）、
+  `test/application/use-cases/architecture/route-modules-to-infra.use-case.spec.ts`
   （两个模块的正常路径；没有当前 module_map；映射之外的模块；再次路由时的版本化）、
   `apps/engine/test/engine/harness/tools/route_modules_to_infra_test.exs`
   （`:direct`；工具调用键的规范化；api 的拒绝变成错误工具结果，从不崩溃——RN-061）
@@ -3515,11 +3515,11 @@ golden-set **手动**运行（`mix golden_set.rag`），从不在普通的 `mix 
 
 **由 RN-498 修订：**“无法在 CI 中运行真正的 Ollama”在第 2 步时是事实，在第 3 步（ADR 0138）时不再是——一个专门的、定时的工作流现在在 CI 中针对真实的 Ollama 真正运行 `mix golden_set.rag`。上面 `test_helper.exs` 中的永久排除**继续**照样有效：它保护的是普通的 `mix test`（以及任何有 Ollama 运行的开发者的机器），从不是新的工作流，后者显式调用该标签，就像一直以来所需要的那样。
 
-- **位置：** `apps/api/src/domain/rag/golden-set-criterio.ts`、
-  `apps/api/scripts/seed-golden-set-rag.ts`、
+- **位置：** `src/domain/rag/golden-set-criterio.ts`、
+  `scripts/seed-golden-set-rag.ts`、
   `apps/engine/test/engine/rag/rag_golden_test.exs`、
   `apps/engine/test/fixtures/golden_set_rag/floor.json`
-- **测试：** `apps/api/test/domain/rag/golden-set-criterio.spec.ts`
+- **测试：** `test/domain/rag/golden-set-criterio.spec.ts`
 - **ADR：** [0132](../adr/0132-golden-set-de-acerto-do-rag.md)
 - **来源：** 产品负责人的计划，第 2 部分 / 第 2 步
 
@@ -3531,11 +3531,11 @@ golden-set **手动**运行（`mix golden_set.rag`），从不在普通的 `mix 
 
 **理由是**第二道**边界，而不是第一道的缺失。** 终端的词法范围（`terminalNoEscopo`，ADR 0055）继续在一贯的**宿主机**路径上运行——到达 `decide()` 的 `cwd`/`command` **从不**被转换为 `/work`（这种转换只在之后、在 engine 中发生——RN-492）。在真实容器内，在词法边界之上多了一道**更强**的边界：Docker 的挂载命名空间，进程在物理上无法穿越，再加上 broker 已经进行的 `/work` 校验（`DiretorioForaDoEscopoError`）。这是纵深防御——词法范围没有被取代，而是冗余的。
 
-- **位置：** `apps/api/src/domain/actions/decide.ts`
-  （`DecideContext.containerExecutionActive`，条件化的初始 `current`）、`apps/api/src/application/use-cases/actions/propose-action.use-case.ts`
-- **测试：** `apps/api/test/domain/actions/decide.spec.ts`（describe "decide
+- **位置：** `src/domain/actions/decide.ts`
+  （`DecideContext.containerExecutionActive`，条件化的初始 `current`）、`src/application/use-cases/actions/propose-action.use-case.ts`
+- **测试：** `test/domain/actions/decide.spec.ts`（describe "decide
   — piso do container ativo do projeto"：没有任何规则时自动批准；没有 `containerExecutionActive` 时不变；不影响非终端操作；显式的 `agent_autonomy`/`permissions.json` 降低下限；IAM 不足在下限之前就拒绝；范围继续在之上胜出；git push/sudo 继续 `require_approval`）、
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts`
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts`
   （describe "piso do container ativo"：容器 running 时终端自动批准并**执行**；不影响 `container_start`；没有 `running` 行时不变；内置 deny/git push/sudo 继续胜出）
 - **ADR：** [0134](../adr/0134-dev-agents-executam-dentro-do-container.md)
 - **来源：** 产品负责人的计划，第 1 部分 / PR 1.6
@@ -3556,26 +3556,26 @@ golden-set **手动**运行（`mix golden_set.rag`），从不在普通的 `mix 
 **两者都不决定镜像**——不同于 `container_start`，后者复用 `DecidirImagemDoProjetoUseCase` 来发出新版本的
 `artifact.project_image`。`stop`/`remove` 只请求 broker 对已存在的容器采取行动。
 
-- **位置：** `apps/api/src/domain/actions/decide.ts`（`ACTION_TYPES`、
+- **位置：** `src/domain/actions/decide.ts`（`ACTION_TYPES`、
   `MIN_ROLE_FOR_ACTION_TYPE`、`container_remove` 的绝对上限）、
-  `apps/api/src/domain/actions/command-matcher.ts`（`ACTION_TYPE_LABELS`）、
-  `apps/api/src/domain/containers/container-stop-remove-execution-result.ts`、
-  `apps/api/src/application/use-cases/actions/execute-container-stop.use-case.ts`、
-  `apps/api/src/application/use-cases/actions/execute-container-remove.use-case.ts`、
-  `apps/api/src/application/use-cases/actions/approve-action.use-case.ts`、
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts`、
-  `apps/api/src/application/use-cases/actions/approve-always-action.use-case.ts`、
+  `src/domain/actions/command-matcher.ts`（`ACTION_TYPE_LABELS`）、
+  `src/domain/containers/container-stop-remove-execution-result.ts`、
+  `src/application/use-cases/actions/execute-container-stop.use-case.ts`、
+  `src/application/use-cases/actions/execute-container-remove.use-case.ts`、
+  `src/application/use-cases/actions/approve-action.use-case.ts`、
+  `src/application/use-cases/actions/propose-action.use-case.ts`、
+  `src/application/use-cases/actions/approve-always-action.use-case.ts`、
   `apps/web/src/lib/aprovacoes.ts`、`apps/web/src/components/ApprovalCard.tsx`
   （`podeSemprePermitir`）
 - **测试：**
-  `apps/api/test/domain/actions/decide.spec.ts`（"container_stop, a página
+  `test/domain/actions/decide.spec.ts`（"container_stop, a página
   global de containers"——**能**达到 auto_approve；"teto de container_remove"——**永远不能**）、
-  `apps/api/test/application/use-cases/actions/execute-container-stop.use-case.spec.ts`、
-  `apps/api/test/application/use-cases/actions/execute-container-remove.use-case.spec.ts`
+  `test/application/use-cases/actions/execute-container-stop.use-case.spec.ts`、
+  `test/application/use-cases/actions/execute-container-remove.use-case.spec.ts`
   （从 `running` 起的两跳；从 `stopped`/
   `failed` 起只有一跳；幂等性；`BrokerRecusouError`/`BrokerIndisponivelError`
   从不传播）、
-  `apps/api/test/application/use-cases/actions/approve-always-action.use-case.spec.ts`、
+  `test/application/use-cases/actions/approve-always-action.use-case.spec.ts`、
   `apps/web/src/lib/aprovacoes.test.ts`、
   `apps/web/src/routes/ContainersPage.test.tsx`
 - **架构决策：** [ADR 0136](../adr/0136-pagina-global-de-containers.md)
@@ -3597,19 +3597,19 @@ workspaces/:workspaceId/containers`（`/containers`，跨项目）为工作区�
 
 **容器的待处理 `proposed_action`（如果有）在**同一次**批量读取中传递**，与另外两个一样按 `projectId IN (...)` 匹配——这使得屏幕能用内联的 `ApprovalCard` 取代三个操作按钮，而无需每个项目第四次查询。
 
-- **位置：** `apps/api/src/application/ports/containers-overview-repository.port.ts`、
-  `apps/api/src/infrastructure/persistence/drizzle/containers-overview.repository.ts`、
-  `apps/api/src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts`、
-  `apps/api/src/domain/containers/project-container.ts`（`decisaoNaVersao`、
-  `versaoDoPayload`）、`apps/api/src/interfaces/http/containers/containers-overview.controller.ts`、
+- **位置：** `src/application/ports/containers-overview-repository.port.ts`、
+  `src/infrastructure/persistence/drizzle/containers-overview.repository.ts`、
+  `src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts`、
+  `src/domain/containers/project-container.ts`（`decisaoNaVersao`、
+  `versaoDoPayload`）、`src/interfaces/http/containers/containers-overview.controller.ts`、
   `apps/web/src/routes/ContainersPage.tsx`、`apps/web/src/lib/hooks.ts`
   （`useContainersOverview`）
 - **测试：**
-  `apps/api/test/infrastructure/persistence/drizzle/containers-overview.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/containers-overview.repository.spec.ts`
   （只有带 `project_containers` 的项目进入；镜像是**冻结**的而不是当前的；跨会话的 `acaoPendente`；查询数量不随项目数量增长）、
-  `apps/api/test/application/use-cases/containers/obter-visao-geral-de-containers.use-case.spec.ts`
+  `test/application/use-cases/containers/obter-visao-geral-de-containers.use-case.spec.ts`
   （按状态的合格性；按加载的上限；`naoObservado` 从不与 `naoVerificado` 混淆）、
-  `apps/api/test/interfaces/http/containers/containers-overview.controller.spec.ts`、
+  `test/interfaces/http/containers/containers-overview.controller.spec.ts`、
   `apps/web/src/routes/ContainersPage.test.tsx`
 - **架构决策：** [ADR 0136](../adr/0136-pagina-global-de-containers.md)
 - **来源：** 产品负责人的计划，第 1 部分 / PR 1.8
@@ -3633,14 +3633,14 @@ workspaces/:workspaceId/containers`（`/containers`，跨项目）为工作区�
 
 **这条 RN **不**做的：** 它不要求 `mounted` 项目位于基准之内。`caminhoDeWorkspaceLocalValido` 和 `projectScopeRoot` 保持不动——那个谓词在每次**读取**时运行，基准之外的旧挂载项目会在被读取时出错。基准是**创建**和**转换**的规则，在下一条 RN 中进入。
 
-- **位置：** `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts:67`
+- **位置：** `src/infrastructure/filesystem/project-workspaces-root.ts:67`
   （`baseDeProjetos`）和 `:92`（`dentroDaBaseDeProjetos`）；
-  `apps/api/src/interfaces/http/iam/workspaces.controller.ts:197`
+  `src/interfaces/http/iam/workspaces.controller.ts:197`
   （`GET :workspaceId/projects-base`）；`scripts/dev/base-de-projetos.mjs` 以及
   `scripts/dev/preflight.mjs` 中的调用；`docker/docker-compose.yml` 和
   `docker/docker-compose.prod.yml`（`api`、`engine`、`broker` 服务）
 - **测试：**
-  `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+  `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   （`describe('baseDeProjetos / dentroDaBaseDeProjetos')`）和
   `scripts/dev/base-de-projetos.spec.ts`
 - **ADR：** [0141](../adr/0141-base-unica-dos-projetos-montados.md)
@@ -3680,23 +3680,23 @@ montada, o bind-mount deve ser criado APÓS a decisão do arquiteto”*。磁盘
 **声明的后果：** 在创建项目和启动容器之间，`workspace_path` 指向一个可能不存在的文件夹。什么都不会坏（`projectScopeRoot` 是词法的；`permissions.json` 降级为
 `EMPTY_PERMISSIONS_FILE`，在一切上都是 `require_approval`），但屏幕需要**说出来**——一个显示路径却不说它尚不存在的屏幕，是在断言它不知道的事。
 
-- **位置：** `apps/api/src/application/services/workspace-location.ts:93`
+- **位置：** `src/application/services/workspace-location.ts:93`
   （词法）和 `:108`（基准）；
-  `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts:575`
+  `src/infrastructure/filesystem/project-workspaces-root.ts:575`
   （`motivoDeForaDaBaseDeProjetos`）、`:624`
   （`validarWorkspaceMontadoEmDisco`，原 `validarCaminhoDeWorkspaceLocal`）
   和 `:705`（`materializarWorkspaceMontado`）；
-  `apps/api/src/application/use-cases/iam/convert-project-execution-mode.use-case.ts:139`；
-  `apps/api/src/application/use-cases/actions/execute-container-start.use-case.ts:133`
+  `src/application/use-cases/iam/convert-project-execution-mode.use-case.ts:139`；
+  `src/application/use-cases/actions/execute-container-start.use-case.ts:133`
   和 `:334`
 - **测试：**
-  `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+  `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   （`describe('materializarWorkspaceMontado')` 以及非回归“projeto
   mounted LEGADO, FORA da base, continua resolvendo sem lançar”）；
-  `apps/api/test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`
+  `test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`
   （`describe('mounted valida só o léxico + a base na criação')`）；
-  `apps/api/test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`；
-  `apps/api/test/application/use-cases/actions/execute-container-start.use-case.spec.ts`
+  `test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`；
+  `test/application/use-cases/actions/execute-container-start.use-case.spec.ts`
   （`describe` "ExecuteContainerStartUseCase — materialização do mounted"）
 - **ADR：** [0142](../adr/0142-validacao-de-workspace-montado-adiada.md)，它引用 [0141](../adr/0141-base-unica-dos-projetos-montados.md)
 - **来源：** 产品负责人的计划，PR 2
@@ -3733,12 +3733,12 @@ montada, o bind-mount deve ser criado APÓS a decisão do arquiteto”*。磁盘
 **这条规则**不**做的：** 它不物化任何文件夹——创建挂载项目文件夹的是 [RN-501](#rn-501)，在**同一个**用例中、在这个分支**之前**，正是因为服务器的守护进程需要文件夹存在才能挂载它。它也不触碰镜像门槛（自 RN-494 起 RN-105 已对三种模式有效），也不改变谁**提议** `container_start`——Infra Lead 仍然可以为没有已连接 runner 也没有已决定镜像的项目提议，这是自 RN-494 起声明的缺口。
 
 - **位置：**
-  `apps/api/src/application/use-cases/containers/obter-spec-de-container.use-case.ts`
+  `src/application/use-cases/containers/obter-spec-de-container.use-case.ts`
   （`LocalizacaoDoProjeto`、`localizacaoDoProjeto`）；
-  `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
+  `src/infrastructure/filesystem/project-workspaces-root.ts`
   （`segmentoSobABaseDeProjetos`）；
-  `apps/api/src/interfaces/http/internal/dto/container-spec-internal.response.dto.ts`；
-  `apps/api/src/application/use-cases/actions/execute-container-start.use-case.ts`、
+  `src/interfaces/http/internal/dto/container-spec-internal.response.dto.ts`；
+  `src/application/use-cases/actions/execute-container-start.use-case.ts`、
   `…/execute-container-stop.use-case.ts`、`…/execute-container-remove.use-case.ts`
   （`!== 'runner'` 分支）；
   `packages/docker-port/src/docker-port.ts`（`segmentoDeProjetoValidado`）；
@@ -3747,9 +3747,9 @@ montada, o bind-mount deve ser criado APÓS a decisão do arquiteto”*。磁盘
   `garantirModoSuportado`、`BaseDeProjetosNaoConfiguradaError`、
   `LocalizacaoIndisponivelError`）
 - **测试：**
-  `apps/api/test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts`
+  `test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts`
   （`describe('… o localizador discriminado (RN-503)')`）；
-  `apps/api/test/application/use-cases/actions/execute-container-{start,stop,remove}.use-case.spec.ts`；
+  `test/application/use-cases/actions/execute-container-{start,stop,remove}.use-case.spec.ts`；
   `packages/docker-port/src/docker-port.spec.ts`
   （`describe('segmentoDeProjetoValidado')`）；`apps/broker/src/operacoes.spec.ts`
   和 `apps/broker/src/config.spec.ts`
@@ -3769,7 +3769,7 @@ montada, o bind-mount deve ser criado APÓS a decisão do arquiteto”*。磁盘
 
 **`container_start_via_runner` 只有 `rationale`（可选）。** 与 `container_start` 同一量级（`maintainer`，默认 `require_approval`，从不播种为自动批准，可以像另外三个容器操作一样在 `permissions.json` 中配置——不进入 `container_remove` 的绝对上限）。`ExecuteContainerStartUseCase` 失去了整个 `runner` 分支（`executeViaRunner`，`ApiToEngineClient`/`ObterSpecDeContainerUseCase` 离开构造函数）——变为 `container`/`mounted` 专用，两者都经由 **BROKER**（RN-503）。提取出的代码变成
 `ExecuteContainerStartViaRunnerUseCase`，同级文件。两条路径通过复制共享的生命周期流程（`provisioning -> running`）变成 `SubirCicloDeVidaDoContainerUseCase`
-（`apps/api/.../containers/`）——提取出来，以免在两个文件中重复状态机的推理。
+（`.../containers/`）——提取出来，以免在两个文件中重复状态机的推理。
 
 **Infra Lead 在提议之前**本地**查询，不经 HTTP。** 新工具
 （`Engine.Infra.Tools.ProposeContainerStartViaRunner`）被
@@ -3778,23 +3778,23 @@ montada, o bind-mount deve ser criado APÓS a decisão do arquiteto”*。磁盘
 
 **api 组装的规格就是 runner **校验**的规格，而这已经被证明。** `EspecificacaoDeContainerParaRunner` 是 `EntradaDeEspecificacao`（`packages/docker-port`）的字段减去只有 runner 知道的 `raizDoProjeto`——**十个**，不是九个。它诞生时是九个，没有 `projectId`，后果是这条路径自存在以来**从未**启动过任何容器：engine 不透明地转发该映射，runner 把它交给 `especificacaoValidada`，后者要求 `projectId` 为非空文本，操作以 `failed` 结束：*“especificação de container recusada em `projectId`: esperava texto não vazio, recebi undefined”*——然后 [RN-507](runner.md#rn-507)/[RN-502](engine.md#rn-502) 的**正确**阻断完成了其余部分，没有任何 dev agent 认领任务。数据一直存在（`SpecDeContainer.projectId`，与 **BROKER** 通过 `GET .../container-spec` 收到的相同，这就是为什么只有 `runner` 模式坏了）；只是没有被复制。三个绿色的测试套件没有发现，因为每个都组装自己的夹具：用例的测试断言它自己期望的东西，runner 的测试组装了一个**带** `projectId` 的夹具，engine 不看这个映射。现在得到保证的是**整条链**——`ExecuteContainerStartViaRunnerUseCase` 组装的 payload 穿过真正的 `especificacaoValidada`——测试还锁定了字段集合：`raizDoProjeto` 是 api 唯一不发送的字段，所以一边新增字段而另一边没有就会失败。
 
-- **位置：** `apps/api/src/domain/actions/decide.ts`（`container_start_via_runner`）；
-  `apps/api/src/application/use-cases/actions/
+- **位置：** `src/domain/actions/decide.ts`（`container_start_via_runner`）；
+  `src/application/use-cases/actions/
   execute-container-start-via-runner.use-case.ts`（新）；
-  `apps/api/src/application/use-cases/containers/
+  `src/application/use-cases/containers/
   subir-ciclo-de-vida-do-container.use-case.ts`（新）；
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts`；
-  `apps/api/src/application/use-cases/actions/approve-action.use-case.ts`；
-  `apps/api/src/application/ports/api-to-engine-client.port.ts`
+  `src/application/use-cases/actions/propose-action.use-case.ts`；
+  `src/application/use-cases/actions/approve-action.use-case.ts`；
+  `src/application/ports/api-to-engine-client.port.ts`
   （`EspecificacaoDeContainerParaRunner`，十个字段）；
   `apps/web/src/lib/aprovacoes.ts`；
   `apps/engine/lib/engine/infra/tools/propose_container_start_via_runner.ex`
   （新）；`apps/engine/lib/engine/infra/infra_lead_server.ex`
 - **测试：**
-  `apps/api/test/application/use-cases/actions/execute-container-start.use-case.spec.ts`、
-  `apps/api/test/application/use-cases/actions/
+  `test/application/use-cases/actions/execute-container-start.use-case.spec.ts`、
+  `test/application/use-cases/actions/
   execute-container-start-via-runner.use-case.spec.ts`（新）、
-  `apps/api/test/contract/
+  `test/contract/
   especificacao-de-container-para-runner.contract.spec.ts`（**整条链**——api 组装的 payload 对照真正的 `especificacaoValidada`）、
   `apps/web/src/lib/aprovacoes.test.ts`、
   `apps/engine/test/engine/infra/tools/
@@ -3831,13 +3831,13 @@ create`）或特权终端（`sudo`/`doas`）——RN-106/RN-418——以及
 **没有数据迁移。** 在这条规则存在之前，为模块 dev 写入 `permissions.json` 的旧“总是允许”条目原样保留——只是从此以后不再收到这类条目。这是产品负责人有意识的决定，不是被遗忘的缺口。
 
 - **位置：**
-  `apps/api/src/application/use-cases/actions/approve-always-action.use-case.ts`
-  （`ehAgenteDeModulo` 分支）、`apps/api/src/domain/agents/agent-areas.ts`
+  `src/application/use-cases/actions/approve-always-action.use-case.ts`
+  （`ehAgenteDeModulo` 分支）、`src/domain/agents/agent-areas.ts`
   （`ehDevDeModulo`、`DEV_LEAD`——被消费，未改动）、
-  `apps/api/src/application/ports/agent-autonomy-repository.port.ts`
+  `src/application/ports/agent-autonomy-repository.port.ts`
   （`upsert`，已存在，没有新方法）
 - **测试：**
-  `apps/api/test/application/use-cases/actions/approve-always-action.use-case.spec.ts`
+  `test/application/use-cases/actions/approve-always-action.use-case.spec.ts`
   （描述 `escopo por Dev Agent de módulo (RN-509)`：正常路径
   `dev-checkout` 写入 `agent_autonomy` 而不泄露给 `dev-auth`；**两个**绝对上限对模块 dev 参与者拒绝整个点击；`dev-lead` 和 `user` 参与者——包括 id 以 `dev-` 开头的——继续走旧路径）
 - **来源：** 产品负责人的计划，第 2 战线
@@ -3866,25 +3866,25 @@ create`）或特权终端（`sudo`/`doas`）——RN-106/RN-418——以及
 
 **而且它「不是」`proposed_action`。** 镜像的写入是用户声明的配置，不是代理请求行动——ADR 0147 对此明确，而通过终端命令同步会落入 [ADR 0055](../adr/0055-escopo-de-caminho-na-politica-de-terminal.md) 的范围，变成例行审批的队列。
 
-- **位置：** `apps/api/src/db/schema/iam.ts`（列 `mirror_path`，可为空，无 CHECK——对 `container` 的拒绝放在用例中，因为模式是「可转换的」）；`apps/api/src/db/migrations/0056_lovely_firelord.sql`；
-  `apps/api/src/domain/iam/project.entity.ts`（`mirrorPath`）；
-  `apps/api/src/application/services/workspace-location.ts`
+- **位置：** `src/db/schema/iam.ts`（列 `mirror_path`，可为空，无 CHECK——对 `container` 的拒绝放在用例中，因为模式是「可转换的」）；`src/db/migrations/0056_lovely_firelord.sql`；
+  `src/domain/iam/project.entity.ts`（`mirrorPath`）；
+  `src/application/services/workspace-location.ts`
   （`validarDestinoDeEspelho`——复用的词法、对 `container` 的拒绝以及环的两个方向）；
-  `apps/api/src/application/use-cases/iam/set-project-mirror-path.use-case.ts`；
-  `apps/api/src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`
+  `src/application/use-cases/iam/set-project-mirror-path.use-case.ts`；
+  `src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`
   （转换清空目标）；
-  `apps/api/src/interfaces/http/iam/dto/set-mirror-path.dto.ts`（`@IsDefined`
+  `src/interfaces/http/iam/dto/set-mirror-path.dto.ts`（`@IsDefined`
   + `@ValidateIf`，绝不用 `@IsOptional`，那会把 `null` 和 `undefined` 混为一谈）；
-  `apps/api/src/interfaces/http/iam/projects.controller.ts`
+  `src/interfaces/http/iam/projects.controller.ts`
   （`PUT :projectId/mirror-path`，`maintainer`）；
-  `apps/api/src/interfaces/http/iam/dto/iam.response.dto.ts`
+  `src/interfaces/http/iam/dto/iam.response.dto.ts`
 - **测试：**
-  `apps/api/test/application/use-cases/iam/set-project-mirror-path.use-case.spec.ts`
-  （写入、规范化、清除、在 `container` 中也能清除，拒绝非绝对路径/`..`/根目录/系统文件夹/Brabo 检出，环的两个方向，`/base-outra` 与 `/base` 「不」算在内，`container` 被拒绝，404）；`apps/api/test/interfaces/http/iam/projects-execution-mode.controller.spec.ts`
+  `test/application/use-cases/iam/set-project-mirror-path.use-case.spec.ts`
+  （写入、规范化、清除、在 `container` 中也能清除，拒绝非绝对路径/`..`/根目录/系统文件夹/Brabo 检出，环的两个方向，`/base-outra` 与 `/base` 「不」算在内，`container` 被拒绝，404）；`test/interfaces/http/iam/projects-execution-mode.controller.spec.ts`
   （`describe "destino do espelho (RN-515)"`——`maintainer` 以及 `null` 的透传）；
-  `apps/api/test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
+  `test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
   （转换清空目标）；
-  `apps/api/test/interfaces/route-surface.spec.ts`（该路由在 `docs/security-surface.md` 中的分类）
+  `test/interfaces/route-surface.spec.ts`（该路由在 `docs/security-surface.md` 中的分类）
 - **ADR：** [0147](../adr/0147-agente-local-com-capacidades.md)，第 4 点
 - **来源：** FASE 28，第 6 次会话（A 半部——目标放在哪里；复制、`mirror_sync` 和第二遍 `realpath` 是 B 半部，在 engine 和 runner 中）
 
@@ -3914,16 +3914,16 @@ FASE 28 的第 8 次会话，以及 [ADR 0147](../adr/0147-agente-local-com-capa
 
 **「读」需要 `viewer` 角色，写目标需要 `maintainer`**——应用 [RN-102](#rn-102) 的尺子：最低角色属于「端点」，而这个端点只读。目标已经随每次项目读取传递（`GET /projects/:projectId`，`viewer`），所以这里要求 `maintainer` 会把信息锁在已经在同一项目中看到它的人之外，这是两种缺陷中更糟的一种，因为失去能力的人看不见它。
 
-- **位置：** `apps/api/src/db/schema/iam.ts`（`project_mirror_states`，放在 `iam` 聚合中，因为目标就住在那里——没有 `domain/runners`）；
-  `apps/api/src/db/migrations/0057_brave_silver_centurion.sql`；
-  `apps/api/src/domain/iam/mirror-state.ts`（`deriveMirrorSyncStatus`，三种状态的规则，纯函数）；`apps/api/src/application/ports/mirror-state-repository.port.ts`
+- **位置：** `src/db/schema/iam.ts`（`project_mirror_states`，放在 `iam` 聚合中，因为目标就住在那里——没有 `domain/runners`）；
+  `src/db/migrations/0057_brave_silver_centurion.sql`；
+  `src/domain/iam/mirror-state.ts`（`deriveMirrorSyncStatus`，三种状态的规则，纯函数）；`src/application/ports/mirror-state-repository.port.ts`
   （「两个」写入方法，而不是一个所有字段可选的 upsert——正是这让不相交成为类型的不变量，而不是调用方的约定）；
-  `apps/api/src/infrastructure/persistence/drizzle/mirror-state.repository.ts`；
-  `apps/api/src/application/use-cases/iam/record-mirror-sync.use-case.ts` 和
+  `src/infrastructure/persistence/drizzle/mirror-state.repository.ts`；
+  `src/application/use-cases/iam/record-mirror-sync.use-case.ts` 和
   `.../get-project-mirror-state.use-case.ts`；
-  `apps/api/src/interfaces/http/internal/internal-projects.controller.ts`
+  `src/interfaces/http/internal/internal-projects.controller.ts`
   （`POST .../mirror-sync-result`）；
-  `apps/api/src/interfaces/http/iam/projects.controller.ts`
+  `src/interfaces/http/iam/projects.controller.ts`
   （`GET .../mirror-state`，`viewer`）；
   `apps/engine/lib/engine/sessions/engine_api_client.ex`
   （`report_mirror_sync/2`）；
@@ -3933,9 +3933,9 @@ FASE 28 的第 8 次会话，以及 [ADR 0147](../adr/0147-agente-local-com-capa
   `enviarMirrorSyncResult`）；`apps/runner/src/index.ts`（`tratarMirrorSync`
   上报三种出口）；`apps/web/src/components/AmbienteDoProjeto.tsx`
 - **测试：**
-  `apps/api/test/application/use-cases/iam/mirror-sync-telemetry.use-case.spec.ts`
+  `test/application/use-cases/iam/mirror-sync-telemetry.use-case.spec.ts`
   （纯函数和读取中的三种状态；不抹掉成功的错误；更换的目标；计数 0；无文本的消息和长消息；没有目标但仍然记录的项目）；
-  `apps/api/test/infrastructure/persistence/drizzle/mirror-state.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/mirror-state.repository.spec.ts`
   （针对真实数据库的不相交列不变量——假实现只能证明假实现）；
   `apps/engine/test/engine_web/channels/terminal_channel_test.exs`
   （`describe "mirror_sync_result"`——带转换的转发、不会消失的 `filesCopied: 0`、缺失字段「不」变成 `nil`、缺少 `sucesso` 时变成 `ok: false`、忽略 `:web`，以及拒绝但不拖垮频道的 api）；
@@ -3965,18 +3965,18 @@ PAT tem"*。但 `PersonalAccessTokensController` 有**五个**路由——为用
 
 **`maintainer` 的视图仍然「不在范围内」——现在是出于决定，而不是遗漏。** PAT 的两个管理员路由源于事件响应（[RN-427](#rn-427)）：已离职的开发者手中有一个「共享」秘密在流传。设备密钥不是这种东西——私钥从不离开生成它的浏览器，所以没有落在别人手中需要遏制的秘密。这里的 `DELETE` 作为交换得到的是「到达范围」（[RN-520](#rn-520)），而不是广度。
 
-- **位置：** `apps/api/src/interfaces/http/runner/runner-device-keys.controller.ts:99`
+- **位置：** `src/interfaces/http/runner/runner-device-keys.controller.ts:99`
   （`@Get()`、`listDeviceKeys`、`developer`）；
-  `apps/api/src/application/use-cases/auth/list-runner-device-keys.use-case.ts:24`；
-  `apps/api/src/application/ports/runner-device-key-repository.port.ts:90`
+  `src/application/use-cases/auth/list-runner-device-keys.use-case.ts:24`；
+  `src/application/ports/runner-device-key-repository.port.ts:90`
   （`listarDoUsuarioNoProjeto`）；
-  `apps/api/src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:69`；
-  `apps/api/src/interfaces/http/runner/dto/runner-device-key-list.response.dto.ts:19`
+  `src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:69`；
+  `src/interfaces/http/runner/dto/runner-device-key-list.response.dto.ts:19`
   （「两个」类型锁 `Wire`/`MesmasChaves`，与登记的 DTO 不同）
 - **测试：**
-  `apps/api/test/application/use-cases/auth/list-runner-device-keys.use-case.spec.ts`
+  `test/application/use-cases/auth/list-runner-device-keys.use-case.spec.ts`
   （以正确顺序带 `userId`/`projectId` 委托；留在列表中的已吊销密钥；`lastUsedAt` 为空的孤儿；拒绝并传播的仓储）；
-  `apps/api/test/interfaces/http/runner/runner-device-keys.controller.spec.ts`
+  `test/interfaces/http/runner/runner-device-keys.controller.spec.ts`
   （「三个」路由都是 `developer`；委托；不会误返回空列表的路由）
 - **ADR：** [0147](../adr/0147-agente-local-com-capacidades.md)，第 6 点
 - **来源：** FASE 28，第 7 次会话。已声明且「未」做：**没有任何界面**。本次交付是服务端的一半；`CLAUDE.md` 的缺口关闭了一半——api 开始能够列出和吊销，而 `apps/web` 还没有地方做这件事
@@ -4004,11 +4004,11 @@ PAT tem"*。但 `PersonalAccessTokensController` 有**五个**路由——为用
 
 **先「吊销」，再断开**，项目取自被吊销的「那一行」，绝不取自 URL：路由的 `projectId` 在 `DELETE` 中本来就被忽略，在这里读取它会让一个不一致的 `projectId` 断开与这把密钥毫无关系的项目的 runner。
 
-- **位置：** `apps/api/src/application/use-cases/auth/revoke-runner-device-key.use-case.ts:63`
+- **位置：** `src/application/use-cases/auth/revoke-runner-device-key.use-case.ts:63`
   （顺序、取自那一行的项目以及只记录日志的 `try/catch`）；
-  `apps/api/src/application/ports/api-to-engine-client.port.ts:411`
+  `src/application/ports/api-to-engine-client.port.ts:411`
   （`disconnectRunnerOfUser`、`DesfechoDeDesconexaoDeRunner`）；
-  `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts:477`；
+  `src/infrastructure/http-clients/api-to-engine-client.ts:477`；
   `apps/engine/lib/engine/runners/revogacao.ex:92`（`derrubar/3`）；
   `apps/engine/lib/engine_web/channels/terminal_channel.ex:697`
   （`handle_info({:derrubar_por_revogacao, …})`）；
@@ -4016,9 +4016,9 @@ PAT tem"*。但 `PersonalAccessTokensController` 有**五个**路由——为用
   `apps/engine/lib/engine_web/controllers/runner_connection_command_controller.ex:27`；
   `apps/engine/lib/engine_web/router.ex:86`
 - **测试：**
-  `apps/api/test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
+  `test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
   （`describe "a revogação alcança a conexão viva"`——取自那一行的项目；吊销→断开的顺序；不会拖垮吊销的宕机 engine；不断开任何人的 404）；
-  `apps/api/test/infrastructure/http-clients/api-to-engine-client.spec.ts`
+  `test/infrastructure/http-clients/api-to-engine-client.spec.ts`
   （路由和请求体；未知结果变成 `timeout`；会「抛出」的 500，交给用例处理）；
   `apps/engine/test/engine/runners/revogacao_test.exs`（没有 runner；所有者；另一个所有者；上限；格式不对的参数不会抛出）；
   `apps/engine/test/engine_web/channels/terminal_channel_test.exs`
@@ -4056,21 +4056,21 @@ PAT tem"*。但 `PersonalAccessTokensController` 有**五个**路由——为用
 **没有任何上限被改动。** 这个界面的每个提议都是 `proposed_action`，总是由「人」点击，绝不由代理；`container_remove` 仍处于绝对上限（[RN-418](#rn-418)），`decide.ts` 逐字节不变。读取的角色是「workspace」的，缺口已声明：有效角色是 `projectRole ?? workspaceRole`（[RN-471](web.md#rn-471)），而逐行查询 `project_members` 就是这个页面存在就是为了不付出的网络 N+1——在某个项目中被「降级」的人仍然看到按钮并收到 403，这是可修复的缺陷（以 toast 结束），而不是不可见的那种。
 
 - **位置：**
-  `apps/api/src/infrastructure/persistence/drizzle/containers-overview.repository.ts:96`
+  `src/infrastructure/persistence/drizzle/containers-overview.repository.ts:96`
   （LEFT JOIN、`ORDER BY` 和 `temImagemDecidida`）；
-  `apps/api/src/application/ports/containers-overview-repository.port.ts:20`
+  `src/application/ports/containers-overview-repository.port.ts:20`
   （`executionMode`/为空的 `lifecycle`/`temImagemDecidida`/`workspaceVerifiedAt`）；
-  `apps/api/src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts:33`
+  `src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts:33`
   （`sem_container_registrado`）和 `:101`（`elegivelParaVerificacao`，正是它保持预算不变）；
-  `apps/api/src/interfaces/http/containers/containers-overview.controller.ts:60`；
+  `src/interfaces/http/containers/containers-overview.controller.ts:60`；
   `apps/web/src/routes/containers-subida.ts:114`（`decidirSubida`，完整的规则，纯函数）；
   `apps/web/src/routes/ContainersPage.tsx:119`（两种 payload）
 - **测试：**
-  `apps/api/test/application/use-cases/containers/obter-visao-geral-de-containers.use-case.spec.ts`
+  `test/application/use-cases/containers/obter-visao-geral-de-containers.use-case.spec.ts`
   （有自己原因的第三种状态；25 个空项目「不会」把 20 个有真实容器的项目挤出核实）；
-  `apps/api/test/infrastructure/persistence/drizzle/containers-overview.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/containers-overview.repository.spec.ts`
   （列表中没有 `project_containers` 的项目；`temImagemDecidida`；待处理的 `container_start_via_runner`；不会增长的「三次」查询）；
-  `apps/api/test/interfaces/http/containers/containers-overview.controller.spec.ts`
+  `test/interfaces/http/containers/containers-overview.controller.spec.ts`
   （嵌套的 `registrado` 以及在转换后幸存的 `null`）；
   `apps/web/src/routes/containers-subida.test.ts`（按模式分支、三种拒绝、保留说明、角色层级）；
   `apps/web/src/routes/ContainersPage.test.tsx`（`exp004` 的「真实」场景：`runner` 项目、没有行、镜像已决定、文件夹已确认 → 提议的操作是只带 `rationale` payload 的 `container_start_via_runner`，`GET .../container` 甚至不被调用）
@@ -4100,10 +4100,10 @@ desenvolvedor iniciar o desenvolvimento"*。
 **「不」算失败的：** 「采用」了仓库的项目。`ProvisionRepository` 有意以 `ConflictException` 拒绝这种情况——第三方仓库的 bootstrap 只能通过计划审批运行（RN-045）——，但项目「有」仓库，所以没有要配置的东西，把它记录为失败会对它的状态撒谎。分支查询 `findByProjectId` 并提前退出。已存在的 `created` 仓库**不会**被跳过：它落入正常的用例，后者按设计是幂等的（「再运行一次不会失败」），中断的 bootstrap 正是这样完成的。
 
 - **位置：**
-  `apps/api/src/application/use-cases/agents/accept-handoff.use-case.ts`——`execute` 中的 `dev-lead` 分支以及私有方法 `provisionarRepositorio`，带有 `try/catch` 和对已采用仓库的提前退出；
-  `apps/api/src/application/use-cases/agents/agents-use-cases.module.ts`（`GitUseCasesModule` 的导入——箭头是 `agents → git`，而 `git` 不导入 `agents`，所以没有循环）
+  `src/application/use-cases/agents/accept-handoff.use-case.ts`——`execute` 中的 `dev-lead` 分支以及私有方法 `provisionarRepositorio`，带有 `try/catch` 和对已采用仓库的提前退出；
+  `src/application/use-cases/agents/agents-use-cases.module.ts`（`GitUseCasesModule` 的导入——箭头是 `agents → git`，而 `git` 不导入 `agents`，所以没有循环）
 - **测试：**
-  `apps/api/test/application/use-cases/agents/accept-handoff.use-case.spec.ts`
+  `test/application/use-cases/agents/accept-handoff.use-case.spec.ts`
   ——正常路径（"aceitar para o Dev Lead provisiona `local` com o slug do
   projeto"）、两个失败用例（"provisionamento que falha NÃO derruba o
   aceite nem a ativação" 和 "a falha vira evento nomeado, com origem e a mensagem
@@ -4142,28 +4142,28 @@ ADR 0155 本身：密码在 TTY 中读取，*"usada e descartada"*，第 5 点�
 
 **「未」纳入的：** 公开路由（与 [RN-546](produto.md#rn-546) 相同的赛跑）；请求体中的 `userId`；为团队安装提供机器密钥（上面已声明为缺口，而非偶然）；新表（机器密钥仍是 `runner_device_keys` 中 `project_id NULL` 的一行，[ADR 0154](../adr/0154-chave-de-dispositivo-de-maquina.md) 第 1 点）——以及**没有任何迁移**，因为该列自 [RN-543](produto.md#rn-543) 起已可为空。
 
-- **代码：** `apps/api/src/interfaces/http/internal/internal-machine-device-keys.controller.ts:87`
+- **代码：** `src/interfaces/http/internal/internal-machine-device-keys.controller.ts:87`
   （路由的 `@Post()`，以及记录凭据选择的 docblock），
-  `apps/api/src/application/use-cases/auth/registrar-chave-de-maquina.use-case.ts:122`
+  `src/application/use-cases/auth/registrar-chave-de-maquina.use-case.ts:122`
   （解析所有者）、`:124`（`409`）、`:136`（登记之前的替换）和 `:146`（`projectId: null`，正是它让这把密钥成为机器密钥），
-  `apps/api/src/domain/auth/jwk-de-dispositivo.ts:33`（唯一的尺子）和 `:59`（对私钥的拒绝），
-  `apps/api/src/infrastructure/persistence/drizzle/user.repository.ts:31`
+  `src/domain/auth/jwk-de-dispositivo.ts:33`（唯一的尺子）和 `:59`（对私钥的拒绝），
+  `src/infrastructure/persistence/drizzle/user.repository.ts:31`
   （`usuarioUnicoDaInstalacao`，`LIMIT 2`），
-  `apps/api/src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:148`
+  `src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:148`
   （`revogarChavesDeMaquina`，两个 `IS NULL`），
-  `apps/api/src/domain/auth/auth-event.ts`（`machine_device_key_registered`），
-  `apps/api/src/interfaces/http/internal/dto/machine-device-key-internal.dto.ts`
+  `src/domain/auth/auth-event.ts`（`machine_device_key_registered`），
+  `src/interfaces/http/internal/dto/machine-device-key-internal.dto.ts`
   和 `…/machine-device-key-internal.response.dto.ts`
-- **测试：** `apps/api/test/application/use-cases/auth/registrar-chave-de-maquina.use-case.spec.ts`
+- **测试：** `test/application/use-cases/auth/registrar-chave-de-maquina.use-case.spec.ts`
   （`projectId` 为空且所有者已解析的正常路径；没有唯一用户时的 `409`，不写入任何东西；登记「之前」的替换；在打开事务之前拒绝私钥；不含 JWK 的轨迹）；
-  `apps/api/test/domain/auth/jwk-de-dispositivo.spec.ts`（唯一的尺子，含 `d` 以及曲线的优先级）；
-  `apps/api/test/interfaces/http/internal/internal-machine-device-keys.controller.spec.ts`
+  `test/domain/auth/jwk-de-dispositivo.spec.ts`（唯一的尺子，含 `d` 以及曲线的优先级）；
+  `test/interfaces/http/internal/internal-machine-device-keys.controller.spec.ts`
   （回应的契约、「没有」所有者的请求体，以及守卫的三种情况）；
-  `apps/api/test/infrastructure/persistence/drizzle/user.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/user.repository.spec.ts`
   （一个用户时返回它；两个时返回 `null`，绝不是「第一个」）；
-  `apps/api/test/infrastructure/persistence/drizzle/runner-device-key.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/runner-device-key.repository.spec.ts`
   （针对真实 Postgres 的替换，以及它「不」断掉的东西）；
-  `apps/api/test/interfaces/route-surface.spec.ts`（路由的分类）
+  `test/interfaces/route-surface.spec.ts`（路由的分类）
 - **ADR：** [0155](../adr/0155-a-primeira-conta-nasce-no-terminal.md) 第 4 点，涉及 [0154](../adr/0154-chave-de-dispositivo-de-maquina.md) 创建的种类
 
 ## 自我降级的上限也适用于「移除」（RN-556）
@@ -4196,15 +4196,15 @@ escrita aqui para não ser redescoberta"*。本 RN 关上这扇门——这是 `
 
 **界面不变，而拒绝会显示出来。** `MembersSection.handleRemove` 已经在 toast 中显示 `mensagemDaApi(erro, …)`（[RN-471](web.md#rn-471)），所以 api 的语句无需改动一行 web 就能到达。与上限 1 不同，这个闸门「可以」在客户端计算——但只计算它会产生 ADR 0127 拒绝过的半个闸门。
 
-- **代码：** `apps/api/src/domain/iam/tetos-de-rebaixamento.ts`
+- **代码：** `src/domain/iam/tetos-de-rebaixamento.ts`
   （`remocaoEhAutoRebaixamento` 和 `MENSAGEM_TETO_AUTO_REBAIXAMENTO_POR_REMOCAO`，以及说明上限 1 为何没有对应项的注释），
-  `apps/api/src/application/use-cases/iam/remove-project-member.use-case.ts`
+  `src/application/use-cases/iam/remove-project-member.use-case.ts`
   （带 `atorId` 的签名以及两次角色读取），
-  `apps/api/src/interfaces/http/iam/projects.controller.ts`
+  `src/interfaces/http/iam/projects.controller.ts`
   （`@Delete(':projectId/members/:userId')` 中的 `@CurrentUser()`、更正的描述以及 `@ApiForbiddenResponse`），
-  `apps/api/src/application/use-cases/iam/resolve-effective-role.use-case.ts`
+  `src/application/use-cases/iam/resolve-effective-role.use-case.ts`
   （「未改动」——`projectRole ?? workspaceRole` 照旧）
-- **测试：** `apps/api/test/application/use-cases/iam/tetos-de-rebaixamento.use-case.spec.ts`，
+- **测试：** `test/application/use-cases/iam/tetos-de-rebaixamento.use-case.spec.ts`，
   块 *"Teto 2 pela outra porta — a remoção da própria linha"*（三种拒绝；良性的自我移除；移除他人；以及把项目还给 workspace `owner` 的移除）。其中第一个是 ADR 0127 的缺口测试「反转」过来，名称保留了来源
 - **ADR：** [0156](../adr/0156-teto-de-auto-rebaixamento-na-remocao.md)，它引用 [0127](../adr/0127-tetos-de-rebaixamento-em-project-members.md) 并关闭其声明的缺口
 - **来源：** `BRB-001`，维护者登记表中的安全 P1——ADR 0127 以 *"quem for fechá-lo vê o teste falhar"* 这句话写下的缺口
@@ -4227,8 +4227,8 @@ escrita aqui para não ser redescoberta"*。本 RN 关上这扇门——这是 `
 
 **测试中没有任何密钥或秘密是字面量**：两者每轮都由 `randomBytes` 生成。fixture 中的常量 passphrase 是一个看起来像秘密的字符串进入历史，而 gitleaks 会扫描分支。
 
-- **代码：** `apps/api/src/scripts/rewrap-deks.ts:93`（`reenvelopar`，导出的函数）、`:100`（两张表的列表，正是测试所固定的）、`:209`（阻止导入时轮换的 `require.main === module`）
-- **测试：** `apps/api/test/scripts/rewrap-deks.spec.ts`——正常路径（K1 → K1+K2 → 重新封装 → 只有 K2 的序列）、幂等性，以及来自另一环境的那一行的失败用例，它还断言报告中「不」携带任何秘密
+- **代码：** `src/scripts/rewrap-deks.ts:93`（`reenvelopar`，导出的函数）、`:100`（两张表的列表，正是测试所固定的）、`:209`（阻止导入时轮换的 `require.main === module`）
+- **测试：** `test/scripts/rewrap-deks.spec.ts`——正常路径（K1 → K1+K2 → 重新封装 → 只有 K2 的序列）、幂等性，以及来自另一环境的那一行的失败用例，它还断言报告中「不」携带任何秘密
 - **来源：** AT-033（EP-015/HS-022），发现 `BRB-010`
 
 ### RN-563 — 信封说明是哪把密钥封装了它，而这个标签绝不决定它能否打开 {#rn-563}
@@ -4253,13 +4253,13 @@ select count(*) from project_git_connections where key_id is distinct from '<atu
 
 **运维者需要当前指纹**，否则这一列无从比较：api 在启动时用一行记录它，已有的轮换警告开始点名「两个」指纹。
 
-- **代码：** `apps/api/src/infrastructure/security/envelope-encryption.service.ts:130`
+- **代码：** `src/infrastructure/security/envelope-encryption.service.ts:130`
   （`impressaoDigital`）、`:107`（启动行）、`:113`（带两个指纹的警告）、`:226`（`rewrap` 的诊断）、`:251`（`diagnosticoDaChave`）；
-  `apps/api/src/db/schema/llm.ts:259` 和 `apps/api/src/db/schema/git.ts:76`
+  `src/db/schema/llm.ts:259` 和 `src/db/schema/git.ts:76`
   （两张表中的列）；迁移
-  `apps/api/src/db/migrations/0059_key_id_no_envelope.sql`
-- **测试：** `apps/api/test/infrastructure/security/envelope-encryption.service.spec.ts` 中的 `key_id da chave mestra` describe
-  ——正常路径（稳定且确定的指纹，由 `encrypt` 和 `rewrap` 写入）、**标签不做决定的证明**（撒谎的行被重新封装）、没有标签的遗留行，以及两个失败用例（点名密钥而不泄露秘密的消息；「sem rótulo」照实说出）。真实的 SQL 查询在 `apps/api/test/scripts/rewrap-deks.spec.ts` 中，包括 `NULL` 行算作待处理的情况
+  `src/db/migrations/0059_key_id_no_envelope.sql`
+- **测试：** `test/infrastructure/security/envelope-encryption.service.spec.ts` 中的 `key_id da chave mestra` describe
+  ——正常路径（稳定且确定的指纹，由 `encrypt` 和 `rewrap` 写入）、**标签不做决定的证明**（撒谎的行被重新封装）、没有标签的遗留行，以及两个失败用例（点名密钥而不泄露秘密的消息；「sem rótulo」照实说出）。真实的 SQL 查询在 `test/scripts/rewrap-deks.spec.ts` 中，包括 `NULL` 行算作待处理的情况
 - **ADR：** [0158](../adr/0158-o-id-da-chave-mestra-gravado-no-envelope.md)
 - **来源：** AT-034（EP-015/HS-022），发现 `BRB-016`
 
@@ -4281,10 +4281,10 @@ select count(*) from project_git_connections where key_id is distinct from '<atu
 
 **原因「不」说明的，已声明：** 它点名规则，而不是范围的「根」——[ADR 0055](../adr/0055-escopo-de-caminho-na-politica-de-terminal.md) 第 7 点要求的是*哪个根*授权，而 `escopo: cd dentro da pasta do projeto` 不携带路径。（自 [RN-609](#rn-609) 起，根以「自己的」字段进入事件，是相对路径，绝不是绝对路径。）在复合命令中，原因说明所有段都命中了 `allow`，却不说明哪个模式匹配了哪个段。而 `permissions.json` 的规则行在文字中重复命令的「令牌」（`matchAgainstFile` 的 `label`）——与已经存放在 `proposed_actions.payload` 和审批卡片中的同一个命令。
 
-- **代码：** `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:259`
+- **代码：** `src/application/use-cases/actions/propose-action.use-case.ts:259`
   （会话事件 payload 中的 `reason`）、`:223`（关于 outbox 不带该字段的注释）、`:227`（outbox 的 payload，不变）、`:356`（`rejectionReason`，仍然只在 `deny` 中）；
-  `apps/api/src/domain/actions/decide.ts:278`（`Decision`，字符串的来源）
-- **测试：** `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:902`
+  `src/domain/actions/decide.ts:278`（`Decision`，字符串的来源）
+- **测试：** `test/application/use-cases/actions/propose-action.use-case.spec.ts:902`
   （正常路径：自动批准写入 `agent_autonomy: auto_approve`）、
   `:948`（因默认值和合并锁上限而 `require_approval`）、
   `:1047`（`deny`，文字与 `rejectionReason` 相同）、`:999`（不带 `reason` 的 outbox）
@@ -4296,7 +4296,7 @@ select count(*) from project_git_connections where key_id is distinct from '<atu
 
 [ADR 0152](../adr/0152-backup-de-volumes-contra-compose.md)（决定 4）拒绝备份 `neo4j_data`，所依据的前提——*图可以丢弃，因为它可以重建*——其机制并不存在：在 `apps/` 和 `scripts/` 中 `grep` `reprojet`/`reproject` 返回为空，`application/graph-projection/` 只有「向前」的投影器。在它存在之前，图不是可丢弃的：而是会丢失的。
 
-**规则：** `apps/api/src/scripts/reprojetar-grafo.ts`
+**规则：** `src/scripts/reprojetar-grafo.ts`
 （`pnpm --filter api grafo:reprojetar`；镜像中为 `node scripts/reprojetar-grafo.js`）通过扫描来源重建图。五个决定，各有原因：
 
 1. **只有一个翻译器。** 事件 → 节点/边的翻译从 `GraphProjector` 「移出」到 `GraphEventTranslator`，两条路径都调用它——投影器通过一行 outbox 到达来源，重新投影通过游标。两个翻译器会分歧，而分歧的那个会是一年运行一次的那个。投影器的注入面「没有」改变（它用已接收的依赖组装翻译器）。一个测试会在 `GRAPH_PROJECTABLE_EVENT_TYPES` 中出现没有翻译的新类型时失败。
@@ -4308,14 +4308,14 @@ select count(*) from project_git_connections where key_id is distinct from '<atu
 
 **本规则「不」关闭的：** `PerfilAnamnese` 是按用户 + 维度的快照，「没有」项目——最后写入的胜出——，所以一次带 `--project` 的运行可能把它留在那个项目的值上，而另一个项目在之后写过；完整运行会恢复全局的最后值。没有在大型 event log 上的耗时测量（唯一一次真实运行是开发 compose，98 个事件，2.5 秒），BRB-018 所要求的本地集群证明也没有做——它仍然开放。
 
-- **代码：** `apps/api/src/application/graph-projection/graph-event-translator.ts:15`
+- **代码：** `src/application/graph-projection/graph-event-translator.ts:15`
   （`EVENTOS_DO_LOG_PROJETAVEIS`）、`:31`（`FECHAMENTOS_DE_SESSAO`）、`:56`（翻译器）、`:75`（`projetarEvento`）、`:99`（`projetarFechamentoDeSessao`）；
-  `apps/api/src/application/graph-projection/graph-projector.ts:77`（投影器组装「同一个」翻译器）、`:141`（通过 outbox 到达来源并委托）；
-  `apps/api/src/scripts/reprojetar-grafo.ts:124`（`montarTradutor`）、`:145`
-  （`reprojetarGrafo`）、`:154`（读取之前的拒绝）、`:163` 和 `:169`（不存在的项目）、`:187`（事件阶段，按游标）、`:213`（点名的中断）、`:218`（计数但不中止其余部分的失败）、`:230`（已关闭会话的阶段）、`:301`（`lerArgumentos`）、`:370`（只有直接调用才重新投影）；`apps/api/package.json:44`（`grafo:reprojetar`）；`Makefile:61`
+  `src/application/graph-projection/graph-projector.ts:77`（投影器组装「同一个」翻译器）、`:141`（通过 outbox 到达来源并委托）；
+  `src/scripts/reprojetar-grafo.ts:124`（`montarTradutor`）、`:145`
+  （`reprojetarGrafo`）、`:154`（读取之前的拒绝）、`:163` 和 `:169`（不存在的项目）、`:187`（事件阶段，按游标）、`:213`（点名的中断）、`:218`（计数但不中止其余部分的失败）、`:230`（已关闭会话的阶段）、`:301`（`lerArgumentos`）、`:370`（只有直接调用才重新投影）；`package.json:44`（`grafo:reprojetar`）；`Makefile:61`
   （`test-reprojecao`）
-- **测试：** `apps/api/test/scripts/reprojetar-grafo.spec.ts:349`（向前投影器 → 删除子图 → 重新投影整个日志 → 相同的节点和边数量以及相同的键列表；第二次运行完全相同；outbox 不变）、
-  `:394`（按项目）、`:417`（不存在的项目，不写入任何东西——失败用例）、`:432`（图不可用是点名的错误——失败用例）、`:441`（未知参数被拒绝）、`:452`（翻译器恰好覆盖可投影的类型）；`apps/api/test/application/graph-projection/graph-projector.spec.ts`
+- **测试：** `test/scripts/reprojetar-grafo.spec.ts:349`（向前投影器 → 删除子图 → 重新投影整个日志 → 相同的节点和边数量以及相同的键列表；第二次运行完全相同；outbox 不变）、
+  `:394`（按项目）、`:417`（不存在的项目，不写入任何东西——失败用例）、`:432`（图不可用是点名的错误——失败用例）、`:441`（未知参数被拒绝）、`:452`（翻译器恰好覆盖可投影的类型）；`test/application/graph-projection/graph-projector.spec.ts`
   （向前投影器，未改变，基于抽取出的翻译器）。前四个需要 Neo4j 在运行，没有它时「跳过」——api 的 CI 不启动 Neo4j。
 - **来源：** AT-032（BRB-018）——ADR 0152 没有机制的前提
 
@@ -4332,15 +4332,15 @@ select count(*) from project_git_connections where key_id is distinct from '<atu
 
 **本规则「不」关闭的：** 模式转换（[RN-559](web.md#rn-559)）在没有 broker 的安装中仍然提供 `container`/`mounted`；安装程序不询问是否开启 broker，因为通过 Release 的安装无法获取它的镜像（已测量——见 ADR 0161）；在开发 compose 中，它默认启动 broker（[RN-512](infra.md#rn-512)），但在有人把 `BROKER_URL` 放进 `.env` 之前它为空，提示会出现——这是对的，因为没有这个变量，api 永远不会调用 broker。
 
-- **代码：** `apps/api/src/interfaces/http/iam/workspaces.controller.ts:404`
+- **代码：** `src/interfaces/http/iam/workspaces.controller.ts:404`
   （`getProjectsBase`，`:256` 是新字段），
-  `apps/api/src/interfaces/http/iam/dto/iam.response.dto.ts:554`，
-  `apps/api/src/interfaces/http/iam/iam-http.module.ts`（仅为 `configurado()` 这个问题而导入的 broker 模块）；
+  `src/interfaces/http/iam/dto/iam.response.dto.ts:554`，
+  `src/interfaces/http/iam/iam-http.module.ts`（仅为 `configurado()` 这个问题而导入的 broker 模块）；
   `apps/web/src/routes/NewProjectWizard.tsx:257`（`brokerConfirmado`）、`:260`
   （`semBrokerConfirmado`）、`:270`（`modoExecutavel`）、`:283`（当前模式）、
   `:716`（惰性卡片）、`:728`（文字说明的原因）；
   `apps/web/src/locales/{pt-BR,en}/newProject.json`（`workspace.noBroker`）
-- **测试：** `apps/api/test/interfaces/http/iam/workspaces-projects-base.controller.spec.ts:59`
+- **测试：** `test/interfaces/http/iam/workspaces-projects-base.controller.spec.ts:59`
   （有 `BROKER_URL`，`true`）、`:69`（没有时为 `false`，即使有基目录——失败用例）、`:79`（只有空格算作缺失）、`:52`（最低角色仍是 `maintainer`）；`apps/web/src/routes/NewProjectWizard.test.tsx:504`（没有 broker：预选 `runner`，两张卡片惰性，原因以文字说明）、
   `:523`（broker 未知：不预选 `mounted`，也不锁定任何东西）、
   `:534`（在回应之前点击 `container` 会落到 `runner`）、`:479`
@@ -4360,14 +4360,14 @@ AT-085 的同一个安装允许通过容器页面（[RN-521](#rn-521)）批准�
 
 **本规则「不」关闭的：** 停止和删除没有获得这一拒绝（没有 broker 就没有处于运行状态的已登记 `container`/`mounted` 容器可停，这种情况也没有测量），Infra Lead 仍然不知道 broker 缺失——它按「模式」拒绝（[RN-566](engine.md#rn-566)），在没有 broker 的安装中由代理提议 `container_start` 仍然可能。
 
-- **代码：** `apps/api/src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts:71`
+- **代码：** `src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts:71`
   （字段）、`:150`（每次加载读一次）；
-  `apps/api/src/interfaces/http/containers/dto/containers.response.dto.ts:408`；
+  `src/interfaces/http/containers/dto/containers.response.dto.ts:408`；
   `apps/web/src/routes/containers-subida.ts:33`（原因）、`:94`
   （`usaBroker`）、`:122`（拒绝）；
   `apps/web/src/locales/{pt-BR,en}/containers.json`
   （`actions.bloqueio.sem_broker_na_instalacao`）
-- **测试：** `apps/api/test/application/use-cases/containers/obter-visao-geral-de-containers.use-case.spec.ts:252`
+- **测试：** `test/application/use-cases/containers/obter-visao-geral-de-containers.use-case.spec.ts:252`
   （没有 broker，每行都是 `false`——失败用例）、`:264`（有 broker，`true`）；`apps/web/src/routes/containers-subida.test.ts:54`（`container` 和 `mounted` 在镜像之前拒绝）、`:70`（`runner` 不受影响）、`:84`
   （缺失字段拒绝）、`:93`（已在运行时仍然这样说）；
   `apps/web/src/routes/ContainersPage.test.tsx:562`（按钮惰性，原因以文字说明，从不提议）、`:636`（`runner` 继续启动）
@@ -4402,20 +4402,20 @@ AT-085 的同一个安装允许通过容器页面（[RN-521](#rn-521)）批准�
 
 - **代码：** `apps/web/src/lib/sessao-encerrada.ts`
   （`ehRecusaDeSessaoEncerrada`、`sessaoEhTerminal`）；
-  `apps/api/src/domain/sessions/conversa-em-sessao-encerrada.ts:56`
+  `src/domain/sessions/conversa-em-sessao-encerrada.ts:56`
   （`AGENTES_CONVERSACIONAIS`）、`:67`（`TIPOS_DA_CONVERSA`）、`:95`
   （`ehEventoDeConversa`）、`:117`（`garantirQueSessaoAceitaEvento`）；
-  `apps/api/src/application/use-cases/sessions/append-session-event.use-case.ts:44`
+  `src/application/use-cases/sessions/append-session-event.use-case.ts:44`
   （`conflitoDeSessaoEncerrada`）、`:114`（与 `seq` 同一个 `UPDATE` 中的状态）、
   `:241`（`garantirQueAceita`）；
-  `apps/api/src/infrastructure/persistence/drizzle/session.repository.ts:117`
+  `src/infrastructure/persistence/drizzle/session.repository.ts:117`
   （`incrementSeq`）；
-  `apps/api/src/application/use-cases/llm/send-chat-message.use-case.ts:78`
-  （人类聊天）；`apps/api/src/application/use-cases/agents/create-handoff.use-case.ts:67`，
+  `src/application/use-cases/llm/send-chat-message.use-case.ts:78`
+  （人类聊天）；`src/application/use-cases/agents/create-handoff.use-case.ts:67`，
   `accept-handoff.use-case.ts:90`、`activate-agent.use-case.ts:52`；
-  `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts:30`
+  `src/application/use-cases/sessions/get-session-pending-work.use-case.ts:30`
   （`FALA_DO_AGENTE`）、`:238`（第五个信号）；
-  `apps/api/src/infrastructure/persistence/drizzle/session-event.repository.ts:124`
+  `src/infrastructure/persistence/drizzle/session-event.repository.ts:124`
   （`findLatestOfTypesInSession`）；
   `apps/engine/lib/engine/sessions/session_server.ex:115`（带时刻的待办）、`:141`（自己时钟的 `handle_info`，AT-152）、`:168`
   （`conversa_ociosa`）、`:193`（`encerrar`）、`:222`
@@ -4431,12 +4431,12 @@ AT-085 的同一个安装允许通过容器页面（[RN-521](#rn-521)）批准�
   `apps/engine/lib/engine/agents/turno_assincrono.ex:411`（`abandonar`）；
   `apps/engine/lib/engine/workers/session_lifecycle_worker.ex:88`
   （`parar_conversacionais`）；`apps/engine/config/runtime.exs:79`
-- **测试：** `apps/api/test/application/use-cases/sessions/conversa-em-sessao-encerrada.spec.ts:144`
+- **测试：** `test/application/use-cases/sessions/conversa-em-sessao-encerrada.spec.ts:144`
   （已结束会话以点名的 409 拒绝 `chat.message`——失败用例）、
   `:167`（没有事件，没有消耗 `seq`）、`:183`（Psicólogo 和 Anamnese 继续进入）、`:211`（对操作的决定继续进入）、`:223`
   （活动会话接受——正常路径）、`:244`（`closing` 接受）、`:258`
   （`SendAgentMessage` 不调用 engine）、`:263`（没有孤立的 handoff）、
-  `:276`（接受不激活任何人）、`:309`（激活不启动代理）；`apps/api/test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts:478`
+  `:276`（接受不激活任何人）、`:309`（激活不启动代理）；`test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts:478`
   （Criativo 已回复：带时刻的待办）、`:519`（用户最后发言）、`:546`（不对话者不保持会话）、`:563`（没有上限的信号优先）；
   `apps/engine/test/engine/sessions/session_lifecycle_test.exs:87`（上限之内，重新安排）、`:106`（超过上限，`conversation_idle_timeout`，`closed`）、`:124`（默认是 8 小时）、`:151`（没有时刻的待办仍没有上限）、`:152` 和 `:194`（AT-152：标签页打开——有 ping——超过上限的空闲对话会关闭，上限之内不关闭）；`apps/engine/test/engine/sessions/pendencia_de_conversa_test.exs:28`
   （无效时刻变成错误）；`apps/engine/test/engine/agents/conversacionais_test.exs:60`
@@ -4468,30 +4468,30 @@ AT-085 的同一个安装允许通过容器页面（[RN-521](#rn-521)）批准�
 **激活的拒绝不会让人去接受已结束会话的 handoff（[RN-581](#rn-581)，AT-131）。** 在终止会话中接受 handoff 是 409 `sessao_encerrada`，在 handoff 变为 `accepted` 「之前」检查——所以不会有半途的配置。拒绝的语句现在查询每个 `offered` handoff 的会话状态：只有住在「打开」会话中的才会变成「接受它」；如果唯一的 `offered` 在已结束会话中，语句会说明这一点并指向配置页面。找不到的会话算作打开（「不知道」不变成「已结束」）。配置写入的事件不落入 RN-581：执行者是 `system`，目标是刚创建的 `git-bootstrap` 会话。仍「未」覆盖的：概览和会话中的 handoff 卡片读取的是仓库的状态，而不是每个会话的状态，它们没有改变。
 
 - **位置：**
-  `apps/api/src/application/use-cases/agents/accept-handoff.use-case.ts:66`
+  `src/application/use-cases/agents/accept-handoff.use-case.ts:66`
   （`AGENTES_QUE_PROVISIONAM_O_REPOSITORIO`，触发器和第二道门）和 `:141`
   （分支，在 `activateAgent` 之前）；
-  `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts:143`
+  `src/application/use-cases/execution/activate-execution.use-case.ts:143`
   （拒绝，在任何效果之前）；
-  `apps/api/src/domain/execution/repositorio-para-executar.ts:50`
-  （`motivoDeExecucaoSemRepositorio`，以及接受也使用的两个代理名）；`apps/api/src/infrastructure/persistence/drizzle/handoff.repository.ts:55`
+  `src/domain/execution/repositorio-para-executar.ts:50`
+  （`motivoDeExecucaoSemRepositorio`，以及接受也使用的两个代理名）；`src/infrastructure/persistence/drizzle/handoff.repository.ts:55`
   （`findByProject`）；`apps/web/src/routes/ProjectOverviewTab.tsx:369` 和 `:511`；
   `apps/web/src/routes/SessionPage.tsx:147`；`apps/web/src/routes/session-timeline-montagem.tsx:495`；
   `apps/web/src/lib/session-acoes-de-handoff.ts:122`；
   `apps/engine/lib/engine/projects/project_repository.ex:74`（[RN-577](engine.md#rn-577) 拒绝的文字，它点名旧的触发器，随之改变）
 - **测试：**
-  `apps/api/test/application/use-cases/agents/accept-handoff.use-case.spec.ts`
+  `test/application/use-cases/agents/accept-handoff.use-case.spec.ts`
   （"aceitar para o Arquiteto provisiona `local` com o slug do projeto"、"o
   repositório nasce ANTES de o Arquiteto acordar"、"aceitar para o Dev Lead
   continua provisionando `local` (segunda porta)"）；
-  `apps/api/test/application/use-cases/agents/accept-handoff-provisiona-uma-vez.spec.ts`
+  `test/application/use-cases/agents/accept-handoff-provisiona-uma-vez.spec.ts`
   （针对数据库的两扇门："UM createRepo, UMA linha, nenhuma falha"，以及
   "o exp001: Arquiteto aceito SEM repositório, e a segunda porta provisiona"）；
-  `apps/api/test/application/use-cases/execution/activate-execution.use-case.spec.ts:725`
+  `test/application/use-cases/execution/activate-execution.use-case.spec.ts:725`
   （"sem repositório: 409, e NENHUM efeito antes da recusa"、"a frase nomeia o
   handoff ao Dev Lead pendente — a saída do exp001"、"repositório ADOTADO conta
-  como repositório"）；`apps/api/test/domain/execution/repositorio-para-executar.spec.ts`；
-  `apps/api/test/infrastructure/persistence/handoff-por-projeto.repository.spec.ts`；
+  como repositório"）；`test/domain/execution/repositorio-para-executar.spec.ts`；
+  `test/infrastructure/persistence/handoff-por-projeto.repository.spec.ts`；
   `apps/web/src/routes/ProjectOverviewTab.test.tsx:409`、`:427` 和 `:440`；
   `apps/web/src/routes/SessionPage.handoff-devlead-e-colapso.test.tsx:575`；
   `apps/engine/test/engine/agents/arquiteto_server_test.exs:134` 和
@@ -4511,12 +4511,12 @@ AT-085 的同一个安装允许通过容器页面（[RN-521](#rn-521)）批准�
    `LLMProviderCapabilities.routingPreference` 在九个提供方中都是必需的，自 2026-09-29（AT-158）起*只*在 OpenRouter 中为 `true`：使用真实凭据的 smoke（`openrouter-provider.roteamento.smoke.spec.ts`）显示标准*改变*了实际服务的上游——在 `meta-llama/llama-3.3-70b-instruct` 上，
    `price` 落在 DeepInfra，`throughput` 落在 Groq（`latency` 在一次测量中是 Groq，另一次是 CoreWeave），而没有标准时 hub 在 Novita/DeepInfra 之间交替。证明是*差异*，而不是被接受：旧默认模型（`~deepseek/deepseek-v4-flash-latest`）对三种标准和无标准都返回*同一个*上游，这无法区分"hub 遵守了"和"根本没有选择"。其他八个仍为 `false`，对它们而言这个功能仍然*休眠*：路由以 422 拒绝，界面以文字说明提供方没有经过证明的选项，线路上什么都不变。证明*不*断言的是：每种标准会选择哪个上游——那是 hub 的决定，并随时间变化。
 
-- **位置：** `apps/api/src/domain/llm/routing-preference.ts:56`（写入），
-  `apps/api/src/domain/llm/routing-preference.ts:75`（发送到线路上的东西），
-  `apps/api/src/domain/llm/binding-resolver.ts:100`（随 binding 传输），
-  `apps/api/src/application/use-cases/llm/record-llm-usage.use-case.ts:118`
+- **位置：** `src/domain/llm/routing-preference.ts:56`（写入），
+  `src/domain/llm/routing-preference.ts:75`（发送到线路上的东西），
+  `src/domain/llm/binding-resolver.ts:100`（随 binding 传输），
+  `src/application/use-cases/llm/record-llm-usage.use-case.ts:118`
   （在计量中冻结），
-  `apps/api/src/infrastructure/llm/openrouter-provider.ts:327` (`openrouterConfig`，经过证明的能力)
+  `src/infrastructure/llm/openrouter-provider.ts:327` (`openrouterConfig`，经过证明的能力)
 - **测试：** `test/domain/llm/routing-preference.spec.ts`,
   `test/application/use-cases/llm/set-model-binding.use-case.spec.ts`,
   `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts`,
@@ -4527,7 +4527,7 @@ AT-085 的同一个安装允许通过容器页面（[RN-521](#rn-521)）批准�
 
 [ADR 0148](../adr/0148-artefatos-projetados-em-arquivo.md) 称 `docs/` 文件夹可重建，并在代价 3 中声明**不存在重新投影命令**：删除文件夹不会重建它，因为 outbox 行已被标记。这与 [RN-569](#rn-569) 为图关闭的缺口相同，只是在第二个消费者中。通过阅读代码测量：Postgres 的恢复、`project_workspaces` 卷的丢失以及 `execution_mode` 的转换（不触碰 `docs/`）会让文件夹缺失或留在旧位置，而没有任何东西重写它。
 
-**规则：** `apps/api/src/scripts/reprojetar-artefatos.ts`
+**规则：** `src/scripts/reprojetar-artefatos.ts`
 （`pnpm --filter api artefatos:reprojetar`；镜像中为 `node scripts/reprojetar-artefatos.js`）扫描 `session_events` 并重写文件夹。与 RN-569 一样：
 
 1. **只有一个翻译器。** 事件 → 代理文件夹、文件名和 Markdown 的翻译从 `ArtifactProjector` 「移出」到 `ArtifactEventTranslator`；投影器通过一行 outbox 到达事件，重新投影通过游标，两者都调用它。投影器的接口（构造函数、`drainOnce`）没有改变。被投影的列表仍是 `ARTIFACT_PROJECTABLE_EVENT_TYPES`——新类型进入那里并在同一处翻译，绝不在第二个翻译器中。
@@ -4537,16 +4537,16 @@ AT-085 的同一个安装允许通过容器页面（[RN-521](#rn-521)）批准�
 
 **本规则「不」关闭的：** (a) 版本化的类型（`module_map`、`module_routing`、`project_image`、`c4_diagram`）显示按 `id` 顺序的「最后」一个事件；从两个版本之间开始的 `--after-event` 可能留下较旧的一个——只有完整运行才能保证当前有效的那个；(b) 它写入项目的「当前」位置，需要看到与 api 相同的磁盘；(c) 不重建从未成为文件的 `qa_verdict`/`secops_verdict`/`task_blocked`/`infra_delegation_files`；(d) 没有在大型 event log 上的耗时测量；(e) 「不」进入备份——它是派生的，即 [ADR 0152](../adr/0152-backup-de-volumes-contra-compose.md) 的论点。
 
-- **代码：** `apps/api/src/application/artifact-projection/artifact-event-translator.ts:21`
+- **代码：** `src/application/artifact-projection/artifact-event-translator.ts:21`
   （`ArtifactEventTranslator`）、`:24`（`projetarEvento`）；
-  `apps/api/src/application/artifact-projection/artifact-projector.ts:64`
+  `src/application/artifact-projection/artifact-projector.ts:64`
   （投影器组装「同一个」翻译器）、`:131`（委托）；
-  `apps/api/src/scripts/reprojetar-artefatos.ts:96`（`reprojetarArtefatos`）、
+  `src/scripts/reprojetar-artefatos.ts:96`（`reprojetarArtefatos`）、
   `:115`（翻译器）、`:137`（在 `session_events` 上按游标扫描）、
-  `:163`（计数但不中止的失败）、`:185`（`lerArgumentos`）、`:241`（只有直接调用才重新投影）；`apps/api/package.json:45`（`artefatos:reprojetar`）
-- **测试：** `apps/api/test/scripts/reprojetar-artefatos.spec.ts:215`（向前投影器 → 删除文件夹 → 重新投影 → 相同的路径和内容；第二次运行完全相同；outbox 不变）、`:254`（绝不删除）、`:265`（按项目）、
+  `:163`（计数但不中止的失败）、`:185`（`lerArgumentos`）、`:241`（只有直接调用才重新投影）；`package.json:45`（`artefatos:reprojetar`）
+- **测试：** `test/scripts/reprojetar-artefatos.spec.ts:215`（向前投影器 → 删除文件夹 → 重新投影 → 相同的路径和内容；第二次运行完全相同；outbox 不变）、`:254`（绝不删除）、`:265`（按项目）、
   `:275`（不存在的项目——失败用例）、`:289`（写入失败被计数而不中止其余部分——失败用例）、`:314`（未知参数）；
-  `apps/api/test/application/artifact-projection/artifact-projector.spec.ts`
+  `test/application/artifact-projection/artifact-projector.spec.ts`
   （向前投影器，未改变，基于抽取出的翻译器）
 - **来源：** AT-128——ADR 0148 声明的缺口（代价 3）
 
@@ -4561,13 +4561,13 @@ AT-085 的同一个安装允许通过容器页面（[RN-521](#rn-521)）批准�
 
 **「不」关闭的：** 因缺少「镜像」而盲目提议仍然可能（[RN-566](engine.md#rn-566) 已经声明）；api 的拒绝也适用于非代理的调用方，这正是所期望的——批准只会以 `failed` 告终；`PUT execution-mode` 仍接受直接调用进行的转换。
 
-- **代码：** `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:90`
+- **代码：** `src/application/use-cases/actions/propose-action.use-case.ts:90`
   （409 拒绝）、`apps/web/src/routes/containers-subida.ts:181`
   （`semBrokerParaCicloDeVida`）和 `:192`（`conversaoSemBroker`）、
   `apps/web/src/routes/settings/ExecutionModeSection.tsx`（惰性按钮）、
   `apps/engine/lib/engine/infra/infra_lead_server.ex:817`
   （`motivo_da_recusa_da_api`）
-- **测试：** `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:207`
+- **测试：** `test/application/use-cases/actions/propose-action.use-case.spec.ts:207`
   （三个操作中的 409，有 broker 时 `container_stop` 仍为 `pending`），
   `apps/web/src/routes/containers-subida.test.ts`（两个函数，三种状态），
   `apps/web/src/routes/settings/conversao-de-modo.test.tsx`，
@@ -4585,11 +4585,11 @@ AT-085 的同一个安装允许通过容器页面（[RN-521](#rn-521)）批准�
 
 **「不」关闭的：** 概览和会话中的 handoff 卡片仍不查询每个 handoff 的会话状态（RN-582 声明的缺口）；决定它们是否开始查询是另一个决定，不在本规则范围内。
 
-- **代码：** `apps/api/src/application/use-cases/sessions/list-sessions-for-project.use-case.ts:30`
-  （`execute`）、`apps/api/src/interfaces/http/sessions/dto/sessions.response.dto.ts:110`
+- **代码：** `src/application/use-cases/sessions/list-sessions-for-project.use-case.ts:30`
+  （`execute`）、`src/interfaces/http/sessions/dto/sessions.response.dto.ts:110`
   （`SessionListItemResponseDto`）、`apps/web/src/lib/hooks.ts:147`
   （`sessaoMaisRecente`）
-- **测试：** `apps/api/test/application/use-cases/sessions/list-sessions-for-project.use-case.spec.ts:81`
+- **测试：** `test/application/use-cases/sessions/list-sessions-for-project.use-case.spec.ts:81`
   （关联而非名称；另一个项目的技术会话不标记），
   `apps/web/src/lib/sessao-mais-recente.test.ts:28`（重命名后仍被排除）和
   `:36`（名为 `git-bootstrap` 的工作会话不是技术会话）
@@ -4602,9 +4602,9 @@ AT-085 的同一个安装允许通过容器页面（[RN-521](#rn-521)）批准�
 
 - **位置：** `docker/docker-compose.yml`、`docker/docker-compose.prod.yml` 和
   `docker/docker-compose.install.yml`（`api`、`engine` 和 `broker` 服务）；
-  读取方是 `apps/api/src/infrastructure/security/auth-key-material.ts:136`
-  （`passphraseAnterior`），`apps/api/src/infrastructure/security/service-token.ts:92`
-  （`tokenDeServicoAnterior`），`apps/api/src/infrastructure/security/envelope-encryption.service.ts:93`,
+  读取方是 `src/infrastructure/security/auth-key-material.ts:136`
+  （`passphraseAnterior`），`src/infrastructure/security/service-token.ts:92`
+  （`tokenDeServicoAnterior`），`src/infrastructure/security/envelope-encryption.service.ts:93`,
   `apps/engine/config/runtime.exs:70` 和 `apps/broker/src/config.ts:85`
 - **测试：** `scripts/ci/previous-nos-composes.spec.ts`——从三个服务的代码中*推导*所读取的 `_PREVIOUS` 列表，在三个 compose 中任何一个缺失或带非空默认值时失败；"ExternalSecret
   do k8s" 块拒绝没有 `dataFrom.extract` 的 `ExternalSecret`、`data:` 中的 `_PREVIOUS`，以及没有 `envFrom: brabo-secrets` 的 api/engine Deployment
@@ -4621,9 +4621,9 @@ ou expirado"，锁定桶的键会改变——被锁的账户解锁。*密码*不
 在 [RN-613](#rn-613) 之前，没有自己值的 pepper 会落到
 `AUTH_JWT_SECRET` 上，JWT 的轮换也就是 pepper 的轮换，带有上面所有的后果。自那以后，pepper 在生产环境中是必需的，绝不从 JWT 借用。
 
-- **位置：** `apps/api/src/infrastructure/security/auth-key-material.ts:212`
+- **位置：** `src/infrastructure/security/auth-key-material.ts:212`
   (`pepper`), `:228` (`hashDeToken`), `:247` (`baldeDeEmail`);
-  `apps/api/src/interfaces/http/auth/pat-auth.guard.ts:142`
+  `src/interfaces/http/auth/pat-auth.guard.ts:142`
 - **测试：** `test/application/use-cases/auth/rotacao-dos-segredos.spec.ts`，
   针对测试用 Postgres
 - **边界情况：** "更换"的*目标*包括这样一种错误：把 pepper 与 JWT 分开的人生成了一个新值，而不是复制当前值——这是同一种更换，以同样的方式登出（在同一个 spec 中锁定，"a ordem errada"）。
@@ -4635,9 +4635,9 @@ ou expirado"，锁定桶的键会改变——被锁的账户解锁。*密码*不
 在轮换期间，`BRABO_SERVICE_TOKEN_PREVIOUS` 和当前 token 一样能打开 `/internal/*`。它经过*一把*尺子，与当前 token 的相同（`exigirTokenDeProducao`），没有任何副本。周围的空格被丢弃，只由空格组成的值视为缺失。在生产环境中，公开的开发字面量（`dev-service-token-change-me`）以及 trim 后少于 16 个字符的值会让 api 启动*失败*，消息中点名
 `BRABO_SERVICE_TOKEN_PREVIOUS`。在此之前，变量被原样比较：使用示例值的之前 token 会向任何读过这个仓库的人打开内部大门，而且不报任何错误。必需性是当前规则中唯一*不*被复制的部分，因为在轮换之外，之前值缺失是正常状态。等于当前值（trim 后）的之前值仍然不算轮换。
 
-- **位置：** `apps/api/src/infrastructure/security/service-token.ts:63`
+- **位置：** `src/infrastructure/security/service-token.ts:63`
   （`exigirTokenDeProducao`），`:92`（`tokenDeServicoAnterior`）；
-  `apps/api/src/main.ts:50`（`tokenDeServicoAnterior`），它在启动时与当前值并列运行
+  `src/main.ts:50`（`tokenDeServicoAnterior`），它在启动时与当前值并列运行
 - **测试：** `test/infrastructure/security/service-token.spec.ts`（describe
   "tokenDeServicoAnterior (RN-598)"）
 - **边界情况：** 这条 RN 是 api 一侧。engine 和 broker 自 [RN-601](engine.md#rn-601) 起应用同一把尺子。
@@ -4657,18 +4657,18 @@ ou expirado"，锁定桶的键会改变——被锁的账户解锁。*密码*不
 
 界面在点击之前说明模式放开了什么、什么仍然需要请求：`ApprovalCard` 的说明出现在*两种*变体中（聊天和审批队列），agent 卡片在开关下方显示一句话——只在*通配符*打开时，因为针对代表性类型的开关写入的是具体规则，它不放开范围。
 
-- **位置：** `apps/api/src/domain/actions/decide.ts:295` (`modoAutomaticoDoAgente`),
-  `apps/api/src/domain/actions/decide.ts:370`（被忽略的复合命令合成裁决），`apps/api/src/domain/actions/decide.ts:455`（被跳过的范围上限），
-  `apps/api/src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
+- **位置：** `src/domain/actions/decide.ts:295` (`modoAutomaticoDoAgente`),
+  `src/domain/actions/decide.ts:370`（被忽略的复合命令合成裁决），`src/domain/actions/decide.ts:455`（被跳过的范围上限），
+  `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
   （`resolve`，带来源），
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:216`
+  `src/application/use-cases/actions/propose-action.use-case.ts:216`
   (`autonomyOrigin`), `apps/web/src/components/AgentTeamGrid.tsx:108`
   (`autonomyHint`), `apps/web/src/components/ApprovalCard.tsx:313`（两种变体中的说明）
-- **测试：** `apps/api/test/domain/actions/decide.spec.ts`（"modo automático
+- **测试：** `test/domain/actions/decide.spec.ts`（"modo automático
   libera o escopo de caminho (RN-603)"：范围之外和复合命令自动批准；push/`sudo`/`deny`/写明的 `ask` 照旧；具体规则和关闭的通配符不放开；其他上限不变），
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts`
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts`
   （使用真实仓储的端到端），
-  `apps/api/test/infrastructure/persistence/drizzle/agent-autonomy.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/agent-autonomy.repository.spec.ts`
   （`resolve` 返回来源），`apps/web/src/components/AgentTeamGrid.test.tsx`,
   `apps/web/src/components/AgentCard.test.tsx`,
   `apps/web/src/components/ApprovalCard.test.tsx`
@@ -4699,18 +4699,18 @@ engine 也会截断：`container-exec` 调用不传 `receive_timeout`，落入 R
 - **`ps` 中生病的 broker**（`docker ps` 花满 30 秒，诊断再花 30 秒）可能在短命令下超过 `exec` 的上限；以 `teto-excedido` 发出，名字是对的。
 
 - **代码：**
-  `apps/api/src/infrastructure/http-clients/container-broker.client.ts:240`（`tetoDaOperacao`）、
+  `src/infrastructure/http-clients/container-broker.client.ts:240`（`tetoDaOperacao`）、
   `:205`（`TETO_DE_MUTACAO_MS`）、`:217`（`FOLGA_DO_EXEC_NO_ENGINE_MS`）、
   `:270`（`erroDeTransporte`）；
-  `apps/api/src/application/ports/container-broker.port.ts:89`（`MotivoDeBrokerIndisponivel`）；
+  `src/application/ports/container-broker.port.ts:89`（`MotivoDeBrokerIndisponivel`）；
   `apps/engine/lib/engine/sessions/engine_api_client.ex:1950`（`teto_do_container_exec_ms`）
 
   `apps/engine/lib/engine/sessions/engine_api_client.ex:1950`（`teto_do_container_exec_ms`）
-- **测试：** `apps/api/test/infrastructure/http-clients/container-broker.client.spec.ts:286`
+- **测试：** `test/infrastructure/http-clients/container-broker.client.spec.ts:286`
   （复现，针对一个延迟 6 秒的 `node:http` broker）、`:182`（`AbortSignal` 中每个操作的上限）、`:204` 和 `:229`（点名操作和数字的 `teto-excedido`）、`:245`（undici 的上限）、`:330`（describe `tetoDaOperacao`，包括 broker < api < engine 的顺序）；
-  `apps/api/test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts:298`
+  `test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts:298`
   （界面仍说 `broker-sem-resposta`）；
-  `apps/api/test/application/use-cases/containers/executar-comando-no-container.use-case.spec.ts:98`；
+  `test/application/use-cases/containers/executar-comando-no-container.use-case.spec.ts:98`；
   `apps/engine/test/engine/sessions/engine_api_client_container_exec_test.exs:72`
   （engine 一侧的复现，使用 Bandit 的真实 HTTP）、`:91`（api 中镜像的余量）
 - **来源：** AT-233
@@ -4736,15 +4736,15 @@ engine 也会截断：`container-exec` 调用不传 `receive_timeout`，落入 R
 
 **已声明：** 在 `mounted` 中，段相对于决定「那一刻」配置的基目录——如果之后基目录改变，旧的段仍说明当时为真的东西，这正是要点。范围与 `permissions.json` 之间的分离（[RN-478](#rn-478)）不进入这个字段：它描述的是「范围」的根，绝不是策略文件住在哪里。
 
-- **代码：** `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts:907`
+- **代码：** `src/infrastructure/filesystem/project-workspaces-root.ts:907`
   （`raizDoEscopoNoEvento`）、`:901`（`RaizDoEscopoNoEvento`）、`:117`
   （`segmentoSobABaseDeProjetos`，复用）；
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:297`
+  `src/application/use-cases/actions/propose-action.use-case.ts:297`
   （仅在 `terminal` 中的 `scopeRoot`）；
-  `apps/api/src/domain/actions/decide.ts:604`（`terminalNoEscopo`，范围的唯一消费者）
-- **测试：** `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:1143`
+  `src/domain/actions/decide.ts:604`（`terminalNoEscopo`，范围的唯一消费者）
+- **测试：** `test/application/use-cases/actions/propose-action.use-case.spec.ts:1143`
   （`container`）、`:1123`（`mounted`）、`:1123`（`runner`）、`:1123`（`/home/usuario/…` 下的绝对路径「绝不」泄露，三种情况都是，包括在基目录之外）、`:1213`（`indisponivel`）、`:1163`（其他类型以及不带该字段的 outbox）、`:1183`（之前的事件，没有该字段，经过同样的读取）；
-  `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts:772`
+  `test/infrastructure/filesystem/project-workspaces-root.spec.ts:772`
   （纯函数，三种模式以及 `indisponivel` 的三种情况）
 - **ADR：** [0055](../adr/0055-escopo-de-caminho-na-politica-de-terminal.md)（第 7 点）
 - **来源：** AT-147（EP-025/HS-043）
@@ -4769,14 +4769,14 @@ novo」），连同 RN-520 的附带代价。加载中、失败、空、已吊�
 
 **在一个列表中吊销会使「所有」列表失效。** 机器密钥出现在账户的列表中（`['machine-device-keys']`），也出现在所有者「每个」项目的列表中（`['runner-device-keys', projectId]`，由 `RunnerOnboardingPanel` 和 `device-keys` 节读取）。`invalidarChavesDeDispositivo` 按「前缀」使按项目的列表失效（缓存中的每个项目），并总是使账户的失效，「两个」吊销界面都调用它——以前，在项目节中吊销只会使打开的那个项目的列表失效，其他列表仍在宣布已吊销的密钥。
 
-- **代码：** `apps/api/src/interfaces/http/runner/machine-device-keys.controller.ts:48`
+- **代码：** `src/interfaces/http/runner/machine-device-keys.controller.ts:48`
   （`MachineDeviceKeysController`）、`:69`（`listMachineDeviceKeys`）、`:93`
   （`revokeMachineDeviceKey`）；
-  `apps/api/src/application/use-cases/auth/list-machine-device-keys.use-case.ts:33`
+  `src/application/use-cases/auth/list-machine-device-keys.use-case.ts:33`
   （`ListMachineDeviceKeysUseCase`）；
-  `apps/api/src/application/use-cases/auth/revoke-machine-device-key.use-case.ts:33`
+  `src/application/use-cases/auth/revoke-machine-device-key.use-case.ts:33`
   （`RevokeMachineDeviceKeyUseCase`）；
-  `apps/api/src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:97`
+  `src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:97`
   （`listarDeMaquinaDoUsuario`）；
   `apps/web/src/routes/MachineDeviceKeysSection.tsx:69`
   （`MachineDeviceKeysSection`）；
@@ -4784,14 +4784,14 @@ novo」），连同 RN-520 的附带代价。加载中、失败、空、已吊�
   （`invalidarChavesDeDispositivo`）；
   `apps/web/src/lib/api-client.ts:447`（`listMachineDeviceKeys`）；
   `apps/web/src/locales/{en,pt-BR}/machineKeys.json`
-- **测试：** `apps/api/test/application/use-cases/auth/machine-device-keys.use-case.spec.ts`
+- **测试：** `test/application/use-cases/auth/machine-device-keys.use-case.spec.ts`
   （只按用户的列表，包括已吊销的；「真实」吊销在每个项目中断开 `{projeto, usuário}`；没有项目时只写入；不属于调用者的密钥为 404 且不吊销任何东西）；
-  `apps/api/test/interfaces/http/runner/machine-device-keys.controller.spec.ts`
+  `test/interfaces/http/runner/machine-device-keys.controller.spec.ts`
   （没有 `@RequireRole`、204、来自 JWT 的 `userId`、传播的 404）；
-  `apps/api/test/infrastructure/persistence/drizzle/runner-device-key.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/runner-device-key.repository.spec.ts`
   （针对 Postgres：只有用户的机器密钥、列表中已吊销的被替换者、另一个用户的被排除、没有项目的安装）；
   `apps/web/src/routes/MachineDeviceKeysSection.test.tsx`（列表、五种状态、带范围的确认、账户「以及」每个项目的失效——也在缓存中的一个项目条目上得到证明——、带 api 语句的失败，以及两种语言）；
-  `apps/api/test/interfaces/route-surface.spec.ts`（两个路由在 `docs/security-surface.md` 中被归类为 `jwt`）
+  `test/interfaces/route-surface.spec.ts`（两个路由在 `docs/security-surface.md` 中被归类为 `jwt`）
 - **已声明且「未」关闭的：** (1) 吊销的目标仍是 `{projeto, usuário}`（RN-520，AT-013）；(2) `maintainer` 的视图仍排除在外（RN-519）；(3) 「创建」机器密钥的路由仍只服务「一个」人的安装（RN-552）——账户列出并吊销，不创建。
 - **来源：** AT-118（EP-003/HS-007）
 
@@ -4802,8 +4802,8 @@ AUTH_JWT_SECRET para não deslogar ninguém"*——，因为显而易见的修�
 
 `install.sh` 负责迁移：*全新*安装生成随机 pepper；如果文件夹中有之前的 `.env`，它会在被覆盖之前被*读取*（绝不执行），并保留其中的 pepper——或者，没有 pepper 时，以其中的 `AUTH_JWT_SECRET` 生成。终端会说明值来自哪里，绝不说出值本身。
 
-- **位置：** `apps/api/src/infrastructure/security/auth-key-material.ts:168`
-  （`pepperAtual`），`:212`（`pepper`）；`apps/api/src/main.ts:46`（启动检查）；`install.sh:702`（`valor_no_env_anterior`），`:734`（`gerar_segredos`），
+- **位置：** `src/infrastructure/security/auth-key-material.ts:168`
+  （`pepperAtual`），`:212`（`pepper`）；`src/main.ts:46`（启动检查）；`install.sh:702`（`valor_no_env_anterior`），`:734`（`gerar_segredos`），
   `:831`（`dizer_a_origem_do_pepper`）；三个 compose 中的变量
   （`docker/docker-compose.yml`、`docker-compose.prod.yml`、
   `docker-compose.install.yml`），`docker/smoke.sh` 中以及 `.env.example` 中
@@ -4841,27 +4841,27 @@ outro owner."*
 
 **已声明且「未」做：** 「机器」密钥（它属于账户并服务其他 workspace；在这里它不再能到达，因为角色解析为无）；被移除者已连接的「会话」套接字和 `:web` 终端（一直到断开为止；新票据被拒绝）；界面（`apps/web` 中没有 workspace 成员节）。「持有者」（`workspaces.created_by`）不能经由这条路由离开——那是 [RN-616](#rn-616)。
 
-- **代码：** `apps/api/src/interfaces/http/iam/workspaces.controller.ts:262`
+- **代码：** `src/interfaces/http/iam/workspaces.controller.ts:262`
   （`removeMember`）；
-  `apps/api/src/application/use-cases/iam/remove-workspace-member.use-case.ts:79`
+  `src/application/use-cases/iam/remove-workspace-member.use-case.ts:79`
   （`RemoveWorkspaceMemberUseCase`）；
-  `apps/api/src/domain/iam/tetos-de-rebaixamento.ts:88`
+  `src/domain/iam/tetos-de-rebaixamento.ts:88`
   （`MENSAGEM_TETO_AUTO_REMOCAO_DO_WORKSPACE`）、`:248`
   （`remocaoEhAutoRebaixamento`）；
-  `apps/api/src/infrastructure/persistence/drizzle/workspace.repository.ts:84`
+  `src/infrastructure/persistence/drizzle/workspace.repository.ts:84`
   （`removeMember`）；
-  `apps/api/src/infrastructure/persistence/drizzle/project.repository.ts:167`
+  `src/infrastructure/persistence/drizzle/project.repository.ts:167`
   （`removeMemberFromWorkspaceProjects`）；
-  `apps/api/src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:169`
+  `src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:169`
   （`revogarChavesDeProjetoNoWorkspace`）；
-  `apps/api/src/infrastructure/persistence/drizzle/personal-access-token.repository.ts:187`
+  `src/infrastructure/persistence/drizzle/personal-access-token.repository.ts:187`
   （`revogarDoUsuarioNoWorkspace`）
 - **测试：**
-  `apps/api/test/application/use-cases/iam/remove-workspace-member.use-case.spec.ts`
+  `test/application/use-cases/iam/remove-workspace-member.use-case.spec.ts`
   （针对 Postgres：移除另一个成员，完整级联且不影响 workspace 之外的东西；移除另一个 owner；engine 宕机不拖垮；幂等；拒绝自己且不写入任何东西；自己的语句；唯一的 owner 不会离开；有两个 owner 时，执行移除的人留下）；
-  `apps/api/test/interfaces/http/iam/workspaces-members.controller.spec.ts`
+  `test/interfaces/http/iam/workspaces-members.controller.spec.ts`
   （两个成员路由中的 `owner`、204、执行者/目标的顺序、传播的 403）；
-  `apps/api/test/interfaces/route-surface.spec.ts`（路由在 `docs/security-surface.md` 中的分类）
+  `test/interfaces/route-surface.spec.ts`（路由在 `docs/security-surface.md` 中的分类）
 - **ADR：** [0173](../adr/0173-remocao-de-membro-de-workspace.md)
 - **来源：** AT-115（EP-002/HS-006）
 
@@ -4884,21 +4884,21 @@ para quem já é owner deste workspace: o titular paga o que os agentes gastam
 **花费，自提交起。** `ResolveCredentialOwnerUseCase` 返回新的持有者：代理回合为模型的 provider 查找「他的」凭据，git 操作查找他的 git 凭据。没有凭据时，结果与已有的相同——回合以 *"Nenhuma credencial cadastrada para
 <provider>"* 结束，远程 git 读取失败并点名缺少的是谁的凭据。转移「不」事先核对这一点（已在 ADR 中声明）。已记录的花费不会移动：`token_usage` 不保存持有者，整个报告（包括历史）都归新持有者。没有领域事件：留下一行带「从/到/谁」的日志。
 
-- **代码：** `apps/api/src/domain/iam/titularidade-do-workspace.ts:22`
+- **代码：** `src/domain/iam/titularidade-do-workspace.ts:22`
   （`CODIGO_CRIADOR_DO_WORKSPACE`）、`:38`（`removeOTitular`）；
-  `apps/api/src/application/use-cases/iam/remove-workspace-member.use-case.ts:120`
+  `src/application/use-cases/iam/remove-workspace-member.use-case.ts:120`
   （`removeOTitular`）；
-  `apps/api/src/application/use-cases/iam/transfer-workspace-ownership.use-case.ts:39`
+  `src/application/use-cases/iam/transfer-workspace-ownership.use-case.ts:39`
   （`TransferWorkspaceOwnershipUseCase`）；
-  `apps/api/src/infrastructure/persistence/drizzle/workspace.repository.ts:98`
+  `src/infrastructure/persistence/drizzle/workspace.repository.ts:98`
   （`transferirTitularidade`）；
-  `apps/api/src/interfaces/http/iam/workspaces.controller.ts:324`
+  `src/interfaces/http/iam/workspaces.controller.ts:324`
   （`transferOwnership`）
 - **测试：**
-  `apps/api/test/application/use-cases/iam/remove-workspace-member.use-case.spec.ts`
+  `test/application/use-cases/iam/remove-workspace-member.use-case.spec.ts`
   （`describe` "o TITULAR não sai"：带代码的 409 且不写入任何东西；移除自己的持有者收到 403；转移之后，移除原创建者通过，新持有者成为受保护者——以及 `describe`
   "TransferWorkspaceOwnershipUseCase"：转给 owner 写入 `created_by`；转给 `maintainer` 和非成员为 409 `titular_precisa_ser_owner`；转给当前持有者是幂等的）；
-  `apps/api/test/interfaces/http/iam/workspaces-members.controller.spec.ts`
+  `test/interfaces/http/iam/workspaces-members.controller.spec.ts`
   （`owner` 以及转移的委托）
 - **ADR：** [0173](../adr/0173-remocao-de-membro-de-workspace.md)，第 7 点
 - **来源：** AT-115（EP-002/HS-006）
@@ -4922,23 +4922,23 @@ para quem já é owner deste workspace: o titular paga o que os agentes gastam
 
 **谁消费：** 自 [RN-622](engine.md#rn-622) 起，有效语言到达模型——api 用发给代理的每条消息的「作者」和会话调用 `ResolverIdiomaDaRespostaUseCase`，engine 在该回合的每次 LLM 调用末尾加上指引。账户不再说这个值「ainda não chega」。
 
-- **代码：** `apps/api/src/domain/iam/idioma-de-resposta.ts:56`
+- **代码：** `src/domain/iam/idioma-de-resposta.ts:56`
   （`normalizarIdiomaBcp47`）、`:118`（`resolverIdiomaDaResposta`）；
-  `apps/api/src/db/schema/iam.ts:104`（`responseLanguage`）、`:111`
+  `src/db/schema/iam.ts:104`（`responseLanguage`）、`:111`
   （`detectedLanguage`）、`:128`（`users_idioma_detectado_so_confirmado`）；
-  `apps/api/src/db/schema/sessions.ts:120`（`sessionLanguageOverrides`）；
-  `apps/api/src/application/use-cases/iam/resolver-idioma-da-resposta.use-case.ts:44`
+  `src/db/schema/sessions.ts:120`（`sessionLanguageOverrides`）；
+  `src/application/use-cases/iam/resolver-idioma-da-resposta.use-case.ts:44`
   （`ResolverIdiomaDaRespostaUseCase`）；
-  `apps/api/src/application/use-cases/iam/update-user-preferences.use-case.ts:25`
+  `src/application/use-cases/iam/update-user-preferences.use-case.ts:25`
   （`idiomaDaRespostaOuRecusa`）、`:47`（`UpdateUserPreferencesUseCase`）；
-  `apps/api/src/application/use-cases/iam/idioma-da-resposta-na-sessao.use-case.ts:19`
+  `src/application/use-cases/iam/idioma-da-resposta-na-sessao.use-case.ts:19`
   （`IdiomaDaRespostaNaSessaoUseCase`）；
   `apps/web/src/routes/ResponseLanguageSection.tsx`
-- **测试：** `apps/api/test/domain/iam/idioma-de-resposta.spec.ts:12`（尺子，以及它拒绝的东西——失败用例）、`:40`（优先级）；
-  `apps/api/test/application/use-cases/iam/idioma-da-resposta.use-case.spec.ts:96`
+- **测试：** `test/domain/iam/idioma-de-resposta.spec.ts:12`（尺子，以及它拒绝的东西——失败用例）、`:40`（优先级）；
+  `test/application/use-cases/iam/idioma-da-resposta.use-case.spec.ts:96`
   （新账户为自动）、`:124`（以规范形式写入，不触及界面）、
   `:158`（无效的什么都不写入——失败用例）、`:188`（覆盖到不了另一个参与者）、`:209`（另一个项目会话的 404）；
-  `apps/api/test/infrastructure/persistence/session-language-override.repository.spec.ts:73`
+  `test/infrastructure/persistence/session-language-override.repository.spec.ts:73`
   （数据库中的 CHECK）、`:93`（按对 upsert）；
   `apps/web/src/routes/ResponseLanguageSection.test.tsx:76`（带来源的有效语言，没有旧的「ainda não chega」提示）、`:115`（输入的代码只在按钮点击时保存）
 - **来源：** AT-162，基于 AT-168（回答 1、2、3、4 和 6）以及 AT-169（回答 2）的决定；AT-079 的规格
@@ -4953,16 +4953,16 @@ para quem já é owner deste workspace: o titular paga o que os agentes gastam
 
 **谁消费，以及剩下的：** 自 [RN-622](engine.md#rn-622) 起 engine 读取这一列（`Engine.Projects.Project`，直接从 Postgres），并在每次「没有」人类作者的回合的 LLM 调用中把它发给模型，自 [RN-623](engine.md#rn-623) 起也作为代理在「有」人类作者的回合中写入的共享产物的语言——本规则声明的分歧已经关闭。
 
-- **代码：** `apps/api/src/db/schema/iam.ts:262`（`language`）；
-  `apps/api/src/db/migrations/0062_idioma_do_projeto.sql`（回填）；
-  `apps/api/src/application/use-cases/iam/idioma-do-projeto.ts:13`
+- **代码：** `src/db/schema/iam.ts:262`（`language`）；
+  `src/db/migrations/0062_idioma_do_projeto.sql`（回填）；
+  `src/application/use-cases/iam/idioma-do-projeto.ts:13`
   （`idiomaDoProjetoOuRecusa`）；
-  `apps/api/src/application/use-cases/iam/create-project.use-case.ts:72`
-  （`language`）；`apps/api/src/application/use-cases/iam/update-project.use-case.ts:18`
+  `src/application/use-cases/iam/create-project.use-case.ts:72`
+  （`language`）；`src/application/use-cases/iam/update-project.use-case.ts:18`
   （`idiomaDoProjetoOuRecusa`）；
-  `apps/api/src/interfaces/http/iam/dto/iam.response.dto.ts:233`
+  `src/interfaces/http/iam/dto/iam.response.dto.ts:233`
   （`language`）；`apps/web/src/routes/settings/ProjectLanguageSection.tsx`
-- **测试：** `apps/api/test/application/use-cases/iam/idioma-do-projeto.use-case.spec.ts:63`
+- **测试：** `test/application/use-cases/iam/idioma-do-projeto.use-case.spec.ts:63`
   （以创建者的语言诞生）、`:74`（账户选择优先于界面）、`:100`（无效和 `automatico`——失败用例，项目不诞生）、`:132`（无效的 PATCH 什么都不改）、`:152`（迁移写入持有者的）；`apps/web/src/routes/settings/idioma-do-projeto.test.tsx:84`
   （当前值以及对尚未遵循它的东西的声明）、`:125`（低于 `maintainer`：值保留，控件惰性）
 - **来源：** AT-243，基于 AT-168（回答 8）和 AT-169（回答 1）的决定
@@ -4971,7 +4971,7 @@ para quem já é owner deste workspace: o titular paga o que os agentes gastam
 
 [RN-618](#rn-618) 留下了「已确认的检测结果」这一级，已就绪但为空。维护者的决定（AT-168 第 4、6、7 条答复）：**检测，「询问」语言是否正确，确认的结果成为默认值**——按人、全局，问题出现在已经显示并可更正语言的界面上。
 
-1. **标准只有「一个」，位于 api 中。** AT-080 的启发式规则，经 AT-160 测量（`pt`/`es`/`en` 的对比标记，以及对代码、日志、引用、URL 和标识符的清理），从 `scripts/idioma/` 移到了 `apps/api/src/domain/iam/heuristica-de-idioma.ts`，测量工具从那里「重新导出」它——产品运行的就是工具测量的。关于「什么」算证据的规则（只有 `user` 角色；在表单中只有回答，跳过带 agent 标签的回显）也只有一个，`evidenciasDoAutor`，供真实语料提取和检测共同使用。本地运行，不用 LLM，不加新依赖。
+1. **标准只有「一个」，位于 api 中。** AT-080 的启发式规则，经 AT-160 测量（`pt`/`es`/`en` 的对比标记，以及对代码、日志、引用、URL 和标识符的清理），从 `scripts/idioma/` 移到了 `src/domain/iam/heuristica-de-idioma.ts`，测量工具从那里「重新导出」它——产品运行的就是工具测量的。关于「什么」算证据的规则（只有 `user` 角色；在表单中只有回答，跳过带 agent 标签的回显）也只有一个，`evidenciasDoAutor`，供真实语料提取和检测共同使用。本地运行，不用 LLM，不加新依赖。
 2. **样本来自 event log，滞后判断是重算的。** 检测读取该人在「所有」会话中最近的 11 条证据（10 条的窗口加上滞后判断要重算的那一条），当样本的「最后两次」评估指向同一语言时作出判断（`idiomaConcordante`）。不保存任何检测状态：对前一条消息的评估用截至该消息的窗口重新计算。读取由一个「部分」索引提供（`session_events_evidencia_de_idioma_idx`，`user` 角色和两种证据类型）：在 20 万个事件上测量，走索引 0.056 ms，不走索引的扫描 13.5 ms。
 3. **阈值是「临时」的。** `PARAMETROS_PROVISORIOS` 是 AT-080 的候选值，只有「一处」不同：最少证据为 10 个词而不是 20——在「合成」语料中，取 10 时可判定样本的覆盖率从 42.2% 升到 58.9%，错误仍是同样的三个（都是这三种之外的语言）。列表 `at080`；阈值 0.8，边距 0.3，样本 10 条消息 / 2,000 个字符，滞后 2。合成语料与启发式规则出自同一人之手：这些数字都没有校准过，负责人会用真实语料重新校准（`pnpm --filter @brabo/scripts idioma:medir --real`），修改该对象，那是 api 读取它们的唯一地方。
 4. **何时询问。** `GET .../sessions/:sessionId/response-language` 返回带有待询问语言的 `detectionQuestion`，或 `null`。以下情况不询问：检测结果不一致（短文本、「ok」、代码、日志、混合）；有效语言来自「明确」选择——会话覆盖或账户——因为确认会写入比它们「低」的一级，回复不会改变；检测结果已是有效语言，按「子标签」比较（`pt` 与 `pt-BR` 不算不同——启发式只知道语种）；或者该人已经拒绝过这种语言。
@@ -4982,26 +4982,26 @@ para quem já é owner deste workspace: o titular paga o que os agentes gastam
 
 **本规则「不」覆盖的内容，已声明：** 启发式只认识三种语言，而语言列表是开放的——加利西亚语和法语可能被判成 `es`/`pt`（合成语料中的错误），在本规则下代价是一个错误的问题，由该人拒绝。葡萄牙语窗口中的一条西班牙语消息会让样本在其存在期间不确定（不提问，不更换）。并且启发式文件不能有 `import`：测量工具通过 type stripping 执行它，而 `scripts/idioma/` 有自己的 tsconfig，不带 `verbatimModuleSyntax`，以接受一个 CommonJS 模块的 `export`。
 
-- **代码：** `apps/api/src/domain/iam/heuristica-de-idioma.ts:175`
+- **代码：** `src/domain/iam/heuristica-de-idioma.ts:175`
   （`PARAMETROS_PROVISORIOS`），`:457`（`evidenciasDoAutor`），`:500`
   （`mensagensNecessarias`），`:520`（`idiomaConcordante`）；
-  `apps/api/src/domain/iam/deteccao-de-idioma.ts:43`（`idiomaAPerguntar`）；
-  `apps/api/src/application/use-cases/iam/detectar-idioma-do-autor.use-case.ts:57`
+  `src/domain/iam/deteccao-de-idioma.ts:43`（`idiomaAPerguntar`）；
+  `src/application/use-cases/iam/detectar-idioma-do-autor.use-case.ts:57`
   （`DetectarIdiomaDoAutorUseCase`），`:66`（`detectar`），`:88`（`pergunta`），
   `:123`（`responder`）；
-  `apps/api/src/infrastructure/persistence/drizzle/deteccao-de-idioma.repository.ts:27`
+  `src/infrastructure/persistence/drizzle/deteccao-de-idioma.repository.ts:27`
   （`ultimasEvidencias`），`:75`（`confirmar`）；
-  `apps/api/src/db/schema/iam.ts:144`（`detectedLanguageDeclines`）；
-  `apps/api/src/db/schema/sessions.ts:164`
+  `src/db/schema/iam.ts:144`（`detectedLanguageDeclines`）；
+  `src/db/schema/sessions.ts:164`
   （`session_events_evidencia_de_idioma_idx`）；
-  `apps/api/src/interfaces/http/iam/session-response-language.controller.ts:66`
-  （`comPergunta`）；`apps/api/src/interfaces/http/iam/user-preferences.controller.ts:94`
+  `src/interfaces/http/iam/session-response-language.controller.ts:66`
+  （`comPergunta`）；`src/interfaces/http/iam/user-preferences.controller.ts:94`
   （`answerDetected`）；`apps/web/src/routes/SessionLanguageIndicator.tsx`；
   `scripts/idioma/heuristica.ts`（重新导出）
-- **测试：** `apps/api/test/domain/iam/deteccao-de-idioma.spec.ts:29`（临时值），`:42`（两次评估一致），`:48`（只有一次不够），`:52`（不确定时不指向——失败情形），`:77`（跳过表单回显），`:105`..`:158`（何时询问）；
-  `apps/api/test/application/use-cases/iam/detectar-idioma-do-autor.use-case.spec.ts:109`
+- **测试：** `test/domain/iam/deteccao-de-idioma.spec.ts:29`（临时值），`:42`（两次评估一致），`:48`（只有一次不够），`:52`（不确定时不指向——失败情形），`:77`（跳过表单回显），`:105`..`:158`（何时询问）；
+  `test/application/use-cases/iam/detectar-idioma-do-autor.use-case.spec.ts:109`
   （询问但不写入），`:116`（确认），`:131`（拒绝后不再询问），`:142`（不确定时不询问——失败情形），`:148`（明确的账户设置），`:159`（检测出错变为「无问题」——失败情形），`:169`（409 `deteccao_mudou`）；
-  `apps/api/test/infrastructure/persistence/deteccao-de-idioma.repository.spec.ts:87`
+  `test/infrastructure/persistence/deteccao-de-idioma.repository.spec.ts:87`
   （只有作者，所有会话），`:166`（部分索引），`:200`（这一对与被删除的拒绝记录）；`apps/web/src/routes/SessionLanguageIndicator.test.tsx:117`
   （「Usar」），`:148`（「Não」），`:162`（「Agora não」不写入），`:172`（409 变为 toast）
 - **来源：** AT-163，基于 AT-168 的决定（第 4、6、7 条答复）、AT-080 的规格和 AT-160 的测量
@@ -5018,10 +5018,10 @@ QA/SecOps 的 gate 以 `awaiting_user` 结束，此后没有任何东西再改�
    status <> 'done'`：同一 PR 的重复合并返回 `null`，不再移动，也「不」记录事件。移动时，记录「一个」不可变事件 `backlog.task_status_changed`（`cause: 'pr_merged'`、`pullRequestId`、`actionId`），仅追加，不对事件表做 UPDATE。没有 migration。
 4. **声明的边界（AT-249）。** 本规则「不」拒绝对已合并 PR 的合并，也不查询 `gate_status`。对已合并 PR（以及重复提议）的拒绝是后来在 [RN-663](#rn-663) 中加入的，在合并到达这里之前；待处理的 gate，依负责人的决定，只是界面上的提示。
 
-- **位置：** `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:295`
-  （`settleMerge`），`apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:480`
+- **位置：** `src/application/use-cases/actions/execute-git-action.use-case.ts:295`
+  （`settleMerge`），`src/infrastructure/persistence/drizzle/backlog.repository.ts:480`
   （`markDoneIfNotDone`）
-- **测试：** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
+- **测试：** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   （"git_merge marca a tarefa como done"：正常、重复、打开的 PR/失败的合并、没有任务的 PR）
 - **来源：** AT-275
 
@@ -5041,10 +5041,10 @@ QA/SecOps 的 gate 以 `awaiting_user` 结束，此后没有任何东西再改�
 > **已在 [RN-631](web.md#rn-631) 中关闭（AT-251）：** 会话界面中 composer 的接收者和 handoff 提议把 `roster.activatedAgents` 「加」到窗口上，带有同一会话的守护。`criativoActive`/`arquitetoActive`
 > （`session-readiness.ts`）仍然只读取窗口。
 
-- **位置：** `apps/api/src/infrastructure/persistence/drizzle/projects-summary.repository.ts:212`
-  （`activatedAgents`）；`apps/api/src/application/ports/projects-summary-repository.port.ts:32`
+- **位置：** `src/infrastructure/persistence/drizzle/projects-summary.repository.ts:212`
+  （`activatedAgents`）；`src/application/ports/projects-summary-repository.port.ts:32`
   （`activatedAgents`）
-- **测试：** `apps/api/test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
+- **测试：** `test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
   （"activatedAgents cobre ativações anteriores à janela de 200 eventos" 和
   "activatedAgents é da sessão MAIS RECENTE: ativação de sessão antiga não vale"）
 - **来源：** AT-252
@@ -5060,30 +5060,30 @@ QA/SecOps 的 gate 以 `awaiting_user` 结束，此后没有任何东西再改�
 5. **激活即取代。** `ActivateAgentUseCase`（接受和直接激活）与 `ActivateExecutionUseCase`（按 `dev-<modulo>`）在激活之后取代项目任何会话中发给该 agent 的所有待处理提议；已接受的不被触碰，被拒绝的激活不取代任何东西。
 6. **「Arquitetura pronta」是幂等的。** `OfferInfraHandoffUseCase` 不触发已有待处理提议或已激活的目标（`infra`、`dev-lead`）；两者都如此时，不写入也不调用 engine（`desfecho: ja_oferecido`，`jaAtendidos` 带每一方的原因）。
 
-- **位置：** `apps/api/src/domain/sessions/ciclo-de-vida-do-handoff.ts:71`
+- **位置：** `src/domain/sessions/ciclo-de-vida-do-handoff.ts:71`
   （`decidirOferta`），`:104`（`mensagemDeAgenteJaAtivo`）；
-  `apps/api/src/application/use-cases/agents/ciclo-de-vida-do-handoff.service.ts:43`
+  `src/application/use-cases/agents/ciclo-de-vida-do-handoff.service.ts:43`
   （`sessaoOndeEstaAtivo`），`:71`（`substituir`），`:97`
   （`substituirOfertasAoAtivar`）；
-  `apps/api/src/application/use-cases/agents/create-handoff.use-case.ts:109`
+  `src/application/use-cases/agents/create-handoff.use-case.ts:109`
   （`travarOfertasDoDestino`）；
-  `apps/api/src/infrastructure/persistence/drizzle/handoff.repository.ts:94`
+  `src/infrastructure/persistence/drizzle/handoff.repository.ts:94`
   （`travarOfertasDoDestino`）；
-  `apps/api/src/application/use-cases/agents/activate-agent.use-case.ts:88`
+  `src/application/use-cases/agents/activate-agent.use-case.ts:88`
   （`substituirOfertasAoAtivar`）；
-  `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts:319`
+  `src/application/use-cases/execution/activate-execution.use-case.ts:319`
   （`substituirOfertasAoAtivar`）；
-  `apps/api/src/application/use-cases/agents/offer-infra-handoff.use-case.ts:96`
+  `src/application/use-cases/agents/offer-infra-handoff.use-case.ts:96`
   （`jaAtendido`）；
   `apps/engine/lib/engine/harness/tools/offer_handoff.ex:132`
   （`agente_ja_ativo`）；`apps/engine/lib/engine/agents/falha_de_turno.ex:63`
-  （`agente_ja_ativo`）；`apps/api/src/db/migrations/0064_ciclo_de_vida_do_handoff.sql`
-- **测试：** `apps/api/test/application/use-cases/agents/ciclo-de-vida-do-handoff.spec.ts`
+  （`agente_ja_ativo`）；`src/db/migrations/0064_ciclo_de_vida_do_handoff.sql`
+- **测试：** `test/application/use-cases/agents/ciclo-de-vida-do-handoff.spec.ts`
   （针对 Postgres：同一会话中重复、并发双击、新产物、另一个已结束的会话、ADR 之前的数据、已激活的 agent 以及在已结束会话中激活、取代的激活和被拒绝的激活）；
-  `apps/api/test/application/use-cases/agents/offer-infra-handoff.use-case.spec.ts`
+  `test/application/use-cases/agents/offer-infra-handoff.use-case.spec.ts`
   （"ADR 0182: segundo clique…"，"ADR 0182: só aciona o destino que falta…"）；
-  `apps/api/test/application/use-cases/agents/activate-agent.use-case.spec.ts`；
-  `apps/api/test/application/use-cases/execution/activate-execution.use-case.spec.ts`
+  `test/application/use-cases/agents/activate-agent.use-case.spec.ts`；
+  `test/application/use-cases/execution/activate-execution.use-case.spec.ts`
   （"ciclo de vida do handoff"）；
   `apps/engine/test/engine/harness/tools/offer_handoff_test.exs`；
   `apps/engine/test/engine/agents/falha_de_turno_test.exs`；
@@ -5101,18 +5101,18 @@ QA/SecOps 的 gate 以 `awaiting_user` 结束，此后没有任何东西再改�
 
 **本规则「不」覆盖的内容：** 一个会话中有超过 200 个「待处理」项时，超出部分中较旧的会落在外面（上限是同一个 `limit`）；消息流展示的「已决定」项仍是尾部——较旧的已决定操作，若不在最新的 200 个之内，不会出现在消息流中。整个「项目」的待处理项是另一种读取（[RN-638](web.md#rn-638)）。
 
-- **代码：** `apps/api/src/infrastructure/persistence/drizzle/proposed-action.repository.ts:96`
+- **代码：** `src/infrastructure/persistence/drizzle/proposed-action.repository.ts:96`
   （`listPaginated`），`:113`（`latest` 分支）；
-  `apps/api/src/interfaces/http/actions/actions.controller.ts:105`（`list`），
+  `src/interfaces/http/actions/actions.controller.ts:105`（`list`），
   `:114`（对 `status` 的拒绝）；
-  `apps/api/src/application/ports/proposed-action-repository.port.ts`
+  `src/application/ports/proposed-action-repository.port.ts`
   （`ListProposedActionsOptions`）；
   `apps/web/src/lib/acoes-da-sessao.ts:48`（`buscarAcoesDaSessao`），`:30`
   （`juntarCaudaEPendentes`）；`apps/web/src/lib/hooks.ts:432`
   （`usePendingActions`）
-- **测试：** `apps/api/test/infrastructure/persistence/proposed-action-latest.repository.spec.ts`
+- **测试：** `test/infrastructure/persistence/proposed-action-latest.repository.spec.ts`
   （没有 `latest` 时新的待处理项落在外面——缺陷；有 `latest` 时它在尾部；`status=pending` 返回旧的；且不带出其他会话）；
-  `apps/api/test/interfaces/http/actions/actions-list.controller.spec.ts`
+  `test/interfaces/http/actions/actions-list.controller.spec.ts`
   （参数的传递和 400——失败情形）；
   `apps/web/src/lib/acoes-da-sessao.test.ts`（短会话一次请求；有 250 个操作的满尾部返回第 3 个和第 250 个待处理项；读取待处理项失败会让查询失败）
 - **来源：** AT-296（HS-076）
@@ -5129,15 +5129,15 @@ QA/SecOps 的 gate 以 `awaiting_user` 结束，此后没有任何东西再改�
 6. **上限中的「类型」也一样（AT-320）。** 在 9月30日的审计中测得：api 只拒绝在终端中「输入」的 `git push`；「类型化」的 `git_push` 能通过并把 `GitPush()` 写入 `allow`（或模块的自主权），而 `ApprovalCard` 也提供了按钮。`TIPOS_SEM_SEMPRE_PERMITIR` 是「唯一」列表——`git_push`、`pr_open`、`git_merge`（整个：`GitMerge()` 模式会对所有目标生效）、`container_remove`、`instruction_patch`、`parallelize`、`raise_max_parallel`——`motivoDeRecusaDoSempreAprovar` 按命令判断终端，其余按类型判断。拒绝是 400，带 `reason:
    'teto_do_sempre_permitir'` 和 `actionType`。web 通过 `apps/web/src/lib/sempre-permitir.ts` 中的副本隐藏按钮，该副本由测试与 api 的副本对照；终端命令仍保留按钮（在界面上重复解析器就是第二套标准），并接收 api 的拒绝。诞生时它「不」改变 `decide()`，也不改变初始写入；自 [RN-689](#rn-689) 起两者都改变了——`git_push`/`pr_open` 处于 `decide()` 的上限中，激活只写入 `git_commit`——点击为它们写入的模式将是无效的。
 
-- **位置：** `apps/api/src/application/use-cases/actions/approve-always-action.use-case.ts:109`
+- **位置：** `src/application/use-cases/actions/approve-always-action.use-case.ts:109`
   （`execute`），`:190`（`cliqueSobreAcaoJaDecidida`），`:240`
-  （`gravarPadraoSeFaltar`），`apps/api/src/application/use-cases/actions/approve-action.use-case.ts:255`
-  （`approve`），`apps/api/src/domain/actions/sempre-permitir.ts:30`
+  （`gravarPadraoSeFaltar`），`src/application/use-cases/actions/approve-action.use-case.ts:255`
+  （`approve`），`src/domain/actions/sempre-permitir.ts:30`
   （`TIPOS_SEM_SEMPRE_PERMITIR`），`:65`（`motivoDeRecusaDoSempreAprovar`），
   `apps/web/src/lib/sempre-permitir.ts:15`（`TIPOS_SEM_SEMPRE_PERMITIR`）
-- **测试：** `apps/api/test/application/use-cases/actions/approve-always-action.use-case.spec.ts`
+- **测试：** `test/application/use-cases/actions/approve-always-action.use-case.spec.ts`
   （"ordem e idempotência (RN-642)"：双击、并发点击、经由其他路径批准的操作、被拒绝 → 命名的 409 且无模式、模式失败撤销批准、操作已批准时的上限；"tipos do teto
-  (AT-320)"），`apps/api/test/domain/actions/sempre-permitir.spec.ts`，
+  (AT-320)"），`test/domain/actions/sempre-permitir.spec.ts`，
   `apps/web/src/lib/sempre-permitir.test.ts`（web 的副本与 api 的相同），
   `apps/web/src/components/ApprovalCard.test.tsx`（类型化 git 没有该按钮）
 - **来源：** AT-310，AT-320
@@ -5156,19 +5156,19 @@ QA/SecOps 的 gate 以 `awaiting_user` 结束，此后没有任何东西再改�
 6. **被重新打开撤销的关闭不会停止存活的会话。** `SessionLifecycleWorker` 读取会话的 `status`，并带日志地忽略针对 api 已说明为非终止的会话的 `session.closed`/`session.closed_abnormally` 作业。
 7. **Psicólogo 的第二次自动分析被已有的 `alreadyAnalyzed` 阻止**；手动重新处理仍然可行。图的第二次整合会扩展同一个 `Interacao` 的窗口。
 
-- **位置：** `apps/api/src/domain/sessions/session-state-machine.ts:66`
+- **位置：** `src/domain/sessions/session-state-machine.ts:66`
   （`canReopen`）、`:70`（`assertReopen`）；
-  `apps/api/src/domain/sessions/reabertura-de-sessao.ts:24`
+  `src/domain/sessions/reabertura-de-sessao.ts:24`
   （`SessaoComExecucaoNaoReabreError`）、`:44`
   （`garantirQueSessaoSemExecucaoReabre`）、`:58`（`payloadDaReabertura`）；
-  `apps/api/src/application/use-cases/sessions/reopen-session.use-case.ts:53`
+  `src/application/use-cases/sessions/reopen-session.use-case.ts:53`
   （`execute`）、`:96`（`garantirQuePodeReabrir`）；
   `apps/engine/lib/engine/workers/session_lifecycle_worker.ex:59`
   （`encerrar_se_ainda_encerrada`）；
   `apps/engine/lib/engine/sessions/project_session.ex:48`（`status`）
-- **测试：** `apps/api/test/domain/sessions/session-state-machine.spec.ts:56`
+- **测试：** `test/domain/sessions/session-state-machine.spec.ts:56`
   （只有终止状态能重新打开；`closing` 永远不回来）；
-  `apps/api/test/application/use-cases/sessions/reopen-session.use-case.spec.ts:121`
+  `test/application/use-cases/sessions/reopen-session.use-case.spec.ts:121`
   （`closed` 重新打开，日志保留，`session.reopened` 带之前的关闭——正常路径）、`:151`（`closed_abnormally`）、`:163`（对话重新进入）、`:186`（`closing` 是 409，没有 engine 也没有事件——失败用例）、`:208`（有执行的会话是 409 `sessao_com_execucao`）、`:239`
   （engine 宕机：什么都不变）；
   `apps/engine/test/engine/workers/session_lifecycle_worker_test.exs:66`
@@ -5182,12 +5182,12 @@ QA/SecOps 的 gate 以 `awaiting_user` 结束，此后没有任何东西再改�
 
 在会话界面上，已结束会话的横条显示「Reabrir sessão」以及一句说明什么会回来的话。低于 `developer`（`roleAtLeast`，WORKSPACE 角色——界面上已声明的 [RN-471](web.md#rn-471) 缺口）时按钮惰性，原因以「文字」说明。api 的拒绝（有执行的会话的 409、403）变成带其语句的 toast。线程把 `session.reopened` 叙述为「sessão reaberta」，在之前关闭的原因已记录时附上它。
 
-- **位置：** `apps/api/src/interfaces/http/sessions/sessions.controller.ts:210`
+- **位置：** `src/interfaces/http/sessions/sessions.controller.ts:210`
   （`reopen`）；`apps/web/src/lib/api-client.ts:623`（`reopenSession`）；
   `apps/web/src/routes/SessionPage.tsx:153`（`podeReabrir`）；
   `apps/web/src/lib/session-acoes-da-sessao.ts:77`（`handleReopen`）；`apps/web/src/routes/SessionComposer.tsx:383`（按钮）；
   `apps/web/src/lib/activity.ts:633`（线程中的语句）
-- **测试：** `apps/api/test/interfaces/http/sessions/sessions-reopen.controller.spec.ts:22`
+- **测试：** `test/interfaces/http/sessions/sessions-reopen.controller.spec.ts:22`
   （`developer`，与通用转换相同）、`:36`（viewer 达不到路由的角色；developer、maintainer 和 owner 达到）、`:49`（200）；
   `apps/web/src/routes/SessionPage.reabrir-sessao.test.tsx:143`（developer 通过自己的路由重新打开——正常路径）、`:167`（maintainer 和 owner 也可以）、`:178`（viewer/无角色：惰性，原因以文字说明——失败用例）、`:191`（api 的拒绝变成 toast）、`:213`（活动会话不提供）；
   `apps/web/src/lib/activity.test.ts`（"reabertura de sessão"）
@@ -5214,10 +5214,10 @@ QA/SecOps 的 gate 以 `awaiting_user` 结束，此后没有任何东西再改�
 
 **本规则「不」覆盖的内容：** 按键的路由仍存在于 api 中（已没有界面读取它们）。键超过 64 个字符的 `dev-<modulo>` 会被批量的格式拒绝，额外项的读取会整体失败——未在真实项目中测量，已声明。
 
-- **代码：** `apps/api/src/application/use-cases/llm/resolve-model-bindings-em-lote.use-case.ts:12`
+- **代码：** `src/application/use-cases/llm/resolve-model-bindings-em-lote.use-case.ts:12`
   （`TETO_DE_CHAVES_NO_LOTE`），`:37`（`lerListaDeChaves`），`:77`
   （`ResolveModelBindingsEmLoteUseCase`）；
-  `apps/api/src/interfaces/http/llm/model-bindings.controller.ts:233`
+  `src/interfaces/http/llm/model-bindings.controller.ts:233`
   （`getResolvedBindings`）；`apps/web/src/lib/api-client.ts:1149`
   （`getResolvedModelBindings`）；`apps/web/src/lib/bindings-resolvidos.ts:43`
   （`invalidarBindingsResolvidos`），`:69`（`useBindingsResolvidos`），`:111`
@@ -5226,7 +5226,7 @@ QA/SecOps 的 gate 以 `awaiting_user` 结束，此后没有任何东西再改�
   `apps/web/src/components/AgentTeamGrid.tsx:46`（`bindingDoAgente`）；
   `apps/web/src/routes/settings/LeituraDosBindings.tsx:19`
   （`AvisoDeBindingsNaoLidos`），`:40`（`MarcaDeBindingNaoLido`）
-- **测试：** `apps/api/test/interfaces/http/llm/model-bindings-em-lote.integration.spec.ts:182`
+- **测试：** `test/interfaces/http/llm/model-bindings-em-lote.integration.spec.ts:182`
   （针对 Postgres 的正常路径：viewer 读取批量，每个键与单独路由相同），`:256`（按角色拒绝，与单独路由相同的 403），`:275`（格式错误的键），`:287`（超出上限的批量）；
   `apps/web/src/routes/settings/bindings-em-lote.test.tsx:150`（两个节由「一次」调用渲染，没有按键路由），`:182`（批量失败会被说明，没有一行变成「sem modelo」），`:217`（读取中，不是「sem modelo」）；
   `apps/web/src/routes/configuracoes.orcamento.test.tsx:233`（加载读取批量一次，控制在 30 以内），`:279`（转到「概览」不获取 binding）；`apps/web/src/routes/ProjectOverviewTab.test.tsx:472`（卡片的模型来自「一次」批量读取，没有按 agent 路由），`:493`（被拒绝的批量不会捏造模型，也不回落到按 agent 路由）；
@@ -5242,14 +5242,14 @@ QA/SecOps 的 gate 以 `awaiting_user` 结束，此后没有任何东西再改�
 
 回应与项目读取的形式「相同」——`userId`、`name`、`email`、`role`（「工作区」角色）——别无其他：没有 `createdAt`，没有账户状态。不存在的工作区为 404，非成员被 `RolesGuard` 拒绝（403）。仍然没有工作区成员的「界面」：读取是为了称呼，写入路由仍然是 API。
 
-- **代码：** `apps/api/src/interfaces/http/iam/workspaces.controller.ts:216`
+- **代码：** `src/interfaces/http/iam/workspaces.controller.ts:216`
   （`listMembers`）；
-  `apps/api/src/application/use-cases/iam/list-workspace-members.use-case.ts:16`
+  `src/application/use-cases/iam/list-workspace-members.use-case.ts:16`
   （`execute`）；
-  `apps/api/src/infrastructure/persistence/drizzle/workspace.repository.ts:127`
+  `src/infrastructure/persistence/drizzle/workspace.repository.ts:127`
   （`listMembers`）
 - **测试：**
-  `apps/api/test/application/use-cases/iam/list-workspace-members.use-case.spec.ts:75`
+  `test/application/use-cases/iam/list-workspace-members.use-case.spec.ts:75`
   （回应的形式，针对 Postgres——正常路径），`:96`（不存在的工作区为 404），`:104`（最低是 `viewer`），`:112`（`viewer` 通过 guard），`:125`（非成员收到 403）
 - **来源：** AT-335
 
@@ -5265,15 +5265,15 @@ QA/SecOps 的 gate 以 `awaiting_user` 结束，此后没有任何东西再改�
 
 **界面中的规则。** `useDecisoesDaPolitica`：事件已在标签页「已经」加载的日志中的操作直接使用它，不发请求；其他操作在自己的会话中按操作读取，带 `staleTime: Infinity`——事件不可变，因此只要缓存存在，每个操作只花「一次」读取，队列轮询时不会重复任何一次。标签页仍在加载自己的日志时，不请求任何东西。返回了「没有」该事件的读取给出「原因未记录」的句子（绝不沉默）；只有「失败」的读取让卡片沉默，而顶部的说明计数的正是这一种，且只计这一种（*"de N das M ações abaixo"*）。自 AT-340 起，聊天中「其他」会话待处理项的卡片（[RN-626](web.md#rn-626)，`PendenciasDeOutrasSessoes`，也在「执行者」标签页中）经过「同一个」hook 和「同一个」缓存：那里的每个操作都属于另一个会话，因此没有一个被界面的日志覆盖，每个都按操作读取——只有「绘制出来」的那些，在块的卡片上限之内，「审批」标签页已经读过的在那里不花任何代价（反之亦然）。失败的读取同样让卡片沉默，并在块的顶部说明一次。「需要你处理」面板「不」使用这条路径：它不读取任何日志，打开也不触发查询，因此那里的卡片仍保持沉默，正如 [RN-614](web.md#rn-614) 已经说过的——这是决定，不是缺口。没有任何上限改变。
 
-- **代码：** `apps/api/src/interfaces/http/sessions/sessions.controller.ts:256`
+- **代码：** `src/interfaces/http/sessions/sessions.controller.ts:256`
   （`listEvents`）；
-  `apps/api/src/infrastructure/persistence/drizzle/session-event.repository.ts:61`
+  `src/infrastructure/persistence/drizzle/session-event.repository.ts:61`
   （过滤）；
   `apps/web/src/lib/decisao-da-politica-queries.ts:35`（`useDecisoesDaPolitica`）；
   `apps/web/src/routes/ProjectApprovalsTab.tsx:307`（调用方），`:481`（失败的说明），`:499`（每张卡片上的原因）；
   `apps/web/src/components/PendenciasDeOutrasSessoes.tsx:74`（聊天调用同一个 hook），`:145`（每张卡片上的原因），`:181`（失败的说明）
 - **测试：**
-  `apps/api/test/application/use-cases/sessions/list-session-events-por-acao.use-case.spec.ts:80`
+  `test/application/use-cases/sessions/list-session-events-por-acao.use-case.spec.ts:80`
   （只有该操作的事件，带原因——正常路径，针对 Postgres），
   `:109`（不跨会话），`:123`（另一项目的会话为 404），
   `:134`（空的 `actionId` 为 400）；
@@ -5295,12 +5295,12 @@ QA/SecOps 的 gate 以 `awaiting_user` 结束，此后没有任何东西再改�
 
 engine 的拒绝（409 轮次进行中，422 没有业务规则）在第 3 步「之前」向上抛出：没有被接受的轮次就没有正在产生的 brief，需求「不」算已验证。gate 仍为 `warn`（`docs/gates.yml`）——下游没有任何东西查询它。界面不再有「Confirmar necessidade validada」按钮；启用按钮的标题说明点击关闭了什么，成功提示说明摘要就绪后 PO 会加入。
 
-- **代码：** `apps/api/src/application/use-cases/agents/confirm-readiness.use-case.ts:26`（`ConfirmReadinessUseCase`），
+- **代码：** `src/application/use-cases/agents/confirm-readiness.use-case.ts:26`（`ConfirmReadinessUseCase`），
   `:42`（`necessity.validated`）；
-  `apps/api/src/domain/sessions/estou-pronto.ts:27`（`MARCA_DO_ESTOU_PRONTO`）；
+  `src/domain/sessions/estou-pronto.ts:27`（`MARCA_DO_ESTOU_PRONTO`）；
   `apps/web/src/routes/SessionComposer.tsx:315`（按钮的标题）；
   `apps/web/src/lib/session-acoes-da-sessao.ts:143`（`handleReadiness`）
-- **测试：** `apps/api/test/application/use-cases/agents/confirm-readiness.use-case.spec.ts:49`
+- **测试：** `test/application/use-cases/agents/confirm-readiness.use-case.spec.ts:49`
   （两个事件，带标记且 brief 尚未产生——正常路径），`:72`
   （engine 返回 422：只有就绪被写入——失败情形）；
   `apps/web/src/routes/SessionPage.estou-pronto.test.tsx:150`（一次点击，需求已验证的提示，没有单独的按钮），`:169`（拒绝：不会说任何东西已验证）
@@ -5316,16 +5316,16 @@ engine 的拒绝（409 轮次进行中，422 没有业务规则）在第 3 步�
 只有当「所有」条件都成立时才接受（`decidirAceiteImplicitoDoPo`）：提议是 `criativo` → `po`、`offered`、属于「本」会话，并且作为产物带有 `product_brief`，它在最近一次带标记的 `readiness.confirmed`「之后」产生。除此之外，提议保持 `offered`，卡片照常出现：ADR 0185 之前的会话（没有标记）、点击之前的 brief，以及从不带产物的「手动」handoff（[RN-633](web.md#rn-633)——之后「Estou pronto」仍留在界面上）。接受失败「不」会向上传给 engine（提议已创建，而 Criativo 会说「não consegui oferecer」——那是假的）：它变成持久的 `agent.error`，角色 `system`/`aceite-implicito`，带来源（`infra` 或 `politica`）和 `reason: aceite_implicito_falhou`。「não está
 `offered`」的 400 不是失败：有人在这期间通过别的路径决定了提议，这已经记在日志中。界面在点击时把 composer 的接收者交给 PO（召唤它的动作，[RN-631](web.md#rn-631)）；在它加入之前，这一选择无效，Criativo 继续接收。没有任何上限移动：接受 PO 不会配置仓库（只有 Arquiteto 和 Dev Lead，[RN-582](#rn-582)），不会合并也不会推送。
 
-- **代码：** `apps/api/src/domain/sessions/estou-pronto.ts:62`（`decidirAceiteImplicitoDoPo`）；
-  `apps/api/src/application/use-cases/agents/aceite-implicito-do-po.use-case.ts:37`（`AceiteImplicitoDoPoUseCase`），
+- **代码：** `src/domain/sessions/estou-pronto.ts:62`（`decidirAceiteImplicitoDoPo`）；
+  `src/application/use-cases/agents/aceite-implicito-do-po.use-case.ts:37`（`AceiteImplicitoDoPoUseCase`），
   `:45`（`seCouber`）；
-  `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts:414`（`handoff`）；
-  `apps/api/src/application/use-cases/agents/accept-handoff.use-case.ts:135`（`implicito` 位于 `handoff.accepted`）；
-  `apps/api/src/application/use-cases/agents/activate-agent.use-case.ts:80`（`implicito` 位于 `agent.activated`）
-- **测试：** `apps/api/test/application/use-cases/agents/aceite-implicito-do-po.use-case.spec.ts:105`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:414`（`handoff`）；
+  `src/application/use-cases/agents/accept-handoff.use-case.ts:135`（`implicito` 位于 `handoff.accepted`）；
+  `src/application/use-cases/agents/activate-agent.use-case.ts:80`（`implicito` 位于 `agent.activated`）
+- **测试：** `test/application/use-cases/agents/aceite-implicito-do-po.use-case.spec.ts:105`
   （以点击者的名义接受——正常路径），`:129`（接受失败变为 `agent.error`，不向上抛出——失败情形），`:120`，`:146`；
-  `apps/api/test/domain/sessions/estou-pronto.spec.ts:58`，`:72`，`:83`，`:94`；
-  `apps/api/test/application/use-cases/agents/accept-handoff.use-case.spec.ts:318`
+  `test/domain/sessions/estou-pronto.spec.ts:58`，`:72`，`:83`，`:94`；
+  `test/application/use-cases/agents/accept-handoff.use-case.spec.ts:318`
   （相同的事件、人类角色和标记），`:338`（通过卡片则没有标记）
 - **ADR：** [0185](../adr/0185-estou-pronto-fecha-os-dois-gates.md)
 - **来源：** AT-312（AT-309 的调查，第 4 步）
@@ -5338,11 +5338,11 @@ engine 的拒绝（409 轮次进行中，422 没有业务规则）在第 3 步�
 
 改变的是列的「默认值」，通过 migration `0065`（`ALTER COLUMN … SET DEFAULT 'auto'`），仅此而已：没有任何行被改写，因此以 `manual` 产生的项目会一直是 `manual`，直到有人在「配置」中修改。创建「不」发送该字段——值就是列的默认值，单一来源——两个界面都「说明」该值：创建的「确认」步骤显示「Promoção de histórias: automática — o PO promove」，并说明在哪里修改；「配置」中的那一节说明新项目以「自动」开始，在那里修改只对该项目生效。演练手动流程的两个验证脚本（`validacao-fase-12.ts`、`validacao-real.ts`）改为显式请求 `manual`。
 
-- **代码：** `apps/api/src/db/schema/iam.ts:287`（`storyPromotion`）；
-  `apps/api/src/db/migrations/0065_default_de_promocao_auto.sql`；
+- **代码：** `src/db/schema/iam.ts:287`（`storyPromotion`）；
+  `src/db/migrations/0065_default_de_promocao_auto.sql`；
   `apps/web/src/routes/NewProjectWizard.tsx:978`（「确认」中的那一行）；
   `apps/web/src/routes/settings/PromotionSection.tsx:75`（默认值的说明）
-- **测试：** `apps/api/test/db/story-promotion-migration.spec.ts:29`（新项目以 `auto` 产生——正常路径），`:40`（`manual` 的现有项目不变——失败情形）；`apps/web/src/routes/NewProjectWizard.test.tsx:254`
+- **测试：** `test/db/story-promotion-migration.spec.ts:29`（新项目以 `auto` 产生——正常路径），`:40`（`manual` 的现有项目不变——失败情形）；`apps/web/src/routes/NewProjectWizard.test.tsx:254`
   （「确认」说明该值）；`apps/web/src/routes/ProjectSettingsTab.test.tsx:625`
   （旧项目仍是 `manual`，界面说明默认值），`:646`（api 拒绝修改，界面说明未保存）
 - **来源：** AT-313（AT-309 的调查，第 5 步）；修订了 [RN-048](#rn-048) 的默认值
@@ -5359,22 +5359,22 @@ engine 创建的 `po → arquiteto` 提议（`POST
 
 负责接受的仍是 `AcceptHandoffUseCase`：仓库在那里、在 `activateAgent` 之前产生（RN-582，ADR 0165），以打开会话者的名义。接受是可审计的：`handoff.accepted` 和 `agent.activated` 以「系统」角色 `handoff-auto-accept` 发出，`handoff.accepted` 带有 `automatico: true`、`emNomeDe` 和 `criterio`（`regras`、`cobertas`、`repositorio`）。不满足的条件不写入任何东西——提议保留常规按钮，给 engine 的回应说明原因（`regras_sem_historia`、`repositorio_nao_local`、`credencial_de_git_no_projeto`……）。在决定「是」之后发生的失败不会向上抛出：它变成事件 `handoff.auto_accept_failed`（来源 `infra`），消息流会显示它。接受完成后，工具 `offer_handoff` 告诉 PO Arquiteto 已被激活。远程或带凭据的仓库仍需要点击，手动 handoff（ADR 0109）也一样。
 
-- **代码：** `apps/api/src/domain/sessions/aceite-automatico-do-handoff.ts:81`
+- **代码：** `src/domain/sessions/aceite-automatico-do-handoff.ts:81`
   （`decidirAceiteAutomatico`），`:74`（`backlogCoberto`）；
-  `apps/api/src/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.ts:44`
+  `src/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.ts:44`
   （`AceitarHandoffAutomaticamenteUseCase`）；
-  `apps/api/src/application/use-cases/agents/accept-handoff.use-case.ts:91`
+  `src/application/use-cases/agents/accept-handoff.use-case.ts:91`
   （`AceitePeloSistema`）；
-  `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts:414`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:414`
   （`handoff`）；`apps/engine/lib/engine/harness/tools/offer_handoff.ex:59`；
   `apps/web/src/routes/session-timeline-montagem.tsx:604`（消息流中的提示）
-- **测试：** `apps/api/test/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.spec.ts:73`
+- **测试：** `test/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.spec.ts:73`
   （backlog 已覆盖且没有仓库：由系统接受——正常路径），
   `:89`（规则没有故事：不接受，不写入任何东西——失败情形），
   `:99`（远程仓库），`:109`（git 连接），`:128`（失败变为 `handoff.auto_accept_failed`）；
-  `apps/api/test/domain/sessions/aceite-automatico-do-handoff.spec.ts:37`，
+  `test/domain/sessions/aceite-automatico-do-handoff.spec.ts:37`，
   `:49`（每种拒绝原因）；
-  `apps/api/test/application/use-cases/agents/accept-handoff.use-case.spec.ts:323`
+  `test/application/use-cases/agents/accept-handoff.use-case.spec.ts:323`
   （系统角色、标准以及激活前的配置）；
   `apps/web/src/routes/SessionPage.handoff-aceite-automatico.test.tsx:174`，
   `:196`；`apps/engine/test/engine/harness/tools/offer_handoff_test.exs:38`
@@ -5393,25 +5393,25 @@ engine 创建的 `po → arquiteto` 提议（`POST
 4. **待处理的 gate 是「提示」，绝不是拒绝**（负责人的决定，9月30日）。PR 标签页和聊天中的「Mergear」以「文字」说明缺少哪个 gate（`qa-verificada` 在 `awaiting_qa` 或 gate 尚未打开时，`secops-segura` 在 `awaiting_secops` 时），按钮和卡片保持可用。`awaiting_user`、任务 `done` 以及没有任务的 PR 不提示。「gate bloqueado」（任务 `blocked`）保持原样。
 5. **没有任何上限移动。** 在受保护分支上合并仍是无条件的、由人进行的 `require_approval`（[RN-418](#rn-418)，`decide.ts`）：本规则只阻止提议或批准没有东西可合并的操作。已声明：同一 PR 的两个同时提议不会被串行化（没有按 PR 的锁），是第 2 条规则挡住第二个。
 
-- **代码：** `apps/api/src/domain/actions/merge-de-pr.ts:56`（`recusaDeMerge`），
+- **代码：** `src/domain/actions/merge-de-pr.ts:56`（`recusaDeMerge`），
   `:40`（`mergeouAPr`）；
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:120`（`recusaDeMerge`）；
-  `apps/api/src/application/use-cases/actions/approve-action.use-case.ts:282`（`recusaDeMerge`）；
-  `apps/api/src/infrastructure/git/local-git-provider.ts:339`（`GitPullRequestAlreadyMergedError`）；
+  `src/application/use-cases/actions/propose-action.use-case.ts:120`（`recusaDeMerge`）；
+  `src/application/use-cases/actions/approve-action.use-case.ts:282`（`recusaDeMerge`）；
+  `src/infrastructure/git/local-git-provider.ts:339`（`GitPullRequestAlreadyMergedError`）；
   `apps/web/src/lib/gate-do-merge.ts:19`（`gatePendenteNoMerge`）；
   `apps/web/src/routes/ProjectPrsTab.tsx:232`（`gatePendenteNoMerge`）；
   `apps/web/src/routes/session-timeline-montagem.tsx:1100`（`gatePendenteNoMerge`）
   `apps/web/src/routes/ProjectPrsTab.tsx:232`（`gatePendenteNoMerge`）；
   `apps/web/src/routes/session-timeline-montagem.tsx:1100`（`gatePendenteNoMerge`）
-- **测试：** `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:664`
+- **测试：** `test/application/use-cases/actions/propose-action.use-case.spec.ts:664`
   （`merge_ja_proposto`），`:687`（`pr_ja_mergeado`——失败情形），`:696`
 
   `apps/web/src/routes/session-timeline-montagem.tsx:1100`（`gatePendenteNoMerge`）
-- **测试：** `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:664`
+- **测试：** `test/application/use-cases/actions/propose-action.use-case.spec.ts:664`
   （`merge_ja_proposto`），`:687`（`pr_ja_mergeado`——失败情形），`:696`
   （被拒绝的不阻塞，另一个 PR 不冲突——正常路径）；
-  `apps/api/test/application/use-cases/actions/approve-deny-action.use-case.spec.ts:473`；
-  `apps/api/test/infrastructure/git/local-git-provider.contract.spec.ts:150`；
+  `test/application/use-cases/actions/approve-deny-action.use-case.spec.ts:473`；
+  `test/infrastructure/git/local-git-provider.contract.spec.ts:150`；
   `apps/web/src/routes/ProjectPrsTab.test.tsx:266`，`:300`，`:315`；
   `apps/web/src/routes/MergearNoChat.test.tsx:135`，`:148`；
   `apps/web/src/lib/gate-do-merge.test.ts:5`，`:18`
@@ -5433,13 +5433,13 @@ engine 创建的 `po → arquiteto` 提议（`POST
 5. **响应关于自身说了什么，就记录什么。** `resolved_model_name`（帧中的 `model`——解析后的别名）和 `generation_id`（`id`，在 OpenRouter 中是 `gen-…`），对方言的所有提供方都适用。`model_name` 仍然是目录的那个，即报告的维度。
 6. **只有经过证明的才读取成本。** `extrairCustoReal` 钩子只存在于 OpenRouter；没有它的提供方会忽略存在的 `usage.cost`。不是有限非负数的成本视为"没说"（真正的零是真实成本），而在 `is_byok: true` 时*不*读取成本：那是 hub 的费用，推理在别处计费——该行回落到目录价格。
 
-- **位置：** `apps/api/src/domain/llm/custo-da-chamada.ts:43` (`custoDaChamada`),
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:225` (`custoDaChamada`),
-  `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:238` (`custoDaChamada`),
-  `apps/api/src/application/use-cases/llm/send-chat-message.use-case.ts:227` (`custoDaChamada`),
-  `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:319` (`extrairCustoReal`),
-  `apps/api/src/infrastructure/llm/openrouter-provider.ts:243` (`extrairCustoRealOpenRouter`),
-  `apps/api/src/db/schema/llm.ts:357` (`priceImplicit`)
+- **位置：** `src/domain/llm/custo-da-chamada.ts:43` (`custoDaChamada`),
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:225` (`custoDaChamada`),
+  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:238` (`custoDaChamada`),
+  `src/application/use-cases/llm/send-chat-message.use-case.ts:227` (`custoDaChamada`),
+  `src/infrastructure/llm/openai-compatible-provider.ts:319` (`extrairCustoReal`),
+  `src/infrastructure/llm/openrouter-provider.ts:243` (`extrairCustoRealOpenRouter`),
+  `src/db/schema/llm.ts:357` (`priceImplicit`)
 - **测试：** `test/domain/llm/custo-da-chamada.spec.ts`,
   `test/infrastructure/llm/openrouter-provider.contract.spec.ts`（录制响应：成本、解析后的模型、id；BYOK；没有 `cost`；没有钩子的提供方），`test/application/use-cases/llm/run-llm-turn.use-case.spec.ts`,
   `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts`,
@@ -5459,12 +5459,12 @@ engine 创建的 `po → arquiteto` 提议（`POST
 3. **测量会说明缓存占多少。** `medir-execucao.ts` 开始按 agent 显示读取的缓存和推理及其占总数的百分比，*只*针对告知了的调用（不是全部时说明有多少次），没有任何调用告知时显示"未测量"——另外还显示有多少次调用的成本是真实成本。
 4. **对方言的所有提供方都读取**，因为这两个字段是 OpenAI 自己的；不发送它们的提供方保持 `null`。Anthropic 在其协议中告知缓存（`cache_read_input_tokens`），这里*不*读取——保持 `null`，已声明；Ollama 不告知。
 
-- **位置：** `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:323` (`cachedInputTokens`),
-  `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:650` (`contagem`),
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:175` (`cachedInputTokens`),
-  `apps/api/src/application/use-cases/llm/record-llm-usage.use-case.ts:113` (`cachedInputTokens`),
-  `apps/api/src/db/schema/llm.ts:374` (`cachedInputTokens`),
-  `apps/api/scripts/medir-execucao.ts:89` (`formatarParteMedida`)
+- **位置：** `src/infrastructure/llm/openai-compatible-provider.ts:323` (`cachedInputTokens`),
+  `src/infrastructure/llm/openai-compatible-provider.ts:650` (`contagem`),
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:175` (`cachedInputTokens`),
+  `src/application/use-cases/llm/record-llm-usage.use-case.ts:113` (`cachedInputTokens`),
+  `src/db/schema/llm.ts:374` (`cachedInputTokens`),
+  `scripts/medir-execucao.ts:89` (`formatarParteMedida`)
 - **测试：** `test/infrastructure/llm/openrouter-provider.contract.spec.ts`
   （带两个部分的录制响应；没有细节；无效值和零），`test/application/use-cases/llm/run-llm-turn.use-case.spec.ts`,
   `test/scripts/medir-execucao.spec.ts` (`formatarParteMedida`)
@@ -5479,15 +5479,15 @@ ADR 0055 的范围上限把每条命令都与「宿主机」上的项目文件�
 
 适用于不在自动驾驶中的一方（具体规则 `terminal`）：自动驾驶不经过范围（[RN-603](#rn-603)，由 [RN-670](#rn-670) 维持）。`projectScopeRoot` 不变，也不与 `permissionsFilePath` 合并（[RN-478](#rn-478)）；自动批准的「下限」仍只属于 `container` 模式（[RN-493](#rn-493)）。`runner` 有意排除在外：api 不知道 runner 会路由到容器还是宿主机（RN-558）。有容器时，带「宿主机」路径的命令参数算作在范围之外——engine 只转换 `cwd`，而该路径在容器内不存在。
 
-- **代码：** `apps/api/src/domain/actions/path-scope.ts:153`（`cwdNoContainer`），
+- **代码：** `src/domain/actions/path-scope.ts:153`（`cwdNoContainer`），
   `:174`（`comandoNoEscopoDoContainer`），`:112`（`comandoNoEscopo`，现在有多个根），`:137`（`PONTO_DE_MONTAGEM_DO_CONTAINER`）；
-  `apps/api/src/domain/actions/decide.ts:275`（`execucaoNoContainer`），`:616`
+  `src/domain/actions/decide.ts:275`（`execucaoNoContainer`），`:616`
   （`execucaoNoContainer`，在 `terminalNoEscopo` 中）；
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:174`
+  `src/application/use-cases/actions/propose-action.use-case.ts:174`
   （`containerExecutionActive`，与 `execucaoNoContainer` 分开）
-- **测试：** `apps/api/test/domain/actions/decide.spec.ts:1274`（有容器时 `/work`、`.worktrees`、`/tmp` 和 `..` 在范围内——正常路径；`/etc`、另一个项目、`/workspace`、`/tmp/../etc` 在范围外；没有容器时 `/tmp` 和 `/work` 在范围外——失败情形）；`apps/api/test/domain/actions/path-scope.spec.ts:216`
+- **测试：** `test/domain/actions/decide.spec.ts:1274`（有容器时 `/work`、`.worktrees`、`/tmp` 和 `..` 在范围内——正常路径；`/etc`、另一个项目、`/workspace`、`/tmp/../etc` 在范围外；没有容器时 `/tmp` 和 `/work` 在范围外——失败情形）；`test/domain/actions/path-scope.spec.ts:216`
   （以及 `/work` 的副本，对照 `packages/docker-port` 锁定）；
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:1141`
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts:1141`
   （`mounted` 模式有容器和没有容器，以及没有下限）
 - **来源：** AT-258（9月29日真实使用分析的 A12 项），负责人 10月1日的决定，[ADR 0189](../adr/0189-o-piloto-automatico.md)
 
@@ -5499,20 +5499,20 @@ ADR 0055 的范围上限把每条命令都与「宿主机」上的项目文件�
 
 **界面说明自动驾驶放行什么、不放行什么**，在开启该模式的三个地方使用「一个」列表：「执行者」的批量卡片（[RN-661](web.md#rn-661)，展开）、`ApprovalCard` 和 agent 卡片的开关（收起）。「不放行」是 RN-661 已有的文字，被复用。
 
-- **代码：** `apps/api/src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
+- **代码：** `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
   （`resolve`），`:67`（`modoEspecifico`，自动驾驶的例外）；
-  `apps/api/src/application/ports/agent-autonomy-repository.port.ts:5`
+  `src/application/ports/agent-autonomy-repository.port.ts:5`
   （`AutonomiaResolvida`，带 `especifica`）；
-  `apps/api/src/application/use-cases/actions/approve-always-action.use-case.ts:263`
-  （`especifica`）；`apps/api/src/domain/actions/decide.ts:295`
+  `src/application/use-cases/actions/approve-always-action.use-case.ts:263`
+  （`especifica`）；`src/domain/actions/decide.ts:295`
   （`modoAutomaticoDoAgente`）；`apps/web/src/components/OQueOPilotoLibera.tsx:16`
   （`OQueOPilotoLibera`）；`apps/web/src/components/ApprovalCard.tsx:434`，
   `apps/web/src/components/AgentCard.tsx:164`，
   `apps/web/src/components/ModoAutomaticoDoTime.tsx:134`
-- **测试：** `apps/api/test/application/use-cases/actions/approve-always-action.use-case.spec.ts:850`
+- **测试：** `test/application/use-cases/actions/approve-always-action.use-case.spec.ts:850`
   （测得的场景：通配符 +「Sempre permitir」仍不产生请求——正常路径；开关切回手动后回到范围——失败情形）；
-  `apps/api/test/infrastructure/persistence/drizzle/agent-autonomy.repository.spec.ts:115`；
-  `apps/api/test/domain/actions/decide.spec.ts:1210`（commit 和本地分支放行；push、merge、PR、deploy 和 `doas` 仍需请求）；
+  `test/infrastructure/persistence/drizzle/agent-autonomy.repository.spec.ts:115`；
+  `test/domain/actions/decide.spec.ts:1210`（commit 和本地分支放行；push、merge、PR、deploy 和 `doas` 仍需请求）；
   `apps/broker/src/contencao-do-brabo.spec.ts:105`（隔离）；
   `apps/web/src/components/ModoAutomaticoDoTime.test.tsx:86`，
   `apps/web/src/components/ApprovalCard.test.tsx:145`，
@@ -5531,7 +5531,7 @@ ADR 0055 的范围上限把每条命令都与「宿主机」上的项目文件�
 
 没有任何上限移动：最低角色仍是 `maintainer`（打开会话者的有效角色），`deny`（来自 `permissions.json`）仍然胜出，`/containers` 不变（它以人的身份提议，agent 的自主权对它不适用）。已声明：卡片的手动/自动开关写入的是通配符，而具体规则胜出——把 Infra 设为「manual」不会关闭这一预置。
 
-- **代码：** `apps/api/src/application/use-cases/agents/accept-handoff.use-case.ts:38`
+- **代码：** `src/application/use-cases/agents/accept-handoff.use-case.ts:38`
   （`INFRA_AUTONOMY_SEEDS`）；
   `apps/engine/lib/engine/infra/infra_lead_server.ex:256`（`handle_cast`），
   `:647`（`propor_container_start`），`:728`（`subir_no_aceite`），`:780`
@@ -5539,7 +5539,7 @@ ADR 0055 的范围上限把每条命令都与「宿主机」上的项目文件�
 
   `:626`（`propor_container_start`），`:707`（`subir_no_aceite`），`:759`
   （`eleger_candidata`），`:1319`（`passo_da_subida`）
-- **测试：** `apps/api/test/application/use-cases/agents/accept-handoff.use-case.spec.ts:250`
+- **测试：** `test/application/use-cases/agents/accept-handoff.use-case.spec.ts:250`
   （预置，且仅此一项——正常路径），`:267`（其他 agent 不预置——失败情形）；
   `apps/engine/test/engine/infra/infra_lead_server_test.exs:1263`（服务器在模型之前选定并提议——正常路径），`:1454`（`mounted`），`:1464`
   （`runner` 不由服务器启动），`:1377`（没有路由），`:1387`（api 在没有 broker 时拒绝——失败情形），`:1427`（容器已 `running`），`:1439`
@@ -5557,7 +5557,7 @@ ADR 0055 的范围上限把每条命令都与「宿主机」上的项目文件�
 
 保持原样的：在接受 Dev Lead 时仓库的第二道入口（[RN-582](#rn-582)）——接受不变，只是提出者变了——以及在接受时串联的执行激活（RN-161）。已声明：outbox 的通知是至多一次的，与 `Engine.Dev.Wake` 相同；那一刻没有运行中的 Infra Lead 时，提议会等到它下一轮结束。
 
-- **代码：** `apps/api/src/application/use-cases/agents/offer-infra-handoff.use-case.ts:15`
+- **代码：** `src/application/use-cases/agents/offer-infra-handoff.use-case.ts:15`
   （`ALVOS_DA_CONFIRMACAO`）；
   `apps/engine/lib/engine/infra/infra_lead_server.ex:1090`（`oferecer_ao_dev_lead`），
   `:1085`（`concluir`），`:345`（`handle_info`），`:1075`
@@ -5572,7 +5572,7 @@ ADR 0055 的范围上限把每条命令都与「宿主机」上的项目文件�
   `apps/engine/test/engine/agents/arquiteto_server_test.exs:256`（Arquiteto 不再向 Dev Lead 提出）；
   `apps/engine/test/engine/workers/infra_oferece_dev_lead_worker_test.exs:9`；
   `apps/engine/test/engine/outbox/drain_test.exs:266`；
-  `apps/api/test/application/use-cases/agents/offer-infra-handoff.use-case.spec.ts:104`，
+  `test/application/use-cases/agents/offer-infra-handoff.use-case.spec.ts:104`，
   `:147`
 - **来源：** AT-262（9月29日真实使用分析的 A16 项）
 
@@ -5592,15 +5592,15 @@ ADR 0055 的范围上限把每条命令都与「宿主机」上的项目文件�
 
 匹配仍照旧（token 前缀），对具有外部效果或特权的命令的点击仍在之前被整体拒绝（`motivoDeRecusaDoSempreAprovar`，400 `teto_do_sempre_permitir`），`decide()` 的上限在文件之后运行，路径范围在自动驾驶之外仍限制「在哪里」（[RN-669](#rn-669)）。可以写入的仍是原本就可以的人（端点的角色，未变）；与自动模式的优先级是 [RN-670](#rn-670) 的优先级。模块 dev agent 的「Sempre permitir」仍写到 `agent_autonomy`（[RN-509](#rn-509)），没有模式。只有「缺失」的模式被写入并叙述；`permission.granted` 带有 `patterns`（写入的列表）和 `pattern`（同一列表以逗号连接，供时间线使用）。
 
-- **代码：** `apps/api/src/domain/actions/pattern-for-action.ts:22`
+- **代码：** `src/domain/actions/pattern-for-action.ts:22`
   （`patternsForAction`），`:62`（`unidadeDoSegmento`），`:43`（`SUBCOMANDO`）；
-  `apps/api/src/domain/actions/external-effect.ts:237`（`padraoAlcancaTeto`）；
-  `apps/api/src/application/use-cases/actions/approve-always-action.use-case.ts:277`
+  `src/domain/actions/external-effect.ts:237`（`padraoAlcancaTeto`）；
+  `src/application/use-cases/actions/approve-always-action.use-case.ts:277`
   （`faltam`），`:315`（`patternsForAction`）
-- **测试：** `apps/api/test/domain/actions/pattern-for-action.spec.ts:18`
-  （单位，正常路径），`:103`（作为上限前缀的片段不写入任何东西——失败情形）；`apps/api/test/domain/actions/external-effect.spec.ts:11`
+- **测试：** `test/domain/actions/pattern-for-action.spec.ts:18`
+  （单位，正常路径），`:103`（作为上限前缀的片段不写入任何东西——失败情形）；`test/domain/actions/external-effect.spec.ts:11`
   （`padraoAlcancaTeto`）；
-  `apps/api/test/application/use-cases/actions/approve-always-action.use-case.spec.ts:936`
+  `test/application/use-cases/actions/approve-always-action.use-case.spec.ts:936`
   （对复合命令的点击放行下一条使用相同动词的命令；其他子命令仍需请求；会推送的复合命令仍被拒绝）；
   `apps/web/src/components/ApprovalCard.test.tsx:253`（说明中写明单位）
 - **来源：** AT-257（9月29日真实使用分析的 A11 项）和 AT-170（EP-025），负责人 10月1日的决定
@@ -5623,17 +5623,17 @@ ADR 0055 的范围上限把每条命令都与「宿主机」上的项目文件�
 4. **Dev Lead 的会话「不」关闭**（不作为 `originSessionId` 传入，[RN-135](#rn-135)）：它在那里恢复挂起的轮次并叙述结局。
 5. **结局是命名的、持久的。** 操作以 `executed` 结束并带 `{ sessaoDeExecucao, modulos, tarefasAtribuidas }`，或以 `failed` 结束并带 `motivo`（api 的句子，例如没有仓库时的 409），并在时间线上加上事件 `execution.plan_applied`/`execution.plan_failed`。Dev Lead 恢复时读到真实的结局（「execução ATIVADA na sessão …」或「a ativação falhou: …」），绝不是「plano registrado」。失败不会撤销批准：人的决定已经写入。
 
-- **位置：** `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts:89`
-  （`execute`）；`apps/api/src/application/use-cases/actions/approve-action.use-case.ts:192`
-  （`executeExecutionPlan`）；`apps/api/src/application/use-cases/actions/propose-action.use-case.ts:390`
+- **位置：** `src/application/use-cases/execution/execute-execution-plan.use-case.ts:89`
+  （`execute`）；`src/application/use-cases/actions/approve-action.use-case.ts:192`
+  （`executeExecutionPlan`）；`src/application/use-cases/actions/propose-action.use-case.ts:390`
   （`executeExecutionPlan`）；`apps/web/src/lib/session-acoes-de-handoff.ts:91`
   （`handleAcceptHandoff`）；`apps/engine/lib/engine/agents/dev_lead_tools.ex:220`
   （`classificar`）；`apps/engine/lib/engine/agents/dev_lead_server.ex:699`
   （`texto_do_desfecho`）；`apps/web/src/lib/aprovacoes.ts:317`
   （`propose_execution_plan`）
-- **测试：** `apps/api/test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts:106`
+- **测试：** `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts:106`
   （批准后以批准者身份激活——正常路径），`:129`（自动批准：打开会话的人），`:151`（因缺少仓库而被拒绝的激活变为带句子的 `failed`——失败情形）；
-  `apps/api/test/application/use-cases/actions/approve-deny-action.use-case.spec.ts:399`
+  `test/application/use-cases/actions/approve-deny-action.use-case.spec.ts:399`
   （批准会调用执行器并通知 Dev Lead）；
   `apps/web/src/routes/SessionPage.handoff-devlead-e-colapso.test.tsx:396`
   （接受不会激活，三种角色都是），`:416`（明确的快捷方式保留）；
@@ -5656,22 +5656,22 @@ ADR 0055 的范围上限把每条命令都与「宿主机」上的项目文件�
 
 已声明排除在外的：计划「之后」创建的任务不带模块（PO 不指定）；通知 `task.became_claimable` 仍按「故事」的模块路由（多唤醒一个 dev 不会领取任何东西，只花一次查询）；计划中按模块的 `agentes` 仍只是信息性的——激活仍像以前一样按 `module_map` 的每个模块启动一个 dev，额外的并行仍通过 `parallelize`（[RN-083](#rn-083)）。
 
-- **位置：** `apps/api/src/domain/execution/plano-de-execucao.ts:33`
-  （`lerPlanoDeExecucao`）；`apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:680`
+- **位置：** `src/domain/execution/plano-de-execucao.ts:33`
+  （`lerPlanoDeExecucao`）；`src/infrastructure/persistence/drizzle/backlog.repository.ts:680`
   （`daTarefaDoModulo`），`:403`（`claimNext`），`:391`（`assignModules`）；
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:137`
-  （`recusaNaProposta`）；`apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts:67`
-  （`recusaNaProposta`）；`apps/api/src/db/schema/backlog.ts:187`（`module`）；
+  `src/application/use-cases/actions/propose-action.use-case.ts:137`
+  （`recusaNaProposta`）；`src/application/use-cases/execution/execute-execution-plan.use-case.ts:67`
+  （`recusaNaProposta`）；`src/db/schema/backlog.ts:187`（`module`）；
   `apps/engine/lib/engine/agents/dev_lead_tools.ex:372`
   （`tarefas_do_backlog`）；`apps/engine/lib/engine/agents/dev_lead_tools.ex:204`
   （`erro_da_proposta`）
-- **测试：** `apps/api/test/domain/execution/plano-de-execucao.spec.ts:22`
+- **测试：** `test/domain/execution/plano-de-execucao.spec.ts:22`
   （正常路径），`:41`（没有模块的任务——失败情形），`:49`（模块不在 `module_map` 中），`:80`（重复的以及其他项目的）；
-  `apps/api/test/application/use-cases/execution/claim-next-task.use-case.spec.ts:127`
+  `test/application/use-cases/execution/claim-next-task.use-case.spec.ts:127`
   （有两个模块的故事：只有任务所属模块的 dev），`:152`（没有模块且有多个模块：没有人），`:169`（任务的模块胜出）；
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:289`
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts:289`
   （命名的 400，没有提议）；
-  `apps/api/test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts:135`
+  `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts:135`
   （批准时模块不在映射中：不写入，不激活）；
   `apps/engine/test/engine/agents/dev_lead_tools_test.exs:110`，`:118`；
   `apps/engine/test/engine/agents/dev_lead_server_test.exs:131`
@@ -5693,11 +5693,11 @@ ADR 0055 的范围上限把每条命令都与「宿主机」上的项目文件�
    `freeRoutingAlias`，在读取时由提供方和名称推导，从不写入。该行在有人尝试激活之前，以*文字*显示徽章和原因。
 4. **已策展的继续工作。** 这是可测量的（OpenRouter 行中带 `~` 的名称），选择的出路是最不令人意外的：规则之前已激活的别名**保持激活**——它的 binding 继续解析，选择器继续显示——，在目录中带标记出现，并且可以被*关闭*。关闭后不会回来。什么都不删除，也不重写任何 binding。对仍处于激活状态的别名新建 binding 在这里不会被拒绝：规则属于策展，binding 遵循 [RN-043](#rn-043)。
 
-- **位置：** `apps/api/src/domain/llm/alias-de-roteamento-livre.ts:23` (`ehAliasDeRoteamentoLivre`),
+- **位置：** `src/domain/llm/alias-de-roteamento-livre.ts:23` (`ehAliasDeRoteamentoLivre`),
   `:41` (`AliasDeRoteamentoLivreError`),
-  `apps/api/src/application/use-cases/llm/set-models-active.use-case.ts:59` (`AliasDeRoteamentoLivreError`),
-  `apps/api/src/infrastructure/persistence/drizzle/workspace-model.repository.ts:67` (`freeRoutingAlias`),
-  `apps/api/src/interfaces/http/shared/llm-binding-error.filter.ts:60` (`code`),
+  `src/application/use-cases/llm/set-models-active.use-case.ts:59` (`AliasDeRoteamentoLivreError`),
+  `src/infrastructure/persistence/drizzle/workspace-model.repository.ts:67` (`freeRoutingAlias`),
+  `src/interfaces/http/shared/llm-binding-error.filter.ts:60` (`code`),
   `apps/web/src/components/ModelCatalogSection.tsx:693` (`recusaDeAliasLivre`)
 - **测试：** `test/application/use-cases/llm/set-models-active.use-case.spec.ts`
   （整个批次被拒绝，带代码和 id；上游固定的激活；OpenRouter 之外的 `~` 激活；规则之前已策展的别名保持激活、带标记、可关闭且不会回来），`test/interfaces/http/shared/llm-binding-error.filter.spec.ts`,
@@ -5719,14 +5719,14 @@ ADR 0055 的范围上限把每条命令都与「宿主机」上的项目文件�
    [ADR 0075](../adr/0075-embeddings-no-contrato-de-llm-provider.md) 划分的*唯一*例外——RAG 的索引和搜索仍在其外——，之所以成立，是因为发出发生在会话之内。
 5. **上限：** 最近的 100 个现有条目（截断时结果会说明是多少中的多少）以及整个检查 10 s 的挂钟时间。
 
-- **位置：** `apps/api/src/domain/backlog/duplicata-semantica.ts:35` (`LIMIAR_DE_DUPLICATA_SEMANTICA`),
+- **位置：** `src/domain/backlog/duplicata-semantica.ts:35` (`LIMIAR_DE_DUPLICATA_SEMANTICA`),
   `:44` (`TETO_DE_COMPARACOES_DE_DUPLICATA`), `:53` (`TETO_DE_TEMPO_DA_CHECAGEM_MS`),
   `:107` (`ehDuplicataSemantica`),
-  `apps/api/src/application/use-cases/backlog/verificar-duplicata-semantica.use-case.ts:111` (`VerificarDuplicataSemanticaUseCase`),
+  `src/application/use-cases/backlog/verificar-duplicata-semantica.use-case.ts:111` (`VerificarDuplicataSemanticaUseCase`),
   `:241` (`medir`), `:285` (`narrar`), `:349` (`fraseParaOAgente`),
-  `apps/api/src/application/use-cases/backlog/create-story.use-case.ts:193` (`semanticDuplicate`),
-  `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts:640` (`semanticDuplicateCheck`),
-  `apps/api/src/application/use-cases/rag/rag-embedding.service.ts:106` (`uso`),
+  `src/application/use-cases/backlog/create-story.use-case.ts:193` (`semanticDuplicate`),
+  `src/interfaces/http/internal/internal-sessions.controller.ts:640` (`semanticDuplicateCheck`),
+  `src/application/use-cases/rag/rag-embedding.service.ts:106` (`uso`),
   `apps/engine/lib/engine/harness/tools/emit_artifact.ex` (`aviso_semantico`),
   `apps/engine/lib/engine/harness/tools/create_story.ex` (`aviso_semantico`)
 - **测试：** `test/application/use-cases/backlog/verificar-duplicata-semantica.use-case.spec.ts`
@@ -5758,17 +5758,17 @@ ADR 0055 的范围上限把每条命令都与「宿主机」上的项目文件�
 - **在这种情况之外，路由仍以原始模型回应**：在没有 agent 的创意会话中（seed 的 `curl`），以及在「有」agent 的咨询会话中，对手动调用它的人。界面在这两种情况下都不调用它；负责人的决定针对的是没有 agent 的咨询会话，关闭整条路由是另一项决定。
 - 带历史的自由聊天，即 AT-254 的另一个选项，没有做。
 
-- **代码：** `apps/api/src/domain/sessions/chat-sem-destinatario.ts:24`
+- **代码：** `src/domain/sessions/chat-sem-destinatario.ts:24`
   （`chatSemDestinatarioRecusado`），`:17`（`MOTIVO_CHAT_SEM_DESTINATARIO`）；
-  `apps/api/src/application/use-cases/llm/garantir-destinatario-do-chat.use-case.ts:27`
+  `src/application/use-cases/llm/garantir-destinatario-do-chat.use-case.ts:27`
   （`GarantirDestinatarioDoChatUseCase`）；
-  `apps/api/src/interfaces/http/llm/chat.controller.ts:82`（`chat`）；
+  `src/interfaces/http/llm/chat.controller.ts:82`（`chat`）；
   `apps/web/src/lib/session-destinatario.ts:329`（`agentesParaChamar`）；
   `apps/web/src/routes/SessionPage.tsx:678`（`handleSend`）；
   `apps/web/src/routes/SessionComposer.tsx:276`
-- **测试：** `apps/api/test/application/use-cases/llm/garantir-destinatario-do-chat.use-case.spec.ts:82`
+- **测试：** `test/application/use-cases/llm/garantir-destinatario-do-chat.use-case.spec.ts:82`
   （没有 agent 的咨询会话——失败情形），`:96`，`:113`，`:120`；
-  `apps/api/test/interfaces/http/llm/chat.controller.spec.ts:56`（422 作为 HTTP 回应），`:79`（正常路径）；
+  `test/interfaces/http/llm/chat.controller.spec.ts:56`（422 作为 HTTP 回应），`:79`（正常路径）；
   `apps/web/src/routes/SessionPage.destinatario-do-chat.test.tsx:458`（不发送——失败情形），`:471`（列表和「Chamar」——正常路径）；
   `apps/web/src/lib/session-destinatario.test.ts:93`；
   `apps/web/src/routes/SessionPage.ideacao-automatica.test.tsx:177`
@@ -5788,23 +5788,23 @@ ADR 0055 的范围上限把每条命令都与「宿主机」上的项目文件�
 
 已声明排除在外的：`choose_project_image`（Arquiteto 决定它的镜像和资源）和 `container_start_via_runner`（启动已决定的镜像）不变；低于最小值的拒绝发生在执行时，而不是提议时。
 
-- **代码：** `apps/api/src/domain/containers/recursos-minimos.ts:70`
+- **代码：** `src/domain/containers/recursos-minimos.ts:70`
   （`validarRecursosDoModulo`），`:108`（`derivarRecursosMinimos`），`:150`
   （`validarSomaNoTeto`），`:171`（`resolverRecursosDaSubida`），`:206`
   （`explicarRecursosMinimos`）；
-  `apps/api/src/application/use-cases/architecture/create-module-map.use-case.ts:134`
+  `src/application/use-cases/architecture/create-module-map.use-case.ts:134`
   （`normalizarModulo`）；
-  `apps/api/src/application/use-cases/actions/execute-container-start.use-case.ts:175`
+  `src/application/use-cases/actions/execute-container-start.use-case.ts:175`
   （`resolverRecursosDaSubida`）；
   `apps/engine/lib/engine/harness/tools/create_module_map.ex:103`（`normalize`）；
   `apps/engine/lib/engine/infra/infra_lead_server.ex:803`
   （`rationale_do_servidor`）
-- **测试：** `apps/api/test/domain/containers/recursos-minimos.spec.ts:18`
+- **测试：** `test/domain/containers/recursos-minimos.spec.ts:18`
   （求和——正常路径），`:35`（旧映射 = 默认值），`:41`（下限并点名），
   `:54`（总和超出上限——失败情形），`:94`（低于最小值）；
-  `apps/api/test/application/use-cases/architecture/create-module-map.use-case.spec.ts:190`
+  `test/application/use-cases/architecture/create-module-map.use-case.spec.ts:190`
   （写入），`:208`（只声明一半——失败情形），`:217`（总和在上限内）；
-  `apps/api/test/application/use-cases/actions/execute-container-start.use-case.spec.ts:530`
+  `test/application/use-cases/actions/execute-container-start.use-case.spec.ts:530`
   （服务器以总和启动），`:556`（没有声明），`:575`（高于），
   `:588`（低于——失败情形），`:608`（没有映射）；
   `apps/engine/test/engine/harness/tools/create_module_map_test.exs:94`，`:109`；
@@ -5825,17 +5825,17 @@ ADR 0055 的范围上限把每条命令都与「宿主机」上的项目文件�
 5. **dev 通过 `listar_contratos_de_modulos` 读取**，`:direct`，位于 `Engine.Dev.Tools` 的注册中：项目范围来自路由，「没有」参数，dev 的模块来自 `ctx.module`。完整显示它自己的以及它消费的；消费它的以及其余的只显示名称；上限 120 项，并说明截断。已从映射中移除的模块的契约会被「说明」，绝不会被归属。
 6. **dev 的 kickoff 说明到哪里读另一个模块的接口**，并且不是在另一个 dev agent 的 worktree 中。显示的模块没有契约时，工具要求按 story 和 task 所说的实现，如果缺少接口，就 `report_blocked` 并点名该模块——绝不重读 worktree。
 
-- **代码：** `apps/api/src/domain/architecture/module-contracts.ts:110`
+- **代码：** `src/domain/architecture/module-contracts.ts:110`
   （`validarContratos`）；
-  `apps/api/src/application/use-cases/architecture/declare-module-contracts.use-case.ts:55`
+  `src/application/use-cases/architecture/declare-module-contracts.use-case.ts:55`
   （`execute`），`:80`（`missingModules`）；
-  `apps/api/src/application/use-cases/architecture/get-module-contracts.use-case.ts:23`
+  `src/application/use-cases/architecture/get-module-contracts.use-case.ts:23`
   （`execute`）；
-  `apps/api/src/application/use-cases/architecture/list-module-contracts.use-case.ts:42`
+  `src/application/use-cases/architecture/list-module-contracts.use-case.ts:42`
   （`execute`）；
-  `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts:779`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:779`
   （`moduleContracts`）；
-  `apps/api/src/interfaces/http/internal/internal-projects.controller.ts:178`
+  `src/interfaces/http/internal/internal-projects.controller.ts:178`
   （`moduleContracts`）；
   `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex:91`（`run`）；
   `apps/engine/lib/engine/harness/tools/listar_contratos_de_modulos.ex:43`
@@ -5843,7 +5843,7 @@ ADR 0055 的范围上限把每条命令都与「宿主机」上的项目文件�
   `apps/engine/lib/engine/dev/tools.ex:36`（`ListarContratosDeModulos`）；
   `apps/engine/lib/engine/dev/dev_agent_server.ex:497`（`module`），`:501`；
   `apps/engine/lib/engine/agents/arquiteto_server.ex:112`，`:335`，`:399`
-- **测试：** `apps/api/test/application/use-cases/architecture/module-contracts.use-case.spec.ts:173`
+- **测试：** `test/application/use-cases/architecture/module-contracts.use-case.spec.ts:173`
   （写入版本 1——正常路径），`:185`（当前版本取代），`:210`
   （模块不在映射中——失败情形），`:222`（没有 `module_map`），`:123`
   （领域层的拒绝），`:239` 和 `:257`（dev 的读取）；
@@ -5875,17 +5875,17 @@ ADR 0055 的范围上限把每条命令都与「宿主机」上的项目文件�
 **界面说明这种精确性**（[RN-561](web.md#rn-561)）：撤销的确认——「配置」中的设备密钥和「账户」中的机器密钥——把 *"outro
 runner seu também cai"* 换成 *"só cai o que se conectou com ESTA chave"*。改变的是标签，不是行为。
 
-- **位置：** `apps/api/src/interfaces/http/auth/pat-auth.guard.ts:151`
+- **位置：** `src/interfaces/http/auth/pat-auth.guard.ts:151`
   （`credencialDeDispositivo`，PAT），`:236`（`credencialDeDispositivo`，密钥）；
-  `apps/api/src/interfaces/http/runner/runner-tickets.controller.ts:67`
+  `src/interfaces/http/runner/runner-tickets.controller.ts:67`
   （`runnerTicket`）；
-  `apps/api/src/application/use-cases/runner/request-runner-ticket.use-case.ts:55`
+  `src/application/use-cases/runner/request-runner-ticket.use-case.ts:55`
   （`execute`）；
-  `apps/api/src/application/use-cases/auth/revoke-runner-device-key.use-case.ts:71`
+  `src/application/use-cases/auth/revoke-runner-device-key.use-case.ts:71`
   （`execute`），`:109`（`derrubarConexoesDaChave`）；
-  `apps/api/src/application/use-cases/auth/derrubar-conexoes-do-pat.ts:21`
+  `src/application/use-cases/auth/derrubar-conexoes-do-pat.ts:21`
   （`derrubarConexoesDoPat`）；
-  `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts:633`
+  `src/infrastructure/http-clients/api-to-engine-client.ts:633`
   （`disconnectRunnerCredential`）；
   `apps/engine/lib/engine/runners/socket_ticket.ex:107`（`emitir`），`:207`
   （`anular_pendentes_da_credencial`）；
@@ -5900,18 +5900,18 @@ runner seu também cai"* 换成 *"só cai o que se conectou com ESTA chave"*。�
   `apps/web/src/routes/settings/RunnerDeviceKeysSection.tsx:346`，
   `apps/web/src/routes/MachineDeviceKeysSection.tsx:202`
 - **测试：**
-  `apps/api/test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
+  `test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
   （`describe "o alvo da queda é a CHAVE"`——正常路径；`describe "CASO DE
   FALHA: o engine não atende o pedido por chave"`——按这一对的备用方案；机器只需一次请求）；
-  `apps/api/test/application/use-cases/auth/machine-device-keys.use-case.spec.ts`；
-  `apps/api/test/application/use-cases/auth/revoke-personal-access-token.use-case.spec.ts`
+  `test/application/use-cases/auth/machine-device-keys.use-case.spec.ts`；
+  `test/application/use-cases/auth/revoke-personal-access-token.use-case.spec.ts`
   和 `revoke-personal-access-token-as-maintainer.use-case.spec.ts`；
-  `apps/api/test/interfaces/pat-auth.guard.spec.ts`（两条路径中都标注凭据，拒绝时不标注）；
-  `apps/api/test/interfaces/http/runner/runner-tickets.guards.integration.spec.ts`
+  `test/interfaces/pat-auth.guard.spec.ts`（两条路径中都标注凭据，拒绝时不标注）；
+  `test/interfaces/http/runner/runner-tickets.guards.integration.spec.ts`
   （真实 PAT 一直到对 engine 的请求）；
-  `apps/api/test/application/use-cases/runner/request-runner-ticket.use-case.spec.ts`
+  `test/application/use-cases/runner/request-runner-ticket.use-case.spec.ts`
   （`terminal` 从不带凭据）；
-  `apps/api/test/infrastructure/http-clients/api-to-engine-client.spec.ts`
+  `test/infrastructure/http-clients/api-to-engine-client.spec.ts`
   （`describe "o alvo é a CREDENCIAL"`，包括会「抛出」的 404）；
   `apps/engine/test/engine_web/channels/terminal_channel_test.exs`
   （`describe "revogação por CREDENCIAL"`——真实通道断开、同一用户的 PAT 保持连接、没有列表的两个项目中的机器、按这一对的旧式连接、作废的待处理 ticket）；
@@ -5938,17 +5938,17 @@ runner seu também cai"* 换成 *"só cai o que se conectou com ESTA chave"*。�
 
 有意排除在外的：`git_merge`（受保护分支有自己的上限）；`git_commit`（留在本机，RN-670）；`open_adr_pr` 和 `open_infra_pr`（在 provider 上打开真实 PR，但负责人的决定不覆盖它们——`open_infra_pr` 在接受 Infra 时被预置为 `auto_approve`，[RN-671](#rn-671)）；bootstrap 操作（`git_repo_create`/`git_branch_create`/`git_branch_protect`，不经过 `decide()`）；以及 `deploy`，它不是 `proposed_action` 的类型——只作为终端命令消息的目标存在。
 
-- **位置：** `apps/api/src/domain/actions/decide.ts:414`（`ehAcaoTipadaComEfeitoExterno`）；
-  `apps/api/src/domain/actions/external-effect.ts:258`
+- **位置：** `src/domain/actions/decide.ts:414`（`ehAcaoTipadaComEfeitoExterno`）；
+  `src/domain/actions/external-effect.ts:258`
   （`ACOES_TIPADAS_COM_EFEITO_EXTERNO`），`:266`（`ehAcaoTipadaComEfeitoExterno`），
   `:280`（`mensagemDoTetoDaAcaoTipada`）；
-  `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts:71`
+  `src/application/use-cases/execution/activate-execution.use-case.ts:71`
   （`DEV_AUTO_GIT_ACTIONS`）
-- **测试：** `apps/api/test/domain/actions/decide.spec.ts:1375`（两种类型在通配符、具体规则和 `allow` 下都输出 `require_approval`；`deny` 仍然胜出——失败情形；指向未受保护分支的 `git_commit` 和 `git_merge` 不在此列）；`apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:953`
+- **测试：** `test/domain/actions/decide.spec.ts:1375`（两种类型在通配符、具体规则和 `allow` 下都输出 `require_approval`；`deny` 仍然胜出——失败情形；指向未受保护分支的 `git_commit` 和 `git_merge` 不在此列）；`test/application/use-cases/actions/propose-action.use-case.spec.ts:953`
   （使用 Postgres：以 `pending` 产生，原因在事件中）；
-  `apps/api/test/application/use-cases/execution/activate-execution.use-case.spec.ts:473`
+  `test/application/use-cases/execution/activate-execution.use-case.spec.ts:473`
   和 `accept-parallelization.use-case.spec.ts:141`（只预置 `git_commit`）；
-  `apps/api/test/application/use-cases/actions/approve-always-action.use-case.spec.ts:795`
+  `test/application/use-cases/actions/approve-always-action.use-case.spec.ts:795`
   （「始终允许」被拒绝，400 `teto_do_sempre_permitir`）
 - **来源：** AT-347，负责人 10月1日的决定
 
@@ -5964,22 +5964,22 @@ runner seu também cai"* 换成 *"só cai o que se conectou com ESTA chave"*。�
 > （`anamnese.agent_signal`，主体不是人）还是独立的表，由谁读取
 > （Staff？一个改进界面？），保存多久？这是新的数据边界，需要 ADR（已预留 0205）。
 
-- **位置：** `apps/api/src/domain/anamnese/proficiencia-do-autor.ts:22`
+- **位置：** `src/domain/anamnese/proficiencia-do-autor.ts:22`
   （`textoDaProficienciaDoAutor`）；
-  `apps/api/src/application/use-cases/agents/send-agent-message.use-case.ts:111`
+  `src/application/use-cases/agents/send-agent-message.use-case.ts:111`
   （`resolverPerfil`），`:134`（`resolverProficiencia`）
-- **测试：** `apps/api/test/application/use-cases/agents/send-agent-message.use-case.spec.ts:254`
-  （等级发送，rationale 不发送），`:274`（读取失败，消息继续——失败情形）；`apps/api/test/domain/anamnese/proficiencia-do-autor.spec.ts`
+- **测试：** `test/application/use-cases/agents/send-agent-message.use-case.spec.ts:254`
+  （等级发送，rationale 不发送），`:274`（读取失败，消息继续——失败情形）；`test/domain/anamnese/proficiencia-do-autor.spec.ts`
 - **来源：** AT-356（前一半）
 
 ### RN-703 — 没有模型的子 agent 继承区域 lead 解析出的模型 {#rn-703}
 
 "应用到所有 agent"（RN-476）为设置目录中的每个 agent 写入一个 binding——17 行——，而 engine 在这个列表之外运行的子 agent 在任何层级都没有模型：`appsec` 以来源 `infra` 的 `agent.error`（"Nenhum modelo vinculado para esta sessão"）告终，对除 `dev-backend`/`dev-frontend` 之外的每个 `dev-<modulo>` 以及 `qa-estrategia` 也是如此。当*子 agent* 的级联找不到值（或者只找到没有人为项目选择的 workspace 全局默认值）时，它使用其区域 lead 的*已解析* binding：目录（`agent-areas.ts`）中区域的 lead，或者——对于 `appsec` → `secops` 和 `qa-estrategia` → `qa`，它们由 engine 在 lead 内部运行但不接收 handoff——旁边的一张表，只服务于这种继承。响应带有指明 lead 的 `herdadoDoLead`，`origin` 仍然是 lead 的 binding 的来源（RN-470：界面不断言自有配置）。tool calling 过滤器（RN-040）在 lead 的解析中与子 agent 的解析中同样适用。如果仍然没有模型，失败消息会说明在哪里配置。
 
-- **位置：** `apps/api/src/application/use-cases/llm/resolve-model-binding.use-case.ts:76`
-  (`leadDoSubagente`); `apps/api/src/domain/agents/agent-areas.ts:123` (`leadDoSubagente`);
-  `apps/api/src/domain/llm/binding-resolver.ts:66` (`MENSAGEM_SEM_MODELO`)
-- **测试：** `apps/api/test/application/use-cases/llm/resolve-model-binding.use-case.spec.ts`
+- **位置：** `src/application/use-cases/llm/resolve-model-binding.use-case.ts:76`
+  (`leadDoSubagente`); `src/domain/agents/agent-areas.ts:123` (`leadDoSubagente`);
+  `src/domain/llm/binding-resolver.ts:66` (`MENSAGEM_SEM_MODELO`)
+- **测试：** `test/application/use-cases/llm/resolve-model-binding.use-case.spec.ts`
   （`appsec` 继承自 `secops`，`dev-api` 继承自 `dev-lead`；lead 也没有模型时仍为 `null`——失败用例）
 - **来源：** AT-367
 
@@ -5992,10 +5992,10 @@ runner seu também cai"* 换成 *"só cai o que se conectou com ESTA chave"*。�
 - **规则：** `mergePullRequest`（属于 `local` provider）只在目标是来源的祖先时才快进；两者分叉时，构建一个有两个父提交的合并 commit（`git merge-tree --write-tree` + `commit-tree`，不用工作树，消息为 `Merge pull request #N from <branch>`，身份为 `Brabo
   Bot`）。目标的 ref 通过带期望旧值的 `update-ref` 移动，因此并发合并会失败而不是覆盖。冲突时抛出带冲突文件的 `GitMergeConflictError`：ref 保持不变，PR 仍为 `open`，`git_merge` 操作以 `failed` 结束，原因写在 `action.failed` 中，通过 HTTP 时错误为 409 `merge_conflict`。
 - **测量（AT-377）：** 来自同一基准 commit 的两个 PR（#3 和 #4）依次合并：`dev` 只剩下 #4，#3 的 commit 不再是它的祖先。旧的 `update-ref` 是强制重置。
-- **位置：** `apps/api/src/infrastructure/git/local-git-provider.ts:783`（`mergeShas`），
-  `apps/api/src/domain/git/git-errors.ts:89`（`GitMergeConflictError`），
-  `apps/api/src/interfaces/http/shared/git-provider-error.filter.ts`
-- **测试：** `apps/api/test/infrastructure/git/local-git-provider.contract.spec.ts`
+- **位置：** `src/infrastructure/git/local-git-provider.ts:783`（`mergeShas`），
+  `src/domain/git/git-errors.ts:89`（`GitMergeConflictError`），
+  `src/interfaces/http/shared/git-provider-error.filter.ts`
+- **测试：** `test/infrastructure/git/local-git-provider.contract.spec.ts`
   （"duas PRs divergentes sem conflito: os dois commits ficam no alvo, por
   commit de merge"；失败情形："conflito: recusa nomeada com os arquivos,
   alvo intacto e PR aberta"）
@@ -6008,16 +6008,16 @@ runner seu também cai"* 换成 *"só cai o que se conectou com ESTA chave"*。�
   true`、`error`，以及对 `git_merge` 而言的 `pullRequestId`；此前每次失败都写入 `{kind: 'git_push', branch: ''}`。合并冲突（`GitMergeConflictError`，RN-704）还会写入 `conflictingFiles`，并在 PR 的每个任务中写入事件 `backlog.task_merge_conflict`。`GET
   projects/:projectId/actions` 接受 `status=failed`（只与 `actionType` 一起），PR 标签页从那里读取每个打开 PR 最近一次合并拒绝：原因、文件，以及需要先解决冲突的句子。它是文字「提示」，与待处理 gate 的提示一样（RN-663）：「Merge」按钮保持可用，决定仍由人作出。批准合并会使 PR 列表失效，通道的 `action.git_merge`/`action.failed` 通知也会；「审批」中的「PRs em revisão」列表不再显示 `done` 任务。合并卡片通过成员读取（RN-655）称呼人类角色，并显示 PR 的「编号」（`#3`，而不是 `#pr-3`），本地 provider 记录 PR 的作者（`<agente>[bot]`）。
 - **测量（AT-383/AT-382，10月2日，loja-teste）：** #6 以 `failed` 结束，带有 `package.json` 中的冲突，PR 标签页仍显示「ABERTA」和「Merge」按钮，没有任何文字；操作写入的是 `kind: git_push`。一次合并执行后，PR 一直留在「Abertas」直到刷新，卡片显示用户的 UUID 和 `#pr-3`，每个本地 PR 都是「autor desconhecido」。
-- **位置：** `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:72`（`resultadoDaFalha`），
-  `apps/api/src/application/use-cases/actions/list-project-pending-actions.use-case.ts:22`（`execute`），
+- **位置：** `src/application/use-cases/actions/execute-git-action.use-case.ts:72`（`resultadoDaFalha`），
+  `src/application/use-cases/actions/list-project-pending-actions.use-case.ts:22`（`execute`），
   `apps/web/src/routes/ProjectPrsTab.tsx:65`（`ultimaRecusaDeMerge`），
   `apps/web/src/lib/canal-vivo.ts:134`（`alvosDoEvento`）
-- **测试：** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
+- **测试：** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   （"conflito de merge → kind git_merge, arquivos no resultado e evento na
   tarefa"；失败情形："falha que não é conflito não grava arquivos nem
   evento de conflito"），`apps/web/src/routes/ProjectPrsTab.test.tsx`（"conflito
   de merge: mostra motivo e arquivos..."；"recusa de OUTRA PR não aparece
-  nesta"），`apps/api/test/infrastructure/git/local-git-provider.contract.spec.ts`
+  nesta"），`test/infrastructure/git/local-git-provider.contract.spec.ts`
   （"grava o autor ao abrir..."）
 - **声明的缺口（已在 [RN-715](#rn-715) 中关闭）：** 冲突「不」会唤醒任务的 dev agent 去 rebase 并重新提交。QA 使用的路径（`DevAgentServer.correct/3`）只在 agent 处于 `:awaiting_gate` 且在「同一」任务上时起作用，而在合并时 gate 已经结束（`task.gate_resolved` 带 `done`，让 agent 进入 `finish_task`，它清空任务、worktree 和分支并领取另一个）。复用它需要决定 agent 如何在现有分支上重新接管一个 `in_review` 任务，以及 rebase 之后 gate 是否重新运行——这是设计决定，此处没有作出。任务保持 `in_review`，带有持久的 `backlog.task_merge_conflict`。
 - **来源：** AT-383，AT-382
@@ -6032,12 +6032,12 @@ runner seu também cai"* 换成 *"só cai o que se conectou com ESTA chave"*。�
 只有通配符能放行：没有它的具体规则 `auto_approve`、「Sempre
 permitir」（在源头被拒绝，[RN-642](#rn-642)）以及 `allow`（在 `permissions.json` 中）仍处于 RN-418 的上限之中，激活仍只预置 `git_commit`。即使在自动模式下仍是绝对上限的：合并（受保护分支上的类型化合并，以及通过终端的 `git merge`/`gh pr merge`）、deploy、`sudo`/`doas`、`container_remove`、`instruction_patch` 和并行化。开关切回手动会恢复审批。
 
-- **位置：** `apps/api/src/domain/actions/decide.ts:296`（`modoAutomaticoDoAgente`），
-  `:311`（`decide`）；`apps/api/src/domain/actions/external-effect.ts:294`
+- **位置：** `src/domain/actions/decide.ts:296`（`modoAutomaticoDoAgente`），
+  `:311`（`decide`）；`src/domain/actions/external-effect.ts:294`
   （`mensagemDoModoAutomaticoNoEfeitoExterno`）；
   `apps/web/src/components/OQueOPilotoLibera.tsx`
-- **测试：** `apps/api/test/domain/actions/decide.spec.ts`（自动驾驶放行 `git push`/`gh pr create` 和类型化操作；`git merge`、`gh pr merge` 和 `sudo` 仍为 `require_approval`；没有通配符时具体规则和 `allow` 仍在上限之中；通配符为 `require_approval` 时请求审批——失败情形）；
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts`
+- **测试：** `test/domain/actions/decide.spec.ts`（自动驾驶放行 `git push`/`gh pr create` 和类型化操作；`git merge`、`gh pr merge` 和 `sudo` 仍为 `require_approval`；没有通配符时具体规则和 `allow` 仍在上限之中；通配符为 `require_approval` 时请求审批——失败情形）；
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts`
   （使用 Postgres：自动批准并执行，原因在事件中；单独的具体规则以 `pending` 产生）；`apps/web/src/components/ModoAutomaticoDoTime.test.tsx`，
   `AgentCard.test.tsx`，`ApprovalCard.test.tsx`（界面说明 push 和 PR 被放行）
 - **架构决策：** [ADR 0204](../adr/0204-modo-automatico-libera-push-e-pr.md)
@@ -6050,13 +6050,13 @@ permitir」（在源头被拒绝，[RN-642](#rn-642)）以及 `allow`（在 `per
 - **规则：** 当一个 PR 已批准的合并因与 `dev` 冲突而被拒绝时（`GitMergeConflictError`，[RN-704](#rn-704)），PR 中每个处于 `in_review` 的任务回到 `in_progress`，`gate_status` 清零（QA/SecOps 的旧裁决对即将改变的分支无效），写入 `backlog.task_status_changed`，带 `cause: merge_conflict`，并把 `task.merge_conflict` 放入 outbox，带上提议 `pr_open` 的 agent（「所有者」）、PR 和冲突的文件。engine 通过 `Engine.Dev.Wake` 交给所有者；空闲时，它「重新接管」PR 的分支（`WorktreeManager.adopt/3`，同一个 `garantir_base`，不丢失 commit），并以文本中的原因运行「修正」循环：引入 `origin/dev`，通过 `git fetch`/`git merge`，解决文件，运行测试套件。在 `report_done` 中，它按常规路径提议 commit 和 push（由当前的审批策略决定），gate 从 QA「重新开始」（`open_gate` + QA），不新建 `pr_open`——PR 是同一个分支。没有新的任务状态：`in_progress`，原因在事件中。
 - **命名的结局：** 所有者在 `dev_agent_states` 中没有行——任务被「阻塞」（`conflito de merge sem dev agent para resolvê-lo`，来源 `infra`）；所有者的断路器已打开（`idle_tripped`）——被阻塞，来源 `politica`；分支无法恢复（`adopt` 失败）——被阻塞，来源 `infra`。忙碌的所有者（`working`/`awaiting_gate`/`awaiting_approval`）会在 30 秒后再次收到冲突。合并的拒绝（[RN-705](#rn-705)）不依赖于这些：在 engine 动作之前，操作已经是 `failed`，并带有原因。已不再是 `in_review` 的任务（重复合并）不会被重新打开，也不唤醒任何人，由人打开的 PR 没有可唤醒的所有者。
 - **测量（AT-383，10月2日，loja-teste）：** #6 以 `failed` 结束，原因是 `package.json` 中的冲突，任务停留在 `in_review`，没有人去解决它。
-- **位置：** `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:392`（`devolverAoDono`），
-  `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:490`（`reabrirPorConflitoDeMerge`），
+- **位置：** `src/application/use-cases/actions/execute-git-action.use-case.ts:392`（`devolverAoDono`），
+  `src/infrastructure/persistence/drizzle/backlog.repository.ts:490`（`reabrirPorConflitoDeMerge`），
   `apps/engine/lib/engine/workers/dev_agent_wake_worker.ex:151`（`task.merge_conflict`），
   `apps/engine/lib/engine/dev/dev_agent_server.ex:350`（`handle_info`），
   `apps/engine/lib/engine/dev/dev_agent_server.ex:831`（`trigger_gate_recheck`），
   `apps/engine/lib/engine/dev/worktree_manager.ex:47`（`adopt`）
-- **测试：** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts`（"conflito de merge → kind git_merge, arquivos no
+- **测试：** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`（"conflito de merge → kind git_merge, arquivos no
   resultado e evento na tarefa"；失败："RN-715: tarefa que já não está em
   revisão não é reaberta nem acorda ninguém"），
   `apps/engine/test/engine/dev/dev_agent_server_test.exs`（describe "conflito
@@ -6074,15 +6074,15 @@ permitir」（在源头被拒绝，[RN-642](#rn-642)）以及 `allow`（在 `per
 - **测量（AT-376）：** 在 10月2日的 loja-teste 中，「Git → iniciante」和「Infra →
   iniciante」出现时，该人与两者都没有互动过，「aprova 2 ADRs
   sem hesitar」被当作高级架构能力。
-- **位置：** `apps/api/src/domain/anamnese/proficiency-validation.ts:53`
-  （`ehEvidenciaObservadaDaPessoa`），`apps/api/src/domain/anamnese/proficiency-validation.ts:74`
-  （`validateProficiencyBatch`），`apps/api/src/application/use-cases/anamnese/record-proficiency.use-case.ts:189`
+- **位置：** `src/domain/anamnese/proficiency-validation.ts:53`
+  （`ehEvidenciaObservadaDaPessoa`），`src/domain/anamnese/proficiency-validation.ts:74`
+  （`validateProficiencyBatch`），`src/application/use-cases/anamnese/record-proficiency.use-case.ts:189`
   （`resolveKnownEventIds`），kickoff 中的规则（`prompts/anamnese-kickoff.md`
   v3 以及 `anamnese_worker.ex` 的内联后备）
-- **测试：** `apps/api/test/domain/anamnese/proficiency-validation.spec.ts`
+- **测试：** `test/domain/anamnese/proficiency-validation.spec.ts`
   （"RN-716: aprovação ao lado de interação da pessoa passa"；失败："só
   evidência de outro ator é \"não observado\""，"aprovação sem leitura não é
-  evidência"），`apps/api/test/application/use-cases/anamnese/record-proficiency.use-case.spec.ts`
+  evidência"），`test/application/use-cases/anamnese/record-proficiency.use-case.spec.ts`
   （"evidência só de aprovação não grava perfil nem profile_updated"）
 - **声明的缺口：** 在档案批次中识别「修复」消息由模型负责（提示词）；代码不对消息文本做分类。
 - **来源：** AT-376
@@ -6101,14 +6101,14 @@ permitir」（在源头被拒绝，[RN-642](#rn-642)）以及 `allow`（在 `per
 
 PO 的 kickoff 说明这三件事。
 
-- **位置：** `apps/api/src/application/use-cases/backlog/complete-story.use-case.ts:52`
+- **位置：** `src/application/use-cases/backlog/complete-story.use-case.ts:52`
   （`CompleteStoryUseCase`）；
-  `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts:541`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:541`
   （`completeStoryRoute`）；`apps/engine/lib/engine/harness/tools/complete_story.ex:47`
   （`run`）；`apps/engine/lib/engine/harness/tools/offer_handoff.ex:52`
   （`recusa_por_cobertura`）；`apps/engine/lib/engine/harness/tools/emit_artifact.ex:188`
   （`pergunte_antes`）
-- **测试：** `apps/api/test/application/use-cases/backlog/complete-story.use-case.spec.ts`
+- **测试：** `test/application/use-cases/backlog/complete-story.use-case.spec.ts`
   （关联规则并提议提升；`auto` 进入 `ready`；不存在的规则、其他项目和 `ready` 故事被拒绝）；
   `apps/engine/test/engine/harness/tools/offer_handoff_test.exs`（describe
   "cobertura (RN-720)"：带列表拒绝，覆盖完整时提出且自动接受继续）；`apps/engine/test/engine/harness/tools/complete_story_test.exs`；
@@ -6121,23 +6121,23 @@ PO 的 kickoff 说明这三件事。
 ### RN-727 — draft 故事可以被修正和归档，由 PO 和用户进行，不删除任何东西 {#rn-727}
 
 - **规则：** `draft` 故事，若「没有」执行中任务（`in_progress` 或 `in_review`），可以修正标题，也可以被「归档」——由 PO（工具 `update_story`，它也能修正描述，以及 `archive_story`）和用户在 Backlog 标签页中进行（「Editar título」和「Arquivar」，带确认）。两个入口经过「同一」标准（`recusaDeCorrecaoDeHistoria`），拒绝是「命名」的 409：`historia_arquivada`、`historia_nao_draft` 或 `historia_com_tarefa_em_execucao`，带有模型和 toast 显示的句子。归档「不」删除：`stories` 的那一行获得 `archived_at`/`archived_reason`（migration `0069`，[ADR 0212](../adr/0212-historia-arquivada.md)），任务保留，「新」事件 `backlog.story_archived` 保存是谁、为什么以及哪些任务；编辑写入带旧标题的 `backlog.story_updated`。归档的故事退出 backlog（包括 `listar_backlog`——PO 看不到它，以免再次补全它）、覆盖率（`computeCoverage` 只读未归档的）、提升队列、Dev Lead 的计划和领取，它的任务也随故事一起退出；状态转换、`complete_story` 和 `create_task` 拒绝已归档的故事。用户的最低角色与其他 backlog 写入（提升/退回，RN-048）相同：`developer`；低于它时按钮不可操作并以文字说明原因，对不在 `draft` 或有执行中任务的故事也一样。每个故事显示它有多少任务。
-- **位置：** `apps/api/src/domain/backlog/correcao-de-historia.ts:33`
+- **位置：** `src/domain/backlog/correcao-de-historia.ts:33`
   （`recusaDeCorrecaoDeHistoria`），
-  `apps/api/src/application/use-cases/backlog/corrigir-historia.use-case.ts:47`
+  `src/application/use-cases/backlog/corrigir-historia.use-case.ts:47`
   （`editar`），`:95`（`arquivar`），
-  `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:97`
+  `src/infrastructure/persistence/drizzle/backlog.repository.ts:97`
   （`findByProject`），`:403`（`claimNext`），
-  `apps/api/src/interfaces/http/backlog/backlog.controller.ts:205`
+  `src/interfaces/http/backlog/backlog.controller.ts:205`
   （`updateTitle`），`:219`（`archive`），
-  `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts:576`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:576`
   （`updateStoryRoute`），`:609`（`archiveStoryRoute`），
   `apps/engine/lib/engine/harness/tools/update_story.ex:45`（`run`），
   `apps/engine/lib/engine/harness/tools/archive_story.ex:38`（`run`），
   `apps/web/src/routes/ProjectBacklogTab.tsx:76`（`motivoDeCorrecaoInerte`）
-- **测试：** `apps/api/test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts`
+- **测试：** `test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts`
   （正常：标题和归档带事件；失败：`in_progress`/`in_review` 的任务为 409 `historia_com_tarefa_em_execucao`，不写入），
-  `apps/api/test/application/use-cases/execution/claim-next-task.use-case.spec.ts`
-  （"não pega task de story ARQUIVADA, nem a conta, nem a lista"，针对 Postgres），`apps/api/test/interfaces/http/backlog/backlog-corrigir-historia.controller.spec.ts`
+  `test/application/use-cases/execution/claim-next-task.use-case.spec.ts`
+  （"não pega task de story ARQUIVADA, nem a conta, nem a lista"，针对 Postgres），`test/interfaces/http/backlog/backlog-corrigir-historia.controller.spec.ts`
   （两条路由的角色与提升相同；`viewer` 达不到），
   `apps/engine/test/engine/harness/tools/corrigir_historia_test.exs`（命名的拒绝到达模型），`apps/web/src/routes/ProjectBacklogTab.test.tsx`
   （"corrigir história (RN-727)"：正常，执行中的任务和低于 `developer` 的角色使其不可操作并说明原因）
@@ -6148,14 +6148,14 @@ PO 的 kickoff 说明这三件事。
 
 - **规则：** 在 TP-01（10月3日）中测得的四个条款。
   (1) infra 的 PR（`open_infra_pr`）遵循 [RN-664](engine.md#rn-664)：分支 `feature/infra-setup` 从 `dev` 产生，PR 指向 `dev`——dev agent 的 worktree 从 `dev` 产生，所以合并到 `main` 的 Dockerfile 从未到达它。没有 `dev` 的仓库由 provider 以命名方式失败，不回落到默认分支。PR 带有作者 `<agente>[bot]`（角色不是 agent 时为 `infra[bot]`），与 [RN-705](#rn-705) 的身份相同。在「审批」中，每个审查中的 infra PR 获得「Mergear na aba PRs」，它把框架切换到 PR 标签页（合并所在之处）。(2) 打开一个项目会在侧边栏中「折叠」其他项目，并把列表滚动到它；在 Dashboard 中没有项目被强制展开；箭头仍可手动切换。(3)「Novo projeto」向导的文本字段（名称、路径、接管的仓库）带有 `SEM_AUTOFILL`，与 [RN-693](web.md#rn-693) 的属性集相同。(4) 在 PR 标签页决定一次合并会使项目的整个待处理队列失效，因此侧边栏的「PRs」计数器不会在下一次轮询之前一直显示已执行的合并；QA（或 SecOps）的 lead 在最后一份意见之后、当该区域的某个子 agent 记录 `delegation.failed` 时，不再显示「trabalhando」——改为 `falhou`。没有新的查询或轮询。
-- **位置：** `apps/api/src/application/use-cases/actions/execute-infra-pr.use-case.ts:71`
+- **位置：** `src/application/use-cases/actions/execute-infra-pr.use-case.ts:71`
   （`ExecuteInfraPrUseCase`），
   `apps/web/src/routes/ProjectApprovalsTab.tsx:106`（`ProjectApprovalsTab`），
   `apps/web/src/routes/Shell.tsx:545`（`idDoProjetoAtual`），
   `apps/web/src/routes/NewProjectWizard.tsx:155`（`NewProjectWizard`），
   `apps/web/src/routes/ProjectPrsTab.tsx:141`（`invalidateMergeActions`），
   `apps/web/src/lib/agent-status.ts:222`（`gateStatus`）
-- **测试：** `apps/api/test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts`
+- **测试：** `test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts`
   （"a branch nasce de dev, a PR mira dev e leva infra[bot]"；失败：
   "repositório sem dev falha nomeado, sem cair na default"），
   `apps/web/src/routes/Shell.test.tsx`（"abrir um projeto recolhe o visitado
@@ -6168,17 +6168,17 @@ PO 的 kickoff 说明这三件事。
 ### RN-730 — provider 的 402 有自己的 `code`，由它决定额度是否耗尽 {#rn-730}
 
 - **规则：** LLM provider 的 HTTP 402 被规范化为 `insufficient_credit`（此前落入 `upstream`），在 ADR 0041 的同一状态表中——其他状态保持不变。`code` 以 `errorCode` 的形式与 `error` 一起传到 engine，位于 `llm-turn` 的响应体和 `final` 帧（属于 `llm-turn/stream`）中（没有错误或错误不来自 provider 时为 `null`，例如预算和缺少 binding）。在 engine 中，`FalhaDeTurno.credito_esgotado?/1` 首先按 `code` 决定（`insufficient_credit` 是额度问题；其他 `code` 不是，即使带有那句话），对话型 agent 的 `{:final, texto, code}` 帧按代码给出来源 `infra`。RN-726 的按文本识别只作为「兜底」：没有该字段的旧版 api，以及只带消息的路径。
-- **位置：** `apps/api/src/domain/llm/llm-provider-errors.ts:38`
+- **位置：** `src/domain/llm/llm-provider-errors.ts:38`
   （`LLMInsufficientCreditError`），`:81`（`normalizeHttpStatus`），
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:207`
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:207`
   （`streamErrorCode`），
-  `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:219`
+  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:219`
   （`streamErrorCode`），
   `apps/engine/lib/engine/agents/falha_de_turno.ex:83`（`credito_esgotado?`），
   `:71`（`origem`），`apps/engine/lib/engine/harness/tool_loop.ex:148`
   （`last_error_code`），`apps/engine/lib/engine/dev/dev_agent_server.ex:906`
   （`handle_outcome`）
-- **测试：** `apps/api/test/contract/llm-provider.contract.ts`（`erro_402 vira
+- **测试：** `test/contract/llm-provider.contract.ts`（`erro_402 vira
   chunk de erro com code "insufficient_credit"`；失败：`erro_500` 仍为 `upstream`），由所有 provider 契约套件运行；
   `apps/engine/test/engine/agents/falha_de_turno_test.exs`（"insufficient_credit
   é crédito esgotado e origem infra, sem frase nenhuma"；失败："outro code não
@@ -6189,9 +6189,9 @@ PO 的 kickoff 说明这三件事。
 
 - **规则：** 通过 `/chat/completions` 方言的每次聊天调用（从 `OpenAICompatibleProvider` 派生的 provider，包括 OpenRouter）都带有输出上限字段——`max_tokens` 或 `max_completion_tokens`，取决于 `maxTokensField`——即使调用方没有定义 `maxTokens`。未定义时，值为 `MAX_TOKENS_PADRAO`（4096），与 `DEFAULT_MAX_TOKENS`（属于 `anthropic-provider.ts`）「相同」，让 agent 在两种方言中有相同的上限。原因是额度的「预留」：没有该字段时，OpenRouter 每次调用都预留模型的「最大」输出，并以 402（「would exceed your available credits given your current in-flight
   requests」）拒绝，而余额本足以支付真实调用。目前没有任何调用方（engine → `llm-turn`）定义 `maxTokens`，因此默认值适用于所有 agent。被上限截断的回答（`finish_reason: "length"`）自 [RN-737](#rn-737) 起会被读取并叙述（RN-698 叙述的是「迭代」上限，不是 token 上限）。「未」用真实密钥测量的假设：预留解释了 TP-01 的 402。
-- **位置：** `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:38`
+- **位置：** `src/infrastructure/llm/openai-compatible-provider.ts:38`
   （`MAX_TOKENS_PADRAO`），`:484`（`flags`）
-- **测试：** `apps/api/test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
+- **测试：** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
   （没有 `maxTokens` 时请求体带 `max_tokens: 4096`；有 `maxTokens: 123` 时带 123；有 `maxTokensField: 'max_completion_tokens'` 时字段改变，`max_tokens` 不发送）
 - **来源：** AT-419（10月3日的 TP-01：可用 1.79 美元，Dev Lead 和 dev agent 的调用却返回 402）
 
@@ -6203,18 +6203,18 @@ PO 的 kickoff 说明这三件事。
   argumento em partes menores」），模型读到后会修正（RN-163）；(b) 被截断的文本收尾在模型文本「之后」、不改写它地加上一行，使用轮次的语言（RN-622，仿照 RN-731）：`pt*` 为「Resposta
   cortada pelo limite de tamanho.」，其他任何语言——或没有——为「Response cut
   off by the length limit.」。Ollama 不读取停止原因（不在范围内，已声明）。
-- **位置：** `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:257`
+- **位置：** `src/infrastructure/llm/openai-compatible-provider.ts:257`
   （`cortadaPeloTeto`），
-  `apps/api/src/infrastructure/llm/anthropic-provider.ts:198`（`finalMessage`），
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:204`
+  `src/infrastructure/llm/anthropic-provider.ts:198`（`finalMessage`），
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:204`
   （`truncated`），
-  `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:217`
+  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:217`
   （`truncated`），
   `apps/engine/lib/engine/harness/resposta_cortada.ex:43`（`registrar`），
   `:89`（`descarregar`），
   `apps/engine/lib/engine/harness/argumentos_de_ferramenta.ex:26`（`executar`），
   `apps/engine/lib/engine/agents/texto_do_turno.ex:65`（`payload_do_turno`）
-- **测试：** `apps/api/test/contract/llm-provider.contract.ts`（"resposta
+- **测试：** `test/contract/llm-provider.contract.ts`（"resposta
   cortada pelo teto de saída emite o sinal truncated" 和 "resposta normal não
   traz o sinal de corte"，由 OpenAI 兼容和 Anthropic 的 harness 用假服务器运行），
   `apps/engine/test/engine/harness/resposta_cortada_test.exs`（被截断回答中的工具不运行并返回命名的错误；正常回答运行；被截断的收尾以 pt-BR 加上这一行而不改写；正常收尾不变；pt/en）
@@ -6223,10 +6223,10 @@ PO 的 kickoff 说明这三件事。
 ### RN-739 — 诊断带上 provider 完整的错误体，气泡保持简短 {#rn-739}
 
 - **规则：** provider 规范化错误（ADR 0041）的消息带上错误体，最多 `LIMITE_DO_DETALHE` = 4 000 个字符（原为 200，会在说明错误性质的 `metadata.reason` 之前截断 OpenRouter 的 JSON）。这条消息是最终帧的文本，并原样成为 `reason`（属于 `agent.error`）（`FalhaDeTurno.diagnostico/1`，RN-733）。气泡的句子「不」随之变长：在额度情形之外（它已有简短句子），叙述的文本进入气泡时截断到 300 个字符并加上「…」。
-- **位置：** `apps/api/src/domain/llm/llm-provider-errors.ts:159`
+- **位置：** `src/domain/llm/llm-provider-errors.ts:159`
   （`LIMITE_DO_DETALHE`），`apps/engine/lib/engine/agents/falha_de_turno.ex:284`
   （`@teto_da_bolha`），`:286`（`curto`）
-- **测试：** `apps/api/test/domain/llm/llm-provider-errors.spec.ts`（402 完整带有 `"metadata":{"reason":"insufficient_credits"`；超出上限的错误体被截断），`apps/engine/test/engine/agents/falha_de_turno_test.exs`
+- **测试：** `test/domain/llm/llm-provider-errors.spec.ts`（402 完整带有 `"metadata":{"reason":"insufficient_credits"`；超出上限的错误体被截断），`apps/engine/test/engine/agents/falha_de_turno_test.exs`
   （RN-739：`reason` 包含 `metadata`；长错误在气泡中截断，在诊断中不截断）
 - **来源：** AT-424（TP-01，第 3 轮，10月3日：`reason` 在 `…"code":402,"metadata":{"reason":"in…` 处被截断）
 
@@ -6235,9 +6235,9 @@ PO 的 kickoff 说明这三件事。
 - **规则：** 当 binding 的模型会推理时（`models.supports_reasoning`，来自目录），LLM 用例向 provider 发送 `reasoning: true`。配置了 `campoDeRaciocinio` 的 provider（目前只有 OpenRouter）发送「明确」的推理预算——`reasoning: { max_tokens:
   ORCAMENTO_DE_RACIOCINIO }`，4096——调用的 `max_tokens` 改为可见输出（RN-734 的上限）「加上」这个预算，让文本和工具调用保留各自的上限。推理从不被关闭（不发送 `exclude`/`enabled: false`）。不推理的模型以及没有该配置的 provider，发送与以前逐字节相同的请求体。直接的 `anthropic-provider` 不发送 `thinking`，因此模型在那里不推理，这个漏洞不存在——已声明，没有改动。字段的形式取自 OpenRouter 的文档（Reasoning Tokens：`reasoning.max_tokens`；调用的 `max_tokens` 必须大于它）。
   **由 [RN-782](#rn-782)/[RN-783](#rn-783) 修订（AT-467）：** 10月10日用凭据进行的测量表明 Haiku 5.5「忽略」`reasoning.max_tokens`；该字段不再发送，`max_tokens` 中的余量保留。
-- **位置：** `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:48`
+- **位置：** `src/infrastructure/llm/openai-compatible-provider.ts:48`
   （`ORCAMENTO_DE_RACIOCINIO`），`:490`（`controla`）
-- **测试：** `apps/api/test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
+- **测试：** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
   （`raciocínio com orçamento próprio (RN-741)`：预算与相加后的上限；没有推理时请求体不变；没有该字段的 provider 不捏造预算）
 - **来源：** AT-427（TP-01，10月8日：`anthropic/claude-haiku-5.5` 在 PO 的两次连续调用中 `output_tokens = reasoning_tokens = 4096`）
 
@@ -6245,19 +6245,19 @@ PO 的 kickoff 说明这三件事。
 
 - **规则：** 读取 `GET .../infra-artifacts`（「审批」标签页的「PRs de infra em
   revisão」一节）不返回其 PR 已被合并的 infra 产物。产物的 gate 以 `awaiting_user` 结束，合并后没有任何东西移动它；不新增列，标准是「推导」的：产物的 PR 是 `pullRequestId`，取自打开它的 `open_infra_pr` 的结果（`prActionId`），当项目中某个 `git_merge` 状态为 `executed` 且为该 id 返回了 `state: 'merged'` 时它就是已合并的——与关闭任务所用的按 `pullRequestId` 匹配相同（RN-628）。失败或仍待处理的合并不会从列表中移除任何东西。在消息流或「需要你处理」面板中提示「PR de infra pronta para merge」此处「没有」做。
-- **位置：** `apps/api/src/application/use-cases/execution/list-infra-artifacts.use-case.ts:26`
+- **位置：** `src/application/use-cases/execution/list-infra-artifacts.use-case.ts:26`
   （`execute`）
-- **测试：** `apps/api/test/application/use-cases/execution/list-infra-artifacts.use-case.spec.ts`
+- **测试：** `test/application/use-cases/execution/list-infra-artifacts.use-case.spec.ts`
   （已执行的合并移除该 PR；失败或待处理的合并保留它）
 - **来源：** AT-436（TP-01：在 PR 标签页「Merge」→「Aprovar」之后，PR 仍显示 Dev ✓ QA ✓ SecOps ✓ 以及待处理的「Você」）
 
 ### RN-758 — Jev 的截取绝不会拿走 agent 必需的工具 {#rn-758}
 
 - **规则：** 当 Jev 截取该步骤的菜单时（[RN-625](engine.md#rn-625)，P3），菜单会补回 agent 的「下限」：对 PO 是 `create_story` 和 `create_task`；对 Arquiteto 是 `create_module_map`、`route_modules_to_infra`、`declare_module_contracts`、`propose_adr` 和 `create_c4_diagram`。只加入该步骤目录中有的——下限绝不增加 agent 原本没有的工具，任何回退时完整目录照旧。下限按 agent 是「静态」的，这一点已声明：api 没有廉价的信号知道该步骤哪项义务待完成，因此只要有截取它就生效。dev agents 有意没有下限（它们的义务每步都在变；对它们只适用 [RN-759](#rn-759)）——除了 `report_done`/`report_blocked`，自 [RN-839](#rn-839) 起它们进入了 dev agents 的下限。
-- **位置：** `apps/api/src/domain/llm/tool-router.ts:392`（`menuComPiso`）和
-  `apps/api/src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:248`
+- **位置：** `src/domain/llm/tool-router.ts:392`（`menuComPiso`）和
+  `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:248`
   （`menuComPiso`）
-- **测试：** `apps/api/test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
+- **测试：** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
   （菜单为 `["listar_backlog","create_story"]` 的 PO 保留 `create_task`；9 个中有 2 个的 Arquiteto 保留五个产物工具）
 - **来源：** AT-445（10月9日的 TP-01：没有 `create_task` 的 PO 回答「Não
   tenho uma ferramenta para criar tarefas」并以 8 个没有任务的故事收尾；9 个中只有 2 个的 Arquiteto 收尾时没有路由、契约、ADR 和 C4）
@@ -6265,10 +6265,10 @@ PO 的 kickoff 说明这三件事。
 ### RN-759 — 被截取的步骤会告知模型菜单是一个截取 {#rn-759}
 
 - **规则：** 当应用了 Jev 的截取时（`aplicado: true`），对「该」步骤的 provider 调用在末尾带上一条「临时」`system` 消息，说明该步骤收到了多少个以及哪些工具，其余的在后续轮次中仍然可用，agent 不应断定自己没有某个工具，也不应为等它而结束轮次。它绝不进入 agent 的历史，也不进入 event log，没有截取或回退时不存在。它在 api 中组装，而不是像 [RN-622](engine.md#rn-622) 那样在 engine 的门面中，因为只有 api 知道 Jev 之后的菜单。评估过在结束轮次的那一轮不应用截取但没有做：api 在回应之前不知道这一轮会是最后一轮。
-- **位置：** `apps/api/src/domain/llm/tool-router.ts:411`（`avisoDeRecorte`）和
-  `apps/api/src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:263`
+- **位置：** `src/domain/llm/tool-router.ts:411`（`avisoDeRecorte`）和
+  `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:263`
   （`avisoDeRecorte`）
-- **测试：** `apps/api/test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
+- **测试：** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
   （有截取时提示作为最后一条消息到达；没有截取和回退时，消息就是请求中的那些）
 - **来源：** AT-445（dev agent 在拥有 `write_file` 的情况下以「sem ferramenta para
   editar arquivos」阻塞了一个任务）
@@ -6280,14 +6280,14 @@ PO 的 kickoff 说明这三件事。
   2. dev agent 的 commit（`git_commit`）以及阻塞时保留 worktree 的 commit（[RN-743](engine.md#rn-743)）暂存除这些目录「以外」的所有内容，任意深度（pathspec `:(exclude,glob)`），即使没有 `.gitignore`；
   3. SecOps gate 把出现在 PR diff 中的列表目录作为发现（`changes_requested`）指出，并附文件数量。
   列表的两份副本（api 和 engine）由测试对照。已声明：本规则之前「已经」被跟踪的依赖文件不会被 commit 移除（排除不会暂存删除）；已 bootstrap 的项目只有在 bootstrap 再次运行时才得到 `.gitignore`；在 `runner` 模式下 commit 通过同一个 `GitExecutor` 运行，同样的排除在 engine 执行 git 的地方生效。
-- **位置：** `apps/api/src/application/use-cases/git/bootstrap-templates.ts:28`
-  （`gitignoreContent`），`apps/api/src/application/use-cases/git/bootstrap-steps.ts:164`
+- **位置：** `src/application/use-cases/git/bootstrap-templates.ts:28`
+  （`gitignoreContent`），`src/application/use-cases/git/bootstrap-steps.ts:164`
   （`soSeAusente`），`apps/engine/lib/engine/actions/diretorios_de_dependencia.ex:20`
   （`argumentos_do_add`），`:28`（`commitados`），
   `apps/engine/lib/engine/gates/secops_agent_server.ex:162`
   （`dependencias_commitadas`）
-- **测试：** `apps/api/test/application/use-cases/git/bootstrap-plan.spec.ts`
-  （空仓库计划 3 个文件；用户的 `.gitignore` 不进入计划），`apps/api/test/application/use-cases/git/provision-repository.use-case.spec.ts`
+- **测试：** `test/application/use-cases/git/bootstrap-plan.spec.ts`
+  （空仓库计划 3 个文件；用户的 `.gitignore` 不进入计划），`test/application/use-cases/git/provision-repository.use-case.spec.ts`
   （本地收敛 6 个步骤），
   `apps/engine/test/engine/actions/git_executor_test.exs`（`commit exclui
   diretórios de dependência mesmo sem .gitignore`），
@@ -6297,16 +6297,16 @@ PO 的 kickoff 说明这三件事。
 ### RN-762 — 因修正周期耗尽而阻塞时记录来源 `politica` {#rn-762}
 
 - **规则：** 当 gate 用尽修正上限（`maxGateCorrections`），task 以「ciclo de correção esgotado (gate)」被阻塞时，`backlog.task_blocked` 和 task 行都带有 `origin: "politica"`——上限是配置决定，不是真实失败（ADR 0020 的词汇，RN-059 的规则）。此前输出 `origin: null`。同一原因导致的 infra 产物阻塞（`infra.artifact_blocked`）没有来源字段，保持原样，已声明。
-- **位置：** `apps/api/src/application/use-cases/execution/record-gate-verdict.use-case.ts:215`
+- **位置：** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:215`
   （`politica`）
-- **测试：** `apps/api/test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
+- **测试：** `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
   （耗尽的周期调用 `MarkTaskBlockedUseCase`，带 `'politica'`；批准的裁决不阻塞）
 - **来源：** AT-450（10月9日的 TP-01：`backlog.task_blocked` 带 `origin: null`）
 
 ### RN-770 — 项目界面的小问题：ADR PR 的作者、Infra 的模型、dev PR 的标题、执行的徽章、路径和表格 {#rn-770}
 
 - **规则：** (1) ADR 的 PR 带上 agent 的身份（`<agente>[bot]`，否则 `arquiteto[bot]`），与 infra 的一样（[RN-729](#rn-729)）——PR 标签页不再显示「autor desconhecido」；(2) Infra Lead 的 `agent.response` 带有最终帧的 `modelName`，与其他对话型 agent 一样——气泡不再显示「modelo não registrado」；(3) dev agent 的 PR 标题以「任务」开头，然后是故事（`<tarefa> — <história>`），这样同一故事的三个 PR 在末尾被截断时看起来不会一样；(4) 有活动执行时（与 [RN-769](web.md#rn-769) 相同的谓词），会话栏显示「Execução」而不是写入的 `kind`（`criativa`，它不变——[RN-097](#rn-097)），composer 在 Criativo 激活之前不提供它；(5) 在创建确认中，路径的每一段都是 `nowrap`：只在斜杠之后换行，绝不在连字符处；(6) 气泡中的 Markdown 表格每「列」下限为 `12rem`，按比例增长，容器为 `min-content`——用 `max-content` 时它会是不换行文本的宽度（在 Chromium 中测得：在 708px 的气泡中为 2 236px），最后一列消失。
-- **位置：** `apps/api/src/application/use-cases/actions/execute-adr-pr.use-case.ts:96`
+- **位置：** `src/application/use-cases/actions/execute-adr-pr.use-case.ts:96`
   （`openPullRequest`）；`apps/engine/lib/engine/infra/infra_lead_server.ex:1521`
   （`gravar_texto_do_turno`）；`apps/engine/lib/engine/dev/dev_agent_server.ex:1164`
   （`propose_pr`）；`apps/web/src/lib/session-destinatario.ts:210`
@@ -6314,7 +6314,7 @@ PO 的 kickoff 说明这三件事。
   （`tipoDaSessao`）；`apps/web/src/routes/NewProjectWizard.tsx:1122`
   （`quebraPorSegmento`）；`apps/web/src/components/ui/MarkdownMessage.tsx:139`
   （`TabelaMarkdown`）
-- **测试：** `apps/api/test/application/use-cases/actions/execute-adr-pr.use-case.spec.ts`，
+- **测试：** `test/application/use-cases/actions/execute-adr-pr.use-case.spec.ts`，
   `apps/engine/test/engine/infra/infra_lead_server_test.exs`（"agent.response
   carrega o nome do modelo"），`apps/engine/test/engine/dev/dev_agent_server_test.exs`
   （正常流程），`apps/web/src/lib/session-destinatario.test.ts`，
@@ -6325,49 +6325,49 @@ PO 的 kickoff 说明这三件事。
 ### RN-776 — 在等人处理的执行任务会保住执行会话 {#rn-776}
 
 - **规则：** 心跳不会关闭项目的「当前」执行会话（最近一个 `active` 且带 `execution.activated` 的会话），只要还有未归档故事的任务处于「阻塞」、PR 处于 `awaiting_user`，或因合并冲突被退回（[RN-715](#rn-715)，本会话中的 `backlog.task_merge_conflict`）且仍为 `in_progress`。这是 [RN-064](web.md#rn-064) 的第六个信号，没有上限，与其他等人的信号一样；它在对话空闲信号（[RN-581](#rn-581)）之前，后者仍是唯一有上限的。同一项目「旧的」执行会话不会被任务保住：任务属于项目，没有这个截取它将永不消亡。
-- **位置：** `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts:242`
-  （`findPendenteDaExecucao`），`apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:252`
+- **位置：** `src/application/use-cases/sessions/get-session-pending-work.use-case.ts:242`
+  （`findPendenteDaExecucao`），`src/infrastructure/persistence/drizzle/backlog.repository.ts:252`
   （`findPendenteDaExecucao`）
-- **测试：** `apps/api/test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts`
+- **测试：** `test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts`
   （阻塞的、PR 等待合并的和冲突的会保住；什么都没有时关闭；旧的执行会话不被保住）
 - **来源：** AT-457（10月9日的 TP-01：两个执行会话都在 `dev.idle` 之后 2–8 秒关闭，当时有被阻塞的任务和等待合并的 PR）
 
 ### RN-777 — 解除任务阻塞会唤醒「它」所属模块的 dev {#rn-777}
 
 - **规则：** `task.became_claimable` 的原因为 `task_unblocked` 时，以任务的模块作为 `modules`（`tasks.module`，[RN-678](#rn-678)），在它存在时，只有任务没有模块时才用故事的模块——领取按任务的模块进行，所以要唤醒的是它的 dev。合并冲突已经会唤醒所有者（[RN-715](#rn-715)）；执行会话保持运行时（[RN-776](#rn-776)），所有者在 `dev_agent_states` 中仍有行可被唤醒。
-- **位置：** `apps/api/src/application/use-cases/execution/unblock-task.use-case.ts:68`
+- **位置：** `src/application/use-cases/execution/unblock-task.use-case.ts:68`
   （`modules`）
-- **测试：** `apps/api/test/application/use-cases/execution/unblock-task.use-case.spec.ts`
+- **测试：** `test/application/use-cases/execution/unblock-task.use-case.spec.ts`
   （有模块的任务唤醒该模块的 dev）
 - **来源：** AT-457
 
 ### RN-782 — 接受推理参数不等于请求推理 {#rn-782}
 
 - **规则：** 修订 [RN-741](#rn-741)。具有 `supportsReasoning` 的模型（在 OpenRouter 中是 `reasoning`，位于 `supported_parameters`——478 个模型中有 341 个，也就是说「接受该参数」，而不是「会推理」）在上限中继续保留「余量」：`max_tokens` = 可见输出（RN-734）+ `ORCAMENTO_DE_RACIOCINIO`（4096）。去掉的是 `reasoning: { max_tokens }` 字段：它不再发送给任何模型。10月10日的付费测量（AT-467）：在没有该字段时不推理的 `anthropic/claude-haiku-4.5` 上，它在 74% 的调用中「开启」了推理，成本为 2.8 倍；在 `anthropic/claude-haiku-5.5` 上它被「忽略」（请求 1024，仅推理就花了 8192）。请求什么的决定只在一处，`opcoesDeRaciocinio`，由三个轮次用例调用。RN-741 的 TODO(humano) 随这次测量关闭。
-- **位置：** `apps/api/src/domain/llm/raciocinio-do-agente.ts:18`
-  （`opcoesDeRaciocinio`），`apps/api/src/infrastructure/llm/openai-compatible-provider.ts:490`
-  （`controla`），`apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:189`
+- **位置：** `src/domain/llm/raciocinio-do-agente.ts:18`
+  （`opcoesDeRaciocinio`），`src/infrastructure/llm/openai-compatible-provider.ts:490`
+  （`controla`），`src/application/use-cases/llm/run-llm-turn.use-case.ts:189`
   （`opcoesDeRaciocinio`）
-- **测试：** `apps/api/test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
-  （`modelo que raciocina: folga no teto e NENHUM campo de raciocínio (RN-782)`，请求体逐字节），`apps/api/test/domain/llm/raciocinio-do-agente.spec.ts`
+- **测试：** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
+  （`modelo que raciocina: folga no teto e NENHUM campo de raciocínio (RN-782)`，请求体逐字节），`test/domain/llm/raciocinio-do-agente.spec.ts`
 - **来源：** AT-467（10月10日的付费测量）
 
 ### RN-783 — 执行型 dev agents 在关闭推理的情况下运行 {#rn-783}
 
 - **规则：** 负责人 10月10日的决定。对于 `dev-<modulo>` agent（Dev Lead，`dev-lead`，是对话型，不在此列），若其模型具有 `supportsReasoning`，能够表达「关闭」的 provider（目前只有 OpenRouter，`campoDeRaciocinioDesligado`）发送 `reasoning: { enabled: false }`，保留 [RN-782](#rn-782) 的余量。在 Haiku 5.5 上测得：8 个回答中 0 个被截断，成本 −42%。对话型 agent 和 gates 不变（没有该字段），没有 `supportsReasoning` 的模型什么也不发送。这不是静默的：模型目录中「thinking」维度的帮助说明，在执行型 dev agents 中以及自 RN-838 起在 QA de Automação 中，推理是关闭的（所选的最低值；选择器和气泡不变）。
-- **位置：** `apps/api/src/domain/llm/raciocinio-do-agente.ts:23`
-  （`raciocinioDesligadoParaOAgente`），`apps/api/src/infrastructure/llm/openrouter-provider.ts:224`
+- **位置：** `src/domain/llm/raciocinio-do-agente.ts:23`
+  （`raciocinioDesligadoParaOAgente`），`src/infrastructure/llm/openrouter-provider.ts:224`
   （`campoDeRaciocinioDesligadoOpenRouter`）
-- **测试：** `apps/api/test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
+- **测试：** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
   （`dev agent: raciocínio desligado explícito, com a folga (RN-783)`），
-  `apps/api/test/domain/llm/raciocinio-do-agente.spec.ts`（dev-* 关闭；criativo 和 dev-lead 只有余量；没有 `supportsReasoning` 时什么也不发）
+  `test/domain/llm/raciocinio-do-agente.spec.ts`（dev-* 关闭；criativo 和 dev-lead 只有余量；没有 `supportsReasoning` 时什么也不发）
 - **来源：** AT-467（负责人 10月10日的决定）
 
 ### RN-784 — Arquiteto 的状态读取进入 Jev 的下限 {#rn-784}
 
 - **规则：** 修订 [RN-758](#rn-758) 和 [RN-772](engine.md#rn-772)（负责人的决定）。Arquiteto 的下限增加 `listar_adrs_propostas` 和 `listar_backlog`：Jev 的截取绝不去掉它们，这样 Arquiteto 不会在无法查询的情况下断言 ADR 的状态或 backlog 的任务（[RN-773](engine.md#rn-773)）。下限只交还该步骤目录中已有的内容，这一点仍然有效。
-- **位置：** `apps/api/src/domain/llm/tool-router.ts:311`（`PISO_DO_MENU`）
-- **测试：** `apps/api/test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
+- **位置：** `src/domain/llm/tool-router.ts:311`（`PISO_DO_MENU`）
+- **测试：** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
   （`Arquiteto recortado pelo Jev: as leituras de estado (ADRs propostas,
   backlog) continuam no menu (RN-784)`）
 - **来源：** AT-460（10月9日的 TP-01：Jev 从 Arquiteto 的菜单中去掉了 AT-454 的读取）
@@ -6375,10 +6375,10 @@ PO 的 kickoff 说明这三件事。
 ### RN-785 — 依赖另一个尚未完成的故事的需求，在 QA gate 中是观察 {#rn-785}
 
 - **规则：** 除了兄弟任务（[RN-765](engine.md#rn-765)），QA 策略和 QA 自动化收到的截取还带有同一模块中「其他」故事「未」完成的任务，附故事标题（`moduleOpenTasks`，位于 `GET .../dev-context`）。模块是任务的模块，否则是请求的，否则是故事的；已归档的故事被排除。受控读取（ADR 0060）：最多 20 个，真实总数在 `moduleOpenTasksTotal` 中，截断在截取中说明。交付中依赖于另一个故事尚未交付内容（一条路由、一个界面）的需求，作为观察进入 `resumo`，不导致否决。这是「提示词」标准，与 RN-765 相同。
-- **位置：** `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:210`
+- **位置：** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:210`
   （`tarefasAbertasDoModulo`），`apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
   （`texto`）
-- **测试：** `apps/api/test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
+- **测试：** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   （只有同一模块另一个故事的未完成任务；已归档的排除；上限带真实总数）和 `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
   （未完成的任务以及文本中的截断）。QA 的 golden-set 没有增加用例（裁决需要付费调用）——已声明。
 - **来源：** AT-461（10月9日的 TP-01，会话 `80e3ce09`：任务「middleware
@@ -6388,13 +6388,13 @@ PO 的 kickoff 说明这三件事。
 ### RN-786 — QA 的 gate 读取模块的契约，与故事的分歧是观察 {#rn-786}
 
 - **规则：** QA 策略和 QA 自动化收到的截取带有任务所属模块的「当前」契约（`artifact.module_contracts`，[RN-684](#rn-684)），位于 `moduleContract` 中（属于 `GET .../dev-context`），作为「接口」的来源。模块是任务的模块，否则是请求的，否则是故事唯一的模块；有多个模块的故事且任务没有模块时是有歧义的，不带契约。当故事与契约在某个接口名称上（路由、函数、事件）不一致时，遵循契约的交付不因此被否决：意见在 `resumo` 中点明这一「分歧」（故事说 X，契约说 Y），供用户和 Arquiteto 参考。「提示词」标准，与 [RN-765](engine.md#rn-765) 相同。自 [RN-792](engine.md#rn-792) 起，Arquiteto 在声明契约时会对照故事中引用的路由检查它。
-- **位置：** `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:255`
+- **位置：** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:255`
   （`moduloDoContrato`），`apps/engine/lib/engine/gates/recorte_da_tarefa.ex:66`
 
-- **位置：** `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:255`
+- **位置：** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:255`
   （`moduloDoContrato`），`apps/engine/lib/engine/gates/recorte_da_tarefa.ex:70`
   （`secao_do_contrato`）
-- **测试：** `apps/api/test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
+- **测试：** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   （故事所属模块的契约；没有契约或模块有歧义时为 `null`）和
   `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`（契约一节带分歧标准；没有契约时没有该节）
 - **来源：** AT-462（10月9日的 TP-01，会话 `80e3ce09`：故事要求 `GET /painel`，契约声明了 `GET /panel`，dev 遵循了契约，QA 按故事否决了）
@@ -6406,19 +6406,19 @@ PO 的 kickoff 说明这三件事。
 
 倍数只在 engine 中*应用*（`Engine.Dev.TetoDaTarefa`）；api 有一个声明的镜像，因为界面不应该复制这个常量，而提议时不会询问 engine。改一个就要改另一个。
 
-- **位置：** `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts:83` (`MULTIPLICADOR_DA_PRIMEIRA_TAREFA_DO_MODULO`);
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:237` (`multiplicadorDaPrimeiraDoModulo`);
+- **位置：** `src/application/use-cases/execution/activate-execution.use-case.ts:83` (`MULTIPLICADOR_DA_PRIMEIRA_TAREFA_DO_MODULO`);
+  `src/application/use-cases/actions/propose-action.use-case.ts:237` (`multiplicadorDaPrimeiraDoModulo`);
   `apps/web/src/lib/aprovacoes.ts:346` (`multiplicador`)
 - **测试：** `apps/web/src/lib/aprovacoes.test.ts`（it "RN-802 (AT-473)"：8 个任务、1 个模块 → US$ 4.50；3 个任务、2 个模块 → US$ 2.50；没有预算则没有数字——失败用例）；
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts`（"plano válido nasce pending"）
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts`（"plano válido nasce pending"）
 - **来源：** AT-473
 
 ### RN-809 — Arquiteto 关于模块和镜像的义务进入 Jev 的下限 {#rn-809}
 
 - **规则：** 扩展 [RN-758](#rn-758) 和 [RN-784](#rn-784)。Arquiteto 的下限增加 `assign_story_modules` 和 `choose_project_image`，即它 kickoff 的第 2 和第 3 步（`arquiteto_server.ex`）：Jev 的截取绝不去掉它们，Arquiteto 不会在故事没有模块、镜像未决定时以工具「não está disponível nesta
   etapa」收尾。`emit_insight`（第 8 步，记录张力）和 `emit_artifact` 不在下限之中：它们不是该阶段的义务。下限只交还该步骤目录中已有的内容，这一点仍然有效。
-- **位置：** `apps/api/src/domain/llm/tool-router.ts:311`（`PISO_DO_MENU`）
-- **测试：** `apps/api/test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
+- **位置：** `src/domain/llm/tool-router.ts:311`（`PISO_DO_MENU`）
+- **测试：** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
   （`Arquiteto recortado pelo Jev sem assign_story_modules/choose_project_image:
   as duas continuam no menu (RN-809)`）
 - **来源：** AT-481（TP-01：截取只留下 11 个工具中的 7 个，Arquiteto 没有把故事分配到模块）
@@ -6426,10 +6426,10 @@ PO 的 kickoff 说明这三件事。
 ### RN-812 — 同一分支已打开的 PR 会被复用，绝不重复 {#rn-812}
 
 - **规则：** 在为 `pr_open` 打开 PR 之前，执行器询问 provider（`listPullRequests`，只看打开的）是否已有来源和目标都相同的「打开」PR。如果有，就复用它：操作以 `executed` 结束，带它的 URL 和 id 以及 `reaproveitada: true`，不再打开另一个——task 的 push 已经更新了它。在真实使用中，阻塞后重新打开的 task 在 pr-8 仍打开时为同一分支打开了 pr-9，PR 标签页显示了两个。没有列表功能的 provider，或列表失败，都不妨碍打开：常规路径照旧。[RN-797](engine.md#rn-797) 以「已在 dev 中」关闭的分支所对应的 PR 保持原样：它不会在 provider 中被关闭。
-- **位置：** `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:32`
-  （`prAbertaDaBranch`），`apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:204`
+- **位置：** `src/application/use-cases/actions/execute-git-action.use-case.ts:32`
+  （`prAbertaDaBranch`），`src/application/use-cases/actions/execute-git-action.use-case.ts:204`
   （`prAbertaDaBranch`）
-- **测试：** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
+- **测试：** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   （"pr_open com PR aberta da mesma branch → reaproveita, sem abrir outra"；
   "pr_open: listar PRs falha → abre a PR como sempre"）
 - **来源：** AT-485（10月10日的 TP-01）
@@ -6438,13 +6438,13 @@ PO 的 kickoff 说明这三件事。
 
 - **规则：** 「Contexto da sessão」面板的「数字」——业务规则、已记录的决定和按 agent 的产物——来自服务器统计的「整个」会话的聚合（`GET .../sessions/:sessionId/context-summary`，`viewer`，读取不需要新表），按 [RN-568](web.md#rn-568) 的方式「加」到界面已加载的事件窗口上：计数是单调的，所以取两者中较大者。「细节」（规则卡片、决定、backlog 树）仍是窗口中的，截取提示（「Mostrando N de
   M」）只出现在细节不完整的那一节；产物全部在窗口之前的 agent 获得带总数的分组。聚合「缺失」（加载中或失败）就是「没读到」：面板回落到 [RN-180](web.md#rn-180)/[RN-701](web.md#rn-701) 声明的截取，空的「Arquivos tocados」说明没读到，绝不说「Nada ainda」。聚合「不」轮询（[RN-579](engine.md#rn-579)，[RN-632](web.md#rn-632)）：当窗口看到新的产物或 commit/PR 操作时（查询的键）、获得焦点时以及重新挂载时重新读取。
-- **位置：** `apps/api/src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:22`
+- **位置：** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:22`
   （`resumir`），`apps/web/src/lib/contexto-da-sessao.ts:15`
   （`useContextoDaSessaoInteira`），`apps/web/src/lib/contexto-da-sessao.ts:34`
   （`totalDaSessao`），`apps/web/src/routes/ContextAside.tsx:174`（`resumo`）
-- **测试：** `apps/api/test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
+- **测试：** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
   （"conta a sessão INTEIRA, além de qualquer cauda de 200…"），
-  `apps/api/test/application/use-cases/sessions/get-session-context-summary.use-case.spec.ts`
+  `test/application/use-cases/sessions/get-session-context-summary.use-case.spec.ts`
   （失败："sessão de outro projeto é 404 e não lê nada"），
   `apps/web/src/routes/ContextAside.sessao-inteira.test.tsx`（"com o agregado
   maior que a janela, mostra o total da sessão…"；失败："sem o agregado, os
@@ -6454,9 +6454,9 @@ PO 的 kickoff 说明这三件事。
 ### RN-828 — 「Arquivos tocados」包括关联的执行会话，带上限和真实总数 {#rn-828}
 
 - **规则：** 聚合（[RN-827](#rn-827)）的已触及文件列表合并所请求会话与关联到它的「执行」会话的 `git_commit`/`git_push`——即在「本」会话中获批的 Dev Lead 计划所激活的那个（`executionResult.sessaoDeExecucao`，属于已执行的 `propose_execution_plan`），同一项目。没有这种关联的会话不计入。列表从新到旧，截断为 100（`TETO_DE_ARQUIVOS_TOCADOS`），`total` 给出真实数量；截断时界面声明截取。
-- **位置：** `apps/api/src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:31`
+- **位置：** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:31`
   （`ligadas`），`apps/web/src/routes/ContextAside.tsx:366`（`filesTouched`）
-- **测试：** `apps/api/test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
+- **测试：** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
   （"…e soma os arquivos da execução ligada"；失败："corta a lista de arquivos
   no teto e devolve o total real; não lê sessão sem ligação"）
 - **来源：** AT-498
@@ -6464,9 +6464,9 @@ PO 的 kickoff 说明这三件事。
 ### RN-838 — QA de Automação 在关闭推理的情况下运行 {#rn-838}
 
 - **规则：** 扩展 [RN-783](#rn-783)（负责人 10月10日的决定）。gate `qa-automacao` 获得与执行型 dev agents 相同的处理：模型具有 `supportsReasoning` 时，能够表达「关闭」的 provider 发送 `reasoning: { enabled: false }`，保留 [RN-782](#rn-782) 的余量。QA 策略（`qa-estrategia`）和其他 gates 不变。促成它的测量：gates 的推理从每轮 4.4 万 token 升到 21.1 万，它们的成本从 0.15 美元升到 0.55 美元。
-- **位置：** `apps/api/src/domain/llm/raciocinio-do-agente.ts:34`
+- **位置：** `src/domain/llm/raciocinio-do-agente.ts:34`
   （`raciocinioDesligadoParaOAgente`）
-- **测试：** `apps/api/test/domain/llm/raciocinio-do-agente.spec.ts`
+- **测试：** `test/domain/llm/raciocinio-do-agente.spec.ts`
   （`QA de Automação desliga; QA-estratégia e outros gates não (RN-838)`；
   `falha: QA de Automação com modelo sem supportsReasoning não manda nada`）
 - **来源：** AT-504（负责人 10月10日的决定）
@@ -6474,8 +6474,8 @@ PO 的 kickoff 说明这三件事。
 ### RN-839 — `report_done` 和 `report_blocked` 进入 dev agents 的 Jev 下限 {#rn-839}
 
 - **规则：** 修订 [RN-758](#rn-758)/[RN-759](#rn-759)（负责人 10月10日的决定）。执行型 dev agents（`dev-<modulo>`，绝不是 `dev-lead`）不再没有下限，「仅」针对 task 的两个结局工具：Jev 的截取绝不去掉 `report_done` 或 `report_blocked`。它们步骤中的其余部分仍可截取，带 RN-759 的截取提示。与所有下限一样，它只交还该步骤目录中已有的内容。
-- **位置：** `apps/api/src/domain/llm/tool-router.ts:351`（`pisoDoMenu`）
-- **测试：** `apps/api/test/domain/llm/piso-dos-dev-agents.spec.ts`
+- **位置：** `src/domain/llm/tool-router.ts:351`（`pisoDoMenu`）
+- **测试：** `test/domain/llm/piso-dos-dev-agents.spec.ts`
   （`recorte que deixa só \`terminal\` para dev-api: report_done e
   report_blocked continuam`；`falha: dev-lead e outro agente não ganham as
   ferramentas de desfecho`）
@@ -6484,8 +6484,8 @@ PO 的 kickoff 说明这三件事。
 ### RN-840 — 每个 gate agent 的意见工具进入 Jev 的下限 {#rn-840}
 
 - **规则：** 把 [RN-758](#rn-758) 和 [RN-839](#rn-839) 扩展到「gate」agent。Jev 的截取绝不去掉每个 agent 自己的「意见」工具，且只限它自己的：`qa-automacao` → `emit_qa_verdict`，`qa-performance-seguranca` → `emit_perf_seguranca_verdict`，`qa-estrategia` → `emit_plano_de_teste`，`appsec` → `emit_threat_model`。没有它时，gate 会运行测试套件后停下而没有裁决，委派以来源 `modelo` 失败，已完成的任务被阻塞。gates 之外的 agent 不获得意见工具，下限只交还该步骤目录中已有的内容。
-- **位置：** `apps/api/src/domain/llm/tool-router.ts:311`（`PISO_DO_MENU`）
-- **测试：** `apps/api/test/domain/llm/tool-router-piso-dos-gates.spec.ts`
+- **位置：** `src/domain/llm/tool-router.ts:311`（`PISO_DO_MENU`）
+- **测试：** `test/domain/llm/tool-router-piso-dos-gates.spec.ts`
   （id 和工具对照 engine 的 `.ex` 校验；只剩 `terminal`/`read_file` 的截取最终带有意见工具；失败：`criativo`、`dev-api` 和 `dev-lead` 不获得意见工具；下限不添加目录之外的工具）
 - **来源：** AT-509（TP-01，第 12 次执行）
 
@@ -6493,15 +6493,15 @@ PO 的 kickoff 说明这三件事。
 
 - **规则：** [RN-827](#rn-827) 和 [RN-828](#rn-828) 的扩展。聚合 `GET .../sessions/:sessionId/context-summary` 除了数字之外还返回「条目」：会话的业务规则（`itensDeRegras`：标题、描述以及引用了多少来源）和已记录的决定（`itensDeDecisoes`：选择和背景），最新的在前，每种最多 50 个（`TETO_DE_ITENS_DO_CONTEXTO`）；总数仍在 `regras`/`decisoes` 中。有聚合时，面板列出这些条目而不是 200 个事件的窗口——位于窗口之前的规则仍会出现——截取说明「Mostrando as N mais recentes de M」。「Arquivos tocados」改为包括本会话及关联执行会话中 PR 的文件（已执行的 `pr_open`/`open_adr_pr`/`open_infra_pr`，带 `pullRequestId`），从与 PR 标签页「相同」的 diff 读取（`ReadProjectCodeUseCase.pullRequestDiff`），排在 commit payload 的文件之前，上限 100 并带真实总数。受控读取（[ADR 0060](../adr/0060-superficie-de-leitura-de-codigo.md)）：没有自由参数，每次调用最多 20 个 diff（`TETO_DE_PRS_LIDAS`）；超出上限或 diff 失败的 PR 进入 `prsNaoLidas`，界面说明有多少被排除。有聚合但没有可列出的内容时，空状态说明没有的是什么（本会话或关联执行中没有 PR 或 commit 的文件），绝不说「Nada
   ainda」。该用例位于 git 模块中，因为读取仓库的是它；另一项目的会话仍为 404，不读取任何 PR。
-- **位置：** `apps/api/src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:140`
-  （`itensDeRegras`），`apps/api/src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:184`
-  （`prsDasSessoes`），`apps/api/src/application/use-cases/git/resumir-contexto-da-sessao.use-case.ts:37`
+- **位置：** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:140`
+  （`itensDeRegras`），`src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:184`
+  （`prsDasSessoes`），`src/application/use-cases/git/resumir-contexto-da-sessao.use-case.ts:37`
   （`prs`），`apps/web/src/routes/ContextAside.tsx:197`（`businessRules`），
   `apps/web/src/routes/ContextAside.tsx:222`（`decisoes`）
-- **测试：** `apps/api/test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
+- **测试：** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
   （"RN-844: devolve os ITENS de regra e decisão fora de qualquer cauda, com
   teto de 50"；"RN-844: lista as PRs executadas da sessão e da execução
-  ligada…"），`apps/api/test/application/use-cases/git/resumir-contexto-da-sessao.use-case.spec.ts`
+  ligada…"），`test/application/use-cases/git/resumir-contexto-da-sessao.use-case.spec.ts`
   （"lê os arquivos das PRs das sessões lidas…"；失败："corta no teto de
   arquivos, conta PR fora do teto e diff que falhou em prsNaoLidas" 和 "sessão
   de outro projeto é 404 e não lê PR nenhuma"），
@@ -6512,11 +6512,11 @@ PO 的 kickoff 说明这三件事。
 ### RN-847 — 已合并的 PR 仍会说明它修改了哪些文件 {#rn-847}
 
 - **规则：** [RN-844](#rn-844) 的扩展。在「本地」git provider 中，PR 的 diff 在合并之后也是 `target...source`——而那时合并基准就是来源的末端本身，所以已合并的 PR 返回「零」个文件（在测试中测得：快进和合并 commit 都是 `[]`），「Contexto da sessão」面板在有 14 个已合并 PR 时显示「Nenhum arquivo nas PRs」，`prsNaoLidas` 中什么也没有（diff 没有失败，只是为空）。现在合并会在 PR 的存储中记录合并时刻的合并基准和来源末端（`mergedBaseSha`/`mergedHeadSha`），已合并 PR 的 diff 是 `mergedBaseSha...mergedHeadSha`。在这些字段之前合并的 PR 回落到目标上的合并 commit（第一父提交），其第二父提交是来源的末端；没有这些字段的快进合并无法重建，仍为空（声明的缺口）。GitHub 和 GitLab 已经由平台本身返回已合并 PR 的 diff。在界面上，上下文摘要在与重新读取 PR 列表「相同」的触发点上重新读取（[RN-841](web.md#rn-841)）：通道的 `prs` 目标（带它 2 秒的窗口，没有额外获取）以及 backlog 签名的变化，按前缀 `['session-context-summary', projectId]`。
-- **位置：** `apps/api/src/infrastructure/git/local-git-provider.ts:374`
-  （`mergedBaseSha`），`apps/api/src/infrastructure/git/local-git-provider.ts:862`
+- **位置：** `src/infrastructure/git/local-git-provider.ts:374`
+  （`mergedBaseSha`），`src/infrastructure/git/local-git-provider.ts:862`
   （`rangeDoDiff`），`apps/web/src/lib/canal-vivo.ts:221`（`prs`），
   `apps/web/src/components/PendenciasDeOutrasSessoes.tsx:101`（`invalidateQueries`）
-- **测试：** `apps/api/test/infrastructure/git/local-git-provider.contract.spec.ts`
+- **测试：** `test/infrastructure/git/local-git-provider.contract.spec.ts`
   （"PR mergeada por fast-forward devolve os arquivos que mudou"；"PR mergeada
   por commit de merge devolve só os arquivos dela"；"PR mergeada antes de os
   SHAs serem gravados acha o commit de merge"），
@@ -6524,7 +6524,7 @@ PO 的 kickoff 说明这三件事。
   relê o resumo"；"CASO DE FALHA: evento que não mexe em PR não relê o
   resumo"），`apps/web/src/components/PendenciasDeOutrasSessoes.test.tsx`
   （"RN-841: a tarefa que entra em awaiting_user relê as PRs…"）。计入 `prsNaoLidas` 的读取失败仍由
-  `apps/api/test/application/use-cases/git/resumir-contexto-da-sessao.use-case.spec.ts`
+  `test/application/use-cases/git/resumir-contexto-da-sessao.use-case.spec.ts`
   覆盖（"corta no teto de arquivos, conta PR fora do teto e diff que falhou em
   prsNaoLidas"）。
 - **来源：** AT-518（TP-01，第 13 次：有 14 个已合并 PR 时显示「Nenhum arquivo nas PRs nem nos commits」，标签页也不重新读取摘要）
@@ -6532,12 +6532,12 @@ PO 的 kickoff 说明这三件事。
 ### RN-848 — 在内部请求中执行的操作所产生的效果会通知会话通道 {#rn-848}
 
 - **规则：** [RN-579](engine.md#rn-579)（AT-157）的扩展。api 不为来自 engine 的写入（`/internal/*`）通知通道，因为 engine 的门面会通知「它」请求写入的事件。api 作为在该请求中执行的自动批准操作的「效果」而自行写入的内容（`infra.pr_opened`、`adr.pr_opened`、`action.*`），没有任何门面通知，现在会被通知：`ProposeActionUseCase` 在 `runComoEfeitoDeAcao` 标记下执行操作，notifier 只在来源为 engine 且「没有」该标记时保持沉默。engine 请求的事件（包括 `proposed_action.created`）仍不由 api 通知，以免重复。
-- **位置：** `apps/api/src/application/efeito-de-acao.ts:18`（`ehEfeitoDeAcao`），
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:314`
+- **位置：** `src/application/efeito-de-acao.ts:18`（`ehEfeitoDeAcao`），
+  `src/application/use-cases/actions/propose-action.use-case.ts:314`
   （`runComoEfeitoDeAcao`），
-  `apps/api/src/infrastructure/http-clients/session-channel-notifier.ts:73`
+  `src/infrastructure/http-clients/session-channel-notifier.ts:73`
   （`ehEfeitoDeAcao`）
-- **测试：** `apps/api/test/application/use-cases/sessions/aviso-ao-canal-da-sessao.spec.ts`
+- **测试：** `test/application/use-cases/sessions/aviso-ao-canal-da-sessao.spec.ts`
   （"AT-516: efeito de ação executada dentro de /internal avisa o canal, uma
   vez"；失败/回归："escrita vinda do engine (/internal) não é avisada de
   novo pela api"）
@@ -6546,42 +6546,42 @@ PO 的 kickoff 说明这三件事。
 ### RN-852 — infra 的 PR 声明如何运行交付物，这会成为产物 {#rn-852}
 
 - **规则：** `open_infra_pr`「要求」`run` = `{command, urls, envExample}`（ADR 0213）：`command` 为非空文本，最多 300 个字符；`urls` 1 到 5 项 `{label (até 60), url, kind}`，`url` 以 `http://localhost:` 或 `http://127.0.0.1:` 开头，`kind` ∈ `api_docs` | `web`；`envExample` 为布尔值。api 在「提议」时以 400 `run_invalido` 拒绝（文本回到 Infra Lead），并在「执行」时再次校验，以命名的方式失败且不提交。PR 打开（或更正）后，api 发出 `artifact.run_instructions` `{command, urls, envExample, prUrl, version}`——版本化，没有表，`version` 最大的为当前（`artifact.project_image` 的设计），并像其他版本化产物一样投影到 `docs/` 中。`GET /projects/:projectId/run-instructions`（`viewer`）返回当前版本（`+ version, eventId, declaredAt`）或 `null`。它由 Infra「声明」，绝不在读者的机器上验证（RN-468）。并且 Infra 的上下文（`/internal/.../infra-context`）改为带上 `projectImage`，即当前的镜像、网络和资源决定，没有决定时为 `null`。
-- **位置：** `apps/api/src/domain/infra/run-instructions.ts:44`（`recusaDoRun`），
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:155`
+- **位置：** `src/domain/infra/run-instructions.ts:44`（`recusaDoRun`），
+  `src/application/use-cases/actions/propose-action.use-case.ts:155`
   （`recusaDoRun`），
-  `apps/api/src/application/use-cases/actions/execute-infra-pr.use-case.ts:111`
+  `src/application/use-cases/actions/execute-infra-pr.use-case.ts:111`
   （`recusaDoRun`），`:328`（`EVENTO_INSTRUCOES_DE_EXECUCAO`），
-  `apps/api/src/application/use-cases/execution/get-run-instructions.use-case.ts:26`
+  `src/application/use-cases/execution/get-run-instructions.use-case.ts:26`
   （`execute`），
-  `apps/api/src/application/use-cases/execution/get-infra-context.use-case.ts:89`
+  `src/application/use-cases/execution/get-infra-context.use-case.ts:89`
   （`projectImage`）
-- **测试：** `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts`
+- **测试：** `test/application/use-cases/actions/propose-action.use-case.spec.ts`
   （"sem `run`: 400 `run_invalido`, sem proposta"；"URL fora de localhost: 400
   nomeando o campo"；"`run` válido: a proposta nasce"），
-  `apps/api/test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts`
+  `test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts`
   （"PR aberta emite artifact.run_instructions com prUrl e versão seguinte"；
   失败："`run` inválido na execução falha sem commitar nem emitir"），
-  `apps/api/test/application/use-cases/execution/get-run-instructions.use-case.spec.ts`
+  `test/application/use-cases/execution/get-run-instructions.use-case.spec.ts`
   （"devolve o vigente — o de maior version"；"null sem artefato, e o de outro
   projeto não vaza"），
-  `apps/api/test/application/use-cases/execution/get-infra-context.use-case.spec.ts`
+  `test/application/use-cases/execution/get-infra-context.use-case.spec.ts`
   （"RN-852: projectImage é a decisão vigente…"；"…null sem decisão de imagem"）
 - **来源：** AT-517（TP-01 的交付物没有说明如何在用户的机器上运行）
 
 ### RN-856 — 解除阻塞不会结束执行，孤儿进行中任务有回路 {#rn-856}
 
 - **规则：** 同一缺陷的三个部分（TP-01 测得「Desbloquear」与 dev 领取之间只有 1 秒，心跳就在这时结束了会话）。(1) [RN-064](web.md#rn-064) 的第六个信号（[RN-776](#rn-776)）在当前执行会话中也计入：`todo` 任务（属于 `ready` 故事），其模块属于「本」执行的某个 dev agent（会话中 `dev.*` 事件的角色），以及分配给其中某个的 `in_progress` 任务——没有上限，与其他信号一样。(2) 领取在 `todo` 队列「之前」恢复已属于该 agent 的 `in_progress` 任务（相同的 `assigned_to`，不在 gate 中，未被阻塞）；它的分支如果存在且未合并，就是 worktree 的起点（`WorktreeManager` 的恢复）。(3) 结束执行会话（[RN-763](engine.md#rn-763)）也会阻塞 `in_progress` 任务，其所有者为 `dev-*`、却没有任何 `dev_agent_states` 行持有它，使用相同的原因和来源 `politica`；该列表只针对「执行」会话，因此结束同一项目的咨询会话不阻塞任何东西。
-- **位置：** `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:252`
+- **位置：** `src/infrastructure/persistence/drizzle/backlog.repository.ts:252`
   （`findPendenteDaExecucao`），`:403`（`claimNext`），`:221`（`listEmCursoDeDev`），
-  `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts:49`
+  `src/application/use-cases/sessions/get-session-pending-work.use-case.ts:49`
   （`em_curso_de_dev`），
   `apps/engine/lib/engine/dev/encerramento_da_sessao.ex:133`（`bloquear_orfas`）
-- **测试：** `apps/api/test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts`
+- **测试：** `test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts`
   （"tarefa recém-desbloqueada (todo) do módulo de um dev da execução segura a
   sessão"；"tarefa todo de módulo SEM dev na execução não segura"；"tarefa
   in_progress atribuída a dev da execução segura a sessão"；"listEmCursoDeDev
   lista a in_progress de dev só para sessão de EXECUÇÃO"），
-  `apps/api/test/application/use-cases/execution/claim-next-task.use-case.spec.ts`
+  `test/application/use-cases/execution/claim-next-task.use-case.spec.ts`
   （"retoma a in_progress que já é DELE antes da fila todo"；"não retoma a
   in_progress dele que está em gate"），
   `apps/engine/test/engine/dev/encerramento_da_sessao_test.exs`（"bloqueia a
@@ -6591,10 +6591,10 @@ PO 的 kickoff 说明这三件事。
 ### RN-857 — dev agent 的修正步骤在 Jev 的截取中拥有写入和终端 {#rn-857}
 
 - **规则：** 当 Jev 的截取（RN-625）决定执行型 dev agent（`dev-<modulo>`，绝不是 `dev-lead`）的菜单，且该步骤的「最后」一条 `user` 消息是 engine 组装的修正意见时——gate 要求修正（「pediu correção nesta PR」）或因冲突被拒绝的合并（RN-715）——菜单在结局下限（RN-839）之外再获得 `write_file` 和 `terminal`。判断依据是 api 已经收到的文本，没有新字段；每个步骤的固定下限不扩大（RN-759），其他 agent 不获得，下限只加入该步骤目录中已有的内容（P3）。
-- **位置：** `apps/api/src/domain/llm/tool-router.ts:368`（`PISO_DA_CORRECAO_DO_DEV`），
+- **位置：** `src/domain/llm/tool-router.ts:368`（`PISO_DA_CORRECAO_DO_DEV`），
   `:379`（`ehPassoDeCorrecao`），`:392`（`menuComPiso`），
-  `apps/api/src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:248`（`menuComPiso`）
-- **测试：** `apps/api/test/domain/llm/tool-router-correcao-do-dev.spec.ts`
+  `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:248`（`menuComPiso`）
+- **测试：** `test/domain/llm/tool-router-correcao-do-dev.spec.ts`
   （"dev agent em correção recebe write_file e terminal"；"passo comum de
   leitura do dev não alarga"；"outro agente com a mesma mensagem não ganha"；
   "as marcas existem no texto que o engine monta"）
@@ -6607,15 +6607,15 @@ PO 的 kickoff 说明这三件事。
   aceitouSugestao, decisionEventId, respondidaPor}` 关闭；「状态」来自日志（未决 = 没有 `answered`），绝不来自表。`GET
   /projects/:projectId/open-questions?status=open|answered|all`（`viewer`，默认 `open`）按从新到旧列出，上限 50 并带 `total`（RN-180），并在 `autorDaSessao` 中说明谁可以回答。`POST
   .../open-questions/:questionId/answer` 带 `{resposta}` 或 `{aceitarSugestao: true}`，只接受来源会话「作者」的请求（403 `so_o_autor_da_sessao`）；已回答为 409 `pergunta_ja_respondida`，其他项目的问题为 404，空回答（或不存在的建议）为 400。回答在一个事务中写入以用户为角色的 `artifact.decision_record`（`context` = 问题，`choice` = 回答，`consequences` = 影响范围，外加 `questionId` 和 `afeta`）以及 `open_question.answered`，通知会话通道（经由漏斗，RN-579），并请求 engine 恢复每个受影响任务的「已停放」QA gate（RN-724 的路径）——尽力而为：未停放的 gate 或 engine 不在线不会撤销回答。ADR 0214。
-- **位置：** `apps/api/src/domain/open-questions/pergunta-em-aberto.ts:44`
+- **位置：** `src/domain/open-questions/pergunta-em-aberto.ts:44`
   （`validarPerguntaEmAberto`），`:112`（`respostaEscolhida`），
-  `apps/api/src/application/use-cases/sessions/append-session-event.use-case.ts:101`
+  `src/application/use-cases/sessions/append-session-event.use-case.ts:101`
   （`EVENTO_PERGUNTA_EM_ABERTO`），
-  `apps/api/src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:72`
+  `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:72`
   （`listar`），`:106`（`responder`），`:189`（`resumeParkedGate`），
-  `apps/api/src/interfaces/http/backlog/open-questions.controller.ts:51`
+  `src/interfaces/http/backlog/open-questions.controller.ts:51`
   （`list`），`:81`（`answer`）
-- **测试：** `apps/api/test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
+- **测试：** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
   （"o autor responde: decision_record (ator usuário, com questionId) e
   answered, e o gate é religado"；"aceitar a sugestão grava a sugestão como
   escolha"；失败："quem não é o autor da sessão recebe 403
@@ -6627,24 +6627,24 @@ PO 的 kickoff 说明这三件事。
 ### RN-859 — 用户的决定到达工作者，并解锁对 `ready` 故事的修正 {#rn-859}
 
 - **规则：** `GET /internal/sessions/:sessionId/dev-context` 返回 `decisoes`：项目中的 `artifact.decision_record`，其 `afeta` 涉及该任务、它的故事或故事引用的某条规则——从新到旧，最多 10 个，问题和决定各截断到 1 500 个字符（`{id, questionId, pergunta, decisao, decididaEm}`）。没有 `afeta` 的决定不计入。冲突时它们胜过 RF/DoR（dev 的 kickoff 和 QA 的截取会显示它们——engine）。并且故事修正的标准（RN-727，`recusaDeCorrecaoDeHistoria`）被修订（ADR 0214，基于 ADR 0212）：`ready` 故事也可以修正，当请求引用一个用户「已经」回答的 `questionId` 时——未决或不存在的问题解锁不了任何东西，`in_progress`/`in_review` 任务的锁仍然有效。PO 的两个入口都接受 `questionId`：`update_story`（标题/描述，事件带上它）和 `complete_story`（RF/DoD/DoR；故事保持 `ready`，没有新的提升，`backlog.story_completed` 带上 `questionId`）。
-- **位置：** `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:122`
+- **位置：** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:122`
   （`decisoesDaTarefa`），`:374`（`decisoesDoContexto`），
-  `apps/api/src/domain/backlog/correcao-de-historia.ts:33`
+  `src/domain/backlog/correcao-de-historia.ts:33`
   （`recusaDeCorrecaoDeHistoria`），
-  `apps/api/src/application/use-cases/backlog/corrigir-historia.use-case.ts:126`
+  `src/application/use-cases/backlog/corrigir-historia.use-case.ts:126`
   （`respostaDoUsuario`），
-  `apps/api/src/application/use-cases/backlog/complete-story.use-case.ts:82`
+  `src/application/use-cases/backlog/complete-story.use-case.ts:82`
   （`corrigindoReady`）
-- **测试：** `apps/api/test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
+- **测试：** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   （"devolve só as que afetam a tarefa, a história ou uma regra dela, mais
   recentes primeiro"；"decisão sem afeta não entra; teto de 10 e texto cortado
   em 1 500"），
-  `apps/api/test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts`
+  `test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts`
   （"história ready citando pergunta RESPONDIDA é corrigida, e o evento a
   cita"；失败："história ready citando pergunta AINDA ABERTA segue
   recusada"；"história ready com tarefa em revisão segue recusada mesmo com a
   resposta"），
-  `apps/api/test/application/use-cases/backlog/complete-story.use-case.spec.ts`
+  `test/application/use-cases/backlog/complete-story.use-case.spec.ts`
   （"história ready com pergunta respondida tem RF/DoR corrigidos e segue
   ready"；"história ready com pergunta ainda aberta é recusada"）
 - **来源：** AT-521（在用户已经作出决定之后，QA 读着一个没人能修正的 `ready` 故事的 DoR 否决了三次）
@@ -6653,14 +6653,14 @@ PO 的 kickoff 说明这三件事。
 
 - **规则：** gate 意见（`POST /internal/sessions/:sessionId/gates/verdict`）接受裁决 `needs_user_decision`，只来自 gate `qa`，带 `pergunta`（最多 500）和 `sugestao`（最多 300）或一个已存在的 `openQuestionId`——两者都没有为 400。状态机保持「同一」gate，「不」增加修正计数，在上限时也不，因此周期不会到达 RN-762 的 `politica` 阻塞。没有 `openQuestionId` 时，api 写入 `artifact.open_question`（角色和作者为 `qa-agent`，在执行会话中，影响该任务及其故事），`pr.gate_changed` 带 `esperandoUsuario: true` 和 `openQuestionId` 发出（界面正是借此把任务显示为「esperando você」），回应返回 `nextAction:
   "await_user"` 和 `openQuestionId`——engine 停放周期（ADR 0207），对问题的回答会重新启动它（RN-858）。这种结局不产生任何 outbox 行。ADR 0214。
-- **位置：** `apps/api/src/domain/execution/pr-gate-state-machine.ts:63`
+- **位置：** `src/domain/execution/pr-gate-state-machine.ts:63`
   （`nextGateStatus`），
-  `apps/api/src/application/use-cases/execution/record-gate-verdict.use-case.ts:135`
+  `src/application/use-cases/execution/record-gate-verdict.use-case.ts:135`
   （`esperaUsuario`），`:171`（`nextAction`）
-- **测试：** `apps/api/test/domain/execution/pr-gate-state-machine.spec.ts`
+- **测试：** `test/domain/execution/pr-gate-state-machine.spec.ts`
   （"needs_user_decision mantém o gate e NÃO incrementa o contador, nem no
   teto"），
-  `apps/api/test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
+  `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
   （"needs_user_decision no teto: grava a pergunta, não conta correção, não
   bloqueia"；失败："needs_user_decision sem pergunta nem openQuestionId é
   recusado"）
@@ -6670,10 +6670,10 @@ PO 的 kickoff 说明这三件事。
 ### RN-870 — 裁决只等待存在且未决的问题 {#rn-870}
 
 - **规则：** `POST /internal/sessions/:sessionId/gates/verdict` 带 `needs_user_decision` 和 `openQuestionId` 时，在任何写入（PR 评论、gate 状态、事件）「之前」检查问题是否存在于项目中且未决。不存在或属于其他项目：404 `reason: "pergunta_nao_encontrada"`。已回答：409 `reason: "pergunta_ja_respondida"`，`decisao` 中带用户的决定——不写入，也没有 `pr.gate_changed`。状态来自日志（RN-858）。
-- **位置：** `apps/api/src/application/use-cases/execution/record-gate-verdict.use-case.ts:85`
-  （`exigirPerguntaAberta`），`apps/api/src/domain/open-questions/pergunta-em-aberto.ts:154`
+- **位置：** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:85`
+  （`exigirPerguntaAberta`），`src/domain/open-questions/pergunta-em-aberto.ts:154`
   （`estadoDaPergunta`）
-- **测试：** `apps/api/test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
+- **测试：** `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
   （"pergunta aberta: estaciona sem gravar outra"；失败："inexistente ou de
   outro projeto: 404 nomeado, sem escrita"，"já respondida: 409 com a decisão,
   sem escrita nem pr.gate_changed"）
@@ -6682,24 +6682,24 @@ PO 的 kickoff 说明这三件事。
 ### RN-871 — `afeta.regras` 接受规则的精确标题并保存 id {#rn-871}
 
 - **规则：** 在事件漏斗中，`artifact.open_question` 若其 `afeta.regras` 带有项目中某个 `artifact.business_rule` 的精确「标题」，就以该规则的 id 写入（标题重复时取最近的）；既不是 id 也不是精确标题的，以 400 拒绝并点名这些值。在 dev 的上下文中，`decisoes` 也按故事规则的标题匹配，以照顾本规则之前写入的决定。
-- **位置：** `apps/api/src/domain/open-questions/pergunta-em-aberto.ts:179`
-  （`resolverRegrasDoAfeta`），`apps/api/src/application/use-cases/sessions/append-session-event.use-case.ts:117`
-  （`resolverRegrasDoAfeta`），`apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:134`
+- **位置：** `src/domain/open-questions/pergunta-em-aberto.ts:179`
+  （`resolverRegrasDoAfeta`），`src/application/use-cases/sessions/append-session-event.use-case.ts:117`
+  （`resolverRegrasDoAfeta`），`src/application/use-cases/execution/get-dev-task-context.use-case.ts:134`
   （`decisoesDoContexto`）
-- **测试：** `apps/api/test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
+- **测试：** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
   （"título exato é convertido para o id da regra"；失败："texto que não é id
   nem título de regra: 400 sem escrita"），
-  `apps/api/test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
+  `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   （"decisão legada com TÍTULO de regra em afeta.regras casa pelo título"）
 - **来源：** AT-526，ADR 0215
 
 ### RN-872 — 项目的其他决定以独立一节到达 dev 和 QA {#rn-872}
 
 - **规则：** `GET /internal/sessions/:sessionId/dev-context` 除了 `decisoes`（涉及该任务的，RN-859）之外，还返回 `decisoesDoProjeto`：项目中其余的 `artifact.decision_record`，从新到旧，格式相同。10 的上限是「共享」的——任务的决定排在前面并先消耗上限。对这个列表修订 ADR 0214 中「decisão sem `afeta` não entra」这句话。该字段是附加的（不认识它的 engine 会忽略它）。
-- **位置：** `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:134`
-  （`decisoesDoContexto`），`apps/api/src/interfaces/http/internal/dto/internal.response.dto.ts:237`
+- **位置：** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:134`
+  （`decisoesDoContexto`），`src/interfaces/http/internal/dto/internal.response.dto.ts:237`
   （`decisoesDoProjeto`）
-- **测试：** `apps/api/test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
+- **测试：** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   （"as que não tocam a tarefa vêm em decisoesDoProjeto; teto de 10 somado, as
   da tarefa primeiro"）
 - **来源：** AT-526，ADR 0215
@@ -6707,12 +6707,12 @@ PO 的 kickoff 说明这三件事。
 ### RN-886 — OpenRouter 的预算 403 是额度耗尽，带限额、花费和重置时间 {#rn-886}
 
 - **规则：** OpenRouter 带 `Budget limit exceeded` / `limit_source: openrouter_guardrail_budget` 的 403（密钥的每月护栏）「不是」凭据被拒绝：api 把它规范化为与 402 「相同」的 `insufficient_credit`（RN-730）——契约中没有新代码——额度路径的其余部分同样适用：来源 `infra`（RN-726），暂停且不自动恢复（绝不是短暂故障，RN-864）。简短句子使用轮次的语言（RN-733），说明从响应体中读到的限额、花费和重置时间（`limit_usd`、`spend_usd`、`resets_at`，有什么用什么），并请 OpenRouter 管理员提高预算；dev 以这句话作为原因阻塞任务，而不是来源为 `codigo` 的「parou sem concluir nem reportar bloqueio」。没有该标记的 403 仍是 `auth`。
-- **位置：** `apps/api/src/domain/llm/llm-provider-errors.ts:81`（`normalizeHttpStatus`），
+- **位置：** `src/domain/llm/llm-provider-errors.ts:81`（`normalizeHttpStatus`），
   `:135`（`pareceOrcamento`）；`apps/engine/lib/engine/agents/falha_de_turno.ex:205`
   （`orcamento_esgotado`），`:219`（`frase_de_orcamento`），`:163`
   （`credito_esgotado?`）；`apps/engine/lib/engine/dev/dev_agent_server.ex:961`
   （`motivo_de_credito`）
-- **测试：** `apps/api/test/domain/llm/llm-provider-errors.spec.ts`（"o 403 de
+- **测试：** `test/domain/llm/llm-provider-errors.spec.ts`（"o 403 de
   orçamento vira insufficient_credit com o corpo inteiro"；失败："403 sem
   marcador de orçamento continua credencial rejeitada"）；
   `apps/engine/test/engine/agents/falha_de_turno_test.exs`（"RN-886: o 403 de
@@ -6722,10 +6722,10 @@ PO 的 kickoff 说明这三件事。
 ### RN-891 — 界面有四种语言，以 pt-BR 为默认和后备 {#rn-891}
 
 - **规则：** 界面语言（`users.locale`）接受 `pt-BR`、`en`、`ru` 和 `zh-Hans`，拒绝其他任何语言；账户的默认值仍是 `pt-BR`。在 web 中，`pt-BR` 是默认值和 `fallbackLng`（修订 RN-432，它曾让 `en` 成为 web 的默认值）。账户中保存的选择总是胜出；没有它时，由浏览器建议：`pt*` → `pt-BR`；`zh`、`zh-CN`、`zh-SG`、`zh-Hans*` → `zh-Hans`；`ru*` → `ru`；`en*` → `en`；其余（德语、繁体中文……）→ `pt-BR`。在 `locales/` 中没有目录的 locale 不会破坏启动：界面落到 pt-BR，「账户」的选择器使用原生标签并说明「tradução em andamento」。`<html lang>` 跟随当前语言。键的一致性把每个现有 locale 与 pt-BR 源进行比较。
-- **位置：** `apps/api/src/domain/iam/user.entity.ts:8`（`USER_LOCALES`），
+- **位置：** `src/domain/iam/user.entity.ts:8`（`USER_LOCALES`），
   `apps/web/src/lib/idioma.ts:65`（`resolverIdiomaDoNavegador`），
   `apps/web/src/lib/i18n.ts:72`（`fallbackLng`）
-- **测试：** `apps/api/test/interfaces/http/iam/user-preferences-locale.dto.spec.ts`
+- **测试：** `test/interfaces/http/iam/user-preferences-locale.dto.spec.ts`
   （"aceita pt-BR, en, ru e zh-Hans"；"recusa idioma fora da lista"）；
   `apps/web/src/lib/idioma.test.ts`（"idioma sem catálogo cai no pt-BR, nunca
   no inglês"）；`apps/web/src/lib/i18n-paridade.test.ts`
@@ -6744,9 +6744,9 @@ PO 的 kickoff 说明这三件事。
    `cached_input_tokens=8011`；只有在那之后，OpenRouter 的能力才变为
    `true`。打开其他提供方需要等效的 smoke。收益通过 [RN-666](#rn-666) 出现在计量中。
 
-- **代码：** `apps/api/src/infrastructure/llm/openrouter-provider.ts:276` (`marcarCacheDePromptOpenRouter`);
-  `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:501` (`mensagens`)
-- **测试：** `apps/api/test/infrastructure/llm/openrouter-provider.contract.spec.ts`（"pontos de cache de prompt (RN-892)"：打开时标记两个点；关闭时逐字节相同；有能力而无钩子会失败——失败用例）
+- **代码：** `src/infrastructure/llm/openrouter-provider.ts:276` (`marcarCacheDePromptOpenRouter`);
+  `src/infrastructure/llm/openai-compatible-provider.ts:501` (`mensagens`)
+- **测试：** `test/infrastructure/llm/openrouter-provider.contract.spec.ts`（"pontos de cache de prompt (RN-892)"：打开时标记两个点；关闭时逐字节相同；有能力而无钩子会失败——失败用例）
 - **来源：** AT-543
 
 ### RN-894 — 与项目中另一史诗同名的史诗会被拒绝 {#rn-894}
@@ -6756,16 +6756,16 @@ PO 的 kickoff 说明这三件事。
   projeto — use este id em epic_id"。规则与用户故事相同（发现 R，
   `tituloDuplicado`），没有第二份副本。语义重复（RN-681）不适用于史诗：只看标题相同。
   拒绝时不创建任何内容，也不写入事件日志。
-- **位置：** `apps/api/src/application/use-cases/backlog/create-epic.use-case.ts:25` (`tituloDuplicado`)
-- **测试：** `apps/api/test/application/use-cases/backlog/create-epic.use-case.spec.ts:41`
+- **位置：** `src/application/use-cases/backlog/create-epic.use-case.ts:25` (`tituloDuplicado`)
+- **测试：** `test/application/use-cases/backlog/create-epic.use-case.spec.ts:41`
   （无同名时创建）和 `:49`（同名时拒绝并返回已有 id）
 - **来源：** AT-581
 
 ### RN-902 — 重建容器会冻结当前的镜像决策，过期镜像会被提示 {#rn-902}
 
 - **规则：** `removed → provisioning` 和 `failed → provisioning` 转换会重新读取当前镜像决策，并重写 `project_containers` 行的 `imageVersion` 和 `resources`。没有当前决策时返回 409（[RN-105](#rn-105)）。`stopped → running` 不改变版本。`/containers` 页面新增 `decisaoVigente` 和 `imagemDesatualizada`；差异比较的是内容（镜像、网络、资源），而不是版本号，并以文字提示"停止 → 移除 → 再次启动"。`choose_project_image` 的结果带有 `containerDePe`，并提醒该决策只有在重建容器后才生效。不存在一步"重建"；审批上限不变（[RN-495](#rn-495)）。
-- **位置：** `apps/api/src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts:131`（`recongelar`）、`apps/api/src/domain/containers/project-container.ts:342`（`containerDivergeDaDecisao`）、`apps/engine/lib/engine/harness/tools/choose_project_image.ex:99`（`mensagem_de_fixada`）
-- **测试：** `apps/api/test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`；`apps/api/test/domain/containers/project-container.spec.ts`；`apps/web/src/routes/ContainersPage.test.tsx`
+- **位置：** `src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts:131`（`recongelar`）、`src/domain/containers/project-container.ts:342`（`containerDivergeDaDecisao`）、`apps/engine/lib/engine/harness/tools/choose_project_image.ex:99`（`mensagem_de_fixada`）
+- **测试：** `test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`；`test/domain/containers/project-container.spec.ts`；`apps/web/src/routes/ContainersPage.test.tsx`
 - **来源：** AT-595
 
 ### RN-906 — 当模块技术栈需要下载依赖时，API 拒绝网络 `none` {#rn-906}
@@ -6778,18 +6778,18 @@ PO 的 kickoff 说明这三件事。
   同一个用例（对 Infra，`container_start` 以 `failed` 结束并给出原因，不调用 broker）。
   没有 `module_map` 或技术栈不匹配时，仍只有 RN-735 的警告。无可配置的例外。修订
   RN-735（该情形下由警告变为拒绝）。
-- **位置：** `apps/api/src/application/use-cases/containers/decidir-imagem-do-projeto.use-case.ts:80`
+- **位置：** `src/application/use-cases/containers/decidir-imagem-do-projeto.use-case.ts:80`
   (`stackQueBaixaDependencias`)
-- **测试：** `apps/api/test/application/use-cases/containers/container-do-projeto.use-case.spec.ts`；
-  `apps/api/test/domain/containers/project-container.spec.ts`；
-  `apps/api/test/application/use-cases/actions/execute-container-start.use-case.spec.ts`
+- **测试：** `test/application/use-cases/containers/container-do-projeto.use-case.spec.ts`；
+  `test/domain/containers/project-container.spec.ts`；
+  `test/application/use-cases/actions/execute-container-start.use-case.spec.ts`
 - **来源：** AT-593（EP-031）。
 
 ### RN-909 — 9Router 是第 10 个提供商：按安装配置 URL、凭据必填、按公开价格策展 {#rn-909}
 
 - **规则：** 提供商 `9router` 与所有者机器上的网关通信。基础 URL 为 `NINE_ROUTER_BASE_URL`（默认 `http://host.docker.internal:20128/v1`），提供商和连接测试（带密钥的 `GET /models`）每次使用时读取。凭据必填。提供商能力为 `false`（仅 `listModels` 和合约要求的 `streaming` 为 `true`），直到带密钥的 smoke 证明其余能力（ADR 0041）。模型价格不自动发现：通过人工策展录入，并按所有者的决定，订阅模型记录等价 API 的公开价格，而不是零。提供商在每次调用中发送 `x-9router-token-saver: off`，避免 9Router 压缩 `tool_result`。
-- **位置：** `apps/api/src/infrastructure/llm/nine-router-provider.ts:83`（`nineRouterConfig`）
-- **测试：** `apps/api/test/infrastructure/llm/nine-router-provider.contract.spec.ts:109`（能力、环境中的 URL、请求头、连接测试、合成固件解析）；手动 smoke 位于 `nine-router-provider.smoke.spec.ts`。
+- **位置：** `src/infrastructure/llm/nine-router-provider.ts:83`（`nineRouterConfig`）
+- **测试：** `test/infrastructure/llm/nine-router-provider.contract.spec.ts:109`（能力、环境中的 URL、请求头、连接测试、合成固件解析）；手动 smoke 位于 `nine-router-provider.smoke.spec.ts`。
 - **来源：** AT-576a（EP-026），ADR 0222，所有者 22/10 的决定。
 
 ### RN-910 — 每个区域的默认上限：dev 为 5，qa 为 4，infra 为 2 {#rn-910}
@@ -6799,5 +6799,5 @@ PO 的 kickoff 说明这三件事。
 - **目前执行时只应用 `dev` 的上限。** `RequestParallelizationUseCase` 在决定并行度时读取 `dev` 区域。`qa` 和 `infra` 的值已记录、可显示且可编辑，但没有任何代码查询它：提高它们的上限不会改变任何执行。
 - **`dev` 的上限只有在 3 个或以上模块时才起作用。** dev agent 的最大数量是每个模块一个加一个额外的（`dev-<modulo>-2`），即 2 × 模块数（RN-083）。有 2 个模块时最大为 4，低于 5。
 - **只有 INSERT 使用目录值。** 再次播种不会改动该行（RN-094）。列仍为 `default(2)`：该值只会出现在用例之外的原始 INSERT 中。
-- **位置：** `apps/api/src/domain/agents/agent-areas.ts:73`（`maxParallelPadrao`）；`apps/api/src/application/use-cases/agents/seed-agent-areas.use-case.ts:53`（`maxParallelAoNascer`）；`apps/api/src/infrastructure/persistence/drizzle/agent-area.repository.ts:62`（`nascer`）；`apps/api/src/application/use-cases/execution/request-parallelization.use-case.ts:13`（`MAX_PARALLEL_PADRAO`）；迁移 `apps/api/src/db/migrations/0073_paralelismo_padrao_por_area.sql`。
+- **位置：** `src/domain/agents/agent-areas.ts:73`（`maxParallelPadrao`）；`src/application/use-cases/agents/seed-agent-areas.use-case.ts:53`（`maxParallelAoNascer`）；`src/infrastructure/persistence/drizzle/agent-area.repository.ts:62`（`nascer`）；`src/application/use-cases/execution/request-parallelization.use-case.ts:13`（`MAX_PARALLEL_PADRAO`）；迁移 `src/db/migrations/0073_paralelismo_padrao_por_area.sql`。
 - **测试：** `test/application/use-cases/iam/create-project-semeia-areas.spec.ts`（新项目以 5/4/2 诞生）、`test/infrastructure/persistence/drizzle/agent-area.repository.spec.ts`（再次播种不会撤销已修改的上限）、`test/db/paralelismo-padrao-migration.spec.ts`（值为 2、3 和 7 的行最终为 5/4/2）以及 `test/application/use-cases/execution/request-parallelization.use-case.spec.ts`（默认值 5 决定 dev 的并行度）。

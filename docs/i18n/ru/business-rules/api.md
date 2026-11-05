@@ -56,7 +56,7 @@ stateDiagram-v2
   closed_abnormally --> [*]
 ```
 
-- **Где:** `apps/api/src/domain/sessions/session-state-machine.ts:29`
+- **Где:** `src/domain/sessions/session-state-machine.ts:29`
 - **Тест:** `test/domain/sessions/session-state-machine.spec.ts`
 - **Граничный случай:** `closing` — **транзитное** состояние. Сессия,
   застрявшая в нём, означает, что дренаж начался и не завершился — для этого
@@ -68,7 +68,7 @@ stateDiagram-v2
 (`unique(session_id, seq)`) и не имеет пропусков: начинается с 1 и идёт
 подряд.
 
-- **Где:** `apps/api/src/db/schema/sessions.ts` (таблица `session_events`)
+- **Где:** `src/db/schema/sessions.ts` (таблица `session_events`)
 - **Тест:** проверяется при восстановлении — `docker/backup/restore.sh`
   падает, если `count(*) ≠ max(seq) − min(seq) + 1` или `min(seq) ≠ 1`
 - **Почему:** именно это делает доказательства Psicólogo прослеживаемыми, а
@@ -97,7 +97,7 @@ stateDiagram-v2
   failed --> [*]
 ```
 
-- **Где:** `apps/api/src/domain/actions/action-state-machine.ts:36`
+- **Где:** `src/domain/actions/action-state-machine.ts:36`
 - **Тест:** `test/domain/actions/action-state-machine.spec.ts`
 - **Граничный случай:** одобренное и выполненное действие становится
   `executed`, а **не** остаётся `approved`. Подсчёт одобрений по
@@ -110,7 +110,7 @@ stateDiagram-v2
 этап может только **повысить** разрешительность; молчащий этап никогда не
 понижает предыдущий. `deny` на любом этапе возвращается немедленно.
 
-- **Где:** `apps/api/src/domain/actions/decide.ts:118`
+- **Где:** `src/domain/actions/decide.ts:118`
 - **Тест:** `test/domain/actions/decide.spec.ts` (10 КБ — самый большой в
   домене)
 
@@ -119,7 +119,7 @@ stateDiagram-v2
 До любой политики — IAM: каждый `ActionType` требует минимальной
 эффективной роли. Без неё — `deny` с явной причиной.
 
-- **Где:** `apps/api/src/domain/actions/decide.ts:110` (`MIN_ROLE_FOR_ACTION_TYPE`)
+- **Где:** `src/domain/actions/decide.ts:110` (`MIN_ROLE_FOR_ACTION_TYPE`)
 - **Тест:** `test/domain/actions/decide.spec.ts`
 
 ### RN-006 — Потолок: merge в защищённую ветку никогда не одобряется автоматически {#rn-006}
@@ -135,7 +135,7 @@ stateDiagram-v2
 всё ещё есть: защита несуществующей ничего не стоит; снятие защиты с
 существующей обходится дорого.
 
-- **Где:** `apps/api/src/domain/actions/decide.ts:498` (`isProtectedBranch`, o teto da trava de merge) + `protected-branches.ts:4`
+- **Где:** `src/domain/actions/decide.ts:498` (`isProtectedBranch`, o teto da trava de merge) + `protected-branches.ts:4`
 - **Тест:** `test/domain/actions/decide.spec.ts`
 - **Источник:** [ADR 0011](../adr/0011-infra-dev-agents-worktrees-merge-lock.md) §1
 - **Примечание:** эквивалентная защита **на платформе** (GitHub/GitLab)
@@ -148,7 +148,7 @@ stateDiagram-v2
 функции в том, что человек видит diff; автоматическое одобрение означало бы,
 что агент переписывает сам себя.
 
-- **Где:** `apps/api/src/domain/actions/decide.ts:168`
+- **Где:** `src/domain/actions/decide.ts:168`
 - **Тест:** `test/domain/actions/decide.spec.ts`
 - **Источник:** [ADR 0016](../adr/0016-anamnese-proficiencia-patches-instrucao.md) §8
 
@@ -157,7 +157,7 @@ stateDiagram-v2
 `permissions.json` сопоставляет команду терминала по структурированному
 шаблону, с корректно токенизированной командой, — а не через `includes()`.
 
-- **Где:** `apps/api/src/domain/actions/command-matcher.ts`
+- **Где:** `src/domain/actions/command-matcher.ts`
 - **Тест:** `test/domain/actions/command-matcher.spec.ts`
 
 ---
@@ -180,7 +180,7 @@ stateDiagram-v2
   done --> [*]
 ```
 
-- **Где:** `apps/api/src/domain/backlog/story-state-machine.ts:27`
+- **Где:** `src/domain/backlog/story-state-machine.ts:27`
 - **Тест:** `test/domain/backlog/story-state-machine.spec.ts`
 
 ### RN-010 — `draft → ready` требует четырёх вещей, проверяемых в домене {#rn-010}
@@ -194,7 +194,7 @@ stateDiagram-v2
 
 Ошибка называет **ровно то, чего не хватает**, а не общее "невалидно".
 
-- **Где:** `apps/api/src/domain/backlog/story-readiness.ts:39`
+- **Где:** `src/domain/backlog/story-readiness.ts:39`
 - **Тест:** `test/domain/backlog/story-readiness.spec.ts`
 - **Источник:** [ADR 0009](../adr/0009-agente-po-backlog-rastreabilidade.md) §3
 - **Почему:** именно это не даёт PO сбросить расплывчатую историю в очередь
@@ -205,12 +205,12 @@ stateDiagram-v2
 Покрытие правило→история вычисляется, и то, что не имеет истории,
 показывается как **ожидающее** — информация, а не сбой.
 
-- **Где:** `apps/api/src/domain/backlog/coverage.ts`
+- **Где:** `src/domain/backlog/coverage.ts`
 - **Тест:** `test/domain/backlog/coverage.spec.ts`
 
 ### RN-013 — В графе модулей не может быть цикла {#rn-013}
 
-- **Где:** `apps/api/src/domain/architecture/module-graph.ts`
+- **Где:** `src/domain/architecture/module-graph.ts`
 - **Тест:** `test/domain/architecture/module-graph.spec.ts`
 
 ---
@@ -233,7 +233,7 @@ stateDiagram-v2
   awaiting_user --> [*]: merge за человеком
 ```
 
-- **Где:** `apps/api/src/domain/execution/pr-gate-state-machine.ts:24`
+- **Где:** `src/domain/execution/pr-gate-state-machine.ts:24`
 - **Тест:** `test/domain/execution/pr-gate-state-machine.spec.ts`
 - **Источник:** [ADR 0013](../adr/0013-gates-qa-secops-pr.md) §1
 - **Граничный случай:** `awaiting_user` терминально **по замыслу** — система
@@ -251,7 +251,7 @@ stateDiagram-v2
 расходует ровно ОДИН круг. См. [RN-036](engine.md#rn-036).
 
 - **Где:** `DEFAULT_MAX_GATE_CORRECTIONS = 3` в
-  `apps/api/src/application/use-cases/execution/record-gate-verdict.use-case.ts:21`;
+  `src/application/use-cases/execution/record-gate-verdict.use-case.ts:21`;
   применяется в `activate-execution.use-case.ts:89` и, в engine, в
   `qa_lead_server.ex:268` и `secops_agent_server.ex:142`
 - **Тест:** `apps/engine/test/engine/gates/qa_automacao_agent_test.exs`
@@ -265,7 +265,7 @@ stateDiagram-v2
 `budget` ссылается на проект или на сессию, никогда на оба — это
 гарантируется `check` в базе данных, а не только в коде.
 
-- **Где:** `apps/api/src/db/schema/llm.ts` (`budgets_scope_check`)
+- **Где:** `src/db/schema/llm.ts` (`budgets_scope_check`)
 - **Тест:** гарантией является ограничение
 
 ### RN-018 — Уведомление о бюджете на 70%, 90% и 100%, без повторов {#rn-018}
@@ -273,12 +273,12 @@ stateDiagram-v2
 Каждый порог срабатывает **один раз**; последний уведомлённый сохраняется в
 `budgets.last_threshold_notified`.
 
-- **Где:** `apps/api/src/domain/llm/budget-threshold.ts:1`
+- **Где:** `src/domain/llm/budget-threshold.ts:1`
 - **Тест:** `test/domain/llm/budget-threshold.spec.ts`
 
 ### RN-019 — `policy = 'block'` отклоняет вызов; `'allow'` лишь регистрирует {#rn-019}
 
-- **Где:** `apps/api/src/domain/llm/budget-threshold.ts:4`
+- **Где:** `src/domain/llm/budget-threshold.ts:4`
 - **Граничный случай:** проект в `allow` **не останавливается** на потолке.
   Это самая частая причина «бюджет не удержал» — см.
   [runbook](../runbook.md).
@@ -289,7 +289,7 @@ stateDiagram-v2
 существующий. `area` вошла в ФАЗЕ 23 — см. [RN-102](#rn-102) о её позиции и о
 том, что меняется для того, кто уже читал этот каскад.
 
-- **Где:** `apps/api/src/domain/llm/binding-resolver.ts`
+- **Где:** `src/domain/llm/binding-resolver.ts`
 - **Тест:** `test/domain/llm/binding-resolver.spec.ts`
 
 ## Psicólogo и Anamnese
@@ -300,7 +300,7 @@ stateDiagram-v2
 принадлежат анализируемой сессии**. Проверка атомарна на пакет: один
 невалидный id проваливает весь пакет.
 
-- **Где:** `apps/api/src/domain/psychologist/hypothesis-evidence.ts`
+- **Где:** `src/domain/psychologist/hypothesis-evidence.ts`
 - **Тест:** `test/domain/psychologist/hypothesis-evidence.spec.ts`
 - **Источник:** [ADR 0015](../adr/0015-psicologo-real-toolloop-hipoteses-evidencia.md) §3
 
@@ -309,7 +309,7 @@ stateDiagram-v2
 `proposed → accepted | dismissed`. Два конкурирующих решения об одной
 гипотезе: одно побеждает, другое получает конфликт — не 500 и не молчание.
 
-- **Где:** `apps/api/src/domain/psychologist/hypothesis-lifecycle.ts`
+- **Где:** `src/domain/psychologist/hypothesis-lifecycle.ts`
 - **Тест:** `test/domain/psychologist/hypothesis-lifecycle.spec.ts`
 - **Источник:** [ADR 0022](../adr/0022-fechamento-4b-psicologo.md) §7
 
@@ -320,7 +320,7 @@ stateDiagram-v2
 `module_map`. Всё остальное — "тревожность", "психическое здоровье" — **не
 имеет пути записи**: это ошибка в домене, а не инструкция промпта.
 
-- **Где:** `apps/api/src/domain/anamnese/competency-catalog.ts:16`
+- **Где:** `src/domain/anamnese/competency-catalog.ts:16`
 - **Тест:** `test/domain/anamnese/competency-catalog.spec.ts`
 - **Источник:** [ADR 0016](../adr/0016-anamnese-proficiencia-patches-instrucao.md) §1
 - **Почему:** Anamnese профилирует **техническую компетенцию**, а не
@@ -329,7 +329,7 @@ stateDiagram-v2
 
 ### RN-025 — Удаление профиля удаляет по-настоящему, а opt-out запрещает повторный вывод {#rn-025}
 
-- **Где:** `apps/api/src/domain/anamnese/proficiency-profile.entity.ts` +
+- **Где:** `src/domain/anamnese/proficiency-profile.entity.ts` +
   таблица `anamnese_opt_outs`
 - **Источник:** [ADR 0016](../adr/0016-anamnese-proficiencia-patches-instrucao.md) §2
 
@@ -340,7 +340,7 @@ stateDiagram-v2
 Таблицы дедупликации нет — источником служит сама история `proposed_action` с
 `actionType = instruction_patch` и `status = denied`.
 
-- **Где:** `apps/api/src/domain/instructions/patch-dedup.ts:22`
+- **Где:** `src/domain/instructions/patch-dedup.ts:22`
 - **Тест:** `test/domain/instructions/patch-dedup.spec.ts`
 
 ### RN-027 — Откат инструкции — операция **вперёд** {#rn-027}
@@ -348,7 +348,7 @@ stateDiagram-v2
 Откат создаёт новую версию со старым содержимым; историю он не стирает.
 Таблица версий — только для добавления.
 
-- **Где:** `apps/api/src/domain/instructions/`
+- **Где:** `src/domain/instructions/`
 - **Источник:** [ADR 0016](../adr/0016-anamnese-proficiencia-patches-instrucao.md) §4
 
 ---
@@ -368,7 +368,7 @@ bootstrap продолжал создавать, защищать и **доку�
 `bootstrap_step`: на него ссылаются старые строки, а шаг, который реально
 произошёл, из истории не стирается.
 
-- **Где:** `apps/api/src/application/use-cases/git/bootstrap-steps.ts` +
+- **Где:** `src/application/use-cases/git/bootstrap-steps.ts` +
   `domain/git/repo-bootstrap.entity.ts` (`RETIRED_BOOTSTRAP_STEPS`)
 - **Тест:** `test/domain/git/repo-bootstrap-status.spec.ts`
 - **Источник:** [ADR 0005](../adr/0005-repo-bootstrap-idempotent-steps.md)
@@ -386,7 +386,7 @@ bootstrap продолжал создавать, защищать и **доку�
 дефект: на стороне сервера двойная отправка клиента и replay вора
 идентичны.
 
-- **Где:** `apps/api/src/domain/auth/refresh-token.ts:50` +
+- **Где:** `src/domain/auth/refresh-token.ts:50` +
   `application/use-cases/auth/refresh.use-case.ts:98`
 - **Тест:** `test/application/use-cases/auth/rotacao-e-reuso.spec.ts`
 - **Граничный случай:** тот, кто предъявляет токен **уже отозванного** семейства, —
@@ -407,7 +407,7 @@ bootstrap продолжал создавать, защищать и **доку�
 корзина существовала бы только после нахождения учётной записи, и сама
 блокировка превратилась бы в оракул существования.
 
-- **Где:** `apps/api/src/domain/auth/lockout-policy.ts:97` +
+- **Где:** `src/domain/auth/lockout-policy.ts:97` +
   `infrastructure/persistence/drizzle/drizzle-login-throttle.ts:74`
 - **Тест:** `test/application/use-cases/auth/lockout.spec.ts`
 - **Граничный случай:** пока действует блокировка, попытка **не** регистрируется.
@@ -428,7 +428,7 @@ bootstrap продолжал создавать, защищать и **доку�
 сгенерированному с **теми же параметрами**, что и настоящий. При регистрации и
 запросе сброса известный и неизвестный адреса возвращают 202.
 
-- **Где:** `apps/api/src/application/use-cases/auth/login.use-case.ts:79` +
+- **Где:** `src/application/use-cases/auth/login.use-case.ts:79` +
   `register.use-case.ts:74`
 - **Тест:** `test/application/use-cases/auth/enumeracao.spec.ts`
 - **Граничный случай:** проверка блокировки по e-mail выполняется **после**
@@ -457,7 +457,7 @@ bootstrap продолжал создавать, защищать и **доку�
 аннулирует предыдущую. Завершение сброса отзывает **все** сессии
 пользователя и не выпускает токенов.
 
-- **Где:** `apps/api/src/infrastructure/persistence/drizzle/account-token.repository.ts:76`
+- **Где:** `src/infrastructure/persistence/drizzle/account-token.repository.ts:76`
 - **Тест:** `test/application/use-cases/auth/tokens-de-conta.spec.ts`
 - **Граничный случай:** две одновременные отправки не проходят обе. Гонка —
   **нормальный** случай, а не исключение: корпоративный сканер почты открывает
@@ -478,7 +478,7 @@ Refresh token идёт в cookie `brabo_refresh` (`httpOnly`, `SameSite=Strict`,
 `/auth/refresh` и `/auth/logout` требуют `X-CSRF-Token`, равный cookie
 `brabo_csrf`, сравниваемый за постоянное время.
 
-- **Где:** `apps/api/src/interfaces/http/auth/session-cookies.ts:53` +
+- **Где:** `src/interfaces/http/auth/session-cookies.ts:53` +
   `interfaces/http/auth/auth.controller.ts`
 - **Тест:** `test/interfaces/session-cookies.spec.ts`
 - **Граничный случай:** провал CSRF — **403**, а не 401. С 401 клиент
@@ -497,7 +497,7 @@ JWT и вне rate limit. Аутентифицирует `EngineServiceGuard`, �
 тот же секрет действует в обоих направлениях, а `BRABO_SERVICE_TOKEN_PREVIOUS`
 принимается только при проверке, чтобы у ротации не было окна недоступности.
 
-- **Где:** `apps/api/src/interfaces/http/auth/engine-service.guard.ts:44` +
+- **Где:** `src/interfaces/http/auth/engine-service.guard.ts:44` +
   `infrastructure/security/service-token.ts` +
   `apps/engine/lib/engine_web/plugs/verify_service_token.ex`
 - **Тест:** `apps/engine/test/engine_web/plugs/verify_service_token_test.exs`,
@@ -527,7 +527,7 @@ roster какой-либо сессии. Подсчёт естественно �
 областей Фазы 8 (`qa-automacao`, `qa-performance-seguranca`,
 `infra-workflows`): у каждой свой `actor_id`, когда она тратит токены.
 
-- **Где:** `apps/api/src/infrastructure/persistence/drizzle/token-usage.repository.ts`
+- **Где:** `src/infrastructure/persistence/drizzle/token-usage.repository.ts`
   (`summarizeForWorkspaceThisMonth`)
 - **Тест:** `test/application/use-cases/iam/get-workspace-summary.use-case.spec.ts`
 
@@ -591,7 +591,7 @@ prop, открывающий селектор с отмеченным фильт
 потребитель модели области — её агент ([RN-102](#rn-102)), — и именно
 поэтому экранов, включающих фильтр, ДВА.
 
-- **Где:** `apps/api/src/domain/llm/model-capabilities.ts:38`;
+- **Где:** `src/domain/llm/model-capabilities.ts:38`;
   `apps/web/src/components/ModelPicker.tsx` (фильтр и предупреждение о
   скрытом действующем), `apps/web/src/routes/settings/ModelsSection.tsx`,
   `apps/web/src/routes/settings/ModelsSection.tsx` (кто его включает)
@@ -617,7 +617,7 @@ prop, открывающий селектор с отмеченным фильт
 протокола. Все три ответа — в
 [docs/reference/llm-providers.md](../reference/llm-providers.md#normalized-divergences).
 
-- **Где:** `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:167`
+- **Где:** `src/infrastructure/llm/openai-compatible-provider.ts:167`
 - **Тест:** `test/contract/llm-provider.contract.ts` (сценарий
   `sem_usage`, выполняемый против трёх провайдеров)
 - **Источник:** [ADR 0041](../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
@@ -634,7 +634,7 @@ prop, открывающий селектор с отмеченным фильт
 нет, так что `sum by (upstream_provider)` продолжает суммировать всю
 стоимость.
 
-- **Где:** `apps/api/src/application/use-cases/llm/record-llm-usage.use-case.ts:73`
+- **Где:** `src/application/use-cases/llm/record-llm-usage.use-case.ts:73`
 - **Тест:** `test/application/use-cases/llm/record-llm-usage.use-case.spec.ts`
 - **Источник:** [ADR 0041](../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
 
@@ -676,9 +676,9 @@ prop, открывающий селектор с отмеченным фильт
   сбоя (`infra` | `modelo`) в отчёте — никогда диагностика методом
   исключения.
 
-- **Где:** `apps/api/src/application/use-cases/llm/sync-model-catalog.use-case.ts:160`,
-  `apps/api/src/domain/llm/binding-resolver.ts:63`,
-  `apps/api/src/domain/llm/model-capabilities.ts:49`
+- **Где:** `src/application/use-cases/llm/sync-model-catalog.use-case.ts:160`,
+  `src/domain/llm/binding-resolver.ts:63`,
+  `src/domain/llm/model-capabilities.ts:49`
 - **Тест:** `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts`,
   `test/domain/llm/binding-resolver.spec.ts`,
   `test/application/use-cases/llm/set-model-binding.use-case.spec.ts`
@@ -707,9 +707,9 @@ prop, открывающий селектор с отмеченным фильт
 исправлял цену). Обе теперь аудируются, а seed переиспользует сам
 `UpdateModelPricingUseCase`.
 
-- **Где:** `apps/api/src/application/use-cases/llm/update-model-pricing.use-case.ts:44`,
-  `apps/api/src/application/use-cases/llm/sync-model-catalog.use-case.ts:213`,
-  `apps/api/src/db/seed.ts:376`
+- **Где:** `src/application/use-cases/llm/update-model-pricing.use-case.ts:44`,
+  `src/application/use-cases/llm/sync-model-catalog.use-case.ts:213`,
+  `src/db/seed.ts:376`
 - **Тест:** `test/application/use-cases/llm/update-model-pricing.use-case.spec.ts`,
   `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts`
 - **Источник:** [ADR 0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
@@ -755,9 +755,9 @@ bootstrap — тот же, что в Фазе 2, без фильтра, и ег�
 считается «незащищённой» и может быть перезаписана — но только внутри
 одобренного плана.
 
-- **Где:** `apps/api/src/application/use-cases/git/decide-bootstrap-plan.use-case.ts`,
-  `apps/api/src/application/use-cases/git/bootstrap-plan.ts`,
-  `apps/api/src/application/use-cases/git/bootstrap-steps.ts:112`
+- **Где:** `src/application/use-cases/git/decide-bootstrap-plan.use-case.ts`,
+  `src/application/use-cases/git/bootstrap-plan.ts`,
+  `src/application/use-cases/git/bootstrap-steps.ts:112`
 - **Тест:** `test/application/use-cases/git/decide-bootstrap-plan.use-case.spec.ts`,
   `test/application/use-cases/git/bootstrap-plan.spec.ts`
 - **Источник:** [ADR 0044](../adr/0044-adocao-de-repositorio-existente.md)
@@ -779,8 +779,8 @@ Backfill миграции `0031` помечает всё существовав�
 быть в этом слепым: принятия до неё не существовало, так что нет принятой
 строки, которую можно классифицировать неверно.
 
-- **Где:** `apps/api/src/db/schema/git.ts`, `apps/api/src/db/migrations/0031_special_winter_soldier.sql`,
-  `apps/api/src/domain/git/repo-bootstrap.entity.ts`
+- **Где:** `src/db/schema/git.ts`, `src/db/migrations/0031_special_winter_soldier.sql`,
+  `src/domain/git/repo-bootstrap.entity.ts`
 - **Тест:** `test/application/use-cases/git/adopt-repository.use-case.spec.ts`
 - **Источник:** [ADR 0044](../adr/0044-adocao-de-repositorio-existente.md)
 
@@ -839,10 +839,10 @@ Backfill миграции `0031` помечает всё существовав�
 Новое значение по умолчанию действует для тех, кто придёт позже; идущий
 проект не может перестать производить из-за deploy.
 
-- **Где:** `apps/api/src/domain/backlog/story-promotion.ts`,
-  `apps/api/src/db/migrations/0033_absurd_domino.sql`,
-  `apps/api/src/application/use-cases/backlog/promote-stories.use-case.ts`,
-  `apps/api/src/application/use-cases/backlog/return-story.use-case.ts`,
+- **Где:** `src/domain/backlog/story-promotion.ts`,
+  `src/db/migrations/0033_absurd_domino.sql`,
+  `src/application/use-cases/backlog/promote-stories.use-case.ts`,
+  `src/application/use-cases/backlog/return-story.use-case.ts`,
   `apps/engine/lib/engine/agents/po_server.ex` (`revision_message/1`)
 - **Тест:** `test/domain/backlog/story-promotion.spec.ts` (симметрия),
   `test/db/story-promotion-migration.spec.ts` (направленный backfill),
@@ -876,7 +876,7 @@ Outbox — **не** память: он вычерпывается, помеча�
 `bootstrap.step_*` в той же сессии, и их дублирование считало бы один и тот
 же факт дважды в метрике одобрения.
 
-- **Где:** `apps/api/src/application/use-cases/actions/propose-action.use-case.ts`,
+- **Где:** `src/application/use-cases/actions/propose-action.use-case.ts`,
   `.../approve-action.use-case.ts`, `.../deny-action.use-case.ts`
 - **Тест:** `test/application/use-cases/actions/approve-deny-action.use-case.spec.ts`
   (describe `the decision in the event log`)
@@ -906,8 +906,8 @@ Outbox — **не** память: он вычерпывается, помеча�
 **без** цены — `true`: строка ждёт, что кто-то наберёт цену, и пометка уже
 защищает это число от первого каталога, который решит сообщить цену.
 
-- **Где:** `apps/api/src/application/use-cases/llm/sync-model-catalog.use-case.ts`
-  (`resolverPreco`), `apps/api/src/db/schema/llm.ts:137`
+- **Где:** `src/application/use-cases/llm/sync-model-catalog.use-case.ts`
+  (`resolverPreco`), `src/db/schema/llm.ts:137`
 - **Тест:** `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts`
   (`manually typed price beats a catalog that REPORTS a price`)
 - **Источник:** [ADR 0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
@@ -939,9 +939,9 @@ workspace создало бы N истин об одной модели, а та
    получает `null` и проверяет только доступность, оставляя пробел явным,
    вместо того чтобы угадывать workspace.
 
-- **Где:** `apps/api/src/db/schema/llm.ts` (`workspace_models`),
-  `apps/api/src/application/use-cases/llm/set-models-active.use-case.ts`,
-  `apps/api/src/application/use-cases/llm/set-model-binding.use-case.ts`
+- **Где:** `src/db/schema/llm.ts` (`workspace_models`),
+  `src/application/use-cases/llm/set-models-active.use-case.ts`,
+  `src/application/use-cases/llm/set-model-binding.use-case.ts`
   (`workspaceDoEscopo`)
 - **Тест:** `test/application/use-cases/llm/set-models-active.use-case.spec.ts`
   (`activating in one workspace does NOT turn on the model in its neighbor`)
@@ -979,8 +979,8 @@ workspace создало бы N истин об одной модели, а та
 для агента в `awaiting_gate` это означало бы бросить worktree, который gate
 сейчас прочёсывает, — не говоря об обходе circuit breaker одним кликом.
 
-- **Где:** `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts`,
-  `apps/api/src/infrastructure/persistence/drizzle/session.repository.ts`
+- **Где:** `src/application/use-cases/execution/activate-execution.use-case.ts`,
+  `src/infrastructure/persistence/drizzle/session.repository.ts`
   (`findActiveExecutionSession`),
   `apps/engine/lib/engine_web/controllers/execution_command_controller.ex`
   (`acordar/4`)
@@ -1018,7 +1018,7 @@ ADR 0038 требовал этой проверки, называя место �
 нарушить иерархию.
 
 **У области, lead и участников ОДИН источник** начиная с ФАЗЫ 18:
-`apps/api/src/domain/agents/agent-areas.ts`. Раньше список был написан
+`src/domain/agents/agent-areas.ts`. Раньше список был написан
 вручную в трёх местах (api, web, engine), а тест сравнивал только api с
 web — engine молча расходился. Теперь
 `apps/web/src/lib/agent-areas.generated.ts` и
@@ -1030,9 +1030,9 @@ web — engine молча расходился. Теперь
 Список по-прежнему является КАТАЛОГОМ; `agent_areas` — это СОСТОЯНИЕ по
 проекту (RN-094), и они отвечают на разные вопросы.
 
-- **Где:** `apps/api/src/domain/agents/agent-areas.ts`
+- **Где:** `src/domain/agents/agent-areas.ts`
   (`assertHandoffTargetAllowed`, `HandoffToSubagentError`),
-  `apps/api/src/application/use-cases/agents/create-handoff.use-case.ts`
+  `src/application/use-cases/agents/create-handoff.use-case.ts`
 - **Тест:** `test/domain/agents/agent-areas.spec.ts` (правило + проверка, что
   производные копии не расходятся с источником),
   `test/application/use-cases/agents/create-handoff.use-case.spec.ts`
@@ -1085,10 +1085,10 @@ LLM в Фазе 11a). Реальный режим отказа оказался 
 проверять.
 
 - **Где:**
-  `apps/api/src/application/use-cases/credentials/test-stored-credential.use-case.ts`,
-  `apps/api/src/application/use-cases/llm/upsert-user-credential.use-case.ts`,
-  `apps/api/src/application/use-cases/git/register-git-credential.use-case.ts`,
-  `apps/api/src/application/ports/llm-credential-connection-tester.port.ts`
+  `src/application/use-cases/credentials/test-stored-credential.use-case.ts`,
+  `src/application/use-cases/llm/upsert-user-credential.use-case.ts`,
+  `src/application/use-cases/git/register-git-credential.use-case.ts`,
+  `src/application/ports/llm-credential-connection-tester.port.ts`
   (`supports`)
 - **Тест:**
   `test/application/use-cases/credentials/test-stored-credential.use-case.spec.ts`
@@ -1126,10 +1126,10 @@ LLM в Фазе 11a). Реальный режим отказа оказался 
 ПОЛОЖИТЕЛЬНЫЙ фильтр и никогда не пишет «не читает изображения» — `false`
 здесь значит «провайдер не объявил».
 
-- **Где:** `apps/api/src/infrastructure/llm/openrouter-provider.ts`
+- **Где:** `src/infrastructure/llm/openrouter-provider.ts`
   (`temModalidade`, `parseCatalogoOpenRouter`),
-  `apps/api/src/application/use-cases/llm/sync-model-catalog.use-case.ts`,
-  `apps/api/src/db/schema/llm.ts` (`models`)
+  `src/application/use-cases/llm/sync-model-catalog.use-case.ts`,
+  `src/db/schema/llm.ts` (`models`)
 - **Тест:**
   `test/infrastructure/llm/openrouter-provider.contract.spec.ts`
   (`modalidade não declarada OMITE o campo em vez de afirmar false`);
@@ -1162,11 +1162,11 @@ LLM в Фазе 11a). Реальный режим отказа оказался 
 способ снять все отметки, и это легитимное состояние — «никто не высказался»
 не значит «не подходит».
 
-- **Где:** `apps/api/src/domain/llm/model-uses.ts`,
-  `apps/api/src/db/schema/llm.ts` (`workspace_models.uses`),
-  `apps/api/src/infrastructure/persistence/drizzle/workspace-model.repository.ts`
+- **Где:** `src/domain/llm/model-uses.ts`,
+  `src/db/schema/llm.ts` (`workspace_models.uses`),
+  `src/infrastructure/persistence/drizzle/workspace-model.repository.ts`
   (`setUses`),
-  `apps/api/src/application/use-cases/llm/set-model-uses.use-case.ts`
+  `src/application/use-cases/llm/set-model-uses.use-case.ts`
 - **Тест:** `test/application/use-cases/llm/set-model-uses.use-case.spec.ts`
   (`marcar uso NÃO liga o modelo — a linha nova nasce inativa`,
   `trocar o uso não desliga o que já estava ligado`,
@@ -1198,9 +1198,9 @@ LLM в Фазе 11a). Реальный режим отказа оказался 
 то есть настоящего пользователя.
 
 - **Где:**
-  `apps/api/src/application/use-cases/llm/resolve-credential-owner.use-case.ts`,
-  `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts`,
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts`
+  `src/application/use-cases/llm/resolve-credential-owner.use-case.ts`,
+  `src/application/use-cases/llm/stream-llm-turn.use-case.ts`,
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts`
 - **Тест:** `test/application/use-cases/llm/resolve-credential-owner.use-case.spec.ts`
   (owner побеждает того, кто создал проект; найденный ключ — его;
   несуществующий проект — 404, а не ошибка базы)
@@ -1232,8 +1232,8 @@ LLM в Фазе 11a). Реальный режим отказа оказался 
 ([ADR 0050](../adr/0050-credencial-sempre-cifrada-verificacao-explicita.md)).
 
 - **Где:**
-  `apps/api/src/application/use-cases/llm/get-credential-spend.use-case.ts`,
-  `apps/api/src/interfaces/http/llm/budgets.controller.ts`,
+  `src/application/use-cases/llm/get-credential-spend.use-case.ts`,
+  `src/interfaces/http/llm/budgets.controller.ts`,
   `apps/web/src/components/CredentialSpendSection.tsx`
 - **Тест:** `test/application/use-cases/llm/get-credential-spend.use-case.spec.ts`
   (группирует по провайдеру; отделяет агента от человека; удалённый ключ
@@ -1260,7 +1260,7 @@ kickoff. Именно поэтому ход **не** завершается, к�
 Arquiteto впереди ещё три шага (привязать истории, предложить ADR,
 зарегистрировать напряжения), и завершение там убило бы все три.
 
-- **Где:** `apps/api/src/application/use-cases/architecture/create-module-map.use-case.ts`
+- **Где:** `src/application/use-cases/architecture/create-module-map.use-case.ts`
 - **Тест:** `test/application/use-cases/architecture/create-module-map.use-case.spec.ts`
   (`refuses the SECOND map of the same session`; а версионирование между
   сессиями по-прежнему доказано рядом)
@@ -1300,8 +1300,8 @@ dev agent на модуль**, нарисованная архитектура �
 карту именно для того, чтобы попытаться закрепить имена, которые он не мог
 прочитать.
 
-- **Где:** `apps/api/src/application/use-cases/architecture/assign-story-modules.use-case.ts`,
-  `apps/api/src/application/use-cases/architecture/create-module-map.use-case.ts`,
+- **Где:** `src/application/use-cases/architecture/assign-story-modules.use-case.ts`,
+  `src/application/use-cases/architecture/create-module-map.use-case.ts`,
   `apps/engine/lib/engine/harness/tools/create_module_map.ex`
 - **Тест:** `test/application/use-cases/architecture/assign-story-modules.use-case.spec.ts`
   (`the refusal lists the VALID modules`; `with no module_map, it directs
@@ -1338,7 +1338,7 @@ engine никогда не знал. Эффект — молчаливый ка�
 Тест намеренно касается ИСХОДНИКА: поведенческий тест доказывал бы по одному
 пути за раз, а дефект здесь — путь, о котором никто не подумал.
 
-- **Где:** `apps/api/src/application/use-cases/sessions/create-session.use-case.ts`
+- **Где:** `src/application/use-cases/sessions/create-session.use-case.ts`
   (владелец), `git/provision-repository.use-case.ts`,
   `git/adopt-repository.use-case.ts`,
   `execution/activate-execution.use-case.ts` (вызывающие)
@@ -1377,7 +1377,7 @@ Allowlist — смягчение, а не решение: это список п
 решения, а не сжигал итерации, — находится в
 [ADR 0052](../adr/0052-dev-agent-espera-aprovacao-no-meio-do-laco.md).
 
-- **Где:** `apps/api/src/domain/actions/dev-terminal-patterns.ts`,
+- **Где:** `src/domain/actions/dev-terminal-patterns.ts`,
   засеивается `application/use-cases/execution/activate-execution.use-case.ts`
 - **Тест:** `test/domain/actions/dev-terminal-patterns.spec.ts`
   (`allows ls -la`; `a composite command doesn't hitch a ride on the
@@ -1411,7 +1411,7 @@ runtime.** Реестр проверяется на двух уровнях: `va
 `RegistroDeGatesInvalido`, перечисляющим одиннадцать целей как
 отсутствующие, — двенадцать 5xx примерно за 55 минут, в каждой установке.
 Образ production несёт `/app/docs/gates.yml` и больше ничего из `docs/`;
-`apps/api/test/`, `scripts/ci/` и `.github/` в него никогда не входят.
+`test/`, `scripts/ci/` и `.github/` в него никогда не входят.
 Правило не было ослаблено — оно было перенесено туда, где существует вопрос.
 Не возвращайте его в загрузчик: `arquivoExiste` в процессе, у которого нет
 репозитория, отвечает о другом дереве.
@@ -1436,17 +1436,17 @@ api.
 открыл бы весь запрос. Кто продвинул story (человек или PO), живёт в колонке
 `actor_kind` и остаётся вне декларативного словаря.
 
-- **Где:** `apps/api/src/domain/gates/gate-registry.ts`
+- **Где:** `src/domain/gates/gate-registry.ts`
   (`validarRegistro` и `validarLocalizadores`), зарегистрировано в
-  `docs/gates.yml`, измеряется в `apps/api/scripts/validacao-gates.ts`;
+  `docs/gates.yml`, измеряется в `scripts/validacao-gates.ts`;
   загрузчик, намеренно вызывающий только первую, —
-  `apps/api/src/infrastructure/gates/gate-registry.loader.ts`
-- **Тест:** `apps/api/test/domain/gates/gate-registry.spec.ts`
+  `src/infrastructure/gates/gate-registry.loader.ts`
+- **Тест:** `test/domain/gates/gate-registry.spec.ts`
   (`é válido: nenhum problema acumulado`; `todo alvo de prova citado
   existe no repositório`; `validarRegistro ignora o disco: alvo ausente
   não é problema DELE`; `nenhum par (event_types + filtro) se repete
   entre gates`) и
-  `apps/api/test/infrastructure/gates/gate-registry.loader.spec.ts`
+  `test/infrastructure/gates/gate-registry.loader.spec.ts`
   (`carrega o registro real sem exigir os alvos que a imagem não leva`,
   против корня, восстановленного как дерево образа production)
 - **Источник:** ФАЗА 15a (ADR 0054); разделение на два уровня пришло из 500
@@ -1470,12 +1470,12 @@ api.
 Обратное тоже проваливает: id в списке без соответствующего gate — мёртвое
 правило, указывающее в никуда.
 
-- **Где:** `apps/api/src/domain/gates/gate-registry.ts`
+- **Где:** `src/domain/gates/gate-registry.ts`
   (`GATES_HUMANOS_IMUTAVEIS`); потолок в
-  `apps/api/src/domain/actions/decide.ts`
-- **Тест:** `apps/api/test/domain/gates/gate-registry.spec.ts`
+  `src/domain/actions/decide.ts`
+- **Тест:** `test/domain/gates/gate-registry.spec.ts`
   (`%s cannot have aprovacao_humana false`); потолок в
-  `apps/api/test/domain/actions/decide.spec.ts`
+  `test/domain/actions/decide.spec.ts`
 - **Источник:** ФАЗА 15a (ADR 0054)
 
 ### RN-072 — Без явного выбора модель — модель агента Criativo {#rn-072}
@@ -1502,10 +1502,10 @@ api.
 локальную модель на семантическом шаге. При реальном исполнении пришлось
 вручную менять модель в каждой открытой сессии, и три dev agents поднялись
 на `llama3.2:1b`, хотя никто об этом не просил.
-- **Где:** `apps/api/src/domain/llm/binding-resolver.ts`
+- **Где:** `src/domain/llm/binding-resolver.ts`
   (`herdarModeloDeStart`), применяется в
   `application/use-cases/llm/resolve-model-binding.use-case.ts`
-- **Тест:** `apps/api/test/domain/llm/binding-resolver.spec.ts`
+- **Тест:** `test/domain/llm/binding-resolver.spec.ts`
   (`fills the gap`; `does NOT override %s's explicit choice`)
 - **Источник:** находки B и O реального исполнения (ФАЗА 13c, фаза A)
 
@@ -1557,12 +1557,12 @@ api.
 истинным для любого абсолютного пути. Тот, кто «упростит» обратно до regex,
 снова откроет предупреждение.
 
-- **Где:** `apps/api/src/domain/actions/path-scope.ts`,
+- **Где:** `src/domain/actions/path-scope.ts`,
   `domain/actions/decide.ts` (потолок области видимости и `cd` в области),
   корень, выводимый в
   `infrastructure/filesystem/project-workspaces-root.ts`
-- **Тест:** `apps/api/test/domain/actions/path-scope.spec.ts` и
-  `apps/api/test/domain/actions/decide.spec.ts`
+- **Тест:** `test/domain/actions/path-scope.spec.ts` и
+  `test/domain/actions/decide.spec.ts`
   (describe `decide — escopo de caminho`)
 - **Источник:** [ADR 0055](../adr/0055-escopo-de-caminho-na-politica-de-terminal.md),
   находка U, Фаза F [backlog](../explanation/backlog.md)
@@ -1598,10 +1598,10 @@ api.
 payload: продолжение без защиты — его выбор, и тот, кто прочтёт потом, должен
 знать, от чего именно отказались.
 
-- **Где:** `apps/api/src/application/use-cases/git/acknowledge-protection-failure.use-case.ts`,
+- **Где:** `src/application/use-cases/git/acknowledge-protection-failure.use-case.ts`,
   маршрут в `interfaces/http/git/git.controller.ts`, кнопка в
   `apps/web/src/routes/ProvisioningPage.tsx`
-- **Тест:** `apps/api/test/application/use-cases/git/acknowledge-protection-failure.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/git/acknowledge-protection-failure.use-case.spec.ts`
   (разблокирует; решение в логе с актором; и отказ для более раннего сбоя)
 - **Источник:** находка D, Фаза D [backlog](../explanation/backlog.md)
 
@@ -1633,10 +1633,10 @@ público GET /hello que responde saudação imediata" покрывают оди�
 Начиная с [RN-681](#rn-681) пара ПРЕДУПРЕЖДАЕТСЯ через embedding — по-прежнему
 проходит, и тест, утверждающий предел ЭТОГО механизма, остаётся в силе.
 
-- **Где:** `apps/api/src/domain/backlog/story-overlap.ts`,
-  `apps/api/src/application/use-cases/backlog/create-story.use-case.ts`
-- **Тест:** `apps/api/test/domain/backlog/story-overlap.spec.ts`,
-  `apps/api/test/application/use-cases/backlog/create-story.use-case.spec.ts`
+- **Где:** `src/domain/backlog/story-overlap.ts`,
+  `src/application/use-cases/backlog/create-story.use-case.ts`
+- **Тест:** `test/domain/backlog/story-overlap.spec.ts`,
+  `test/application/use-cases/backlog/create-story.use-case.spec.ts`
 - **Источник:** находка R, Фаза E [backlog](../explanation/backlog.md)
 
 ### RN-082 — Учётные данные git для действия — это данные OWNER workspace {#rn-082}
@@ -1665,9 +1665,9 @@ API, которая была вне симметрии.
 агентов**, и это не меняется в зависимости от того, кто кликает. Поэтому
 резолвер ПЕРЕИСПОЛЬЗУЕТСЯ, а не реализуется заново.
 
-- **Где:** `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts`,
+- **Где:** `src/application/use-cases/actions/execute-git-action.use-case.ts`,
   переиспользуя `application/use-cases/llm/resolve-credential-owner.use-case.ts`
-- **Тест:** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   (автоодобренный `pr_open` с `decidedBy: null` запрашивает учётные данные
   owner)
 - **Источник:** находка AA, [реальная проверка 13b](../explanation/validacao-real.md)
@@ -1719,12 +1719,12 @@ API, которая была вне симметрии.
 создании, а его переинтерпретация под новым потолком изменила бы то, что вы
 собираетесь решить, уже прочитав.
 
-- **Где:** `apps/api/src/domain/execution/paralelismo.ts` (чистое правило),
+- **Где:** `src/domain/execution/paralelismo.ts` (чистое правило),
   `application/use-cases/execution/request-parallelization.use-case.ts`,
   `application/use-cases/execution/set-area-max-parallel.use-case.ts`,
   раскрыто в `interfaces/http/execution/execution.controller.ts` и
   настраивается в `apps/web/src/routes/settings/ParallelismSection.tsx`
-- **Тест:** `apps/api/test/domain/execution/paralelismo.spec.ts`,
+- **Тест:** `test/domain/execution/paralelismo.spec.ts`,
   `test/application/use-cases/execution/request-parallelization.use-case.spec.ts`,
   `test/application/use-cases/execution/set-area-max-parallel.use-case.spec.ts`
   и `apps/web/src/routes/ProjectSettingsTab.test.tsx` (`ParallelismSection`)
@@ -1759,7 +1759,7 @@ API, которая была вне симметрии.
   общий конвейер информирует больше, чем ничего.
 
 - **Где:** `apps/web/src/components/PrGateTimeline.tsx` (`etapasDaEsteira`),
-  читающий `GET /gates` (`apps/api/src/interfaces/http/gates/gates.controller.ts`)
+  читающий `GET /gates` (`src/interfaces/http/gates/gates.controller.ts`)
 - **Тест:** `apps/web/src/components/PrGateTimeline.test.ts`
   (`gate que SAI do registro some da tela`, `gate de PR que a tela ainda não
   sabe desenhar é IGNORADO`, `sem registro, mostra a esteira completa`)
@@ -1800,12 +1800,12 @@ Anamnese работает периодически и предлагала бы 
 Одобрение применяет значение из **payload**, а не пересчитанное в моменте, —
 это число, которое вы прочитали, принимая решение.
 
-- **Где:** `apps/api/src/domain/actions/decide.ts` (потолок),
+- **Где:** `src/domain/actions/decide.ts` (потолок),
   `application/use-cases/execution/propose-max-parallel.use-case.ts`,
   `execute-max-parallel-raise.use-case.ts`,
   `apps/engine/lib/engine/anamnese/tools/propose_max_parallel.ex` и порог в
   `apps/engine/lib/engine/workers/anamnese_worker.ex` (`nota_de_paralelismo/1`)
-- **Тест:** `apps/api/test/domain/actions/decide.spec.ts`
+- **Тест:** `test/domain/actions/decide.spec.ts`
   (`decide — teto do paralelismo`),
   `test/application/use-cases/execution/propose-max-parallel.use-case.spec.ts`,
   `execute-max-parallel-raise.use-case.spec.ts`,
@@ -1853,15 +1853,15 @@ Anamnese работает периодически и предлагала бы 
 `deriveAgentRoster` всегда говорил "уже открывался хоть раз".
 
 - **Где:**
-  `apps/api/src/application/ports/projects-summary-repository.port.ts`,
-  `apps/api/src/infrastructure/persistence/drizzle/projects-summary.repository.ts`,
-  `apps/api/src/interfaces/http/iam/workspaces.controller.ts`
+  `src/application/ports/projects-summary-repository.port.ts`,
+  `src/infrastructure/persistence/drizzle/projects-summary.repository.ts`,
+  `src/interfaces/http/iam/workspaces.controller.ts`
   (`getProjectsSummary`), `apps/web/src/lib/hooks.ts` (`useProjectsSummary`),
   `apps/web/src/lib/agent-status.ts` (`rosterFromFacts`),
   `apps/web/src/routes/Dashboard.tsx`, `apps/web/src/routes/Shell.tsx`
 - **Тест:** `apps/web/src/routes/Dashboard.fanout.test.tsx` (30 проектов
   стоят столько же, сколько 3; ни один эндпоинт на проект не вызывается);
-  `apps/api/test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
   (число запросов к базе не растёт с N);
   `apps/web/src/lib/agent-status.test.ts` (факты api дают те же чипы, что и
   журнал событий)
@@ -1914,16 +1914,16 @@ Anamnese работает периодически и предлагала бы 
 остатком старого workspace.
 
 - **Где:**
-  `apps/api/src/application/ports/projects-summary-repository.port.ts`
+  `src/application/ports/projects-summary-repository.port.ts`
   (`unreadEventsForWorkspace`),
-  `apps/api/src/infrastructure/persistence/drizzle/projects-summary.repository.ts`,
-  `apps/api/src/interfaces/http/iam/workspaces.controller.ts`
-  (`getUnreadEvents`), `apps/api/src/interfaces/http/iam/dto/unread-events.dto.ts`,
+  `src/infrastructure/persistence/drizzle/projects-summary.repository.ts`,
+  `src/interfaces/http/iam/workspaces.controller.ts`
+  (`getUnreadEvents`), `src/interfaces/http/iam/dto/unread-events.dto.ts`,
   `apps/web/src/lib/notifications.ts` (`useNotificationGroups`),
   `apps/web/src/lib/api-client.ts` (`getUnreadEvents`)
 - **Тест:** `apps/web/src/routes/Dashboard.fanout.test.tsx` (с ОТКРЫТЫМ
   ящиком: один запрос, и 30 проектов стоят столько же, сколько 3);
-  `apps/api/test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
   (число запросов к базе не растёт с N; пустая карта, отсечка по проекту,
   потолок по проекту и изоляция workspace)
 - **Источник:** измеренный остаток [RN-090](#rn-090) — 286 запросов/мин с
@@ -1955,9 +1955,9 @@ Express **декодирует percent-encoding сегмента перед ег
 
 Счастливый путь не меняется — каждый реальный id является UUID из базы.
 
-- **Где:** `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
+- **Где:** `src/infrastructure/filesystem/project-workspaces-root.ts`
   (`projectScopeRoot`)
-- **Тест:** `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+- **Тест:** `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
 - **Источник:** [ADR 0058](../adr/0058-csp-fechado-na-api-e-escopo-de-projeto-contido.md),
   предупреждения `js/path-injection` от CodeQL
 
@@ -1985,9 +1985,9 @@ Express **декодирует percent-encoding сегмента перед ег
 расходятся. При расхождении здесь callback отклонял бы каждый легитимный
 `state`.
 
-- **Где:** `apps/api/src/infrastructure/security/oauth-state-secret.ts`
-  (`resolveOauthStateSecret`), вызывается при загрузке в `apps/api/src/main.ts`
-- **Тест:** `apps/api/test/infrastructure/security/oauth-state-secret.spec.ts`
+- **Где:** `src/infrastructure/security/oauth-state-secret.ts`
+  (`resolveOauthStateSecret`), вызывается при загрузке в `src/main.ts`
+- **Тест:** `test/infrastructure/security/oauth-state-secret.spec.ts`
 - **Источник:** [ADR 0059](../adr/0059-segredo-do-state-de-oauth-sem-default.md)
 
 ### RN-094 — Область агентов рождается вместе с проектом {#rn-094}
@@ -2027,11 +2027,11 @@ CONFLICT DO NOTHING` в обеих таблицах. Без неё дефект 
 для тех, кто начинает с нуля.
 
 - **Где:**
-  `apps/api/src/application/use-cases/agents/seed-agent-areas.use-case.ts`,
+  `src/application/use-cases/agents/seed-agent-areas.use-case.ts`,
   вызывается `application/use-cases/iam/create-project.use-case.ts` и
   `application/use-cases/execution/activate-execution.use-case.ts`;
-  канонический список в `apps/api/src/domain/agents/agent-areas.ts`;
-  backfill в `apps/api/src/db/migrations/0038_wandering_lila_cheney.sql`
+  канонический список в `src/domain/agents/agent-areas.ts`;
+  backfill в `src/db/migrations/0038_wandering_lila_cheney.sql`
 - **Тест:**
   `test/application/use-cases/iam/create-project-semeia-areas.spec.ts` (путь,
   против базы, включая сбой, роняющий создание),
@@ -2091,19 +2091,19 @@ owner сколько угодно — то же семейство дефект�
 только для чтения, а запись — когда появится — рождается `proposed_action`.
 
 - **Где:**
-  `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
+  `src/infrastructure/filesystem/project-workspaces-root.ts`
   (`caminhoDeRepositorioContido`),
-  `apps/api/src/application/use-cases/git/read-project-code.use-case.ts`,
-  `apps/api/src/domain/git/git-read-limits.ts`,
-  `apps/api/src/domain/git/git-read-cache.ts`,
-  `apps/api/src/interfaces/http/git/code.controller.ts`
+  `src/application/use-cases/git/read-project-code.use-case.ts`,
+  `src/domain/git/git-read-limits.ts`,
+  `src/domain/git/git-read-cache.ts`,
+  `src/interfaces/http/git/code.controller.ts`
 - **Тест:**
-  `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+  `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   (изолированное ограничение),
-  `apps/api/test/application/use-cases/git/read-project-code.use-case.spec.ts`
+  `test/application/use-cases/git/read-project-code.use-case.spec.ts`
   (вредоносный путь отклоняется на трёх маршрутах **до** вызова провайдера, и
   каждый из трёх бюджетов останавливает поиск),
-  `apps/api/test/domain/git/git-read-cache.spec.ts`
+  `test/domain/git/git-read-cache.spec.ts`
 - **Источник:** ФАЗА 26b, пункт 34 программы 16–26; ограничение расширяет
   [RN-092](#rn-092) ([ADR 0058](../adr/0058-csp-fechado-na-api-e-escopo-de-projeto-contido.md))
 
@@ -2151,11 +2151,11 @@ DEFAULT колонки — `consultiva`, тип, который может **м�
 сломать повторную активацию проекта в работе без того, чтобы кто-то что-то
 решил.
 
-- **Где:** `apps/api/src/domain/sessions/session-kind.ts:50`
-  (`podeAtivarExecucao`), `apps/api/src/db/schema/sessions.ts:68` (колонка),
-  `apps/api/src/application/use-cases/sessions/append-session-event.use-case.ts:53`
+- **Где:** `src/domain/sessions/session-kind.ts:50`
+  (`podeAtivarExecucao`), `src/db/schema/sessions.ts:68` (колонка),
+  `src/application/use-cases/sessions/append-session-event.use-case.ts:53`
   (защита)
-- **Тест:** `apps/api/test/application/use-cases/sessions/session-kind-e-nome.spec.ts`
+- **Тест:** `test/application/use-cases/sessions/session-kind-e-nome.spec.ts`
 - **Источник:** [ADR 0061](../adr/0061-tipo-da-sessao-na-criacao.md)
 
 ## Панель проектов
@@ -2199,15 +2199,15 @@ DEFAULT колонки — `consultiva`, тип, который может **м�
 изменилось то, какое окно выбирает запрос и что ящик о нём объявляет.
 
 - **Где:**
-  `apps/api/src/infrastructure/persistence/drizzle/projects-summary.repository.ts`
+  `src/infrastructure/persistence/drizzle/projects-summary.repository.ts`
   (`unreadEventsForWorkspace`),
-  `apps/api/src/application/ports/projects-summary-repository.port.ts`,
-  `apps/api/src/interfaces/http/iam/dto/iam.response.dto.ts`
+  `src/application/ports/projects-summary-repository.port.ts`,
+  `src/interfaces/http/iam/dto/iam.response.dto.ts`
   (`ProjectUnreadEventsResponseDto`),
   `apps/web/src/lib/notifications.ts` (`useNotificationGroups`),
   `apps/web/src/components/NotificationBell.tsx`
 - **Тест:**
-  `apps/api/test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
   ("com mais não lidos que o teto, voltam os MAIS RECENTES, do novo para o
   velho" — утверждает МНОЖЕСТВО до порядка);
   `apps/web/src/components/NotificationBell.test.tsx` (отрисовывает в
@@ -2262,12 +2262,12 @@ DEFAULT колонки — `consultiva`, тип, который может **м�
 одну строку измерения `model`.
 
 - **Где:**
-  `apps/api/src/application/use-cases/llm/get-my-spend.use-case.ts`,
-  `apps/api/src/application/use-cases/llm/get-workspace-spend-report.use-case.ts`,
-  `apps/api/src/application/ports/token-usage-repository.port.ts`,
-  `apps/api/src/interfaces/http/llm/spend.controller.ts`,
+  `src/application/use-cases/llm/get-my-spend.use-case.ts`,
+  `src/application/use-cases/llm/get-workspace-spend-report.use-case.ts`,
+  `src/application/ports/token-usage-repository.port.ts`,
+  `src/interfaces/http/llm/spend.controller.ts`,
   `apps/web/src/routes/ProjectSpendTab.tsx`
-- **Тест:** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
   (участник не видит строку другого актора, ни агента, ни owner; фильтр — по
   паре `(kind, id)`; ответ не несёт провайдера);
   `apps/web/src/routes/ProjectSpendTab.test.tsx`
@@ -2362,17 +2362,17 @@ WORKSPACE (`useCurrentWorkspaceWithRole`), а с другой стороны а�
 > «ПЕРЕКРЫВАЕТ в обоих направлениях» выше: это буквально, а три описания
 > OpenAPI утверждают обратное — см. RN-471.
 
-- **Где:** `apps/api/src/domain/llm/binding-resolver.ts` (приоритет),
-  `apps/api/src/domain/llm/model-capabilities.ts` (capability `area`),
-  `apps/api/src/application/use-cases/llm/resolve-model-binding.use-case.ts`
+- **Где:** `src/domain/llm/binding-resolver.ts` (приоритет),
+  `src/domain/llm/model-capabilities.ts` (capability `area`),
+  `src/application/use-cases/llm/resolve-model-binding.use-case.ts`
   (область агента берётся из каталога `agent-areas.ts`, без похода в базу),
-  `apps/api/src/application/use-cases/llm/clear-model-binding.use-case.ts`,
-  `apps/api/src/interfaces/http/llm/model-bindings.controller.ts`
+  `src/application/use-cases/llm/clear-model-binding.use-case.ts`,
+  `src/interfaces/http/llm/model-bindings.controller.ts`
   (`area-bindings`, `DELETE` в `agent-bindings` и `area-bindings`),
   `apps/web/src/routes/settings/ModelsSection.tsx` (колонка Origem с
   «вернуться к наследованию» и gate `maintainer`, переписанный на
   `roleAtLeast` без смены минимума),
-  `apps/api/src/interfaces/http/llm/model-bindings.controller.ts:273` и `:301`
+  `src/interfaces/http/llm/model-bindings.controller.ts:273` и `:301`
   (`developer` на двух endpoints агента — эти строки НЕ изменились),
   `apps/web/src/lib/roles.ts:49` (`roleAtLeast` — недостававшее сравнение),
   `apps/web/src/routes/settings/ModelsSection.tsx:89` (`podeEditar` и почему
@@ -2421,10 +2421,10 @@ WORKSPACE (`useCurrentWorkspaceWithRole`), а с другой стороны а�
 информации о том, кому она «принадлежала», — выдумывать проект-владельца
 значило бы выдумывать несуществовавшие данные.
 
-- **Где:** `apps/api/src/domain/llm/binding-scope-id.ts` (формат и
-  проверка), `apps/api/src/application/use-cases/llm/set-model-binding.use-case.ts`
+- **Где:** `src/domain/llm/binding-scope-id.ts` (формат и
+  проверка), `src/application/use-cases/llm/set-model-binding.use-case.ts`
   (`workspaceDoEscopo` стал выводить workspace также для `agent`/`area` —
-  курирование RN-043 раньше в них не проверялось), `apps/api/src/db/migrations/0040_tearful_night_nurse.sql`
+  курирование RN-043 раньше в них не проверялось), `src/db/migrations/0040_tearful_night_nurse.sql`
 - **Тест:** `test/domain/llm/binding-scope-id.spec.ts`,
   `test/application/use-cases/llm/set-model-binding.use-case.spec.ts`,
   `test/application/use-cases/llm/resolve-model-binding.use-case.spec.ts`
@@ -2456,15 +2456,15 @@ Arquiteto выпускает `artifact.project_image` инструментом
 наибольшим `version`), так же, как `artifact.module_map`. Пересмотр образа —
 это эмиссия новой версии, никогда не перезапись предыдущей.
 
-- **Где:** `apps/api/src/domain/containers/project-container.ts`,
-  `apps/api/src/application/use-cases/containers/decidir-imagem-do-projeto.use-case.ts`,
-  `apps/api/src/application/use-cases/containers/obter-container-do-projeto.use-case.ts`,
-  `apps/api/src/application/use-cases/git/read-project-code.use-case.ts` (метод
+- **Где:** `src/domain/containers/project-container.ts`,
+  `src/application/use-cases/containers/decidir-imagem-do-projeto.use-case.ts`,
+  `src/application/use-cases/containers/obter-container-do-projeto.use-case.ts`,
+  `src/application/use-cases/git/read-project-code.use-case.ts` (метод
   `portaoDoContainer`), `apps/engine/lib/engine/harness/tools/choose_project_image.ex`
 - **Тест:**
-  `apps/api/test/domain/containers/project-container.spec.ts`,
-  `apps/api/test/application/use-cases/containers/container-do-projeto.use-case.spec.ts`,
-  `apps/api/test/application/use-cases/git/read-project-code.use-case.spec.ts`
+  `test/domain/containers/project-container.spec.ts`,
+  `test/application/use-cases/containers/container-do-projeto.use-case.spec.ts`,
+  `test/application/use-cases/git/read-project-code.use-case.spec.ts`
   (блок "o portão do container")
 - **Граничный случай:** 409, а не 403 — ничего не так ни с тем, кто запросил,
   ни с его разрешением; ресурса ещё нет В ЭТОМ СОСТОЯНИИ. И не 404: вкладка
@@ -2505,10 +2505,10 @@ log, что было отправлено и куда. Это путь, кото
 (`agent_io.ex` предлагает `git_push`); меняется то, что теперь это
 гарантировано `deny`, а не просто договорено по соглашению.
 
-- **Где:** `apps/api/src/domain/actions/external-effect.ts`,
-  `apps/api/src/domain/actions/decide.ts` (блок "FRONTEIRA DO CONTAINER")
-- **Тест:** `apps/api/test/domain/actions/external-effect.spec.ts`,
-  `apps/api/test/domain/actions/decide.spec.ts` (describe "a fronteira do
+- **Где:** `src/domain/actions/external-effect.ts`,
+  `src/domain/actions/decide.ts` (блок "FRONTEIRA DO CONTAINER")
+- **Тест:** `test/domain/actions/external-effect.spec.ts`,
+  `test/domain/actions/decide.spec.ts` (describe "a fronteira do
   container")
 - **Граничный случай:** граница НЕ перекрывает блокировку merge в защищённую
   ветку (RN-014, всегда вручную) и область видимости пути (RN-095/ADR 0055) —
@@ -2521,7 +2521,7 @@ log, что было отправлено и куда. Это путь, кото
 нечитаемым при открытии на диске. `projects.workspace_dir_name` (NOT NULL,
 UNIQUE) стал хранить настоящее имя: `<slug>-<8 символов id>` для НОВОГО
 проекта (`workspaceDirNameFor` в
-`apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`),
+`src/infrastructure/filesystem/project-workspaces-root.ts`),
 генерируемое в коде — id рождается из `crypto.randomUUID()` в
 `CreateProjectUseCase`, а не из `defaultRandom()` Postgres, потому что имени
 папки нужен id ДО insert. 8 символов следуют тому же соглашению, что и метка
@@ -2554,22 +2554,22 @@ UNIQUE) стал хранить настоящее имя: `<slug>-<8 симво
 RN-092 (чтение кода) продолжают указывать на ТУ ЖЕ папку, которую реально
 использует engine.
 
-- **Где:** `apps/api/src/db/schema/iam.ts` (`projects.workspaceDirName`),
-  `apps/api/src/db/migrations/0042_tough_captain_midlands.sql`,
-  `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
+- **Где:** `src/db/schema/iam.ts` (`projects.workspaceDirName`),
+  `src/db/migrations/0042_tough_captain_midlands.sql`,
+  `src/infrastructure/filesystem/project-workspaces-root.ts`
   (`workspaceDirNameFor`, `projectScopeRoot`),
-  `apps/api/src/application/use-cases/iam/create-project.use-case.ts`,
+  `src/application/use-cases/iam/create-project.use-case.ts`,
   `apps/engine/lib/engine/projects/project.ex`
   (`workspace_dir_name/1`, `all_workspace_dirs/0`),
   `apps/engine/lib/engine/actions/workspace.ex` (`workspace_dir/1,2`),
   `apps/engine/lib/engine/dev/worktree_cleanup.ex`
 - **Тест:**
-  `apps/api/test/db/workspace-dir-name-migration.spec.ts` (триггер,
+  `test/db/workspace-dir-name-migration.spec.ts` (триггер,
   эквивалентный backfill, уникальность),
-  `apps/api/test/application/use-cases/iam/create-project-semeia-areas.spec.ts`
+  `test/application/use-cases/iam/create-project-semeia-areas.spec.ts`
   (`workspaceDirName` рождается `<slug>-<8 символов>`, два проекта с одним
   slug в разных workspaces не конфликтуют по папке),
-  `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+  `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
 - **Граничный случай:** потолок параллелизма и gate merge не меняются — RN-109
   касается только ИМЕНИ папки, никогда политики. Переименование slug после
   создания не переименовывает папку; папка читается только по записанному
@@ -2618,19 +2618,19 @@ RN-092 (чтение кода) продолжают указывать на ТУ
 fallback, так что на реальном пути ошибки переменные были **заданы** —
 проверка «не пусто» прошла бы поверх всего дефекта.
 
-- **Где:** `apps/api/src/infrastructure/security/auth-key-material.ts`
-  (`passphraseAtual`), `apps/api/src/infrastructure/security/service-token.ts`
+- **Где:** `src/infrastructure/security/auth-key-material.ts`
+  (`passphraseAtual`), `src/infrastructure/security/service-token.ts`
   (`tokenDeServicoAtual`) и
-  `apps/api/src/infrastructure/security/envelope-encryption.service.ts`
+  `src/infrastructure/security/envelope-encryption.service.ts`
   (`EnvelopeEncryptionService`, проверка в конструкторе) — первые два
-  вызываются при загрузке в `apps/api/src/main.ts`, третий выполняется, когда
+  вызываются при загрузке в `src/main.ts`, третий выполняется, когда
   `NestFactory.create` собирает граф провайдеров. `SECRET_KEY_BASE` в
   `apps/engine/config/runtime.exs` (неизменный) с fallback, удалённым из
   `docker/docker-compose.prod.yml`
-- **Тест:** `apps/api/test/infrastructure/security/auth-key-material.spec.ts`,
-  `apps/api/test/infrastructure/security/service-token.spec.ts` и describe
+- **Тест:** `test/infrastructure/security/auth-key-material.spec.ts`,
+  `test/infrastructure/security/service-token.spec.ts` и describe
   `validação de produção` в
-  `apps/api/test/infrastructure/security/envelope-encryption.service.spec.ts`
+  `test/infrastructure/security/envelope-encryption.service.spec.ts`
 - **Источник:** [ADR 0059](../adr/0059-segredo-do-state-de-oauth-sem-default.md)
 
 ### RN-127 — `ref`/`path` вкладки Code отклоняются при поступлении как МАССИВ, а не только как путь вне области видимости {#rn-127}
@@ -2659,14 +2659,14 @@ fallback, так что на реальном пути ошибки переме
 
 Счастливый путь не меняется: каждый легитимный `ref`/`path` уже был строкой.
 
-- **Где:** `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
+- **Где:** `src/infrastructure/filesystem/project-workspaces-root.ts`
   (`garantirQueryEscalar`, используемая в `caminhoDeRepositorioContido`),
-  `apps/api/src/application/use-cases/git/read-project-code.use-case.ts`
+  `src/application/use-cases/git/read-project-code.use-case.ts`
   (`alvo`, `ref`)
 - **Тест:**
-  `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+  `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   (изолированная `garantirQueryEscalar` и `caminhoDeRepositorioContido`,
-  отклоняющая массив), `apps/api/test/application/use-cases/git/read-project-code.use-case.spec.ts`
+  отклоняющая массив), `test/application/use-cases/git/read-project-code.use-case.spec.ts`
   (`ref`/`path` как массив дают 400 в `tree`, который все остальные маршруты
   переиспользуют через `alvo`)
 - **Источник:** КРИТИЧЕСКОЕ предупреждение CodeQL (путаница типов в
@@ -2702,9 +2702,9 @@ fallback, так что на реальном пути ошибки переме
 Счастливый путь не меняется: `sessionId`/`projectId` — всегда UUID из базы, а
 `agent`/`agentId` — всегда короткий slug.
 
-- **Где:** `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts`
+- **Где:** `src/infrastructure/http-clients/api-to-engine-client.ts`
   (`garantirSegmentoDeUrlInterna`, `postCommand`)
-- **Тест:** `apps/api/test/infrastructure/http-clients/api-to-engine-client.spec.ts`
+- **Тест:** `test/infrastructure/http-clients/api-to-engine-client.spec.ts`
   (некорректный id отклоняется ДО обращения к сети — доказано направлением
   `ENGINE_URL` на порт, который никто не слушает, — а счастливый путь доходит
   до выполнения запроса)
@@ -2746,10 +2746,10 @@ fallback, так что на реальном пути ошибки переме
 вызвал `execute()`: активация исполнения уже произошла и является основным
 эффектом; закрытие исходного чата — побочный эффект *best-effort*.
 
-- **Где:** `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts`
-  (`closeOriginSession`), `apps/api/src/interfaces/http/execution/dto/activate-execution.dto.ts`
-  (`originSessionId`), `apps/api/src/interfaces/http/execution/execution.controller.ts`
-- **Тест:** `apps/api/test/application/use-cases/execution/activate-execution.use-case.spec.ts`,
+- **Где:** `src/application/use-cases/execution/activate-execution.use-case.ts`
+  (`closeOriginSession`), `src/interfaces/http/execution/dto/activate-execution.dto.ts`
+  (`originSessionId`), `src/interfaces/http/execution/execution.controller.ts`
+- **Тест:** `test/application/use-cases/execution/activate-execution.use-case.spec.ts`,
   describe `fecha a sessão de origem (RN-135)` — закрывает без ожидающих, НЕ
   закрывает с ожидающими, НЕ закрывает уже не-`active` сессию, старый
   вызывающий без параметра ничего не закрывает, и никогда не закрывает
@@ -2787,8 +2787,8 @@ fallback, так что на реальном пути ошибки переме
   никогда `if (!sessão) return null`, который их сливает.
 
 - **Где:**
-  `apps/api/src/application/use-cases/execution/get-active-execution-session.use-case.ts`,
-  `apps/api/src/interfaces/http/execution/execution.controller.ts` (`getSession`),
+  `src/application/use-cases/execution/get-active-execution-session.use-case.ts`,
+  `src/interfaces/http/execution/execution.controller.ts` (`getSession`),
   `apps/web/src/lib/hooks.ts` (`useActiveExecutionSession`),
   `apps/web/src/routes/ProjectExecutorsTab.tsx`
 - **Тест:**
@@ -2847,7 +2847,7 @@ ls-tree`, `git rev-parse` и `git config --get`. `git log` не понадоби
   ограничение, которое уже блокирует одинокий `git branch`.
   `--global`/`--system` никогда не закреплялись.
 
-- **Где:** `apps/api/src/domain/actions/dev-terminal-patterns.ts`
+- **Где:** `src/domain/actions/dev-terminal-patterns.ts`
 - **Тест:** `test/domain/actions/dev-terminal-patterns.spec.ts` (describe
   `read-only git subcommands (found live)` — покрывает составную цепочку,
   замеченную вживую и автоодобряемую, и каждый изменяющий вариант с ТЕМ ЖЕ
@@ -2889,7 +2889,7 @@ Dev Lead (ФАЗА 14d/ADR 0053). Не хватало способа до нег
 Lead ([RN-137](web.md#rn-137)) — когда эта карточка существует,
 Arquiteto уже решил архитектуру.
 
-- **Где:** `apps/api/src/interfaces/http/agents/agents.controller.ts`
+- **Где:** `src/interfaces/http/agents/agents.controller.ts`
   (`handoffInfra`, ранее существовавший маршрут), `apps/web/src/lib/api-client.ts`
   (`confirmArchitectureReadiness`), `apps/web/src/routes/SessionPage.tsx`
   (`arquitetoActive`, `arquiteturaJaDeclarada`, `handleArchitectureReadiness`,
@@ -2931,15 +2931,15 @@ Arquiteto уже решил архитектуру.
    экране; тот же шаблон, что `text === ''` уже использует для ответа,
    предшествующего RN-059.
 
-- **Где:** `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts`
-  (`LlmTurnStreamEvent`), `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts`
-  (`RunLlmTurnResult`), `apps/api/src/interfaces/http/internal/dto/internal.response.dto.ts`
+- **Где:** `src/application/use-cases/llm/stream-llm-turn.use-case.ts`
+  (`LlmTurnStreamEvent`), `src/application/use-cases/llm/run-llm-turn.use-case.ts`
+  (`RunLlmTurnResult`), `src/interfaces/http/internal/dto/internal.response.dto.ts`
   (`LlmTurnResponseDto`/`LlmTurnStreamEventResponseDto`),
   `apps/engine/lib/engine/agents/{criativo,po,arquiteto,dev_lead}_server.ex`
   (`emit_response/3`), `apps/web/src/routes/SessionPage.tsx` (блок
   `agent.response` ленты)
-- **Тест:** `apps/api/test/application/use-cases/llm/run-llm-turn.use-case.spec.ts`,
-  `apps/api/test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts`,
+  `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts`
   (`modelName` на счастливом пути, при ошибке провайдера и без binding),
   `apps/engine/test/engine/agents/{criativo,po,arquiteto,dev_lead}_server_test.exs`
   (`agent.response` несёт имя модели; граничный случай кадра без ключа),
@@ -2981,18 +2981,18 @@ ADR 0068), но она никогда не ЛЖЁТ о том, что сущес
 действующий — с наибольшим `version`, а пересмотр — это повторная
 генерация, никогда не перезапись.
 
-- **Где:** `apps/api/src/domain/architecture/c4-diagram.ts`
+- **Где:** `src/domain/architecture/c4-diagram.ts`
   (`gerarDiagramaContexto`/`gerarDiagramaContainer`, чистые),
-  `apps/api/src/application/use-cases/architecture/create-c4-diagram.use-case.ts`,
-  `apps/api/src/application/use-cases/architecture/get-c4-diagram.use-case.ts`,
+  `src/application/use-cases/architecture/create-c4-diagram.use-case.ts`,
+  `src/application/use-cases/architecture/get-c4-diagram.use-case.ts`,
   `apps/engine/lib/engine/harness/tools/create_c4_diagram.ex`,
   `apps/web/src/components/C4DiagramView.tsx` (отрисовка, три состояния —
   RN-088), `apps/web/src/lib/mermaid-render.ts` (`mermaid` изолирован здесь,
   динамический `import()`)
-- **Тест:** `apps/api/test/domain/architecture/c4-diagram.spec.ts` (валидный
+- **Тест:** `test/domain/architecture/c4-diagram.spec.ts` (валидный
   синтаксис Mermaid из примерного `module_map`, висячее ребро
   игнорируется, id дедуплицируются),
-  `apps/api/test/application/use-cases/architecture/create-c4-diagram.use-case.spec.ts`
+  `test/application/use-cases/architecture/create-c4-diagram.use-case.spec.ts`
   (без module_map отклоняет с 400 и ничего не записывает; Container отражает
   реальные модули/зависимости; версионирует при повторной эмиссии),
   `apps/engine/test/engine/harness/tools/create_c4_diagram_test.exs`,
@@ -3031,14 +3031,14 @@ Aprovações (`ProjectApprovalsTab.tsx`), показывающая только 
 тем же значением, что в боковой панели, — два экрана, одно число, один
 источник.
 
-- **Где:** `apps/api/src/application/ports/projects-summary-repository.port.ts`
+- **Где:** `src/application/ports/projects-summary-repository.port.ts`
   (`ProjectCardSummary.pendingApprovalsCount`),
-  `apps/api/src/infrastructure/persistence/drizzle/projects-summary.repository.ts`
+  `src/infrastructure/persistence/drizzle/projects-summary.repository.ts`
   (`summarizeForWorkspace`, агрегированный запрос над `proposed_actions`),
   `apps/web/src/routes/Shell.tsx`, `apps/web/src/routes/Dashboard.tsx`,
   `apps/web/src/components/ProjectCard.tsx`
 - **Тест:**
-  `apps/api/test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
   (`pendingApprovalsCount soma o projeto INTEIRO...`, считается только
   `pending`, не протекает между проектами, число запросов остаётся
   постоянным),
@@ -3060,7 +3060,7 @@ Aprovações (`ProjectApprovalsTab.tsx`), показывающая только 
 До этой RN `agent_autonomy` умел предоставлять автономию только по
 `(проект, агент, ТИП действия)` — одна строка на тип, upsert ОДНОГО правила
 за раз (`SetAgentAutonomyUseCase`,
-`apps/api/src/application/use-cases/actions/set-agent-autonomy.use-case.ts`).
+`src/application/use-cases/actions/set-agent-autonomy.use-case.ts`).
 Широкое доверие агенту требовало строки на каждый тип — `terminal`,
 `write_file`, `pr_open`… — а новый тип рождался без правила, возвращаясь к
 `require_approval`.
@@ -3068,14 +3068,14 @@ Aprovações (`ProjectApprovalsTab.tsx`), показывающая только 
 «Auto mode» — это специальное значение `actionType: "*"` в ТОЙ ЖЕ таблице и
 ТОМ ЖЕ endpoint (`PUT /projects/:projectId/agent-autonomy`) — не новый
 механизм, а существующая колонка (`agent_autonomy.action_type`, свободный
-`text`, без enum и FK — `apps/api/src/db/schema/agents.ts`), принимающая ещё
+`text`, без enum и FK — `src/db/schema/agents.ts`), принимающая ещё
 одно значение. Подстановочный знак означает «автономия для любого типа
 действия ЭТОГО агента» и разрешается в `DrizzleAgentAutonomyRepository.findMode`
-(`apps/api/src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts`):
+(`src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts`):
 он ищет КОНКРЕТНОЕ правило и подстановочный знак в одном запросе, и
 конкретное всегда побеждает — запись `terminal: deny` при уже включённом
 `"*": auto_approve` продолжает запрещать `terminal` этому агенту и разрешать
-остальное. `decide()` (`apps/api/src/domain/actions/decide.ts`) не меняется:
+остальное. `decide()` (`src/domain/actions/decide.ts`) не меняется:
 он получает уже разрешённый `PermissionPolicy` в `ctx.autonomyMode`, ровно как
 до появления подстановочного знака, — именно поэтому абсолютные потолки
 действуют, не нуждаясь в знании о существовании «auto mode» (см.
@@ -3100,24 +3100,24 @@ Aprovações (`ProjectApprovalsTab.tsx`), показывающая только 
 означает запись той же подстановки как `require_approval`, и переключатель в
 карточке агента и есть это «выключение».
 
-- **Где:** `apps/api/src/domain/actions/decide.ts`
+- **Где:** `src/domain/actions/decide.ts`
   (`AGENT_AUTONOMY_ALL_ACTIONS`, `AgentAutonomyActionType`),
-  `apps/api/src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts`
+  `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts`
   (`findMode` с приоритетом конкретное > подстановка),
-  `apps/api/src/interfaces/http/actions/dto/set-agent-autonomy.dto.ts`
+  `src/interfaces/http/actions/dto/set-agent-autonomy.dto.ts`
   (принимает `"*"`), `apps/web/src/components/ApprovalCard.tsx` (кнопка "Modo
   automático"), `apps/web/src/components/AgentTeamGrid.tsx` (переключатель
   начинает отдавать приоритет подстановке), `apps/web/src/routes/ProjectApprovalsTab.tsx`
   и `apps/web/src/routes/SessionPage.tsx` (`handleActivateAutoMode`, gate
   роли через `useCurrentWorkspaceWithRole`)
 - **Тест:**
-  `apps/api/test/infrastructure/persistence/drizzle/agent-autonomy.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/agent-autonomy.repository.spec.ts`
   (приоритет конкретное > подстановка; подстановка — по агенту; выключение —
   перезапись подстановки как `require_approval`),
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts`
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts`
   (auto mode автоодобряет обычное действие БЕЗ обращения к `permissions.json`;
   конкретное правило в `deny` побеждает подстановку),
-  `apps/api/test/interfaces/http/actions/agent-autonomy.controller.spec.ts`
+  `test/interfaces/http/actions/agent-autonomy.controller.spec.ts`
   (`PUT`/`GET` по-прежнему требуют `maintainer`; DTO принимает `"*"` и
   отклоняет строку вне списка), `apps/web/src/components/ApprovalCard.test.tsx`
   (кнопка исчезает без `onActivateAutoMode`; клик вызывает callback; заметка
@@ -3163,10 +3163,10 @@ Aprovações (`ProjectApprovalsTab.tsx`), показывающая только 
 РЕПОЗИТОРИИ (до запуска `decide()`), а сама `decide()` не получила ни одной
 новой строки — ровно столько, чтобы подстановке негде было пробить.
 
-- **Где:** `apps/api/src/domain/actions/decide.ts` (три блока потолков,
+- **Где:** `src/domain/actions/decide.ts` (три блока потолков,
   строки ~207–258, не изменённые этой функцией)
 - **Тест:**
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts`
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts`
   ("auto mode NÃO auto-aprova merge em branch protegida", "... instruction_patch",
   "... parallelize/raise_max_parallel" — все три с `agent_autonomy` "*",
   записанным как `auto_approve`, и вердиктом, остающимся `require_approval`)
@@ -3184,7 +3184,7 @@ Aprovações (`ProjectApprovalsTab.tsx`), показывающая только 
 действие), — никогда `action.seq`, который является уникальным глобальным
 `bigserial` всей таблицы `proposed_actions`, общим для всех сессий и проектов
 системы и потому несравнимым с `event.seq` (намеренный контраст, см.
-`apps/api/src/db/schema/actions.ts`). Прямое сравнение двух давало
+`src/db/schema/actions.ts`). Прямое сравнение двух давало
 непредсказуемый порядок каждый раз, когда `ApprovalCard` смешивался с
 обычными событиями. Действия без этой связи (только bootstrap Gitflow —
 `git_repo_create`/`git_branch_create`, которые пишут только outbox)
@@ -3250,24 +3250,24 @@ Aprovações (`ProjectApprovalsTab.tsx`), показывающая только 
 на диске живёт КОД, другой — где живёт git-РЕПОЗИТОРИЙ, и эти два выбора
 ортогональны.
 
-- **Где:** `apps/api/src/db/schema/iam.ts` (`projects`),
-  `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
-  (`projectScopeRoot`), `apps/api/src/domain/iam/project.entity.ts`,
-  `apps/api/src/application/use-cases/git/read-project-code.use-case.ts`
+- **Где:** `src/db/schema/iam.ts` (`projects`),
+  `src/infrastructure/filesystem/project-workspaces-root.ts`
+  (`projectScopeRoot`), `src/domain/iam/project.entity.ts`,
+  `src/application/use-cases/git/read-project-code.use-case.ts`
   (`portaoDoContainer`), `apps/web/src/routes/ProjectCodeTab.tsx`,
   `apps/engine/lib/engine/projects/project.ex`,
   `apps/engine/lib/engine/actions/workspace.ex` (`workspace_dir/2`),
   `apps/engine/lib/engine/dev/worktree_cleanup.ex` (который был вторым
   выводом, написанным вручную, и начал использовать единственный),
   `apps/web/src/routes/NewProjectWizard.tsx`
-- **Тест:** `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+- **Тест:** `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   (describe "projectScopeRoot no modo local"),
-  `apps/api/test/infrastructure/filesystem/fs-permissions-file-store.spec.ts`
+  `test/infrastructure/filesystem/fs-permissions-file-store.spec.ts`
   (permissions.json в папке пользователя),
-  `apps/api/test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`,
-  `apps/api/test/application/use-cases/git/read-project-code.use-case.spec.ts`
+  `test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`,
+  `test/application/use-cases/git/read-project-code.use-case.spec.ts`
   (проект Local не проходит через ворота),
-  `apps/api/test/interfaces/http/iam/project-dto-modo-de-workspace.spec.ts`
+  `test/interfaces/http/iam/project-dto-modo-de-workspace.spec.ts`
   (режим заморожен: PATCH его не меняет),
   `apps/web/src/routes/ProjectCodeTab.test.tsx` (экран тоже освобождает от gate),
   `apps/engine/test/engine/actions/workspace_test.exs`
@@ -3326,14 +3326,14 @@ Aprovações (`ProjectApprovalsTab.tsx`), показывающая только 
 принимает, а engine не видит: она проверяет то, что видит сама, и не может
 знать, что смонтировано в другом контейнере.
 
-- **Где:** `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
+- **Где:** `src/infrastructure/filesystem/project-workspaces-root.ts`
   (`validarCaminhoDeWorkspaceLocal`, `CaminhoLocalInvalidoError`),
-  `apps/api/src/application/use-cases/iam/create-project.use-case.ts`
-  (`caminhoValidado`), `apps/api/src/interfaces/http/iam/dto/create-project.dto.ts`,
+  `src/application/use-cases/iam/create-project.use-case.ts`
+  (`caminhoValidado`), `src/interfaces/http/iam/dto/create-project.dto.ts`,
   `apps/web/src/lib/wizard.ts` (`caminhoLocalParecePlausivel`)
-- **Тест:** `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+- **Тест:** `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   (describe "validarCaminhoDeWorkspaceLocal"),
-  `apps/api/test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`
+  `test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`
   (describe "a criação RECUSA o caminho que travaria depois"),
   `apps/web/src/lib/wizard.test.ts`, `apps/web/src/routes/NewProjectWizard.test.tsx`
 - **Архитектурное решение:** [ADR 0072](../adr/0072-projeto-local-ou-container.md)
@@ -3363,12 +3363,12 @@ Aprovações (`ProjectApprovalsTab.tsx`), показывающая только 
 строки рейтинга, не отвечая на вопрос, на который уже не отвечали бы два
 отдельных списка.
 
-- **Где:** `apps/api/src/application/ports/token-usage-repository.port.ts:137`
+- **Где:** `src/application/ports/token-usage-repository.port.ts:137`
   (`SpendDimension`),
-  `apps/api/src/infrastructure/persistence/drizzle/token-usage.repository.ts:255`
-  (`GROUP BY`), `apps/api/src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:112`,
-  `apps/api/src/interfaces/http/llm/spend.controller.ts:56`
-- **Тест:** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
+  `src/infrastructure/persistence/drizzle/token-usage.repository.ts:255`
+  (`GROUP BY`), `src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:112`,
+  `src/interfaces/http/llm/spend.controller.ts:56`
+- **Тест:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
   ("quebra por PROVIDER, e o mesmo nome de modelo em dois providers segue UMA
   linha")
 - **Источник:** [ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
@@ -3397,15 +3397,15 @@ Aprovações (`ProjectApprovalsTab.tsx`), показывающая только 
 досягаемости участника становится явным актом **в этом месте** — никогда не
 забывчивостью в другом файле.
 
-- **Где:** `apps/api/src/application/ports/token-usage-repository.port.ts:121`
+- **Где:** `src/application/ports/token-usage-repository.port.ts:121`
   (две перегрузки), `:147` (`SpendDimensionDoAtor`), `:163`/`:173` (две
-  области), `apps/api/src/application/use-cases/llm/get-my-spend.use-case.ts:73`,
-  `apps/api/src/interfaces/http/llm/spend.controller.ts:98`
-- **Тест:** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
+  области), `src/application/use-cases/llm/get-my-spend.use-case.ts:73`,
+  `src/interfaces/http/llm/spend.controller.ts:98`
+- **Тест:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
   ("não compila pedir `provider` com escopo de ator" — `@ts-expect-error`,
   который `tsc` проваливает как НЕИСПОЛЬЗОВАННУЮ директиву, если барьер падёт;
   и "só pede as dimensões `session` e `day`"),
-  `apps/api/test/interfaces/spend.controller.spec.ts` (маршрут участника
+  `test/interfaces/spend.controller.spec.ts` (маршрут участника
   принимает `dias` и ничего больше)
 - **Источник:** [ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
 
@@ -3430,8 +3430,8 @@ Aprovações (`ProjectApprovalsTab.tsx`), показывающая только 
 workspace по-прежнему определяется полем `ownerId`, а не `actorKind` каждой
 строки.
 
-- **Где:** `apps/api/src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:120`
-- **Тест:** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
+- **Где:** `src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:120`
+- **Тест:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
   ("separa PESSOA de AGENTE em dois blocos, sem perder a lista por ator")
 - **Источник:** [ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
 
@@ -3464,8 +3464,8 @@ workspace по-прежнему определяется полем `ownerId`, �
 взял. Это тот же выбор, что у `listModels`, и та же таксономия: никакого
 нового `LLMErrorCode`.
 
-- **Где:** `apps/api/src/application/ports/llm-provider.port.ts:61`,
-  `apps/api/src/infrastructure/llm/embedding-result.ts:26`
+- **Где:** `src/application/ports/llm-provider.port.ts:61`,
+  `src/infrastructure/llm/embedding-result.ts:26`
 - **Тест:** `test/contract/llm-provider.contract.ts` (пять случаев,
   выполняемых против каждого провайдера, объявляющего capability)
 - **Источник:** [ADR 0075](../adr/0075-embeddings-no-contrato-de-llm-provider.md)
@@ -3493,8 +3493,8 @@ workspace по-прежнему определяется полем `ownerId`, �
 каталог, а не менять модель. Выводить capability по ИМЕНИ модели
 запрещено: это была бы догадка, одетая в данные.
 
-- **Где:** `apps/api/src/domain/llm/embedding-capability.ts:64`,
-  `apps/api/src/infrastructure/llm/ollama-provider.ts:319`
+- **Где:** `src/domain/llm/embedding-capability.ts:64`,
+  `src/infrastructure/llm/ollama-provider.ts:319`
 - **Тест:** `test/domain/llm/embedding-capability.spec.ts`,
   `test/infrastructure/llm/ollama-provider.spec.ts`
 - **Источник:** [ADR 0075](../adr/0075-embeddings-no-contrato-de-llm-provider.md)
@@ -3525,8 +3525,8 @@ workspace по-прежнему определяется полем `ownerId`, �
 объявляет `false` и всё же раскрывает метод, **отклоняет вызов** до обращения
 к сети.
 
-- **Где:** `apps/api/src/infrastructure/llm/ollama-provider.ts:73`,
-  `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:325`
+- **Где:** `src/infrastructure/llm/ollama-provider.ts:73`,
+  `src/infrastructure/llm/openai-compatible-provider.ts:325`
 - **Тест:** `test/contract/llm-provider.contract.ts`,
   `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`,
   `test/infrastructure/llm/ollama-provider.embeddings.smoke.spec.ts`
@@ -3544,7 +3544,7 @@ workspace по-прежнему определяется полем `ownerId`, �
 
 «Экземпляр» — это не перенумерованный счётчик (`-01`/`-02`), а РЕАЛЬНЫЙ
 `agent_id`, который продукт уже пишет: `devAgentId`/`extraDevAgentId`
-(`apps/api/src/application/use-cases/execution/activate-execution.use-case.ts:27-38`)
+(`src/application/use-cases/execution/activate-execution.use-case.ts:27-38`)
 производят `dev-<modulo>` и `dev-<modulo>-2` (суффикс всегда ровно `-2`,
 потому что потолок — ДВА на модуль, [RN-154](#rn-154)). Ветвь становится
 «дополнительным экземпляром» другой, только если у базового агента (без
@@ -3579,7 +3579,7 @@ handoff, адаптированным к реальным id: `agenteBase` (от
 ### RN-213 — Предупреждение о расходе — это чтение `lastThresholdNotified`, никогда не пересчёт {#rn-213}
 
 `alertaDeOrcamento` не реализует заново `crossedThresholds`
-(`apps/api/src/domain/llm/budget-threshold.ts`): он читает поле, которое
+(`src/domain/llm/budget-threshold.ts`): он читает поле, которое
 backend уже записывает в момент, когда реальный вызов пересекает 70/90/100%,
 и решает только цвет (`warning` ниже 90, `danger` от 90) и должен ли текст
 предупреждать об активной блокировке (`policy === 'block' && spentMicros >=
@@ -3605,9 +3605,9 @@ Requests намеренно исключены — их индексация б�
 что писать в эту таблицу будет конвейер (Волна 4), который не обязательно
 каждый раз проходит через тот же сценарий использования.
 
-- **Где:** `apps/api/src/db/schema/rag.ts` (`chunkScopeEnum` и два CHECK
+- **Где:** `src/db/schema/rag.ts` (`chunkScopeEnum` и два CHECK
   таблицы `chunks`)
-- **Тест:** `apps/api/test/infrastructure/persistence/chunk.repository.spec.ts`
+- **Тест:** `test/infrastructure/persistence/chunk.repository.spec.ts`
   ("recusa chunk de docs sem source_path — o CHECK da migração 0045, não
   validação de aplicação")
 - **ADR:** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
@@ -3621,8 +3621,8 @@ Requests намеренно исключены — их индексация б�
 или наоборот, — без какого-либо механизма базы, который бы этому мешал.
 Одна строка — один источник истины для обеих половин поиска.
 
-- **Где:** `apps/api/src/db/schema/rag.ts` (таблица `chunks`)
-- **Тест:** `apps/api/test/infrastructure/persistence/chunk.repository.spec.ts`
+- **Где:** `src/db/schema/rag.ts` (таблица `chunks`)
+- **Тест:** `test/infrastructure/persistence/chunk.repository.spec.ts`
   (все три spec пишут и читают обе колонки в одной строке)
 - **ADR:** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
 
@@ -3635,8 +3635,8 @@ STORED`. Ни один сценарий использования, репози
 провайдера LLM (в отличие от `embedding`, который приходит только когда
 появится конвейер индексации).
 
-- **Где:** `apps/api/src/db/schema/rag.ts` (колонка `search_vector`)
-- **Тест:** `apps/api/test/infrastructure/persistence/chunk.repository.spec.ts`
+- **Где:** `src/db/schema/rag.ts` (колонка `search_vector`)
+- **Тест:** `test/infrastructure/persistence/chunk.repository.spec.ts`
   ("grava um chunk de docs com vetor e devolve o search_vector gerado pela
   GENERATED ALWAYS AS")
 - **ADR:** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
@@ -3654,8 +3654,8 @@ runtime. Колонка NULLABLE: эта таблица хранит ЧАНК (�
 два сбоя разной природы (разбор документа против сетевого вызова к
 провайдеру) в одной атомарной записи.
 
-- **Где:** `apps/api/src/db/schema/rag.ts` (колонка `embedding`)
-- **Тест:** `apps/api/test/infrastructure/persistence/chunk.repository.spec.ts`
+- **Где:** `src/db/schema/rag.ts` (колонка `embedding`)
+- **Тест:** `test/infrastructure/persistence/chunk.repository.spec.ts`
   ("grava um chunk de docs com vetor..." пишет с заполненным `embedding`;
   два других spec пишут без него, подтверждая допустимость NULL)
 - **ADR:** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md); [RN-191](#rn-191)
@@ -3670,7 +3670,7 @@ IVFFlat нужны уже загруженные строки для обуче�
 метрика, которую обычно ожидают текстовые embeddings (ранжирование по
 сходству не должно меняться с величиной вектора).
 
-- **Где:** `apps/api/src/db/migrations/0045_shallow_randall.sql`
+- **Где:** `src/db/migrations/0045_shallow_randall.sql`
   (`chunks_embedding_idx`)
 - **ADR:** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
 
@@ -3686,7 +3686,7 @@ EXTENSION vector;` один раз от суперпользователя), а 
 `feature/`/`bugfix/`.
 
 - **Где:** ветка `breaking/tabela-de-chunks`,
-  `apps/api/src/db/migrations/0045_shallow_randall.sql` (комментарий,
+  `src/db/migrations/0045_shallow_randall.sql` (комментарий,
   документирующий решение внутри самой миграции)
 - **ADR:** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
 
@@ -3699,9 +3699,9 @@ EXTENSION vector;` один раз от суперпользователя), а 
 фрагментов документа/сессии разом, избегая N походов на каждый
 индексируемый документ.
 
-- **Где:** `apps/api/src/application/ports/chunk-repository.port.ts`,
-  `apps/api/src/infrastructure/persistence/drizzle/chunk.repository.ts`
-- **Тест:** `apps/api/test/infrastructure/persistence/chunk.repository.spec.ts`
+- **Где:** `src/application/ports/chunk-repository.port.ts`,
+  `src/infrastructure/persistence/drizzle/chunk.repository.ts`
+- **Тест:** `test/infrastructure/persistence/chunk.repository.spec.ts`
   ("createMany grava um lote e listByProject filtra por escopo, sem
   misturar docs e session")
 - **ADR:** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
@@ -3728,9 +3728,9 @@ RN first-party аутентификации находятся в
 удаление `session` по всему проекту удалило бы сессии, которые сейчас не
 переиндексируются, поэтому сессия удаляется только через `deleteBySession`.
 
-- **Где:** `apps/api/src/application/ports/chunk-repository.port.ts`
-  (строки 105-146), `apps/api/src/infrastructure/persistence/drizzle/chunk.repository.ts`
-- **Тест:** `apps/api/test/infrastructure/persistence/chunk.repository.spec.ts`
+- **Где:** `src/application/ports/chunk-repository.port.ts`
+  (строки 105-146), `src/infrastructure/persistence/drizzle/chunk.repository.ts`
+- **Тест:** `test/infrastructure/persistence/chunk.repository.spec.ts`
   — describes "Onda 4 (G2)" (удаление по области/сессии, поиск по
   вектору/лексике, счастливый и пустой случай каждого)
 - **ADR:** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
@@ -3745,11 +3745,11 @@ RN first-party аутентификации находятся в
 (`tool.call`, `agent.status`, `agent.error`...) — это механизм/сбой, а не
 цитируемое знание.
 
-- **Где:** `apps/api/src/application/use-cases/rag/index-project-docs.use-case.ts`
-  (строки 16-17, 64), `apps/api/src/application/use-cases/rag/index-session.use-case.ts`
+- **Где:** `src/application/use-cases/rag/index-project-docs.use-case.ts`
+  (строки 16-17, 64), `src/application/use-cases/rag/index-session.use-case.ts`
   (строка 29, 45)
-- **Тест:** `apps/api/test/application/use-cases/rag/index-project-docs.use-case.spec.ts`,
-  `apps/api/test/application/use-cases/rag/index-session.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/rag/index-project-docs.use-case.spec.ts`,
+  `test/application/use-cases/rag/index-session.use-case.spec.ts`
   (счастливые случаи + "projeto sem docs/" + "evento sem payload.text é
   ignorado")
 - **ADR:** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
@@ -3765,9 +3765,9 @@ embedded, skipped, reason }`). Та же деградация действует
 `HybridSearchUseCase` работает только с лексическим сигналом, и
 `vectorAvailable: false` предупреждает об этом.
 
-- **Где:** `apps/api/src/application/use-cases/rag/rag-embedding.service.ts`
+- **Где:** `src/application/use-cases/rag/rag-embedding.service.ts`
   (строки 53-58)
-- **Тест:** `apps/api/test/application/use-cases/rag/rag-embedding.service.spec.ts`
+- **Тест:** `test/application/use-cases/rag/rag-embedding.service.spec.ts`
   — "CASO DE FALHA: provider sem a capability..." и "CASO DE FALHA: provider
   que lança no meio do lote..."; `index-project-docs.use-case.spec.ts`/
   `index-session.use-case.spec.ts` — "CASO DE FALHA: provider de embedding
@@ -3788,12 +3788,12 @@ JOIN), сливаемые в `HybridSearchUseCase` взвешенной сумм
 нашёл чанк)/`origin` как дискриминируемое по `kind` объединение (`file` с
 `sourcePath`/`headingPath`, `session` с `sessionId`/`eventId`).
 
-- **Где:** `apps/api/src/application/use-cases/rag/hybrid-search.use-case.ts`
-  (строки 44-113), `apps/api/src/domain/rag/rag-search-limits.ts`
-  (строки 60-93), `apps/api/src/domain/rag/rag-citation.ts` (строки 12-71)
-- **Тест:** `apps/api/test/application/use-cases/rag/hybrid-search.use-case.spec.ts`
+- **Где:** `src/application/use-cases/rag/hybrid-search.use-case.ts`
+  (строки 44-113), `src/domain/rag/rag-search-limits.ts`
+  (строки 60-93), `src/domain/rag/rag-citation.ts` (строки 12-71)
+- **Тест:** `test/application/use-cases/rag/hybrid-search.use-case.spec.ts`
   (слияние/упорядочение/порог, запрос вне диапазона, деградация до
-  только-лексики, origin сессии) и `apps/api/test/infrastructure/persistence/chunk.repository.spec.ts`
+  только-лексики, origin сессии) и `test/infrastructure/persistence/chunk.repository.spec.ts`
   (сами SQL-запросы, против реальных pgvector/tsvector)
 - **ADR:** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
@@ -3807,9 +3807,9 @@ JOIN), сливаемые в `HybridSearchUseCase` взвешенной сумм
 откалиброванная на реальных данных о качестве извлечения (корпуса реальных
 вопросов, прогнанного против этого индекса, пока не существует).
 
-- **Где:** `apps/api/src/domain/rag/chunking.ts` (строки 30-31, 53 и
+- **Где:** `src/domain/rag/chunking.ts` (строки 30-31, 53 и
   далее)
-- **Тест:** `apps/api/test/domain/rag/chunking.spec.ts` (текст, который
+- **Тест:** `test/domain/rag/chunking.spec.ts` (текст, который
   помещается/не помещается, пустой текст, реальное перекрытие,
   патологический текст без пробелов, вложенные заголовки, markdown без
   заголовка)
@@ -3823,9 +3823,9 @@ JOIN), сливаемые в `HybridSearchUseCase` взвешенной сумм
 созданием заново — двойной запуск подряд не дублирует. Запускается через
 `POST /projects/:projectId/rag/reindex`, `role:maintainer`.
 
-- **Где:** `apps/api/src/application/use-cases/rag/reindex-project.use-case.ts`
+- **Где:** `src/application/use-cases/rag/reindex-project.use-case.ts`
   (строка 36)
-- **Тест:** `apps/api/test/application/use-cases/rag/reindex-project.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/rag/reindex-project.use-case.spec.ts`
   (агрегирует docs+сессии, embeddingAvailable ложно, когда любой прогон
   сбоит, несуществующий проект)
 - **ADR:** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
@@ -3838,9 +3838,9 @@ JOIN), сливаемые в `HybridSearchUseCase` взвешенной сумм
 содержит никакого "переиндексировано X мин назад" — число наугад лгало бы
 (та же линейка, что в ADR 0042 для оценки модели).
 
-- **Где:** `apps/api/src/application/use-cases/rag/get-rag-coverage.use-case.ts`
+- **Где:** `src/application/use-cases/rag/get-rag-coverage.use-case.ts`
   (строка 47)
-- **Тест:** `apps/api/test/application/use-cases/rag/get-rag-coverage.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/rag/get-rag-coverage.use-case.spec.ts`
 - **ADR:** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
 ### RN-238 — Три HTTP-маршрута RAG делят роли по тому, кто МЕНЯЕТ то, что тратит продукт {#rn-238}
@@ -3851,9 +3851,9 @@ JOIN), сливаемые в `HybridSearchUseCase` взвешенной сумм
 "меняет то, что продукт тратит, не спрашивая", что у потолка параллелизма
 области (RN-083).
 
-- **Где:** `apps/api/src/interfaces/http/rag/rag.controller.ts` (строки
+- **Где:** `src/interfaces/http/rag/rag.controller.ts` (строки
   50, 57, 81, 98), `docs/security-surface.md`
-- **Тест:** `apps/api/test/interfaces/route-surface.spec.ts`
+- **Тест:** `test/interfaces/route-surface.spec.ts`
   (классификация ролей, закрытые теги, метаданные OpenAPI трёх маршрутов)
 - **ADR:** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
@@ -3871,9 +3871,9 @@ JOIN), сливаемые в `HybridSearchUseCase` взвешенной сумм
 правила. Реальный оркестратор, когда он появится, ПОТРЕБЛЯЕТ эту таблицу
 после реального действия — никогда наоборот.
 
-- **Где:** `apps/api/src/domain/containers/container-lifecycle.ts`,
-  `apps/api/src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
-- **Тест:** `apps/api/test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
+- **Где:** `src/domain/containers/container-lifecycle.ts`,
+  `src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
+- **Тест:** `test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
 - **ADR:** [0081](../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
 ### RN-244 — Машина состояний контейнера: только `removed` выходит повторной подготовкой {#rn-244}
@@ -3887,9 +3887,9 @@ JOIN), сливаемые в `HybridSearchUseCase` взвешенной сумм
 409 — тот же формат, что у `session-state-machine.ts` и
 `pr-gate-state-machine.ts`.
 
-- **Где:** `apps/api/src/domain/containers/container-lifecycle.ts`
+- **Где:** `src/domain/containers/container-lifecycle.ts`
   (`ALLOWED_TRANSITIONS`)
-- **Тест:** `apps/api/test/domain/containers/container-lifecycle.spec.ts`
+- **Тест:** `test/domain/containers/container-lifecycle.spec.ts`
 - **ADR:** [0081](../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
 ### RN-245 — Первый переход требует уже решённого образа и ЗАМОРАЖИВАЕТ версию и ресурсы {#rn-245}
@@ -3902,8 +3902,8 @@ JOIN), сливаемые в `HybridSearchUseCase` взвешенной сумм
 `pids_limit`): последующий пересмотр артефакта не меняет задним числом то,
 что обещает уже подготовленный экземпляр.
 
-- **Где:** `apps/api/src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
-- **Тест:** `apps/api/test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
+- **Где:** `src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
+- **Тест:** `test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
   — "a primeira transição (provisioning) cria a linha…" и "sem decisão de
   imagem do Arquiteto, não há o que provisionar"
 - **ADR:** [0081](../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
@@ -3915,8 +3915,8 @@ JOIN), сливаемые в `HybridSearchUseCase` взвешенной сумм
 перехода для проекта `local` отклоняется с 400 ДО того, как затронуть
 таблицу, в источнике, а не фильтруется потом в UI.
 
-- **Где:** `apps/api/src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
-- **Тест:** `apps/api/test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
+- **Где:** `src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
+- **Тест:** `test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
   — "projeto em modo `local` não tem ciclo de vida de container (ADR 0072)"
 - **ADR:** [0081](../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
@@ -3928,8 +3928,8 @@ JOIN), сливаемые в `HybridSearchUseCase` взвешенной сумм
 только в сценарии использования: `create`, вызванный дважды для одного
 проекта, падает на записи и никогда не производит молчаливую вторую строку.
 
-- **Где:** `apps/api/src/db/migrations/0046_chilly_forgotten_one.sql`
-- **Тест:** `apps/api/test/infrastructure/persistence/drizzle/container.repository.spec.ts`
+- **Где:** `src/db/migrations/0046_chilly_forgotten_one.sql`
+- **Тест:** `test/infrastructure/persistence/drizzle/container.repository.spec.ts`
   — "só uma linha por projeto — create duplicado viola a constraint única"
 - **ADR:** [0081](../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
@@ -3944,8 +3944,8 @@ Arquiteto в момент подготовки, но сегодня ни оди�
 не лжёт о ПРИМЕНЕНИИ (ни один экран или ответ API сегодня не утверждает
 "контейнер ограничен X" — только "записанное намерение было X").
 
-- **Где:** `apps/api/src/db/schema/containers.ts` (`projectContainers`)
-- **Тест:** `apps/api/test/infrastructure/persistence/drizzle/container.repository.spec.ts`
+- **Где:** `src/db/schema/containers.ts` (`projectContainers`)
+- **Тест:** `test/infrastructure/persistence/drizzle/container.repository.spec.ts`
   — "create nasce em `provisioning`, com a versão e os recursos passados"
 - **ADR:** [0081](../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
@@ -3967,10 +3967,10 @@ Docker (RN-243). То же разрешение, что у соседнего м
 /projects/:projectId/container`): `viewer`, GET, без `@Post` — тот, кто
 переводил бы жизненный цикл, — оркестратор, которого ещё нет.
 
-- **Где:** `apps/api/src/interfaces/http/containers/containers.controller.ts`
-  (`cicloDeVida`), `apps/api/src/interfaces/http/containers/dto/containers.response.dto.ts`
+- **Где:** `src/interfaces/http/containers/containers.controller.ts`
+  (`cicloDeVida`), `src/interfaces/http/containers/dto/containers.response.dto.ts`
   (`CicloDeVidaDoContainerResponseDto`)
-- **Тест:** `apps/api/test/interfaces/http/containers/containers.controller.spec.ts`
+- **Тест:** `test/interfaces/http/containers/containers.controller.spec.ts`
 - **Граничный случай:** `id`/`projectId`/`containerId` внутренней строки НЕ
   утекают в ответ — HTTP-контракт не совпадает по форме со строкой базы.
 - **ADR:** [0083](../adr/0083-terminal-mostra-estado-real-do-container.md)
@@ -3986,8 +3986,8 @@ Docker (RN-243). То же разрешение, что у соседнего м
 первом шаге — всегда `providerUserId`, никогда e-mail: это не даёт смене
 e-mail у провайдера "потерять" привязку.
 
-- **Где:** `apps/api/src/application/use-cases/auth/social-login-callback.use-case.ts`
-- **Тест:** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **Где:** `src/application/use-cases/auth/social-login-callback.use-case.ts`
+- **Тест:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — семь случаев `SocialLoginCallbackUseCase`
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -4001,8 +4001,8 @@ e-mail у провайдера "потерять" привязку.
 дискриминанта принять его означало бы войти как `userId` того, кто начал то
 подключение, — эскалация привилегий.
 
-- **Где:** `apps/api/src/domain/auth/social-oauth-state.ts`
-- **Тест:** `apps/api/test/domain/auth/social-oauth-state.spec.ts`
+- **Где:** `src/domain/auth/social-oauth-state.ts`
+- **Тест:** `test/domain/auth/social-oauth-state.spec.ts`
   — "RN-273: rejeita um state do fluxo de CONEXÃO de git, mesma chave"
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -4019,9 +4019,9 @@ e-mail как подтверждённый (`emailVerified: true`) — GitHub ч
 лишь ВВЕДЁННЫМ, унаследовал учётную запись. Отказ — `403`, и никакая
 привязка не записывается.
 
-- **Где:** `apps/api/src/application/use-cases/auth/social-login-callback.use-case.ts`
+- **Где:** `src/application/use-cases/auth/social-login-callback.use-case.ts`
   (`vincularAContaExistente`)
-- **Тест:** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — "RECUSA vincular quando o e-mail bate mas NÃO está verificado pelo provider"
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -4037,9 +4037,9 @@ e-mail подтверждён, но не у всех, и отказ во вхо�
 же риск, который регистрация по паролю уже неявно принимает до клика по
 ссылке подтверждения.
 
-- **Где:** `apps/api/src/application/use-cases/auth/social-login-callback.use-case.ts`
+- **Где:** `src/application/use-cases/auth/social-login-callback.use-case.ts`
   (`provisionarContaNova`)
-- **Тест:** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — "provisiona conta nova mesmo com e-mail NÃO verificado"
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -4052,9 +4052,9 @@ e-mail подтверждён, но не у всех, и отказ во вхо�
 привязку того, у кого уже была учётная запись, или хуже — молча унаследовать
 привязку другого человека, переиспользовавшего этот адрес позже.
 
-- **Где:** `apps/api/src/db/migrations/0047_complete_hannibal_king.sql`,
-  `apps/api/src/application/ports/social-identity-repository.port.ts`
-- **Тест:** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **Где:** `src/db/migrations/0047_complete_hannibal_king.sql`,
+  `src/application/ports/social-identity-repository.port.ts`
+- **Тест:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — "identidade já conhecida: login direto, sem criar segunda linha"
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -4067,10 +4067,10 @@ e-mail подтверждён, но не у всех, и отказ во вхо�
 (RN-281), но запрашивают разные авторизации, решаемые в момент авторизации, а
 не в конфигурации приложения.
 
-- **Где:** `apps/api/src/infrastructure/git/github-oauth-client.ts`,
-  `apps/api/src/infrastructure/git/gitlab-oauth-client.ts`
+- **Где:** `src/infrastructure/git/github-oauth-client.ts`,
+  `src/infrastructure/git/gitlab-oauth-client.ts`
   (`buildLoginAuthorizeUrl`)
-- **Тест:** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — "StartSocialLoginUseCase › caminho feliz"
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -4083,10 +4083,10 @@ e-mail подтверждён, но не у всех, и отказ во вхо�
 второго механизма "ожидающего пароля" для социального входа не
 понадобилось.
 
-- **Где:** `apps/api/src/application/ports/auth-credential-repository.port.ts`
+- **Где:** `src/application/ports/auth-credential-repository.port.ts`
   (`criarUsuarioSemCredencial`),
-  `apps/api/src/infrastructure/persistence/drizzle/auth-credential.repository.ts`
-- **Тест:** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+  `src/infrastructure/persistence/drizzle/auth-credential.repository.ts`
+- **Тест:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — "caminho feliz: provisiona um usuário NOVO, sem senha (RN-278)"
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -4101,9 +4101,9 @@ e-mail подтверждён, но не у всех, и отказ во вхо�
 (RN-032) после того, как владение e-mail доказано другим, столь же сильным
 путём.
 
-- **Где:** `apps/api/src/application/use-cases/auth/social-login-callback.use-case.ts`
+- **Где:** `src/application/use-cases/auth/social-login-callback.use-case.ts`
   (`vincularAContaExistente`)
-- **Тест:** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — "vincula a conta existente (…) e marca o e-mail dela como verificado (RN-274/279)"
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -4114,9 +4114,9 @@ e-mail подтверждён, но не у всех, и отказ во вхо�
 (уже известная идентичность), так и при попытке привязки. Отключение
 учётной записи нельзя обойти сменой способа входа.
 
-- **Где:** `apps/api/src/application/use-cases/auth/social-login-callback.use-case.ts`
+- **Где:** `src/application/use-cases/auth/social-login-callback.use-case.ts`
   (`entrarComIdentidadeConhecida`, `vincularAContaExistente`)
-- **Тест:** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — "recusa login de identidade vinculada a conta DESABILITADA"
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
 
@@ -4132,7 +4132,7 @@ callback URL в приложении каждого провайдера), он�
 обосновывает рождение ветки как `breaking/`.
 
 - **Где:** `.env.example`,
-  `apps/api/src/application/use-cases/auth/start-social-login.use-case.ts`
+  `src/application/use-cases/auth/start-social-login.use-case.ts`
 - **Тест:** вручную (регистрация в OAuth-приложении) — автоматически
   протестировать внешнюю по отношению к продукту конфигурацию невозможно
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
@@ -4146,9 +4146,9 @@ callback URL в приложении каждого провайдера), он�
 refresh на access token — никакого нового кода на стороне клиента, кроме
 кнопок и псевдонима маршрута ошибки.
 
-- **Где:** `apps/api/src/interfaces/http/auth/auth.controller.ts`
+- **Где:** `src/interfaces/http/auth/auth.controller.ts`
   (`oauthCallback`)
-- **Тест:** `apps/api/test/interfaces/route-surface.spec.ts` — покрывает
+- **Тест:** `test/interfaces/route-surface.spec.ts` — покрывает
   публичную классификацию и метаданные OpenAPI маршрута; полный поток
   cookie→загрузка — это E2E, вне рамок модульного теста
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
@@ -4161,9 +4161,9 @@ refresh на access token — никакого нового кода на сто
 причину. Тот же паттерн, что у callback подключения git
 (`WEB_ORIGIN/git-error`).
 
-- **Где:** `apps/api/src/interfaces/http/auth/auth.controller.ts`
+- **Где:** `src/interfaces/http/auth/auth.controller.ts`
   (`oauthCallback`, блок `catch`)
-- **Тест:** `apps/api/test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — покрывает исходы сбоя, которые контроллер отображает на тот же общий
   redirect
 - **ADR:** [0084](../adr/0084-login-social-github-e-gitlab.md)
@@ -4175,7 +4175,7 @@ refresh на access token — никакого нового кода на сто
 Сознательное решение владельца продукта ОПЕРЕДИТЬ построение ролей
 `analytics` и `delivery-metricas` (`docs/fluxo.yml`, `status: proposto`), не
 дожидаясь органического триггера, который каждая уже объявляла. Обе
-становятся одним СКРИПТОМ — `apps/api/scripts/analise-funil.ts` — в том же
+становятся одним СКРИПТОМ — `scripts/analise-funil.ts` — в том же
 формате, что `medir-execucao.ts` (Фаза 13b):
 `NestFactory.createApplicationContext`, обязательный `--projeto <uuid>`,
 чистое чтение через Drizzle, без какой-либо записи. Форма — та, которую уже
@@ -4192,9 +4192,9 @@ git_merge)`) и `projects`, никогда не пишет. Защита
 файла та же, что у `medir-execucao.ts`: без неё импорт модуля в тесте поднял
 бы весь Nest и уронил бы процесс на `process.exit` парсера аргументов.
 
-- **Где:** `apps/api/scripts/analise-funil.ts:64-73` (`lerOpcoes`),
+- **Где:** `scripts/analise-funil.ts:64-73` (`lerOpcoes`),
   `:256-319` (`main`), `:390` (защита выполнения)
-- **Тест:** `apps/api/test/scripts/analise-funil.spec.ts` (только чистые
+- **Тест:** `test/scripts/analise-funil.spec.ts` (только чистые
   функции — часть, говорящая с базой, проверяется реальным выполнением, тот
   же паттерн, что у `medir-execucao.spec.ts`)
 - **ADR:** [0089](../adr/0089-analytics-e-delivery-metricas-como-relatorio.md)
@@ -4215,9 +4215,9 @@ git_merge)`) и `projects`, никогда не пишет. Защита
 `updated_at` коммита (две волны в одной сессии или несогласованные данные),
 отбрасывается и никогда не становится отрицательным lead time.
 
-- **Где:** `apps/api/scripts/analise-funil.ts:115-160` (`calcularFunil`),
+- **Где:** `scripts/analise-funil.ts:115-160` (`calcularFunil`),
   `:170-193` (`calcularLeadTimes`)
-- **Тест:** `apps/api/test/scripts/analise-funil.spec.ts` (describe
+- **Тест:** `test/scripts/analise-funil.spec.ts` (describe
   "calcularFunil", "calcularLeadTimes")
 - **ADR:** [0089](../adr/0089-analytics-e-delivery-metricas-como-relatorio.md)
 
@@ -4225,7 +4225,7 @@ git_merge)`) и `projects`, никогда не пишет. Защита
 
 `deploymentFrequencyPorDia` считает только `git_merge` `executed`, чей
 `executionResult.targetBranch` входит в `PROTECTED_BRANCHES`
-(`apps/api/src/domain/actions/protected-branches.ts`) — merge в ветку
+(`src/domain/actions/protected-branches.ts`) — merge в ветку
 функции не является деплоем. Пересекается по ССЫЛКЕ с gate `backmerge`
 (`docs/gates.yml`): его доказательство — CI, в `.release/gate.json`, вне
 досягаемости скрипта, который только читает базу, поэтому соединения данных
@@ -4246,10 +4246,10 @@ git_merge)`) и `projects`, никогда не пишет. Защита
    `secops-runtime`/`platform` (`status: proposto`/`planned`, активация
    синхронизирована с `DEPLOY_ENABLED`).
 
-- **Где:** `apps/api/scripts/analise-funil.ts:220-247`
+- **Где:** `scripts/analise-funil.ts:220-247`
   (`deploymentFrequencyPorDia`), `:372-386` (печатаемый раздел "Не
   измерено")
-- **Тест:** `apps/api/test/scripts/analise-funil.spec.ts` (describe
+- **Тест:** `test/scripts/analise-funil.spec.ts` (describe
   "deploymentFrequencyPorDia")
 - **ADR:** [0089](../adr/0089-analytics-e-delivery-metricas-como-relatorio.md)
 
@@ -4299,13 +4299,13 @@ git_merge)`) и `projects`, никогда не пишет. Защита
 
 - **Где:** `apps/engine/lib/engine/agents/dev_lead_tools.ex`
   (`run_assessment/2`, `spec_assess_implementability/0`),
-  `dev_lead_server.ex` (`run_tool/3`); `apps/api/src/domain/actions/decide.ts`
+  `dev_lead_server.ex` (`run_tool/3`); `src/domain/actions/decide.ts`
   (`assess_implementability`); `docs/gates.yml` (`implementavel`,
   `status: active`)
 - **Тест:** `apps/engine/test/engine/agents/dev_lead_tools_test.exs`
   (describe "assess_implementability"), `dev_lead_server_test.exs`
   (describe "suspensão em aprovação" — два новых теста),
-  `apps/api/test/domain/actions/decide.spec.ts` (describe "parecer de
+  `test/domain/actions/decide.spec.ts` (describe "parecer de
   implementabilidade do Dev Lead")
 - **Источник:** [ADR 0090](../adr/0090-qa-estrategia-e-appsec-segundo-momento.md)
 
@@ -4324,7 +4324,7 @@ git_merge)`) и `projects`, никогда не пишет. Защита
 ### RN-375 — Отчёт объявляет окно и никогда не изображает более длинную историю {#rn-375}
 
 `DomainGaugesCollector.pruneRateLimit`
-(`apps/api/src/infrastructure/observability/domain-gauges.collector.ts:177-186`)
+(`src/infrastructure/observability/domain-gauges.collector.ts:177-186`)
 удаляет хиты старше `2 × RATE_LIMIT_WINDOW_MS` (240 с при значении по
 умолчанию 60 с) каждые `METRICS_GAUGE_INTERVAL_MS` (по умолчанию 15 с) —
 таблица никогда не хранит больше нескольких минут.
@@ -4338,10 +4338,10 @@ git_merge)`) и `projects`, никогда не пишет. Защита
 ### RN-376 — Рейтинг работает только с тем, что хранит `bucket_key`: корзина и когда {#rn-376}
 
 `RateLimitGuard.registrarEContar`
-(`apps/api/src/interfaces/http/shared/rate-limit.guard.ts:150-170`) записывает
+(`src/interfaces/http/shared/rate-limit.guard.ts:150-170`) записывает
 только `bucket_key` (`user:<uuid>` или `ip:<адрес>`) и `occurred_at` — НЕТ ни
 маршрута, ни HTTP-метода, ни причины блокировки. `rankingDeBaldes` и
-`interpretarBalde` (`apps/api/scripts/relatorio-seguranca-runtime.ts`)
+`interpretarBalde` (`scripts/relatorio-seguranca-runtime.ts`)
 классифицируют по этим двум полям и только по ним; `bucket_key` вне формата
 `user:`/`ip:` попадает в `desconhecido` вместо падения, чтобы скрипт не
 ломался, если будущий `RateLimitGuard` начнёт записывать другой формат.
@@ -4353,7 +4353,7 @@ git_merge)`) и `projects`, никогда не пишет. Защита
 ### RN-400 — Заключение о миграции — СТАТИЧЕСКИЙ анализ SQL, и он игнорирует рискованный шаблон, когда тот появляется только в комментарии {#rn-400}
 
 `lintarConteudo` (чистое ядро `lint-migracao.ts`) просматривает каждый `.sql`
-в `apps/api/src/db/migrations/` строка за строкой, не завися ни от
+в `src/db/migrations/` строка за строкой, не завися ни от
 `--projeto`, ни от базы, — риск, который он находит, касается СХЕМЫ, а не
 нагрузки, и поэтому не зависит ни от какого реального объёма данных (критерий
 разделения, который `docs/fluxo.yml` уже объявлял для роли). Пять шаблонов,
@@ -4369,9 +4369,9 @@ git_merge)`) и `projects`, никогда не пишет. Защита
 анализ текста комментария нашёл бы шаблон ровно во фразе, описывающей, почему
 он не был использован.
 
-- **Где:** `apps/api/scripts/lint-migracao.ts` (`REGRAS`, строка 75;
+- **Где:** `scripts/lint-migracao.ts` (`REGRAS`, строка 75;
   `lintarConteudo`, строка 126)
-- **Тест:** `apps/api/test/scripts/lint-migracao.spec.ts` — каждый шаблон по
+- **Тест:** `test/scripts/lint-migracao.spec.ts` — каждый шаблон по
   отдельности, сочетание нескольких в одной миграции и "ignora o padrão de
   risco quando ele aparece só em COMENTÁRIO"
 - **ADR:** [0093](../adr/0093-dbre-linter-de-migracao-e-relatorio-de-backup.md)
@@ -4400,9 +4400,9 @@ handoff. Выбран `StoryRepository` (а не `ListBacklogUseCase`), пото
 легче — не нужно собирать дерево эпик→история→задача, чтобы ответить "есть
 ли хоть одна не-draft?".
 
-- **Где:** `apps/api/src/application/use-cases/agents/offer-infra-handoff.use-case.ts`
+- **Где:** `src/application/use-cases/agents/offer-infra-handoff.use-case.ts`
   (строки 27-34, проверка; внедрение `StoryRepository` в конструктор)
-- **Тест:** `apps/api/test/application/use-cases/agents/offer-infra-handoff.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/agents/offer-infra-handoff.use-case.spec.ts`
   — ноль продвинутых историй отклоняется с НУЛЁМ вызовов engine и НУЛЁМ
   записанных событий; хотя бы с одной `ready`/`in_progress`/`done` идёт
   обычный поток
@@ -4448,15 +4448,15 @@ RN-114 (`AUTH_JWT_SECRET` и компания) ЕСТЬ публичное зн�
 конструкторе `EnvelopeEncryptionService`, задействуемом той же сборкой
 графа).
 
-- **Где:** `apps/api/src/infrastructure/mail/smtp-config.ts`
+- **Где:** `src/infrastructure/mail/smtp-config.ts`
   (`resolverConfigSmtp`, `resolverModoDeTransporte`),
-  `apps/api/src/infrastructure/mail/smtp-mail-sender.ts` (`SmtpMailSender`,
+  `src/infrastructure/mail/smtp-mail-sender.ts` (`SmtpMailSender`,
   вызывает `resolverConfigSmtp()` в конструкторе),
-  `apps/api/src/application/use-cases/auth/auth-use-cases.module.ts`
+  `src/application/use-cases/auth/auth-use-cases.module.ts`
   (`useFactory` для `MailSender`)
-- **Тест:** `apps/api/test/infrastructure/mail/smtp-config.spec.ts`
+- **Тест:** `test/infrastructure/mail/smtp-config.spec.ts`
   (тот же паттерн, что у `auth-key-material.spec.ts`/`service-token.spec.ts`),
-  `apps/api/test/infrastructure/mail/smtp-mail-sender.spec.ts`
+  `test/infrastructure/mail/smtp-mail-sender.spec.ts`
 - **Источник:** [ADR 0096](../adr/0096-smtp-real-no-mailsender.md), расширяющий
   паттерн [RN-114](#rn-114) (который, в свою очередь,
   расширяет [ADR 0059](../adr/0059-segredo-do-state-de-oauth-sem-default.md))
@@ -4492,7 +4492,7 @@ workspace, если что-то упадёт посередине.
 
 Имя и slug берутся из ОДНОЙ чистой функции,
 `nomeESlugDoWorkspacePessoal(nome, email, userId)`
-(`apps/api/src/domain/auth/personal-workspace.ts`), переиспользуемой обеими
+(`src/domain/auth/personal-workspace.ts`), переиспользуемой обеими
 точками создания, — чтобы правило не разошлось в двух файлах, по той же
 причине, по которой `normalizarEmail`/`exigirSenhaValida` живут в домене. Имя
 использует указанный `nome` (социальный вход использует логин провайдера), с
@@ -4505,18 +4505,18 @@ workspace, если что-то упадёт посередине.
 суффикса. Имя или e-mail БЕЗ единого буквенно-цифрового символа деградируют до
 литерала `workspace-<8 символов>`, никогда до пустой строки.
 
-- **Где:** `apps/api/src/domain/auth/personal-workspace.ts`
+- **Где:** `src/domain/auth/personal-workspace.ts`
   (`nomeESlugDoWorkspacePessoal`),
-  `apps/api/src/application/use-cases/auth/register.use-case.ts`,
-  `apps/api/src/application/use-cases/auth/social-login-callback.use-case.ts`
+  `src/application/use-cases/auth/register.use-case.ts`,
+  `src/application/use-cases/auth/social-login-callback.use-case.ts`
   (метод `provisionarContaNova`)
-- **Тест:** `apps/api/test/domain/auth/personal-workspace.spec.ts` (имя
+- **Тест:** `test/domain/auth/personal-workspace.spec.ts` (имя
   с/без `nome`, откат к локальной части e-mail, акцент/заглавные,
   превращающиеся в ASCII kebab-case, откат `workspace-<id>` без единого
   буквенно-цифрового символа, slug всегда уникален благодаря суффиксу);
-  `apps/api/test/application/use-cases/auth/register.use-case.spec.ts`
+  `test/application/use-cases/auth/register.use-case.spec.ts`
   (новая учётная запись получает workspace с пользователем как `owner`,
-  дублирующийся e-mail не создаёт второй); `apps/api/test/application/use-cases/auth/
+  дублирующийся e-mail не создаёт второй); `test/application/use-cases/auth/
   social-login-callback.use-case.spec.ts` (то же доказательство в ветке,
   подготавливающей новую учётную запись через социальный вход)
 - **ADR:** нет — исправление пути, который должен был делать это с самого
@@ -4541,7 +4541,7 @@ large"), с двумя дефектами, сцепленными друг с д
 Два исправления, оба необходимые (одно без другого лишь откладывает
 переполнение):
 
-1. `apps/api/src/main.ts` никогда не настраивал лимит тела Express —
+1. `src/main.ts` никогда не настраивал лимит тела Express —
    действовало значение по умолчанию 100 КБ, самое узкое горлышко в
    направлении engine→api (Phoenix принимает до 8 МБ). `POST
    /internal/sessions/:sessionId/llm-turn` повторно отправляет ВСЮ историю
@@ -4589,11 +4589,11 @@ RN-411 отбросила: решение об одобрении/отклоне
 бы изменить сигнатуру `deriveAgentRoster`/`rosterFactsFromEvents`, вне рамок
 этого исправления.
 
-- **Где:** `apps/api/src/main.ts`, `apps/engine/lib/engine/harness/context_manager.ex`,
+- **Где:** `src/main.ts`, `apps/engine/lib/engine/harness/context_manager.ex`,
   `apps/engine/lib/engine/harness/tokenizer.ex`,
-  `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts`,
+  `src/application/use-cases/sessions/get-session-pending-work.use-case.ts`,
   `apps/web/src/routes/ProjectExecutorsTab.tsx`, `apps/web/src/routes/ProjectOverviewTab.tsx`
-- **Тест:** `apps/api/test/main.spec.ts` (тело в 1 МБ принимается; выше
+- **Тест:** `test/main.spec.ts` (тело в 1 МБ принимается; выше
   лимита → 413); `apps/engine/test/engine/harness/context_manager_test.exs`
   (тяжёлые toolCalls запускают сжатие; `:pinned` выживает; потолок
   транспорта форсирует сжатие даже при большом окне модели);
@@ -4634,9 +4634,9 @@ outbox, в той же транзакции, что и всегда, `aggregateT
 (остальное упало бы по той же причине) — строка остаётся необработанной и
 сама повторяется в следующем цикле, без вмешательства.
 
-- **Где:** `apps/api/src/application/graph-projection/graph-projector.ts`;
-  `apps/api/src/domain/graph/graph-projection-events.ts`;
-  `apps/api/src/application/use-cases/sessions/append-session-event.use-case.ts`,
+- **Где:** `src/application/graph-projection/graph-projector.ts`;
+  `src/domain/graph/graph-projection-events.ts`;
+  `src/application/use-cases/sessions/append-session-event.use-case.ts`,
   `transition-session.use-case.ts`
 - **Тест:** `graph-projector.spec.ts` (счастливый путь четырёх типов;
   разрешение доказательство→seq у гипотезы; `GraphUnavailableError` оставляет
@@ -4687,10 +4687,10 @@ merge, `instruction_patch`, `parallelize`/`raise_max_parallel`, область
 абсолютный `deny`, заслуживает пристального внимания) — владелец продукта
 явно подтвердил после проверки, что решение именно такое.
 
-- **Где:** `apps/api/src/domain/actions/decide.ts` (блок абсолютных
-  потолков), `apps/api/src/domain/actions/external-effect.ts`
+- **Где:** `src/domain/actions/decide.ts` (блок абсолютных
+  потолков), `src/domain/actions/external-effect.ts`
   (`comandoPrivilegiadoNoComando`, `mensagemDeComandoPrivilegiado`),
-  `apps/api/src/application/use-cases/actions/approve-always-action.use-case.ts`
+  `src/application/use-cases/actions/approve-always-action.use-case.ts`
 - **Тест:** `decide.spec.ts` (`git push` с автоматическим режимом `"*"` И с
   совпадающим `allow` в `permissions.json` разрешаются в `require_approval`;
   `sudo` так же; прежние потолки остаются нетронутыми — полная регрессия);
@@ -4729,12 +4729,12 @@ ADR 0072 (RN-169/RN-170) и ADR 0103 (RN-419/RN-420) никогда не
 КОГДА/КТО подтверждает, что он действительно существует
 ([RN-422](#rn-422)/[RN-423](runner.md#rn-423)).
 
-- **Где:** `apps/api/src/db/migrations/0048_quiet_iron_fist.sql`,
-  `apps/api/src/db/schema/iam.ts` (`projectExecutionModeEnum`),
-  `apps/api/src/domain/iam/project.entity.ts` (`PROJECT_EXECUTION_MODES`),
-  `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
+- **Где:** `src/db/migrations/0048_quiet_iron_fist.sql`,
+  `src/db/schema/iam.ts` (`projectExecutionModeEnum`),
+  `src/domain/iam/project.entity.ts` (`PROJECT_EXECUTION_MODES`),
+  `src/infrastructure/filesystem/project-workspaces-root.ts`
   (`projectScopeRoot`), `apps/engine/lib/engine/projects/project.ex`
-- **Тест:** `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+- **Тест:** `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   (describe "projectScopeRoot nos modos mounted/runner"),
   `apps/engine/test/engine/projects/project_test.exs`
 - **Архитектурное решение:**
@@ -4759,11 +4759,11 @@ runner, работающий на настоящем ХОСТЕ, вправе п
 подтверждением runner ([RN-423](runner.md#rn-423)) — одна и та же функция, никогда не
 две копии, которые однажды разойдутся.
 
-- **Где:** `apps/api/src/application/use-cases/iam/create-project.use-case.ts`
-  (`caminhoValidado`), `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
-  (`caminhoDeWorkspaceLocalValido`, экспортированная), `apps/api/src/interfaces/http/iam/dto/create-project.dto.ts`
-- **Тест:** `apps/api/test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`
-  (блок `runner`), `apps/api/test/interfaces/http/iam/project-dto-modo-de-workspace.spec.ts`,
+- **Где:** `src/application/use-cases/iam/create-project.use-case.ts`
+  (`caminhoValidado`), `src/infrastructure/filesystem/project-workspaces-root.ts`
+  (`caminhoDeWorkspaceLocalValido`, экспортированная), `src/interfaces/http/iam/dto/create-project.dto.ts`
+- **Тест:** `test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`
+  (блок `runner`), `test/interfaces/http/iam/project-dto-modo-de-workspace.spec.ts`,
   `apps/web/src/lib/wizard.test.ts` (`canAdvanceFromWorkspace` для `runner`)
 - **Архитектурное решение:**
   [ADR 0104](../adr/0104-execution-mode-tres-valores-e-workspace-verificado-pelo-runner.md)
@@ -4795,15 +4795,15 @@ Personal Access Token (`brb_…`) никогда не авторизует ни�
 остальной api, — область "только запрашивает ticket runner" стала бы
 декоративной.
 
-- **Где:** `apps/api/src/interfaces/http/auth/pat-route.decorator.ts`
+- **Где:** `src/interfaces/http/auth/pat-route.decorator.ts`
   (`IS_PAT_ROUTE_KEY`/`@RequirePatAuth()`),
-  `apps/api/src/interfaces/http/auth/jwt-auth.guard.ts` (третий ранний
-  выход), `apps/api/src/interfaces/http/auth/pat-auth.guard.ts`
-  (`PatAuthGuard`), `apps/api/src/interfaces/http/runner/runner-tickets.controller.ts`
+  `src/interfaces/http/auth/jwt-auth.guard.ts` (третий ранний
+  выход), `src/interfaces/http/auth/pat-auth.guard.ts`
+  (`PatAuthGuard`), `src/interfaces/http/runner/runner-tickets.controller.ts`
   (`runnerTicket`, единственный помеченный обработчик)
-- **Тест:** `apps/api/test/interfaces/pat-auth.guard.spec.ts`,
-  `apps/api/test/interfaces/jwt-auth.guard.spec.ts` (`@RequirePatAuth()`
-  проходит без попытки `verify()`), `apps/api/test/interfaces/http/runner/runner-tickets.controller.spec.ts`
+- **Тест:** `test/interfaces/pat-auth.guard.spec.ts`,
+  `test/interfaces/jwt-auth.guard.spec.ts` (`@RequirePatAuth()`
+  проходит без попытки `verify()`), `test/interfaces/http/runner/runner-tickets.controller.spec.ts`
   (у `runnerTicket` есть декоратор, у `terminalTicket` — нет)
 - **Архитектурное решение:**
   [ADR 0105](../adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
@@ -4834,12 +4834,12 @@ runner переподключается за секунды, а не минут�
 несущественно в худшем реальном случае (до 10 попыток подряд, потолок
 runner).
 
-- **Где:** `apps/api/src/infrastructure/persistence/drizzle/personal-access-token.repository.ts`
-  (`validarEUsar`), `apps/api/src/interfaces/http/auth/pat-auth.guard.ts`
-- **Тест:** `apps/api/test/infrastructure/persistence/personal-access-token.repository.spec.ts`
+- **Где:** `src/infrastructure/persistence/drizzle/personal-access-token.repository.ts`
+  (`validarEUsar`), `src/interfaces/http/auth/pat-auth.guard.ts`
+- **Тест:** `test/infrastructure/persistence/personal-access-token.repository.spec.ts`
   (несуществующий/отозванный/истёкший → `null`; "toca `last_used_at` sempre
   que válido, sem throttle" — регрессия бага выше),
-  `apps/api/test/interfaces/pat-auth.guard.spec.ts` (неверная область → 403,
+  `test/interfaces/pat-auth.guard.spec.ts` (неверная область → 403,
   а не 401)
 - **Архитектурное решение:**
   [ADR 0105](../adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
@@ -4865,13 +4865,13 @@ runner).
 реализован. Эта линейка (самоотзыв, область по `userId`) ничуть не
 изменилась.
 
-- **Где:** `apps/api/src/application/use-cases/auth/list-personal-access-tokens.use-case.ts`
-  (`ListPersonalAccessTokensUseCase`), `apps/api/src/application/use-cases/auth/revoke-personal-access-token.use-case.ts`,
-  `apps/api/src/infrastructure/persistence/drizzle/personal-access-token.repository.ts`
+- **Где:** `src/application/use-cases/auth/list-personal-access-tokens.use-case.ts`
+  (`ListPersonalAccessTokensUseCase`), `src/application/use-cases/auth/revoke-personal-access-token.use-case.ts`,
+  `src/infrastructure/persistence/drizzle/personal-access-token.repository.ts`
   (`listarDoUsuarioNoProjeto`, `revogar`)
-- **Тест:** `apps/api/test/application/use-cases/auth/list-personal-access-tokens.use-case.spec.ts`,
-  `apps/api/test/application/use-cases/auth/revoke-personal-access-token.use-case.spec.ts`,
-  `apps/api/test/infrastructure/persistence/personal-access-token.repository.spec.ts`
+- **Тест:** `test/application/use-cases/auth/list-personal-access-tokens.use-case.spec.ts`,
+  `test/application/use-cases/auth/revoke-personal-access-token.use-case.spec.ts`,
+  `test/infrastructure/persistence/personal-access-token.repository.spec.ts`
   (отзыв токена другого пользователя → `null`)
 - **Архитектурное решение:**
   [ADR 0105](../adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
@@ -4911,19 +4911,19 @@ ADR 0105 объявлял "вне этой волны", — реальное р�
 ответ (404) для обоих случаев, та же дисциплина нераскрытия существования,
 которую RN-426 уже применяла.
 
-- **Где:** `apps/api/src/application/use-cases/auth/list-personal-access-tokens-as-maintainer.use-case.ts`,
-  `apps/api/src/application/use-cases/auth/revoke-personal-access-token-as-maintainer.use-case.ts`,
-  `apps/api/src/infrastructure/persistence/drizzle/personal-access-token.repository.ts`
+- **Где:** `src/application/use-cases/auth/list-personal-access-tokens-as-maintainer.use-case.ts`,
+  `src/application/use-cases/auth/revoke-personal-access-token-as-maintainer.use-case.ts`,
+  `src/infrastructure/persistence/drizzle/personal-access-token.repository.ts`
   (`listarDoProjeto`, `revogarComoMaintainer`),
-  `apps/api/src/interfaces/http/runner/personal-access-tokens.controller.ts`
+  `src/interfaces/http/runner/personal-access-tokens.controller.ts`
   (`listAllPats`, `revokePatAsMaintainer`),
   `apps/web/src/routes/settings/PersonalAccessTokensSection.tsx`
   (подсписок, видимый только для `owner`/`maintainer`)
-- **Тест:** `apps/api/test/application/use-cases/auth/list-personal-access-tokens-as-maintainer.use-case.spec.ts`,
-  `apps/api/test/application/use-cases/auth/revoke-personal-access-token-as-maintainer.use-case.spec.ts`,
-  `apps/api/test/infrastructure/persistence/personal-access-token.repository.spec.ts`
+- **Тест:** `test/application/use-cases/auth/list-personal-access-tokens-as-maintainer.use-case.spec.ts`,
+  `test/application/use-cases/auth/revoke-personal-access-token-as-maintainer.use-case.spec.ts`,
+  `test/infrastructure/persistence/personal-access-token.repository.spec.ts`
   (`listarDoProjeto`/`revogarComoMaintainer`),
-  `apps/api/test/interfaces/http/runner/personal-access-tokens.controller.spec.ts`,
+  `test/interfaces/http/runner/personal-access-tokens.controller.spec.ts`,
   `apps/web/src/routes/ProjectSettingsTab.test.tsx`
 - **Архитектурное решение:**
   [ADR 0105](../adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
@@ -4952,10 +4952,10 @@ ADR 0105 объявлял "вне этой волны", — реальное р�
 собственное тело в карточке одобрения вместо вывала сырого JSON (тот же
 дефект, который RN-096 уже исправила для других типов).
 
-- **Где:** `apps/api/src/application/ports/proposed-action-repository.port.ts`,
-  `apps/api/src/infrastructure/persistence/drizzle/proposed-action.repository.ts`,
-  `apps/api/src/application/use-cases/actions/list-project-pending-actions.use-case.ts`,
-  `apps/api/src/interfaces/http/actions/project-actions.controller.ts`
+- **Где:** `src/application/ports/proposed-action-repository.port.ts`,
+  `src/infrastructure/persistence/drizzle/proposed-action.repository.ts`,
+  `src/application/use-cases/actions/list-project-pending-actions.use-case.ts`,
+  `src/interfaces/http/actions/project-actions.controller.ts`
   (`GET /projects/:projectId/actions?status=pending&actionType=`),
   `apps/web/src/routes/ProjectPrsTab.tsx`, `apps/web/src/components/ApprovalCard.tsx`
 - **Тест:** `list-project-pending-actions.use-case.spec.ts` (ожидающее
@@ -5012,15 +5012,15 @@ pepper, тот же, что `TokenFactory`/`IssuePersonalAccessTokenUseCase`
 проявлялся — исправление лишь первого заменило бы вечный 403 вечным 401, и
 runner по-прежнему никогда бы реально не подключался.
 
-- **Где:** `apps/api/src/interfaces/http/iam/roles.guard.ts` (обход
-  `IS_PAT_ROUTE_KEY`); `apps/api/src/interfaces/http/auth/pat-auth.guard.ts`
-  (авторизация по роли + хэш токена); `apps/api/src/interfaces/http/runner/runner-http.module.ts`
+- **Где:** `src/interfaces/http/iam/roles.guard.ts` (обход
+  `IS_PAT_ROUTE_KEY`); `src/interfaces/http/auth/pat-auth.guard.ts`
+  (авторизация по роли + хэш токена); `src/interfaces/http/runner/runner-http.module.ts`
   (импортирован `IamUseCasesModule` ради `ResolveEffectiveRoleUseCase`,
   который стал нужен `PatAuthGuard`); исправленный комментарий в
-  `apps/api/src/interfaces/http/runner/runner-tickets.controller.ts`
-- **Тест:** `apps/api/test/interfaces/pat-auth.guard.spec.ts` (изолированная
-  авторизация по роли + хэш токена); `apps/api/test/interfaces/roles.guard.spec.ts`
-  (обход `IS_PAT_ROUTE_KEY`); `apps/api/test/interfaces/http/runner/runner-tickets.guards.integration.spec.ts`
+  `src/interfaces/http/runner/runner-tickets.controller.ts`
+- **Тест:** `test/interfaces/pat-auth.guard.spec.ts` (изолированная
+  авторизация по роли + хэш токена); `test/interfaces/roles.guard.spec.ts`
+  (обход `IS_PAT_ROUTE_KEY`); `test/interfaces/http/runner/runner-tickets.guards.integration.spec.ts`
   (НОВЫЙ — поднимает `JwtAuthGuard`+`RolesGuard`+`PatAuthGuard` в реальном
   Nest, с `supertest`, в ТОМ ЖЕ относительном порядке, что `AppModule`: это
   недостающий тест, потому что до этого каждый guard проверялся только
@@ -5041,7 +5041,7 @@ runner по-прежнему никогда бы реально не подкл�
 прошёл бы её без ошибки, потому что агент называет только те цели, которые
 уже знает из собственной инструкции. Это перестаёт быть верным, когда
 выбирает ЧЕЛОВЕК, в `<select>`, питаемом клиентом, который может расходиться
-с бэкендом. `addressableAgents()` (`apps/api/src/domain/agents/agent-areas.ts`)
+с бэкендом. `addressableAgents()` (`src/domain/agents/agent-areas.ts`)
 — ЗАКРЫТЫЙ каталог: лиды областей (`AGENT_AREAS.map(a => a.lead)`) ∪
 `SOLO_CONVERSATIONAL_AGENTS` (`criativo`, `po`, `arquiteto`, `ux-designer`,
 `staff`), — и `RequestManualHandoffUseCase` отклоняет с 400 любой `toAgent`
@@ -5060,15 +5060,15 @@ gerar:areas`, Фаза 18), в `apps/web/src/lib/agent-areas.generated.ts`,
 нет). Даже при заблокированных двух копиях то, что принимается, по-прежнему
 решает `RequestManualHandoffUseCase`.
 
-- **Где:** `apps/api/src/domain/agents/agent-areas.ts` (`addressableAgents`,
-  `SOLO_CONVERSATIONAL_AGENTS`); `apps/api/src/application/use-cases/agents/request-manual-handoff.use-case.ts`;
-  `apps/api/scripts/gerar-areas.ts` (`renderWeb`, записывающий список в
+- **Где:** `src/domain/agents/agent-areas.ts` (`addressableAgents`,
+  `SOLO_CONVERSATIONAL_AGENTS`); `src/application/use-cases/agents/request-manual-handoff.use-case.ts`;
+  `scripts/gerar-areas.ts` (`renderWeb`, записывающий список в
   web); `apps/web/src/lib/agent-areas.generated.ts` (СГЕНЕРИРОВАННАЯ копия,
   реэкспортируемая `apps/web/src/lib/agents.ts`)
-- **Тест:** `apps/api/test/domain/agents/agent-areas.spec.ts`
+- **Тест:** `test/domain/agents/agent-areas.spec.ts`
   (`describe('addressableAgents (ADR 0109)')` и
   `describe('a lista solo sai do gerador para o web (AT-046)')`, плюс
-  проверка свежести файла web); `apps/api/test/application/use-cases/agents/request-manual-handoff.use-case.spec.ts`
+  проверка свежести файла web); `test/application/use-cases/agents/request-manual-handoff.use-case.spec.ts`
   (отклоняет субагента И отклоняет неизвестного агента); `apps/web/src/lib/agents.test.ts`
 - **ADR:** [0109](../adr/0109-handoff-manual-a-agente-a-escolha.md)
 - **Источник:** бэклог модели команды — пункт, открытый с ФАЗЫ 13c, закрытый
@@ -5105,16 +5105,16 @@ gerar:areas`, Фаза 18), в `apps/web/src/lib/agent-areas.generated.ts`,
 что проверено чтением ДО написания хоть одной строки web, и ни у одной из них
 не было человеческого пути к себе.
 
-- **Где:** `apps/api/src/interfaces/http/agents/agents.controller.ts`
-  (`requestManual`); `apps/api/src/interfaces/http/agents/dto/request-manual-handoff.dto.ts`;
-  `apps/api/src/application/use-cases/agents/create-handoff.use-case.ts`
+- **Где:** `src/interfaces/http/agents/agents.controller.ts`
+  (`requestManual`); `src/interfaces/http/agents/dto/request-manual-handoff.dto.ts`;
+  `src/application/use-cases/agents/create-handoff.use-case.ts`
   (`actor?: Actor`); `apps/web/src/routes/SessionPage.tsx`
   (`AGENTES_DE_CHAT`, `.manualHandoffRow`, `handleRequestManualHandoff`);
   `apps/web/src/lib/api-client.ts` (`requestManualHandoff`)
-- **Тест:** `apps/api/test/interfaces/http/agents/agents.controller.spec.ts`
-  (требуемая роль); `apps/api/test/application/use-cases/agents/request-manual-handoff.use-case.spec.ts`
+- **Тест:** `test/interfaces/http/agents/agents.controller.spec.ts`
+  (требуемая роль); `test/application/use-cases/agents/request-manual-handoff.use-case.spec.ts`
   (выведенный `fromAgent`, сторожевое `"usuario"`, `actor: user`);
-  `docs/security-surface.md` + `apps/api/test/interfaces/route-surface.spec.ts`
+  `docs/security-surface.md` + `test/interfaces/route-surface.spec.ts`
   (классификация `role:developer` во время выполнения)
 - **ADR:** [0109](../adr/0109-handoff-manual-a-agente-a-escolha.md)
 - **Источник:** бэклог модели команды (см. RN-440)
@@ -5153,24 +5153,24 @@ gerar:areas`, Фаза 18), в `apps/web/src/lib/agent-areas.generated.ts`,
 обязательное поле, принимающее `null` как валидное значение (`ValidateIf`, а
 не `IsOptional`), тот же паттерн, что у `RenameSessionDto`.
 
-- **Где:** `apps/api/src/db/schema/agents.ts` (`agentAreas`, колонки
-  `budgetMicros`/`spentMicros` и два CHECK); `apps/api/src/domain/llm/area-budget.ts`
-  (`isAreaBudgetExceeded`); `apps/api/src/application/use-cases/llm/check-budget-gate.use-case.ts`;
-  `apps/api/src/application/use-cases/llm/record-llm-usage.use-case.ts`;
-  `apps/api/src/application/use-cases/execution/set-area-budget.use-case.ts`;
-  `apps/api/src/infrastructure/persistence/drizzle/agent-area.repository.ts`
-  (`setBudget`/`incrementSpent`); `apps/api/src/interfaces/http/execution/execution.controller.ts`
+- **Где:** `src/db/schema/agents.ts` (`agentAreas`, колонки
+  `budgetMicros`/`spentMicros` и два CHECK); `src/domain/llm/area-budget.ts`
+  (`isAreaBudgetExceeded`); `src/application/use-cases/llm/check-budget-gate.use-case.ts`;
+  `src/application/use-cases/llm/record-llm-usage.use-case.ts`;
+  `src/application/use-cases/execution/set-area-budget.use-case.ts`;
+  `src/infrastructure/persistence/drizzle/agent-area.repository.ts`
+  (`setBudget`/`incrementSpent`); `src/interfaces/http/execution/execution.controller.ts`
   (`PUT agent-areas/:key/budget`); `apps/web/src/routes/settings/BudgetSection.tsx`
-- **Тест:** `apps/api/test/application/use-cases/llm/check-budget-gate.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/llm/check-budget-gate.use-case.spec.ts`
   (describe `budget de área — aditivo, não cascata`: превышенная область
   блокирует при нормальных проекте/сессии и наоборот, без потолка никогда не
-  блокирует, агент без области не затрагивается); `apps/api/test/application/use-cases/llm/record-llm-usage.use-case.spec.ts`
+  блокирует, агент без области не затрагивается); `test/application/use-cases/llm/record-llm-usage.use-case.spec.ts`
   (describe `gasto por área`: увеличивает для члена и для lead, ничего
   вредного без области, суммирует без настроенного потолка);
-  `apps/api/test/application/use-cases/execution/set-area-budget.use-case.spec.ts`
+  `test/application/use-cases/execution/set-area-budget.use-case.spec.ts`
   (записывает, очищает с `null`, отклоняет отрицательное/NaN/Infinity, ноль
   валиден);
-  `apps/api/test/infrastructure/persistence/drizzle/agent-area.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/agent-area.repository.spec.ts`
   (`setBudget`/`incrementSpent`, атомарность при конкуренции)
 - **ADR:** [0110](../adr/0110-budget-por-area-aditivo-nao-cascata.md)
 - **Источник:** пункт бэклога, одобренный владельцем продукта на явной
@@ -5206,12 +5206,12 @@ gerar:areas`, Фаза 18), в `apps/web/src/lib/agent-areas.generated.ts`,
 выполняется — повторная отправка формы без изменений не должна стоить
 обхода активных агентов.
 
-- **Где:** `apps/api/src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`;
-  `apps/api/src/application/ports/dev-agent-activity.port.ts`;
-  `apps/api/src/infrastructure/persistence/drizzle/dev-agent-activity.repository.ts`
-- **Тест:** `apps/api/test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
+- **Где:** `src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`;
+  `src/application/ports/dev-agent-activity.port.ts`;
+  `src/infrastructure/persistence/drizzle/dev-agent-activity.repository.ts`
+- **Тест:** `test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
   (отказ при активном dev agent, без какой-либо записи; no-op не проверяет);
-  `apps/api/test/infrastructure/persistence/drizzle/dev-agent-activity.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/dev-agent-activity.repository.spec.ts`
   (`idle` не считается, всё остальное считается, изоляция между проектами)
 - **ADR:** [0111](../adr/0111-conversao-de-execution-mode-de-projeto-existente.md)
 - **Источник:** исправление, записанное в `docs/explanation/backlog.md` во
@@ -5237,9 +5237,9 @@ bind-mount файл живёт в папке, которая лишь совпа
 случая для `runner`, кроме использования `move()`, как для любой другой
 пары.
 
-- **Где:** `apps/api/src/application/ports/permissions-file-store.port.ts`
-  (`move`); `apps/api/src/infrastructure/filesystem/fs-permissions-file-store.ts`
-- **Тест:** `apps/api/test/infrastructure/filesystem/fs-permissions-file-store.spec.ts`
+- **Где:** `src/application/ports/permissions-file-store.port.ts`
+  (`move`); `src/infrastructure/filesystem/fs-permissions-file-store.ts`
+- **Тест:** `test/infrastructure/filesystem/fs-permissions-file-store.spec.ts`
   (содержимое выживает и удаляется из источника; источник без файла
   записывает пустой, не выбрасывая; `from === to` — no-op)
 - **ADR:** [0111](../adr/0111-conversao-de-execution-mode-de-projeto-existente.md)
@@ -5264,9 +5264,9 @@ bind-mount файл живёт в папке, которая лишь совпа
 действуют с этого момента, как для любого проекта `container`, — никогда не
 ярлык, пропускающий gate, потому что у проекта "уже где-то был код".
 
-- **Где:** `apps/api/src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`
+- **Где:** `src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`
   (`removerContainerSeExistir`)
-- **Тест:** `apps/api/test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
   (`running` проходит через `stopped`; `provisioning` идёт напрямую; без
   строки — никакого перехода; вход в `container` никогда не запускает
   переход)
@@ -5286,8 +5286,8 @@ bind-mount файл живёт в папке, которая лишь совпа
 — единственное исключение: ничего не меняется, поэтому ничего не
 обнуляется.
 
-- **Где:** `apps/api/src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`
-- **Тест:** `apps/api/test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
+- **Где:** `src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`
+- **Тест:** `test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
   (`runner -> container` обнуляет; no-op сохраняет)
 - **ADR:** [0111](../adr/0111-conversao-de-execution-mode-de-projeto-existente.md)
 
@@ -5317,12 +5317,12 @@ bind-mount файл живёт в папке, которая лишь совпа
 `docs`/`adr`, поэтому попадает в `kind: 'file'`, который цитата уже умела
 отрисовывать.
 
-- **Где:** `apps/api/src/db/schema/rag.ts` (`chunkScopeEnum`),
-  `apps/api/src/db/migrations/0052_chunks_local_scope.sql`,
-  `apps/api/src/application/ports/chunk-repository.port.ts` (`ChunkScope`),
-  `apps/api/src/application/use-cases/rag/index-local-folder.use-case.ts`
-- **Тест:** `apps/api/test/application/use-cases/rag/index-local-folder.use-case.spec.ts`
-  (счастливый путь и полная перестройка), `apps/api/test/interfaces/http/rag/rag.controller.spec.ts`
+- **Где:** `src/db/schema/rag.ts` (`chunkScopeEnum`),
+  `src/db/migrations/0052_chunks_local_scope.sql`,
+  `src/application/ports/chunk-repository.port.ts` (`ChunkScope`),
+  `src/application/use-cases/rag/index-local-folder.use-case.ts`
+- **Тест:** `test/application/use-cases/rag/index-local-folder.use-case.spec.ts`
+  (счастливый путь и полная перестройка), `test/interfaces/http/rag/rag.controller.spec.ts`
 - **ADR:** [0113](../adr/0113-pasta-local-anexada-via-navegador-vira-chunks-scope-local.md)
 - **Источник:** просьба владельца продукта
 
@@ -5343,11 +5343,11 @@ bind-mount файл живёт в папке, которая лишь совпа
 будущее "исправление" не связало их обратно и молча не стёрло материал
 пользователя.
 
-- **Где:** `apps/api/src/interfaces/http/rag/rag.controller.ts`
+- **Где:** `src/interfaces/http/rag/rag.controller.ts`
   (`anexarPastaLocal`, `@RequireRole('maintainer')`),
-  `apps/api/src/application/use-cases/rag/reindex-project.use-case.ts`
+  `src/application/use-cases/rag/reindex-project.use-case.ts`
   (комментарий "Por que `local` NÃO entra aqui")
-- **Тест:** `apps/api/test/interfaces/http/rag/rag.controller.spec.ts`
+- **Тест:** `test/interfaces/http/rag/rag.controller.spec.ts`
 - **ADR:** [0113](../adr/0113-pasta-local-anexada-via-navegador-vira-chunks-scope-local.md)
 - **Источник:** просьба владельца продукта
 
@@ -5363,9 +5363,9 @@ bind-mount файл живёт в папке, которая лишь совпа
 вычисляется (тот же `todosOsChunks`, который уже получает
 `GetRagCoverageUseCase`).
 
-- **Где:** `apps/api/src/application/use-cases/rag/get-rag-coverage.use-case.ts`
+- **Где:** `src/application/use-cases/rag/get-rag-coverage.use-case.ts`
   (`RagLocalCoverage`), `apps/web/src/components/rag/RagCoveragePanel.tsx`
-- **Тест:** `apps/api/test/application/use-cases/rag/get-rag-coverage.use-case.spec.ts`,
+- **Тест:** `test/application/use-cases/rag/get-rag-coverage.use-case.spec.ts`,
   `apps/web/src/components/rag/RagCoveragePanel.test.tsx`
 - **ADR:** [0113](../adr/0113-pasta-local-anexada-via-navegador-vira-chunks-scope-local.md)
 - **Источник:** просьба владельца продукта
@@ -5385,15 +5385,15 @@ bind-mount файл живёт в папке, которая лишь совпа
 префиксом источника (`infra`/`modelo`/`código`, словарь ADR 0020) — никогда
 не тихий сбой, и ничего не активируется в каталоге при сбое.
 
-- **Где:** `apps/api/src/application/use-cases/llm/huggingface/request-model-pull.use-case.ts:23`
+- **Где:** `src/application/use-cases/llm/huggingface/request-model-pull.use-case.ts:23`
   (`RequestModelPullUseCase`),
-  `apps/api/src/application/use-cases/llm/huggingface/confirm-model-pull.use-case.ts:45`
+  `src/application/use-cases/llm/huggingface/confirm-model-pull.use-case.ts:45`
   (`ConfirmModelPullUseCase`),
-  `apps/api/src/interfaces/http/llm/huggingface-models.controller.ts:109-165`
+  `src/interfaces/http/llm/huggingface-models.controller.ts:109-165`
   (два маршрута, `role:maintainer`)
-- **Тест:** `apps/api/test/application/use-cases/llm/huggingface/request-model-pull.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/llm/huggingface/request-model-pull.use-case.spec.ts`
   (создаёт в `pending_confirmation`, ничего сверх этого),
-  `apps/api/test/application/use-cases/llm/huggingface/confirm-model-pull.use-case.spec.ts`
+  `test/application/use-cases/llm/huggingface/confirm-model-pull.use-case.spec.ts`
   (счастливый путь активирует в каталоге; сбой Ollama помечает `failed` с
   правильным источником — `modelo`/`infra`; отказ повторно подтверждать
   запрос, уже вышедший из `pending_confirmation`; 404 для несуществующего в
@@ -5415,16 +5415,16 @@ bind-mount файл живёт в папке, которая лишь совпа
 opt-in и предупреждение — один и тот же жест, никогда не предпочтение,
 которое пользователь включает однажды и забывает, что оно включено.
 
-- **Где:** `apps/api/src/domain/llm/huggingface-official-publishers.ts:17-41`
+- **Где:** `src/domain/llm/huggingface-official-publishers.ts:17-41`
   (`HUGGINGFACE_OFFICIAL_PUBLISHERS`/`isOfficialPublisher`),
-  `apps/api/src/application/use-cases/llm/huggingface/search-huggingface-models.use-case.ts:28-39`
+  `src/application/use-cases/llm/huggingface/search-huggingface-models.use-case.ts:28-39`
   (фильтр по умолчанию), `apps/web/src/components/HuggingFaceModelBrowser.tsx:190-203`
   (переключатель + `Alert` предупреждения)
-- **Тест:** `apps/api/test/domain/huggingface/huggingface-official-publishers.spec.ts`
+- **Тест:** `test/domain/huggingface/huggingface-official-publishers.spec.ts`
   (распознаёт издателя из списка разрешённых; отклоняет повторную загрузку
   третьей стороны; чувствителен к регистру; `repoId` без `/` никогда не
   совпадает),
-  `apps/api/test/application/use-cases/llm/huggingface/search-huggingface-models.use-case.spec.ts`
+  `test/application/use-cases/llm/huggingface/search-huggingface-models.use-case.spec.ts`
   (по умолчанию только официальные; `includeCommunity` приносит всех,
   помеченных), `apps/web/src/components/HuggingFaceModelBrowser.test.tsx`
   (переключатель рождается выключенным и показывает предупреждение только
@@ -5465,12 +5465,12 @@ PAT ЛЮБОГО пользователя проекта, реагировани
 этого раунда, а не забывчивостью: распространение того же паттерна RN-427 на
 ключи устройств — прямая будущая работа, если её попросят.
 
-- **Где:** `apps/api/src/db/schema/auth.ts:338` (`runnerDeviceKeys`),
-  `apps/api/src/application/use-cases/auth/register-runner-device-key.use-case.ts`,
-  `apps/api/src/application/use-cases/auth/revoke-runner-device-key.use-case.ts`,
-  `apps/api/src/interfaces/http/runner/runner-device-keys.controller.ts`
-- **Тест:** `apps/api/test/application/use-cases/auth/register-runner-device-key.use-case.spec.ts`,
-  `apps/api/test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
+- **Где:** `src/db/schema/auth.ts:338` (`runnerDeviceKeys`),
+  `src/application/use-cases/auth/register-runner-device-key.use-case.ts`,
+  `src/application/use-cases/auth/revoke-runner-device-key.use-case.ts`,
+  `src/interfaces/http/runner/runner-device-keys.controller.ts`
+- **Тест:** `test/application/use-cases/auth/register-runner-device-key.use-case.spec.ts`,
+  `test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
 - **ADR:** [0118](../adr/0118-configuracao-automatica-do-runner-pelo-navegador.md)
 - **Источник:** просьба владельца продукта
 
@@ -5513,10 +5513,10 @@ RN-466).
 api, разрушив область `runner:project:<id>`, — ровно то, что предотвратила
 RN-439.
 
-- **Где:** `apps/api/src/interfaces/http/auth/pat-auth.guard.ts:104-216`
+- **Где:** `src/interfaces/http/auth/pat-auth.guard.ts:104-216`
   (`autenticarChaveDeDispositivo`), `apps/runner/src/auth.ts:143-188`
   (`assinarTicketComChaveDeDispositivo`, `obterTicketDoRunnerComCredencial`)
-- **Тест:** `apps/api/test/interfaces/pat-auth.guard.spec.ts` (describe
+- **Тест:** `test/interfaces/pat-auth.guard.spec.ts` (describe
   "chave de dispositivo (JWT EdDSA autoassinado, ao lado do PAT)" —
   счастливый путь, невалидная подпись, отозванный ключ, `projectId` из claim
   не совпадает с маршрутом, ключ зарегистрирован в другом проекте, слишком
@@ -5597,17 +5597,17 @@ workspace её держит, и необратимо, когда нет (`mainta
 показывает `mensagemDaApi(erro, …)` в тосте (RN-471), и именно фраза api
 говорит, какой потолок сработал.
 
-- **Где:** `apps/api/src/domain/iam/tetos-de-rebaixamento.ts`
+- **Где:** `src/domain/iam/tetos-de-rebaixamento.ts`
   (`rebaixaOwnerDoWorkspace`, `ehAutoRebaixamento` и два сообщения),
-  `apps/api/src/application/use-cases/iam/add-project-member.use-case.ts`
+  `src/application/use-cases/iam/add-project-member.use-case.ts`
   (где оба применяются, до upsert),
-  `apps/api/src/interfaces/http/iam/projects.controller.ts` (`@CurrentUser()`,
+  `src/interfaces/http/iam/projects.controller.ts` (`@CurrentUser()`,
   дающий участника, и два исправленных описания),
-  `apps/api/src/interfaces/http/iam/dto/add-member.dto.ts` (третье),
-  `apps/api/src/application/use-cases/iam/resolve-effective-role.use-case.ts`
+  `src/interfaces/http/iam/dto/add-member.dto.ts` (третье),
+  `src/application/use-cases/iam/resolve-effective-role.use-case.ts`
   (НЕ ТРОНУТ — `projectRole ?? workspaceRole` остаётся как есть),
-  `apps/api/src/db/schema/iam.ts` (`workspaces.created_by` × `workspace_members.role`)
-- **Тест:** `apps/api/test/application/use-cases/iam/tetos-de-rebaixamento.use-case.spec.ts`
+  `src/db/schema/iam.ts` (`workspaces.created_by` × `workspace_members.role`)
+- **Тест:** `test/application/use-cases/iam/tetos-de-rebaixamento.use-case.spec.ts`
   (оба потолка отклоняют; `owner` workspace, получающий `owner` проекта,
   проходит; самопонижение также тогда, когда роль участника берётся из строки
   проекта; самоповышение проходит; ОБЕ законные возможности сохранены —
@@ -5667,19 +5667,19 @@ background", было неверным и исправлено). Следова�
 снова ведёт на экран подготовки, который отклонялся только при
 `provision_failed`.
 
-- **Где:** `apps/api/src/application/use-cases/git/bootstrap-runner.ts:181`
+- **Где:** `src/application/use-cases/git/bootstrap-runner.ts:181`
   (`catch` этапа, единственное место, объявляющее провал),
-  `apps/api/src/domain/git/repo-bootstrap-status.ts:29` (второй аргумент),
-  `apps/api/src/application/use-cases/git/get-repo-bootstrap-status.use-case.ts:59`
+  `src/domain/git/repo-bootstrap-status.ts:29` (второй аргумент),
+  `src/application/use-cases/git/get-repo-bootstrap-status.use-case.ts:59`
   (сбой создания, читаемый из `proposed_action`),
-  `apps/api/src/infrastructure/persistence/drizzle/projects-summary.repository.ts`
+  `src/infrastructure/persistence/drizzle/projects-summary.repository.ts`
   (значок карточки), `apps/web/src/routes/ProvisioningPage.tsx` (причина,
   повтор и потолок)
 - **Тест:**
-  `apps/api/test/application/use-cases/git/provision-repository.use-case.spec.ts`
+  `test/application/use-cases/git/provision-repository.use-case.spec.ts`
   (сбой в CHECK становится `failed` с причиной и событием; сбой при СОЗДАНИИ
   не оставляет строки, но статус сообщает, с пустым `failedStep`),
-  `apps/api/test/domain/git/repo-bootstrap-status.spec.ts` (без строки со
+  `test/domain/git/repo-bootstrap-status.spec.ts` (без строки со
   сбоем создания; со строкой старый сбой игнорируется; чистый `pending`),
   `apps/web/src/routes/ProvisioningPage.test.tsx` (причина появляется; повтор
   существует без `provision_failed`; ожидание останавливается и говорит, чего
@@ -5756,23 +5756,23 @@ agent, который не работает. Исправить это изол�
 вместо пересылки сырого "отказано в доступе".
 
 - **Где:**
-  `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts:231`
+  `src/infrastructure/filesystem/project-workspaces-root.ts:231`
   (`projectScopeRoot`, без изменений) и `:319` (`permissionsFilePath`, второе
   выведение), с `LocalizacaoDeProjetoInvalidaError` в `:219`,
-  `apps/api/src/infrastructure/filesystem/fs-permissions-file-store.ts:77`
+  `src/infrastructure/filesystem/fs-permissions-file-store.ts:77`
   (единственный вызывающий путь файла),
-  `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts:176`
-  (400), `apps/api/src/interfaces/http/execution/execution.controller.ts:74`
+  `src/application/use-cases/execution/activate-execution.use-case.ts:176`
+  (400), `src/interfaces/http/execution/execution.controller.ts:74`
   (аннотация OpenAPI, обещавшая 409 для двух случаев, никогда не бывших
   409), `apps/web/src/routes/ProjectOverviewTab.tsx:473`
   (`mensagemDaApi`), `apps/engine/lib/engine/actions/workspace.ex:61`
   (сообщение остающегося пробела)
 - **Тест:**
-  `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+  `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   (`permissionsFilePath` в трёх режимах; и **отсутствие регрессии**
   `projectScopeRoot`, продолжающего возвращать путь хоста в
   `runner`/`mounted`, — обратное объединение двух сломало бы ADR 0055),
-  `apps/api/test/application/use-cases/execution/activate-execution.use-case.spec.ts`
+  `test/application/use-cases/execution/activate-execution.use-case.spec.ts`
   (с НАСТОЯЩИМ `FsPermissionsFileStore`: файл попадает в управляемый корень, а
   папка хоста остаётся нетронутой; несогласованная строка становится 400,
   который учит),
@@ -5786,7 +5786,7 @@ agent, который не работает. Исправить это изол�
 
 ### RN-479 — Каждый гибридный поиск записывает строку в `rag_searches` с ЗАМОРОЖЕННЫМИ весами; и телеметрия никогда не роняет поиск {#rn-479}
 
-`apps/api/src/domain/rag/rag-search-limits.ts` объявляет в собственном
+`src/domain/rag/rag-search-limits.ts` объявляет в собственном
 комментарии, что **ни одно** из четырёх чисел гибридного поиска (два веса,
 порог и количество кандидатов) не получено калибровкой на реальных данных. Не
 получено, потому что не было как: поиск не оставлял никакого следа — ни строки
@@ -5831,13 +5831,13 @@ NULLABLE `session_id`.
 проваливаться, — а `degraded` — слово КОНТРАКТА с engine, определение которого
 может расти.
 
-- **Где:** `apps/api/src/domain/rag/rag-telemetry.ts` (`pesosVigentes`,
-  `RagSearchHitTelemetry`), `apps/api/src/db/schema/rag.ts` (`ragSearches`),
-  `apps/api/src/application/use-cases/rag/hybrid-search.use-case.ts`
+- **Где:** `src/domain/rag/rag-telemetry.ts` (`pesosVigentes`,
+  `RagSearchHitTelemetry`), `src/db/schema/rag.ts` (`ragSearches`),
+  `src/application/use-cases/rag/hybrid-search.use-case.ts`
   (`registrarBusca`),
-  `apps/api/src/infrastructure/persistence/drizzle/rag-telemetry.repository.ts`
+  `src/infrastructure/persistence/drizzle/rag-telemetry.repository.ts`
 - **Тест:**
-  `apps/api/test/application/use-cases/rag/hybrid-search.use-case.spec.ts`
+  `test/application/use-cases/rag/hybrid-search.use-case.spec.ts`
   (записанная строка с рангом и весами; веса — КОПИЯ, а не тот же объект;
   поиск из вкладки без сессии; и СЛУЧАЙ СБОЯ — сбойный insert не роняет поиск
   и возвращает `searchId: null`)
@@ -5880,13 +5880,13 @@ actor_id)`, с `onConflictDoUpdate`): передумать — значит пе
 — `:direct`, никогда `proposed_action`: оценка фрагмента — не внешний эффект,
 а превращение её в действие на одобрение заполнило бы очередь шумом.
 
-- **Где:** `apps/api/src/db/schema/rag.ts` (`ragFeedback`, `ragVerdictEnum`),
-  `apps/api/src/application/use-cases/rag/record-rag-feedback.use-case.ts`,
+- **Где:** `src/db/schema/rag.ts` (`ragFeedback`, `ragVerdictEnum`),
+  `src/application/use-cases/rag/record-rag-feedback.use-case.ts`,
   `apps/engine/lib/engine/harness/tools/rag_feedback.ex`,
   `apps/web/src/components/rag/RagCitationCard.tsx` (два элемента управления,
   там, где уже стоит оценка)
 - **Тест:**
-  `apps/api/test/application/use-cases/rag/record-rag-feedback.use-case.spec.ts`
+  `test/application/use-cases/rag/record-rag-feedback.use-case.spec.ts`
   (возвращённый ранг; и три СЛУЧАЯ СБОЯ — неизвестный `searchId`, `chunkId`
   вне хитов, поиск другого проекта),
   `apps/engine/test/engine/harness/tools/rag_feedback_test.exs` (отказ
@@ -5894,7 +5894,7 @@ actor_id)`, с `onConflictDoUpdate`): передумать — значит пе
   регистрация у шести агентов, у которых уже был `rag_search`),
   `apps/web/src/components/rag/RagCitationCard.test.tsx` (три состояния
   элемента и его отсутствие без `searchId`),
-  `apps/api/test/scripts/medir-rag.spec.ts` (`precision@k` по оценённому)
+  `test/scripts/medir-rag.spec.ts` (`precision@k` по оценённому)
 - **ADR:** [0129](../adr/0129-telemetria-de-busca-do-rag-como-tabela.md)
 - **Источник:** план владельца продукта, Часть 2 / Этап 1
 
@@ -5929,14 +5929,14 @@ actor_id)`, с `onConflictDoUpdate`): передумать — значит пе
 страница, которая его потребляет, ещё не существует.
 
 - **Где:**
-  `apps/api/src/application/use-cases/containers/obter-estado-observado-do-container.use-case.ts`
+  `src/application/use-cases/containers/obter-estado-observado-do-container.use-case.ts`
   (три причины и `null`, который не является причиной),
-  `apps/api/src/interfaces/http/containers/containers.controller.ts`
+  `src/interfaces/http/containers/containers.controller.ts`
   (маршрут, возвращающий оба),
-  `apps/api/src/application/ports/container-broker.port.ts` (`null` у
+  `src/application/ports/container-broker.port.ts` (`null` у
   `inspect` — отсутствие; сбой ВЫБРАСЫВАЕТСЯ)
 - **Тест:**
-  `apps/api/test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts`
+  `test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts`
   ("посмотрел, и нет" и "не смог посмотреть" не схлопываются; без `BROKER_URL`
   брокер даже не вызывается; отказ становится причиной с деталью, никогда
   исключением)
@@ -5987,19 +5987,19 @@ infra. `build_kickoff/1` у `ArquitetoServer` — ЕДИНСТВЕННОЕ ме�
 последовательность, что уже действовала, когда `module_map` существовал до
 того, как он понадобился `create_c4_diagram`.
 
-- **Где:** `apps/api/src/domain/architecture/module-routing.ts`
+- **Где:** `src/domain/architecture/module-routing.ts`
   (`validarRoteamento`, `EVENTO_MODULE_ROUTING`),
-  `apps/api/src/application/use-cases/architecture/route-modules-to-infra.use-case.ts`,
-  `apps/api/src/application/use-cases/architecture/get-module-routing.use-case.ts`,
-  `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts`
+  `src/application/use-cases/architecture/route-modules-to-infra.use-case.ts`,
+  `src/application/use-cases/architecture/get-module-routing.use-case.ts`,
+  `src/interfaces/http/internal/internal-sessions.controller.ts`
   (`POST .../module-routing`),
   `apps/engine/lib/engine/harness/tools/route_modules_to_infra.ex`,
   `apps/engine/lib/engine/agents/arquiteto_server.ex` (`build_kickoff/1`, шаг 4)
 - **Тест:**
-  `apps/api/test/domain/architecture/module-routing.spec.ts` (пустой список,
+  `test/domain/architecture/module-routing.spec.ts` (пустой список,
   повторённый модуль и делегирование `validarDecisaoDeImagem` — `latest` и
   короткий `rationale`),
-  `apps/api/test/application/use-cases/architecture/route-modules-to-infra.use-case.spec.ts`
+  `test/application/use-cases/architecture/route-modules-to-infra.use-case.spec.ts`
   (счастливый путь с двумя модулями; без действующего module_map; модуль вне
   карты; версионирование при повторной маршрутизации),
   `apps/engine/test/engine/harness/tools/route_modules_to_infra_test.exs`
@@ -6050,11 +6050,11 @@ Gate `rag-acertivo` (`docs/gates.yml`) измеряет, возвращает л
 любого разработчика с работающим Ollama), никогда не новый workflow, который
 явно вызывает тег, так же, как это всегда требовалось.
 
-- **Где:** `apps/api/src/domain/rag/golden-set-criterio.ts`,
-  `apps/api/scripts/seed-golden-set-rag.ts`,
+- **Где:** `src/domain/rag/golden-set-criterio.ts`,
+  `scripts/seed-golden-set-rag.ts`,
   `apps/engine/test/engine/rag/rag_golden_test.exs`,
   `apps/engine/test/fixtures/golden_set_rag/floor.json`
-- **Тест:** `apps/api/test/domain/rag/golden-set-criterio.spec.ts`
+- **Тест:** `test/domain/rag/golden-set-criterio.spec.ts`
 - **ADR:** [0132](../adr/0132-golden-set-de-acerto-do-rag.md)
 - **Источник:** план владельца продукта, Часть 2 / Этап 2
 
@@ -6083,16 +6083,16 @@ engine, — RN-492). Внутри настоящего контейнера по
 (`DiretorioForaDoEscopoError`). Это глубокая защита — лексическая область не
 заменяется, она избыточна.
 
-- **Где:** `apps/api/src/domain/actions/decide.ts`
+- **Где:** `src/domain/actions/decide.ts`
   (`DecideContext.containerExecutionActive`, условный начальный `current`),
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts`
-- **Тест:** `apps/api/test/domain/actions/decide.spec.ts` (describe "decide
+  `src/application/use-cases/actions/propose-action.use-case.ts`
+- **Тест:** `test/domain/actions/decide.spec.ts` (describe "decide
   — piso do container ativo do projeto": автоодобряет без каких-либо правил;
   без изменений без `containerExecutionActive`; не влияет на не-терминальное
   действие; явные `agent_autonomy`/`permissions.json` понижают порог;
   недостаточный IAM запрещает до порога; область по-прежнему побеждает
   сверху; git push/sudo остаются `require_approval`),
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts`
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts`
   (describe "piso do container ativo": терминал автоодобряется и ВЫПОЛНЯЕТСЯ
   при running-контейнере; не влияет на `container_start`; без строки
   `running` без изменений; встроенный deny/git push/sudo продолжают
@@ -6147,27 +6147,27 @@ RN-486 уже назвала для наблюдаемого.
 версию `artifact.project_image`. `stop`/`remove` лишь просят брокер
 действовать над уже существующим контейнером.
 
-- **Где:** `apps/api/src/domain/actions/decide.ts` (`ACTION_TYPES`,
+- **Где:** `src/domain/actions/decide.ts` (`ACTION_TYPES`,
   `MIN_ROLE_FOR_ACTION_TYPE`, абсолютный потолок `container_remove`),
-  `apps/api/src/domain/actions/command-matcher.ts` (`ACTION_TYPE_LABELS`),
-  `apps/api/src/domain/containers/container-stop-remove-execution-result.ts`,
-  `apps/api/src/application/use-cases/actions/execute-container-stop.use-case.ts`,
-  `apps/api/src/application/use-cases/actions/execute-container-remove.use-case.ts`,
-  `apps/api/src/application/use-cases/actions/approve-action.use-case.ts`,
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts`,
-  `apps/api/src/application/use-cases/actions/approve-always-action.use-case.ts`,
+  `src/domain/actions/command-matcher.ts` (`ACTION_TYPE_LABELS`),
+  `src/domain/containers/container-stop-remove-execution-result.ts`,
+  `src/application/use-cases/actions/execute-container-stop.use-case.ts`,
+  `src/application/use-cases/actions/execute-container-remove.use-case.ts`,
+  `src/application/use-cases/actions/approve-action.use-case.ts`,
+  `src/application/use-cases/actions/propose-action.use-case.ts`,
+  `src/application/use-cases/actions/approve-always-action.use-case.ts`,
   `apps/web/src/lib/aprovacoes.ts`, `apps/web/src/components/ApprovalCard.tsx`
   (`podeSemprePermitir`)
 - **Тест:**
-  `apps/api/test/domain/actions/decide.spec.ts` ("container_stop, a página
+  `test/domain/actions/decide.spec.ts` ("container_stop, a página
   global de containers" — МОЖЕТ auto_approve; "teto de container_remove" —
   НИКОГДА не может),
-  `apps/api/test/application/use-cases/actions/execute-container-stop.use-case.spec.ts`,
-  `apps/api/test/application/use-cases/actions/execute-container-remove.use-case.spec.ts`
+  `test/application/use-cases/actions/execute-container-stop.use-case.spec.ts`,
+  `test/application/use-cases/actions/execute-container-remove.use-case.spec.ts`
   (два шага из `running`; один шаг из `stopped`/`failed`; идемпотентность;
   `BrokerRecusouError`/`BrokerIndisponivelError` никогда не
   распространяются),
-  `apps/api/test/application/use-cases/actions/approve-always-action.use-case.spec.ts`,
+  `test/application/use-cases/actions/approve-always-action.use-case.spec.ts`,
   `apps/web/src/lib/aprovacoes.test.ts`,
   `apps/web/src/routes/ContainersPage.test.tsx`
 - **Архитектурное решение:** [ADR 0136](../adr/0136-pagina-global-de-containers.md)
@@ -6212,22 +6212,22 @@ workspaces/:workspaceId/containers` (`/containers`, межпроектный) в
 заменить три кнопки действий встроенным `ApprovalCard` без четвёртого запроса
 на проект.
 
-- **Где:** `apps/api/src/application/ports/containers-overview-repository.port.ts`,
-  `apps/api/src/infrastructure/persistence/drizzle/containers-overview.repository.ts`,
-  `apps/api/src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts`,
-  `apps/api/src/domain/containers/project-container.ts` (`decisaoNaVersao`,
-  `versaoDoPayload`), `apps/api/src/interfaces/http/containers/containers-overview.controller.ts`,
+- **Где:** `src/application/ports/containers-overview-repository.port.ts`,
+  `src/infrastructure/persistence/drizzle/containers-overview.repository.ts`,
+  `src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts`,
+  `src/domain/containers/project-container.ts` (`decisaoNaVersao`,
+  `versaoDoPayload`), `src/interfaces/http/containers/containers-overview.controller.ts`,
   `apps/web/src/routes/ContainersPage.tsx`, `apps/web/src/lib/hooks.ts`
   (`useContainersOverview`)
 - **Тест:**
-  `apps/api/test/infrastructure/persistence/drizzle/containers-overview.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/containers-overview.repository.spec.ts`
   (входит только проект с `project_containers`; ЗАМОРОЖЕННЫЙ образ, а не
   действующий; межсессионный `acaoPendente`; число запросов не растёт с
   количеством проектов),
-  `apps/api/test/application/use-cases/containers/obter-visao-geral-de-containers.use-case.spec.ts`
+  `test/application/use-cases/containers/obter-visao-geral-de-containers.use-case.spec.ts`
   (пригодность по статусу; потолок за загрузку; `naoObservado` никогда не
   путается с `naoVerificado`),
-  `apps/api/test/interfaces/http/containers/containers-overview.controller.spec.ts`,
+  `test/interfaces/http/containers/containers-overview.controller.spec.ts`,
   `apps/web/src/routes/ContainersPage.test.tsx`
 - **Архитектурное решение:** [ADR 0136](../adr/0136-pagina-global-de-containers.md)
 - **Источник:** план владельца продукта, Часть 1 / PR 1.8
@@ -6289,14 +6289,14 @@ Brabo в `$HOME/brabo` и направляет туда базу, проходи
 смонтированный проект вне базы начал бы падать при чтении. База — правило
 СОЗДАНИЯ и ПРЕОБРАЗОВАНИЯ, и оно входит в следующую RN.
 
-- **Где:** `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts:67`
+- **Где:** `src/infrastructure/filesystem/project-workspaces-root.ts:67`
   (`baseDeProjetos`) и `:92` (`dentroDaBaseDeProjetos`);
-  `apps/api/src/interfaces/http/iam/workspaces.controller.ts:197`
+  `src/interfaces/http/iam/workspaces.controller.ts:197`
   (`GET :workspaceId/projects-base`); `scripts/dev/base-de-projetos.mjs` и
   вызов в `scripts/dev/preflight.mjs`; `docker/docker-compose.yml` и
   `docker/docker-compose.prod.yml` (сервисы `api`, `engine`, `broker`)
 - **Тест:**
-  `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+  `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   (`describe('baseDeProjetos / dentroDaBaseDeProjetos')`) и
   `scripts/dev/base-de-projetos.spec.ts`
 - **ADR:** [0141](../adr/0141-base-unica-dos-projetos-montados.md)
@@ -6387,23 +6387,23 @@ Brabo в `$HOME/brabo` и направляет туда базу, проходи
 это СКАЗАТЬ — экран, показывающий путь, не говоря, что его ещё нет, — экран,
 утверждающий то, чего он не знает.
 
-- **Где:** `apps/api/src/application/services/workspace-location.ts:93`
+- **Где:** `src/application/services/workspace-location.ts:93`
   (лексика) и `:108` (база);
-  `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts:575`
+  `src/infrastructure/filesystem/project-workspaces-root.ts:575`
   (`motivoDeForaDaBaseDeProjetos`), `:624`
   (`validarWorkspaceMontadoEmDisco`, бывший `validarCaminhoDeWorkspaceLocal`)
   и `:705` (`materializarWorkspaceMontado`);
-  `apps/api/src/application/use-cases/iam/convert-project-execution-mode.use-case.ts:139`;
-  `apps/api/src/application/use-cases/actions/execute-container-start.use-case.ts:133`
+  `src/application/use-cases/iam/convert-project-execution-mode.use-case.ts:139`;
+  `src/application/use-cases/actions/execute-container-start.use-case.ts:133`
   и `:334`
 - **Тест:**
-  `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+  `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   (`describe('materializarWorkspaceMontado')` и отсутствие регрессии "projeto
   mounted LEGADO, FORA da base, continua resolvendo sem lançar");
-  `apps/api/test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`
+  `test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`
   (`describe('mounted valida só o léxico + a base na criação')`);
-  `apps/api/test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`;
-  `apps/api/test/application/use-cases/actions/execute-container-start.use-case.spec.ts`
+  `test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`;
+  `test/application/use-cases/actions/execute-container-start.use-case.spec.ts`
   (`describe` "ExecuteContainerStartUseCase — materialização do mounted")
 - **ADR:** [0142](../adr/0142-validacao-de-workspace-montado-adiada.md),
   ссылающийся на [0141](../adr/0141-base-unica-dos-projetos-montados.md)
@@ -6499,12 +6499,12 @@ runner.** Это не эстетическая симметрия: это еди
 начиная с RN-494.
 
 - **Где:**
-  `apps/api/src/application/use-cases/containers/obter-spec-de-container.use-case.ts`
+  `src/application/use-cases/containers/obter-spec-de-container.use-case.ts`
   (`LocalizacaoDoProjeto`, `localizacaoDoProjeto`);
-  `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
+  `src/infrastructure/filesystem/project-workspaces-root.ts`
   (`segmentoSobABaseDeProjetos`);
-  `apps/api/src/interfaces/http/internal/dto/container-spec-internal.response.dto.ts`;
-  `apps/api/src/application/use-cases/actions/execute-container-start.use-case.ts`,
+  `src/interfaces/http/internal/dto/container-spec-internal.response.dto.ts`;
+  `src/application/use-cases/actions/execute-container-start.use-case.ts`,
   `…/execute-container-stop.use-case.ts`, `…/execute-container-remove.use-case.ts`
   (ветвление `!== 'runner'`);
   `packages/docker-port/src/docker-port.ts` (`segmentoDeProjetoValidado`);
@@ -6513,9 +6513,9 @@ runner.** Это не эстетическая симметрия: это еди
   `garantirModoSuportado`, `BaseDeProjetosNaoConfiguradaError`,
   `LocalizacaoIndisponivelError`)
 - **Тест:**
-  `apps/api/test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts`
+  `test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts`
   (`describe('… o localizador discriminado (RN-503)')`);
-  `apps/api/test/application/use-cases/actions/execute-container-{start,stop,remove}.use-case.spec.ts`;
+  `test/application/use-cases/actions/execute-container-{start,stop,remove}.use-case.spec.ts`;
   `packages/docker-port/src/docker-port.spec.ts`
   (`describe('segmentoDeProjetoValidado')`); `apps/broker/src/operacoes.spec.ts`
   и `apps/broker/src/config.spec.ts`
@@ -6550,7 +6550,7 @@ runner.** Это не эстетическая симметрия: это еди
 Извлечённый код становится `ExecuteContainerStartViaRunnerUseCase`,
 соседним файлом. Танец жизненного цикла (`provisioning -> running`), который
 оба пути разделяли копированием, становится
-`SubirCicloDeVidaDoContainerUseCase` (`apps/api/.../containers/`) — извлечён,
+`SubirCicloDeVidaDoContainerUseCase` (`.../containers/`) — извлечён,
 чтобы не дублировать обоснование машины состояний в двух файлах.
 
 **Infra Lead обращается ЛОКАЛЬНО, без HTTP, до предложения.** Новый
@@ -6589,23 +6589,23 @@ undefined"* — а дальше ПРАВИЛЬНАЯ блокировка
 набор полей: `raizDoProjeto` — единственное, что api не присылает, поэтому
 новое поле на одной стороне без другой проваливается.
 
-- **Где:** `apps/api/src/domain/actions/decide.ts` (`container_start_via_runner`);
-  `apps/api/src/application/use-cases/actions/
+- **Где:** `src/domain/actions/decide.ts` (`container_start_via_runner`);
+  `src/application/use-cases/actions/
   execute-container-start-via-runner.use-case.ts` (новый);
-  `apps/api/src/application/use-cases/containers/
+  `src/application/use-cases/containers/
   subir-ciclo-de-vida-do-container.use-case.ts` (новый);
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts`;
-  `apps/api/src/application/use-cases/actions/approve-action.use-case.ts`;
-  `apps/api/src/application/ports/api-to-engine-client.port.ts`
+  `src/application/use-cases/actions/propose-action.use-case.ts`;
+  `src/application/use-cases/actions/approve-action.use-case.ts`;
+  `src/application/ports/api-to-engine-client.port.ts`
   (`EspecificacaoDeContainerParaRunner`, десять полей);
   `apps/web/src/lib/aprovacoes.ts`;
   `apps/engine/lib/engine/infra/tools/propose_container_start_via_runner.ex`
   (новый); `apps/engine/lib/engine/infra/infra_lead_server.ex`
 - **Тест:**
-  `apps/api/test/application/use-cases/actions/execute-container-start.use-case.spec.ts`,
-  `apps/api/test/application/use-cases/actions/
+  `test/application/use-cases/actions/execute-container-start.use-case.spec.ts`,
+  `test/application/use-cases/actions/
   execute-container-start-via-runner.use-case.spec.ts` (новый),
-  `apps/api/test/contract/
+  `test/contract/
   especificacao-de-container-para-runner.contract.spec.ts` (ЦЕПОЧКА —
   полезная нагрузка, собранная api, против настоящего
   `especificacaoValidada`),
@@ -6678,13 +6678,13 @@ dev-модуля в `permissions.json` до появления этого пра
 типа. Сознательное решение владельца продукта, а не забытый пробел.
 
 - **Где:**
-  `apps/api/src/application/use-cases/actions/approve-always-action.use-case.ts`
-  (ветка `ehAgenteDeModulo`), `apps/api/src/domain/agents/agent-areas.ts`
+  `src/application/use-cases/actions/approve-always-action.use-case.ts`
+  (ветка `ehAgenteDeModulo`), `src/domain/agents/agent-areas.ts`
   (`ehDevDeModulo`, `DEV_LEAD` — потребляются, не изменяются),
-  `apps/api/src/application/ports/agent-autonomy-repository.port.ts`
+  `src/application/ports/agent-autonomy-repository.port.ts`
   (`upsert`, уже существующий, без нового метода)
 - **Тест:**
-  `apps/api/test/application/use-cases/actions/approve-always-action.use-case.spec.ts`
+  `test/application/use-cases/actions/approve-always-action.use-case.spec.ts`
   (описывает `escopo por Dev Agent de módulo (RN-509)`: счастливый путь
   `dev-checkout` записывает `agent_autonomy` и не протекает в `dev-auth`; ОБА
   абсолютных потолка отклоняют весь клик для участника dev-модуля; `dev-lead`
@@ -6768,32 +6768,32 @@ checkout Brabo), вместо четвёртой копии того же пра
 [ADR 0055](../adr/0055-escopo-de-caminho-na-politica-de-terminal.md) и
 превратилась бы в очередь рутинных одобрений.
 
-- **Где:** `apps/api/src/db/schema/iam.ts` (колонка `mirror_path`, nullable,
+- **Где:** `src/db/schema/iam.ts` (колонка `mirror_path`, nullable,
   без CHECK — отказ для `container` живёт в сценарии использования, потому что
-  режим КОНВЕРТИРУЕМ); `apps/api/src/db/migrations/0056_lovely_firelord.sql`;
-  `apps/api/src/domain/iam/project.entity.ts` (`mirrorPath`);
-  `apps/api/src/application/services/workspace-location.ts`
+  режим КОНВЕРТИРУЕМ); `src/db/migrations/0056_lovely_firelord.sql`;
+  `src/domain/iam/project.entity.ts` (`mirrorPath`);
+  `src/application/services/workspace-location.ts`
   (`validarDestinoDeEspelho` — переиспользованная лексика, отказ для
   `container` и оба направления петли);
-  `apps/api/src/application/use-cases/iam/set-project-mirror-path.use-case.ts`;
-  `apps/api/src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`
+  `src/application/use-cases/iam/set-project-mirror-path.use-case.ts`;
+  `src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`
   (конвертация, обнуляющая назначение);
-  `apps/api/src/interfaces/http/iam/dto/set-mirror-path.dto.ts` (`@IsDefined`
+  `src/interfaces/http/iam/dto/set-mirror-path.dto.ts` (`@IsDefined`
   + `@ValidateIf`, никогда `@IsOptional`, который смешал бы `null` и `undefined`);
-  `apps/api/src/interfaces/http/iam/projects.controller.ts`
+  `src/interfaces/http/iam/projects.controller.ts`
   (`PUT :projectId/mirror-path`, `maintainer`);
-  `apps/api/src/interfaces/http/iam/dto/iam.response.dto.ts`
+  `src/interfaces/http/iam/dto/iam.response.dto.ts`
 - **Тест:**
-  `apps/api/test/application/use-cases/iam/set-project-mirror-path.use-case.spec.ts`
+  `test/application/use-cases/iam/set-project-mirror-path.use-case.spec.ts`
   (записывает, нормализует, очищает, очищает даже в `container`, отклоняет
   неабсолютный/`..`/корень/системную папку/checkout Brabo, оба направления
   петли, `/base-outra` против `/base` НЕ внутри, `container` отклонён,
-  404); `apps/api/test/interfaces/http/iam/projects-execution-mode.controller.spec.ts`
+  404); `test/interfaces/http/iam/projects-execution-mode.controller.spec.ts`
   (`describe "destino do espelho (RN-515)"` — `maintainer` и передача
   `null`);
-  `apps/api/test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
+  `test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
   (конвертация, обнуляющая назначение);
-  `apps/api/test/interfaces/route-surface.spec.ts` (маршрут, классифицированный
+  `test/interfaces/route-surface.spec.ts` (маршрут, классифицированный
   в `docs/security-surface.md`)
 - **ADR:** [0147](../adr/0147-agente-local-com-capacidades.md), пункт 4
 - **Источник:** ФАЗА 28, сессия 6 (половина A — где живёт назначение; копия,
@@ -6896,19 +6896,19 @@ runner. АБСОЛЮТНАЯ дата с оговоркой и никогда з
 это худший из двух дефектов, потому что он невидим для того, кто потерял
 возможность.
 
-- **Где:** `apps/api/src/db/schema/iam.ts` (`project_mirror_states`, в
+- **Где:** `src/db/schema/iam.ts` (`project_mirror_states`, в
   агрегате `iam`, потому что там живёт назначение — `domain/runners` нет);
-  `apps/api/src/db/migrations/0057_brave_silver_centurion.sql`;
-  `apps/api/src/domain/iam/mirror-state.ts` (`deriveMirrorSyncStatus`, чистое
-  правило трёх состояний); `apps/api/src/application/ports/mirror-state-repository.port.ts`
+  `src/db/migrations/0057_brave_silver_centurion.sql`;
+  `src/domain/iam/mirror-state.ts` (`deriveMirrorSyncStatus`, чистое
+  правило трёх состояний); `src/application/ports/mirror-state-repository.port.ts`
   (ДВА метода записи, а не один upsert со всем необязательным — это делает
   непересечение инвариантом типа, а не соглашением вызывающего);
-  `apps/api/src/infrastructure/persistence/drizzle/mirror-state.repository.ts`;
-  `apps/api/src/application/use-cases/iam/record-mirror-sync.use-case.ts` и
+  `src/infrastructure/persistence/drizzle/mirror-state.repository.ts`;
+  `src/application/use-cases/iam/record-mirror-sync.use-case.ts` и
   `.../get-project-mirror-state.use-case.ts`;
-  `apps/api/src/interfaces/http/internal/internal-projects.controller.ts`
+  `src/interfaces/http/internal/internal-projects.controller.ts`
   (`POST .../mirror-sync-result`);
-  `apps/api/src/interfaces/http/iam/projects.controller.ts`
+  `src/interfaces/http/iam/projects.controller.ts`
   (`GET .../mirror-state`, `viewer`);
   `apps/engine/lib/engine/sessions/engine_api_client.ex`
   (`report_mirror_sync/2`);
@@ -6918,11 +6918,11 @@ runner. АБСОЛЮТНАЯ дата с оговоркой и никогда з
   `enviarMirrorSyncResult`); `apps/runner/src/index.ts` (`tratarMirrorSync`
   сообщает о трёх выходах); `apps/web/src/components/AmbienteDoProjeto.tsx`
 - **Тест:**
-  `apps/api/test/application/use-cases/iam/mirror-sync-telemetry.use-case.spec.ts`
+  `test/application/use-cases/iam/mirror-sync-telemetry.use-case.spec.ts`
   (три состояния в чистой функции и в чтении; ошибка, не стирающая успех;
   сменившееся назначение; счётчик 0; сообщение без текста и длинное сообщение;
   проект без назначения, который всё равно регистрирует);
-  `apps/api/test/infrastructure/persistence/drizzle/mirror-state.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/mirror-state.repository.spec.ts`
   (инвариант непересекающихся колонок против настоящей базы — fake доказал бы
   fake);
   `apps/engine/test/engine_web/channels/terminal_channel_test.exs`
@@ -6989,20 +6989,20 @@ runner. АБСОЛЮТНАЯ дата с оговоркой и никогда з
 получил здешний `DELETE` взамен — это ОХВАТ ([RN-520](#rn-520)), а не
 широту.
 
-- **Где:** `apps/api/src/interfaces/http/runner/runner-device-keys.controller.ts:99`
+- **Где:** `src/interfaces/http/runner/runner-device-keys.controller.ts:99`
   (`@Get()`, `listDeviceKeys`, `developer`);
-  `apps/api/src/application/use-cases/auth/list-runner-device-keys.use-case.ts:24`;
-  `apps/api/src/application/ports/runner-device-key-repository.port.ts:90`
+  `src/application/use-cases/auth/list-runner-device-keys.use-case.ts:24`;
+  `src/application/ports/runner-device-key-repository.port.ts:90`
   (`listarDoUsuarioNoProjeto`);
-  `apps/api/src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:69`;
-  `apps/api/src/interfaces/http/runner/dto/runner-device-key-list.response.dto.ts:19`
+  `src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:69`;
+  `src/interfaces/http/runner/dto/runner-device-key-list.response.dto.ts:19`
   (ДВА замка типа, `Wire`/`MesmasChaves`, в отличие от DTO регистрации)
 - **Тест:**
-  `apps/api/test/application/use-cases/auth/list-runner-device-keys.use-case.spec.ts`
+  `test/application/use-cases/auth/list-runner-device-keys.use-case.spec.ts`
   (делегирование с `userId`/`projectId` в правильном порядке; отозванный,
   остающийся в списке; осиротевший с пустым `lastUsedAt`; репозиторий,
   отклоняющий и пробрасывающий);
-  `apps/api/test/interfaces/http/runner/runner-device-keys.controller.spec.ts`
+  `test/interfaces/http/runner/runner-device-keys.controller.spec.ts`
   (ВСЕ ТРИ маршрута в `developer`; делегирование; маршрут, не возвращающий по
   ошибке пустой список)
 - **ADR:** [0147](../adr/0147-agente-local-com-capacidades.md), пункт 6
@@ -7088,11 +7088,11 @@ timeout не могут заставить отзыв упасть или ста
 чтение здесь заставило бы расходящийся `projectId` оборвать runner проекта,
 не имеющего к этому ключу никакого отношения.
 
-- **Где:** `apps/api/src/application/use-cases/auth/revoke-runner-device-key.use-case.ts:63`
+- **Где:** `src/application/use-cases/auth/revoke-runner-device-key.use-case.ts:63`
   (порядок, проект из строки и `try/catch`, который только логирует);
-  `apps/api/src/application/ports/api-to-engine-client.port.ts:411`
+  `src/application/ports/api-to-engine-client.port.ts:411`
   (`disconnectRunnerOfUser`, `DesfechoDeDesconexaoDeRunner`);
-  `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts:477`;
+  `src/infrastructure/http-clients/api-to-engine-client.ts:477`;
   `apps/engine/lib/engine/runners/revogacao.ex:92` (`derrubar/3`);
   `apps/engine/lib/engine_web/channels/terminal_channel.ex:697`
   (`handle_info({:derrubar_por_revogacao, …})`);
@@ -7101,11 +7101,11 @@ timeout не могут заставить отзыв упасть или ста
   `apps/engine/lib/engine_web/controllers/runner_connection_command_controller.ex:27`;
   `apps/engine/lib/engine_web/router.ex:86`
 - **Тест:**
-  `apps/api/test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
+  `test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
   (`describe "a revogação alcança a conexão viva"` — проект из строки; порядок
   отзыв→обрыв; недоступный engine, не обрывающий отзыв; 404, не обрывающий
   никого);
-  `apps/api/test/infrastructure/http-clients/api-to-engine-client.spec.ts`
+  `test/infrastructure/http-clients/api-to-engine-client.spec.ts`
   (маршрут и тело; неизвестный итог, становящийся `timeout`; 500, который
   БРОСАЕТ, чтобы сценарий использования его обработал);
   `apps/engine/test/engine/runners/revogacao_test.exs` (без runner; владелец;
@@ -7214,25 +7214,25 @@ Phoenix в engine). Поэтому строка `runner` предлагает к
 не невидимый.
 
 - **Где:**
-  `apps/api/src/infrastructure/persistence/drizzle/containers-overview.repository.ts:96`
+  `src/infrastructure/persistence/drizzle/containers-overview.repository.ts:96`
   (LEFT JOIN, `ORDER BY` и `temImagemDecidida`);
-  `apps/api/src/application/ports/containers-overview-repository.port.ts:20`
+  `src/application/ports/containers-overview-repository.port.ts:20`
   (`executionMode`/пустой `lifecycle`/`temImagemDecidida`/`workspaceVerifiedAt`);
-  `apps/api/src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts:33`
+  `src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts:33`
   (`sem_container_registrado`) и `:101` (`elegivelParaVerificacao`, что и
   сохраняет бюджет нетронутым);
-  `apps/api/src/interfaces/http/containers/containers-overview.controller.ts:60`;
+  `src/interfaces/http/containers/containers-overview.controller.ts:60`;
   `apps/web/src/routes/containers-subida.ts:114` (`decidirSubida`, всё
   правило, чистое);
   `apps/web/src/routes/ContainersPage.tsx:119` (два payload)
 - **Тест:**
-  `apps/api/test/application/use-cases/containers/obter-visao-geral-de-containers.use-case.spec.ts`
+  `test/application/use-cases/containers/obter-visao-geral-de-containers.use-case.spec.ts`
   (третье состояние с собственной причиной; 25 пустых проектов, которые НЕ
   выталкивают из проверки 20 с реальным контейнером);
-  `apps/api/test/infrastructure/persistence/drizzle/containers-overview.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/containers-overview.repository.spec.ts`
   (проект без `project_containers` в списке; `temImagemDecidida`;
   ожидающий `container_start_via_runner`; ТРИ запроса, которые не растут);
-  `apps/api/test/interfaces/http/containers/containers-overview.controller.spec.ts`
+  `test/interfaces/http/containers/containers-overview.controller.spec.ts`
   (вложенный `registrado` и `null`, переживающий преобразование);
   `apps/web/src/routes/containers-subida.test.ts` (ветвление по режиму, три
   отказа, оговорка, иерархия ролей);
@@ -7305,14 +7305,14 @@ bootstrap стороннего репозитория выполняется т�
 bootstrap.
 
 - **Где:**
-  `apps/api/src/application/use-cases/agents/accept-handoff.use-case.ts` —
+  `src/application/use-cases/agents/accept-handoff.use-case.ts` —
   ветка `dev-lead` в `execute` и приватный метод `provisionarRepositorio` с
   `try/catch` и досрочным выходом для усыновлённого репозитория;
-  `apps/api/src/application/use-cases/agents/agents-use-cases.module.ts`
+  `src/application/use-cases/agents/agents-use-cases.module.ts`
   (импорт `GitUseCasesModule` — стрелка `agents → git`, а `git` не импортирует
   `agents`, так что цикла нет)
 - **Тест:**
-  `apps/api/test/application/use-cases/agents/accept-handoff.use-case.spec.ts`
+  `test/application/use-cases/agents/accept-handoff.use-case.spec.ts`
   — счастливый путь ("aceitar para o Dev Lead provisiona `local` com o slug do
   projeto"), два случая сбоя ("provisionamento que falha NÃO derruba o aceite
   nem a ativação" и "a falha vira evento nomeado, com origem e a mensagem
@@ -7431,33 +7431,33 @@ OKP (RFC 8037 §2) и приходит только по ошибке того, 
 [ADR 0154](../adr/0154-chave-de-dispositivo-de-maquina.md) пункт 1) — и **ни одной
 миграции**, потому что колонка nullable с [RN-543](produto.md#rn-543).
 
-- **Код:** `apps/api/src/interfaces/http/internal/internal-machine-device-keys.controller.ts:87`
+- **Код:** `src/interfaces/http/internal/internal-machine-device-keys.controller.ts:87`
   (`@Post()` маршрута и docblock с выбором учётных данных),
-  `apps/api/src/application/use-cases/auth/registrar-chave-de-maquina.use-case.ts:122`
+  `src/application/use-cases/auth/registrar-chave-de-maquina.use-case.ts:122`
   (разрешённый владелец), `:124` (`409`), `:136` (замена до регистрации) и
   `:146` (`projectId: null`, делающий его ключом машины),
-  `apps/api/src/domain/auth/jwk-de-dispositivo.ts:33` (единое правило) и `:59`
+  `src/domain/auth/jwk-de-dispositivo.ts:33` (единое правило) и `:59`
   (отказ приватному),
-  `apps/api/src/infrastructure/persistence/drizzle/user.repository.ts:31`
+  `src/infrastructure/persistence/drizzle/user.repository.ts:31`
   (`usuarioUnicoDaInstalacao`, `LIMIT 2`),
-  `apps/api/src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:148`
+  `src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:148`
   (`revogarChavesDeMaquina`, два `IS NULL`),
-  `apps/api/src/domain/auth/auth-event.ts` (`machine_device_key_registered`),
-  `apps/api/src/interfaces/http/internal/dto/machine-device-key-internal.dto.ts`
+  `src/domain/auth/auth-event.ts` (`machine_device_key_registered`),
+  `src/interfaces/http/internal/dto/machine-device-key-internal.dto.ts`
   и `…/machine-device-key-internal.response.dto.ts`
-- **Тест:** `apps/api/test/application/use-cases/auth/registrar-chave-de-maquina.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/auth/registrar-chave-de-maquina.use-case.spec.ts`
   (счастливый путь с пустым `projectId` и разрешённым владельцем; `409` без
   единственного пользователя, ничего не записывая; замена ДО регистрации;
   приватный, отклонённый до открытия транзакции; журнал без JWK);
-  `apps/api/test/domain/auth/jwk-de-dispositivo.spec.ts` (единое правило, с `d`
+  `test/domain/auth/jwk-de-dispositivo.spec.ts` (единое правило, с `d`
   и приоритетом кривой);
-  `apps/api/test/interfaces/http/internal/internal-machine-device-keys.controller.spec.ts`
+  `test/interfaces/http/internal/internal-machine-device-keys.controller.spec.ts`
   (контракт ответа, тело БЕЗ владельца и три отказа guard);
-  `apps/api/test/infrastructure/persistence/drizzle/user.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/user.repository.spec.ts`
   (один пользователь возвращается; два возвращают `null`, никогда «первого»);
-  `apps/api/test/infrastructure/persistence/drizzle/runner-device-key.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/runner-device-key.repository.spec.ts`
   (замена против настоящего Postgres и то, чего она НЕ обрывает);
-  `apps/api/test/interfaces/route-surface.spec.ts` (классифицированный маршрут)
+  `test/interfaces/route-surface.spec.ts` (классифицированный маршрут)
 - **ADR:** [0155](../adr/0155-a-primeira-conta-nasce-no-terminal.md) пункт 4, о
   виде, созданном [0154](../adr/0154-chave-de-dispositivo-de-maquina.md)
 
@@ -7533,17 +7533,17 @@ api доходит без единой строки web. В отличие от 
 на клиенте — но вычисление только его дало бы полу-gate, который отверг
 ADR 0127.
 
-- **Код:** `apps/api/src/domain/iam/tetos-de-rebaixamento.ts`
+- **Код:** `src/domain/iam/tetos-de-rebaixamento.ts`
   (`remocaoEhAutoRebaixamento` и `MENSAGEM_TETO_AUTO_REBAIXAMENTO_POR_REMOCAO`,
   плюс комментарий, объясняющий, почему у потолка 1 нет пары),
-  `apps/api/src/application/use-cases/iam/remove-project-member.use-case.ts`
+  `src/application/use-cases/iam/remove-project-member.use-case.ts`
   (сигнатура с `atorId` и два чтения роли),
-  `apps/api/src/interfaces/http/iam/projects.controller.ts`
+  `src/interfaces/http/iam/projects.controller.ts`
   (`@CurrentUser()` в `@Delete(':projectId/members/:userId')`, исправленное
   описание и `@ApiForbiddenResponse`),
-  `apps/api/src/application/use-cases/iam/resolve-effective-role.use-case.ts`
+  `src/application/use-cases/iam/resolve-effective-role.use-case.ts`
   (НЕТРОНУТ — `projectRole ?? workspaceRole` остаётся как есть)
-- **Тест:** `apps/api/test/application/use-cases/iam/tetos-de-rebaixamento.use-case.spec.ts`,
+- **Тест:** `test/application/use-cases/iam/tetos-de-rebaixamento.use-case.spec.ts`,
   блок *"Teto 2 pela outra porta — a remoção da própria linha"* (три отказа;
   безвредное самоудаление; удаление другого человека; и удаление,
   возвращающее проект `owner` workspace). Первый из них — ПЕРЕВЁРНУТЫЙ тест
@@ -7595,11 +7595,11 @@ runbook обещает прервавшему скрипт: второй про�
 из `randomBytes` на каждом прогоне. Постоянная passphrase в фикстуре — строка,
 похожая на секрет, уходящая в историю, а gitleaks сканирует ветки.
 
-- **Код:** `apps/api/src/scripts/rewrap-deks.ts:93` (`reenvelopar`,
+- **Код:** `src/scripts/rewrap-deks.ts:93` (`reenvelopar`,
   экспортируемая функция), `:100` (список двух таблиц, который и фиксирует
   тест), `:209` (`require.main === module`, не дающий импорту выполнить
   ротацию)
-- **Тест:** `apps/api/test/scripts/rewrap-deks.spec.ts` — счастливый путь
+- **Тест:** `test/scripts/rewrap-deks.spec.ts` — счастливый путь
   (последовательность K1 → K1+K2 → переупаковка → только K2),
   идемпотентность и случай сбоя строки из другого окружения, который также
   утверждает, что отчёт НЕ несёт никакого секрета
@@ -7657,19 +7657,19 @@ passphrase, выведенного ключа или содержимого се
 регистрирует его при загрузке одной строкой, а уже существовавшее
 предупреждение о ротации начинает называть ОБА.
 
-- **Код:** `apps/api/src/infrastructure/security/envelope-encryption.service.ts:130`
+- **Код:** `src/infrastructure/security/envelope-encryption.service.ts:130`
   (`impressaoDigital`), `:107` (строка загрузки), `:113` (предупреждение с
   обоими), `:226` (диагноз `rewrap`), `:251` (`diagnosticoDaChave`);
-  `apps/api/src/db/schema/llm.ts:259` и `apps/api/src/db/schema/git.ts:76`
+  `src/db/schema/llm.ts:259` и `src/db/schema/git.ts:76`
   (колонка в обеих таблицах); миграция
-  `apps/api/src/db/migrations/0059_key_id_no_envelope.sql`
+  `src/db/migrations/0059_key_id_no_envelope.sql`
 - **Тест:** describe `key_id da chave mestra` в
-  `apps/api/test/infrastructure/security/envelope-encryption.service.spec.ts`
+  `test/infrastructure/security/envelope-encryption.service.spec.ts`
   — счастливый путь (стабильный и детерминированный отпечаток, записываемый
   `encrypt` и `rewrap`), **доказательство того, что метка не решает** (лживая
   строка переупаковывается), унаследованная строка без метки и два случая сбоя
   (сообщение, называющее ключ без утечки секрета; «без метки», сказанное как
-  есть). Настоящий SQL-запрос — в `apps/api/test/scripts/rewrap-deks.spec.ts`,
+  есть). Настоящий SQL-запрос — в `test/scripts/rewrap-deks.spec.ts`,
   включая случай строки `NULL`, считающейся ожидающей
 - **ADR:** [0158](../adr/0158-o-id-da-chave-mestra-gravado-no-envelope.md)
 - **Источник:** AT-034 (EP-015/HS-022), finding `BRB-016`
@@ -7725,12 +7725,12 @@ passphrase, выведенного ключа или содержимого се
 в тексте (`label` из `matchAgainstFile`) — ту же команду, что уже живёт в
 `proposed_actions.payload` и в карточке одобрения.
 
-- **Код:** `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:259`
+- **Код:** `src/application/use-cases/actions/propose-action.use-case.ts:259`
   (`reason` в payload события сессии), `:223` (комментарий outbox без поля),
   `:227` (payload outbox, нетронутый), `:356` (`rejectionReason`, остающийся
   только в `deny`);
-  `apps/api/src/domain/actions/decide.ts:278` (`Decision`, источник строки)
-- **Тест:** `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:902`
+  `src/domain/actions/decide.ts:278` (`Decision`, источник строки)
+- **Тест:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:902`
   (счастливый путь: автоодобрение записывает `agent_autonomy: auto_approve`),
   `:948` (`require_approval` по умолчанию и по потолку замка merge),
   `:1047` (`deny` с тем же текстом, что `rejectionReason`), `:999` (outbox без
@@ -7748,7 +7748,7 @@ passphrase, выведенного ключа или содержимого се
 возвращал пустоту, а в `application/graph-projection/` был только проектор
 ВПЕРЁД. Пока его не было, граф был не отбрасываемым, а теряемым.
 
-**Правило:** `apps/api/src/scripts/reprojetar-grafo.ts`
+**Правило:** `src/scripts/reprojetar-grafo.ts`
 (`pnpm --filter api grafo:reprojetar`; `node scripts/reprojetar-grafo.js` в
 образе) перестраивает граф, обходя источник. Пять решений, у каждого своя
 причина:
@@ -7790,27 +7790,27 @@ passphrase, выведенного ключа или содержимого се
 событий, 2,5 с), а доказательство в локальном кластере, которого требует
 BRB-018, не сделано — он остаётся открытым.
 
-- **Код:** `apps/api/src/application/graph-projection/graph-event-translator.ts:15`
+- **Код:** `src/application/graph-projection/graph-event-translator.ts:15`
   (`EVENTOS_DO_LOG_PROJETAVEIS`), `:31` (`FECHAMENTOS_DE_SESSAO`), `:56`
   (транслятор), `:75` (`projetarEvento`), `:99` (`projetarFechamentoDeSessao`);
-  `apps/api/src/application/graph-projection/graph-projector.ts:77` (проектор
+  `src/application/graph-projection/graph-projector.ts:77` (проектор
   собирает ТОТ ЖЕ транслятор), `:141` (доходит до источника через outbox и
   делегирует);
-  `apps/api/src/scripts/reprojetar-grafo.ts:124` (`montarTradutor`), `:145`
+  `src/scripts/reprojetar-grafo.ts:124` (`montarTradutor`), `:145`
   (`reprojetarGrafo`), `:154` (отказ до чтения), `:163` и `:169`
   (несуществующий проект), `:187` (фаза событий, по курсору), `:213`
   (именованное прерывание), `:218` (сбой, подсчитанный без прерывания
   остального), `:230` (фаза закрытых сессий), `:301` (`lerArgumentos`), `:370`
-  (перепроецирует только прямой вызов); `apps/api/package.json:44`
+  (перепроецирует только прямой вызов); `package.json:44`
   (`grafo:reprojetar`); `Makefile:61` (`test-reprojecao`)
-- **Тест:** `apps/api/test/scripts/reprojetar-grafo.spec.ts:349` (проектор
+- **Тест:** `test/scripts/reprojetar-grafo.spec.ts:349` (проектор
   вперёд → удаляет подграф → перепроецирует весь лог → то же количество узлов
   и рёбер и тот же список ключей; второй прогон идентичен; outbox нетронут),
   `:394` (по проекту), `:417` (несуществующий проект, ничего не записано —
   случай сбоя), `:432` (недоступный граф — именованная ошибка — случай сбоя),
   `:441` (неизвестный аргумент отклонён), `:452` (транслятор покрывает ровно
   проецируемые типы);
-  `apps/api/test/application/graph-projection/graph-projector.spec.ts`
+  `test/application/graph-projection/graph-projector.spec.ts`
   (проектор вперёд, без изменений, поверх извлечённого транслятора). Первые
   четыре требуют поднятого Neo4j и ПРОПУСКАЮТСЯ без него — CI api не поднимает
   Neo4j.
@@ -7858,16 +7858,16 @@ Release (измерено — см. ADR 0161); а в dev compose, который
 не впишет её в `.env`, предупреждение появляется — и это верно, потому что без
 переменной api никогда не вызывает брокер.
 
-- **Код:** `apps/api/src/interfaces/http/iam/workspaces.controller.ts:404`
+- **Код:** `src/interfaces/http/iam/workspaces.controller.ts:404`
   (`getProjectsBase`, `:256` новое поле),
-  `apps/api/src/interfaces/http/iam/dto/iam.response.dto.ts:554`,
-  `apps/api/src/interfaces/http/iam/iam-http.module.ts` (модуль брокера,
+  `src/interfaces/http/iam/dto/iam.response.dto.ts:554`,
+  `src/interfaces/http/iam/iam-http.module.ts` (модуль брокера,
   импортированный только ради вопроса `configurado()`);
   `apps/web/src/routes/NewProjectWizard.tsx:257` (`brokerConfirmado`), `:260`
   (`semBrokerConfirmado`), `:270` (`modoExecutavel`), `:283` (действующий
   режим), `:716` (инертная карточка), `:728` (причина текстом);
   `apps/web/src/locales/{pt-BR,en}/newProject.json` (`workspace.noBroker`)
-- **Тест:** `apps/api/test/interfaces/http/iam/workspaces-projects-base.controller.spec.ts:59`
+- **Тест:** `test/interfaces/http/iam/workspaces-projects-base.controller.spec.ts:59`
   (с `BROKER_URL` — `true`), `:69` (без — `false` даже при базе — случай
   сбоя), `:79` (одни пробелы считаются отсутствием), `:52` (минимум
   по-прежнему `maintainer`); `apps/web/src/routes/NewProjectWizard.test.tsx:504`
@@ -7910,14 +7910,14 @@ Infra Lead по-прежнему не знает об отсутствии бр�
 РЕЖИМУ ([RN-566](engine.md#rn-566)), и предложить `container_start` в установке без
 брокера агенту по-прежнему возможно.
 
-- **Код:** `apps/api/src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts:71`
+- **Код:** `src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts:71`
   (поле), `:150` (читается раз за загрузку);
-  `apps/api/src/interfaces/http/containers/dto/containers.response.dto.ts:408`;
+  `src/interfaces/http/containers/dto/containers.response.dto.ts:408`;
   `apps/web/src/routes/containers-subida.ts:33` (причина), `:94`
   (`usaBroker`), `:122` (отказ);
   `apps/web/src/locales/{pt-BR,en}/containers.json`
   (`actions.bloqueio.sem_broker_na_instalacao`)
-- **Тест:** `apps/api/test/application/use-cases/containers/obter-visao-geral-de-containers.use-case.spec.ts:252`
+- **Тест:** `test/application/use-cases/containers/obter-visao-geral-de-containers.use-case.spec.ts:252`
   (без брокера `false` в каждой строке — случай сбоя), `:264` (с брокером
   `true`); `apps/web/src/routes/containers-subida.test.ts:54` (`container` и
   `mounted` отказывают до образа), `:70` (`runner` не затронут), `:84`
@@ -8059,20 +8059,20 @@ stateless человеческого чата на ход, НАЧАВШИЙСЯ 
 
 - **Код:** `apps/web/src/lib/sessao-encerrada.ts`
   (`ehRecusaDeSessaoEncerrada`, `sessaoEhTerminal`);
-  `apps/api/src/domain/sessions/conversa-em-sessao-encerrada.ts:56`
+  `src/domain/sessions/conversa-em-sessao-encerrada.ts:56`
   (`AGENTES_CONVERSACIONAIS`), `:67` (`TIPOS_DA_CONVERSA`), `:95`
   (`ehEventoDeConversa`), `:117` (`garantirQueSessaoAceitaEvento`);
-  `apps/api/src/application/use-cases/sessions/append-session-event.use-case.ts:44`
+  `src/application/use-cases/sessions/append-session-event.use-case.ts:44`
   (`conflitoDeSessaoEncerrada`), `:114` (состояние в том же `UPDATE`, что и
   `seq`), `:241` (`garantirQueAceita`);
-  `apps/api/src/infrastructure/persistence/drizzle/session.repository.ts:117`
+  `src/infrastructure/persistence/drizzle/session.repository.ts:117`
   (`incrementSeq`);
-  `apps/api/src/application/use-cases/llm/send-chat-message.use-case.ts:78`
-  (человеческий чат); `apps/api/src/application/use-cases/agents/create-handoff.use-case.ts:67`,
+  `src/application/use-cases/llm/send-chat-message.use-case.ts:78`
+  (человеческий чат); `src/application/use-cases/agents/create-handoff.use-case.ts:67`,
   `accept-handoff.use-case.ts:90`, `activate-agent.use-case.ts:52`;
-  `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts:30`
+  `src/application/use-cases/sessions/get-session-pending-work.use-case.ts:30`
   (`FALA_DO_AGENTE`), `:238` (пятый сигнал);
-  `apps/api/src/infrastructure/persistence/drizzle/session-event.repository.ts:124`
+  `src/infrastructure/persistence/drizzle/session-event.repository.ts:124`
   (`findLatestOfTypesInSession`);
   `apps/engine/lib/engine/sessions/session_server.ex:115` (ожидание с
   моментом), `:141` (`handle_info` собственных часов, AT-152), `:168`
@@ -8089,7 +8089,7 @@ stateless человеческого чата на ход, НАЧАВШИЙСЯ 
   `apps/engine/lib/engine/agents/turno_assincrono.ex:411` (`abandonar`);
   `apps/engine/lib/engine/workers/session_lifecycle_worker.ex:88`
   (`parar_conversacionais`); `apps/engine/config/runtime.exs:79`
-- **Тест:** `apps/api/test/application/use-cases/sessions/conversa-em-sessao-encerrada.spec.ts:144`
+- **Тест:** `test/application/use-cases/sessions/conversa-em-sessao-encerrada.spec.ts:144`
   (закрытая сессия отклоняет `chat.message` с именованным 409 — случай сбоя),
   `:167` (без события и без израсходованного `seq`), `:183` (Psicólogo и
   Anamnese продолжают входить), `:211` (решение о действии продолжает
@@ -8097,7 +8097,7 @@ stateless человеческого чата на ход, НАЧАВШИЙСЯ 
   (`closing` принимает), `:258` (`SendAgentMessage` не вызывает engine), `:263`
   (ни одного осиротевшего handoff), `:276` (принятие никого не активирует),
   `:309` (активация не поднимает агента);
-  `apps/api/test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts:478`
+  `test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts:478`
   (Criativo ответил: ожидание с моментом), `:519` (пользователь говорил
   последним), `:546` (кто не ведёт беседу, не удерживает), `:563` (сигнал без
   потолка побеждает);
@@ -8214,32 +8214,32 @@ bootstrap» ДО `createdAt`, и Обзор (`useLatestSession`) делает т
 каждой сессии, и не изменились.
 
 - **Где:**
-  `apps/api/src/application/use-cases/agents/accept-handoff.use-case.ts:66`
+  `src/application/use-cases/agents/accept-handoff.use-case.ts:66`
   (`AGENTES_QUE_PROVISIONAM_O_REPOSITORIO`, триггер и вторая дверь) и `:141`
   (ветка, до `activateAgent`);
-  `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts:143`
+  `src/application/use-cases/execution/activate-execution.use-case.ts:143`
   (отказ, до любого эффекта);
-  `apps/api/src/domain/execution/repositorio-para-executar.ts:50`
+  `src/domain/execution/repositorio-para-executar.ts:50`
   (`motivoDeExecucaoSemRepositorio` и два имени агентов, которые использует и
-  принятие); `apps/api/src/infrastructure/persistence/drizzle/handoff.repository.ts:55`
+  принятие); `src/infrastructure/persistence/drizzle/handoff.repository.ts:55`
   (`findByProject`); `apps/web/src/routes/ProjectOverviewTab.tsx:369` и `:511`;
   `apps/web/src/routes/SessionPage.tsx:147`; `apps/web/src/routes/session-timeline-montagem.tsx:495`;
   `apps/web/src/lib/session-acoes-de-handoff.ts:122`;
   `apps/engine/lib/engine/projects/project_repository.ex:74` (текст отказа
   [RN-577](engine.md#rn-577), называвший старый триггер и меняющийся вместе)
 - **Тест:**
-  `apps/api/test/application/use-cases/agents/accept-handoff.use-case.spec.ts`
+  `test/application/use-cases/agents/accept-handoff.use-case.spec.ts`
   ("aceitar para o Arquiteto provisiona `local` com o slug do projeto", "o
   repositório nasce ANTES de o Arquiteto acordar", "aceitar para o Dev Lead
   continua provisionando `local` (segunda porta)");
-  `apps/api/test/application/use-cases/agents/accept-handoff-provisiona-uma-vez.spec.ts`
+  `test/application/use-cases/agents/accept-handoff-provisiona-uma-vez.spec.ts`
   (обе двери против базы: "UM createRepo, UMA linha, nenhuma falha" и
   "o exp001: Arquiteto aceito SEM repositório, e a segunda porta provisiona");
-  `apps/api/test/application/use-cases/execution/activate-execution.use-case.spec.ts:725`
+  `test/application/use-cases/execution/activate-execution.use-case.spec.ts:725`
   ("sem repositório: 409, e NENHUM efeito antes da recusa", "a frase nomeia o
   handoff ao Dev Lead pendente — a saída do exp001", "repositório ADOTADO conta
-  como repositório"); `apps/api/test/domain/execution/repositorio-para-executar.spec.ts`;
-  `apps/api/test/infrastructure/persistence/handoff-por-projeto.repository.spec.ts`;
+  como repositório"); `test/domain/execution/repositorio-para-executar.spec.ts`;
+  `test/infrastructure/persistence/handoff-por-projeto.repository.spec.ts`;
   `apps/web/src/routes/ProjectOverviewTab.test.tsx:409`, `:427` и `:440`;
   `apps/web/src/routes/SessionPage.handoff-devlead-e-colapso.test.tsx:575`;
   `apps/engine/test/engine/agents/arquiteto_server_test.exs:134` и
@@ -8289,12 +8289,12 @@ HUB, как выбирать upstream, обслуживающий модель. 
    Чего доказательство НЕ утверждает: какой upstream выбирает каждый
    критерий, — это решение hub, и оно меняется со временем.
 
-- **Где:** `apps/api/src/domain/llm/routing-preference.ts:56` (запись),
-  `apps/api/src/domain/llm/routing-preference.ts:75` (что уходит в провод),
-  `apps/api/src/domain/llm/binding-resolver.ts:100` (путешествует с binding),
-  `apps/api/src/application/use-cases/llm/record-llm-usage.use-case.ts:118`
+- **Где:** `src/domain/llm/routing-preference.ts:56` (запись),
+  `src/domain/llm/routing-preference.ts:75` (что уходит в провод),
+  `src/domain/llm/binding-resolver.ts:100` (путешествует с binding),
+  `src/application/use-cases/llm/record-llm-usage.use-case.ts:118`
   (замораживается в metering),
-  `apps/api/src/infrastructure/llm/openrouter-provider.ts:327` (`openrouterConfig`,
+  `src/infrastructure/llm/openrouter-provider.ts:327` (`openrouterConfig`,
   доказанная capability)
 - **Тест:** `test/domain/llm/routing-preference.spec.ts`,
   `test/application/use-cases/llm/set-model-binding.use-case.spec.ts`,
@@ -8314,7 +8314,7 @@ HUB, как выбирать upstream, обслуживающий модель. 
 `docs/`) оставляют папку отсутствующей или на старом месте, и ничто её не
 переписывает.
 
-**Правило:** `apps/api/src/scripts/reprojetar-artefatos.ts`
+**Правило:** `src/scripts/reprojetar-artefatos.ts`
 (`pnpm --filter api artefatos:reprojetar`;
 `node scripts/reprojetar-artefatos.js` в образе) обходит `session_events` и
 переписывает папку. Как в RN-569:
@@ -8347,21 +8347,21 @@ HUB, как выбирать upstream, обслуживающий модель. 
 log; (e) НЕ входит в резервную копию — она производная, аргумент
 [ADR 0152](../adr/0152-backup-de-volumes-contra-compose.md).
 
-- **Код:** `apps/api/src/application/artifact-projection/artifact-event-translator.ts:21`
+- **Код:** `src/application/artifact-projection/artifact-event-translator.ts:21`
   (`ArtifactEventTranslator`), `:24` (`projetarEvento`);
-  `apps/api/src/application/artifact-projection/artifact-projector.ts:64`
+  `src/application/artifact-projection/artifact-projector.ts:64`
   (проектор собирает ТОТ ЖЕ транслятор), `:131` (делегирует);
-  `apps/api/src/scripts/reprojetar-artefatos.ts:96` (`reprojetarArtefatos`),
+  `src/scripts/reprojetar-artefatos.ts:96` (`reprojetarArtefatos`),
   `:115` (транслятор), `:137` (обход по курсору над `session_events`), `:163`
   (сбой, подсчитанный без прерывания), `:185` (`lerArgumentos`), `:241`
-  (перепроецирует только прямой вызов); `apps/api/package.json:45`
+  (перепроецирует только прямой вызов); `package.json:45`
   (`artefatos:reprojetar`)
-- **Тест:** `apps/api/test/scripts/reprojetar-artefatos.spec.ts:215` (проектор
+- **Тест:** `test/scripts/reprojetar-artefatos.spec.ts:215` (проектор
   вперёд → удаляет папку → перепроецирует → те же пути и содержимое; второй
   прогон идентичен; outbox нетронут), `:254` (никогда не удаляет), `:265` (по
   проекту), `:275` (несуществующий проект — случай сбоя), `:289` (сбой записи,
   подсчитанный без прерывания остального — случай сбоя), `:314` (неизвестный
-  аргумент); `apps/api/test/application/artifact-projection/artifact-projector.spec.ts`
+  аргумент); `test/application/artifact-projection/artifact-projector.spec.ts`
   (проектор вперёд, без изменений, поверх извлечённого транслятора)
 - **Источник:** AT-128 — пробел, объявленный ADR 0148 (цена 3)
 
@@ -8406,13 +8406,13 @@ log; (e) НЕ входит в резервную копию — она прои�
 `failed`; а `PUT execution-mode` по-прежнему принимает конвертацию прямым
 вызовом.
 
-- **Код:** `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:90`
+- **Код:** `src/application/use-cases/actions/propose-action.use-case.ts:90`
   (отказ 409), `apps/web/src/routes/containers-subida.ts:181`
   (`semBrokerParaCicloDeVida`) и `:192` (`conversaoSemBroker`),
   `apps/web/src/routes/settings/ExecutionModeSection.tsx` (инертная кнопка),
   `apps/engine/lib/engine/infra/infra_lead_server.ex:817`
   (`motivo_da_recusa_da_api`)
-- **Тест:** `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:207`
+- **Тест:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:207`
   (409 в трёх действиях, а `container_stop` остаётся `pending` с брокером),
   `apps/web/src/routes/containers-subida.test.ts` (две функции, три
   состояния), `apps/web/src/routes/settings/conversao-de-modo.test.tsx`,
@@ -8450,11 +8450,11 @@ workspace расходиться в том, какая сессия рабоча
 сверяются с состоянием сессии каждого handoff (пробел, объявленный RN-582);
 начнут ли они сверяться — отдельное решение вне этого правила.
 
-- **Код:** `apps/api/src/application/use-cases/sessions/list-sessions-for-project.use-case.ts:30`
-  (`execute`), `apps/api/src/interfaces/http/sessions/dto/sessions.response.dto.ts:110`
+- **Код:** `src/application/use-cases/sessions/list-sessions-for-project.use-case.ts:30`
+  (`execute`), `src/interfaces/http/sessions/dto/sessions.response.dto.ts:110`
   (`SessionListItemResponseDto`), `apps/web/src/lib/hooks.ts:147`
   (`sessaoMaisRecente`)
-- **Тест:** `apps/api/test/application/use-cases/sessions/list-sessions-for-project.use-case.spec.ts:81`
+- **Тест:** `test/application/use-cases/sessions/list-sessions-for-project.use-case.spec.ts:81`
   (связь, а не имя; техническая другого проекта не помечает),
   `apps/web/src/lib/sessao-mais-recente.test.ts:28` (переименованная остаётся
   вне) и `:36` (рабочая по имени `git-bootstrap` не техническая)
@@ -8476,9 +8476,9 @@ api получает все три, а engine и broker получают `BRABO_
 
 - **Где:** `docker/docker-compose.yml`, `docker/docker-compose.prod.yml` и
   `docker/docker-compose.install.yml` (сервисы `api`, `engine` и `broker`);
-  читатели — `apps/api/src/infrastructure/security/auth-key-material.ts:136`
-  (`passphraseAnterior`), `apps/api/src/infrastructure/security/service-token.ts:92`
-  (`tokenDeServicoAnterior`), `apps/api/src/infrastructure/security/envelope-encryption.service.ts:93`,
+  читатели — `src/infrastructure/security/auth-key-material.ts:136`
+  (`passphraseAnterior`), `src/infrastructure/security/service-token.ts:92`
+  (`tokenDeServicoAnterior`), `src/infrastructure/security/envelope-encryption.service.ts:93`,
   `apps/engine/config/runtime.exs:70` и `apps/broker/src/config.ts:85`
 - **Тест:** `scripts/ci/previous-nos-composes.spec.ts` — ВЫВОДИТ из кода трёх
   сервисов список читаемых `_PREVIOUS` и проваливает ту, что отсутствует или
@@ -8517,9 +8517,9 @@ pepper): смена pepper стоит одного входа, никогда у
 следствиями выше. Начиная с неё pepper обязателен в production и никогда не
 заимствуется у JWT.
 
-- **Где:** `apps/api/src/infrastructure/security/auth-key-material.ts:212`
+- **Где:** `src/infrastructure/security/auth-key-material.ts:212`
   (`pepper`), `:228` (`hashDeToken`), `:247` (`baldeDeEmail`);
-  `apps/api/src/interfaces/http/auth/pat-auth.guard.ts:142`
+  `src/interfaces/http/auth/pat-auth.guard.ts:142`
 - **Тест:** `test/application/use-cases/auth/rotacao-dos-segredos.spec.ts`,
   против тестового Postgres
 - **Граничный случай:** ЦЕЛЬ «смены» включает ошибку того, кто отделяет pepper
@@ -8544,9 +8544,9 @@ production публичный литерал разработки (`dev-service-
 ротации отсутствие предыдущего — нормальное состояние. Предыдущий, равный
 текущему (после trim), по-прежнему не считается ротацией.
 
-- **Где:** `apps/api/src/infrastructure/security/service-token.ts:63`
+- **Где:** `src/infrastructure/security/service-token.ts:63`
   (`exigirTokenDeProducao`), `:92` (`tokenDeServicoAnterior`);
-  `apps/api/src/main.ts:50` (`tokenDeServicoAnterior`), выполняемый при загрузке рядом с текущим
+  `src/main.ts:50` (`tokenDeServicoAnterior`), выполняемый при загрузке рядом с текущим
 - **Тест:** `test/infrastructure/security/service-token.spec.ts` (describe
   "tokenDeServicoAnterior (RN-598)")
 - **Граничный случай:** эта RN — сторона api. Engine и broker применяют то же
@@ -8601,24 +8601,24 @@ Aprovações), а карточка агента показывает фразу 
 типом записывает конкретное правило, которое область видимости не
 освобождает.
 
-- **Где:** `apps/api/src/domain/actions/decide.ts:295` (`modoAutomaticoDoAgente`),
-  `apps/api/src/domain/actions/decide.ts:370` (игнорируемый синтезированный
-  вердикт составной команды), `apps/api/src/domain/actions/decide.ts:455`
+- **Где:** `src/domain/actions/decide.ts:295` (`modoAutomaticoDoAgente`),
+  `src/domain/actions/decide.ts:370` (игнорируемый синтезированный
+  вердикт составной команды), `src/domain/actions/decide.ts:455`
   (пропущенный потолок области видимости),
-  `apps/api/src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
+  `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
   (`resolve`, с источником),
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:216`
+  `src/application/use-cases/actions/propose-action.use-case.ts:216`
   (`autonomyOrigin`), `apps/web/src/components/AgentTeamGrid.tsx:108`
   (`autonomyHint`), `apps/web/src/components/ApprovalCard.tsx:313` (заметка
   в обоих вариантах)
-- **Тест:** `apps/api/test/domain/actions/decide.spec.ts` ("modo automático
+- **Тест:** `test/domain/actions/decide.spec.ts` ("modo automático
   libera o escopo de caminho (RN-603)": вне области видимости и составная
   команда автоодобряются; push/`sudo`/`deny`/записанный `ask` остаются;
   конкретное правило и выключенная подстановка не освобождают; остальные
   потолки не меняются),
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts`
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts`
   (сквозной, с реальным репозиторием),
-  `apps/api/test/infrastructure/persistence/drizzle/agent-autonomy.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/agent-autonomy.repository.spec.ts`
   (`resolve` возвращает источник), `apps/web/src/components/AgentTeamGrid.test.tsx`,
   `apps/web/src/components/AgentCard.test.tsx`,
   `apps/web/src/components/ApprovalCard.test.tsx`
@@ -8696,21 +8696,21 @@ broker de container não respondeu … The operation was aborted due to timeout�
   выходит `teto-excedido`, с правильным именем.
 
 - **Код:**
-  `apps/api/src/infrastructure/http-clients/container-broker.client.ts:240` (`tetoDaOperacao`),
+  `src/infrastructure/http-clients/container-broker.client.ts:240` (`tetoDaOperacao`),
   `:205` (`TETO_DE_MUTACAO_MS`), `:217` (`FOLGA_DO_EXEC_NO_ENGINE_MS`),
   `:270` (`erroDeTransporte`);
-  `apps/api/src/application/ports/container-broker.port.ts:89` (`MotivoDeBrokerIndisponivel`);
+  `src/application/ports/container-broker.port.ts:89` (`MotivoDeBrokerIndisponivel`);
   `apps/engine/lib/engine/sessions/engine_api_client.ex:1950` (`teto_do_container_exec_ms`)
 
   `apps/engine/lib/engine/sessions/engine_api_client.ex:1950` (`teto_do_container_exec_ms`)
-- **Тест:** `apps/api/test/infrastructure/http-clients/container-broker.client.spec.ts:286`
+- **Тест:** `test/infrastructure/http-clients/container-broker.client.spec.ts:286`
   (воспроизведение против брокера `node:http`, задерживающегося на 6 с),
   `:182` (потолок каждой операции в `AbortSignal`), `:204` и `:229`
   (`teto-excedido` с названием операции и числа), `:245` (потолок undici),
   `:330` (describe `tetoDaOperacao`, включая порядок брокер < api < engine);
-  `apps/api/test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts:298`
+  `test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts:298`
   (экран по-прежнему говорит `broker-sem-resposta`);
-  `apps/api/test/application/use-cases/containers/executar-comando-no-container.use-case.spec.ts:98`;
+  `test/application/use-cases/containers/executar-comando-no-container.use-case.spec.ts:98`;
   `apps/engine/test/engine/sessions/engine_api_client_container_exec_test.exs:72`
   (воспроизведение со стороны engine, настоящий HTTP с Bandit), `:91` (запас,
   зеркалированный в api)
@@ -8767,19 +8767,19 @@ engine). В `decide()` ничего не меняется, ни один пот�
 `permissions.json` ([RN-478](#rn-478)) в поле не входит: оно описывает корень
 ОБЛАСТИ, никогда то, где живёт файл политики.
 
-- **Код:** `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts:907`
+- **Код:** `src/infrastructure/filesystem/project-workspaces-root.ts:907`
   (`raizDoEscopoNoEvento`), `:901` (`RaizDoEscopoNoEvento`), `:117`
   (`segmentoSobABaseDeProjetos`, переиспользованная);
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:297`
+  `src/application/use-cases/actions/propose-action.use-case.ts:297`
   (`scopeRoot` только в `terminal`);
-  `apps/api/src/domain/actions/decide.ts:604` (`terminalNoEscopo`,
+  `src/domain/actions/decide.ts:604` (`terminalNoEscopo`,
   единственный потребитель области)
-- **Тест:** `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:1143`
+- **Тест:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:1143`
   (`container`), `:1123` (`mounted`), `:1123` (`runner`), `:1123` (абсолютный
   путь под `/home/usuario/…` НИКОГДА не утекает, во всех трёх случаях, включая
   вне базы), `:1213` (`indisponivel`), `:1163` (другой тип и outbox без поля),
   `:1183` (предыдущее событие, без поля, тем же чтением);
-  `apps/api/test/infrastructure/filesystem/project-workspaces-root.spec.ts:772`
+  `test/infrastructure/filesystem/project-workspaces-root.spec.ts:772`
   (чистая функция, в трёх режимах и трёх случаях `indisponivel`)
 - **ADR:** [0055](../adr/0055-escopo-de-caminho-na-politica-de-terminal.md) (пункт 7)
 - **Источник:** AT-147 (EP-025/HS-043)
@@ -8862,14 +8862,14 @@ novo»), вместе с побочной ценой RN-520. Загрузка, �
 отзыва его вызывают — раньше отзыв через раздел проекта инвалидировал только
 открытый проект, и остальные списки продолжали объявлять отозванный.
 
-- **Код:** `apps/api/src/interfaces/http/runner/machine-device-keys.controller.ts:48`
+- **Код:** `src/interfaces/http/runner/machine-device-keys.controller.ts:48`
   (`MachineDeviceKeysController`), `:69` (`listMachineDeviceKeys`), `:93`
   (`revokeMachineDeviceKey`);
-  `apps/api/src/application/use-cases/auth/list-machine-device-keys.use-case.ts:33`
+  `src/application/use-cases/auth/list-machine-device-keys.use-case.ts:33`
   (`ListMachineDeviceKeysUseCase`);
-  `apps/api/src/application/use-cases/auth/revoke-machine-device-key.use-case.ts:33`
+  `src/application/use-cases/auth/revoke-machine-device-key.use-case.ts:33`
   (`RevokeMachineDeviceKeyUseCase`);
-  `apps/api/src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:97`
+  `src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:97`
   (`listarDeMaquinaDoUsuario`);
   `apps/web/src/routes/MachineDeviceKeysSection.tsx:69`
   (`MachineDeviceKeysSection`);
@@ -8877,20 +8877,20 @@ novo»), вместе с побочной ценой RN-520. Загрузка, �
   (`invalidarChavesDeDispositivo`);
   `apps/web/src/lib/api-client.ts:447` (`listMachineDeviceKeys`);
   `apps/web/src/locales/{en,pt-BR}/machineKeys.json`
-- **Тест:** `apps/api/test/application/use-cases/auth/machine-device-keys.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/auth/machine-device-keys.use-case.spec.ts`
   (список только по пользователю, включая отозванный; НАСТОЯЩИЙ отзыв,
   обрывающий `{projeto, usuário}` в каждом проекте; без проекта — только
   запись; ключ не из ключей вызывающего — 404 без какого-либо отзыва);
-  `apps/api/test/interfaces/http/runner/machine-device-keys.controller.spec.ts`
+  `test/interfaces/http/runner/machine-device-keys.controller.spec.ts`
   (без `@RequireRole`, 204, `userId` из JWT, проброшенный 404);
-  `apps/api/test/infrastructure/persistence/drizzle/runner-device-key.repository.spec.ts`
+  `test/infrastructure/persistence/drizzle/runner-device-key.repository.spec.ts`
   (против Postgres: только ключи машины пользователя, заменённый отозванный в
   списке, ключ другого пользователя вне, установка без проекта);
   `apps/web/src/routes/MachineDeviceKeysSection.test.tsx` (список, пять
   состояний, подтверждение с охватом, инвалидация Учётной записи И каждого
   проекта — доказанная и на проектной записи в кеше, — сбой с фразой api и оба
   языка);
-  `apps/api/test/interfaces/route-surface.spec.ts` (оба маршрута,
+  `test/interfaces/route-surface.spec.ts` (оба маршрута,
   классифицированные `jwt` в `docs/security-surface.md`)
 - **Заявлено и НЕ закрывается:** (1) цель отзыва по-прежнему
   `{projeto, usuário}` (RN-520, AT-013); (2) представление `maintainer`
@@ -8923,8 +8923,8 @@ production действует СОБСТВЕННОЕ значение по ум�
 `AUTH_JWT_SECRET`. Терминал говорит, откуда пришло значение, никогда само
 значение.
 
-- **Где:** `apps/api/src/infrastructure/security/auth-key-material.ts:168`
-  (`pepperAtual`), `:212` (`pepper`); `apps/api/src/main.ts:46` (проверка при
+- **Где:** `src/infrastructure/security/auth-key-material.ts:168`
+  (`pepperAtual`), `:212` (`pepper`); `src/main.ts:46` (проверка при
   загрузке); `install.sh:702` (`valor_no_env_anterior`), `:734` (`gerar_segredos`),
   `:831` (`dizer_a_origem_do_pepper`); переменная в трёх composes
   (`docker/docker-compose.yml`, `docker-compose.prod.yml`,
@@ -9004,31 +9004,31 @@ estaria abandonando. Peça a outro owner."*
 `apps/web` нет раздела участников workspace). ТИТУЛЯР
 (`workspaces.created_by`) не уходит этим маршрутом — это [RN-616](#rn-616).
 
-- **Код:** `apps/api/src/interfaces/http/iam/workspaces.controller.ts:262`
+- **Код:** `src/interfaces/http/iam/workspaces.controller.ts:262`
   (`removeMember`);
-  `apps/api/src/application/use-cases/iam/remove-workspace-member.use-case.ts:79`
+  `src/application/use-cases/iam/remove-workspace-member.use-case.ts:79`
   (`RemoveWorkspaceMemberUseCase`);
-  `apps/api/src/domain/iam/tetos-de-rebaixamento.ts:88`
+  `src/domain/iam/tetos-de-rebaixamento.ts:88`
   (`MENSAGEM_TETO_AUTO_REMOCAO_DO_WORKSPACE`), `:248`
   (`remocaoEhAutoRebaixamento`);
-  `apps/api/src/infrastructure/persistence/drizzle/workspace.repository.ts:84`
+  `src/infrastructure/persistence/drizzle/workspace.repository.ts:84`
   (`removeMember`);
-  `apps/api/src/infrastructure/persistence/drizzle/project.repository.ts:167`
+  `src/infrastructure/persistence/drizzle/project.repository.ts:167`
   (`removeMemberFromWorkspaceProjects`);
-  `apps/api/src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:169`
+  `src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:169`
   (`revogarChavesDeProjetoNoWorkspace`);
-  `apps/api/src/infrastructure/persistence/drizzle/personal-access-token.repository.ts:187`
+  `src/infrastructure/persistence/drizzle/personal-access-token.repository.ts:187`
   (`revogarDoUsuarioNoWorkspace`)
 - **Тест:**
-  `apps/api/test/application/use-cases/iam/remove-workspace-member.use-case.spec.ts`
+  `test/application/use-cases/iam/remove-workspace-member.use-case.spec.ts`
   (против Postgres: удаляет другого участника со всем каскадом и ничего вне
   workspace; удаляет другого owner; недоступный engine не обрывает;
   идемпотентно; отказывает себе, ничего не записывая; собственная фраза;
   единственный owner не уходит; при двух owners удаляющий остаётся);
-  `apps/api/test/interfaces/http/iam/workspaces-members.controller.spec.ts`
+  `test/interfaces/http/iam/workspaces-members.controller.spec.ts`
   (`owner` на обоих маршрутах участника, 204, порядок актор/цель, проброшенный
   403);
-  `apps/api/test/interfaces/route-surface.spec.ts` (маршрут, классифицированный
+  `test/interfaces/route-surface.spec.ts` (маршрут, классифицированный
   в `docs/security-surface.md`)
 - **ADR:** [0173](../adr/0173-remocao-de-membro-de-workspace.md)
 - **Источник:** AT-115 (EP-002/HS-006)
@@ -9074,25 +9074,25 @@ para quem já é owner deste workspace: o titular paga o que os agentes gastam
 историю, становится отчётом нового титуляра. Без доменного события: остаётся
 строка лога с от/кому/кто.
 
-- **Код:** `apps/api/src/domain/iam/titularidade-do-workspace.ts:22`
+- **Код:** `src/domain/iam/titularidade-do-workspace.ts:22`
   (`CODIGO_CRIADOR_DO_WORKSPACE`), `:38` (`removeOTitular`);
-  `apps/api/src/application/use-cases/iam/remove-workspace-member.use-case.ts:120`
+  `src/application/use-cases/iam/remove-workspace-member.use-case.ts:120`
   (`removeOTitular`);
-  `apps/api/src/application/use-cases/iam/transfer-workspace-ownership.use-case.ts:39`
+  `src/application/use-cases/iam/transfer-workspace-ownership.use-case.ts:39`
   (`TransferWorkspaceOwnershipUseCase`);
-  `apps/api/src/infrastructure/persistence/drizzle/workspace.repository.ts:98`
+  `src/infrastructure/persistence/drizzle/workspace.repository.ts:98`
   (`transferirTitularidade`);
-  `apps/api/src/interfaces/http/iam/workspaces.controller.ts:324`
+  `src/interfaces/http/iam/workspaces.controller.ts:324`
   (`transferOwnership`)
 - **Тест:**
-  `apps/api/test/application/use-cases/iam/remove-workspace-member.use-case.spec.ts`
+  `test/application/use-cases/iam/remove-workspace-member.use-case.spec.ts`
   (`describe` "o TITULAR não sai": 409 с кодом и ничего не записано; титуляр,
   удаляющий себя, получает 403; после передачи удаление бывшего создателя
   проходит, и защищённым становится новый титуляр — и `describe`
   "TransferWorkspaceOwnershipUseCase": для owner записывает `created_by`; для
   `maintainer` и не-участника — 409 `titular_precisa_ser_owner`; для текущего
   титуляра идемпотентно);
-  `apps/api/test/interfaces/http/iam/workspaces-members.controller.spec.ts`
+  `test/interfaces/http/iam/workspaces-members.controller.spec.ts`
   (`owner` и делегирование передачи)
 - **ADR:** [0173](../adr/0173-remocao-de-membro-de-workspace.md), пункт 7
 - **Источник:** AT-115 (EP-002/HS-006)
@@ -9145,26 +9145,26 @@ api вызывает `ResolverIdiomaDaRespostaUseCase` с АВТОРОМ каж�
 агенту и сессией, а engine ставит указание в конец каждого вызова LLM этого
 хода. Учётная запись перестала говорить, что значение «ещё не доходит».
 
-- **Код:** `apps/api/src/domain/iam/idioma-de-resposta.ts:56`
+- **Код:** `src/domain/iam/idioma-de-resposta.ts:56`
   (`normalizarIdiomaBcp47`), `:118` (`resolverIdiomaDaResposta`);
-  `apps/api/src/db/schema/iam.ts:104` (`responseLanguage`), `:111`
+  `src/db/schema/iam.ts:104` (`responseLanguage`), `:111`
   (`detectedLanguage`), `:128` (`users_idioma_detectado_so_confirmado`);
-  `apps/api/src/db/schema/sessions.ts:120` (`sessionLanguageOverrides`);
-  `apps/api/src/application/use-cases/iam/resolver-idioma-da-resposta.use-case.ts:44`
+  `src/db/schema/sessions.ts:120` (`sessionLanguageOverrides`);
+  `src/application/use-cases/iam/resolver-idioma-da-resposta.use-case.ts:44`
   (`ResolverIdiomaDaRespostaUseCase`);
-  `apps/api/src/application/use-cases/iam/update-user-preferences.use-case.ts:25`
+  `src/application/use-cases/iam/update-user-preferences.use-case.ts:25`
   (`idiomaDaRespostaOuRecusa`), `:47` (`UpdateUserPreferencesUseCase`);
-  `apps/api/src/application/use-cases/iam/idioma-da-resposta-na-sessao.use-case.ts:19`
+  `src/application/use-cases/iam/idioma-da-resposta-na-sessao.use-case.ts:19`
   (`IdiomaDaRespostaNaSessaoUseCase`);
   `apps/web/src/routes/ResponseLanguageSection.tsx`
-- **Тест:** `apps/api/test/domain/iam/idioma-de-resposta.spec.ts:12` (мерка и
+- **Тест:** `test/domain/iam/idioma-de-resposta.spec.ts:12` (мерка и
   то, что она отклоняет — случай сбоя), `:40` (приоритет);
-  `apps/api/test/application/use-cases/iam/idioma-da-resposta.use-case.spec.ts:96`
+  `test/application/use-cases/iam/idioma-da-resposta.use-case.spec.ts:96`
   (новая учётная запись в автоматическом), `:124` (записывает канонически, не
   трогает интерфейс), `:158` (невалидный ничего не записывает — случай сбоя),
   `:188` (override не достаёт другого участника), `:209` (404 для сессии
   другого проекта);
-  `apps/api/test/infrastructure/persistence/session-language-override.repository.spec.ts:73`
+  `test/infrastructure/persistence/session-language-override.repository.spec.ts:73`
   (CHECK в базе), `:93` (upsert по паре);
   `apps/web/src/routes/ResponseLanguageSection.test.tsx:76` (действующий с
   источником, без старого предупреждения «ещё не доходит»), `:115`
@@ -9210,16 +9210,16 @@ api вызывает `ResolverIdiomaDaRespostaUseCase` с АВТОРОМ каж�
 общего артефакта, который агент записывает ВО ВРЕМЯ хода с автором-человеком,
 — расхождение, которое объявляло это правило, закрылось.
 
-- **Код:** `apps/api/src/db/schema/iam.ts:262` (`language`);
-  `apps/api/src/db/migrations/0062_idioma_do_projeto.sql` (backfill);
-  `apps/api/src/application/use-cases/iam/idioma-do-projeto.ts:13`
+- **Код:** `src/db/schema/iam.ts:262` (`language`);
+  `src/db/migrations/0062_idioma_do_projeto.sql` (backfill);
+  `src/application/use-cases/iam/idioma-do-projeto.ts:13`
   (`idiomaDoProjetoOuRecusa`);
-  `apps/api/src/application/use-cases/iam/create-project.use-case.ts:72`
-  (`language`); `apps/api/src/application/use-cases/iam/update-project.use-case.ts:18`
+  `src/application/use-cases/iam/create-project.use-case.ts:72`
+  (`language`); `src/application/use-cases/iam/update-project.use-case.ts:18`
   (`idiomaDoProjetoOuRecusa`);
-  `apps/api/src/interfaces/http/iam/dto/iam.response.dto.ts:233`
+  `src/interfaces/http/iam/dto/iam.response.dto.ts:233`
   (`language`); `apps/web/src/routes/settings/ProjectLanguageSection.tsx`
-- **Тест:** `apps/api/test/application/use-cases/iam/idioma-do-projeto.use-case.spec.ts:63`
+- **Тест:** `test/application/use-cases/iam/idioma-do-projeto.use-case.spec.ts:63`
   (рождается с языком создателя), `:74` (выбор учётной записи побеждает
   интерфейс), `:100` (невалидный и `automatico` — случай сбоя, проект не
   рождается), `:132` (невалидный PATCH ничего не меняет), `:152` (миграция
@@ -9240,7 +9240,7 @@ api вызывает `ResolverIdiomaDaRespostaUseCase` с АВТОРОМ каж�
 1. **Правило ОДНО, и живёт в api.** Эвристика AT-080, измеренная AT-160
    (контрастные маркеры `pt`/`es`/`en`, очистка кода, логов, цитат, URL и
    идентификаторов), переехала из `scripts/idioma/` в
-   `apps/api/src/domain/iam/heuristica-de-idioma.ts`, а инструмент
+   `src/domain/iam/heuristica-de-idioma.ts`, а инструмент
    РЕЭКСПОРТИРУЕТ её оттуда — то, что запускает продукт, и есть то, что
    измеряет инструмент. Правило того, ЧТО является свидетельством (только актор
    `user`; в форме — только ответы, а эхо с метками агента пропускается), тоже
@@ -9309,32 +9309,32 @@ api вызывает `ResolverIdiomaDaRespostaUseCase` с АВТОРОМ каж�
 `scripts/idioma/` собственный tsconfig без `verbatimModuleSyntax`, чтобы
 принимать `export` модуля CommonJS.
 
-- **Код:** `apps/api/src/domain/iam/heuristica-de-idioma.ts:175`
+- **Код:** `src/domain/iam/heuristica-de-idioma.ts:175`
   (`PARAMETROS_PROVISORIOS`), `:457` (`evidenciasDoAutor`), `:500`
   (`mensagensNecessarias`), `:520` (`idiomaConcordante`);
-  `apps/api/src/domain/iam/deteccao-de-idioma.ts:43` (`idiomaAPerguntar`);
-  `apps/api/src/application/use-cases/iam/detectar-idioma-do-autor.use-case.ts:57`
+  `src/domain/iam/deteccao-de-idioma.ts:43` (`idiomaAPerguntar`);
+  `src/application/use-cases/iam/detectar-idioma-do-autor.use-case.ts:57`
   (`DetectarIdiomaDoAutorUseCase`), `:66` (`detectar`), `:88` (`pergunta`),
   `:123` (`responder`);
-  `apps/api/src/infrastructure/persistence/drizzle/deteccao-de-idioma.repository.ts:27`
+  `src/infrastructure/persistence/drizzle/deteccao-de-idioma.repository.ts:27`
   (`ultimasEvidencias`), `:75` (`confirmar`);
-  `apps/api/src/db/schema/iam.ts:144` (`detectedLanguageDeclines`);
-  `apps/api/src/db/schema/sessions.ts:164`
+  `src/db/schema/iam.ts:144` (`detectedLanguageDeclines`);
+  `src/db/schema/sessions.ts:164`
   (`session_events_evidencia_de_idioma_idx`);
-  `apps/api/src/interfaces/http/iam/session-response-language.controller.ts:66`
-  (`comPergunta`); `apps/api/src/interfaces/http/iam/user-preferences.controller.ts:94`
+  `src/interfaces/http/iam/session-response-language.controller.ts:66`
+  (`comPergunta`); `src/interfaces/http/iam/user-preferences.controller.ts:94`
   (`answerDetected`); `apps/web/src/routes/SessionLanguageIndicator.tsx`;
   `scripts/idioma/heuristica.ts` (реэкспорт)
-- **Тест:** `apps/api/test/domain/iam/deteccao-de-idioma.spec.ts:29`
+- **Тест:** `test/domain/iam/deteccao-de-idioma.spec.ts:29`
   (временные), `:42` (две оценки согласуются), `:48` (одной недостаточно),
   `:52` (неопределённое не указывает — случай сбоя), `:77` (эхо формы
   пропускается), `:105`..`:158` (когда спрашивает);
-  `apps/api/test/application/use-cases/iam/detectar-idioma-do-autor.use-case.spec.ts:109`
+  `test/application/use-cases/iam/detectar-idioma-do-autor.use-case.spec.ts:109`
   (спрашивает без записи), `:116` (подтвердить), `:131` (отказ — больше не
   спрашивает), `:142` (неопределённое не спрашивает — случай сбоя), `:148`
   (явная Учётная запись), `:159` (ошибка определения становится «без
   вопроса» — случай сбоя), `:169` (409 `deteccao_mudou`);
-  `apps/api/test/infrastructure/persistence/deteccao-de-idioma.repository.spec.ts:87`
+  `test/infrastructure/persistence/deteccao-de-idioma.repository.spec.ts:87`
   (только автор, все сессии), `:166` (частичный индекс), `:200` (пара и
   стёртый отказ); `apps/web/src/routes/SessionLanguageIndicator.test.tsx:117`
   ("Usar"), `:148` ("Não"), `:162` ("Agora não" не записывает), `:172` (409
@@ -9370,10 +9370,10 @@ Gate QA/SecOps заканчивается в `awaiting_user`, и больше н
    merge дойдёт сюда; ожидающий gate, по решению владельца, — лишь
    предупреждение на экране.
 
-- **Где:** `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:295`
-  (`settleMerge`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:480`
+- **Где:** `src/application/use-cases/actions/execute-git-action.use-case.ts:295`
+  (`settleMerge`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:480`
   (`markDoneIfNotDone`)
-- **Тест:** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   ("git_merge marca a tarefa como done": счастливый, повторный, открытый
   PR/неудачный merge, PR без задачи)
 - **Источник:** AT-275
@@ -9419,10 +9419,10 @@ AT-251/AT-253 не начнут потреблять `roster.activatedAgents`.
 > окну, с проверкой той же сессии. `criativoActive`/`arquitetoActive`
 > (`session-readiness.ts`) продолжают читать только окно.
 
-- **Где живёт:** `apps/api/src/infrastructure/persistence/drizzle/projects-summary.repository.ts:212`
-  (`activatedAgents`); `apps/api/src/application/ports/projects-summary-repository.port.ts:32`
+- **Где живёт:** `src/infrastructure/persistence/drizzle/projects-summary.repository.ts:212`
+  (`activatedAgents`); `src/application/ports/projects-summary-repository.port.ts:32`
   (`activatedAgents`)
-- **Тесты:** `apps/api/test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
+- **Тесты:** `test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
   ("activatedAgents cobre ativações anteriores à janela de 200 eventos" и
   "activatedAgents é da sessão MAIS RECENTE: ativação de sessão antiga não vale")
 - **Источник:** AT-252
@@ -9465,32 +9465,32 @@ Lead, а предложение уже активному агенту оста�
    вызывает engine (`desfecho: ja_oferecido`, `jaAtendidos` с причиной для
    каждого).
 
-- **Где:** `apps/api/src/domain/sessions/ciclo-de-vida-do-handoff.ts:71`
+- **Где:** `src/domain/sessions/ciclo-de-vida-do-handoff.ts:71`
   (`decidirOferta`), `:104` (`mensagemDeAgenteJaAtivo`);
-  `apps/api/src/application/use-cases/agents/ciclo-de-vida-do-handoff.service.ts:43`
+  `src/application/use-cases/agents/ciclo-de-vida-do-handoff.service.ts:43`
   (`sessaoOndeEstaAtivo`), `:71` (`substituir`), `:97`
   (`substituirOfertasAoAtivar`);
-  `apps/api/src/application/use-cases/agents/create-handoff.use-case.ts:109`
+  `src/application/use-cases/agents/create-handoff.use-case.ts:109`
   (`travarOfertasDoDestino`);
-  `apps/api/src/infrastructure/persistence/drizzle/handoff.repository.ts:94`
+  `src/infrastructure/persistence/drizzle/handoff.repository.ts:94`
   (`travarOfertasDoDestino`);
-  `apps/api/src/application/use-cases/agents/activate-agent.use-case.ts:88`
+  `src/application/use-cases/agents/activate-agent.use-case.ts:88`
   (`substituirOfertasAoAtivar`);
-  `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts:319`
+  `src/application/use-cases/execution/activate-execution.use-case.ts:319`
   (`substituirOfertasAoAtivar`);
-  `apps/api/src/application/use-cases/agents/offer-infra-handoff.use-case.ts:96`
+  `src/application/use-cases/agents/offer-infra-handoff.use-case.ts:96`
   (`jaAtendido`);
   `apps/engine/lib/engine/harness/tools/offer_handoff.ex:132`
   (`agente_ja_ativo`); `apps/engine/lib/engine/agents/falha_de_turno.ex:63`
-  (`agente_ja_ativo`); `apps/api/src/db/migrations/0064_ciclo_de_vida_do_handoff.sql`
-- **Тест:** `apps/api/test/application/use-cases/agents/ciclo-de-vida-do-handoff.spec.ts`
+  (`agente_ja_ativo`); `src/db/migrations/0064_ciclo_de_vida_do_handoff.sql`
+- **Тест:** `test/application/use-cases/agents/ciclo-de-vida-do-handoff.spec.ts`
   (против Postgres: повтор в той же сессии, конкурентный двойной клик, новый
   артефакт, другая закрытая сессия, данные до ADR, активный агент и активный
   в закрытой сессии, активация, которая замещает, и отклонённая активация);
-  `apps/api/test/application/use-cases/agents/offer-infra-handoff.use-case.spec.ts`
+  `test/application/use-cases/agents/offer-infra-handoff.use-case.spec.ts`
   ("ADR 0182: segundo clique…", "ADR 0182: só aciona o destino que falta…");
-  `apps/api/test/application/use-cases/agents/activate-agent.use-case.spec.ts`;
-  `apps/api/test/application/use-cases/execution/activate-execution.use-case.spec.ts`
+  `test/application/use-cases/agents/activate-agent.use-case.spec.ts`;
+  `test/application/use-cases/execution/activate-execution.use-case.spec.ts`
   ("ciclo de vida do handoff");
   `apps/engine/test/engine/harness/tools/offer_handoff_test.exs`;
   `apps/engine/test/engine/agents/falha_de_turno_test.exs`;
@@ -9531,19 +9531,19 @@ Lead, а предложение уже активному агенту оста�
 самых новых в ленте не появляется. Ожидающие ВСЕГО проекта — другое чтение
 ([RN-638](web.md#rn-638)).
 
-- **Код:** `apps/api/src/infrastructure/persistence/drizzle/proposed-action.repository.ts:96`
+- **Код:** `src/infrastructure/persistence/drizzle/proposed-action.repository.ts:96`
   (`listPaginated`), `:113` (ветка `latest`);
-  `apps/api/src/interfaces/http/actions/actions.controller.ts:105` (`list`),
+  `src/interfaces/http/actions/actions.controller.ts:105` (`list`),
   `:114` (отказ `status`);
-  `apps/api/src/application/ports/proposed-action-repository.port.ts`
+  `src/application/ports/proposed-action-repository.port.ts`
   (`ListProposedActionsOptions`);
   `apps/web/src/lib/acoes-da-sessao.ts:48` (`buscarAcoesDaSessao`), `:30`
   (`juntarCaudaEPendentes`); `apps/web/src/lib/hooks.ts:432`
   (`usePendingActions`)
-- **Тест:** `apps/api/test/infrastructure/persistence/proposed-action-latest.repository.spec.ts`
+- **Тест:** `test/infrastructure/persistence/proposed-action-latest.repository.spec.ts`
   (без `latest` новое ожидающее остаётся вне — дефект; с `latest` оно в
   хвосте; `status=pending` возвращает старое; и не приносит другую сессию);
-  `apps/api/test/interfaces/http/actions/actions-list.controller.spec.ts`
+  `test/interfaces/http/actions/actions-list.controller.spec.ts`
   (передача параметров и 400 — случай сбоя);
   `apps/web/src/lib/acoes-da-sessao.test.ts` (короткая сессия одним запросом;
   полный хвост с 250 действиями возвращает ожидающее 3 и 250; чтение
@@ -9602,18 +9602,18 @@ Lead, а предложение уже активному агенту оста�
    `git_push`/`pr_open` в потолке `decide()`, а активация сеет только
    `git_commit` —, и шаблон, который записал бы клик для них, был бы инертным.
 
-- **Где:** `apps/api/src/application/use-cases/actions/approve-always-action.use-case.ts:109`
+- **Где:** `src/application/use-cases/actions/approve-always-action.use-case.ts:109`
   (`execute`), `:190` (`cliqueSobreAcaoJaDecidida`), `:240`
-  (`gravarPadraoSeFaltar`), `apps/api/src/application/use-cases/actions/approve-action.use-case.ts:255`
-  (`approve`), `apps/api/src/domain/actions/sempre-permitir.ts:30`
+  (`gravarPadraoSeFaltar`), `src/application/use-cases/actions/approve-action.use-case.ts:255`
+  (`approve`), `src/domain/actions/sempre-permitir.ts:30`
   (`TIPOS_SEM_SEMPRE_PERMITIR`), `:65` (`motivoDeRecusaDoSempreAprovar`),
   `apps/web/src/lib/sempre-permitir.ts:15` (`TIPOS_SEM_SEMPRE_PERMITIR`)
-- **Тест:** `apps/api/test/application/use-cases/actions/approve-always-action.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/actions/approve-always-action.use-case.spec.ts`
   ("ordem e idempotência (RN-642)": двойной клик, конкурентные клики,
   действие, одобренное другим путём, отклонённое → именованный 409 без
   шаблона, шаблон, который падает, отменяет одобрение, потолки при уже
   одобренном действии; "tipos do teto (AT-320)"),
-  `apps/api/test/domain/actions/sempre-permitir.spec.ts`,
+  `test/domain/actions/sempre-permitir.spec.ts`,
   `apps/web/src/lib/sempre-permitir.test.ts` (копия web совпадает с копией
   api), `apps/web/src/components/ApprovalCard.test.tsx` (типизированный git без
   кнопки)
@@ -9658,19 +9658,19 @@ Lead, а предложение уже активному агенту оста�
    `alreadyAnalyzed`; ручная переобработка остаётся. Вторая консолидация графа
    расширяет окно той же `Interacao`.
 
-- **Где:** `apps/api/src/domain/sessions/session-state-machine.ts:66`
+- **Где:** `src/domain/sessions/session-state-machine.ts:66`
   (`canReopen`), `:70` (`assertReopen`);
-  `apps/api/src/domain/sessions/reabertura-de-sessao.ts:24`
+  `src/domain/sessions/reabertura-de-sessao.ts:24`
   (`SessaoComExecucaoNaoReabreError`), `:44`
   (`garantirQueSessaoSemExecucaoReabre`), `:58` (`payloadDaReabertura`);
-  `apps/api/src/application/use-cases/sessions/reopen-session.use-case.ts:53`
+  `src/application/use-cases/sessions/reopen-session.use-case.ts:53`
   (`execute`), `:96` (`garantirQuePodeReabrir`);
   `apps/engine/lib/engine/workers/session_lifecycle_worker.ex:59`
   (`encerrar_se_ainda_encerrada`);
   `apps/engine/lib/engine/sessions/project_session.ex:48` (`status`)
-- **Тест:** `apps/api/test/domain/sessions/session-state-machine.spec.ts:56`
+- **Тест:** `test/domain/sessions/session-state-machine.spec.ts:56`
   (открываются заново только терминальные; `closing` никогда не возвращается);
-  `apps/api/test/application/use-cases/sessions/reopen-session.use-case.spec.ts:121`
+  `test/application/use-cases/sessions/reopen-session.use-case.spec.ts:121`
   (`closed` открывается заново, лог сохранён, `session.reopened` с предыдущим
   закрытием — счастливый путь), `:151` (`closed_abnormally`), `:163` (беседа
   снова входит), `:186` (`closing` — 409 без engine и события — случай сбоя),
@@ -9698,13 +9698,13 @@ Lead, а предложение уже активному агенту оста�
 её фразой. Нить рассказывает `session.reopened` как «сессия открыта заново», с
 причиной предыдущего закрытия, когда она была записана.
 
-- **Где:** `apps/api/src/interfaces/http/sessions/sessions.controller.ts:210`
+- **Где:** `src/interfaces/http/sessions/sessions.controller.ts:210`
   (`reopen`); `apps/web/src/lib/api-client.ts:623` (`reopenSession`);
   `apps/web/src/routes/SessionPage.tsx:153` (`podeReabrir`);
   `apps/web/src/lib/session-acoes-da-sessao.ts:77` (`handleReopen`);
   `apps/web/src/routes/SessionComposer.tsx:383` (кнопка);
   `apps/web/src/lib/activity.ts:633` (фраза нити)
-- **Тест:** `apps/api/test/interfaces/http/sessions/sessions-reopen.controller.spec.ts:22`
+- **Тест:** `test/interfaces/http/sessions/sessions-reopen.controller.spec.ts:22`
   (`developer`, та же, что у общего перехода), `:36` (viewer не достигает
   роли маршрута; developer, maintainer и owner достигают), `:49` (200);
   `apps/web/src/routes/SessionPage.reabrir-sessao.test.tsx:143` (developer
@@ -9776,10 +9776,10 @@ api (ни один экран их больше не читает). `dev-<modulo
 символов, был бы отклонён форматом пакета, и чтение дополнительных упало бы
 целиком — не измерено в реальном проекте, и заявлено.
 
-- **Код:** `apps/api/src/application/use-cases/llm/resolve-model-bindings-em-lote.use-case.ts:12`
+- **Код:** `src/application/use-cases/llm/resolve-model-bindings-em-lote.use-case.ts:12`
   (`TETO_DE_CHAVES_NO_LOTE`), `:37` (`lerListaDeChaves`), `:77`
   (`ResolveModelBindingsEmLoteUseCase`);
-  `apps/api/src/interfaces/http/llm/model-bindings.controller.ts:233`
+  `src/interfaces/http/llm/model-bindings.controller.ts:233`
   (`getResolvedBindings`); `apps/web/src/lib/api-client.ts:1149`
   (`getResolvedModelBindings`); `apps/web/src/lib/bindings-resolvidos.ts:43`
   (`invalidarBindingsResolvidos`), `:69` (`useBindingsResolvidos`), `:111`
@@ -9788,7 +9788,7 @@ api (ни один экран их больше не читает). `dev-<modulo
   `apps/web/src/components/AgentTeamGrid.tsx:46` (`bindingDoAgente`);
   `apps/web/src/routes/settings/LeituraDosBindings.tsx:19`
   (`AvisoDeBindingsNaoLidos`), `:40` (`MarcaDeBindingNaoLido`)
-- **Тест:** `apps/api/test/interfaces/http/llm/model-bindings-em-lote.integration.spec.ts:182`
+- **Тест:** `test/interfaces/http/llm/model-bindings-em-lote.integration.spec.ts:182`
   (счастливый путь против Postgres: viewer читает пакет, и каждый ключ равен
   индивидуальному маршруту), `:256` (отказ по роли, тот же 403, что у
   индивидуального маршрута), `:275` (некорректный ключ), `:287` (пакет сверх
@@ -9832,14 +9832,14 @@ api (ни один экран их больше не читает). `dev-<modulo
 `RolesGuard` (403). По-прежнему нет ЭКРАНА участников workspace: чтение
 существует, чтобы называть, а маршруты записи остаются маршрутами API.
 
-- **Код:** `apps/api/src/interfaces/http/iam/workspaces.controller.ts:216`
+- **Код:** `src/interfaces/http/iam/workspaces.controller.ts:216`
   (`listMembers`);
-  `apps/api/src/application/use-cases/iam/list-workspace-members.use-case.ts:16`
+  `src/application/use-cases/iam/list-workspace-members.use-case.ts:16`
   (`execute`);
-  `apps/api/src/infrastructure/persistence/drizzle/workspace.repository.ts:127`
+  `src/infrastructure/persistence/drizzle/workspace.repository.ts:127`
   (`listMembers`)
 - **Тест:**
-  `apps/api/test/application/use-cases/iam/list-workspace-members.use-case.spec.ts:75`
+  `test/application/use-cases/iam/list-workspace-members.use-case.spec.ts:75`
   (форма ответа, против Postgres — счастливый путь), `:96` (несуществующий
   workspace — 404), `:104` (минимум — `viewer`), `:112` (`viewer` проходит
   guard), `:125` (не-участник получает 403)
@@ -9894,9 +9894,9 @@ api (ни один экран их больше не читает). `dev-<modulo
 уже говорила [RN-614](web.md#rn-614), — решение, а не пробел. Ни один потолок не
 меняется.
 
-- **Код:** `apps/api/src/interfaces/http/sessions/sessions.controller.ts:256`
+- **Код:** `src/interfaces/http/sessions/sessions.controller.ts:256`
   (`listEvents`);
-  `apps/api/src/infrastructure/persistence/drizzle/session-event.repository.ts:61`
+  `src/infrastructure/persistence/drizzle/session-event.repository.ts:61`
   (фильтр);
   `apps/web/src/lib/decisao-da-politica-queries.ts:35` (`useDecisoesDaPolitica`);
   `apps/web/src/routes/ProjectApprovalsTab.tsx:307` (кто его вызывает), `:481`
@@ -9904,7 +9904,7 @@ api (ни один экран их больше не читает). `dev-<modulo
   `apps/web/src/components/PendenciasDeOutrasSessoes.tsx:74` (чат вызывает тот
   же hook), `:145` (причина на каждой карточке), `:181` (примечание о сбое)
 - **Тест:**
-  `apps/api/test/application/use-cases/sessions/list-session-events-por-acao.use-case.spec.ts:80`
+  `test/application/use-cases/sessions/list-session-events-por-acao.use-case.spec.ts:80`
   (только события действия, с причиной — счастливый путь, против Postgres),
   `:109` (не пересекает сессии), `:123` (сессия другого проекта — 404),
   `:134` (пустой `actionId` — 400);
@@ -9947,12 +9947,12 @@ Criativo теперь называется **«Estou pronto — a necessidade es
 validada"; заголовок включённой кнопки говорит, что закрывает клик, а
 уведомление об успехе говорит, что PO войдёт, когда резюме будет готово.
 
-- **Код:** `apps/api/src/application/use-cases/agents/confirm-readiness.use-case.ts:26` (`ConfirmReadinessUseCase`),
+- **Код:** `src/application/use-cases/agents/confirm-readiness.use-case.ts:26` (`ConfirmReadinessUseCase`),
   `:42` (`necessity.validated`);
-  `apps/api/src/domain/sessions/estou-pronto.ts:27` (`MARCA_DO_ESTOU_PRONTO`);
+  `src/domain/sessions/estou-pronto.ts:27` (`MARCA_DO_ESTOU_PRONTO`);
   `apps/web/src/routes/SessionComposer.tsx:315` (заголовок кнопки);
   `apps/web/src/lib/session-acoes-da-sessao.ts:143` (`handleReadiness`)
-- **Тест:** `apps/api/test/application/use-cases/agents/confirm-readiness.use-case.spec.ts:49`
+- **Тест:** `test/application/use-cases/agents/confirm-readiness.use-case.spec.ts:49`
   (оба события, с меткой и brief в пути — счастливый путь), `:72`
   (422 от engine: записана только готовность — случай сбоя);
   `apps/web/src/routes/SessionPage.estou-pronto.test.tsx:150` (один клик,
@@ -10000,17 +10000,17 @@ engine (предложение создано, и Criativo сказал бы «�
 не сдвигается: принятие PO не подготавливает репозиторий (только Arquiteto и
 Dev Lead, [RN-582](#rn-582)), не делает ни merge, ни push.
 
-- **Код:** `apps/api/src/domain/sessions/estou-pronto.ts:62` (`decidirAceiteImplicitoDoPo`);
-  `apps/api/src/application/use-cases/agents/aceite-implicito-do-po.use-case.ts:37` (`AceiteImplicitoDoPoUseCase`),
+- **Код:** `src/domain/sessions/estou-pronto.ts:62` (`decidirAceiteImplicitoDoPo`);
+  `src/application/use-cases/agents/aceite-implicito-do-po.use-case.ts:37` (`AceiteImplicitoDoPoUseCase`),
   `:45` (`seCouber`);
-  `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts:414` (`handoff`);
-  `apps/api/src/application/use-cases/agents/accept-handoff.use-case.ts:135` (`implicito` в `handoff.accepted`);
-  `apps/api/src/application/use-cases/agents/activate-agent.use-case.ts:80` (`implicito` в `agent.activated`)
-- **Тест:** `apps/api/test/application/use-cases/agents/aceite-implicito-do-po.use-case.spec.ts:105`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:414` (`handoff`);
+  `src/application/use-cases/agents/accept-handoff.use-case.ts:135` (`implicito` в `handoff.accepted`);
+  `src/application/use-cases/agents/activate-agent.use-case.ts:80` (`implicito` в `agent.activated`)
+- **Тест:** `test/application/use-cases/agents/aceite-implicito-do-po.use-case.spec.ts:105`
   (принимает от имени кликнувшего — счастливый путь), `:129` (сбой принятия
   становится `agent.error` и не поднимается — случай сбоя), `:120`, `:146`;
-  `apps/api/test/domain/sessions/estou-pronto.spec.ts:58`, `:72`, `:83`, `:94`;
-  `apps/api/test/application/use-cases/agents/accept-handoff.use-case.spec.ts:318`
+  `test/domain/sessions/estou-pronto.spec.ts:58`, `:72`, `:83`, `:94`;
+  `test/application/use-cases/agents/accept-handoff.use-case.spec.ts:318`
   (те же события, человеческий актор и метка), `:338` (без метки через
   карточку)
 - **ADR:** [0185](../adr/0185-estou-pronto-fecha-os-dois-gates.md)
@@ -10038,11 +10038,11 @@ PO promove", с указанием, где изменить, а раздел Н�
 (`validacao-fase-12.ts`, `validacao-real.ts`), теперь явно запрашивают
 `manual`.
 
-- **Код:** `apps/api/src/db/schema/iam.ts:287` (`storyPromotion`);
-  `apps/api/src/db/migrations/0065_default_de_promocao_auto.sql`;
+- **Код:** `src/db/schema/iam.ts:287` (`storyPromotion`);
+  `src/db/migrations/0065_default_de_promocao_auto.sql`;
   `apps/web/src/routes/NewProjectWizard.tsx:978` (строка Confirmar);
   `apps/web/src/routes/settings/PromotionSection.tsx:75` (примечание о default)
-- **Тест:** `apps/api/test/db/story-promotion-migration.spec.ts:29` (новый
+- **Тест:** `test/db/story-promotion-migration.spec.ts:29` (новый
   проект рождается `auto` — счастливый путь), `:40` (существующий проект в
   `manual` не меняется — случай сбоя); `apps/web/src/routes/NewProjectWizard.test.tsx:254`
   (Confirmar говорит значение); `apps/web/src/routes/ProjectSettingsTab.test.tsx:625`
@@ -10083,23 +10083,23 @@ engine называет причину (`regras_sem_historia`, `repositorio_nao_
 репозиторий с учётными данными по-прежнему требует клика, как и ручной handoff
 (ADR 0109).
 
-- **Код:** `apps/api/src/domain/sessions/aceite-automatico-do-handoff.ts:81`
+- **Код:** `src/domain/sessions/aceite-automatico-do-handoff.ts:81`
   (`decidirAceiteAutomatico`), `:74` (`backlogCoberto`);
-  `apps/api/src/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.ts:44`
+  `src/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.ts:44`
   (`AceitarHandoffAutomaticamenteUseCase`);
-  `apps/api/src/application/use-cases/agents/accept-handoff.use-case.ts:91`
+  `src/application/use-cases/agents/accept-handoff.use-case.ts:91`
   (`AceitePeloSistema`);
-  `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts:414`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:414`
   (`handoff`); `apps/engine/lib/engine/harness/tools/offer_handoff.ex:59`;
   `apps/web/src/routes/session-timeline-montagem.tsx:604` (уведомление в ленте)
-- **Тест:** `apps/api/test/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.spec.ts:73`
+- **Тест:** `test/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.spec.ts:73`
   (backlog покрыт и без репозитория: принимается системой — счастливый путь),
   `:89` (правило без истории: не принимает и ничего не записывает — случай
   сбоя), `:99` (удалённый репозиторий), `:109` (git-подключение), `:128` (сбой
   становится `handoff.auto_accept_failed`);
-  `apps/api/test/domain/sessions/aceite-automatico-do-handoff.spec.ts:37`,
+  `test/domain/sessions/aceite-automatico-do-handoff.spec.ts:37`,
   `:49` (каждая причина отказа);
-  `apps/api/test/application/use-cases/agents/accept-handoff.use-case.spec.ts:323`
+  `test/application/use-cases/agents/accept-handoff.use-case.spec.ts:323`
   (системный актор, критерий и подготовка до активации);
   `apps/web/src/routes/SessionPage.handoff-aceite-automatico.test.tsx:174`,
   `:196`; `apps/engine/test/engine/harness/tools/offer_handoff_test.exs:38`
@@ -10142,25 +10142,25 @@ engine называет причину (`regras_sem_historia`, `repositorio_nao_
    нечего мержить. Заявлено: два одновременных предложения одного PR не
    сериализуются (нет блокировки по PR), и второе удерживает правило 2.
 
-- **Код:** `apps/api/src/domain/actions/merge-de-pr.ts:56` (`recusaDeMerge`),
+- **Код:** `src/domain/actions/merge-de-pr.ts:56` (`recusaDeMerge`),
   `:40` (`mergeouAPr`);
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:120` (`recusaDeMerge`);
-  `apps/api/src/application/use-cases/actions/approve-action.use-case.ts:282` (`recusaDeMerge`);
-  `apps/api/src/infrastructure/git/local-git-provider.ts:339` (`GitPullRequestAlreadyMergedError`);
+  `src/application/use-cases/actions/propose-action.use-case.ts:120` (`recusaDeMerge`);
+  `src/application/use-cases/actions/approve-action.use-case.ts:282` (`recusaDeMerge`);
+  `src/infrastructure/git/local-git-provider.ts:339` (`GitPullRequestAlreadyMergedError`);
   `apps/web/src/lib/gate-do-merge.ts:19` (`gatePendenteNoMerge`);
   `apps/web/src/routes/ProjectPrsTab.tsx:232` (`gatePendenteNoMerge`);
   `apps/web/src/routes/session-timeline-montagem.tsx:1100` (`gatePendenteNoMerge`)
   `apps/web/src/routes/ProjectPrsTab.tsx:232` (`gatePendenteNoMerge`);
   `apps/web/src/routes/session-timeline-montagem.tsx:1100` (`gatePendenteNoMerge`)
-- **Тест:** `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:664`
+- **Тест:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:664`
   (`merge_ja_proposto`), `:687` (`pr_ja_mergeado` — случай сбоя), `:696`
 
   `apps/web/src/routes/session-timeline-montagem.tsx:1100` (`gatePendenteNoMerge`)
-- **Тест:** `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:664`
+- **Тест:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:664`
   (`merge_ja_proposto`), `:687` (`pr_ja_mergeado` — случай сбоя), `:696`
   (отклонённое не блокирует, другой PR не конфликтует — счастливый путь);
-  `apps/api/test/application/use-cases/actions/approve-deny-action.use-case.spec.ts:473`;
-  `apps/api/test/infrastructure/git/local-git-provider.contract.spec.ts:150`;
+  `test/application/use-cases/actions/approve-deny-action.use-case.spec.ts:473`;
+  `test/infrastructure/git/local-git-provider.contract.spec.ts:150`;
   `apps/web/src/routes/ProjectPrsTab.test.tsx:266`, `:300`, `:315`;
   `apps/web/src/routes/MergearNoChat.test.tsx:135`, `:148`;
   `apps/web/src/lib/gate-do-merge.test.ts:5`, `:18`
@@ -10205,13 +10205,13 @@ engine называет причину (`regras_sem_historia`, `repositorio_nao_
    стоимость), а при `is_byok: true` стоимость НЕ читается: это комиссия hub,
    а инференс оплачивается отдельно, — строка падает на каталог.
 
-- **Где:** `apps/api/src/domain/llm/custo-da-chamada.ts:43` (`custoDaChamada`),
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:225` (`custoDaChamada`),
-  `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:238` (`custoDaChamada`),
-  `apps/api/src/application/use-cases/llm/send-chat-message.use-case.ts:227` (`custoDaChamada`),
-  `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:319` (`extrairCustoReal`),
-  `apps/api/src/infrastructure/llm/openrouter-provider.ts:243` (`extrairCustoRealOpenRouter`),
-  `apps/api/src/db/schema/llm.ts:357` (`priceImplicit`)
+- **Где:** `src/domain/llm/custo-da-chamada.ts:43` (`custoDaChamada`),
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:225` (`custoDaChamada`),
+  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:238` (`custoDaChamada`),
+  `src/application/use-cases/llm/send-chat-message.use-case.ts:227` (`custoDaChamada`),
+  `src/infrastructure/llm/openai-compatible-provider.ts:319` (`extrairCustoReal`),
+  `src/infrastructure/llm/openrouter-provider.ts:243` (`extrairCustoRealOpenRouter`),
+  `src/db/schema/llm.ts:357` (`priceImplicit`)
 - **Тест:** `test/domain/llm/custo-da-chamada.spec.ts`,
   `test/infrastructure/llm/openrouter-provider.contract.spec.ts` (записанный
   ответ: стоимость, разрешённая модель, id; BYOK; без `cost`; провайдер без
@@ -10247,12 +10247,12 @@ engine называет причину (`regras_sem_historia`, `repositorio_nao_
    кэш в своём протоколе (`cache_read_input_tokens`), и это здесь НЕ читается —
    остаётся `null`, объявлено; Ollama не сообщает.
 
-- **Где:** `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:323` (`cachedInputTokens`),
-  `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:650` (`contagem`),
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:175` (`cachedInputTokens`),
-  `apps/api/src/application/use-cases/llm/record-llm-usage.use-case.ts:113` (`cachedInputTokens`),
-  `apps/api/src/db/schema/llm.ts:374` (`cachedInputTokens`),
-  `apps/api/scripts/medir-execucao.ts:89` (`formatarParteMedida`)
+- **Где:** `src/infrastructure/llm/openai-compatible-provider.ts:323` (`cachedInputTokens`),
+  `src/infrastructure/llm/openai-compatible-provider.ts:650` (`contagem`),
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:175` (`cachedInputTokens`),
+  `src/application/use-cases/llm/record-llm-usage.use-case.ts:113` (`cachedInputTokens`),
+  `src/db/schema/llm.ts:374` (`cachedInputTokens`),
+  `scripts/medir-execucao.ts:89` (`formatarParteMedida`)
 - **Тест:** `test/infrastructure/llm/openrouter-provider.contract.spec.ts`
   (записанный ответ с обеими частями; без деталей; недопустимое значение и
   ноль), `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts`,
@@ -10286,19 +10286,19 @@ api не знает, направит ли runner в контейнер или �
 команды с путём ХОСТА теперь считается вне, когда есть контейнер — engine
 переводит только `cwd`, а внутри контейнера такого пути нет.
 
-- **Код:** `apps/api/src/domain/actions/path-scope.ts:153` (`cwdNoContainer`),
+- **Код:** `src/domain/actions/path-scope.ts:153` (`cwdNoContainer`),
   `:174` (`comandoNoEscopoDoContainer`), `:112` (`comandoNoEscopo`, теперь с
   несколькими корнями), `:137` (`PONTO_DE_MONTAGEM_DO_CONTAINER`);
-  `apps/api/src/domain/actions/decide.ts:275` (`execucaoNoContainer`), `:616`
+  `src/domain/actions/decide.ts:275` (`execucaoNoContainer`), `:616`
   (`execucaoNoContainer`, в `terminalNoEscopo`);
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:174`
+  `src/application/use-cases/actions/propose-action.use-case.ts:174`
   (`containerExecutionActive`, отдельно от `execucaoNoContainer`)
-- **Тест:** `apps/api/test/domain/actions/decide.spec.ts:1274` (с контейнером
+- **Тест:** `test/domain/actions/decide.spec.ts:1274` (с контейнером
   `/work`, `.worktrees`, `/tmp` и `..` внутри — счастливый путь; `/etc`, другой
   проект, `/workspace`, `/tmp/../etc` вне; без контейнера `/tmp` и `/work` вне
-  — случаи сбоя); `apps/api/test/domain/actions/path-scope.spec.ts:216`
+  — случаи сбоя); `test/domain/actions/path-scope.spec.ts:216`
   (и копия `/work`, зафиксированная против `packages/docker-port`);
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:1141`
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts:1141`
   (режим `mounted` с контейнером и без, и без пола)
 - **Источник:** AT-258 (пункт A12 анализа реального использования 29.09),
   решение владельца от 01.10, [ADR 0189](../adr/0189-o-piloto-automatico.md)
@@ -10336,22 +10336,22 @@ broker, без сокета Docker и без привилегий, — дока�
 (свёрнутый). «Не разрешает» — текст, который уже был у RN-661,
 переиспользованный.
 
-- **Код:** `apps/api/src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
+- **Код:** `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
   (`resolve`), `:67` (`modoEspecifico`, исключение автопилота);
-  `apps/api/src/application/ports/agent-autonomy-repository.port.ts:5`
+  `src/application/ports/agent-autonomy-repository.port.ts:5`
   (`AutonomiaResolvida`, с `especifica`);
-  `apps/api/src/application/use-cases/actions/approve-always-action.use-case.ts:263`
-  (`especifica`); `apps/api/src/domain/actions/decide.ts:295`
+  `src/application/use-cases/actions/approve-always-action.use-case.ts:263`
+  (`especifica`); `src/domain/actions/decide.ts:295`
   (`modoAutomaticoDoAgente`); `apps/web/src/components/OQueOPilotoLibera.tsx:16`
   (`OQueOPilotoLibera`); `apps/web/src/components/ApprovalCard.tsx:434`,
   `apps/web/src/components/AgentCard.tsx:164`,
   `apps/web/src/components/ModoAutomaticoDoTime.tsx:134`
-- **Тест:** `apps/api/test/application/use-cases/actions/approve-always-action.use-case.spec.ts:850`
+- **Тест:** `test/application/use-cases/actions/approve-always-action.use-case.spec.ts:850`
   (измеренный сценарий: подстановка + «Sempre permitir» продолжает без
   запроса — счастливый путь; переключатель в manual возвращает к области —
   случай сбоя);
-  `apps/api/test/infrastructure/persistence/drizzle/agent-autonomy.repository.spec.ts:115`;
-  `apps/api/test/domain/actions/decide.spec.ts:1210` (commit и локальная ветка
+  `test/infrastructure/persistence/drizzle/agent-autonomy.repository.spec.ts:115`;
+  `test/domain/actions/decide.spec.ts:1210` (commit и локальная ветка
   свободны; push, merge, PR, deploy и `doas` по-прежнему спрашивают);
   `apps/broker/src/contencao-do-brabo.spec.ts:105` (изоляция);
   `apps/web/src/components/ModoAutomaticoDoTime.test.tsx:86`,
@@ -10406,7 +10406,7 @@ broker, без сокета Docker и без привилегий, — дока�
 карточки пишет подстановку, а конкретное правило побеждает — перевод Infra в
 "manual" не выключает этот посев.
 
-- **Код:** `apps/api/src/application/use-cases/agents/accept-handoff.use-case.ts:38`
+- **Код:** `src/application/use-cases/agents/accept-handoff.use-case.ts:38`
   (`INFRA_AUTONOMY_SEEDS`);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:256` (`handle_cast`),
   `:647` (`propor_container_start`), `:728` (`subir_no_aceite`), `:780`
@@ -10414,7 +10414,7 @@ broker, без сокета Docker и без привилегий, — дока�
 
   `:626` (`propor_container_start`), `:707` (`subir_no_aceite`), `:759`
   (`eleger_candidata`), `:1319` (`passo_da_subida`)
-- **Тест:** `apps/api/test/application/use-cases/agents/accept-handoff.use-case.spec.ts:250`
+- **Тест:** `test/application/use-cases/agents/accept-handoff.use-case.spec.ts:250`
   (посев, и только он — счастливый путь), `:267` (другой агент не засеивает —
   случай сбоя);
   `apps/engine/test/engine/infra/infra_lead_server_test.exs:1263` (сервер
@@ -10463,7 +10463,7 @@ Infra и к Dev Lead (FASE 14d, `handoff-duplo` в `docs/fluxo.yml`), — и Dev
 outbox — at-most-once, как `Engine.Dev.Wake`; без работающего Infra Lead в
 этот момент предложение ждёт конца его следующего хода.
 
-- **Код:** `apps/api/src/application/use-cases/agents/offer-infra-handoff.use-case.ts:15`
+- **Код:** `src/application/use-cases/agents/offer-infra-handoff.use-case.ts:15`
   (`ALVOS_DA_CONFIRMACAO`);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:1090` (`oferecer_ao_dev_lead`),
   `:1085` (`concluir`), `:345` (`handle_info`), `:1075`
@@ -10481,7 +10481,7 @@ outbox — at-most-once, как `Engine.Dev.Wake`; без работающего
   больше не предлагает Dev Lead);
   `apps/engine/test/engine/workers/infra_oferece_dev_lead_worker_test.exs:9`;
   `apps/engine/test/engine/outbox/drain_test.exs:266`;
-  `apps/api/test/application/use-cases/agents/offer-infra-handoff.use-case.spec.ts:104`,
+  `test/application/use-cases/agents/offer-infra-handoff.use-case.spec.ts:104`,
   `:147`
 - **Источник:** AT-262 (пункт A16 анализа реального использования 29.09)
 
@@ -10527,16 +10527,16 @@ outbox — at-most-once, как `Engine.Dev.Wake`; без работающего
 `patterns` (записанный список) и `pattern` (тот же список, объединённый
 запятой, для timeline).
 
-- **Код:** `apps/api/src/domain/actions/pattern-for-action.ts:22`
+- **Код:** `src/domain/actions/pattern-for-action.ts:22`
   (`patternsForAction`), `:62` (`unidadeDoSegmento`), `:43` (`SUBCOMANDO`);
-  `apps/api/src/domain/actions/external-effect.ts:237` (`padraoAlcancaTeto`);
-  `apps/api/src/application/use-cases/actions/approve-always-action.use-case.ts:277`
+  `src/domain/actions/external-effect.ts:237` (`padraoAlcancaTeto`);
+  `src/application/use-cases/actions/approve-always-action.use-case.ts:277`
   (`faltam`), `:315` (`patternsForAction`)
-- **Тест:** `apps/api/test/domain/actions/pattern-for-action.spec.ts:18`
+- **Тест:** `test/domain/actions/pattern-for-action.spec.ts:18`
   (единица, счастливый путь), `:103` (сегмент, являющийся префиксом потолка,
-  ничего не записывает — случай сбоя); `apps/api/test/domain/actions/external-effect.spec.ts:11`
+  ничего не записывает — случай сбоя); `test/domain/actions/external-effect.spec.ts:11`
   (`padraoAlcancaTeto`);
-  `apps/api/test/application/use-cases/actions/approve-always-action.use-case.spec.ts:936`
+  `test/application/use-cases/actions/approve-always-action.use-case.spec.ts:936`
   (клик по составной разрешает следующую с теми же глаголами; другая
   подкоманда по-прежнему спрашивает; составная, которая пушит, по-прежнему
   отклоняется);
@@ -10597,19 +10597,19 @@ Lead, предложенный в 06:47:47, остался `pending` и так �
    …» или «активация не удалась: …»), никогда «план записан». Сбой не отменяет
    одобрение: решение человека уже записано.
 
-- **Где:** `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts:89`
-  (`execute`); `apps/api/src/application/use-cases/actions/approve-action.use-case.ts:192`
-  (`executeExecutionPlan`); `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:390`
+- **Где:** `src/application/use-cases/execution/execute-execution-plan.use-case.ts:89`
+  (`execute`); `src/application/use-cases/actions/approve-action.use-case.ts:192`
+  (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:390`
   (`executeExecutionPlan`); `apps/web/src/lib/session-acoes-de-handoff.ts:91`
   (`handleAcceptHandoff`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:220`
   (`classificar`); `apps/engine/lib/engine/agents/dev_lead_server.ex:699`
   (`texto_do_desfecho`); `apps/web/src/lib/aprovacoes.ts:317`
   (`propose_execution_plan`)
-- **Тест:** `apps/api/test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts:106`
+- **Тест:** `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts:106`
   (одобренный активирует от имени одобрившего — счастливый путь), `:129`
   (автоодобренный: открывший сессию), `:151` (активация, отклонённая из-за
   отсутствия репозитория, становится `failed` с фразой — случай сбоя);
-  `apps/api/test/application/use-cases/actions/approve-deny-action.use-case.spec.ts:399`
+  `test/application/use-cases/actions/approve-deny-action.use-case.spec.ts:399`
   (одобрение вызывает исполнителя и уведомляет Dev Lead);
   `apps/web/src/routes/SessionPage.handoff-devlead-e-colapso.test.tsx:396`
   (принятие не активирует, при всех трёх ролях), `:416` (явный ярлык
@@ -10664,24 +10664,24 @@ de queda automática da peça», а `dev-board-engine` взял «Mapear teclas�
 параллелизм по-прежнему через `parallelize`
 ([RN-083](#rn-083)).
 
-- **Где:** `apps/api/src/domain/execution/plano-de-execucao.ts:33`
-  (`lerPlanoDeExecucao`); `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:680`
+- **Где:** `src/domain/execution/plano-de-execucao.ts:33`
+  (`lerPlanoDeExecucao`); `src/infrastructure/persistence/drizzle/backlog.repository.ts:680`
   (`daTarefaDoModulo`), `:403` (`claimNext`), `:391` (`assignModules`);
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:137`
-  (`recusaNaProposta`); `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts:67`
-  (`recusaNaProposta`); `apps/api/src/db/schema/backlog.ts:187` (`module`);
+  `src/application/use-cases/actions/propose-action.use-case.ts:137`
+  (`recusaNaProposta`); `src/application/use-cases/execution/execute-execution-plan.use-case.ts:67`
+  (`recusaNaProposta`); `src/db/schema/backlog.ts:187` (`module`);
   `apps/engine/lib/engine/agents/dev_lead_tools.ex:372`
   (`tarefas_do_backlog`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:204`
   (`erro_da_proposta`)
-- **Тест:** `apps/api/test/domain/execution/plano-de-execucao.spec.ts:22`
+- **Тест:** `test/domain/execution/plano-de-execucao.spec.ts:22`
   (счастливый путь), `:41` (задача без модуля — случай сбоя), `:49` (модуль
   вне `module_map`), `:80` (повторная и из другого проекта);
-  `apps/api/test/application/use-cases/execution/claim-next-task.use-case.spec.ts:127`
+  `test/application/use-cases/execution/claim-next-task.use-case.spec.ts:127`
   (история с двумя модулями: только dev модуля задачи), `:152` (без модуля и
   несколько модулей: никто), `:169` (модуль задачи побеждает);
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:289`
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts:289`
   (именованный 400, без предложения);
-  `apps/api/test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts:135`
+  `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts:135`
   (модуль вне карты при одобрении: ничего не записано, ничего не
   активировано);
   `apps/engine/test/engine/agents/dev_lead_tools_test.exs:110`, `:118`;
@@ -10727,11 +10727,11 @@ de queda automática da peça», а `dev-board-engine` взял «Mapear teclas�
    активного alias здесь не отклоняется: правило относится к курированию, а
    binding следует [RN-043](#rn-043).
 
-- **Где:** `apps/api/src/domain/llm/alias-de-roteamento-livre.ts:23` (`ehAliasDeRoteamentoLivre`),
+- **Где:** `src/domain/llm/alias-de-roteamento-livre.ts:23` (`ehAliasDeRoteamentoLivre`),
   `:41` (`AliasDeRoteamentoLivreError`),
-  `apps/api/src/application/use-cases/llm/set-models-active.use-case.ts:59` (`AliasDeRoteamentoLivreError`),
-  `apps/api/src/infrastructure/persistence/drizzle/workspace-model.repository.ts:67` (`freeRoutingAlias`),
-  `apps/api/src/interfaces/http/shared/llm-binding-error.filter.ts:60` (`code`),
+  `src/application/use-cases/llm/set-models-active.use-case.ts:59` (`AliasDeRoteamentoLivreError`),
+  `src/infrastructure/persistence/drizzle/workspace-model.repository.ts:67` (`freeRoutingAlias`),
+  `src/interfaces/http/shared/llm-binding-error.filter.ts:60` (`code`),
   `apps/web/src/components/ModelCatalogSection.tsx:693` (`recusaDeAliasLivre`)
 - **Тест:** `test/application/use-cases/llm/set-models-active.use-case.spec.ts`
   (пакет отклоняется целиком с кодом и id; фиксированный upstream
@@ -10776,14 +10776,14 @@ de queda automática da peça», а `dev-board-engine` взял «Mapear teclas�
 5. **Потолки:** 100 самых свежих существующих (результат говорит, сколько из
    скольких, когда обрезает) и 10 s по часам на всю проверку.
 
-- **Где:** `apps/api/src/domain/backlog/duplicata-semantica.ts:35` (`LIMIAR_DE_DUPLICATA_SEMANTICA`),
+- **Где:** `src/domain/backlog/duplicata-semantica.ts:35` (`LIMIAR_DE_DUPLICATA_SEMANTICA`),
   `:44` (`TETO_DE_COMPARACOES_DE_DUPLICATA`), `:53` (`TETO_DE_TEMPO_DA_CHECAGEM_MS`),
   `:107` (`ehDuplicataSemantica`),
-  `apps/api/src/application/use-cases/backlog/verificar-duplicata-semantica.use-case.ts:111` (`VerificarDuplicataSemanticaUseCase`),
+  `src/application/use-cases/backlog/verificar-duplicata-semantica.use-case.ts:111` (`VerificarDuplicataSemanticaUseCase`),
   `:241` (`medir`), `:285` (`narrar`), `:349` (`fraseParaOAgente`),
-  `apps/api/src/application/use-cases/backlog/create-story.use-case.ts:193` (`semanticDuplicate`),
-  `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts:640` (`semanticDuplicateCheck`),
-  `apps/api/src/application/use-cases/rag/rag-embedding.service.ts:106` (`uso`),
+  `src/application/use-cases/backlog/create-story.use-case.ts:193` (`semanticDuplicate`),
+  `src/interfaces/http/internal/internal-sessions.controller.ts:640` (`semanticDuplicateCheck`),
+  `src/application/use-cases/rag/rag-embedding.service.ts:106` (`uso`),
   `apps/engine/lib/engine/harness/tools/emit_artifact.ex` (`aviso_semantico`),
   `apps/engine/lib/engine/harness/tools/create_story.ex` (`aviso_semantico`)
 - **Тест:** `test/application/use-cases/backlog/verificar-duplicata-semantica.use-case.spec.ts`
@@ -10855,17 +10855,17 @@ metering) в сессии без агента. Поэтому отказ api ж�
   маршрута — отдельное решение.
 - Свободный чат с историей, другой вариант AT-254, сделан не был.
 
-- **Код:** `apps/api/src/domain/sessions/chat-sem-destinatario.ts:24`
+- **Код:** `src/domain/sessions/chat-sem-destinatario.ts:24`
   (`chatSemDestinatarioRecusado`), `:17` (`MOTIVO_CHAT_SEM_DESTINATARIO`);
-  `apps/api/src/application/use-cases/llm/garantir-destinatario-do-chat.use-case.ts:27`
+  `src/application/use-cases/llm/garantir-destinatario-do-chat.use-case.ts:27`
   (`GarantirDestinatarioDoChatUseCase`);
-  `apps/api/src/interfaces/http/llm/chat.controller.ts:82` (`chat`);
+  `src/interfaces/http/llm/chat.controller.ts:82` (`chat`);
   `apps/web/src/lib/session-destinatario.ts:329` (`agentesParaChamar`);
   `apps/web/src/routes/SessionPage.tsx:678` (`handleSend`);
   `apps/web/src/routes/SessionComposer.tsx:276`
-- **Тест:** `apps/api/test/application/use-cases/llm/garantir-destinatario-do-chat.use-case.spec.ts:82`
+- **Тест:** `test/application/use-cases/llm/garantir-destinatario-do-chat.use-case.spec.ts:82`
   (консультативная без агента — случай сбоя), `:96`, `:113`, `:120`;
-  `apps/api/test/interfaces/http/llm/chat.controller.spec.ts:56` (422 как
+  `test/interfaces/http/llm/chat.controller.spec.ts:56` (422 как
   HTTP-ответ), `:79` (счастливый путь);
   `apps/web/src/routes/SessionPage.destinatario-do-chat.test.tsx:458` (не
   отправляет — случай сбоя), `:471` (список и Chamar — счастливый путь);
@@ -10914,23 +10914,23 @@ AT-261). До сих пор опущенный `resources` становился 
 и `container_start_via_runner` (поднимает уже решённый образ) не меняются;
 отказ ниже минимума происходит при выполнении, а не при предложении.
 
-- **Код:** `apps/api/src/domain/containers/recursos-minimos.ts:70`
+- **Код:** `src/domain/containers/recursos-minimos.ts:70`
   (`validarRecursosDoModulo`), `:108` (`derivarRecursosMinimos`), `:150`
   (`validarSomaNoTeto`), `:171` (`resolverRecursosDaSubida`), `:206`
   (`explicarRecursosMinimos`);
-  `apps/api/src/application/use-cases/architecture/create-module-map.use-case.ts:134`
+  `src/application/use-cases/architecture/create-module-map.use-case.ts:134`
   (`normalizarModulo`);
-  `apps/api/src/application/use-cases/actions/execute-container-start.use-case.ts:175`
+  `src/application/use-cases/actions/execute-container-start.use-case.ts:175`
   (`resolverRecursosDaSubida`);
   `apps/engine/lib/engine/harness/tools/create_module_map.ex:103` (`normalize`);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:803`
   (`rationale_do_servidor`)
-- **Тест:** `apps/api/test/domain/containers/recursos-minimos.spec.ts:18`
+- **Тест:** `test/domain/containers/recursos-minimos.spec.ts:18`
   (сумма — счастливый путь), `:35` (старая карта = по умолчанию), `:41` (пол и
   названо), `:54` (сумма выше потолка — случай сбоя), `:94` (ниже минимума);
-  `apps/api/test/application/use-cases/architecture/create-module-map.use-case.spec.ts:190`
+  `test/application/use-cases/architecture/create-module-map.use-case.spec.ts:190`
   (записывает), `:208` (наполовину — случай сбоя), `:217` (сумма у потолка);
-  `apps/api/test/application/use-cases/actions/execute-container-start.use-case.spec.ts:530`
+  `test/application/use-cases/actions/execute-container-start.use-case.spec.ts:530`
   (подъём сервера с суммой), `:556` (без объявления), `:575` (выше),
   `:588` (ниже — случай сбоя), `:608` (без карты);
   `apps/engine/test/engine/harness/tools/create_module_map_test.exs:94`, `:109`;
@@ -10977,17 +10977,17 @@ agents.
    хватает интерфейса — `report_blocked` с названием модуля, никогда не
    перечитывать worktree.
 
-- **Код:** `apps/api/src/domain/architecture/module-contracts.ts:110`
+- **Код:** `src/domain/architecture/module-contracts.ts:110`
   (`validarContratos`);
-  `apps/api/src/application/use-cases/architecture/declare-module-contracts.use-case.ts:55`
+  `src/application/use-cases/architecture/declare-module-contracts.use-case.ts:55`
   (`execute`), `:80` (`missingModules`);
-  `apps/api/src/application/use-cases/architecture/get-module-contracts.use-case.ts:23`
+  `src/application/use-cases/architecture/get-module-contracts.use-case.ts:23`
   (`execute`);
-  `apps/api/src/application/use-cases/architecture/list-module-contracts.use-case.ts:42`
+  `src/application/use-cases/architecture/list-module-contracts.use-case.ts:42`
   (`execute`);
-  `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts:779`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:779`
   (`moduleContracts`);
-  `apps/api/src/interfaces/http/internal/internal-projects.controller.ts:178`
+  `src/interfaces/http/internal/internal-projects.controller.ts:178`
   (`moduleContracts`);
   `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex:91` (`run`);
   `apps/engine/lib/engine/harness/tools/listar_contratos_de_modulos.ex:43`
@@ -10995,7 +10995,7 @@ agents.
   `apps/engine/lib/engine/dev/tools.ex:36` (`ListarContratosDeModulos`);
   `apps/engine/lib/engine/dev/dev_agent_server.ex:497` (`module`), `:501`;
   `apps/engine/lib/engine/agents/arquiteto_server.ex:112`, `:335`, `:399`
-- **Тест:** `apps/api/test/application/use-cases/architecture/module-contracts.use-case.spec.ts:173`
+- **Тест:** `test/application/use-cases/architecture/module-contracts.use-case.spec.ts:173`
   (записывает версию 1 — счастливый путь), `:185` (действующая заменяет),
   `:210` (модуль вне карты — случай сбоя), `:222` (без `module_map`), `:123`
   (доменные отказы), `:239` и `:257` (чтение dev);
@@ -11067,17 +11067,17 @@ ticket `terminal` — никогда; неполная пара или неиз�
 runner seu também cai"* на *"só cai o que se conectou com ESTA chave"*.
 Меняется метка, не поведение.
 
-- **Где:** `apps/api/src/interfaces/http/auth/pat-auth.guard.ts:151`
+- **Где:** `src/interfaces/http/auth/pat-auth.guard.ts:151`
   (`credencialDeDispositivo`, PAT), `:236` (`credencialDeDispositivo`, ключ);
-  `apps/api/src/interfaces/http/runner/runner-tickets.controller.ts:67`
+  `src/interfaces/http/runner/runner-tickets.controller.ts:67`
   (`runnerTicket`);
-  `apps/api/src/application/use-cases/runner/request-runner-ticket.use-case.ts:55`
+  `src/application/use-cases/runner/request-runner-ticket.use-case.ts:55`
   (`execute`);
-  `apps/api/src/application/use-cases/auth/revoke-runner-device-key.use-case.ts:71`
+  `src/application/use-cases/auth/revoke-runner-device-key.use-case.ts:71`
   (`execute`), `:109` (`derrubarConexoesDaChave`);
-  `apps/api/src/application/use-cases/auth/derrubar-conexoes-do-pat.ts:21`
+  `src/application/use-cases/auth/derrubar-conexoes-do-pat.ts:21`
   (`derrubarConexoesDoPat`);
-  `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts:633`
+  `src/infrastructure/http-clients/api-to-engine-client.ts:633`
   (`disconnectRunnerCredential`);
   `apps/engine/lib/engine/runners/socket_ticket.ex:107` (`emitir`), `:207`
   (`anular_pendentes_da_credencial`);
@@ -11092,20 +11092,20 @@ runner seu também cai"* на *"só cai o que se conectou com ESTA chave"*.
   `apps/web/src/routes/settings/RunnerDeviceKeysSection.tsx:346`,
   `apps/web/src/routes/MachineDeviceKeysSection.tsx:202`
 - **Тест:**
-  `apps/api/test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
+  `test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
   (`describe "o alvo da queda é a CHAVE"` — счастливый путь; `describe "CASO DE
   FALHA: o engine não atende o pedido por chave"` — план B по паре; машина
   одним запросом);
-  `apps/api/test/application/use-cases/auth/machine-device-keys.use-case.spec.ts`;
-  `apps/api/test/application/use-cases/auth/revoke-personal-access-token.use-case.spec.ts`
+  `test/application/use-cases/auth/machine-device-keys.use-case.spec.ts`;
+  `test/application/use-cases/auth/revoke-personal-access-token.use-case.spec.ts`
   и `revoke-personal-access-token-as-maintainer.use-case.spec.ts`;
-  `apps/api/test/interfaces/pat-auth.guard.spec.ts` (учётные данные помечены
+  `test/interfaces/pat-auth.guard.spec.ts` (учётные данные помечены
   на обоих путях и не помечены при отказе);
-  `apps/api/test/interfaces/http/runner/runner-tickets.guards.integration.spec.ts`
+  `test/interfaces/http/runner/runner-tickets.guards.integration.spec.ts`
   (настоящий PAT до запроса к engine);
-  `apps/api/test/application/use-cases/runner/request-runner-ticket.use-case.spec.ts`
+  `test/application/use-cases/runner/request-runner-ticket.use-case.spec.ts`
   (`terminal` никогда не несёт учётных данных);
-  `apps/api/test/infrastructure/http-clients/api-to-engine-client.spec.ts`
+  `test/infrastructure/http-clients/api-to-engine-client.spec.ts`
   (`describe "o alvo é a CREDENCIAL"`, включая 404, который ВЫБРАСЫВАЕТ);
   `apps/engine/test/engine_web/channels/terminal_channel_test.exs`
   (`describe "revogação por CREDENCIAL"` — настоящий канал, который падает, PAT
@@ -11173,21 +11173,21 @@ nunca é auto-aprovável"), которая идёт в `proposed_action.created`
 `proposed_action` — он существует только как назначение сообщения команды
 терминала.
 
-- **Где:** `apps/api/src/domain/actions/decide.ts:414` (`ehAcaoTipadaComEfeitoExterno`);
-  `apps/api/src/domain/actions/external-effect.ts:258`
+- **Где:** `src/domain/actions/decide.ts:414` (`ehAcaoTipadaComEfeitoExterno`);
+  `src/domain/actions/external-effect.ts:258`
   (`ACOES_TIPADAS_COM_EFEITO_EXTERNO`), `:266` (`ehAcaoTipadaComEfeitoExterno`),
   `:280` (`mensagemDoTetoDaAcaoTipada`);
-  `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts:71`
+  `src/application/use-cases/execution/activate-execution.use-case.ts:71`
   (`DEV_AUTO_GIT_ACTIONS`)
-- **Тест:** `apps/api/test/domain/actions/decide.spec.ts:1375` (оба типа с
+- **Тест:** `test/domain/actions/decide.spec.ts:1375` (оба типа с
   подстановкой, конкретным правилом и `allow` выходят `require_approval`;
   `deny` по-прежнему побеждает — случай сбоя; `git_commit` и `git_merge` в
-  незащищённую ветку остаются вне); `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts:953`
+  незащищённую ветку остаются вне); `test/application/use-cases/actions/propose-action.use-case.spec.ts:953`
   (с Postgres: рождаются `pending` с причиной в событии);
-  `apps/api/test/application/use-cases/execution/activate-execution.use-case.spec.ts:473`
+  `test/application/use-cases/execution/activate-execution.use-case.spec.ts:473`
   и `accept-parallelization.use-case.spec.ts:141` (засевают только
   `git_commit`);
-  `apps/api/test/application/use-cases/actions/approve-always-action.use-case.spec.ts:795`
+  `test/application/use-cases/actions/approve-always-action.use-case.spec.ts:795`
   («всегда разрешать» отклонено, 400 `teto_do_sempre_permitir`)
 - **Источник:** AT-347, решение владельца 01.10
 
@@ -11216,13 +11216,13 @@ Anamnese, не доходил ни до одного агента — в ход 
 > его читает (Staff? экран улучшений?) и сколько он живёт? Это новая граница
 > данных, и она требует ADR (зарезервирован 0205).
 
-- **Где:** `apps/api/src/domain/anamnese/proficiencia-do-autor.ts:22`
+- **Где:** `src/domain/anamnese/proficiencia-do-autor.ts:22`
   (`textoDaProficienciaDoAutor`);
-  `apps/api/src/application/use-cases/agents/send-agent-message.use-case.ts:111`
+  `src/application/use-cases/agents/send-agent-message.use-case.ts:111`
   (`resolverPerfil`), `:134` (`resolverProficiencia`)
-- **Тест:** `apps/api/test/application/use-cases/agents/send-agent-message.use-case.spec.ts:254`
+- **Тест:** `test/application/use-cases/agents/send-agent-message.use-case.spec.ts:254`
   (уровень идёт, rationale — нет), `:274` (чтение падает, сообщение идёт —
-  случай сбоя); `apps/api/test/domain/anamnese/proficiencia-do-autor.spec.ts`
+  случай сбоя); `test/domain/anamnese/proficiencia-do-autor.spec.ts`
 - **Источник:** AT-356 (половина 1)
 
 ### RN-703 — Подагент без модели наследует разрешённую модель lead своей области {#rn-703}
@@ -11244,10 +11244,10 @@ workspace, которое никто не выбирал для проекта),
 действует при разрешении lead так же, как при разрешении подагента. Если
 модели всё равно нет, сообщение о сбое говорит, где её настроить.
 
-- **Где:** `apps/api/src/application/use-cases/llm/resolve-model-binding.use-case.ts:76`
-  (`leadDoSubagente`); `apps/api/src/domain/agents/agent-areas.ts:123` (`leadDoSubagente`);
-  `apps/api/src/domain/llm/binding-resolver.ts:66` (`MENSAGEM_SEM_MODELO`)
-- **Тест:** `apps/api/test/application/use-cases/llm/resolve-model-binding.use-case.spec.ts`
+- **Где:** `src/application/use-cases/llm/resolve-model-binding.use-case.ts:76`
+  (`leadDoSubagente`); `src/domain/agents/agent-areas.ts:123` (`leadDoSubagente`);
+  `src/domain/llm/binding-resolver.ts:66` (`MENSAGEM_SEM_MODELO`)
+- **Тест:** `test/application/use-cases/llm/resolve-model-binding.use-case.spec.ts`
   (`appsec` наследует от `secops`, а `dev-api` — от `dev-lead`; lead тоже без
   модели остаётся `null` — случай сбоя)
 - **Источник:** AT-367
@@ -11270,10 +11270,10 @@ workspace, которое никто не выбирал для проекта),
 - **Измерение (AT-377):** два PR от одного базового commit (#3 и #4),
   смерженные последовательно: в `dev` остался только #4, а commits #3
   перестали быть его предками. Старый `update-ref` был принудительным reset.
-- **Где:** `apps/api/src/infrastructure/git/local-git-provider.ts:783` (`mergeShas`),
-  `apps/api/src/domain/git/git-errors.ts:89` (`GitMergeConflictError`),
-  `apps/api/src/interfaces/http/shared/git-provider-error.filter.ts`
-- **Тест:** `apps/api/test/infrastructure/git/local-git-provider.contract.spec.ts`
+- **Где:** `src/infrastructure/git/local-git-provider.ts:783` (`mergeShas`),
+  `src/domain/git/git-errors.ts:89` (`GitMergeConflictError`),
+  `src/interfaces/http/shared/git-provider-error.filter.ts`
+- **Тест:** `test/infrastructure/git/local-git-provider.contract.spec.ts`
   ("duas PRs divergentes sem conflito: os dois commits ficam no alvo, por
   commit de merge"; случай сбоя: "conflito: recusa nomeada com os arquivos,
   alvo intacto e PR aberta")
@@ -11305,16 +11305,16 @@ workspace, которое никто не выбирал для проекта),
   После выполненного merge PR оставался в "Abertas" до перезагрузки, карточка
   показывала UUID пользователя и `#pr-3`, а каждый локальный PR был «автор
   неизвестен».
-- **Где:** `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:72` (`resultadoDaFalha`),
-  `apps/api/src/application/use-cases/actions/list-project-pending-actions.use-case.ts:22` (`execute`),
+- **Где:** `src/application/use-cases/actions/execute-git-action.use-case.ts:72` (`resultadoDaFalha`),
+  `src/application/use-cases/actions/list-project-pending-actions.use-case.ts:22` (`execute`),
   `apps/web/src/routes/ProjectPrsTab.tsx:65` (`ultimaRecusaDeMerge`),
   `apps/web/src/lib/canal-vivo.ts:134` (`alvosDoEvento`)
-- **Тест:** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   ("conflito de merge → kind git_merge, arquivos no resultado e evento na
   tarefa"; случай сбоя: "falha que não é conflito não grava arquivos nem
   evento de conflito"), `apps/web/src/routes/ProjectPrsTab.test.tsx` ("conflito
   de merge: mostra motivo e arquivos..."; "recusa de OUTRA PR não aparece
-  nesta"), `apps/api/test/infrastructure/git/local-git-provider.contract.spec.ts`
+  nesta"), `test/infrastructure/git/local-git-provider.contract.spec.ts`
   ("grava o autor ao abrir...")
 - **Заявленный пробел (закрыт в [RN-715](#rn-715)):** конфликт НЕ будит dev
   agent задачи, чтобы сделать rebase и отправить заново. Путь, который
@@ -11349,16 +11349,16 @@ merge (типизированный в защищённую ветку, и `git 
 терминал), deploy, `sudo`/`doas`, `container_remove`, `instruction_patch` и
 параллелизм. Переключатель в manual восстанавливает одобрение.
 
-- **Где:** `apps/api/src/domain/actions/decide.ts:296` (`modoAutomaticoDoAgente`),
-  `:311` (`decide`); `apps/api/src/domain/actions/external-effect.ts:294`
+- **Где:** `src/domain/actions/decide.ts:296` (`modoAutomaticoDoAgente`),
+  `:311` (`decide`); `src/domain/actions/external-effect.ts:294`
   (`mensagemDoModoAutomaticoNoEfeitoExterno`);
   `apps/web/src/components/OQueOPilotoLibera.tsx`
-- **Тест:** `apps/api/test/domain/actions/decide.spec.ts` (автопилот
+- **Тест:** `test/domain/actions/decide.spec.ts` (автопилот
   разрешает `git push`/`gh pr create` и типизированные; `git merge`,
   `gh pr merge` и `sudo` остаются `require_approval`; конкретное и `allow` без
   подстановки остаются в потолке; подстановка в `require_approval` требует
   одобрения — случаи сбоя);
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts`
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts`
   (с Postgres: автоодобрены и выполнены, причина в событии; одно конкретное
   рождается `pending`); `apps/web/src/components/ModoAutomaticoDoTime.test.tsx`,
   `AgentCard.test.tsx`, `ApprovalCard.test.tsx` (экран говорит, что push и PR
@@ -11399,13 +11399,13 @@ merge (типизированный в защищённую ветку, и `git 
 - **Измерение (AT-383, 02.10, loja-teste):** #6 закончился `failed` из-за
   конфликта в `package.json`, и задача осталась `in_review` без того, кто бы
   его разрешил.
-- **Где:** `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:392` (`devolverAoDono`),
-  `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:490` (`reabrirPorConflitoDeMerge`),
+- **Где:** `src/application/use-cases/actions/execute-git-action.use-case.ts:392` (`devolverAoDono`),
+  `src/infrastructure/persistence/drizzle/backlog.repository.ts:490` (`reabrirPorConflitoDeMerge`),
   `apps/engine/lib/engine/workers/dev_agent_wake_worker.ex:151` (`task.merge_conflict`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:350` (`handle_info`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:831` (`trigger_gate_recheck`),
   `apps/engine/lib/engine/dev/worktree_manager.ex:47` (`adopt`)
-- **Тест:** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("conflito de merge → kind git_merge, arquivos no
+- **Тест:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("conflito de merge → kind git_merge, arquivos no
   resultado e evento na tarefa"; сбой: "RN-715: tarefa que já não está em
   revisão não é reaberta nem acorda ninguém"),
   `apps/engine/test/engine/dev/dev_agent_server_test.exs` (describe "conflito
@@ -11440,15 +11440,15 @@ merge (типизированный в защищённую ветку, и `git 
 - **Измерение (AT-376):** в loja-teste 02.10 «Git → начинающий» и «Infra →
   начинающий» без какого-либо взаимодействия человека с ними, и «одобряет 2
   ADR без колебаний» как продвинутая архитектура.
-- **Где:** `apps/api/src/domain/anamnese/proficiency-validation.ts:53`
-  (`ehEvidenciaObservadaDaPessoa`), `apps/api/src/domain/anamnese/proficiency-validation.ts:74`
-  (`validateProficiencyBatch`), `apps/api/src/application/use-cases/anamnese/record-proficiency.use-case.ts:189`
+- **Где:** `src/domain/anamnese/proficiency-validation.ts:53`
+  (`ehEvidenciaObservadaDaPessoa`), `src/domain/anamnese/proficiency-validation.ts:74`
+  (`validateProficiencyBatch`), `src/application/use-cases/anamnese/record-proficiency.use-case.ts:189`
   (`resolveKnownEventIds`), правила в kickoff (`prompts/anamnese-kickoff.md`
   v3 и встроенный fallback в `anamnese_worker.ex`)
-- **Тест:** `apps/api/test/domain/anamnese/proficiency-validation.spec.ts`
+- **Тест:** `test/domain/anamnese/proficiency-validation.spec.ts`
   ("RN-716: aprovação ao lado de interação da pessoa passa"; сбои: "só
   evidência de outro ator é \"não observado\"", "aprovação sem leitura não é
-  evidência"), `apps/api/test/application/use-cases/anamnese/record-proficiency.use-case.spec.ts`
+  evidência"), `test/application/use-cases/anamnese/record-proficiency.use-case.spec.ts`
   ("evidência só de aprovação não grava perfil nem profile_updated")
 - **Заявленный пробел:** распознавание сообщения ИСПРАВЛЕНИЯ в пакете профиля
   — дело модели (промпт); код не классифицирует текст сообщения.
@@ -11496,14 +11496,14 @@ merge (типизированный в защищённую ветку, и `git 
 
 Kickoff PO говорит все три вещи.
 
-- **Где:** `apps/api/src/application/use-cases/backlog/complete-story.use-case.ts:52`
+- **Где:** `src/application/use-cases/backlog/complete-story.use-case.ts:52`
   (`CompleteStoryUseCase`);
-  `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts:541`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:541`
   (`completeStoryRoute`); `apps/engine/lib/engine/harness/tools/complete_story.ex:47`
   (`run`); `apps/engine/lib/engine/harness/tools/offer_handoff.ex:52`
   (`recusa_por_cobertura`); `apps/engine/lib/engine/harness/tools/emit_artifact.ex:188`
   (`pergunte_antes`)
-- **Тест:** `apps/api/test/application/use-cases/backlog/complete-story.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/backlog/complete-story.use-case.spec.ts`
   (привязывает правило и предлагает продвижение; `auto` идёт в `ready`;
   несуществующее правило, другой проект и история `ready` отклоняются);
   `apps/engine/test/engine/harness/tools/offer_handoff_test.exs` (describe
@@ -11544,26 +11544,26 @@ Kickoff PO говорит все три вещи.
   (продвинуть/вернуть, RN-048): `developer`; ниже неё кнопки инертны с
   причиной текстом, и то же для истории вне `draft` или с задачей в работе.
   Каждая история показывает, сколько у неё задач.
-- **Где:** `apps/api/src/domain/backlog/correcao-de-historia.ts:33`
+- **Где:** `src/domain/backlog/correcao-de-historia.ts:33`
   (`recusaDeCorrecaoDeHistoria`),
-  `apps/api/src/application/use-cases/backlog/corrigir-historia.use-case.ts:47`
+  `src/application/use-cases/backlog/corrigir-historia.use-case.ts:47`
   (`editar`), `:95` (`arquivar`),
-  `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:97`
+  `src/infrastructure/persistence/drizzle/backlog.repository.ts:97`
   (`findByProject`), `:403` (`claimNext`),
-  `apps/api/src/interfaces/http/backlog/backlog.controller.ts:205`
+  `src/interfaces/http/backlog/backlog.controller.ts:205`
   (`updateTitle`), `:219` (`archive`),
-  `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts:576`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:576`
   (`updateStoryRoute`), `:609` (`archiveStoryRoute`),
   `apps/engine/lib/engine/harness/tools/update_story.ex:45` (`run`),
   `apps/engine/lib/engine/harness/tools/archive_story.ex:38` (`run`),
   `apps/web/src/routes/ProjectBacklogTab.tsx:76` (`motivoDeCorrecaoInerte`)
-- **Тест:** `apps/api/test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts`
   (счастливый: заголовок и архив с событием; сбой: задача
   `in_progress`/`in_review` — 409 `historia_com_tarefa_em_execucao` без
   записи),
-  `apps/api/test/application/use-cases/execution/claim-next-task.use-case.spec.ts`
+  `test/application/use-cases/execution/claim-next-task.use-case.spec.ts`
   ("não pega task de story ARQUIVADA, nem a conta, nem a lista", против
-  Postgres), `apps/api/test/interfaces/http/backlog/backlog-corrigir-historia.controller.spec.ts`
+  Postgres), `test/interfaces/http/backlog/backlog-corrigir-historia.controller.spec.ts`
   (роль обоих маршрутов — как у продвижения; `viewer` не дотягивает),
   `apps/engine/test/engine/harness/tools/corrigir_historia_test.exs`
   (именованный отказ доходит до модели), `apps/web/src/routes/ProjectBacklogTab.test.tsx`
@@ -11594,14 +11594,14 @@ Kickoff PO говорит все три вещи.
   перестаёт говорить «работает», когда после последнего заключения субагент
   области регистрирует `delegation.failed`, — переходит в `falhou`. Никаких
   новых query или poll.
-- **Где:** `apps/api/src/application/use-cases/actions/execute-infra-pr.use-case.ts:71`
+- **Где:** `src/application/use-cases/actions/execute-infra-pr.use-case.ts:71`
   (`ExecuteInfraPrUseCase`),
   `apps/web/src/routes/ProjectApprovalsTab.tsx:106` (`ProjectApprovalsTab`),
   `apps/web/src/routes/Shell.tsx:545` (`idDoProjetoAtual`),
   `apps/web/src/routes/NewProjectWizard.tsx:155` (`NewProjectWizard`),
   `apps/web/src/routes/ProjectPrsTab.tsx:141` (`invalidateMergeActions`),
   `apps/web/src/lib/agent-status.ts:222` (`gateStatus`)
-- **Тест:** `apps/api/test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts`
   ("a branch nasce de dev, a PR mira dev e leva infra[bot]"; сбой:
   "repositório sem dev falha nomeado, sem cair na default"),
   `apps/web/src/routes/Shell.test.tsx` ("abrir um projeto recolhe o visitado
@@ -11623,17 +11623,17 @@ Kickoff PO говорит все три вещи.
   а кадр `{:final, texto, code}` разговорных даёт источник `infra` по коду.
   Распознавание по тексту из RN-726 остаётся лишь СТРАХОВКОЙ: api до появления
   поля и путь, несущий только сообщение.
-- **Где:** `apps/api/src/domain/llm/llm-provider-errors.ts:38`
+- **Где:** `src/domain/llm/llm-provider-errors.ts:38`
   (`LLMInsufficientCreditError`), `:81` (`normalizeHttpStatus`),
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:207`
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:207`
   (`streamErrorCode`),
-  `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:219`
+  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:219`
   (`streamErrorCode`),
   `apps/engine/lib/engine/agents/falha_de_turno.ex:83` (`credito_esgotado?`),
   `:71` (`origem`), `apps/engine/lib/engine/harness/tool_loop.ex:148`
   (`last_error_code`), `apps/engine/lib/engine/dev/dev_agent_server.ex:906`
   (`handle_outcome`)
-- **Тест:** `apps/api/test/contract/llm-provider.contract.ts` (`erro_402 vira
+- **Тест:** `test/contract/llm-provider.contract.ts` (`erro_402 vira
   chunk de erro com code "insufficient_credit"`; сбой: `erro_500` остаётся
   `upstream`), выполняемый всеми контрактными suite provider;
   `apps/engine/test/engine/agents/falha_de_turno_test.exs` ("insufficient_credit
@@ -11658,9 +11658,9 @@ Kickoff PO говорит все три вещи.
   (`finish_reason: "length"`), читается и описывается начиная с
   [RN-737](#rn-737) (RN-698 описывает потолок ИТЕРАЦИЙ, а не токенов).
   Гипотеза НЕ измерена с реальным ключом: что резерв объясняет 402 в TP-01.
-- **Где:** `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:38`
+- **Где:** `src/infrastructure/llm/openai-compatible-provider.ts:38`
   (`MAX_TOKENS_PADRAO`), `:484` (`flags`)
-- **Тест:** `apps/api/test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
+- **Тест:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
   (без `maxTokens` тело несёт `max_tokens: 4096`; с `maxTokens: 123` несёт
   123; с `maxTokensField: 'max_completion_tokens'` поле меняется, и
   `max_tokens` не идёт)
@@ -11683,18 +11683,18 @@ Kickoff PO говорит все три вещи.
   RN-731): `pt*` "Resposta cortada pelo limite de tamanho.", любой другой —
   или никакой — "Response cut off by the length limit.". Ollama не читает
   причину остановки (вне охвата, заявлено).
-- **Где:** `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:257`
+- **Где:** `src/infrastructure/llm/openai-compatible-provider.ts:257`
   (`cortadaPeloTeto`),
-  `apps/api/src/infrastructure/llm/anthropic-provider.ts:198` (`finalMessage`),
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:204`
+  `src/infrastructure/llm/anthropic-provider.ts:198` (`finalMessage`),
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:204`
   (`truncated`),
-  `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:217`
+  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:217`
   (`truncated`),
   `apps/engine/lib/engine/harness/resposta_cortada.ex:43` (`registrar`),
   `:89` (`descarregar`),
   `apps/engine/lib/engine/harness/argumentos_de_ferramenta.ex:26` (`executar`),
   `apps/engine/lib/engine/agents/texto_do_turno.ex:65` (`payload_do_turno`)
-- **Тест:** `apps/api/test/contract/llm-provider.contract.ts` ("resposta
+- **Тест:** `test/contract/llm-provider.contract.ts` ("resposta
   cortada pelo teto de saída emite o sinal truncated" и "resposta normal não
   traz o sinal de corte", запускаемые с фальшивым сервером в harness
   OpenAI-совместимого и Anthropic),
@@ -11713,10 +11713,10 @@ Kickoff PO говорит все три вещи.
   `agent.error` (`FalhaDeTurno.diagnostico/1`, RN-733). Фраза пузыря НЕ растёт
   вместе с ним: вне случая кредита (у которого уже короткая фраза)
   описываемый текст входит в пузырь обрезанным до 300 символов с «…».
-- **Где:** `apps/api/src/domain/llm/llm-provider-errors.ts:159`
+- **Где:** `src/domain/llm/llm-provider-errors.ts:159`
   (`LIMITE_DO_DETALHE`), `apps/engine/lib/engine/agents/falha_de_turno.ex:284`
   (`@teto_da_bolha`), `:286` (`curto`)
-- **Тест:** `apps/api/test/domain/llm/llm-provider-errors.spec.ts` (402 несёт
+- **Тест:** `test/domain/llm/llm-provider-errors.spec.ts` (402 несёт
   `"metadata":{"reason":"insufficient_credits"` целиком; тело выше потолка
   обрезается), `apps/engine/test/engine/agents/falha_de_turno_test.exs`
   (RN-739: `reason` содержит `metadata`; длинная ошибка обрезается в пузыре и
@@ -11743,9 +11743,9 @@ Kickoff PO говорит все три вещи.
   учётными данными 10.10 показало, что Haiku 5.5 ИГНОРИРУЕТ
   `reasoning.max_tokens`; поле перестало отправляться, а запас в
   `max_tokens` остался.
-- **Где:** `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:48`
+- **Где:** `src/infrastructure/llm/openai-compatible-provider.ts:48`
   (`ORCAMENTO_DE_RACIOCINIO`), `:490` (`controla`)
-- **Тест:** `apps/api/test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
+- **Тест:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
   (`raciocínio com orçamento próprio (RN-741)`: бюджет и суммированный
   потолок; без рассуждения тело не меняется; provider без поля не выдумывает
   бюджет)
@@ -11764,9 +11764,9 @@ Kickoff PO говорит все три вещи.
   `pullRequestId`, которое закрывает задачи (RN-628). Упавший или ещё
   ожидающий merge ничего из списка не убирает. Уведомление «PR infra готов к
   merge» в ленте или в панели «нужно ваше решение» здесь НЕ сделано.
-- **Где:** `apps/api/src/application/use-cases/execution/list-infra-artifacts.use-case.ts:26`
+- **Где:** `src/application/use-cases/execution/list-infra-artifacts.use-case.ts:26`
   (`execute`)
-- **Тест:** `apps/api/test/application/use-cases/execution/list-infra-artifacts.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/execution/list-infra-artifacts.use-case.spec.ts`
   (выполненный merge убирает PR; упавший или ожидающий merge оставляет)
 - **Источник:** AT-436 (TP-01: после "Merge" → "Aprovar" во вкладке PRs PR
   оставался с Dev ✓ QA ✓ SecOps ✓ и ожидающим «Você»)
@@ -11785,10 +11785,10 @@ Kickoff PO говорит все три вещи.
   (их обязательство меняется на каждом шаге; для них действует только
   [RN-759](#rn-759)) — кроме `report_done`/`report_blocked`, которые входят в
   их пол начиная с [RN-839](#rn-839).
-- **Где:** `apps/api/src/domain/llm/tool-router.ts:392` (`menuComPiso`) и
-  `apps/api/src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:248`
+- **Где:** `src/domain/llm/tool-router.ts:392` (`menuComPiso`) и
+  `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:248`
   (`menuComPiso`)
-- **Тест:** `apps/api/test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
   (PO с меню `["listar_backlog","create_story"]` сохраняет `create_task`;
   Arquiteto с 2 из 9 сохраняет пять артефактных)
 - **Источник:** AT-445 (TP-01 от 09.10: PO без `create_task` ответил «Não
@@ -11806,10 +11806,10 @@ Kickoff PO говорит все три вещи.
   не в фасаде engine, как [RN-622](engine.md#rn-622), потому что только api знает меню
   после Jev. Неприменение среза в проходе, закрывающем ход, оценено и не
   сделано: api до ответа не знает, что проход будет последним.
-- **Где:** `apps/api/src/domain/llm/tool-router.ts:411` (`avisoDeRecorte`) и
-  `apps/api/src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:263`
+- **Где:** `src/domain/llm/tool-router.ts:411` (`avisoDeRecorte`) и
+  `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:263`
   (`avisoDeRecorte`)
-- **Тест:** `apps/api/test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
   (предупреждение приходит последним сообщением при срезе; без среза и при
   откате сообщения — как в запросе)
 - **Источник:** AT-445 (dev agent заблокировал задачу «sem ferramenta para
@@ -11839,15 +11839,15 @@ Kickoff PO говорит все три вещи.
   получает `.gitignore`, только если bootstrap выполнится снова; в режиме
   `runner` commit выполняется тем же `GitExecutor`, и то же исключение
   действует там, где engine выполняет git.
-- **Где:** `apps/api/src/application/use-cases/git/bootstrap-templates.ts:28`
-  (`gitignoreContent`), `apps/api/src/application/use-cases/git/bootstrap-steps.ts:164`
+- **Где:** `src/application/use-cases/git/bootstrap-templates.ts:28`
+  (`gitignoreContent`), `src/application/use-cases/git/bootstrap-steps.ts:164`
   (`soSeAusente`), `apps/engine/lib/engine/actions/diretorios_de_dependencia.ex:20`
   (`argumentos_do_add`), `:28` (`commitados`),
   `apps/engine/lib/engine/gates/secops_agent_server.ex:162`
   (`dependencias_commitadas`)
-- **Тест:** `apps/api/test/application/use-cases/git/bootstrap-plan.spec.ts`
+- **Тест:** `test/application/use-cases/git/bootstrap-plan.spec.ts`
   (пустой репозиторий планирует 3 файла; `.gitignore` пользователя в план не
-  входит), `apps/api/test/application/use-cases/git/provision-repository.use-case.spec.ts`
+  входит), `test/application/use-cases/git/provision-repository.use-case.spec.ts`
   (локальный сходится за 6 шагов),
   `apps/engine/test/engine/actions/git_executor_test.exs` (`commit exclui
   diretórios de dependência mesmo sem .gitignore`),
@@ -11865,9 +11865,9 @@ Kickoff PO говорит все три вещи.
   0020, правило RN-059). Раньше выходило `origin: null`. Блокировка артефакта
   infra по той же причине (`infra.artifact_blocked`) не имеет поля источника
   и остаётся как есть, заявлено.
-- **Где:** `apps/api/src/application/use-cases/execution/record-gate-verdict.use-case.ts:215`
+- **Где:** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:215`
   (`politica`)
-- **Тест:** `apps/api/test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
   (исчерпанный цикл вызывает `MarkTaskBlockedUseCase` с `'politica'`;
   одобренный вердикт не блокирует)
 - **Источник:** AT-450 (TP-01 от 09.10: `backlog.task_blocked` с
@@ -11890,7 +11890,7 @@ Kickoff PO говорит все три вещи.
   пузыре пол `12rem` НА КОЛОНКУ, и она растёт по долям, с контейнером в
   `min-content` — с `max-content` она была шириной текста без переноса
   (измерено в Chromium: 2 236px в пузыре 708px), и последняя колонка исчезала.
-- **Где:** `apps/api/src/application/use-cases/actions/execute-adr-pr.use-case.ts:96`
+- **Где:** `src/application/use-cases/actions/execute-adr-pr.use-case.ts:96`
   (`openPullRequest`); `apps/engine/lib/engine/infra/infra_lead_server.ex:1521`
   (`gravar_texto_do_turno`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1164`
   (`propose_pr`); `apps/web/src/lib/session-destinatario.ts:210`
@@ -11898,7 +11898,7 @@ Kickoff PO говорит все три вещи.
   (`tipoDaSessao`); `apps/web/src/routes/NewProjectWizard.tsx:1122`
   (`quebraPorSegmento`); `apps/web/src/components/ui/MarkdownMessage.tsx:139`
   (`TabelaMarkdown`)
-- **Тест:** `apps/api/test/application/use-cases/actions/execute-adr-pr.use-case.spec.ts`,
+- **Тест:** `test/application/use-cases/actions/execute-adr-pr.use-case.spec.ts`,
   `apps/engine/test/engine/infra/infra_lead_server_test.exs` ("agent.response
   carrega o nome do modelo"), `apps/engine/test/engine/dev/dev_agent_server_test.exs`
   (счастливый поток), `apps/web/src/lib/session-destinatario.test.ts`,
@@ -11918,10 +11918,10 @@ Kickoff PO говорит все три вещи.
   ([RN-581](#rn-581)), который остаётся единственным с потолком. СТАРАЯ
   сессия выполнения того же проекта задачей не удерживается: задача
   принадлежит проекту, и без этого среза она стала бы бессмертной.
-- **Где:** `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts:242`
-  (`findPendenteDaExecucao`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:252`
+- **Где:** `src/application/use-cases/sessions/get-session-pending-work.use-case.ts:242`
+  (`findPendenteDaExecucao`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:252`
   (`findPendenteDaExecucao`)
-- **Тест:** `apps/api/test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts`
   (заблокированная, PR в ожидании merge и конфликт удерживают; без ничего
   закрывает; старая сессия выполнения не удерживается)
 - **Источник:** AT-457 (TP-01 от 09.10: обе сессии выполнения закрылись через
@@ -11936,9 +11936,9 @@ Kickoff PO говорит все три вещи.
   ([RN-715](#rn-715)); при поднятой сессии выполнения ([RN-776](#rn-776))
   владелец сохраняет строку в `dev_agent_states`, чтобы его можно было
   разбудить.
-- **Где:** `apps/api/src/application/use-cases/execution/unblock-task.use-case.ts:68`
+- **Где:** `src/application/use-cases/execution/unblock-task.use-case.ts:68`
   (`modules`)
-- **Тест:** `apps/api/test/application/use-cases/execution/unblock-task.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/execution/unblock-task.use-case.spec.ts`
   (задача с модулем будит dev этого модуля)
 - **Источник:** AT-457
 
@@ -11956,13 +11956,13 @@ Kickoff PO говорит все три вещи.
   8192 только на рассуждение). Решение о том, что просить, живёт в одной
   точке, `opcoesDeRaciocinio`, вызываемой тремя use case хода. TODO(humano)
   RN-741 закрывается этим измерением.
-- **Где:** `apps/api/src/domain/llm/raciocinio-do-agente.ts:18`
-  (`opcoesDeRaciocinio`), `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:490`
-  (`controla`), `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:189`
+- **Где:** `src/domain/llm/raciocinio-do-agente.ts:18`
+  (`opcoesDeRaciocinio`), `src/infrastructure/llm/openai-compatible-provider.ts:490`
+  (`controla`), `src/application/use-cases/llm/run-llm-turn.use-case.ts:189`
   (`opcoesDeRaciocinio`)
-- **Тест:** `apps/api/test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
+- **Тест:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
   (`modelo que raciocina: folga no teto e NENHUM campo de raciocínio (RN-782)`,
-  тело байт в байт), `apps/api/test/domain/llm/raciocinio-do-agente.spec.ts`
+  тело байт в байт), `test/domain/llm/raciocinio-do-agente.spec.ts`
 - **Источник:** AT-467 (платное измерение 10.10)
 
 ### RN-783 — Dev agents выполнения работают с выключенным рассуждением {#rn-783}
@@ -11978,12 +11978,12 @@ Kickoff PO говорит все три вещи.
   "thinking" каталога моделей говорит, что у dev agents выполнения и, начиная
   с RN-838, у QA Автоматизации рассуждение идёт выключенным (выбранный
   минимум; селектор и пузырь не меняются).
-- **Где:** `apps/api/src/domain/llm/raciocinio-do-agente.ts:23`
-  (`raciocinioDesligadoParaOAgente`), `apps/api/src/infrastructure/llm/openrouter-provider.ts:224`
+- **Где:** `src/domain/llm/raciocinio-do-agente.ts:23`
+  (`raciocinioDesligadoParaOAgente`), `src/infrastructure/llm/openrouter-provider.ts:224`
   (`campoDeRaciocinioDesligadoOpenRouter`)
-- **Тест:** `apps/api/test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
+- **Тест:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
   (`dev agent: raciocínio desligado explícito, com a folga (RN-783)`),
-  `apps/api/test/domain/llm/raciocinio-do-agente.spec.ts` (dev-* выключает;
+  `test/domain/llm/raciocinio-do-agente.spec.ts` (dev-* выключает;
   criativo и dev-lead — только запас; без `supportsReasoning` — ничего)
 - **Источник:** AT-467 (решение владельца от 10.10)
 
@@ -11995,8 +11995,8 @@ Kickoff PO говорит все три вещи.
   утверждал статус ADR и задачи backlog, не имея возможности их проверить
   ([RN-773](engine.md#rn-773)). По-прежнему действует то, что пол возвращает только то,
   что есть в каталоге шага.
-- **Где:** `apps/api/src/domain/llm/tool-router.ts:311` (`PISO_DO_MENU`)
-- **Тест:** `apps/api/test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
+- **Где:** `src/domain/llm/tool-router.ts:311` (`PISO_DO_MENU`)
+- **Тест:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
   (`Arquiteto recortado pelo Jev: as leituras de estado (ADRs propostas,
   backlog) continuam no menu (RN-784)`)
 - **Источник:** AT-460 (TP-01 от 09.10: Jev убрал из меню Arquiteto чтения из
@@ -12013,10 +12013,10 @@ Kickoff PO говорит все три вещи.
   названной обрезкой в срезе. Требование сдачи, которое зависит от того, что
   ещё сдаст другая история (маршрут, экран), идёт в `resumo` как наблюдение и
   не проваливает. Правило — в ПРОМПТЕ, как в RN-765.
-- **Где:** `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:210`
+- **Где:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:210`
   (`tarefasAbertasDoModulo`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
   (`texto`)
-- **Тест:** `apps/api/test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   (только открытая задача другой истории того же модуля; архивированная вне;
   потолок с реальным итогом) и `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
   (открытые задачи и обрезка в тексте). Golden-set QA не получил случая
@@ -12039,13 +12039,13 @@ Kickoff PO говорит все три вещи.
   говорит X, контракт говорит Y) для пользователя и Arquiteto. Правило ПРОМПТА,
   как [RN-765](engine.md#rn-765). Начиная с [RN-792](engine.md#rn-792) Arquiteto сверяет
   контракт с маршрутами, упомянутыми в историях, при его объявлении.
-- **Где:** `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:255`
+- **Где:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:255`
   (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:66`
 
-- **Где:** `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:255`
+- **Где:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:255`
   (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:70`
   (`secao_do_contrato`)
-- **Тест:** `apps/api/test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   (контракт модуля истории; без контракта или при неоднозначном модуле —
   `null`) и `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs` (раздел
   контракта с правилом расхождения; без контракта — без раздела)
@@ -12070,11 +12070,11 @@ Kickoff PO говорит все три вещи.
 объявленное зеркало, потому что экран не должен копировать константу, а engine
 при предложении не опрашивается. Изменение одного требует изменения другого.
 
-- **Где:** `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts:83` (`MULTIPLICADOR_DA_PRIMEIRA_TAREFA_DO_MODULO`);
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:237` (`multiplicadorDaPrimeiraDoModulo`);
+- **Где:** `src/application/use-cases/execution/activate-execution.use-case.ts:83` (`MULTIPLICADOR_DA_PRIMEIRA_TAREFA_DO_MODULO`);
+  `src/application/use-cases/actions/propose-action.use-case.ts:237` (`multiplicadorDaPrimeiraDoModulo`);
   `apps/web/src/lib/aprovacoes.ts:346` (`multiplicador`)
 - **Тест:** `apps/web/src/lib/aprovacoes.test.ts` (it "RN-802 (AT-473)": 8 задач, 1 модуль → US$ 4,50; 3 задачи, 2 модуля → US$ 2,50; без бюджета — без числа, случай сбоя);
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts` ("plano válido nasce pending")
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts` ("plano válido nasce pending")
 - **Источник:** AT-473
 
 ### RN-809 — Обязательства Arquiteto по модулям и образу входят в пол Jev {#rn-809}
@@ -12087,8 +12087,8 @@ Kickoff PO говорит все три вещи.
   напряжения) и `emit_artifact` остаются вне пола: они не являются
   обязательством этапа. По-прежнему действует то, что пол возвращает только
   то, что есть в каталоге шага.
-- **Где:** `apps/api/src/domain/llm/tool-router.ts:311` (`PISO_DO_MENU`)
-- **Тест:** `apps/api/test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
+- **Где:** `src/domain/llm/tool-router.ts:311` (`PISO_DO_MENU`)
+- **Тест:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
   (`Arquiteto recortado pelo Jev sem assign_story_modules/choose_project_image:
   as duas continuam no menu (RN-809)`)
 - **Источник:** AT-481 (TP-01: срез оставил 7 из 11 инструментов, и Arquiteto
@@ -12106,10 +12106,10 @@ Kickoff PO говорит все три вещи.
   падает, не мешает открытию: обычный путь продолжается. Остаётся как было PR
   ветки, которую [RN-797](engine.md#rn-797) закрывает как «уже в dev»: он в provider не
   закрывается.
-- **Где:** `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:32`
-  (`prAbertaDaBranch`), `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:204`
+- **Где:** `src/application/use-cases/actions/execute-git-action.use-case.ts:32`
+  (`prAbertaDaBranch`), `src/application/use-cases/actions/execute-git-action.use-case.ts:204`
   (`prAbertaDaBranch`)
-- **Тест:** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   ("pr_open com PR aberta da mesma branch → reaproveita, sem abrir outra";
   "pr_open: listar PRs falha → abre a PR como sempre")
 - **Источник:** AT-485 (TP-01 от 10.10)
@@ -12131,13 +12131,13 @@ Kickoff PO говорит все три вещи.
   НЕ опрашивается ([RN-579](engine.md#rn-579), [RN-632](web.md#rn-632)): он перечитывается,
   когда окно видит новый артефакт или новое действие commit/PR (ключ query),
   при фокусе и при повторном монтировании.
-- **Где:** `apps/api/src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:22`
+- **Где:** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:22`
   (`resumir`), `apps/web/src/lib/contexto-da-sessao.ts:15`
   (`useContextoDaSessaoInteira`), `apps/web/src/lib/contexto-da-sessao.ts:34`
   (`totalDaSessao`), `apps/web/src/routes/ContextAside.tsx:174` (`resumo`)
-- **Тест:** `apps/api/test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
+- **Тест:** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
   ("conta a sessão INTEIRA, além de qualquer cauda de 200…"),
-  `apps/api/test/application/use-cases/sessions/get-session-context-summary.use-case.spec.ts`
+  `test/application/use-cases/sessions/get-session-context-summary.use-case.spec.ts`
   (сбой: "sessão de outro projeto é 404 e não lê nada"),
   `apps/web/src/routes/ContextAside.sessao-inteira.test.tsx` ("com o agregado
   maior que a janela, mostra o total da sessão…"; сбой: "sem o agregado, os
@@ -12155,9 +12155,9 @@ Kickoff PO говорит все три вещи.
   Список идёт от самого свежего к самому старому, обрезанный до 100
   (`TETO_DE_ARQUIVOS_TOCADOS`), а `total` говорит реальное число; экран
   объявляет срез, когда он обрезает.
-- **Где:** `apps/api/src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:31`
+- **Где:** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:31`
   (`ligadas`), `apps/web/src/routes/ContextAside.tsx:366` (`filesTouched`)
-- **Тест:** `apps/api/test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
+- **Тест:** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
   ("…e soma os arquivos da execução ligada"; сбой: "corta a lista de arquivos
   no teto e devolve o total real; não lê sessão sem ligação")
 - **Источник:** AT-498
@@ -12171,9 +12171,9 @@ Kickoff PO говорит все три вещи.
   [RN-782](#rn-782). QA-стратегия (`qa-estrategia`) и остальные gates не
   меняются. Измерение, ставшее мотивом: рассуждение gates выросло с 44 тыс. до
   211 тыс. токенов за раунд, а их стоимость — с US$ 0,15 до US$ 0,55.
-- **Где:** `apps/api/src/domain/llm/raciocinio-do-agente.ts:34`
+- **Где:** `src/domain/llm/raciocinio-do-agente.ts:34`
   (`raciocinioDesligadoParaOAgente`)
-- **Тест:** `apps/api/test/domain/llm/raciocinio-do-agente.spec.ts`
+- **Тест:** `test/domain/llm/raciocinio-do-agente.spec.ts`
   (`QA de Automação desliga; QA-estratégia e outros gates não (RN-838)`;
   `falha: QA de Automação com modelo sem supportsReasoning não manda nada`)
 - **Источник:** AT-504 (решение владельца от 10.10)
@@ -12186,8 +12186,8 @@ Kickoff PO говорит все три вещи.
   срез Jev никогда не убирает `report_done` и `report_blocked`. Остальная часть
   их шага остаётся обрезаемой, с предупреждением о срезе из RN-759. Как и
   любой пол, он возвращает только то, что есть в каталоге шага.
-- **Где:** `apps/api/src/domain/llm/tool-router.ts:351` (`pisoDoMenu`)
-- **Тест:** `apps/api/test/domain/llm/piso-dos-dev-agents.spec.ts`
+- **Где:** `src/domain/llm/tool-router.ts:351` (`pisoDoMenu`)
+- **Тест:** `test/domain/llm/piso-dos-dev-agents.spec.ts`
   (`recorte que deixa só \`terminal\` para dev-api: report_done e
   report_blocked continuam`; `falha: dev-lead e outro agente não ganham as
   ferramentas de desfecho`)
@@ -12204,8 +12204,8 @@ Kickoff PO говорит все три вещи.
   с источником `modelo`, а готовая задача блокировалась. Агент вне gates
   инструмента заключения не получает, а пол возвращает только то, что есть в
   каталоге шага.
-- **Где:** `apps/api/src/domain/llm/tool-router.ts:311` (`PISO_DO_MENU`)
-- **Тест:** `apps/api/test/domain/llm/tool-router-piso-dos-gates.spec.ts`
+- **Где:** `src/domain/llm/tool-router.ts:311` (`PISO_DO_MENU`)
+- **Тест:** `test/domain/llm/tool-router-piso-dos-gates.spec.ts`
   (id и инструменты сверены с `.ex` engine; срез, оставляющий только
   `terminal`/`read_file`, заканчивается заключением; сбой: `criativo`,
   `dev-api` и `dev-lead` не получают инструмента заключения; пол не добавляет
@@ -12235,15 +12235,15 @@ Kickoff PO говорит все три вещи.
   связанного выполнения), никогда «Nada ainda». Use case живёт в модуле git,
   потому что именно он читает репозиторий; сессия другого проекта
   по-прежнему 404 без чтения какого-либо PR.
-- **Где:** `apps/api/src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:140`
-  (`itensDeRegras`), `apps/api/src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:184`
-  (`prsDasSessoes`), `apps/api/src/application/use-cases/git/resumir-contexto-da-sessao.use-case.ts:37`
+- **Где:** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:140`
+  (`itensDeRegras`), `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:184`
+  (`prsDasSessoes`), `src/application/use-cases/git/resumir-contexto-da-sessao.use-case.ts:37`
   (`prs`), `apps/web/src/routes/ContextAside.tsx:197` (`businessRules`),
   `apps/web/src/routes/ContextAside.tsx:222` (`decisoes`)
-- **Тест:** `apps/api/test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
+- **Тест:** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts`
   ("RN-844: devolve os ITENS de regra e decisão fora de qualquer cauda, com
   teto de 50"; "RN-844: lista as PRs executadas da sessão e da execução
-  ligada…"), `apps/api/test/application/use-cases/git/resumir-contexto-da-sessao.use-case.spec.ts`
+  ligada…"), `test/application/use-cases/git/resumir-contexto-da-sessao.use-case.spec.ts`
   ("lê os arquivos das PRs das sessões lidas…"; сбои: "corta no teto de
   arquivos, conta PR fora do teto e diff que falhou em prsNaoLidas" и "sessão
   de outro projeto é 404 e não lê PR nenhuma"),
@@ -12271,11 +12271,11 @@ Kickoff PO говорит все три вещи.
   ([RN-841](web.md#rn-841)): цель `prs` канала (с его окном 2 с, без лишнего
   запроса) и изменение подписи backlog, по префиксу
   `['session-context-summary', projectId]`.
-- **Где:** `apps/api/src/infrastructure/git/local-git-provider.ts:374`
-  (`mergedBaseSha`), `apps/api/src/infrastructure/git/local-git-provider.ts:862`
+- **Где:** `src/infrastructure/git/local-git-provider.ts:374`
+  (`mergedBaseSha`), `src/infrastructure/git/local-git-provider.ts:862`
   (`rangeDoDiff`), `apps/web/src/lib/canal-vivo.ts:221` (`prs`),
   `apps/web/src/components/PendenciasDeOutrasSessoes.tsx:101` (`invalidateQueries`)
-- **Тест:** `apps/api/test/infrastructure/git/local-git-provider.contract.spec.ts`
+- **Тест:** `test/infrastructure/git/local-git-provider.contract.spec.ts`
   ("PR mergeada por fast-forward devolve os arquivos que mudou"; "PR mergeada
   por commit de merge devolve só os arquivos dela"; "PR mergeada antes de os
   SHAs serem gravados acha o commit de merge"),
@@ -12284,7 +12284,7 @@ Kickoff PO говорит все три вещи.
   resumo"), `apps/web/src/components/PendenciasDeOutrasSessoes.test.tsx`
   ("RN-841: a tarefa que entra em awaiting_user relê as PRs…"). Сбой чтения,
   прибавляющийся к `prsNaoLidas`, по-прежнему покрыт
-  `apps/api/test/application/use-cases/git/resumir-contexto-da-sessao.use-case.spec.ts`
+  `test/application/use-cases/git/resumir-contexto-da-sessao.use-case.spec.ts`
   ("corta no teto de arquivos, conta PR fora do teto e diff que falhou em
   prsNaoLidas").
 - **Источник:** AT-518 (TP-01, 13-й: «Nenhum arquivo nas PRs nem nos commits»
@@ -12302,12 +12302,12 @@ Kickoff PO говорит все три вещи.
   источнике engine БЕЗ этой метки. Событие, которое запросил engine (включая
   `proposed_action.created`), по-прежнему без уведомления от api, чтобы не
   выходить дважды.
-- **Где:** `apps/api/src/application/efeito-de-acao.ts:18` (`ehEfeitoDeAcao`),
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:314`
+- **Где:** `src/application/efeito-de-acao.ts:18` (`ehEfeitoDeAcao`),
+  `src/application/use-cases/actions/propose-action.use-case.ts:314`
   (`runComoEfeitoDeAcao`),
-  `apps/api/src/infrastructure/http-clients/session-channel-notifier.ts:73`
+  `src/infrastructure/http-clients/session-channel-notifier.ts:73`
   (`ehEfeitoDeAcao`)
-- **Тест:** `apps/api/test/application/use-cases/sessions/aviso-ao-canal-da-sessao.spec.ts`
+- **Тест:** `test/application/use-cases/sessions/aviso-ao-canal-da-sessao.spec.ts`
   ("AT-516: efeito de ação executada dentro de /internal avisa o canal, uma
   vez"; сбой/регрессия: "escrita vinda do engine (/internal) não é avisada de
   novo pela api")
@@ -12332,25 +12332,25 @@ Kickoff PO говорит все три вещи.
   Infra, никогда не проверен на машине читающего (RN-468). А контекст Infra
   (`/internal/.../infra-context`) теперь несёт `projectImage`, действующее
   решение об образе, сети и ресурсах, `null` без решения.
-- **Где:** `apps/api/src/domain/infra/run-instructions.ts:44` (`recusaDoRun`),
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:155`
+- **Где:** `src/domain/infra/run-instructions.ts:44` (`recusaDoRun`),
+  `src/application/use-cases/actions/propose-action.use-case.ts:155`
   (`recusaDoRun`),
-  `apps/api/src/application/use-cases/actions/execute-infra-pr.use-case.ts:111`
+  `src/application/use-cases/actions/execute-infra-pr.use-case.ts:111`
   (`recusaDoRun`), `:328` (`EVENTO_INSTRUCOES_DE_EXECUCAO`),
-  `apps/api/src/application/use-cases/execution/get-run-instructions.use-case.ts:26`
+  `src/application/use-cases/execution/get-run-instructions.use-case.ts:26`
   (`execute`),
-  `apps/api/src/application/use-cases/execution/get-infra-context.use-case.ts:89`
+  `src/application/use-cases/execution/get-infra-context.use-case.ts:89`
   (`projectImage`)
-- **Тест:** `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/actions/propose-action.use-case.spec.ts`
   ("sem `run`: 400 `run_invalido`, sem proposta"; "URL fora de localhost: 400
   nomeando o campo"; "`run` válido: a proposta nasce"),
-  `apps/api/test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts`
+  `test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts`
   ("PR aberta emite artifact.run_instructions com prUrl e versão seguinte";
   сбой: "`run` inválido na execução falha sem commitar nem emitir"),
-  `apps/api/test/application/use-cases/execution/get-run-instructions.use-case.spec.ts`
+  `test/application/use-cases/execution/get-run-instructions.use-case.spec.ts`
   ("devolve o vigente — o de maior version"; "null sem artefato, e o de outro
   projeto não vaza"),
-  `apps/api/test/application/use-cases/execution/get-infra-context.use-case.spec.ts`
+  `test/application/use-cases/execution/get-infra-context.use-case.spec.ts`
   ("RN-852: projectImage é a decisão vigente…"; "…null sem decisão de imagem")
 - **Источник:** AT-517 (результат TP-01 не говорил, как запустить его на
   машине пользователя)
@@ -12372,17 +12372,17 @@ Kickoff PO говорит все три вещи.
   `dev_agent_states`, с той же причиной и источником `politica`; список
   приходит только для сессии ВЫПОЛНЕНИЯ, так что закрытие консультативной
   того же проекта ничего не блокирует.
-- **Где:** `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:252`
+- **Где:** `src/infrastructure/persistence/drizzle/backlog.repository.ts:252`
   (`findPendenteDaExecucao`), `:403` (`claimNext`), `:221` (`listEmCursoDeDev`),
-  `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts:49`
+  `src/application/use-cases/sessions/get-session-pending-work.use-case.ts:49`
   (`em_curso_de_dev`),
   `apps/engine/lib/engine/dev/encerramento_da_sessao.ex:133` (`bloquear_orfas`)
-- **Тест:** `apps/api/test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts`
   ("tarefa recém-desbloqueada (todo) do módulo de um dev da execução segura a
   sessão"; "tarefa todo de módulo SEM dev na execução não segura"; "tarefa
   in_progress atribuída a dev da execução segura a sessão"; "listEmCursoDeDev
   lista a in_progress de dev só para sessão de EXECUÇÃO"),
-  `apps/api/test/application/use-cases/execution/claim-next-task.use-case.spec.ts`
+  `test/application/use-cases/execution/claim-next-task.use-case.spec.ts`
   ("retoma a in_progress que já é DELE antes da fila todo"; "não retoma a
   in_progress dele que está em gate"),
   `apps/engine/test/engine/dev/encerramento_da_sessao_test.exs` ("bloqueia a
@@ -12400,10 +12400,10 @@ Kickoff PO говорит все три вещи.
   исхода (RN-839). Критерий — текст, который api уже получает, без нового
   поля; фиксированный пол каждого шага не расширяется (RN-759), другой агент
   не получает, а пол добавляет только то, что есть в каталоге шага (P3).
-- **Где:** `apps/api/src/domain/llm/tool-router.ts:368` (`PISO_DA_CORRECAO_DO_DEV`),
+- **Где:** `src/domain/llm/tool-router.ts:368` (`PISO_DA_CORRECAO_DO_DEV`),
   `:379` (`ehPassoDeCorrecao`), `:392` (`menuComPiso`),
-  `apps/api/src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:248` (`menuComPiso`)
-- **Тест:** `apps/api/test/domain/llm/tool-router-correcao-do-dev.spec.ts`
+  `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:248` (`menuComPiso`)
+- **Тест:** `test/domain/llm/tool-router-correcao-do-dev.spec.ts`
   ("dev agent em correção recebe write_file e terminal"; "passo comum de
   leitura do dev não alarga"; "outro agente com a mesma mensagem não ganha";
   "as marcas existem no texto que o engine monta")
@@ -12433,15 +12433,15 @@ Kickoff PO говорит все три вещи.
   просит engine возобновить ПРИПАРКОВАННЫЙ gate QA каждой затронутой задачи
   (путь RN-724) — по мере возможности: gate, который не был припаркован, или
   недоступный engine не отменяют ответ. ADR 0214.
-- **Где:** `apps/api/src/domain/open-questions/pergunta-em-aberto.ts:44`
+- **Где:** `src/domain/open-questions/pergunta-em-aberto.ts:44`
   (`validarPerguntaEmAberto`), `:112` (`respostaEscolhida`),
-  `apps/api/src/application/use-cases/sessions/append-session-event.use-case.ts:101`
+  `src/application/use-cases/sessions/append-session-event.use-case.ts:101`
   (`EVENTO_PERGUNTA_EM_ABERTO`),
-  `apps/api/src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:72`
+  `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:72`
   (`listar`), `:106` (`responder`), `:189` (`resumeParkedGate`),
-  `apps/api/src/interfaces/http/backlog/open-questions.controller.ts:51`
+  `src/interfaces/http/backlog/open-questions.controller.ts:51`
   (`list`), `:81` (`answer`)
-- **Тест:** `apps/api/test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
   ("o autor responde: decision_record (ator usuário, com questionId) e
   answered, e o gate é religado"; "aceitar a sugestão grava a sugestão como
   escolha"; сбои: "quem não é o autor da sessão recebe 403
@@ -12468,24 +12468,24 @@ Kickoff PO говорит все три вещи.
   (заголовок/описание, событие его несёт) и `complete_story` (RF/DoD/DoR;
   история остаётся `ready`, без нового продвижения, а
   `backlog.story_completed` несёт `questionId`).
-- **Где:** `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:122`
+- **Где:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:122`
   (`decisoesDaTarefa`), `:374` (`decisoesDoContexto`),
-  `apps/api/src/domain/backlog/correcao-de-historia.ts:33`
+  `src/domain/backlog/correcao-de-historia.ts:33`
   (`recusaDeCorrecaoDeHistoria`),
-  `apps/api/src/application/use-cases/backlog/corrigir-historia.use-case.ts:126`
+  `src/application/use-cases/backlog/corrigir-historia.use-case.ts:126`
   (`respostaDoUsuario`),
-  `apps/api/src/application/use-cases/backlog/complete-story.use-case.ts:82`
+  `src/application/use-cases/backlog/complete-story.use-case.ts:82`
   (`corrigindoReady`)
-- **Тест:** `apps/api/test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   ("devolve só as que afetam a tarefa, a história ou uma regra dela, mais
   recentes primeiro"; "decisão sem afeta não entra; teto de 10 e texto cortado
   em 1 500"),
-  `apps/api/test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts`
+  `test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts`
   ("história ready citando pergunta RESPONDIDA é corrigida, e o evento a
   cita"; сбои: "história ready citando pergunta AINDA ABERTA segue
   recusada"; "história ready com tarefa em revisão segue recusada mesmo com a
   resposta"),
-  `apps/api/test/application/use-cases/backlog/complete-story.use-case.spec.ts`
+  `test/application/use-cases/backlog/complete-story.use-case.spec.ts`
   ("história ready com pergunta respondida tem RF/DoR corrigidos e segue
   ready"; "história ready com pergunta ainda aberta é recusada")
 - **Источник:** AT-521 (QA трижды провалил, читая DoR истории `ready`,
@@ -12506,14 +12506,14 @@ Kickoff PO говорит все три вещи.
   `openQuestionId` — engine паркует цикл (ADR 0207), а ответ на вопрос его
   снова включает (RN-858). При этом исходе не рождается ни одной строки
   outbox. ADR 0214.
-- **Где:** `apps/api/src/domain/execution/pr-gate-state-machine.ts:63`
+- **Где:** `src/domain/execution/pr-gate-state-machine.ts:63`
   (`nextGateStatus`),
-  `apps/api/src/application/use-cases/execution/record-gate-verdict.use-case.ts:135`
+  `src/application/use-cases/execution/record-gate-verdict.use-case.ts:135`
   (`esperaUsuario`), `:171` (`nextAction`)
-- **Тест:** `apps/api/test/domain/execution/pr-gate-state-machine.spec.ts`
+- **Тест:** `test/domain/execution/pr-gate-state-machine.spec.ts`
   ("needs_user_decision mantém o gate e NÃO incrementa o contador, nem no
   teto"),
-  `apps/api/test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
+  `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
   ("needs_user_decision no teto: grava a pergunta, não conta correção, não
   bloqueia"; сбой: "needs_user_decision sem pergunta nem openQuestionId é
   recusado")
@@ -12529,10 +12529,10 @@ Kickoff PO говорит все три вещи.
   `reason: "pergunta_nao_encontrada"`. Уже отвеченный: 409
   `reason: "pergunta_ja_respondida"` с решением пользователя в `decisao` — без
   записи и без `pr.gate_changed`. Состояние берётся из лога (RN-858).
-- **Где:** `apps/api/src/application/use-cases/execution/record-gate-verdict.use-case.ts:85`
-  (`exigirPerguntaAberta`), `apps/api/src/domain/open-questions/pergunta-em-aberto.ts:154`
+- **Где:** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:85`
+  (`exigirPerguntaAberta`), `src/domain/open-questions/pergunta-em-aberto.ts:154`
   (`estadoDaPergunta`)
-- **Тест:** `apps/api/test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
   ("pergunta aberta: estaciona sem gravar outra"; сбой: "inexistente ou de
   outro projeto: 404 nomeado, sem escrita", "já respondida: 409 com a decisão,
   sem escrita nem pr.gate_changed")
@@ -12546,14 +12546,14 @@ Kickoff PO говорит все три вещи.
   id, ни точным заголовком, отклоняется с 400 с указанием значений. В
   контексте dev `decisoes` сопоставляются также по заголовку правил истории —
   для решений, записанных до этого правила.
-- **Где:** `apps/api/src/domain/open-questions/pergunta-em-aberto.ts:179`
-  (`resolverRegrasDoAfeta`), `apps/api/src/application/use-cases/sessions/append-session-event.use-case.ts:117`
-  (`resolverRegrasDoAfeta`), `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:134`
+- **Где:** `src/domain/open-questions/pergunta-em-aberto.ts:179`
+  (`resolverRegrasDoAfeta`), `src/application/use-cases/sessions/append-session-event.use-case.ts:117`
+  (`resolverRegrasDoAfeta`), `src/application/use-cases/execution/get-dev-task-context.use-case.ts:134`
   (`decisoesDoContexto`)
-- **Тест:** `apps/api/test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
   ("título exato é convertido para o id da regra"; сбой: "texto que não é id
   nem título de regra: 400 sem escrita"),
-  `apps/api/test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
+  `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   ("decisão legada com TÍTULO de regra em afeta.regras casa pelo título")
 - **Источник:** AT-526, ADR 0215
 
@@ -12566,10 +12566,10 @@ Kickoff PO говорит все три вещи.
   потолок раньше. Пересматривает фразу «решение без `afeta` не входит» из ADR
   0214 для этого списка. Поле аддитивное (engine, который его не знает, его
   игнорирует).
-- **Где:** `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:134`
-  (`decisoesDoContexto`), `apps/api/src/interfaces/http/internal/dto/internal.response.dto.ts:237`
+- **Где:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:134`
+  (`decisoesDoContexto`), `src/interfaces/http/internal/dto/internal.response.dto.ts:237`
   (`decisoesDoProjeto`)
-- **Тест:** `apps/api/test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   ("as que não tocam a tarefa vêm em decisoesDoProjeto; teto de 10 somado, as
   da tarefa primeiro")
 - **Источник:** AT-526, ADR 0215
@@ -12587,12 +12587,12 @@ Kickoff PO говорит все три вещи.
   просит администратора OpenRouter поднять бюджет; dev блокирует задачу с этой
   фразой в причине, вместо «parou sem concluir nem reportar bloqueio» с
   источником `codigo`. 403 без маркера остаётся `auth`.
-- **Где:** `apps/api/src/domain/llm/llm-provider-errors.ts:81` (`normalizeHttpStatus`),
+- **Где:** `src/domain/llm/llm-provider-errors.ts:81` (`normalizeHttpStatus`),
   `:135` (`pareceOrcamento`); `apps/engine/lib/engine/agents/falha_de_turno.ex:205`
   (`orcamento_esgotado`), `:219` (`frase_de_orcamento`), `:163`
   (`credito_esgotado?`); `apps/engine/lib/engine/dev/dev_agent_server.ex:961`
   (`motivo_de_credito`)
-- **Тест:** `apps/api/test/domain/llm/llm-provider-errors.spec.ts` ("o 403 de
+- **Тест:** `test/domain/llm/llm-provider-errors.spec.ts` ("o 403 de
   orçamento vira insufficient_credit com o corpo inteiro"; сбой: "403 sem
   marcador de orçamento continua credencial rejeitada");
   `apps/engine/test/engine/agents/falha_de_turno_test.exs` ("RN-886: o 403 de
@@ -12613,10 +12613,10 @@ Kickoff PO говорит все три вещи.
   нативными метками, говорит «перевод в процессе». `<html lang>` следует
   активному языку. Паритет ключей сравнивает каждый существующий locale с
   исходным pt-BR.
-- **Где:** `apps/api/src/domain/iam/user.entity.ts:8` (`USER_LOCALES`),
+- **Где:** `src/domain/iam/user.entity.ts:8` (`USER_LOCALES`),
   `apps/web/src/lib/idioma.ts:65` (`resolverIdiomaDoNavegador`),
   `apps/web/src/lib/i18n.ts:72` (`fallbackLng`)
-- **Тест:** `apps/api/test/interfaces/http/iam/user-preferences-locale.dto.spec.ts`
+- **Тест:** `test/interfaces/http/iam/user-preferences-locale.dto.spec.ts`
   ("aceita pt-BR, en, ru e zh-Hans"; "recusa idioma fora da lista");
   `apps/web/src/lib/idioma.test.ts` ("idioma sem catálogo cai no pt-BR, nunca
   no inglês"); `apps/web/src/lib/i18n-paridade.test.ts`
@@ -12649,9 +12649,9 @@ US$ 1,02. Модели Anthropic читают из кэша только пре�
    `true`. Включение другого провайдера требует эквивалентного smoke. Выигрыш
    появляется в metering через [RN-666](#rn-666).
 
-- **Код:** `apps/api/src/infrastructure/llm/openrouter-provider.ts:276` (`marcarCacheDePromptOpenRouter`);
-  `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:501` (`mensagens`)
-- **Тест:** `apps/api/test/infrastructure/llm/openrouter-provider.contract.spec.ts` ("pontos de cache de prompt (RN-892)": включённая помечает две точки; выключенная — байт в байт; capability без hook падает — случай сбоя)
+- **Код:** `src/infrastructure/llm/openrouter-provider.ts:276` (`marcarCacheDePromptOpenRouter`);
+  `src/infrastructure/llm/openai-compatible-provider.ts:501` (`mensagens`)
+- **Тест:** `test/infrastructure/llm/openrouter-provider.contract.spec.ts` ("pontos de cache de prompt (RN-892)": включённая помечает две точки; выключенная — байт в байт; capability без hook падает — случай сбоя)
 - **Источник:** AT-543
 
 ### RN-894 — Эпик с тем же заголовком, что и другой в проекте, отклоняется {#rn-894}
@@ -12663,8 +12663,8 @@ US$ 1,02. Модели Anthropic читают из кэша только пре�
   R, `tituloDuplicado`), без второй копии. СЕМАНТИЧЕСКИЙ дубликат (RN-681) к
   эпику не применяется: только одинаковый заголовок. При отказе ничего не
   создаётся и не пишется в журнал событий.
-- **Где:** `apps/api/src/application/use-cases/backlog/create-epic.use-case.ts:25` (`tituloDuplicado`)
-- **Тест:** `apps/api/test/application/use-cases/backlog/create-epic.use-case.spec.ts:41`
+- **Где:** `src/application/use-cases/backlog/create-epic.use-case.ts:25` (`tituloDuplicado`)
+- **Тест:** `test/application/use-cases/backlog/create-epic.use-case.spec.ts:41`
   (создаёт без совпадения) и `:49` (отклоняет совпадение с id существующего)
 - **Происхождение:** AT-581
 
@@ -12680,13 +12680,13 @@ US$ 1,02. Модели Anthropic читают из кэша только пре�
   `choose_project_image` содержит `containerDePe` и предупреждает, что решение
   действует только после пересоздания контейнера. Пересоздания одним действием
   нет; потолки одобрения не меняются ([RN-495](#rn-495)).
-- **Где:** `apps/api/src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts:131`
-  (`recongelar`), `apps/api/src/domain/containers/project-container.ts:342`
+- **Где:** `src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts:131`
+  (`recongelar`), `src/domain/containers/project-container.ts:342`
   (`containerDivergeDaDecisao`),
   `apps/engine/lib/engine/harness/tools/choose_project_image.ex:99`
   (`mensagem_de_fixada`)
-- **Тест:** `apps/api/test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`;
-  `apps/api/test/domain/containers/project-container.spec.ts`;
+- **Тест:** `test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`;
+  `test/domain/containers/project-container.spec.ts`;
   `apps/web/src/routes/ContainersPage.test.tsx`
 - **Источник:** AT-595
 
@@ -12703,18 +12703,18 @@ US$ 1,02. Модели Anthropic читают из кэша только пре�
   вызова брокера). Без `module_map` или при несовпадении остаётся только
   предупреждение RN-735. Без настраиваемых исключений. Пересматривает RN-735
   (предупреждение → отказ в этом случае).
-- **Где:** `apps/api/src/application/use-cases/containers/decidir-imagem-do-projeto.use-case.ts:80`
+- **Где:** `src/application/use-cases/containers/decidir-imagem-do-projeto.use-case.ts:80`
   (`stackQueBaixaDependencias`)
-- **Тест:** `apps/api/test/application/use-cases/containers/container-do-projeto.use-case.spec.ts`;
-  `apps/api/test/domain/containers/project-container.spec.ts`;
-  `apps/api/test/application/use-cases/actions/execute-container-start.use-case.spec.ts`
+- **Тест:** `test/application/use-cases/containers/container-do-projeto.use-case.spec.ts`;
+  `test/domain/containers/project-container.spec.ts`;
+  `test/application/use-cases/actions/execute-container-start.use-case.spec.ts`
 - **Источник:** AT-593 (EP-031).
 
 ### RN-909 — 9Router — 10-й провайдер: URL на установку, обязательный ключ, публичная цена по курированию {#rn-909}
 
 - **Правило:** провайдер `9router` обращается к шлюзу на машине владельца. Базовый URL — `NINE_ROUTER_BASE_URL` (по умолчанию `http://host.docker.internal:20128/v1`), читается при каждом использовании провайдером и проверкой соединения (`GET /models` с ключом). Учётные данные обязательны. Возможности провайдера `false` (только `listModels` и `streaming`, которого требует контракт, — `true`), пока smoke с ключом не докажет остальное (ADR 0041). Цены моделей не обнаруживаются: они вносятся ручным курированием, и по решению владельца модель по подписке записывает публичную цену эквивалентного API, а не ноль. Провайдер шлёт `x-9router-token-saver: off` в каждом вызове, чтобы 9Router не сжимал `tool_result`.
-- **Где:** `apps/api/src/infrastructure/llm/nine-router-provider.ts:83` (`nineRouterConfig`)
-- **Тест:** `apps/api/test/infrastructure/llm/nine-router-provider.contract.spec.ts:109` (возможности, URL из окружения, заголовок, проверка соединения, разбор синтетической фикстуры); ручной smoke в `nine-router-provider.smoke.spec.ts`.
+- **Где:** `src/infrastructure/llm/nine-router-provider.ts:83` (`nineRouterConfig`)
+- **Тест:** `test/infrastructure/llm/nine-router-provider.contract.spec.ts:109` (возможности, URL из окружения, заголовок, проверка соединения, разбор синтетической фикстуры); ручной smoke в `nine-router-provider.smoke.spec.ts`.
 - **Источник:** AT-576a (EP-026), ADR 0222, решение владельца от 22/10.
 
 ### RN-910 — Потолок по умолчанию для области — 5 в dev, 4 в qa и 2 в infra {#rn-910}
@@ -12733,11 +12733,11 @@ US$ 1,02. Модели Anthropic читают из кэша только пре�
 - **Только INSERT использует значение из каталога.** Повторный посев не трогает строку
   (RN-094). Колонка остаётся `default(2)`: это значение появляется только в сыром INSERT,
   вне сценария использования.
-- **Где:** `apps/api/src/domain/agents/agent-areas.ts:73` (`maxParallelPadrao`);
-  `apps/api/src/application/use-cases/agents/seed-agent-areas.use-case.ts:53`
-  (`maxParallelAoNascer`); `apps/api/src/infrastructure/persistence/drizzle/agent-area.repository.ts:62`
-  (`nascer`); `apps/api/src/application/use-cases/execution/request-parallelization.use-case.ts:13`
-  (`MAX_PARALLEL_PADRAO`); миграция `apps/api/src/db/migrations/0073_paralelismo_padrao_por_area.sql`.
+- **Где:** `src/domain/agents/agent-areas.ts:73` (`maxParallelPadrao`);
+  `src/application/use-cases/agents/seed-agent-areas.use-case.ts:53`
+  (`maxParallelAoNascer`); `src/infrastructure/persistence/drizzle/agent-area.repository.ts:62`
+  (`nascer`); `src/application/use-cases/execution/request-parallelization.use-case.ts:13`
+  (`MAX_PARALLEL_PADRAO`); миграция `src/db/migrations/0073_paralelismo_padrao_por_area.sql`.
 - **Тест:** `test/application/use-cases/iam/create-project-semeia-areas.spec.ts`
   (новый проект рождается с 5/4/2), `test/infrastructure/persistence/drizzle/agent-area.repository.spec.ts`
   (повторный посев не отменяет изменённый потолок), `test/db/paralelismo-padrao-migration.spec.ts`

@@ -81,8 +81,8 @@ describe('a api não consome @brabo/docker-port', () => {
       try {
         return execFileSync(
           'git',
-          ['grep', '-l', ...argumentos, '--', 'apps/api/src'],
-          { cwd: join(raizDaApi, '../..'), encoding: 'utf8' },
+          ['grep', '-l', ...argumentos, '--', 'src'],
+          { cwd: raizDaApi, encoding: 'utf8' },
         )
           .split('\n')
           .filter(Boolean);

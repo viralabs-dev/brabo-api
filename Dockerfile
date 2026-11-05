@@ -1,9 +1,7 @@
-# Imagem de PRODUÇÃO da api (Fase 5). O Dockerfile de dev ao lado continua
-# existindo e não muda: ele bind-monta o repo e roda `start:dev`.
-#
-# Contexto de build: a RAIZ do repo (o monorepo pnpm precisa do lockfile e do
-# packages/shared). O `.dockerignore` da raiz derruba o contexto de 742 MB para
-# ~5 MB — sem ele este build manda node_modules e .pnpm-store pro daemon.
+# Imagem de PRODUÇÃO da api. O Dockerfile.dev ao lado bind-monta o repo e roda
+# `start:dev`. Contexto de build: a RAIZ deste repositório (AT-696, ADR 0252:
+# a api vive sozinha; o `brabo-infra` consome a imagem). O `.dockerignore` deixa
+# o contexto em poucos MB.
 #
 # hadolint global ignore=DL3018
 # (não usamos apk aqui; o ignore evita ruído no lint do CI)
@@ -30,32 +28,27 @@ WORKDIR /repo
 
 # Só os manifests: é o que decide o grafo de dependências.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/api/package.json apps/api/
-COPY packages/shared/package.json packages/shared/
 
 # `--frozen-lockfile` (sem o `=false` do dev): em produção o lockfile é lei.
-RUN pnpm install --frozen-lockfile --filter api...
+# `@brabo/shared` (tipos, do brabo-contracts#v1.0.0) é devDependency: entra aqui
+# para o `nest build`, e não na árvore de produção.
+RUN pnpm install --frozen-lockfile
 
 # ---------------------------------------------------------------------------
 # Estágio 2: build. `nest build` faz o typecheck, e o typecheck precisa do
-# packages/shared — que é 100% tipos (não exporta nenhum valor em runtime), por
+# @brabo/shared (brabo-contracts) — que é 100% tipos (não exporta nenhum valor em runtime), por
 # isso ele NÃO aparece no estágio final.
 # ---------------------------------------------------------------------------
 FROM deps AS build
 
-COPY apps/api apps/api
-COPY packages/shared packages/shared
+COPY . .
 
-RUN pnpm --filter api build
+RUN pnpm build
 
-# Árvore de produção isolada. `pnpm deploy` resolve o link do workspace num
-# node_modules autocontido — copiar o node_modules do monorepo traria symlinks
-# quebrados pra fora do contexto.
-#
-# RUN separado do build de propósito: são passos com invalidação de cache
-# diferente, e juntar não economiza camada no estágio final — que é descartado.
-# hadolint ignore=DL3059
-RUN pnpm --filter api --prod --legacy deploy /prod
+# Árvore de produção isolada: só as dependências de runtime, instaladas do mesmo
+# lockfile. Sem workspace não há `pnpm deploy`; `--prod` basta.
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts \
+  && mkdir /prod && cp -a node_modules /prod/node_modules
 
 # ---------------------------------------------------------------------------
 # Estágio 3: runtime. Só o compilado, as deps de produção e as migrations.
@@ -142,15 +135,15 @@ COPY --chown=root:root --chmod=0644 THIRD_PARTY_NOTICES.md \
 
 # `node` (uid 1000) já vem na imagem oficial — não criamos usuário novo.
 COPY --from=build --chown=node:node /prod/node_modules ./node_modules
-COPY --from=build --chown=node:node /repo/apps/api/dist ./
-COPY --from=build --chown=node:node /repo/apps/api/package.json ./package.json
+COPY --from=build --chown=node:node /repo/dist ./
+COPY --from=build --chown=node:node /repo/package.json ./package.json
 # Os .sql não passam pelo tsc: são copiados pra o migrator achá-los.
-COPY --from=build --chown=node:node /repo/apps/api/src/db/migrations ./db/migrations
+COPY --from=build --chown=node:node /repo/src/db/migrations ./db/migrations
 # Mesmo motivo, mesmo remédio: o registro de gates é YAML, não passa pelo tsc,
 # e `GET /internal/gates` o lê do disco em runtime. Sem esta linha a rota
 # responderia erro só em produção — o loader sobe de `__dirname` até achar
 # `config/gates.yml`, e aqui ele acha em `/app/config/gates.yml`.
-COPY --from=build --chown=node:node /repo/apps/api/config/gates.yml ./config/gates.yml
+COPY --from=build --chown=node:node /repo/config/gates.yml ./config/gates.yml
 
 USER node
 

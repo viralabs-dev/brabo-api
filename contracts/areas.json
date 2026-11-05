@@ -1,0 +1,37 @@
+{
+  "areas": [
+    {
+      "key": "dev",
+      "label": "Dev",
+      "lead": "dev-lead",
+      "members": [],
+      "maxParallelPadrao": 5
+    },
+    {
+      "key": "qa",
+      "label": "QA",
+      "lead": "qa",
+      "members": [
+        "qa-automacao",
+        "qa-performance-seguranca"
+      ],
+      "maxParallelPadrao": 4
+    },
+    {
+      "key": "infra",
+      "label": "Infra",
+      "lead": "infra",
+      "members": [
+        "infra-workflows"
+      ],
+      "maxParallelPadrao": 2
+    }
+  ],
+  "solo": [
+    "criativo",
+    "po",
+    "arquiteto",
+    "ux-designer",
+    "staff"
+  ]
+}

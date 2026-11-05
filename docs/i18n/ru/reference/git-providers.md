@@ -65,10 +65,10 @@ Brabo работает поверх настоящего git-репозитор�
 единообразно.
 
 **Пределы.** Обе операции обрезают и сообщают об этом через `truncated: true`.
-Числа живут в `apps/api/src/domain/git/git-read-limits.ts` (1000 записей на
+Числа живут в `src/domain/git/git-read-limits.ts` (1000 записей на
 уровень, 300 файлов на diff) и **не** в `packages/shared`, который на 100%
 состоит из типов, — `export const` там переживает `tsc` и ломает загрузку api в
-продакшене (охраняется `apps/api/test/packages-shared-so-tipos.spec.ts`).
+продакшене (охраняется `test/packages-shared-so-tipos.spec.ts`).
 
 ### Три фундаментальные операции (ФАЗА 26b — RN-110/111/112)
 
@@ -222,7 +222,7 @@ HTTP-фильтру он не нужен.
 
 Алгоритм — Full Jitter от AWS:
 `sleep = random(0, min(maxDelay, base · 2^attempt))`, по умолчанию 4 попытки.
-`apps/api/src/infrastructure/git/retry.ts`.
+`src/infrastructure/git/retry.ts`.
 
 Асимметрия — это всё решение: повторить `listBranches`, превысивший время,
 безвредно; повторить `commitFiles`, который мог пройти, создаёт дублирующий
@@ -231,7 +231,7 @@ HTTP-фильтру он не нужен.
 
 ## Контрактный набор тестов
 
-Единый набор — `apps/api/test/contract/git-provider.contract.ts` — запускается
+Единый набор — `test/contract/git-provider.contract.ts` — запускается
 против **всех трёх** провайдеров. Именно он гарантирует, что «работает в Local»
 не превратится в «работает только в Local».
 
@@ -241,7 +241,7 @@ HTTP-фильтру он не нужен.
 набор в обе стороны.
 
 Набор сопровождают две проверки, в
-`apps/api/test/contract/git-provider-contract-callers.spec.ts`. Первая
+`test/contract/git-provider-contract-callers.spec.ts`. Первая
 проверяет, что заголовок набора перечисляет ровно тех, кто его вызывает. Вторая —
 пункт 33 ФАЗЫ 26: **операция контракта без потребителя в `src/` проваливает
 CI** — операция, которую реализуют три провайдера и никто не вызывает, — это

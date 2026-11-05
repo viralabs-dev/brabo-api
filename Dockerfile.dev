@@ -2,7 +2,7 @@ FROM node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a
 
 # UID/GID do usuário que roda o container — casam com o dono do bind mount
 # no host (ver docker-compose.yml `build.args` e .env.example), pra tudo que
-# for escrito em `apps/api/dist`/`node_modules` nascer com o SEU dono, nunca
+# for escrito em `dist`/`node_modules` nascer com o SEU dono, nunca
 # root. Default 1000 é o mais comum em máquina Linux de desenvolvedor único
 # — e coincide com o usuário `node` que a própria imagem já traz.
 ARG DEV_UID=1000
@@ -55,14 +55,14 @@ RUN mkdir -p /data/git-repos /data/project-workspaces \
 # aqui ele nasce `root:root 755` e o `pnpm install` do CMD morre com
 # `EACCES: mkdir '/workspace/node_modules/.pnpm'` (AT-172). O `chown` é só dos
 # pontos de montagem, vazios — nunca recursivo sobre `/workspace`.
-RUN mkdir -p /workspace/node_modules /workspace/apps/api/node_modules /workspace/packages/shared/node_modules \
-  && chown "${DEV_UID}:${DEV_GID}" /workspace/node_modules /workspace/apps/api/node_modules /workspace/packages/shared/node_modules
+RUN mkdir -p /workspace/node_modules \
+  && chown "${DEV_UID}:${DEV_GID}" /workspace/node_modules
 
 USER ${DEV_UID}:${DEV_GID}
 
-# `--filter api...`: instala só a api e as dependências dela (incluindo
-# packages/shared e as deps da raiz), nunca o workspace inteiro — apps/runner
+# O pnpm instala a api e as dependências dela (incluindo
+# @brabo/shared, do brabo-contracts), nunca o monorepo — apps/runner
 # (node-pty, binding nativo) roda na máquina do usuário e não existe aqui;
 # instalá-lo no container faria o postinstall compilar com node-gyp e quebrar
 # o boot (Alpine não tem Python/toolchain). Mesmo padrão do Dockerfile.prod.
-CMD ["sh", "-c", "pnpm install --frozen-lockfile=false --filter api... && pnpm db:migrate && pnpm --filter api start:dev"]
+CMD ["sh", "-c", "pnpm install --frozen-lockfile=false && pnpm db:migrate && pnpm start:dev"]

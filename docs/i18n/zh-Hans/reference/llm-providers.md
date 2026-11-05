@@ -15,7 +15,7 @@ Brabo 中的每个 agent 和每个聊天都通过一个统一的契约与模型�
 
 ## 契约
 
-`LLMProvider`（`apps/api/src/application/ports/llm-provider.port.ts`）有一个**必需**操作，而且它总是流式的：
+`LLMProvider`（`src/application/ports/llm-provider.port.ts`）有一个**必需**操作，而且它总是流式的：
 
 ```ts
 abstract class LLMProvider {
@@ -87,26 +87,26 @@ tool calling 和 token 计数都没有单独的方法：工具放在 `options.to
 
 > ⚠️ 此区块由 `pnpm docs:generate` 生成。请勿手动编辑——下次构建会覆盖它。
 
-读取自 `apps/api/src/infrastructure/llm/` 中的 `capabilities` 字面量——**11 个 provider**。
+读取自 `src/infrastructure/llm/` 中的 `capabilities` 字面量——**11 个 provider**。
 
 | provider | streaming | tool calling | list_models | embeddings | 路由偏好 | 凭据 | 模型来源 | 特性摘要 | 来源 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `9router` | 是 | 是 | 是 | 否 | 否 | API 密钥 | sync | URL por instalação; Credencial obrigatória; Preço = curadoria manual; Capabilities `false`; Usage corrigido; Token Saver desligado; Raciocínio redigido no OAuth do Claude; Camuflagem das ferramentas no OAuth do Claude; Qual upstream serviu | `apps/api/src/infrastructure/llm/nine-router-provider.ts` |
-| `anthropic` | 是 | 是 | 是 | 否 | 否 | API 密钥 | sync + seed | — | `apps/api/src/infrastructure/llm/anthropic-provider.ts` |
-| `bitdeer` | 是 | 是 | 否 | 否 | 否 | API 密钥 | seed | `Authorization: Bearer <chave>` CONFIRMADO; `GET /v1/models` existe e é autenticado; Três ids REAIS de modelo confirmados; Nenhuma peculiaridade de stream/erro confirmada | `apps/api/src/infrastructure/llm/bitdeer-provider.ts` |
-| `deepinfra` | 是 | 是 | 是 | 否 | 否 | API 密钥 | sync + seed | O catálogo é PÚBLICO — sem autenticação nenhuma; `stream_options.include_usage` confirmado como suportado; Erro no formato padrão | `apps/api/src/infrastructure/llm/deepinfra-provider.ts` |
-| `nvidia-nim` | 是 | 是 | 是 | 否 | 否 | API 密钥 | sync + seed | Sem cabeçalho dedicado; Tool calling é POR MODELO, não por API; `stream_options.include_usage` não confirmado | `apps/api/src/infrastructure/llm/nvidia-nim-provider.ts` |
-| `ollama` | 是 | 是 | 是 | 是 | 否 | 无（本地） | sync + seed | — | `apps/api/src/infrastructure/llm/ollama-provider.ts` |
-| `openai` | 是 | 是 | 是 | 否 | 否 | API 密钥 | sync + seed | — | `apps/api/src/infrastructure/llm/openai-provider.ts` |
-| `opencode-zen` | 是 | 否 | 否 | 否 | 否 | API 密钥 | seed | Sem teste de conexão da credencial; Capabilities `false` | `apps/api/src/infrastructure/llm/opencode-zen-provider.ts` |
-| `openrouter` | 是 | 是 | 是 | 否 | 是 | API 密钥 | sync | Cabeçalhos próprios; Id de modelo prefixado pelo upstream; Catálogo com preço na própria linha; Erro NO MEIO do stream; Custo real em `usage.cost`; Alias de roteamento livre (`~…`) é sincronizado mas não pode ser curado | `apps/api/src/infrastructure/llm/openrouter-provider.ts` |
-| `together` | 是 | 是 | 是 | 否 | 否 | API 密钥 | sync + seed | Unidade de preço NÃO documentada explicitamente pela Together; Ids com namespace; `stream_options.include_usage` não confirmado; 429 leva `error_type: dynamic_request_limited \| dynamic_token_limited` | `apps/api/src/infrastructure/llm/together-provider.ts` |
-| `vultr` | 是 | 是 | 否 | 否 | 否 | API 密钥 | seed | Tool calling CONFIRMADO com exemplo real; Sufixo `-normalize` | `apps/api/src/infrastructure/llm/vultr-provider.ts` |
+| `9router` | 是 | 是 | 是 | 否 | 否 | API 密钥 | sync | URL por instalação; Credencial obrigatória; Preço = curadoria manual; Capabilities `false`; Usage corrigido; Token Saver desligado; Raciocínio redigido no OAuth do Claude; Camuflagem das ferramentas no OAuth do Claude; Qual upstream serviu | `src/infrastructure/llm/nine-router-provider.ts` |
+| `anthropic` | 是 | 是 | 是 | 否 | 否 | API 密钥 | sync + seed | — | `src/infrastructure/llm/anthropic-provider.ts` |
+| `bitdeer` | 是 | 是 | 否 | 否 | 否 | API 密钥 | seed | `Authorization: Bearer <chave>` CONFIRMADO; `GET /v1/models` existe e é autenticado; Três ids REAIS de modelo confirmados; Nenhuma peculiaridade de stream/erro confirmada | `src/infrastructure/llm/bitdeer-provider.ts` |
+| `deepinfra` | 是 | 是 | 是 | 否 | 否 | API 密钥 | sync + seed | O catálogo é PÚBLICO — sem autenticação nenhuma; `stream_options.include_usage` confirmado como suportado; Erro no formato padrão | `src/infrastructure/llm/deepinfra-provider.ts` |
+| `nvidia-nim` | 是 | 是 | 是 | 否 | 否 | API 密钥 | sync + seed | Sem cabeçalho dedicado; Tool calling é POR MODELO, não por API; `stream_options.include_usage` não confirmado | `src/infrastructure/llm/nvidia-nim-provider.ts` |
+| `ollama` | 是 | 是 | 是 | 是 | 否 | 无（本地） | sync + seed | — | `src/infrastructure/llm/ollama-provider.ts` |
+| `openai` | 是 | 是 | 是 | 否 | 否 | API 密钥 | sync + seed | — | `src/infrastructure/llm/openai-provider.ts` |
+| `opencode-zen` | 是 | 否 | 否 | 否 | 否 | API 密钥 | seed | Sem teste de conexão da credencial; Capabilities `false` | `src/infrastructure/llm/opencode-zen-provider.ts` |
+| `openrouter` | 是 | 是 | 是 | 否 | 是 | API 密钥 | sync | Cabeçalhos próprios; Id de modelo prefixado pelo upstream; Catálogo com preço na própria linha; Erro NO MEIO do stream; Custo real em `usage.cost`; Alias de roteamento livre (`~…`) é sincronizado mas não pode ser curado | `src/infrastructure/llm/openrouter-provider.ts` |
+| `together` | 是 | 是 | 是 | 否 | 否 | API 密钥 | sync + seed | Unidade de preço NÃO documentada explicitamente pela Together; Ids com namespace; `stream_options.include_usage` não confirmado; 429 leva `error_type: dynamic_request_limited \| dynamic_token_limited` | `src/infrastructure/llm/together-provider.ts` |
+| `vultr` | 是 | 是 | 否 | 否 | 否 | API 密钥 | seed | Tool calling CONFIRMADO com exemplo real; Sufixo `-normalize` | `src/infrastructure/llm/vultr-provider.ts` |
 
 没有 `list_models` 的 provider 会被目录同步跳过，原因记录在报告中——
 绝不会被当作“目录返回为空”。
 “模型来源”：`sync` 自行发现，`seed` 只通过
-`apps/api/src/db/seed.ts` 进入，`sync + seed` 两者都有（seed 只是首次同步前的
+`src/db/seed.ts` 进入，`sync + seed` 两者都有（seed 只是首次同步前的
 引导）。“特性摘要”是下方该 provider 文字章节中的粗体标签——
 每一项的原因写在那里，而不是这里。
 “embeddings” 是 ADR 0075 的能力，只有在有执行证明时才为 `是`：
@@ -151,7 +151,7 @@ tool calling 和 token 计数都没有单独的方法：工具放在 `options.to
 
 ### 第三个轴：workspace 用这个模型做什么
 
-`workspace_models.uses` 保存**按用途**的策展——`codigo`、`documentacao`、`analise`、`imagem`、`conversa`——这是 `apps/api/src/domain/llm/model-uses.ts` 中的一个封闭词汇表。这是任何目录都不会发布的东西：provider 声明 capability，但哪个模型**对这个团队**在代码上表现好，只有用了才知道。
+`workspace_models.uses` 保存**按用途**的策展——`codigo`、`documentacao`、`analise`、`imagem`、`conversa`——这是 `src/domain/llm/model-uses.ts` 中的一个封闭词汇表。这是任何目录都不会发布的东西：provider 声明 capability，但哪个模型**对这个团队**在代码上表现好，只有用了才知道。
 
 它不与 `is_active` 混在一起：
 
@@ -242,7 +242,7 @@ Ollama 也是唯一发布**模型**层的：`/api/tags` 每行带有 `capabiliti
 
 ## 规范化的错误
 
-没有人通过匹配供应商消息中的子串来做决定：决定依据 chunk 的 `code`。这些类位于 `apps/api/src/domain/llm/llm-provider-errors.ts`。
+没有人通过匹配供应商消息中的子串来做决定：决定依据 chunk 的 `code`。这些类位于 `src/domain/llm/llm-provider-errors.ts`。
 
 | provider 状态码 | `code` | 含义 |
 | --- | --- | --- |
@@ -305,7 +305,7 @@ Anthropic 这一列代价最高：并行调用的结果必须在**同一个** `u
 
 ### 对话末尾的一条 `system` 消息（AT-161） {#a-system-message-at-the-end-of-the-conversation-at-161}
 
-迟到 `system` 这一行之所以存在，是因为 AT-081 的语言指引计划在一个回合的每次调用中，于列表**末尾**发送**一条**短暂的 `role: "system"` 消息——第一次调用时在 `user` 之后，之后的调用中在 `tool` 之后。契约套件为九个 provider 中的每一个回答这条消息落在**序列化后的请求体**中的什么位置：每个测试框架声明 `posicaoDoSistemaTardio`，契约在两个位置上核对它，并核对文本恰好出现一次、对话其余部分保持顺序（`apps/api/test/contract/llm-provider.contract.ts`）。
+迟到 `system` 这一行之所以存在，是因为 AT-081 的语言指引计划在一个回合的每次调用中，于列表**末尾**发送**一条**短暂的 `role: "system"` 消息——第一次调用时在 `user` 之后，之后的调用中在 `tool` 之后。契约套件为九个 provider 中的每一个回答这条消息落在**序列化后的请求体**中的什么位置：每个测试框架声明 `posicaoDoSistemaTardio`，契约在两个位置上核对它，并核对文本恰好出现一次、对话其余部分保持顺序（`test/contract/llm-provider.contract.ts`）。
 
 | provider | 适配器 | 迟到 `system` 落在哪里 |
 | --- | --- | --- |
@@ -313,13 +313,13 @@ Anthropic 这一列代价最高：并行调用的结果必须在**同一个** `u
 | Ollama | 自有（`messages` 原样发送） | `messages` 末尾，`role: "system"` |
 | Anthropic | 自有（官方 SDK） | 顶层 `system` 的末尾；位置丢失 |
 
-没有任何适配器丢弃或重复它。假服务器无法回答的是**真实**的 provider 是否接受这个请求体——它什么都接受。这是一个单独的手动 smoke，`apps/api/test/infrastructure/llm/sistema-tardio.smoke.spec.ts`，每个 provider 一个 `describe`，各自以验收 smoke 使用的同一个密钥为条件（另加 `ANTHROPIC_TEST_KEY`；Ollama 由 `OLLAMA_SISTEMA_TARDIO_SMOKE=1` 控制）。哪些已经运行过记录在 [provider 验收](../explanation/aceite-providers.md)中。没有这次运行，就迟到 `system` 的接受而言，provider **未被证明**——这是 ADR 0041/0042 的规则。
+没有任何适配器丢弃或重复它。假服务器无法回答的是**真实**的 provider 是否接受这个请求体——它什么都接受。这是一个单独的手动 smoke，`test/infrastructure/llm/sistema-tardio.smoke.spec.ts`，每个 provider 一个 `describe`，各自以验收 smoke 使用的同一个密钥为条件（另加 `ANTHROPIC_TEST_KEY`；Ollama 由 `OLLAMA_SISTEMA_TARDIO_SMOKE=1` 控制）。哪些已经运行过记录在 [provider 验收](../explanation/aceite-providers.md)中。没有这次运行，就迟到 `system` 的接受而言，provider **未被证明**——这是 ADR 0041/0042 的规则。
 
 **观察，而非测量（AT-081 的缺口 2）：** 在 Anthropic 上，上提让指引改变了位于对话**之前**的顶层 `system` 块——所以它的文本每次变化都会改变请求的前缀，以及该前缀本可获得的任何 prompt caching。目前缓存在产品中不可观测（AT-082），所以这一点只是记录下来，没有量化。
 
 ## OpenRouter——第一个 hub（Fase 11a）
 
-`OpenRouterProvider` 是带 `openrouterConfig()` 的 `OpenAICompatibleProvider`（`apps/api/src/infrastructure/llm/openrouter-provider.ts`）。它声明 `listModels: true`——当一个 capability 开启时，唯一改变的代码就是配置；其余由 `SyncModelCatalogUseCase` 处理。
+`OpenRouterProvider` 是带 `openrouterConfig()` 的 `OpenAICompatibleProvider`（`src/infrastructure/llm/openrouter-provider.ts`）。它声明 `listModels: true`——当一个 capability 开启时，唯一改变的代码就是配置；其余由 `SyncModelCatalogUseCase` 处理。
 
 发现并经过测试的特殊之处（`test/infrastructure/llm/openrouter-provider.contract.spec.ts`）：
 
@@ -335,9 +335,9 @@ Fase 11a 要求的真实凭据验收测试——登记、同步填充目录、�
 
 ## NVIDIA NIM（Fase 11b）
 
-`NvidiaNimProvider` 是带 `nvidiaNimConfig()` 的 `OpenAICompatibleProvider`（`apps/api/src/infrastructure/llm/nvidia-nim-provider.ts`），指向**托管**端点（`integrate.api.nvidia.com`）——而不是自托管容器，那是另一个产品，地址也不同。
+`NvidiaNimProvider` 是带 `nvidiaNimConfig()` 的 `OpenAICompatibleProvider`（`src/infrastructure/llm/nvidia-nim-provider.ts`），指向**托管**端点（`integrate.api.nvidia.com`）——而不是自托管容器，那是另一个产品，地址也不同。
 
-- **`listModels: false`**：`GET /v1/models` 存在（本次会话核对过官方文档），返回 `id`/`object`/`created`/`owned_by`，但找到的文档中没有任何每 token 价格——一个真实但对计量所需的按模型成本毫无用处的目录（两层 capability，ADR 0041）。该 provider 依靠**手工种子**（`apps/api/src/db/seed.ts`）运作，直到有人确认存在价格端点；
+- **`listModels: false`**：`GET /v1/models` 存在（本次会话核对过官方文档），返回 `id`/`object`/`created`/`owned_by`，但找到的文档中没有任何每 token 价格——一个真实但对计量所需的按模型成本毫无用处的目录（两层 capability，ADR 0041）。该 provider 依靠**手工种子**（`src/db/seed.ts`）运作，直到有人确认存在价格端点；
 - **没有专用的头**：`Authorization: Bearer nvapi-...`——标准 bearer，密钥带 `nvapi-` 前缀只是 NVIDIA 的惯例；
 - **tool calling 是按模型的，不是按 API 的**：只有特定模型（Llama 3.1 70B/405B、Nemotron 的变体……）真正支持它——但这从来不是配置开关，完全取决于 `models.supports_tool_calling`（种子/策展），这一点通过阅读基座的 `buildBody()` 得到确认：开关 `capabilities.toolCalling` 只决定是否发送 `tools` 参数，而不决定特定模型是否会用它；
 - **`stream_options.include_usage` 未经确认**适用于托管端点（只在自托管的 NIM 软件中有文档）——`streamOptionsIncludeUsage: false`；基座的 `estimated` 回退覆盖了该字段永远不出现的情况；
@@ -353,7 +353,7 @@ Fase 11a 要求的真实凭据验收测试——登记、同步填充目录、�
 
 ## Together AI（Fase 11b）
 
-`TogetherProvider` 是带 `togetherConfig()` 的 `OpenAICompatibleProvider`（`apps/api/src/infrastructure/llm/together-provider.ts`）。
+`TogetherProvider` 是带 `togetherConfig()` 的 `OpenAICompatibleProvider`（`src/infrastructure/llm/together-provider.ts`）。
 
 - **`listModels: true`**：`GET /v1/models` 有文档，带 `pricing: {input, output, cached_input, base, hourly, finetune}`——只使用 `input`/`output`；
 - **价格单位 Together 没有明确写在文档中**：值是**数字**（而不是 OpenRouter 那样的字符串），通过与公布的市场价格比较（together.ai/models 上 Llama 3.3 70B 为每 1M US$1.04——与官方 schema 示例 `"input": 0.3` 同一数量级），推断为**直接按每百万 token 的 USD**，而不是每 token。用真实密钥确认这一点的是 smoke（参见 `together-provider.smoke.spec.ts` 顶部的注释）——如果有一天被证明是错的，那是需要在这里和解析器中修正的发现，而不是需要掩盖的；
@@ -366,7 +366,7 @@ Fase 11a 要求的真实凭据验收测试——登记、同步填充目录、�
 
 ## DeepInfra（Fase 11b）
 
-`DeepInfraProvider` 是带 `deepinfraConfig()` 的 `OpenAICompatibleProvider`（`apps/api/src/infrastructure/llm/deepinfra-provider.ts`），`baseUrl` 为 `https://api.deepinfra.com/v1/openai`（OpenAI 兼容的接口面——DeepInfra 在它之外还有原生端点，这里不使用）。
+`DeepInfraProvider` 是带 `deepinfraConfig()` 的 `OpenAICompatibleProvider`（`src/infrastructure/llm/deepinfra-provider.ts`），`baseUrl` 为 `https://api.deepinfra.com/v1/openai`（OpenAI 兼容的接口面——DeepInfra 在它之外还有原生端点，这里不使用）。
 
 - **`listModels: true`**，本次会话中针对 `GET {baseUrl}/models` **实时**确认（与基座默认调用的是**同一个**端点，无需扩展）：响应每行带有 `metadata.pricing.{input_tokens,output_tokens}`（每百万的 USD，数字——与为 Together 推断的约定相同）和 `metadata.context_length`；
 - **目录是公开的——完全不需要认证**，实时确认过（调用在没有 `Authorization` 头的情况下成功）。这有一个真实的后果：**DeepInfra 没有连接测试**（`llm-credential-connection-tester.ts` 中没有它的条目）——无效的密钥只会在第一次真正的**聊天**调用时被发现，而绝不会在登记时。没有找到任何其他公开文档化的、需要认证的验证端点；
@@ -378,19 +378,19 @@ Fase 11a 要求的真实凭据验收测试——登记、同步填充目录、�
 
 ## Bitdeer（Fase 11b）
 
-`BitdeerProvider` 是带 `bitdeerConfig()` 的 `OpenAICompatibleProvider`（`apps/api/src/infrastructure/llm/bitdeer-provider.ts`）——是本阶段五个中公开文档最浅的。
+`BitdeerProvider` 是带 `bitdeerConfig()` 的 `OpenAICompatibleProvider`（`src/infrastructure/llm/bitdeer-provider.ts`）——是本阶段五个中公开文档最浅的。
 
 - **`listModels: false`**：没有公开找到任何目录/价格格式（价格页面由 JS 渲染，没有非交互式搜索可以访问的示例）——没有核对过的格式，就写不出诚实的 `parseCatalogo`。重新核对过：`bitdeer.ai/en/pricing/ai-models` 仍然在客户端组装表格（提供的 HTML 中**没有**任何模型名），除此之外没有价格文档。种子价格仍然是**估算**的；
 - **`Authorization: Bearer <chave>` 已确认**（本次会话在 Bitdeer 的 embeddings API 文档中找到了真实的 curl 示例）——即使方言的其余部分完全没有示例；
 - **`GET /v1/models` 存在且需要认证**（没有密钥时实时返回 401，本次会话确认）——它成为连接测试（只看状态码，与其他没有专用端点的一样）；
-- **三个真实的模型 id 已确认**，来自 Bitdeer 自己博客中的配置示例（不是橱窗名称）：`moonshotai/Kimi-K2.5`、`zai-org/GLM-5`、`nvidia/NVIDIA-Nemotron-3-Super-120B-A12B`——在 `apps/api/src/db/seed.ts` 中以**估算**价格写入种子（该模型/家族在其他 provider 上的市场价，未经 Bitdeer 自己确认）；
+- **三个真实的模型 id 已确认**，来自 Bitdeer 自己博客中的配置示例（不是橱窗名称）：`moonshotai/Kimi-K2.5`、`zai-org/GLM-5`、`nvidia/NVIDIA-Nemotron-3-Super-120B-A12B`——在 `src/db/seed.ts` 中以**估算**价格写入种子（该模型/家族在其他 provider 上的市场价，未经 Bitdeer 自己确认）；
 - **没有确认任何流/错误方面的特殊之处**——Bitdeer 关于 "OpenAI REST API standards" 的声明没有附带真实的 `/chat/completions` 示例，所以契约测试不会填充任何文档没有证明的特殊性。smoke 是对该方言的**第一次**真实确认。
 
 真实凭据的验收测试位于 `test/infrastructure/llm/bitdeer-provider.smoke.spec.ts`，以 `BITDEER_TEST_KEY` 为条件。
 
 ## Vultr Serverless Inference（Fase 11b）
 
-`VultrProvider` 是带 `vultrConfig()` 的 `OpenAICompatibleProvider`（`apps/api/src/infrastructure/llm/vultr-provider.ts`）——五个中唯一一个 `listModels` 的决定相对原计划**在实现过程中改变了**的。
+`VultrProvider` 是带 `vultrConfig()` 的 `OpenAICompatibleProvider`（`src/infrastructure/llm/vultr-provider.ts`）——五个中唯一一个 `listModels` 的决定相对原计划**在实现过程中改变了**的。
 
 - **`listModels: false`**（原计划是 `true`）：基座**总是**调用 `{baseUrl}/models`（`openai-compatible-provider.ts`，`listModels()`），而 Vultr 自己的官方参考（`api.vultrinference.com`）描述 `GET /models` 只返回 `id`/`created`/`object`/`owned_by`/`features`——**没有价格**。文档中与价格相关的端点（`GET /provider`，带 `cost`/`contextWindow`）在本次会话测试的路径上**实时返回 404**——数据不足以写出一个不冒指向错误 URL 风险的 `parseCatalogo`（"脆弱的 true"）。`GET /v1/models` 本身已确认（没有密钥时实时返回 401，两次）——只是没有价格；
 - **tool calling 已用真实示例确认**：官方文档（`docs.vultr.com/how-to-use-tool-calling-with-vultr-serverless-inference`）展示了 `kimi-k2-instruct` 以 `finish_reason: "tool_calls"` 响应——纯标准 OpenAI 方言，那个示例中没有奇怪的字段；另外两个种子模型（`llama-3.3-70b-instruct-fp8`、`deepseek-r1-distill-llama-70b`）没有 tool calling 的确认——它们是 `supportsToolCalling: false`；
@@ -402,7 +402,7 @@ Fase 11a 要求的真实凭据验收测试——登记、同步填充目录、�
 
 之前那里的估算错在危险的方向：三个模型中有两个的**输出**价是 `400_000`，而真实值是 `2_750_000`。计量把输出成本低估了将近 7 倍——而输出正是写代码的 agent 账单的主要部分。
 
-`manual_pricing` 仍然是 `true`，这并不矛盾：这个开关的意思是"价格是由一个人阅读文档后输入的，而不是来自同步"（`apps/api/src/db/schema.ts`）。改变的是，这个数字现在来自 provider 本身，而不是市场比较。
+`manual_pricing` 仍然是 `true`，这并不矛盾：这个开关的意思是"价格是由一个人阅读文档后输入的，而不是来自同步"（`src/db/schema.ts`）。改变的是，这个数字现在来自 provider 本身，而不是市场比较。
 :::
 
 真实凭据的验收测试位于 `test/infrastructure/llm/vultr-provider.smoke.spec.ts`，以 `VULTR_TEST_KEY` 为条件。
@@ -435,7 +435,7 @@ sum(rate(brabo_llm_cost_micros_total{provider="openai"}[1h]))
 
 ## 契约套件
 
-`apps/api/test/contract/llm-provider.contract.ts` 针对任何实现运行同一组测试，就像 git 套件自 Fase 2 起所做的那样。分工才是重点：**契约拥有断言，测试框架拥有方言。**
+`test/contract/llm-provider.contract.ts` 针对任何实现运行同一组测试，就像 git 套件自 Fase 2 起所做的那样。分工才是重点：**契约拥有断言，测试框架拥有方言。**
 
 新的 provider 只需要编写测试框架——把每个场景翻译成自己的线路格式——就能继承以下测试：分帧断开的流、有和没有 usage、tool calling、四种错误以及沉默的服务器。假服务器是临时端口上一个真正的 `node:http`，而不是 `fetch` 的 mock：被测的恰恰是 socket 的行为。
 

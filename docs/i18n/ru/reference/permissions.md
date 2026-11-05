@@ -236,7 +236,7 @@ Terminal(rm -fr /)
 ## Что засевает активация исполнения
 
 Активация исполнения записывает шаблоны из `DEV_TERMINAL_ALLOW_PATTERNS`
-(`apps/api/src/domain/actions/dev-terminal-patterns.ts`) в `allow`
+(`src/domain/actions/dev-terminal-patterns.ts`) в `allow`
 проекта. Это два семейства:
 
 - **чтение собственного worktree** — `ls`, `pwd`, `find`, `cat`, `head`,
@@ -442,7 +442,7 @@ upgrade`, `terraform apply`, `docker push`, `npm publish`, ...) и теперь
 шаблон в `allow`, и одного нажатия хватило бы, чтобы открыть дверь навсегда.
 Эта брешь закрыта В ИСТОЧНИКЕ, а не обойдена:
 `ApproveAlwaysActionUseCase`/`patternsForAction`
-(`apps/api/src/application/use-cases/actions/approve-always-action.use-case.ts`)
+(`src/application/use-cases/actions/approve-always-action.use-case.ts`)
 ОТКАЗЫВАЮТСЯ записывать шаблон в `allow` для действия terminal с внешним
 эффектом git или привилегированной командой — пользователь по-прежнему
 одобряет конкретный экземпляр обычным путём, но «всегда разрешать» никогда не
@@ -501,7 +501,7 @@ upgrade`, `terraform apply`, `docker push`, `npm publish`, ...) и теперь
 набранный `git push`; типизированное действие `git_push` проходило и
 записывало `GitPush()` в `allow`. «Всегда разрешать» теперь отклоняет, по
 типу, единый список `TIPOS_SEM_SEMPRE_PERMITIR`
-(`apps/api/src/domain/actions/sempre-permitir.ts`): `git_push`, `pr_open`,
+(`src/domain/actions/sempre-permitir.ts`): `git_push`, `pr_open`,
 `git_merge`, `container_remove`, `instruction_patch`, `parallelize` и
 `raise_max_parallel` — `400` с `reason: "teto_do_sempre_permitir"`. Карточка
 одобрения скрывает кнопку для того же списка (копия, сверяемая с этим тестом).

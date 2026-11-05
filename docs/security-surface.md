@@ -5,7 +5,7 @@ justificativa das que ficam abertas. Decisões no
 [ADR 0027](adr/0027-fase5-backup-hardening-release.md).
 
 > **Este documento é a fonte de verdade de um teste**, não a cópia de um.
-> `apps/api/test/interfaces/route-surface.spec.ts` sobe a aplicação,
+> `test/interfaces/route-surface.spec.ts` sobe a aplicação,
 > enumera as rotas **registradas em runtime** e as compara com a tabela
 > abaixo. Rota nova sem linha aqui **reprova o teste**; linha cuja
 > classificação difere da anotação real **reprova o teste**; linha órfã
@@ -1097,7 +1097,7 @@ detalhar o motivo na URL.
   `redact` do pino: se caísse num corpo de erro logado, iria para o
   Loki em texto puro e com retenção. `serviceToken`, `privateKey`,
   `encryptedDek` e `dek` entraram junto. A lista completa está
-  em `apps/api/src/infrastructure/observability/logger.config.ts`, e
+  em `src/infrastructure/observability/logger.config.ts`, e
   há um teste afirmando cada caminho — a lista é contrato, não
   conveniência.
 - **O `allowedHeaders` do CORS é explícito**, e a lista precisa conter

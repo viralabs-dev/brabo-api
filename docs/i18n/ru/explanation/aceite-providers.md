@@ -167,7 +167,7 @@ ADR 0049. Когда остальные пять ключей появятся, 
 | Bitdeer | `bitdeer-provider.smoke.spec.ts` | `BITDEER_TEST_KEY` | `moonshotai/Kimi-K2.5` | ❌ пропущен | ключ отсутствует в окружении | — |
 | Vultr | `vultr-provider.smoke.spec.ts` | `VULTR_TEST_KEY` | `kimi-k2-instruct` | ❌ пропущен | ключ отсутствует в окружении | — |
 
-Файлы находятся в `apps/api/test/infrastructure/llm/`. Модель по умолчанию
+Файлы находятся в `test/infrastructure/llm/`. Модель по умолчанию
 переопределяется через `<PROVIDER>_TEST_MODEL` — полезно, когда у учётной записи нет доступа
 к модели из колонки.
 

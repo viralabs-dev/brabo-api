@@ -9,7 +9,7 @@ traducao_de: 2f301391630d5be632e27036026760d416d43da1
 [ADR 0027](adr/0027-fase5-backup-hardening-release.md).
 
 > **Этот документ — источник истины для теста**, а не копия теста.
-> `apps/api/test/interfaces/route-surface.spec.ts` поднимает приложение,
+> `test/interfaces/route-surface.spec.ts` поднимает приложение,
 > перечисляет маршруты, **зарегистрированные в runtime**, и сравнивает их с
 > таблицей ниже. Новый маршрут без строки здесь **проваливает тест**; строка,
 > классификация которой расходится с реальной аннотацией, **проваливает
@@ -1096,7 +1096,7 @@ runner из GitHub Releases, чтобы браузер никогда не об�
   `redact` pino: попав в залогированное тело ошибки, он ушёл бы в
   Loki открытым текстом и с хранением. Вместе с ним вошли `serviceToken`,
   `privateKey`, `encryptedDek` и `dek`. Полный список — в
-  `apps/api/src/infrastructure/observability/logger.config.ts`, и
+  `src/infrastructure/observability/logger.config.ts`, и
   есть тест, утверждающий каждый путь, — список является контрактом, а не
   удобством.
 - **`allowedHeaders` CORS задан явно**, и список должен содержать

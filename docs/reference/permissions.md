@@ -107,7 +107,7 @@ Lead fica SUSPENSO esperando a decisão, não só a conversa parada.
 
 `assess_implementability` (ADR 0090, [RN-340](../business-rules/api.md#rn-340))
 é a avaliação de implementabilidade de uma história (gate `implementavel`,
-`apps/api/config/gates.yml`) — MESMO calibre e MESMO raciocínio de
+`config/gates.yml`) — MESMO calibre e MESMO raciocínio de
 `propose_execution_plan`: uma decisão inicial da sessão, não um estouro de
 teto, e por isso também fora do bloco de tetos absolutos. Ela suspende o turno
 do Dev Lead do mesmo jeito enquanto está `pending`.
@@ -232,7 +232,7 @@ vem de o `allow` ser explícito e todo o resto cair em aprovação.
 ## O que a ativação da execução semeia
 
 Ativar a execução grava os padrões de `DEV_TERMINAL_ALLOW_PATTERNS`
-(`apps/api/src/domain/actions/dev-terminal-patterns.ts`) no `allow` do
+(`src/domain/actions/dev-terminal-patterns.ts`) no `allow` do
 projeto. São duas famílias:
 
 - **leitura do próprio worktree** — `ls`, `pwd`, `find`, `cat`, `head`,
@@ -434,7 +434,7 @@ motivo histórico do `deny` era concreto: "sempre permitir" grava o padrão no
 `allow`, e um único clique bastaria para reabrir a porta para sempre. Essa
 brecha foi fechada NA FONTE, não contornada:
 `ApproveAlwaysActionUseCase`/`patternsForAction`
-(`apps/api/src/application/use-cases/actions/approve-always-action.use-case.ts`)
+(`src/application/use-cases/actions/approve-always-action.use-case.ts`)
 RECUSAM gravar padrão no `allow` para ação de terminal com efeito externo de
 git ou comando privilegiado — o usuário continua aprovando a instância
 específica pelo fluxo normal, mas "sempre permitir" nunca grava o padrão nesses
@@ -492,7 +492,7 @@ aprovada.
 `git push` era recusado; uma ação tipada `git_push` passava e gravava
 `GitPush()` no `allow`. "Sempre permitir" agora recusa, por tipo, a lista
 única `TIPOS_SEM_SEMPRE_PERMITIR`
-(`apps/api/src/domain/actions/sempre-permitir.ts`): `git_push`, `pr_open`,
+(`src/domain/actions/sempre-permitir.ts`): `git_push`, `pr_open`,
 `git_merge`, `container_remove`, `instruction_patch`, `parallelize` e
 `raise_max_parallel` — `400` com `reason: "teto_do_sempre_permitir"`. O card
 de aprovação esconde o botão para a mesma lista (uma cópia conferida contra

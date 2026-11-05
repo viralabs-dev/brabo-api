@@ -161,7 +161,7 @@ Terminal(rm -fr /)
 ## 激活执行时预置什么
 
 激活执行会把 `DEV_TERMINAL_ALLOW_PATTERNS`
-（`apps/api/src/domain/actions/dev-terminal-patterns.ts`）中的模式写入项目的
+（`src/domain/actions/dev-terminal-patterns.ts`）中的模式写入项目的
 `allow`。有两个家族：
 
 - **读取自己的 worktree** — `ls`、`pwd`、`find`、`cat`、`head`、
@@ -281,7 +281,7 @@ upgrade`、`terraform apply`、`docker push`、`npm publish`……）以及现�
 **为什么现在 `require_approval` 是安全的，而以前需要 `deny`。** `deny` 的历史原因很具体：“始终允许”会把模式写入
 `allow`，一次点击就足以永久重新打开这扇门。这个漏洞是在**源头**堵上的，而不是绕过：
 `ApproveAlwaysActionUseCase`/`patternsForAction`
-（`apps/api/src/application/use-cases/actions/approve-always-action.use-case.ts`）
+（`src/application/use-cases/actions/approve-always-action.use-case.ts`）
 **拒绝**为有 git 外部效果或特权命令的终端动作把模式写入 `allow`——用户仍通过正常流程批准具体实例，但在这两种情况下“始终允许”从不写入模式。没有这种拒绝，上限就只是装饰。
 
 `sudo`/`doas` 在 `external-effect.ts` 中获得了自己的类别
@@ -311,7 +311,7 @@ test && git push origin main` 被第二个片段拦下，正如复合命令本�
 `git push` 被拒绝；有类型的 `git_push` 动作会通过，并把
 `GitPush()` 写入 `allow`。“始终允许”现在按类型拒绝唯一的列表
 `TIPOS_SEM_SEMPRE_PERMITIR`
-（`apps/api/src/domain/actions/sempre-permitir.ts`）：`git_push`、`pr_open`、
+（`src/domain/actions/sempre-permitir.ts`）：`git_push`、`pr_open`、
 `git_merge`、`container_remove`、`instruction_patch`、`parallelize` 和
 `raise_max_parallel`——`400`，带 `reason: "teto_do_sempre_permitir"`。审批卡片对同一列表隐藏按钮（一个由测试对照此列表核对的副本）。它加入时**并未**改变 `decide()`，也未改变激活执行时预置的内容；自 [RN-689](../business-rules/api.md#rn-689) 起两者都变了：`git_push` 和 `pr_open` 在 `decide()` 中处于 RN-418 的上限之内
 （见[“上限”](#caps)），而激活执行只为每个 `dev-<modulo>` 预置 `git_commit` 为

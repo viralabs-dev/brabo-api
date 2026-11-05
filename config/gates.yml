@@ -40,7 +40,7 @@ gates:
           proposed_action.approved,
           proposed_action.denied,
         ]
-      onde: apps/api/src/application/use-cases/actions/propose-action.use-case.ts
+      onde: src/application/use-cases/actions/propose-action.use-case.ts
 
   - id: necessidade-validada # Criativo → PO — auditoria fluxo.yml x código (B2), ADR 0095
     fluxo: descoberta
@@ -60,7 +60,7 @@ gates:
     evidencia:
       tipo: event_log
       event_types: [necessity.validated]
-      onde: apps/api/src/application/use-cases/agents/validate-necessity.use-case.ts
+      onde: src/application/use-cases/agents/validate-necessity.use-case.ts
 
   - id: story-promovida
     fluxo: pre-dev
@@ -79,7 +79,7 @@ gates:
       # fora do alcance do vocabulário declarativo, e de propósito: aceitar
       # coluna arbitrária no YAML seria abrir a consulta inteira.
       filtro: { to: ready }
-      onde: apps/api/src/application/use-cases/backlog/transition-story.use-case.ts
+      onde: src/application/use-cases/backlog/transition-story.use-case.ts
 
   - id: plano-de-adocao
     fluxo: provisionamento
@@ -93,7 +93,7 @@ gates:
     evidencia:
       tipo: event_log
       event_types: [bootstrap.plan_approved, bootstrap.adopted_as_is]
-      onde: apps/api/src/application/use-cases/git/decide-bootstrap-plan.use-case.ts
+      onde: src/application/use-cases/git/decide-bootstrap-plan.use-case.ts
 
   - id: workspace-verificado # RN-423, ADR 0104
     fluxo: provisionamento
@@ -107,7 +107,7 @@ gates:
     evidencia:
       tipo: event_log
       event_types: [project.workspace_verified]
-      onde: apps/api/src/application/use-cases/iam/confirm-project-workspace.use-case.ts
+      onde: src/application/use-cases/iam/confirm-project-workspace.use-case.ts
 
   - id: qa-verificada
     fluxo: pr
@@ -128,7 +128,7 @@ gates:
       # campo, abertura contaria como passagem.
       event_types: [pr.gate_changed]
       filtro: { gate: qa, veredito: presente }
-      onde: apps/api/src/application/use-cases/execution/record-gate-verdict.use-case.ts
+      onde: src/application/use-cases/execution/record-gate-verdict.use-case.ts
 
   - id: secops-segura
     fluxo: pr
@@ -143,7 +143,7 @@ gates:
       tipo: event_log
       event_types: [pr.gate_changed]
       filtro: { gate: secops, veredito: presente }
-      onde: apps/api/src/application/use-cases/execution/record-gate-verdict.use-case.ts
+      onde: src/application/use-cases/execution/record-gate-verdict.use-case.ts
 
   # PR de INFRA tem caminho próprio: não há task de backlog por trás, então o
   # payload traz `artifactId` no lugar de `taskId` (Fase 8c). São DOIS gates
@@ -163,7 +163,7 @@ gates:
       tipo: event_log
       event_types: [infra.gate_changed]
       filtro: { gate: qa }
-      onde: apps/api/src/application/use-cases/execution/record-infra-gate-verdict.use-case.ts
+      onde: src/application/use-cases/execution/record-infra-gate-verdict.use-case.ts
 
   - id: infra-secops-segura
     fluxo: pr
@@ -178,7 +178,7 @@ gates:
       tipo: event_log
       event_types: [infra.gate_changed]
       filtro: { gate: secops }
-      onde: apps/api/src/application/use-cases/execution/record-infra-gate-verdict.use-case.ts
+      onde: src/application/use-cases/execution/record-infra-gate-verdict.use-case.ts
 
   - id: merge-protegida
     fluxo: pr
@@ -196,8 +196,8 @@ gates:
       # pendente, indistinguível de qualquer outra pendência. O que garante a
       # trava é o teste.
       tipo: teste
-      arquivo: apps/api/test/domain/actions/decide.spec.ts
-      onde: apps/api/src/domain/actions/decide.ts
+      arquivo: test/domain/actions/decide.spec.ts
+      onde: src/domain/actions/decide.ts
 
   - id: backmerge
     fluxo: release
@@ -291,7 +291,7 @@ gates:
           proposed_action.denied,
         ]
       filtro: { actionType: parallelize }
-      onde: apps/api/src/application/use-cases/execution/request-parallelization.use-case.ts
+      onde: src/application/use-cases/execution/request-parallelization.use-case.ts
     backlog: ADR 0053
 
   - id: implementavel # Dev Lead — FASE 14d (ADR 0053); ativado pelo ADR 0090
@@ -364,4 +364,4 @@ gates:
       tipo: ci
       workflow: .github/workflows/golden-set-rag.yml
       arquivo: apps/engine/test/engine/rag/rag_golden_test.exs
-      onde: apps/api/scripts/seed-golden-set-rag.ts
+      onde: scripts/seed-golden-set-rag.ts

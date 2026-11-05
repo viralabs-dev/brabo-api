@@ -1,0 +1,22 @@
+name: politica
+
+# Política de PR do Brabo, pelos workflows reutilizáveis do brabo-ci (AT-696).
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize, ready_for_review]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  pr-police:
+    uses: viralabs-dev/brabo-ci/.github/workflows/pr-police.yml@236dc29d9e64a95ba278bd2ec1109940ce3d6e20  # v1.0.0
+    with:
+      ci_ref: 236dc29d9e64a95ba278bd2ec1109940ce3d6e20
+  escada:
+    uses: viralabs-dev/brabo-ci/.github/workflows/approval-ladder.yml@236dc29d9e64a95ba278bd2ec1109940ce3d6e20  # v1.0.0
+    with:
+      ci_ref: 236dc29d9e64a95ba278bd2ec1109940ce3d6e20

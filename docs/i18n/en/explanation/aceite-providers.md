@@ -170,7 +170,7 @@ round's cost is **US$ 0.00**.
 | Bitdeer | `bitdeer-provider.smoke.spec.ts` | `BITDEER_TEST_KEY` | `moonshotai/Kimi-K2.5` | ❌ skipped | key missing in environment | — |
 | Vultr | `vultr-provider.smoke.spec.ts` | `VULTR_TEST_KEY` | `kimi-k2-instruct` | ❌ skipped | key missing in environment | — |
 
-The files live in `apps/api/test/infrastructure/llm/`. The default model is
+The files live in `test/infrastructure/llm/`. The default model is
 overridable by `<PROVIDER>_TEST_MODEL` — useful when the account doesn't
 have access to the model in the column.
 
@@ -247,7 +247,7 @@ Requirements:
 - the test database up — `TEST_DATABASE_URL`, default
   `postgres://brabo:brabo@localhost:5432/brabo_test`. Since
   `perf/banco-por-worker-nos-testes-da-api`, that value only names the BASE
-  Vitest derives names from (`apps/api/test/support/test-db-name.ts`); this
+  Vitest derives names from (`test/support/test-db-name.ts`); this
   single spec still runs on one Vitest worker and connects to that worker's
   own database (`brabo_test_w1`, cloned from a migrated template), the same
   mechanism any of the api's integration tests use — the smoke calls

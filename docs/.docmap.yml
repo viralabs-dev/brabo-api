@@ -14,20 +14,20 @@ rules:
   # (`route-surface.spec.ts`) reprova rota sem linha.
   - id: superficie-http
     watch:
-      - "apps/api/src/interfaces/http/**"
-    docs: ["apps/api/docs/security-surface.md"]
+      - "src/interfaces/http/**"
+    docs: ["docs/security-surface.md"]
     severity: block
 
   - id: llm-providers
     watch:
-      - "apps/api/src/infrastructure/llm/**"
-      - "apps/api/src/domain/llm/**"
-      - "apps/api/test/contract/llm-provider.contract.ts"
+      - "src/infrastructure/llm/**"
+      - "src/domain/llm/**"
+      - "test/contract/llm-provider.contract.ts"
     docs:
-      - "apps/api/docs/reference/llm-providers.md"
+      - "docs/reference/llm-providers.md"
       # O aceite com credencial real (Fase 13a): mexer num provider invalida a
       # linha dele na tabela de aceite, e sem esta regra ninguém era cobrado.
-      - "apps/api/docs/explanation/aceite-providers.md"
+      - "docs/explanation/aceite-providers.md"
     severity: warn
     note: "Até a Fase 9a NENHUMA regra observava a camada de LLM — provider, capabilities e taxonomia de erro mudavam sem doc cobrando nada. Contrato, capabilities e divergências por dialeto vivem no doc apontado (ADR 0041)."
 
