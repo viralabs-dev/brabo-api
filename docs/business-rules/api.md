@@ -1595,204 +1595,208 @@ reads later needs to know exactly what was waived.
   failure)
 - **Origin:** finding D, Phase D of the [backlog](../explanation/backlog.md)
 
-### RN-081 — História repetida: título igual recusa, justificativa igual avisa {#rn-081}
+### RN-081 — A repeated story: an equal title refuses, an equal justification warns {#rn-081}
 
-Duas respostas diferentes para dois problemas diferentes:
+Two different answers for two different problems:
 
-- **título idêntico** no projeto é erro, não escolha: a história é **recusada** e
-  nada é criado;
-- **mesma justificativa** — todas as regras de negócio que a história cita já
-  estavam cobertas por outra — é suspeita, não erro. A história **é criada** e
-  sai um `backlog.story_overlap_warned`. Um segundo recorte da mesma regra pode
-  ser legítimo, então quem julga é o usuário; o produto só se recusa a deixar
-  passar despercebido.
+- an **identical title** in the project is an error, not a choice: the story is
+  **refused** and nothing is created;
+- the **same justification** — all the business rules the story cites were already
+  covered by another — is a suspicion, not an error. The story **is created** and a
+  `backlog.story_overlap_warned` goes out. A second cut of the same rule may be
+  legitimate, so the user is the judge; the product only refuses to let it pass
+  unnoticed.
 
-**Contido, não intersecção.** Duas histórias compartilharem uma regra é normal, e
-avisar disso viraria ruído que ninguém lê. O sinal só existe quando a nova não
-acrescenta cobertura nenhuma. História que não cita regra alguma não gera aviso:
-tratar o conjunto vazio como subconjunto de tudo acusaria todas.
+**Contained, not intersecting.** Two stories sharing a rule is normal, and warning
+about it would become noise nobody reads. The signal only exists when the new one
+adds no coverage at all. A story that cites no rule generates no warning: treating
+the empty set as a subset of everything would accuse all of them.
 
-**O limite é o mesmo da [RN-080](engine.md#rn-080), e o par do achado o atravessa:**
-"Endpoint público de saudação determinística" e "Endpoint público GET /hello que
-responde saudação imediata" cobrem o mesmo endpoint com títulos e justificativas
-diferentes — nada mecânico os liga, e eles continuam passando. Há teste
-afirmando isso, para o limite ficar visível em vez de implícito.
-Desde a [RN-681](#rn-681) o par é AVISADO por embedding — continua passando,
-e o teste que afirma o limite DESTE mecanismo segue valendo.
+**The limit is the same as [RN-080](engine.md#rn-080), and the finding's pair crosses
+it:** "Public endpoint for a deterministic greeting" and "Public GET /hello endpoint
+that answers an immediate greeting" cover the same endpoint with different titles and
+justifications — nothing mechanical links them, and they still pass. There is a test
+asserting this, so the limit is visible instead of implicit.
+Since [RN-681](#rn-681) the pair is WARNED about by embedding — it still passes,
+and the test that asserts THIS mechanism's limit still holds.
 
-- **Onde:** `src/domain/backlog/story-overlap.ts`,
+- **Where:** `src/domain/backlog/story-overlap.ts`,
   `src/application/use-cases/backlog/create-story.use-case.ts`
-- **Teste:** `test/domain/backlog/story-overlap.spec.ts`,
+- **Test:** `test/domain/backlog/story-overlap.spec.ts`,
   `test/application/use-cases/backlog/create-story.use-case.spec.ts`
-- **Origem:** achado R, Fase E do [backlog](../explanation/backlog.md)
+- **Origin:** finding R, Phase E of the [backlog](../explanation/backlog.md)
 
-### RN-082 — A credencial de git de uma ação é a do OWNER do workspace {#rn-082}
+### RN-082 — An action's git credential is the workspace OWNER's {#rn-082}
 
-Quando a api executa uma ação de git contra provider remoto (`pr_open`,
-`git_merge`), o token vem do **owner do workspace** — o mesmo resolvedor da
-[RN-058](#rn-058), não de quem decidiu a ação.
+When the api executes a git action against a remote provider (`pr_open`,
+`git_merge`), the token comes from the **workspace owner** — the same resolver as
+[RN-058](#rn-058), not from whoever decided the action.
 
-**Resolver por quem decidiu só funcionava com clique humano.** Ação
-auto-aprovada por política não tem decisor: `decided_by` fica `NULL`, o token
-fica `undefined`, e o GitHub responde `Requires authentication`. Na prática,
-com autonomia ligada — que é o modo que o ADR 0055 existe para viabilizar —
-**nenhum dev agent conseguia abrir PR em provider remoto**.
+**Resolving by who decided only worked with a human click.** An action
+auto-approved by policy has no decider: `decided_by` stays `NULL`, the token stays
+`undefined`, and GitHub answers `Requires authentication`. In practice, with
+autonomy on — which is the mode ADR 0055 exists to make viable — **no dev agent
+could open a PR on a remote provider**.
 
-**O contraste que expôs o defeito** aconteceu dentro de uma execução só: no
-mesmo run, `git_push` passou e `pr_open` falhou. O push é executado pelo
-ENGINE, que já injetava a credencial do owner
-([RN-076](engine.md#rn-076)); a PR é aberta pela API, que estava fora de simetria.
+**The contrast that exposed the defect** happened within a single run: in the same
+run, `git_push` passed and `pr_open` failed. The push is executed by the ENGINE,
+which already injected the owner's credential ([RN-076](engine.md#rn-076)); the PR
+is opened by the API, which was out of symmetry.
 
-Não apareceu antes porque toda validação anterior usou o `LocalGitProvider`,
-onde o token nem é consultado.
+It did not show up before because every earlier validation used the
+`LocalGitProvider`, where the token is not even consulted.
 
-O princípio é o mesmo da RN-058, e vale repetir porque é o que impede as duas
-regras de divergirem com o tempo: **quem banca a conta banca os agentes**, e
-isso não muda conforme quem clica. Por isso o resolvedor é REUSADO em vez de
-reimplementado.
+The principle is the same as RN-058, and it is worth repeating because it is what
+keeps the two rules from diverging over time: **whoever pays the bill pays for the
+agents**, and that does not change depending on who clicks. That is why the
+resolver is REUSED instead of reimplemented.
 
-- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts`,
-  reusando `application/use-cases/llm/resolve-credential-owner.use-case.ts`
-- **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
-  (`pr_open` auto-aprovado, com `decidedBy: null`, pede a credencial do owner)
-- **Origem:** achado AA, [validação real da 13b](../explanation/validacao-real.md)
+- **Where:** `src/application/use-cases/actions/execute-git-action.use-case.ts`,
+  reusing `application/use-cases/llm/resolve-credential-owner.use-case.ts`
+- **Test:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
+  (an auto-approved `pr_open`, with `decidedBy: null`, asks for the owner's credential)
+- **Origin:** finding AA, [real validation of 13b](../explanation/validacao-real.md)
 
-### RN-083 — O lead decide o paralelismo; acima do teto, você autoriza {#rn-083}
+### RN-083 — The lead decides the parallelism; above the ceiling, you authorize {#rn-083}
 
-Quantos agentes sobem deixa de ser um número no código: quem avalia é o **lead
-da área**. Mas a decisão dele não é soberana sobre GASTO — até
-`agent_areas.max_parallel` (nasce com **5** no `dev`, [RN-910](#rn-910)) ele sobe e segue; **acima disso vira
-`proposed_action` do tipo `parallelize`**, pelo mesmo pipeline de toda ação com
-efeito externo.
+How many agents come up stops being a number in the code: the **area lead**
+evaluates it. But its decision is not sovereign over SPENDING — up to
+`agent_areas.max_parallel` (born with **5** in `dev`, [RN-910](#rn-910)) it brings
+them up and goes on; **above that it becomes a `proposed_action` of type
+`parallelize`**, through the same pipeline as every action with an external effect.
 
-**O teto é da SESSÃO, não do módulo.** É a única parte da regra que não é
-óbvia, e a que um refactor desatento desfaz: contar por módulo permitiria N
-módulos × 2 agentes sem autorização nenhuma — o buraco anterior com outro nome.
-Há teste afirmando exatamente isso.
+**The ceiling belongs to the SESSION, not the module.** It is the only part of the
+rule that is not obvious, and the one an inattentive refactor undoes: counting per
+module would allow N modules × 2 agents without any authorization — the earlier
+hole under another name. There is a test asserting exactly that.
 
-**Teto zero ou negativo é configuração inválida, não "sem limite".** Tratá-lo
-como ilimitado transformaria um erro de digitação em gasto irrestrito, que é o
-oposto do que o pipeline existe para fazer.
+**A zero or negative ceiling is an invalid configuration, not "no limit".**
+Treating it as unlimited would turn a typo into unrestricted spending, which is the
+opposite of what the pipeline exists to do.
 
-**Quem PEDE é o lead; quem DECIDE é você.** A `proposed_action` nasce com o
-lead como ator, e a decisão fica no event log com o seu nome — é essa distinção
-que faz a história ser reconstituível depois ([ADR 0048](../adr/0048-decisao-no-log-e-a-ordem-do-gate.md)).
+**Who ASKS is the lead; who DECIDES is you.** The `proposed_action` is born with the
+lead as actor, and the decision stays in the event log with your name — it is that
+distinction that makes the story reconstructable later ([ADR 0048](../adr/0048-decisao-no-log-e-a-ordem-do-gate.md)).
 
-O motivo viaja no payload IMUTÁVEL, com os três números (quantos há, quantos
-pede, qual o teto): quem ler daqui a seis meses precisa entender o que foi
-autorizado sem reconstruir o estado da sessão.
+The reason travels in the IMMUTABLE payload, with the three numbers (how many there
+are, how many it asks for, what the ceiling is): whoever reads it six months from
+now needs to understand what was authorized without reconstructing the session's
+state.
 
-`AcceptParallelizationUseCase` não muda: ele continua sendo quem EXECUTA, tanto
-no caminho direto quanto quando a ação é aprovada. Absorvê-lo por dentro, em vez
-de reescrevê-lo, é o que mantém a suite da Fase 4 verde sem modificação — que é
-a prova de que a troca não vazou para o contrato externo.
+`AcceptParallelizationUseCase` does not change: it is still the one that EXECUTES,
+both on the direct path and when the action is approved. Absorbing it from the
+inside, instead of rewriting it, is what keeps the Phase 4 suite green without
+modification — which is the proof that the swap did not leak into the external
+contract.
 
-**O teto é configurável por área, e só por você.** `PATCH
-/projects/:projectId/agent-areas/:key/max-parallel` exige `maintainer` — o mesmo
-papel de ativar a execução, e pelo mesmo motivo: mudar o teto é decidir quanto o
-produto pode gastar sem perguntar. Não existe caminho automático de subi-lo. A
-Anamnese pode PROPOR, quando notar que a autorização virou rotina, e a proposta
-continua passando por esta rota depois que você aceita — um produto que eleva o
-próprio teto de gasto é exatamente o que o pipeline de aprovação existe para
-impedir.
+**The ceiling is configurable per area, and only by you.** `PATCH
+/projects/:projectId/agent-areas/:key/max-parallel` requires `maintainer` — the
+same role as activating execution, and for the same reason: changing the ceiling
+is deciding how much the product can spend without asking. There is no automatic
+path to raise it. Anamnesis may PROPOSE, when it notices that the authorization
+became routine, and the proposal still goes through this route after you accept —
+a product that raises its own spending ceiling is exactly what the approval
+pipeline exists to prevent.
 
-Mudar o teto vale para os PRÓXIMOS pedidos. O que já está aguardando decisão
-continua aguardando: a ação carrega no payload o teto vigente quando foi criada,
-e reinterpretá-la sob o teto novo mudaria o que você está prestes a decidir
-depois de ler.
+Changing the ceiling applies to the NEXT requests. What is already awaiting a
+decision keeps waiting: the action carries in its payload the ceiling that held
+when it was created, and reinterpreting it under the new ceiling would change what
+you are about to decide after reading.
 
-- **Onde:** `src/domain/execution/paralelismo.ts` (a regra pura),
+- **Where:** `src/domain/execution/paralelismo.ts` (the pure rule),
   `application/use-cases/execution/request-parallelization.use-case.ts`,
   `application/use-cases/execution/set-area-max-parallel.use-case.ts`,
-  exposto em `interfaces/http/execution/execution.controller.ts` e configurado
-  em `apps/web/src/routes/settings/ParallelismSection.tsx`
-- **Teste:** `test/domain/execution/paralelismo.spec.ts`,
+  exposed in `interfaces/http/execution/execution.controller.ts` and configured
+  in `apps/web/src/routes/settings/ParallelismSection.tsx`
+- **Test:** `test/domain/execution/paralelismo.spec.ts`,
   `test/application/use-cases/execution/request-parallelization.use-case.spec.ts`,
   `test/application/use-cases/execution/set-area-max-parallel.use-case.spec.ts`
-  e `apps/web/src/routes/ProjectSettingsTab.test.tsx` (`ParallelismSection`)
+  and `apps/web/src/routes/ProjectSettingsTab.test.tsx` (`ParallelismSection`)
 - **Gate:** `config/gates.yml` (`paralelismo-autorizado`) — `status: active`
-  desde a auditoria fluxo.yml × código (achado A1/B5); o mecanismo em si não
-  mudou, só o registro que ficou `planned` por engano desde a FASE 14d, ver
+  since the fluxo.yml × code audit (finding A1/B5); the mechanism itself did not
+  change, only the registry entry that stayed `planned` by mistake since PHASE 14d, see
   [gates.md](../explanation/gates.md#a-registry-can-age-in-the-wrong-direction--stale-not-inactive)
-- **Origem:** [ADR 0053](../adr/0053-dev-lead-e-paralelismo-autorizado.md), FASE 14d
+- **Origin:** [ADR 0053](../adr/0053-dev-lead-e-paralelismo-autorizado.md), PHASE 14d
 
-### RN-084 — A esteira exibida deriva do registro de gates {#rn-084}
+### RN-084 — The displayed pipeline derives from the gate registry {#rn-084}
 
-O painel do time mostra a etapa em que uma PR está **derivando-a de
-`config/gates.yml`**, não de uma lista escrita na tela. Gate que sai do registro
-some da esteira; gate `planned` nunca aparece.
+The team panel shows the stage a PR is at **deriving it from
+`config/gates.yml`**, not from a list written on the screen. A gate that leaves
+the registry disappears from the pipeline; a `planned` gate never appears.
 
-**A regra existe por uma forma específica de envelhecimento.** Antes da FASE
-15b a tela tinha as etapas fixas no componente, e o registro (FASE 15a)
-descrevia os gates em outro lugar. Nada ligava os dois: acrescentar um gate ao
-YAML não mudava a tela, e remover um deixava a tela mostrando uma etapa que já
-não existia — sem nenhum teste falhar, porque as duas fontes estavam certas
-cada uma por si. É o mesmo apodrecimento que o `docs/.docmap.yml` existe para
-impedir, e a resposta é a mesma: uma fonte só, com o consumo cobrado.
+**The rule exists because of a specific form of aging.** Before PHASE 15b the
+screen had the stages fixed in the component, and the registry (PHASE 15a)
+described the gates elsewhere. Nothing linked the two: adding a gate to the YAML
+did not change the screen, and removing one left the screen showing a stage that
+no longer existed — without any test failing, because the two sources were each
+right on their own. It is the same rot that `docs/.docmap.yml` exists to prevent,
+and the answer is the same: a single source, with the consumption enforced.
 
-Três decisões de borda, todas para a tela **degradar** em vez de sumir:
+Three edge decisions, all so the screen **degrades** instead of vanishing:
 
-- gate de PR que a tela ainda não sabe desenhar é **ignorado**, não quebra o
-  render — o registro pode ganhar um gate antes de a tela ganhar o rótulo;
-- os **rótulos são de tela**, não do registro: o YAML descreve engenharia, e a
-  tela fala com quem espera uma PR;
-- **sem registro** (a rota falhou), mostra a esteira completa em vez de vazia —
-  uma esteira genérica informa mais que nada.
+- a PR gate that the screen does not yet know how to draw is **ignored**, it does
+  not break the render — the registry may gain a gate before the screen gains the
+  label;
+- the **labels belong to the screen**, not the registry: the YAML describes
+  engineering, and the screen talks to whoever is waiting for a PR;
+- **without a registry** (the route failed), it shows the full pipeline instead of
+  an empty one — a generic pipeline informs more than nothing.
 
-- **Onde:** `apps/web/src/components/PrGateTimeline.tsx` (`etapasDaEsteira`),
-  lendo `GET /gates` (`src/interfaces/http/gates/gates.controller.ts`)
-- **Teste:** `apps/web/src/components/PrGateTimeline.test.ts`
+- **Where:** `apps/web/src/components/PrGateTimeline.tsx` (`etapasDaEsteira`),
+  reading `GET /gates` (`src/interfaces/http/gates/gates.controller.ts`)
+- **Test:** `apps/web/src/components/PrGateTimeline.test.ts`
   (`gate que SAI do registro some da tela`, `gate de PR que a tela ainda não
   sabe desenhar é IGNORADO`, `sem registro, mostra a esteira completa`)
-- **Origem:** [ADR 0054](../adr/0054-gates-como-registro-declarativo.md), FASE 15b
+- **Origin:** [ADR 0054](../adr/0054-gates-como-registro-declarativo.md), PHASE 15b
 
-### RN-086 — Gastar com mais agentes nunca se auto-aprova {#rn-086}
+### RN-086 — Spending on more agents is never self-approved {#rn-086}
 
-As duas ações que mexem em **quanto o produto pode gastar sozinho** —
-`parallelize` (ultrapassar o teto agora) e `raise_max_parallel` (mudar o teto)
-— nunca são auto-aprováveis. Nem por `agent_autonomy`, nem por
-`permissions.json`. É a mesma classe de garantia da trava de merge e do teto do
-patch de instrução.
+The two actions that touch **how much the product may spend on its own** —
+`parallelize` (exceeding the ceiling now) and `raise_max_parallel` (changing the
+ceiling) — are never auto-approvable. Not by `agent_autonomy`, not by
+`permissions.json`. It is the same class of guarantee as the merge lock and the
+instruction patch ceiling.
 
-**Sem isto o teto da [RN-083](#rn-083) seria decorativo.** Um `permissions.json`
-com `Parallelize()` no `allow` faria toda ultrapassagem se aprovar sozinha — a
-regra que existe para EXIGIR a decisão do usuário passaria a dispensá-la. E
-`raise_max_parallel` é o caso mais grave: seria o produto elevando o próprio
-limite de gasto, exatamente o que o pipeline de aprovação existe para impedir.
+**Without this, the ceiling of [RN-083](#rn-083) would be decorative.** A
+`permissions.json` with `Parallelize()` in `allow` would make every overrun
+approve itself — the rule that exists to REQUIRE the user's decision would come to
+waive it. And `raise_max_parallel` is the gravest case: it would be the product
+raising its own spending limit, exactly what the approval pipeline exists to
+prevent.
 
-**A Anamnese pode PROPOR, e é isso que ela faz.** Quando autorizar mais um
-agente vira rotina, o teto está errado, e quem percebe primeiro é quem lê o
-histórico. O sinal já chegava a ela: as decisões do usuário na janela vêm de
-`proposed_actions`, com `actionType` e `status`.
+**Anamnesis may PROPOSE, and that is what it does.** When authorizing one more
+agent becomes routine, the ceiling is wrong, and the first to notice is whoever
+reads the history. The signal already reached it: the user's decisions in the
+window come from `proposed_actions`, with `actionType` and `status`.
 
-O limiar é **três aprovações e nenhuma negação**, e as duas metades importam:
+The threshold is **three approvals and no denial**, and both halves matter:
 
-- **duas não são rotina — são duas.** Três é o que separa "aconteceu" de "está
-  acontecendo sempre";
-- **uma negação derruba o sinal inteiro**, por mais aprovações que haja. Se o
-  usuário recusou alguma vez, o teto está fazendo o trabalho dele, e propor
-  subi-lo seria ler o sinal ao contrário.
+- **two are not routine — they are two.** Three is what separates "it happened"
+  from "it is always happening";
+- **one denial brings down the whole signal**, however many approvals there are. If
+  the user refused even once, the ceiling is doing their job, and proposing to
+  raise it would be reading the signal backwards.
 
-Propor um teto **igual ou menor** que o vigente é recusado pela api: a Anamnese
-roda periodicamente e reproporia a mesma coisa a cada rodada, enchendo de ruído
-uma fila que o usuário precisa ler.
+Proposing a ceiling **equal to or lower than** the current one is refused by the
+api: Anamnesis runs periodically and would re-propose the same thing every round,
+filling with noise a queue the user needs to read.
 
-Aprovar aplica o valor do **payload**, não um recalculado na hora — é o número
-que você leu ao decidir.
+Approving applies the value from the **payload**, not one recalculated on the
+spot — it is the number you read when deciding.
 
-- **Onde:** `src/domain/actions/decide.ts` (o teto),
+- **Where:** `src/domain/actions/decide.ts` (the ceiling),
   `application/use-cases/execution/propose-max-parallel.use-case.ts`,
   `execute-max-parallel-raise.use-case.ts`,
-  `apps/engine/lib/engine/anamnese/tools/propose_max_parallel.ex` e o limiar em
+  `apps/engine/lib/engine/anamnese/tools/propose_max_parallel.ex` and the threshold in
   `apps/engine/lib/engine/workers/anamnese_worker.ex` (`nota_de_paralelismo/1`)
-- **Teste:** `test/domain/actions/decide.spec.ts`
+- **Test:** `test/domain/actions/decide.spec.ts`
   (`decide — teto do paralelismo`),
   `test/application/use-cases/execution/propose-max-parallel.use-case.spec.ts`,
   `execute-max-parallel-raise.use-case.spec.ts`,
-  `apps/engine/test/engine/anamnese/tools_test.exs` e
+  `apps/engine/test/engine/anamnese/tools_test.exs` and
   `test/engine/workers/anamnese_worker_test.exs` (`duas aprovacoes NAO sao
   rotina`, `uma NEGACAO derruba o sinal`)
-- **Origem:** [ADR 0053](../adr/0053-dev-lead-e-paralelismo-autorizado.md), FASE 14d
+- **Origin:** [ADR 0053](../adr/0053-dev-lead-e-paralelismo-autorizado.md), PHASE 14d
 
 ## Painel de projetos
 
@@ -1904,174 +1908,175 @@ old workspace.
 - **Origin:** measured residual of [RN-090](#rn-090) — 286 req/min with the
   drawer open in a workspace of 23 projects
 
-### RN-092 — O `projectId` é segmento de caminho, e o escopo nunca sai da raiz {#rn-092}
+### RN-092 — The `projectId` is a path segment, and the scope never leaves the root {#rn-092}
 
-`projectScopeRoot()` **recusa** um `projectId` que não seja segmento de caminho
-simples (`^[A-Za-z0-9_-]{1,64}$`), lançando em vez de montar o caminho.
+`projectScopeRoot()` **refuses** a `projectId` that is not a simple path segment
+(`^[A-Za-z0-9_-]{1,64}$`), throwing instead of building the path.
 
-O motivo é que o id chega de `@Param('projectId')` sem pipe de validação, e o
-Express **decodifica o percent-encoding do segmento antes de entregá-lo**: um
-`..%2F..%2Fetc` chega como `../../etc`, e o `join` resolveria para fora da raiz
-sem reclamar. Os dois consumidores da função sofrem, e o segundo é o grave:
+The reason is that the id arrives from `@Param('projectId')` with no validation
+pipe, and Express **decodes the segment's percent-encoding before handing it
+over**: a `..%2F..%2Fetc` arrives as `../../etc`, and the `join` would resolve
+outside the root without complaining. The function's two consumers suffer, and the
+second is the serious one:
 
-- o `permissions.json` seria lido **e escrito** em caminho arbitrário;
-- o escopo da [RN-075](#rn-075) autoriza comando de `terminal` sob essa pasta.
-  Um escopo que escapa da raiz é a política de aprovação apontando para o lugar
-  errado — falha de SEGURANÇA, não de arquivo não encontrado.
+- `permissions.json` would be read **and written** at an arbitrary path;
+- the scope of [RN-075](#rn-075) authorizes a `terminal` command under that
+  folder. A scope that escapes the root is the approval policy pointing at the
+  wrong place — a SECURITY failure, not a file-not-found.
 
-A checagem é deliberadamente **mais larga que UUID** (aceita letra, dígito,
-hífen e sublinhado) para não amarrar o formato do id, e estreita o bastante para
-que o resultado nunca escape. E fica **onde a raiz é derivada**, não em cada
-chamador, pela mesma razão que fez a função existir: as duas derivações têm que
-concordar, e checagem duplicada é checagem que um dia diverge.
+The check is deliberately **wider than UUID** (it accepts letter, digit, hyphen and
+underscore) so as not to tie down the id's format, and narrow enough that the result
+never escapes. And it stays **where the root is derived**, not in each caller, for
+the same reason that made the function exist: the two derivations must agree, and a
+duplicated check is a check that one day diverges.
 
-O caminho feliz não muda — todo id real é UUID vindo do banco.
+The happy path does not change — every real id is a UUID coming from the database.
 
-- **Onde:** `src/infrastructure/filesystem/project-workspaces-root.ts`
+- **Where:** `src/infrastructure/filesystem/project-workspaces-root.ts`
   (`projectScopeRoot`)
-- **Teste:** `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
-- **Origem:** [ADR 0058](../adr/0058-csp-fechado-na-api-e-escopo-de-projeto-contido.md),
-  alertas `js/path-injection` do CodeQL
+- **Test:** `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
+- **Origin:** [ADR 0058](../adr/0058-csp-fechado-na-api-e-escopo-de-projeto-contido.md),
+  CodeQL `js/path-injection` alerts
 
-### RN-093 — Em produção, a api não sobe com a chave de exemplo do `state` de OAuth {#rn-093}
+### RN-093 — In production, the api does not boot with the example OAuth `state` key {#rn-093}
 
-`resolveOauthStateSecret()` **derruba o boot** quando `NODE_ENV === 'production'`
-e `GIT_OAUTH_STATE_SECRET` está ausente, é igual ao literal de exemplo do
-repositório, ou tem menos de 16 caracteres. Fora de produção o default de
-desenvolvimento continua valendo.
+`resolveOauthStateSecret()` **brings the boot down** when `NODE_ENV === 'production'`
+and `GIT_OAUTH_STATE_SECRET` is absent, equals the repository's example literal, or
+has fewer than 16 characters. Outside production the development default still
+holds.
 
-Essa chave assina o `state` do OAuth de git, e o `state` é o único que impede o
-callback `GET /git/oauth/:provider/callback` — rota pública, por necessidade —
-de ser forjado. Com a chave conhecida, qualquer um assina um `state` para
-`{projectId, userId, provider}` à escolha e faz o callback gravar, no projeto
-apontado por esse payload, o token de git obtido do provider.
+That key signs the git OAuth `state`, and the `state` is the only thing that keeps
+the callback `GET /git/oauth/:provider/callback` — a public route, by necessity —
+from being forged. With the key known, anyone signs a `state` for
+`{projectId, userId, provider}` of their choice and makes the callback record, in the
+project pointed to by that payload, the git token obtained from the provider.
 
-**Por que rejeitar o literal, e não só o vazio.** O default estava no
-`.env.example` de um repositório open source — é segredo publicado, não segredo
-fraco. E o `docker-compose.prod.yml` o supria como fallback, então no caminho
-real de erro a variável estava **definida**: uma verificação de "não vazia"
-passaria por cima do defeito inteiro.
+**Why reject the literal, and not just the empty one.** The default was in the
+`.env.example` of an open source repository — it is a published secret, not a weak
+secret. And `docker-compose.prod.yml` supplied it as a fallback, so on the real error
+path the variable was **defined**: a "not empty" check would walk right over the
+whole defect.
 
-A resolução fica em função única, e não em cada chamador, pela mesma razão da
-[RN-092](#rn-092) — eram duas cópias do mesmo literal, e cópias divergem.
-Divergindo aqui, o callback recusaria todo `state` legítimo.
+The resolution stays in a single function, and not in each caller, for the same
+reason as [RN-092](#rn-092) — there were two copies of the same literal, and copies
+diverge. Diverging here, the callback would refuse every legitimate `state`.
 
-- **Onde:** `src/infrastructure/security/oauth-state-secret.ts`
-  (`resolveOauthStateSecret`), chamada no boot em `src/main.ts`
-- **Teste:** `test/infrastructure/security/oauth-state-secret.spec.ts`
-- **Origem:** [ADR 0059](../adr/0059-segredo-do-state-de-oauth-sem-default.md)
+- **Where:** `src/infrastructure/security/oauth-state-secret.ts`
+  (`resolveOauthStateSecret`), called at boot in `src/main.ts`
+- **Test:** `test/infrastructure/security/oauth-state-secret.spec.ts`
+- **Origin:** [ADR 0059](../adr/0059-segredo-do-state-de-oauth-sem-default.md)
 
-### RN-094 — A área de agentes nasce com o projeto {#rn-094}
+### RN-094 — The agent area is born with the project {#rn-094}
 
-Criar um projeto grava as três áreas (`dev`, `qa`, `infra`) em `agent_areas`,
-com o lead de cada uma e os membros **enumeráveis** em `agent_area_members` —
-na MESMA transação da criação. Se o seeding falha, o projeto não nasce: projeto
-sem área é projeto onde a RN-083 lê tabela vazia e cai no default sem que
-ninguém tenha decidido nada.
+Creating a project records the three areas (`dev`, `qa`, `infra`) in `agent_areas`,
+with each one's lead and the **enumerable** members in `agent_area_members` — in the
+SAME transaction as the creation. If the seeding fails, the project is not born: a
+project without an area is a project where RN-083 reads an empty table and falls to
+the default without anyone having decided anything.
 
-**Isto é a correção de um defeito, não uma capacidade nova.** `agent_areas`
-existe desde a FASE 14d e nunca foi gravada — `AgentAreaRepository.upsert`
-tinha teste e não tinha NENHUM chamador. Em produção a tabela estava vazia,
-`GET /projects/:projectId/agent-areas` devolvia `[]`, e os quatro casos de uso
-que a leem operavam sobre o nada. É a mesma falha da própria FASE 14d, escrita
-no CLAUDE.md: **testar a peça não é testar o caminho até ela**. Por isso o
-teste desta regra entra pelo caso de uso que a rota chama, com repositório
-real: um fake aqui provaria exatamente o que já estava provado e quebrado.
+**This is the fix of a defect, not a new capability.** `agent_areas` has existed
+since PHASE 14d and was never written — `AgentAreaRepository.upsert` had a test and
+NO caller. In production the table was empty, `GET /projects/:projectId/agent-areas`
+returned `[]`, and the four use cases that read it operated on nothing. It is the
+same failure as PHASE 14d itself, written in CLAUDE.md: **testing the piece is not
+testing the path to it**. That is why this rule's test enters through the use case
+the route calls, with a real repository: a fake here would prove exactly what was
+already proven and broken.
 
-**Semeia em DOIS lugares, e cada um responde uma pergunta diferente.** A
-criação do projeto faz a área EXISTIR — a tela de Configurações lê num projeto
-que nunca executou. A ativação da execução diz quem são os MEMBROS da área de
-`dev`: um `dev-<modulo>` por módulo do `module_map`, que não existia quando o
-projeto nasceu. Enquanto não há membros gravados, quem sustenta a regra de
-endereçamento (RN-087) é o predicado `ehDevDeModulo`, que não consulta o banco.
+**It seeds in TWO places, and each answers a different question.** Project creation
+makes the area EXIST — the Settings screen reads it in a project that never
+executed. Execution activation says who the MEMBERS of the `dev` area are: one
+`dev-<modulo>` per `module_map` module, which did not exist when the project was
+born. While there are no recorded members, what upholds the addressing rule (RN-087)
+is the `ehDevDeModulo` predicate, which does not consult the database.
 
-**O seeding manda o teto de NASCENÇA, e só no INSERT.** Desde a
-[RN-910](#rn-910) a área nasce com o valor do catálogo (dev 5, qa 4, infra 2),
-mas o `upsert` o grava só quando a linha ainda não existe: a ativação é
-repetível, e um teto que você subiu não volta ao valor de nascença em silêncio
-— o produto desfazendo a sua decisão. A migração de backfill `0038` faz a área
-existir e para aí; quem alinha os projetos existentes é a `0073` (RN-910).
+**The seeding sends the BIRTH ceiling, and only on the INSERT.** Since
+[RN-910](#rn-910) the area is born with the catalog's value (dev 5, qa 4, infra 2),
+but the `upsert` writes it only when the row does not exist yet: activation is
+repeatable, and a ceiling you raised does not silently go back to its birth value —
+the product undoing your decision. The backfill migration `0038` makes the area
+exist and stops there; what aligns the existing projects is `0073` (RN-910).
 
-Projetos criados antes disto são cobertos pela migração `0038`, com `ON
-CONFLICT DO NOTHING` nas duas tabelas. Sem ela, o defeito ficaria corrigido só
-para quem começasse do zero.
+Projects created before this are covered by migration `0038`, with `ON CONFLICT DO
+NOTHING` in both tables. Without it, the defect would be fixed only for whoever
+started from scratch.
 
-- **Onde:**
+- **Where:**
   `src/application/use-cases/agents/seed-agent-areas.use-case.ts`,
-  chamado por `application/use-cases/iam/create-project.use-case.ts` e
+  called by `application/use-cases/iam/create-project.use-case.ts` and
   `application/use-cases/execution/activate-execution.use-case.ts`;
-  lista canônica em `src/domain/agents/agent-areas.ts`;
-  backfill em `src/db/migrations/0038_wandering_lila_cheney.sql`
-- **Teste:**
-  `test/application/use-cases/iam/create-project-semeia-areas.spec.ts` (o
-  caminho, contra o banco, incluindo a falha que derruba a criação),
-  `test/db/agent-areas-backfill.spec.ts` (a migração rodada de verdade, duas
-  vezes) e `test/application/use-cases/execution/activate-execution.use-case.spec.ts`
-  (os membros de dev, e o teto nunca enviado)
-- **Origem:** FASE 18, defeito achado na investigação do programa 16–26;
-  a tabela vem do [ADR 0053](../adr/0053-dev-lead-e-paralelismo-autorizado.md)
+  canonical list in `src/domain/agents/agent-areas.ts`;
+  backfill in `src/db/migrations/0038_wandering_lila_cheney.sql`
+- **Test:**
+  `test/application/use-cases/iam/create-project-semeia-areas.spec.ts` (the
+  path, against the database, including the failure that brings creation down),
+  `test/db/agent-areas-backfill.spec.ts` (the migration really run, twice) and
+  `test/application/use-cases/execution/activate-execution.use-case.spec.ts`
+  (the dev members, and the ceiling never sent)
+- **Origin:** PHASE 18, defect found in the investigation of the 16–26 program;
+  the table comes from [ADR 0053](../adr/0053-dev-lead-e-paralelismo-autorizado.md)
 
-### RN-095 — A leitura de repositório é contida ao projeto e limitada {#rn-095}
+### RN-095 — Repository reading is contained to the project and limited {#rn-095}
 
-A superfície de leitura de código (`GET /projects/:projectId/code/{tree,file,search}`
-e o diff de PR) tem **duas** garantias, e as duas são do mesmo tipo: o produto
-recusando fazer o que o cliente pediu.
+The code-reading surface (`GET /projects/:projectId/code/{tree,file,search}`
+and the PR diff) has **two** guarantees, and both are of the same kind: the product
+refusing to do what the client asked.
 
-**Contenção.** Todo caminho de arquivo vindo do cliente passa por
-`caminhoDeRepositorioContido()`, que ancora o pedido na pasta do projeto e
-recusa o que sair dela — `../`, absoluto, ou byte NUL. Ela é uma função só, no
-mesmo arquivo do `projectScopeRoot` da [RN-092](#rn-092), reusando as primitivas
-do escopo de terminal (`normalizarCaminho`/`dentroDoEscopo`). **Nenhuma rota
-valida caminho por conta própria**, e é isso que a regra afirma: quatro
-implementações da mesma contenção seriam quatro chances de divergir, e o
-CLAUDE.md já registra que a decisão foi manter a checagem central e pagar o
-preço no painel do CodeQL (barreira em outra função ele não enxerga).
+**Containment.** Every file path coming from the client goes through
+`caminhoDeRepositorioContido()`, which anchors the request in the project folder and
+refuses what leaves it — `../`, absolute, or a NUL byte. It is a single function, in
+the same file as the `projectScopeRoot` of [RN-092](#rn-092), reusing the terminal
+scope's primitives (`normalizarCaminho`/`dentroDoEscopo`). **No route validates a
+path on its own**, and that is what the rule asserts: four implementations of the
+same containment would be four chances to diverge, and CLAUDE.md already records
+that the decision was to keep the check central and pay the price in the CodeQL
+panel (it does not see a barrier in another function).
 
-Ela devolve o caminho **normalizado**, e o chamador usa o que voltou. Devolver o
-original permitiria conferir `b` e mandar `a/../b` ao provider — a forma mais
-comum de a contenção existir e não valer.
+It returns the **normalized** path, and the caller uses what came back. Returning
+the original would allow checking `b` and sending `a/../b` to the provider — the
+most common way for containment to exist and not hold.
 
-O vetor não é "ler o arquivo errado". Em `github`/`gitlab` o caminho vira
-segmento de URL da API do provider, então um `../` **troca de endpoint** com a
-credencial do owner do workspace na mão ([RN-058](#rn-058)/[RN-082](#rn-082)).
-Em `local` ele vira o lado direito de `git show <ref>:<path>`. A `ref` é
-conferida no mesmo lugar, pelo mesmo motivo, e `..` nela é recusado porque para
-o git `dev..main` é intervalo de commits, não revisão.
+The vector is not "reading the wrong file". In `github`/`gitlab` the path becomes a
+URL segment of the provider's API, so a `../` **switches endpoint** with the
+workspace owner's credential in hand ([RN-058](#rn-058)/[RN-082](#rn-082)). In
+`local` it becomes the right side of `git show <ref>:<path>`. The `ref` is checked in
+the same place, for the same reason, and `..` in it is refused because for git
+`dev..main` is a range of commits, not a revision.
 
-**Limite.** Árvore e diff já vêm cortados pelo contrato
-(`GIT_TREE_ENTRY_LIMIT`, `GIT_DIFF_FILE_LIMIT`, FASE 26a). A **busca** não: ela
-não é operação do contrato — é composta sobre `listTree` e `getFileContent`, e
-é a única leitura cujo custo cresce com o TAMANHO do repositório em vez do
-tamanho do pedido. Três orçamentos a param (diretórios percorridos, arquivos
-abertos, casamentos devolvidos), um cache de TTL curto evita repetir as mesmas
-chamadas, e `truncated` diz que o corte aconteceu. Sem eles, um `viewer`
-gastaria a credencial e o rate limit do owner à vontade — a mesma família de
-defeito dos 3.824 req/min do dashboard ([RN-090](#rn-090)).
+**Limit.** Tree and diff already come cut by the contract (`GIT_TREE_ENTRY_LIMIT`,
+`GIT_DIFF_FILE_LIMIT`, PHASE 26a). The **search** does not: it is not an operation
+of the contract — it is composed over `listTree` and `getFileContent`, and is the
+only read whose cost grows with the repository's SIZE instead of the request's size.
+Three budgets stop it (directories traversed, files opened, matches returned), a
+short-TTL cache avoids repeating the same calls, and `truncated` says that the cut
+happened. Without them, a `viewer` would spend the owner's credential and rate limit
+at will — the same family of defect as the dashboard's 3,824 req/min
+([RN-090](#rn-090)).
 
-Cortar é sempre **visível**: toda resposta que pode ter sido cortada diz isso
-num campo. `filesScanned` vai junto na busca porque o custo que ninguém vê é o
-que ninguém corrige.
+Cutting is always **visible**: every response that may have been cut says so in a
+field. `filesScanned` goes along in the search because the cost nobody sees is the
+cost nobody fixes.
 
-**Ler não vira `proposed_action`.** Leitura não é efeito externo, e transformá-la
-em ação de aprovação encheria a fila de ruído até ninguém mais ler as de
-verdade. O congelamento da fase é o outro lado disso: a aba é só leitura, e
-escrita — quando vier — nasce `proposed_action`.
+**Reading does not become a `proposed_action`.** Reading is not an external effect,
+and turning it into an approval action would fill the queue with noise until nobody
+read the real ones. The phase's freeze is the other side of this: the tab is
+read-only, and writing — when it comes — is born a `proposed_action`.
 
-- **Onde:**
+- **Where:**
   `src/infrastructure/filesystem/project-workspaces-root.ts`
   (`caminhoDeRepositorioContido`),
   `src/application/use-cases/git/read-project-code.use-case.ts`,
   `src/domain/git/git-read-limits.ts`,
   `src/domain/git/git-read-cache.ts`,
   `src/interfaces/http/git/code.controller.ts`
-- **Teste:**
+- **Test:**
   `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
-  (a contenção isolada),
+  (the containment in isolation),
   `test/application/use-cases/git/read-project-code.use-case.spec.ts`
-  (o caminho malicioso recusado nas três rotas **antes** de o provider ser
-  chamado, e cada um dos três orçamentos parando a busca),
+  (the malicious path refused in the three routes **before** the provider is called,
+  and each of the three budgets stopping the search),
   `test/domain/git/git-read-cache.spec.ts`
-- **Origem:** FASE 26b, item 34 do programa 16–26; a contenção estende a
+- **Origin:** PHASE 26b, item 34 of the 16–26 program; the containment extends
   [RN-092](#rn-092) ([ADR 0058](../adr/0058-csp-fechado-na-api-e-escopo-de-projeto-contido.md))
 
 ## Session
@@ -2188,55 +2193,54 @@ was which window the query chooses and what the drawer declares about it.
 
 ---
 
-### RN-101 — O mesmo gasto, duas audiências: a fatura é do owner, o consumo é de quem gastou {#rn-101}
+### RN-101 — The same spending, two audiences: the bill is the owner's, the consumption is whoever spent's {#rn-101}
 
-O produto responde **duas perguntas diferentes** sobre `token_usage`, e nenhuma
-é recorte da outra.
+The product answers **two different questions** about `token_usage`, and neither is
+a cut of the other.
 
-**A do owner é por CREDENCIAL.** `GET /workspaces/:id/credential-spend` continua
-como a [RN-060](#rn-060) o deixou — por provider, exigindo `owner`, respondendo
-"quanto saiu da minha chave". Junto dele, `GET /workspaces/:id/spend-report`
-(também `owner`) quebra o workspace por **modelo, provider, projeto, ator e
-dia** — o eixo de provider entrou pela [RN-186](#rn-186). O owner vê os dois
-porque é a única pessoa que pode ver os dois.
+**The owner's is by CREDENTIAL.** `GET /workspaces/:id/credential-spend` remains as
+[RN-060](#rn-060) left it — by provider, requiring `owner`, answering "how much left
+my key". Alongside it, `GET /workspaces/:id/spend-report` (also `owner`) breaks the
+workspace down by **model, provider, project, actor and day** — the provider axis
+came in through [RN-186](#rn-186). The owner sees both because they are the only
+person who can see both.
 
-**A do membro é por ATOR.** `GET /projects/:id/spend/me` (papel `viewer`)
-devolve, em tokens e custo **estimado**, o que **quem chamou** consumiu naquele
-projeto, por sessão e por dia. Ela **não quebra por provider nem por
-credencial** — a chave que rodou é a do owner ([RN-058](#rn-058)), e uma fatia
-da fatura dele não é o que o membro está perguntando.
+**The member's is by ACTOR.** `GET /projects/:id/spend/me` (role `viewer`) returns,
+in tokens and **estimated** cost, what **the caller** consumed in that project, by
+session and by day. It **does not break down by provider nor by credential** — the
+key that ran is the owner's ([RN-058](#rn-058)), and a slice of their bill is not
+what the member is asking.
 
-O ator **não é parâmetro**: sai do usuário autenticado, e não existe onde
-escrever o id de outra pessoa. "Membro não vê linha de outro ator" é propriedade
-da assinatura do caso de uso, não uma checagem que alguém pode esquecer de
-chamar.
+The actor is **not a parameter**: it comes from the authenticated user, and there is
+nowhere to write another person's id. "A member does not see another actor's row" is
+a property of the use case's signature, not a check someone can forget to call.
 
-**Agente não entra na conta do membro.** `token_usage` registra quem GASTOU, não
-quem mandou gastar; atribuir o agente a quem o iniciou seria inventar um dado
-que a tabela não tem. Gasto de agente aparece no relatório do owner, de quem é a
-chave.
+**An agent does not enter the member's account.** `token_usage` records who SPENT,
+not who ordered the spending; attributing the agent to whoever started it would be
+inventing a datum the table does not have. An agent's spending appears in the owner's
+report, whose key it is.
 
-**O eixo de `provider` existe, e o membro não o alcança.** Até o
-[ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md) ele simplesmente
-não existia na agregação, e era a ausência que continha a visão do membro. Hoje
-`sumGroupedBy` tem seis dimensões (`model`, `provider`, `project`, `actor`,
-`session`, `day`) e a contenção mudou de forma, não de força: quem contém é o
-TIPO — ver [RN-186](#rn-186) e [RN-187](#rn-187). O que não mudou é que dois
-providers servindo o mesmo nome de modelo continuam caindo numa linha só na
-dimensão `model`.
+**The `provider` axis exists, and the member does not reach it.** Until
+[ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md) it simply did not
+exist in the aggregation, and it was the absence that contained the member's view.
+Today `sumGroupedBy` has six dimensions (`model`, `provider`, `project`, `actor`,
+`session`, `day`) and the containment changed shape, not strength: what contains is
+the TYPE — see [RN-186](#rn-186) and [RN-187](#rn-187). What did not change is that
+two providers serving the same model name still fall into a single row in the
+`model` dimension.
 
-- **Onde:**
+- **Where:**
   `src/application/use-cases/llm/get-my-spend.use-case.ts`,
   `src/application/use-cases/llm/get-workspace-spend-report.use-case.ts`,
   `src/application/ports/token-usage-repository.port.ts`,
   `src/interfaces/http/llm/spend.controller.ts`,
   `apps/web/src/routes/ProjectSpendTab.tsx`
-- **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
-  (o membro não enxerga linha de outro ator, nem de agente, nem do owner; o
-  filtro é pelo par `(kind, id)`; a resposta não carrega provider);
+- **Test:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
+  (the member does not see another actor's row, nor an agent's, nor the owner's; the
+  filter is by the pair `(kind, id)`; the response carries no provider);
   `apps/web/src/routes/ProjectSpendTab.test.tsx`
-- **Origem:** [ADR 0063](../adr/0063-duas-audiencias-para-o-mesmo-gasto.md) (FASE 22),
-  revisto pelo [ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
+- **Origin:** [ADR 0063](../adr/0063-duas-audiencias-para-o-mesmo-gasto.md) (PHASE 22),
+  revised by [ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
 
 ### RN-102 — The area's model is an inheritable default; diverging is the agent's decision, and going back to inheriting erases the decision {#rn-102}
 
