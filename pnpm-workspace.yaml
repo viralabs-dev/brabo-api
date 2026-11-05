@@ -30,5 +30,7 @@ allowBuilds:
   esbuild: true
   msw: true
   unrs-resolver: true
+  protobufjs: false
+  '@scarf/scarf': false
 minimumReleaseAgeExclude:
   - '@anthropic-ai/sdk@0.113.0'
