@@ -294,6 +294,7 @@ position and what changes for whoever already read this cascade.
 - **Test:** `test/domain/llm/binding-resolver.spec.ts`
 
 ## Psychologist and Anamnesis {#psicologo-e-anamnese}
+
 ### RN-021 — A hypothesis without valid evidence is not recorded {#rn-021}
 
 The `evidenceEventIds` must point to events **that exist and belong to the
@@ -589,6 +590,7 @@ that is why there are TWO screens that turn the filter on.
   `apps/web/src/routes/SessionPage.filtro-de-aptos.test.tsx` (the two screens
   that turn it on, and the one that does not)
 - **Origin:** [ADR 0041](../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
+
 ### RN-041 — Token count the provider didn't give is marked as estimated {#rn-041}
 
 When the provider's response doesn't carry `usage`, the OpenAI-compatible
@@ -750,6 +752,7 @@ plan.
 - **Test:** `test/application/use-cases/git/decide-bootstrap-plan.use-case.spec.ts`,
   `test/application/use-cases/git/bootstrap-plan.spec.ts`
 - **Origin:** [ADR 0044](../adr/0044-adocao-de-repositorio-existente.md)
+
 ### RN-046 — Every project repository declares its origin {#rn-046}
 
 `project_repositories.origin` and `repo_bootstraps.origin` say whether
@@ -1048,6 +1051,7 @@ The list is still the CATALOG; `agent_areas` is the per-project STATE
 An LLM key and the user's git token live in the same table
 (`user_credentials`), under the same envelope encryption. This section applies
 to both.
+
 ### RN-055 — A credential is always encrypted and saved; verifying is a separate action, with three answers {#rn-055}
 
 Registration **doesn't judge the credential**: it encrypts and saves, even if the provider
@@ -1438,6 +1442,7 @@ the `actor_kind` column and stays outside the declarative vocabulary.
   against a root rebuilt like the production image tree)
 - **Origin:** PHASE 15a (ADR 0054); the split into two layers came from the 500
   on `GET /gates` measured on the installed v6.1.0 (AT-086)
+
 ### RN-071 — The four user-authority gates cannot be declared automatic {#rn-071}
 
 `acao-aprovada`, `story-promovida`, `plano-de-adocao`, and
@@ -1895,6 +1900,7 @@ old workspace.
   cutoff, per-project ceiling and workspace isolation)
 - **Origin:** measured residual of [RN-090](#rn-090) — 286 req/min with the
   drawer open in a workspace of 23 projects
+
 ### RN-092 — O `projectId` é segmento de caminho, e o escopo nunca sai da raiz {#rn-092}
 
 `projectScopeRoot()` **recusa** um `projectId` que não seja segmento de caminho
@@ -2345,6 +2351,7 @@ a second source of role in only one section would be worse than the gap.
   "making the two sections uniform" — the same `developer` sees the agents table
   enabled and the areas one disabled, at the same time)
 - **Origin:** [ADR 0064](../adr/0064-escopo-de-area-na-cascata-e-o-binding-de-agente-global.md) (PHASE 23)
+
 ### RN-103 — O binding de agente é POR PROJETO, não mais global {#rn-103}
 
 Até a FASE 23, `scope = 'agent'` guardava um SLUG global
@@ -3626,7 +3633,9 @@ The first-party auth RNs live in
 They left here for SIZE, not for subject: together with Cost they were half of a
 640 KB page. The content did not change, and the `#rn-NNN` anchors are the
 same — what changed was the file that hosts them.
+
 ## Authentication {#autenticacao}
+
 ### RN-231 — `ChunkRepository` gains DELETE and both halves of hybrid search {#rn-231}
 
 The Wave 3 port (RN-226) only covered basic write/read. Wave 4
@@ -3768,6 +3777,7 @@ parallelism ceiling (RN-083).
 - **ADR:** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
 ## PROGRAM 28 — Wave 4, front E2: row virtualization and minimap in the Code tab (RN-239..242) {#programa-28-onda-4-frente-e2-virtualizacao-de-linha-e-minimapa-na-aba-code-rn-239-242}
+
 ### RN-243 — The container lifecycle is a TABLE, and none of its rows calls Docker {#rn-243}
 
 `project_containers` (migration `0046`) records the mutable STATE of a project's
@@ -4084,6 +4094,7 @@ mandatory `--projeto <uuid>`, pure read via Drizzle, no write at all. The shape
 is the one the flow itself already prescribed: `analytics` is "absorbed by
 `medicao`" and `delivery-metricas` "never becomes an agent" — no GenServer, no
 LLM agent.
+
 ### RN-320 — `analise-funil.ts` is a script, never an agent — same skeleton as `medir-execucao.ts` {#rn-320}
 
 The command is `pnpm --filter api analise:funil -- --projeto <uuid> [--json]`.
@@ -4157,6 +4168,7 @@ instead of an approximate number:
 ---
 
 ## The `implementavel` gate activates — QA-strategy as the second moment of the qa-lead (RN-340/341, ADR 0090) {#o-gate-implementavel-ativa-qa-estrategia-como-segundo-momento-do-qa-lead-rn-340-341-adr-0090}
+
 ### RN-340 — The `implementavel` gate decides the story BEFORE the dev agent writes code {#rn-340}
 
 `config/gates.yml` declared the `implementavel` gate (owner `dev-lead`) since
@@ -4217,6 +4229,7 @@ ADR 0027): one row per counted request, written even under dev/CI traffic.
 `secops-runtime` enters as a SCRIPT (`pnpm --filter api relatorio:seguranca-runtime`),
 not an LLM agent nor a `GenServer` — there is no decision to make, only data to
 aggregate.
+
 ### RN-375 — The report declares the window, never pretends a longer history {#rn-375}
 
 `DomainGaugesCollector.pruneRateLimit`
@@ -4243,6 +4256,7 @@ break if a future `RateLimitGuard` writes another format. Asking for an "IP
 ranking by route" would be inventing a dimension the table never kept.
 
 ## The `dbre` role becomes two mechanical scripts (RN-400..403, ADR 0093) {#o-papel-dbre-vira-dois-scripts-mecanicos-rn-400-403-adr-0093}
+
 ### RN-400 — The migration opinion is STATIC SQL analysis, and ignores the risk pattern when it appears only in a comment {#rn-400}
 
 `lintarConteudo` (the pure core of `lint-migracao.ts`) scans each `.sql` of
@@ -4275,6 +4289,7 @@ Closes the last two findings of the audit (section D,
 `docs/explanation/auditoria-fluxo-vs-codigo.md`): B6 (RN-160 guaranteed only on
 the client) and B1 (the Dev Lead → `dev-<modulo>` delegation declared by ADR
 0053 item 5 and never implemented).
+
 ### RN-404 — "Confirm architecture ready" (RN-160) is revalidated in the BACKEND, not only disabled in the UI {#rn-404}
 
 [RN-160](web.md#rn-160) guaranteed the rule ("at least 1 promoted story before the
@@ -4300,6 +4315,7 @@ lighter — it doesn't need to build the epic→story→task tree to answer
 - **ADR:** [0094](../adr/0094-delegacao-dev-lead-vira-dado.md)
 
 ## fluxo.yml × code audit — Wave 6 (last): the `necessidade-validada` gate (RN-406, ADR 0095) {#auditoria-fluxo-yml-codigo-onda-6-ultima-o-gate-necessidade-validada-rn-406-adr-0095}
+
 ### RN-408 — `MAIL_TRANSPORT=smtp` gates boot by the RN-114 pattern, without the public default {#rn-408}
 
 Closes the backlog item "Real SMTP in MailSender" ([ADR 0096](../adr/0096-smtp-real-no-mailsender.md)).
@@ -4365,6 +4381,7 @@ social login, hit that wall. It had only not shown up before because
 `db/seed.ts` always creates a workspace along with the demo data, and no
 product screen calls `createWorkspace` (the route, the use case and the HTTP
 client exist — they just have no caller in the UI).
+
 ### RN-410 — Every NEW account is born with a personal workspace, in the SAME transaction as the account {#rn-410}
 
 `RegisterUseCase` (e-mail/password registration) and `SocialLoginCallbackUseCase`
@@ -4410,6 +4427,7 @@ literal `workspace-<8 chars>`, never to an empty string.
   backlog item
 
 ## "N agents online" on the dashboard — LIVE status, never historical presence (RN-409, ADR 0097) {#n-agentes-online-no-dashboard-status-ao-vivo-nunca-presenca-historica-rn-409-adr-0097}
+
 ### RN-412 — `dev.awaiting_gate`/`dev.awaiting_approval` hold the session; the effective compaction window is consistent with the transport {#rn-412}
 
 Found by real USE ("on PRs it's always blowing up with entity too
@@ -4585,6 +4603,7 @@ was the decision.
 - **Origin:** see [ADR 0102](../adr/0102-revisao-do-adr-0065-teto-absoluto-substitui-deny.md)
 
 ---
+
 ## ADR 0104 Wave 1 — `execution_mode` with three values, workspace verified by the runner {#onda-1-do-adr-0104-execution-mode-em-tres-valores-workspace-verificado-pelo-runner}
 
 ADR 0072 (RN-169/RN-170) and ADR 0103 (RN-419/RN-420) never talked to each
@@ -4595,6 +4614,7 @@ recreates the enum (`project_workspace_mode` → `project_execution_mode`,
 `local` → `mounted`) in a single transaction — `ALTER TYPE ... ADD VALUE`
 cannot be referenced in the same transaction in which it was added — and adds
 `workspace_verified_at` (nullable).
+
 ### RN-421 — `execution_mode` has THREE values: `container`/`mounted`/`runner` {#rn-421}
 
 `projects.workspace_mode` (two values) became `projects.execution_mode`
@@ -4852,6 +4872,7 @@ RN-096 already fixed for other types).
 ---
 
 ## The Runner folder explorer becomes three columns, and creating a `runner` project stops waiting for the final step (RN-436/436) {#o-explorador-de-pasta-do-runner-vira-tres-colunas-e-a-criacao-de-um-projeto-runner-deixa-de-esperar-o-passo-final-rn-436-436}
+
 ### RN-439 — `POST .../runner-ticket` authenticates AND authorizes in the SAME guard; `RolesGuard` (global) abstains on an `@RequirePatAuth()` route {#rn-439}
 
 `POST /projects/:projectId/runner-ticket` answered `403 "Não autenticado"`
@@ -5176,6 +5197,7 @@ chosen folder (`File.webkitRelativePath`) — never an absolute machine path,
 because the browser's `File` API does not expose one, to any site. What crosses
 the network is text the browser already had the right to read, the same trust
 model as any ordinary file upload.
+
 ### RN-455 — `chunks.scope` gains `'local'`, reusing the entire RAG pipeline {#rn-455}
 
 `ChunkScope` goes from `'docs' | 'adr' | 'session'` to include `'local'`
@@ -5300,6 +5322,7 @@ never a preference the user turns on once and forgets is on.
 - **Origin:** product owner's request
 
 ## Runner configuration by the browser (RN-464..466, ADR 0118) {#configuracao-do-runner-pelo-navegador-rn-464-466-adr-0118}
+
 ### RN-464 — Runner device key: self-service registration/revocation; NO maintainer view in this round (declared cut) {#rn-464}
 
 > **Revised by [RN-687](web.md#rn-687) ([ADR 0203](../adr/0203-aposenta-o-fluxo-do-runner-pelo-navegador.md), 01/10):**
@@ -5337,6 +5360,7 @@ is direct future work, if it comes to be requested.
   `test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
 - **ADR:** [0118](../adr/0118-configuracao-automatica-do-runner-pelo-navegador.md)
 - **Origin:** request from the product owner
+
 ### RN-465 — `POST .../runner-ticket` accepts a PAT OR a device key (Ed25519, TTL ≤60s) — a second form of DEVICE credential, never dual-auth with a session JWT (distinction from RN-439) {#rn-465}
 
 > **Revised by [RN-687](web.md#rn-687) ([ADR 0203](../adr/0203-aposenta-o-fluxo-do-runner-pelo-navegador.md), 01/10):**
@@ -5385,6 +5409,7 @@ exactly what RN-439 prevented.
   "assinarTicketComChaveDeDispositivo"/"obterTicketDoRunnerComCredencial")
 - **ADR:** [0118](../adr/0118-configuracao-automatica-do-runner-pelo-navegador.md)
 - **Origin:** request from the product owner
+
 ## Os dois tetos de rebaixamento em `project_members` (RN-472)
 
 ### RN-472 — Nobody downgrades the workspace `owner`, and nobody downgrades themselves {#rn-472}
@@ -5477,6 +5502,7 @@ api's sentence that says which ceiling was hit.
 ---
 
 ## The `kid` is the link, and the refusal has a name (RN-475) {#o-kid-e-o-vinculo-e-a-recusa-tem-nome-rn-475}
+
 ### RN-477 — Provisioning that fails SAYS it failed, and the wait for it has a ceiling {#rn-477}
 
 Repository provisioning runs **entirely inside the POST** — there's no
@@ -6070,6 +6096,7 @@ what lets the screen swap the three action buttons for the inline
 - **Origin:** the product owner's plan, Part 1 / PR 1.8
 
 ## The single base of mounted projects (RN-500) {#a-base-unica-dos-projetos-montados-rn-500}
+
 ### RN-500 — There's ONE base for mounted projects, it's mounted by identity, and absent means "don't offer the mode" {#rn-500}
 
 `BRABO_PROJECTS_BASE` is the **only** folder of the operator's computer that
@@ -6139,6 +6166,7 @@ in the next RN.
 ---
 
 ## The mounted folder is born when the container comes up (RN-501) {#a-pasta-montada-nasce-quando-o-container-sobe-rn-501}
+
 ### RN-501 — `mounted` validates only the LEXICON and the base at creation; the folder is MATERIALIZED later, by whoever has authority over the disk {#rn-501}
 
 Creating a `mounted` project **stopped touching disk**. It requires two
@@ -6240,6 +6268,7 @@ screen asserting what it doesn't know.
 ---
 
 ## A mounted project brings up its container through the BROKER (RN-503) {#projeto-montado-sobe-container-pelo-broker-rn-503}
+
 ### RN-503 — A `mounted` project brings up a container through the BROKER, and what crosses the network is a discriminated locator — never an absolute path {#rn-503}
 
 A project in Mounted folder mode **couldn't get any container** until now, and
@@ -6347,6 +6376,7 @@ image, the gap declared since RN-494.
 ---
 
 ## The decision artifact of the conversational agents (RN-505) {#o-artefato-de-decisao-dos-conversacionais-rn-505}
+
 ### RN-508 — `container_start_via_runner`: a second action type to bring up the container, exclusive to `runner`, and the Infra Lead refuses blind proposals BEFORE proposing {#rn-508}
 
 `container_start` (ADR 0130/0133) requires `imagem`/`network`/`resources`/
@@ -6437,6 +6467,7 @@ side without the other fails.
 ---
 
 ## The folder browser served by the api (RN-504) {#o-navegador-de-pastas-servido-pela-api-rn-504}
+
 ### RN-509 — A module Dev Agent's "Always allow" scopes to `agent_autonomy`, PER AGENT — no longer the whole project's `permissions.json` {#rn-509}
 
 `ApproveAlwaysActionUseCase` always wrote to `permissions.json/allow` —
@@ -6511,6 +6542,7 @@ gap.
 ---
 
 ## The mirror destination is per project (RN-515) {#o-destino-do-espelho-e-por-projeto-rn-515}
+
 ### RN-515 — The mirror destination is declared PER PROJECT and is never global; `null` is the normal state; and the api validates ONLY the lexicon, saying it is only the lexicon {#rn-515}
 
 The `espelho` capability ([RN-514](engine.md#rn-514), [ADR 0147](../adr/0147-agente-local-com-capacidades.md))
@@ -6615,6 +6647,7 @@ queue of routine approvals.
 ---
 
 ## The mirror state is visible, and the three states do not collapse (RN-517) {#o-estado-do-espelho-e-visivel-e-os-tres-estados-nao-colapsam-rn-517}
+
 ### RN-517 — The outcome of each mirror round comes back through the channel and becomes TELEMETRY in its own table; "never synced", "synced and copied nothing" and "failed" are THREE answers, and success and error coexist {#rn-517}
 
 Session 8 of PHASE 28 and **point 7** of
@@ -6754,6 +6787,7 @@ capability.
 ---
 
 ## Device key revocation stops being blind, and reaches the live connection (RN-519..520) {#a-revogacao-de-chave-de-dispositivo-deixa-de-ser-cega-e-alcanca-a-conexao-viva-rn-519-520}
+
 ### RN-519 — Nobody revokes what they cannot see: the device key gains a listing for its OWN owner, and the `maintainer` view stays out by DECISION {#rn-519}
 
 Session 7 of PHASE 28 and **point 6** of
@@ -7046,6 +7080,7 @@ repairable defect (it ends in a toast), not the invisible one.
   project's effective one
 
 ## The repository is born at the handoff to the Dev Lead (RN-522) {#o-repositorio-nasce-no-handoff-para-o-dev-lead-rn-522}
+
 ### RN-522 — The repository is provisioned on ACCEPTING the Arquiteto → Dev Lead handoff, always `local`, and the failure never takes down the acceptance {#rn-522}
 
 > **Revised by [RN-582](#rn-582) ([ADR 0165](../adr/0165-o-repositorio-nasce-no-handoff-ao-arquiteto.md)):**
@@ -7117,6 +7152,7 @@ interrupted bootstrap completes.
   passar o handoff para o desenvolvedor iniciar o desenvolvimento"*
 
 ## The MACHINE key that the installer registers (RN-552) {#a-chave-de-maquina-que-o-instalador-registra-rn-552}
+
 ### RN-552 — An internal route registers the MACHINE device key, for the installation's SOLE user, and registering REPLACES {#rn-552}
 
 Session 7 of [PHASE 30](../explanation/fase-30-runner-por-maquina.md), closing
@@ -7249,6 +7285,7 @@ point 1) — and **no migration**, because the column is already nullable since
   the kind created by [0154](../adr/0154-chave-de-dispositivo-de-maquina.md)
 
 ## The self-demotion ceiling also on REMOVAL (RN-556) {#o-teto-de-auto-rebaixamento-tambem-na-remocao-rn-556}
+
 ### RN-556 — Removing one's own `project_members` row is refused with 403 when the net effect is a demotion {#rn-556}
 
 > **About the number.** The jump from [RN-542](produto.md#rn-542) to 556 is deliberate: the
@@ -7339,6 +7376,7 @@ client — but computing only it would produce the half-gate ADR 0127 refused.
 ---
 
 ## Master key rotation stops being trial and error (RN-562, RN-563) {#a-rotacao-da-chave-mestra-deixa-de-ser-tentativa-e-erro-rn-562-rn-563}
+
 ### RN-562 — Master key rotation is proven end to end, in both tables {#rn-562}
 
 The procedure with the worst outcome in the [Runbook](../runbook.md#rotacao-da-chave-mestra)
@@ -7701,6 +7739,7 @@ installation without a broker remains possible by the agent.
 ---
 
 ## The container broker on the installation, with consent (RN-575) {#o-broker-de-container-na-instalacao-com-consentimento-rn-575}
+
 ### RN-581 — The conversation in progress holds the session for up to 8h, and the closed session refuses conversation {#rn-581}
 
 In `exp001` the heartbeat closed the session 30 seconds after the tab stopped, with
@@ -7877,6 +7916,7 @@ closed session keep showing the api's message.
   ceiling and its own cause; a closed session refuses conversation, named)
 
 ## The repository is born at the acceptance of the handoff to the Architect, and execution does not start without it (RN-582) {#o-repositorio-nasce-no-aceite-do-handoff-ao-arquiteto-e-a-execucao-nao-comeca-sem-ele-rn-582}
+
 ### RN-582 — Accepting the handoff to the Arquiteto provisions the repository; accepting to the Dev Lead is the second, idempotent door; and `execution/activate` without a repository is a named 409 {#rn-582}
 
 It revises the TRIGGER of [RN-522](#rn-522), which fulfilled the promise of
@@ -8835,6 +8875,7 @@ maintainer's decisions of 2026-09-28 (AT-168, AT-169) fixed where the language
 of the REPLIES lives — account, session and project — and the precedence among
 the sources. None of these rules touches the language of the INTERFACE
 ([RN-432](web.md#rn-432)).
+
 ### RN-618 — The answers' language belongs to the PERSON: a choice in the account, an override per session, and the precedence that always ends in a language {#rn-618}
 
 1. **Open list, canonical form.** The answers' language is any BCP-47
@@ -9068,6 +9109,7 @@ to accept the `export`s of a CommonJS module.
   specification of AT-080 and the measurement of AT-160
 
 ## Deciding in the chat, where the owner is (RN-626) {#decidir-no-chat-onde-o-dono-esta-rn-626}
+
 ### RN-628 — The executed merge closes the PR's task: `done`, exactly once {#rn-628}
 
 The QA/SecOps gate ends in `awaiting_user` and nothing else touched the task's
@@ -9102,6 +9144,7 @@ in `in_review` (AT-275).
   ("git_merge marca a tarefa como done": happy path, repeated, open PR/failed
   merge, PR without a task)
 - **Origin:** AT-275
+
 ### RN-630 — Who is active in the session is read from the WHOLE session, not from the last 200 events {#rn-630}
 
 "Who is active" and "who receives the composer" came from the `agent.activated` seen
@@ -9334,7 +9377,9 @@ another tab) threw 409 with the pattern ALREADY written and WITHOUT the
   `apps/web/src/lib/sempre-permitir.test.ts` (the web's copy equal to the api's),
   `apps/web/src/components/ApprovalCard.test.tsx` (typed git without the button)
 - **Origin:** AT-310, AT-320
+
 ## A closed session can be reopened (RN-649/RN-650) {#a-sessao-encerrada-pode-ser-reaberta-rn-649-rn-650}
+
 ### RN-649 — A `closed`/`closed_abnormally` session reopens to `active` with the log intact, and the previous closing becomes a new event {#rn-649}
 
 [RN-001](#rn-001) said the terminal states have no way out. Since
@@ -9517,6 +9562,7 @@ not measured on a real project, and declared.
   [RN-645](web.md#rn-645)); AT-339 (the Visão geral and the Executores tab in the batch)
 
 ## Reading the workspace members (RN-655) {#a-leitura-dos-membros-do-workspace-rn-655}
+
 ### RN-655 — `GET workspaces/:id/members` is `viewer`, and returns only id, name, e-mail and role {#rn-655}
 
 The session thread ([RN-652](web.md#rn-652)) only named whoever had a row in
@@ -9550,6 +9596,7 @@ read exists to name, and the write routes remain API-only.
 - **Origin:** AT-335
 
 ## The policy reason on each Approvals card (RN-656) {#o-motivo-da-politica-em-cada-cartao-de-aprovacoes-rn-656}
+
 ### RN-656 — The session events read filters by `actionId`, and each card of the Aprovações tab reads its own reason through it {#rn-656}
 
 The action does not keep the policy reason: it lives in `proposed_action.created`
@@ -9618,6 +9665,7 @@ log and opening it does not trigger a query, so the card there stays silent, as
 - **Origin:** AT-329 (finding N2 of `docs/explanation/auditoria-visual-rodada-29.md`)
 
 ## One click closes readiness, need and the PO's acceptance (RN-657/RN-658) {#um-clique-fecha-a-prontidao-a-necessidade-e-o-aceite-do-po-rn-657-rn-658}
+
 ### RN-657 — "I'm ready — the need is validated" closes BOTH gates in one POST, with the `product_brief` produced after the click {#rn-657}
 
 Revises [RN-406](contracts.md#rn-406) by the owner's decision (30/09, AT-311): the
@@ -9658,6 +9706,7 @@ success notice says the PO enters when the summary is ready.
 - **ADR:** [0185](../adr/0185-estou-pronto-fecha-os-dois-gates.md), which revises
   [0095](../adr/0095-gate-necessidade-validada.md)
 - **Origin:** AT-311 (survey of AT-309, finding 1)
+
 ### RN-658 — Acceptance of the Creative→PO handoff is implicit in "I'm ready": the SAME events, with the person as actor and the `implicito` mark {#rn-658}
 
 The owner's decision (30/09, AT-312): the separate click to accept the PO goes
@@ -9711,7 +9760,9 @@ does it merge or push.
   (same events, human actor and mark), `:338` (no mark through the card)
 - **ADR:** [0185](../adr/0185-estou-pronto-fecha-os-dois-gates.md)
 - **Origin:** AT-312 (survey of AT-309, step 4)
+
 ## The policy reason on each Approvals card (RN-656) {#o-motivo-da-politica-em-cada-cartao-de-aprovacoes-rn-656-1}
+
 ### RN-659 — A new project is born with automatic story promotion; an existing project stays in the mode it had {#rn-659}
 
 The default of `projects.story_promotion` goes from `manual` to `auto` (owner's
@@ -9743,6 +9794,7 @@ validation scripts that exercise the manual flow (`validacao-fase-12.ts`,
   api refuses the change and the screen says it did not save)
 - **Origin:** AT-313 (survey of AT-309, step 5); revises the default of
   [RN-048](#rn-048)
+
 ### RN-660 — The PO's handoff to the Arquiteto is accepted by the SYSTEM when the backlog is covered and the repository is local and without credentials {#rn-660}
 
 The `po → arquiteto` offer that the engine creates (`POST
@@ -9798,6 +9850,7 @@ manual handoff (ADR 0109) too.
 - **Origin:** AT-314, [ADR 0186](../adr/0186-aceite-automatico-do-handoff-ao-arquiteto.md)
 
 ## The Infra Lead does not announce a bring-up it did not do (RN-668) {#o-infra-lead-nao-anuncia-subida-que-nao-fez-rn-668}
+
 ### RN-663 — PR merge refuses an already-merged PR and a repeated proposal; a pending gate is only a warning {#rn-663}
 
 Real use on 29/09 measured both holes: `pr-6` had THREE `git_merge`
@@ -9854,6 +9907,7 @@ same list), and `LocalGitProvider` returned the already-merged PR without error
   `apps/web/src/routes/MergearNoChat.test.tsx:135`, `:148`;
   `apps/web/src/lib/gate-do-merge.test.ts:5`, `:18`
 - **Origin:** AT-249 (item A3/extra E3 of the analysis of the real use of 29/09)
+
 ### RN-665 — O custo real que o provider devolve é o número do metering; o catálogo fica onde ele não vem {#rn-665}
 
 Decisão do dono (30/09): **o custo real vira o número**. Quando a resposta de
@@ -9985,6 +10039,7 @@ path does not exist.
   (`mounted` mode with and without a container, and without the floor)
 - **Origin:** AT-258 (item A12 of the analysis of the real use of 29/09), owner's
   decision of 01/10, [ADR 0189](../adr/0189-o-piloto-automatico.md)
+
 ### RN-670 — Automatic mode is the AUTOPILOT, and "Always allow" does not turn it off {#rn-670}
 
 Owner's decision of 01/10 ([ADR 0189](../adr/0189-o-piloto-automatico.md)):
@@ -10038,6 +10093,7 @@ list in the three places where the mode is turned on: the Executors' batch card
   `apps/web/src/components/AgentCard.test.tsx:81`
 - **Origin:** AT-259 and AT-255 (items A9 and A13 of the analysis of the real use
   of 29/09), owner's decision of 01/10
+
 ### RN-671 — Infra brings up the container at handoff acceptance: the server proposes, and the seeded autonomy approves {#rn-671}
 
 Owner's decision on 01/10 ([ADR 0190](../adr/0190-a-infra-sobe-o-container-no-aceite.md)),
@@ -10101,6 +10157,7 @@ this seed off.
   (the api refuses without a broker — failure case), `:1427` (container already
   `running`), `:1439` (denied by the policy), `:1580` (`eleger_candidata/1`)
 - **Origin:** AT-260 (item A14 of the analysis of the real use of 29/09)
+
 ### RN-672 — The handoff to the Dev Lead leaves from Infra, and only with the project's container `running` {#rn-672}
 
 Owner's decision on 01/10 ([ADR 0190](../adr/0190-a-infra-sobe-o-container-no-aceite.md),
@@ -10161,6 +10218,7 @@ instant, the offer waits for the end of its next turn.
 - **Origin:** AT-262 (item A16 of the analysis of the real use of 29/09)
 
 ---
+
 ### RN-675 — "Always allow" writes VERB + SUBCOMMAND, one pattern per segment of the command {#rn-675}
 
 Owner's decision of 01/10 (AT-257, which closes AT-170 — point 6 of ADR 0055,
@@ -10214,6 +10272,7 @@ timeline).
   `apps/web/src/components/ApprovalCard.test.tsx:253` (the note states the unit)
 - **Origin:** AT-257 (item A11 of the analysis of the real use of 29/09) and
   AT-170 (EP-025), owner's decision of 01/10
+
 ## O git credenciado roda no host do runner (RN-676)
 
 ### RN-677 — Accepting the Dev Lead only brings it in to plan; APPROVING its plan is what activates execution {#rn-677}
@@ -10287,6 +10346,7 @@ the only one that emits it is `ActivateExecutionUseCase`, called only by the
   `apps/engine/test/engine/agents/dev_lead_server_test.exs:426`, `:457`
 - **Architectural decision:** [ADR 0194](../adr/0194-aprovar-o-plano-ativa-a-execucao.md)
 - **Origin:** AT-263 (item A17 of the analysis of the real use of 29/09)
+
 ### RN-678 — The task belongs to a module, assigned by the Dev Lead in the plan, and only that module's dev picks it up {#rn-678}
 
 In real use on 29/09 `dev-input-keyboard` picked up "Implement the piece's
@@ -10352,6 +10412,7 @@ parallelism still goes through `parallelize` ([RN-083](#rn-083)).
   `apps/engine/test/engine/agents/dev_lead_server_test.exs:131`
 - **Architectural decision:** [ADR 0194](../adr/0194-aprovar-o-plano-ativa-a-execucao.md)
 - **Origin:** AT-274 (item A28 / extra E5 of the analysis of the real use of 29/09)
+
 ### RN-679 — A curadoria recusa o alias de roteamento livre do OpenRouter {#rn-679}
 
 Decisão do dono (01/10): **o alias `~` não entra na curadoria** — só modelo
@@ -10454,6 +10515,7 @@ embedding do RAG, e AVISA quando a mais próxima está a partir do limiar.
   (AT-171, achado R)
 
 ## Anamnesis reconnected: eligible subject and profile fact (RN-680) {#a-anamnese-religada-sujeito-elegivel-e-fato-do-perfil-rn-680}
+
 ### RN-682 — An advisory session with no agent asks for an agent: the composer does not send without a recipient, and the chat route refuses by name {#rn-682}
 
 Until now, the message of an **advisory** session with no agent went to the SSE
@@ -10526,6 +10588,7 @@ does not change.
   `apps/web/src/routes/SessionPage.ideacao-automatica.test.tsx:177`
 - **Origin:** AT-254 (item A8 of the analysis of the real use of 2026-09-29),
   owner's decision of 01/10
+
 ## O plano de teste nasce depois da entrega do dev (RN-674, ADR 0192)
 
 ### RN-683 — Infra brings up the container with the SMALLEST eligible resource, derived from what the Architect declares per module in the `module_map` {#rn-683}
@@ -10589,6 +10652,7 @@ proposal.
   `apps/engine/test/engine/harness/tools/create_module_map_test.exs:94`, `:109`;
   `apps/engine/test/engine/infra/infra_lead_server_test.exs:1307`
 - **Origin:** AT-261 (item A15 of the analysis of the real use of 29/09)
+
 ## A Anamnese religada: sujeito elegível e fato do perfil (RN-680)
 
 ### RN-684 — O contrato entre módulos é artefato versionado do Arquiteto, e o dev agent o lê pela ferramenta, nunca no worktree de outro dev {#rn-684}
