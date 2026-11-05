@@ -275,6 +275,26 @@ describe('Anthropic: thinking por geração do modelo (AT-676)', () => {
     expect(c?.max_tokens).toBe(3000);
   });
 
+  // AT-743 (RN-1007): a folga curada do Haiku 5.5 é 12288 (teto 4096 + 12288).
+  it('Haiku 5.5 com reasoningBudget 12288: max_tokens 16384, adaptive', async () => {
+    const c = await corpoEnviado({
+      model: 'claude-haiku-5-5',
+      reasoning: true,
+      reasoningBudget: 12288,
+    });
+    expect(c?.thinking).toEqual({ type: 'adaptive', display: 'summarized' });
+    expect(c?.max_tokens).toBe(16384);
+  });
+
+  it('Haiku 5.5 com reasoningBudget NULL: volta a 8192', async () => {
+    const c = await corpoEnviado({
+      model: 'claude-haiku-5-5',
+      reasoning: true,
+      reasoningBudget: null,
+    });
+    expect(c?.max_tokens).toBe(8192);
+  });
+
   it('modelo antigo: enabled + budget_tokens', async () => {
     const c = await corpoEnviado({
       model: 'claude-haiku-4-5',

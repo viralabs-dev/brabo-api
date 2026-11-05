@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Folga de raciocínio do Haiku 5.5 na Anthropic (AT-743, RN-1007): a migration `0083` grava `reasoning_budget = 12288` no `claude-haiku-5-5` (teto 16384), para o gate que raciocina não ser cortado; smoke manual `anthropic-provider.folga.smoke.spec.ts`.
 - `POST /internal/projects/:projectId/open-questions/:questionId/answer` (AT-741, RN-1002): the agent closes the open question the user answered in chat, sharing the core of the human answer; idempotent (`already_answered`).
 - Corrige o `TracedLLMProvider` (AT-743, RN-1001): repassa `aceitaRaciocinioDesligado` do provider envolvido; sem isso a retentativa sem raciocínio da RN-916 nunca rodava em produção (OpenRouter e Anthropic).
 - Provider Anthropic (AT-739, RN-1000): com o raciocínio desligado o corpo é por modelo — Haiku 5.5 `thinking: disabled`, Sonnet 5.5 `between_tools`, Opus 5.5 `effort: low` (reduzido); o adaptativo ligado ganha a folga no `max_tokens`; declara `aceitaRaciocinioDesligado`; `reasoning_tokens` vem do `thinking_tokens` do `message_delta` em vez de NULL.
