@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Provider Anthropic direto usa prompt caching (AT-744, RN-1008): `system` em dois blocos (ponto no prefixo, cauda sem ponto), ponto na última `user`, `usage` somando `input + leitura + escrita` com `cachedInputTokens = leitura`, custo pelas 4 parcelas × tabela do fabricante, `promptCaching: true`. Smoke manual `anthropic-provider.cache.smoke.spec.ts`.
 - Folga de raciocínio do Haiku 5.5 na Anthropic (AT-743, RN-1007): a migration `0083` grava `reasoning_budget = 12288` no `claude-haiku-5-5` (teto 16384), para o gate que raciocina não ser cortado; smoke manual `anthropic-provider.folga.smoke.spec.ts`.
 - `POST /internal/projects/:projectId/open-questions/:questionId/answer` (AT-741, RN-1002): the agent closes the open question the user answered in chat, sharing the core of the human answer; idempotent (`already_answered`).
 - Corrige o `TracedLLMProvider` (AT-743, RN-1001): repassa `aceitaRaciocinioDesligado` do provider envolvido; sem isso a retentativa sem raciocínio da RN-916 nunca rodava em produção (OpenRouter e Anthropic).

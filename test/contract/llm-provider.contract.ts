@@ -509,7 +509,12 @@ export function runLLMProviderContract(
           // ONDE a orientação estava (lacuna 2 da AT-081: o prefixo do
           // pedido muda com o texto dela — não medido, ver AT-082).
           expect(mensagens.some((m) => m.role === 'system')).toBe(false);
-          expect(corpo.system).toBe(`${SISTEMA_INICIAL}\n\n${SISTEMA_TARDIO}`);
+          // Blocos (RN-1008): o texto concatenado e a ordem são os de antes.
+          const blocos = corpo.system as { text: string }[] | string;
+          const texto = Array.isArray(blocos)
+            ? blocos.map((b) => b.text).join('\n\n')
+            : blocos;
+          expect(texto).toBe(`${SISTEMA_INICIAL}\n\n${SISTEMA_TARDIO}`);
           expect(papeis).toEqual(caso.papeisSemSistema.icadoAoTopo);
         }
       });
