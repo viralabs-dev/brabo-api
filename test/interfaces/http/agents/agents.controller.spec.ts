@@ -22,7 +22,7 @@ import { RequestManualHandoffDto } from '../../../../src/interfaces/http/agents/
  * .../handoffs/:handoffId/accept` já exige (RN-136, quem CONVERSA nesta
  * tela). `RolesGuard` (roles.guard.spec.ts) prova a matriz em geral;
  * `route-surface.spec.ts` prova o mesmo fato em runtime contra
- * `docs/security-surface.md` — este é o companheiro rápido, sem subir o
+ * `apps/api/docs/security-surface.md` — este é o companheiro rápido, sem subir o
  * `AppModule`.
  */
 describe('AgentsController — POST handoffs (handoff manual, ADR 0109)', () => {

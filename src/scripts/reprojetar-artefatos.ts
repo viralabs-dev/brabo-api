@@ -13,7 +13,7 @@ import type { Project } from '../domain/iam/project.entity';
 /**
  * Reconstrói a pasta `docs/` dos projetos a partir do event log — o mecanismo
  * que o ADR 0148 declarou ausente ("não existe hoje comando de reprojeção") e
- * a RN-590. Ver docs/runbook.md, seção "Losing the artifact folder".
+ * a RN-590. Ver deploy/docs/runbook.md, seção "Losing the artifact folder".
  *
  * Mesmo desenho de `reprojetar-grafo.ts` (RN-569), e vive em `src/` pelo mesmo
  * motivo: `scripts/` fica fora da imagem. Roda como

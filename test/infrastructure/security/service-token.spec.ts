@@ -72,7 +72,7 @@ describe('tokenDeServicoAtual', () => {
 });
 
 /**
- * A rotação do runbook (`docs/runbook.md`, "BRABO_SERVICE_TOKEN —
+ * A rotação do runbook (`deploy/docs/runbook.md`, "BRABO_SERVICE_TOKEN —
  * zero-downtime rotation", RN-597), passo a passo. O que cada passo promete é
  * uma afirmação sobre ESTAS duas funções: quem VERIFICA aceita o atual e o
  * anterior, quem CHAMA manda sempre o atual. É a combinação das duas que deixa

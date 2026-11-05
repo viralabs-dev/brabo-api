@@ -30,7 +30,7 @@ export const CABECALHO_SERVICE_TOKEN = 'x-brabo-service-token';
  *
  * `route-surface.spec.ts` classifica a rota como `engine-service` procurando
  * esta classe pelo nome nos metadados de guard. Renomear reclassificaria as 26
- * rotas e exigiria reescrever a tabela de `docs/security-surface.md` — churn
+ * rotas e exigiria reescrever a tabela de `apps/api/docs/security-surface.md` — churn
  * que esconderia, no meio do diff, qualquer mudança real de exposição.
  *
  * ## Cabeçalho próprio, e não `Authorization: Bearer`

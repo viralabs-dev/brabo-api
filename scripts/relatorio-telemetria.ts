@@ -317,13 +317,13 @@ function imprimir(s: Snapshot): void {
   console.log(
     '- Alertas configurados: `deploy/k8s/observability/alerts/brabo-alerts.yaml`',
   );
-  console.log('- Runbook operacional: `docs/runbook.md#observabilidade`');
+  console.log('- Runbook operacional: `deploy/docs/runbook.md#observabilidade`');
   console.log(
     '- Observabilidade local (Prometheus + Loki + Alloy + Grafana, opt-in): `pnpm dev:obs`',
   );
   console.log(
     '- Como se segue uma ação pelo sistema (trace/log/correlação): ' +
-      '`docs/explanation/observability.md`',
+      '`deploy/docs/explanation/observability.md`',
   );
 
   console.log('\n## Não medido\n');

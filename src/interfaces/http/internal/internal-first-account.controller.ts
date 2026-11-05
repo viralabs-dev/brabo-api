@@ -39,7 +39,7 @@ import { FirstAccountInternalResponseDto } from './dto/first-account-internal.re
  * (primeira conta, rota interna, service token) e some assim que a instalação
  * tem gente: o caso de uso recusa com 409 havendo QUALQUER usuário, condição
  * sobre a instalação inteira e não sobre o e-mail pedido. Está declarado aqui,
- * nas Consequences do ADR 0155 e em `docs/security-surface.md`, em vez de
+ * nas Consequences do ADR 0155 e em `apps/api/docs/security-surface.md`, em vez de
  * ficar para ser descoberto.
  *
  * ## Sem `@Get` e sem `@Delete`

@@ -25,7 +25,7 @@
  *
  * O procedimento de restaurar (`make test-restore` /
  * `deploy/k8s/test-restore.sh`) está documentado e foi EXECUTADO de verdade
- * em `docs/runbook.md#restore` — RTO real ~40s contra um banco de ~108 KB,
+ * em `deploy/docs/runbook.md#restore` — RTO real ~40s contra um banco de ~108 KB,
  * registrado na seção "Última execução verificada" daquele documento. Este
  * relatório responde uma pergunta mais estreita e mais frequente: "o backup
  * que esse restore usaria está saudável, agora?" — e aponta para o runbook
@@ -193,7 +193,7 @@ function imprimir(r: RelatorioDeBackup): void {
   }
 
   console.log(
-    '\nProcedimento de restore, testado e documentado: docs/runbook.md#restore ' +
+    '\nProcedimento de restore, testado e documentado: deploy/docs/runbook.md#restore ' +
       '(`make test-restore` / `deploy/k8s/test-restore.sh`, RTO real ~40s — ' +
       'ver "Última execução verificada" naquele documento). Este relatório ' +
       'não reexecuta o restore, só avalia se o backup que ele usaria está bom.',

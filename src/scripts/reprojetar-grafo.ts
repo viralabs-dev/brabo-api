@@ -22,7 +22,7 @@ import { RecordProfileFactUseCase } from '../application/use-cases/graph/record-
 
 /**
  * Reconstrói o grafo de conhecimento (Neo4j) a partir do event log — o
- * BRB-018, e a RN-569. Ver docs/runbook.md, seção "Losing the graph".
+ * BRB-018, e a RN-569. Ver deploy/docs/runbook.md, seção "Losing the graph".
  *
  * O ADR 0152 (decisão 4) recusou fazer backup de `neo4j_data` apoiado numa
  * frase — *o grafo pode ser descartado porque pode ser reconstruído* — cujo

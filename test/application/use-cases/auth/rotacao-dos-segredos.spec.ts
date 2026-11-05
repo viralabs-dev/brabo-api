@@ -29,7 +29,7 @@ import {
 
 /**
  * O que o runbook promete sobre trocar os segredos do auth que tocam o BANCO
- * (`docs/runbook.md`, "Auth key rotation", RN-597), contra os repositórios
+ * (`deploy/docs/runbook.md`, "Auth key rotation", RN-597), contra os repositórios
  * reais. O pepper não tem `_PREVIOUS`: a promessa é de CONSEQUÊNCIA, e é ela
  * que se testa — o que para de valer, o que continua valendo, e que a api
  * não morre por isso.

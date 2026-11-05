@@ -356,7 +356,7 @@ describe.skipIf(!apiKey)(
         // teste.
         expect(
           uso.upstreamProvider,
-          'OpenRouter não informou upstream_provider no frame — quirk a registrar em docs/reference/llm-providers.md',
+          'OpenRouter não informou upstream_provider no frame — quirk a registrar em apps/api/docs/reference/llm-providers.md',
         ).toBeTruthy();
       },
     );

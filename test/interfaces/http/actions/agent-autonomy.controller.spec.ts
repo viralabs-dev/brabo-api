@@ -24,7 +24,7 @@ import { SetAgentAutonomyDto } from '../../../../src/interfaces/http/actions/dto
  * `RolesGuard` (roles.guard.spec.ts) já prova que a matriz de papéis funciona
  * em geral; este teste prova que ESTE handler específico está anotado, o que
  * é o que faz a matriz valer para ele. `route-surface.spec.ts` prova o mesmo
- * fato contra `docs/security-surface.md` em runtime — este é o companheiro
+ * fato contra `apps/api/docs/security-surface.md` em runtime — este é o companheiro
  * rápido, sem subir o `AppModule`.
  */
 describe('AgentAutonomyController — papel exigido pra ligar/desligar o auto mode', () => {

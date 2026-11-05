@@ -184,7 +184,7 @@ export function pepperAtual(): string {
         'ATUAL de AUTH_JWT_SECRET para não deslogar ninguém — os refresh ' +
         'tokens e os PATs continuam válidos, e depois o JWT pode rotacionar ' +
         'sozinho. Instalação nova: gere um próprio (ex.: ' +
-        '`openssl rand -base64 32`). Ver docs/runbook.md, "Auth key rotation".',
+        '`openssl rand -base64 32`). Ver deploy/docs/runbook.md, "Auth key rotation".',
     );
   }
 
@@ -194,7 +194,7 @@ export function pepperAtual(): string {
         'público — em produção isso tira do hash dos tokens a única coisa que ' +
         'um dump do banco não tem. Gere um próprio (ex.: ' +
         '`openssl rand -base64 32`); se a instalação já roda, ver ' +
-        'docs/runbook.md antes, porque trocar o pepper desloga todo mundo.',
+        'deploy/docs/runbook.md antes, porque trocar o pepper desloga todo mundo.',
     );
   }
 

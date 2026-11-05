@@ -63,7 +63,7 @@ export const MENSAGEM_TETO_AUTO_REBAIXAMENTO =
  * As TRÊS mensagens que o ADR 0157 (RN-557) acrescentou. Os nomes são
  * assimétricos — as de projeto não ganharam sufixo `_NO_PROJETO` — porque as
  * duas primeiras já existiam e são citadas por nome na RN-472, no ADR 0127 e em
- * `docs/security-surface.md`: renomeá-las por simetria trocaria referência de
+ * `apps/api/docs/security-surface.md`: renomeá-las por simetria trocaria referência de
  * documento por estética.
  *
  * Cada sentido tem frase PRÓPRIA, e cada escopo também. Quem tentou se promover

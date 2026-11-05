@@ -41,7 +41,7 @@ import { ContainerSpecInternalResponseDto } from './dto/container-spec-internal.
  * ao custo de dobrar o que precisa ser rotacionado em sincronia; a razão está
  * escrita por inteiro em `service-token.ts` e vale igual para o terceiro
  * serviço. O nome da classificação (`engine-service`, em
- * `docs/security-surface.md`) descreve o MECANISMO, não o remetente.
+ * `apps/api/docs/security-surface.md`) descreve o MECANISMO, não o remetente.
  *
  * ## Sem `@Post` aqui, e isso não é esquecimento
  *

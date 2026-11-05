@@ -43,7 +43,7 @@ export interface LLMProviderContractHarness {
   /**
    * O que este provider faz quando a resposta NÃO traz contagem de tokens.
    * As três respostas são divergências REAIS de dialeto, normalizadas aqui em
-   * vez de escondidas (ver docs/reference/llm-providers.md):
+   * vez de escondidas (ver apps/api/docs/reference/llm-providers.md):
    *
    * - `estimated`: conta localmente e marca `estimated: true` (base compatível);
    * - `nenhum`: não emite `usage` nenhum (Ollama — sem a linha `done` não há

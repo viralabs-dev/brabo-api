@@ -72,7 +72,7 @@ const TAMANHO_DA_IMPRESSAO = 16; // hex, 8 bytes
  * `keyId` ausente/nulo é a linha gravada antes desta coluna existir. Nunca é
  * lido como "está na chave atual".
  *
- * Ver docs/runbook.md (seção "Rotação da chave mestra").
+ * Ver deploy/docs/runbook.md (seção "Rotação da chave mestra").
  */
 @Injectable()
 export class EnvelopeEncryptionService implements EncryptionService {

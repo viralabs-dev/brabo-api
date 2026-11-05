@@ -10,7 +10,7 @@ describe('corpus congelado do golden-set de RAG (ADR 0132, AT-693)', () => {
   it('indexa os 22 caminhos lógicos de sempre', () => {
     expect(ARQUIVOS_CURADOS).toHaveLength(22);
     expect(ARQUIVOS_CURADOS[0]).toBe('docs/business-rules.md');
-    expect(ARQUIVOS_CURADOS).toContain('docs/explanation/branching-policy.md');
+    expect(ARQUIVOS_CURADOS).toContain('scripts/ci/docs/explanation/branching-policy.md');
   });
 
   it.each([...ARQUIVOS_CURADOS])('%s existe no corpus congelado', (caminho) => {

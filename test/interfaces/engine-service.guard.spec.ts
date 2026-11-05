@@ -7,7 +7,7 @@ import {
 
 /**
  * O guard das rotas `/internal/*` durante a rotação do `BRABO_SERVICE_TOKEN`
- * (`docs/runbook.md`, RN-597). `service-token.spec.ts` prova as funções; este
+ * (`deploy/docs/runbook.md`, RN-597). `service-token.spec.ts` prova as funções; este
  * prova que a PORTA de entrada do engine usa a que aceita o anterior — um
  * guard que comparasse direto contra `tokenDeServicoAtual()` passaria em todo
  * teste de caminho feliz e quebraria só no meio de um rollout.

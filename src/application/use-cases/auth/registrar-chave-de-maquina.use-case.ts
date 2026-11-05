@@ -52,7 +52,7 @@ const MOTIVO_DA_SUBSTITUICAO =
  * segunda credencial viva na máquina, gravada onde o instalador não promete
  * gravar nada.
  *
- * O custo está declarado, aqui e em `docs/security-surface.md`: um service
+ * O custo está declarado, aqui e em `apps/api/docs/security-surface.md`: um service
  * token vazado passa a poder FABRICAR uma credencial de acesso duradoura,
  * e não só falar com as rotas internas. É por isso que as três contenções
  * abaixo estão na ROTA, e não só no texto.

@@ -29,7 +29,7 @@ import {
  *
  * ## O que este teste garante
  *
- * Que `docs/security-surface.md` descreve EXATAMENTE as rotas que a aplicação
+ * Que `apps/api/docs/security-surface.md` descreve EXATAMENTE as rotas que a aplicação
  * registra — nem mais, nem menos, com a classificação certa. Uma rota nova sem
  * linha no documento reprova; uma linha que diz `jwt` numa rota que na verdade
  * é `@Public()` reprova; uma linha que sobrou depois de a rota ser removida
@@ -84,7 +84,7 @@ interface Rota {
   statusReal?: number;
 }
 
-const DOC = join(__dirname, '../../../../docs/security-surface.md');
+const DOC = join(__dirname, '../../docs/security-surface.md');
 
 /** Lê a tabela do markdown. O documento é a fonte de verdade. */
 function rotasDocumentadas(): Map<string, Rota> {
@@ -340,7 +340,7 @@ describe('superfície exposta da api', () => {
 
     expect(
       faltando,
-      `Rota(s) sem classificação em docs/security-surface.md. Acrescente uma linha ` +
+      `Rota(s) sem classificação em apps/api/docs/security-surface.md. Acrescente uma linha ` +
         `para cada uma decidindo conscientemente a exposição:\n  ${faltando.join('\n  ')}`,
     ).toEqual([]);
   });
@@ -352,7 +352,7 @@ describe('superfície exposta da api', () => {
 
     expect(
       orfas,
-      `Linha(s) em docs/security-surface.md sem rota correspondente — remova:\n  ${orfas.join('\n  ')}`,
+      `Linha(s) em apps/api/docs/security-surface.md sem rota correspondente — remova:\n  ${orfas.join('\n  ')}`,
     ).toEqual([]);
   });
 
@@ -382,7 +382,7 @@ describe('superfície exposta da api', () => {
     // o guard global ainda verifica token do Keycloak — exigir token numa rota
     // de auth pediria credencial do sistema antigo para entrar no novo. O que
     // as protege é o lockout progressivo, não o RateLimitGuard, que libera
-    // rota `@Public()`. Ver docs/security-surface.md.
+    // rota `@Public()`. Ver apps/api/docs/security-surface.md.
     const publicas = [...registradas.values()]
       .filter((r) => r.classificacao === 'public')
       .map((r) => `${r.metodo} ${r.caminho}`)

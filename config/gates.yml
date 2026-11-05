@@ -221,7 +221,7 @@ gates:
   # são os que mais reprovam PR no dia a dia. Incluir o `backmerge` e deixar
   # estes de fora seria arbitrário: são a mesma família (script puro + workflow
   # + spec). O registro é ÍNDICE, não a política: quem manda continua sendo
-  # docs/explanation/branching-policy.md, e `onde` aponta para o script.
+  # scripts/ci/docs/explanation/branching-policy.md, e `onde` aponta para o script.
   - id: pr-no-lugar-certo
     fluxo: ci
     dono: bot-gate

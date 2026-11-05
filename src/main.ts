@@ -153,7 +153,7 @@ async function bootstrap() {
   // o site de docs, gerado do mesmo documento — servir a superfície inteira
   // num ambiente real não acrescenta nada e dá mapa de graça a quem sondar.
   //
-  // Estas duas rotas NÃO aparecem em docs/security-surface.md nem no
+  // Estas duas rotas NÃO aparecem em apps/api/docs/security-surface.md nem no
   // route-surface.spec.ts, e isso não é esquecimento: `SwaggerModule.setup`
   // monta middleware direto no Express, não um controller, e o teste enumera
   // por `DiscoveryService`. A lacuna está registrada em prosa naquele

@@ -19,7 +19,7 @@ import { OllamaProvider } from '../../../src/infrastructure/llm/ollama-provider'
  * OLLAMA_EMBEDDING_SMOKE=1 pnpm --filter api test ollama-provider.embeddings
  * ```
  *
- * Resultado datado em docs/explanation/aceite-providers.md.
+ * Resultado datado em apps/api/docs/explanation/aceite-providers.md.
  */
 const ligado = process.env.OLLAMA_EMBEDDING_SMOKE === '1';
 const host = process.env.OLLAMA_HOST ?? 'http://localhost:11434';
@@ -31,7 +31,7 @@ if (!ligado) {
       'Ollama contra o daemon real foi PULADO. Ele exige um daemon ' +
       'alcançável em OLLAMA_HOST com o modelo de embedding já puxado ' +
       `(default: ${modelo}); nada disso existe no CI. Ver ` +
-      'docs/explanation/aceite-providers.md.',
+      'apps/api/docs/explanation/aceite-providers.md.',
   );
 }
 

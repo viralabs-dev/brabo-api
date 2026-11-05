@@ -97,7 +97,7 @@ export class PastaForaDaBaseError extends Error {
         ? `Não há base de projetos montados nesta instalação, então não existe ` +
             `pasta alguma para navegar — ${JSON.stringify(caminho)} está fora ` +
             `de qualquer escopo que esta rota alcance. Configure ` +
-            `BRABO_PROJECTS_BASE (ver docs/runbook.md) e suba a api e o engine ` +
+            `BRABO_PROJECTS_BASE (ver deploy/docs/runbook.md) e suba a api e o engine ` +
             `de novo.`
         : `A pasta ${JSON.stringify(caminho)} está fora da base de projetos ` +
             `(${base}). O navegador de pastas só enxerga o que está DENTRO da ` +

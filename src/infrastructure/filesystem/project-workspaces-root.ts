@@ -553,7 +553,7 @@ function comoMontar(caminho: string): string {
     `existe para nenhum dos dois). Confirme ` +
     `BRABO_PROJECTS_BASE=${base ?? '<pasta do seu computador>'} no .env e ` +
     `rode: docker compose up -d api engine. O caminho pedido foi ${caminho}. ` +
-    `Ver docs/runbook.md, seção "Projeto no modo Pasta montada".`
+    `Ver deploy/docs/runbook.md, seção "Projeto no modo Pasta montada".`
   );
 }
 

@@ -32,7 +32,7 @@ const RAIZ = join(__dirname, '..', '..', '..', '..');
 // `website/i18n/pt-BR/` saiu. Tradução que vier em `website/i18n/<locale>/`
 // entra aqui quando existir.
 const ARQUIVOS = {
-  fonte: join(RAIZ, 'docs', 'runbook.md'),
+  fonte: join(RAIZ, 'deploy', 'docs', 'runbook.md'),
 } as const;
 
 /** Os blocos ```sql da seção `{#incidente-de-custo}`, em ordem. */

@@ -28,7 +28,7 @@ import { VultrProvider } from '../../../src/infrastructure/llm/vultr-provider';
  * qualidade, medida pela AT-082, não de protocolo.
  *
  * Cada provider roda só quando a credencial dele existe no ambiente — as
- * MESMAS variáveis dos smokes de aceite (`docs/explanation/aceite-providers.md`),
+ * MESMAS variáveis dos smokes de aceite (`apps/api/docs/explanation/aceite-providers.md`),
  * mais `ANTHROPIC_TEST_KEY`. O Ollama não tem chave: liga com
  * `OLLAMA_SISTEMA_TARDIO_SMOKE=1` e um daemon alcançável em `OLLAMA_HOST`
  * (modelo em `OLLAMA_TEST_MODEL`, default `qwen2.5-coder:7b`). Gasta uma
@@ -165,7 +165,7 @@ for (const alvo of ALVOS) {
     console.warn(
       `[smoke] sistema tardio — ${alvo.nome} PULADO: sem credencial/gatilho ` +
         'no ambiente. Não provado contra o provider real (AT-161). Ver ' +
-        'docs/explanation/aceite-providers.md.',
+        'apps/api/docs/explanation/aceite-providers.md.',
     );
   }
 

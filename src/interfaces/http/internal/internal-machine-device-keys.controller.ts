@@ -43,7 +43,7 @@ import { MachineDeviceKeyInternalResponseDto } from './dto/machine-device-key-in
  * **O que essa escolha custa, dito em vez de deixado para ser descoberto:**
  * um `BRABO_SERVICE_TOKEN` vazado passa a poder FABRICAR uma credencial de
  * acesso duradoura de um usuário, e não só falar com as rotas internas. Está
- * declarado em `docs/security-surface.md`, ao lado da declaração irmã da
+ * declarado em `apps/api/docs/security-surface.md`, ao lado da declaração irmã da
  * primeira conta.
  *
  * ## O que impede a rota de virar fábrica de chaves

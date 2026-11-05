@@ -39,7 +39,7 @@ import { RunnerProjectResponseDto } from './dto/runner-project.response.dto';
  *
  * Por isso `route-surface.spec.ts` classifica esta rota como `jwt` — o
  * classificador automático lê `@RequireRole` e não enxerga mecanismo — e
- * `docs/security-surface.md` corrige a leitura em prosa, exatamente como já
+ * `apps/api/docs/security-surface.md` corrige a leitura em prosa, exatamente como já
  * faz para `runner-ticket`. Ela **não** aceita JWT de sessão: `JwtAuthGuard`
  * se abstém em rota `@RequirePatAuth()`, e a chave pública que `PatAuthGuard`
  * verifica vem de `runner_device_keys`, nunca do emissor de sessão.
