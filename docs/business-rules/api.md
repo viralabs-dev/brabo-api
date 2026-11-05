@@ -9697,7 +9697,7 @@ faz merge nem push.
 - **Código:** `src/domain/sessions/estou-pronto.ts:62` (`decidirAceiteImplicitoDoPo`);
   `src/application/use-cases/agents/aceite-implicito-do-po.use-case.ts:37` (`AceiteImplicitoDoPoUseCase`),
   `:45` (`seCouber`);
-  `src/interfaces/http/internal/internal-sessions.controller.ts:414` (`handoff`);
+  `src/interfaces/http/internal/internal-sessions.controller.ts:439` (`handoff`);
   `src/application/use-cases/agents/accept-handoff.use-case.ts:135` (`implicito` no `handoff.accepted`);
   `src/application/use-cases/agents/activate-agent.use-case.ts:80` (`implicito` no `agent.activated`)
 - **Teste:** `test/application/use-cases/agents/aceite-implicito-do-po.use-case.spec.ts:105`
@@ -9779,7 +9779,7 @@ handoff manual (ADR 0109) também.
   (`AceitarHandoffAutomaticamenteUseCase`);
   `src/application/use-cases/agents/accept-handoff.use-case.ts:91`
   (`AceitePeloSistema`);
-  `src/interfaces/http/internal/internal-sessions.controller.ts:414`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:439`
   (`handoff`); `apps/engine/lib/engine/harness/tools/offer_handoff.ex:59`;
   `apps/web/src/routes/session-timeline-montagem.tsx:604` (o aviso no fio)
 - **Teste:** `test/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.spec.ts:73`
@@ -10436,7 +10436,7 @@ embedding do RAG, e AVISA quando a mais próxima está a partir do limiar.
   `src/application/use-cases/backlog/verificar-duplicata-semantica.use-case.ts:111` (`VerificarDuplicataSemanticaUseCase`),
   `:241` (`medir`), `:285` (`narrar`), `:349` (`fraseParaOAgente`),
   `src/application/use-cases/backlog/create-story.use-case.ts:193` (`semanticDuplicate`),
-  `src/interfaces/http/internal/internal-sessions.controller.ts:640` (`semanticDuplicateCheck`),
+  `src/interfaces/http/internal/internal-sessions.controller.ts:643` (`semanticDuplicateCheck`),
   `src/application/use-cases/rag/rag-embedding.service.ts:106` (`uso`),
   `apps/engine/lib/engine/harness/tools/emit_artifact.ex` (`aviso_semantico`),
   `apps/engine/lib/engine/harness/tools/create_story.ex` (`aviso_semantico`)
@@ -10626,7 +10626,7 @@ lendo o worktree de outros módulos para descobrir a interface deles: o
   (`execute`);
   `src/application/use-cases/architecture/list-module-contracts.use-case.ts:42`
   (`execute`);
-  `src/interfaces/http/internal/internal-sessions.controller.ts:779`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:783`
   (`moduleContracts`);
   `src/interfaces/http/internal/internal-projects.controller.ts:178`
   (`moduleContracts`);
@@ -11172,8 +11172,8 @@ O kickoff do PO diz as três coisas.
   (`findByProject`), `:403` (`claimNext`),
   `src/interfaces/http/backlog/backlog.controller.ts:205`
   (`updateTitle`), `:219` (`archive`),
-  `src/interfaces/http/internal/internal-sessions.controller.ts:576`
-  (`updateStoryRoute`), `:609` (`archiveStoryRoute`),
+  `src/interfaces/http/internal/internal-sessions.controller.ts:579`
+  (`updateStoryRoute`), `:612` (`archiveStoryRoute`),
   `apps/engine/lib/engine/harness/tools/update_story.ex:45` (`run`),
   `apps/engine/lib/engine/harness/tools/archive_story.ex:38` (`run`),
   `apps/web/src/routes/ProjectBacklogTab.tsx:80` (`motivoDeCorrecaoInerte`)
