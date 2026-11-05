@@ -24,7 +24,10 @@ describe('cabeçalho de git-errors.ts × GitProviderContract', () => {
   const operacoesDoContrato = (): string[] => {
     const fonte = ts.createSourceFile(
       'index.ts',
-      readFileSync(join(raizDoRepo, 'node_modules/@brabo/shared/src/index.ts'), 'utf8'),
+      readFileSync(
+        join(raizDoRepo, 'node_modules/@brabo/shared/src/index.ts'),
+        'utf8',
+      ),
       ts.ScriptTarget.ESNext,
       true,
     );

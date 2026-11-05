@@ -79,11 +79,10 @@ describe('a api não consome @brabo/docker-port', () => {
     // não existe na imagem.
     const buscar = (argumentos: string[]): string[] => {
       try {
-        return execFileSync(
-          'git',
-          ['grep', '-l', ...argumentos, '--', 'src'],
-          { cwd: raizDaApi, encoding: 'utf8' },
-        )
+        return execFileSync('git', ['grep', '-l', ...argumentos, '--', 'src'], {
+          cwd: raizDaApi,
+          encoding: 'utf8',
+        })
           .split('\n')
           .filter(Boolean);
       } catch {
