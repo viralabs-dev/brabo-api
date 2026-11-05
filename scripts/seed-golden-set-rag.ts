@@ -108,8 +108,12 @@ import {
   GOLDEN_SET_RAG_TOP_K,
 } from '../src/domain/rag/golden-set-criterio';
 
-// raiz do monorepo — apps/api/scripts/ -> apps/api -> apps -> raiz.
-const REPO_ROOT = resolve(__dirname, '../../..');
+// Corpus CONGELADO (ADR 0132 + AT-693): o piso 17/17 foi medido contra estes bytes,
+// então o seed não lê `docs/` vivo; o caminho lógico gravado no índice não muda.
+export const CORPUS_ROOT = resolve(
+  __dirname,
+  '../test/fixtures/golden-set-rag/corpus',
+);
 
 function log(msg: string) {
   console.error(msg); // stderr: o stdout é só o JSON de saída (ver main()).
@@ -129,7 +133,7 @@ function log(msg: string) {
  * pergunta (um corpus onde cada arquivo é a resposta de exatamente uma
  * pergunta testaria pouco além de "o índice não está vazio").
  */
-const ARQUIVOS_CURADOS = [
+export const ARQUIVOS_CURADOS = [
   'docs/business-rules.md',
   'docs/business-rules/custo.md',
   'docs/business-rules/autenticacao.md',
@@ -351,7 +355,7 @@ async function main() {
   const arquivos = await Promise.all(
     ARQUIVOS_CURADOS.map(async (caminho) => ({
       path: caminho,
-      content: await readFile(join(REPO_ROOT, caminho), 'utf-8'),
+      content: await readFile(join(CORPUS_ROOT, caminho), 'utf-8'),
     })),
   );
   await registry.get('local').commitFiles({
@@ -465,7 +469,9 @@ async function main() {
   );
 }
 
-main().catch((error) => {
-  console.error('\nSeed do golden-set de RAG falhou:', error);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error('\nSeed do golden-set de RAG falhou:', error);
+    process.exit(1);
+  });
+}
