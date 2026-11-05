@@ -151,7 +151,7 @@ export const ARQUIVOS_CURADOS = [
   'docs/adr/0129-telemetria-de-busca-do-rag-como-tabela.md',
   'docs/adr/0130-broker-de-container.md',
   'docs/explanation/gates.md',
-  'scripts/ci/docs/explanation/branching-policy.md',
+  'docs/explanation/branching-policy.md',
   'docs/explanation/backlog.md',
   'docs/explanation/achados-execucao-real.md',
   'docs/architecture.md',
@@ -249,7 +249,7 @@ const CASOS: CasoRag[] = [
   {
     id: 'branch-taxonomia-de-dev',
     query: 'What branch-type taxonomy is used for work that starts from `dev`?',
-    expectedPath: 'scripts/ci/docs/explanation/branching-policy.md',
+    expectedPath: 'docs/explanation/branching-policy.md',
   },
   {
     id: 'tetos-de-rebaixamento-project-members',
