@@ -12541,7 +12541,7 @@ Completes [RN-666](#rn-666) (item 4) for 9Router. 0.5.112 ADDS 2,000 to `prompt_
 
 ### RN-964 — Price and billing are curated on the Providers screen, and manual editing protects the number from the sync {#rn-964}
 
-Completes [RN-044](#rn-044) (the manual path now marks `manual_pricing`), [RN-954](#rn-954) (the mark gains a screen) and [RN-963](web.md#rn-963) (the same sentence for the subscription without a price).
+Completes [RN-044](#rn-044) (the manual path now marks `manual_pricing`), [RN-954](#rn-954) (the mark gains a screen) and [RN-963](#rn-963) (the same sentence for the subscription without a price).
 
 1. **Manual editing marks.** Changing the price with origin `manual` records `manual_pricing = true` in the same write as the price. Origin `sync` does not touch the mark.
 2. **The sync respects the mark.** A `manual_pricing` row keeps the recorded price even when the remote catalog brings another; only the catalog without a price and the non-manual row follow the remote.
