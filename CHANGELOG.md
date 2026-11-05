@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Volta `test/runbook/sql-do-incidente-de-custo.spec.ts`: executa o SQL do runbook (`deploy/docs/runbook.md` do `brabo-infra`) contra o schema da api. Lê o runbook por `BRABO_INFRA_DIR` (padrão `../brabo-infra`; o CI baixa o `brabo-infra` `dev`) e REPROVA, nomeando o caminho, se ele não existe.
+- Catálogo `docs/i18n/{pt-BR,ru,zh-Hans}/openapi-textos.json`: removida a entrada órfã `606f9805e6ba` (conferida com `aplicar()` de `openapi-por-locale.mjs`, que mora no `brabo-legacy`/`brabo`).
+- `CLAUDE.md`: blocos cortados pelo teto de 40 mil caracteres passam a regras de caminho em `.claude/rules/`.
+
 ## v1.0.0
 
 - Extração de `apps/api` (e dos Dockerfiles `docker/api/*`) do monorepo `daneiel/brabo` (AT-696, ADR 0252), com o histórico dos caminhos; `#N` nos commits aponta para `viralabs-dev/brabo-legacy`.

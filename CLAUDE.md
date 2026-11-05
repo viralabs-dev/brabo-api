@@ -522,4 +522,7 @@ API do Brabo: NestJS 11 + Drizzle + PostgreSQL 16/pgvector. Dona do schema, do R
 - Gate novo é decisão de produto, com ADR. Área nova de agente também.
 
 ## Onde está o que não coube aqui
-O teto de 40 mil caracteres deixou de fora, por serem de outro repo ou de pouco uso aqui: o bloco `O projeto escolhe ONDE o código mora` (`convencoes-repositorio-e-dominio.md`), imagem de container como artefato, cascata de modelo e LLMProvider/embed (`convencoes-agentes-e-telas.md`), Anamnese/Psicólogo, capabilities de LLM e RAG (`estado-atual.md`). O texto integral está em `brabo-legacy` (`.claude/contexto/*.md`, `dev` @ `1586158973`) e no `CLAUDE.md` da pasta-mãe (`brabo-workspace`).
+O teto de 40 mil caracteres tirou deste arquivo blocos que viraram regras de CAMINHO em `.claude/rules/` (texto integral da fonte `brabo-legacy`, `dev` @ `1586158973`), carregadas quando a sessão lê os arquivos do `paths:`:
+- `execucao-e-imagem-do-projeto.md` — onde o código do projeto mora (`container`/`mounted`/`runner`) e a imagem de container como artefato.
+- `llm-cascata-e-rag.md` — LLMProvider/embed, cascata de modelo, capabilities de LLM e calibração do RAG.
+- `anamnese-e-psicologo.md` — Anamnese religada e Psicólogo pausado.
