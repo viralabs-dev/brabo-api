@@ -9797,41 +9797,41 @@ manual handoff (ADR 0109) too.
   (not run in this session: no Elixir in the environment)
 - **Origin:** AT-314, [ADR 0186](../adr/0186-aceite-automatico-do-handoff-ao-arquiteto.md)
 
-## O Infra Lead não anuncia subida que não fez (RN-668)
+## The Infra Lead does not announce a bring-up it did not do (RN-668) {#o-infra-lead-nao-anuncia-subida-que-nao-fez-rn-668}
+### RN-663 — PR merge refuses an already-merged PR and a repeated proposal; a pending gate is only a warning {#rn-663}
 
-### RN-663 — O merge de PR recusa a PR já mergeada e a proposta repetida; gate pendente é só aviso {#rn-663}
+Real use on 29/09 measured both holes: `pr-6` had THREE `git_merge`
+`executed`, and `pr-4` was merged with the task in `awaiting_qa`. The api did
+not deduplicate `git_merge` per PR (only the screen did, and only within the
+same list), and `LocalGitProvider` returned the already-merged PR without error
+— the executor recorded a second `executed` for the same merge.
 
-O uso real de 29/09 mediu os dois buracos: a `pr-6` teve TRÊS `git_merge`
-`executed`, e a `pr-4` foi mergeada com a tarefa em `awaiting_qa`. A api não
-deduplicava `git_merge` por PR (só a tela, e só na mesma lista), e o
-`LocalGitProvider` devolvia a PR já mergeada sem erro — o executor gravava um
-segundo `executed` para o mesmo merge.
+1. **Proposal.** A `git_merge` of a PR that an earlier execution already merged
+   (`executed` with `state: 'merged'`) is 409 `pr_ja_mergeado`; with a LIVE
+   proposal for the same PR (`pending`, `approved` or `auto_approved`), 409
+   `merge_ja_proposto`. In both, nothing is created. Denied or failed do not
+   count: whoever denied or saw it fail can try again. The comparison is by the
+   payload's `pullRequestId`, across the whole project (any session).
+2. **Approval.** Approving a pending `git_merge` whose PR ANOTHER proposal
+   already merged is 409 `pr_ja_mergeado`, before any effect, and the action
+   stays `pending` for whoever sees it denied. A sibling that is merely LIVE
+   does not prevent deciding this one.
+3. **Provider.** `LocalGitProvider` refuses to merge an already-merged PR with
+   `GitPullRequestAlreadyMergedError`, and the target does not move — aligned
+   with GitHub, which refuses the repeated merge.
+4. **A pending gate is a WARNING, never a refusal** (owner's decision, 30/09).
+   The PRs tab and the chat's "Merge" say in TEXT which gate is missing
+   (`qa-verificada` with `awaiting_qa` or the gate not yet opened,
+   `secops-segura` with `awaiting_secops`), and the button and the card stay
+   active. `awaiting_user`, a `done` task and a PR without a task do not warn.
+   The "blocked gate" (task `blocked`) stays as it was.
+5. **No ceiling moves.** Merge into a protected branch stays unconditional,
+   human `require_approval` ([RN-418](#rn-418), `decide.ts`): this rule only
+   prevents proposing or approving what there is nothing to merge. Declared: two
+   simultaneous proposals for the same PR are not serialized (there is no
+   per-PR lock), and it is rule 2 that holds the second one.
 
-1. **Proposta.** `git_merge` de uma PR que uma execução anterior já mergeou
-   (`executed` com `state: 'merged'`) é 409 `pr_ja_mergeado`; com uma proposta
-   VIVA da mesma PR (`pending`, `approved` ou `auto_approved`), 409
-   `merge_ja_proposto`. Nos dois, nada é criado. Negada ou falha não contam:
-   quem negou ou viu falhar pode tentar de novo. A comparação é pelo
-   `pullRequestId` do payload, no projeto inteiro (qualquer sessão).
-2. **Aprovação.** Aprovar um `git_merge` pendente cuja PR OUTRA proposta já
-   mergeou é 409 `pr_ja_mergeado`, antes de qualquer efeito, e a ação continua
-   `pending` para quem a vê negar. A irmã apenas VIVA não impede decidir esta.
-3. **Provider.** O `LocalGitProvider` recusa mergear PR já mergeada com
-   `GitPullRequestAlreadyMergedError`, e o target não se move — alinhado ao
-   GitHub, que recusa o merge repetido.
-4. **Gate pendente é AVISO, nunca recusa** (decisão do dono, 30/09). A aba PRs
-   e o "Mergear" do chat dizem em TEXTO qual gate falta (`qa-verificada` com
-   `awaiting_qa` ou gate ainda não aberto, `secops-segura` com
-   `awaiting_secops`), e o botão e o card seguem ativos. `awaiting_user`,
-   tarefa `done` e PR sem tarefa não avisam. O "gate bloqueado" (tarefa
-   `blocked`) continua como era.
-5. **Nenhum teto se move.** O merge em branch protegida segue
-   `require_approval` incondicional e humano ([RN-418](#rn-418), `decide.ts`):
-   esta regra só impede propor ou aprovar o que não há o que mergear.
-   Declarado: duas propostas simultâneas da mesma PR não são serializadas (não
-   há trava por PR), e é a regra 2 que segura a segunda.
-
-- **Código:** `src/domain/actions/merge-de-pr.ts:56` (`recusaDeMerge`),
+- **Code:** `src/domain/actions/merge-de-pr.ts:56` (`recusaDeMerge`),
   `:40` (`mergeouAPr`);
   `src/application/use-cases/actions/propose-action.use-case.ts:124` (`recusaDeMerge`);
   `src/application/use-cases/actions/approve-action.use-case.ts:306` (`recusaDeMerge`);
@@ -9841,20 +9841,19 @@ segundo `executed` para o mesmo merge.
   `apps/web/src/routes/session-timeline-montagem.tsx:1249` (`gatePendenteNoMerge`)
   `apps/web/src/routes/ProjectPrsTab.tsx:236` (`gatePendenteNoMerge`);
   `apps/web/src/routes/session-timeline-montagem.tsx:1249` (`gatePendenteNoMerge`)
-- **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:664`
-  (`merge_ja_proposto`), `:687` (`pr_ja_mergeado` — caso de falha), `:696`
+- **Test:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:664`
+  (`merge_ja_proposto`), `:687` (`pr_ja_mergeado` — failure case), `:696`
 
   `apps/web/src/routes/session-timeline-montagem.tsx:1249` (`gatePendenteNoMerge`)
-- **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:664`
-  (`merge_ja_proposto`), `:687` (`pr_ja_mergeado` — caso de falha), `:696`
-  (negada não bloqueia, outra PR não colide — caminho feliz);
+- **Test:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:664`
+  (`merge_ja_proposto`), `:687` (`pr_ja_mergeado` — failure case), `:696`
+  (denied does not block, another PR does not collide — happy path);
   `test/application/use-cases/actions/approve-deny-action.use-case.spec.ts:473`;
   `test/infrastructure/git/local-git-provider.contract.spec.ts:150`;
   `apps/web/src/routes/ProjectPrsTab.test.tsx:266`, `:300`, `:315`;
   `apps/web/src/routes/MergearNoChat.test.tsx:135`, `:148`;
   `apps/web/src/lib/gate-do-merge.test.ts:5`, `:18`
-- **Origem:** AT-249 (item A3/extra E3 da análise do uso real de 29/09)
-
+- **Origin:** AT-249 (item A3/extra E3 of the analysis of the real use of 29/09)
 ### RN-665 — O custo real que o provider devolve é o número do metering; o catálogo fica onde ele não vem {#rn-665}
 
 Decisão do dono (30/09): **o custo real vira o número**. Quando a resposta de
@@ -9944,146 +9943,148 @@ foram raciocínio).
 - **Origin:** [ADR 0188](../adr/0188-o-custo-real-do-provider-vira-o-numero-do-metering.md)
   (AT-272)
 
-### RN-669 — O escopo de caminho compara com a pasta REAL de execução: `/work` e o `/tmp` do container quando ele está de pé {#rn-669}
+### RN-669 — The path scope compares against the REAL execution folder: `/work` and the container's `/tmp` when it is up {#rn-669}
 
-O teto de escopo do ADR 0055 comparava todo comando com a pasta do projeto no
-HOST, inclusive quando o comando roda DENTRO do container (RN-492/RN-502). No
-uso real de 29/09, os 37 pedidos "escopo" eram `/work/...` e `/tmp`
-comparados com `/home/<usuario>/projetos-brabo/<projeto>` (AT-258).
+The scope ceiling of ADR 0055 compared every command against the project's
+folder on the HOST, including when the command runs INSIDE the container
+(RN-492/RN-502). In real use on 29/09, the 37 "scope" requests were `/work/...`
+and `/tmp` compared against `/home/<usuario>/projetos-brabo/<projeto>` (AT-258).
 
-Com um container `running` REGISTRADO num projeto `container` ou `mounted`, a
-raiz do escopo é `/work` — o ponto de montagem, onde moram a pasta e os
-`.worktrees` do projeto — mais o `/tmp` do PRÓPRIO container. O `cwd` chega
-como caminho de host e é traduzido para `/work` pela mesma regra do engine
-(`cwd_para_container/2`): a raiz vira `/work`, o que está sob ela vira
-`/work/...`, o que está fora segue como veio e fica fora. Em `mounted` a
-tradução é bijetiva. Sem container, a raiz continua a pasta do projeto no host,
-e o `/tmp` do host fica FORA.
+With a `running` container REGISTERED on a `container` or `mounted` project, the
+scope root is `/work` — the mount point, where the project's folder and
+`.worktrees` live — plus the container's OWN `/tmp`. The `cwd` arrives as a host
+path and is translated to `/work` by the same rule as the engine
+(`cwd_para_container/2`): the root becomes `/work`, what is under it becomes
+`/work/...`, what is outside stays as it came and stays outside. In `mounted`
+the translation is bijective. Without a container, the root remains the
+project's folder on the host, and the host's `/tmp` stays OUTSIDE.
 
-Vale para quem não está no piloto (a regra específica `terminal`): o piloto não
-passa pelo escopo ([RN-603](#rn-603), mantida
-pela [RN-670](#rn-670)). `projectScopeRoot` não muda nem se une a
-`permissionsFilePath` ([RN-478](#rn-478)); o PISO de auto-aprovação continua só
-do modo `container` ([RN-493](#rn-493)). `runner` fica fora, de propósito: a api
-não sabe se o runner vai rotear para o container ou para o host (RN-558).
-Argumento de comando com caminho de HOST passa a contar como fora quando há
-container — o engine traduz só o `cwd`, e dentro do container esse caminho não
-existe.
+It applies to whoever is not in autopilot (the specific `terminal` rule): the
+autopilot does not go through the scope ([RN-603](#rn-603), kept by
+[RN-670](#rn-670)). `projectScopeRoot` neither changes nor merges with
+`permissionsFilePath` ([RN-478](#rn-478)); the auto-approval FLOOR remains only
+for `container` mode ([RN-493](#rn-493)). `runner` is left out, on purpose: the
+api does not know whether the runner will route to the container or to the host
+(RN-558). A command argument with a HOST path now counts as outside when there is
+a container — the engine translates only the `cwd`, and inside the container that
+path does not exist.
 
-- **Código:** `src/domain/actions/path-scope.ts:153` (`cwdNoContainer`),
-  `:174` (`comandoNoEscopoDoContainer`), `:112` (`comandoNoEscopo`, agora com
-  várias raízes), `:137` (`PONTO_DE_MONTAGEM_DO_CONTAINER`);
+- **Code:** `src/domain/actions/path-scope.ts:153` (`cwdNoContainer`),
+  `:174` (`comandoNoEscopoDoContainer`), `:112` (`comandoNoEscopo`, now with
+  several roots), `:137` (`PONTO_DE_MONTAGEM_DO_CONTAINER`);
   `src/domain/actions/decide.ts:289` (`execucaoNoContainer`), `:648`
-  (`execucaoNoContainer`, em `terminalNoEscopo`);
+  (`execucaoNoContainer`, in `terminalNoEscopo`);
   `src/application/use-cases/actions/propose-action.use-case.ts:174`
-  (`containerExecutionActive`, separado de `execucaoNoContainer`)
-- **Teste:** `test/domain/actions/decide.spec.ts:1274` (com container
-  `/work`, `.worktrees`, `/tmp` e `..` dentro — caminho feliz; `/etc`, outro
-  projeto, `/workspace`, `/tmp/../etc` fora; sem container `/tmp` e `/work`
-  fora — casos de falha); `test/domain/actions/path-scope.spec.ts:216`
-  (e a cópia de `/work` travada contra `packages/docker-port`);
+  (`containerExecutionActive`, separate from `execucaoNoContainer`)
+- **Test:** `test/domain/actions/decide.spec.ts:1274` (with a container
+  `/work`, `.worktrees`, `/tmp` and `..` inside — happy path; `/etc`, another
+  project, `/workspace`, `/tmp/../etc` outside; without a container `/tmp` and
+  `/work` outside — failure cases); `test/domain/actions/path-scope.spec.ts:216`
+  (and the copy of `/work` locked against `packages/docker-port`);
   `test/application/use-cases/actions/propose-action.use-case.spec.ts:1141`
-  (o modo `mounted` com e sem container, e sem o piso)
-- **Origem:** AT-258 (item A12 da análise do uso real de 29/09), decisão do
-  dono de 01/10, [ADR 0189](../adr/0189-o-piloto-automatico.md)
+  (`mounted` mode with and without a container, and without the floor)
+- **Origin:** AT-258 (item A12 of the analysis of the real use of 29/09), owner's
+  decision of 01/10, [ADR 0189](../adr/0189-o-piloto-automatico.md)
+### RN-670 — Automatic mode is the AUTOPILOT, and "Always allow" does not turn it off {#rn-670}
 
-### RN-670 — O modo automático é o PILOTO AUTOMÁTICO, e "Sempre permitir" não o desliga {#rn-670}
+Owner's decision of 01/10 ([ADR 0189](../adr/0189-o-piloto-automatico.md)):
+[RN-603](#rn-603) is NOT revoked. The wildcard
+`*: auto_approve` approves EVERYTHING, including the compound synthesized from
+`permissions.json`, a path outside the folder, `git commit` and creation of a
+LOCAL branch. Still outside, never auto-approvable: push/PR/merge/deploy through
+the terminal and `sudo`/`doas` ([RN-418](#rn-418)), merge into a protected
+branch, `container_remove`, `instruction_patch` and parallelism. An explicit
+`deny` wins, and an `ask` written in the file asks. The guarantee that this does
+not reach Brabo's code is the container containment — a single folder, at
+`/work`, strictly below the broker's root, no Docker socket nor privilege —,
+proven in `apps/broker/src/contencao-do-brabo.spec.ts`; what the proof does NOT
+cover is declared in ADR 0189.
 
-Decisão do dono de 01/10 ([ADR 0189](../adr/0189-o-piloto-automatico.md)): a
-[RN-603](#rn-603) NÃO é revogada. A curinga
-`*: auto_approve` aprova TUDO, inclusive o composto sintetizado do
-`permissions.json`, caminho fora da pasta, `git commit` e criação de branch
-LOCAL. Seguem fora, nunca auto-aprováveis: push/PR/merge/deploy pelo terminal
-e `sudo`/`doas` ([RN-418](#rn-418)), merge em branch protegida,
-`container_remove`, `instruction_patch` e paralelismo. `deny` explícito vence, e
-`ask` escrito no arquivo pede. A garantia de que isso não alcança o código do
-Brabo é a contenção do container — uma pasta só, em `/work`, estritamente
-abaixo da raiz do broker, sem socket do Docker nem privilégio —, provada em
-`apps/broker/src/contencao-do-brabo.spec.ts`; o que a prova NÃO cobre está
-declarado no ADR 0189.
+**"Always allow" does not turn the autopilot off (AT-255).** The dev agent's
+click writes `terminal: auto_approve` ([RN-509](#rn-509)), and the repository
+returned that specific one BEFORE the wildcard, with origin `especifica` —
+`decide()` stopped recognizing automatic mode (97 + 37 requests in real use on
+29/09, with the mode lit on screen). Now the specific `auto_approve` under the
+wildcard `auto_approve` resolves as the WILDCARD. A specific that says something
+else (`require_approval`, `deny`) still wins, and with the toggle back to manual
+the specific written by the click goes back to counting on its own, with the
+scope. The click still writes the specific; what decides whether it already
+exists is the resolution's `especifica` field, never the resolved mode.
 
-**"Sempre permitir" não desliga o piloto (AT-255).** O clique de dev agent
-grava `terminal: auto_approve` ([RN-509](#rn-509)), e o repositório devolvia
-essa específica ANTES da curinga, com origem `especifica` — `decide()` deixava
-de reconhecer o modo automático (97 + 37 pedidos no uso real de 29/09, com o
-modo aceso na tela). Agora a específica `auto_approve` sob a curinga
-`auto_approve` resolve como a CURINGA. Específica que diz outra coisa
-(`require_approval`, `deny`) continua vencendo, e com o toggle de volta em
-manual a específica gravada pelo clique volta a valer sozinha, com o escopo. O
-clique continua gravando a específica; quem decide se ela já existe é o campo
-`especifica` da resolução, nunca o modo resolvido.
+**The screen says what the autopilot releases and what it does not**, with ONE
+list in the three places where the mode is turned on: the Executors' batch card
+([RN-661](web.md#rn-661), open), the `ApprovalCard` and the agent card's toggle
+(collapsed). The "does not release" is the text RN-661 already had, reused.
 
-**A tela diz o que o piloto libera e o que não libera**, com UMA lista nos três
-lugares onde o modo é ligado: o cartão de lote dos Executores
-([RN-661](web.md#rn-661), aberta), o `ApprovalCard` e o toggle do card do agente
-(recolhida). O "não libera" é o texto que a RN-661 já tinha, reusado.
-
-- **Código:** `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
-  (`resolve`), `:67` (`modoEspecifico`, a exceção do piloto);
+- **Code:** `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
+  (`resolve`), `:67` (`modoEspecifico`, the autopilot's exception);
   `src/application/ports/agent-autonomy-repository.port.ts:5`
-  (`AutonomiaResolvida`, com `especifica`);
+  (`AutonomiaResolvida`, with `especifica`);
   `src/application/use-cases/actions/approve-always-action.use-case.ts:263`
   (`especifica`); `src/domain/actions/decide.ts:309`
   (`modoAutomaticoDoAgente`); `apps/web/src/components/OQueOPilotoLibera.tsx:16`
   (`OQueOPilotoLibera`); `apps/web/src/components/ApprovalCard.tsx:434`,
   `apps/web/src/components/AgentCard.tsx:164`,
   `apps/web/src/components/ModoAutomaticoDoTime.tsx:134`
-- **Teste:** `test/application/use-cases/actions/approve-always-action.use-case.spec.ts:850`
-  (o cenário medido: curinga + "Sempre permitir" segue sem pedido — caminho
-  feliz; toggle em manual volta ao escopo — caso de falha);
+- **Test:** `test/application/use-cases/actions/approve-always-action.use-case.spec.ts:850`
+  (the measured scenario: wildcard + "Always allow" still goes without a request
+  — happy path; toggle in manual goes back to the scope — failure case);
   `test/infrastructure/persistence/drizzle/agent-autonomy.repository.spec.ts:115`;
-  `test/domain/actions/decide.spec.ts:1210` (commit e branch local
-  livres; push, merge, PR, deploy e `doas` seguem pedindo);
-  `apps/broker/src/contencao-do-brabo.spec.ts:105` (a contenção);
+  `test/domain/actions/decide.spec.ts:1210` (commit and local branch
+  free; push, merge, PR, deploy and `doas` still ask);
+  `apps/broker/src/contencao-do-brabo.spec.ts:105` (the containment);
   `apps/web/src/components/ModoAutomaticoDoTime.test.tsx:86`,
   `apps/web/src/components/ApprovalCard.test.tsx:145`,
   `apps/web/src/components/AgentCard.test.tsx:81`
-- **Origem:** AT-259 e AT-255 (itens A9 e A13 da análise do uso real de 29/09),
-  decisão do dono de 01/10
+- **Origin:** AT-259 and AT-255 (items A9 and A13 of the analysis of the real use
+  of 29/09), owner's decision of 01/10
+### RN-671 — Infra brings up the container at handoff acceptance: the server proposes, and the seeded autonomy approves {#rn-671}
 
-### RN-671 — A Infra sobe o container no aceite do handoff: o servidor propõe, e a autonomia semeada aprova {#rn-671}
+Owner's decision on 01/10 ([ADR 0190](../adr/0190-a-infra-sobe-o-container-no-aceite.md)),
+revising the "never seeded" of [RN-491](web.md#rn-491). In real use on 29/09
+Infra announced the bring-up "in parallel" and did not propose it; the container
+only came up through `/containers` (AT-260).
 
-Decisão do dono em 01/10 ([ADR 0190](../adr/0190-a-infra-sobe-o-container-no-aceite.md)),
-revisando o "nunca semeado" da [RN-491](web.md#rn-491). No uso real de 29/09 a Infra
-anunciou a subida "em paralelo" e não a propôs; o container só subiu pela
-`/containers` (AT-260).
+1. **The seed.** Accepting the handoff addressed to `infra` writes, besides
+   `open_infra_pr: auto_approve` and `terminal: deny`, the autonomy
+   `container_start: auto_approve`. Only that one among the container ones:
+   `container_start_via_runner` and `container_stop` are still never seeded, and
+   `container_remove` stays on the absolute ceiling ([RN-495](#rn-495)).
+2. **The trigger belongs to the SERVER.** In the Infra Lead's kickoff, BEFORE
+   the first trip to the model, if there is a current routing
+   (`artifact.module_routing` `roteado`, with a candidate) and a
+   `container`/`mounted` project, the server proposes `container_start` through
+   the SAME path as the `propose_container_start` tool: the local refusals by
+   mode and state ([RN-566](engine.md#rn-566), [RN-610](engine.md#rn-610)), then
+   `propose_action`, where the api refuses without a broker ([RN-591](#rn-591)),
+   resolves the autonomy and, if auto-approved, executes the bring-up, electing
+   the image through `DecidirImagemDoProjetoUseCase` with
+   `decidedBy: 'infra-lead'` ([RN-491](web.md#rn-491)). `runner` has no server
+   step: it goes through `container_start_via_runner`, proposed by the model and
+   decided by a human.
+3. **The election is deterministic.** The candidate with the greatest number of
+   modules; on a tie, the first one in the routing. Network `none`, default
+   resources, and a `rationale` saying it was the server. *(Revised by
+   [RN-683](#rn-683): the resources are omitted and the api brings it up with the
+   minimum derived from the `module_map`, not with the default.)*
+4. **The trail says who called.** Durable `tool.call` (with `origem: "servidor"`)
+   and `tool.result`, and no tool message in the model's history; the kickoff
+   says in text what has ALREADY happened (the status returned, or the reason for
+   the refusal).
+5. **The closing of [RN-668](engine.md#rn-668) remains true.** The server's
+   bring-up marks the turn as the tool's: proposed, the closing is silent;
+   refused, it says it was refused. A proposal DENIED by the policy (status
+   `denied`, like a session opened by someone who is not `maintainer`) counts as
+   a refusal, in both origins.
 
-1. **A semente.** Aceitar o handoff endereçado a `infra` grava, além de
-   `open_infra_pr: auto_approve` e `terminal: deny`, a autonomia
-   `container_start: auto_approve`. Só ela entre as de container:
-   `container_start_via_runner` e `container_stop` seguem nunca semeados, e
-   `container_remove` segue no teto absoluto ([RN-495](#rn-495)).
-2. **O disparo é do SERVIDOR.** No kickoff do Infra Lead, ANTES da primeira ida
-   ao modelo, havendo roteamento vigente (`artifact.module_routing` `roteado`,
-   com candidata) e projeto `container`/`mounted`, o servidor propõe
-   `container_start` pelo MESMO caminho da tool `propose_container_start`: as
-   recusas locais por modo e estado ([RN-566](engine.md#rn-566), [RN-610](engine.md#rn-610)),
-   depois `propose_action`, onde a api recusa sem broker ([RN-591](#rn-591)),
-   resolve a autonomia e, auto-aprovada, executa a subida, elegendo a imagem
-   por `DecidirImagemDoProjetoUseCase` com `decidedBy: 'infra-lead'`
-   ([RN-491](web.md#rn-491)). `runner` não tem passo do servidor: segue pelo
-   `container_start_via_runner`, proposto pelo modelo e decidido por humano.
-3. **A eleição é determinística.** A candidata do maior número de módulos; no
-   empate, a primeira do roteamento. Rede `none`, recursos padrão, e um
-   `rationale` que diz que foi o servidor. *(Revisado pela [RN-683](#rn-683):
-   os recursos vão omitidos e a api sobe com o mínimo derivado do
-   `module_map`, não com o padrão.)*
-4. **O rastro diz quem chamou.** `tool.call` (com `origem: "servidor"`) e
-   `tool.result` duráveis, e nenhuma mensagem de ferramenta no histórico do
-   modelo; o kickoff diz em texto o que JÁ aconteceu (status devolvido, ou o
-   motivo da recusa).
-5. **O fecho da [RN-668](engine.md#rn-668) segue verdadeiro.** A subida do servidor marca
-   o turno como a da tool: proposta, o fecho não fala; recusada, ele diz que foi
-   recusada. Proposta NEGADA pela política (status `denied`, como uma sessão
-   aberta por quem não é `maintainer`) conta como recusa, nas duas origens.
+No ceiling moves: the minimum role remains `maintainer` (the effective one of
+whoever opened the session), a `deny` in `permissions.json` still wins, and
+`/containers` does not change (it proposes as a human, and the agent autonomy
+does not apply to it). Declared: the card's manual/auto toggle writes the
+wildcard, and the specific rule wins — putting Infra in "manual" does not turn
+this seed off.
 
-Nenhum teto se move: o papel mínimo segue `maintainer` (o efetivo de quem abriu
-a sessão), `deny` de `permissions.json` segue vencendo, e a `/containers` não
-muda (ela propõe como humano, e a autonomia de agente não vale para ela).
-Declarado: o toggle manual/auto do card escreve a curinga, e a regra específica
-vence — pôr a Infra em "manual" não desliga esta semente.
-
-- **Código:** `src/application/use-cases/agents/accept-handoff.use-case.ts:38`
+- **Code:** `src/application/use-cases/agents/accept-handoff.use-case.ts:38`
   (`INFRA_AUTONOMY_SEEDS`);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:259` (`handle_cast`),
   `:710` (`propor_container_start`), `:791` (`subir_no_aceite`), `:794`
@@ -10091,55 +10092,53 @@ vence — pôr a Infra em "manual" não desliga esta semente.
 
   `:626` (`propor_container_start`), `:707` (`subir_no_aceite`), `:759`
   (`eleger_candidata`), `:1319` (`passo_da_subida`)
-- **Teste:** `test/application/use-cases/agents/accept-handoff.use-case.spec.ts:250`
-  (a semente, e só ela — caminho feliz), `:267` (outro agente não semeia —
-  caso de falha);
-  `apps/engine/test/engine/infra/infra_lead_server_test.exs:1263` (o servidor
-  elege e propõe antes do modelo — caminho feliz), `:1458` (`mounted`), `:1468`
-  (`runner` não sobe pelo servidor), `:1377` (sem roteamento), `:1387` (a api
-  recusa sem broker — caso de falha), `:1427` (container já `running`), `:1439`
-  (negada pela política), `:1580` (`eleger_candidata/1`)
-- **Origem:** AT-260 (item A14 da análise do uso real de 29/09)
+- **Test:** `test/application/use-cases/agents/accept-handoff.use-case.spec.ts:250`
+  (the seed, and only it — happy path), `:267` (another agent does not seed —
+  failure case);
+  `apps/engine/test/engine/infra/infra_lead_server_test.exs:1263` (the server
+  elects and proposes before the model — happy path), `:1458` (`mounted`), `:1468`
+  (`runner` does not come up through the server), `:1377` (no routing), `:1387`
+  (the api refuses without a broker — failure case), `:1427` (container already
+  `running`), `:1439` (denied by the policy), `:1580` (`eleger_candidata/1`)
+- **Origin:** AT-260 (item A14 of the analysis of the real use of 29/09)
+### RN-672 — The handoff to the Dev Lead leaves from Infra, and only with the project's container `running` {#rn-672}
 
-### RN-672 — O handoff ao Dev Lead sai da Infra, e só com o container do projeto `running` {#rn-672}
+Owner's decision on 01/10 ([ADR 0190](../adr/0190-a-infra-sobe-o-container-no-aceite.md),
+AT-262). Until now "Confirm architecture ready" offered TWO handoffs — to Infra
+and to the Dev Lead (PHASE 14d, `handoff-duplo` in `packages/contracts/fluxo.yml`)
+—, and the Dev Lead could be accepted before the container in which the dev
+agents work existed ([RN-502](engine.md#rn-502)). In real use on 29/09 both were
+born from the same confirmation (session `be70`, seq 252/254).
 
-Decisão do dono em 01/10 ([ADR 0190](../adr/0190-a-infra-sobe-o-container-no-aceite.md),
-AT-262). Até aqui "Confirmar arquitetura pronta" oferecia DOIS handoffs — à
-Infra e ao Dev Lead (FASE 14d, `handoff-duplo` em `packages/contracts/fluxo.yml`) —, e o Dev
-Lead podia ser aceito antes de existir o container em que os dev agents
-trabalham ([RN-502](engine.md#rn-502)). No uso real de 29/09 os dois nasceram da mesma
-confirmação (sessão `be70`, seq 252/254).
+1. **The architecture confirmation offers only to Infra.**
+   `OfferInfraHandoffUseCase` has one destination (`infra`); the engine port's
+   `offerDevHandoff`, the route `POST /internal/sessions/:id/agent/offer-dev-handoff`
+   and the Architect's `:offer_dev_handoff`/`handoff_dev_pendente` ceased to
+   exist. `ja_oferecido` now means "Infra already had an offer or was active".
+2. **Who offers the Dev Lead is the Infra Lead's server**, through
+   `create_handoff_if_absent/5` (`infra → dev-lead`, ADR 0182): a pending offer
+   in any session of the project comes back as it is, and an already-active Dev
+   Lead (409 `agente_ja_ativo`) is not a failure. It is not a tool: the model does
+   not decide when the Dev Lead enters.
+3. **Only with the container REGISTERED as `running`** (the local read of
+   `ProjectContainerLifecycle`). The question is asked at two moments: at the end
+   of every Infra turn (`concluir`) — the common case, because the server's
+   bring-up at acceptance ([RN-671](#rn-671)) runs inside the kickoff — and when
+   the outbox's `container.running` arrives outside a turn (later approval,
+   `/containers`, `container_start_via_runner`): `Engine.Outbox.Drain` now also
+   enqueues `Engine.Workers.InfraOfereceDevLeadWorker`, which notifies the
+   project's Infra Lead through PubSub.
+4. **A failure that is not "already served" is a durable `agent.error`** with
+   origin ([RN-116](engine.md#rn-116)), without bringing the turn down; the end
+   of Infra's next turn tries again.
 
-1. **A confirmação de arquitetura oferece só à Infra.** `OfferInfraHandoffUseCase`
-   tem um destino (`infra`); o `offerDevHandoff` da porta do engine, a rota
-   `POST /internal/sessions/:id/agent/offer-dev-handoff` e o
-   `:offer_dev_handoff`/`handoff_dev_pendente` do Arquiteto deixaram de
-   existir. `ja_oferecido` passa a significar "a Infra já tinha oferta ou estava
-   ativa".
-2. **Quem oferece o Dev Lead é o servidor do Infra Lead**, por
-   `create_handoff_if_absent/5` (`infra → dev-lead`, ADR 0182): oferta pendente
-   em qualquer sessão do projeto volta como está, e Dev Lead já ativo (409
-   `agente_ja_ativo`) não é falha. Não é ferramenta: o modelo não decide quando
-   o Dev Lead entra.
-3. **Só com o container REGISTRADO `running`** (a leitura local de
-   `ProjectContainerLifecycle`). A pergunta é feita em dois momentos: no fim de
-   todo turno da Infra (`concluir`) — o caso comum, porque a subida do servidor
-   no aceite ([RN-671](#rn-671)) executa dentro do kickoff — e quando o
-   `container.running` do outbox chega fora de um turno (aprovação posterior,
-   `/containers`, `container_start_via_runner`): o `Engine.Outbox.Drain`
-   passa a enfileirar também o `Engine.Workers.InfraOfereceDevLeadWorker`, que
-   avisa por PubSub o Infra Lead do projeto.
-4. **Falha que não é "já atendido" é `agent.error` durável** com origem
-   ([RN-116](engine.md#rn-116)), sem derrubar o turno; o fim do
-   próximo turno da Infra tenta de novo.
+It stays as it was: the second repository gate at acceptance by the Dev Lead
+([RN-582](#rn-582)) — the acceptance is the same, only who offers changed — and
+the execution activation chained at acceptance (RN-161). Declared: the outbox
+notice is at-most-once, like `Engine.Dev.Wake`; with no Infra Lead up at that
+instant, the offer waits for the end of its next turn.
 
-Fica como estava: a segunda porta do repositório no aceite ao Dev Lead
-([RN-582](#rn-582)) — o aceite é o mesmo, só mudou quem oferece — e a
-ativação de execução encadeada no aceite (RN-161). Declarado: o aviso do
-outbox é at-most-once, como o `Engine.Dev.Wake`; sem Infra Lead de pé naquele
-instante, a oferta espera o fim do próximo turno dele.
-
-- **Código:** `src/application/use-cases/agents/offer-infra-handoff.use-case.ts:15`
+- **Code:** `src/application/use-cases/agents/offer-infra-handoff.use-case.ts:15`
   (`ALVOS_DA_CONFIRMACAO`);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:1169` (`oferecer_ao_dev_lead`),
   `:1164` (`concluir`), `:368` (`handle_info`), `:1075`
@@ -10148,21 +10147,20 @@ instante, a oferta espera o fim do próximo turno dele.
   (`topico_do_container`);
   `apps/engine/lib/engine/workers/infra_oferece_dev_lead_worker.ex:29` (`perform`);
   `apps/engine/lib/engine/outbox/drain.ex:107` (`handlers_for`)
-- **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs:1490`
-  (container `running` no fim do turno: oferece — caminho feliz), `:1504`
-  (sem `running`: não oferece — caso de falha), `:1515` (o aviso fora de
-  turno), `:1532` (o aviso com turno em curso), `:1544` (409 não é falha; 500
-  vira `agent.error`);
-  `apps/engine/test/engine/agents/arquiteto_server_test.exs:256` (o Arquiteto
-  não oferece mais ao Dev Lead);
+- **Test:** `apps/engine/test/engine/infra/infra_lead_server_test.exs:1490`
+  (container `running` at the end of the turn: offers — happy path), `:1504`
+  (without `running`: does not offer — failure case), `:1515` (the notice
+  outside a turn), `:1532` (the notice with a turn in progress), `:1544` (409 is
+  not a failure; 500 becomes `agent.error`);
+  `apps/engine/test/engine/agents/arquiteto_server_test.exs:256` (the Architect
+  no longer offers to the Dev Lead);
   `apps/engine/test/engine/workers/infra_oferece_dev_lead_worker_test.exs:9`;
   `apps/engine/test/engine/outbox/drain_test.exs:266`;
   `test/application/use-cases/agents/offer-infra-handoff.use-case.spec.ts:104`,
   `:147`
-- **Origem:** AT-262 (item A16 da análise do uso real de 29/09)
+- **Origin:** AT-262 (item A16 of the analysis of the real use of 29/09)
 
 ---
-
 ### RN-675 — "Sempre permitir" grava VERBO + SUBCOMANDO, um padrão por segmento do comando {#rn-675}
 
 Decisão do dono de 01/10 (AT-257, que fecha a AT-170 — o ponto 6 do ADR 0055,
