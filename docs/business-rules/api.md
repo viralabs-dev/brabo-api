@@ -11401,51 +11401,52 @@ The PO's kickoff states the three things.
   closing gains the line in pt-BR without rewriting; a normal closing intact; pt/en)
 - **Origin:** AT-423 (gap declared in RN-734)
 
-### RN-739 — O diagnóstico leva o corpo de erro do provider inteiro, e a bolha segue curta {#rn-739}
+### RN-739 — The diagnosis carries the provider's whole error body, and the bubble stays short {#rn-739}
 
-- **Regra:** a mensagem do erro normalizado de provider (ADR 0041) leva o
-  corpo de erro até `LIMITE_DO_DETALHE` = 4 000 caracteres (era 200, e cortava
-  o JSON do OpenRouter antes do `metadata.reason`, que diz a natureza do
-  erro). Essa mensagem é o texto do frame final e vira, verbatim, o `reason`
-  do `agent.error` (`FalhaDeTurno.diagnostico/1`, RN-733). A frase da bolha
-  NÃO cresce com ela: fora do caso de crédito (que já tem frase curta), o
-  texto narrado entra na bolha cortado em 300 caracteres com "…".
-- **Onde:** `src/domain/llm/llm-provider-errors.ts:164`
+- **Rule:** the message of the normalized provider error (ADR 0041) carries the
+  error body up to `LIMITE_DO_DETALHE` = 4,000 characters (it was 200, and cut
+  OpenRouter's JSON before the `metadata.reason`, which says the nature of the
+  error). That message is the text of the final frame and becomes, verbatim, the
+  `reason` of the `agent.error` (`FalhaDeTurno.diagnostico/1`, RN-733). The
+  bubble's sentence does NOT grow with it: outside the credit case (which already
+  has a short sentence), the narrated text enters the bubble cut at 300
+  characters with "…".
+- **Where:** `src/domain/llm/llm-provider-errors.ts:164`
   (`LIMITE_DO_DETALHE`), `apps/engine/lib/engine/agents/falha_de_turno.ex:284`
   (`@teto_da_bolha`), `:289` (`curto`)
-- **Teste:** `test/domain/llm/llm-provider-errors.spec.ts` (o 402
-  leva `"metadata":{"reason":"insufficient_credits"` inteiro; corpo acima do
-  teto corta), `apps/engine/test/engine/agents/falha_de_turno_test.exs`
-  (RN-739: o `reason` contém o `metadata`; erro longo corta na bolha e não no
-  diagnóstico)
-- **Origem:** AT-424 (TP-01, 3ª rodada, 03/10: `reason` cortado em
+- **Test:** `test/domain/llm/llm-provider-errors.spec.ts` (the 402
+  carries `"metadata":{"reason":"insufficient_credits"` whole; a body above the
+  ceiling is cut), `apps/engine/test/engine/agents/falha_de_turno_test.exs`
+  (RN-739: the `reason` contains the `metadata`; a long error is cut in the bubble
+  and not in the diagnosis)
+- **Origin:** AT-424 (TP-01, 3rd round, 03/10: `reason` cut at
   `…"code":402,"metadata":{"reason":"in…`)
 
-### RN-741 — O raciocínio tem orçamento próprio e não come a saída visível {#rn-741}
+### RN-741 — Reasoning has its own budget and does not eat the visible output {#rn-741}
 
-- **Regra:** quando o modelo do binding raciocina (`models.supports_reasoning`,
-  do catálogo), os casos de uso de LLM mandam `reasoning: true` ao provider.
-  Um provider com `campoDeRaciocinio` configurado (hoje só o OpenRouter) manda
-  um orçamento EXPLÍCITO de raciocínio — `reasoning: { max_tokens:
-  ORCAMENTO_DE_RACIOCINIO }`, 4096 — e o `max_tokens` da chamada passa a ser a
-  saída visível (o teto da RN-734) MAIS esse orçamento, para o texto e a
-  chamada de ferramenta continuarem com o teto deles. O raciocínio nunca é
-  desligado (`exclude`/`enabled: false` não são enviados). Modelo sem
-  raciocínio, e provider sem a configuração, mandam o corpo de antes, byte a
-  byte. O `anthropic-provider` direto não envia `thinking`, então o modelo não
-  raciocina por ali e o buraco não existe — declarado, sem mudança. A forma do
-  campo foi lida da doc do OpenRouter (Reasoning Tokens: `reasoning.max_tokens`;
-  o `max_tokens` da chamada tem de ser maior que ele).
-  **Revisada pela [RN-782](#rn-782)/[RN-783](#rn-783) (AT-467):** a medição
-  com credencial de 10/10 mostrou que o Haiku 5.5 IGNORA `reasoning.max_tokens`;
-  o campo deixou de ser enviado e a folga no `max_tokens` ficou.
-- **Onde:** `src/infrastructure/llm/openai-compatible-provider.ts:48`
+- **Rule:** when the binding's model reasons (`models.supports_reasoning`, from the
+  catalog), the LLM use cases send `reasoning: true` to the provider. A provider
+  with `campoDeRaciocinio` configured (today only OpenRouter) sends an EXPLICIT
+  reasoning budget — `reasoning: { max_tokens: ORCAMENTO_DE_RACIOCINIO }`, 4096 —
+  and the call's `max_tokens` becomes the visible output (the ceiling of RN-734)
+  PLUS that budget, so that the text and the tool call keep their own ceiling.
+  Reasoning is never turned off (`exclude`/`enabled: false` are not sent). A model
+  without reasoning, and a provider without the configuration, send the body from
+  before, byte for byte. The direct `anthropic-provider` does not send `thinking`,
+  so the model does not reason through it and the hole does not exist — declared,
+  no change. The shape of the field was read from OpenRouter's docs (Reasoning
+  Tokens: `reasoning.max_tokens`; the call's `max_tokens` must be greater than it).
+  **Revised by [RN-782](#rn-782)/[RN-783](#rn-783) (AT-467):** the measurement with
+  a credential on 10/10 showed that Haiku 5.5 IGNORES `reasoning.max_tokens`; the
+  field stopped being sent and the headroom in `max_tokens` stayed.
+- **Where:** `src/infrastructure/llm/openai-compatible-provider.ts:48`
   (`ORCAMENTO_DE_RACIOCINIO`), `:640` (`controla`)
-- **Teste:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
-  (`raciocínio com orçamento próprio (RN-741)`: orçamento e teto somado; sem
-  raciocínio o corpo não muda; provider sem campo não inventa orçamento)
-- **Origem:** AT-427 (TP-01, 08/10: `anthropic/claude-haiku-5.5` com
-  `output_tokens = reasoning_tokens = 4096` em duas chamadas seguidas do PO)
+- **Test:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
+  (`raciocínio com orçamento próprio (RN-741)`: budget and summed ceiling; without
+  reasoning the body does not change; a provider without the field does not invent
+  a budget)
+- **Origin:** AT-427 (TP-01, 08/10: `anthropic/claude-haiku-5.5` with
+  `output_tokens = reasoning_tokens = 4096` in two consecutive PO calls)
 
 ### RN-752 — A merged infra PR leaves "PRs de infra em revisão" {#rn-752}
 
@@ -11466,28 +11467,29 @@ The PO's kickoff states the three things.
 - **Origin:** AT-436 (TP-01: after "Merge" → "Aprovar" in the PRs tab, the PR
   stayed with Dev ✓ QA ✓ SecOps ✓ and "Você" pending)
 
-### RN-758 — O recorte do Jev nunca tira a ferramenta de obrigação do agente {#rn-758}
+### RN-758 — Jev's cut never removes the agent's obligation tool {#rn-758}
 
-- **Regra:** quando o Jev recorta o menu do passo ([RN-625](engine.md#rn-625), P3), o
-  menu recebe de volta o PISO do agente: para o PO, `create_story`,
-  `create_task` e, desde a [RN-942](#rn-942), `declare_open_question`; para o Arquiteto, `create_module_map`,
-  `route_modules_to_infra`, `declare_module_contracts`, `propose_adr` e
-  `create_c4_diagram`. Só entra o que está no catálogo daquele passo — o piso
-  nunca acrescenta ferramenta que o agente não tinha, e em toda queda o
-  catálogo inteiro segue como antes. O piso é ESTÁTICO por agente, e isso é
-  declarado: a api não tem sinal barato de qual obrigação está pendente
-  naquele passo, então ele vale sempre que há recorte. Os dev agents ficam
-  sem piso, de propósito (a obrigação deles muda a cada passo; para eles vale
-  só a [RN-759](#rn-759)) — salvo `report_done`/`report_blocked`, que entram no piso deles desde a [RN-839](#rn-839).
-- **Onde:** `src/domain/llm/tool-router.ts:397` (`menuComPiso`) e
+- **Rule:** when Jev cuts the step's menu ([RN-625](engine.md#rn-625), P3), the
+  menu gets the agent's FLOOR back: for the PO, `create_story`, `create_task` and,
+  since [RN-942](#rn-942), `declare_open_question`; for the Architect,
+  `create_module_map`, `route_modules_to_infra`, `declare_module_contracts`,
+  `propose_adr` and `create_c4_diagram`. Only what is in that step's catalog
+  enters — the floor never adds a tool the agent did not have, and on every
+  fallback the whole catalog stays as before. The floor is STATIC per agent, and
+  that is declared: the api has no cheap signal of which obligation is pending at
+  that step, so it holds whenever there is a cut. The dev agents are left without
+  a floor, on purpose (their obligation changes at each step; for them only
+  [RN-759](#rn-759) holds) — except `report_done`/`report_blocked`, which enter
+  their floor since [RN-839](#rn-839).
+- **Where:** `src/domain/llm/tool-router.ts:397` (`menuComPiso`) and
   `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:248`
   (`menuComPiso`)
-- **Teste:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
-  (o PO com o menu `["listar_backlog","create_story"]` mantém `create_task`;
-  o Arquiteto com 2 de 9 mantém as cinco de artefato)
-- **Origem:** AT-445 (TP-01 de 09/10: o PO sem `create_task` respondeu "Não
-  tenho uma ferramenta para criar tarefas" e fechou com 8 histórias sem
-  tarefa; o Arquiteto com 2 de 9 fechou sem roteamento, contratos, ADR nem C4)
+- **Test:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
+  (the PO with the menu `["listar_backlog","create_story"]` keeps `create_task`;
+  the Architect with 2 of 9 keeps the five artifact tools)
+- **Origin:** AT-445 (TP-01 of 09/10: the PO without `create_task` answered "I do
+  not have a tool to create tasks" and closed with 8 stories without tasks; the
+  Architect with 2 of 9 closed without routing, contracts, ADR or C4)
 
 ### RN-759 — The cut step tells the model that the menu is a cut {#rn-759}
 
@@ -11510,115 +11512,118 @@ The PO's kickoff states the three things.
 - **Origin:** AT-445 (the dev agent blocked a task "sem ferramenta para
   editar arquivos" while having `write_file`)
 
-### RN-761 — Dependência instalada não entra no repositório: `.gitignore` base, commit que a exclui e gate que a acusa {#rn-761}
+### RN-761 — An installed dependency does not enter the repository: base `.gitignore`, a commit that excludes it and a gate that flags it {#rn-761}
 
-- **Regra:** três camadas, com a MESMA lista de diretórios (`node_modules`,
+- **Rule:** three layers, with the SAME list of directories (`node_modules`,
   `deps`, `_build`, `.venv`, `venv`, `__pycache__`, `vendor`, `target`):
-  1. o bootstrap do repositório (os três providers e a adoção) ganha o passo
-     `commit_gitignore`, que commita um `.gitignore` base em `main` ANTES de
-     `dev` nascer, então toda branch de trabalho o herda. É o ponto único
-     porque é por ele que TODO repositório criado ou adotado passa, antes de
-     qualquer agente escrever; a Infra pelo `module_map` chegaria depois do
-     primeiro commit do dev e só nos projetos que passam por ela. O passo só
-     CRIA o arquivo: um `.gitignore` já existente, mesmo diferente, é do
-     usuário e não entra no plano;
-  2. o commit do dev agent (`git_commit`) e o commit que preserva o worktree
-     ao bloquear ([RN-743](engine.md#rn-743)) estagiam tudo MENOS esses diretórios, em
-     qualquer profundidade (pathspec `:(exclude,glob)`), mesmo sem
+  1. the repository bootstrap (the three providers and adoption) gains the step
+     `commit_gitignore`, which commits a base `.gitignore` to `main` BEFORE `dev`
+     is born, so every working branch inherits it. It is the single point because
+     EVERY created or adopted repository goes through it, before any agent writes;
+     Infra through the `module_map` would arrive after the dev's first commit and
+     only in the projects that go through it. The step only CREATES the file: an
+     existing `.gitignore`, even a different one, belongs to the user and does not
+     enter the plan;
+  2. the dev agent's commit (`git_commit`) and the commit that preserves the
+     worktree on blocking ([RN-743](engine.md#rn-743)) stage everything EXCEPT
+     those directories, at any depth (pathspec `:(exclude,glob)`), even without a
      `.gitignore`;
-  3. o gate SecOps acusa, como achado (`changes_requested`), diretório da lista
-     que apareça no diff da PR, com a contagem de arquivos.
-  As duas cópias da lista (api e engine) são conferidas por teste. Declarado:
-  arquivo de dependência JÁ rastreado antes desta regra não é removido pelo
-  commit (a exclusão não estagia remoção); o projeto já bootstrapado só ganha
-  o `.gitignore` se o bootstrap rodar de novo; no modo `runner` o commit roda
-  pelo mesmo `GitExecutor` e a mesma exclusão vale onde o engine executa git.
-- **Onde:** `src/application/use-cases/git/bootstrap-templates.ts:38`
+  3. the SecOps gate flags, as a finding (`changes_requested`), a directory of the
+     list that appears in the PR diff, with the file count.
+  The two copies of the list (api and engine) are checked by a test. Declared: a
+  dependency file ALREADY tracked before this rule is not removed by the commit
+  (the exclusion does not stage a removal); a project already bootstrapped only
+  gets the `.gitignore` if the bootstrap runs again; in `runner` mode the commit
+  runs through the same `GitExecutor` and the same exclusion holds wherever the
+  engine runs git.
+- **Where:** `src/application/use-cases/git/bootstrap-templates.ts:38`
   (`gitignoreContent`), `src/application/use-cases/git/bootstrap-steps.ts:164`
   (`soSeAusente`), `apps/engine/lib/engine/actions/diretorios_de_dependencia.ex:37`
   (`argumentos_do_add`), `:47` (`commitados`),
   `apps/engine/lib/engine/gates/secops_agent_server.ex:162`
   (`dependencias_commitadas`)
-- **Teste:** `test/application/use-cases/git/bootstrap-plan.spec.ts`
-  (o repositório vazio planeja os 3 arquivos; `.gitignore` do usuário não entra
-  no plano), `test/application/use-cases/git/provision-repository.use-case.spec.ts`
-  (o local converge os 6 passos),
+- **Test:** `test/application/use-cases/git/bootstrap-plan.spec.ts`
+  (the empty repository plans the 3 files; the user's `.gitignore` does not enter
+  the plan), `test/application/use-cases/git/provision-repository.use-case.spec.ts`
+  (the local one converges the 6 steps),
   `apps/engine/test/engine/actions/git_executor_test.exs` (`commit exclui
   diretórios de dependência mesmo sem .gitignore`),
-  `apps/engine/test/engine/actions/diretorios_de_dependencia_test.exs` (a
-  lista é a mesma da api; o SecOps acusa `node_modules`)
-- **Origem:** AT-446 (TP-01 de 09/10: PR com 1.453 arquivos, 1.437 em
-  `node_modules/`, aprovada por QA e SecOps)
+  `apps/engine/test/engine/actions/diretorios_de_dependencia_test.exs` (the list
+  is the same as the api's; SecOps flags `node_modules`)
+- **Origin:** AT-446 (TP-01 of 09/10: a PR with 1,453 files, 1,437 in
+  `node_modules/`, approved by QA and SecOps)
 
-### RN-762 — O bloqueio por ciclo de correção esgotado grava a origem `politica` {#rn-762}
+### RN-762 — The block by an exhausted correction cycle records the `politica` origin {#rn-762}
 
-- **Regra:** quando o gate esgota o teto de correções (`maxGateCorrections`) e
-  a task é bloqueada com "ciclo de correção esgotado (gate)", o
-  `backlog.task_blocked` e a linha da task levam `origin: "politica"` — o teto
-  é decisão de configuração, não falha real (vocabulário do ADR 0020, regra da
-  RN-059). Antes saía `origin: null`. O bloqueio de artefato de infra pelo
-  mesmo motivo (`infra.artifact_blocked`) não tem campo de origem e fica como
-  está, declarado.
-- **Onde:** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:215`
+- **Rule:** when the gate exhausts the correction ceiling (`maxGateCorrections`)
+  and the task is blocked with "ciclo de correção esgotado (gate)", the
+  `backlog.task_blocked` and the task's row carry `origin: "politica"` — the
+  ceiling is a configuration decision, not a real failure (ADR 0020 vocabulary,
+  RN-059 rule). Before, it came out `origin: null`. The infra artifact block for
+  the same reason (`infra.artifact_blocked`) has no origin field and stays as it
+  is, declared.
+- **Where:** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:215`
   (`politica`)
-- **Teste:** `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
-  (o ciclo esgotado chama `MarkTaskBlockedUseCase` com `'politica'`; o veredito
-  aprovado não bloqueia)
-- **Origem:** AT-450 (TP-01 de 09/10: `backlog.task_blocked` com
+- **Test:** `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts`
+  (the exhausted cycle calls `MarkTaskBlockedUseCase` with `'politica'`; the
+  approved verdict does not block)
+- **Origin:** AT-450 (TP-01 of 09/10: `backlog.task_blocked` with
   `origin: null`)
 
-### RN-770 — Miudezas da tela de projeto: autor da PR de ADR, modelo da Infra, título da PR do dev, selo da execução, caminho e tabela {#rn-770}
+### RN-770 — Small things on the project screen: ADR PR author, Infra's model, the dev's PR title, the execution badge, path and table {#rn-770}
 
-- **Regra:** (1) a PR de ADR leva a identidade do agente (`<agente>[bot]`,
-  senão `arquiteto[bot]`), como a de infra ([RN-729](#rn-729)) — a aba PRs
-  deixa de dizer "autor desconhecido"; (2) a `agent.response` do Infra Lead
-  carrega o `modelName` do frame final, como os outros conversacionais — a
-  bolha deixa de dizer "modelo não registrado"; (3) o título da PR do dev
-  agent abre pela TAREFA e depois a história (`<tarefa> — <história>`), para
-  três PRs da mesma história não parecerem a mesma com o fim cortado; (4) com
-  execução ativa (o mesmo predicado da [RN-769](web.md#rn-769)), a barra da sessão
-  diz "Execução" em vez do `kind` gravado (`criativa`, que não muda —
-  [RN-097](#rn-097)) e o composer não oferece o Criativo antes de ativado;
-  (5) na confirmação da criação, cada segmento do caminho é `nowrap`: a quebra
-  só acontece depois da barra, nunca no hífen; (6) a tabela Markdown no balão
-  tem piso de `12rem` POR COLUNA e cresce por fração, com o contêiner em
-  `min-content` — com `max-content` ela ficava da largura do texto sem quebra
-  (medido no Chromium: 2 236px num balão de 708px) e a última coluna sumia.
-- **Onde:** `src/application/use-cases/actions/execute-adr-pr.use-case.ts:96`
+- **Rule:** (1) the ADR PR carries the agent's identity (`<agente>[bot]`, else
+  `arquiteto[bot]`), like the infra one ([RN-729](#rn-729)) — the PRs tab stops
+  saying "unknown author"; (2) the Infra Lead's `agent.response` carries the final
+  frame's `modelName`, like the other conversational agents — the bubble stops
+  saying "model not recorded"; (3) the dev agent's PR title opens with the TASK and
+  then the story (`<task> — <story>`), so that three PRs of the same story do not
+  look like the same one with the end cut off; (4) with execution active (the same
+  predicate as [RN-769](web.md#rn-769)), the session bar says "Execution" instead
+  of the recorded `kind` (`criativa`, which does not change —
+  [RN-097](#rn-097)) and the composer does not offer the Creative before it is
+  activated; (5) in the creation confirmation, each path segment is `nowrap`: the
+  break only happens after the slash, never at the hyphen; (6) the Markdown table
+  in the balloon has a floor of `12rem` PER COLUMN and grows by fraction, with the
+  container at `min-content` — with `max-content` it took the width of the text
+  with no break (measured in Chromium: 2,236px in a 708px balloon) and the last
+  column vanished.
+- **Where:** `src/application/use-cases/actions/execute-adr-pr.use-case.ts:96`
   (`openPullRequest`); `apps/engine/lib/engine/infra/infra_lead_server.ex:1599`
   (`gravar_texto_do_turno`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1188`
   (`propose_pr`); `apps/web/src/lib/session-destinatario.ts:228`
-  (`agentesEmConversa`) e `apps/web/src/lib/session-kind.ts:69`
+  (`agentesEmConversa`) and `apps/web/src/lib/session-kind.ts:69`
   (`tipoDaSessao`); `apps/web/src/routes/NewProjectWizard.tsx:1143`
   (`quebraPorSegmento`); `apps/web/src/components/ui/MarkdownMessage.tsx:178`
   (`TabelaMarkdown`)
-- **Teste:** `test/application/use-cases/actions/execute-adr-pr.use-case.spec.ts`,
+- **Test:** `test/application/use-cases/actions/execute-adr-pr.use-case.spec.ts`,
   `apps/engine/test/engine/infra/infra_lead_server_test.exs` ("agent.response
   carrega o nome do modelo"), `apps/engine/test/engine/dev/dev_agent_server_test.exs`
-  (fluxo feliz), `apps/web/src/lib/session-destinatario.test.ts`,
+  (happy flow), `apps/web/src/lib/session-destinatario.test.ts`,
   `apps/web/src/lib/session-kind.test.ts`, `apps/web/src/routes/NewProjectWizard.test.tsx`,
   `apps/web/src/components/ui/MarkdownMessage.test.tsx`
-- **Origem:** AT-455 (TP-01 de 09/10, achados 2, 3, 8, 9, 16 e 18)
+- **Origin:** AT-455 (TP-01 of 09/10, findings 2, 3, 8, 9, 16 and 18)
 
-### RN-776 — Tarefa da execução esperando alguém segura a sessão de execução {#rn-776}
+### RN-776 — An execution task waiting for someone holds the execution session {#rn-776}
 
-- **Regra:** o heartbeat não fecha a sessão de execução VIGENTE do projeto (a
-  `active` mais recente com `execution.activated`) enquanto houver tarefa de
-  história não arquivada BLOQUEADA, com PR em `awaiting_user`, ou devolvida
-  por conflito de merge ([RN-715](#rn-715), `backlog.task_merge_conflict`
-  nesta sessão) e ainda `in_progress`. É o sexto sinal da
-  [RN-064](web.md#rn-064), sem teto, como os outros sinais que esperam uma pessoa;
-  vem antes do sinal da conversa ociosa ([RN-581](#rn-581)), que continua
-  o único com teto. Sessão de execução ANTIGA do mesmo projeto não é segurada
-  pela tarefa: a tarefa é do projeto, e sem esse recorte ela ficaria imortal.
-- **Onde:** `src/application/use-cases/sessions/get-session-pending-work.use-case.ts:242`
+- **Rule:** the heartbeat does not close the project's CURRENT execution session
+  (the most recent `active` one with `execution.activated`) while there is a task
+  of a non-archived story BLOCKED, with a PR in `awaiting_user`, or returned by a
+  merge conflict ([RN-715](#rn-715), `backlog.task_merge_conflict` in this
+  session) and still `in_progress`. It is the sixth signal of
+  [RN-064](web.md#rn-064), without a ceiling, like the other signals that wait for
+  a person; it comes before the idle-conversation signal ([RN-581](#rn-581)),
+  which remains the only one with a ceiling. An OLD execution session of the same
+  project is not held by the task: the task belongs to the project, and without
+  that cut it would be immortal.
+- **Where:** `src/application/use-cases/sessions/get-session-pending-work.use-case.ts:242`
   (`findPendenteDaExecucao`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:252`
   (`findPendenteDaExecucao`)
-- **Teste:** `test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts`
-  (bloqueada, PR esperando merge e conflito seguram; sem nada, fecha; sessão
-  de execução antiga não é segurada)
-- **Origem:** AT-457 (TP-01 de 09/10: as duas sessões de execução fecharam
-  2–8 s depois do `dev.idle`, com tarefa bloqueada e PR esperando o merge)
+- **Test:** `test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts`
+  (blocked, a PR waiting for merge and a conflict hold; with nothing, it closes; an
+  old execution session is not held)
+- **Origin:** AT-457 (TP-01 of 09/10: both execution sessions closed 2–8 s after
+  `dev.idle`, with a blocked task and a PR waiting for the merge)
 
 ### RN-777 — Unblocking the task wakes the dev of ITS module {#rn-777}
 
@@ -11678,69 +11683,72 @@ The PO's kickoff states the three things.
   criativo and dev-lead only the slack; without `supportsReasoning`, nothing)
 - **Origin:** AT-467 (owner decision of 10/10)
 
-### RN-784 — As leituras de estado do Arquiteto entram no piso do Jev {#rn-784}
+### RN-784 — The Architect's state reads enter Jev's floor {#rn-784}
 
-- **Regra:** revisa a [RN-758](#rn-758) e a [RN-772](engine.md#rn-772) (decisão do
-  dono). O piso do Arquiteto ganha `listar_adrs_propostas` e `listar_backlog`:
-  o recorte do Jev nunca as tira, para o Arquiteto não afirmar status de ADR
-  nem tarefas do backlog sem poder consultá-los ([RN-773](engine.md#rn-773)). Continua
-  valendo que o piso só devolve o que está no catálogo do passo.
-- **Onde:** `src/domain/llm/tool-router.ts:315` (`PISO_DO_MENU`)
-- **Teste:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
+- **Rule:** revises [RN-758](#rn-758) and [RN-772](engine.md#rn-772) (owner's
+  decision). The Architect's floor gains `listar_adrs_propostas` and
+  `listar_backlog`: Jev's cut never removes them, so that the Architect does not
+  state ADR status or backlog tasks without being able to consult them
+  ([RN-773](engine.md#rn-773)). It still holds that the floor only gives back what
+  is in the step's catalog.
+- **Where:** `src/domain/llm/tool-router.ts:315` (`PISO_DO_MENU`)
+- **Test:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
   (`Arquiteto recortado pelo Jev: as leituras de estado (ADRs propostas,
   backlog) continuam no menu (RN-784)`)
-- **Origem:** AT-460 (TP-01 de 09/10: o Jev tirou do menu do Arquiteto as
-  leituras da AT-454)
+- **Origin:** AT-460 (TP-01 of 09/10: Jev removed from the Architect's menu the
+  reads of AT-454)
 
-### RN-785 — Requisito que depende de outra história ainda não feita é observação no gate de QA {#rn-785}
+### RN-785 — A requirement that depends on another story not yet done is an observation in the QA gate {#rn-785}
 
-- **Regra:** além das tarefas irmãs ([RN-765](engine.md#rn-765)), o recorte que a
-  QA-estratégia e a QA-automação recebem traz as tarefas NÃO concluídas das
-  OUTRAS histórias do mesmo módulo, com o título da história
-  (`moduleOpenTasks` em `GET .../dev-context`). O módulo é o da tarefa, senão
-  o pedido, senão os da história; história arquivada fica fora. Leitura
-  contida (ADR 0060): no máximo 20, com o total real em
-  `moduleOpenTasksTotal` e o corte dito no recorte. Requisito da entrega que
-  depende do que outra história ainda vai entregar (uma rota, uma tela) vai ao
-  `resumo` como observação e não reprova. A régua é de PROMPT, como na RN-765.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:210`
+- **Rule:** besides the sibling tasks ([RN-765](engine.md#rn-765)), the cut that
+  QA-strategy and QA-automation receive brings the NOT-completed tasks of the
+  OTHER stories of the same module, with the story's title (`moduleOpenTasks` in
+  `GET .../dev-context`). The module is the task's, else the request's, else the
+  story's; an archived story stays out. A contained read (ADR 0060): at most 20,
+  with the real total in `moduleOpenTasksTotal` and the cut stated in the cut. A
+  requirement of the delivery that depends on what another story will still
+  deliver (a route, a screen) goes to the `resumo` as an observation and does not
+  fail. The yardstick is a PROMPT one, as in RN-765.
+- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:210`
   (`tarefasAbertasDoModulo`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
   (`texto`)
-- **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
-  (só a tarefa aberta da outra história do mesmo módulo; arquivada fora; teto
-  com o total real) e `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
-  (as tarefas abertas e o corte no texto). O golden-set do QA não ganhou caso
-  (o veredito exige chamada paga) — declarado.
-- **Origem:** AT-461 (TP-01 de 09/10, sessão `80e3ce09`: a tarefa "middleware
-  JWT" foi reprovada porque "não há rotas de criar, listar, apagar links nem de
-  painel no diff", rotas de outras histórias ainda não feitas)
+- **Test:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
+  (only the open task of the other story of the same module; archived out; ceiling
+  with the real total) and `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
+  (the open tasks and the cut in the text). The QA golden-set did not gain a case
+  (the verdict requires a paid call) — declared.
+- **Origin:** AT-461 (TP-01 of 09/10, session `80e3ce09`: the task "JWT
+  middleware" was failed because "there are no routes to create, list, delete links
+  nor for the dashboard in the diff", routes of other stories not yet done)
 
-### RN-786 — O gate de QA lê o contrato do módulo, e divergência com a história é observação {#rn-786}
+### RN-786 — The QA gate reads the module's contract, and a divergence with the story is an observation {#rn-786}
 
-- **Regra:** o recorte que a QA-estratégia e a QA-automação recebem traz o
-  contrato VIGENTE do módulo da tarefa (`artifact.module_contracts`,
-  [RN-684](#rn-684)), em `moduleContract` de `GET .../dev-context`, como a
-  fonte da INTERFACE. O módulo é o da tarefa, senão o pedido, senão o único da
-  história; história com mais de um módulo e tarefa sem módulo é ambígua e vai
-  sem contrato. Quando a história e o contrato divergem num nome de interface
-  (rota, função, evento), a entrega que segue o contrato não é reprovada por
-  isso: o parecer nomeia a DIVERGÊNCIA no `resumo` (história diz X, contrato
-  diz Y), para o usuário e o Arquiteto. Régua de PROMPT, como a
-  [RN-765](engine.md#rn-765). Desde a [RN-792](engine.md#rn-792) o Arquiteto confere o contrato
-  contra as rotas citadas nas histórias ao declará-lo.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:255`
+- **Rule:** the cut that QA-strategy and QA-automation receive brings the CURRENT
+  contract of the task's module (`artifact.module_contracts`,
+  [RN-684](#rn-684)), in `moduleContract` of `GET .../dev-context`, as the source
+  of the INTERFACE. The module is the task's, else the request's, else the story's
+  only one; a story with more than one module and a task without a module is
+  ambiguous and goes without a contract. When the story and the contract diverge
+  on an interface name (route, function, event), a delivery that follows the
+  contract is not failed for that: the opinion names the DIVERGENCE in the `resumo`
+  (the story says X, the contract says Y), for the user and the Architect. A PROMPT
+  yardstick, like [RN-765](engine.md#rn-765). Since [RN-792](engine.md#rn-792) the
+  Architect checks the contract against the routes cited in the stories when
+  declaring it.
+- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:255`
   (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:66`
 
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:255`
+- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:255`
   (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:70`
   (`secao_do_contrato`)
-- **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
-  (o contrato do módulo da história; sem contrato ou módulo ambíguo, `null`) e
-  `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs` (a seção do
-  contrato com a régua da divergência; sem contrato, sem seção)
-- **Origem:** AT-462 (TP-01 de 09/10, sessão `80e3ce09`: a história pedia
-  `GET /painel`, o contrato declarou `GET /panel`, o dev seguiu o contrato e o
-  QA reprovou pela história)
+- **Test:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
+  (the contract of the story's module; without a contract or with an ambiguous
+  module, `null`) and
+  `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs` (the contract section
+  with the divergence yardstick; without a contract, no section)
+- **Origin:** AT-462 (TP-01 of 09/10, session `80e3ce09`: the story asked for
+  `GET /painel`, the contract declared `GET /panel`, the dev followed the contract
+  and QA failed it by the story)
 
 ### RN-802 — A estimativa do plano do Dev Lead soma o dobro da primeira tarefa de cada módulo {#rn-802}
 
