@@ -495,8 +495,16 @@ enviado só porque o modelo aceita o parâmetro (RN-782): a medição paga de
 pelo `anthropic/claude-haiku-5.5` (1024 pedidos, 8192 gastos). Os dev agents de
 execução (`dev-<modulo>`, não o `dev-lead`) recebem `reasoning: { enabled: false }`
 (RN-783, decisão do dono): 0 de 8 respostas cortadas, -42% de custo no Haiku
-5.5. A ajuda da faceta "pensamento" do catálogo de modelos diz isso. O provider
-Anthropic direto não envia `thinking`, então ali o modelo não raciocina.
+5.5. A ajuda da faceta "pensamento" do catálogo de modelos diz isso.
+
+No provider Anthropic direto (RN-1000, ADR 0257) o raciocínio desligado é POR
+MODELO: Haiku 5.5 → `thinking: disabled`; Sonnet 5.5 → `thinking:
+between_tools`; Opus 5.5 → `output_config.effort: low` (REDUZIDO, não
+desligado — o `disabled` é 400 no Opus e no Sonnet 5.5); adaptativo
+desconhecido → o padrão do modelo. Fora o Haiku, o `max_tokens` ganha a folga
+(`reasoningBudget ?? 4096`), como no adaptativo ligado, onde o teto é TOTAL.
+O provider declara `aceitaRaciocinioDesligado` (RN-916) e grava
+`thinking_tokens` do último `message_delta` como `reasoning_tokens` (RN-666).
 
 Exceção por modelo (RN-914, ADR 0223): com `models.reasoning_budget` preenchido
 (curado à mão; hoje só `qwen/qwen3.7-flash`, 2048, provado em 22/10) o corpo
