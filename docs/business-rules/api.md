@@ -7841,11 +7841,11 @@ fechada seguem mostrando a mensagem da api.
   (`conversa_ociosa`), `:193` (`encerrar`), `:222`
   (`conversation_idle_timeout_ms`); `apps/engine/lib/engine/sessions/monitor.ex:185`
   (`classify`); `apps/engine/lib/engine/psychologist/termination_classifier.ex:46`;
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:1179`
-  (`narrar_recusa_de_sessao_encerrada`), `:1531` (`pendencia_da_resposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:1193`
+  (`narrar_recusa_de_sessao_encerrada`), `:1545` (`pendencia_da_resposta`);
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:1179`
-  (`narrar_recusa_de_sessao_encerrada`), `:1531` (`pendencia_da_resposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:1193`
+  (`narrar_recusa_de_sessao_encerrada`), `:1545` (`pendencia_da_resposta`);
   `apps/engine/lib/engine/agents/conversacionais.ex:49` (`parar_da_sessao`),
   `:69` (`parar_da_sessao_no_cluster`);
   `apps/engine/lib/engine/agents/turno_assincrono.ex:471` (`abandonar`);
@@ -8436,9 +8436,9 @@ pacote da porta de Docker. Nada muda na contenção do broker ([ADR
   `:241` (`TETO_DE_MUTACAO_MS`), `:253` (`FOLGA_DO_EXEC_NO_ENGINE_MS`),
   `:306` (`erroDeTransporte`);
   `src/application/ports/container-broker.port.ts:96` (`MotivoDeBrokerIndisponivel`);
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:2048` (`teto_do_container_exec_ms`)
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:2062` (`teto_do_container_exec_ms`)
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:2048` (`teto_do_container_exec_ms`)
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:2062` (`teto_do_container_exec_ms`)
 - **Teste:** `test/infrastructure/http-clients/container-broker.client.spec.ts:286`
   (a reprodução, contra um broker `node:http` que demora 6 s), `:182` (o
   teto de cada operação no `AbortSignal`), `:204` e `:229` (`teto-excedido`
@@ -10270,7 +10270,7 @@ handoff às 06:45:01 — o web encadeava a ativação para `maintainer`/`owner`
   (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:401`
   (`executeExecutionPlan`); `apps/web/src/lib/session-acoes-de-handoff.ts:91`
   (`handleAcceptHandoff`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:220`
-  (`classificar`); `apps/engine/lib/engine/agents/dev_lead_server.ex:717`
+  (`classificar`); `apps/engine/lib/engine/agents/dev_lead_server.ex:730`
   (`texto_do_desfecho`); `apps/web/src/lib/aprovacoes.ts:327`
   (`propose_execution_plan`)
 - **Teste:** `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts:106`
@@ -10328,13 +10328,13 @@ HISTÓRIA (acordar um dev a mais não pega nada, só gasta uma consulta); e o
 módulo do `module_map`, como antes, e o paralelismo extra continua pelo
 `parallelize` ([RN-083](#rn-083)).
 
-- **Onde:** `src/domain/execution/plano-de-execucao.ts:33`
-  (`lerPlanoDeExecucao`); `src/infrastructure/persistence/drizzle/backlog.repository.ts:680`
+- **Onde:** `src/domain/execution/plano-de-execucao.ts:39`
+  (`lerPlanoDeExecucao`); `src/infrastructure/persistence/drizzle/backlog.repository.ts:707`
   (`daTarefaDoModulo`), `:403` (`claimNext`), `:391` (`assignModules`);
   `src/application/use-cases/actions/propose-action.use-case.ts:141`
   (`recusaNaProposta`); `src/application/use-cases/execution/execute-execution-plan.use-case.ts:67`
   (`recusaNaProposta`); `src/db/schema/backlog.ts:187` (`module`);
-  `apps/engine/lib/engine/agents/dev_lead_tools.ex:372`
+  `apps/engine/lib/engine/agents/dev_lead_tools.ex:390`
   (`tarefas_do_backlog`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:204`
   (`erro_da_proposta`)
 - **Teste:** `test/domain/execution/plano-de-execucao.spec.ts:22`
@@ -12039,7 +12039,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `src/application/use-cases/sessions/append-session-event.use-case.ts:101`
   (`EVENTO_PERGUNTA_EM_ABERTO`),
   `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:72`
-  (`listar`), `:106` (`responder`), `:189` (`resumeParkedGate`),
+  (`listar`), `:106` (`responder`), `:273` (`resumeParkedGate`),
   `src/interfaces/http/backlog/open-questions.controller.ts:51`
   (`list`), `:81` (`answer`)
 - **Teste:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
@@ -12741,7 +12741,7 @@ na instalação responde 409.
 
 - **Regra:** o provider devolve o TEXTO do raciocínio como chunk `reasoning` (`delta.reasoning` do OpenRouter, `delta.reasoning_content` do dialeto DeepSeek/vLLM, `thinking_delta` da Anthropic) e nunca no `content`. O `stream-llm-turn` repassa cada pedaço como frame `raciocinio` e o frame `final` leva `raciocinio` com o texto INTEIRO do passo, sem corte; o `llm-turn` sem stream devolve o mesmo campo. A Anthropic recebe `thinking` quando o modelo raciocina e o raciocínio não foi desligado: `adaptive` com `display: "summarized"` e sem `budget_tokens` nos modelos atuais (4.6 em diante e a família 5; o `display` padrão devolveria texto vazio, e o texto que chega é um RESUMO, nunca o bruto), `enabled` com `budget_tokens` nos antigos (`pensamentoAdaptativo`, `src/infrastructure/llm/anthropic-provider.ts:395`); `reasoningOff` não manda `thinking`. Os blocos `thinking` assinados voltam em `message.thinkingBlocks` para o engine devolvê-los intactos no turno `assistant` que pediu ferramentas. O engine grava o texto em `agent.response.payload.raciocinio` (lane do engine) e ele não entra na reidratação, no RAG nem no grafo. As leituras de evento da sessão (`GET .../events`, `GET .../events/:eventId` e o evento por id da Anamnese) tiram `payload.raciocinio` de `agent.response` para papel efetivo abaixo de `developer` (`projectRole ?? workspaceRole`, RN-471), por UM filtro de saída. A capability `reasoningText` é `false` em todos os providers até haver smoke com credencial (ADR 0041).
 - **Capability:** `reasoningText` é `true` só na Anthropic e no OpenRouter, PROVADA com credencial real em 2026-11-03: `anthropic-provider.raciocinio.smoke.spec.ts` (`claude-haiku-5-5` e `claude-sonnet-5-5`, saída 0 nos dois; o texto é o RESUMO do raciocínio, `display: summarized`, nunca o bruto) e `openrouter-provider.raciocinio.smoke.spec.ts` (`deepseek/deepseek-r1-0528`, o `deepseek/deepseek-r1` saiu do OpenRouter e dá 404). Os outros nove providers seguem `false`; ligar outro exige o smoke equivalente com credencial.
-- **Onde:** `src/infrastructure/llm/openai-compatible-provider.ts:381` (`textoDoRaciocinio`), `src/infrastructure/llm/anthropic-provider.ts:395` (`toThinkingBlocks`), `src/domain/sessions/raciocinio-do-evento.ts:16` (`filtrarRaciocinio`), `src/interfaces/http/sessions/sessions.controller.ts:260` (`listEvents`), `:333` (`getEvent`), `src/application/use-cases/sessions/create-socket-ticket.use-case.ts:69` (`podeVerRaciocinio` no ticket do socket, coluna `session_socket_tickets.pode_ver_raciocinio`, que o engine lê ao consumi-lo, RN-108). Engine (AT-676): o `RaciocinioDoTurno` acumula o raciocínio do turno e `TextoDoTurno.payload_do_turno` o grava como `raciocinio`/`raciocinioTotal` fora do `content`; devolve os `thinkingBlocks` na mensagem `assistant` com `toolCalls` (`apps/engine/lib/engine/agents/raciocinio_do_turno.ex:34` (`anexar_blocos`)); o frame `raciocinio` do stream vira o evento efêmero `agent.reasoning_delta` (`apps/engine/lib/engine/sessions/engine_api_client.ex:1827` (`consume_sse`)); e o `intercept` do canal `session:<id>` só entrega o delta, e só deixa `raciocinio` no `agent.response`, ao socket cujo ticket tem `pode_ver_raciocinio` (`apps/engine/lib/engine_web/channels/session_channel.ex:42` (`handle_out`)). Coluna ausente ou nula conta como falso.
+- **Onde:** `src/infrastructure/llm/openai-compatible-provider.ts:381` (`textoDoRaciocinio`), `src/infrastructure/llm/anthropic-provider.ts:484` (`toThinkingBlocks`), `src/domain/sessions/raciocinio-do-evento.ts:16` (`filtrarRaciocinio`), `src/interfaces/http/sessions/sessions.controller.ts:260` (`listEvents`), `:333` (`getEvent`), `src/application/use-cases/sessions/create-socket-ticket.use-case.ts:69` (`podeVerRaciocinio` no ticket do socket, coluna `session_socket_tickets.pode_ver_raciocinio`, que o engine lê ao consumi-lo, RN-108). Engine (AT-676): o `RaciocinioDoTurno` acumula o raciocínio do turno e `TextoDoTurno.payload_do_turno` o grava como `raciocinio`/`raciocinioTotal` fora do `content`; devolve os `thinkingBlocks` na mensagem `assistant` com `toolCalls` (`apps/engine/lib/engine/agents/raciocinio_do_turno.ex:34` (`anexar_blocos`)); o frame `raciocinio` do stream vira o evento efêmero `agent.reasoning_delta` (`apps/engine/lib/engine/sessions/engine_api_client.ex:1841` (`consume_sse`)); e o `intercept` do canal `session:<id>` só entrega o delta, e só deixa `raciocinio` no `agent.response`, ao socket cujo ticket tem `pode_ver_raciocinio` (`apps/engine/lib/engine_web/channels/session_channel.ex:42` (`handle_out`)). Coluna ausente ou nula conta como falso.
 - **Teste:** `test/infrastructure/llm/raciocinio-texto.spec.ts` (os dois campos, `thinking_delta`, adaptive/summarized × enabled por modelo, blocos devolvidos no corpo seguinte, `reasoningText` falso), `test/domain/sessions/raciocinio-do-evento.spec.ts` (`viewer` não recebe, `developer`+ recebe), `test/application/use-cases/sessions/create-socket-ticket.use-case.spec.ts` (ticket `true` para `developer`, `false` para `viewer`), `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` e `run-llm-turn.use-case.spec.ts` (frame `raciocinio`, `final` com o texto inteiro, `content` intacto); smoke manual `openrouter-provider.raciocinio.smoke.spec.ts`. Engine: `apps/engine/test/engine/agents/raciocinio_do_turno_test.exs` (frame acumula e `final` substitui, payload com `content` intacto, reidratação sem raciocínio, `thinkingBlocks` na 2ª chamada) e `apps/engine/test/engine_web/channels/session_channel_test.exs` (`intercept` com e sem a flag).
 - **Origem:** AT-676 (EP-031), lane api; ADR 0249.
 
@@ -12755,7 +12755,7 @@ na instalação responde 409.
 ### RN-997 — O catálogo da Anthropic nasce com preço de lista datado e `supportsReasoning` do SDK; preço manual nunca é sobrescrito {#rn-997}
 
 - **Regra:** a `/v1/models` da Anthropic não informa preço, e o modelo sincronizado nascia com preço 0 (gasto de custo zero, sem aviso). O `listModels` devolve o preço da tabela ÚNICA do fabricante da [RN-965](#rn-965) (`precoDoFabricante`, micro-USD por milhão), casando pelo ID e, se não achar, pelo ID sem o sufixo de data (`-AAAAMMDD`); ID fora da tabela segue sem preço ([RN-042](#rn-042)). `supportsReasoning` vem de `capabilities.thinking.supported` do SDK; com `capabilities` nulo vale a família (todo `claude-` que não seja 3.x raciocina). O sync trata o preço como já tratava (RN-044): linha `manual_pricing` vence sempre, e modelo novo COM preço de lista nasce `manual_pricing = false`. O preço congelado no metering não muda. Linha antiga já `manual_pricing = true` (nascida sem preço) segue como está: corrigi-la é a curadoria do `owner`.
-- **Onde:** `src/infrastructure/llm/anthropic-provider.ts:403` (`precoDeLista`), `src/domain/llm/precos-do-fabricante.ts` (`PRECOS_DO_FABRICANTE`, `precoDoFabricante`), `src/application/use-cases/llm/sync-model-catalog.use-case.ts` (`resolverPreco`).
+- **Onde:** `src/infrastructure/llm/anthropic-provider.ts:492` (`precoDeLista`), `src/domain/llm/precos-do-fabricante.ts` (`PRECOS_DO_FABRICANTE`, `precoDoFabricante`), `src/application/use-cases/llm/sync-model-catalog.use-case.ts` (`resolverPreco`).
 - **Teste:** `test/infrastructure/llm/anthropic-provider.catalogo.spec.ts` (preço com e sem sufixo de data, ID desconhecido sem preço, `supportsReasoning`); `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts` (preço manual não é sobrescrito).
 - **Origem:** pedido do dono de 03/11; ADR 0251 (referencia o [0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)).
 
@@ -12763,7 +12763,7 @@ na instalação responde 409.
 
 - **Regra:** revisa a [RN-741](#rn-741) e a [RN-782](#rn-782)/[RN-783](#rn-783) para o provider `anthropic`. A frase da RN-741 "o `anthropic-provider` direto não envia `thinking`, então o modelo não raciocina" ficou falsa: nos modelos de pensamento ADAPTATIVO (os 5.5) omitir o `thinking` é o adaptativo no esforço padrão, e o Haiku 5.5 pensava até o `max_tokens` com o raciocínio "desligado" (TP-01 de 05/11: 10 de 10 tarefas bloqueadas com "resposta só de raciocínio"). (1) Com `reasoningOff` o corpo é POR MODELO (`raciocinioDesligado`, decisão do dono de 05/11): Haiku 5.5 → `thinking: { type: 'disabled' }` (desligado de verdade, sem folga); Sonnet 5.5 → `thinking: { type: 'between_tools' }` (pensa só entre chamadas de ferramenta, com folga); Opus 5.5 → `output_config: { effort: 'low' }` com folga, DECLARADO como REDUZIDO, não desligado — o `disabled` é 400 no Opus e no Sonnet 5.5; modelo adaptativo desconhecido → nada (o padrão do modelo) com a folga, porque reduzir exige prova; modelo antigo (3.x, 4.0..4.5) sem `thinking` não pensa, e omitir já é desligar. (2) Com o raciocínio ligado no adaptativo, o `max_tokens` é a saída visível + `reasoningBudget ?? 4096` — a mesma folga da RN-741, porque ali o teto é TOTAL (antes ficava 4096 TOTAL e a Infra era cortada). (3) O provider declara `aceitaRaciocinioDesligado: true` ([RN-916](#rn-916)). (4) `reasoningTokens` vem do `usage.output_tokens_details.thinking_tokens` do último `message_delta` (o SDK 0.113 não o copia para a mensagem final), só quando é inteiro >= 0; senão é omitido e a coluna fica NULL ([RN-666](#rn-666)).
 - **Prova (smoke pago de 05/11, `ANTHROPIC_TEST_KEY`):** Haiku/Sonnet/Opus 5.5 com `reasoningOff` e uma ferramenta: aceitos, chamaram a ferramenta, sem truncar, `thinking_tokens` 0; `thinking: disabled` no Opus 5.5 → 400 (`"thinking.type.disabled" is not supported for this model`); Haiku 5.5 ligado: 303 de 308 tokens de saída eram raciocínio; trocar o `system` entre duas voltas reenviando o bloco de raciocínio foi ACEITO. Custo: ~US$ 0,009.
-- **Onde:** `apps/api/src/infrastructure/llm/anthropic-provider.ts:432` (`corpoDeRaciocinio`), `:473` (`raciocinioDesligado`), `:494` (`tokensDeRaciocinio`), `:80` (`aceitaRaciocinioDesligado`)
+- **Onde:** `apps/api/src/infrastructure/llm/anthropic-provider.ts:521` (`corpoDeRaciocinio`), `:562` (`raciocinioDesligado`), `:583` (`tokensDeRaciocinio`), `:80` (`aceitaRaciocinioDesligado`)
 - **Teste:** `apps/api/test/infrastructure/llm/raciocinio-texto.spec.ts` (corpo por modelo com `reasoningOff`, folga no adaptativo e com orçamento, `thinking_tokens` do `message_delta` e omitido quando não é inteiro >= 0, a capability), `apps/api/test/infrastructure/llm/anthropic-provider.raciocinio.smoke.spec.ts` (manual, pula sem a chave)
 - **Origem:** AT-739 (EP-030), achados 2 e 8 do TP-01 de 05/11; ADR 0257 (revisa o item 4 do [ADR 0223](../adr/0223-orcamento-de-raciocinio-por-modelo.md) para a Anthropic).
 
@@ -12783,7 +12783,7 @@ na instalação responde 409.
 
 ### RN-1004 — The Dev Lead's execution plan is refused when a module with no task is a dependency of a module that has one {#rn-1004}
 
-- **Rule:** extends [RN-678](#rn-678). `lerPlanoDeExecucao` now receives the current `module_map` WITH each module's `dependsOn`, not just the names. After the per-task checks, if a module with NO task in the plan appears in the `dependsOn` of a module that HAS a task, the plan is refused with 400 `plano_de_execucao_invalido`, naming the pair: "deploy depende de api, que ficou sem tarefa — crie a tarefa de fundação de api". A leaf module without a task stays legitimate ([RN-709](#rn-709)); the check runs at proposal and at approval, like the rest of the reading.
+- **Rule:** extends [RN-678](#rn-678). `lerPlanoDeExecucao` now receives the current `module_map` WITH each module's `dependsOn`, not just the names. After the per-task checks, if a module with NO task in the plan appears in the `dependsOn` of a module that HAS a task, the plan is refused with 400 `plano_de_execucao_invalido`, naming the pair: "deploy depende de api, que ficou sem tarefa — crie a tarefa de fundação de api". A leaf module without a task stays legitimate ([RN-709](web.md#rn-709)); the check runs at proposal and at approval, like the rest of the reading.
 - **Code:** `apps/api/src/domain/execution/plano-de-execucao.ts` (`lerPlanoDeExecucao`), `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts` (`lerPlano`)
 - **Test:** `apps/api/test/domain/execution/plano-de-execucao.spec.ts` (`fundação com dono`: the plan without `db`/`api` is refused naming `deploy` -> `api`; with a task in `db`, `api` and `deploy` it passes)
 - **Origin:** AT-742 (EP-030), TP-01 finding 9 of 05/11; ADR 0259.
