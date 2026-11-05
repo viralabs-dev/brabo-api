@@ -14,6 +14,7 @@ import { OllamaProvider } from '../../../src/infrastructure/llm/ollama-provider'
 // AT-676 (ADR 0249, RN-993): o TEXTO do raciocínio vira chunk próprio.
 interface Corpo {
   thinking?: unknown;
+  output_config?: unknown;
   max_tokens?: number;
   messages: { content: unknown[] }[];
 }
@@ -260,7 +261,18 @@ describe('Anthropic: thinking por geração do modelo (AT-676)', () => {
       reasoning: true,
     });
     expect(c?.thinking).toEqual({ type: 'adaptive', display: 'summarized' });
-    expect(c?.max_tokens).toBe(4096);
+    // AT-739: no adaptativo o teto é TOTAL; ganha a folga da RN-741.
+    expect(c?.max_tokens).toBe(4096 + 4096);
+  });
+
+  it('adaptativo com orçamento: a folga é o orçamento', async () => {
+    const c = await corpoEnviado({
+      model: 'claude-sonnet-5-5',
+      reasoning: true,
+      reasoningBudget: 1000,
+      maxTokens: 2000,
+    });
+    expect(c?.max_tokens).toBe(3000);
   });
 
   it('modelo antigo: enabled + budget_tokens', async () => {
@@ -271,13 +283,29 @@ describe('Anthropic: thinking por geração do modelo (AT-676)', () => {
     expect(c?.thinking).toEqual({ type: 'enabled', budget_tokens: 2048 });
   });
 
-  it('reasoningOff não manda thinking, nem no modelo atual', async () => {
-    const c = await corpoEnviado({
-      model: 'claude-sonnet-5-5',
-      reasoning: true,
-      reasoningOff: true,
-    });
-    expect(c?.thinking).toBeUndefined();
+  // AT-739: desligar é POR MODELO (decisão do dono de 05/11).
+  it.each([
+    ['claude-haiku-5-5', { type: 'disabled' }, undefined, 4096],
+    ['claude-sonnet-5-5', { type: 'between_tools' }, undefined, 8192],
+    ['claude-opus-5-5', undefined, { effort: 'low' }, 8192],
+    ['claude-fable-6', undefined, undefined, 8192],
+    ['claude-haiku-4-5', undefined, undefined, 4096],
+  ])(
+    'reasoningOff em %s: thinking %j, output_config %j, max_tokens %i',
+    async (model, thinking, outputConfig, maxTokens) => {
+      const c = await corpoEnviado({
+        model,
+        reasoning: true,
+        reasoningOff: true,
+      });
+      expect(c?.thinking).toEqual(thinking);
+      expect(c?.output_config).toEqual(outputConfig);
+      expect(c?.max_tokens).toBe(maxTokens);
+    },
+  );
+
+  it('declara aceitaRaciocinioDesligado (RN-916)', () => {
+    expect(new AnthropicProvider().aceitaRaciocinioDesligado).toBe(true);
   });
 
   it.each([
@@ -289,6 +317,71 @@ describe('Anthropic: thinking por geração do modelo (AT-676)', () => {
   ])('pensamentoAdaptativo(%s) = %s', (m, esperado) => {
     expect(pensamentoAdaptativo(m)).toBe(esperado);
   });
+});
+
+describe('Anthropic: thinking_tokens no metering (AT-739, RN-666)', () => {
+  async function usageCom(detalhes: unknown) {
+    servidor = createServer((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+      res.write(
+        ev('message_start', {
+          type: 'message_start',
+          message: {
+            id: 'm',
+            type: 'message',
+            role: 'assistant',
+            model: 'c',
+            content: [],
+            stop_reason: null,
+            stop_sequence: null,
+            usage: { input_tokens: 1, output_tokens: 0 },
+          },
+        }),
+      );
+      res.write(
+        ev('message_delta', {
+          type: 'message_delta',
+          delta: { stop_reason: 'end_turn', stop_sequence: null },
+          usage: { output_tokens: 50, output_tokens_details: detalhes },
+        }),
+      );
+      res.end(ev('message_stop', { type: 'message_stop' }));
+    });
+    await new Promise<void>((r) => servidor!.listen(0, r));
+    const p = new AnthropicProvider({
+      baseURL: `http://127.0.0.1:${porta()}`,
+      maxRetries: 0,
+    });
+    const chunks = await coletar(
+      p.chat([{ role: 'user', content: 'x' }], {
+        model: 'claude-sonnet-5-5',
+        apiKey: 'k',
+        reasoning: true,
+      }),
+    );
+    return chunks.find((c) => c.type === 'usage');
+  }
+
+  it('lê thinking_tokens do último message_delta', async () => {
+    expect(await usageCom({ thinking_tokens: 42 })).toMatchObject({
+      outputTokens: 50,
+      reasoningTokens: 42,
+    });
+  });
+
+  it.each([
+    [null],
+    [{}],
+    [{ thinking_tokens: -1 }],
+    [{ thinking_tokens: 1.5 }],
+  ])(
+    'sem inteiro >= 0 (%j), reasoningTokens fica omitido',
+    async (detalhes) => {
+      const u = await usageCom(detalhes);
+      expect(u).toBeDefined();
+      expect(u).not.toHaveProperty('reasoningTokens');
+    },
+  );
 });
 
 describe('capability reasoningText', () => {
