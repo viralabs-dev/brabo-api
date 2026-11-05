@@ -1100,136 +1100,138 @@ and returns a result, with 200. The only exception is when there's no credential
 
 ---
 
-### RN-056 — Faceta de capability vem do provider; silêncio preserva o que estava {#rn-056}
+### RN-056 — A capability facet comes from the provider; silence preserves what was there {#rn-056}
 
-`supports_vision`, `supports_reasoning` e `generates_image` são **fato do
-provider**, não opinião: saem do catálogo remoto no sync, com o mesmo fallback
-de `supports_tool_calling` — remoto, depois local, depois `false`.
+`supports_vision`, `supports_reasoning` and `generates_image` are a **fact of the
+provider**, not an opinion: they come from the remote catalog on sync, with the
+same fallback as `supports_tool_calling` — remote, then local, then `false`.
 
-No OpenRouter (o único que publica isso hoje) as três saem de:
-`architecture.input_modalities` contém `image`,
-`supported_parameters` contém `reasoning`, e
-`architecture.output_modalities` contém `image`. Aceitar imagem e **produzir**
-imagem são eixos distintos: fundi-los mandaria o usuário para o modelo errado.
+On OpenRouter (the only one that publishes this today) the three come from:
+`architecture.input_modalities` contains `image`,
+`supported_parameters` contains `reasoning`, and
+`architecture.output_modalities` contains `image`. Accepting an image and
+**producing** an image are distinct axes: merging them would send the user to the
+wrong model.
 
-Antes, o sync lia `supportsVision` do que já estava GRAVADO e nunca consultava
-o remoto — a coluna nascia `false` e não havia caminho para virar verdadeira.
-Os 338 modelos do primeiro sync real ficaram todos `false`, incluindo 181 que o
-provider declara como multimodais.
+Before, the sync read `supportsVision` from what was already STORED and never
+consulted the remote — the column was born `false` and there was no path to
+become true. The 338 models of the first real sync all stayed `false`, including
+181 that the provider declares as multimodal.
 
-**Ausência de declaração não é declaração de ausência**
-([ADR 0041](../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)): o
-parser OMITE o campo quando o provider se cala, e `undefined` preserva o valor
-local. Por isso a tela usa as facetas só como filtro POSITIVO e nunca escreve
-"não lê imagem" — `false` aqui quer dizer "o provider não declarou".
+**Absence of a declaration is not a declaration of absence**
+([ADR 0041](../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)): the
+parser OMITS the field when the provider is silent, and `undefined` preserves the
+local value. That is why the screen uses the facets only as a POSITIVE filter and
+never writes "does not read images" — `false` here means "the provider did not
+declare".
 
-- **Onde:** `src/infrastructure/llm/openrouter-provider.ts`
+- **Where:** `src/infrastructure/llm/openrouter-provider.ts`
   (`temModalidade`, `parseCatalogoOpenRouter`),
   `src/application/use-cases/llm/sync-model-catalog.use-case.ts`,
   `src/db/schema/llm.ts` (`models`)
-- **Teste:**
+- **Test:**
   `test/infrastructure/llm/openrouter-provider.contract.spec.ts`
   (`modalidade não declarada OMITE o campo em vez de afirmar false`);
   `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts`
   (`catálogo que se cala sobre modalidade preserva a faceta gravada`)
-- **Origem:** [ADR 0051](../adr/0051-facetas-de-capability-e-curadoria-por-uso.md)
+- **Origin:** [ADR 0051](../adr/0051-facetas-de-capability-e-curadoria-por-uso.md)
 
-### RN-057 — "Para que serve" é curadoria do workspace, e marcar uso não liga o modelo {#rn-057}
+### RN-057 — "What it is for" is the workspace's curation, and marking a use does not turn the model on {#rn-057}
 
-Nenhum catálogo de provider publica "bom para código". Isso é **opinião de quem
-opera**, descoberta usando — então mora em `workspace_models.uses`, ao lado da
-outra decisão do workspace ([RN-052](#rn-052)), e não em `models`.
+No provider catalog publishes "good for code". That is the **opinion of whoever
+operates**, discovered by using — so it lives in `workspace_models.uses`, next to
+the workspace's other decision ([RN-052](#rn-052)), and not in `models`.
 
-Vocabulário FECHADO — `codigo`, `documentacao`, `analise`, `imagem`,
-`conversa` —, com prova de exaustividade em tempo de compilação nos dois lados.
-Texto livre daria `code`, `coding` e `código` no mesmo filtro em uma semana.
+A CLOSED vocabulary — `codigo`, `documentacao`, `analise`, `imagem`,
+`conversa` —, with an exhaustiveness proof at compile time on both sides.
+Free text would give `code`, `coding` and `código` in the same filter within a
+week.
 
-Duas regras que mantêm os eixos separados:
+Two rules that keep the axes separate:
 
-1. **Marcar uso não liga o modelo.** `workspace_models.is_active` tem DEFAULT
-   `true`, então a linha criada por uma marcação de uso é inserida com
-   `is_active = false` explícito. Sem isso, opinar sobre um modelo o autorizaria
-   a gastar, contra a [RN-043](#rn-043).
-2. **Trocar o uso não desliga o que estava ligado.** `is_active` fica fora do
-   `SET` do `ON CONFLICT`.
+1. **Marking a use does not turn the model on.** `workspace_models.is_active` has
+   DEFAULT `true`, so the row created by a use mark is inserted with an explicit
+   `is_active = false`. Without that, having an opinion about a model would
+   authorize it to spend, against [RN-043](#rn-043).
+2. **Changing the use does not turn off what was on.** `is_active` stays out of
+   the `ON CONFLICT` `SET`.
 
-A lista de usos **substitui** a anterior, não soma: lista vazia é como se
-desmarca tudo, e é um estado legítimo — "ninguém opinou" não é "não serve".
+The list of uses **replaces** the previous one, it does not add: an empty list is
+how everything is unchecked, and it is a legitimate state — "nobody gave an
+opinion" is not "it does not fit".
 
-- **Onde:** `src/domain/llm/model-uses.ts`,
+- **Where:** `src/domain/llm/model-uses.ts`,
   `src/db/schema/llm.ts` (`workspace_models.uses`),
   `src/infrastructure/persistence/drizzle/workspace-model.repository.ts`
   (`setUses`),
   `src/application/use-cases/llm/set-model-uses.use-case.ts`
-- **Teste:** `test/application/use-cases/llm/set-model-uses.use-case.spec.ts`
+- **Test:** `test/application/use-cases/llm/set-model-uses.use-case.spec.ts`
   (`marcar uso NÃO liga o modelo — a linha nova nasce inativa`,
   `trocar o uso não desliga o que já estava ligado`,
   `o uso vale só neste workspace`)
-- **Origem:** [ADR 0051](../adr/0051-facetas-de-capability-e-curadoria-por-uso.md)
+- **Origin:** [ADR 0051](../adr/0051-facetas-de-capability-e-curadoria-por-uso.md)
 
-### RN-058 — A chave que o AGENTE gasta é a do owner do workspace {#rn-058}
+### RN-058 — The key the AGENT spends is the workspace owner's {#rn-058}
 
-Credencial de LLM pertence a uma pessoa (`user_credentials.user_id`), e agente
-não é pessoa. O turno de agente resolve a chave pelo **owner do workspace**
-(`workspaces.created_by`), não por quem abriu a sessão nem por quem criou o
-projeto: quem banca a conta banca os agentes, e isso não muda quando outra
-pessoa da equipe começa a sessão.
+An LLM credential belongs to a person (`user_credentials.user_id`), and an agent
+is not a person. The agent's turn resolves the key through the **workspace owner**
+(`workspaces.created_by`), not through whoever opened the session nor whoever
+created the project: whoever pays the bill pays for the agents, and that does not
+change when another team member starts the session.
 
-`created_by` e não `workspace_members.role = 'owner'`: pode haver vários
-owners, e "qualquer um deles" faria a chave usada variar sem ninguém decidir.
+`created_by` and not `workspace_members.role = 'owner'`: there can be several
+owners, and "any of them" would make the key used vary with nobody deciding.
 
-Antes disto o turno passava o **slug do agente** (`agentId ?? sessionId`) na
-coluna de usuário. A consulta ia ao banco com `user_id = 'criativo'`, o
-Postgres recusava o UUID inválido, e o erro virava **resposta vazia** no fio —
-sem métrica, sem evento de falha, sem nada na tela. O efeito prático, que só
-uma execução real revelou: **nenhum agente jamais usou um provider com
-credencial**. Só `ollama` funcionava, porque para ele a busca é pulada — e foi
-com modelo local que a Fase 4, o dogfooding da Fase 10 e todas as demos
-rodaram.
+Before this, the turn passed the **agent's slug** (`agentId ?? sessionId`) in the
+user column. The query went to the database with `user_id = 'criativo'`, Postgres
+refused the invalid UUID, and the error became an **empty reply** in the thread —
+with no metric, no failure event, nothing on screen. The practical effect, which
+only a real run revealed: **no agent ever used a provider with a credential**.
+Only `ollama` worked, because for it the lookup is skipped — and it was with a
+local model that Phase 4, Phase 10's dogfooding and all the demos ran.
 
-O chat humano nunca teve o defeito: ele usa `actor.id`, que é o usuário de
-verdade.
+The human chat never had the defect: it uses `actor.id`, which is the real user.
 
-- **Onde:**
+- **Where:**
   `src/application/use-cases/llm/resolve-credential-owner.use-case.ts`,
   `src/application/use-cases/llm/stream-llm-turn.use-case.ts`,
   `src/application/use-cases/llm/run-llm-turn.use-case.ts`
-- **Teste:** `test/application/use-cases/llm/resolve-credential-owner.use-case.spec.ts`
-  (o owner vence quem criou o projeto; a chave encontrada é a dele; projeto
-  inexistente é 404 e não erro de banco)
-- **Origem:** execução real da FASE 13b
+- **Test:** `test/application/use-cases/llm/resolve-credential-owner.use-case.spec.ts`
+  (the owner wins over whoever created the project; the key found is theirs; a
+  nonexistent project is 404 and not a database error)
+- **Origin:** real run of PHASE 13b
 
-### RN-060 — O gasto das chaves é do owner, e só ele vê {#rn-060}
+### RN-060 — The keys' spend is the owner's, and only they see it {#rn-060}
 
-O relatório de consumo por credencial (`GET /workspaces/:id/credential-spend`)
-exige **`owner`** no workspace. Não é `maintainer`: desde a
-[RN-058](#rn-058) os agentes de todos os projetos gastam a credencial do dono,
-e a fatura dele não é assunto de quem só opera um projeto.
+The consumption report by credential (`GET /workspaces/:id/credential-spend`)
+requires **`owner`** on the workspace. Not `maintainer`: since
+[RN-058](#rn-058) the agents of all projects spend the owner's credential, and
+their bill is not the business of someone who only operates a project.
 
-O relatório agrupa por **provider**, porque é essa a unidade da credencial —
-uma chave por provider, por pessoa. Um total único não bateria com fatura
-nenhuma.
+The report groups by **provider**, because that is the credential's unit — one
+key per provider, per person. A single total would not match any bill.
 
-E separa **agente** de **pessoa**: as duas coisas saem da mesma chave desde a
-RN-058, e "meus agentes estão caros?" é uma pergunta diferente de "eu uso muito
-o chat?". Por isso este é o único agregado de custo do produto **sem** o filtro
-`actor_kind = 'agent'` da [RN-038](#rn-038) — aqui a pergunta é quanto saiu da
-chave, e o chat do próprio owner sai dela.
+And it separates **agent** from **person**: both come out of the same key since
+RN-058, and "are my agents expensive?" is a different question from "do I use the
+chat a lot?". That is why this is the only cost aggregate in the product **without**
+the `actor_kind = 'agent'` filter of [RN-038](#rn-038) — here the question is how
+much left the key, and the owner's own chat comes out of it.
 
-Gasto de credencial **já removida** continua no relatório, marcado: o consumo
-aconteceu, e escondê-lo daria um total que não fecha com o extrato do provider.
+Spend on an **already-removed** credential stays in the report, marked: the
+consumption happened, and hiding it would give a total that does not close with
+the provider's statement.
 
-Nenhum segredo atravessa: a resposta tem provider, tokens e custo — nunca a
-chave, nem cifrada ([ADR 0050](../adr/0050-credencial-sempre-cifrada-verificacao-explicita.md)).
+No secret crosses: the response has provider, tokens and cost — never the key, not
+even encrypted ([ADR 0050](../adr/0050-credencial-sempre-cifrada-verificacao-explicita.md)).
 
-- **Onde:**
+- **Where:**
   `src/application/use-cases/llm/get-credential-spend.use-case.ts`,
   `src/interfaces/http/llm/budgets.controller.ts`,
   `apps/web/src/components/CredentialSpendSection.tsx`
-- **Teste:** `test/application/use-cases/llm/get-credential-spend.use-case.spec.ts`
-  (agrupa por provider; separa agente de pessoa; chave removida fica marcada);
+- **Test:** `test/application/use-cases/llm/get-credential-spend.use-case.spec.ts`
+  (groups by provider; separates agent from person; a removed key stays marked);
   `apps/web/src/components/CredentialSpendSection.test.tsx`
-- **Origem:** decisão do usuário junto com a RN-058
+- **Origin:** the user's decision together with RN-058
 
 ### RN-065 — One module_map per SESSION; revision is another session {#rn-065}
 
@@ -1502,95 +1504,96 @@ up on `llama3.2:1b` with no one having asked for it.
   (`fills the gap`; `does NOT override %s's explicit choice`)
 - **Origin:** findings B and O of the real execution (PHASE 13c, phase A)
 
-### RN-075 — Comando de terminal é avaliado por onde toca, não só pelo verbo {#rn-075}
+### RN-075 — A terminal command is evaluated by where it touches, not only by the verb {#rn-075}
 
-A pasta do projeto (`<PROJECT_WORKSPACES_ROOT>/<workspace_dir_name>` — o
-UUID puro num projeto de antes do [RN-109](#rn-109), `<slug>-<8 chars do
-id>` num projeto novo) é o **escopo**.
-Um comando de `terminal` que toca qualquer caminho fora dela **nunca** é
-auto-aprovado, por mais que o verbo esteja em `allow`. Dentro dela, `cd` deixa
-de exigir permissão — ele é a declaração de escopo, não um verbo.
+The project folder (`<PROJECT_WORKSPACES_ROOT>/<workspace_dir_name>` — the bare
+UUID in a project from before [RN-109](#rn-109), `<slug>-<8 chars of the
+id>` in a new project) is the **scope**.
+A `terminal` command that touches any path outside it is **never** auto-approved,
+however much the verb is in `allow`. Inside it, `cd` stops requiring permission —
+it is the scope declaration, not a verb.
 
-Quatro propriedades que os testes fixam:
+Four properties the tests fix:
 
-- **Aperta:** `Terminal(cat)` liberado deixa de auto-executar
-  `cat /workspace/apps/engine/.../git_executor.ex`. Era o achado U: o
-  casamento é por VERBO, então o agente lia o código da plataforma que o
-  executava, e alcançava o worktree de outros projetos.
-- **Afrouxa:** `cd <dentro> && cat README.md` vira `auto_approve`. Era o
-  defeito mais caro da escada — o dev agent emite sempre `cd <caminho> &&
-  <verbo>`, `cd` não estava em `allow` nenhum, e comando composto exige que
-  TODOS os segmentos casem.
-- **Permite sem isentar:** dentro do escopo, verbo fora do `allow` continua
-  pedindo. Estar na pasta do projeto não torna `curl … | sh` seguro.
-- **Fora do escopo é `require_approval`, nunca `deny`:** o agente pode ter
-  razão legítima para olhar fora, e a decisão continua sendo do usuário.
+- **Tightens:** a released `Terminal(cat)` stops auto-executing
+  `cat /workspace/apps/engine/.../git_executor.ex`. That was finding U: the match
+  is by VERB, so the agent read the code of the platform that was running it, and
+  reached other projects' worktrees.
+- **Loosens:** `cd <inside> && cat README.md` becomes `auto_approve`. That was the
+  costliest defect of the ladder — the dev agent always emits `cd <path> &&
+  <verb>`, `cd` was in no `allow`, and a compound command requires ALL segments to
+  match.
+- **Permits without exempting:** inside the scope, a verb outside `allow` still
+  asks. Being in the project folder does not make `curl … | sh` safe.
+- **Outside the scope is `require_approval`, never `deny`:** the agent may have a
+  legitimate reason to look outside, and the decision remains the user's.
 
-`deny` continua vencendo primeiro, e os dois tetos ([RN-006](#rn-006),
-[RN-007](#rn-007)) seguem intocados. Sem raiz informada ao `decide()`, o
-veredito é o de antes desta regra — nenhum chamador tem comportamento alterado
-por omissão.
+`deny` still wins first, and the two ceilings ([RN-006](#rn-006),
+[RN-007](#rn-007)) remain untouched. Without a root given to `decide()`, the
+verdict is the one from before this rule — no caller has its behavior changed by
+omission.
 
-A normalização é **léxica**, não `realpath`: `<raiz>/../..` é resolvido e
-reprovado, mas link simbólico de dentro apontando para fora não é detectado.
-`decide()` é puro por contrato e resolver symlink exigiria IO no domínio.
-Escopo é política; isolamento é outro problema, declarado em aberto no ADR.
+The normalization is **lexical**, not `realpath`: `<root>/../..` is resolved and
+failed, but a symbolic link from inside pointing outside is not detected.
+`decide()` is pure by contract and resolving a symlink would require I/O in the
+domain. Scope is policy; isolation is another problem, declared open in the ADR.
 
-**Sem regex sobre a entrada, de propósito.** Tirar as barras finais da raiz era
-`.replace(/\/+$/, '')`, e o CodeQL apontou ReDoS polinomial
-(`js/polynomial-redos`, HIGH): o padrão obriga o motor a tentar cada posição
-inicial e varrer até o fim, degradando em O(n²). Hoje é varredura O(n),
-equivalente inclusive no caso degenerado — a raiz `/` vira string vazia nos
-dois, e é isso que faz `startsWith('/')` valer para todo caminho absoluto.
-Quem for "simplificar" de volta para regex reabre o alerta.
+**No regex over the input, on purpose.** Stripping the root's trailing slashes
+was `.replace(/\/+$/, '')`, and CodeQL flagged polynomial ReDoS
+(`js/polynomial-redos`, HIGH): the pattern forces the engine to try every
+starting position and scan to the end, degrading to O(n²). Now it is an O(n) scan,
+equivalent even in the degenerate case — the root `/` becomes an empty string in
+both, and that is what makes `startsWith('/')` hold for every absolute path.
+Whoever "simplifies" it back to a regex reopens the alert.
 
-- **Onde:** `src/domain/actions/path-scope.ts`,
-  `domain/actions/decide.ts` (teto do escopo e o `cd` no escopo),
-  raiz derivada em
+- **Where:** `src/domain/actions/path-scope.ts`,
+  `domain/actions/decide.ts` (scope ceiling and the `cd` in scope),
+  root derived in
   `infrastructure/filesystem/project-workspaces-root.ts`
-- **Teste:** `test/domain/actions/path-scope.spec.ts` e
+- **Test:** `test/domain/actions/path-scope.spec.ts` and
   `test/domain/actions/decide.spec.ts`
   (describe `decide — escopo de caminho`)
-- **Origem:** [ADR 0055](../adr/0055-escopo-de-caminho-na-politica-de-terminal.md),
-  achado U, Fase F do [backlog](../explanation/backlog.md)
+- **Origin:** [ADR 0055](../adr/0055-escopo-de-caminho-na-politica-de-terminal.md),
+  finding U, Phase F of the [backlog](../explanation/backlog.md)
 
-O escopo só vale enquanto ele próprio estiver dentro da raiz — quem garante isso
-é a [RN-092](#rn-092).
+The scope only holds as long as it itself is inside the root — what guarantees
+that is [RN-092](#rn-092).
 
-### RN-078 — Falha em proteger branches pode ser reconhecida, e só ela {#rn-078}
+### RN-078 — A failure to protect branches can be acknowledged, and only that one {#rn-078}
 
-`protect_branches` falha em repositório privado no plano gratuito do GitHub — e
-o wizard **avisa isso antes de começar**. O usuário pode reconhecer a falha e
-seguir; o bootstrap fecha e o projeto passa a ser alcançável.
+`protect_branches` fails on a private repository on GitHub's free plan — and the
+wizard **warns of this before starting**. The user can acknowledge the failure and
+go on; the bootstrap closes and the project becomes reachable.
 
-**O que isso destrava é maior do que parece.** O único botão oferecido depois da
-falha era "Tentar novamente", que falha sempre pelo mesmo motivo. E
-`provision_failed` faz o dashboard **redirecionar o clique do projeto de volta
-para a página de provisionamento** — o projeto ficava inalcançável para sempre,
-preso num passo que não tem como suceder.
+**What this unlocks is bigger than it seems.** The only button offered after the
+failure was "Try again", which always fails for the same reason. And
+`provision_failed` makes the dashboard **redirect the project's click back to the
+provisioning page** — the project was unreachable forever, stuck on a step that
+has no way to succeed.
 
-**Só a proteção pode ser reconhecida.** Ela é o ÚLTIMO passo e a única cuja
-falha deixa um repositório utilizável: o repo existe, os arquivos foram
-commitados, as branches foram criadas. Falhar em criar o repositório ou em
-commitar é outra coisa — ali "seguir" produziria um projeto sem onde trabalhar,
-e o botão seria uma segunda mentira em cima da primeira. A recusa diz isso, em
-vez de só negar.
+**Only the protection can be acknowledged.** It is the LAST step and the only one
+whose failure leaves a usable repository: the repo exists, the files were
+committed, the branches were created. Failing to create the repository or to
+commit is something else — there "going on" would produce a project with nowhere
+to work, and the button would be a second lie on top of the first. The refusal
+says so, instead of just denying.
 
-**A garantia do produto não muda.** A trava de merge ([RN-006](#rn-006)) é
-aplicada em `decide.ts`, não pela proteção do provider. Seguir sem ela remove a
-segunda camada, a do GitHub — não a do Brabo. É o que torna esta saída honesta
-em vez de um atalho.
+**The product's guarantee does not change.** The merge ceiling ([RN-006](#rn-006))
+is enforced in `decide.ts`, not by the provider's protection. Going on without it
+removes the second layer, GitHub's — not Brabo's. That is what makes this way out
+honest instead of a shortcut.
 
-A decisão vai para o event log com o **usuário** como ator e o erro original no
-payload: seguir sem proteção é escolha dele, e quem ler depois precisa saber o
-que exatamente foi dispensado.
+The decision goes to the event log with the **user** as actor and the original
+error in the payload: going on without protection is their choice, and whoever
+reads later needs to know exactly what was waived.
 
-- **Onde:** `src/application/use-cases/git/acknowledge-protection-failure.use-case.ts`,
-  rota em `interfaces/http/git/git.controller.ts`, botão em
+- **Where:** `src/application/use-cases/git/acknowledge-protection-failure.use-case.ts`,
+  route in `interfaces/http/git/git.controller.ts`, button in
   `apps/web/src/routes/ProvisioningPage.tsx`
-- **Teste:** `test/application/use-cases/git/acknowledge-protection-failure.use-case.spec.ts`
-  (destrava; a decisão no log com o ator; e a recusa para falha anterior)
-- **Origem:** achado D, Fase D do [backlog](../explanation/backlog.md)
+- **Test:** `test/application/use-cases/git/acknowledge-protection-failure.use-case.spec.ts`
+  (unlocks; the decision in the log with the actor; and the refusal for an earlier
+  failure)
+- **Origin:** finding D, Phase D of the [backlog](../explanation/backlog.md)
 
 ### RN-081 — História repetida: título igual recusa, justificativa igual avisa {#rn-081}
 
