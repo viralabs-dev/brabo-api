@@ -9913,93 +9913,92 @@ same list), and `LocalGitProvider` returned the already-merged PR without error
   `apps/web/src/lib/gate-do-merge.test.ts:5`, `:18`
 - **Origin:** AT-249 (item A3/extra E3 of the analysis of the real use of 29/09)
 
-### RN-665 — O custo real que o provider devolve é o número do metering; o catálogo fica onde ele não vem {#rn-665}
+### RN-665 — The real cost the provider returns is the metering's number; the catalog stays where it does not come {#rn-665}
 
-Decisão do dono (30/09): **o custo real vira o número**. Quando a resposta de
-uma chamada de LLM diz quanto o provider cobrou — no OpenRouter, `usage.cost`
-no frame final do stream —, esse valor é o `token_usage.cost_micros` da linha,
-o que o turno devolve ao engine (e o laço soma ao orçamento local), o que
-incrementa os budgets de projeto, sessão e área, e o que os relatórios de
-gasto somam. Sem ele, o preço congelado do catálogo produz o número, como no
+Owner's decision (30/09): **the real cost becomes the number**. When the response
+of an LLM call says how much the provider charged — on OpenRouter, `usage.cost` in
+the stream's final frame —, that value is the row's `token_usage.cost_micros`, what
+the turn returns to the engine (and the loop adds to the local budget), what
+increments the project, session and area budgets, and what the spend reports sum.
+Without it, the catalog's frozen price produces the number, as in
 [ADR 0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md).
 
-1. **Uma regra, três caminhos.** `RunLlmTurnUseCase`, `StreamLlmTurnUseCase`
-   e `SendChatMessageUseCase` passam pela mesma `custoDaChamada`; não há
-   segunda régua.
-2. **Preço implícito, marcado.** Com custo real, as duas colunas de preço
-   gravam `custo ÷ tokens` (o mesmo valor: o provider devolve UM custo) e
-   `price_implicit = true` — o que mantém `tokens × preço = custo`
-   ([RN-044](#rn-044)) sem fingir um preço de tabela. Sem custo real,
-   `price_implicit = false` e as colunas são as do catálogo.
-3. **O catálogo ao lado.** `catalog_cost_micros` grava o que o preço de
-   catálogo teria cobrado, só nas linhas cujo número é o real (`null` nas
-   outras) — é a distância entre estimativa e fatura, por linha.
-4. **`estimated` segue falando dos TOKENS** ([RN-041](#rn-041)). A linha
-   com custo real tem `estimated = false` porque o custo só chega com o
-   `usage` do provider; quem marca o CUSTO como real é `price_implicit`.
-5. **O que a resposta disse sobre si é gravado.** `resolved_model_name` (o
-   `model` do frame — o alias resolvido) e `generation_id` (o `id`, `gen-…` no
-   OpenRouter), por todo provider do dialeto. `model_name` continua sendo o do
-   catálogo, a dimensão dos relatórios.
-6. **Só quem provou lê o custo.** O hook `extrairCustoReal` existe só no
-   OpenRouter; provider sem ele ignora um `usage.cost` presente. Custo que não
-   é número finito e não negativo é "não disse" (zero de verdade é custo real),
-   e com `is_byok: true` o custo NÃO é lido: é a taxa do hub, e a inferência é
-   cobrada por fora — a linha cai no catálogo.
+1. **One rule, three paths.** `RunLlmTurnUseCase`, `StreamLlmTurnUseCase`
+   and `SendChatMessageUseCase` go through the same `custoDaChamada`; there is no
+   second yardstick.
+2. **Implicit price, marked.** With a real cost, the two price columns record
+   `cost ÷ tokens` (the same value: the provider returns ONE cost) and
+   `price_implicit = true` — which keeps `tokens × price = cost`
+   ([RN-044](#rn-044)) without pretending a table price. Without a real cost,
+   `price_implicit = false` and the columns are the catalog's.
+3. **The catalog alongside.** `catalog_cost_micros` records what the catalog price
+   would have charged, only on the rows whose number is the real one (`null` on the
+   others) — it is the distance between estimate and bill, per row.
+4. **`estimated` still speaks of the TOKENS** ([RN-041](#rn-041)). A row with a real
+   cost has `estimated = false` because the cost only arrives with the provider's
+   `usage`; what marks the COST as real is `price_implicit`.
+5. **What the response said about itself is recorded.** `resolved_model_name` (the
+   frame's `model` — the resolved alias) and `generation_id` (the `id`, `gen-…` on
+   OpenRouter), for every provider of the dialect. `model_name` remains the
+   catalog's, the reports' dimension.
+6. **Only those who proved it read the cost.** The `extrairCustoReal` hook exists
+   only on OpenRouter; a provider without it ignores a present `usage.cost`. A cost
+   that is not a finite, non-negative number is "did not say" (a true zero is a real
+   cost), and with `is_byok: true` the cost is NOT read: it is the hub's fee, and the
+   inference is charged separately — the row falls back to the catalog.
 
-- **Onde:** `src/domain/llm/custo-da-chamada.ts:43` (`custoDaChamada`),
+- **Where:** `src/domain/llm/custo-da-chamada.ts:43` (`custoDaChamada`),
   `src/application/use-cases/llm/run-llm-turn.use-case.ts:288` (`custoDaChamada`),
   `src/application/use-cases/llm/stream-llm-turn.use-case.ts:327` (`custoDaChamada`),
   `src/application/use-cases/llm/send-chat-message.use-case.ts:286` (`custoDaChamada`),
   `src/infrastructure/llm/openai-compatible-provider.ts:410` (`extrairCustoReal`),
   `src/infrastructure/llm/openrouter-provider.ts:272` (`extrairCustoRealOpenRouter`),
   `src/db/schema/llm.ts:375` (`priceImplicit`)
-- **Teste:** `test/domain/llm/custo-da-chamada.spec.ts`,
-  `test/infrastructure/llm/openrouter-provider.contract.spec.ts` (resposta
-  gravada: custo, modelo resolvido, id; BYOK; sem `cost`; provider sem o
+- **Test:** `test/domain/llm/custo-da-chamada.spec.ts`,
+  `test/infrastructure/llm/openrouter-provider.contract.spec.ts` (recorded response:
+  cost, resolved model, id; BYOK; without `cost`; provider without the
   hook), `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts`,
   `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts`,
-  `test/application/use-cases/llm/send-chat-message.use-case.spec.ts`; com
-  credencial, o smoke manual `openrouter-provider.smoke.spec.ts`
-- **Origem:** [ADR 0188](../adr/0188-o-custo-real-do-provider-vira-o-numero-do-metering.md)
+  `test/application/use-cases/llm/send-chat-message.use-case.spec.ts`; with a
+  credential, the manual smoke `openrouter-provider.smoke.spec.ts`
+- **Origin:** [ADR 0188](../adr/0188-o-custo-real-do-provider-vira-o-numero-do-metering.md)
   (AT-270)
 
-### RN-666 — O metering grava quanto da entrada veio de cache e quanto da saída foi raciocínio {#rn-666}
+### RN-666 — The metering records how much of the input came from cache and how much of the output was reasoning {#rn-666}
 
-Cada linha de `token_usage` grava duas PARTES que o provider informa no
-`usage` do dialeto OpenAI: `cached_input_tokens`
-(`prompt_tokens_details.cached_tokens` — quantos dos `input_tokens` foram
-servidos de cache, cobrados a uma fração do preço) e `reasoning_tokens`
-(`completion_tokens_details.reasoning_tokens` — quantos dos `output_tokens`
-foram raciocínio).
+Each `token_usage` row records two PARTS that the provider reports in the OpenAI
+dialect's `usage`: `cached_input_tokens`
+(`prompt_tokens_details.cached_tokens` — how many of the `input_tokens` were served
+from cache, charged at a fraction of the price) and `reasoning_tokens`
+(`completion_tokens_details.reasoning_tokens` — how many of the `output_tokens`
+were reasoning).
 
-1. **Parte, nunca soma.** `input_tokens`/`output_tokens` continuam sendo os
-   totais que o provider disse, e já incluem as partes; nada é somado a eles
-   e nenhum custo é recalculado por elas — o número do custo é o da
-   [RN-665](#rn-665).
-2. **"Não disse" não é zero.** `null` = o provider não informou; 0 = informou
-   que não houve. Valor que não é inteiro não negativo é "não disse".
-3. **A medição diz quanto foi cache.** `medir-execucao.ts` passa a mostrar,
-   por agente, o cache lido e o raciocínio com a porcentagem do total, SÓ sobre
-   as chamadas que informaram (e em quantas, quando não foram todas), e
-   "não medido" quando nenhuma informou — além de em quantas chamadas o custo
-   é o real.
-4. **Lido para todo provider do dialeto**, porque os dois campos são da
-   própria OpenAI; quem não os manda fica com `null`. O Anthropic informa cache
-   no protocolo dele (`cache_read_input_tokens`) e isso NÃO é lido aqui — fica
-   `null`, declarado; o Ollama não informa.
+1. **A part, never a sum.** `input_tokens`/`output_tokens` remain the totals the
+   provider said, and already include the parts; nothing is added to them and no
+   cost is recalculated from them — the cost number is that of [RN-665](#rn-665).
+2. **"Did not say" is not zero.** `null` = the provider did not report; 0 = it
+   reported that there was none. A value that is not a non-negative integer is "did
+   not say".
+3. **The measurement says how much was cache.** `medir-execucao.ts` now shows, per
+   agent, the cache read and the reasoning with the percentage of the total, ONLY
+   over the calls that reported (and in how many, when not all), and "not measured"
+   when none reported — besides in how many calls the cost is the real one.
+4. **Read for every provider of the dialect**, because the two fields are OpenAI's
+   own; whoever does not send them stays with `null`. Anthropic reports cache in its
+   own protocol (`cache_read_input_tokens`) and that is NOT read here — it stays
+   `null`, declared; Ollama does not report it.
 
-- **Onde:** `src/infrastructure/llm/openai-compatible-provider.ts:414` (`cachedInputTokens`),
+- **Where:** `src/infrastructure/llm/openai-compatible-provider.ts:414` (`cachedInputTokens`),
   `src/infrastructure/llm/openai-compatible-provider.ts:817` (`contagem`),
   `src/application/use-cases/llm/run-llm-turn.use-case.ts:230` (`cachedInputTokens`),
   `src/application/use-cases/llm/record-llm-usage.use-case.ts:121` (`cachedInputTokens`),
   `src/db/schema/llm.ts:395` (`cachedInputTokens`),
   `scripts/medir-execucao.ts:89` (`formatarParteMedida`)
-- **Teste:** `test/infrastructure/llm/openrouter-provider.contract.spec.ts`
-  (resposta gravada com as duas partes; sem os detalhes; valor inválido e
+- **Test:** `test/infrastructure/llm/openrouter-provider.contract.spec.ts`
+  (recorded response with the two parts; without the details; invalid value and
   zero), `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts`,
   `test/scripts/medir-execucao.spec.ts` (`formatarParteMedida`)
-- **Origem:** [ADR 0188](../adr/0188-o-custo-real-do-provider-vira-o-numero-do-metering.md)
+- **Origin:** [ADR 0188](../adr/0188-o-custo-real-do-provider-vira-o-numero-do-metering.md)
   (AT-272)
 
 ### RN-669 — The path scope compares against the REAL execution folder: `/work` and the container's `/tmp` when it is up {#rn-669}
@@ -10418,85 +10417,86 @@ parallelism still goes through `parallelize` ([RN-083](#rn-083)).
 - **Architectural decision:** [ADR 0194](../adr/0194-aprovar-o-plano-ativa-a-execucao.md)
 - **Origin:** AT-274 (item A28 / extra E5 of the analysis of the real use of 29/09)
 
-### RN-679 — A curadoria recusa o alias de roteamento livre do OpenRouter {#rn-679}
+### RN-679 — The curation refuses OpenRouter's free-routing alias {#rn-679}
 
-Decisão do dono (01/10): **o alias `~` não entra na curadoria** — só modelo
-com upstream fixo. O alias de roteamento livre do OpenRouter (o id que começa
-com `~`, como `~deepseek/deepseek-flash-latest`) "sempre redireciona para o
-último da família": o catálogo publica um preço de VITRINE (no uso real de
-29/09, o do endpoint mais barato da família), a lista de endpoints vem vazia,
-e quem cobra é o upstream que atendeu. Não há upstream contra o qual o preço
-congelado do [ADR 0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
-signifique alguma coisa. A alternativa — preçar por upstream — foi recusada.
+Owner's decision (01/10): **the `~` alias does not enter the curation** — only a
+model with a fixed upstream. OpenRouter's free-routing alias (the id that starts
+with `~`, such as `~deepseek/deepseek-flash-latest`) "always redirects to the
+latest of the family": the catalog publishes a SHOWCASE price (in real use on 29/09,
+that of the cheapest endpoint of the family), the list of endpoints comes empty, and
+whoever charges is the upstream that served. There is no upstream against which the
+frozen price of [ADR 0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
+means anything. The alternative — pricing by upstream — was refused.
 
-1. **A régua é do provider.** `ehAliasDeRoteamentoLivre` é `provider =
-   'openrouter'` E nome começando com `~`; o mesmo prefixo noutro provider não
-   é alias e não recusa.
-2. **Ativar recusa, com código.** `POST .../models/activate` com
-   `isActive: true` e algum alias no lote é **422** com
-   `code: "alias_de_roteamento_livre"`, os `modelIds` recusados e uma frase que
-   os nomeia. O lote INTEIRO é recusado, como o 404 do id inexistente
-   ([RN-043](#rn-043)): nem o modelo de upstream fixo do mesmo lote é ligado.
-   A tela de catálogo mostra a frase da api num toast de título próprio, e
-   casa pelo `code`, nunca pelo texto.
-3. **O sync NÃO filtra o alias.** Ele continua no catálogo — sumir dali faria
-   o sync marcar `unavailable` o que já estava curado, e a cascata pularia os
-   bindings dele em silêncio. A leitura da curadoria o MARCA:
-   `freeRoutingAlias`, derivado de provider e nome na leitura, nunca gravado.
-   A linha mostra o selo e o motivo em TEXTO antes de alguém tentar ativar.
-4. **O que já estava curado segue funcionando.** É mensurável (o nome com `~`
-   na linha do OpenRouter), e a saída escolhida é a menos surpreendente: o
-   alias ativo antes da regra **continua ativo** — os bindings dele seguem
-   resolvendo, o seletor segue mostrando —, sai marcado no catálogo, e pode
-   ser DESLIGADO. Desligado, não volta. Nada é apagado e nenhum binding é
-   reescrito. Binding NOVO para um alias ainda ativo não é recusado aqui: a
-   regra é da curadoria, e o binding segue a [RN-043](#rn-043).
+1. **The yardstick belongs to the provider.** `ehAliasDeRoteamentoLivre` is
+   `provider = 'openrouter'` AND a name starting with `~`; the same prefix on another
+   provider is not an alias and does not refuse.
+2. **Activating refuses, with a code.** `POST .../models/activate` with
+   `isActive: true` and some alias in the batch is **422** with
+   `code: "alias_de_roteamento_livre"`, the refused `modelIds` and a sentence that
+   names them. The WHOLE batch is refused, like the 404 of a nonexistent id
+   ([RN-043](#rn-043)): not even the fixed-upstream model of the same batch is turned
+   on. The catalog screen shows the api's sentence in a toast with a title of its
+   own, and matches by the `code`, never by the text.
+3. **The sync does NOT filter the alias.** It stays in the catalog — disappearing
+   from there would make the sync mark `unavailable` what was already curated, and
+   the cascade would skip its bindings silently. The curation read MARKS it:
+   `freeRoutingAlias`, derived from provider and name on read, never recorded. The
+   row shows the badge and the reason in TEXT before anyone tries to activate.
+4. **What was already curated keeps working.** It is measurable (the name with `~`
+   on the OpenRouter row), and the chosen way out is the least surprising: the alias
+   active before the rule **stays active** — its bindings keep resolving, the picker
+   keeps showing it —, comes out marked in the catalog, and can be TURNED OFF. Once
+   off, it does not come back. Nothing is deleted and no binding is rewritten. A NEW
+   binding to a still-active alias is not refused here: the rule is the curation's,
+   and the binding follows [RN-043](#rn-043).
 
-- **Onde:** `src/domain/llm/alias-de-roteamento-livre.ts:23` (`ehAliasDeRoteamentoLivre`),
+- **Where:** `src/domain/llm/alias-de-roteamento-livre.ts:23` (`ehAliasDeRoteamentoLivre`),
   `:41` (`AliasDeRoteamentoLivreError`),
   `src/application/use-cases/llm/set-models-active.use-case.ts:59` (`AliasDeRoteamentoLivreError`),
   `src/infrastructure/persistence/drizzle/workspace-model.repository.ts:67` (`freeRoutingAlias`),
   `src/interfaces/http/shared/llm-binding-error.filter.ts:60` (`code`),
   `apps/web/src/components/ModelCatalogSection.tsx:606` (`recusaDeAliasLivre`)
-- **Teste:** `test/application/use-cases/llm/set-models-active.use-case.spec.ts`
-  (lote recusado inteiro com código e ids; upstream fixo ativa; `~` fora do
-  OpenRouter ativa; alias curado antes da regra segue ativo, marcado, desliga
-  e não volta), `test/interfaces/http/shared/llm-binding-error.filter.spec.ts`,
-  `apps/web/src/components/ModelCatalogSection.test.tsx` (selo e motivo;
-  toast da recusa; toast genérico para outro erro)
-- **Origem:** AT-271 (item A25 da análise do uso real de 29/09); complementa a
+- **Test:** `test/application/use-cases/llm/set-models-active.use-case.spec.ts`
+  (batch refused whole with code and ids; fixed upstream activates; `~` outside
+  OpenRouter activates; an alias curated before the rule stays active, marked, turns
+  off and does not come back), `test/interfaces/http/shared/llm-binding-error.filter.spec.ts`,
+  `apps/web/src/components/ModelCatalogSection.test.tsx` (badge and reason;
+  refusal toast; generic toast for another error)
+- **Origin:** AT-271 (item A25 of the analysis of the real use of 29/09); complements
   [RN-665](#rn-665)
 
-### RN-681 — História e regra parecidas com uma existente geram AVISO por embedding, nunca recusa; o gasto da checagem é linha própria do metering {#rn-681}
+### RN-681 — A story and a rule similar to an existing one generate a WARNING by embedding, never a refusal; the cost of the check is a row of its own in the metering {#rn-681}
 
-Depois de gravar uma história (`create_story`) ou uma regra de negócio
-(`emit_artifact` de `business_rule`), a api compara o TÍTULO dela com os das
-existentes do mesmo tipo no PROJETO, por cosseno entre vetores do modelo de
-embedding do RAG, e AVISA quando a mais próxima está a partir do limiar.
+After recording a story (`create_story`) or a business rule (`emit_artifact` of
+`business_rule`), the api compares its TITLE with those of the existing ones of the
+same type in the PROJECT, by cosine between vectors of the RAG's embedding model,
+and WARNS when the closest one is at or above the threshold.
 
-1. **Aviso, nunca recusa.** O item já existe quando a checagem roda. O aviso
-   volta ao agente no resultado da ferramenta — a frase nomeia o parecido, o
-   id e o número — e fica no log como `backlog.semantic_duplicate_warned`. A
-   duplicata EXATA continua recusada antes, pela [RN-080](engine.md#rn-080) e pela
-   [RN-081](#rn-081), e por isso título normalizado igual sai da comparação.
-2. **O limiar é 0,80 e é PONTO DE PARTIDA, não calibrado** (ADR 0198, como os
-   pesos do [ADR 0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)):
-   os vetores reais do par do achado R e dos pares que não são duplicata não
-   puderam ser gravados no ambiente em que a regra nasceu. A prova roda sozinha
-   quando `vetores.json` for gravado; até lá ela é PULADA com aviso.
-3. **Sem provider de embedding a checagem é PULADA e DITA** — capability
-   ausente, daemon fora, timeout: `backlog.semantic_duplicate_check_skipped`
-   com o motivo no log e na frase ao agente. Nunca falha a emissão.
-4. **O gasto entra no metering como linha própria**: ator
-   `system`/`duplicata-semantica`, provider e modelo do RAG, saída zero, preço
-   do catálogo quando o modelo está nele. É a ÚNICA exceção ao corte do
-   [ADR 0075](../adr/0075-embeddings-no-contrato-de-llm-provider.md) — a
-   indexação e a busca do RAG seguem fora —, e cabe porque a emissão acontece
-   dentro de sessão.
-5. **Tetos:** as 100 existentes mais recentes (o resultado diz quantas de
-   quantas quando corta) e 10 s de relógio para a checagem inteira.
+1. **A warning, never a refusal.** The item already exists when the check runs. The
+   warning goes back to the agent in the tool's result — the sentence names the
+   similar one, the id and the number — and stays in the log as
+   `backlog.semantic_duplicate_warned`. The EXACT duplicate is still refused before,
+   by [RN-080](engine.md#rn-080) and [RN-081](#rn-081), and that is why an equal
+   normalized title is left out of the comparison.
+2. **The threshold is 0.80 and is a STARTING POINT, not calibrated** (ADR 0198, like
+   the weights of [ADR 0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)):
+   the real vectors of the pair from finding R and of the pairs that are not
+   duplicates could not be recorded in the environment where the rule was born. The
+   proof runs on its own when `vetores.json` is recorded; until then it is SKIPPED
+   with a warning.
+3. **Without an embedding provider the check is SKIPPED and STATED** — capability
+   absent, daemon down, timeout: `backlog.semantic_duplicate_check_skipped` with the
+   reason in the log and in the sentence to the agent. It never fails the emission.
+4. **The spend enters the metering as a row of its own**: actor
+   `system`/`duplicata-semantica`, the RAG's provider and model, zero output, catalog
+   price when the model is in it. It is the ONLY exception to the cut of
+   [ADR 0075](../adr/0075-embeddings-no-contrato-de-llm-provider.md) — RAG indexing
+   and search stay out —, and it fits because the emission happens inside a session.
+5. **Ceilings:** the 100 most recent existing ones (the result says how many of how
+   many when it cuts) and 10 s of clock for the whole check.
 
-- **Onde:** `src/domain/backlog/duplicata-semantica.ts:35` (`LIMIAR_DE_DUPLICATA_SEMANTICA`),
+- **Where:** `src/domain/backlog/duplicata-semantica.ts:35` (`LIMIAR_DE_DUPLICATA_SEMANTICA`),
   `:44` (`TETO_DE_COMPARACOES_DE_DUPLICATA`), `:53` (`TETO_DE_TEMPO_DA_CHECAGEM_MS`),
   `:107` (`ehDuplicataSemantica`),
   `src/application/use-cases/backlog/verificar-duplicata-semantica.use-case.ts:111` (`VerificarDuplicataSemanticaUseCase`),
@@ -10506,18 +10506,18 @@ embedding do RAG, e AVISA quando a mais próxima está a partir do limiar.
   `src/application/use-cases/rag/rag-embedding.service.ts:106` (`uso`),
   `apps/engine/lib/engine/harness/tools/emit_artifact.ex` (`aviso_semantico`),
   `apps/engine/lib/engine/harness/tools/create_story.ex` (`aviso_semantico`)
-- **Teste:** `test/application/use-cases/backlog/verificar-duplicata-semantica.use-case.spec.ts`
-  (avisa acima do limiar; o gasto vira linha própria; abaixo não narra; sem
-  provider pula dizendo; teto de tempo; teto de comparações; regra pelos
-  eventos; metering e log que falham não derrubam),
+- **Test:** `test/application/use-cases/backlog/verificar-duplicata-semantica.use-case.spec.ts`
+  (warns above the threshold; the spend becomes a row of its own; below it does not
+  narrate; without a provider it skips saying so; time ceiling; comparisons ceiling;
+  rule by events; a failing metering and log do not bring it down),
   `test/application/use-cases/backlog/create-story.use-case.spec.ts`
   (`duplicata semântica (RN-681)`), `test/domain/backlog/duplicata-semantica.spec.ts`,
-  `test/domain/backlog/limiar-de-duplicata.calibracao.spec.ts` (o NÚMERO —
-  pulada até os vetores serem gravados),
+  `test/domain/backlog/limiar-de-duplicata.calibracao.spec.ts` (the NUMBER —
+  skipped until the vectors are recorded),
   `apps/engine/test/engine/harness/duplicata_semantica_test.exs`,
   `apps/web/src/lib/activity.test.ts` (`duplicata semântica (RN-681)`)
-- **Origem:** [ADR 0198](../adr/0198-duplicata-semantica-por-embedding-com-limiar-que-so-avisa.md)
-  (AT-171, achado R)
+- **Origin:** [ADR 0198](../adr/0198-duplicata-semantica-por-embedding-com-limiar-que-so-avisa.md)
+  (AT-171, finding R)
 
 ## Anamnesis reconnected: eligible subject and profile fact (RN-680) {#a-anamnese-religada-sujeito-elegivel-e-fato-do-perfil-rn-680}
 
@@ -10943,31 +10943,30 @@ product-improvement signal, separate from the person's profile.
   on — failure case); `test/domain/anamnese/proficiencia-do-autor.spec.ts`
 - **Origin:** AT-356 (half 1)
 
-### RN-703 — Subagente sem modelo herda o modelo resolvido do lead da área {#rn-703}
+### RN-703 — A subagent without a model inherits the area lead's resolved model {#rn-703}
 
-"Aplicar a todos os agentes" (RN-476) grava um binding por agente do catálogo
-de Configurações — 17 linhas —, e subagente que o engine roda fora dessa lista
-ficava sem modelo em nível nenhum: o `appsec` terminava com `agent.error`
-origem `infra` ("Nenhum modelo vinculado para esta sessão"), e o mesmo valia
-para todo `dev-<modulo>` além de `dev-backend`/`dev-frontend` e para a
-`qa-estrategia`. Quando a cascata de um SUBAGENTE não acha valor (ou só acha o
-default global do workspace, que ninguém escolheu para o projeto), ele usa o
-binding RESOLVIDO do lead da área dele: o lead da área do catálogo
-(`agent-areas.ts`), ou — para `appsec` → `secops` e `qa-estrategia` → `qa`, que
-o engine roda por dentro de um lead mas não recebem handoff — uma tabela ao
-lado, que só serve a esta herança. A resposta leva `herdadoDoLead` com o lead,
-e `origin` continua sendo a do binding dele (RN-470: a tela não afirma
-configuração própria). O filtro de tool calling (RN-040) vale na resolução do
-lead como na do subagente. Se ainda assim não há modelo, a mensagem de falha
-diz onde configurar.
+"Apply to all agents" (RN-476) records one binding per agent of the Settings
+catalog — 17 rows —, and a subagent that the engine runs outside that list was left
+with no model at any level: `appsec` ended with `agent.error` origin `infra` ("No
+model bound for this session"), and the same held for every `dev-<modulo>` beyond
+`dev-backend`/`dev-frontend` and for `qa-estrategia`. When the cascade of a SUBAGENT
+finds no value (or only finds the workspace's global default, which nobody chose for
+the project), it uses the RESOLVED binding of its area's lead: the area lead from the
+catalog (`agent-areas.ts`), or — for `appsec` → `secops` and `qa-estrategia` → `qa`,
+which the engine runs inside a lead but which receive no handoff — a table alongside,
+which serves only this inheritance. The response carries `herdadoDoLead` with the
+lead, and `origin` remains that of its own binding (RN-470: the screen does not claim
+its own configuration). The tool-calling filter (RN-040) holds in the lead's
+resolution as in the subagent's. If there is still no model, the failure message says
+where to configure it.
 
-- **Onde:** `src/application/use-cases/llm/resolve-model-binding.use-case.ts:76`
+- **Where:** `src/application/use-cases/llm/resolve-model-binding.use-case.ts:76`
   (`leadDoSubagente`); `src/domain/agents/agent-areas.ts:139` (`leadDoSubagente`);
   `src/domain/llm/binding-resolver.ts:66` (`MENSAGEM_SEM_MODELO`)
-- **Teste:** `test/application/use-cases/llm/resolve-model-binding.use-case.spec.ts`
-  (`appsec` herda do `secops` e `dev-api` do `dev-lead`; lead também sem modelo
-  segue `null` — caso de falha)
-- **Origem:** AT-367
+- **Test:** `test/application/use-cases/llm/resolve-model-binding.use-case.spec.ts`
+  (`appsec` inherits from `secops` and `dev-api` from `dev-lead`; a lead also
+  without a model stays `null` — failure case)
+- **Origin:** AT-367
 
 ---
 
@@ -11755,28 +11754,29 @@ The PO's kickoff states the three things.
   `GET /painel`, the contract declared `GET /panel`, the dev followed the contract
   and QA failed it by the story)
 
-### RN-802 — A estimativa do plano do Dev Lead soma o dobro da primeira tarefa de cada módulo {#rn-802}
+### RN-802 — The Dev Lead plan's estimate sums double for the first task of each module {#rn-802}
 
-O cartão de aprovação do `propose_execution_plan` (RN-709) dizia "até N × teto",
-ignorando que a primeira tarefa de cada módulo tem o dobro do teto (RN-774).
-Agora a api leva no payload, ao lado de `orcamentoPorTarefaMicros`, o
-`multiplicadorDaPrimeiraDoModulo`, e a frase soma o teto EFETIVO:
-(tarefas − módulos com tarefa) × teto + módulos com tarefa × multiplicador ×
-teto, dizendo "a primeira de cada módulo vale o dobro". Com 8 tarefas num
-módulo e teto de US$ 0,50: até US$ 4,50. É limite superior: a primeira de um
-módulo que já teve tarefa reivindicada não ganha o dobro, e a frase continua
-dizendo "até". Sem o multiplicador no payload (proposta antiga), a conta antiga.
+The approval card of `propose_execution_plan` (RN-709) said "up to N × ceiling",
+ignoring that the first task of each module has double the ceiling (RN-774). Now the
+api carries in the payload, next to `orcamentoPorTarefaMicros`, the
+`multiplicadorDaPrimeiraDoModulo`, and the sentence sums the EFFECTIVE ceiling:
+(tasks − modules with a task) × ceiling + modules with a task × multiplier ×
+ceiling, saying "the first of each module is worth double". With 8 tasks in one
+module and a ceiling of US$ 0.50: up to US$ 4.50. It is an upper bound: the first of
+a module that has already had a task claimed does not get the double, and the
+sentence still says "up to". Without the multiplier in the payload (an old proposal),
+the old calculation.
 
-O multiplicador é APLICADO só no engine (`Engine.Dev.TetoDaTarefa`); a api tem
-um espelho declarado, porque a tela não deve copiar a constante e o engine não
-é consultado na proposta. Mudar um exige mudar o outro.
+The multiplier is APPLIED only in the engine (`Engine.Dev.TetoDaTarefa`); the api has
+a declared mirror, because the screen must not copy the constant and the engine is
+not consulted at proposal. Changing one requires changing the other.
 
-- **Onde:** `src/application/use-cases/execution/activate-execution.use-case.ts:83` (`MULTIPLICADOR_DA_PRIMEIRA_TAREFA_DO_MODULO`);
+- **Where:** `src/application/use-cases/execution/activate-execution.use-case.ts:83` (`MULTIPLICADOR_DA_PRIMEIRA_TAREFA_DO_MODULO`);
   `src/application/use-cases/actions/propose-action.use-case.ts:242` (`multiplicadorDaPrimeiraDoModulo`);
   `apps/web/src/lib/aprovacoes.ts:350` (`multiplicador`)
-- **Teste:** `apps/web/src/lib/aprovacoes.test.ts` (it "RN-802 (AT-473)": 8 tarefas, 1 módulo → US$ 4,50; 3 tarefas, 2 módulos → US$ 2,50; sem orçamento, sem número — caso de falha);
+- **Test:** `apps/web/src/lib/aprovacoes.test.ts` (it "RN-802 (AT-473)": 8 tasks, 1 module → US$ 4.50; 3 tasks, 2 modules → US$ 2.50; without a budget, no number — failure case);
   `test/application/use-cases/actions/propose-action.use-case.spec.ts` ("plano válido nasce pending")
-- **Origem:** AT-473
+- **Origin:** AT-473
 
 ### RN-809 — The Arquiteto's module and image obligations enter the Jev's floor {#rn-809}
 
