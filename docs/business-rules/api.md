@@ -9994,7 +9994,7 @@ path does not exist.
   project, `/workspace`, `/tmp/../etc` outside; without a container `/tmp` and
   `/work` outside — failure cases); `test/domain/actions/path-scope.spec.ts:216`
   (and the copy of `/work` locked against `packages/docker-port`);
-  `test/application/use-cases/actions/propose-action.use-case.spec.ts:1141`
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts:1158`
   (`mounted` mode with and without a container, and without the floor)
 - **Origin:** AT-258 (item A12 of the analysis of the real use of 29/09), owner's
   decision of 01/10, [ADR 0189](../adr/0189-o-piloto-automatico.md)
