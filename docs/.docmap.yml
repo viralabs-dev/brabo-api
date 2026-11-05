@@ -1,0 +1,34 @@
+version: 1
+
+rules:
+  # DIVIDIDA na FASE 29, e o motivo é o mesmo que este arquivo já usa duas
+  # vezes (a separação de `checks-e-rulesets` e a exclusão de `scripts/ci/`):
+  # a regra era uma conjunção — `docs:` exige TODOS —, então QUALQUER mudança
+  # em QUALQUER controller HTTP cobrava também `internal-api.md`, que
+  # documenta as rotas `/internal/*` entre api e engine. Uma rota pública não
+  # tem o que dizer ali, e cobrar isso ensina a usar o escape hatch por
+  # reflexo — aí ele para de significar alguma coisa.
+  #
+  # `security-surface.md` continua cobrindo TODO controller, e tem de
+  # continuar: ele é o inventário de TODAS as rotas, e um teste
+  # (`route-surface.spec.ts`) reprova rota sem linha.
+  - id: superficie-http
+    watch:
+      - "apps/api/src/interfaces/http/**"
+    docs: ["apps/api/docs/security-surface.md"]
+    severity: block
+
+  - id: llm-providers
+    watch:
+      - "apps/api/src/infrastructure/llm/**"
+      - "apps/api/src/domain/llm/**"
+      - "apps/api/test/contract/llm-provider.contract.ts"
+    docs:
+      - "apps/api/docs/reference/llm-providers.md"
+      # O aceite com credencial real (Fase 13a): mexer num provider invalida a
+      # linha dele na tabela de aceite, e sem esta regra ninguém era cobrado.
+      - "apps/api/docs/explanation/aceite-providers.md"
+    severity: warn
+    note: "Até a Fase 9a NENHUMA regra observava a camada de LLM — provider, capabilities e taxonomia de erro mudavam sem doc cobrando nada. Contrato, capabilities e divergências por dialeto vivem no doc apontado (ADR 0041)."
+
+  # ---------------------------------------------------------------- agentes
