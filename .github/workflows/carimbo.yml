@@ -11,6 +11,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write # o tag-release do brabo-ci declara (gate e PRs de retropropagação)
 
 jobs:
   carimbar:
