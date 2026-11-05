@@ -12418,7 +12418,7 @@ Revisa a [RN-782](#rn-782) e a [RN-783](#rn-783) (o desligado deixa de ser só d
 1. **Gatilho.** A resposta veio `truncated`, sem texto e sem tool call, e o raciocínio comeu o orçamento: `reasoningTokens >= (reasoningBudget do modelo ?? 4096) − 256` (folga `FOLGA_DO_ORCAMENTO_DE_RACIOCINIO`, a mesma ordem de grandeza do erro do `usage` e da contagem caracteres/4), ou o stream foi abortado pela RN-915 (sem `usage`, o aborto já é a prova do estouro).
 2. **Uma vez.** A api repete a chamada com `reasoningOff`, nos três caminhos (`run-llm-turn`, `stream-llm-turn`, `send-chat-message`). Se a segunda também trunca, o desfecho é o de hoje (`truncated`); nunca há terceira. Nada foi emitido ao cliente na primeira, então a retentativa é invisível.
 3. **Metering.** As DUAS chamadas gravam linha em `token_usage`; a primeira, ao preço/custo que o provider informou (ou a estimativa abortada da RN-915, com reconciliação).
-4. **Não retenta** sem raciocínio pedido, com o raciocínio já desligado (dev agents, RN-783) ou com provider que não sabe desligá-lo (`aceitaRaciocinioDesligado`, hoje só o OpenRouter): ali o desfecho segue o de antes.
+4. **Não retenta** sem raciocínio pedido, com o raciocínio já desligado (dev agents, RN-783) ou com provider que não sabe desligá-lo (`aceitaRaciocinioDesligado`, OpenRouter e Anthropic; ver a [RN-1001](#rn-1001), que corrige o decorator que escondia a flag): ali o desfecho segue o de antes.
 
 - **Código:** `src/domain/llm/raciocinio-do-agente.ts:66` (`devoRetentarSemRaciocinio`);
   `src/application/use-cases/llm/run-llm-turn.use-case.ts:359` (`devoRetentarSemRaciocinio`)
@@ -12766,6 +12766,13 @@ na instalação responde 409.
 - **Onde:** `apps/api/src/infrastructure/llm/anthropic-provider.ts:432` (`corpoDeRaciocinio`), `:473` (`raciocinioDesligado`), `:494` (`tokensDeRaciocinio`), `:80` (`aceitaRaciocinioDesligado`)
 - **Teste:** `apps/api/test/infrastructure/llm/raciocinio-texto.spec.ts` (corpo por modelo com `reasoningOff`, folga no adaptativo e com orçamento, `thinking_tokens` do `message_delta` e omitido quando não é inteiro >= 0, a capability), `apps/api/test/infrastructure/llm/anthropic-provider.raciocinio.smoke.spec.ts` (manual, pula sem a chave)
 - **Origem:** AT-739 (EP-030), achados 2 e 8 do TP-01 de 05/11; ADR 0257 (revisa o item 4 do [ADR 0223](../adr/0223-orcamento-de-raciocinio-por-modelo.md) para a Anthropic).
+
+### RN-1001 — The tracing decorator forwards `aceitaRaciocinioDesligado`, so the retry without reasoning really runs {#rn-1001}
+
+- **Rule:** revises [RN-916](#rn-916), whose text said the provider capability `aceitaRaciocinioDesligado` was "today only OpenRouter". It now holds for OpenRouter and Anthropic ([RN-1000](#rn-1000)). Defect declared: `TracedLLMProvider` forwarded only `name`, `capabilities`, `chat`, `listModels` and `embed`; since the registry wraps EVERY provider, `provider.aceitaRaciocinioDesligado` was `undefined` in production and the RN-916 retry never ran, for any provider. The decorator now copies the flag from the wrapped provider in its constructor (`undefined` stays `undefined`: a provider that does not declare it does not expose it). The other optional members of the `LLMProvider` port (`listModels`, `embed`) were already forwarded.
+- **Code:** `apps/api/src/infrastructure/llm/traced-llm-provider.ts:78` (`aceitaRaciocinioDesligado`)
+- **Test:** `apps/api/test/infrastructure/llm/traced-llm-provider.spec.ts` (keeps `true`, stays `undefined`, and the real `LLMProviderRegistryImpl.get('anthropic')` returns `true`)
+- **Origin:** AT-743 (EP-030)
 
 ### RN-1002 — The agent closes the open question the user answered in chat; the human answer and the agent share one core {#rn-1002}
 
