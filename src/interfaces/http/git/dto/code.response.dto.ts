@@ -36,7 +36,7 @@ import type {
 
 export class CodeTreeEntryResponseDto implements Wire<GitTreeEntry> {
   @ApiProperty({
-    example: 'apps/api/src/main.ts',
+    example: 'src/main.ts',
     description: "Full path from the repository's root.",
   })
   path!: string;
@@ -71,7 +71,7 @@ export class CodeTreeResponseDto implements Wire<GitTree> {
   ref!: string;
 
   @ApiProperty({
-    example: 'apps/api',
+    example: 'src',
     description: 'Listed directory; `""` is the root.',
   })
   path!: string;
@@ -93,7 +93,7 @@ export class CodeFileResponseDto implements Wire<CodeFile> {
   @ApiProperty({ example: 'dev' })
   ref!: string;
 
-  @ApiProperty({ example: 'apps/api/src/main.ts' })
+  @ApiProperty({ example: 'src/main.ts' })
   path!: string;
 
   @ApiProperty({
@@ -120,7 +120,7 @@ export class CodeFileResponseDto implements Wire<CodeFile> {
 export const _chavesArquivo: MesmasChaves<CodeFileResponseDto, CodeFile> = true;
 
 export class CodeSearchMatchResponseDto implements Wire<CodeSearchMatch> {
-  @ApiProperty({ example: 'apps/api/src/main.ts' })
+  @ApiProperty({ example: 'src/main.ts' })
   path!: string;
 
   @ApiProperty({
@@ -177,7 +177,7 @@ export const _chavesBusca: MesmasChaves<
 
 export class CodeDiffFileResponseDto implements Wire<GitPullRequestDiffFile> {
   @ApiProperty({
-    example: 'apps/api/src/main.ts',
+    example: 'src/main.ts',
     description: 'Path AFTER the change (for `removed`, what disappeared).',
   })
   path!: string;
@@ -273,7 +273,7 @@ export class CodeBlameResponseDto implements Wire<GitBlame> {
   @ApiProperty({ example: 'dev' })
   ref!: string;
 
-  @ApiProperty({ example: 'apps/api/src/main.ts' })
+  @ApiProperty({ example: 'src/main.ts' })
   path!: string;
 
   @ApiProperty({ type: [CodeBlameLineResponseDto] })
