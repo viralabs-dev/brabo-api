@@ -10161,110 +10161,111 @@ instant, the offer waits for the end of its next turn.
 - **Origin:** AT-262 (item A16 of the analysis of the real use of 29/09)
 
 ---
-### RN-675 — "Sempre permitir" grava VERBO + SUBCOMANDO, um padrão por segmento do comando {#rn-675}
+### RN-675 — "Always allow" writes VERB + SUBCOMMAND, one pattern per segment of the command {#rn-675}
 
-Decisão do dono de 01/10 (AT-257, que fecha a AT-170 — o ponto 6 do ADR 0055,
-a unidade da generalização; [ADR 0189](../adr/0189-o-piloto-automatico.md)). Até
-aqui o clique gravava o comando INTEIRO, byte a byte (`Terminal(<comando>)`):
-o próximo comando quase nunca era igual — 173 cliques no uso real de 29/09 —, e
-o composto virava UM padrão cujo conteúdo só casava o PRIMEIRO segmento, então
-`cd src && npm test` liberava só `cd src`.
+Owner's decision of 01/10 (AT-257, which closes AT-170 — point 6 of ADR 0055,
+the unit of generalization; [ADR 0189](../adr/0189-o-piloto-automatico.md)).
+Until now the click wrote the WHOLE command, byte by byte
+(`Terminal(<comando>)`): the next command was almost never the same — 173 clicks
+in real use on 29/09 —, and the compound became ONE pattern whose content only
+matched the FIRST segment, so `cd src && npm test` released only `cd src`.
 
-Agora cada SEGMENTO do comando (o mesmo corte de `decide()`: `&&`, `||`, `;`,
-`|`, `&`) vira um padrão, e a unidade é:
+Now each SEGMENT of the command (the same cut as `decide()`: `&&`, `||`, `;`,
+`|`, `&`) becomes a pattern, and the unit is:
 
-- o verbo sozinho (`ls`) → o verbo;
-- verbo + palavra (`npm test`, `git status`, `mix test`, `npx vitest`) → os
-  dois. "Palavra" é letra no começo, sem `/`, `.`, `=`, glob nem flag; um
-  argumento que parece palavra (`cd src`) fica como subcomando — o lado
-  ESTREITO da dúvida, porque distinguir os dois exigiria uma lista de verbos,
-  que é o espaço que os achados Z/AD dizem não convergir;
-- verbo + argumento que não é palavra (`cat src/x.ts`, `cd ../lib`) → o verbo;
-- verbo + FLAG (`ls -la src`, `git -C /x status`) → o segmento EXATO: a forma
-  com flag é onde verbo e invocação divergem, e generalizar ali seria escolher
-  uma forma de dentro do código;
-- unidade que é PREFIXO de um teto da [RN-418](#rn-418) (`git remote`,
-  `gh pr`) → o segmento EXATO; e se até o exato é prefixo (`git` sozinho),
-  nenhum padrão para aquele segmento.
+- the verb alone (`ls`) → the verb;
+- verb + word (`npm test`, `git status`, `mix test`, `npx vitest`) → both.
+  "Word" is a letter at the start, with no `/`, `.`, `=`, glob or flag; an
+  argument that looks like a word (`cd src`) stays as a subcommand — the NARROW
+  side of the doubt, because telling the two apart would require a list of
+  verbs, which is the space that findings Z/AD say does not converge;
+- verb + an argument that is not a word (`cat src/x.ts`, `cd ../lib`) → the verb;
+- verb + FLAG (`ls -la src`, `git -C /x status`) → the EXACT segment: the form
+  with a flag is where verb and invocation diverge, and generalizing there would
+  be choosing a form from inside the code;
+- a unit that is a PREFIX of a ceiling of [RN-418](#rn-418) (`git remote`,
+  `gh pr`) → the EXACT segment; and if even the exact one is a prefix (`git`
+  alone), no pattern for that segment.
 
-O casamento continua o de sempre (prefixo de tokens), o clique sobre comando
-com efeito externo ou privilegiado continua recusado inteiro antes
-(`motivoDeRecusaDoSempreAprovar`, 400 `teto_do_sempre_permitir`), o teto de
-`decide()` roda depois do arquivo, e o escopo de caminho segue limitando ONDE
-fora do piloto ([RN-669](#rn-669)). Quem pode gravar é quem já podia (o papel
-do endpoint, inalterado); a precedência com o modo automático é a da
-[RN-670](#rn-670). O "Sempre permitir" de dev agent de módulo continua indo
-para `agent_autonomy` ([RN-509](#rn-509)), sem padrão. Só os padrões que
-FALTAM são gravados e narrados; o `permission.granted` leva `patterns` (a lista
-gravada) e `pattern` (a mesma lista unida por vírgula, para a timeline).
+Matching remains the usual one (token prefix), the click on a command with an
+external or privileged effect remains refused whole beforehand
+(`motivoDeRecusaDoSempreAprovar`, 400 `teto_do_sempre_permitir`), the ceiling of
+`decide()` runs after the file, and the path scope keeps limiting WHERE outside
+the autopilot ([RN-669](#rn-669)). Who can write is who already could (the
+endpoint's role, unchanged); the precedence with automatic mode is that of
+[RN-670](#rn-670). The module dev agent's "Always allow" still goes to
+`agent_autonomy` ([RN-509](#rn-509)), with no pattern. Only the patterns that
+are MISSING are written and narrated; `permission.granted` carries `patterns`
+(the written list) and `pattern` (the same list joined by comma, for the
+timeline).
 
-- **Código:** `src/domain/actions/pattern-for-action.ts:22`
+- **Code:** `src/domain/actions/pattern-for-action.ts:22`
   (`patternsForAction`), `:62` (`unidadeDoSegmento`), `:43` (`SUBCOMANDO`);
   `src/domain/actions/external-effect.ts:237` (`padraoAlcancaTeto`);
   `src/application/use-cases/actions/approve-always-action.use-case.ts:277`
   (`faltam`), `:315` (`patternsForAction`)
-- **Teste:** `test/domain/actions/pattern-for-action.spec.ts:18`
-  (a unidade, caminho feliz), `:103` (segmento que é prefixo de teto não grava
-  nada — caso de falha); `test/domain/actions/external-effect.spec.ts:11`
+- **Test:** `test/domain/actions/pattern-for-action.spec.ts:18`
+  (the unit, happy path), `:103` (a segment that is a ceiling prefix writes
+  nothing — failure case); `test/domain/actions/external-effect.spec.ts:11`
   (`padraoAlcancaTeto`);
   `test/application/use-cases/actions/approve-always-action.use-case.spec.ts:936`
-  (o clique num composto libera o próximo com os mesmos verbos; outro
-  subcomando continua pedindo; composto que empurra segue recusado);
-  `apps/web/src/components/ApprovalCard.test.tsx:253` (a nota diz a unidade)
-- **Origem:** AT-257 (item A11 da análise do uso real de 29/09) e AT-170
-  (EP-025), decisão do dono de 01/10
-
+  (the click on a compound releases the next one with the same verbs; another
+  subcommand still asks; a compound that pushes remains refused);
+  `apps/web/src/components/ApprovalCard.test.tsx:253` (the note states the unit)
+- **Origin:** AT-257 (item A11 of the analysis of the real use of 29/09) and
+  AT-170 (EP-025), owner's decision of 01/10
 ## O git credenciado roda no host do runner (RN-676)
 
-### RN-677 — Aceitar o Dev Lead só o traz para planejar; APROVAR o plano dele é o que ativa a execução {#rn-677}
+### RN-677 — Accepting the Dev Lead only brings it in to plan; APPROVING its plan is what activates execution {#rn-677}
 
-> **Revisa a [RN-161](web.md#rn-161)** (decisão do
-> dono, 01/10): aceitar o handoff ao Dev Lead deixou de encadear
-> `POST .../execution/activate`, para TODO papel. O atalho explícito "Ativar
-> execução" do card ([RN-137](web.md#rn-137)) e o da Visão Geral continuam — são um
-> clique próprio, não o aceite.
+> **Revises [RN-161](web.md#rn-161)** (owner's decision, 01/10): accepting the
+> handoff to the Dev Lead no longer chains `POST .../execution/activate`, for
+> EVERY role. The explicit "Activate execution" shortcut on the card
+> ([RN-137](web.md#rn-137)) and the one on the Overview remain — they are a click
+> of their own, not the acceptance.
 
-O uso real de 29/09 mediu a inversão: a execução foi ativada no aceite do
-handoff às 06:45:01 — o web encadeava a ativação para `maintainer`/`owner`
-(`session-acoes-de-handoff.ts`, RN-161) —, e o plano do Dev Lead, proposto às
-06:47:47, ficou `pending` e nunca foi usado. O plano não tinha consumidor:
-`propose_execution_plan` não tinha pipeline de execução e, aprovado, ficava
-`approved` para sempre. Medido em `dev` antes de mudar: o backend do aceite
-(`AcceptHandoffUseCase`) NUNCA emitiu `execution.activated`; quem o emite é só
-`ActivateExecutionUseCase`, chamado só pela rota `execution/activate`.
+Real use on 29/09 measured the inversion: execution was activated at the
+handoff acceptance at 06:45:01 — the web chained the activation for
+`maintainer`/`owner` (`session-acoes-de-handoff.ts`, RN-161) —, and the Dev
+Lead's plan, proposed at 06:47:47, stayed `pending` and was never used. The plan
+had no consumer: `propose_execution_plan` had no execution pipeline and, once
+approved, stayed `approved` forever. Measured on `dev` before changing: the
+acceptance backend (`AcceptHandoffUseCase`) NEVER emitted `execution.activated`;
+the only one that emits it is `ActivateExecutionUseCase`, called only by the
+`execution/activate` route.
 
-**A regra:**
+**The rule:**
 
-1. **O aceite do Dev Lead só o ativa para planejar.** `handleAcceptHandoff`
-   aceita e mais nada; o `AcceptHandoffUseCase` não muda — segue provisionando
-   o repositório como segunda porta idempotente ([RN-582](#rn-582)).
-2. **Aprovar o `propose_execution_plan` ATIVA a execução.** A ação ganhou
-   executor na api, `ExecuteExecutionPlanUseCase`, chamado pela aprovação
-   manual (`ApproveActionUseCase`) e pela auto-aprovação
-   (`ProposeActionUseCase` — o tipo não está nos tetos absolutos de
-   `decide.ts`, então PODE ser configurado auto-aprovável). Ele grava o módulo
-   das tarefas ([RN-678](#rn-678)) e chama o MESMO `ActivateExecutionUseCase`
-   do botão — nenhuma segunda régua: o 409 sem repositório (RN-582), o 409 de
-   `execution.activated` em sessão consultiva ([RN-097](#rn-097)) e a
-   reativação idempotente por `findActiveExecutionSession` continuam lá,
-   intocados.
-3. **Quem ativa é quem APROVOU** (`decidedBy`); na auto-aprovação, quem abriu
-   a sessão — contra quem `decide()` resolveu o papel. Os dois exigem
-   `maintainer`, o mesmo mínimo de `execution/activate`, então a resolução do
-   papel efetivo dos `git_*` dos dev agents (o `createdBy` da sessão de
-   execução) não muda de dono.
-4. **A sessão do Dev Lead NÃO fecha** (não é passada como `originSessionId`,
-   [RN-135](#rn-135)): é nela que ele retoma o turno suspenso e narra o
-   desfecho.
-5. **O desfecho é nomeado e durável.** A ação termina `executed` com
-   `{ sessaoDeExecucao, modulos, tarefasAtribuidas }` ou `failed` com o
-   `motivo` (a frase da api, ex.: o 409 sem repositório), mais o evento
-   `execution.plan_applied`/`execution.plan_failed` na timeline. O Dev Lead
-   lê o desfecho real ao retomar ("execução ATIVADA na sessão …" ou "a
-   ativação falhou: …"), nunca "plano registrado". Falhar não desfaz a
-   aprovação: a decisão do humano já está gravada.
+1. **The Dev Lead's acceptance only activates it to plan.** `handleAcceptHandoff`
+   accepts and nothing else; `AcceptHandoffUseCase` does not change — it still
+   provisions the repository as an idempotent second gate ([RN-582](#rn-582)).
+2. **Approving `propose_execution_plan` ACTIVATES execution.** The action gained
+   an executor in the api, `ExecuteExecutionPlanUseCase`, called by manual
+   approval (`ApproveActionUseCase`) and by auto-approval (`ProposeActionUseCase`
+   — the type is not in the absolute ceilings of `decide.ts`, so it CAN be
+   configured as auto-approvable). It writes the tasks' module ([RN-678](#rn-678))
+   and calls the SAME `ActivateExecutionUseCase` as the button — no second
+   yardstick: the 409 without a repository (RN-582), the 409 of
+   `execution.activated` in an advisory session ([RN-097](#rn-097)) and the
+   idempotent reactivation by `findActiveExecutionSession` are still there,
+   untouched.
+3. **Who activates is who APPROVED** (`decidedBy`); in auto-approval, whoever
+   opened the session — against whom `decide()` resolved the role. Both require
+   `maintainer`, the same minimum as `execution/activate`, so the resolution of
+   the effective role of the dev agents' `git_*` (the execution session's
+   `createdBy`) does not change owner.
+4. **The Dev Lead's session does NOT close** (it is not passed as
+   `originSessionId`, [RN-135](#rn-135)): it is in it that it resumes the
+   suspended turn and narrates the outcome.
+5. **The outcome is named and durable.** The action ends `executed` with
+   `{ sessaoDeExecucao, modulos, tarefasAtribuidas }` or `failed` with the
+   `motivo` (the api's sentence, e.g. the 409 without a repository), plus the
+   event `execution.plan_applied`/`execution.plan_failed` on the timeline. The
+   Dev Lead reads the real outcome on resuming ("execution ACTIVATED in session
+   …" or "activation failed: …"), never "plan recorded". Failing does not undo
+   the approval: the human's decision is already recorded.
 
-- **Onde:** `src/application/use-cases/execution/execute-execution-plan.use-case.ts:89`
+- **Where:** `src/application/use-cases/execution/execute-execution-plan.use-case.ts:89`
   (`execute`); `src/application/use-cases/actions/approve-action.use-case.ts:216`
   (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:401`
   (`executeExecutionPlan`); `apps/web/src/lib/session-acoes-de-handoff.ts:91`
@@ -10272,62 +10273,63 @@ handoff às 06:45:01 — o web encadeava a ativação para `maintainer`/`owner`
   (`classificar`); `apps/engine/lib/engine/agents/dev_lead_server.ex:730`
   (`texto_do_desfecho`); `apps/web/src/lib/aprovacoes.ts:327`
   (`propose_execution_plan`)
-- **Teste:** `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts:106`
-  (aprovado ativa como quem aprovou — caminho feliz), `:129` (auto-aprovado:
-  quem abriu a sessão), `:151` (ativação recusada por falta de repositório
-  vira `failed` com a frase — caso de falha);
+- **Test:** `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts:106`
+  (approved activates as whoever approved — happy path), `:129` (auto-approved:
+  whoever opened the session), `:151` (activation refused for lack of a
+  repository becomes `failed` with the sentence — failure case);
   `test/application/use-cases/actions/approve-deny-action.use-case.spec.ts:399`
-  (aprovar chama o executor e avisa o Dev Lead);
+  (approving calls the executor and notifies the Dev Lead);
   `apps/web/src/routes/SessionPage.handoff-devlead-e-colapso.test.tsx:396`
-  (aceitar não ativa, nos três papéis), `:416` (o atalho explícito continua);
-  `apps/web/src/lib/aprovacoes.test.ts:118` (a frase diz que aprovar ativa);
+  (accepting does not activate, in the three roles), `:416` (the explicit
+  shortcut remains); `apps/web/src/lib/aprovacoes.test.ts:118` (the sentence says
+  approving activates);
   `apps/engine/test/engine/agents/dev_lead_tools_test.exs:134`, `:141`;
   `apps/engine/test/engine/agents/dev_lead_server_test.exs:426`, `:457`
-- **Decisão arquitetural:** [ADR 0194](../adr/0194-aprovar-o-plano-ativa-a-execucao.md)
-- **Origem:** AT-263 (item A17 da análise do uso real de 29/09)
+- **Architectural decision:** [ADR 0194](../adr/0194-aprovar-o-plano-ativa-a-execucao.md)
+- **Origin:** AT-263 (item A17 of the analysis of the real use of 29/09)
+### RN-678 — The task belongs to a module, assigned by the Dev Lead in the plan, and only that module's dev picks it up {#rn-678}
 
-### RN-678 — A tarefa pertence a um módulo, atribuído pelo Dev Lead no plano, e só o dev daquele módulo a pega {#rn-678}
+In real use on 29/09 `dev-input-keyboard` picked up "Implement the piece's
+automatic drop loop" and `dev-board-engine` picked up "Map keys…": the task had
+no module, the story had several, and `claimNext` let any dev of any module of
+the story pick up any of its tasks (`s.module_ids ? $1`).
 
-No uso real de 29/09 `dev-input-keyboard` pegou "Implementar loop de queda
-automática da peça" e `dev-board-engine` pegou "Mapear teclas…": a tarefa não
-tinha módulo, a história tinha vários, e `claimNext` deixava qualquer dev de
-qualquer módulo da história pegar qualquer tarefa dela (`s.module_ids ? $1`).
+**The rule:**
 
-**A regra:**
+1. **The task has a module** — `tasks.module`, nullable `text` (migration
+   `0068_modulo_da_tarefa`). Who assigns it is the **Dev Lead**, in the
+   execution plan: `propose_execution_plan` gained `tarefas: [{ taskId, modulo }]`,
+   and its kickoff lists the pending tasks of the PROJECT's backlog with the
+   `task_id` and the story's modules.
+2. **The valid set is the current `module_map`.** The api reads the plan
+   (`lerPlanoDeExecucao`, a pure function) at the PROPOSAL and refuses with 400
+   `plano_de_execucao_invalido`, without creating the action, when: the plan has
+   no `tarefas`; a task has no `taskId` or is **without a module**; the module
+   (of the task or of the plan) is **outside the `module_map`**; the task appears
+   twice; or does not exist in this project. The sentence names the task, the
+   module and the valid modules, and goes back to the Dev Lead as a tool error
+   (loop input, [RN-163](engine.md#rn-163)), for it to correct.
+3. **Approval re-reads** the plan against the `module_map` of that moment (it may
+   have changed): a refusal becomes `failed` without writing anything and without
+   activating. If it passes, the modules are written BEFORE the activation, so no
+   freshly-started dev agent looks for a task with no owner.
+4. **Only that module's dev picks it up.** `claimNext` and
+   `countClaimableByModule` use the SAME predicate (`daTarefaDoModulo`): a task
+   with a module belongs to whoever has that module, and to nobody else — the
+   story's `module_ids` stop deciding. A task **without** a module is only
+   pickable when the story has ONE module only, and it is the dev's: it is the
+   only case where "that module's dev" is not ambiguous, and it is the path of
+   whoever activated through the Overview without a plan. A task without a module
+   in a story with several waits for the next plan.
 
-1. **A tarefa tem módulo** — `tasks.module`, `text` nulo (migração
-   `0068_modulo_da_tarefa`). Quem o atribui é o **Dev Lead**, no plano de
-   execução: `propose_execution_plan` ganhou `tarefas: [{ taskId, modulo }]`,
-   e o kickoff dele lista as tarefas pendentes do backlog do PROJETO com o
-   `task_id` e os módulos da história.
-2. **O conjunto válido é o `module_map` vigente.** A api lê o plano
-   (`lerPlanoDeExecucao`, função pura) na PROPOSTA e recusa com 400
-   `plano_de_execucao_invalido`, sem criar a ação, quando: o plano não tem
-   `tarefas`; uma tarefa não tem `taskId` ou está **sem módulo**; o módulo
-   (da tarefa ou do plano) está **fora do `module_map`**; a tarefa aparece duas
-   vezes; ou não existe neste projeto. A frase nomeia a tarefa, o módulo e os
-   módulos válidos, e volta ao Dev Lead como erro da ferramenta (entrada do
-   laço, [RN-163](engine.md#rn-163)), para ele corrigir.
-3. **A aprovação relê** o plano contra o `module_map` daquele momento (ele pode
-   ter mudado): recusa vira `failed` sem gravar nada e sem ativar. Passando,
-   os módulos são gravados ANTES da ativação, para nenhum dev agent recém-subido
-   procurar tarefa sem dono.
-4. **Só o dev daquele módulo pega.** `claimNext` e `countClaimableByModule`
-   usam o MESMO predicado (`daTarefaDoModulo`): tarefa com módulo é de quem
-   tem aquele módulo, e de mais ninguém — os `module_ids` da história deixam de
-   decidir. Tarefa **sem** módulo só é pegável quando a história tem UM módulo
-   só, e ele é o do dev: é o único caso em que "o dev daquele módulo" não é
-   ambíguo, e é o caminho de quem ativou pela Visão Geral sem plano. Tarefa sem
-   módulo de história com vários espera o próximo plano.
+Left out, declared: a task created AFTER the plan is born without a module (the
+PO does not assign it); the `task.became_claimable` notice is still routed by the
+STORY's modules (waking one dev too many picks up nothing, it only costs a
+query); and the plan's per-module `agentes` is still informational — activation
+brings up one dev per module of the `module_map`, as before, and extra
+parallelism still goes through `parallelize` ([RN-083](#rn-083)).
 
-Fica de fora, declarado: tarefa criada DEPOIS do plano nasce sem módulo (o PO
-não atribui); o aviso `task.became_claimable` segue roteado pelos módulos da
-HISTÓRIA (acordar um dev a mais não pega nada, só gasta uma consulta); e o
-`agentes` por módulo do plano segue informativo — a ativação sobe um dev por
-módulo do `module_map`, como antes, e o paralelismo extra continua pelo
-`parallelize` ([RN-083](#rn-083)).
-
-- **Onde:** `src/domain/execution/plano-de-execucao.ts:39`
+- **Where:** `src/domain/execution/plano-de-execucao.ts:39`
   (`lerPlanoDeExecucao`); `src/infrastructure/persistence/drizzle/backlog.repository.ts:707`
   (`daTarefaDoModulo`), `:403` (`claimNext`), `:391` (`assignModules`);
   `src/application/use-cases/actions/propose-action.use-case.ts:141`
@@ -10336,21 +10338,20 @@ módulo do `module_map`, como antes, e o paralelismo extra continua pelo
   `apps/engine/lib/engine/agents/dev_lead_tools.ex:390`
   (`tarefas_do_backlog`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:204`
   (`erro_da_proposta`)
-- **Teste:** `test/domain/execution/plano-de-execucao.spec.ts:22`
-  (caminho feliz), `:41` (tarefa sem módulo — caso de falha), `:49` (módulo
-  fora do `module_map`), `:80` (repetida e de outro projeto);
+- **Test:** `test/domain/execution/plano-de-execucao.spec.ts:22`
+  (happy path), `:41` (task without a module — failure case), `:49` (module
+  outside the `module_map`), `:80` (repeated and from another project);
   `test/application/use-cases/execution/claim-next-task.use-case.spec.ts:127`
-  (história com dois módulos: só o dev do módulo da tarefa), `:152` (sem
-  módulo e vários módulos: ninguém), `:169` (o módulo da tarefa vence);
+  (story with two modules: only the dev of the task's module), `:152` (no module
+  and several modules: nobody), `:169` (the task's module wins);
   `test/application/use-cases/actions/propose-action.use-case.spec.ts:289`
-  (400 nomeado, sem proposta);
+  (named 400, no proposal);
   `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts:135`
-  (módulo fora do mapa na aprovação: nada gravado, nada ativado);
+  (module outside the map at approval: nothing written, nothing activated);
   `apps/engine/test/engine/agents/dev_lead_tools_test.exs:110`, `:118`;
   `apps/engine/test/engine/agents/dev_lead_server_test.exs:131`
-- **Decisão arquitetural:** [ADR 0194](../adr/0194-aprovar-o-plano-ativa-a-execucao.md)
-- **Origem:** AT-274 (item A28 / extra E5 da análise do uso real de 29/09)
-
+- **Architectural decision:** [ADR 0194](../adr/0194-aprovar-o-plano-ativa-a-execucao.md)
+- **Origin:** AT-274 (item A28 / extra E5 of the analysis of the real use of 29/09)
 ### RN-679 — A curadoria recusa o alias de roteamento livre do OpenRouter {#rn-679}
 
 Decisão do dono (01/10): **o alias `~` não entra na curadoria** — só modelo
@@ -10452,59 +10453,62 @@ embedding do RAG, e AVISA quando a mais próxima está a partir do limiar.
 - **Origin:** [ADR 0198](../adr/0198-duplicata-semantica-por-embedding-com-limiar-que-so-avisa.md)
   (AT-171, achado R)
 
-## A Anamnese religada: sujeito elegível e fato do perfil (RN-680)
+## Anamnesis reconnected: eligible subject and profile fact (RN-680) {#a-anamnese-religada-sujeito-elegivel-e-fato-do-perfil-rn-680}
+### RN-682 — An advisory session with no agent asks for an agent: the composer does not send without a recipient, and the chat route refuses by name {#rn-682}
 
-### RN-682 — A consultiva sem agente pede um agente: o composer não envia sem destinatário, e a rota de chat recusa com nome {#rn-682}
+Until now, the message of an **advisory** session with no agent went to the SSE
+of `POST .../chat` (`SendChatMessageUseCase`), which sends the bound model only
+the current text — no history, no system prompt, no tool — and records the reply
+with the MODEL NAME as the actor. Measured in real use on 29/09: session 5d66
+answered "I have no access to previous conversations". The owner's decision
+(01/10) is that, with no active agent, the advisory session **asks to choose an
+agent** — the same yardstick as [RN-584](engine.md#rn-584) (no default
+recipient) reaching the last case that still had one: the raw model.
 
-Até aqui, a mensagem de uma sessão **consultiva** sem agente ia ao SSE de
-`POST .../chat` (`SendChatMessageUseCase`), que manda ao modelo vinculado só o
-texto atual — sem histórico, sem prompt de sistema, sem ferramenta — e grava a
-resposta com o NOME DO MODELO como ator. Medido no uso real de 29/09: a sessão
-5d66 respondeu "não tenho acesso a conversas anteriores". A decisão do dono
-(01/10) é que, sem agente ativo, a consultiva **pede para escolher um agente**
-— a mesma régua da [RN-584](engine.md#rn-584) (nenhum destinatário padrão) chegando ao
-último caso que ainda tinha um: o modelo cru.
+**The measurement, before the fix:** the chat route had ONE client, the screen
+(`handleSend`, only when there was no recipient — which, since
+[RN-631](web.md#rn-631), only happened in the advisory session with no agent: the
+creative one always has the Creative as an option). The `curl` that the seed
+prints is a development hint, in a creative session. The use case has a SECOND
+legitimate consumer: the provider smokes (`*-provider.smoke.spec.ts`) use it
+directly as an end-to-end instrument (credential → call → metering) in a session
+with no agent. That is why the api's refusal lives in the ROUTE, and the use case
+does not change.
 
-**A medição, antes do conserto:** a rota de chat tinha UM cliente, a tela
-(`handleSend`, só quando não havia destinatário — o que, desde a
-[RN-631](web.md#rn-631), só acontecia na consultiva sem agente: a criativa sempre tem
-o Criativo como opção). O `curl` que o seed imprime é dica de desenvolvimento,
-numa sessão criativa. O caso de uso tem um SEGUNDO consumidor legítimo: os
-smokes de provider (`*-provider.smoke.spec.ts`) o usam direto como instrumento
-de ponta a ponta (credencial → chamada → metering) numa sessão sem agente. Por
-isso a recusa da api mora na ROTA, e o caso de uso não muda.
+**The rule:**
 
-**A regra:**
+1. **The screen does not send without a recipient.** "Send" and Enter are locked
+   with zero options, as they already were with two and no choice; the SSE branch
+   left `handleSend`.
+2. **The recipient row SHOWS who can be called.** With no option, the manual
+   handoff selector ([RN-440](#rn-440)) moves inside it — "To", the list, and
+   "Call" —, and the selector above disappears so the same choice is not in two
+   places. The list is the agents that converse (`AGENTES_DE_CHAT`, the ones the
+   engine matches with a clause of their own) and that the manual handoff
+   reaches, minus whoever has already entered and **minus the Creative**: the
+   advisory session promises in the invitation that it does not enter, because
+   opening ideation is what the creative session does ([RN-097](#rn-097)).
+   Calling offers the handoff; accepting it in the thread makes the agent the
+   recipient (RN-631).
+3. **The api refuses the same case for any client.** `POST .../chat` in an
+   advisory session in which no `agent.activated` was recorded is **422**
+   `{reason: "destinatario_ausente"}`, with the sentence that points to
+   `.../agents/:agent/message`, BEFORE any effect: nothing is recorded and no
+   model is called. The refusal comes out as an HTTP response and not as an
+   `error` frame inside a 200 stream — the handler returns
+   `Promise<Observable>`, and a rejection before the SSE header becomes the
+   normal response.
 
-1. **A tela não envia sem destinatário.** O "Enviar" e o Enter ficam travados
-   com zero opções, como já ficavam com duas sem escolha; o ramo do SSE saiu de
-   `handleSend`.
-2. **A linha do destinatário MOSTRA quem pode ser chamado.** Sem opção, o
-   seletor do handoff manual ([RN-440](#rn-440)) muda de lugar para dentro
-   dela — "Para", a lista, e "Chamar" —, e o seletor de cima some para não
-   haver a mesma escolha em dois lugares. A lista são os agentes que conversam
-   (`AGENTES_DE_CHAT`, os que o engine casa com cláusula própria) e que o
-   handoff manual alcança, menos quem já entrou e **menos o Criativo**: a
-   consultiva promete no convite que ele não entra, porque abrir a ideação é o
-   que a criativa faz ([RN-097](#rn-097)). Chamar oferece o handoff; aceitá-lo
-   no fio faz do agente o destinatário (RN-631).
-3. **A api recusa o mesmo caso para qualquer cliente.** `POST .../chat` numa
-   sessão consultiva em que nenhum `agent.activated` foi gravado é **422**
-   `{reason: "destinatario_ausente"}`, com a frase que aponta
-   `.../agents/:agent/message`, ANTES de qualquer efeito: nada é gravado e
-   nenhum modelo é chamado. A recusa sai como resposta HTTP e não como quadro
-   `error` dentro de um stream 200 — o handler devolve `Promise<Observable>`,
-   e a rejeição antes do cabeçalho do SSE vira a resposta normal.
+**What this rule does NOT close, declared:**
 
-**O que esta regra NÃO fecha, declarado:**
+- **The route still answers through the raw model outside that case**: in a
+  creative session with no agent (the seed's `curl`) and in an advisory session
+  WITH an agent, for whoever calls it by hand. The screen calls it in neither;
+  the owner's decision was about the advisory session with no agent, and closing
+  the whole route is a separate decision.
+- Free chat with history, the other option of AT-254, was not done.
 
-- **A rota segue respondendo pelo modelo cru fora desse caso**: numa criativa
-  sem agente (o `curl` do seed) e numa consultiva COM agente, para quem a
-  chamar à mão. A tela não a chama em nenhum dos dois; a decisão do dono foi
-  sobre a consultiva sem agente, e fechar a rota inteira é decisão à parte.
-- O chat livre com histórico, a outra opção da AT-254, não foi feito.
-
-- **Código:** `src/domain/sessions/chat-sem-destinatario.ts:24`
+- **Code:** `src/domain/sessions/chat-sem-destinatario.ts:24`
   (`chatSemDestinatarioRecusado`), `:17` (`MOTIVO_CHAT_SEM_DESTINATARIO`);
   `src/application/use-cases/llm/garantir-destinatario-do-chat.use-case.ts:27`
   (`GarantirDestinatarioDoChatUseCase`);
@@ -10512,54 +10516,58 @@ isso a recusa da api mora na ROTA, e o caso de uso não muda.
   `apps/web/src/lib/session-destinatario.ts:347` (`agentesParaChamar`);
   `apps/web/src/routes/SessionPage.tsx:684` (`handleSend`);
   `apps/web/src/routes/SessionComposer.tsx:276`
-- **Teste:** `test/application/use-cases/llm/garantir-destinatario-do-chat.use-case.spec.ts:82`
-  (consultiva sem agente — caso de falha), `:96`, `:113`, `:120`;
-  `test/interfaces/http/llm/chat.controller.spec.ts:56` (422 como
-  resposta HTTP), `:79` (caminho feliz);
-  `apps/web/src/routes/SessionPage.destinatario-do-chat.test.tsx:458` (não
-  envia — caso de falha), `:471` (lista e Chamar — caminho feliz);
+- **Test:** `test/application/use-cases/llm/garantir-destinatario-do-chat.use-case.spec.ts:82`
+  (advisory session with no agent — failure case), `:96`, `:113`, `:120`;
+  `test/interfaces/http/llm/chat.controller.spec.ts:56` (422 as an HTTP
+  response), `:79` (happy path);
+  `apps/web/src/routes/SessionPage.destinatario-do-chat.test.tsx:458` (does not
+  send — failure case), `:471` (list and Call — happy path);
   `apps/web/src/lib/session-destinatario.test.ts:93`;
   `apps/web/src/routes/SessionPage.ideacao-automatica.test.tsx:177`
-- **Origem:** AT-254 (item A8 da análise do uso real de 2026-09-29), decisão do
-  dono de 01/10
-
+- **Origin:** AT-254 (item A8 of the analysis of the real use of 2026-09-29),
+  owner's decision of 01/10
 ## O plano de teste nasce depois da entrega do dev (RN-674, ADR 0192)
 
-### RN-683 — A Infra sobe o container com o MENOR recurso elegível, derivado do que o Arquiteto declara por módulo no `module_map` {#rn-683}
+### RN-683 — Infra brings up the container with the SMALLEST eligible resource, derived from what the Architect declares per module in the `module_map` {#rn-683}
 
-Decisão do dono em 01/10 ([ADR 0199](../adr/0199-recurso-minimo-derivado-do-module-map.md),
-AT-261). Até aqui `resources` omitido virava `RECURSOS_PADRAO` (2 cpus,
-4096 MiB, 512 pids) e a subida do servidor no aceite ([RN-671](#rn-671)) o
-omitia sempre: todo container nascia no padrão, sem noção de mínimo.
+Owner's decision on 01/10 ([ADR 0199](../adr/0199-recurso-minimo-derivado-do-module-map.md),
+AT-261). Until now an omitted `resources` became `RECURSOS_PADRAO` (2 cpus,
+4096 MiB, 512 pids) and the server's bring-up at acceptance
+([RN-671](#rn-671)) always omitted it: every container was born with the
+default, with no notion of a minimum.
 
-1. **Cada módulo declara o seu.** O `module_map` ganha `resources`
-   (`cpus`, `memoryMb`, `pidsLimit`) por módulo — o que AQUELE módulo precisa
-   sozinho no container. A ferramenta `create_module_map` o pede; a api o
-   aceita ausente e recusa com 400, na criação do mapa: declaração pela METADE
-   (os três ou nenhum), valor não positivo ou acima do teto, e SOMA entre
-   módulos acima do teto. O campo mora no JSON do artefato, sem migration.
-2. **O mínimo é a SOMA, campo a campo.** Um projeto tem UM container
-   (`project_id UNIQUE` em `project_containers`) e os módulos rodam nele ao
-   mesmo tempo; o máximo entre módulos subdimensionaria o container sempre que
-   dois estivessem de pé.
-3. **Módulo sem declaração: piso no padrão de hoje.** Não se inventa número.
-   Havendo módulo sem declaração, o mínimo é o maior entre a soma dos
-   declarados e `RECURSOS_PADRAO`, campo a campo, e o `rationale` NOMEIA quem
-   não declarou. Sem declaração nenhuma (todo mapa anterior a esta regra), e
-   sem `module_map` vigente, o mínimo é exatamente o padrão de hoje.
-4. **A execução de `container_start` resolve campo a campo.** Omitido vira o
-   mínimo (a subida do servidor manda tudo omitido); abaixo do mínimo é
-   `failed` nomeado, sem gravar decisão de imagem nem subir; acima vale até o
-   teto, que não muda. O `rationale` do `artifact.project_image` gravado ganha
-   "Recursos mínimos (RN-683): …" com os módulos somados e a versão do mapa.
-5. **Uma régua só.** Quem deriva é a api; o engine não soma nada e a subida do
-   servidor diz no rationale que os recursos são o mínimo derivado.
+1. **Each module declares its own.** The `module_map` gains `resources`
+   (`cpus`, `memoryMb`, `pidsLimit`) per module — what THAT module needs alone in
+   the container. The `create_module_map` tool asks for it; the api accepts it
+   absent and refuses with 400, at map creation: a HALF declaration (the three or
+   none), a non-positive value or one above the ceiling, and a SUM across modules
+   above the ceiling. The field lives in the artifact's JSON, no migration.
+2. **The minimum is the SUM, field by field.** A project has ONE container
+   (`project_id UNIQUE` in `project_containers`) and the modules run in it at the
+   same time; the maximum across modules would undersize the container whenever
+   two were up.
+3. **A module with no declaration: floor at today's default.** No number is
+   invented. When there is a module with no declaration, the minimum is the
+   greater of the sum of the declared ones and `RECURSOS_PADRAO`, field by field,
+   and the `rationale` NAMES who did not declare. With no declaration at all
+   (every map prior to this rule), and with no current `module_map`, the minimum
+   is exactly today's default.
+4. **The execution of `container_start` resolves field by field.** Omitted
+   becomes the minimum (the server's bring-up sends everything omitted); below
+   the minimum is a named `failed`, without recording an image decision or
+   bringing anything up; above holds up to the ceiling, which does not change.
+   The `rationale` of the recorded `artifact.project_image` gains "Minimum
+   resources (RN-683): …" with the summed modules and the map version.
+5. **One yardstick only.** The api derives; the engine sums nothing, and the
+   server's bring-up says in the rationale that the resources are the derived
+   minimum.
 
-Fora, declarado: `choose_project_image` (o Arquiteto decide a imagem e os
-recursos dele) e `container_start_via_runner` (sobe a imagem já decidida) não
-mudam; a recusa abaixo do mínimo acontece na execução, não ao propor.
+Out, declared: `choose_project_image` (the Architect decides the image and its
+resources) and `container_start_via_runner` (brings up the already-decided image)
+do not change; the refusal below the minimum happens at execution, not at
+proposal.
 
-- **Código:** `src/domain/containers/recursos-minimos.ts:70`
+- **Code:** `src/domain/containers/recursos-minimos.ts:70`
   (`validarRecursosDoModulo`), `:108` (`derivarRecursosMinimos`), `:150`
   (`validarSomaNoTeto`), `:171` (`resolverRecursosDaSubida`), `:206`
   (`explicarRecursosMinimos`);
@@ -10570,18 +10578,17 @@ mudam; a recusa abaixo do mínimo acontece na execução, não ao propor.
   `apps/engine/lib/engine/harness/tools/create_module_map.ex:103` (`normalize`);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:805`
   (`rationale_do_servidor`)
-- **Teste:** `test/domain/containers/recursos-minimos.spec.ts:18`
-  (soma — caminho feliz), `:35` (mapa antigo = padrão), `:41` (piso e nomeado),
-  `:54` (soma acima do teto — caso de falha), `:94` (abaixo do mínimo);
+- **Test:** `test/domain/containers/recursos-minimos.spec.ts:18`
+  (sum — happy path), `:35` (old map = default), `:41` (floor and named),
+  `:54` (sum above the ceiling — failure case), `:94` (below the minimum);
   `test/application/use-cases/architecture/create-module-map.use-case.spec.ts:190`
-  (grava), `:208` (pela metade — caso de falha), `:217` (soma no teto);
+  (writes), `:208` (half — failure case), `:217` (sum at the ceiling);
   `test/application/use-cases/actions/execute-container-start.use-case.spec.ts:530`
-  (subida do servidor com a soma), `:556` (sem declaração), `:575` (acima),
-  `:588` (abaixo — caso de falha), `:608` (sem mapa);
+  (server bring-up with the sum), `:556` (no declaration), `:575` (above),
+  `:588` (below — failure case), `:608` (no map);
   `apps/engine/test/engine/harness/tools/create_module_map_test.exs:94`, `:109`;
   `apps/engine/test/engine/infra/infra_lead_server_test.exs:1307`
-- **Origem:** AT-261 (item A15 da análise do uso real de 29/09)
-
+- **Origin:** AT-261 (item A15 of the analysis of the real use of 29/09)
 ## A Anamnese religada: sujeito elegível e fato do perfil (RN-680)
 
 ### RN-684 — O contrato entre módulos é artefato versionado do Arquiteto, e o dev agent o lê pela ferramenta, nunca no worktree de outro dev {#rn-684}
