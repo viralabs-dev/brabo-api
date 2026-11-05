@@ -2359,43 +2359,43 @@ a second source of role in only one section would be worse than the gap.
   enabled and the areas one disabled, at the same time)
 - **Origin:** [ADR 0064](../adr/0064-escopo-de-area-na-cascata-e-o-binding-de-agente-global.md) (PHASE 23)
 
-### RN-103 — O binding de agente é POR PROJETO, não mais global {#rn-103}
+### RN-103 — The agent binding is PER PROJECT, no longer global {#rn-103}
 
-Até a FASE 23, `scope = 'agent'` guardava um SLUG global
-(`scope_id = 'qa'`), e `PUT /projects/:id/agent-bindings/:slug` recebia
-`:projectId` na rota e o DESCARTAVA de propósito — escolher o modelo do
-Arquiteto na tela de um projeto mudava o modelo dele em TODOS os projetos.
-Isso deixou de se sustentar quando a área virou padrão herdável (RN-102): a
-área é por projeto, e um binding de agente global ACIMA de um padrão por
-projeto faria o mesmo agente resolver modelos diferentes só onde existisse
-área — e faria "voltar a herdar" apagar uma decisão que alcançava projetos
-que ninguém está olhando.
+Until PHASE 23, `scope = 'agent'` stored a global SLUG
+(`scope_id = 'qa'`), and `PUT /projects/:id/agent-bindings/:slug` received
+`:projectId` in the route and DISCARDED it on purpose — choosing the Architect's
+model on a project's screen changed its model in ALL projects.
+That stopped being sustainable when the area became an inheritable default (RN-102):
+the area is per project, and a global agent binding ABOVE a per-project default
+would make the same agent resolve different models only where an area existed —
+and would make "go back to inheriting" erase a decision that reached projects
+nobody is looking at.
 
-A saída foi tornar `agent` por projeto também, e não rebaixar a área para
-abaixo do agente: `scope_id` de `agent` e de `area` virou COMPOSTO —
-`<projectId>:<slug do agente|chave da área>` — em vez de inventar uma tabela
-nova só para guardar um projeto por binding. UUID de projeto e slug de agente
-nunca contêm `:`, o que torna o primeiro `:` um separador não ambíguo; a
-leitura corta nele, e não em todos, para um slug com `:` (nenhum existe hoje,
-mas nada impede) não virar três pedaços.
+The way out was to make `agent` per project too, and not to demote the area below
+the agent: the `scope_id` of `agent` and of `area` became COMPOSITE —
+`<projectId>:<agent slug|area key>` — instead of inventing a new table just to hold
+one project per binding. A project UUID and an agent slug never contain `:`, which
+makes the first `:` an unambiguous separator; the read cuts at it, and not at all of
+them, so that a slug with `:` (none exists today, but nothing prevents it) does not
+become three pieces.
 
-`scope_id` sem o projeto (o formato antigo) é RECUSADO na escrita, não aceito
-e ignorado: gravá-lo criaria um binding que a cascata nunca mais encontraria
-— invisível, e não um erro. A migração 0040 espalha cada binding de agente
-global existente para uma linha por projeto (preservando o que cada projeto
-resolvia antes da mudança) e apaga o formato antigo; é ESPALHAR e não
-apagar porque a linha global nunca guardou informação de a quem "pertencia" —
-inventar um projeto dono seria inventar dado que não existia.
+A `scope_id` without the project (the old format) is REFUSED on write, not accepted
+and ignored: recording it would create a binding the cascade would never find
+again — invisible, rather than an error. Migration 0040 spreads each existing global
+agent binding into one row per project (preserving what each project resolved before
+the change) and deletes the old format; it SPREADS and does not delete because the
+global row never stored information on who it "belonged" to — inventing an owner
+project would be inventing data that did not exist.
 
-- **Onde:** `src/domain/llm/binding-scope-id.ts` (formato e
-  validação), `src/application/use-cases/llm/set-model-binding.use-case.ts`
-  (`workspaceDoEscopo` passou a derivar o workspace de `agent`/`area` também —
-  a curadoria da RN-043 não era verificável neles antes), `src/db/migrations/0040_tearful_night_nurse.sql`
-- **Teste:** `test/domain/llm/binding-scope-id.spec.ts`,
+- **Where:** `src/domain/llm/binding-scope-id.ts` (format and
+  validation), `src/application/use-cases/llm/set-model-binding.use-case.ts`
+  (`workspaceDoEscopo` now derives the workspace for `agent`/`area` too —
+  RN-043's curation was not verifiable in them before), `src/db/migrations/0040_tearful_night_nurse.sql`
+- **Test:** `test/domain/llm/binding-scope-id.spec.ts`,
   `test/application/use-cases/llm/set-model-binding.use-case.spec.ts`,
   `test/application/use-cases/llm/resolve-model-binding.use-case.spec.ts`
   ("o binding de agente é POR PROJETO: o vizinho não o enxerga")
-- **Origem:** [ADR 0064](../adr/0064-escopo-de-area-na-cascata-e-o-binding-de-agente-global.md) (FASE 23)
+- **Origin:** [ADR 0064](../adr/0064-escopo-de-area-na-cascata-e-o-binding-de-agente-global.md) (PHASE 23)
 
 ### RN-105 — Without an image decided by the Arquiteto, the container does not start and Code does not open {#rn-105}
 
@@ -2536,96 +2536,95 @@ folder the engine really uses.
   rename the folder; the folder is only read through the stored `workspace_dir_name`.
 - **Origin:** ADR 0066 (revises ADR 0055).
 
-### RN-114 — Os quatro segredos irmãos do `GIT_OAUTH_STATE_SECRET` também não sobem em produção com o valor de exemplo {#rn-114}
+### RN-114 — The four sibling secrets of `GIT_OAUTH_STATE_SECRET` also do not boot in production with the example value {#rn-114}
 
-O [ADR 0059](../adr/0059-segredo-do-state-de-oauth-sem-default.md) fechou o
-padrão para `GIT_OAUTH_STATE_SECRET` e deixou declaradamente aberto que o
-mesmo modo de falha valia para quatro segredos irmãos, todos com default de
-desenvolvimento no `docker-compose.prod.yml`: `AUTH_JWT_SECRET`,
-`BRABO_SERVICE_TOKEN`, `CREDENTIALS_MASTER_KEY` e `SECRET_KEY_BASE`. Esta RN
-fecha os quatro, replicando exatamente a mesma regra — não é decisão nova,
-é a mesma decisão aplicada aos irmãos.
+[ADR 0059](../adr/0059-segredo-do-state-de-oauth-sem-default.md) closed the
+pattern for `GIT_OAUTH_STATE_SECRET` and left it declaredly open that the same
+failure mode held for four sibling secrets, all with a development default in
+`docker-compose.prod.yml`: `AUTH_JWT_SECRET`, `BRABO_SERVICE_TOKEN`,
+`CREDENTIALS_MASTER_KEY` and `SECRET_KEY_BASE`. This RN closes the four,
+replicating exactly the same rule — it is not a new decision, it is the same
+decision applied to the siblings.
 
-Em produção (`NODE_ENV === 'production'`), cada resolutor **derruba o boot**
-quando a variável está ausente/só com espaços, é igual ao literal de exemplo
-do repositório (que é público — está no `.env.example`), ou tem menos de 16
-caracteres. Fora de produção o default de desenvolvimento continua valendo,
-porque `docker compose up` sem `.env` tem que funcionar.
+In production (`NODE_ENV === 'production'`), each resolver **brings the boot down**
+when the variable is absent/only whitespace, equals the repository's example
+literal (which is public — it is in `.env.example`), or has fewer than 16
+characters. Outside production the development default still holds, because
+`docker compose up` without a `.env` has to work.
 
-- `AUTH_JWT_SECRET` — deriva o par Ed25519 que assina o access token. Com o
-  default público, qualquer um forja um access token válido.
-- `BRABO_SERVICE_TOKEN` — autentica o tráfego interno api ↔ engine. Com o
-  default público, qualquer um chama as rotas `/internal/*` sem passar pelo
-  `EngineServiceGuard`.
-- `CREDENTIALS_MASTER_KEY` — embrulha os DEKs que cifram as credenciais do
-  usuário (chaves de LLM, tokens de git). Com o default público, qualquer um
-  decripta o acervo. **Fora de escopo aqui**: qualquer mecanismo de rotação —
-  esse já existe (`CREDENTIALS_MASTER_KEY_PREVIOUS` +
-  `src/scripts/rewrap-deks.ts`) e não muda; esta é só a checagem de BOOT.
-- `SECRET_KEY_BASE` (engine) — já derrubava o boot sem a variável
-  (`runtime.exs`, bloco `:prod`, boilerplate padrão do Phoenix). O defeito
-  real não era falta de checagem no Elixir: era o `docker-compose.prod.yml`
-  suprir o literal público como fallback, o que fazia a variável chegar
-  sempre DEFINIDA e mascarava o `raise` que já existia. A correção aqui foi
-  só remover o fallback do compose — nenhuma linha de Elixir mudou.
+- `AUTH_JWT_SECRET` — derives the Ed25519 pair that signs the access token. With
+  the public default, anyone forges a valid access token.
+- `BRABO_SERVICE_TOKEN` — authenticates the internal api ↔ engine traffic. With
+  the public default, anyone calls the `/internal/*` routes without going through
+  the `EngineServiceGuard`.
+- `CREDENTIALS_MASTER_KEY` — wraps the DEKs that encrypt the user's credentials
+  (LLM keys, git tokens). With the public default, anyone decrypts the whole store.
+  **Out of scope here**: any rotation mechanism — that one already exists
+  (`CREDENTIALS_MASTER_KEY_PREVIOUS` + `src/scripts/rewrap-deks.ts`) and does not
+  change; this is only the BOOT check.
+- `SECRET_KEY_BASE` (engine) — already brought the boot down without the variable
+  (`runtime.exs`, `:prod` block, standard Phoenix boilerplate). The real defect was
+  not a missing check in Elixir: it was `docker-compose.prod.yml` supplying the
+  public literal as a fallback, which made the variable always arrive DEFINED and
+  masked the `raise` that already existed. The fix here was only removing the
+  compose's fallback — no line of Elixir changed.
 
-Vale a mesma razão do ADR 0059 para rejeitar o literal, e não só o vazio: o
-`docker-compose.prod.yml` supria os quatro literais como fallback, então no
-caminho real de erro as variáveis estavam **definidas** — uma verificação de
-"não vazia" passaria por cima do defeito inteiro.
+The same reason as ADR 0059 applies to rejecting the literal, and not just the
+empty one: `docker-compose.prod.yml` supplied the four literals as a fallback, so
+on the real error path the variables were **defined** — a "not empty" check would
+walk right over the whole defect.
 
-- **Onde:** `src/infrastructure/security/auth-key-material.ts`
+- **Where:** `src/infrastructure/security/auth-key-material.ts`
   (`passphraseAtual`), `src/infrastructure/security/service-token.ts`
-  (`tokenDeServicoAtual`) e
+  (`tokenDeServicoAtual`) and
   `src/infrastructure/security/envelope-encryption.service.ts`
-  (`EnvelopeEncryptionService`, checagem no construtor) — os dois primeiros
-  chamados no boot em `src/main.ts`, o terceiro exercitado quando o
-  `NestFactory.create` monta o grafo de providers. `SECRET_KEY_BASE` em
-  `apps/engine/config/runtime.exs` (inalterado) com o fallback removido de
+  (`EnvelopeEncryptionService`, check in the constructor) — the first two
+  called at boot in `src/main.ts`, the third exercised when
+  `NestFactory.create` assembles the provider graph. `SECRET_KEY_BASE` in
+  `apps/engine/config/runtime.exs` (unchanged) with the fallback removed from
   `docker/docker-compose.prod.yml`
-- **Teste:** `test/infrastructure/security/auth-key-material.spec.ts`,
-  `test/infrastructure/security/service-token.spec.ts` e o describe
-  `validação de produção` em
+- **Test:** `test/infrastructure/security/auth-key-material.spec.ts`,
+  `test/infrastructure/security/service-token.spec.ts` and the describe
+  `validação de produção` in
   `test/infrastructure/security/envelope-encryption.service.spec.ts`
-- **Origem:** [ADR 0059](../adr/0059-segredo-do-state-de-oauth-sem-default.md)
+- **Origin:** [ADR 0059](../adr/0059-segredo-do-state-de-oauth-sem-default.md)
 
-### RN-127 — `ref`/`path` da aba Code recusam chegar como ARRAY, não só como caminho fora do escopo {#rn-127}
+### RN-127 — The Code tab's `ref`/`path` refuse to arrive as an ARRAY, not only as a path outside the scope {#rn-127}
 
-`@Query('ref') ref?: string` e `@Query('path') path?: string`
-(`code.controller.ts`) extraem o valor cru sem DTO/`class-validator` no
-meio, e o `ValidationPipe` global (`main.ts`) não ajuda: ele pula tipo
-primitivo nativo (`String`) por desenho do Nest, então nada intercepta
-`ref`/`path` antes de chegarem como argumento de método. O Express entrega
-`?ref=a&ref=b` como **array**, não string — a anotação `string` do
-TypeScript só existe em compile-time.
+`@Query('ref') ref?: string` and `@Query('path') path?: string`
+(`code.controller.ts`) extract the raw value with no DTO/`class-validator` in
+between, and the global `ValidationPipe` (`main.ts`) does not help: it skips a
+native primitive type (`String`) by Nest's design, so nothing intercepts
+`ref`/`path` before they arrive as a method argument. Express delivers
+`?ref=a&ref=b` as an **array**, not a string — TypeScript's `string` annotation
+only exists at compile time.
 
-Um array escapava das DUAS checagens que a [RN-095](#rn-095) já fazia
-tratando o valor como string: `ref.includes('..')` tem semântica de
-ELEMENTO EXATO (não substring) em array, e `REF_VALIDO.test(ref)` chama
-`.toString()` no array antes de casar — um valor como `['x/../y']`
-continha `..` e ainda assim passaria pelas duas.
+An array escaped BOTH checks that [RN-095](#rn-095) already did treating the value
+as a string: `ref.includes('..')` has EXACT-ELEMENT semantics (not substring) on an
+array, and `REF_VALIDO.test(ref)` calls `.toString()` on the array before
+matching — a value such as `['x/../y']` contained `..` and still would pass both.
 
-`garantirQueryEscalar(valor, criarErro)` recusa o array ANTES de qualquer
-outra checagem, num lugar só, reusado pelos DOIS pontos que tratavam query
-como string: `caminhoDeRepositorioContido` (mesmo arquivo da RN-092/095) e
-`ReadProjectCodeUseCase.alvo` (`ref`). O erro concreto (`CaminhoForaDoEscopoError`
-ou `BadRequestException`) é decidido por quem chama, passado como fábrica —
-a função central não decide o tipo de erro, só a forma da checagem.
+`garantirQueryEscalar(valor, criarErro)` refuses the array BEFORE any other check,
+in a single place, reused by the TWO points that treated the query as a string:
+`caminhoDeRepositorioContido` (same file as RN-092/095) and
+`ReadProjectCodeUseCase.alvo` (`ref`). The concrete error (`CaminhoForaDoEscopoError`
+or `BadRequestException`) is decided by the caller, passed as a factory — the central
+function does not decide the error type, only the shape of the check.
 
-O caminho feliz não muda: todo `ref`/`path` legítimo já era string.
+The happy path does not change: every legitimate `ref`/`path` was already a string.
 
-- **Onde:** `src/infrastructure/filesystem/project-workspaces-root.ts`
-  (`garantirQueryEscalar`, usada em `caminhoDeRepositorioContido`),
+- **Where:** `src/infrastructure/filesystem/project-workspaces-root.ts`
+  (`garantirQueryEscalar`, used in `caminhoDeRepositorioContido`),
   `src/application/use-cases/git/read-project-code.use-case.ts`
   (`alvo`, `ref`)
-- **Teste:**
+- **Test:**
   `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
-  (`garantirQueryEscalar` isolada e `caminhoDeRepositorioContido` recusando
-  array), `test/application/use-cases/git/read-project-code.use-case.spec.ts`
-  (`ref`/`path` como array são 400 em `tree`, que todas as outras rotas
-  reusam via `alvo`)
-- **Origem:** alerta CRÍTICO do CodeQL (confusão de tipo em query param HTTP)
-  bloqueando a promoção qa→main, achado durante a PR #256; estende a
+  (`garantirQueryEscalar` in isolation and `caminhoDeRepositorioContido` refusing
+  an array), `test/application/use-cases/git/read-project-code.use-case.spec.ts`
+  (`ref`/`path` as an array are 400 in `tree`, which all the other routes
+  reuse via `alvo`)
+- **Origin:** CRITICAL CodeQL alert (type confusion in an HTTP query param)
+  blocking the qa→main promotion, found during PR #256; extends
   [RN-095](#rn-095)
 
 ### RN-128 — `sessionId`/`projectId`/`agent`/`agentId` are validated BEFORE becoming a URL segment of the internal request to the engine {#rn-128}
