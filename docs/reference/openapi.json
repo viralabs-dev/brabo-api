@@ -1057,6 +1057,70 @@
         ]
       }
     },
+    "/internal/projects/{projectId}/open-questions/{questionId}/answer": {
+      "post": {
+        "description": "Writes the same `decision_record` + `open_question.answered` pair as the human answer (actor: the author of the chat session, `viaAgente` names the agent) and resumes the parked QA gate (RN-860). Without `resposta`, the question suggestion is the answer. Idempotent: an already closed question returns `already_answered`, never 409.",
+        "operationId": "InternalOpenQuestionsController_answer",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentAnswerOpenQuestionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentAnswerOpenQuestionResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, or no answer and no suggestion."
+          },
+          "403": {
+            "description": "Service token missing or different from the shared one."
+          },
+          "404": {
+            "description": "Question or session not in this project."
+          }
+        },
+        "security": [
+          {
+            "service-token": []
+          }
+        ],
+        "summary": "Closes an open question on behalf of an agent (RN-1002)",
+        "tags": [
+          "internal"
+        ]
+      }
+    },
     "/internal/projects/{projectId}/product-metrics": {
       "get": {
         "description": "The SAME report as the `analise:funil` script (ADR 0089) — session → commit → PR → merge funnel, real lead time and real deployment frequency — through the same pure functions and the same query (`src/application/services/funil-metrics.ts`), so the two never diverge from the same fact. Closes `docs/fluxo.yml` (role `po`, input `metricas-de-produto`, previously `status: lacuna`) (RN-407).",
@@ -14977,6 +15041,52 @@
           "title",
           "status",
           "pullRequestUrl"
+        ]
+      },
+      "AgentAnswerOpenQuestionDto": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "description": "The chat session where the user answered."
+          },
+          "agentId": {
+            "type": "string",
+            "example": "criativo",
+            "description": "The agent closing it."
+          },
+          "resposta": {
+            "type": "string",
+            "description": "Answer text; omitted = the suggestion."
+          },
+          "messageEventId": {
+            "type": "string",
+            "description": "The chat message event that answered."
+          }
+        },
+        "required": [
+          "sessionId",
+          "agentId"
+        ]
+      },
+      "AgentAnswerOpenQuestionResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "answered",
+              "already_answered"
+            ]
+          },
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "status",
+          "questionId"
         ]
       },
       "AgentAutonomyRuleResponseDto": {
