@@ -18465,6 +18465,15 @@
           "description": {
             "type": "string",
             "example": "Accepts SKU and quantity; validates stock."
+          },
+          "agentRole": {
+            "type": "string",
+            "enum": [
+              "po",
+              "dev_lead"
+            ],
+            "default": "po",
+            "description": "Agent creating the task; becomes the actor of the event."
           }
         },
         "required": [

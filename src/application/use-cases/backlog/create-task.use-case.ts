@@ -11,6 +11,8 @@ export interface CreateTaskInput {
   storyId: string;
   title: string;
   description?: string;
+  /** Quem cria (po | dev_lead); o padrão é po. */
+  actorId?: string;
 }
 
 /**
@@ -54,7 +56,7 @@ export class CreateTaskUseCase {
 
       await this.appendEvent.execute(projectId, sessionId, {
         type: 'backlog.task_created',
-        actor: { kind: 'agent', id: 'po' },
+        actor: { kind: 'agent', id: input.actorId ?? 'po' },
         payload: { taskId: task.id, storyId: task.storyId, title: task.title },
       });
 

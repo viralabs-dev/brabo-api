@@ -664,6 +664,7 @@ export class InternalSessionsController {
       storyId: dto.storyId,
       title: dto.title,
       description: dto.description,
+      actorId: dto.agentRole,
     });
   }
 

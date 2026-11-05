@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `backlog.task_created` records the real actor (AT-742): `POST /internal/sessions/:sessionId/tasks` accepts optional `agentRole` (`po` | `dev_lead`, 400 otherwise; default `po`), so the Dev Lead's foundation task (RN-1006) is no longer logged as created by the PO.
 - The Dev Lead's plan leaves no module without an owner (AT-742, RN-1004/RN-1005, ADR 0259): `lerPlanoDeExecucao` refuses the plan (400 `plano_de_execucao_invalido`, naming the pair) when a module with no task is in the `dependsOn` of a module with one, and `claimNext` does not hand out a module's task while a task of a module in its direct `dependsOn` is open.
 - Provider Anthropic direto usa prompt caching (AT-744, RN-1008): `system` em dois blocos (ponto no prefixo, cauda sem ponto), ponto na última `user`, `usage` somando `input + leitura + escrita` com `cachedInputTokens = leitura`, custo pelas 4 parcelas × tabela do fabricante, `promptCaching: true`. Smoke manual `anthropic-provider.cache.smoke.spec.ts`.
 - Folga de raciocínio do Haiku 5.5 na Anthropic (AT-743, RN-1007): a migration `0083` grava `reasoning_budget = 12288` no `claude-haiku-5-5` (teto 16384), para o gate que raciocina não ser cortado; smoke manual `anthropic-provider.folga.smoke.spec.ts`.
