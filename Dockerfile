@@ -45,10 +45,16 @@ COPY . .
 
 RUN pnpm build
 
-# Árvore de produção isolada: só as dependências de runtime, instaladas do mesmo
-# lockfile. Sem workspace não há `pnpm deploy`; `--prod` basta.
-RUN pnpm install --frozen-lockfile --prod --ignore-scripts \
-  && mkdir /prod && cp -a node_modules /prod/node_modules
+# ---------------------------------------------------------------------------
+# Estágio 2b: árvore de produção. Instalação NOVA, só com os manifests, do mesmo
+# lockfile. Não reaproveita o node_modules do build: `pnpm install --prod` por
+# cima dele deixava as devDependencies em `.pnpm` (esbuild, @angular-devkit...) e
+# o Trivy as acusava na imagem final.
+# ---------------------------------------------------------------------------
+FROM deps AS prod-deps
+
+RUN rm -rf node_modules \
+  && pnpm install --frozen-lockfile --prod --ignore-scripts
 
 # ---------------------------------------------------------------------------
 # Estágio 3: runtime. Só o compilado, as deps de produção e as migrations.
@@ -134,7 +140,7 @@ COPY --chown=root:root --chmod=0644 THIRD_PARTY_NOTICES.md \
      /usr/share/doc/brabo/THIRD_PARTY_NOTICES.md
 
 # `node` (uid 1000) já vem na imagem oficial — não criamos usuário novo.
-COPY --from=build --chown=node:node /prod/node_modules ./node_modules
+COPY --from=prod-deps --chown=node:node /repo/node_modules ./node_modules
 COPY --from=build --chown=node:node /repo/dist ./
 COPY --from=build --chown=node:node /repo/package.json ./package.json
 # Os .sql não passam pelo tsc: são copiados pra o migrator achá-los.

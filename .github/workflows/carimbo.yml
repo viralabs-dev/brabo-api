@@ -1,0 +1,22 @@
+name: carimbo
+
+# Carimba a tag do estágio a cada push em dev/main (tag-release do brabo-ci, AT-704).
+# O reutilizável gera o token do App dentro do próprio job (APP_ID/APP_PRIVATE_KEY), então
+# o push da tag dispara o `release.yml` (gatilho `push: tags`) sozinho. Sem tag anterior,
+# a 1ª versão é v1.0.0 qualquer que seja a função da branch.
+on:
+  push:
+    branches: [dev, main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  carimbar:
+    uses: viralabs-dev/brabo-ci/.github/workflows/tag-release.yml@242598dff5b306bfc7c2f71f28317826538f887a  # brabo-ci#2
+    with:
+      ci_ref: 242598dff5b306bfc7c2f71f28317826538f887a
+    secrets:
+      APP_ID: ${{ secrets.BRABO_APP_ID }}
+      APP_PRIVATE_KEY: ${{ secrets.BRABO_APP_PRIVATE_KEY }}
