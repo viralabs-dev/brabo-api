@@ -12611,156 +12611,156 @@ Revises [RN-583](#rn-583) (`sort` stops being the only `provider` field that goe
 - **Test:** `apps/engine/test/engine/actions/diretorios_de_dependencia_test.exs` (list crossed with the api, a real add that stages only `src/a.js`, SecOps names the `.db`), `test/application/use-cases/git/bootstrap-plan.spec.ts` (the six patterns in the `.gitignore`), `apps/engine/test/engine/harness/ambiente_do_agente_test.exs`, `apps/engine/test/engine/harness/tools/write_file_test.exs`, `apps/engine/test/engine/dev/report_done_instrucao_test.exs`.
 - **Origin:** AT-623 (EP-031), deliverable `entregavel3` (commits 956fa5c, 8e593b0).
 
-### RN-949 — Chamada de ferramenta escrita como texto não vira resposta no fio {#rn-949}
+### RN-949 — A tool call written as text does not become a reply in the thread {#rn-949}
 
-- **Regra:** quando a chamada ao LLM leva `tools`, vem sem `toolCalls` e o
-  texto traz a chamada escrita como marcação (`<function_calls>`, `<invoke
-  name="X">` com X ferramenta do passo, `<tool_call>{json}` com `name` de
-  ferramenta; com ou sem prefixo `antml:`), a api repete a MESMA chamada UMA
-  vez (flag própria, independente das RN-916/917; as duas chamadas entram no
-  metering). Se repetir, o desfecho é falha NOMEADA: `final` com
-  `content: ''`, `error` nomeando o formato e o modelo e `errorCode:
-  'tool_call_as_text'` (erro do MODELO, RN-059/163), nunca resposta. No stream,
-  a api para de repassar deltas a partir do primeiro marcador e retém a cauda
-  que pode ser início dele: o texto cru não sai da api. Bloco cercado, código
-  inline, prosa, nome que não é ferramenta e chamada sem `tools` não contam; o
-  JSON solto segue com o `ToolCallRecovery` (ADR 0020). Decisão do dono: NÃO
-  se parseia nem se executa o XML (RN-040: resgate não é licença). Limite
-  declarado: o prefixo legítimo da 1ª tentativa fica na bolha em curso até o
-  turno fechar.
-- **Onde:** `src/domain/llm/chamada-em-texto.ts:10`
+- **Rule:** when the LLM call carries `tools`, comes without `toolCalls` and the
+  text carries the call written as markup (`<function_calls>`, `<invoke
+  name="X">` with X a tool of the step, `<tool_call>{json}` with the `name` of a
+  tool; with or without the `antml:` prefix), the api repeats the SAME call ONCE
+  (its own flag, independent of RN-916/917; both calls enter the metering). If it
+  repeats, the outcome is a NAMED failure: `final` with
+  `content: ''`, `error` naming the format and the model and `errorCode:
+  'tool_call_as_text'` (a MODEL error, RN-059/163), never a reply. In the stream,
+  the api stops forwarding deltas from the first marker and holds back the tail
+  that may be the beginning of one: the raw text does not leave the api. A fenced
+  block, inline code, prose, a name that is not a tool and a call without `tools`
+  do not count; loose JSON stays with `ToolCallRecovery` (ADR 0020). Owner's
+  decision: the XML is NOT parsed nor executed (RN-040: rescue is not a license).
+  Declared limit: the legitimate prefix of the 1st attempt stays in the bubble in
+  progress until the turn closes.
+- **Where:** `src/domain/llm/chamada-em-texto.ts:10`
   (`marcacaoDeChamadaEmTexto`),
   `src/application/use-cases/llm/run-llm-turn.use-case.ts:347`
   (`semChamadaEmTexto`),
   `src/application/use-cases/llm/stream-llm-turn.use-case.ts:386`
   (`semChamadaEmTexto`)
-- **Teste:** `test/domain/llm/chamada-em-texto.spec.ts`,
-  `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` e
-  `stream-llm-turn.use-case.spec.ts` (`chamada escrita como texto`: duas vezes
-  falha nomeada com 2 linhas de uso; segunda limpa responde)
-- **Origem:** AT-633 (sessão `2b5161d0`, seq 4: `<invoke name="emit_artifact">`
-  apareceu como resposta no fio)
+- **Test:** `test/domain/llm/chamada-em-texto.spec.ts`,
+  `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` and
+  `stream-llm-turn.use-case.spec.ts` (`chamada escrita como texto`: twice
+  a named failure with 2 usage rows; a clean second one answers)
+- **Origin:** AT-633 (session `2b5161d0`, seq 4: `<invoke name="emit_artifact">`
+  appeared as a reply in the thread)
 
-### RN-950 — O 9Router recebe as ferramentas, o vínculo confere a capability do provider e ferramenta sem capability lança {#rn-950}
+### RN-950 — 9Router receives the tools, the binding checks the provider's capability and a tool without capability throws {#rn-950}
 
-- **Regra:** revisa a [RN-909](#rn-909) e completa a [RN-040](#rn-040) com a SEGUNDA camada do ADR 0041. (1) `nineRouterConfig` declara `toolCalling: true`, provado por smoke com chave real em 31/10: 3/3 chamadas em `cc/claude-haiku-5-5` voltaram com `tool_calls` estruturado, 10/10 consistente a temperatura 0 e laço de 3 voltas íntegro. Antes, a capability `false` fazia o `buildBody` descartar `tools` em silêncio e o Criativo escrevia a chamada como XML no fio (AT-637). (2) `assertModelFitsBindingScope` confere também o PROVIDER nos escopos `agent` e `area`: vínculo cujo provider declara `toolCalling: false` é recusado com 422 (`ModelNotFitForAgentScopeError`, causa `provider`), com frase própria. `workspace`, `project` e `session` seguem livres. (3) `buildBody` com ferramentas pedidas e capability `false` LANÇA erro nomeado em vez de descartar. Providers afetados: só o `opencode-zen` tem `toolCalling: false` além do 9Router de antes; vínculos novos de agente/área a ele passam a ser 422 e o chat sem ferramenta segue igual. Vínculo antigo a ele continua gravado e o turno do agente falha nomeado.
-- **Onde:** `src/infrastructure/llm/nine-router-provider.ts:171` (`nineRouterConfig`), `src/domain/llm/model-capabilities.ts:95` (`assertModelFitsBindingScope`), `src/application/use-cases/llm/set-model-binding.use-case.ts:56` (`toolCalling`), `src/infrastructure/llm/openai-compatible-provider.ts:633` (`buildBody`)
-- **Teste:** `test/domain/llm/model-capabilities.spec.ts` (recusa por provider em `agent`/`area`; escopos livres), `test/infrastructure/llm/nine-router-provider.contract.spec.ts` (capability `true`), `test/contract/llm-provider.contract.ts` (provider sem capability lança nomeado); smoke manual em `nine-router-provider.smoke.spec.ts`.
-- **Origem:** AT-637 (EP-026), TP-01 de 31/10 e medição da AT-631.
+- **Rule:** revises [RN-909](#rn-909) and completes [RN-040](#rn-040) with the SECOND layer of ADR 0041. (1) `nineRouterConfig` declares `toolCalling: true`, proven by a smoke with a real key on 31/10: 3/3 calls on `cc/claude-haiku-5-5` came back with structured `tool_calls`, 10/10 consistent at temperature 0 and a 3-round loop intact. Before, the `false` capability made `buildBody` silently drop `tools` and the Creative wrote the call as XML in the thread (AT-637). (2) `assertModelFitsBindingScope` also checks the PROVIDER in the `agent` and `area` scopes: a binding whose provider declares `toolCalling: false` is refused with 422 (`ModelNotFitForAgentScopeError`, cause `provider`), with its own sentence. `workspace`, `project` and `session` stay free. (3) `buildBody` with tools requested and capability `false` THROWS a named error instead of dropping. Providers affected: only `opencode-zen` has `toolCalling: false` besides the earlier 9Router; new agent/area bindings to it become 422 and chat without tools stays the same. An old binding to it stays recorded and the agent's turn fails named.
+- **Where:** `src/infrastructure/llm/nine-router-provider.ts:171` (`nineRouterConfig`), `src/domain/llm/model-capabilities.ts:95` (`assertModelFitsBindingScope`), `src/application/use-cases/llm/set-model-binding.use-case.ts:56` (`toolCalling`), `src/infrastructure/llm/openai-compatible-provider.ts:633` (`buildBody`)
+- **Test:** `test/domain/llm/model-capabilities.spec.ts` (refusal by provider in `agent`/`area`; free scopes), `test/infrastructure/llm/nine-router-provider.contract.spec.ts` (capability `true`), `test/contract/llm-provider.contract.ts` (a provider without the capability throws named); manual smoke in `nine-router-provider.smoke.spec.ts`.
+- **Origin:** AT-637 (EP-026), TP-01 of 31/10 and the measurement of AT-631.
 
-### RN-952 — O relatório do owner recorta por projeto e por sessão, e o membro vê o total do projeto sem credencial {#rn-952}
+### RN-952 — The owner's report cuts by project and by session, and the member sees the project's total without a credential {#rn-952}
 
-Revisa a [RN-101](#rn-101) (o membro deixa de ver SÓ o próprio consumo) e convive com a [RN-060](#rn-060), a [RN-186](#rn-186) e a [RN-187](#rn-187).
+Revises [RN-101](#rn-101) (the member stops seeing ONLY their own consumption) and coexists with [RN-060](#rn-060), [RN-186](#rn-186) and [RN-187](#rn-187).
 
-1. **Recorte.** `GET workspaces/:workspaceId/spend-report?projectId=` (`owner`) limita o relatório a UM projeto e devolve também `porSessao`. Projeto de outro workspace é 404, igual a inexistente: o filtro nunca vira leitura entre workspaces.
-2. **Membro.** `GET projects/:projectId/spend/team` (`viewer`) devolve o total do projeto e o custo por agente (`porAgente`) e por área do catálogo (`porArea`, `sem-area` quando não há). Nunca provider nem credencial: a rota não tem parâmetro de dimensão e o caso de uso só pede `actor` (ADR [0233](../adr/0233-membro-ve-o-gasto-do-projeto-sem-credencial.md), que revisa o [0063](../adr/0063-duas-audiencias-para-o-mesmo-gasto.md)).
+1. **Cut.** `GET workspaces/:workspaceId/spend-report?projectId=` (`owner`) limits the report to ONE project and also returns `porSessao`. A project of another workspace is 404, the same as a nonexistent one: the filter never becomes a read across workspaces.
+2. **Member.** `GET projects/:projectId/spend/team` (`viewer`) returns the project's total and the cost per agent (`porAgente`) and per catalog area (`porArea`, `sem-area` when there is none). Never provider nor credential: the route has no dimension parameter and the use case only asks for `actor` (ADR [0233](../adr/0233-membro-ve-o-gasto-do-projeto-sem-credencial.md), which revises [0063](../adr/0063-duas-audiencias-para-o-mesmo-gasto.md)).
 
-- **Código:** `src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:98` (`NotFoundException`); `src/application/use-cases/llm/get-project-spend-team.use-case.ts:29` (`GetProjectSpendTeamUseCase`); `src/interfaces/http/llm/spend.controller.ts:147` (`getProjectSpendTeam`)
-- **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (recorte por projeto com sessão, 404 entre workspaces, membro sem provider); `test/interfaces/spend.controller.spec.ts` (papéis das rotas)
-- **Origem:** AT-632
+- **Code:** `src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:98` (`NotFoundException`); `src/application/use-cases/llm/get-project-spend-team.use-case.ts:29` (`GetProjectSpendTeamUseCase`); `src/interfaces/http/llm/spend.controller.ts:147` (`getProjectSpendTeam`)
+- **Test:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (cut by project with session, 404 across workspaces, member without provider); `test/interfaces/spend.controller.spec.ts` (roles of the routes)
+- **Origin:** AT-632
 
-### RN-953 — O não-owner vê o PRÓPRIO consumo no workspace, somado por projeto {#rn-953}
+### RN-953 — The non-owner sees their OWN consumption in the workspace, summed by project {#rn-953}
 
-Convive com a [RN-101](#rn-101): o ator vem do token, nunca da rota.
+Coexists with [RN-101](#rn-101): the actor comes from the token, never from the route.
 
-`GET workspaces/:workspaceId/spend/me` (`viewer`) devolve só as linhas do chamador, por projeto e por dia. Escopo de ator: a dimensão `provider` não compila (RN-187), e a rota não tem parâmetro de dimensão.
+`GET workspaces/:workspaceId/spend/me` (`viewer`) returns only the caller's rows, by project and by day. Actor scope: the `provider` dimension does not compile (RN-187), and the route has no dimension parameter.
 
-- **Código:** `src/application/use-cases/llm/get-my-workspace-spend.use-case.ts:32` (`GetMyWorkspaceSpendUseCase`); `src/interfaces/http/llm/spend.controller.ts:120` (`getMyWorkspaceSpend`)
-- **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (soma por projeto, nunca a linha de outro ator)
-- **Origem:** AT-632
+- **Code:** `src/application/use-cases/llm/get-my-workspace-spend.use-case.ts:32` (`GetMyWorkspaceSpendUseCase`); `src/interfaces/http/llm/spend.controller.ts:120` (`getMyWorkspaceSpend`)
+- **Test:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (sum by project, never another actor's row)
+- **Origin:** AT-632
 
-### RN-954 — A cobrança do modelo é uma marca CURADA, e a assinatura é separada do US$ pago {#rn-954}
+### RN-954 — The model's billing is a CURATED mark, and the subscription is separate from the paid US$ {#rn-954}
 
-Convive com a [RN-665](#rn-665) (custo real do OpenRouter) e o preço congelado do ADR 0042.
+Coexists with [RN-665](#rn-665) (OpenRouter's real cost) and the frozen price of ADR 0042.
 
-1. **Marca.** `models.billing` é `api` (padrão), `subscription` ou `free`, gravada pela curadoria em `PATCH workspaces/:workspaceId/models/:modelId/billing` (`owner`, o nível de `…/pricing`). O sync nunca a toca e a linha de `token_usage` não muda.
-2. **Relatório.** Todo bucket e o total ganham `assinaturaMicros` = soma do custo dos modelos `subscription`, contida em `costMicros`; o pago em US$ é `costMicros − assinaturaMicros`.
+1. **Mark.** `models.billing` is `api` (default), `subscription` or `free`, recorded by curation in `PATCH workspaces/:workspaceId/models/:modelId/billing` (`owner`, the level of `…/pricing`). The sync never touches it and the `token_usage` row does not change.
+2. **Report.** Every bucket and the total gain `assinaturaMicros` = the sum of the cost of `subscription` models, contained in `costMicros`; what is paid in US$ is `costMicros − assinaturaMicros`.
 
-- **Código:** `src/db/schema/llm.ts:175` (`modelBillingEnum`); `src/infrastructure/persistence/drizzle/token-usage.repository.ts:394` (`assinaturaMicros`); `src/interfaces/http/llm/models.controller.ts:302` (`updateBilling`)
-- **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (assinatura separada do pago)
-- **Origem:** AT-632
+- **Code:** `src/db/schema/llm.ts:175` (`modelBillingEnum`); `src/infrastructure/persistence/drizzle/token-usage.repository.ts:394` (`assinaturaMicros`); `src/interfaces/http/llm/models.controller.ts:302` (`updateBilling`)
+- **Test:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (subscription separate from paid)
+- **Origin:** AT-632
 
-### RN-958 — O usage do 9Router é corrigido no provider: −2 000 só na 0.5.112, e o cache do topo conta {#rn-958}
+### RN-958 — 9Router's usage is corrected in the provider: −2,000 only on 0.5.112, and the top-level cache counts {#rn-958}
 
-Completa a [RN-666](#rn-666) (item 4) para o 9Router. A 0.5.112 SOMA 2 000 a `prompt_tokens` no frame final, inclusive sobre o usage que ele mesmo estima; gravar como veio inflava o `input_tokens` e, pela [RN-665](#rn-665), o custo.
+Completes [RN-666](#rn-666) (item 4) for 9Router. 0.5.112 ADDS 2,000 to `prompt_tokens` in the final frame, including over the usage it estimates itself; recording it as it came inflated `input_tokens` and, through [RN-665](#rn-665), the cost.
 
-1. **Só na versão conhecida.** O provider lê `currentVersion` de `GET <origem>/api/version` (público, teto de 2 s, cache de 5 min no sucesso e 1 min na falha) antes do stream. Só a versão da tabela (`0.5.112`) tem `prompt_tokens` reduzido em 2 000, com piso em 0; subtrair numa versão que consertou o bug gravaria MENOS do que foi cobrado.
-2. **Versão outra ou ilegível** (404, lento, corpo inválido): grava como veio e loga UM aviso por versão. O turno nunca falha por causa da leitura.
-3. **Cache.** `cached_tokens` do TOPO do usage vira `prompt_tokens_details.cached_tokens` (e então `cachedInputTokens`) quando este não veio; ausente continua "não disse" ([RN-666](#rn-666) item 2).
-4. **Declarado, não remendado.** Em `cc/*` o 9Router descarta `cache_read_input_tokens` ao filtrar o usage no stream, então o cache desse upstream NÃO chega ao Brabo; `cache_creation` não tem coluna; o caminho sem stream não existe na base.
-5. **Hook opcional** `normalizarUsage` em `OpenAICompatibleConfig`: só o 9Router o configura; os demais providers leem o usage como sempre.
+1. **Only on the known version.** The provider reads `currentVersion` from `GET <origin>/api/version` (public, ceiling of 2 s, 5 min cache on success and 1 min on failure) before the stream. Only the table's version (`0.5.112`) has `prompt_tokens` reduced by 2,000, with a floor at 0; subtracting on a version that fixed the bug would record LESS than what was charged.
+2. **Another or unreadable version** (404, slow, invalid body): records as it came and logs ONE warning per version. The turn never fails because of the read.
+3. **Cache.** `cached_tokens` at the TOP of the usage becomes `prompt_tokens_details.cached_tokens` (and then `cachedInputTokens`) when the latter did not come; absent remains "did not say" ([RN-666](#rn-666) item 2).
+4. **Declared, not patched.** On `cc/*` 9Router discards `cache_read_input_tokens` when filtering the usage in the stream, so that upstream's cache does NOT reach Brabo; `cache_creation` has no column; the non-stream path does not exist in the base.
+5. **Optional hook** `normalizarUsage` in `OpenAICompatibleConfig`: only 9Router configures it; the other providers read the usage as always.
 
-- **Código:** `src/infrastructure/llm/nine-router-provider.ts:118` (`normalizarUsage9Router`); `:99` (`versaoDo9Router`); `src/infrastructure/llm/openai-compatible-provider.ts:188` (`normalizarUsage`)
-- **Teste:** `test/infrastructure/llm/nine-router-provider.contract.spec.ts` (versão 0.5.112, outra, 404, lenta, corpo inválido, piso, cache do topo, outros providers sem o hook)
-- **Origem:** AT-638
+- **Code:** `src/infrastructure/llm/nine-router-provider.ts:118` (`normalizarUsage9Router`); `:99` (`versaoDo9Router`); `src/infrastructure/llm/openai-compatible-provider.ts:188` (`normalizarUsage`)
+- **Test:** `test/infrastructure/llm/nine-router-provider.contract.spec.ts` (version 0.5.112, another, 404, slow, invalid body, floor, top-level cache, other providers without the hook)
+- **Origin:** AT-638
 
-### RN-959 — O 503 do 9Router que embrulha um 4xx do upstream é classificado pelo status de dentro {#rn-959}
+### RN-959 — 9Router's 503 that wraps an upstream 4xx is classified by the status inside {#rn-959}
 
-- **Regra:** completa a [RN-864](engine.md#rn-864) e a RN-909. Quando todas as contas do 9Router estão em cooldown por um 4xx do upstream, ele responde 503 com `[<status>]: <msg> (reset after Ns)`. O provider lê o status de dentro: 404 vira `model_not_found`, 401/403 `auth`, 402 `insufficient_credit` (RN-730), 429 `rate_limit`. 5xx de dentro, ausente ou corpo sem `reset after` seguem `upstream` passageiro. A forma do corpo vem da leitura do bundle do 9Router 0.5.112; o smoke com chave a confirma.
-- **Onde:** `src/infrastructure/llm/nine-router-provider.ts:153` (`classificarErro9Router`), aplicado por `src/infrastructure/llm/openai-compatible-provider.ts:305` (`classificarErroHttp`).
-- **Teste:** `test/infrastructure/llm/nine-router-provider.contract.spec.ts` (503 com cada status interno e os três casos que seguem `upstream`); `apps/engine/test/engine/agents/falha_de_turno_test.exs` (`model_not_found` não é passageira).
-- **Origem:** AT-639 (EP-026).
+- **Rule:** completes [RN-864](engine.md#rn-864) and RN-909. When all of 9Router's accounts are in cooldown because of an upstream 4xx, it answers 503 with `[<status>]: <msg> (reset after Ns)`. The provider reads the status inside: 404 becomes `model_not_found`, 401/403 `auth`, 402 `insufficient_credit` (RN-730), 429 `rate_limit`. A 5xx inside, absent or a body without `reset after` stay a transient `upstream`. The body's shape comes from reading the 9Router 0.5.112 bundle; the smoke with a key confirms it.
+- **Where:** `src/infrastructure/llm/nine-router-provider.ts:153` (`classificarErro9Router`), applied by `src/infrastructure/llm/openai-compatible-provider.ts:305` (`classificarErroHttp`).
+- **Test:** `test/infrastructure/llm/nine-router-provider.contract.spec.ts` (503 with each inner status and the three cases that stay `upstream`); `apps/engine/test/engine/agents/falha_de_turno_test.exs` (`model_not_found` is not transient).
+- **Origin:** AT-639 (EP-026).
 
-### RN-960 — O `GraphStore` reconecta depois de boot sem Neo4j, e o aviso diz a causa {#rn-960}
+### RN-960 — The `GraphStore` reconnects after a boot without Neo4j, and the warning states the cause {#rn-960}
 
-- **Regra:** refina o ADR 0099. Boot em que o Neo4j ainda não respondia deixava o driver `null` para a vida do processo. Agora, com config presente, a operação seguinte tenta conectar de novo, no máximo uma vez a cada 30 s; sem config nunca tenta, e `onModuleInit` segue sem lançar. O aviso do `GraphProjector` inclui a causa do erro do driver.
-- **Onde:** `src/infrastructure/graph/graph-store.ts:105` (`reconectarSeNecessario`), `src/application/graph-projection/graph-projector.ts:106` (`drainOnce`).
-- **Teste:** `test/infrastructure/graph/graph-store.spec.ts` ("RN-960"), `test/application/graph-projection/graph-projector.spec.ts` ("RN-960").
-- **Origem:** AT-642 (EP-030).
+- **Rule:** refines ADR 0099. A boot in which Neo4j did not yet answer left the driver `null` for the life of the process. Now, with a config present, the next operation tries to connect again, at most once every 30 s; without a config it never tries, and `onModuleInit` still does not throw. The `GraphProjector` warning includes the cause of the driver's error.
+- **Where:** `src/infrastructure/graph/graph-store.ts:105` (`reconectarSeNecessario`), `src/application/graph-projection/graph-projector.ts:106` (`drainOnce`).
+- **Test:** `test/infrastructure/graph/graph-store.spec.ts` ("RN-960"), `test/application/graph-projection/graph-projector.spec.ts` ("RN-960").
+- **Origin:** AT-642 (EP-030).
 
-### RN-961 — O aviso de recorte diz que as ferramentas fora dele podem ser pedidas neste passo {#rn-961}
+### RN-961 — The cut warning says that the tools outside it can be requested in this step {#rn-961}
 
-- **Regra:** revisa a [RN-759](#rn-759) (decisão do dono de 31/10, AT-643). O aviso `system` efêmero do passo recortado não diz mais que as ferramentas fora do recorte "voltam nas próximas voltas" nem que ela "volta no seguinte": o recorte é do PASSO, e a RN-759 mandava o agente esperar por um passo que, para o modelo, pode não vir. O texto novo diz a verdade do ADR 0179: as demais seguem disponíveis e podem ser pedidas neste mesmo passo, e o agente não deve concluir que não tem a ferramenta nem encerrar o turno esperando por ela; se precisar de uma delas e responder sem ferramenta, o passo é refeito com o catálogo completo (a repetição da regra 10 do ADR 0179, pelo mecanismo que a fachada já tem). Não muda o piso, a política do Jev nem a montagem do menu: só o texto do aviso.
-- **Onde:** `src/domain/llm/tool-router.ts:416` (`avisoDeRecorte`).
-- **Teste:** `test/domain/llm/aviso-de-recorte.spec.ts` (fixa o texto novo e reprova o antigo, "voltam nas próximas voltas" e "volta no seguinte").
-- **Origem:** AT-643 (EP-030): o `write_file` e o `terminal` saíam do menu do dev no Jev, e o aviso mandava esperar por uma volta que o modelo não tinha como pedir.
+- **Rule:** revises [RN-759](#rn-759) (owner's decision of 31/10, AT-643). The ephemeral `system` warning of the cut step no longer says that the tools outside the cut "come back in the next rounds" nor that it "comes back in the next one": the cut belongs to the STEP, and RN-759 told the agent to wait for a step that, for the model, may not come. The new text states the truth of ADR 0179: the others remain available and can be requested in this very step, and the agent must not conclude that it does not have the tool nor end the turn waiting for it; if it needs one of them and answers without a tool, the step is redone with the full catalog (the repetition of rule 10 of ADR 0179, through the mechanism the facade already has). It does not change the floor, Jev's policy nor the menu assembly: only the warning's text.
+- **Where:** `src/domain/llm/tool-router.ts:416` (`avisoDeRecorte`).
+- **Test:** `test/domain/llm/aviso-de-recorte.spec.ts` (fixes the new text and fails the old one, "voltam nas próximas voltas" and "volta no seguinte").
+- **Origin:** AT-643 (EP-030): `write_file` and `terminal` left the dev's menu in Jev, and the warning said to wait for a round the model had no way to request.
 
-### RN-964 — O preço e a cobrança são curados na tela de Providers, e a edição manual protege o número do sync {#rn-964}
+### RN-964 — Price and billing are curated on the Providers screen, and manual editing protects the number from the sync {#rn-964}
 
-Completa a [RN-044](#rn-044) (o caminho manual passa a marcar `manual_pricing`), a [RN-954](#rn-954) (a marca ganha tela) e a [RN-963](web.md#rn-963) (a mesma frase para a assinatura sem preço).
+Completes [RN-044](#rn-044) (the manual path now marks `manual_pricing`), [RN-954](#rn-954) (the mark gains a screen) and [RN-963](web.md#rn-963) (the same sentence for the subscription without a price).
 
-1. **Edição manual marca.** Mudar o preço com origem `manual` grava `manual_pricing = true` na mesma escrita do preço. Origem `sync` não mexe na marca.
-2. **O sync respeita a marca.** Linha `manual_pricing` mantém o preço gravado mesmo quando o catálogo remoto traz outro; só o catálogo sem preço e a linha não-manual seguem o remoto.
-3. **Preço igual ao vigente segue no-op** (RN-044): não grava marca nova nem linha de auditoria.
-4. **Escopo.** `models` é GLOBAL da instalação: o preço vale para todos os workspaces. A tela diz isso em texto.
+1. **Manual editing marks.** Changing the price with origin `manual` records `manual_pricing = true` in the same write as the price. Origin `sync` does not touch the mark.
+2. **The sync respects the mark.** A `manual_pricing` row keeps the recorded price even when the remote catalog brings another; only the catalog without a price and the non-manual row follow the remote.
+3. **A price equal to the current one remains a no-op** (RN-044): it records neither a new mark nor an audit row.
+4. **Scope.** `models` is GLOBAL to the installation: the price applies to all workspaces. The screen says so in text.
 
-- **Código:** `src/application/use-cases/llm/update-model-pricing.use-case.ts:51` (`manualPricing`); `src/application/use-cases/llm/sync-model-catalog.use-case.ts:286` (`resolverPreco`)
-- **Teste:** `test/application/use-cases/llm/update-model-pricing.use-case.spec.ts` (edição manual marca `manualPricing`; origem sync não marca)
-- **Origem:** AT-634
+- **Code:** `src/application/use-cases/llm/update-model-pricing.use-case.ts:51` (`manualPricing`); `src/application/use-cases/llm/sync-model-catalog.use-case.ts:286` (`resolverPreco`)
+- **Test:** `test/application/use-cases/llm/update-model-pricing.use-case.spec.ts` (manual editing marks `manualPricing`; sync origin does not mark)
+- **Origin:** AT-634
 
-### RN-965 — O catálogo sugere o preço do FABRICANTE do modelo e a faixa de cobrança do 9Router, e quem aplica é o humano {#rn-965}
+### RN-965 — The catalog suggests the price of the model's MANUFACTURER and 9Router's billing tier, and the human applies it {#rn-965}
 
-Completa a [RN-964](#rn-964) (curadoria de preço na tela) e a [RN-954](#rn-954) (marca `billing`), por decisão do dono de 01/11 (AT-640): o preço de um modelo é o que o fabricante dele publica, qualquer que seja o provider que o serve.
+Completes [RN-964](#rn-964) (price curation on the screen) and [RN-954](#rn-954) (`billing` mark), by the owner's decision of 01/11 (AT-640): a model's price is what its manufacturer publishes, whichever provider serves it.
 
-1. **Tabela curada no domínio, sem raspar página.** Cada linha de `PRECOS_DO_FABRICANTE` cobre ids exatos e guarda o preço em micros, o link da fonte (domínio do fabricante, conferido por teste) e a data em que foi conferida. A primeira entrega traz só a Anthropic; fabricante novo entra por PR, com a fonte conferida.
-2. **Casamento por igualdade exata.** No `9router` sai só o primeiro segmento (o alias) antes de casar; nos demais providers o nome fica como está. Variante que não casa fica "sem sugestão", nunca adivinhada. O `openrouter` fica fora de propósito: o preço dele vem do sync e o custo real do `usage.cost` ([RN-665](#rn-665)).
-3. **Faixa pelo alias do 9Router 0.5.112**, calculada na leitura e sem gravar: `cc`/`cx` → `subscription`; alias `ollama` ou id terminado em `:free`, `/free` ou `-free` → `free`; o resto → `api`. Sem credencial do painel.
-4. **Sugestão, não escrita.** A rota de curadoria devolve `sugestao` por modelo; nada é gravado sozinho (ADR 0042). Quem aplica é o `owner`, pela tela da [RN-964](#rn-964).
+1. **A table curated in the domain, without scraping a page.** Each row of `PRECOS_DO_FABRICANTE` covers exact ids and stores the price in micros, the source link (manufacturer's domain, checked by a test) and the date it was checked. The first delivery brings only Anthropic; a new manufacturer enters by PR, with the source checked.
+2. **Matching by exact equality.** In `9router` only the first segment (the alias) is stripped before matching; in the other providers the name stays as is. A variant that does not match stays "no suggestion", never guessed. `openrouter` is out on purpose: its price comes from the sync and the real cost from `usage.cost` ([RN-665](#rn-665)).
+3. **Tier by the 9Router 0.5.112 alias**, computed on read and without recording: `cc`/`cx` → `subscription`; alias `ollama` or id ending in `:free`, `/free` or `-free` → `free`; the rest → `api`. Without the panel credential.
+4. **A suggestion, not a write.** The curation route returns `sugestao` per model; nothing is recorded on its own (ADR 0042). Who applies it is the `owner`, through the screen of [RN-964](#rn-964).
 
-- **Código:** `src/domain/llm/sugestao-do-catalogo.ts:18` (`sugestaoDoModelo`); `src/domain/llm/precos-do-fabricante.ts:96` (`precoDoFabricante`)
-- **Teste:** `test/domain/llm/sugestao-do-catalogo.spec.ts` (alias, grátis, assinatura, openrouter sem sugestão, igualdade exata); `test/domain/llm/precos-do-fabricante.spec.ts` (id repetido, data futura, preço inválido, link fora do domínio)
-- **Origem:** AT-640
+- **Code:** `src/domain/llm/sugestao-do-catalogo.ts:18` (`sugestaoDoModelo`); `src/domain/llm/precos-do-fabricante.ts:96` (`precoDoFabricante`)
+- **Test:** `test/domain/llm/sugestao-do-catalogo.spec.ts` (alias, free, subscription, openrouter without a suggestion, exact equality); `test/domain/llm/precos-do-fabricante.spec.ts` (repeated id, future date, invalid price, link outside the domain)
+- **Origin:** AT-640
 
-### RN-966 — O 9Router 0.5.112 faz três coisas por trás: `off` desliga RTK/Headroom/Caveman/Ponytail e não o Custom Prompt; o OAuth do Claude redige o raciocínio; e camufla as ferramentas {#rn-966}
+### RN-966 — 9Router 0.5.112 does three things behind the scenes: `off` turns off RTK/Headroom/Caveman/Ponytail and not the Custom Prompt; Claude's OAuth redacts the reasoning; and it disguises the tools {#rn-966}
 
-- **Regra:** completa a [RN-909](#rn-909) com o que o build 0.5.112 do 9Router faz por trás do gateway, medido no bundle e declarado sem código novo. (1) O cabeçalho `x-9router-token-saver` com valor `off` (sem caixa) desliga, juntos, o RTK, o Headroom, o Caveman e o Ponytail; o Custom Prompt NÃO passa por ele e segue como o painel o deixou. O provider manda o cabeçalho em toda chamada, e o efeito é confirmado pela medição da AT-631 (`ok` sem ele = 1 262 tokens). (2) Para a conta OAuth do Claude (`cc/*`) o 9Router manda `redact-thinking-2026-02-12` em `Anthropic-Beta`: o pensamento volta redigido e sem `reasoning_tokens`, então a contagem de raciocínio do stream ([RN-915](#rn-915)) e a retentativa sem raciocínio ([RN-916](#rn-916)) ficam cegas nesse caminho, e `reasoning_tokens` grava ausente ("não disse", [RN-666](#rn-666)). (3) Com token `sk-ant-oat` o 9Router renomeia as ferramentas, acrescenta cerca de 20 ferramentas falsas do Claude Code e envia cabeçalhos de Claude Code; não há configuração que desligue isso. O Brabo não corrige nem desliga a camuflagem: o risco é o modelo chamar uma ferramenta falsa e os termos de uso, e por isso o TP-01 voltou ao OpenRouter.
-- **Onde:** `src/infrastructure/llm/nine-router-provider.ts:38` (`NINE_ROUTER_TOKEN_SAVER_HEADER`), `src/infrastructure/llm/nine-router-provider.ts:172` (`nineRouterConfig`)
-- **Teste:** `test/infrastructure/llm/nine-router-provider.contract.spec.ts:140` (cabeçalho `off` fixado no contrato). Os efeitos (2) e (3) vivem no bundle do 9Router, não no repositório: não há teste deles, e o smoke com chave é o único que os exercitaria.
-- **Origem:** AT-641 (EP-026), levantamento de 31/10 sobre o 9Router 0.5.112 (`chunks/8895.js`, `chunks/8499.js`, `chunks/2380.js`, `chunks/2598.js`), derivado da AT-631.
+- **Rule:** completes [RN-909](#rn-909) with what the 0.5.112 build of 9Router does behind the gateway, measured in the bundle and declared without new code. (1) The `x-9router-token-saver` header with value `off` (case-insensitive) turns off, together, RTK, Headroom, Caveman and Ponytail; the Custom Prompt does NOT go through it and stays as the panel left it. The provider sends the header on every call, and the effect is confirmed by the measurement of AT-631 (`ok` without it = 1,262 tokens). (2) For Claude's OAuth account (`cc/*`) 9Router sends `redact-thinking-2026-02-12` in `Anthropic-Beta`: the thinking comes back redacted and without `reasoning_tokens`, so the stream's reasoning count ([RN-915](#rn-915)) and the retry without reasoning ([RN-916](#rn-916)) go blind on that path, and `reasoning_tokens` records absent ("did not say", [RN-666](#rn-666)). (3) With an `sk-ant-oat` token 9Router renames the tools, adds about 20 fake Claude Code tools and sends Claude Code headers; there is no configuration that turns this off. Brabo neither fixes nor turns off the disguise: the risk is the model calling a fake tool and the terms of use, and that is why TP-01 went back to OpenRouter.
+- **Where:** `src/infrastructure/llm/nine-router-provider.ts:38` (`NINE_ROUTER_TOKEN_SAVER_HEADER`), `src/infrastructure/llm/nine-router-provider.ts:172` (`nineRouterConfig`)
+- **Test:** `test/infrastructure/llm/nine-router-provider.contract.spec.ts:140` (header `off` fixed in the contract). Effects (2) and (3) live in 9Router's bundle, not in the repository: there is no test for them, and the smoke with a key is the only one that would exercise them.
+- **Origin:** AT-641 (EP-026), survey of 31/10 on 9Router 0.5.112 (`chunks/8895.js`, `chunks/8499.js`, `chunks/2380.js`, `chunks/2598.js`), derived from AT-631.
 
-### RN-969 — A ocupação da janela do agente na sessão é o `input_tokens` da última chamada dele, fora o Jev {#rn-969}
+### RN-969 — The agent's window occupancy in the session is the `input_tokens` of its last call, excluding Jev {#rn-969}
 
-Completa a [RN-101](#rn-101) (consumo por agente) sem rota nova: `GET projects/:projectId/sessions/:sessionId/token-usage` passa a trazer `lastCall` por agente.
+Completes [RN-101](#rn-101) (consumption per agent) without a new route: `GET projects/:projectId/sessions/:sessionId/token-usage` now brings `lastCall` per agent.
 
-1. **Última chamada.** `lastCall = { inputTokens, modelName, contextWindow }` é a linha mais recente de `token_usage` do agente na sessão; o `input_tokens` dela é o que ela pôs na janela.
-2. **Jev fora.** As linhas com `model_name = MODELO_DO_JEV` são ignoradas (ele grava em nome do agente, ADR 0179); agente só com Jev tem `lastCall: null`.
-3. **Janela do modelo daquela chamada** (LEFT JOIN `models`), não a do binding vigente. `context_window` nulo vira `contextWindow: null`: "não sei", nunca 0%.
-4. **As somas não mudam**, e nenhuma requisição nova nasce (RN-632).
-5. **Onde a tela mostra (decisão do dono, 02/11).** Na topbar da Sessão, ao lado do medidor de orçamento, do agente DESTINATÁRIO do composer: gatilho em porcentagem (`—` com janela nula, nunca 0%) e cartão "N de M tokens na última chamada · modelo". Lê a MESMA `queryKey` `['session-token-usage', …]` de `session-destinatario.ts`, sem poll próprio; sem chamada, sem destinatário ou 403, nada aparece.
+1. **Last call.** `lastCall = { inputTokens, modelName, contextWindow }` is the most recent `token_usage` row of the agent in the session; its `input_tokens` is what it put in the window.
+2. **Jev out.** Rows with `model_name = MODELO_DO_JEV` are ignored (it records on behalf of the agent, ADR 0179); an agent with only Jev has `lastCall: null`.
+3. **The window of that call's model** (LEFT JOIN `models`), not the current binding's. A null `context_window` becomes `contextWindow: null`: "I do not know", never 0%.
+4. **The sums do not change**, and no new request is born (RN-632).
+5. **Where the screen shows it (owner's decision, 02/11).** In the Session topbar, next to the budget meter, for the composer's RECIPIENT agent: a trigger in percentage (`—` with a null window, never 0%) and a card "N of M tokens on the last call · model". It reads the SAME `queryKey` `['session-token-usage', …]` of `session-destinatario.ts`, with no poll of its own; with no call, no recipient or 403, nothing appears.
 
-- **Código:** `src/infrastructure/persistence/drizzle/token-usage.repository.ts:155` (`sumBySessionGroupedByActor`); `apps/web/src/routes/JanelaDoAgente.tsx:12` (`JanelaDoAgente`); `apps/web/src/lib/session-destinatario.ts:223` (o `actorId` é o mesmo id que alimenta as opções do destinatário)
-- **Teste:** `test/infrastructure/persistence/token-usage.repository.spec.ts` (lastCall: última chamada, Jev ignorado, janela nula, ator só com Jev); `apps/web/src/routes/SessionTopbar.test.tsx` (porcentagem, janela nula, sem chamada)
-- **Origem:** AT-654
+- **Code:** `src/infrastructure/persistence/drizzle/token-usage.repository.ts:155` (`sumBySessionGroupedByActor`); `apps/web/src/routes/JanelaDoAgente.tsx:12` (`JanelaDoAgente`); `apps/web/src/lib/session-destinatario.ts:223` (the `actorId` is the same id that feeds the recipient options)
+- **Test:** `test/infrastructure/persistence/token-usage.repository.spec.ts` (lastCall: last call, Jev ignored, null window, actor with only Jev); `apps/web/src/routes/SessionTopbar.test.tsx` (percentage, null window, no call)
+- **Origin:** AT-654
 
 ### RN-983 — O clique numa fonte consultada é gravado em tabela própria e nunca é voto {#rn-983}
 
