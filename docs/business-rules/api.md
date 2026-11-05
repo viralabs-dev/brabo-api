@@ -12470,83 +12470,83 @@ been decided — the owner's decision, taken knowing that a ceiling set on purpo
   (rows with 2, 3 and 7 end at 5/4/2) and `test/application/use-cases/execution/request-parallelization.use-case.spec.ts`
   (the default of 5 decides the dev's parallelism).
 
-### RN-914 — O orçamento de raciocínio é por modelo, só para quem o respeita {#rn-914}
+### RN-914 — The reasoning budget is per model, only for those that respect it {#rn-914}
 
-- **Regra:** revisa a [RN-782](#rn-782) ([ADR 0223](../adr/0223-orcamento-de-raciocinio-por-modelo.md)). Modelo com `models.reasoning_budget` preenchido (curado à mão, nunca pelo sync) e `supportsReasoning` manda `reasoning: { max_tokens: N }` e `max_tokens` = saída visível + N ([RN-741](#rn-741)); só no provider que sabe controlar o raciocínio (hoje o OpenRouter) e nunca no agente com raciocínio desligado ([RN-783](#rn-783)). Hoje só `qwen/qwen3.7-flash` (N = 2048), provado em 22/10: 1024 pedidos, 1024 gastos. Modelo sem orçamento segue a RN-782, corpo byte a byte. `deepseek/deepseek-v4.1-flash` fica sem orçamento: `reasoning.max_tokens`, `effort` e `reasoning_effort` foram ignorados (8192 de raciocínio). `effort` nunca é enviado. O limite contém o raciocínio mas não garante a tool call.
-- **Onde:** `src/domain/llm/raciocinio-do-agente.ts:18` (`opcoesDeRaciocinio`), `src/infrastructure/llm/openai-compatible-provider.ts:640` (`controla`), `src/db/schema/llm.ts:159` (`reasoningBudget`), `src/db/migrations/0074_orcamento_de_raciocinio.sql`
-- **Teste:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts` (`modelo com orçamento de raciocínio (RN-914)`), `test/domain/llm/raciocinio-do-agente.spec.ts`
-- **Origem:** AT-569 (medição paga de 22/10, `~/brabo-gravacoes/raciocinio-smoke-2026-10-22/resultados.jsonl`)
+- **Rule:** revises [RN-782](#rn-782) ([ADR 0223](../adr/0223-orcamento-de-raciocinio-por-modelo.md)). A model with `models.reasoning_budget` filled in (curated by hand, never by the sync) and `supportsReasoning` sends `reasoning: { max_tokens: N }` and `max_tokens` = visible output + N ([RN-741](#rn-741)); only on the provider that knows how to control reasoning (today OpenRouter) and never on the agent with reasoning turned off ([RN-783](#rn-783)). Today only `qwen/qwen3.7-flash` (N = 2048), proven on 22/10: 1024 requested, 1024 spent. A model without a budget follows RN-782, body byte for byte. `deepseek/deepseek-v4.1-flash` stays without a budget: `reasoning.max_tokens`, `effort` and `reasoning_effort` were ignored (8192 of reasoning). `effort` is never sent. The limit contains the reasoning but does not guarantee the tool call.
+- **Where:** `src/domain/llm/raciocinio-do-agente.ts:18` (`opcoesDeRaciocinio`), `src/infrastructure/llm/openai-compatible-provider.ts:640` (`controla`), `src/db/schema/llm.ts:159` (`reasoningBudget`), `src/db/migrations/0074_orcamento_de_raciocinio.sql`
+- **Test:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts` (`modelo com orçamento de raciocínio (RN-914)`), `test/domain/llm/raciocinio-do-agente.spec.ts`
+- **Origin:** AT-569 (paid measurement of 22/10, `~/brabo-gravacoes/raciocinio-smoke-2026-10-22/resultados.jsonl`)
 
-### RN-915 — O raciocínio é contado no stream e abortado no limite; o custo abortado é estimado e depois reconciliado {#rn-915}
+### RN-915 — Reasoning is counted in the stream and aborted at the limit; the aborted cost is estimated and later reconciled {#rn-915}
 
-Complementa a [RN-914](#rn-914) ([ADR 0224](../adr/0224-raciocinio-abortado-no-stream.md)).
+Complements [RN-914](#rn-914) ([ADR 0224](../adr/0224-raciocinio-abortado-no-stream.md)).
 
-1. **Aborto.** Com `reasoning_budget` e raciocínio ligado, o provider soma os
-   caracteres de `delta.reasoning`; passando de `caracteres/4 > N` ele destrói a conexão
-   e emite `truncated` com `motivo: "raciocinio"` (o corte por `max_tokens` não tem
-   motivo). Sem orçamento (ou com raciocínio desligado), nada é contado.
-2. **Estimativa na hora.** A resposta abortada não traz `usage`: saída = caracteres/4,
-   entrada pelo estimador, ao preço do catálogo, `estimated`, `price_implicit` e
-   `custo_a_reconciliar` (só se há id de geração).
-3. **Reconciliação.** Periódica (`CUSTO_RECONCILIACAO_INTERVAL_MS`), idempotente: troca
-   pelo `total_cost` de `GET /generation?id=` só com 200, só linha marcada e das últimas
-   24 h; 404 ou erro deixam a linha como está. A estimativa vai para `catalog_cost_micros`.
-   O `spentMicros` de budget/área não é corrigido.
+1. **Abort.** With `reasoning_budget` and reasoning on, the provider sums the
+   characters of `delta.reasoning`; when `characters/4 > N` it destroys the connection
+   and emits `truncated` with `motivo: "raciocinio"` (the cut by `max_tokens` has no
+   reason). Without a budget (or with reasoning off), nothing is counted.
+2. **Estimate on the spot.** The aborted response carries no `usage`: output = characters/4,
+   input by the estimator, at the catalog price, `estimated`, `price_implicit` and
+   `custo_a_reconciliar` (only if there is a generation id).
+3. **Reconciliation.** Periodic (`CUSTO_RECONCILIACAO_INTERVAL_MS`), idempotent: swaps
+   for the `total_cost` of `GET /generation?id=` only on 200, only a marked row and from the last
+   24 h; a 404 or error leaves the row as it is. The estimate goes to `catalog_cost_micros`.
+   The budget/area `spentMicros` is not corrected.
 
-- **Código:** `src/infrastructure/llm/openai-compatible-provider.ts:391` (`limiteDeRaciocinio`);
+- **Code:** `src/infrastructure/llm/openai-compatible-provider.ts:391` (`limiteDeRaciocinio`);
   `src/application/use-cases/llm/reconciliar-custo-estimado.use-case.ts:57` (`execute`)
-- **Teste:** `test/infrastructure/llm/raciocinio-abortado.spec.ts` (aborta e estima; sem orçamento não conta);
-  `test/application/use-cases/llm/reconciliar-custo-estimado.use-case.spec.ts` (200 troca, 404 mantém);
-  `test/infrastructure/persistence/token-usage.repository.spec.ts` (troca uma única vez)
-- **Origem:** AT-589; ADR [0224](../adr/0224-raciocinio-abortado-no-stream.md)
+- **Test:** `test/infrastructure/llm/raciocinio-abortado.spec.ts` (aborts and estimates; without a budget it does not count);
+  `test/application/use-cases/llm/reconciliar-custo-estimado.use-case.spec.ts` (200 swaps, 404 keeps);
+  `test/infrastructure/persistence/token-usage.repository.spec.ts` (swaps only once)
+- **Origin:** AT-589; ADR [0224](../adr/0224-raciocinio-abortado-no-stream.md)
 
-### RN-916 — Resposta cortada pelo raciocínio é retentada UMA vez com o raciocínio desligado {#rn-916}
+### RN-916 — A response cut by reasoning is retried ONCE with reasoning turned off {#rn-916}
 
-Revisa a [RN-782](#rn-782) e a [RN-783](#rn-783) (o desligado deixa de ser só dos dev agents) e convive com a [RN-915](#rn-915).
+Revises [RN-782](#rn-782) and [RN-783](#rn-783) (the turned-off state stops being only the dev agents') and coexists with [RN-915](#rn-915).
 
-1. **Gatilho.** A resposta veio `truncated`, sem texto e sem tool call, e o raciocínio comeu o orçamento: `reasoningTokens >= (reasoningBudget do modelo ?? 4096) − 256` (folga `FOLGA_DO_ORCAMENTO_DE_RACIOCINIO`, a mesma ordem de grandeza do erro do `usage` e da contagem caracteres/4), ou o stream foi abortado pela RN-915 (sem `usage`, o aborto já é a prova do estouro).
-2. **Uma vez.** A api repete a chamada com `reasoningOff`, nos três caminhos (`run-llm-turn`, `stream-llm-turn`, `send-chat-message`). Se a segunda também trunca, o desfecho é o de hoje (`truncated`); nunca há terceira. Nada foi emitido ao cliente na primeira, então a retentativa é invisível.
-3. **Metering.** As DUAS chamadas gravam linha em `token_usage`; a primeira, ao preço/custo que o provider informou (ou a estimativa abortada da RN-915, com reconciliação).
-4. **Não retenta** sem raciocínio pedido, com o raciocínio já desligado (dev agents, RN-783) ou com provider que não sabe desligá-lo (`aceitaRaciocinioDesligado`, OpenRouter e Anthropic; ver a [RN-1001](#rn-1001), que corrige o decorator que escondia a flag): ali o desfecho segue o de antes.
+1. **Trigger.** The response came `truncated`, without text and without a tool call, and reasoning ate the budget: `reasoningTokens >= (the model's reasoningBudget ?? 4096) − 256` (headroom `FOLGA_DO_ORCAMENTO_DE_RACIOCINIO`, the same order of magnitude as the `usage` error and the characters/4 count), or the stream was aborted by RN-915 (without `usage`, the abort is already the proof of the overrun).
+2. **Once.** The api repeats the call with `reasoningOff`, in the three paths (`run-llm-turn`, `stream-llm-turn`, `send-chat-message`). If the second also truncates, the outcome is today's (`truncated`); there is never a third. Nothing was emitted to the client on the first, so the retry is invisible.
+3. **Metering.** BOTH calls record a row in `token_usage`; the first, at the price/cost the provider reported (or the aborted estimate of RN-915, with reconciliation).
+4. **It does not retry** without reasoning requested, with reasoning already off (dev agents, RN-783) or with a provider that does not know how to turn it off (`aceitaRaciocinioDesligado`, OpenRouter and Anthropic; see [RN-1001](#rn-1001), which fixes the decorator that hid the flag): there the outcome follows the previous one.
 
-- **Código:** `src/domain/llm/raciocinio-do-agente.ts:66` (`devoRetentarSemRaciocinio`);
+- **Code:** `src/domain/llm/raciocinio-do-agente.ts:66` (`devoRetentarSemRaciocinio`);
   `src/application/use-cases/llm/run-llm-turn.use-case.ts:359` (`devoRetentarSemRaciocinio`)
-- **Teste:** `test/domain/llm/raciocinio-do-agente.spec.ts` (folga, aborto e as recusas); `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` (retenta e grava duas linhas; segunda truncada não tem terceira; truncada com texto não retenta); `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` (idem no stream)
-- **Origem:** AT-587
+- **Test:** `test/domain/llm/raciocinio-do-agente.spec.ts` (headroom, abort and the refusals); `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` (retries and records two rows; a second truncated has no third; truncated with text does not retry); `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` (same in the stream)
+- **Origin:** AT-587
 
-### RN-917 — O OpenRouter recebe um teto de preço por chamada, e sem upstream no teto a chamada repete UMA vez sem ele {#rn-917}
+### RN-917 — OpenRouter receives a price ceiling per call, and with no upstream within the ceiling the call is repeated ONCE without it {#rn-917}
 
-Revisa a [RN-583](#rn-583) (o `sort` deixa de ser o único campo de `provider` que vai ao fio) e convive com a [RN-907](#rn-907) (o `session_id`) e a [RN-916](#rn-916) (a mesma volta de retentativa).
+Revises [RN-583](#rn-583) (`sort` stops being the only `provider` field that goes on the wire) and coexists with [RN-907](#rn-907) (the `session_id`) and [RN-916](#rn-916) (the same retry loop).
 
-1. **Teto.** `provider.max_price = { prompt, completion }` = preço de catálogo do modelo (`inputPricePerMillionMicros`/`outputPricePerMillionMicros`) × `FATOR_DO_TETO_DE_PRECO` (1,5, decisão do dono de 27/10), em US$ por milhão. Fixo no código e ligado por padrão no provider que declara `priceCeiling` (só o OpenRouter, provado por smoke); preço 0 em qualquer ponta, ou provider sem a capability, não manda teto. Mudar o fator é ADR novo (0225).
-2. **Mescla.** O objeto `provider` do teto é mesclado com o do `sort` do binding (RN-583): os dois vão juntos no mesmo corpo, nunca um apaga o outro.
-3. **Sem upstream no teto.** O 404 de uma chamada que levava teto é o erro `LLMPriceCeilingError` (`code: price_ceiling`), nunca `LLMModelNotFoundError`. Os três caminhos de turno (`run-llm-turn`, `stream-llm-turn`, `send-chat-message`) repetem a chamada UMA vez sem teto, avisam no log e não falham o turno; nunca há terceira por este motivo.
-4. **Metering.** `token_usage.price_ceiling_factor` congela o fator que FOI AO FIO (`null` = nada enviado, inclusive na repetição sem teto), no molde do `routing_preference`.
+1. **Ceiling.** `provider.max_price = { prompt, completion }` = the model's catalog price (`inputPricePerMillionMicros`/`outputPricePerMillionMicros`) × `FATOR_DO_TETO_DE_PRECO` (1.5, owner's decision of 27/10), in US$ per million. Fixed in the code and on by default in the provider that declares `priceCeiling` (only OpenRouter, proven by a smoke); a price of 0 at either end, or a provider without the capability, sends no ceiling. Changing the factor is a new ADR (0225).
+2. **Merge.** The ceiling's `provider` object is merged with the binding's `sort` one (RN-583): both go together in the same body, one never erases the other.
+3. **No upstream within the ceiling.** The 404 of a call that carried a ceiling is the error `LLMPriceCeilingError` (`code: price_ceiling`), never `LLMModelNotFoundError`. The three turn paths (`run-llm-turn`, `stream-llm-turn`, `send-chat-message`) repeat the call ONCE without a ceiling, warn in the log and do not fail the turn; there is never a third for this reason.
+4. **Metering.** `token_usage.price_ceiling_factor` freezes the factor that WENT ON THE WIRE (`null` = nothing sent, including in the repeat without a ceiling), on the model of `routing_preference`.
 
-- **Código:** `src/domain/llm/routing-preference.ts:108` (`tetoDePreco`); `src/domain/llm/routing-preference.ts:132` (`devoRetentarSemTeto`); `src/infrastructure/llm/openrouter-provider.ts:221` (`campoDeTetoDePrecoOpenRouter`); `src/infrastructure/llm/openai-compatible-provider.ts:604` (`camposDoHub`); `src/application/use-cases/llm/stream-llm-turn.use-case.ts:372` (`devoRetentarSemTeto`); `src/db/schema/llm.ts:414` (`priceCeilingFactor`)
-- **Teste:** `test/domain/llm/routing-preference.spec.ts` (fator, preço 0, só o OpenRouter declara); `test/infrastructure/llm/openrouter-provider.contract.spec.ts` (`sort` e teto mesclados no corpo, sem capability nada vai, 404 com teto é `price_ceiling` e sem teto segue `model_not_found`); `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` (repete uma vez sem teto, fator `[1.5, null]` no metering); `test/infrastructure/llm/openrouter-provider.teto.smoke.spec.ts` (manual, API real)
-- **Origem:** AT-606; ADR [0225](../adr/0225-teto-de-preco-do-upstream-no-openrouter.md)
+- **Code:** `src/domain/llm/routing-preference.ts:108` (`tetoDePreco`); `src/domain/llm/routing-preference.ts:132` (`devoRetentarSemTeto`); `src/infrastructure/llm/openrouter-provider.ts:221` (`campoDeTetoDePrecoOpenRouter`); `src/infrastructure/llm/openai-compatible-provider.ts:604` (`camposDoHub`); `src/application/use-cases/llm/stream-llm-turn.use-case.ts:372` (`devoRetentarSemTeto`); `src/db/schema/llm.ts:414` (`priceCeilingFactor`)
+- **Test:** `test/domain/llm/routing-preference.spec.ts` (factor, price 0, only OpenRouter declares); `test/infrastructure/llm/openrouter-provider.contract.spec.ts` (`sort` and ceiling merged in the body, without the capability nothing goes, a 404 with a ceiling is `price_ceiling` and without a ceiling remains `model_not_found`); `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` (repeats once without a ceiling, factor `[1.5, null]` in the metering); `test/infrastructure/llm/openrouter-provider.teto.smoke.spec.ts` (manual, real API)
+- **Origin:** AT-606; ADR [0225](../adr/0225-teto-de-preco-do-upstream-no-openrouter.md)
 
-### RN-921 — O botão "Retomar" do fio é gesto humano, sem teto, e só vale para o turno interrompido {#rn-921}
+### RN-921 — The thread's "Resume" button is a human gesture, with no ceiling, and only applies to the interrupted turn {#rn-921}
 
-- **Regra:** o `agent.error` com `reason: turno_interrompido_por_reinicio` ganha no fio o cartão `RetomarTurnoInterrompido` (objetivo e passos do último plano, "Parou em", botão). O clique chama `POST /projects/:projectId/sessions/:sessionId/agents/:agent/resume` (`developer`; 200 `{ok:true}`; 404 sessão alheia; 409 `turno_nao_interrompido` quando o último desfecho do agente não é a interrupção ou há turno em curso; 409 `agente_sem_retomada`), que pede ao engine `POST /internal/sessions/:sessionId/agent/resume`: ele grava `agent.turn_resumed` com `automatica: false` e manda `:retomar_turno_interrompido` à MESMA `TurnoAssincrono`. Sem teto: cada clique é uma retomada. O cartão some quando algo segue o erro, e a retomada automática vira uma linha discreta. O "sem desfecho" do diário NÃO aparece na tela (o evento não o traz).
-- **Onde:** `src/interfaces/http/sessions/agent-resume.controller.ts:23` (`AgentResumeController`), `src/application/use-cases/sessions/resume-agent-turn.use-case.ts:29` (`execute`), `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:638` (`resume`), `apps/web/src/routes/RetomarTurnoInterrompido.tsx:23` (`ehTurnoInterrompido`)
-- **Teste:** `test/interfaces/http/sessions/agent-resume.controller.spec.ts` (feliz, duas recusas 409, 404, papel); `apps/web/src/routes/RetomarTurnoInterrompido.test.tsx`; ExUnit do `agent_command_controller`
-- **Origem:** AT-582 (EP-031); [ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
+- **Rule:** the `agent.error` with `reason: turno_interrompido_por_reinicio` gains in the thread the card `RetomarTurnoInterrompido` (goal and steps of the last plan, "Stopped at", button). The click calls `POST /projects/:projectId/sessions/:sessionId/agents/:agent/resume` (`developer`; 200 `{ok:true}`; 404 foreign session; 409 `turno_nao_interrompido` when the agent's last outcome is not the interruption or there is a turn in progress; 409 `agente_sem_retomada`), which asks the engine `POST /internal/sessions/:sessionId/agent/resume`: it records `agent.turn_resumed` with `automatica: false` and sends `:retomar_turno_interrompido` to the SAME `TurnoAssincrono`. No ceiling: each click is a resume. The card disappears when something follows the error, and the automatic resume becomes a discreet line. The diary's "no outcome" does NOT appear on the screen (the event does not carry it).
+- **Where:** `src/interfaces/http/sessions/agent-resume.controller.ts:23` (`AgentResumeController`), `src/application/use-cases/sessions/resume-agent-turn.use-case.ts:29` (`execute`), `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:638` (`resume`), `apps/web/src/routes/RetomarTurnoInterrompido.tsx:23` (`ehTurnoInterrompido`)
+- **Test:** `test/interfaces/http/sessions/agent-resume.controller.spec.ts` (happy, two 409 refusals, 404, role); `apps/web/src/routes/RetomarTurnoInterrompido.test.tsx`; ExUnit of `agent_command_controller`
+- **Origin:** AT-582 (EP-031); [ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
-### RN-926 — A rota de providers com chave devolve só os nomes, e a chave é a do TITULAR {#rn-926}
+### RN-926 — The credentialed-providers route returns only the names, and the key is the HOLDER's {#rn-926}
 
-- **Regra:** `GET workspaces/:workspaceId/llm-providers/credentialed` (`viewer`, o mínimo da leitura de membros, [RN-655](#rn-655)) devolve `{ providers: LLMProviderName[] }` com os providers de LLM em que o TITULAR do workspace (`workspaces.created_by`, a pessoa cuja credencial os agentes gastam, [RN-058](#rn-058)) tem credencial cadastrada. Só nomes, na ordem da lista canônica: nunca segredo, id, data nem `key_id`. `ollama` não tem credencial e nunca aparece; token de git (`github`/`gitlab`) também não. Credencial de outro membro não conta. É a fonte de "tem chave" das telas de providers e do catálogo (AT-607); a tela vem depois.
-- **Onde:** `src/application/use-cases/llm/list-credentialed-providers.use-case.ts:20` (`execute`), `src/interfaces/http/llm/models.controller.ts:80` (`credentialed`)
-- **Teste:** `test/application/use-cases/llm/list-credentialed-providers.use-case.spec.ts:44` (`titular com duas chaves: só os dois nomes`; a chave de outro membro não conta)
-- **Origem:** AT-607 (EP-026).
+- **Rule:** `GET workspaces/:workspaceId/llm-providers/credentialed` (`viewer`, the minimum for reading members, [RN-655](#rn-655)) returns `{ providers: LLMProviderName[] }` with the LLM providers in which the workspace HOLDER (`workspaces.created_by`, the person whose credential the agents spend, [RN-058](#rn-058)) has a registered credential. Only names, in the order of the canonical list: never a secret, id, date or `key_id`. `ollama` has no credential and never appears; a git token (`github`/`gitlab`) neither. Another member's credential does not count. It is the source of "has a key" for the providers screens and the catalog (AT-607); the screen comes later.
+- **Where:** `src/application/use-cases/llm/list-credentialed-providers.use-case.ts:20` (`execute`), `src/interfaces/http/llm/models.controller.ts:80` (`credentialed`)
+- **Test:** `test/application/use-cases/llm/list-credentialed-providers.use-case.spec.ts:44` (`titular com duas chaves: só os dois nomes`; another member's key does not count)
+- **Origin:** AT-607 (EP-026).
 
-### RN-927 — O runner grava a chave de API de LLM do usuário por `POST /runner/llm-credentials`, só com chave de máquina, sem sobrescrever sem confirmação {#rn-927}
+### RN-927 — The runner records the user's LLM API key through `POST /runner/llm-credentials`, only with a machine key, without overwriting without confirmation {#rn-927}
 
-- **Regra:** `POST /runner/llm-credentials` (`@RequirePatAuth()`, `PatAuthGuard`) recebe `{ provider, apiKey, origem, substituir? }` e delega ao mesmo `UpsertUserCredentialUseCase` (envelope com `key_id`, ADR 0158) para o usuário dono da credencial. Rota sem `:projectId`: o guard recusa com 403 credencial amarrada a projeto, e todo PAT é de projeto, então só a chave de dispositivo de MÁQUINA entra (a primeira rota em que ela escreve segredo de usuário). Provider fora de `LLM_PROVIDER_NAMES_COM_CREDENCIAL` é 400; credencial existente do provider sem `substituir: true` é 409 `credencial_existente`, sem tocar a existente. A resposta é `{ provider, substituida }`. O valor nunca vai a log (a auditoria leva provider e `origem`), URL, evento, exceção nem resposta, e a rota não testa a conexão (ADR 0050). Só chave de API é importável; token de login por assinatura não (ADR 0230).
-- **Onde:** `src/application/use-cases/llm/import-runner-llm-credential.use-case.ts:22` (`execute`), `src/interfaces/http/runner/runner-llm-credentials.controller.ts:33` (`RunnerLlmCredentialsController`)
-- **Teste:** `test/application/use-cases/llm/import-runner-llm-credential.use-case.spec.ts` (grava cifrado com `key_id` sem o valor em log/resposta; 409 sem substituir; substituir; provider inválido); 401/403 do guard em `test/interfaces/pat-auth.guard.spec.ts`; `route-surface.spec.ts`
-- **Origem:** AT-611 (EP-026), ADR 0230.
+- **Rule:** `POST /runner/llm-credentials` (`@RequirePatAuth()`, `PatAuthGuard`) receives `{ provider, apiKey, origem, substituir? }` and delegates to the same `UpsertUserCredentialUseCase` (envelope with `key_id`, ADR 0158) for the user who owns the credential. A route without `:projectId`: the guard refuses with 403 a credential tied to a project, and every PAT is a project one, so only the MACHINE device key gets in (the first route in which it writes a user secret). A provider outside `LLM_PROVIDER_NAMES_COM_CREDENCIAL` is 400; an existing credential of the provider without `substituir: true` is 409 `credencial_existente`, without touching the existing one. The response is `{ provider, substituida }`. The value never goes to a log (the audit carries provider and `origem`), URL, event, exception or response, and the route does not test the connection (ADR 0050). Only an API key is importable; a subscription login token is not (ADR 0230).
+- **Where:** `src/application/use-cases/llm/import-runner-llm-credential.use-case.ts:22` (`execute`), `src/interfaces/http/runner/runner-llm-credentials.controller.ts:33` (`RunnerLlmCredentialsController`)
+- **Test:** `test/application/use-cases/llm/import-runner-llm-credential.use-case.spec.ts` (writes encrypted with `key_id` and without the value in log/response; 409 without replacing; replace; invalid provider); 401/403 of the guard in `test/interfaces/pat-auth.guard.spec.ts`; `route-surface.spec.ts`
+- **Origin:** AT-611 (EP-026), ADR 0230.
 
 ### RN-932 — A rede do container é artefato declarado por humano e só vale no container recriado {#rn-932}
 
