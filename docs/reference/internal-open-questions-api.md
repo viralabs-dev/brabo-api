@@ -1,3 +1,7 @@
+---
+idioma_original: en
+---
+
 # Internal API (engine to api)
 
 Routes under `/internal/*` are called only by the engine with the shared service token (`X-Brabo-Service-Token`). The full route inventory is in [security-surface.md](../security-surface.md).
