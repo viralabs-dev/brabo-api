@@ -76,7 +76,7 @@ describe('a lista solo sai do gerador para o web (AT-046)', () => {
   });
 
   it('uma lista solo divergente da fonte NÃO bate com o disco — o aferidor reprova', () => {
-    const emDisco = readFileSync(CAMINHO_WEB, 'utf8');
+    const emDisco = renderWeb(AGENT_AREAS, SOLO_CONVERSATIONAL_AGENTS);
     const semStaff = SOLO_CONVERSATIONAL_AGENTS.filter((a) => a !== 'staff');
     const comIntruso = [...SOLO_CONVERSATIONAL_AGENTS, 'psicologo'];
 
