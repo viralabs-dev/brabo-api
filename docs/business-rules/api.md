@@ -3270,94 +3270,93 @@ mounted in the other container.
 
 ---
 
-### RN-186 — `provider` é dimensão do relatório do owner, e só dele {#rn-186}
+### RN-186 — `provider` is a dimension of the owner's report, and only theirs {#rn-186}
 
-`sumGroupedBy` aceita `provider` como dimensão, e
-`GET /workspaces/:id/spend-report` devolve a lista `porProvider` ao lado de
-modelo, projeto, ator e dia. O [ADR 0063](../adr/0063-duas-audiencias-para-o-mesmo-gasto.md)
-tinha deixado o eixo de fora; o [ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
-o devolveu **sem revogar o argumento**: quebrar gasto por provider continua
-sendo quebrar por CREDENCIAL, e por isso o eixo mora numa rota que já exige
-`owner` ([RN-060](#rn-060)) — a mesma régua de `credential-spend`, que segue
-respondendo a pergunta da FATURA (por mês, com o vínculo à chave que existe
-hoje).
+`sumGroupedBy` accepts `provider` as a dimension, and
+`GET /workspaces/:id/spend-report` returns the `porProvider` list alongside model,
+project, actor and day. [ADR 0063](../adr/0063-duas-audiencias-para-o-mesmo-gasto.md)
+had left the axis out; [ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
+gave it back **without revoking the argument**: breaking spending down by provider
+is still breaking it down by CREDENTIAL, and that is why the axis lives in a route
+that already requires `owner` ([RN-060](#rn-060)) — the same yardstick as
+`credential-spend`, which still answers the BILL question (by month, with the link
+to the key that exists today).
 
-`GET /projects/:id/spend/me` **não ganhou nada**. A assimetria é o desenho: as
-duas respostas continuam não sendo recorte uma da outra ([RN-101](#rn-101)).
+`GET /projects/:id/spend/me` **gained nothing**. The asymmetry is the design: the
+two answers are still not a cut of each other ([RN-101](#rn-101)).
 
-A dimensão `model` **não mudou**: dois providers servindo o mesmo nome de modelo
-continuam numa linha só. Quem quer a quebra por credencial tem a lista própria,
-e cruzar as duas dimensões multiplicaria as linhas do ranking sem responder
-pergunta que as duas listas separadas já não respondam.
+The `model` dimension **did not change**: two providers serving the same model name
+still fall into a single row. Whoever wants the breakdown by credential has the list
+of their own, and crossing the two dimensions would multiply the ranking's rows
+without answering a question the two separate lists do not already answer.
 
-- **Onde:** `src/application/ports/token-usage-repository.port.ts:150`
+- **Where:** `src/application/ports/token-usage-repository.port.ts:150`
   (`SpendDimension`),
   `src/infrastructure/persistence/drizzle/token-usage.repository.ts:255`
-  (o `GROUP BY`), `src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:112`,
+  (the `GROUP BY`), `src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:112`,
   `src/interfaces/http/llm/spend.controller.ts:56`
-- **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
+- **Test:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
   ("quebra por PROVIDER, e o mesmo nome de modelo em dois providers segue UMA
   linha")
-- **Origem:** [ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
+- **Origin:** [ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
 
-### RN-187 — A visão do membro não alcança `provider`, e quem garante é o TIPO {#rn-187}
+### RN-187 — The member's view does not reach `provider`, and the TYPE is what guarantees it {#rn-187}
 
-Enquanto o eixo não existia, o que continha a visão do membro era a **ausência**
-de argumento a passar. Com o eixo de volta, a contenção passou a ser da
-assinatura: `sumGroupedBy` tem **duas sobrecargas**, e a que aceita um escopo com
-`actor` — o da audiência do membro, e o único que ele tem — só recebe
-`SpendDimensionDoAtor`, que é `Exclude<SpendDimension, 'provider'>`.
-`sumGroupedBy('provider', escopoComAtor)` **não compila**.
+While the axis did not exist, what contained the member's view was the **absence**
+of an argument to pass. With the axis back, the containment became the signature's:
+`sumGroupedBy` has **two overloads**, and the one that accepts a scope with
+`actor` — the member audience's, and the only one they have — only receives
+`SpendDimensionDoAtor`, which is `Exclude<SpendDimension, 'provider'>`.
+`sumGroupedBy('provider', escopoComAtor)` **does not compile**.
 
-Nem o repositório nem o caso de uso têm `if` sobre essa combinação, de
-propósito: uma checagem em tempo de execução daria a impressão de que a garantia
-é dinâmica, quando quem a sustenta é o compilador — e um `if` é o tipo de coisa
-que a próxima refatoração remove sem que nenhum teste fique vermelho.
+Neither the repository nor the use case has an `if` over that combination, on
+purpose: a runtime check would give the impression that the guarantee is dynamic,
+when what upholds it is the compiler — and an `if` is the kind of thing the next
+refactoring removes without any test turning red.
 
-A barreira é dupla e as duas metades são independentes: a rota do membro
-**também não tem parâmetro de dimensão** (só `projectId` e `dias`), então uma
-query inventada como `?dimensao=provider` é descartada pelo Nest antes de
-chegar ao handler.
+The barrier is double and the two halves are independent: the member's route
+**also has no dimension parameter** (only `projectId` and `dias`), so an invented
+query such as `?dimensao=provider` is discarded by Nest before reaching the handler.
 
-`Exclude` em vez de uma segunda lista escrita à mão é deliberado: dimensão nova
-nasce alcançável pelas duas audiências, e tirá-la do alcance do membro vira ato
-explícito **neste ponto** — nunca um esquecimento em outro arquivo.
+`Exclude` instead of a second hand-written list is deliberate: a new dimension is
+born reachable by both audiences, and taking it out of the member's reach becomes an
+explicit act **at this point** — never an oversight in another file.
 
-- **Onde:** `src/application/ports/token-usage-repository.port.ts:121`
-  (as duas sobrecargas), `:147` (`SpendDimensionDoAtor`), `:163`/`:173` (os dois
-  escopos), `src/application/use-cases/llm/get-my-spend.use-case.ts:73`,
+- **Where:** `src/application/ports/token-usage-repository.port.ts:121`
+  (the two overloads), `:147` (`SpendDimensionDoAtor`), `:163`/`:173` (the two
+  scopes), `src/application/use-cases/llm/get-my-spend.use-case.ts:73`,
   `src/interfaces/http/llm/spend.controller.ts:98`
-- **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
-  ("não compila pedir `provider` com escopo de ator" — um `@ts-expect-error` que
-  o `tsc` reprova como diretiva NÃO USADA se a barreira cair; e "só pede as
+- **Test:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
+  ("não compila pedir `provider` com escopo de ator" — a `@ts-expect-error` that
+  `tsc` fails as an UNUSED directive if the barrier falls; and "só pede as
   dimensões `session` e `day`"),
-  `test/interfaces/spend.controller.spec.ts` (a rota do membro aceita
-  `dias` e mais nada)
-- **Origem:** [ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
+  `test/interfaces/spend.controller.spec.ts` (the member's route accepts
+  `dias` and nothing else)
+- **Origin:** [ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
 
-### RN-188 — Pessoa e agente são partição da lista por ator, sem consulta a mais {#rn-188}
+### RN-188 — Person and agent are a partition of the list by actor, with no extra query {#rn-188}
 
-O relatório do owner traz `porOwner` (linhas de `actor_kind = 'user'`) e
-`porAgente` (`actor_kind = 'agent'`) além de `porAtor`, que continua inteira.
-Os dois blocos são **derivados** de `porAtor` no caso de uso — `actorKind` já
-vem na linha desde a FASE 22 —, e não duas consultas com `where actor_kind`.
-O motivo é medido: o [ADR 0063](../adr/0063-duas-audiencias-para-o-mesmo-gasto.md)
-mostrou que o custo destas consultas cresce com o tamanho de `token_usage` e
-não com o do pedido, então varrer a janela duas vezes a mais para separar o que
-já está separado em memória seria caro pelo motivo errado.
+The owner's report brings `porOwner` (rows with `actor_kind = 'user'`) and
+`porAgente` (`actor_kind = 'agent'`) besides `porAtor`, which remains whole.
+The two blocks are **derived** from `porAtor` in the use case — `actorKind` has come
+in the row since PHASE 22 —, and not two queries with `where actor_kind`. The reason
+is measured: [ADR 0063](../adr/0063-duas-audiencias-para-o-mesmo-gasto.md) showed
+that the cost of these queries grows with the size of `token_usage` and not with that
+of the request, so sweeping the window two more times to separate what is already
+separated in memory would be expensive for the wrong reason.
 
-`actor_kind` que não seja pessoa nem agente (hoje, `system`) **não entra em
-nenhum dos dois blocos** e continua visível em `porAtor` e no total. Abrir um
-terceiro bloco para ele diria que o produto tem uma audiência que ele não tem.
+An `actor_kind` that is neither person nor agent (today, `system`) **enters neither
+block** and stays visible in `porAtor` and in the total. Opening a third block for it
+would say the product has an audience that it does not have.
 
-O rótulo "Por owner" é do handoff de design e vale pela [RN-058](#rn-058) — é a
-chave do owner que todas essas linhas gastam. Quem é o dono do workspace
-continua sendo o campo `ownerId`, não o `actorKind` de cada linha.
+The label "By owner" comes from the design handoff and holds through
+[RN-058](#rn-058) — it is the owner's key that all these rows spend. Who the
+workspace's owner is remains the `ownerId` field, not each row's `actorKind`.
 
-- **Onde:** `src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:120`
-- **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
+- **Where:** `src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:120`
+- **Test:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
   ("separa PESSOA de AGENTE em dois blocos, sem perder a lista por ator")
-- **Origem:** [ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
+- **Origin:** [ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
 
 ### RN-189 — Embedding returns one vector per input, or an error {#rn-189}
 
@@ -8046,58 +8045,58 @@ repository, not that of each session, and did not change.
 - **Origin:** AT-092 — real installation of v6.1.0 on 2026-09-14, decided by the
   maintainer on 2026-09-18
 
-### RN-583 — O critério de roteamento do hub é do binding, viaja com ele, e congela no metering {#rn-583}
+### RN-583 — The hub's routing criterion belongs to the binding, travels with it, and is frozen in the metering {#rn-583}
 
-Um binding de modelo pode guardar um **critério de roteamento** —
-`routing_preference`: `price`, `throughput` ou `latency` — que diz ao HUB
-como escolher o upstream que serve o modelo. Anulável: `null` é o
-comportamento de sempre, nada vai ao fio e o hub decide sozinho.
+A model binding may store a **routing criterion** —
+`routing_preference`: `price`, `throughput` or `latency` — that tells the HUB
+how to choose the upstream that serves the model. Nullable: `null` is the usual
+behavior, nothing goes on the wire and the hub decides on its own.
 
-1. **Viaja com o binding que venceu, nunca cascateia sozinho.** A cascata
-   continua sendo de binding: o nível vencedor traz o modelo E o critério
-   dele. O nível que a cascata PULA (modelo indisponível, sem tool calling)
-   leva o critério junto — sobreviver só o critério produziria combinação que
-   ninguém escolheu.
-2. **Escrita em três formas.** No `PUT .../model-binding` dos cinco escopos,
-   `routingPreference` **ausente** preserva o gravado se o provider do modelo
-   novo declara a capability, e vira `null` se não declara; **`null`** limpa;
-   **valor** para provider sem a capability é **422**
-   (`RoutingPreferenceNotSupportedError`). Invariante: nenhum binding guarda
-   critério para provider que não o declara.
-3. **Congela o que FOI AO FIO.** `token_usage.routing_preference` é gravado
-   por chamada, ao lado do `upstream_provider` da [RN-042](#rn-042): o critério
-   enviado, e `null` quando o binding não tinha ou quando o provider não
-   declara a capability (o que não foi enviado não é procedência de nada).
-   Mesma régua do preço congelado (ADR 0042).
-4. **Capability de PROVIDER, só com prova.**
-   `LLMProviderCapabilities.routingPreference` é obrigatória nos nove, e é
-   `true` SÓ no OpenRouter desde 2026-09-29 (AT-158): o smoke com credencial
-   real (`openrouter-provider.roteamento.smoke.spec.ts`) mostrou o critério
-   MUDANDO o upstream que serviu — em `meta-llama/llama-3.3-70b-instruct`,
-   `price` pousou na DeepInfra e `throughput` na Groq (`latency` foi Groq numa
-   medição e CoreWeave na outra), enquanto sem critério o hub alternou
-   Novita/DeepInfra. A prova é a DIFERENÇA, não o
-   aceite: o modelo do default antigo (`~deepseek/deepseek-v4-flash-latest`)
-   devolveu o MESMO upstream para os três critérios e sem critério, e isso não
-   distingue "o hub respeitou" de "não havia escolha". Os outros oito seguem
-   `false`, e para eles a feature continua DORMENTE: a rota recusa com 422, a
-   tela diz em texto que o provider não tem a opção provada, e nada muda no
-   fio. O que a prova NÃO afirma: qual upstream cada critério escolhe — isso
-   é decisão do hub e muda com o tempo.
+1. **It travels with the binding that won, it never cascades on its own.** The
+   cascade is still one of bindings: the winning level brings the model AND its
+   criterion. The level the cascade SKIPS (model unavailable, without tool calling)
+   takes its criterion with it — only the criterion surviving would produce a
+   combination nobody chose.
+2. **Writing in three forms.** In the `PUT .../model-binding` of the five scopes,
+   an **absent** `routingPreference` preserves the stored one if the new model's
+   provider declares the capability, and becomes `null` if it does not; **`null`**
+   clears; a **value** for a provider without the capability is **422**
+   (`RoutingPreferenceNotSupportedError`). Invariant: no binding stores a criterion
+   for a provider that does not declare it.
+3. **It freezes what WENT ON THE WIRE.** `token_usage.routing_preference` is
+   recorded per call, next to the `upstream_provider` of [RN-042](#rn-042): the
+   criterion sent, and `null` when the binding had none or when the provider does not
+   declare the capability (what was not sent is not the provenance of anything). The
+   same yardstick as the frozen price (ADR 0042).
+4. **A PROVIDER capability, only with proof.**
+   `LLMProviderCapabilities.routingPreference` is mandatory in the nine, and is
+   `true` ONLY on OpenRouter since 2026-09-29 (AT-158): the smoke with a real
+   credential (`openrouter-provider.roteamento.smoke.spec.ts`) showed the criterion
+   CHANGING the upstream that served — on `meta-llama/llama-3.3-70b-instruct`,
+   `price` landed on DeepInfra and `throughput` on Groq (`latency` was Groq in one
+   measurement and CoreWeave in the other), while without a criterion the hub
+   alternated Novita/DeepInfra. The proof is the DIFFERENCE, not the acceptance: the
+   old default's model (`~deepseek/deepseek-v4-flash-latest`) returned the SAME
+   upstream for the three criteria and for none, and that does not distinguish "the
+   hub respected it" from "there was no choice". The other eight stay `false`, and
+   for them the feature remains DORMANT: the route refuses with 422, the screen says
+   in text that the provider does not have the option proven, and nothing changes on
+   the wire. What the proof does NOT assert: which upstream each criterion chooses —
+   that is the hub's decision and changes over time.
 
-- **Onde:** `src/domain/llm/routing-preference.ts:56` (escrita),
-  `src/domain/llm/routing-preference.ts:75` (o que vai ao fio),
-  `src/domain/llm/binding-resolver.ts:100` (viaja com o binding),
+- **Where:** `src/domain/llm/routing-preference.ts:56` (writing),
+  `src/domain/llm/routing-preference.ts:75` (what goes on the wire),
+  `src/domain/llm/binding-resolver.ts:100` (travels with the binding),
   `src/application/use-cases/llm/record-llm-usage.use-case.ts:118`
-  (congela no metering),
+  (freezes in the metering),
   `src/infrastructure/llm/openrouter-provider.ts:353` (`openrouterConfig`,
-  a capability provada)
-- **Teste:** `test/domain/llm/routing-preference.spec.ts`,
+  the proven capability)
+- **Test:** `test/domain/llm/routing-preference.spec.ts`,
   `test/application/use-cases/llm/set-model-binding.use-case.spec.ts`,
   `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts`,
-  `test/infrastructure/llm/openrouter-provider.contract.spec.ts`; a prova
-  manual da capability é `test/infrastructure/llm/openrouter-provider.roteamento.smoke.spec.ts`
-- **Origem:** [ADR 0166](../adr/0166-preferencia-de-roteamento-no-binding-de-modelo.md) (AT-090)
+  `test/infrastructure/llm/openrouter-provider.contract.spec.ts`; the manual proof
+  of the capability is `test/infrastructure/llm/openrouter-provider.roteamento.smoke.spec.ts`
+- **Origin:** [ADR 0166](../adr/0166-preferencia-de-roteamento-no-binding-de-modelo.md) (AT-090)
 
 ### RN-590 — The artifacts' `docs/` folder is rebuilt from the event log by the SAME translator as the live projector, without touching the outbox, and never comes out as a silent success {#rn-590}
 
