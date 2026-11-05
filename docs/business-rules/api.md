@@ -8828,13 +8828,13 @@ a log line with from/to/who.
 
 ---
 
-## O idioma das respostas dos agentes (RN-618..620, RN-622..624, ADR 0177)
+## The language of the agents' replies (RN-618..620, RN-622..624, ADR 0177) {#o-idioma-das-respostas-dos-agentes-rn-618-620-rn-622-624-adr-0177}
 
-O épico EP-028 nasceu de uma conversa em português respondida em espanhol. As
-decisões do mantenedor de 2026-09-28 (AT-168, AT-169) fixaram onde o idioma
-das RESPOSTAS mora — conta, sessão e projeto — e a precedência entre as
-fontes. Nenhuma destas regras toca o idioma da INTERFACE ([RN-432](web.md#rn-432)).
-
+Epic EP-028 was born from a conversation in Portuguese answered in Spanish. The
+maintainer's decisions of 2026-09-28 (AT-168, AT-169) fixed where the language
+of the REPLIES lives — account, session and project — and the precedence among
+the sources. None of these rules touches the language of the INTERFACE
+([RN-432](web.md#rn-432)).
 ### RN-618 — The answers' language belongs to the PERSON: a choice in the account, an override per session, and the precedence that always ends in a language {#rn-618}
 
 1. **Open list, canonical form.** The answers' language is any BCP-47
@@ -9067,40 +9067,41 @@ to accept the `export`s of a CommonJS module.
 - **Origin:** AT-163, on the decisions of AT-168 (answers 4, 6 and 7), the
   specification of AT-080 and the measurement of AT-160
 
-## Decidir no chat, onde o dono está (RN-626)
+## Deciding in the chat, where the owner is (RN-626) {#decidir-no-chat-onde-o-dono-esta-rn-626}
+### RN-628 — The executed merge closes the PR's task: `done`, exactly once {#rn-628}
 
-### RN-628 — O merge executado fecha a tarefa da PR: `done`, uma vez só {#rn-628}
+The QA/SecOps gate ends in `awaiting_user` and nothing else touched the task's
+`status`: in real use on 29/09 `pr-6` was merged three times and the tasks stayed
+in `in_review` (AT-275).
 
-O gate de QA/SecOps termina em `awaiting_user` e nada mais mexia no `status` da
-tarefa: no uso real de 29/09 o `pr-6` foi mergeado três vezes e as tarefas
-seguiram em `in_review` (AT-275).
+1. **After the merge, never in place of it.** `git_merge` is still an
+   unconditional `require_approval` ([RN-418](#rn-418)); the rule runs INSIDE
+   `ExecuteGitActionUseCase`, in the transaction that records the merge result,
+   and only when the provider returned `state: 'merged'` (an open PR, or a merge
+   that failed, does not touch the task).
+2. **The task is found by the PR that opened it.** Every `pr_open` of the
+   project whose `pullRequestId` is that of the merged PR and which carries
+   `storyTaskId` in the payload. A PR without a task (infra, ADR) changes
+   nothing.
+3. **Idempotent.** `TaskRepository.markDoneIfNotDone` is an `UPDATE … WHERE
+   status <> 'done'`: repeating the merge of the same PR returns `null`, does not
+   move again and does NOT write the event. When it moves, it writes ONE
+   immutable event `backlog.task_status_changed` (`cause: 'pr_merged'`,
+   `pullRequestId`, `actionId`), append-only, no UPDATE on an event table. No
+   migration.
+4. **Declared boundary (AT-249).** This rule does NOT refuse the merge of an
+   already-merged PR nor does it consult `gate_status`. The refusal of the
+   already-merged PR (and of the repeated proposal) came later, in
+   [RN-663](#rn-663), before the merge gets here; the pending gate, by the
+   owner's decision, is only a warning on screen.
 
-1. **Depois do merge, nunca no lugar dele.** `git_merge` continua sendo
-   `require_approval` incondicional ([RN-418](#rn-418)); a regra roda DENTRO de
-   `ExecuteGitActionUseCase`, na transação que grava o resultado do merge, e só
-   quando o provider devolveu `state: 'merged'` (PR aberta, ou merge que falhou,
-   não toca a tarefa).
-2. **A tarefa é achada pela PR que a abriu.** Toda `pr_open` do projeto cujo
-   `pullRequestId` é o da PR mergeada e que carrega `storyTaskId` no payload.
-   PR sem tarefa (infra, ADR) não muda nada.
-3. **Idempotente.** `TaskRepository.markDoneIfNotDone` é um `UPDATE … WHERE
-   status <> 'done'`: merge repetido da mesma PR devolve `null`, não move de
-   novo e NÃO grava o evento. Quando move, grava UM evento imutável
-   `backlog.task_status_changed` (`cause: 'pr_merged'`, `pullRequestId`,
-   `actionId`), append-only, sem UPDATE em tabela de eventos. Sem migration.
-4. **Fronteira declarada (AT-249).** Esta regra NÃO recusa merge de PR já
-   mergeada nem consulta `gate_status`. A recusa da PR já mergeada (e da
-   proposta repetida) veio depois, na [RN-663](#rn-663), antes de o merge
-   chegar aqui; o gate pendente, por decisão do dono, é só aviso na tela.
-
-- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:295`
+- **Where:** `src/application/use-cases/actions/execute-git-action.use-case.ts:295`
   (`settleMerge`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:480`
   (`markDoneIfNotDone`)
-- **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
-  ("git_merge marca a tarefa como done": feliz, repetido, PR aberta/merge
-  falho, PR sem tarefa)
-- **Origem:** AT-275
-
+- **Test:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
+  ("git_merge marca a tarefa como done": happy path, repeated, open PR/failed
+  merge, PR without a task)
+- **Origin:** AT-275
 ### RN-630 — Who is active in the session is read from the WHOLE session, not from the last 200 events {#rn-630}
 
 "Who is active" and "who receives the composer" came from the `agent.activated` seen
@@ -9265,73 +9266,75 @@ does not appear in the thread. Pending items of the WHOLE project are another re
   brings the query down)
 - **Origin:** AT-296 (HS-076)
 
-### RN-642 — "Sempre permitir" aprova e grava o padrão na MESMA transação; clique em ação já aprovada é sucesso nomeado {#rn-642}
+### RN-642 — "Always allow" approves and writes the pattern in the SAME transaction; a click on an already-approved action is a named success {#rn-642}
 
-No uso real de 29/09, 45 de 173 cliques em "Sempre permitir" devolveram 409
-(AT-310): o padrão era gravado ANTES de aprovar, e uma ação que já tinha saído
-de `pending` (clique duplo, a mesma pendência em dois painéis, outra aba)
-lançava 409 com o padrão JÁ gravado e SEM o evento `permission.granted`.
+In real use on 29/09, 45 of 173 clicks on "Always allow" returned 409
+(AT-310): the pattern was written BEFORE approving, and an action that had
+already left `pending` (double click, the same pending item in two panels,
+another tab) threw 409 with the pattern ALREADY written and WITHOUT the
+`permission.granted` event.
 
-1. **Mesma transação, depois da transição.** `ApproveActionUseCase` aceita um
-   `aoAprovar` que roda DENTRO da transação da decisão, depois de
-   `assertTransition` passar e antes da execução; é por ele que o padrão
-   (`permissions.json/allow` ou `agent_autonomy`, [RN-509](#rn-509)) e o
-   `permission.granted` são gravados. "Aprovar antes, gravar depois" em
-   transações separadas foi recusado: trocaria o defeito por ação aprovada (e
-   até executada) com o padrão falhando depois. `agent_autonomy` e o evento são
-   atômicos com a decisão; o `permissions.json` é arquivo e não entra em
-   transação — ele só é escrito depois de a transição ser válida, e falhar ao
-   escrevê-lo desfaz a aprovação. Sobra, declarada, a janela de o COMMIT falhar
-   depois do arquivo escrito.
-2. **O evento acompanha a gravação, e só ela.** Padrão que já existe não é
-   regravado nem narrado de novo (`padraoGravado: false`).
-3. **Ação já aprovada é sucesso nomeado.** Se a transição é recusada porque a
-   ação já está `approved`/`auto_approved`/`executed`/`failed`, a resposta é
-   201 com `desfecho: 'ja_aprovada'` (o caminho normal devolve `'aprovada'`),
-   sem executar de novo, gravando o padrão só se ele faltar — com o evento.
-   Transição inválida vinda da EXECUÇÃO, depois de a decisão ter sido
-   confirmada, NÃO vira `ja_aprovada`: propaga como sempre.
-4. **Ação RECUSADA continua 409, nomeado** (`reason: 'acao_ja_recusada'`), sem
-   gravar padrão nem evento: liberar para sempre o que alguém acabou de recusar
-   não é idempotência.
-5. **Tetos intactos.** `git push`/PR/deploy, `sudo`/`doas`
-   (`motivoDeRecusaSempreAprovar`, [RN-418](#rn-418)) e `container_remove`
-   continuam recusados com 400 ANTES de qualquer leitura de estado — inclusive
-   com a ação já aprovada. O padrão continua o EXATO da ação (a generalização
-   por verbo é a AT-257, fora daqui).
-6. **Os TIPOS do teto também (AT-320).** Medido na auditoria de 30/09: a api
-   só recusava o `git push` DIGITADO no terminal; o `git_push` TIPADO passava e
-   gravava `GitPush()` em `allow` (ou autonomia do módulo), e o `ApprovalCard`
-   oferecia o botão. `TIPOS_SEM_SEMPRE_PERMITIR` é a lista ÚNICA — `git_push`,
-   `pr_open`, `git_merge` (inteiro: o padrão `GitMerge()` valeria para todo
-   destino), `container_remove`, `instruction_patch`, `parallelize`,
-   `raise_max_parallel` — e `motivoDeRecusaDoSempreAprovar` julga terminal pelo
-   comando e o resto pelo tipo. A recusa é 400 com `reason:
-   'teto_do_sempre_permitir'` e `actionType`. A web esconde o botão pela cópia
-   em `apps/web/src/lib/sempre-permitir.ts`, conferida contra a da api por
-   teste; comando de terminal segue com o botão (repetir o parser na tela
-   seria segunda régua) e recebe a recusa da api. Quando nasceu, NÃO mudava
-   `decide()` nem a semeadura; desde a [RN-689](#rn-689) mudam os dois —
-   `git_push`/`pr_open` estão no teto de `decide()` e a ativação semeia só
-   `git_commit` —, e o padrão que o clique gravaria para eles seria inerte.
+1. **Same transaction, after the transition.** `ApproveActionUseCase` accepts an
+   `aoAprovar` that runs INSIDE the decision's transaction, after
+   `assertTransition` passes and before execution; it is through it that the
+   pattern (`permissions.json/allow` or `agent_autonomy`, [RN-509](#rn-509)) and
+   the `permission.granted` are written. "Approve first, write after" in
+   separate transactions was refused: it would trade the defect for an action
+   that is approved (and even executed) with the pattern failing afterwards.
+   `agent_autonomy` and the event are atomic with the decision; `permissions.json`
+   is a file and does not enter a transaction — it is only written after the
+   transition is valid, and failing to write it undoes the approval. What
+   remains, declared, is the window of the COMMIT failing after the file was
+   written.
+2. **The event follows the write, and only the write.** A pattern that already
+   exists is not rewritten nor narrated again (`padraoGravado: false`).
+3. **An already-approved action is a named success.** If the transition is
+   refused because the action is already `approved`/`auto_approved`/`executed`/
+   `failed`, the response is 201 with `desfecho: 'ja_aprovada'` (the normal path
+   returns `'aprovada'`), without executing again, writing the pattern only if it
+   is missing — with the event. An invalid transition coming from EXECUTION,
+   after the decision was confirmed, does NOT become `ja_aprovada`: it
+   propagates as always.
+4. **A REFUSED action is still 409, named** (`reason: 'acao_ja_recusada'`),
+   without writing a pattern or an event: freeing forever what someone just
+   refused is not idempotency.
+5. **Ceilings intact.** `git push`/PR/deploy, `sudo`/`doas`
+   (`motivoDeRecusaSempreAprovar`, [RN-418](#rn-418)) and `container_remove`
+   are still refused with 400 BEFORE any state read — even with the action
+   already approved. The pattern is still the action's EXACT one (generalization
+   by verb is AT-257, outside this).
+6. **The ceiling's TYPES too (AT-320).** Measured in the audit of 30/09: the api
+   only refused the `git push` TYPED in the terminal; the TYPED `git_push` went
+   through and wrote `GitPush()` into `allow` (or the module's autonomy), and the
+   `ApprovalCard` offered the button. `TIPOS_SEM_SEMPRE_PERMITIR` is the SINGLE
+   list — `git_push`, `pr_open`, `git_merge` (whole: the `GitMerge()` pattern
+   would hold for every destination), `container_remove`, `instruction_patch`,
+   `parallelize`, `raise_max_parallel` — and `motivoDeRecusaDoSempreAprovar`
+   judges terminal by the command and the rest by the type. The refusal is 400
+   with `reason: 'teto_do_sempre_permitir'` and `actionType`. The web hides the
+   button through the copy in `apps/web/src/lib/sempre-permitir.ts`, checked
+   against the api's by a test; a terminal command keeps the button (repeating
+   the parser on the screen would be a second yardstick) and receives the api's
+   refusal. When it was born, it did NOT change `decide()` nor the seeding; since
+   [RN-689](#rn-689) both change — `git_push`/`pr_open` are in the ceiling of
+   `decide()` and activation seeds only `git_commit` —, and the pattern the
+   click would write for them would be inert.
 
-- **Onde:** `src/application/use-cases/actions/approve-always-action.use-case.ts:109`
+- **Where:** `src/application/use-cases/actions/approve-always-action.use-case.ts:109`
   (`execute`), `:190` (`cliqueSobreAcaoJaDecidida`), `:240`
   (`gravarPadraoSeFaltar`), `src/application/use-cases/actions/approve-action.use-case.ts:279`
   (`approve`), `src/domain/actions/sempre-permitir.ts:30`
   (`TIPOS_SEM_SEMPRE_PERMITIR`), `:65` (`motivoDeRecusaDoSempreAprovar`),
   `apps/web/src/lib/sempre-permitir.ts:15` (`TIPOS_SEM_SEMPRE_PERMITIR`)
-- **Teste:** `test/application/use-cases/actions/approve-always-action.use-case.spec.ts`
-  ("ordem e idempotência (RN-642)": clique duplo, cliques concorrentes, ação
-  aprovada por outro caminho, recusada → 409 nomeado sem padrão, padrão que
-  falha desfaz a aprovação, tetos com a ação já aprovada; "tipos do teto
-  (AT-320)"), `test/domain/actions/sempre-permitir.spec.ts`,
-  `apps/web/src/lib/sempre-permitir.test.ts` (a cópia do web igual à da api),
-  `apps/web/src/components/ApprovalCard.test.tsx` (git tipado sem o botão)
-- **Origem:** AT-310, AT-320
-
-## A sessão encerrada pode ser reaberta (RN-649/RN-650)
-
+- **Test:** `test/application/use-cases/actions/approve-always-action.use-case.spec.ts`
+  ("ordem e idempotência (RN-642)": double click, concurrent clicks, action
+  approved by another path, refused → named 409 without a pattern, a pattern
+  that fails undoes the approval, ceilings with the action already approved;
+  "tipos do teto (AT-320)"), `test/domain/actions/sempre-permitir.spec.ts`,
+  `apps/web/src/lib/sempre-permitir.test.ts` (the web's copy equal to the api's),
+  `apps/web/src/components/ApprovalCard.test.tsx` (typed git without the button)
+- **Origin:** AT-310, AT-320
+## A closed session can be reopened (RN-649/RN-650) {#a-sessao-encerrada-pode-ser-reaberta-rn-649-rn-650}
 ### RN-649 — A `closed`/`closed_abnormally` session reopens to `active` with the log intact, and the previous closing becomes a new event {#rn-649}
 
 [RN-001](#rn-001) said the terminal states have no way out. Since
@@ -9513,8 +9516,7 @@ not measured on a real project, and declared.
 - **Origin:** AT-334 (owner decision on the gap declared in
   [RN-645](web.md#rn-645)); AT-339 (the Visão geral and the Executores tab in the batch)
 
-## A leitura dos membros do workspace (RN-655)
-
+## Reading the workspace members (RN-655) {#a-leitura-dos-membros-do-workspace-rn-655}
 ### RN-655 — `GET workspaces/:id/members` is `viewer`, and returns only id, name, e-mail and role {#rn-655}
 
 The session thread ([RN-652](web.md#rn-652)) only named whoever had a row in
@@ -9547,8 +9549,7 @@ read exists to name, and the write routes remain API-only.
   guard), `:125` (a non-member gets 403)
 - **Origin:** AT-335
 
-## O motivo da política em cada cartão de Aprovações (RN-656)
-
+## The policy reason on each Approvals card (RN-656) {#o-motivo-da-politica-em-cada-cartao-de-aprovacoes-rn-656}
 ### RN-656 — The session events read filters by `actionId`, and each card of the Aprovações tab reads its own reason through it {#rn-656}
 
 The action does not keep the policy reason: it lives in `proposed_action.created`
@@ -9616,133 +9617,132 @@ log and opening it does not trigger a query, so the card there stays silent, as
 
 - **Origin:** AT-329 (finding N2 of `docs/explanation/auditoria-visual-rodada-29.md`)
 
-## Um clique fecha a prontidão, a necessidade e o aceite do PO (RN-657/RN-658)
+## One click closes readiness, need and the PO's acceptance (RN-657/RN-658) {#um-clique-fecha-a-prontidao-a-necessidade-e-o-aceite-do-po-rn-657-rn-658}
+### RN-657 — "I'm ready — the need is validated" closes BOTH gates in one POST, with the `product_brief` produced after the click {#rn-657}
 
-### RN-657 — "Estou pronto — a necessidade está validada" fecha os DOIS gates num POST, com o `product_brief` produzido depois do clique {#rn-657}
+Revises [RN-406](contracts.md#rn-406) by the owner's decision (30/09, AT-311): the
+Creative's button was renamed **"I'm ready — the need is validated"**
+(pt-BR: "Estou pronto — a necessidade está validada"), and it is the label that
+makes the click the MERIT judgment that [ADR 0095](../adr/0095-gate-necessidade-validada.md)
+required separately — the person declares both things, with the words of both.
+`POST .../sessions/:id/readiness` writes, in this order:
 
-Revisa a [RN-406](contracts.md#rn-406) por decisão do dono (30/09, AT-311): o botão do
-Criativo passou a se chamar **"Estou pronto — a necessidade está validada"**
-(en: "I'm ready — the need is validated"), e é o rótulo que faz do clique o
-julgamento de MÉRITO que o [ADR 0095](../adr/0095-gate-necessidade-validada.md)
-exigia separado — a pessoa declara as duas coisas, com as palavras das duas.
-`POST .../sessions/:id/readiness` grava, nesta ordem:
+1. `readiness.confirmed`, actor the person, with the mark
+   `{ necessidadeValidada: true, aceiteImplicitoDoPo: true }` (the mark is what
+   [RN-658](#rn-658) reads; an old event, with payload `{}`, accepts nothing);
+2. the command to the engine (the turn that consolidates the `product_brief`,
+   [RN-142](engine.md#rn-142));
+3. only if the engine ACCEPTED the turn, `necessity.validated`, actor the same
+   person, with `productBriefId: null` (the brief does not exist yet — it is
+   born from the turn the click triggers), `via: 'readiness.confirmed'` and the
+   `readinessEventId` from step 1.
 
-1. `readiness.confirmed`, ator a pessoa, com a marca
-   `{ necessidadeValidada: true, aceiteImplicitoDoPo: true }` (a marca é o
-   que a [RN-658](#rn-658) lê; evento antigo, com payload `{}`, não aceita
-   nada);
-2. o comando ao engine (o turno que consolida o `product_brief`, [RN-142](engine.md#rn-142));
-3. só se o engine ACEITOU o turno, `necessity.validated`, ator a mesma
-   pessoa, com `productBriefId: null` (o brief ainda não existe — nasce do
-   turno que o clique dispara), `via: 'readiness.confirmed'` e o
-   `readinessEventId` do passo 1.
+The engine's refusal (409 turn in progress, 422 no business rule) bubbles up
+BEFORE step 3: without an accepted turn there is no brief on the way, and the
+need is NOT validated. The gate stays `warn` (`config/gates.yml`) — nothing
+downstream consults it. The screen no longer has the "Confirm need validated"
+button; the title of the enabled button says what the click closes, and the
+success notice says the PO enters when the summary is ready.
 
-A recusa do engine (409 turno em curso, 422 sem regra de negócio) sobe ANTES
-do passo 3: sem turno aceito não há brief a caminho, e a necessidade NÃO fica
-validada. O gate segue `warn` (`config/gates.yml`) — nada a jusante o consulta.
-A tela não tem mais o botão "Confirmar necessidade validada"; o título do
-botão habilitado diz o que o clique fecha, e o aviso de sucesso diz que o PO
-entra quando o resumo ficar pronto.
-
-- **Código:** `src/application/use-cases/agents/confirm-readiness.use-case.ts:26` (`ConfirmReadinessUseCase`),
+- **Code:** `src/application/use-cases/agents/confirm-readiness.use-case.ts:26` (`ConfirmReadinessUseCase`),
   `:42` (`necessity.validated`);
   `src/domain/sessions/estou-pronto.ts:27` (`MARCA_DO_ESTOU_PRONTO`);
-  `apps/web/src/routes/SessionComposer.tsx:315` (o título do botão);
+  `apps/web/src/routes/SessionComposer.tsx:315` (the button's title);
   `apps/web/src/lib/session-acoes-da-sessao.ts:143` (`handleReadiness`)
-- **Teste:** `test/application/use-cases/agents/confirm-readiness.use-case.spec.ts:49`
-  (os dois eventos, com a marca e o brief por vir — caminho feliz), `:72`
-  (422 do engine: só a prontidão fica gravada — caso de falha);
-  `apps/web/src/routes/SessionPage.estou-pronto.test.tsx:150` (um clique,
-  aviso de necessidade validada, sem botão separado), `:169` (recusa: nada é
-  dito como validado)
-- **ADR:** [0185](../adr/0185-estou-pronto-fecha-os-dois-gates.md), que revisa o
+- **Test:** `test/application/use-cases/agents/confirm-readiness.use-case.spec.ts:49`
+  (the two events, with the mark and the brief to come — happy path), `:72`
+  (422 from the engine: only readiness is recorded — failure case);
+  `apps/web/src/routes/SessionPage.estou-pronto.test.tsx:150` (one click,
+  need-validated notice, no separate button), `:169` (refusal: nothing is said
+  to be validated)
+- **ADR:** [0185](../adr/0185-estou-pronto-fecha-os-dois-gates.md), which revises
   [0095](../adr/0095-gate-necessidade-validada.md)
-- **Origem:** AT-311 (levantamento da AT-309, achado 1)
+- **Origin:** AT-311 (survey of AT-309, finding 1)
+### RN-658 — Acceptance of the Creative→PO handoff is implicit in "I'm ready": the SAME events, with the person as actor and the `implicito` mark {#rn-658}
 
-### RN-658 — O aceite do handoff Criativo→PO é implícito no "Estou pronto": os MESMOS eventos, com a pessoa como ator e a marca `implicito` {#rn-658}
+The owner's decision (30/09, AT-312): the separate click to accept the PO goes
+away. The Creative→PO handoff is born AFTER the click (it is the turn the click
+triggers that offers it, `CriativoServer.executar_confirm_readiness/1`), so the
+acceptance does not fit in the click's POST: it happens in the internal route
+that CREATES the offer (`POST /internal/sessions/:id/handoffs`), right after
+`CreateHandoffUseCase`, and goes through the SAME `AcceptHandoffUseCase` as the
+card.
 
-Decisão do dono (30/09, AT-312): o clique separado de aceitar o PO some. O
-handoff Criativo→PO nasce DEPOIS do clique (é o turno que ele dispara que o
-oferece, `CriativoServer.executar_confirm_readiness/1`), então o aceite não
-cabe no POST do clique: ele acontece na rota interna que CRIA a oferta
-(`POST /internal/sessions/:id/handoffs`), logo depois de
-`CreateHandoffUseCase`, e passa pelo MESMO `AcceptHandoffUseCase` do card.
+Measured before changing, acceptance through the card writes: the row's
+transition to `accepted`, `handoff.accepted` (actor the person,
+`{handoffId, toAgent}`), `agent.activated` (actor the person, `{agent}`) and,
+per [RN-635](#rn-635), the `handoff.superseded` of the other offers to the PO in
+the project. Implicit acceptance writes exactly those, with the SAME human actor
+— whoever clicked, read from the marked `readiness.confirmed` —, and adds the
+mark `implicito: { via: 'readiness.confirmed', readinessEventId }` to the payload
+of `handoff.accepted` and of `agent.activated`. No event is edited, no system
+actor takes the person's place, and acceptance through the card remains without
+the mark.
 
-Medido antes de mudar, o aceite pelo card grava: a transição da linha para
-`accepted`, `handoff.accepted` (ator a pessoa, `{handoffId, toAgent}`),
-`agent.activated` (ator a pessoa, `{agent}`) e, pela [RN-635](#rn-635), o
-`handoff.superseded` das outras ofertas ao PO no projeto. O aceite implícito
-grava exatamente esses, com o MESMO ator humano — quem clicou, lido do
-`readiness.confirmed` marcado —, e acrescenta a marca
-`implicito: { via: 'readiness.confirmed', readinessEventId }` no payload de
-`handoff.accepted` e de `agent.activated`. Nenhum evento é editado, nenhum ator
-de sistema entra no lugar da pessoa, e o aceite pelo card segue sem a marca.
+It is accepted only when ALL hold (`decidirAceiteImplicitoDoPo`): the offer is
+`criativo` → `po`, `offered`, from THIS session, and carries as artifact the
+`product_brief` born AFTER the most recent marked `readiness.confirmed`.
+Otherwise the offer stays `offered` and the card appears as always: a session
+prior to ADR 0185 (no mark), a brief prior to the click, and the MANUAL handoff,
+which never carries an artifact ([RN-633](web.md#rn-633) — the "I'm ready" stays
+on screen after it). The failure of the acceptance does NOT go up to the engine
+(the offer was created, and the Creative would say "I could not offer" — false):
+it becomes a durable `agent.error`, actor `system`/`aceite-implicito`, with
+origin (`infra` or `politica`) and `reason: aceite_implicito_falhou`. The 400 of
+"not `offered`" is not a failure: someone decided the offer through another path
+in the meantime, and that is already in the log. The screen passes the
+composer's recipient to the PO on the click (the gesture of calling it,
+[RN-631](web.md#rn-631)); until it enters, the choice does not count and the
+Creative keeps receiving. No ceiling moves: accepting the PO does not provision
+a repository (only the Architect and the Dev Lead do, [RN-582](#rn-582)), nor
+does it merge or push.
 
-Aceita-se só quando TODAS valem (`decidirAceiteImplicitoDoPo`): a oferta é
-`criativo` → `po`, `offered`, DESTA sessão, e leva como artefato o
-`product_brief` nascido DEPOIS do `readiness.confirmed` marcado mais recente.
-Fora disso a oferta fica `offered` e o card aparece como sempre: sessão
-anterior ao ADR 0185 (sem marca), brief anterior ao clique, e o handoff
-MANUAL, que nunca leva artefato ([RN-633](web.md#rn-633) — o "Estou pronto" segue
-na tela depois dele). A falha do aceite NÃO sobe para o engine (a oferta foi
-criada, e o Criativo diria "não consegui oferecer" — falso): vira
-`agent.error` durável, ator `system`/`aceite-implicito`, com origem (`infra`
-ou `politica`) e `reason: aceite_implicito_falhou`. O 400 de "não está
-`offered`" não é falha: alguém decidiu a oferta por outro caminho no intervalo,
-e isso já está no log. A tela passa o destinatário do composer ao PO no clique
-(o gesto de chamá-lo, [RN-631](web.md#rn-631)); enquanto ele não entra, a escolha não
-vale e o Criativo segue recebendo. Nenhum teto se move: aceitar o PO não
-provisiona repositório (só o Arquiteto e o Dev Lead, [RN-582](#rn-582)), não
-faz merge nem push.
-
-- **Código:** `src/domain/sessions/estou-pronto.ts:62` (`decidirAceiteImplicitoDoPo`);
+- **Code:** `src/domain/sessions/estou-pronto.ts:62` (`decidirAceiteImplicitoDoPo`);
   `src/application/use-cases/agents/aceite-implicito-do-po.use-case.ts:37` (`AceiteImplicitoDoPoUseCase`),
   `:45` (`seCouber`);
   `src/interfaces/http/internal/internal-sessions.controller.ts:439` (`handoff`);
-  `src/application/use-cases/agents/accept-handoff.use-case.ts:135` (`implicito` no `handoff.accepted`);
-  `src/application/use-cases/agents/activate-agent.use-case.ts:80` (`implicito` no `agent.activated`)
-- **Teste:** `test/application/use-cases/agents/aceite-implicito-do-po.use-case.spec.ts:105`
-  (aceita em nome de quem clicou — caminho feliz), `:129` (falha do aceite
-  vira `agent.error` e não sobe — caso de falha), `:120`, `:146`;
+  `src/application/use-cases/agents/accept-handoff.use-case.ts:135` (`implicito` in `handoff.accepted`);
+  `src/application/use-cases/agents/activate-agent.use-case.ts:80` (`implicito` in `agent.activated`)
+- **Test:** `test/application/use-cases/agents/aceite-implicito-do-po.use-case.spec.ts:105`
+  (accepts on behalf of whoever clicked — happy path), `:129` (acceptance failure
+  becomes `agent.error` and does not go up — failure case), `:120`, `:146`;
   `test/domain/sessions/estou-pronto.spec.ts:58`, `:72`, `:83`, `:94`;
   `test/application/use-cases/agents/accept-handoff.use-case.spec.ts:318`
-  (mesmos eventos, ator humano e marca), `:338` (sem marca pelo card)
+  (same events, human actor and mark), `:338` (no mark through the card)
 - **ADR:** [0185](../adr/0185-estou-pronto-fecha-os-dois-gates.md)
-- **Origem:** AT-312 (levantamento da AT-309, passo 4)
+- **Origin:** AT-312 (survey of AT-309, step 4)
+## The policy reason on each Approvals card (RN-656) {#o-motivo-da-politica-em-cada-cartao-de-aprovacoes-rn-656-1}
+### RN-659 — A new project is born with automatic story promotion; an existing project stays in the mode it had {#rn-659}
 
-## O motivo da política em cada cartão de Aprovações (RN-656)
+The default of `projects.story_promotion` goes from `manual` to `auto` (owner's
+decision on 30/09, AT-313): each complete story from the PO is born `ready`,
+without the per-story promotion click that the survey of AT-309 counted as +N
+steps. The validation is the SAME in both modes (RN-048); only who triggers it
+changes.
 
-### RN-659 — Projeto novo nasce com promoção de histórias automática; projeto existente fica no modo que tinha {#rn-659}
+The change is to the column's DEFAULT, by migration `0065`
+(`ALTER COLUMN … SET DEFAULT 'auto'`), and nothing else: no row is rewritten, so
+a project that was born `manual` stays `manual` until someone changes it in
+Settings. Creation does NOT send the field — the value is the column's default,
+a single source —, and both screens STATE the value: the Confirm step of
+creation shows "Story promotion: automatic — the PO promotes", with where to
+change it, and the Settings section says that a new project is born in
+Automatic and that changing it there applies only to that project. The two
+validation scripts that exercise the manual flow (`validacao-fase-12.ts`,
+`validacao-real.ts`) now ask for `manual` explicitly.
 
-O default de `projects.story_promotion` passa de `manual` para `auto` (decisão
-do dono em 30/09, AT-313): cada história completa do PO nasce `ready`, sem o
-clique de promoção por história que o levantamento da AT-309 contou como +N
-passos. A validação é a MESMA nos dois modos (RN-048); muda só quem dispara.
-
-A mudança é do DEFAULT da coluna, pela migration `0065`
-(`ALTER COLUMN … SET DEFAULT 'auto'`), e nada mais: nenhuma linha é reescrita,
-então projeto que nasceu `manual` continua `manual` até alguém trocar em
-Configurações. A criação NÃO manda o campo — o valor é o default da coluna,
-uma fonte só —, e as duas telas DIZEM o valor: o passo Confirmar da criação
-mostra "Promoção de histórias: automática — o PO promove", com onde mudar, e a
-seção de Configurações diz que projeto novo nasce em Automática e que mudar ali
-vale só para aquele projeto. Os dois scripts de validação que exercitam o fluxo
-manual (`validacao-fase-12.ts`, `validacao-real.ts`) passam a pedir `manual`
-explícito.
-
-- **Código:** `src/db/schema/iam.ts:287` (`storyPromotion`);
+- **Code:** `src/db/schema/iam.ts:287` (`storyPromotion`);
   `src/db/migrations/0065_default_de_promocao_auto.sql`;
-  `apps/web/src/routes/NewProjectWizard.tsx:978` (a linha do Confirmar);
-  `apps/web/src/routes/settings/PromotionSection.tsx:75` (a nota do default)
-- **Teste:** `test/db/story-promotion-migration.spec.ts:29` (projeto
-  novo nasce `auto` — caminho feliz), `:40` (projeto existente em `manual` não
-  muda — caso de falha); `apps/web/src/routes/NewProjectWizard.test.tsx:254`
-  (o Confirmar diz o valor); `apps/web/src/routes/ProjectSettingsTab.test.tsx:625`
-  (projeto antigo segue `manual` e a tela diz o default), `:646` (a api recusa
-  a troca e a tela diz que não salvou)
-- **Origem:** AT-313 (levantamento da AT-309, passo 5); revisa o default da
+  `apps/web/src/routes/NewProjectWizard.tsx:978` (the Confirm row);
+  `apps/web/src/routes/settings/PromotionSection.tsx:75` (the default's note)
+- **Test:** `test/db/story-promotion-migration.spec.ts:29` (a new project is
+  born `auto` — happy path), `:40` (an existing project in `manual` does not
+  change — failure case); `apps/web/src/routes/NewProjectWizard.test.tsx:254`
+  (Confirm states the value); `apps/web/src/routes/ProjectSettingsTab.test.tsx:625`
+  (an old project stays `manual` and the screen states the default), `:646` (the
+  api refuses the change and the screen says it did not save)
+- **Origin:** AT-313 (survey of AT-309, step 5); revises the default of
   [RN-048](#rn-048)
-
 ### RN-660 — The PO's handoff to the Arquiteto is accepted by the SYSTEM when the backlog is covered and the repository is local and without credentials {#rn-660}
 
 The `po → arquiteto` offer that the engine creates (`POST
