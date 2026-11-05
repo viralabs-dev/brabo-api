@@ -1374,72 +1374,70 @@ WAITING for the decision instead of burning iterations — is in
   allowed segment`)
 - **Origin:** PHASE 13b real execution
 
-### RN-070 — Todo gate declarado aponta para a evidência que o prova {#rn-070}
+### RN-070 — Every declared gate points to the evidence that proves it {#rn-070}
 
-Nenhuma entrada de `config/gates.yml` existe sem `evidencia`, e o registro não
-pode afirmar mais do que verifica: um gate `block` exige `verificacao:
-script`, e um gate `planned` não carrega evidência de algo que ainda não
-aconteceu.
+No entry in `config/gates.yml` exists without `evidencia`, and the registry
+cannot claim more than it verifies: a `block` gate requires `verificacao:
+script`, and a `planned` gate carries no evidence of something that has not
+happened yet.
 
-Evidência é um **localizador**, não prosa: `event_log` traz os tipos de
-evento e o filtro de payload que os distingue dos vizinhos; `teste` e `ci`
-trazem o caminho, e um alvo que sumiu REPROVA. É o mesmo modo de falha que o
-docmap chama de glob morto — uma regra que nunca dispara e finge cobertura.
+Evidence is a **locator**, not prose: `event_log` carries the event types and
+the payload filter that tells them apart from their neighbors; `teste` and `ci`
+carry the path, and a target that disappeared FAILS. It is the same failure mode
+the docmap calls a dead glob — a rule that never fires and pretends to cover.
 
-**Essa última afirmação é sobre o REPOSITÓRIO, e nunca é avaliada em
-runtime.** O registro é validado em duas camadas: `validarRegistro` (o
-conteúdo — `block` precisa de `script`, os quatro gates humanos continuam
-humanos, `active` precisa de evidência, nenhum id duplicado, nenhuma `entrada`
-órfã) vale onde quer que o arquivo seja lido e é o que o loader da api chama;
-`validarLocalizadores` (o arquivo alvo está em disco) só faz sentido dentro de
-um checkout, e é cobrada pelo teste do arquivo real e pela fase 2 do
-`validacao-gates.ts`.
+**That last statement is about the REPOSITORY, and is never evaluated at
+runtime.** The registry is validated in two layers: `validarRegistro` (the
+content — `block` needs `script`, the four human gates remain human, `active`
+needs evidence, no duplicate id, no orphan `entrada`) holds wherever the file
+is read and is what the api loader calls; `validarLocalizadores` (the target
+file is on disk) only makes sense inside a checkout, and is enforced by the
+real file's test and by phase 2 of `validacao-gates.ts`.
 
-As duas costumavam ser uma função só, e isso custou um defeito de produção,
-medido na v6.1.0 instalada: `GET /gates` devolvia `500` com
-`RegistroDeGatesInvalido` listando os onze alvos como ausentes — doze 5xx em
-cerca de 55 minutos, em toda instalação. A imagem de produção leva
-`/app/config/gates.yml` e mais nada; `test/`, `scripts/ci/`
-e `.github/` nunca entram nela. A regra não foi afrouxada — foi movida para
-onde a pergunta existe. Não a ponha de volta no loader: `arquivoExiste` num
-processo que não tem repositório responde sobre outra árvore.
+The two used to be a single function, and that cost a production defect,
+measured on the installed v6.1.0: `GET /gates` returned `500` with
+`RegistroDeGatesInvalido` listing the eleven targets as missing — twelve 5xx in
+about 55 minutes, on every installation. The production image carries
+`/app/config/gates.yml` and nothing else; `test/`, `scripts/ci/`
+and `.github/` never enter it. The rule was not loosened — it was moved to
+where the question exists. Do not put it back in the loader: `arquivoExiste` in
+a process that has no repository answers about another tree.
 
-A tela escondeu isso: a [RN-084](#rn-084) faz o `PrGateTimeline` cair no
-pipeline completo quando a rota falha, então o 500 só aparecia nos logs da
-api.
+The screen hid this: [RN-084](#rn-084) makes the `PrGateTimeline` fall back to
+the full pipeline when the route fails, so the 500 only showed up in the api
+logs.
 
-Três tipos porque nem todo gate vive no event log:
-[`merge-protegida`](#rn-014) é um teto numa regra pura
-que não emite evento próprio (o que a garante é um teste) e `backmerge` é CI
-com estado em `.release/gate.json`. Rebaixá-los a `warn` por isso mentiria
-sobre as travas mais duras do produto.
+Three types because not every gate lives in the event log:
+[`merge-protegida`](#rn-014) is a ceiling in a pure rule
+that emits no event of its own (what guarantees it is a test) and `backmerge` is
+CI with state in `.release/gate.json`. Downgrading them to `warn` for that
+reason would lie about the hardest locks in the product.
 
-O filtro importa tanto quanto o tipo: `qa-verificada` e `secops-segura`
-gravam o MESMO `pr.gate_changed`, e o mesmo tipo dispara na ABERTURA do gate,
-sem `veredito` — sem o filtro, abrir contaria como passar. O mesmo vale para
-os dois gates de PR de infra. É por isso que nenhum par (`event_types` +
-`filtro`) pode se repetir.
+The filter matters as much as the type: `qa-verificada` and `secops-segura`
+write the SAME `pr.gate_changed`, and the same type fires on the OPENING of the
+gate, with no `veredito` — without the filter, opening would count as passing.
+The same goes for the two infra PR gates. That is why no pair (`event_types` +
+`filtro`) can repeat.
 
-O filtro só alcança o PAYLOAD, de propósito: aceitar uma coluna arbitrária
-abriria a consulta inteira. Quem promoveu uma story (humano ou o PO) mora na
-coluna `actor_kind` e fica fora do vocabulário declarativo.
+The filter only reaches the PAYLOAD, on purpose: accepting an arbitrary column
+would open up the whole query. Who promoted a story (human or the PO) lives in
+the `actor_kind` column and stays outside the declarative vocabulary.
 
-- **Onde:** `src/domain/gates/gate-registry.ts`
-  (`validarRegistro` e `validarLocalizadores`), registrado em
-  `config/gates.yml`, medido em `scripts/validacao-gates.ts`;
-  o loader que deliberadamente chama só a primeira é
+- **Where:** `src/domain/gates/gate-registry.ts`
+  (`validarRegistro` and `validarLocalizadores`), registered in
+  `config/gates.yml`, measured in `scripts/validacao-gates.ts`;
+  the loader that deliberately calls only the first is
   `src/infrastructure/gates/gate-registry.loader.ts`
-- **Teste:** `test/domain/gates/gate-registry.spec.ts`
+- **Test:** `test/domain/gates/gate-registry.spec.ts`
   (`é válido: nenhum problema acumulado`; `todo alvo de prova citado
   existe no repositório`; `validarRegistro ignora o disco: alvo ausente
   não é problema DELE`; `nenhum par (event_types + filtro) se repete
-  entre gates`) e
+  entre gates`) and
   `test/infrastructure/gates/gate-registry.loader.spec.ts`
   (`carrega o registro real sem exigir os alvos que a imagem não leva`,
-  contra uma raiz reconstruída como a árvore da imagem de produção)
-- **Origem:** FASE 15a (ADR 0054); a divisão em duas camadas veio do 500 de
-  `GET /gates` medido na v6.1.0 instalada (AT-086)
-
+  against a root rebuilt like the production image tree)
+- **Origin:** PHASE 15a (ADR 0054); the split into two layers came from the 500
+  on `GET /gates` measured on the installed v6.1.0 (AT-086)
 ### RN-071 — The four user-authority gates cannot be declared automatic {#rn-071}
 
 `acao-aprovada`, `story-promovida`, `plano-de-adocao`, and
@@ -1840,49 +1838,49 @@ lost chips in long sessions (see
 - **Origin:** dashboard of 23 projects measured in the browser — 3,824 req/min
   before, 12 after
 
-### RN-091 — O navegador manda onde parou de ler; o sino é uma requisição {#rn-091}
+### RN-091 — The browser sends where it stopped reading; the bell is one request {#rn-091}
 
-Com a gaveta de notificações **aberta**, o conteúdo dela sai de **uma**
-requisição por ciclo — `POST /workspaces/:workspaceId/unread-events` — e o
-número de requisições **não cresce com a quantidade de projetos**.
+With the notifications drawer **open**, its content comes from **one** request
+per cycle — `POST /workspaces/:workspaceId/unread-events` — and the number of
+requests **does not grow with the number of projects**.
 
-É a metade que faltava da [RN-090](#rn-090). Aquela derrubou o dashboard de
-3.824 para 12 req/min, mas o sino continuou buscando um projeto de cada vez:
-23 projetos com a gaveta aberta mediam **286 req/min** contra o limite de 300
-(`RateLimitGuard`). Passava, e sumia com um projeto a mais.
+It is the missing half of [RN-090](#rn-090). That one brought the dashboard down
+from 3,824 to 12 req/min, but the bell kept fetching one project at a time:
+23 projects with the drawer open measured **286 req/min** against the limit of
+300 (`RateLimitGuard`). It passed, and would vanish with one more project.
 
-**O obstáculo, e por que a saída é esta.** Não existe "marcar como lido" no
-servidor, de propósito: o corte é um `seq` por projeto guardado no
-`localStorage` de cada navegador (`read-state`). Havia duas saídas, e a
-diferença entre elas é de PRODUTO:
+**The obstacle, and why the way out is this one.** There is no "mark as read"
+on the server, on purpose: the cutoff is a `seq` per project kept in each
+browser's `localStorage` (`read-state`). There were two ways out, and the
+difference between them is a PRODUCT one:
 
-- parar de repolar enquanto a gaveta está aberta muda a atualidade do que o
-  usuário vê — **recusada**, ninguém pediu essa troca;
-- o navegador **mandar** o mapa `projeto → afterSeq` devolve exatamente os
-  mesmos dados na mesma cadência. **É batelamento puro: nada muda para quem
-  olha a tela**, nem a frescura nem o conteúdo.
+- stop re-polling while the drawer is open changes how fresh what the user sees
+  is — **refused**, nobody asked for that trade;
+- the browser **sending** the `project → afterSeq` map returns exactly the same
+  data at the same cadence. **It is pure batching: nothing changes for whoever
+  looks at the screen**, neither freshness nor content.
 
-**É `POST` sem mutar nada**, e a api responde `200` (nunca `201`) para dizer
-isso. O verbo foi escolhido por ser o único com CORPO: são dezenas de pares, e
-em query string isso vira URL longa — que proxy trunca — além de pôr id de
-projeto do usuário em log de acesso, contra a regra de não passar dado pessoal
-por query string.
+**It is a `POST` that mutates nothing**, and the api answers `200` (never `201`)
+to say so. The verb was chosen because it is the only one with a BODY: there are
+dozens of pairs, and in a query string that becomes a long URL — which a proxy
+truncates — besides putting the user's project ids in the access log, against
+the rule of not passing personal data through the query string.
 
-Três garantias de semântica que a rota fixa, porque batelar leituras com cortes
-diferentes é onde o erro fácil mora:
+Three semantic guarantees the route fixes, because batching reads with
+different cutoffs is where the easy mistake lives:
 
-- **mapa vazio devolve vazio**, e sem tocar no banco. "Não perguntei nada" não
-  é "me dê tudo";
-- **cada projeto respeita o SEU corte** — `seq` estritamente maior que o dele;
-- **o teto de 50 eventos é por projeto**, o mesmo que `GET .../events` aplica
-  sem `limit`. Um limite na resposta inteira deixaria o projeto barulhento
-  comer a cota dos calados.
+- **an empty map returns empty**, without touching the database. "I asked
+  nothing" is not "give me everything";
+- **each project respects ITS cutoff** — `seq` strictly greater than its own;
+- **the ceiling of 50 events is per project**, the same one `GET .../events`
+  applies without `limit`. A limit on the whole response would let the noisy
+  project eat the quota of the quiet ones.
 
-Cursor apontando para projeto de outro workspace é **ignorado**, não recusado:
-ele vem do armazenamento local de quem chama e pode ser sobra de um workspace
-antigo.
+A cursor pointing to a project of another workspace is **ignored**, not
+refused: it comes from the caller's local storage and may be a leftover from an
+old workspace.
 
-- **Onde:**
+- **Where:**
   `src/application/ports/projects-summary-repository.port.ts`
   (`unreadEventsForWorkspace`),
   `src/infrastructure/persistence/drizzle/projects-summary.repository.ts`,
@@ -1890,14 +1888,13 @@ antigo.
   (`getUnreadEvents`), `src/interfaces/http/iam/dto/unread-events.dto.ts`,
   `apps/web/src/lib/notifications.ts` (`useNotificationGroups`),
   `apps/web/src/lib/api-client.ts` (`getUnreadEvents`)
-- **Teste:** `apps/web/src/routes/Dashboard.fanout.test.tsx` (com a gaveta
-  ABERTA: uma requisição, e 30 projetos custam o mesmo que 3);
+- **Test:** `apps/web/src/routes/Dashboard.fanout.test.tsx` (with the drawer
+  OPEN: one request, and 30 projects cost the same as 3);
   `test/infrastructure/persistence/drizzle/projects-summary.repository.spec.ts`
-  (o número de consultas ao banco não cresce com N; mapa vazio, corte por
-  projeto, teto por projeto e isolamento de workspace)
-- **Origem:** residual medido da [RN-090](#rn-090) — 286 req/min com a gaveta
-  aberta num workspace de 23 projetos
-
+  (the number of database queries does not grow with N; empty map, per-project
+  cutoff, per-project ceiling and workspace isolation)
+- **Origin:** measured residual of [RN-090](#rn-090) — 286 req/min with the
+  drawer open in a workspace of 23 projects
 ### RN-092 — O `projectId` é segmento de caminho, e o escopo nunca sai da raiz {#rn-092}
 
 `projectScopeRoot()` **recusa** um `projectId` que não seja segmento de caminho
@@ -2232,119 +2229,122 @@ dimensão `model`.
 - **Origem:** [ADR 0063](../adr/0063-duas-audiencias-para-o-mesmo-gasto.md) (FASE 22),
   revisto pelo [ADR 0076](../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
 
-### RN-102 — O modelo da área é padrão herdável; divergir é decisão do agente, e voltar a herdar apaga a decisão {#rn-102}
+### RN-102 — The area's model is an inheritable default; diverging is the agent's decision, and going back to inheriting erases the decision {#rn-102}
 
-A cascata de binding ganhou um nível: `sessão > agente > **área** > projeto >
-workspace`. `area` fica ENTRE agente e projeto — é o PADRÃO que o lead e os
-subagentes de uma área compartilham (`qa`/`qa-automacao`/
-`qa-performance-seguranca`, `infra`/`infra-workflows`, `dev`/`dev-<módulo>`), e
-o binding do próprio agente é a DIVERGÊNCIA que o sobrepõe. Se a área viesse
-ACIMA do agente ela venceria sempre, e "padrão herdável" seria, na prática,
-"padrão imposto" — nenhum agente conseguiria escolher outro modelo.
+The binding cascade gained a level: `session > agent > **area** > project >
+workspace`. `area` sits BETWEEN agent and project — it is the DEFAULT that the
+lead and the subagents of an area share (`qa`/`qa-automacao`/
+`qa-performance-seguranca`, `infra`/`infra-workflows`, `dev`/`dev-<module>`), and
+the agent's own binding is the DIVERGENCE that overrides it. If the area came
+ABOVE the agent it would always win, and "inheritable default" would in practice
+be "imposed default" — no agent could choose another model.
 
-O nível novo entra na MESMA revalidação de capability da
-[RN-041](#rn-041)/[RN-043](#rn-043): modelo da área que sumiu do provider ou
-que não faz tool calling é PULADO e registrado em `skipped`, exatamente como
-`agent` já era. `assertModelFitsBindingScope` (RN-040) passou a exigir
-`supports_tool_calling` também no escopo `area` — ela nunca é lida por chat
-humano, só por agente, então deixá-la passar adiaria a mesma falha silenciosa
-em um nível.
+The new level enters the SAME capability revalidation as
+[RN-041](#rn-041)/[RN-043](#rn-043): an area model that vanished from the
+provider or that does not do tool calling is SKIPPED and recorded in `skipped`,
+exactly as `agent` already was. `assertModelFitsBindingScope` (RN-040) now
+requires `supports_tool_calling` in the `area` scope too — it is never read by
+the human chat, only by an agent, so letting it through would postpone the same
+silent failure by one level.
 
-**"Voltar a herdar" apaga o binding, nunca copia o modelo do nível de baixo
-para o de cima.** Gravar no agente o modelo que a área decidiu pareceria igual
-na tela e não é: viraria uma CÓPIA, e a próxima mudança da área deixaria esse
-agente para trás sem ninguém notar. Herdar é a AUSÊNCIA de decisão própria, e
-desfazer uma divergência é remover a linha — `DELETE
-/projects/:id/agent-bindings/:slug` e `DELETE
-/projects/:id/area-bindings/:key`, ambos 204, ambos 404 quando o escopo já
-herda (idempotência que MENTIRIA se fosse 204 silencioso: apagar o que não
-existia e apagar de verdade são respostas diferentes para a mesma tela).
+**"Going back to inheriting" deletes the binding, it never copies the model from
+the lower level to the upper one.** Writing to the agent the model the area
+decided would look the same on screen and is not: it would become a COPY, and
+the area's next change would leave that agent behind with nobody noticing.
+Inheriting is the ABSENCE of its own decision, and undoing a divergence is
+removing the row — `DELETE
+/projects/:id/agent-bindings/:slug` and `DELETE
+/projects/:id/area-bindings/:key`, both 204, both 404 when the scope already
+inherits (idempotency that would LIE if it were a silent 204: deleting what did
+not exist and really deleting are different answers for the same screen).
 
-Mudar o modelo da ÁREA exige `maintainer`, e não `developer` como o do agente
-individual — pelo mesmo motivo do teto de paralelismo
-([RN-083](#rn-083)): o binding da área alcança o lead e TODOS os subagentes de
-uma vez, e escolher modelo é decidir quanto o produto gasta sem perguntar.
+Changing the AREA's model requires `maintainer`, and not `developer` like the
+individual agent's — for the same reason as the parallelism ceiling
+([RN-083](#rn-083)): the area's binding reaches the lead and ALL the subagents
+at once, and choosing a model is deciding how much the product spends without
+asking.
 
-**A TELA passou a honrar os DOIS mínimos, e são dois.** Até aqui
-`ModelsSection` — a tabela de modelo por agente — não checava papel nenhum: o
-`ModelPicker` da coluna MODELO VIGENTE e o "voltar a herdar" da coluna ORIGEM
-apareciam clicáveis para todo mundo, `viewer` incluído, e a api recusava com
-403. A saída NÃO foi copiar o gate da seção irmã (`owner || maintainer`): isso
-trocaria o defeito pelo INVERSO, trancando um `developer` fora de uma ação que
-`PUT`/`DELETE .../agent-bindings/:slug` aceita — e o inverso é pior, porque
-oferecer o que será recusado ao menos termina num toast, enquanto perder
-capacidade é invisível para quem a perdeu. O mínimo é do ENDPOINT, não da
-seção, e as duas seções são vizinhas na MESMA tela com mínimos diferentes. A
-comparação saiu das telas e virou `roleAtLeast` (`apps/web/src/lib/roles.ts`),
-sobre o `ROLE_ORDER` que já existia — mesmo nome da função do backend, porque é
-a mesma regra dos dois lados do fio; escrever a hierarquia à mão
-(`role === 'owner' || role === 'maintainer'`) acerta por acidente enquanto o
-mínimo é alto e erra calada quando é baixo. Papel AUSENTE (consulta em voo, ou
-que falhou) não alcança nada: errar para o lado de desabilitar se conserta
-recarregando.
+**The SCREEN now honors BOTH minimums, and they are two.** Until now
+`ModelsSection` — the table of model per agent — checked no role at all: the
+`ModelPicker` in the CURRENT MODEL column and the "go back to inheriting" in the
+ORIGIN column appeared clickable to everyone, `viewer` included, and the api
+refused with 403. The way out was NOT to copy the gate from the sibling section
+(`owner || maintainer`): that would trade the defect for its INVERSE, locking a
+`developer` out of an action that `PUT`/`DELETE .../agent-bindings/:slug`
+accepts — and the inverse is worse, because offering what will be refused at
+least ends in a toast, while losing a capability is invisible to whoever lost
+it. The minimum belongs to the ENDPOINT, not the section, and the two sections
+are neighbors on the SAME screen with different minimums. The comparison left
+the screens and became `roleAtLeast` (`apps/web/src/lib/roles.ts`), over the
+`ROLE_ORDER` that already existed — same name as the backend function, because
+it is the same rule on both sides of the wire; writing the hierarchy by hand
+(`role === 'owner' || role === 'maintainer'`) gets it right by accident while
+the minimum is high and gets it wrong silently when it is low. An ABSENT role
+(query in flight, or failed) reaches nothing: erring on the side of disabling
+is fixed by reloading.
 
-**Some o CONTROLE, nunca a INFORMAÇÃO** (ADR 0064). Quem não pode editar
-continua vendo o modelo vigente no gatilho e a cadeia de origem inteira
-([RN-470](web.md#rn-470)), e o "voltar a herdar" continua na linha, inerte — ele é o
-que DIZ que aquele agente divergiu, e escondê-lo apagaria um estado que dá para
-ler sem poder mudar. O motivo de estarem apagados é dito UMA vez, em texto, na
-legenda da seção, e não por `title` em cada linha: tooltip em elemento
-`disabled` não abre no Chromium (o navegador não despacha evento de mouse em
-controle desabilitado), e uma explicação que não aparece é a mesma ausência com
-mais código.
+**The CONTROL disappears, never the INFORMATION** (ADR 0064). Whoever cannot
+edit still sees the current model in the trigger and the whole origin chain
+([RN-470](web.md#rn-470)), and the "go back to inheriting" stays on the row,
+inert — it is what SAYS that agent diverged, and hiding it would erase a state
+that can be read without being able to change it. The reason they are dimmed is
+stated ONCE, in text, in the section legend, and not by `title` on each row: a
+tooltip on a `disabled` element does not open in Chromium (the browser does not
+dispatch mouse events on a disabled control), and an explanation that does not
+show is the same absence with more code.
 
-**Nada disso é fronteira de segurança, e o limite é declarado.** Quem recusa
-continua sendo o `RolesGuard`. O papel que a tela lê é o do WORKSPACE
-(`useCurrentWorkspaceWithRole`) e quem autoriza do outro lado é o papel EFETIVO
-do PROJETO (`ResolveEffectiveRoleUseCase.forProject`), que uma linha de
-`project_members` SOBREPÕE nos dois sentidos — então quem tem papel próprio no
-projeto pode ver aqui um controle desabilitado que a api aceitaria. Fechar isso
-exigiria uma consulta de papel POR PROJETO que o web ainda não tem, e é a mesma
-lacuna que a caixa da área (RN-912) também carrega; inventar uma segunda fonte de papel
-só numa seção seria pior que a lacuna.
+**None of this is a security boundary, and the limit is declared.** What
+refuses is still the `RolesGuard`. The role the screen reads is the WORKSPACE's
+(`useCurrentWorkspaceWithRole`) and what authorizes on the other side is the
+PROJECT's EFFECTIVE role (`ResolveEffectiveRoleUseCase.forProject`), which a
+`project_members` row OVERRIDES in both directions — so whoever has their own
+role in the project may see here a disabled control that the api would accept.
+Closing that would require a role query PER PROJECT that the web does not have
+yet, and it is the same gap that the area's box (RN-912) also carries; inventing
+a second source of role in only one section would be worse than the gap.
 
-> **Nota aditiva ([RN-471](web.md#rn-471)):** a lacuna do parágrafo
-> acima é UMA, não uma por seção, e onde a tela JÁ faz a consulta de papel por
-> projeto ela se fecha em vez de se declarar. A seção de **Membros** busca
-> `listProjectMembers`, que é `findMemberRole` para todo mundo de uma vez, e
-> compõe `projectRole ?? workspaceRole` — exatamente o que `forProject` faz.
-> Isso não é a segunda fonte de papel que este parágrafo recusa: é a MESMA
-> composição, a partir de dados que aquela seção já tem em mãos. As duas seções
-> de modelo continuam com a aproximação por não terem esses dados. Cuidado ao
-> ler "SOBREPÕE nos dois sentidos" acima: é literal, e três descrições de OpenAPI
-> afirmam o contrário — ver a RN-471.
+> **Additive note ([RN-471](web.md#rn-471)):** the gap in the paragraph above is
+> ONE, not one per section, and where the screen ALREADY does the per-project
+> role query it closes instead of being declared. The **Members** section
+> fetches `listProjectMembers`, which is `findMemberRole` for everyone at once,
+> and composes `projectRole ?? workspaceRole` — exactly what `forProject` does.
+> That is not the second source of role this paragraph refuses: it is the SAME
+> composition, from data that section already has in hand. The two model
+> sections stay with the approximation because they do not have that data. Be
+> careful reading "OVERRIDES in both directions" above: it is literal, and three
+> OpenAPI descriptions claim the opposite — see RN-471.
 
-- **Onde:** `src/domain/llm/binding-resolver.ts` (precedência),
-  `src/domain/llm/model-capabilities.ts` (capability de `area`),
+- **Where:** `src/domain/llm/binding-resolver.ts` (precedence),
+  `src/domain/llm/model-capabilities.ts` (`area` capability),
   `src/application/use-cases/llm/resolve-model-binding.use-case.ts`
-  (a área do agente sai do catálogo `agent-areas.ts`, sem round-trip ao
-  banco), `src/application/use-cases/llm/clear-model-binding.use-case.ts`,
+  (the agent's area comes from the `agent-areas.ts` catalog, with no round trip
+  to the database), `src/application/use-cases/llm/clear-model-binding.use-case.ts`,
   `src/interfaces/http/llm/model-bindings.controller.ts`
-  (`area-bindings`, `DELETE` em `agent-bindings` e `area-bindings`),
-  `apps/web/src/routes/settings/ModelsSection.tsx` (coluna Origem com
-  "voltar a herdar"; desde a RN-912 o apagar da área é desmarcar a caixa do
-  lead, e o gate de `maintainer` segue sobre `roleAtLeast` sem mudar de
-  mínimo),
-  `src/interfaces/http/llm/model-bindings.controller.ts:273` e `:301`
-  (`developer` nos dois endpoints de agente — estas linhas NÃO mudaram),
-  `apps/web/src/lib/roles.ts:49` (`roleAtLeast` — a comparação que faltava),
-  `apps/web/src/routes/settings/ModelsSection.tsx:93` (`podeEditar`, e por que
-  `developer` e não `maintainer`), `:379` (o picker desabilitado), `:446` (o
-  botão desabilitado, e por que o motivo não vai em `title`), `:546` (a legenda
-  que diz o motivo)
-- **Teste:** `test/domain/llm/binding-resolver.spec.ts`,
+  (`area-bindings`, `DELETE` on `agent-bindings` and `area-bindings`),
+  `apps/web/src/routes/settings/ModelsSection.tsx` (Origin column with
+  "go back to inheriting"; since RN-912 erasing the area is unchecking the
+  lead's box, and the `maintainer` gate stays on `roleAtLeast` without changing
+  its minimum),
+  `src/interfaces/http/llm/model-bindings.controller.ts:273` and `:301`
+  (`developer` on both agent endpoints — these lines did NOT change),
+  `apps/web/src/lib/roles.ts:49` (`roleAtLeast` — the comparison that was
+  missing),
+  `apps/web/src/routes/settings/ModelsSection.tsx:93` (`podeEditar`, and why
+  `developer` and not `maintainer`), `:379` (the disabled picker), `:446` (the
+  disabled button, and why the reason does not go in `title`), `:546` (the
+  legend that states the reason)
+- **Test:** `test/domain/llm/binding-resolver.spec.ts`,
   `test/domain/llm/model-capabilities.spec.ts`,
   `test/application/use-cases/llm/resolve-model-binding.use-case.spec.ts`,
   `test/application/use-cases/llm/clear-model-binding.use-case.spec.ts`,
   `apps/web/src/routes/ProjectSettingsTab.test.tsx`,
   `apps/web/src/routes/settings/papel-na-tabela-de-agentes.test.tsx`
-  (`viewer` não edita e o clique não chega na api; `developer` edita e o
-  PUT/DELETE chega; papel ausente é inerte; a informação da linha sobrevive ao
-  controle apagado; e o caso que impede "uniformizar" as duas seções — o mesmo
-  `developer` vê a tabela de agentes habilitada e a de áreas desabilitada, ao
-  mesmo tempo)
-- **Origem:** [ADR 0064](../adr/0064-escopo-de-area-na-cascata-e-o-binding-de-agente-global.md) (FASE 23)
-
+  (`viewer` does not edit and the click does not reach the api; `developer`
+  edits and the PUT/DELETE arrives; an absent role is inert; the row's
+  information survives the dimmed control; and the case that prevents
+  "making the two sections uniform" — the same `developer` sees the agents table
+  enabled and the areas one disabled, at the same time)
+- **Origin:** [ADR 0064](../adr/0064-escopo-de-area-na-cascata-e-o-binding-de-agente-global.md) (PHASE 23)
 ### RN-103 — O binding de agente é POR PROJETO, não mais global {#rn-103}
 
 Até a FASE 23, `scope = 'agent'` guardava um SLUG global
@@ -3618,17 +3618,15 @@ document.
   misturar docs e session")
 - **ADR:** [0079](../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
 
-## PROGRAMA 28 — Onda 4, frente G2: pipeline de indexação e busca híbrida do Chat RAG (RN-231..238, ADR 0080)
+## PROGRAM 28 — Wave 4, front G2: indexing pipeline and hybrid search of the RAG Chat (RN-231..238, ADR 0080) {#programa-28-onda-4-frente-g2-pipeline-de-indexacao-e-busca-hibrida-do-chat-rag-rn-231-238-adr-0080}
 
-As RNs do auth first-party moram em
-**[Regras de negócio — Autenticação](autenticacao.md)**.
+The first-party auth RNs live in
+**[Business rules — Authentication](autenticacao.md)**.
 
-Saíram daqui por TAMANHO, não por assunto: junto com Custo elas eram
-metade de uma página de 640 KB. O conteúdo não mudou, e as âncoras
-`#rn-NNN` são as mesmas — o que mudou foi o arquivo que as hospeda.
-
-## Autenticação
-
+They left here for SIZE, not for subject: together with Cost they were half of a
+640 KB page. The content did not change, and the `#rn-NNN` anchors are the
+same — what changed was the file that hosts them.
+## Authentication {#autenticacao}
 ### RN-231 — `ChunkRepository` gains DELETE and both halves of hybrid search {#rn-231}
 
 The Wave 3 port (RN-226) only covered basic write/read. Wave 4
@@ -3769,8 +3767,7 @@ parallelism ceiling (RN-083).
   routes)
 - **ADR:** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
-## PROGRAMA 28 — Onda 4, frente E2: virtualização de linha e minimapa na aba Code (RN-239..242)
-
+## PROGRAM 28 — Wave 4, front E2: row virtualization and minimap in the Code tab (RN-239..242) {#programa-28-onda-4-frente-e2-virtualizacao-de-linha-e-minimapa-na-aba-code-rn-239-242}
 ### RN-243 — The container lifecycle is a TABLE, and none of its rows calls Docker {#rn-243}
 
 `project_containers` (migration `0046`) records the mutable STATE of a project's
@@ -4076,18 +4073,17 @@ real reason. Same pattern as the git connection callback
 
 ---
 
-## Analytics e delivery-metricas: os dois papéis viram RELATÓRIO (RN-320..322, ADR 0089)
+## Analytics and delivery-metricas: the two roles become a REPORT (RN-320..322, ADR 0089) {#analytics-e-delivery-metricas-os-dois-papeis-viram-relatorio-rn-320-322-adr-0089}
 
-Decisão consciente do dono do produto de ANTECIPAR a construção dos papéis
-`analytics` e `delivery-metricas` (`packages/contracts/fluxo.yml`, `status: proposto`) sem
-esperar o gatilho orgânico que cada um já declarava. Os dois viram um SCRIPT
-só — `scripts/analise-funil.ts` — no mesmo formato de
-`medir-execucao.ts` (Fase 13b): `NestFactory.createApplicationContext`,
-`--projeto <uuid>` obrigatório, leitura pura via Drizzle, sem escrita
-nenhuma. A forma é a que o próprio fluxo já prescrevia: `analytics` é
-"absorvido por `medicao`" e `delivery-metricas` "nunca vira agente" —
-nenhum GenServer, nenhum agente de LLM.
-
+A conscious decision of the product owner to BRING FORWARD the construction of
+the `analytics` and `delivery-metricas` roles (`packages/contracts/fluxo.yml`,
+`status: proposto`) without waiting for the organic trigger each one already
+declared. The two become a single SCRIPT — `scripts/analise-funil.ts` — in the
+same format as `medir-execucao.ts` (Phase 13b): `NestFactory.createApplicationContext`,
+mandatory `--projeto <uuid>`, pure read via Drizzle, no write at all. The shape
+is the one the flow itself already prescribed: `analytics` is "absorbed by
+`medicao`" and `delivery-metricas` "never becomes an agent" — no GenServer, no
+LLM agent.
 ### RN-320 — `analise-funil.ts` is a script, never an agent — same skeleton as `medir-execucao.ts` {#rn-320}
 
 The command is `pnpm --filter api analise:funil -- --projeto <uuid> [--json]`.
@@ -4160,8 +4156,7 @@ instead of an approximate number:
 
 ---
 
-## O gate `implementavel` ativa — QA-estratégia como segundo momento do qa-lead (RN-340/341, ADR 0090)
-
+## The `implementavel` gate activates — QA-strategy as the second moment of the qa-lead (RN-340/341, ADR 0090) {#o-gate-implementavel-ativa-qa-estrategia-como-segundo-momento-do-qa-lead-rn-340-341-adr-0090}
 ### RN-340 — The `implementavel` gate decides the story BEFORE the dev agent writes code {#rn-340}
 
 `config/gates.yml` declared the `implementavel` gate (owner `dev-lead`) since
@@ -4211,17 +4206,17 @@ outcomes, minimum role, outside the absolute ceilings) remains the same.
   implementabilidade do Dev Lead")
 - **Origin:** [ADR 0090](../adr/0090-qa-estrategia-e-appsec-segundo-momento.md)
 
-## `secops-runtime` — relatório de abuso sobre `rate_limit_hits` (RN-375..377, ADR 0091)
+## `secops-runtime` — abuse report over `rate_limit_hits` (RN-375..377, ADR 0091) {#secops-runtime-relatorio-de-abuso-sobre-rate-limit-hits-rn-375-377-adr-0091}
 
-Decisão consciente do dono do produto de antecipar o papel `secops-runtime`
-(`packages/contracts/fluxo.yml`, `camada_seguranca`), que nasceu `proposto` com o critério
-de separação "produção com tráfego real (pós `DEPLOY_ENABLED` + `platform`
-ativo)". Esse gatilho não disparou — não há tráfego de produção. O que existe
-hoje é `rate_limit_hits` (`RateLimitGuard`, ADR 0027): uma linha por request
-contado, gravada mesmo sob tráfego de dev/CI. `secops-runtime` entra como
-SCRIPT (`pnpm --filter api relatorio:seguranca-runtime`), não agente LLM nem
-`GenServer` — não há decisão a tomar, só dado a agregar.
-
+A conscious decision of the product owner to bring forward the `secops-runtime`
+role (`packages/contracts/fluxo.yml`, `camada_seguranca`), which was born
+`proposto` with the separation criterion "production with real traffic (after
+`DEPLOY_ENABLED` + `platform` active)". That trigger did not fire — there is no
+production traffic. What exists today is `rate_limit_hits` (`RateLimitGuard`,
+ADR 0027): one row per counted request, written even under dev/CI traffic.
+`secops-runtime` enters as a SCRIPT (`pnpm --filter api relatorio:seguranca-runtime`),
+not an LLM agent nor a `GenServer` — there is no decision to make, only data to
+aggregate.
 ### RN-375 — The report declares the window, never pretends a longer history {#rn-375}
 
 `DomainGaugesCollector.pruneRateLimit`
