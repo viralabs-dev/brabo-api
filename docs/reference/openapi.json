@@ -14721,7 +14721,7 @@
   "info": {
     "title": "Brabo API",
     "description": "The Brabo API. Every endpoint returns JSON, except the four explicitly\ndocumented with a different `content-type` (two SSE ones, the metrics one,\nand the OAuth callback, which redirects).\n\n## Authentication\n\nThe access token is a **15-minute EdDSA JWT**, presented in\n`Authorization: Bearer <token>`. The public key lives at\n`GET /.well-known/jwks.json`.\n\nThe refresh **is not** a JWT: it's an opaque token that lives in an\n`httpOnly` cookie (`brabo_refresh`, `Path=/auth`, `SameSite=Strict`) and\nnever appears in any response body. `POST /auth/refresh` and\n`POST /auth/logout` read the cookie and require the `X-CSRF-Token` header\nto match the `brabo_csrf` cookie.\n\n**Rotation is mandatory.** Each refresh consumes the presented token and\nissues another. Re-presenting an already-consumed one is a theft signature\nand revokes the WHOLE family — including the legitimate session. A client\nthat fires two concurrent refreshes takes itself down; use a single in-flight\ncall.\n\nThe `/internal/*` routes are the api ↔ engine surface and sit **outside the\nJWT**: they require the `X-Brabo-Service-Token` header with the shared\nsecret. A user token doesn't open any of them.\n\n## Errors\n\nNestJS default format: `{ \"statusCode\": number, \"message\": string | string[], \"error\": string }`.\n\n| code | when |\n|---|---|\n| `400` | invalid body — the `ValidationPipe` runs with `whitelist` and `forbidNonWhitelisted`, so an unknown field also fails |\n| `401` | no token, expired token, or invalid credential |\n| `403` | authenticated but without the role RBAC requires, or a wrong service token |\n| `404` | resource doesn't exist **or** is invisible to the caller |\n| `409` | state conflict — invalid session transition, resource already exists |\n| `429` | rate limit or progressive lockout |\n\nAuth routes respond **deliberately indistinguishably** between a nonexistent\nemail, a wrong password, and a locked account: same body, same status, same\ntiming. That's what closes account enumeration, and it's not a diagnostic\ndefect.\n\n## Rate limit\n\nSliding window in Postgres: 300 requests per user and 600 per IP every 60s,\nconfigurable. A `@Public()` route and a service route are **exempt** — what\nguards `/auth/*` is the progressive lockout, not the rate limit.",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "contact": {}
   },
   "tags": [],
@@ -17126,7 +17126,7 @@
           },
           "path": {
             "type": "string",
-            "example": "apps/api",
+            "example": "src",
             "description": "Listed directory; `\"\"` is the root."
           },
           "entries": {

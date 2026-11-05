@@ -152,7 +152,7 @@ export class InternalProjectsController {
       'The SAME report as the `analise:funil` script (ADR 0089) — session → ' +
       'commit → PR → merge funnel, real lead time and real deployment ' +
       'frequency — through the same pure functions and the same query ' +
-      '(`apps/api/src/application/services/funil-metrics.ts`), so the two ' +
+      '(`src/application/services/funil-metrics.ts`), so the two ' +
       'never diverge from the same fact. Closes `docs/fluxo.yml` (role ' +
       '`po`, input `metricas-de-produto`, previously `status: lacuna`) ' +
       '(RN-407).',

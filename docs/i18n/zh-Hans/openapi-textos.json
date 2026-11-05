@@ -327,10 +327,6 @@
     "fonte": "The contracts between modules, for a dev agent to read (RN-684)",
     "traducao": "模块之间的契约，供 dev agent 阅读（RN-684）"
   },
-  "606f9805e6ba": {
-    "fonte": "The SAME report as the `analise:funil` script (ADR 0089) — session → commit → PR → merge funnel, real lead time and real deployment frequency — through the same pure functions and the same query (`src/application/services/funil-metrics.ts`), so the two never diverge from the same fact. Closes `docs/fluxo.yml` (role `po`, input `metricas-de-produto`, previously `status: lacuna`) (RN-407).",
-    "traducao": "与 `analise:funil` 脚本（ADR 0089）相同的报告——会话 → 提交 → PR → 合并的漏斗、真实交付周期和真实部署频率——经由相同的纯函数和相同的查询（`src/application/services/funil-metrics.ts`），因此两者对同一事实绝不会出现分歧。补上 `docs/fluxo.yml`（角色 `po`，输入 `metricas-de-produto`，此前为 `status: lacuna`）（RN-407）。"
-  },
   "c167a62bbd4d": {
     "fonte": "The project's delivery funnel and partial DORA metrics, for the PO to read",
     "traducao": "项目的交付漏斗和部分 DORA 指标，供 PO 阅读"
