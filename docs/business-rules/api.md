@@ -12773,3 +12773,10 @@ na instalação responde 409.
 - **Code:** `apps/api/src/infrastructure/llm/traced-llm-provider.ts:78` (`aceitaRaciocinioDesligado`)
 - **Test:** `apps/api/test/infrastructure/llm/traced-llm-provider.spec.ts` (keeps `true`, stays `undefined`, and the real `LLMProviderRegistryImpl.get('anthropic')` returns `true`)
 - **Origin:** AT-743 (EP-030)
+
+### RN-1002 — The agent closes the open question the user answered in chat; the human answer and the agent share one core {#rn-1002}
+
+- **Rule:** extends [RN-858](#rn-858)/[RN-860](#rn-860) (ADR 0214, owner decision of 05/11: the agent closes). `POST /internal/projects/:projectId/open-questions/:questionId/answer` (service token) takes `{ sessionId, agentId, resposta?, messageEventId? }` and writes the SAME `artifact.decision_record` + `open_question.answered` pair as the click, through one shared core (`fechar`), then resumes the parked QA gate of each affected task. `respondidaPor` is the author of the chat session (`sessionId`); the agent goes in `viaAgente` (and `messageEventId` when sent). Without `resposta` the question suggestion is the answer; with neither, 400. Unknown question, a question of another project, or a session outside the project: 404. Already closed: `200 { status: 'already_answered' }`, never 409 (idempotent for the agent). The human `responder` is unchanged (`so_o_autor_da_sessao`, 409).
+- **Where:** `apps/api/src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts` (`responderPeloAgente`, `fechar`), `apps/api/src/interfaces/http/internal/internal-open-questions.controller.ts`.
+- **Test:** `apps/api/test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts` (closes with `decision_record`, 404 for another project, second call `already_answered`).
+- **Origin:** AT-741 (EP-030), finding 4 of the TP-01 of 05/11; engine side is RN-1003.

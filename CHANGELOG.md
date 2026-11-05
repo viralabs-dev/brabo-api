@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `POST /internal/projects/:projectId/open-questions/:questionId/answer` (AT-741, RN-1002): the agent closes the open question the user answered in chat, sharing the core of the human answer; idempotent (`already_answered`).
 - Corrige o `TracedLLMProvider` (AT-743, RN-1001): repassa `aceitaRaciocinioDesligado` do provider envolvido; sem isso a retentativa sem raciocínio da RN-916 nunca rodava em produção (OpenRouter e Anthropic).
 - Provider Anthropic (AT-739, RN-1000): com o raciocínio desligado o corpo é por modelo — Haiku 5.5 `thinking: disabled`, Sonnet 5.5 `between_tools`, Opus 5.5 `effort: low` (reduzido); o adaptativo ligado ganha a folga no `max_tokens`; declara `aceitaRaciocinioDesligado`; `reasoning_tokens` vem do `thinking_tokens` do `message_delta` em vez de NULL.
 - `politica.yml`: pins do `brabo-ci` sobem para `b030fbf` (dispensa da PR do bot, ADR 0255; AT-733).
