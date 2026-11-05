@@ -20,6 +20,12 @@ export interface AtribuicaoDeTarefa {
   modulo: string;
 }
 
+/** Módulo do `module_map` vigente, com o que ele CONSOME (`dependsOn`). */
+export interface ModuloDoMapa {
+  name: string;
+  dependsOn?: readonly string[];
+}
+
 export type LeituraDoPlano =
   | { ok: true; tarefas: AtribuicaoDeTarefa[]; modulos: string[] }
   | { ok: false; motivo: string };
@@ -32,9 +38,10 @@ export type LeituraDoPlano =
  */
 export function lerPlanoDeExecucao(
   payload: unknown,
-  modulosDoMapa: readonly string[],
+  mapa: readonly ModuloDoMapa[],
   tarefasDoProjeto: ReadonlySet<string>,
 ): LeituraDoPlano {
+  const modulosDoMapa = mapa.map((m) => m.name);
   const p = (payload ?? {}) as { tarefas?: unknown; modulos?: unknown };
   const validos = `módulos do module_map vigente: ${modulosDoMapa.join(', ') || '(nenhum)'}`;
 
@@ -108,6 +115,23 @@ export function lerPlanoDeExecucao(
     }
     vistas.add(taskId);
     tarefas.push({ taskId, modulo });
+  }
+
+  // RN-1004 (AT-742, ADR 0259): módulo sem tarefa de que outro módulo COM
+  // tarefa depende fica sem dono — o consumidor bloqueia sem contrato. Módulo
+  // folha sem tarefa segue legítimo (RN-709).
+  const comTarefa = new Set(tarefas.map((t) => t.modulo));
+  for (const m of mapa) {
+    if (!comTarefa.has(m.name)) continue;
+    const orfa = (m.dependsOn ?? []).find(
+      (d) => modulosDoMapa.includes(d) && !comTarefa.has(d),
+    );
+    if (orfa !== undefined) {
+      return {
+        ok: false,
+        motivo: `${m.name} depende de ${orfa}, que ficou sem tarefa — crie a tarefa de fundação de ${orfa}.`,
+      };
+    }
   }
 
   return { ok: true, tarefas, modulos };

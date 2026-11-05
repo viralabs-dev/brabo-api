@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The Dev Lead's plan leaves no module without an owner (AT-742, RN-1004/RN-1005, ADR 0259): `lerPlanoDeExecucao` refuses the plan (400 `plano_de_execucao_invalido`, naming the pair) when a module with no task is in the `dependsOn` of a module with one, and `claimNext` does not hand out a module's task while a task of a module in its direct `dependsOn` is open.
 - Corrige o `TracedLLMProvider` (AT-743, RN-1001): repassa `aceitaRaciocinioDesligado` do provider envolvido; sem isso a retentativa sem raciocínio da RN-916 nunca rodava em produção (OpenRouter e Anthropic).
 - Provider Anthropic (AT-739, RN-1000): com o raciocínio desligado o corpo é por modelo — Haiku 5.5 `thinking: disabled`, Sonnet 5.5 `between_tools`, Opus 5.5 `effort: low` (reduzido); o adaptativo ligado ganha a folga no `max_tokens`; declara `aceitaRaciocinioDesligado`; `reasoning_tokens` vem do `thinking_tokens` do `message_delta` em vez de NULL.
 - `politica.yml`: pins do `brabo-ci` sobem para `b030fbf` (dispensa da PR do bot, ADR 0255; AT-733).

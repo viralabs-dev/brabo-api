@@ -12773,3 +12773,17 @@ na instalação responde 409.
 - **Code:** `apps/api/src/infrastructure/llm/traced-llm-provider.ts:78` (`aceitaRaciocinioDesligado`)
 - **Test:** `apps/api/test/infrastructure/llm/traced-llm-provider.spec.ts` (keeps `true`, stays `undefined`, and the real `LLMProviderRegistryImpl.get('anthropic')` returns `true`)
 - **Origin:** AT-743 (EP-030)
+
+### RN-1004 — The Dev Lead's execution plan is refused when a module with no task is a dependency of a module that has one {#rn-1004}
+
+- **Rule:** extends [RN-678](#rn-678). `lerPlanoDeExecucao` now receives the current `module_map` WITH each module's `dependsOn`, not just the names. After the per-task checks, if a module with NO task in the plan appears in the `dependsOn` of a module that HAS a task, the plan is refused with 400 `plano_de_execucao_invalido`, naming the pair: "deploy depende de api, que ficou sem tarefa — crie a tarefa de fundação de api". A leaf module without a task stays legitimate ([RN-709](#rn-709)); the check runs at proposal and at approval, like the rest of the reading.
+- **Code:** `apps/api/src/domain/execution/plano-de-execucao.ts` (`lerPlanoDeExecucao`), `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts` (`lerPlano`)
+- **Test:** `apps/api/test/domain/execution/plano-de-execucao.spec.ts` (`fundação com dono`: the plan without `db`/`api` is refused naming `deploy` -> `api`; with a task in `db`, `api` and `deploy` it passes)
+- **Origin:** AT-742 (EP-030), TP-01 finding 9 of 05/11; ADR 0259.
+
+### RN-1005 — The claim does not hand out a module's task while a task of a module in its direct `dependsOn` is open {#rn-1005}
+
+- **Rule:** extends [RN-678](#rn-678). `claimNext` skips the `todo` queue for module M while any task NOT `done` belongs to a module listed in the `dependsOn` of M in the project's current `module_map` (the same source as [RN-1004](#rn-1004)). Only the DIRECT dependencies count (no transitive walk); a task without `module` counts for the module of a single-module story, as in the claim itself. Without a `module_map`, or when M is not in it, the claim behaves as before. The agent's own orphaned `in_progress` task ([RN-856](#rn-856)) is not affected.
+- **Code:** `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts` (`claimNext`, `semDependenciaAberta`)
+- **Test:** `apps/api/test/infrastructure/persistence/drizzle/backlog-claim-depends-on.repository.spec.ts` (open task in `api` -> `deploy` gets nothing; `api` done -> it gets the task; direct only; no map)
+- **Origin:** AT-742 (EP-030); ADR 0259.
