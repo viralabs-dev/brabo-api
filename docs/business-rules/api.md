@@ -8079,19 +8079,19 @@ comportamento de sempre, nada vai ao fio e o hub decide sozinho.
    fio. O que a prova NÃO afirma: qual upstream cada critério escolhe — isso
    é decisão do hub e muda com o tempo.
 
-- **Where:** `src/domain/llm/routing-preference.ts:56` (escrita),
+- **Onde:** `src/domain/llm/routing-preference.ts:56` (escrita),
   `src/domain/llm/routing-preference.ts:75` (o que vai ao fio),
   `src/domain/llm/binding-resolver.ts:100` (viaja com o binding),
   `src/application/use-cases/llm/record-llm-usage.use-case.ts:118`
   (congela no metering),
   `src/infrastructure/llm/openrouter-provider.ts:353` (`openrouterConfig`,
   a capability provada)
-- **Test:** `test/domain/llm/routing-preference.spec.ts`,
+- **Teste:** `test/domain/llm/routing-preference.spec.ts`,
   `test/application/use-cases/llm/set-model-binding.use-case.spec.ts`,
   `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts`,
   `test/infrastructure/llm/openrouter-provider.contract.spec.ts`; a prova
   manual da capability é `test/infrastructure/llm/openrouter-provider.roteamento.smoke.spec.ts`
-- **Origin:** [ADR 0166](../adr/0166-preferencia-de-roteamento-no-binding-de-modelo.md) (AT-090)
+- **Origem:** [ADR 0166](../adr/0166-preferencia-de-roteamento-no-binding-de-modelo.md) (AT-090)
 
 ### RN-590 — The artifacts' `docs/` folder is rebuilt from the event log by the SAME translator as the live projector, without touching the outbox, and never comes out as a silent success {#rn-590}
 
@@ -9942,21 +9942,21 @@ gasto somam. Sem ele, o preço congelado do catálogo produz o número, como no
    e com `is_byok: true` o custo NÃO é lido: é a taxa do hub, e a inferência é
    cobrada por fora — a linha cai no catálogo.
 
-- **Where:** `src/domain/llm/custo-da-chamada.ts:43` (`custoDaChamada`),
+- **Onde:** `src/domain/llm/custo-da-chamada.ts:43` (`custoDaChamada`),
   `src/application/use-cases/llm/run-llm-turn.use-case.ts:288` (`custoDaChamada`),
   `src/application/use-cases/llm/stream-llm-turn.use-case.ts:327` (`custoDaChamada`),
   `src/application/use-cases/llm/send-chat-message.use-case.ts:286` (`custoDaChamada`),
   `src/infrastructure/llm/openai-compatible-provider.ts:410` (`extrairCustoReal`),
   `src/infrastructure/llm/openrouter-provider.ts:272` (`extrairCustoRealOpenRouter`),
   `src/db/schema/llm.ts:375` (`priceImplicit`)
-- **Test:** `test/domain/llm/custo-da-chamada.spec.ts`,
+- **Teste:** `test/domain/llm/custo-da-chamada.spec.ts`,
   `test/infrastructure/llm/openrouter-provider.contract.spec.ts` (resposta
   gravada: custo, modelo resolvido, id; BYOK; sem `cost`; provider sem o
   hook), `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts`,
   `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts`,
   `test/application/use-cases/llm/send-chat-message.use-case.spec.ts`; com
   credencial, o smoke manual `openrouter-provider.smoke.spec.ts`
-- **Origin:** [ADR 0188](../adr/0188-o-custo-real-do-provider-vira-o-numero-do-metering.md)
+- **Origem:** [ADR 0188](../adr/0188-o-custo-real-do-provider-vira-o-numero-do-metering.md)
   (AT-270)
 
 ### RN-666 — O metering grava quanto da entrada veio de cache e quanto da saída foi raciocínio {#rn-666}
@@ -9984,17 +9984,17 @@ foram raciocínio).
    no protocolo dele (`cache_read_input_tokens`) e isso NÃO é lido aqui — fica
    `null`, declarado; o Ollama não informa.
 
-- **Where:** `src/infrastructure/llm/openai-compatible-provider.ts:414` (`cachedInputTokens`),
+- **Onde:** `src/infrastructure/llm/openai-compatible-provider.ts:414` (`cachedInputTokens`),
   `src/infrastructure/llm/openai-compatible-provider.ts:817` (`contagem`),
   `src/application/use-cases/llm/run-llm-turn.use-case.ts:230` (`cachedInputTokens`),
   `src/application/use-cases/llm/record-llm-usage.use-case.ts:121` (`cachedInputTokens`),
   `src/db/schema/llm.ts:395` (`cachedInputTokens`),
   `scripts/medir-execucao.ts:89` (`formatarParteMedida`)
-- **Test:** `test/infrastructure/llm/openrouter-provider.contract.spec.ts`
+- **Teste:** `test/infrastructure/llm/openrouter-provider.contract.spec.ts`
   (resposta gravada com as duas partes; sem os detalhes; valor inválido e
   zero), `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts`,
   `test/scripts/medir-execucao.spec.ts` (`formatarParteMedida`)
-- **Origin:** [ADR 0188](../adr/0188-o-custo-real-do-provider-vira-o-numero-do-metering.md)
+- **Origem:** [ADR 0188](../adr/0188-o-custo-real-do-provider-vira-o-numero-do-metering.md)
   (AT-272)
 
 ### RN-669 — The path scope compares against the REAL execution folder: `/work` and the container's `/tmp` when it is up {#rn-669}
@@ -10447,19 +10447,19 @@ signifique alguma coisa. A alternativa — preçar por upstream — foi recusada
    reescrito. Binding NOVO para um alias ainda ativo não é recusado aqui: a
    regra é da curadoria, e o binding segue a [RN-043](#rn-043).
 
-- **Where:** `src/domain/llm/alias-de-roteamento-livre.ts:23` (`ehAliasDeRoteamentoLivre`),
+- **Onde:** `src/domain/llm/alias-de-roteamento-livre.ts:23` (`ehAliasDeRoteamentoLivre`),
   `:41` (`AliasDeRoteamentoLivreError`),
   `src/application/use-cases/llm/set-models-active.use-case.ts:59` (`AliasDeRoteamentoLivreError`),
   `src/infrastructure/persistence/drizzle/workspace-model.repository.ts:67` (`freeRoutingAlias`),
   `src/interfaces/http/shared/llm-binding-error.filter.ts:60` (`code`),
   `apps/web/src/components/ModelCatalogSection.tsx:606` (`recusaDeAliasLivre`)
-- **Test:** `test/application/use-cases/llm/set-models-active.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/llm/set-models-active.use-case.spec.ts`
   (lote recusado inteiro com código e ids; upstream fixo ativa; `~` fora do
   OpenRouter ativa; alias curado antes da regra segue ativo, marcado, desliga
   e não volta), `test/interfaces/http/shared/llm-binding-error.filter.spec.ts`,
   `apps/web/src/components/ModelCatalogSection.test.tsx` (selo e motivo;
   toast da recusa; toast genérico para outro erro)
-- **Origin:** AT-271 (item A25 da análise do uso real de 29/09); complementa a
+- **Origem:** AT-271 (item A25 da análise do uso real de 29/09); complementa a
   [RN-665](#rn-665)
 
 ### RN-681 — História e regra parecidas com uma existente geram AVISO por embedding, nunca recusa; o gasto da checagem é linha própria do metering {#rn-681}
@@ -10491,7 +10491,7 @@ embedding do RAG, e AVISA quando a mais próxima está a partir do limiar.
 5. **Tetos:** as 100 existentes mais recentes (o resultado diz quantas de
    quantas quando corta) e 10 s de relógio para a checagem inteira.
 
-- **Where:** `src/domain/backlog/duplicata-semantica.ts:35` (`LIMIAR_DE_DUPLICATA_SEMANTICA`),
+- **Onde:** `src/domain/backlog/duplicata-semantica.ts:35` (`LIMIAR_DE_DUPLICATA_SEMANTICA`),
   `:44` (`TETO_DE_COMPARACOES_DE_DUPLICATA`), `:53` (`TETO_DE_TEMPO_DA_CHECAGEM_MS`),
   `:107` (`ehDuplicataSemantica`),
   `src/application/use-cases/backlog/verificar-duplicata-semantica.use-case.ts:111` (`VerificarDuplicataSemanticaUseCase`),
@@ -10501,7 +10501,7 @@ embedding do RAG, e AVISA quando a mais próxima está a partir do limiar.
   `src/application/use-cases/rag/rag-embedding.service.ts:106` (`uso`),
   `apps/engine/lib/engine/harness/tools/emit_artifact.ex` (`aviso_semantico`),
   `apps/engine/lib/engine/harness/tools/create_story.ex` (`aviso_semantico`)
-- **Test:** `test/application/use-cases/backlog/verificar-duplicata-semantica.use-case.spec.ts`
+- **Teste:** `test/application/use-cases/backlog/verificar-duplicata-semantica.use-case.spec.ts`
   (avisa acima do limiar; o gasto vira linha própria; abaixo não narra; sem
   provider pula dizendo; teto de tempo; teto de comparações; regra pelos
   eventos; metering e log que falham não derrubam),
@@ -10511,7 +10511,7 @@ embedding do RAG, e AVISA quando a mais próxima está a partir do limiar.
   pulada até os vetores serem gravados),
   `apps/engine/test/engine/harness/duplicata_semantica_test.exs`,
   `apps/web/src/lib/activity.test.ts` (`duplicata semântica (RN-681)`)
-- **Origin:** [ADR 0198](../adr/0198-duplicata-semantica-por-embedding-com-limiar-que-so-avisa.md)
+- **Origem:** [ADR 0198](../adr/0198-duplicata-semantica-por-embedding-com-limiar-que-so-avisa.md)
   (AT-171, achado R)
 
 ## Anamnesis reconnected: eligible subject and profile fact (RN-680) {#a-anamnese-religada-sujeito-elegivel-e-fato-do-perfil-rn-680}
