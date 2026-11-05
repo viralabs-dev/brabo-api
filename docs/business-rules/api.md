@@ -10653,42 +10653,46 @@ proposal.
   `apps/engine/test/engine/infra/infra_lead_server_test.exs:1307`
 - **Origin:** AT-261 (item A15 of the analysis of the real use of 29/09)
 
-## A Anamnese religada: sujeito elegível e fato do perfil (RN-680)
+## Anamnesis reconnected: eligible subject and profile fact (RN-680) {#a-anamnese-religada-sujeito-elegivel-e-fato-do-perfil-rn-680-1}
 
-### RN-684 — O contrato entre módulos é artefato versionado do Arquiteto, e o dev agent o lê pela ferramenta, nunca no worktree de outro dev {#rn-684}
+### RN-684 — The contract between modules is a versioned artifact of the Architect, and the dev agent reads it through the tool, never in another dev's worktree {#rn-684}
 
-Decisão do dono (01/10), registrada no
-[ADR 0200](../adr/0200-contrato-entre-modulos-artefato-do-arquiteto.md). No uso
-real de 29/09, `dev-board-engine` gastou 5 dos seus 24 passos com ferramenta
-lendo o worktree de outros módulos para descobrir a interface deles: o
-`module_map` diz quem depende de quem, nunca o que um módulo expõe. Aplica a
-[RN-164](engine.md#rn-164) aos dev agents.
+Owner's decision (01/10), recorded in
+[ADR 0200](../adr/0200-contrato-entre-modulos-artefato-do-arquiteto.md). In real
+use on 29/09, `dev-board-engine` spent 5 of its 24 tool steps reading other
+modules' worktrees to discover their interface: the `module_map` says who
+depends on whom, never what a module exposes. It applies
+[RN-164](engine.md#rn-164) to the dev agents.
 
-1. **O artefato é `artifact.module_contracts`**, sem tabela, como o
-   `module_routing` e o `c4_diagram`: o vigente é o de maior `version`, com
-   desempate por `seq`. Cada declaração leva a lista INTEIRA e SUBSTITUI a
-   anterior; mudar contrato é versão nova do Arquiteto.
-2. **Por módulo, só o que ele EXPÕE**: `{modulo, expoe: [{tipo, assinatura,
-   descricao}]}`, `tipo` em `funcao | rota | evento | dado`, `assinatura`
-   obrigatória (até 300 caracteres), de 1 a 40 itens. O que ele CONSOME é o
-   `dependsOn` do `module_map` vigente, derivado na leitura — nunca redigitado.
-3. **A api recusa com 400 e o motivo inteiro** (que volta ao modelo, RN-061):
-   lista vazia, módulo repetido, módulo fora do `module_map` vigente (listando
-   os válidos) ou sem `module_map`, `expoe` vazio ou acima de 40, `tipo`
-   desconhecido, `assinatura` vazia ou acima de 300. Nada é gravado.
-4. **Artefato SEPARADO do `module_map`**, nunca um campo dele: revisar um não
-   reemite o outro.
-5. **O dev lê por `listar_contratos_de_modulos`**, `:direct`, no registro de
-   `Engine.Dev.Tools`: escopo do projeto pela rota, NENHUM parâmetro, o módulo
-   do dev vindo de `ctx.module`. Mostra por inteiro o dele e os que ele
-   consome; quem o consome e os demais, só pelo nome; teto de 120 itens com o
-   corte dito. Contrato de módulo que saiu do mapa é DITO, nunca atribuído.
-6. **O kickoff do dev diz onde ler a interface de outro módulo**, e que não é
-   no worktree de outro dev agent. Sem contrato para um módulo mostrado, a
-   ferramenta manda implementar pelo que a story e a task dizem e, se faltar
-   interface, `report_blocked` nomeando o módulo — nunca reler o worktree.
+1. **The artifact is `artifact.module_contracts`**, with no table, like
+   `module_routing` and `c4_diagram`: the current one is the one with the
+   greatest `version`, tie-broken by `seq`. Each declaration carries the WHOLE
+   list and REPLACES the previous one; changing a contract is a new version from
+   the Architect.
+2. **Per module, only what it EXPOSES**: `{modulo, expoe: [{tipo, assinatura,
+   descricao}]}`, `tipo` in `funcao | rota | evento | dado`, `assinatura`
+   mandatory (up to 300 characters), from 1 to 40 items. What it CONSUMES is the
+   current `module_map`'s `dependsOn`, derived on read — never retyped.
+3. **The api refuses with 400 and the whole reason** (which goes back to the
+   model, RN-061): empty list, repeated module, module outside the current
+   `module_map` (listing the valid ones) or without a `module_map`, `expoe` empty
+   or above 40, unknown `tipo`, `assinatura` empty or above 300. Nothing is
+   written.
+4. **An artifact SEPARATE from the `module_map`**, never a field of it: revising
+   one does not reissue the other.
+5. **The dev reads through `listar_contratos_de_modulos`**, `:direct`, in the
+   `Engine.Dev.Tools` registry: project scope by the route, NO parameter, the
+   dev's module coming from `ctx.module`. It shows its own in full and those it
+   consumes; who consumes it and the rest, by name only; a ceiling of 120 items
+   with the cut stated. The contract of a module that left the map is STATED,
+   never attributed.
+6. **The dev's kickoff says where to read another module's interface**, and that
+   it is not in another dev agent's worktree. With no contract for a shown
+   module, the tool says to implement from what the story and the task say and,
+   if an interface is missing, `report_blocked` naming the module — never
+   re-read the worktree.
 
-- **Código:** `src/domain/architecture/module-contracts.ts:110`
+- **Code:** `src/domain/architecture/module-contracts.ts:110`
   (`validarContratos`);
   `src/application/use-cases/architecture/declare-module-contracts.use-case.ts:55`
   (`execute`), `:80` (`missingModules`);
@@ -10706,80 +10710,82 @@ lendo o worktree de outros módulos para descobrir a interface deles: o
   `apps/engine/lib/engine/dev/tools.ex:36` (`ListarContratosDeModulos`);
   `apps/engine/lib/engine/dev/dev_agent_server.ex:497` (`module`), `:501`;
   `apps/engine/lib/engine/agents/arquiteto_server.ex:112`, `:335`, `:399`
-- **Teste:** `test/application/use-cases/architecture/module-contracts.use-case.spec.ts:173`
-  (grava a versão 1 — caminho feliz), `:185` (a vigente substitui), `:210`
-  (módulo fora do mapa — caso de falha), `:222` (sem `module_map`), `:123`
-  (as recusas de domínio), `:239` e `:257` (a leitura do dev);
+- **Test:** `test/application/use-cases/architecture/module-contracts.use-case.spec.ts:173`
+  (writes version 1 — happy path), `:185` (the current one replaces), `:210`
+  (module outside the map — failure case), `:222` (without a `module_map`), `:123`
+  (the domain refusals), `:239` and `:257` (the dev's read);
   `apps/engine/test/engine/harness/tools/declare_module_contracts_test.exs:26`,
-  `:65` (recusa da api); `apps/engine/test/engine/harness/tools/listar_contratos_de_modulos_test.exs:71`,
-  `:76`, `:97`, `:109`, `:128`; `scripts/jev/kickoff.spec.ts:19`. Os testes
-  ExUnit não rodaram pelo `mix` neste ambiente (`repo.hex.pm` 403; rodaram
-  num harness avulso com os módulos compilados à mão); o CI os prova.
-- **Origem:** AT-276 (item A30 da análise do uso real de 2026-09-29), decisão
-  do dono de 01/10
+  `:65` (refusal from the api); `apps/engine/test/engine/harness/tools/listar_contratos_de_modulos_test.exs:71`,
+  `:76`, `:97`, `:109`, `:128`; `scripts/jev/kickoff.spec.ts:19`. The ExUnit
+  tests did not run through `mix` in this environment (`repo.hex.pm` 403; they ran
+  in a standalone harness with the modules compiled by hand); CI proves them.
+- **Origin:** AT-276 (item A30 of the analysis of the real use of 2026-09-29),
+  owner's decision of 01/10
 
-### RN-685 — Revogar uma credencial derruba só as conexões abertas COM ELA: o ticket do socket guarda a credencial, e o alvo deixa de ser `{projeto, usuário}` {#rn-685}
+### RN-685 — Revoking a credential takes down only the connections opened WITH it: the socket ticket stores the credential, and the target stops being `{project, user}` {#rn-685}
 
-Revisa a [RN-520](#rn-520). Até aqui, revogar uma chave de dispositivo derrubava
-a conexão viva do runner pelo par `{projeto, usuário}`, porque a identidade da
-credencial morria no `PatAuthGuard`: um runner do MESMO usuário conectado com
-PAT ou com outra chave caía junto, e a chave de MÁQUINA
-([RN-543](produto.md#rn-543)) multiplicava isso por projeto. Revogar um PAT não derrubava
-nada.
+Revises [RN-520](#rn-520). Until now, revoking a device key took down the
+runner's live connection by the `{project, user}` pair, because the credential's
+identity died in the `PatAuthGuard`: a runner of the SAME user connected with a
+PAT or with another key fell together, and the MACHINE key
+([RN-543](produto.md#rn-543)) multiplied this by project. Revoking a PAT took
+nothing down.
 
-**O ticket guarda QUAL credencial o pediu.** `runner_socket_tickets` (tabela do
-engine) ganha `credential_kind` (`device_key` | `pat`) e `credential_id` (o
-`kid`, que é o id do registro — [RN-475](web.md#rn-475) —, ou o id do PAT), as duas
-NULÁVEIS: o ticket de `terminal` é da aba da web e não tem credencial de
-dispositivo, e o de `runner` emitido por uma api anterior chega sem ela. O
-`PatAuthGuard` anota a credencial DEPOIS de autorizar
-(`request.credencialDeDispositivo`), o ticket de `runner` a leva ao engine e o
-de `terminal` nunca leva; par incompleto ou espécie desconhecida vira AUSENTE,
-nunca uma credencial inventada.
+**The ticket stores WHICH credential requested it.** `runner_socket_tickets`
+(the engine's table) gains `credential_kind` (`device_key` | `pat`) and
+`credential_id` (the `kid`, which is the record id — [RN-475](web.md#rn-475) —,
+or the PAT id), both NULLABLE: the `terminal` ticket belongs to the web tab and
+has no device credential, and the `runner` one issued by an earlier api arrives
+without it. The `PatAuthGuard` annotates the credential AFTER authorizing
+(`request.credencialDeDispositivo`), the `runner` ticket carries it to the engine
+and the `terminal` one never does; an incomplete pair or an unknown kind becomes
+ABSENT, never an invented credential.
 
-**O socket guarda a credencial, e o id dele também.** `connect/3` põe
-`assigns.credencial`, e o id passa a ser
-`runner_socket:<kind>:<projectId>:<userId>:<espécie>:<id>` quando ela existe —
-o `disconnect` que o canal difunde para o próprio id alcança só aquela
-credencial.
+**The socket stores the credential, and so does its id.** `connect/3` puts
+`assigns.credencial`, and the id becomes
+`runner_socket:<kind>:<projectId>:<userId>:<kind>:<id>` when it exists — the
+`disconnect` that the channel broadcasts for its own id reaches only that
+credential.
 
-**A revogação de UMA credencial:**
+**The revocation of ONE credential:**
 
-1. **anula os tickets PENDENTES dela** — o pedido feito segundos antes da
-   revogação não entra depois dela (`consumed_at`, o mesmo estado de "já
-   usado", nenhum estado novo);
-2. **pergunta a TODO runner do cluster** se ele nasceu desta credencial — só o
-   canal sabe —, e só quem nasceu dela cai. A chave de máquina é UM pedido, e
-   cai em todo projeto em que abriu conexão, inclusive num que a api não
-   listaria;
-3. responde um BALANÇO (`derrubados`, `legados`, `intocados`, `semResposta`,
-   `ticketsAnulados`) — zero derrubados é o caso normal da chave órfã
+1. **voids its PENDING tickets** — the request made seconds before the
+   revocation does not get in after it (`consumed_at`, the same "already used"
+   state, no new state);
+2. **asks EVERY runner in the cluster** whether it was born from this credential
+   — only the channel knows —, and only whoever was born from it falls. The
+   machine key is ONE request, and it falls in every project in which it opened a
+   connection, including one the api would not list;
+3. answers with a BALANCE (`derrubados`, `legados`, `intocados`, `semResposta`,
+   `ticketsAnulados`) — zero taken down is the normal case of the orphan key
    ([RN-519](#rn-519)).
 
-Vale para as três revogações: a de chave (por projeto e pela Conta,
-[RN-611](#rn-611)) e as duas de PAT (a do dono, [RN-426](#rn-426),
-e a do `maintainer`, [RN-427](#rn-427)).
-Revoga PRIMEIRO, derruba depois, e derrubar continua sendo efeito colateral que
-só LOGA — o `DELETE` segue 204 e idempotente.
+It applies to the three revocations: the key's (per project and by the Account,
+[RN-611](#rn-611)) and the two for PATs (the owner's, [RN-426](#rn-426), and the
+`maintainer`'s, [RN-427](#rn-427)). It revokes FIRST, takes down after, and
+taking down remains a side effect that only LOGS — the `DELETE` is still 204 and
+idempotent.
 
-**O que já caía continua caindo** (a proibição da AT-013). A conexão LEGADA —
-ticket sem credencial — do mesmo dono, num dos projetos que a revogação de
-CHAVE manda como alcance (o da linha, ou os candidatos da máquina), cai pelo
-par como antes; o PAT não ganha alcance legado, porque não derrubava nada. E se
-o engine não conhece a rota por credencial (404 de um engine anterior), a
-revogação de chave volta ao par, `disconnectRunnerOfUser`, projeto a projeto.
+**What already fell keeps falling** (the prohibition of AT-013). The LEGACY
+connection — ticket without a credential — of the same owner, in one of the
+projects the KEY revocation sends as scope (the row's, or the machine's
+candidates), falls by the pair as before; the PAT gains no legacy scope, because
+it took nothing down. And if the engine does not know the per-credential route
+(404 from an earlier engine), the key revocation goes back to the pair,
+`disconnectRunnerOfUser`, project by project.
 
-**O par `{projeto, usuário}` continua, com outro dono:** é o alvo da remoção de
-membro ([RN-615](#rn-615)), que tira a PESSOA, com a credencial que for.
+**The `{project, user}` pair remains, with another owner:** it is the target of
+member removal ([RN-615](#rn-615)), which removes the PERSON, whatever the
+credential.
 
-**A tela diz a precisão** ([RN-561](web.md#rn-561)): a confirmação de revogar — chaves
-de dispositivo em Configurações e chaves de máquina na Conta — troca *"outro
-runner seu também cai"* por *"só cai o que se conectou com ESTA chave"*. Muda o
-rótulo, não o comportamento.
+**The screen states the precision** ([RN-561](web.md#rn-561)): the revoke
+confirmation — device keys in Settings and machine keys in the Account — swaps
+*"another runner of yours also falls"* for *"only what connected with THIS key
+falls"*. The label changes, not the behavior.
 
-- **Onde:** `src/interfaces/http/auth/pat-auth.guard.ts:151`
-  (`credencialDeDispositivo`, o PAT), `:236` (`credencialDeDispositivo`, a
-  chave);
+- **Where:** `src/interfaces/http/auth/pat-auth.guard.ts:151`
+  (`credencialDeDispositivo`, the PAT), `:236` (`credencialDeDispositivo`, the
+  key);
   `src/interfaces/http/runner/runner-tickets.controller.ts:67`
   (`runnerTicket`);
   `src/application/use-cases/runner/request-runner-ticket.use-case.ts:55`
@@ -10802,133 +10808,135 @@ rótulo, não o comportamento.
   `apps/engine/priv/repo/migrations/20261001120000_add_credential_to_runner_socket_tickets.exs`;
   `apps/web/src/routes/settings/RunnerDeviceKeysSection.tsx:346`,
   `apps/web/src/routes/MachineDeviceKeysSection.tsx:202`
-- **Teste:**
+- **Test:**
   `test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
-  (`describe "o alvo da queda é a CHAVE"` — caminho feliz; `describe "CASO DE
-  FALHA: o engine não atende o pedido por chave"` — o plano B pelo par; a
-  máquina num pedido só);
+  (`describe "o alvo da queda é a CHAVE"` — happy path; `describe "CASO DE
+  FALHA: o engine não atende o pedido por chave"` — plan B by the pair; the
+  machine in one request only);
   `test/application/use-cases/auth/machine-device-keys.use-case.spec.ts`;
   `test/application/use-cases/auth/revoke-personal-access-token.use-case.spec.ts`
-  e `revoke-personal-access-token-as-maintainer.use-case.spec.ts`;
-  `test/interfaces/pat-auth.guard.spec.ts` (a credencial anotada nos
-  dois caminhos, e não anotada na recusa);
+  and `revoke-personal-access-token-as-maintainer.use-case.spec.ts`;
+  `test/interfaces/pat-auth.guard.spec.ts` (the credential annotated on both
+  paths, and not annotated on refusal);
   `test/interfaces/http/runner/runner-tickets.guards.integration.spec.ts`
-  (o PAT real até o pedido ao engine);
+  (the real PAT up to the request to the engine);
   `test/application/use-cases/runner/request-runner-ticket.use-case.spec.ts`
-  (o `terminal` nunca leva credencial);
+  (`terminal` never carries a credential);
   `test/infrastructure/http-clients/api-to-engine-client.spec.ts`
-  (`describe "o alvo é a CREDENCIAL"`, inclusive o 404 que LANÇA);
+  (`describe "o alvo é a CREDENCIAL"`, including the 404 that THROWS);
   `apps/engine/test/engine_web/channels/terminal_channel_test.exs`
-  (`describe "revogação por CREDENCIAL"` — o canal real que cai, o PAT do mesmo
-  usuário que fica de pé, a máquina em dois projetos sem lista, o legado pelo
-  par, o ticket pendente anulado);
+  (`describe "revogação por CREDENCIAL"` — the real channel that falls, the same
+  user's PAT that stays up, the machine in two projects without a list, the
+  legacy by the pair, the pending ticket voided);
   `apps/engine/test/engine/runners/socket_ticket_test.exs`,
   `apps/engine/test/engine_web/channels/runner_socket_test.exs`,
   `apps/engine/test/engine_web/controllers/runner_connection_command_controller_test.exs`
-  (200 com balanço, 400 de credencial fora de forma);
+  (200 with a balance, 400 for a malformed credential);
   `apps/web/src/routes/settings/chaves-de-dispositivo.test.tsx`,
-  `apps/web/src/routes/MachineDeviceKeysSection.test.tsx` (a frase da precisão,
-  e a do alvo antigo que não volta)
+  `apps/web/src/routes/MachineDeviceKeysSection.test.tsx` (the precision
+  sentence, and the old-target one that does not come back)
 - **ADR:** [0201](../adr/0201-revogacao-por-chave.md)
-- **Origem:** AT-013 (HS-008, EP-003), decisão do dono em 01/10. Fica
-  declarado e NÃO feito: o ticket SEM credencial (de api anterior) não é
-  anulado na revogação — não há o que comparar, e a janela é de 30 s, só no
-  rollout; e os testes ExUnit só rodam no CI (`repo.hex.pm` dá 403 no ambiente
-  em que foram escritos)
+- **Origin:** AT-013 (HS-008, EP-003), owner's decision on 01/10. Declared and
+  NOT done: the ticket WITHOUT a credential (from an earlier api) is not voided on
+  revocation — there is nothing to compare, and the window is 30 s, only at
+  rollout; and the ExUnit tests only run in CI (`repo.hex.pm` gives 403 in the
+  environment where they were written)
 
-## O teto da RN-418 vale também pela porta tipada (RN-689)
+## The RN-418 ceiling also holds through the typed door (RN-689) {#o-teto-da-rn-418-vale-tambem-pela-porta-tipada-rn-689}
 
-### RN-689 — `git_push` e `pr_open` tipados nunca são auto-aprováveis: o teto da RN-418 vale para o comando E para a ação {#rn-689}
+### RN-689 — Typed `git_push` and `pr_open` are never auto-approvable: the RN-418 ceiling holds for the command AND for the action {#rn-689}
 
-**Revisada pela [RN-713](#rn-713)** (AT-385, 02/10): o modo automático (a
-curinga em `auto_approve`) passa a liberar `git_push` e `pr_open`.
+**Revised by [RN-713](#rn-713)** (AT-385, 02/10): automatic mode (the wildcard in
+`auto_approve`) now releases `git_push` and `pr_open`.
 
-Revisa a [RN-418](#rn-418), por decisão do dono (01/10). Até aqui o teto de
-efeito externo de `decide()` só olhava `actionType === 'terminal'`: o
-`git push` DIGITADO virava `require_approval`, e a mensagem mandava usar a ação
-tipada `git_push` — que, com o papel mínimo (`maintainer`) cumprido, nascia
-`auto_approved` por QUALQUER um dos três estágios: o curinga `"*"` do modo
-automático ([RN-153](#rn-153), o piloto da
-[RN-670](#rn-670)), uma regra específica de `agent_autonomy` (a ativação da
-execução semeava `git_push`/`pr_open` em `auto_approve` para cada
-`dev-<modulo>`) ou um `allow` em `permissions.json`. Medido em
-`decide.spec.ts` antes da correção: os seis casos (dois tipos × três estágios)
-saíam `auto_approve`.
+Revises [RN-418](#rn-418), by the owner's decision (01/10). Until now the
+external-effect ceiling of `decide()` only looked at `actionType === 'terminal'`:
+the TYPED `git push` became `require_approval`, and the message said to use the
+typed action `git_push` — which, with the minimum role (`maintainer`) met, was
+born `auto_approved` by ANY of the three stages: the `"*"` wildcard of automatic
+mode ([RN-153](#rn-153), the autopilot of [RN-670](#rn-670)), a specific
+`agent_autonomy` rule (execution activation seeded `git_push`/`pr_open` in
+`auto_approve` for each `dev-<modulo>`) or an `allow` in `permissions.json`.
+Measured in `decide.spec.ts` before the fix: the six cases (two types × three
+stages) came out `auto_approve`.
 
-**A regra:** `git_push` e `pr_open` entram no bloco de tetos absolutos — se o
-veredito até ali é `auto_approve`, vira `require_approval` incondicional, com o
-motivo nomeado ("teto de efeito externo (RN-418): … nunca é auto-aprovável"),
-que vai no `proposed_action.created`. `deny` já retornou antes e continua
-vencendo; a ORIGEM da autonomia não importa. O "sempre permitir" dos dois já
-era recusado na fonte ([RN-642](#rn-642), `TIPOS_SEM_SEMPRE_PERMITIR`), e é essa
-metade que impede o teto de ser decorativo.
+**The rule:** `git_push` and `pr_open` enter the absolute-ceilings block — if the
+verdict up to there is `auto_approve`, it becomes unconditional
+`require_approval`, with the named reason ("external-effect ceiling (RN-418): …
+is never auto-approvable"), which goes into `proposed_action.created`. `deny`
+already returned before and still wins; the ORIGIN of the autonomy does not
+matter. The "always allow" of both was already refused at the source
+([RN-642](#rn-642), `TIPOS_SEM_SEMPRE_PERMITIR`), and it is that half that keeps
+the ceiling from being decorative.
 
-**A semeadura acompanha:** `DEV_AUTO_GIT_ACTIONS` passa a ser só `git_commit`
-— na ativação e no aceite de paralelização. Semear push e PR seria gravar uma
-autonomia que `decide()` nunca honra, a tela prometendo o que não acontece (o
-argumento da RN-642). Linhas já gravadas ficam no banco, inertes. O dev agent
-segue o caminho da [RN-050](engine.md#rn-050): commit executado,
-push e PR `pending`, agente em `awaiting_approval` retendo o worktree até o
-`task.pr_settled`; só então o gate abre.
+**The seeding follows:** `DEV_AUTO_GIT_ACTIONS` becomes only `git_commit` — at
+activation and at the parallelization acceptance. Seeding push and PR would be
+writing an autonomy that `decide()` never honors, the screen promising what does
+not happen (the argument of RN-642). Rows already written stay in the database,
+inert. The dev agent still follows the path of [RN-050](engine.md#rn-050): commit
+executed, push and PR `pending`, agent in `awaiting_approval` holding the
+worktree until `task.pr_settled`; only then does the gate open.
 
-Ficam FORA, de propósito: `git_merge` (teto próprio de branch protegida);
-`git_commit` (fica na máquina, RN-670); `open_adr_pr` e `open_infra_pr` (abrem
-PR real no provider, mas a decisão do dono não os cobre — `open_infra_pr` é
-semeado `auto_approve` no aceite da Infra, [RN-671](#rn-671)); as ações de
-bootstrap (`git_repo_create`/`git_branch_create`/`git_branch_protect`, que não
-passam por `decide()`); e `deploy`, que não é tipo de `proposed_action` — só
-existe como destino da mensagem do comando de terminal.
+OUT, on purpose: `git_merge` (its own protected-branch ceiling); `git_commit`
+(stays on the machine, RN-670); `open_adr_pr` and `open_infra_pr` (they open a
+real PR on the provider, but the owner's decision does not cover them —
+`open_infra_pr` is seeded `auto_approve` at Infra's acceptance,
+[RN-671](#rn-671)); the bootstrap actions
+(`git_repo_create`/`git_branch_create`/`git_branch_protect`, which do not go
+through `decide()`); and `deploy`, which is not a `proposed_action` type — it only
+exists as the destination of the terminal command's message.
 
-- **Onde:** `src/domain/actions/decide.ts:427` (`ehAcaoTipadaComEfeitoExterno`);
+- **Where:** `src/domain/actions/decide.ts:427` (`ehAcaoTipadaComEfeitoExterno`);
   `src/domain/actions/external-effect.ts:258`
   (`ACOES_TIPADAS_COM_EFEITO_EXTERNO`), `:266` (`ehAcaoTipadaComEfeitoExterno`),
   `:280` (`mensagemDoTetoDaAcaoTipada`);
   `src/application/use-cases/execution/activate-execution.use-case.ts:71`
   (`DEV_AUTO_GIT_ACTIONS`)
-- **Teste:** `test/domain/actions/decide.spec.ts:1375` (os dois tipos
-  com curinga, regra específica e `allow` saem `require_approval`; `deny`
-  continua vencendo — caso de falha; `git_commit` e `git_merge` para branch
-  não protegida ficam fora); `test/application/use-cases/actions/propose-action.use-case.spec.ts:953`
-  (com Postgres: nascem `pending` com o motivo no evento);
+- **Test:** `test/domain/actions/decide.spec.ts:1375` (both types with the
+  wildcard, a specific rule and `allow` come out `require_approval`; `deny` still
+  wins — failure case; `git_commit` and `git_merge` to a non-protected branch stay
+  out); `test/application/use-cases/actions/propose-action.use-case.spec.ts:953`
+  (with Postgres: born `pending` with the reason in the event);
   `test/application/use-cases/execution/activate-execution.use-case.spec.ts:473`
-  e `accept-parallelization.use-case.spec.ts:141` (semeiam só `git_commit`);
+  and `accept-parallelization.use-case.spec.ts:141` (seed only `git_commit`);
   `test/application/use-cases/actions/approve-always-action.use-case.spec.ts:795`
-  ("sempre permitir" recusado, 400 `teto_do_sempre_permitir`)
-- **Origem:** AT-347, decisão do dono em 01/10
+  ("always allow" refused, 400 `teto_do_sempre_permitir`)
+- **Origin:** AT-347, owner's decision on 01/10
 
-### RN-696 — O nível de proficiência por competência chega aos agentes que conversam com a pessoa {#rn-696}
+### RN-696 — The proficiency level per competency reaches the agents that talk to the person {#rn-696}
 
-Medido no código: até aqui o `proficiency_profiles` que a Anamnese grava não
-chegava a agente nenhum — só os FATOS do Psicólogo aceitos pela pessoa
-([RN-680](engine.md#rn-680)) iam no turno. O perfil era só tela.
+Measured in the code: until now the `proficiency_profiles` that Anamnesis writes
+did not reach any agent — only the Psychologist's FACTS accepted by the person
+([RN-680](engine.md#rn-680)) went into the turn. The profile was only a screen.
 
-**A regra:** a api lê o nível por competência do AUTOR da mensagem neste
-projeto (`listByUser`) e o acrescenta ao MESMO texto `perfilDoAutor` que o
-engine põe como mensagem `system` efêmera no turno (`Engine.Harness.PerfilDoAutor`)
-— nenhum servidor de agente muda. Vai só `competência: nível`, com a
-orientação de calibrar quantas perguntas fazer; o `rationale` e as evidências
-NÃO vão, e nível fora da escala é descartado. Teto de 12 competências, e o
-texto inteiro segue sob o `TETO_DO_TEXTO` de 2 000 caracteres. Falha na leitura
-é log, e o turno segue sem ela, independente da leitura do grafo.
-`fatosDoPerfil` no `chat.message` continua contando só os fatos do Psicólogo.
+**The rule:** the api reads the per-competency level of the message's AUTHOR in
+this project (`listByUser`) and adds it to the SAME `perfilDoAutor` text that the
+engine puts as an ephemeral `system` message in the turn
+(`Engine.Harness.PerfilDoAutor`) — no agent server changes. Only
+`competency: level` goes, with the guidance to calibrate how many questions to
+ask; the `rationale` and the evidence do NOT go, and a level outside the scale is
+discarded. A ceiling of 12 competencies, and the whole text stays under the
+`TETO_DO_TEXTO` of 2,000 characters. A failure on the read is logged, and the turn
+goes on without it, independent of the graph read. `fatosDoPerfil` in
+`chat.message` still counts only the Psychologist's facts.
 
-Fica FORA, e é decisão de produto pendente: o que a Anamnese observa sobre o
-comportamento do AGENTE (o laço, o usuário cancelando o turno) virar sinal de
-melhoria do produto, separado do perfil da pessoa.
+Left OUT, and a pending product decision: what Anamnesis observes about the
+AGENT's behavior (the loop, the user cancelling the turn) becoming a
+product-improvement signal, separate from the person's profile.
 
-> **TODO(humano):** o sinal de melhoria do produto vindo da Anamnese é evento
-> (`anamnese.agent_signal`, sem sujeito pessoa) ou tabela própria, quem o lê
-> (Staff? uma tela de melhorias?) e por quanto tempo vive? É fronteira nova de
-> dado e pede ADR (0205 reservado).
+> **TODO(human):** is the product-improvement signal coming from Anamnesis an
+> event (`anamnese.agent_signal`, with no person subject) or a table of its own,
+> who reads it (Staff? an improvements screen?) and how long does it live? It is
+> a new data boundary and calls for an ADR (0205 reserved).
 
-- **Onde:** `src/domain/anamnese/proficiencia-do-autor.ts:22`
+- **Where:** `src/domain/anamnese/proficiencia-do-autor.ts:22`
   (`textoDaProficienciaDoAutor`);
   `src/application/use-cases/agents/send-agent-message.use-case.ts:152`
   (`resolverPerfil`), `:203` (`resolverProficiencia`)
-- **Teste:** `test/application/use-cases/agents/send-agent-message.use-case.spec.ts:254`
-  (o nível vai, o rationale não), `:274` (leitura falha, a mensagem segue —
-  caso de falha); `test/domain/anamnese/proficiencia-do-autor.spec.ts`
-- **Origem:** AT-356 (metade 1)
+- **Test:** `test/application/use-cases/agents/send-agent-message.use-case.spec.ts:254`
+  (the level goes, the rationale does not), `:274` (read fails, the message goes
+  on — failure case); `test/domain/anamnese/proficiencia-do-autor.spec.ts`
+- **Origin:** AT-356 (half 1)
 
 ### RN-703 — Subagente sem modelo herda o modelo resolvido do lead da área {#rn-703}
 
@@ -10958,7 +10966,7 @@ diz onde configurar.
 
 ---
 
-## O instalador oferece os modelos locais, e não confunde o dev com uma instalação (RN-691, RN-692)
+## The installer offers the local models, and does not confuse dev with an installation (RN-691, RN-692) {#o-instalador-oferece-os-modelos-locais-e-nao-confunde-o-dev-com-uma-instalacao-rn-691-rn-692}
 
 ### RN-704 — The local repository's merge is a real merge, and a conflict is a named refusal {#rn-704}
 
@@ -10985,86 +10993,86 @@ diz onde configurar.
   own API (405/406), without translation to `GitMergeConflictError`.
 - **Origin:** AT-377
 
-### RN-705 — A recusa de merge aparece na aba PRs, e a falha grava o tipo da ação {#rn-705}
+### RN-705 — The merge refusal appears in the PRs tab, and the failure records the action's type {#rn-705}
 
-- **Regra:** a ação git que falha grava `execution_result` com o `kind` da
-  PRÓPRIA ação (`git_merge`, `pr_open`, `git_commit`, `git_push`), `failed:
-  true`, o `error` e, no `git_merge`, o `pullRequestId`; antes toda falha
-  gravava `{kind: 'git_push', branch: ''}`. O conflito de merge
-  (`GitMergeConflictError`, RN-704) grava também `conflictingFiles` e um evento
-  `backlog.task_merge_conflict` em cada tarefa da PR. `GET
-  projects/:projectId/actions` aceita `status=failed` (só com `actionType`), e
-  a aba PRs lê dali a última recusa de merge de cada PR aberta: o motivo, os
-  arquivos e a frase de que é preciso resolver o conflito antes. É AVISO em
-  texto, como o do gate pendente (RN-663): o botão "Merge" segue ativo e a
-  decisão continua humana. Aprovar o merge invalida a lista de PRs, e o aviso
-  `action.git_merge`/`action.failed` do canal também; a lista "PRs em revisão"
-  de Aprovações deixa de mostrar tarefa `done`. O card do merge nomeia o ator
-  humano pela leitura de membros (RN-655) e mostra o NÚMERO da PR (`#3`, não
-  `#pr-3`), e o provider local grava o autor da PR (`<agente>[bot]`).
-- **Medição (AT-383/AT-382, 02/10, loja-teste):** a #6 terminou `failed` com
-  o conflito em `package.json` e a aba PRs seguiu mostrando "ABERTA" com o botão
-  "Merge", sem texto nenhum; a ação gravou `kind: git_push`. Depois de um merge
-  executado, a PR seguia em "Abertas" até recarregar, o card mostrava o UUID do
-  usuário e `#pr-3`, e toda PR local era "autor desconhecido".
-- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:72` (`resultadoDaFalha`),
+- **Rule:** a git action that fails records `execution_result` with the `kind` of
+  the action ITSELF (`git_merge`, `pr_open`, `git_commit`, `git_push`), `failed:
+  true`, the `error` and, in `git_merge`, the `pullRequestId`; before, every
+  failure recorded `{kind: 'git_push', branch: ''}`. The merge conflict
+  (`GitMergeConflictError`, RN-704) also records `conflictingFiles` and a
+  `backlog.task_merge_conflict` event on each task of the PR. `GET
+  projects/:projectId/actions` accepts `status=failed` (only with `actionType`),
+  and the PRs tab reads from there the last merge refusal of each open PR: the
+  reason, the files and the sentence that the conflict must be resolved first. It
+  is a WARNING in text, like the pending gate's (RN-663): the "Merge" button
+  stays active and the decision remains human. Approving the merge invalidates
+  the PR list, and so does the channel's `action.git_merge`/`action.failed`
+  notice; the "PRs in review" list in Approvals stops showing a `done` task. The
+  merge card names the human actor through the members read (RN-655) and shows the
+  PR NUMBER (`#3`, not `#pr-3`), and the local provider records the PR's author
+  (`<agente>[bot]`).
+- **Measurement (AT-383/AT-382, 02/10, test shop):** #6 ended `failed` with the
+  conflict in `package.json` and the PRs tab kept showing "OPEN" with the "Merge"
+  button, with no text at all; the action recorded `kind: git_push`. After an
+  executed merge, the PR stayed in "Open" until reload, the card showed the
+  user's UUID and `#pr-3`, and every local PR was "unknown author".
+- **Where:** `src/application/use-cases/actions/execute-git-action.use-case.ts:72` (`resultadoDaFalha`),
   `src/application/use-cases/actions/list-project-pending-actions.use-case.ts:22` (`execute`),
   `apps/web/src/routes/ProjectPrsTab.tsx:69` (`ultimaRecusaDeMerge`),
   `apps/web/src/lib/canal-vivo.ts:134` (`alvosDoEvento`)
-- **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
+- **Test:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   ("conflito de merge → kind git_merge, arquivos no resultado e evento na
-  tarefa"; caso de falha: "falha que não é conflito não grava arquivos nem
+  tarefa"; failure case: "falha que não é conflito não grava arquivos nem
   evento de conflito"), `apps/web/src/routes/ProjectPrsTab.test.tsx` ("conflito
   de merge: mostra motivo e arquivos..."; "recusa de OUTRA PR não aparece
   nesta"), `test/infrastructure/git/local-git-provider.contract.spec.ts`
   ("grava o autor ao abrir...")
-- **Lacuna declarada (fechada na [RN-715](#rn-715)):** o conflito NÃO acorda o dev agent da tarefa para
-  rebasear e reenviar. O caminho que o QA usa (`DevAgentServer.correct/3`) só
-  age com o agente em `:awaiting_gate` NA MESMA tarefa, e no merge o gate já
-  terminou (`task.gate_resolved` com `done` leva o agente a `finish_task`, que
-  zera tarefa, worktree e branch e reivindica outra). Reaproveitá-lo exige
-  decidir como o agente readota uma tarefa `in_review` na branch existente e
-  se o gate roda de novo depois do rebase — decisão de desenho, não tomada
-  aqui. A tarefa segue `in_review`, com o `backlog.task_merge_conflict`
-  durável.
-- **Origem:** AT-383, AT-382
+- **Declared gap (closed in [RN-715](#rn-715)):** the conflict does NOT wake the
+  task's dev agent to rebase and resend. The path the QA uses
+  (`DevAgentServer.correct/3`) only acts with the agent in `:awaiting_gate` ON THE
+  SAME task, and at merge the gate has already ended (`task.gate_resolved` with
+  `done` takes the agent to `finish_task`, which zeroes task, worktree and branch
+  and claims another). Reusing it requires deciding how the agent re-adopts an
+  `in_review` task on the existing branch and whether the gate runs again after
+  the rebase — a design decision, not taken here. The task stays `in_review`,
+  with the durable `backlog.task_merge_conflict`.
+- **Origin:** AT-383, AT-382
 
-## O modo automático libera push e PR (RN-713)
+## Automatic mode releases push and PR (RN-713) {#o-modo-automatico-libera-push-e-pr-rn-713}
 
-### RN-713 — Com o modo automático do agente, `git_push` e `pr_open` são auto-aprovados; só a curinga libera {#rn-713}
+### RN-713 — With the agent's automatic mode, `git_push` and `pr_open` are auto-approved; only the wildcard releases {#rn-713}
 
-Revisa a [RN-418](#rn-418) e a [RN-689](#rn-689), só na metade de push e PR,
-por decisão do dono (02/10, AT-385). Com a curinga `agent_autonomy`
-`actionType: "*"` em `auto_approve` (o modo automático,
-[RN-153](#rn-153), o piloto da [RN-670](#rn-670)),
-`git_push` e `pr_open` tipados e o mesmo efeito pelo comando de terminal
-(`git push`, `git remote add/set-url`, `gh pr create`, `glab mr create`) saem
-`auto_approve`, com o motivo "modo automático (RN-713)" no
-`proposed_action.created` ([RN-567](#rn-567)).
+Revises [RN-418](#rn-418) and [RN-689](#rn-689), only the push and PR half, by the
+owner's decision (02/10, AT-385). With the `agent_autonomy` wildcard
+`actionType: "*"` in `auto_approve` (automatic mode, [RN-153](#rn-153), the
+autopilot of [RN-670](#rn-670)), typed `git_push` and `pr_open` and the same
+effect through the terminal command (`git push`, `git remote add/set-url`,
+`gh pr create`, `glab mr create`) come out `auto_approve`, with the reason
+"automatic mode (RN-713)" in `proposed_action.created` ([RN-567](#rn-567)).
 
-Só a curinga libera: regra específica `auto_approve` sem ela, "Sempre
-permitir" (recusado na fonte, [RN-642](#rn-642)) e `allow` no `permissions.json`
-seguem no teto da RN-418, e a ativação continua semeando só `git_commit`.
-Seguem teto absoluto mesmo em modo automático: merge (tipado em branch
-protegida, e `git merge`/`gh pr merge` pelo terminal), deploy, `sudo`/`doas`,
-`container_remove`, `instruction_patch` e paralelismo. O toggle em manual
-restaura a aprovação.
+Only the wildcard releases: a specific `auto_approve` rule without it, "Always
+allow" (refused at the source, [RN-642](#rn-642)) and `allow` in
+`permissions.json` stay under the RN-418 ceiling, and activation still seeds only
+`git_commit`. Still an absolute ceiling even in automatic mode: merge (typed on a
+protected branch, and `git merge`/`gh pr merge` through the terminal), deploy,
+`sudo`/`doas`, `container_remove`, `instruction_patch` and parallelism. The
+toggle back to manual restores approval.
 
-- **Onde:** `src/domain/actions/decide.ts:309` (`modoAutomaticoDoAgente`),
+- **Where:** `src/domain/actions/decide.ts:309` (`modoAutomaticoDoAgente`),
   `:324` (`decide`); `src/domain/actions/external-effect.ts:294`
   (`mensagemDoModoAutomaticoNoEfeitoExterno`);
   `apps/web/src/components/OQueOPilotoLibera.tsx`
-- **Teste:** `test/domain/actions/decide.spec.ts` (o piloto libera
-  `git push`/`gh pr create` e os tipados; `git merge`, `gh pr merge` e `sudo`
-  seguem `require_approval`; específica e `allow` sem curinga seguem no teto;
-  curinga em `require_approval` pede aprovação — casos de falha);
-  `test/application/use-cases/actions/propose-action.use-case.spec.ts`
-  (com Postgres: auto-aprovados e executados, motivo no evento; específica
-  sozinha nasce `pending`); `apps/web/src/components/ModoAutomaticoDoTime.test.tsx`,
-  `AgentCard.test.tsx`, `ApprovalCard.test.tsx` (a tela diz que push e PR são
-  liberados)
-- **Decisão arquitetural:** [ADR 0204](../adr/0204-modo-automatico-libera-push-e-pr.md)
-- **Origem:** AT-385, decisão do dono em 02/10
+- **Test:** `test/domain/actions/decide.spec.ts` (the autopilot releases
+  `git push`/`gh pr create` and the typed ones; `git merge`, `gh pr merge` and
+  `sudo` stay `require_approval`; specific and `allow` without the wildcard stay
+  under the ceiling; wildcard in `require_approval` asks for approval — failure
+  cases); `test/application/use-cases/actions/propose-action.use-case.spec.ts`
+  (with Postgres: auto-approved and executed, reason in the event; a specific rule
+  alone is born `pending`); `apps/web/src/components/ModoAutomaticoDoTime.test.tsx`,
+  `AgentCard.test.tsx`, `ApprovalCard.test.tsx` (the screen says push and PR are
+  released)
+- **Architectural decision:** [ADR 0204](../adr/0204-modo-automatico-libera-push-e-pr.md)
+- **Origin:** AT-385, owner's decision on 02/10
 
 ## O instalador oferece os modelos locais, e não confunde o dev com uma instalação (RN-691, RN-692)
 
