@@ -74,14 +74,13 @@ export class ExecuteExecutionPlanUseCase {
 
   private async lerPlano(projectId: string, payload: unknown) {
     const moduleMap = await this.moduleMaps.findCurrent(projectId);
-    const modulosDoMapa = (moduleMap?.modules ?? []).map((m) => m.name);
     const encontradas = await this.tasks.findInProjectByIds(
       projectId,
       idsDasTarefasDoPlano(payload),
     );
     return lerPlanoDeExecucao(
       payload,
-      modulosDoMapa,
+      moduleMap?.modules ?? [],
       new Set(encontradas.map((t) => t.id)),
     );
   }
