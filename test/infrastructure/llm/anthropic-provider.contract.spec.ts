@@ -1,5 +1,6 @@
 import type { ServerResponse } from 'node:http';
 import { describe, expect, it } from 'vitest';
+import type { ChatMessage, ChatStreamChunk } from '@brabo/shared';
 import { AnthropicProvider } from '../../../src/infrastructure/llm/anthropic-provider';
 import { runLLMProviderContract } from '../../contract/llm-provider.contract';
 import {
@@ -188,13 +189,13 @@ describe('AnthropicProvider — particularidades do dialeto', () => {
     }
 
     const pedido = servidor.ultimoPedido() as {
-      system: string;
+      system: { text: string }[];
       messages: { role: string; content: unknown }[];
     };
     await servidor.fechar();
 
     // System sai do array de mensagens e vira parâmetro próprio.
-    expect(pedido.system).toBe('seja breve');
+    expect(pedido.system.map((b) => b.text)).toEqual(['seja breve']);
     expect(pedido.messages).toHaveLength(3);
 
     expect(pedido.messages[1]).toMatchObject({
@@ -219,5 +220,161 @@ describe('AnthropicProvider — particularidades do dialeto', () => {
         { type: 'tool_result', tool_use_id: 'toolu_2', content: 'outro' },
       ],
     });
+  });
+});
+
+/** Servidor falso cujo `usage` leva as parcelas de cache (RN-1008). */
+function dialetoComCache(usage: Record<string, number>) {
+  return (_cenario: CenarioLLM, res: ServerResponse) => {
+    res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+    evento(res, 'message_start', {
+      type: 'message_start',
+      message: {
+        id: 'msg_1',
+        type: 'message',
+        role: 'assistant',
+        model: 'm',
+        content: [],
+        stop_reason: null,
+        stop_sequence: null,
+        usage: { output_tokens: 0, ...usage },
+      },
+    });
+    evento(res, 'content_block_start', {
+      type: 'content_block_start',
+      index: 0,
+      content_block: { type: 'text', text: '' },
+    });
+    evento(res, 'content_block_delta', {
+      type: 'content_block_delta',
+      index: 0,
+      delta: { type: 'text_delta', text: 'ok' },
+    });
+    evento(res, 'content_block_stop', { type: 'content_block_stop', index: 0 });
+    evento(res, 'message_delta', {
+      type: 'message_delta',
+      delta: { stop_reason: 'end_turn', stop_sequence: null },
+      usage: { output_tokens: usage.output_tokens ?? 1_000 },
+    });
+    evento(res, 'message_stop', { type: 'message_stop' });
+    res.end();
+  };
+}
+
+async function chamar(
+  usage: Record<string, number>,
+  mensagens: ChatMessage[],
+  modelo = 'claude-sonnet-5-5',
+) {
+  const servidor = await subirServidorFalso(dialetoComCache(usage));
+  const chunks: ChatStreamChunk[] = [];
+  for await (const c of criarProvider(servidor.baseUrl).chat(mensagens, {
+    model: modelo,
+    apiKey: 'k',
+  })) {
+    chunks.push(c);
+  }
+  const pedido = servidor.ultimoPedido() as {
+    system?: { type: string; text: string; cache_control?: unknown }[];
+    messages: { role: string; content: unknown }[];
+  };
+  await servidor.fechar();
+  const uso = chunks.find((c) => c.type === 'usage');
+  return { pedido, uso: uso?.type === 'usage' ? uso : undefined };
+}
+
+const EFEMERO = { type: 'ephemeral' };
+
+describe('AnthropicProvider — prompt caching (RN-1008)', () => {
+  const conversa: ChatMessage[] = [
+    { role: 'system', content: 'instrucoes' },
+    { role: 'system', content: 'mais instrucoes' },
+    { role: 'user', content: 'primeira' },
+    { role: 'assistant', content: 'resposta' },
+    { role: 'user', content: 'segunda' },
+    { role: 'system', content: 'cauda do turno' },
+  ];
+
+  it('(a) system em dois blocos: ponto só no prefixo, cauda sem ponto', async () => {
+    const { pedido } = await chamar({ input_tokens: 5 }, conversa);
+    expect(pedido.system).toEqual([
+      {
+        type: 'text',
+        text: 'instrucoes\n\nmais instrucoes',
+        cache_control: EFEMERO,
+      },
+      { type: 'text', text: 'cauda do turno' },
+    ]);
+  });
+
+  it('(b) um ponto no último bloco da última user; as outras ficam intactas', async () => {
+    const { pedido } = await chamar({ input_tokens: 5 }, conversa);
+    expect(pedido.messages).toEqual([
+      { role: 'user', content: 'primeira' },
+      { role: 'assistant', content: 'resposta' },
+      {
+        role: 'user',
+        content: [{ type: 'text', text: 'segunda', cache_control: EFEMERO }],
+      },
+    ]);
+    // resultado de ferramenta também é turno user: o ponto vai no último bloco
+    const { pedido: p2 } = await chamar({ input_tokens: 5 }, [
+      { role: 'user', content: 'x' },
+      { role: 'tool', content: 'a', toolCallId: 't1' },
+      { role: 'tool', content: 'b', toolCallId: 't2' },
+    ]);
+    expect(p2.messages[1].content).toEqual([
+      { type: 'tool_result', tool_use_id: 't1', content: 'a' },
+      {
+        type: 'tool_result',
+        tool_use_id: 't2',
+        content: 'b',
+        cache_control: EFEMERO,
+      },
+    ]);
+  });
+
+  it('(c) usage soma input + leitura + escrita; cachedInputTokens = leitura; sem campos, ausente', async () => {
+    const { uso } = await chamar(
+      {
+        input_tokens: 10,
+        cache_read_input_tokens: 700,
+        cache_creation_input_tokens: 90,
+      },
+      conversa,
+    );
+    expect(uso).toMatchObject({ inputTokens: 800, cachedInputTokens: 700 });
+
+    const { uso: sem } = await chamar({ input_tokens: 10 }, conversa);
+    expect(sem?.inputTokens).toBe(10);
+    expect(sem).not.toHaveProperty('cachedInputTokens');
+    expect(sem).not.toHaveProperty('costMicros');
+  });
+
+  it('(d) custo pelas 4 parcelas × tabela do fabricante; fora da tabela não emite', async () => {
+    const parcelas = {
+      input_tokens: 1_000_000,
+      cache_read_input_tokens: 1_000_000,
+      cache_creation_input_tokens: 1_000_000,
+      output_tokens: 1_000_000,
+    };
+    // Sonnet 5.5: 2 / 10 por 1M => 2 + 0,2 + 2,5 + 10 = US$ 14,70
+    const { uso } = await chamar(parcelas, conversa, 'claude-sonnet-5-5');
+    expect(uso).toMatchObject({ costMicros: 14_700_000 });
+    // Opus 5.5: 4 / 20 por 1M, leitura 0,05x => 4 + 0,2 + 5 + 20 = US$ 29,20
+    const { uso: opus } = await chamar(parcelas, conversa, 'claude-opus-5-5');
+    expect(opus).toMatchObject({ costMicros: 29_200_000 });
+
+    const { uso: fora } = await chamar(
+      parcelas,
+      conversa,
+      'claude-desconhecido-9',
+    );
+    expect(fora?.inputTokens).toBe(3_000_000);
+    expect(fora).not.toHaveProperty('costMicros');
+  });
+
+  it('declara promptCaching', () => {
+    expect(new AnthropicProvider().capabilities.promptCaching).toBe(true);
   });
 });

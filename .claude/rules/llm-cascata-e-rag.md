@@ -59,12 +59,15 @@ paths:
   upstream (sem ele, 4 upstreams em 6). Os outros oito seguem `false`; ligá-los
   exige o smoke equivalente. `provider.order`/`allow_fallbacks` seguem fora
 
-- A capability `promptCaching` (RN-892, AT-543) é `true` SÓ no OpenRouter
+- A capability `promptCaching` (RN-892, AT-543) é `true` no OpenRouter
   desde 2026-10-15, PROVADA: `openrouter-provider.cache.smoke.spec.ts` rodou
   com credencial real e a segunda chamada a `anthropic/claude-haiku-5.5`
   voltou com `cached_input_tokens=8011`. O hook segue marcando só
-  `anthropic/*`; os outros oito providers seguem `false`, e ligá-los exige o
-  smoke equivalente
+  `anthropic/*`. Na Anthropic direta também é `true` (RN-1008, AT-744):
+  `system` em dois blocos (ponto no prefixo), ponto na última `user`, usage
+  somando `input + leitura + escrita` e custo pelas 4 parcelas × tabela do
+  fabricante; prova em `anthropic-provider.cache.smoke.spec.ts`. Os outros
+  sete providers seguem `false`, e ligá-los exige o smoke equivalente
 
 - Gasto de embedding fora do metering (corte declarado do ADR 0075), salvo a
   checagem de duplicata semântica (ADR 0198, RN-681), que é linha própria

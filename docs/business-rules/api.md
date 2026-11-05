@@ -12229,7 +12229,7 @@ dos US$ 1,02. Modelos Anthropic só leem do cache o prefixo marcado com
 quatro pontos, TTL de 5 min — https://openrouter.ai/docs/features/prompt-caching).
 
 1. **Capability de provider, obrigatória.** `LLMProviderCapabilities.promptCaching`
-   é `true` só no OpenRouter e `false` nos outros oito. Declará-la sem o hook `marcarCacheDePrompt`
+   é `true` no OpenRouter e (RN-1008) na Anthropic direta, e `false` nos outros sete. Declará-la sem o hook `marcarCacheDePrompt`
    falha na construção. Desligada, o corpo é byte a byte o de antes.
 2. **Camada de modelo na config.** No OpenRouter só `anthropic/*` recebe ponto;
    os demais cacheiam sozinhos e voltam intactos.
@@ -12773,3 +12773,10 @@ na instalação responde 409.
 - **Code:** `apps/api/src/infrastructure/llm/traced-llm-provider.ts:78` (`aceitaRaciocinioDesligado`)
 - **Test:** `apps/api/test/infrastructure/llm/traced-llm-provider.spec.ts` (keeps `true`, stays `undefined`, and the real `LLMProviderRegistryImpl.get('anthropic')` returns `true`)
 - **Origin:** AT-743 (EP-030)
+
+### RN-1008 — The direct Anthropic provider uses prompt caching, sums the cache parcels into the input and prices the call from the vendor table {#rn-1008}
+
+- **Rule:** revises [RN-892](#rn-892) item 1 (`promptCaching` was "only OpenRouter") and completes [RN-666](#rn-666) for the direct Anthropic provider. Measured in TP-01 (25th, 05/11): 463 calls, 10.12 M input tokens, `cached_input_tokens` = 0, US$ 2.28 of the US$ 2.62 total was input. (1) `system` goes out in up to two blocks: the PREFIX (the `system` messages before the first non-system one) carries `cache_control: {type: "ephemeral"}` (TTL 5 min); the TAIL (late `system` messages, hoisted to the top by this dialect) follows without a point. Text and order do not change. (2) One more point goes on the last block of the last `user` turn (tool results are `user` turns), mirroring [RN-892](#rn-892); an empty text gets no point. (3) `usage`: Anthropic's `input_tokens` is only the NON-cached part, so `inputTokens = input_tokens + cache_read_input_tokens + cache_creation_input_tokens` and `cachedInputTokens = cache_read_input_tokens`; without the fields `cachedInputTokens` is absent ("did not say", [RN-666](#rn-666)). (4) Cost (owner's option A, ADR 0188): when any cache parcel is non-zero the provider emits `costMicros` from the four parcels times `precoDoFabricante(model)`: input 1x, cache read 0.1x (0.05x on Opus 5.5), cache write 1.25x, output 1x; the api records it with `priceImplicit` and `catalogCostMicros`. A model outside the table emits no cost ([RN-042](#rn-042)); with no cache parcel the catalog path already gives the same number. (5) `capabilities.promptCaching` is `true`, proven by `anthropic-provider.cache.smoke.spec.ts` before merge.
+- **Code:** `apps/api/src/infrastructure/llm/anthropic-provider.ts` (`blocosDeSistema`, `marcarCacheDaConversa`, `usageDeEntrada`)
+- **Test:** `apps/api/test/infrastructure/llm/anthropic-provider.contract.spec.ts` ("prompt caching (RN-1008)": blocks and points, last user point, usage sum, cost by four parcels, out-of-table model); smoke `anthropic-provider.cache.smoke.spec.ts` (manual)
+- **Origin:** AT-744 (EP-030)
