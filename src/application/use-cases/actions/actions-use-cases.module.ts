@@ -14,6 +14,7 @@ import { ExecuteContainerRemoveUseCase } from './execute-container-remove.use-ca
 import { ExecuteContainerRecreateUseCase } from './execute-container-recreate.use-case';
 import { ExecuteInstructionPatchUseCase } from './execute-instruction-patch.use-case';
 import { ExecuteGitActionUseCase } from './execute-git-action.use-case';
+import { ProporRecriacaoDoAppUseCase } from './propor-recriacao-do-app.use-case';
 import { ListProposedActionsUseCase } from './list-proposed-actions.use-case';
 import { ListProjectPendingActionsUseCase } from './list-project-pending-actions.use-case';
 import { GetAgentAutonomyUseCase } from './get-agent-autonomy.use-case';
@@ -48,6 +49,7 @@ const USE_CASES = [
   ExecuteContainerRecreateUseCase,
   ExecuteInstructionPatchUseCase,
   ExecuteGitActionUseCase,
+  ProporRecriacaoDoAppUseCase,
   ListProposedActionsUseCase,
   ListProjectPendingActionsUseCase,
   GetAgentAutonomyUseCase,

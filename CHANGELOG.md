@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- After the infra PR that declares `run.app` is merged into `main`, the api proposes `container_recreate` (actor `agent/infra`, payload `{ reason: 'app_declared', pullRequestId, ports: [{ host, container, protocol: 'tcp' }] }`) once (AT-758, RN-1029): host port always from 13000, skipping ports declared by other projects; never for `runner`, with a pending recreate, without a standing container or when the container started after the current instructions. The click stays human and, without a declared network, writes `artifact.container_network` as the user who clicked (RN-932). The hook runs outside the merge transaction and best effort. New port method `SessionEventRepository.listByType`.
+
 - `POST /internal/projects/:projectId/app/restart` (RN-1026, ADR 0264): the engine asks the api to restart only the app process in place, through the new `ContainerBrokerPort.reiniciarApp` (broker route `POST /containers/:projectId/app/restart`). The answer is typed (`reiniciou`, `motivo`, `exitCode`) with no free text or log. Bumps `@brabo/shared` to `v1.2.0-dev.1`.
 
 - BREAKING: the repository Brabo creates for the user's project is trunk (AT-617, RN-1022, ADR 0263). `BRANCH_DE_TRABALHO` is `main` (task, infra and ADR PRs open from and target it); the bootstrap no longer creates `dev`/`qa` and protects only `main`; the committed `branching-policy.md` describes trunk; a merge into `main` appends the outbox event `project.trunk_merged` (`{ projectId, sessionId, mergedSha }`) for the engine. `dev`/`qa` stay protected for old projects. Old projects migrate with `pnpm migrar-projeto-para-trunk [--dry-run]` (fast-forward `main` to `dev` in the bare repository, refuses otherwise, never deletes `dev`).

@@ -191,6 +191,16 @@ export class DrizzleSessionEventRepository implements SessionEventRepository {
       .limit(limit);
     return rows.map((r) => toEntity(r.session_events));
   }
+
+  async listByType(type: string): Promise<SessionEvent[]> {
+    const db = currentDb(this.rootDb);
+    const rows = await db
+      .select()
+      .from(sessionEvents)
+      .where(eq(sessionEvents.type, type))
+      .orderBy(asc(sessionEvents.createdAt));
+    return rows.map(toEntity);
+  }
 }
 
 /** Exportado para a reprojeção do grafo (`scripts/reprojetar-grafo.ts`), que varre a tabela por cursor e entrega o MESMO envelope ao tradutor. */
