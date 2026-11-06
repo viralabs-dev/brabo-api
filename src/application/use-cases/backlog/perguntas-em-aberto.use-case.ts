@@ -103,6 +103,18 @@ export class PerguntasEmAbertoUseCase {
     );
   }
 
+  /** `questionId` das perguntas JÁ RESPONDIDAS cujo `afeta.historias` cita a história. */
+  async respondidasQueAfetam(
+    projectId: string,
+    storyId: string,
+  ): Promise<string[]> {
+    return (await this.todas(projectId))
+      .filter(
+        (p) => p.status === 'answered' && p.afeta.historias.includes(storyId),
+      )
+      .map((p) => p.questionId);
+  }
+
   async responder(
     projectId: string,
     questionId: string,
