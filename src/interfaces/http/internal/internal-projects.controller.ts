@@ -34,6 +34,8 @@ import { ProductMetricsResponseDto } from './dto/product-metrics.response.dto';
 import { ContratosDoProjetoResponseDto } from './dto/module-contracts.response.dto';
 import { ConfirmProjectWorkspaceInternalDto } from './dto/confirm-project-workspace-internal.dto';
 import { ConfirmProjectWorkspaceResponseDto } from './dto/confirm-project-workspace.response.dto';
+import { ReiniciarAppDoProjetoUseCase } from '../../../application/use-cases/containers/reiniciar-app-do-projeto.use-case';
+import { ReiniciarAppInternalResponseDto } from './dto/reiniciar-app-internal.response.dto';
 import { ContainerExecInternalDto } from './dto/container-exec-internal.dto';
 import { ContainerExecInternalResponseDto } from './dto/container-exec-internal.response.dto';
 import { MirrorSyncResultInternalDto } from './dto/mirror-sync-result-internal.dto';
@@ -91,6 +93,7 @@ export class InternalProjectsController {
     private readonly confirmWorkspace: ConfirmProjectWorkspaceUseCase,
     private readonly executarComandoNoContainer: ExecutarComandoNoContainerUseCase,
     private readonly recordMirrorSync: RecordMirrorSyncUseCase,
+    private readonly reiniciarApp: ReiniciarAppDoProjetoUseCase,
   ) {}
 
   @Get(':projectId/git-remote')
@@ -239,6 +242,25 @@ export class InternalProjectsController {
       dto.timeoutMs,
       dto.alvo?.taskId,
     );
+  }
+
+  @Post(':projectId/app/restart')
+  // Reinicia um processo; não cria recurso endereçável.
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Restarts only the project app process, in place (RN-1026)',
+    description:
+      'Called only by the engine, after the project folder advanced. ' +
+      'Proxies to `ContainerBrokerPort.reiniciarApp`; the command is read by ' +
+      'the broker from the container-spec, never from the caller. The body is ' +
+      'empty. The answer is typed and carries NO free text or log (the app ' +
+      'command may hold a secret): `reiniciou: false` with `motivo` is the ' +
+      'NORMAL shape of a missing container, a timeout, a failed exec, an ' +
+      'app that exited (`exitCode`) or an unreachable broker.',
+  })
+  @ApiOkResponse({ type: ReiniciarAppInternalResponseDto })
+  reiniciarOApp(@Param('projectId') projectId: string) {
+    return this.reiniciarApp.execute(projectId);
   }
 
   @Post(':projectId/mirror-sync-result')

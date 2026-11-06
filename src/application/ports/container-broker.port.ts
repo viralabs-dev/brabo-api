@@ -64,6 +64,20 @@ export interface ResultadoDeExecNoContainer {
 }
 
 /**
+ * Espelho de `ResultadoDoReinicio` (`packages/docker-port`, RN-1024). Sem campo
+ * de texto livre de propósito: o comando do app pode carregar segredo, então
+ * nenhum trecho de log atravessa a api. `sem_app` é só da api: o broker
+ * recusou com 409 (sem `run.app` na spec, ou projeto `runner`), um no-op.
+ */
+export type ResultadoDoReinicioDoApp =
+  | { reiniciou: true }
+  | {
+      reiniciou: false;
+      motivo: 'sem_container' | 'tempo_esgotado' | 'falha_no_exec' | 'sem_app';
+    }
+  | { reiniciou: false; motivo: 'app_saiu'; exitCode: number };
+
+/**
  * O broker recusou, ou não respondeu. `origem` vem DELE — cada erro do broker
  * declara a própria (`infra | politica | codigo`), e `null` é a resposta
  * honesta de `ComandoDeDockerFalhouError`, que o ADR 0128 deixou sem origem de
@@ -121,6 +135,12 @@ export abstract class ContainerBrokerPort {
     cwd?: string,
     timeoutMs?: number,
   ): Promise<ResultadoDeExecNoContainer>;
+
+  /**
+   * RN-1026: reinicia SÓ o processo do app, no lugar. O comando NÃO viaja: o
+   * broker o lê da `container-spec`.
+   */
+  abstract reiniciarApp(projectId: string): Promise<ResultadoDoReinicioDoApp>;
 
   /** AT-612 (ADR 0229): a instância de QA efêmera. `chave` = `chaveDeQa(taskId)`. */
   abstract startQa(

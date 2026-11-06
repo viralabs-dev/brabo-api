@@ -720,6 +720,46 @@
         ]
       }
     },
+    "/internal/projects/{projectId}/app/restart": {
+      "post": {
+        "description": "Called only by the engine, after the project folder advanced. Proxies to `ContainerBrokerPort.reiniciarApp`; the command is read by the broker from the container-spec, never from the caller. The body is empty. The answer is typed and carries NO free text or log (the app command may hold a secret): `reiniciou: false` with `motivo` is the NORMAL shape of a missing container, a timeout, a failed exec, an app that exited (`exitCode`) or an unreachable broker.",
+        "operationId": "InternalProjectsController_reiniciarOApp",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReiniciarAppInternalResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Service token missing or different from the shared one."
+          }
+        },
+        "security": [
+          {
+            "service-token": []
+          }
+        ],
+        "summary": "Restarts only the project app process, in place (RN-1026)",
+        "tags": [
+          "internal"
+        ]
+      }
+    },
     "/internal/projects/{projectId}/backlog": {
       "get": {
         "description": "The SAME epic → story → task tree as the Backlog tab, through the same use case (three reads per project, never N+1). It is with this that the PO sees an orphan epic and a story with no task instead of re-creating what already exists (RN-164).",
@@ -25682,6 +25722,34 @@
           "total",
           "indexed",
           "chunksCreated"
+        ]
+      },
+      "ReiniciarAppInternalResponseDto": {
+        "type": "object",
+        "properties": {
+          "reiniciou": {
+            "type": "boolean",
+            "example": true
+          },
+          "motivo": {
+            "type": "string",
+            "enum": [
+              "sem_container",
+              "tempo_esgotado",
+              "falha_no_exec",
+              "app_saiu",
+              "sem_app"
+            ],
+            "description": "Present only when `reiniciou: false`."
+          },
+          "exitCode": {
+            "type": "number",
+            "example": 1,
+            "description": "Present only when `motivo: app_saiu`."
+          }
+        },
+        "required": [
+          "reiniciou"
         ]
       },
       "RenameSessionDto": {

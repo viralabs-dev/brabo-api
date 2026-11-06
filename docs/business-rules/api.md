@@ -8447,10 +8447,10 @@ Docker port package. Nothing changes in the broker's containment ([ADR
   it comes out `teto-excedido`, with the right name.
 
 - **Code:**
-  `src/infrastructure/http-clients/container-broker.client.ts:276` (`tetoDaOperacao`),
+  `src/infrastructure/http-clients/container-broker.client.ts:286` (`tetoDaOperacao`),
   `:241` (`TETO_DE_MUTACAO_MS`), `:253` (`FOLGA_DO_EXEC_NO_ENGINE_MS`),
   `:306` (`erroDeTransporte`);
-  `src/application/ports/container-broker.port.ts:96` (`MotivoDeBrokerIndisponivel`);
+  `src/application/ports/container-broker.port.ts:109` (`MotivoDeBrokerIndisponivel`);
   `apps/engine/lib/engine/sessions/engine_api_client.ex:2077` (`teto_do_container_exec_ms`)
 
   `apps/engine/lib/engine/sessions/engine_api_client.ex:2077` (`teto_do_container_exec_ms`)
@@ -10662,7 +10662,7 @@ depends on whom, never what a module exposes. It applies
   (`execute`);
   `src/interfaces/http/internal/internal-sessions.controller.ts:783`
   (`moduleContracts`);
-  `src/interfaces/http/internal/internal-projects.controller.ts:178`
+  `src/interfaces/http/internal/internal-projects.controller.ts:181`
   (`moduleContracts`);
   `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex:91` (`run`);
   `apps/engine/lib/engine/harness/tools/listar_contratos_de_modulos.ex:43`
@@ -12773,3 +12773,9 @@ is no known password). With no user at all on the installation it answers 409.
 - **Test:** `apps/api/test/domain/actions/decide.spec.ts` ("git merge local (RN-1019)": plain merge allowed; merge plus push to a protected branch refused with RN-1017; outside the scope and outside automatic mode as before)
 - **Origin:** AT-754 (EP-030), owner decision of 06/11/2026.
 
+### RN-1026 — The api restarts only the app process in the project container, with a typed answer {#rn-1026}
+
+- **Rule:** the engine asks `POST /internal/projects/:projectId/app/restart` (engine-service, empty body) after the project folder advanced. The api forwards to the broker (`POST /containers/:projectId/app/restart`) through `ContainerBrokerPort.reiniciarApp`; the app command is NEVER sent, the broker reads `run.app` from the container-spec. The answer mirrors `ResultadoDoReinicio` (RN-1024 in the contracts docs): `{ reiniciou: true }`, or `{ reiniciou: false, motivo }` with `sem_container`, `tempo_esgotado`, `falha_no_exec`, or `app_saiu` plus `exitCode` (and the api-only `sem_app`). There is no free-text field: the app command may hold a secret, so no log excerpt and no broker message leaves the api. A broker answering 404 gives `sem_container`; a 409 (no `run.app` in the container-spec, or a `runner` project) gives `sem_app`, a named no-op; any other refusal or an unreachable broker gives `falha_no_exec`, never an HTTP error. A failed restart is only reported: the folder stays on the new `main`.
+- **Code:** `apps/api/src/application/use-cases/containers/reiniciar-app-do-projeto.use-case.ts:25` (`execute`), `apps/api/src/interfaces/http/internal/internal-projects.controller.ts` (`reiniciarOApp`), `apps/api/src/infrastructure/http-clients/container-broker.client.ts` (`reiniciarApp`)
+- **Test:** `apps/api/test/application/use-cases/containers/reiniciar-app-do-projeto.use-case.spec.ts` (result forwarded untouched; 409 gives `sem_app`; only `projectId` is sent; 404 gives `sem_container`; broker message never leaks; the route is guarded by `EngineServiceGuard`)
+- **Origin:** AT-617 (EP-030), owner decision of 06/11/2026.

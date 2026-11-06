@@ -9,6 +9,7 @@ import { ObterEstadoObservadoDoContainerUseCase } from './obter-estado-observado
 import { ObterSpecDeContainerUseCase } from './obter-spec-de-container.use-case';
 import { RegistrarTransicaoDeContainerUseCase } from './registrar-transicao-de-container.use-case';
 import { ExecutarComandoNoContainerUseCase } from './executar-comando-no-container.use-case';
+import { ReiniciarAppDoProjetoUseCase } from './reiniciar-app-do-projeto.use-case';
 import { ObterVisaoGeralDeContainersUseCase } from './obter-visao-geral-de-containers.use-case';
 import { SubirCicloDeVidaDoContainerUseCase } from './subir-ciclo-de-vida-do-container.use-case';
 
@@ -29,6 +30,7 @@ const USE_CASES = [
   ObterSpecDeContainerUseCase,
   RegistrarTransicaoDeContainerUseCase,
   ExecutarComandoNoContainerUseCase,
+  ReiniciarAppDoProjetoUseCase,
   ObterVisaoGeralDeContainersUseCase,
   SubirCicloDeVidaDoContainerUseCase,
 ];
