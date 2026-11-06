@@ -229,6 +229,25 @@ function casaPrefixo(prefixo: string[], tokens: string[]): boolean {
 }
 
 /**
+ * RN-1019 (AT-754): tira do comando os segmentos `git merge` (e `--abort`) para
+ * o modo automático auto-aprovar a integração local no worktree. Devolve os
+ * segmentos RESTANTES, ou `null` quando não há `git merge` ou algum segmento
+ * troca (`checkout`/`switch`) para branch protegida — esses ficam como estão.
+ * O que sobra segue sob os tetos de sempre (`git push` é a RN-1017).
+ */
+export function semMergeLocal(segmentos: string[][]): string[][] | null {
+  const resto = segmentos.filter((t) => !casaPrefixo(['git', 'merge'], t));
+  if (resto.length === segmentos.length) return null;
+  const trocaParaProtegida = segmentos.some(
+    (t) =>
+      t[0] === 'git' &&
+      (t.includes('checkout') || t.includes('switch')) &&
+      t.some((a) => !a.startsWith('-') && isProtectedBranch(a)),
+  );
+  return trocaParaProtegida ? null : resto;
+}
+
+/**
  * RN-1017 (AT-756): o `git push` de terminal que o modo automático NÃO libera —
  * destino em branch protegida (`dev`, `main`…), force (`--force`, `-f`,
  * `--force-with-lease`), `--all` ou `--mirror`. Devolve o motivo ou `null`.
