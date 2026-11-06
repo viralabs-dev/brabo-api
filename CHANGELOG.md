@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Closing an open question through `POST /internal/projects/:projectId/open-questions/:questionId/answer` now runs as an action effect, so the session channel is notified of `open_question.answered` and the web "open questions" counter updates live (AT-753 UX-1, RN-1002). (api#28)
 - The merge that closes a task wakes the dev agents of the modules that depend on it (AT-746, RN-1009): `settleMerge` appends a `task.became_claimable` outbox row (`cause: dependency_done`) in the same transaction when a task actually became `done`, so idle agents blocked only by `dependsOn` (RN-1005) no longer need a stop and restart of the execution.
 - The root `README.md` and `THIRD_PARTY_NOTICES.md` are English-only (AT-745), with the same content; the notices shipped in the images now read in English.
 - The api docs are English-only (AT-745): `docs/` is now the English source with `idioma_original: en`, the `docs/i18n/` translations and the `openapi-textos.json` catalogs (the `brabo` reads its own since brabo#27) are removed, and the generated `providers-capabilities` block is in English.
