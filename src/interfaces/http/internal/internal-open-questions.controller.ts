@@ -17,6 +17,7 @@ import {
 } from '@nestjs/swagger';
 import { EngineServiceGuard } from '../auth/engine-service.guard';
 import { ServiceRoute } from '../auth/service-route.decorator';
+import { runComoEfeitoDeAcao } from '../../../application/efeito-de-acao';
 import { PerguntasEmAbertoUseCase } from '../../../application/use-cases/backlog/perguntas-em-aberto.use-case';
 import { SERVICE_TOKEN } from '../../../infrastructure/openapi/documento';
 import {
@@ -62,6 +63,10 @@ export class InternalOpenQuestionsController {
     @Param('questionId') questionId: string,
     @Body() dto: AgentAnswerOpenQuestionDto,
   ) {
-    return this.perguntas.responderPeloAgente(projectId, questionId, dto);
+    // The close is a local effect of the agent's action: mark it so the
+    // channel notifier announces `open_question.answered` inside `/internal/*`.
+    return runComoEfeitoDeAcao(() =>
+      this.perguntas.responderPeloAgente(projectId, questionId, dto),
+    );
   }
 }
