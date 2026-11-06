@@ -1,25 +1,25 @@
 ---
 id: llm-providers
-title: LLM Providers
+title: Providers de LLM
+sidebar_label: Providers de LLM
 sidebar_position: 9
-description: The single contract that makes Ollama, OpenAI, and Anthropic interchangeable, with capabilities per provider and per model, catalog sync, model lifecycle, normalized errors, and an inactivity ceiling.
-keywords: [LLM, provider, OpenAI, Anthropic, Ollama, capabilities, tool calling, streaming, catalog, pricing]
-idioma_original: en
+description: O contrato único que torna Ollama, OpenAI e Anthropic intercambiáveis, com capabilities por provider e por modelo, sincronização do catálogo, ciclo de vida do modelo, erros normalizados e teto de inatividade.
+keywords: [LLM, provider, OpenAI, Anthropic, Ollama, capabilities, tool calling, streaming, catálogo, preço]
 ---
 
-# LLM Providers
+# Providers de LLM
 
-Every agent and every chat in Brabo talks to a model behind a single
-contract. The caller doesn't know whether an Ollama on disk, the OpenAI
-API, or the Anthropic API is on the other side — and it shouldn't.
+Todo agente e todo chat do Brabo fala com um modelo atrás de um contrato
+único. Quem chama não sabe se do outro lado está um Ollama em disco, a API da
+OpenAI ou a API da Anthropic — e não deveria saber.
 
-Decided in [ADR 0041](../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md),
-with the inactivity ceiling inherited from [ADR 0020](../adr/0020-destravar-gates-qa-secops.md).
+Decidido no [ADR 0041](../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md),
+com o teto de inatividade herdado do [ADR 0020](../adr/0020-destravar-gates-qa-secops.md).
 
-## The contract
+## O contrato
 
-`LLMProvider` (`src/application/ports/llm-provider.port.ts`) has one
-REQUIRED operation, and it's always streaming:
+`LLMProvider` (`src/application/ports/llm-provider.port.ts`) tem uma
+operação OBRIGATÓRIA, e ela é sempre streaming:
 
 ```ts
 abstract class LLMProvider {
@@ -40,72 +40,72 @@ abstract class LLMProvider {
 }
 ```
 
-The two optional ones follow the same **two-sided** contract: whoever declares the
-capability implements the method, and whoever doesn't declare it doesn't expose it. The
-consumer degrades by checking the capability, never by discovering it on failure.
+As duas opcionais seguem o mesmo contrato de **dois lados**: quem declara a
+capability implementa o método, e quem não a declara não o expõe. O consumidor
+degrada checando a capability, nunca descobrindo-a na falha.
 
-There's no separate method for tool calling or token counting: the
-tools go in `options.tools` and everything comes back through the same stream, as one of
-the four `ChatStreamChunk` types.
+Não há método separado para tool calling nem para contagem de tokens: as
+ferramentas vão em `options.tools` e tudo volta pelo mesmo stream, como um dos
+quatro tipos de `ChatStreamChunk`.
 
-| chunk | when |
+| chunk | quando |
 | --- | --- |
-| `text_delta` | a piece of generated text |
-| `tool_calls` | the model requested tools (single chunk, not incremental) |
-| `usage` | token count, with the `estimated` flag; and, when the response says so, the real cost (`costMicros`), the model that served (`resolvedModel`), the response id (`generationId`) and the cached/reasoning PARTS of the token counts (`cachedInputTokens`, `reasoningTokens`, RN-666) — [ADR 0188](../adr/0188-o-custo-real-do-provider-vira-o-numero-do-metering.md) |
-| `error` | failure classified by `code` — **never an exception** |
+| `text_delta` | um pedaço de texto gerado |
+| `tool_calls` | o modelo pediu ferramentas (chunk único, não incremental) |
+| `usage` | contagem de tokens, com a marca `estimated`; e, quando a resposta diz, o custo real (`costMicros`), o modelo que serviu (`resolvedModel`), o id da resposta (`generationId`) e as PARTES em cache/raciocínio das contagens de tokens (`cachedInputTokens`, `reasoningTokens`, RN-666) — [ADR 0188](../adr/0188-o-custo-real-do-provider-vira-o-numero-do-metering.md) |
+| `error` | falha classificada por `code` — **nunca uma exceção** |
 
-A failure becomes a chunk, not an exception, because the turn has already spent
-tokens: metering needs to happen even when the response didn't come.
+A falha vira chunk, e não exceção, porque o turno já gastou tokens: o metering
+precisa acontecer mesmo quando a resposta não veio.
 
-## Capabilities: two layers
+## Capabilities: duas camadas
 
-**The provider's** is the ceiling of what that backend knows how to do. **The
-model's** is what that row in the `models` table knows how to do. A model can be
-poorer than the provider, never richer.
+**A do provider** é o teto do que aquele backend sabe fazer. **A do modelo** é
+o que aquela linha da tabela `models` sabe fazer. Um modelo pode ser mais pobre
+que o provider, nunca mais rico.
 
-| capability | where it lives | used for |
+| capability | onde mora | serve para |
 | --- | --- | --- |
 | `streaming` | provider + `models.supports_streaming` | — |
-| `toolCalling` | provider + `models.supports_tool_calling` | reject agent binding ([RN-040](../business-rules/api.md#rn-040)) |
-| `listModels` | provider only | enable/skip catalog sync ([RN-043](../business-rules/api.md#rn-043)) |
-| `embeddings` | provider + `supportsEmbeddings` on the catalog row | allow/reject the embedding call ([RN-190](../business-rules/api.md#rn-190)) |
-| `reasoningText` | provider only | return the reasoning TEXT as a `reasoning` chunk ([RN-993](../business-rules/api.md#rn-993)); `true` only on Anthropic and OpenRouter, proven on 2026-11-03 (`anthropic-provider.raciocinio.smoke.spec.ts`, `openrouter-provider.raciocinio.smoke.spec.ts`); on Anthropic the text is the summary; the other nine stay `false` |
-| `promptCaching` | provider + the model filter in the config hook (`anthropic/*` on OpenRouter) | mark `cache_control` on the stable prefix ([RN-892](../business-rules/api.md#rn-892)); `true` on OpenRouter (smoke on 2026-10-15) and on direct Anthropic ([RN-1008](../business-rules/api.md#rn-1008)) |
-| `stickySession` | provider only | send `session_id` and pin the conversation to the upstream that served it ([RN-907](../business-rules/api.md#rn-907)); `true` only on OpenRouter, proven by smoke on 2026-10-21 |
-| `priceCeiling` | provider only | send `provider.max_price` = catalog × 1.5 and retry once without a ceiling on 404 ([RN-917](../business-rules/api.md#rn-917)); `true` only on OpenRouter, proven by smoke on 2026-10-28 |
-| `context_length` | `models.context_window` | context budget |
-| `vision` | `models.supports_vision` | filter the catalog ([RN-056](../business-rules/api.md#rn-056)); `true` only on OpenRouter (provider), proven by smoke on 2026-11-03 ([RN-989](../business-rules/api.md#rn-989)) |
-| `reasoning` | `models.supports_reasoning` | same |
-| `image output` | `models.generates_image` | same |
+| `toolCalling` | provider + `models.supports_tool_calling` | recusar binding de agente ([RN-040](../business-rules/api.md#rn-040)) |
+| `listModels` | só provider | habilitar/pular a sincronização do catálogo ([RN-043](../business-rules/api.md#rn-043)) |
+| `embeddings` | provider + `supportsEmbeddings` na linha do catálogo | permitir/recusar a chamada de embedding ([RN-190](../business-rules/api.md#rn-190)) |
+| `reasoningText` | só provider | devolver o TEXTO do raciocínio como chunk `reasoning` ([RN-993](../business-rules/api.md#rn-993)); `true` só na Anthropic e no OpenRouter, provados em 2026-11-03 (`anthropic-provider.raciocinio.smoke.spec.ts`, `openrouter-provider.raciocinio.smoke.spec.ts`); na Anthropic o texto é o resumo; os outros nove seguem `false` |
+| `promptCaching` | provider + o filtro de modelo no hook de configuração (`anthropic/*` no OpenRouter) | marcar `cache_control` no prefixo estável ([RN-892](../business-rules/api.md#rn-892)); `true` no OpenRouter (smoke em 2026-10-15) e na Anthropic direta ([RN-1008](../business-rules/api.md#rn-1008)) |
+| `stickySession` | só provider | mandar `session_id` e prender a conversa ao upstream que a atendeu ([RN-907](../business-rules/api.md#rn-907)); `true` só no OpenRouter, provado por smoke em 2026-10-21 |
+| `priceCeiling` | só provider | mandar `provider.max_price` = catálogo × 1,5 e repetir uma vez sem teto no 404 ([RN-917](../business-rules/api.md#rn-917)); `true` só no OpenRouter, provado por smoke em 2026-10-28 |
+| `context_length` | `models.context_window` | orçamento de contexto |
+| `vision` | `models.supports_vision` | filtrar o catálogo ([RN-056](../business-rules/api.md#rn-056)); `true` só no OpenRouter (provider), provado por smoke em 2026-11-03 ([RN-989](../business-rules/api.md#rn-989)) |
+| `reasoning` | `models.supports_reasoning` | idem |
+| `image output` | `models.generates_image` | idem |
 
-### The three modality facets
+### As três facetas de modalidade
 
-`supports_vision`, `supports_reasoning`, and `generates_image` are **provider
-fact**: they come out of the remote catalog during sync, with the same fallback as
-tool calling — remote, then local, then `false`. Today only OpenRouter
-publishes them:
+`supports_vision`, `supports_reasoning` e `generates_image` são **fato do
+provider**: saem do catálogo remoto na sincronização, com o mesmo fallback do
+tool calling — remoto, depois local, depois `false`. Hoje só o OpenRouter as
+publica:
 
-| facet | where it comes from in OpenRouter | in the 2026-08-04 catalog |
+| faceta | de onde vem no OpenRouter | no catálogo de 2026-08-04 |
 | --- | --- | --- |
-| `supports_vision` | `architecture.input_modalities` contains `image` | 181 of 338 |
-| `generates_image` | `architecture.output_modalities` contains `image` | 11 of 338 |
-| `supports_reasoning` | `supported_parameters` contains `reasoning` | 213 of 338 |
+| `supports_vision` | `architecture.input_modalities` contém `image` | 181 de 338 |
+| `generates_image` | `architecture.output_modalities` contém `image` | 11 de 338 |
+| `supports_reasoning` | `supported_parameters` contém `reasoning` | 213 de 338 |
 
-Accepting image and **producing** image are distinct axes: reading a diagram and
-drawing one solve different problems.
+Aceitar imagem e **produzir** imagem são eixos distintos: ler um diagrama e
+desenhar um resolvem problemas diferentes.
 
-The parser **omits** the field when the provider doesn't declare the modality, and
-`undefined` preserves the local value during sync — absence of a declaration isn't a
-declaration of absence. That's why the screen uses the facets only as a positive filter:
-`false` means "the provider didn't declare it," never "the model can't do it"
-([ADR 0051](../adr/0051-facetas-de-capability-e-curadoria-por-uso.md)).
+O parser **omite** o campo quando o provider não declara a modalidade, e
+`undefined` preserva o valor local na sincronização — ausência de declaração
+não é declaração de ausência. Por isso a tela usa as facetas só como filtro
+positivo: `false` quer dizer "o provider não declarou", nunca "o modelo não
+sabe" ([ADR 0051](../adr/0051-facetas-de-capability-e-curadoria-por-uso.md)).
 
-:::caution This does NOT cover "best for code"
-No provider catalog publishes what a model is good for. That's curation
-by whoever operates it, and it lives in `workspace_models.uses`, per workspace
-([RN-057](../business-rules/api.md#rn-057)) — it's not a capability, and deriving it
-from the model's name would be a guess dressed up as data.
+:::caution Isto NÃO cobre "melhor para código"
+Nenhum catálogo de provider publica para que um modelo é bom. Isso é curadoria
+de quem opera, e mora em `workspace_models.uses`, por workspace
+([RN-057](../business-rules/api.md#rn-057)) — não é capability, e derivá-la
+do nome do modelo seria um palpite vestido de dado.
 :::
 
 <!-- BEGIN:GENERATED:providers-capabilities -->
@@ -142,227 +142,228 @@ by `price`, `throughput` or `latency`), under the same rule: `yes` only after
 a smoke against the real API returns the chosen upstream.
 <!-- END:GENERATED:providers-capabilities -->
 
-The default for `supports_tool_calling` is `false`. This is deliberate: a model
-discovered by automatic sync (Phase 9c) comes in without a promise nobody
-verified. Seed models declare the capability explicitly, and migration
-`0026` does the same backfill on already-existing databases — targeted at
-the seed's seven rows, never a blind `UPDATE` on the table.
+O default de `supports_tool_calling` é `false`. É de propósito: um modelo
+descoberto pela sincronização automática (Fase 9c) entra sem uma promessa que
+ninguém verificou. Os modelos do seed declaram a capability explicitamente, e
+a migration `0026` faz o mesmo backfill em bancos que já existiam — mirando as
+sete linhas do seed, nunca um `UPDATE` cego na tabela.
 
-:::caution Manually inserted model
-`models` has no HTTP edit endpoint: whoever adds a model does it via
-`seed.ts` or direct SQL. In both cases, **declare
-`supports_tool_calling`** if you intend to bind that model to an agent — the
-`false` default causes the binding to be rejected, including when the model is
-pointed to by `DEMO_QA_MODEL` in the gate demo scripts.
+:::caution Modelo inserido à mão
+`models` não tem endpoint HTTP de edição: quem acrescenta um modelo o faz pelo
+`seed.ts` ou por SQL direto. Nos dois casos, **declare
+`supports_tool_calling`** se pretende vincular esse modelo a um agente — o
+default `false` faz o binding ser recusado, inclusive quando o modelo é
+apontado por `DEMO_QA_MODEL` nos scripts de demonstração de gate.
 :::
 
-## Where people see and edit the providers
+## Onde a pessoa vê e edita os providers
 
-Providers have their own page, `/providers`, in the menu footer next to
-Containers (AT-577). Since RN-911 (AT-597) it is the ONLY place for credential, catalog and
-spend per key: the project Settings only choose a model. It composes, with
-the same endpoints and `queryKey`s: keys, the table of what each provider
-can do (read from `GET /llm/provider-capabilities`, one column per key of the
-response), the model catalog and, for the `owner` only, the spend per key. The
-OpenRouter routing criterion remains the agent's or the area's model, chosen in the
-project Settings.
+Os providers têm página própria, `/providers`, no rodapé do menu ao lado de
+Containers (AT-577). Desde a RN-911 (AT-597) ela é o ÚNICO lugar de credencial, catálogo e gasto
+por chave: as Configurações do projeto só escolhem modelo. Ela compõe, com
+os mesmos endpoints e `queryKey`s: chaves, a tabela do que cada provider
+sabe fazer (lida de `GET /llm/provider-capabilities`, uma coluna por chave da
+resposta), o catálogo de modelos e, só para `owner`, o gasto por chave. O
+critério de roteamento do OpenRouter continua sendo do modelo do agente ou da
+área, escolhido nas Configurações do projeto.
 
-The api already exposes which providers have a key from the workspace HOLDER (the person whose
-key the agents spend, RN-058): `GET workspaces/:workspaceId/llm-providers/credentialed`,
-`viewer`, response `{ providers: [...] }` with names only and without `ollama` (RN-926, AT-607).
-Since RN-931 the screen consumes it: the table of what each provider can do lists only
-the ACTIVE providers (local or with the holder's key), each with the name and color of the
-credential card, and a line says how many were left out and which. The model catalog
-is a panel with one tab per active provider; a provider without a key that still
-has an active model shows up as a tab marked "no holder key", so that it can
-be deactivated. If the route does not answer, the screens show all providers.
+A api já expõe quais providers têm chave do TITULAR do workspace (a pessoa cuja
+chave os agentes gastam, RN-058): `GET workspaces/:workspaceId/llm-providers/credentialed`,
+`viewer`, resposta `{ providers: [...] }` só com nomes e sem `ollama` (RN-926, AT-607).
+Desde a RN-931 a tela a consome: a tabela do que cada provider sabe fazer lista só
+os providers ATIVOS (local ou com chave do titular), cada um com o nome e a cor do
+card de credencial, e uma linha diz quantos ficaram de fora e quais. O catálogo de
+modelos é um painel com uma aba por provider ativo; o provider sem chave que ainda
+tem modelo ativo aparece como aba marcada "sem chave do titular", para dar para
+desativá-lo. Se a rota não responde, as telas mostram todos os providers.
 
-## Model catalog: discovery and lifecycle
+## Catálogo de modelos: descoberta e ciclo de vida
 
-Whoever declares `listModels` knows how to list its own catalog. The compatible base
-implements the `GET /models` of the dialect it already speaks, with parsing swappable
-via configuration (`parseCatalogo`) — a hub returns price and window on the same
-row, and that can't turn into an `if` inside the standard parsing.
+Quem declara `listModels` sabe listar o próprio catálogo. A base compatível
+implementa o `GET /models` do dialeto que ela já fala, com o parsing trocável
+por configuração (`parseCatalogo`) — um hub devolve preço e janela na mesma
+linha, e isso não pode virar um `if` dentro do parsing padrão.
 
-**Ollama and Anthropic now declare `true`** — the backlog that
+**Ollama e Anthropic agora declaram `true`** — o backlog que o
 [ADR 0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
-left open. They declared `false` not for lack of an endpoint, but because the
-format hadn't been verified against the official doc, and the rule is not to code
-against a guessed contract. Both formats were verified before a single line of
-code was written:
+deixou aberto. Eles declaravam `false` não por falta de endpoint, mas porque o
+formato não tinha sido conferido contra a doc oficial, e a regra é não
+programar contra contrato adivinhado. Os dois formatos foram conferidos antes
+de escrever uma linha de código:
 
-- **Anthropic** — `GET /v1/models` returns
+- **Anthropic** — `GET /v1/models` devolve
   `{ data: [{ id, display_name, max_input_tokens, ... }], has_more, last_id }`,
-  paginated **by cursor** (not by offset): `last_id` becomes the `after_id` of
-  the next page, with `limit` from 1 to 1000. The one that walks the pages is the
-  official SDK's `client.models.list`, which already auto-paginates — redoing
-  the cursor loop by hand would mean rewriting vendor-maintained code. Price
-  **doesn't come** in the response: the model comes in with the provider's dated
-  LIST price (`PRECO_DE_LISTA_ANTHROPIC`, [RN-997](../business-rules/api.md#rn-997)), and
-  without a price, instead of an invented one, when the id is not in the table.
-  Since [RN-965](../business-rules/api.md#rn-965) the curation screen
-  SUGGESTS the price the manufacturer publishes (curated table
-  `src/domain/llm/precos-do-fabricante.ts`, each row with the link and
-  date of the source), and the `owner` applies it; the same table holds for the
-  Anthropic model served by another provider (9Router's `cc/`, for
-  example), by exact id equality. On 9Router the suggestion also carries the
-  billing tier by alias (`cc`/`cx` subscription, `:free`/`ollama`
-  free, the rest API).
-- **Ollama** — `GET /api/tags` returns `{ models: [{ name, model, size, ... }] }`
-  on the local host (`OLLAMA_HOST`, default `http://localhost:11434`). No price,
-  as fits a local runtime.
+  paginado **por cursor** (não por offset): `last_id` vira o `after_id` da
+  próxima página, com `limit` de 1 a 1000. Quem percorre as páginas é o
+  `client.models.list` do SDK oficial, que já pagina sozinho — refazer o laço
+  do cursor à mão seria reescrever código mantido pelo fornecedor. Preço **não
+  vem** na resposta: o modelo entra com o preço de LISTA datado do provider
+  (`PRECO_DE_LISTA_ANTHROPIC`, [RN-997](../business-rules/api.md#rn-997)), e
+  sem preço, em vez de com um inventado, quando o id não está na tabela.
+  Desde a [RN-965](../business-rules/api.md#rn-965) a tela de curadoria
+  SUGERE o preço que o fabricante publica (tabela curada
+  `src/domain/llm/precos-do-fabricante.ts`, cada linha com link e
+  data da fonte), e quem aplica é o `owner`; a mesma tabela vale para o
+  modelo da Anthropic servido por outro provider (o `cc/` do 9Router, por
+  exemplo), por igualdade exata do id. No 9Router a sugestão traz também a
+  faixa de cobrança pelo alias (`cc`/`cx` assinatura, `:free`/`ollama`
+  grátis, o resto API).
+- **Ollama** — `GET /api/tags` devolve `{ models: [{ name, model, size, ... }] }`
+  no host local (`OLLAMA_HOST`, default `http://localhost:11434`). Sem preço,
+  como cabe a um runtime local.
 
-Both THROW on error, as the contract requires: returning an empty list
-would be read by reconciliation as "everything disappeared" and would make the
-whole catalog unavailable ([RN-043](../business-rules/api.md#rn-043)).
+Os dois LANÇAM no erro, como o contrato exige: devolver lista vazia seria lido
+pela reconciliação como "sumiu tudo" e deixaria o catálogo inteiro
+indisponível ([RN-043](../business-rules/api.md#rn-043)).
 
-### The two independent availability axes
+### Os dois eixos independentes de disponibilidade
 
-A model has two INDEPENDENT states, and confusing them was the hole
-Phase 9c closed:
+Um modelo tem dois estados INDEPENDENTES, e confundi-los era o buraco que a
+Fase 9c fechou:
 
-| where | who writes it | what it means |
+| onde | quem escreve | o que quer dizer |
 | --- | --- | --- |
-| `workspace_models.is_active` | the **owner of that workspace**, via the curation screen | shows up in the selector and can receive a new binding |
-| `models.availability` | **sync**, alone | `unavailable` = disappeared from the provider's catalog |
+| `workspace_models.is_active` | o **owner daquele workspace**, pela tela de curadoria | aparece no seletor e pode receber binding novo |
+| `models.availability` | a **sincronização**, sozinha | `unavailable` = sumiu do catálogo do provider |
 
-A model can be active AND unavailable at the same time — that overlap
-is what generates the warning on the screen. When the provider brings it back, the owner's
-choice still holds: sync never re-enables what someone turned off on purpose.
+Um modelo pode estar ativo E indisponível ao mesmo tempo — é essa sobreposição
+que gera o aviso na tela. Quando o provider o traz de volta, a escolha do owner
+continua valendo: a sincronização nunca religa o que alguém desligou de
+propósito.
 
-The two axes stopped living in the same table in
-[ADR 0049](../adr/0049-curadoria-de-modelo-por-workspace.md). Curation is
-**per workspace** — `models.is_active` used to be a column for the whole
-installation, and a workspace-A owner turning on a model turned it on for B too
-([RN-052](../business-rules/api.md#rn-052)). What's left in `models` is provider fact: name,
-price, capabilities, and availability, the same for everyone.
+Os dois eixos deixaram de morar na mesma tabela no
+[ADR 0049](../adr/0049-curadoria-de-modelo-por-workspace.md). A curadoria é
+**por workspace** — `models.is_active` era uma coluna da instalação inteira, e
+o owner do workspace A ligando um modelo o ligava também para o B
+([RN-052](../business-rules/api.md#rn-052)). O que ficou em `models` é fato
+do provider: nome, preço, capabilities e disponibilidade, iguais para todos.
 
-**Absence of a row in `workspace_models` IS "off."** There's no separate
-"never decided" state, and that's how RN-043 keeps holding without any
-column that sync could run over.
+**Ausência de linha em `workspace_models` É "desligado".** Não há um estado
+separado de "nunca decidido", e é assim que a RN-043 continua valendo sem
+coluna nenhuma que a sincronização pudesse atropelar.
 
-### The third axis: what the workspace uses the model for
+### O terceiro eixo: para que o workspace usa o modelo
 
-`workspace_models.uses` holds curation BY USE — `codigo`, `documentacao`,
-`analise`, `imagem`, `conversa` — a closed vocabulary in
-`src/domain/llm/model-uses.ts`. It's what no catalog publishes: the
-provider declares the capability, but which model performs well at code **for
-this team** is only found out by using it.
+`workspace_models.uses` guarda a curadoria POR USO — `codigo`, `documentacao`,
+`analise`, `imagem`, `conversa` — um vocabulário fechado em
+`src/domain/llm/model-uses.ts`. É o que nenhum catálogo publica: o
+provider declara a capability, mas qual modelo rende bem em código **para este
+time** só se descobre usando.
 
-It doesn't mix with `is_active`:
+Ele não se mistura com `is_active`:
 
-- marking a use **doesn't turn on** the model — the new row is born with `is_active =
-  false` explicit, against the column's `true` DEFAULT;
-- switching the use **doesn't turn off** what was on;
-- the list **replaces** the previous one (an empty list unmarks everything).
+- marcar um uso **não liga** o modelo — a linha nova nasce com `is_active =
+  false` explícito, contra o DEFAULT `true` da coluna;
+- trocar o uso **não desliga** o que estava ligado;
+- a lista **substitui** a anterior (lista vazia desmarca tudo).
 
-Route: `POST /workspaces/:workspaceId/models/uses`, `owner`
+Rota: `POST /workspaces/:workspaceId/models/uses`, `owner`
 ([RN-057](../business-rules/api.md#rn-057)).
 
-### The three reconciliation rules
+### As três regras de reconciliação
 
-1. **New model comes in INACTIVE** — with no curation row in any workspace.
-   A catalog has hundreds of rows; dumping them all active would make choosing
-   impossible and would turn on an expensive model without anyone deciding.
-2. **A model that disappeared becomes `unavailable`, never deleted.** `model_bindings`
-   and `token_usage` point to the row; deleting it would take the cost history
-   with it.
-3. **Provider failure doesn't make anything unavailable.** A 401 means "I don't
-   know what's there," not "there's nothing there" — marking everything as gone
-   because of a revoked key would take down every binding for that provider at
-   once. The provider is SKIPPED, with the failure's origin (`infra` | `modelo`)
-   in the report.
+1. **Modelo novo entra INATIVO** — sem linha de curadoria em workspace nenhum.
+   Um catálogo tem centenas de linhas; despejá-las todas ativas tornaria a
+   escolha impossível e ligaria um modelo caro sem ninguém decidir.
+2. **Modelo que sumiu vira `unavailable`, nunca é apagado.** `model_bindings`
+   e `token_usage` apontam para a linha; apagá-la levaria o histórico de custo
+   junto.
+3. **Falha do provider não torna nada indisponível.** Um 401 quer dizer "não
+   sei o que tem lá", não "não tem nada lá" — marcar tudo como sumido por causa
+   de uma chave revogada derrubaria de uma vez todo binding daquele provider. O
+   provider é PULADO, com a origem da falha (`infra` | `modelo`) no relatório.
 
-### And the two price reconciliation rules
+### E as duas regras de reconciliação de preço
 
-4. **`manual_pricing` wins over the remote catalog.** A row marked this way has a
-   number someone typed in from the provider's doc, and sync doesn't touch it —
-   not even when the catalog brings its own price
+4. **`manual_pricing` vence o catálogo remoto.** Uma linha marcada assim tem um
+   número que alguém digitou a partir da doc do provider, e a sincronização não
+   mexe nele — nem quando o catálogo traz preço próprio
    ([RN-051](../business-rules/api.md#rn-051)).
-5. **Every price change made by sync leaves a row in `model_price_changes`**, with
-   origin `sync` and `changed_by` null ([RN-044](../business-rules/api.md#rn-044)).
+5. **Toda mudança de preço feita pela sincronização deixa uma linha em
+   `model_price_changes`**, com origem `sync` e `changed_by` nulo
+   ([RN-044](../business-rules/api.md#rn-044)).
 
-A NEW model discovered by sync is born `manual_pricing = false` when the
-catalog reported a price — the origin is sync, and it's sync that keeps the row
-up to date. Discovered WITHOUT a price, it's born `true`: the row is waiting for
-someone to type one in, and marking it already protects that number from the first
-catalog that happens to report a price.
+Um modelo NOVO descoberto pela sincronização nasce `manual_pricing = false`
+quando o catálogo informou preço — a origem é a sincronização, e é ela que
+mantém a linha em dia. Descoberto SEM preço, nasce `true`: a linha está
+esperando alguém digitar um, e marcá-la já protege esse número do primeiro
+catálogo que por acaso informe preço.
 
-### The cascade revalidates capability when dropping a level
+### A cascata revalida a capability ao descer de nível
 
-`resolveBinding` skips the unavailable candidate and follows the precedence. When
-the turn carries tools, it also skips whoever doesn't do tool calling **at every
-level** — without this, an agent's fallback would land on a chat-only model and
-would silently violate [RN-040](../business-rules/api.md#rn-040): the failure would
-only show up later, in the ToolLoop, as "the agent stopped on its own." What was
-skipped comes back in `skipped`, and the UI shows it.
+`resolveBinding` pula o candidato indisponível e segue a precedência. Quando o
+turno leva ferramentas, ele também pula quem não faz tool calling **em todo
+nível** — sem isso, o fallback de um agente pousaria num modelo só de chat e
+violaria em silêncio a [RN-040](../business-rules/api.md#rn-040): a falha só
+apareceria depois, no ToolLoop, como "o agente parou sozinho". O que foi pulado
+volta em `skipped`, e a interface o mostra.
 
-The precedence is `session > agent > area > project > workspace`
-([RN-020](../business-rules/api.md#rn-020)). `area` came in during PHASE 23: it's the
-STANDARD that a lead and its area's subagents share, and the agent's own binding
-is the divergence that overrides it — it enters the same capability revalidation
-above, including the tool calling requirement
-([RN-102](../business-rules/api.md#rn-102)). The `agent` and `area` scopes became
-PER PROJECT (`scope_id` composite, `<projectId>:<slug|chave>`) — before,
-`agent` was a global slug and the same binding held for every project
+A precedência é `session > agent > area > project > workspace`
+([RN-020](../business-rules/api.md#rn-020)). `area` entrou na FASE 23: é o
+PADRÃO que um lead e os subagentes da área dele compartilham, e o binding
+próprio do agente é a divergência que o sobrepõe — ele entra na mesma
+revalidação de capability acima, inclusive a exigência de tool calling
+([RN-102](../business-rules/api.md#rn-102)). Os escopos `agent` e `area`
+passaram a ser POR PROJETO (`scope_id` composto, `<projectId>:<slug|chave>`) —
+antes, `agent` era um slug global e o mesmo binding valia para todo projeto
 ([RN-103](../business-rules/api.md#rn-103), [ADR 0064](../adr/0064-escopo-de-area-na-cascata-e-o-binding-de-agente-global.md)).
 
-A subagent with no value in any level (or only the global workspace default)
-inherits the RESOLVED binding of its area lead, and the response carries
-`herdadoDoLead` naming the lead; `appsec` inherits from `secops` and
-`qa-estrategia` from `qa` ([RN-703](../business-rules/api.md#rn-703)).
+Um subagente sem valor em nível nenhum (ou só com o default global do
+workspace) herda o binding RESOLVIDO do lead da área dele, e a resposta leva
+`herdadoDoLead` nomeando o lead; `appsec` herda de `secops` e `qa-estrategia`
+de `qa` ([RN-703](../business-rules/api.md#rn-703)).
 
-### Who schedules and who executes
+### Quem agenda e quem executa
 
-The engine schedules (an auto-rescheduled Oban worker, `MODEL_SYNC_INTERVAL_SECONDS`,
-6h by default) and the api executes, because it holds the credentials and the
-provider registry. The "Update catalog" button on the curation screen calls the
-**same** use case — there aren't two reconciliations that could diverge.
+O engine agenda (um worker do Oban que se reagenda, `MODEL_SYNC_INTERVAL_SECONDS`,
+6h por padrão) e a api executa, porque é ela que guarda as credenciais e o
+registro de providers. O botão "Atualizar catálogo" da tela de curadoria chama
+o **mesmo** caso de uso — não há duas reconciliações que possam divergir.
 
-## Price: applies going forward, never retroactively
+## Preço: vale daqui para frente, nunca retroativo
 
-`token_usage` stores the price that produced each `cost_micros`
-(`input_price_per_million_micros` and `output_price_per_million_micros`). Historical
-cost was already immutable before Phase 9c; what was missing was being
-**reproducible** — without the recorded price, `tokens × price = cost` would stop
-adding up the moment someone corrected the table.
+`token_usage` guarda o preço que produziu cada `cost_micros`
+(`input_price_per_million_micros` e `output_price_per_million_micros`). O custo
+histórico já era imutável antes da Fase 9c; o que faltava era ser
+**reproduzível** — sem o preço gravado, `tokens × preço = custo` deixaria de
+fechar no momento em que alguém corrigisse a tabela.
 
-Since [ADR 0188](../adr/0188-o-custo-real-do-provider-vira-o-numero-do-metering.md)
-([RN-665](../business-rules/api.md#rn-665)) the catalog price is the number
-only when the response doesn't carry the real cost. When it does (OpenRouter's
-`usage.cost`), that is `cost_micros`, both price columns hold the IMPLICIT price
-(`cost ÷ tokens`, flagged by `price_implicit`), and what the catalog would have
-charged goes alongside in `catalog_cost_micros` — so `tokens × price = cost`
-still holds on every row, real or estimated.
+Desde o [ADR 0188](../adr/0188-o-custo-real-do-provider-vira-o-numero-do-metering.md)
+([RN-665](../business-rules/api.md#rn-665)) o preço do catálogo só é o número
+quando a resposta não traz o custo real. Quando traz (o `usage.cost` do
+OpenRouter), ele é o `cost_micros`, as duas colunas de preço guardam o preço
+IMPLÍCITO (`custo ÷ tokens`, marcado por `price_implicit`), e o que o catálogo
+teria cobrado vai ao lado em `catalog_cost_micros` — então `tokens × preço =
+custo` continua valendo em toda linha, real ou estimada.
 
-Every price change writes a row in `model_price_changes`, append-only,
-with the before/after pair and the origin (`manual` | `sync`). The pair is written
-together on purpose: reconstructing the "before" from the previous row would
-depend on no write having escaped the audited path, which is exactly what the
-audit exists to prove.
+Toda mudança de preço grava uma linha em `model_price_changes`, append-only,
+com o par antes/depois e a origem (`manual` | `sync`). O par é gravado junto de
+propósito: reconstruir o "antes" a partir da linha anterior dependeria de
+nenhuma escrita ter escapado do caminho auditado, que é exatamente o que a
+auditoria existe para provar.
 
-:::caution Two writes were escaping
-The `sync` origin existed in the domain since Phase 9c and **no write
-produced it**: sync swapped the price via `upsert`, outside the audited path.
-`seed.ts` did the same — and it runs against an already-seeded database
-(`BRABO_FORCE_SEED=1` in the k8s `bootstrap.sh`), so fixing a price in the seed
-swapped the number in silence. Both started auditing; the seed reuses the
-`UpdateModelPricingUseCase` instead of repeating the logic, and calls it
-**before** the upsert — after it, the two values would already be equal and the
-audit would treat it as a no-op.
+:::caution Duas escritas escapavam
+A origem `sync` existia no domínio desde a Fase 9c e **nenhuma escrita a
+produzia**: a sincronização trocava o preço por `upsert`, fora do caminho
+auditado. O `seed.ts` fazia o mesmo — e ele roda contra banco já semeado
+(`BRABO_FORCE_SEED=1` no `bootstrap.sh` do k8s), então corrigir um preço no seed
+trocava o número em silêncio. Os dois passaram a auditar; o seed reusa o
+`UpdateModelPricingUseCase` em vez de repetir a lógica, e o chama **antes** do
+upsert — depois dele, os dois valores já seriam iguais e a auditoria trataria
+como nada a fazer.
 :::
 
-:::note Not an outbox event
-`model_price_changes` is its own table, not a row in `outbox_events`. The
-`Engine.Outbox.Drain.run_once/0` filters on `aggregate_type == "session"` — a
-price row there would sit with `processed_at` null forever and would pollute
-the outbox lag metric. It's an immutable domain log, like `session_events`.
+:::note Não é evento da outbox
+`model_price_changes` é tabela própria, não uma linha em `outbox_events`. O
+`Engine.Outbox.Drain.run_once/0` filtra por `aggregate_type == "session"` — uma
+linha de preço ali ficaria com `processed_at` nulo para sempre e poluiria a
+métrica de atraso da outbox. É um log de domínio imutável, como `session_events`.
 :::
 
 ## Embeddings
 
-The contract's second operation (ADR 0075), and the only one besides `chat` that spends
-tokens. Only exists where `capabilities.embeddings` is `true`.
+A segunda operação do contrato (ADR 0075), e a única além de `chat` que gasta
+tokens. Só existe onde `capabilities.embeddings` é `true`.
 
 ```ts
 const { vectors, dimensions, model, inputTokens, estimated } =
@@ -371,105 +372,104 @@ const { vectors, dimensions, model, inputTokens, estimated } =
   });
 ```
 
-**It's batched, and order is contract.** An index receives N snippets at once, and
-the position is the only link between input and vector. Hence the guarantee that
-matters most: **one vector per input, or an error** — never a shorter list. A
-partially rejected response is undetectable later; the defect would only surface
-in search, far from the cause. For the same reason the contract rejects an empty
-vector, mismatched dimensions within the same response, and an empty input list.
+**É em lote, e a ordem é contrato.** Um índice recebe N trechos de uma vez, e a
+posição é o único vínculo entre entrada e vetor. Daí a garantia que mais
+importa: **um vetor por entrada, ou erro** — nunca uma lista mais curta. Uma
+resposta parcialmente recusada é indetectável depois; o defeito só apareceria
+na busca, longe da causa. Pelo mesmo motivo o contrato recusa vetor vazio,
+dimensões diferentes dentro da mesma resposta e lista de entradas vazia.
 
-**The error throws, it doesn't become a chunk.** In `chat` the error becomes a
-chunk because the turn has already spent tokens and metering needs to happen; here
-there's nothing to preserve — either the provider returned the vectors and
-charged, or it didn't return them and didn't charge. The `code` taxonomy is
-exactly the same as the table below.
+**O erro lança, não vira chunk.** No `chat` o erro vira chunk porque o turno já
+gastou tokens e o metering precisa acontecer; aqui não há nada a preservar — ou
+o provider devolveu os vetores e cobrou, ou não devolveu e não cobrou. A
+taxonomia de `code` é exatamente a mesma da tabela abaixo.
 
-| dialect | endpoint | response body |
+| dialeto | endpoint | corpo da resposta |
 | --- | --- | --- |
-| OpenAI-compatible base | `POST /embeddings` | `{ data: [{ index, embedding }], model, usage.prompt_tokens }` |
+| base OpenAI-compatível | `POST /embeddings` | `{ data: [{ index, embedding }], model, usage.prompt_tokens }` |
 | Ollama | `POST /api/embed` | `{ model, embeddings: number[][], prompt_eval_count }` |
 
-OpenAI's `index` is the link to the input, and the doc **doesn't promise order** —
-that's why the base sorts by it before returning. The `dimensions` field of
-`EmbeddingOptions` (reduce the vector) only exists for OpenAI; Ollama ignores it,
-instead of failing, because there the dimension belongs to the model — and the
-result always declares the REAL dimension of what came back.
+O `index` da OpenAI é o vínculo com a entrada, e a doc **não promete ordem** —
+por isso a base ordena por ele antes de devolver. O campo `dimensions` de
+`EmbeddingOptions` (reduzir o vetor) só existe na OpenAI; o Ollama o ignora, em
+vez de falhar, porque ali a dimensão é do modelo — e o resultado sempre declara
+a dimensão REAL do que voltou.
 
-### Who embeds today
+### Quem vetoriza hoje
 
-| provider | `embeddings` | why |
+| provider | `embeddings` | por quê |
 | --- | --- | --- |
-| `ollama` | **yes** | proven by execution against daemon 0.32.1 (`nomic-embed-text`, 2 inputs → 2 vectors of 768) |
-| `anthropic` | no | it **doesn't have** an embedding endpoint — the doc points to a third party, which is another provider |
-| the other seven | no | no smoke test with a credential has proven their endpoint ([acceptance](../explanation/aceite-providers.md)) |
+| `ollama` | **sim** | provado por execução contra o daemon 0.32.1 (`nomic-embed-text`, 2 entradas → 2 vetores de 768) |
+| `anthropic` | não | **não tem** endpoint de embedding — a doc aponta para um terceiro, que é outro provider |
+| os outros sete | não | nenhum smoke com credencial provou o endpoint deles ([aceite](../explanation/aceite-providers.md)) |
 
-Declaring by reading the doc is what ADR 0043 forbids, and it cost two live
-reversals. The base's DIALECT, though, is proven: the contract suite runs a
-second time over it with the capability turned on — that's what makes it cheap to
-flip a provider to `true` once the key exists.
+Declarar lendo a doc é o que o ADR 0043 proíbe, e custou duas reversões ao
+vivo. O DIALETO da base, porém, está provado: a suite de contrato roda uma
+segunda vez sobre ele com a capability ligada — é isso que torna barato virar
+um provider para `true` quando a chave existir.
 
-Ollama is also the only one that publishes the MODEL layer: `/api/tags` brings
-`capabilities: ["embedding"]` and `details.embedding_length` per row, and that's
-where `supportsEmbeddings` and `embeddingDimensions` in the catalog come from. A
-chat model asked for embedding gets a **`501`** from the daemon — the reason the
-check happens beforehand ([RN-190](../business-rules/api.md#rn-190)).
+O Ollama também é o único que publica a camada do MODELO: `/api/tags` traz
+`capabilities: ["embedding"]` e `details.embedding_length` por linha, e é daí
+que vêm `supportsEmbeddings` e `embeddingDimensions` no catálogo. Um modelo de
+chat a quem se pede embedding recebe **`501`** do daemon — o motivo de a
+checagem acontecer antes ([RN-190](../business-rules/api.md#rn-190)).
 
-:::note The spend still isn't measured
-`embed` returns `inputTokens`/`estimated` to feed the metering, and
-`calculateCostMicros(input, 0, …)` already works (embedding has no output in
-tokens). What's missing is structural: `token_usage.session_id` is **NOT NULL**,
-and indexing a repository doesn't happen inside a session. Cut declared in
-ADR 0075 — it belongs to the wave that implements the consumer.
+:::note O gasto ainda não é medido
+`embed` devolve `inputTokens`/`estimated` para alimentar o metering, e
+`calculateCostMicros(input, 0, …)` já funciona (embedding não tem saída em
+tokens). O que falta é estrutural: `token_usage.session_id` é **NOT NULL**, e
+indexar um repositório não acontece dentro de sessão. Corte declarado no
+ADR 0075 — pertence à onda que implementa o consumidor.
 :::
 
-## Normalized errors
+## Erros normalizados
 
-No one decides anything by substring-matching the vendor's message: the decision
-is made by the chunk's `code`. The classes live in
+Ninguém decide nada casando substring da mensagem do fornecedor: a decisão é
+tomada pelo `code` do chunk. As classes moram em
 `src/domain/llm/llm-provider-errors.ts`.
 
-| provider status | `code` | means |
+| status do provider | `code` | quer dizer |
 | --- | --- | --- |
-| 401, 403 | `auth` | key missing, invalid, or without access to the model |
-| 402 | `insufficient_credit` | the provider account has no credit left (RN-730) |
-| 404 | `model_not_found` | the model doesn't exist on that provider |
-| 429 | `rate_limit` | quota or throughput exceeded |
-| 413, or 400 with a context marker | `context_length` | the prompt doesn't fit the window |
-| — | `timeout` | the provider went **silent** past the inactivity ceiling |
-| — | `connection` | never even reached the provider |
-| anything else | `upstream` | it failed on the other side for some other reason |
+| 401, 403 | `auth` | chave ausente, inválida ou sem acesso ao modelo |
+| 402 | `insufficient_credit` | a conta do provider ficou sem crédito (RN-730) |
+| 404 | `model_not_found` | o modelo não existe naquele provider |
+| 429 | `rate_limit` | cota ou vazão estourada |
+| 413, ou 400 com marcador de contexto | `context_length` | o prompt não cabe na janela |
+| — | `timeout` | o provider ficou **calado** além do teto de inatividade |
+| — | `connection` | nem chegou ao provider |
+| qualquer outro | `upstream` | falhou do outro lado por outro motivo |
 
-A 400 only becomes `context_length` when the body carries a known marker
-(`context_length_exceeded` and variants). Matching by marker is fragile, so
-413 — which is unambiguous — comes first, and a 400 without a marker falls into
-`upstream` instead of lying about the cause.
+Um 400 só vira `context_length` quando o corpo traz um marcador conhecido
+(`context_length_exceeded` e variantes). Casar por marcador é frágil, então o
+413 — que é inequívoco — vem primeiro, e um 400 sem marcador cai em `upstream`
+em vez de mentir sobre a causa.
 
-## Inactivity ceiling {#inactivity-ceiling}
+## Teto de inatividade {#inactivity-ceiling}
 
-The ceiling isn't about total duration, it's about **silence**. A legitimate turn
-can take a long time (a model processes thousands of prompt tokens before the
-first token), but it never goes quiet. That's the lesson from ADR 0020, where
-`fetch` gave up at undici's fixed 300s with an opaque "fetch failed" and the agent
-recorded "the model stopped" for a request that was never answered.
+O teto não é sobre duração total, é sobre **silêncio**. Um turno legítimo pode
+demorar (um modelo processa milhares de tokens de prompt antes do primeiro
+token), mas nunca fica calado. É a lição do ADR 0020, em que o `fetch` desistia
+nos 300s fixos do undici com um "fetch failed" opaco e o agente gravava "o
+modelo parou" para uma requisição que nunca foi respondida.
 
-| provider | mechanism | env |
+| provider | mecanismo | env |
 | --- | --- | --- |
-| Ollama | `node:http` socket timeout | `OLLAMA_REQUEST_TIMEOUT_MS` |
-| OpenAI-compatible base | same | `LLM_REQUEST_TIMEOUT_MS` |
-| Anthropic | `withIdleTimeout` over the SDK stream | `LLM_REQUEST_TIMEOUT_MS` |
+| Ollama | timeout de socket do `node:http` | `OLLAMA_REQUEST_TIMEOUT_MS` |
+| base OpenAI-compatível | idem | `LLM_REQUEST_TIMEOUT_MS` |
+| Anthropic | `withIdleTimeout` sobre o stream do SDK | `LLM_REQUEST_TIMEOUT_MS` |
 
-Ollama has its own env because a local model has a different order of magnitude of
-latency until the first token.
+O Ollama tem env própria porque um modelo local tem outra ordem de grandeza de
+latência até o primeiro token.
 
-## The OpenAI-compatible base
+## A base OpenAI-compatível
 
-`OpenAICompatibleProvider` implements the `/chat/completions` dialect exactly once.
-Nine providers are born from it: OpenAI (the first instance), OpenRouter (Phase
-11a, the hub), and the five from Phase 11b — NVIDIA NIM, Together, DeepInfra,
-Bitdeer, Vultr. All of them change `baseUrl`, the auth header, and flags — never
-the parsing (the only exception proven necessary was each one's own
-`parseCatalogo`, when the capability is `true` — see the per-provider sections
-below).
+`OpenAICompatibleProvider` implementa o dialeto `/chat/completions` uma única
+vez. Nove providers nascem dela: OpenAI (a primeira instância), OpenRouter
+(Fase 11a, o hub) e os cinco da Fase 11b — NVIDIA NIM, Together, DeepInfra,
+Bitdeer, Vultr. Todos mudam `baseUrl`, o cabeçalho de autenticação e flags —
+nunca o parsing (a única exceção que se provou necessária foi o `parseCatalogo`
+próprio de cada um, quando a capability é `true` — ver as seções por provider
+abaixo).
 
 ```ts
 interface OpenAICompatibleFlags {
@@ -478,493 +478,497 @@ interface OpenAICompatibleFlags {
 }
 ```
 
-The output cap field is sent on EVERY call (RN-734): `options.maxTokens`
-when the caller sets it, otherwise `MAX_TOKENS_PADRAO` (4096, the same
-default as the Anthropic provider). Without the field, OpenRouter reserves
-credit for the model's MAXIMUM output per in-flight call and answers 402
-even when the real call would fit the balance. A reply cut by this cap is
-not narrated yet: this dialect does not read `finish_reason: "length"`.
+O campo de teto de saída vai em TODA chamada (RN-734): `options.maxTokens`
+quando quem chama o define, senão `MAX_TOKENS_PADRAO` (4096, o mesmo default
+do provider Anthropic). Sem o campo, o OpenRouter reserva crédito para a saída
+MÁXIMA do modelo por chamada em voo e responde 402 mesmo quando a chamada real
+caberia no saldo. Uma resposta cortada por esse teto ainda não é narrada: este
+dialeto não lê `finish_reason: "length"`.
 
-When the model reasons (`models.supports_reasoning`) and the provider config
-has `campoDeRaciocinioDesligado` (only OpenRouter today), the output cap becomes
-visible output + `ORCAMENTO_DE_RACIOCINIO` (4096), because reasoning counts
-inside `max_tokens` (RN-741). No reasoning field is sent just because the model
-accepts the parameter (RN-782): the paid measurement of 2026-10-10 (AT-467)
-showed `reasoning: { max_tokens }` turning reasoning ON for
-`anthropic/claude-haiku-4.5` (74% of calls, 2.8x the cost) and being IGNORED by
-`anthropic/claude-haiku-5.5` (1024 asked, 8192 spent). Execution dev agents
-(`dev-<module>`, not `dev-lead`) get `reasoning: { enabled: false }` (RN-783,
-owner's decision): 0 of 8 replies cut, -42% cost on Haiku 5.5. The model
-catalog's "thinking" facet help says so.
+Quando o modelo raciocina (`models.supports_reasoning`) e a configuração do
+provider tem `campoDeRaciocinioDesligado` (hoje só o OpenRouter), o teto de
+saída vira saída visível + `ORCAMENTO_DE_RACIOCINIO` (4096), porque o
+raciocínio conta dentro de `max_tokens` (RN-741). Nenhum campo de raciocínio é
+enviado só porque o modelo aceita o parâmetro (RN-782): a medição paga de
+2026-10-10 (AT-467) mostrou `reasoning: { max_tokens }` LIGANDO o raciocínio no
+`anthropic/claude-haiku-4.5` (74% das chamadas, 2,8x o custo) e sendo IGNORADO
+pelo `anthropic/claude-haiku-5.5` (1024 pedidos, 8192 gastos). Os dev agents de
+execução (`dev-<modulo>`, não o `dev-lead`) recebem `reasoning: { enabled: false }`
+(RN-783, decisão do dono): 0 de 8 respostas cortadas, -42% de custo no Haiku
+5.5. A ajuda da faceta "pensamento" do catálogo de modelos diz isso.
 
-On the direct Anthropic provider (RN-1000, ADR 0257) turning reasoning off is PER
-MODEL: Haiku 5.5 → `thinking: disabled`; Sonnet 5.5 → `thinking:
-between_tools`; Opus 5.5 → `output_config.effort: low` (REDUCED, not
-turned off — `disabled` is a 400 on Opus and on Sonnet 5.5); unknown adaptive
-→ the model's default. Except for Haiku, `max_tokens` gets the headroom
-(`reasoningBudget ?? 4096`), as in the adaptive-on case, where the cap is TOTAL.
-The provider declares `aceitaRaciocinioDesligado` (RN-916) and records
-`thinking_tokens` from the last `message_delta` as `reasoning_tokens` (RN-666).
+No provider Anthropic direto (RN-1000, ADR 0257) o raciocínio desligado é POR
+MODELO: Haiku 5.5 → `thinking: disabled`; Sonnet 5.5 → `thinking:
+between_tools`; Opus 5.5 → `output_config.effort: low` (REDUZIDO, não
+desligado — o `disabled` é 400 no Opus e no Sonnet 5.5); adaptativo
+desconhecido → o padrão do modelo. Fora o Haiku, o `max_tokens` ganha a folga
+(`reasoningBudget ?? 4096`), como no adaptativo ligado, onde o teto é TOTAL.
+O provider declara `aceitaRaciocinioDesligado` (RN-916) e grava
+`thinking_tokens` do último `message_delta` como `reasoning_tokens` (RN-666).
 
-Per-model exception (RN-914, ADR 0223): with `models.reasoning_budget` filled in
-(curated by hand; today only `qwen/qwen3.7-flash`, 2048, proven on 22/10) the body
-carries `reasoning: { max_tokens: N }` and the cap becomes visible output + N.
-`deepseek/deepseek-v4.1-flash` ignored `max_tokens` and `effort` in the measurement: its
-limit (2048, migration 0075) is enforced by ABORTING the stream when
-`delta.reasoning` goes past characters/4 > N, with the cost estimated and reconciled
-afterwards (RN-915, ADR 0224). `effort` is never sent, and the limit does not
-guarantee the tool call.
+Exceção por modelo (RN-914, ADR 0223): com `models.reasoning_budget` preenchido
+(curado à mão; hoje só `qwen/qwen3.7-flash`, 2048, provado em 22/10) o corpo
+leva `reasoning: { max_tokens: N }` e o teto vira saída visível + N. O
+`deepseek/deepseek-v4.1-flash` ignorou `max_tokens` e `effort` na medição: o
+limite dele (2048, migração 0075) é imposto ABORTANDO o stream quando o
+`delta.reasoning` passa de caracteres/4 > N, com custo estimado e reconciliado
+depois (RN-915, ADR 0224). `effort` nunca é enviado, e o limite não garante a
+tool call.
 
-Each flag exists because a real provider diverges. Don't add a flag without a
-provider that needs it.
+Cada flag existe porque um provider real diverge. Não acrescente flag sem um
+provider que precise dela.
 
-## Normalized divergences {#normalized-divergences}
+## Divergências normalizadas {#normalized-divergences}
 
-The three providers pass the same contract, but the dialects aren't identical.
-What diverges is normalized, not hidden:
+Os três providers passam no mesmo contrato, mas os dialetos não são idênticos.
+O que diverge é normalizado, não escondido:
 
-| topic | Ollama | Compatible base | Anthropic |
+| assunto | Ollama | base compatível | Anthropic |
 | --- | --- | --- | --- |
-| format | NDJSON | SSE `data:` | SSE with named events |
-| transport | `node:http` | `node:http` | official SDK + `withIdleTimeout` |
-| tool call ids | doesn't send — we generate | sends; we generate if missing | sends |
-| tool call arguments | already deserialized | sliced string, reassembled by index | `input_json_delta`, reassembled by the SDK |
-| response without `usage` | doesn't emit a chunk | counts locally with `estimated: true` | **impossible** — `usage` is mandatory in `message_start` |
-| `tool` role | its own message | `role: "tool"` + `tool_call_id` | `tool_result` block inside a `user` turn |
-| response cut at the output cap | not read | `finish_reason: "length"` → `truncated` chunk | `stop_reason: "max_tokens"` → `truncated` chunk |
-| `system` AFTER `user`/`tool` | kept in place, last item of `messages` | kept in place, last item of `messages` | **hoisted**: appended to the top-level `system` parameter (`\n\n`-joined after the prompt already there) and removed from `messages` |
+| formato | NDJSON | SSE `data:` | SSE com eventos nomeados |
+| transporte | `node:http` | `node:http` | SDK oficial + `withIdleTimeout` |
+| ids de tool call | não manda — nós geramos | manda; geramos se faltar | manda |
+| argumentos de tool call | já desserializados | string fatiada, remontada pelo índice | `input_json_delta`, remontado pelo SDK |
+| resposta sem `usage` | não emite chunk | conta localmente com `estimated: true` | **impossível** — `usage` é obrigatório no `message_start` |
+| papel `tool` | mensagem própria | `role: "tool"` + `tool_call_id` | bloco `tool_result` dentro de um turno `user` |
+| resposta cortada no teto de saída | não lido | `finish_reason: "length"` → chunk `truncated` | `stop_reason: "max_tokens"` → chunk `truncated` |
+| `system` DEPOIS de `user`/`tool` | mantido no lugar, último item de `messages` | mantido no lugar, último item de `messages` | **içado**: acrescentado ao parâmetro `system` de topo (unido com `\n\n` depois do prompt que já está lá) e removido de `messages` |
 
-The Anthropic row is the costliest: results from parallel calls need to arrive in
-the **same** `user` turn, so consecutive `tool` messages are grouped.
+A linha da Anthropic é a mais cara: resultados de chamadas paralelas precisam
+chegar no **mesmo** turno `user`, então mensagens `tool` consecutivas são
+agrupadas.
 
-### A `system` message at the end of the conversation (AT-161) {#a-system-message-at-the-end-of-the-conversation-at-161}
+### Uma mensagem `system` no fim da conversa (AT-161) {#a-system-message-at-the-end-of-the-conversation-at-161}
 
-The late-`system` row exists because the language guidance of AT-081 plans to
-send **one** ephemeral `role: "system"` message at the END of the list, on
-every call of a turn — after `user` on the first call, after `tool` on the
-following ones. The contract suite answers, for each of the eleven providers,
-where that message lands in the **serialized body**: each harness declares
-`posicaoDoSistemaTardio` and the contract checks it in both positions, plus
-that the text appears exactly once and the rest of the conversation keeps its
-order (`test/contract/llm-provider.contract.ts`).
+A linha do `system` tardio existe porque a orientação de idioma da AT-081
+prevê enviar **uma** mensagem efêmera `role: "system"` no FIM da lista, em toda
+chamada de um turno — depois de `user` na primeira chamada, depois de `tool`
+nas seguintes. A suite de contrato responde, para cada um dos onze providers,
+onde essa mensagem pousa no **corpo serializado**: cada harness declara
+`posicaoDoSistemaTardio` e o contrato a confere nas duas posições, além de o
+texto aparecer exatamente uma vez e o resto da conversa manter a ordem
+(`test/contract/llm-provider.contract.ts`).
 
-| provider | adapter | where the late `system` lands |
+| provider | adaptador | onde o `system` tardio pousa |
 | --- | --- | --- |
-| OpenAI, OpenRouter, NVIDIA NIM, Together, DeepInfra, Bitdeer, Vultr, 9Router, OpenCode Zen | compatible base (`toWireMessage`) | end of `messages`, `role: "system"` |
-| Ollama | own (`messages` sent as-is) | end of `messages`, `role: "system"` |
-| Anthropic | own (official SDK) | last text block of the last `user` turn, after the cache point ([RN-1015](../business-rules/api.md#rn-1015)) |
+| OpenAI, OpenRouter, NVIDIA NIM, Together, DeepInfra, Bitdeer, Vultr, 9Router, OpenCode Zen | base compatível (`toWireMessage`) | fim de `messages`, `role: "system"` |
+| Ollama | próprio (`messages` enviado como está) | fim de `messages`, `role: "system"` |
+| Anthropic | próprio (SDK oficial) | último bloco de texto do último turno `user`, depois do ponto de cache ([RN-1015](../business-rules/api.md#rn-1015)) |
 
-No adapter drops or duplicates it. What the fake server cannot say is whether
-the REAL provider accepts that body — it accepts anything. That is a separate,
-manual smoke, `test/infrastructure/llm/sistema-tardio.smoke.spec.ts`,
-one `describe` per provider, each gated on the same key the acceptance smokes
-use (plus `ANTHROPIC_TEST_KEY`; Ollama by `OLLAMA_SISTEMA_TARDIO_SMOKE=1`).
-Which ones have run is tracked in
-[provider acceptance](../explanation/aceite-providers.md). Without that run, a
-provider is **not proven** to accept a late `system` — the ADR 0041/0042 rule.
+Nenhum adaptador a descarta nem a duplica. O que o servidor falso não sabe
+dizer é se o provider REAL aceita esse corpo — ele aceita qualquer coisa. Isso
+é um smoke manual à parte, `test/infrastructure/llm/sistema-tardio.smoke.spec.ts`,
+um `describe` por provider, cada um condicionado à mesma chave que os smokes de
+aceite usam (mais `ANTHROPIC_TEST_KEY`; o Ollama por
+`OLLAMA_SISTEMA_TARDIO_SMOKE=1`). Quais já rodaram está registrado no
+[aceite de providers](../explanation/aceite-providers.md). Sem essa rodada, um
+provider **não está provado** quanto a aceitar `system` tardio — a regra dos
+ADRs 0041/0042.
 
-**Observation, not measured (AT-081 gap 2):** on Anthropic the hoist means the
-guidance changes the top `system` block, which comes BEFORE the conversation —
-so every change in its text changes the request prefix, and with it whatever
-prompt caching the prefix would get. Cache is not observable in the product
-today (AT-082), so this is recorded, not quantified.
+**Observação, não medida (lacuna 2 da AT-081):** na Anthropic o içamento faz a
+orientação mudar o bloco `system` do topo, que vem ANTES da conversa — então
+toda mudança no texto dela muda o prefixo da requisição, e com ele qualquer
+prompt caching que o prefixo teria. Cache não é observável no produto hoje
+(AT-082), então isto fica registrado, não quantificado.
 
-## OpenRouter — the first hub (Phase 11a)
+## OpenRouter — o primeiro hub (Fase 11a)
 
-`OpenRouterProvider` is `OpenAICompatibleProvider` with `openrouterConfig()`
-(`src/infrastructure/llm/openrouter-provider.ts`). It declares
-`listModels: true` — the only piece of code that changes when a capability turns
-on is the config; `SyncModelCatalogUseCase` already handles the rest.
+`OpenRouterProvider` é `OpenAICompatibleProvider` com `openrouterConfig()`
+(`src/infrastructure/llm/openrouter-provider.ts`). Ele declara
+`listModels: true` — a única peça de código que muda quando uma capability liga
+é a configuração; o `SyncModelCatalogUseCase` já cuida do resto.
 
-Quirks found and tested
+Peculiaridades encontradas e testadas
 (`test/infrastructure/llm/openrouter-provider.contract.spec.ts`):
 
-- **Own headers**: `HTTP-Referer` (from `API_PUBLIC_URL`) and `X-Title:
-  "Brabo"` — optional per the official doc (attribution/ranking on the
-  OpenRouter site), always sent because they cost nothing;
-- **Model id prefixed by the upstream** (`openai/gpt-4o-mini`,
-  `anthropic/claude-3-5-sonnet`): the prefix is the REQUESTED vendor, not the one
-  that responded — see `extrairUpstreamProvider` below;
-- **Catalog with pricing on its own row**: `GET /v1/models` returns
-  `pricing.prompt`/`pricing.completion` as a decimal STRING in USD **per
-  token**, unlike OpenAI's plain id-only `{ data: [{ id }] }` pattern.
-  `parseCatalogoOpenRouter` converts to micro-USD per million
-  (`* 1e12`, rounded — the column is `bigint`);
-- **Error IN THE MIDDLE of the stream**: OpenRouter accepts the connection and
-  starts sending text before it knows whether the real backing provider is going
-  to fail — a failure mode OpenAI doesn't have, because it doesn't route to
-  third-party infrastructure. The frame comes as
-  `{"error":{"code":"...","message":"..."},"choices":[...]}`; a truthy `error`
-  field is the signal. A numeric code uses the base's same `normalizeHttpStatus`;
-  a string code is mapped by substring
-  (`mapearCodigoDeFrame`) with `upstream` as a safe default — never silence, even
-  for a code outside the map;
-- **Real cost in `usage.cost`** (ADR 0188, RN-665): the last stream frame
-  carries what the hub charged, in USD; `extrairCustoRealOpenRouter` turns it
-  into micro-USD and the metering records it as the number. With
-  `is_byok: true` the field is the hub's fee, not the inference, so it is NOT
-  read and the row falls back to the catalog. `model` (the dated version an
-  alias like `~deepseek/deepseek-flash-latest` resolved to) and `id` (`gen-…`)
-  are read by the base for every provider of the dialect;
-- **Free-routing alias (`~…`) is synced but cannot be curated** (AT-271,
-  [RN-679](../business-rules/api.md#rn-679)): an id like
-  `~deepseek/deepseek-flash-latest` always redirects to the latest model of the
-  family, its catalog price is a showcase price, and the bill comes from
-  whichever upstream served the call. Sync keeps it in the catalog (dropping
-  it would mark an already-curated one `unavailable`); activating it is 422
-  `alias_de_roteamento_livre`, and the curation read marks it with
-  `freeRoutingAlias`. One activated before the rule stays active and can be
-  turned off — once off, it does not come back;
-- **Connection test**: `GET /key` (official doc) validates the key without
-  spending tokens on an actual chat call. It's the first `LLMCredentialConnectionTester`
-  on the LLM side. Since [ADR 0050](../adr/0050-credencial-sempre-cifrada-verificacao-explicita.md)
-  it **doesn't run at registration**: the credential is encrypted and stored
-  without judgment, and verification is the explicit action
-  `POST /users/me/credentials/{provider}/test`, on the already-stored key.
-  A provider with no declared test (today: `ollama`/`anthropic`/`openai`) returns
-  `nao_suportado` — never a fake `ok` ([RN-055](../business-rules/api.md#rn-055)).
+- **Cabeçalhos próprios**: `HTTP-Referer` (de `API_PUBLIC_URL`) e `X-Title:
+  "Brabo"` — opcionais pela doc oficial (atribuição/ranking no site do
+  OpenRouter), sempre enviados porque não custam nada;
+- **Id de modelo prefixado pelo upstream** (`openai/gpt-4o-mini`,
+  `anthropic/claude-3-5-sonnet`): o prefixo é o fornecedor PEDIDO, não o que
+  respondeu — ver `extrairUpstreamProvider` abaixo;
+- **Catálogo com preço na própria linha**: `GET /v1/models` devolve
+  `pricing.prompt`/`pricing.completion` como STRING decimal em USD **por
+  token**, ao contrário do padrão simples só com id `{ data: [{ id }] }` da
+  OpenAI. `parseCatalogoOpenRouter` converte para micro-USD por milhão
+  (`* 1e12`, arredondado — a coluna é `bigint`);
+- **Erro NO MEIO do stream**: o OpenRouter aceita a conexão e começa a mandar
+  texto antes de saber se o provider real por trás vai falhar — um modo de
+  falha que a OpenAI não tem, porque não roteia para infraestrutura de
+  terceiros. O frame vem como
+  `{"error":{"code":"...","message":"..."},"choices":[...]}`; um campo `error`
+  verdadeiro é o sinal. Código numérico usa o mesmo `normalizeHttpStatus` da
+  base; código em string é mapeado por substring (`mapearCodigoDeFrame`) com
+  `upstream` como default seguro — nunca silêncio, nem para código fora do mapa;
+- **Custo real em `usage.cost`** (ADR 0188, RN-665): o último frame do stream
+  traz o que o hub cobrou, em USD; `extrairCustoRealOpenRouter` o converte em
+  micro-USD e o metering o grava como o número. Com `is_byok: true` o campo é a
+  taxa do hub, não a inferência, então NÃO é lido e a linha cai no catálogo.
+  `model` (a versão datada para a qual um alias como
+  `~deepseek/deepseek-flash-latest` resolveu) e `id` (`gen-…`) são lidos pela
+  base para todo provider do dialeto;
+- **Alias de roteamento livre (`~…`) é sincronizado mas não pode ser curado**
+  (AT-271, [RN-679](../business-rules/api.md#rn-679)): um id como
+  `~deepseek/deepseek-flash-latest` sempre redireciona para o modelo mais novo
+  da família, o preço dele no catálogo é preço de vitrine, e a conta vem de
+  qualquer upstream que tenha servido a chamada. A sincronização o mantém no
+  catálogo (tirá-lo marcaria `unavailable` um já curado); ativá-lo é 422
+  `alias_de_roteamento_livre`, e a leitura da curadoria o marca com
+  `freeRoutingAlias`. Um ativado antes da regra continua ativo e pode ser
+  desligado — desligado, não volta;
+- **Teste de conexão**: `GET /key` (doc oficial) valida a chave sem gastar
+  tokens numa chamada de chat de verdade. É o primeiro
+  `LLMCredentialConnectionTester` do lado de LLM. Desde o
+  [ADR 0050](../adr/0050-credencial-sempre-cifrada-verificacao-explicita.md) ele
+  **não roda no cadastro**: a credencial é cifrada e guardada sem julgamento, e
+  a verificação é a ação explícita
+  `POST /users/me/credentials/{provider}/test`, sobre a chave já guardada. Um
+  provider sem teste declarado (hoje: `ollama`/`anthropic`/`openai`) devolve
+  `nao_suportado` — nunca um `ok` falso ([RN-055](../business-rules/api.md#rn-055)).
 
-The real-credential acceptance test that Phase 11a requires — registration, sync
-populating the catalog, curated activation, and an end-to-end chat session with
-cost frozen in `token_usage` — is
-`test/infrastructure/llm/openrouter-provider.smoke.spec.ts`. It never runs in
-CI: without `OPENROUTER_TEST_KEY` in the environment, the whole `describe` is
-skipped with a warning. Same mold as the git-against-real-API smoke tests
+O teste de aceite com credencial real que a Fase 11a exige — cadastro,
+sincronização povoando o catálogo, ativação curada e uma sessão de chat ponta a
+ponta com custo congelado em `token_usage` — é
+`test/infrastructure/llm/openrouter-provider.smoke.spec.ts`. Ele nunca roda em
+CI: sem `OPENROUTER_TEST_KEY` no ambiente, o `describe` inteiro é pulado com
+um aviso. Mesmo molde dos smokes de git contra API real
 (`github-provider.smoke.spec.ts`, `gitlab-provider.smoke.spec.ts`).
 
-## NVIDIA NIM (Phase 11b)
+## NVIDIA NIM (Fase 11b)
 
-`NvidiaNimProvider` is `OpenAICompatibleProvider` with `nvidiaNimConfig()`
-(`src/infrastructure/llm/nvidia-nim-provider.ts`), pointed at the
-**hosted** endpoint (`integrate.api.nvidia.com`) — not the self-hosted
-container product, which is a different product with a different address.
+`NvidiaNimProvider` é `OpenAICompatibleProvider` com `nvidiaNimConfig()`
+(`src/infrastructure/llm/nvidia-nim-provider.ts`), apontado para o
+endpoint **hospedado** (`integrate.api.nvidia.com`) — não o container
+auto-hospedado, que é outro produto com outro endereço.
 
-- **`listModels: true`** (AT-575, proven on 2026-10-28): `GET /v1/models` returns
-  `id`/`object`/`created`/`owned_by` (84 models in the real smoke, among them
-  `nemotron-3.5-lightning-30b-a3b`, `nemotron-3-ultra-550b-a55b` and
-  `nemotron-3-nano-omni-30b-a3b-reasoning`), with no price: the default parser is enough and
-  the sync records price 0 with `manual_pricing`. Without the capability the sync skipped the
-  provider and curation (ADR 0042) had no model to activate;
-- **No dedicated header**: `Authorization: Bearer nvapi-...` — standard bearer,
-  the key only has the `nvapi-` prefix by NVIDIA convention;
-- **Tool calling is PER MODEL, not per API**: only specific models (Llama
-  3.1 70B/405B, Nemotron variants, ...) actually support it — but this is never a
-  config flag, it's entirely `models.supports_tool_calling`
-  (seed/curation), confirmed by reading `buildBody()` in the base: the
-  `capabilities.toolCalling` flag only decides whether the `tools` parameter is
-  sent, not whether the specific model knows how to use it;
-- **`stream_options.include_usage` not confirmed** for the hosted endpoint (only
-  documented for the self-hosted NIM software) —
-  `streamOptionsIncludeUsage: false`; the base's `estimated` fallback covers the
-  case where the field never comes;
-- **Connection test**: no dedicated validation endpoint (no
-  "whoami"/balance endpoint found) — `GET /v1/models` with the key, only the
-  status matters (200 vs 401/403).
+- **`listModels: true`** (AT-575, provado em 28/10/2026): `GET /v1/models` devolve
+  `id`/`object`/`created`/`owned_by` (84 modelos no smoke real, entre eles
+  `nemotron-3.5-lightning-30b-a3b`, `nemotron-3-ultra-550b-a55b` e
+  `nemotron-3-nano-omni-30b-a3b-reasoning`), sem preço: o parser padrão basta e
+  o sync grava preço 0 com `manual_pricing`. Sem a capability o sync pulava o
+  provider e a curadoria (ADR 0042) não tinha modelo para ativar;
+- **Sem cabeçalho dedicado**: `Authorization: Bearer nvapi-...` — bearer
+  padrão, a chave só tem o prefixo `nvapi-` por convenção da NVIDIA;
+- **Tool calling é POR MODELO, não por API**: só modelos específicos (Llama
+  3.1 70B/405B, variantes do Nemotron, ...) o suportam de fato — mas isso nunca
+  é flag de configuração, é inteiramente `models.supports_tool_calling`
+  (seed/curadoria), confirmado lendo `buildBody()` na base: a flag
+  `capabilities.toolCalling` só decide se o parâmetro `tools` é enviado, não se
+  o modelo específico sabe usá-lo;
+- **`stream_options.include_usage` não confirmado** para o endpoint hospedado
+  (só documentado para o software NIM auto-hospedado) —
+  `streamOptionsIncludeUsage: false`; o fallback `estimated` da base cobre o
+  caso em que o campo nunca vem;
+- **Teste de conexão**: sem endpoint de validação dedicado (nenhum endpoint de
+  "whoami"/saldo encontrado) — `GET /v1/models` com a chave, só o status
+  importa (200 vs 401/403).
 
-:::info NVIDIA doesn't charge by token
-The search for an official price was redone and landed on an answer better than
-"I couldn't find it": **there's no per-token price to find**. The official doc
+:::info A NVIDIA não cobra por token
+A busca por um preço oficial foi refeita e chegou a uma resposta melhor que
+"não achei": **não há preço por token para achar**. A doc oficial
 ([docs.api.nvidia.com/nim/docs/product](https://docs.api.nvidia.com/nim/docs/product))
-says the hosted endpoint is free **prototyping** access for a Developer Program
-member, and that production requires an NVIDIA AI Enterprise license —
+diz que o endpoint hospedado é acesso gratuito de **prototipação** para membro
+do Developer Program, e que produção exige licença NVIDIA AI Enterprise —
 "These licenses start at $4500 per GPU per year or ~ $1 per GPU per hour in the
-cloud." The unit is GPU/hour, not token.
+cloud." A unidade é GPU/hora, não token.
 
-The three NIM models in the seed therefore stay with an **estimated** price by
-comparison with equivalents on other providers, and `manual_pricing = true`:
-that's enough for the budget ceiling to have something to deduct, and it's the
-maximum honesty possible while the vendor's business model isn't per token.
+Os três modelos NIM do seed ficam, portanto, com preço **estimado** por
+comparação com equivalentes em outros providers, e `manual_pricing = true`:
+basta para o teto de orçamento ter o que descontar, e é o máximo de
+honestidade possível enquanto o modelo de negócio do fornecedor não for por
+token.
 :::
 
-The real-credential acceptance test lives in
-`test/infrastructure/llm/nvidia-nim-provider.smoke.spec.ts`, gated by
-`NVIDIA_NIM_TEST_KEY`. The sync step really lists the catalog and
-checks that the curated model came from `/v1/models`.
+O teste de aceite com credencial real mora em
+`test/infrastructure/llm/nvidia-nim-provider.smoke.spec.ts`, condicionado a
+`NVIDIA_NIM_TEST_KEY`. O passo de sincronização lista o catálogo de verdade e
+confere que o modelo curado veio do `/v1/models`.
 
-## Together AI (Phase 11b)
+## Together AI (Fase 11b)
 
-`TogetherProvider` is `OpenAICompatibleProvider` with `togetherConfig()`
+`TogetherProvider` é `OpenAICompatibleProvider` com `togetherConfig()`
 (`src/infrastructure/llm/together-provider.ts`).
 
-- **`listModels: true`**: `GET /v1/models` documented with `pricing:
-  {input, output, cached_input, base, hourly, finetune}` — only `input`/
-  `output` are used;
-- **Price unit NOT explicitly documented by Together**: the values are NUMBERS
-  (not strings like OpenRouter) and, by comparison with published market price
-  (Llama 3.3 70B at US$1.04/1M on together.ai/models — the same order of
-  magnitude as the official schema's `"input": 0.3` example), the inference is
-  **USD per MILLION tokens directly**, not per token. The smoke test is what
-  confirms this against a real key (see the comment at the top of
-  `together-provider.smoke.spec.ts`) — if it's ever proven wrong, it's a finding
-  to fix here and in the parser, not to silence;
-- **Namespaced ids**: `meta-llama/Llama-3.3-70B-Instruct-Turbo` — a
-  "flattened" OpenAI-style id (`gpt-4o`) responds 404;
-- **`stream_options.include_usage` not confirmed** in the doc — same cautious
-  treatment as NIM, the `estimated` fallback covers it;
-- **429 carries `error_type: dynamic_request_limited | dynamic_token_limited`**
-  in the body — not tested separately because the body is still
-  `{error: {message}}`, compatible with the base's standard parsing; only
-  relevant if we ever need to distinguish the two rate-limit types;
-- **Connection test**: no dedicated endpoint — `GET /v1/models` status-only.
+- **`listModels: true`**: `GET /v1/models` documentado com `pricing:
+  {input, output, cached_input, base, hourly, finetune}` — só `input`/
+  `output` são usados;
+- **Unidade de preço NÃO documentada explicitamente pela Together**: os
+  valores são NÚMEROS (não strings como no OpenRouter) e, por comparação com o
+  preço de mercado publicado (Llama 3.3 70B a US$1,04/1M em together.ai/models
+  — a mesma ordem de grandeza do exemplo `"input": 0.3` do schema oficial), a
+  inferência é **USD por MILHÃO de tokens direto**, não por token. Quem
+  confirma isso contra uma chave real é o smoke (ver o comentário no topo de
+  `together-provider.smoke.spec.ts`) — se um dia se provar errado, é achado a
+  corrigir aqui e no parser, não a calar;
+- **Ids com namespace**: `meta-llama/Llama-3.3-70B-Instruct-Turbo` — um id
+  "achatado" no estilo da OpenAI (`gpt-4o`) responde 404;
+- **`stream_options.include_usage` não confirmado** na doc — mesmo tratamento
+  cauteloso do NIM, o fallback `estimated` cobre;
+- **429 leva `error_type: dynamic_request_limited | dynamic_token_limited`**
+  no corpo — não testado à parte porque o corpo continua sendo
+  `{error: {message}}`, compatível com o parsing padrão da base; só importa se
+  um dia precisarmos distinguir os dois tipos de rate limit;
+- **Teste de conexão**: sem endpoint dedicado — `GET /v1/models`, só o status.
 
-The real-credential acceptance test lives in
-`test/infrastructure/llm/together-provider.smoke.spec.ts`, gated by
+O teste de aceite com credencial real mora em
+`test/infrastructure/llm/together-provider.smoke.spec.ts`, condicionado a
 `TOGETHER_TEST_KEY`.
 
-## DeepInfra (Phase 11b)
+## DeepInfra (Fase 11b)
 
-`DeepInfraProvider` is `OpenAICompatibleProvider` with `deepinfraConfig()`
+`DeepInfraProvider` é `OpenAICompatibleProvider` com `deepinfraConfig()`
 (`src/infrastructure/llm/deepinfra-provider.ts`), `baseUrl`
-`https://api.deepinfra.com/v1/openai` (the OpenAI-compatible surface —
-DeepInfra also has native endpoints outside of it, not used here).
+`https://api.deepinfra.com/v1/openai` (a superfície OpenAI-compatível — a
+DeepInfra também tem endpoints nativos fora dela, não usados aqui).
 
-- **`listModels: true`**, confirmed LIVE in this session against
-  `GET {baseUrl}/models` (the SAME endpoint the base already calls by default,
-  no extension needed): the response brings `metadata.pricing.
-  {input_tokens,output_tokens}` (USD per million, number — same convention
-  inferred for Together) and `metadata.context_length` per row;
-- **The catalog is PUBLIC — no authentication at all**, confirmed live (the
-  call worked with no `Authorization` header). This has a real
-  consequence: **there's no connection test for DeepInfra**
-  (`llm-credential-connection-tester.ts` has no entry for it) — an invalid key
-  would only be discovered on the first real CHAT call, never at registration.
-  No other publicly documented authenticated validation endpoint was found;
-- **The catalog mixes chat with image/audio/video/embedding in the SAME
-  list**, each type with a different `pricing` shape
+- **`listModels: true`**, confirmado AO VIVO nesta sessão contra
+  `GET {baseUrl}/models` (o MESMO endpoint que a base já chama por padrão, sem
+  extensão necessária): a resposta traz `metadata.pricing.
+  {input_tokens,output_tokens}` (USD por milhão, número — a mesma convenção
+  inferida para a Together) e `metadata.context_length` por linha;
+- **O catálogo é PÚBLICO — sem autenticação nenhuma**, confirmado ao vivo (a
+  chamada funcionou sem cabeçalho `Authorization`). Isso tem uma consequência
+  real: **não há teste de conexão para a DeepInfra**
+  (`llm-credential-connection-tester.ts` não tem entrada para ela) — uma chave
+  inválida só seria descoberta na primeira chamada de CHAT real, nunca no
+  cadastro. Nenhum outro endpoint autenticado de validação documentado
+  publicamente foi encontrado;
+- **O catálogo mistura chat com imagem/áudio/vídeo/embedding na MESMA
+  lista**, cada tipo com um formato de `pricing` diferente
   (`per_image_unit`, `input_characters`, `output_seconds`, ...) —
-  `parseCatalogoDeepInfra` filters by `metadata.tags.includes('chat')` before
-  trying to read `input_tokens`/`output_tokens`; without the filter, an image
-  model would come in with a fabricated price from a field that isn't "per
-  token" at all;
-- **`stream_options.include_usage` confirmed supported** in the doc (unlike
-  NIM/Together) — `streamOptionsIncludeUsage: true`;
-- **Error in standard shape** `{"error": {"message", "type", "param", "code"}}`
-  — compatible with the base's standard parsing, no dedicated `parseErrorFrame`.
+  `parseCatalogoDeepInfra` filtra por `metadata.tags.includes('chat')` antes
+  de tentar ler `input_tokens`/`output_tokens`; sem o filtro, um modelo de
+  imagem entraria com um preço fabricado a partir de um campo que nem é "por
+  token";
+- **`stream_options.include_usage` confirmado como suportado** na doc (ao
+  contrário de NIM/Together) — `streamOptionsIncludeUsage: true`;
+- **Erro no formato padrão** `{"error": {"message", "type", "param", "code"}}`
+  — compatível com o parsing padrão da base, sem `parseErrorFrame` dedicado.
 
-The real-credential acceptance test lives in
-`test/infrastructure/llm/deepinfra-provider.smoke.spec.ts`, gated by
-`DEEPINFRA_TEST_KEY` — and it's the first smoke where the REGISTRATION step
-doesn't validate anything, only the CHAT step would discover a bad key.
+O teste de aceite com credencial real mora em
+`test/infrastructure/llm/deepinfra-provider.smoke.spec.ts`, condicionado a
+`DEEPINFRA_TEST_KEY` — e é o primeiro smoke em que o passo de CADASTRO não
+valida nada; só o passo de CHAT descobriria uma chave ruim.
 
-## Bitdeer (Phase 11b)
+## Bitdeer (Fase 11b)
 
-`BitdeerProvider` is `OpenAICompatibleProvider` with `bitdeerConfig()`
-(`src/infrastructure/llm/bitdeer-provider.ts`) — the shallowest public
-doc of the five in this phase.
+`BitdeerProvider` é `OpenAICompatibleProvider` com `bitdeerConfig()`
+(`src/infrastructure/llm/bitdeer-provider.ts`) — a doc pública mais
+rasa dos cinco desta fase.
 
-- **`listModels: false`**: no catalog/price shape was found publicly (the
-  pricing page renders via JS, with no example reachable by a non-interactive
-  search) — with no verified shape, there's no honest `parseCatalogo` to write.
-  Re-verified: `bitdeer.ai/en/pricing/ai-models` still assembles the table
-  client-side (the served HTML carries **no** model name) and there's no
-  pricing doc outside of it. The seed's price stays ESTIMATED;
-- **`Authorization: Bearer <key>` CONFIRMED** (real curl example found in
-  Bitdeer's embeddings API doc during this session) — even when the rest of
-  the dialect had no example at all;
-- **`GET /v1/models` exists and is authenticated** (401 live with no key,
-  confirmed this session) — becomes the connection test (status-only, same as
-  the others with no dedicated endpoint);
-- **Three REAL model ids confirmed** in configuration examples from Bitdeer's
-  own blog (not showcase names): `moonshotai/Kimi-K2.5`,
-  `zai-org/GLM-5`, `nvidia/NVIDIA-Nemotron-3-Super-120B-A12B` — seeded in
-  `src/db/seed.ts` with ESTIMATED price (market for the model/family on
-  other providers, not confirmed by Bitdeer itself);
-- **No stream/error quirk confirmed** — Bitdeer's "OpenAI REST API standards"
-  claim wasn't accompanied by a real `/chat/completions` example, so the
-  contract test doesn't hydrate any particularity the doc didn't prove. The
-  smoke test is the FIRST real confirmation of the dialect.
+- **`listModels: false`**: nenhum formato de catálogo/preço foi encontrado
+  publicamente (a página de preços renderiza por JS, sem exemplo alcançável
+  por uma busca não interativa) — sem formato conferido, não há
+  `parseCatalogo` honesto a escrever. Reconferido:
+  `bitdeer.ai/en/pricing/ai-models` continua montando a tabela no cliente (o
+  HTML servido **não** traz nome de modelo nenhum) e não há doc de preço fora
+  dela. O preço do seed segue ESTIMADO;
+- **`Authorization: Bearer <chave>` CONFIRMADO** (exemplo real de curl achado
+  na doc da API de embeddings da Bitdeer nesta sessão) — mesmo com o resto do
+  dialeto sem exemplo nenhum;
+- **`GET /v1/models` existe e é autenticado** (401 ao vivo sem chave,
+  confirmado nesta sessão) — vira o teste de conexão (só o status, como os
+  outros sem endpoint dedicado);
+- **Três ids REAIS de modelo confirmados** em exemplos de configuração do
+  próprio blog da Bitdeer (não nomes de vitrine): `moonshotai/Kimi-K2.5`,
+  `zai-org/GLM-5`, `nvidia/NVIDIA-Nemotron-3-Super-120B-A12B` — semeados em
+  `src/db/seed.ts` com preço ESTIMADO (mercado do modelo/família em
+  outros providers, não confirmado pela própria Bitdeer);
+- **Nenhuma peculiaridade de stream/erro confirmada** — a afirmação de
+  "OpenAI REST API standards" da Bitdeer não veio acompanhada de um exemplo
+  real de `/chat/completions`, então o teste de contrato não hidrata
+  particularidade nenhuma que a doc não provou. O smoke é a PRIMEIRA
+  confirmação real do dialeto.
 
-The real-credential acceptance test lives in
-`test/infrastructure/llm/bitdeer-provider.smoke.spec.ts`, gated by
+O teste de aceite com credencial real mora em
+`test/infrastructure/llm/bitdeer-provider.smoke.spec.ts`, condicionado a
 `BITDEER_TEST_KEY`.
 
-## Vultr Serverless Inference (Phase 11b)
+## Vultr Serverless Inference (Fase 11b)
 
-`VultrProvider` is `OpenAICompatibleProvider` with `vultrConfig()`
-(`src/infrastructure/llm/vultr-provider.ts`) — the only one of the five
-where the `listModels` decision **changed during implementation** relative to
-the original plan.
+`VultrProvider` é `OpenAICompatibleProvider` com `vultrConfig()`
+(`src/infrastructure/llm/vultr-provider.ts`) — o único dos cinco em
+que a decisão de `listModels` **mudou durante a implementação** em relação ao
+plano original.
 
-- **`listModels: false`** (the original plan pointed to `true`): the base
-  ALWAYS calls `{baseUrl}/models` (`openai-compatible-provider.ts`,
-  `listModels()`), and Vultr's own official reference
-  (`api.vultrinference.com`) describes `GET /models` as returning only
-  `id`/`created`/`object`/`owned_by`/`features` — **no price**. The endpoint the
-  doc associates with price (`GET /provider`, with `cost`/
-  `contextWindow`) returned **404 live** on the path tested this session — not
-  enough data to write a `parseCatalogo` without risking pointing to the wrong
-  URL ("fragile true"). `GET /v1/models` itself is confirmed (401 live with no
-  key, twice) — it just has no price;
-- **Tool calling CONFIRMED with a real example**: official doc
+- **`listModels: false`** (o plano original apontava `true`): a base chama
+  SEMPRE `{baseUrl}/models` (`openai-compatible-provider.ts`, `listModels()`),
+  e a própria referência oficial da Vultr (`api.vultrinference.com`) descreve
+  `GET /models` como devolvendo só `id`/`created`/`object`/`owned_by`/`features`
+  — **sem preço**. O endpoint que a doc associa a preço (`GET /provider`, com
+  `cost`/`contextWindow`) devolveu **404 ao vivo** no caminho testado nesta
+  sessão — dado insuficiente para escrever um `parseCatalogo` sem arriscar
+  apontar para a URL errada ("true frágil"). O próprio `GET /v1/models` está
+  confirmado (401 ao vivo sem chave, duas vezes) — só não tem preço;
+- **Tool calling CONFIRMADO com exemplo real**: a doc oficial
   (`docs.vultr.com/how-to-use-tool-calling-with-vultr-serverless-inference`)
-  shows `kimi-k2-instruct` responding with `finish_reason: "tool_calls"` — plain
-  standard OpenAI dialect, no odd field in that specific example; the other two
-  seeded models (`llama-3.3-70b-instruct-fp8`,
-  `deepseek-r1-distill-llama-70b`) have no tool calling confirmation —
-  `supportsToolCalling: false` for them;
-- **`-normalize` suffix**: initial research pointed to a documented
-  normalizing proxy — it was NOT possible to reconfirm that doc this session (a
-  targeted search didn't find the term on the pages checked). Not used by
-  default anyway (we keep the raw model id);
-- **Connection test**: `GET /v1/models`, status-only.
+  mostra `kimi-k2-instruct` respondendo com `finish_reason: "tool_calls"` —
+  dialeto OpenAI padrão puro, sem campo estranho naquele exemplo; os outros
+  dois modelos semeados (`llama-3.3-70b-instruct-fp8`,
+  `deepseek-r1-distill-llama-70b`) não têm confirmação de tool calling —
+  `supportsToolCalling: false` para eles;
+- **Sufixo `-normalize`**: a pesquisa inicial apontou um proxy normalizador
+  documentado — NÃO foi possível reconfirmar essa doc nesta sessão (uma busca
+  dirigida não achou o termo nas páginas conferidas). Não é usado por padrão de
+  qualquer forma (mantemos o id cru do modelo);
+- **Teste de conexão**: `GET /v1/models`, só o status.
 
-:::tip Vultr's price is OFFICIAL, and it's a flat rate
-Unlike NIM and Bitdeer, Vultr **publishes** the rate —
-[in the Serverless Inference usage-and-cost doc](https://docs.vultr.com/support/products/serverless/how-do-i-monitor-the-usage-and-cost-of-my-vultr-serverless-inference-subscription):
+:::tip O preço da Vultr é OFICIAL, e é tarifa única
+Ao contrário de NIM e Bitdeer, a Vultr **publica** a tarifa —
+[na doc de uso e custo do Serverless Inference](https://docs.vultr.com/support/products/serverless/how-do-i-monitor-the-usage-and-cost-of-my-vultr-serverless-inference-subscription):
 "Requests are billed at $0.55 per 1,000,000 input tokens and $2.75 per
-1,000,000 output tokens." It's a **service** rate, not a per-model one — the
-doc doesn't differentiate by model, and that's why the seed's three rows repeat
-the same pair (`550_000` / `2_750_000` micros).
+1,000,000 output tokens." É tarifa do **serviço**, não por modelo — a doc não
+diferencia por modelo, e é por isso que as três linhas do seed repetem o mesmo
+par (`550_000` / `2_750_000` micros).
 
-The estimate that was there before erred in the dangerous direction:
-`400_000` for **output** on two of the three models, against the real
-`2_750_000`. Metering was underestimating output cost by almost 7× — and
-output is what dominates the bill for an agent that writes code.
+A estimativa que estava lá antes errava na direção perigosa: `400_000` de
+**saída** em dois dos três modelos, contra os `2_750_000` reais. O metering
+subestimava o custo de saída em quase 7× — e saída é o que domina a conta de um
+agente que escreve código.
 
-`manual_pricing` stays `true`, and that's not a contradiction: the flag means
-"price typed by a person reading the doc, instead of coming from sync"
-(`src/db/schema.ts`). What changed is that the number is now the
-provider's own, not a market comparison.
+`manual_pricing` continua `true`, e não é contradição: a flag quer dizer "preço
+digitado por uma pessoa lendo a doc, em vez de vir da sincronização"
+(`src/db/schema.ts`). O que mudou é que o número agora é o do próprio
+provider, não uma comparação de mercado.
 :::
 
-The real-credential acceptance test lives in
-`test/infrastructure/llm/vultr-provider.smoke.spec.ts`, gated by
+O teste de aceite com credencial real mora em
+`test/infrastructure/llm/vultr-provider.smoke.spec.ts`, condicionado a
 `VULTR_TEST_KEY`.
 
 ## 9Router (AT-576a, ADR 0222)
 
-`NineRouterProvider` is `OpenAICompatibleProvider` with `nineRouterConfig()`
-(`src/infrastructure/llm/nine-router-provider.ts`) — the tenth
-provider (ADR 0043 was the nine-provider one). 9Router is the owner's local gateway
-(`github.com/decolua/9router`), with an OpenAI-compatible endpoint and a panel on the
-same port, and it routes by **combos** (stable name → list of models/accounts with
+`NineRouterProvider` é `OpenAICompatibleProvider` com `nineRouterConfig()`
+(`src/infrastructure/llm/nine-router-provider.ts`) — o décimo
+provider (ADR 0043 era o dos nove). O 9Router é um gateway local do dono
+(`github.com/decolua/9router`), com endpoint OpenAI-compatível e painel na
+mesma porta, e roteia por **combos** (nome estável → lista de modelos/contas com
 fallback).
 
-- **Per-installation URL**: `NINE_ROUTER_BASE_URL`, default
-  `http://host.docker.internal:20128/v1`, read on each use (the mold of
-  `OLLAMA_HOST`). The installation and production composes gain
-  `extra_hosts: host.docker.internal:host-gateway` on the api; without it the default does not
-  resolve on native Linux Docker Engine;
-- **Mandatory credential**: the API key is created in the 9Router panel. The
-  connection test is `GET /models` with the key, on the environment's URL;
-- **`listModels: true`**, with `parseCatalogo9Router`: reads `capabilities` from
-  `GET /v1/models` (tools, reasoning, context window). The test fixture
-  (`test/fixtures/nine-router/models.sintetica.json`) is **SYNTHETIC**,
-  built from the format described in the survey, not captured from a real 9Router;
-- **Price = manual curation** (ADR 0042): the response carries neither price nor
-  `usage.cost` (not found in build v0.5.104). By the owner's decision (22/10), the
-  subscription model records the **public price of the equivalent API**, not zero:
-  the budget counts the opportunity cost;
-- **Capabilities `false`** (besides `listModels`, `streaming` and `toolCalling`, the latter since RN-950; `streaming` is required of every provider in the contract suite) until the smoke with a key:
-  `routingPreference` (a combo is not `provider.sort`), `embeddings`,
+- **URL por instalação**: `NINE_ROUTER_BASE_URL`, padrão
+  `http://host.docker.internal:20128/v1`, lida a cada uso (molde do
+  `OLLAMA_HOST`). Os composes de instalação e de produção ganham
+  `extra_hosts: host.docker.internal:host-gateway` na api; sem ele o padrão não
+  resolve no Docker Engine nativo do Linux;
+- **Credencial obrigatória**: a chave de API é criada no painel do 9Router. O
+  teste de conexão é `GET /models` com a chave, na URL do ambiente;
+- **`listModels: true`**, com `parseCatalogo9Router`: lê `capabilities` do
+  `GET /v1/models` (tools, reasoning, janela de contexto). A fixture de teste
+  (`test/fixtures/nine-router/models.sintetica.json`) é **SINTÉTICA**,
+  montada do formato descrito no levantamento, não capturada do 9Router real;
+- **Preço = curadoria manual** (ADR 0042): a resposta não traz preço nem
+  `usage.cost` (não achado no build v0.5.104). Por decisão do dono (22/10), o
+  modelo de assinatura registra o **preço público da API equivalente**, não zero:
+  o orçamento conta o custo de oportunidade;
+- **Capabilities `false`** (além de `listModels`, `streaming` e `toolCalling`, esta última desde a RN-950; `streaming` é exigida por todo provider na suite de contrato) até o smoke com chave:
+  `routingPreference` (combo não é `provider.sort`), `embeddings`,
   `promptCaching`, `stickySession`, `priceCeiling`;
-- **Corrected usage** (AT-638, RN-958): 0.5.112 adds 2,000 to `prompt_tokens`; the provider reads the version at `/api/version` and subtracts only there, records as it came on the others (with a warning) and reads the top-level `cached_tokens`. The cache of `cc/*` is discarded by 9Router in the stream;
-- **Token Saver off**: 9Router's "RTK Token Saver" compresses
-  `tool_result`, and the model would read something different from what the log recorded. The provider
-  sends `x-9router-token-saver: off` on every call. **Finding on 9Router 0.5.112** (RN-966): the bundle (`chunks/8895.js`) reads this header and the value `off`, case-insensitive, turns off RTK, Headroom, Caveman and Ponytail together. The Custom Prompt does NOT go through it: the header does not turn it off (turned off in the panel since 22/10);
-- **Reasoning redacted on Claude OAuth** (RN-966): for the Claude OAuth account (`cc/*`) 9Router sends `Anthropic-Beta` with `redact-thinking-2026-02-12`. The thinking comes back redacted and without `reasoning_tokens`. Because of that, the stream's reasoning count (RN-915) and the retry without reasoning (RN-916) go blind on that path, and `reasoning_tokens` is recorded as absent ("didn't say", RN-666);
-- **Tool disguise on Claude OAuth** (RN-966): with the `sk-ant-oat` token 9Router renames the tools (suffix, undone on the way back), adds about 20 fake Claude Code tools and sends `User-Agent: claude-cli/…`, `X-App: cli` and Claude Code's `Anthropic-Beta`. No configuration turns it off. Risks: the model calling a fake tool (e.g. `Read`/`Bash`, which Brabo does not have) and terms of use — which is why TP-01 went back to OpenRouter (AT-631). Use an API key or another provider.
-- **Which upstream served**: the only header with the connection
-  (`x-9router-connection-id`) appears only on the video path in the build read; in
-  chat, not measured. The smoke prints the response's `x-*` headers.
+- **Usage corrigido** (AT-638, RN-958): a 0.5.112 soma 2 000 a `prompt_tokens`; o provider lê a versão em `/api/version` e subtrai só nela, grava como veio nas outras (com aviso) e lê o `cached_tokens` do topo. O cache de `cc/*` o 9Router descarta no stream;
+- **Token Saver desligado**: o "RTK Token Saver" do 9Router comprime
+  `tool_result`, e o modelo leria algo diferente do que o log gravou. O provider
+  manda `x-9router-token-saver: off` em toda chamada. **Achado no 9Router 0.5.112** (RN-966): o bundle (`chunks/8895.js`) lê esse cabeçalho e o valor `off`, sem caixa, desliga RTK, Headroom, Caveman e Ponytail juntos. O Custom Prompt NÃO passa por ele: o cabeçalho não o desliga (desligado no painel desde 22/10);
+- **Raciocínio redigido no OAuth do Claude** (RN-966): para a conta OAuth do Claude (`cc/*`) o 9Router manda `Anthropic-Beta` com `redact-thinking-2026-02-12`. O pensamento volta redigido e sem `reasoning_tokens`. Por isso a contagem de raciocínio do stream (RN-915) e a retentativa sem raciocínio (RN-916) ficam cegas nesse caminho, e `reasoning_tokens` grava ausente ("não disse", RN-666);
+- **Camuflagem das ferramentas no OAuth do Claude** (RN-966): com o token `sk-ant-oat` o 9Router renomeia as ferramentas (sufixo, desfeito na volta), acrescenta cerca de 20 ferramentas falsas do Claude Code e envia `User-Agent: claude-cli/…`, `X-App: cli` e o `Anthropic-Beta` de Claude Code. Não há configuração que desligue. Riscos: o modelo chamar uma ferramenta falsa (ex.: `Read`/`Bash` que o Brabo não tem) e termos de uso — por isso o TP-01 voltou ao OpenRouter (AT-631). Usar API key ou outro provider.
+- **Qual upstream serviu**: o único cabeçalho com a conexão
+  (`x-9router-connection-id`) aparece só no caminho de vídeo no build lido; no
+  chat, não medido. O smoke imprime os cabeçalhos `x-*` da resposta.
 
-The real-key acceptance lives in
-`test/infrastructure/llm/nine-router-provider.smoke.spec.ts`, gated by
-`NINE_ROUTER_TEST_KEY` and `NINE_ROUTER_TEST_MODEL` (only a `free`/`auto:free` model).
+O aceite com chave real mora em
+`test/infrastructure/llm/nine-router-provider.smoke.spec.ts`, condicionado a
+`NINE_ROUTER_TEST_KEY` e `NINE_ROUTER_TEST_MODEL` (só modelo `free`/`auto:free`).
 
 ## OpenCode Zen (AT-568, ADR 0227)
 
-`OpenCodeZenProvider` is `OpenAICompatibleProvider` with `openCodeZenConfig()`
-(`src/infrastructure/llm/opencode-zen-provider.ts`) — the eleventh
-provider. Zen's public doc shows three dialects; only `/chat/completions`
-(`https://opencode.ai/inference/openai/v1`) fits the base. The `/responses`,
-`/v1/messages` and Google models, and Zen's Jev, are left out.
+`OpenCodeZenProvider` é `OpenAICompatibleProvider` com `openCodeZenConfig()`
+(`src/infrastructure/llm/opencode-zen-provider.ts`) — o décimo primeiro
+provider. A doc pública do Zen mostra três dialetos; só o `/chat/completions`
+(`https://opencode.ai/inference/openai/v1`) cabe na base. Os modelos de
+`/responses`, `/v1/messages` e Google, e o Jev do Zen, ficam fora.
 
-**Measured on 2026-10-29 (smoke with a real key):** `deepseek-v4.1-flash-free` and
-`glm-5.3-flash-free` answer `429 FreeUsageLimitError` through a third-party API
-("Free models work in OpenCode ... subscribe to OpenCode Go"). The free ones only work
-inside the OpenCode client. Zen's paid models require balance on the account or
-OpenCode Go; that path was not proven.
+**Medido em 29/10/2026 (smoke com chave real):** `deepseek-v4.1-flash-free` e
+`glm-5.3-flash-free` respondem `429 FreeUsageLimitError` por API de terceiro
+("Free models work in OpenCode ... subscribe to OpenCode Go"). Os grátis só valem
+dentro do cliente OpenCode. Os modelos pagos do Zen exigem saldo na conta ou o
+OpenCode Go; essa via não foi provada.
 
-- **`listModels: false`**: the model list lives at `/inference/v1/models`, and
-  not at `{baseUrl}/models`, which the base calls. The catalog comes from the curated seed
-  (ADR 0042). The seed carries NO model: the free ones left on 2026-10-29, because the
-  vendor refuses them through the API. A paid model comes in through curation on the screen;
-- **No credential connection test**: the model list is public, and a
-  test through it would pass with an invalid key;
-- **Capabilities `false`** besides `streaming` (required by the contract suite)
-  and `streamOptionsIncludeUsage: false` until the smoke with a key proves it.
+- **`listModels: false`**: a lista de modelos mora em `/inference/v1/models`, e
+  não em `{baseUrl}/models`, que a base chama. O catálogo vem do seed curado
+  (ADR 0042). O seed NÃO traz modelo: os grátis saíram em 29/10/2026, porque o
+  fornecedor os recusa por API. Modelo pago entra por curadoria na tela;
+- **Sem teste de conexão da credencial**: a lista de modelos é pública, e um
+  teste por ela passaria com chave inválida;
+- **Capabilities `false`** além de `streaming` (exigido pela suite de contrato)
+  e `streamOptionsIncludeUsage: false` até o smoke com chave provar.
 
-The real-key acceptance lives in
-`test/infrastructure/llm/opencode-zen-provider.smoke.spec.ts`, gated by
-`OPENCODE_ZEN_TEST_KEY` (`-free` models, cost US$ 0). It proves stream, tool
-call and `usage` with `stream_options`. It ran on 2026-10-29: **fails** with 429
-`FreeUsageLimitError`, the vendor's refusal of the free tier through the API.
+O aceite com chave real mora em
+`test/infrastructure/llm/opencode-zen-provider.smoke.spec.ts`, condicionado a
+`OPENCODE_ZEN_TEST_KEY` (modelos `-free`, custo US$ 0). Ele prova stream, tool
+call e `usage` com `stream_options`. Rodou em 29/10/2026: **reprova** com 429
+`FreeUsageLimitError`, a recusa do fornecedor para o grátis por API.
 
-## Hubs and real cost
+## Hubs e custo real
 
-In a **hub** (OpenRouter), the one that shows up in the call is the hub, but the
-one that costs is the provider that actually served it. Metering records both:
+Num **hub** (OpenRouter), quem aparece na chamada é o hub, mas quem custa é o
+provider que de fato serviu. O metering grava os dois:
 
-- `ChatUsageChunk.upstreamProvider` — the provider fills it in when the hub
-  reports it;
-- `token_usage.upstream_provider` — free text and **nullable**. Not an enum: the
-  set belongs to the hub, changes without notice, and isn't ours to version.
-  `null` means "didn't come from a hub, or the hub didn't report it";
-- the `brabo_llm_tokens_total` and `brabo_llm_cost_micros_total` metrics gained
-  the `upstream_provider` label, and the executive dashboard has a
-  cost-per-underlying-provider panel. Without a hub, the label repeats the
-  provider itself — with an empty label, `sum by (upstream_provider)` would show
-  only what went through a hub and would make it look like the rest cost
-  nothing.
+- `ChatUsageChunk.upstreamProvider` — o provider o preenche quando o hub o
+  informa;
+- `token_usage.upstream_provider` — texto livre e **anulável**. Não é enum: o
+  conjunto é do hub, muda sem aviso e não cabe a nós versioná-lo. `null` quer
+  dizer "não veio de hub, ou o hub não informou";
+- as métricas `brabo_llm_tokens_total` e `brabo_llm_cost_micros_total`
+  ganharam o rótulo `upstream_provider`, e o dashboard executivo tem um painel
+  de custo por provider subjacente. Sem hub, o rótulo repete o próprio
+  provider — com rótulo vazio, `sum by (upstream_provider)` mostraria só o que
+  passou por hub e faria parecer que o resto não custou nada.
 
-Reading the field off the frame is a **configuration hook** in the base
-(`extrairUpstreamProvider`), not an `if` inside the parsing: each hub puts the
-information in a different place, and the phase's rule is that provider
-particularity becomes configuration.
+Ler o campo do frame é um **hook de configuração** na base
+(`extrairUpstreamProvider`), não um `if` dentro do parsing: cada hub põe a
+informação num lugar diferente, e a regra da fase é que particularidade de
+provider vira configuração.
 
-`models.manual_pricing` marks a price typed from the provider's doc instead of
-synced. Catalog sync **doesn't overwrite** the price of a marked row without an
-explicit decision — and when the remote catalog doesn't report a price, the
-stored value is preserved instead of zeroed out: an absent field means "the
-provider didn't say," never "it's free."
+`models.manual_pricing` marca um preço digitado a partir da doc do provider em
+vez de sincronizado. A sincronização do catálogo **não sobrescreve** o preço de
+uma linha marcada sem decisão explícita — e quando o catálogo remoto não
+informa preço, o valor guardado é preservado em vez de zerado: campo ausente
+quer dizer "o provider não disse", nunca "é de graça".
 
-### Example: the same model, hub × direct
+### Exemplo: o mesmo modelo, hub × direto
 
-Phase 11a's promise ("comparable cost between 'same model via hub' and 'direct'
-is queryable") only becomes real use when the SAME model shows up on both
-sides — today that's the case for any model OpenAI/Anthropic publish that's also
-in OpenRouter's catalog (e.g., GPT-4o):
+A promessa da Fase 11a ("custo comparável entre 'mesmo modelo via hub' e
+'direto' é consultável") só vira uso real quando o MESMO modelo aparece dos
+dois lados — hoje é o caso de qualquer modelo que OpenAI/Anthropic publiquem e
+que também esteja no catálogo do OpenRouter (por exemplo, GPT-4o):
 
 ```promql
-# Cost ratio: served via OpenRouter vs. served directly by OpenAI,
-# in the same period. > 1 means the hub came out more expensive than direct.
+# Razão de custo: servido via OpenRouter vs. servido direto pela OpenAI,
+# no mesmo período. > 1 quer dizer que o hub saiu mais caro que o direto.
 sum(rate(brabo_llm_cost_micros_total{provider="openrouter", upstream_provider="openai"}[1h]))
   /
 sum(rate(brabo_llm_cost_micros_total{provider="openai"}[1h]))
 ```
 
-This is the hook that `upstream_provider` enables — today with no automatic
-consumer. The intended reading (recorded as a seed, not implemented) is for the
-Psychologist to one day suggest "this model comes out cheaper direct than via
-hub" from that same metric.
+Este é o gancho que `upstream_provider` habilita — hoje sem consumidor
+automático. A leitura pretendida (registrada como semente, não implementada) é
+o Psicólogo um dia sugerir "este modelo sai mais barato direto que via hub" a
+partir dessa mesma métrica.
 
-## The contract suite
+## A suite de contrato
 
-`test/contract/llm-provider.contract.ts` runs the same battery against
-any implementation, as the git suite has done since Phase 2. The split is the
-point: **the contract owns the assertions, the harness owns the dialect.**
+`test/contract/llm-provider.contract.ts` roda a mesma bateria contra
+qualquer implementação, como a suite de git faz desde a Fase 2. A divisão é o
+ponto: **o contrato é dono das asserções, o harness é dono do dialeto.**
 
-A new provider only has to write the harness — translating each scenario into its
-own wire format — and inherits the tests for a split-frame stream, usage present
-and absent, tool calling, the four errors, and the silent server. The fake
-server is a real `node:http` on an ephemeral port, not a `fetch` mock: what's
-under test is precisely socket behavior.
+Um provider novo só precisa escrever o harness — traduzindo cada cenário para
+o próprio formato de fio — e herda os testes de stream com frame partido, usage
+presente e ausente, tool calling, os quatro erros e o servidor calado. O
+servidor falso é um `node:http` de verdade numa porta efêmera, não um mock de
+`fetch`: o que está sob teste é justamente o comportamento do socket.
 
-## Tool calling and the engine's rescue
+## Tool calling e o resgate do engine
 
-The engine's `ToolCallRecovery` (ADR 0020) recovers calls a small model wrote in
-prose instead of using the `tools` field. It's a **rescue, not a license**: it
-depends on the model getting the format right by chance and fails silently when
-it doesn't. That's why binding a model without native tool calling to an agent is
-rejected in the domain, and not merely discouraged.
+O `ToolCallRecovery` do engine (ADR 0020) recupera chamadas que um modelo
+pequeno escreveu em prosa em vez de usar o campo `tools`. É **resgate, não
+licença**: depende de o modelo acertar o formato por acaso e falha calado
+quando não acerta. Por isso vincular a um agente um modelo sem tool calling
+nativo é recusado no domínio, e não apenas desencorajado.
