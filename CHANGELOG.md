@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- In automatic mode a terminal `git merge` (and `git merge --abort`) inside the task worktree is auto-approved instead of asking the user (AT-754, RN-1019). A compound with a protected `git push` still asks (RN-1017); outside the scope, `gh pr merge`, and a checkout/switch to a protected branch are unchanged.
 - A terminal `git push` to a protected branch (`dev`, `qa`, `rc`, `main`, also by refspec such as `HEAD:dev`), with `--force`/`-f`/`--force-with-lease`, or with `--all`/`--mirror` is no longer auto-approved in automatic mode: it becomes a pending action for the human (AT-756, RN-1017). Pushing the task's own branch is unchanged.
 - The 409 of `complete_story` on a non-`draft` story is the common named refusal (`historia_nao_draft`, citing `questionId`) and lists the answered questions that affect the story (AT-752 part A, RN-859); the API still does not infer the `questionId`.
 - Closing an open question through `POST /internal/projects/:projectId/open-questions/:questionId/answer` now runs as an action effect, so the session channel is notified of `open_question.answered` and the web "open questions" counter updates live (AT-753 UX-1, RN-1002). (api#28)

@@ -5,6 +5,7 @@ import { isProtectedBranch } from './protected-branches';
 import { comandoNoEscopo, comandoNoEscopoDoContainer } from './path-scope';
 import {
   efeitoExternoNoComando,
+  semMergeLocal,
   mensagemDeEfeitoExterno,
   comandoPrivilegiadoNoComando,
   mensagemDeComandoPrivilegiado,
@@ -441,7 +442,13 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
   }
   if (action.actionType === 'terminal' && action.command) {
     const tokens = parseCommand(action.command);
-    const efeito = efeitoExternoNoComando(tokens);
+    // RN-1019: o `git merge` local no escopo da tarefa, em modo automático,
+    // não conta como efeito externo; o resto do composto conta como sempre.
+    const semMerge =
+      modoAutomatico && noEscopo === true && current.policy === 'auto_approve'
+        ? semMergeLocal(tokens)
+        : null;
+    const efeito = efeitoExternoNoComando(semMerge ?? tokens);
     const privilegiado = comandoPrivilegiadoNoComando(tokens);
     if (
       efeito &&

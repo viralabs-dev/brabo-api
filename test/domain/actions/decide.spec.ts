@@ -1156,6 +1156,59 @@ describe('decide — modo automático libera o escopo de caminho (RN-603)', () =
     }
   });
 
+  // RN-1019 (AT-754): o `git merge` local no worktree da tarefa.
+  describe('git merge local (RN-1019)', () => {
+    const WT = `${RAIZ}/.worktrees/dev-api`;
+    const run = (command: string, ctxo: DecideContext = automatico()) =>
+      decide({ actionType: 'terminal', command, cwd: WT }, ctxo);
+
+    it.each([
+      'git merge origin/dev',
+      'git fetch origin dev && git merge origin/dev && git status',
+      'git merge --abort',
+    ])('`%s` é auto-aprovado em modo automático', (command) => {
+      expect(run(command).policy).toBe('auto_approve');
+    });
+
+    it.each([
+      'git merge origin/dev && git push origin dev',
+      'git merge origin/dev; git push origin main',
+      'git merge x && gh pr merge 3',
+      'git checkout main && git merge feature/x',
+      'git merge x && git switch dev',
+    ])('`%s` segue pedindo aprovação', (command) => {
+      expect(run(command).policy).toBe('require_approval');
+    });
+
+    it('o push composto reprova pela RN-1017', () => {
+      expect(run('git merge origin/dev && git push origin dev').reason).toMatch(
+        /RN-1017/,
+      );
+    });
+
+    it('fora do escopo não é liberado', () => {
+      const r = decide(
+        { actionType: 'terminal', command: 'git -C /etc merge x', cwd: '/etc' },
+        automatico(),
+      );
+      expect(r.policy).toBe('require_approval');
+    });
+
+    it('fora do modo automático segue como hoje', () => {
+      expect(
+        run('git merge origin/dev', automatico({ autonomyMode: undefined }))
+          .policy,
+      ).toBe('require_approval');
+      // regra específica auto_approve não é o modo automático (só a curinga é)
+      expect(
+        run(
+          'git merge origin/dev',
+          automatico({ autonomyOrigin: 'especifica' }),
+        ).policy,
+      ).toBe('require_approval');
+    });
+  });
+
   it('`sudo` continua pedindo aprovação em modo automático (RN-418)', () => {
     const result = decide(
       { actionType: 'terminal', command: 'sudo apt-get install jq' },
