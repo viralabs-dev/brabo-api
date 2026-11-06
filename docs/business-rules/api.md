@@ -11698,12 +11698,12 @@ not consulted at proposal. Changing one requires changing the other.
 
 ### RN-809 — The Arquiteto's module and image obligations enter the Jev's floor {#rn-809}
 
-- **Rule:** extends [RN-758](#rn-758) and [RN-784](#rn-784). The Arquiteto's floor gains `assign_story_modules` and `choose_project_image`, steps 2 and 3 of its kickoff (`arquiteto_server.ex`): the Jev's cut never removes them, and the Arquiteto does not end saying the tool "não está disponível nesta etapa" with stories without a module and an undecided image. `emit_insight` (step 8, tension record) and `emit_artifact` stay out of the floor: they are not obligations of the stage. It still holds that the floor only gives back what is in the step's catalog.
+- **Rule:** extends [RN-758](#rn-758) and [RN-784](#rn-784). The Arquiteto's floor gains `assign_story_modules` and `choose_project_image`, steps 2 and 3 of its kickoff (`arquiteto_server.ex`): the Jev's cut never removes them, and the Arquiteto does not end saying the tool "não está disponível nesta etapa" with stories without a module and an undecided image. Revised by AT-614, the floor also keeps `emit_insight` (step 8, tension record) and `declare_open_question`, which the cut used to remove. Only `emit_artifact` stays out of the floor: it is not an obligation of the stage. It still holds that the floor only gives back what is in the step's catalog.
 - **Where:** `src/domain/llm/tool-router.ts:315` (`PISO_DO_MENU`)
 - **Test:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
   (`Arquiteto recortado pelo Jev sem assign_story_modules/choose_project_image: as duas continuam no menu (RN-809)`)
 - **Origin:** AT-481 (TP-01: the cut left 7 of 11 tools and the
-  Arquiteto did not distribute the stories by module)
+  Arquiteto did not distribute the stories by module); AT-614 (the cut also removed `emit_insight` and `declare_open_question`)
 
 ### RN-812 — An open PR from the same branch is reused, never duplicated {#rn-812}
 
