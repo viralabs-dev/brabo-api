@@ -50,17 +50,27 @@ export class DrizzleSessionContextSummaryRepository extends SessionContextSummar
       sql`, `,
     );
 
+    // RN-1018: a regra retirada (em qualquer sessão do projeto) não conta nem lista.
+    const naoRetirada = sql`not (e.type = 'artifact.business_rule' and exists (
+      select 1 from session_events r
+      join sessions rs on rs.id = r.session_id
+      where rs.project_id = ${projectId}
+        and r.type = 'artifact.business_rule_retired'
+        and r.payload->>'ruleId' = e.id
+    ))`;
+
     const [eventos, prs, arquivos, itens] = await Promise.all([
       db.execute(sql`
-        select type, actor_id, count(*)::int as total
-        from session_events
-        where session_id = ${sessionId}
-          and type in (
+        select e.type, e.actor_id, count(*)::int as total
+        from session_events e
+        where e.session_id = ${sessionId}
+          and ${naoRetirada}
+          and e.type in (
             'artifact.business_rule', 'artifact.decision_record',
             'backlog.epic_created', 'backlog.story_created',
             'backlog.task_created'
           )
-        group by type, actor_id
+        group by e.type, e.actor_id
       `),
       db.execute(sql`
         select actor_id, count(*)::int as total
@@ -90,11 +100,12 @@ export class DrizzleSessionContextSummaryRepository extends SessionContextSummar
       // lista do painel não depende da janela de 200 eventos. Teto por tipo.
       db.execute(sql`
         select * from (
-          select id, seq, type, actor_id, payload,
-                 row_number() over (partition by type order by seq desc) as n
-          from session_events
-          where session_id = ${sessionId}
-            and type in ('artifact.business_rule', 'artifact.decision_record')
+          select e.id, e.seq, e.type, e.actor_id, e.payload,
+                 row_number() over (partition by e.type order by e.seq desc) as n
+          from session_events e
+          where e.session_id = ${sessionId}
+            and ${naoRetirada}
+            and e.type in ('artifact.business_rule', 'artifact.decision_record')
         ) t
         where n <= ${TETO_DE_ITENS_DO_CONTEXTO}
         order by seq desc

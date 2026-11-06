@@ -11740,7 +11740,7 @@ not consulted at proposal. Changing one requires changing the other.
   read, never "Nada ainda". The aggregate does NOT poll ([RN-579](engine.md#rn-579),
   [RN-632](web.md#rn-632)): it is reread when the window sees a new artifact or a new
   commit/PR action (the query's key), on focus and on remount.
-- **Where:** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:22`
+- **Where:** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:24`
   (`resumir`), `apps/web/src/lib/contexto-da-sessao.ts:15`
   (`useContextoDaSessaoInteira`), `apps/web/src/lib/contexto-da-sessao.ts:34`
   (`totalDaSessao`), `apps/web/src/routes/ContextAside.tsx:174` (`resumo`)
@@ -11757,7 +11757,7 @@ not consulted at proposal. Changing one requires changing the other.
   of the same project. A session without that link does not enter. The list goes from the most
   recent to the oldest, cut at 100 (`TETO_DE_ARQUIVOS_TOCADOS`), and the
   `total` states the real number; the screen declares the cut when it cuts.
-- **Where:** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:31`
+- **Where:** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:33`
   (`ligadas`), `apps/web/src/routes/ContextAside.tsx:366` (`filesTouched`)
 - **Test:** `test/infrastructure/persistence/drizzle/session-context-summary.repository.spec.ts` ("…e soma os arquivos da execução ligada"; failure: "corta a lista de arquivos no teto e devolve o total real; não lê sessão sem ligação")
 - **Origin:** AT-498
@@ -11831,8 +11831,8 @@ not consulted at proposal. Changing one requires changing the other.
   file in a PR or commit of this session or the linked execution), never "Nothing
   yet". The use case lives in the git module because it is the one that reads the
   repository; a session of another project is still 404 without reading any PR.
-- **Where:** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:140`
-  (`itensDeRegras`), `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:184`
+- **Where:** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:151`
+  (`itensDeRegras`), `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:195`
   (`prsDasSessoes`), `src/application/use-cases/git/resumir-contexto-da-sessao.use-case.ts:37`
   (`prs`), `apps/web/src/routes/ContextAside.tsx:197` (`businessRules`),
   `apps/web/src/routes/ContextAside.tsx:222` (`decisoes`)
@@ -12740,7 +12740,7 @@ is no known password). With no user at all on the installation it answers 409.
 
 ### RN-1018 — The agent retires an obsolete business rule, citing its replacement or the user's answer; every reader ignores it {#rn-1018}
 
-- **Rule:** a business rule is an `artifact.business_rule` event and the log is append-only, so an obsolete rule used to stay forever (TP-01 26th, 06/11: the Criativo asked the conductor to "remove it manually"). `POST /internal/projects/:projectId/business-rules/:ruleId/retire` (service token) takes `{ sessionId, agentRole, reason, replacedBy?, questionId? }` and appends `artifact.business_rule_retired { ruleId, reason, storyIds, replacedBy?, questionId? }`, with no approval card (owner decision of 06/11/2026). (1) Only `criativo` and `po` retire: any other role is 403 `papel_nao_retira_regra`. (2) The call must cite `replacedBy` (an existing, non-retired rule other than itself, else 400 `substituta_invalida`) and/or a `questionId` the user already answered (the [RN-859](#rn-859) standard, else 409 `pergunta_nao_respondida`); neither is 400 `retirada_sem_citacao`. (3) Unknown rule is 404, a rule already retired is 409 `regra_ja_retirada`. (4) Each (non-archived) story that cites the rule drops it and cites `replacedBy` instead (inclusive a `ready` story, no new promotion); if a story would be left with NO rule (only possible without `replacedBy`) the whole retirement is refused with 409 `historia_ficaria_sem_regra`, and a story with a task `in_progress`/`in_review` refuses with 409 `historia_com_tarefa_em_execucao`; nothing is written on a refusal. (5) The retired rule stays in the log but leaves every reader that decides: the rule list and coverage ([RN-164](#rn-164)), the semantic-duplicate check ([RN-681](#rn-681)), the dev and psychologist contexts, the auto-accept coverage count and the `afeta.regras` resolution of open questions; `create_story`/`complete_story` refuse to link it (400).
+- **Rule:** a business rule is an `artifact.business_rule` event and the log is append-only, so an obsolete rule used to stay forever (TP-01 26th, 06/11: the Criativo asked the conductor to "remove it manually"). `POST /internal/projects/:projectId/business-rules/:ruleId/retire` (service token) takes `{ sessionId, agentRole, reason, replacedBy?, questionId? }` and appends `artifact.business_rule_retired { ruleId, reason, storyIds, replacedBy?, questionId? }`, with no approval card (owner decision of 06/11/2026). (1) Only `criativo` and `po` retire: any other role is 403 `papel_nao_retira_regra`. (2) The call must cite `replacedBy` (an existing, non-retired rule other than itself, else 400 `substituta_invalida`) and/or a `questionId` the user already answered (the [RN-859](#rn-859) standard, else 409 `pergunta_nao_respondida`); neither is 400 `retirada_sem_citacao`. (3) Unknown rule is 404, a rule already retired is 409 `regra_ja_retirada`. (4) Each (non-archived) story that cites the rule drops it and cites `replacedBy` instead (inclusive a `ready` story, no new promotion); if a story would be left with NO rule (only possible without `replacedBy`) the whole retirement is refused with 409 `historia_ficaria_sem_regra`, and a story with a task `in_progress`/`in_review` refuses with 409 `historia_com_tarefa_em_execucao`; nothing is written on a refusal. (5) The retired rule stays in the log but leaves every reader that decides: the rule list and coverage ([RN-164](#rn-164)), the semantic-duplicate check ([RN-681](#rn-681)), the dev and psychologist contexts, the auto-accept coverage count and the `afeta.regras` resolution of open questions, and the per-session context summary of [RN-844](#rn-844) (count and `itensDeRegras`, raw SQL); `create_story`/`complete_story` refuse to link it (400).
 - **Where:** `apps/api/src/application/use-cases/backlog/retire-business-rule.use-case.ts` (`execute`), `apps/api/src/application/use-cases/backlog/regras-retiradas.ts` (`idsDeRegrasRetiradas`), `apps/api/src/interfaces/http/internal/internal-business-rules.controller.ts`.
 - **Test:** `apps/api/test/application/use-cases/backlog/retire-business-rule.use-case.spec.ts` (role, missing citation, swap, no-rule refusal, running task, readers).
 - **Origin:** AT-755 (EP-030), part B of AT-752; the engine tool and the web panel come after.

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The session context summary (RN-844) ignores a retired business rule (RN-1018): it no longer counts in `regras` nor appears in `itensDeRegras`.
+
 - In automatic mode a terminal `git merge` (and `git merge --abort`) inside the task worktree is auto-approved instead of asking the user (AT-754, RN-1019). A compound with a protected `git push` still asks (RN-1017); outside the scope, `gh pr merge`, and a checkout/switch to a protected branch are unchanged.
 - The agent retires an obsolete business rule (AT-755, RN-1018, ADR 0262): `POST /internal/projects/:projectId/business-rules/:ruleId/retire` (Criativo and PO only; cites `replacedBy` and/or an answered `questionId`) appends `artifact.business_rule_retired`, swaps the id in the stories that cite the rule, and is refused (409 `historia_ficaria_sem_regra`) when a story would be left with no rule. List, coverage, semantic-duplicate check, dev/psychologist context, auto-accept and `create_story`/`complete_story` ignore the retired rule.
 
