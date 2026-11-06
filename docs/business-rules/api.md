@@ -10287,9 +10287,9 @@ the only one that emits it is `ActivateExecutionUseCase`, called only by the
   (`execute`); `src/application/use-cases/actions/approve-action.use-case.ts:216`
   (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:401`
   (`executeExecutionPlan`); `apps/web/src/lib/session-acoes-de-handoff.ts:91`
-  (`handleAcceptHandoff`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:220`
-  (`classificar`); `apps/engine/lib/engine/agents/dev_lead_server.ex:730`
-  (`texto_do_desfecho`); `apps/web/src/lib/aprovacoes.ts:327`
+  (`handleAcceptHandoff`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:274`
+  (`classificar`); `apps/engine/lib/engine/agents/dev_lead_server.ex:776`
+  (`texto_do_desfecho`); `apps/web/src/lib/aprovacoes.ts:359`
   (`propose_execution_plan`)
 - **Test:** `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts:106`
   (approved activates as whoever approved — happy path), `:129` (auto-approved:
@@ -10354,8 +10354,8 @@ parallelism still goes through `parallelize` ([RN-083](#rn-083)).
   `src/application/use-cases/actions/propose-action.use-case.ts:141`
   (`recusaNaProposta`); `src/application/use-cases/execution/execute-execution-plan.use-case.ts:67`
   (`recusaNaProposta`); `src/db/schema/backlog.ts:187` (`module`);
-  `apps/engine/lib/engine/agents/dev_lead_tools.ex:390`
-  (`tarefas_do_backlog`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:204`
+  `apps/engine/lib/engine/agents/dev_lead_tools.ex:460`
+  (`tarefas_do_backlog`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:259`
   (`erro_da_proposta`)
 - **Test:** `test/domain/execution/plano-de-execucao.spec.ts:22`
   (happy path), `:41` (task without a module — failure case), `:49` (module
@@ -11054,11 +11054,11 @@ toggle back to manual restores approval.
 - **Measurement (AT-383, 02/10, test shop):** #6 ended `failed` because of a
   conflict in `package.json`, and the task stayed `in_review` with nobody to
   resolve it.
-- **Where:** `src/application/use-cases/actions/execute-git-action.use-case.ts:392` (`devolverAoDono`),
+- **Where:** `src/application/use-cases/actions/execute-git-action.use-case.ts:429` (`devolverAoDono`),
   `src/infrastructure/persistence/drizzle/backlog.repository.ts:490` (`reabrirPorConflitoDeMerge`),
   `apps/engine/lib/engine/workers/dev_agent_wake_worker.ex:151` (`task.merge_conflict`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:350` (`handle_info`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:831` (`trigger_gate_recheck`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:876` (`trigger_gate_recheck`),
   `apps/engine/lib/engine/dev/worktree_manager.ex:47` (`adopt`)
 - **Test:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("conflito de merge → kind git_merge, arquivos no resultado e evento na tarefa"; failure: "RN-715: tarefa que já não está em revisão não é reaberta nem acorda ninguém"), `apps/engine/test/engine/dev/dev_agent_server_test.exs` (describe "conflito de merge (RN-715)": re-adopts, reason in the turn, commit+push with no new PR, gate reopens from QA; failures: branch that does not come back and open breaker), `apps/engine/test/engine/workers/dev_agent_wake_worker_test.exs` ("dono que não existe: bloqueia a task com motivo nomeado, nada calado"), `apps/engine/test/engine/dev/worktree_manager_test.exs` ("readotar a branch da PR preserva os commits dela")
 - **Declared gap:** the redelivery to a busy owner lives in memory — an engine
@@ -11513,7 +11513,7 @@ The PO's kickoff states the three things.
   column vanished.
 - **Where:** `src/application/use-cases/actions/execute-adr-pr.use-case.ts:96`
   (`openPullRequest`); `apps/engine/lib/engine/infra/infra_lead_server.ex:1599`
-  (`gravar_texto_do_turno`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1188`
+  (`gravar_texto_do_turno`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1254`
   (`propose_pr`); `apps/web/src/lib/session-destinatario.ts:228`
   (`agentesEmConversa`) and `apps/web/src/lib/session-kind.ts:69`
   (`tipoDaSessao`); `apps/web/src/routes/NewProjectWizard.tsx:1143`
@@ -11691,7 +11691,7 @@ not consulted at proposal. Changing one requires changing the other.
 
 - **Where:** `src/application/use-cases/execution/activate-execution.use-case.ts:83` (`MULTIPLICADOR_DA_PRIMEIRA_TAREFA_DO_MODULO`);
   `src/application/use-cases/actions/propose-action.use-case.ts:242` (`multiplicadorDaPrimeiraDoModulo`);
-  `apps/web/src/lib/aprovacoes.ts:350` (`multiplicador`)
+  `apps/web/src/lib/aprovacoes.ts:382` (`multiplicador`)
 - **Test:** `apps/web/src/lib/aprovacoes.test.ts` (it "RN-802 (AT-473)": 8 tasks, 1 module → US$ 4.50; 3 tasks, 2 modules → US$ 2.50; without a budget, no number — failure case);
   `test/application/use-cases/actions/propose-action.use-case.spec.ts` ("plano válido nasce pending")
 - **Origin:** AT-473
@@ -12104,7 +12104,7 @@ not consulted at proposal. Changing one requires changing the other.
 - **Where:** `src/domain/llm/llm-provider-errors.ts:86` (`normalizeHttpStatus`),
   `:140` (`pareceOrcamento`); `apps/engine/lib/engine/agents/falha_de_turno.ex:212`
   (`orcamento_esgotado`), `:226` (`frase_de_orcamento`), `:163`
-  (`credito_esgotado?`); `apps/engine/lib/engine/dev/dev_agent_server.ex:957`
+  (`credito_esgotado?`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1026`
   (`motivo_de_credito`)
 - **Test:** `test/domain/llm/llm-provider-errors.spec.ts` ("o 403 de orçamento vira insufficient_credit com o corpo inteiro"; failure: "403 sem marcador de orçamento continua credencial rejeitada"); `apps/engine/test/engine/agents/falha_de_turno_test.exs` ("RN-886: o 403 de orçamento do OpenRouter")
 - **Origin:** AT-534
@@ -12403,7 +12403,7 @@ Revises [RN-583](#rn-583) (`sort` stops being the only `provider` field that goe
 ### RN-936 — Bringing up the QA instance is the action `qa_environment_start`, seeded `auto_approve` for QA; removing is automatic and outside the `container_remove` ceiling {#rn-936}
 
 - **Rule:** `qa_environment_start` (`developer`, payload `{ taskId }`) is a `proposed_action` seeded `auto_approve` for `qa-automacao` at execution activation; when auto-approved or approved, the api brings the instance up through the broker (a named `failed` if the ceiling is occupied, if the project is `runner` or if the broker refuses). REMOVAL is not a proposal: `POST /internal/projects/:projectId/qa-environments/:taskId/remove` is idempotent and only reaches what the broker labels `brabo.papel=qa`, so it does not enter the absolute ceiling of `container_remove`/`container_recreate`. The `container-exec` accepts `alvo: { qa: true, taskId }` coming from the engine (never from the model) to run in the instance; without a `running` instance it returns `sucesso: false`. The type's sentence exists in `aprovacoes.ts` and the web test fails a type without a sentence.
-- **Where:** `src/domain/actions/decide.ts:196` (`qa_environment_start`), `src/application/use-cases/actions/execute-qa-environment-start.use-case.ts:25` (`execute`), `src/application/use-cases/containers/instancia-de-qa.use-case.ts:120` (`remove`), `apps/web/src/lib/aprovacoes.ts:438` (`qa_environment_start`).
+- **Where:** `src/domain/actions/decide.ts:196` (`qa_environment_start`), `src/application/use-cases/actions/execute-qa-environment-start.use-case.ts:25` (`execute`), `src/application/use-cases/containers/instancia-de-qa.use-case.ts:120` (`remove`), `apps/web/src/lib/aprovacoes.ts:459` (`qa_environment_start`).
 - **Test:** `test/application/use-cases/containers/instancia-de-qa.use-case.spec.ts`, `test/domain/actions/decide.spec.ts`, `apps/web/src/lib/aprovacoes.test.ts`.
 - **Origin:** AT-612 (EP-030), ADR 0229.
 
@@ -12431,7 +12431,7 @@ Revises [RN-583](#rn-583) (`sort` stops being the only `provider` field that goe
 ### RN-948 — Deliverable hygiene: SQLite database out of the commit, command folder stated, README routes preserved {#rn-948}
 
 - **Rule:** extends [RN-761](#rn-761), [RN-900](engine.md#rn-900) and [RN-706](engine.md#rn-706)/[RN-850](engine.md#rn-850). Three parts, no new gate. (1) A second list, `ARQUIVOS_DE_DADOS` (`*.db`, `*.db-*`, `*.sqlite`, `*.sqlite-*`, `*.sqlite3`, `*.sqlite3-*`), in the SAME three layers as RN-761: the bootstrap's base `.gitignore`, the `:(exclude,glob)**/<pattern>` exclusion in the dev agent's `git add` and a finding of its own from SecOps ("runtime data file committed", which names the path). The test that crosses the api and engine lists crosses both. (2) The environment message of the agent with a module says that `npm`/`pip`/`mix` run in the module's folder in the SAME call, never `cd … 2>/dev/null;` (the failed `cd` fell to the root and left an empty `package-lock.json`), within the ceiling of 1,500 characters. (3) The dev's kickoff names the ROOT `README.md`, without repeating the section in a folder's README, and `write_file` refuses to rewrite a README that loses a route heading (`### GET /links`) present in the old one, on the model of RN-900. Declared: a repository already bootstrapped does not gain the new `.gitignore`; an intentional `.db` fixture stays out of the commit (rename it to version it); the guard does not cover a write through the `terminal`. Outside this RN: `expires_at` × `expiresAt`.
-- **Where:** `src/application/use-cases/git/bootstrap-templates.ts:29` (`ARQUIVOS_DE_DADOS`), `apps/engine/lib/engine/actions/diretorios_de_dependencia.ex:37` (`argumentos_do_add`), `apps/engine/lib/engine/gates/secops_agent_server.ex:162` (`dependencias_commitadas`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:178` (`modulo`), `apps/engine/lib/engine/harness/tools/write_file.ex:62` (`recusa_de_secao_perdida`), `apps/engine/lib/engine/dev/dev_agent_server.ex:604` (`initial_message`).
+- **Where:** `src/application/use-cases/git/bootstrap-templates.ts:29` (`ARQUIVOS_DE_DADOS`), `apps/engine/lib/engine/actions/diretorios_de_dependencia.ex:37` (`argumentos_do_add`), `apps/engine/lib/engine/gates/secops_agent_server.ex:162` (`dependencias_commitadas`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:178` (`modulo`), `apps/engine/lib/engine/harness/tools/write_file.ex:62` (`recusa_de_secao_perdida`), `apps/engine/lib/engine/dev/dev_agent_server.ex:651` (`initial_message`).
 - **Test:** `apps/engine/test/engine/actions/diretorios_de_dependencia_test.exs` (list crossed with the api, a real add that stages only `src/a.js`, SecOps names the `.db`), `test/application/use-cases/git/bootstrap-plan.spec.ts` (the six patterns in the `.gitignore`), `apps/engine/test/engine/harness/ambiente_do_agente_test.exs`, `apps/engine/test/engine/harness/tools/write_file_test.exs`, `apps/engine/test/engine/dev/report_done_instrucao_test.exs`.
 - **Origin:** AT-623 (EP-031), deliverable `entregavel3` (commits 956fa5c, 8e593b0).
 
