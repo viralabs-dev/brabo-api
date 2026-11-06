@@ -1,284 +1,280 @@
-# ADR 0123 — Golden-set de casos de regressão para o julgamento semântico do agente de QA Automação
+# ADR 0123 — Golden-set of regression cases for the QA Automation agent's semantic judgment
 
-- **Status:** aceito
-- **Data:** 2026-08-30
-- **Referencia (sem editar):** [ADR 0020](0020-destravar-gates-qa-secops.md)
-  (o achado que este fecha — o próprio critério de aceite dele documenta o
-  passo semântico do gate de QA como não determinístico com modelo local, e
-  nomeia a direção de correção que este ADR constrói: "apontar para um
-  modelo de API em vez de torcer").
+- **Status:** accepted
+- **Date:** 2026-08-30
+- **References (without editing):** [ADR 0020](0020-destravar-gates-qa-secops.md)
+  (the finding this closes — its own acceptance criterion documents the
+  QA gate's semantic step as non-deterministic with a local model, and
+  names the fix direction this ADR builds: "point at an API model instead
+  of hoping").
 
-## Contexto
+## Context
 
-O ADR 0020 fechou o critério de aceite dos gates de PR, mas com uma ressalva
-escrita na própria seção de título: **FECHADO, mas NÃO DETERMINÍSTICO**.
-Contra o `qwen2.5-coder:7b` local, o critério — o QA casar uma regra de
-negócio com um teste, duas vezes no mesmo PR — só fechou na 10ª de 11
-execuções. A 11ª, rodada logo depois sem mudança de código, não fechou: o
-modelo encerrou o laço sem chamar `emit_qa_verdict`. O ADR 0020 nomeia isso
-explicitamente como o passo semântico sendo "o papel que pior cabe num modelo
-pequeno" e declara a direção de correção sem construí-la: "apontar
-`DEMO_QA_MODEL` para um modelo de API".
+ADR 0020 closed the PR gates' acceptance criterion, but with a caveat
+spelled out in its own title section: **CLOSED, but NOT DETERMINISTIC**.
+Against local `qwen2.5-coder:7b`, the criterion — QA matching a business
+rule to a test, twice on the same PR — closed only on the 10th of 11 runs.
+The 11th, run immediately after with no code change, did not close: the
+model ended the loop without calling `emit_qa_verdict`. ADR 0020 names this
+explicitly as the semantic step being "the role that fits worst in a small
+model" and states the fix direction without building it: "point
+`DEMO_QA_MODEL` at an API model."
 
-Essa direção nunca virou mecanismo — ficou documentada, não construída.
-Uma revisão de código externa do trabalho desta sessão classificou 15
-achados por prioridade; 14 de 15 fecharam ao longo da sessão. O 15º e último
-foi este, proposto sem custo de construção associado: "um golden-set (5-10
-casos, saída esperada frouxa, modelo fixo, falha permitida para começar)
-transformaria 'a demo depende do julgamento de um 7B' num sinal de
-tendência".
+That direction never became a mechanism — it stayed documented, not built.
+An external code review of this session's work, ranked 15 findings by
+priority; 14 of 15 closed as this session progressed. The 15th and last was
+this one, proposed with no build cost attached: "a golden-set (5-10 cases,
+loose expected output, fixed model, allow-failure to start) would turn 'the
+demo depends on a 7B's judgment' into a trend signal."
 
-Três fatos, confirmados lendo o código e não supostos, moldaram o que dava
-para construir hoje:
+Three facts, confirmed by reading code rather than assumed, shaped what
+could be built today:
 
-1. **O julgamento pode ser invocado isolado, sem a máquina de estados
-   inteira.** `Engine.Gates.QaAutomacaoAgent.run/5` já é chamado assim em
-   `qa_automacao_agent_test.exs` — sem `QaLeadServer`, sem `GateState`, sem
-   PR, sem repositório git, sem backlog. A única coisa que separa esse teste
-   existente de um golden-set real é trocar o cliente de LLM falso pelo real.
-2. **O cliente real exige a api de fato rodando e alcançável.**
-   `Engine.Sessions.EngineApiClient.Live.llm_turn/5` lê
-   `Application.fetch_env!(:engine, :api_url)`, preenchido só por
-   `config/runtime.exs` (via `API_URL`) — nunca por `config/test.exs`. Isto
-   não é um teste unitário no sentido usual: é, na prática, "rodar contra a
-   stack de dev", a mesma postura que `demo-pr-gates.ts` já tem.
-3. **CI não é possível hoje — confirmado, não suposto.** Zero menção a
-   `ollama` em `.github/workflows/`; o serviço do compose fica atrás de
-   `profiles: ["local-llm"]`, nunca iniciado por `docker/smoke.sh`. Zero
-   segredo de LLM no repositório. E a própria cultura do CI recusa falha
-   permitida silenciosa: `pr-police.yml` é o único lugar do repo que usa
-   `continue-on-error`, e mesmo ali o erro é relançado num passo final. Não
-   há hoje checagem que possa ficar vermelha sem consequência. Ligar isto ao
-   CI exige um segredo de LLM de API ou infraestrutura nova (um runner com
-   GPU, um passo de pull do Ollama) — decisão de um humano, não algo a
-   construir escolhendo.
+1. **The judgment can be invoked in isolation, without the full state
+   machine.** `Engine.Gates.QaAutomacaoAgent.run/5` is already called this
+   way in `qa_automacao_agent_test.exs` — no `QaLeadServer`, no
+   `GateState`, no PR, no git repository, no backlog. The only thing
+   separating that existing test from a real golden-set is swapping the
+   fake LLM client for the real one.
+2. **The real client requires the api actually running, reachable.**
+   `Engine.Sessions.EngineApiClient.Live.llm_turn/5` reads
+   `Application.fetch_env!(:engine, :api_url)`, populated only by
+   `config/runtime.exs` (via `API_URL`) — never by `config/test.exs`. This
+   is not a unit test in the usual sense: it is, in practice, "run against
+   the dev stack," the same posture `demo-pr-gates.ts` already has.
+3. **CI is not possible today — confirmed, not assumed.** Zero mention of
+   `ollama` in `.github/workflows/`; the compose service sits behind
+   `profiles: ["local-llm"]`, never started by `docker/smoke.sh`. Zero LLM
+   secret in the repository. And the CI's own culture rejects silent
+   allow-failure: `pr-police.yml` is the only place in the repo using
+   `continue-on-error`, and even there the error is re-raised in a final
+   step. There is no check today that can go red with no consequence.
+   Wiring this into CI needs an API LLM secret or new infrastructure (a
+   GPU runner, an Ollama pull step) — a decision for a human, not
+   something to build by choosing.
 
-## Decisão
+## Decision
 
-**Onde mora.** `apps/engine/test/engine/gates/qa_automacao_agent_golden_test.exs`,
-`use Engine.DataCase`, reaproveitando a mesma construção de
-`dev_state`/`dev_context` de `qa_automacao_agent_test.exs`. É ExUnit, não uma
-task Mix nova: não há hoje `Mix.Task` própria em lugar nenhum de
-`apps/engine/lib`, e um teste isolado já é a forma natural deste código para
-esta classe de coisa — ao contrário do lado da api, onde `demo-pr-gates.ts`
-é um script porque lá não existe equivalente de "chamar a função direto".
+**Where it lives.** `apps/engine/test/engine/gates/qa_automacao_agent_golden_test.exs`,
+`use Engine.DataCase`, reusing the same `dev_state`/`dev_context`
+construction as `qa_automacao_agent_test.exs`. It is ExUnit, not a new Mix
+task: there is no `Mix.Task` of its own anywhere in `apps/engine/lib`
+today, and an isolated test is already this codebase's natural shape for
+this class of thing — unlike the api side, where `demo-pr-gates.ts` is a
+script because no "call the function directly" equivalent exists there.
 
-**Uma tag de exclusão permanente, nunca detecção de disponibilidade.** O
-padrão do `test_helper.exs` para gitleaks/hadolint/yamllint/actionlint inclui
-automaticamente um teste marcado quando o binário é encontrado na máquina —
-certo para uma ferramenta gratuita e determinística, e errado aqui. Esta
-máquina de desenvolvimento já tem o Ollama rodando continuamente; a inclusão
-automática por alcançabilidade faria o golden-set disparar dentro de
-*qualquer* `mix test`, gastando tokens sem aviso e introduzindo instabilidade
-real numa suíte que hoje é 100% determinística.
+**A permanent exclusion tag, never availability detection.** The
+`test_helper.exs` pattern for gitleaks/hadolint/yamllint/actionlint
+auto-includes a tagged test when the binary is found on the machine — right
+for a free, deterministic tool, and wrong here. This development machine
+already has Ollama running continuously; auto-inclusion by reachability
+would make the golden-set fire inside *any* `mix test`, spending tokens with
+no warning and introducing real flakiness in a suite that is 100%
+deterministic today.
 
 ```elixir
 ExUnit.start(exclude: [:golden_set_qa | binary_exclusions])
 ```
 
-Só `mix test --only golden_set_qa` o roda, mais um alias `mix golden_set.qa`
-para ser encontrável — a mesma disciplina que `demo-pr-gates.ts` já declara
-no próprio comentário de cabeçalho: "NOT deterministic ... run deliberately,
-not in CI." O `setup_all` pula (pelo retorno `{:skip, reason}` do ExUnit no
-corpo do teste, não por uma falha lançada) quando a api não é alcançável em
-`API_URL` — um pré-requisito de ambiente, não defeito de código.
+Only `mix test --only golden_set_qa` runs it, plus a `mix golden_set.qa`
+alias for discoverability — the same discipline `demo-pr-gates.ts` already
+states in its own header comment: "NOT deterministic ... run deliberately,
+not in CI." `setup_all` skips (via ExUnit's `{:skip, reason}` return from
+the test body, not a raised failure) when the api is unreachable at
+`API_URL` — an environment prerequisite, not a code defect.
 
-**Semeadura por um script TS externo, chamado por `System.cmd`.** O engine
-não tem como criar as linhas reais (projeto, sessão, binding de modelo) sem
-duplicar regra de negócio que mora nos próprios casos de uso da api — e não
-há, de todo modo, caminho Ecto cru que alcance o banco certo. Este é o custo
-de encanamento que este ADR declara às claras em vez de esconder:
-`apps/api/scripts/seed-golden-set-qa.ts` é um **`System.cmd` entre
-linguagens**, novo neste repositório (zero precedente de um teste Elixir
-chamando `pnpm`/`ts-node` pelo shell).
+**Seeding via an external TS script, called through `System.cmd`.** The
+engine has no way to create the real rows (project, session, model
+binding) without duplicating business logic that lives in the api's own
+use cases — and there is no raw-Ecto path that reaches the right database
+anyway. This is the plumbing cost this ADR states plainly rather than
+hides: `apps/api/scripts/seed-golden-set-qa.ts` is a **cross-language
+`System.cmd`**, new to this repository (zero prior precedent of an Elixir
+test shelling out to `pnpm`/`ts-node`).
 
-Um segundo motivo, nada óbvio, para ter de ser deste jeito: o teste golden
-usa `Engine.DataCase`, cujo sandbox aponta para o banco isolado `engine_test`
-(a mesma convenção que `qa_automacao_agent_test.exs` já usa). O script de
-semeadura roda dentro do *próprio processo da api*, escrevendo no banco real
-de dev (`DATABASE_URL`) que os servidores *rodando* da api e do engine de
-fato usam. São dois bancos diferentes — nada que o `Engine.Repo` leia no
-teste golden veria linhas que o script escreveu, nem o contrário. Por
-consequência, `Engine.Actions.Workspace`/`Engine.Dev.WorktreeManager` (que
-leem `project_repositories` via `Engine.Repo`) não conseguem materializar o
-worktree dos casos deste teste: **o script de semeadura faz o próprio
-checkout git** (um `git clone` simples do repo bare que ele acabou de
-provisionar) e devolve o caminho do worktree pronto na saída JSON. O teste
-golden só consome esse JSON — nunca consulta o Postgres para achar nada.
+A second, non-obvious reason it has to be this shape: the golden test uses
+`Engine.DataCase`, whose sandbox points at the isolated `engine_test`
+database (the same convention `qa_automacao_agent_test.exs` already uses).
+The seed script runs inside the *api's own* process, writing to the real
+dev database (`DATABASE_URL`) that the *running* api and engine servers
+actually use. These are two different databases — nothing `Engine.Repo`
+reads in the golden test would see rows the seed script wrote, or vice
+versa. Consequently `Engine.Actions.Workspace`/`Engine.Dev.WorktreeManager`
+(which read `project_repositories` via `Engine.Repo`) cannot materialize
+the worktree for this test's cases: **the seed script does its own git
+checkout** (a plain `git clone` of the bare repo it just provisioned) and
+returns the ready worktree path in its JSON output. The golden test only
+ever consumes that JSON — it never queries Postgres to find anything.
 
-O script de semeadura:
+The seed script:
 
-- Cria um usuário + um workspace, e um projeto por caso (um repo git local
-  provisionado é 1:1 com um projeto — `ProjectRepository.remoto_de_trabalho/1`
-  faz a busca de uma linha só por `project_id`).
-- Resolve **ou cria** a linha de `models` para `GOLDEN_SET_QA_MODEL`
-  (default `qwen2.5-coder:latest`) — ao contrário das demos mais antigas, que
-  lançam erro se o modelo já não estiver no catálogo fixo da semeadura
-  (`MODEL_SEEDS` do `seed.ts`). O golden-set mira modelos locais arbitrários
-  do Ollama por desenho, e prendê-lo a um catálogo fixo significaria editar o
-  `seed.ts` toda vez que alguém quisesse medir um novo.
-- Ativa o modelo para o workspace (`SetModelsActiveUseCase`) — um passo que
-  os scripts de demo mais antigos pulam, e cuja falta faz hoje
-  `SetModelBindingUseCase` lançar `ModelNotBindableError('inativo')`
-  (ausência em `workspace_models` quer dizer "desligado", RN-043/ADR 0049).
-  Isso parece deriva nas demos antigas, não algo que este ADR deva corrigir
-  lá em silêncio — elas estão fora do escopo.
-- Faz o binding do modelo em `chaveDeAgente(project.id, 'qa-automacao')` —
-  **`'qa-automacao'`, nunca `'qa'`**: desde a Fase 8b o subagente que de
-  fato roda é `qa-automacao`/`qa-performance-seguranca`; o binding em `'qa'`
-  não tem efeito (a cascata cai no binding do projeto). Copiado de
-  `demo-pr-gates-area-qa.ts:281`, não do `demo-pr-gates.ts` mais antigo, que
-  ainda usa a chave velha.
-- Chama `SeedAgentAreasUseCase.execute(project.id)` — sem isso,
-  `agent_areas` fica vazia para um projeto criado por insert cru (em vez de
-  por `CreateProjectUseCase`), e o **primeiro** turno de LLM que o agente de
-  QA faz falha com 404 de `RecordLlmUsageUseCase`
-  (`AgentAreaRepository.incrementSpent` exige que a linha exista — o metering
-  é obrigatório, RN-036, nunca melhor esforço). Achado empiricamente: a
-  primeira execução real deste harness devolveu `blocked(infra)` nos seis
-  casos antes de esta chamada ser acrescentada.
-- Provisiona o repo, commita o esqueleto do caso e então materializa o
-  worktree **dentro de `projectScopeRoot(project)`** (`git clone`, *antes* de
-  escrever o `permissions.json` — clonar exige diretório de destino vazio).
-  Essa ordem e esse lugar sustentam a coisa, não são acidentais: o teto de
-  escopo de caminho do ADR 0055 em `decide()` recusa auto-aprovar *qualquer*
-  ação `terminal` cujo `cwd` caia fora da raiz de escopo do próprio projeto,
-  por melhor que o comando case com um padrão `allow`. Uma primeira versão
-  deste script clonava num diretório de rascunho separado sob `os.tmpdir()` —
-  todo caso voltava `awaiting_approval` para sempre, porque o `npm test`
-  nunca passava pela checagem de escopo. Achado empiricamente, do mesmo jeito
-  que a lacuna de `agent_areas` acima.
-- Acrescenta `DEV_TERMINAL_ALLOW_PATTERNS` ao `permissions.json` do projeto
-  (o mesmo mecanismo que `ActivateExecutionUseCase` já usa) — sem isso, o
-  default de `decide()` é `require_approval` para toda chamada `terminal`, e
-  `emit_qa_verdict` nunca consegue ver no histórico um `terminal` com saída 0.
-- Cria e ativa uma sessão por caso (`CreateSessionUseCase` +
+- Creates one user + one workspace, and one project per case (a
+  provisioned local git repo is 1:1 with a project — `ProjectRepository.remoto_de_trabalho/1`
+  does a single-row lookup by `project_id`).
+- Resolves **or creates** the `models` row for `GOLDEN_SET_QA_MODEL`
+  (default `qwen2.5-coder:latest`) — unlike the older demos, which throw if
+  the model isn't already in the fixed seed catalog (`seed.ts`'s
+  `MODEL_SEEDS`). The golden-set targets arbitrary local Ollama models by
+  design, and pinning it to a fixed catalog would mean editing `seed.ts`
+  every time someone wants to measure a new one.
+- Activates the model for the workspace (`SetModelsActiveUseCase`) — a step
+  the older demo scripts skip, and which currently makes `SetModelBindingUseCase`
+  throw `ModelNotBindableError('inativo')` when it is missing
+  (`workspace_models` absence means "off," RN-043/ADR 0049). This looks
+  like drift in the older demos, not something this ADR should silently
+  fix there — they are out of scope.
+- Binds the model at `chaveDeAgente(project.id, 'qa-automacao')` —
+  **`'qa-automacao'`, never `'qa'`**: since Phase 8b the subagent that
+  actually runs is `qa-automacao`/`qa-performance-seguranca`; binding
+  `'qa'` is a no-op (the cascade falls through to the project binding).
+  Copied from `demo-pr-gates-area-qa.ts:281`, not from the older
+  `demo-pr-gates.ts`, which still uses the stale key.
+- Calls `SeedAgentAreasUseCase.execute(project.id)` — without it,
+  `agent_areas` stays empty for a project created by a raw insert (instead
+  of through `CreateProjectUseCase`), and the **first** LLM turn the QA
+  agent makes fails with a 404 from `RecordLlmUsageUseCase`
+  (`AgentAreaRepository.incrementSpent` requires the row to exist — metering
+  is mandatory, RN-036, never best-effort). Found empirically: the first
+  real run of this harness returned `blocked(infra)` on all six cases
+  before this call was added.
+- Provisions the repo, commits the case's skeleton, then materializes the
+  worktree **inside `projectScopeRoot(project)`** (`git clone`, *before*
+  writing `permissions.json` — cloning needs an empty target directory).
+  This ordering and location are load-bearing, not incidental: ADR 0055's
+  path-scope cap in `decide()` refuses to auto-approve *any* `terminal`
+  action whose `cwd` falls outside the project's own scope root, no matter
+  how well the command matches an `allow` pattern. A first version of this
+  script cloned into a separate scratch directory under `os.tmpdir()` — every
+  case came back `awaiting_approval` forever, because `npm test` never
+  cleared the scope check. Found empirically, the same way as the
+  `agent_areas` gap above.
+- Adds `DEV_TERMINAL_ALLOW_PATTERNS` to the project's `permissions.json`
+  (same mechanism `ActivateExecutionUseCase` already uses) — without it,
+  `decide()`'s default is `require_approval` for every `terminal` call, and
+  `emit_qa_verdict` can never see a `terminal` with exit 0 in history.
+- Creates and activates one session per case (`CreateSessionUseCase` +
   `TransitionSessionUseCase`).
-- Imprime um objeto JSON no stdout — `{"model": "...", "cases": [{"id",
+- Prints one JSON object to stdout — `{"model": "...", "cases": [{"id",
   "projectId", "sessionId", "worktreePath", "story", "task",
   "expectedVerdict"}, ...]}`.
 
-Sem limpeza — a mesma postura de `demo-pr-gates.ts` (um sufixo de timestamp,
-nunca apagado).
+No cleanup — same posture as `demo-pr-gates.ts` (a timestamp suffix, never
+deleted).
 
-**Os seis casos**, cada um sondando uma tabela de julgamento diferente que
-um LLM avaliador pode de fato errar — não seis variações do mesmo teste:
+**The six cases**, each probing a different judgment table an evaluator LLM
+can genuinely get wrong — not six variations on the same test:
 
-1. `rf-covered` — RF_1 de `demo-pr-gates.ts`, literal (coberta) →
-   `approved`. Controle positivo, já provado de ponta a ponta.
-2. `rf-uncovered` — RF_2 de `demo-pr-gates.ts`, literal (explicitamente sem
-   cobertura) → `changes_requested`. Controle negativo, já provado.
-3. `rf-single-clean` — RF_1 de `demo-pr-gates-area-qa.ts` (regra única,
-   coberta, aprovação limpa) → `approved`.
-4. `rf-mismatched-filename` — uma regra sobre `enviar()`, coberta por um
-   teste que mora em `test/outro-modulo.test.js` (não `enviar.test.js`) →
-   `approved`. Sonda se o QA lê o *conteúdo* do teste, não só a convenção de
-   nome de arquivo.
-5. `rf-partial-coverage` — uma regra que nomeia um caminho feliz e um caso
-   de falha explícito (`cancelar(pedido)` marca o status, e lança erro quando
-   já entregue); só o caminho feliz tem teste → `changes_requested`. Sonda se
-   o QA carimba cobertura parcial como completa.
-6. `rf-skipped-test` — o único teste que "cobre" a regra é `test.skip(...)`
-   → `changes_requested`. Sonda se o QA conta um teste desligado como
-   cobertura.
+1. `rf-covered` — RF_1 from `demo-pr-gates.ts`, verbatim (covered) →
+   `approved`. Positive control, already proven end to end.
+2. `rf-uncovered` — RF_2 from `demo-pr-gates.ts`, verbatim (explicitly
+   uncovered) → `changes_requested`. Negative control, already proven.
+3. `rf-single-clean` — RF_1 from `demo-pr-gates-area-qa.ts` (single rule,
+   covered, clean approval) → `approved`.
+4. `rf-mismatched-filename` — a rule about `enviar()`, covered by a test
+   living in `test/outro-modulo.test.js` (not `enviar.test.js`) →
+   `approved`. Probes whether the QA reads test *content*, not just
+   filename convention.
+5. `rf-partial-coverage` — a rule that names both a happy path and an
+   explicit failure case (`cancelar(pedido)` marks status, and throws when
+   already delivered); only the happy path has a test → `changes_requested`.
+   Probes whether the QA rubber-stamps partial coverage as complete.
+6. `rf-skipped-test` — the only test "covering" the rule is `test.skip(...)`
+   → `changes_requested`. Probes whether the QA counts a disabled test as
+   coverage.
 
-Os dois quase-acertos que o ADR 0020 já documenta (alucinação de chamada de
-ferramenta, o QA tentando consertar o código sob revisão) ficam de fora de
-propósito — já são regressão determinística e barata em
-`apps/engine/test/engine/harness/tool_call_recovery_test.exs:79`, sem modelo
-real envolvido. Acrescentá-los aqui duplicaria essa cobertura e diluiria o
-que este harness de fato mede: julgamento regra-vs-teste, não mau
-comportamento geral do QA.
+The two near-misses ADR 0020 already documents (tool-call hallucination,
+QA trying to fix the code under review) are deliberately **not** added
+here — they are already deterministic, cheap regression at
+`apps/engine/test/engine/harness/tool_call_recovery_test.exs:79`, with no
+real model involved. Adding them here would duplicate that coverage while
+diluting what this harness actually measures: rule-vs-test judgment, not
+general QA misbehavior.
 
-**Um piso, não um gate binário.** A mesma filosofia de catraca do
-`verificarPiso` de `scripts/ci/coverage-floor.ts` (`>=`, nunca `>`; o
-arquivo só é editado por um humano; o script nunca o reescreve) — casando
-exatamente com o que "saída esperada frouxa, falha permitida para começar"
-já pedia. `apps/engine/test/fixtures/golden_set_qa/floor.json` é chaveado por
-**modelo** (trocar de modelo muda legitimamente o piso alcançável) e guarda
-uma contagem mais um total (`{"passRate": N, "of": 6}`, não uma
-porcentagem) — para que um golden-set que depois cresça além de seis casos
-não tenha uma entrada antiga lida errado em silêncio. Sem entrada para o
-modelo em uso → o teste **falha**, informando a contagem observada de
-acertos e pedindo a um humano que acrescente a entrada — nunca escrita
-automaticamente, a mesma regra inegociável que `coverage-floor.ts` já
-estabeleceu.
+**A floor, not a binary gate.** Same ratchet philosophy as
+`scripts/ci/coverage-floor.ts`'s `verificarPiso` (`>=`, never `>`; the file
+is edited only by a human; the script never rewrites it) — matching
+exactly what "loose expected output, allow-failure to start" already asked
+for. `apps/engine/test/fixtures/golden_set_qa/floor.json` is keyed by
+**model** (switching models legitimately changes the achievable floor) and
+stores a count plus a total (`{"passRate": N, "of": 6}`, not a percentage) —
+so a golden-set that later grows past six cases can't have an old entry
+silently misread. No entry for the model in use → the test **fails**,
+reporting the observed pass count and asking a human to add the entry —
+never auto-written, the same non-negotiable `coverage-floor.ts` already
+established.
 
-**Um teste, não seis.** Os seis casos rodam dentro de um único bloco `test`
-(marcado `@moduletag :golden_set_qa`), não em seis separados. O `mix test`
-não garante ordem entre testes de um módulo; dividir em seis arriscaria uma
-asserção de piso ler um subconjunto incompleto se um suposto "sétimo teste,
-agregador" rodasse antes de os outros terminarem de semear o contexto. Rodar
-os seis e agregar no fim é também o que deixa um humano ler os seis
-desfechos juntos para depurar, impressos no stdout.
+**One test, not six.** All six cases run inside a single `test` block
+(tagged `@moduletag :golden_set_qa`), not six separate ones. `mix test`
+gives no ordering guarantee between tests in a module; splitting into six
+would risk a floor assertion reading an incomplete subset if a would-be
+"seventh, aggregate" test ran before the others finished seeding context.
+Running all six and aggregating at the end is also what lets a human read
+all six outcomes together for debugging, printed to stdout.
 
-**O `ownership_timeout` teve de ficar configurável em `Engine.DataCase`.**
-Achado empiricamente rodando contra o `gpt-oss:20b`: um turno real de LLM
-contra um modelo grande carregando pela primeira vez pode passar minutos sem
-tocar o Postgres. O `ownership_timeout` default de 60s do
-`Ecto.Adapters.SQL.Sandbox` recuperou no meio da chamada a conexão que o
-teste golden tinha emprestado; a consulta *seguinte* pelo `Engine.Repo` — os
-arquivos de instrução, dentro de `ToolLoop.Default.init/1`, por onde todo
-agente de gate passa, personalize ele as instruções de agente ou não —
-morreu com "owner process exited", relatando uma característica de
-velocidade do modelo como falha de infraestrutura.
-`Engine.DataCase.setup_sandbox/1` agora lê um `tags[:ownership_timeout]`
-opcional (nil preserva o default de 60s existente para todo outro teste da
-suíte); o teste golden se marca com `ownership_timeout: :infinity`.
+**`ownership_timeout` had to become configurable in `Engine.DataCase`.**
+Found empirically running against `gpt-oss:20b`: a real LLM turn against a
+large model loading for the first time can run for minutes without
+touching Postgres. `Ecto.Adapters.SQL.Sandbox`'s default 60s
+`ownership_timeout` reclaimed the golden test's checked-out connection
+mid-call; the *next* query through `Engine.Repo` — instruction files,
+inside `ToolLoop.Default.init/1`, which every gate agent goes through
+regardless of whether it customizes agent instructions — died with "owner
+process exited," misreporting a model-speed characteristic as
+infrastructure failure. `Engine.DataCase.setup_sandbox/1` now reads an
+optional `tags[:ownership_timeout]` (nil preserves the existing 60s default
+for every other test in the suite); the golden test tags itself
+`ownership_timeout: :infinity`.
 
-## Consequências
+## Consequences
 
-**A ligação ao CI é um `TODO(humano)` declarado, não construído.** Ela exige
-um segredo de LLM de API ou infraestrutura nova (um runner com GPU, um passo
-de pull de modelo do Ollama) — não é uma escolha que esta sessão possa fazer;
-precisa de decisão humana e, no caso da infra, de orçamento. Registrado na
-seção "Pendências com dono humano" do `CLAUDE.md`, o mesmo lugar onde esta
-classe de bloqueio já mora.
+**CI wiring is a declared `TODO(humano)`, not built.** It needs an API LLM
+secret or new infrastructure (a GPU runner, an Ollama model-pull step) —
+this is not a choice this session can make; it needs a human decision and,
+in the infra case, budget. Recorded in `CLAUDE.md`'s "Pendências com dono
+humano" section, the same place this class of blocker already lives.
 
-**Taxas de acerto reais medidas (2026-08-30, processos nativos no host — api
-via `pnpm --filter api start:dev`, engine via `mix phx.server`, os dois
-apontados para um Postgres local e para o Ollama da própria máquina em
-`localhost:11434`, sem Docker Compose nesta execução em particular):**
+**Real measured pass rates (2026-08-30, native host processes — api via
+`pnpm --filter api start:dev`, engine via `mix phx.server`, both pointed at
+one local Postgres and the machine's own Ollama at `localhost:11434`, no
+Docker Compose in this particular run):**
 
-| modelo | execuções (acertos/6) |
+| model | runs (pass/6) |
 |---|---|
 | `qwen2.5-coder:latest` | 1, 3, 2, 4, 5 |
 | `gpt-oss:20b` | 5, 4 |
 
-O `qwen2.5-coder:latest` é marcadamente instável — o modo de falha dominante
-entre as execuções foi o modelo chamar a ferramenta `terminal` com um
-**argumento `command` vazio**, que `decide()` corretamente se recusa a
-auto-aprovar (nenhum padrão casa com string vazia), deixando o caso preso em
-`awaiting_approval` para sempre. É exatamente a classe de instabilidade de
-chamada de ferramenta que o ADR 0020 já achou nesta família de modelos —
-reproduzida aqui como *tendência medida* em vez de anedota isolada.
+`qwen2.5-coder:latest` is markedly unreliable — the dominant failure mode
+across runs was the model calling the `terminal` tool with an **empty
+`command` argument**, which `decide()` correctly refuses to auto-approve
+(no pattern matches an empty string), leaving the case stuck
+`awaiting_approval` forever. This is the exact class of tool-calling
+unreliability ADR 0020 already found with this model family — reproduced
+here as a *measured trend* instead of a one-off anecdote.
 
-O `gpt-oss:20b` é marcadamente mais confiável (4-5/6 em duas execuções, ~4x
-mais lento por caso). O único erro recorrente dele foi `rf-partial-coverage`
-— carimbar como `approved` uma regra com um caso de falha sem teste —, que é
-exatamente a lacuna de julgamento que esse caso existe para expor, não
-defeito de fixture.
+`gpt-oss:20b` is markedly more reliable (4-5/6 across two runs, ~4x
+slower per case). Its one recurring miss was `rf-partial-coverage` —
+rubber-stamping a rule with an untested failure case as `approved` — which
+is exactly the judgment gap that case exists to surface, not a fixture
+defect.
 
-Diante disso, **o `gpt-oss:20b` é o default recomendado daqui em diante para
-qualquer fluxo que dependa de o passo semântico do gate de QA ser
-confiável** — a mesma conclusão que o ADR 0020 previu sem poder medir.
-`GOLDEN_SET_QA_MODEL`/o default do script de semeadura continua
-`qwen2.5-coder:latest` por ora (mudar um default de demo/harness é decisão
-separada de registrar o que foi medido); as duas entradas do arquivo de piso
-deixam os tetos reais dos dois modelos visíveis lado a lado para quem tomar
-essa decisão.
+Given this, **`gpt-oss:20b` is the recommended default going forward for
+any workflow that depends on the QA gate's semantic step being trustworthy**
+— the same conclusion ADR 0020 predicted without being able to measure it.
+`GOLDEN_SET_QA_MODEL`/the seed script's default stays `qwen2.5-coder:latest`
+for now (changing a demo/harness default is a separate decision from
+recording what was measured); the floor file's two entries make both
+models' real ceilings visible side by side for whoever makes that call.
 
-O piso registrado (`floor.json`) fica de propósito abaixo da melhor execução
-observada de cada modelo — uma catraca, não uma aspiração:
-`qwen2.5-coder:latest` em 1/6, `gpt-oss:20b` em 4/6.
+The floor recorded (`floor.json`) is deliberately below the best observed
+run for each model — a ratchet, not an aspiration:
+`qwen2.5-coder:latest` at 1/6, `gpt-oss:20b` at 4/6.
 
-**Mecanismo provado, mas o encanamento do script de semeadura agora é
-superfície nova que sustenta a coisa.** Duas lacunas do lado da api que as
-próprias execuções empíricas deste ADR acharam — `agent_areas` não semeada
-para projeto criado por insert cru, e o worktree precisar morar dentro de
-`projectScopeRoot` para o teto de escopo de caminho de `decide()` chegar a
-auto-aprovar alguma coisa — não são defeitos dos gates nem de `decide()`; são
-exatamente o tipo de lacuna "a demo esqueceu um passo de que o
-`ActivateExecutionUseCase` normalmente cuida" que o próprio ADR 0020 achou
-repetidas vezes. Registradas aqui em vez de escondidas, do mesmo jeito que o
-ADR 0020 registrou suas nove execuções falhas antes de a décima fechar.
+**Mechanism proven, but the seed script's plumbing is now load-bearing new
+surface.** Two api-side gaps this ADR's own empirical runs found —
+`agent_areas` not seeded for a project created by raw insert, and the
+worktree needing to live inside `projectScopeRoot` for `decide()`'s
+path-scope cap to ever auto-approve anything — are not defects in the
+gates or in `decide()`; they are exactly the kind of "the demo forgot a
+step `ActivateExecutionUseCase` normally takes care of" gap ADR 0020 itself
+found repeatedly. Recorded here rather than hidden, the same way ADR 0020
+recorded its own nine failed runs before the tenth closed.

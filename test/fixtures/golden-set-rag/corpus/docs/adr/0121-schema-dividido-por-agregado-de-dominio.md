@@ -1,51 +1,52 @@
-# ADR 0121 — O schema dividido por agregado de domínio, atrás de um barrel
+# ADR 0121 — The schema split by domain aggregate, behind a barrel
 
-- **Status:** aceito
-- **Data:** 2026-08-29
-- **Referencia (sem editar):** [ADR 0038](0038-hierarquia-de-agentes.md)
-  e [ADR 0053](0053-dev-lead-e-paralelismo-autorizado.md) (as fronteiras de
-  agregado que esta divisão espelha), [ADR 0117](0117-lockfile-proprio-para-o-website.md)
-  (o mesmo formato de raciocínio: uma fronteira vale a pena quando a coisa
-  compartilhada cobra um preço que ninguém escolheu pagar).
+- **Status:** accepted
+- **Date:** 2026-08-29
+- **References (without editing):** [ADR 0038](0038-fase8-hierarquia-de-areas.md)
+  and [ADR 0053](0053-fase14d-dev-lead-e-areas-dinamicas.md) (the aggregate
+  boundaries this split mirrors), [ADR 0117](0117-lockfile-proprio-para-o-website.md)
+  (same shape of reasoning: a boundary is worth drawing when the shared thing
+  charges a price nobody chose to pay).
 
-## Contexto
+## Context
 
-`apps/api/src/db/schema.ts` tinha 2 452 linhas com **51 declarações
-`pgTable` e 34 declarações `pgEnum`** — tudo, de `users` a
-`huggingface_model_pull_requests`, do event log aos chunks do RAG.
+`apps/api/src/db/schema.ts` was 2 452 lines holding **51 `pgTable`
+declarations and 34 `pgEnum` declarations** — everything from `users` to
+`huggingface_model_pull_requests`, from the event log to the RAG chunks.
 
-Isso já era dívida técnica declarada. A tabela de dívidas de
-`docs/architecture.md` tinha uma linha para ele desde que a tabela existe: "o
-arquivo mais alterado do repo … concentra as tabelas num arquivo só", com a
-consequência escrita na própria linha — **um segundo colaborador mexendo no
-schema ao mesmo tempo bate em conflito, garantido**, porque toda mudança de
-schema cai no mesmo arquivo, seja de que parte do produto for. O número dessa
-linha (35 tabelas) já estava 16 tabelas defasado, o que é evidência por si:
-o arquivo cresceu mais rápido que o parágrafo que o descrevia.
+This was already declared technical debt. `docs/architecture.md`'s debt
+table has carried a row for it since the table existed: "the repo's
+most-changed file … concentrates the tables into a single file", with the
+consequence spelled out in the row itself — **a second collaborator
+touching the schema at the same time hits a conflict, guaranteed**, because
+every schema change lands in the same file regardless of which part of the
+product it belongs to. The number in that row (35 tables) was already stale
+by 16 tables, which is its own evidence: the file grew faster than the
+paragraph describing it.
 
-Três custos concretos, nenhum hipotético:
+Three concrete costs, none of them hypothetical:
 
-1. **Todo merge de duas mudanças de schema é conflito textual**, mesmo quando
-   as duas estão em agregados sem relação — uma coluna de auth e uma
-   constraint do backlog nada têm a ver uma com a outra e ainda assim se
-   encontram no mesmo hunk.
-2. **`git log --follow` no schema é inútil.** O histórico do arquivo é a
-   união do histórico de toda área do produto, então "quando `chunks` mudou e
-   por quê" exige ler commits sobre `refresh_tokens`.
-3. **Lê-lo exige saber onde rolar.** O arquivo já era organizado por dentro
-   com comentários `// --- section ---` que nomeavam áreas do produto — a
-   divisão não inventa uma taxonomia, promove uma que o arquivo já mantinha à
-   mão.
+1. **Every merge of two schema changes is a textual conflict**, even when
+   the two changes are in unrelated aggregates — an auth column and a
+   backlog constraint have nothing to do with each other and still meet in
+   the same hunk.
+2. **`git log --follow` on the schema is useless.** The file's history is
+   the union of every product area's history, so "when did `chunks` change
+   and why" requires reading commits about `refresh_tokens`.
+3. **Reading it requires knowing where to scroll.** The file was already
+   internally organised by `// --- section ---` comments that named product
+   areas — the split doesn't invent a taxonomy, it promotes one the file
+   was already keeping by hand.
 
-## Decisão
+## Decision
 
-### 1. Um arquivo por agregado de domínio, em `apps/api/src/db/schema/`
+### 1. One file per domain aggregate, under `apps/api/src/db/schema/`
 
-Os grupos **espelham `apps/api/src/domain/*`**, as fronteiras de agregado com
-que o código já se compromete. Nenhuma taxonomia nova: se a camada de domínio
-tem uma pasta para isso, o schema tem um arquivo com esse nome.
+The buckets **mirror `apps/api/src/domain/*`**, the aggregate boundaries the
+codebase already commits to. No new taxonomy: if the domain layer has a
+folder for it, the schema has a file with that name.
 
-| arquivo | tabelas | enums |
+| file | tables | enums |
 |---|---|---|
 | `iam.ts` | 5 | 4 |
 | `sessions.ts` | 5 | 5 |
@@ -65,136 +66,134 @@ tem uma pasta para isso, o schema tem um arquivo com esse nome.
 | `backup.ts` | 1 | 2 |
 | **total** | **51** | **34** |
 
-Três posições precisaram de decisão em vez de consulta, e cada uma está
-registrada num comentário no topo do arquivo que a recebeu:
+Three placements needed a decision rather than a lookup, and each one is
+recorded as a comment at the top of the file that owns it:
 
-- **`handoffs` vai para `sessions.ts`, não `agents.ts`.** A entidade é
-  `domain/sessions/handoff.entity.ts`: um handoff só existe dentro de uma
-  sessão, e a camada de domínio já dizia isso.
-- **`user_credentials` vai para `llm.ts`, não `iam.ts` nem `git.ts`**, embora
-  `credential_provider` cubra chaves de LLM *e* tokens de git. A entidade é
-  `domain/llm/user-credential.entity.ts` e `domain/git` não tem
-  correspondente — a divisão segue a camada de domínio, inclusive onde a
-  escolha da própria camada de domínio é um meio-termo.
-- **`backup.ts` é o único arquivo sem pasta `domain/` correspondente.**
-  Backup é infraestrutura operacional sem regra de negócio própria. Forçá-lo
-  em `architecture.ts` ou `containers.ts` faria o mapeamento mentir sobre o
-  que é um agregado, para evitar um arquivo de 60 linhas. Um arquivo pequeno e
-  honesto custa menos que uma fronteira errada.
+- **`handoffs` goes to `sessions.ts`, not `agents.ts`.** The entity is
+  `domain/sessions/handoff.entity.ts`: a handoff only exists inside a
+  session, and the domain layer already said so.
+- **`user_credentials` goes to `llm.ts`, not `iam.ts` or `git.ts`**, even
+  though `credential_provider` spans LLM keys *and* git tokens. The entity
+  is `domain/llm/user-credential.entity.ts` and `domain/git` has no
+  counterpart — the split follows the domain layer, including where the
+  domain layer's own choice is a compromise.
+- **`backup.ts` is the one file with no matching `domain/` folder.** Backup
+  is operational infrastructure with no business rule of its own. Forcing
+  it into `architecture.ts` or `containers.ts` would have made the mapping
+  lie about what an aggregate is, to avoid a 60-line file. A small honest
+  file costs less than a wrong boundary.
 
-### 2. Enums moram com a tabela que os chama, porque o grafo de módulos precisa continuar acíclico
+### 2. Enums live with the table that calls them, because the module graph has to stay acyclic
 
-Uma chave estrangeira entre arquivos é segura num ciclo:
-`.references(() => otherTable.column)` recebe um **callback preguiçoso**
-justamente para que referências adiante se resolvam. Um **enum** entre
-arquivos não é: `storyPromotionModeEnum('story_promotion')` roda na avaliação
-do módulo, e um ciclo cuja aresta aponta para o lado errado lança
-`ReferenceError: Cannot access '…' before initialization` no import, não na
-consulta.
+A cross-file foreign key is safe under a cycle: `.references(() => otherTable.column)`
+takes a **lazy callback** precisely so forward references resolve. A
+cross-file **enum** is not: `storyPromotionModeEnum('story_promotion')` runs
+at module-evaluation time, and a cycle whose edge points the wrong way
+throws `ReferenceError: Cannot access '…' before initialization` at import,
+not at query time.
 
-Por isso três enums ficam onde está o único chamador deles, e não onde um
-agrupamento por assunto os poria:
+So three enums sit where their only caller sits, rather than where a subject
+grouping would put them:
 
-- `project_execution_mode` e `story_promotion` moram em **`iam.ts`**, não em
-  `git.ts`/`backlog.ts`. `projects` é o único consumidor dos dois. Pô-los no
-  arquivo do "assunto" faria `iam.ts` depender de `git.ts` e `backlog.ts` na
-  avaliação, enquanto os dois já dependem de `iam.ts` de forma preguiçosa —
-  dois ciclos, e `iam` é o primeiro módulo que o barrel avalia, que é o
-  sentido que falha.
-- `failure_origin` mora em **`backlog.ts`**, compartilhado por
-  `tasks.blocked_origin` e `delegations.failure_origin`. `agents.ts` já
-  importa `tasks` de `backlog.ts` (para `delegations.task_id`), então
-  `agents → backlog` é o sentido que já existe; o inverso fecharia o laço.
+- `project_execution_mode` and `story_promotion` live in **`iam.ts`**, not
+  `git.ts`/`backlog.ts`. `projects` is the sole consumer of both. Putting
+  them in the "subject" file would have made `iam.ts` depend on `git.ts` and
+  `backlog.ts` at evaluation time while both already depend on `iam.ts`
+  lazily — two cycles, and `iam` is the first module the barrel evaluates,
+  which is the failing direction.
+- `failure_origin` lives in **`backlog.ts`**, shared by
+  `tasks.blocked_origin` and `delegations.failure_origin`. `agents.ts`
+  already imports `tasks` from `backlog.ts` (for `delegations.task_id`), so
+  `agents → backlog` is the direction that already exists; the reverse would
+  have closed the loop.
 
-O grafo de imports resultante é um DAG: `iam.ts` e `backup.ts` não importam
-nada dos irmãos, e todo o resto flui a partir deles. É essa propriedade que
-se preserva quando uma tabela é acrescentada — não a ordem alfabética.
+The resulting import graph is a DAG: `iam.ts` and `backup.ts` import nothing
+from their siblings, everything else flows outward from them. That property
+is the thing to preserve when a table is added — not the alphabet.
 
-### 3. `schema.ts` vira um barrel; nenhum consumidor muda
+### 3. `schema.ts` becomes a barrel; not one consumer changes
 
-`apps/api/src/db/schema.ts` agora tem 25 linhas de
-`export * from './schema/<file>'`, na ordem de leitura do arquivo original
-(identidade, sessão, LLM, ações, agentes, e daí para as bordas) e não em
-ordem alfabética — a ordem é o índice do schema.
+`apps/api/src/db/schema.ts` is now 25 lines of `export * from './schema/<file>'`,
+in the original file's reading order (identity, session, LLM, actions,
+agents, then outward to the edges) rather than alphabetical — the order is
+the schema's index.
 
-Cada um dos **144 módulos que importam de `…/db/schema`** — 46 em `src/`, 98
-em `test/` e `scripts/` — continua funcionando com zero edições, porque eles
-ainda importam do mesmo especificador e o barrel reexporta tudo. Isso inclui
-`infrastructure/persistence/drizzle/drizzle-client.ts`, cujo
-`import * as schema` → `drizzle(pool, { schema })` vê o mesmo conjunto de
-exports que via antes.
+Every one of the **144 modules that import from `…/db/schema`** — 46 under
+`src/`, 98 under `test/` and `scripts/` — keeps working with zero edits,
+because they still import from the same specifier and the barrel re-exports
+everything. That includes
+`infrastructure/persistence/drizzle/drizzle-client.ts`, whose
+`import * as schema` → `drizzle(pool, { schema })` sees the identical set of
+exports it saw before.
 
-### 4. `drizzle.config.ts` continua apontando para o barrel
+### 4. `drizzle.config.ts` keeps pointing at the barrel
 
-`schema: './src/db/schema.ts'` não muda. O `drizzle-kit` resolve o módulo com
-esbuild e segue a cadeia de `export *`, então descobre as 51 tabelas pelo
-barrel — verificado, não suposto: `pnpm --filter api db:generate` imprime o
-inventário completo de tabelas e depois **"No schema changes, nothing to
-migrate"**. Um glob (`'./src/db/schema/*.ts'`) era o plano B se isso tivesse
-falhado; não falhou, e o barrel é o ponteiro melhor porque é também o ponto
-de entrada que o código da aplicação usa — um lugar que decide o que "o
-schema" significa, não dois que podem divergir.
+`schema: './src/db/schema.ts'` is unchanged. `drizzle-kit` resolves the
+module with esbuild and follows the `export *` chain, so it discovers all 51
+tables through the barrel — verified, not assumed: `pnpm --filter api
+db:generate` prints the full table inventory and then **"No schema changes,
+nothing to migrate"**. A glob (`'./src/db/schema/*.ts'`) was the fallback if
+that had failed; it didn't, and the barrel is the better pointer because it
+is also the entry point the application code uses — one place that decides
+what "the schema" means, not two that can drift.
 
-### 5. O critério de aceite é uma migration de diff zero, não uma suíte de testes passando
+### 5. The acceptance bar is a zero-diff migration, not a passing test suite
 
-A mudança é puramente mecânica: nenhuma tabela, coluna, valor de enum, nome
-de índice ou expressão de constraint mudou. A prova é o `db:generate` não
-produzir **nenhum arquivo de migration novo e nenhum diff** contra o snapshot
-em `src/db/migrations/meta/` — uma checagem mais estrita que a suíte de
-testes, porque o Drizzle compara o *SQL inferido*, então um `notNull`
-invertido, um default trocado ou um índice renomeado apareceria ali mesmo
-com todos os testes passando.
+The move is purely mechanical: not one table, column, enum value, index name
+or constraint expression changed. The proof is `db:generate` producing **no
+new migration file and no diff** against the snapshot in
+`src/db/migrations/meta/` — a stricter check than the test suite, because
+Drizzle diffs the *inferred SQL*, so a flipped `notNull`, a changed default
+or a renamed index would show up there even if every test still passed.
 
-## Consequências
+## Consequences
 
-- **Duas pessoas podem mudar o schema ao mesmo tempo sem conflito**, desde
-  que trabalhem em agregados diferentes — que é o caso normal, e exatamente o
-  que a linha de dívida dizia ser impossível.
-- **`git log` num arquivo de schema agora é legível.** `git log --follow
-  apps/api/src/db/schema/auth.ts` responde "o que aconteceu com as tabelas de
-  auth", uma pergunta que antes não tinha resposta. O custo: o histórico
-  *anterior* a este commit continua em `schema.ts`, e o `--follow` não
-  atravessa a divisão (ele segue renomeações, não divisões de um para muitos).
-  Arqueologia mais antiga que este ADR passa pelo caminho antigo.
-- **A regra `schema-e-migrations` de `docs/.docmap.yml` precisou ganhar um
-  glob.** Ela observava o literal `apps/api/src/db/schema.ts`; depois da
-  divisão, uma CHECK constraint nova dentro de `schema/llm.ts` nem tocaria o
-  barrel, e a regra teria ficado **cega, em silêncio, justamente para o que
-  ela existe para observar** — constraints, que a própria nota dela aponta
-  como regras de negócio, em geral. `apps/api/src/db/schema/**` agora é
-  observado ao lado do barrel, que continua sendo um arquivo real que muda
-  sempre que uma tabela nasce ou morre.
-- **Uma tabela nova agora custa duas edições, não uma**: a tabela no arquivo
-  do agregado dela e — só se o arquivo for novo — uma linha no barrel.
-  Acrescentar uma tabela a um arquivo existente custa o mesmo de antes.
-- **O grafo de imports acíclico agora é uma invariante que ninguém garante.**
-  Não há teste que o afirme; um enum futuro posto no arquivo errado vai falhar
-  de forma ruidosa no import (um `ReferenceError` no boot, não um defeito
-  sutil), mas vai falhar no terminal de quem for, não na revisão. Declarado,
-  não resolvido.
-- **As migrations não foram tocadas.** `src/db/migrations/` e o snapshot dela
-  são idênticos byte a byte; este ADR fecha a metade "arquivo único" da linha
-  de dívida e nada mais. A dívida do contrato de schema api↔engine é outra
-  linha, ainda aberta, e continua aberta.
+- **Two people can change the schema at once without conflicting**, as long
+  as they're working on different aggregates — which is the normal case, and
+  the exact thing the debt row said was impossible.
+- **`git log` on a schema file is now readable.** `git log --follow
+  apps/api/src/db/schema/auth.ts` answers "what happened to auth's tables",
+  a question that had no answer before. The cost: the history *before* this
+  commit still lives on `schema.ts`, and `--follow` won't cross the split
+  (it follows renames, not one-to-many splits). Archaeology older than this
+  ADR goes through the old path.
+- **`docs/.docmap.yml`'s `schema-e-migrations` rule had to grow a glob.** It
+  watched the literal `apps/api/src/db/schema.ts`; after the split, a new
+  CHECK constraint inside `schema/llm.ts` wouldn't touch the barrel at all,
+  and the rule would have gone **silently blind to exactly what it exists to
+  watch** — constraints, which its own note calls out as usually being
+  business rules. `apps/api/src/db/schema/**` is now watched alongside the
+  barrel, which is still a real file that changes whenever a table is born
+  or dies.
+- **A new table now costs two edits, not one**: the table in its aggregate
+  file, and — only if the file is new — a line in the barrel. Adding a table
+  to an existing file costs the same as before.
+- **The acyclic import graph is now an invariant nobody enforces.** There is
+  no test asserting it; a future enum placed in the wrong file will fail
+  loudly at import time (a `ReferenceError` on boot, not a subtle bug), but
+  it will fail in whoever's terminal, not in review. Declared, not solved.
+- **Migrations are untouched.** `src/db/migrations/` and its snapshot are
+  byte-identical; this ADR closes the "single file" half of the debt row and
+  nothing else. The api↔engine schema-contract debt is a different, still-open
+  row and stays open.
 
-## Alternativas descartadas
+## Discarded alternatives
 
-- **Dividir por camada em vez de por agregado** (todos os enums num arquivo,
-  todas as tabelas em outro, todos os índices em outro): produz arquivos que
-  ninguém tem motivo para abrir, e põe `budgets_scope_check` a dois arquivos
-  de `budgets`. Também não resolveria o problema de conflito, já que toda
-  mudança ainda tocaria o arquivo de enums.
-- **Um `columns.ts` compartilhado reexportando os construtores de coluna do
-  drizzle**, para que cada arquivo importe uma coisa só. Recusado: acrescenta
-  um módulo que só existe para poupar digitação, esconde quais primitivas um
-  arquivo de fato usa e faz a lista de imports deixar de ser um resumo do que
-  o arquivo faz.
-- **Deixar `schema.ts` como o arquivo real e acrescentar a divisão ao lado**
-  (depreciando aos poucos): duas fontes de verdade para as mesmas tabelas, e
-  o `drizzle-kit` veria as duplicatas. Recusado de saída.
-- **Mudar os 144 consumidores para importar do arquivo do agregado
-  específico.** Tentador — deixaria explícita a dependência de cada módulo
-  sobre o schema —, mas transforma uma mudança mecânica de diff zero numa
-  mudança de 144 arquivos que precisa ser revisada linha a linha, e pode ser
-  feita depois, arquivo por arquivo, sempre que alguém tocar um deles. O
-  barrel não impede isso; só não o exige hoje.
+- **Split by layer instead of by aggregate** (all enums in one file, all
+  tables in another, all indexes elsewhere): produces files nobody has a
+  reason to open, and puts `budgets_scope_check` two files away from
+  `budgets`. It also wouldn't fix the conflict problem, since every change
+  still touches the enum file.
+- **A shared `columns.ts` re-exporting the drizzle column builders**, so each
+  file imports one thing. Rejected: it adds a module that exists only to
+  save keystrokes, hides which primitives a file actually uses, and makes the
+  import list stop being a summary of what the file does.
+- **Leave `schema.ts` as the real file and add the split alongside it**
+  (deprecating gradually): two sources of truth for the same tables, and
+  `drizzle-kit` would see the duplicates. Rejected outright.
+- **Change the 144 consumers to import from the specific aggregate file.**
+  Tempting — it would make each module's dependency on the schema explicit —
+  but it turns a mechanical, zero-diff move into a 144-file change that has
+  to be reviewed line by line, and it can be done later, per file, whenever
+  someone touches one of them. The barrel doesn't prevent it; it just doesn't
+  demand it today.

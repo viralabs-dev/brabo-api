@@ -1,177 +1,179 @@
-# ADR 0080 — Busca híbrida: pesos, limiar e o que é citação
+# ADR 0080 — Hybrid search: weights, threshold, and what counts as a citation
 
-- **Status:** aceito
-- **Data:** 2026-08-16
-- **Contexto anterior:** [ADR 0079](0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
-  (a tabela `chunks`, com vetor e `tsvector` na mesma linha — fundação sem
-  pipeline nem busca), [ADR 0075](0075-embeddings-no-contrato-de-llm-provider.md)
-  (`LLMProvider.embed?`, capability provada só contra o Ollama)
+- **Status:** accepted
+- **Date:** 2026-08-16
+- **Prior context:** [ADR 0079](0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
+  (the `chunks` table, with vector and `tsvector` in the same row — foundation
+  without pipeline or search), [ADR 0075](0075-embeddings-no-contrato-de-llm-provider.md)
+  (`LLMProvider.embed?`, capability proven only against Ollama)
 
-## Contexto
+## Context
 
-O ADR 0079 deixou a tabela pronta e vazia: nenhum pipeline escreve nela,
-nenhuma busca lê dela. Esta onda (PROGRAMA 28, Onda 4, frente G2) precisava
-resolver quatro perguntas em aberto, e as quatro são estruturais — decisão
-de produto, não detalhe de implementação:
+ADR 0079 left the table ready and empty: no pipeline writes to it, no search
+reads from it. This wave (PROGRAM 28, Wave 4, front G2) needed to answer four
+open questions, and all four are structural — a product decision, not an
+implementation detail:
 
-1. **De onde vem o texto que vira chunk**, para os três escopos honestos do
-   ADR 0079 (`docs`, `adr`, `session`)?
-2. **Como recortar** um documento/mensagem em pedaços — tamanho, sobreposição
-   — sem um número arbitrário?
-3. **O que fazer quando o provider de embedding não responde?** O pipeline
-   não pode fingir que indexou por completo quando só indexou a metade
-   léxica.
-4. **Como combinar** o sinal vetorial (pgvector) com o léxico (`tsvector`)
-   numa busca só, com que peso e que corte — e **o que devolver** como
-   citação, já que é esse contrato que o Chat RAG (Onda 5, tela ainda não
-   construída) vai consumir sem poder adivinhar forma.
+1. **Where does the text that becomes a chunk come from**, for the three
+   honest scopes of ADR 0079 (`docs`, `adr`, `session`)?
+2. **How to cut** a document/message into pieces — size, overlap — without an
+   arbitrary number?
+3. **What to do when the embedding provider doesn't respond?** The pipeline
+   can't pretend it indexed completely when it only indexed the lexical half.
+4. **How to combine** the vector signal (pgvector) with the lexical one
+   (`tsvector`) into a single search, with what weight and what cutoff — and
+   **what to return** as a citation, since it's this contract that Chat RAG
+   (Wave 5, screen not yet built) will consume without being able to guess
+   its shape.
 
-## Decisão
+## Decision
 
-### 1. Origem do texto: o repositório do PRÓPRIO projeto, e o event log da sessão
+### 1. Text origin: the project's OWN repository, and the session's event log
 
-`docs`/`adr` são indexados a partir do repositório GIT do projeto sendo
-indexado — via `ReadProjectCodeUseCase`, a MESMA superfície que a aba Code
-usa (mesma resolução de credencial do owner, RN-058/082; mesmo portão de
-container, RN-105; mesma checagem de caminho, RN-095; mesmo cache). Não é a
-documentação do Brabo enquanto produto: é a convenção `docs/`/`docs/adr/`
-que cada projeto GERENCIADO pode ter no próprio repositório. Reindexar sem
-duplicar a varredura da árvore importava mais que separar os dois escopos
-em dois casos de uso — `IndexProjectDocsUseCase` cobre os dois, distinguindo
-por PREFIXO de caminho (`docs/adr/` → `adr`, resto → `docs`).
+`docs`/`adr` are indexed from the GIT repository of the project being
+indexed — via `ReadProjectCodeUseCase`, the SAME surface the Code tab uses
+(same owner credential resolution, RN-058/082; same container gate, RN-105;
+same path check, RN-095; same cache). This is not documentation of Brabo as a
+product: it's the `docs/`/`docs/adr/` convention that each MANAGED project
+may have in its own repository. Reindexing without duplicating the tree scan
+mattered more than separating the two scopes into two use cases —
+`IndexProjectDocsUseCase` covers both, distinguishing by path PREFIX
+(`docs/adr/` → `adr`, the rest → `docs`).
 
-`session` é indexado a partir dos DOIS tipos de evento que formam uma
-conversa: `chat.message` (o humano) e `agent.response` (o agente). O resto
-do event log (`tool.call`, `agent.status`, `tool.result`, eventos de gate)
-fica de fora — é mecanismo, não conhecimento citável. Indexar um `tool.call`
-faria a busca devolver um payload JSON como se fosse prosa; indexar
-`agent.error` citaria uma falha como se fosse assunto da sessão. Cada chunk
-de sessão guarda `metadata.sourceRef` com o id do evento de ORIGEM — o mesmo
-id que `GetSessionEventUseCase` já resolve — para a citação poder navegar de
-volta ao ponto exato da conversa.
+`session` is indexed from the TWO event types that make up a conversation:
+`chat.message` (the human) and `agent.response` (the agent). The rest of the
+event log (`tool.call`, `agent.status`, `tool.result`, gate events) stays out
+— it's mechanism, not citable knowledge. Indexing a `tool.call` would make
+search return a JSON payload as if it were prose; indexing `agent.error`
+would cite a failure as if it were session subject matter. Each session
+chunk keeps `metadata.sourceRef` with the id of the SOURCE event — the same
+id `GetSessionEventUseCase` already resolves — so the citation can navigate
+back to the exact point in the conversation.
 
-### 2. Chunking: 1200 caracteres, 150 de sobreposição, por PARÁGRAFO/quebra
+### 2. Chunking: 1200 characters, 150 overlap, by PARAGRAPH/break
 
-`CHUNK_TARGET_CHARS = 1200` (~300 tokens em português) mira um trecho grande
-o bastante para carregar uma ideia completa — o que um vetor de embedding
-precisa para não diluir o sentido entre tópicos não relacionados — e pequeno
-o bastante para virar uma citação que se lê em segundos, não um documento
-inteiro. `CHUNK_OVERLAP_CHARS = 150` (12,5% do alvo) existe porque um corte
-exato no meio de uma frase faz o pedaço seguinte perder o antecedente dela.
+`CHUNK_TARGET_CHARS = 1200` (~300 tokens in Portuguese) aims for a passage
+large enough to carry a complete idea — what an embedding vector needs so it
+doesn't dilute meaning across unrelated topics — and small enough to become
+a citation readable in seconds, not an entire document.
+`CHUNK_OVERLAP_CHARS = 150` (12.5% of the target) exists because an exact cut
+in the middle of a sentence makes the following piece lose its antecedent.
 
-Os dois números são **ponto de partida ajustável, não ciência**: não existe,
-ainda, um corpo de perguntas reais rodado contra este índice para calibrar
-tamanho ótimo de chunk contra qualidade de recuperação — este programa não
-produziu esse dado, e inventá-lo seria fingir precisão que não existe (a
-mesma classe de erro que o ADR 0042 recusa para nota de modelo).
+Both numbers are a **starting point to adjust, not science**: there is no
+body of real questions run against this index yet to calibrate optimal chunk
+size against retrieval quality — this program did not produce that data, and
+inventing it would be pretending a precision that doesn't exist (the same
+class of error that ADR 0042 refuses for model rating).
 
-O corte prefere a quebra de PARÁGRAFO mais próxima do alvo (`\n\n`), depois a
-de PALAVRA (espaço), e só corta no meio de uma palavra se nenhuma das duas
-existir numa janela de 200 caracteres — Markdown com Markdown quebrado no
-meio de uma tabela ainda é melhor que uma citação que corta uma frase ao
-meio. Documentos Markdown (`docs`/`adr`) são divididos por HEADING primeiro
-(preservando a trilha `headingPath`, a parte de "seção" na citação
-"arquivo + seção"), e só então recortados por tamanho DENTRO de cada seção.
+The cut prefers the nearest PARAGRAPH break to the target (`\n\n`), then a
+WORD break (space), and only cuts mid-word if neither exists within a
+200-character window — Markdown broken in the middle of a table is still
+better than a citation that cuts a sentence in half. Markdown documents
+(`docs`/`adr`) are split by HEADING first (preserving the `headingPath`
+trail, the "section" part of the "file + section" citation), and only then
+cut by size WITHIN each section.
 
-Contar TOKEN em vez de caractere exigiria o tokenizador do próprio modelo de
-embedding, que `nomic-embed-text` não expõe localmente (diferente do
-`GptTokenizerEstimator` que o `chat` já usa, calibrado para modelos de
-CHAT). Caractere com preferência por quebra limpa é uma aproximação honesta.
+Counting TOKENS instead of characters would require the embedding model's
+own tokenizer, which `nomic-embed-text` does not expose locally (unlike the
+`GptTokenizerEstimator` that `chat` already uses, calibrated for CHAT
+models). Characters with a preference for a clean break is an honest
+approximation.
 
-### 3. Falha do provider: indexa léxico, declara a lacuna — nunca finge completo
+### 3. Provider failure: index lexical, declare the gap — never pretend complete
 
-O modelo/provider de embedding são FIXOS por constante
+The embedding model/provider are FIXED by constant
 (`RAG_EMBEDDING_MODEL = 'nomic-embed-text'`, `RAG_EMBEDDING_PROVIDER =
-'ollama'`), não resolvidos por catálogo: `chunks.embedding` é `vector(768)`,
-a dimensão real e DOCUMENTADA desse modelo (RN-222), e não existe ainda
-coluna persistida dizendo "qual modelo é de embedding" — o ADR 0075 deixou
-isso como trabalho futuro, e esta onda não tinha slot de migração para
-resolver (a única migração desta onda, `0046`, é da frente F1, para
+'ollama'`), not resolved by catalog: `chunks.embedding` is `vector(768)`,
+the real and DOCUMENTED dimension of that model (RN-222), and there is no
+persisted column yet saying "which model is for embedding" — ADR 0075 left
+that as future work, and this wave had no migration slot to resolve it (the
+only migration in this wave, `0046`, belongs to front F1, for
 `project_containers`).
 
-Quando `ollama` não responde — daemon fora do ar, timeout, modelo não
-puxado — `RagEmbeddingService` **não lança para o chamador tratar chunk a
-chunk**: devolve `available: false` e `null` para cada vetor pedido. O
-pipeline de indexação grava os chunks MESMO ASSIM, com `embedding: null` —
-`search_vector` é `GENERATED ALWAYS AS` e não depende de provider nenhum
-(ADR 0079), então a metade léxica continua disponível mesmo com a semântica
-fora do ar. A alternativa — falhar a indexação inteira porque metade de um
-sinal faltou — jogaria fora a metade que funcionou. O relatório de
-indexação (`embedding: { available, embedded, skipped, reason }`) declara a
-lacuna; nada no retorno diz "indexação completa" quando ela não foi.
+When `ollama` doesn't respond — daemon down, timeout, model not pulled —
+`RagEmbeddingService` **does not throw for the caller to handle chunk by
+chunk**: it returns `available: false` and `null` for each requested vector.
+The indexing pipeline writes the chunks ANYWAY, with `embedding: null` —
+`search_vector` is `GENERATED ALWAYS AS` and doesn't depend on any provider
+(ADR 0079), so the lexical half remains available even with the semantic
+half down. The alternative — failing the whole indexing because half a
+signal was missing — would throw away the half that worked. The indexing
+report (`embedding: { available, embedded, skipped, reason }`) declares the
+gap; nothing in the return says "complete indexing" when it wasn't.
 
-A mesma degradação vale na BUSCA: se a consulta não puder ser vetorizada, a
-busca roda só com o sinal léxico e `vectorAvailable: false` avisa — nunca
-finge ter rodado o híbrido completo.
+The same degradation applies to SEARCH: if the query can't be vectorized,
+search runs lexical-only and `vectorAvailable: false` warns — it never
+pretends to have run the full hybrid.
 
-### 4. Busca híbrida: duas consultas independentes, fusão por soma ponderada
+### 4. Hybrid search: two independent queries, fusion by weighted sum
 
-Vetor e léxico são **duas consultas separadas** contra `chunks`
-(`ChunkRepository.searchByVector`/`searchByLexicalQuery`), não uma só com
-JOIN — cada uma aproveita o índice feito para ela (HNSW para cosseno, GIN
-para `ts_rank`), a mesma razão de design que levou o ADR 0079 a pôr as duas
-colunas na MESMA linha (para não perder a fusão) mas não obriga a MESMA
-consulta (para não perder o índice certo). O port devolve candidatos brutos;
-o caso de uso (`HybridSearchUseCase`) funde, pesa e corta — mesma fronteira
-que já separa `ChunkRepository` (guarda dado) de quem decide o que fazer com
-ele (RN-226).
+Vector and lexical are **two separate queries** against `chunks`
+(`ChunkRepository.searchByVector`/`searchByLexicalQuery`), not a single one
+with a JOIN — each takes advantage of the index built for it (HNSW for
+cosine, GIN for `ts_rank`), the same design reasoning that led ADR 0079 to
+put the two columns in the SAME row (so as not to lose the fusion) but does
+not force the SAME query (so as not to lose the right index). The port
+returns raw candidates; the use case (`HybridSearchUseCase`) fuses, weighs,
+and cuts — the same boundary that already separates `ChunkRepository`
+(stores data) from whoever decides what to do with it (RN-226).
 
-**Pesos: 0.6 vetorial, 0.4 léxico.** `ts_rank` normalizado (bit 32,
-`rank/(rank+1)`) raramente passa de ~0.3 mesmo num casamento forte, enquanto
-similaridade de cosseno de um par genuinamente relevante costuma ficar entre
-0.5 e 0.85 — as duas escalas NÃO são comparáveis por natureza. O peso maior
-do lado vetorial reconhece isso sem apagar o léxico: um chunk só-léxico
-ainda pode passar do limiar sozinho (`0.4 * 0.3 = 0.12`, abaixo do limiar —
-então na prática um casamento léxico muito forte sozinho ainda não basta, o
-que é intencional: texto que só bate uma palavra em comum não deveria virar
-citação sem apoio nenhum de sentido).
+**Weights: 0.6 vector, 0.4 lexical.** Normalized `ts_rank` (bit 32,
+`rank/(rank+1)`) rarely goes above ~0.3 even for a strong match, while
+cosine similarity for a genuinely relevant pair is usually between 0.5 and
+0.85 — the two scales are NOT naturally comparable. The higher vector weight
+recognizes this without erasing the lexical side: a lexical-only chunk can
+still clear the threshold on its own (`0.4 * 0.3 = 0.12`, below the
+threshold — so in practice a very strong lexical match alone still isn't
+enough, which is intentional: text that only matches one word in common
+shouldn't become a citation with no semantic backing at all).
 
-**Limiar: 0.2.** Abaixo dele, "achamos algo fraco" e "não achamos nada"
-ficam indistinguíveis para quem lê a resposta — uma citação fraca
-apresentada como se fosse forte é pior que nenhuma citação.
+**Threshold: 0.2.** Below it, "we found something weak" and "we found
+nothing" become indistinguishable to whoever reads the response — a weak
+citation presented as if it were strong is worse than no citation.
 
-**Nenhum dos quatro números (pesos, limiar, tamanho de chunk, sobreposição)
-vem de calibração com dado real de qualidade de busca.** Não há, ainda, um
-corpo de perguntas reais rodado contra este índice — o Chat RAG em si
-(Onda 5) ainda não existe como tela. São ponto de partida, documentados como
-tal, com o argumento de cada escolha escrito para poderem ser revistos com
-dado depois, não recalculados de cabeça.
+**None of the four numbers (weights, threshold, chunk size, overlap) comes
+from calibration against real search-quality data.** There is not yet a
+body of real questions run against this index — Chat RAG itself (Wave 5)
+doesn't exist as a screen yet. They are a starting point, documented as
+such, with the reasoning for each choice written down so they can be
+revisited with data later, not recalculated from scratch.
 
-### O que conta como citação
+### What counts as a citation
 
-O contrato de retorno (`HybridSearchHit`) é: `chunkId`, `content`, `score`
-combinado, `vectorScore`/`lexicalScore` (cada um `null` quando aquele sinal
-não achou o chunk — não zero, que confundiria "não achou" com "achou e a
-similaridade é zero"), `scope`, e `origin` — uma união discriminada por
-`kind`: `{ kind: 'file', sourcePath, headingPath?, title? }` para `docs`/
-`adr`, ou `{ kind: 'session', sessionId, eventId?, title? }` para `session`.
-A discriminação existe para quem consome nunca precisar checar dois campos
-opcionais para saber qual é `null` — o `tsc` torna a checagem exaustiva.
+The return contract (`HybridSearchHit`) is: `chunkId`, `content`, combined
+`score`, `vectorScore`/`lexicalScore` (each `null` when that signal didn't
+find the chunk — not zero, which would confuse "didn't find" with "found and
+similarity is zero"), `scope`, and `origin` — a union discriminated by
+`kind`: `{ kind: 'file', sourcePath, headingPath?, title? }` for `docs`/
+`adr`, or `{ kind: 'session', sessionId, eventId?, title? }` for `session`.
+The discrimination exists so consumers never need to check two optional
+fields to know which one is `null` — `tsc` makes the check exhaustive.
 
-## Consequências
+## Consequences
 
-**"Cobertura do índice" (o painel que o handoff pede) responde com o que dá
-para responder HONESTAMENTE hoje**: `GetRagCoverageUseCase` conta arquivos
-`.md` reais no repositório contra quantos têm chunk, e sessões do projeto
-contra quantas têm chunk. Não inclui "reindexado há 12min" — não existe
-coluna de timestamp de indexação por escopo, e um número chutado mentiria.
+**"Index coverage" (the panel the handoff asks for) answers with what can be
+answered HONESTLY today**: `GetRagCoverageUseCase` counts real `.md` files
+in the repository against how many have a chunk, and project sessions
+against how many have a chunk. It does not include "reindexed 12min ago" —
+there is no indexing timestamp column per scope, and a guessed number would
+lie.
 
-**Reindexação é sempre MANUAL** (`POST .../rag/reindex`, `role:maintainer`,
-full rebuild idempotente por `deleteByScope`/`deleteBySession` seguido de
-recriação). Não há watcher por push nem por fechamento de sessão — decisão
-já registrada no ADR 0079 ("reindexar é responsabilidade de quem escrever o
-pipeline"), e esta onda escreveu o pipeline SOB DEMANDA, não reativo.
-Código-fonte e Pull Requests continuam fora do índice, pela mesma razão do
-ADR 0079.
+**Reindexing is always MANUAL** (`POST .../rag/reindex`, `role:maintainer`,
+idempotent full rebuild via `deleteByScope`/`deleteBySession` followed by
+recreation). There is no push watcher and no session-close watcher —
+decision already recorded in ADR 0079 ("reindexing is the responsibility of
+whoever writes the pipeline"), and this wave wrote the pipeline ON DEMAND,
+not reactively. Source code and Pull Requests remain outside the index, for
+the same reason as ADR 0079.
 
-**Metering de embedding continua fora** (mesmo corte do ADR 0075): o
-provider fixo é local e gratuito (`ollama`), então não há custo a
-registrar hoje; o dia em que um provider pago de embedding entrar, essa
-lacuna precisa fechar antes.
+**Embedding metering remains out of scope** (same cut as ADR 0075): the
+fixed provider is local and free (`ollama`), so there is no cost to record
+today; the day a paid embedding provider is added, this gap needs to close
+first.
 
-**HTTP já nesta onda, antes da tela (Onda 5).** `POST .../rag/search`,
-`POST .../rag/reindex` e `GET .../rag/coverage` existem porque a tela do
-Chat RAG depende do contrato de busca e citação para ser construída sem
-adivinhar forma — o handoff já assume "busca híbrida · embeddings + BM25 ·
-limiar X" e um painel de cobertura, e os dois só têm dado real depois destas
-três rotas.
+**HTTP already in this wave, ahead of the screen (Wave 5).** `POST
+.../rag/search`, `POST .../rag/reindex`, and `GET .../rag/coverage` exist
+because the Chat RAG screen depends on the search-and-citation contract to
+be built without guessing its shape — the handoff already assumes "hybrid
+search · embeddings + BM25 · threshold X" and a coverage panel, and both
+only have real data after these three routes.

@@ -108,8 +108,9 @@ import {
   GOLDEN_SET_RAG_TOP_K,
 } from '../src/domain/rag/golden-set-criterio';
 
-// Corpus CONGELADO (ADR 0132 + AT-693): o piso 17/17 foi medido contra estes bytes,
-// então o seed não lê `docs/` vivo; o caminho lógico gravado no índice não muda.
+// Corpus FIXO (ADR 0132, AT-693, AT-763): são os bytes do último verde do piso 17/17
+// (monorepo 6d56eb3872, 1 555 499 bytes, 1 524 853 characters), não o `docs/` vivo; a guarda de deriva
+// (seed-golden-set-rag.corpus.spec.ts) reprova qualquer byte diferente.
 export const CORPUS_ROOT = resolve(
   __dirname,
   '../test/fixtures/golden-set-rag/corpus',
@@ -453,6 +454,17 @@ async function main() {
       `${passou ? '✓' : '✗'} ${caso.id}: esperado=${caso.expectedPath} ` +
         `rank=${rank ?? '—'} vectorAvailable=${resultado.vectorAvailable}`,
     );
+    if (!passou) {
+      log(
+        `  top-${GOLDEN_SET_RAG_TOP_K} no lugar: ` +
+          resultado.hits
+            .map(
+              (h, i) =>
+                `#${i + 1} ${h.origin.kind === 'file' ? h.origin.sourcePath : '(não-arquivo)'} (${h.score.toFixed(3)})`,
+            )
+            .join(' | '),
+      );
+    }
   }
 
   await app.close();
