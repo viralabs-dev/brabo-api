@@ -11985,7 +11985,7 @@ not consulted at proposal. Changing one requires changing the other.
   `src/application/use-cases/sessions/append-session-event.use-case.ts:101`
   (`EVENTO_PERGUNTA_EM_ABERTO`),
   `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:72`
-  (`listar`), `:106` (`responder`), `:273` (`resumeParkedGate`),
+  (`listar`), `:118` (`responder`), `:285` (`resumeParkedGate`),
   `src/interfaces/http/backlog/open-questions.controller.ts:51`
   (`list`), `:81` (`answer`)
 - **Test:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts` ("o autor responde: decision_record (ator usuário, com questionId) e answered, e o gate é religado"; "aceitar a sugestão grava a sugestão como escolha"; failures: "quem não é o autor da sessão recebe 403 so_o_autor_da_sessao, sem escrever"; "já respondida é 409 pergunta_ja_respondida"; "pergunta de outro projeto é 404"; "o funil de eventos recusa com 400 antes de qualquer escrita")
@@ -12008,15 +12008,22 @@ not consulted at proposal. Changing one requires changing the other.
   still applies. Both PO doors accept the `questionId`: `update_story`
   (title/description, the event carries it) and `complete_story` (RF/DoD/DoR; the
   story stays `ready`, without a new promotion, and `backlog.story_completed` carries
-  the `questionId`).
+  the `questionId`). When `complete_story` hits a non-`draft` story without a valid
+  `questionId`, the 409 is the common named refusal (`historia_nao_draft`, whose
+  message names `questionId`) plus the `questionId`s of the ALREADY ANSWERED questions
+  whose `afeta.historias` cites the story; the API never infers the `questionId` on the
+  agent's behalf (AT-752). The engine lists each decision with its `questionId` and
+  affected stories (`apps/engine/lib/engine/harness/decisoes_do_projeto.ex`), so the PO
+  finds the id.
 - **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:122`
   (`decisoesDaTarefa`), `:374` (`decisoesDoContexto`),
   `src/domain/backlog/correcao-de-historia.ts:33`
   (`recusaDeCorrecaoDeHistoria`),
   `src/application/use-cases/backlog/corrigir-historia.use-case.ts:126`
   (`respostaDoUsuario`),
-  `src/application/use-cases/backlog/complete-story.use-case.ts:82`
-  (`corrigindoReady`)
+  `src/application/use-cases/backlog/complete-story.use-case.ts:100`
+  (`corrigindoReady`), `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:107`
+  (`respondidasQueAfetam`)
 - **Test:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts` ("devolve só as que afetam a tarefa, a história ou uma regra dela, mais recentes primeiro"; "decisão sem afeta não entra; teto de 10 e texto cortado em 1 500"), `test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts` ("história ready citando pergunta RESPONDIDA é corrigida, e o evento a cita"; failures: "história ready citando pergunta AINDA ABERTA segue recusada"; "história ready com tarefa em revisão segue recusada mesmo com a resposta"), `test/application/use-cases/backlog/complete-story.use-case.spec.ts` ("história ready com pergunta respondida tem RF/DoR corrigidos e segue ready"; "história ready com pergunta ainda aberta é recusada")
 - **Origin:** AT-521 (QA failed three times reading the DoR of a `ready`
   story nobody could correct, after the user had already decided)

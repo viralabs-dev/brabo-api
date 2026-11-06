@@ -98,6 +98,7 @@ describe('CompleteStoryUseCase (RN-720)', () => {
       {
         foiRespondida: (_p: string, q: string) =>
           Promise.resolve(q === 'q-respondida'),
+        respondidasQueAfetam: () => Promise.resolve(['q-respondida']),
       } as unknown as PerguntasEmAbertoUseCase,
     );
   });
@@ -181,5 +182,19 @@ describe('CompleteStoryUseCase (RN-720)', () => {
       }),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(stories.story?.dor).toEqual([]);
+  });
+
+  it('ready sem questionId: o 409 nomeia o motivo, cita questionId e lista a pergunta respondida', async () => {
+    stories.story = makeStory({ status: 'ready' });
+    const erro = await useCase
+      .execute(PROJECT, SESSION, { storyId: 'story-1', dor: ['x'] })
+      .catch((e: ConflictException) => e);
+    const corpo = (erro as ConflictException).getResponse() as {
+      reason: string;
+      message: string;
+    };
+    expect(corpo.reason).toBe('historia_nao_draft');
+    expect(corpo.message).toContain('questionId');
+    expect(corpo.message).toContain('q-respondida');
   });
 });
