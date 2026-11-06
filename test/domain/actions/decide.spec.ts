@@ -1118,11 +1118,42 @@ describe('decide — modo automático libera o escopo de caminho (RN-603)', () =
   // Invertido pela RN-713 (ADR 0204): o nome guarda a origem (RN-418).
   it('`git push` continua pedindo aprovação em modo automático (RN-418) — até a RN-713, que o libera', () => {
     const result = decide(
-      { actionType: 'terminal', command: 'cd /work && git push origin dev' },
+      {
+        actionType: 'terminal',
+        command: 'cd /work && git push origin feature/x',
+      },
       automatico(),
     );
     expect(result.policy).toBe('auto_approve');
     expect(result.reason).toMatch(/modo automático \(RN-713\)/);
+  });
+
+  // RN-1017 (AT-756): o push de terminal que o modo automático não libera.
+  it.each([
+    ['git push origin dev', /RN-1017/],
+    ['git push origin main', /RN-1017/],
+    ['git push origin HEAD:dev', /RN-1017/],
+    ['git push origin +HEAD:refs/heads/main', /RN-1017/],
+    ['git push --force origin feature/x', /RN-1017/],
+    ['git push -f origin feature/x', /RN-1017/],
+    ['git push --force-with-lease origin feature/x', /RN-1017/],
+    ['git push --all origin', /RN-1017/],
+    ['git push --mirror origin', /RN-1017/],
+    ['cd /work && git push origin dev', /RN-1017/],
+  ])('`%s` é recusado em modo automático (RN-1017)', (command, reason) => {
+    const result = decide({ actionType: 'terminal', command }, automatico());
+    expect(result.policy).toBe('require_approval');
+    expect(result.reason).toMatch(reason);
+  });
+
+  it('`git push` da branch da própria tarefa segue auto-aprovado (RN-1017)', () => {
+    for (const command of [
+      'git push -u origin feature/x',
+      'git push origin HEAD:feature/x',
+    ]) {
+      const result = decide({ actionType: 'terminal', command }, automatico());
+      expect(result.policy).toBe('auto_approve');
+    }
   });
 
   it('`sudo` continua pedindo aprovação em modo automático (RN-418)', () => {
