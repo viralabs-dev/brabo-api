@@ -109,7 +109,7 @@ Order: **(a) IAM → (b) `agent_autonomy` → (c) `permissions.json`**. Each
 stage can only **raise** permissiveness; a silent stage never lowers the
 previous one. `deny` at any stage returns immediately.
 
-- **Where:** `src/domain/actions/decide.ts:118`
+- **Where:** `src/domain/actions/decide.ts:119`
 - **Test:** `test/domain/actions/decide.spec.ts` (10 KB — the largest in
   the domain)
 
@@ -118,7 +118,7 @@ previous one. `deny` at any stage returns immediately.
 Before any policy, IAM: each `ActionType` requires a minimum effective
 role. Without it, `deny` with an explicit reason.
 
-- **Where:** `src/domain/actions/decide.ts:115` (`MIN_ROLE_FOR_ACTION_TYPE`)
+- **Where:** `src/domain/actions/decide.ts:116` (`MIN_ROLE_FOR_ACTION_TYPE`)
 - **Test:** `test/domain/actions/decide.spec.ts`
 
 ### RN-006 — Ceiling: merge into a protected branch is never auto-approvable {#rn-006}
@@ -135,7 +135,7 @@ stopped creating it ([RN-029](#rn-029)). This list decides what the lock
 the branch: protecting one that doesn't exist costs nothing; unprotecting
 one that exists costs dearly.
 
-- **Where:** `src/domain/actions/decide.ts:511` (`isProtectedBranch`, o teto da trava de merge) + `protected-branches.ts:4`
+- **Where:** `src/domain/actions/decide.ts:516` (`isProtectedBranch`, o teto da trava de merge) + `protected-branches.ts:4`
 - **Test:** `test/domain/actions/decide.spec.ts`
 - **Origin:** [ADR 0011](../adr/0011-infra-dev-agents-worktrees-merge-lock.md) §1
 - **Note:** the equivalent protection **on the platform** (GitHub/GitLab)
@@ -148,7 +148,7 @@ Changing an agent's instruction always requires a human decision. The
 feature's value is in the human seeing the diff; auto-approving would be
 the agent rewriting itself.
 
-- **Where:** `src/domain/actions/decide.ts:168`
+- **Where:** `src/domain/actions/decide.ts:169`
 - **Test:** `test/domain/actions/decide.spec.ts`
 - **Origin:** [ADR 0016](../adr/0016-anamnese-proficiencia-patches-instrucao.md) §8
 
@@ -7527,7 +7527,7 @@ lines of `permissions.json` repeat the command's TOKENS in the text (the `label`
   (`reason` in the session event payload), `:223` (the comment on the outbox
   without the field), `:227` (the outbox payload, intact), `:356` (the
   `rejectionReason`, which stays only on `deny`);
-  `src/domain/actions/decide.ts:292` (`Decision`, the string's source)
+  `src/domain/actions/decide.ts:293` (`Decision`, the string's source)
 - **Test:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:902`
   (happy path: auto-approval records `agent_autonomy: auto_approve`),
   `:948` (`require_approval` by default and by the merge lock ceiling),
@@ -8352,9 +8352,9 @@ and the agent card shows a sentence under the toggle — only when the WILDCARD 
 on, because the toggle over the representative type writes a specific rule,
 which does not release the scope.
 
-- **Where:** `src/domain/actions/decide.ts:309` (`modoAutomaticoDoAgente`),
-  `src/domain/actions/decide.ts:370` (the synthesized verdict of the
-  compound ignored), `src/domain/actions/decide.ts:455` (the scope
+- **Where:** `src/domain/actions/decide.ts:310` (`modoAutomaticoDoAgente`),
+  `src/domain/actions/decide.ts:371` (the synthesized verdict of the
+  compound ignored), `src/domain/actions/decide.ts:457` (the scope
   ceiling skipped),
   `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
   (`resolve`, with the origin),
@@ -8524,7 +8524,7 @@ SCOPE's root, never where the policy file lives.
   (`segmentoSobABaseDeProjetos`, reused);
   `src/application/use-cases/actions/propose-action.use-case.ts:302`
   (`scopeRoot` only in `terminal`);
-  `src/domain/actions/decide.ts:636` (`terminalNoEscopo`, the only
+  `src/domain/actions/decide.ts:641` (`terminalNoEscopo`, the only
   consumer of the scope)
 - **Test:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:1143`
   (`container`), `:1123` (`mounted`), `:1123` (`runner`), `:1123` (the absolute
@@ -9985,7 +9985,7 @@ path does not exist.
 - **Code:** `src/domain/actions/path-scope.ts:153` (`cwdNoContainer`),
   `:174` (`comandoNoEscopoDoContainer`), `:112` (`comandoNoEscopo`, now with
   several roots), `:137` (`PONTO_DE_MONTAGEM_DO_CONTAINER`);
-  `src/domain/actions/decide.ts:289` (`execucaoNoContainer`), `:648`
+  `src/domain/actions/decide.ts:290` (`execucaoNoContainer`), `:653`
   (`execucaoNoContainer`, in `terminalNoEscopo`);
   `src/application/use-cases/actions/propose-action.use-case.ts:174`
   (`containerExecutionActive`, separate from `execucaoNoContainer`)
@@ -10035,7 +10035,7 @@ list in the three places where the mode is turned on: the Executors' batch card
   `src/application/ports/agent-autonomy-repository.port.ts:5`
   (`AutonomiaResolvida`, with `especifica`);
   `src/application/use-cases/actions/approve-always-action.use-case.ts:263`
-  (`especifica`); `src/domain/actions/decide.ts:309`
+  (`especifica`); `src/domain/actions/decide.ts:310`
   (`modoAutomaticoDoAgente`); `apps/web/src/components/OQueOPilotoLibera.tsx:16`
   (`OQueOPilotoLibera`); `apps/web/src/components/ApprovalCard.tsx:434`,
   `apps/web/src/components/AgentCard.tsx:164`,
@@ -10218,7 +10218,7 @@ timeline).
 
 - **Code:** `src/domain/actions/pattern-for-action.ts:22`
   (`patternsForAction`), `:62` (`unidadeDoSegmento`), `:43` (`SUBCOMANDO`);
-  `src/domain/actions/external-effect.ts:237` (`padraoAlcancaTeto`);
+  `src/domain/actions/external-effect.ts:278` (`padraoAlcancaTeto`);
   `src/application/use-cases/actions/approve-always-action.use-case.ts:277`
   (`faltam`), `:315` (`patternsForAction`)
 - **Test:** `test/domain/actions/pattern-for-action.spec.ts:18`
@@ -10845,8 +10845,8 @@ real PR on the provider, but the owner's decision does not cover them —
 through `decide()`); and `deploy`, which is not a `proposed_action` type — it only
 exists as the destination of the terminal command's message.
 
-- **Where:** `src/domain/actions/decide.ts:427` (`ehAcaoTipadaComEfeitoExterno`);
-  `src/domain/actions/external-effect.ts:258`
+- **Where:** `src/domain/actions/decide.ts:428` (`ehAcaoTipadaComEfeitoExterno`);
+  `src/domain/actions/external-effect.ts:299`
   (`ACOES_TIPADAS_COM_EFEITO_EXTERNO`), `:266` (`ehAcaoTipadaComEfeitoExterno`),
   `:280` (`mensagemDoTetoDaAcaoTipada`);
   `src/application/use-cases/execution/activate-execution.use-case.ts:71`
@@ -11007,8 +11007,8 @@ protected branch, and `git merge`/`gh pr merge` through the terminal), deploy,
 `sudo`/`doas`, `container_remove`, `instruction_patch` and parallelism. The
 toggle back to manual restores approval.
 
-- **Where:** `src/domain/actions/decide.ts:309` (`modoAutomaticoDoAgente`),
-  `:324` (`decide`); `src/domain/actions/external-effect.ts:294`
+- **Where:** `src/domain/actions/decide.ts:310` (`modoAutomaticoDoAgente`),
+  `:325` (`decide`); `src/domain/actions/external-effect.ts:335`
   (`mensagemDoModoAutomaticoNoEfeitoExterno`);
   `apps/web/src/components/OQueOPilotoLibera.tsx`
 - **Test:** `test/domain/actions/decide.spec.ts` (the autopilot releases
@@ -11310,7 +11310,7 @@ The PO's kickoff states the three things.
   scope, declared).
 - **Where:** `src/infrastructure/llm/openai-compatible-provider.ts:314`
   (`cortadaPeloTeto`),
-  `src/infrastructure/llm/anthropic-provider.ts:229` (`finalMessage`),
+  `src/infrastructure/llm/anthropic-provider.ts:228` (`finalMessage`),
   `src/application/use-cases/llm/run-llm-turn.use-case.ts:234`
   (`truncated`),
   `src/application/use-cases/llm/stream-llm-turn.use-case.ts:301`
@@ -12389,14 +12389,14 @@ Revises [RN-583](#rn-583) (`sort` stops being the only `provider` field that goe
 ### RN-933 — `run.app` declares the app's command and only the autopilot waives approval of the infra PR {#rn-933}
 
 - **Rule:** the `run` of `open_infra_pr` accepts an optional `app: { command, port }` (command up to 300 code points, one line, no NUL; port 1024-65535; `null` is equivalent to absent, as in the engine) validated at proposal and at execution; without `app`, everything is byte for byte what it was before. With `run.app`, the SPECIFIC rule `open_infra_pr: auto_approve` (the acceptance seed) is NOT enough and the decision becomes `require_approval`; only the agent's `auto_approve` WILDCARD (autopilot, RN-603/RN-670) auto-approves. The `container-spec` returns `comandoDoApp` from the current `run.app.command`, or `null`.
-- **Where:** `src/domain/infra/run-instructions.ts:77` (`recusaDoRun`), `src/domain/actions/decide.ts:614` (`comAppDeclarado`), `src/application/use-cases/actions/propose-action.use-case.ts:208` (`comAppDeclarado`), `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:171` (`comandoDoApp`).
+- **Where:** `src/domain/infra/run-instructions.ts:77` (`recusaDoRun`), `src/domain/actions/decide.ts:619` (`comAppDeclarado`), `src/application/use-cases/actions/propose-action.use-case.ts:208` (`comAppDeclarado`), `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:171` (`comandoDoApp`).
 - **Test:** `test/domain/infra/run-app.spec.ts`, `test/domain/actions/decide.spec.ts` (no app + specific = auto; with app + specific = approval; with app + wildcard = auto).
 - **Origin:** AT-610 (EP-030), ADR 0228.
 
 ### RN-934 — `container_recreate` removes and brings up again, under the absolute ceiling of `container_remove` {#rn-934}
 
 - **Rule:** `container_recreate` (`maintainer`) is a `proposed_action` never auto-approvable, not even with the wildcard, and "always allow" is refused at the source (same list as `container_remove`). Execution does `remove` and `start` through the broker passing through `running -> stopped -> removed -> provisioning -> running`; a broker refusal or unavailability becomes a named `failed` (if the bring-up fails, the reason says the container has already been removed). `runner` is refused naming "runner later". The sentence in `aprovacoes.ts` exists and the web test fails a type without a sentence.
-- **Where:** `src/domain/actions/decide.ts:597` (`container_recreate`), `src/application/use-cases/actions/execute-container-recreate.use-case.ts:44` (`execute`), `apps/web/src/lib/aprovacoes.ts:117` (`container_recreate`).
+- **Where:** `src/domain/actions/decide.ts:602` (`container_recreate`), `src/application/use-cases/actions/execute-container-recreate.use-case.ts:44` (`execute`), `apps/web/src/lib/aprovacoes.ts:117` (`container_recreate`).
 - **Test:** `test/application/use-cases/actions/execute-container-recreate.use-case.spec.ts`, `test/domain/actions/decide.spec.ts` (ceiling), `apps/web/src/lib/aprovacoes.test.ts`.
 - **Origin:** AT-608 (EP-030), ADR 0228.
 
@@ -12410,7 +12410,7 @@ Revises [RN-583](#rn-583) (`sort` stops being the only `provider` field that goe
 ### RN-936 — Bringing up the QA instance is the action `qa_environment_start`, seeded `auto_approve` for QA; removing is automatic and outside the `container_remove` ceiling {#rn-936}
 
 - **Rule:** `qa_environment_start` (`developer`, payload `{ taskId }`) is a `proposed_action` seeded `auto_approve` for `qa-automacao` at execution activation; when auto-approved or approved, the api brings the instance up through the broker (a named `failed` if the ceiling is occupied, if the project is `runner` or if the broker refuses). REMOVAL is not a proposal: `POST /internal/projects/:projectId/qa-environments/:taskId/remove` is idempotent and only reaches what the broker labels `brabo.papel=qa`, so it does not enter the absolute ceiling of `container_remove`/`container_recreate`. The `container-exec` accepts `alvo: { qa: true, taskId }` coming from the engine (never from the model) to run in the instance; without a `running` instance it returns `sucesso: false`. The type's sentence exists in `aprovacoes.ts` and the web test fails a type without a sentence.
-- **Where:** `src/domain/actions/decide.ts:196` (`qa_environment_start`), `src/application/use-cases/actions/execute-qa-environment-start.use-case.ts:25` (`execute`), `src/application/use-cases/containers/instancia-de-qa.use-case.ts:120` (`remove`), `apps/web/src/lib/aprovacoes.ts:459` (`qa_environment_start`).
+- **Where:** `src/domain/actions/decide.ts:197` (`qa_environment_start`), `src/application/use-cases/actions/execute-qa-environment-start.use-case.ts:25` (`execute`), `src/application/use-cases/containers/instancia-de-qa.use-case.ts:120` (`remove`), `apps/web/src/lib/aprovacoes.ts:459` (`qa_environment_start`).
 - **Test:** `test/application/use-cases/containers/instancia-de-qa.use-case.spec.ts`, `test/domain/actions/decide.spec.ts`, `apps/web/src/lib/aprovacoes.test.ts`.
 - **Origin:** AT-612 (EP-030), ADR 0229.
 
@@ -12659,9 +12659,9 @@ is no known password). With no user at all on the installation it answers 409.
 
 ### RN-993 — The model's reasoning is recorded whole outside the `content`, appears live and only `developer` or above reads it; it never goes back to the model {#rn-993}
 
-- **Rule:** the provider returns the reasoning TEXT as a `reasoning` chunk (OpenRouter's `delta.reasoning`, the DeepSeek/vLLM dialect's `delta.reasoning_content`, Anthropic's `thinking_delta`) and never in the `content`. The `stream-llm-turn` forwards each piece as a `raciocinio` frame and the `final` frame carries `raciocinio` with the WHOLE text of the step, with no cut; the non-stream `llm-turn` returns the same field. Anthropic receives `thinking` when the model reasons and reasoning was not turned off: `adaptive` with `display: "summarized"` and without `budget_tokens` in the current models (4.6 onward and the 5 family; the default `display` would return empty text, and the text that arrives is a SUMMARY, never the raw one), `enabled` with `budget_tokens` in the old ones (`pensamentoAdaptativo`, `src/infrastructure/llm/anthropic-provider.ts:395`); `reasoningOff` does not send `thinking`. The signed `thinking` blocks come back in `message.thinkingBlocks` so the engine returns them intact in the `assistant` turn that asked for tools. The engine records the text in `agent.response.payload.raciocinio` (the engine's lane) and it does not enter rehydration, the RAG nor the graph. The session's event reads (`GET .../events`, `GET .../events/:eventId` and Anamnesis's event by id) remove `payload.raciocinio` from `agent.response` for an effective role below `developer` (`projectRole ?? workspaceRole`, RN-471), through ONE output filter. The `reasoningText` capability is `false` in all providers until there is a smoke with a credential (ADR 0041).
+- **Rule:** the provider returns the reasoning TEXT as a `reasoning` chunk (OpenRouter's `delta.reasoning`, the DeepSeek/vLLM dialect's `delta.reasoning_content`, Anthropic's `thinking_delta`) and never in the `content`. The `stream-llm-turn` forwards each piece as a `raciocinio` frame and the `final` frame carries `raciocinio` with the WHOLE text of the step, with no cut; the non-stream `llm-turn` returns the same field. Anthropic receives `thinking` when the model reasons and reasoning was not turned off: `adaptive` with `display: "summarized"` and without `budget_tokens` in the current models (4.6 onward and the 5 family; the default `display` would return empty text, and the text that arrives is a SUMMARY, never the raw one), `enabled` with `budget_tokens` in the old ones (`pensamentoAdaptativo`, `src/infrastructure/llm/anthropic-provider.ts:559`); `reasoningOff` does not send `thinking`. The signed `thinking` blocks come back in `message.thinkingBlocks` so the engine returns them intact in the `assistant` turn that asked for tools. The engine records the text in `agent.response.payload.raciocinio` (the engine's lane) and it does not enter rehydration, the RAG nor the graph. The session's event reads (`GET .../events`, `GET .../events/:eventId` and Anamnesis's event by id) remove `payload.raciocinio` from `agent.response` for an effective role below `developer` (`projectRole ?? workspaceRole`, RN-471), through ONE output filter. The `reasoningText` capability is `false` in all providers until there is a smoke with a credential (ADR 0041).
 - **Capability:** `reasoningText` is `true` only in Anthropic and OpenRouter, PROVEN with a real credential on 2026-11-03: `anthropic-provider.raciocinio.smoke.spec.ts` (`claude-haiku-5-5` and `claude-sonnet-5-5`, output 0 in both; the text is the reasoning SUMMARY, `display: summarized`, never the raw one) and `openrouter-provider.raciocinio.smoke.spec.ts` (`deepseek/deepseek-r1-0528`, `deepseek/deepseek-r1` left OpenRouter and gives 404). The other nine providers stay `false`; turning on another requires the equivalent smoke with a credential.
-- **Where:** `src/infrastructure/llm/openai-compatible-provider.ts:381` (`textoDoRaciocinio`), `src/infrastructure/llm/anthropic-provider.ts:484` (`toThinkingBlocks`), `src/domain/sessions/raciocinio-do-evento.ts:16` (`filtrarRaciocinio`), `src/interfaces/http/sessions/sessions.controller.ts:260` (`listEvents`), `:333` (`getEvent`), `src/application/use-cases/sessions/create-socket-ticket.use-case.ts:69` (`podeVerRaciocinio` in the socket ticket, column `session_socket_tickets.pode_ver_raciocinio`, which the engine reads when consuming it, RN-108). Engine (AT-676): `RaciocinioDoTurno` accumulates the turn's reasoning and `TextoDoTurno.payload_do_turno` records it as `raciocinio`/`raciocinioTotal` outside the `content`; it returns the `thinkingBlocks` in the `assistant` message with `toolCalls` (`apps/engine/lib/engine/agents/raciocinio_do_turno.ex:34` (`anexar_blocos`)); the stream's `raciocinio` frame becomes the ephemeral event `agent.reasoning_delta` (`apps/engine/lib/engine/sessions/engine_api_client.ex:1841` (`consume_sse`)); and the `intercept` of the `session:<id>` channel only delivers the delta, and only leaves `raciocinio` in the `agent.response`, to the socket whose ticket has `pode_ver_raciocinio` (`apps/engine/lib/engine_web/channels/session_channel.ex:42` (`handle_out`)). A missing or null column counts as false.
+- **Where:** `src/infrastructure/llm/openai-compatible-provider.ts:381` (`textoDoRaciocinio`), `src/infrastructure/llm/anthropic-provider.ts:536` (`toThinkingBlocks`), `src/domain/sessions/raciocinio-do-evento.ts:16` (`filtrarRaciocinio`), `src/interfaces/http/sessions/sessions.controller.ts:260` (`listEvents`), `:333` (`getEvent`), `src/application/use-cases/sessions/create-socket-ticket.use-case.ts:69` (`podeVerRaciocinio` in the socket ticket, column `session_socket_tickets.pode_ver_raciocinio`, which the engine reads when consuming it, RN-108). Engine (AT-676): `RaciocinioDoTurno` accumulates the turn's reasoning and `TextoDoTurno.payload_do_turno` records it as `raciocinio`/`raciocinioTotal` outside the `content`; it returns the `thinkingBlocks` in the `assistant` message with `toolCalls` (`apps/engine/lib/engine/agents/raciocinio_do_turno.ex:34` (`anexar_blocos`)); the stream's `raciocinio` frame becomes the ephemeral event `agent.reasoning_delta` (`apps/engine/lib/engine/sessions/engine_api_client.ex:1841` (`consume_sse`)); and the `intercept` of the `session:<id>` channel only delivers the delta, and only leaves `raciocinio` in the `agent.response`, to the socket whose ticket has `pode_ver_raciocinio` (`apps/engine/lib/engine_web/channels/session_channel.ex:42` (`handle_out`)). A missing or null column counts as false.
 - **Test:** `test/infrastructure/llm/raciocinio-texto.spec.ts` (the two fields, `thinking_delta`, adaptive/summarized × enabled by model, blocks returned in the next body, `reasoningText` false), `test/domain/sessions/raciocinio-do-evento.spec.ts` (`viewer` does not receive, `developer`+ receives), `test/application/use-cases/sessions/create-socket-ticket.use-case.spec.ts` (ticket `true` for `developer`, `false` for `viewer`), `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` and `run-llm-turn.use-case.spec.ts` (`raciocinio` frame, `final` with the whole text, `content` intact); manual smoke `openrouter-provider.raciocinio.smoke.spec.ts`. Engine: `apps/engine/test/engine/agents/raciocinio_do_turno_test.exs` (frame accumulates and `final` replaces, payload with `content` intact, rehydration without reasoning, `thinkingBlocks` on the 2nd call) and `apps/engine/test/engine_web/channels/session_channel_test.exs` (`intercept` with and without the flag).
 - **Origin:** AT-676 (EP-031), api lane; ADR 0249.
 
@@ -12675,7 +12675,7 @@ is no known password). With no user at all on the installation it answers 409.
 ### RN-997 — The Anthropic catalog is born with a dated list price and the SDK's `supportsReasoning`; a manual price is never overwritten {#rn-997}
 
 - **Rule:** Anthropic's `/v1/models` does not report a price, and the synced model was born with price 0 (a zero-cost spend, with no warning). `listModels` returns the price from the manufacturer's SINGLE table of [RN-965](#rn-965) (`precoDoFabricante`, micro-USD per million), matching by ID and, if not found, by the ID without the date suffix (`-YYYYMMDD`); an ID outside the table stays without a price ([RN-042](#rn-042)). `supportsReasoning` comes from the SDK's `capabilities.thinking.supported`; with null `capabilities` the family applies (every `claude-` that is not 3.x reasons). The sync treats the price as it already did (RN-044): a `manual_pricing` row always wins, and a new model WITH a list price is born `manual_pricing = false`. The price frozen in the metering does not change. An old row already `manual_pricing = true` (born without a price) stays as it is: correcting it is the `owner`'s curation.
-- **Where:** `src/infrastructure/llm/anthropic-provider.ts:492` (`precoDeLista`), `src/domain/llm/precos-do-fabricante.ts` (`PRECOS_DO_FABRICANTE`, `precoDoFabricante`), `src/application/use-cases/llm/sync-model-catalog.use-case.ts` (`resolverPreco`).
+- **Where:** `src/infrastructure/llm/anthropic-provider.ts:544` (`precoDeLista`), `src/domain/llm/precos-do-fabricante.ts` (`PRECOS_DO_FABRICANTE`, `precoDoFabricante`), `src/application/use-cases/llm/sync-model-catalog.use-case.ts` (`resolverPreco`).
 - **Test:** `test/infrastructure/llm/anthropic-provider.catalogo.spec.ts` (price with and without date suffix, unknown ID without a price, `supportsReasoning`); `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts` (a manual price is not overwritten).
 - **Origin:** owner's request of 03/11; ADR 0251 (references [0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)).
 
@@ -12683,7 +12683,7 @@ is no known password). With no user at all on the installation it answers 409.
 
 - **Rule:** revises [RN-741](#rn-741) and [RN-782](#rn-782)/[RN-783](#rn-783) for the `anthropic` provider. The sentence of RN-741 "the direct `anthropic-provider` does not send `thinking`, so the model does not reason" became false: in ADAPTIVE-thinking models (the 5.5s) omitting `thinking` is adaptive at the default effort, and Haiku 5.5 thought up to `max_tokens` with reasoning "off" (TP-01 of 05/11: 10 of 10 tasks blocked with "reasoning-only response"). (1) With `reasoningOff` the body is PER MODEL (`raciocinioDesligado`, owner's decision of 05/11): Haiku 5.5 → `thinking: { type: 'disabled' }` (really off, with no headroom); Sonnet 5.5 → `thinking: { type: 'between_tools' }` (thinks only between tool calls, with headroom); Opus 5.5 → `output_config: { effort: 'low' }` with headroom, DECLARED as REDUCED, not off — `disabled` is a 400 on Opus and on Sonnet 5.5; an unknown adaptive model → nothing (the model's default) with the headroom, because reducing requires proof; an old model (3.x, 4.0..4.5) without `thinking` does not think, and omitting is already turning off. (2) With reasoning on in the adaptive one, `max_tokens` is the visible output + `reasoningBudget ?? 4096` — the same headroom as RN-741, because there the ceiling is TOTAL (before, it stayed 4096 TOTAL and Infra was cut off). (3) The provider declares `aceitaRaciocinioDesligado: true` ([RN-916](#rn-916)). (4) `reasoningTokens` comes from `usage.output_tokens_details.thinking_tokens` of the last `message_delta` (SDK 0.113 does not copy it to the final message), only when it is an integer >= 0; otherwise it is omitted and the column stays NULL ([RN-666](#rn-666)).
 - **Proof (paid smoke of 05/11, `ANTHROPIC_TEST_KEY`):** Haiku/Sonnet/Opus 5.5 with `reasoningOff` and a tool: accepted, called the tool, did not truncate, `thinking_tokens` 0; `thinking: disabled` on Opus 5.5 → 400 (`"thinking.type.disabled" is not supported for this model`); Haiku 5.5 on: 303 of 308 output tokens were reasoning; swapping the `system` between two rounds resending the reasoning block was ACCEPTED. Cost: ~US$ 0.009.
-- **Where:** `apps/api/src/infrastructure/llm/anthropic-provider.ts:521` (`corpoDeRaciocinio`), `:562` (`raciocinioDesligado`), `:583` (`tokensDeRaciocinio`), `:80` (`aceitaRaciocinioDesligado`)
+- **Where:** `apps/api/src/infrastructure/llm/anthropic-provider.ts:573` (`corpoDeRaciocinio`), `:614` (`raciocinioDesligado`), `:635` (`tokensDeRaciocinio`), `:81` (`aceitaRaciocinioDesligado`)
 - **Test:** `apps/api/test/infrastructure/llm/raciocinio-texto.spec.ts` (body per model with `reasoningOff`, headroom in the adaptive one and with a budget, `thinking_tokens` from the `message_delta` and omitted when it is not an integer >= 0, the capability), `apps/api/test/infrastructure/llm/anthropic-provider.raciocinio.smoke.spec.ts` (manual, skips without the key)
 - **Origin:** AT-739 (EP-030), findings 2 and 8 of TP-01 of 05/11; ADR 0257 (revises item 4 of [ADR 0223](../adr/0223-orcamento-de-raciocinio-por-modelo.md) for Anthropic).
 
@@ -12724,7 +12724,7 @@ is no known password). With no user at all on the installation it answers 409.
 
 ### RN-1008 — The direct Anthropic provider uses prompt caching, sums the cache parcels into the input and prices the call from the vendor table {#rn-1008}
 
-- **Rule:** revises [RN-892](#rn-892) item 1 (`promptCaching` was "only OpenRouter") and completes [RN-666](#rn-666) for the direct Anthropic provider. Measured in TP-01 (25th, 05/11): 463 calls, 10.12 M input tokens, `cached_input_tokens` = 0, US$ 2.28 of the US$ 2.62 total was input. (1) `system` goes out in up to two blocks: the PREFIX (the `system` messages before the first non-system one) carries `cache_control: {type: "ephemeral"}` (TTL 5 min); the TAIL (late `system` messages, hoisted to the top by this dialect) follows without a point. Text and order do not change. (2) One more point goes on the last block of the last `user` turn (tool results are `user` turns), mirroring [RN-892](#rn-892); an empty text gets no point. (3) `usage`: Anthropic's `input_tokens` is only the NON-cached part, so `inputTokens = input_tokens + cache_read_input_tokens + cache_creation_input_tokens` and `cachedInputTokens = cache_read_input_tokens`; without the fields `cachedInputTokens` is absent ("did not say", [RN-666](#rn-666)). (4) Cost (owner's option A, ADR 0188): when any cache parcel is non-zero the provider emits `costMicros` from the four parcels times `precoDoFabricante(model)`: input 1x, cache read 0.1x (0.05x on Opus 5.5), cache write 1.25x, output 1x; the api records it with `priceImplicit` and `catalogCostMicros`. A model outside the table emits no cost ([RN-042](#rn-042)); with no cache parcel the catalog path already gives the same number. (5) `capabilities.promptCaching` is `true`, proven by `anthropic-provider.cache.smoke.spec.ts` before merge.
+- **Rule:** revises [RN-892](#rn-892) item 1 (`promptCaching` was "only OpenRouter") and completes [RN-666](#rn-666) for the direct Anthropic provider. Measured in TP-01 (25th, 05/11): 463 calls, 10.12 M input tokens, `cached_input_tokens` = 0, US$ 2.28 of the US$ 2.62 total was input. (1) `system` goes out as ONE block, the PREFIX (the `system` messages before the first non-system one), carrying `cache_control: {type: "ephemeral"}` (TTL 5 min); the TAIL (late `system` messages) no longer goes up to the top ([RN-1015](#rn-1015)). (2) One more point goes on the last block of the last `user` turn (tool results are `user` turns), mirroring [RN-892](#rn-892); an empty text gets no point ([RN-1014](#rn-1014) adds one on the second-to-last `user` turn). (3) `usage`: Anthropic's `input_tokens` is only the NON-cached part, so `inputTokens = input_tokens + cache_read_input_tokens + cache_creation_input_tokens` and `cachedInputTokens = cache_read_input_tokens`; without the fields `cachedInputTokens` is absent ("did not say", [RN-666](#rn-666)). (4) Cost (owner's option A, ADR 0188): when any cache parcel is non-zero the provider emits `costMicros` from the four parcels times `precoDoFabricante(model)`: input 1x, cache read 0.1x (0.05x on Opus 5.5), cache write 1.25x, output 1x; the api records it with `priceImplicit` and `catalogCostMicros`. A model outside the table emits no cost ([RN-042](#rn-042)); with no cache parcel the catalog path already gives the same number. (5) `capabilities.promptCaching` is `true`, proven by `anthropic-provider.cache.smoke.spec.ts` before merge.
 - **Code:** `apps/api/src/infrastructure/llm/anthropic-provider.ts` (`blocosDeSistema`, `marcarCacheDaConversa`, `usageDeEntrada`)
 - **Test:** `apps/api/test/infrastructure/llm/anthropic-provider.contract.spec.ts` ("prompt caching (RN-1008)": blocks and points, last user point, usage sum, cost by four parcels, out-of-table model); smoke `anthropic-provider.cache.smoke.spec.ts` (manual)
 - **Origin:** AT-744 (EP-030)
@@ -12744,3 +12744,25 @@ is no known password). With no user at all on the installation it answers 409.
 - **Where:** `apps/api/src/application/use-cases/backlog/retire-business-rule.use-case.ts` (`execute`), `apps/api/src/application/use-cases/backlog/regras-retiradas.ts` (`idsDeRegrasRetiradas`), `apps/api/src/interfaces/http/internal/internal-business-rules.controller.ts`.
 - **Test:** `apps/api/test/application/use-cases/backlog/retire-business-rule.use-case.spec.ts` (role, missing citation, swap, no-rule refusal, running task, readers).
 - **Origin:** AT-755 (EP-030), part B of AT-752; the engine tool and the web panel come after.
+
+### RN-1014 — The direct Anthropic provider also puts a cache point on the second-to-last `user` turn {#rn-1014}
+
+- **Rule:** extends [RN-1008](#rn-1008) item 2. Besides the last `user` turn, `marcarCacheDaConversa` marks the last block of the SECOND-TO-LAST `user` turn (tool results are `user` turns), under the same rules (no point on empty text, on `tool_use` or on a thinking block). The second-to-last `user` is where the previous call of the same loop wrote its cache entry, so the read becomes an explicit point and no longer depends on Anthropic's lookback of about 20 blocks, which a turn with 7 to 10 parallel calls plus their results exceeds (TP-01 26th, 06/11: PO, Architect and Creative at 19% to 35% cache). A conversation with a single `user` turn gets one point. The request carries at most 3 of the 4 `cache_control` points Anthropic allows (the `system` prefix plus these two); a point on every `user` turn would exceed the limit and is wrong.
+- **Code:** `apps/api/src/infrastructure/llm/anthropic-provider.ts` (`marcarCacheDaConversa`, `marcarTurno`)
+- **Test:** `apps/api/test/infrastructure/llm/anthropic-provider.contract.spec.ts` ("(b)" last and second-to-last `user`; "(b2)" third-to-last `user` stays unmarked and the request has at most 4 points)
+- **Origin:** AT-749 (EP-030), api part; the engine part (reasoning blocks per `assistant`) is RN-1013.
+
+### RN-1015 — On direct Anthropic, the late `system` messages go to the end of the last `user` turn, after the cache point, never to the top `system` {#rn-1015}
+
+- **Rule:** revises [RN-1008](#rn-1008) item 1 and makes [RN-622](#rn-622) / [RN-878](#rn-878) true on this provider. The engine appends the ephemeral guidance (language reminder, citation list, decisions) as `system` messages AFTER the conversation. This dialect only takes `system` at the top, and the provider used to hoist them there, ahead of dozens of English `tool_result` blocks, so in a long loop the model followed the language of the recent context (TP-01 26th, 06/11: `dev-*` answers in English at 38% to 60% from the 3rd position on). Now the `system` messages after the first non-system one (the TAIL) become the LAST text block of the LAST `user` turn, AFTER the block that carries the cache point of [RN-1008](#rn-1008) / [RN-1014](#rn-1014), so the cached prefix is unchanged and the tail is read next to the recent context. The top `system` keeps only the PREFIX. If the conversation does not end in a `user` turn, the tail stays as a second `system` block without a point (previous behaviour). Text and order of the messages do not change. OpenRouter is NOT changed (owner decision): this covers only the direct Anthropic provider.
+- **Code:** `apps/api/src/infrastructure/llm/anthropic-provider.ts` (`blocosDeSistema`, `caudaDeSistema`, `comCaudaDeSistema`)
+- **Test:** `apps/api/test/infrastructure/llm/anthropic-provider.contract.spec.ts` ("(a)" prefix-only `system` and tail after the point; "(a2)" tail after `tool_result`, fallback without a final `user`), `apps/api/test/contract/llm-provider.contract.ts` (`fim_do_ultimo_user`, late `system` after `user` and after `tool`)
+- **Origin:** AT-751 (EP-030). Acceptance (behaviour) is the next TP-01: `dev-*` `agent.response` in English at position >= 3 down to 5% or less; no paid smoke before it.
+
+### RN-1017 — A terminal `git push` to a protected branch, with force, `--all` or `--mirror` is a human decision, even in automatic mode {#rn-1017}
+
+- **Rule:** narrows [RN-713](#rn-713) for the terminal door only. In automatic mode (the `"*"` wildcard in `auto_approve`) a `git push` typed in the terminal is still auto-approved ONLY when it cannot reach a protected branch or rewrite history. It becomes `require_approval` (a pending `proposed_action`, reason starting `RN-1017`) when any segment of the command (a) pushes to a protected branch (`dev`, `qa`, `rc`, `main`, the list of `isProtectedBranch`), by name or by refspec destination (`HEAD:dev`, `+x:refs/heads/main`), (b) uses `--force`, `-f` (also clustered, as in `-fu`) or `--force-with-lease`, or (c) uses `--all` or `--mirror`. Without this, [RN-014](#rn-014) was bypassable: with the local `git merge` allowed, `checkout dev`, `merge` and `push origin dev` ran with no human and no gates. The push of the task's own branch is unchanged, and so is every non-automatic mode (already `require_approval`, [RN-418](#rn-418)). Known limits: a push with no refspec (`git push origin`) pushes the current branch, which `decide()` cannot see, and the repository's default branch is only covered when it is in the fixed protected list.
+- **Code:** `apps/api/src/domain/actions/external-effect.ts:241` (`pushProibidoNoModoAutomatico`), `apps/api/src/domain/actions/decide.ts:452` (the terminal block of the ceilings)
+- **Test:** `apps/api/test/domain/actions/decide.spec.ts` ("é recusado em modo automático (RN-1017)": `dev`, `main`, `HEAD:dev`, `+HEAD:refs/heads/main`, `--force`, `-f`, `--force-with-lease`, `--all`, `--mirror`, compound; the task branch still passes)
+- **Origin:** AT-756 (EP-030), found in the AT-754 survey (Round 204).
+
