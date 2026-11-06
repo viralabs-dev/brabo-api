@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The Arquiteto's floor in Jev's tool menu always keeps `emit_insight` and `declare_open_question` (AT-614, revises RN-809): a cut menu no longer makes the Arquiteto say the tension and doubt records are unavailable.
 - The retry without reasoning of RN-916 is covered with the real `AnthropicProvider` capability (AT-757): the provider already declares `aceitaRaciocinioDesligado` and the tracing decorator forwards it (RN-1001); the use-case spec now fails if the provider stops declaring it.
 - The session context summary (RN-844) ignores a retired business rule (RN-1018): it no longer counts in `regras` nor appears in `itensDeRegras`.
 
