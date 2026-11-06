@@ -28,6 +28,7 @@ import { ResolveCredentialOwnerUseCase } from '../../../../src/application/use-c
 import { DrizzleWorkspaceRepository } from '../../../../src/infrastructure/persistence/drizzle/workspace.repository';
 import { DecidirFerramentaDoPassoUseCase } from '../../../../src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case';
 import { RecordLlmUsageUseCase } from '../../../../src/application/use-cases/llm/record-llm-usage.use-case';
+import { AnthropicProvider } from '../../../../src/infrastructure/llm/anthropic-provider';
 import { RunLlmTurnUseCase } from '../../../../src/application/use-cases/llm/run-llm-turn.use-case';
 import type { LLMProvider } from '../../../../src/application/ports/llm-provider.port';
 import type { LLMProviderRegistry } from '../../../../src/application/ports/llm-provider-registry.port';
@@ -508,7 +509,9 @@ describe('RunLlmTurnUseCase — preferência de roteamento (ADR 0166, RN-583)', 
 describe('RunLlmTurnUseCase — retentativa sem raciocínio (AT-587, RN-916)', () => {
   class ProviderPorChamada extends FakeProvider {
     readonly opcoesRecebidas: ChatOptions[] = [];
-    readonly aceitaRaciocinioDesligado = true;
+    // AT-757: a capacidade vem do AnthropicProvider real, não de um literal.
+    readonly aceitaRaciocinioDesligado = new AnthropicProvider()
+      .aceitaRaciocinioDesligado;
     constructor(private readonly chamadas: ChatStreamChunk[][]) {
       super([]);
     }
