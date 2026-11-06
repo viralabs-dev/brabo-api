@@ -200,11 +200,10 @@ describe('AdoptRepositoryUseCase', () => {
 
     // O plano diz o que FARIA...
     expect(result.plan.steps.length).toBeGreaterThan(0);
+    // Trunk (RN-1022): o plano não cria `dev` nem `qa`.
     expect(
-      result.plan.steps
-        .filter((s) => s.actionType === 'git_branch_create')
-        .map((s) => s.payload.branchName),
-    ).toEqual(['dev', 'qa']);
+      result.plan.steps.filter((s) => s.actionType === 'git_branch_create'),
+    ).toEqual([]);
 
     // ...e o repositório continua só com `main` (RN-045: nada roda antes
     // da decisão).

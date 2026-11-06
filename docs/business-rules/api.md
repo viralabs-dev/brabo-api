@@ -749,7 +749,7 @@ plan.
 
 - **Where:** `src/application/use-cases/git/decide-bootstrap-plan.use-case.ts`,
   `src/application/use-cases/git/bootstrap-plan.ts`,
-  `src/application/use-cases/git/bootstrap-steps.ts:112`
+  `src/application/use-cases/git/bootstrap-steps.ts:74`
 - **Test:** `test/application/use-cases/git/decide-bootstrap-plan.use-case.spec.ts`,
   `test/application/use-cases/git/bootstrap-plan.spec.ts`
 - **Origin:** [ADR 0044](../adr/0044-adocao-de-repositorio-existente.md)
@@ -9092,13 +9092,17 @@ in `in_review` (AT-275).
    immutable event `backlog.task_status_changed` (`cause: 'pr_merged'`,
    `pullRequestId`, `actionId`), append-only, no UPDATE on an event table. No
    migration.
+5. **The merge into the working branch also warns the engine.** With
+   `state: 'merged'` and `targetBranch = main`, `settleMerge` appends the outbox
+   event `project.trunk_merged` ([RN-1022](#rn-1022)), for task, infra and ADR PRs
+   alike.
 4. **Declared boundary (AT-249).** This rule does NOT refuse the merge of an
    already-merged PR nor does it consult `gate_status`. The refusal of the
    already-merged PR (and of the repeated proposal) came later, in
    [RN-663](#rn-663), before the merge gets here; the pending gate, by the
    owner's decision, is only a warning on screen.
 
-- **Where:** `src/application/use-cases/actions/execute-git-action.use-case.ts:295`
+- **Where:** `src/application/use-cases/actions/execute-git-action.use-case.ts:374`
   (`settleMerge`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:480`
   (`markDoneIfNotDone`)
 - **Test:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
@@ -10971,7 +10975,7 @@ where to configure it.
   button, with no text at all; the action recorded `kind: git_push`. After an
   executed merge, the PR stayed in "Open" until reload, the card showed the
   user's UUID and `#pr-3`, and every local PR was "unknown author".
-- **Where:** `src/application/use-cases/actions/execute-git-action.use-case.ts:72` (`resultadoDaFalha`),
+- **Where:** `src/application/use-cases/actions/execute-git-action.use-case.ts:73` (`resultadoDaFalha`),
   `src/application/use-cases/actions/list-project-pending-actions.use-case.ts:22` (`execute`),
   `apps/web/src/routes/ProjectPrsTab.tsx:69` (`ultimaRecusaDeMerge`),
   `apps/web/src/lib/canal-vivo.ts:134` (`alvosDoEvento`)
@@ -11054,7 +11058,7 @@ toggle back to manual restores approval.
 - **Measurement (AT-383, 02/10, test shop):** #6 ended `failed` because of a
   conflict in `package.json`, and the task stayed `in_review` with nobody to
   resolve it.
-- **Where:** `src/application/use-cases/actions/execute-git-action.use-case.ts:429` (`devolverAoDono`),
+- **Where:** `src/application/use-cases/actions/execute-git-action.use-case.ts:460` (`devolverAoDono`),
   `src/infrastructure/persistence/drizzle/backlog.repository.ts:490` (`reabrirPorConflitoDeMerge`),
   `apps/engine/lib/engine/workers/dev_agent_wake_worker.ex:151` (`task.merge_conflict`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:350` (`handle_info`),
@@ -11206,14 +11210,14 @@ The PO's kickoff states the three things.
   `delete_story` and received "unknown tool"; the duplicates gained tasks and
   entered the plan), owner's decision of 03/10 ("PO and user")
 
-### RN-729 — The infra PR targets `dev` and says where to merge; the sidebar opens only the open project {#rn-729}
+### RN-729 — The infra PR targets `main` and says where to merge; the sidebar opens only the open project {#rn-729}
 
 - **Rule:** four clauses measured in TP-01 (03/10).
   (1) The infra PR (`open_infra_pr`) follows [RN-664](engine.md#rn-664): the
-  `feature/infra-setup` branch is born from `dev` and the PR targets `dev` — the
-  dev agent's worktree is born from `dev`, so the Dockerfile merged into `main`
-  never reached it. A repository without `dev` fails named by the provider, with no
-  fallback to the default. The PR carries the author `<agente>[bot]`
+  `feature/infra-setup` branch is born from `main` and the PR targets `main` (the
+  trunk working branch, [RN-1022](#rn-1022); it was `dev` before) — the dev agent's
+  worktree is born from the same branch. A repository without it fails named by
+  the provider, with no fallback to the default. The PR carries the author `<agente>[bot]`
   (`infra[bot]` when the actor is not an agent), the same identity as
   [RN-705](#rn-705). In Approvals, each infra PR in review gains "Merge in the PRs
   tab", which switches the frame to the PRs tab (where the merge lives). (2) Opening
@@ -11441,8 +11445,8 @@ The PO's kickoff states the three things.
 - **Rule:** three layers, with the SAME list of directories (`node_modules`,
   `deps`, `_build`, `.venv`, `venv`, `__pycache__`, `vendor`, `target`):
   1. the repository bootstrap (the three providers and adoption) gains the step
-     `commit_gitignore`, which commits a base `.gitignore` to `main` BEFORE `dev`
-     is born, so every working branch inherits it. It is the single point because
+     `commit_gitignore`, which commits a base `.gitignore` to `main` BEFORE any
+     working branch is born (the repository is trunk, [RN-1022](#rn-1022)), so every working branch inherits it. It is the single point because
      EVERY created or adopted repository goes through it, before any agent writes;
      Infra through the `module_map` would arrive after the dev's first commit and
      only in the projects that go through it. The step only CREATES the file: an
@@ -11461,7 +11465,7 @@ The PO's kickoff states the three things.
   runs through the same `GitExecutor` and the same exclusion holds wherever the
   engine runs git.
 - **Where:** `src/application/use-cases/git/bootstrap-templates.ts:38`
-  (`gitignoreContent`), `src/application/use-cases/git/bootstrap-steps.ts:164`
+  (`gitignoreContent`), `src/application/use-cases/git/bootstrap-steps.ts:177`
   (`soSeAusente`), `apps/engine/lib/engine/actions/diretorios_de_dependencia.ex:37`
   (`argumentos_do_add`), `:47` (`commitados`),
   `apps/engine/lib/engine/gates/secops_agent_server.ex:162`
@@ -11511,7 +11515,7 @@ The PO's kickoff states the three things.
   container at `min-content` — with `max-content` it took the width of the text
   with no break (measured in Chromium: 2,236px in a 708px balloon) and the last
   column vanished.
-- **Where:** `src/application/use-cases/actions/execute-adr-pr.use-case.ts:96`
+- **Where:** `src/application/use-cases/actions/execute-adr-pr.use-case.ts:95`
   (`openPullRequest`); `apps/engine/lib/engine/infra/infra_lead_server.ex:1599`
   (`gravar_texto_do_turno`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1254`
   (`propose_pr`); `apps/web/src/lib/session-destinatario.ts:228`
@@ -11716,8 +11720,8 @@ not consulted at proposal. Changing one requires changing the other.
   both. A provider without the listing, or a listing that fails, does not prevent opening: the
   usual path goes on. The PR of the branch that [RN-797](engine.md#rn-797)
   closes as "already in dev" stays as it was: that one is not closed on the provider.
-- **Where:** `src/application/use-cases/actions/execute-git-action.use-case.ts:32`
-  (`prAbertaDaBranch`), `src/application/use-cases/actions/execute-git-action.use-case.ts:204`
+- **Where:** `src/application/use-cases/actions/execute-git-action.use-case.ts:33`
+  (`prAbertaDaBranch`), `src/application/use-cases/actions/execute-git-action.use-case.ts:206`
   (`prAbertaDaBranch`)
 - **Test:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   ("pr_open com PR aberta da mesma branch → reaproveita, sem abrir outra";
@@ -11952,7 +11956,7 @@ not consulted at proposal. Changing one requires changing the other.
   fixed floor of every step does not widen (RN-759), another agent does not gain it, and the floor only
   adds what is in the step's catalog (P3).
 - **Where:** `src/domain/llm/tool-router.ts:377` (`PISO_DA_CORRECAO_DO_DEV`),
-  `:384` (`ehPassoDeCorrecao`), `:397` (`menuComPiso`),
+  `:388` (`ehPassoDeCorrecao`), `:401` (`menuComPiso`),
   `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:248` (`menuComPiso`)
 - **Test:** `test/domain/llm/tool-router-correcao-do-dev.spec.ts` ("dev agent em correção recebe write_file e terminal"; "passo comum de leitura do dev não alarga"; "outro agente com a mesma mensagem não ganha"; "as marcas existem no texto que o engine monta")
 - **Origin:** AT-523
@@ -12779,3 +12783,15 @@ is no known password). With no user at all on the installation it answers 409.
 - **Code:** `apps/api/src/application/use-cases/containers/reiniciar-app-do-projeto.use-case.ts:25` (`execute`), `apps/api/src/interfaces/http/internal/internal-projects.controller.ts` (`reiniciarOApp`), `apps/api/src/infrastructure/http-clients/container-broker.client.ts` (`reiniciarApp`)
 - **Test:** `apps/api/test/application/use-cases/containers/reiniciar-app-do-projeto.use-case.spec.ts` (result forwarded untouched; 409 gives `sem_app`; only `projectId` is sent; 404 gives `sem_container`; broker message never leaks; the route is guarded by `EngineServiceGuard`)
 - **Origin:** AT-617 (EP-030), owner decision of 06/11/2026.
+
+### RN-1022 — The project repository is trunk: the bootstrap creates and protects only `main`, merges into it warn the engine, and old projects migrate by script {#rn-1022}
+
+- **Rule:** the repository Brabo creates for the user's project is trunk (ADR 0263); Brabo's own development stays `dev` → `main`.
+  1. **Working branch.** `BRANCH_DE_TRABALHO` is `main`: the task PR, the infra PR ([RN-729](#rn-729)) and the ADR PR open from and target it. The engine keeps the same value (`ProjectRepository.branch_de_trabalho/0`); both change together.
+  2. **Bootstrap.** The sequence no longer creates `dev` or `qa`, and `protect_branches` protects only `main`. The `branching-policy.md` committed to the user's repository describes trunk. `create_dev_branch` and `create_qa_branch` stay in the `bootstrap_step` enum (old bootstraps have rows with them) and are listed as retired steps.
+  3. **Protection is unchanged.** `isProtectedBranch` keeps `dev`, `qa`, `rc` and `main` ([RN-1017](#rn-1017), [RN-1019](#rn-1019)): old projects still have the first three, and un-protecting a branch that exists costs more than protecting one that does not.
+  4. **Hook.** After a merge with `state: 'merged'` into `main`, `settleMerge` appends the outbox event `project.trunk_merged` (`aggregateType: 'project'`) with payload `{ projectId, sessionId, mergedSha }`. `mergedSha` is the tip of `main` after the merge, best effort (`''` when the provider cannot list branches). A merge that is not `merged`, fails or targets another branch writes nothing. The engine consumes it to advance the project folder.
+  5. **Migration of old projects.** `pnpm migrar-projeto-para-trunk [--dry-run] [--root <dir>] [<bare>...]` (`src/scripts/migrar-projeto-para-trunk.ts`) fast-forwards `main` to `dev` in each bare repository. It refuses, changing nothing and exiting 1, when `main` is not an ancestor of `dev`; `--dry-run` only reports; it never deletes `dev` or `qa`. It does not retarget open PRs aimed at `dev`. It is run by the owner, because writing to `main` is a write to a protected branch ([RN-418](#rn-418)).
+- **Code:** `apps/api/src/domain/actions/protected-branches.ts:26` (`BRANCH_DE_TRABALHO`), `apps/api/src/application/use-cases/git/bootstrap-steps.ts:161` (`BOOTSTRAP_STEP_SEQUENCE`), `apps/api/src/application/use-cases/git/bootstrap-templates.ts:66` (`branchingPolicyContent`), `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:374` (`settleMerge`), `apps/api/src/scripts/migrar-projeto-para-trunk.ts` (`migrarParaTrunk`)
+- **Test:** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("project.trunk_merged (RN-1022)"), `apps/api/test/application/use-cases/git/provision-repository.use-case.spec.ts`, `apps/api/test/application/use-cases/git/bootstrap-plan.spec.ts`, `apps/api/test/scripts/migrar-projeto-para-trunk.spec.ts`
+- **Origin:** AT-617 (EP-030), owner decision of 06/11/2026; round 208, lane L2.

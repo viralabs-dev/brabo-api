@@ -36,74 +36,54 @@ describe('planBootstrap — o dry-run da adoção', () => {
 
     const tipos = resultado.steps.map((s) => s.actionType);
     expect(tipos).toContain('git_commit');
-    expect(tipos).toContain('git_branch_create');
+    expect(tipos).not.toContain('git_branch_create');
     expect(tipos).toContain('git_branch_protect');
     expect(resultado.generatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
-  it('repo vazio: planeja os 3 arquivos, as 2 branches e as 3 proteções', async () => {
+  it('repo vazio (RN-1022, trunk): planeja os 3 arquivos, nenhuma branch e a proteção só da main', async () => {
     const { plano } = planejar(semNada);
     const { steps } = await plano;
 
     expect(steps.filter((s) => s.actionType === 'git_commit')).toHaveLength(3);
-    expect(
-      steps
-        .filter((s) => s.actionType === 'git_branch_create')
-        .map((s) => s.payload.branchName),
-    ).toEqual(['dev', 'qa']);
-    // main já existe e as duas nascem no plano — as 3 entram pra proteger.
-    // `rc` saiu com o degrau (ADR 0030, achado #3): o bootstrap não a cria
-    // nem a protege mais.
+    // Sem `dev`/`qa`: o repositório do projeto é trunk (RN-1022).
+    expect(steps.filter((s) => s.actionType === 'git_branch_create')).toEqual(
+      [],
+    );
     expect(
       steps
         .filter((s) => s.actionType === 'git_branch_protect')
         .map((s) => s.payload.branchName),
-    ).toEqual(['main', 'qa', 'dev']);
+    ).toEqual(['main']);
   });
 
   it('branch JÁ protegida não entra no plano — é o que a RN-045 protege', async () => {
     const { plano } = planejar({
-      branches: [
-        { name: 'main', protected: true },
-        { name: 'dev', protected: true },
-        { name: 'qa', protected: false },
-      ],
+      branches: [{ name: 'main', protected: true }, { name: 'qa' }],
     });
     const { steps, diagnostics } = await plano;
 
-    const aProteger = steps
-      .filter((s) => s.actionType === 'git_branch_protect')
-      .map((s) => s.payload.branchName);
-    expect(aProteger).toEqual(['qa']);
-
-    expect(diagnostics.filter((d) => d.kind === 'unprotected_branch')).toEqual([
-      { kind: 'unprotected_branch', detail: { branchName: 'qa' } },
-    ]);
+    expect(steps.filter((s) => s.actionType === 'git_branch_protect')).toEqual(
+      [],
+    );
+    // `qa` é de um projeto antigo: política própria, só informativa.
+    expect(diagnostics.filter((d) => d.kind === 'unprotected_branch')).toEqual(
+      [],
+    );
   });
 
-  it('promete a proteção das branches que ELE MESMO vai criar', async () => {
-    // Tem main/dev protegidas, falta `qa`. `check()` sozinho não veria `qa`
-    // como desprotegida — ela nem existe ainda —, então o plano diria "crio
-    // qa" sem avisar que ela sairia protegida. Prometer MENOS do que a
-    // execução faz é exatamente o que a RN-045 não pode permitir.
-    const { plano } = planejar({
-      branches: [
-        { name: 'main', protected: true },
-        { name: 'dev', protected: true },
-      ],
-    });
-    const { steps } = await plano;
+  it('main desprotegida entra no plano e vira diagnóstico', async () => {
+    const { plano } = planejar({ branches: [{ name: 'main' }] });
+    const { steps, diagnostics } = await plano;
 
-    expect(
-      steps
-        .filter((s) => s.actionType === 'git_branch_create')
-        .map((s) => s.payload.branchName),
-    ).toEqual(['qa']);
     expect(
       steps
         .filter((s) => s.actionType === 'git_branch_protect')
         .map((s) => s.payload.branchName),
-    ).toEqual(['qa']);
+    ).toEqual(['main']);
+    expect(diagnostics.filter((d) => d.kind === 'unprotected_branch')).toEqual([
+      { kind: 'unprotected_branch', detail: { branchName: 'main' } },
+    ]);
   });
 
   it('`rc` de um repo antigo vira branch EXTRA, não passo do plano', async () => {
@@ -115,8 +95,6 @@ describe('planBootstrap — o dry-run da adoção', () => {
     const { plano } = planejar({
       branches: [
         { name: 'main', protected: true },
-        { name: 'dev', protected: true },
-        { name: 'qa', protected: true },
         { name: 'rc', protected: true },
       ],
       arquivosCanonicos: [
@@ -140,7 +118,6 @@ describe('planBootstrap — o dry-run da adoção', () => {
       branches: [
         { name: 'main', protected: true },
         { name: 'dev', protected: true },
-        { name: 'qa', protected: true },
         { name: 'develop' },
         { name: 'release/1.2' },
       ],
@@ -149,6 +126,7 @@ describe('planBootstrap — o dry-run da adoção', () => {
 
     const extras = diagnostics.filter((d) => d.kind === 'extra_branch');
     expect(extras.map((d) => d.detail.branchName)).toEqual([
+      'dev',
       'develop',
       'release/1.2',
     ]);
@@ -222,11 +200,7 @@ describe('planBootstrap — o dry-run da adoção', () => {
 
   it('repo já convergido: plano vazio de passos, e nada a decidir', async () => {
     const { plano } = planejar({
-      branches: [
-        { name: 'main', protected: true },
-        { name: 'dev', protected: true },
-        { name: 'qa', protected: true },
-      ],
+      branches: [{ name: 'main', protected: true }],
       arquivosCanonicos: [
         PR_TEMPLATE_PATH,
         BRANCHING_POLICY_PATH,
