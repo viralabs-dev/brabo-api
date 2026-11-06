@@ -8,6 +8,7 @@ import type { GitProviderRegistry } from '../../../../src/application/ports/git-
 import type { ProvisionedRepositoryRepository } from '../../../../src/application/ports/provisioned-repository-repository.port';
 import type { UserCredentialRepository } from '../../../../src/application/ports/user-credential-repository.port';
 import type { EncryptionService } from '../../../../src/application/ports/encryption.port';
+import type { ModuleMapRepository } from '../../../../src/application/ports/module-map-repository.port';
 import type { TaskRepository } from '../../../../src/application/ports/backlog-repository.port';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
 import type { ProposedAction } from '../../../../src/domain/actions/proposed-action.entity';
@@ -110,6 +111,7 @@ function build(overrides: {
   provider?: Record<string, unknown>;
   repo?: unknown;
   credenciais?: FakeCredenciais;
+  mapa?: Array<{ name: string; dependsOn: string[] }>;
 }) {
   proposedActions = new FakeProposedActions();
   tasks = new FakeTasks();
@@ -140,6 +142,10 @@ function build(overrides: {
       execute: () => Promise.resolve(OWNER),
     } as unknown as ResolveCredentialOwnerUseCase,
     tasks as unknown as TaskRepository,
+    {
+      findCurrent: () =>
+        Promise.resolve(overrides.mapa ? { modules: overrides.mapa } : null),
+    } as unknown as ModuleMapRepository,
   );
 }
 
@@ -421,6 +427,61 @@ describe('ExecuteGitActionUseCase', () => {
       expect(
         eventos.filter((e) => e.type === 'backlog.task_status_changed'),
       ).toHaveLength(1);
+    });
+
+    // RN-1009 (AT-746): o merge que fecha a tarefa acorda os módulos com dependência.
+    describe('acorda os dependentes (RN-1009)', () => {
+      const mapa = [
+        { name: 'persistence', dependsOn: [] },
+        { name: 'auth', dependsOn: ['persistence'] },
+      ];
+      const claimables = () =>
+        outboxRows.filter((r) => r.eventType === 'task.became_claimable');
+      const mergear = (uc: ExecuteGitActionUseCase) =>
+        uc.execute(
+          PROJECT,
+          SESSION,
+          action('git_merge', { pullRequestId: 'pr-6' }),
+        );
+
+      it('grava UMA linha com os módulos com dependsOn e cause dependency_done', async () => {
+        const uc = build({ provider: merge(), mapa });
+        proposedActions.prOpens = [prOpenDaTarefa('t1', 'pr-6')];
+        await mergear(uc);
+        expect(claimables()).toHaveLength(1);
+        expect(claimables()[0]).toMatchObject({
+          aggregateType: 'task',
+          aggregateId: 't1',
+          payload: {
+            projectId: PROJECT,
+            sessionId: SESSION,
+            taskId: 't1',
+            modules: ['auth'],
+            cause: 'dependency_done',
+          },
+        });
+      });
+
+      it('merge repetido (tarefa já done) não grava de novo', async () => {
+        const uc = build({ provider: merge(), mapa });
+        proposedActions.prOpens = [prOpenDaTarefa('t1', 'pr-6')];
+        await mergear(uc);
+        await mergear(uc);
+        expect(claimables()).toHaveLength(1);
+      });
+
+      it('sem module_map, ou sem dependsOn, não grava', async () => {
+        const sem = build({ provider: merge() });
+        proposedActions.prOpens = [prOpenDaTarefa('t1', 'pr-6')];
+        await mergear(sem);
+        const plano = build({
+          provider: merge(),
+          mapa: [{ name: 'a', dependsOn: [] }],
+        });
+        proposedActions.prOpens = [prOpenDaTarefa('t1', 'pr-6')];
+        await mergear(plano);
+        expect(claimables()).toHaveLength(0);
+      });
     });
 
     it('PR que não terminou `merged`, ou merge que falhou, não toca a tarefa', async () => {

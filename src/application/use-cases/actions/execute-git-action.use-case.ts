@@ -9,6 +9,7 @@ import { ProvisionedRepositoryRepository } from '../../ports/provisioned-reposit
 import { UserCredentialRepository } from '../../ports/user-credential-repository.port';
 import { ResolveCredentialOwnerUseCase } from '../llm/resolve-credential-owner.use-case';
 import { TaskRepository } from '../../ports/backlog-repository.port';
+import { ModuleMapRepository } from '../../ports/module-map-repository.port';
 import { EncryptionService } from '../../ports/encryption.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
@@ -111,6 +112,7 @@ export class ExecuteGitActionUseCase {
     private readonly encryption: EncryptionService,
     private readonly resolveOwner: ResolveCredentialOwnerUseCase,
     private readonly tasks: TaskRepository,
+    private readonly moduleMaps: ModuleMapRepository,
   ) {}
 
   async execute(
@@ -364,9 +366,11 @@ export class ExecuteGitActionUseCase {
 
     const taskIds = await this.tarefasDaPr(projectId, result.pullRequestId);
 
+    const fechadas: string[] = [];
     for (const taskId of taskIds) {
       const task = await this.tasks.markDoneIfNotDone(taskId);
       if (!task) continue;
+      fechadas.push(taskId);
       await this.appendSessionEvent.execute(projectId, sessionId, {
         type: 'backlog.task_status_changed',
         actor: { kind: 'system', id: 'git-executor' },
@@ -379,6 +383,39 @@ export class ExecuteGitActionUseCase {
         },
       });
     }
+    await this.acordarDependentes(projectId, sessionId, fechadas);
+  }
+
+  /**
+   * RN-1009 (AT-746): fechar tarefa é um motivo novo de outra ficar pegável
+   * (RN-1005, `dependsOn`). Uma linha `task.became_claimable` acorda os dev
+   * agents idle dos módulos com dependência. Mais largo que "só os dependentes
+   * desta tarefa" de propósito: o wake extra custa um claim vazio. Sem
+   * `module_map`, ou sem `dependsOn`, a RN-1005 não filtra e nada é gravado.
+   */
+  private async acordarDependentes(
+    projectId: string,
+    sessionId: string,
+    fechadas: string[],
+  ) {
+    if (fechadas.length === 0) return;
+    const mapa = await this.moduleMaps.findCurrent(projectId);
+    const modules = (mapa?.modules ?? [])
+      .filter((m) => m.dependsOn.length > 0)
+      .map((m) => m.name);
+    if (modules.length === 0) return;
+    await this.outbox.append({
+      aggregateType: 'task',
+      aggregateId: fechadas[0],
+      eventType: 'task.became_claimable',
+      payload: {
+        projectId,
+        sessionId,
+        taskId: fechadas[0],
+        modules,
+        cause: 'dependency_done',
+      },
+    });
   }
 
   /**
