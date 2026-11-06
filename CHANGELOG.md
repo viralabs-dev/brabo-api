@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The direct Anthropic provider no longer hoists late `system` messages to the top `system` (AT-751, RN-1015): they become the last text block of the last `user` turn, after the cache point (cache of RN-1008 unchanged), so the language guidance reaches the model next to the recent context. The `system` keeps only the prefix; OpenRouter is unchanged. Contract harness gains `fim_do_ultimo_user`.
 - The direct Anthropic provider also marks the second-to-last `user` turn with `cache_control` (AT-749, RN-1014): the cache read no longer depends on Anthropic's ~20-block lookback, for planning agents whose turns carry many parallel calls; the request keeps at most 3 of the 4 points.
 - Closing an open question through `POST /internal/projects/:projectId/open-questions/:questionId/answer` now runs as an action effect, so the session channel is notified of `open_question.answered` and the web "open questions" counter updates live (AT-753 UX-1, RN-1002). (api#28)
 - The merge that closes a task wakes the dev agents of the modules that depend on it (AT-746, RN-1009): `settleMerge` appends a `task.became_claimable` outbox row (`cause: dependency_done`) in the same transaction when a task actually became `done`, so idle agents blocked only by `dependsOn` (RN-1005) no longer need a stop and restart of the execution.

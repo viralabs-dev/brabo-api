@@ -552,7 +552,7 @@ order (`test/contract/llm-provider.contract.ts`).
 | --- | --- | --- |
 | OpenAI, OpenRouter, NVIDIA NIM, Together, DeepInfra, Bitdeer, Vultr, 9Router, OpenCode Zen | compatible base (`toWireMessage`) | end of `messages`, `role: "system"` |
 | Ollama | own (`messages` sent as-is) | end of `messages`, `role: "system"` |
-| Anthropic | own (official SDK) | end of the top-level `system`; position lost |
+| Anthropic | own (official SDK) | last text block of the last `user` turn, after the cache point ([RN-1015](../business-rules/api.md#rn-1015)) |
 
 No adapter drops or duplicates it. What the fake server cannot say is whether
 the REAL provider accepts that body — it accepts anything. That is a separate,
