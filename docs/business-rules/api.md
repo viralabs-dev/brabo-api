@@ -8447,10 +8447,10 @@ Docker port package. Nothing changes in the broker's containment ([ADR
   it comes out `teto-excedido`, with the right name.
 
 - **Code:**
-  `src/infrastructure/http-clients/container-broker.client.ts:286` (`tetoDaOperacao`),
+  `src/infrastructure/http-clients/container-broker.client.ts:287` (`tetoDaOperacao`),
   `:241` (`TETO_DE_MUTACAO_MS`), `:253` (`FOLGA_DO_EXEC_NO_ENGINE_MS`),
   `:306` (`erroDeTransporte`);
-  `src/application/ports/container-broker.port.ts:109` (`MotivoDeBrokerIndisponivel`);
+  `src/application/ports/container-broker.port.ts:110` (`MotivoDeBrokerIndisponivel`);
   `apps/engine/lib/engine/sessions/engine_api_client.ex:2077` (`teto_do_container_exec_ms`)
 
   `apps/engine/lib/engine/sessions/engine_api_client.ex:2077` (`teto_do_container_exec_ms`)
