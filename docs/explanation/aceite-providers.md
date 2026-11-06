@@ -27,7 +27,7 @@ line by line in Phase 11, and still not execution.
 
 Another axis, same rule. The contract suite now proves where each adapter puts
 a `role: "system"` that arrives AFTER `user` or `tool` (end of `messages` in
-eight; hoisted into the top `system` in Anthropic — see
+eight; moved to the end of the last `user` turn in direct Anthropic (RN-1015) — see
 [the divergences table](../reference/llm-providers.md#a-system-message-at-the-end-of-the-conversation-at-161)).
 Whether the provider ACCEPTS that body is what
 `sistema-tardio.smoke.spec.ts` asks, and only a real call answers it:
