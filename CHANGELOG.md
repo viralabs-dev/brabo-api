@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Imagem a cada carimbo `-dev` e no hotfix, com limpeza do GHCR (AT-765): o `release.yml` reage também a `vX.Y.Z-dev.N` (publica, escaneia, assina; o `imagem.json` vai como artefato do run, sem Release); o `ci.yml` ganha o job `imagem-hotfix` (`:sha-<12>` em PR `hotfix/*` para a `main`, com Trivy e cosign); o `limpeza-ghcr.yml` apaga o `sha-` da PR fechada e guarda as 10 `-dev.*` mais novas, sem tocar em `vX.Y.Z`.
 - A doc da api volta a ser em pt-BR por padrão (AT-766, decisão do dono de 06/11/2026, revertendo o ADR 0260): as 8 páginas de `docs/` com `idioma_original: en` são traduzidas e perdem o campo, com as mesmas âncoras, links, refs `caminho:N` e a mesma tabela de rotas; o `README.md` é reescrito em pt-BR, com a versão real do contrato e o mapa dos repositórios do Brabo; e o `CLAUDE.md` passa a mandar escrever a doc em pt-BR. O bloco gerado `providers-capabilities` de `docs/reference/llm-providers.md` continua em inglês até o `brabo` regerá-lo.
 
 - O corpus do golden set do RAG (`test/fixtures/golden-set-rag/corpus`) volta aos bytes exatos da última rodada verde (monorepo `6d56eb3872`, 22 arquivos, 1 555 499 bytes = 1 524 853 caracteres) em vez da cópia de `docs/` de 04/11, que aumentou o corpus em 63% e derrubou 12 dos 17 casos abaixo do piso (AT-763, ADR 0132). O spec do corpus ganha uma guarda de deriva (contagem de arquivos, tamanho, sha256), e o seed imprime o top-5 que veio no lugar de cada caso perdido.
