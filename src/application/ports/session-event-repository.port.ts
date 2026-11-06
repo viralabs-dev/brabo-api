@@ -66,6 +66,8 @@ export abstract class SessionEventRepository {
     projectId: string,
     type: string,
   ): Promise<SessionEvent[]>;
+  // Todos os eventos de um tipo em TODOS os projetos (AT-758: portas do app).
+  abstract listByType(type: string): Promise<SessionEvent[]>;
   // Todos os eventos de um tipo numa sessão, em ordem crescente de seq. Usado
   // pelo terceiro sinal de trabalho pendente (RN-064): o último `agent.status`
   // por ator diz se ele está `working` no meio de um turno.

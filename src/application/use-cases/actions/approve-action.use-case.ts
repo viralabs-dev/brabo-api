@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
@@ -20,6 +21,7 @@ import { ExecuteContainerRemoveUseCase } from './execute-container-remove.use-ca
 import { ExecuteContainerRecreateUseCase } from './execute-container-recreate.use-case';
 import { ExecuteInstructionPatchUseCase } from './execute-instruction-patch.use-case';
 import { ExecuteGitActionUseCase } from './execute-git-action.use-case';
+import { ProporRecriacaoDoAppUseCase } from './propor-recriacao-do-app.use-case';
 import { ExecuteParallelizationUseCase } from '../execution/execute-parallelization.use-case';
 import { ExecuteMaxParallelRaiseUseCase } from '../execution/execute-max-parallel-raise.use-case';
 import { ExecuteExecutionPlanUseCase } from '../execution/execute-execution-plan.use-case';
@@ -56,7 +58,10 @@ export class ApproveActionUseCase {
     private readonly executeExecutionPlan: ExecuteExecutionPlanUseCase,
     private readonly executeContainerRecreate: ExecuteContainerRecreateUseCase,
     private readonly executeQaStart?: ExecuteQaEnvironmentStartUseCase,
+    private readonly proporRecriacaoDoApp?: ProporRecriacaoDoAppUseCase,
   ) {}
+
+  private readonly logger = new Logger(ApproveActionUseCase.name);
 
   @Traced('application')
   async execute(
@@ -218,11 +223,27 @@ export class ApproveActionUseCase {
     }
 
     if (GIT_EXECUTED_ACTION_TYPES.includes(approved.actionType)) {
-      return this.avisarQuemEsperava(
+      const executada = await this.executeGitAction.execute(
         projectId,
         sessionId,
-        await this.executeGitAction.execute(projectId, sessionId, approved),
+        approved,
       );
+      // AT-758 (RN-1029): FORA da transação do merge e em melhor esforço — se
+      // falhar, o merge continua valendo e só o log registra (sem segredo).
+      if (approved.actionType === 'git_merge') {
+        try {
+          await this.proporRecriacaoDoApp?.execute(
+            projectId,
+            sessionId,
+            executada,
+          );
+        } catch (erro) {
+          this.logger.warn(
+            `recreate do app não proposto: ${erro instanceof Error ? erro.name : 'erro'}`,
+          );
+        }
+      }
+      return this.avisarQuemEsperava(projectId, sessionId, executada);
     }
 
     return this.avisarQuemEsperava(projectId, sessionId, approved);

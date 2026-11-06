@@ -9330,7 +9330,7 @@ another tab) threw 409 with the pattern ALREADY written and WITHOUT the
 
 - **Where:** `src/application/use-cases/actions/approve-always-action.use-case.ts:109`
   (`execute`), `:190` (`cliqueSobreAcaoJaDecidida`), `:240`
-  (`gravarPadraoSeFaltar`), `src/application/use-cases/actions/approve-action.use-case.ts:279`
+  (`gravarPadraoSeFaltar`), `src/application/use-cases/actions/approve-action.use-case.ts:300`
   (`approve`), `src/domain/actions/sempre-permitir.ts:30`
   (`TIPOS_SEM_SEMPRE_PERMITIR`), `:65` (`motivoDeRecusaDoSempreAprovar`),
   `apps/web/src/lib/sempre-permitir.ts:15` (`TIPOS_SEM_SEMPRE_PERMITIR`)
@@ -9851,7 +9851,7 @@ same list), and `LocalGitProvider` returned the already-merged PR without error
 - **Code:** `src/domain/actions/merge-de-pr.ts:56` (`recusaDeMerge`),
   `:40` (`mergeouAPr`);
   `src/application/use-cases/actions/propose-action.use-case.ts:124` (`recusaDeMerge`);
-  `src/application/use-cases/actions/approve-action.use-case.ts:306` (`recusaDeMerge`);
+  `src/application/use-cases/actions/approve-action.use-case.ts:327` (`recusaDeMerge`);
   `src/infrastructure/git/local-git-provider.ts:339` (`GitPullRequestAlreadyMergedError`);
   `apps/web/src/lib/gate-do-merge.ts:19` (`gatePendenteNoMerge`);
   `apps/web/src/routes/ProjectPrsTab.tsx:236` (`gatePendenteNoMerge`);
@@ -10288,7 +10288,7 @@ the only one that emits it is `ActivateExecutionUseCase`, called only by the
    the approval: the human's decision is already recorded.
 
 - **Where:** `src/application/use-cases/execution/execute-execution-plan.use-case.ts:89`
-  (`execute`); `src/application/use-cases/actions/approve-action.use-case.ts:216`
+  (`execute`); `src/application/use-cases/actions/approve-action.use-case.ts:221`
   (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:401`
   (`executeExecutionPlan`); `apps/web/src/lib/session-acoes-de-handoff.ts:91`
   (`handleAcceptHandoff`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:274`
@@ -12400,7 +12400,7 @@ Revises [RN-583](#rn-583) (`sort` stops being the only `provider` field that goe
 ### RN-934 — `container_recreate` removes and brings up again, under the absolute ceiling of `container_remove` {#rn-934}
 
 - **Rule:** `container_recreate` (`maintainer`) is a `proposed_action` never auto-approvable, not even with the wildcard, and "always allow" is refused at the source (same list as `container_remove`). Execution does `remove` and `start` through the broker passing through `running -> stopped -> removed -> provisioning -> running`; a broker refusal or unavailability becomes a named `failed` (if the bring-up fails, the reason says the container has already been removed). `runner` is refused naming "runner later". The sentence in `aprovacoes.ts` exists and the web test fails a type without a sentence.
-- **Where:** `src/domain/actions/decide.ts:609` (`container_recreate`), `src/application/use-cases/actions/execute-container-recreate.use-case.ts:44` (`execute`), `apps/web/src/lib/aprovacoes.ts:117` (`container_recreate`).
+- **Where:** `src/domain/actions/decide.ts:609` (`container_recreate`), `src/application/use-cases/actions/execute-container-recreate.use-case.ts:48` (`execute`), `apps/web/src/lib/aprovacoes.ts:117` (`container_recreate`).
 - **Test:** `test/application/use-cases/actions/execute-container-recreate.use-case.spec.ts`, `test/domain/actions/decide.spec.ts` (ceiling), `apps/web/src/lib/aprovacoes.test.ts`.
 - **Origin:** AT-608 (EP-030), ADR 0228.
 
@@ -12795,3 +12795,15 @@ is no known password). With no user at all on the installation it answers 409.
 - **Code:** `apps/api/src/domain/actions/protected-branches.ts:26` (`BRANCH_DE_TRABALHO`), `apps/api/src/application/use-cases/git/bootstrap-steps.ts:161` (`BOOTSTRAP_STEP_SEQUENCE`), `apps/api/src/application/use-cases/git/bootstrap-templates.ts:66` (`branchingPolicyContent`), `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:374` (`settleMerge`), `apps/api/src/scripts/migrar-projeto-para-trunk.ts` (`migrarParaTrunk`)
 - **Test:** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("project.trunk_merged (RN-1022)"), `apps/api/test/application/use-cases/git/provision-repository.use-case.spec.ts`, `apps/api/test/application/use-cases/git/bootstrap-plan.spec.ts`, `apps/api/test/scripts/migrar-projeto-para-trunk.spec.ts`
 - **Origin:** AT-617 (EP-030), owner decision of 06/11/2026; round 208, lane L2.
+
+### RN-1029 — After the infra PR that declares `run.app` is merged, the api proposes `container_recreate` with the app port, once {#rn-1029}
+
+- **Rule:** when a `git_merge` into `main` ([RN-1022](#rn-1022)) gets `state: 'merged'`, `ApproveActionUseCase` calls `ProporRecriacaoDoAppUseCase` OUTSIDE the merge transaction and best effort: a failure only logs the error name (no message, no secret) and the merge stays valid.
+  1. **Detection.** There is an `open_infra_pr` of the project, `executed`, whose `pullRequestId` is the merged one and whose payload carries `run.app`, and the `prUrl` of the current `run_instructions` ([RN-852](#rn-852)) is that action's `pullRequestUrl` (a newer, still open infra PR would carry a command that is not on `main`).
+  2. **It does NOT propose when** (pure function `motivoDeNaoRecriar`): the project is `runner`; there is no container, or it is `removed`, `failed` or `provisioning`; a `container_recreate` is already `pending`; or the container status changed after the current `run_instructions` were declared (`statusChangedAt > declaredAt`: it already started with the app). Shortcut: a container stopped and restarted later with `docker start` passes as up to date; the manual recreate on the container page remains.
+  3. **Host port.** ALWAYS in the 13000+ range, even when `app.port` would be allowed: the first free value from 13000, skipping every host port already declared in any `artifact.container_network` of any project (shortcut: any version counts as taken, and another project's pending recreate does not). The container port is `run.app.port`.
+  4. **Proposal.** `ProposeActionUseCase` with `container_recreate`, actor `agent/infra`, in the merge session, payload exactly `{ reason: 'app_declared', pullRequestId, ports: [{ host, container, protocol: 'tcp' }] }`. The absolute ceiling of [RN-934](#rn-934) keeps it `pending`: the click stays human. The web builds the app URL from `payload.ports[0].host` (`http://127.0.0.1:<host>`).
+  5. **Click.** `ExecuteContainerRecreateUseCase` writes `artifact.container_network` ([RN-932](#rn-932)) with the actor `user/<who clicked>` BEFORE `remove`, and only when the project has no current network (it never overwrites); a refused network fails the action before the old container is touched. Then `remove` + `start` as in [RN-934](#rn-934).
+- **Code:** `apps/api/src/application/use-cases/actions/propor-recriacao-do-app.use-case.ts` (`execute`), `apps/api/src/domain/containers/recriar-com-app.ts` (`motivoDeNaoRecriar`, `proximaPortaLivre`), `apps/api/src/application/use-cases/actions/approve-action.use-case.ts` (`proporRecriacaoDoApp`), `apps/api/src/application/use-cases/actions/execute-container-recreate.use-case.ts` (`obterRede`)
+- **Test:** `apps/api/test/domain/containers/recriar-com-app.spec.ts`, `apps/api/test/application/use-cases/actions/propor-recriacao-do-app.use-case.spec.ts`, `apps/api/test/application/use-cases/actions/approve-action-recreate-hook.spec.ts` (hook failure does not undo the merge), `apps/api/test/application/use-cases/actions/execute-container-recreate.use-case.spec.ts` (network written only without a prior one, with the clicker as actor, before `remove`)
+- **Origin:** AT-758 (EP-030), owner decision of 06/11/2026; round 209, lane L1.
