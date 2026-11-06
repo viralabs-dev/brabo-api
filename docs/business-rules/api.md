@@ -7530,8 +7530,8 @@ lines of `permissions.json` repeat the command's TOKENS in the text (the `label`
   `src/domain/actions/decide.ts:294` (`Decision`, the string's source)
 - **Test:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:902`
   (happy path: auto-approval records `agent_autonomy: auto_approve`),
-  `:948` (`require_approval` by default and by the merge lock ceiling),
-  `:1047` (`deny` with the same text as `rejectionReason`), `:999` (the outbox
+  `:959` (`require_approval` by default and by the merge lock ceiling),
+  `:1058` (`deny` with the same text as `rejectionReason`), `:999` (the outbox
   without `reason`)
 - **ADR:** [0048](../adr/0048-decisao-no-log-e-a-ordem-do-gate.md),
   [0055](../adr/0055-escopo-de-caminho-na-politica-de-terminal.md) (point 7,
@@ -7847,7 +7847,7 @@ closed session keep showing the api's message.
   (`ehEventoDeConversa`), `:117` (`garantirQueSessaoAceitaEvento`);
   `src/application/use-cases/sessions/append-session-event.use-case.ts:45`
   (`conflitoDeSessaoEncerrada`), `:114` (the state in the same `UPDATE` as the `seq`),
-  `:241` (`garantirQueAceita`);
+  `:248` (`garantirQueAceita`);
   `src/infrastructure/persistence/drizzle/session.repository.ts:117`
   (`incrementSeq`);
   `src/application/use-cases/llm/send-chat-message.use-case.ts:78`
@@ -7862,11 +7862,11 @@ closed session keep showing the api's message.
   (`conversa_ociosa`), `:193` (`encerrar`), `:222`
   (`conversation_idle_timeout_ms`); `apps/engine/lib/engine/sessions/monitor.ex:185`
   (`classify`); `apps/engine/lib/engine/psychologist/termination_classifier.ex:46`;
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:1193`
-  (`narrar_recusa_de_sessao_encerrada`), `:1545` (`pendencia_da_resposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:1203`
+  (`narrar_recusa_de_sessao_encerrada`), `:1560` (`pendencia_da_resposta`);
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:1193`
-  (`narrar_recusa_de_sessao_encerrada`), `:1545` (`pendencia_da_resposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:1203`
+  (`narrar_recusa_de_sessao_encerrada`), `:1560` (`pendencia_da_resposta`);
   `apps/engine/lib/engine/agents/conversacionais.ex:49` (`parar_da_sessao`),
   `:69` (`parar_da_sessao_no_cluster`);
   `apps/engine/lib/engine/agents/turno_assincrono.ex:471` (`abandonar`);
@@ -8451,9 +8451,9 @@ Docker port package. Nothing changes in the broker's containment ([ADR
   `:241` (`TETO_DE_MUTACAO_MS`), `:253` (`FOLGA_DO_EXEC_NO_ENGINE_MS`),
   `:306` (`erroDeTransporte`);
   `src/application/ports/container-broker.port.ts:96` (`MotivoDeBrokerIndisponivel`);
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:2062` (`teto_do_container_exec_ms`)
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:2077` (`teto_do_container_exec_ms`)
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:2062` (`teto_do_container_exec_ms`)
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:2077` (`teto_do_container_exec_ms`)
 - **Test:** `test/infrastructure/http-clients/container-broker.client.spec.ts:286`
   (the reproduction, against a `node:http` broker that takes 6 s), `:182` (the
   ceiling of each operation in the `AbortSignal`), `:204` and `:229` (`teto-excedido`
@@ -8526,10 +8526,10 @@ SCOPE's root, never where the policy file lives.
   (`scopeRoot` only in `terminal`);
   `src/domain/actions/decide.ts:648` (`terminalNoEscopo`, the only
   consumer of the scope)
-- **Test:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:1143`
-  (`container`), `:1123` (`mounted`), `:1123` (`runner`), `:1123` (the absolute
+- **Test:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:1154`
+  (`container`), `:1134` (`mounted`), `:1134` (`runner`), `:1123` (the absolute
   path under `/home/usuario/…` NEVER leaks, in all three cases, including outside
-  the base), `:1213` (`indisponivel`), `:1163` (another type and the outbox without the
+  the base), `:1224` (`indisponivel`), `:1163` (another type and the outbox without the
   field), `:1183` (earlier event, without the field, through the same read);
   `test/infrastructure/filesystem/project-workspaces-root.spec.ts:772`
   (the pure function, in the three modes and in the three cases of `indisponivel`)
@@ -9854,12 +9854,12 @@ same list), and `LocalGitProvider` returned the already-merged PR without error
   `apps/web/src/routes/session-timeline-montagem.tsx:1249` (`gatePendenteNoMerge`)
   `apps/web/src/routes/ProjectPrsTab.tsx:236` (`gatePendenteNoMerge`);
   `apps/web/src/routes/session-timeline-montagem.tsx:1249` (`gatePendenteNoMerge`)
-- **Test:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:664`
-  (`merge_ja_proposto`), `:687` (`pr_ja_mergeado` — failure case), `:696`
+- **Test:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:675`
+  (`merge_ja_proposto`), `:698` (`pr_ja_mergeado` — failure case), `:696`
 
   `apps/web/src/routes/session-timeline-montagem.tsx:1249` (`gatePendenteNoMerge`)
-- **Test:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:664`
-  (`merge_ja_proposto`), `:687` (`pr_ja_mergeado` — failure case), `:696`
+- **Test:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:675`
+  (`merge_ja_proposto`), `:698` (`pr_ja_mergeado` — failure case), `:696`
   (denied does not block, another PR does not collide — happy path);
   `test/application/use-cases/actions/approve-deny-action.use-case.spec.ts:473`;
   `test/infrastructure/git/local-git-provider.contract.spec.ts:150`;
@@ -9994,7 +9994,7 @@ path does not exist.
   project, `/workspace`, `/tmp/../etc` outside; without a container `/tmp` and
   `/work` outside — failure cases); `test/domain/actions/path-scope.spec.ts:216`
   (and the copy of `/work` locked against `packages/docker-port`);
-  `test/application/use-cases/actions/propose-action.use-case.spec.ts:1158`
+  `test/application/use-cases/actions/propose-action.use-case.spec.ts:1169`
   (`mounted` mode with and without a container, and without the floor)
 - **Origin:** AT-258 (item A12 of the analysis of the real use of 29/09), owner's
   decision of 01/10, [ADR 0189](../adr/0189-o-piloto-automatico.md)
@@ -10455,7 +10455,7 @@ and WARNS when the closest one is at or above the threshold.
   `:44` (`TETO_DE_COMPARACOES_DE_DUPLICATA`), `:53` (`TETO_DE_TEMPO_DA_CHECAGEM_MS`),
   `:107` (`ehDuplicataSemantica`),
   `src/application/use-cases/backlog/verificar-duplicata-semantica.use-case.ts:112` (`VerificarDuplicataSemanticaUseCase`),
-  `:241` (`medir`), `:285` (`narrar`), `:349` (`fraseParaOAgente`),
+  `:247` (`medir`), `:291` (`narrar`), `:355` (`fraseParaOAgente`),
   `src/application/use-cases/backlog/create-story.use-case.ts:199` (`semanticDuplicate`),
   `src/interfaces/http/internal/internal-sessions.controller.ts:643` (`semanticDuplicateCheck`),
   `src/application/use-cases/rag/rag-embedding.service.ts:106` (`uso`),
@@ -12016,7 +12016,7 @@ not consulted at proposal. Changing one requires changing the other.
   affected stories (`apps/engine/lib/engine/harness/decisoes_do_projeto.ex`), so the PO
   finds the id.
 - **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:123`
-  (`decisoesDaTarefa`), `:374` (`decisoesDoContexto`),
+  (`decisoesDaTarefa`), `:378` (`decisoesDoContexto`),
   `src/domain/backlog/correcao-de-historia.ts:33`
   (`recusaDeCorrecaoDeHistoria`),
   `src/application/use-cases/backlog/corrigir-historia.use-case.ts:126`
@@ -12661,14 +12661,14 @@ is no known password). With no user at all on the installation it answers 409.
 
 - **Rule:** the provider returns the reasoning TEXT as a `reasoning` chunk (OpenRouter's `delta.reasoning`, the DeepSeek/vLLM dialect's `delta.reasoning_content`, Anthropic's `thinking_delta`) and never in the `content`. The `stream-llm-turn` forwards each piece as a `raciocinio` frame and the `final` frame carries `raciocinio` with the WHOLE text of the step, with no cut; the non-stream `llm-turn` returns the same field. Anthropic receives `thinking` when the model reasons and reasoning was not turned off: `adaptive` with `display: "summarized"` and without `budget_tokens` in the current models (4.6 onward and the 5 family; the default `display` would return empty text, and the text that arrives is a SUMMARY, never the raw one), `enabled` with `budget_tokens` in the old ones (`pensamentoAdaptativo`, `src/infrastructure/llm/anthropic-provider.ts:559`); `reasoningOff` does not send `thinking`. The signed `thinking` blocks come back in `message.thinkingBlocks` so the engine returns them intact in the `assistant` turn that asked for tools. The engine records the text in `agent.response.payload.raciocinio` (the engine's lane) and it does not enter rehydration, the RAG nor the graph. The session's event reads (`GET .../events`, `GET .../events/:eventId` and Anamnesis's event by id) remove `payload.raciocinio` from `agent.response` for an effective role below `developer` (`projectRole ?? workspaceRole`, RN-471), through ONE output filter. The `reasoningText` capability is `false` in all providers until there is a smoke with a credential (ADR 0041).
 - **Capability:** `reasoningText` is `true` only in Anthropic and OpenRouter, PROVEN with a real credential on 2026-11-03: `anthropic-provider.raciocinio.smoke.spec.ts` (`claude-haiku-5-5` and `claude-sonnet-5-5`, output 0 in both; the text is the reasoning SUMMARY, `display: summarized`, never the raw one) and `openrouter-provider.raciocinio.smoke.spec.ts` (`deepseek/deepseek-r1-0528`, `deepseek/deepseek-r1` left OpenRouter and gives 404). The other nine providers stay `false`; turning on another requires the equivalent smoke with a credential.
-- **Where:** `src/infrastructure/llm/openai-compatible-provider.ts:381` (`textoDoRaciocinio`), `src/infrastructure/llm/anthropic-provider.ts:536` (`toThinkingBlocks`), `src/domain/sessions/raciocinio-do-evento.ts:16` (`filtrarRaciocinio`), `src/interfaces/http/sessions/sessions.controller.ts:260` (`listEvents`), `:333` (`getEvent`), `src/application/use-cases/sessions/create-socket-ticket.use-case.ts:69` (`podeVerRaciocinio` in the socket ticket, column `session_socket_tickets.pode_ver_raciocinio`, which the engine reads when consuming it, RN-108). Engine (AT-676): `RaciocinioDoTurno` accumulates the turn's reasoning and `TextoDoTurno.payload_do_turno` records it as `raciocinio`/`raciocinioTotal` outside the `content`; it returns the `thinkingBlocks` in the `assistant` message with `toolCalls` (`apps/engine/lib/engine/agents/raciocinio_do_turno.ex:34` (`anexar_blocos`)); the stream's `raciocinio` frame becomes the ephemeral event `agent.reasoning_delta` (`apps/engine/lib/engine/sessions/engine_api_client.ex:1841` (`consume_sse`)); and the `intercept` of the `session:<id>` channel only delivers the delta, and only leaves `raciocinio` in the `agent.response`, to the socket whose ticket has `pode_ver_raciocinio` (`apps/engine/lib/engine_web/channels/session_channel.ex:42` (`handle_out`)). A missing or null column counts as false.
+- **Where:** `src/infrastructure/llm/openai-compatible-provider.ts:381` (`textoDoRaciocinio`), `src/infrastructure/llm/anthropic-provider.ts:536` (`toThinkingBlocks`), `src/domain/sessions/raciocinio-do-evento.ts:16` (`filtrarRaciocinio`), `src/interfaces/http/sessions/sessions.controller.ts:260` (`listEvents`), `:333` (`getEvent`), `src/application/use-cases/sessions/create-socket-ticket.use-case.ts:69` (`podeVerRaciocinio` in the socket ticket, column `session_socket_tickets.pode_ver_raciocinio`, which the engine reads when consuming it, RN-108). Engine (AT-676): `RaciocinioDoTurno` accumulates the turn's reasoning and `TextoDoTurno.payload_do_turno` records it as `raciocinio`/`raciocinioTotal` outside the `content`; it returns the `thinkingBlocks` in the `assistant` message with `toolCalls` (`apps/engine/lib/engine/agents/raciocinio_do_turno.ex:47` (`anexar_blocos`)); the stream's `raciocinio` frame becomes the ephemeral event `agent.reasoning_delta` (`apps/engine/lib/engine/sessions/engine_api_client.ex:1856` (`consume_sse`)); and the `intercept` of the `session:<id>` channel only delivers the delta, and only leaves `raciocinio` in the `agent.response`, to the socket whose ticket has `pode_ver_raciocinio` (`apps/engine/lib/engine_web/channels/session_channel.ex:42` (`handle_out`)). A missing or null column counts as false.
 - **Test:** `test/infrastructure/llm/raciocinio-texto.spec.ts` (the two fields, `thinking_delta`, adaptive/summarized × enabled by model, blocks returned in the next body, `reasoningText` false), `test/domain/sessions/raciocinio-do-evento.spec.ts` (`viewer` does not receive, `developer`+ receives), `test/application/use-cases/sessions/create-socket-ticket.use-case.spec.ts` (ticket `true` for `developer`, `false` for `viewer`), `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` and `run-llm-turn.use-case.spec.ts` (`raciocinio` frame, `final` with the whole text, `content` intact); manual smoke `openrouter-provider.raciocinio.smoke.spec.ts`. Engine: `apps/engine/test/engine/agents/raciocinio_do_turno_test.exs` (frame accumulates and `final` replaces, payload with `content` intact, rehydration without reasoning, `thinkingBlocks` on the 2nd call) and `apps/engine/test/engine_web/channels/session_channel_test.exs` (`intercept` with and without the flag).
 - **Origin:** AT-676 (EP-031), api lane; ADR 0249.
 
 ### RN-995 — The agent catalog comes from the engine and is read-only: identity and tools from the engine, current instruction from the database, no composed prompt and no schema, and engine down is "I do not know", never "no tools" {#rn-995}
 
 - **Rule:** `GET /projects/:projectId/agent-catalog` (`viewer`, RN-102) returns, per agent, the code's identity, the project's CURRENT instruction (`agent_instructions`, only the current version) and the tools (`nome` and `descricao`, the pt-BR text the model reads; the other languages fall back to it, ADR 0216). The source of the tools and the identity is the engine, through `GET /internal/agents/catalog` (service token) — a single source, no copy in the api. It does not expose `parameters` (the JSON schema), the turn's composed prompt, the graph template nor credential or model. It is the FULL catalog: Jev's per-step cut (RN-625) may show less to the model. A contained read (ADR 0060): one call to the engine and one query to the database, no free parameter; `conteudo` cuts at 8,000 characters with `conteudoTotal` (the model of RN-589) and `descricao` at 1,000. Engine down: `identidade` and `ferramentas` come `null` with `motivoSemCatalogo: 'engine_indisponivel'` and the instructions from the database keep coming (RN-470). The per-module dev agents (`dev-api`) inherit the engine's single `dev-*` entry. In the engine: `GET /internal/agents/catalog` (service token, no parameter) returns, per agent, the code's identity and the tools (`nome`, `descricao` up to 1,000 characters). The source is each of the seven conversational agents' `tool_specs/0` and the execution and gate registries; nothing is copied. It does not return `parameters`, the composed prompt nor the graph template. It is the FULL catalog: Jev (RN-625) cuts the menu per step. Psychologist and Anamnesis are left out.
-- **Where:** `src/application/use-cases/agents/get-agent-catalog.use-case.ts:39` (`execute`), `src/infrastructure/http-clients/api-to-engine-client.ts:280` (`getAgentCatalog`), `src/interfaces/http/agents/agent-catalog.controller.ts:32` (`get`); engine side: lane E1 of AT-686 (`Engine.Agents.CatalogoDeFerramentas`); engine: `apps/engine/lib/engine/agents/catalogo_de_ferramentas.ex:38` (`listar`), `apps/engine/lib/engine_web/controllers/agent_catalog_controller.ex:9` (`index`), `apps/engine/lib/engine_web/router.ex:79`, `apps/engine/lib/engine/agents/po_server.ex:824` (`tool_specs`).
+- **Where:** `src/application/use-cases/agents/get-agent-catalog.use-case.ts:39` (`execute`), `src/infrastructure/http-clients/api-to-engine-client.ts:280` (`getAgentCatalog`), `src/interfaces/http/agents/agent-catalog.controller.ts:32` (`get`); engine side: lane E1 of AT-686 (`Engine.Agents.CatalogoDeFerramentas`); engine: `apps/engine/lib/engine/agents/catalogo_de_ferramentas.ex:38` (`listar`), `apps/engine/lib/engine_web/controllers/agent_catalog_controller.ex:9` (`index`), `apps/engine/lib/engine_web/router.ex:79`, `apps/engine/lib/engine/agents/po_server.ex:838` (`tool_specs`).
 - **Test:** `test/application/use-cases/agents/get-agent-catalog.use-case.spec.ts` (join, ceilings, `dev-*`, engine down), `test/interfaces/route-surface.spec.ts` (the route and the role); engine: `apps/engine/test/engine/agents/catalogo_de_ferramentas_test.exs` (matches each source, description ceiling, 401 without a token and 200 with).
 - **Origin:** AT-686 (EP-031), lanes A1 (api) and E1 (engine).
 
