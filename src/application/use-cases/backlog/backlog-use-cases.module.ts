@@ -20,6 +20,7 @@ import { CorrigirHistoriaUseCase } from './corrigir-historia.use-case';
 import { PerguntasEmAbertoUseCase } from './perguntas-em-aberto.use-case';
 import { ListBacklogUseCase } from './list-backlog.use-case';
 import { GetCoverageUseCase } from './get-coverage.use-case';
+import { RetireBusinessRuleUseCase } from './retire-business-rule.use-case';
 import { ListBusinessRulesUseCase } from './list-business-rules.use-case';
 import { ListProductMetricsUseCase } from './list-product-metrics.use-case';
 
@@ -36,6 +37,7 @@ const USE_CASES = [
   ListBacklogUseCase,
   GetCoverageUseCase,
   ListBusinessRulesUseCase,
+  RetireBusinessRuleUseCase,
   ListProductMetricsUseCase,
   VerificarDuplicataSemanticaUseCase,
 ];

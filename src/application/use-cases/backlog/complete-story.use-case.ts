@@ -19,6 +19,7 @@ import { ProjectRepository } from '../../ports/project-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { isPromotable } from '../../../domain/backlog/story-promotion';
 import type { Story } from '../../../domain/backlog/backlog.entity';
+import { idsDeRegrasRetiradas } from './regras-retiradas';
 
 export interface CompleteStoryInput {
   storyId: string;
@@ -122,9 +123,14 @@ export class CompleteStoryUseCase {
     const novas = (input.businessRuleIds ?? []).filter(
       (id) => !atual.businessRuleIds.includes(id),
     );
+    const retiradas = await idsDeRegrasRetiradas(this.sessionEvents, projectId);
     for (const ruleId of novas) {
       const event = await this.sessionEvents.findById(ruleId);
-      if (!event || event.type !== 'artifact.business_rule') {
+      if (
+        !event ||
+        event.type !== 'artifact.business_rule' ||
+        retiradas.has(ruleId) // RN-1018
+      ) {
         throw new BadRequestException(
           `business_rule_id "${ruleId}" não corresponde a uma regra de negócio existente`,
         );

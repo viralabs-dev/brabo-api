@@ -2122,7 +2122,7 @@ anything.
 
 - **Where:** `src/domain/sessions/session-kind.ts:50`
   (`podeAtivarExecucao`), `src/db/schema/sessions.ts:68` (the column),
-  `src/application/use-cases/sessions/append-session-event.use-case.ts:53`
+  `src/application/use-cases/sessions/append-session-event.use-case.ts:54`
   (the guard)
 - **Test:** `test/application/use-cases/sessions/session-kind-e-nome.spec.ts`
 - **Origin:** [ADR 0061](../adr/0061-tipo-da-sessao-na-criacao.md)
@@ -7845,7 +7845,7 @@ closed session keep showing the api's message.
   `src/domain/sessions/conversa-em-sessao-encerrada.ts:56`
   (`AGENTES_CONVERSACIONAIS`), `:67` (`TIPOS_DA_CONVERSA`), `:95`
   (`ehEventoDeConversa`), `:117` (`garantirQueSessaoAceitaEvento`);
-  `src/application/use-cases/sessions/append-session-event.use-case.ts:44`
+  `src/application/use-cases/sessions/append-session-event.use-case.ts:45`
   (`conflitoDeSessaoEncerrada`), `:114` (the state in the same `UPDATE` as the `seq`),
   `:241` (`garantirQueAceita`);
   `src/infrastructure/persistence/drizzle/session.repository.ts:117`
@@ -9788,7 +9788,7 @@ manual handoff (ADR 0109) too.
 
 - **Code:** `src/domain/sessions/aceite-automatico-do-handoff.ts:81`
   (`decidirAceiteAutomatico`), `:74` (`backlogCoberto`);
-  `src/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.ts:44`
+  `src/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.ts:45`
   (`AceitarHandoffAutomaticamenteUseCase`);
   `src/application/use-cases/agents/accept-handoff.use-case.ts:91`
   (`AceitePeloSistema`);
@@ -10454,9 +10454,9 @@ and WARNS when the closest one is at or above the threshold.
 - **Where:** `src/domain/backlog/duplicata-semantica.ts:35` (`LIMIAR_DE_DUPLICATA_SEMANTICA`),
   `:44` (`TETO_DE_COMPARACOES_DE_DUPLICATA`), `:53` (`TETO_DE_TEMPO_DA_CHECAGEM_MS`),
   `:107` (`ehDuplicataSemantica`),
-  `src/application/use-cases/backlog/verificar-duplicata-semantica.use-case.ts:111` (`VerificarDuplicataSemanticaUseCase`),
+  `src/application/use-cases/backlog/verificar-duplicata-semantica.use-case.ts:112` (`VerificarDuplicataSemanticaUseCase`),
   `:241` (`medir`), `:285` (`narrar`), `:349` (`fraseParaOAgente`),
-  `src/application/use-cases/backlog/create-story.use-case.ts:193` (`semanticDuplicate`),
+  `src/application/use-cases/backlog/create-story.use-case.ts:199` (`semanticDuplicate`),
   `src/interfaces/http/internal/internal-sessions.controller.ts:643` (`semanticDuplicateCheck`),
   `src/application/use-cases/rag/rag-embedding.service.ts:106` (`uso`),
   `apps/engine/lib/engine/harness/tools/emit_artifact.ex` (`aviso_semantico`),
@@ -11133,7 +11133,7 @@ the story it recreated triggered the semantic-duplicate warning
 
 The PO's kickoff states the three things.
 
-- **Where:** `src/application/use-cases/backlog/complete-story.use-case.ts:52`
+- **Where:** `src/application/use-cases/backlog/complete-story.use-case.ts:53`
   (`CompleteStoryUseCase`);
   `src/interfaces/http/internal/internal-sessions.controller.ts:541`
   (`completeStoryRoute`); `apps/engine/lib/engine/harness/tools/complete_story.ex:47`
@@ -11310,7 +11310,7 @@ The PO's kickoff states the three things.
   scope, declared).
 - **Where:** `src/infrastructure/llm/openai-compatible-provider.ts:314`
   (`cortadaPeloTeto`),
-  `src/infrastructure/llm/anthropic-provider.ts:229` (`finalMessage`),
+  `src/infrastructure/llm/anthropic-provider.ts:228` (`finalMessage`),
   `src/application/use-cases/llm/run-llm-turn.use-case.ts:234`
   (`truncated`),
   `src/application/use-cases/llm/stream-llm-turn.use-case.ts:301`
@@ -11631,7 +11631,7 @@ The PO's kickoff states the three things.
   requirement of the delivery that depends on what another story will still
   deliver (a route, a screen) goes to the `resumo` as an observation and does not
   fail. The yardstick is a PROMPT one, as in RN-765.
-- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:210`
+- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:211`
   (`tarefasAbertasDoModulo`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
   (`texto`)
 - **Test:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
@@ -11657,10 +11657,10 @@ The PO's kickoff states the three things.
   yardstick, like [RN-765](engine.md#rn-765). Since [RN-792](engine.md#rn-792) the
   Architect checks the contract against the routes cited in the stories when
   declaring it.
-- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:255`
+- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:256`
   (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:66`
 
-- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:255`
+- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:256`
   (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:70`
   (`secao_do_contrato`)
 - **Test:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
@@ -11982,7 +11982,7 @@ not consulted at proposal. Changing one requires changing the other.
   engine that is down does not undo the answer. ADR 0214.
 - **Where:** `src/domain/open-questions/pergunta-em-aberto.ts:44`
   (`validarPerguntaEmAberto`), `:112` (`respostaEscolhida`),
-  `src/application/use-cases/sessions/append-session-event.use-case.ts:101`
+  `src/application/use-cases/sessions/append-session-event.use-case.ts:102`
   (`EVENTO_PERGUNTA_EM_ABERTO`),
   `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:72`
   (`listar`), `:118` (`responder`), `:285` (`resumeParkedGate`),
@@ -12015,13 +12015,13 @@ not consulted at proposal. Changing one requires changing the other.
   agent's behalf (AT-752). The engine lists each decision with its `questionId` and
   affected stories (`apps/engine/lib/engine/harness/decisoes_do_projeto.ex`), so the PO
   finds the id.
-- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:122`
+- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:123`
   (`decisoesDaTarefa`), `:374` (`decisoesDoContexto`),
   `src/domain/backlog/correcao-de-historia.ts:33`
   (`recusaDeCorrecaoDeHistoria`),
   `src/application/use-cases/backlog/corrigir-historia.use-case.ts:126`
   (`respostaDoUsuario`),
-  `src/application/use-cases/backlog/complete-story.use-case.ts:100`
+  `src/application/use-cases/backlog/complete-story.use-case.ts:101`
   (`corrigindoReady`), `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:107`
   (`respondidasQueAfetam`)
 - **Test:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts` ("devolve só as que afetam a tarefa, a história ou uma regra dela, mais recentes primeiro"; "decisão sem afeta não entra; teto de 10 e texto cortado em 1 500"), `test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts` ("história ready citando pergunta RESPONDIDA é corrigida, e o evento a cita"; failures: "história ready citando pergunta AINDA ABERTA segue recusada"; "história ready com tarefa em revisão segue recusada mesmo com a resposta"), `test/application/use-cases/backlog/complete-story.use-case.spec.ts` ("história ready com pergunta respondida tem RF/DoR corrigidos e segue ready"; "história ready com pergunta ainda aberta é recusada")
@@ -12075,8 +12075,8 @@ not consulted at proposal. Changing one requires changing the other.
   dev's context, `decisoes` also matches by the titles of the story's rules, for the
   decisions recorded before this rule.
 - **Where:** `src/domain/open-questions/pergunta-em-aberto.ts:179`
-  (`resolverRegrasDoAfeta`), `src/application/use-cases/sessions/append-session-event.use-case.ts:117`
-  (`resolverRegrasDoAfeta`), `src/application/use-cases/execution/get-dev-task-context.use-case.ts:134`
+  (`resolverRegrasDoAfeta`), `src/application/use-cases/sessions/append-session-event.use-case.ts:122`
+  (`resolverRegrasDoAfeta`), `src/application/use-cases/execution/get-dev-task-context.use-case.ts:135`
   (`decisoesDoContexto`)
 - **Test:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts` ("título exato é convertido para o id da regra"; failure: "texto que não é id nem título de regra: 400 sem escrita"), `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts` ("decisão legada com TÍTULO de regra em afeta.regras casa pelo título")
 - **Origin:** AT-526, ADR 0215
@@ -12089,7 +12089,7 @@ not consulted at proposal. Changing one requires changing the other.
   format. The ceiling of 10 is SHARED — the task's come first and consume
   the ceiling before. It revises ADR 0214's sentence "a decision without `afeta` does not enter" for
   this list. The field is additive (an engine that does not know it ignores it).
-- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:134`
+- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:135`
   (`decisoesDoContexto`), `src/interfaces/http/internal/dto/internal.response.dto.ts:237`
   (`decisoesDoProjeto`)
 - **Test:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts` ("as que não tocam a tarefa vêm em decisoesDoProjeto; teto de 10 somado, as da tarefa primeiro")
@@ -12659,9 +12659,9 @@ is no known password). With no user at all on the installation it answers 409.
 
 ### RN-993 — The model's reasoning is recorded whole outside the `content`, appears live and only `developer` or above reads it; it never goes back to the model {#rn-993}
 
-- **Rule:** the provider returns the reasoning TEXT as a `reasoning` chunk (OpenRouter's `delta.reasoning`, the DeepSeek/vLLM dialect's `delta.reasoning_content`, Anthropic's `thinking_delta`) and never in the `content`. The `stream-llm-turn` forwards each piece as a `raciocinio` frame and the `final` frame carries `raciocinio` with the WHOLE text of the step, with no cut; the non-stream `llm-turn` returns the same field. Anthropic receives `thinking` when the model reasons and reasoning was not turned off: `adaptive` with `display: "summarized"` and without `budget_tokens` in the current models (4.6 onward and the 5 family; the default `display` would return empty text, and the text that arrives is a SUMMARY, never the raw one), `enabled` with `budget_tokens` in the old ones (`pensamentoAdaptativo`, `src/infrastructure/llm/anthropic-provider.ts:395`); `reasoningOff` does not send `thinking`. The signed `thinking` blocks come back in `message.thinkingBlocks` so the engine returns them intact in the `assistant` turn that asked for tools. The engine records the text in `agent.response.payload.raciocinio` (the engine's lane) and it does not enter rehydration, the RAG nor the graph. The session's event reads (`GET .../events`, `GET .../events/:eventId` and Anamnesis's event by id) remove `payload.raciocinio` from `agent.response` for an effective role below `developer` (`projectRole ?? workspaceRole`, RN-471), through ONE output filter. The `reasoningText` capability is `false` in all providers until there is a smoke with a credential (ADR 0041).
+- **Rule:** the provider returns the reasoning TEXT as a `reasoning` chunk (OpenRouter's `delta.reasoning`, the DeepSeek/vLLM dialect's `delta.reasoning_content`, Anthropic's `thinking_delta`) and never in the `content`. The `stream-llm-turn` forwards each piece as a `raciocinio` frame and the `final` frame carries `raciocinio` with the WHOLE text of the step, with no cut; the non-stream `llm-turn` returns the same field. Anthropic receives `thinking` when the model reasons and reasoning was not turned off: `adaptive` with `display: "summarized"` and without `budget_tokens` in the current models (4.6 onward and the 5 family; the default `display` would return empty text, and the text that arrives is a SUMMARY, never the raw one), `enabled` with `budget_tokens` in the old ones (`pensamentoAdaptativo`, `src/infrastructure/llm/anthropic-provider.ts:559`); `reasoningOff` does not send `thinking`. The signed `thinking` blocks come back in `message.thinkingBlocks` so the engine returns them intact in the `assistant` turn that asked for tools. The engine records the text in `agent.response.payload.raciocinio` (the engine's lane) and it does not enter rehydration, the RAG nor the graph. The session's event reads (`GET .../events`, `GET .../events/:eventId` and Anamnesis's event by id) remove `payload.raciocinio` from `agent.response` for an effective role below `developer` (`projectRole ?? workspaceRole`, RN-471), through ONE output filter. The `reasoningText` capability is `false` in all providers until there is a smoke with a credential (ADR 0041).
 - **Capability:** `reasoningText` is `true` only in Anthropic and OpenRouter, PROVEN with a real credential on 2026-11-03: `anthropic-provider.raciocinio.smoke.spec.ts` (`claude-haiku-5-5` and `claude-sonnet-5-5`, output 0 in both; the text is the reasoning SUMMARY, `display: summarized`, never the raw one) and `openrouter-provider.raciocinio.smoke.spec.ts` (`deepseek/deepseek-r1-0528`, `deepseek/deepseek-r1` left OpenRouter and gives 404). The other nine providers stay `false`; turning on another requires the equivalent smoke with a credential.
-- **Where:** `src/infrastructure/llm/openai-compatible-provider.ts:381` (`textoDoRaciocinio`), `src/infrastructure/llm/anthropic-provider.ts:484` (`toThinkingBlocks`), `src/domain/sessions/raciocinio-do-evento.ts:16` (`filtrarRaciocinio`), `src/interfaces/http/sessions/sessions.controller.ts:260` (`listEvents`), `:333` (`getEvent`), `src/application/use-cases/sessions/create-socket-ticket.use-case.ts:69` (`podeVerRaciocinio` in the socket ticket, column `session_socket_tickets.pode_ver_raciocinio`, which the engine reads when consuming it, RN-108). Engine (AT-676): `RaciocinioDoTurno` accumulates the turn's reasoning and `TextoDoTurno.payload_do_turno` records it as `raciocinio`/`raciocinioTotal` outside the `content`; it returns the `thinkingBlocks` in the `assistant` message with `toolCalls` (`apps/engine/lib/engine/agents/raciocinio_do_turno.ex:34` (`anexar_blocos`)); the stream's `raciocinio` frame becomes the ephemeral event `agent.reasoning_delta` (`apps/engine/lib/engine/sessions/engine_api_client.ex:1841` (`consume_sse`)); and the `intercept` of the `session:<id>` channel only delivers the delta, and only leaves `raciocinio` in the `agent.response`, to the socket whose ticket has `pode_ver_raciocinio` (`apps/engine/lib/engine_web/channels/session_channel.ex:42` (`handle_out`)). A missing or null column counts as false.
+- **Where:** `src/infrastructure/llm/openai-compatible-provider.ts:381` (`textoDoRaciocinio`), `src/infrastructure/llm/anthropic-provider.ts:536` (`toThinkingBlocks`), `src/domain/sessions/raciocinio-do-evento.ts:16` (`filtrarRaciocinio`), `src/interfaces/http/sessions/sessions.controller.ts:260` (`listEvents`), `:333` (`getEvent`), `src/application/use-cases/sessions/create-socket-ticket.use-case.ts:69` (`podeVerRaciocinio` in the socket ticket, column `session_socket_tickets.pode_ver_raciocinio`, which the engine reads when consuming it, RN-108). Engine (AT-676): `RaciocinioDoTurno` accumulates the turn's reasoning and `TextoDoTurno.payload_do_turno` records it as `raciocinio`/`raciocinioTotal` outside the `content`; it returns the `thinkingBlocks` in the `assistant` message with `toolCalls` (`apps/engine/lib/engine/agents/raciocinio_do_turno.ex:34` (`anexar_blocos`)); the stream's `raciocinio` frame becomes the ephemeral event `agent.reasoning_delta` (`apps/engine/lib/engine/sessions/engine_api_client.ex:1841` (`consume_sse`)); and the `intercept` of the `session:<id>` channel only delivers the delta, and only leaves `raciocinio` in the `agent.response`, to the socket whose ticket has `pode_ver_raciocinio` (`apps/engine/lib/engine_web/channels/session_channel.ex:42` (`handle_out`)). A missing or null column counts as false.
 - **Test:** `test/infrastructure/llm/raciocinio-texto.spec.ts` (the two fields, `thinking_delta`, adaptive/summarized × enabled by model, blocks returned in the next body, `reasoningText` false), `test/domain/sessions/raciocinio-do-evento.spec.ts` (`viewer` does not receive, `developer`+ receives), `test/application/use-cases/sessions/create-socket-ticket.use-case.spec.ts` (ticket `true` for `developer`, `false` for `viewer`), `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` and `run-llm-turn.use-case.spec.ts` (`raciocinio` frame, `final` with the whole text, `content` intact); manual smoke `openrouter-provider.raciocinio.smoke.spec.ts`. Engine: `apps/engine/test/engine/agents/raciocinio_do_turno_test.exs` (frame accumulates and `final` replaces, payload with `content` intact, rehydration without reasoning, `thinkingBlocks` on the 2nd call) and `apps/engine/test/engine_web/channels/session_channel_test.exs` (`intercept` with and without the flag).
 - **Origin:** AT-676 (EP-031), api lane; ADR 0249.
 
@@ -12675,7 +12675,7 @@ is no known password). With no user at all on the installation it answers 409.
 ### RN-997 — The Anthropic catalog is born with a dated list price and the SDK's `supportsReasoning`; a manual price is never overwritten {#rn-997}
 
 - **Rule:** Anthropic's `/v1/models` does not report a price, and the synced model was born with price 0 (a zero-cost spend, with no warning). `listModels` returns the price from the manufacturer's SINGLE table of [RN-965](#rn-965) (`precoDoFabricante`, micro-USD per million), matching by ID and, if not found, by the ID without the date suffix (`-YYYYMMDD`); an ID outside the table stays without a price ([RN-042](#rn-042)). `supportsReasoning` comes from the SDK's `capabilities.thinking.supported`; with null `capabilities` the family applies (every `claude-` that is not 3.x reasons). The sync treats the price as it already did (RN-044): a `manual_pricing` row always wins, and a new model WITH a list price is born `manual_pricing = false`. The price frozen in the metering does not change. An old row already `manual_pricing = true` (born without a price) stays as it is: correcting it is the `owner`'s curation.
-- **Where:** `src/infrastructure/llm/anthropic-provider.ts:492` (`precoDeLista`), `src/domain/llm/precos-do-fabricante.ts` (`PRECOS_DO_FABRICANTE`, `precoDoFabricante`), `src/application/use-cases/llm/sync-model-catalog.use-case.ts` (`resolverPreco`).
+- **Where:** `src/infrastructure/llm/anthropic-provider.ts:544` (`precoDeLista`), `src/domain/llm/precos-do-fabricante.ts` (`PRECOS_DO_FABRICANTE`, `precoDoFabricante`), `src/application/use-cases/llm/sync-model-catalog.use-case.ts` (`resolverPreco`).
 - **Test:** `test/infrastructure/llm/anthropic-provider.catalogo.spec.ts` (price with and without date suffix, unknown ID without a price, `supportsReasoning`); `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts` (a manual price is not overwritten).
 - **Origin:** owner's request of 03/11; ADR 0251 (references [0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)).
 
@@ -12683,7 +12683,7 @@ is no known password). With no user at all on the installation it answers 409.
 
 - **Rule:** revises [RN-741](#rn-741) and [RN-782](#rn-782)/[RN-783](#rn-783) for the `anthropic` provider. The sentence of RN-741 "the direct `anthropic-provider` does not send `thinking`, so the model does not reason" became false: in ADAPTIVE-thinking models (the 5.5s) omitting `thinking` is adaptive at the default effort, and Haiku 5.5 thought up to `max_tokens` with reasoning "off" (TP-01 of 05/11: 10 of 10 tasks blocked with "reasoning-only response"). (1) With `reasoningOff` the body is PER MODEL (`raciocinioDesligado`, owner's decision of 05/11): Haiku 5.5 → `thinking: { type: 'disabled' }` (really off, with no headroom); Sonnet 5.5 → `thinking: { type: 'between_tools' }` (thinks only between tool calls, with headroom); Opus 5.5 → `output_config: { effort: 'low' }` with headroom, DECLARED as REDUCED, not off — `disabled` is a 400 on Opus and on Sonnet 5.5; an unknown adaptive model → nothing (the model's default) with the headroom, because reducing requires proof; an old model (3.x, 4.0..4.5) without `thinking` does not think, and omitting is already turning off. (2) With reasoning on in the adaptive one, `max_tokens` is the visible output + `reasoningBudget ?? 4096` — the same headroom as RN-741, because there the ceiling is TOTAL (before, it stayed 4096 TOTAL and Infra was cut off). (3) The provider declares `aceitaRaciocinioDesligado: true` ([RN-916](#rn-916)). (4) `reasoningTokens` comes from `usage.output_tokens_details.thinking_tokens` of the last `message_delta` (SDK 0.113 does not copy it to the final message), only when it is an integer >= 0; otherwise it is omitted and the column stays NULL ([RN-666](#rn-666)).
 - **Proof (paid smoke of 05/11, `ANTHROPIC_TEST_KEY`):** Haiku/Sonnet/Opus 5.5 with `reasoningOff` and a tool: accepted, called the tool, did not truncate, `thinking_tokens` 0; `thinking: disabled` on Opus 5.5 → 400 (`"thinking.type.disabled" is not supported for this model`); Haiku 5.5 on: 303 of 308 output tokens were reasoning; swapping the `system` between two rounds resending the reasoning block was ACCEPTED. Cost: ~US$ 0.009.
-- **Where:** `apps/api/src/infrastructure/llm/anthropic-provider.ts:521` (`corpoDeRaciocinio`), `:562` (`raciocinioDesligado`), `:583` (`tokensDeRaciocinio`), `:80` (`aceitaRaciocinioDesligado`)
+- **Where:** `apps/api/src/infrastructure/llm/anthropic-provider.ts:573` (`corpoDeRaciocinio`), `:614` (`raciocinioDesligado`), `:635` (`tokensDeRaciocinio`), `:81` (`aceitaRaciocinioDesligado`)
 - **Test:** `apps/api/test/infrastructure/llm/raciocinio-texto.spec.ts` (body per model with `reasoningOff`, headroom in the adaptive one and with a budget, `thinking_tokens` from the `message_delta` and omitted when it is not an integer >= 0, the capability), `apps/api/test/infrastructure/llm/anthropic-provider.raciocinio.smoke.spec.ts` (manual, skips without the key)
 - **Origin:** AT-739 (EP-030), findings 2 and 8 of TP-01 of 05/11; ADR 0257 (revises item 4 of [ADR 0223](../adr/0223-orcamento-de-raciocinio-por-modelo.md) for Anthropic).
 
@@ -12724,7 +12724,7 @@ is no known password). With no user at all on the installation it answers 409.
 
 ### RN-1008 — The direct Anthropic provider uses prompt caching, sums the cache parcels into the input and prices the call from the vendor table {#rn-1008}
 
-- **Rule:** revises [RN-892](#rn-892) item 1 (`promptCaching` was "only OpenRouter") and completes [RN-666](#rn-666) for the direct Anthropic provider. Measured in TP-01 (25th, 05/11): 463 calls, 10.12 M input tokens, `cached_input_tokens` = 0, US$ 2.28 of the US$ 2.62 total was input. (1) `system` goes out in up to two blocks: the PREFIX (the `system` messages before the first non-system one) carries `cache_control: {type: "ephemeral"}` (TTL 5 min); the TAIL (late `system` messages, hoisted to the top by this dialect) follows without a point. Text and order do not change. (2) One more point goes on the last block of the last `user` turn (tool results are `user` turns), mirroring [RN-892](#rn-892); an empty text gets no point. (3) `usage`: Anthropic's `input_tokens` is only the NON-cached part, so `inputTokens = input_tokens + cache_read_input_tokens + cache_creation_input_tokens` and `cachedInputTokens = cache_read_input_tokens`; without the fields `cachedInputTokens` is absent ("did not say", [RN-666](#rn-666)). (4) Cost (owner's option A, ADR 0188): when any cache parcel is non-zero the provider emits `costMicros` from the four parcels times `precoDoFabricante(model)`: input 1x, cache read 0.1x (0.05x on Opus 5.5), cache write 1.25x, output 1x; the api records it with `priceImplicit` and `catalogCostMicros`. A model outside the table emits no cost ([RN-042](#rn-042)); with no cache parcel the catalog path already gives the same number. (5) `capabilities.promptCaching` is `true`, proven by `anthropic-provider.cache.smoke.spec.ts` before merge.
+- **Rule:** revises [RN-892](#rn-892) item 1 (`promptCaching` was "only OpenRouter") and completes [RN-666](#rn-666) for the direct Anthropic provider. Measured in TP-01 (25th, 05/11): 463 calls, 10.12 M input tokens, `cached_input_tokens` = 0, US$ 2.28 of the US$ 2.62 total was input. (1) `system` goes out as ONE block, the PREFIX (the `system` messages before the first non-system one), carrying `cache_control: {type: "ephemeral"}` (TTL 5 min); the TAIL (late `system` messages) no longer goes up to the top ([RN-1015](#rn-1015)). (2) One more point goes on the last block of the last `user` turn (tool results are `user` turns), mirroring [RN-892](#rn-892); an empty text gets no point ([RN-1014](#rn-1014) adds one on the second-to-last `user` turn). (3) `usage`: Anthropic's `input_tokens` is only the NON-cached part, so `inputTokens = input_tokens + cache_read_input_tokens + cache_creation_input_tokens` and `cachedInputTokens = cache_read_input_tokens`; without the fields `cachedInputTokens` is absent ("did not say", [RN-666](#rn-666)). (4) Cost (owner's option A, ADR 0188): when any cache parcel is non-zero the provider emits `costMicros` from the four parcels times `precoDoFabricante(model)`: input 1x, cache read 0.1x (0.05x on Opus 5.5), cache write 1.25x, output 1x; the api records it with `priceImplicit` and `catalogCostMicros`. A model outside the table emits no cost ([RN-042](#rn-042)); with no cache parcel the catalog path already gives the same number. (5) `capabilities.promptCaching` is `true`, proven by `anthropic-provider.cache.smoke.spec.ts` before merge.
 - **Code:** `apps/api/src/infrastructure/llm/anthropic-provider.ts` (`blocosDeSistema`, `marcarCacheDaConversa`, `usageDeEntrada`)
 - **Test:** `apps/api/test/infrastructure/llm/anthropic-provider.contract.spec.ts` ("prompt caching (RN-1008)": blocks and points, last user point, usage sum, cost by four parcels, out-of-table model); smoke `anthropic-provider.cache.smoke.spec.ts` (manual)
 - **Origin:** AT-744 (EP-030)
@@ -12736,6 +12736,28 @@ is no known password). With no user at all on the installation it answers 409.
 - **Code:** `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts` (`settleMerge`, `acordarDependentes`)
 - **Test:** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("acorda os dependentes (RN-1009)": one row with `cause: dependency_done`, repeated merge writes nothing, no map writes nothing), `apps/api/test/infrastructure/persistence/drizzle/dependente-acorda-no-merge.spec.ts` (real Postgres: `auth` claims nothing before the merge, the row exists after it and `auth` claims the task)
 - **Origin:** AT-746 (EP-030); the engine side (outbox -> drain -> wake -> idle agent claims) already exists and is proven by `dev_agent_chain_test.exs`.
+
+
+### RN-1018 — The agent retires an obsolete business rule, citing its replacement or the user's answer; every reader ignores it {#rn-1018}
+
+- **Rule:** a business rule is an `artifact.business_rule` event and the log is append-only, so an obsolete rule used to stay forever (TP-01 26th, 06/11: the Criativo asked the conductor to "remove it manually"). `POST /internal/projects/:projectId/business-rules/:ruleId/retire` (service token) takes `{ sessionId, agentRole, reason, replacedBy?, questionId? }` and appends `artifact.business_rule_retired { ruleId, reason, storyIds, replacedBy?, questionId? }`, with no approval card (owner decision of 06/11/2026). (1) Only `criativo` and `po` retire: any other role is 403 `papel_nao_retira_regra`. (2) The call must cite `replacedBy` (an existing, non-retired rule other than itself, else 400 `substituta_invalida`) and/or a `questionId` the user already answered (the [RN-859](#rn-859) standard, else 409 `pergunta_nao_respondida`); neither is 400 `retirada_sem_citacao`. (3) Unknown rule is 404, a rule already retired is 409 `regra_ja_retirada`. (4) Each (non-archived) story that cites the rule drops it and cites `replacedBy` instead (inclusive a `ready` story, no new promotion); if a story would be left with NO rule (only possible without `replacedBy`) the whole retirement is refused with 409 `historia_ficaria_sem_regra`, and a story with a task `in_progress`/`in_review` refuses with 409 `historia_com_tarefa_em_execucao`; nothing is written on a refusal. (5) The retired rule stays in the log but leaves every reader that decides: the rule list and coverage ([RN-164](#rn-164)), the semantic-duplicate check ([RN-681](#rn-681)), the dev and psychologist contexts, the auto-accept coverage count and the `afeta.regras` resolution of open questions; `create_story`/`complete_story` refuse to link it (400).
+- **Where:** `apps/api/src/application/use-cases/backlog/retire-business-rule.use-case.ts` (`execute`), `apps/api/src/application/use-cases/backlog/regras-retiradas.ts` (`idsDeRegrasRetiradas`), `apps/api/src/interfaces/http/internal/internal-business-rules.controller.ts`.
+- **Test:** `apps/api/test/application/use-cases/backlog/retire-business-rule.use-case.spec.ts` (role, missing citation, swap, no-rule refusal, running task, readers).
+- **Origin:** AT-755 (EP-030), part B of AT-752; the engine tool and the web panel come after.
+
+### RN-1014 — The direct Anthropic provider also puts a cache point on the second-to-last `user` turn {#rn-1014}
+
+- **Rule:** extends [RN-1008](#rn-1008) item 2. Besides the last `user` turn, `marcarCacheDaConversa` marks the last block of the SECOND-TO-LAST `user` turn (tool results are `user` turns), under the same rules (no point on empty text, on `tool_use` or on a thinking block). The second-to-last `user` is where the previous call of the same loop wrote its cache entry, so the read becomes an explicit point and no longer depends on Anthropic's lookback of about 20 blocks, which a turn with 7 to 10 parallel calls plus their results exceeds (TP-01 26th, 06/11: PO, Architect and Creative at 19% to 35% cache). A conversation with a single `user` turn gets one point. The request carries at most 3 of the 4 `cache_control` points Anthropic allows (the `system` prefix plus these two); a point on every `user` turn would exceed the limit and is wrong.
+- **Code:** `apps/api/src/infrastructure/llm/anthropic-provider.ts` (`marcarCacheDaConversa`, `marcarTurno`)
+- **Test:** `apps/api/test/infrastructure/llm/anthropic-provider.contract.spec.ts` ("(b)" last and second-to-last `user`; "(b2)" third-to-last `user` stays unmarked and the request has at most 4 points)
+- **Origin:** AT-749 (EP-030), api part; the engine part (reasoning blocks per `assistant`) is RN-1013.
+
+### RN-1015 — On direct Anthropic, the late `system` messages go to the end of the last `user` turn, after the cache point, never to the top `system` {#rn-1015}
+
+- **Rule:** revises [RN-1008](#rn-1008) item 1 and makes [RN-622](#rn-622) / [RN-878](#rn-878) true on this provider. The engine appends the ephemeral guidance (language reminder, citation list, decisions) as `system` messages AFTER the conversation. This dialect only takes `system` at the top, and the provider used to hoist them there, ahead of dozens of English `tool_result` blocks, so in a long loop the model followed the language of the recent context (TP-01 26th, 06/11: `dev-*` answers in English at 38% to 60% from the 3rd position on). Now the `system` messages after the first non-system one (the TAIL) become the LAST text block of the LAST `user` turn, AFTER the block that carries the cache point of [RN-1008](#rn-1008) / [RN-1014](#rn-1014), so the cached prefix is unchanged and the tail is read next to the recent context. The top `system` keeps only the PREFIX. If the conversation does not end in a `user` turn, the tail stays as a second `system` block without a point (previous behaviour). Text and order of the messages do not change. OpenRouter is NOT changed (owner decision): this covers only the direct Anthropic provider.
+- **Code:** `apps/api/src/infrastructure/llm/anthropic-provider.ts` (`blocosDeSistema`, `caudaDeSistema`, `comCaudaDeSistema`)
+- **Test:** `apps/api/test/infrastructure/llm/anthropic-provider.contract.spec.ts` ("(a)" prefix-only `system` and tail after the point; "(a2)" tail after `tool_result`, fallback without a final `user`), `apps/api/test/contract/llm-provider.contract.ts` (`fim_do_ultimo_user`, late `system` after `user` and after `tool`)
+- **Origin:** AT-751 (EP-030). Acceptance (behaviour) is the next TP-01: `dev-*` `agent.response` in English at position >= 3 down to 5% or less; no paid smoke before it.
 
 ### RN-1017 — A terminal `git push` to a protected branch, with force, `--all` or `--mirror` is a human decision, even in automatic mode {#rn-1017}
 

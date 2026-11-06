@@ -56,6 +56,7 @@ function montar(eventos: SessionEvent[], historias: Story[]) {
   const sessionEvents = {
     listByTypeForProject: (projectId: string, type: string) => {
       expect(projectId).toBe(PROJETO);
+      if (type === 'artifact.business_rule_retired') return Promise.resolve([]);
       expect(type).toBe('artifact.business_rule');
       return Promise.resolve(eventos);
     },

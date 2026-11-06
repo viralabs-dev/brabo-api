@@ -163,10 +163,12 @@ export class AnthropicProvider implements LLMProvider {
         : {}),
     });
 
-    const system = blocosDeSistema(messages);
-
-    const conversation = marcarCacheDaConversa(
-      toConversation(messages.filter((message) => message.role !== 'system')),
+    const { system, conversation } = comCaudaDeSistema(
+      blocosDeSistema(messages),
+      marcarCacheDaConversa(
+        toConversation(messages.filter((message) => message.role !== 'system')),
+      ),
+      caudaDeSistema(messages),
     );
 
     const tetoDeInatividade = timeoutFromEnv(
@@ -363,35 +365,72 @@ function toConversation(messages: ChatMessage[]): TurnoAnthropic[] {
 
 const EFEMERO = { type: 'ephemeral' } as const;
 
-/**
- * `system` em até dois blocos (RN-1008): o PREFIXO (mensagens `system` antes da
- * primeira não-system) leva o ponto de cache; a cauda (as `system` tardias,
- * içadas para cá) vem depois, sem ponto. Texto e ordem não mudam.
- */
-export function blocosDeSistema(
-  messages: ChatMessage[],
-): Anthropic.TextBlockParam[] | undefined {
+/** Mensagens `system` antes da primeira não-system (o prefixo estável) e depois dela (a cauda). */
+function particaoDeSistema(messages: ChatMessage[]): [string, string] {
   const sistema = messages.filter((m) => m.role === 'system');
   const fim = messages.findIndex((m) => m.role !== 'system');
   const nPrefixo = fim === -1 ? sistema.length : fim;
   const junta = (ms: ChatMessage[]) =>
     ms.map((m) => textoDoConteudo(m.content)).join('\n\n');
-  const prefixo = junta(sistema.slice(0, nPrefixo));
-  const cauda = junta(sistema.slice(nPrefixo));
-  const blocos: Anthropic.TextBlockParam[] = [];
-  if (prefixo) {
-    blocos.push({ type: 'text', text: prefixo, cache_control: EFEMERO });
-  }
-  if (cauda) blocos.push({ type: 'text', text: cauda });
-  return blocos.length > 0 ? blocos : undefined;
+  return [junta(sistema.slice(0, nPrefixo)), junta(sistema.slice(nPrefixo))];
 }
 
-/** Um ponto no último bloco da última `user` (espelha a RN-892); texto vazio não leva ponto. */
-export function marcarCacheDaConversa(
-  turnos: TurnoAnthropic[],
-): TurnoAnthropic[] {
-  const i = turnos.findLastIndex((t) => t.role === 'user');
-  if (i === -1) return turnos;
+/**
+ * `system` do topo = só o PREFIXO (as `system` antes da primeira não-system),
+ * com o ponto de cache (RN-1008). A cauda NÃO sobe para cá (RN-1015): ver
+ * `caudaDeSistema` e `comCaudaDeSistema`.
+ */
+export function blocosDeSistema(
+  messages: ChatMessage[],
+): Anthropic.TextBlockParam[] | undefined {
+  const [prefixo] = particaoDeSistema(messages);
+  return prefixo
+    ? [{ type: 'text', text: prefixo, cache_control: EFEMERO }]
+    : undefined;
+}
+
+/** Texto das `system` tardias (RN-622/878: a orientação efêmera do fim da lista); vazio se não há. */
+export function caudaDeSistema(messages: ChatMessage[]): string {
+  return particaoDeSistema(messages)[1];
+}
+
+/**
+ * RN-1015: a cauda vira o ÚLTIMO bloco de texto do último turno `user`, DEPOIS
+ * do ponto de cache da conversa (o cache da RN-1008 não muda), para o modelo a
+ * ler junto do contexto recente. Se a conversa não termina em `user`, a cauda
+ * fica como 2º bloco do `system`, sem ponto.
+ */
+export function comCaudaDeSistema(
+  system: Anthropic.TextBlockParam[] | undefined,
+  conversa: TurnoAnthropic[],
+  cauda: string,
+): {
+  system: Anthropic.TextBlockParam[] | undefined;
+  conversation: TurnoAnthropic[];
+} {
+  if (!cauda) return { system, conversation: conversa };
+  const bloco = { type: 'text', text: cauda } as const;
+  const ultimo = conversa.at(-1);
+  if (ultimo?.role !== 'user') {
+    return { system: [...(system ?? []), bloco], conversation: conversa };
+  }
+  const conteudo: BlocoDeConteudo[] =
+    typeof ultimo.content === 'string'
+      ? ultimo.content
+        ? [{ type: 'text', text: ultimo.content }]
+        : []
+      : [...ultimo.content];
+  return {
+    system,
+    conversation: [
+      ...conversa.slice(0, -1),
+      { ...ultimo, content: [...conteudo, bloco] },
+    ],
+  };
+}
+
+/** Um ponto no último bloco do turno `i`; texto vazio e `tool_use`/raciocínio não levam ponto. */
+function marcarTurno(turnos: TurnoAnthropic[], i: number): TurnoAnthropic[] {
   const { content } = turnos[i];
   const blocos: BlocoDeConteudo[] =
     typeof content === 'string'
@@ -406,6 +445,19 @@ export function marcarCacheDaConversa(
   if (ultimo.type === 'redacted_thinking') return turnos;
   blocos[blocos.length - 1] = { ...ultimo, cache_control: EFEMERO };
   return turnos.map((t, j) => (j === i ? { ...t, content: blocos } : t));
+}
+
+/**
+ * Pontos de cache da conversa (RN-1008, RN-1014): o último bloco da última E da
+ * penúltima `user` (resultado de ferramenta também é `user`). Com o do `system`
+ * são 3 dos 4 pontos permitidos. O da penúltima é onde a chamada anterior
+ * gravou, e não depende da janela de ~20 blocos da Anthropic.
+ */
+export function marcarCacheDaConversa(
+  turnos: TurnoAnthropic[],
+): TurnoAnthropic[] {
+  const users = turnos.flatMap((t, i) => (t.role === 'user' ? [i] : []));
+  return users.slice(-2).reduce(marcarTurno, turnos);
 }
 
 /**

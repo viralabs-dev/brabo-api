@@ -803,6 +803,73 @@
         ]
       }
     },
+    "/internal/projects/{projectId}/business-rules/{ruleId}/retire": {
+      "post": {
+        "description": "Writes `artifact.business_rule_retired`. The rule stays in the log but leaves every reader (list, coverage, duplicate check, dev context). Stories citing it cite `replacedBy` instead; the retirement is refused when a story would be left with no rule. No approval card: the citation (`replacedBy` and/or an answered `questionId`) is the standard.",
+        "operationId": "InternalBusinessRulesController_retireRoute",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ruleId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetireBusinessRuleInternalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetiredBusinessRuleResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Named refusal (`reason`): `retirada_sem_citacao` or `substituta_invalida`."
+          },
+          "403": {
+            "description": "Service token missing or different from the shared one; or the role is not `criativo`/`po` (`papel_nao_retira_regra`)."
+          },
+          "404": {
+            "description": "Rule not in this project."
+          },
+          "409": {
+            "description": "Named refusal (`reason`): `regra_ja_retirada`, `pergunta_nao_respondida`, `historia_ficaria_sem_regra` or `historia_com_tarefa_em_execucao`."
+          }
+        },
+        "security": [
+          {
+            "service-token": []
+          }
+        ],
+        "summary": "Retires an obsolete business rule (RN-1018)",
+        "tags": [
+          "internal"
+        ]
+      }
+    },
     "/internal/projects/{projectId}/container-exec": {
       "post": {
         "description": "Called only by the engine, when `Engine.Actions.TerminalExecutor` decided the command belongs inside the real container (`execution_mode: container` with a REGISTERED `running` row). Proxies to `ContainerBrokerPort.exec` (ADR 0130/0134) — the last of the broker's five operations to gain a real caller. `sucesso: false` in the response — never a thrown error — is the NORMAL shape for a refused or unreachable broker: the container may have died or been removed from outside between the registered `running` row and this call (RN-486, registered and observed never merge), and that is a command failure, not a transport error.",
@@ -25888,6 +25955,66 @@
           "descobertos",
           "reencontrados",
           "indisponibilizados"
+        ]
+      },
+      "RetireBusinessRuleInternalDto": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "description": "The session the retirement is logged in."
+          },
+          "agentRole": {
+            "type": "string",
+            "example": "criativo",
+            "description": "Who retires. Only `criativo` and `po` are allowed (403)."
+          },
+          "reason": {
+            "type": "string",
+            "example": "Replaced by the per-professional agenda rule."
+          },
+          "replacedBy": {
+            "type": "string",
+            "description": "The existing, non-retired rule that replaces it. Stories citing the retired rule cite this one. Required when `questionId` is absent."
+          },
+          "questionId": {
+            "type": "string",
+            "description": "An open question the user ALREADY answered (RN-859 standard). Required when `replacedBy` is absent."
+          }
+        },
+        "required": [
+          "sessionId",
+          "agentRole",
+          "reason"
+        ]
+      },
+      "RetiredBusinessRuleResponseDto": {
+        "type": "object",
+        "properties": {
+          "ruleId": {
+            "type": "string"
+          },
+          "replacedBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "questionId": {
+            "type": "string",
+            "nullable": true
+          },
+          "storyIds": {
+            "description": "Stories whose citation of the rule was swapped or removed.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "ruleId",
+          "replacedBy",
+          "questionId",
+          "storyIds"
         ]
       },
       "ReturnStoryDto": {
