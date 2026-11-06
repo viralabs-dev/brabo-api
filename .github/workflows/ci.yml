@@ -96,7 +96,7 @@ jobs:
   # A identidade do cosign é este ci.yml (o brabo-qa aceita release|ci).
   imagem-hotfix:
     name: Imagem do hotfix (sha-)
-    if: github.event_name == 'pull_request' && github.base_ref == 'main' && startsWith(github.head_ref, 'hotfix/')
+    if: github.event_name == 'pull_request' && github.base_ref == 'main' && startsWith(github.head_ref, 'hotfix/') && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 40
     permissions:

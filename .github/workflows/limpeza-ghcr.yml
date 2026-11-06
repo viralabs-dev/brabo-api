@@ -1,8 +1,8 @@
 name: limpeza-ghcr
 
 # Limpeza das versões da imagem `ghcr.io/viralabs-dev/brabo-api` no GHCR (AT-765).
-# - PR fechada: apaga a versão `sha-<12 do head>` (imagem do hotfix).
-# - Diário: guarda as 10 tags `-dev.N` mais novas e apaga as demais.
+# - PR `hotfix/*` fechada: apaga a versão `sha-<12>` de cada commit da PR (imagem do hotfix).
+# - Diário: guarda as 10 tags `-dev.N` mais novas e apaga as demais; rede de segurança: apaga `sha-*` com mais de 14 dias.
 # Nunca apaga versão que tenha tag `vX.Y.Z` sem sufixo.
 on:
   pull_request:
@@ -12,7 +12,8 @@ on:
 
 permissions:
   contents: read
-  packages: write # apagar versões do pacote (o pacote precisa permitir este repo em "Manage Actions access")
+  pull-requests: read # listar os commits da PR
+  packages: write # apagar versões do pacote: o DELETE exige que este repo tenha o papel Admin no pacote (Package settings > Manage Actions access)
 
 env:
   PACOTE: brabo-api
@@ -20,36 +21,39 @@ env:
 
 jobs:
   sha-da-pr:
-    name: Apagar sha- da PR fechada
-    if: github.event_name == 'pull_request'
+    name: Apagar os sha- da PR fechada
+    if: github.event_name == 'pull_request' && github.base_ref == 'main' && startsWith(github.head_ref, 'hotfix/')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - env:
-          TAG_SHA: sha-${{ github.event.pull_request.head.sha }}
+          PR: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          tag="${TAG_SHA:0:16}"
+          # cada push na PR cria um sha-<12>; apaga o de todos os commits dela
+          tags=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR}/commits" --jq '.[].sha | "sha-" + .[0:12]' | jq -R . | jq -sc .)
           gh api --paginate "orgs/viralabs-dev/packages/container/${PACOTE}/versions" \
-            | jq -r --arg t "$tag" '.[] | select(any(.metadata.container.tags[]; . == $t)) | select(all(.metadata.container.tags[]; test("^v[0-9]+\\.[0-9]+\\.[0-9]+$") | not)) | .id' \
+            | jq -r --argjson t "$tags" '.[] | select(any(.metadata.container.tags[]; . as $x | $t | index($x))) | select(all(.metadata.container.tags[]; test("^v[0-9]+\\.[0-9]+\\.[0-9]+$") | not)) | .id' \
             | while read -r id; do
-                echo "apagando versão ${id} (${tag})"
+                echo "apagando versão ${id}"
                 gh api -X DELETE "orgs/viralabs-dev/packages/container/${PACOTE}/versions/${id}"
               done
 
-  dev-antigas:
-    name: Guardar só as 10 -dev mais novas
+  limpeza-diaria:
+    name: Guardar só as 10 -dev mais novas e varrer sha- antigos
     if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - run: |
           set -euo pipefail
+          corte=$(date -u -d '14 days ago' +%Y-%m-%dT%H:%M:%SZ)
           gh api --paginate "orgs/viralabs-dev/packages/container/${PACOTE}/versions" \
-            | jq -rs 'add
-                | map(select(any(.metadata.container.tags[]; test("^v[0-9]+\\.[0-9]+\\.[0-9]+-dev\\.[0-9]+$"))
-                       and all(.metadata.container.tags[]; test("^v[0-9]+\\.[0-9]+\\.[0-9]+$") | not)))
-                | sort_by(.created_at) | reverse | .[10:][] | .id' \
+            | jq -rs --arg corte "$corte" 'add
+                | map(select(all(.metadata.container.tags[]; test("^v[0-9]+\\.[0-9]+\\.[0-9]+$") | not))) as $v
+                | ($v | map(select(any(.metadata.container.tags[]; test("^v[0-9]+\\.[0-9]+\\.[0-9]+-dev\\.[0-9]+$")))) | sort_by(.created_at) | reverse | .[10:]) as $dev
+                | ($v | map(select(any(.metadata.container.tags[]; test("^sha-")) and .created_at < $corte))) as $sha
+                | ($dev + $sha)[] | .id' \
             | while read -r id; do
                 echo "apagando versão ${id}"
                 gh api -X DELETE "orgs/viralabs-dev/packages/container/${PACOTE}/versions/${id}"
