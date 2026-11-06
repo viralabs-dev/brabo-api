@@ -1,291 +1,277 @@
 ---
 id: aceite-providers
-title: Acceptance of LLM providers with real credentials
-sidebar_label: Provider acceptance
+title: O aceite dos providers de LLM com credencial real
+sidebar_label: Aceite dos providers
 sidebar_position: 6
-description: The living document that tracks which provider smokes have already run against a real key, how much they cost, and what each one proves that the mock doesn't.
-keywords: [providers, LLM, smoke, acceptance, Phase 11, ADR 0043, credential]
-idioma_original: en
+description: O documento vivo que rastreia quais smokes de provider já rodaram contra chave de verdade, quanto custaram, e o que cada um prova que o mock não prova.
+keywords: [providers, LLM, smoke, aceite, Fase 11, ADR 0043, credencial]
 ---
 
-# Acceptance of LLM providers with real credentials
+# O aceite dos providers de LLM com credencial real
 
-[ADR 0043](../adr/0043-seis-providers-de-llm-e-o-fechamento-da-fase-9b.md)
-delivered nine providers with the contract suite green (the tenth, 9Router, came in later, ADR 0222) — **against a mock**.
-It registered, in "what's left for later," that acceptance with real
-credentials for the six smokes remained open. This file is where that
-"later" is tracked: one line per provider, updated **every time a key shows
-up**. The ADR is not edited; it is the record of the decision, this is the
-record of the proof.
+O [ADR 0043](../adr/0043-seis-providers-de-llm-e-o-fechamento-da-fase-9b.md)
+entregou nove providers com a suite de contrato verde (o décimo, o 9Router, entrou depois, ADR 0222) — **contra mock**. Ele
+mesmo registrou, em "o que fica para depois", que o aceite com credencial real
+dos seis smokes continuava aberto. Este arquivo é onde esse "depois" é
+rastreado: uma linha por provider, atualizada **toda vez que uma chave
+aparece**. O ADR não é editado; ele é o registro da decisão, este é o registro
+da prova.
 
-The house's golden rule applies here in full: a capability is only declared
-when proven. As long as a smoke hasn't run against a real key, what exists
-about that provider is a reading of official documentation — good, verified
-line by line in Phase 11, and still not execution.
+A regra de ouro da casa vale aqui inteira: capability só é declarada quando
+provada. Enquanto um smoke não rodou contra chave real, o que existe sobre
+aquele provider é leitura de documentação oficial — boa, verificada linha a
+linha na Fase 11, e ainda assim não é execução.
 
-## State as of 2026-09-25 — a `system` message after `user`/`tool` (AT-161)
+## Estado em 2026-09-25 — mensagem `system` depois de `user`/`tool` (AT-161)
 
-Another axis, same rule. The contract suite now proves where each adapter puts
-a `role: "system"` that arrives AFTER `user` or `tool` (end of `messages` in
-eight; moved to the end of the last `user` turn in direct Anthropic (RN-1015) — see
-[the divergences table](../reference/llm-providers.md#a-system-message-at-the-end-of-the-conversation-at-161)).
-Whether the provider ACCEPTS that body is what
-`sistema-tardio.smoke.spec.ts` asks, and only a real call answers it:
+Outro eixo, a mesma régua. A suite de contrato agora prova onde cada adapter
+põe um `role: "system"` que chega DEPOIS de `user` ou `tool` (no fim de
+`messages` em oito; movido para o fim do último turno `user` no Anthropic
+direto (RN-1015) — ver
+[a tabela de divergências](../reference/llm-providers.md#a-system-message-at-the-end-of-the-conversation-at-161)).
+Se o provider ACEITA esse corpo é o que
+`sistema-tardio.smoke.spec.ts` pergunta, e só uma chamada real responde:
 
 ```bash
 OLLAMA_SISTEMA_TARDIO_SMOKE=1 pnpm --filter api exec vitest run test/infrastructure/llm/sistema-tardio
-# cloud providers: export the same *_TEST_KEY as the acceptance smokes (ANTHROPIC_TEST_KEY for Anthropic)
+# providers de nuvem: exporte a mesma *_TEST_KEY dos smokes de aceite (ANTHROPIC_TEST_KEY para o Anthropic)
 ```
 
-| provider | late `system` accepted by the real provider? | how |
+| provider | `system` tardio aceito pelo provider real? | como |
 |---|---|---|
-| Ollama | ✅ **yes**, after `user` and after `tool` | local daemon 0.32.15, `qwen2.5-coder:7b`; both turns ended with text and no error chunk |
-| Anthropic | ❌ not proven | `ANTHROPIC_TEST_KEY` missing — and the body it sends has no late `system` anyway (hoisted) |
-| OpenAI | ❌ not proven | `OPENAI_TEST_KEY` missing |
-| OpenRouter | ❌ not proven | `OPENROUTER_TEST_KEY` missing in this environment; in a hub the answer is per upstream, so one run proves the upstream that served it |
-| NVIDIA NIM | ✅ **yes** (`user` only, via the smoke's turn) | 2026-10-22, `nvidia/nemotron-3.5-lightning-30b-a3b`; the turn ended with text and no error chunk |
-| Together AI | ❌ not proven | `TOGETHER_TEST_KEY` missing |
-| DeepInfra | ❌ not proven | `DEEPINFRA_TEST_KEY` missing |
-| Bitdeer | ❌ not proven | `BITDEER_TEST_KEY` missing |
-| Vultr | ❌ not proven | `VULTR_TEST_KEY` missing |
-| 9Router | ❌ not proven | `NINE_ROUTER_TEST_KEY`/`NINE_ROUTER_TEST_MODEL` missing (`free`/`auto:free` only) |
-| OpenCode Zen | ❌ not proven | smoke ran on 2026-10-29 with a real key: free models refused (429 `FreeUsageLimitError`, vendor policy: free only in the OpenCode client). Paid not proven |
+| Ollama | ✅ **sim**, depois de `user` e depois de `tool` | daemon local 0.32.15, `qwen2.5-coder:7b`; os dois turnos terminaram com texto e sem chunk de erro |
+| Anthropic | ❌ não provado | falta `ANTHROPIC_TEST_KEY` — e o corpo que ele envia não tem `system` tardio de qualquer forma (içado) |
+| OpenAI | ❌ não provado | falta `OPENAI_TEST_KEY` |
+| OpenRouter | ❌ não provado | falta `OPENROUTER_TEST_KEY` neste ambiente; num hub a resposta é por upstream, então uma rodada prova o upstream que a serviu |
+| NVIDIA NIM | ✅ **sim** (só `user`, via o turno do smoke) | 22/10/2026, `nvidia/nemotron-3.5-lightning-30b-a3b`; o turno terminou com texto e sem chunk de erro |
+| Together AI | ❌ não provado | falta `TOGETHER_TEST_KEY` |
+| DeepInfra | ❌ não provado | falta `DEEPINFRA_TEST_KEY` |
+| Bitdeer | ❌ não provado | falta `BITDEER_TEST_KEY` |
+| Vultr | ❌ não provado | falta `VULTR_TEST_KEY` |
+| 9Router | ❌ não provado | falta `NINE_ROUTER_TEST_KEY`/`NINE_ROUTER_TEST_MODEL` (só `free`/`auto:free`) |
+| OpenCode Zen | ❌ não provado | smoke rodou em 29/10/2026 com chave real: grátis recusados (429 `FreeUsageLimitError`, política do fornecedor: grátis só no cliente OpenCode). Pago não provado |
 
-The smoke proves ACCEPTANCE only (the turn ends with text, no error chunk). If
-the model OBEYS the guidance is a quality question, and belongs to AT-082.
+O smoke prova só o ACEITE (o turno termina com texto, sem chunk de erro). Se
+o modelo OBEDECE à orientação é pergunta de qualidade, e pertence à AT-082.
 
-## State as of 2026-08-14 — the embedding capability (ADR 0075)
+## Estado em 2026-08-14 — a capability de embedding (ADR 0075)
 
-NEW axis in this list. Until now "acceptance" meant the CHAT script; the
-[ADR 0075](../adr/0075-embeddings-no-contrato-de-llm-provider.md) added
-`embed` to the contract, and the same rule applies: **a capability is only
-`true` with proof of execution**.
+Eixo NOVO nesta lista. Até aqui "aceite" queria dizer o roteiro de CHAT; o
+[ADR 0075](../adr/0075-embeddings-no-contrato-de-llm-provider.md) acrescentou
+`embed` ao contrato, e a mesma régua vale: **capability só é `true` com prova
+de execução**.
 
-**Ollama closed**, and it's the only one. Run against the real local daemon
-(0.32.1), with the model pulled on the spot:
+**Ollama fechou**, e é o único. Rodado contra o daemon local de verdade
+(0.32.1), com o modelo puxado na hora:
 
 ```bash
 docker exec brabo-dev-ollama-1 ollama pull nomic-embed-text
 OLLAMA_EMBEDDING_SMOKE=1 pnpm --filter api test ollama-provider.embeddings
 ```
 
-| what | result |
+| o que | resultado |
 |---|---|
-| `POST /api/embed`, 2 inputs | 2 vectors, **768** dimensions each |
-| `prompt_eval_count` | **10** — `estimated: false`, came from the daemon |
-| `/api/tags` of the same daemon | `nomic-embed-text` with `capabilities: ["embedding"]` and `embedding_length: 768`; `llama3.2:1b` with `["completion","tools"]` |
-| CHAT model asked to embed | **`501`** — "This server does not support embeddings" |
+| `POST /api/embed`, 2 entradas | 2 vetores, **768** dimensões cada |
+| `prompt_eval_count` | **10** — `estimated: false`, veio do daemon |
+| `/api/tags` do mesmo daemon | `nomic-embed-text` com `capabilities: ["embedding"]` e `embedding_length: 768`; `llama3.2:1b` com `["completion","tools"]` |
+| modelo de CHAT pedindo embedding | **`501`** — "This server does not support embeddings" |
 
-The `501` is the finding that mattered most, and it became a test at both
-levels: it's the MODEL layer of the capability failing at the latest
-possible point, and the reason `assertCanEmbed` refuses earlier
-([RN-190](../business-rules/api.md#rn-190)). Real cost: **US$ 0.00** — a local
-model has no price, and that's why this is the only acceptance on this page
-that can be repeated freely.
+O `501` é o achado que mais valeu, e virou teste nos dois níveis: é a camada de
+MODELO da capability falhando no lugar mais tarde possível, e a razão de
+`assertCanEmbed` recusar antes ([RN-190](../business-rules/api.md#rn-190)). Custo
+real: **US$ 0,00** — modelo local não tem preço, e por isso este é o único
+aceite desta página que dá para repetir à vontade.
 
-| provider | `embeddings` | ran? | reason |
+| provider | `embeddings` | rodou? | motivo |
 |---|---|---|---|
-| Ollama | ✅ **yes** | ✅ yes | local daemon, no key and no cost |
-| Anthropic | ❌ no | — | **has no** embedding endpoint of its own; the doc points to a third party, which is another provider with another key and another dialect |
-| OpenAI | ❌ no | ❌ skipped | `OPENAI_TEST_KEY` missing |
-| OpenRouter | ❌ no | ❌ skipped | has a key, but the smoke that ran was **chat** — in a hub, embedding routes to a different provider, and proof of one endpoint isn't proof of the other |
-| Together AI | ❌ no | ❌ skipped | `TOGETHER_TEST_KEY` missing |
-| DeepInfra | ❌ no | ❌ skipped | `DEEPINFRA_TEST_KEY` missing |
-| NVIDIA NIM | ❌ no | ❌ skipped | `NVIDIA_NIM_TEST_KEY` missing |
-| Bitdeer | ❌ no | ❌ skipped | `BITDEER_TEST_KEY` missing — ironic, since their embeddings doc is the only authenticated source Phase 11b found |
-| Vultr | ❌ no | ❌ skipped | `VULTR_TEST_KEY` missing |
-| 9Router | ❌ no | ❌ skipped | `NINE_ROUTER_TEST_KEY` missing; the `embeddings` capability stays `false` |
-| OpenCode Zen | ❌ no | ❌ refused | smoke ran on 2026-10-29 (429); the `embeddings` capability stays `false` |
+| Ollama | ✅ **sim** | ✅ sim | daemon local, sem chave e sem custo |
+| Anthropic | ❌ não | — | **não tem** endpoint de embedding próprio; a doc aponta para um terceiro, que é outro provider com outra chave e outro dialeto |
+| OpenAI | ❌ não | ❌ pulado | `OPENAI_TEST_KEY` ausente |
+| OpenRouter | ❌ não | ❌ pulado | tem chave, mas o smoke que rodou foi de **chat** — num hub, embedding roteia para provedor diferente, e a prova de um endpoint não é a do outro |
+| Together AI | ❌ não | ❌ pulado | `TOGETHER_TEST_KEY` ausente |
+| DeepInfra | ❌ não | ❌ pulado | `DEEPINFRA_TEST_KEY` ausente |
+| NVIDIA NIM | ❌ não | ❌ pulado | `NVIDIA_NIM_TEST_KEY` ausente |
+| Bitdeer | ❌ não | ❌ pulado | `BITDEER_TEST_KEY` ausente — irônico, já que a doc de embeddings deles é a única fonte autenticada que a Fase 11b encontrou |
+| Vultr | ❌ não | ❌ pulado | `VULTR_TEST_KEY` ausente |
+| 9Router | ❌ não | ❌ pulado | `NINE_ROUTER_TEST_KEY` ausente; capability `embeddings` fica `false` |
+| OpenCode Zen | ❌ não | ❌ recusado | smoke rodou 29/10/2026 (429); capability `embeddings` fica `false` |
 
-What **is** proven without any credential at all is the DIALECT: the
-contract suite runs a second time over the OpenAI-compatible base with the
-capability turned on, and exercises ordering by `index`, reading
-`usage.prompt_tokens`, refusal of an incomplete batch, and error normalized
-by `code`. Flipping a provider to `true` once the key exists is changing one
-line of the literal and running the smoke — not writing new parsing.
+O que **está** provado sem credencial nenhuma é o DIALETO: a suite de contrato
+roda uma segunda vez sobre a base OpenAI-compatível com a capability ligada, e
+exercita ordenação por `index`, leitura de `usage.prompt_tokens`, recusa de
+lote incompleto e erro normalizado por `code`. Virar um provider para `true`
+quando a chave existir é mudar uma linha do literal e rodar o smoke — não
+escrever parsing.
 
-## State as of 2026-08-07
+## Estado em 2026-08-07
 
-First paid run of this list. **OpenRouter closed**; the other five remain
-skipped for lack of a key — there's no credential for them anywhere in the
-environment, and the product only has OpenRouter's registered (the same one
-used in the hello-clean run).
+Primeira execução paga desta lista. **OpenRouter fechou**; os outros cinco
+seguem pulados por falta de chave — não há credencial deles em lugar nenhum do
+ambiente, e o produto só tem a do OpenRouter cadastrada (a mesma usada na
+execução do hello-limpo).
 
-| provider | ran? | result |
+| provider | rodou? | resultado |
 |---|---|---|
-| OpenRouter | ✅ **yes** | full script green, one paid call |
-| Together AI | ❌ skipped | `TOGETHER_TEST_KEY` missing |
-| DeepInfra | ❌ skipped | `DEEPINFRA_TEST_KEY` missing |
-| NVIDIA NIM | ✅ passed | streaming chat + tool calling, 2026-10-22 (embedding stays `false`, no proof) |
-| Bitdeer | ❌ skipped | `BITDEER_TEST_KEY` missing |
-| Vultr | ❌ skipped | `VULTR_TEST_KEY` missing |
-| 9Router | ❌ skipped | `NINE_ROUTER_TEST_KEY` missing |
-| OpenCode Zen | ❌ refused | smoke ran on 2026-10-29: 429 by vendor policy |
+| OpenRouter | ✅ **sim** | roteiro completo verde, uma chamada paga |
+| Together AI | ❌ pulado | `TOGETHER_TEST_KEY` ausente |
+| DeepInfra | ❌ pulado | `DEEPINFRA_TEST_KEY` ausente |
+| NVIDIA NIM | ✅ passou | chat em streaming + tool calling, 22/10/2026 (embedding segue `false`, sem prova) |
+| Bitdeer | ❌ pulado | `BITDEER_TEST_KEY` ausente |
+| Vultr | ❌ pulado | `VULTR_TEST_KEY` ausente |
+| 9Router | ❌ pulado | `NINE_ROUTER_TEST_KEY` ausente |
+| OpenCode Zen | ❌ recusado | smoke rodou 29/10/2026: 429 por política do fornecedor |
 
-**Real cost, read from the test database's `token_usage`:**
+**Custo real, lido do `token_usage` do banco de teste:**
 
-| provider | model | in | out | `cost_micros` | frozen price | `estimated` |
+| provider | modelo | in | out | `cost_micros` | preço congelado | `estimated` |
 |---|---|---|---|---|---|---|
-| openrouter | `openai/gpt-4o-mini` | 20 | 3 | **5** | 150,000 /million | `false` |
+| openrouter | `openai/gpt-4o-mini` | 20 | 3 | **5** | 150.000 /milhão | `false` |
 
-Five micro-USD — **US$ 0.000005**, two orders of magnitude below the
-"< US$ 0.001" estimate from the section above. `estimated: false` is what
-matters here: the consumption came from the provider, not from the local
-estimator, and the recorded price is the one FROZEN at the moment of use
-([RN-044](../business-rules/api.md#rn-044)) — not today's price in the `models`
-table.
+Cinco micro-USD — **US$ 0,000005**, duas ordens de grandeza abaixo da
+estimativa de "< US$ 0,001" da seção acima. `estimated: false` é o que importa
+aqui: o consumo veio do provider, não do estimador local, e o preço gravado é o
+congelado no momento do uso ([RN-044](../business-rules/api.md#rn-044)) — não o da
+tabela `models` de hoje.
 
-### What the smoke found along the way
+### O que o smoke encontrou no caminho
 
-It had **never run before**, and had therefore silently rotted against
-[ADR 0049](../adr/0049-curadoria-de-modelo-por-workspace.md), which moved
-curation from `models.is_active` to `workspace_models`:
+Ele **nunca tinha rodado**, e por isso tinha apodrecido em silêncio contra o
+[ADR 0049](../adr/0049-curadoria-de-modelo-por-workspace.md), que moveu a
+curadoria de `models.is_active` para `workspace_models`:
 
-- it asserted `alvo.isActive === false` against the global catalog — a
-  field that no longer exists, and that came back `undefined`. The correct
-  assertion per [RN-043](../business-rules/api.md#rn-043) today is
-  `workspaceModels.isActive(...)`, because **absence of a row IS off**;
-- it assembled `SetModelsActiveUseCase` and `SetModelBindingUseCase` with the
-  old signatures, missing `workspaceId`/`curatedBy` and the curation
-  repository.
+- afirmava `alvo.isActive === false` sobre o catálogo global — campo que não
+  existe mais, e que vinha `undefined`. A afirmação certa da
+  [RN-043](../business-rules/api.md#rn-043) hoje é `workspaceModels.isActive(...)`,
+  porque **ausência de linha é o desligado**;
+- montava `SetModelsActiveUseCase` e `SetModelBindingUseCase` com as assinaturas
+  antigas, sem `workspaceId`/`curatedBy` e sem o repositório de curadoria.
 
-None of this was detectable by CI: without the key, `describe.skipIf`
-skips the whole file, and the api's typecheck runs over `tsconfig.build.json`,
-which excludes `test/`. **An acceptance test that never runs isn't an
-acceptance test** — it's the same mechanism that left the Phase 10 table as
-"not measured," and the lesson applies here too.
+Nada disso era detectável por CI: sem a chave, o `describe.skipIf` pula o
+arquivo inteiro, e o typecheck da api roda sobre `tsconfig.build.json`, que
+exclui `test/`. **Um aceite que nunca roda não é um aceite** — é o mesmo
+mecanismo que deixou a tabela da Fase 10 como "não medido", e a lição vale
+igual aqui.
 
-Fixed alongside the run: the smoke now asserts RN-043 through the ADR 0049
-path. When the other five keys exist, the five remaining smokes will
-probably have rotted the same way, for the same reason.
+Corrigido junto com a execução: o smoke agora afirma a RN-043 pelo caminho do
+ADR 0049. Quando as outras cinco chaves existirem, os cinco smokes restantes
+provavelmente terão apodrecido do mesmo jeito, e pelo mesmo motivo.
 
-## State as of 2026-08-03
+## Estado em 2026-08-03
 
-Environment scan on this date: **none** of the six variables are exported,
-and there's no provider key under another name in `.env`. Without the
-variable, `describe.skipIf(!apiKey)` skips the whole suite with a warning —
-which is the correct behavior, not a failure. No paid call was made; this
-round's cost is **US$ 0.00**.
+Varredura do ambiente nesta data: **nenhuma** das seis variáveis está
+exportada, e não há chave de provider sob outro nome no `.env`. Sem a variável,
+o `describe.skipIf(!apiKey)` pula a suite inteira com um aviso — que é o
+comportamento correto, não uma falha. Nenhuma chamada paga foi feita; o custo
+desta rodada é **US$ 0,00**.
 
-| provider | smoke | variable | default model | ran? | reason | real cost (`token_usage`) |
+| provider | smoke | variável | modelo default | rodado? | motivo | custo real (`token_usage`) |
 |---|---|---|---|---|---|---|
-| OpenRouter | `openrouter-provider.smoke.spec.ts` | `OPENROUTER_TEST_KEY` | `openai/gpt-4o-mini` | ❌ skipped | key missing in environment | — |
-| Together AI | `together-provider.smoke.spec.ts` | `TOGETHER_TEST_KEY` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | ❌ skipped | key missing in environment | — |
-| DeepInfra | `deepinfra-provider.smoke.spec.ts` | `DEEPINFRA_TEST_KEY` | `deepseek-ai/DeepSeek-V3` | ❌ skipped | key missing in environment | — |
-| NVIDIA NIM | `nvidia-nim-provider.smoke.spec.ts` | `NVIDIA_NIM_TEST_KEY` | `nvidia/nemotron-3.5-lightning-30b-a3b` | ✅ passed (2026-10-22) | streaming chat, frozen cost, and `tool_calls` proven | 1 test, ~5 s |
-| Bitdeer | `bitdeer-provider.smoke.spec.ts` | `BITDEER_TEST_KEY` | `moonshotai/Kimi-K2.5` | ❌ skipped | key missing in environment | — |
-| Vultr | `vultr-provider.smoke.spec.ts` | `VULTR_TEST_KEY` | `kimi-k2-instruct` | ❌ skipped | key missing in environment | — |
-| 9Router | `nine-router-provider.smoke.spec.ts` | `NINE_ROUTER_TEST_KEY` + `NINE_ROUTER_TEST_MODEL` | no default (`free`/`auto:free` only) | ❌ skipped | key missing in environment | — |
-| OpenCode Zen | `opencode-zen-provider.smoke.spec.ts` | `OPENCODE_ZEN_TEST_KEY` | `deepseek-v4.1-flash-free`, `glm-5.3-flash-free` | ❌ refused | ran on 2026-10-29: 429 `FreeUsageLimitError` (free only in the OpenCode client) | — |
+| OpenRouter | `openrouter-provider.smoke.spec.ts` | `OPENROUTER_TEST_KEY` | `openai/gpt-4o-mini` | ❌ pulado | chave ausente no ambiente | — |
+| Together AI | `together-provider.smoke.spec.ts` | `TOGETHER_TEST_KEY` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | ❌ pulado | chave ausente no ambiente | — |
+| DeepInfra | `deepinfra-provider.smoke.spec.ts` | `DEEPINFRA_TEST_KEY` | `deepseek-ai/DeepSeek-V3` | ❌ pulado | chave ausente no ambiente | — |
+| NVIDIA NIM | `nvidia-nim-provider.smoke.spec.ts` | `NVIDIA_NIM_TEST_KEY` | `nvidia/nemotron-3.5-lightning-30b-a3b` | ✅ passou (22/10/2026) | chat em streaming, custo congelado e `tool_calls` provados | 1 teste, ~5 s |
+| Bitdeer | `bitdeer-provider.smoke.spec.ts` | `BITDEER_TEST_KEY` | `moonshotai/Kimi-K2.5` | ❌ pulado | chave ausente no ambiente | — |
+| Vultr | `vultr-provider.smoke.spec.ts` | `VULTR_TEST_KEY` | `kimi-k2-instruct` | ❌ pulado | chave ausente no ambiente | — |
+| 9Router | `nine-router-provider.smoke.spec.ts` | `NINE_ROUTER_TEST_KEY` + `NINE_ROUTER_TEST_MODEL` | sem default (só `free`/`auto:free`) | ❌ pulado | chave ausente no ambiente | — |
+| OpenCode Zen | `opencode-zen-provider.smoke.spec.ts` | `OPENCODE_ZEN_TEST_KEY` | `deepseek-v4.1-flash-free`, `glm-5.3-flash-free` | ❌ recusado | rodou em 29/10/2026: 429 `FreeUsageLimitError` (grátis só no cliente OpenCode) | — |
 
-The files live in `test/infrastructure/llm/`. The default model is
-overridable by `<PROVIDER>_TEST_MODEL` — useful when the account doesn't
-have access to the model in the column.
+Os arquivos vivem em `test/infrastructure/llm/`. O modelo default é
+sobrescrevível por `<PROVIDER>_TEST_MODEL` — útil quando a conta não tem acesso
+ao modelo da coluna.
 
-## How much it costs to close each line
+## Quanto custa fechar cada linha
 
-Deliberately cheap. Each smoke does **exactly one chat turn**, with the
-prompt `Respond only with the word "ok", nothing else.` — on the order of
-20 input tokens and a handful of output. Everything else in the script is
-free: the credential check is a status-only `GET /v1/models` (or
-`GET /key`), and the catalog sync (in the three with `listModels: true`) is
-a read.
+Barato de propósito. Cada smoke faz **exatamente um turno de chat**, com o
+prompt `Responda só a palavra "ok", sem mais nada.` — ordem de 20 tokens de
+entrada e um punhado de saída. Tudo o mais no roteiro é gratuito: a verificação
+da credencial é um `GET /v1/models` (ou `GET /key`) status-only, e o sync de
+catálogo (nos três que têm `listModels: true`) é leitura.
 
-| | paid calls | free calls | order of magnitude |
+| | chamadas pagas | chamadas gratuitas | ordem de grandeza |
 |---|---|---|---|
-| per smoke | 1 chat turn (~20 tokens in) | connection test + sync | **< US$ 0.001** |
-| all six together | 6 chat turns | — | **< US$ 0.01** |
+| por smoke | 1 turno de chat (~20 tokens in) | teste de conexão + sync | **< US$ 0,001** |
+| os seis juntos | 6 turnos de chat | — | **< US$ 0,01** |
 
-Even at the table's most expensive model this doesn't reach a cent of a
-dollar per run. What costs isn't the token: it's having the key.
+Mesmo no modelo mais caro da tabela isso não chega a um centavo de dólar por
+execução. O que custa não é o token: é ter a chave.
 
-## What each smoke proves — and it's not the same for everyone
+## O que cada smoke prova — e não é o mesmo para todos
 
-The split follows the capability, exactly as ADR 0041 designed:
+A divisão segue a capability, exatamente como o ADR 0041 desenhou:
 
-**With `listModels: true` — OpenRouter, Together, DeepInfra, NVIDIA NIM.** The sync
-hits the real API and populates the catalog. This is where the **real
-price** meets the parser. The most important case is Together: ADR 0043
-records that the price unit (USD per million tokens vs. per token) was
-**inferred** by comparing against market price, because the official
-documentation doesn't declare it — and the smoke has a sanity range for
-exactly this
-(`inputPricePerMillionMicros` between 10,000 and 1,000,000,000; outside it,
-the diagnosis is "wrong unit," not "expensive model"). If this ever goes
-wrong, it's a finding to fix in the parser and here, never to be silenced.
-The smoke also confirms RN-043: the discovered model comes in
-**deactivated**, and activation is manual curation. NIM is the exception without a price: the real `GET /v1/models` (84 models on
-2026-10-28, AT-575) carries only `id`, so the model comes in with price 0 and
-`manual_pricing` — the hosted endpoint is free for prototyping.
+**Com `listModels: true` — OpenRouter, Together, DeepInfra, NVIDIA NIM.** O sync bate na
+API de verdade e popula o catálogo. É aqui que o **preço real** encontra o
+parser. O caso mais importante é a Together: o ADR 0043 registra que a unidade
+do preço (USD por milhão de tokens vs. por token) foi **inferida** por
+comparação com preço de mercado, porque a documentação oficial não declara — e
+o smoke tem uma faixa de sanidade justamente para isso
+(`inputPricePerMillionMicros` entre 10.000 e 1.000.000.000; fora dela, o
+diagnóstico é "unidade errada", não "modelo caro"). Se algum dia der errado, é
+achado a corrigir no parser e aqui, nunca a silenciar. O smoke também confirma
+o RN-043: o modelo descoberto entra **desativado**, e a ativação é curadoria
+manual. A NIM é a exceção sem preço: o `GET /v1/models` real (84 modelos em
+28/10/2026, AT-575) traz só `id`, então o modelo entra com preço 0 e
+`manual_pricing` — o endpoint hospedado é gratuito de prototipação.
 
-**With `listModels: false` — Bitdeer, Vultr.** Neither of the two
-publishes a per-token price in accessible documentation. The sync, therefore, **has
-to skip** with `pulado: 'sem_capability'` — and the smoke asserts exactly
-that, which makes the declared capability verifiable instead of trusted.
-The model comes in via seed / manual curation with `manual_pricing = true`,
-and what the smoke actually validates is the **model id** against the real
-API — today an estimate read from the doc — and the metering path
-end-to-end with the frozen price.
+**Com `listModels: false` — Bitdeer, Vultr.** Nenhum dos dois
+publica preço por token em documentação acessível. O sync, portanto, **tem de pular** com
+`pulado: 'sem_capability'` — e o smoke afirma exatamente isso, o que torna a
+capability declarada verificável em vez de confiada. O modelo entra por seed /
+curadoria manual com `manual_pricing = true`, e o que o smoke valida de fato é
+o **id do modelo** contra a API real — hoje estimativa lida da doc — e o
+caminho de metering ponta a ponta com o preço congelado.
 
-Across all six, step **1b** verifies the real key against the real API via
-`TestStoredCredentialUseCase` — `ok` in five, and `nao_suportado` in
-DeepInfra, the only one without a declared test endpoint. Before
-[ADR 0050](../adr/0050-credencial-sempre-cifrada-verificacao-explicita.md)
-this proof happened embedded in registration; it didn't disappear, it moved
-and became explicit.
+Nos seis, o passo **1b** verifica a chave real contra a API real por
+`TestStoredCredentialUseCase` — `ok` em cinco, e `nao_suportado` na DeepInfra,
+que é o único sem endpoint de teste declarado. Antes do
+[ADR 0050](../adr/0050-credencial-sempre-cifrada-verificacao-explicita.md) essa
+prova acontecia embutida no cadastro; ela não sumiu, mudou de lugar e ficou
+explícita.
 
-Across all six, the final step is the same and is what matters to the
-product: a complete chat session, with no `error` or `metering_failed`
-event, with one line in `token_usage` carrying the price **frozen** at the
-moment of use
-([RN-044](../business-rules/api.md#rn-044)) — not today's price in the `models`
-table.
+Nos seis, o passo final é o mesmo e é o que interessa ao produto: uma sessão de
+chat completa, sem evento `error` nem `metering_failed`, com uma linha em
+`token_usage` carregando o preço **congelado** no momento do uso
+([RN-044](../business-rules/api.md#rn-044)) — não o preço de hoje da tabela
+`models`.
 
-## How to close a pending item
+## Como fechar uma pendência
 
 ```bash
-export OPENROUTER_TEST_KEY=...          # the variable of the provider in question
-# optional, if the account doesn't have the default model:
+export OPENROUTER_TEST_KEY=...          # a variável do provider em questão
+# opcional, se a conta não tiver o modelo default:
 # export OPENROUTER_TEST_MODEL=...
 
 pnpm --filter api test -- openrouter-provider.smoke.spec.ts
 ```
 
-Requirements:
+Requisitos:
 
-- the test database up — `TEST_DATABASE_URL`, default
-  `postgres://brabo:brabo@localhost:5432/brabo_test`. Since
-  `perf/banco-por-worker-nos-testes-da-api`, that value only names the BASE
-  Vitest derives names from (`test/support/test-db-name.ts`); this
-  single spec still runs on one Vitest worker and connects to that worker's
-  own database (`brabo_test_w1`, cloned from a migrated template), the same
-  mechanism any of the api's integration tests use — the smoke calls
-  `truncateAll` before starting;
-- credit in the provider's account. Since
-  [ADR 0050](../adr/0050-credencial-sempre-cifrada-verificacao-explicita.md)
-  registration tests nothing — who verifies the key is smoke step 1b
-  (`TestStoredCredentialUseCase`, status-only), and a valid key with no
-  balance only fails at the actual chat turn.
+- o banco de teste de pé — `TEST_DATABASE_URL`, default
+  `postgres://brabo:brabo@localhost:5432/brabo_test` (o mesmo de qualquer
+  teste de integração da api; o smoke chama `truncateAll` antes de começar);
+- crédito na conta do provider. Desde o
+  [ADR 0050](../adr/0050-credencial-sempre-cifrada-verificacao-explicita.md) o
+  cadastro não testa nada — quem verifica a chave é o passo 1b do smoke
+  (`TestStoredCredentialUseCase`, status-only), e uma chave válida sem saldo só
+  falha mesmo no turno de chat.
 
-After running, **update the table's row** above with the date, the verdict
-and the real cost. The cost comes from the database, not from the estimate:
+Depois de rodar, **atualize a linha da tabela** acima com a data, o veredito e
+o custo real. O custo sai do banco, não da estimativa:
 
 ```sql
 SELECT provider, model_name, input_tokens, output_tokens, cost_micros
 FROM token_usage ORDER BY created_at DESC LIMIT 1;
 ```
 
-If the smoke fails, the row becomes `❌ failed` with the reason, and the
-finding becomes a fix in the provider — never a capability declared on
-trust.
+Se o smoke reprovar, a linha vira `❌ reprovado` com o motivo, e o achado vira
+correção no provider — nunca uma capability declarada na base da confiança.
 
-## Why this is a living document
+## Por que isto é um documento vivo
 
-The table isn't a report from a single date: it's the current state of
-acceptance. Each key that shows up closes a line and the others remain
-open, visible. The failure mode this file exists to avoid is Phase 10's,
-described in the
-[first dogfooding harvest](./primeiro-dogfooding.md): the observation
-table that no one filled in and that became "not measured" forever. Here,
-the number comes from `token_usage` per query, and what hasn't run is
-written down as not having run.
+A tabela não é um relatório de uma data: é o estado corrente do aceite. Cada
+chave que aparecer fecha uma linha e as outras seguem abertas, visíveis. O
+modo de falha que este arquivo existe para evitar é o da Fase 10, descrito na
+[colheita do primeiro dogfooding](./primeiro-dogfooding.md): a tabela de
+observação que ninguém preencheu e virou `não medido` para sempre. Aqui, o
+número vem de `token_usage` por consulta, e o que não rodou está escrito como
+não rodou.

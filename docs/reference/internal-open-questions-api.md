@@ -1,24 +1,20 @@
----
-idioma_original: en
----
+# API interna (engine para api)
 
-# Internal API (engine to api)
+As rotas sob `/internal/*` são chamadas só pelo engine, com o token de serviço compartilhado (`X-Brabo-Service-Token`). O inventário completo das rotas está em [security-surface.md](../security-surface.md).
 
-Routes under `/internal/*` are called only by the engine with the shared service token (`X-Brabo-Service-Token`). The full route inventory is in [security-surface.md](../security-surface.md).
-
-## Open questions
+## Perguntas em aberto
 
 ### `POST /internal/projects/:projectId/open-questions/:questionId/answer`
 
-An agent closes an open question the user answered in chat ([RN-1002](../business-rules/api.md#rn-1002)).
+Um agente fecha uma pergunta em aberto que o usuário respondeu no chat ([RN-1002](../business-rules/api.md#rn-1002)).
 
-Body: `{ sessionId: string, agentId: string, resposta?: string, messageEventId?: string }`.
+Corpo: `{ sessionId: string, agentId: string, resposta?: string, messageEventId?: string }`.
 
-| Status | Body | When |
+| Status | Corpo | Quando |
 |---|---|---|
-| 200 | `{ status: "answered", questionId }` | closed now |
-| 200 | `{ status: "already_answered", questionId }` | already closed (idempotent, never 409) |
-| 400 | | invalid body, or no `resposta` and the question has no suggestion |
-| 404 | | question not in this project, or `sessionId` not in this project |
+| 200 | `{ status: "answered", questionId }` | fechada agora |
+| 200 | `{ status: "already_answered", questionId }` | já estava fechada (idempotente, nunca 409) |
+| 400 | | corpo inválido, ou sem `resposta` e a pergunta não tem sugestão |
+| 404 | | pergunta fora deste projeto, ou `sessionId` fora deste projeto |
 
-Writes the same `decision_record` + `open_question.answered` pair as the human answer and resumes the parked QA gate of the affected tasks. Without `resposta`, the question suggestion is the answer.
+Grava o mesmo par `decision_record` + `open_question.answered` da resposta humana e retoma o gate de QA estacionado das tarefas afetadas. Sem `resposta`, a sugestão da pergunta é a resposta.
