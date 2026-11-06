@@ -11,6 +11,7 @@ import {
   ehAcaoTipadaComEfeitoExterno,
   mensagemDoTetoDaAcaoTipada,
   mensagemDoModoAutomaticoNoEfeitoExterno,
+  pushProibidoNoModoAutomatico,
 } from './external-effect';
 
 export type ActionType =
@@ -447,7 +448,8 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
       !privilegiado &&
       modoAutomatico &&
       current.policy === 'auto_approve' &&
-      ehAcaoTipadaComEfeitoExterno(efeito.acaoTipada)
+      ehAcaoTipadaComEfeitoExterno(efeito.acaoTipada) &&
+      !pushProibidoNoModoAutomatico(tokens)
     ) {
       return {
         policy: 'auto_approve',
@@ -455,11 +457,14 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
       };
     }
     if ((efeito || privilegiado) && current.policy === 'auto_approve') {
+      const pushProibido = efeito ? pushProibidoNoModoAutomatico(tokens) : null;
       return {
         policy: 'require_approval',
-        reason: efeito
-          ? mensagemDeEfeitoExterno(efeito)
-          : mensagemDeComandoPrivilegiado(privilegiado!),
+        reason: pushProibido
+          ? `RN-1017: "git push" ${pushProibido} — branch protegida, force, --all e --mirror são decisão do usuário, mesmo em modo automático.`
+          : efeito
+            ? mensagemDeEfeitoExterno(efeito)
+            : mensagemDeComandoPrivilegiado(privilegiado!),
       };
     }
   }
