@@ -165,9 +165,9 @@ export class ExecuteInfraPrUseCase {
           await provider.createBranch({
             externalId: repo.externalId,
             branchName: branch,
-            // RN-729: a PR de infra segue a RN-664 — nasce de `dev` e mira
-            // `dev`, senão o Dockerfile mergeado nunca chega ao worktree do
-            // dev agent (que nasce de `dev`). Sem `dev`, o provider recusa
+            // RN-729: a PR de infra segue a RN-664 — nasce de `main` e mira
+            // `main`, senão o Dockerfile mergeado nunca chega ao worktree do
+            // dev agent (que nasce de `main`). Sem `main`, o provider recusa
             // nomeando a ref, sem queda para a default.
             fromRef: BRANCH_DE_TRABALHO,
             accessToken,

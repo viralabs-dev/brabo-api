@@ -81,8 +81,7 @@ export class ExecuteAdrPrUseCase {
         externalId: repo.externalId,
         branchName: branch,
         // RN-664: a branch do ADR nasce da de TRABALHO e a PR vai para ela —
-        // as duas juntas, senão a PR carregaria a diferença entre `main` e
-        // `dev`. Sem `dev` no repositório, o provider recusa nomeando a ref.
+        // as duas juntas (hoje a `main`, RN-1022). Sem `main` no repositório, o provider recusa nomeando a ref.
         fromRef: BRANCH_DE_TRABALHO,
         accessToken,
       });

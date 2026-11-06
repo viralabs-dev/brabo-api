@@ -252,11 +252,32 @@ export class ExecuteGitActionUseCase {
       pullRequestId: String(payload.pullRequestId),
       accessToken,
     });
+    // RN-1022: a ponta da branch de trabalho depois do merge viaja no evento
+    // `project.trunk_merged`. Melhor esforço — a pasta avança por `fetch`, o
+    // sha só informa.
+    let mergedSha: string | undefined;
+    if (
+      merged.state === 'merged' &&
+      merged.targetBranch === BRANCH_DE_TRABALHO
+    ) {
+      try {
+        const branches = await provider.listBranches({
+          externalId: repo.externalId,
+          accessToken,
+        });
+        mergedSha = branches.find(
+          (b) => b.name === merged.targetBranch,
+        )?.commitSha;
+      } catch {
+        mergedSha = undefined;
+      }
+    }
     return {
       kind: 'git_merge',
       pullRequestId: merged.id,
       state: merged.state,
       targetBranch: merged.targetBranch,
+      ...(mergedSha ? { mergedSha } : {}),
     };
   }
 
@@ -363,6 +384,17 @@ export class ExecuteGitActionUseCase {
       result.state !== 'merged'
     )
       return;
+
+    // RN-1022: merge na branch de trabalho (`main`, trunk) avisa o engine para
+    // avançar a pasta do projeto. Vale para PR de tarefa, infra e ADR.
+    if (result.targetBranch === BRANCH_DE_TRABALHO) {
+      await this.outbox.append({
+        aggregateType: 'project',
+        aggregateId: projectId,
+        eventType: 'project.trunk_merged',
+        payload: { projectId, sessionId, mergedSha: result.mergedSha ?? '' },
+      });
+    }
 
     const taskIds = await this.tarefasDaPr(projectId, result.pullRequestId);
 
