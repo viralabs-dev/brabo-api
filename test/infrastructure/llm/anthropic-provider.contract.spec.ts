@@ -307,10 +307,13 @@ describe('AnthropicProvider — prompt caching (RN-1008)', () => {
     ]);
   });
 
-  it('(b) um ponto no último bloco da última user; as outras ficam intactas', async () => {
+  it('(b) um ponto no último bloco da última e da penúltima user; o assistant fica intacto', async () => {
     const { pedido } = await chamar({ input_tokens: 5 }, conversa);
     expect(pedido.messages).toEqual([
-      { role: 'user', content: 'primeira' },
+      {
+        role: 'user',
+        content: [{ type: 'text', text: 'primeira', cache_control: EFEMERO }],
+      },
       { role: 'assistant', content: 'resposta' },
       {
         role: 'user',
@@ -332,6 +335,34 @@ describe('AnthropicProvider — prompt caching (RN-1008)', () => {
         cache_control: EFEMERO,
       },
     ]);
+  });
+
+  it('(b2) RN-1014: 2º ponto na penúltima user; no máximo 4 pontos por pedido', async () => {
+    const { pedido } = await chamar({ input_tokens: 5 }, [
+      { role: 'system', content: 'instrucoes' },
+      { role: 'user', content: 'x' },
+      {
+        role: 'assistant',
+        content: '',
+        toolCalls: [{ id: 't1', name: 'f', arguments: {} }],
+      },
+      { role: 'tool', content: 'a', toolCallId: 't1' },
+      {
+        role: 'assistant',
+        content: '',
+        toolCalls: [{ id: 't2', name: 'f', arguments: {} }],
+      },
+      { role: 'tool', content: 'b', toolCallId: 't2' },
+    ]);
+    const pontos = (v: unknown): number =>
+      JSON.stringify(v).split('"cache_control"').length - 1;
+    // user "x" (1ª) fica sem ponto; as duas últimas (tool_result) levam um cada
+    expect(pontos(pedido.messages[0])).toBe(0);
+    expect(pontos(pedido.messages[2])).toBe(1);
+    expect(pontos(pedido.messages[4])).toBe(1);
+    expect(pontos(pedido.system) + pontos(pedido.messages)).toBeLessThanOrEqual(
+      4,
+    );
   });
 
   it('(c) usage soma input + leitura + escrita; cachedInputTokens = leitura; sem campos, ausente', async () => {

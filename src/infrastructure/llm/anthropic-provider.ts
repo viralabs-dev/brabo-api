@@ -386,12 +386,8 @@ export function blocosDeSistema(
   return blocos.length > 0 ? blocos : undefined;
 }
 
-/** Um ponto no último bloco da última `user` (espelha a RN-892); texto vazio não leva ponto. */
-export function marcarCacheDaConversa(
-  turnos: TurnoAnthropic[],
-): TurnoAnthropic[] {
-  const i = turnos.findLastIndex((t) => t.role === 'user');
-  if (i === -1) return turnos;
+/** Um ponto no último bloco do turno `i`; texto vazio e `tool_use`/raciocínio não levam ponto. */
+function marcarTurno(turnos: TurnoAnthropic[], i: number): TurnoAnthropic[] {
   const { content } = turnos[i];
   const blocos: BlocoDeConteudo[] =
     typeof content === 'string'
@@ -406,6 +402,19 @@ export function marcarCacheDaConversa(
   if (ultimo.type === 'redacted_thinking') return turnos;
   blocos[blocos.length - 1] = { ...ultimo, cache_control: EFEMERO };
   return turnos.map((t, j) => (j === i ? { ...t, content: blocos } : t));
+}
+
+/**
+ * Pontos de cache da conversa (RN-1008, RN-1014): o último bloco da última E da
+ * penúltima `user` (resultado de ferramenta também é `user`). Com o do `system`
+ * são 3 dos 4 pontos permitidos. O da penúltima é onde a chamada anterior
+ * gravou, e não depende da janela de ~20 blocos da Anthropic.
+ */
+export function marcarCacheDaConversa(
+  turnos: TurnoAnthropic[],
+): TurnoAnthropic[] {
+  const users = turnos.flatMap((t, i) => (t.role === 'user' ? [i] : []));
+  return users.slice(-2).reduce(marcarTurno, turnos);
 }
 
 /**
