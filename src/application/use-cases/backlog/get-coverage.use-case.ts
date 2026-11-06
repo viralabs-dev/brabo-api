@@ -6,6 +6,7 @@ import {
   type CoverageReport,
   type RuleView,
 } from '../../../domain/backlog/coverage';
+import { idsDeRegrasRetiradas } from './regras-retiradas';
 
 /**
  * Rastreabilidade regra→stories do projeto: para cada regra de negócio
@@ -20,13 +21,16 @@ export class GetCoverageUseCase {
   ) {}
 
   async execute(projectId: string): Promise<CoverageReport> {
-    const [ruleEvents, stories] = await Promise.all([
+    const [todasAsRegras, stories, retiradas] = await Promise.all([
       this.sessionEvents.listByTypeForProject(
         projectId,
         'artifact.business_rule',
       ),
       this.stories.findByProject(projectId),
+      idsDeRegrasRetiradas(this.sessionEvents, projectId),
     ]);
+    // RN-1018: a regra retirada sai da cobertura.
+    const ruleEvents = todasAsRegras.filter((e) => !retiradas.has(e.id));
 
     const rules: RuleView[] = ruleEvents.map((e) => ({
       id: e.id,

@@ -2122,7 +2122,7 @@ anything.
 
 - **Where:** `src/domain/sessions/session-kind.ts:50`
   (`podeAtivarExecucao`), `src/db/schema/sessions.ts:68` (the column),
-  `src/application/use-cases/sessions/append-session-event.use-case.ts:53`
+  `src/application/use-cases/sessions/append-session-event.use-case.ts:54`
   (the guard)
 - **Test:** `test/application/use-cases/sessions/session-kind-e-nome.spec.ts`
 - **Origin:** [ADR 0061](../adr/0061-tipo-da-sessao-na-criacao.md)
@@ -7845,7 +7845,7 @@ closed session keep showing the api's message.
   `src/domain/sessions/conversa-em-sessao-encerrada.ts:56`
   (`AGENTES_CONVERSACIONAIS`), `:67` (`TIPOS_DA_CONVERSA`), `:95`
   (`ehEventoDeConversa`), `:117` (`garantirQueSessaoAceitaEvento`);
-  `src/application/use-cases/sessions/append-session-event.use-case.ts:44`
+  `src/application/use-cases/sessions/append-session-event.use-case.ts:45`
   (`conflitoDeSessaoEncerrada`), `:114` (the state in the same `UPDATE` as the `seq`),
   `:241` (`garantirQueAceita`);
   `src/infrastructure/persistence/drizzle/session.repository.ts:117`
@@ -9788,7 +9788,7 @@ manual handoff (ADR 0109) too.
 
 - **Code:** `src/domain/sessions/aceite-automatico-do-handoff.ts:81`
   (`decidirAceiteAutomatico`), `:74` (`backlogCoberto`);
-  `src/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.ts:44`
+  `src/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.ts:45`
   (`AceitarHandoffAutomaticamenteUseCase`);
   `src/application/use-cases/agents/accept-handoff.use-case.ts:91`
   (`AceitePeloSistema`);
@@ -10454,9 +10454,9 @@ and WARNS when the closest one is at or above the threshold.
 - **Where:** `src/domain/backlog/duplicata-semantica.ts:35` (`LIMIAR_DE_DUPLICATA_SEMANTICA`),
   `:44` (`TETO_DE_COMPARACOES_DE_DUPLICATA`), `:53` (`TETO_DE_TEMPO_DA_CHECAGEM_MS`),
   `:107` (`ehDuplicataSemantica`),
-  `src/application/use-cases/backlog/verificar-duplicata-semantica.use-case.ts:111` (`VerificarDuplicataSemanticaUseCase`),
+  `src/application/use-cases/backlog/verificar-duplicata-semantica.use-case.ts:112` (`VerificarDuplicataSemanticaUseCase`),
   `:241` (`medir`), `:285` (`narrar`), `:349` (`fraseParaOAgente`),
-  `src/application/use-cases/backlog/create-story.use-case.ts:193` (`semanticDuplicate`),
+  `src/application/use-cases/backlog/create-story.use-case.ts:199` (`semanticDuplicate`),
   `src/interfaces/http/internal/internal-sessions.controller.ts:643` (`semanticDuplicateCheck`),
   `src/application/use-cases/rag/rag-embedding.service.ts:106` (`uso`),
   `apps/engine/lib/engine/harness/tools/emit_artifact.ex` (`aviso_semantico`),
@@ -11133,7 +11133,7 @@ the story it recreated triggered the semantic-duplicate warning
 
 The PO's kickoff states the three things.
 
-- **Where:** `src/application/use-cases/backlog/complete-story.use-case.ts:52`
+- **Where:** `src/application/use-cases/backlog/complete-story.use-case.ts:53`
   (`CompleteStoryUseCase`);
   `src/interfaces/http/internal/internal-sessions.controller.ts:541`
   (`completeStoryRoute`); `apps/engine/lib/engine/harness/tools/complete_story.ex:47`
@@ -11631,7 +11631,7 @@ The PO's kickoff states the three things.
   requirement of the delivery that depends on what another story will still
   deliver (a route, a screen) goes to the `resumo` as an observation and does not
   fail. The yardstick is a PROMPT one, as in RN-765.
-- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:210`
+- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:211`
   (`tarefasAbertasDoModulo`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
   (`texto`)
 - **Test:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
@@ -11657,10 +11657,10 @@ The PO's kickoff states the three things.
   yardstick, like [RN-765](engine.md#rn-765). Since [RN-792](engine.md#rn-792) the
   Architect checks the contract against the routes cited in the stories when
   declaring it.
-- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:255`
+- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:256`
   (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:66`
 
-- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:255`
+- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:256`
   (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:70`
   (`secao_do_contrato`)
 - **Test:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
@@ -11982,7 +11982,7 @@ not consulted at proposal. Changing one requires changing the other.
   engine that is down does not undo the answer. ADR 0214.
 - **Where:** `src/domain/open-questions/pergunta-em-aberto.ts:44`
   (`validarPerguntaEmAberto`), `:112` (`respostaEscolhida`),
-  `src/application/use-cases/sessions/append-session-event.use-case.ts:101`
+  `src/application/use-cases/sessions/append-session-event.use-case.ts:102`
   (`EVENTO_PERGUNTA_EM_ABERTO`),
   `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:72`
   (`listar`), `:118` (`responder`), `:285` (`resumeParkedGate`),
@@ -12015,13 +12015,13 @@ not consulted at proposal. Changing one requires changing the other.
   agent's behalf (AT-752). The engine lists each decision with its `questionId` and
   affected stories (`apps/engine/lib/engine/harness/decisoes_do_projeto.ex`), so the PO
   finds the id.
-- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:122`
+- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:123`
   (`decisoesDaTarefa`), `:374` (`decisoesDoContexto`),
   `src/domain/backlog/correcao-de-historia.ts:33`
   (`recusaDeCorrecaoDeHistoria`),
   `src/application/use-cases/backlog/corrigir-historia.use-case.ts:126`
   (`respostaDoUsuario`),
-  `src/application/use-cases/backlog/complete-story.use-case.ts:100`
+  `src/application/use-cases/backlog/complete-story.use-case.ts:101`
   (`corrigindoReady`), `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:107`
   (`respondidasQueAfetam`)
 - **Test:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts` ("devolve só as que afetam a tarefa, a história ou uma regra dela, mais recentes primeiro"; "decisão sem afeta não entra; teto de 10 e texto cortado em 1 500"), `test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts` ("história ready citando pergunta RESPONDIDA é corrigida, e o evento a cita"; failures: "história ready citando pergunta AINDA ABERTA segue recusada"; "história ready com tarefa em revisão segue recusada mesmo com a resposta"), `test/application/use-cases/backlog/complete-story.use-case.spec.ts` ("história ready com pergunta respondida tem RF/DoR corrigidos e segue ready"; "história ready com pergunta ainda aberta é recusada")
@@ -12075,8 +12075,8 @@ not consulted at proposal. Changing one requires changing the other.
   dev's context, `decisoes` also matches by the titles of the story's rules, for the
   decisions recorded before this rule.
 - **Where:** `src/domain/open-questions/pergunta-em-aberto.ts:179`
-  (`resolverRegrasDoAfeta`), `src/application/use-cases/sessions/append-session-event.use-case.ts:117`
-  (`resolverRegrasDoAfeta`), `src/application/use-cases/execution/get-dev-task-context.use-case.ts:134`
+  (`resolverRegrasDoAfeta`), `src/application/use-cases/sessions/append-session-event.use-case.ts:122`
+  (`resolverRegrasDoAfeta`), `src/application/use-cases/execution/get-dev-task-context.use-case.ts:135`
   (`decisoesDoContexto`)
 - **Test:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts` ("título exato é convertido para o id da regra"; failure: "texto que não é id nem título de regra: 400 sem escrita"), `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts` ("decisão legada com TÍTULO de regra em afeta.regras casa pelo título")
 - **Origin:** AT-526, ADR 0215
@@ -12089,7 +12089,7 @@ not consulted at proposal. Changing one requires changing the other.
   format. The ceiling of 10 is SHARED — the task's come first and consume
   the ceiling before. It revises ADR 0214's sentence "a decision without `afeta` does not enter" for
   this list. The field is additive (an engine that does not know it ignores it).
-- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:134`
+- **Where:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:135`
   (`decisoesDoContexto`), `src/interfaces/http/internal/dto/internal.response.dto.ts:237`
   (`decisoesDoProjeto`)
 - **Test:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts` ("as que não tocam a tarefa vêm em decisoesDoProjeto; teto de 10 somado, as da tarefa primeiro")
@@ -12736,6 +12736,14 @@ is no known password). With no user at all on the installation it answers 409.
 - **Code:** `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts` (`settleMerge`, `acordarDependentes`)
 - **Test:** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("acorda os dependentes (RN-1009)": one row with `cause: dependency_done`, repeated merge writes nothing, no map writes nothing), `apps/api/test/infrastructure/persistence/drizzle/dependente-acorda-no-merge.spec.ts` (real Postgres: `auth` claims nothing before the merge, the row exists after it and `auth` claims the task)
 - **Origin:** AT-746 (EP-030); the engine side (outbox -> drain -> wake -> idle agent claims) already exists and is proven by `dev_agent_chain_test.exs`.
+
+
+### RN-1018 — The agent retires an obsolete business rule, citing its replacement or the user's answer; every reader ignores it {#rn-1018}
+
+- **Rule:** a business rule is an `artifact.business_rule` event and the log is append-only, so an obsolete rule used to stay forever (TP-01 26th, 06/11: the Criativo asked the conductor to "remove it manually"). `POST /internal/projects/:projectId/business-rules/:ruleId/retire` (service token) takes `{ sessionId, agentRole, reason, replacedBy?, questionId? }` and appends `artifact.business_rule_retired { ruleId, reason, storyIds, replacedBy?, questionId? }`, with no approval card (owner decision of 06/11/2026). (1) Only `criativo` and `po` retire: any other role is 403 `papel_nao_retira_regra`. (2) The call must cite `replacedBy` (an existing, non-retired rule other than itself, else 400 `substituta_invalida`) and/or a `questionId` the user already answered (the [RN-859](#rn-859) standard, else 409 `pergunta_nao_respondida`); neither is 400 `retirada_sem_citacao`. (3) Unknown rule is 404, a rule already retired is 409 `regra_ja_retirada`. (4) Each (non-archived) story that cites the rule drops it and cites `replacedBy` instead (inclusive a `ready` story, no new promotion); if a story would be left with NO rule (only possible without `replacedBy`) the whole retirement is refused with 409 `historia_ficaria_sem_regra`, and a story with a task `in_progress`/`in_review` refuses with 409 `historia_com_tarefa_em_execucao`; nothing is written on a refusal. (5) The retired rule stays in the log but leaves every reader that decides: the rule list and coverage ([RN-164](#rn-164)), the semantic-duplicate check ([RN-681](#rn-681)), the dev and psychologist contexts, the auto-accept coverage count and the `afeta.regras` resolution of open questions; `create_story`/`complete_story` refuse to link it (400).
+- **Where:** `apps/api/src/application/use-cases/backlog/retire-business-rule.use-case.ts` (`execute`), `apps/api/src/application/use-cases/backlog/regras-retiradas.ts` (`idsDeRegrasRetiradas`), `apps/api/src/interfaces/http/internal/internal-business-rules.controller.ts`.
+- **Test:** `apps/api/test/application/use-cases/backlog/retire-business-rule.use-case.spec.ts` (role, missing citation, swap, no-rule refusal, running task, readers).
+- **Origin:** AT-755 (EP-030), part B of AT-752; the engine tool and the web panel come after.
 
 ### RN-1014 — The direct Anthropic provider also puts a cache point on the second-to-last `user` turn {#rn-1014}
 

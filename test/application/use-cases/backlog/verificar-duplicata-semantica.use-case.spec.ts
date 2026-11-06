@@ -45,6 +45,7 @@ class FakeEvents {
     createdAt: Date;
   }[] = [];
   listByTypeForProject(_p: string, tipo: string) {
+    if (tipo === 'artifact.business_rule_retired') return Promise.resolve([]);
     expect(tipo).toBe('artifact.business_rule');
     return Promise.resolve(this.regras);
   }

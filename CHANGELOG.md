@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The agent retires an obsolete business rule (AT-755, RN-1018, ADR 0262): `POST /internal/projects/:projectId/business-rules/:ruleId/retire` (Criativo and PO only; cites `replacedBy` and/or an answered `questionId`) appends `artifact.business_rule_retired`, swaps the id in the stories that cite the rule, and is refused (409 `historia_ficaria_sem_regra`) when a story would be left with no rule. List, coverage, semantic-duplicate check, dev/psychologist context, auto-accept and `create_story`/`complete_story` ignore the retired rule.
+
 - The direct Anthropic provider no longer hoists late `system` messages to the top `system` (AT-751, RN-1015): they become the last text block of the last `user` turn, after the cache point (cache of RN-1008 unchanged), so the language guidance reaches the model next to the recent context. The `system` keeps only the prefix; OpenRouter is unchanged. Contract harness gains `fim_do_ultimo_user`.
 - The direct Anthropic provider also marks the second-to-last `user` turn with `cache_control` (AT-749, RN-1014): the cache read no longer depends on Anthropic's ~20-block lookback, for planning agents whose turns carry many parallel calls; the request keeps at most 3 of the 4 points.
 - A terminal `git push` to a protected branch (`dev`, `qa`, `rc`, `main`, also by refspec such as `HEAD:dev`), with `--force`/`-f`/`--force-with-lease`, or with `--all`/`--mirror` is no longer auto-approved in automatic mode: it becomes a pending action for the human (AT-756, RN-1017). Pushing the task's own branch is unchanged.

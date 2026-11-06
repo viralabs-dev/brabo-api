@@ -36,6 +36,7 @@ import {
   validarPerguntaEmAberto,
 } from '../../../domain/open-questions/pergunta-em-aberto';
 import { Traced } from '../../../infrastructure/observability/traced.decorator';
+import { idsDeRegrasRetiradas } from '../backlog/regras-retiradas';
 
 /**
  * A recusa da RN-581 como 409 NOMEADO: `reason` é o que o engine reconhece no
@@ -110,10 +111,14 @@ export class AppendSessionEventUseCase {
       // que não é id nem título exato de regra do projeto é recusado.
       let valor = validada.valor;
       if (valor.afeta.regras.length) {
-        const regras = await this.sessionEvents.listByTypeForProject(
-          projectId,
-          'artifact.business_rule',
-        );
+        const [todas, retiradas] = await Promise.all([
+          this.sessionEvents.listByTypeForProject(
+            projectId,
+            'artifact.business_rule',
+          ),
+          idsDeRegrasRetiradas(this.sessionEvents, projectId),
+        ]);
+        const regras = todas.filter((r) => !retiradas.has(r.id)); // RN-1018
         const resolvidas = resolverRegrasDoAfeta(
           valor.afeta.regras,
           regras.map((r) => ({
