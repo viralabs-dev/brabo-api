@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The agent retires an obsolete business rule (AT-755, RN-1018, ADR 0262): `POST /internal/projects/:projectId/business-rules/:ruleId/retire` (Criativo and PO only; cites `replacedBy` and/or an answered `questionId`) appends `artifact.business_rule_retired`, swaps the id in the stories that cite the rule, and is refused (409 `historia_ficaria_sem_regra`) when a story would be left with no rule. List, coverage, semantic-duplicate check, dev/psychologist context, auto-accept and `create_story`/`complete_story` ignore the retired rule.
 - The 409 of `complete_story` on a non-`draft` story is the common named refusal (`historia_nao_draft`, citing `questionId`) and lists the answered questions that affect the story (AT-752 part A, RN-859); the API still does not infer the `questionId`.
 - Closing an open question through `POST /internal/projects/:projectId/open-questions/:questionId/answer` now runs as an action effect, so the session channel is notified of `open_question.answered` and the web "open questions" counter updates live (AT-753 UX-1, RN-1002). (api#28)
 - The merge that closes a task wakes the dev agents of the modules that depend on it (AT-746, RN-1009): `settleMerge` appends a `task.became_claimable` outbox row (`cause: dependency_done`) in the same transaction when a task actually became `done`, so idle agents blocked only by `dependsOn` (RN-1005) no longer need a stop and restart of the execution.

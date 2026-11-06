@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { StoryRepository } from '../../ports/backlog-repository.port';
 import { SessionEventRepository } from '../../ports/session-event-repository.port';
 import { computeCoverage } from '../../../domain/backlog/coverage';
+import { idsDeRegrasRetiradas } from './regras-retiradas';
 
 /** Uma regra de negócio do projeto, com o estado de cobertura dela. */
 export interface BusinessRuleWithCoverage {
@@ -44,13 +45,16 @@ export class ListBusinessRulesUseCase {
   ) {}
 
   async execute(projectId: string): Promise<ProjectBusinessRules> {
-    const [ruleEvents, stories] = await Promise.all([
+    const [todasAsRegras, stories, retiradas] = await Promise.all([
       this.sessionEvents.listByTypeForProject(
         projectId,
         'artifact.business_rule',
       ),
       this.stories.findByProject(projectId),
+      idsDeRegrasRetiradas(this.sessionEvents, projectId),
     ]);
+    // RN-1018: a regra retirada continua no log, mas não é lida.
+    const ruleEvents = todasAsRegras.filter((e) => !retiradas.has(e.id));
 
     const descricaoPorId = new Map<string, string>();
     for (const evento of ruleEvents) {

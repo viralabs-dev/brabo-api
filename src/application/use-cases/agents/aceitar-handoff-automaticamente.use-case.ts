@@ -18,6 +18,7 @@ import {
   type CriterioDoAceite,
   type MotivoSemAceiteAutomatico,
 } from '../../../domain/sessions/aceite-automatico-do-handoff';
+import { idsDeRegrasRetiradas } from '../backlog/regras-retiradas';
 
 /** O que a oferta devolve ao engine sobre o aceite sem clique (RN-660). */
 export type DesfechoDoAceiteAutomatico =
@@ -69,22 +70,30 @@ export class AceitarHandoffAutomaticamenteUseCase {
     const session = await this.sessions.findInProject(projectId, sessionId);
     if (!session) return { aceito: false, motivo: 'autor_sem_papel' };
 
-    const [regras, historias, repositorio, credenciais, papel] =
-      await Promise.all([
-        this.sessionEvents.listByTypeForProject(
-          projectId,
-          'artifact.business_rule',
+    const [
+      todasAsRegras,
+      retiradas,
+      historias,
+      repositorio,
+      credenciais,
+      papel,
+    ] = await Promise.all([
+      this.sessionEvents.listByTypeForProject(
+        projectId,
+        'artifact.business_rule',
+      ),
+      idsDeRegrasRetiradas(this.sessionEvents, projectId),
+      this.stories.findByProject(projectId),
+      this.repositories.findByProjectId(projectId),
+      Promise.all(
+        GIT_CREDENTIAL_PROVIDER_NAMES.map((p) =>
+          this.gitConnections.findMetadataByProjectAndProvider(projectId, p),
         ),
-        this.stories.findByProject(projectId),
-        this.repositories.findByProjectId(projectId),
-        Promise.all(
-          GIT_CREDENTIAL_PROVIDER_NAMES.map((p) =>
-            this.gitConnections.findMetadataByProjectAndProvider(projectId, p),
-          ),
-        ),
-        this.effectiveRole.forProject(session.createdBy, projectId),
-      ]);
+      ),
+      this.effectiveRole.forProject(session.createdBy, projectId),
+    ]);
 
+    const regras = todasAsRegras.filter((e) => !retiradas.has(e.id)); // RN-1018
     // A MESMA conta da aba Backlog (`GetCoverageUseCase`): duas contas do
     // mesmo fato divergiriam no primeiro ajuste.
     const cobertura = computeCoverage(

@@ -17,6 +17,7 @@ import {
   VerificarDuplicataSemanticaUseCase,
   type SemanticDuplicateCheckResult,
 } from './verificar-duplicata-semantica.use-case';
+import { idsDeRegrasRetiradas } from './regras-retiradas';
 
 /**
  * A história criada + o desfecho da checagem de duplicata SEMÂNTICA
@@ -88,9 +89,14 @@ export class CreateStoryUseCase {
     }
 
     const businessRuleIds = input.businessRuleIds ?? [];
+    const retiradas = await idsDeRegrasRetiradas(this.sessionEvents, projectId);
     for (const ruleId of businessRuleIds) {
       const event = await this.sessionEvents.findById(ruleId);
-      if (!event || event.type !== 'artifact.business_rule') {
+      if (
+        !event ||
+        event.type !== 'artifact.business_rule' ||
+        retiradas.has(ruleId) // RN-1018
+      ) {
         throw new BadRequestException(
           `business_rule_id "${ruleId}" não corresponde a uma regra de negócio existente`,
         );

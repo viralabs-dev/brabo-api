@@ -109,6 +109,9 @@ class FakeEvents {
   findById(id: string) {
     return Promise.resolve(this.byId[id] ?? null);
   }
+  listByTypeForProject() {
+    return Promise.resolve([]);
+  }
 }
 
 class FakeAppend {

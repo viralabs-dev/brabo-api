@@ -527,6 +527,13 @@ reason in the URL.
   ([RN-1002](business-rules/api.md#rn-1002)) is called only by the engine
   (`engine-service`): an agent closes the open question the user answered in
   chat. Same core as the human answer; idempotent; scoped to the project.
+- **`POST /internal/projects/:projectId/business-rules/:ruleId/retire`**
+  ([RN-1018](business-rules/api.md#rn-1018)) is called only by the engine
+  (`engine-service`): the Criativo or the PO retires an obsolete business rule.
+  The role is checked in the body (`criativo`/`po`, otherwise 403) and the call
+  must cite the replacing rule and/or an answered question. It appends one
+  `artifact.business_rule_retired` event and swaps the rule id in the stories
+  that cite it; nothing is deleted and no credential is involved.
 - **`POST /internal/projects/:projectId/qa-environments/:taskId/start`**,
   **`POST /internal/projects/:projectId/qa-environments/:taskId/remove`** and
   **`POST /internal/qa-environments/sweep`** ([RN-935](business-rules/api.md#rn-935),
@@ -1373,6 +1380,7 @@ reason in the URL.
 | POST | `/internal/projects/:projectId/qa-environments/:taskId/remove` | engine-service |
 | POST | `/internal/qa-environments/sweep` | engine-service |
 | POST | `/internal/projects/:projectId/open-questions/:questionId/answer` | engine-service |
+| POST | `/internal/projects/:projectId/business-rules/:ruleId/retire` | engine-service |
 | POST | `/internal/first-account` | engine-service |
 | POST | `/internal/machine-device-keys` | engine-service |
 | GET | `/internal/sessions/:sessionId/psychologist-context` | engine-service |

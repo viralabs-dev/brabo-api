@@ -20,6 +20,7 @@ import {
 import { normalizarTitulo } from '../../../domain/backlog/story-overlap';
 import { calculateCostMicros } from '../../../domain/llm/cost-calculator';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
+import { idsDeRegrasRetiradas } from './regras-retiradas';
 
 /**
  * O ator do metering e dos eventos desta checagem — `system`, nunca o agente
@@ -226,10 +227,15 @@ export class VerificarDuplicataSemanticaUseCase {
         createdAt: s.createdAt,
       }));
     }
-    const regras = await this.sessionEvents.listByTypeForProject(
-      projectId,
-      'artifact.business_rule',
-    );
+    const [todas, retiradas] = await Promise.all([
+      this.sessionEvents.listByTypeForProject(
+        projectId,
+        'artifact.business_rule',
+      ),
+      idsDeRegrasRetiradas(this.sessionEvents, projectId),
+    ]);
+    // RN-1018: regra retirada não compete como duplicata.
+    const regras = todas.filter((e) => !retiradas.has(e.id));
     return regras.flatMap((e) => {
       const titulo = (e.payload as { title?: unknown } | null)?.title;
       return typeof titulo === 'string' && titulo.trim() !== ''

@@ -79,6 +79,7 @@ describe('CompleteStoryUseCase (RN-720)', () => {
       {
         findById: (id: string) =>
           Promise.resolve(id === 'rule-1' ? (regra as SessionEvent) : null),
+        listByTypeForProject: () => Promise.resolve([]),
       } as unknown as SessionEventRepository,
       {
         execute: (_p: string, _s: string, e: { type: string }) => {
