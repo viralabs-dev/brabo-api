@@ -7862,11 +7862,11 @@ closed session keep showing the api's message.
   (`conversa_ociosa`), `:193` (`encerrar`), `:222`
   (`conversation_idle_timeout_ms`); `apps/engine/lib/engine/sessions/monitor.ex:185`
   (`classify`); `apps/engine/lib/engine/psychologist/termination_classifier.ex:46`;
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:1203`
-  (`narrar_recusa_de_sessao_encerrada`), `:1560` (`pendencia_da_resposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:1214`
+  (`narrar_recusa_de_sessao_encerrada`), `:1571` (`pendencia_da_resposta`);
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:1203`
-  (`narrar_recusa_de_sessao_encerrada`), `:1560` (`pendencia_da_resposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:1214`
+  (`narrar_recusa_de_sessao_encerrada`), `:1571` (`pendencia_da_resposta`);
   `apps/engine/lib/engine/agents/conversacionais.ex:49` (`parar_da_sessao`),
   `:69` (`parar_da_sessao_no_cluster`);
   `apps/engine/lib/engine/agents/turno_assincrono.ex:471` (`abandonar`);
@@ -8448,12 +8448,12 @@ Docker port package. Nothing changes in the broker's containment ([ADR
 
 - **Code:**
   `src/infrastructure/http-clients/container-broker.client.ts:287` (`tetoDaOperacao`),
-  `:241` (`TETO_DE_MUTACAO_MS`), `:253` (`FOLGA_DO_EXEC_NO_ENGINE_MS`),
-  `:306` (`erroDeTransporte`);
+  `:252` (`TETO_DE_MUTACAO_MS`), `:264` (`FOLGA_DO_EXEC_NO_ENGINE_MS`),
+  `:324` (`erroDeTransporte`);
   `src/application/ports/container-broker.port.ts:110` (`MotivoDeBrokerIndisponivel`);
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:2077` (`teto_do_container_exec_ms`)
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:2099` (`teto_do_container_exec_ms`)
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:2077` (`teto_do_container_exec_ms`)
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:2099` (`teto_do_container_exec_ms`)
 - **Test:** `test/infrastructure/http-clients/container-broker.client.spec.ts:286`
   (the reproduction, against a `node:http` broker that takes 6 s), `:182` (the
   ceiling of each operation in the `AbortSignal`), `:204` and `:229` (`teto-excedido`
@@ -11465,7 +11465,7 @@ The PO's kickoff states the three things.
   runs through the same `GitExecutor` and the same exclusion holds wherever the
   engine runs git.
 - **Where:** `src/application/use-cases/git/bootstrap-templates.ts:38`
-  (`gitignoreContent`), `src/application/use-cases/git/bootstrap-steps.ts:177`
+  (`gitignoreContent`), `src/application/use-cases/git/bootstrap-steps.ts:128`
   (`soSeAusente`), `apps/engine/lib/engine/actions/diretorios_de_dependencia.ex:37`
   (`argumentos_do_add`), `:47` (`commitados`),
   `apps/engine/lib/engine/gates/secops_agent_server.ex:162`
@@ -12665,7 +12665,7 @@ is no known password). With no user at all on the installation it answers 409.
 
 - **Rule:** the provider returns the reasoning TEXT as a `reasoning` chunk (OpenRouter's `delta.reasoning`, the DeepSeek/vLLM dialect's `delta.reasoning_content`, Anthropic's `thinking_delta`) and never in the `content`. The `stream-llm-turn` forwards each piece as a `raciocinio` frame and the `final` frame carries `raciocinio` with the WHOLE text of the step, with no cut; the non-stream `llm-turn` returns the same field. Anthropic receives `thinking` when the model reasons and reasoning was not turned off: `adaptive` with `display: "summarized"` and without `budget_tokens` in the current models (4.6 onward and the 5 family; the default `display` would return empty text, and the text that arrives is a SUMMARY, never the raw one), `enabled` with `budget_tokens` in the old ones (`pensamentoAdaptativo`, `src/infrastructure/llm/anthropic-provider.ts:559`); `reasoningOff` does not send `thinking`. The signed `thinking` blocks come back in `message.thinkingBlocks` so the engine returns them intact in the `assistant` turn that asked for tools. The engine records the text in `agent.response.payload.raciocinio` (the engine's lane) and it does not enter rehydration, the RAG nor the graph. The session's event reads (`GET .../events`, `GET .../events/:eventId` and Anamnesis's event by id) remove `payload.raciocinio` from `agent.response` for an effective role below `developer` (`projectRole ?? workspaceRole`, RN-471), through ONE output filter. The `reasoningText` capability is `false` in all providers until there is a smoke with a credential (ADR 0041).
 - **Capability:** `reasoningText` is `true` only in Anthropic and OpenRouter, PROVEN with a real credential on 2026-11-03: `anthropic-provider.raciocinio.smoke.spec.ts` (`claude-haiku-5-5` and `claude-sonnet-5-5`, output 0 in both; the text is the reasoning SUMMARY, `display: summarized`, never the raw one) and `openrouter-provider.raciocinio.smoke.spec.ts` (`deepseek/deepseek-r1-0528`, `deepseek/deepseek-r1` left OpenRouter and gives 404). The other nine providers stay `false`; turning on another requires the equivalent smoke with a credential.
-- **Where:** `src/infrastructure/llm/openai-compatible-provider.ts:381` (`textoDoRaciocinio`), `src/infrastructure/llm/anthropic-provider.ts:536` (`toThinkingBlocks`), `src/domain/sessions/raciocinio-do-evento.ts:16` (`filtrarRaciocinio`), `src/interfaces/http/sessions/sessions.controller.ts:260` (`listEvents`), `:333` (`getEvent`), `src/application/use-cases/sessions/create-socket-ticket.use-case.ts:69` (`podeVerRaciocinio` in the socket ticket, column `session_socket_tickets.pode_ver_raciocinio`, which the engine reads when consuming it, RN-108). Engine (AT-676): `RaciocinioDoTurno` accumulates the turn's reasoning and `TextoDoTurno.payload_do_turno` records it as `raciocinio`/`raciocinioTotal` outside the `content`; it returns the `thinkingBlocks` in the `assistant` message with `toolCalls` (`apps/engine/lib/engine/agents/raciocinio_do_turno.ex:47` (`anexar_blocos`)); the stream's `raciocinio` frame becomes the ephemeral event `agent.reasoning_delta` (`apps/engine/lib/engine/sessions/engine_api_client.ex:1856` (`consume_sse`)); and the `intercept` of the `session:<id>` channel only delivers the delta, and only leaves `raciocinio` in the `agent.response`, to the socket whose ticket has `pode_ver_raciocinio` (`apps/engine/lib/engine_web/channels/session_channel.ex:42` (`handle_out`)). A missing or null column counts as false.
+- **Where:** `src/infrastructure/llm/openai-compatible-provider.ts:381` (`textoDoRaciocinio`), `src/infrastructure/llm/anthropic-provider.ts:536` (`toThinkingBlocks`), `src/domain/sessions/raciocinio-do-evento.ts:16` (`filtrarRaciocinio`), `src/interfaces/http/sessions/sessions.controller.ts:260` (`listEvents`), `:333` (`getEvent`), `src/application/use-cases/sessions/create-socket-ticket.use-case.ts:69` (`podeVerRaciocinio` in the socket ticket, column `session_socket_tickets.pode_ver_raciocinio`, which the engine reads when consuming it, RN-108). Engine (AT-676): `RaciocinioDoTurno` accumulates the turn's reasoning and `TextoDoTurno.payload_do_turno` records it as `raciocinio`/`raciocinioTotal` outside the `content`; it returns the `thinkingBlocks` in the `assistant` message with `toolCalls` (`apps/engine/lib/engine/agents/raciocinio_do_turno.ex:47` (`anexar_blocos`)); the stream's `raciocinio` frame becomes the ephemeral event `agent.reasoning_delta` (`apps/engine/lib/engine/sessions/engine_api_client.ex:1867` (`consume_sse`)); and the `intercept` of the `session:<id>` channel only delivers the delta, and only leaves `raciocinio` in the `agent.response`, to the socket whose ticket has `pode_ver_raciocinio` (`apps/engine/lib/engine_web/channels/session_channel.ex:42` (`handle_out`)). A missing or null column counts as false.
 - **Test:** `test/infrastructure/llm/raciocinio-texto.spec.ts` (the two fields, `thinking_delta`, adaptive/summarized × enabled by model, blocks returned in the next body, `reasoningText` false), `test/domain/sessions/raciocinio-do-evento.spec.ts` (`viewer` does not receive, `developer`+ receives), `test/application/use-cases/sessions/create-socket-ticket.use-case.spec.ts` (ticket `true` for `developer`, `false` for `viewer`), `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` and `run-llm-turn.use-case.spec.ts` (`raciocinio` frame, `final` with the whole text, `content` intact); manual smoke `openrouter-provider.raciocinio.smoke.spec.ts`. Engine: `apps/engine/test/engine/agents/raciocinio_do_turno_test.exs` (frame accumulates and `final` replaces, payload with `content` intact, rehydration without reasoning, `thinkingBlocks` on the 2nd call) and `apps/engine/test/engine_web/channels/session_channel_test.exs` (`intercept` with and without the flag).
 - **Origin:** AT-676 (EP-031), api lane; ADR 0249.
 
