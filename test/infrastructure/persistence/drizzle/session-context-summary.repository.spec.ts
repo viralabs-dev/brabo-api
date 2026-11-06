@@ -185,6 +185,21 @@ describe('DrizzleSessionContextSummaryRepository (RN-827/828)', () => {
     ]);
   });
 
+  it('RN-1018: a regra retirada (em outra sessão do projeto) não conta nem entra na lista', async () => {
+    const s = await sessao();
+    const outra = await sessao();
+    await evento(s, 'artifact.business_rule', 'po', { title: 'Velha' });
+    await evento(s, 'artifact.business_rule', 'po', { title: 'Nova' });
+    await evento(outra, 'artifact.business_rule_retired', 'criativo', {
+      ruleId: 'evt-1',
+    });
+
+    const r = await repo.resumir(projectId, s);
+
+    expect(r.regras).toBe(1);
+    expect(r.itensDeRegras.map((i) => i.titulo)).toEqual(['Nova']);
+  });
+
   it('RN-844: lista as PRs executadas da sessão e da execução ligada, a mais recente primeiro, com teto', async () => {
     const criativa = await sessao();
     const execucao = await sessao();
