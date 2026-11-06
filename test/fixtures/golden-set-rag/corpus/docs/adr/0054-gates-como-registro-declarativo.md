@@ -1,131 +1,139 @@
-# ADR 0054 — Gates como registro declarativo
+# 0054 — Gates as a declarative registry
 
 ## Status
 
-Proposto
+Proposed
 
-## Contexto
+## Context
 
-Os gates do fluxo (QA, SecOps, promoção manual de story, plano de adoção, merge
-manual, pipeline de proposed_actions) existem e foram validados por execução
-real (ADR 0020, 0044–0046), mas estão **implícitos**: espalhados entre prompts
-de agente, código do engine, regras puras da api e convenções do CLAUDE.md.
+The flow's gates (QA, SecOps, manual story promotion, adoption plan,
+manual merge, the proposed_actions pipeline) exist and were validated by
+real execution (ADR 0020, 0044–0046), but they're **implicit**: scattered
+across agent prompts, engine code, the api's pure rules, and CLAUDE.md
+conventions.
 
-A lição da Fase 10/13 — métrica extraída por script, nunca anotada — não tem
-como ser aplicada a um gate que não é enumerável.
+The lesson from Phase 10/13 — metrics extracted by script, never
+hand-recorded — has no way to be applied to a gate that isn't
+enumerable.
 
-O [ADR 0048](0048-decisao-no-log-e-a-ordem-do-gate.md) resolveu a metade de
-baixo desse problema: pôs a decisão de ação no event log, com o ator real, e
-fez `proposed_action.created` carregar o `status` — que é o que distingue "o
-usuário clicou" de "a política decidiu sozinha". Sem aquilo, medir passagem de
-gate seria contar eventos que não existiam. Este ADR é a metade de cima: dizer
-QUAIS gates existem, para que o que o 0048 tornou observável fique também
-enumerável.
+[ADR 0048](0048-decisao-no-log-e-a-ordem-do-gate.md) solved the bottom
+half of this problem: it put the action decision in the event log, with
+the real actor, and made `proposed_action.created` carry the `status` —
+which is what distinguishes "the user clicked" from "policy decided on
+its own." Without that, measuring gate passage would mean counting events
+that didn't exist. This ADR is the top half: saying WHICH gates exist, so
+that what 0048 made observable also becomes enumerable.
 
-## Decisão
+## Decision
 
-Registro declarativo em `docs/gates.yml`, versionado, com schema: `id`, fluxo,
-dono (agente/área/usuário), entradas, entregável, `verificacao` (script |
-humana), `severidade` (block | warn), `aprovacao_humana`, `status` (active |
-planned).
+A declarative registry in `docs/gates.yml`, versioned, with a schema:
+`id`, flow, owner (agent/area/user), inputs, deliverable, `verificacao`
+(script | human), `severidade` (block | warn), `aprovacao_humana`,
+`status` (active | planned).
 
-Regras:
+Rules:
 
-- Gate sem script de verificação nasce `warn`; promoção a `block` exige o
-  script existir e ter medido passagens (mesma filosofia do staged rollout da
-  documentação).
-- `aprovacao_humana: true` é imutável por configuração de produto nos gates que
-  a constituição declara manuais (merge em protegida, promoção de story no modo
-  manual, plano de adoção, decisão de ação) — garantido por teste, como o merge
-  manual já é.
-- `status: planned` declara gate de papel futuro sem ativá-lo.
+- A gate with no verification script is born `warn`; promotion to `block`
+  requires the script to exist and to have measured passages (the same
+  philosophy as documentation's staged rollout).
+- `aprovacao_humana: true` is immutable by product configuration on the
+  gates the constitution declares manual (merge to protected, story
+  promotion in manual mode, adoption plan, action decision) — guaranteed
+  by test, the same way manual merge already is.
+- `status: planned` declares a future role's gate without activating it.
 
-### `evidencia`: onde mora a prova
+### `evidencia`: where the proof lives
 
-Campo que a spec original não previa, e que a primeira leitura do código
-tornou obrigatório: **nem todo gate pode ter prova no event log**.
+A field the original spec didn't foresee, and that the first read of the
+code made mandatory: **not every gate can have proof in the event log**.
 
-- `merge-protegida` não emite evento próprio. É um teto aplicado por último
-  sobre o veredito já calculado (`decide.ts`), que rebaixa `auto_approve` para
-  `require_approval`; o desfecho aparece como um `proposed_action.created`
-  pendente, indistinguível de qualquer outra pendência. O que garante a trava é
-  **teste**.
-- `backmerge` vive inteiramente fora da aplicação: é check required de PR, com
-  estado versionado em `.release/gate.json` na `main`.
+- `merge-protegida` doesn't emit its own event. It's a cap applied last
+  on top of an already-computed verdict (`decide.ts`), which downgrades
+  `auto_approve` to `require_approval`; the outcome shows up as a pending
+  `proposed_action.created`, indistinguishable from any other pending
+  item. What guarantees the lock is a **test**.
+- `backmerge` lives entirely outside the application: it's a required PR
+  check, with state versioned in `.release/gate.json` on `main`.
 
-Sem esse campo, a regra "gate `active` + `block` sem evidência no log reprova"
-tornaria os dois vermelhos para sempre — e eles são as travas mais duras do
-produto. Cada gate declara então `evidencia: event_log | teste | ci` com o
-localizador junto (tipos de evento e filtro de payload, caminho do spec, ou
-workflow). O script só cobra o event log de quem o declara; para `teste` e `ci`
-confirma que o alvo existe.
+Without this field, the rule "gate `active` + `block` with no evidence in
+the log fails" would turn both of these red forever — and they're the
+product's hardest locks. Each gate then declares
+`evidencia: event_log | teste | ci` with the locator alongside it (event
+types and payload filter, spec path, or workflow). The script only cross
+checks the event log for whoever declares it; for `teste` and `ci` it
+just confirms the target exists.
 
-A alternativa — rebaixar os dois a `warn` — foi recusada por mentir sobre a
-severidade real, que é justamente o que o registro existe para acabar.
+The alternative — downgrading both to `warn` — was rejected for lying
+about the real severity, which is exactly what the registry exists to put
+an end to.
 
-### Os gates do repositório entram junto
+### The repository's gates come in too
 
-`backmerge`, `pr-no-lugar-certo`, `aprovacoes-da-escada` e `promocao-conferida`
-(ADR 0030) são gates pelo mesmo critério dos demais: têm dono, entrada,
-entregável, verificação mecânica e severidade. E são os que mais reprovam PR no
-dia a dia. Incluir só o `backmerge` seria arbitrário — são a mesma família
-(script puro + workflow + spec).
+`backmerge`, `pr-no-lugar-certo`, `aprovacoes-da-escada`, and
+`promocao-conferida` (ADR 0030) are gates by the same criterion as the
+rest: they have an owner, an input, a deliverable, mechanical
+verification, and severity. And they're the ones that reject PRs most
+often, day to day. Including only `backmerge` would be arbitrary — they're
+the same family (pure script + workflow + spec).
 
-`aprovacoes-da-escada` é o único gate de CI com `aprovacao_humana: true`: o que
-ele mede é gente aprovando, por papel. Um registro de gates que omitisse
-justamente o gate que conta assinaturas humanas omitiria o mais óbvio.
+`aprovacoes-da-escada` is the only CI gate with `aprovacao_humana: true`:
+what it measures is people approving, by role. A gate registry that
+omitted precisely the gate that counts human signatures would omit the
+most obvious one.
 
-O limite: o registro é **índice**, não política. Quem manda sobre branches
-continua sendo `docs/explanation/branching-policy.md`; `entrada` e `entregavel`
-são uma frase, e `onde` aponta para o script. O YAML nunca reproduz a regra —
-se reproduzisse, viraria a segunda fonte de verdade que ele existe para evitar.
+The limit: the registry is an **index**, not policy. Who governs branches
+remains `docs/explanation/branching-policy.md`; `entrada` and
+`entregavel` are one sentence, and `onde` points to the script. The YAML
+never reproduces the rule — if it did, it would become the second source
+of truth it exists to avoid.
 
-### O filtro importa tanto quanto o tipo
+### The filter matters as much as the type
 
-`qa-verificada` e `secops-segura` **não são dois tipos de evento**: os dois
-gravam `pr.gate_changed`, discriminados por `payload.gate`. E o mesmo tipo é
-gravado na ABERTURA do gate, sem `veredito`. Um registro que guardasse só o
-nome do tipo contaria abertura como passagem, e mediria o dobro do que
-aconteceu. Por isso `evidencia` carrega o filtro de payload, não só o tipo.
+`qa-verificada` and `secops-segura` **are not two event types**: both
+record `pr.gate_changed`, discriminated by `payload.gate`. And the same
+type is recorded at the gate's OPENING, with no `veredito`. A registry
+that kept only the type name would count opening as passage, and would
+measure double what actually happened. That's why `evidencia` carries the
+payload filter, not just the type.
 
-Pelo mesmo motivo o julgamento sobre PR de infra são **dois** gates
-(`infra-qa-verificada` e `infra-secops-segura`): `infra.gate_changed` também
-discrimina por `payload.gate`, e juntá-los reportaria a passagem de um como se
-fosse a do outro. O teste afirma que nenhum par (`event_types` + `filtro`) se
-repete no registro — é essa unicidade que faz a medição significar alguma
-coisa.
+For the same reason, the verdicts on infra PRs are **two** gates
+(`infra-qa-verificada` and `infra-secops-segura`): `infra.gate_changed`
+also discriminates by `payload.gate`, and merging them would report one's
+passage as if it were the other's. The test asserts that no pair
+(`event_types` + `filtro`) repeats in the registry — it's that uniqueness
+that makes the measurement mean something.
 
-## Alternativas consideradas
+## Alternatives considered
 
-- **Manter implícito nos prompts:** rejeitado — não mensurável.
-- **Tabela no banco em vez de YAML:** rejeitado por ora — gates mudam por PR
-  revisado, não em runtime; segue o precedente do `.docmap.yml` e dos rulesets
-  versionados (ADR 0030). Migrar para banco fica trivial com o loader como
-  fronteira.
+- **Keep it implicit in the prompts:** rejected — not measurable.
+- **A database table instead of YAML:** rejected for now — gates change
+  via reviewed PR, not at runtime; this follows the precedent of
+  `.docmap.yml` and the versioned rulesets (ADR 0030). Migrating to a
+  database becomes trivial with the loader as the boundary.
 
-## Consequências
+## Consequences
 
-- O modo community do approval-ladder (backlog) vira mudança de valores em
-  `aprovacao_humana`, não reescrita de agentes.
-- Dev Lead (ADR 0053) e Platform/SRE ganham contrato de entrada: quando forem
-  implementados, o gate deles já está especificado como `planned`.
-- O registro nasce sabendo de gates que a lista original esquecera — o
-  julgamento de QA/SecOps sobre PR de **infra**, que tem caminho próprio
-  (`infra.gate_changed`) porque não há task de backlog por trás. Enumerar
-  encontra o que estava fora da conta: é o primeiro dividendo do registro,
-  antes mesmo de ele medir qualquer coisa.
-- E encontra lacuna: `promocao-conferida` é check required **sem spec
-  própria**, ao contrário de `pr-police` e `approval-ladder`. A evidência dele
-  aponta para o script em vez do teste, com a lacuna escrita ali. Vai para a
-  triagem da 13c como item, não corrigida aqui — a fase declara e mede, não
-  conserta.
+- The approval-ladder's community mode (backlog) becomes a change of
+  values in `aprovacao_humana`, not a rewrite of agents.
+- Dev Lead (ADR 0053) and Platform/SRE gain an entry contract: once
+  they're implemented, their gate is already specified as `planned`.
+- The registry is born knowing about gates the original list had
+  forgotten — QA/SecOps's verdict on **infra** PRs, which has its own path
+  (`infra.gate_changed`) because there's no backlog task behind it.
+  Enumerating finds what was left out of the count: it's the registry's
+  first dividend, before it even measures anything.
+- And it finds a gap: `promocao-conferida` is a required check with
+  **no spec of its own**, unlike `pr-police` and `approval-ladder`. Its
+  evidence points to the script instead of the test, with the gap written
+  right there. It goes to 13c's triage as an item, not fixed here — the
+  phase declares and measures, it doesn't repair.
 
-## Referências
+## References
 
-- [ADR 0048](0048-decisao-no-log-e-a-ordem-do-gate.md) — a decisão no event
-  log, sem a qual não haveria o que medir
-- [ADR 0020](0020-destravar-gates-qa-secops.md) — gates validados por
-  execução real
-- [ADR 0030](0030-politica-de-branches-mecanizada.md) — rulesets versionados,
-  o precedente de configuração em arquivo
-- `docs/gates.yml` — o registro
+- [ADR 0048](0048-decisao-no-log-e-a-ordem-do-gate.md) — the decision in
+  the event log, without which there would be nothing to measure
+- [ADR 0020](0020-destravar-gates-qa-secops.md) — gates validated by real
+  execution
+- [ADR 0030](0030-politica-de-branches-mecanizada.md) — versioned
+  rulesets, the precedent for configuration in a file
+- `docs/gates.yml` — the registry

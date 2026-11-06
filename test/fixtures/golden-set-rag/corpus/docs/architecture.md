@@ -1,867 +1,810 @@
 ---
 id: architecture
-title: Arquitetura
-sidebar_label: Arquitetura
+title: Architecture
+sidebar_label: Architecture
 sidebar_position: 2
-description: Mapa do Brabo — containers, mapa do código, o fluxo de um turno de agente, invariantes de camada e dívida conhecida.
-keywords: [arquitetura, mapa do código, invariantes, harness, event log]
+description: Map of Brabo — containers, code map, an agent turn's flow, layer invariants, and known debt.
+keywords: [architecture, code map, invariants, harness, event log]
 ---
 
-# Arquitetura
+# Architecture
 
-Este documento é o mapa para quem vai **trabalhar** no código. Ele diz por
-onde começar a ler, o que cada fronteira promete e o que já se sabe que está
-torto.
+This document is the map for anyone who's going to **work** on the code. It
+says where to start reading, what each boundary promises, and what's already
+known to be crooked.
 
-As decisões e suas justificativas moram nos [ADRs](adr/index.md) — 248
-deles, vários registrando um defeito real encontrado em execução. Aqui não
-repetimos o argumento: apontamos para ele.
+Decisions and their rationale live in the [ADRs](adr/index.md) — 159 of
+them, several recording a real defect found in execution. Here we don't
+repeat the argument: we point at it.
 
-## A visão de fora {#the-outside-view}
+## The outside view
 
-O Brabo recebe **uma intenção de produto** ("quero um sistema que faça X") e
-devolve **um repositório git com código, testes e um histórico de decisões**,
-produzido por um time de agentes de IA. Entre a entrada e a saída, toda ação
-com efeito no mundo — rodar um comando, commitar, abrir uma PR, gastar
-tokens — passa por um pedido de aprovação que o humano decide.
+Brabo receives **a product intent** ("I want a system that does X") and
+returns **a git repository with code, tests, and a history of decisions**,
+produced by a team of AI agents. Between input and output, every action with
+an effect on the world — running a command, committing, opening a PR,
+spending tokens — goes through an approval request that the human decides
+on.
 
-Visto de fora, é uma aplicação web. O que a distingue é que o trabalho é
-feito por processos de longa duração conversando com modelos de linguagem, e
-que o sistema é construído para que **nada aconteça sem rastro e sem
-permissão**.
+Seen from outside it's a web application. What sets it apart is that the
+work is done by long-running processes talking to language models, and that
+the system is built so that **nothing happens without a trace and without
+permission**.
 
-## Containers {#containers}
+## Containers
 
 ```mermaid
 graph TB
   subgraph cliente[" "]
-    B["Navegador<br/>React 19 · TanStack"]
+    B["Browser<br/>React 19 · TanStack"]
   end
 
-  subgraph brabo["Namespace brabo"]
-    W["web<br/>nginx serve a SPA"]
-    A["api · NestJS 11<br/>domínio, RBAC, aprovação, metering"]
-    E["engine · Elixir/OTP<br/>agentes, harness, gates"]
-    K["broker · Node/TS<br/>o único que fala com o Docker<br/>(desligado por padrão, ADR 0130)"]
+  subgraph brabo["brabo Namespace"]
+    W["web<br/>nginx serves the SPA"]
+    A["api · NestJS 11<br/>domain, RBAC, approval, metering"]
+    E["engine · Elixir/OTP<br/>agents, harness, gates"]
+    K["broker · Node/TS<br/>the only one that talks to Docker<br/>(off by default, ADR 0130)"]
   end
 
   subgraph externo[" "]
-    P[("PostgreSQL 16<br/>estado + event log + fila")]
+    P[("PostgreSQL 16<br/>state + event log + queue")]
     L["LLM<br/>Ollama · Anthropic · OpenAI"]
-    G["GitHub / GitLab<br/>ou repo local"]
-    D["Docker daemon<br/>no host"]
+    G["GitHub / GitLab<br/>or local repo"]
+    D["Docker daemon<br/>on the host"]
   end
 
   B -->|"HTTPS"| W
   B -->|"REST + SSE"| A
-  B -->|"WebSocket (canais)"| E
+  B -->|"WebSocket (channels)"| E
   A -->|"SQL"| P
-  A -->|"HTTP interno<br/>comando síncrono"| E
-  A -->|"HTTP interno<br/>cinco operações"| K
-  K -->|"lê a decisão do Arquiteto"| A
-  K -->|"docker CLI pelo socket"| D
-  A -->|"turno de LLM"| L
+  A -->|"internal HTTP<br/>sync command"| E
+  A -->|"internal HTTP<br/>five operations"| K
+  K -->|"reads the Architect's decision"| A
+  K -->|"docker CLI over the socket"| D
+  A -->|"LLM turn"| L
   A -->|"git"| G
   E -->|"Ecto + Oban"| P
-  E -->|"chama de volta"| A
-  E -->|"valida token"| K
+  E -->|"calls back"| A
+  E -->|"validates token"| K
 ```
 
-Duas coisas neste desenho não são óbvias e explicam muito:
+Two things in this design aren't obvious and explain a lot:
 
-**O engine nunca fala com o LLM nem com o git diretamente.** Ele pede à api.
-É isso que garante que metering, orçamento e o pipeline de aprovação não têm
-desvio — não há caminho que escape deles.
+**The engine never talks to the LLM or to git directly.** It asks the api.
+That's what guarantees metering, budget, and the approval pipeline have no
+bypass — there's no path that escapes them.
 
-**A comunicação api→engine é dupla.** Um evento assíncrono via *transactional
-outbox* no Postgres (consumido pelo Oban), e HTTP interno para um comando
-síncrono. O outbox existe porque gravar o estado e publicar o evento precisam
-ser a mesma transação; o HTTP existe porque algumas operações precisam de
-resposta imediata.
+**api→engine communication is dual.** An async event via a *transactional
+outbox* in Postgres (consumed by Oban), and internal HTTP for a synchronous
+command. The outbox exists because writing state and publishing the event
+need to be the same transaction; the HTTP exists because some operations
+need an immediate response.
 
-O outbox drena três `aggregate_type`s: `session` (desde a Fase 5),
-`task` (Fase 12b — `task.gate_resolved`/`task.became_claimable`, o
-reagendamento do dev agent depois que um gate resolve ou uma tarefa nova fica
-pegável) e `container` ([ADR 0143](adr/0143-agentes-de-dev-so-depois-do-container.md)
-/[RN-502](business-rules.md#rn-502) — `container.running`, anexado na
-mesma transação que registra o container do projeto chegando a `running`, para
-que os dev agents que a ausência dele estacionou em `:idle` acordem sozinhos; um
-agregado próprio em vez de um `task` emprestado, porque o evento não é sobre
-tarefa nenhuma).
-O motivo de ser um outbox, e não uma chamada HTTP síncrona como as outras:
-um reinício do engine entre o veredito do gate e a reação do agente não pode
-perder o sinal — a linha sobrevive ao processo que a leria, o HTTP não
-sobreviveria à morte de quem esperava a resposta.
-Um dev agent que CAI (qualquer saída que não seja `:normal`/`:shutdown`) não é
-tratado como encerrado: `Engine.Dev.Monitor` registra um `agent.error` durável
-(origem `infra`) e o reinicia a partir da própria linha em `dev_agent_states`, até
-três vezes; a tarefa interrompida é bloqueada com diagnóstico pela recuperação
-de reinício que já existia ([RN-742](business-rules.md#rn-742)).
-`dev_agent_states` ganhou `consecutive_blocked`/`max_consecutive_blocked`
-(o disjuntor, [RN-047](business-rules/custo.md#rn-047)); a decisão completa está no
+The outbox drains three `aggregate_type`s: `session` (since Phase 5),
+`task` (Phase 12b — `task.gate_resolved`/`task.became_claimable`, the dev
+agent's rescheduling after a gate resolves or a new task becomes claimable)
+and `container` ([ADR 0143](adr/0143-agentes-de-dev-so-depois-do-container.md)
+/[RN-502](business-rules.md#rn-502) — `container.running`, appended in the
+same transaction that records the project's container reaching `running`, so
+the dev agents its absence had parked in `:idle` wake up on their own; its
+own aggregate rather than a borrowed `task`, because the event is about no
+task at all).
+The reason it's an outbox, and not a synchronous HTTP call like the others:
+an engine restart between the gate's verdict and the agent's reaction must
+not lose the signal — the row survives the process that would read it, HTTP
+would not survive the death of whoever was waiting for the response.
+`dev_agent_states` gained `consecutive_blocked`/`max_consecutive_blocked`
+(the circuit breaker, [RN-047](business-rules/custo.md#rn-047)); full decision in
 [ADR 0045](adr/0045-reagendamento-por-evento-do-dev-agent.md).
-Uma tarefa bloqueada por falha transitória de rede/provider (DNS, conexão
-resetada, 5xx/429) é desbloqueada de novo por um job do Oban depois de 1, 3 e 10 min
-(até três vezes, pelo mesmo caso de uso de desbloqueio do humano), e o
-dev agent pausa por um minuto em vez de pegar a próxima tarefa
-([RN-864](business-rules.md#rn-864)).
 
-Os agentes de gate (`QaLeadServer`/`SecOpsAgentServer`) não passam pelo
-outbox nas transições intermediárias (`correct`/`run_secops` continuam uma
-chamada direta em memória — a prova mecânica está no comentário de
-`record-gate-verdict.use-case.ts`: só os desfechos TERMINAIS, `done`/`blocked`,
-viajam pelo outbox), então ganharam a MESMA rede de segurança que os dev agents
-já tinham: `gate_states`, mais um `GateRescuer` que varre ciclos parados e os
-retoma sozinho — nenhuma tabela nova para o caminho do outbox, porque o problema
-não era falta de outbox, era falta de estado durável para o que acontece
-ENTRE duas chamadas no mesmo processo. Ver
+The gate agents (`QaLeadServer`/`SecOpsAgentServer`) don't go through the
+outbox on intermediate transitions (`correct`/`run_secops` remain a direct
+in-memory call — the mechanical proof is in the comment of
+`record-gate-verdict.use-case.ts`: only TERMINAL outcomes, `done`/`blocked`,
+travel by outbox), so they got the SAME safety net the dev agents already
+had: `gate_states`, plus a `GateRescuer` that scans stuck cycles and resumes
+them on its own — no new table for the outbox path, because the problem
+wasn't a missing outbox, it was missing durable state for what happens
+BETWEEN two in-process calls. See
 [RN-140](business-rules.md#rn-140), [ADR 0067](adr/0067-o-gate-sobrevive-ao-restart.md).
 
-O gate de QA tem um TERCEIRO veredito além de `approved`/`changes_requested`:
-`needs_user_decision`, para um requisito que o usuário nunca confirmou (ou que
-uma decisão vigente contradiz). Ele não consome uma correção; o QA Lead
-o consolida acima de `approved`, e o ciclo é ESTACIONADO pelo mecanismo do
-[ADR 0207](adr/0207-ciclo-de-gate-velho-estaciona.md) até o usuário responder à
-pergunta, o que o retoma. O lado conversacional da mesma regra é a ferramenta
-`declare_open_question` (Criativo, PO, Arquiteto, Dev Lead), que grava
-`artifact.open_question`; as respostas do usuário voltam ao dev e ao QA como
-"decisões do usuário" no dev-context ([RN-862](business-rules.md#rn-862),
-[ADR 0214](adr/0214-pergunta-em-aberto-vira-pendencia.md)).
-
-Quem PEDE um gate nunca é o próprio gate: `Engine.Gates.Dispatcher` é um
-behaviour com cinco callbacks (QA de PR e SecOps, os dois gates de infra
-determinísticos e o AppSec de design — o de estratégia de QA saiu com o
-[ADR 0192](adr/0192-plano-de-teste-depois-da-entrega.md), quando o plano de teste
-virou o primeiro passo do próprio QA de PR) cujo único trabalho é subir o
-GenServer por projeto se necessário e fazer cast nele. A indireção existe para
-os testes de quem chama: `Engine.Agents.DevLeadTools` é exercitado por um teste
-LEVE sem sandbox do Ecto, e subir um GenServer real ali só para provar que um gate
-foi PEDIDO amarraria o teste do Dev Lead ao banco. O mais novo dos
-cinco, `run_appsec_design/2`, fechou o último gate que era acionável sem
-chamador de produção: `assess_implementability` agora pede o modelo de ameaças
-de design da história EM PARALELO — o veredito nunca espera por ele, e o pedido
-acontece uma única vez por história ([RN-539](business-rules.md#rn-539),
+Who ASKS for a gate is never the gate itself: `Engine.Gates.Dispatcher` is a
+behaviour with six callbacks (PR QA and SecOps, QA-strategy, the two
+deterministic infra gates, and design AppSec) whose only job is to start the
+per-project GenServer if needed and cast into it. The indirection exists for
+the callers' tests: `Engine.Agents.DevLeadTools` is exercised by a LIGHT test
+with no Ecto sandbox, and starting a real GenServer there just to prove a gate
+was ASKED FOR would tie the Dev Lead's test to the database. The newest of the
+six, `run_appsec_design/2`, closed the last gate that was actionable with no
+production caller: `assess_implementability` now asks for the story's design
+threat model IN PARALLEL — the verdict never waits for it, and the ask happens
+only once per story ([RN-539](business-rules.md#rn-539),
 [ADR 0090](adr/0090-qa-estrategia-e-appsec-segundo-momento.md)).
 
-## Mapa do código {#code-map}
+## Code map
 
-### `apps/api` — NestJS, 906 arquivos em `src/` (medido em 2026-09-25) {#appsapi--nestjs-906-files-in-src-measured-2026-09-25}
+### `apps/api` — NestJS, 444 files
 
-Quatro camadas, e a ordem importa:
+Four layers, and the order matters:
 
-| diretório | o que é | comece por | para o que **não** serve |
+| directory | what it is | start with | what it's **not** for |
 |---|---|---|---|
-| `src/domain/` (72) | regra de negócio pura. Sem IO, sem framework | `actions/decide.ts` — o coração da aprovação | não sabe o que é HTTP, banco ou NestJS |
-| `src/application/` (177) | casos de uso. Orquestram domínio e portas | `use-cases/sessions/` | não guarda regra; se tem um `if` de negócio, está no lugar errado |
-| `src/infrastructure/` (76) | implementações de porta: Drizzle, clientes HTTP, cripto | `persistence/drizzle/` | não decide nada |
-| `src/interfaces/http/` (105) | controllers, guards, DTOs | `auth/jwt-auth.guard.ts` | não tem regra nem consulta |
+| `src/domain/` (72) | pure business rule. No IO, no framework | `actions/decide.ts` — the heart of approval | doesn't know what HTTP, database, or NestJS are |
+| `src/application/` (177) | use cases. Orchestrate domain and ports | `use-cases/sessions/` | holds no rule; if it has a business `if`, it's in the wrong place |
+| `src/infrastructure/` (76) | port implementations: Drizzle, HTTP clients, crypto | `persistence/drizzle/` | decides nothing |
+| `src/interfaces/http/` (105) | controllers, guards, DTOs | `auth/jwt-auth.guard.ts` | has no rule or query |
 
-Símbolos para dar grep quando estiver perdido: `decide(`, `assertTransition`,
+Symbols to grep for when you're lost: `decide(`, `assertTransition`,
 `@RequireRole`, `PROTECTED_BRANCHES`, `EncryptionService`.
 
-**Ponto de entrada:** `src/main.ts` — e a ordem dos `imports` nele é
-significativa (`./tracing-boot` é o primeiro de propósito; a
-auto-instrumentação do OpenTelemetry não pega um módulo já carregado, e um
-módulo separado é o que garante isso: o TypeScript iça todos os `require`s para
-o topo, então uma chamada escrita entre imports rodaria tarde demais).
+**Entrypoint:** `src/main.ts` — and the order of `imports` in it is
+significant (`./tracing-boot` is deliberately first; OpenTelemetry
+auto-instrumentation doesn't catch an already-loaded module, and a separate
+module is what guarantees that: TypeScript hoists all `require`s to the
+top, so a call written between imports would run too late).
 
-### `apps/engine` — Elixir/OTP, 219 arquivos em `lib/` (medido em 2026-09-25) {#appsengine--elixirotp-219-files-in-lib-measured-2026-09-25}
+### `apps/engine` — Elixir/OTP, 155 files
 
-| módulo | o que é | comece por |
+| module | what it is | start with |
 |---|---|---|
-| `harness/` (33) | montagem de contexto, ToolLoop, compactação. **Nenhuma chamada de LLM acontece fora daqui** | `harness/tool_loop/` |
+| `harness/` (33) | context assembly, ToolLoop, compaction. **No LLM call happens outside here** | `harness/tool_loop/` |
 | `dev/` (15) | dev agents, worktrees, monitor | `dev/dev_agent_server.ex` |
-| `gates/` (20) | a área de QA (Lead + Automação, subespecialidades de Performance/Segurança e de estratégia de QA — o segundo momento do Lead, ADR 0090 — todas com LLM) e SecOps (determinístico) | `gates/qa_lead_server.ex` |
-| `infra/` (9) | a área de Infra (Lead conversacional, escopado à sessão — desde a [RN-617](business-rules.md#rn-617) o sétimo agente conversacional, alcançável pelo composer e rodando seus turnos no `TurnoAssincrono` — + subespecialidade Workflows via ToolLoop — duas famílias arquiteturais na mesma área, ver RN-037) | `infra/infra_lead_server.ex` |
-| `sessions/` (9) | ciclo de vida da sessão, registro `:global` | `sessions/session_server.ex` |
-| `actions/` (9) | executores de terminal e git, detectores de lint/scanner | `actions/git_executor.ex` |
-| `agents/` (16) | Criativo, PO, Arquiteto, Dev Lead, Staff (ADR 0088, dormente para disparo automático) — cada turno roda numa Task supervisionada (`TurnoAssincrono`, RN-122), não mais dentro do `handle_call`, então um `:cancel` consegue de fato interrompê-lo | `agents/turno_assincrono.ex` |
-| `psychologist/` (6) · `anamnese/` (6) | análise e melhoria do time | — |
+| `gates/` (20) | the QA area (Lead + Automation, Performance/Security and QA-strategy sub-specialties — the Lead's second moment, ADR 0090 — all with an LLM) and SecOps (deterministic) | `gates/qa_lead_server.ex` |
+| `infra/` (9) | the Infra area (conversational, session-scoped Lead + Workflows sub-specialty via ToolLoop — two architectural families in the same area, see RN-037) | `infra/infra_lead_server.ex` |
+| `sessions/` (9) | session lifecycle, `:global` registry | `sessions/session_server.ex` |
+| `actions/` (9) | terminal and git executors, lint/scanner detectors | `actions/git_executor.ex` |
+| `agents/` (16) | Creative, PO, Architect, Dev Lead, Staff (ADR 0088, dormant for automatic trigger) — each turn runs on a supervised Task (`TurnoAssincrono`, RN-122), no longer inside `handle_call`, so a `:cancel` can actually interrupt it | `agents/turno_assincrono.ex` |
+| `psychologist/` (6) · `anamnese/` (6) | team analysis and improvement | — |
 
-**Ponto de entrada:** `lib/engine/application.ex` — a árvore de supervisão
-inteira está lá, e é o melhor arquivo para entender o que está rodando.
+**Entrypoint:** `lib/engine/application.ex` — the whole supervision tree is
+there, and it's the best file to understand what's running.
 
-### `apps/broker` — Node/TS, 9 arquivos em `src/` (medido em 2026-09-25) {#appsbroker--nodets-9-files-in-src-measured-2026-09-25}
+### `apps/broker` — Node/TS, 8 files
 
-O único processo do produto com acesso a um Docker daemon
-([ADR 0130](adr/0130-broker-de-container.md)), e o menor serviço daqui:
-sem framework, `node:http`, seis rotas (medido em 2026-09-25 em `src/servidor.ts`).
+The only process in the product with access to a Docker daemon
+([ADR 0130](adr/0130-broker-de-container.md)), and the smallest service here:
+no framework, `node:http`, six routes.
 
-| arquivo | o que é |
+| file | what it is |
 |---|---|
-| `src/operacoes.ts` | as CINCO operações, e a composição da spec. Nada que vira um `docker run` vem de fora |
-| `src/servidor.ts` | a lista fechada de rotas, a checagem do token e a tabela de falhas (status + `origem`) |
-| `src/api-client.ts` | como ele LÊ a decisão do Arquiteto na api — a chamada que o faz não aceitar uma spec |
-| `src/config.ts` | quatro variáveis de ambiente, e a recusa de subir em produção com o token público do repositório |
+| `src/operacoes.ts` | the FIVE operations, and the composition of the spec. Nothing that becomes a `docker run` comes from outside |
+| `src/servidor.ts` | the closed route list, the token check, and the failure table (status + `origem`) |
+| `src/api-client.ts` | how it READS the Architect's decision from the api — the call that makes it not accept a spec |
+| `src/config.ts` | four env variables, and the refusal to boot in production with the repository's public token |
 
-**Ponto de entrada:** `src/index.ts`. O acesso ao Docker em si não está aqui: vem de
-`packages/docker-port`, o mesmo arquivo que o runner usa.
+**Entrypoint:** `src/index.ts`. Docker access itself is not here: it comes from
+`packages/docker-port`, the same file the runner uses.
 
-### `apps/web` — React 19, 487 arquivos em `src/` (medido em 2026-09-25) {#appsweb--react-19-487-files-in-src-measured-2026-09-25}
+### `apps/web` — React 19, 70 files
 
-`src/lib/api-types.ts` e `src/lib/activity.ts` são os dois arquivos que vale
-ler primeiro: o primeiro é o contrato com a api, o segundo
-classifica os 40 tipos de evento do log em algo exibível — é a
-melhor fonte de verdade sobre o que cada evento significa.
+`src/lib/api-types.ts` and `src/lib/activity.ts` are the two files worth
+reading first: the first is the contract with the api, the second
+classifies the log's 40 event types into something displayable — it's the
+best source of truth about what each event means.
 
-Três derivações do mesmo event log, respondendo perguntas diferentes:
+Three derivations of the same event log, answering different questions:
 
-| arquivo | responde |
+| file | answers |
 |---|---|
-| `lib/activity.ts` | "o que aconteceu" — o feed cronológico |
-| `lib/agent-status.ts` | "quem existe e em que estado está" — os cards do time |
-| `lib/timeline-tree.ts` | "o que cada agente fez, e o que está fazendo AGORA" — a árvore |
+| `lib/activity.ts` | "what happened" — the chronological feed |
+| `lib/agent-status.ts` | "who exists and what state are they in" — the team cards |
+| `lib/timeline-tree.ts` | "what each agent did, and what they're doing NOW" — the tree |
 
-`lib/aprovacoes.ts` responde uma quarta pergunta, e ela não vem do
-event log: "o que acontece se eu aprovar". O verbo e a frase de cada tipo de
-`proposed_action` moram ali, e as três telas de decisão os consomem — a
-fila de Aprovações, o card dentro do chat e a aba Insights
+`lib/aprovacoes.ts` answers a fourth question, and it doesn't come from the
+event log: "what happens if I approve". Each `proposed_action` type's verb
+and sentence live there, and the three decision screens consume them — the
+Approvals queue, the card inside the chat, and the Insights tab
 ([RN-096](business-rules.md#rn-096)).
 
-**A união `ActionType` ERA uma cópia, e a cópia envelheceu — duas vezes, em
-produção** (os três tipos do bootstrap do Gitflow; depois
-`parallelize`/`raise_max_parallel`), as duas vezes sem o compilador perceber,
-porque `apps/api` não é dependência de `apps/web`. O ADR 0116 fechou a
-classe: `ActionType` agora é gerado pelo `openapi-typescript` a partir de
-`docs/reference/openapi.json` (`lib/api-types.generated.ts`, reexportado por
-`lib/api-types.ts`) em vez de digitado à mão, e o compilador agora exige que os
-mapas `Record<ActionType, ...>` em `lib/aprovacoes.ts` sejam exaustivos a cada
-edição. O resto de `api-types.ts` — ~1600 linhas — continua escrito à mão; só
-este tipo, com um custo repetido provado, migrou. `lib/aprovacoes.test.ts`
-também fica, mas para um trabalho mais estreito: não precisa mais pegar uma
-entrada FALTANDO (o compilador pega), só uma ruim — frase curta demais, sem
-ponto final, `snake_case` cru vazando para a prosa em português. Na dúvida, a UI
-ainda degrada em vez de derrubar a árvore do React.
+**The `ActionType` union WAS a copy, and a copy aged — twice, in
+production** (the three Gitflow bootstrap types; later
+`parallelize`/`raise_max_parallel`), both times unnoticed by the compiler
+because `apps/api` is not a dependency of `apps/web`. ADR 0116 closed the
+class: `ActionType` is now generated by `openapi-typescript` from
+`docs/reference/openapi.json` (`lib/api-types.generated.ts`, re-exported by
+`lib/api-types.ts`) instead of hand-typed, and the compiler now enforces the
+`Record<ActionType, ...>` maps in `lib/aprovacoes.ts` are exhaustive on every
+edit. The rest of `api-types.ts` — ~1600 lines — stays hand-written; only
+this one type, with a proven repeated cost, migrated. `lib/aprovacoes.test.ts`
+stays too, but for a narrower job: it no longer needs to catch a MISSING
+entry (the compiler does), only a bad one — sentence too short, no trailing
+period, raw `snake_case` leaking into Portuguese prose. When in doubt, the UI
+still degrades instead of crashing the React tree.
 
-A árvore inverte o eixo do feed (agente primeiro, tempo depois) porque numa
-sessão com Criativo, PO, Arquiteto e N devs a coluna cronológica
-não conseguia responder quem estava fazendo o quê. Nenhuma das três tem estado
-ou rota própria — todas derivam dos mesmos eventos, e um evento que não está no
-log não aparece em nenhuma delas.
+The tree inverts the feed's axis (agent first, time second) because in a
+session with Creative, PO, Architect and N devs the chronological column
+couldn't answer who was doing what. None of the three has its own state or
+route — all derive from the same events, and an event that isn't in the log
+shows up in none of them.
 
-**Escopo de leitura: a tela de projeto pergunta por sessão, a tela de lista
-pergunta por workspace.** Dentro de um projeto as consultas são por sessão e
-por projeto, que é o recorte natural do que está aberto. Mas o dashboard e a
-sidebar mostram TODOS os projetos, e ali o recorte por projeto vira N+1 — eram
-sete consultas com polling por card, 3.824 req/min com 23 projetos contra um
-limite de 300, e a tela se derrubava sozinha com 429s. As duas leem
-de `GET /workspaces/:id/projects-summary` — um read model que atravessa
-agregados (git, orçamento, sessão, backlog, arquitetura) e cujo número de
-idas e voltas ao banco não cresce com a quantidade de projetos
+**Read scope: the project screen asks per session, the list screen asks per
+workspace.** Inside a project the queries are per session and per project,
+which is the natural cut of what's open. But the dashboard and the sidebar
+show ALL projects, and there the per-project cut turns into N+1 — it was
+seven polled queries per card, 3,824 req/min with 23 projects against a
+limit of 300, and the screen was knocking itself over with 429s. Both read
+from `GET /workspaces/:id/projects-summary` — a read model that cuts across
+aggregates (git, budget, session, backlog, architecture) and whose number of
+database round trips doesn't grow with project count
 ([RN-090](business-rules.md#rn-090)).
 
-A gaveta do sino segue o mesmo recorte, com uma diferença que vale
-registrar: ela precisa do ponto de corte de leitura de cada projeto, e esse
-ponto é um `seq` guardado no navegador de quem está olhando (`lib/read-state.ts`) — o
-servidor não tem, e não vai ter, um "marcar como lido". Então o cliente
-**envia** o mapa `project → afterSeq` no corpo de
-`POST /workspaces/:id/unread-events`, que é uma leitura apesar do verbo e
-devolve `200` ([RN-091](business-rules.md#rn-091)). O verbo decorre
-do corpo, não de uma mutação: são dezenas de pares, e uma query string desse
-tamanho quebra num proxy, além de pôr ids de projeto em logs de acesso.
+The bell's drawer follows the same cut, with one difference worth
+recording: it needs each project's read cutoff, and that cutoff is a `seq`
+kept in the browser of whoever is looking (`lib/read-state.ts`) — the
+server doesn't have, and won't have, a "mark as read". So the client
+**sends** the `project → afterSeq` map in the body of
+`POST /workspaces/:id/unread-events`, which is a read despite the verb and
+returns `200` ([RN-091](business-rules.md#rn-091)). The verb follows from
+the body, not from a mutation: it's dozens of pairs, and a query string that
+size breaks in a proxy on top of putting project ids in access logs.
 
-Esse endpoint devolve FATOS do event log, nunca componentes
-montados: `lib/agents.ts` (quem é lead, ícone, cor) e `rosterFromFacts`
-(`lib/agent-status.ts`) continuam sendo trabalho do web, e a regra de presença é a
-mesma que o painel do time usa. É a mesma fronteira das três
-derivações acima — a api diz o que aconteceu, o web decide o que se
-desenha a partir disso.
+That endpoint returns FACTS from the event log, never assembled
+components: `lib/agents.ts` (who's lead, icon, color) and `rosterFromFacts`
+(`lib/agent-status.ts`) remain the web's job, and the presence rule is the
+same one the team panel uses. It's the same boundary as the three
+derivations above — the api says what happened, the web decides what gets
+drawn from it.
 
-Duas checagens de UI são automáticas: contraste (`lib/contraste.ts`, um teste sobre
-`design/tokens.css`) e layout (`scripts/dev/validacao-visual.js`, rodado no
-navegador). Explicadas em `design/README.md`.
+Two UI checks are automatic: contrast (`lib/contraste.ts`, a test over
+`design/tokens.css`) and layout (`scripts/dev/validacao-visual.js`, run in
+the browser). Explained in `design/README.md`.
 
-**A instalação decide o que o assistente de projeto oferece.** `getProjectsBase`
-(`lib/api-client.ts`) lê `GET /workspaces/:workspaceId/projects-base` — a
-base única de projetos montados desta instalação ([ADR
-0141](adr/0141-base-unica-dos-projetos-montados.md)) — e o assistente de Novo
-Projeto é seu único chamador ([RN-513](business-rules.md#rn-513)). `projectsBase:
-null` é um estado normal, não uma falha: a instalação não tem
-`BRABO_PROJECTS_BASE`, então o card de pasta montada simplesmente não é oferecido e
-`container` continua o padrão. O mesmo vale enquanto a resposta está a caminho e
-quando a consulta FALHA — desconhecido nunca vira oferta, a mesma regra da
-[RN-088](business-rules.md#rn-088)/[RN-468](business-rules.md#rn-468). Com uma
-base, o card vem PRÉ-SELECIONADO e o campo de caminho abre em `<base>/<slug>`,
-composto por `caminhoSugeridoNaBase` (`lib/wizard.ts`) — uma função pura, ao lado
-de `caminhoDentroDaBase`, que responde "este caminho está sob a base?" por
-SEGMENTO e espelha o `dentroDoEscopo` da api. Nem a pré-seleção nem a
-sugestão sobrescrevem uma escolha humana.
+**The installation decides what the project wizard offers.** `getProjectsBase`
+(`lib/api-client.ts`) reads `GET /workspaces/:workspaceId/projects-base` — the
+single mounted-projects base of this installation ([ADR
+0141](adr/0141-base-unica-dos-projetos-montados.md)) — and the New Project
+wizard is its only caller ([RN-513](business-rules.md#rn-513)). `projectsBase:
+null` is a normal state, not a failure: the installation has no
+`BRABO_PROJECTS_BASE`, so the Mounted folder card is not offered at all and
+`container` stays the default. The same holds while the answer is in flight and
+when the query FAILS — unknown never becomes an offer, the same rule as
+[RN-088](business-rules.md#rn-088)/[RN-468](business-rules.md#rn-468). With a
+base, the card is PRE-SELECTED and the path field opens on `<base>/<slug>`,
+composed by `caminhoSugeridoNaBase` (`lib/wizard.ts`) — a pure function, next
+to `caminhoDentroDaBase`, which answers "is this path under the base?" by
+SEGMENT and mirrors the api's `dentroDoEscopo`. Neither the pre-selection nor
+the suggestion overwrites a human choice.
 
-**O seletor de pastas é a única leitura do web com DOIS TRANSPORTES**, e a interface
-que a torna uma só mora em `lib/fs-browser.ts`
+**The folder picker is the web's one TWO-TRANSPORT read**, and the interface
+that makes it one lives in `lib/fs-browser.ts`
 ([RN-504](business-rules.md#rn-504)). `FsBrowser` — `listarDiretorio` /
-`diretorioInicial` / `fechar` — tem duas implementações, e elas não falam
-com a mesma máquina: `criarFsBrowserViaApi(workspaceId)` chama
-`GET /workspaces/:workspaceId/project-folders` na api, escopado rigidamente a
+`diretorioInicial` / `fechar` — has two implementations, and they don't talk
+to the same machine: `criarFsBrowserViaApi(workspaceId)` calls
+`GET /workspaces/:workspaceId/project-folders` on the api, scoped hard to
 `BRABO_PROJECTS_BASE` ([ADR 0141](adr/0141-base-unica-dos-projetos-montados.md)),
-enquanto `connectFsBrowserChannel(projectId)` (`lib/fs-browser-channel.ts`) fala
-o canal Phoenix `terminal:<projectId>` e lê o disco do USUÁRIO pelo
-runner.
+while `connectFsBrowserChannel(projectId)` (`lib/fs-browser-channel.ts`) speaks
+the Phoenix `terminal:<projectId>` channel and reads the USER's disk through
+the runner.
 
-A interface foi extraída do módulo do canal justamente porque ele
-deixou de ter uma implementação só. `FolderBrowserModal` escolhe entre elas com
-uma união discriminada — `origem: { tipo: 'api'; workspaceId } | { tipo:
-'runner'; projectId }`, não duas props opcionais, para que "nenhuma" e "ambas" não
-sejam estados representáveis que o componente precise tratar em runtime — e o corpo
-dele nunca fica sabendo qual recebeu. Só três coisas ramificam por `origem`: qual
-fábrica roda, quais atalhos existem (`/` não é oferecido pelo transporte da api;
-está fora da base por construção, e o botão só poderia terminar num
-400) e se o `RunnerOnboardingPanel` faz sentido.
+The interface was extracted out of the channel module precisely because it
+stopped having one implementation. `FolderBrowserModal` picks between them with
+a discriminated union — `origem: { tipo: 'api'; workspaceId } | { tipo:
+'runner'; projectId }`, not two optional props, so "neither" and "both" are not
+representable states the component has to handle at runtime — and its body
+never learns which one it got. Only three things branch on `origem`: which
+factory runs, which shortcuts exist (`/` is not offered over the api transport;
+it is outside the base by construction, and the button could only ever end in a
+400) and whether `RunnerOnboardingPanel` makes sense.
 
-`ListagemResultado` ganhou três campos OPCIONAIS — `arquivos`, `simbolicos`,
-`truncado` — e eles são opcionais porque só o transporte da api conta o que
-excluiu. O protocolo do runner (`FsEntrada` em `apps/runner/src/channel.ts`)
-devolve pastas e arquivos misturados e não conta nada; preencher zeros ali
-afirmaria "nada ficou de fora", o que é diferente de não saber.
+`ListagemResultado` gained three OPTIONAL fields — `arquivos`, `simbolicos`,
+`truncado` — and they are optional because only the api transport counts what it
+excluded. The runner protocol (`FsEntrada` in `apps/runner/src/channel.ts`)
+returns folders and files mixed and counts nothing; filling in zeros there would
+assert "nothing was left out", which is different from not knowing.
 
-A RN-504 apontou OS DOIS modos para a api e declarou o preço: para `runner`, a
-lista deixou de ser a máquina do usuário e virou a base. Isso foi aceito
-porque o modo `runner` sairia do assistente de criação — não saiu, e a
+RN-504 pointed BOTH modes at the api and declared the price: for `runner`, the
+list stopped being the user's machine and became the base. That was accepted
+because the `runner` mode would leave the creation wizard — it didn't, and
 [RN-533](business-rules.md#rn-533) ([ADR 0151](adr/0151-base-consentida-no-runner.md)
-ponto 7) o reverte. Agora é o MODO que escolhe o transporte, porque eles respondem
-perguntas diferentes: `mounted` pergunta à api (sua pasta mora sob a base, no
-SERVIDOR), `runner` pergunta ao agente local (sua pasta mora numa máquina que o
-servidor não enxerga). O ramo `runner` se ancora no projeto que o assistente
-já criou antecipadamente ([RN-437](business-rules.md#rn-437)); quando essa
-criação falha, nenhum modal abre, porque cair para a api
-mostraria a base do SERVIDOR sob o rótulo "sua máquina".
+point 7) reverses it. The MODE now picks the transport, because they answer
+different questions: `mounted` asks the api (its folder lives under the base, on
+the SERVER), `runner` asks the local agent (its folder lives on a machine the
+server cannot see). The `runner` branch is anchored on the project the wizard
+already created ahead of time ([RN-437](business-rules.md#rn-437)); when that
+creation fails, no modal opens at all, because falling back to the api would
+show the SERVER's base under the label "your machine".
 
-A falha carrega um motivo DISCRIMINADO (`MotivoDeFalhaDoAgente`): `sem-agente`
-é o servidor AFIRMANDO que não há runner, `sem-resposta` é um timeout, um
-socket caído ou um ticket recusado — ignorância, dita como ignorância
-([RN-088](business-rules.md#rn-088)/[RN-468](business-rules.md#rn-468)). O
-componente decidia por `includes('Nenhum runner conectado')`, casando uma
-frase em pt-BR que mora no `.ex` do engine; o casamento de substring agora mora
-em exatamente um lugar, o módulo dono do protocolo do canal, e uma mensagem do
-engine reescrita degrada para `sem-resposta`, nunca para "há um agente". Os dois
-motivos montam `EsperaDoRunner` — a espera da RN-474, REUSADA: mesmos três estados, mesmo
-teto, mesmo sinal — que refaz sozinha a listagem que falhou quando o
-carimbo muda. Uma espera por tela: `RunnerOnboardingPanel` recebe
-`mostrarEspera`, falso só onde o hospedeiro dele já mostra uma. E o seletor
-DIZ de quem é o disco que está listando, nas duas origens — a única pista antes disso era
-o rótulo de um atalho, que nomeia um lugar, não uma máquina.
+Failure carries a DISCRIMINATED reason (`MotivoDeFalhaDoAgente`): `sem-agente`
+is the server ASSERTING there is no runner, `sem-resposta` is a timeout, a
+dropped socket or a refused ticket — ignorance, stated as ignorance
+([RN-088](business-rules.md#rn-088)/[RN-468](business-rules.md#rn-468)). The
+component used to decide by `includes('Nenhum runner conectado')`, matching a
+pt-BR sentence that lives in the engine's `.ex`; the substring match now lives
+in exactly one place, the module that owns the channel protocol, and a reworded
+engine message degrades to `sem-resposta`, never to "there is an agent". Both
+reasons mount `EsperaDoRunner` — RN-474's wait, REUSED: same three states, same
+ceiling, same signal — which re-runs the failed listing on its own when the
+stamp changes. One wait per screen: `RunnerOnboardingPanel` takes
+`mostrarEspera`, false only where its host already shows one. And the picker
+STATES whose disk it is listing, in both origins — the only hint before that was
+a shortcut's label, which names a place, not a machine.
 
-**O painel também RECONHECE uma máquina que já está pareada**
+**The panel also RECOGNISES a machine that is already paired**
 ([RN-548](business-rules.md#rn-548), [ADR 0154](adr/0154-chave-de-dispositivo-de-maquina.md)).
-`listRunnerDeviceKeys` em `lib/api-client.ts` lê
-`GET /projects/:projectId/runner-device-keys`, que desde a
-[RN-543](business-rules.md#rn-543) marca a ESPÉCIE de cada chave — e a
-derivação inteira mora fora do componente, em `lib/agente-de-maquina.ts`, porque
-a regra é sobre o DADO e o componente é sobre o desenho. Sete estados,
-nenhum colapsando em outro, e a falha é derivada de `isError` e não
-de um status, então um erro de rede diz "não sei" em vez de girar em
-"verificando…" para sempre. Uma chave registrada NÃO é um agente rodando — a mesma
-disciplina que `workspaceVerifiedAt` já impõe — e a lista pertence à
-CONTA, não a este navegador, então a frase mais forte disponível é "sua
-conta tem uma máquina pareada". Os dois limites são ditos na tela. O
-fluxo pelo navegador do [ADR 0118](adr/0118-configuracao-automatica-do-runner-pelo-navegador.md)
-(gerar a chave, baixar o binário, gravar a pasta) foi
-aposentado no [ADR 0203](adr/0203-aposenta-o-fluxo-do-runner-pelo-navegador.md)
-([RN-687](business-rules.md#rn-687)): o painel agora mostra o comando do `install.sh`,
-que sai quando uma chave que atende o projeto é reconhecida, e o
-comando manual com PAT fica num `<details>` nomeado pelo caso que ele responde
-(outra máquina). O mínimo da leitura vem de `roleAtLeast`
-contra o `developer` do ENDPOINT, e um 403 real cai no mesmo estado —
-o papel de workspace é um proxy, a api é a autoridade.
+`listRunnerDeviceKeys` in `lib/api-client.ts` reads
+`GET /projects/:projectId/runner-device-keys`, which since
+[RN-543](business-rules.md#rn-543) marks each key's SPECIES — and the whole
+derivation lives outside the component, in `lib/agente-de-maquina.ts`, because
+the rule is about the DATA and the component is about the design. Seven states,
+none collapsing into another, and failure is derived from `isError` rather than
+from a status, so a network error says "I don't know" instead of spinning in
+"checking…" forever. A registered key is NOT a running agent — the same
+discipline `workspaceVerifiedAt` already imposes — and the list belongs to the
+ACCOUNT, not to this browser, so the strongest sentence available is "your
+account has a paired machine". Both limits are stated on screen, and they are
+why the [ADR 0118](adr/0118-configuracao-do-runner-pelo-navegador.md) flow is
+not removed: it moves into a `<details>` whose label names the case it still
+answers ("I'm on another machine"). The read's minimum comes from `roleAtLeast`
+against the ENDPOINT's `developer`, and a real 403 lands in the same state —
+the workspace role is a proxy, the api is the authority.
 
-**A aba Código (FASE 26) é o mesmo padrão de leitura**, aplicado a código
-em vez de eventos: `getContainerState`/`getCodeTree`/`getCodeFile`/
-`searchCode`/`getCodeDiff` em `lib/api-client.ts` espelham as rotas de leitura da
-api (`container` mais as sete em `code.controller.ts`, FASE 26b), com
-os tipos em `lib/api-types.ts` (`EstadoDoContainer`, `CodeTree`, `CodeFile`,
-`CodeSearchResult`, `CodeDiff`) copiados dos DTOs — a mesma convenção
-do resto do arquivo, sem importar `apps/api`. `routes/code/
-highlight.ts` é um tokenizador PRÓPRIO baseado em regex para realce de sintaxe,
-zero dependência nova. O portão do `ProjectCodeTab.tsx` (RN-107) pergunta pelo
-estado do container ANTES de tentar ler código, para que ele apareça como
-mensagem própria em vez de como nota de rodapé de um 409.
+**The Code tab (PHASE 26) is the same read pattern**, applied to code
+instead of events: `getContainerState`/`getCodeTree`/`getCodeFile`/
+`searchCode`/`getCodeDiff` in `lib/api-client.ts` mirror the api's read
+routes (`container` plus the seven in `code.controller.ts`, FASE 26b), with
+the types in `lib/api-types.ts` (`EstadoDoContainer`, `CodeTree`, `CodeFile`,
+`CodeSearchResult`, `CodeDiff`) copied from the DTOs — the same convention
+as the rest of the file, without importing `apps/api`. `routes/code/
+highlight.ts` is a regex-based tokenizer OF ITS OWN for syntax highlighting,
+zero new dependency. `ProjectCodeTab.tsx`'s gate (RN-107) asks for the
+container's state BEFORE trying to read code, so it can appear as its own
+message instead of as a 409's footnote.
 
-**A FASE 26b acrescentou `getCodeBlame`/`getCodePullRequests`/`getCodeBranches` ao
-mesmo padrão**, com `CodeBlame`/`CodePullRequestList`/
-`CodeBranchDetailList` em `lib/api-types.ts` — fundação para os três itens
-pendentes declarados da aba Código (RN-110/111/112). Os três agora têm
-consumidor: `CodeEditor.tsx` (o toggle de blame), `code/PrListAndDiff.tsx` (lista
-de PRs + diff, consumido tanto por `CodeDiffPanel.tsx` quanto pela aba `prs`
-avulsa) e `CodeBranchPicker.tsx` (o dropdown rico de branches).
+**PHASE 26b added `getCodeBlame`/`getCodePullRequests`/`getCodeBranches` to
+the same pattern**, with `CodeBlame`/`CodePullRequestList`/
+`CodeBranchDetailList` in `lib/api-types.ts` — foundation for the Code
+tab's three declared pending items (RN-110/111/112). All three now have a
+consumer: `CodeEditor.tsx` (blame toggle), `code/PrListAndDiff.tsx` (PR
+list + diff, consumed by both `CodeDiffPanel.tsx` and the standalone `prs`
+tab) and `CodeBranchPicker.tsx` (the rich branch dropdown).
 
-O portão da imagem de container (RN-105) é um funil único
-(`ReadProjectCodeUseCase.alvo`) compartilhado pelas sete rotas, então qualquer uma delas
-pode dar 409 enquanto o Arquiteto não decidiu a imagem — não só a árvore.
-`ProjectCodeTab.tsx` evita esse 409 com uma pré-checagem (`RN-107`, acima); a
-aba `prs` não tem leitura de árvore/arquivo contra a qual pré-checar, então
-`code/PrListAndDiff.tsx` reage ao 409 das próprias chamadas
-`getCodePullRequests`/`getCodeDiff`. Os dois caminhos renderizam a mesma
-apresentação, `ContainerImageGateNotice`
-(`components/ContainerImageGate.tsx`), detectada por `isContainerImageGateError`
-(`lib/api-client.ts`, casa `ApiError.status === 409`) — um bug achado pelo
-uso: antes disso, a aba `prs` exibia esse 409 como um erro transitório genérico
-com um botão "tentar de novo", que é a affordance errada para um estado
-que só se resolve quando o Arquiteto age.
+The container-image gate (RN-105) is a single funnel
+(`ReadProjectCodeUseCase.alvo`) shared by all seven routes, so any of them
+can 409 while the Architect hasn't decided the image — not just the tree.
+`ProjectCodeTab.tsx` avoids that 409 with a pre-check (`RN-107`, above); the
+`prs` tab has no tree/file read to pre-check against, so
+`code/PrListAndDiff.tsx` instead reacts to the 409 from its own
+`getCodePullRequests`/`getCodeDiff` calls. Both paths render the same
+presentation, `ContainerImageGateNotice`
+(`components/ContainerImageGate.tsx`), detected via `isContainerImageGateError`
+(`lib/api-client.ts`, matches `ApiError.status === 409`) — a bug found by
+use: before this, the `prs` tab surfaced that 409 as a generic transient
+error with a "try again" button, which is the wrong affordance for a state
+that only resolves when the Architect acts.
 
-**A página global de containers (`/containers`, ADR 0136/RN-495) é uma leitura de
-WORKSPACE**, não de projeto — `getContainersOverview` em `lib/api-client.ts`
-chama `GET workspaces/:workspaceId/containers`, e `ContainerOverviewItem`
-em `lib/api-types.ts` espelha `ContainerOverviewItemResponseDto`. O lado da
-api é um read model dedicado, `ContainersOverviewRepository`/
-`DrizzleContainersOverviewRepository`, com a mesma disciplina de "sem N+1 entre
-projetos" do `ProjectsSummaryRepository` — três consultas constantes (`projects`
-com LEFT JOIN nas linhas de container, os eventos `artifact.project_image` em
-lote, as `proposed_actions` de container pendentes em lote), nunca uma por
-projeto. O que NÃO dá para fazer em lote — perguntar ao broker o estado observado —
-ganha em vez disso um orçamento explícito por carga
-(`ObterVisaoGeralDeContainersUseCase.TETO_DE_VERIFICACOES_POR_CARGA`, só
-linhas `provisioning`/`running` são perguntadas, com teto de 20): uma linha fora do
-orçamento diz `naoVerificado`, nunca reaproveitando em silêncio a resposta de outra
-linha nem herdando o estado registrado. As ações (parar/remover/subir) são
-`proposed_action`s como em todo lugar — a página nunca chama o broker
-diretamente — e a ação pendente de cada linha (se houver) vem junto na mesma
-leitura em lote, renderizada como um `ApprovalCard` inline, o mesmo padrão
-que `ProjectPrsTab.tsx` já usa para propostas de merge.
+**The global containers page (`/containers`, ADR 0136/RN-495) is a WORKSPACE
+read**, not a project one — `getContainersOverview` in `lib/api-client.ts`
+calls `GET workspaces/:workspaceId/containers`, and `ContainerOverviewItem`
+in `lib/api-types.ts` mirrors `ContainerOverviewItemResponseDto`. The api
+side is a dedicated read model, `ContainersOverviewRepository`/
+`DrizzleContainersOverviewRepository`, same "no N+1 across projects"
+discipline as `ProjectsSummaryRepository` — three constant queries (`projects`
+LEFT JOINed to the container rows, the `artifact.project_image` events in
+batch, the pending container `proposed_actions` in batch), never one per
+project. What CAN'T be batched — asking the broker for the observed state —
+gets an explicit per-load budget instead
+(`ObterVisaoGeralDeContainersUseCase.TETO_DE_VERIFICACOES_POR_CARGA`, only
+`provisioning`/`running` rows are asked, capped at 20): a row outside the
+budget says `naoVerificado`, never silently reusing another row's answer or
+inheriting the registered state. The actions (stop/remove/start) are
+`proposed_action`s like everywhere else — the page never calls the broker
+directly — and each row's pending action (if any) rides along in the same
+batched read, rendered as an inline `ApprovalCard`, the same pattern
+`ProjectPrsTab.tsx` already uses for merge proposals.
 
-Desde a [RN-521](business-rules.md#rn-521) o join é LEFT e a página
-lista TODO projeto do workspace, porque ela virou o caminho humano para subir
-o PRIMEIRO container: uma subida que falha antes de registrar não deixa linha, e
-o INNER JOIN antigo escondia exatamente o projeto que precisava da página.
-`ContainerOverviewItem.registrado` é portanto anulável — um terceiro estado nomeado
-no tipo, distinto de `stopped` e de "não pôde ser observado" — e linhas
-sem container nunca são elegíveis ao orçamento do broker, então não podem
-expulsar um container real. A ramificação entre `container_start` (broker) e
-`container_start_via_runner` (agente local) é uma função pura do CLIENTE,
-`routes/containers-subida.ts`: ela também decide quando NÃO oferecer o botão (sem
-imagem decidida, `runner` cuja pasta nenhum agente jamais confirmou, papel abaixo de
-`maintainer` por `roleAtLeast`) e cada recusa tem texto próprio — a tela
-nunca propõe uma ação que já sabe que vai falhar, e nunca esconde por quê.
+Since [RN-521](business-rules.md#rn-521) the join is a LEFT one and the page
+lists EVERY project of the workspace, because it became the human path to start
+the FIRST container: a start that fails before registering leaves no row, and
+the old INNER JOIN hid exactly the project that needed the page.
+`ContainerOverviewItem.registrado` is therefore nullable — a third state named
+in the type, distinct from `stopped` and from "could not be observed" — and rows
+with no container are never eligible for the broker budget, so they cannot crowd
+out a real container. The branch between `container_start` (broker) and
+`container_start_via_runner` (local agent) is a pure function of the CLIENT,
+`routes/containers-subida.ts`: it also decides when NOT to offer the button (no
+image decided, `runner` whose folder no agent ever confirmed, role below
+`maintainer` by `roleAtLeast`) and each refusal has its own text — the screen
+never proposes an action it already knows will fail, and never hides why.
 
-O OUTRO proponente — o agente Infra Lead — ramifica do mesmo jeito desde a
-[RN-566](business-rules.md#rn-566). As duas ferramentas dele passam por uma única
-`recusa_local_de_subida/2` em `infra_lead_server.ex`, que lê o projeto
-UMA vez (`Project.get/1`, mesmo processo BEAM, nunca HTTP: uma chamada de rede dentro do
-laço do agente é o custo que esta correção não podia pagar) e devolve `nil` ou um motivo
-NOMEADO, uma cláusula por ferramenta — `container`/`mounted` propõem `container_start`,
-`runner` é recusado apontando para `container_start_via_runner`, e a
-cláusula de `container_start` é uma LISTA DE PERMITIDOS como a do broker, então um modo novo
-no enum nasce recusado. A recusa é texto de RESULTADO de ferramenta que o modelo lê (entrada do laço,
-[RN-163](business-rules/autenticacao.md#rn-163)), nunca um `agent.error`, e o `tool.call`
-continua sendo emitido para que uma recusa local nunca suma da timeline. O que o
-agente NÃO checa, e a tela checa, é a imagem decidida e a
-pasta confirmada.
+The OTHER proposer — the Infra Lead agent — branches the same way since
+[RN-566](business-rules.md#rn-566). Both of its tools go through one
+`recusa_local_de_subida/2` in `infra_lead_server.ex`, which reads the project
+ONCE (`Project.get/1`, same BEAM process, never HTTP: a network call inside the
+agent loop is the cost this fix could not pay) and returns `nil` or a NAMED
+reason, one clause per tool — `container`/`mounted` propose `container_start`,
+`runner` is refused pointing at `container_start_via_runner`, and the
+`container_start` clause is an ALLOWLIST like the broker's, so a new enum mode
+is born refused. The refusal is tool-RESULT text the model reads (loop input,
+[RN-163](business-rules/autenticacao.md#rn-163)), never an `agent.error`, and the `tool.call`
+is still emitted so a local refusal never disappears from the timeline. What the
+agent does NOT check, and the screen does, is the decided image and the
+confirmed folder.
 
-### Fora das aplicações {#outside-the-applications}
+### Outside the applications
 
-| diretório | o que é |
+| directory | what it is |
 |---|---|
-| `packages/shared/` | o `GitProviderContract` — quinze operações, **tipos e nada mais**: um valor que sobrevive ao `tsc` quebra o boot da api (travado por um teste), então a constante mora no consumidor |
-| `packages/docker-port/` | a PORTA do Docker (cinco operações) e seu adaptador de CLI, compartilhados por `apps/runner` e `apps/broker` — [ADR 0130](adr/0130-broker-de-container.md). É código de runtime, e é exatamente por isso que NÃO está em `packages/shared`; não tem passo de build e os dois consumidores o EMPACOTAM, então nenhuma imagem jamais o resolve a partir de `node_modules` |
-| `docker/` | imagens de dev e de produção; `smoke.sh` |
-| `deploy/k8s/` | base do Kustomize + overlays (local, staging, prod) |
-| `design/` | design system: tokens, tipografia, componentes |
+| `packages/shared/` | the `GitProviderContract` — fifteen operations, **types and nothing else**: a value that survives `tsc` breaks the api's boot (locked by a test), so the constant lives in the consumer |
+| `packages/docker-port/` | the Docker PORT (five operations) and its CLI adapter, shared by `apps/runner` and `apps/broker` — [ADR 0130](adr/0130-broker-de-container.md). It is runtime code, which is exactly why it is NOT in `packages/shared`; it has no build step and both consumers BUNDLE it, so no image ever resolves it from `node_modules` |
+| `docker/` | dev and production images; `smoke.sh` |
+| `deploy/k8s/` | Kustomize base + overlays (local, staging, prod) |
+| `design/` | design system: tokens, typography, components |
 
-## O fluxo de um turno de agente {#an-agent-turns-flow}
+## An agent turn's flow
 
-O caminho quente, de ponta a ponta. É aqui que mora a maior parte da complexidade.
+The hot path, end to end. This is where most of the complexity lives.
 
 ```mermaid
 sequenceDiagram
-  actor U as Usuário
+  actor U as User
   participant W as web
   participant A as api
   participant P as Postgres
   participant E as engine
   participant M as LLM
 
-  U->>W: ativa a sessão
+  U->>W: activates the session
   W->>A: POST /projects/:p/sessions/:s/activate
-  A->>P: transição created→active + evento (mesma transação)
-  A->>P: grava no outbox
-  A->>E: POST /internal/sessions (comando síncrono)
-  E->>E: sobe o SessionServer (registro :global)
+  A->>P: created→active transition + event (same transaction)
+  A->>P: writes to the outbox
+  A->>E: POST /internal/sessions (sync command)
+  E->>E: spins up SessionServer (:global registry)
 
-  Note over E: o Harness assume daqui em diante
-  E->>E: PromptAssembler monta o contexto
+  Note over E: Harness takes over from here
+  E->>E: PromptAssembler builds the context
   E->>A: POST /internal/.../llm-turn
-  A->>M: turno
-  M-->>A: resposta com uma chamada de ferramenta
-  A->>P: grava token_usage (metering)
-  A-->>E: resultado do turno
+  A->>M: turn
+  M-->>A: response with a tool call
+  A->>P: writes token_usage (metering)
+  A-->>E: turn result
 
-  E->>A: POST /internal/.../actions (a ferramenta pedida)
-  A->>A: decide.ts — permissions.json + tetos
-  alt auto-aprovada
-    A->>E: executa
-  else exige aprovação
-    A->>P: proposed_action pendente
+  E->>A: POST /internal/.../actions (the tool requested)
+  A->>A: decide.ts — permissions.json + ceilings
+  alt auto-approved
+    A->>E: executes
+  else requires approval
+    A->>P: proposed_action pending
     A-->>W: broadcast
-    U->>W: aprova
+    U->>W: approves
     W->>A: POST .../approve
-    A->>E: executa
+    A->>E: executes
   end
-  E->>A: POST /internal/.../events (evento imutável)
-  A->>P: append no event log
-  A-->>W: broadcast Phoenix → painel atualiza
+  E->>A: POST /internal/.../events (immutable event)
+  A->>P: append to the event log
+  A-->>W: Phoenix broadcast → panel updates
 ```
 
-O laço `Harness → chamada de ferramenta → aprovação → evento` se repete até o agente
-chamar a ferramenta de encerramento ou bater num teto (iterações, tokens, orçamento).
+The `Harness → tool call → approval → event` loop repeats until the agent
+calls the finishing tool or hits a ceiling (iterations, tokens, budget).
 
-## Fronteiras e invariantes {#boundaries-and-invariants}
+## Boundaries and invariants
 
-Esta é a parte que mais importa. Cada item abaixo é verificável, e
-vários têm um teste que falha na violação.
+This is the part that matters most. Every item below is verifiable, and
+several have a test that fails on violation.
 
-**1. O domínio é puro.** `apps/api/src/domain/` não importa
-`infrastructure`, `application`, `@nestjs` nem nenhum driver de banco —
-verificado: **zero** ocorrências dos três. A direção é sempre
-`interfaces → application → domain`, e 89 arquivos de `application` importam
-`domain`. Se você precisa de IO dentro de `domain/`, o desenho está errado: crie uma
-porta em `application/ports/`.
+**1. The domain is pure.** `apps/api/src/domain/` doesn't import
+`infrastructure`, `application`, `@nestjs`, or any database driver —
+verified: **zero** occurrences of the three. The direction is always
+`interfaces → application → domain`, and 89 `application` files import
+`domain`. If you need IO inside `domain/`, the design is wrong: create a
+port under `application/ports/`.
 
-**2. Um evento de domínio é imutável.** Nunca há `UPDATE` numa tabela de
-eventos. `session_events` tem `unique(session_id, seq)` e o `seq` é denso por
-sessão — o teste de restauração verifica que não há buraco. Estado que precisa
-mudar (o ciclo de vida de uma hipótese, o status de um handoff) mora na sua própria
-tabela mutável, ao lado dos eventos. Uma oferta de handoff que deixa de ser a vigente
-vira `superseded` nessa tabela e ganha seu próprio evento `handoff.superseded`
-— nunca uma edição do `handoff.offered` que a anunciou ([ADR
-0182](adr/0182-ciclo-de-vida-do-handoff.md)).
+**2. A domain event is immutable.** There's never an `UPDATE` on an event
+table. `session_events` has `unique(session_id, seq)` and `seq` is dense per
+session — the restore test verifies there's no gap. State that needs to
+change (a hypothesis's lifecycle, a handoff's status) lives in its own
+mutable table, alongside the events.
 
-**3. Nenhuma chamada de LLM fora do Harness.** Não é convenção: o engine
-não tem cliente de LLM. Ele pede à api, que faz o metering.
+**3. No LLM call outside the Harness.** It's not a convention: the engine
+has no LLM client. It asks the api, which does the metering.
 
-**4. Toda ação com efeito externo vira um `proposed_action`.**
-`deny` sempre vence `allow` no `permissions.json`, e dois **tetos** são
-aplicados por último, por cima do veredito já calculado: merge numa
-branch protegida e um patch de instrução **nunca** são auto-aprováveis.
-Ver [RN-006 e RN-007](business-rules.md).
+**4. Every action with an external effect becomes a `proposed_action`.**
+`deny` always beats `allow` in `permissions.json`, and two **ceilings** are
+applied last, on top of the already-computed verdict: merging into a
+protected branch and an instruction patch are **never** auto-approvable.
+See [RN-006 and RN-007](business-rules.md).
 
-**5. Merge numa branch protegida é manual.** Não há opção de
-automatizá-lo. É um teto no domínio (`decide.ts`), garantido por um
-teste.
+**5. Merging into a protected branch is manual.** There's no option to
+automate it. It's a ceiling in the domain (`decide.ts`), guaranteed by a
+test.
 
-**6. Uma sessão, um dono.** O `SessionServer` é registrado sob
-`:global`, não num `Registry` local — sem isso, N réplicas hospedariam N
-cópias da mesma sessão, e as cópias sem heartbeat matariam
-a sessão viva ([ADR 0026](adr/0026-fase5-observabilidade-e-graceful-shutdown.md)).
+**6. One session, one owner.** The `SessionServer` is registered under
+`:global`, not a local `Registry` — without that, N replicas would host N
+copies of the same session, and the copies without a heartbeat would kill
+the live session ([ADR 0026](adr/0026-fase5-observabilidade-e-graceful-shutdown.md)).
 
-**7. Falha de agente registra a ORIGEM** (`infra | model | code | policy`),
-nunca um diagnóstico por eliminação. Uma lição cara do
-[ADR 0020](adr/0020-destravar-gates-qa-secops.md): uma queda de provider foi
-registrada como "o modelo parou sem sinalizar", e o sistema culpou
-o modelo por um problema de infraestrutura.
+**7. Agent failure records its ORIGIN** (`infra | model | code | policy`),
+never a diagnosis by elimination. An expensive lesson from
+[ADR 0020](adr/0020-destravar-gates-qa-secops.md): a provider outage was
+recorded as "the model stopped without signaling", and the system blamed
+the model for an infrastructure problem.
 
-**8. O container de um projeto é decidido, nunca implícito.** A aba Código só
-destrava depois que o Arquiteto emite `artifact.project_image` — enquanto o
-estado é `sem_decisao`, ler código devolve `409`
-([RN-105](business-rules/autenticacao.md#rn-105)). E `git push`, abrir uma PR e
-deploy não passam pelo terminal, mesmo dentro do escopo do projeto:
-`decide()` os reconhece pelo prefixo do comando e devolve `deny` ANTES de qualquer
-etapa permissiva — não `require_approval`, porque "sempre permitir" gravaria
-o padrão em `allow` e reabriria a porta
+**8. A project's container is decided, never implicit.** The Code tab only
+unlocks after the Architect emits `artifact.project_image` — while the
+state is `sem_decisao` (no decision), reading code returns `409`
+([RN-105](business-rules/autenticacao.md#rn-105)). And `git push`, opening a PR, and
+deploy don't go through the terminal, even inside the project's scope:
+`decide()` recognizes them by command prefix and returns `deny` BEFORE any
+permissive stage — not `require_approval`, because "always allow" would
+write the pattern into `allow` and reopen the door
 ([RN-106](business-rules/autenticacao.md#rn-106),
 [ADR 0065](adr/0065-container-por-projeto-a-fronteira-deixa-de-ser-politica.md)).
-O ciclo de vida do container (provisionar, reciclar, limpar) ainda não existe
-— um corte declarado da FASE 25, registrado no CLAUDE.md — então este invariante
-convive, por ora, com a política de escopo de caminho do
+The container's lifecycle (provision, recycle, clean up) doesn't exist yet
+— a declared cut from PHASE 25, recorded in CLAUDE.md — so this invariant
+coexists, for now, with the path-scope policy from
 [ADR 0055](adr/0055-escopo-de-caminho-na-politica-de-terminal.md).
 
-E desde o [ADR 0143](adr/0143-agentes-de-dev-so-depois-do-container.md)
-/[RN-502](business-rules.md#rn-502), uma imagem decidida não é mais a única
-pré-condição: **um dev agent não pega tarefa nenhuma até o container do
-projeto estar REGISTRADO `running`**. A guarda mora em
-`Engine.Dev.AgentIo.try_claim/2` — o ponto único de claim — e não só no
-`activate-execution` da api, porque a reidratação chega a `try_claim/2`
-sem passar por rota nenhuma (`DevAgentServer.init/1` ->
-`finish_restart_recovery/1`). Sem container o agente cai para `:idle`
-(o único estado que um wake ainda resgata) e diz isso com
-`dev.blocked_by_container`. A outra metade da mesma regra é que
-`Engine.Actions.TerminalExecutor` deixou de cair no `System.cmd` dentro
-do processo do engine quando não há container: ele recusa, nomeado, como o
-modo `runner` já fazia.
+And since [ADR 0143](adr/0143-agentes-de-dev-so-depois-do-container.md)
+/[RN-502](business-rules.md#rn-502), a decided image is no longer the only
+precondition: **a dev agent does not claim a task at all until the project's
+container is REGISTERED `running`**. The guard lives in
+`Engine.Dev.AgentIo.try_claim/2` — the single claim point — and not only in
+the api's `activate-execution`, because rehydration reaches `try_claim/2`
+without going through any route (`DevAgentServer.init/1` ->
+`finish_restart_recovery/1`). Without a container the agent falls to `:idle`
+(the only state a wake still rescues) and says so with
+`dev.blocked_by_container`. The other half of the same rule is that
+`Engine.Actions.TerminalExecutor` stopped falling back to `System.cmd` inside
+the engine process when there is no container: it refuses, named, the way the
+`runner` mode already did.
 
-**9. Um agente que ESCREVE tem de poder LER e tem de poder PERGUNTAR.**
-As duas metades são a mesma lição, e vieram de um agente que só tinha
-ferramentas de escrita: o PO montava o contexto uma vez, no kickoff, e agia dali em diante
-sobre um retrato velho — diante de uma lacuna, escolhia entre inventar e
-parar ([RN-164](business-rules/autenticacao.md#rn-164),
-[RN-165](business-rules/autenticacao.md#rn-165)). Ler **não** vira um
-`proposed_action` (o invariante 4 é sobre efeito EXTERNO, e ler não é
-um), mas é contido no sentido do
-[ADR 0060](adr/0060-superficie-de-leitura-de-codigo.md): escopo fechado pelo
-caminho da rota, custo constante por chamada e um teto de linhas no texto
-entregue ao modelo. E o laço de um agente não termina calado — um
-teto de iterações emite `toolloop.limit_reached`, uma obrigação não cumprida emite
-um desfecho durável com origem ([RN-166](business-rules/autenticacao.md#rn-166)).
+**9. An agent that WRITES must be able to READ and must be able to ASK.**
+Both halves are the same lesson, and came from an agent that only had
+write tools: the PO built context once, at kickoff, and acted from then on
+over a stale snapshot — facing a gap, it chose between inventing and
+stopping ([RN-164](business-rules/autenticacao.md#rn-164),
+[RN-165](business-rules/autenticacao.md#rn-165)). Reading does **not** become a
+`proposed_action` (invariant 4 is about EXTERNAL effect, and reading isn't
+one), but it is contained in the sense of
+[ADR 0060](adr/0060-superficie-de-leitura-de-codigo.md): scope closed by the
+route's path, constant cost per call, and a line ceiling in the text
+delivered to the model. And an agent's loop doesn't end silently — an
+iteration ceiling emits `toolloop.limit_reached`, an unmet obligation emits
+a durable outcome with an origin ([RN-166](business-rules/autenticacao.md#rn-166)).
 
-## Preocupações transversais {#cross-cutting-concerns}
+## Cross-cutting concerns
 
-**Origem cruzada.** O web é servido da própria origem e fala com
-**duas** outras, então CORS é uma fronteira arquitetural, não um detalhe de
-configuração ([ADR 0037](adr/0037-cors-do-engine-e-a-porta-como-contrato.md)).
-Quatro caminhos, e só três passam por CORS:
+**Cross-origin.** The web is served from its own origin and talks to
+**two** others, so CORS is an architectural boundary, not a configuration
+detail ([ADR 0037](adr/0037-cors-do-engine-e-a-porta-como-contrato.md)).
+Four paths, and only three go through CORS:
 
-| caminho | mecanismo |
+| path | mechanism |
 |---|---|
-| web → api, HTTP | o CORS do Nest, origem exata de `WEB_ORIGIN` + `credentials` |
-| web → engine, HTTP (`/health`) | `EngineWeb.Plugs.Cors`, só rotas de health |
-| web → engine, WebSocket | o `check_origin` do endpoint Phoenix — **WebSocket não passa por CORS** |
-| api ↔ engine, HTTP | **CORS não se aplica**: um cliente de servidor, não um navegador |
+| web → api, HTTP | Nest's CORS, exact origin from `WEB_ORIGIN` + `credentials` |
+| web → engine, HTTP (`/health`) | `EngineWeb.Plugs.Cors`, health routes only |
+| web → engine, WebSocket | the Phoenix endpoint's `check_origin` — **WebSocket doesn't go through CORS** |
+| api ↔ engine, HTTP | **CORS doesn't apply**: a server client, not a browser |
 
-Uma única variável — `WEB_ORIGIN` — alimenta as três primeiras, nos dois
-serviços. Lê-la duas vezes de forma independente foi como o CORS do engine acabou
-sem origem nenhuma enquanto o `check_origin` já tinha a lista certa; no
-engine ela agora é resolvida uma vez, em `runtime.exs`.
+One single variable — `WEB_ORIGIN` — feeds the first three, in both
+services. Reading it twice independently is how the engine's CORS ended up
+with no origin at all while `check_origin` already had the right list; in
+the engine it's now resolved once, in `runtime.exs`.
 
-E a **porta faz parte da origem**: o web em `:5174` é um sistema diferente
-aos olhos do navegador. É por isso que `vite.config.ts` usa
+And the **port is part of the origin**: the web on `:5174` is a different
+system in the browser's eyes. That's why `vite.config.ts` uses
 `strictPort`.
 
-**Autenticação.** First-party, no domínio da api — não há IdP
-externo. Senhas com argon2id, um access token EdDSA de 15 minutos e um refresh
-token opaco com rotação obrigatória; a sessão do web mora num cookie
-`httpOnly` com CSRF por double-submit. `JwtAuthGuard` é global e
-**lê** o usuário pelo `sub` do token (que é `users.id`); uma rota aberta
-exige `@Public()` explícito.
+**Authentication.** First-party, in the api's domain — there's no external
+IdP. Passwords with argon2id, a 15-minute EdDSA access token, and an opaque
+refresh token with mandatory rotation; the web's session lives in an
+`httpOnly` cookie with CSRF via double-submit. `JwtAuthGuard` is global and
+**reads** the user by the token's `sub` (which is `users.id`); an open
+route requires explicit `@Public()`.
 
-Nenhuma decisão de RBAC lê uma claim do token: o papel vem de `request.user.id` e
-de linhas no banco. É por isso que a matriz de permissões sobreviveu à troca de
-emissor sem mudar. Decisões no
-[ADR 0031](adr/0031-auth-first-party-argon2id-e-rotacao-de-refresh.md) e no
+No RBAC decision reads a token claim: role comes from `request.user.id` and
+rows in the database. That's why the permission matrix survived the issuer
+swap without changing. Decisions in
+[ADR 0031](adr/0031-auth-first-party-argon2id-e-rotacao-de-refresh.md) and
 [ADR 0032](adr/0032-corte-do-keycloak-e-sessao-em-cookie.md).
 
-Chamadas do engine não passam pelo JWT: as rotas `/internal/*` são
-`@ServiceRoute()` e o `EngineServiceGuard` compara um segredo compartilhado
-(`BRABO_SERVICE_TOKEN`) em tempo constante. A superfície inteira está classificada em
-[`security-surface.md`](security-surface.md), e um teste de tabela reprova uma
-rota nova sem classificação.
+Calls from the engine don't go through the JWT: `/internal/*` routes are
+`@ServiceRoute()` and `EngineServiceGuard` compares a shared secret
+(`BRABO_SERVICE_TOKEN`) in constant time. The whole surface is classified in
+[`security-surface.md`](security-surface.md), and a table test fails a new
+route with no classification.
 
-**Autorização.** RBAC no domínio, com o papel efetivo resolvido
-a partir do projeto (caindo para o workspace). `@RequireRole` nas
-rotas.
+**Authorization.** RBAC in the domain, with the effective role resolved
+from the project (falling back to the workspace). `@RequireRole` on the
+routes.
 
-**Erro.** Erros de domínio são classes tipadas
-(`InvalidSessionTransitionError`, `StoryNotReadyError`) traduzidas para HTTP
-por filtros globais em `main.ts`. Erros de provider de git são normalizados por um
-contrato único ([ADR 0002](adr/0002-git-error-normalization.md)) — quem
-chama não sabe se falou com GitHub ou GitLab.
+**Error.** Domain errors are typed classes
+(`InvalidSessionTransitionError`, `StoryNotReadyError`) translated to HTTP
+by global filters in `main.ts`. Git provider errors are normalized by a
+single contract ([ADR 0002](adr/0002-git-error-normalization.md)) — the
+caller doesn't know whether it talked to GitHub or GitLab.
 
-**Logging.** JSON de **uma linha** por evento em produção nos três
-apps, com `trace_id` correlacionado; legível por humanos em desenvolvimento. A api
-usa pino com redação obrigatória de `apiKey`, `access_token`,
-`clientSecret` e do service token api↔engine. Cada linha diz de qual
-classe e método veio, e uma linha por request mostra o **caminho
-pelas camadas** com a duração de cada passo — ver
-[observabilidade](explanation/observability.md).
+**Logging.** **One-line** JSON per event in production across the three
+apps, with a correlated `trace_id`; human-readable in development. The api
+uses pino with mandatory redaction of `apiKey`, `access_token`,
+`clientSecret`, and the api↔engine service token. Each line says which
+class and method it came from, and one line per request shows the **path
+across layers** with each step's duration — see
+[observability](explanation/observability.md).
 
-**Transação.** O padrão é *unit of work*: gravar o estado e publicar o
-evento na **mesma** transação, via outbox. Publicar fora da
-transação criaria um evento para um estado que nunca persistiu.
+**Transaction.** The pattern is *unit of work*: write state and publish the
+event in the **same** transaction, via the outbox. Publishing outside the
+transaction would create an event for state that never persisted.
 
-**Tracing.** OpenTelemetry de ponta a ponta, e o `trace_id` nasce no
-**web**: o navegador gera o `traceparent`, a api o adota como
-pai, e o engine adota o da api. Uma sessão é **um trace raiz** —
-o `traceparent` é persistido em `sessions.trace_parent` e viaja no
-envelope do outbox, então o trabalho assíncrono disparado por um evento fica no
-trace de quem o produziu.
+**Tracing.** End-to-end OpenTelemetry, and the `trace_id` is born in the
+**web**: the browser generates the `traceparent`, the api adopts it as
+parent, and the engine adopts the api's. A session is **one root trace** —
+the `traceparent` is persisted in `sessions.trace_parent` and travels in
+the outbox envelope, so async work triggered by an event stays in the
+trace of whoever produced it.
 
-Instrumentar e **exportar** são independentes
-([ADR 0035](adr/0035-observabilidade-legivel-e-trace-sem-coletor.md)): um
-span é sempre criado e o `trace_id` sempre vai para o log, mesmo
-sem coletor; `OTEL_EXPORTER_OTLP_ENDPOINT` só decide se ele
-sai do processo. É isso que dá correlação no `pnpm dev`.
+Instrumenting and **exporting** are independent
+([ADR 0035](adr/0035-observabilidade-legivel-e-trace-sem-coletor.md)): a
+span is always created and the `trace_id` always goes into the log, even
+with no collector; `OTEL_EXPORTER_OTLP_ENDPOINT` only decides whether it
+leaves the process. That's what gives correlation in `pnpm dev`.
 
-**Segredos.** Envelope encryption: uma DEK aleatória por registro, embrulhada pela
-chave mestra. Rotação sem downtime via `CREDENTIALS_MASTER_KEY_PREVIOUS` —
-ver o [runbook](runbook.md).
+**Secrets.** Envelope encryption: a random DEK per record, wrapped by the
+master key. Zero-downtime rotation via `CREDENTIALS_MASTER_KEY_PREVIOUS` —
+see the [runbook](runbook.md).
 
-**Hierarquia de agentes.** Desde a Fase 8b
-([ADR 0038](adr/0038-hierarquia-de-agentes.md)), uma área pode ter um LEAD e
-subespecialidades — hoje "qa" (`qa-lead`, `qa-automacao`,
-`qa-performance-seguranca`) e "infra" (`infra` como lead,
-`infra-workflows` como subagente — Fase 8c, RN-037). O lead é o único
-ponto de contato externo: a delegação interna nunca vira handoff, e
-nunca é visível fora da área. A primeira instância prova a garantia
-central do modelo — `QaLeadServer` consolida os vereditos das duas
-subespecialidades num único `qa_verdict`, e o contrato que a api já tinha
-(`RecordGateVerdictUseCase`, `nextGateStatus`) não mudou uma linha. A
-segunda mostra que o modelo não exige a mesma implementação interna:
-`InfraLeadServer` continua um GenServer conversacional escopado à sessão
-(espelhando o `ArquitetoServer`, contato externo inalterado por pedido
-explícito do CLAUDE.md 8c), e delega ao `WorkflowsAgent` — que, sem
-usuário do outro lado, roda como um `ToolLoop` limitado, igual aos
-subagentes de QA. Desde a [RN-617](business-rules.md#rn-617)
-([ADR 0175](adr/0175-infra-lead-conversa-pelo-composer.md)) o Infra Lead
-também recebe mensagens do composer, e os três turnos dele (kickoff, correção
-de gate, mensagem) rodam na mesma Task do `TurnoAssincrono` que os outros seis
-agentes conversacionais. As `delegations` genéricas da 8b precisaram de UM ajuste para servir
-à segunda área: `task_id` virou anulável, porque a Infra delega sobre a
-sessão, não sobre uma tarefa do backlog.
+**Agent hierarchy.** Since Phase 8b
+([ADR 0038](adr/0038-hierarquia-de-agentes.md)), an area can have a LEAD and
+sub-specialties — today "qa" (`qa-lead`, `qa-automacao`,
+`qa-performance-seguranca`) and "infra" (`infra` as lead,
+`infra-workflows` as subagent — Phase 8c, RN-037). The lead is the only
+external point of contact: internal delegation never becomes a handoff, and
+is never visible outside the area. The first instance proves the model's
+central guarantee — `QaLeadServer` consolidates the two sub-specialties'
+verdicts into a single `qa_verdict`, and the contract the api already had
+(`RecordGateVerdictUseCase`, `nextGateStatus`) didn't change a line. The
+second shows the model doesn't require the same internal implementation:
+`InfraLeadServer` remains a conversational, session-scoped GenServer
+(mirroring `ArquitetoServer`, external contact unchanged by explicit
+request of CLAUDE.md 8c), and delegates to `WorkflowsAgent` — which, with
+no user on the other side, runs as a bounded `ToolLoop`, just like the QA
+subagents. The 8b's generic `delegations` needed ONE adjustment to serve
+the second area: `task_id` became nullable, because Infra delegates over the
+session, not over a backlog task.
 
-A Fase 8d fecha o ciclo do lado de `apps/web`, sem rota nova —
-tudo vem dos mesmos `session_events` que o painel já busca
-(`useSessionEvents`). `apps/web/src/lib/agents.ts` ganhou
-`AREAS`/`areaFor`: o registro que liga a `AgentKey` de um subagente
-(`qa-automacao`, `qa-performance-seguranca`, `infra-workflows`) à
-área do lead — é essa busca reversa que agrupa o painel do time (lead
-com um selo "Lead" + subespecialidades recolhíveis), agrupa o Insights por
-área e narra `delegation.completed`/`failed`/`dispensed` no feed
-(`activity.ts`). `consolidated_verdict` (decisão nº 4 do ADR 0038) nunca
-virou um artefato real — QA e Infra reusam `qa_verdict`/`open_infra_pr`,
-ver a [nota de fechamento do ADR](adr/0038-hierarquia-de-agentes.md#fechamento-fase-8d).
+Phase 8d closes the loop on the `apps/web` side, with no new route —
+everything comes from the same `session_events` the panel already fetches
+(`useSessionEvents`). `apps/web/src/lib/agents.ts` gained
+`AREAS`/`areaFor`: the registry linking a subagent's `AgentKey`
+(`qa-automacao`, `qa-performance-seguranca`, `infra-workflows`) to the
+lead's area — it's this reverse lookup that groups the team panel (lead
+with a "Lead" badge + collapsible sub-specialties), groups Insights by
+area, and narrates `delegation.completed`/`failed`/`dispensed` in the feed
+(`activity.ts`). `consolidated_verdict` (decision #4 of ADR 0038) never
+became a real artifact — QA and Infra reuse `qa_verdict`/`open_infra_pr`,
+see the [ADR's closing note](adr/0038-hierarquia-de-agentes.md#closure-phase-8d).
 
-## Dados {#data}
+## Data
 
 ```mermaid
 erDiagram
-  workspaces ||--o{ projects : contem
-  projects ||--o{ sessions : "tem (`kind` é intenção de criação, RN-097)"
-  sessions ||--o{ session_events : "log imutável (seq denso)"
-  sessions ||--o{ proposed_actions : propoe
+  workspaces ||--o{ projects : contains
+  projects ||--o{ sessions : "has (`kind` is creation intent, RN-097)"
+  sessions ||--o{ session_events : "immutable log (dense seq)"
+  sessions ||--o{ proposed_actions : proposes
   projects ||--o{ epics : ""
   epics ||--o{ stories : ""
   stories ||--o{ tasks : ""
-  tasks |o--o{ delegations : "área de QA (8b) / Infra (8c, task_id anulável)"
-  projects ||--o{ agent_areas : "área por projeto (14d), semeada na criação (RN-094)"
-  agent_areas ||--o{ agent_area_members : compoe
-  projects ||--o{ budgets : limita
-  sessions ||--o{ token_usage : mede
-  projects ||--o{ agent_instructions : configura
-  agent_instructions ||--o{ agent_instruction_versions : versiona
-  sessions ||--o{ psychologist_analyses : analisa
-  psychologist_analyses ||--o{ psychologist_hypotheses : produz
-  projects ||--o{ rag_searches : "toda busca híbrida deixa uma linha (RN-479)"
-  rag_searches ||--o{ rag_feedback : "este trecho foi útil? (RN-480)"
-  chunks ||--o{ rag_feedback : "o trecho julgado"
-  projects ||--o| project_mirror_states : "o que a última rodada de espelho fez (RN-517)"
-  sessions ||--o{ session_language_overrides : "idioma de resposta fixado por pessoa (RN-618)"
-  users ||--o{ detected_language_declines : "idioma detectado que a pessoa recusou (RN-624)"
+  tasks |o--o{ delegations : "QA area (8b) / Infra (8c, task_id nullable)"
+  projects ||--o{ agent_areas : "per-project area (14d), seeded on creation (RN-094)"
+  agent_areas ||--o{ agent_area_members : composes
+  projects ||--o{ budgets : caps
+  sessions ||--o{ token_usage : measures
+  projects ||--o{ agent_instructions : configures
+  agent_instructions ||--o{ agent_instruction_versions : versions
+  sessions ||--o{ psychologist_analyses : analyzes
+  psychologist_analyses ||--o{ psychologist_hypotheses : produces
+  projects ||--o{ rag_searches : "every hybrid search leaves a row (RN-479)"
+  rag_searches ||--o{ rag_feedback : "was this excerpt useful? (RN-480)"
+  chunks ||--o{ rag_feedback : "the judged excerpt"
+  projects ||--o| project_mirror_states : "what the last mirror round did (RN-517)"
 ```
 
-59 tabelas no total. A mais recente é `chat_attachments` ([RN-986](business-rules.md#rn-986): os bytes dos anexos do chat; o `chat.message` guarda só a referência, RN-987); antes dela veio `source_clicks` ([RN-983](business-rules.md#rn-983): o clique numa fonte consultada, que não é voto); antes dela veio `detected_language_declines`
-([RN-624](business-rules.md#rn-624)): uma linha por pessoa e idioma que a
-pessoa RECUSOU quando perguntada "notamos que você escreve em X — usar X nas
-respostas?", com a data. A presença dela é o que impede a mesma pergunta de
-voltar; confirmar esse idioma depois apaga a linha. A detecção
-em si não guarda estado — a amostra é lida de `session_events` pelo
-índice parcial `session_events_evidencia_de_idioma_idx` (ator usuário, os dois
-tipos de evidência) e a histerese é recalculada —, então esta tabela e o
-par confirmado em `users` são tudo o que ela grava, e só quando a pessoa responde.
-Antes dela, a mais recente era `session_language_overrides`
-([RN-618](business-rules.md#rn-618),
-[ADR 0177](adr/0177-idioma-das-respostas-por-conta-sessao-e-projeto.md)): o
-idioma de resposta que uma pessoa fixou numa sessão, chaveado pelo PAR
-`{session_id, user_id}` para que dois participantes nunca se toquem. É
-configuração, não evento — fixar de novo é um upsert, liberar é um
-`DELETE`. O mesmo ADR acrescenta `users.response_language` (`NULL` é "automático")
-e o par de detecção confirmada `users.detected_language` /
-`detected_language_confirmed_at`, amarrados por um CHECK; `users.locale` continua sendo o
-idioma da interface, fechado em `pt-BR`/`en`. E `projects.language`
-([RN-619](business-rules.md#rn-619)) é o idioma do que não tem autor
-humano — artefatos compartilhados e turnos que ninguém digitou —, sempre um código
-BCP-47 concreto. Antes dela, a mais recente era
-`project_mirror_states`
+54 tables in total. The most recent is `project_mirror_states`
 ([RN-517](business-rules.md#rn-517),
-[ADR 0147](adr/0147-agente-local-com-capacidades.md) ponto 7): uma linha por
-projeto, `project_id` único, guardando o que a ÚLTIMA rodada de espelho fez — a última
-sincronização bem-sucedida com suas três contagens e seu destino congelado, mais o último
-erro. Uma TABELA e não um evento pelo mesmo motivo de `rag_searches` logo
-acima: uma rodada de espelho não tem sessão, e `session_events.session_id` é
-`NOT NULL`, então o event log descartaria tudo em silêncio. Três estados
-que nunca colapsam ([RN-088](business-rules.md#rn-088)): "nunca sincronizado" é a
-linha AUSENTE, "sincronizado e não copiou nada" é uma linha presente com `files_copied = 0`,
-e "falhou" é `last_error_at` mais novo que `last_synced_at`. As colunas de sucesso e de falha
-são DISJUNTAS e nenhuma escrita toca as da outra — e é por isso que a
-tela consegue dizer "falhando desde hoje, a última cópia boa foi ontem com 412
-arquivos" em vez de perder a coisa mais útil que tem.
+[ADR 0147](adr/0147-agente-local-com-capacidades.md) point 7): one row per
+project, `project_id` unique, holding what the LAST mirror round did — the last
+successful sync with its three counts and its frozen destination, plus the last
+error. A TABLE and not an event for the same reason as `rag_searches` right
+above: a mirror round has no session, and `session_events.session_id` is
+`NOT NULL`, so the event log would silently drop the whole thing. Three states
+that never collapse ([RN-088](business-rules.md#rn-088)): "never synced" is the
+ABSENT row, "synced and copied nothing" is a present row with `files_copied = 0`,
+and "failed" is `last_error_at` newer than `last_synced_at`. Success and failure
+columns are DISJOINT and neither write touches the other's — which is why the
+screen can say "failing since today, last good copy was yesterday with 412
+files" instead of losing the most useful thing it has.
 
-As duas antes dela são `rag_searches`/`rag_feedback`
-(RN-479/480): o rastro da busca híbrida e o voto sobre o que ela
-devolveu, acrescentadas porque `rag-search-limits.ts` declara no próprio comentário
-que nenhum dos quatro números da busca híbrida vem de calibração
-com dados reais — e não havia como calibrar enquanto a busca não deixava
-rastro. São TABELAS e não só eventos de sessão por um motivo concreto:
-`session_events.session_id` é `NOT NULL`, e uma busca vinda da aba de RAG
-é uma busca de *projeto* sem sessão, então o event log descartaria em silêncio
-exatamente as buscas que um humano rodou olhando os scores (a mesma
-classe de problema que forçou o corte do metering de embedding do
+The two before it are `rag_searches`/`rag_feedback`
+(RN-479/480): the trail of the hybrid search and the vote on what it
+returned, added because `rag-search-limits.ts` declares in its own comment
+that none of the four numbers of the hybrid search comes from calibration
+with real data — and there was no way to calibrate while the search left no
+trace. They are TABLES and not just session events for a concrete reason:
+`session_events.session_id` is `NOT NULL`, and a search coming from the RAG
+tab is a *project* search with no session, so the event log would silently
+drop exactly the searches a human ran while looking at the scores (the same
+class of problem that forced the embedding-metering cut of
 [ADR 0075](adr/0075-embeddings-no-contrato-de-llm-provider.md)).
-`rag_searches.pesos` congela os pesos de cada busca na própria linha —
-mesma disciplina do preço congelado no metering
-([ADR 0042](adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)) — para que uma
-calibração posterior não mude em silêncio o que toda medição anterior significava.
-`session_socket_tickets` fica fora do diagrama pelo mesmo motivo de
-`refresh_tokens`/`account_tokens`: um mecanismo de auth, não uma relação de domínio.
+`rag_searches.pesos` freezes the weights of each search on its own row —
+same discipline as the frozen price in metering
+([ADR 0042](adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)) — so that a later
+calibration does not silently change what every earlier measurement meant.
+`session_socket_tickets` is kept off the diagram for the same reason as
+`refresh_tokens`/`account_tokens`: an auth mechanism, not a domain relation.
 
 `projects.mirror_path` (FASE 28, [RN-515](business-rules.md#rn-515),
-[ADR 0147](adr/0147-agente-local-com-capacidades.md) ponto 4) é uma coluna e
-não uma tabela porque é UM valor opcional por projeto: o caminho absoluto,
-na máquina do USUÁRIO, para onde a capacidade `espelho` do agente local copia o
-trabalho. É anulável e `NULL` é o estado NORMAL — um projeto sem
-espelho é a maioria, e o produto nunca escolhe um destino sozinho.
-Ela deliberadamente **não** carrega CHECK que a amarre a `execution_mode`, ao contrário de
-`workspace_path` logo ao lado: `container` não pode ter destino (sua
-origem é um volume gerenciado no SERVIDOR, e o processo que copiaria roda
-na máquina do usuário), mas `execution_mode` é CONVERSÍVEL
+[ADR 0147](adr/0147-agente-local-com-capacidades.md) point 4) is a column and
+not a table because it is ONE optional value per project: the absolute path,
+on the USER's machine, that the local agent's `espelho` capability copies the
+work to. It is nullable and `NULL` is the NORMAL state — a project without a
+mirror is the majority, and the product never picks a destination on its own.
+It deliberately carries **no** CHECK pairing it with `execution_mode`, unlike
+`workspace_path` right next to it: `container` cannot have a destination (its
+source is a managed volume on the SERVER, and the process that would copy runs
+on the user's machine), but `execution_mode` is CONVERTIBLE
 ([RN-447](business-rules.md#rn-447), [ADR 0111](adr/0111-conversao-de-execution-mode-de-projeto-existente.md)),
-então um CHECK faria a conversão para `container` explodir no Postgres em vez de
-recusar com motivo. A recusa mora no caso de uso, e a conversão
-zera a coluna — a mesma forma de `workspace_verified_at`, e por um
-motivo adicional: os dois sentidos do laço origem↔destino foram
-validados contra o `workspace_path` ANTIGO.
-Desde a [RN-516](business-rules.md#rn-516) o engine LÊ esta coluna — é
-ela que decide se o `join` do runner exige a capacidade `espelho`, e
-é ela que viaja de volta na concessão desse join (`Engine.Runners.Espelho`,
-`EngineWeb.TerminalChannel`). O engine nunca a escreve. Desde a
-[RN-517](business-rules.md#rn-517) HÁ uma rota interna na
-vizinhança — `POST /internal/projects/:projectId/mirror-sync-result` — mas ela
-grava `project_mirror_states`, nunca esta coluna: o destino é
-CONFIGURAÇÃO (o usuário o declara) e o desfecho da rodada é TELEMETRIA (o
-agente local o relata), e fundi-los deixaria um relato sobrescrever uma escolha.
-**As constraints são regras de negócio**: o unique `(session_id, seq)` do event log, o `check` que exige
-exatamente um escopo em `budgets` (projeto **ou** sessão, nunca os dois), os
-índices parciais que garantem a idempotência da análise — e, desde a Fase 8b,
-os três `check`s de `delegations` que travam qual campo é obrigatório por
+so a CHECK would make converting to `container` blow up in Postgres instead of
+refusing with a reason. The refusal lives in the use case, and the conversion
+zeroes the column — the same shape as `workspace_verified_at`, and for an
+additional reason: the two directions of the origin↔destination loop were
+validated against the OLD `workspace_path`.
+Since [RN-516](business-rules.md#rn-516) the engine READS this column — it is
+what decides whether the runner's `join` requires the `espelho` capability, and
+it is what travels back in that join's grant (`Engine.Runners.Espelho`,
+`EngineWeb.TerminalChannel`). The engine never writes it. Since
+[RN-517](business-rules.md#rn-517) there IS an internal route in the
+neighbourhood — `POST /internal/projects/:projectId/mirror-sync-result` — but it
+writes `project_mirror_states`, never this column: the destination is
+CONFIGURATION (the user declares it) and the round outcome is TELEMETRY (the
+local agent reports it), and merging them would let a report overwrite a choice.
+**The constraints are business rules**: the event log's unique `(session_id, seq)`, the `check` requiring
+exactly one scope in `budgets` (project **or** session, never both), the
+partial indexes that guarantee analysis idempotency — and, since Phase 8b,
+`delegations`'s three `check`s that lock which field is required per
 `status` (`completed` → `parecerArtifactId`, `failed` → `failureOrigin`,
-`dispensed` → `justification`; ver
-[RN-036](business-rules.md#rn-036)). `delegations.task_id` nasceu
-`NOT NULL` e virou anulável na Fase 8c — a área de Infra delega sobre
-a sessão, sem tarefa de backlog por trás de uma PR de infra (ver
+`dispensed` → `justification`; see
+[RN-036](business-rules.md#rn-036)). `delegations.task_id` was born
+`NOT NULL` and became nullable in Phase 8c — the Infra area delegates over
+the session, with no backlog task behind an infra PR (see
 [RN-037](business-rules.md#rn-037)).
 
-`agent_areas` (FASE 14d,
-[ADR 0053](adr/0053-dev-lead-e-paralelismo-autorizado.md)) é o que a Fase 8
-tinha cortado. Voltou porque a área de **dev** não é enumerável no código:
-`qa` e `infra` cabem numa lista fixa, mas os membros de dev são um por
-módulo do `module_map`, decididos pelo Arquiteto e diferentes em cada
-projeto. O unique `(project_id, key)` é o que torna a semeadura idempotente,
-e `max_parallel` (nasce com 5 no `dev`, 4 no `qa` e 2 na `infra`, [RN-910](business-rules/custo.md#rn-910)) é o teto que o lead usa sem perguntar
-— acima dele, `proposed_action`
-(ver [RN-083](business-rules/custo.md#rn-083)). `budget_micros`/`spent_micros`
-(ADR 0110) espelham `max_parallel` na mesma linha — um teto de gasto que é
-ADITIVO a `budgets` (projeto/sessão), nunca uma cascata: é checado
-e incrementado de forma independente, pelos mesmos `CheckBudgetGateUseCase`/
-`RecordLlmUsageUseCase` que já cuidam do gasto de projeto e de sessão (ver
-[RN-443](business-rules.md#rn-443)). Não confunda isso com a cascata de
-binding de modelo do [ADR 0064](adr/0064-escopo-de-area-na-cascata-e-o-binding-de-agente-global.md)
-(`session > agent > area > project > workspace`) — aquela escolhe um único
-vencedor; o orçamento de área nunca escolhe.
+`agent_areas` (PHASE 14d,
+[ADR 0053](adr/0053-dev-lead-e-paralelismo-autorizado.md)) is what Phase 8
+had cut. It came back because the **dev** area isn't enumerable in code:
+`qa` and `infra` fit in a fixed list, but dev's members are one per
+`module_map` module, decided by the Architect and different in each
+project. The unique `(project_id, key)` is what makes seeding idempotent,
+and `max_parallel` (default 2) is the ceiling the lead uses without asking
+— above it, `proposed_action`
+(see [RN-083](business-rules/custo.md#rn-083)). `budget_micros`/`spent_micros`
+(ADR 0110) mirror `max_parallel` on the same row — a spend ceiling that is
+ADDITIVE to `budgets` (project/session), never a cascade: it is checked
+and incremented independently, by the same `CheckBudgetGateUseCase`/
+`RecordLlmUsageUseCase` that already own project and session spend (see
+[RN-443](business-rules.md#rn-443)). Do not confuse this with the model-
+binding cascade of [ADR 0064](adr/0064-escopo-de-area-na-cascata-e-o-binding-de-agente-global.md)
+(`session > agent > area > project > workspace`) — that one picks a single
+winner; area budget never does.
 
-**Migrations:** Drizzle na api (`src/db/migrations/`, aplicadas por um
-Job de execução única — as réplicas **não** migram no boot, senão disputariam a
-mesma migration) e Ecto no engine, no seu próprio schema (`engine`).
-Não há referência cruzada entre os dois schemas, então eles rodam em
-paralelo.
+**Migrations:** Drizzle in the api (`src/db/migrations/`, applied by a
+one-shot Job — replicas do **not** migrate on boot, or they'd race for the
+same migration) and Ecto in the engine, in its own schema (`engine`).
+There's no cross-reference between the two schemas, so they run in
+parallel.
 
-## Dívida técnica conhecida {#divida-tecnica}
+## Known technical debt {#divida-tecnica}
 
-Derivada dos hotspots do histórico e dos ADRs que registram estado em aberto.
+Derived from history's hotspots and the ADRs that record open state.
 
-| dívida | evidência | impacto |
+| debt | evidence | impact |
 |---|---|---|
-| ~~`schema.ts` é o arquivo mais alterado do repo (23 mudanças) e concentra 51 tabelas num único arquivo~~ | histórico → **fechada pelo** [ADR 0121](adr/0121-schema-dividido-por-agregado-de-dominio.md) | o schema agora é um arquivo por agregado de domínio em `apps/api/src/db/schema/`, espelhando `src/domain/*`, com o caminho antigo mantido como barrel de `export *` para que nenhum dos 144 consumidores mudasse nada. Dois agregados agora podem ser editados ao mesmo tempo sem conflito. O que isto NÃO toca: as migrations são idênticas byte a byte (o critério de aceite foi um `drizzle-kit generate` com diff zero), e a linha do contrato api↔engine abaixo é uma dívida diferente, ainda aberta |
-| O contrato api↔engine está espalhado por 4 arquivos quentes (`internal-sessions.controller.ts`, `api-to-engine-client.ts`, `engine_api_client.ex`, `router.ex`) sem fonte única | histórico | uma mudança exige editar os quatro em sincronia; nada garante que concordem |
-| A demo dos gates **não é teste de regressão** — depende do julgamento de um modelo local de 7B | [ADR 0020](adr/0020-destravar-gates-qa-secops.md) | o caminho semântico do gate não tem cobertura automatizada |
-| Fase 4a com um critério de aceite marcado **NÃO FECHADO** | [ADR 0021](adr/0021-fechamento-4a-infra-e-painel.md) | há trabalho admitidamente incompleto sem issue de acompanhamento |
-| A fila do Oban acumula `AnamneseWorker` de execuções anteriores; a guarda só bloqueia enfileiramentos **novos** | [ADR 0020](adr/0020-destravar-gates-qa-secops.md) | desligar a guarda não basta — a fila precisa ser expurgada |
-| `TerminalExecutor` roda a suíte do projeto gerenciado **dentro** da imagem do engine | [ADR 0024](adr/0024-fase5-imagens-producao-ci.md) | não escala para stacks arbitrárias; a saída é sandbox por projeto |
-| ~~As imagens não são publicadas num registry; o overlay de produção aponta para `ghcr.io/OWNER/*`~~ | [ADR 0027](adr/0027-fase5-backup-hardening-release.md) → **fechada pelo** [ADR 0119](adr/0119-imagens-publicadas-no-ghcr-por-digest.md) | as quatro imagens publicam no GHCR a cada tag final e o overlay fixa por digest a partir de `.release/images.json`. O que sobra NÃO é esta dívida: nada faz deploy automaticamente, e as imagens não são assinadas nem atestadas |
-| ~~`SessionPage.tsx` tinha 169 KiB com 25 arquivos de teste importando-o; `ProjectSettingsTab.tsx` tinha 90 KiB~~ | [ADR 0122](adr/0122-sessionpage-dividido-em-cinco-prs.md) + [ADR 0124](adr/0124-hook-do-canal-de-turno-do-sessionpage.md) + [ADR 0125](adr/0125-projectsettingstab-dividido-por-secao.md) — **esta linha FECHA nas duas metades** | as cinco PRs mecânicas do ADR 0122 foram mergeadas primeiro: a PR 1 extraiu os helpers puros de timeline/turno para `apps/web/src/lib/session-timeline.ts`, a PR 2 extraiu `StorySlide` para `apps/web/src/routes/StorySlide.tsx`, a PR 3 extraiu `StructuredQuestionCard` (mais seu helper privado `permiteOutra`) para `apps/web/src/routes/StructuredQuestionCard.tsx`, a PR 4 extraiu os helpers da árvore de backlog (`urlDaPr`, `vinculoDeBacklog`, `montarArvoreDeBacklog`, `totalDeDescendentes`) para `apps/web/src/lib/session-backlog-tree.ts` e `ItemDeBacklog` + `ContextAside` (a sidebar direita inteira) para `apps/web/src/routes/ContextAside.tsx`, e a PR 5 extraiu as seis derivações de prontidão (`criativoActive`, `arquitetoActive`, `hasBusinessRule`, `hasPromotedStory`, `hasProductBrief`, `activeAgent`) para um hook `useSessionReadiness` em `apps/web/src/lib/session-readiness.ts` — `SessionPage.tsx` foi de 3 807 para 2 661 linhas, deixando explicitamente fora de escopo o aglomerado de estado do canal de turno (`turnoViaCanal`/`statusAgent`/`pensandoVisivel`/`atividadeDoTurno`) para um ADR futuro próprio. O ADR 0124 é esse ADR: uma PR mecânica de deduplicação primeiro fez `handleSend`/`handleReadiness`/`handleArchitectureReadiness` chamarem o par já existente `iniciarTurnoDoAgente`/`finalizarTurnoDoAgente` em vez de duplicar o braço deles inline, e depois uma segunda PR extraiu o estado, o efeito de canal `connectSessionHeartbeat` e as três funções de ciclo de vida para um hook `useTurnoDoAgente` (`apps/web/src/lib/session-turno.ts`). `SessionPage.tsx` agora tem 2 479 linhas; os 25 (24 depois da migração da PR 1) arquivos `SessionPage.*.test.tsx` passaram sem edição pelas sete PRs dos dois ADRs. O ADR 0125 fecha a OUTRA metade, numa PR em vez de cinco: `ProjectSettingsTab.tsx` se divide em um arquivo por seção em `apps/web/src/routes/settings/` (17 seções + um `settings/shared.ts` de dois símbolos guardando só `ORIGIN_TONE` e `formatarCustoMicros`, os dois helpers com mais de um chamador), indo de 2 532 para 77 linhas e FICANDO no seu caminho como entrada e barrel — o que sustenta carga, porque `ProjectSettingsTab.test.tsx` importa 11 nomes dele e `ProjectPage.test.tsx`/`project-tabs.test.tsx` fazem `vi.mock` dele PELO CAMINHO. Uma PR e não cinco porque este arquivo nunca teve o formato do `SessionPage.tsx`: o pai não guardava estado nenhum (17 filhos JSX, nenhum hook, nenhuma query, nenhuma checagem de papel), nenhuma seção recebia mais que `{projectId}`, e 11 das 17 já eram exportadas. `ProjectSettingsTab.module.css` continua uma folha de estilo compartilhada com 15 importadores (a mesma resposta que o ADR 0122 deu para `SessionPage.module.css`). A suíte inteira do web — 142 arquivos, 1 537 testes — passou com ZERO arquivos de teste editados |
-| ~~`SessionPage.tsx` voltou a crescer depois de a linha dele fechar: **2 559 linhas** (116 KiB, 26 arquivos `SessionPage.*.test.tsx`), medido na `dev` em `b61bc49cd` em **2026-09-13** — a linha acima o fechou em **2 479**~~ | `git show --numstat` nos dois commits que o tocaram desde o [ADR 0124](adr/0124-hook-do-canal-de-turno-do-sessionpage.md): `62eebad55` (+8, o seletor de modelo "aptos para agentes") e `a26ddd84d` (+72, o card acionável de handoff da Infra, RN-499) | a linha fechada acima está certa para `ProjectSettingsTab.tsx` (agora uma barra e barrel de 96 linhas) e **não está mais certa para `SessionPage.tsx`**. Ninguém fez nada errado — cada acréscimo foi uma feature legítima — e é exatamente por isso que uma dívida fechada **por um número** precisa do número remedido: sem isso, a regressão é a soma de decisões corretas. Esta linha **declara**, não decompõe: dividir mais é um programa com ADR próprio, no molde de 0122/0125. Não há portão de tamanho no CI, de propósito — uma catraca num arquivo que ninguém está decompondo só produz PRs vermelhas. A linha fechada fica como histórico. **O programa agora existe:** o [ADR 0176](adr/0176-sessionpage-abaixo-de-mil-linhas.md) (AT-138, 2026-09-28) remediu **2 637 linhas** na `dev` em `018b8cd24c` e declara dez PRs mecânicas empilhadas até 834, com o portão de tamanho nascendo só na última. **Fechada** pela última PR desse programa: o arquivo tem **834 linhas**, e `apps/web/src/routes/SessionPage.teto.test.ts` o reprova com 1 000 ou mais — o portão de tamanho que esta linha recusou num arquivo que ninguém estava decompondo existe agora que alguém decompôs |
+| ~~`schema.ts` is the repo's most-changed file (23 changes) and concentrates 51 tables into a single file~~ | history → **closed by** [ADR 0121](adr/0121-schema-dividido-por-agregado-de-dominio.md) | the schema is now one file per domain aggregate under `apps/api/src/db/schema/`, mirroring `src/domain/*`, with the old path kept as a barrel of `export *` so all 144 consumers changed nothing. Two aggregates can now be edited at once without conflicting. What this does NOT touch: the migrations are byte-identical (the acceptance bar was a zero-diff `drizzle-kit generate`), and the api↔engine contract row below is a different, still-open debt |
+| The api↔engine contract is spread across 4 hot files (`internal-sessions.controller.ts`, `api-to-engine-client.ts`, `engine_api_client.ex`, `router.ex`) with no single source | history | a change requires editing all four in sync; nothing guarantees they agree |
+| The gates demo is **not a regression test** — it depends on a local 7B model's judgment | [ADR 0020](adr/0020-destravar-gates-qa-secops.md) | the gate's semantic path has no automated coverage |
+| Phase 4a with an acceptance criterion marked **NOT CLOSED** | [ADR 0021](adr/0021-fechamento-4a-infra-e-painel.md) | there's admittedly incomplete work with no tracking issue |
+| The Oban queue accumulates `AnamneseWorker` from previous runs; the guard only blocks **new** enqueues | [ADR 0020](adr/0020-destravar-gates-qa-secops.md) | turning off the guard isn't enough — the queue needs purging |
+| `TerminalExecutor` runs the managed project's suite **inside** the engine's image | [ADR 0024](adr/0024-fase5-imagens-producao-ci.md) | doesn't scale to arbitrary stacks; the way out is per-project sandboxing |
+| ~~Images aren't published to a registry; the production overlay points at `ghcr.io/OWNER/*`~~ | [ADR 0027](adr/0027-fase5-backup-hardening-release.md) → **closed by** [ADR 0119](adr/0119-imagens-publicadas-no-ghcr-por-digest.md) | the four images publish to GHCR on every final tag and the overlay pins by digest from `.release/images.json`. What remains is NOT this debt: nothing deploys automatically, and the images are neither signed nor attested |
+| ~~`SessionPage.tsx` was 169 KiB with 25 test files importing it; `ProjectSettingsTab.tsx` was 90 KiB~~ | [ADR 0122](adr/0122-sessionpage-dividido-em-cinco-prs.md) + [ADR 0124](adr/0124-hook-do-canal-de-turno-do-sessionpage.md) + [ADR 0125](adr/0125-projectsettingstab-dividido-por-secao.md) — **this row CLOSES on both halves** | ADR 0122's five mechanical PRs merged first: PR 1 extracted the pure timeline/turn helpers to `apps/web/src/lib/session-timeline.ts`, PR 2 extracted `StorySlide` to `apps/web/src/routes/StorySlide.tsx`, PR 3 extracted `StructuredQuestionCard` (plus its private helper `permiteOutra`) to `apps/web/src/routes/StructuredQuestionCard.tsx`, PR 4 extracted the backlog-tree helpers (`urlDaPr`, `vinculoDeBacklog`, `montarArvoreDeBacklog`, `totalDeDescendentes`) to `apps/web/src/lib/session-backlog-tree.ts` and `ItemDeBacklog` + `ContextAside` (the whole right-hand sidebar) to `apps/web/src/routes/ContextAside.tsx`, and PR 5 extracted the six readiness derivations (`criativoActive`, `arquitetoActive`, `hasBusinessRule`, `hasPromotedStory`, `hasProductBrief`, `activeAgent`) to a `useSessionReadiness` hook in `apps/web/src/lib/session-readiness.ts` — `SessionPage.tsx` went from 3 807 to 2 661 lines, explicitly leaving the turn-channel state cluster (`turnoViaCanal`/`statusAgent`/`pensandoVisivel`/`atividadeDoTurno`) out of scope for its own future ADR. ADR 0124 is that ADR: a mechanical dedup PR first made `handleSend`/`handleReadiness`/`handleArchitectureReadiness` call the pre-existing `iniciarTurnoDoAgente`/`finalizarTurnoDoAgente` pair instead of duplicating their arm inline, then a second PR extracted the state, the `connectSessionHeartbeat` channel effect, and the three lifecycle functions into a `useTurnoDoAgente` hook (`apps/web/src/lib/session-turno.ts`). `SessionPage.tsx` is now 2 479 lines; the 25 (24 after PR 1's migration) `SessionPage.*.test.tsx` files passed unedited through all seven PRs across the two ADRs. ADR 0125 closes the OTHER half, in one PR rather than five: `ProjectSettingsTab.tsx` splits into one file per section under `apps/web/src/routes/settings/` (17 sections + a two-symbol `settings/shared.ts` holding only `ORIGIN_TONE` and `formatarCustoMicros`, the two helpers with more than one caller), going from 2 532 to 77 lines while STAYING at its path as the entry and barrel — load-bearing, because `ProjectSettingsTab.test.tsx` imports 11 names from it and `ProjectPage.test.tsx`/`project-tabs.test.tsx` both `vi.mock` it BY PATH. One PR and not five because this file was never shaped like `SessionPage.tsx`: the parent held no state at all (17 JSX children, no hook, no query, no role check), no section took more than `{projectId}`, and 11 of the 17 were already exported. `ProjectSettingsTab.module.css` stays one shared stylesheet with 15 importers (same answer ADR 0122 gave for `SessionPage.module.css`). The full web suite — 142 files, 1 537 tests — passed with ZERO test files edited |
+| `SessionPage.tsx` grew back after its row closed: **2 559 lines** (116 KiB, 26 `SessionPage.*.test.tsx` files), measured on `dev` at `b61bc49cd` on **2026-09-13** — the row above closed it at **2 479** | `git show --numstat` on the two commits that touched it since [ADR 0124](adr/0124-hook-do-canal-de-turno-do-sessionpage.md): `62eebad55` (+8, the "fit for agents" model picker) and `a26ddd84d` (+72, the actionable Infra handoff card, RN-499) | the closed row above is right for `ProjectSettingsTab.tsx` (now a 96-line bar and barrel) and **no longer right for `SessionPage.tsx`**. Nobody did anything wrong — each addition was a legitimate feature — which is exactly why a debt closed **by a number** needs the number re-measured: without it, regression is the sum of correct decisions. This row **declares**, it does not decompose: splitting further is a program with its own ADR, in the mould of 0122/0125. There is no size gate in CI, on purpose — a ratchet on a file nobody is decomposing only produces red PRs. The closed row stays as history |
