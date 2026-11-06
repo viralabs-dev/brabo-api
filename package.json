@@ -88,7 +88,7 @@
     "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "@brabo/shared": "git+https://github.com/viralabs-dev/brabo-contracts.git#v1.0.0&path:/packages/shared",
+    "@brabo/shared": "git+https://github.com/viralabs-dev/brabo-contracts.git#v1.2.0-dev.1&path:/packages/shared",
     "@swc/helpers": "^0.5.17",
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.18.0",

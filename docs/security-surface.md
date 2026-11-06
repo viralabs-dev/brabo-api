@@ -497,6 +497,12 @@ reason in the URL.
   Creating that folder is consented configuration, not an agent asking to
   act: it is **not** a `proposed_action`, and no ceiling in `decide.ts`
   gains an exception.
+- **`POST /internal/projects/:projectId/app/restart`** ([RN-1026](business-rules/api.md#rn-1026))
+  is called only by the engine, after the project folder advanced. It proxies
+  to `ContainerBrokerPort.reiniciarApp`. The body is empty: the app command
+  never travels, the broker reads it from the container-spec. The answer is
+  typed (`reiniciou`, `motivo`, `exitCode`) and carries no free text or log,
+  because the app command may hold a secret.
 - **`POST /internal/projects/:projectId/container-exec`** ([RN-492](business-rules/engine.md#rn-492),
   [ADR 0134](adr/0134-dev-agents-executam-dentro-do-container.md)) is called
   only by the engine, when `Engine.Actions.TerminalExecutor` decided a
@@ -1374,6 +1380,7 @@ reason in the URL.
 | GET | `/internal/projects/:projectId/module-contracts` | engine-service |
 | POST | `/internal/projects/:projectId/workspace-verification` | engine-service |
 | POST | `/internal/projects/:projectId/container-exec` | engine-service |
+| POST | `/internal/projects/:projectId/app/restart` | engine-service |
 | POST | `/internal/projects/:projectId/mirror-sync-result` | engine-service |
 | GET | `/internal/projects/:projectId/container-spec` | engine-service |
 | POST | `/internal/projects/:projectId/qa-environments/:taskId/start` | engine-service |
