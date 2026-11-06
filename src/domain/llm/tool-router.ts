@@ -330,6 +330,10 @@ export const PISO_DO_MENU: Readonly<Record<string, readonly string[]>> = {
     // Arquiteto afirmava ADR "pendente" e backlog "sem tarefas" de memória.
     'listar_adrs_propostas',
     'listar_backlog',
+    // AT-614 (RN-809 revista): o kickoff manda registrar tensão e dúvida; o
+    // recorte as tirava e o Arquiteto narrava "não está disponível".
+    'emit_insight',
+    'declare_open_question',
   ],
   // Agentes de GATE (AT-509, RN-840): a ferramenta de PARECER de cada um, e
   // só a dele. Sem ela o passo recortado deixava o gate sem veredito — o QA

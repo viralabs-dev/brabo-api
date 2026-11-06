@@ -623,7 +623,7 @@ describe('DecidirFerramentaDoPassoUseCase — o recorte não vira incapacidade (
     expect(r.tools?.map((t) => t.name)).not.toContain('declare_open_question');
   });
 
-  it('Arquiteto com 2 de 9 pelo Jev: as cinco de artefato (mapa, roteamento, contratos, ADR, C4) nunca saem', async () => {
+  it('Arquiteto com 2 de 9 pelo Jev: as cinco de artefato (mapa, roteamento, contratos, ADR, C4) e o `emit_insight` nunca saem', async () => {
     const s = await setup();
     const r = await montar(
       new RoteadorFalso(() => decidiu('assign_story_modules')),
@@ -642,8 +642,9 @@ describe('DecidirFerramentaDoPassoUseCase — o recorte não vira incapacidade (
       'route_modules_to_infra',
       'declare_module_contracts',
       'propose_adr',
+      'emit_insight',
     ]);
-    expect(r.messages.at(-1)!.content).toContain('as outras 2 seguem');
+    expect(r.messages.at(-1)!.content).toContain('as outras 1 seguem');
   });
 
   it('Arquiteto recortado pelo Jev: as leituras de estado (ADRs propostas, backlog) continuam no menu (RN-784)', async () => {
@@ -666,7 +667,7 @@ describe('DecidirFerramentaDoPassoUseCase — o recorte não vira incapacidade (
     expect(nomes).toContain('listar_adrs_propostas');
     expect(nomes).toContain('listar_backlog');
     // Ainda é recorte: o que não é piso nem escolhido sai.
-    expect(nomes).not.toContain('emit_insight');
+    expect(nomes).not.toContain('emit_artifact');
   });
 
   it('Arquiteto recortado pelo Jev sem `assign_story_modules`/`choose_project_image`: as duas continuam no menu (RN-809)', async () => {
@@ -684,8 +685,26 @@ describe('DecidirFerramentaDoPassoUseCase — o recorte não vira incapacidade (
     expect(r.toolRouting?.aplicado).toBe(true);
     expect(nomes).toContain('assign_story_modules');
     expect(nomes).toContain('choose_project_image');
-    expect(nomes).not.toContain('emit_insight');
+    expect(nomes).not.toContain('emit_artifact');
   });
+
+  it.each(['emit_insight', 'declare_open_question'])(
+    'Arquiteto recortado pelo Jev mantém `%s` (AT-614, RN-809 revista)',
+    async (ferramenta) => {
+      const s = await setup();
+      const r = await montar(
+        new RoteadorFalso(() => decidiu('choose_project_image')),
+      ).decidir(
+        base(s, {
+          agentId: 'arquiteto',
+          tools: [...ARQUITETO, tool('declare_open_question')],
+          messages: execucaoCom('arquiteto', 'create_module_map'),
+        }),
+      );
+      expect(r.toolRouting?.aplicado).toBe(true);
+      expect(r.tools?.map((t) => t.name)).toContain(ferramenta);
+    },
+  );
 
   it('o Jev diz responder (sem recorte): nenhum aviso, mensagens intactas', async () => {
     const s = await setup();
