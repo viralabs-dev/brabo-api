@@ -160,7 +160,7 @@ describe('ExecuteInfraPrUseCase — criação de branch idempotente', () => {
 });
 
 describe('ExecuteInfraPrUseCase — base e autor da PR (RN-729)', () => {
-  it('a branch nasce de dev, a PR mira dev e leva infra[bot]', async () => {
+  it('a branch nasce de main, a PR mira main e leva infra[bot]', async () => {
     const provider = {
       createBranch: vi.fn().mockResolvedValue(undefined),
       commitFiles: vi.fn().mockResolvedValue(undefined),
@@ -172,19 +172,19 @@ describe('ExecuteInfraPrUseCase — base e autor da PR (RN-729)', () => {
     await useCase.execute('proj-1', 'sess-1', makeAction());
 
     expect(provider.createBranch).toHaveBeenCalledWith(
-      expect.objectContaining({ fromRef: 'dev' }),
+      expect.objectContaining({ fromRef: 'main' }),
     );
     expect(provider.openPullRequest).toHaveBeenCalledWith(
-      expect.objectContaining({ targetBranch: 'dev', author: 'infra[bot]' }),
+      expect.objectContaining({ targetBranch: 'main', author: 'infra[bot]' }),
     );
     expect(gravados.at(-1)?.status).toBe('executed');
   });
 
-  it('repositório sem dev falha nomeado, sem cair na default', async () => {
+  it('repositório sem main falha nomeado, sem cair na default', async () => {
     const provider = {
       createBranch: vi
         .fn()
-        .mockRejectedValue(new Error('ref não encontrada: dev')),
+        .mockRejectedValue(new Error('ref não encontrada: main')),
       commitFiles: vi.fn(),
       openPullRequest: vi.fn(),
     };

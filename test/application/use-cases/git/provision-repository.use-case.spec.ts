@@ -305,11 +305,13 @@ describe('ProvisionRepositoryUseCase', () => {
       .select()
       .from(proposedActions)
       .where(eq(proposedActions.sessionId, bootstrapRow!.sessionId));
-    // git_repo_create + 2 git_branch_create (dev/qa) + 3 git_commit (o 3º é o
-    // `.gitignore` base, RN-761) —
-    // nenhum git_branch_protect (degradado, sem mutação de verdade). Eram 3
-    // branches até o degrau `rc` sair do template (ADR 0030, achado #3).
-    expect(actions).toHaveLength(6);
+    // git_repo_create + 3 git_commit (o 3º é o `.gitignore` base, RN-761) —
+    // nenhum git_branch_create (trunk, RN-1022) e nenhum git_branch_protect
+    // (degradado, sem mutação de verdade).
+    expect(actions).toHaveLength(4);
+    expect(actions.some((a) => a.actionType === 'git_branch_create')).toBe(
+      false,
+    );
     expect(actions.every((a) => a.status === 'executed')).toBe(true);
     expect(actions.every((a) => a.resolvedPolicy === 'auto_approve')).toBe(
       true,
@@ -358,11 +360,11 @@ describe('ProvisionRepositoryUseCase', () => {
     const degradedAfterReruns = events.filter(
       (e) => e.type === 'bootstrap.step_degraded',
     );
-    // 5 passos com mutação real (3 commits + 2 branches) * 2 reruns = 10
+    // 3 passos com mutação real (3 commits) * 2 reruns = 6
     // skips — protect_branches nunca é "skipped", sempre "degraded" (não
     // suportado pelo Local, independente de progresso prévio) — 3
     // ocorrências no total (1ª execução + 2 reruns).
-    expect(skipsAfterReruns.length).toBe(10);
+    expect(skipsAfterReruns.length).toBe(6);
     expect(degradedAfterReruns.length).toBe(3);
   });
 
@@ -371,10 +373,9 @@ describe('ProvisionRepositoryUseCase', () => {
     const provider = new InstrumentedGitProvider(new LocalGitProvider());
     const useCase = buildUseCase(provider);
 
-    // Mata o processo na 2ª chamada de createBranch (create_qa_branch) —
-    // depois dos 2 commits em main e da criação de dev (passos 1-3 já
-    // resolvidos), no meio da criação de qa/rc/proteção (passos 4-6).
-    provider.failNextCallTo('createBranch', 1);
+    // Mata o processo na 3ª chamada de commitFiles (commit_gitignore) —
+    // depois dos 2 primeiros commits em main (passos 1-2 já resolvidos).
+    provider.failNextCallTo('commitFiles', 2);
 
     await expect(
       useCase.execute(project.id, user.id, {
@@ -382,13 +383,13 @@ describe('ProvisionRepositoryUseCase', () => {
         name: 'retomada-repo',
         visibility: 'private',
       }),
-    ).rejects.toThrow('falha injetada em createBranch');
+    ).rejects.toThrow('falha injetada em commitFiles');
 
     const failedRow = await repoBootstraps.findByProjectId(project.id);
-    expect(failedRow?.step).toBe('create_qa_branch');
+    expect(failedRow?.step).toBe('commit_gitignore');
     expect(failedRow?.status).toBe('failed');
     expect(failedRow?.attempts).toBe(1);
-    expect(failedRow?.lastError).toContain('falha injetada em createBranch');
+    expect(failedRow?.lastError).toContain('falha injetada em commitFiles');
 
     const session = await sessionRepo.findInProject(
       project.id,
@@ -409,8 +410,10 @@ describe('ProvisionRepositoryUseCase', () => {
     expect(result.bootstrap.step).toBe('protect_branches');
 
     // Passos 1-2 (commit de arquivo) REVALIDADOS (getFileContent chamado
-    // de novo) mas NÃO recomitados (commitFiles não chamado de novo).
-    expect(provider.callCounts.commitFiles).toBe(commitFilesCallsBeforeResume);
+    // de novo) mas NÃO recomitados: só o 3º commit roda na retomada.
+    expect(provider.callCounts.commitFiles).toBe(
+      commitFilesCallsBeforeResume + 1,
+    );
     expect(provider.callCounts.getFileContent).toBeGreaterThan(
       getFileContentCallsBeforeResume,
     );
@@ -440,7 +443,7 @@ describe('ProvisionRepositoryUseCase', () => {
    * `lastError: NULL`. `deriveProvisioningStatus` lia isso como
    * `provisioning`, e a tela mostrava "Trabalhando…" pollando para sempre.
    *
-   * O teste de retomada acima injeta a falha em `createBranch` — ou seja, em
+   * O teste de retomada acima injeta a falha em `commitFiles` — ou seja, em
    * `run`, o único caminho que JÁ tinha try/catch. É por isso que ele passava
    * com o defeito presente.
    */

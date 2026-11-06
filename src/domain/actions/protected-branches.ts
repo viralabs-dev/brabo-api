@@ -15,12 +15,12 @@ export function isProtectedBranch(branch: string): boolean {
   return (PROTECTED_BRANCHES as readonly string[]).includes(branch);
 }
 
-// A branch de TRABALHO dos agentes (RN-664, AT-250): de onde o worktree do dev
+// A branch de TRABALHO dos agentes (RN-664, RN-1022): de onde o worktree do dev
 // agent nasce, para onde a PR dele (e a do ADR do Arquiteto) vai e contra qual
-// o gate calcula o diff. NÃO é a `defaultBranch` do provider — aquela é a que a
-// promoção alcança por último (dev → qa → main); PR de agente direto nela
-// pulava a esteira. O engine guarda o MESMO valor em
+// o gate calcula o diff. O repositório do projeto é trunk (ADR 0263): a
+// tarefa nasce da `main` e volta para ela. O engine guarda o MESMO valor em
 // `Engine.Projects.ProjectRepository.branch_de_trabalho/0`; os dois mudam
-// juntos. Repositório sem esta branch (adotado sem bootstrap) FALHA nomeado no
-// provider — não há queda para a `defaultBranch`.
-export const BRANCH_DE_TRABALHO = 'dev';
+// juntos. Repositório sem esta branch FALHA nomeado no provider — não há
+// queda para a `defaultBranch`. Projetos antigos (com `dev`) migram pelo
+// script `migrar-projeto-para-trunk`.
+export const BRANCH_DE_TRABALHO = 'main';

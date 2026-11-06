@@ -27,6 +27,8 @@ export interface GitMergeExecutionResult {
   pullRequestId: string;
   state: string;
   targetBranch: string;
+  /** RN-1022: ponta da branch de trabalho após o merge (melhor esforço). */
+  mergedSha?: string;
 }
 
 /**

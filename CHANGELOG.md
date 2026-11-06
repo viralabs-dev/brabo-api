@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- BREAKING: the repository Brabo creates for the user's project is trunk (AT-617, RN-1022, ADR 0263). `BRANCH_DE_TRABALHO` is `main` (task, infra and ADR PRs open from and target it); the bootstrap no longer creates `dev`/`qa` and protects only `main`; the committed `branching-policy.md` describes trunk; a merge into `main` appends the outbox event `project.trunk_merged` (`{ projectId, sessionId, mergedSha }`) for the engine. `dev`/`qa` stay protected for old projects. Old projects migrate with `pnpm migrar-projeto-para-trunk [--dry-run]` (fast-forward `main` to `dev` in the bare repository, refuses otherwise, never deletes `dev`).
 - The Arquiteto's floor in Jev's tool menu always keeps `emit_insight` and `declare_open_question` (AT-614, revises RN-809): a cut menu no longer makes the Arquiteto say the tension and doubt records are unavailable.
 - The retry without reasoning of RN-916 is covered with the real `AnthropicProvider` capability (AT-757): the provider already declares `aceitaRaciocinioDesligado` and the tracing decorator forwards it (RN-1001); the use-case spec now fails if the provider stops declaring it.
 - The session context summary (RN-844) ignores a retired business rule (RN-1018): it no longer counts in `regras` nor appears in `itensDeRegras`.

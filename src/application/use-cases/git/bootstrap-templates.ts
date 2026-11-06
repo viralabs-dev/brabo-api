@@ -66,15 +66,11 @@ Descreva o que essa mudança faz e por quê.
 export function branchingPolicyContent(): string {
   return `# Política de branching
 
-Gerado automaticamente pelo bootstrap de Gitflow — branches permanentes:
+Gerado automaticamente pelo bootstrap — o repositório é trunk:
 
-- \`main\` — produção. Só recebe merge de \`qa\`.
-- \`qa\` — recebe merge de \`dev\` pra validação antes de ir pra produção.
-- \`dev\` — integração contínua do trabalho em andamento. Todo
-  \`feature/*\` nasce a partir daqui.
+- \`main\` — a única branch permanente. Só recebe merge por PR.
 
-Trabalho novo sempre em \`feature/*\` a partir de \`dev\`, nunca direto
-nas branches permanentes. Correção urgente nasce de \`main\` como
-\`hotfix/*\` e volta pra \`main\`.
+Todo trabalho nasce de \`main\` em \`feature/*\` (ou \`bugfix/*\`, etc.),
+vira PR para \`main\` e volta para ela. Nunca direto na \`main\`.
 `;
 }
