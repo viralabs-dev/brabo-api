@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The graph no longer duplicates `Handoff`, `Evento`, `PerfilAnamnese` and `Hipotese` nodes under concurrent writes (AT-762 part B, RN-1030): each has a uniqueness constraint on its natural key (composite where needed; accepted by Neo4j 5.26 Community), and at boot the api first merges the duplicates of an already installed graph, keeping their edges, then creates the constraints. Idempotent; logs only a count.
+
 - After the infra PR that declares `run.app` is merged into `main`, the api proposes `container_recreate` (actor `agent/infra`, payload `{ reason: 'app_declared', pullRequestId, ports: [{ host, container, protocol: 'tcp' }] }`) once (AT-758, RN-1029): host port always from 13000, skipping ports declared by other projects; never for `runner`, with a pending recreate, without a standing container or when the container started after the current instructions. The click stays human and, without a declared network, writes `artifact.container_network` as the user who clicked (RN-932). The hook runs outside the merge transaction and best effort. New port method `SessionEventRepository.listByType`.
 
 - `POST /internal/projects/:projectId/app/restart` (RN-1026, ADR 0264): the engine asks the api to restart only the app process in place, through the new `ContainerBrokerPort.reiniciarApp` (broker route `POST /containers/:projectId/app/restart`). The answer is typed (`reiniciou`, `motivo`, `exitCode`) with no free text or log. Bumps `@brabo/shared` to `v1.2.0-dev.1`.

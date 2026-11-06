@@ -7566,7 +7566,8 @@ reason:
    no event in the log. `PromptTemplate`/`PromptVersion` do NOT come from the event log and
    are NOT reprojected — they come back through `scripts/dev/seed-prompts.ts`.
 3. **Idempotent, in batches, and never deletes.** Every write is a `MERGE` on a natural
-   key; running again is the way to resume. `session_events` is swept in
+   key, backed by a uniqueness constraint on that key ([RN-1030](#rn-1030)), so a concurrent live
+   projector or second replica cannot create a second node; running again is the way to resume. `session_events` is swept in
    `id` order (ULID, the primary key), 200 per batch, and `--after-event`
    resumes after the printed cursor. With `--project`, only that
    project's sessions.
@@ -12539,7 +12540,7 @@ Completes [RN-666](#rn-666) (item 4) for 9Router. 0.5.112 ADDS 2,000 to `prompt_
 ### RN-960 — The `GraphStore` reconnects after a boot without Neo4j, and the warning states the cause {#rn-960}
 
 - **Rule:** refines ADR 0099. A boot in which Neo4j did not yet answer left the driver `null` for the life of the process. Now, with a config present, the next operation tries to connect again, at most once every 30 s; without a config it never tries, and `onModuleInit` still does not throw. The `GraphProjector` warning includes the cause of the driver's error.
-- **Where:** `src/infrastructure/graph/graph-store.ts:105` (`reconectarSeNecessario`), `src/application/graph-projection/graph-projector.ts:106` (`drainOnce`).
+- **Where:** `src/infrastructure/graph/graph-store.ts:114` (`reconectarSeNecessario`), `src/application/graph-projection/graph-projector.ts:106` (`drainOnce`).
 - **Test:** `test/infrastructure/graph/graph-store.spec.ts` ("RN-960"), `test/application/graph-projection/graph-projector.spec.ts` ("RN-960").
 - **Origin:** AT-642 (EP-030).
 
@@ -12807,3 +12808,11 @@ is no known password). With no user at all on the installation it answers 409.
 - **Code:** `apps/api/src/application/use-cases/actions/propor-recriacao-do-app.use-case.ts` (`execute`), `apps/api/src/domain/containers/recriar-com-app.ts` (`motivoDeNaoRecriar`, `proximaPortaLivre`), `apps/api/src/application/use-cases/actions/approve-action.use-case.ts` (`proporRecriacaoDoApp`), `apps/api/src/application/use-cases/actions/execute-container-recreate.use-case.ts` (`obterRede`)
 - **Test:** `apps/api/test/domain/containers/recriar-com-app.spec.ts`, `apps/api/test/application/use-cases/actions/propor-recriacao-do-app.use-case.spec.ts`, `apps/api/test/application/use-cases/actions/approve-action-recreate-hook.spec.ts` (hook failure does not undo the merge), `apps/api/test/application/use-cases/actions/execute-container-recreate.use-case.spec.ts` (network written only without a prior one, with the clicker as actor, before `remove`)
 - **Origin:** AT-758 (EP-030), owner decision of 06/11/2026; round 209, lane L1.
+
+### RN-1030 — Every graph node written by `MERGE` on a natural key has a uniqueness constraint, and the boot merges pre-existing duplicates before creating it {#rn-1030}
+
+- **Rule:** refines [RN-569](#rn-569). `Handoff (sessionId, seq)`, `Evento (sessionId, seq)`, `PerfilAnamnese (userId, dimensao)` and `Hipotese (id)` had no constraint, so two concurrent `MERGE`s (the live projector and a reprojection, or two api replicas) created two nodes: the k3d reprojection proof measured `12|9` instead of `9|6`. They now have a uniqueness constraint, and the use cases keep `MERGE`-ing on exactly the constrained key. A composite uniqueness constraint is accepted by Neo4j 5.26 Community (measured; only `NODE KEY` and existence constraints are Enterprise), so no synthetic key property exists.
+- **Boot:** before `CREATE CONSTRAINT`, `GraphStore` merges the duplicates of those four labels already present in an installed graph (the oldest node by `elementId` is kept, every edge of the others is moved to it without duplicating an existing one, then the others are deleted). It is idempotent (without duplicates it writes nothing), runs in one transaction per label, and logs only the number of nodes merged, never their content. A failure keeps the graph off, as any other bootstrap failure ([RN-960](#rn-960)).
+- **Where:** `apps/api/src/infrastructure/graph/graph-store.ts:51` (`CONSTRAINTS`), `apps/api/src/infrastructure/graph/graph-store.ts:160` (`bootstrapConstraints`), `apps/api/src/infrastructure/graph/graph-dedup.ts:34` (`deduplicarNos`).
+- **Test:** `apps/api/test/infrastructure/graph/neo4j-integration.spec.ts` (against a real Neo4j: concurrent writes of the same node give one node; duplicates are merged with their edges kept, the constraints are created afterwards, a second boot changes nothing), `apps/api/test/infrastructure/graph/graph-store.spec.ts` (deduplication runs before the constraints).
+- **Origin:** AT-762 part B (EP-033), owner decision of 06/11/2026; round 214, lane L1.
