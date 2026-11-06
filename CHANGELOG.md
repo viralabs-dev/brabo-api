@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- A terminal `git push` to a protected branch (`dev`, `qa`, `rc`, `main`, also by refspec such as `HEAD:dev`), with `--force`/`-f`/`--force-with-lease`, or with `--all`/`--mirror` is no longer auto-approved in automatic mode: it becomes a pending action for the human (AT-756, RN-1017). Pushing the task's own branch is unchanged.
 - Closing an open question through `POST /internal/projects/:projectId/open-questions/:questionId/answer` now runs as an action effect, so the session channel is notified of `open_question.answered` and the web "open questions" counter updates live (AT-753 UX-1, RN-1002). (api#28)
 - The merge that closes a task wakes the dev agents of the modules that depend on it (AT-746, RN-1009): `settleMerge` appends a `task.became_claimable` outbox row (`cause: dependency_done`) in the same transaction when a task actually became `done`, so idle agents blocked only by `dependsOn` (RN-1005) no longer need a stop and restart of the execution.
 - The root `README.md` and `THIRD_PARTY_NOTICES.md` are English-only (AT-745), with the same content; the notices shipped in the images now read in English.

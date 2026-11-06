@@ -109,7 +109,7 @@ Order: **(a) IAM → (b) `agent_autonomy` → (c) `permissions.json`**. Each
 stage can only **raise** permissiveness; a silent stage never lowers the
 previous one. `deny` at any stage returns immediately.
 
-- **Where:** `src/domain/actions/decide.ts:118`
+- **Where:** `src/domain/actions/decide.ts:119`
 - **Test:** `test/domain/actions/decide.spec.ts` (10 KB — the largest in
   the domain)
 
@@ -118,7 +118,7 @@ previous one. `deny` at any stage returns immediately.
 Before any policy, IAM: each `ActionType` requires a minimum effective
 role. Without it, `deny` with an explicit reason.
 
-- **Where:** `src/domain/actions/decide.ts:115` (`MIN_ROLE_FOR_ACTION_TYPE`)
+- **Where:** `src/domain/actions/decide.ts:116` (`MIN_ROLE_FOR_ACTION_TYPE`)
 - **Test:** `test/domain/actions/decide.spec.ts`
 
 ### RN-006 — Ceiling: merge into a protected branch is never auto-approvable {#rn-006}
@@ -135,7 +135,7 @@ stopped creating it ([RN-029](#rn-029)). This list decides what the lock
 the branch: protecting one that doesn't exist costs nothing; unprotecting
 one that exists costs dearly.
 
-- **Where:** `src/domain/actions/decide.ts:511` (`isProtectedBranch`, o teto da trava de merge) + `protected-branches.ts:4`
+- **Where:** `src/domain/actions/decide.ts:516` (`isProtectedBranch`, o teto da trava de merge) + `protected-branches.ts:4`
 - **Test:** `test/domain/actions/decide.spec.ts`
 - **Origin:** [ADR 0011](../adr/0011-infra-dev-agents-worktrees-merge-lock.md) §1
 - **Note:** the equivalent protection **on the platform** (GitHub/GitLab)
@@ -148,7 +148,7 @@ Changing an agent's instruction always requires a human decision. The
 feature's value is in the human seeing the diff; auto-approving would be
 the agent rewriting itself.
 
-- **Where:** `src/domain/actions/decide.ts:168`
+- **Where:** `src/domain/actions/decide.ts:169`
 - **Test:** `test/domain/actions/decide.spec.ts`
 - **Origin:** [ADR 0016](../adr/0016-anamnese-proficiencia-patches-instrucao.md) §8
 
@@ -7527,7 +7527,7 @@ lines of `permissions.json` repeat the command's TOKENS in the text (the `label`
   (`reason` in the session event payload), `:223` (the comment on the outbox
   without the field), `:227` (the outbox payload, intact), `:356` (the
   `rejectionReason`, which stays only on `deny`);
-  `src/domain/actions/decide.ts:292` (`Decision`, the string's source)
+  `src/domain/actions/decide.ts:293` (`Decision`, the string's source)
 - **Test:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:902`
   (happy path: auto-approval records `agent_autonomy: auto_approve`),
   `:948` (`require_approval` by default and by the merge lock ceiling),
@@ -8352,9 +8352,9 @@ and the agent card shows a sentence under the toggle — only when the WILDCARD 
 on, because the toggle over the representative type writes a specific rule,
 which does not release the scope.
 
-- **Where:** `src/domain/actions/decide.ts:309` (`modoAutomaticoDoAgente`),
-  `src/domain/actions/decide.ts:370` (the synthesized verdict of the
-  compound ignored), `src/domain/actions/decide.ts:455` (the scope
+- **Where:** `src/domain/actions/decide.ts:310` (`modoAutomaticoDoAgente`),
+  `src/domain/actions/decide.ts:371` (the synthesized verdict of the
+  compound ignored), `src/domain/actions/decide.ts:457` (the scope
   ceiling skipped),
   `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
   (`resolve`, with the origin),
@@ -8524,7 +8524,7 @@ SCOPE's root, never where the policy file lives.
   (`segmentoSobABaseDeProjetos`, reused);
   `src/application/use-cases/actions/propose-action.use-case.ts:302`
   (`scopeRoot` only in `terminal`);
-  `src/domain/actions/decide.ts:636` (`terminalNoEscopo`, the only
+  `src/domain/actions/decide.ts:641` (`terminalNoEscopo`, the only
   consumer of the scope)
 - **Test:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:1143`
   (`container`), `:1123` (`mounted`), `:1123` (`runner`), `:1123` (the absolute
@@ -9985,7 +9985,7 @@ path does not exist.
 - **Code:** `src/domain/actions/path-scope.ts:153` (`cwdNoContainer`),
   `:174` (`comandoNoEscopoDoContainer`), `:112` (`comandoNoEscopo`, now with
   several roots), `:137` (`PONTO_DE_MONTAGEM_DO_CONTAINER`);
-  `src/domain/actions/decide.ts:289` (`execucaoNoContainer`), `:648`
+  `src/domain/actions/decide.ts:290` (`execucaoNoContainer`), `:653`
   (`execucaoNoContainer`, in `terminalNoEscopo`);
   `src/application/use-cases/actions/propose-action.use-case.ts:174`
   (`containerExecutionActive`, separate from `execucaoNoContainer`)
@@ -10035,7 +10035,7 @@ list in the three places where the mode is turned on: the Executors' batch card
   `src/application/ports/agent-autonomy-repository.port.ts:5`
   (`AutonomiaResolvida`, with `especifica`);
   `src/application/use-cases/actions/approve-always-action.use-case.ts:263`
-  (`especifica`); `src/domain/actions/decide.ts:309`
+  (`especifica`); `src/domain/actions/decide.ts:310`
   (`modoAutomaticoDoAgente`); `apps/web/src/components/OQueOPilotoLibera.tsx:16`
   (`OQueOPilotoLibera`); `apps/web/src/components/ApprovalCard.tsx:434`,
   `apps/web/src/components/AgentCard.tsx:164`,
@@ -10218,7 +10218,7 @@ timeline).
 
 - **Code:** `src/domain/actions/pattern-for-action.ts:22`
   (`patternsForAction`), `:62` (`unidadeDoSegmento`), `:43` (`SUBCOMANDO`);
-  `src/domain/actions/external-effect.ts:237` (`padraoAlcancaTeto`);
+  `src/domain/actions/external-effect.ts:278` (`padraoAlcancaTeto`);
   `src/application/use-cases/actions/approve-always-action.use-case.ts:277`
   (`faltam`), `:315` (`patternsForAction`)
 - **Test:** `test/domain/actions/pattern-for-action.spec.ts:18`
@@ -10845,8 +10845,8 @@ real PR on the provider, but the owner's decision does not cover them —
 through `decide()`); and `deploy`, which is not a `proposed_action` type — it only
 exists as the destination of the terminal command's message.
 
-- **Where:** `src/domain/actions/decide.ts:427` (`ehAcaoTipadaComEfeitoExterno`);
-  `src/domain/actions/external-effect.ts:258`
+- **Where:** `src/domain/actions/decide.ts:428` (`ehAcaoTipadaComEfeitoExterno`);
+  `src/domain/actions/external-effect.ts:299`
   (`ACOES_TIPADAS_COM_EFEITO_EXTERNO`), `:266` (`ehAcaoTipadaComEfeitoExterno`),
   `:280` (`mensagemDoTetoDaAcaoTipada`);
   `src/application/use-cases/execution/activate-execution.use-case.ts:71`
@@ -11007,8 +11007,8 @@ protected branch, and `git merge`/`gh pr merge` through the terminal), deploy,
 `sudo`/`doas`, `container_remove`, `instruction_patch` and parallelism. The
 toggle back to manual restores approval.
 
-- **Where:** `src/domain/actions/decide.ts:309` (`modoAutomaticoDoAgente`),
-  `:324` (`decide`); `src/domain/actions/external-effect.ts:294`
+- **Where:** `src/domain/actions/decide.ts:310` (`modoAutomaticoDoAgente`),
+  `:325` (`decide`); `src/domain/actions/external-effect.ts:335`
   (`mensagemDoModoAutomaticoNoEfeitoExterno`);
   `apps/web/src/components/OQueOPilotoLibera.tsx`
 - **Test:** `test/domain/actions/decide.spec.ts` (the autopilot releases
@@ -12382,14 +12382,14 @@ Revises [RN-583](#rn-583) (`sort` stops being the only `provider` field that goe
 ### RN-933 — `run.app` declares the app's command and only the autopilot waives approval of the infra PR {#rn-933}
 
 - **Rule:** the `run` of `open_infra_pr` accepts an optional `app: { command, port }` (command up to 300 code points, one line, no NUL; port 1024-65535; `null` is equivalent to absent, as in the engine) validated at proposal and at execution; without `app`, everything is byte for byte what it was before. With `run.app`, the SPECIFIC rule `open_infra_pr: auto_approve` (the acceptance seed) is NOT enough and the decision becomes `require_approval`; only the agent's `auto_approve` WILDCARD (autopilot, RN-603/RN-670) auto-approves. The `container-spec` returns `comandoDoApp` from the current `run.app.command`, or `null`.
-- **Where:** `src/domain/infra/run-instructions.ts:77` (`recusaDoRun`), `src/domain/actions/decide.ts:614` (`comAppDeclarado`), `src/application/use-cases/actions/propose-action.use-case.ts:208` (`comAppDeclarado`), `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:171` (`comandoDoApp`).
+- **Where:** `src/domain/infra/run-instructions.ts:77` (`recusaDoRun`), `src/domain/actions/decide.ts:619` (`comAppDeclarado`), `src/application/use-cases/actions/propose-action.use-case.ts:208` (`comAppDeclarado`), `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:171` (`comandoDoApp`).
 - **Test:** `test/domain/infra/run-app.spec.ts`, `test/domain/actions/decide.spec.ts` (no app + specific = auto; with app + specific = approval; with app + wildcard = auto).
 - **Origin:** AT-610 (EP-030), ADR 0228.
 
 ### RN-934 — `container_recreate` removes and brings up again, under the absolute ceiling of `container_remove` {#rn-934}
 
 - **Rule:** `container_recreate` (`maintainer`) is a `proposed_action` never auto-approvable, not even with the wildcard, and "always allow" is refused at the source (same list as `container_remove`). Execution does `remove` and `start` through the broker passing through `running -> stopped -> removed -> provisioning -> running`; a broker refusal or unavailability becomes a named `failed` (if the bring-up fails, the reason says the container has already been removed). `runner` is refused naming "runner later". The sentence in `aprovacoes.ts` exists and the web test fails a type without a sentence.
-- **Where:** `src/domain/actions/decide.ts:597` (`container_recreate`), `src/application/use-cases/actions/execute-container-recreate.use-case.ts:44` (`execute`), `apps/web/src/lib/aprovacoes.ts:117` (`container_recreate`).
+- **Where:** `src/domain/actions/decide.ts:602` (`container_recreate`), `src/application/use-cases/actions/execute-container-recreate.use-case.ts:44` (`execute`), `apps/web/src/lib/aprovacoes.ts:117` (`container_recreate`).
 - **Test:** `test/application/use-cases/actions/execute-container-recreate.use-case.spec.ts`, `test/domain/actions/decide.spec.ts` (ceiling), `apps/web/src/lib/aprovacoes.test.ts`.
 - **Origin:** AT-608 (EP-030), ADR 0228.
 
@@ -12403,7 +12403,7 @@ Revises [RN-583](#rn-583) (`sort` stops being the only `provider` field that goe
 ### RN-936 — Bringing up the QA instance is the action `qa_environment_start`, seeded `auto_approve` for QA; removing is automatic and outside the `container_remove` ceiling {#rn-936}
 
 - **Rule:** `qa_environment_start` (`developer`, payload `{ taskId }`) is a `proposed_action` seeded `auto_approve` for `qa-automacao` at execution activation; when auto-approved or approved, the api brings the instance up through the broker (a named `failed` if the ceiling is occupied, if the project is `runner` or if the broker refuses). REMOVAL is not a proposal: `POST /internal/projects/:projectId/qa-environments/:taskId/remove` is idempotent and only reaches what the broker labels `brabo.papel=qa`, so it does not enter the absolute ceiling of `container_remove`/`container_recreate`. The `container-exec` accepts `alvo: { qa: true, taskId }` coming from the engine (never from the model) to run in the instance; without a `running` instance it returns `sucesso: false`. The type's sentence exists in `aprovacoes.ts` and the web test fails a type without a sentence.
-- **Where:** `src/domain/actions/decide.ts:196` (`qa_environment_start`), `src/application/use-cases/actions/execute-qa-environment-start.use-case.ts:25` (`execute`), `src/application/use-cases/containers/instancia-de-qa.use-case.ts:120` (`remove`), `apps/web/src/lib/aprovacoes.ts:459` (`qa_environment_start`).
+- **Where:** `src/domain/actions/decide.ts:197` (`qa_environment_start`), `src/application/use-cases/actions/execute-qa-environment-start.use-case.ts:25` (`execute`), `src/application/use-cases/containers/instancia-de-qa.use-case.ts:120` (`remove`), `apps/web/src/lib/aprovacoes.ts:459` (`qa_environment_start`).
 - **Test:** `test/application/use-cases/containers/instancia-de-qa.use-case.spec.ts`, `test/domain/actions/decide.spec.ts`, `apps/web/src/lib/aprovacoes.test.ts`.
 - **Origin:** AT-612 (EP-030), ADR 0229.
 
@@ -12729,3 +12729,11 @@ is no known password). With no user at all on the installation it answers 409.
 - **Code:** `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts` (`settleMerge`, `acordarDependentes`)
 - **Test:** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("acorda os dependentes (RN-1009)": one row with `cause: dependency_done`, repeated merge writes nothing, no map writes nothing), `apps/api/test/infrastructure/persistence/drizzle/dependente-acorda-no-merge.spec.ts` (real Postgres: `auth` claims nothing before the merge, the row exists after it and `auth` claims the task)
 - **Origin:** AT-746 (EP-030); the engine side (outbox -> drain -> wake -> idle agent claims) already exists and is proven by `dev_agent_chain_test.exs`.
+
+### RN-1017 — A terminal `git push` to a protected branch, with force, `--all` or `--mirror` is a human decision, even in automatic mode {#rn-1017}
+
+- **Rule:** narrows [RN-713](#rn-713) for the terminal door only. In automatic mode (the `"*"` wildcard in `auto_approve`) a `git push` typed in the terminal is still auto-approved ONLY when it cannot reach a protected branch or rewrite history. It becomes `require_approval` (a pending `proposed_action`, reason starting `RN-1017`) when any segment of the command (a) pushes to a protected branch (`dev`, `qa`, `rc`, `main`, the list of `isProtectedBranch`), by name or by refspec destination (`HEAD:dev`, `+x:refs/heads/main`), (b) uses `--force`, `-f` (also clustered, as in `-fu`) or `--force-with-lease`, or (c) uses `--all` or `--mirror`. Without this, [RN-014](#rn-014) was bypassable: with the local `git merge` allowed, `checkout dev`, `merge` and `push origin dev` ran with no human and no gates. The push of the task's own branch is unchanged, and so is every non-automatic mode (already `require_approval`, [RN-418](#rn-418)). Known limits: a push with no refspec (`git push origin`) pushes the current branch, which `decide()` cannot see, and the repository's default branch is only covered when it is in the fixed protected list.
+- **Code:** `apps/api/src/domain/actions/external-effect.ts:241` (`pushProibidoNoModoAutomatico`), `apps/api/src/domain/actions/decide.ts:452` (the terminal block of the ceilings)
+- **Test:** `apps/api/test/domain/actions/decide.spec.ts` ("é recusado em modo automático (RN-1017)": `dev`, `main`, `HEAD:dev`, `+HEAD:refs/heads/main`, `--force`, `-f`, `--force-with-lease`, `--all`, `--mirror`, compound; the task branch still passes)
+- **Origin:** AT-756 (EP-030), found in the AT-754 survey (Round 204).
+

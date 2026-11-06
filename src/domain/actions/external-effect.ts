@@ -59,6 +59,8 @@
  * Puro, sem IO.
  */
 
+import { isProtectedBranch } from './protected-branches';
+
 export interface EfeitoExterno {
   /** Como o comando pediu o efeito, para a mensagem. */
   comando: string;
@@ -224,6 +226,45 @@ function casaPrefixo(prefixo: string[], tokens: string[]): boolean {
     }
   }
   return alvo === prefixo.length;
+}
+
+/**
+ * RN-1017 (AT-756): o `git push` de terminal que o modo automático NÃO libera —
+ * destino em branch protegida (`dev`, `main`…), force (`--force`, `-f`,
+ * `--force-with-lease`), `--all` ou `--mirror`. Devolve o motivo ou `null`.
+ * Refspec conta pelo DESTINO (`HEAD:dev`, `+x:refs/heads/main`). Push sem
+ * refspec (`git push origin`) empurra a branch corrente, que não se vê aqui:
+ * segue como a branch da tarefa.
+ * shortcut: a default do repo não chega ao `decide()`, só a lista fixa de
+ * `isProtectedBranch`; passar a default no contexto se ela fugir dessa lista.
+ */
+export function pushProibidoNoModoAutomatico(
+  segmentos: string[][],
+): string | null {
+  for (const tokens of segmentos) {
+    if (tokens[0] !== 'git') continue;
+    const i = tokens.indexOf('push');
+    if (i < 0) continue;
+    const args = tokens.slice(i + 1);
+    const flag = args.find(
+      (a) =>
+        a === '--all' ||
+        a === '--mirror' ||
+        a === '--force' ||
+        a.startsWith('--force-with-lease') ||
+        /^-[a-zA-Z]*f[a-zA-Z]*$/.test(a),
+    );
+    if (flag) return `usa "${flag}"`;
+    // o 1º posicional é o remoto; os demais são refspecs
+    const refspecs = args.filter((a) => !a.startsWith('-')).slice(1);
+    for (const ref of refspecs) {
+      const destino = (ref.split(':').pop() ?? ref)
+        .replace(/^\+/, '')
+        .replace(/^refs\/heads\//, '');
+      if (isProtectedBranch(destino)) return `empurra para "${destino}"`;
+    }
+  }
+  return null;
 }
 
 /**
