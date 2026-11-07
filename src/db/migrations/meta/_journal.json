@@ -582,6 +582,13 @@
       "when": 1793749320020,
       "tag": "0082_married_hannibal_king",
       "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1793800000000,
+      "tag": "0083_folga_do_haiku_5_5",
+      "breakpoints": true
     }
   ]
 }

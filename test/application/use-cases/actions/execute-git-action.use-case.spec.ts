@@ -8,6 +8,7 @@ import type { GitProviderRegistry } from '../../../../src/application/ports/git-
 import type { ProvisionedRepositoryRepository } from '../../../../src/application/ports/provisioned-repository-repository.port';
 import type { UserCredentialRepository } from '../../../../src/application/ports/user-credential-repository.port';
 import type { EncryptionService } from '../../../../src/application/ports/encryption.port';
+import type { ModuleMapRepository } from '../../../../src/application/ports/module-map-repository.port';
 import type { TaskRepository } from '../../../../src/application/ports/backlog-repository.port';
 import type { AppendSessionEventUseCase } from '../../../../src/application/use-cases/sessions/append-session-event.use-case';
 import type { ProposedAction } from '../../../../src/domain/actions/proposed-action.entity';
@@ -110,6 +111,7 @@ function build(overrides: {
   provider?: Record<string, unknown>;
   repo?: unknown;
   credenciais?: FakeCredenciais;
+  mapa?: Array<{ name: string; dependsOn: string[] }>;
 }) {
   proposedActions = new FakeProposedActions();
   tasks = new FakeTasks();
@@ -140,6 +142,10 @@ function build(overrides: {
       execute: () => Promise.resolve(OWNER),
     } as unknown as ResolveCredentialOwnerUseCase,
     tasks as unknown as TaskRepository,
+    {
+      findCurrent: () =>
+        Promise.resolve(overrides.mapa ? { modules: overrides.mapa } : null),
+    } as unknown as ModuleMapRepository,
   );
 }
 
@@ -204,7 +210,7 @@ describe('ExecuteGitActionUseCase', () => {
                 url: 'local://repo/pull/8',
                 state: 'open',
                 sourceBranch: 'feature/x',
-                targetBranch: 'dev',
+                targetBranch: 'main',
               },
             ],
             truncated: false,
@@ -218,7 +224,7 @@ describe('ExecuteGitActionUseCase', () => {
     await uc.execute(
       PROJECT,
       SESSION,
-      action('pr_open', { sourceBranch: 'feature/x', targetBranch: 'dev' }),
+      action('pr_open', { sourceBranch: 'feature/x', targetBranch: 'main' }),
     );
     expect(abriu).toBe(false);
     expect(proposedActions.saved?.status).toBe('executed');
@@ -239,7 +245,7 @@ describe('ExecuteGitActionUseCase', () => {
             number: 9,
             url: 'local://repo/pull/9',
             sourceBranch: 'feature/x',
-            targetBranch: 'dev',
+            targetBranch: 'main',
             state: 'open',
           }),
       },
@@ -247,7 +253,7 @@ describe('ExecuteGitActionUseCase', () => {
     await uc.execute(
       PROJECT,
       SESSION,
-      action('pr_open', { sourceBranch: 'feature/x', targetBranch: 'dev' }),
+      action('pr_open', { sourceBranch: 'feature/x', targetBranch: 'main' }),
     );
     expect(proposedActions.saved?.result).toMatchObject({
       pullRequestId: 'pr-9',
@@ -256,8 +262,8 @@ describe('ExecuteGitActionUseCase', () => {
   });
 
   // RN-664 (AT-250): `pr_open` sem `targetBranch` (proposto antes de o dev
-  // agent mandar o campo) mira `dev`, não a `defaultBranch` do repositório.
-  it('pr_open sem targetBranch mira `dev`, não a defaultBranch', async () => {
+  // agent mandar o campo) mira `main`, não a `defaultBranch` do repositório.
+  it('pr_open sem targetBranch mira `main`, não a defaultBranch', async () => {
     let alvo: string | undefined;
     const uc = build({
       provider: {
@@ -279,10 +285,10 @@ describe('ExecuteGitActionUseCase', () => {
       SESSION,
       action('pr_open', { sourceBranch: 'feature/x', title: 'X' }),
     );
-    expect(alvo).toBe('dev');
+    expect(alvo).toBe('main');
     expect(proposedActions.saved?.result).toMatchObject({
       kind: 'pr_open',
-      targetBranch: 'dev',
+      targetBranch: 'main',
     });
   });
 
@@ -368,13 +374,13 @@ describe('ExecuteGitActionUseCase', () => {
         pullRequestUrl: 'local://x',
         pullRequestId,
         sourceBranch: 'feature/x',
-        targetBranch: 'dev',
+        targetBranch: 'main',
       };
       return a;
     }
     const merge = (state = 'merged') => ({
       mergePullRequest: () =>
-        Promise.resolve({ id: 'pr-6', state, targetBranch: 'dev' }),
+        Promise.resolve({ id: 'pr-6', state, targetBranch: 'main' }),
     });
 
     it('marca done a tarefa cuja PR foi mergeada e grava UM evento imutável', async () => {
@@ -423,6 +429,61 @@ describe('ExecuteGitActionUseCase', () => {
       ).toHaveLength(1);
     });
 
+    // RN-1009 (AT-746): o merge que fecha a tarefa acorda os módulos com dependência.
+    describe('acorda os dependentes (RN-1009)', () => {
+      const mapa = [
+        { name: 'persistence', dependsOn: [] },
+        { name: 'auth', dependsOn: ['persistence'] },
+      ];
+      const claimables = () =>
+        outboxRows.filter((r) => r.eventType === 'task.became_claimable');
+      const mergear = (uc: ExecuteGitActionUseCase) =>
+        uc.execute(
+          PROJECT,
+          SESSION,
+          action('git_merge', { pullRequestId: 'pr-6' }),
+        );
+
+      it('grava UMA linha com os módulos com dependsOn e cause dependency_done', async () => {
+        const uc = build({ provider: merge(), mapa });
+        proposedActions.prOpens = [prOpenDaTarefa('t1', 'pr-6')];
+        await mergear(uc);
+        expect(claimables()).toHaveLength(1);
+        expect(claimables()[0]).toMatchObject({
+          aggregateType: 'task',
+          aggregateId: 't1',
+          payload: {
+            projectId: PROJECT,
+            sessionId: SESSION,
+            taskId: 't1',
+            modules: ['auth'],
+            cause: 'dependency_done',
+          },
+        });
+      });
+
+      it('merge repetido (tarefa já done) não grava de novo', async () => {
+        const uc = build({ provider: merge(), mapa });
+        proposedActions.prOpens = [prOpenDaTarefa('t1', 'pr-6')];
+        await mergear(uc);
+        await mergear(uc);
+        expect(claimables()).toHaveLength(1);
+      });
+
+      it('sem module_map, ou sem dependsOn, não grava', async () => {
+        const sem = build({ provider: merge() });
+        proposedActions.prOpens = [prOpenDaTarefa('t1', 'pr-6')];
+        await mergear(sem);
+        const plano = build({
+          provider: merge(),
+          mapa: [{ name: 'a', dependsOn: [] }],
+        });
+        proposedActions.prOpens = [prOpenDaTarefa('t1', 'pr-6')];
+        await mergear(plano);
+        expect(claimables()).toHaveLength(0);
+      });
+    });
+
     it('PR que não terminou `merged`, ou merge que falhou, não toca a tarefa', async () => {
       const aberta = build({ provider: merge('open') });
       proposedActions.prOpens = [prOpenDaTarefa('t1', 'pr-6')];
@@ -446,6 +507,76 @@ describe('ExecuteGitActionUseCase', () => {
       );
       expect(proposedActions.saved?.status).toBe('failed');
       expect(tasks.chamadas).toEqual([]);
+    });
+
+    // RN-1022: o merge na branch de trabalho (`main`, trunk) avisa o engine.
+    describe('project.trunk_merged (RN-1022)', () => {
+      const trunk = () =>
+        outboxRows.filter((r) => r.eventType === 'project.trunk_merged');
+      const mergeCom = (state: string, targetBranch: string) => ({
+        mergePullRequest: () =>
+          Promise.resolve({ id: 'pr-6', state, targetBranch }),
+        listBranches: () =>
+          Promise.resolve([
+            { name: 'main', commitSha: 'abc123', protected: true },
+          ]),
+      });
+
+      it('merge na main grava o evento com projectId e mergedSha', async () => {
+        const uc = build({ provider: mergeCom('merged', 'main') });
+        await uc.execute(
+          PROJECT,
+          SESSION,
+          action('git_merge', { pullRequestId: 'pr-6' }),
+        );
+        expect(trunk()).toHaveLength(1);
+        expect(trunk()[0].payload).toEqual({
+          projectId: PROJECT,
+          sessionId: SESSION,
+          mergedSha: 'abc123',
+        });
+      });
+
+      it('vale também para PR sem tarefa (infra/ADR)', async () => {
+        const uc = build({ provider: mergeCom('merged', 'main') });
+        proposedActions.prOpens = [];
+        await uc.execute(
+          PROJECT,
+          SESSION,
+          action('git_merge', { pullRequestId: 'pr-6' }),
+        );
+        expect(trunk()).toHaveLength(1);
+      });
+
+      it('sem listBranches o evento sai mesmo assim (sha vazio)', async () => {
+        const uc = build({ provider: merge() });
+        await uc.execute(
+          PROJECT,
+          SESSION,
+          action('git_merge', { pullRequestId: 'pr-6' }),
+        );
+        expect(trunk()[0].payload).toEqual({
+          projectId: PROJECT,
+          sessionId: SESSION,
+          mergedSha: '',
+        });
+      });
+
+      it('PR não mergeada, falha ou destino fora da main não gravam', async () => {
+        for (const provider of [
+          mergeCom('open', 'main'),
+          mergeCom('merged', 'feature/x'),
+          { mergePullRequest: () => Promise.reject(new Error('conflito')) },
+        ]) {
+          const uc = build({ provider });
+          await uc.execute(
+            PROJECT,
+            SESSION,
+            action('git_merge', { pullRequestId: 'pr-6' }),
+          );
+          expect(trunk()).toHaveLength(0);
+        }
+      });
     });
 
     it('PR sem tarefa (infra/ADR) não muda nada', async () => {

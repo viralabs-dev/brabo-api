@@ -71,8 +71,10 @@ class FakeTasks {
 
 class FakeAppend {
   calls: string[] = [];
-  execute(_p: string, _s: string, input: { type: string }) {
+  actors: unknown[] = [];
+  execute(_p: string, _s: string, input: { type: string; actor?: unknown }) {
     this.calls.push(input.type);
+    this.actors.push(input.actor);
     return Promise.resolve({} as never);
   }
 }
@@ -114,6 +116,19 @@ describe('CreateTaskUseCase', () => {
 
     expect(task.storyId).toBe('story-1');
     expect(append.calls).toEqual(['backlog.task_created']);
+  });
+
+  it('o ator do evento é po por padrão e dev_lead quando informado', async () => {
+    await useCase.execute(PROJECT, SESSION, { storyId: 'story-1', title: 't' });
+    await useCase.execute(PROJECT, SESSION, {
+      storyId: 'story-1',
+      title: 't',
+      actorId: 'dev_lead',
+    });
+    expect(append.actors).toEqual([
+      { kind: 'agent', id: 'po' },
+      { kind: 'agent', id: 'dev_lead' },
+    ]);
   });
 
   it('story inexistente ou de outro projeto: rejeita', async () => {

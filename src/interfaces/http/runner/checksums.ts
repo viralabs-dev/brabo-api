@@ -29,7 +29,7 @@ export const NOME_DO_BUNDLE_DE_ASSINATURA = 'checksums.txt.bundle';
  * sozinho não basta: esta rota tem SEIS desfechos de 502 que o cliente
  * precisa distinguir, e três deles pedem ações diferentes de quem chamou —
  * "essa plataforma não foi publicada" manda esperar a próxima release,
- * "release sem manifesto" manda usar `npm install -g @brabo/runner`
+ * "release sem manifesto" manda abrir uma issue no `brabo-runner`
  * ([RN-473](../../../../../../docs/business-rules.md#rn-473)), e "hash
  * divergente" é incidente. Colapsar os três num 502 mudo seria a tela
  * afirmando menos do que a api sabe.

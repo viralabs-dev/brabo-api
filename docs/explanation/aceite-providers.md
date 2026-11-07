@@ -26,7 +26,8 @@ linha na Fase 11, e ainda assim não é execução.
 
 Outro eixo, a mesma régua. A suite de contrato agora prova onde cada adapter
 põe um `role: "system"` que chega DEPOIS de `user` ou `tool` (no fim de
-`messages` em oito; içado para o `system` do topo no Anthropic — ver
+`messages` em oito; movido para o fim do último turno `user` no Anthropic
+direto (RN-1015) — ver
 [a tabela de divergências](../reference/llm-providers.md#a-system-message-at-the-end-of-the-conversation-at-161)).
 Se o provider ACEITA esse corpo é o que
 `sistema-tardio.smoke.spec.ts` pergunta, e só uma chamada real responde:

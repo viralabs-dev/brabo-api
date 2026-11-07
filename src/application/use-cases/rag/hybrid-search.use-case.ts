@@ -19,6 +19,7 @@ import {
 } from '../../../domain/rag/rag-telemetry';
 import {
   RAG_SEARCH_LEXICAL_CANDIDATES,
+  RAG_SEARCH_MAX_CHUNKS_PER_FILE,
   RAG_SEARCH_RESULT_LIMIT,
   RAG_SEARCH_SCORE_THRESHOLD,
   RAG_SEARCH_VECTOR_CANDIDATES,
@@ -43,6 +44,31 @@ export interface HybridSearchInput {
    * porque `session_events.session_id` é `NOT NULL`.
    */
   sessionId?: string | null;
+  /** Teto de trechos por arquivo (RN-1046). Ausente = `RAG_SEARCH_MAX_CHUNKS_PER_FILE`. */
+  maxPerFile?: number;
+  /**
+   * Diagnóstico (golden-set): recebe TODOS os candidatos que passaram do
+   * limiar, ordenados, ANTES do teto por arquivo e do corte em `limit`.
+   */
+  onCandidatos?: (candidatos: HybridSearchHit[]) => void;
+}
+
+/**
+ * Mantém só os `maxPerFile` melhores trechos de cada arquivo, na ordem
+ * recebida (já por score). O melhor de cada arquivo nunca cai. Trecho sem
+ * arquivo (sessão) não entra na conta.
+ */
+export function limitarPorArquivo(
+  hits: HybridSearchHit[],
+  maxPerFile: number,
+): HybridSearchHit[] {
+  const vistos = new Map<string, number>();
+  return hits.filter((hit) => {
+    if (hit.origin.kind !== 'file') return true;
+    const n = (vistos.get(hit.origin.sourcePath) ?? 0) + 1;
+    vistos.set(hit.origin.sourcePath, n);
+    return n <= Math.max(1, maxPerFile);
+  });
 }
 
 const QUERY_MIN = 2;
@@ -145,7 +171,8 @@ export class HybridSearchUseCase {
         });
     }
 
-    const hits: HybridSearchHit[] = [...combinados.values()]
+    const maxPerFile = input.maxPerFile ?? RAG_SEARCH_MAX_CHUNKS_PER_FILE;
+    const candidatos: HybridSearchHit[] = [...combinados.values()]
       .map(({ chunk, vectorScore, lexicalScore }) => ({
         chunkId: chunk.id,
         scope: chunk.scope,
@@ -158,8 +185,9 @@ export class HybridSearchUseCase {
         origin: origemDoChunk(chunk),
       }))
       .filter((hit) => hit.score >= RAG_SEARCH_SCORE_THRESHOLD)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
+      .sort((a, b) => b.score - a.score);
+    input.onCandidatos?.(candidatos);
+    const hits = limitarPorArquivo(candidatos, maxPerFile).slice(0, limit);
 
     const latencyMs = Date.now() - comecou;
 
@@ -169,6 +197,7 @@ export class HybridSearchUseCase {
       hits,
       available,
       latencyMs,
+      maxPerFile,
     });
 
     return {
@@ -199,6 +228,7 @@ export class HybridSearchUseCase {
       hits: HybridSearchHit[];
       available: boolean;
       latencyMs: number;
+      maxPerFile: number;
     },
   ): Promise<string | null> {
     const ator = input.actor ?? ATOR_DESCONHECIDO;
@@ -225,7 +255,7 @@ export class HybridSearchUseCase {
         hits: hitsTelemetria,
         degraded: !medida.available,
         vectorAvailable: medida.available,
-        pesos: pesosVigentes(),
+        pesos: pesosVigentes(medida.maxPerFile),
         latencyMs: medida.latencyMs,
       });
       searchId = registro.id;

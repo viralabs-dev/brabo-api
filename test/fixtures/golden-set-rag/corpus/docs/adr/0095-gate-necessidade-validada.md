@@ -1,165 +1,167 @@
-# ADR 0095 — O gate `necessidade-validada` se fecha com confirmação humana separada, não com o Criativo se autovalidando
+# ADR 0095 — The `necessidade-validada` gate closes with a separate human confirmation, not with the Creative self-validating
 
-- **Status:** Aceito
-- **Data:** 2026-08-17
-- **Contexto:** auditoria fluxo.yml × código (Onda 6/última, item B2,
-  `docs/explanation/auditoria-fluxo-vs-codigo.md`, seção D)
-- **Estende:** [ADR 0054](0054-gates-como-registro-declarativo.md) (dono do
-  desenho de `docs/gates.yml`)
-- **Referências:** `docs/explanation/modelo-de-time.md` — o anti-padrão que
-  motiva esta decisão já estava registrado ali como pendência
+- **Status:** Accepted
+- **Date:** 2026-08-17
+- **Context:** fluxo.yml × code audit (Wave 6/last, item B2,
+  `docs/explanation/auditoria-fluxo-vs-codigo.md`, section D)
+- **Extends:** [ADR 0054](0054-gates-como-registro-declarativo.md) (owner
+  of the `docs/gates.yml` design)
+- **References:** `docs/explanation/modelo-de-time.md` — the anti-pattern
+  motivating this decision was already recorded there as a pending item
 
-## Contexto
+## Context
 
-`docs/fluxo.yml` (papel `criativo`) declara `gate_saida: { id:
-necessidade-validada, status: proposto }` desde o ADR 0085 (v3 do fluxo).
-O gate nunca existiu de verdade: não há entrada em `docs/gates.yml`, nem
-mecanismo nenhum em código. `docs/explanation/modelo-de-time.md` já
-registrava o motivo de ele ter ficado parado, na lista "Propostas
-pendentes de decisão":
+`docs/fluxo.yml` (`criativo` role) declares `gate_saida: { id:
+necessidade-validada, status: proposto }` since ADR 0085 (fluxo v3). The
+gate never really existed: there's no entry in `docs/gates.yml`, nor any
+mechanism in code. `docs/explanation/modelo-de-time.md` already recorded
+why it stayed stalled, in the "Proposals pending decision" list:
 
-> Anti-padrão do Criativo como validação real do gate
-> `necessidade-validada`.
+> Anti-pattern of the Creative acting as the real validator of the
+> `necessidade-validada` gate.
 
-O anti-padrão é este: o Criativo é o agente que PRODUZ a necessidade de
-negócio (via `emit_artifact`/`confirm_readiness`, consolidada num
-`artifact.product_brief`). Se o próprio modelo decidisse quando essa
-necessidade está "validada" — por exemplo, inferindo prontidão da
-conversa —, o gate seria o autor se autoavaliando, não um portão de
-verdade. Um gate sem verificação independente não mede nada; só finge que
-mede.
+The anti-pattern is this: the Creative is the agent that PRODUCES the
+business need (via `emit_artifact`/`confirm_readiness`, consolidated into
+an `artifact.product_brief`). If the model itself decided when that need
+is "validated" — for example, inferring readiness from the conversation —,
+the gate would be the author grading himself, not a real checkpoint. A
+gate with no independent verification measures nothing; it just pretends
+to measure.
 
-### O que já existe e não é isto
+### What already exists and is NOT this
 
-- **`confirm_readiness`/RN-142** — o piso estrutural: recusa quando ZERO
-  regras de negócio foram capturadas na sessão (`CriativoServer`,
-  `handle_call(:confirm_readiness, ...)`). É checagem de FORMA (existe
-  conteúdo?), não de MÉRITO (o conteúdo está certo?). Continua valendo
-  exatamente como está — este ADR não mexe nele.
-- **`AcceptHandoffUseCase`** — o aceite do handoff pelo PO é estrutural:
-  transiciona o handoff para `accepted` e ativa o agente destino. Não
-  julga o CONTEÚDO do que está aceitando; é o mesmo mecanismo genérico que
-  todo handoff usa (QA aceitando de dev, Dev Lead aceitando do Arquiteto
-  etc.). Tratar esse aceite como "validação da necessidade" reaproveitaria
-  silenciosamente um evento que significa outra coisa.
+- **`confirm_readiness`/RN-142** — the structural floor: refuses when ZERO
+  business rules have been captured in the session (`CriativoServer`,
+  `handle_call(:confirm_readiness, ...)`). It's a check of FORM (does
+  content exist?), not of MERIT (is the content right?). It keeps working
+  exactly as it is — this ADR doesn't touch it.
+- **`AcceptHandoffUseCase`** — the PO accepting the handoff is structural:
+  it transitions the handoff to `accepted` and activates the destination
+  agent. It doesn't judge the CONTENT of what it's accepting; it's the
+  same generic mechanism every handoff uses (QA accepting from dev, Dev
+  Lead accepting from the Architect, etc.). Treating that acceptance as
+  "validating the need" would silently repurpose an event that means
+  something else.
 
-Nenhum dos dois é gate de mérito. O que falta é um terceiro mecanismo,
-deliberado.
+Neither one is a merit gate. What's missing is a third, deliberate
+mechanism.
 
-## Decisão
+## Decision
 
-**O gate se fecha com um clique explícito e SEPARADO do usuário** — mesmo
-padrão interacional de "Confirmar arquitetura pronta"
-([RN-160](../business-rules/autenticacao.md#rn-160)): um botão dedicado em
-`SessionPage.tsx`, uma rota HTTP dedicada
-(`POST .../agents/criativo/validate-necessity`), um caso de uso dedicado
-(`ValidateNecessityUseCase`) que grava o evento de domínio
+**The gate closes with an explicit click, SEPARATE from the user** — the
+same interaction pattern as "Confirm architecture ready"
+([RN-160](../business-rules/autenticacao.md#rn-160)): a dedicated button in
+`SessionPage.tsx`, a dedicated HTTP route
+(`POST .../agents/criativo/validate-necessity`), a dedicated use case
+(`ValidateNecessityUseCase`) that writes the domain event
 `necessity.validated` ([RN-406](../business-rules.md#rn-406)).
 
-### Encadeamento: depois de `confirm_readiness`, não em paralelo com ele
+### Sequencing: after `confirm_readiness`, not in parallel with it
 
-Duas ordens eram razoáveis: (a) o botão de validação só habilita DEPOIS
-que `confirm_readiness` já rodou (o `product_brief` existe); ou (b) os
-dois botões coexistem, cada um com sua própria pré-condição, sem relação
-de ordem entre si.
+Two orderings were reasonable: (a) the validation button only enables
+AFTER `confirm_readiness` has already run (the `product_brief` exists); or
+(b) the two buttons coexist, each with its own precondition, with no
+ordering relationship between them.
 
-Escolhida (a). O argumento decisivo: **não faz sentido "validar" um
-`product_brief` que ainda não foi consolidado** — `necessidade-validada`
-é gate de SAÍDA do Criativo no `docs/fluxo.yml`, o momento em que o
-trabalho dele já produziu um artefato concreto para o usuário julgar. A
-opção (b) permitiria validar a necessidade ANTES de existir o resumo
-executivo que a representa, o que inverteria a ordem do próprio fluxo (a
-necessidade É o `product_brief` consolidado — não a conversa livre que o
-precede). `hasProductBrief` (`events.some(e => e.type ===
-'artifact.product_brief')`) é a pré-condição do botão novo, no mesmo
-padrão de `hasBusinessRule`/`hasPromotedStory` que já guardam os dois
-botões vizinhos.
+Option (a) was chosen. The decisive argument: **it makes no sense to
+"validate" a `product_brief` that hasn't been consolidated yet** —
+`necessidade-validada` is an OUTPUT gate of the Creative in
+`docs/fluxo.yml`, the moment his work has already produced a concrete
+artifact for the user to judge. Option (b) would allow validating the need
+BEFORE the executive summary representing it even exists, which would
+invert the flow's own order (the need IS the consolidated
+`product_brief` — not the free-form conversation that precedes it).
+`hasProductBrief` (`events.some(e => e.type ===
+'artifact.product_brief')`) is the new button's precondition, in the same
+pattern as `hasBusinessRule`/`hasPromotedStory`, which already guard the
+two neighboring buttons.
 
-### Por que NÃO sinaliza o engine
+### Why it does NOT signal the engine
 
-Diferente de `OfferInfraHandoffUseCase` (RN-160/[ADR 0086](0086-dev-lead-plano-suspende-para-aprovacao.md)),
-que dispara `engineClient.offerInfraHandoff`/`offerDevHandoff` porque a
-CONFIRMAÇÃO é o que ativa o próximo passo, aqui o handoff Criativo→PO **já
-aconteceu** dentro do próprio `confirm_readiness`
-(`CriativoServer.executar_confirm_readiness/1` chama
-`EngineApiClient.create_handoff` antes mesmo deste gate existir). Não há
-nenhum agente esperando por `necessity.validated` para agir — o evento é
-só o registro de que um humano confirmou o mérito do que já foi
-entregue. `ValidateNecessityUseCase` não tem porta para o engine no
-construtor, de propósito: nada além de `SessionEventRepository` (ler o
-`product_brief` mais recente) e `AppendSessionEventUseCase` (gravar).
+Unlike `OfferInfraHandoffUseCase` (RN-160/[ADR 0086](0086-dev-lead-plano-suspende-para-aprovacao.md)),
+which fires `engineClient.offerInfraHandoff`/`offerDevHandoff` because the
+CONFIRMATION is what activates the next step, here the Creative→PO handoff
+**already happened** inside `confirm_readiness` itself
+(`CriativoServer.executar_confirm_readiness/1` calls
+`EngineApiClient.create_handoff` even before this gate existed). No agent
+is waiting on `necessity.validated` to act — the event is just the record
+that a human confirmed the merit of what was already delivered.
+`ValidateNecessityUseCase` has no engine port in its constructor, on
+purpose: nothing beyond `SessionEventRepository` (read the most recent
+`product_brief`) and `AppendSessionEventUseCase` (write).
 
-### `docs/gates.yml`: `warn`, não `block`
+### `docs/gates.yml`: `warn`, not `block`
 
-`aprovacao_humana: true` (é literalmente um clique humano) e `verificacao:
-script` (o script de validação já pode extrair `necessity.validated` do
-event log). Mas `severidade: warn`: nenhum mecanismo do produto hoje
-CONSULTA se este gate passou antes de deixar o PO seguir — diferente de
-`story-promovida`/`plano-de-adocao` (`block`, porque uma trava real de
-código os impede de serem pulados), este gate é medição, não portão.
-Mesmo espírito do comentário já usado em `implementavel`: "nasce `warn`
-mesmo quando ativar". Se um mecanismo bloqueante nascer depois (ex.: o PO
-recusando trabalhar sem a validação), a promoção para `block` é decisão
-de produto nova, com seu próprio ADR — não implícita nesta entrega.
+`aprovacao_humana: true` (it's literally a human click) and `verificacao:
+script` (the validation script can already extract `necessity.validated`
+from the event log). But `severidade: warn`: no mechanism in the product
+today CHECKS whether this gate has passed before letting the PO continue —
+unlike `story-promovida`/`plano-de-adocao` (`block`, because a real code
+lock prevents them from being skipped), this gate is a measurement, not a
+gatekeeper. Same spirit as the comment already used for `implementavel`:
+"born `warn` even once activated". If a blocking mechanism is born later
+(e.g., the PO refusing to work without the validation), promoting to
+`block` is a new product decision, with its own ADR — not implicit in
+this delivery.
 
-## Consequências
+## Consequences
 
-**A favor**
+**For**
 
-- Fecha a ÚLTIMA das seis ondas do plano da auditoria fluxo.yml × código
-  (`docs/explanation/auditoria-fluxo-vs-codigo.md`, seção D) — as seis
-  fecharam (a 3, 4 e 5 tinham sido antecipadas fora de ordem pelos ADRs
-  0089/0090; a 1 e a 2 fecharam nos PRs anteriores; esta é a 6ª e
-  última).
-- `docs/gates.yml` deixa de ter um gate de papel `active` sem registro —
-  a última lacuna desse tipo que a auditoria apontou.
-- O mecanismo é reconhecível: quem já leu "Confirmar arquitetura pronta"
-  (RN-160) lê este de graça — mesmo padrão de botão dedicado + pré-condição
-  + evento próprio.
+- Closes the LAST of the six waves of the fluxo.yml × code audit plan
+  (`docs/explanation/auditoria-fluxo-vs-codigo.md`, section D) — all six
+  are closed (waves 3, 4 and 5 had been brought forward out of order by
+  ADRs 0089/0090; waves 1 and 2 closed in prior PRs; this is the 6th and
+  last).
+- `docs/gates.yml` no longer has an `active`-role gate with no
+  registration — the last gap of that kind the audit pointed out.
+- The mechanism is recognizable: whoever has already read "Confirm
+  architecture ready" (RN-160) gets this one for free — the same pattern
+  of dedicated button + precondition + dedicated event.
 
-**Contra**
+**Against**
 
-- Mais um clique no fluxo do Criativo, quando `confirm_readiness` já
-  produz o `product_brief` e o handoff sozinho. Aceito: é exatamente esse
-  clique a mais que separa "o modelo decidiu" de "o humano validou" — sem
-  ele, não haveria gate nenhum, só o mesmo mecanismo de sempre com um nome
-  novo.
-- O gate `warn` não impede NADA de seguir sem ele — um projeto pode viver
-  para sempre com `necessidade-validada` nunca acionado, e o PO segue
-  trabalhando normalmente. Aceito de propósito: inventar um bloqueio sem
-  ninguém do produto tendo pedido um portão duro seria a mesma classe de
-  erro que os ADRs 0041/0042/0077 já recusam para capability/nota
-  inventada — declarar o gate como medição honesta é melhor que fingir
-  que ele trava algo que não trava.
+- One more click in the Creative's flow, when `confirm_readiness` already
+  produces the `product_brief` and the handoff by itself. Accepted: it's
+  exactly this extra click that separates "the model decided" from "the
+  human validated" — without it, there would be no gate at all, just the
+  same old mechanism with a new name.
+- The `warn` gate blocks NOTHING from proceeding without it — a project
+  can live forever with `necessidade-validada` never triggered, and the
+  PO keeps working normally. Accepted on purpose: inventing a hard block
+  with no one in the product having asked for one would be the same class
+  of error that ADRs 0041/0042/0077 already refuse for
+  invented capability/rating — declaring the gate as an honest
+  measurement is better than pretending it blocks something it doesn't.
 
-## Alternativas consideradas
+## Alternatives considered
 
-**Reaproveitar `confirm_readiness` — um único botão que já conta como as
-duas coisas.** Recusada explicitamente pelo pedido que originou este ADR:
-`confirm_readiness`/RN-142 é piso estrutural ("existe pelo menos 1 regra
-capturada"), não julgamento de mérito sobre o CONTEÚDO da necessidade.
-Fundir os dois manteria o piso raso disfarçado de gate novo.
+**Reuse `confirm_readiness` — a single button that already counts as
+both.** Rejected explicitly by the request that originated this ADR:
+`confirm_readiness`/RN-142 is a structural floor ("at least 1 rule was
+captured"), not a merit judgment on the CONTENT of the need. Merging the
+two would keep the shallow floor disguised as a new gate.
 
-**O Criativo (o modelo) decide sozinho, via ferramenta nova
-(`confirm_necessity_validated` como tool call).** Recusada: é o
-anti-padrão que este ADR existe para evitar — o mesmo agente que produziu
-o `product_brief` não pode ser quem certifica que ele está certo.
+**The Creative (the model) decides on his own, via a new tool call
+(`confirm_necessity_validated`).** Rejected: it's the anti-pattern this
+ADR exists to avoid — the same agent that produced the `product_brief`
+cannot be the one certifying it's correct.
 
-**Tratar `AcceptHandoffUseCase` (o PO aceitando o handoff) como a
-validação.** Recusada: o aceite é estrutural e genérico a TODO handoff do
-produto — mudar o que ele significa só para esta origem quebraria a
-leitura "aceitar = comecei a trabalhar" que QA, Infra e Dev Lead também
-dependem dela ter.
+**Treat `AcceptHandoffUseCase` (the PO accepting the handoff) as the
+validation.** Rejected: the acceptance is structural and generic to EVERY
+handoff in the product; changing what it means just for this origin would
+break the "accept = I started working" reading that QA, Infra and Dev
+Lead also depend on it having.
 
-**`severidade: block` desde já, travando o PO até a necessidade ser
-validada.** Recusada: exigiria inventar um mecanismo de bloqueio (ex.:
-`ActivateAgentUseCase` recusando ativar o PO sem `necessity.validated`)
-que ninguém pediu e que não existe hoje para nenhum gate equivalente
-(`arquitetura-pronta`/RN-160 também não bloqueia nada no backend fora da
-revalidação de história promovida). Fica registrado como possibilidade
-futura, não como parte desta entrega.
+**`severidade: block` from the start, blocking the PO until the need is
+validated.** Rejected: it would require inventing a blocking mechanism
+(e.g., `ActivateAgentUseCase` refusing to activate the PO without
+`necessity.validated`) that nobody asked for and that doesn't exist today
+for any equivalent gate (`arquitetura-pronta`/RN-160 also doesn't block
+anything on the backend beyond re-validating a promoted story). Recorded
+as a future possibility, not part of this delivery.
 
-## Referências
+## References
 
 - `apps/api/src/application/use-cases/agents/validate-necessity.use-case.ts`
 - `apps/api/src/interfaces/http/agents/agents.controller.ts`
@@ -167,10 +169,10 @@ futura, não como parte desta entrega.
 - `apps/web/src/routes/SessionPage.tsx` (`hasProductBrief`,
   `necessidadeJaValidada`, `handleValidateNecessity`)
 - `docs/gates.yml` — gate `necessidade-validada`
-- `docs/fluxo.yml` — papel `criativo`, `gate_saida`
+- `docs/fluxo.yml` — `criativo` role, `gate_saida`
 - [RN-406](../business-rules.md#rn-406)
-- [RN-160](../business-rules/autenticacao.md#rn-160) — o padrão interacional copiado
-- `docs/explanation/modelo-de-time.md` — o anti-padrão que motivou a
-  decisão (removido da lista de pendências por este ADR)
-- `docs/explanation/auditoria-fluxo-vs-codigo.md` — achado B2, seção D
-  (Onda 6, última do plano)
+- [RN-160](../business-rules/autenticacao.md#rn-160) — the interaction pattern copied
+- `docs/explanation/modelo-de-time.md` — the anti-pattern that motivated
+  the decision (removed from the pending list by this ADR)
+- `docs/explanation/auditoria-fluxo-vs-codigo.md` — finding B2, section D
+  (Wave 6, last of the plan)

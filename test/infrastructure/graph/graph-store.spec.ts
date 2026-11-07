@@ -2,6 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GraphUnavailableError } from '../../../src/domain/graph/graph-errors';
 import { GraphStore } from '../../../src/infrastructure/graph/graph-store';
 
+const deduplicarNos = vi.fn();
+vi.mock('../../../src/infrastructure/graph/graph-dedup', () => ({
+  deduplicarNos: (...args: unknown[]): unknown => deduplicarNos(...args),
+}));
+
 const verifyConnectivity = vi.fn();
 const driverClose = vi.fn();
 const sessionRun = vi.fn();
@@ -130,9 +135,22 @@ describe('GraphStore', () => {
     await store.onModuleInit();
 
     expect(store.disponivel).toBe(true);
-    // As 6 constraints (4 pedidas + Interacao.sessionId + FatoDoPerfil.hypothesisId) rodaram.
-    expect(sessionRun).toHaveBeenCalledTimes(6);
+    // As 10 constraints (6 anteriores + as 4 da RN-1030) rodaram.
+    expect(sessionRun).toHaveBeenCalledTimes(10);
     expect(sessionClose).toHaveBeenCalled();
+  });
+
+  it('RN-1030: junta as duplicatas ANTES de criar as constraints', async () => {
+    configurarEnv();
+    verifyConnectivity.mockResolvedValue(undefined);
+    deduplicarNos.mockResolvedValue(0);
+    sessionRun.mockResolvedValue({ records: [] });
+    await new GraphStore().onModuleInit();
+
+    expect(deduplicarNos).toHaveBeenCalledTimes(1);
+    expect(deduplicarNos.mock.invocationCallOrder[0]).toBeLessThan(
+      sessionRun.mock.invocationCallOrder[0],
+    );
   });
 
   it('executeWrite: adapta a transação e devolve o resultado do work', async () => {

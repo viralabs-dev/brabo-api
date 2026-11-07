@@ -144,8 +144,8 @@ importers:
         version: 2.9.0
     devDependencies:
       '@brabo/shared':
-        specifier: git+https://github.com/viralabs-dev/brabo-contracts.git#v1.0.0&path:/packages/shared
-        version: https://codeload.github.com/viralabs-dev/brabo-contracts/tar.gz/0513a15fd257456e031e995f8a32046bd9e31b2e#path:/packages/shared
+        specifier: git+https://github.com/viralabs-dev/brabo-contracts.git#v1.2.0-dev.1&path:/packages/shared
+        version: https://codeload.github.com/viralabs-dev/brabo-contracts/tar.gz/fafff6c7f3874d796ef99a9bd93eb6435bd0f64f#path:/packages/shared
       '@eslint/eslintrc':
         specifier: ^3.2.0
         version: 3.3.6
@@ -317,8 +317,8 @@ packages:
   '@borewit/text-codec@0.2.2':
     resolution: {integrity: sha512-DDaRehssg1aNrH4+2hnj1B7vnUGEjU6OIlyRdkMd0aUdIUvKXrJfXsy8LVtXAy7DRvYVluWbMspsRhz2lcW0mQ==}
 
-  '@brabo/shared@https://codeload.github.com/viralabs-dev/brabo-contracts/tar.gz/0513a15fd257456e031e995f8a32046bd9e31b2e#path:/packages/shared':
-    resolution: {gitHosted: true, path: /packages/shared, tarball: https://codeload.github.com/viralabs-dev/brabo-contracts/tar.gz/0513a15fd257456e031e995f8a32046bd9e31b2e}
+  '@brabo/shared@https://codeload.github.com/viralabs-dev/brabo-contracts/tar.gz/fafff6c7f3874d796ef99a9bd93eb6435bd0f64f#path:/packages/shared':
+    resolution: {gitHosted: true, path: /packages/shared, tarball: https://codeload.github.com/viralabs-dev/brabo-contracts/tar.gz/fafff6c7f3874d796ef99a9bd93eb6435bd0f64f}
     version: 0.0.1
 
   '@colors/colors@1.5.0':
@@ -4130,7 +4130,7 @@ snapshots:
 
   '@borewit/text-codec@0.2.2': {}
 
-  '@brabo/shared@https://codeload.github.com/viralabs-dev/brabo-contracts/tar.gz/0513a15fd257456e031e995f8a32046bd9e31b2e#path:/packages/shared': {}
+  '@brabo/shared@https://codeload.github.com/viralabs-dev/brabo-contracts/tar.gz/fafff6c7f3874d796ef99a9bd93eb6435bd0f64f#path:/packages/shared': {}
 
   '@colors/colors@1.5.0':
     optional: true

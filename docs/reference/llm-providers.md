@@ -71,7 +71,7 @@ que o provider, nunca mais rico.
 | `listModels` | só provider | habilitar/pular a sincronização do catálogo ([RN-043](../business-rules/api.md#rn-043)) |
 | `embeddings` | provider + `supportsEmbeddings` na linha do catálogo | permitir/recusar a chamada de embedding ([RN-190](../business-rules/api.md#rn-190)) |
 | `reasoningText` | só provider | devolver o TEXTO do raciocínio como chunk `reasoning` ([RN-993](../business-rules/api.md#rn-993)); `true` só na Anthropic e no OpenRouter, provados em 2026-11-03 (`anthropic-provider.raciocinio.smoke.spec.ts`, `openrouter-provider.raciocinio.smoke.spec.ts`); na Anthropic o texto é o resumo; os outros nove seguem `false` |
-| `promptCaching` | provider + o filtro de modelo no hook de configuração (`anthropic/*` no OpenRouter) | marcar `cache_control` no prefixo estável ([RN-892](../business-rules/api.md#rn-892)); `true` só no OpenRouter, provado por smoke em 2026-10-15 |
+| `promptCaching` | provider + o filtro de modelo no hook de configuração (`anthropic/*` no OpenRouter) | marcar `cache_control` no prefixo estável ([RN-892](../business-rules/api.md#rn-892)); `true` no OpenRouter (smoke em 2026-10-15) e na Anthropic direta ([RN-1008](../business-rules/api.md#rn-1008)) |
 | `stickySession` | só provider | mandar `session_id` e prender a conversa ao upstream que a atendeu ([RN-907](../business-rules/api.md#rn-907)); `true` só no OpenRouter, provado por smoke em 2026-10-21 |
 | `priceCeiling` | só provider | mandar `provider.max_price` = catálogo × 1,5 e repetir uma vez sem teto no 404 ([RN-917](../business-rules/api.md#rn-917)); `true` só no OpenRouter, provado por smoke em 2026-10-28 |
 | `context_length` | `models.context_window` | orçamento de contexto |
@@ -553,7 +553,7 @@ texto aparecer exatamente uma vez e o resto da conversa manter a ordem
 | --- | --- | --- |
 | OpenAI, OpenRouter, NVIDIA NIM, Together, DeepInfra, Bitdeer, Vultr, 9Router, OpenCode Zen | base compatível (`toWireMessage`) | fim de `messages`, `role: "system"` |
 | Ollama | próprio (`messages` enviado como está) | fim de `messages`, `role: "system"` |
-| Anthropic | próprio (SDK oficial) | fim do `system` de topo; posição perdida |
+| Anthropic | próprio (SDK oficial) | último bloco de texto do último turno `user`, depois do ponto de cache ([RN-1015](../business-rules/api.md#rn-1015)) |
 
 Nenhum adaptador a descarta nem a duplica. O que o servidor falso não sabe
 dizer é se o provider REAL aceita esse corpo — ele aceita qualquer coisa. Isso

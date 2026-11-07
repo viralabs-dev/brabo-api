@@ -1,0 +1,18 @@
+name: refs
+
+# Confere as refs `caminho:N` (`símbolo`) das RNs no próprio PR (AT-782). Reutilizável do brabo-ci;
+# ref interna quebrada reprova, o artefato `refs-patch` traz a reancoragem. NÃO é check obrigatório.
+run-name: "refs ← #${{ github.event.pull_request.number }} (${{ github.head_ref }})"
+
+on:
+  pull_request:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+jobs:
+  refs:
+    uses: viralabs-dev/brabo-ci/.github/workflows/refs-com-simbolo.yml@2d9ec1b9a8045d0d35e769d81b4c441264452ebb  # brabo-ci dev, merge da ci#28
+    with:
+      ci_ref: 2d9ec1b9a8045d0d35e769d81b4c441264452ebb  # brabo-ci dev, merge da ci#28

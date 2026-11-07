@@ -37,7 +37,10 @@ export type BootstrapStepName = (typeof BOOTSTRAP_STEPS)[number];
  * `branching-policy.md` que ele commita no repositório do usuário continuava
  * ensinando a escada de quatro — achado #3 do primeiro dogfooding.
  *
- * Ele NÃO sai do vocabulário, e por dois motivos distintos: bootstraps já
+ * `create_dev_branch` e `create_qa_branch` saíram com o trunk (RN-1022): o
+ * repositório do projeto tem só a `main`.
+ *
+ * Eles NÃO saem do vocabulário, e por dois motivos distintos: bootstraps já
  * rodados têm linhas com esse valor (apagá-lo reescreveria história para negar
  * um passo que aconteceu), e a api pode devolvê-lo — um contrato que só
  * publicasse os passos atuais mentiria sobre um projeto antigo.
@@ -46,6 +49,8 @@ export type BootstrapStepName = (typeof BOOTSTRAP_STEPS)[number];
  * vai rodar (ver `apps/web/src/lib/bootstrap.ts`).
  */
 export const RETIRED_BOOTSTRAP_STEPS: readonly BootstrapStepName[] = [
+  'create_dev_branch',
+  'create_qa_branch',
   'create_rc_branch',
 ];
 

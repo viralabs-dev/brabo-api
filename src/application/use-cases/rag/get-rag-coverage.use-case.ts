@@ -13,6 +13,8 @@ export interface RagFileCoverage {
   filesIndexed: number;
   /** A varredura do repositório foi cortada por teto — a contagem de `filesInRepo` é um PISO, não o total real. */
   truncated: boolean;
+  /** Desses, quantos foram lidos só até o teto de indexação (RN-1036): parte do texto NÃO está no índice. */
+  filesCut: number;
 }
 
 export interface RagSessionCoverage {
@@ -91,6 +93,14 @@ export class GetRagCoverageUseCase {
     const adrIndexados = new Set(
       todosOsChunks.filter((c) => c.scope === 'adr').map((c) => c.sourcePath),
     );
+    const cortados = (scope: 'docs' | 'adr') =>
+      new Set(
+        todosOsChunks
+          .filter((c) => c.scope === scope && c.metadata.sourceCut)
+          .map((c) => c.sourcePath),
+      );
+    const docsCortados = cortados('docs');
+    const adrCortados = cortados('adr');
     const sessoesIndexadas = new Set(
       todosOsChunks
         .filter((c) => c.scope === 'session')
@@ -114,11 +124,13 @@ export class GetRagCoverageUseCase {
         filesInRepo: arquivosDocs.length,
         filesIndexed: arquivosDocs.filter((p) => docsIndexados.has(p)).length,
         truncated: arquivos.truncated,
+        filesCut: arquivosDocs.filter((p) => docsCortados.has(p)).length,
       },
       adr: {
         filesInRepo: arquivosAdr.length,
         filesIndexed: arquivosAdr.filter((p) => adrIndexados.has(p)).length,
         truncated: arquivos.truncated,
+        filesCut: arquivosAdr.filter((p) => adrCortados.has(p)).length,
       },
       session: {
         sessionsInProject: sessoes.length,

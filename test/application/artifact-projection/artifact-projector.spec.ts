@@ -77,6 +77,9 @@ class FakeSessionEvents implements SessionEventRepository {
   findById(id: string): Promise<SessionEvent | null> {
     return Promise.resolve(this.events.get(id) ?? null);
   }
+  listByType(): Promise<SessionEvent[]> {
+    return Promise.resolve([]);
+  }
   listByTypeForProject(): Promise<SessionEvent[]> {
     return Promise.reject(new Error('não usado neste teste'));
   }

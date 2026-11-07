@@ -102,14 +102,17 @@ import { GitProviderRegistry } from '../src/application/ports/git-provider.port'
 import type { Actor } from '../src/domain/sessions/session-event.entity';
 import { workspaceDirNameFor } from '../src/infrastructure/filesystem/project-workspaces-root';
 import { RAG_EMBEDDING_MODEL } from '../src/domain/rag/rag-search-limits';
+import type { HybridSearchHit } from '../src/domain/rag/rag-citation';
 import {
   acertouCaminhoEsperado,
   rankDoCaminhoEsperado,
   GOLDEN_SET_RAG_TOP_K,
 } from '../src/domain/rag/golden-set-criterio';
 
-// Corpus CONGELADO (ADR 0132 + AT-693): o piso 17/17 foi medido contra estes bytes,
-// então o seed não lê `docs/` vivo; o caminho lógico gravado no índice não muda.
+// Corpus FIXO (ADR 0132, AT-693, AT-763): são os bytes do último verde do piso 17/17
+// (monorepo 6d56eb3872, 1 555 499 bytes, 1 524 853 characters), não o `docs/` vivo; a guarda de deriva
+// (seed-golden-set-rag.corpus.spec.ts) reprova qualquer byte diferente. Aquele verde foi medido com o
+// corte mudo de 512 KiB por arquivo; desde a AT-764 (RN-1036) a indexação lê até 4 MiB e declara o corte.
 export const CORPUS_ROOT = resolve(
   __dirname,
   '../test/fixtures/golden-set-rag/corpus',
@@ -402,6 +405,7 @@ async function main() {
   log(
     `✓ indexado: ${relatorioIndexacao.docsChunks + relatorioIndexacao.adrChunks} chunks ` +
       `(docs=${relatorioIndexacao.docsChunks}, adr=${relatorioIndexacao.adrChunks}), ` +
+      `cutFiles=${relatorioIndexacao.cutFiles.length}, ` +
       `embedding.available=${relatorioIndexacao.embedding.available}` +
       (relatorioIndexacao.embedding.reason
         ? ` (${relatorioIndexacao.embedding.reason})`
@@ -427,6 +431,7 @@ async function main() {
   const ator: Actor = { kind: 'user', id: user.id };
   const resultados: ResultadoCaso[] = [];
   for (const caso of CASOS) {
+    let candidatosAntesDoCorte: HybridSearchHit[] = [];
     const resultado = await search.execute({
       projectId: project.id,
       query: caso.query,
@@ -434,6 +439,13 @@ async function main() {
       limit: GOLDEN_SET_RAG_TOP_K,
       actor: ator,
       sessionId: null,
+      // AT-778: o seed imprime onde o esperado ficou ANTES do teto por arquivo.
+      maxPerFile: process.env.GOLDEN_SET_RAG_MAX_PER_FILE
+        ? Number(process.env.GOLDEN_SET_RAG_MAX_PER_FILE)
+        : undefined,
+      onCandidatos: (c) => {
+        candidatosAntesDoCorte = c;
+      },
     });
     const passou = acertouCaminhoEsperado(resultado.hits, caso.expectedPath);
     const rank = rankDoCaminhoEsperado(resultado.hits, caso.expectedPath);
@@ -453,6 +465,27 @@ async function main() {
       `${passou ? '✓' : '✗'} ${caso.id}: esperado=${caso.expectedPath} ` +
         `rank=${rank ?? '—'} vectorAvailable=${resultado.vectorAvailable}`,
     );
+    if (!passou) {
+      log(
+        `  top-${GOLDEN_SET_RAG_TOP_K} no lugar: ` +
+          resultado.hits
+            .map(
+              (h, i) =>
+                `#${i + 1} ${h.origin.kind === 'file' ? h.origin.sourcePath : '(não-arquivo)'} (${h.score.toFixed(3)})`,
+            )
+            .join(' | '),
+      );
+      const caminho = (h: HybridSearchHit) =>
+        h.origin.kind === 'file' ? h.origin.sourcePath : null;
+      const pos = candidatosAntesDoCorte.findIndex(
+        (h) => caminho(h) === caso.expectedPath,
+      );
+      log(
+        pos < 0
+          ? `  esperado FORA dos ${candidatosAntesDoCorte.length} candidatos acima do limiar`
+          : `  esperado na posição #${pos + 1} de ${candidatosAntesDoCorte.length} candidatos antes do corte (score ${candidatosAntesDoCorte[pos].score.toFixed(3)})`,
+      );
+    }
   }
 
   await app.close();

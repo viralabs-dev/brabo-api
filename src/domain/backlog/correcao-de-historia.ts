@@ -55,8 +55,8 @@ export function recusaDeCorrecaoDeHistoria(
       reason: 'historia_nao_draft',
       message:
         `A história "${story.title}" está "${story.status}" — só história ` +
-        'draft é editada ou arquivada (a ready, só citando uma pergunta ' +
-        'respondida pelo usuário).',
+        'draft é editada ou arquivada (a ready, só citando em `questionId` uma ' +
+        'pergunta respondida pelo usuário).',
     };
   }
   const emExecucao = tarefas.filter((t) =>

@@ -59,12 +59,15 @@ paths:
   upstream (sem ele, 4 upstreams em 6). Os outros oito seguem `false`; ligá-los
   exige o smoke equivalente. `provider.order`/`allow_fallbacks` seguem fora
 
-- A capability `promptCaching` (RN-892, AT-543) é `true` SÓ no OpenRouter
+- A capability `promptCaching` (RN-892, AT-543) é `true` no OpenRouter
   desde 2026-10-15, PROVADA: `openrouter-provider.cache.smoke.spec.ts` rodou
   com credencial real e a segunda chamada a `anthropic/claude-haiku-5.5`
   voltou com `cached_input_tokens=8011`. O hook segue marcando só
-  `anthropic/*`; os outros oito providers seguem `false`, e ligá-los exige o
-  smoke equivalente
+  `anthropic/*`. Na Anthropic direta também é `true` (RN-1008, AT-744):
+  `system` em dois blocos (ponto no prefixo), ponto na última `user`, usage
+  somando `input + leitura + escrita` e custo pelas 4 parcelas × tabela do
+  fabricante; prova em `anthropic-provider.cache.smoke.spec.ts`. Os outros
+  sete providers seguem `false`, e ligá-los exige o smoke equivalente
 
 - Gasto de embedding fora do metering (corte declarado do ADR 0075), salvo a
   checagem de duplicata semântica (ADR 0198, RN-681), que é linha própria
@@ -77,6 +80,7 @@ paths:
   sem gravar, e se a gravação não separar os pares, reveja os pares ou o texto
   comparado — nunca afrouxe o teste
 
+- A busca devolve no máximo `RAG_SEARCH_MAX_CHUNKS_PER_FILE` (2) trechos por arquivo, depois da fusão e antes do `limit` (RN-1046); o N vigente vai em `rag_searches.pesos.maxPerFile`.
 - Chunking do RAG (1200 caracteres/150 de sobreposição) e pesos da busca
   híbrida (0.6/0.4, limiar 0.2) seguem sendo PONTO DE PARTIDA — ainda NÃO
   calibrados (ADR 0080). O que mudou desde a Etapa 1 é que agora dá para
@@ -111,3 +115,5 @@ Dependabot, duas lacunas do runbook, a severidade dos alertas, e mais). O
 defeito é de CADÊNCIA e não de conteúdo: fases foram fechadas sem ninguém
 voltar ali marcar. A fila viva é o backlog do mantenedor; este arquivo guarda
 o RACIOCÍNIO da triagem, que continua valendo.
+
+- A indexação de `docs`/`adr` lê cada `.md` até `RAG_INDEX_FILE_MAX_BYTES` (4 MiB, `src/domain/rag/rag-search-limits.ts`), um teto PRÓPRIO, separado do `GIT_BLOB_MAX_BYTES` da aba Code (512 KiB, RN-095). O que passa dele é cortado e DECLARADO (`cutFiles`, log, `metadata.sourceCut`, `filesCut` na cobertura), nunca em silêncio (RN-1036, ADR 0269).

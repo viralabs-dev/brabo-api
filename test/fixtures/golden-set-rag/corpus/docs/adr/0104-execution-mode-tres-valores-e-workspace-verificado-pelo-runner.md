@@ -1,159 +1,166 @@
-# ADR 0104 — `execution_mode` em três valores, e o workspace nasce `unverified` quando o runner é quem verifica
+# ADR 0104 — `execution_mode` in three values, and the workspace is born `unverified` when the runner is the one who verifies it
 
-- **Status:** Aceito
-- **Data:** 2026-08-22
-- **Contexto:** os ADRs 0072 e 0103 nunca foram reconciliados entre si
-- **Revisa (sem atenuar) o terreno de:** [ADR 0072](0072-projeto-local-ou-container.md), [ADR 0103](0103-runner-local-execucao-na-maquina-do-usuario.md)
+- **Status:** Accepted
+- **Date:** 2026-08-22
+- **Context:** ADRs 0072 and 0103 were never reconciled with each other
+- **Revises (without softening) the ground of:** [ADR 0072](0072-projeto-local-ou-container.md), [ADR 0103](0103-runner-local-execucao-na-maquina-do-usuario.md)
 
-## Contexto
+## Context
 
-Dois ADRs deste produto descrevem execuções fisicamente incompatíveis sob o
-MESMO nome de campo, e ninguém tinha reconciliado os dois até agora.
+Two ADRs of this product describe physically incompatible executions under
+the SAME field name, and nobody had reconciled the two until now.
 
-O [ADR 0072](0072-projeto-local-ou-container.md) criou
-`projects.workspace_mode` (`'container'|'local'`) + `workspace_path`. No
-modo `local`, a [RN-170](../business-rules/autenticacao.md#rn-170) valida na CRIAÇÃO que
-a pasta está **montada por bind-mount** dentro dos containers da api E do
-engine — `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
-(`validarCaminhoDeWorkspaceLocal`) roda `access(W_OK|X_OK)` **dentro do
-processo do container da api**, e recusa com 400 quando não acha. O wizard
-web (`apps/web/src/routes/NewProjectWizard.tsx:71,462-468`) só ensina a
-editar `docker/docker-compose.yml` com uma linha de bind-mount — não existe
-outra instrução.
+[ADR 0072](0072-projeto-local-ou-container.md) created
+`projects.workspace_mode` (`'container'|'local'`) + `workspace_path`. In
+`local` mode, [RN-170](../business-rules/autenticacao.md#rn-170) validates at CREATION
+time that the folder is **mounted via bind-mount** inside both the api's AND
+the engine's containers — `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
+(`validarCaminhoDeWorkspaceLocal`) runs `access(W_OK|X_OK)` **inside the
+api container's process**, and refuses with 400 when it doesn't find it. The
+web wizard (`apps/web/src/routes/NewProjectWizard.tsx:71,462-468`) only
+teaches how to edit `docker/docker-compose.yml` with a bind-mount line — no
+other instruction exists.
 
-O [ADR 0103](0103-runner-local-execucao-na-maquina-do-usuario.md) criou
-`apps/runner`: um CLI que roda na MÁQUINA do usuário, **sem bind-mount
-nenhum**, conectando ao engine por canal Phoenix (`/runner`, tópico
-`terminal:<projectId>`) autenticado por ticket de uso único emitido pelo
-próprio engine. Ele executa comando de agente já aprovado pelo pipeline
-normal e abre terminal PTY interativo de verdade — a aba Terminal
-(`apps/web/src/routes/code/TerminalPanel.tsx`) já usa `@xterm/xterm` de
-verdade para isso. A [RN-420](../business-rules.md#rn-420), que decide
-quando rotear um comando pro runner em vez do `System.cmd` de sempre, reusa
-a MESMA condição `workspace_mode == "local"` (mais runner conectado) — o
-ADR 0103 nunca criou um terceiro valor para o campo.
+[ADR 0103](0103-runner-local-execucao-na-maquina-do-usuario.md) created
+`apps/runner`: a CLI that runs on the user's MACHINE, **with no bind-mount
+at all**, connecting to the engine via a Phoenix channel (`/runner`, topic
+`terminal:<projectId>`) authenticated by a single-use ticket issued by the
+engine itself. It executes agent commands already approved by the normal
+pipeline and opens a real interactive PTY terminal — the Terminal tab
+(`apps/web/src/routes/code/TerminalPanel.tsx`) already uses real
+`@xterm/xterm` for this. [RN-420](../business-rules.md#rn-420), which
+decides when to route a command to the runner instead of the usual
+`System.cmd`, reuses the SAME `workspace_mode == "local"` condition (plus a
+connected runner) — ADR 0103 never created a third value for the field.
 
-O resultado prático: hoje, para USAR o runner — que existe exatamente para
-dispensar bind-mount —, o usuário ainda é obrigado a passar pela validação
-de bind-mount do ADR 0072 só para criar o projeto. As duas metades do
-produto citam o mesmo enum de 2 valores para descrever duas execuções que
-não têm nada em comum fisicamente: uma pasta montada nos dois containers, e
-uma pasta que só existe na máquina do usuário. Confirmado por leitura direta
-do código: `apps/api/src/db/schema.ts:238-240`
+The practical result: today, to USE the runner — which exists precisely to
+do away with bind-mount — the user is still forced to go through ADR 0072's
+bind-mount validation just to create the project. The two halves of the
+product cite the same 2-value enum to describe two executions that have
+nothing physically in common: a folder mounted in both containers, and a
+folder that only exists on the user's machine. Confirmed by direct reading
+of the code: `apps/api/src/db/schema.ts:238-240`
 (`projectWorkspaceModeEnum = pgEnum('project_workspace_mode', ['container',
-'local'])`) e `apps/api/src/domain/iam/project.entity.ts`
-(`PROJECT_WORKSPACE_MODES = ['container', 'local']`, cujo comentário
-existente já avisa do risco de confundir o homônimo com o `GitProviderName`
-`'local'` — risco que este ADR herda e precisa preservar ao renomear o
-campo).
+'local'])`) and `apps/api/src/domain/iam/project.entity.ts`
+(`PROJECT_WORKSPACE_MODES = ['container', 'local']`, whose existing comment
+already warns of the risk of confusing the homonym with the
+`GitProviderName` `'local'` — a risk this ADR inherits and needs to preserve
+when renaming the field).
 
-Este achado surgiu investigando "o que falta para o produto de fato acessar
-pasta e terminal do usuário fora do escopo de Docker" — não estava
-registrado em lugar nenhum como divergência formal antes desta sessão.
+This finding came up while investigating "what's missing for the product to
+actually access the user's folder and terminal outside the scope of
+Docker" — it wasn't recorded anywhere as a formal divergence before this
+session.
 
-## Decisão
+## Decision
 
-1. **`execution_mode` substitui `workspace_mode`, com três valores:**
-   `container` (default, comportamento de sempre — tudo dentro do Docker),
-   `mounted` (o antigo `local` — bind-mount, RN-170 continua valendo, agora
-   condicionada a este valor) e `runner` (a pasta só existe na máquina do
-   usuário, sem bind-mount nenhum). O nome muda porque `local` já carregava
-   a ambiguidade com `GitProviderName`, e passaria a precisar carregar DUAS
-   semânticas físicas incompatíveis (montado vs. não-montado) sob o mesmo
-   rótulo — `execution_mode` nomeia o eixo real que o campo decide (ONDE o
-   comando executa), não mais "onde o código mora", que os dois modos novos
-   respondem de formas que não podem compartilhar validação.
+1. **`execution_mode` replaces `workspace_mode`, with three values:**
+   `container` (default, the usual behavior — everything inside Docker),
+   `mounted` (the former `local` — bind-mount, RN-170 keeps applying, now
+   conditioned on this value) and `runner` (the folder only exists on the
+   user's machine, with no bind-mount at all). The name changes because
+   `local` already carried the ambiguity with `GitProviderName`, and would
+   go on to need to carry TWO incompatible physical semantics (mounted vs.
+   not-mounted) under the same label — `execution_mode` names the real axis
+   the field decides (WHERE the command executes), no longer "where the
+   code lives," which the two new modes answer in ways that can't share
+   validation.
 
-2. **RN-170 passa a ser condicional a `execution_mode = 'mounted'`.** Para
-   `execution_mode = 'runner'`, a criação continua validando a parte LÉXICA
-   do caminho (absoluto, sem `..` em nenhum segmento, fora da raiz e das
-   pastas de sistema, sem sobreposição com o checkout do Brabo nos dois
-   sentidos) — nada disso depende de I/O do container, e continua valendo
-   porque é o mesmo escopo que autoriza o terminal do agente
-   ([ADR 0055](0055-escopo-de-caminho-na-politica-de-terminal.md)). O que
-   muda é a parte de DISCO (existe, é pasta, é gravável): para `mounted`
-   continua rodando na criação, dentro do container da api, como hoje; para
-   `runner` essa verificação é ADIADA — não tem como a api confirmar algo
-   que só existe na máquina do usuário. Quem tem autoridade para fazer esse
-   `access()` é o runner, rodando no host de verdade.
+2. **RN-170 becomes conditional on `execution_mode = 'mounted'`.** For
+   `execution_mode = 'runner'`, creation still validates the LEXICAL part of
+   the path (absolute, no `..` in any segment, outside the root and system
+   folders, no overlap with the Brabo checkout in either direction) — none
+   of that depends on container I/O, and it keeps applying because it's the
+   same scope that authorizes the agent's terminal
+   ([ADR 0055](0055-escopo-de-caminho-na-politica-de-terminal.md)). What
+   changes is the DISK part (exists, is a folder, is writable): for
+   `mounted` it keeps running at creation, inside the api container, as
+   today; for `runner` that check is DEFERRED — there's no way for the api
+   to confirm something that only exists on the user's machine. Who has the
+   authority to do that `access()` is the runner, running on the real host.
 
-3. **Projeto em `execution_mode = 'runner'` nasce com `workspace:
-   unverified`, promovido a `verified` quando o primeiro runner conecta e
-   confirma o caminho no host.** Mesmo espírito de estado pendente com
-   evidência por evento que `docs/gates.yml` já usa para gate `status:
-   planned` + `evidencia: event_log` — a pasta declarada é aceita de
-   imediato (a criação não trava esperando um runner que ainda não existe),
-   mas o produto não afirma "o caminho é válido" até ter prova de que
-   alguém, na máquina certa, confirmou isso. O MECANISMO exato — nome do
-   evento, rota que o runner chama para confirmar, onde o estado é gravado
-   — fica para a sessão de implementação: este ADR declara a EXISTÊNCIA do
-   estado e o CRITÉRIO de promoção, não a mecânica.
+3. **A project in `execution_mode = 'runner'` is born with `workspace:
+   unverified`, promoted to `verified` when the first runner connects and
+   confirms the path on the host.** Same spirit as a pending state with
+   event evidence that `docs/gates.yml` already uses for gate `status:
+   planned` + `evidencia: event_log` — the declared folder is accepted
+   immediately (creation doesn't block waiting for a runner that doesn't
+   exist yet), but the product doesn't assert "the path is valid" until it
+   has proof that someone, on the right machine, confirmed it. The exact
+   MECHANISM — the event name, the route the runner calls to confirm, where
+   the state is stored — is left for the implementation session: this ADR
+   declares the EXISTENCE of the state and the promotion CRITERION, not the
+   mechanics.
 
-4. **Consequência, não pedido em separado: converter `execution_mode` entre
-   os três valores deixa de exigir recriar o projeto.** Hoje o modo só é
-   escolhido na criação (ADR 0072, item 1) — com a diferença entre os
-   valores reduzida a uma coluna (mais o estado de verificação do item 3),
-   isso deixa de ser uma limitação estrutural. **Todas as direções de
-   conversão passam a ser permitidas**, sem restrição própria declarada
-   aqui — `container ⇄ mounted ⇄ runner`, em qualquer sentido. A mecânica de
-   cada transição (o que acontece com o worktree/estado ao trocar, se há
-   confirmação própria por direção) fica para a sessão de implementação;
-   este ADR só declara que a conversão é permitida em qualquer sentido.
+4. **A consequence, not a request in its own right: converting
+   `execution_mode` between the three values stops requiring recreating the
+   project.** Today the mode is only chosen at creation (ADR 0072, item 1)
+   — with the difference between values reduced to a column (plus the
+   verification state from item 3), this stops being a structural
+   limitation. **All conversion directions become allowed**, with no
+   restriction of its own declared here — `container ⇄ mounted ⇄ runner`, in
+   either direction. The mechanics of each transition (what happens to the
+   worktree/state when switching, whether there's a confirmation of its own
+   per direction) is left for the implementation session; this ADR only
+   declares that conversion is allowed in any direction.
 
-### Ordem de entrega do que fica para depois
+### Delivery order for what's left for later
 
-Esta decisão (itens 1–3 acima) é **P1**: sem ela, o runner existe mas
-ninguém consegue chegar nele sem primeiro montar a pasta que ele foi
-desenhado para dispensar. O que fica para depois, na ordem que o dono do
-produto já definiu (detalhe completo em
+This decision (items 1–3 above) is **P1**: without it, the runner exists but
+nobody can reach it without first mounting the folder it was designed to do
+away with. What's left for later, in the order the product owner has
+already set (full detail in
 [backlog.md](../explanation/backlog.md#backlog-of-the-runnerexecution_mode-adr-0104)):
 
-- **Distribuição do runner** (`tsup` → pacote único + `npm publish
-  @brabo/runner`) — hoje é `"private": true` com `bin` apontando pra um
-  `.ts` cru, só alcançável clonando o monorepo inteiro.
-- **Token de conta de longa duração (PAT)**, substituindo o replay de login
-  de `apps/runner/src/auth.ts` — precisa vir ANTES da distribuição, porque
-  publicar hoje distribuiria um fluxo de senha+cookie salvo em disco.
-- **Exclusividade do runner por `{project_id, machine_id}`**, em vez de só
-  `project_id` — ADIADA até existir critério real de ativação (segundo dev
-  de fato simultâneo no mesmo projeto).
-- **`guard.ts` best-effort** — não é lacuna a fechar, ver Consequências.
+- **Runner distribution** (`tsup` → single package + `npm publish
+  @brabo/runner`) — today it's `"private": true` with `bin` pointing to a
+  raw `.ts`, only reachable by cloning the whole monorepo.
+- **Long-lived account token (PAT)**, replacing the login replay of
+  `apps/runner/src/auth.ts` — needs to come BEFORE distribution, because
+  publishing today would distribute a password+cookie flow saved to disk.
+- **Runner exclusivity by `{project_id, machine_id}`**, instead of just
+  `project_id` — DEFERRED until a real activation criterion exists (a
+  second dev actually simultaneous on the same project).
+- **`guard.ts` best-effort** — not a gap to close, see Consequences.
 
-## Consequências
+## Consequences
 
-**O que dói, e não é resolvido por este ADR:** `ALTER TYPE ... ADD VALUE`
-tem restrições transacionais em várias versões do PostgreSQL (não pode ser
-usado na mesma transação em que o valor novo é referenciado). A migration
-que introduzir o terceiro valor do enum precisa tratar isso explicitamente
-(dois passos, ou recriar o tipo) — registrado aqui como risco técnico para
-a sessão de implementação, não resolvido neste documento.
+**What hurts, and isn't resolved by this ADR:** `ALTER TYPE ... ADD VALUE`
+has transactional restrictions in several PostgreSQL versions (it can't be
+used in the same transaction where the new value is referenced). The
+migration that introduces the enum's third value needs to handle this
+explicitly (two steps, or recreating the type) — recorded here as a
+technical risk for the implementation session, not resolved in this
+document.
 
-**O que fica DECLARADO como invariante, não como lacuna:**
-`apps/runner/src/guard.ts` continua sendo, e continuará sendo, uma checagem
-LÉXICA best-effort — vulnerável a TOCTOU e a symlink criado depois da
-checagem, sem sandbox, sem usuário separado, sem limite técnico real. Isto
-já estava declarado no ADR 0103; este ADR REAFIRMA explicitamente, porque
-`execution_mode = 'runner'` deixa de ser um bônus condicional (modo `local`
-+ runner conectado por acaso) e passa a ser um caminho de PRIMEIRA CLASSE
-na criação do projeto — e um caminho de primeira classe corre o risco de
-ser lido, por alguém que não acompanhou o ADR 0103, como uma promessa de
-isolamento que nunca existiu. A fronteira de segurança real do runner
-continua sendo, só: autenticação (o CLI se identifica com o token da conta
-do usuário) + o pipeline de aprovação de sempre (todo comando de agente
-nasce `proposed_action`, tetos absolutos do ADR 0102 incluídos) +
-consentimento do usuário em rodar o binário na própria máquina.
+**What stays DECLARED as an invariant, not as a gap:**
+`apps/runner/src/guard.ts` remains, and will remain, a best-effort LEXICAL
+check — vulnerable to TOCTOU and to a symlink created after the check, with
+no sandbox, no separate user, no real technical limit. This was already
+declared in ADR 0103; this ADR explicitly REAFFIRMS it, because
+`execution_mode = 'runner'` stops being a conditional bonus (`local` mode +
+a runner connected by chance) and becomes a FIRST-CLASS path at project
+creation — and a first-class path runs the risk of being read, by someone
+who didn't follow ADR 0103, as a promise of isolation that never existed.
+The runner's real security boundary remains, only: authentication (the CLI
+identifies itself with the user's account token) + the usual approval
+pipeline (every agent command is born a `proposed_action`, including ADR
+0102's absolute ceilings) + the user's consent to run the binary on their
+own machine.
 
-**O que este ADR NÃO faz:**
+**What this ADR does NOT do:**
 
-- Não implementa nenhuma linha de código, migration, rota ou UI — é decisão
-  registrada, a sessão de implementação executa sobre `origin/dev`.
-- Não desenha o mecanismo exato do estado `unverified`/`verified` (evento,
-  rota, onde grava) — só declara que ele existe e o critério de promoção.
-- Não implementa nenhuma conversão entre valores de `execution_mode` — só
-  declara que todas as direções passam a ser permitidas.
-- Não muda a fronteira de efeito externo (RN-106/RN-418): `git push`,
-  abertura de PR e deploy continuam `require_approval` incondicional,
-  dentro ou fora do escopo, em qualquer `execution_mode`.
-- Não muda a política de escopo de caminho nem o allowlist do terminal
-  (ADR 0055) — o que muda é só onde/quando o disco é verificado na
-  criação do projeto.
+- It doesn't implement any line of code, migration, route, or UI — it's a
+  recorded decision; the implementation session executes it on top of
+  `origin/dev`.
+- It doesn't design the exact mechanism of the `unverified`/`verified`
+  state (event, route, where it's stored) — it only declares that it exists
+  and the promotion criterion.
+- It doesn't implement any conversion between `execution_mode` values — it
+  only declares that all directions become allowed.
+- It doesn't change the external-effect boundary (RN-106/RN-418): `git
+  push`, opening a PR, and deploy remain unconditional `require_approval`,
+  inside or outside the scope, in any `execution_mode`.
+- It doesn't change the path-scope policy nor the terminal allowlist (ADR
+  0055) — what changes is only where/when the disk is checked at project
+  creation.

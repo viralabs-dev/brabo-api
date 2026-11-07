@@ -1,5 +1,4 @@
 import type { GitProviderContract } from '@brabo/shared';
-import { GitBranchAlreadyExistsError } from '../../../domain/git/git-errors';
 import type { BootstrapStepName } from '../../../domain/git/repo-bootstrap.entity';
 import {
   BRANCHING_POLICY_PATH,
@@ -46,59 +45,11 @@ export interface BootstrapStep {
   ): Promise<BootstrapMutation[] | 'capability_unsupported'>;
 }
 
-// dev←main, qa←dev — cascata de promoção do pipeline dev→qa→main.
-//
-// Havia um terceiro degrau, `rc`, criado a partir de `qa`. O ADR 0030 o
-// removeu da política do Brabo ("sem ambiente e sem gente para exercê-lo,
-// seria degrau cerimonial") e o `pr-police` do CI opera com três desde então —
-// mas o bootstrap continuou criando e protegendo `rc` no repositório do
-// usuário, e o `branching-policy.md` que ele commita continuou ensinando a
-// escada de quatro. Era o achado #3 do primeiro dogfooding.
-function createBranchStep(
-  step: BootstrapStepName,
-  branchName: string,
-  fromRef: string,
-): BootstrapStep {
-  return {
-    step,
-    async check(ctx): Promise<BootstrapMutation[]> {
-      const branches = await ctx.provider.listBranches({
-        externalId: ctx.externalId,
-        accessToken: ctx.accessToken,
-      });
-      if (branches.some((b) => b.name === branchName)) return [];
-
-      return [
-        {
-          actionType: 'git_branch_create',
-          payload: { branchName, fromRef },
-          async run(runCtx) {
-            try {
-              const branch = await runCtx.provider.createBranch({
-                externalId: runCtx.externalId,
-                branchName,
-                fromRef,
-                accessToken: runCtx.accessToken,
-              });
-              return { branchName: branch.name, commitSha: branch.commitSha };
-            } catch (error) {
-              // Corrida entre check() e run() — a branch já existe
-              // agora, tratado como satisfeito, não como falha.
-              if (error instanceof GitBranchAlreadyExistsError) {
-                return { branchName, note: 'já existia (corrida)' };
-              }
-              throw error;
-            }
-          },
-        },
-      ];
-    },
-  };
-}
-
-// Um só passo, com até 3 mutações internas (uma por branch ainda não
-// protegida) — da ponta de produção para a de integração: main, qa, dev.
-const PROTECTED_BRANCH_NAMES = ['main', 'qa', 'dev'] as const;
+// RN-1022: o repositório do projeto é trunk. O bootstrap protege só a `main`;
+// `dev`/`qa` não são mais criadas (o ADR 0030 já tirou o `rc`). Os valores
+// `create_dev_branch`/`create_qa_branch` ficam no enum `bootstrap_step` do
+// banco, porque bootstraps antigos têm linhas com eles.
+const PROTECTED_BRANCH_NAMES = ['main'] as const;
 
 /**
  * As branches que o template CONHECE — as mesmas que ele protege, já que
@@ -203,8 +154,8 @@ function commitFileStep(
 // significar a mesma coisa nos 3). Uma ref sem nenhum commit não pode
 // ser origem de `createBranch` (não há o que resolver). Os dois commits
 // em `main` (template de PR, branching-policy) precisam vir PRIMEIRO —
-// são eles que dão a `main` seu primeiro commit — só depois dev/qa/rc
-// podem nascer a partir dela. O enum `bootstrap_step` no schema (ordem
+// são eles que dão a `main` seu primeiro commit — só depois a proteção
+// pode ser aplicada a ela. O enum `bootstrap_step` no schema (ordem
 // de declaração) não muda — não afeta nada, é só um conjunto de valores
 // válidos, nunca comparado por ordem.
 export const BOOTSTRAP_STEP_SEQUENCE: readonly BootstrapStep[] = [
@@ -229,8 +180,6 @@ export const BOOTSTRAP_STEP_SEQUENCE: readonly BootstrapStep[] = [
     'chore: adiciona .gitignore base',
     true,
   ),
-  createBranchStep('create_dev_branch', 'dev', 'main'),
-  createBranchStep('create_qa_branch', 'qa', 'dev'),
   // `create_rc_branch` saiu da sequência (achado #3), mas CONTINUA no enum
   // `bootstrap_step` do banco: bootstraps já rodados têm linhas com esse
   // valor, e apagá-lo do enum reescreveria história para tirar um passo que

@@ -8,7 +8,7 @@ import {
 // conjunto válido é o `module_map` vigente.
 const T1 = '11111111-1111-4111-8111-111111111111';
 const T2 = '22222222-2222-4222-8222-222222222222';
-const MAPA = ['board-engine', 'input-keyboard'];
+const MAPA = [{ name: 'board-engine' }, { name: 'input-keyboard' }];
 const DO_PROJETO = new Set([T1, T2]);
 
 function plano(
@@ -112,5 +112,46 @@ describe('lerPlanoDeExecucao (RN-678)', () => {
         tarefas: [{ taskId: T1 }, { taskId: 'não-é-uuid' }, {}],
       }),
     ).toEqual([T1]);
+  });
+
+  // RN-1004 (AT-742, ADR 0259)
+  describe('fundação com dono', () => {
+    const T3 = '33333333-3333-4333-8333-333333333333';
+    const MAPA_25 = [
+      { name: 'db', dependsOn: [] },
+      { name: 'api', dependsOn: ['db'] },
+      { name: 'deploy', dependsOn: ['api'] },
+      { name: 'docs', dependsOn: [] },
+    ];
+    const TODAS = new Set([T1, T2, T3]);
+
+    it('módulo sem tarefa de que outro com tarefa depende recusa nomeando o par', () => {
+      const r = lerPlanoDeExecucao(
+        plano([{ taskId: T1, modulo: 'deploy' }], []),
+        MAPA_25,
+        TODAS,
+      );
+      expect(r.ok).toBe(false);
+      if (r.ok) return;
+      expect(r.motivo).toContain(
+        'deploy depende de api, que ficou sem tarefa — crie a tarefa de fundação de api',
+      );
+    });
+
+    it('com tarefa em db, api e deploy passa; folha sem tarefa (docs) segue legítima', () => {
+      const r = lerPlanoDeExecucao(
+        plano(
+          [
+            { taskId: T1, modulo: 'deploy' },
+            { taskId: T2, modulo: 'api' },
+            { taskId: T3, modulo: 'db' },
+          ],
+          [],
+        ),
+        MAPA_25,
+        TODAS,
+      );
+      expect(r.ok).toBe(true);
+    });
   });
 });

@@ -439,7 +439,8 @@ export class DrizzleTaskRepository implements TaskRepository {
               AND t.gate_status IS NULL)
             OR (s.status = 'ready'
               AND ${daTarefaDoModulo(module)}
-              AND t.status = 'todo')
+              AND t.status = 'todo'
+              AND ${semDependenciaAberta(projectId, module)})
           )
         ORDER BY (t.status = 'in_progress') DESC, t.created_at
         FOR UPDATE OF t SKIP LOCKED
@@ -664,6 +665,32 @@ function taskToEntity(row: typeof tasks.$inferSelect): Task {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+}
+
+/**
+ * RN-1005 (AT-742, ADR 0259): a tarefa de `module` só sai enquanto NÃO houver
+ * tarefa aberta (não `done`) de um módulo do seu `dependsOn` DIRETO no
+ * `module_map` vigente. Sem `module_map` (ou módulo ausente dele), não filtra.
+ */
+function semDependenciaAberta(projectId: string, module: string) {
+  return sql`NOT EXISTS (
+    SELECT 1
+    FROM (
+      SELECT modules FROM module_maps
+      WHERE project_id = ${projectId}
+      ORDER BY version DESC
+      LIMIT 1
+    ) mm,
+    jsonb_array_elements(mm.modules) me,
+    jsonb_array_elements_text(COALESCE(me->'dependsOn', '[]'::jsonb)) dep,
+    tasks dt
+    JOIN stories ds ON ds.id = dt.story_id
+    WHERE me->>'name' = ${module}
+      AND ds.project_id = ${projectId}
+      AND ds.archived_at IS NULL
+      AND dt.status <> 'done'
+      AND (dt.module = dep OR (dt.module IS NULL AND jsonb_array_length(ds.module_ids) = 1 AND ds.module_ids ? dep))
+  )`;
 }
 
 /**

@@ -6,64 +6,65 @@ description: 'As RNs de orçamento, metering, relatório de gasto e teto de cust
 keywords: [regras de negócio, custo, orçamento, metering, token]
 ---
 
-# Custo
+# Cost
 
 > Estas RNs saíram de [`business-rules.md`](../business-rules.md) sem
 > mudar uma vírgula do conteúdo: a página única passava de 640 KB e
 > estas duas seções sozinhas eram metade dela. As âncoras `#rn-NNN`
 > continuam idênticas — só o arquivo que as hospeda mudou.
 
-### RN-017 — Orçamento tem escopo exclusivo: projeto **ou** sessão {#rn-017}
+### RN-017 — Budget has an exclusive scope: project **or** session {#rn-017}
 
-Um `budget` referencia um projeto ou uma sessão, nunca os dois — garantido
-por um `check` no banco de dados, não só no código.
+A `budget` references a project or a session, never both — guaranteed by
+a `check` in the database, not just in code.
 
-- **Onde:** `apps/api/src/db/schema/llm.ts` (`budgets_scope_check`)
-- **Teste:** a constraint é a garantia
+- **Where:** `apps/api/src/db/schema/llm.ts` (`budgets_scope_check`)
+- **Test:** the constraint is the guarantee
 
-### RN-018 — Notificação de orçamento em 70%, 90% e 100%, sem repetir {#rn-018}
+### RN-018 — Budget notification at 70%, 90%, and 100%, without repeating {#rn-018}
 
-Cada limiar dispara **uma vez**; o último notificado fica persistido em
+Each threshold fires **once**; the last one notified is persisted in
 `budgets.last_threshold_notified`.
 
-- **Onde:** `apps/api/src/domain/llm/budget-threshold.ts:1`
-- **Teste:** `test/domain/llm/budget-threshold.spec.ts`
+- **Where:** `apps/api/src/domain/llm/budget-threshold.ts:1`
+- **Test:** `test/domain/llm/budget-threshold.spec.ts`
 
-### RN-019 — `policy = 'block'` recusa a chamada; `'allow'` só registra {#rn-019}
+### RN-019 — `policy = 'block'` refuses the call; `'allow'` only records {#rn-019}
 
-- **Onde:** `apps/api/src/domain/llm/budget-threshold.ts:4`
-- **Caso de borda:** um projeto em `allow` **não se detém** no teto. É a
-  causa mais comum de "o orçamento não segurou" — veja o
-  [runbook](../runbook.md).
+- **Where:** `apps/api/src/domain/llm/budget-threshold.ts:4`
+- **Edge case:** a project in `allow` **doesn't stop itself** at the
+  ceiling. It's the most common cause of "the budget didn't hold" — see
+  the [runbook](../runbook.md).
 
-### RN-020 — O modelo é resolvido em cascata, do mais específico ao mais geral {#rn-020}
+### RN-020 — The model is resolved by cascade, from most specific to most general {#rn-020}
 
-`session > agent > area > project > workspace`. Vence o primeiro que
-existir. `area` entrou na FASE 23 — veja a [RN-102](#rn-102) para a posição
-dela e o que muda para quem já leu esta cascata.
+`session > agent > area > project > workspace`. The first one that
+exists wins. `area` entered in PHASE 23 — see [RN-102](#rn-102) for its
+position and what changes for whoever already read this cascade.
 
-- **Onde:** `apps/api/src/domain/llm/binding-resolver.ts`
-- **Teste:** `test/domain/llm/binding-resolver.spec.ts`
+- **Where:** `apps/api/src/domain/llm/binding-resolver.ts`
+- **Test:** `test/domain/llm/binding-resolver.spec.ts`
 
-### RN-040 — Binding de agente exige tool calling nativo {#rn-040}
+### RN-040 — Agent binding requires native tool calling {#rn-040}
 
-Vincular um modelo a um **agente** (`scope = 'agent'`) só é permitido se o
-modelo tiver `supports_tool_calling`. Um agente só existe dentro do
-ToolLoop, e o ToolLoop só funciona se o modelo souber **pedir** ferramentas;
-sem isso, a falha apareceria adiante como "o agente parou sem terminar",
-que é exatamente o diagnóstico por eliminação que o
-[ADR 0020](../adr/0020-destravar-gates-qa-secops.md) proibiu. A recusa é um
-422 e a mensagem aponta para o filtro **"aptos para agentes"** — sem esse
-apontamento a regra vira um beco sem saída.
+Binding a model to an **agent** (`scope = 'agent'`) is only allowed if the
+model has `supports_tool_calling`. An agent only exists inside the
+ToolLoop, and the ToolLoop only works if the model knows how to
+**request** tools; without that, the failure would show up downstream as
+"the agent stopped without finishing", which is exactly the
+diagnosis-by-elimination that [ADR 0020](../adr/0020-destravar-gates-qa-secops.md)
+forbade. The refusal is a 422 and the message points to the **"fit for
+agents"** filter — without that pointer the rule becomes a dead end.
 
-O `ToolCallRecovery` do engine recupera chamadas que o modelo escreveu em
-prosa, mas é um **resgate, não uma licença**: depende de o modelo acertar o
-formato por acaso.
+The engine's `ToolCallRecovery` recovers calls the model wrote in prose,
+but it's a **rescue, not a license**: it depends on the model getting the
+format right by chance.
 
-Só `agent` valida. `workspace` e `project` são o fallback do chat humano e
-`session` é conversa — nenhum deles roda um ToolLoop, e travá-los proibiria
-modelos só de chat no produto. O agente `context-manager` está coberto por
-construção: é um slug **dentro** do escopo `agent`, não um escopo próprio.
+Only `agent` validates. `workspace` and `project` are the human chat's
+fallback and `session` is conversation — none of them run a ToolLoop, and
+locking them would forbid chat-only models in the product. The
+`context-manager` agent is covered by construction: it's a slug
+**within** the `agent` scope, not its own scope.
 
 **Nota aditiva — o filtro passou a vir MARCADO, e quem o liga é o ESCOPO.** O
 parágrafo acima diz que a recusa aponta para o filtro "aptos para agentes",
@@ -71,8 +72,8 @@ parágrafo acima diz que a recusa aponta para o filtro "aptos para agentes",
 abre o seletor com o filtro marcado existia desde a Fase 9c e **nenhuma tela de
 produção o passava**. O seletor de um agente abria oferecendo modelo chat-only
 cujo clique só existia para ser recusado. As duas telas que gravam num escopo
-validado passam a abrir filtradas — `ModelsSection` (agente e a caixa
-da área na linha do lead, RN-912) —, e a régua de quem liga não é a tela e sim
+validado passam a abrir filtradas — `ModelsSection` (agente) e
+`AreaModelsSection` (área) —, e a régua de quem liga não é a tela e sim
 `assertModelFitsBindingScope`: onde a api RECUSA, o filtro vem marcado; onde ela
 não recusa, quem escolhe é a pessoa. Por isso o seletor de SESSÃO continua sem
 filtro — marcar ali esconderia modelo que a api aceita. **Isto não elimina o
@@ -99,1271 +100,1050 @@ Fase 9a. Desde o [ADR 0064](../adr/0064-escopo-de-area-na-cascata-e-o-binding-de
 do modelo de uma área é um agente dela ([RN-102](#rn-102)) —, e é por isso que
 são DUAS as telas que ligam o filtro.
 
-- **Onde:** `apps/api/src/domain/llm/model-capabilities.ts:38`;
+- **Where:** `apps/api/src/domain/llm/model-capabilities.ts:38`;
   `apps/web/src/components/ModelPicker.tsx` (o filtro e o aviso de vigente
-  escondido), `apps/web/src/routes/settings/ModelsSection.tsx` (quem o liga,
-  no seletor do agente e no do lead que segue a área)
-- **Teste:** `test/domain/llm/model-capabilities.spec.ts`,
+  escondido), `apps/web/src/routes/settings/ModelsSection.tsx`,
+  `apps/web/src/routes/settings/AreaModelsSection.tsx` (quem o liga)
+- **Test:** `test/domain/llm/model-capabilities.spec.ts`,
   `test/application/use-cases/llm/set-model-binding.use-case.spec.ts`;
   `apps/web/src/routes/settings/filtro-de-aptos.test.tsx` e
   `apps/web/src/routes/SessionPage.filtro-de-aptos.test.tsx` (as duas telas que
   ligam, e a que não liga)
-- **Origem:** [ADR 0041](../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
+- **Origin:** [ADR 0041](../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
 
-### RN-041 — Contagem de tokens que o provider não deu é marcada como estimada {#rn-041}
+### RN-041 — Token count the provider didn't give is marked as estimated {#rn-041}
 
-Quando a resposta do provider não traz `usage`, a base compatível com
-OpenAI conta localmente com o tokenizer e emite o chunk com
-`estimated: true`. O número ainda serve para cobrança, mas a marca preserva
-a diferença entre **"o provider disse zero"** e **"o provider não disse
-nada"** — e é o que permite à UI qualificar o custo em vez de mostrar um
-valor sem procedência.
+When the provider's response doesn't carry `usage`, the OpenAI-compatible
+base counts locally with the tokenizer and emits the chunk with
+`estimated: true`. The number still serves for billing, but the mark
+preserves the difference between **"the provider said zero"** and **"the
+provider said nothing"** — and it's what lets the UI qualify the cost
+instead of showing a value with no provenance.
 
-Os outros dois providers divergem, e a divergência é normalizada, não
-escondida: o Ollama simplesmente não emite `usage` sem a linha `done`; o
-Anthropic não pode omitir a contagem, porque `usage` é obrigatório no
-`message_start` do protocolo dele. As três respostas estão em
+The other two providers diverge, and the divergence is normalized, not
+hidden: Ollama simply doesn't emit `usage` without the `done` line;
+Anthropic can't omit the count, because `usage` is mandatory in its
+protocol's `message_start`. The three responses are in
 [docs/reference/llm-providers.md](../reference/llm-providers.md#normalized-divergences).
 
-- **Onde:** `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:167`
-- **Teste:** `test/contract/llm-provider.contract.ts` (cenário
-  `sem_usage`, rodado contra os três providers)
-- **Origem:** [ADR 0041](../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
+- **Where:** `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:150`
+- **Test:** `test/contract/llm-provider.contract.ts` (scenario
+  `sem_usage`, run against the three providers)
+- **Origin:** [ADR 0041](../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
 
-### RN-042 — O metering registra quem ATENDEU a chamada, não só por onde ela entrou {#rn-042}
+### RN-042 — Metering records who SERVED the call, not just where it came in {#rn-042}
 
-Quando a chamada passa por um hub que informa o provider real,
-`token_usage` registra esse provider em `upstream_provider`, além do
-provider de entrada. Sem hub — ou com um hub que não informou — o campo é
-**`null`**, nunca string vazia: a consulta de custo por provider precisa
-distinguir "não passou por hub" de "passou por um e o hub não disse".
+When the call goes through a hub that reports the real provider,
+`token_usage` records that provider in `upstream_provider` in addition to
+the entry provider. With no hub — or a hub that didn't report — the field
+is **`null`**, never an empty string: the cost-by-provider query needs to
+distinguish "didn't go through a hub" from "went through one and the hub
+didn't say".
 
-Nas métricas, o rótulo `upstream_provider` repete o próprio provider quando
-não há hub, de modo que `sum by (upstream_provider)` continua somando o
-custo inteiro.
+In metrics the `upstream_provider` label repeats the provider itself when
+there's no hub, so `sum by (upstream_provider)` keeps summing the whole
+cost.
 
-- **Onde:** `apps/api/src/application/use-cases/llm/record-llm-usage.use-case.ts:73`
-- **Teste:** `test/application/use-cases/llm/record-llm-usage.use-case.spec.ts`
-- **Origem:** [ADR 0041](../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
+- **Where:** `apps/api/src/application/use-cases/llm/record-llm-usage.use-case.ts:58`
+- **Test:** `test/application/use-cases/llm/record-llm-usage.use-case.spec.ts`
+- **Origin:** [ADR 0041](../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
 
-### RN-681 — História e regra parecidas com uma existente geram AVISO por embedding, nunca recusa; o gasto da checagem é linha própria do metering {#rn-681}
+### RN-043 — A discovered model enters disabled; a model that disappears is marked, never deleted {#rn-043}
 
-Depois de gravar uma história (`create_story`) ou uma regra de negócio
-(`emit_artifact` de `business_rule`), a api compara o TÍTULO dela com os das
-existentes do mesmo tipo no PROJETO, por cosseno entre vetores do modelo de
-embedding do RAG, e AVISA quando a mais próxima está a partir do limiar.
+Catalog sync has three outcomes, and none of them is destructive:
 
-1. **Aviso, nunca recusa.** O item já existe quando a checagem roda. O aviso
-   volta ao agente no resultado da ferramenta — a frase nomeia o parecido, o
-   id e o número — e fica no log como `backlog.semantic_duplicate_warned`. A
-   duplicata EXATA continua recusada antes, pela [RN-080](#rn-080) e pela
-   [RN-081](#rn-081), e por isso título normalizado igual sai da comparação.
-2. **O limiar é 0,80 e é PONTO DE PARTIDA, não calibrado** (ADR 0198, como os
-   pesos do [ADR 0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)):
-   os vetores reais do par do achado R e dos pares que não são duplicata não
-   puderam ser gravados no ambiente em que a regra nasceu. A prova roda sozinha
-   quando `vetores.json` for gravado; até lá ela é PULADA com aviso.
-3. **Sem provider de embedding a checagem é PULADA e DITA** — capability
-   ausente, daemon fora, timeout: `backlog.semantic_duplicate_check_skipped`
-   com o motivo no log e na frase ao agente. Nunca falha a emissão.
-4. **O gasto entra no metering como linha própria**: ator
-   `system`/`duplicata-semantica`, provider e modelo do RAG, saída zero, preço
-   do catálogo quando o modelo está nele. É a ÚNICA exceção ao corte do
-   [ADR 0075](../adr/0075-embeddings-no-contrato-de-llm-provider.md) — a
-   indexação e a busca do RAG seguem fora —, e cabe porque a emissão acontece
-   dentro de sessão.
-5. **Tetos:** as 100 existentes mais recentes (o resultado diz quantas de
-   quantas quando corta) e 10 s de relógio para a checagem inteira.
+1. **A new model** enters **with no curation row in any workspace**, and
+   the absence of a row IS the disabled state. A provider's catalog has
+   hundreds of rows — dumping them in active would make choosing
+   impossible and would turn on an expensive model without anyone
+   deciding. Activating is the owner's curation, and it applies only in
+   their workspace ([RN-052](#rn-052)).
+2. **A model that disappeared from the remote catalog** receives
+   `availability = 'unavailable'` and **stays in the table**:
+   `model_bindings` and `token_usage` point to the row, and deleting it
+   would take the cost history along with it.
+3. **A model that came back** returns to `available` with the curation
+   **untouched** — the owner's choice survives a temporary absence from
+   the provider.
 
-- **Onde:** `apps/api/src/domain/backlog/duplicata-semantica.ts:35` (`LIMIAR_DE_DUPLICATA_SEMANTICA`),
-  `:44` (`TETO_DE_COMPARACOES_DE_DUPLICATA`), `:53` (`TETO_DE_TEMPO_DA_CHECAGEM_MS`),
-  `:107` (`ehDuplicataSemantica`),
-  `apps/api/src/application/use-cases/backlog/verificar-duplicata-semantica.use-case.ts:111` (`VerificarDuplicataSemanticaUseCase`),
-  `:241` (`medir`), `:285` (`narrar`), `:349` (`fraseParaOAgente`),
-  `apps/api/src/application/use-cases/backlog/create-story.use-case.ts:193` (`semanticDuplicate`),
-  `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts:640` (`semanticDuplicateCheck`),
-  `apps/api/src/application/use-cases/rag/rag-embedding.service.ts:106` (`uso`),
-  `apps/engine/lib/engine/harness/tools/emit_artifact.ex` (`aviso_semantico`),
-  `apps/engine/lib/engine/harness/tools/create_story.ex` (`aviso_semantico`)
-- **Teste:** `test/application/use-cases/backlog/verificar-duplicata-semantica.use-case.spec.ts`
-  (avisa acima do limiar; o gasto vira linha própria; abaixo não narra; sem
-  provider pula dizendo; teto de tempo; teto de comparações; regra pelos
-  eventos; metering e log que falham não derrubam),
-  `test/application/use-cases/backlog/create-story.use-case.spec.ts`
-  (`duplicata semântica (RN-681)`), `test/domain/backlog/duplicata-semantica.spec.ts`,
-  `test/domain/backlog/limiar-de-duplicata.calibracao.spec.ts` (o NÚMERO —
-  pulada até os vetores serem gravados),
-  `apps/engine/test/engine/harness/duplicata_semantica_test.exs`,
-  `apps/web/src/lib/activity.test.ts` (`duplicata semântica (RN-681)`)
-- **Origem:** [ADR 0198](../adr/0198-duplicata-semantica-por-embedding-com-limiar-que-so-avisa.md)
-  (AT-171, achado R)
+The two axes are deliberately independent: curation is a person's
+decision, `availability` is an observation of the provider. Neither
+writes to the other — and since
+[ADR 0049](../adr/0049-curadoria-de-modelo-por-workspace.md) they don't even
+live in the same table, so sync has no curation field to run over even if
+it wanted to.
 
-### RN-666 — O metering grava quanto da entrada veio de cache e quanto da saída foi raciocínio {#rn-666}
+Three consequences in the rest of the system:
 
-Cada linha de `token_usage` grava duas PARTES que o provider informa no
-`usage` do dialeto OpenAI: `cached_input_tokens`
-(`prompt_tokens_details.cached_tokens` — quantos dos `input_tokens` foram
-servidos de cache, cobrados a uma fração do preço) e `reasoning_tokens`
-(`completion_tokens_details.reasoning_tokens` — quantos dos `output_tokens`
-foram raciocínio).
+- a **NEW** binding for an inactive or unavailable model is refused in
+  the domain (`ModelNotBindableError`, 422). Bindings that already exist
+  stand;
+- `resolveBinding`'s **cascade** skips the unavailable candidate, records
+  what it skipped in `skipped`, and — when the turn carries tools —
+  revalidates `supports_tool_calling` at EVERY level. Without that, the
+  fallback would land an agent on a chat-only model and silently violate
+  [RN-040](#rn-040);
+- **a provider that failed doesn't make anything unavailable**: a 401 is
+  "I don't know what's there", not "there's nothing there". The provider
+  is skipped, with the failure's ORIGIN (`infra` | `modelo`) in the
+  report — never diagnosis by elimination.
 
-1. **Parte, nunca soma.** `input_tokens`/`output_tokens` continuam sendo os
-   totais que o provider disse, e já incluem as partes; nada é somado a eles
-   e nenhum custo é recalculado por elas — o número do custo é o da
-   [RN-665](#rn-665).
-2. **"Não disse" não é zero.** `null` = o provider não informou; 0 = informou
-   que não houve. Valor que não é inteiro não negativo é "não disse".
-3. **A medição diz quanto foi cache.** `medir-execucao.ts` passa a mostrar,
-   por agente, o cache lido e o raciocínio com a porcentagem do total, SÓ sobre
-   as chamadas que informaram (e em quantas, quando não foram todas), e
-   "não medido" quando nenhuma informou — além de em quantas chamadas o custo
-   é o real.
-4. **Lido para todo provider do dialeto**, porque os dois campos são da
-   própria OpenAI; quem não os manda fica com `null`. O Anthropic informa cache
-   no protocolo dele (`cache_read_input_tokens`) e isso NÃO é lido aqui — fica
-   `null`, declarado; o Ollama não informa.
-
-- **Onde:** `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:414` (`cachedInputTokens`),
-  `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:817` (`contagem`),
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:230` (`cachedInputTokens`),
-  `apps/api/src/application/use-cases/llm/record-llm-usage.use-case.ts:121` (`cachedInputTokens`),
-  `apps/api/src/db/schema/llm.ts:395` (`cachedInputTokens`),
-  `apps/api/scripts/medir-execucao.ts:89` (`formatarParteMedida`)
-- **Teste:** `test/infrastructure/llm/openrouter-provider.contract.spec.ts`
-  (resposta gravada com as duas partes; sem os detalhes; valor inválido e
-  zero), `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts`,
-  `test/scripts/medir-execucao.spec.ts` (`formatarParteMedida`)
-- **Origem:** [ADR 0188](../adr/0188-o-custo-real-do-provider-vira-o-numero-do-metering.md)
-  (AT-272)
-
-### RN-665 — O custo real que o provider devolve é o número do metering; o catálogo fica onde ele não vem {#rn-665}
-
-Decisão do dono (30/09): **o custo real vira o número**. Quando a resposta de
-uma chamada de LLM diz quanto o provider cobrou — no OpenRouter, `usage.cost`
-no frame final do stream —, esse valor é o `token_usage.cost_micros` da linha,
-o que o turno devolve ao engine (e o laço soma ao orçamento local), o que
-incrementa os budgets de projeto, sessão e área, e o que os relatórios de
-gasto somam. Sem ele, o preço congelado do catálogo produz o número, como no
-[ADR 0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md).
-
-1. **Uma regra, três caminhos.** `RunLlmTurnUseCase`, `StreamLlmTurnUseCase`
-   e `SendChatMessageUseCase` passam pela mesma `custoDaChamada`; não há
-   segunda régua.
-2. **Preço implícito, marcado.** Com custo real, as duas colunas de preço
-   gravam `custo ÷ tokens` (o mesmo valor: o provider devolve UM custo) e
-   `price_implicit = true` — o que mantém `tokens × preço = custo`
-   ([RN-044](#rn-044)) sem fingir um preço de tabela. Sem custo real,
-   `price_implicit = false` e as colunas são as do catálogo.
-3. **O catálogo ao lado.** `catalog_cost_micros` grava o que o preço de
-   catálogo teria cobrado, só nas linhas cujo número é o real (`null` nas
-   outras) — é a distância entre estimativa e fatura, por linha.
-4. **`estimated` segue falando dos TOKENS** ([RN-041](#rn-041)). A linha
-   com custo real tem `estimated = false` porque o custo só chega com o
-   `usage` do provider; quem marca o CUSTO como real é `price_implicit`.
-5. **O que a resposta disse sobre si é gravado.** `resolved_model_name` (o
-   `model` do frame — o alias resolvido) e `generation_id` (o `id`, `gen-…` no
-   OpenRouter), por todo provider do dialeto. `model_name` continua sendo o do
-   catálogo, a dimensão dos relatórios.
-6. **Só quem provou lê o custo.** O hook `extrairCustoReal` existe só no
-   OpenRouter; provider sem ele ignora um `usage.cost` presente. Custo que não
-   é número finito e não negativo é "não disse" (zero de verdade é custo real),
-   e com `is_byok: true` o custo NÃO é lido: é a taxa do hub, e a inferência é
-   cobrada por fora — a linha cai no catálogo.
-
-- **Onde:** `apps/api/src/domain/llm/custo-da-chamada.ts:43` (`custoDaChamada`),
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:288` (`custoDaChamada`),
-  `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:327` (`custoDaChamada`),
-  `apps/api/src/application/use-cases/llm/send-chat-message.use-case.ts:286` (`custoDaChamada`),
-  `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:410` (`extrairCustoReal`),
-  `apps/api/src/infrastructure/llm/openrouter-provider.ts:272` (`extrairCustoRealOpenRouter`),
-  `apps/api/src/db/schema/llm.ts:375` (`priceImplicit`)
-- **Teste:** `test/domain/llm/custo-da-chamada.spec.ts`,
-  `test/infrastructure/llm/openrouter-provider.contract.spec.ts` (resposta
-  gravada: custo, modelo resolvido, id; BYOK; sem `cost`; provider sem o
-  hook), `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts`,
-  `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts`,
-  `test/application/use-cases/llm/send-chat-message.use-case.spec.ts`; com
-  credencial, o smoke manual `openrouter-provider.smoke.spec.ts`
-- **Origem:** [ADR 0188](../adr/0188-o-custo-real-do-provider-vira-o-numero-do-metering.md)
-  (AT-270)
-
-### RN-679 — A curadoria recusa o alias de roteamento livre do OpenRouter {#rn-679}
-
-Decisão do dono (01/10): **o alias `~` não entra na curadoria** — só modelo
-com upstream fixo. O alias de roteamento livre do OpenRouter (o id que começa
-com `~`, como `~deepseek/deepseek-flash-latest`) "sempre redireciona para o
-último da família": o catálogo publica um preço de VITRINE (no uso real de
-29/09, o do endpoint mais barato da família), a lista de endpoints vem vazia,
-e quem cobra é o upstream que atendeu. Não há upstream contra o qual o preço
-congelado do [ADR 0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
-signifique alguma coisa. A alternativa — preçar por upstream — foi recusada.
-
-1. **A régua é do provider.** `ehAliasDeRoteamentoLivre` é `provider =
-   'openrouter'` E nome começando com `~`; o mesmo prefixo noutro provider não
-   é alias e não recusa.
-2. **Ativar recusa, com código.** `POST .../models/activate` com
-   `isActive: true` e algum alias no lote é **422** com
-   `code: "alias_de_roteamento_livre"`, os `modelIds` recusados e uma frase que
-   os nomeia. O lote INTEIRO é recusado, como o 404 do id inexistente
-   ([RN-043](#rn-043)): nem o modelo de upstream fixo do mesmo lote é ligado.
-   A tela de catálogo mostra a frase da api num toast de título próprio, e
-   casa pelo `code`, nunca pelo texto.
-3. **O sync NÃO filtra o alias.** Ele continua no catálogo — sumir dali faria
-   o sync marcar `unavailable` o que já estava curado, e a cascata pularia os
-   bindings dele em silêncio. A leitura da curadoria o MARCA:
-   `freeRoutingAlias`, derivado de provider e nome na leitura, nunca gravado.
-   A linha mostra o selo e o motivo em TEXTO antes de alguém tentar ativar.
-4. **O que já estava curado segue funcionando.** É mensurável (o nome com `~`
-   na linha do OpenRouter), e a saída escolhida é a menos surpreendente: o
-   alias ativo antes da regra **continua ativo** — os bindings dele seguem
-   resolvendo, o seletor segue mostrando —, sai marcado no catálogo, e pode
-   ser DESLIGADO. Desligado, não volta. Nada é apagado e nenhum binding é
-   reescrito. Binding NOVO para um alias ainda ativo não é recusado aqui: a
-   regra é da curadoria, e o binding segue a [RN-043](#rn-043).
-
-- **Onde:** `apps/api/src/domain/llm/alias-de-roteamento-livre.ts:23` (`ehAliasDeRoteamentoLivre`),
-  `:41` (`AliasDeRoteamentoLivreError`),
-  `apps/api/src/application/use-cases/llm/set-models-active.use-case.ts:59` (`AliasDeRoteamentoLivreError`),
-  `apps/api/src/infrastructure/persistence/drizzle/workspace-model.repository.ts:67` (`freeRoutingAlias`),
-  `apps/api/src/interfaces/http/shared/llm-binding-error.filter.ts:60` (`code`),
-  `apps/web/src/components/ModelCatalogSection.tsx:606` (`recusaDeAliasLivre`)
-- **Teste:** `test/application/use-cases/llm/set-models-active.use-case.spec.ts`
-  (lote recusado inteiro com código e ids; upstream fixo ativa; `~` fora do
-  OpenRouter ativa; alias curado antes da regra segue ativo, marcado, desliga
-  e não volta), `test/interfaces/http/shared/llm-binding-error.filter.spec.ts`,
-  `apps/web/src/components/ModelCatalogSection.test.tsx` (selo e motivo;
-  toast da recusa; toast genérico para outro erro)
-- **Origem:** AT-271 (item A25 da análise do uso real de 29/09); complementa a
-  [RN-665](#rn-665)
-
-### RN-583 — O critério de roteamento do hub é do binding, viaja com ele, e congela no metering {#rn-583}
-
-Um binding de modelo pode guardar um **critério de roteamento** —
-`routing_preference`: `price`, `throughput` ou `latency` — que diz ao HUB
-como escolher o upstream que serve o modelo. Anulável: `null` é o
-comportamento de sempre, nada vai ao fio e o hub decide sozinho.
-
-1. **Viaja com o binding que venceu, nunca cascateia sozinho.** A cascata
-   continua sendo de binding: o nível vencedor traz o modelo E o critério
-   dele. O nível que a cascata PULA (modelo indisponível, sem tool calling)
-   leva o critério junto — sobreviver só o critério produziria combinação que
-   ninguém escolheu.
-2. **Escrita em três formas.** No `PUT .../model-binding` dos cinco escopos,
-   `routingPreference` **ausente** preserva o gravado se o provider do modelo
-   novo declara a capability, e vira `null` se não declara; **`null`** limpa;
-   **valor** para provider sem a capability é **422**
-   (`RoutingPreferenceNotSupportedError`). Invariante: nenhum binding guarda
-   critério para provider que não o declara.
-3. **Congela o que FOI AO FIO.** `token_usage.routing_preference` é gravado
-   por chamada, ao lado do `upstream_provider` da [RN-042](#rn-042): o critério
-   enviado, e `null` quando o binding não tinha ou quando o provider não
-   declara a capability (o que não foi enviado não é procedência de nada).
-   Mesma régua do preço congelado (ADR 0042).
-4. **Capability de PROVIDER, só com prova.**
-   `LLMProviderCapabilities.routingPreference` é obrigatória nos nove, e é
-   `true` SÓ no OpenRouter desde 2026-09-29 (AT-158): o smoke com credencial
-   real (`openrouter-provider.roteamento.smoke.spec.ts`) mostrou o critério
-   MUDANDO o upstream que serviu — em `meta-llama/llama-3.3-70b-instruct`,
-   `price` pousou na DeepInfra e `throughput` na Groq (`latency` foi Groq numa
-   medição e CoreWeave na outra), enquanto sem critério o hub alternou
-   Novita/DeepInfra. A prova é a DIFERENÇA, não o
-   aceite: o modelo do default antigo (`~deepseek/deepseek-v4-flash-latest`)
-   devolveu o MESMO upstream para os três critérios e sem critério, e isso não
-   distingue "o hub respeitou" de "não havia escolha". Os outros oito seguem
-   `false`, e para eles a feature continua DORMENTE: a rota recusa com 422, a
-   tela diz em texto que o provider não tem a opção provada, e nada muda no
-   fio. O que a prova NÃO afirma: qual upstream cada critério escolhe — isso
-   é decisão do hub e muda com o tempo.
-
-- **Onde:** `apps/api/src/domain/llm/routing-preference.ts:56` (escrita),
-  `apps/api/src/domain/llm/routing-preference.ts:75` (o que vai ao fio),
-  `apps/api/src/domain/llm/binding-resolver.ts:100` (viaja com o binding),
-  `apps/api/src/application/use-cases/llm/record-llm-usage.use-case.ts:118`
-  (congela no metering),
-  `apps/api/src/infrastructure/llm/openrouter-provider.ts:353` (`openrouterConfig`,
-  a capability provada)
-- **Teste:** `test/domain/llm/routing-preference.spec.ts`,
-  `test/application/use-cases/llm/set-model-binding.use-case.spec.ts`,
-  `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts`,
-  `test/infrastructure/llm/openrouter-provider.contract.spec.ts`; a prova
-  manual da capability é `test/infrastructure/llm/openrouter-provider.roteamento.smoke.spec.ts`
-- **Origem:** [ADR 0166](../adr/0166-preferencia-de-roteamento-no-binding-de-modelo.md) (AT-090)
-
-### RN-043 — Um modelo descoberto entra desabilitado; um modelo que desaparece é marcado, nunca apagado {#rn-043}
-
-A sincronização do catálogo tem três desfechos, e nenhum é destrutivo:
-
-1. **Um modelo novo** entra **sem linha de curadoria em nenhum workspace**,
-   e a ausência de linha É o estado desabilitado. O catálogo de um provider
-   tem centenas de linhas — despejá-las como ativas tornaria a escolha
-   impossível e ligaria um modelo caro sem que ninguém decidisse. Ativar é a
-   curadoria do owner, e vale só no workspace dele ([RN-052](#rn-052)).
-2. **Um modelo que sumiu do catálogo remoto** recebe
-   `availability = 'unavailable'` e **permanece na tabela**:
-   `model_bindings` e `token_usage` apontam para a linha, e apagá-la levaria
-   junto o histórico de custo.
-3. **Um modelo que voltou** retorna a `available` com a curadoria
-   **intacta** — a escolha do owner sobrevive a uma ausência temporária do
-   provider.
-
-Os dois eixos são deliberadamente independentes: a curadoria é decisão de
-uma pessoa, `availability` é uma observação do provider. Nenhum escreve no
-outro — e desde o [ADR 0049](../adr/0049-curadoria-de-modelo-por-workspace.md)
-eles nem moram na mesma tabela, então a sincronização não tem campo de
-curadoria para atropelar, mesmo que quisesse.
-
-Três consequências no resto do sistema:
-
-- um binding **NOVO** para um modelo inativo ou indisponível é recusado no
-  domínio (`ModelNotBindableError`, 422). Os bindings que já existem
-  permanecem;
-- a **cascata** do `resolveBinding` pula o candidato indisponível, registra
-  o que pulou em `skipped` e — quando o turno leva ferramentas — revalida
-  `supports_tool_calling` em TODOS os níveis. Sem isso, o fallback pousaria
-  um agente num modelo só de chat e violaria a [RN-040](#rn-040) em silêncio;
-- **um provider que falhou não torna nada indisponível**: um 401 é "não sei
-  o que há ali", não "não há nada ali". O provider é pulado, com a ORIGEM da
-  falha (`infra` | `modelo`) no relatório — nunca diagnóstico por
-  eliminação.
-
-- **Onde:** `apps/api/src/application/use-cases/llm/sync-model-catalog.use-case.ts:160`,
+- **Where:** `apps/api/src/application/use-cases/llm/sync-model-catalog.use-case.ts:160`,
   `apps/api/src/domain/llm/binding-resolver.ts:63`,
   `apps/api/src/domain/llm/model-capabilities.ts:49`
-- **Teste:** `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts`,
+- **Test:** `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts`,
   `test/domain/llm/binding-resolver.spec.ts`,
   `test/application/use-cases/llm/set-model-binding.use-case.spec.ts`
-- **Origem:** [ADR 0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
+- **Origin:** [ADR 0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
 
-### RN-044 — O preço vale daqui para a frente, e o custo antigo continua conferindo {#rn-044}
+### RN-044 — Price applies from here on, and old cost still checks out {#rn-044}
 
-Toda linha de `token_usage` registra o preço que produziu o seu
-`cost_micros`. Mudar o preço de um modelo **não reprecifica o consumo
-passado** — e mais que isso: o custo antigo continua **reproduzível**,
-porque `tokens × preço registrado` bate com o custo registrado mesmo depois
-de três correções na tabela `models`.
+Every `token_usage` row records the price that produced its
+`cost_micros`. Changing a model's price **doesn't reprice past
+consumption** — and more than that: old cost stays **reproducible**,
+because `tokens × recorded price` matches the recorded cost even after
+three corrections to the `models` table.
 
-Toda mudança de preço grava uma linha em `model_price_changes`, append-only,
-com o par antes/depois e a origem (`manual` | `sync`). O par é gravado junto
-de propósito: reconstruir o "antes" a partir da linha anterior dependeria de
-nenhuma escrita ter escapado do caminho auditado, que é exatamente o que a
-auditoria existe para provar. Um preço igual ao atual é no-op — uma linha
-dizendo "mudou de 10 para 10" transformaria o log em ruído.
+Every price change writes a row to `model_price_changes`, append-only,
+with the before/after pair and the origin (`manual` | `sync`). The pair
+is recorded together on purpose: reconstructing the "before" from the
+previous row would depend on no write having escaped the audited path,
+which is exactly what the audit exists to prove. A price equal to the
+current one is a no-op — a row saying "changed from 10 to 10" would turn
+the log into noise.
 
-A regra vale para **todo** caminho que muda preço, não só o da tela. Duas
-escritas costumavam escapar dela: a sincronização do catálogo (que mudava o
-preço via `upsert`, nunca produzindo a origem `sync` que o domínio declarava
-desde a Fase 9c) e o `seed.ts` (que roda num banco já semeado —
-`BRABO_FORCE_SEED=1` no `bootstrap.sh` do k8s — e portanto corrigia o preço
-em silêncio). Ambos agora auditam, com o seed reaproveitando o próprio
-`UpdateModelPricingUseCase`.
+The rule applies to **every** path that changes price, not just the
+screen's. Two writes used to escape it: catalog sync (which changed
+price via `upsert`, never producing the `sync` origin the domain had
+declared since Phase 9c) and `seed.ts` (which runs on an already-seeded
+database — `BRABO_FORCE_SEED=1` in k8s's `bootstrap.sh` — and therefore
+silently corrected price). Both now audit, with the seed reusing
+`UpdateModelPricingUseCase` itself.
 
-- **Onde:** `apps/api/src/application/use-cases/llm/update-model-pricing.use-case.ts:44`,
+- **Where:** `apps/api/src/application/use-cases/llm/update-model-pricing.use-case.ts:44`,
   `apps/api/src/application/use-cases/llm/sync-model-catalog.use-case.ts:213`,
   `apps/api/src/db/seed.ts:376`
-- **Teste:** `test/application/use-cases/llm/update-model-pricing.use-case.spec.ts`,
+- **Test:** `test/application/use-cases/llm/update-model-pricing.use-case.spec.ts`,
   `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts`
-- **Origem:** [ADR 0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
+- **Origin:** [ADR 0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
 
-### RN-189 — O embedding devolve um vetor por entrada, ou um erro {#rn-189}
+### RN-189 — Embedding returns one vector per input, or an error {#rn-189}
 
-`embed` é uma operação em LOTE: recebe N textos e devolve N vetores, **na
-mesma ordem**. A ordem é o único vínculo entre entrada e vetor, e é por isso
-que uma resposta mais curta não serve — o i-ésimo vetor acabaria pertencendo
-a outra frase, e o índice erraria em silêncio, com o sintoma aparecendo na
-BUSCA, semanas depois e longe da causa.
+`embed` is a BATCH operation: it receives N texts and returns N vectors,
+**in the same order**. Order is the only link between input and vector,
+and that's why a shorter response isn't usable — the i-th vector would
+end up belonging to another sentence, and the index would silently go
+wrong, with the symptom showing up in SEARCH, weeks later and far from
+the cause.
 
-Assim, o contrato recusa, em vez de degradar, três coisas: um lote
-incompleto, um vetor vazio e dimensões diferentes na mesma resposta. Uma
-lista de entradas vazia também é recusada antes de sair pela rede —
-responder `[]` a ela faria o chamador gravar um índice vazio achando que
-indexou algo.
+So the contract refuses, rather than degrading, three things: an
+incomplete batch, an empty vector, and different dimensions in the same
+response. An empty input list is also refused before it goes out over the
+network — answering `[]` to it would make the caller record an empty
+index thinking it had indexed something.
 
-O resultado traz quatro campos, e cada um responde a uma pergunta que já
-custou caro em outro lugar do produto: `dimensions` é conferido contra o que
-VOLTOU (nunca copiado do catálogo); `model` é o que o provider **disse** ter
-usado, porque um alias resolve para uma versão datada e é esse nome que vai
-para o metering, pela mesma razão do preço congelado ([RN-044](#rn-044)); e
-`inputTokens` vem com `estimated`, preservando a distinção "o provider disse
-zero" × "o provider não disse nada" da [RN-041](#rn-041).
+The result carries four fields, and each answers a question that already
+cost dearly somewhere else in the product: `dimensions` is checked
+against what CAME BACK (never copied from the catalog); `model` is what
+the provider **said** it used, because an alias resolves to a dated
+version and it's that name that goes to metering, for the same reason as
+the frozen price ([RN-044](#rn-044)); and `inputTokens` comes with
+`estimated`, preserving the "the provider said zero" × "the provider said
+nothing" distinction from [RN-041](#rn-041).
 
-O erro é **lançado**, normalizado por `code`, em vez de virar um chunk como
-no `chat`. A razão do chunk é preservar o gasto de um turno em andamento;
-aqui não há nada a preservar — ou o provider devolveu os vetores e cobrou,
-ou não devolveu e não cobrou. É a mesma escolha do `listModels`, e a
-taxonomia é a mesma: nenhum `LLMErrorCode` novo.
+The error is **thrown**, normalized by `code`, instead of becoming a
+chunk like in `chat`. The chunk's reason is to preserve the spend of an
+in-progress turn; here there's nothing to preserve — either the provider
+returned the vectors and charged, or it didn't return them and didn't
+charge. It's the same choice as `listModels`, and the taxonomy is the
+same: no new `LLMErrorCode`.
 
-- **Onde:** `apps/api/src/application/ports/llm-provider.port.ts:61`,
+- **Where:** `apps/api/src/application/ports/llm-provider.port.ts:61`,
   `apps/api/src/infrastructure/llm/embedding-result.ts:26`
-- **Teste:** `test/contract/llm-provider.contract.ts` (cinco casos, rodados
-  contra todo provider que declara a capability)
-- **Origem:** [ADR 0075](../adr/0075-embeddings-no-contrato-de-llm-provider.md)
+- **Test:** `test/contract/llm-provider.contract.ts` (five cases, run
+  against every provider that declares the capability)
+- **Origin:** [ADR 0075](../adr/0075-embeddings-no-contrato-de-llm-provider.md)
 
-### RN-190 — O embedding tem uma capability em duas camadas, e a do modelo é exclusão {#rn-190}
+### RN-190 — Embedding has a capability in two layers, and the model's is exclusion {#rn-190}
 
-Como no tool calling ([RN-040](#rn-040)), a capability tem duas camadas: o
-PROVIDER (`capabilities.embeddings`, o teto) e o MODELO (`supportsEmbeddings`
-na linha do catálogo). A diferença entre os dois casos é exatamente o que a
-regra existe para afirmar:
+As with tool calling ([RN-040](#rn-040)), the capability has two layers:
+the PROVIDER (`capabilities.embeddings`, the ceiling) and the MODEL
+(`supportsEmbeddings` on the catalog row). The difference between the two
+cases is exactly what the rule exists to state:
 
-- **tool calling é um gradiente** — um modelo que não pede ferramentas ainda
-  conversa, e por isso só o binding de agente é recusado;
-- **embedding é exclusão** — o `nomic-embed-text` não responde a uma pergunta
-  e o `llama3.2` não devolve um vetor. São conjuntos disjuntos, e o daemon do
-  Ollama prova isso respondendo **`501`** ("This server does not support
-  embeddings") a um pedido de embedding com um modelo de chat.
+- **tool calling is a gradient** — a model that doesn't request tools
+  still converses, and that's why only the agent binding is refused;
+- **embedding is exclusion** — `nomic-embed-text` doesn't answer a
+  question and `llama3.2` doesn't return a vector. They're disjoint sets,
+  and the Ollama daemon proves it by answering **`501`** ("This server
+  does not support embeddings") to an embedding request with a chat
+  model.
 
-`assertCanEmbed` confere os dois na ordem que falha melhor: primeiro o
-provider, porque trocar de modelo não conserta um provider que não faz
-embedding. Um modelo **sem declaração** também é recusado, com mensagem
-diferente — ausência significa "o provider não disse"
+`assertCanEmbed` checks both in the order that fails best: the provider
+first, because switching models doesn't fix a provider that doesn't
+embed. A model **with no declaration** is also refused, with a different
+message — absence means "the provider didn't say"
 ([ADR 0041](../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)),
-nunca permissão, e a ação certa para quem lê é sincronizar o catálogo em vez
-de trocar de modelo. Deduzir a capability pelo NOME do modelo é proibido:
-seria um palpite vestido de dado.
+never permission, and the right action for the reader is to sync the
+catalog rather than switch models. Deducing the capability from the
+model's NAME is forbidden: it would be a guess dressed up as data.
 
-- **Onde:** `apps/api/src/domain/llm/embedding-capability.ts:64`,
+- **Where:** `apps/api/src/domain/llm/embedding-capability.ts:64`,
   `apps/api/src/infrastructure/llm/ollama-provider.ts:319`
-- **Teste:** `test/domain/llm/embedding-capability.spec.ts`,
+- **Test:** `test/domain/llm/embedding-capability.spec.ts`,
   `test/infrastructure/llm/ollama-provider.spec.ts`
-- **Origem:** [ADR 0075](../adr/0075-embeddings-no-contrato-de-llm-provider.md)
+- **Origin:** [ADR 0075](../adr/0075-embeddings-no-contrato-de-llm-provider.md)
 
-### RN-191 — `embeddings: true` exige execução, não documentação {#rn-191}
+### RN-191 — `embeddings: true` requires execution, not documentation {#rn-191}
 
-A regra da casa ([ADR 0041](../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)/[ADR 0043](../adr/0043-seis-providers-de-llm-e-o-fechamento-da-fase-9b.md))
-aplicada à nova capability: **só o `ollama` declara `true`**, e a prova é o
-`POST /api/embed` rodado contra o daemon real 0.32.1 com `nomic-embed-text` —
-duas entradas, dois vetores de 768 dimensões, `prompt_eval_count: 10`.
+The house rule ([ADR 0041](../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)/[ADR 0043](../adr/0043-seis-providers-de-llm-e-o-fechamento-da-fase-9b.md))
+applied to the new capability: **only `ollama` declares `true`**, and the
+proof is `POST /api/embed` run against the real 0.32.1 daemon with
+`nomic-embed-text` — two inputs, two 768-dimension vectors,
+`prompt_eval_count: 10`.
 
-Os outros oito declaram `false`, por dois motivos distintos:
+The other eight declare `false`, for two distinct reasons:
 
-- **falta de prova** (sete): não há chave para eles no ambiente, e o único
-  smoke test pago que já rodou ([aceite](../explanation/aceite-providers.md))
-  foi de CHAT — num hub, o embedding roteia para providers diferentes dos do
-  chat, e a prova de um endpoint não é prova do outro;
-- **operação ausente** (Anthropic): não há endpoint dedicado de embedding, e
-  a documentação dele aponta para um terceiro, que é outro provider, com
-  outra chave e outro dialeto.
+- **lack of proof** (seven): there's no key for them in the environment,
+  and the only paid smoke test that has ever run
+  ([acceptance](../explanation/aceite-providers.md)) was for CHAT — in a
+  hub, embedding routes to different providers than chat does, and proof
+  of one endpoint isn't proof of the other;
+- **operation absent** (Anthropic): there's no dedicated embedding
+  endpoint, and its docs point to a third party, which is a different
+  provider with a different key and a different dialect.
 
-O DIALETO da base OpenAI-compatível é provado à parte, com a suíte de
-contrato rodando uma segunda vez sobre ela com a capability ligada. É isso
-que torna barato virar um provider para `true` no dia em que a chave dele
-existir: muda uma linha do literal, e o parsing já está exercitado. Um
-provider que declara `false` e ainda expõe o método **recusa a chamada**
-antes de tocar a rede.
+The OpenAI-compatible base's DIALECT is proven separately, with the
+contract suite running a second time over it with the capability turned
+on. That's what makes it cheap to flip a provider to `true` the day its
+key exists: it changes one line of the literal, and the parsing is
+already exercised. A provider that declares `false` and still exposes
+the method **refuses the call** before touching the network.
 
-- **Onde:** `apps/api/src/infrastructure/llm/ollama-provider.ts:73`,
-  `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:325`
-- **Teste:** `test/contract/llm-provider.contract.ts`,
+- **Where:** `apps/api/src/infrastructure/llm/ollama-provider.ts:73`,
+  `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:302`
+- **Test:** `test/contract/llm-provider.contract.ts`,
   `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`,
   `test/infrastructure/llm/ollama-provider.embeddings.smoke.spec.ts`
-  (manual, contra o daemon real)
-- **Origem:** [ADR 0075](../adr/0075-embeddings-no-contrato-de-llm-provider.md)
+  (manual, against the real daemon)
+- **Origin:** [ADR 0075](../adr/0075-embeddings-no-contrato-de-llm-provider.md)
 
-### RN-045 — Um repositório adotado só é alterado por um plano aprovado {#rn-045}
+### RN-045 — An adopted repository is only changed by an approved plan {#rn-045}
 
-Adotar um repositório existente **diagnostica sem agir**. A adoção valida o
-acesso (`getRepo`), grava as linhas do projeto e produz um **plano**: a lista
-serializada do que o bootstrap faria, obtida chamando o `check()` de cada
-passo — o mesmo que dá idempotência desde a [RN-029](../business-rules.md#rn-029)
-— sem nunca executar a mutação correspondente.
+Adopting an existing repository **diagnoses without acting**. Adoption
+validates access (`getRepo`), writes the project's rows, and produces a
+**plan**: the serialized list of what the bootstrap would do, obtained by
+calling each step's `check()` — the same one that has provided idempotency
+since [RN-029](../business-rules.md#rn-029) — without ever running the corresponding
+mutation.
 
-Enquanto `repo_bootstraps.plan_decision` é **nulo**, nenhuma mutação roda. O
-portão fica **antes** do executor, não dentro dele: o runner do bootstrap é o
-mesmo da Fase 2, sem filtro, e simplesmente não é chamado. Somado à guarda
-que já pulava branches protegidas, não há caminho de código que toque uma
-branch fora de um plano aprovado.
+While `repo_bootstraps.plan_decision` is **null**, no mutation runs. The
+gate is **before** the executor, not inside it: the bootstrap runner is
+the same one from Phase 2, with no filter, and it simply isn't called.
+Added to the guard that already skipped protected branches, there's no
+code path that touches a branch outside an approved plan.
 
-Os dois desfechos:
+The two outcomes:
 
-- **aprovar** é tudo ou nada (aprovar passos soltos quebraria a cascata
-  `dev←main, qa←dev`). O que executa é o plano **rederivado** no momento da
-  execução: igual ou menor que o mostrado, **nunca maior** — uma branch que
-  virou protegida nesse meio-tempo é pulada;
-- **adotar como está** dispensa o bootstrap, registra a decisão e **não**
-  mexe no cursor para fingir convergência. O plano é guardado como evidência
-  do que foi deliberadamente não aplicado.
+- **approve** is all-or-nothing (approving loose steps would break the
+  `dev←main, qa←dev` cascade). What executes is the plan
+  **re-derived** at execution time: equal to or smaller than the one
+  shown, **never larger** — a branch that turned protected in the
+  meantime is skipped;
+- **adopt as-is** waives the bootstrap, records the decision, and does
+  **not** tamper with the cursor to fake convergence. The plan is kept
+  as evidence of what was deliberately not applied.
 
-Decidir sobre um plano regenerado é recusado (409): a decisão carrega o
-`planGeneratedAt` que o usuário viu, e um "sim" dado sobre outra coisa não
-vale.
+Deciding on a regenerated plan is refused (409): the decision carries the
+`planGeneratedAt` the user saw, and a "yes" given about something else
+doesn't count.
 
-O provisionamento normal recusa (409) rodar num repositório adotado — sem
-essa guarda, o caminho de retomada rodaria o bootstrap no repositório de
-terceiros sem plano nenhum.
+Normal provisioning refuses (409) to run on an adopted repository —
+without this guard, the resumption path would run the bootstrap on a
+third party's repository with no plan at all.
 
-**Limite conhecido:** "proteção divergente" aqui é presença × ausência,
-porque é só isso que o contrato expõe (`GitBranch.protected` é um booleano, e
-o [ADR 0028](../adr/0028-protecao-de-branch-divergencia-entre-providers.md)
-adiou uma `ProtectionPolicy` normalizada). Uma branch com proteção PARCIAL
-conta como "desprotegida" e pode ser sobrescrita — mas só dentro de um plano
-aprovado.
+**Known limit:** "divergent protection" here is presence × absence,
+because that's all the contract exposes (`GitBranch.protected` is a
+boolean, and
+[ADR 0028](../adr/0028-protecao-de-branch-divergencia-entre-providers.md)
+deferred a normalized `ProtectionPolicy`). A branch with PARTIAL
+protection counts as "unprotected" and can be overwritten — but only
+within an approved plan.
 
-- **Onde:** `apps/api/src/application/use-cases/git/decide-bootstrap-plan.use-case.ts`,
+- **Where:** `apps/api/src/application/use-cases/git/decide-bootstrap-plan.use-case.ts`,
   `apps/api/src/application/use-cases/git/bootstrap-plan.ts`,
   `apps/api/src/application/use-cases/git/bootstrap-steps.ts:112`
-- **Teste:** `test/application/use-cases/git/decide-bootstrap-plan.use-case.spec.ts`,
+- **Test:** `test/application/use-cases/git/decide-bootstrap-plan.use-case.spec.ts`,
   `test/application/use-cases/git/bootstrap-plan.spec.ts`
-- **Origem:** [ADR 0044](../adr/0044-adocao-de-repositorio-existente.md)
+- **Origin:** [ADR 0044](../adr/0044-adocao-de-repositorio-existente.md)
 
-### RN-046 — Todo repositório de projeto declara a sua origem {#rn-046}
+### RN-046 — Every project repository declares its origin {#rn-046}
 
-`project_repositories.origin` e `repo_bootstraps.origin` dizem se o Brabo
-**criou** o repositório (`created`) ou **adotou** um que já existia
-(`adopted`). A origem é escrita explicitamente por quem grava a linha — não
-pelo default da coluna — e não muda depois.
+`project_repositories.origin` and `repo_bootstraps.origin` say whether
+Brabo **created** the repository (`created`) or **adopted** one that
+already existed (`adopted`). The origin is written explicitly by whoever
+writes the row — not by the column's default — and doesn't change
+afterward.
 
-Não é decoração: é o que faz o produto tratar como caso legítimo o que a
-Fase 10 precisou fazer à mão (inserir linhas em `project_repositories` e
-`repo_bootstraps` para apontar um projeto para um fork). Um repositório
-`adopted` tem política de branches própria, não passa pelo provisionamento e
-só é alterado conforme a [RN-045](#rn-045).
+It isn't decoration: it's what makes the product treat as a legitimate
+case what Phase 10 had to do by hand (inserting rows into
+`project_repositories` and `repo_bootstraps` to point a project at a
+fork). An `adopted` repository has its own branch policy, doesn't go
+through provisioning, and is only changed per [RN-045](#rn-045).
 
-O backfill da migration `0031` marca tudo que já existia como `created`, e
-pode ser cego quanto a isso: a adoção não existia antes dela, então não há
-linha adotada para classificar errado.
+Migration `0031`'s backfill marks everything that already existed as
+`created`, and can be blind about it: adoption didn't exist before it,
+so there's no adopted row to misclassify.
 
-- **Onde:** `apps/api/src/db/schema/git.ts`, `apps/api/src/db/migrations/0031_special_winter_soldier.sql`,
+- **Where:** `apps/api/src/db/schema/git.ts`, `apps/api/src/db/migrations/0031_special_winter_soldier.sql`,
   `apps/api/src/domain/git/repo-bootstrap.entity.ts`
-- **Teste:** `test/application/use-cases/git/adopt-repository.use-case.spec.ts`
-- **Origem:** [ADR 0044](../adr/0044-adocao-de-repositorio-existente.md)
+- **Test:** `test/application/use-cases/git/adopt-repository.use-case.spec.ts`
+- **Origin:** [ADR 0044](../adr/0044-adocao-de-repositorio-existente.md)
 
-### RN-047 — Circuit breaker do dev agent: N bloqueios consecutivos o param, sem queimar orçamento em laço {#rn-047}
+### RN-047 — Dev agent circuit breaker: N consecutive blocked stops it, without burning budget in a loop {#rn-047}
 
-Cada dev agent mantém um contador (`dev_agent_states.consecutive_blocked`)
-de quantas tarefas TERMINARAM `blocked` em sequência — localmente (no
-ToolLoop) ou remotamente (o teto de correções do gate esgotado). Ao atingir o
-teto por projeto (`max_consecutive_blocked`, default 3), o agente para em
-`idle_tripped` **sem tentar pegar a próxima tarefa**. Um desfecho terminal
-aprovado zera o contador; uma tarefa bloqueada isolada segue o fluxo normal
-(devolvida com diagnóstico, disponível para um humano desbloquear) — o
-breaker trata da SEQUÊNCIA, não da tarefa.
+Each dev agent keeps a counter (`dev_agent_states.consecutive_blocked`)
+of how many tasks ENDED `blocked` in a row — locally (in the ToolLoop) or
+remotely (the gate's correction ceiling exhausted). On hitting the
+per-project ceiling (`max_consecutive_blocked`, default 3), the agent
+stops at `idle_tripped` **without trying to claim the next task**. An
+approved terminal outcome resets the counter; an individual blocked task
+continues the normal flow (returned with a diagnosis, available for a
+human to unblock) — the breaker is about the SEQUENCE, not the task.
 
-A única saída de `idle_tripped` é um rearme explícito
-(`POST .../agents/:agentId/rearm`, papel `developer`): ele zera o contador e
-o agente volta a tentar pegar tarefa. Não há destravamento automático — o
-mesmo princípio do `MarkTaskBlockedUseCase`/`unblock`, aplicado à sequência
-em vez da tarefa. Rearmar um agente que **não** está travado é **409**, não
-sucesso silencioso: o evento `dev.rearmed` é imutável, e registrá-lo para um
-rearme que não aconteceu seria uma mentira no event log.
+The only way out of `idle_tripped` is an explicit rearm
+(`POST .../agents/:agentId/rearm`, role `developer`): it resets the
+counter and the agent starts trying to claim again. There's no automatic
+unlock — the same principle as `MarkTaskBlockedUseCase`/`unblock`,
+applied to the sequence instead of the task. Rearming an agent that is
+**not** tripped is **409**, not silent success: the `dev.rearmed` event
+is immutable, and recording it for a rearm that didn't happen would be a
+lie in the event log.
 
-Um bloqueio que vem de FORA do agente (o `QaLeadServer` falhando
-internamente, por exemplo) também precisa acordá-lo — é por isso que a
-emissão de `task.gate_resolved` mora no `MarkTaskBlockedUseCase`, o funil por
-onde todo bloqueio passa, e não no `RecordGateVerdictUseCase`, que só vê
-parte deles. Sem isso o agente ficaria em `awaiting_gate` para sempre, com a
-tarefa morta e o contador do breaker nunca incrementando.
+A block that comes from OUTSIDE the agent (`QaLeadServer` failing
+internally, for example) also needs to wake it — that's why the
+`task.gate_resolved` emission lives in `MarkTaskBlockedUseCase`, the
+funnel every block passes through, and not in
+`RecordGateVerdictUseCase`, which only sees part of them. Without this
+the agent would stay in `awaiting_gate` forever, with the task dead and
+the breaker's counter never incrementing.
 
-Reiniciar o engine com um agente em `working` **não** conta para o contador:
-a tarefa retida é bloqueada com um diagnóstico de reinício, mas esse
-bloqueio não é o agente "queimando o teto" — é a infraestrutura caindo. O
-contador só sobe quando o próprio ciclo dev↔gate produz um `blocked` real.
+Restarting the engine with an agent in `working` does **not** count
+toward the counter: the retained task is blocked with a restart
+diagnosis, but that block isn't the agent "burning the ceiling" — it's
+the infrastructure going down. The counter only rises when the dev↔gate
+cycle itself produces a real `blocked`.
 
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex` (`finish_task/2`,
+- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex` (`finish_task/2`,
   `resume_state/2`), `apps/api/src/application/use-cases/execution/rearm-dev-agent.use-case.ts`,
   `apps/api/src/db/schema/iam.ts` (`projects.max_consecutive_blocked`)
-- **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`
+- **Test:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`
   (describe `circuit breaker`), `apps/engine/test/engine/dev/dev_rehydrator_test.exs`
   (describe `the four rehydrated states`), `test/application/use-cases/execution/rearm-dev-agent.use-case.spec.ts`
-- **Origem:** [ADR 0045](../adr/0045-reagendamento-por-evento-do-dev-agent.md)
+- **Origin:** [ADR 0045](../adr/0045-reagendamento-por-evento-do-dev-agent.md)
 
-### RN-053 — Reativar a execução acorda quem está parado, dentro da sessão que já existe {#rn-053}
+### RN-053 — Reactivating execution wakes whoever is stopped, inside the session that already exists {#rn-053}
 
-Ativar a execução de um projeto que **já está executando** é reativação, não
-um começo do zero: ela cai na sessão de execução atual e acorda os agentes
-que estavam parados. Duas partes, uma de cada lado do sistema.
+Activating execution for a project that's **already executing** is
+reactivation, not a fresh start: it lands on the current execution
+session and wakes the agents that were stopped. Two parts, one on each
+side of the system.
 
-**A sessão é reaproveitada.** A ativação usa a sessão `active` do projeto
-que já carrega um `execution.activated`; só cria uma quando não há nenhuma.
-Não existe coluna dizendo "esta sessão é de execução" — o que distingue uma é
-o evento que ela guarda, e é isso que se consulta. Fechar a sessão continua
-sendo o jeito de recomeçar: uma fechada não é candidata, e a próxima
-ativação abre uma nova.
+**The session is reused.** Activation uses the project's `active` session
+that already carries an `execution.activated`; it only creates one when
+there's none. There's no column saying "this session is an execution
+session" — what distinguishes one is the event it holds, and that's what
+gets queried. Closing the session is still the way to start fresh: a
+closed one isn't a candidate, and the next activation opens a new one.
 
-Antes, o `create` era incondicional, e o engine **descarta** o novo
-`session_id` quando o agente já está vivo. Cada clique em "ativar" deixava
-para trás uma sessão ativa que recebia o `execution.activated` e mais nada —
-os eventos dos agentes continuavam indo para a sessão da ativação anterior.
+Before, `create` was unconditional, and the engine **discards** the new
+`session_id` when the agent is already alive. Every click on "activate"
+left behind an active session that received the `execution.activated`
+and nothing else — the agents' events kept going to the previous
+activation's session.
 
-**O agente é acordado por wake, não por `work`.** Um começo do zero dispara o
-ciclo (`:work` — emite `dev.started` e pega tarefa). Um agente que já estava
-vivo recebe `{:wake, :became_claimable}`, e quem decide é a guarda de estado
-do servidor:
+**The agent is woken by wake, not by `work`.** A fresh start triggers the
+cycle (`:work` — emits `dev.started` and claims). An agent that was
+already alive receives `{:wake, :became_claimable}`, and it's the
+server's state guard that decides:
 
-| estado do agente | o que a reativação faz |
+| agent state | what reactivation does |
 |---|---|
-| `idle` | pega a próxima tarefa |
-| `working`, `awaiting_gate`, `awaiting_approval` | nada — a tarefa em andamento não é abandonada |
-| `idle_tripped` | nada — só o rearme explícito o destrava ([RN-047](#rn-047)) |
+| `idle` | claims the next task |
+| `working`, `awaiting_gate`, `awaiting_approval` | nothing — the in-progress task isn't abandoned |
+| `idle_tripped` | nothing — only the explicit rearm unlocks it ([RN-047](#rn-047)) |
 
-Disparar `:work` para todos seria pior que o defeito: ele pega tarefa
-incondicionalmente, e para um agente em `awaiting_gate` significaria largar o
-worktree que o gate está varrendo — além de contornar o circuit breaker com
-um clique.
+Firing `:work` for everyone would be worse than the defect: it claims
+unconditionally, and for an `awaiting_gate` agent it would mean dropping
+the worktree the gate is sweeping — on top of bypassing the circuit
+breaker with a click.
 
-- **Onde:** `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts`,
+- **Where:** `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts`,
   `apps/api/src/infrastructure/persistence/drizzle/session.repository.ts`
   (`findActiveExecutionSession`),
   `apps/engine/lib/engine_web/controllers/execution_command_controller.ex`
   (`acordar/4`)
-- **Teste:** `test/application/use-cases/execution/activate-execution.use-case.spec.ts`
+- **Test:** `test/application/use-cases/execution/activate-execution.use-case.spec.ts`
   (describe `reactivation doesn't open an orphan session`),
   `test/infrastructure/persistence/session-execution.repository.spec.ts`,
   `apps/engine/test/engine_web/controllers/execution_command_controller_test.exs`
   (describe `reactivation`)
-- **Origem:** achado #11 do
-  [primeiro dogfooding](../explanation/primeiro-dogfooding.md)
+- **Origin:** finding #11 of the
+  [first dogfooding](../explanation/primeiro-dogfooding.md)
 
-### RN-048 — A promoção de story é do usuário por padrão; o modo muda quem dispara, nunca o que se valida {#rn-048}
+### RN-048 — Story promotion is the user's by default; the mode changes who triggers it, never what gets validated {#rn-048}
 
-`projects.story_promotion` escolhe QUEM promove uma story de `draft` para
+`projects.story_promotion` chooses WHO promotes a story from `draft` to
 `ready`:
 
-- **`manual`**: o PO deixa a story completa e ela fica `draft` com
-  `stories.proposed_ready = true`. **Nenhuma de suas tarefas é pegável** — o
-  `claimNext` exige `story.status = 'ready'` — e é o usuário quem a promove,
-  individualmente ou em lote, a partir do Backlog.
-- **`auto`** (default de projeto novo desde a [RN-659](../business-rules.md#rn-659)):
-  o PO promove por conta própria ao terminar uma story completa. Esse era o
-  comportamento anterior à Fase 12c; `manual` foi o default da 12c até a
-  RN-659 (migration `0065`), que mudou só o default da coluna — projetos
-  criados no meio do caminho continuam `manual`.
+- **`manual`** (new project's default): the PO leaves the story complete
+  and it stays `draft` with `stories.proposed_ready = true`. **None of
+  its tasks are claimable** — `claimNext` requires `story.status =
+  'ready'` — and it's the user who promotes it, individually or in
+  batch, from the Backlog.
+- **`auto`**: the PO promotes on its own upon finishing a complete story.
+  This is the behavior that predates Phase 12c, kept as an explicit
+  option.
 
-**O modo muda o gatilho, não o critério.** Os dois caminhos passam por
-`assertPromotable` — prontidão (RF/DoD/DoR/regra) e módulos resolvidos contra
-o `module_map` vigente — e é isso que o teste de simetria em
-`story-promotion.spec.ts` trava: para toda story, `isPromotable` concorda com
-o que `assertPromotable` levanta. Antes da fase, a validação era duplicada e
-assimétrica (a criação chamava `canBecomeReady`, a transição chamava
-`assertReady` + `assertModulesResolved`): duas portas para o mesmo estado,
-com fechaduras diferentes. Tornar o gatilho configurável exigiu unificá-las
-primeiro, senão "promover pela UI" e "promover na criação" seriam regras
-distintas com o mesmo nome.
+**The mode changes the trigger, not the criterion.** Both paths go
+through `assertPromotable` — readiness (RF/DoD/DoR/rule) and modules
+resolved against the current `module_map` — and that's what the symmetry
+test in `story-promotion.spec.ts` locks down: for every story,
+`isPromotable` agrees with what `assertPromotable` raises. Before the
+phase, validation was duplicated and asymmetric (creation called
+`canBecomeReady`, transition called `assertReady` +
+`assertModulesResolved`): two doors to the same state, with different
+locks. Making the trigger configurable required unifying them first, or
+else "promote via the UI" and "promote on creation" would be distinct
+rules with the same name.
 
-Uma story **incompleta** nunca é proposta. `proposed_ready` só liga quando a
-story já passaria na validação — propor o que o domínio recusaria empurraria
-o trabalho do PO para o usuário disfarçado de decisão.
+An **incomplete** story is never proposed. `proposed_ready` only turns on
+when the story would already pass validation — proposing what the domain
+would refuse would push the PO's work onto the user disguised as a
+decision.
 
-A **recusa** devolve a story ao PO: grava `returned_reason`/`returned_at`,
-desliga `proposed_ready`, emite `backlog.story_promotion_returned` e injeta o
-motivo como mensagem FIXADA na sessão do PO, com a mesma redação de
-precedência de um gate devolvido ao dev (lição do ADR 0020). A recusa é
-gravada **antes** de falar com o engine, e o engine falhar não a desfaz — é o
-inverso da ordem do rearme na [RN-047](#rn-047), e por um motivo: lá o evento
-afirma algo SOBRE o engine, aqui ele afirma algo sobre o usuário, o que é
-verdade haja ou não um PO de plantão para ouvir.
+**Refusal** returns the story to the PO: it records
+`returned_reason`/`returned_at`, turns off `proposed_ready`, emits
+`backlog.story_promotion_returned`, and injects the reason as a PINNED
+message in the PO's session, with the same precedence wording as a gate
+returned to the dev (a lesson from ADR 0020). The refusal is recorded
+**before** talking to the engine, and the engine failing doesn't undo
+it — it's the reverse of the rearm order in [RN-047](#rn-047), and for a
+reason: there the event asserts something ABOUT the engine, here it
+asserts something about the user, which is true whether or not there's a
+PO standing by to listen.
 
-A promoção em lote **não é tudo ou nada**: cada story é a sua própria
-transação, e uma que perdeu a prontidão entre a proposta e a decisão volta
-`failed` com o motivo, sem derrubar as outras que o usuário acabou de
-revisar.
+Batch promotion is **not all-or-nothing**: each story is its own
+transaction, and one that lost readiness between the proposal and the
+decision comes back `failed` with the reason, without knocking down the
+others the user just reviewed.
 
-O evento `backlog.story_transitioned` registra o **ator real** — `user` na
-promoção manual, `agent/po` na automática. O event log é imutável e é o que a
-auditoria lê: registrar o PO numa decisão do usuário apagaria exatamente a
-etapa humana que a regra existe para devolver.
+The `backlog.story_transitioned` event records the **real actor** —
+`user` on manual promotion, `agent/po` on automatic. The event log is
+immutable and it's what the audit reads: recording the PO on a user's
+decision would erase exactly the human step the rule exists to give
+back.
 
-A migration `0033` faz um backfill **dirigido**, não cego: a coluna nasce
-`manual` e todo projeto que já existia é movido para `auto`. O novo default
-vale para quem vier depois; um projeto em andamento não pode parar de
-produzir por causa de um deploy.
+Migration `0033` does a **directed** backfill, not a blind one: the
+column is born `manual` and every project that already existed is moved
+to `auto`. The new default applies to whoever comes afterward; an
+in-progress project can't stop producing because of a deploy.
 
-- **Onde:** `apps/api/src/domain/backlog/story-promotion.ts`,
+- **Where:** `apps/api/src/domain/backlog/story-promotion.ts`,
   `apps/api/src/db/migrations/0033_absurd_domino.sql`,
   `apps/api/src/application/use-cases/backlog/promote-stories.use-case.ts`,
   `apps/api/src/application/use-cases/backlog/return-story.use-case.ts`,
   `apps/engine/lib/engine/agents/po_server.ex` (`revision_message/1`)
-- **Teste:** `test/domain/backlog/story-promotion.spec.ts` (simetria),
-  `test/db/story-promotion-migration.spec.ts` (backfill dirigido),
+- **Test:** `test/domain/backlog/story-promotion.spec.ts` (symmetry),
+  `test/db/story-promotion-migration.spec.ts` (directed backfill),
   `test/application/use-cases/backlog/promote-stories.use-case.spec.ts`,
   `test/application/use-cases/backlog/return-story.use-case.spec.ts`,
   `apps/engine/test/engine/agents/po_server_test.exs` (describe `revise/2`)
-- **Origem:** [ADR 0046](../adr/0046-promocao-de-story-com-autoridade-do-usuario.md)
-### RN-049 — Toda decisão sobre uma ação proposta fica no event log, com quem decidiu {#rn-049}
+- **Origin:** [ADR 0046](../adr/0046-promocao-de-story-com-autoridade-do-usuario.md)
 
-`proposed_action.created`, `.approved` e `.denied` são eventos de domínio em
-`session_events`, além das linhas do outbox que os levam ao engine. O outbox
-**não** é memória: ele é drenado, marcado com `processed_at` e podado.
+### RN-049 — Every decision on a proposed action stays in the event log, with who decided {#rn-049}
 
-`actor` é quem realmente decidiu — o **usuário** em `.approved`/`.denied`, o
-**agente** que propôs em `.created`. E `created.payload.status` diz como a
-ação nasceu (`pending`, `auto_approved`, `denied`).
+`proposed_action.created`, `.approved`, and `.denied` are domain events in
+`session_events`, in addition to the outbox rows that carry them to the
+engine. The outbox is **not** memory: it's drained, marked with
+`processed_at`, and pruned.
 
-Isso rende a distinção que dá a métrica: **decisão humana = evento
-`proposed_action.approved`**; a política decidindo sozinha aparece apenas em
-`.created` com `status: auto_approved` e ator agente, e nunca se confunde com
-um clique. Essa contagem — "cliques de aprovação" — era exatamente o que a
-Fase 10 queria medir e não conseguiu, porque a decisão não existia em lugar
-consultável (achado #17). `approve_always` conta como aprovação porque
-delega ao mesmo caso de uso, e emite `permission.granted` por cima.
+`actor` is who really decided — the **user** on `.approved`/`.denied`,
+the **agent** that proposed on `.created`. And `created.payload.status`
+says how the action was born (`pending`, `auto_approved`, `denied`).
 
-Ficou de fora, por decisão: o `proposed_action.created` que o bootstrap do
-repositório emite direto para o outbox. Essas mutações já são narradas por
-`bootstrap.step_*` na mesma sessão, e duplicá-las contaria o mesmo fato duas
-vezes numa métrica de aprovação.
+That yields the distinction that gives the metric: **human decision =
+`proposed_action.approved` event**; policy deciding alone shows up only
+in `.created` with `status: auto_approved` and an agent actor, and is
+never confused with a click. That count — "approval clicks" — was
+exactly what Phase 10 wanted to measure and couldn't, because the
+decision existed nowhere queryable (finding #17). `approve_always`
+counts as an approval because it delegates to the same use case, and
+emits `permission.granted` on top.
 
-- **Onde:** `apps/api/src/application/use-cases/actions/propose-action.use-case.ts`,
+Left out, by decision: the `proposed_action.created` that the repository
+bootstrap emits directly to the outbox. Those mutations are already
+narrated by `bootstrap.step_*` in the same session, and duplicating them
+would count the same fact twice in an approval metric.
+
+- **Where:** `apps/api/src/application/use-cases/actions/propose-action.use-case.ts`,
   `.../approve-action.use-case.ts`, `.../deny-action.use-case.ts`
-- **Teste:** `test/application/use-cases/actions/approve-deny-action.use-case.spec.ts`
+- **Test:** `test/application/use-cases/actions/approve-deny-action.use-case.spec.ts`
   (describe `the decision in the event log`)
-- **Origem:** [ADR 0048](../adr/0048-decisao-no-log-e-a-ordem-do-gate.md)
+- **Origin:** [ADR 0048](../adr/0048-decisao-no-log-e-a-ordem-do-gate.md)
 
-### RN-050 — Sem PR aberta, nenhum gate abre {#rn-050}
+### RN-050 — With no PR open, no gate opens {#rn-050}
 
-O dev agent propõe commit, push e PR e **lê o desfecho de cada um**. Ele só
-abre o gate se os três executaram. Se um ficou `pending` — a autonomia do
-agente em `require_approval` — ele entra em `awaiting_approval`, **segurando o
-worktree**, e não abre gate nenhum.
+The dev agent proposes commit, push, and PR and **reads each one's
+outcome**. It only opens the gate if all three executed. If one stayed
+`pending` — the agent's autonomy at `require_approval` — it enters
+`awaiting_approval`, **holding the worktree**, and opens no gate at all.
 
-Sem isso o gate abria de qualquer jeito, e o dano era silencioso: o QA varre
-o **worktree**, não a PR; achou os arquivos, aprovou; o SecOps aprovou; a
-tarefa fechou como concluída — **sem uma linha commitada e sem PR nenhuma**.
-Só depois, ao aprovar o commit, o usuário veria a ação falhar (com
-diagnóstico vazio, porque `System.cmd` num diretório apagado devolve
-`{"", 2}`).
+Without this the gate opened regardless, and the damage was silent: QA
+scans the **worktree**, not the PR; it found the files, approved; SecOps
+approved; the task closed as completed — **with not one line committed
+and no PR at all**. Only later, when approving the commit, would the
+user see the action fail (with an empty diagnosis, because
+`System.cmd` on a deleted directory returns `{"", 2}`).
 
-O que libera o agente é `task.pr_settled`, emitido pela api quando `pr_open`
-chega a um desfecho terminal: `opened: true` abre o gate; `opened: false`
-(negada ou falha) devolve a tarefa com diagnóstico, em vez de deixar o
-agente esperando para sempre por um gate que ninguém vai abrir.
+What releases the agent is `task.pr_settled`, emitted by the api when
+`pr_open` reaches a terminal outcome: `opened: true` opens the gate;
+`opened: false` (denied or failed) returns the task with a diagnosis,
+instead of leaving the agent waiting forever for a gate no one is going
+to open.
 
-Uma PR negada **não conta para o circuit breaker** da [RN-047](#rn-047): a
-decisão foi do usuário, não do agente queimando o teto — o mesmo princípio
-da recuperação de reinício.
+A denied PR **doesn't count toward the circuit breaker** of
+[RN-047](#rn-047): the decision was the user's, not the agent burning
+the ceiling — the same principle as restart recovery.
 
-Essa regra também elimina o D5 (worktree reciclado sob aprovação pendente)
-como consequência: o worktree só é liberado em `gate_resolved`, o gate só
-abre depois da PR, e a PR só abre depois do commit e do push.
+This rule also eliminates D5 (worktree recycled under pending approval)
+as a consequence: the worktree is only released on `gate_resolved`, the
+gate only opens after the PR, and the PR only opens after commit and
+push.
 
-- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex` (`propose/3`),
+- **Where:** `apps/engine/lib/engine/dev/agent_io.ex` (`propose/3`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex` (`abrir_gate/1`,
   `aguardar_aprovacao/2`),
   `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts`
   (`settlePrOpen`)
-- **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`
+- **Test:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`
   (describe `pending approval doesn't open a gate`)
-- **Origem:** [ADR 0048](../adr/0048-decisao-no-log-e-a-ordem-do-gate.md)
+- **Origin:** [ADR 0048](../adr/0048-decisao-no-log-e-a-ordem-do-gate.md)
 
-### RN-051 — Um preço digitado à mão vence o catálogo do provider {#rn-051}
+### RN-051 — A manually typed price beats the provider's catalog {#rn-051}
 
-Uma linha de `models` com `manual_pricing = true` tem um número que alguém
-digitou depois de ler a documentação do provider. A sincronização do catálogo
-**não toca nele** — nem quando o catálogo remoto traz um preço próprio. Era
-isso que o schema sempre dizia ("quem sincroniza preço NÃO PODE sobrescrever
-uma linha marcada aqui sem decisão explícita") e o que o código não fazia: o
-remoto sempre vencia quando trazia um preço, e a sincronização seguinte
-desfazia a correção de quem tinha acertado um número errado.
+A `models` row with `manual_pricing = true` has a number someone typed
+after reading the provider's docs. Catalog sync **doesn't touch it** —
+not even when the remote catalog brings its own price. That's what the
+schema always said ("whoever syncs price CANNOT overwrite a row marked
+here without an explicit decision") and what the code didn't do: the
+remote always won whenever it brought a price, and the next sync would
+undo the correction of whoever had fixed a wrong number.
 
-A regra existe porque, para vários providers, o número digitado é o **único
-que existe**: NVIDIA NIM e Bitdeer não publicam preço por token em
-documentação nenhuma
-([referência de providers](../reference/llm-providers.md)), e o valor
-semeado é uma aproximação de mercado. Deixar o catálogo remoto sobrescrevê-lo
-trocaria uma aproximação conhecida por outra, sem ninguém decidir.
+The rule exists because for several providers the typed number is the
+**only one that exists**: NVIDIA NIM and Bitdeer don't publish
+per-token price in any doc
+([providers reference](../reference/llm-providers.md)), and the seeded
+value is a market approximation. Letting the remote catalog overwrite
+that would trade one known approximation for another, with no one
+deciding.
 
-Um modelo NOVO nasce com a flag vinda do catálogo, não de um default fixo:
-descoberto **com** preço, `manual_pricing = false` (a fonte é a sincronização,
-e é ela quem mantém a linha em dia); descoberto **sem** preço, `true` — a
-linha está esperando alguém digitar um, e marcá-la já protege esse número do
-primeiro catálogo que resolver informar um preço.
+A NEW model is born with the flag coming from the catalog, not from a
+fixed default: discovered **with** a price, `manual_pricing = false`
+(the source is the sync, and it's the one keeping the row up to date);
+discovered **without** a price, `true` — the row is waiting for someone
+to type one, and flagging it already protects that number from the
+first catalog that decides to report a price.
 
-- **Onde:** `apps/api/src/application/use-cases/llm/sync-model-catalog.use-case.ts`
+- **Where:** `apps/api/src/application/use-cases/llm/sync-model-catalog.use-case.ts`
   (`resolverPreco`), `apps/api/src/db/schema/llm.ts:137`
-- **Teste:** `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts`
+- **Test:** `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts`
   (`manually typed price beats a catalog that REPORTS a price`)
-- **Origem:** [ADR 0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
+- **Origin:** [ADR 0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
 
-### RN-052 — A curadoria de modelos vale só no workspace que a decidiu {#rn-052}
+### RN-052 — Model curation applies only to the workspace that decided it {#rn-052}
 
-Ligar ou desligar um modelo no seletor é uma decisão **daquele workspace**, e
-não alcança o vizinho. O catálogo em si continua global — nome, preço,
-janela e capabilities são fatos do provider, iguais para todos, e duplicá-los
-por workspace criaria N verdades sobre o mesmo modelo, além de partir
-`token_usage.model_id` ao meio.
+Turning a model on or off in the selector is a decision **of that
+workspace**, and doesn't reach its neighbor. The catalog itself stays
+global — name, price, window, and capabilities are provider facts, the
+same for everyone, and duplicating them per workspace would create N
+truths about the same model on top of splitting `token_usage.model_id`
+in half.
 
-Antes disso, `models.is_active` era uma coluna para a instalação inteira:
-quem clicava em "ativar" decidia por todos os workspaces, e a tela não dava
-sinal nenhum disso. O efeito prático era um workspace ligando um modelo caro
-no seletor de outro — e o gasto aparecendo no orçamento de quem não decidiu
-nada.
+Before this, `models.is_active` was a column for the whole installation:
+whoever clicked "activate" decided for every workspace, and the screen
+gave no sign of that at all. The practical effect was one workspace
+turning on an expensive model in another's selector — and the spend
+showing up in the budget of someone who decided nothing.
 
-Três regras derivadas:
+Three derived rules:
 
-1. **A ausência de linha é o estado desabilitado.** Não há um estado separado
-   de "nunca decidido"; um modelo que a sincronização descobriu não tem linha
-   e não aparece no seletor ([RN-043](#rn-043)).
-2. **Desabilitar é `UPDATE`, não `DELETE`.** Apagar a linha apagaria também
-   quem decidiu e quando. As leituras tratam os dois casos como inativos; o
-   registro existe para quem audita.
-3. **Os escopos `agent` e `session` não conferem a curadoria.** Nenhum dos
-   dois tem âncora de workspace — o binding de agente é por slug global. A
-   checagem recebe `null` e confere só a disponibilidade, deixando a lacuna
-   explícita em vez de adivinhar um workspace.
+1. **Absence of a row is the disabled state.** There's no separate
+   "never decided" state; a model the sync discovered has no row and
+   doesn't show up in the selector ([RN-043](#rn-043)).
+2. **Disabling is `UPDATE`, not `DELETE`.** Deleting the row would also
+   delete who decided and when. Reads treat both cases as inactive; the
+   record exists for whoever audits.
+3. **The `agent` and `session` scopes don't check curation.** Neither
+   has a workspace anchor — agent binding is by global slug. The check
+   receives `null` and only checks availability, leaving the gap
+   explicit instead of guessing a workspace.
 
-- **Onde:** `apps/api/src/db/schema/llm.ts` (`workspace_models`),
+- **Where:** `apps/api/src/db/schema/llm.ts` (`workspace_models`),
   `apps/api/src/application/use-cases/llm/set-models-active.use-case.ts`,
   `apps/api/src/application/use-cases/llm/set-model-binding.use-case.ts`
   (`workspaceDoEscopo`)
-- **Teste:** `test/application/use-cases/llm/set-models-active.use-case.spec.ts`
+- **Test:** `test/application/use-cases/llm/set-models-active.use-case.spec.ts`
   (`activating in one workspace does NOT turn on the model in its neighbor`)
-- **Origem:** [ADR 0049](../adr/0049-curadoria-de-modelo-por-workspace.md)
+- **Origin:** [ADR 0049](../adr/0049-curadoria-de-modelo-por-workspace.md)
 
-### RN-061 — Uma falha de FERRAMENTA também é um evento, e volta para o modelo {#rn-061}
+### RN-061 — A TOOL failure is also an event, and goes back to the model {#rn-061}
 
-O resultado de uma chamada de ferramenta nunca é descartado. Ele vira
-`tool.result` no event log (`ok` e, quando falha, `erro`), o agente **diz** o
-que aconteceu no fio, e o motivo **volta para o modelo** no papel `tool` —
-para ele corrigir e reemitir no turno seguinte. Um erro de ferramenta é
-entrada do laço, não fim de linha.
+A tool call's result is never discarded. It becomes `tool.result` in the
+event log (`ok`, and when it fails, `erro`), the agent **says** what
+happened in the thread, and the reason **goes back to the model** in the
+`tool` role — for it to correct and reemit on the next turn. A tool
+error is input to the loop, not the end of the line.
 
-O agente Criativo era o único que o descartava
-(`_ = EmitArtifact.run(args, state)`) — o PO e o Arquiteto já o realimentavam.
-Numa execução real o modelo emitiu `titulo`/`descricao` contra um schema que
-exige `title`/`description`/`origin`: as **quatro regras de negócio da
-conversa foram recusadas**, nenhum evento foi gravado, e ele continuava
-dizendo "registrei as regras" com o painel vazio.
+The Creative agent was the only one that discarded it
+(`_ = EmitArtifact.run(args, state)`) — the PO and the Architect already
+fed it back. In a real execution the model emitted `titulo`/`descricao`
+against a schema that requires `title`/`description`/`origin`: the
+**four business rules from the conversation were refused**, no event was
+recorded, and it kept saying "I recorded the rules" with an empty panel.
 
-A descrição da ferramenta agora NOMEIA os campos obrigatórios de cada tipo,
-em inglês e com um exemplo preenchido — inclusive que `business_rule.origin`
-é uma **lista não vazia** de `seq` das mensagens que originaram a regra, não
-texto livre. Sem isso o modelo adivinha, e adivinha no idioma da conversa.
+The tool's description now NAMES each type's required fields, in
+English and with a filled-in example — including that
+`business_rule.origin` is a **non-empty list** of `seq` from the
+messages that originated the rule, not free text. Without that the model
+guesses, and guesses in the conversation's language.
 
-É a mesma regra da [RN-059](#rn-059) aplicada ao outro caminho de falha: duas
-políticas para o mesmo problema seriam duas chances de engolir o erro.
+It's the same rule as [RN-059](#rn-059) applied to the other failure
+path: two policies for the same problem would be two chances to swallow
+the error.
 
-- **Onde:** `apps/engine/lib/engine/agents/criativo_server.ex` (`dispatch_tool`,
+- **Where:** `apps/engine/lib/engine/agents/criativo_server.ex` (`dispatch_tool`,
   `realimentar`), `apps/engine/lib/engine/harness/tools/emit_artifact.ex`
   (`descricao/0`), `apps/engine/lib/engine/harness/artifact_schemas.ex`
   (`required/1`)
-- **Teste:** `apps/engine/test/engine/agents/criativo_server_test.exs`
+- **Test:** `apps/engine/test/engine/agents/criativo_server_test.exs`
   (`a refused tool becomes a tool.result with an error, and the agent speaks`)
-- **Origem:** execução real da FASE 13b
+- **Origin:** PHASE 13b real execution
 
-### RN-065 — Um module_map por SESSÃO; revisar é outra sessão {#rn-065}
+### RN-065 — One module_map per SESSION; revision is another session {#rn-065}
 
-`create_module_map` recusa uma segunda emissão **dentro da mesma sessão**,
-com uma mensagem que diz o próximo passo. Entre sessões o mapa continua
-versionando (`version + 1`, `findCurrent` devolve o mais alto) — revisar a
-arquitetura é comportamento desejado.
+`create_module_map` refuses a second emission **within the same
+session**, with a message stating the next step. Between sessions the
+map keeps versioning (`version + 1`, `findCurrent` returns the highest)
+— revising architecture is desired behavior.
 
-A distinção é o ponto: entre sessões, uma nova emissão é uma **revisão**;
-dentro da mesma, é o modelo **redecidindo do zero**. Numa execução real o
-Arquiteto emitiu quatro mapas seguidos, com nomes e recortes diferentes a
-cada vez — `greeting`, `hello_core`, `greeting`, `hello-api-core` — e o laço
-só terminou porque a rede caiu (`%Req.TransportError{reason: :timeout}`).
+The distinction is the point: between sessions, a new emission is a
+**revision**; within the same one, it's the model **re-deciding from
+scratch**. In a real execution the Architect emitted four maps in a row,
+with different names and cuts each time —
+`greeting`, `hello_core`, `greeting`, `hello-api-core` — and the loop
+only ended because the network dropped
+(`%Req.TransportError{reason: :timeout}`).
 
-A recusa volta ao modelo pelo tool-result ([RN-061](#rn-061)): ele lê que já
-existe um e segue para `assign_story_modules`, que é o passo 2 do kickoff
-dele. É por isso que o turno **não** termina quando o mapa é emitido — o
-Arquiteto ainda tem três passos pela frente (vincular histórias, propor um
-ADR, registrar tensões), e terminar ali mataria os três.
+The refusal goes back to the model via the tool-result ([RN-061](#rn-061)):
+it reads that one already exists and moves on to
+`assign_story_modules`, which is step 2 of its kickoff. That's why the
+turn does **not** end when the map is emitted — the Architect still has
+three steps ahead (linking stories, proposing an ADR, recording
+tensions), and ending there would kill all three.
 
-- **Onde:** `apps/api/src/application/use-cases/architecture/create-module-map.use-case.ts`
-- **Teste:** `test/application/use-cases/architecture/create-module-map.use-case.spec.ts`
-  (`refuses the SECOND map of the same session`; e o versionamento entre
-  sessões continua provado ao lado)
-- **Origem:** execução real da FASE 13b
+- **Where:** `apps/api/src/application/use-cases/architecture/create-module-map.use-case.ts`
+- **Test:** `test/application/use-cases/architecture/create-module-map.use-case.spec.ts`
+  (`refuses the SECOND map of the same session`; and cross-session
+  versioning is still proven alongside)
+- **Origin:** PHASE 13b real execution
 
-### RN-066 — Toda resposta sobre módulos traz os nomes canônicos {#rn-066}
+### RN-066 — Every response about modules carries the canonical names {#rn-066}
 
-O Arquiteto **não tem ferramenta para ler** o module_map vigente. É por isso
-que as três respostas que ele recebe sobre módulos precisam dizer os nomes:
+The Architect **has no tool to read** the current module_map. That's
+why the three responses it gets about modules need to state the names:
 
-1. Um `create_module_map` bem-sucedido devolve os módulos **como a api os
-   gravou** — não apenas a versão.
-2. Um `assign_story_modules` recusado lista os módulos **válidos**, além dos
-   inexistentes.
-3. Um `create_module_map` recusado pela [RN-065](#rn-065) diz **quais** módulos
-   a sessão já definiu, não quantos.
+1. A successful `create_module_map` returns the modules **as the api
+   recorded them** — not just the version.
+2. A refused `assign_story_modules` lists the **valid** modules, in
+   addition to the nonexistent ones.
+3. `create_module_map` refused by [RN-065](#rn-065) says **which**
+   modules the session already defined, not how many.
 
-Sem mapa nenhum não há nomes a oferecer, e uma lista vazia lê-se como
-"chute de novo": esse caminho nomeia o problema real — falta o passo 1 do
-kickoff.
+With no map at all there are no names to offer, and an empty list reads
+as "guess again": that path names the real problem — kickoff step 1 is
+missing.
 
-O motivo é concreto. Numa execução real o Arquiteto emitiu o mapa
-(`saudacao`, `api_http`), não conseguiu relê-lo e recorreu à força bruta: 18
-chutes seguidos — `api`, `core`, `http`, `greeting`, `domain`, `web`,
-`hello-api`, `hello`, `greeting-api`, `saudacao`, `app`, `server`, `publico`,
-`public-api`, `api-publica` — até acertar **um por sorte**. Nas palavras dele
-no event log: *"vou descobrir os nomes válidos testando candidatos
-plausíveis"*.
+The reason is concrete. In a real execution the Architect emitted the
+map (`saudacao`, `api_http`), couldn't reread it, and resorted to brute
+force: 18 guesses in a row — `api`, `core`, `http`, `greeting`,
+`domain`, `web`, `hello-api`, `hello`, `greeting-api`, `saudacao`,
+`app`, `server`, `publico`, `public-api`, `api-publica` — until it hit
+**one by luck**. In its own words in the event log: *"I'll figure out
+the valid names by testing plausible candidates"*.
 
-O dano não foi o desperdício, foi o resultado: as **quatro** histórias
-acabaram no mesmo módulo (`saudacao`), inclusive a do endpoint, `api_http`
-ficou sem história nenhuma, e o desfecho afirmou *"Todas as 4 histórias foram
-vinculadas a módulos com sucesso"*. Como a execução sobe **um dev agent por
-módulo**, a arquitetura desenhada não seria a construída.
+The damage wasn't the waste, it was the result: the **four** stories
+ended up in the same module (`saudacao`), including the endpoint's,
+`api_http` ended up with no story at all, and the outcome asserted
+*"All 4 stories were successfully linked to modules"*. Since execution
+spins up **one dev agent per module**, the designed architecture
+wouldn't be the one built.
 
-O laço da [RN-065](#rn-065) era um sintoma disso: o Arquiteto reemitia o mapa
-justamente para tentar fixar nomes que não conseguia ler.
+The loop from [RN-065](#rn-065) was a symptom of this: the Architect kept
+reemitting the map precisely to try to pin down names it couldn't read.
 
-- **Onde:** `apps/api/src/application/use-cases/architecture/assign-story-modules.use-case.ts`,
+- **Where:** `apps/api/src/application/use-cases/architecture/assign-story-modules.use-case.ts`,
   `apps/api/src/application/use-cases/architecture/create-module-map.use-case.ts`,
   `apps/engine/lib/engine/harness/tools/create_module_map.ex`
-- **Teste:** `test/application/use-cases/architecture/assign-story-modules.use-case.spec.ts`
+- **Test:** `test/application/use-cases/architecture/assign-story-modules.use-case.spec.ts`
   (`the refusal lists the VALID modules`; `with no module_map, it directs
-  creating the map`) e
+  creating the map`) and
   `create-module-map.use-case.spec.ts` (`the refusal says WHICH modules
   there are`)
-- **Origem:** execução real da FASE 13b
+- **Origin:** PHASE 13b real execution
 
-### RN-067 — Toda sessão nasce emitindo `session.created` {#rn-067}
+### RN-067 — Every session is born emitting `session.created` {#rn-067}
 
-`CreateSessionUseCase` é o **único** lugar que cria uma sessão. Ele emite
-`session.created` para o outbox **na mesma transação** do insert, e é esse
-evento que faz o engine subir o `SessionServer` da sessão.
+`CreateSessionUseCase` is the **only** place that creates a session. It
+emits `session.created` to the outbox **in the same transaction** as the
+insert, and it's that event that makes the engine spin up the session's
+`SessionServer`.
 
-Quem chamou `sessions.create(...)` diretamente produziu uma sessão que o
-engine nunca conheceu. O efeito é uma cascata silenciosa:
+Whoever called `sessions.create(...)` directly produced a session the
+engine never knew about. The effect is a silent cascade:
 
-- o canal Phoenix responde `REFUSED JOIN` para sempre — a UI só reclama no
-  console e continua tentando a cada 10 segundos;
-- sem canal não há atualização ao vivo: o fio fica preso no indicador de
-  digitação, mesmo com o agente já `idle`;
-- ninguém bate o heartbeat, e como é o heartbeat que fecha a sessão
-  ([RN-064](#rn-064)), ela fica `active` **para sempre**.
+- the Phoenix channel replies `REFUSED JOIN` forever — the UI only
+  complains in the console and keeps retrying every 10 seconds;
+- with no channel there's no live update: the thread stays stuck on the
+  typing indicator, even with the agent already `idle`;
+- no one hits the heartbeat, and since it's the heartbeat that closes
+  the session ([RN-064](#rn-064)), it stays `active` **forever**.
 
-Três caminhos faziam isso: `provision-repository` (duas chamadas),
-`adopt-repository` e `activate-execution` — este último cria a sessão onde
-rodam os **dev agents**.
+Three paths did this: `provision-repository` (two calls),
+`adopt-repository`, and `activate-execution` — the last of which creates
+the session where the **dev agents** run.
 
-A prova por contraste, de uma execução real: a sessão do assistente não tinha
-`session.created`, tinha `engine.session_states` vazio e `REFUSED JOIN`; a
-sessão aberta pela rota normal tinha o evento, a linha de estado e `JOINED`.
+The proof by contrast, from a real execution: the wizard's session had
+no `session.created`, had an empty `engine.session_states`, and
+`REFUSED JOIN`; the session opened via the normal route had the event,
+the state row, and `JOINED`.
 
-O teste é sobre a FONTE de propósito: um teste de comportamento provaria um
-caminho por vez, e o defeito aqui é o caminho em que ninguém pensou.
+The test is about the SOURCE on purpose: a behavior test would prove one
+path at a time, and the defect here is the path no one thought of.
 
-- **Onde:** `apps/api/src/application/use-cases/sessions/create-session.use-case.ts`
-  (o dono), `git/provision-repository.use-case.ts`,
+- **Where:** `apps/api/src/application/use-cases/sessions/create-session.use-case.ts`
+  (the owner), `git/provision-repository.use-case.ts`,
   `git/adopt-repository.use-case.ts`,
-  `execution/activate-execution.use-case.ts` (os chamadores)
-- **Teste:** `test/application/use-cases/sessions/toda-sessao-emite-created.spec.ts`
+  `execution/activate-execution.use-case.ts` (the callers)
+- **Test:** `test/application/use-cases/sessions/toda-sessao-emite-created.spec.ts`
   (`only CreateSessionUseCase calls sessions.create`)
-- **Origem:** execução real da FASE 13b
+- **Origin:** PHASE 13b real execution
 
-### RN-068 — O dev agent lê o worktree sem pedir permissão {#rn-068}
+### RN-068 — The dev agent reads the worktree without asking permission {#rn-068}
 
-Ativar a execução semeia duas famílias de comandos no `allow` do projeto:
-**ler o próprio worktree** (`ls`, `pwd`, `find`, `cat`, `head`, `tail`,
-`grep`, `wc`, `echo`, `git status`, `git diff`, `git log`) e **build e
-teste**.
+Activating execution seeds two command families into the project's
+`allow`: **reading the worktree itself** (`ls`, `pwd`, `find`, `cat`,
+`head`, `tail`, `grep`, `wc`, `echo`, `git status`, `git diff`, `git
+log`) and **build and test**.
 
-A segunda já existia: `ReportDone` só deixa uma PR abrir depois de um
-`terminal` com `exit 0`. A primeira foi acrescentada porque o agente **olha
-antes de construir**, e sem ela não conseguia nem começar.
+The second already existed: `ReportDone` only lets a PR open after a
+`terminal` with `exit 0`. The first was added because the agent
+**looks before it builds**, and without it it couldn't get started.
 
-O motivo é concreto. Uma ferramenta `:pipeline` pendente devolve
-`proposed_action <id> status pending` como RESULTADO — não a saída do
-comando — e o ToolLoop segue em frente. Num repositório recém-provisionado,
-cada `ls -la` do agente caía em aprovação, não lhe ensinava nada e queimava
-uma iteração. Numa execução real o desfecho foi
-`toolloop.limit_reached {iteration: 8, max_iterations: 8}`, tarefa bloqueada
-por "limite de iterações atingido", sem uma linha escrita — e as aprovações
-que o usuário deu chegaram depois de o laço esgotado.
+The reason is concrete. A pending `:pipeline` tool returns
+`proposed_action <id> status pending` as the RESULT — not the command's
+output — and the ToolLoop moves on. On a freshly provisioned repository,
+every `ls -la` from the agent fell into approval, taught it nothing, and
+burned an iteration. In a real execution the outcome was
+`toolloop.limit_reached {iteration: 8, max_iterations: 8}`, task blocked
+for "iteration limit reached", with not one line written — and the
+approvals the user granted arrived after the loop was exhausted.
 
-Liberar leituras não afrouxa o pipeline, e é isso que o teste afirma: `deny`
-vence `allow`, os `BUILTIN_DENY_PATTERNS` continuam ativos, o casamento é por
-prefixo de TOKEN (um `ls` permitido não permite `lsof`), e um comando
-composto exige que TODO segmento case — `ls && rm -rf /` não passa por causa
-do `ls`.
+Freeing up reads doesn't loosen the pipeline, and that's what the test
+asserts: `deny` beats `allow`, `BUILTIN_DENY_PATTERNS` stay active,
+matching is by TOKEN prefix (an allowed `ls` doesn't allow `lsof`), and a
+composite command requires EVERY segment to match — `ls && rm -rf /`
+doesn't pass because of the `ls`.
 
-A allowlist é mitigação, não solução: é uma lista de comandos previstos e o
-modelo inventa comandos. A correção estrutural — o agente ESPERAR a decisão em
-vez de queimar iterações — está no
+The allowlist is mitigation, not a solution: it's a list of foreseen
+commands and the model invents commands. The structural fix — the agent
+WAITING for the decision instead of burning iterations — is in
 [ADR 0052](../adr/0052-dev-agent-espera-aprovacao-no-meio-do-laco.md).
 
-- **Onde:** `apps/api/src/domain/actions/dev-terminal-patterns.ts`,
-  semeado por `application/use-cases/execution/activate-execution.use-case.ts`
-- **Teste:** `test/domain/actions/dev-terminal-patterns.spec.ts`
+- **Where:** `apps/api/src/domain/actions/dev-terminal-patterns.ts`,
+  seeded by `application/use-cases/execution/activate-execution.use-case.ts`
+- **Test:** `test/domain/actions/dev-terminal-patterns.spec.ts`
   (`allows ls -la`; `a composite command doesn't hitch a ride on the
   allowed segment`)
-- **Origem:** execução real da FASE 13b
+- **Origin:** PHASE 13b real execution
 
-### RN-143 — Um subcomando de git somente leitura só é permitido ancorado pela flag que torna a leitura inequívoca, nunca pelo verbo solto {#rn-143}
+### RN-143 — A read-only git subcommand is only allowed anchored by the flag that makes the read unambiguous, never by the bare verb {#rn-143}
 
-Consultando o banco de uma execução real, os dev agents queimaram dezenas de
-aprovações manuais em subcomandos de exploração — `git branch -a`, `git
+Querying a real execution's database, dev agents burned dozens of manual
+approvals on exploration subcommands — `git branch -a`, `git
 remote -v`, `git worktree list`, `git show origin/dev --stat`, `git log
 --all --oneline --graph`, `git for-each-ref`, `git ls-tree -r origin/dev
---name-only`, `git config user.name` — nenhum coberto pela [RN-068](#rn-068),
-que só permitia `git status`/`diff`/`log` (sem flags extras). Como o casamento
-por prefixo de token exige que TODO segmento de um comando composto esteja em
-`allow`, uma longa cadeia de exploração caía inteira em `require_approval` no
-instante em que UM desses subcomandos aparecia no meio.
+--name-only`, `git config user.name` — none covered by [RN-068](#rn-068),
+which only allowed `git status`/`diff`/`log` (with no extra flags).
+Since prefix-by-token matching requires EVERY segment of a composite
+command to be in `allow`, a long exploration chain fell entirely into
+`require_approval` the moment ONE of these subcommands showed up in the
+middle.
 
-`DEV_TERMINAL_ALLOW_PATTERNS` ganhou
+`DEV_TERMINAL_ALLOW_PATTERNS` gained
 `git branch -a/-r/-v/--list/--show-current`, `git remote -v`/`git remote
 show`, `git worktree list`, `git show`, `git for-each-ref`, `git
-ls-tree`, `git rev-parse` e `git config --get`. O `git log` não precisou de
-padrão novo: o casamento já é por PREFIXO de token (tokens finais extras são
-permitidos), então `Terminal(git log)` já cobria `git log
+ls-tree`, `git rev-parse`, and `git config --get`. `git log` didn't need
+a new pattern: matching is already by token PREFIX (extra trailing
+tokens are allowed), so `Terminal(git log)` already covered `git log
 --all --graph --oneline --decorate`.
 
-**A cautela aqui é a mesma que a RN-068 já mostra para `ls`/`lsof`, aplicada
-a verbos com um irmão MUTANTE que aceita a mesma forma truncada do padrão.**
-`Terminal(git branch)` casaria `git branch -D nome` (apaga) tanto quanto `git
-branch nome-nova` (cria) ou `git branch` sozinho — o padrão não vê o que vem
-DEPOIS do prefixo que conferiu. É por isso que nenhum dos quatro verbos com
-forma mutante (`branch`, `remote`, `worktree`, `config`) foi admitido pelo
-verbo solto; cada um foi ANCORADO pela flag que torna a leitura inequívoca
-independentemente do que vem depois:
+**The caution here is the same one RN-068 already shows for
+`ls`/`lsof`, applied to verbs with a MUTATING sibling that accepts the
+same truncated form of the pattern.** `Terminal(git branch)` would match
+`git branch -D nome` (deletes) just as much as `git branch nome-nova`
+(creates) or `git branch` alone — the pattern doesn't see what comes
+AFTER the prefix it checked. That's why none of the four verbs with a
+mutating form (`branch`, `remote`, `worktree`, `config`) was admitted by
+the bare verb; each was ANCHORED by the flag that makes the read
+unambiguous regardless of anything that follows it:
 
-- `git branch` — ancorado em `-a`/`-r`/`-v`/`--list`/`--show-current`, nunca
-  no verbo sozinho; `-D`/`-d`/`-m`/`-M` (apagar/renomear) e um nome de branch
-  solto (criar) ficam de fora.
-- `git remote` — ancorado em `-v` e `show` (que só aceita um nome de remoto
-  depois, sempre uma leitura); `add`/`remove`/`set-url` ficam de fora.
-- `git worktree` — ancorado em `list`; `add`/`remove`/`prune` ficam de fora.
-- `git config` — só `--get` foi admitido, porque é a única flag que o próprio
-  git garante ser leitura independentemente do que vem depois (uma chave, ou
-  uma chave + padrão de valor). `git config user.name`/`git config
-  user.email` SEM `--get` foram deixados de fora deliberadamente: um segundo
-  token depois da chave (`git config user.name "novo valor"`) é uma ESCRITA, e
-  o casamento por prefixo não distingue "nenhum token a mais" de "um token a
-  mais" sem inventar um novo parser de contagem de argumentos — a mesma
-  limitação que já bloqueia um `git branch` solto. `--global`/`--system`
-  nunca foram ancorados.
+- `git branch` — anchored on `-a`/`-r`/`-v`/`--list`/`--show-current`,
+  never the verb alone; `-D`/`-d`/`-m`/`-M` (delete/rename) and a bare
+  branch name (create) stay out.
+- `git remote` — anchored on `-v` and `show` (which only accepts a
+  remote name afterward, always a read); `add`/`remove`/`set-url` stay
+  out.
+- `git worktree` — anchored on `list`; `add`/`remove`/`prune` stay out.
+- `git config` — only `--get` was admitted, because it's the only flag
+  git itself guarantees is a read regardless of what follows (a key, or
+  a key + value pattern). `git config user.name`/`git config
+  user.email` WITHOUT `--get` were deliberately left out: a second
+  token after the key (`git config user.name "new value"`) is a WRITE,
+  and prefix matching doesn't distinguish "no more tokens" from "one
+  more token" without inventing a new argument-counting parser — the
+  same limitation that already blocks a bare `git branch`.
+  `--global`/`--system` were never anchored.
 
-- **Onde:** `apps/api/src/domain/actions/dev-terminal-patterns.ts`
-- **Teste:** `test/domain/actions/dev-terminal-patterns.spec.ts` (describe
-  `read-only git subcommands (found live)` — cobre a cadeia composta
-  observada ao vivo sendo auto-aprovada, e cada variante mutante com a MESMA
-  palavra de comando — `git branch -D`, `git remote add`, `git worktree add`,
-  `git config --global user.name` — permanecendo em `require_approval`)
-- **Origem:** consulta ao banco de uma sessão real, achada durante o uso
+- **Where:** `apps/api/src/domain/actions/dev-terminal-patterns.ts`
+- **Test:** `test/domain/actions/dev-terminal-patterns.spec.ts` (describe
+  `read-only git subcommands (found live)` — covers the composite chain
+  observed live auto-approving, and each mutating variant with the SAME
+  command word — `git branch -D`, `git remote add`, `git worktree add`,
+  `git config --global user.name` — staying in `require_approval`)
+- **Origin:** query against a real session's database, found during use
 
-### RN-069 — Repetir uma tarefa recria a branch, não falha {#rn-069}
+### RN-069 — Retrying a task recreates the branch, doesn't fail {#rn-069}
 
-`WorktreeManager.add_worktree/3` usa `git worktree add -B` (cria **ou**
-reseta), não `-b`. Ele já removia o diretório do worktree anterior, mas
-deixava a branch para trás — e como o nome dela vem do slug da tarefa, a
-segunda tentativa na MESMA tarefa sempre caía em `fatal: a branch named
-'feature/<slug>' already exists`.
+`WorktreeManager.add_worktree/3` uses `git worktree add -B` (creates
+**or** resets), not `-b`. It already removed the previous worktree's
+directory, but left the branch behind — and since its name comes from
+the task's slug, the second attempt on the SAME task always fell into
+`fatal: a branch named 'feature/<slug>' already exists`.
 
-O efeito era permanente: desbloquear a tarefa não ajudava, reativar a
-execução não ajudava, e o circuit breaker desarmava sem saída. Numa execução
-real a única saída era um `git worktree prune` manual no workspace do
-projeto.
+The effect was permanent: unblocking the task didn't help, reactivating
+execution didn't help, and the circuit breaker disarmed with no way
+out. In a real execution the only way out was a manual
+`git worktree prune` in the project's workspace.
 
-Resetar é a escolha certa: o worktree anterior já foi removido, o trabalho
-daquela tentativa não vale nada (a tarefa voltou para a fila), e a branch
-renasce do ponto atual de `work_dir`.
+Resetting is the right call: the previous worktree has already been
+removed, that attempt's work is worthless (the task went back to the
+queue), and the branch is reborn from the current point of `work_dir`.
 
-- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex`
-- **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
+- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex`
+- **Test:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
   (`retrying the SAME task recreates the worktree instead of failing`)
-- **Origem:** execução real da FASE 13b
+- **Origin:** PHASE 13b real execution
 
-### RN-070 — Todo gate declarado aponta para a evidência que o prova {#rn-070}
+### RN-070 — Every declared gate points to the evidence that proves it {#rn-070}
 
-Nenhuma entrada de `apps/api/config/gates.yml` existe sem `evidencia`, e o registro não
-pode afirmar mais do que verifica: um gate `block` exige `verificacao:
-script`, e um gate `planned` não carrega evidência de algo que ainda não
-aconteceu.
+No entry in `docs/gates.yml` exists without `evidencia`, and the
+registry can't claim more than it verifies: a `block` gate requires
+`verificacao: script`, and a `planned` gate carries no evidence of
+something that hasn't happened yet.
 
-Evidência é um **localizador**, não prosa: `event_log` traz os tipos de
-evento e o filtro de payload que os distingue dos vizinhos; `teste` e `ci`
-trazem o caminho, e um alvo que sumiu REPROVA. É o mesmo modo de falha que o
-docmap chama de glob morto — uma regra que nunca dispara e finge cobertura.
+Evidence is a **locator**, not prose: `event_log` carries the event
+types and the payload filter that distinguishes them from their
+neighbors; `teste` and `ci` carry the path, and a target that
+disappeared FAILS. It's the same failure mode the docmap calls a dead
+glob — a rule that never fires and fakes coverage.
 
-**Essa última afirmação é sobre o REPOSITÓRIO, e nunca é avaliada em
-runtime.** O registro é validado em duas camadas: `validarRegistro` (o
-conteúdo — `block` precisa de `script`, os quatro gates humanos continuam
-humanos, `active` precisa de evidência, nenhum id duplicado, nenhuma `entrada`
-órfã) vale onde quer que o arquivo seja lido e é o que o loader da api chama;
-`validarLocalizadores` (o arquivo alvo está em disco) só faz sentido dentro de
-um checkout, e é cobrada pelo teste do arquivo real e pela fase 2 do
-`validacao-gates.ts`.
+Three types because not every gate lives in the event log:
+[`merge-protegida`](../business-rules.md#rn-014) is a ceiling in a pure rule that emits no
+event of its own (what guarantees it is a test) and `backmerge` is CI
+with state in `.release/gate.json`. Downgrading them to `warn` for that
+reason would lie about the product's hardest locks.
 
-As duas costumavam ser uma função só, e isso custou um defeito de produção,
-medido na v6.1.0 instalada: `GET /gates` devolvia `500` com
-`RegistroDeGatesInvalido` listando os onze alvos como ausentes — doze 5xx em
-cerca de 55 minutos, em toda instalação. A imagem de produção leva
-`/app/config/gates.yml` e mais nada; `apps/api/test/`, `scripts/ci/`
-e `.github/` nunca entram nela. A regra não foi afrouxada — foi movida para
-onde a pergunta existe. Não a ponha de volta no loader: `arquivoExiste` num
-processo que não tem repositório responde sobre outra árvore.
+The filter matters as much as the type: `qa-verificada` and
+`secops-segura` record the SAME `pr.gate_changed`, and the same type
+fires on the gate's OPENING with no `veredito` — without the filter,
+opening would count as passing. The same holds for the two infra PR
+gates. That's why no (`event_types` + `filtro`) pair can repeat.
 
-A tela escondeu isso: a [RN-084](#rn-084) faz o `PrGateTimeline` cair no
-pipeline completo quando a rota falha, então o 500 só aparecia nos logs da
-api.
+The filter only reaches the PAYLOAD, on purpose: accepting an arbitrary
+column would open up the whole query. Who promoted a story (human or
+the PO) lives in the `actor_kind` column and stays outside the
+declarative vocabulary.
 
-Três tipos porque nem todo gate vive no event log:
-[`merge-protegida`](../business-rules.md#rn-014) é um teto numa regra pura
-que não emite evento próprio (o que a garante é um teste) e `backmerge` é CI
-com estado em `.release/gate.json`. Rebaixá-los a `warn` por isso mentiria
-sobre as travas mais duras do produto.
+- **Where:** `apps/api/src/domain/gates/gate-registry.ts`, registered in
+  `docs/gates.yml`, measured in `apps/api/scripts/validacao-gates.ts`
+- **Test:** `apps/api/test/domain/gates/gate-registry.spec.ts`
+  (`is valid: no accumulated problem`; `no (event_types + filtro) pair
+  repeats between gates`)
+- **Origin:** PHASE 15a (ADR 0054)
 
-O filtro importa tanto quanto o tipo: `qa-verificada` e `secops-segura`
-gravam o MESMO `pr.gate_changed`, e o mesmo tipo dispara na ABERTURA do gate,
-sem `veredito` — sem o filtro, abrir contaria como passar. O mesmo vale para
-os dois gates de PR de infra. É por isso que nenhum par (`event_types` +
-`filtro`) pode se repetir.
+### RN-071 — The four user-authority gates cannot be declared automatic {#rn-071}
 
-O filtro só alcança o PAYLOAD, de propósito: aceitar uma coluna arbitrária
-abriria a consulta inteira. Quem promoveu uma story (humano ou o PO) mora na
-coluna `actor_kind` e fica fora do vocabulário declarativo.
+`acao-aprovada`, `story-promovida`, `plano-de-adocao`, and
+`merge-protegida` have `aprovacao_humana: true` by construction. The
+list lives in the DOMAIN (`GATES_HUMANOS_IMUTAVEIS`), not in the test:
+touching it has to be a deliberate act, reviewed like code.
 
-- **Onde:** `apps/api/src/domain/gates/gate-registry.ts`
-  (`validarRegistro` e `validarLocalizadores`), registrado em
-  `apps/api/config/gates.yml`, medido em `apps/api/scripts/validacao-gates.ts`;
-  o loader que deliberadamente chama só a primeira é
-  `apps/api/src/infrastructure/gates/gate-registry.loader.ts`
-- **Teste:** `apps/api/test/domain/gates/gate-registry.spec.ts`
-  (`é válido: nenhum problema acumulado`; `todo alvo de prova citado
-  existe no repositório`; `validarRegistro ignora o disco: alvo ausente
-  não é problema DELE`; `nenhum par (event_types + filtro) se repete
-  entre gates`) e
-  `apps/api/test/infrastructure/gates/gate-registry.loader.spec.ts`
-  (`carrega o registro real sem exigir os alvos que a imagem não leva`,
-  contra uma raiz reconstruída como a árvore da imagem de produção)
-- **Origem:** FASE 15a (ADR 0054); a divisão em duas camadas veio do 500 de
-  `GET /gates` medido na v6.1.0 instalada (AT-086)
-### RN-071 — Os quatro gates de autoridade do usuário não podem ser declarados automáticos {#rn-071}
+`aprovacao_humana: true` means the decision is the user's — directly by
+a click, or delegated by a policy they themselves wrote in
+`permissions.json`. That's what lets `acao-aprovada` coexist with
+`status: auto_approved`: policy deciding alone is the user having
+decided beforehand. `merge-protegida` is the case where not even the
+delegation exists — the ceiling downgrades `auto_approve` to
+`require_approval` even with autonomy turned on.
 
-`acao-aprovada`, `story-promovida`, `plano-de-adocao` e `merge-protegida`
-têm `aprovacao_humana: true` por construção. A lista mora no DOMÍNIO
-(`GATES_HUMANOS_IMUTAVEIS`), não no teste: mexer nela tem de ser um ato
-deliberado, revisado como código.
+The opposite also fails: an id in the list with no matching gate is a
+dead rule, pointing at nothing.
 
-`aprovacao_humana: true` significa que a decisão é do usuário — diretamente
-por um clique, ou delegada por uma política que ele mesmo escreveu no
-`permissions.json`. É isso que permite a `acao-aprovada` coexistir com
-`status: auto_approved`: a política decidindo sozinha é o usuário tendo
-decidido de antemão. `merge-protegida` é o caso em que nem a delegação
-existe — o teto rebaixa `auto_approve` para `require_approval` mesmo com a
-autonomia ligada.
-
-O contrário também reprova: um id na lista sem gate correspondente é uma
-regra morta, apontando para nada.
-
-- **Onde:** `apps/api/src/domain/gates/gate-registry.ts`
-  (`GATES_HUMANOS_IMUTAVEIS`); o teto em
+- **Where:** `apps/api/src/domain/gates/gate-registry.ts`
+  (`GATES_HUMANOS_IMUTAVEIS`); the ceiling in
   `apps/api/src/domain/actions/decide.ts`
-- **Teste:** `apps/api/test/domain/gates/gate-registry.spec.ts`
-  (`%s cannot have aprovacao_humana false`); o teto em
+- **Test:** `apps/api/test/domain/gates/gate-registry.spec.ts`
+  (`%s cannot have aprovacao_humana false`); the ceiling in
   `apps/api/test/domain/actions/decide.spec.ts`
-- **Origem:** FASE 15a (ADR 0054)
+- **Origin:** PHASE 15a (ADR 0054)
 
-### RN-072 — Sem escolha explícita, o modelo é o do agente Criativo {#rn-072}
+### RN-072 — With no explicit choice, the model is the Creative agent's {#rn-072}
 
-Quando a cascata de bindings pousa no default do **workspace** — isto é,
-ninguém decidiu nada para este projeto — o modelo herdado é o do agente
-**Criativo**, não o default global.
+When the binding cascade lands on the **workspace** default — that is,
+no one decided anything for this project — the inherited model is the
+**Creative** agent's, not the global default.
 
-O agente Criativo é sempre a porta de entrada de um projeto: é com ele que a
-primeira conversa acontece, e o binding dele representa "o modelo que este
-projeto usa para pensar".
+The Creative agent is always a project's entry door: it's the one the
+first conversation happens with, and its binding represents "the model
+this project uses to think".
 
-A herança preenche a **lacuna**, nunca sobrescreve: bindings de sessão, de
-agente ou de projeto são escolhas explícitas de alguém e continuam vencendo.
-É por isso que é um passo DEPOIS da cascata e não um novo escopo dentro dela
-— não disputa precedência. E o modelo herdado passa pelos mesmos filtros: sumido
-do catálogo ou sem tool calling significa que não é herdado, pelo mesmo motivo
-que a cascata os pula ([RN-043](#rn-043)).
+Inheritance fills the **gap**, never overrides: session, agent, or
+project bindings are someone's explicit choices and still win. That's
+why it's a step AFTER the cascade and not a new scope within it — it
+doesn't compete for precedence. And the inherited model passes through
+the same filters: gone from the catalog or with no tool calling means
+it isn't inherited, for the same reason the cascade skips them
+([RN-043](#rn-043)).
 
-O que isto conserta: o default do workspace é global e tende a ser um modelo
-local pequeno. Uma sessão nova e um dev agent — que não têm binding próprio —
-nasciam nele, e o [ADR 0020](../adr/0020-destravar-gates-qa-secops.md) proíbe
-um modelo local pequeno no passo semântico. Numa execução real foi preciso
-trocar o modelo à mão em cada sessão aberta, e os três dev agents subiram em
-`llama3.2:1b` sem que ninguém tivesse pedido.
+What this fixes: the workspace default is global and tends to be a
+small local model. A new session and a dev agent — which have no
+binding of their own — used to be born in it, and
+[ADR 0020](../adr/0020-destravar-gates-qa-secops.md) forbids a small local
+model at the semantic step. In a real execution, the model had to be
+switched by hand in every open session, and the three dev agents came
+up on `llama3.2:1b` with no one having asked for it.
 
-- **Onde:** `apps/api/src/domain/llm/binding-resolver.ts`
-  (`herdarModeloDeStart`), aplicado em
+- **Where:** `apps/api/src/domain/llm/binding-resolver.ts`
+  (`herdarModeloDeStart`), applied in
   `application/use-cases/llm/resolve-model-binding.use-case.ts`
-- **Teste:** `apps/api/test/domain/llm/binding-resolver.spec.ts`
+- **Test:** `apps/api/test/domain/llm/binding-resolver.spec.ts`
   (`fills the gap`; `does NOT override %s's explicit choice`)
-- **Origem:** achados B e O da execução real (FASE 13c, fase A)
+- **Origin:** findings B and O of the real execution (PHASE 13c, phase A)
 
-### RN-073 — Uma aprovação pendente SUSPENDE o laço, não o queima {#rn-073}
+### RN-073 — A pending approval SUSPENDS the loop, doesn't burn it {#rn-073}
 
-Quando uma ferramenta de pipeline devolve `pending`, o ToolLoop **para** e o
-dev agent entra em `:awaiting_approval`, segurando a tarefa, o worktree e o
-histórico do laço. A decisão do usuário emite `task.action_settled`, que o
-acorda: o resultado real ocupa o lugar onde a palavra "pending" estaria, e o
-laço retoma de onde parou.
+When a pipeline tool returns `pending`, the ToolLoop **stops** and the
+dev agent enters `:awaiting_approval`, holding onto the task, the
+worktree, and the loop's history. The user's decision emits
+`task.action_settled`, which wakes it: the real result takes the place
+where the word "pending" would be, and the loop resumes from where it
+stopped.
 
-Duas propriedades que o teste trava:
+Two properties the test locks down:
 
-- **Nada é gravado durante a espera.** O espaço da mensagem da ferramenta
-  fica vazio. Gravar "pending" ali diria ao modelo que foi isso que o comando
-  respondeu — que era exatamente o defeito.
-- **Uma recusa é uma resposta.** O motivo ocupa o lugar do resultado e o
-  agente aprende que aquele caminho fechou, em vez de esperar para sempre por
-  algo que ninguém vai aprovar. É o mesmo princípio de `pr_settled` com
-  `opened: false` ([RN-047](#rn-047)), um nível abaixo.
-- **O wake tem de CHEGAR.** `task.action_settled` nasce no agregado `task`,
-  não na `proposed_action` que o nome da tabela sugere: o drain do engine lê
-  uma lista fechada de agregados (`session` e `task`). Emitido fora dessa
-  lista, o evento é gravado com sucesso, fica com `processed_at` nulo e nem
-  chega a ser lido — sem job, sem erro, sem log, e o agente espera para
-  sempre. O contrato atravessa duas linguagens, e é por isso que está fixado
-  nos dois lados.
+- **Nothing is recorded while waiting.** The tool message's slot stays
+  empty. Recording "pending" there would tell the model that's what the
+  command answered — which was exactly the defect.
+- **A refusal is a response.** The reason takes the result's place and
+  the agent learns that path closed, instead of waiting forever for
+  something no one is going to approve. It's the same principle as
+  `pr_settled` with `opened: false` ([RN-047](#rn-047)), one level down.
+- **The wake has to ARRIVE.** `task.action_settled` is born on the
+  `task` aggregate, not on the `proposed_action` the table name
+  suggests: the engine's drain reads a closed list of aggregates
+  (`session` and `task`). Emitted outside that list, the event is
+  recorded successfully, stays with a null `processed_at`, and is never
+  even read — no job, no error, no log, and the agent waits forever.
+  The contract crosses two languages, and that's why it's pinned on
+  both sides.
 
-Se o engine **reiniciar** durante a espera, a regra deixa de valer para essa
-tarefa: o laço suspenso só existe em memória, então ela volta para a fila
-bloqueada com origem `infra`, e a decisão tomada depois não tem onde ser
-aplicada. Bloquear com diagnóstico é deliberado — a alternativa era a espera
-eterna e silenciosa, que é exatamente o que esta regra existe para acabar.
+If the engine **restarts** during the wait, the rule no longer applies
+to that task: the suspended loop only exists in memory, so it goes back
+to the queue blocked with origin `infra`, and the decision made
+afterward has nowhere to be applied. Blocking with a diagnosis is
+deliberate — the alternative was the silent eternal wait, which is
+exactly what this rule exists to end.
 
-O que isto conserta: `pending` costumava voltar como o RESULTADO da
-ferramenta e o laço seguia em frente. O modelo lia aquilo como a resposta do
-comando, não aprendia nada, tentava outra coisa — e cada tentativa queimava
-uma iteração até `toolloop.limit_reached {iteration: 8, max_iterations: 8}`,
-com a tarefa bloqueada por "limite de iterações atingido" sem uma linha
-escrita. As aprovações concedidas chegavam depois de o laço esgotado e não
-serviam para nada.
+What this fixes: `pending` used to come back as the tool's RESULT and
+the loop kept going. The model read that as the command's answer,
+learned nothing, tried something else — and each attempt burned an
+iteration until `toolloop.limit_reached {iteration: 8,
+max_iterations: 8}`, with the task blocked for "iteration limit
+reached" with not one line written. The approvals granted arrived
+after the loop was exhausted and were useless.
 
-A allowlist de terminal ([RN-068](#rn-068)) continua valendo, mas deixa de ser
-a única defesa: é uma lista de comandos previstos, e o modelo inventa
-comandos.
+The terminal allowlist ([RN-068](#rn-068)) still applies, but stops
+being the only defense: it's a list of foreseen commands, and the model
+invents commands.
 
-- **Onde:** `apps/engine/lib/engine/harness/hooks/action_pipeline.ex`,
+- **Where:** `apps/engine/lib/engine/harness/hooks/action_pipeline.ex`,
   `harness/tool_loop.ex`, `dev/dev_agent_server.ex`,
-  `workers/dev_agent_wake_worker.ex`; emissão em
+  `workers/dev_agent_wake_worker.ex`; emission in
   `apps/api/src/application/use-cases/actions/{approve,deny}-action.use-case.ts`
-- **Teste:** `apps/engine/test/engine/dev/dev_agent_awaiting_approval_test.exs`
+- **Test:** `apps/engine/test/engine/dev/dev_agent_awaiting_approval_test.exs`
   (`pending action STOPS the agent`; `approved: resumes the loop with
-  the REAL output`; `restart during the wait BLOCKS the task`) e
-  `apps/engine/test/engine/dev/wake_do_outbox_ao_agente_test.exs`, que
-  percorre a cadeia inteira — outbox, drain, fila e processo — porque os
-  testes por elo estavam todos verdes com a entrega quebrada; o agregado
-  está fixado no lado da api em
+  the REAL output`; `restart during the wait BLOCKS the task`) and
+  `apps/engine/test/engine/dev/wake_do_outbox_ao_agente_test.exs`, which
+  walks the whole chain — outbox, drain, queue, and process — because
+  the per-link tests were all green with the delivery broken; the
+  aggregate is pinned on the api side in
   `apps/api/test/application/use-cases/actions/approve-deny-action.use-case.spec.ts`
-- **Origem:** [ADR 0052](../adr/0052-dev-agent-espera-aprovacao-no-meio-do-laco.md),
-  fase A da triagem
+- **Origin:** [ADR 0052](../adr/0052-dev-agent-espera-aprovacao-no-meio-do-laco.md),
+  triage phase A
 
-### RN-135 — Ativar a execução fecha a sessão de CHAT que originou o pedido {#rn-135}
+### RN-135 — Activating execution closes the CHAT session that originated the request {#rn-135}
 
-`ActivateExecutionUseCase` sempre resolvia a sessão de EXECUÇÃO
-(`findActiveExecutionSession`, ou criava uma `criativa` nova), mas nunca
-transicionava a sessão de CHAT de onde veio o clique em "ativar execução" — a
-conversa com o Dev Lead/PO, numa sessão separada. Ela ficava `active` para
-sempre, mesmo com a execução já rodando sozinha em outra sessão, e continuava
-aparecendo como conversa aberta na lista.
+`ActivateExecutionUseCase` always resolved the EXECUTION session
+(`findActiveExecutionSession`, or created a new `criativa` one), but
+never transitioned the CHAT session the click on "activate execution"
+came from — the Dev Lead/PO conversing in a separate session. It stayed
+`active` forever, even with execution already running on its own in
+another session, and kept showing up as an open conversation in the
+list.
 
-`execute()` ganhou `originSessionId`, opcional e por último — um chamador
-antigo (hoje só a ativação pela Visão Geral, sem contexto de sessão) continua
-funcionando de forma IDÊNTICA, sem fechar nada. Quando passado, no FIM do
-método (depois de tudo o mais ter acontecido: module_map, áreas, autonomia,
-`startExecution`, `execution.activated`):
+`execute()` gained `originSessionId`, optional and last — an old caller
+(today only activation from Overview, with no session context) keeps
+working IDENTICALLY, closing nothing. When passed, at the END of the
+method (after everything else has happened: module_map, areas,
+autonomy, `startExecution`, `execution.activated`):
 
-- **nunca fecha a própria sessão de execução** — se `originSessionId` for
-  igual à sessão que acabou de receber `execution.activated`, o fechamento é
-  pulado, porque fechá-la destruiria o processo que os dev agents acabaram de
-  ganhar;
-- **só fecha o que está `active`** — a mesma cautela de
-  `decide-bootstrap-plan.use-case.ts#fecharSessao`, nada a fazer se a sessão
-  não existe mais ou já não está aberta;
-- **reaproveita o `GetSessionPendingWorkUseCase`** ([RN-073](#rn-073)) — a
-  MESMA guarda que segura o fechamento por heartbeat de inatividade: um
-  handoff oferecido, uma `proposed_action` pendente ou um agente `working` sem
-  `idle` posterior impedem o fechamento;
-- passa por `closing` antes de `closed` — a máquina de estados
-  (`active -> closing -> closed`) não permite o salto direto.
+- **never closes the execution session itself** — if `originSessionId`
+  equals the session that just received `execution.activated`, closing
+  is skipped, because closing it would destroy the process the dev
+  agents just gained;
+- **only closes what's `active`** — the same caution as
+  `decide-bootstrap-plan.use-case.ts#fecharSessao`, nothing to do if
+  the session no longer exists or is no longer open;
+- **reuses `GetSessionPendingWorkUseCase`** ([RN-073](#rn-073)) — the
+  SAME guard that holds off closing on inactivity heartbeat: an offered
+  handoff, a pending `proposed_action`, or an agent `working` with no
+  subsequent `idle` prevent closing;
+- goes through `closing` before `closed` — the state machine
+  (`active -> closing -> closed`) doesn't allow the direct jump.
 
-Uma falha ou estado pendente aqui NUNCA se propaga a quem chamou `execute()`: a
+A failure or pending state here NEVER propagates to whoever called
+`execute()`: the
 ativação da execução já aconteceu e é o efeito principal; fechar o chat de
 origem é um efeito colateral *best-effort*.
 
@@ -1632,6 +1412,7 @@ Divergindo aqui, o callback recusaria todo `state` legítimo.
   (`resolveOauthStateSecret`), chamada no boot em `apps/api/src/main.ts`
 - **Teste:** `apps/api/test/infrastructure/security/oauth-state-secret.spec.ts`
 - **Origem:** [ADR 0059](../adr/0059-segredo-do-state-de-oauth-sem-default.md)
+
 ### RN-114 — Os quatro segredos irmãos do `GIT_OAUTH_STATE_SECRET` também não sobem em produção com o valor de exemplo {#rn-114}
 
 O [ADR 0059](../adr/0059-segredo-do-state-de-oauth-sem-default.md) fechou o
@@ -1863,8 +1644,6 @@ A comparação normaliza caixa, acento e espaço redundante; pontuação fica.
 **Duplicata semântica continua passando, e isso é declarado, não esquecido:**
 "Saudação com nome" e "Quem chama pode se identificar" seguem sendo duas regras,
 porque separá-las é julgamento e não cabe num `if`.
-Desde a [RN-681](#rn-681) a duplicata semântica de TÍTULO é **avisada** por
-embedding depois de gravar — continua passando, nunca é recusada aqui.
 
 - **Onde:** `apps/engine/lib/engine/harness/artifact_dedupe.ex`,
   `apps/engine/lib/engine/harness/tools/emit_artifact.ex`,
@@ -1895,8 +1674,6 @@ tratar o conjunto vazio como subconjunto de tudo acusaria todas.
 responde saudação imediata" cobrem o mesmo endpoint com títulos e justificativas
 diferentes — nada mecânico os liga, e eles continuam passando. Há teste
 afirmando isso, para o limite ficar visível em vez de implícito.
-Desde a [RN-681](#rn-681) o par é AVISADO por embedding — continua passando,
-e o teste que afirma o limite DESTE mecanismo segue valendo.
 
 - **Onde:** `apps/api/src/domain/backlog/story-overlap.ts`,
   `apps/api/src/application/use-cases/backlog/create-story.use-case.ts`
@@ -1939,7 +1716,7 @@ reimplementado.
 
 Quantos agentes sobem deixa de ser um número no código: quem avalia é o **lead
 da área**. Mas a decisão dele não é soberana sobre GASTO — até
-`agent_areas.max_parallel` (nasce com **5** no `dev`, [RN-910](#rn-910)) ele sobe e segue; **acima disso vira
+`agent_areas.max_parallel` (default **2**) ele sobe e segue; **acima disso vira
 `proposed_action` do tipo `parallelize`**, pelo mesmo pipeline de toda ação com
 efeito externo.
 
@@ -1988,7 +1765,7 @@ depois de ler.
   `test/application/use-cases/execution/request-parallelization.use-case.spec.ts`,
   `test/application/use-cases/execution/set-area-max-parallel.use-case.spec.ts`
   e `apps/web/src/routes/ProjectSettingsTab.test.tsx` (`ParallelismSection`)
-- **Gate:** `apps/api/config/gates.yml` (`paralelismo-autorizado`) — `status: active`
+- **Gate:** `docs/gates.yml` (`paralelismo-autorizado`) — `status: active`
   desde a auditoria fluxo.yml × código (achado A1/B5); o mecanismo em si não
   mudou, só o registro que ficou `planned` por engano desde a FASE 14d, ver
   [gates.md](../explanation/gates.md#a-registry-can-age-in-the-wrong-direction--stale-not-inactive)
@@ -2018,12 +1795,10 @@ que nunca executou. A ativação da execução diz quem são os MEMBROS da área
 projeto nasceu. Enquanto não há membros gravados, quem sustenta a regra de
 endereçamento (RN-087) é o predicado `ehDevDeModulo`, que não consulta o banco.
 
-**O seeding manda o teto de NASCENÇA, e só no INSERT.** Desde a
-[RN-910](#rn-910) a área nasce com o valor do catálogo (dev 5, qa 4, infra 2),
-mas o `upsert` o grava só quando a linha ainda não existe: a ativação é
-repetível, e um teto que você subiu não volta ao valor de nascença em silêncio
-— o produto desfazendo a sua decisão. A migração de backfill `0038` faz a área
-existir e para aí; quem alinha os projetos existentes é a `0073` (RN-910).
+**O seeding nunca manda `max_parallel`.** A ativação é repetível, e mandar o
+default faria um teto que você subiu para 5 voltar para 2 em silêncio — o
+produto desfazendo a sua decisão. O mesmo vale para a migração de backfill: ela
+faz a área existir e para aí.
 
 Projetos criados antes disto são cobertos pela migração `0038`, com `ON
 CONFLICT DO NOTHING` nas duas tabelas. Sem ela, o defeito ficaria corrigido só
@@ -2044,39 +1819,10 @@ para quem começasse do zero.
 - **Origem:** FASE 18, defeito achado na investigação do programa 16–26;
   a tabela vem do [ADR 0053](../adr/0053-dev-lead-e-paralelismo-autorizado.md)
 
-### RN-910 — O teto padrão por área é 5 no dev, 4 no qa e 2 na infra {#rn-910}
-
-Cada área de agentes nasce com um teto de paralelismo que vem do catálogo:
-`dev` 5, `qa` 4, `infra` 2 (AT-599, pedido do dono de 22/10). A migração `0073`
-aplicou os mesmos valores a **todos** os projetos existentes, sobrescrevendo o
-que já estava decidido — decisão do dono, tomada sabendo que um teto posto de
-propósito se perde.
-
-- **Hoje só o teto de `dev` é aplicado na execução.** `RequestParallelizationUseCase`
-  lê a área `dev` ao decidir o paralelismo. `qa` e `infra` têm o valor gravado,
-  exibido e editável, mas nenhum código o consulta: subir o teto deles não muda
-  execução nenhuma.
-- **O teto de `dev` só morde com 3 módulos ou mais.** O máximo de dev agents é um
-  por módulo mais um extra (`dev-<modulo>-2`), ou seja, 2 × módulos (RN-083). Com
-  2 módulos o máximo é 4, abaixo de 5.
-- **Só o INSERT usa o valor de catálogo.** Semear de novo não toca a linha
-  (RN-094). A coluna continua `default(2)`: esse valor só aparece num INSERT cru,
-  fora do caso de uso.
-- **Onde:** `apps/api/src/domain/agents/agent-areas.ts:73` (`maxParallelPadrao`);
-  `apps/api/src/application/use-cases/agents/seed-agent-areas.use-case.ts:53`
-  (`maxParallelAoNascer`); `apps/api/src/infrastructure/persistence/drizzle/agent-area.repository.ts:62`
-  (`nascer`); `apps/api/src/application/use-cases/execution/request-parallelization.use-case.ts:13`
-  (`MAX_PARALLEL_PADRAO`); migração `apps/api/src/db/migrations/0073_paralelismo_padrao_por_area.sql`.
-- **Teste:** `test/application/use-cases/iam/create-project-semeia-areas.spec.ts`
-  (projeto novo nasce com 5/4/2), `test/infrastructure/persistence/drizzle/agent-area.repository.spec.ts`
-  (semear de novo não desfaz o teto alterado), `test/db/paralelismo-padrao-migration.spec.ts`
-  (linhas com 2, 3 e 7 terminam em 5/4/2) e `test/application/use-cases/execution/request-parallelization.use-case.spec.ts`
-  (o padrão de 5 decide o paralelismo do dev).
-
 ### RN-084 — A esteira exibida deriva do registro de gates {#rn-084}
 
 O painel do time mostra a etapa em que uma PR está **derivando-a de
-`apps/api/config/gates.yml`**, não de uma lista escrita na tela. Gate que sai do registro
+`docs/gates.yml`**, não de uma lista escrita na tela. Gate que sai do registro
 some da esteira; gate `planned` nunca aparece.
 
 **A regra existe por uma forma específica de envelhecimento.** Antes da FASE
@@ -2197,8 +1943,7 @@ que você leu ao decidir.
 ### RN-087 — O Dev Lead é o único endereço externo da execução {#rn-087}
 
 Existe um agente `dev-lead`, conversacional, que recebe o handoff do Arquiteto
-(desde a [RN-672](../business-rules.md#rn-672), da Infra, com o container do
-projeto `running`) e propõe o **plano de execução**: quantos agentes por módulo e por quê. Ele não
+e propõe o **plano de execução**: quantos agentes por módulo e por quê. Ele não
 escreve código — distribui trabalho e responde por ele.
 
 **Antes dele, a frase "quem decide é o lead" da [RN-083](#rn-083) não tinha
@@ -2225,7 +1970,7 @@ Até essa mudança o plano virava EVENTO simples, sem aprovação: o argumento e
 que propor não tem efeito externo — o gasto acontece quando os agentes sobem,
 e é lá que o teto cobra autorização; transformar a proposta em ação a decidir
 faria você decidir duas vezes a mesma coisa. Uma auditoria de
-`packages/contracts/fluxo.yml` × código encontrou que o fluxo já declarava esta saída como
+`docs/fluxo.yml` × código encontrou que o fluxo já declarava esta saída como
 `via: proposed_action` desde o ADR 0085, e o código nunca foi ajustado para
 bater — o dono do produto decidiu que o código errava: o plano é a PRIMEIRA
 decisão real de quanto a sessão vai gastar com paralelismo, e o usuário passou
@@ -2268,11 +2013,6 @@ plano meio proposto não teria como ser retratado.
   o mecanismo de aprovação revisado pelo [ADR 0086](../adr/0086-dev-lead-plano-suspende-para-aprovacao.md)
 
 ### RN-064 — Heartbeat não encerra sessão com trabalho pendente {#rn-064}
-
-> **Estendida pela [RN-581](../business-rules.md#rn-581) (AT-072):** um agente
-> conversacional esperando o usuário passou a ser o QUINTO sinal, e o único com
-> teto (8h, causa `conversation_idle_timeout`); a resposta ganhou
-> `aguardandoUsuarioDesde`. O resto desta regra vale como está.
 
 O timeout de heartbeat mede inatividade da **aba**, não do **trabalho**. Antes
 de encerrar, o `SessionServer` pergunta à api se sobrou trabalho
@@ -2512,9 +2252,9 @@ continuam numa linha só. Quem quer a quebra por credencial tem a lista própria
 e cruzar as duas dimensões multiplicaria as linhas do ranking sem responder
 pergunta que as duas listas separadas já não respondam.
 
-- **Onde:** `apps/api/src/application/ports/token-usage-repository.port.ts:150`
+- **Onde:** `apps/api/src/application/ports/token-usage-repository.port.ts:123`
   (`SpendDimension`),
-  `apps/api/src/infrastructure/persistence/drizzle/token-usage.repository.ts:255`
+  `apps/api/src/infrastructure/persistence/drizzle/token-usage.repository.ts:245`
   (o `GROUP BY`), `apps/api/src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:112`,
   `apps/api/src/interfaces/http/llm/spend.controller.ts:56`
 - **Teste:** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
@@ -2545,8 +2285,8 @@ chegar ao handler.
 nasce alcançável pelas duas audiências, e tirá-la do alcance do membro vira ato
 explícito **neste ponto** — nunca um esquecimento em outro arquivo.
 
-- **Onde:** `apps/api/src/application/ports/token-usage-repository.port.ts:121`
-  (as duas sobrecargas), `:147` (`SpendDimensionDoAtor`), `:163`/`:173` (os dois
+- **Onde:** `apps/api/src/application/ports/token-usage-repository.port.ts:107`
+  (as duas sobrecargas), `:138` (`SpendDimensionDoAtor`), `:154`/`:164` (os dois
   escopos), `apps/api/src/application/use-cases/llm/get-my-spend.use-case.ts:73`,
   `apps/api/src/interfaces/http/llm/spend.controller.ts:98`
 - **Teste:** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
@@ -2649,7 +2389,7 @@ do PROJETO (`ResolveEffectiveRoleUseCase.forProject`), que uma linha de
 `project_members` SOBREPÕE nos dois sentidos — então quem tem papel próprio no
 projeto pode ver aqui um controle desabilitado que a api aceitaria. Fechar isso
 exigiria uma consulta de papel POR PROJETO que o web ainda não tem, e é a mesma
-lacuna que a caixa da área (RN-912) também carrega; inventar uma segunda fonte de papel
+lacuna que `AreaModelsSection` já carregava; inventar uma segunda fonte de papel
 só numa seção seria pior que a lacuna.
 
 > **Nota aditiva ([RN-471](../business-rules.md#rn-471)):** a lacuna do parágrafo
@@ -2670,14 +2410,13 @@ só numa seção seria pior que a lacuna.
   banco), `apps/api/src/application/use-cases/llm/clear-model-binding.use-case.ts`,
   `apps/api/src/interfaces/http/llm/model-bindings.controller.ts`
   (`area-bindings`, `DELETE` em `agent-bindings` e `area-bindings`),
-  `apps/web/src/routes/settings/ModelsSection.tsx` (coluna Origem com
-  "voltar a herdar"; desde a RN-912 o apagar da área é desmarcar a caixa do
-  lead, e o gate de `maintainer` segue sobre `roleAtLeast` sem mudar de
-  mínimo),
-  `apps/api/src/interfaces/http/llm/model-bindings.controller.ts:273` e `:301`
+  `apps/web/src/routes/settings/AreaModelsSection.tsx` (coluna Origem com
+  "voltar a herdar", e o gate de `maintainer` reescrito sobre `roleAtLeast` sem
+  mudar de mínimo),
+  `apps/api/src/interfaces/http/llm/model-bindings.controller.ts:195` e `:222`
   (`developer` nos dois endpoints de agente — estas linhas NÃO mudaram),
   `apps/web/src/lib/roles.ts:49` (`roleAtLeast` — a comparação que faltava),
-  `apps/web/src/routes/settings/ModelsSection.tsx:93` (`podeEditar`, e por que
+  `apps/web/src/routes/settings/ModelsSection.tsx:77` (`podeEditar`, e por que
   `developer` e não `maintainer`), `:379` (o picker desabilitado), `:446` (o
   botão desabilitado, e por que o motivo não vai em `title`), `:546` (a legenda
   que diz o motivo)
@@ -2817,20 +2556,19 @@ consegue nomear.
 - **Onde:** `apps/web/src/routes/settings/cascata.tsx:119` (`montarCadeia` — os
   quatro estados e o nó do Criativo), `:178` (`herdouDoCriativo` — a dedução e
   seu limite), `:287` (`CadeiaDeCascata`),
-  `apps/web/src/routes/settings/ModelsSection.tsx:158` (`cadeiaDoAgente`),
-  `:325` (`handleModelChange` — por que aqui o 404 NÃO tem desfecho próprio, e
-  por que a linha só relê no sucesso), `:407` (`handleClearAgentBinding` — os
-  três desfechos, e por que o 404 tem o dele), `:359` (coluna Origem), `:429`
-  (`não há nível abaixo`), `:448` (`sem gasto ainda`),
-  `apps/web/src/components/ModelPicker.tsx:95` (`selected` sai do prop — o
+  `apps/web/src/routes/settings/ModelsSection.tsx:122` (`cadeiaDoAgente`),
+  `:242` (`handleModelChange` — por que aqui o 404 NÃO tem desfecho próprio, e
+  por que a linha só relê no sucesso), `:285` (`handleClearAgentBinding` — os
+  três desfechos, e por que o 404 tem o dele), `:352` (coluna Origem), `:422`
+  (`não há nível abaixo`), `:441` (`sem gasto ainda`),
+  `apps/web/src/components/ModelPicker.tsx:83` (`selected` sai do prop — o
   picker não guarda a escolha, e é por isso que a recusa não deixa valor
   fantasma na tela),
   `apps/api/src/application/use-cases/llm/set-model-binding.use-case.ts:38`
   (as duas causas de 404 deste endpoint — este arquivo NÃO mudou),
   `apps/api/src/interfaces/http/shared/llm-binding-error.filter.ts:39`
   (400/422 das recusas de curadoria — este arquivo NÃO mudou),
-  `apps/web/src/routes/settings/ModelsSection.tsx` (a cadeia do agente, que já
-  desenha o nó da área),
+  `apps/web/src/routes/settings/AreaModelsSection.tsx:142` (a cadeia da área),
   `apps/api/src/application/use-cases/llm/clear-model-binding.use-case.ts:25`
   (o 404 que a api levanta — este arquivo NÃO mudou),
   `apps/api/src/domain/llm/binding-resolver.ts:140` (o `origin: 'agent'` que a
@@ -2905,10 +2643,8 @@ anterior a esta regra, em vez de mostrar branco.
 
 ### RN-116 — Falha ao CRIAR um handoff não derruba o agente {#rn-116}
 
-`confirm_readiness` (Criativo → PO) e `offer_infra_handoff` (Arquiteto → Infra;
-o `offer_dev_handoff`, Arquiteto → Dev Lead, saiu na
-[RN-672](../business-rules.md#rn-672), e o handoff ao Dev Lead que a Infra
-oferece segue a mesma régua) chamam a api pra criar o handoff DEPOIS de o
+`confirm_readiness` (Criativo → PO) e `offer_infra_handoff`/`offer_dev_handoff`
+(Arquiteto → Infra/Dev Lead) chamam a api pra criar o handoff DEPOIS de o
 turno já ter rodado — no caso do Criativo, depois de o `product_brief` já
 estar gravado no event log. Se essa chamada falhar (api fora, 5xx, etc.), o
 handoff não existe, mas isso NUNCA derruba o GenServer do agente: a falha vira
@@ -2942,15 +2678,13 @@ defeito era só nestes três handlers server-driven, que chamam
 - **Onde:** `apps/engine/lib/engine/agents/criativo_server.ex`
   (`handle_call(:confirm_readiness, ...)`, `emit_falha_handoff/3`),
   `apps/engine/lib/engine/agents/arquiteto_server.ex`
-  (`handle_call(:offer_infra_handoff, ...)`, `emit_falha_handoff/3`);
-  `apps/engine/lib/engine/infra/infra_lead_server.ex`
-  (`emit_falha_do_handoff_ao_dev_lead/2`, RN-672)
+  (`handle_call(:offer_infra_handoff, ...)`, `handle_call(:offer_dev_handoff, ...)`,
+  `emit_falha_handoff/3`)
 - **Teste:** `apps/engine/test/engine/agents/criativo_server_test.exs`
   ("prontidão: falha ao criar o handoff NÃO derruba o processo, e vira
   agent.error durável"); `apps/engine/test/engine/agents/arquiteto_server_test.exs`
-  (`offer_infra_handoff`, sucesso e falha);
-  `apps/engine/test/engine/infra/infra_lead_server_test.exs` (o handoff ao Dev
-  Lead que a Infra oferece, recusado com 500)
+  (as quatro variantes de `offer_infra_handoff`/`offer_dev_handoff`, sucesso e
+  falha)
 - **Origem:** relato de uso real no projeto `exp-001` (Criativo → PO); a
   mesma falha estrutural foi achada por leitura de código nos dois handoffs
   do Arquiteto, sem reprodução separada para eles
@@ -3073,312 +2807,3 @@ cada uma tem seu próprio `actor_id` quando gasta tokens.
 - **Teste:** `test/application/use-cases/iam/get-workspace-summary.use-case.spec.ts`
 
 ---
-
-### RN-703 — Subagente sem modelo herda o modelo resolvido do lead da área {#rn-703}
-
-"Aplicar a todos os agentes" (RN-476) grava um binding por agente do catálogo
-de Configurações — 17 linhas —, e subagente que o engine roda fora dessa lista
-ficava sem modelo em nível nenhum: o `appsec` terminava com `agent.error`
-origem `infra` ("Nenhum modelo vinculado para esta sessão"), e o mesmo valia
-para todo `dev-<modulo>` além de `dev-backend`/`dev-frontend` e para a
-`qa-estrategia`. Quando a cascata de um SUBAGENTE não acha valor (ou só acha o
-default global do workspace, que ninguém escolheu para o projeto), ele usa o
-binding RESOLVIDO do lead da área dele: o lead da área do catálogo
-(`agent-areas.ts`), ou — para `appsec` → `secops` e `qa-estrategia` → `qa`, que
-o engine roda por dentro de um lead mas não recebem handoff — uma tabela ao
-lado, que só serve a esta herança. A resposta leva `herdadoDoLead` com o lead,
-e `origin` continua sendo a do binding dele (RN-470: a tela não afirma
-configuração própria). O filtro de tool calling (RN-040) vale na resolução do
-lead como na do subagente. Se ainda assim não há modelo, a mensagem de falha
-diz onde configurar.
-
-- **Onde:** `apps/api/src/application/use-cases/llm/resolve-model-binding.use-case.ts:76`
-  (`leadDoSubagente`); `apps/api/src/domain/agents/agent-areas.ts:139` (`leadDoSubagente`);
-  `apps/api/src/domain/llm/binding-resolver.ts:66` (`MENSAGEM_SEM_MODELO`)
-- **Teste:** `apps/api/test/application/use-cases/llm/resolve-model-binding.use-case.spec.ts`
-  (`appsec` herda do `secops` e `dev-api` do `dev-lead`; lead também sem modelo
-  segue `null` — caso de falha)
-- **Origem:** AT-367
-
----
-
-### RN-774 — A primeira tarefa de cada módulo tem o dobro do teto por tarefa {#rn-774}
-
-A primeira tarefa de um módulo monta o esqueleto inteiro (manifesto, app,
-banco, testes) e custa mais que as seguintes: no TP-01 de 08/10 ela gastou
-US$ 0,53 com o Haiku 4.5 e foi bloqueada pelo teto fixo de US$ 0,50
-(`taskBudgetMicros: 500000`). Por decisão do dono (09/10), ela ganha
-**2× o teto por tarefa** (US$ 1,00 com o padrão); as demais seguem o teto
-configurado. O multiplicador é constante nomeada no engine, não configuração.
-
-"Primeira" é medida pelo log, nunca pelo estado da tarefa: é a tarefa cujo
-`backlog.task_claimed` é o MAIS ANTIGO do projeto para aquele módulo. Bloquear
-zera `assigned_to` e reiniciar o engine perde a memória do processo; o log não
-muda, então a mesma tarefa reivindicada de novo depois de liberada continua a
-primeira, e uma correção pedida por gate também recebe o 2×. A api responde
-`task.primeiraDoModulo` no contexto do dev (`false` sem `module`, e `false` sem
-claim nenhum do módulo — o teto normal é o conservador), e o teto EFETIVO é
-resolvido num ponto só do engine. O bloqueio por orçamento diz o teto que valeu
-para aquela tarefa ("teto da primeira tarefa do módulo: 1000000 micro-USD,
-US$ 1.00"). Os gates de QA seguem com o `task_budget_micros` base — fora do
-recorte do card.
-
-- **Onde:** `apps/engine/lib/engine/dev/teto_da_tarefa.ex:32` (`efetivo`);
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:669` (`diagnostico_de_orcamento`);
-  `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:182`
-  (`ehPrimeiraTarefaDoModulo`)
-- **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` (describe
-  "RN-774": a primeira com US$ 0,53 não bloqueia, a segunda do mesmo módulo
-  bloqueia — caso de falha —, a primeira de outro módulo também ganha 2×);
-  `apps/engine/test/engine/dev/teto_da_tarefa_test.exs`;
-  `apps/api/test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
-  (describe "RN-774")
-- **Origem:** AT-433
-
-### RN-802 — A estimativa do plano do Dev Lead soma o dobro da primeira tarefa de cada módulo {#rn-802}
-
-O cartão de aprovação do `propose_execution_plan` (RN-709) dizia "até N × teto",
-ignorando que a primeira tarefa de cada módulo tem o dobro do teto (RN-774).
-Agora a api leva no payload, ao lado de `orcamentoPorTarefaMicros`, o
-`multiplicadorDaPrimeiraDoModulo`, e a frase soma o teto EFETIVO:
-(tarefas − módulos com tarefa) × teto + módulos com tarefa × multiplicador ×
-teto, dizendo "a primeira de cada módulo vale o dobro". Com 8 tarefas num
-módulo e teto de US$ 0,50: até US$ 4,50. É limite superior: a primeira de um
-módulo que já teve tarefa reivindicada não ganha o dobro, e a frase continua
-dizendo "até". Sem o multiplicador no payload (proposta antiga), a conta antiga.
-
-O multiplicador é APLICADO só no engine (`Engine.Dev.TetoDaTarefa`); a api tem
-um espelho declarado, porque a tela não deve copiar a constante e o engine não
-é consultado na proposta. Mudar um exige mudar o outro.
-
-- **Onde:** `apps/api/src/application/use-cases/execution/activate-execution.use-case.ts:83` (`MULTIPLICADOR_DA_PRIMEIRA_TAREFA_DO_MODULO`);
-  `apps/api/src/application/use-cases/actions/propose-action.use-case.ts:242` (`multiplicadorDaPrimeiraDoModulo`);
-  `apps/web/src/lib/aprovacoes.ts:350` (`multiplicador`)
-- **Teste:** `apps/web/src/lib/aprovacoes.test.ts` (it "RN-802 (AT-473)": 8 tarefas, 1 módulo → US$ 4,50; 3 tarefas, 2 módulos → US$ 2,50; sem orçamento, sem número — caso de falha);
-  `apps/api/test/application/use-cases/actions/propose-action.use-case.spec.ts` ("plano válido nasce pending")
-- **Origem:** AT-473
-
-### RN-892 — O prefixo estável da chamada vai marcado para o cache de prompt, e a capability é ligada só no OpenRouter, provada {#rn-892}
-
-Medido no TP-01 (15/10): o `anthropic/claude-haiku-5.5` pelo OpenRouter
-recebeu 8,40 M tokens de entrada com **0** em cache, e a entrada foi US$ 0,84
-dos US$ 1,02. Modelos Anthropic só leem do cache o prefixo marcado com
-`cache_control: { type: "ephemeral" }` num bloco de conteúdo de texto (até
-quatro pontos, TTL de 5 min — https://openrouter.ai/docs/features/prompt-caching).
-
-1. **Capability de provider, obrigatória.** `LLMProviderCapabilities.promptCaching`
-   é `true` só no OpenRouter e `false` nos outros oito. Declará-la sem o hook `marcarCacheDePrompt`
-   falha na construção. Desligada, o corpo é byte a byte o de antes.
-2. **Camada de modelo na config.** No OpenRouter só `anthropic/*` recebe ponto;
-   os demais cacheiam sozinhos e voltam intactos.
-3. **Dois pontos, sobre o que não muda.** A última `system` do prefixo
-   (instruções, e as ferramentas antes delas) e a última `user`/`tool` antes
-   da cauda de `system` do fim. A cauda — idioma (RN-622), ambiente (RN-706),
-   fluxo (RN-711), perfil (RN-680) — fica DEPOIS do último ponto, e a ordem
-   das mensagens nunca muda.
-4. **Prova (ADRs 0041/0042).** Em 2026-10-15 o smoke rodou com credencial
-   real (`OPENROUTER_TEST_KEY=… pnpm --filter api exec vitest run
-   test/infrastructure/llm/openrouter-provider.cache.smoke.spec.ts`) e a
-   segunda chamada a `anthropic/claude-haiku-5.5` voltou com
-   `cached_input_tokens=8011`; só então a capability do OpenRouter passou a
-   `true`. Ligar outro provider exige o smoke equivalente. O ganho aparece no
-   metering pela [RN-666](#rn-666).
-
-- **Código:** `apps/api/src/infrastructure/llm/openrouter-provider.ts:302` (`marcarCacheDePromptOpenRouter`);
-  `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:661` (`mensagens`)
-- **Teste:** `apps/api/test/infrastructure/llm/openrouter-provider.contract.spec.ts` ("pontos de cache de prompt (RN-892)": ligada marca os dois pontos; desligada é byte a byte; capability sem hook falha — caso de falha)
-- **Origem:** AT-543
-
-### RN-907 — O OpenRouter recebe uma chave de sessão por agente, e a conversa fica presa ao upstream que a atendeu {#rn-907}
-
-Sem chave, o hub trata cada tarefa do dev agent (outra primeira mensagem) como
-conversa nova e sorteia outro upstream — 17 no TP-01 da 18ª rodada, com o
-acerto de cache caindo. O Brabo agora manda a chave.
-
-1. **Formato.** `session_id` = `brabo:<sessionId>:<agentId>`, e `brabo:<sessionId>`
-   sem agente — por agente + sessão, nunca por projeto. É montada pelos dois
-   casos de uso de turno e viaja em `ChatOptions.sessionKey`.
-2. **Capability de provider, obrigatória.** `LLMProviderCapabilities.stickySession`
-   é `true` só no OpenRouter e `false` nos outros oito; declará-la sem o hook
-   `campoDeSessao` falha na construção. Desligada, ou sem chave, o corpo é byte a
-   byte o de antes.
-3. **Prova (ADRs 0041/0042).** Em 2026-10-21 o smoke rodou com credencial real em
-   `deepseek/deepseek-v4.1-flash`: com a chave, 6 de 6 chamadas no mesmo upstream
-   (Together); sem ela, 4 upstreams em 6. Ligar outro provider exige o smoke
-   equivalente.
-4. **Sem tabela.** A chave é derivável de `token_usage` (`session_id` + `actor_id`),
-   e o efeito se mede em `upstream_provider`, `cached_input_tokens` e `cost_micros`
-   (RN-665/666). `provider.order`/`allow_fallbacks` ficam fora (ADR 0221).
-
-- **Código:** `apps/api/src/infrastructure/llm/openrouter-provider.ts:236` (`campoDeSessaoOpenRouter`);
-  `apps/api/src/domain/llm/routing-preference.ts:88` (`chaveDeSessao`);
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:243` (`chaveDeSessao`)
-- **Teste:** `apps/api/test/infrastructure/llm/openrouter-provider.contract.spec.ts` ("chave de sessão (ADR 0221, RN-907)": com capability e chave leva `session_id`; sem chave ou desligada não leva; capability sem hook falha — caso de falha); `apps/api/test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts`; `run-llm-turn.use-case.spec.ts`; smoke `openrouter-provider.sessao.smoke.spec.ts`
-- **Origem:** AT-580; ADR [0221](../adr/0221-upstream-preso-por-sessao.md)
-
-### RN-915 — O raciocínio é contado no stream e abortado no limite; o custo abortado é estimado e depois reconciliado {#rn-915}
-
-Complementa a [RN-914](../business-rules.md#rn-914) ([ADR 0224](../adr/0224-raciocinio-abortado-no-stream.md)).
-
-1. **Aborto.** Com `reasoning_budget` e raciocínio ligado, o provider soma os
-   caracteres de `delta.reasoning`; passando de `caracteres/4 > N` ele destrói a conexão
-   e emite `truncated` com `motivo: "raciocinio"` (o corte por `max_tokens` não tem
-   motivo). Sem orçamento (ou com raciocínio desligado), nada é contado.
-2. **Estimativa na hora.** A resposta abortada não traz `usage`: saída = caracteres/4,
-   entrada pelo estimador, ao preço do catálogo, `estimated`, `price_implicit` e
-   `custo_a_reconciliar` (só se há id de geração).
-3. **Reconciliação.** Periódica (`CUSTO_RECONCILIACAO_INTERVAL_MS`), idempotente: troca
-   pelo `total_cost` de `GET /generation?id=` só com 200, só linha marcada e das últimas
-   24 h; 404 ou erro deixam a linha como está. A estimativa vai para `catalog_cost_micros`.
-   O `spentMicros` de budget/área não é corrigido.
-
-- **Código:** `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:391` (`limiteDeRaciocinio`);
-  `apps/api/src/application/use-cases/llm/reconciliar-custo-estimado.use-case.ts:57` (`execute`)
-- **Teste:** `apps/api/test/infrastructure/llm/raciocinio-abortado.spec.ts` (aborta e estima; sem orçamento não conta);
-  `apps/api/test/application/use-cases/llm/reconciliar-custo-estimado.use-case.spec.ts` (200 troca, 404 mantém);
-  `apps/api/test/infrastructure/persistence/token-usage.repository.spec.ts` (troca uma única vez)
-- **Origem:** AT-589; ADR [0224](../adr/0224-raciocinio-abortado-no-stream.md)
-
-### RN-916 — Resposta cortada pelo raciocínio é retentada UMA vez com o raciocínio desligado {#rn-916}
-
-Revisa a [RN-782](../business-rules.md#rn-782) e a [RN-783](../business-rules.md#rn-783) (o desligado deixa de ser só dos dev agents) e convive com a [RN-915](#rn-915).
-
-1. **Gatilho.** A resposta veio `truncated`, sem texto e sem tool call, e o raciocínio comeu o orçamento: `reasoningTokens >= (reasoningBudget do modelo ?? 4096) − 256` (folga `FOLGA_DO_ORCAMENTO_DE_RACIOCINIO`, a mesma ordem de grandeza do erro do `usage` e da contagem caracteres/4), ou o stream foi abortado pela RN-915 (sem `usage`, o aborto já é a prova do estouro).
-2. **Uma vez.** A api repete a chamada com `reasoningOff`, nos três caminhos (`run-llm-turn`, `stream-llm-turn`, `send-chat-message`). Se a segunda também trunca, o desfecho é o de hoje (`truncated`); nunca há terceira. Nada foi emitido ao cliente na primeira, então a retentativa é invisível.
-3. **Metering.** As DUAS chamadas gravam linha em `token_usage`; a primeira, ao preço/custo que o provider informou (ou a estimativa abortada da RN-915, com reconciliação).
-4. **Não retenta** sem raciocínio pedido, com o raciocínio já desligado (dev agents, RN-783) ou com provider que não sabe desligá-lo (`aceitaRaciocinioDesligado`, hoje só o OpenRouter): ali o desfecho segue o de antes.
-
-- **Código:** `apps/api/src/domain/llm/raciocinio-do-agente.ts:66` (`devoRetentarSemRaciocinio`);
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:359` (`devoRetentarSemRaciocinio`)
-- **Teste:** `apps/api/test/domain/llm/raciocinio-do-agente.spec.ts` (folga, aborto e as recusas); `apps/api/test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` (retenta e grava duas linhas; segunda truncada não tem terceira; truncada com texto não retenta); `apps/api/test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` (idem no stream)
-- **Origem:** AT-587
-
-### RN-917 — O OpenRouter recebe um teto de preço por chamada, e sem upstream no teto a chamada repete UMA vez sem ele {#rn-917}
-
-Revisa a [RN-583](#rn-583) (o `sort` deixa de ser o único campo de `provider` que vai ao fio) e convive com a [RN-907](#rn-907) (o `session_id`) e a [RN-916](#rn-916) (a mesma volta de retentativa).
-
-1. **Teto.** `provider.max_price = { prompt, completion }` = preço de catálogo do modelo (`inputPricePerMillionMicros`/`outputPricePerMillionMicros`) × `FATOR_DO_TETO_DE_PRECO` (1,5, decisão do dono de 27/10), em US$ por milhão. Fixo no código e ligado por padrão no provider que declara `priceCeiling` (só o OpenRouter, provado por smoke); preço 0 em qualquer ponta, ou provider sem a capability, não manda teto. Mudar o fator é ADR novo (0225).
-2. **Mescla.** O objeto `provider` do teto é mesclado com o do `sort` do binding (RN-583): os dois vão juntos no mesmo corpo, nunca um apaga o outro.
-3. **Sem upstream no teto.** O 404 de uma chamada que levava teto é o erro `LLMPriceCeilingError` (`code: price_ceiling`), nunca `LLMModelNotFoundError`. Os três caminhos de turno (`run-llm-turn`, `stream-llm-turn`, `send-chat-message`) repetem a chamada UMA vez sem teto, avisam no log e não falham o turno; nunca há terceira por este motivo.
-4. **Metering.** `token_usage.price_ceiling_factor` congela o fator que FOI AO FIO (`null` = nada enviado, inclusive na repetição sem teto), no molde do `routing_preference`.
-
-- **Código:** `apps/api/src/domain/llm/routing-preference.ts:108` (`tetoDePreco`); `apps/api/src/domain/llm/routing-preference.ts:132` (`devoRetentarSemTeto`); `apps/api/src/infrastructure/llm/openrouter-provider.ts:221` (`campoDeTetoDePrecoOpenRouter`); `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:604` (`camposDoHub`); `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:372` (`devoRetentarSemTeto`); `apps/api/src/db/schema/llm.ts:414` (`priceCeilingFactor`)
-- **Teste:** `apps/api/test/domain/llm/routing-preference.spec.ts` (fator, preço 0, só o OpenRouter declara); `apps/api/test/infrastructure/llm/openrouter-provider.contract.spec.ts` (`sort` e teto mesclados no corpo, sem capability nada vai, 404 com teto é `price_ceiling` e sem teto segue `model_not_found`); `apps/api/test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` (repete uma vez sem teto, fator `[1.5, null]` no metering); `apps/api/test/infrastructure/llm/openrouter-provider.teto.smoke.spec.ts` (manual, API real)
-- **Origem:** AT-606; ADR [0225](../adr/0225-teto-de-preco-do-upstream-no-openrouter.md)
-
-### RN-952 — O relatório do owner recorta por projeto e por sessão, e o membro vê o total do projeto sem credencial {#rn-952}
-
-Revisa a [RN-101](#rn-101) (o membro deixa de ver SÓ o próprio consumo) e convive com a [RN-060](#rn-060), a [RN-186](#rn-186) e a [RN-187](#rn-187).
-
-1. **Recorte.** `GET workspaces/:workspaceId/spend-report?projectId=` (`owner`) limita o relatório a UM projeto e devolve também `porSessao`. Projeto de outro workspace é 404, igual a inexistente: o filtro nunca vira leitura entre workspaces.
-2. **Membro.** `GET projects/:projectId/spend/team` (`viewer`) devolve o total do projeto e o custo por agente (`porAgente`) e por área do catálogo (`porArea`, `sem-area` quando não há). Nunca provider nem credencial: a rota não tem parâmetro de dimensão e o caso de uso só pede `actor` (ADR [0233](../adr/0233-membro-ve-o-gasto-do-projeto-sem-credencial.md), que revisa o [0063](../adr/0063-duas-audiencias-para-o-mesmo-gasto.md)).
-
-- **Código:** `apps/api/src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:98` (`NotFoundException`); `apps/api/src/application/use-cases/llm/get-project-spend-team.use-case.ts:29` (`GetProjectSpendTeamUseCase`); `apps/api/src/interfaces/http/llm/spend.controller.ts:147` (`getProjectSpendTeam`)
-- **Teste:** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (recorte por projeto com sessão, 404 entre workspaces, membro sem provider); `apps/api/test/interfaces/spend.controller.spec.ts` (papéis das rotas)
-- **Origem:** AT-632
-
-### RN-953 — O não-owner vê o PRÓPRIO consumo no workspace, somado por projeto {#rn-953}
-
-Convive com a [RN-101](#rn-101): o ator vem do token, nunca da rota.
-
-`GET workspaces/:workspaceId/spend/me` (`viewer`) devolve só as linhas do chamador, por projeto e por dia. Escopo de ator: a dimensão `provider` não compila (RN-187), e a rota não tem parâmetro de dimensão.
-
-- **Código:** `apps/api/src/application/use-cases/llm/get-my-workspace-spend.use-case.ts:32` (`GetMyWorkspaceSpendUseCase`); `apps/api/src/interfaces/http/llm/spend.controller.ts:120` (`getMyWorkspaceSpend`)
-- **Teste:** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (soma por projeto, nunca a linha de outro ator)
-- **Origem:** AT-632
-
-### RN-954 — A cobrança do modelo é uma marca CURADA, e a assinatura é separada do US$ pago {#rn-954}
-
-Convive com a [RN-665](#rn-665) (custo real do OpenRouter) e o preço congelado do ADR 0042.
-
-1. **Marca.** `models.billing` é `api` (padrão), `subscription` ou `free`, gravada pela curadoria em `PATCH workspaces/:workspaceId/models/:modelId/billing` (`owner`, o nível de `…/pricing`). O sync nunca a toca e a linha de `token_usage` não muda.
-2. **Relatório.** Todo bucket e o total ganham `assinaturaMicros` = soma do custo dos modelos `subscription`, contida em `costMicros`; o pago em US$ é `costMicros − assinaturaMicros`.
-
-- **Código:** `apps/api/src/db/schema/llm.ts:175` (`modelBillingEnum`); `apps/api/src/infrastructure/persistence/drizzle/token-usage.repository.ts:394` (`assinaturaMicros`); `apps/api/src/interfaces/http/llm/models.controller.ts:302` (`updateBilling`)
-- **Teste:** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (assinatura separada do pago)
-- **Origem:** AT-632
-
-### RN-963 — O gasto tem página GLOBAL e aba do PROJETO, e o orçamento tem editor {#rn-963}
-
-Revisa a [RN-212](autenticacao.md#rn-212) no destino do botão "Definir orçamento" e convive com a [RN-060](#rn-060), a [RN-952](#rn-952), a [RN-953](#rn-953) e a [RN-954](#rn-954).
-
-1. **Página global.** `/spend`, no menu global ao lado de Containers e Providers, serve todo papel: o `owner` vê o workspace inteiro (janela 30/90/180, por modelo, provider, projeto e ator), os orçamentos de todos os projetos e a fatura por chave (`CredentialSpendSection`, que saiu de Providers); quem não é `owner` vê só o PRÓPRIO consumo por projeto (`spend/me` do workspace) e nunca provider nem credencial.
-2. **Aba do projeto.** A aba Gastos é SÓ do projeto: o `owner` lê `spend-report?projectId=` (com a quebra por sessão), o membro lê o total e o custo por agente e por área (`spend/team`) e, abaixo, o próprio consumo. O consumo do Criativo (`CriativoKpis`) passou a mostrar o total do projeto.
-3. **Orçamento.** A aba traz o editor do teto (`PUT projects/:projectId/budget`, `maintainer` pela `roleAtLeast`); abaixo do papel o controle fica inerte e o motivo é dito em texto. O botão "Definir orçamento" do card do projeto abre `?tab=spend` (antes `?tab=settings`, onde nenhuma tela gravava o orçamento).
-4. **Assinatura.** `assinaturaMicros` aparece num destaque separado; linha de modelo marcado `subscription` com custo zero mostra "assinatura — sem preço registrado", nunca "US$ 0".
-
-- **Código:** `apps/web/src/components/SpendPaineis.tsx:153` (`GastoDoWorkspace`); `apps/web/src/components/SpendPaineis.tsx:354` (`GastoDoTimeNoProjeto`); `apps/web/src/routes/ProjectSpendTab.tsx:172` (`EditorDoOrcamento`); `apps/web/src/routes/Dashboard.tsx:98` (`onDefineBudget`)
-- **Teste:** `apps/web/src/routes/SpendPage.test.tsx` (owner × não-owner, sem provider para quem não é owner); `apps/web/src/routes/ProjectSpendTab.test.tsx` (owner só do projeto, membro por agente e área, editor grava, teto inválido e papel baixo recusados)
-- **Origem:** AT-632
-### RN-964 — O preço e a cobrança são curados na tela de Providers, e a edição manual protege o número do sync {#rn-964}
-
-Completa a [RN-044](#rn-044) (o caminho manual passa a marcar `manual_pricing`), a [RN-954](#rn-954) (a marca ganha tela) e a [RN-963](#rn-963) (a mesma frase para a assinatura sem preço).
-
-1. **Edição manual marca.** Mudar o preço com origem `manual` grava `manual_pricing = true` na mesma escrita do preço. Origem `sync` não mexe na marca.
-2. **O sync respeita a marca.** Linha `manual_pricing` mantém o preço gravado mesmo quando o catálogo remoto traz outro; só o catálogo sem preço e a linha não-manual seguem o remoto.
-3. **Preço igual ao vigente segue no-op** (RN-044): não grava marca nova nem linha de auditoria.
-4. **Escopo.** `models` é GLOBAL da instalação: o preço vale para todos os workspaces. A tela diz isso em texto.
-
-- **Código:** `apps/api/src/application/use-cases/llm/update-model-pricing.use-case.ts:51` (`manualPricing`); `apps/api/src/application/use-cases/llm/sync-model-catalog.use-case.ts:286` (`resolverPreco`)
-- **Teste:** `apps/api/test/application/use-cases/llm/update-model-pricing.use-case.spec.ts` (edição manual marca `manualPricing`; origem sync não marca)
-- **Origem:** AT-634
-
-### RN-958 — O usage do 9Router é corrigido no provider: −2 000 só na 0.5.112, e o cache do topo conta {#rn-958}
-
-Completa a [RN-666](#rn-666) (item 4) para o 9Router. A 0.5.112 SOMA 2 000 a `prompt_tokens` no frame final, inclusive sobre o usage que ele mesmo estima; gravar como veio inflava o `input_tokens` e, pela [RN-665](#rn-665), o custo.
-
-1. **Só na versão conhecida.** O provider lê `currentVersion` de `GET <origem>/api/version` (público, teto de 2 s, cache de 5 min no sucesso e 1 min na falha) antes do stream. Só a versão da tabela (`0.5.112`) tem `prompt_tokens` reduzido em 2 000, com piso em 0; subtrair numa versão que consertou o bug gravaria MENOS do que foi cobrado.
-2. **Versão outra ou ilegível** (404, lento, corpo inválido): grava como veio e loga UM aviso por versão. O turno nunca falha por causa da leitura.
-3. **Cache.** `cached_tokens` do TOPO do usage vira `prompt_tokens_details.cached_tokens` (e então `cachedInputTokens`) quando este não veio; ausente continua "não disse" ([RN-666](#rn-666) item 2).
-4. **Declarado, não remendado.** Em `cc/*` o 9Router descarta `cache_read_input_tokens` ao filtrar o usage no stream, então o cache desse upstream NÃO chega ao Brabo; `cache_creation` não tem coluna; o caminho sem stream não existe na base.
-5. **Hook opcional** `normalizarUsage` em `OpenAICompatibleConfig`: só o 9Router o configura; os demais providers leem o usage como sempre.
-
-- **Código:** `apps/api/src/infrastructure/llm/nine-router-provider.ts:118` (`normalizarUsage9Router`); `:99` (`versaoDo9Router`); `apps/api/src/infrastructure/llm/openai-compatible-provider.ts:188` (`normalizarUsage`)
-- **Teste:** `apps/api/test/infrastructure/llm/nine-router-provider.contract.spec.ts` (versão 0.5.112, outra, 404, lenta, corpo inválido, piso, cache do topo, outros providers sem o hook)
-- **Origem:** AT-638
-
-### RN-969 — A ocupação da janela do agente na sessão é o `input_tokens` da última chamada dele, fora o Jev {#rn-969}
-
-Completa a [RN-101](#rn-101) (consumo por agente) sem rota nova: `GET projects/:projectId/sessions/:sessionId/token-usage` passa a trazer `lastCall` por agente.
-
-1. **Última chamada.** `lastCall = { inputTokens, modelName, contextWindow }` é a linha mais recente de `token_usage` do agente na sessão; o `input_tokens` dela é o que ela pôs na janela.
-2. **Jev fora.** As linhas com `model_name = MODELO_DO_JEV` são ignoradas (ele grava em nome do agente, ADR 0179); agente só com Jev tem `lastCall: null`.
-3. **Janela do modelo daquela chamada** (LEFT JOIN `models`), não a do binding vigente. `context_window` nulo vira `contextWindow: null`: "não sei", nunca 0%.
-4. **As somas não mudam**, e nenhuma requisição nova nasce (RN-632).
-5. **Onde a tela mostra (decisão do dono, 02/11).** Na topbar da Sessão, ao lado do medidor de orçamento, do agente DESTINATÁRIO do composer: gatilho em porcentagem (`—` com janela nula, nunca 0%) e cartão "N de M tokens na última chamada · modelo". Lê a MESMA `queryKey` `['session-token-usage', …]` de `session-destinatario.ts`, sem poll próprio; sem chamada, sem destinatário ou 403, nada aparece.
-
-- **Código:** `apps/api/src/infrastructure/persistence/drizzle/token-usage.repository.ts:155` (`sumBySessionGroupedByActor`); `apps/web/src/routes/JanelaDoAgente.tsx:12` (`JanelaDoAgente`); `apps/web/src/lib/session-destinatario.ts:223` (o `actorId` é o mesmo id que alimenta as opções do destinatário)
-- **Teste:** `apps/api/test/infrastructure/persistence/token-usage.repository.spec.ts` (lastCall: última chamada, Jev ignorado, janela nula, ator só com Jev); `apps/web/src/routes/SessionTopbar.test.tsx` (porcentagem, janela nula, sem chamada)
-- **Origem:** AT-654
-
-### RN-965 — O catálogo sugere o preço do FABRICANTE do modelo e a faixa de cobrança do 9Router, e quem aplica é o humano {#rn-965}
-
-Completa a [RN-964](#rn-964) (curadoria de preço na tela) e a [RN-954](#rn-954) (marca `billing`), por decisão do dono de 01/11 (AT-640): o preço de um modelo é o que o fabricante dele publica, qualquer que seja o provider que o serve.
-
-1. **Tabela curada no domínio, sem raspar página.** Cada linha de `PRECOS_DO_FABRICANTE` cobre ids exatos e guarda o preço em micros, o link da fonte (domínio do fabricante, conferido por teste) e a data em que foi conferida. A primeira entrega traz só a Anthropic; fabricante novo entra por PR, com a fonte conferida.
-2. **Casamento por igualdade exata.** No `9router` sai só o primeiro segmento (o alias) antes de casar; nos demais providers o nome fica como está. Variante que não casa fica "sem sugestão", nunca adivinhada. O `openrouter` fica fora de propósito: o preço dele vem do sync e o custo real do `usage.cost` ([RN-665](#rn-665)).
-3. **Faixa pelo alias do 9Router 0.5.112**, calculada na leitura e sem gravar: `cc`/`cx` → `subscription`; alias `ollama` ou id terminado em `:free`, `/free` ou `-free` → `free`; o resto → `api`. Sem credencial do painel.
-4. **Sugestão, não escrita.** A rota de curadoria devolve `sugestao` por modelo; nada é gravado sozinho (ADR 0042). Quem aplica é o `owner`, pela tela da [RN-964](#rn-964).
-
-- **Código:** `apps/api/src/domain/llm/sugestao-do-catalogo.ts:18` (`sugestaoDoModelo`); `apps/api/src/domain/llm/precos-do-fabricante.ts:96` (`precoDoFabricante`)
-- **Teste:** `apps/api/test/domain/llm/sugestao-do-catalogo.spec.ts` (alias, grátis, assinatura, openrouter sem sugestão, igualdade exata); `apps/api/test/domain/llm/precos-do-fabricante.spec.ts` (id repetido, data futura, preço inválido, link fora do domínio)
-- **Origem:** AT-640
-
-### RN-973 — A série diária do gasto é desenhada pelo Chart, carregado sob demanda, e também existe como tabela {#rn-973}
-
-Por decisão do dono (31/10, AT-636 decisão 4), a página de Gastos ganha o Chart do shadcn (`recharts@3.8.0`, ADR 0234), sem mexer em quem vê o quê ([RN-952](#rn-952), [RN-953](#rn-953), [RN-963](#rn-963)).
-
-1. **Só as três séries diárias** (owner, não-owner e membro) viram gráfico: barras (soma por dia), eixo em US$, tooltip com dia, US$ e chamadas, cor `var(--accent)` pelo `ChartConfig` (nenhuma variável nova). Os rankings seguem barras com o número ao lado, e o empilhado por provider segue fora ([RN-211](autenticacao.md#rn-211)).
-2. **Carga sob demanda.** O gráfico mora em `GraficoDeGastoPorDia.tsx`, carregado por `React.lazy` em `GastoPorDia.tsx`, com o SVG de `BarrasPorDia` como fallback. `SpendCharts.tsx` não importa o recharts, porque a aba Sessões importa o `Destaque` dali.
-3. **Recorte dito e alternativa em texto** ([RN-180](autenticacao.md#rn-180)): o título diz a janela, a figura tem `aria-label` igual a ele, e `<details>` "Ver como tabela" traz dia, gasto e chamadas. Zero requisição nova ([RN-632](../business-rules.md#rn-632)).
-
-- **Código:** `apps/web/src/components/GraficoDeGastoPorDia.tsx:13` (`GraficoDeGastoPorDia`); `apps/web/src/components/GastoPorDia.tsx:16` (`GastoPorDia`)
-- **Teste:** `apps/web/src/components/GraficoDeGastoPorDia.test.tsx` (figura com janela, tabela com os dias, série vazia)
-- **Origem:** AT-658
-
-### RN-997 — O catálogo da Anthropic nasce com preço de lista datado e `supportsReasoning` do SDK; preço manual nunca é sobrescrito {#rn-997}
-
-- **Regra:** a `/v1/models` da Anthropic não informa preço, e o modelo sincronizado nascia com preço 0 (gasto de custo zero, sem aviso). O `listModels` devolve o preço da tabela ÚNICA do fabricante da [RN-965](#rn-965) (`precoDoFabricante`, micro-USD por milhão), casando pelo ID e, se não achar, pelo ID sem o sufixo de data (`-AAAAMMDD`); ID fora da tabela segue sem preço ([RN-042](#rn-042)). `supportsReasoning` vem de `capabilities.thinking.supported` do SDK; com `capabilities` nulo vale a família (todo `claude-` que não seja 3.x raciocina). O sync trata o preço como já tratava (RN-044): linha `manual_pricing` vence sempre, e modelo novo COM preço de lista nasce `manual_pricing = false`. O preço congelado no metering não muda. Linha antiga já `manual_pricing = true` (nascida sem preço) segue como está: corrigi-la é a curadoria do `owner`.
-- **Onde:** `apps/api/src/infrastructure/llm/anthropic-provider.ts:415` (`precoDeLista`), `apps/api/src/domain/llm/precos-do-fabricante.ts` (`PRECOS_DO_FABRICANTE`, `precoDoFabricante`), `apps/api/src/application/use-cases/llm/sync-model-catalog.use-case.ts` (`resolverPreco`).
-- **Teste:** `apps/api/test/infrastructure/llm/anthropic-provider.catalogo.spec.ts` (preço com e sem sufixo de data, ID desconhecido sem preço, `supportsReasoning`); `apps/api/test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts` (preço manual não é sobrescrito).
-- **Origem:** pedido do dono de 03/11; ADR 0251 (referencia o [0042](../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)).

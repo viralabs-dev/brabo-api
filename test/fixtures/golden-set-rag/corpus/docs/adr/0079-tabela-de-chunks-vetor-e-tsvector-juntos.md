@@ -1,129 +1,132 @@
-# ADR 0079 — Tabela de chunks: vetor e `tsvector` na mesma linha
+# ADR 0079 — Chunks table: vector and `tsvector` on the same row
 
-- **Status:** aceito
-- **Data:** 2026-08-15
-- **Contexto anterior:** [ADR 0075](0075-embeddings-no-contrato-de-llm-provider.md)
-  (embeddings no contrato de `LLMProvider`, fundação sem consumo — `embed?`
-  provado só contra o Ollama), [ADR 0072](0072-projeto-local-ou-container.md)
-  (CHECK no banco para amarrar um par de colunas mutuamente exclusivo, mesmo
-  padrão usado aqui para `session_id`/`source_path`), [ADR 0078](0078-moldura-de-tela-e-o-registro-de-abas-diverge-do-handoff.md)
-  (por que a aba continua rotulada "Chat", não "Chat RAG" — esta migração NÃO
-  muda esse rótulo)
+- **Status:** accepted
+- **Date:** 2026-08-15
+- **Prior context:** [ADR 0075](0075-embeddings-no-contrato-de-llm-provider.md)
+  (embeddings in the `LLMProvider` contract, a foundation with no consumer
+  yet — `embed?` proven only against Ollama), [ADR 0072](0072-projeto-local-ou-container.md)
+  (a CHECK in the database to bind a mutually-exclusive pair of columns, the
+  same pattern used here for `session_id`/`source_path`), [ADR 0078](0078-moldura-de-tela-e-o-registro-de-abas-diverge-do-handoff.md)
+  (why the tab stays labeled "Chat", not "Chat RAG" — this migration does
+  NOT change that label)
 
-## Contexto
+## Context
 
-O Chat RAG que o handoff de design anuncia (`design_handoff_brabo/designs/Brabo
-Chat.dc.html`) precisa de um lugar para guardar trechos indexados com vetor de
-embedding — hoje não existe NENHUMA tabela para isso. O ADR 0075 deixou o
-contrato pronto (`LLMProvider.embed?`, capability provada no Ollama com
-`nomic-embed-text`, vetores de 768 dimensões), mas nada ainda escreve ou lê um
-índice: sem tabela, o contrato é uma porta sem sala do outro lado.
+The Chat RAG the design handoff announces (`design_handoff_brabo/designs/Brabo
+Chat.dc.html`) needs somewhere to store indexed chunks with an embedding
+vector — today NO table exists for that. ADR 0075 got the contract ready
+(`LLMProvider.embed?`, capability proven on Ollama with `nomic-embed-text`,
+768-dimension vectors), but nothing yet writes to or reads from an index:
+without a table, the contract is a door with no room behind it.
 
-Duas perguntas precisavam de decisão antes de gerar a migração, e as duas são
-estruturais, não de implementação:
+Two questions needed a decision before the migration could be generated, and
+both are structural, not implementation details:
 
-1. **Vetor e busca léxica moram na mesma tabela, ou em duas?** A Onda 4 (fora
-   do escopo desta migração) vai construir busca HÍBRIDA — semântica
-   (`pgvector`, similaridade de cosseno) e léxica (`tsvector`, full-text do
-   Postgres) combinadas. Se as duas informações vivessem em tabelas
-   separadas, toda busca híbrida precisaria de um JOIN por `chunk_id`, e as
-   duas tabelas poderiam divergir (um trecho com vetor mas sem entrada léxica,
-   ou vice-versa) sem nenhum mecanismo do banco impedindo.
-2. **Quais escopos o índice cobre?** O handoff insinua "buscar no projeto", o
-   que é vago demais para desenhar uma coluna. A investigação achou EXATAMENTE
-   três fontes de texto que o produto já produz e sabe de onde vieram: os
-   arquivos de `docs/`, os ADRs (que também são arquivos, mas com identidade
-   própria — um ADR é citável por número, um doc genérico não) e as sessões
-   (o event log já tem texto de sobra). Código-fonte e Pull Requests ficaram
-   de fora DE PROPÓSITO: os dois mudam a cada `push`, e indexá-los sem um
-   watcher de reindexação faria o índice **mentir** sobre cobertura — a
-   mesma classe de erro que o ADR 0042 já recusa para capability de modelo
-   ("declarar sem provar"). Três escopos com cobertura HONESTA valem mais que
-   cinco com um número inventado.
+1. **Do vector and lexical search live in the same table, or two?** Wave 4
+   (out of scope for this migration) is going to build HYBRID search —
+   semantic (`pgvector`, cosine similarity) and lexical (`tsvector`,
+   Postgres full-text) combined. If the two lived in separate tables, every
+   hybrid search would need a `chunk_id` JOIN, and the two tables could
+   diverge (a chunk with a vector but no lexical entry, or the reverse) with
+   nothing in the database preventing it.
+2. **Which scopes does the index cover?** The handoff hints at "search
+   within the project", which is too vague to design a column around. The
+   investigation found EXACTLY three text sources the product already
+   produces and knows the origin of: `docs/` files, ADRs (which are also
+   files, but with their own identity — an ADR is citable by number, a
+   generic doc isn't), and sessions (the event log already has plenty of
+   text). Source code and Pull Requests were left out ON PURPOSE: both
+   change on every `push`, and indexing them without a reindexing watcher
+   would make the index **lie** about coverage — the same class of error
+   ADR 0042 already rejects for model capability ("declare without
+   proving"). Three honestly-covered scopes are worth more than five with a
+   made-up number.
 
-Um terceiro ponto não era decisão de produto, mas achado técnico com
-consequência de deploy: `docker/postgres/init.sql:2` roda `CREATE EXTENSION
-IF NOT EXISTS vector`, mas esse arquivo só executa na PRIMEIRA inicialização
-do volume Postgres. Um ambiente com volume antigo — inclusive, possivelmente,
-produção — pode não ter a extensão instalada, e criá-la exige privilégio que o
-role da aplicação pode não ter.
+One more point wasn't a product decision, but a technical finding with a
+deployment consequence: `docker/postgres/init.sql:2` runs `CREATE EXTENSION
+IF NOT EXISTS vector`, but that file only runs on the FIRST initialization of
+the Postgres volume. An environment with an old volume — including,
+possibly, production — may not have the extension installed, and creating it
+requires a privilege the application role may not have.
 
-## Decisão
+## Decision
 
-**Uma tabela só, `chunks`, com `embedding vector(768)` e `search_vector
-tsvector` como colunas irmãs da mesma linha.** `search_vector` é `GENERATED
-ALWAYS AS (to_tsvector('portuguese', content)) STORED` — nunca escrita pela
-aplicação, sempre coerente com `content` por construção do Postgres, e pronta
-na mesma transação do `INSERT` (não depende de nenhum provider de LLM
-responder). `embedding` é NULLABLE: o pipeline de indexação (Onda 4) ainda não
-existe, e fazer o CHUNK (o recorte de texto) esperar o VETOR misturaria duas
-falhas de natureza diferente — parsing de documento contra chamada de rede a
-um provider — numa só escrita atômica.
+**A single table, `chunks`, with `embedding vector(768)` and `search_vector
+tsvector` as sibling columns on the same row.** `search_vector` is
+`GENERATED ALWAYS AS (to_tsvector('portuguese', content)) STORED` — never
+written by the application, always coherent with `content` by Postgres's own
+construction, and ready in the same transaction as the `INSERT` (it doesn't
+depend on any LLM provider responding). `embedding` is NULLABLE: the
+indexing pipeline (Wave 4) doesn't exist yet, and making the CHUNK (the text
+excerpt) wait for the VECTOR would mix two failures of different nature —
+document parsing versus a network call to a provider — into one atomic
+write.
 
-**Índice HNSW sobre `embedding` (`vector_cosine_ops`), não IVFFlat.** IVFFlat
-precisa de linhas já carregadas para treinar as listas (`lists`) — construído
-sobre uma tabela vazia, que é exatamente o estado desta tabela ao nascer (sem
-pipeline de indexação ainda), o índice fica ruim até alguém o reconstruir
-manualmente depois de popular. HNSW constrói o grafo incrementalmente,
-inserção por inserção, sem etapa de treino — o índice fica bom desde a
-primeira linha. `vector_cosine_ops` porque é a métrica que embeddings de texto
-geralmente esperam (o ranking de similaridade não deveria mudar com a
-magnitude do vetor).
+**HNSW index over `embedding` (`vector_cosine_ops`), not IVFFlat.** IVFFlat
+needs rows already loaded to train its lists (`lists`) — built over an empty
+table, which is exactly this table's state at birth (no indexing pipeline
+yet), the index stays bad until someone manually rebuilds it after
+populating it. HNSW builds the graph incrementally, insertion by insertion,
+with no training step — the index is good from the very first row.
+`vector_cosine_ops` because it's the metric text embeddings generally
+expect (similarity ranking shouldn't change with the vector's magnitude).
 
-**Índice GIN sobre `search_vector`** — a metade léxica pronta para a busca
-híbrida da Onda 4 usar via `@@`/`ts_rank`, sem precisar calcular nada em tempo
-de consulta.
+**GIN index over `search_vector`** — the lexical half, ready for Wave 4's
+hybrid search to use via `@@`/`ts_rank`, with nothing to compute at query
+time.
 
-**Os três escopos (RN-219) são um `pgEnum` — `docs` | `adr` | `session` — e
-`session_id`/`source_path` são mutuamente exclusivos por CHECK, não por
-convenção de aplicação**, o mesmo padrão que o ADR 0072 usou para
-`workspace_mode`/`workspace_path`: `scope = 'session'` exige `session_id`
-preenchido e recusa `source_path`; `docs`/`adr` exigem `source_path` (caminho
-relativo do arquivo fonte) e recusam `session_id`. A trava fica no banco
-porque quem vai escrever esta tabela é um pipeline (Onda 4) que não
-necessariamente passa pelo mesmo caso de uso toda vez — um script de
-reindexação em lote é um candidato óbvio a burlar validação só de aplicação.
+**The three scopes (RN-219) are a `pgEnum` — `docs` | `adr` | `session` —
+and `session_id`/`source_path` are mutually exclusive via CHECK, not by
+application convention**, the same pattern ADR 0072 used for
+`workspace_mode`/`workspace_path`: `scope = 'session'` requires `session_id`
+to be filled and rejects `source_path`; `docs`/`adr` require `source_path`
+(the source file's relative path) and reject `session_id`. The guard lives
+in the database because whoever writes this table is a pipeline (Wave 4)
+that won't necessarily go through the same use case every time — a batch
+reindexing script is an obvious candidate to bypass application-only
+validation.
 
-**A migração carrega `CREATE EXTENSION IF NOT EXISTS vector` ela mesma**, em
-vez de assumir que `docker/postgres/init.sql` já rodou. `IF NOT EXISTS` é
-idempotente — local (onde a extensão já está instalada, confirmado por
-`SELECT * FROM pg_extension WHERE extname='vector'` antes de escrever este
-ADR) e um ambiente novo passam pela mesma linha sem diferença de
-comportamento visível.
+**The migration loads `CREATE EXTENSION IF NOT EXISTS vector` itself**,
+instead of assuming `docker/postgres/init.sql` has already run.
+`IF NOT EXISTS` is idempotent — local (where the extension is already
+installed, confirmed by `SELECT * FROM pg_extension WHERE extname='vector'`
+before writing this ADR) and a fresh environment go through the same line
+with no visible behavior difference.
 
-**Esta migração nasce em branch `breaking/`, não `feature/`.** Criar uma
-extensão exige que o role da aplicação tenha `CREATEDB` (ou que a extensão
-esteja marcada "trusted" pelo DBA). Localmente o role é superusuário
-(confirmado por `SELECT rolsuper FROM pg_roles WHERE rolname=current_user`),
-mas nada garante isso em produção — gerenciadores de Postgres administrado
-frequentemente não dão superusuário à aplicação. Se a migração falhar aí, é
-ação do OPERADOR antes do deploy (rodar `CREATE EXTENSION vector;` uma vez,
-como superusuário), não bug do produto — exatamente o critério que o
-CLAUDE.md já usa para decidir `breaking/` versus `bugfix/`/`feature/`: "mudança
-que exige ação do operador antes do deploy nasce em `breaking/` mesmo quando o
-conteúdo é correção".
+**This migration is born on a `breaking/` branch, not `feature/`.** Creating
+an extension requires the application role to have `CREATEDB` (or for the
+extension to be marked "trusted" by the DBA). Locally the role is
+superuser (confirmed by `SELECT rolsuper FROM pg_roles WHERE
+rolname=current_user`), but nothing guarantees that in production — managed
+Postgres providers frequently don't grant superuser to the application. If
+the migration fails there, it's an action for the OPERATOR before deploy
+(run `CREATE EXTENSION vector;` once, as superuser), not a product bug —
+exactly the criterion CLAUDE.md already uses to decide `breaking/` versus
+`bugfix/`/`feature/`: "a change that requires operator action before deploy
+is born in `breaking/` even when the content is a fix".
 
-## Consequências
+## Consequences
 
-**O que esta migração entrega é só a FUNDAÇÃO**: a tabela, os índices, o
-repositório de escrita/leitura básica (`ChunkRepository`). Ela não escreve
-nenhuma linha — não há pipeline de indexação, não há busca híbrida, não há UI.
-A aba continua "Chat" (ADR 0078); nada muda no rótulo até a Onda 4 entregar o
-que o nome "Chat RAG" promete.
+**What this migration delivers is only the FOUNDATION**: the table, the
+indexes, the basic write/read repository (`ChunkRepository`). It doesn't
+write a single row — there's no indexing pipeline, no hybrid search, no UI.
+The tab stays "Chat" (ADR 0078); nothing changes in the label until Wave 4
+delivers what the name "Chat RAG" promises.
 
-**Reindexar `docs`/`adr` é responsabilidade de quem escrever o pipeline
-(Onda 4), não desta migração** — a tabela não tem coluna de hash/versão do
-arquivo fonte para detectar mudança, porque essa decisão pertence a quem vai
-efetivamente rodar a reindexação e sabe qual estratégia (hash de conteúdo,
-`mtime`, versão do commit) faz sentido para o watcher que ainda não existe.
+**Reindexing `docs`/`adr` is the responsibility of whoever writes the
+pipeline (Wave 4), not this migration** — the table has no hash/version
+column for the source file to detect changes, because that decision belongs
+to whoever actually runs the reindexing and knows which strategy (content
+hash, `mtime`, commit version) makes sense for the watcher that doesn't
+exist yet.
 
-**Código-fonte e PRs continuam fora do índice.** Se um dia entrarem, a decisão
-tem de vir com um mecanismo de reindexação por push — não é extensão trivial
-do enum `chunk_scope`, porque a garantia de cobertura honesta desta tabela
-depende de cada escopo ter uma história clara de "quando este chunk fica
-desatualizado".
+**Source code and PRs remain outside the index.** If they're added someday,
+the decision has to come with a push-triggered reindexing mechanism — it
+isn't a trivial extension of the `chunk_scope` enum, because this table's
+honest-coverage guarantee depends on every scope having a clear story for
+"when does this chunk go stale".
 
-**Em produção, esta migração pode parar no `CREATE EXTENSION`** se o role da
-aplicação não tiver privilégio — comportamento intencional (falhar alto e
-cedo) em vez de a tabela nascer sem o tipo `vector` disponível e falhar de
-um jeito mais confuso lá na frente, na primeira tentativa de `INSERT`.
+**In production, this migration may stop at `CREATE EXTENSION`** if the
+application role lacks the privilege — intentional behavior (fail loud and
+early) rather than the table being born without the `vector` type available
+and failing more confusingly down the line, on the first `INSERT` attempt.

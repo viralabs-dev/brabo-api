@@ -15,6 +15,8 @@ import { RagUseCasesModule } from '../../../application/use-cases/rag/rag-use-ca
 import { GraphUseCasesModule } from '../../../application/use-cases/graph/graph-use-cases.module';
 import { InternalSessionsController } from './internal-sessions.controller';
 import { InternalModelsController } from './internal-models.controller';
+import { InternalOpenQuestionsController } from './internal-open-questions.controller';
+import { InternalBusinessRulesController } from './internal-business-rules.controller';
 import { InternalGatesController } from './internal-gates.controller';
 import { InternalProjectsController } from './internal-projects.controller';
 import { InternalContainersController } from './internal-containers.controller';
@@ -55,6 +57,8 @@ import { AuthUseCasesModule } from '../../../application/use-cases/auth/auth-use
     InternalModelsController,
     // Sem provider: o registro é arquivo, e o loader é função pura memoizada.
     InternalGatesController,
+    InternalOpenQuestionsController,
+    InternalBusinessRulesController,
     InternalProjectsController,
     // O broker de container (ADR 0130) — a rota que ele LÊ para compor a
     // especificação ele mesmo, em vez de recebê-la pronta.

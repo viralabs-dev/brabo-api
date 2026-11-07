@@ -97,11 +97,17 @@ export interface LLMProviderContractHarness {
    *   (Anthropic). A mensagem não se perde, mas a POSIÇÃO se perde — e o
    *   prefixo do pedido muda a cada vez que o texto dela mudar.
    *
+   * - `fim_do_ultimo_user`: como `icado_ao_topo` (fora do array), mas a mensagem
+   *   vira o ÚLTIMO bloco de texto do último turno `user`, depois do ponto de
+   *   cache, e o `system` do topo fica só com o prefixo (Anthropic direto,
+   *   RN-1015: a orientação efêmera fica junto do contexto recente).
+   *
    * O que o contrato prova é o CORPO SERIALIZADO. Se o provider real aceita
    * esse corpo é outra pergunta, e só um smoke com credencial responde
    * (`sistema-tardio.smoke.spec.ts`, ADRs 0041/0042).
    */
-  posicaoDoSistemaTardio: 'fim_da_conversa' | 'icado_ao_topo';
+  posicaoDoSistemaTardio:
+    'fim_da_conversa' | 'icado_ao_topo' | 'fim_do_ultimo_user';
 }
 
 const FERRAMENTAS = [
@@ -503,13 +509,33 @@ export function runLLMProviderContract(
           });
           expect(papeis).toEqual(caso.papeisSemSistema.fimDaConversa);
           expect(corpo).not.toHaveProperty('system');
+        } else if (harness.posicaoDoSistemaTardio === 'fim_do_ultimo_user') {
+          expect(mensagens.some((m) => m.role === 'system')).toBe(false);
+          // `system` do topo: só o prefixo; a cauda é o último bloco do último user.
+          const blocos = corpo.system as { text: string }[];
+          expect(blocos.map((b) => b.text).join('\n\n')).toBe(SISTEMA_INICIAL);
+          const ultimo = mensagens.at(-1) as {
+            role: string;
+            content: { type: string; text?: string }[];
+          };
+          expect(ultimo.role).toBe('user');
+          expect(ultimo.content.at(-1)).toEqual({
+            type: 'text',
+            text: SISTEMA_TARDIO,
+          });
+          expect(papeis).toEqual(caso.papeisSemSistema.icadoAoTopo);
         } else {
           // Içada: sai do array e vai para o FIM do `system` do topo, depois
           // do prompt que já estava lá. A conversa perde a informação de
           // ONDE a orientação estava (lacuna 2 da AT-081: o prefixo do
           // pedido muda com o texto dela — não medido, ver AT-082).
           expect(mensagens.some((m) => m.role === 'system')).toBe(false);
-          expect(corpo.system).toBe(`${SISTEMA_INICIAL}\n\n${SISTEMA_TARDIO}`);
+          // Blocos (RN-1008): o texto concatenado e a ordem são os de antes.
+          const blocos = corpo.system as { text: string }[] | string;
+          const texto = Array.isArray(blocos)
+            ? blocos.map((b) => b.text).join('\n\n')
+            : blocos;
+          expect(texto).toBe(`${SISTEMA_INICIAL}\n\n${SISTEMA_TARDIO}`);
           expect(papeis).toEqual(caso.papeisSemSistema.icadoAoTopo);
         }
       });

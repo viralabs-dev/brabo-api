@@ -588,7 +588,18 @@ describe('ProposeActionUseCase', () => {
     });
     expect(push.resolvedPolicy).toBe('auto_approve');
 
-    for (const command of ['sudo ls /root', 'git merge dev']) {
+    // RN-1019: o merge local passa; o merge seguido de push protegido não.
+    const merge = await proposeAction.execute(project.id, session.id, {
+      actionType: 'terminal',
+      actor: { kind: 'agent', id: 'dev-api' },
+      payload: { command: 'git merge dev' },
+    });
+    expect(merge.resolvedPolicy).toBe('auto_approve');
+
+    for (const command of [
+      'sudo ls /root',
+      'git merge dev && git push origin dev',
+    ]) {
       const action = await proposeAction.execute(project.id, session.id, {
         actionType: 'terminal',
         actor: { kind: 'agent', id: 'dev-api' },

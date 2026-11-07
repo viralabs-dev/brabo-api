@@ -7,6 +7,8 @@ import { ObterCicloDeVidaDoContainerUseCase } from '../containers/obter-ciclo-de
 import { RegistrarTransicaoDeContainerUseCase } from '../containers/registrar-transicao-de-container.use-case';
 import { SubirCicloDeVidaDoContainerUseCase } from '../containers/subir-ciclo-de-vida-do-container.use-case';
 import { ProjectRepository } from '../../ports/project-repository.port';
+import { ObterRedeDoContainerUseCase } from '../containers/obter-rede-do-container.use-case';
+import { DeclararRedeDoContainerUseCase } from '../containers/declarar-rede-do-container.use-case';
 import {
   BrokerIndisponivelError,
   BrokerRecusouError,
@@ -39,6 +41,8 @@ export class ExecuteContainerRecreateUseCase {
     private readonly subirCicloDeVida: SubirCicloDeVidaDoContainerUseCase,
     private readonly brokerPort: ContainerBrokerPort,
     private readonly projects: ProjectRepository,
+    private readonly obterRede?: ObterRedeDoContainerUseCase,
+    private readonly declararRede?: DeclararRedeDoContainerUseCase,
   ) {}
 
   async execute(
@@ -73,6 +77,21 @@ export class ExecuteContainerRecreateUseCase {
           action.id,
           'Não há container registrado para este projeto — nada para recriar.',
         );
+      }
+
+      // AT-758 (RN-1029): o clique de quem aprovou declara a rede da proposta
+      // `app_declared`, só se não houver rede vigente (RN-932). ANTES do
+      // `remove`: se a rede for recusada, o container antigo segue de pé.
+      const portas = (action.payload as { ports?: unknown } | null)?.ports;
+      if (
+        Array.isArray(portas) &&
+        portas.length > 0 &&
+        action.decidedBy &&
+        !(await this.obterRede!.execute(projectId))
+      ) {
+        await this.declararRede!.execute(projectId, action.decidedBy, {
+          ports: portas,
+        });
       }
 
       try {

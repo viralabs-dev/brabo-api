@@ -86,6 +86,7 @@ API do Brabo: NestJS 11 + Drizzle + PostgreSQL 16/pgvector. Dona do schema, do R
   archived".
 - PR do Dependabot entra pela `dev`, nunca direto na `main`; na `dev` ele não espera aprovação humana (ADR 0236) e a `main` segue com a escada inteira. Dependência de linguagem só por segurança (`open-pull-requests-limit: 0`), `github-actions` e `docker` semanais, `target-branch: dev`. O `dependabot-para-dev.yml` do `brabo-ci` fecha ou redireciona o PR de segurança que o GitHub abre contra a `main`.
 - Merge em branch protegida (`dev`/`main`) é SEMPRE manual do usuário, sem opção de automatizar. A política de PR, escada, promoção e carimbo de tag vem dos workflows reutilizáveis do `brabo-ci`, fixados por SHA com `# vX` no `uses:`. Imagem de terceiro por digest com a tag inline. Segredo nunca é impresso; teste nunca roda contra o Postgres da instalação.
+- Ref de doc quebrada reprova no próprio PR: o check `refs` (reutilizável `refs-com-simbolo` do `brabo-ci`, não obrigatório) confere cada `caminho:N` (`símbolo`) das RNs, e o artefato `refs-patch` traz a reancoragem (`gh run download <id> -n refs-patch && git apply refs.patch`) (AT-782).
 
 ## Convenções (dados e domínio)
 - `src/db/seed.ts` é IDEMPOTENTE, e rodá-lo de novo é o caso normal
@@ -408,6 +409,7 @@ API do Brabo: NestJS 11 + Drizzle + PostgreSQL 16/pgvector. Dona do schema, do R
   significado de toda medição anterior. Gravar medição NUNCA derruba o que ela
   mede, e também não falha calada: origem `infra` no log e um `null` explícito
   na resposta, que a tela distingue de "não achei nada".
+- Banco dos testes (AT-775): `DATABASE_URL` (admin) e `TEST_DATABASE_URL` (base `brabo_test`) são OBRIGATÓRIAS, sem fallback. O setup (`test/support/test-db-name.ts`, `refusalReason`) recusa `localhost`/`127.0.0.1` na 5432 sem `BRABO_TESTE_PERMITE_5432=1` (só o service do CI usa) e o banco alvo `brabo`. Local: Postgres descartável sem porta publicada (`docker run -d --name pg-teste -e POSTGRES_PASSWORD=x pgvector/pgvector:pg16`) e URLs pelo IP do container.
 - Testes: vitest (api/web/scripts de CI), ExUnit (engine). Nenhuma
   feature sem teste do caminho feliz + 1 caso de falha. Providers de
   git e de LLM validados por suas suites de contrato únicas. A quarta
@@ -452,7 +454,7 @@ API do Brabo: NestJS 11 + Drizzle + PostgreSQL 16/pgvector. Dona do schema, do R
 - Decisões arquiteturais relevantes registradas em docs/adr/.
 
 ## Documentação é parte da definição de pronto (permanente)
-- A doc deste repo mora em `docs/` (fonte pt-BR; `en`, `ru` e `zh-Hans` em `docs/i18n/`). Ao alterar código, atualize a doc da área NA MESMA mudança e mostre o diff dela junto com o do código. Não pergunte se deve: faça. NUNCA crie `website/docs/`: o site é agregado pelo `brabo`, que lê a `docs/` de cada repositório.
+- A doc deste repo mora em `docs/` (em pt-BR por padrão; tradução é permitida, mas não obrigatória). Ao alterar código, atualize a doc da área NA MESMA mudança e mostre o diff dela junto com o do código. Não pergunte se deve: faça. NUNCA crie `website/docs/`: o site é agregado pelo `brabo`, que lê a `docs/` de cada repositório.
 - `docs/.docmap.yml` liga cada doc ao código: consulte-o ao alterar código e atualize os docs mapeados. Arquivos `generated: true` são gerados, nunca editados à mão.
 - Mudança de comportamento observável → entrada em `CHANGELOG.md` (Unreleased). Versão própria a partir da 1.0.0, e toda tag nasce de workflow (nunca versionar à mão).
 - Regra de negócio nova → RN-XXX com `caminho:N` (`símbolo`) e o teste que a cobre, na `docs/business-rules*` deste repo; a numeração é UMA só no produto (nunca reinicie), a âncora `{#rn-NNN}` é o contrato e não muda quando a RN muda de arquivo. Aloque o número varrendo as branches locais e o remoto (colide com frente paralela).

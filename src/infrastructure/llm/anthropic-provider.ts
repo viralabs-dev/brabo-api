@@ -72,7 +72,8 @@ export class AnthropicProvider implements LLMProvider {
     routingPreference: false,
     stickySession: false,
     priceCeiling: false,
-    promptCaching: false,
+    // RN-1008 (AT-744): `cache_control` no prefixo do `system` e na última `user`.
+    promptCaching: true,
     vision: false,
   };
   // AT-739: Haiku 5.5 desliga, Sonnet 5.5 pensa só entre ferramentas, Opus 5.5
@@ -162,14 +163,12 @@ export class AnthropicProvider implements LLMProvider {
         : {}),
     });
 
-    const systemPrompt =
-      messages
-        .filter((message) => message.role === 'system')
-        .map((message) => textoDoConteudo(message.content))
-        .join('\n\n') || undefined;
-
-    const conversation = toConversation(
-      messages.filter((message) => message.role !== 'system'),
+    const { system, conversation } = comCaudaDeSistema(
+      blocosDeSistema(messages),
+      marcarCacheDaConversa(
+        toConversation(messages.filter((message) => message.role !== 'system')),
+      ),
+      caudaDeSistema(messages),
     );
 
     const tetoDeInatividade = timeoutFromEnv(
@@ -183,7 +182,7 @@ export class AnthropicProvider implements LLMProvider {
       const stream = client.messages.stream({
         model: options.model,
         ...corpoDeRaciocinio(options),
-        system: systemPrompt,
+        ...(system ? { system } : {}),
         messages: conversation,
         ...(options.tools && options.tools.length > 0
           ? { tools: options.tools.map(toAnthropicTool) }
@@ -244,7 +243,7 @@ export class AnthropicProvider implements LLMProvider {
 
       yield {
         type: 'usage',
-        inputTokens: finalMessage.usage.input_tokens,
+        ...usageDeEntrada(finalMessage.usage, options.model),
         outputTokens: finalMessage.usage.output_tokens,
         estimated: false,
         ...tokensDeRaciocinio(
@@ -279,15 +278,17 @@ export class AnthropicProvider implements LLMProvider {
 
 // --- Mapeamento ---
 
+type Ponto = { cache_control?: { type: 'ephemeral' } };
+
 type BlocoDeConteudo =
-  | { type: 'text'; text: string }
-  | {
+  | ({ type: 'text'; text: string } & Ponto)
+  | ({
       type: 'image';
       source: { type: 'base64'; media_type: 'image/png'; data: string };
-    }
+    } & Ponto)
   | { type: 'tool_use'; id: string; name: string; input: unknown }
   | ThinkingBlock
-  | { type: 'tool_result'; tool_use_id: string; content: string };
+  | ({ type: 'tool_result'; tool_use_id: string; content: string } & Ponto);
 
 interface TurnoAnthropic {
   role: 'user' | 'assistant';
@@ -360,6 +361,146 @@ function toConversation(messages: ChatMessage[]): TurnoAnthropic[] {
   }
 
   return turnos;
+}
+
+const EFEMERO = { type: 'ephemeral' } as const;
+
+/** Mensagens `system` antes da primeira não-system (o prefixo estável) e depois dela (a cauda). */
+function particaoDeSistema(messages: ChatMessage[]): [string, string] {
+  const sistema = messages.filter((m) => m.role === 'system');
+  const fim = messages.findIndex((m) => m.role !== 'system');
+  const nPrefixo = fim === -1 ? sistema.length : fim;
+  const junta = (ms: ChatMessage[]) =>
+    ms.map((m) => textoDoConteudo(m.content)).join('\n\n');
+  return [junta(sistema.slice(0, nPrefixo)), junta(sistema.slice(nPrefixo))];
+}
+
+/**
+ * `system` do topo = só o PREFIXO (as `system` antes da primeira não-system),
+ * com o ponto de cache (RN-1008). A cauda NÃO sobe para cá (RN-1015): ver
+ * `caudaDeSistema` e `comCaudaDeSistema`.
+ */
+export function blocosDeSistema(
+  messages: ChatMessage[],
+): Anthropic.TextBlockParam[] | undefined {
+  const [prefixo] = particaoDeSistema(messages);
+  return prefixo
+    ? [{ type: 'text', text: prefixo, cache_control: EFEMERO }]
+    : undefined;
+}
+
+/** Texto das `system` tardias (RN-622/878: a orientação efêmera do fim da lista); vazio se não há. */
+export function caudaDeSistema(messages: ChatMessage[]): string {
+  return particaoDeSistema(messages)[1];
+}
+
+/**
+ * RN-1015: a cauda vira o ÚLTIMO bloco de texto do último turno `user`, DEPOIS
+ * do ponto de cache da conversa (o cache da RN-1008 não muda), para o modelo a
+ * ler junto do contexto recente. Se a conversa não termina em `user`, a cauda
+ * fica como 2º bloco do `system`, sem ponto.
+ */
+export function comCaudaDeSistema(
+  system: Anthropic.TextBlockParam[] | undefined,
+  conversa: TurnoAnthropic[],
+  cauda: string,
+): {
+  system: Anthropic.TextBlockParam[] | undefined;
+  conversation: TurnoAnthropic[];
+} {
+  if (!cauda) return { system, conversation: conversa };
+  const bloco = { type: 'text', text: cauda } as const;
+  const ultimo = conversa.at(-1);
+  if (ultimo?.role !== 'user') {
+    return { system: [...(system ?? []), bloco], conversation: conversa };
+  }
+  const conteudo: BlocoDeConteudo[] =
+    typeof ultimo.content === 'string'
+      ? ultimo.content
+        ? [{ type: 'text', text: ultimo.content }]
+        : []
+      : [...ultimo.content];
+  return {
+    system,
+    conversation: [
+      ...conversa.slice(0, -1),
+      { ...ultimo, content: [...conteudo, bloco] },
+    ],
+  };
+}
+
+/** Um ponto no último bloco do turno `i`; texto vazio e `tool_use`/raciocínio não levam ponto. */
+function marcarTurno(turnos: TurnoAnthropic[], i: number): TurnoAnthropic[] {
+  const { content } = turnos[i];
+  const blocos: BlocoDeConteudo[] =
+    typeof content === 'string'
+      ? content
+        ? [{ type: 'text', text: content }]
+        : []
+      : [...content];
+  const ultimo = blocos.at(-1);
+  if (!ultimo || ultimo.type === 'tool_use' || ultimo.type === 'thinking') {
+    return turnos;
+  }
+  if (ultimo.type === 'redacted_thinking') return turnos;
+  blocos[blocos.length - 1] = { ...ultimo, cache_control: EFEMERO };
+  return turnos.map((t, j) => (j === i ? { ...t, content: blocos } : t));
+}
+
+/**
+ * Pontos de cache da conversa (RN-1008, RN-1014): o último bloco da última E da
+ * penúltima `user` (resultado de ferramenta também é `user`). Com o do `system`
+ * são 3 dos 4 pontos permitidos. O da penúltima é onde a chamada anterior
+ * gravou, e não depende da janela de ~20 blocos da Anthropic.
+ */
+export function marcarCacheDaConversa(
+  turnos: TurnoAnthropic[],
+): TurnoAnthropic[] {
+  const users = turnos.flatMap((t, i) => (t.role === 'user' ? [i] : []));
+  return users.slice(-2).reduce(marcarTurno, turnos);
+}
+
+/**
+ * Entrada do `usage` (RN-1008): o `input_tokens` da Anthropic é só o NÃO
+ * cacheado, então a entrada é a soma das três parcelas, e `cachedInputTokens`
+ * é a leitura. Com cache em jogo, o custo vem das 4 parcelas × a tabela do
+ * fabricante (ADR 0188); sem cache o caminho do catálogo dá o mesmo número.
+ * Modelo fora da tabela não emite custo (RN-042).
+ */
+export function usageDeEntrada(
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+    cache_read_input_tokens?: number | null;
+    cache_creation_input_tokens?: number | null;
+  },
+  modelo: string,
+): { inputTokens: number; cachedInputTokens?: number; costMicros?: number } {
+  const leitura = usage.cache_read_input_tokens;
+  const escrita = usage.cache_creation_input_tokens;
+  const inputTokens = usage.input_tokens + (leitura ?? 0) + (escrita ?? 0);
+  const saida: {
+    inputTokens: number;
+    cachedInputTokens?: number;
+    costMicros?: number;
+  } = { inputTokens };
+  if (typeof leitura === 'number') saida.cachedInputTokens = leitura;
+  const preco =
+    precoDoFabricante(modelo) ??
+    precoDoFabricante(modelo.replace(/-\d{8}$/, ''));
+  if (preco && ((leitura ?? 0) > 0 || (escrita ?? 0) > 0)) {
+    // Opus 5.5 lê a 0,05x ($0,20 de $4); os demais a 0,1x. Escrita 5 min = 1,25x.
+    // shortcut: Haiku 5.5 acima de 100k de prompt tem outra tabela; ignorado, rever se a medição divergir.
+    const leitura05 = /^claude-opus-5[-.]5/.test(modelo) ? 0.05 : 0.1;
+    const entrada =
+      usage.input_tokens + (leitura ?? 0) * leitura05 + (escrita ?? 0) * 1.25;
+    saida.costMicros = Math.round(
+      (entrada * preco.entradaMicros +
+        usage.output_tokens * preco.saidaMicros) /
+        1_000_000,
+    );
+  }
+  return saida;
 }
 
 function toAnthropicTool(tool: ToolDef) {

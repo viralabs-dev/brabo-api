@@ -67,6 +67,14 @@ export const RAG_EMBED_BATCH_SIZE = 32;
 export const RAG_SEARCH_VECTOR_CANDIDATES = 20;
 export const RAG_SEARCH_LEXICAL_CANDIDATES = 20;
 
+/**
+ * Teto de trechos do MESMO arquivo no resultado (AT-778, RN-1046), aplicado
+ * depois da fusão e do limiar e antes do corte em `limit`. Sem ele, um
+ * documento grande e repetitivo ocupa todas as vagas e abafa o específico.
+ * Para o piso do golden-set (N=1 vira prova), troque este valor.
+ */
+export const RAG_SEARCH_MAX_CHUNKS_PER_FILE = 2;
+
 /** Resultados devolvidos por busca, depois da fusão e do corte pelo limiar. */
 export const RAG_SEARCH_RESULT_LIMIT = 10;
 
@@ -95,16 +103,32 @@ export const RAG_SEARCH_SCORE_THRESHOLD = 0.2;
 // ---------------------------------------------------------------------------
 // Pasta local anexada (ADR 0113, RN-455) — upload do NAVEGADOR, um gesto
 // ÚNICO com um seletor de pasta na frente, não uma varredura em background.
-// Por isso a régua é REJEITAR (400) acima do teto em vez de truncar em
-// silêncio como `docs`/`adr`: quem clicou "Anexar" está olhando a tela e
+// Por isso a régua é REJEITAR (400) acima do teto em vez de cortar (a
+// indexação de `docs`/`adr` também corta, mas declara: RN-1036): quem clicou "Anexar" está olhando a tela e
 // pode escolher uma pasta menor, o mesmo motivo que a busca da aba Code
 // (item 34 da FASE 26) rejeita termo demais em vez de truncar.
 // ---------------------------------------------------------------------------
 
+/**
+ * Bytes lidos de CADA `.md` na indexação de `docs`/`adr` (AT-764, RN-1036,
+ * ADR 0269) — teto PRÓPRIO, separado do `GIT_BLOB_MAX_BYTES` da aba Code
+ * (512 KiB, RN-095). O que passa dele é cortado e DECLARADO (`cutFiles`,
+ * log, `metadata.sourceCut`), nunca descartado em silêncio. Cobre um
+ * `business-rules.md` de ~1,7 MB com folga de 2x.
+ */
+export const RAG_INDEX_FILE_MAX_BYTES = 4 * 1024 * 1024;
+
+/**
+ * Chunks por `INSERT`: o Postgres aceita 65 535 parâmetros por comando e cada
+ * linha leva ~7, então um insert único estoura em ~9 000 chunks — alcançável
+ * com 4 MiB por arquivo (~5 400 chunks) em poucos arquivos grandes.
+ */
+export const RAG_INSERT_BATCH_SIZE = 1000;
+
 /** Arquivos por upload — cada um vira ao menos um chunk. */
 export const RAG_LOCAL_FILE_COUNT_LIMIT = 500;
 
-/** Bytes por arquivo individual — mesma ordem de grandeza de `GIT_BLOB_MAX_BYTES`. */
+/** Bytes por arquivo individual do upload local — mesma ordem de grandeza de `GIT_BLOB_MAX_BYTES` (não do teto de indexação de docs, `RAG_INDEX_FILE_MAX_BYTES`). */
 export const RAG_LOCAL_FILE_BYTES_LIMIT = 512 * 1024;
 
 /** Bytes somados de TODOS os arquivos do upload — o teto que protege o corpo HTTP e o custo de embedding de um lote. */

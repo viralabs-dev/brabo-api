@@ -39,6 +39,8 @@ const urlDasReleases = (): string =>
  */
 const PLATAFORMAS = ['linux-x64', 'linux-arm64', 'darwin-arm64'] as const;
 
+const ISSUES_DO_RUNNER = 'https://github.com/viralabs-dev/brabo-runner/issues';
+
 /**
  * Plataformas que o runner ATENDE, mas sem binário publicado, por decisão —
  * cada uma com o nome legível e o ADR que a tirou.
@@ -242,7 +244,7 @@ export class RunnerReleasesController {
     if (platform && decisao) {
       throw new BadRequestException(
         `${platform} (${decisao.nome}) não tem binário publicado, por ` +
-          `decisão (${decisao.adr}) — instale pelo npm: npm install -g @brabo/runner`,
+          `decisão (${decisao.adr}) — para pedir suporte, abra uma issue em ${ISSUES_DO_RUNNER}`,
       );
     }
     if (!platform || !ehPlataformaValida(platform)) {
@@ -266,14 +268,14 @@ export class RunnerReleasesController {
     // e, pior, seria o downgrade mais barato que existe: apagar um arquivo de
     // 400 bytes da Release desligaria a conferência de todo mundo. O custo
     // está medido e é pequeno: o passo do binário é BEST-EFFORT no fluxo do
-    // navegador (RN-473, passo 4) e cai em `npm install -g @brabo/runner`, que
-    // não depende de release nenhuma.
+    // navegador (RN-473, passo 4): a pessoa fica sem o agente local e é
+    // avisada, porque o runner sai só como binário da Release (AT-774).
     const manifesto = await this.obterManifesto(urlPorAsset);
     if (!manifesto) {
       recusar(
         'release_sem_manifesto',
         `Esta release não publica ${NOME_DO_MANIFESTO} — não há contra o que conferir o binário, ` +
-          'e servir bytes não conferidos não é uma opção. Instale com `npm install -g @brabo/runner`.',
+          `e servir bytes não conferidos não é uma opção. Para pedir suporte, abra uma issue em ${ISSUES_DO_RUNNER}`,
       );
     }
 

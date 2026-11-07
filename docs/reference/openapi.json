@@ -720,6 +720,46 @@
         ]
       }
     },
+    "/internal/projects/{projectId}/app/restart": {
+      "post": {
+        "description": "Called only by the engine, after the project folder advanced. Proxies to `ContainerBrokerPort.reiniciarApp`; the command is read by the broker from the container-spec, never from the caller. The body is empty. The answer is typed and carries NO free text or log (the app command may hold a secret): `reiniciou: false` with `motivo` is the NORMAL shape of a missing container, a timeout, a failed exec, an app that exited (`exitCode`) or an unreachable broker.",
+        "operationId": "InternalProjectsController_reiniciarOApp",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReiniciarAppInternalResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Service token missing or different from the shared one."
+          }
+        },
+        "security": [
+          {
+            "service-token": []
+          }
+        ],
+        "summary": "Restarts only the project app process, in place (RN-1026)",
+        "tags": [
+          "internal"
+        ]
+      }
+    },
     "/internal/projects/{projectId}/backlog": {
       "get": {
         "description": "The SAME epic → story → task tree as the Backlog tab, through the same use case (three reads per project, never N+1). It is with this that the PO sees an orphan epic and a story with no task instead of re-creating what already exists (RN-164).",
@@ -798,6 +838,73 @@
           }
         ],
         "summary": "The project's business rules, with coverage, for the PO to read",
+        "tags": [
+          "internal"
+        ]
+      }
+    },
+    "/internal/projects/{projectId}/business-rules/{ruleId}/retire": {
+      "post": {
+        "description": "Writes `artifact.business_rule_retired`. The rule stays in the log but leaves every reader (list, coverage, duplicate check, dev context). Stories citing it cite `replacedBy` instead; the retirement is refused when a story would be left with no rule. No approval card: the citation (`replacedBy` and/or an answered `questionId`) is the standard.",
+        "operationId": "InternalBusinessRulesController_retireRoute",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ruleId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetireBusinessRuleInternalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetiredBusinessRuleResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Named refusal (`reason`): `retirada_sem_citacao` or `substituta_invalida`."
+          },
+          "403": {
+            "description": "Service token missing or different from the shared one; or the role is not `criativo`/`po` (`papel_nao_retira_regra`)."
+          },
+          "404": {
+            "description": "Rule not in this project."
+          },
+          "409": {
+            "description": "Named refusal (`reason`): `regra_ja_retirada`, `pergunta_nao_respondida`, `historia_ficaria_sem_regra` or `historia_com_tarefa_em_execucao`."
+          }
+        },
+        "security": [
+          {
+            "service-token": []
+          }
+        ],
+        "summary": "Retires an obsolete business rule (RN-1018)",
         "tags": [
           "internal"
         ]
@@ -1052,6 +1159,70 @@
           }
         ],
         "summary": "The contracts between modules, for a dev agent to read (RN-684)",
+        "tags": [
+          "internal"
+        ]
+      }
+    },
+    "/internal/projects/{projectId}/open-questions/{questionId}/answer": {
+      "post": {
+        "description": "Writes the same `decision_record` + `open_question.answered` pair as the human answer (actor: the author of the chat session, `viaAgente` names the agent) and resumes the parked QA gate (RN-860). Without `resposta`, the question suggestion is the answer. Idempotent: an already closed question returns `already_answered`, never 409.",
+        "operationId": "InternalOpenQuestionsController_answer",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentAnswerOpenQuestionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentAnswerOpenQuestionResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, or no answer and no suggestion."
+          },
+          "403": {
+            "description": "Service token missing or different from the shared one."
+          },
+          "404": {
+            "description": "Question or session not in this project."
+          }
+        },
+        "security": [
+          {
+            "service-token": []
+          }
+        ],
+        "summary": "Closes an open question on behalf of an agent (RN-1002)",
         "tags": [
           "internal"
         ]
@@ -14979,6 +15150,52 @@
           "pullRequestUrl"
         ]
       },
+      "AgentAnswerOpenQuestionDto": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "description": "The chat session where the user answered."
+          },
+          "agentId": {
+            "type": "string",
+            "example": "criativo",
+            "description": "The agent closing it."
+          },
+          "resposta": {
+            "type": "string",
+            "description": "Answer text; omitted = the suggestion."
+          },
+          "messageEventId": {
+            "type": "string",
+            "description": "The chat message event that answered."
+          }
+        },
+        "required": [
+          "sessionId",
+          "agentId"
+        ]
+      },
+      "AgentAnswerOpenQuestionResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "answered",
+              "already_answered"
+            ]
+          },
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "status",
+          "questionId"
+        ]
+      },
       "AgentAutonomyRuleResponseDto": {
         "type": "object",
         "properties": {
@@ -18355,6 +18572,15 @@
           "description": {
             "type": "string",
             "example": "Accepts SKU and quantity; validates stock."
+          },
+          "agentRole": {
+            "type": "string",
+            "enum": [
+              "po",
+              "dev_lead"
+            ],
+            "default": "po",
+            "description": "Agent creating the task; becomes the actor of the event."
           }
         },
         "required": [
@@ -18582,6 +18808,29 @@
           "regras",
           "cobertas",
           "repositorio"
+        ]
+      },
+      "CutFileResponseDto": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "number"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "too_large",
+              "binary"
+            ]
+          }
+        },
+        "required": [
+          "path",
+          "bytes",
+          "reason"
         ]
       },
       "DecideBootstrapPlanDto": {
@@ -20274,6 +20523,12 @@
           "truncated": {
             "type": "boolean"
           },
+          "cutFiles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CutFileResponseDto"
+            }
+          },
           "embedding": {
             "$ref": "#/components/schemas/IndexEmbeddingResponseDto"
           }
@@ -20283,6 +20538,7 @@
           "docsChunks",
           "adrChunks",
           "truncated",
+          "cutFiles",
           "embedding"
         ]
       },
@@ -24893,12 +25149,16 @@
           },
           "truncated": {
             "type": "boolean"
+          },
+          "filesCut": {
+            "type": "number"
           }
         },
         "required": [
           "filesInRepo",
           "filesIndexed",
-          "truncated"
+          "truncated",
+          "filesCut"
         ]
       },
       "RagLocalCoverageResponseDto": {
@@ -25498,6 +25758,34 @@
           "chunksCreated"
         ]
       },
+      "ReiniciarAppInternalResponseDto": {
+        "type": "object",
+        "properties": {
+          "reiniciou": {
+            "type": "boolean",
+            "example": true
+          },
+          "motivo": {
+            "type": "string",
+            "enum": [
+              "sem_container",
+              "tempo_esgotado",
+              "falha_no_exec",
+              "app_saiu",
+              "sem_app"
+            ],
+            "description": "Present only when `reiniciou: false`."
+          },
+          "exitCode": {
+            "type": "number",
+            "example": 1,
+            "description": "Present only when `motivo: app_saiu`."
+          }
+        },
+        "required": [
+          "reiniciou"
+        ]
+      },
       "RenameSessionDto": {
         "type": "object",
         "properties": {
@@ -25769,6 +26057,66 @@
           "descobertos",
           "reencontrados",
           "indisponibilizados"
+        ]
+      },
+      "RetireBusinessRuleInternalDto": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "description": "The session the retirement is logged in."
+          },
+          "agentRole": {
+            "type": "string",
+            "example": "criativo",
+            "description": "Who retires. Only `criativo` and `po` are allowed (403)."
+          },
+          "reason": {
+            "type": "string",
+            "example": "Replaced by the per-professional agenda rule."
+          },
+          "replacedBy": {
+            "type": "string",
+            "description": "The existing, non-retired rule that replaces it. Stories citing the retired rule cite this one. Required when `questionId` is absent."
+          },
+          "questionId": {
+            "type": "string",
+            "description": "An open question the user ALREADY answered (RN-859 standard). Required when `replacedBy` is absent."
+          }
+        },
+        "required": [
+          "sessionId",
+          "agentRole",
+          "reason"
+        ]
+      },
+      "RetiredBusinessRuleResponseDto": {
+        "type": "object",
+        "properties": {
+          "ruleId": {
+            "type": "string"
+          },
+          "replacedBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "questionId": {
+            "type": "string",
+            "nullable": true
+          },
+          "storyIds": {
+            "description": "Stories whose citation of the rule was swapped or removed.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "ruleId",
+          "replacedBy",
+          "questionId",
+          "storyIds"
         ]
       },
       "ReturnStoryDto": {

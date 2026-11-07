@@ -1,163 +1,169 @@
-# ADR 0084 — Login social (GitHub/GitLab), revisando o backlog dos ADRs 0031/0032
+# ADR 0084 — Social login (GitHub/GitLab), revising the ADR 0031/0032 backlog
 
-## Contexto
+## Context
 
-O ADR 0031 (auth first-party) e o ADR 0032 (corte do Keycloak) colocaram
-**login social** explicitamente no backlog consciente: "o Keycloak os
-oferecia e não eram usados; reimplementá-los agora seria pagar o custo sem a
-demanda." O `CLAUDE.md` transformou essa decisão em proibição permanente —
-"Não implementar (…) login social" — e o `docs/explanation/backlog.md`
-manteve o item como pendência aberta desde a FASE 13c.
+ADR 0031 (first-party auth) and ADR 0032 (Keycloak cutover) explicitly put
+**social login** on the conscious backlog: "Keycloak offered them and they
+weren't used; reimplementing them now would pay the cost without the
+demand." `CLAUDE.md` turned that decision into a permanent prohibition —
+"Do not implement (…) social login" — and `docs/explanation/backlog.md`
+kept the item as an open pending issue since PHASE 13c.
 
-O dono do produto pediu explicitamente esta frente, ciente das
-consequências de segurança envolvidas, e por isso a proibição foi
-revogada PARA ESTA FRENTE — não retroativamente para MFA, OIDC provider ou
-federação, que continuam fora de escopo (ver Consequências).
+The product owner explicitly requested this front, aware of the security
+consequences involved, and so the prohibition was revoked FOR THIS FRONT
+ONLY — not retroactively for MFA, an OIDC provider, or federation, which
+remain out of scope (see Consequences).
 
-O produto já tem DOIS pedaços do mecanismo, para dois propósitos
-diferentes:
+The product already has TWO pieces of the mechanism, for two different
+purposes:
 
-1. **Auth first-party** (ADR 0031/0032): `EmitirSessaoUseCase` empacota o
-   par access (Ed25519, curto) + refresh (opaco, rotação com família) depois
-   que a identidade já foi resolvida — usado por `LoginUseCase` e
-   `RegisterUseCase` hoje.
-2. **OAuth de GitHub/GitLab** (Fase 2, ADR 0059): `GitOauthClient`
+1. **First-party auth** (ADR 0031/0032): `EmitirSessaoUseCase` packages the
+   access (Ed25519, short-lived) + refresh (opaque, rotation with family)
+   pair after identity has already been resolved — used today by
+   `LoginUseCase` and `RegisterUseCase`.
+2. **GitHub/GitLab OAuth** (Phase 2, ADR 0059): `GitOauthClient`
    (`buildAuthorizeUrl`/`exchangeCode`), `GitOauthClientRegistry`,
-   `signOauthState`/`verifyOauthState` assinado por `GIT_OAUTH_STATE_SECRET`
-   — mas para **conectar uma credencial de git a um projeto de um usuário JÁ
-   AUTENTICADO** (`StartGitOauthUseCase` exige `projectId` e `userId`).
+   `signOauthState`/`verifyOauthState` signed by `GIT_OAUTH_STATE_SECRET`
+   — but for **connecting a git credential to a project for a user who is
+   ALREADY AUTHENTICATED** (`StartGitOauthUseCase` requires `projectId`
+   and `userId`).
 
-O trabalho desta frente é ligar os dois SEM inventar um terceiro formato de
-sessão nem misturar os dois propósitos de `state`.
+This front's work is to link the two WITHOUT inventing a third session
+format or mixing the two `state` purposes.
 
-## Decisão
+## Decision
 
-### 1. O mecanismo de emissão de sessão é reusado, sem exceção
+### 1. The session-issuance mechanism is reused, no exception
 
-`SocialLoginCallbackUseCase` termina chamando o MESMO `EmitirSessaoUseCase`
-que `LoginUseCase`/`RefreshUseCase` usam. Não existe um segundo formato de
-token, cookie ou claim para quem entra por GitHub/GitLab — a sessão de quem
-loga por senha e a de quem loga por OAuth são **indistinguíveis** depois de
-emitidas.
+`SocialLoginCallbackUseCase` ends up calling the SAME `EmitirSessaoUseCase`
+that `LoginUseCase`/`RefreshUseCase` use. There is no second token, cookie,
+or claim format for whoever enters via GitHub/GitLab — the session of
+someone who logs in by password and someone who logs in by OAuth are
+**indistinguishable** once issued.
 
-### 2. O cliente OAuth é reusado; o propósito do `state`, NÃO
+### 2. The OAuth client is reused; the `state` purpose is NOT
 
-`GitOauthClient` ganhou dois métodos novos —
-`buildLoginAuthorizeUrl`/`fetchIdentity` — implementados pelos MESMOS
-`GithubOauthClient`/`GitlabOauthClient` do fluxo de conexão de git.
-`exchangeCode` é reusado tal como está.
+`GitOauthClient` gained two new methods —
+`buildLoginAuthorizeUrl`/`fetchIdentity` — implemented by the SAME
+`GithubOauthClient`/`GitlabOauthClient` used by the git-connection flow.
+`exchangeCode` is reused as-is.
 
-O que NÃO é reusado é a assinatura do `state`. `domain/auth/social-oauth-state.ts`
-é um módulo PRÓPRIO, com payload estruturalmente diferente
-(`{purpose: 'social_login', provider, nonce, expiresAt}`, sem `projectId`
-nem `userId` — não existe "onde" para login social, só identidade) e um
-discriminante de PROPÓSITO checado ANTES de qualquer outro campo
-([RN-273](../business-rules.md#rn-273)). Um `state` do fluxo de CONEXÃO de
-git, mesmo assinado pela MESMA chave, não é aceito aqui — e a suíte prova a
-direção que importava (git-connect state → verificador de login social):
-aceitar aquele `state` no callback de LOGIN teria significado logar como
-`userId` de outra pessoa, escalação de privilégio pura.
+What is NOT reused is the `state` signature. `domain/auth/social-oauth-state.ts`
+is its OWN module, with a structurally different payload
+(`{purpose: 'social_login', provider, nonce, expiresAt}`, without
+`projectId` or `userId` — there is no "where" for social login, only
+identity) and a PURPOSE discriminant checked BEFORE any other field
+([RN-273](../business-rules.md#rn-273)). A `state` from the git CONNECTION
+flow, even signed by the SAME key, is not accepted here — and the test
+suite proves the direction that mattered (git-connect state →
+social-login verifier): accepting that `state` in the LOGIN callback would
+have meant logging in as someone else's `userId`, plain privilege
+escalation.
 
-A chave HMAC continua sendo `GIT_OAUTH_STATE_SECRET`
-(`resolveOauthStateSecret()`) — **nenhuma variável de ambiente nova**. Reusar
-a chave é seguro porque a incompatibilidade estrutural do payload, e não o
-segredo, é o que separa os dois propósitos.
+The HMAC key remains `GIT_OAUTH_STATE_SECRET` (`resolveOauthStateSecret()`)
+— **no new environment variable**. Reusing the key is safe because it's the
+structural incompatibility of the payload, not the secret, that separates
+the two purposes.
 
-### 3. Escopo mínimo, próprio do login
+### 3. Minimal, login-specific scope
 
-`buildLoginAuthorizeUrl` pede `read:user user:email` (GitHub) e `read_user`
-(GitLab) — nunca o `repo`/`api` do fluxo de conexão. Entrar na conta não
-deveria conceder acesso a repositório nenhum
+`buildLoginAuthorizeUrl` requests `read:user user:email` (GitHub) and
+`read_user` (GitLab) — never the git-connection flow's `repo`/`api`.
+Logging into the account shouldn't grant access to any repository
 ([RN-277](../business-rules.md#rn-277)).
 
-### 4. Tabela nova: `social_identities`
+### 4. New table: `social_identities`
 
-Migração `0047`. Coluna dedicada em `users` foi rejeitada pelo motivo que
-`keycloak_sub` já ensina: uma coluna por provider legado não escala para
-DOIS providers simultâneos (um usuário pode logar por GitHub e GitLab ao
-mesmo tempo). `(provider, provider_user_id)` é único; `provider_user_id` é o
-id NUMÉRICO do provider, nunca o login/e-mail — que podem mudar de dono
-([RN-276](../business-rules.md#rn-276)). `user_id` é `NOT NULL`: o vínculo
-nasce no MESMO passo que resolve a identidade, sem um estado intermediário
-"identidade sem dono".
+Migration `0047`. A dedicated column on `users` was rejected for the reason
+`keycloak_sub` already teaches: one column per legacy provider doesn't
+scale to TWO simultaneous providers (a user may log in via GitHub and
+GitLab at once). `(provider, provider_user_id)` is unique;
+`provider_user_id` is the provider's NUMERIC id, never the login/email —
+which can change owners ([RN-276](../business-rules.md#rn-276)). `user_id`
+is `NOT NULL`: the link is born in the SAME step that resolves identity,
+with no intermediate "identity without owner" state.
 
-### 5. As três decisões do callback, em ordem
+### 5. The callback's three decisions, in order
 
-`SocialLoginCallbackUseCase` decide, nesta ordem
+`SocialLoginCallbackUseCase` decides, in this order
 ([RN-272](../business-rules.md#rn-272)):
 
-1. **Identidade já conhecida** (`(provider, providerUserId)` em
-   `social_identities`) → login direto.
-2. **Identidade nova, e-mail bate com conta existente E o provider marca o
-   e-mail como VERIFICADO** → vincula e loga
-   ([RN-274](../business-rules.md#rn-274)). Vincular é fusão de contas — a
-   verificação do PROVIDER faz o papel que o clique no link de verificação
-   faz no registro por senha, e por isso, como efeito colateral, uma conta
-   registrada por senha e nunca verificada fica com `emailVerifiedAt`
-   preenchido depois de vincular ([RN-279](../business-rules.md#rn-279)):
-   o provider acabou de provar, por um caminho independente, exatamente o
-   que aquele clique provaria.
-3. **Identidade nova, e-mail bate mas NÃO verificado** → recusa
-   (`403`). Um e-mail digitado (não verificado) num provider OAuth não é
-   prova de posse — aceitar aqui seria abrir account takeover: quem tem
-   `alguem@empresa.com` na Brabo não pediu para um GitHub alheio, com aquele
-   endereço só digitado, herdar a conta.
-4. **Identidade nova, sem conta correspondente** → provisiona usuário NOVO,
-   **sem senha** — reusando o MESMO estado "pendente" que a migração do
-   Keycloak já deixa (`users` sem linha em `auth_credentials`,
-   [RN-278](../business-rules.md#rn-278)). Aqui o e-mail NÃO precisa estar
-   verificado ([RN-275](../business-rules.md#rn-275)): não há conta
-   existente para tomar, só uma para nascer, e exigir verificação
-   encareceria o caso comum sem proteger nada. `LoginUseCase` e
-   `ResetPasswordUseCase` já sabem tratar esse estado — a conta social ganha
-   "esqueci minha senha" de graça, sem um segundo mecanismo.
+1. **Identity already known** (`(provider, providerUserId)` in
+   `social_identities`) → direct login.
+2. **New identity, email matches an existing account AND the provider
+   marks the email as VERIFIED** → link and log in
+   ([RN-274](../business-rules.md#rn-274)). Linking is account merging —
+   the PROVIDER's verification plays the role the click on the
+   verification link plays during password registration, and so, as a
+   side effect, an account registered by password and never verified ends
+   up with `emailVerifiedAt` filled in after linking
+   ([RN-279](../business-rules.md#rn-279)): the provider just proved,
+   through an independent path, exactly what that click would prove.
+3. **New identity, email matches but is NOT verified** → refuse (`403`).
+   An email typed in (unverified) at an OAuth provider is not proof of
+   possession — accepting it here would open account takeover: someone who
+   owns `someone@company.com` on Brabo didn't ask for a stranger's GitHub,
+   with that address merely typed in, to inherit the account.
+4. **New identity, no matching account** → provisions a NEW user, **with
+   no password** — reusing the SAME "pending" state the Keycloak migration
+   already leaves (`users` without a row in `auth_credentials`,
+   [RN-278](../business-rules.md#rn-278)). Here the email does NOT need
+   to be verified ([RN-275](../business-rules.md#rn-275)): there's no
+   existing account to take over, only one to be born, and requiring
+   verification would make the common case more expensive without
+   protecting anything. `LoginUseCase` and `ResetPasswordUseCase` already
+   know how to handle that state — the social account gets "forgot my
+   password" for free, with no second mechanism.
 
-### 6. O callback nunca expõe token na URL nem no corpo
+### 6. The callback never exposes a token in the URL or body
 
-`GET /auth/oauth/:provider/callback` grava os cookies de sessão
-(`definirCookiesDeSessao`, a MESMA função do login por senha) e redireciona
-para `WEB_ORIGIN/`. O `access token` não viaja na URL: o boot da web
-(`restaurarSessao()`, chamado em TODA carga de página, `apps/web/src/main.tsx`)
-já troca o refresh recém-gravado por um access token — zero código novo do
-lado do cliente além dos dois botões e o alias de rota de erro
-([RN-282](../business-rules.md#rn-282)). Falha vai para
-`WEB_ORIGIN/login?oauth_error=1`, sem detalhar o motivo — mesmo padrão do
-callback de conexão de git ([RN-283](../business-rules.md#rn-283)).
+`GET /auth/oauth/:provider/callback` writes the session cookies
+(`definirCookiesDeSessao`, the SAME function used by password login) and
+redirects to `WEB_ORIGIN/`. The `access token` doesn't travel in the URL:
+the web boot (`restaurarSessao()`, called on EVERY page load,
+`apps/web/src/main.tsx`) already exchanges the freshly written refresh
+token for an access token — zero new client-side code beyond the two
+buttons and the error route alias
+([RN-282](../business-rules.md#rn-282)). Failure goes to
+`WEB_ORIGIN/login?oauth_error=1`, without detailing the reason — the same
+pattern as the git-connection callback ([RN-283](../business-rules.md#rn-283)).
 
-### 7. Reuso do MESMO app OAuth — sem variável de ambiente nova
+### 7. Reuse of the SAME OAuth app — no new environment variable
 
-`GITHUB_OAUTH_CLIENT_ID`/`_SECRET` e `GITLAB_OAUTH_CLIENT_ID`/`_SECRET`
-continuam sendo os do app já cadastrado para conexão de git. O que muda por
-fluxo é o `redirect_uri` (`/auth/oauth/<provider>/callback` em vez de
-`/git/oauth/<provider>/callback`) e o `scope` pedido — ambos decididos em
-tempo de requisição, não de configuração
-([RN-281](../business-rules.md#rn-281)). **Ação do operador continua
-necessária**: o segundo callback URL precisa ser cadastrado no app OAuth de
-cada provider (documentado em `.env.example`) — é essa exigência, não uma
-env var nova, que justifica o branch nascer `breaking/`.
+`GITHUB_OAUTH_CLIENT_ID`/`_SECRET` and `GITLAB_OAUTH_CLIENT_ID`/`_SECRET`
+remain those of the app already registered for git connection. What
+changes per flow is the `redirect_uri` (`/auth/oauth/<provider>/callback`
+instead of `/git/oauth/<provider>/callback`) and the requested `scope` —
+both decided at request time, not configuration time
+([RN-281](../business-rules.md#rn-281)). **Operator action is still
+required**: the second callback URL needs to be registered in each
+provider's OAuth app (documented in `.env.example`) — it's this
+requirement, not a new env var, that justifies the branch being born
+`breaking/`.
 
-## Consequências
+## Consequences
 
-- **Duas rotas públicas novas** (`GET /auth/oauth/:provider/start`,
-  `GET /auth/oauth/:provider/callback`), justificadas em
-  `docs/security-surface.md` e cobertas por `route-surface.spec.ts` — a
-  superfície pública passa de doze para catorze rotas.
-- **`social_identities` é tabela NOVA**, sem soft delete e sem histórico:
-  desvincular uma identidade (revogar acesso por GitHub/GitLab mantendo a
-  conta) não tem UI nem rota nesta frente — backlog.
-- **Só GitHub e GitLab.** Nenhum provider OIDC genérico, nenhuma federação
-  SAML — o backlog dos ADRs 0031/0032 continua valendo para **MFA**,
-  **federação OIDC genérica** e **a api como provedor OIDC**. O que este ADR
-  revisa é SÓ o item "login social" daquela lista, e só para os dois
-  providers que já têm `GitOauthClient` registrado.
-- **`emailVerified` depende do provider dizer a verdade.** O GitHub separa
-  e-mail de verificação em duas chamadas (`/user` e `/user/emails`); o
-  GitLab embute a verificação em `confirmed_at` da CONTA. Os dois são
-  tratados como equivalentes por decisão de produto — nenhum dos dois é
-  auditável pelo lado da Brabo além de confiar na resposta do provider.
-- **Conta social-only nunca passa pelo balde de lockout do login por
-  senha** (RN-030/031): não há tentativa de senha para conter. O que a
-  contém é o próprio handshake OAuth, do lado do provider.
-- **`CLAUDE.md` precisa perder a frase "Não implementar (…) login social"**
-  da seção "O que NÃO fazer" — não editado por este ADR (fica para a PR de
-  fechamento da onda, junto das outras frentes).
+- **Two new public routes** (`GET /auth/oauth/:provider/start`,
+  `GET /auth/oauth/:provider/callback`), justified in
+  `docs/security-surface.md` and covered by `route-surface.spec.ts` — the
+  public surface goes from twelve to fourteen routes.
+- **`social_identities` is a NEW table**, with no soft delete and no
+  history: unlinking an identity (revoking GitHub/GitLab access while
+  keeping the account) has no UI or route in this front — backlog.
+- **Only GitHub and GitLab.** No generic OIDC provider, no SAML
+  federation — the ADR 0031/0032 backlog remains valid for **MFA**,
+  **generic OIDC federation**, and **the api as an OIDC provider**. What
+  this ADR revises is ONLY the "social login" item on that list, and only
+  for the two providers that already have a registered `GitOauthClient`.
+- **`emailVerified` depends on the provider telling the truth.** GitHub
+  splits email from verification across two calls (`/user` and
+  `/user/emails`); GitLab embeds verification in the ACCOUNT's
+  `confirmed_at`. The two are treated as equivalent by product decision —
+  neither is auditable on Brabo's side beyond trusting the provider's
+  response.
+- **A social-only account never goes through the password login's lockout
+  bucket** (RN-030/031): there's no password attempt to contain. What
+  contains it is the OAuth handshake itself, on the provider's side.
+- **`CLAUDE.md` needs to lose the phrase "Do not implement (…) social
+  login"** from the "What NOT to do" section — not edited by this ADR (left
+  for the wave's closing PR, along with the other fronts).

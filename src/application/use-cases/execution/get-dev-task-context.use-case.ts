@@ -12,6 +12,7 @@ import {
   type AfetaDaPergunta,
 } from '../../../domain/open-questions/pergunta-em-aberto';
 import { GetModuleContractsUseCase } from '../architecture/get-module-contracts.use-case';
+import { idsDeRegrasRetiradas } from '../backlog/regras-retiradas';
 
 export interface DevContextBusinessRule {
   title: string;
@@ -305,7 +306,10 @@ export class GetDevTaskContextUseCase {
 
     const [businessRules, adrActions, daHistoria, claims, decisoes] =
       await Promise.all([
-        this.resolveBusinessRules(story.businessRuleIds),
+        this.resolveBusinessRules(
+          story.businessRuleIds,
+          await idsDeRegrasRetiradas(this.sessionEvents, projectId), // RN-1018
+        ),
         this.proposedActions.listByProjectAndType(projectId, 'open_adr_pr'),
         this.tasks.findByStoryIds([story.id]),
         module
@@ -384,9 +388,11 @@ export class GetDevTaskContextUseCase {
 
   private async resolveBusinessRules(
     ids: string[],
+    retiradas: ReadonlySet<string>,
   ): Promise<DevContextBusinessRule[]> {
     const rules = await Promise.all(
       ids.map(async (id) => {
+        if (retiradas.has(id)) return null;
         const event = await this.sessionEvents.findById(id);
         if (!event || event.type !== 'artifact.business_rule') return null;
         const payload = event.payload as {

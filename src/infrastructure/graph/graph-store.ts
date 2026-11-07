@@ -12,6 +12,7 @@ import neo4j, {
 import { GraphUnavailableError } from '../../domain/graph/graph-errors';
 import { resolverConfigNeo4j } from './neo4j-config';
 import { withRetry } from '../git/retry';
+import { deduplicarNos } from './graph-dedup';
 
 /**
  * O contrato mínimo que os casos de uso do grafo enxergam de uma transação —
@@ -40,7 +41,7 @@ export interface GraphTx {
  * os módulos de persistência já usam em fixture, rodado no `onModuleInit`
  * como o `DomainGaugesCollector` já faz para o próprio ciclo de vida.
  *
- * As quatro constraints cobrem as chaves naturais que os casos de uso desta
+ * As constraints cobrem as chaves naturais que os casos de uso desta
  * fundação usam para idempotência: `PromptTemplate.name` (upsert por hash),
  * `Usuario.id`/`Projeto.id`/`Agente.slug` (nós compartilhados que várias
  * gravações fazem `MERGE` — sem a constraint, duas gravações concorrentes
@@ -61,6 +62,14 @@ const CONSTRAINTS: readonly string[] = [
   // RN-680 (ADR 0196): o fato do perfil é chaveado pela hipótese aceita, e o
   // MERGE dele é o que torna a reprojeção idempotente — mesma razão da de cima.
   'CREATE CONSTRAINT fato_do_perfil_hipotese_unico IF NOT EXISTS FOR (f:FatoDoPerfil) REQUIRE f.hypothesisId IS UNIQUE',
+  // RN-1030: measured on Neo4j 5.26 Community — a COMPOSITE uniqueness
+  // constraint IS accepted (only NODE KEY and existence constraints are
+  // Enterprise). Without these, two concurrent MERGEs (live projector +
+  // reprojection, or two api replicas) create two nodes.
+  'CREATE CONSTRAINT hipotese_id_unico IF NOT EXISTS FOR (h:Hipotese) REQUIRE h.id IS UNIQUE',
+  'CREATE CONSTRAINT handoff_sessionid_seq_unico IF NOT EXISTS FOR (h:Handoff) REQUIRE (h.sessionId, h.seq) IS UNIQUE',
+  'CREATE CONSTRAINT evento_sessionid_seq_unico IF NOT EXISTS FOR (e:Evento) REQUIRE (e.sessionId, e.seq) IS UNIQUE',
+  'CREATE CONSTRAINT perfil_anamnese_userid_dimensao_unico IF NOT EXISTS FOR (p:PerfilAnamnese) REQUIRE (p.userId, p.dimensao) IS UNIQUE',
 ];
 
 /**
@@ -152,9 +161,23 @@ export class GraphStore implements OnModuleInit, OnModuleDestroy {
     if (!this.driver) return;
     const session = this.driver.session();
     try {
-      for (const cypher of CONSTRAINTS) {
-        await session.run(cypher);
-      }
+      // RN-1030: graphs installed before the constraints may hold duplicates.
+      // Two replicas booting together can deadlock on the schema lock (a
+      // transient error): retry the whole bootstrap, which is idempotent.
+      await withRetry(
+        async () => {
+          const removidos = await deduplicarNos(session);
+          if (removidos > 0) {
+            this.logger.warn(
+              `Grafo: ${removidos} nó(s) duplicado(s) juntado(s).`,
+            );
+          }
+          for (const cypher of CONSTRAINTS) {
+            await session.run(cypher);
+          }
+        },
+        { maxAttempts: 4, baseDelayMs: 200, shouldRetry: erroTransitorio },
+      );
     } finally {
       await session.close();
     }

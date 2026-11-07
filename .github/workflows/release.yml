@@ -5,11 +5,12 @@ name: release
 # promove dev->main; este workflow reage a ela: constrói, publica por digest, escaneia
 # o DIGEST (Trivy, as flags do monorepo), assina keyless por DIGEST e verifica no mesmo
 # run. O `imagem.json` anexado à Release é o que o `brabo` lê para montar o `images.json`.
+# A tag `-dev.N` (carimbo da dev, AT-765) também publica, escaneia e assina, mas NÃO cria Release: o `imagem.json` vai como artefato do run.
 # `workflow_dispatch` numa BRANCH é o ENSAIO (constrói e escaneia local, NÃO publica nem assina); numa TAG (disparado pelo carimbo.yml) publica.
 # Molde repetido nos quatro repos de imagem; candidato a reutilizável do brabo-ci.
 on:
   push:
-    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+    tags: ['v[0-9]+.[0-9]+.[0-9]+', 'v[0-9]+.[0-9]+.[0-9]+-dev.[0-9]+']
   workflow_dispatch:
   pull_request: # ensaio quando o próprio workflow muda (dispatch exige o arquivo na branch padrão)
     paths: ['.github/workflows/release.yml', 'Dockerfile']
@@ -27,7 +28,7 @@ env:
 jobs:
   imagem:
     name: Imagem (${{ github.ref_type == 'tag' && 'release' || 'ensaio' }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 40
     env:
       PUBLICAR: ${{ github.ref_type == 'tag' }}
@@ -105,10 +106,9 @@ jobs:
             "${IMAGEM}@${DIGEST}" > /dev/null
           echo "verificado: ${IMAGEM}@${DIGEST}"
 
-      - name: Publicar a Release com o imagem.json
+      - name: Gerar o imagem.json
         if: env.PUBLICAR == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
           DIGEST: ${{ steps.build.outputs.digest }}
           TAG: ${{ steps.v.outputs.tag }}
         run: |
@@ -116,4 +116,18 @@ jobs:
           jq -n --arg i "${IMAGEM}" --arg t "${TAG}" --arg d "${DIGEST}" \
             '{imagem:$i,tag:$t,digest:$d}' > imagem.json
           cat imagem.json
-          gh release create "${TAG}" imagem.json --title "${TAG}" --generate-notes --verify-tag
+
+      # `-dev.N`: sem Release no GitHub; o brabo-qa lê o digest do artefato (e do GHCR).
+      - name: Guardar o imagem.json como artefato (-dev)
+        if: env.PUBLICAR == 'true' && contains(github.ref_name, '-dev.')
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: imagem-json
+          path: imagem.json
+
+      - name: Publicar a Release com o imagem.json
+        if: env.PUBLICAR == 'true' && !contains(github.ref_name, '-dev.')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.v.outputs.tag }}
+        run: gh release create "${TAG}" imagem.json --title "${TAG}" --generate-notes --verify-tag

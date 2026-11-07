@@ -12,6 +12,8 @@ import type {
 import { LLMProvider } from '../../../src/application/ports/llm-provider.port';
 import { TracedLLMProvider } from '../../../src/infrastructure/llm/traced-llm-provider';
 import { BraboMetrics } from '../../../src/infrastructure/observability/brabo-metrics';
+import { AnthropicProvider } from '../../../src/infrastructure/llm/anthropic-provider';
+import { LLMProviderRegistryImpl } from '../../../src/infrastructure/llm/llm-provider-registry';
 import { OllamaProvider } from '../../../src/infrastructure/llm/ollama-provider';
 import { OpenRouterProvider } from '../../../src/infrastructure/llm/openrouter-provider';
 import { NvidiaNimProvider } from '../../../src/infrastructure/llm/nvidia-nim-provider';
@@ -237,5 +239,42 @@ describe('TracedLLMProvider', () => {
         expect(traced.embed === undefined).toBe(provider.embed === undefined);
       });
     }
+  });
+
+  describe('aceitaRaciocinioDesligado (RN-916, RN-1001)', () => {
+    const metrics = {} as unknown as BraboMetrics;
+
+    it('preserva true do provider envolvido', () => {
+      const inner = new ProviderFalso();
+      Object.assign(inner, { aceitaRaciocinioDesligado: true });
+      expect(
+        new TracedLLMProvider(inner, metrics).aceitaRaciocinioDesligado,
+      ).toBe(true);
+    });
+
+    it('fica undefined quando o provider não declara', () => {
+      expect(
+        new TracedLLMProvider(new ProviderFalso(), metrics)
+          .aceitaRaciocinioDesligado,
+      ).toBeUndefined();
+    });
+
+    it('o registry real devolve a anthropic com a flag true', () => {
+      const registry = new LLMProviderRegistryImpl(
+        {} as never,
+        new AnthropicProvider(),
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        metrics,
+      );
+      expect(registry.get('anthropic').aceitaRaciocinioDesligado).toBe(true);
+    });
   });
 });

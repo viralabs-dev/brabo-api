@@ -483,6 +483,12 @@ detalhar o motivo na URL.
   resposta NOMEADA. Criar essa pasta é configuração consentida, não um agente
   pedindo para agir: **não** é `proposed_action`, e nenhum teto de
   `decide.ts` ganha exceção.
+- **`POST /internal/projects/:projectId/app/restart`** ([RN-1026](business-rules/api.md#rn-1026))
+  é chamada só pelo engine, depois que a pasta do projeto avançou. Ela repassa
+  a `ContainerBrokerPort.reiniciarApp`. O corpo é vazio: o comando do app
+  nunca trafega, o broker o lê do container-spec. A resposta é tipada
+  (`reiniciou`, `motivo`, `exitCode`) e não leva texto livre nem log, porque
+  o comando do app pode conter um segredo.
 - **`POST /internal/projects/:projectId/container-exec`** ([RN-492](business-rules/engine.md#rn-492),
   [ADR 0134](adr/0134-dev-agents-executam-dentro-do-container.md)) é chamada
   só pelo engine, quando `Engine.Actions.TerminalExecutor` decidiu que um
@@ -508,6 +514,18 @@ detalhar o motivo na URL.
   caminho sobre o qual a api aja, nada executado, nada concedido. Gravar
   nunca derruba o que mede: a cópia já terminou quando isto é chamado, e uma
   recusa aqui só é registrada em log pelo engine.
+- **`POST /internal/projects/:projectId/open-questions/:questionId/answer`**
+  ([RN-1002](business-rules/api.md#rn-1002)) é chamada só pelo engine
+  (`engine-service`): um agente fecha a pergunta em aberto que o usuário
+  respondeu no chat. O mesmo núcleo da resposta humana; idempotente; restrita
+  ao projeto.
+- **`POST /internal/projects/:projectId/business-rules/:ruleId/retire`**
+  ([RN-1018](business-rules/api.md#rn-1018)) é chamada só pelo engine
+  (`engine-service`): o Criativo ou o PO retira uma regra de negócio obsoleta.
+  O papel é conferido no corpo (`criativo`/`po`, senão 403) e a chamada
+  precisa citar a regra que substitui e/ou uma pergunta respondida. Ela anexa
+  um evento `artifact.business_rule_retired` e troca o id da regra nas
+  histórias que a citam; nada é apagado e nenhuma credencial entra.
 - **`POST /internal/projects/:projectId/qa-environments/:taskId/start`**,
   **`POST /internal/projects/:projectId/qa-environments/:taskId/remove`** e
   **`POST /internal/qa-environments/sweep`** ([RN-935](business-rules/api.md#rn-935),
@@ -1348,11 +1366,14 @@ detalhar o motivo na URL.
 | GET | `/internal/projects/:projectId/module-contracts` | engine-service |
 | POST | `/internal/projects/:projectId/workspace-verification` | engine-service |
 | POST | `/internal/projects/:projectId/container-exec` | engine-service |
+| POST | `/internal/projects/:projectId/app/restart` | engine-service |
 | POST | `/internal/projects/:projectId/mirror-sync-result` | engine-service |
 | GET | `/internal/projects/:projectId/container-spec` | engine-service |
 | POST | `/internal/projects/:projectId/qa-environments/:taskId/start` | engine-service |
 | POST | `/internal/projects/:projectId/qa-environments/:taskId/remove` | engine-service |
 | POST | `/internal/qa-environments/sweep` | engine-service |
+| POST | `/internal/projects/:projectId/open-questions/:questionId/answer` | engine-service |
+| POST | `/internal/projects/:projectId/business-rules/:ruleId/retire` | engine-service |
 | POST | `/internal/first-account` | engine-service |
 | POST | `/internal/machine-device-keys` | engine-service |
 | GET | `/internal/sessions/:sessionId/psychologist-context` | engine-service |

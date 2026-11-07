@@ -1,6 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import neo4j, { type Driver } from 'neo4j-driver';
 import { GraphStore } from '../../../src/infrastructure/graph/graph-store';
+import { deduplicarNos } from '../../../src/infrastructure/graph/graph-dedup';
+import { RecordHandoffUseCase } from '../../../src/application/use-cases/graph/record-handoff.use-case';
+import { RecordHypothesisUseCase } from '../../../src/application/use-cases/graph/record-hypothesis.use-case';
 
 /**
  * Integração REAL contra um Neo4j de pé — fundação do grafo de conhecimento.
@@ -119,4 +122,164 @@ describe('GraphStore — integração real (Neo4j de pé)', () => {
       }),
     );
   });
+});
+
+// Same file as the block above on purpose: it drops constraints, and files
+// run in parallel against the same Neo4j.
+/**
+ * RN-1030 against a REAL Neo4j (skipped when none answers, like
+ * `neo4j-integration.spec.ts`): uniqueness of Handoff / Hipotese / Evento /
+ * PerfilAnamnese, and the boot-time deduplication of graphs installed before it.
+ */
+const SESSAO = `s-unicidade-${Date.now()}`;
+const NOMES = [
+  'hipotese_id_unico',
+  'handoff_sessionid_seq_unico',
+  'evento_sessionid_seq_unico',
+  'perfil_anamnese_userid_dimensao_unico',
+];
+
+describe('grafo — unicidade e deduplicação (RN-1030)', () => {
+  let driver: Driver | undefined;
+  let store: GraphStore;
+  let vivo = false;
+
+  const rodar = async (
+    cypher: string,
+    params: Record<string, unknown> = {},
+  ) => {
+    const s = driver!.session();
+    try {
+      return (await s.run(cypher, params)).records;
+    } finally {
+      await s.close();
+    }
+  };
+  const contar = async (cypher: string) =>
+    Number((await rodar(cypher, { sessao: SESSAO }))[0].get('n'));
+  const limpar = () =>
+    rodar(
+      `MATCH (n) WHERE n.sessionId = $sessao OR n.id = $sessao OR n.userId = $sessao OR n.slug IN ['a-un', 'b-un'] DETACH DELETE n`,
+      { sessao: SESSAO },
+    );
+
+  beforeAll(async () => {
+    try {
+      driver = neo4j.driver(URI, neo4j.auth.basic(USER, PASSWORD));
+      await Promise.race([
+        driver.verifyConnectivity(),
+        new Promise((_, rej) =>
+          setTimeout(() => rej(new Error('timeout')), 2000),
+        ),
+      ]);
+      vivo = true;
+    } catch {
+      return;
+    }
+    process.env.NEO4J_URI = URI;
+    process.env.NEO4J_USER = USER;
+    process.env.NEO4J_PASSWORD = PASSWORD;
+    store = new GraphStore();
+    await store.onModuleInit();
+  }, 15_000);
+
+  afterAll(async () => {
+    if (vivo) await limpar();
+    await store?.onModuleDestroy();
+    await driver?.close();
+  });
+
+  it('duas gravações concorrentes do mesmo nó geram um nó só', async (ctx) => {
+    if (!vivo) return ctx.skip();
+    const handoff = new RecordHandoffUseCase(store);
+    const hipotese = new RecordHypothesisUseCase(store);
+    await Promise.all([
+      ...Array.from({ length: 8 }, () =>
+        handoff.execute({
+          sessionId: SESSAO,
+          seq: 7,
+          fromAgent: 'a-un',
+          toAgent: 'b-un',
+        }),
+      ),
+      ...Array.from({ length: 8 }, () =>
+        hipotese.execute({
+          hypothesisId: SESSAO,
+          sessionId: SESSAO,
+          descricao: 'd',
+          status: 'ativa',
+          evidenceSeqs: [1, 2],
+        }),
+      ),
+    ]);
+    expect(
+      await contar(
+        `MATCH (n:Handoff {sessionId: $sessao}) RETURN count(n) AS n`,
+      ),
+    ).toBe(1);
+    expect(
+      await contar(`MATCH (n:Hipotese {id: $sessao}) RETURN count(n) AS n`),
+    ).toBe(1);
+    expect(
+      await contar(
+        `MATCH (n:Evento {sessionId: $sessao}) RETURN count(n) AS n`,
+      ),
+    ).toBe(2);
+    await limpar();
+  });
+
+  it('o bootstrap criou as quatro restrições de unicidade', async (ctx) => {
+    if (!vivo) return ctx.skip();
+    const restricoes = await rodar(
+      `SHOW CONSTRAINTS YIELD name RETURN collect(name) AS nomes`,
+    );
+    expect(restricoes[0].get('nomes')).toEqual(expect.arrayContaining(NOMES));
+  });
+
+  it('junta duplicatas preservando arestas, a restrição criada depois não falha, e rodar de novo é idempotente', async (ctx) => {
+    if (!vivo) return ctx.skip();
+    // A private label: dropping the real constraints would race with the
+    // other specs that share this Neo4j.
+    const label = `TesteDup${Date.now()}`;
+    const nos = [{ label, chave: ['sessionId', 'seq'] }];
+    const s = driver!.session();
+    try {
+      await s.run(
+        `MERGE (u:Usuario {id: $sessao})
+         CREATE (:\`${label}\` {sessionId: $sessao, seq: 1.0, n: 'a'})-[:DE]->(u),
+                (:\`${label}\` {sessionId: $sessao, seq: 1.0, n: 'b'})-[:PARA]->(u),
+                (:\`${label}\` {sessionId: $sessao, seq: 1.0, n: 'c'})<-[:SOBRE]-(u),
+                (:\`${label}\` {sessionId: $sessao, seq: 2.0, n: 'd'})`,
+        { sessao: SESSAO },
+      );
+      const contarLabel = async () =>
+        Number(
+          (
+            await s.run(`MATCH (n:\`${label}\`) RETURN count(n) AS n`)
+          ).records[0].get('n'),
+        );
+      expect(await contarLabel()).toBe(4);
+
+      expect(await deduplicarNos(s, nos)).toBe(2);
+      expect(await contarLabel()).toBe(2);
+      // the three edges (DE, PARA, SOBRE) now hang from the single kept node
+      const arestas = await s.run(
+        `MATCH (n:\`${label}\` {seq: 1.0})-[r]-(:Usuario {id: $sessao}) RETURN count(r) AS n`,
+        { sessao: SESSAO },
+      );
+      expect(Number(arestas.records[0].get('n'))).toBe(3);
+
+      // the constraint after the deduplication does not fail
+      await s.run(
+        `CREATE CONSTRAINT dup_${label} IF NOT EXISTS FOR (n:\`${label}\`) REQUIRE (n.sessionId, n.seq) IS UNIQUE`,
+      );
+      // idempotent: a second run changes nothing
+      expect(await deduplicarNos(s, nos)).toBe(0);
+      expect(await contarLabel()).toBe(2);
+    } finally {
+      await s.run(`DROP CONSTRAINT dup_${label} IF EXISTS`);
+      await s.run(`MATCH (n:\`${label}\`) DETACH DELETE n`);
+      await s.close();
+    }
+  }, 30_000);
 });

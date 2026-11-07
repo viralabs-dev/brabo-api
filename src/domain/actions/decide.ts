@@ -5,12 +5,14 @@ import { isProtectedBranch } from './protected-branches';
 import { comandoNoEscopo, comandoNoEscopoDoContainer } from './path-scope';
 import {
   efeitoExternoNoComando,
+  semMergeLocal,
   mensagemDeEfeitoExterno,
   comandoPrivilegiadoNoComando,
   mensagemDeComandoPrivilegiado,
   ehAcaoTipadaComEfeitoExterno,
   mensagemDoTetoDaAcaoTipada,
   mensagemDoModoAutomaticoNoEfeitoExterno,
+  pushProibidoNoModoAutomatico,
 } from './external-effect';
 
 export type ActionType =
@@ -440,14 +442,21 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
   }
   if (action.actionType === 'terminal' && action.command) {
     const tokens = parseCommand(action.command);
-    const efeito = efeitoExternoNoComando(tokens);
+    // RN-1019: o `git merge` local no escopo da tarefa, em modo automático,
+    // não conta como efeito externo; o resto do composto conta como sempre.
+    const semMerge =
+      modoAutomatico && noEscopo === true && current.policy === 'auto_approve'
+        ? semMergeLocal(tokens)
+        : null;
+    const efeito = efeitoExternoNoComando(semMerge ?? tokens);
     const privilegiado = comandoPrivilegiadoNoComando(tokens);
     if (
       efeito &&
       !privilegiado &&
       modoAutomatico &&
       current.policy === 'auto_approve' &&
-      ehAcaoTipadaComEfeitoExterno(efeito.acaoTipada)
+      ehAcaoTipadaComEfeitoExterno(efeito.acaoTipada) &&
+      !pushProibidoNoModoAutomatico(tokens)
     ) {
       return {
         policy: 'auto_approve',
@@ -455,11 +464,14 @@ export function decide(action: DecideAction, ctx: DecideContext): Decision {
       };
     }
     if ((efeito || privilegiado) && current.policy === 'auto_approve') {
+      const pushProibido = efeito ? pushProibidoNoModoAutomatico(tokens) : null;
       return {
         policy: 'require_approval',
-        reason: efeito
-          ? mensagemDeEfeitoExterno(efeito)
-          : mensagemDeComandoPrivilegiado(privilegiado!),
+        reason: pushProibido
+          ? `RN-1017: "git push" ${pushProibido} — branch protegida, force, --all e --mirror são decisão do usuário, mesmo em modo automático.`
+          : efeito
+            ? mensagemDeEfeitoExterno(efeito)
+            : mensagemDeComandoPrivilegiado(privilegiado!),
       };
     }
   }

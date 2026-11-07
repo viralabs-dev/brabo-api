@@ -9,13 +9,17 @@ import {
   TaskRepository,
 } from '../../ports/backlog-repository.port';
 import { PerguntasEmAbertoUseCase } from './perguntas-em-aberto.use-case';
-import { recusaDeCorrecaoDeHistoria } from '../../../domain/backlog/correcao-de-historia';
+import {
+  recusaDeCorrecaoDeHistoria,
+  type RecusaDeCorrecao,
+} from '../../../domain/backlog/correcao-de-historia';
 import { SessionEventRepository } from '../../ports/session-event-repository.port';
 import { ModuleMapRepository } from '../../ports/module-map-repository.port';
 import { ProjectRepository } from '../../ports/project-repository.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { isPromotable } from '../../../domain/backlog/story-promotion';
 import type { Story } from '../../../domain/backlog/backlog.entity';
+import { idsDeRegrasRetiradas } from './regras-retiradas';
 
 export interface CompleteStoryInput {
   storyId: string;
@@ -60,6 +64,21 @@ export class CompleteStoryUseCase {
     private readonly perguntas: PerguntasEmAbertoUseCase,
   ) {}
 
+  /** 409 nomeado; em `historia_nao_draft` lista as perguntas respondidas que afetam a história. */
+  private async recusar(
+    projectId: string,
+    storyId: string,
+    recusa: RecusaDeCorrecao,
+  ) {
+    if (recusa.reason !== 'historia_nao_draft')
+      return new ConflictException(recusa);
+    const ids = await this.perguntas.respondidasQueAfetam(projectId, storyId);
+    const message = ids.length
+      ? `${recusa.message} Perguntas já respondidas que afetam esta história (cite uma em questionId): ${ids.join(', ')}.`
+      : recusa.message;
+    return new ConflictException({ ...recusa, message });
+  }
+
   async execute(
     projectId: string,
     sessionId: string,
@@ -91,19 +110,27 @@ export class CompleteStoryUseCase {
           ),
         },
       );
-      if (recusa) throw new ConflictException(recusa);
+      if (recusa) throw await this.recusar(projectId, atual.id, recusa);
     } else if (atual.status !== 'draft') {
-      throw new ConflictException(
-        `A história "${atual.title}" está ${atual.status} — só história draft é completada`,
+      // A mesma recusa nomeada de `update_story`, com a saída (`questionId`).
+      throw await this.recusar(
+        projectId,
+        atual.id,
+        recusaDeCorrecaoDeHistoria(atual, []) as RecusaDeCorrecao,
       );
     }
 
     const novas = (input.businessRuleIds ?? []).filter(
       (id) => !atual.businessRuleIds.includes(id),
     );
+    const retiradas = await idsDeRegrasRetiradas(this.sessionEvents, projectId);
     for (const ruleId of novas) {
       const event = await this.sessionEvents.findById(ruleId);
-      if (!event || event.type !== 'artifact.business_rule') {
+      if (
+        !event ||
+        event.type !== 'artifact.business_rule' ||
+        retiradas.has(ruleId) // RN-1018
+      ) {
         throw new BadRequestException(
           `business_rule_id "${ruleId}" não corresponde a uma regra de negócio existente`,
         );
