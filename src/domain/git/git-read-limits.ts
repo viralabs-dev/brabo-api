@@ -65,6 +65,10 @@ export const GIT_SEARCH_MATCH_LIMIT = 100;
  * Vale para a rota de blob (que corta e marca `truncated`) e para a busca (que
  * PULA o arquivo grande em vez de cortá-lo — casar metade de um arquivo daria
  * um resultado que muda conforme o teto, e isso é pior que não casar).
+ *
+ * É o teto da ABA CODE. A indexação de docs tem o seu (`RAG_INDEX_FILE_MAX_BYTES`,
+ * RN-1036) e o passa em `file(..., maxBytes)`; subir ESTE valor mexeria na aba
+ * e na busca (RN-095).
  */
 export const GIT_BLOB_MAX_BYTES = 512 * 1024;
 

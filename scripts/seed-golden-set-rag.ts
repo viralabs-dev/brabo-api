@@ -110,7 +110,8 @@ import {
 
 // Corpus FIXO (ADR 0132, AT-693, AT-763): são os bytes do último verde do piso 17/17
 // (monorepo 6d56eb3872, 1 555 499 bytes, 1 524 853 characters), não o `docs/` vivo; a guarda de deriva
-// (seed-golden-set-rag.corpus.spec.ts) reprova qualquer byte diferente.
+// (seed-golden-set-rag.corpus.spec.ts) reprova qualquer byte diferente. Aquele verde foi medido com o
+// corte mudo de 512 KiB por arquivo; desde a AT-764 (RN-1036) a indexação lê até 4 MiB e declara o corte.
 export const CORPUS_ROOT = resolve(
   __dirname,
   '../test/fixtures/golden-set-rag/corpus',
@@ -403,6 +404,7 @@ async function main() {
   log(
     `✓ indexado: ${relatorioIndexacao.docsChunks + relatorioIndexacao.adrChunks} chunks ` +
       `(docs=${relatorioIndexacao.docsChunks}, adr=${relatorioIndexacao.adrChunks}), ` +
+      `cutFiles=${relatorioIndexacao.cutFiles.length}, ` +
       `embedding.available=${relatorioIndexacao.embedding.available}` +
       (relatorioIndexacao.embedding.reason
         ? ` (${relatorioIndexacao.embedding.reason})`

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { GitTree } from '@brabo/shared';
 import { ReadProjectCodeUseCase } from '../git/read-project-code.use-case';
 import {
@@ -11,11 +11,21 @@ import { chunkMarkdownDocument } from '../../../domain/rag/chunking';
 import {
   RAG_INDEX_DIR_LIMIT,
   RAG_INDEX_FILE_LIMIT,
+  RAG_INDEX_FILE_MAX_BYTES,
 } from '../../../domain/rag/rag-search-limits';
 
 /** A raiz onde a indexação de `docs`/`adr` procura Markdown, no repositório do PRÓPRIO projeto. */
 const DOCS_ROOT = 'docs';
 const ADR_DIR_PREFIX = 'docs/adr/';
+
+/** Arquivo que a indexação NÃO leu inteiro (RN-1036). */
+export interface CutFile {
+  path: string;
+  /** Bytes do arquivo no repositório (o tamanho da árvore; os lidos, se a árvore não souber). */
+  bytes: number;
+  /** `too_large`: lido só até o teto; `binary`: tem `\0`, foi pulado. */
+  reason: 'too_large' | 'binary';
+}
 
 export interface IndexDocsReport {
   filesScanned: number;
@@ -23,6 +33,8 @@ export interface IndexDocsReport {
   adrChunks: number;
   /** `true` quando o teto de diretórios/arquivos cortou a varredura antes de terminar. */
   truncated: boolean;
+  /** Arquivos cortados no teto de indexação ou pulados por binário — nunca em silêncio (RN-1036). */
+  cutFiles: CutFile[];
   embedding: {
     available: boolean;
     embedded: number;
@@ -63,6 +75,8 @@ export interface IndexDocsReport {
  */
 @Injectable()
 export class IndexProjectDocsUseCase {
+  private readonly logger = new Logger(IndexProjectDocsUseCase.name);
+
   constructor(
     private readonly readCode: ReadProjectCodeUseCase,
     private readonly chunks: ChunkRepository,
@@ -70,7 +84,8 @@ export class IndexProjectDocsUseCase {
   ) {}
 
   async execute(projectId: string): Promise<IndexDocsReport> {
-    const { paths, truncated } = await this.listarArquivosMarkdown(projectId);
+    const { paths, truncated, sizes } =
+      await this.listarArquivosMarkdown(projectId);
 
     interface Candidato {
       scope: ChunkScope;
@@ -80,11 +95,32 @@ export class IndexProjectDocsUseCase {
       content: string;
       chunkIndex: number;
       totalChunks: number;
+      sourceCut: boolean;
     }
     const candidatos: Candidato[] = [];
+    const cutFiles: CutFile[] = [];
 
     for (const caminho of paths) {
-      const arquivo = await this.readCode.file(projectId, caminho);
+      const arquivo = await this.readCode.file(
+        projectId,
+        caminho,
+        undefined,
+        RAG_INDEX_FILE_MAX_BYTES,
+      );
+      const bytes = sizes[caminho] ?? arquivo.bytes;
+      if (arquivo.content.includes('\0')) {
+        cutFiles.push({ path: caminho, bytes, reason: 'binary' });
+        this.logger.warn(
+          `Indexação pulou "${caminho}": tem byte nulo (binário)`,
+        );
+        continue;
+      }
+      if (arquivo.truncated) {
+        cutFiles.push({ path: caminho, bytes, reason: 'too_large' });
+        this.logger.warn(
+          `Indexação cortou "${caminho}" em ${RAG_INDEX_FILE_MAX_BYTES} de ${bytes} bytes`,
+        );
+      }
       const scope: ChunkScope = caminho.startsWith(ADR_DIR_PREFIX)
         ? 'adr'
         : 'docs';
@@ -99,6 +135,7 @@ export class IndexProjectDocsUseCase {
           content: pedaco.content,
           chunkIndex: i,
           totalChunks: pedacos.length,
+          sourceCut: arquivo.truncated,
         });
       });
     }
@@ -124,6 +161,7 @@ export class IndexProjectDocsUseCase {
         headingPath: c.headingPath.length > 0 ? c.headingPath : undefined,
         chunkIndex: c.chunkIndex,
         totalChunks: c.totalChunks,
+        sourceCut: c.sourceCut ? true : undefined,
       },
     }));
 
@@ -135,6 +173,7 @@ export class IndexProjectDocsUseCase {
       docsChunks: novos.filter((c) => c.scope === 'docs').length,
       adrChunks: novos.filter((c) => c.scope === 'adr').length,
       truncated,
+      cutFiles,
       embedding: {
         available,
         embedded,
@@ -152,10 +191,14 @@ export class IndexProjectDocsUseCase {
    * mesma contagem para responder "quantos arquivos existem" sem duplicar a
    * varredura.
    */
-  async listarArquivosMarkdown(
-    projectId: string,
-  ): Promise<{ paths: string[]; truncated: boolean }> {
+  async listarArquivosMarkdown(projectId: string): Promise<{
+    paths: string[];
+    truncated: boolean;
+    /** Tamanho em bytes que a árvore informou, por caminho (ausente se ela não soube). */
+    sizes: Record<string, number>;
+  }> {
     const paths: string[] = [];
+    const sizes: Record<string, number> = {};
     const fila: string[] = [DOCS_ROOT];
     let diretorios = 0;
     let truncated = false;
@@ -189,9 +232,10 @@ export class IndexProjectDocsUseCase {
           continue;
         }
         paths.push(entrada.path);
+        if (entrada.size !== null) sizes[entrada.path] = entrada.size;
       }
     }
-    return { paths, truncated };
+    return { paths, truncated, sizes };
   }
 }
 

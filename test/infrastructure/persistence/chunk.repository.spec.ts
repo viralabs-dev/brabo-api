@@ -295,4 +295,19 @@ describe('DrizzleChunkRepository', () => {
 
     expect(resultado).toEqual([]);
   });
+  it('createMany fatia o INSERT: 9 500 chunks passam do limite de 65 535 parâmetros do Postgres num comando só (RN-1036)', async () => {
+    const { project } = await seedProjetoESessao();
+
+    const criados = await repo.createMany(
+      Array.from({ length: 9500 }, (_, i) => ({
+        projectId: project.id,
+        scope: 'docs' as const,
+        sourcePath: 'docs/enorme.md',
+        content: `trecho ${i}`,
+      })),
+    );
+
+    expect(criados).toHaveLength(9500);
+    expect(await repo.listByProject(project.id, 'docs')).toHaveLength(9500);
+  }, 60_000);
 });
