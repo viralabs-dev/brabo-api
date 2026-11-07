@@ -14,3 +14,7 @@ decisão do dono (com a pergunta exata) e entregue o card no formato das
 atividades do vault: De onde vem, O que precisa cobrir, RNs e ADRs tocados,
 Exige ADR?, Dependências, fronteiras de arquivo com outras lanes e o esforço
 (P/M/G). A execução fica com o agente `executor` (esforço baixo).
+No levantamento, liste também as funcionalidades do catálogo tocadas (ids de
+`brabo-qa/funcionalidades.yml`, mapa por caminho) e se o regressivo delas muda: card
+que mexe numa funcionalidade altera o regressivo dela no `brabo-qa` contra a `dev`
+ou diz por que não precisa (AT-769).

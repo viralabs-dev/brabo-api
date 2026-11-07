@@ -8,6 +8,12 @@ name: release
 # A tag `-dev.N` (carimbo da dev, AT-765) também publica, escaneia e assina, mas NÃO cria Release: o `imagem.json` vai como artefato do run.
 # `workflow_dispatch` numa BRANCH é o ENSAIO (constrói e escaneia local, NÃO publica nem assina); numa TAG (disparado pelo carimbo.yml) publica.
 # Molde repetido nos quatro repos de imagem; candidato a reutilizável do brabo-ci.
+# O run se nomeia pela origem (AT-773, RN-1044) e o primeiro passo escreve os Vínculos (a origem sai da linha `Carimbo:` da tag).
+run-name: >-
+  ${{ github.event_name == 'push' && format('release {0} ← tag do carimbo', github.ref_name)
+    || github.event_name == 'pull_request' && format('release (ensaio) ← #{0}', github.event.pull_request.number)
+    || format('release manual {0} · {1}', github.ref_name, github.actor) }}
+
 on:
   push:
     tags: ['v[0-9]+.[0-9]+.[0-9]+', 'v[0-9]+.[0-9]+.[0-9]+-dev.[0-9]+']
@@ -34,6 +40,11 @@ jobs:
       PUBLICAR: ${{ github.ref_type == 'tag' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - name: Vínculos (origem pela tag)
+        uses: viralabs-dev/brabo-ci/.github/actions/vinculos@13f3697aaf3e4a151637755babb58422a44db303  # brabo-ci#17 (AT-773)
+        with:
+          destino: |
+            Imagem no GHCR|https://github.com/viralabs-dev/brabo-api/pkgs/container/brabo-api
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
 
       - name: A versão
