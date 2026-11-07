@@ -1,8 +1,8 @@
 name: limpeza-ghcr
 
 # Limpeza das versões da imagem `ghcr.io/viralabs-dev/brabo-api` no GHCR (AT-765).
-# - PR `hotfix/*` fechada: apaga a versão `sha-<12>` de cada commit da PR (imagem do hotfix).
-# - Diário: guarda as 10 tags `-dev.N` mais novas e apaga as demais; rede de segurança: apaga `sha-*` com mais de 14 dias.
+# - PR fechada (para a `dev`, ou `hotfix/*` para a `main`): apaga a versão `sha-<12>` de cada commit da PR (AT-769).
+# - Diário: guarda as 10 tags `-dev.N` mais novas e apaga as demais; rede de segurança: apaga `sha-*` com mais de 7 dias (as órfãs de force-push).
 # Nunca apaga versão que tenha tag `vX.Y.Z` sem sufixo.
 on:
   pull_request:
@@ -22,7 +22,7 @@ env:
 jobs:
   sha-da-pr:
     name: Apagar os sha- da PR fechada
-    if: github.event_name == 'pull_request' && github.base_ref == 'main' && startsWith(github.head_ref, 'hotfix/')
+    if: github.event_name == 'pull_request' && (github.base_ref == 'dev' || (github.base_ref == 'main' && startsWith(github.head_ref, 'hotfix/'))) && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
@@ -47,7 +47,7 @@ jobs:
     steps:
       - run: |
           set -euo pipefail
-          corte=$(date -u -d '14 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          corte=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
           gh api --paginate "orgs/viralabs-dev/packages/container/${PACOTE}/versions" \
             | jq -rs --arg corte "$corte" 'add
                 | map(select(all(.metadata.container.tags[]; test("^v[0-9]+\\.[0-9]+\\.[0-9]+$") | not))) as $v
