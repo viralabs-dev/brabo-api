@@ -9,10 +9,10 @@ import {
   workerDatabaseName,
 } from './test-db-name';
 
-// Banco de dev (mesmo do docker-compose) — só serve de onde rodar
-// CREATE/DROP DATABASE; nenhum teste escreve nele.
-const ADMIN_DATABASE_URL =
-  process.env.DATABASE_URL ?? 'postgres://brabo:brabo@localhost:5432/brabo';
+// Banco só de onde rodar CREATE/DROP DATABASE; nenhum teste escreve nele.
+// Sem fallback (AT-775): a recusa mora em `refusalReason`, avaliada ao importar
+// `test-db-name`.
+const ADMIN_DATABASE_URL = process.env.DATABASE_URL as string;
 
 const DUPLICATE_DATABASE = '42P04';
 
