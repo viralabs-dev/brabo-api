@@ -144,8 +144,8 @@ importers:
         version: 2.9.0
     devDependencies:
       '@brabo/shared':
-        specifier: git+https://github.com/viralabs-dev/brabo-contracts.git#v1.2.0-dev.1&path:/packages/shared
-        version: https://codeload.github.com/viralabs-dev/brabo-contracts/tar.gz/fafff6c7f3874d796ef99a9bd93eb6435bd0f64f#path:/packages/shared
+        specifier: npm:@viralabs-dev/brabo-shared@1.2.0
+        version: '@viralabs-dev/brabo-shared@1.2.0'
       '@eslint/eslintrc':
         specifier: ^3.2.0
         version: 3.3.6
@@ -316,10 +316,6 @@ packages:
 
   '@borewit/text-codec@0.2.2':
     resolution: {integrity: sha512-DDaRehssg1aNrH4+2hnj1B7vnUGEjU6OIlyRdkMd0aUdIUvKXrJfXsy8LVtXAy7DRvYVluWbMspsRhz2lcW0mQ==}
-
-  '@brabo/shared@https://codeload.github.com/viralabs-dev/brabo-contracts/tar.gz/fafff6c7f3874d796ef99a9bd93eb6435bd0f64f#path:/packages/shared':
-    resolution: {gitHosted: true, path: /packages/shared, tarball: https://codeload.github.com/viralabs-dev/brabo-contracts/tar.gz/fafff6c7f3874d796ef99a9bd93eb6435bd0f64f}
-    version: 0.0.1
 
   '@colors/colors@1.5.0':
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
@@ -1850,6 +1846,9 @@ packages:
   '@typescript-eslint/visitor-keys@8.65.0':
     resolution: {integrity: sha512-8C71BQkGjiMmXtop7pHVJu1l2NNShFdkCyD6a2ezzs5vU/L3LRtb69EtcteFwz0mYMPzIgOw0n6OV4VBUWZd7A==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@viralabs-dev/brabo-shared@1.2.0':
+    resolution: {integrity: sha512-6zrUSEg0gJiUde/X+DQejTe1RaGIRWDtwCiBRfkEhA271weHoq7ouyNJNXPY0OQqbqBr5p+1rAmgKpXo4jWC5g==, tarball: https://npm.pkg.github.com/download/@viralabs-dev/brabo-shared/1.2.0/8c2e7676e2aff3771fc10e53851a89a26212c214}
 
   '@vitest/coverage-v8@4.1.10':
     resolution: {integrity: sha512-IM49HmthevbgAO4anp1hwtoT9wYe59w0LR00gr+eagHE+ZJ5lK4sLPeO0ubgoJcwLk6dehU3R24N+FbEEKDc8g==}
@@ -4130,8 +4129,6 @@ snapshots:
 
   '@borewit/text-codec@0.2.2': {}
 
-  '@brabo/shared@https://codeload.github.com/viralabs-dev/brabo-contracts/tar.gz/fafff6c7f3874d796ef99a9bd93eb6435bd0f64f#path:/packages/shared': {}
-
   '@colors/colors@1.5.0':
     optional: true
 
@@ -5539,6 +5536,8 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.65.0
       eslint-visitor-keys: 5.0.1
+
+  '@viralabs-dev/brabo-shared@1.2.0': {}
 
   '@vitest/coverage-v8@4.1.10(vitest@4.1.12)':
     dependencies:

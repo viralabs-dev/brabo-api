@@ -12971,3 +12971,4 @@ na instalação responde 409.
 - **Teste:** `apps/api/test/infrastructure/graph/neo4j-integration.spec.ts` (contra um Neo4j real: escritas concorrentes do mesmo nó dão um nó; as duplicatas são fundidas com as arestas mantidas, as restrições são criadas depois, uma segunda subida não muda nada), `apps/api/test/infrastructure/graph/graph-store.spec.ts` (a deduplicação roda antes das restrições).
 - **Origem:** AT-762 parte B (EP-033), decisão do dono de 06/11/2026; rodada 214, lane L1.
 
+A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em `ARG`/`ENV`; só como secret do BuildKit), definida no [brabo-broker](https://github.com/viralabs-dev/brabo-broker/blob/dev/docs/business-rules/broker.md). Quem prova na api é `test/dockerfile-sem-token.spec.ts:13` (todo `pnpm install` do `Dockerfile` monta o secret, nenhum `ARG`/`ENV` com token, `.npmrc` só com o registry).

@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  packages: read # instala @viralabs-dev/brabo-shared (GitHub Packages)
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -32,7 +33,11 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
+          registry-url: https://npm.pkg.github.com
+          scope: '@viralabs-dev'
       - run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: ESLint (modo verificação)
         run: pnpm exec eslint "src/**/*.ts" "test/**/*.ts" --max-warnings 0
       - name: Typecheck (o do build)
@@ -83,7 +88,11 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
+          registry-url: https://npm.pkg.github.com
+          scope: '@viralabs-dev'
       - run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Testes com o piso de cobertura
         env:
           BRABO_INFRA_DIR: ${{ github.workspace }}/brabo-infra
@@ -95,8 +104,13 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      # O token vai para um arquivo temporário e entra como secret do BuildKit (RN-1040).
+      - name: .npmrc temporário (fora do contexto)
+        run: |
+          umask 077
+          printf '//npm.pkg.github.com/:_authToken=%s\n' "${{ secrets.GITHUB_TOKEN }}" > "${RUNNER_TEMP}/npmrc"
       - name: docker build
-        run: docker build -f Dockerfile -t brabo-api:ci .
+        run: docker build -f Dockerfile --secret id=npmrc,src="${RUNNER_TEMP}/npmrc" -t brabo-api:ci .
 
   # Imagem da PR: publica `:sha-<12 do head>` para o E2E (PR hotfix/* -> main, AT-765) e para o regressivo
   # (PR -> dev, AT-769; decisão do dono 06/11: assinada, apagada ao fechar a PR ou em 7 dias).
@@ -129,6 +143,10 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: .npmrc temporário (fora do contexto)
+        run: |
+          umask 077
+          printf '//npm.pkg.github.com/:_authToken=%s\n' "${{ secrets.GITHUB_TOKEN }}" > "${RUNNER_TEMP}/npmrc"
       - name: Tag sha-<12>
         id: v
         run: echo "tag=${TAG_SHA:0:16}" >> "$GITHUB_OUTPUT"
@@ -139,6 +157,8 @@ jobs:
           context: .
           file: Dockerfile
           push: true
+          secret-files: |
+            npmrc=${{ runner.temp }}/npmrc
           tags: |
             ${{ env.IMAGEM }}:${{ steps.v.outputs.tag }}
           build-args: |
@@ -172,3 +192,10 @@ jobs:
             --certificate-identity-regexp "^https://github.com/${GITHUB_REPOSITORY}/\.github/workflows/ci\.yml@" \
             --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
             "${IMAGEM}@${DIGEST}" > /dev/null
+
+  # Versão do brabo-contracts igual em package.json, lock e scripts (AT-770, RN-1039). Não é obrigatório.
+  contracts-alinhado:
+    name: Contracts alinhado
+    uses: viralabs-dev/brabo-ci/.github/workflows/contracts-alinhado.yml@4976af2cd947966df43bbbcae5c3c80f91ac2310  # brabo-ci dev (R1 da AT-770)
+    with:
+      ci_ref: 4976af2cd947966df43bbbcae5c3c80f91ac2310

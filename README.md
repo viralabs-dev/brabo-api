@@ -22,7 +22,9 @@ pnpm build
 
 ## Contratos
 
-- `@brabo/shared` (só tipos) vem de `github:viralabs-dev/brabo-contracts#v1.2.0-dev.1&path:/packages/shared`, como devDependency.
+- `@brabo/shared` (só tipos) é o pacote `@viralabs-dev/brabo-shared@1.2.0` do GitHub Packages, instalado pelo alias `npm:` do pnpm como devDependency (ADR 0270). O `.npmrc` do repo só aponta o escopo `@viralabs-dev` para `https://npm.pkg.github.com`.
+- O `pnpm install` precisa de token mesmo com pacote público: ponha no `~/.npmrc` da máquina uma linha `//npm.pkg.github.com/:_authToken=<PAT>`, com um PAT classic só com `read:packages` (nunca no repo). No Docker, `docker build --secret id=npmrc,src=$HOME/.npmrc .`. No CI vale o `GITHUB_TOKEN` com `packages: read`.
+- Para subir a versão do contracts use `scripts/ci/subir-contracts.sh` do `brabo-ci` (não edite o lock à mão); o check `contracts-alinhado` confere a versão.
 - A api NÃO consome `@brabo/docker-port` (`test/api-nao-consome-docker-port.spec.ts`).
 - `contracts/areas.json` é gerado por `pnpm gerar:areas` (a api é a fonte) e publicado no `brabo-contracts`.
 - `docs/reference/openapi.json` é a saída de `pnpm openapi:export` (que escreve na saída padrão), commitada no repo; o `brabo-web` guarda uma cópia fixada dele.
