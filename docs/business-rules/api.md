@@ -3671,6 +3671,28 @@ achou o chunk)/`origin` como união discriminada por `kind` (`file` com
   (as consultas SQL de fato, contra pgvector/tsvector real)
 - **ADR:** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
+### RN-1046 — A busca híbrida devolve no máximo N trechos do mesmo arquivo {#rn-1046}
+
+Depois da fusão e do limiar ([RN-234](#rn-234)) e antes do corte em `limit`, a
+busca mantém só os `maxPerFile` melhores trechos de cada arquivo
+(`RAG_SEARCH_MAX_CHUNKS_PER_FILE`, hoje 2), na ordem do score. Assim um
+documento grande e repetitivo (o `business-rules.md` agregado) não ocupa todas
+as citações e abafa o documento específico (um ADR). O melhor trecho de cada
+arquivo nunca é descartado, então o filtro só pode subir a posição do primeiro
+trecho de um arquivo, nunca baixá-la. Trecho sem arquivo (sessão) não entra na
+conta. O `maxPerFile` vigente vai congelado em `rag_searches.pesos`
+([RN-479](#rn-479)), para a calibração não comparar rodadas com regras
+diferentes; linhas antigas não o têm. O seed do golden set aceita
+`GOLDEN_SET_RAG_MAX_PER_FILE` e, em caso perdido, imprime a posição do arquivo
+esperado entre os candidatos antes do corte.
+
+- **Onde:** `src/application/use-cases/rag/hybrid-search.use-case.ts`
+  (`limitarPorArquivo`), `src/domain/rag/rag-search-limits.ts`,
+  `src/domain/rag/rag-telemetry.ts`, `scripts/seed-golden-set-rag.ts`
+- **Teste:** `test/application/use-cases/rag/hybrid-search.use-case.spec.ts`
+- **ADR:** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
+  (a decisão sobre diversidade fica no ADR 0272)
+
 ### RN-235 — Chunking: 1200 caracteres, 150 de sobreposição, por parágrafo/heading {#rn-235}
 
 `CHUNK_TARGET_CHARS = 1200` (~300 tokens em português),
@@ -12331,7 +12353,7 @@ quatro pontos, TTL de 5 min — https://openrouter.ai/docs/features/prompt-cachi
   texto avisa que a decisão só vale ao recriar o container. "Recriar" numa só
   ação NÃO existe; nenhum teto de aprovação muda ([RN-495](#rn-495)).
 - **Onde:** `src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts:131`
-  (`recongelar`), `src/domain/containers/project-container.ts:373`
+  (`recongelar`), `src/domain/containers/project-container.ts:387`
   (`containerDivergeDaDecisao`),
   `apps/engine/lib/engine/harness/tools/choose_project_image.ex:99`
   (`mensagem_de_fixada`)
@@ -12359,8 +12381,16 @@ quatro pontos, TTL de 5 min — https://openrouter.ai/docs/features/prompt-cachi
   com o motivo, sem chamar o broker). Sem `module_map` ou com stack que não casa,
   segue só o aviso da RN-735. Sem exceção configurável. Revisa a RN-735 (aviso →
   recusa nesse caso).
-- **Onde:** `src/application/use-cases/containers/decidir-imagem-do-projeto.use-case.ts:80`
-  (`stackQueBaixaDependencias`)
+  **Exceção (AT-784):** o módulo cuja `stack` declara não ter dependências
+  ("sem dependências", "nenhuma dependência", "no dependencies",
+  "zero-dependency", "dependency-free") é ignorado, e `none` passa (ex.: "Node.js
+  puro (node:test), sem dependências", o caso do golden-set do QA). O `module_map`
+  só tem texto, sem acesso ao `package.json`: a declaração é o único sinal. Quem
+  baixa dependência (Node com Express, Python com `requirements`) segue recusado,
+  e outro módulo que baixa recusa mesmo com um módulo sem dependências.
+- **Onde:** `src/domain/containers/project-container.ts` (`stackQueBaixaDependencias`,
+  `DECLARA_SEM_DEPENDENCIAS`); chamada em
+  `src/application/use-cases/containers/decidir-imagem-do-projeto.use-case.ts`
 - **Teste:** `test/application/use-cases/containers/container-do-projeto.use-case.spec.ts`
   (recusa nos dois chamadores; `egress`, stack que não casa e sem mapa passam);
   `test/domain/containers/project-container.spec.ts` (casamento por palavra);

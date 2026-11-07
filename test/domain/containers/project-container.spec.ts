@@ -21,6 +21,19 @@ describe('stackQueBaixaDependencias (RN-906)', () => {
     expect(ach('Elixir/Phoenix')).toBe('elixir');
   });
 
+  it('ignora a stack que declara não ter dependências, mas não a que as baixa', () => {
+    for (const s of [
+      'Node.js puro (node:test), sem dependências',
+      'Node.js, sem dependencias',
+      'Node 22, no dependencies',
+      'Node.js zero-dependency',
+      'Python dependency-free',
+    ])
+      expect(ach(s)).toBeNull();
+    expect(ach('Node.js + Express')).toBe('node');
+    expect(ach('Python com dependências do requirements.txt')).toBe('python');
+  });
+
   it('não casa estático nem por substring', () => {
     expect(ach('HTML estático')).toBeNull();
     expect(ach('MongoDB')).toBeNull();

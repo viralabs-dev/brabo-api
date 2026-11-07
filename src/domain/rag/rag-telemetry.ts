@@ -24,6 +24,7 @@
  * ficaria impossível de fazer.
  */
 import {
+  RAG_SEARCH_MAX_CHUNKS_PER_FILE,
   RAG_SEARCH_SCORE_THRESHOLD,
   RAG_SEARCH_WEIGHT_LEXICAL,
   RAG_SEARCH_WEIGHT_VECTOR,
@@ -50,6 +51,8 @@ export interface RagSearchWeights {
   vector: number;
   lexical: number;
   threshold: number;
+  /** Teto de trechos por arquivo da busca (RN-1046); ausente nas linhas antigas. */
+  maxPerFile?: number;
 }
 
 /**
@@ -59,11 +62,14 @@ export interface RagSearchWeights {
  * seria o MESMO objeto em toda linha do JSONB em memória, e um `Object.freeze`
  * esquecido em qualquer chamador viraria mutação retroativa de tudo.
  */
-export function pesosVigentes(): RagSearchWeights {
+export function pesosVigentes(
+  maxPerFile: number = RAG_SEARCH_MAX_CHUNKS_PER_FILE,
+): RagSearchWeights {
   return {
     vector: RAG_SEARCH_WEIGHT_VECTOR,
     lexical: RAG_SEARCH_WEIGHT_LEXICAL,
     threshold: RAG_SEARCH_SCORE_THRESHOLD,
+    maxPerFile,
   };
 }
 

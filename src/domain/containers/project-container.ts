@@ -211,11 +211,25 @@ export const TERMOS_DE_STACK_QUE_BAIXA_DEPENDENCIA: readonly string[] = [
   'php', 'composer', 'dotnet', 'nuget',
 ];
 
-/** Primeiro módulo cuja `stack` casa um termo da lista, ou `null`. */
+/**
+ * A stack DECLARA que não baixa dependências ("sem dependências", "no
+ * dependencies", "zero-dependency"...). O módulo do `module_map` só tem texto
+ * (nome/stack/responsabilidade), sem acesso ao `package.json`: a declaração na
+ * stack é o único sinal que o caso de uso tem. Afirmar "sem dependências" e
+ * baixá-las é erro do Arquiteto, que a falha de instalação expõe na hora.
+ */
+const DECLARA_SEM_DEPENDENCIAS =
+  /\b(sem|nenhuma|zero)\s+(depend[eê]ncias?|deps)\b|\bno\s+(external\s+)?(dependencies|deps)\b|\bzero[- ]dependenc(y|ies)\b|\bdependency[- ]free\b/i;
+
+/**
+ * Primeiro módulo cuja `stack` casa um termo da lista, ou `null`. Módulo cuja
+ * stack declara não ter dependências é ignorado (RN-906).
+ */
 export function stackQueBaixaDependencias(
   modules: ReadonlyArray<{ name: string; stack: string }>,
 ): { modulo: string; stack: string; termo: string } | null {
   for (const m of modules) {
+    if (DECLARA_SEM_DEPENDENCIAS.test(m.stack)) continue;
     // Palavras = corridas de letras/dígitos: "Node.js" -> node, js.
     const palavras = new Set(m.stack.toLowerCase().split(/[^a-z0-9]+/));
     const termo = TERMOS_DE_STACK_QUE_BAIXA_DEPENDENCIA.find((t) =>

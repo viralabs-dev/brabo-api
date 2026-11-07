@@ -5,6 +5,15 @@
 - CI: o regressivo do brabo-qa roda em toda PR para a `dev` (AT-769): o job `imagem-hotfix` do `ci.yml` publica a `sha-<12>` assinada também com `base_ref == 'dev'` (mesma guarda de fork, sem Dependabot); o `limpeza-ghcr.yml` apaga toda `sha-*` de PR fechada e as de mais de 7 dias (eram 14); o `qa-e2e.yml` passa a `branches: [dev, main]` (PR para a `dev` = `Regressivo do brabo-qa`, nunca exigido; PR para a `main` segue com o `E2E do brabo-qa`). CLAUDE.md e `.claude/agents/analista.md` ganham a regra do card.
 - CI: o run do `release.yml` ganha `run-name` com a origem e o passo `Vínculos` (helper do `brabo-ci`, origem pela linha `Carimbo:` da tag; AT-773, RN-1044), e o `ci.yml` registra o `brabo-infra` lido no job de testes.
 
+- RN-906 ajustada (AT-784): a rede `none` passa quando a stack do módulo declara não ter dependências ("sem dependências", "no dependencies", "zero-dependency"...), como o "Node.js puro (node:test), sem dependências" do seed do golden-set do QA; a recusa segue para Node/Python/etc. que baixam dependências.
+- CI: repina os reutilizáveis do `brabo-ci` em `384b5d1` (merge da ci#22: o job `disparar` do `qa-e2e-gatilho.yml` agora instala as dependências) em todos os pins, `uses:`, `ci_ref:` e checkout do `brabo-ci` (AT-785).
+
+- Check `refs` no PR (AT-782): o `refs.yml` chama o `refs-com-simbolo` do `brabo-ci` (pin `64a1e15`) e reprova a ref `caminho:N` (`símbolo`) de RN que o PR quebra; o artefato `refs-patch` traz a reancoragem. Não é check obrigatório.
+
+- Doc: o bloco gerado `providers-capabilities` de `docs/reference/llm-providers.md` volta ao português, regerado no `brabo` com `BRABO_GERAR_PROVIDERS=1` sobre a trava `irmaos.lock` (api `7d94c3b7`) e com o prefixo `apps/api/` tirado dos caminhos da coluna fonte (AT-783).
+
+- A busca híbrida do RAG devolve no máximo N trechos do mesmo arquivo (AT-778, RN-1046, ADR 0272): `limitarPorArquivo` roda depois da fusão e do limiar e antes do corte em `limit`, com `RAG_SEARCH_MAX_CHUNKS_PER_FILE = 2`; o melhor trecho de cada arquivo nunca cai, e o trecho de sessão não entra na conta. Assim o `business-rules.md` agregado não ocupa as cinco vagas e abafa o ADR. `rag_searches.pesos` ganha `maxPerFile` (jsonb, sem migração). A busca aceita `maxPerFile` e `onCandidatos` (diagnóstico); o seed do golden set lê `GOLDEN_SET_RAG_MAX_PER_FILE` e, no caso perdido, imprime a posição do esperado entre os candidatos antes do corte.
+
 - Imagem a cada carimbo `-dev` e no hotfix, com limpeza do GHCR (AT-765): o `release.yml` reage também a `vX.Y.Z-dev.N` (publica, escaneia, assina; o `imagem.json` vai como artefato do run, sem Release); o `ci.yml` ganha o job `imagem-hotfix` (`:sha-<12>` em PR `hotfix/*` para a `main`, com Trivy e cosign); o `limpeza-ghcr.yml` apaga o `sha-` da PR fechada e guarda as 10 `-dev.*` mais novas, sem tocar em `vX.Y.Z`.
 
 - O runner sai só como binário da Release do `brabo-runner`, sem `npm install -g @brabo/runner` (AT-774, parte 2): o `GET /runner-releases/binary` recusa Mac Intel e Windows (400) e a release sem manifesto (502) apontando a issue em `https://github.com/viralabs-dev/brabo-runner/issues`, no lugar do npm.

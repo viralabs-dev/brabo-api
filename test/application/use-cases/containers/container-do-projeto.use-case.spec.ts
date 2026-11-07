@@ -253,4 +253,21 @@ describe('DecidirImagemDoProjetoUseCase — rede none x stack (RN-906)', () => {
     await c.decidir.execute(PROJETO, SESSAO, entrada());
     expect(a.eventos.length + b.eventos.length + c.eventos.length).toBe(3);
   });
+
+  it('aceita none quando a stack declara não ter dependências (o seed do golden-set)', async () => {
+    const a = montar([], null, ['Node.js puro (node:test), sem dependências']);
+    await a.decidir.execute(PROJETO, SESSAO, entrada());
+    expect(a.eventos).toHaveLength(1);
+  });
+
+  it('segue recusando none se OUTRO módulo baixa dependências', async () => {
+    const { decidir, eventos } = montar([], null, [
+      'Node.js puro, sem dependências',
+      'Python 3.12 (pip)',
+    ]);
+    await expect(decidir.execute(PROJETO, SESSAO, entrada())).rejects.toThrow(
+      /"m1".*python/s,
+    );
+    expect(eventos).toHaveLength(0);
+  });
 });

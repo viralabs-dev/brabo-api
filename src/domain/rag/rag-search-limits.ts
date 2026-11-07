@@ -67,6 +67,14 @@ export const RAG_EMBED_BATCH_SIZE = 32;
 export const RAG_SEARCH_VECTOR_CANDIDATES = 20;
 export const RAG_SEARCH_LEXICAL_CANDIDATES = 20;
 
+/**
+ * Teto de trechos do MESMO arquivo no resultado (AT-778, RN-1046), aplicado
+ * depois da fusão e do limiar e antes do corte em `limit`. Sem ele, um
+ * documento grande e repetitivo ocupa todas as vagas e abafa o específico.
+ * Para o piso do golden-set (N=1 vira prova), troque este valor.
+ */
+export const RAG_SEARCH_MAX_CHUNKS_PER_FILE = 2;
+
 /** Resultados devolvidos por busca, depois da fusão e do corte pelo limiar. */
 export const RAG_SEARCH_RESULT_LIMIT = 10;
 
