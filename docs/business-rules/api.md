@@ -12381,8 +12381,16 @@ quatro pontos, TTL de 5 min — https://openrouter.ai/docs/features/prompt-cachi
   com o motivo, sem chamar o broker). Sem `module_map` ou com stack que não casa,
   segue só o aviso da RN-735. Sem exceção configurável. Revisa a RN-735 (aviso →
   recusa nesse caso).
-- **Onde:** `src/application/use-cases/containers/decidir-imagem-do-projeto.use-case.ts:80`
-  (`stackQueBaixaDependencias`)
+  **Exceção (AT-784):** o módulo cuja `stack` declara não ter dependências
+  ("sem dependências", "nenhuma dependência", "no dependencies",
+  "zero-dependency", "dependency-free") é ignorado, e `none` passa (ex.: "Node.js
+  puro (node:test), sem dependências", o caso do golden-set do QA). O `module_map`
+  só tem texto, sem acesso ao `package.json`: a declaração é o único sinal. Quem
+  baixa dependência (Node com Express, Python com `requirements`) segue recusado,
+  e outro módulo que baixa recusa mesmo com um módulo sem dependências.
+- **Onde:** `src/domain/containers/project-container.ts` (`stackQueBaixaDependencias`,
+  `DECLARA_SEM_DEPENDENCIAS`); chamada em
+  `src/application/use-cases/containers/decidir-imagem-do-projeto.use-case.ts`
 - **Teste:** `test/application/use-cases/containers/container-do-projeto.use-case.spec.ts`
   (recusa nos dois chamadores; `egress`, stack que não casa e sem mapa passam);
   `test/domain/containers/project-container.spec.ts` (casamento por palavra);

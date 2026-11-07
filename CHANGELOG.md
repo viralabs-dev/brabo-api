@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- RN-906 ajustada (AT-784): a rede `none` passa quando a stack do módulo declara não ter dependências ("sem dependências", "no dependencies", "zero-dependency"...), como o "Node.js puro (node:test), sem dependências" do seed do golden-set do QA; a recusa segue para Node/Python/etc. que baixam dependências.
+
 - Check `refs` no PR (AT-782): o `refs.yml` chama o `refs-com-simbolo` do `brabo-ci` (pin `64a1e15`) e reprova a ref `caminho:N` (`símbolo`) de RN que o PR quebra; o artefato `refs-patch` traz a reancoragem. Não é check obrigatório.
 
 - Doc: o bloco gerado `providers-capabilities` de `docs/reference/llm-providers.md` volta ao português, regerado no `brabo` com `BRABO_GERAR_PROVIDERS=1` sobre a trava `irmaos.lock` (api `7d94c3b7`) e com o prefixo `apps/api/` tirado dos caminhos da coluna fonte (AT-783).
