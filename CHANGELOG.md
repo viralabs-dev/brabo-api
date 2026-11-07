@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- CI: repina o `brabo-ci` em `2d9ec1b` (merge da ci#28: o `HEAD` do `brabo-ci` deixa de sombrear o `dev` em `qa-e2e-disparar.ts`, então o portão da `main` volta a rodar) em todos os pins, `uses:` e `ci_ref:` (AT-789).
 - RN-906 ajustada (AT-784): a rede `none` passa quando a stack do módulo declara não ter dependências ("sem dependências", "no dependencies", "zero-dependency"...), como o "Node.js puro (node:test), sem dependências" do seed do golden-set do QA; a recusa segue para Node/Python/etc. que baixam dependências.
 - CI: repina os reutilizáveis do `brabo-ci` em `384b5d1` (merge da ci#22: o job `disparar` do `qa-e2e-gatilho.yml` agora instala as dependências) em todos os pins, `uses:`, `ci_ref:` e checkout do `brabo-ci` (AT-785).
 
