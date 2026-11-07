@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- CI: todo `runs-on` fixa `ubuntu-26.04` no lugar de `ubuntu-latest`, e o `create-github-app-token` usa `client-id` no lugar do `app-id` obsoleto; os runs saem sem anotação de aviso (AT-772).
+
 - Ko-fi do mantenedor: `.github/FUNDING.yml` (botão Sponsor) e seção Apoie no README (AT-768).
 
 - A doc da api volta a ser em pt-BR por padrão (AT-766, decisão do dono de 06/11/2026, revertendo o ADR 0260): as 8 páginas de `docs/` com `idioma_original: en` são traduzidas e perdem o campo, com as mesmas âncoras, links, refs `caminho:N` e a mesma tabela de rotas; o `README.md` é reescrito em pt-BR, com a versão real do contrato e o mapa dos repositórios do Brabo; e o `CLAUDE.md` passa a mandar escrever a doc em pt-BR. O bloco gerado `providers-capabilities` de `docs/reference/llm-providers.md` continua em inglês até o `brabo` regerá-lo.
