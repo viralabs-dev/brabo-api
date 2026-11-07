@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- O runner sai só como binário da Release do `brabo-runner`, sem `npm install -g @brabo/runner` (AT-774, parte 2): o `GET /runner-releases/binary` recusa Mac Intel e Windows (400) e a release sem manifesto (502) apontando a issue em `https://github.com/viralabs-dev/brabo-runner/issues`, no lugar do npm.
+
 - CI: todo `runs-on` fixa `ubuntu-26.04` no lugar de `ubuntu-latest`, e o `create-github-app-token` usa `client-id` no lugar do `app-id` obsoleto; os runs saem sem anotação de aviso (AT-772).
 - A indexação de docs não corta mais o documento em 512 KiB sem avisar (AT-764, RN-1036, ADR 0269): `ReadProjectCodeUseCase.file` ganha `maxBytes` (o default continua 512 KiB, o da aba Code) e a indexação lê cada `.md` até 4 MiB (`RAG_INDEX_FILE_MAX_BYTES`). O que passa do teto é cortado e declarado: `cutFiles: { path, bytes, reason: 'too_large' | 'binary' }[]` no relatório do `POST .../rag/reindex`, `Logger.warn` e `metadata.sourceCut` nos chunks; `.md` com `\0` é pulado e declarado. `GET .../rag/coverage` ganha `filesCut` em `docs` e `adr`. O insert de chunks é fatiado em 1000 por comando (limite de 65 535 parâmetros do Postgres). O `github-provider` lê o conteúdo em `raw`: arquivo de 1 a 100 MB não vira mais string vazia. O golden set passa a indexar o corpus inteiro (o fixture de 842 KB era cortado): o piso será remedido depois do merge.
 
