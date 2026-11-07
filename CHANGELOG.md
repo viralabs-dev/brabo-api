@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Check `refs` no PR (AT-782): o `refs.yml` chama o `refs-com-simbolo` do `brabo-ci` (pin `64a1e15`) e reprova a ref `caminho:N` (`símbolo`) de RN que o PR quebra; o artefato `refs-patch` traz a reancoragem. Não é check obrigatório.
+
 - Doc: o bloco gerado `providers-capabilities` de `docs/reference/llm-providers.md` volta ao português, regerado no `brabo` com `BRABO_GERAR_PROVIDERS=1` sobre a trava `irmaos.lock` (api `7d94c3b7`) e com o prefixo `apps/api/` tirado dos caminhos da coluna fonte (AT-783).
 
 - A busca híbrida do RAG devolve no máximo N trechos do mesmo arquivo (AT-778, RN-1046, ADR 0272): `limitarPorArquivo` roda depois da fusão e do limiar e antes do corte em `limit`, com `RAG_SEARCH_MAX_CHUNKS_PER_FILE = 2`; o melhor trecho de cada arquivo nunca cai, e o trecho de sessão não entra na conta. Assim o `business-rules.md` agregado não ocupa as cinco vagas e abafa o ADR. `rag_searches.pesos` ganha `maxPerFile` (jsonb, sem migração). A busca aceita `maxPerFile` e `onCandidatos` (diagnóstico); o seed do golden set lê `GOLDEN_SET_RAG_MAX_PER_FILE` e, no caso perdido, imprime a posição do esperado entre os candidatos antes do corte.

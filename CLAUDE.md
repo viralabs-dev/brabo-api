@@ -86,6 +86,7 @@ API do Brabo: NestJS 11 + Drizzle + PostgreSQL 16/pgvector. Dona do schema, do R
   archived".
 - PR do Dependabot entra pela `dev`, nunca direto na `main`; na `dev` ele não espera aprovação humana (ADR 0236) e a `main` segue com a escada inteira. Dependência de linguagem só por segurança (`open-pull-requests-limit: 0`), `github-actions` e `docker` semanais, `target-branch: dev`. O `dependabot-para-dev.yml` do `brabo-ci` fecha ou redireciona o PR de segurança que o GitHub abre contra a `main`.
 - Merge em branch protegida (`dev`/`main`) é SEMPRE manual do usuário, sem opção de automatizar. A política de PR, escada, promoção e carimbo de tag vem dos workflows reutilizáveis do `brabo-ci`, fixados por SHA com `# vX` no `uses:`. Imagem de terceiro por digest com a tag inline. Segredo nunca é impresso; teste nunca roda contra o Postgres da instalação.
+- Ref de doc quebrada reprova no próprio PR: o check `refs` (reutilizável `refs-com-simbolo` do `brabo-ci`, não obrigatório) confere cada `caminho:N` (`símbolo`) das RNs, e o artefato `refs-patch` traz a reancoragem (`gh run download <id> -n refs-patch && git apply refs.patch`) (AT-782).
 
 ## Convenções (dados e domínio)
 - `src/db/seed.ts` é IDEMPOTENTE, e rodá-lo de novo é o caso normal
