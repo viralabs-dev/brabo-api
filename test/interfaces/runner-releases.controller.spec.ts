@@ -235,7 +235,7 @@ describe('RunnerReleasesController', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('darwin-x64 (Mac Intel): 400 que aponta o npm, sem chamar o GitHub (ADR 0174)', async () => {
+  it('darwin-x64 (Mac Intel): 400 que aponta a issue, sem chamar o GitHub (ADR 0174)', async () => {
     const controller = new RunnerReleasesController();
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
@@ -243,12 +243,12 @@ describe('RunnerReleasesController', () => {
 
     const recusa = controller.binary('darwin-x64', res);
     await expect(recusa).rejects.toBeInstanceOf(BadRequestException);
-    await expect(recusa).rejects.toThrow(/npm install -g @brabo\/runner/);
+    await expect(recusa).rejects.toThrow(/brabo-runner\/issues/);
     await expect(recusa).rejects.toThrow(/ADR 0174/);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('win32-x64 (Windows): 400 que aponta o npm, sem chamar o GitHub (ADR 0187)', async () => {
+  it('win32-x64 (Windows): 400 que aponta a issue, sem chamar o GitHub (ADR 0187)', async () => {
     const controller = new RunnerReleasesController();
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
@@ -256,7 +256,7 @@ describe('RunnerReleasesController', () => {
 
     const recusa = controller.binary('win32-x64', res);
     await expect(recusa).rejects.toBeInstanceOf(BadRequestException);
-    await expect(recusa).rejects.toThrow(/npm install -g @brabo\/runner/);
+    await expect(recusa).rejects.toThrow(/brabo-runner\/issues/);
     await expect(recusa).rejects.toThrow(/ADR 0187/);
     expect(fetchMock).not.toHaveBeenCalled();
   });

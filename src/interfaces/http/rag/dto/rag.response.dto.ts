@@ -11,7 +11,10 @@ import {
   type RagVerdict,
 } from '../../../../domain/rag/rag-telemetry';
 import type { RagFeedbackReport } from '../../../../application/use-cases/rag/record-rag-feedback.use-case';
-import type { IndexDocsReport } from '../../../../application/use-cases/rag/index-project-docs.use-case';
+import type {
+  CutFile,
+  IndexDocsReport,
+} from '../../../../application/use-cases/rag/index-project-docs.use-case';
 import type { IndexSessionReport } from '../../../../application/use-cases/rag/index-session.use-case';
 import type { IndexLocalFolderReport } from '../../../../application/use-cases/rag/index-local-folder.use-case';
 import type { ReindexProjectReport } from '../../../../application/use-cases/rag/reindex-project.use-case';
@@ -141,11 +144,24 @@ export const _chavesEmbedding: MesmasChaves<
   Wire<IndexDocsReport['embedding']>
 > = true;
 
+export class CutFileResponseDto implements Wire<CutFile> {
+  @ApiProperty() path!: string;
+  @ApiProperty() bytes!: number;
+  @ApiProperty({ enum: ['too_large', 'binary'] })
+  reason!: CutFile['reason'];
+}
+export const _chavesCutFile: MesmasChaves<
+  CutFileResponseDto,
+  Wire<CutFile>
+> = true;
+
 export class IndexDocsReportResponseDto implements Wire<IndexDocsReport> {
   @ApiProperty() filesScanned!: number;
   @ApiProperty() docsChunks!: number;
   @ApiProperty() adrChunks!: number;
   @ApiProperty() truncated!: boolean;
+  @ApiProperty({ type: CutFileResponseDto, isArray: true })
+  cutFiles!: CutFileResponseDto[];
   @ApiProperty({ type: IndexEmbeddingResponseDto })
   embedding!: IndexEmbeddingResponseDto;
 }
@@ -215,6 +231,7 @@ export class RagFileCoverageResponseDto implements Wire<RagFileCoverage> {
   @ApiProperty() filesInRepo!: number;
   @ApiProperty() filesIndexed!: number;
   @ApiProperty() truncated!: boolean;
+  @ApiProperty() filesCut!: number;
 }
 export const _chavesFileCoverage: MesmasChaves<
   RagFileCoverageResponseDto,

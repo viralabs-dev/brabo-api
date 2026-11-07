@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- O runner sai só como binário da Release do `brabo-runner`, sem `npm install -g @brabo/runner` (AT-774, parte 2): o `GET /runner-releases/binary` recusa Mac Intel e Windows (400) e a release sem manifesto (502) apontando a issue em `https://github.com/viralabs-dev/brabo-runner/issues`, no lugar do npm.
+
+- CI: repina os reutilizáveis do `brabo-ci` em `13f3697` (merge da ci#17, que inclui a ci#16): `ubuntu-26.04`, `client-id` no lugar de `app-id`, rótulo de família criado antes de aplicar, linha `Carimbo:` na tag e helper `vinculos` (AT-772, AT-773).
+- O setup de teste da api nunca cai no Postgres da instalação (AT-775): `global-setup.ts` e `test-db-name.ts` perdem o fallback para `localhost:5432`; sem `DATABASE_URL`/`TEST_DATABASE_URL` o setup para com a instrução de subir um Postgres descartável, e recusa `localhost:5432` sem `BRABO_TESTE_PERMITE_5432=1` (definida só no service do CI) e o banco alvo `brabo`. A decisão é a função pura `refusalReason`, testada.
+
+- CI: todo `runs-on` fixa `ubuntu-26.04` no lugar de `ubuntu-latest`, e o `create-github-app-token` usa `client-id` no lugar do `app-id` obsoleto; os runs saem sem anotação de aviso (AT-772).
+- A indexação de docs não corta mais o documento em 512 KiB sem avisar (AT-764, RN-1036, ADR 0269): `ReadProjectCodeUseCase.file` ganha `maxBytes` (o default continua 512 KiB, o da aba Code) e a indexação lê cada `.md` até 4 MiB (`RAG_INDEX_FILE_MAX_BYTES`). O que passa do teto é cortado e declarado: `cutFiles: { path, bytes, reason: 'too_large' | 'binary' }[]` no relatório do `POST .../rag/reindex`, `Logger.warn` e `metadata.sourceCut` nos chunks; `.md` com `\0` é pulado e declarado. `GET .../rag/coverage` ganha `filesCut` em `docs` e `adr`. O insert de chunks é fatiado em 1000 por comando (limite de 65 535 parâmetros do Postgres). O `github-provider` lê o conteúdo em `raw`: arquivo de 1 a 100 MB não vira mais string vazia. O golden set passa a indexar o corpus inteiro (o fixture de 842 KB era cortado): o piso será remedido depois do merge.
+
+- Ko-fi do mantenedor: `.github/FUNDING.yml` (botão Sponsor) e seção Apoie no README (AT-768).
+
 - A doc da api volta a ser em pt-BR por padrão (AT-766, decisão do dono de 06/11/2026, revertendo o ADR 0260): as 8 páginas de `docs/` com `idioma_original: en` são traduzidas e perdem o campo, com as mesmas âncoras, links, refs `caminho:N` e a mesma tabela de rotas; o `README.md` é reescrito em pt-BR, com a versão real do contrato e o mapa dos repositórios do Brabo; e o `CLAUDE.md` passa a mandar escrever a doc em pt-BR. O bloco gerado `providers-capabilities` de `docs/reference/llm-providers.md` continua em inglês até o `brabo` regerá-lo.
 
 - O corpus do golden set do RAG (`test/fixtures/golden-set-rag/corpus`) volta aos bytes exatos da última rodada verde (monorepo `6d56eb3872`, 22 arquivos, 1 555 499 bytes = 1 524 853 caracteres) em vez da cópia de `docs/` de 04/11, que aumentou o corpus em 63% e derrubou 12 dos 17 casos abaixo do piso (AT-763, ADR 0132). O spec do corpus ganha uma guarda de deriva (contagem de arquivos, tamanho, sha256), e o seed imprime o top-5 que veio no lugar de cada caso perdido.

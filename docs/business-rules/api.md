@@ -2013,6 +2013,11 @@ chamadas, e `truncated` diz que o corte aconteceu. Sem eles, um `viewer`
 gastaria a credencial e o rate limit do owner à vontade — a mesma família de
 defeito dos 3.824 req/min do dashboard ([RN-090](#rn-090)).
 
+**A indexação de docs tem teto próprio.** O `GIT_BLOB_MAX_BYTES` (512 KiB) vale
+para a aba Code e para a busca; a indexação de `docs`/`adr` lê cada `.md` até
+`RAG_INDEX_FILE_MAX_BYTES` (4 MiB), pelo parâmetro `maxBytes` de
+`ReadProjectCodeUseCase.file` (o default continua o da aba) — [RN-1036](#rn-1036).
+
 Cortar é sempre **visível**: toda resposta que pode ter sido cortada diz isso
 num campo. `filesScanned` vai junto na busca porque o custo que ninguém vê é o
 que ninguém corrige.
@@ -3616,7 +3621,8 @@ citável.
 
 - **Onde:** `src/application/use-cases/rag/index-project-docs.use-case.ts`
   (linhas 16-17, 64), `src/application/use-cases/rag/index-session.use-case.ts`
-  (linha 29, 45)
+  (linha 29, 45). Desde a AT-764, a leitura de cada `.md` usa o teto próprio
+  da indexação, não o da aba Code ([RN-1036](#rn-1036))
 - **Teste:** `test/application/use-cases/rag/index-project-docs.use-case.spec.ts`,
   `test/application/use-cases/rag/index-session.use-case.spec.ts`
   (casos felizes + "projeto sem docs/" + "evento sem payload.text é
@@ -3706,10 +3712,42 @@ chunk. Não existe coluna de timestamp de indexação por escopo, e a
 resposta não inclui nenhum "reindexado há Xmin" — um número chutado
 mentiria (mesma régua do ADR 0042 para nota de modelo).
 
+Desde a AT-764 ([RN-1036](#rn-1036)), cada escopo `docs`/`adr` também traz
+`filesCut`: quantos desses arquivos têm chunk marcado `metadata.sourceCut`,
+isto é, foram lidos só até o teto de indexação. Um arquivo "indexado" que
+`filesCut` conta tem parte do texto FORA do índice, e a cobertura não o
+apresenta mais como inteiro.
+
 - **Onde:** `src/application/use-cases/rag/get-rag-coverage.use-case.ts`
   (linha 47)
 - **Teste:** `test/application/use-cases/rag/get-rag-coverage.use-case.spec.ts`
 - **ADR:** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
+
+### RN-1036 — A indexação de docs nunca descarta em silêncio o conteúdo de um arquivo {#rn-1036}
+
+A indexação de docs lê cada `.md` até o teto próprio de indexação
+(`RAG_INDEX_FILE_MAX_BYTES`, 4 MiB), separado do teto da aba Code
+(`GIT_BLOB_MAX_BYTES`, 512 KiB, [RN-095](#rn-095)), que não muda. Um arquivo
+cortado por esse teto, ou pulado por ser binário (`\0` no conteúdo), aparece:
+
+- em `cutFiles` no relatório de indexação (`POST .../rag/reindex`), com
+  `{ path, bytes, reason }`: `bytes` é o tamanho do arquivo no repositório e
+  `reason` é `too_large` (lido só até o teto) ou `binary` (pulado, sem chunk);
+- no `Logger.warn` da api, com o caminho e os bytes;
+- no metadado dos chunks de um arquivo cortado (`metadata.sourceCut: true`);
+- na cobertura ([RN-237](#rn-237)), em `filesCut` de cada escopo.
+
+O que passa do teto é cortado no teto, nunca descartado em silêncio. O insert
+dos chunks é fatiado (`RAG_INSERT_BATCH_SIZE`, 1000 por comando) porque o
+Postgres aceita 65 535 parâmetros por comando e um arquivo de 4 MiB já gera
+~5 400 chunks. O provider do GitHub lê o conteúdo em formato `raw`: no formato
+JSON a API devolve `content` vazio para arquivo de 1 a 100 MB, e o arquivo
+sumiria sem aviso.
+
+- **Onde:** `src/application/use-cases/rag/index-project-docs.use-case.ts`, `src/application/use-cases/git/read-project-code.use-case.ts` (`file(..., maxBytes)`), `src/application/use-cases/rag/get-rag-coverage.use-case.ts`, `src/domain/rag/rag-search-limits.ts`, `src/infrastructure/persistence/drizzle/chunk.repository.ts`, `src/infrastructure/git/github-provider.ts`, `src/interfaces/http/rag/dto/rag.response.dto.ts`.
+- **Teste:** `test/application/use-cases/rag/index-project-docs.use-case.spec.ts` (600 KiB indexado até o fim; acima de 4 MiB em `cutFiles` com `sourceCut`; `.md` com `\0` pulado e declarado), `test/application/use-cases/git/read-project-code.use-case.spec.ts` (default de 512 KiB intacto), `test/application/use-cases/rag/get-rag-coverage.use-case.spec.ts` (`filesCut`), `test/infrastructure/persistence/chunk.repository.spec.ts` (9 500 chunks em `createMany`), `test/infrastructure/git/github-provider.contract.spec.ts` (arquivo acima de 1 MB em `raw`).
+- **ADR:** 0269.
+- **Origem:** AT-764 (EP-033), decisão do dono de 06/11/2026 (teto de 4 MiB); rodada 223, lane A.
 
 ### RN-238 — As três rotas HTTP do RAG dividem papel por quem MUDA o que o produto gasta {#rn-238}
 
@@ -9409,7 +9447,7 @@ com a causa do fechamento anterior quando ela foi gravada.
 
 - **Onde:** `src/interfaces/http/sessions/sessions.controller.ts:214`
   (`reopen`); `apps/web/src/lib/api-client.ts:634` (`reopenSession`);
-  `apps/web/src/routes/SessionPage.tsx:158` (`podeReabrir`);
+  `apps/web/src/routes/SessionPage.tsx:147` (`podeReabrir`);
   `apps/web/src/lib/session-acoes-da-sessao.ts:77` (`handleReopen`); `apps/web/src/routes/SessionComposer.tsx:383` (o botão);
   `apps/web/src/lib/activity.ts:633` (a frase do fio)
 - **Teste:** `test/interfaces/http/sessions/sessions-reopen.controller.spec.ts:22`
@@ -9836,14 +9874,14 @@ segundo `executed` para o mesmo merge.
   `src/application/use-cases/actions/approve-action.use-case.ts:327` (`recusaDeMerge`);
   `src/infrastructure/git/local-git-provider.ts:339` (`GitPullRequestAlreadyMergedError`);
   `apps/web/src/lib/gate-do-merge.ts:19` (`gatePendenteNoMerge`);
-  `apps/web/src/routes/ProjectPrsTab.tsx:236` (`gatePendenteNoMerge`);
-  `apps/web/src/routes/session-timeline-montagem.tsx:1249` (`gatePendenteNoMerge`)
-  `apps/web/src/routes/ProjectPrsTab.tsx:236` (`gatePendenteNoMerge`);
-  `apps/web/src/routes/session-timeline-montagem.tsx:1249` (`gatePendenteNoMerge`)
+  `apps/web/src/routes/ProjectPrsTab.tsx:214` (`gatePendenteNoMerge`);
+  `apps/web/src/routes/session-timeline-montagem.tsx:1244` (`gatePendenteNoMerge`)
+  `apps/web/src/routes/ProjectPrsTab.tsx:214` (`gatePendenteNoMerge`);
+  `apps/web/src/routes/session-timeline-montagem.tsx:1244` (`gatePendenteNoMerge`)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:675`
   (`merge_ja_proposto`), `:698` (`pr_ja_mergeado` — caso de falha), `:696`
 
-  `apps/web/src/routes/session-timeline-montagem.tsx:1249` (`gatePendenteNoMerge`)
+  `apps/web/src/routes/session-timeline-montagem.tsx:1244` (`gatePendenteNoMerge`)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:675`
   (`merge_ja_proposto`), `:698` (`pr_ja_mergeado` — caso de falha), `:696`
   (negada não bloqueia, outra PR não colide — caminho feliz);
@@ -10511,7 +10549,7 @@ isso a recusa da api mora na ROTA, e o caso de uso não muda.
   (`GarantirDestinatarioDoChatUseCase`);
   `src/interfaces/http/llm/chat.controller.ts:82` (`chat`);
   `apps/web/src/lib/session-destinatario.ts:347` (`agentesParaChamar`);
-  `apps/web/src/routes/SessionPage.tsx:684` (`handleSend`);
+  `apps/web/src/routes/SessionPage.tsx:690` (`handleSend`);
   `apps/web/src/routes/SessionComposer.tsx:276`
 - **Teste:** `test/application/use-cases/llm/garantir-destinatario-do-chat.use-case.spec.ts:82`
   (consultiva sem agente — caso de falha), `:96`, `:113`, `:120`;
@@ -10939,7 +10977,7 @@ diz onde configurar.
   usuário e `#pr-3`, e toda PR local era "autor desconhecido".
 - **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:73` (`resultadoDaFalha`),
   `src/application/use-cases/actions/list-project-pending-actions.use-case.ts:22` (`execute`),
-  `apps/web/src/routes/ProjectPrsTab.tsx:69` (`ultimaRecusaDeMerge`),
+  `apps/web/src/routes/ProjectPrsTab.helpers.ts:9` (`ultimaRecusaDeMerge`),
   `apps/web/src/lib/canal-vivo.ts:134` (`alvosDoEvento`)
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   ("conflito de merge → kind git_merge, arquivos no resultado e evento na
@@ -11176,7 +11214,7 @@ O kickoff do PO diz as três coisas.
   (`updateStoryRoute`), `:612` (`archiveStoryRoute`),
   `apps/engine/lib/engine/harness/tools/update_story.ex:45` (`run`),
   `apps/engine/lib/engine/harness/tools/archive_story.ex:38` (`run`),
-  `apps/web/src/routes/ProjectBacklogTab.tsx:80` (`motivoDeCorrecaoInerte`)
+  `apps/web/src/lib/correcao-de-historia.ts:10` (`motivoDeCorrecaoInerte`)
 - **Teste:** `test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts`
   (feliz: título e arquivo com evento; falha: tarefa `in_progress`/`in_review`
   é 409 `historia_com_tarefa_em_execucao` sem escrita),
@@ -11218,7 +11256,7 @@ O kickoff do PO diz as três coisas.
   `apps/web/src/routes/ProjectApprovalsTab.tsx:106` (`ProjectApprovalsTab`),
   `apps/web/src/routes/Shell.tsx:562` (`idDoProjetoAtual`),
   `apps/web/src/routes/NewProjectWizard.tsx:155` (`NewProjectWizard`),
-  `apps/web/src/routes/ProjectPrsTab.tsx:141` (`invalidateMergeActions`),
+  `apps/web/src/routes/ProjectPrsTab.tsx:150` (`invalidateMergeActions`),
   `apps/web/src/lib/agent-status.ts:222` (`gateStatus`)
 - **Teste:** `test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts`
   ("a branch nasce de dev, a PR mira dev e leva infra[bot]"; falha:
@@ -12452,7 +12490,7 @@ Revisa a [RN-583](#rn-583) (o `sort` deixa de ser o único campo de `provider` q
 ### RN-921 — O botão "Retomar" do fio é gesto humano, sem teto, e só vale para o turno interrompido {#rn-921}
 
 - **Regra:** o `agent.error` com `reason: turno_interrompido_por_reinicio` ganha no fio o cartão `RetomarTurnoInterrompido` (objetivo e passos do último plano, "Parou em", botão). O clique chama `POST /projects/:projectId/sessions/:sessionId/agents/:agent/resume` (`developer`; 200 `{ok:true}`; 404 sessão alheia; 409 `turno_nao_interrompido` quando o último desfecho do agente não é a interrupção ou há turno em curso; 409 `agente_sem_retomada`), que pede ao engine `POST /internal/sessions/:sessionId/agent/resume`: ele grava `agent.turn_resumed` com `automatica: false` e manda `:retomar_turno_interrompido` à MESMA `TurnoAssincrono`. Sem teto: cada clique é uma retomada. O cartão some quando algo segue o erro, e a retomada automática vira uma linha discreta. O "sem desfecho" do diário NÃO aparece na tela (o evento não o traz).
-- **Onde:** `src/interfaces/http/sessions/agent-resume.controller.ts:23` (`AgentResumeController`), `src/application/use-cases/sessions/resume-agent-turn.use-case.ts:29` (`execute`), `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:638` (`resume`), `apps/web/src/routes/RetomarTurnoInterrompido.tsx:23` (`ehTurnoInterrompido`)
+- **Onde:** `src/interfaces/http/sessions/agent-resume.controller.ts:23` (`AgentResumeController`), `src/application/use-cases/sessions/resume-agent-turn.use-case.ts:29` (`execute`), `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:638` (`resume`), `apps/web/src/routes/RetomarTurnoInterrompido.helpers.ts:10` (`ehTurnoInterrompido`)
 - **Teste:** `test/interfaces/http/sessions/agent-resume.controller.spec.ts` (feliz, duas recusas 409, 404, papel); `apps/web/src/routes/RetomarTurnoInterrompido.test.tsx`; ExUnit do `agent_command_controller`
 - **Origem:** AT-582 (EP-031); [ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 

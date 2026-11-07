@@ -36,6 +36,8 @@ export interface ChunkMetadata {
   sourceRef?: string;
   uploadedBy?: string;
   folderName?: string;
+  /** `true` quando o arquivo de origem passou do teto de indexação e este chunk vem do trecho cortado (RN-1036). */
+  sourceCut?: boolean;
 }
 
 export interface Chunk {

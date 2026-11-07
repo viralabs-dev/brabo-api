@@ -19,7 +19,9 @@ import type {
 } from '@brabo/shared';
 import { ReadProjectCodeUseCase } from '../../../../src/application/use-cases/git/read-project-code.use-case';
 import { GitReadCache } from '../../../../src/domain/git/git-read-cache';
+import { RAG_INDEX_FILE_MAX_BYTES } from '../../../../src/domain/rag/rag-search-limits';
 import {
+  GIT_BLOB_MAX_BYTES,
   GIT_SEARCH_DIR_LIMIT,
   GIT_SEARCH_FILE_LIMIT,
   GIT_SEARCH_MATCH_LIMIT,
@@ -434,6 +436,24 @@ describe('ReadProjectCodeUseCase — arquivo', () => {
     expect(arquivo.content).toBe(REPO['src/a.ts']);
     expect(arquivo.truncated).toBe(false);
     expect(arquivo.bytes).toBe(Buffer.byteLength(REPO['src/a.ts']));
+  });
+
+  it('o teto padrão é o da aba Code (512 KiB); `maxBytes` maior devolve o arquivo inteiro (RN-1036)', async () => {
+    const grande = 'a'.repeat(600 * 1024);
+    const { useCase } = montar(new ProviderFalso({ 'docs/g.md': grande }));
+
+    const padrao = await useCase.file(PROJETO, 'docs/g.md', 'dev');
+    expect(padrao.truncated).toBe(true);
+    expect(padrao.bytes).toBe(GIT_BLOB_MAX_BYTES);
+
+    const inteiro = await useCase.file(
+      PROJETO,
+      'docs/g.md',
+      'dev',
+      RAG_INDEX_FILE_MAX_BYTES,
+    );
+    expect(inteiro.truncated).toBe(false);
+    expect(inteiro.content).toBe(grande);
   });
 
   it('caso de falha: arquivo inexistente é 404 e não string vazia', async () => {
