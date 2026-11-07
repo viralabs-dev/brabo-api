@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- A busca híbrida do RAG devolve no máximo N trechos do mesmo arquivo (AT-778, RN-1046, ADR 0272): `limitarPorArquivo` roda depois da fusão e do limiar e antes do corte em `limit`, com `RAG_SEARCH_MAX_CHUNKS_PER_FILE = 2`; o melhor trecho de cada arquivo nunca cai, e o trecho de sessão não entra na conta. Assim o `business-rules.md` agregado não ocupa as cinco vagas e abafa o ADR. `rag_searches.pesos` ganha `maxPerFile` (jsonb, sem migração). A busca aceita `maxPerFile` e `onCandidatos` (diagnóstico); o seed do golden set lê `GOLDEN_SET_RAG_MAX_PER_FILE` e, no caso perdido, imprime a posição do esperado entre os candidatos antes do corte.
+
 - Imagem a cada carimbo `-dev` e no hotfix, com limpeza do GHCR (AT-765): o `release.yml` reage também a `vX.Y.Z-dev.N` (publica, escaneia, assina; o `imagem.json` vai como artefato do run, sem Release); o `ci.yml` ganha o job `imagem-hotfix` (`:sha-<12>` em PR `hotfix/*` para a `main`, com Trivy e cosign); o `limpeza-ghcr.yml` apaga o `sha-` da PR fechada e guarda as 10 `-dev.*` mais novas, sem tocar em `vX.Y.Z`.
 
 - O runner sai só como binário da Release do `brabo-runner`, sem `npm install -g @brabo/runner` (AT-774, parte 2): o `GET /runner-releases/binary` recusa Mac Intel e Windows (400) e a release sem manifesto (502) apontando a issue em `https://github.com/viralabs-dev/brabo-runner/issues`, no lugar do npm.

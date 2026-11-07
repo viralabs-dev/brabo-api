@@ -239,6 +239,112 @@ describe('HybridSearchUseCase', () => {
       title: 'user:abc',
     });
   });
+
+  // ---------------------------------------------------------------- RN-1046
+
+  /** `n` chunks de `arquivo`, scores decrescentes a partir de `topo`. */
+  function doArquivo(arquivo: string, n: number, topo: number) {
+    return Array.from({ length: n }, (_, i) => ({
+      chunk: mkChunk(`${arquivo}-${i + 1}`, { sourcePath: arquivo }),
+      score: topo - i * 0.01,
+    }));
+  }
+
+  async function buscar(
+    vetor: ChunkSearchCandidate[],
+    extra: { maxPerFile?: number; limit?: number } = {},
+  ) {
+    const repo = new FakeChunkRepository();
+    repo.vectorResult = vetor;
+    const { useCase, telemetry } = montar(
+      repo,
+      embeddingServiceComVetor([1, 2, 3]),
+    );
+    const resultado = await useCase.execute({
+      projectId: 'proj-1',
+      query: 'pergunta real',
+      limit: 5,
+      ...extra,
+    });
+    return { ids: resultado.hits.map((h) => h.chunkId), telemetry };
+  }
+
+  it('RN-1046: 5 chunks de um arquivo no topo e N=2 deixam 2 dele e abrem vaga ao outro', async () => {
+    const { ids } = await buscar(
+      [...doArquivo('big.md', 5, 0.9), ...doArquivo('adr.md', 1, 0.5)],
+      { maxPerFile: 2 },
+    );
+    expect(ids).toEqual(['big.md-1', 'big.md-2', 'adr.md-1']);
+  });
+
+  it('RN-1046: a ordem por score é preservada depois do teto', async () => {
+    const { ids } = await buscar(
+      [
+        ...doArquivo('a.md', 3, 0.9),
+        ...doArquivo('b.md', 3, 0.895),
+        ...doArquivo('c.md', 1, 0.6),
+      ],
+      { maxPerFile: 2 },
+    );
+    expect(ids).toEqual(['a.md-1', 'b.md-1', 'a.md-2', 'b.md-2', 'c.md-1']);
+  });
+
+  it('RN-1046: N=1 devolve um chunk por arquivo', async () => {
+    const { ids } = await buscar(
+      [...doArquivo('a.md', 3, 0.9), ...doArquivo('b.md', 3, 0.8)],
+      { maxPerFile: 1 },
+    );
+    expect(ids).toEqual(['a.md-1', 'b.md-1']);
+  });
+
+  it('RN-1046: o melhor chunk de cada arquivo nunca cai, mesmo sem vaga sobrando no limit', async () => {
+    const { ids } = await buscar(
+      [
+        ...doArquivo('a.md', 6, 0.9),
+        ...doArquivo('b.md', 1, 0.5),
+        ...doArquivo('c.md', 1, 0.45),
+      ],
+      { maxPerFile: 2, limit: 4 },
+    );
+    expect(ids).toEqual(['a.md-1', 'a.md-2', 'b.md-1', 'c.md-1']);
+  });
+
+  it('RN-1046: chunk de sessão (sem arquivo) não entra no teto', async () => {
+    const sess = [1, 2, 3].map((i) => ({
+      chunk: mkChunk(`s${i}`, {
+        scope: 'session',
+        sessionId: 'x',
+        sourcePath: null,
+      }),
+      score: 0.9 - i * 0.01,
+    }));
+    const { ids } = await buscar(sess, { maxPerFile: 1 });
+    expect(ids).toEqual(['s1', 's2', 's3']);
+  });
+
+  it('RN-1046: sem maxPerFile no input vale o padrão (2) e a telemetria congela o N usado', async () => {
+    const padrao = await buscar(doArquivo('a.md', 4, 0.9));
+    expect(padrao.ids).toEqual(['a.md-1', 'a.md-2']);
+    expect(padrao.telemetry.gravadas[0].pesos.maxPerFile).toBe(2);
+    const um = await buscar(doArquivo('a.md', 4, 0.9), { maxPerFile: 1 });
+    expect(um.telemetry.gravadas[0].pesos.maxPerFile).toBe(1);
+  });
+
+  it('RN-1046: onCandidatos recebe a lista inteira, antes do teto e do limit', async () => {
+    const repo = new FakeChunkRepository();
+    repo.vectorResult = doArquivo('a.md', 5, 0.9);
+    const { useCase } = montar(repo, embeddingServiceComVetor([1, 2, 3]));
+    let vistos = 0;
+    await useCase.execute({
+      projectId: 'proj-1',
+      query: 'pergunta real',
+      onCandidatos: (c) => {
+        vistos = c.length;
+      },
+    });
+    expect(vistos).toBe(5);
+  });
+
   // ---------------------------------------------------------------- RN-479
 
   it('RN-479: grava a linha de telemetria com os pesos CONGELADOS e o rank de cada hit', async () => {
@@ -272,7 +378,12 @@ describe('HybridSearchUseCase', () => {
     expect(linha.latencyMs).toBeGreaterThanOrEqual(0);
     // Os pesos vão na linha, não são lidos de novo na hora de medir — é o que
     // faz a medição continuar significando o mesmo depois da calibração.
-    expect(linha.pesos).toEqual({ vector: 0.6, lexical: 0.4, threshold: 0.2 });
+    expect(linha.pesos).toEqual({
+      vector: 0.6,
+      lexical: 0.4,
+      threshold: 0.2,
+      maxPerFile: 2,
+    });
     expect(linha.hits.map((h) => [h.chunkId, h.rank])).toEqual([
       ['a', 1],
       ['b', 2],
