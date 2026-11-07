@@ -13,6 +13,6 @@ permissions:
 
 jobs:
   refs:
-    uses: viralabs-dev/brabo-ci/.github/workflows/refs-com-simbolo.yml@64a1e15d5c5fbf46c09385eccf6c70f6bb39cd7e  # brabo-ci dev, merge da ci#19
+    uses: viralabs-dev/brabo-ci/.github/workflows/refs-com-simbolo.yml@384b5d134cf099087b2f8e6b9fa911f1c8ee345d  # brabo-ci dev, merge da ci#22
     with:
-      ci_ref: 64a1e15d5c5fbf46c09385eccf6c70f6bb39cd7e
+      ci_ref: 384b5d134cf099087b2f8e6b9fa911f1c8ee345d  # brabo-ci dev, merge da ci#22
