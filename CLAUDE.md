@@ -408,6 +408,7 @@ API do Brabo: NestJS 11 + Drizzle + PostgreSQL 16/pgvector. Dona do schema, do R
   significado de toda medição anterior. Gravar medição NUNCA derruba o que ela
   mede, e também não falha calada: origem `infra` no log e um `null` explícito
   na resposta, que a tela distingue de "não achei nada".
+- Banco dos testes (AT-775): `DATABASE_URL` (admin) e `TEST_DATABASE_URL` (base `brabo_test`) são OBRIGATÓRIAS, sem fallback. O setup (`test/support/test-db-name.ts`, `refusalReason`) recusa `localhost`/`127.0.0.1` na 5432 sem `BRABO_TESTE_PERMITE_5432=1` (só o service do CI usa) e o banco alvo `brabo`. Local: Postgres descartável sem porta publicada (`docker run -d --name pg-teste -e POSTGRES_PASSWORD=x pgvector/pgvector:pg16`) e URLs pelo IP do container.
 - Testes: vitest (api/web/scripts de CI), ExUnit (engine). Nenhuma
   feature sem teste do caminho feliz + 1 caso de falha. Providers de
   git e de LLM validados por suas suites de contrato únicas. A quarta

@@ -9,9 +9,53 @@
 // mudam), mas o que ela nomeia MUDA de sentido: antes era o banco único de
 // teste, agora é só a BASE do nome — o banco de onde os nomes de template e
 // de worker são derivados, nunca um banco que alguém conecta direto.
-const BASE_TEST_DATABASE_URL =
-  process.env.TEST_DATABASE_URL ??
-  'postgres://brabo:brabo@localhost:5432/brabo_test';
+/**
+ * Decide se o ambiente pode rodar os testes (AT-775). Função pura: devolve a
+ * mensagem de recusa, ou `null` se pode seguir. Teste nunca cai no Postgres da
+ * instalação (`localhost:5432`, banco `brabo`), então não há fallback de URL.
+ */
+export function refusalReason(env: {
+  DATABASE_URL?: string;
+  TEST_DATABASE_URL?: string;
+  BRABO_TESTE_PERMITE_5432?: string;
+}): string | null {
+  const como =
+    'Suba um Postgres descartável sem porta publicada, p.ex. ' +
+    '`docker run -d --name pg-teste -e POSTGRES_PASSWORD=x pgvector/pgvector:pg16`, ' +
+    'e aponte DATABASE_URL e TEST_DATABASE_URL para o IP do container ' +
+    '(`docker inspect -f "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}" pg-teste`).';
+  if (!env.DATABASE_URL || !env.TEST_DATABASE_URL) {
+    return `DATABASE_URL e TEST_DATABASE_URL são obrigatórias nos testes (sem fallback para localhost:5432, o Postgres da instalação). ${como}`;
+  }
+  for (const url of [env.DATABASE_URL, env.TEST_DATABASE_URL]) {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return `URL de banco inválida nos testes. ${como}`;
+    }
+    const local = ['localhost', '127.0.0.1', '::1', '[::1]'].includes(
+      parsed.hostname,
+    );
+    if (
+      local &&
+      (parsed.port || '5432') === '5432' &&
+      !env.BRABO_TESTE_PERMITE_5432
+    ) {
+      return `${parsed.hostname}:5432 pode ser o Postgres da instalação; recusado. Se for um Postgres descartável (service do CI), defina BRABO_TESTE_PERMITE_5432=1. ${como}`;
+    }
+  }
+  const testDb = new URL(env.TEST_DATABASE_URL).pathname.slice(1);
+  if (testDb === 'brabo') {
+    return `TEST_DATABASE_URL aponta para o banco "brabo" (o da instalação); use outro nome, p.ex. brabo_test. ${como}`;
+  }
+  return null;
+}
+
+const refusal = refusalReason(process.env);
+if (refusal) throw new Error(refusal);
+
+const BASE_TEST_DATABASE_URL = process.env.TEST_DATABASE_URL as string;
 
 function parseDatabaseUrl(url: string): { prefix: string; dbName: string } {
   const lastSlash = url.lastIndexOf('/');
