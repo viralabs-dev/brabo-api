@@ -12353,7 +12353,7 @@ quatro pontos, TTL de 5 min — https://openrouter.ai/docs/features/prompt-cachi
   texto avisa que a decisão só vale ao recriar o container. "Recriar" numa só
   ação NÃO existe; nenhum teto de aprovação muda ([RN-495](#rn-495)).
 - **Onde:** `src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts:131`
-  (`recongelar`), `src/domain/containers/project-container.ts:373`
+  (`recongelar`), `src/domain/containers/project-container.ts:387`
   (`containerDivergeDaDecisao`),
   `apps/engine/lib/engine/harness/tools/choose_project_image.ex:99`
   (`mensagem_de_fixada`)
