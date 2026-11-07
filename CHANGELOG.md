@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- CI: repina os reutilizáveis do `brabo-ci` em `13f3697` (merge da ci#17, que inclui a ci#16): `ubuntu-26.04`, `client-id` no lugar de `app-id`, rótulo de família criado antes de aplicar, linha `Carimbo:` na tag e helper `vinculos` (AT-772, AT-773).
 - O setup de teste da api nunca cai no Postgres da instalação (AT-775): `global-setup.ts` e `test-db-name.ts` perdem o fallback para `localhost:5432`; sem `DATABASE_URL`/`TEST_DATABASE_URL` o setup para com a instrução de subir um Postgres descartável, e recusa `localhost:5432` sem `BRABO_TESTE_PERMITE_5432=1` (definida só no service do CI) e o banco alvo `brabo`. A decisão é a função pura `refusalReason`, testada.
 
 - CI: todo `runs-on` fixa `ubuntu-26.04` no lugar de `ubuntu-latest`, e o `create-github-app-token` usa `client-id` no lugar do `app-id` obsoleto; os runs saem sem anotação de aviso (AT-772).
