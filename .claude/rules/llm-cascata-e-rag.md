@@ -80,6 +80,7 @@ paths:
   sem gravar, e se a gravação não separar os pares, reveja os pares ou o texto
   comparado — nunca afrouxe o teste
 
+- A busca devolve no máximo `RAG_SEARCH_MAX_CHUNKS_PER_FILE` (2) trechos por arquivo, depois da fusão e antes do `limit` (RN-1046); o N vigente vai em `rag_searches.pesos.maxPerFile`.
 - Chunking do RAG (1200 caracteres/150 de sobreposição) e pesos da busca
   híbrida (0.6/0.4, limiar 0.2) seguem sendo PONTO DE PARTIDA — ainda NÃO
   calibrados (ADR 0080). O que mudou desde a Etapa 1 é que agora dá para

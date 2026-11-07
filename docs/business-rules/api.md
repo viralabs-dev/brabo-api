@@ -3671,6 +3671,28 @@ achou o chunk)/`origin` como união discriminada por `kind` (`file` com
   (as consultas SQL de fato, contra pgvector/tsvector real)
 - **ADR:** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
+### RN-1046 — A busca híbrida devolve no máximo N trechos do mesmo arquivo {#rn-1046}
+
+Depois da fusão e do limiar ([RN-234](#rn-234)) e antes do corte em `limit`, a
+busca mantém só os `maxPerFile` melhores trechos de cada arquivo
+(`RAG_SEARCH_MAX_CHUNKS_PER_FILE`, hoje 2), na ordem do score. Assim um
+documento grande e repetitivo (o `business-rules.md` agregado) não ocupa todas
+as citações e abafa o documento específico (um ADR). O melhor trecho de cada
+arquivo nunca é descartado, então o filtro só pode subir a posição do primeiro
+trecho de um arquivo, nunca baixá-la. Trecho sem arquivo (sessão) não entra na
+conta. O `maxPerFile` vigente vai congelado em `rag_searches.pesos`
+([RN-479](#rn-479)), para a calibração não comparar rodadas com regras
+diferentes; linhas antigas não o têm. O seed do golden set aceita
+`GOLDEN_SET_RAG_MAX_PER_FILE` e, em caso perdido, imprime a posição do arquivo
+esperado entre os candidatos antes do corte.
+
+- **Onde:** `src/application/use-cases/rag/hybrid-search.use-case.ts`
+  (`limitarPorArquivo`), `src/domain/rag/rag-search-limits.ts`,
+  `src/domain/rag/rag-telemetry.ts`, `scripts/seed-golden-set-rag.ts`
+- **Teste:** `test/application/use-cases/rag/hybrid-search.use-case.spec.ts`
+- **ADR:** [0080](../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
+  (a decisão sobre diversidade fica no ADR 0272)
+
 ### RN-235 — Chunking: 1200 caracteres, 150 de sobreposição, por parágrafo/heading {#rn-235}
 
 `CHUNK_TARGET_CHARS = 1200` (~300 tokens em português),

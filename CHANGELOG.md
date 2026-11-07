@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- A busca híbrida do RAG devolve no máximo N trechos do mesmo arquivo (AT-778, RN-1046, ADR 0272): `limitarPorArquivo` roda depois da fusão e do limiar e antes do corte em `limit`, com `RAG_SEARCH_MAX_CHUNKS_PER_FILE = 2`; o melhor trecho de cada arquivo nunca cai, e o trecho de sessão não entra na conta. Assim o `business-rules.md` agregado não ocupa as cinco vagas e abafa o ADR. `rag_searches.pesos` ganha `maxPerFile` (jsonb, sem migração). A busca aceita `maxPerFile` e `onCandidatos` (diagnóstico); o seed do golden set lê `GOLDEN_SET_RAG_MAX_PER_FILE` e, no caso perdido, imprime a posição do esperado entre os candidatos antes do corte.
+
 - O runner sai só como binário da Release do `brabo-runner`, sem `npm install -g @brabo/runner` (AT-774, parte 2): o `GET /runner-releases/binary` recusa Mac Intel e Windows (400) e a release sem manifesto (502) apontando a issue em `https://github.com/viralabs-dev/brabo-runner/issues`, no lugar do npm.
 
 - CI: repina os reutilizáveis do `brabo-ci` em `13f3697` (merge da ci#17, que inclui a ci#16): `ubuntu-26.04`, `client-id` no lugar de `app-id`, rótulo de família criado antes de aplicar, linha `Carimbo:` na tag e helper `vinculos` (AT-772, AT-773).
