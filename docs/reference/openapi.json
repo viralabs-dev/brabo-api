@@ -18810,6 +18810,29 @@
           "repositorio"
         ]
       },
+      "CutFileResponseDto": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "number"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "too_large",
+              "binary"
+            ]
+          }
+        },
+        "required": [
+          "path",
+          "bytes",
+          "reason"
+        ]
+      },
       "DecideBootstrapPlanDto": {
         "type": "object",
         "properties": {
@@ -20500,6 +20523,12 @@
           "truncated": {
             "type": "boolean"
           },
+          "cutFiles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CutFileResponseDto"
+            }
+          },
           "embedding": {
             "$ref": "#/components/schemas/IndexEmbeddingResponseDto"
           }
@@ -20509,6 +20538,7 @@
           "docsChunks",
           "adrChunks",
           "truncated",
+          "cutFiles",
           "embedding"
         ]
       },
@@ -25119,12 +25149,16 @@
           },
           "truncated": {
             "type": "boolean"
+          },
+          "filesCut": {
+            "type": "number"
           }
         },
         "required": [
           "filesInRepo",
           "filesIndexed",
-          "truncated"
+          "truncated",
+          "filesCut"
         ]
       },
       "RagLocalCoverageResponseDto": {

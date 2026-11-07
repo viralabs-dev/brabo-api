@@ -87,7 +87,7 @@ export interface CodeFile {
   ref: string;
   path: string;
   content: string;
-  /** `true` quando o arquivo passou de `GIT_BLOB_MAX_BYTES` e foi cortado. */
+  /** `true` quando o arquivo passou do teto da leitura (`GIT_BLOB_MAX_BYTES` por padrão) e foi cortado. */
   truncated: boolean;
   /** Bytes DEVOLVIDOS, não os do arquivo — o corte já aconteceu. */
   bytes: number;
@@ -202,7 +202,17 @@ export class ReadProjectCodeUseCase {
     return arvore;
   }
 
-  async file(projectId: string, path: string, ref?: string): Promise<CodeFile> {
+  /**
+   * `maxBytes` é o teto de ESTA leitura. O default é o da aba Code
+   * (`GIT_BLOB_MAX_BYTES`, RN-095); só a indexação de docs passa outro
+   * (`RAG_INDEX_FILE_MAX_BYTES`, RN-1036).
+   */
+  async file(
+    projectId: string,
+    path: string,
+    ref?: string,
+    maxBytes: number = GIT_BLOB_MAX_BYTES,
+  ): Promise<CodeFile> {
     const alvo = await this.alvo(projectId, ref, path);
     if (alvo.path === '') {
       throw new BadRequestException('`path` é obrigatório para ler um arquivo');
@@ -218,9 +228,9 @@ export class ReadProjectCodeUseCase {
     // Cortar em bytes e não em caracteres: o teto existe para limitar o que
     // trafega, e um arquivo de emoji tem 4 bytes por caractere.
     const bruto = Buffer.from(conteudo, 'utf8');
-    const truncated = bruto.byteLength > GIT_BLOB_MAX_BYTES;
+    const truncated = bruto.byteLength > maxBytes;
     const devolvido = truncated
-      ? bruto.subarray(0, GIT_BLOB_MAX_BYTES).toString('utf8')
+      ? bruto.subarray(0, maxBytes).toString('utf8')
       : conteudo;
 
     return {

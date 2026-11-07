@@ -18,6 +18,7 @@ import {
   type NewChunk,
 } from '../../../application/ports/chunk-repository.port';
 import { chunks } from '../../../db/schema';
+import { RAG_INSERT_BATCH_SIZE } from '../../../domain/rag/rag-search-limits';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
@@ -37,21 +38,26 @@ export class DrizzleChunkRepository implements ChunkRepository {
 
   private async insertMany(inputs: NewChunk[]): Promise<Chunk[]> {
     const db = currentDb(this.rootDb);
-    const rows = await db
-      .insert(chunks)
-      .values(
-        inputs.map((input) => ({
-          projectId: input.projectId,
-          scope: input.scope,
-          sessionId: input.sessionId ?? null,
-          sourcePath: input.sourcePath ?? null,
-          content: input.content,
-          embedding: input.embedding ?? null,
-          metadata: input.metadata ?? {},
-        })),
-      )
-      .returning();
-    return rows.map(toEntity);
+    const out: Chunk[] = [];
+    // Fatiado: um INSERT único estoura os 65 535 parâmetros do Postgres.
+    for (let i = 0; i < inputs.length; i += RAG_INSERT_BATCH_SIZE) {
+      const rows = await db
+        .insert(chunks)
+        .values(
+          inputs.slice(i, i + RAG_INSERT_BATCH_SIZE).map((input) => ({
+            projectId: input.projectId,
+            scope: input.scope,
+            sessionId: input.sessionId ?? null,
+            sourcePath: input.sourcePath ?? null,
+            content: input.content,
+            embedding: input.embedding ?? null,
+            metadata: input.metadata ?? {},
+          })),
+        )
+        .returning();
+      out.push(...rows.map(toEntity));
+    }
+    return out;
   }
 
   async findById(id: string): Promise<Chunk | null> {

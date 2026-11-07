@@ -23,7 +23,7 @@ jobs:
   sha-da-pr:
     name: Apagar os sha- da PR fechada
     if: github.event_name == 'pull_request' && github.base_ref == 'main' && startsWith(github.head_ref, 'hotfix/')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - env:
@@ -42,7 +42,7 @@ jobs:
   limpeza-diaria:
     name: Guardar só as 10 -dev mais novas e varrer sha- antigos
     if: github.event_name == 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     steps:
       - run: |

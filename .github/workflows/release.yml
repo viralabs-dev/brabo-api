@@ -28,7 +28,7 @@ env:
 jobs:
   imagem:
     name: Imagem (${{ github.ref_type == 'tag' && 'release' || 'ensaio' }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 40
     env:
       PUBLICAR: ${{ github.ref_type == 'tag' }}

@@ -66,6 +66,10 @@ O Brabo é dividido em repositórios por camada (ADR 0252), e a documentação c
 | [brabo-qa](https://github.com/viralabs-dev/brabo-qa) | testes de ponta a ponta e de propriedades |
 | [brabo-workspace](https://github.com/viralabs-dev/brabo-workspace) | pasta-mãe que clona os repositórios lado a lado |
 
+## Apoie
+
+Se o projeto te ajuda, você pode [pagar um café no Ko-fi](https://ko-fi.com/daneiel).
+
 ## Licença
 
 MIT, ver `LICENSE`. Avisos de terceiros em `THIRD_PARTY_NOTICES.md`.
