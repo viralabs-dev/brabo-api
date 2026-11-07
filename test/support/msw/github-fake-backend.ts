@@ -582,6 +582,25 @@ function lerConteudo(store: FakeRepoStore) {
 
     const content = arquivos.get(path);
     if (content !== undefined) {
+      // Como a API viva: `raw` devolve o texto; no JSON, arquivo de 1 a 100 MB
+      // vem com `content` vazio e `encoding: "none"`.
+      if (request.headers.get('accept')?.includes('raw')) {
+        return new HttpResponse(content, {
+          headers: {
+            'content-type': 'application/vnd.github.raw; charset=utf-8',
+          },
+        });
+      }
+      if (Buffer.byteLength(content, 'utf8') > 1024 * 1024) {
+        return HttpResponse.json({
+          type: 'file',
+          encoding: 'none',
+          content: '',
+          path,
+          name: path.slice(path.lastIndexOf('/') + 1),
+          size: Buffer.byteLength(content, 'utf8'),
+        });
+      }
       return HttpResponse.json({
         type: 'file',
         encoding: 'base64',

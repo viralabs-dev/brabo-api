@@ -38,6 +38,31 @@ describe('GithubProvider — cenários de HTTP mockados', () => {
     store.reset();
   });
 
+  /** Arquivo de 1 a 100 MB: no JSON o `content` vem vazio, e o arquivo sumiria (RN-1036). */
+  it('lê o conteúdo em formato raw: arquivo acima de 1 MB não vira string vazia', async () => {
+    const provider = withAccessToken(new GithubProvider(), 'fake-token');
+    const repo = await provider.createRepo({
+      name: 'arquivo-grande',
+      visibility: 'private',
+    });
+    const grande = `# Grande\n${'linha de texto\n'.repeat(100_000)}`;
+    await provider.commitFiles({
+      externalId: repo.externalId,
+      branch: 'main',
+      message: 'docs: arquivo grande',
+      files: [{ path: 'docs/grande.md', content: grande }],
+    });
+
+    const conteudo = await provider.getFileContent({
+      externalId: repo.externalId,
+      branch: 'main',
+      path: 'docs/grande.md',
+    });
+
+    expect(Buffer.byteLength(grande)).toBeGreaterThan(1024 * 1024);
+    expect(conteudo).toBe(grande);
+  });
+
   /**
    * O primeiro commit num repositório recém-criado.
    *

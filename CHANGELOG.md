@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- A indexação de docs não corta mais o documento em 512 KiB sem avisar (AT-764, RN-1036, ADR 0269): `ReadProjectCodeUseCase.file` ganha `maxBytes` (o default continua 512 KiB, o da aba Code) e a indexação lê cada `.md` até 4 MiB (`RAG_INDEX_FILE_MAX_BYTES`). O que passa do teto é cortado e declarado: `cutFiles: { path, bytes, reason: 'too_large' | 'binary' }[]` no relatório do `POST .../rag/reindex`, `Logger.warn` e `metadata.sourceCut` nos chunks; `.md` com `\0` é pulado e declarado. `GET .../rag/coverage` ganha `filesCut` em `docs` e `adr`. O insert de chunks é fatiado em 1000 por comando (limite de 65 535 parâmetros do Postgres). O `github-provider` lê o conteúdo em `raw`: arquivo de 1 a 100 MB não vira mais string vazia. O golden set passa a indexar o corpus inteiro (o fixture de 842 KB era cortado): o piso será remedido depois do merge.
+
 - Ko-fi do mantenedor: `.github/FUNDING.yml` (botão Sponsor) e seção Apoie no README (AT-768).
 
 - A doc da api volta a ser em pt-BR por padrão (AT-766, decisão do dono de 06/11/2026, revertendo o ADR 0260): as 8 páginas de `docs/` com `idioma_original: en` são traduzidas e perdem o campo, com as mesmas âncoras, links, refs `caminho:N` e a mesma tabela de rotas; o `README.md` é reescrito em pt-BR, com a versão real do contrato e o mapa dos repositórios do Brabo; e o `CLAUDE.md` passa a mandar escrever a doc em pt-BR. O bloco gerado `providers-capabilities` de `docs/reference/llm-providers.md` continua em inglês até o `brabo` regerá-lo.

@@ -114,3 +114,5 @@ Dependabot, duas lacunas do runbook, a severidade dos alertas, e mais). O
 defeito é de CADÊNCIA e não de conteúdo: fases foram fechadas sem ninguém
 voltar ali marcar. A fila viva é o backlog do mantenedor; este arquivo guarda
 o RACIOCÍNIO da triagem, que continua valendo.
+
+- A indexação de `docs`/`adr` lê cada `.md` até `RAG_INDEX_FILE_MAX_BYTES` (4 MiB, `src/domain/rag/rag-search-limits.ts`), um teto PRÓPRIO, separado do `GIT_BLOB_MAX_BYTES` da aba Code (512 KiB, RN-095). O que passa dele é cortado e DECLARADO (`cutFiles`, log, `metadata.sourceCut`, `filesCut` na cobertura), nunca em silêncio (RN-1036, ADR 0269).
