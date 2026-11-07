@@ -11,7 +11,9 @@ const dockerfile = readFileSync(join(raiz, 'Dockerfile'), 'utf8');
 
 describe('Dockerfile sem token do registry (RN-1039)', () => {
   it('todo `pnpm install` monta o .npmrc como secret do BuildKit', () => {
-    const instalacoes = dockerfile.split('\n').filter((l) => /^\s*RUN\b.*\bpnpm install\b/.test(l));
+    const instalacoes = dockerfile
+      .split('\n')
+      .filter((l) => /^\s*RUN\b.*\bpnpm install\b/.test(l));
     expect(instalacoes.length).toBeGreaterThan(0);
     for (const l of instalacoes) {
       expect(l).toContain('--mount=type=secret,id=npmrc');
@@ -19,7 +21,9 @@ describe('Dockerfile sem token do registry (RN-1039)', () => {
   });
 
   it('nenhum ARG/ENV carrega token', () => {
-    const decls = dockerfile.split('\n').filter((l) => /^\s*(ARG|ENV)\b/.test(l));
+    const decls = dockerfile
+      .split('\n')
+      .filter((l) => /^\s*(ARG|ENV)\b/.test(l));
     for (const l of decls) {
       expect(l).not.toMatch(/TOKEN|NPM_CONFIG|NODE_AUTH|_authToken|NPMRC/i);
     }
