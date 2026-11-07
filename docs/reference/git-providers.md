@@ -34,7 +34,7 @@ ainda sem tela que as consuma):
 | `protectBranch` | — |
 | `listBranches` | `GitBranch[]` |
 | `commitFiles` | `GitCommitResult` |
-| `getFileContent` | `string \| null` — `null` se o arquivo (ou a branch) não existe |
+| `getFileContent` | `string \| null` — `null` se o arquivo (ou a branch) não existe. No GitHub é lido em formato `raw` ([RN-1036](../business-rules/api.md#rn-1036)): no JSON, arquivo de 1 a 100 MB vem com `content` vazio |
 | `openPullRequest` | `GitPullRequest` |
 | `mergePullRequest` | `GitPullRequest` — PR já mergeada é recusada (`GitPullRequestAlreadyMergedError` no `local`; o GitHub recusa ele mesmo o merge repetido), [RN-663](../business-rules/api.md#rn-663). No `local` é um merge de verdade: fast-forward quando o alvo é ancestral, senão um commit de merge com dois pais; conflito lança `GitMergeConflictError` (arquivos listados, ref alvo intocada, PR continua aberta, HTTP 409 `merge_conflict`). GitHub/GitLab recusam o merge com conflito pela própria API, sem tradução, [RN-704](../business-rules/api.md#rn-704) |
 | `commentOnPullRequest` | — (veredito de QA/SecOps na PR) |

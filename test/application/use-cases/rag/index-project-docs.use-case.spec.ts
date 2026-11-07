@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { NotFoundException } from '@nestjs/common';
+import { describe, expect, it, vi } from 'vitest';
+import { Logger, NotFoundException } from '@nestjs/common';
 import type { GitTree } from '@brabo/shared';
 import type { ReadProjectCodeUseCase } from '../../../../src/application/use-cases/git/read-project-code.use-case';
 import {
@@ -8,6 +8,8 @@ import {
   type NewChunk,
 } from '../../../../src/application/ports/chunk-repository.port';
 import { RagEmbeddingService } from '../../../../src/application/use-cases/rag/rag-embedding.service';
+import { GIT_BLOB_MAX_BYTES } from '../../../../src/domain/git/git-read-limits';
+import { RAG_INDEX_FILE_MAX_BYTES } from '../../../../src/domain/rag/rag-search-limits';
 import { IndexProjectDocsUseCase } from '../../../../src/application/use-cases/rag/index-project-docs.use-case';
 
 class FakeChunkRepository extends ChunkRepository {
@@ -68,16 +70,27 @@ function fakeReadCode(opts: {
         );
       return Promise.resolve(arvore);
     },
-    file: (_projectId: string, path: string) => {
+    // Igual ao `file` de verdade: sem `maxBytes` o teto é o da aba Code.
+    file: (
+      _projectId: string,
+      path: string,
+      _ref?: string,
+      maxBytes: number = GIT_BLOB_MAX_BYTES,
+    ) => {
       const conteudo = opts.files[path];
       if (conteudo === undefined)
         return Promise.reject(new NotFoundException(`sem arquivo "${path}"`));
+      const bruto = Buffer.from(conteudo, 'utf8');
+      const truncated = bruto.byteLength > maxBytes;
+      const devolvido = truncated
+        ? bruto.subarray(0, maxBytes).toString('utf8')
+        : conteudo;
       return Promise.resolve({
         ref: 'dev',
         path,
-        content: conteudo,
-        truncated: false,
-        bytes: conteudo.length,
+        content: devolvido,
+        truncated,
+        bytes: Buffer.byteLength(devolvido, 'utf8'),
       });
     },
   } as unknown as ReadProjectCodeUseCase;
@@ -146,6 +159,7 @@ describe('IndexProjectDocsUseCase', () => {
     expect(relatorio.docsChunks).toBe(1);
     expect(relatorio.adrChunks).toBe(1);
     expect(relatorio.truncated).toBe(false);
+    expect(relatorio.cutFiles).toEqual([]);
     expect(relatorio.embedding).toEqual({
       available: true,
       embedded: 2,
@@ -202,5 +216,85 @@ describe('IndexProjectDocsUseCase', () => {
     expect(relatorio.filesScanned).toBe(0);
     expect(relatorio.docsChunks).toBe(0);
     expect(relatorio.adrChunks).toBe(0);
+  });
+  describe('teto próprio de indexação (RN-1036)', () => {
+    const ARVORE_UM = (nome: string, size: number): GitTree => ({
+      ref: 'dev',
+      path: 'docs',
+      truncated: false,
+      entries: [{ path: `docs/${nome}`, name: nome, type: 'file', size }],
+    });
+    const usar = (nome: string, conteudo: string) => {
+      const repo = new FakeChunkRepository();
+      const useCase = new IndexProjectDocsUseCase(
+        fakeReadCode({
+          trees: { docs: ARVORE_UM(nome, Buffer.byteLength(conteudo)) },
+          files: { [`docs/${nome}`]: conteudo },
+        }),
+        repo,
+        embeddingServiceQueVetoriza(true),
+      );
+      return { repo, useCase };
+    };
+    /** Seções de ~1 KiB cada, com um marcador único no fim. */
+    const documento = (bytes: number) => {
+      const secao = (i: number) => `## Seção ${i}\n${'x'.repeat(1000)}\n`;
+      let texto = '# Doc\n';
+      for (let i = 0; texto.length < bytes; i++) texto += secao(i);
+      return `${texto}## FIM\nMARCADOR-FINAL\n`;
+    };
+
+    it('arquivo de 600 KiB (acima da aba Code, abaixo do teto) é indexado até o fim', async () => {
+      const { repo, useCase } = usar('grande.md', documento(600 * 1024));
+
+      const relatorio = await useCase.execute('proj-1');
+
+      expect(
+        repo.created.some((c) => c.content.includes('MARCADOR-FINAL')),
+      ).toBe(true);
+      expect(relatorio.cutFiles).toEqual([]);
+      expect(repo.created.every((c) => !c.metadata?.sourceCut)).toBe(true);
+    });
+
+    it('arquivo acima do teto é cortado e DECLARADO: cutFiles com os bytes originais, sourceCut nos chunks, aviso no log', async () => {
+      const conteudo = documento(RAG_INDEX_FILE_MAX_BYTES + 10 * 1024);
+      const { repo, useCase } = usar('enorme.md', conteudo);
+      const aviso = vi.spyOn(Logger.prototype, 'warn').mockImplementation();
+
+      const relatorio = await useCase.execute('proj-1');
+
+      expect(relatorio.cutFiles).toEqual([
+        {
+          path: 'docs/enorme.md',
+          bytes: Buffer.byteLength(conteudo),
+          reason: 'too_large',
+        },
+      ]);
+      expect(repo.created.length).toBeGreaterThan(0);
+      expect(repo.created.every((c) => c.metadata?.sourceCut === true)).toBe(
+        true,
+      );
+      expect(
+        repo.created.some((c) => c.content.includes('MARCADOR-FINAL')),
+      ).toBe(false);
+      expect(aviso).toHaveBeenCalledWith(
+        expect.stringContaining('docs/enorme.md'),
+      );
+      aviso.mockRestore();
+    });
+
+    it('.md com byte nulo é pulado e declarado, sem chunk', async () => {
+      const { repo, useCase } = usar('bin.md', '# Bin\nabc\0def');
+      const aviso = vi.spyOn(Logger.prototype, 'warn').mockImplementation();
+
+      const relatorio = await useCase.execute('proj-1');
+
+      expect(repo.created).toEqual([]);
+      expect(relatorio.cutFiles).toEqual([
+        { path: 'docs/bin.md', bytes: 13, reason: 'binary' },
+      ]);
+      expect(relatorio.docsChunks).toBe(0);
+      aviso.mockRestore();
+    });
   });
 });

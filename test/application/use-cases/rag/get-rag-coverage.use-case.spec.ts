@@ -106,11 +106,13 @@ describe('GetRagCoverageUseCase', () => {
       filesInRepo: 2,
       filesIndexed: 1,
       truncated: false,
+      filesCut: 0,
     });
     expect(cobertura.adr).toEqual({
       filesInRepo: 1,
       filesIndexed: 1,
       truncated: false,
+      filesCut: 0,
     });
     expect(cobertura.session).toEqual({
       sessionsInProject: 2,
@@ -159,5 +161,42 @@ describe('GetRagCoverageUseCase', () => {
     await expect(useCase.execute('proj-inexistente')).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+  it('conta em filesCut os arquivos cujo chunk veio de fonte cortada (RN-1036), uma vez por arquivo', async () => {
+    const chunks = new FakeChunkRepository([
+      mkChunk({
+        scope: 'docs',
+        sourcePath: 'docs/grande.md',
+        metadata: { sourceCut: true },
+      }),
+      mkChunk({
+        scope: 'docs',
+        sourcePath: 'docs/grande.md',
+        metadata: { sourceCut: true },
+      }),
+      mkChunk({ scope: 'docs', sourcePath: 'docs/ok.md' }),
+      mkChunk({
+        scope: 'adr',
+        sourcePath: 'docs/adr/0001-a.md',
+        metadata: { sourceCut: true },
+      }),
+    ]);
+    const useCase = new GetRagCoverageUseCase(
+      fakeProjects(PROJETO),
+      fakeSessions([]),
+      chunks,
+      {
+        listarArquivosMarkdown: () =>
+          Promise.resolve({
+            paths: ['docs/grande.md', 'docs/ok.md', 'docs/adr/0001-a.md'],
+            truncated: false,
+          }),
+      } as unknown as IndexProjectDocsUseCase,
+    );
+
+    const cobertura = await useCase.execute('proj-1');
+
+    expect(cobertura.docs.filesCut).toBe(1);
+    expect(cobertura.adr.filesCut).toBe(1);
   });
 });

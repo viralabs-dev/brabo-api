@@ -401,13 +401,18 @@ export class GithubProvider implements GitProviderContract {
         repo,
         path: input.path,
         ref: input.branch,
+        // `raw`: no formato JSON a API devolve `content` VAZIO para arquivo
+        // de 1 a 100 MB (`encoding: "none"`), e o arquivo sumiria em silêncio
+        // (RN-1036). Em `raw` o corpo é o próprio texto.
+        mediaType: { format: 'raw' },
       });
-      if (Array.isArray(data) || data.type !== 'file') {
+      // Diretório não vem como texto: o corpo é a listagem JSON.
+      if (typeof data !== 'string') {
         throw new Error(
           `getFileContent: "${input.path}" não resolve pra um arquivo único`,
         );
       }
-      return Buffer.from(data.content, 'base64').toString('utf8');
+      return data;
     } catch (error) {
       if (getStatus(error) === 404) return null;
       throw error;
