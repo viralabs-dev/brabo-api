@@ -12971,3 +12971,9 @@ na instalação responde 409.
 - **Teste:** `apps/api/test/infrastructure/graph/neo4j-integration.spec.ts` (contra um Neo4j real: escritas concorrentes do mesmo nó dão um nó; as duplicatas são fundidas com as arestas mantidas, as restrições são criadas depois, uma segunda subida não muda nada), `apps/api/test/infrastructure/graph/graph-store.spec.ts` (a deduplicação roda antes das restrições).
 - **Origem:** AT-762 parte B (EP-033), decisão do dono de 06/11/2026; rodada 214, lane L1.
 
+### RN-1039 — O token do GitHub Packages nunca entra em camada nem em `ARG`/`ENV` da imagem da api; só como secret do BuildKit {#rn-1039}
+
+- **Regra:** a api instala o `@brabo/shared` (alias de `@viralabs-dev/brabo-shared`, só tipos, devDependency) do GitHub Packages. O `.npmrc` do repo traz só `@viralabs-dev:registry=https://npm.pkg.github.com`, sem token. No `Dockerfile`, todo `pnpm install` roda com `RUN --mount=type=secret,id=npmrc,target=/root/.npmrc`, e nenhum `ARG` ou `ENV` carrega token. No CI, o `GITHUB_TOKEN` (`permissions: packages: read`) vai para um arquivo temporário e entra por `secret-files: npmrc=…` (ou `--secret id=npmrc,src=…`). Local, `docker build --secret id=npmrc,src=$HOME/.npmrc` (PAT classic `read:packages`).
+- **Onde:** `Dockerfile` (estágio `deps`), `.npmrc`, `.github/workflows/ci.yml`, `.github/workflows/release.yml`.
+- **Teste:** `test/dockerfile-sem-token.spec.ts` (todo `pnpm install` monta o secret, nenhum `ARG`/`ENV` com token, `.npmrc` só com o registry).
+- **Origem:** AT-770 (EP-033), decisão do dono de 06/11/2026; rodada 248, lane api.
