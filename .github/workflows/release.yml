@@ -52,6 +52,9 @@ jobs:
         run: |
           set -euo pipefail
           if [ "${PUBLICAR}" = true ]; then echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"; else echo "tag=v0.0.0-ensaio" >> "$GITHUB_OUTPUT"; fi
+          # Marca da imagem (AT-850, RN-1065): só a tag final (vX.Y.Z, sem sufixo) é prd; `-dev.N` e o ensaio são dev.
+          case "$(grep ^tag= "$GITHUB_OUTPUT" | cut -d= -f2)" in *-*) amb=dev ;; *) amb=prd ;; esac
+          echo "ambiente=${amb}" >> "$GITHUB_OUTPUT"
 
       # Token do GitHub Packages só como secret do BuildKit (RN-1039): arquivo temporário, nunca ARG/ENV.
       - name: .npmrc temporário (fora do contexto)
@@ -82,7 +85,7 @@ jobs:
             ${{ env.IMAGEM }}:${{ steps.v.outputs.tag }}
           build-args: |
               BRABO_VERSION=${{ steps.v.outputs.tag }}
-              BRABO_AMBIENTE=prd
+              BRABO_AMBIENTE=${{ steps.v.outputs.ambiente }}
 
       - name: Instalar o binário do trivy
         run: |

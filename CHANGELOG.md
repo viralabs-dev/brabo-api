@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- CI (AT-850): a imagem `sha-` da PR e a de tag `-dev.N` passam a levar `BRABO_AMBIENTE=dev` (o dublê de LLM da RN-1065 carrega no E2E); só a de tag final `vX.Y.Z` fica `prd`. Spec `test/scripts/marca-da-imagem.spec.ts` lê os workflows.
 - Doc (AT-848): o bloco "Onde se encaixa" do README é regenerado do `repos.yml` do brabo com o formato `{arquivo, trecho}` e a aresta `brabo → brabo-contracts` (brabo#84); o check `mapa-alinhado` volta a passar.
 - CI (AT-848): todos os `uses:` e `ci_ref` repinam em `6390ef5` (`v1.4.0-dev.17`, brabo-ci#53), que aceita a prova `{arquivo, trecho}` do `mapa-dos-repos.ts`.
 - CI (AT-849 item 4): os comentários de `ci.yml`, `release.yml` e `Dockerfile` que citavam a RN-1040 (token do GitHub Packages só como secret do BuildKit) passam a RN-1039, e o de `ci.yml` que citava a RN-1039 (versão do brabo-contracts igual) passa a RN-1038. Só comentários, sem mudança de comportamento.
