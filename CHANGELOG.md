@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- CI (AT-848): todos os `uses:` e `ci_ref` repinam em `6390ef5` (`v1.4.0-dev.17`, brabo-ci#53), que aceita a prova `{arquivo, trecho}` do `mapa-dos-repos.ts`.
 - Doc (AT-845): as refs `apps/engine/...:N` de `docs/business-rules/api.md` (RN de conversa encerrada, teto do exec, desfecho do Dev Lead, raciocínio, catálogo do agente) são reancoradas para a linha atual no `brabo-engine` `dev` (check `refs`).
 - Doc (AT-826): o README segue o esqueleto de 8 seções do `README.modelo.md` do brabo-ci, com os títulos fixos e sem id de AT, ADR ou RN no título (128 linhas, teto de 150). O detalhe de contratos e de imagem desce para `docs/reference/contratos-e-imagem.md`.
 - CI (AT-826): todos os `uses:` e `ci_ref` repinam em `b5df60b` (`v1.4.0-dev.14`). O `ci.yml` ganha `readme-esqueleto` e `mapa-alinhado`, informativos, do brabo-ci.
