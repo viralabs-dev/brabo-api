@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- CI: o `ci.yml` chama o reutilizável `cadeia.yml` do `brabo-ci` (actionlint, `pins` e `pins-do-brabo-ci`, `ci_ref` obrigatório, AT-819; não é check obrigatório) e todos os `uses:`, actions `vinculos` e `ci_ref` repinam em `0a9eba8` (`v1.4.0-dev.5`, brabo-ci#39), com o comentário de versão no formato `vX.Y.Z-dev.N`. Sem achados do actionlint/shellcheck a corrigir na origem.
 - Doc: as três refs `apps/web/src/routes/session-timeline-montagem.tsx` (`gatePendenteNoMerge`) de `docs/business-rules/api.md` (RN do gate pendente no merge) passam de `:1244` para `:1288`, a linha atual do símbolo no `brabo-web` `origin/dev` (check `refs`).
 - CI: o `qa-e2e.yml` repina o gatilho do `brabo-ci` em `d122b83` (`v1.4.0-dev.4`, merge da ci#33): a espera da imagem `sha-` assinada (AT-790) e os `motivos`/`tocadas` do relatório do regressivo (AT-791); o payload leva só `selecao` (até 10 chaves).
 - Provider de LLM dublê para o regressivo do brabo-qa (AT-815, RN-1065, ADR 0279): `LLM_DUBLE=1` + `LLM_DUBLE_ROTEIRO=<json>` o põem no lugar do `ollama`, só em imagem sem a marca `prd`; custo 0 e modelo `duble-llm`; roteiro por agente e passo.
