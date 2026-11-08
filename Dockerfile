@@ -32,7 +32,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # `--frozen-lockfile` (sem o `=false` do dev): em produção o lockfile é lei.
 # `@brabo/shared` (tipos, pacote `@viralabs-dev/brabo-shared` do GitHub Packages) é devDependency: entra aqui
 # para o `nest build`, e não na árvore de produção. O token do registry entra SÓ como secret do
-# BuildKit (RN-1040): nunca em ARG/ENV nem em camada. `.npmrc` do repo traz só a linha do registry.
+# BuildKit (RN-1039): nunca em ARG/ENV nem em camada. `.npmrc` do repo traz só a linha do registry.
 COPY .npmrc ./
 RUN --mount=type=secret,id=npmrc,target=/root/.npmrc pnpm install --frozen-lockfile
 
