@@ -468,6 +468,19 @@ export class DrizzleTaskRepository implements TaskRepository {
     };
   }
 
+  async updateText(
+    id: string,
+    text: { title: string; description: string },
+  ): Promise<Task> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .update(tasks)
+      .set({ ...text, updatedAt: new Date() })
+      .where(eq(tasks.id, id))
+      .returning();
+    return taskToEntity(row);
+  }
+
   async updateStatus(id: string, status: Task['status']): Promise<Task> {
     const db = currentDb(this.rootDb);
     const [row] = await db

@@ -11,11 +11,14 @@ import {
 import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import { PerguntasEmAbertoUseCase } from './perguntas-em-aberto.use-case';
-import { recusaDeCorrecaoDeHistoria } from '../../../domain/backlog/correcao-de-historia';
-import type { Story } from '../../../domain/backlog/backlog.entity';
+import {
+  recusaDeCorrecaoDeHistoria,
+  recusaDeCorrecaoDeTarefa,
+} from '../../../domain/backlog/correcao-de-historia';
+import type { Story, Task } from '../../../domain/backlog/backlog.entity';
 
 export type AtorDaCorrecao =
-  { kind: 'user'; id: string } | { kind: 'agent'; id: 'po' };
+  { kind: 'user'; id: string } | { kind: 'agent'; id: 'po' | 'dev-lead' };
 
 export const TETO_DO_TITULO = 200;
 
@@ -85,6 +88,70 @@ export class CorrigirHistoriaUseCase {
           previousTitle: story.title,
           title: novo.title,
           descriptionChanged: novo.description !== story.description,
+          ...(questionId ? { questionId } : {}),
+        },
+      });
+      return atualizada;
+    });
+  }
+
+  /**
+   * RN-1068 (AT-805): corrige título e/ou descrição de uma tarefa `todo`
+   * (ferramenta `update_task` do PO e do Dev Lead). Grava
+   * `backlog.task_updated` na sessão da história dela.
+   */
+  async editarTarefa(
+    projectId: string,
+    taskId: string,
+    campos: { title?: string; description?: string },
+    ator: AtorDaCorrecao,
+    questionId?: string,
+  ): Promise<Task> {
+    const titulo = campos.title?.trim();
+    if (
+      titulo !== undefined &&
+      (titulo === '' || titulo.length > TETO_DO_TITULO)
+    ) {
+      throw new BadRequestException(
+        `O título precisa ter entre 1 e ${TETO_DO_TITULO} caracteres.`,
+      );
+    }
+    if (titulo === undefined && campos.description === undefined) {
+      throw new BadRequestException('Informe o título ou a descrição.');
+    }
+    const tarefa = await this.tasks.findById(taskId);
+    const story = tarefa ? await this.stories.findById(tarefa.storyId) : null;
+    if (!tarefa || !story || story.projectId !== projectId) {
+      throw new NotFoundException(
+        `Tarefa "${taskId}" não encontrada neste projeto`,
+      );
+    }
+    const recusa = recusaDeCorrecaoDeTarefa(story, tarefa, {
+      respostaDoUsuario: await this.respostaDoUsuario(projectId, questionId),
+    });
+    if (recusa) throw new ConflictException(recusa);
+
+    const novo = {
+      title: titulo ?? tarefa.title,
+      description: campos.description ?? tarefa.description,
+    };
+    if (
+      novo.title === tarefa.title &&
+      novo.description === tarefa.description
+    ) {
+      return tarefa;
+    }
+    return this.unitOfWork.runInTransaction(async () => {
+      const atualizada = await this.tasks.updateText(taskId, novo);
+      await this.appendEvent.execute(projectId, story.sessionId, {
+        type: 'backlog.task_updated',
+        actor: ator,
+        payload: {
+          taskId,
+          storyId: story.id,
+          previousTitle: tarefa.title,
+          title: novo.title,
+          descriptionChanged: novo.description !== tarefa.description,
           ...(questionId ? { questionId } : {}),
         },
       });

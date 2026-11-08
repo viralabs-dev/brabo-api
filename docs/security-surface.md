@@ -1388,6 +1388,7 @@ detalhar o motivo na URL.
 | POST | `/internal/sessions/:sessionId/tasks/:taskId/unblock` | engine-service |
 | POST | `/internal/sessions/:sessionId/tasks/:taskId/gate/open` | engine-service |
 | POST | `/internal/sessions/:sessionId/tasks/:taskId/status` | engine-service |
+| POST | `/internal/sessions/:sessionId/tasks/:taskId/update` | engine-service |
 | POST | `/internal/sessions/:sessionId/tasks/claim` | engine-service |
 | GET | `/internal/sessions/:sessionId/tasks/in-progress-by-dev` | engine-service |
 | POST | `/internal/sessions/:sessionId/termination` | engine-service |
