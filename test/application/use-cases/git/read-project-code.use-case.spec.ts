@@ -966,6 +966,18 @@ describe('ReadProjectCodeUseCase — o portão do container (FASE 25, RN-105)', 
     },
   );
 
+  it('pullRequestsAbertasDoChat devolve a lista mesmo sem decisão de imagem (AT-843)', async () => {
+    const provider = new ProviderFalso(REPO);
+    const { useCase } = montar(provider, { container: SEM_DECISAO });
+
+    const lista = await useCase.pullRequestsAbertasDoChat(PROJETO);
+
+    expect(lista.items.map((p) => p.id)).toEqual(['pr-1']);
+    await expect(useCase.pullRequests(PROJETO, 'open')).rejects.toThrow(
+      ConflictException,
+    );
+  });
+
   it('a mensagem diz o que falta, para a tela não mostrar erro mudo', async () => {
     const { useCase } = montar(new ProviderFalso(REPO), {
       container: SEM_DECISAO,

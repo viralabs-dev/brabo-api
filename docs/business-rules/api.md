@@ -2374,6 +2374,8 @@ Contagem corrigida aqui: este registro dizia "quatro rotas" desde a FASE 26,
 e ficou desatualizado quando a FASE 26b acrescentou as três últimas ao mesmo
 funil sem que ninguém revisasse este número.
 
+A fila de PRs prontas do chat e o aviso de PR pronta NÃO passam por este portão (AT-843, decisão do dono de 08/11/2026): eles leem `GET /projects/:projectId/git/open-pull-requests`, que lista só as PRs abertas, sem conteúdo de arquivo, pelo mesmo funil `alvo` com o portão desligado. As sete rotas `/code/*`, inclusive a lista da aba PRs, seguem respondendo 409 em `sem_decisao`.
+
 O artefato não tem tabela: é o próprio evento no event log, versionado
 (`version` cresce a cada emissão, o vigente é o de maior `version`), do mesmo
 jeito que `artifact.module_map`. Revisar a imagem é emitir uma versão nova,
