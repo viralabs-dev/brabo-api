@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Doc (AT-867): a linha de badges logo abaixo do título separa o CI (`ci.yml`) e a versão da `dev` (última tag `-dev`) e da `main` (release final), e mantém licença, documentação e Ko-fi.
+
 - Rota `GET /projects/:projectId/git/open-pull-requests` (AT-843, RN-105): lista as PRs abertas para o aviso e a fila de PRs prontas do chat sem o portão da imagem (`role:viewer`, DTO `CodePullRequestListResponseDto`). As sete rotas `/code/*` seguem com o portão. `alvo` ganha `comPortao`; `security-surface.md` e `openapi.json` atualizados.
 - CI (AT-850): a imagem `sha-` da PR e a de tag `-dev.N` passam a levar `BRABO_AMBIENTE=dev` (o dublê de LLM da RN-1065 carrega no E2E); só a de tag final `vX.Y.Z` fica `prd`. Spec `test/scripts/marca-da-imagem.spec.ts` lê os workflows.
 - Doc (AT-848): o bloco "Onde se encaixa" do README é regenerado do `repos.yml` do brabo com o formato `{arquivo, trecho}` e a aresta `brabo → brabo-contracts` (brabo#84); o check `mapa-alinhado` volta a passar.
