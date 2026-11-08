@@ -53,7 +53,7 @@ jobs:
           set -euo pipefail
           if [ "${PUBLICAR}" = true ]; then echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"; else echo "tag=v0.0.0-ensaio" >> "$GITHUB_OUTPUT"; fi
 
-      # Token do GitHub Packages só como secret do BuildKit (RN-1040): arquivo temporário, nunca ARG/ENV.
+      # Token do GitHub Packages só como secret do BuildKit (RN-1039): arquivo temporário, nunca ARG/ENV.
       - name: .npmrc temporário (fora do contexto)
         run: |
           umask 077
