@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Doc: as três refs `apps/web/src/routes/session-timeline-montagem.tsx` (`gatePendenteNoMerge`) de `docs/business-rules/api.md` (RN do gate pendente no merge) passam de `:1244` para `:1288`, a linha atual do símbolo no `brabo-web` `origin/dev` (check `refs`).
 - CI: o `qa-e2e.yml` repina o gatilho do `brabo-ci` em `d122b83` (`v1.4.0-dev.4`, merge da ci#33): a espera da imagem `sha-` assinada (AT-790) e os `motivos`/`tocadas` do relatório do regressivo (AT-791); o payload leva só `selecao` (até 10 chaves).
 - Provider de LLM dublê para o regressivo do brabo-qa (AT-815, RN-1065, ADR 0279): `LLM_DUBLE=1` + `LLM_DUBLE_ROTEIRO=<json>` o põem no lugar do `ollama`, só em imagem sem a marca `prd`; custo 0 e modelo `duble-llm`; roteiro por agente e passo.
 - Contracts por pacote (AT-770, RN-1039): `@brabo/shared` passa do `git+https` por tag para o alias `npm:@viralabs-dev/brabo-shared@1.2.0` do GitHub Packages (lock alterado só nessa entrada; `pnpm-workspace.yaml` ganha o `minimumReleaseAgeExclude` da versão recém-publicada). `.npmrc` novo só com o registry do escopo. `Dockerfile` instala com `--mount=type=secret,id=npmrc`; `ci.yml` e `release.yml` ganham `packages: read`, `setup-node` com escopo, `NODE_AUTH_TOKEN` e `secret-files`; novo job `contracts-alinhado` (brabo-ci `4976af2`, não obrigatório); spec `test/dockerfile-sem-token.spec.ts`.

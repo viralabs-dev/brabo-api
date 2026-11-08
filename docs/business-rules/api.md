@@ -9897,13 +9897,13 @@ segundo `executed` para o mesmo merge.
   `src/infrastructure/git/local-git-provider.ts:339` (`GitPullRequestAlreadyMergedError`);
   `apps/web/src/lib/gate-do-merge.ts:19` (`gatePendenteNoMerge`);
   `apps/web/src/routes/ProjectPrsTab.tsx:214` (`gatePendenteNoMerge`);
-  `apps/web/src/routes/session-timeline-montagem.tsx:1244` (`gatePendenteNoMerge`)
+  `apps/web/src/routes/session-timeline-montagem.tsx:1288` (`gatePendenteNoMerge`)
   `apps/web/src/routes/ProjectPrsTab.tsx:214` (`gatePendenteNoMerge`);
-  `apps/web/src/routes/session-timeline-montagem.tsx:1244` (`gatePendenteNoMerge`)
+  `apps/web/src/routes/session-timeline-montagem.tsx:1288` (`gatePendenteNoMerge`)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:675`
   (`merge_ja_proposto`), `:698` (`pr_ja_mergeado` — caso de falha), `:696`
 
-  `apps/web/src/routes/session-timeline-montagem.tsx:1244` (`gatePendenteNoMerge`)
+  `apps/web/src/routes/session-timeline-montagem.tsx:1288` (`gatePendenteNoMerge`)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:675`
   (`merge_ja_proposto`), `:698` (`pr_ja_mergeado` — caso de falha), `:696`
   (negada não bloqueia, outra PR não colide — caminho feliz);
