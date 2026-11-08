@@ -156,7 +156,8 @@ jobs:
           printf '//npm.pkg.github.com/:_authToken=%s\n' "${{ secrets.GITHUB_TOKEN }}" > "${RUNNER_TEMP}/npmrc"
       - name: Tag sha-<12>
         id: v
-        run: echo "tag=${TAG_SHA:0:16}" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "tag=${TAG_SHA:0:16}" >> "$GITHUB_OUTPUT"
           echo "ambiente=dev" >> "$GITHUB_OUTPUT"  # imagem da PR é dev (AT-850, RN-1065)
       - name: Build e push
         id: build
