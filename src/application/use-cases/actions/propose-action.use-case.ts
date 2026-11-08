@@ -29,6 +29,7 @@ import {
   ACTION_TYPES,
   type ActionType,
 } from '../../../domain/actions/decide';
+import { recusaDeSupersedes } from '../../../domain/actions/adr-supersedes';
 import { GIT_EXECUTED_ACTION_TYPES } from '../../../domain/actions/git-action-types';
 import {
   pullRequestIdDoPayload,
@@ -147,6 +148,31 @@ export class ProposeActionUseCase {
           code: 'plano_de_execucao_invalido',
           message: recusa,
         });
+      }
+    }
+
+    // RN-1069 (AT-806, ADR 0283): `supersedes` da ADR nova aponta uma ADR
+    // aceita deste projeto. 400 nomeado antes de criar a proposta.
+    if (actionType === 'open_adr_pr') {
+      const payload = input.payload as {
+        supersedes?: unknown;
+        slug?: unknown;
+      } | null;
+      if (payload?.supersedes !== undefined && payload.supersedes !== null) {
+        const recusa = recusaDeSupersedes(
+          payload.supersedes,
+          payload.slug,
+          await this.proposedActions.listByProjectAndType(
+            projectId,
+            'open_adr_pr',
+          ),
+        );
+        if (recusa) {
+          throw new BadRequestException({
+            code: 'adr_supersedes_invalido',
+            message: recusa,
+          });
+        }
       }
     }
 

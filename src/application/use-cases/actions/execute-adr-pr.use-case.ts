@@ -9,12 +9,15 @@ import { EncryptionService } from '../../ports/encryption.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
 import type { AdrPrExecutionResult } from '../../../domain/git/adr-pr-execution-result';
+import { slugDeSupersedes } from '../../../domain/actions/adr-supersedes';
 import { BRANCH_DE_TRABALHO } from '../../../domain/actions/protected-branches';
 
 interface AdrPayload {
   title: string;
   slug: string;
   content: string;
+  /** RN-1069: slug da ADR que esta substitui (validado ao propor). */
+  supersedes?: string;
 }
 
 /**
@@ -103,7 +106,11 @@ export class ExecuteAdrPrUseCase {
           action.actor?.kind === 'agent' && action.actor.id
             ? `${action.actor.id}[bot]`
             : 'arquiteto[bot]',
-        body: `ADR proposta pelo Arquiteto.\n\nArquivo: \`${path}\``,
+        body:
+          `ADR proposta pelo Arquiteto.\n\nArquivo: \`${path}\`` +
+          (payload.supersedes
+            ? `\n\nSubstitui: \`docs/adr/${slugDeSupersedes(payload.supersedes)}.md\``
+            : ''),
         accessToken,
       });
 
