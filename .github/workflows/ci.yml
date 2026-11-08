@@ -111,7 +111,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-      # O token vai para um arquivo temporário e entra como secret do BuildKit (RN-1040).
+      # O token vai para um arquivo temporário e entra como secret do BuildKit (RN-1039).
       - name: .npmrc temporário (fora do contexto)
         run: |
           umask 077
@@ -200,7 +200,7 @@ jobs:
             --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
             "${IMAGEM}@${DIGEST}" > /dev/null
 
-  # Versão do brabo-contracts igual em package.json, lock e scripts (AT-770, RN-1039). Não é obrigatório.
+  # Versão do brabo-contracts igual em package.json, lock e scripts (AT-770, RN-1038). Não é obrigatório.
   contracts-alinhado:
     name: Contracts alinhado
     uses: viralabs-dev/brabo-ci/.github/workflows/contracts-alinhado.yml@b5df60b6e114827dd3a59889d6a4b0ecda730ecc  # v1.4.0-dev.14
