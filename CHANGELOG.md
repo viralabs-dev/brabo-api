@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Doc (AT-826): o README segue o esqueleto de 8 seções do `README.modelo.md` do brabo-ci, com os títulos fixos e sem id de AT, ADR ou RN no título (128 linhas, teto de 150). O detalhe de contratos e de imagem desce para `docs/reference/contratos-e-imagem.md`.
+- CI (AT-826): todos os `uses:` e `ci_ref` repinam em `b5df60b` (`v1.4.0-dev.14`). O `ci.yml` ganha `readme-esqueleto` e `mapa-alinhado`, informativos, do brabo-ci.
+
 - Dependências (AT-836): `@nestjs/cli` 12.0.12, `@nestjs/schematics` 12.0.13 e TypeScript `~6.0.2` (o `typescript-eslint` só aceita abaixo de 6.1); o `deepmerge` (GHSA-gcqx-w48m-w2h4, sem patch) sai do lockfile e o alerta do Dependabot fecha sozinho. `tsconfig.json` perde `baseUrl` e ganha `types: ["node"]`; `tsconfig.build.json` fixa `rootDir: ./src`. O runtime `@nestjs/*` segue no 11.
 - CI: o check `dependencias` (Dependências de merge, AT-787) chama o reutilizável do `brabo-ci` em `b75c803` (`v1.4.0-dev.11`).
 - Rodada 271 (EP-030): `POST /internal/sessions/:sessionId/tasks/:taskId/update` corrige título/descrição de tarefa `todo` e grava `backlog.task_updated` (AT-805, RN-1068); `open_adr_pr` aceita `supersedes`, conferido pela api (400 `adr_supersedes_invalido`, AT-806, RN-1069); a decisão que cita `afeta.modulos`, `modules/<m>` ou `dev-<m>` entra em `decisoes` do dev-context (AT-812, RN-872).
