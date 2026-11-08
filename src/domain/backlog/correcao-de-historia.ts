@@ -17,7 +17,8 @@ export const STATUS_DE_TAREFA_EM_EXECUCAO: readonly Task['status'][] = [
 export type MotivoDaRecusaDeCorrecao =
   | 'historia_arquivada'
   | 'historia_nao_draft'
-  | 'historia_com_tarefa_em_execucao';
+  | 'historia_com_tarefa_em_execucao'
+  | 'tarefa_em_execucao';
 
 export interface RecusaDeCorrecao {
   /** O `reason` do corpo do 409 — o nome que a web e o engine reconhecem. */
@@ -71,4 +72,25 @@ export function recusaDeCorrecaoDeHistoria(
     };
   }
   return null;
+}
+
+/**
+ * RN-1068: corrigir o TEXTO de uma tarefa. Só `todo` (as demais têm dev agent
+ * ou já entregaram) e a história dela na mesma régua da RN-727/RN-859 — sem a
+ * trava de tarefa irmã em execução, que é da história inteira, não do texto.
+ */
+export function recusaDeCorrecaoDeTarefa(
+  story: Pick<Story, 'title' | 'status' | 'archivedAt'>,
+  tarefa: Pick<Task, 'title' | 'status'>,
+  opcoes: { respostaDoUsuario?: boolean } = {},
+): RecusaDeCorrecao | null {
+  if (tarefa.status !== 'todo') {
+    return {
+      reason: 'tarefa_em_execucao',
+      message:
+        `A tarefa "${tarefa.title}" está "${tarefa.status}" — só tarefa ` +
+        '`todo` é corrigida (as demais têm dev agent ou já foram entregues).',
+    };
+  }
+  return recusaDeCorrecaoDeHistoria(story, [], opcoes);
 }

@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsArray,
+  IsIn,
   IsOptional,
   IsString,
   IsUUID,
@@ -135,6 +136,40 @@ export class UpdateStoryInternalDto {
     description:
       'RN-859 (ADR 0214): an open question the user ALREADY answered — only ' +
       'then a `ready` story (no task in execution) can be corrected.',
+  })
+  @IsOptional()
+  @IsUUID()
+  questionId?: string;
+}
+
+// Ferramenta update_task do PO e do Dev Lead (RN-1068): corrige título e/ou
+// descrição de uma tarefa `todo`. Campo omitido fica.
+export class UpdateTaskInternalDto {
+  @ApiProperty({ format: 'uuid', example: '01JC4Z0000PROJETO0000000001' })
+  @IsUUID()
+  projectId!: string;
+
+  @ApiPropertyOptional({ enum: ['po', 'dev-lead'], default: 'po' })
+  @IsOptional()
+  @IsIn(['po', 'dev-lead'])
+  agentId?: 'po' | 'dev-lead';
+
+  @ApiPropertyOptional({ example: 'Return 200 for a past date' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  title?: string;
+
+  @ApiPropertyOptional({ example: 'The day agenda accepts a past date.' })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'RN-859: an open question the user ALREADY answered — only then a task ' +
+      'of a `ready` story can be corrected.',
   })
   @IsOptional()
   @IsUUID()

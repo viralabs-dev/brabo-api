@@ -96,6 +96,7 @@ import {
   CompleteStoryInternalDto,
   CreateStoryInternalDto,
   UpdateStoryInternalDto,
+  UpdateTaskInternalDto,
 } from './dto/create-story-internal.dto';
 import { CorrigirHistoriaUseCase } from '../../../application/use-cases/backlog/corrigir-historia.use-case';
 import {
@@ -585,6 +586,40 @@ export class InternalSessionsController {
       storyId,
       { title: dto.title, description: dto.description },
       { kind: 'agent', id: 'po' },
+      dto.questionId,
+    );
+  }
+
+  /**
+   * Ferramenta update_task do PO e do Dev Lead (RN-1068): corrige título e/ou
+   * descrição de uma tarefa `todo`, na mesma régua da história.
+   */
+  @Post(':sessionId/tasks/:taskId/update')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Corrects the title and/or description of a `todo` task',
+    description:
+      'Only a `todo` task; writes `backlog.task_updated` with the PO (default) or the ' +
+      'Dev Lead as actor (RN-1068). A task of a `ready` story too when `questionId` ' +
+      'cites an open question the user already answered (RN-859).',
+  })
+  @ApiOkResponse({ type: TaskResponseDto })
+  @ApiNotFoundResponse({ description: 'Task is not in this project.' })
+  @ApiConflictResponse({
+    description:
+      'Named refusal (`reason`): `tarefa_em_execucao`, `historia_arquivada` or ' +
+      '`historia_nao_draft`.',
+  })
+  @ApiBadRequestResponse({ description: 'No field, or an empty title.' })
+  updateTaskRoute(
+    @Param('taskId') taskId: string,
+    @Body() dto: UpdateTaskInternalDto,
+  ) {
+    return this.corrigirHistoria.editarTarefa(
+      dto.projectId,
+      taskId,
+      { title: dto.title, description: dto.description },
+      { kind: 'agent', id: dto.agentId ?? 'po' },
       dto.questionId,
     );
   }

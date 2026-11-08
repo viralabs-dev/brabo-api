@@ -7555,7 +7555,7 @@ do `permissions.json` repetem os TOKENS do comando no texto (o `label` de
 `matchAgainstFile`) — o mesmo comando que já mora em
 `proposed_actions.payload` e no card de aprovação.
 
-- **Código:** `src/application/use-cases/actions/propose-action.use-case.ts:264`
+- **Código:** `src/application/use-cases/actions/propose-action.use-case.ts:277`
   (`reason` no payload do evento de sessão), `:223` (o comentário do outbox
   sem o campo), `:227` (o payload do outbox, intacto), `:356` (o
   `rejectionReason`, que continua só no `deny`);
@@ -8398,7 +8398,7 @@ que não libera o escopo.
   escopo pulado),
   `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
   (`resolve`, com a origem),
-  `src/application/use-cases/actions/propose-action.use-case.ts:221`
+  `src/application/use-cases/actions/propose-action.use-case.ts:249`
   (`autonomyOrigin`), `apps/web/src/components/AgentTeamGrid.tsx:114`
   (`autonomyHint`), `apps/web/src/components/ApprovalCard.tsx:313` (a nota
   nas duas variantes)
@@ -8563,7 +8563,7 @@ raiz do ESCOPO, nunca onde o arquivo de política mora.
 - **Código:** `src/infrastructure/filesystem/project-workspaces-root.ts:907`
   (`raizDoEscopoNoEvento`), `:901` (`RaizDoEscopoNoEvento`), `:117`
   (`segmentoSobABaseDeProjetos`, reusada);
-  `src/application/use-cases/actions/propose-action.use-case.ts:302`
+  `src/application/use-cases/actions/propose-action.use-case.ts:330`
   (`scopeRoot` só em `terminal`);
   `src/domain/actions/decide.ts:648` (`terminalNoEscopo`, o único
   consumidor do escopo)
@@ -9153,7 +9153,7 @@ seguiram em `in_review` (AT-275).
    infra e de ADR igualmente.
 
 - **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:374`
-  (`settleMerge`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:480`
+  (`settleMerge`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:494`
   (`markDoneIfNotDone`)
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   ("git_merge marca a tarefa como done": feliz, repetido, PR aberta/merge
@@ -10034,7 +10034,7 @@ existe.
   várias raízes), `:137` (`PONTO_DE_MONTAGEM_DO_CONTAINER`);
   `src/domain/actions/decide.ts:291` (`execucaoNoContainer`), `:660`
   (`execucaoNoContainer`, em `terminalNoEscopo`);
-  `src/application/use-cases/actions/propose-action.use-case.ts:174`
+  `src/application/use-cases/actions/propose-action.use-case.ts:203`
   (`containerExecutionActive`, separado de `execucaoNoContainer`)
 - **Teste:** `test/domain/actions/decide.spec.ts:1274` (com container
   `/work`, `.worktrees`, `/tmp` e `..` dentro — caminho feliz; `/etc`, outro
@@ -10327,7 +10327,7 @@ handoff às 06:45:01 — o web encadeava a ativação para `maintainer`/`owner`
 
 - **Onde:** `src/application/use-cases/execution/execute-execution-plan.use-case.ts:89`
   (`execute`); `src/application/use-cases/actions/approve-action.use-case.ts:221`
-  (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:401`
+  (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:427`
   (`executeExecutionPlan`); `apps/web/src/lib/session-acoes-de-handoff.ts:91`
   (`handleAcceptHandoff`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:274`
   (`classificar`); `apps/engine/lib/engine/agents/dev_lead_server.ex:797`
@@ -10389,7 +10389,7 @@ módulo do `module_map`, como antes, e o paralelismo extra continua pelo
 `parallelize` ([RN-083](#rn-083)).
 
 - **Onde:** `src/domain/execution/plano-de-execucao.ts:39`
-  (`lerPlanoDeExecucao`); `src/infrastructure/persistence/drizzle/backlog.repository.ts:707`
+  (`lerPlanoDeExecucao`); `src/infrastructure/persistence/drizzle/backlog.repository.ts:720`
   (`daTarefaDoModulo`), `:403` (`claimNext`), `:391` (`assignModules`);
   `src/application/use-cases/actions/propose-action.use-case.ts:141`
   (`recusaNaProposta`); `src/application/use-cases/execution/execute-execution-plan.use-case.ts:67`
@@ -10496,7 +10496,7 @@ embedding do RAG, e AVISA quando a mais próxima está a partir do limiar.
   `src/application/use-cases/backlog/verificar-duplicata-semantica.use-case.ts:112` (`VerificarDuplicataSemanticaUseCase`),
   `:247` (`medir`), `:291` (`narrar`), `:355` (`fraseParaOAgente`),
   `src/application/use-cases/backlog/create-story.use-case.ts:199` (`semanticDuplicate`),
-  `src/interfaces/http/internal/internal-sessions.controller.ts:643` (`semanticDuplicateCheck`),
+  `src/interfaces/http/internal/internal-sessions.controller.ts:678` (`semanticDuplicateCheck`),
   `src/application/use-cases/rag/rag-embedding.service.ts:106` (`uso`),
   `apps/engine/lib/engine/harness/tools/emit_artifact.ex` (`aviso_semantico`),
   `apps/engine/lib/engine/harness/tools/create_story.ex` (`aviso_semantico`)
@@ -10686,7 +10686,7 @@ lendo o worktree de outros módulos para descobrir a interface deles: o
   (`execute`);
   `src/application/use-cases/architecture/list-module-contracts.use-case.ts:42`
   (`execute`);
-  `src/interfaces/http/internal/internal-sessions.controller.ts:783`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:818`
   (`moduleContracts`);
   `src/interfaces/http/internal/internal-projects.controller.ts:181`
   (`moduleContracts`);
@@ -11086,7 +11086,7 @@ restaura a aprovação.
 - **Medição (AT-383, 02/10, loja-teste):** a #6 terminou `failed` por conflito
   em `package.json`, e a tarefa ficou `in_review` sem ninguém para resolvê-lo.
 - **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:460` (`devolverAoDono`),
-  `src/infrastructure/persistence/drizzle/backlog.repository.ts:490` (`reabrirPorConflitoDeMerge`),
+  `src/infrastructure/persistence/drizzle/backlog.repository.ts:504` (`reabrirPorConflitoDeMerge`),
   `apps/engine/lib/engine/workers/dev_agent_wake_worker.ex:151` (`task.merge_conflict`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:350` (`handle_info`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:851` (`trigger_gate_recheck`),
@@ -11226,14 +11226,14 @@ O kickoff do PO diz as três coisas.
   quantas tarefas tem.
 - **Onde:** `src/domain/backlog/correcao-de-historia.ts:33`
   (`recusaDeCorrecaoDeHistoria`),
-  `src/application/use-cases/backlog/corrigir-historia.use-case.ts:47`
-  (`editar`), `:95` (`arquivar`),
+  `src/application/use-cases/backlog/corrigir-historia.use-case.ts:52`
+  (`editar`), `:162` (`arquivar`),
   `src/infrastructure/persistence/drizzle/backlog.repository.ts:97`
   (`findByProject`), `:403` (`claimNext`),
   `src/interfaces/http/backlog/backlog.controller.ts:205`
   (`updateTitle`), `:219` (`archive`),
   `src/interfaces/http/internal/internal-sessions.controller.ts:579`
-  (`updateStoryRoute`), `:612` (`archiveStoryRoute`),
+  (`updateStoryRoute`), `:647` (`archiveStoryRoute`),
   `apps/engine/lib/engine/harness/tools/update_story.ex:45` (`run`),
   `apps/engine/lib/engine/harness/tools/archive_story.ex:38` (`run`),
   `apps/web/src/lib/correcao-de-historia.ts:10` (`motivoDeCorrecaoInerte`)
@@ -11686,7 +11686,7 @@ O kickoff do PO diz as três coisas.
   `moduleOpenTasksTotal` e o corte dito no recorte. Requisito da entrega que
   depende do que outra história ainda vai entregar (uma rota, uma tela) vai ao
   `resumo` como observação e não reprova. A régua é de PROMPT, como na RN-765.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:211`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:235`
   (`tarefasAbertasDoModulo`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
   (`texto`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
@@ -11711,10 +11711,10 @@ O kickoff do PO diz as três coisas.
   diz Y), para o usuário e o Arquiteto. Régua de PROMPT, como a
   [RN-765](engine.md#rn-765). Desde a [RN-792](engine.md#rn-792) o Arquiteto confere o contrato
   contra as rotas citadas nas histórias ao declará-lo.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:256`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:280`
   (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:66`
 
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:256`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:280`
   (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:70`
   (`secao_do_contrato`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
@@ -11742,7 +11742,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 é consultado na proposta. Mudar um exige mudar o outro.
 
 - **Onde:** `src/application/use-cases/execution/activate-execution.use-case.ts:83` (`MULTIPLICADOR_DA_PRIMEIRA_TAREFA_DO_MODULO`);
-  `src/application/use-cases/actions/propose-action.use-case.ts:242` (`multiplicadorDaPrimeiraDoModulo`);
+  `src/application/use-cases/actions/propose-action.use-case.ts:270` (`multiplicadorDaPrimeiraDoModulo`);
   `apps/web/src/lib/aprovacoes.ts:382` (`multiplicador`)
 - **Teste:** `apps/web/src/lib/aprovacoes.test.ts` (it "RN-802 (AT-473)": 8 tarefas, 1 módulo → US$ 4,50; 3 tarefas, 2 módulos → US$ 2,50; sem orçamento, sem número — caso de falha);
   `test/application/use-cases/actions/propose-action.use-case.spec.ts` ("plano válido nasce pending")
@@ -11969,7 +11969,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   marca. O evento que o engine pediu (inclusive o `proposed_action.created`)
   continua sem aviso da api, para não sair em dobro.
 - **Onde:** `src/application/efeito-de-acao.ts:18` (`ehEfeitoDeAcao`),
-  `src/application/use-cases/actions/propose-action.use-case.ts:319`
+  `src/application/use-cases/actions/propose-action.use-case.ts:347`
   (`runComoEfeitoDeAcao`),
   `src/infrastructure/http-clients/session-channel-notifier.ts:73`
   (`ehEfeitoDeAcao`)
@@ -11998,7 +11998,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   Infra (`/internal/.../infra-context`) passa a levar `projectImage`, a
   decisão vigente de imagem, rede e recursos, `null` sem decisão.
 - **Onde:** `src/domain/infra/run-instructions.ts:77` (`recusaDoRun`),
-  `src/application/use-cases/actions/propose-action.use-case.ts:155`
+  `src/application/use-cases/actions/propose-action.use-case.ts:183`
   (`recusaDoRun`),
   `src/application/use-cases/actions/execute-infra-pr.use-case.ts:111`
   (`recusaDoRun`), `:328` (`EVENTO_INSTRUCOES_DE_EXECUCAO`),
@@ -12140,10 +12140,10 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   (`apps/engine/lib/engine/harness/decisoes_do_projeto.ex`), para o PO achar o
   id.
 - **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:123`
-  (`decisoesDaTarefa`), `:378` (`decisoesDoContexto`),
+  (`decisoesDaTarefa`), `:402` (`decisoesDoContexto`),
   `src/domain/backlog/correcao-de-historia.ts:33`
   (`recusaDeCorrecaoDeHistoria`),
-  `src/application/use-cases/backlog/corrigir-historia.use-case.ts:126`
+  `src/application/use-cases/backlog/corrigir-historia.use-case.ts:130`
   (`respostaDoUsuario`),
   `src/application/use-cases/backlog/complete-story.use-case.ts:101`
   (`corrigindoReady`), `src/application/use-cases/backlog/perguntas-em-aberto.use-case.ts:107`
@@ -12237,13 +12237,18 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   formato. O teto de 10 é COMPARTILHADO — as da tarefa vêm primeiro e consomem
   o teto antes. Revisa a frase "decisão sem `afeta` não entra" do ADR 0214 para
   esta lista. O campo é aditivo (o engine que não o conhece o ignora).
+  AT-812: a decisão também conta como da tarefa quando `afeta.modulos` tem o
+  módulo dela ou o texto (`context`/`choice`) cita `modules/<módulo>` ou
+  `dev-<módulo>` (com borda: `catalogo` não casa `catalogo-admin`). Exemplo: a
+  orientação do Dev Lead "documentar em `modules/catalogo/README.md`" chega ao
+  `dev-catalogo` em `decisoes`, mesmo entre mais de 10 decisões.
 - **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:135`
   (`decisoesDoContexto`), `src/interfaces/http/internal/dto/internal.response.dto.ts:237`
   (`decisoesDoProjeto`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   ("as que não tocam a tarefa vêm em decisoesDoProjeto; teto de 10 somado, as
-  da tarefa primeiro")
-- **Origem:** AT-526, ADR 0215
+  da tarefa primeiro"; `decisão que cita o módulo (RN-872)`)
+- **Origem:** AT-526, ADR 0215; AT-812
 
 ### RN-886 — O 403 de orçamento do OpenRouter é crédito esgotado, com limite, gasto e reset {#rn-886}
 
@@ -12548,7 +12553,7 @@ Revisa a [RN-583](#rn-583) (o `sort` deixa de ser o único campo de `provider` q
 ### RN-933 — `run.app` declara o comando do app e só o piloto automático dispensa a aprovação da PR de infra {#rn-933}
 
 - **Regra:** `run` de `open_infra_pr` aceita `app: { command, port }` opcional (comando de até 300 code points, uma linha, sem NUL; porta 1024-65535; `null` equivale a ausente, como no engine) validado na proposta e na execução; sem `app`, tudo é byte a byte o de antes. Com `run.app`, a regra ESPECÍFICA `open_infra_pr: auto_approve` (a semente do aceite) NÃO basta e a decisão vira `require_approval`; só a CURINGA `auto_approve` do agente (piloto automático, RN-603/RN-670) auto-aprova. A `container-spec` devolve `comandoDoApp` do `run.app.command` vigente, ou `null`.
-- **Onde:** `src/domain/infra/run-instructions.ts:77` (`recusaDoRun`), `src/domain/actions/decide.ts:626` (`comAppDeclarado`), `src/application/use-cases/actions/propose-action.use-case.ts:208` (`comAppDeclarado`), `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:171` (`comandoDoApp`).
+- **Onde:** `src/domain/infra/run-instructions.ts:77` (`recusaDoRun`), `src/domain/actions/decide.ts:626` (`comAppDeclarado`), `src/application/use-cases/actions/propose-action.use-case.ts:236` (`comAppDeclarado`), `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:171` (`comandoDoApp`).
 - **Teste:** `test/domain/infra/run-app.spec.ts`, `test/domain/actions/decide.spec.ts` (sem app + específica = auto; com app + específica = aprovação; com app + curinga = auto).
 - **Origem:** AT-610 (EP-030), ADR 0228.
 
@@ -12980,5 +12985,19 @@ na instalação responde 409.
 - **Onde:** `src/infrastructure/security/ambiente.ts` (`dubleDeLlm`), `src/infrastructure/llm/duble-llm-provider.ts` (`dubleSeAutorizado`, `DubleLLMProvider`), `src/infrastructure/llm/llm-provider-registry.ts` (`resolve`), `src/infrastructure/llm/llm-infrastructure.module.ts` (`LLM_DUBLE`).
 - **Teste:** `test/infrastructure/llm/duble-llm-provider.spec.ts` (variável sim ou não × marca prd ou não; roteiro por agente e passo; custo 0 e modelo dublê).
 - **Origem:** AT-815 (EP-033), decisão do dono de 08/11/2026 (P1); [ADR 0279](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0279-provider-de-llm-duble-do-regressivo.md); rodada 251, lane L3.
+
+### RN-1068 — O PO e o Dev Lead corrigem o texto de uma tarefa `todo`, com a régua da história {#rn-1068}
+
+- **Regra:** `POST /internal/sessions/:sessionId/tasks/:taskId/update` (ferramenta `update_task` do PO e do Dev Lead) corrige título e/ou descrição de uma tarefa. Estende a [RN-727](#rn-727) e a [RN-859](#rn-859) à tarefa. Recusa em 409 nomeado: `tarefa_em_execucao` (status diferente de `todo`), `historia_arquivada` e `historia_nao_draft` (a história `ready` só aceita com `questionId` de pergunta já respondida pelo usuário). 400 sem campo ou com título vazio ou acima de 200; 404 para tarefa de outro projeto. Grava `backlog.task_updated` na sessão da história, com `taskId`, `storyId`, `previousTitle`, `title`, `descriptionChanged` e, quando houver, `questionId`; o ator é `agent` `po` (padrão) ou `dev-lead` (campo `agentId`). Nada mudou, nenhum evento.
+- **Onde:** `src/application/use-cases/backlog/corrigir-historia.use-case.ts:103` (`editarTarefa`), `src/domain/backlog/correcao-de-historia.ts:82` (`recusaDeCorrecaoDeTarefa`), `src/interfaces/http/internal/internal-sessions.controller.ts:614` (`updateTaskRoute`)
+- **Teste:** `test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts` (`CorrigirHistoriaUseCase.editarTarefa`: feliz com evento; `in_progress`/`in_review`/`done` recusadas; história `ready` com e sem resposta; arquivada; 404 e 400).
+- **Origem:** AT-805 (EP-030), achado 5 do TP-01 27ª; rodada 271, lane L2.
+
+### RN-1069 — A ADR proposta declara qual ADR substitui (`supersedes`), e a api confere {#rn-1069}
+
+- **Regra:** o payload de `open_adr_pr` aceita `supersedes` (slug da ADR substituída; `docs/adr/<slug>.md` também vale). Ao propor, a api exige uma `open_adr_pr` DESTE projeto com esse slug e já aceita (`executed`: aprovada, com a PR aberta ou mergeada); inexistente, de outro projeto, pendente, negada, com falha ou a própria ADR nova é 400 `adr_supersedes_invalido`, sem criar a proposta. A PR da ADR nova ganha a linha `Substitui: docs/adr/<slug>.md` no corpo. Sem `supersedes`, nada muda.
+- **Onde:** `src/domain/actions/adr-supersedes.ts:22` (`recusaDeSupersedes`), `src/application/use-cases/actions/propose-action.use-case.ts:162` (chamada), `src/application/use-cases/actions/execute-adr-pr.use-case.ts` (corpo da PR)
+- **Teste:** `test/domain/actions/adr-supersedes.spec.ts`, `test/application/use-cases/actions/propose-action.use-case.spec.ts` (`open_adr_pr com supersedes`, contra Postgres).
+- **Origem:** AT-806 (EP-030), decisão do dono (b) de 08/11/2026; ADR 0283; rodada 271, lane L2.
 
 A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em `ARG`/`ENV`; só como secret do BuildKit), definida no [brabo-broker](https://github.com/viralabs-dev/brabo-broker/blob/dev/docs/business-rules/broker.md). Quem prova na api é `test/dockerfile-sem-token.spec.ts:13` (todo `pnpm install` do `Dockerfile` monta o secret, nenhum `ARG`/`ENV` com token, `.npmrc` só com o registry).

@@ -508,5 +508,51 @@ describe('GetDevTaskContextUseCase', () => {
       expect(ctx.decisoes.map((d) => d.id)).toEqual(['leg']);
       expect(ctx.decisoesDoProjeto.map((d) => d.id)).toEqual(['fora']);
     });
+
+    // RN-1070 (AT-812): a decisão que cita o módulo é da tarefa.
+    describe('decisão que cita o módulo (RN-872)', () => {
+      const alvo = { regras: [], historias: [], tarefas: ['t'] };
+      const velha = (afeta: unknown, context = 'q', choice = 'c') => ({
+        id: 'velha',
+        payload: { context, choice, afeta },
+        createdAt: new Date(0),
+      });
+      const recentes = Array.from({ length: 12 }, (_, i) =>
+        decisao(`o${i}`, { historias: ['outra'] }, 100 + i),
+      );
+
+      it('afeta.modulos com o módulo: vem em decisoes, mesmo a mais antiga entre 12', () => {
+        const eventos = [...recentes, velha({ modulos: ['catalogo'] })];
+        const doModulo = decisoesDoContexto(eventos, alvo, 'catalogo');
+        expect(doModulo.decisoes.map((d) => d.id)).toEqual(['velha']);
+        const outro = decisoesDoContexto(eventos, alvo, 'pagamentos');
+        expect(outro.decisoes).toEqual([]);
+      });
+
+      it('sem o campo, o texto citando modules/<m> ou dev-<m> casa', () => {
+        const a = velha(
+          undefined,
+          'q',
+          'Documente em modules/catalogo/README.md',
+        );
+        const b = velha(undefined, 'Oriente o dev-catalogo: faça X', 'c');
+        expect(decisoesDoContexto([a], alvo, 'catalogo').decisoes).toHaveLength(
+          1,
+        );
+        expect(decisoesDoContexto([b], alvo, 'catalogo').decisoes).toHaveLength(
+          1,
+        );
+      });
+
+      it('catalogo não casa catalogo-admin, nem sem módulo', () => {
+        const a = velha(
+          { modulos: ['catalogo-admin'] },
+          'q',
+          'veja modules/catalogo-admin/x e dev-catalogo-admin',
+        );
+        expect(decisoesDoContexto([a], alvo, 'catalogo').decisoes).toEqual([]);
+        expect(decisoesDoContexto([a], alvo).decisoes).toEqual([]);
+      });
+    });
   });
 });
