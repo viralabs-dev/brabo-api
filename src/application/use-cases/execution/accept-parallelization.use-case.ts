@@ -116,7 +116,7 @@ export class AcceptParallelizationUseCase {
     } catch (error) {
       this.logger.error(
         `Falha ao registrar delegação dev-lead → ${agentId} (área dev, ` +
-          `módulo "${module}"): ${error instanceof Error ? error.message : error}`,
+          `módulo "${module}"): ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }

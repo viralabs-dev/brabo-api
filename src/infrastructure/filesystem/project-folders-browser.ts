@@ -203,7 +203,7 @@ export function listarPastasDeProjeto(
   } catch (erro) {
     const codigo =
       erro !== null && typeof erro === 'object' && 'code' in erro
-        ? String((erro as { code: unknown }).code)
+        ? String(erro.code)
         : 'EUNKNOWN';
     throw new PastaNaoLegivelError(alvo, codigo);
   }
