@@ -10330,7 +10330,7 @@ handoff às 06:45:01 — o web encadeava a ativação para `maintainer`/`owner`
   (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:401`
   (`executeExecutionPlan`); `apps/web/src/lib/session-acoes-de-handoff.ts:91`
   (`handleAcceptHandoff`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:274`
-  (`classificar`); `apps/engine/lib/engine/agents/dev_lead_server.ex:776`
+  (`classificar`); `apps/engine/lib/engine/agents/dev_lead_server.ex:797`
   (`texto_do_desfecho`); `apps/web/src/lib/aprovacoes.ts:359`
   (`propose_execution_plan`)
 - **Teste:** `test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts:106`
@@ -10694,7 +10694,7 @@ lendo o worktree de outros módulos para descobrir a interface deles: o
   `apps/engine/lib/engine/harness/tools/listar_contratos_de_modulos.ex:43`
   (`run`), `:66` (`renderizar`);
   `apps/engine/lib/engine/dev/tools.ex:36` (`ListarContratosDeModulos`);
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:497` (`module`), `:501`;
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:516` (`module`), `:501`;
   `apps/engine/lib/engine/agents/arquiteto_server.ex:112`, `:335`, `:399`
 - **Teste:** `test/application/use-cases/architecture/module-contracts.use-case.spec.ts:173`
   (grava a versão 1 — caminho feliz), `:185` (a vigente substitui), `:210`
@@ -11089,7 +11089,7 @@ restaura a aprovação.
   `src/infrastructure/persistence/drizzle/backlog.repository.ts:490` (`reabrirPorConflitoDeMerge`),
   `apps/engine/lib/engine/workers/dev_agent_wake_worker.ex:151` (`task.merge_conflict`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:350` (`handle_info`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:876` (`trigger_gate_recheck`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:851` (`trigger_gate_recheck`),
   `apps/engine/lib/engine/dev/worktree_manager.ex:47` (`adopt`)
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("conflito de merge → kind git_merge, arquivos no
   resultado e evento na tarefa"; falha: "RN-715: tarefa que já não está em
@@ -11279,7 +11279,7 @@ O kickoff do PO diz as três coisas.
   `apps/web/src/routes/Shell.tsx:562` (`idDoProjetoAtual`),
   `apps/web/src/routes/NewProjectWizard.tsx:155` (`NewProjectWizard`),
   `apps/web/src/routes/ProjectPrsTab.tsx:150` (`invalidateMergeActions`),
-  `apps/web/src/lib/agent-status.ts:222` (`gateStatus`)
+  `apps/web/src/lib/agent-status.ts:254` (`gateStatus`)
 - **Teste:** `test/application/use-cases/actions/execute-infra-pr.use-case.spec.ts`
   ("a branch nasce de dev, a PR mira dev e leva infra[bot]"; falha:
   "repositório sem dev falha nomeado, sem cair na default"),
@@ -11311,7 +11311,7 @@ O kickoff do PO diz as três coisas.
   (`streamErrorCode`),
   `apps/engine/lib/engine/agents/falha_de_turno.ex:91` (`credito_esgotado?`),
   `:71` (`origem`), `apps/engine/lib/engine/harness/tool_loop.ex:168`
-  (`last_error_code`), `apps/engine/lib/engine/dev/dev_agent_server.ex:902`
+  (`last_error_code`), `apps/engine/lib/engine/dev/dev_agent_server.ex:931`
   (`handle_outcome`)
 - **Teste:** `test/contract/llm-provider.contract.ts` (`erro_402 vira
   chunk de erro com code "insufficient_credit"`; falha: `erro_500` segue
@@ -11569,7 +11569,7 @@ O kickoff do PO diz as três coisas.
   (medido no Chromium: 2 236px num balão de 708px) e a última coluna sumia.
 - **Onde:** `src/application/use-cases/actions/execute-adr-pr.use-case.ts:95`
   (`openPullRequest`); `apps/engine/lib/engine/infra/infra_lead_server.ex:1599`
-  (`gravar_texto_do_turno`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1254`
+  (`gravar_texto_do_turno`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1282`
   (`propose_pr`); `apps/web/src/lib/session-destinatario.ts:228`
   (`agentesEmConversa`) e `apps/web/src/lib/session-kind.ts:69`
   (`tipoDaSessao`); `apps/web/src/routes/NewProjectWizard.tsx:1143`
@@ -12261,7 +12261,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 - **Onde:** `src/domain/llm/llm-provider-errors.ts:86` (`normalizeHttpStatus`),
   `:140` (`pareceOrcamento`); `apps/engine/lib/engine/agents/falha_de_turno.ex:212`
   (`orcamento_esgotado`), `:226` (`frase_de_orcamento`), `:163`
-  (`credito_esgotado?`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1026`
+  (`credito_esgotado?`); `apps/engine/lib/engine/dev/dev_agent_server.ex:1044`
   (`motivo_de_credito`)
 - **Teste:** `test/domain/llm/llm-provider-errors.spec.ts` ("o 403 de
   orçamento vira insufficient_credit com o corpo inteiro"; falha: "403 sem
@@ -12597,7 +12597,7 @@ Revisa a [RN-583](#rn-583) (o `sort` deixa de ser o único campo de `provider` q
 ### RN-948 — Higiene do entregável: banco SQLite fora do commit, pasta dos comandos dita, rotas do README preservadas {#rn-948}
 
 - **Regra:** estende a [RN-761](#rn-761), a [RN-900](engine.md#rn-900) e as [RN-706](engine.md#rn-706)/[RN-850](engine.md#rn-850). Três partes, sem gate novo. (1) Segunda lista, `ARQUIVOS_DE_DADOS` (`*.db`, `*.db-*`, `*.sqlite`, `*.sqlite-*`, `*.sqlite3`, `*.sqlite3-*`), nas MESMAS três camadas da RN-761: o `.gitignore` base do bootstrap, a exclusão `:(exclude,glob)**/<padrão>` no `git add` do dev agent e um achado próprio do SecOps ("arquivo de dados em tempo de execução commitado", que nomeia o caminho). O teste que cruza as listas da api e do engine cruza as duas. (2) A mensagem de ambiente do agente com módulo diz que `npm`/`pip`/`mix` rodam na pasta do módulo na MESMA chamada, nunca `cd … 2>/dev/null;` (o `cd` falho caía na raiz e deixou um `package-lock.json` vazio), dentro do teto de 1.500 caracteres. (3) O kickoff do dev nomeia o `README.md` da RAIZ, sem repetir a seção em README de pasta, e `write_file` recusa reescrever um README que perde cabeçalho de rota (`### GET /links`) presente no antigo, no molde da RN-900. Declarado: repositório já bootstrapado não ganha o `.gitignore` novo; fixture `.db` intencional fica fora do commit (renomeie para versioná-la); a guarda não cobre escrita pelo `terminal`. Fora desta RN: `expires_at` × `expiresAt`.
-- **Onde:** `src/application/use-cases/git/bootstrap-templates.ts:29` (`ARQUIVOS_DE_DADOS`), `apps/engine/lib/engine/actions/diretorios_de_dependencia.ex:37` (`argumentos_do_add`), `apps/engine/lib/engine/gates/secops_agent_server.ex:162` (`dependencias_commitadas`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:178` (`modulo`), `apps/engine/lib/engine/harness/tools/write_file.ex:62` (`recusa_de_secao_perdida`), `apps/engine/lib/engine/dev/dev_agent_server.ex:651` (`initial_message`).
+- **Onde:** `src/application/use-cases/git/bootstrap-templates.ts:29` (`ARQUIVOS_DE_DADOS`), `apps/engine/lib/engine/actions/diretorios_de_dependencia.ex:37` (`argumentos_do_add`), `apps/engine/lib/engine/gates/secops_agent_server.ex:162` (`dependencias_commitadas`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:178` (`modulo`), `apps/engine/lib/engine/harness/tools/write_file.ex:62` (`recusa_de_secao_perdida`), `apps/engine/lib/engine/dev/dev_agent_server.ex:666` (`initial_message`).
 - **Teste:** `apps/engine/test/engine/actions/diretorios_de_dependencia_test.exs` (lista cruzada com a api, add real que estagia só `src/a.js`, SecOps nomeia o `.db`), `test/application/use-cases/git/bootstrap-plan.spec.ts` (os seis padrões no `.gitignore`), `apps/engine/test/engine/harness/ambiente_do_agente_test.exs`, `apps/engine/test/engine/harness/tools/write_file_test.exs`, `apps/engine/test/engine/dev/report_done_instrucao_test.exs`.
 - **Origem:** AT-623 (EP-031), entregável `entregavel3` (commits 956fa5c, 8e593b0).
 
