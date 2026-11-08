@@ -156,7 +156,9 @@ jobs:
           printf '//npm.pkg.github.com/:_authToken=%s\n' "${{ secrets.GITHUB_TOKEN }}" > "${RUNNER_TEMP}/npmrc"
       - name: Tag sha-<12>
         id: v
-        run: echo "tag=${TAG_SHA:0:16}" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "tag=${TAG_SHA:0:16}" >> "$GITHUB_OUTPUT"
+          echo "ambiente=dev" >> "$GITHUB_OUTPUT"  # imagem da PR é dev (AT-850, RN-1065)
       - name: Build e push
         id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7.4.0
@@ -170,7 +172,7 @@ jobs:
             ${{ env.IMAGEM }}:${{ steps.v.outputs.tag }}
           build-args: |
             BRABO_VERSION=${{ steps.v.outputs.tag }}
-            BRABO_AMBIENTE=prd
+            BRABO_AMBIENTE=${{ steps.v.outputs.ambiente }}
       - name: Instalar o binário do trivy
         run: |
           set -euo pipefail
