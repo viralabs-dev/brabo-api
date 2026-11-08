@@ -135,6 +135,7 @@ export function decisoesDaTarefa(
 export function decisoesDoContexto(
   eventos: ReadonlyArray<EventoDeDecisao>,
   alvo: { regras: string[]; historias: string[]; tarefas: string[] },
+  modulo?: string | null,
 ): { decisoes: DevContextDecisao[]; decisoesDoProjeto: DevContextDecisao[] } {
   const ordenadas = [...eventos].sort(
     (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
@@ -143,7 +144,7 @@ export function decisoesDoContexto(
     afetaAlgum(
       (e.payload as { afeta?: Partial<AfetaDaPergunta> })?.afeta,
       alvo,
-    );
+    ) || citaOModulo(e.payload, modulo);
   const daTarefa = ordenadas
     .filter(toca)
     .slice(0, TETO_DE_DECISOES_NO_CONTEXTO);
@@ -154,6 +155,29 @@ export function decisoesDoContexto(
     decisoes: daTarefa.map(paraDecisao),
     decisoesDoProjeto: doProjeto.map(paraDecisao),
   };
+}
+
+/**
+ * RN-872 (AT-812): a decisão também é da tarefa quando `afeta.modulos` tem o
+ * módulo ou o texto (`context`/`choice`) cita `modules/<m>` ou `dev-<m>`, com
+ * borda — `catalogo` não casa `catalogo-admin`. Pura e local: `afetaAlgum`
+ * serve às perguntas em aberto e não muda.
+ */
+function citaOModulo(payload: unknown, modulo?: string | null): boolean {
+  if (!modulo) return false;
+  const p = payload as {
+    afeta?: { modulos?: unknown };
+    context?: unknown;
+    choice?: unknown;
+  };
+  if (Array.isArray(p?.afeta?.modulos) && p.afeta.modulos.includes(modulo)) {
+    return true;
+  }
+  const m = modulo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const cita = new RegExp(`(?<![\\w-])(modules/|dev-)${m}(?![\\w-])`);
+  return [p?.context, p?.choice].some(
+    (t) => typeof t === 'string' && cita.test(t),
+  );
 }
 
 function paraDecisao(e: EventoDeDecisao): DevContextDecisao {
@@ -375,14 +399,18 @@ export class GetDevTaskContextUseCase {
       moduleOpenTasksTotal: doModulo.total,
       moduleContract,
       primeiraDoModulo: ehPrimeiraTarefaDoModulo(claims, task.id, module),
-      ...decisoesDoContexto(decisoes, {
-        regras: [
-          ...story.businessRuleIds,
-          ...businessRules.map((r) => r.title),
-        ],
-        historias: [story.id],
-        tarefas: [task.id],
-      }),
+      ...decisoesDoContexto(
+        decisoes,
+        {
+          regras: [
+            ...story.businessRuleIds,
+            ...businessRules.map((r) => r.title),
+          ],
+          historias: [story.id],
+          tarefas: [task.id],
+        },
+        modulo,
+      ),
     };
   }
 
