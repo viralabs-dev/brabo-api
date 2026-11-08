@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import type { LLMProviderName } from '@brabo/shared';
 import { LLMProviderRegistry } from '../../application/ports/llm-provider-registry.port';
 import type { LLMProvider } from '../../application/ports/llm-provider.port';
@@ -14,7 +14,10 @@ import { VultrProvider } from './vultr-provider';
 import { NineRouterProvider } from './nine-router-provider';
 import { OpenCodeZenProvider } from './opencode-zen-provider';
 import { TracedLLMProvider } from './traced-llm-provider';
+import { DubleLLMProvider } from './duble-llm-provider';
 import { BraboMetrics } from '../observability/brabo-metrics';
+
+export const LLM_DUBLE = Symbol('LLM_DUBLE');
 
 @Injectable()
 export class LLMProviderRegistryImpl implements LLMProviderRegistry {
@@ -31,6 +34,9 @@ export class LLMProviderRegistryImpl implements LLMProviderRegistry {
     private readonly nineRouter: NineRouterProvider,
     private readonly openCodeZen: OpenCodeZenProvider,
     private readonly metrics: BraboMetrics,
+    @Optional()
+    @Inject(LLM_DUBLE)
+    private readonly duble: DubleLLMProvider | null = null,
   ) {}
 
   /**
@@ -57,7 +63,7 @@ export class LLMProviderRegistryImpl implements LLMProviderRegistry {
   private resolve(provider: LLMProviderName): LLMProvider {
     switch (provider) {
       case 'ollama':
-        return this.ollama;
+        return this.duble ?? this.ollama;
       case 'anthropic':
         return this.anthropic;
       case 'openai':

@@ -114,6 +114,7 @@ API do Brabo: NestJS 11 + Drizzle + PostgreSQL 16/pgvector. Dona do schema, do R
   só existe com `BRABO_AMBIENTE=local` e nunca sai por Actions: `dev`/`prd`
   vão no build, o `ambiente-nas-actions.spec.ts` reprova `local` em workflow
   (ADR 0245, RN-984). Não ligue por `BRABO_FORCE_SEED` nem pelo `install.sh`.
+- O provider de LLM dublê (`LLM_DUBLE=1`, AT-815, RN-1065) só carrega em imagem sem a marca `prd`; custo 0, modelo `duble-llm`. Não use fora do regressivo.
 - Comunicação api ↔ engine: eventos via Postgres (transactional outbox
   na api, Oban no engine) + HTTP interno com service token para
   comandos síncronos.

@@ -23,3 +23,24 @@ export function acessoRapidoLigado(
   }
   return marca.trim() === 'local';
 }
+
+/**
+ * O provider dublê do regressivo (AT-815, RN-1065) só existe com `LLM_DUBLE=1`
+ * E com a imagem sem a marca `prd`. Na `prd` a variável é ignorada
+ * (`bloqueado-prd`, para quem chama avisar). Sem arquivo (pnpm dev), só a
+ * variável decide.
+ */
+export function dubleDeLlm(
+  env: NodeJS.ProcessEnv = process.env,
+  lerArquivo: (caminho: string) => string = (c) => readFileSync(c, 'utf8'),
+): 'ligado' | 'desligado' | 'bloqueado-prd' {
+  if (env.LLM_DUBLE !== '1') return 'desligado';
+  try {
+    if (lerArquivo(ARQUIVO_AMBIENTE_DA_IMAGEM).trim() === 'prd') {
+      return 'bloqueado-prd';
+    }
+  } catch {
+    // sem marca: só a variável decide
+  }
+  return 'ligado';
+}
