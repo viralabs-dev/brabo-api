@@ -35,11 +35,13 @@ import { GetRepoBootstrapStatusUseCase } from '../../../application/use-cases/gi
 import { AdoptRepositoryUseCase } from '../../../application/use-cases/git/adopt-repository.use-case';
 import { DecideBootstrapPlanUseCase } from '../../../application/use-cases/git/decide-bootstrap-plan.use-case';
 import { GetBootstrapPlanUseCase } from '../../../application/use-cases/git/get-bootstrap-plan.use-case';
+import { ReadProjectCodeUseCase } from '../../../application/use-cases/git/read-project-code.use-case';
 import { AcknowledgeProtectionFailureUseCase } from '../../../application/use-cases/git/acknowledge-protection-failure.use-case';
 import { ProvisionRepositoryDto } from './dto/provision-repository.dto';
 import { AdoptRepositoryDto } from './dto/adopt-repository.dto';
 import { DecideBootstrapPlanDto } from './dto/decide-bootstrap-plan.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
+import { CodePullRequestListResponseDto } from './dto/code.response.dto';
 import {
   AdoptRepositoryResponseDto,
   BootstrapPlanEstadoResponseDto,
@@ -90,6 +92,7 @@ export class GitController {
     private readonly decideBootstrapPlan: DecideBootstrapPlanUseCase,
     private readonly getPlan: GetBootstrapPlanUseCase,
     private readonly acknowledgeProtectionFailure: AcknowledgeProtectionFailureUseCase,
+    private readonly readCode: ReadProjectCodeUseCase,
   ) {}
 
   @Get('projects/:projectId/git/:provider/connect')
@@ -335,6 +338,21 @@ export class GitController {
   @ApiOkResponse({ type: ProvisionedRepositoryResponseDto })
   get(@Param('projectId') projectId: string) {
     return this.getRepository.execute(projectId);
+  }
+
+  @Get('projects/:projectId/git/open-pull-requests')
+  @RequireRole('viewer')
+  @ApiBearerAuth(BEARER)
+  @ApiOperation({
+    summary: 'Lists the open PRs/MRs for the chat, outside the image gate',
+    description:
+      'Feeds the ready-PR notice and queue in the chat (AT-843, RN-105). ' +
+      'Unlike `/code/pull-requests`, it does NOT answer 409 while the ' +
+      'Architect has not decided the container image. Open PRs only, no file content.',
+  })
+  @ApiOkResponse({ type: CodePullRequestListResponseDto })
+  openPullRequests(@Param('projectId') projectId: string) {
+    return this.readCode.pullRequestsAbertasDoChat(projectId);
   }
 
   @Get('projects/:projectId/git/bootstrap')

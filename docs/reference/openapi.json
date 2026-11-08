@@ -6832,6 +6832,55 @@
         ]
       }
     },
+    "/projects/{projectId}/git/open-pull-requests": {
+      "get": {
+        "description": "Feeds the ready-PR notice and queue in the chat (AT-843, RN-105). Unlike `/code/pull-requests`, it does NOT answer 409 while the Architect has not decided the container image. Open PRs only, no file content.",
+        "operationId": "GitController_openPullRequests",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodePullRequestListResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "Insufficient role on the project."
+          },
+          "404": {
+            "description": "Project does not exist."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lists the open PRs/MRs for the chat, outside the image gate",
+        "tags": [
+          "git"
+        ]
+      }
+    },
     "/projects/{projectId}/git/repository": {
       "get": {
         "operationId": "GitController_get",

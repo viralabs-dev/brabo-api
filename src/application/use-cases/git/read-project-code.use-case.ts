@@ -312,6 +312,21 @@ export class ReadProjectCodeUseCase {
   }
 
   /**
+   * PRs abertas para o chat (aviso de PR pronta e fila "prontas", AT-843): o
+   * mesmo funil `alvo`, com o portão da imagem desligado (RN-105).
+   */
+  async pullRequestsAbertasDoChat(
+    projectId: string,
+  ): Promise<GitPullRequestList> {
+    const alvo = await this.alvo(projectId, undefined, undefined, false);
+    return alvo.provider.listPullRequests({
+      externalId: alvo.externalId,
+      state: 'open',
+      accessToken: alvo.accessToken,
+    });
+  }
+
+  /**
    * Branches com `ahead`/`behind` contra a default e a PR aberta associada
    * (FASE 26b, item 2 — fundação do dropdown rico). Deliberadamente NESTE
    * caso de uso, e não perto do bootstrap: é uma LEITURA da aba Code, com a
@@ -499,6 +514,9 @@ export class ReadProjectCodeUseCase {
     projectId: string,
     ref: string | undefined,
     path: string | undefined,
+    // `false` só para a leitura do chat (AT-843, RN-105): o portão da imagem
+    // protege a aba Code, não a fila de PRs prontas.
+    comPortao = true,
   ): Promise<Alvo> {
     const project = await this.projects.findById(projectId);
     if (!project) {
@@ -508,7 +526,7 @@ export class ReadProjectCodeUseCase {
     // O projeto é buscado ANTES do portão porque o portão depende dele: um
     // projeto Local não sobe container nenhum, e portanto não espera decisão
     // do Arquiteto (RN-169).
-    await this.portaoDoContainer(project);
+    if (comPortao) await this.portaoDoContainer(project);
 
     const repo = await this.repositories.findByProjectId(projectId);
     if (!repo) {
