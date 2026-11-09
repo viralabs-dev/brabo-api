@@ -4,6 +4,7 @@
 
 - Docs (AT-873): a tabela "Onde se encaixa" do README linka cada repo no GitHub (o do próprio README fica sem link), gerada pelo `mapa-dos-repos.ts` do brabo-ci repinado em `a571e82` (`v1.4.0-dev.28`, ci#63).
 
+- Teste (AT-869, passo 1): o spec do SQL do incidente de custo acha a seção `{#incidente-de-custo}` no `deploy/docs/runbook.md` (hoje) ou nas partes `deploy/docs/runbook/*.md` (depois da divisão do runbook do `brabo-infra`), sem mudar o que ele prova. Passa com os dois layouts; o caso dividido foi conferido com uma cópia à mão.
 - Correção (AT-866): o padrão de `BRABO_RUNNER_RELEASES_REPO` passa de `daneiel/brabo` (redireciona ao `brabo-legacy`, arquivado) para `viralabs-dev/brabo-runner`, o mesmo runner do `install.sh`; o exemplo do DTO do backlog aponta para `viralabs-dev/brabo`. Spec novo no `runner-releases.controller.spec.ts`; `openapi.json` regenerado.
 - Doc (AT-862, rodada B): `docs/business-rules/api.md` (368 RNs) vira índice com grade de âncoras `#rn-NNN` e 12 partes em `docs/business-rules/api/parte-NN.md` (`partir-rn.mjs` do brabo, ADR 0287); as RNs e as refs `caminho:N` ficam iguais (552 internas batem no `refs`) e a RN nova entra na última parte.
 - Doc (AT-867): a linha de badges logo abaixo do título separa o CI (`ci.yml`) e a versão da `dev` (última tag `-dev`) e da `main` (release final), e mantém licença, documentação e Ko-fi.
