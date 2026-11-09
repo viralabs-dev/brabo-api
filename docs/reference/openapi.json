@@ -3698,6 +3698,65 @@
         ]
       }
     },
+    "/internal/sessions/{sessionId}/tasks/{taskId}/update": {
+      "post": {
+        "description": "Only a `todo` task; writes `backlog.task_updated` with the PO (default) or the Dev Lead as actor (RN-1068). A task of a `ready` story too when `questionId` cites an open question the user already answered (RN-859).",
+        "operationId": "InternalSessionsController_updateTaskRoute",
+        "parameters": [
+          {
+            "name": "taskId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTaskInternalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No field, or an empty title."
+          },
+          "403": {
+            "description": "Service token missing or different from the shared one."
+          },
+          "404": {
+            "description": "Task is not in this project."
+          },
+          "409": {
+            "description": "Named refusal (`reason`): `tarefa_em_execucao`, `historia_arquivada` or `historia_nao_draft`."
+          }
+        },
+        "security": [
+          {
+            "service-token": []
+          }
+        ],
+        "summary": "Corrects the title and/or description of a `todo` task",
+        "tags": [
+          "internal"
+        ]
+      }
+    },
     "/internal/sessions/{sessionId}/tasks/claim": {
       "post": {
         "description": "ATOMIC by design: with several dev agents on the same module, two concurrent claims cannot return the same task. With no task available, returns empty instead of an error.",
@@ -6768,6 +6827,55 @@
           }
         ],
         "summary": "Adopts the repository AS IS, dismissing the bootstrap",
+        "tags": [
+          "git"
+        ]
+      }
+    },
+    "/projects/{projectId}/git/open-pull-requests": {
+      "get": {
+        "description": "Feeds the ready-PR notice and queue in the chat (AT-843, RN-105). Unlike `/code/pull-requests`, it does NOT answer 409 while the Architect has not decided the container image. Open PRs only, no file content.",
+        "operationId": "GitController_openPullRequests",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodePullRequestListResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "Insufficient role on the project."
+          },
+          "404": {
+            "description": "Project does not exist."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lists the open PRs/MRs for the chat, outside the image gate",
         "tags": [
           "git"
         ]
@@ -15138,7 +15246,7 @@
           },
           "pullRequestUrl": {
             "type": "object",
-            "example": "https://github.com/daneiel/brabo/pull/42",
+            "example": "https://github.com/viralabs-dev/brabo/pull/42",
             "nullable": true,
             "description": "`null` while the PR has not actually been opened."
           }
@@ -28598,6 +28706,40 @@
         },
         "required": [
           "title"
+        ]
+      },
+      "UpdateTaskInternalDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "01JC4Z0000PROJETO0000000001"
+          },
+          "agentId": {
+            "type": "string",
+            "enum": [
+              "po",
+              "dev-lead"
+            ],
+            "default": "po"
+          },
+          "title": {
+            "type": "string",
+            "example": "Return 200 for a past date"
+          },
+          "description": {
+            "type": "string",
+            "example": "The day agenda accepts a past date."
+          },
+          "questionId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "RN-859: an open question the user ALREADY answered — only then a task of a `ready` story can be corrected."
+          }
+        },
+        "required": [
+          "projectId"
         ]
       },
       "UpdateUserPreferencesDto": {

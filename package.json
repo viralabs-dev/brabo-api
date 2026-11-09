@@ -88,14 +88,14 @@
     "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "@brabo/shared": "git+https://github.com/viralabs-dev/brabo-contracts.git#v1.2.0-dev.1&path:/packages/shared",
-    "@swc/helpers": "^0.5.17",
+    "@brabo/shared": "npm:@viralabs-dev/brabo-shared@1.2.0",
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.18.0",
-    "@nestjs/cli": "^11.0.0",
-    "@nestjs/schematics": "^11.0.0",
+    "@nestjs/cli": "^12.0.12",
+    "@nestjs/schematics": "^12.0.13",
     "@nestjs/testing": "^11.0.1",
     "@swc/core": "^1.15.46",
+    "@swc/helpers": "^0.5.17",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",
@@ -117,7 +117,7 @@
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.7.3",
+    "typescript": "~6.0.2",
     "typescript-eslint": "^8.20.0",
     "unplugin-swc": "^1.5.9",
     "vitest": "^4.1.12"

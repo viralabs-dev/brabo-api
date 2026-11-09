@@ -1402,3 +1402,39 @@ describe('run da PR de infra (RN-852)', () => {
     expect((action.payload as { run: unknown }).run).toEqual(run);
   });
 });
+
+describe('open_adr_pr com supersedes (RN-1069)', () => {
+  const adr = (slug: string, supersedes?: string) => ({
+    actionType: 'open_adr_pr',
+    actor: { kind: 'agent', id: 'arquiteto' } as const,
+    payload: { title: slug, slug, content: '# x', supersedes },
+  });
+
+  it('cita ADR aceita do projeto: a proposta nasce; inexistente: 400 nomeado', async () => {
+    const { project, session } = await setupSession('maintainer');
+    await proposedActionRepo.create({
+      projectId: project.id,
+      sessionId: session.id,
+      actionType: 'open_adr_pr',
+      payload: { title: 'a', slug: 'antiga', content: '#' },
+      status: 'executed',
+      resolvedPolicy: 'require_approval',
+      actor: { kind: 'agent', id: 'arquiteto' },
+    });
+    const ok = await proposeAction.execute(
+      project.id,
+      session.id,
+      adr('nova', 'antiga'),
+    );
+    expect((ok.payload as { supersedes: string }).supersedes).toBe('antiga');
+    const ruim = proposeAction.execute(
+      project.id,
+      session.id,
+      adr('outra', 'nao-existe'),
+    );
+    await expect(ruim).rejects.toBeInstanceOf(BadRequestException);
+    await expect(ruim).rejects.toMatchObject({
+      response: { code: 'adr_supersedes_invalido' },
+    });
+  });
+});

@@ -34,3 +34,4 @@ allowBuilds:
   '@scarf/scarf': false
 minimumReleaseAgeExclude:
   - '@anthropic-ai/sdk@0.113.0'
+  - '@viralabs-dev/brabo-shared@1.2.0'

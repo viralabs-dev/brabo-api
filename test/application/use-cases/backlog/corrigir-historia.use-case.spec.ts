@@ -94,7 +94,15 @@ beforeEach(() => {
       );
     },
   };
-  const tasks = { findByStoryIds: () => Promise.resolve(tarefas) };
+  const tasks = {
+    findByStoryIds: () => Promise.resolve(tarefas),
+    findById: (id: string) =>
+      Promise.resolve(tarefas.find((t) => t.id === id) ?? null),
+    updateText: (id: string, text: Record<string, unknown>) => {
+      gravado = text;
+      return Promise.resolve({ ...tarefas.find((t) => t.id === id)!, ...text });
+    },
+  };
   const append = {
     execute: (
       _p: string,
@@ -270,5 +278,82 @@ describe('CorrigirHistoriaUseCase (RN-727)', () => {
     expect((erro as ConflictException).getResponse()).toMatchObject({
       reason: 'historia_com_tarefa_em_execucao',
     });
+  });
+});
+
+describe('CorrigirHistoriaUseCase.editarTarefa (RN-1068)', () => {
+  const ator = { kind: 'agent', id: 'dev-lead' } as const;
+
+  it('corrige tarefa todo e grava backlog.task_updated', async () => {
+    const r = await useCase.editarTarefa(
+      'p1',
+      't-todo',
+      { title: ' Novo ' },
+      ator,
+    );
+    expect(r.title).toBe('Novo');
+    expect(eventos).toEqual([
+      {
+        sessionId: 's1',
+        type: 'backlog.task_updated',
+        actor: ator,
+        payload: {
+          taskId: 't-todo',
+          storyId: 'st-1',
+          previousTitle: 't',
+          title: 'Novo',
+          descriptionChanged: false,
+        },
+      },
+    ]);
+  });
+
+  it.each(['in_progress', 'in_review', 'done'] as const)(
+    'recusa tarefa %s com tarefa_em_execucao',
+    async (status) => {
+      tarefas = [makeTask(status)];
+      await expect(
+        useCase.editarTarefa('p1', `t-${status}`, { title: 'x' }, ator),
+      ).rejects.toMatchObject({ response: { reason: 'tarefa_em_execucao' } });
+      expect(eventos).toEqual([]);
+    },
+  );
+
+  it('história ready só com questionId respondido; arquivada nunca', async () => {
+    story = makeStory({ status: 'ready' });
+    await expect(
+      useCase.editarTarefa('p1', 't-todo', { title: 'x' }, ator),
+    ).rejects.toMatchObject({ response: { reason: 'historia_nao_draft' } });
+    await expect(
+      useCase.editarTarefa('p1', 't-todo', { title: 'x' }, ator, 'q-aberta'),
+    ).rejects.toBeInstanceOf(ConflictException);
+    const r = await useCase.editarTarefa(
+      'p1',
+      't-todo',
+      { title: 'x' },
+      ator,
+      'q-respondida',
+    );
+    expect(r.title).toBe('x');
+    expect(eventos[0].payload).toMatchObject({ questionId: 'q-respondida' });
+    story = makeStory({ archivedAt: new Date() });
+    await expect(
+      useCase.editarTarefa('p1', 't-todo', { title: 'y' }, ator),
+    ).rejects.toMatchObject({ response: { reason: 'historia_arquivada' } });
+  });
+
+  it('404 de outro projeto/inexistente; 400 sem campo ou título vazio', async () => {
+    await expect(
+      useCase.editarTarefa('outro', 't-todo', { title: 'x' }, ator),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    await expect(
+      useCase.editarTarefa('p1', 'nao', { title: 'x' }, ator),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    await expect(
+      useCase.editarTarefa('p1', 't-todo', {}, ator),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      useCase.editarTarefa('p1', 't-todo', { title: ' ' }, ator),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

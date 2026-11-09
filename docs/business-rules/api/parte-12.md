@@ -1,0 +1,66 @@
+---
+id: rn-api-parte-12
+title: 'Regras de negócio — API — parte 12 (desde RN-1029)'
+sidebar_label: 'API — parte 12 (desde RN-1029)'
+description: 'As RNs hospedadas na raiz api.'
+keywords: [regras de negócio, api]
+---
+
+# API — parte 12 (desde RN-1029)
+
+## A Anamnese não paga duas vezes pela mesma janela, e o resgate de gate não reinicia ciclo que espera alguém (RN-722)
+<a id="rn-1029"></a>
+
+### RN-1029 — Depois do merge da PR de infra que declara `run.app`, a api propõe `container_recreate` com a porta do app, uma vez {#rn-1029}
+
+- **Regra:** quando um `git_merge` na `main` ([RN-1022](parte-11.md#rn-1022)) recebe `state: 'merged'`, o `ApproveActionUseCase` chama o `ProporRecriacaoDoAppUseCase` FORA da transação do merge e em melhor esforço: uma falha só registra no log o nome do erro (sem mensagem, sem segredo) e o merge continua válido.
+  1. **Detecção.** Existe um `open_infra_pr` do projeto, `executed`, cujo `pullRequestId` é o mergeado e cujo payload leva `run.app`, e o `prUrl` das `run_instructions` correntes ([RN-852](parte-10.md#rn-852)) é o `pullRequestUrl` dessa ação (uma PR de infra mais nova e ainda aberta levaria um comando que não está na `main`).
+  2. **NÃO propõe quando** (função pura `motivoDeNaoRecriar`): o projeto é `runner`; não há container, ou ele está `removed`, `failed` ou `provisioning`; já há um `container_recreate` `pending`; ou o status do container mudou depois que as `run_instructions` correntes foram declaradas (`statusChangedAt > declaredAt`: ele já subiu com o app). Atalho: um container parado e reiniciado depois com `docker start` passa como atualizado; a recriação manual na página do container continua.
+  3. **Porta do host.** SEMPRE na faixa 13000+, mesmo quando `app.port` seria permitida: o primeiro valor livre a partir de 13000, pulando toda porta de host já declarada em qualquer `artifact.container_network` de qualquer projeto (atalho: qualquer versão conta como ocupada, e a recriação pendente de outro projeto não conta). A porta do container é `run.app.port`.
+  4. **Proposta.** `ProposeActionUseCase` com `container_recreate`, ator `agent/infra`, na sessão do merge, payload exatamente `{ reason: 'app_declared', pullRequestId, ports: [{ host, container, protocol: 'tcp' }] }`. O teto absoluto da [RN-934](parte-11.md#rn-934) o mantém `pending`: o clique continua humano. A web monta a URL do app a partir de `payload.ports[0].host` (`http://127.0.0.1:<host>`).
+  5. **Clique.** O `ExecuteContainerRecreateUseCase` grava `artifact.container_network` ([RN-932](parte-11.md#rn-932)) com o ator `user/<quem clicou>` ANTES do `remove`, e só quando o projeto não tem rede corrente (nunca sobrescreve); uma rede recusada faz a ação falhar antes de o container antigo ser tocado. Depois, `remove` + `start` como na [RN-934](parte-11.md#rn-934).
+- **Código:** `apps/api/src/application/use-cases/actions/propor-recriacao-do-app.use-case.ts` (`execute`), `apps/api/src/domain/containers/recriar-com-app.ts` (`motivoDeNaoRecriar`, `proximaPortaLivre`), `apps/api/src/application/use-cases/actions/approve-action.use-case.ts` (`proporRecriacaoDoApp`), `apps/api/src/application/use-cases/actions/execute-container-recreate.use-case.ts` (`obterRede`)
+- **Teste:** `apps/api/test/domain/containers/recriar-com-app.spec.ts`, `apps/api/test/application/use-cases/actions/propor-recriacao-do-app.use-case.spec.ts`, `apps/api/test/application/use-cases/actions/approve-action-recreate-hook.spec.ts` (falha do gancho não desfaz o merge), `apps/api/test/application/use-cases/actions/execute-container-recreate.use-case.spec.ts` (rede gravada só sem uma anterior, com quem clicou como ator, antes do `remove`)
+- **Origem:** AT-758 (EP-030), decisão do dono de 06/11/2026; rodada 209, lane L1.
+
+<a id="rn-1030"></a>
+
+### RN-1030 — Todo nó do grafo gravado por `MERGE` numa chave natural tem restrição de unicidade, e a subida funde as duplicatas preexistentes antes de criá-la {#rn-1030}
+
+- **Regra:** refina a [RN-569](parte-07.md#rn-569). `Handoff (sessionId, seq)`, `Evento (sessionId, seq)`, `PerfilAnamnese (userId, dimensao)` e `Hipotese (id)` não tinham restrição, então dois `MERGE`s concorrentes (o projetor vivo e uma reprojeção, ou duas réplicas da api) criavam dois nós: a prova de reprojeção no k3d mediu `12|9` em vez de `9|6`. Agora eles têm restrição de unicidade, e os casos de uso continuam fazendo `MERGE` exatamente na chave restrita. Restrição de unicidade composta é aceita pelo Neo4j 5.26 Community (medido; só `NODE KEY` e restrições de existência são Enterprise), então não existe propriedade de chave sintética.
+- **Subida:** antes do `CREATE CONSTRAINT`, o `GraphStore` funde as duplicatas desses quatro rótulos já presentes num grafo instalado (fica o nó mais antigo por `elementId`, toda aresta dos outros é movida para ele sem duplicar uma existente, e os outros são apagados). É idempotente (sem duplicatas não grava nada), roda numa transação por rótulo e registra no log só o número de nós fundidos, nunca o conteúdo deles. Uma falha mantém o grafo desligado, como qualquer outra falha de bootstrap ([RN-960](parte-11.md#rn-960)).
+- **Onde:** `apps/api/src/infrastructure/graph/graph-store.ts:51` (`CONSTRAINTS`), `apps/api/src/infrastructure/graph/graph-store.ts:160` (`bootstrapConstraints`), `apps/api/src/infrastructure/graph/graph-dedup.ts:34` (`deduplicarNos`).
+- **Teste:** `apps/api/test/infrastructure/graph/neo4j-integration.spec.ts` (contra um Neo4j real: escritas concorrentes do mesmo nó dão um nó; as duplicatas são fundidas com as arestas mantidas, as restrições são criadas depois, uma segunda subida não muda nada), `apps/api/test/infrastructure/graph/graph-store.spec.ts` (a deduplicação roda antes das restrições).
+- **Origem:** AT-762 parte B (EP-033), decisão do dono de 06/11/2026; rodada 214, lane L1.
+
+<a id="rn-1065"></a>
+
+### RN-1065 — O provider de LLM dublê do regressivo só carrega com `LLM_DUBLE=1` e com a imagem sem a marca `prd`; o custo dele é 0 e o modelo sai como `duble-llm` {#rn-1065}
+
+- **Regra:** o regressivo do `brabo-qa` precisa de agentes que respondem sem LLM real nem custo. O `DubleLLMProvider` ocupa o lugar do provider `ollama` no `LLMProviderRegistry` (o mesmo ponto dos outros; é o provider sem credencial) e responde por roteiro. Ele só existe quando a variável `LLM_DUBLE` vale exatamente `1` E o arquivo `/app/AMBIENTE_DA_IMAGEM` (a marca gravada pelo Dockerfile, o mesmo mecanismo da [AT-722](#rn-1065)) não diz `prd`. Na imagem `prd` ele nunca carrega, nem com a variável: a api só registra um aviso no log. Sem a marca (pnpm dev), só a variável decide. A marca vem da tag (AT-850): a imagem `sha-` da PR e a de tag `-dev.N` levam `dev` (o dublê pode carregar no E2E); só a de tag final `vX.Y.Z`, sem sufixo, leva `prd`. `LLM_DUBLE=1` sem `LLM_DUBLE_ROTEIRO` derruba a subida.
+- **Custo e identificação:** cada chamada devolve `costMicros: 0` e `resolvedModel: "duble-llm"`, então `token_usage` grava custo 0 e `resolved_model_name = duble-llm`, e nunca se confunde com uso real.
+- **Roteiro:** arquivo JSON apontado por `LLM_DUBLE_ROTEIRO`: `{"agentes": {"<agentId>"|"*": [passo, ...]}}`, com `passo = {texto?, tool_calls?: [{name, arguments?}], inputTokens?, outputTokens?}`. Um passo por chamada, por sessão e agente (o agente sai de `sessionKey = brabo:<sessionId>:<agentId>`); acabou a lista, repete o último passo. Agente sem entrada cai em `"*"`; sem `"*"`, o turno termina em erro. As `tool_calls` saem no mesmo formato que o parser do Ollama produz. Exemplo em `docs/reference/llm-duble-roteiro.example.json`.
+- **Limite:** sem `embed` nem `listModels` (RAG e sincronização de catálogo seguem sem o dublê).
+- **Onde:** `src/infrastructure/security/ambiente.ts` (`dubleDeLlm`), `src/infrastructure/llm/duble-llm-provider.ts` (`dubleSeAutorizado`, `DubleLLMProvider`), `src/infrastructure/llm/llm-provider-registry.ts` (`resolve`), `src/infrastructure/llm/llm-infrastructure.module.ts` (`LLM_DUBLE`).
+- **Teste:** `test/scripts/marca-da-imagem.spec.ts` (marca por tag nos workflows) e `test/infrastructure/llm/duble-llm-provider.spec.ts` (variável sim ou não × marca prd ou não; roteiro por agente e passo; custo 0 e modelo dublê).
+- **Origem:** AT-815 (EP-033), decisão do dono de 08/11/2026 (P1); [ADR 0279](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0279-provider-de-llm-duble-do-regressivo.md); rodada 251, lane L3.
+
+<a id="rn-1068"></a>
+
+### RN-1068 — O PO e o Dev Lead corrigem o texto de uma tarefa `todo`, com a régua da história {#rn-1068}
+
+- **Regra:** `POST /internal/sessions/:sessionId/tasks/:taskId/update` (ferramenta `update_task` do PO e do Dev Lead) corrige título e/ou descrição de uma tarefa. Estende a [RN-727](parte-10.md#rn-727) e a [RN-859](parte-10.md#rn-859) à tarefa. Recusa em 409 nomeado: `tarefa_em_execucao` (status diferente de `todo`), `historia_arquivada` e `historia_nao_draft` (a história `ready` só aceita com `questionId` de pergunta já respondida pelo usuário). 400 sem campo ou com título vazio ou acima de 200; 404 para tarefa de outro projeto. Grava `backlog.task_updated` na sessão da história, com `taskId`, `storyId`, `previousTitle`, `title`, `descriptionChanged` e, quando houver, `questionId`; o ator é `agent` `po` (padrão) ou `dev-lead` (campo `agentId`). Nada mudou, nenhum evento.
+- **Onde:** `src/application/use-cases/backlog/corrigir-historia.use-case.ts:103` (`editarTarefa`), `src/domain/backlog/correcao-de-historia.ts:82` (`recusaDeCorrecaoDeTarefa`), `src/interfaces/http/internal/internal-sessions.controller.ts:614` (`updateTaskRoute`)
+- **Teste:** `test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts` (`CorrigirHistoriaUseCase.editarTarefa`: feliz com evento; `in_progress`/`in_review`/`done` recusadas; história `ready` com e sem resposta; arquivada; 404 e 400).
+- **Origem:** AT-805 (EP-030), achado 5 do TP-01 27ª; rodada 271, lane L2.
+
+<a id="rn-1069"></a>
+
+### RN-1069 — A ADR proposta declara qual ADR substitui (`supersedes`), e a api confere {#rn-1069}
+
+- **Regra:** o payload de `open_adr_pr` aceita `supersedes` (slug da ADR substituída; `docs/adr/<slug>.md` também vale). Ao propor, a api exige uma `open_adr_pr` DESTE projeto com esse slug e já aceita (`executed`: aprovada, com a PR aberta ou mergeada); inexistente, de outro projeto, pendente, negada, com falha ou a própria ADR nova é 400 `adr_supersedes_invalido`, sem criar a proposta. A PR da ADR nova ganha a linha `Substitui: docs/adr/<slug>.md` no corpo. Sem `supersedes`, nada muda.
+- **Onde:** `src/domain/actions/adr-supersedes.ts:22` (`recusaDeSupersedes`), `src/application/use-cases/actions/propose-action.use-case.ts:162` (chamada), `src/application/use-cases/actions/execute-adr-pr.use-case.ts` (corpo da PR)
+- **Teste:** `test/domain/actions/adr-supersedes.spec.ts`, `test/application/use-cases/actions/propose-action.use-case.spec.ts` (`open_adr_pr com supersedes`, contra Postgres).
+- **Origem:** AT-806 (EP-030), decisão do dono (b) de 08/11/2026; ADR 0283; rodada 271, lane L2.
+
+A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em `ARG`/`ENV`; só como secret do BuildKit), definida no [brabo-broker](https://github.com/viralabs-dev/brabo-broker/blob/dev/docs/business-rules/broker.md). Quem prova na api é `test/dockerfile-sem-token.spec.ts:13` (todo `pnpm install` do `Dockerfile` monta o secret, nenhum `ARG`/`ENV` com token, `.npmrc` só com o registry).

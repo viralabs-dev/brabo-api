@@ -132,6 +132,11 @@ export abstract class TaskRepository {
     module: string,
     agentId: string,
   ): Promise<Task | null>;
+  // RN-1068: título/descrição corrigidos de uma tarefa `todo`.
+  abstract updateText(
+    id: string,
+    text: { title: string; description: string },
+  ): Promise<Task>;
   abstract updateStatus(id: string, status: TaskStatus): Promise<Task>;
   // O merge da PR fecha a tarefa (AT-275, RN-628): `done` só se ainda não
   // estava. Atômico (UPDATE ... WHERE status <> 'done') e devolve `null` se

@@ -1,0 +1,16 @@
+{
+  "agentes": {
+    "criativo": [
+      { "texto": "Entendi o pedido. Vou registrar o épico." },
+      {
+        "tool_calls": [
+          { "name": "create_epic", "arguments": { "title": "Épico de teste" } }
+        ],
+        "inputTokens": 120,
+        "outputTokens": 30
+      },
+      { "texto": "Pronto, o épico foi criado." }
+    ],
+    "*": [{ "texto": "Resposta padrão do dublê." }]
+  }
+}

@@ -36,7 +36,7 @@ API do Brabo: NestJS 11 + Drizzle + PostgreSQL 16/pgvector. Dona do schema, do R
   provider OpenRouter, só RESTRINGE (P3), ligado por padrão por workspace, e
   qualquer falha dele deixa o catálogo inteiro — o turno nunca falha por causa
   dele, e ele não aprova, não nega nem escolhe modelo
-- Contratos: `@brabo/shared` (só tipos) vem do `brabo-contracts` por TAG (`git+https://github.com/viralabs-dev/brabo-contracts.git#v1.0.0&path:/packages/shared`). A api NÃO consome `@brabo/docker-port`. `contracts/areas.json` é gerado aqui por `pnpm gerar:areas` e publicado no `brabo-contracts`.
+- Contratos: `@brabo/shared` (só tipos) vem do pacote `@viralabs-dev/brabo-shared` do GitHub Packages, pelo alias `npm:@viralabs-dev/brabo-shared@<versão>` (mesma versão da TAG do `brabo-contracts`; sobe pelo `brabo-ci:scripts/ci/subir-contracts.sh`, nunca editando o lock). O `.npmrc` só tem o registry do escopo; o token (PAT `read:packages` no `~/.npmrc`, `GITHUB_TOKEN` no CI) entra só como secret do BuildKit no `Dockerfile` (RN-1039), nunca em ARG/ENV. A api NÃO consome `@brabo/docker-port`. `contracts/areas.json` é gerado aqui por `pnpm gerar:areas` e publicado no `brabo-contracts`.
 
 ## Repositório, branches e PR (vale para todo repo `brabo-*`)
 - Branches permanentes: dev, main — um branch, um ambiente; a esteira é
@@ -114,6 +114,7 @@ API do Brabo: NestJS 11 + Drizzle + PostgreSQL 16/pgvector. Dona do schema, do R
   só existe com `BRABO_AMBIENTE=local` e nunca sai por Actions: `dev`/`prd`
   vão no build, o `ambiente-nas-actions.spec.ts` reprova `local` em workflow
   (ADR 0245, RN-984). Não ligue por `BRABO_FORCE_SEED` nem pelo `install.sh`.
+- O provider de LLM dublê (`LLM_DUBLE=1`, AT-815, RN-1065) só carrega em imagem sem a marca `prd`; custo 0, modelo `duble-llm`. Não use fora do regressivo.
 - Comunicação api ↔ engine: eventos via Postgres (transactional outbox
   na api, Oban no engine) + HTTP interno com service token para
   comandos síncronos.

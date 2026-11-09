@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
+import { dubleSeAutorizado } from './duble-llm-provider';
 import { EncryptionService } from '../../application/ports/encryption.port';
 import { TokenEstimator } from '../../application/ports/token-estimator.port';
 import { LLMProviderRegistry } from '../../application/ports/llm-provider-registry.port';
@@ -16,7 +17,7 @@ import { BitdeerProvider } from './bitdeer-provider';
 import { VultrProvider } from './vultr-provider';
 import { NineRouterProvider } from './nine-router-provider';
 import { OpenCodeZenProvider } from './opencode-zen-provider';
-import { LLMProviderRegistryImpl } from './llm-provider-registry';
+import { LLMProviderRegistryImpl, LLM_DUBLE } from './llm-provider-registry';
 import { LLMCredentialConnectionTesterImpl } from './llm-credential-connection-tester';
 import { ToolRouter } from '../../application/ports/tool-router.port';
 import { JevToolRouter } from './jev-tool-router';
@@ -34,6 +35,14 @@ import { JevToolRouter } from './jev-tool-router';
     VultrProvider,
     NineRouterProvider,
     OpenCodeZenProvider,
+    {
+      // AT-815 (RN-1065): só com LLM_DUBLE=1 e imagem sem a marca `prd`.
+      provide: LLM_DUBLE,
+      useFactory: () => {
+        const log = new Logger('LLMDuble');
+        return dubleSeAutorizado((m) => log.warn(m));
+      },
+    },
     { provide: LLMProviderRegistry, useClass: LLMProviderRegistryImpl },
     { provide: EncryptionService, useClass: EnvelopeEncryptionService },
     { provide: TokenEstimator, useClass: GptTokenizerEstimator },

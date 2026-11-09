@@ -933,6 +933,12 @@ detalhar o motivo na URL.
   proteger nada. O voto continua contido no servidor: um `searchId` de outro
   projeto, ou um `chunkId` que não estava entre os resultados daquela busca, é
   400 — um voto sem posição não mede nada.
+- **`GET /projects/:projectId/git/open-pull-requests` (AT-843) é `role:viewer`
+  e fica FORA do portão da imagem ([RN-105](business-rules/api.md#rn-105)).**
+  Devolve só os metadados das PRs abertas (sem conteúdo de arquivo), com o
+  mesmo papel e a mesma credencial do dono da lista `/code/pull-requests`; a
+  superfície efetiva não cresce. Mora no `GitController` para o
+  `CodeController` continuar inteiro atrás do portão.
 - **As quatro rotas `/projects/:projectId/code/*` são `role:viewer` e
   SOMENTE LEITURA** (FASE 26b). Ver o código de um projeto é a mesma permissão
   que ver o projeto — o mesmo corte de `GET /projects/:id/git/repository`. Três
@@ -1388,6 +1394,7 @@ detalhar o motivo na URL.
 | POST | `/internal/sessions/:sessionId/tasks/:taskId/unblock` | engine-service |
 | POST | `/internal/sessions/:sessionId/tasks/:taskId/gate/open` | engine-service |
 | POST | `/internal/sessions/:sessionId/tasks/:taskId/status` | engine-service |
+| POST | `/internal/sessions/:sessionId/tasks/:taskId/update` | engine-service |
 | POST | `/internal/sessions/:sessionId/tasks/claim` | engine-service |
 | GET | `/internal/sessions/:sessionId/tasks/in-progress-by-dev` | engine-service |
 | POST | `/internal/sessions/:sessionId/termination` | engine-service |
@@ -1465,6 +1472,7 @@ detalhar o motivo na URL.
 | POST | `/projects/:projectId/git/bootstrap/plan/skip` | role:maintainer |
 | POST | `/projects/:projectId/git/bootstrap/acknowledge-protection-failure` | role:maintainer |
 | GET | `/projects/:projectId/git/repository` | role:viewer |
+| GET | `/projects/:projectId/git/open-pull-requests` | role:viewer |
 | GET | `/projects/:projectId/hypotheses` | role:viewer |
 | POST | `/projects/:projectId/hypotheses/:hypothesisId/accept` | role:developer |
 | POST | `/projects/:projectId/hypotheses/:hypothesisId/dismiss` | role:developer |
