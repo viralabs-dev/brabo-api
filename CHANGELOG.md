@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Doc (AT-862, rodada B): `docs/business-rules/api.md` (368 RNs) vira índice com grade de âncoras `#rn-NNN` e 12 partes em `docs/business-rules/api/parte-NN.md` (`partir-rn.mjs` do brabo, ADR 0287); as RNs e as refs `caminho:N` ficam iguais (552 internas batem no `refs`) e a RN nova entra na última parte.
 - Doc (AT-867): a linha de badges logo abaixo do título separa o CI (`ci.yml`) e a versão da `dev` (última tag `-dev`) e da `main` (release final), e mantém licença, documentação e Ko-fi.
 
 - Rota `GET /projects/:projectId/git/open-pull-requests` (AT-843, RN-105): lista as PRs abertas para o aviso e a fila de PRs prontas do chat sem o portão da imagem (`role:viewer`, DTO `CodePullRequestListResponseDto`). As sete rotas `/code/*` seguem com o portão. `alvo` ganha `comPortao`; `security-surface.md` e `openapi.json` atualizados.
