@@ -9,6 +9,8 @@ keywords: [regras de negócio, api]
 # API — parte 11 (desde RN-916)
 
 ## A Anamnese não paga duas vezes pela mesma janela, e o resgate de gate não reinicia ciclo que espera alguém (RN-722)
+<a id="rn-916"></a>
+
 ### RN-916 — Resposta cortada pelo raciocínio é retentada UMA vez com o raciocínio desligado {#rn-916}
 
 Revisa a [RN-782](parte-10.md#rn-782) e a [RN-783](parte-10.md#rn-783) (o desligado deixa de ser só dos dev agents) e convive com a [RN-915](parte-10.md#rn-915).
@@ -23,6 +25,8 @@ Revisa a [RN-782](parte-10.md#rn-782) e a [RN-783](parte-10.md#rn-783) (o deslig
 - **Teste:** `test/domain/llm/raciocinio-do-agente.spec.ts` (folga, aborto e as recusas); `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` (com a capability lida do `AnthropicProvider` real, AT-757: retenta e grava duas linhas; segunda truncada não tem terceira; truncada com texto não retenta); `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` (idem no stream)
 - **Origem:** AT-587, AT-757 (o provider Anthropic declara a capability, o que passa a ser coberto por um spec de caso de uso)
 
+<a id="rn-917"></a>
+
 ### RN-917 — O OpenRouter recebe um teto de preço por chamada, e sem upstream no teto a chamada repete UMA vez sem ele {#rn-917}
 
 Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `provider` que vai ao fio) e convive com a [RN-907](parte-10.md#rn-907) (o `session_id`) e a [RN-916](#rn-916) (a mesma volta de retentativa).
@@ -36,12 +40,16 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 - **Teste:** `test/domain/llm/routing-preference.spec.ts` (fator, preço 0, só o OpenRouter declara); `test/infrastructure/llm/openrouter-provider.contract.spec.ts` (`sort` e teto mesclados no corpo, sem capability nada vai, 404 com teto é `price_ceiling` e sem teto segue `model_not_found`); `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` (repete uma vez sem teto, fator `[1.5, null]` no metering); `test/infrastructure/llm/openrouter-provider.teto.smoke.spec.ts` (manual, API real)
 - **Origem:** AT-606; ADR [0225](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0225-teto-de-preco-do-upstream-no-openrouter.md)
 
+<a id="rn-921"></a>
+
 ### RN-921 — O botão "Retomar" do fio é gesto humano, sem teto, e só vale para o turno interrompido {#rn-921}
 
 - **Regra:** o `agent.error` com `reason: turno_interrompido_por_reinicio` ganha no fio o cartão `RetomarTurnoInterrompido` (objetivo e passos do último plano, "Parou em", botão). O clique chama `POST /projects/:projectId/sessions/:sessionId/agents/:agent/resume` (`developer`; 200 `{ok:true}`; 404 sessão alheia; 409 `turno_nao_interrompido` quando o último desfecho do agente não é a interrupção ou há turno em curso; 409 `agente_sem_retomada`), que pede ao engine `POST /internal/sessions/:sessionId/agent/resume`: ele grava `agent.turn_resumed` com `automatica: false` e manda `:retomar_turno_interrompido` à MESMA `TurnoAssincrono`. Sem teto: cada clique é uma retomada. O cartão some quando algo segue o erro, e a retomada automática vira uma linha discreta. O "sem desfecho" do diário NÃO aparece na tela (o evento não o traz).
 - **Onde:** `src/interfaces/http/sessions/agent-resume.controller.ts:23` (`AgentResumeController`), `src/application/use-cases/sessions/resume-agent-turn.use-case.ts:29` (`execute`), `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:638` (`resume`), `apps/web/src/routes/RetomarTurnoInterrompido.helpers.ts:10` (`ehTurnoInterrompido`)
 - **Teste:** `test/interfaces/http/sessions/agent-resume.controller.spec.ts` (feliz, duas recusas 409, 404, papel); `apps/web/src/routes/RetomarTurnoInterrompido.test.tsx`; ExUnit do `agent_command_controller`
 - **Origem:** AT-582 (EP-031); [ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md).
+
+<a id="rn-926"></a>
 
 ### RN-926 — A rota de providers com chave devolve só os nomes, e a chave é a do TITULAR {#rn-926}
 
@@ -50,12 +58,16 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 - **Teste:** `test/application/use-cases/llm/list-credentialed-providers.use-case.spec.ts:44` (`titular com duas chaves: só os dois nomes`; a chave de outro membro não conta)
 - **Origem:** AT-607 (EP-026).
 
+<a id="rn-927"></a>
+
 ### RN-927 — O runner grava a chave de API de LLM do usuário por `POST /runner/llm-credentials`, só com chave de máquina, sem sobrescrever sem confirmação {#rn-927}
 
 - **Regra:** `POST /runner/llm-credentials` (`@RequirePatAuth()`, `PatAuthGuard`) recebe `{ provider, apiKey, origem, substituir? }` e delega ao mesmo `UpsertUserCredentialUseCase` (envelope com `key_id`, ADR 0158) para o usuário dono da credencial. Rota sem `:projectId`: o guard recusa com 403 credencial amarrada a projeto, e todo PAT é de projeto, então só a chave de dispositivo de MÁQUINA entra (a primeira rota em que ela escreve segredo de usuário). Provider fora de `LLM_PROVIDER_NAMES_COM_CREDENCIAL` é 400; credencial existente do provider sem `substituir: true` é 409 `credencial_existente`, sem tocar a existente. A resposta é `{ provider, substituida }`. O valor nunca vai a log (a auditoria leva provider e `origem`), URL, evento, exceção nem resposta, e a rota não testa a conexão (ADR 0050). Só chave de API é importável; token de login por assinatura não (ADR 0230).
 - **Onde:** `src/application/use-cases/llm/import-runner-llm-credential.use-case.ts:22` (`execute`), `src/interfaces/http/runner/runner-llm-credentials.controller.ts:33` (`RunnerLlmCredentialsController`)
 - **Teste:** `test/application/use-cases/llm/import-runner-llm-credential.use-case.spec.ts` (grava cifrado com `key_id` sem o valor em log/resposta; 409 sem substituir; substituir; provider inválido); 401/403 do guard em `test/interfaces/pat-auth.guard.spec.ts`; `route-surface.spec.ts`
 - **Origem:** AT-611 (EP-026), ADR 0230.
+
+<a id="rn-932"></a>
 
 ### RN-932 — A rede do container é artefato declarado por humano e só vale no container recriado {#rn-932}
 
@@ -64,12 +76,16 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 - **Teste:** `test/contract/rede-do-container-paridade.spec.ts` (paridade com o docker-port), `test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts` (spec devolve a rede; `runner` tudo `null`).
 - **Origem:** AT-608 (EP-030), ADR 0228.
 
+<a id="rn-933"></a>
+
 ### RN-933 — `run.app` declara o comando do app e só o piloto automático dispensa a aprovação da PR de infra {#rn-933}
 
 - **Regra:** `run` de `open_infra_pr` aceita `app: { command, port }` opcional (comando de até 300 code points, uma linha, sem NUL; porta 1024-65535; `null` equivale a ausente, como no engine) validado na proposta e na execução; sem `app`, tudo é byte a byte o de antes. Com `run.app`, a regra ESPECÍFICA `open_infra_pr: auto_approve` (a semente do aceite) NÃO basta e a decisão vira `require_approval`; só a CURINGA `auto_approve` do agente (piloto automático, RN-603/RN-670) auto-aprova. A `container-spec` devolve `comandoDoApp` do `run.app.command` vigente, ou `null`.
 - **Onde:** `src/domain/infra/run-instructions.ts:77` (`recusaDoRun`), `src/domain/actions/decide.ts:626` (`comAppDeclarado`), `src/application/use-cases/actions/propose-action.use-case.ts:236` (`comAppDeclarado`), `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:171` (`comandoDoApp`).
 - **Teste:** `test/domain/infra/run-app.spec.ts`, `test/domain/actions/decide.spec.ts` (sem app + específica = auto; com app + específica = aprovação; com app + curinga = auto).
 - **Origem:** AT-610 (EP-030), ADR 0228.
+
+<a id="rn-934"></a>
 
 ### RN-934 — `container_recreate` remove e sobe de novo, no teto absoluto de `container_remove` {#rn-934}
 
@@ -78,12 +94,16 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 - **Teste:** `test/application/use-cases/actions/execute-container-recreate.use-case.spec.ts`, `test/domain/actions/decide.spec.ts` (teto), `apps/web/src/lib/aprovacoes.test.ts`.
 - **Origem:** AT-608 (EP-030), ADR 0228.
 
+<a id="rn-935"></a>
+
 ### RN-935 — A Infra declara os serviços da instância de QA (`run.qa`), e a api guarda uma instância por tarefa com teto de 1 por projeto {#rn-935}
 
 - **Regra:** `open_infra_pr` aceita `run.qa = { services: [...] }` (opcional, `null` = ausente; até 6 serviços de nome único `[a-z][a-z0-9-]{0,31}`; `image` COM digest `@sha256:<64 hex>`; `env` até 20 variáveis `[A-Z_][A-Z0-9_]*` de uma linha; `tmpfs` até 3 caminhos absolutos; `shared` booleano). A mesma régua vale na proposta (400 `run_invalido`) e na execução, e quem declara é a Infra, não um catálogo do produto (decisão do dono, 29/10). A instância de uma tarefa é uma linha de `project_qa_environments` (`provisioning|running|failed|removed`, único `(projeto, tarefa)`), e um índice parcial único garante no banco UMA ativa por projeto: subir a de outra tarefa com uma ativa é 409 `instancia_de_qa_ocupada`. `runner` é recusado (409 `qa_nao_suporta_runner`, "runner depois"). A chave do container é o `chaveDeQa(taskId)` (8 primeiros `[a-z0-9]` do id, sem hífen), calculada só pela api.
 - **Onde:** `src/domain/infra/run-instructions.ts:160` (`recusaDoQa`), `src/domain/containers/instancia-de-qa.ts:15` (`chaveDeQa`), `src/db/schema/containers.ts:87` (`projectQaEnvironments`), `src/application/use-cases/containers/instancia-de-qa.use-case.ts:80` (`start`).
 - **Teste:** `test/domain/infra/run-qa.spec.ts`, `test/application/use-cases/containers/instancia-de-qa.use-case.spec.ts`.
 - **Origem:** AT-612 (EP-030), ADR 0229.
+
+<a id="rn-936"></a>
 
 ### RN-936 — Subir a instância de QA é a ação `qa_environment_start`, semeada `auto_approve` para o QA; remover é automático e fora do teto do `container_remove` {#rn-936}
 
@@ -92,12 +112,16 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 - **Teste:** `test/application/use-cases/containers/instancia-de-qa.use-case.spec.ts`, `test/domain/actions/decide.spec.ts`, `apps/web/src/lib/aprovacoes.test.ts`.
 - **Origem:** AT-612 (EP-030), ADR 0229.
 
+<a id="rn-937"></a>
+
 ### RN-937 — A `container-spec` de QA e a limpeza de órfãs {#rn-937}
 
 - **Regra:** `GET /internal/projects/:id/container-spec?papel=qa&task=<ref>` devolve o contexto normal com `comandoDoApp: null`, `ports: null` e `qa: { chave, services }` (os de `run.qa`, `[]` se ausentes). `task` é o id completo OU a chave de 8 (o broker da `dev` manda a chave), resolvido DENTRO do projeto: tarefa inexistente ou de outro projeto é 404, chave ambígua é 409 `tarefa_ambigua`. `POST /internal/qa-environments/sweep` recebe do engine os `taskIdsEmVoo` e remove toda instância ativa ou `failed` fora dessa lista. Lacuna declarada: o broker ainda não tem operação para remover o serviço compartilhado nem a rede `brabo-qa-<wd>`, que ficam até essa operação existir.
 - **Onde:** `src/application/use-cases/containers/obter-spec-de-container.use-case.ts:135` (`execute`), `src/application/use-cases/containers/instancia-de-qa.use-case.ts:140` (`limparOrfas`), `src/interfaces/http/internal/internal-qa-environments.controller.ts:90` (`sweep`).
 - **Teste:** `test/application/use-cases/containers/instancia-de-qa.use-case.spec.ts`.
 - **Origem:** AT-612 (EP-030), ADR 0229.
+
+<a id="rn-938"></a>
 
 ### RN-938 — O `terminal` só vai para a instância de QA quando o ator é o `qa-automacao` e a tarefa é do projeto {#rn-938}
 
@@ -106,6 +130,8 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 - **Teste:** `test/application/use-cases/actions/alvo-de-qa-no-terminal.spec.ts`.
 - **Origem:** AT-612 (EP-030), ADR 0229.
 
+<a id="rn-942"></a>
+
 ### RN-942 — O recorte do Jev nunca tira do PO a ferramenta de declarar dúvida {#rn-942}
 
 - **Regra:** estende a [RN-758](parte-10.md#rn-758). O piso do PO ganha `declare_open_question`, porque a regra 3 das obrigações do PO manda declarar a dúvida em vez de inventar ou omitir, e o recorte do Jev ([RN-625](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-625)) a tirava de todo passo depois do primeiro: o PO punha a lacuna na borda da história e nenhuma `artifact.open_question` nascia. Continua valendo que o piso só devolve o que está no catálogo do passo.
@@ -113,12 +139,16 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 - **Teste:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts` (PO recortado mantém `declare_open_question`; catálogo sem ela não a ganha).
 - **Origem:** AT-615 (EP-030).
 
+<a id="rn-948"></a>
+
 ### RN-948 — Higiene do entregável: banco SQLite fora do commit, pasta dos comandos dita, rotas do README preservadas {#rn-948}
 
 - **Regra:** estende a [RN-761](parte-10.md#rn-761), a [RN-900](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-900) e as [RN-706](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-706)/[RN-850](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-850). Três partes, sem gate novo. (1) Segunda lista, `ARQUIVOS_DE_DADOS` (`*.db`, `*.db-*`, `*.sqlite`, `*.sqlite-*`, `*.sqlite3`, `*.sqlite3-*`), nas MESMAS três camadas da RN-761: o `.gitignore` base do bootstrap, a exclusão `:(exclude,glob)**/<padrão>` no `git add` do dev agent e um achado próprio do SecOps ("arquivo de dados em tempo de execução commitado", que nomeia o caminho). O teste que cruza as listas da api e do engine cruza as duas. (2) A mensagem de ambiente do agente com módulo diz que `npm`/`pip`/`mix` rodam na pasta do módulo na MESMA chamada, nunca `cd … 2>/dev/null;` (o `cd` falho caía na raiz e deixou um `package-lock.json` vazio), dentro do teto de 1.500 caracteres. (3) O kickoff do dev nomeia o `README.md` da RAIZ, sem repetir a seção em README de pasta, e `write_file` recusa reescrever um README que perde cabeçalho de rota (`### GET /links`) presente no antigo, no molde da RN-900. Declarado: repositório já bootstrapado não ganha o `.gitignore` novo; fixture `.db` intencional fica fora do commit (renomeie para versioná-la); a guarda não cobre escrita pelo `terminal`. Fora desta RN: `expires_at` × `expiresAt`.
 - **Onde:** `src/application/use-cases/git/bootstrap-templates.ts:29` (`ARQUIVOS_DE_DADOS`), `apps/engine/lib/engine/actions/diretorios_de_dependencia.ex:37` (`argumentos_do_add`), `apps/engine/lib/engine/gates/secops_agent_server.ex:162` (`dependencias_commitadas`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:178` (`modulo`), `apps/engine/lib/engine/harness/tools/write_file.ex:62` (`recusa_de_secao_perdida`), `apps/engine/lib/engine/dev/dev_agent_server.ex:666` (`initial_message`).
 - **Teste:** `apps/engine/test/engine/actions/diretorios_de_dependencia_test.exs` (lista cruzada com a api, add real que estagia só `src/a.js`, SecOps nomeia o `.db`), `test/application/use-cases/git/bootstrap-plan.spec.ts` (os seis padrões no `.gitignore`), `apps/engine/test/engine/harness/ambiente_do_agente_test.exs`, `apps/engine/test/engine/harness/tools/write_file_test.exs`, `apps/engine/test/engine/dev/report_done_instrucao_test.exs`.
 - **Origem:** AT-623 (EP-031), entregável `entregavel3` (commits 956fa5c, 8e593b0).
+
+<a id="rn-949"></a>
 
 ### RN-949 — Chamada de ferramenta escrita como texto não vira resposta no fio {#rn-949}
 
@@ -150,12 +180,16 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 - **Origem:** AT-633 (sessão `2b5161d0`, seq 4: `<invoke name="emit_artifact">`
   apareceu como resposta no fio)
 
+<a id="rn-950"></a>
+
 ### RN-950 — O 9Router recebe as ferramentas, o vínculo confere a capability do provider e ferramenta sem capability lança {#rn-950}
 
 - **Regra:** revisa a [RN-909](parte-10.md#rn-909) e completa a [RN-040](parte-01.md#rn-040) com a SEGUNDA camada do ADR 0041. (1) `nineRouterConfig` declara `toolCalling: true`, provado por smoke com chave real em 31/10: 3/3 chamadas em `cc/claude-haiku-5-5` voltaram com `tool_calls` estruturado, 10/10 consistente a temperatura 0 e laço de 3 voltas íntegro. Antes, a capability `false` fazia o `buildBody` descartar `tools` em silêncio e o Criativo escrevia a chamada como XML no fio (AT-637). (2) `assertModelFitsBindingScope` confere também o PROVIDER nos escopos `agent` e `area`: vínculo cujo provider declara `toolCalling: false` é recusado com 422 (`ModelNotFitForAgentScopeError`, causa `provider`), com frase própria. `workspace`, `project` e `session` seguem livres. (3) `buildBody` com ferramentas pedidas e capability `false` LANÇA erro nomeado em vez de descartar. Providers afetados: só o `opencode-zen` tem `toolCalling: false` além do 9Router de antes; vínculos novos de agente/área a ele passam a ser 422 e o chat sem ferramenta segue igual. Vínculo antigo a ele continua gravado e o turno do agente falha nomeado.
 - **Onde:** `src/infrastructure/llm/nine-router-provider.ts:171` (`nineRouterConfig`), `src/domain/llm/model-capabilities.ts:95` (`assertModelFitsBindingScope`), `src/application/use-cases/llm/set-model-binding.use-case.ts:56` (`toolCalling`), `src/infrastructure/llm/openai-compatible-provider.ts:633` (`buildBody`)
 - **Teste:** `test/domain/llm/model-capabilities.spec.ts` (recusa por provider em `agent`/`area`; escopos livres), `test/infrastructure/llm/nine-router-provider.contract.spec.ts` (capability `true`), `test/contract/llm-provider.contract.ts` (provider sem capability lança nomeado); smoke manual em `nine-router-provider.smoke.spec.ts`.
 - **Origem:** AT-637 (EP-026), TP-01 de 31/10 e medição da AT-631.
+
+<a id="rn-952"></a>
 
 ### RN-952 — O relatório do owner recorta por projeto e por sessão, e o membro vê o total do projeto sem credencial {#rn-952}
 
@@ -168,6 +202,8 @@ Revisa a [RN-101](parte-03.md#rn-101) (o membro deixa de ver SÓ o próprio cons
 - **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (recorte por projeto com sessão, 404 entre workspaces, membro sem provider); `test/interfaces/spend.controller.spec.ts` (papéis das rotas)
 - **Origem:** AT-632
 
+<a id="rn-953"></a>
+
 ### RN-953 — O não-owner vê o PRÓPRIO consumo no workspace, somado por projeto {#rn-953}
 
 Convive com a [RN-101](parte-03.md#rn-101): o ator vem do token, nunca da rota.
@@ -177,6 +213,8 @@ Convive com a [RN-101](parte-03.md#rn-101): o ator vem do token, nunca da rota.
 - **Código:** `src/application/use-cases/llm/get-my-workspace-spend.use-case.ts:32` (`GetMyWorkspaceSpendUseCase`); `src/interfaces/http/llm/spend.controller.ts:120` (`getMyWorkspaceSpend`)
 - **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (soma por projeto, nunca a linha de outro ator)
 - **Origem:** AT-632
+
+<a id="rn-954"></a>
 
 ### RN-954 — A cobrança do modelo é uma marca CURADA, e a assinatura é separada do US$ pago {#rn-954}
 
@@ -188,6 +226,8 @@ Convive com a [RN-665](parte-08.md#rn-665) (custo real do OpenRouter) e o preço
 - **Código:** `src/db/schema/llm.ts:175` (`modelBillingEnum`); `src/infrastructure/persistence/drizzle/token-usage.repository.ts:394` (`assinaturaMicros`); `src/interfaces/http/llm/models.controller.ts:302` (`updateBilling`)
 - **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (assinatura separada do pago)
 - **Origem:** AT-632
+
+<a id="rn-958"></a>
 
 ### RN-958 — O usage do 9Router é corrigido no provider: −2 000 só na 0.5.112, e o cache do topo conta {#rn-958}
 
@@ -203,12 +243,16 @@ Completa a [RN-666](parte-08.md#rn-666) (item 4) para o 9Router. A 0.5.112 SOMA 
 - **Teste:** `test/infrastructure/llm/nine-router-provider.contract.spec.ts` (versão 0.5.112, outra, 404, lenta, corpo inválido, piso, cache do topo, outros providers sem o hook)
 - **Origem:** AT-638
 
+<a id="rn-959"></a>
+
 ### RN-959 — O 503 do 9Router que embrulha um 4xx do upstream é classificado pelo status de dentro {#rn-959}
 
 - **Regra:** completa a [RN-864](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-864) e a RN-909. Quando todas as contas do 9Router estão em cooldown por um 4xx do upstream, ele responde 503 com `[<status>]: <msg> (reset after Ns)`. O provider lê o status de dentro: 404 vira `model_not_found`, 401/403 `auth`, 402 `insufficient_credit` (RN-730), 429 `rate_limit`. 5xx de dentro, ausente ou corpo sem `reset after` seguem `upstream` passageiro. A forma do corpo vem da leitura do bundle do 9Router 0.5.112; o smoke com chave a confirma.
 - **Onde:** `src/infrastructure/llm/nine-router-provider.ts:153` (`classificarErro9Router`), aplicado por `src/infrastructure/llm/openai-compatible-provider.ts:305` (`classificarErroHttp`).
 - **Teste:** `test/infrastructure/llm/nine-router-provider.contract.spec.ts` (503 com cada status interno e os três casos que seguem `upstream`); `apps/engine/test/engine/agents/falha_de_turno_test.exs` (`model_not_found` não é passageira).
 - **Origem:** AT-639 (EP-026).
+
+<a id="rn-960"></a>
 
 ### RN-960 — O `GraphStore` reconecta depois de boot sem Neo4j, e o aviso diz a causa {#rn-960}
 
@@ -217,12 +261,16 @@ Completa a [RN-666](parte-08.md#rn-666) (item 4) para o 9Router. A 0.5.112 SOMA 
 - **Teste:** `test/infrastructure/graph/graph-store.spec.ts` ("RN-960"), `test/application/graph-projection/graph-projector.spec.ts` ("RN-960").
 - **Origem:** AT-642 (EP-030).
 
+<a id="rn-961"></a>
+
 ### RN-961 — O aviso de recorte diz que as ferramentas fora dele podem ser pedidas neste passo {#rn-961}
 
 - **Regra:** revisa a [RN-759](parte-10.md#rn-759) (decisão do dono de 31/10, AT-643). O aviso `system` efêmero do passo recortado não diz mais que as ferramentas fora do recorte "voltam nas próximas voltas" nem que ela "volta no seguinte": o recorte é do PASSO, e a RN-759 mandava o agente esperar por um passo que, para o modelo, pode não vir. O texto novo diz a verdade do ADR 0179: as demais seguem disponíveis e podem ser pedidas neste mesmo passo, e o agente não deve concluir que não tem a ferramenta nem encerrar o turno esperando por ela; se precisar de uma delas e responder sem ferramenta, o passo é refeito com o catálogo completo (a repetição da regra 10 do ADR 0179, pelo mecanismo que a fachada já tem). Não muda o piso, a política do Jev nem a montagem do menu: só o texto do aviso.
 - **Onde:** `src/domain/llm/tool-router.ts:420` (`avisoDeRecorte`).
 - **Teste:** `test/domain/llm/aviso-de-recorte.spec.ts` (fixa o texto novo e reprova o antigo, "voltam nas próximas voltas" e "volta no seguinte").
 - **Origem:** AT-643 (EP-030): o `write_file` e o `terminal` saíam do menu do dev no Jev, e o aviso mandava esperar por uma volta que o modelo não tinha como pedir.
+
+<a id="rn-964"></a>
 
 ### RN-964 — O preço e a cobrança são curados na tela de Providers, e a edição manual protege o número do sync {#rn-964}
 
@@ -237,6 +285,8 @@ Completa a [RN-044](parte-01.md#rn-044) (o caminho manual passa a marcar `manual
 - **Teste:** `test/application/use-cases/llm/update-model-pricing.use-case.spec.ts` (edição manual marca `manualPricing`; origem sync não marca)
 - **Origem:** AT-634
 
+<a id="rn-965"></a>
+
 ### RN-965 — O catálogo sugere o preço do FABRICANTE do modelo e a faixa de cobrança do 9Router, e quem aplica é o humano {#rn-965}
 
 Completa a [RN-964](#rn-964) (curadoria de preço na tela) e a [RN-954](#rn-954) (marca `billing`), por decisão do dono de 01/11 (AT-640): o preço de um modelo é o que o fabricante dele publica, qualquer que seja o provider que o serve.
@@ -250,12 +300,16 @@ Completa a [RN-964](#rn-964) (curadoria de preço na tela) e a [RN-954](#rn-954)
 - **Teste:** `test/domain/llm/sugestao-do-catalogo.spec.ts` (alias, grátis, assinatura, openrouter sem sugestão, igualdade exata); `test/domain/llm/precos-do-fabricante.spec.ts` (id repetido, data futura, preço inválido, link fora do domínio)
 - **Origem:** AT-640
 
+<a id="rn-966"></a>
+
 ### RN-966 — O 9Router 0.5.112 faz três coisas por trás: `off` desliga RTK/Headroom/Caveman/Ponytail e não o Custom Prompt; o OAuth do Claude redige o raciocínio; e camufla as ferramentas {#rn-966}
 
 - **Regra:** completa a [RN-909](parte-10.md#rn-909) com o que o build 0.5.112 do 9Router faz por trás do gateway, medido no bundle e declarado sem código novo. (1) O cabeçalho `x-9router-token-saver` com valor `off` (sem caixa) desliga, juntos, o RTK, o Headroom, o Caveman e o Ponytail; o Custom Prompt NÃO passa por ele e segue como o painel o deixou. O provider manda o cabeçalho em toda chamada, e o efeito é confirmado pela medição da AT-631 (`ok` sem ele = 1 262 tokens). (2) Para a conta OAuth do Claude (`cc/*`) o 9Router manda `redact-thinking-2026-02-12` em `Anthropic-Beta`: o pensamento volta redigido e sem `reasoning_tokens`, então a contagem de raciocínio do stream ([RN-915](parte-10.md#rn-915)) e a retentativa sem raciocínio ([RN-916](#rn-916)) ficam cegas nesse caminho, e `reasoning_tokens` grava ausente ("não disse", [RN-666](parte-08.md#rn-666)). (3) Com token `sk-ant-oat` o 9Router renomeia as ferramentas, acrescenta cerca de 20 ferramentas falsas do Claude Code e envia cabeçalhos de Claude Code; não há configuração que desligue isso. O Brabo não corrige nem desliga a camuflagem: o risco é o modelo chamar uma ferramenta falsa e os termos de uso, e por isso o TP-01 voltou ao OpenRouter.
 - **Onde:** `src/infrastructure/llm/nine-router-provider.ts:38` (`NINE_ROUTER_TOKEN_SAVER_HEADER`), `src/infrastructure/llm/nine-router-provider.ts:172` (`nineRouterConfig`)
 - **Teste:** `test/infrastructure/llm/nine-router-provider.contract.spec.ts:140` (cabeçalho `off` fixado no contrato). Os efeitos (2) e (3) vivem no bundle do 9Router, não no repositório: não há teste deles, e o smoke com chave é o único que os exercitaria.
 - **Origem:** AT-641 (EP-026), levantamento de 31/10 sobre o 9Router 0.5.112 (`chunks/8895.js`, `chunks/8499.js`, `chunks/2380.js`, `chunks/2598.js`), derivado da AT-631.
+
+<a id="rn-969"></a>
 
 ### RN-969 — A ocupação da janela do agente na sessão é o `input_tokens` da última chamada dele, fora o Jev {#rn-969}
 
@@ -271,12 +325,16 @@ Completa a [RN-101](parte-03.md#rn-101) (consumo por agente) sem rota nova: `GET
 - **Teste:** `test/infrastructure/persistence/token-usage.repository.spec.ts` (lastCall: última chamada, Jev ignorado, janela nula, ator só com Jev); `apps/web/src/routes/SessionTopbar.test.tsx` (porcentagem, janela nula, sem chamada)
 - **Origem:** AT-654
 
+<a id="rn-983"></a>
+
 ### RN-983 — O clique numa fonte consultada é gravado em tabela própria e nunca é voto {#rn-983}
 
 - **Regra:** o clique num link do bloco "Consultado neste turno" (RN-982) vira uma linha em `source_clicks`, de escopo de PROJETO como `rag_searches` (RN-479): `projectId`, `sessionId` (anulável), `eventId` (o `agent.response`), `tipo`, `ref`/`searchId`/`chunkId` e o usuário que clicou, congelados sem FK de sessão/evento. NÃO é voto: o único sinal de verdade do RAG segue sendo o `rag_feedback` (RN-480), que esta tabela nunca alimenta, porque clique mede curiosidade. `POST /projects/:projectId/source-clicks` é `viewer` (quem lê pode clicar). Gravar a medição nunca derruba o que ela mede: a falha vira log de origem `infra` e `null` explícito, e o clique navega do mesmo jeito. No web, o clique dispara o POST sem esperar a resposta (um POST por clique, sem poll nem query nova, RN-579); fonte que é só texto não grava.
 - **Onde:** `src/application/use-cases/rag/record-source-click.use-case.ts:18` (`execute`), `src/db/schema/rag.ts:299` (`sourceClicks`), `src/interfaces/http/rag/source-clicks.controller.ts:36` (`registrar`), `apps/web/src/lib/api-client.ts:1456` (`sendSourceClick`).
 - **Teste:** `test/application/use-cases/rag/record-source-click.use-case.spec.ts`, `apps/web/src/components/ai-elements/sources.test.tsx` ("RN-983"), `test/interfaces/route-surface.spec.ts`.
 - **Origem:** AT-716 fatia 4 (EP-031).
+
+<a id="rn-984"></a>
 
 ### RN-984 — O acesso rápido por papel só existe com `BRABO_AMBIENTE=local` {#rn-984}
 
@@ -300,12 +358,16 @@ na instalação responde 409.
   `test/application/use-cases/acesso-rapido/acesso-rapido.use-case.spec.ts`,
   `scripts/ci/ambiente-nas-actions.spec.ts`, `e2e/testes/autenticacao.spec.ts`
 
+<a id="rn-986"></a>
+
 ### RN-986 — O anexo do chat aceita texto/código e imagem, com tipo pelos bytes e tetos {#rn-986}
 
 - **Regra:** `POST /projects/:projectId/sessions/:sessionId/attachments` (`developer`, JSON `{nome, base64}`) guarda o arquivo em `chat_attachments`. O MIME sai dos BYTES, nunca do nome nem do cabeçalho: png, jpeg, gif e webp pela assinatura; texto/código se for UTF-8 válido e sem byte NUL (`text/plain`); o resto é 415. Tetos: 5 MB por imagem e 512 KB por texto, acima disso 413 (rejeita, nunca trunca). Sessão encerrada recusa com o 409 `sessao_encerrada` da RN-581. JSON com base64 em vez de multipart porque 5 MB viram ~6,7 MB e cabem no corpo de 10 MB (`main.ts`), sem parser novo. Sem antivírus, lacuna declarada em `docs/security-surface.md` e no ADR 0246.
 - **Onde:** `src/domain/sessions/anexos.ts:32` (`classificarAnexo`), `src/application/use-cases/sessions/anexos-do-chat.use-case.ts:37` (`enviar`), `src/interfaces/http/sessions/attachments.controller.ts:54` (`enviar`), `src/db/schema/sessions.ts:303` (`chatAttachments`).
 - **Teste:** `test/application/use-cases/sessions/anexos-do-chat.use-case.spec.ts` ("RN-986"), `test/interfaces/route-surface.spec.ts`.
 - **Origem:** AT-715 fatia 1, lane L1 (EP-031), ADR 0246.
+
+<a id="rn-987"></a>
 
 ### RN-987 — O `chat.message` guarda só a referência do anexo, nunca os bytes {#rn-987}
 
@@ -314,12 +376,16 @@ na instalação responde 409.
 - **Teste:** `test/application/use-cases/sessions/anexos-do-chat.use-case.spec.ts` ("RN-987").
 - **Origem:** AT-715 fatia 1, lane L1 (EP-031), ADR 0246.
 
+<a id="rn-988"></a>
+
 ### RN-988 — Todo `viewer` do projeto lê o anexo, escopado a projeto e sessão {#rn-988}
 
 - **Regra:** `GET .../attachments/:attachmentId` (`viewer`) devolve os bytes com o `Content-Type` gravado, `X-Content-Type-Options: nosniff` e `Content-Disposition: attachment` para o que não é imagem. A consulta casa id, projeto E sessão: anexo de outra sessão ou projeto é 404, igual ao inexistente. Quem vê o evento vê o anexo (decisão do dono, 02/11). Os anexos morrem com a sessão (cascade).
 - **Onde:** `src/application/use-cases/sessions/anexos-do-chat.use-case.ts:80` (`ler`), `src/interfaces/http/sessions/attachments.controller.ts:87` (`ler`).
 - **Teste:** `test/application/use-cases/sessions/anexos-do-chat.use-case.spec.ts` ("RN-988"), `test/interfaces/route-surface.spec.ts`.
 - **Origem:** AT-715 fatia 1, lane L1 (EP-031), ADR 0246.
+
+<a id="rn-989"></a>
 
 ### RN-989 — Imagem só vai a modelo com visão provada; sem ela, o agente é avisado {#rn-989}
 
@@ -328,12 +394,16 @@ na instalação responde 409.
 - **Teste:** `test/domain/llm/anexos-no-turno.spec.ts`, `test/infrastructure/llm/openai-compatible-provider.visao.spec.ts`; prova da capability: `test/infrastructure/llm/openrouter-provider.visao.smoke.spec.ts` (manual, com credencial).
 - **Origem:** AT-715 fatia 1, lane L2 (EP-031), ADR 0246.
 
+<a id="rn-991"></a>
+
 ### RN-991 — Uma mensagem pode ter vários destinatários, e o log diz quais {#rn-991}
 
 - **Regra:** `POST /projects/:projectId/sessions/:sessionId/messages` (`developer`) recebe `destinatarios` (1 a 7) e grava UM `chat.message` com `payload.destinatarios`; a rota de um agente só grava `[agent]`. Cada agente recebe a entrega com o MESMO `mensagemId`, pelo caminho de sempre (turno, fila RN-673, recusa nomeada do engine). Quem o engine recusa vem como `recusada` com `motivo`, sem derrubar os outros; sessão encerrada é 409 `sessao_encerrada` (RN-581). Com o `mensagemId` repartido, `chat.message_delivered` e `chat.message_cancelled` só fecham a cópia do agente a que se referem. Revisa a RN-584/631.
 - **Onde:** `src/application/use-cases/agents/send-agent-message.use-case.ts:96` (`executeVarios`), `src/interfaces/http/agents/agents.controller.ts:115` (`messages`), `apps/engine/lib/engine/agents/fila_de_mensagens.ex:76` (`pendentes`).
 - **Teste:** `test/application/use-cases/agents/send-message-to-agents.use-case.spec.ts`, `apps/engine/test/engine/agents/fila_de_mensagens_test.exs`.
 - **Origem:** AT-717 (EP-031), ADR 0247.
+
+<a id="rn-993"></a>
 
 ### RN-993 — O raciocínio do modelo é gravado inteiro fora do `content`, aparece ao vivo e só `developer` ou mais o lê; nunca volta ao modelo {#rn-993}
 
@@ -343,6 +413,8 @@ na instalação responde 409.
 - **Teste:** `test/infrastructure/llm/raciocinio-texto.spec.ts` (os dois campos, `thinking_delta`, adaptive/summarized × enabled por modelo, blocos devolvidos no corpo seguinte, `reasoningText` falso), `test/domain/sessions/raciocinio-do-evento.spec.ts` (`viewer` não recebe, `developer`+ recebe), `test/application/use-cases/sessions/create-socket-ticket.use-case.spec.ts` (ticket `true` para `developer`, `false` para `viewer`), `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` e `run-llm-turn.use-case.spec.ts` (frame `raciocinio`, `final` com o texto inteiro, `content` intacto); smoke manual `openrouter-provider.raciocinio.smoke.spec.ts`. Engine: `apps/engine/test/engine/agents/raciocinio_do_turno_test.exs` (frame acumula e `final` substitui, payload com `content` intacto, reidratação sem raciocínio, `thinkingBlocks` na 2ª chamada) e `apps/engine/test/engine_web/channels/session_channel_test.exs` (`intercept` com e sem a flag).
 - **Origem:** AT-676 (EP-031), lane api; ADR 0249.
 
+<a id="rn-995"></a>
+
 ### RN-995 — O catálogo do agente vem do engine e é só leitura: identidade e ferramentas do engine, instrução vigente do banco, sem prompt composto e sem schema, e engine fora do ar é "não sei", nunca "sem ferramentas" {#rn-995}
 
 - **Regra:** `GET /projects/:projectId/agent-catalog` (`viewer`, RN-102) devolve, por agente, a identidade do código, a instrução VIGENTE do projeto (`agent_instructions`, só a versão atual) e as ferramentas (`nome` e `descricao`, o texto em pt-BR que o modelo lê; os outros idiomas caem nele, ADR 0216). A fonte das ferramentas e da identidade é o engine, por `GET /internal/agents/catalog` (service token) — uma fonte só, sem cópia na api. Não expõe `parameters` (o JSON schema), o prompt composto do turno, o template do grafo nem credencial ou modelo. É o catálogo COMPLETO: o recorte por passo do Jev (RN-625) pode mostrar menos ao modelo. Leitura contida (ADR 0060): uma chamada ao engine e uma consulta ao banco, sem parâmetro livre; `conteudo` corta em 8 000 caracteres com `conteudoTotal` (molde da RN-589) e `descricao` em 1 000. Engine fora do ar: `identidade` e `ferramentas` vêm `null` com `motivoSemCatalogo: 'engine_indisponivel'` e as instruções do banco continuam vindo (RN-470). Os dev agents por módulo (`dev-api`) herdam a entrada única `dev-*` do engine. No engine: `GET /internal/agents/catalog` (service token, sem parâmetro) devolve, por agente, a identidade do código e as ferramentas (`nome`, `descricao` até 1 000 caracteres). A fonte é o `tool_specs/0` de cada um dos sete conversacionais e os registros de execução e de gate; nada é copiado. Não devolve `parameters`, o prompt composto nem o template do grafo. É o catálogo COMPLETO: o Jev (RN-625) recorta o menu por passo. Psicólogo e Anamnese ficam fora.
@@ -350,12 +422,16 @@ na instalação responde 409.
 - **Teste:** `test/application/use-cases/agents/get-agent-catalog.use-case.spec.ts` (junção, tetos, `dev-*`, engine fora), `test/interfaces/route-surface.spec.ts` (a rota e o papel); engine: `apps/engine/test/engine/agents/catalogo_de_ferramentas_test.exs` (bate com cada fonte, teto da descrição, 401 sem token e 200 com).
 - **Origem:** AT-686 (EP-031), lanes A1 (api) e E1 (engine).
 
+<a id="rn-997"></a>
+
 ### RN-997 — O catálogo da Anthropic nasce com preço de lista datado e `supportsReasoning` do SDK; preço manual nunca é sobrescrito {#rn-997}
 
 - **Regra:** a `/v1/models` da Anthropic não informa preço, e o modelo sincronizado nascia com preço 0 (gasto de custo zero, sem aviso). O `listModels` devolve o preço da tabela ÚNICA do fabricante da [RN-965](#rn-965) (`precoDoFabricante`, micro-USD por milhão), casando pelo ID e, se não achar, pelo ID sem o sufixo de data (`-AAAAMMDD`); ID fora da tabela segue sem preço ([RN-042](parte-01.md#rn-042)). `supportsReasoning` vem de `capabilities.thinking.supported` do SDK; com `capabilities` nulo vale a família (todo `claude-` que não seja 3.x raciocina). O sync trata o preço como já tratava (RN-044): linha `manual_pricing` vence sempre, e modelo novo COM preço de lista nasce `manual_pricing = false`. O preço congelado no metering não muda. Linha antiga já `manual_pricing = true` (nascida sem preço) segue como está: corrigi-la é a curadoria do `owner`.
 - **Onde:** `src/infrastructure/llm/anthropic-provider.ts:544` (`precoDeLista`), `src/domain/llm/precos-do-fabricante.ts` (`PRECOS_DO_FABRICANTE`, `precoDoFabricante`), `src/application/use-cases/llm/sync-model-catalog.use-case.ts` (`resolverPreco`).
 - **Teste:** `test/infrastructure/llm/anthropic-provider.catalogo.spec.ts` (preço com e sem sufixo de data, ID desconhecido sem preço, `supportsReasoning`); `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts` (preço manual não é sobrescrito).
 - **Origem:** pedido do dono de 03/11; ADR 0251 (referencia o [0042](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)).
+
+<a id="rn-1000"></a>
 
 ### RN-1000 — Na Anthropic direta o raciocínio desligado é POR MODELO, o adaptativo ganha a folga e o `thinking_tokens` chega ao metering {#rn-1000}
 
@@ -365,12 +441,16 @@ na instalação responde 409.
 - **Teste:** `apps/api/test/infrastructure/llm/raciocinio-texto.spec.ts` (corpo por modelo com `reasoningOff`, folga no adaptativo e com orçamento, `thinking_tokens` do `message_delta` e omitido quando não é inteiro >= 0, a capability), `apps/api/test/infrastructure/llm/anthropic-provider.raciocinio.smoke.spec.ts` (manual, pula sem a chave)
 - **Origem:** AT-739 (EP-030), achados 2 e 8 do TP-01 de 05/11; ADR 0257 (revisa o item 4 do [ADR 0223](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0223-orcamento-de-raciocinio-por-modelo.md) para a Anthropic).
 
+<a id="rn-1001"></a>
+
 ### RN-1001 — O decorator de tracing repassa `aceitaRaciocinioDesligado`, então a retentativa sem raciocínio roda de verdade {#rn-1001}
 
 - **Regra:** revisa a [RN-916](#rn-916), cujo texto dizia que a capability `aceitaRaciocinioDesligado` do provider era "hoje só do OpenRouter". Agora vale para OpenRouter e Anthropic ([RN-1000](#rn-1000)). Defeito declarado: o `TracedLLMProvider` repassava só `name`, `capabilities`, `chat`, `listModels` e `embed`; como o registry envolve TODO provider, `provider.aceitaRaciocinioDesligado` era `undefined` em produção e a retentativa da RN-916 nunca rodava, para provider nenhum. O decorator agora copia a flag do provider envolvido no construtor (`undefined` continua `undefined`: provider que não a declara não a expõe). Os outros membros opcionais da porta `LLMProvider` (`listModels`, `embed`) já eram repassados.
 - **Código:** `apps/api/src/infrastructure/llm/traced-llm-provider.ts:78` (`aceitaRaciocinioDesligado`)
 - **Teste:** `apps/api/test/infrastructure/llm/traced-llm-provider.spec.ts` (mantém `true`, continua `undefined`, e o `LLMProviderRegistryImpl.get('anthropic')` real devolve `true`)
 - **Origem:** AT-743 (EP-030)
+
+<a id="rn-1002"></a>
 
 ### RN-1002 — O agente fecha a pergunta em aberto que o usuário respondeu no chat; a resposta humana e a do agente dividem um núcleo só {#rn-1002}
 
@@ -379,12 +459,16 @@ na instalação responde 409.
 - **Teste:** `apps/api/test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts` (fecha com `decision_record`, 404 para outro projeto, a segunda chamada dá `already_answered`) e `apps/api/test/interfaces/http/internal/internal-open-questions.controller.spec.ts` (o fechamento roda marcado como efeito de ação).
 - **Origem:** AT-741 (EP-030), achado 4 do TP-01 de 05/11; o lado do engine é a RN-1003.
 
+<a id="rn-1004"></a>
+
 ### RN-1004 — O plano de execução do Dev Lead é recusado quando um módulo sem tarefa é dependência de um módulo que tem tarefa {#rn-1004}
 
 - **Regra:** estende a [RN-678](parte-09.md#rn-678). `lerPlanoDeExecucao` agora recebe o `module_map` corrente COM o `dependsOn` de cada módulo, não só os nomes. Depois das checagens por tarefa, se um módulo SEM tarefa no plano aparece no `dependsOn` de um módulo que TEM tarefa, o plano é recusado com 400 `plano_de_execucao_invalido`, nomeando o par: "deploy depende de api, que ficou sem tarefa — crie a tarefa de fundação de api". Módulo folha sem tarefa continua legítimo ([RN-709](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-709)); a checagem roda na proposta e na aprovação, como o resto da leitura.
 - **Código:** `apps/api/src/domain/execution/plano-de-execucao.ts` (`lerPlanoDeExecucao`), `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts` (`lerPlano`)
 - **Teste:** `apps/api/test/domain/execution/plano-de-execucao.spec.ts` (`fundação com dono`: o plano sem `db`/`api` é recusado nomeando `deploy` -> `api`; com tarefa em `db`, `api` e `deploy` ele passa)
 - **Origem:** AT-742 (EP-030), achado 9 do TP-01 de 05/11; ADR 0259.
+
+<a id="rn-1005"></a>
 
 ### RN-1005 — O claim não entrega a tarefa de um módulo enquanto houver tarefa aberta de um módulo do `dependsOn` direto dele {#rn-1005}
 
@@ -393,12 +477,16 @@ na instalação responde 409.
 - **Teste:** `apps/api/test/infrastructure/persistence/drizzle/backlog-claim-depends-on.repository.spec.ts` (tarefa aberta em `api` -> `deploy` não recebe nada; `api` concluída -> recebe a tarefa; só a direta; sem mapa)
 - **Origem:** AT-742 (EP-030); ADR 0259.
 
+<a id="rn-1007"></a>
+
 ### RN-1007 — O Claude Haiku 5.5 na Anthropic direta tem uma folga de raciocínio curada de 12288 tokens {#rn-1007}
 
 - **Regra:** revisa a [RN-1000](#rn-1000), cuja folga adaptativa cai no padrão de 4096 quando `models.reasoning_budget` é NULL. No padrão, um gate que raciocina no `claude-haiku-5-5` recebia `max_tokens` 4096 + 4096 = 8192 no total e era cortado ainda pensando (TP-01 rodada 25, `qa-estrategia`: 8192 de 8192 tokens de saída gastos raciocinando), inclusive um corte COM texto que a [RN-916](#rn-916) não retenta. Dado curado pelo [ADR 0223](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0223-orcamento-de-raciocinio-por-modelo.md): a migration `0083` grava `reasoning_budget = 12288` na linha do catálogo `anthropic` / `claude-haiku-5-5`, então o `max_tokens` adaptativo = saída visível + 12288 (16384 no padrão de 4096). Sem mudança de código: `corpoDeRaciocinio` já lê `reasoningBudget`. A migration é idempotente e não toca outro modelo (nem o mesmo nome sob outro provider, nem outros modelos da Anthropic). Com NULL a folga volta a 4096 (8192 no total). Não adotado: `effort: low` nos gates (a documentação avisa que o agente pula checagens) e transformar o orçamento em `effort`.
 - **Código:** `apps/api/src/db/migrations/0083_folga_do_haiku_5_5.sql`, `apps/api/src/infrastructure/llm/anthropic-provider.ts` (`corpoDeRaciocinio`)
 - **Teste:** `apps/api/test/db/folga-do-haiku-migration.spec.ts` (só aquela linha, idempotente), `apps/api/test/infrastructure/llm/raciocinio-texto.spec.ts` (12288 dá 16384 e `adaptive`; NULL dá 8192), `apps/api/test/infrastructure/llm/anthropic-provider.folga.smoke.spec.ts` (manual, pago, pulado sem chave)
 - **Origem:** AT-743 (EP-030), decisão do dono de 05/11 (folga 12288, teto 16384).
+
+<a id="rn-1008"></a>
 
 ### RN-1008 — O provider Anthropic direto usa prompt caching, soma as parcelas de cache na entrada e precifica a chamada pela tabela do fabricante {#rn-1008}
 
@@ -408,6 +496,8 @@ na instalação responde 409.
 - **Origem:** AT-744 (EP-030)
 
 
+<a id="rn-1009"></a>
+
 ### RN-1009 — O merge que fecha uma tarefa acorda os módulos que dependem dela {#rn-1009}
 
 - **Regra:** estende a [RN-1005](#rn-1005) e a [RN-628](parte-08.md#rn-628), reaproveitando o evento `task.became_claimable` da RN-047 / ADR 0045. A [RN-1005](#rn-1005) tornou uma tarefa pegável quando a última tarefa aberta de um módulo do `dependsOn` direto dela vira `done`, mas nada anunciava esse momento, então dev agents ociosos nunca acordavam (TP-01 26º, 06/11). O `settleMerge` agora, na MESMA transação e só quando pelo menos uma tarefa de fato mudou para `done` (merge repetido não grava nada), anexa UMA linha de outbox: `aggregateType: 'task'`, `eventType: 'task.became_claimable'`, `aggregateId` = a primeira tarefa fechada, `payload: { projectId, sessionId, taskId, modules, cause: 'dependency_done' }`. `modules` são os nomes dos módulos do `module_map` corrente cujo `dependsOn` não é vazio. Isso é de propósito mais largo que "os dependentes do módulo desta tarefa" (não precisa ler a história de uma tarefa sem `module`): o acordar a mais custa um claim vazio num agente ocioso, e um agente ocupado o ignora. Sem `module_map`, ou sem nenhum módulo com `dependsOn`, nada é gravado (a RN-1005 também não filtra). Fora do escopo: arquivar a história da dependência (RN-727) também libera os dependentes sem acordá-los.
@@ -416,12 +506,16 @@ na instalação responde 409.
 - **Origem:** AT-746 (EP-030); o lado do engine (outbox -> drain -> acordar -> agente ocioso faz o claim) já existe e é provado por `dev_agent_chain_test.exs`.
 
 
+<a id="rn-1018"></a>
+
 ### RN-1018 — O agente retira uma regra de negócio obsoleta, citando a substituta ou a resposta do usuário; todo leitor a ignora {#rn-1018}
 
 - **Regra:** uma regra de negócio é um evento `artifact.business_rule` e o log é append-only, então uma regra obsoleta ficava para sempre (TP-01 26º, 06/11: o Criativo pediu ao condutor que a "removesse à mão"). `POST /internal/projects/:projectId/business-rules/:ruleId/retire` (token de serviço) recebe `{ sessionId, agentRole, reason, replacedBy?, questionId? }` e anexa `artifact.business_rule_retired { ruleId, reason, storyIds, replacedBy?, questionId? }`, sem cartão de aprovação (decisão do dono de 06/11/2026). (1) Só `criativo` e `po` retiram: qualquer outro papel é 403 `papel_nao_retira_regra`. (2) A chamada precisa citar `replacedBy` (uma regra existente, não retirada e diferente dela mesma, senão 400 `substituta_invalida`) e/ou um `questionId` que o usuário já respondeu (o padrão da [RN-859](parte-10.md#rn-859), senão 409 `pergunta_nao_respondida`); sem nenhum dos dois é 400 `retirada_sem_citacao`. (3) Regra desconhecida é 404, regra já retirada é 409 `regra_ja_retirada`. (4) Cada história (não arquivada) que cita a regra deixa de citá-la e passa a citar `replacedBy` (inclusive história `ready`, sem nova promoção); se uma história ficaria SEM regra (só possível sem `replacedBy`), a retirada inteira é recusada com 409 `historia_ficaria_sem_regra`, e uma história com tarefa `in_progress`/`in_review` recusa com 409 `historia_com_tarefa_em_execucao`; nada é gravado numa recusa. (5) A regra retirada fica no log mas sai de todo leitor que decide: a lista de regras e a cobertura ([RN-164](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-164)), a checagem de duplicata semântica ([RN-681](parte-09.md#rn-681)), os contextos do dev e do psicólogo, a contagem de cobertura do aceite automático e a resolução de `afeta.regras` das perguntas em aberto, e o resumo de contexto por sessão da [RN-844](parte-10.md#rn-844) (contagem e `itensDeRegras`, SQL cru); `create_story`/`complete_story` recusam ligá-la (400).
 - **Onde:** `apps/api/src/application/use-cases/backlog/retire-business-rule.use-case.ts` (`execute`), `apps/api/src/application/use-cases/backlog/regras-retiradas.ts` (`idsDeRegrasRetiradas`), `apps/api/src/interfaces/http/internal/internal-business-rules.controller.ts`.
 - **Teste:** `apps/api/test/application/use-cases/backlog/retire-business-rule.use-case.spec.ts` (papel, citação faltando, troca, recusa por história sem regra, tarefa em execução, leitores).
 - **Origem:** AT-755 (EP-030), parte B da AT-752; a ferramenta do engine e o painel da web vêm depois.
+
+<a id="rn-1014"></a>
 
 ### RN-1014 — O provider Anthropic direto também põe um ponto de cache no penúltimo turno `user` {#rn-1014}
 
@@ -430,12 +524,16 @@ na instalação responde 409.
 - **Teste:** `apps/api/test/infrastructure/llm/anthropic-provider.contract.spec.ts` ("(b)" último e penúltimo `user`; "(b2)" o antepenúltimo `user` fica sem marca e a requisição tem no máximo 4 pontos)
 - **Origem:** AT-749 (EP-030), parte da api; a parte do engine (blocos de raciocínio por `assistant`) é a RN-1013.
 
+<a id="rn-1015"></a>
+
 ### RN-1015 — Na Anthropic direta, as mensagens `system` tardias vão para o fim do último turno `user`, depois do ponto de cache, nunca para o `system` do topo {#rn-1015}
 
 - **Regra:** revisa o item 1 da [RN-1008](#rn-1008) e torna a [RN-622](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-622) / [RN-878](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-878) verdadeiras neste provider. O engine anexa a orientação efêmera (lembrete de idioma, lista de citações, decisões) como mensagens `system` DEPOIS da conversa. Este dialeto só aceita `system` no topo, e o provider as içava para lá, à frente de dezenas de blocos `tool_result` em inglês, então num loop longo o modelo seguia o idioma do contexto recente (TP-01 26º, 06/11: respostas dos `dev-*` em inglês em 38% a 60% a partir da 3ª posição). Agora as mensagens `system` depois da primeira que não é `system` (a CAUDA) viram o ÚLTIMO bloco de texto do ÚLTIMO turno `user`, DEPOIS do bloco que leva o ponto de cache da [RN-1008](#rn-1008) / [RN-1014](#rn-1014), então o prefixo cacheado não muda e a cauda é lida junto do contexto recente. O `system` do topo fica só com o PREFIXO. Se a conversa não termina num turno `user`, a cauda fica como um segundo bloco `system` sem ponto (comportamento anterior). Texto e ordem das mensagens não mudam. O OpenRouter NÃO muda (decisão do dono): isto cobre só o provider Anthropic direto.
 - **Código:** `apps/api/src/infrastructure/llm/anthropic-provider.ts` (`blocosDeSistema`, `caudaDeSistema`, `comCaudaDeSistema`)
 - **Teste:** `apps/api/test/infrastructure/llm/anthropic-provider.contract.spec.ts` ("(a)" `system` só com o prefixo e a cauda depois do ponto; "(a2)" cauda depois de `tool_result`, recurso sem `user` final), `apps/api/test/contract/llm-provider.contract.ts` (`fim_do_ultimo_user`, `system` tardio depois de `user` e depois de `tool`)
 - **Origem:** AT-751 (EP-030). O aceite (comportamento) é o próximo TP-01: `agent.response` dos `dev-*` em inglês na posição >= 3 caindo para 5% ou menos; nenhum smoke pago antes dele.
+
+<a id="rn-1017"></a>
 
 ### RN-1017 — `git push` de terminal para branch protegida, com force, `--all` ou `--mirror` é decisão humana, mesmo no modo automático {#rn-1017}
 
@@ -444,6 +542,8 @@ na instalação responde 409.
 - **Teste:** `apps/api/test/domain/actions/decide.spec.ts` ("é recusado em modo automático (RN-1017)": `dev`, `main`, `HEAD:dev`, `+HEAD:refs/heads/main`, `--force`, `-f`, `--force-with-lease`, `--all`, `--mirror`, composto; a branch da tarefa continua passando)
 - **Origem:** AT-756 (EP-030), achada no levantamento da AT-754 (Rodada 204).
 
+<a id="rn-1019"></a>
+
 ### RN-1019 — No modo automático, um `git merge` de terminal dentro do escopo da tarefa é auto-aprovado {#rn-1019}
 
 - **Regra:** estreita a porta do terminal da [RN-014](parte-01.md#rn-014) e a linha `git_merge` da [RN-713](parte-09.md#rn-713). No modo automático (o curinga `"*"` em `auto_approve`), um comando de terminal cujos segmentos `git merge` (inclusive `git merge --abort`) rodam dentro do worktree ou da pasta da tarefa (`terminalNoEscopo` é `true`) deixa de contar como efeito externo: esses segmentos são removidos e o resto do comando é julgado como antes. O merge nunca sai da máquina; só o push sai, e um composto como `git merge origin/dev && git push origin dev` continua virando `require_approval` pela [RN-1017](#rn-1017). Não liberados: qualquer outro modo (regra específica, "sempre permitir", `permissions.json`, manual), comando fora do escopo, `gh pr merge`/`glab mr merge`, a ação tipada `git_merge` e comando que também roda `git checkout`/`git switch` para uma branch protegida. Revisa a RN-706 (doc do engine) do lado do engine (o texto do agente agora permite `git merge` e `git fetch` no worktree da tarefa). Limite conhecido: a imagem do container do projeto pode não ter `git`, então no modo container o merge é aprovado mas ainda falha com `git: not found`.
@@ -451,12 +551,16 @@ na instalação responde 409.
 - **Teste:** `apps/api/test/domain/actions/decide.spec.ts` ("git merge local (RN-1019)": merge simples permitido; merge mais push para branch protegida recusado pela RN-1017; fora do escopo e fora do modo automático como antes)
 - **Origem:** AT-754 (EP-030), decisão do dono de 06/11/2026.
 
+<a id="rn-1026"></a>
+
 ### RN-1026 — A api reinicia só o processo do app no container do projeto, com resposta tipada {#rn-1026}
 
 - **Regra:** o engine chama `POST /internal/projects/:projectId/app/restart` (engine-service, corpo vazio) depois que a pasta do projeto avançou. A api repassa ao broker (`POST /containers/:projectId/app/restart`) por `ContainerBrokerPort.reiniciarApp`; o comando do app NUNCA é enviado, o broker lê `run.app` do container-spec. A resposta espelha `ResultadoDoReinicio` (RN-1024 na doc do contracts): `{ reiniciou: true }`, ou `{ reiniciou: false, motivo }` com `sem_container`, `tempo_esgotado`, `falha_no_exec`, ou `app_saiu` mais `exitCode` (e o `sem_app`, só da api). Não há campo de texto livre: o comando do app pode conter um segredo, então nenhum trecho de log e nenhuma mensagem do broker sai da api. Broker respondendo 404 dá `sem_container`; um 409 (sem `run.app` no container-spec, ou projeto `runner`) dá `sem_app`, um no-op nomeado; qualquer outra recusa ou broker inalcançável dá `falha_no_exec`, nunca um erro HTTP. Um reinício que falhou só é relatado: a pasta continua na `main` nova.
 - **Código:** `apps/api/src/application/use-cases/containers/reiniciar-app-do-projeto.use-case.ts:25` (`execute`), `apps/api/src/interfaces/http/internal/internal-projects.controller.ts` (`reiniciarOApp`), `apps/api/src/infrastructure/http-clients/container-broker.client.ts` (`reiniciarApp`)
 - **Teste:** `apps/api/test/application/use-cases/containers/reiniciar-app-do-projeto.use-case.spec.ts` (resultado repassado intacto; 409 dá `sem_app`; só o `projectId` é enviado; 404 dá `sem_container`; a mensagem do broker nunca vaza; a rota é guardada pelo `EngineServiceGuard`)
 - **Origem:** AT-617 (EP-030), decisão do dono de 06/11/2026.
+
+<a id="rn-1022"></a>
 
 ### RN-1022 — O repositório do projeto é trunk: o bootstrap cria e protege só a `main`, merges nela avisam o engine, e projetos antigos migram por script {#rn-1022}
 

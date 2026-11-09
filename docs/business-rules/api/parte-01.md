@@ -35,6 +35,8 @@ O vocabulário está no [glossário](https://github.com/viralabs-dev/brabo/blob/
 
 ## Contexto de negócio
 
+<a id="rn-001"></a>
+
 ### RN-001 — A sessão tem cinco estados e transições fechadas {#rn-001}
 
 `created → active → closing → closed`, com `closed_abnormally` alcançável
@@ -60,6 +62,8 @@ stateDiagram-v2
   nele significa que o dreno começou e não terminou — há alerta para isso,
   ver o [runbook](https://github.com/viralabs-dev/brabo-infra/blob/dev/deploy/docs/runbook.md).
 
+<a id="rn-002"></a>
+
 ### RN-002 — Todo evento de sessão é imutável e o `seq` é denso {#rn-002}
 
 Nunca há `UPDATE` em `session_events`. O `seq` é único por sessão
@@ -76,6 +80,8 @@ Nunca há `UPDATE` em `session_events`. O `seq` é único por sessão
 
 O coração do sistema. Toda ação com efeito externo nasce como
 `proposed_action`.
+
+<a id="rn-003"></a>
 
 ### RN-003 — A ação tem seis estados, e negada é terminal {#rn-003}
 
@@ -100,6 +106,8 @@ stateDiagram-v2
   continua `approved`. Contar aprovações por `status = 'approved'` dá o
   número errado — o critério correto é `decided_by IS NOT NULL`.
 
+<a id="rn-004"></a>
+
 ### RN-004 — A decisão é avaliada em três estágios, e `deny` vence na hora {#rn-004}
 
 Ordem: **(a) IAM → (b) `agent_autonomy` → (c) `permissions.json`**. Cada
@@ -110,6 +118,8 @@ anterior. `deny` em qualquer estágio retorna na hora.
 - **Teste:** `test/domain/actions/decide.spec.ts` (10 KB — o maior do
   domínio)
 
+<a id="rn-005"></a>
+
 ### RN-005 — Papel mínimo por tipo de ação {#rn-005}
 
 Antes de qualquer política, o IAM: cada `ActionType` exige um papel efetivo
@@ -117,6 +127,8 @@ mínimo. Sem ele, `deny` com motivo explícito.
 
 - **Onde:** `src/domain/actions/decide.ts:117` (`MIN_ROLE_FOR_ACTION_TYPE`)
 - **Teste:** `test/domain/actions/decide.spec.ts`
+
+<a id="rn-006"></a>
 
 ### RN-006 — Teto: merge em branch protegida nunca é auto-aprovável {#rn-006}
 
@@ -139,6 +151,8 @@ existe custa caro.
   diverge entre os providers e não é o portão — ver
   [ADR 0028](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0028-protecao-de-branch-divergencia-entre-providers.md).
 
+<a id="rn-007"></a>
+
 ### RN-007 — Teto: patch de instrução nunca é auto-aprovável {#rn-007}
 
 Mudar a instrução de um agente sempre exige decisão humana. O valor da
@@ -148,6 +162,8 @@ reescrevendo.
 - **Onde:** `src/domain/actions/decide.ts:170`
 - **Teste:** `test/domain/actions/decide.spec.ts`
 - **Origem:** [ADR 0016](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0016-anamnese-proficiencia-patches-instrucao.md) §8
+
+<a id="rn-008"></a>
 
 ### RN-008 — O casamento de comando é por padrão, não por substring {#rn-008}
 
@@ -160,6 +176,8 @@ o comando devidamente tokenizado — não por `includes()`.
 ---
 
 ## Backlog
+
+<a id="rn-009"></a>
 
 ### RN-009 — A história tem quatro estados, e `done` é terminal {#rn-009}
 
@@ -180,6 +198,8 @@ stateDiagram-v2
 - **Onde:** `src/domain/backlog/story-state-machine.ts:27`
 - **Teste:** `test/domain/backlog/story-state-machine.spec.ts`
 
+<a id="rn-010"></a>
+
 ### RN-010 — `draft → ready` exige quatro coisas, validadas no domínio {#rn-010}
 
 Para uma história virar `ready` ela precisa, **de todas**:
@@ -197,6 +217,8 @@ O erro nomeia **exatamente o que falta**, não um "inválido" genérico.
 - **Por quê:** é o que impede o PO de despejar uma história vaga na fila do
   dev.
 
+<a id="rn-011"></a>
+
 ### RN-011 — Regra de negócio sem história é achado, não erro {#rn-011}
 
 A cobertura regra→história é calculada, e o que não tem história aparece como
@@ -204,6 +226,8 @@ A cobertura regra→história é calculada, e o que não tem história aparece c
 
 - **Onde:** `src/domain/backlog/coverage.ts`
 - **Teste:** `test/domain/backlog/coverage.spec.ts`
+
+<a id="rn-013"></a>
 
 ### RN-013 — O grafo de módulos não pode ter ciclo {#rn-013}
 
@@ -213,6 +237,8 @@ A cobertura regra→história é calculada, e o que não tem história aparece c
 ---
 
 ## Gates de PR
+
+<a id="rn-014"></a>
 
 ### RN-014 — A ordem dos gates é imutável e `awaiting_user` é terminal {#rn-014}
 
@@ -235,6 +261,8 @@ stateDiagram-v2
 - **Origem:** [ADR 0013](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0013-gates-qa-secops-pr.md) §1
 - **Caso de borda:** `awaiting_user` é terminal **por desenho** — o sistema
   nunca faz merge (RN-006).
+
+<a id="rn-015"></a>
 
 ### RN-015 — Ciclo K: o teto de correção é finito e herdado {#rn-015}
 
@@ -259,6 +287,8 @@ baixo — continua consumindo exatamente UMA rodada. Ver
   queimada)
 - **Origem:** [ADR 0017](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0017-lock-de-workspace-e-monitor-de-dev-agents.md) §4
 
+<a id="rn-017"></a>
+
 ### RN-017 — Orçamento tem escopo exclusivo: projeto **ou** sessão {#rn-017}
 
 Um `budget` referencia um projeto ou uma sessão, nunca os dois — garantido
@@ -266,6 +296,8 @@ por um `check` no banco de dados, não só no código.
 
 - **Onde:** `src/db/schema/llm.ts` (`budgets_scope_check`)
 - **Teste:** a constraint é a garantia
+
+<a id="rn-018"></a>
 
 ### RN-018 — Notificação de orçamento em 70%, 90% e 100%, sem repetir {#rn-018}
 
@@ -275,12 +307,16 @@ Cada limiar dispara **uma vez**; o último notificado fica persistido em
 - **Onde:** `src/domain/llm/budget-threshold.ts:1`
 - **Teste:** `test/domain/llm/budget-threshold.spec.ts`
 
+<a id="rn-019"></a>
+
 ### RN-019 — `policy = 'block'` recusa a chamada; `'allow'` só registra {#rn-019}
 
 - **Onde:** `src/domain/llm/budget-threshold.ts:4`
 - **Caso de borda:** um projeto em `allow` **não se detém** no teto. É a
   causa mais comum de "o orçamento não segurou" — veja o
   [runbook](https://github.com/viralabs-dev/brabo-infra/blob/dev/deploy/docs/runbook.md).
+
+<a id="rn-020"></a>
 
 ### RN-020 — O modelo é resolvido em cascata, do mais específico ao mais geral {#rn-020}
 
@@ -293,6 +329,8 @@ dela e o que muda para quem já leu esta cascata.
 
 ## Psicólogo e Anamnese {#psicologo-e-anamnese}
 
+<a id="rn-021"></a>
+
 ### RN-021 — Hipótese sem evidência válida não é gravada {#rn-021}
 
 Os `evidenceEventIds` precisam apontar para eventos **que existem e pertencem à
@@ -303,6 +341,8 @@ lote inteiro.
 - **Teste:** `test/domain/psychologist/hypothesis-evidence.spec.ts`
 - **Origem:** [ADR 0015](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0015-psicologo-real-toolloop-hipoteses-evidencia.md) §3
 
+<a id="rn-022"></a>
+
 ### RN-022 — O ciclo de vida da hipótese é compare-and-swap {#rn-022}
 
 `proposed → accepted | dismissed`. Duas decisões concorrentes sobre a mesma
@@ -311,6 +351,8 @@ hipótese: uma vence, a outra recebe conflito — não 500, não silêncio.
 - **Onde:** `src/domain/psychologist/hypothesis-lifecycle.ts`
 - **Teste:** `test/domain/psychologist/hypothesis-lifecycle.spec.ts`
 - **Origem:** [ADR 0022](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0022-fechamento-4b-psicologo.md) §7
+
+<a id="rn-024"></a>
 
 ### RN-024 — A Anamnese só perfila competência do catálogo — guarda-corpo estrutural {#rn-024}
 
@@ -325,11 +367,15 @@ caminho de escrita**: é erro no domínio, não instrução de prompt.
 - **Por quê:** a Anamnese perfila **competência técnica**, não pessoa. O limite
   é estrutural porque uma instrução de prompt não é garantia.
 
+<a id="rn-025"></a>
+
 ### RN-025 — Apagar o perfil apaga de verdade, e o opt-out impede a re-derivação {#rn-025}
 
 - **Onde:** `src/domain/anamnese/proficiency-profile.entity.ts` +
   tabela `anamnese_opt_outs`
 - **Origem:** [ADR 0016](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0016-anamnese-proficiencia-patches-instrucao.md) §2
+
+<a id="rn-026"></a>
 
 ### RN-026 — Patch de instrução negado não é reproposto {#rn-026}
 
@@ -340,6 +386,8 @@ instruction_patch` e `status = denied`.
 
 - **Onde:** `src/domain/instructions/patch-dedup.ts:22`
 - **Teste:** `test/domain/instructions/patch-dedup.spec.ts`
+
+<a id="rn-027"></a>
 
 ### RN-027 — Rollback de instrução é operação **para frente** {#rn-027}
 
@@ -352,6 +400,8 @@ tabela de versões é append-only.
 ---
 
 ## Git
+
+<a id="rn-029"></a>
 
 ### RN-029 — O bootstrap de Gitflow é idempotente e retomável {#rn-029}
 
@@ -372,6 +422,8 @@ histórico.
 - **Origem:** [ADR 0005](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0005-repo-bootstrap-idempotent-steps.md)
 
 ---
+
+<a id="rn-030"></a>
 
 ### RN-030 — Reapresentar um refresh já usado revoga a família inteira {#rn-030}
 
@@ -394,6 +446,8 @@ são idênticos.
   falso durante o incidente.
 - **Origem:** [ADR 0031](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0031-auth-first-party-argon2id-e-rotacao-de-refresh.md)
 
+<a id="rn-031"></a>
+
 ### RN-031 — Falha de login é contada por e-mail e por IP, e o bloqueio escala {#rn-031}
 
 Janela deslizante de 15 minutos no Postgres, sem Redis. Dois baldes por
@@ -414,6 +468,8 @@ oráculo de existência.
 - **Por quê:** o balde de IP não pode ser limpo no sucesso; quem tem uma conta
   válida zeraria a janela à vontade e pulverizaria palpites sem limite.
 - **Origem:** [ADR 0031](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0031-auth-first-party-argon2id-e-rotacao-de-refresh.md)
+
+<a id="rn-032"></a>
 
 ### RN-032 — Nenhuma resposta distingue conta existente de inexistente {#rn-032}
 
@@ -442,6 +498,8 @@ registro e no pedido de reset, endereço conhecido e desconhecido devolvem 202.
   borda do migrado em
   [ADR 0032](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0032-corte-do-keycloak-e-sessao-em-cookie.md)
 
+<a id="rn-033"></a>
+
 ### RN-033 — Token de verificação e de reset vale uma vez só {#rn-033}
 
 Consumo por UPDATE condicional com `returning`: o próprio UPDATE é a guarda.
@@ -458,6 +516,8 @@ Concluir um reset revoga **todas** as sessões do usuário e não emite tokens.
   um link recebido por e-mail faria comprometer o e-mail equivaler a tomar a
   conta, sem segundo passo.
 - **Origem:** [ADR 0031](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0031-auth-first-party-argon2id-e-rotacao-de-refresh.md)
+
+<a id="rn-034"></a>
 
 ### RN-034 — A sessão da web vive em cookie httpOnly, com CSRF {#rn-034}
 
@@ -479,6 +539,8 @@ resposta. O access token, de 15 minutos, fica em memória no cliente e viaja no
   bastaria um XSS ler a resposta do login, e levaria a sessão longa em vez dos
   15 minutos do access.
 - **Origem:** [ADR 0032](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0032-corte-do-keycloak-e-sessao-em-cookie.md)
+
+<a id="rn-035"></a>
 
 ### RN-035 — O tráfego interno engine ↔ api exige o segredo de serviço {#rn-035}
 
@@ -502,6 +564,8 @@ verificação, para a rotação não ter janela de indisponibilidade.
   quando ele decide, o `EngineServiceGuard` ainda não rodou.
 - **Origem:** [ADR 0032](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0032-corte-do-keycloak-e-sessao-em-cookie.md)
 
+<a id="rn-038"></a>
+
 ### RN-038 — Agente contado no resumo do workspace = gastou tokens este mês {#rn-038}
 
 O resumo do dashboard de projetos ("N projetos ativos · M agentes · gasto
@@ -521,6 +585,8 @@ cada uma tem seu próprio `actor_id` quando gasta tokens.
 - **Teste:** `test/application/use-cases/iam/get-workspace-summary.use-case.spec.ts`
 
 ---
+
+<a id="rn-040"></a>
 
 ### RN-040 — Binding de agente exige tool calling nativo {#rn-040}
 
@@ -587,6 +653,8 @@ são DUAS as telas que ligam o filtro.
   ligam, e a que não liga)
 - **Origem:** [ADR 0041](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
 
+<a id="rn-041"></a>
+
 ### RN-041 — Contagem de tokens que o provider não deu é marcada como estimada {#rn-041}
 
 Quando a resposta do provider não traz `usage`, a base compatível com
@@ -607,6 +675,8 @@ Anthropic não pode omitir a contagem, porque `usage` é obrigatório no
   `sem_usage`, rodado contra os três providers)
 - **Origem:** [ADR 0041](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
 
+<a id="rn-042"></a>
+
 ### RN-042 — O metering registra quem ATENDEU a chamada, não só por onde ela entrou {#rn-042}
 
 Quando a chamada passa por um hub que informa o provider real,
@@ -622,6 +692,8 @@ custo inteiro.
 - **Onde:** `src/application/use-cases/llm/record-llm-usage.use-case.ts:73`
 - **Teste:** `test/application/use-cases/llm/record-llm-usage.use-case.spec.ts`
 - **Origem:** [ADR 0041](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
+
+<a id="rn-043"></a>
 
 ### RN-043 — Um modelo descoberto entra desabilitado; um modelo que desaparece é marcado, nunca apagado {#rn-043}
 
@@ -668,6 +740,8 @@ Três consequências no resto do sistema:
   `test/application/use-cases/llm/set-model-binding.use-case.spec.ts`
 - **Origem:** [ADR 0042](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
 
+<a id="rn-044"></a>
+
 ### RN-044 — O preço vale daqui para a frente, e o custo antigo continua conferindo {#rn-044}
 
 Toda linha de `token_usage` registra o preço que produziu o seu
@@ -697,6 +771,8 @@ em silêncio). Ambos agora auditam, com o seed reaproveitando o próprio
 - **Teste:** `test/application/use-cases/llm/update-model-pricing.use-case.spec.ts`,
   `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts`
 - **Origem:** [ADR 0042](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
+
+<a id="rn-045"></a>
 
 ### RN-045 — Um repositório adotado só é alterado por um plano aprovado {#rn-045}
 
@@ -744,6 +820,8 @@ aprovado.
   `test/application/use-cases/git/bootstrap-plan.spec.ts`
 - **Origem:** [ADR 0044](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0044-adocao-de-repositorio-existente.md)
 
+<a id="rn-046"></a>
+
 ### RN-046 — Todo repositório de projeto declara a sua origem {#rn-046}
 
 `project_repositories.origin` e `repo_bootstraps.origin` dizem se o Brabo
@@ -765,6 +843,8 @@ linha adotada para classificar errado.
   `src/domain/git/repo-bootstrap.entity.ts`
 - **Teste:** `test/application/use-cases/git/adopt-repository.use-case.spec.ts`
 - **Origem:** [ADR 0044](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0044-adocao-de-repositorio-existente.md)
+
+<a id="rn-048"></a>
 
 ### RN-048 — A promoção de story é do usuário por padrão; o modo muda quem dispara, nunca o que se valida {#rn-048}
 
@@ -832,6 +912,8 @@ produzir por causa de um deploy.
   `apps/engine/test/engine/agents/po_server_test.exs` (describe `revise/2`)
 - **Origem:** [ADR 0046](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0046-promocao-de-story-com-autoridade-do-usuario.md)
 
+<a id="rn-049"></a>
+
 ### RN-049 — Toda decisão sobre uma ação proposta fica no event log, com quem decidiu {#rn-049}
 
 `proposed_action.created`, `.approved` e `.denied` são eventos de domínio em
@@ -861,6 +943,8 @@ vezes numa métrica de aprovação.
   (describe `the decision in the event log`)
 - **Origem:** [ADR 0048](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0048-decisao-no-log-e-a-ordem-do-gate.md)
 
+<a id="rn-051"></a>
+
 ### RN-051 — Um preço digitado à mão vence o catálogo do provider {#rn-051}
 
 Uma linha de `models` com `manual_pricing = true` tem um número que alguém
@@ -889,6 +973,8 @@ primeiro catálogo que resolver informar um preço.
 - **Teste:** `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts`
   (`manually typed price beats a catalog that REPORTS a price`)
 - **Origem:** [ADR 0042](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
+
+<a id="rn-052"></a>
 
 ### RN-052 — A curadoria de modelos vale só no workspace que a decidiu {#rn-052}
 
@@ -924,6 +1010,8 @@ Três regras derivadas:
 - **Teste:** `test/application/use-cases/llm/set-models-active.use-case.spec.ts`
   (`activating in one workspace does NOT turn on the model in its neighbor`)
 - **Origem:** [ADR 0049](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0049-curadoria-de-modelo-por-workspace.md)
+
+<a id="rn-053"></a>
 
 ### RN-053 — Reativar a execução acorda quem está parado, dentro da sessão que já existe {#rn-053}
 
@@ -973,6 +1061,8 @@ um clique.
   [primeiro dogfooding](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/primeiro-dogfooding.md)
 
 ## Gates de PR
+
+<a id="rn-054"></a>
 
 ### RN-054 — O handoff externo se dirige ao lead da área ou a um agente sem área — nunca a um subagente {#rn-054}
 

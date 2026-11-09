@@ -15,6 +15,8 @@ decisões do mantenedor de 2026-09-28 (AT-168, AT-169) fixaram onde o idioma
 das RESPOSTAS mora — conta, sessão e projeto — e a precedência entre as
 fontes. Nenhuma destas regras toca o idioma da INTERFACE ([RN-432](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-432)).
 
+<a id="rn-618"></a>
+
 ### RN-618 — O idioma das respostas é da PESSOA: escolha na conta, override por sessão, e a precedência que termina sempre num idioma {#rn-618}
 
 1. **Lista aberta, forma canônica.** O idioma das respostas é qualquer código
@@ -79,6 +81,8 @@ daquele turno. A Conta deixou de dizer que o valor "ainda não chega".
 - **Origem:** AT-162, sobre as decisões das AT-168 (respostas 1, 2, 3, 4 e 6)
   e AT-169 (resposta 2); especificação da AT-079
 
+<a id="rn-619"></a>
+
 ### RN-619 — O projeto tem um idioma, o de tudo que não tem autor humano, e ele nasce do idioma de quem cria {#rn-619}
 
 1. **O que ele governa** (decisões do mantenedor: AT-168 resposta 8, AT-169
@@ -135,6 +139,8 @@ turno com autor humano — a divergência que esta regra declarava fechou.
   `maintainer`: o valor fica, o controle fica inerte)
 - **Origem:** AT-243, sobre as decisões das AT-168 (resposta 8) e AT-169
   (resposta 1)
+
+<a id="rn-624"></a>
 
 ### RN-624 — A api detecta o idioma do autor pelas próprias mensagens e PERGUNTA; só o confirmado vira preferência {#rn-624}
 
@@ -249,6 +255,8 @@ para aceitar os `export` de um módulo CommonJS.
 
 ## Decidir no chat, onde o dono está (RN-626) {#decidir-no-chat-onde-o-dono-esta-rn-626}
 
+<a id="rn-628"></a>
+
 ### RN-628 — O merge executado fecha a tarefa da PR: `done`, uma vez só {#rn-628}
 
 O gate de QA/SecOps termina em `awaiting_user` e nada mais mexia no `status` da
@@ -284,6 +292,8 @@ seguiram em `in_review` (AT-275).
   ("git_merge marca a tarefa como done": feliz, repetido, PR aberta/merge
   falho, PR sem tarefa)
 - **Origem:** AT-275
+
+<a id="rn-630"></a>
 
 ### RN-630 — Quem está ativo na sessão se lê da sessão INTEIRA, não dos últimos 200 eventos {#rn-630}
 
@@ -331,6 +341,8 @@ AT-251/AT-253 passarem a consumir `roster.activatedAgents`.
   ("activatedAgents cobre ativações anteriores à janela de 200 eventos" e
   "activatedAgents é da sessão MAIS RECENTE: ativação de sessão antiga não vale")
 - **Origem:** AT-252
+
+<a id="rn-635"></a>
 
 ### RN-635 — Uma oferta de handoff pendente por destino no projeto; a que deixa de valer vira `superseded` {#rn-635}
 
@@ -399,6 +411,8 @@ oferta a agente já ativo ficava acionável para sempre (AT-291,
   card acionável no fio, na faixa fora da janela nem no card da Infra)
 - **Origem:** AT-291
 
+<a id="rn-637"></a>
+
 ### RN-637 — A tela lê a CAUDA das ações da sessão, e a pendente antiga volta junto {#rn-637}
 
 `GET /projects/:projectId/sessions/:sessionId/actions` ordenava por `seq`
@@ -448,6 +462,8 @@ novas, não aparece no fio. Pendentes do PROJETO inteiro são outra leitura
   cauda cheia com 250 ações devolve a pendente 3 e a 250; leitura de pendentes
   que falha derruba a query)
 - **Origem:** AT-296 (HS-076)
+
+<a id="rn-642"></a>
 
 ### RN-642 — "Sempre permitir" aprova e grava o padrão na MESMA transação; clique em ação já aprovada é sucesso nomeado {#rn-642}
 
@@ -516,6 +532,8 @@ lançava 409 com o padrão JÁ gravado e SEM o evento `permission.granted`.
 
 ## A sessão encerrada pode ser reaberta (RN-649/RN-650) {#a-sessao-encerrada-pode-ser-reaberta-rn-649-rn-650}
 
+<a id="rn-649"></a>
+
 ### RN-649 — Sessão `closed`/`closed_abnormally` reabre para `active` com o log intacto, e o fechamento anterior vira evento novo {#rn-649}
 
 A [RN-001](parte-01.md#rn-001) dizia que os estados terminais não têm saída. Desde o
@@ -574,6 +592,8 @@ próprio. A transição GENÉRICA continua recusando `closed → active` com 409
   sessão `closed` para, como sempre)
 - **Origem:** AT-071 (HS-048), sobre o `exp001`
 
+<a id="rn-650"></a>
+
 ### RN-650 — Reabrir é `developer`, por rota própria, e a tela só oferece o botão a quem alcança o papel {#rn-650}
 
 `POST projects/:projectId/sessions/:sessionId/reopen` exige `developer` — o
@@ -608,6 +628,8 @@ com a causa do fechamento anterior quando ela foi gravada.
 - **Origem:** AT-071; papel decidido na AT-337
 
 ## Acompanhar ao vivo sem martelar (RN-639) {#acompanhar-ao-vivo-sem-martelar-rn-639}
+
+<a id="rn-654"></a>
 
 ### RN-654 — Os bindings resolvidos de todos os agentes e áreas vêm numa leitura só {#rn-654}
 
@@ -699,6 +721,8 @@ não medido em projeto real, e declarado.
 
 ## A leitura dos membros do workspace (RN-655) {#a-leitura-dos-membros-do-workspace-rn-655}
 
+<a id="rn-655"></a>
+
 ### RN-655 — `GET workspaces/:id/members` é `viewer`, e devolve só id, nome, e-mail e papel {#rn-655}
 
 O fio da sessão ([RN-652](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-652)) nomeava só quem tinha linha em
@@ -732,6 +756,8 @@ leitura existe para nomear, e as rotas de escrita seguem sendo de API.
 - **Origem:** AT-335
 
 ## O motivo da política em cada cartão de Aprovações (RN-656) {#o-motivo-da-politica-em-cada-cartao-de-aprovacoes-rn-656}
+
+<a id="rn-656"></a>
 
 ### RN-656 — A leitura de eventos da sessão filtra por `actionId`, e cada cartão da aba Aprovações lê o próprio motivo por ela {#rn-656}
 
@@ -802,6 +828,8 @@ nenhum e abrir não dispara consulta, então o cartão ali segue calado, como a
 
 ## Um clique fecha a prontidão, a necessidade e o aceite do PO (RN-657/RN-658) {#um-clique-fecha-a-prontidao-a-necessidade-e-o-aceite-do-po-rn-657-rn-658}
 
+<a id="rn-657"></a>
+
 ### RN-657 — "Estou pronto — a necessidade está validada" fecha os DOIS gates num POST, com o `product_brief` produzido depois do clique {#rn-657}
 
 Revisa a [RN-406](https://github.com/viralabs-dev/brabo-contracts/blob/dev/packages/docs/business-rules/contracts.md#rn-406) por decisão do dono (30/09, AT-311): o botão do
@@ -842,6 +870,8 @@ entra quando o resumo ficar pronto.
 - **ADR:** [0185](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0185-estou-pronto-fecha-os-dois-gates.md), que revisa o
   [0095](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0095-gate-necessidade-validada.md)
 - **Origem:** AT-311 (levantamento da AT-309, achado 1)
+
+<a id="rn-658"></a>
 
 ### RN-658 — O aceite do handoff Criativo→PO é implícito no "Estou pronto": os MESMOS eventos, com a pessoa como ator e a marca `implicito` {#rn-658}
 
@@ -896,6 +926,8 @@ faz merge nem push.
 
 ## O motivo da política em cada cartão de Aprovações (RN-656) {#o-motivo-da-politica-em-cada-cartao-de-aprovacoes-rn-656-1}
 
+<a id="rn-659"></a>
+
 ### RN-659 — Projeto novo nasce com promoção de histórias automática; projeto existente fica no modo que tinha {#rn-659}
 
 O default de `projects.story_promotion` passa de `manual` para `auto` (decisão
@@ -926,6 +958,8 @@ explícito.
   a troca e a tela diz que não salvou)
 - **Origem:** AT-313 (levantamento da AT-309, passo 5); revisa o default da
   [RN-048](parte-01.md#rn-048)
+
+<a id="rn-660"></a>
 
 ### RN-660 — O handoff do PO ao Arquiteto é aceito pelo SISTEMA quando o backlog está coberto e o repositório é local e sem credencial {#rn-660}
 
@@ -983,6 +1017,8 @@ handoff manual (ADR 0109) também.
 
 ## O Infra Lead não anuncia subida que não fez (RN-668) {#o-infra-lead-nao-anuncia-subida-que-nao-fez-rn-668}
 
+<a id="rn-663"></a>
+
 ### RN-663 — O merge de PR recusa a PR já mergeada e a proposta repetida; gate pendente é só aviso {#rn-663}
 
 O uso real de 29/09 mediu os dois buracos: a `pr-6` teve TRÊS `git_merge`
@@ -1039,6 +1075,8 @@ segundo `executed` para o mesmo merge.
   `apps/web/src/lib/gate-do-merge.test.ts:5`, `:18`
 - **Origem:** AT-249 (item A3/extra E3 da análise do uso real de 29/09)
 
+<a id="rn-665"></a>
+
 ### RN-665 — O custo real que o provider devolve é o número do metering; o catálogo fica onde ele não vem {#rn-665}
 
 Decisão do dono (30/09): **o custo real vira o número**. Quando a resposta de
@@ -1090,6 +1128,8 @@ gasto somam. Sem ele, o preço congelado do catálogo produz o número, como no
 - **Origem:** [ADR 0188](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0188-o-custo-real-do-provider-vira-o-numero-do-metering.md)
   (AT-270)
 
+<a id="rn-666"></a>
+
 ### RN-666 — O metering grava quanto da entrada veio de cache e quanto da saída foi raciocínio {#rn-666}
 
 Cada linha de `token_usage` grava duas PARTES que o provider informa no
@@ -1127,6 +1167,8 @@ foram raciocínio).
   `test/scripts/medir-execucao.spec.ts` (`formatarParteMedida`)
 - **Origem:** [ADR 0188](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0188-o-custo-real-do-provider-vira-o-numero-do-metering.md)
   (AT-272)
+
+<a id="rn-669"></a>
 
 ### RN-669 — O escopo de caminho compara com a pasta REAL de execução: `/work` e o `/tmp` do container quando ele está de pé {#rn-669}
 
@@ -1170,6 +1212,8 @@ existe.
   (o modo `mounted` com e sem container, e sem o piso)
 - **Origem:** AT-258 (item A12 da análise do uso real de 29/09), decisão do
   dono de 01/10, [ADR 0189](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0189-o-piloto-automatico.md)
+
+<a id="rn-670"></a>
 
 ### RN-670 — O modo automático é o PILOTO AUTOMÁTICO, e "Sempre permitir" não o desliga {#rn-670}
 
@@ -1224,6 +1268,8 @@ lugares onde o modo é ligado: o cartão de lote dos Executores
   `apps/web/src/components/AgentCard.test.tsx:81`
 - **Origem:** AT-259 e AT-255 (itens A9 e A13 da análise do uso real de 29/09),
   decisão do dono de 01/10
+
+<a id="rn-671"></a>
 
 ### RN-671 — A Infra sobe o container no aceite do handoff: o servidor propõe, e a autonomia semeada aprova {#rn-671}
 
@@ -1284,6 +1330,8 @@ vence — pôr a Infra em "manual" não desliga esta semente.
   recusa sem broker — caso de falha), `:1427` (container já `running`), `:1439`
   (negada pela política), `:1580` (`eleger_candidata/1`)
 - **Origem:** AT-260 (item A14 da análise do uso real de 29/09)
+
+<a id="rn-672"></a>
 
 ### RN-672 — O handoff ao Dev Lead sai da Infra, e só com o container do projeto `running` {#rn-672}
 
@@ -1346,6 +1394,8 @@ instante, a oferta espera o fim do próximo turno dele.
 - **Origem:** AT-262 (item A16 da análise do uso real de 29/09)
 
 ---
+
+<a id="rn-675"></a>
 
 ### RN-675 — "Sempre permitir" grava VERBO + SUBCOMANDO, um padrão por segmento do comando {#rn-675}
 

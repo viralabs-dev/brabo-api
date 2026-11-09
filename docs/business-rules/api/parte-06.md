@@ -10,6 +10,8 @@ keywords: [regras de negócio, api]
 
 ## Projeto montado sobe container pelo BROKER (RN-503) {#projeto-montado-sobe-container-pelo-broker-rn-503}
 
+<a id="rn-503"></a>
+
 ### RN-503 — Projeto `mounted` sobe container pelo BROKER, e o que atravessa a rede é um localizador discriminado — nunca um caminho absoluto {#rn-503}
 
 Um projeto no modo Pasta montada **não conseguia container nenhum** até aqui, e
@@ -118,6 +120,8 @@ decidida, a lacuna declarada desde a RN-494.
 
 ## O artefato de decisão dos conversacionais (RN-505) {#o-artefato-de-decisao-dos-conversacionais-rn-505}
 
+<a id="rn-508"></a>
+
 ### RN-508 — `container_start_via_runner`: segundo tipo de ação para subir o container, exclusivo de `runner`, e o Infra Lead recusa às cegas ANTES de propor {#rn-508}
 
 `container_start` (ADR 0130/0133) exige `imagem`/`network`/`resources`/
@@ -209,6 +213,8 @@ lado sem o outro reprova.
 
 ## O navegador de pastas servido pela api (RN-504) {#o-navegador-de-pastas-servido-pela-api-rn-504}
 
+<a id="rn-509"></a>
+
 ### RN-509 — "Sempre permitir" de um Dev Agent de módulo escopa a `agent_autonomy`, POR AGENTE — não mais o `permissions.json` de projeto inteiro {#rn-509}
 
 `ApproveAlwaysActionUseCase` sempre gravou em `permissions.json/allow` —
@@ -283,6 +289,8 @@ esquecida.
 ---
 
 ## O destino do espelho é por projeto (RN-515) {#o-destino-do-espelho-e-por-projeto-rn-515}
+
+<a id="rn-515"></a>
 
 ### RN-515 — O destino do espelho é declarado POR PROJETO e nunca é global; `null` é o estado normal; e a api valida SÓ o léxico, dizendo que é só o léxico {#rn-515}
 
@@ -388,6 +396,8 @@ fila de aprovações rotineiras.
 ---
 
 ## O estado do espelho é visível, e os três estados não colapsam (RN-517) {#o-estado-do-espelho-e-visivel-e-os-tres-estados-nao-colapsam-rn-517}
+
+<a id="rn-517"></a>
 
 ### RN-517 — O desfecho de cada rodada do espelho volta pelo canal e vira TELEMETRIA numa tabela própria; "nunca sincronizou", "sincronizou e não copiou nada" e "falhou" são TRÊS respostas, e sucesso e erro convivem {#rn-517}
 
@@ -529,6 +539,8 @@ capacidade.
 
 ## A revogação de chave de dispositivo deixa de ser cega, e alcança a conexão viva (RN-519..520) {#a-revogacao-de-chave-de-dispositivo-deixa-de-ser-cega-e-alcanca-a-conexao-viva-rn-519-520}
 
+<a id="rn-519"></a>
+
 ### RN-519 — Ninguém revoga o que não consegue ver: a chave de dispositivo ganha listagem do PRÓPRIO dono, e a visão de `maintainer` fica fora por DECISÃO {#rn-519}
 
 A sessão 7 da FASE 28 e o **ponto 6** do
@@ -594,6 +606,8 @@ ALCANCE ([RN-520](#rn-520)), não amplitude.
   `{projeto, usuário}` da desconexão ([RN-520](#rn-520))
 
 ---
+
+<a id="rn-520"></a>
 
 ### RN-520 — Revogar deixa de só impedir ticket NOVO e passa a derrubar a conexão VIVA; o alvo é `{projeto, usuário}` e nunca `{chave}`, e derrubar nunca derruba a revogação {#rn-520}
 
@@ -697,6 +711,8 @@ chave.
   alcança um runner conectado em OUTRO projeto com a mesma chave — não existe
   esse caso, porque `runner_device_keys.project_id` amarra a chave a um projeto
   só; e nenhuma tela dispara isto ainda (a metade web da [RN-519](#rn-519))
+
+<a id="rn-521"></a>
 
 ### RN-521 — A página `/containers` lista TODO projeto do workspace e vira o caminho HUMANO de subir o container, ramificado por `execution_mode` {#rn-521}
 
@@ -822,6 +838,8 @@ reparável (termina em toast), não o invisível.
 
 ## O repositório nasce no handoff para o Dev Lead (RN-522) {#o-repositorio-nasce-no-handoff-para-o-dev-lead-rn-522}
 
+<a id="rn-522"></a>
+
 ### RN-522 — O repositório é provisionado ao ACEITAR o handoff Arquiteto → Dev Lead, sempre `local`, e a falha nunca derruba o aceite {#rn-522}
 
 > **Revisada pela [RN-582](parte-07.md#rn-582) ([ADR 0165](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0165-o-repositorio-nasce-no-handoff-ao-arquiteto.md)):**
@@ -893,6 +911,8 @@ interrompido se completa.
   passar o handoff para o desenvolvedor iniciar o desenvolvimento"*
 
 ## A chave de MÁQUINA que o instalador registra (RN-552) {#a-chave-de-maquina-que-o-instalador-registra-rn-552}
+
+<a id="rn-552"></a>
 
 ### RN-552 — Rota interna registra a chave de dispositivo de MÁQUINA, para o usuário ÚNICO da instalação, e registrar SUBSTITUI {#rn-552}
 
@@ -1027,6 +1047,8 @@ ponto 1) — e **nenhuma migration**, porque a coluna já é nullable desde a
 
 ## O teto de auto-rebaixamento também na REMOÇÃO (RN-556) {#o-teto-de-auto-rebaixamento-tambem-na-remocao-rn-556}
 
+<a id="rn-556"></a>
+
 ### RN-556 — Remover a própria linha de `project_members` é recusado com 403 quando o efeito líquido é rebaixamento {#rn-556}
 
 > **Sobre o número.** O salto de [RN-542](https://github.com/viralabs-dev/brabo/blob/dev/docs/business-rules/produto.md#rn-542) para 556 é deliberado: a
@@ -1117,6 +1139,8 @@ cliente — mas calcular só ele produziria o meio-gate que o ADR 0127 recusou.
 
 ## A rotação da chave mestra deixa de ser tentativa e erro (RN-562, RN-563) {#a-rotacao-da-chave-mestra-deixa-de-ser-tentativa-e-erro-rn-562-rn-563}
 
+<a id="rn-562"></a>
+
 ### RN-562 — A rotação da chave mestra é provada ponta a ponta, nas duas tabelas {#rn-562}
 
 O procedimento com o pior desfecho do [Runbook](https://github.com/viralabs-dev/brabo-infra/blob/dev/deploy/docs/runbook.md#rotacao-da-chave-mestra)
@@ -1160,6 +1184,8 @@ de segredo indo para o histórico, e o gitleaks varre branches.
   falha da linha de outro ambiente, que também assere que o relato NÃO carrega
   segredo nenhum
 - **Origem:** AT-033 (EP-015/HS-022), finding `BRB-010`
+
+<a id="rn-563"></a>
 
 ### RN-563 — O envelope diz qual chave o embrulhou, e esse rótulo nunca decide se ele abre {#rn-563}
 
