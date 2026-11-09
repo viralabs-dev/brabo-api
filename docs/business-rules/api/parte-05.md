@@ -10,6 +10,8 @@ keywords: [regras de negócio, api]
 
 ## O explorador de pasta do Runner vira três colunas, e a criação de um projeto `runner` deixa de esperar o passo final (RN-436/436) {#o-explorador-de-pasta-do-runner-vira-tres-colunas-e-a-criacao-de-um-projeto-runner-deixa-de-esperar-o-passo-final-rn-436-436}
 
+<a id="rn-439"></a>
+
 ### RN-439 — `POST .../runner-ticket` autentica E autoriza no MESMO guard; `RolesGuard` (global) se abstém em rota `@RequirePatAuth()` {#rn-439}
 
 `POST /projects/:projectId/runner-ticket` respondia `403 "Não autenticado"`
@@ -69,6 +71,8 @@ se manifestar — corrigir só o primeiro teria trocado um 403 sempre por um
   nenhuma suíte exercitava `RolesGuard` e `PatAuthGuard` na mesma
   requisição
 
+<a id="rn-440"></a>
+
 ### RN-440 — `addressableAgents()` é o catálogo FECHADO do handoff manual, mais estrito que `assertHandoffTargetAllowed` {#rn-440}
 
 Handoff manual a agente à escolha (backlog, ADR 0109): `assertHandoffTargetAllowed`
@@ -112,6 +116,8 @@ travadas, quem decide o que é aceito continua sendo o
 
 ---
 
+<a id="rn-441"></a>
+
 ### RN-441 — `POST .../sessions/:sessionId/handoffs` exige `developer`; handoff manual nasce `offered`, sem estado novo {#rn-441}
 
 O único caminho para gravar `toAgent` continua sendo `CreateHandoffUseCase`
@@ -154,6 +160,8 @@ caminho humano até si.
 - **Origem:** backlog do modelo de time (ver RN-440)
 
 ---
+
+<a id="rn-443"></a>
 
 ### RN-443 — Budget de área é ADITIVO ao de projeto/sessão, nunca cascata; só `maintainer` muda o teto {#rn-443}
 
@@ -211,6 +219,8 @@ padrão de `RenameSessionDto`.
 
 ---
 
+<a id="rn-447"></a>
+
 ### RN-447 — Converter `execution_mode` de projeto EXISTENTE recusa (409) enquanto qualquer dev agent do projeto não está `idle` {#rn-447}
 
 `ConvertProjectExecutionModeUseCase` (`PUT .../execution-mode`, papel
@@ -251,6 +261,8 @@ agentes ativos.
 
 ---
 
+<a id="rn-448"></a>
+
 ### RN-448 — `permissions.json` é RELOCALIZADO na conversão — o conteúdo nunca muda, só o caminho {#rn-448}
 
 `PermissionsFileStore.move(from, to)` lê o arquivo na localização ANTIGA
@@ -277,6 +289,8 @@ par.
 - **ADR:** [0111](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0111-conversao-de-execution-mode-de-projeto-existente.md)
 
 ---
+
+<a id="rn-449"></a>
 
 ### RN-449 — Saindo de `container`, o ciclo de vida do container é encerrado (`removed`) ANTES da coluna mudar {#rn-449}
 
@@ -305,6 +319,8 @@ lugar".
 - **ADR:** [0111](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0111-conversao-de-execution-mode-de-projeto-existente.md)
 
 ---
+
+<a id="rn-450"></a>
 
 ### RN-450 — `workspaceVerifiedAt` zera em TODA conversão real, mesmo voltando para `runner` com o "mesmo" caminho {#rn-450}
 
@@ -337,6 +353,8 @@ um, para nenhum site. O que atravessa a rede é texto que o navegador já
 tinha o direito de ler, o mesmo modelo de confiança de qualquer upload de
 arquivo comum.
 
+<a id="rn-455"></a>
+
 ### RN-455 — `chunks.scope` ganha `'local'`, reusando o pipeline de RAG inteiro {#rn-455}
 
 `ChunkScope` passa de `'docs' | 'adr' | 'session'` para incluir `'local'`
@@ -357,6 +375,8 @@ sabia renderizar.
   (caminho feliz e full rebuild), `test/interfaces/http/rag/rag.controller.spec.ts`
 - **ADR:** [0113](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0113-pasta-local-anexada-via-navegador-vira-chunks-scope-local.md)
 - **Origem:** pedido do dono do produto
+
+<a id="rn-457"></a>
 
 ### RN-457 — `maintainer`, e reanexar é o MECANISMO de resincronizar — nunca o "Reindexar agora" genérico {#rn-457}
 
@@ -382,6 +402,8 @@ silenciosamente o material do usuário.
 - **ADR:** [0113](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0113-pasta-local-anexada-via-navegador-vira-chunks-scope-local.md)
 - **Origem:** pedido do dono do produto
 
+<a id="rn-458"></a>
+
 ### RN-458 — Cobertura de `local` é forma PRÓPRIA, e `lastAttachedAt` é a ÚNICA exceção real ao "nunca Xmin" (RN-237) {#rn-458}
 
 `RagCoverage.local` não reusa `RagFileCoverage` (RN-237, ADR 0080): não há
@@ -401,6 +423,8 @@ valor real EXISTE e é barato de calcular (mesmo `todosOsChunks` que
 - **Origem:** pedido do dono do produto
 
 ## Ollama nativo no bootstrap dev e pull de modelo Hugging Face (RN-461..463, ADR 0114/0115) {#ollama-nativo-no-bootstrap-dev-e-pull-de-modelo-hugging-face-rn-461-463-adr-0114-0115}
+
+<a id="rn-462"></a>
 
 ### RN-462 — Pull de modelo Hugging Face exige confirmação explícita em duas etapas; nunca roda sozinho {#rn-462}
 
@@ -430,6 +454,8 @@ prefixado pela origem (`infra`/`modelo`/`código`, vocabulário do ADR
   workspace)
 - **ADR:** [0115](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0115-pedido-de-pull-de-modelo-huggingface-tabela-propria.md)
 - **Origem:** pedido do dono do produto
+
+<a id="rn-463"></a>
 
 ### RN-463 — Allowlist de publishers oficiais; comunidade exige opt-in explícito com aviso de segurança {#rn-463}
 
@@ -462,6 +488,8 @@ ligada.
 - **Origem:** pedido do dono do produto
 
 ## Configuração do runner pelo navegador (RN-464..466, ADR 0118) {#configuracao-do-runner-pelo-navegador-rn-464-466-adr-0118}
+
+<a id="rn-464"></a>
 
 ### RN-464 — Chave de dispositivo do runner: registro/revogação self-service; SEM visão de maintainer nesta rodada (corte declarado) {#rn-464}
 
@@ -501,6 +529,8 @@ vier a ser pedido.
   `test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
 - **ADR:** [0118](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0118-configuracao-automatica-do-runner-pelo-navegador.md)
 - **Origem:** pedido do dono do produto
+
+<a id="rn-465"></a>
 
 ### RN-465 — `POST .../runner-ticket` aceita PAT OU chave de dispositivo (Ed25519, TTL ≤60s) — segunda forma de credencial de DISPOSITIVO, nunca dual-auth com JWT de sessão (distinção da RN-439) {#rn-465}
 
@@ -552,6 +582,8 @@ tudo que o papel dele permite no resto da api, estourando o escopo
 - **Origem:** pedido do dono do produto
 
 ## Os dois tetos de rebaixamento em `project_members` (RN-472) {#os-dois-tetos-de-rebaixamento-em-project-members-rn-472}
+
+<a id="rn-472"></a>
 
 ### RN-472 — Ninguém rebaixa o `owner` do workspace, e ninguém rebaixa a si mesmo {#rn-472}
 
@@ -644,6 +676,8 @@ frase da api que diz qual teto bateu.
 
 ## O `kid` é o vínculo, e a recusa tem nome (RN-475) {#o-kid-e-o-vinculo-e-a-recusa-tem-nome-rn-475}
 
+<a id="rn-477"></a>
+
 ### RN-477 — Provisionamento que falha DIZ que falhou, e a espera por ele tem teto {#rn-477}
 
 O provisionamento de repositório roda **inteiro dentro do POST** — não há
@@ -711,6 +745,8 @@ para a tela de provisionamento, que só desviava em `provision_failed`.
   `proposed_actions.execution_result`, que nenhuma tela lê
 
 ## A busca do RAG deixa rastro, e o rastro congela os pesos (RN-479..481) {#a-busca-do-rag-deixa-rastro-e-o-rastro-congela-os-pesos-rn-479-481}
+
+<a id="rn-478"></a>
 
 ### RN-478 — O `permissions.json` mora onde a api ALCANÇA, o escopo do terminal aponta para o HOST {#rn-478}
 
@@ -800,6 +836,8 @@ caminho que a execução em container substitui; o que muda agora é só a
 
 ---
 
+<a id="rn-479"></a>
+
 ### RN-479 — Toda busca híbrida grava uma linha em `rag_searches`, com os pesos CONGELADOS; e a telemetria nunca derruba a busca {#rn-479}
 
 `src/domain/rag/rag-search-limits.ts` declara, no próprio comentário,
@@ -862,6 +900,8 @@ definição pode crescer.
   RN **não** revisa: ela dá o instrumento para revisá-los depois
 - **Origem:** plano do dono do produto, Parte 2 / Etapa 1
 
+<a id="rn-480"></a>
+
 ### RN-480 — O voto sobre um trecho é o único sinal de VERDADE da medição, e ele exige a referência que a busca devolveu {#rn-480}
 
 Latência e taxa de degradação dizem se a busca RODOU; só o voto diz se ela
@@ -910,6 +950,8 @@ encheria a fila de ruído.
 - **ADR:** [0129](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0129-telemetria-de-busca-do-rag-como-tabela.md)
 - **Origem:** plano do dono do produto, Parte 2 / Etapa 1
 
+<a id="rn-486"></a>
+
 ### RN-486 — Estado REGISTRADO e estado OBSERVADO nunca se fundem, e "não olhei" tem motivo próprio {#rn-486}
 
 `project_containers` guarda o que foi REGISTRADO. O daemon responde o que é
@@ -949,6 +991,8 @@ a varredura por `brabo.managed=true`, e a página que a consome ainda não exist
   ("olhei e não há" e "não consegui olhar" não colapsam; sem `BROKER_URL` o
   broker nem é chamado; recusa vira motivo com detalhe, nunca exceção)
 - **ADR:** [0130](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0130-broker-de-container.md)
+
+<a id="rn-487"></a>
 
 ### RN-487 — O Arquiteto roteia módulo por módulo, mas só CANDIDATA — quem elege é a Infra {#rn-487}
 
@@ -1013,6 +1057,8 @@ antes de `create_c4_diagram` precisar dele.
 - **ADR:** [0131](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0131-roteamento-de-modulos-para-infra.md)
 - **Origem:** plano do dono do produto, Parte 1 / PR 1.4
 
+<a id="rn-490"></a>
+
 ### RN-490 — O golden-set de acerto do RAG mede por CAMINHO DE ARQUIVO, no TOP-5, nunca por chunk exato ou rank 1 {#rn-490}
 
 O gate `rag-acertivo` (`config/gates.yml`) mede se a busca híbrida devolve o
@@ -1064,6 +1110,8 @@ a tag explicitamente, do mesmo jeito que sempre foi preciso.
 - **ADR:** [0132](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0132-golden-set-de-acerto-do-rag.md)
 - **Origem:** plano do dono do produto, Parte 2 / Etapa 2
 
+<a id="rn-493"></a>
+
 ### RN-493 — Terminal dentro do container real ganha PISO de auto-aprovação, sem tocar nos tetos absolutos {#rn-493}
 
 Quando `containerExecutionActive` é verdadeiro (o mesmo `running` REGISTRADO
@@ -1104,6 +1152,8 @@ escopo léxico não é substituído, é redundante.
   inalterado; deny embutido/git push/sudo continuam vencendo)
 - **ADR:** [0134](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0134-dev-agents-executam-dentro-do-container.md)
 - **Origem:** plano do dono do produto, Parte 1 / PR 1.6
+
+<a id="rn-495"></a>
 
 ### RN-495 — `container_stop`/`container_remove` nascem como `proposed_action`, e só `container_remove` entra no teto absoluto {#rn-495}
 
@@ -1177,6 +1227,8 @@ o container que já existe.
 - **Decisão arquitetural:** [ADR 0136](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0136-pagina-global-de-containers.md)
 - **Origem:** plano do dono do produto, Parte 1 / PR 1.8
 
+<a id="rn-496"></a>
+
 ### RN-496 — A página global de containers pergunta ao broker com TETO, e nunca funde registrado com observado {#rn-496}
 
 Mesma família da RN-486/RN-468, aplicada a uma tela NOVA: `GET
@@ -1237,6 +1289,8 @@ inline sem uma quarta consulta por projeto.
 - **Origem:** plano do dono do produto, Parte 1 / PR 1.8
 
 ## A base única dos projetos montados (RN-500) {#a-base-unica-dos-projetos-montados-rn-500}
+
+<a id="rn-500"></a>
 
 ### RN-500 — Existe UMA base para os projetos montados, ela é montada por identidade, e ausente quer dizer "não ofereça o modo" {#rn-500}
 
@@ -1307,6 +1361,8 @@ na RN seguinte.
 ---
 
 ## A pasta montada nasce quando o container sobe (RN-501) {#a-pasta-montada-nasce-quando-o-container-sobe-rn-501}
+
+<a id="rn-501"></a>
 
 ### RN-501 — `mounted` valida só o LÉXICO e a base na criação; a pasta é MATERIALIZADA depois, por quem tem autoridade sobre o disco {#rn-501}
 

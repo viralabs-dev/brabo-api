@@ -14,6 +14,8 @@ Chave de LLM e token de git do usuário vivem na mesma tabela
 (`user_credentials`), sob o mesmo envelope encryption. Esta seção vale para as
 duas.
 
+<a id="rn-055"></a>
+
 ### RN-055 — Credencial é sempre cifrada e gravada; verificar é ação à parte, com três respostas {#rn-055}
 
 O cadastro **não julga a credencial**: cifra e grava, mesmo que o provider
@@ -62,6 +64,8 @@ e devolve resultado, com 200. A única exceção é não existir credencial para
 
 ---
 
+<a id="rn-056"></a>
+
 ### RN-056 — Faceta de capability vem do provider; silêncio preserva o que estava {#rn-056}
 
 `supports_vision`, `supports_reasoning` e `generates_image` são **fato do
@@ -96,6 +100,8 @@ local. Por isso a tela usa as facetas só como filtro POSITIVO e nunca escreve
   (`catálogo que se cala sobre modalidade preserva a faceta gravada`)
 - **Origem:** [ADR 0051](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0051-facetas-de-capability-e-curadoria-por-uso.md)
 
+<a id="rn-057"></a>
+
 ### RN-057 — "Para que serve" é curadoria do workspace, e marcar uso não liga o modelo {#rn-057}
 
 Nenhum catálogo de provider publica "bom para código". Isso é **opinião de quem
@@ -129,6 +135,8 @@ desmarca tudo, e é um estado legítimo — "ninguém opinou" não é "não serv
   `o uso vale só neste workspace`)
 - **Origem:** [ADR 0051](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0051-facetas-de-capability-e-curadoria-por-uso.md)
 
+<a id="rn-058"></a>
+
 ### RN-058 — A chave que o AGENTE gasta é a do owner do workspace {#rn-058}
 
 Credencial de LLM pertence a uma pessoa (`user_credentials.user_id`), e agente
@@ -160,6 +168,8 @@ verdade.
   (o owner vence quem criou o projeto; a chave encontrada é a dele; projeto
   inexistente é 404 e não erro de banco)
 - **Origem:** execução real da FASE 13b
+
+<a id="rn-060"></a>
 
 ### RN-060 — O gasto das chaves é do owner, e só ele vê {#rn-060}
 
@@ -193,6 +203,8 @@ chave, nem cifrada ([ADR 0050](https://github.com/viralabs-dev/brabo/blob/dev/do
   `apps/web/src/components/CredentialSpendSection.test.tsx`
 - **Origem:** decisão do usuário junto com a RN-058
 
+<a id="rn-065"></a>
+
 ### RN-065 — Um module_map por SESSÃO; revisar é outra sessão {#rn-065}
 
 `create_module_map` recusa uma segunda emissão **dentro da mesma sessão**,
@@ -217,6 +229,8 @@ ADR, registrar tensões), e terminar ali mataria os três.
   (`refuses the SECOND map of the same session`; e o versionamento entre
   sessões continua provado ao lado)
 - **Origem:** execução real da FASE 13b
+
+<a id="rn-066"></a>
 
 ### RN-066 — Toda resposta sobre módulos traz os nomes canônicos {#rn-066}
 
@@ -261,6 +275,8 @@ justamente para tentar fixar nomes que não conseguia ler.
   there are`)
 - **Origem:** execução real da FASE 13b
 
+<a id="rn-067"></a>
+
 ### RN-067 — Toda sessão nasce emitindo `session.created` {#rn-067}
 
 `CreateSessionUseCase` é o **único** lugar que cria uma sessão. Ele emite
@@ -295,6 +311,8 @@ caminho por vez, e o defeito aqui é o caminho em que ninguém pensou.
 - **Teste:** `test/application/use-cases/sessions/toda-sessao-emite-created.spec.ts`
   (`only CreateSessionUseCase calls sessions.create`)
 - **Origem:** execução real da FASE 13b
+
+<a id="rn-068"></a>
 
 ### RN-068 — O dev agent lê o worktree sem pedir permissão {#rn-068}
 
@@ -333,6 +351,8 @@ vez de queimar iterações — está no
   (`allows ls -la`; `a composite command doesn't hitch a ride on the
   allowed segment`)
 - **Origem:** execução real da FASE 13b
+
+<a id="rn-070"></a>
 
 ### RN-070 — Todo gate declarado aponta para a evidência que o prova {#rn-070}
 
@@ -400,6 +420,8 @@ coluna `actor_kind` e fica fora do vocabulário declarativo.
 - **Origem:** FASE 15a (ADR 0054); a divisão em duas camadas veio do 500 de
   `GET /gates` medido na v6.1.0 instalada (AT-086)
 
+<a id="rn-071"></a>
+
 ### RN-071 — Os quatro gates de autoridade do usuário não podem ser declarados automáticos {#rn-071}
 
 `acao-aprovada`, `story-promovida`, `plano-de-adocao` e `merge-protegida`
@@ -425,6 +447,8 @@ regra morta, apontando para nada.
   (`%s cannot have aprovacao_humana false`); o teto em
   `test/domain/actions/decide.spec.ts`
 - **Origem:** FASE 15a (ADR 0054)
+
+<a id="rn-072"></a>
 
 ### RN-072 — Sem escolha explícita, o modelo é o do agente Criativo {#rn-072}
 
@@ -456,6 +480,8 @@ trocar o modelo à mão em cada sessão aberta, e os três dev agents subiram em
 - **Teste:** `test/domain/llm/binding-resolver.spec.ts`
   (`fills the gap`; `does NOT override %s's explicit choice`)
 - **Origem:** achados B e O da execução real (FASE 13c, fase A)
+
+<a id="rn-075"></a>
 
 ### RN-075 — Comando de terminal é avaliado por onde toca, não só pelo verbo {#rn-075}
 
@@ -512,6 +538,8 @@ Quem for "simplificar" de volta para regex reabre o alerta.
 O escopo só vale enquanto ele próprio estiver dentro da raiz — quem garante isso
 é a [RN-092](#rn-092).
 
+<a id="rn-078"></a>
+
 ### RN-078 — Falha em proteger branches pode ser reconhecida, e só ela {#rn-078}
 
 `protect_branches` falha em repositório privado no plano gratuito do GitHub — e
@@ -547,6 +575,8 @@ que exatamente foi dispensado.
   (destrava; a decisão no log com o ator; e a recusa para falha anterior)
 - **Origem:** achado D, Fase D do [backlog](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/backlog.md)
 
+<a id="rn-081"></a>
+
 ### RN-081 — História repetida: título igual recusa, justificativa igual avisa {#rn-081}
 
 Duas respostas diferentes para dois problemas diferentes:
@@ -578,6 +608,8 @@ e o teste que afirma o limite DESTE mecanismo segue valendo.
   `test/application/use-cases/backlog/create-story.use-case.spec.ts`
 - **Origem:** achado R, Fase E do [backlog](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/backlog.md)
 
+<a id="rn-082"></a>
+
 ### RN-082 — A credencial de git de uma ação é a do OWNER do workspace {#rn-082}
 
 Quando a api executa uma ação de git contra provider remoto (`pr_open`,
@@ -608,6 +640,8 @@ reimplementado.
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   (`pr_open` auto-aprovado, com `decidedBy: null`, pede a credencial do owner)
 - **Origem:** achado AA, [validação real da 13b](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/validacao-real.md)
+
+<a id="rn-083"></a>
 
 ### RN-083 — O lead decide o paralelismo; acima do teto, você autoriza {#rn-083}
 
@@ -668,6 +702,8 @@ depois de ler.
   [gates.md](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/gates.md#a-registry-can-age-in-the-wrong-direction--stale-not-inactive)
 - **Origem:** [ADR 0053](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0053-dev-lead-e-paralelismo-autorizado.md), FASE 14d
 
+<a id="rn-084"></a>
+
 ### RN-084 — A esteira exibida deriva do registro de gates {#rn-084}
 
 O painel do time mostra a etapa em que uma PR está **derivando-a de
@@ -697,6 +733,8 @@ Três decisões de borda, todas para a tela **degradar** em vez de sumir:
   (`gate que SAI do registro some da tela`, `gate de PR que a tela ainda não
   sabe desenhar é IGNORADO`, `sem registro, mostra a esteira completa`)
 - **Origem:** [ADR 0054](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0054-gates-como-registro-declarativo.md), FASE 15b
+
+<a id="rn-086"></a>
 
 ### RN-086 — Gastar com mais agentes nunca se auto-aprova {#rn-086}
 
@@ -748,6 +786,8 @@ que você leu ao decidir.
 
 ## Painel de projetos {#painel-de-projetos}
 
+<a id="rn-090"></a>
+
 ### RN-090 — O dashboard lê o workspace, não um projeto de cada vez {#rn-090}
 
 A grade de cards e os dots da barra lateral se alimentam de **uma** requisição
@@ -797,6 +837,8 @@ perdia chips em sessão longa (ver
   chips que o event log)
 - **Origem:** dashboard de 23 projetos medido no navegador — 3.824 req/min
   antes, 12 depois
+
+<a id="rn-091"></a>
 
 ### RN-091 — O navegador manda onde parou de ler; o sino é uma requisição {#rn-091}
 
@@ -856,6 +898,8 @@ antigo.
 - **Origem:** residual medido da [RN-090](#rn-090) — 286 req/min com a gaveta
   aberta num workspace de 23 projetos
 
+<a id="rn-092"></a>
+
 ### RN-092 — O `projectId` é segmento de caminho, e o escopo nunca sai da raiz {#rn-092}
 
 `projectScopeRoot()` **recusa** um `projectId` que não seja segmento de caminho
@@ -885,6 +929,8 @@ O caminho feliz não muda — todo id real é UUID vindo do banco.
 - **Origem:** [ADR 0058](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0058-csp-fechado-na-api-e-escopo-de-projeto-contido.md),
   alertas `js/path-injection` do CodeQL
 
+<a id="rn-093"></a>
+
 ### RN-093 — Em produção, a api não sobe com a chave de exemplo do `state` de OAuth {#rn-093}
 
 `resolveOauthStateSecret()` **derruba o boot** quando `NODE_ENV === 'production'`
@@ -912,6 +958,8 @@ Divergindo aqui, o callback recusaria todo `state` legítimo.
   (`resolveOauthStateSecret`), chamada no boot em `src/main.ts`
 - **Teste:** `test/infrastructure/security/oauth-state-secret.spec.ts`
 - **Origem:** [ADR 0059](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0059-segredo-do-state-de-oauth-sem-default.md)
+
+<a id="rn-094"></a>
 
 ### RN-094 — A área de agentes nasce com o projeto {#rn-094}
 
@@ -962,6 +1010,8 @@ para quem começasse do zero.
   (os membros de dev, e o teto nunca enviado)
 - **Origem:** FASE 18, defeito achado na investigação do programa 16–26;
   a tabela vem do [ADR 0053](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0053-dev-lead-e-paralelismo-autorizado.md)
+
+<a id="rn-095"></a>
 
 ### RN-095 — A leitura de repositório é contida ao projeto e limitada {#rn-095}
 
@@ -1032,6 +1082,8 @@ escrita — quando vier — nasce `proposed_action`.
   [RN-092](#rn-092) ([ADR 0058](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0058-csp-fechado-na-api-e-escopo-de-projeto-contido.md))
 
 ## Sessão
+
+<a id="rn-097"></a>
 
 ### RN-097 — O tipo da sessão é intenção de criação; a execução continua sendo evento {#rn-097}
 

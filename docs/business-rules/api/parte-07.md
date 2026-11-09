@@ -10,6 +10,8 @@ keywords: [regras de negócio, api]
 
 ## A chave de dispositivo ganha tela, e a tela diz o alcance de revogar (RN-561) {#a-chave-de-dispositivo-ganha-tela-e-a-tela-diz-o-alcance-de-revogar-rn-561}
 
+<a id="rn-567"></a>
+
 ### RN-567 — `proposed_action.created` diz QUAL regra decidiu: o `reason` de `decide()` passa a sobreviver quando a ação passa {#rn-567}
 
 `decide()` sempre devolveu um par — `policy` e `reason` —, e a razão é
@@ -72,6 +74,8 @@ do `permissions.json` repetem os TOKENS do comando no texto (o `label` de
   [0055](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0055-escopo-de-caminho-na-politica-de-terminal.md) (ponto 7,
   parcialmente)
 - **Origem:** AT-066
+
+<a id="rn-569"></a>
 
 ### RN-569 — O grafo é reconstruído do event log pelo MESMO tradutor do projetor vivo, sem tocar a outbox, e nunca sai como sucesso calado {#rn-569}
 
@@ -146,6 +150,8 @@ no cluster local que o BRB-018 pede não foi feita — ele segue aberto.
   primeiros exigem Neo4j de pé e PULAM sem ele — a CI do api não sobe Neo4j.
 - **Origem:** AT-032 (BRB-018) — a premissa do ADR 0152 sem mecanismo
 
+<a id="rn-573"></a>
+
 ### RN-573 — O assistente de criação só pré-seleciona o modo que a instalação executa: sem broker, `runner` é o sugerido e `container`/`mounted` ficam inertes com o motivo em texto {#rn-573}
 
 Numa instalação real da v6.1.0 (AT-085), o assistente pré-selecionou `mounted`
@@ -206,6 +212,8 @@ certo, porque sem a variável a api nunca chama o broker.
 - **Origem:** AT-085 — instalação real da v6.1.0 em 2026-09-14, decidido pelo
   mantenedor em 2026-09-18
 
+<a id="rn-574"></a>
+
 ### RN-574 — A `/containers` recusa antes do clique a subida de `container`/`mounted` numa instalação sem broker, com motivo próprio em texto {#rn-574}
 
 A mesma instalação do AT-085 deixou aprovar, pela página de containers
@@ -257,6 +265,8 @@ instalação sem broker continua possível pelo agente.
 ---
 
 ## O broker de container na instalação, com consentimento (RN-575) {#o-broker-de-container-na-instalacao-com-consentimento-rn-575}
+
+<a id="rn-581"></a>
 
 ### RN-581 — A conversa em curso segura a sessão por até 8h, e a sessão encerrada recusa conversa {#rn-581}
 
@@ -435,6 +445,8 @@ fechada seguem mostrando a mensagem da api.
 
 ## O repositório nasce no aceite do handoff ao Arquiteto, e a execução não começa sem ele (RN-582) {#o-repositorio-nasce-no-aceite-do-handoff-ao-arquiteto-e-a-execucao-nao-comeca-sem-ele-rn-582}
 
+<a id="rn-582"></a>
+
 ### RN-582 — O aceite do handoff ao Arquiteto provisiona o repositório; o aceite ao Dev Lead é a segunda porta, idempotente; e `execution/activate` sem repositório é 409 nomeado {#rn-582}
 
 Revisa o GATILHO da [RN-522](parte-06.md#rn-522), que cumpria a promessa da
@@ -558,6 +570,8 @@ repositório, não o de cada sessão, e não mudaram.
 - **Origem:** AT-092 — instalação real da v6.1.0 em 2026-09-14, decidido pelo
   mantenedor em 2026-09-18
 
+<a id="rn-583"></a>
+
 ### RN-583 — O critério de roteamento do hub é do binding, viaja com ele, e congela no metering {#rn-583}
 
 Um binding de modelo pode guardar um **critério de roteamento** —
@@ -610,6 +624,8 @@ comportamento de sempre, nada vai ao fio e o hub decide sozinho.
   `test/infrastructure/llm/openrouter-provider.contract.spec.ts`; a prova
   manual da capability é `test/infrastructure/llm/openrouter-provider.roteamento.smoke.spec.ts`
 - **Origem:** [ADR 0166](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0166-preferencia-de-roteamento-no-binding-de-modelo.md) (AT-090)
+
+<a id="rn-590"></a>
 
 ### RN-590 — A pasta `docs/` dos artefatos é reconstruída do event log pelo MESMO tradutor do projetor vivo, sem tocar a outbox, e nunca sai como sucesso calado {#rn-590}
 
@@ -669,6 +685,8 @@ backup — é derivada, o argumento do [ADR 0152](https://github.com/viralabs-de
   (o projetor para frente, inalterado, sobre o tradutor extraído)
 - **Origem:** AT-128 — a lacuna que o ADR 0148 declarou (custo 3)
 
+<a id="rn-591"></a>
+
 ### RN-591 — A instalação sem broker é dita na conversão de modo, em parar/remover e na proposta do Infra Lead, pela mesma fonte da RN-574 {#rn-591}
 
 A [RN-573](#rn-573)/[RN-574](#rn-574) (ADR 0161) ensinaram a **criação** de
@@ -724,6 +742,8 @@ direta.
   chega ao modelo)
 - **Origem:** AT-105 — declarado fora do recorte pelo ADR 0161
 
+<a id="rn-592"></a>
+
 ### RN-592 — A listagem de sessões diz qual é a técnica, pelo vínculo em `repo_bootstraps`, e a tela lê o marcador em vez do nome {#rn-592}
 
 A [RN-582](#rn-582) (AT-131) fez a sessão técnica do provisionamento — a de
@@ -761,6 +781,8 @@ decidir se passam a consultá-lo é decisão à parte, fora desta regra.
   `apps/web/src/lib/sessao-mais-recente.test.ts:28` (renomeada continua fora) e
   `:36` (trabalho chamada `git-bootstrap` não é técnica)
 - **Origem:** AT-183 — achado da AT-131
+
+<a id="rn-595"></a>
 
 ### RN-595 — Toda `_PREVIOUS` que um serviço lê chega a ele pelos três composes, vazia por padrão {#rn-595}
 
@@ -800,6 +822,8 @@ eternamente no meio de uma. Vazia é o mesmo que ausente nos três leitores.
 - **Origem:** AT-201 (achado da AT-196), mesma classe da RN-540; metade
   Kubernetes na AT-220
 
+<a id="rn-597"></a>
+
 ### RN-597 — Trocar o pepper é logout global {#rn-597}
 
 O pepper que chaveia o HMAC dos tokens opacos não tem `_PREVIOUS`, e trocá-lo
@@ -828,6 +852,8 @@ emprestado do JWT.
 - **Origem:** [ADR 0031](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0031-auth-first-party-argon2id-e-rotacao-de-refresh.md),
   AT-196
 
+<a id="rn-598"></a>
+
 ### RN-598 — O token de serviço ANTERIOR passa pela mesma régua do atual {#rn-598}
 
 Durante a rotação, `BRABO_SERVICE_TOKEN_PREVIOUS` abre `/internal/*` tanto
@@ -851,6 +877,8 @@ trim) continua não contando como rotação.
 - **Borda:** esta RN é o lado da api. O engine e o broker aplicam a mesma
   régua desde a [RN-601](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-601).
 - **Origem:** AT-205 (achado da AT-196)
+
+<a id="rn-603"></a>
 
 ### RN-603 — O modo automático libera o escopo de caminho, e só ele {#rn-603}
 
@@ -916,6 +944,8 @@ que não libera o escopo.
   `apps/web/src/components/AgentCard.test.tsx`,
   `apps/web/src/components/ApprovalCard.test.tsx`
 - **Origem:** decisão do dono do produto (AT-226) depois do teste no `exp001`
+
+<a id="rn-604"></a>
 
 ### RN-604 — A chamada ao broker tem um teto POR OPERAÇÃO, e o teto estourado diz que foi o teto {#rn-604}
 
@@ -1011,6 +1041,8 @@ pacote da porta de Docker. Nada muda na contenção do broker ([ADR
   espelhada na api)
 - **Origem:** AT-233
 
+<a id="rn-609"></a>
+
 ### RN-609 — `proposed_action.created` diz QUAL raiz o escopo comparou, relativa e nunca absoluta {#rn-609}
 
 A [RN-567](#rn-567) pôs no evento a REGRA que decidiu (`reason`) e declarou o
@@ -1079,6 +1111,8 @@ raiz do ESCOPO, nunca onde o arquivo de política mora.
   (a função pura, nos três modos e nos três casos de `indisponivel`)
 - **ADR:** [0055](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0055-escopo-de-caminho-na-politica-de-terminal.md) (ponto 7)
 - **Origem:** AT-147 (EP-025/HS-043)
+
+<a id="rn-611"></a>
 
 ### RN-611 — A chave de MÁQUINA ganha listagem e revogação por CONTA, sem `:projectId`: só as de máquina, só as do próprio usuário, e a revogação é a MESMA de sempre {#rn-611}
 
@@ -1192,6 +1226,8 @@ projeto aberto, e as outras listas seguiam anunciando a revogada.
   instalação de UMA pessoa (RN-552) — a Conta lista e revoga, não cria.
 - **Origem:** AT-118 (EP-003/HS-007)
 
+<a id="rn-613"></a>
+
 ### RN-613 — `AUTH_TOKEN_PEPPER` é obrigatório e próprio; quem migra o define com o `AUTH_JWT_SECRET` atual {#rn-613}
 
 O pepper do HMAC dos tokens opacos (refresh, links de conta, PATs, balde de
@@ -1238,6 +1274,8 @@ sobrescrito, e o pepper dele é mantido — ou, sem pepper, nasce com o
   sobrevive para quem restaura o dump do Postgres, que é o caso que importa.
 - **Origem:** AT-210 (achado da AT-196), decisão do mantenedor: migração com o
   valor atual
+
+<a id="rn-615"></a>
 
 ### RN-615 — A remoção de membro de WORKSPACE nasce com o teto 2 herdado: remover a si mesmo é 403, e é essa cláusula que segura o último owner, sem contar {#rn-615}
 
@@ -1321,6 +1359,8 @@ o ticket novo é recusado); tela (não existe seção de membros de workspace no
 - **Origem:** AT-115 (EP-002/HS-006)
 
 ---
+
+<a id="rn-616"></a>
 
 ### RN-616 — O TITULAR do workspace não sai pela remoção de membro: 409 `criador_do_workspace` até transferir, e a titularidade só vai para outro `owner` {#rn-616}
 

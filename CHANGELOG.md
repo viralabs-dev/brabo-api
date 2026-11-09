@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Doc (AT-871): cada parte de RN (`docs/business-rules/*/parte-NN.md`) ganha `<a id="rn-NNN"></a>` antes de cada RN, pelo `ancorar-rn.mjs` do brabo, para o link `parte-NN.md#rn-NNN` abrir na RN também no GitHub. Só acréscimo de âncoras: o texto das RNs e as refs `caminho:N` ficam iguais.
+
 - Doc (AT-868): os links das páginas de RN que só resolviam no site (`../adr/…`, `../explanation/…`, `api.md`) apontam para o arquivo no GitHub do repo dono, na `dev` (`https://github.com/viralabs-dev/<repo>/blob/dev/<caminho>`). O site converte de volta para link relativo, então nada muda para quem lê por lá.
 - Docs (AT-873): a tabela "Onde se encaixa" do README linka cada repo no GitHub (o do próprio README fica sem link), gerada pelo `mapa-dos-repos.ts` do brabo-ci repinado em `a571e82` (`v1.4.0-dev.28`, ci#63).
 - Teste (AT-869, passo 1): o spec do SQL do incidente de custo acha a seção `{#incidente-de-custo}` no `deploy/docs/runbook.md` (hoje) ou nas partes `deploy/docs/runbook/*.md` (depois da divisão do runbook do `brabo-infra`), sem mudar o que ele prova. Passa com os dois layouts; o caso dividido foi conferido com uma cópia à mão.

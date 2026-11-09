@@ -10,6 +10,8 @@ keywords: [regras de negócio, api]
 
 ## A Anamnese não paga duas vezes pela mesma janela, e o resgate de gate não reinicia ciclo que espera alguém (RN-722) {#a-anamnese-nao-paga-duas-vezes-pela-mesma-janela-e-o-resgate-de-gate-nao-reinicia-ciclo-que-espera-alguem-rn-722}
 
+<a id="rn-727"></a>
+
 ### RN-727 — A história draft se corrige e se arquiva, pelo PO e pelo usuário, sem apagar nada {#rn-727}
 
 - **Regra:** uma história `draft` SEM tarefa em execução (`in_progress` ou
@@ -62,6 +64,8 @@ keywords: [regras de negócio, api]
   ganharam tarefa e entraram no plano), decisão do dono de 03/10 ("PO e
   usuário")
 
+<a id="rn-729"></a>
+
 ### RN-729 — A PR de infra mira `main` e diz onde mergear; a sidebar abre só o projeto aberto {#rn-729}
 
 - **Regra:** quatro cláusulas medidas no TP-01 (03/10).
@@ -99,6 +103,8 @@ keywords: [regras de negócio, api]
   ("delegação falhada depois do parecer encerra o trabalhando")
 - **Origem:** AT-411, AT-412, AT-413, AT-415
 
+<a id="rn-730"></a>
+
 ### RN-730 — O 402 do provider tem `code` próprio, e é ele que decide o crédito esgotado {#rn-730}
 
 - **Regra:** o HTTP 402 do provider de LLM é normalizado como
@@ -130,6 +136,8 @@ keywords: [regras de negócio, api]
   é crédito, mesmo com a frase; sem code, o texto é a rede")
 - **Origem:** AT-416 (a lacuna declarada da RN-726)
 
+<a id="rn-734"></a>
+
 ### RN-734 — O caminho OpenAI-compatível manda o teto de saída SEMPRE {#rn-734}
 
 - **Regra:** toda chamada de chat pelo dialeto `/chat/completions` (os
@@ -155,6 +163,8 @@ keywords: [regras de negócio, api]
   `max_tokens` não vai)
 - **Origem:** AT-419 (TP-01 de 03/10: US$ 1,79 livres e 402 na chamada do Dev
   Lead e na do dev agent)
+
+<a id="rn-737"></a>
 
 ### RN-737 — A resposta cortada pelo teto de saída é sinalizada, não executada e dita {#rn-737}
 
@@ -192,6 +202,8 @@ keywords: [regras de negócio, api]
   cortado ganha a linha em pt-BR sem reescrita; fecho normal intacto; pt/en)
 - **Origem:** AT-423 (lacuna declarada na RN-734)
 
+<a id="rn-739"></a>
+
 ### RN-739 — O diagnóstico leva o corpo de erro do provider inteiro, e a bolha segue curta {#rn-739}
 
 - **Regra:** a mensagem do erro normalizado de provider (ADR 0041) leva o
@@ -211,6 +223,8 @@ keywords: [regras de negócio, api]
   diagnóstico)
 - **Origem:** AT-424 (TP-01, 3ª rodada, 03/10: `reason` cortado em
   `…"code":402,"metadata":{"reason":"in…`)
+
+<a id="rn-741"></a>
 
 ### RN-741 — O raciocínio tem orçamento próprio e não come a saída visível {#rn-741}
 
@@ -238,6 +252,8 @@ keywords: [regras de negócio, api]
 - **Origem:** AT-427 (TP-01, 08/10: `anthropic/claude-haiku-5.5` com
   `output_tokens = reasoning_tokens = 4096` em duas chamadas seguidas do PO)
 
+<a id="rn-752"></a>
+
 ### RN-752 — PR de infra mergeada sai de "PRs de infra em revisão" {#rn-752}
 
 - **Regra:** a leitura `GET .../infra-artifacts` (seção "PRs de infra em
@@ -256,6 +272,8 @@ keywords: [regras de negócio, api]
   (merge executado tira a PR; merge falho ou pendente a mantém)
 - **Origem:** AT-436 (TP-01: depois de "Merge" → "Aprovar" na aba PRs, a PR
   seguia com Dev ✓ QA ✓ SecOps ✓ e "Você" pendente)
+
+<a id="rn-758"></a>
 
 ### RN-758 — O recorte do Jev nunca tira a ferramenta de obrigação do agente {#rn-758}
 
@@ -280,6 +298,8 @@ keywords: [regras de negócio, api]
   tenho uma ferramenta para criar tarefas" e fechou com 8 histórias sem
   tarefa; o Arquiteto com 2 de 9 fechou sem roteamento, contratos, ADR nem C4)
 
+<a id="rn-759"></a>
+
 ### RN-759 — O passo recortado avisa ao modelo que o menu é um recorte {#rn-759}
 
 - **Regra:** quando o recorte do Jev é aplicado (`aplicado: true`), a chamada
@@ -300,6 +320,8 @@ keywords: [regras de negócio, api]
   mensagens são as do pedido)
 - **Origem:** AT-445 (o dev agent bloqueou uma tarefa "sem ferramenta para
   editar arquivos" tendo `write_file`)
+
+<a id="rn-761"></a>
 
 ### RN-761 — Dependência instalada não entra no repositório: `.gitignore` base, commit que a exclui e gate que a acusa {#rn-761}
 
@@ -342,6 +364,8 @@ keywords: [regras de negócio, api]
 - **Origem:** AT-446 (TP-01 de 09/10: PR com 1.453 arquivos, 1.437 em
   `node_modules/`, aprovada por QA e SecOps)
 
+<a id="rn-762"></a>
+
 ### RN-762 — O bloqueio por ciclo de correção esgotado grava a origem `politica` {#rn-762}
 
 - **Regra:** quando o gate esgota o teto de correções (`maxGateCorrections`) e
@@ -358,6 +382,8 @@ keywords: [regras de negócio, api]
   aprovado não bloqueia)
 - **Origem:** AT-450 (TP-01 de 09/10: `backlog.task_blocked` com
   `origin: null`)
+
+<a id="rn-770"></a>
 
 ### RN-770 — Miudezas da tela de projeto: autor da PR de ADR, modelo da Infra, título da PR do dev, selo da execução, caminho e tabela {#rn-770}
 
@@ -392,6 +418,8 @@ keywords: [regras de negócio, api]
   `apps/web/src/components/ui/MarkdownMessage.test.tsx`
 - **Origem:** AT-455 (TP-01 de 09/10, achados 2, 3, 8, 9, 16 e 18)
 
+<a id="rn-776"></a>
+
 ### RN-776 — Tarefa da execução esperando alguém segura a sessão de execução {#rn-776}
 
 - **Regra:** o heartbeat não fecha a sessão de execução VIGENTE do projeto (a
@@ -412,6 +440,8 @@ keywords: [regras de negócio, api]
 - **Origem:** AT-457 (TP-01 de 09/10: as duas sessões de execução fecharam
   2–8 s depois do `dev.idle`, com tarefa bloqueada e PR esperando o merge)
 
+<a id="rn-777"></a>
+
 ### RN-777 — Desbloquear a tarefa acorda o dev do módulo DELA {#rn-777}
 
 - **Regra:** `task.became_claimable` com causa `task_unblocked` leva como
@@ -426,6 +456,8 @@ keywords: [regras de negócio, api]
 - **Teste:** `test/application/use-cases/execution/unblock-task.use-case.spec.ts`
   (tarefa com módulo acorda o dev desse módulo)
 - **Origem:** AT-457
+
+<a id="rn-782"></a>
 
 ### RN-782 — Aceitar o parâmetro de raciocínio não é pedir raciocínio {#rn-782}
 
@@ -450,6 +482,8 @@ keywords: [regras de negócio, api]
   corpo byte a byte), `test/domain/llm/raciocinio-do-agente.spec.ts`
 - **Origem:** AT-467 (medição paga de 10/10)
 
+<a id="rn-783"></a>
+
 ### RN-783 — Os dev agents de execução rodam com o raciocínio desligado {#rn-783}
 
 - **Regra:** decisão do dono de 10/10. Para agente `dev-<modulo>` (o Dev Lead,
@@ -470,6 +504,8 @@ keywords: [regras de negócio, api]
   criativo e dev-lead só a folga; sem `supportsReasoning`, nada)
 - **Origem:** AT-467 (decisão do dono de 10/10)
 
+<a id="rn-784"></a>
+
 ### RN-784 — As leituras de estado do Arquiteto entram no piso do Jev {#rn-784}
 
 - **Regra:** revisa a [RN-758](#rn-758) e a [RN-772](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-772) (decisão do
@@ -483,6 +519,8 @@ keywords: [regras de negócio, api]
   backlog) continuam no menu (RN-784)`)
 - **Origem:** AT-460 (TP-01 de 09/10: o Jev tirou do menu do Arquiteto as
   leituras da AT-454)
+
+<a id="rn-785"></a>
 
 ### RN-785 — Requisito que depende de outra história ainda não feita é observação no gate de QA {#rn-785}
 
@@ -506,6 +544,8 @@ keywords: [regras de negócio, api]
 - **Origem:** AT-461 (TP-01 de 09/10, sessão `80e3ce09`: a tarefa "middleware
   JWT" foi reprovada porque "não há rotas de criar, listar, apagar links nem de
   painel no diff", rotas de outras histórias ainda não feitas)
+
+<a id="rn-786"></a>
 
 ### RN-786 — O gate de QA lê o contrato do módulo, e divergência com a história é observação {#rn-786}
 
@@ -534,6 +574,8 @@ keywords: [regras de negócio, api]
   `GET /painel`, o contrato declarou `GET /panel`, o dev seguiu o contrato e o
   QA reprovou pela história)
 
+<a id="rn-802"></a>
+
 ### RN-802 — A estimativa do plano do Dev Lead soma o dobro da primeira tarefa de cada módulo {#rn-802}
 
 O cartão de aprovação do `propose_execution_plan` (RN-709) dizia "até N × teto",
@@ -557,6 +599,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `test/application/use-cases/actions/propose-action.use-case.spec.ts` ("plano válido nasce pending")
 - **Origem:** AT-473
 
+<a id="rn-809"></a>
+
 ### RN-809 — As obrigações de módulo e imagem do Arquiteto entram no piso do Jev {#rn-809}
 
 - **Regra:** estende a [RN-758](#rn-758) e a [RN-784](#rn-784). O piso do
@@ -576,6 +620,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   Arquiteto não distribuiu as histórias por módulo); AT-614 (o recorte também
   tirava `emit_insight` e `declare_open_question`)
 
+<a id="rn-812"></a>
+
 ### RN-812 — A PR aberta da mesma branch é reaproveitada, nunca duplicada {#rn-812}
 
 - **Regra:** antes de abrir a PR de um `pr_open`, o executor pergunta ao
@@ -594,6 +640,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   ("pr_open com PR aberta da mesma branch → reaproveita, sem abrir outra";
   "pr_open: listar PRs falha → abre a PR como sempre")
 - **Origem:** AT-485 (TP-01 de 10/10)
+
+<a id="rn-827"></a>
 
 ### RN-827 — O painel de contexto conta a sessão inteira, e a janela só dá o detalhe {#rn-827}
 
@@ -625,6 +673,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 - **Origem:** AT-498 (TP-01 de 10/10: sessão de 301 eventos mostrou 0 regras
   sobre 11 e 2 decisões sobre 6)
 
+<a id="rn-828"></a>
+
 ### RN-828 — "Arquivos tocados" inclui a sessão de execução ligada, com teto e total real {#rn-828}
 
 - **Regra:** a lista de arquivos tocados do agregado ([RN-827](#rn-827)) junta
@@ -640,6 +690,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   ("…e soma os arquivos da execução ligada"; falha: "corta a lista de arquivos
   no teto e devolve o total real; não lê sessão sem ligação")
 - **Origem:** AT-498
+
+<a id="rn-838"></a>
 
 ### RN-838 — O QA de Automação roda com o raciocínio desligado {#rn-838}
 
@@ -657,6 +709,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `falha: QA de Automação com modelo sem supportsReasoning não manda nada`)
 - **Origem:** AT-504 (decisão do dono de 10/10)
 
+<a id="rn-839"></a>
+
 ### RN-839 — `report_done` e `report_blocked` entram no piso do Jev dos dev agents {#rn-839}
 
 - **Regra:** revisa a [RN-758](#rn-758)/[RN-759](#rn-759) (decisão do dono de
@@ -671,6 +725,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   report_blocked continuam`; `falha: dev-lead e outro agente não ganham as
   ferramentas de desfecho`)
 - **Origem:** AT-499 (sequência, decisão do dono de 10/10)
+
+<a id="rn-840"></a>
 
 ### RN-840 — a ferramenta de parecer de cada agente de gate entra no piso do Jev {#rn-840}
 
@@ -689,6 +745,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `dev-api` e `dev-lead` não ganham ferramenta de parecer; o piso não
   acrescenta ferramenta fora do catálogo)
 - **Origem:** AT-509 (TP-01, 12ª execução)
+
+<a id="rn-844"></a>
 
 ### RN-844 — O painel de contexto lista as regras, as decisões e os arquivos das PRs da sessão inteira {#rn-844}
 
@@ -729,6 +787,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 - **Origem:** AT-513 (TP-01 de 11/10: 9 regras sem lista, "mostrando 1 de 4"
   decisões e "Arquivos tocados: Nada ainda" com 12 PRs mergeadas)
 
+<a id="rn-847"></a>
+
 ### RN-847 — A PR mergeada continua dizendo os arquivos que mudou {#rn-847}
 
 - **Regra:** extensão da [RN-844](#rn-844). No provider git LOCAL, o diff de
@@ -766,6 +826,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 - **Origem:** AT-518 (TP-01, 13ª: "Nenhum arquivo nas PRs nem nos commits"
   com 14 PRs mergeadas, e a aba sem reler o resumo)
 
+<a id="rn-848"></a>
+
 ### RN-848 — O efeito de ação executada dentro de um pedido interno avisa o canal da sessão {#rn-848}
 
 - **Regra:** extensão da [RN-579](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-579) (AT-157). A api não avisa o canal
@@ -788,6 +850,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   novo pela api")
 - **Origem:** AT-516 (a PR de infra auto-aprovada só entrou em "PRs prontas"
   do chat ~5 min depois, pelo poll de fallback)
+
+<a id="rn-852"></a>
 
 ### RN-852 — A PR de infra declara como rodar o entregável, e isso vira artefato {#rn-852}
 
@@ -829,6 +893,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 - **Origem:** AT-517 (o entregável do TP-01 não dizia como rodar na máquina
   do usuário)
 
+<a id="rn-856"></a>
+
 ### RN-856 — Desbloquear não encerra a execução, e a tarefa em curso órfã tem volta {#rn-856}
 
 - **Regra:** três metades de um defeito só (o TP-01 mediu 1 s entre o
@@ -863,6 +929,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 - **Origem:** AT-522 (TP-01, 14ª: sessão `538a0ba5` encerrada 1 s depois do
   desbloqueio, tarefa `in_progress` presa em `dev-api` sem processo)
 
+<a id="rn-857"></a>
+
 ### RN-857 — O passo de correção do dev agent tem escrita e terminal no recorte do Jev {#rn-857}
 
 - **Regra:** quando o recorte do Jev (RN-625) decide o menu de um dev agent
@@ -881,6 +949,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   leitura do dev não alarga"; "outro agente com a mesma mensagem não ganha";
   "as marcas existem no texto que o engine monta")
 - **Origem:** AT-523
+
+<a id="rn-858"></a>
 
 ### RN-858 — A pergunta em aberto de agente é registro durável, e só o autor da sessão a responde {#rn-858}
 
@@ -923,6 +993,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   eventos recusa com 400 antes de qualquer escrita")
 - **Origem:** AT-521 (TP-01: quatro perguntas do Criativo sumiram do campo de
   visão e o fluxo seguiu sem respostas)
+
+<a id="rn-859"></a>
 
 ### RN-859 — A decisão do usuário chega a quem trabalha, e destrava a correção da história `ready` {#rn-859}
 
@@ -972,6 +1044,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 - **Origem:** AT-521 (o QA reprovou três vezes lendo a DoR de uma história
   `ready` que ninguém podia corrigir, depois de o usuário já ter decidido)
 
+<a id="rn-860"></a>
+
 ### RN-860 — O gate de QA espera o usuário sem gastar o ciclo de correção {#rn-860}
 
 - **Regra:** o parecer de gate (`POST /internal/sessions/:sessionId/gates/verdict`)
@@ -1001,6 +1075,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 - **Origem:** AT-521 (o QA de Automação reprovou quatro vezes "não confirmado
   pelo usuário" até o ciclo esgotar)
 
+<a id="rn-870"></a>
+
 ### RN-870 — O veredito só espera pergunta que existe e está aberta {#rn-870}
 
 - **Regra:** `POST /internal/sessions/:sessionId/gates/verdict` com
@@ -1018,6 +1094,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   outro projeto: 404 nomeado, sem escrita", "já respondida: 409 com a decisão,
   sem escrita nem pr.gate_changed")
 - **Origem:** AT-526, ADR 0215
+
+<a id="rn-871"></a>
 
 ### RN-871 — `afeta.regras` aceita o título exato da regra e guarda o id {#rn-871}
 
@@ -1037,6 +1115,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   ("decisão legada com TÍTULO de regra em afeta.regras casa pelo título")
 - **Origem:** AT-526, ADR 0215
+
+<a id="rn-872"></a>
 
 ### RN-872 — As outras decisões do projeto chegam ao dev e ao QA, em seção própria {#rn-872}
 
@@ -1058,6 +1138,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   ("as que não tocam a tarefa vêm em decisoesDoProjeto; teto de 10 somado, as
   da tarefa primeiro"; `decisão que cita o módulo (RN-872)`)
 - **Origem:** AT-526, ADR 0215; AT-812
+
+<a id="rn-886"></a>
 
 ### RN-886 — O 403 de orçamento do OpenRouter é crédito esgotado, com limite, gasto e reset {#rn-886}
 
@@ -1084,6 +1166,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   orçamento do OpenRouter")
 - **Origem:** AT-534
 
+<a id="rn-891"></a>
+
 ### RN-891 — A interface tem quatro idiomas, com pt-BR como padrão e fallback {#rn-891}
 
 - **Regra:** o idioma da interface (`users.locale`) aceita `pt-BR`, `en`, `ru`
@@ -1104,6 +1188,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `apps/web/src/lib/idioma.test.ts` ("idioma sem catálogo cai no pt-BR, nunca
   no inglês"); `apps/web/src/lib/i18n-paridade.test.ts`
 - **Origem:** AT-548, ADR 0216 (itens 1–4)
+
+<a id="rn-892"></a>
 
 ### RN-892 — O prefixo estável da chamada vai marcado para o cache de prompt, e a capability é ligada só no OpenRouter, provada {#rn-892}
 
@@ -1136,6 +1222,8 @@ quatro pontos, TTL de 5 min — https://openrouter.ai/docs/features/prompt-cachi
 - **Teste:** `test/infrastructure/llm/openrouter-provider.contract.spec.ts` ("pontos de cache de prompt (RN-892)": ligada marca os dois pontos; desligada é byte a byte; capability sem hook falha — caso de falha)
 - **Origem:** AT-543
 
+<a id="rn-894"></a>
+
 ### RN-894 — Épico com o mesmo título de outro do projeto é recusado {#rn-894}
 
 - **Regra:** `create_epic` recusa (400) o épico cujo título, normalizado,
@@ -1149,6 +1237,8 @@ quatro pontos, TTL de 5 min — https://openrouter.ai/docs/features/prompt-cachi
 - **Teste:** `test/application/use-cases/backlog/create-epic.use-case.spec.ts:41`
   (cria sem título igual) e `:49` (recusa o título igual com o id do existente)
 - **Origem:** AT-581
+
+<a id="rn-902"></a>
 
 ### RN-902 — Recriar o container congela a decisão de imagem vigente, e a imagem desatualizada é avisada {#rn-902}
 
@@ -1182,6 +1272,8 @@ quatro pontos, TTL de 5 min — https://openrouter.ai/docs/features/prompt-cachi
 - **Origem:** AT-595 (TP-01 20ª: a decisão v3 `egress` não alcançou o container
   v2 `none` e a coluna Imagem seguiu em v2)
 
+<a id="rn-906"></a>
+
 ### RN-906 — A api recusa a rede `none` quando a stack de um módulo baixa dependências {#rn-906}
 
 - **Regra:** ao decidir a imagem do projeto, se a rede é `none` e algum módulo
@@ -1211,6 +1303,8 @@ quatro pontos, TTL de 5 min — https://openrouter.ai/docs/features/prompt-cachi
   `test/application/use-cases/actions/execute-container-start.use-case.spec.ts`
 - **Origem:** AT-593 (EP-031).
 
+<a id="rn-907"></a>
+
 ### RN-907 — O OpenRouter recebe uma chave de sessão por agente, e a conversa fica presa ao upstream que a atendeu {#rn-907}
 
 Sem chave, o hub trata cada tarefa do dev agent (outra primeira mensagem) como
@@ -1238,12 +1332,16 @@ acerto de cache caindo. O Brabo agora manda a chave.
 - **Teste:** `test/infrastructure/llm/openrouter-provider.contract.spec.ts` ("chave de sessão (ADR 0221, RN-907)": com capability e chave leva `session_id`; sem chave ou desligada não leva; capability sem hook falha — caso de falha); `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts`; `run-llm-turn.use-case.spec.ts`; smoke `openrouter-provider.sessao.smoke.spec.ts`
 - **Origem:** AT-580; ADR [0221](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0221-upstream-preso-por-sessao.md)
 
+<a id="rn-909"></a>
+
 ### RN-909 — O 9Router é o 10º provider: URL por instalação, credencial obrigatória, preço público de curadoria {#rn-909}
 
 - **Regra:** o provider `9router` fala com um gateway na máquina do dono. A URL base é `NINE_ROUTER_BASE_URL` (padrão `http://host.docker.internal:20128/v1`), lida a cada uso pelo provider e pelo teste de conexão (`GET /models` com a chave). A credencial é obrigatória. As capabilities de provider são `false` (só `listModels`, `streaming` e, desde a [RN-950](parte-11.md#rn-950), `toolCalling`, provado por smoke com chave) até um smoke com chave provar o resto (ADR 0041). O preço dos modelos não é descoberto: entra por curadoria manual e, por decisão do dono, modelo de assinatura registra o preço público da API equivalente, não zero. O provider manda `x-9router-token-saver: off` em toda chamada, para o 9Router não comprimir o `tool_result`.
 - **Onde:** `src/infrastructure/llm/nine-router-provider.ts:171` (`nineRouterConfig`)
 - **Teste:** `test/infrastructure/llm/nine-router-provider.contract.spec.ts:109` (capabilities, URL do ambiente, cabeçalho, teste de conexão, parse da fixture sintética); smoke manual em `nine-router-provider.smoke.spec.ts`.
 - **Origem:** AT-576a (EP-026), ADR 0222, decisão do dono de 22/10.
+
+<a id="rn-910"></a>
 
 ### RN-910 — O teto padrão por área é 5 no dev, 4 no qa e 2 na infra {#rn-910}
 
@@ -1274,12 +1372,16 @@ propósito se perde.
   (linhas com 2, 3 e 7 terminam em 5/4/2) e `test/application/use-cases/execution/request-parallelization.use-case.spec.ts`
   (o padrão de 5 decide o paralelismo do dev).
 
+<a id="rn-914"></a>
+
 ### RN-914 — O orçamento de raciocínio é por modelo, só para quem o respeita {#rn-914}
 
 - **Regra:** revisa a [RN-782](#rn-782) ([ADR 0223](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0223-orcamento-de-raciocinio-por-modelo.md)). Modelo com `models.reasoning_budget` preenchido (curado à mão, nunca pelo sync) e `supportsReasoning` manda `reasoning: { max_tokens: N }` e `max_tokens` = saída visível + N ([RN-741](#rn-741)); só no provider que sabe controlar o raciocínio (hoje o OpenRouter) e nunca no agente com raciocínio desligado ([RN-783](#rn-783)). Hoje só `qwen/qwen3.7-flash` (N = 2048), provado em 22/10: 1024 pedidos, 1024 gastos. Modelo sem orçamento segue a RN-782, corpo byte a byte. `deepseek/deepseek-v4.1-flash` fica sem orçamento: `reasoning.max_tokens`, `effort` e `reasoning_effort` foram ignorados (8192 de raciocínio). `effort` nunca é enviado. O limite contém o raciocínio mas não garante a tool call.
 - **Onde:** `src/domain/llm/raciocinio-do-agente.ts:18` (`opcoesDeRaciocinio`), `src/infrastructure/llm/openai-compatible-provider.ts:640` (`controla`), `src/db/schema/llm.ts:159` (`reasoningBudget`), `src/db/migrations/0074_orcamento_de_raciocinio.sql`
 - **Teste:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts` (`modelo com orçamento de raciocínio (RN-914)`), `test/domain/llm/raciocinio-do-agente.spec.ts`
 - **Origem:** AT-569 (medição paga de 22/10, `~/brabo-gravacoes/raciocinio-smoke-2026-10-22/resultados.jsonl`)
+
+<a id="rn-915"></a>
 
 ### RN-915 — O raciocínio é contado no stream e abortado no limite; o custo abortado é estimado e depois reconciliado {#rn-915}
 

@@ -10,6 +10,8 @@ keywords: [regras de negócio, api]
 
 ## O git credenciado roda no host do runner (RN-676) {#o-git-credenciado-roda-no-host-do-runner-rn-676}
 
+<a id="rn-677"></a>
+
 ### RN-677 — Aceitar o Dev Lead só o traz para planejar; APROVAR o plano dele é o que ativa a execução {#rn-677}
 
 > **Revisa a [RN-161](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-161)** (decisão do
@@ -80,6 +82,8 @@ handoff às 06:45:01 — o web encadeava a ativação para `maintainer`/`owner`
 - **Decisão arquitetural:** [ADR 0194](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0194-aprovar-o-plano-ativa-a-execucao.md)
 - **Origem:** AT-263 (item A17 da análise do uso real de 29/09)
 
+<a id="rn-678"></a>
+
 ### RN-678 — A tarefa pertence a um módulo, atribuído pelo Dev Lead no plano, e só o dev daquele módulo a pega {#rn-678}
 
 No uso real de 29/09 `dev-input-keyboard` pegou "Implementar loop de queda
@@ -145,6 +149,8 @@ módulo do `module_map`, como antes, e o paralelismo extra continua pelo
 - **Decisão arquitetural:** [ADR 0194](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0194-aprovar-o-plano-ativa-a-execucao.md)
 - **Origem:** AT-274 (item A28 / extra E5 da análise do uso real de 29/09)
 
+<a id="rn-679"></a>
+
 ### RN-679 — A curadoria recusa o alias de roteamento livre do OpenRouter {#rn-679}
 
 Decisão do dono (01/10): **o alias `~` não entra na curadoria** — só modelo
@@ -193,6 +199,8 @@ signifique alguma coisa. A alternativa — preçar por upstream — foi recusada
   toast da recusa; toast genérico para outro erro)
 - **Origem:** AT-271 (item A25 da análise do uso real de 29/09); complementa a
   [RN-665](parte-08.md#rn-665)
+
+<a id="rn-681"></a>
 
 ### RN-681 — História e regra parecidas com uma existente geram AVISO por embedding, nunca recusa; o gasto da checagem é linha própria do metering {#rn-681}
 
@@ -247,6 +255,8 @@ embedding do RAG, e AVISA quando a mais próxima está a partir do limiar.
   (AT-171, achado R)
 
 ## A Anamnese religada: sujeito elegível e fato do perfil (RN-680) {#a-anamnese-religada-sujeito-elegivel-e-fato-do-perfil-rn-680}
+
+<a id="rn-682"></a>
 
 ### RN-682 — A consultiva sem agente pede um agente: o composer não envia sem destinatário, e a rota de chat recusa com nome {#rn-682}
 
@@ -319,6 +329,8 @@ isso a recusa da api mora na ROTA, e o caso de uso não muda.
 
 ## O plano de teste nasce depois da entrega do dev (RN-674, ADR 0192) {#o-plano-de-teste-nasce-depois-da-entrega-do-dev-rn-674-adr-0192}
 
+<a id="rn-683"></a>
+
 ### RN-683 — A Infra sobe o container com o MENOR recurso elegível, derivado do que o Arquiteto declara por módulo no `module_map` {#rn-683}
 
 Decisão do dono em 01/10 ([ADR 0199](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0199-recurso-minimo-derivado-do-module-map.md),
@@ -377,6 +389,8 @@ mudam; a recusa abaixo do mínimo acontece na execução, não ao propor.
 - **Origem:** AT-261 (item A15 da análise do uso real de 29/09)
 
 ## A Anamnese religada: sujeito elegível e fato do perfil (RN-680) {#a-anamnese-religada-sujeito-elegivel-e-fato-do-perfil-rn-680-1}
+
+<a id="rn-684"></a>
 
 ### RN-684 — O contrato entre módulos é artefato versionado do Arquiteto, e o dev agent o lê pela ferramenta, nunca no worktree de outro dev {#rn-684}
 
@@ -440,6 +454,8 @@ lendo o worktree de outros módulos para descobrir a interface deles: o
   num harness avulso com os módulos compilados à mão); o CI os prova.
 - **Origem:** AT-276 (item A30 da análise do uso real de 2026-09-29), decisão
   do dono de 01/10
+
+<a id="rn-685"></a>
 
 ### RN-685 — Revogar uma credencial derruba só as conexões abertas COM ELA: o ticket do socket guarda a credencial, e o alvo deixa de ser `{projeto, usuário}` {#rn-685}
 
@@ -561,6 +577,8 @@ rótulo, não o comportamento.
 
 ## O teto da RN-418 vale também pela porta tipada (RN-689) {#o-teto-da-rn-418-vale-tambem-pela-porta-tipada-rn-689}
 
+<a id="rn-689"></a>
+
 ### RN-689 — `git_push` e `pr_open` tipados nunca são auto-aprováveis: o teto da RN-418 vale para o comando E para a ação {#rn-689}
 
 **Revisada pela [RN-713](#rn-713)** (AT-385, 02/10): o modo automático (a
@@ -619,6 +637,8 @@ existe como destino da mensagem do comando de terminal.
   ("sempre permitir" recusado, 400 `teto_do_sempre_permitir`)
 - **Origem:** AT-347, decisão do dono em 01/10
 
+<a id="rn-696"></a>
+
 ### RN-696 — O nível de proficiência por competência chega aos agentes que conversam com a pessoa {#rn-696}
 
 Medido no código: até aqui o `proficiency_profiles` que a Anamnese grava não
@@ -653,6 +673,8 @@ melhoria do produto, separado do perfil da pessoa.
   caso de falha); `test/domain/anamnese/proficiencia-do-autor.spec.ts`
 - **Origem:** AT-356 (metade 1)
 
+<a id="rn-703"></a>
+
 ### RN-703 — Subagente sem modelo herda o modelo resolvido do lead da área {#rn-703}
 
 "Aplicar a todos os agentes" (RN-476) grava um binding por agente do catálogo
@@ -683,6 +705,8 @@ diz onde configurar.
 
 ## O instalador oferece os modelos locais, e não confunde o dev com uma instalação (RN-691, RN-692) {#o-instalador-oferece-os-modelos-locais-e-nao-confunde-o-dev-com-uma-instalacao-rn-691-rn-692}
 
+<a id="rn-704"></a>
+
 ### RN-704 — O merge do repositório local é merge de verdade, e conflito é recusa nomeada {#rn-704}
 
 - **Regra:** `mergePullRequest` do provider `local` faz fast-forward só quando
@@ -707,6 +731,8 @@ diz onde configurar.
 - **Lacuna declarada:** GitHub e GitLab recusam o merge com conflito pela
   própria API (405/406), sem tradução para `GitMergeConflictError`.
 - **Origem:** AT-377
+
+<a id="rn-705"></a>
 
 ### RN-705 — A recusa de merge aparece na aba PRs, e a falha grava o tipo da ação {#rn-705}
 
@@ -754,6 +780,8 @@ diz onde configurar.
 
 ## O modo automático libera push e PR (RN-713) {#o-modo-automatico-libera-push-e-pr-rn-713}
 
+<a id="rn-713"></a>
+
 ### RN-713 — Com o modo automático do agente, `git_push` e `pr_open` são auto-aprovados; só a curinga libera {#rn-713}
 
 Revisa a [RN-418](parte-04.md#rn-418) e a [RN-689](#rn-689), só na metade de push e PR,
@@ -790,6 +818,8 @@ restaura a aprovação.
 - **Origem:** AT-385, decisão do dono em 02/10
 
 ## O instalador oferece os modelos locais, e não confunde o dev com uma instalação (RN-691, RN-692) {#o-instalador-oferece-os-modelos-locais-e-nao-confunde-o-dev-com-uma-instalacao-rn-691-rn-692-1}
+
+<a id="rn-715"></a>
 
 ### RN-715 — O conflito de merge devolve a tarefa ao dev agent dono, e os gates julgam de novo {#rn-715}
 
@@ -842,6 +872,8 @@ restaura a aprovação.
   conflito.
 - **Origem:** AT-383
 
+<a id="rn-716"></a>
+
 ### RN-716 — A Anamnese não grava nível sobre o que não observou, e aprovar não é dominar {#rn-716}
 
 - **Regra:** um perfil de proficiência só é gravado quando a evidência inclui
@@ -872,6 +904,8 @@ restaura a aprovação.
 - **Origem:** AT-376
 
 ## Uma chave de cache, uma pergunta (RN-718) {#uma-chave-de-cache-uma-pergunta-rn-718}
+
+<a id="rn-720"></a>
 
 ### RN-720 — O PO completa a história que já existe, e não oferece o handoff ao Arquiteto com regra descoberta {#rn-720}
 

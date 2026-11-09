@@ -10,6 +10,8 @@ keywords: [regras de negócio, api]
 
 ## Painel de projetos {#painel-de-projetos-1}
 
+<a id="rn-100"></a>
+
 ### RN-100 — A ordem do sino é do SQL, não do front {#rn-100}
 
 A gaveta de notificações mostra os eventos **do mais recente para o mais
@@ -71,6 +73,8 @@ foi qual janela a consulta escolhe e o que a gaveta declara sobre ela.
 
 ---
 
+<a id="rn-101"></a>
+
 ### RN-101 — O mesmo gasto, duas audiências: a fatura é do owner, o consumo é de quem gastou {#rn-101}
 
 O produto responde **duas perguntas diferentes** sobre `token_usage`, e nenhuma
@@ -120,6 +124,8 @@ dimensão `model`.
   `apps/web/src/routes/ProjectSpendTab.test.tsx`
 - **Origem:** [ADR 0063](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0063-duas-audiencias-para-o-mesmo-gasto.md) (FASE 22),
   revisto pelo [ADR 0076](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
+
+<a id="rn-102"></a>
 
 ### RN-102 — O modelo da área é padrão herdável; divergir é decisão do agente, e voltar a herdar apaga a decisão {#rn-102}
 
@@ -234,6 +240,8 @@ só numa seção seria pior que a lacuna.
   mesmo tempo)
 - **Origem:** [ADR 0064](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0064-escopo-de-area-na-cascata-e-o-binding-de-agente-global.md) (FASE 23)
 
+<a id="rn-103"></a>
+
 ### RN-103 — O binding de agente é POR PROJETO, não mais global {#rn-103}
 
 Até a FASE 23, `scope = 'agent'` guardava um SLUG global
@@ -271,6 +279,8 @@ inventar um projeto dono seria inventar dado que não existia.
   `test/application/use-cases/llm/resolve-model-binding.use-case.spec.ts`
   ("o binding de agente é POR PROJETO: o vizinho não o enxerga")
 - **Origem:** [ADR 0064](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0064-escopo-de-area-na-cascata-e-o-binding-de-agente-global.md) (FASE 23)
+
+<a id="rn-105"></a>
 
 ### RN-105 — Sem imagem decidida pelo Arquiteto, o container não sobe e o Code não abre {#rn-105}
 
@@ -313,6 +323,8 @@ nunca sobrescrever a anterior.
   o motivo em vez de um erro mudo (RN-088).
 - **Origem:** [ADR 0065](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0065-container-por-projeto-a-fronteira-deixa-de-ser-politica.md)
 
+<a id="rn-106"></a>
+
 ### RN-106 — `git push`, PR e deploy não saem pelo terminal — mesmo dentro do escopo do projeto {#rn-106}
 
 **REVISADA pela [RN-418](parte-04.md#rn-418) (ADR 0102, decisão GLOBAL do dono do
@@ -353,6 +365,8 @@ que agora está garantido por `deny`, não só combinado por convenção.
   (RN-014, sempre manual) nem ao escopo de caminho (RN-095/ADR 0055) — as três
   regras coexistem, cada uma vetando por um motivo diferente.
 - **Origem:** [ADR 0065](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0065-container-por-projeto-a-fronteira-deixa-de-ser-politica.md)
+
+<a id="rn-109"></a>
 
 ### RN-109 — O nome de pasta do workspace é congelado na criação, e projeto antigo mantém o UUID {#rn-109}
 
@@ -413,6 +427,8 @@ pasta que o engine realmente usa.
   renomeia a pasta; a pasta só se lê pelo `workspace_dir_name` gravado.
 - **Origem:** ADR 0066 (revisa o ADR 0055).
 
+<a id="rn-114"></a>
+
 ### RN-114 — Os quatro segredos irmãos do `GIT_OAUTH_STATE_SECRET` também não sobem em produção com o valor de exemplo {#rn-114}
 
 O [ADR 0059](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0059-segredo-do-state-de-oauth-sem-default.md) fechou o
@@ -466,6 +482,8 @@ caminho real de erro as variáveis estavam **definidas** — uma verificação d
   `test/infrastructure/security/envelope-encryption.service.spec.ts`
 - **Origem:** [ADR 0059](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0059-segredo-do-state-de-oauth-sem-default.md)
 
+<a id="rn-127"></a>
+
 ### RN-127 — `ref`/`path` da aba Code recusam chegar como ARRAY, não só como caminho fora do escopo {#rn-127}
 
 `@Query('ref') ref?: string` e `@Query('path') path?: string`
@@ -505,6 +523,8 @@ O caminho feliz não muda: todo `ref`/`path` legítimo já era string.
   bloqueando a promoção qa→main, achado durante a PR #256; estende a
   [RN-095](parte-02.md#rn-095)
 
+<a id="rn-128"></a>
+
 ### RN-128 — `sessionId`/`projectId`/`agent`/`agentId` são validados ANTES de virar segmento de URL da requisição interna ao engine {#rn-128}
 
 `HttpApiToEngineClient` interpola estes valores em template string pra
@@ -543,6 +563,8 @@ banco, e `agent`/`agentId` são sempre slug curto.
 - **Origem:** alerta CRÍTICO do CodeQL (URL de requisição interna montada
   com valor não validado) bloqueando a promoção qa→main, achado durante a
   PR #256; mesmo padrão do [RN-092](parte-02.md#rn-092)
+
+<a id="rn-135"></a>
 
 ### RN-135 — Ativar a execução fecha a sessão de CHAT que originou o pedido {#rn-135}
 
@@ -589,6 +611,8 @@ origem é um efeito colateral *best-effort*.
   execução ativada continuava `active` na lista mesmo com 35 eventos de
   dev agents dentro dela
 
+<a id="rn-139"></a>
+
 ### RN-139 — A aba Executores lê a sessão de execução VIGENTE, nunca a mais recente do projeto {#rn-139}
 
 `ProjectExecutorsTab` buscava os eventos de dev agent/QA pela sessão que
@@ -628,6 +652,8 @@ o MESMO critério por HTTP, em vez de duplicá-lo no front:
 - **Origem:** achado de investigação de código + teste ao vivo — a mesma
   classe de defeito que a RN-088 fechou para 429, agora para "qual sessão a
   tela está olhando"
+
+<a id="rn-143"></a>
 
 ### RN-143 — Um subcomando de git somente leitura só é permitido ancorado pela flag que torna a leitura inequívoca, nunca pelo verbo solto {#rn-143}
 
@@ -682,6 +708,8 @@ independentemente do que vem depois:
   `git config --global user.name` — permanecendo em `require_approval`)
 - **Origem:** consulta ao banco de uma sessão real, achada durante o uso
 
+<a id="rn-145"></a>
+
 ### RN-145 — O Arquiteto também tem um botão de prontidão, e a MESMA confirmação oferece Infra e Dev Lead {#rn-145}
 
 `OfferInfraHandoffUseCase` (`POST .../agents/arquiteto/handoff-infra`) já
@@ -724,6 +752,8 @@ arquitetura.
   arquitetura já declarada
 - **Origem:** investigação de código — o endpoint e a lógica do engine
   existiam desde a Fase 4a/14d sem NENHUM caminho de UI até eles
+
+<a id="rn-146"></a>
 
 ### RN-146 — `agent.response` carrega o nome do modelo que gerou a resposta {#rn-146}
 
@@ -768,6 +798,8 @@ A mudança atravessa as três camadas, todas com o MESMO nome de campo
   "problema 2" — nome real, evento antigo sem a chave, `modelName: null`
 - **Origem:** investigação de código — confirmado que o dado já existia em
   `token_usage`, mas nunca chegava ao payload do evento
+
+<a id="rn-149"></a>
 
 ### RN-149 — O Container level do diagrama C4 é derivado do module_map, nunca redigitado pelo modelo {#rn-149}
 
@@ -820,6 +852,8 @@ o de maior `version`, e revisar é gerar de novo, nunca sobrescrever.
 - **Origem:** pedido do usuário — diagrama C4 do Arquiteto na Visão Geral do
   projeto (ADR 0068)
 
+<a id="rn-151"></a>
+
 ### RN-151 — O badge de projeto na sidebar é aprovações pendentes, não atividade não lida {#rn-151}
 
 O número ao lado do nome de cada projeto em `Shell.tsx` vinha de
@@ -862,6 +896,8 @@ não o passava), e virou `pendingApprovalsCount` com o mesmo valor da sidebar
   "392" contra "8" de verdade na aba Aprovações do mesmo projeto
 
 ---
+
+<a id="rn-153"></a>
 
 ### RN-153 — "Auto mode": o `ApprovalCard` liga autonomia pra QUALQUER ação futura de um agente {#rn-153}
 
@@ -938,6 +974,8 @@ representativo — desligar é gravar a mesma curinga como
   comando específico, e `agent_autonomy` só cobria um tipo de ação por vez;
   faltava confiar amplamente num agente com um clique só
 
+<a id="rn-154"></a>
+
 ### RN-154 — Os três tetos absolutos continuam bloqueando MESMO com "auto mode" ligado {#rn-154}
 
 > **Revista pela [RN-603](parte-07.md#rn-603)** (ADR 0167): os tetos listados aqui
@@ -983,6 +1021,8 @@ nova — só o suficiente pra não ter onde a curinga furar.
 - **Origem:** restrição de design confirmada pelo usuário ao pedir o "auto
   mode" — os três tetos são a garantia que não pode regredir
 
+<a id="rn-155"></a>
+
 ### RN-155 — ordenação da timeline usa o vínculo `proposed_action.created`, nunca `action.seq` cru {#rn-155}
 
 A `timeline` de `SessionPage.tsx` ordena eventos e ações propostas por um
@@ -1004,6 +1044,8 @@ anterior.
 - **Teste:** `apps/web/src/routes/SessionPage.ordenacao-e-avisos.test.tsx`
 - **Origem:** achado de PR #286 — cards de aprovação apareciam fora de ordem
   na timeline, misturados com eventos normais
+
+<a id="rn-169"></a>
 
 ### RN-169 — O projeto escolhe onde o código mora: Local ou Container {#rn-169}
 
@@ -1083,6 +1125,8 @@ são ortogonais.
 - **Origem:** pedido do usuário (decisão dele, com a variante de caminho livre
   escolhida explicitamente)
 
+<a id="rn-170"></a>
+
 ### RN-170 — Caminho Local é validado na CRIAÇÃO, e a recusa ensina {#rn-170}
 
 **REVISADA pela [RN-422](parte-04.md#rn-422) (ADR 0104)**: a validação de criação passou
@@ -1143,6 +1187,8 @@ montado no outro container.
 
 ---
 
+<a id="rn-186"></a>
+
 ### RN-186 — `provider` é dimensão do relatório do owner, e só dele {#rn-186}
 
 `sumGroupedBy` aceita `provider` como dimensão, e
@@ -1172,6 +1218,8 @@ pergunta que as duas listas separadas já não respondam.
   ("quebra por PROVIDER, e o mesmo nome de modelo em dois providers segue UMA
   linha")
 - **Origem:** [ADR 0076](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
+
+<a id="rn-187"></a>
 
 ### RN-187 — A visão do membro não alcança `provider`, e quem garante é o TIPO {#rn-187}
 
@@ -1208,6 +1256,8 @@ explícito **neste ponto** — nunca um esquecimento em outro arquivo.
   `dias` e mais nada)
 - **Origem:** [ADR 0076](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
 
+<a id="rn-188"></a>
+
 ### RN-188 — Pessoa e agente são partição da lista por ator, sem consulta a mais {#rn-188}
 
 O relatório do owner traz `porOwner` (linhas de `actor_kind = 'user'`) e
@@ -1231,6 +1281,8 @@ continua sendo o campo `ownerId`, não o `actorKind` de cada linha.
 - **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
   ("separa PESSOA de AGENTE em dois blocos, sem perder a lista por ator")
 - **Origem:** [ADR 0076](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
+
+<a id="rn-189"></a>
 
 ### RN-189 — O embedding devolve um vetor por entrada, ou um erro {#rn-189}
 
@@ -1266,6 +1318,8 @@ taxonomia é a mesma: nenhum `LLMErrorCode` novo.
   contra todo provider que declara a capability)
 - **Origem:** [ADR 0075](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0075-embeddings-no-contrato-de-llm-provider.md)
 
+<a id="rn-190"></a>
+
 ### RN-190 — O embedding tem uma capability em duas camadas, e a do modelo é exclusão {#rn-190}
 
 Como no tool calling ([RN-040](parte-01.md#rn-040)), a capability tem duas camadas: o
@@ -1294,6 +1348,8 @@ seria um palpite vestido de dado.
 - **Teste:** `test/domain/llm/embedding-capability.spec.ts`,
   `test/infrastructure/llm/ollama-provider.spec.ts`
 - **Origem:** [ADR 0075](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0075-embeddings-no-contrato-de-llm-provider.md)
+
+<a id="rn-191"></a>
 
 ### RN-191 — `embeddings: true` exige execução, não documentação {#rn-191}
 
@@ -1326,6 +1382,8 @@ antes de tocar a rede.
   `test/infrastructure/llm/ollama-provider.embeddings.smoke.spec.ts`
   (manual, contra o daemon real)
 - **Origem:** [ADR 0075](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0075-embeddings-no-contrato-de-llm-provider.md)
+
+<a id="rn-198"></a>
 
 ### RN-198 — Atividades agrupa por agente-base/instância REAL, nunca por contador inventado {#rn-198}
 
@@ -1369,6 +1427,8 @@ aberta, ex.: `dev-backend/dev-backend-2`).
 - **Origem:** PROGRAMA 28, Onda 1/frente B0 (achado, sem código) e Onda
   2/frente B (implementação)
 
+<a id="rn-213"></a>
+
 ### RN-213 — Alerta de custo é leitura de `lastThresholdNotified`, nunca recálculo {#rn-213}
 
 `alertaDeOrcamento` não reimplementa `crossedThresholds`
@@ -1383,6 +1443,8 @@ um dado que já existe.
 - **Teste:** `apps/web/src/lib/spend.test.ts` (describe "alertaDeOrcamento
   (RN-213)"); `apps/web/src/routes/ProjectSpendTab.test.tsx` (describe "o
   orçamento do projeto")
+
+<a id="rn-219"></a>
 
 ### RN-219 — Os três escopos do índice de chunks são honestos, e mutuamente exclusivos por CHECK {#rn-219}
 
@@ -1405,6 +1467,8 @@ pelo mesmo caso de uso toda vez.
   validação de aplicação")
 - **ADR:** [0079](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
 
+<a id="rn-220"></a>
+
 ### RN-220 — Vetor e busca léxica vivem na mesma linha, nunca em tabelas separadas {#rn-220}
 
 `chunks.embedding` (pgvector) e `chunks.search_vector` (tsvector) são
@@ -1418,6 +1482,8 @@ de verdade para as duas metades da busca.
 - **Teste:** `test/infrastructure/persistence/chunk.repository.spec.ts`
   (as três specs escrevem e leem as duas colunas na mesma linha)
 - **ADR:** [0079](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
+
+<a id="rn-221"></a>
 
 ### RN-221 — `search_vector` nunca é escrita pela aplicação — é coluna GENERATED {#rn-221}
 
@@ -1433,6 +1499,8 @@ existir).
   ("grava um chunk de docs com vetor e devolve o search_vector gerado pela
   GENERATED ALWAYS AS")
 - **ADR:** [0079](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
+
+<a id="rn-222"></a>
 
 ### RN-222 — A dimensão do vetor é documentada, não adivinhada, e `embedding` chega depois do chunk {#rn-222}
 
@@ -1452,6 +1520,8 @@ chamada de rede a um provider) numa escrita atômica só.
   as outras duas specs gravam sem ele, confirmando a nulabilidade)
 - **ADR:** [0079](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md); [RN-191](#rn-191)
 
+<a id="rn-223"></a>
+
 ### RN-223 — O índice vetorial é HNSW, não IVFFlat, porque a tabela nasce vazia {#rn-223}
 
 IVFFlat precisa de linhas já carregadas para treinar as listas (`lists`) e
@@ -1465,6 +1535,8 @@ similaridade não deveria mudar com a magnitude do vetor).
 - **Onde:** `src/db/migrations/0045_shallow_randall.sql`
   (`chunks_embedding_idx`)
 - **ADR:** [0079](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
+
+<a id="rn-225"></a>
 
 ### RN-225 — Migração que pode exigir privilégio de operador nasce em `breaking/` {#rn-225}
 
@@ -1481,6 +1553,8 @@ critério do CLAUDE.md para nascer em `breaking/` em vez de
   `src/db/migrations/0045_shallow_randall.sql` (comentário que
   documenta a decisão dentro da própria migration)
 - **ADR:** [0079](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
+
+<a id="rn-226"></a>
 
 ### RN-226 — `ChunkRepository` cobre só escrita/leitura básica; `createMany` é operação de lote {#rn-226}
 
