@@ -61,7 +61,7 @@ se manifestar — corrigir só o primeiro teria trocado um 403 sempre por um
   faltava, porque cada guard só era exercitado isolado antes disto).
   Verificado também AO VIVO: `brabo-runner` conectou de verdade a um
   projeto `runner` real com um PAT emitido depois da correção
-- **ADR:** [0105](../../adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
+- **ADR:** [0105](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
   — correção de bug na implementação da decisão já tomada lá (PAT
   autentica esta rota), não uma decisão nova
 - **Origem:** achado rodando o `brabo-runner` de verdade contra um projeto
@@ -105,7 +105,7 @@ travadas, quem decide o que é aceito continua sendo o
   `describe('a lista solo sai do gerador para o web (AT-046)')`, mais o
   aferidor de frescor do arquivo do web); `test/application/use-cases/agents/request-manual-handoff.use-case.spec.ts`
   (recusa subagente E recusa agente desconhecido); `apps/web/src/lib/agents.test.ts`
-- **ADR:** [0109](../../adr/0109-handoff-manual-a-agente-a-escolha.md)
+- **ADR:** [0109](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0109-handoff-manual-a-agente-a-escolha.md)
 - **Origem:** backlog do modelo de time — item aberto desde a FASE 13c,
   fechado pelo caso real do Staff (ADR 0088) e do UX Designer (ADR 0087),
   os dois com plumbing de engine pronto e nenhum caminho humano até eles
@@ -129,7 +129,7 @@ já existente (`offeredHandoff`/`handleAcceptHandoff` em `SessionPage.tsx`)
 o pega sozinho no próximo poll de `useHandoffs` — sem NENHUMA mudança no
 caminho de aceite. *(Não pegava, e ninguém viu até a AT-253: o card casava a
 oferta pelo ATOR, e o ator do manual é a pessoa. Corrigido na
-[RN-631](../web.md#rn-631), que casa pelo `handoffId`.)*
+[RN-631](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-631), que casa pelo `handoffId`.)*
 
 A rota (`POST projects/:projectId/sessions/:sessionId/handoffs`) exige
 papel `developer`, o mesmo de `handoffs/:handoffId/accept` (RN-136: quem
@@ -150,7 +150,7 @@ caminho humano até si.
   (`fromAgent` derivado, sentinela `"usuario"`, `actor: user`);
   `docs/security-surface.md` + `test/interfaces/route-surface.spec.ts`
   (classificação `role:developer` em runtime)
-- **ADR:** [0109](../../adr/0109-handoff-manual-a-agente-a-escolha.md)
+- **ADR:** [0109](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0109-handoff-manual-a-agente-a-escolha.md)
 - **Origem:** backlog do modelo de time (ver RN-440)
 
 ---
@@ -204,7 +204,7 @@ padrão de `RenameSessionDto`.
   (grava, limpa com `null`, recusa negativo/NaN/Infinity, zero é válido);
   `test/infrastructure/persistence/drizzle/agent-area.repository.spec.ts`
   (`setBudget`/`incrementSpent`, atomicidade sob concorrência)
-- **ADR:** [0110](../../adr/0110-budget-por-area-aditivo-nao-cascata.md)
+- **ADR:** [0110](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0110-budget-por-area-aditivo-nao-cascata.md)
 - **Origem:** item de backlog aprovado pelo dono do produto numa sessão de
   planejamento explícita — `docs/explanation/backlog.md`, tabela "Older
   backlog"
@@ -245,7 +245,7 @@ agentes ativos.
   (recusa com dev agent ativo, sem gravar nada; no-op não checa);
   `test/infrastructure/persistence/drizzle/dev-agent-activity.repository.spec.ts`
   (`idle` não conta, todo o resto conta, isolamento entre projetos)
-- **ADR:** [0111](../../adr/0111-conversao-de-execution-mode-de-projeto-existente.md)
+- **ADR:** [0111](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0111-conversao-de-execution-mode-de-projeto-existente.md)
 - **Origem:** correção registrada em `docs/explanation/backlog.md` durante
   a implementação da Onda 1 do runner (ADR 0104), fechada nesta Onda 2
 
@@ -274,7 +274,7 @@ par.
 - **Teste:** `test/infrastructure/filesystem/fs-permissions-file-store.spec.ts`
   (conteúdo sobrevive e é apagado da origem; origem sem arquivo grava vazio
   sem lançar; `from === to` é no-op)
-- **ADR:** [0111](../../adr/0111-conversao-de-execution-mode-de-projeto-existente.md)
+- **ADR:** [0111](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0111-conversao-de-execution-mode-de-projeto-existente.md)
 
 ---
 
@@ -302,7 +302,7 @@ lugar".
 - **Teste:** `test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
   (`running` passa por `stopped`; `provisioning` vai direto; sem linha,
   nenhuma transição; entrar em `container` nunca dispara transição)
-- **ADR:** [0111](../../adr/0111-conversao-de-execution-mode-de-projeto-existente.md)
+- **ADR:** [0111](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0111-conversao-de-execution-mode-de-projeto-existente.md)
 
 ---
 
@@ -320,7 +320,7 @@ no-op (RN-447) é a única exceção — nada muda, então nada zera.
 - **Onde:** `src/application/use-cases/iam/convert-project-execution-mode.use-case.ts`
 - **Teste:** `test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`
   (`runner -> container` zera; no-op preserva)
-- **ADR:** [0111](../../adr/0111-conversao-de-execution-mode-de-projeto-existente.md)
+- **ADR:** [0111](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0111-conversao-de-execution-mode-de-projeto-existente.md)
 
 ---
 
@@ -355,7 +355,7 @@ sabia renderizar.
   `src/application/use-cases/rag/index-local-folder.use-case.ts`
 - **Teste:** `test/application/use-cases/rag/index-local-folder.use-case.spec.ts`
   (caminho feliz e full rebuild), `test/interfaces/http/rag/rag.controller.spec.ts`
-- **ADR:** [0113](../../adr/0113-pasta-local-anexada-via-navegador-vira-chunks-scope-local.md)
+- **ADR:** [0113](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0113-pasta-local-anexada-via-navegador-vira-chunks-scope-local.md)
 - **Origem:** pedido do dono do produto
 
 ### RN-457 — `maintainer`, e reanexar é o MECANISMO de resincronizar — nunca o "Reindexar agora" genérico {#rn-457}
@@ -379,7 +379,7 @@ silenciosamente o material do usuário.
   `src/application/use-cases/rag/reindex-project.use-case.ts`
   (comentário "Por que `local` NÃO entra aqui")
 - **Teste:** `test/interfaces/http/rag/rag.controller.spec.ts`
-- **ADR:** [0113](../../adr/0113-pasta-local-anexada-via-navegador-vira-chunks-scope-local.md)
+- **ADR:** [0113](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0113-pasta-local-anexada-via-navegador-vira-chunks-scope-local.md)
 - **Origem:** pedido do dono do produto
 
 ### RN-458 — Cobertura de `local` é forma PRÓPRIA, e `lastAttachedAt` é a ÚNICA exceção real ao "nunca Xmin" (RN-237) {#rn-458}
@@ -397,7 +397,7 @@ valor real EXISTE e é barato de calcular (mesmo `todosOsChunks` que
   (`RagLocalCoverage`), `apps/web/src/components/rag/RagCoveragePanel.tsx`
 - **Teste:** `test/application/use-cases/rag/get-rag-coverage.use-case.spec.ts`,
   `apps/web/src/components/rag/RagCoveragePanel.test.tsx`
-- **ADR:** [0113](../../adr/0113-pasta-local-anexada-via-navegador-vira-chunks-scope-local.md)
+- **ADR:** [0113](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0113-pasta-local-anexada-via-navegador-vira-chunks-scope-local.md)
 - **Origem:** pedido do dono do produto
 
 ## Ollama nativo no bootstrap dev e pull de modelo Hugging Face (RN-461..463, ADR 0114/0115) {#ollama-nativo-no-bootstrap-dev-e-pull-de-modelo-hugging-face-rn-461-463-adr-0114-0115}
@@ -428,7 +428,7 @@ prefixado pela origem (`infra`/`modelo`/`código`, vocabulário do ADR
   origem certa — `modelo`/`infra`; recusa reconfirmar um pedido que já
   saiu de `pending_confirmation`; 404 para pedido inexistente no
   workspace)
-- **ADR:** [0115](../../adr/0115-pedido-de-pull-de-modelo-huggingface-tabela-propria.md)
+- **ADR:** [0115](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0115-pedido-de-pull-de-modelo-huggingface-tabela-propria.md)
 - **Origem:** pedido do dono do produto
 
 ### RN-463 — Allowlist de publishers oficiais; comunidade exige opt-in explícito com aviso de segurança {#rn-463}
@@ -458,14 +458,14 @@ ligada.
   `apps/web/src/components/HuggingFaceModelBrowser.test.tsx`
   (toggle nasce desligado e só mostra o aviso quando ligado; busca respeita
   `includeCommunity`)
-- **ADR:** [0115](../../adr/0115-pedido-de-pull-de-modelo-huggingface-tabela-propria.md)
+- **ADR:** [0115](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0115-pedido-de-pull-de-modelo-huggingface-tabela-propria.md)
 - **Origem:** pedido do dono do produto
 
 ## Configuração do runner pelo navegador (RN-464..466, ADR 0118) {#configuracao-do-runner-pelo-navegador-rn-464-466-adr-0118}
 
 ### RN-464 — Chave de dispositivo do runner: registro/revogação self-service; SEM visão de maintainer nesta rodada (corte declarado) {#rn-464}
 
-> **Revisada pela [RN-687](../web.md#rn-687) ([ADR 0203](../../adr/0203-aposenta-o-fluxo-do-runner-pelo-navegador.md), 01/10):**
+> **Revisada pela [RN-687](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-687) ([ADR 0203](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0203-aposenta-o-fluxo-do-runner-pelo-navegador.md), 01/10):**
 > o fluxo do navegador foi APOSENTADO, e o `POST .../runner-device-keys` saiu
 > com ele — junto com `RegisterRunnerDeviceKeyUseCase` e o teste dele, citados
 > abaixo como eram. Ficam `GET`/`DELETE` e a revogação self-service; a chave
@@ -499,12 +499,12 @@ vier a ser pedido.
   `src/interfaces/http/runner/runner-device-keys.controller.ts`
 - **Teste:** `test/application/use-cases/auth/register-runner-device-key.use-case.spec.ts`,
   `test/application/use-cases/auth/revoke-runner-device-key.use-case.spec.ts`
-- **ADR:** [0118](../../adr/0118-configuracao-automatica-do-runner-pelo-navegador.md)
+- **ADR:** [0118](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0118-configuracao-automatica-do-runner-pelo-navegador.md)
 - **Origem:** pedido do dono do produto
 
 ### RN-465 — `POST .../runner-ticket` aceita PAT OU chave de dispositivo (Ed25519, TTL ≤60s) — segunda forma de credencial de DISPOSITIVO, nunca dual-auth com JWT de sessão (distinção da RN-439) {#rn-465}
 
-> **Revisada pela [RN-687](../web.md#rn-687) ([ADR 0203](../../adr/0203-aposenta-o-fluxo-do-runner-pelo-navegador.md), 01/10):**
+> **Revisada pela [RN-687](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-687) ([ADR 0203](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0203-aposenta-o-fluxo-do-runner-pelo-navegador.md), 01/10):**
 > nada desta RN mudou no guard — o `PatAuthGuard` continua aceitando o JWT de
 > uma chave de PROJETO, e é por isso que um runner configurado pelo navegador
 > antes do ADR 0203 não quebra. O que deixou de existir é criar uma chave de
@@ -548,14 +548,14 @@ tudo que o papel dele permite no resto da api, estourando o escopo
   com a rota, chave registrada em outro projeto, TTL longo demais, `kid` sem
   chave correspondente), `apps/runner/src/auth.spec.ts` (describe
   "assinarTicketComChaveDeDispositivo"/"obterTicketDoRunnerComCredencial")
-- **ADR:** [0118](../../adr/0118-configuracao-automatica-do-runner-pelo-navegador.md)
+- **ADR:** [0118](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0118-configuracao-automatica-do-runner-pelo-navegador.md)
 - **Origem:** pedido do dono do produto
 
 ## Os dois tetos de rebaixamento em `project_members` (RN-472) {#os-dois-tetos-de-rebaixamento-em-project-members-rn-472}
 
 ### RN-472 — Ninguém rebaixa o `owner` do workspace, e ninguém rebaixa a si mesmo {#rn-472}
 
-A [RN-471](../web.md#rn-471) registrou que `ResolveEffectiveRoleUseCase.forProject` é
+A [RN-471](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-471) registrou que `ResolveEffectiveRoleUseCase.forProject` é
 `projectRole ?? workspaceRole` — a linha de projeto SOBREPÕE a de workspace, nos
 dois sentidos. O que ela não guardou é a consequência:
 `AddProjectMemberUseCase` era um passthrough de uma linha para o upsert, e
@@ -637,7 +637,7 @@ frase da api que diz qual teto bateu.
   rebaixar outra pessoa, e `viewer` de workspace virando `maintainer` no
   projeto; auto-remoção permitida; e a remoção que ainda rebaixa quem a chamou,
   fixada como lacuna declarada)
-- **Origem:** [ADR 0127](../../adr/0127-tetos-de-rebaixamento-em-project-members.md),
+- **Origem:** [ADR 0127](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0127-tetos-de-rebaixamento-em-project-members.md),
   sobre o achado da revisão da #444 registrado na RN-471
 
 ---
@@ -676,7 +676,7 @@ mensagem da api e exibi-la. O botão "Tentar novamente" deixa de depender de
 que é justamente quando não há status de falha para depender.
 
 **A espera tem TETO e três estados que não colapsam**, exatamente como a
-[RN-474](../web.md#rn-474) e pelo mesmo motivo: o poll de 1s era infinito. Passados 3
+[RN-474](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-474) e pelo mesmo motivo: o poll de 1s era infinito. Passados 3
 minutos sem convergir, a tela diz que parou de acompanhar, **declara que isso
 não prova fracasso** (o provisionamento roda dentro da requisição, e um
 provider lento pode ainda estar trabalhando) e oferece "procurar de novo" —
@@ -717,12 +717,12 @@ para a tela de provisionamento, que só desviava em `provision_failed`.
 A raiz do projeto tinha **uma** derivação (`projectScopeRoot`) e **dois**
 consumidores com necessidades opostas. Isso estava certo enquanto os dois modos
 com pasta de usuário eram bind-mount; deixou de estar quando o modo `runner`
-nasceu ([RN-423](../runner.md#rn-423), [ADR 0104](../../adr/0104-execution-mode-tres-valores-e-workspace-verificado-pelo-runner.md)),
+nasceu ([RN-423](https://github.com/viralabs-dev/brabo-runner/blob/dev/docs/business-rules/runner.md#rn-423), [ADR 0104](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0104-execution-mode-tres-valores-e-workspace-verificado-pelo-runner.md)),
 porque ele é deliberadamente **sem** bind-mount.
 
 | consumidor | precisa de | por quê |
 |---|---|---|
-| escopo de terminal ([ADR 0055](../../adr/0055-escopo-de-caminho-na-politica-de-terminal.md)) | o caminho **do host** | é lá que o comando roda — na máquina do usuário, pelo runner |
+| escopo de terminal ([ADR 0055](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0055-escopo-de-caminho-na-politica-de-terminal.md)) | o caminho **do host** | é lá que o comando roda — na máquina do usuário, pelo runner |
 | `permissions.json` (a api lê **e escreve**) | um caminho **que a api alcance** | ela o escreve de dentro do container dela |
 
 **São duas derivações, e as duas moram no mesmo arquivo** — a fonte continua
@@ -818,13 +818,13 @@ Calibrar sem medir seria trocar um chute por outro.
 Registrar só como evento perderia exatamente as buscas em que um humano olhou
 os scores e julgou, que são as que carregam o sinal de verdade. É a mesma
 classe de problema que forçou o corte do metering de embedding
-([ADR 0075](../../adr/0075-embeddings-no-contrato-de-llm-provider.md),
+([ADR 0075](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0075-embeddings-no-contrato-de-llm-provider.md),
 `token_usage.session_id NOT NULL`), e a saída é a mesma: tabela própria, com
 `session_id` NULLABLE.
 
 **`pesos` congelado na linha é o ponto.** `pesosVigentes()` copia os valores do
 momento para dentro do registro — mesma disciplina do preço congelado no
-metering ([ADR 0042](../../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md))
+metering ([ADR 0042](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md))
 e da `image_version` em `project_containers`. Sem a cópia, a primeira
 calibração que mexer em `RAG_SEARCH_WEIGHT_VECTOR` faria toda a medição
 anterior passar a significar outra coisa, calada — e "melhorou depois da
@@ -833,12 +833,12 @@ impossível de fazer.
 
 **Gravar telemetria NUNCA derruba a busca, e também não falha CALADA.** Quem
 pergunta não deveria perder a resposta porque o instrumento de medição caiu; e
-o repositório é explícito sobre falha que vira silêncio ([RN-059](../engine.md#rn-059)).
+o repositório é explícito sobre falha que vira silêncio ([RN-059](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-059)).
 Então o INSERT que falha vira log com a origem classificada (`infra`,
-[RN-023](../engine.md#rn-023)) e `searchId: null` na resposta — que não é o mesmo que "não
+[RN-023](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-023)) e `searchId: null` na resposta — que não é o mesmo que "não
 houve resultado": é "não há a que anexar voto", e a tela precisa dos dois
 separados para não oferecer um controle que a api recusaria
-([RN-088](../web.md#rn-088)).
+([RN-088](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-088)).
 
 `degraded` e `vector_available` são duas colunas de propósito, e a redundância
 de hoje (`degraded = !vector_available`) está declarada no schema em vez de
@@ -856,9 +856,9 @@ definição pode crescer.
   (a linha gravada com rank e pesos; os pesos serem CÓPIA e não o mesmo objeto;
   a busca da aba sem sessão; e o CASO DE FALHA — insert que falha não derruba a
   busca e devolve `searchId: null`)
-- **ADR:** [0129](../../adr/0129-telemetria-de-busca-do-rag-como-tabela.md) — por que
+- **ADR:** [0129](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0129-telemetria-de-busca-do-rag-como-tabela.md) — por que
   é TABELA e não evento, e por que os pesos vão congelados;
-  [0080](../../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md), cujos números esta
+  [0080](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0080-busca-hibrida-pesos-limiar-e-citacao.md), cujos números esta
   RN **não** revisa: ela dá o instrumento para revisá-los depois
 - **Origem:** plano do dono do produto, Parte 2 / Etapa 1
 
@@ -879,7 +879,7 @@ número sem significado, que é pior que número nenhum.
 
 A recusa vale nos dois caminhos: pela aba vira 400 na tela; pelo agente vira
 **tool-result de erro** que o modelo pode corrigir na iteração seguinte
-([RN-061](../engine.md#rn-061)/[RN-163](../engine.md#rn-163)), nunca crash.
+([RN-061](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-061)/[RN-163](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-163)), nunca crash.
 
 **Um voto por ator por trecho por busca** (`unique (search_id, chunk_id,
 actor_id)`, com `onConflictDoUpdate`): mudar de ideia sobrescreve o próprio
@@ -907,7 +907,7 @@ encheria a fila de ruído.
   `apps/web/src/components/rag/RagCitationCard.test.tsx` (os três estados do
   controle, e a ausência dele sem `searchId`),
   `test/scripts/medir-rag.spec.ts` (`precision@k` sobre o julgado)
-- **ADR:** [0129](../../adr/0129-telemetria-de-busca-do-rag-como-tabela.md)
+- **ADR:** [0129](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0129-telemetria-de-busca-do-rag-como-tabela.md)
 - **Origem:** plano do dono do produto, Parte 2 / Etapa 1
 
 ### RN-486 — Estado REGISTRADO e estado OBSERVADO nunca se fundem, e "não olhei" tem motivo próprio {#rn-486}
@@ -926,7 +926,7 @@ observação ACONTECEU e voltou vazia — a afirmação positiva "olhei e não h
 container" —, enquanto `broker-nao-configurado`, `broker-sem-resposta` e
 `broker-recusou` querem dizer que não deu para olhar, cada um com um conserto
 diferente. Herdar o estado registrado nesses três casos é exatamente o que a
-[RN-468](../web.md#rn-468) proíbe: sinal de ambiente diz o que SABE, e proxy não vira
+[RN-468](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-468) proíbe: sinal de ambiente diz o que SABE, e proxy não vira
 garantia.
 
 **Nenhuma recusa do broker derruba a leitura.** O ciclo de vida registrado é
@@ -948,7 +948,7 @@ a varredura por `brabo.managed=true`, e a página que a consome ainda não exist
   `test/application/use-cases/containers/spec-e-observacao-de-container.use-case.spec.ts`
   ("olhei e não há" e "não consegui olhar" não colapsam; sem `BROKER_URL` o
   broker nem é chamado; recusa vira motivo com detalhe, nunca exceção)
-- **ADR:** [0130](../../adr/0130-broker-de-container.md)
+- **ADR:** [0130](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0130-broker-de-container.md)
 
 ### RN-487 — O Arquiteto roteia módulo por módulo, mas só CANDIDATA — quem elege é a Infra {#rn-487}
 
@@ -1010,7 +1010,7 @@ antes de `create_c4_diagram` precisar dele.
   `apps/engine/test/engine/harness/tools/route_modules_to_infra_test.exs`
   (`:direct`; normalização das chaves do tool call; recusa da api virando
   tool-result de erro, nunca crash — RN-061)
-- **ADR:** [0131](../../adr/0131-roteamento-de-modulos-para-infra.md)
+- **ADR:** [0131](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0131-roteamento-de-modulos-para-infra.md)
 - **Origem:** plano do dono do produto, Parte 1 / PR 1.4
 
 ### RN-490 — O golden-set de acerto do RAG mede por CAMINHO DE ARQUIVO, no TOP-5, nunca por chunk exato ou rank 1 {#rn-490}
@@ -1061,7 +1061,7 @@ a tag explicitamente, do mesmo jeito que sempre foi preciso.
   `apps/engine/test/engine/rag/rag_golden_test.exs`,
   `apps/engine/test/fixtures/golden_set_rag/floor.json`
 - **Teste:** `test/domain/rag/golden-set-criterio.spec.ts`
-- **ADR:** [0132](../../adr/0132-golden-set-de-acerto-do-rag.md)
+- **ADR:** [0132](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0132-golden-set-de-acerto-do-rag.md)
 - **Origem:** plano do dono do produto, Parte 2 / Etapa 2
 
 ### RN-493 — Terminal dentro do container real ganha PISO de auto-aprovação, sem tocar nos tetos absolutos {#rn-493}
@@ -1102,7 +1102,7 @@ escopo léxico não é substituído, é redundante.
   (describe "piso do container ativo": terminal auto-aprova e EXECUTA com
   container running; não afeta `container_start`; sem linha `running`,
   inalterado; deny embutido/git push/sudo continuam vencendo)
-- **ADR:** [0134](../../adr/0134-dev-agents-executam-dentro-do-container.md)
+- **ADR:** [0134](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0134-dev-agents-executam-dentro-do-container.md)
 - **Origem:** plano do dono do produto, Parte 1 / PR 1.6
 
 ### RN-495 — `container_stop`/`container_remove` nascem como `proposed_action`, e só `container_remove` entra no teto absoluto {#rn-495}
@@ -1174,7 +1174,7 @@ o container que já existe.
   `test/application/use-cases/actions/approve-always-action.use-case.spec.ts`,
   `apps/web/src/lib/aprovacoes.test.ts`,
   `apps/web/src/routes/ContainersPage.test.tsx`
-- **Decisão arquitetural:** [ADR 0136](../../adr/0136-pagina-global-de-containers.md)
+- **Decisão arquitetural:** [ADR 0136](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0136-pagina-global-de-containers.md)
 - **Origem:** plano do dono do produto, Parte 1 / PR 1.8
 
 ### RN-496 — A página global de containers pergunta ao broker com TETO, e nunca funde registrado com observado {#rn-496}
@@ -1233,7 +1233,7 @@ inline sem uma quarta consulta por projeto.
   com `naoVerificado`),
   `test/interfaces/http/containers/containers-overview.controller.spec.ts`,
   `apps/web/src/routes/ContainersPage.test.tsx`
-- **Decisão arquitetural:** [ADR 0136](../../adr/0136-pagina-global-de-containers.md)
+- **Decisão arquitetural:** [ADR 0136](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0136-pagina-global-de-containers.md)
 - **Origem:** plano do dono do produto, Parte 1 / PR 1.8
 
 ## A base única dos projetos montados (RN-500) {#a-base-unica-dos-projetos-montados-rn-500}
@@ -1301,7 +1301,7 @@ na RN seguinte.
   `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
   (`describe('baseDeProjetos / dentroDaBaseDeProjetos')`) e
   `scripts/dev/base-de-projetos.spec.ts`
-- **ADR:** [0141](../../adr/0141-base-unica-dos-projetos-montados.md)
+- **ADR:** [0141](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0141-base-unica-dos-projetos-montados.md)
 - **Origem:** plano do dono do produto, PR 1
 
 ---
@@ -1402,8 +1402,8 @@ tela afirmando o que não sabe.
   `test/application/use-cases/iam/convert-project-execution-mode.use-case.spec.ts`;
   `test/application/use-cases/actions/execute-container-start.use-case.spec.ts`
   (`describe` "ExecuteContainerStartUseCase — materialização do mounted")
-- **ADR:** [0142](../../adr/0142-validacao-de-workspace-montado-adiada.md), que
-  referencia [0141](../../adr/0141-base-unica-dos-projetos-montados.md)
+- **ADR:** [0142](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0142-validacao-de-workspace-montado-adiada.md), que
+  referencia [0141](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0141-base-unica-dos-projetos-montados.md)
 - **Origem:** plano do dono do produto, PR 2
 
 ---

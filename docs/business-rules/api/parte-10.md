@@ -21,7 +21,7 @@ keywords: [regras de negócio, api]
   `historia_nao_draft` ou `historia_com_tarefa_em_execucao`, com a frase que o
   modelo e o toast mostram. Arquivar NÃO apaga: a linha de `stories` ganha
   `archived_at`/`archived_reason` (migration `0069`,
-  [ADR 0212](../../adr/0212-historia-arquivada.md)), as tarefas ficam, e o evento
+  [ADR 0212](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0212-historia-arquivada.md)), as tarefas ficam, e o evento
   NOVO `backlog.story_archived` guarda quem, por quê e quais tarefas; a edição
   grava `backlog.story_updated` com o título anterior. A história arquivada
   sai do backlog (`listar_backlog` incluído — o PO não a vê para não
@@ -65,7 +65,7 @@ keywords: [regras de negócio, api]
 ### RN-729 — A PR de infra mira `main` e diz onde mergear; a sidebar abre só o projeto aberto {#rn-729}
 
 - **Regra:** quatro cláusulas medidas no TP-01 (03/10).
-  (1) A PR de infra (`open_infra_pr`) segue a [RN-664](../engine.md#rn-664): a branch
+  (1) A PR de infra (`open_infra_pr`) segue a [RN-664](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-664): a branch
   `feature/infra-setup` nasce de `main` e a PR mira `main` (a branch de
   trabalho trunk, [RN-1022](parte-11.md#rn-1022); antes era `dev`) — o worktree do dev
   agent nasce da mesma branch. Repositório sem ela falha nomeado pelo
@@ -76,7 +76,7 @@ keywords: [regras de negócio, api]
   e rola a lista até ele; no Dashboard nenhum fica forçado expandido; o
   chevron segue alternando à mão. (3) Os campos de texto do assistente "Novo
   projeto" (nome, caminho, repositório adotado) levam `SEM_AUTOFILL`, o mesmo
-  conjunto da [RN-693](../web.md#rn-693). (4) Decidir um merge na aba PRs invalida a
+  conjunto da [RN-693](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-693). (4) Decidir um merge na aba PRs invalida a
   fila inteira de pendentes do projeto, então o contador "PRs" da sidebar não
   segue mostrando o merge já executado até o próximo poll; e o lead de QA (ou
   SecOps) deixa de dizer "trabalhando" quando, depois do último parecer, um
@@ -259,7 +259,7 @@ keywords: [regras de negócio, api]
 
 ### RN-758 — O recorte do Jev nunca tira a ferramenta de obrigação do agente {#rn-758}
 
-- **Regra:** quando o Jev recorta o menu do passo ([RN-625](../engine.md#rn-625), P3), o
+- **Regra:** quando o Jev recorta o menu do passo ([RN-625](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-625), P3), o
   menu recebe de volta o PISO do agente: para o PO, `create_story`,
   `create_task` e, desde a [RN-942](parte-11.md#rn-942), `declare_open_question`; para o Arquiteto, `create_module_map`,
   `route_modules_to_infra`, `declare_module_contracts`, `propose_adr` e
@@ -288,7 +288,7 @@ keywords: [regras de negócio, api]
   disponíveis nas próximas voltas e que o agente não deve concluir que não tem
   uma ferramenta nem encerrar o turno esperando por ela. Ela nunca entra no
   histórico do agente nem no event log, e não existe sem recorte nem em queda.
-  É montada na api, e não na fachada do engine como a [RN-622](../engine.md#rn-622),
+  É montada na api, e não na fachada do engine como a [RN-622](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-622),
   porque só a api sabe o menu depois do Jev. Não aplicar o recorte na volta
   que fecha o turno foi avaliado e não feito: a api não sabe antes da
   resposta que a volta será a última.
@@ -315,7 +315,7 @@ keywords: [regras de negócio, api]
      CRIA o arquivo: um `.gitignore` já existente, mesmo diferente, é do
      usuário e não entra no plano;
   2. o commit do dev agent (`git_commit`) e o commit que preserva o worktree
-     ao bloquear ([RN-743](../engine.md#rn-743)) estagiam tudo MENOS esses diretórios, em
+     ao bloquear ([RN-743](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-743)) estagiam tudo MENOS esses diretórios, em
      qualquer profundidade (pathspec `:(exclude,glob)`), mesmo sem
      `.gitignore`;
   3. o gate SecOps acusa, como achado (`changes_requested`), diretório da lista
@@ -368,7 +368,7 @@ keywords: [regras de negócio, api]
   bolha deixa de dizer "modelo não registrado"; (3) o título da PR do dev
   agent abre pela TAREFA e depois a história (`<tarefa> — <história>`), para
   três PRs da mesma história não parecerem a mesma com o fim cortado; (4) com
-  execução ativa (o mesmo predicado da [RN-769](../web.md#rn-769)), a barra da sessão
+  execução ativa (o mesmo predicado da [RN-769](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-769)), a barra da sessão
   diz "Execução" em vez do `kind` gravado (`criativa`, que não muda —
   [RN-097](parte-02.md#rn-097)) e o composer não oferece o Criativo antes de ativado;
   (5) na confirmação da criação, cada segmento do caminho é `nowrap`: a quebra
@@ -399,7 +399,7 @@ keywords: [regras de negócio, api]
   história não arquivada BLOQUEADA, com PR em `awaiting_user`, ou devolvida
   por conflito de merge ([RN-715](parte-09.md#rn-715), `backlog.task_merge_conflict`
   nesta sessão) e ainda `in_progress`. É o sexto sinal da
-  [RN-064](../web.md#rn-064), sem teto, como os outros sinais que esperam uma pessoa;
+  [RN-064](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-064), sem teto, como os outros sinais que esperam uma pessoa;
   vem antes do sinal da conversa ociosa ([RN-581](parte-07.md#rn-581)), que continua
   o único com teto. Sessão de execução ANTIGA do mesmo projeto não é segurada
   pela tarefa: a tarefa é do projeto, e sem esse recorte ela ficaria imortal.
@@ -472,10 +472,10 @@ keywords: [regras de negócio, api]
 
 ### RN-784 — As leituras de estado do Arquiteto entram no piso do Jev {#rn-784}
 
-- **Regra:** revisa a [RN-758](#rn-758) e a [RN-772](../engine.md#rn-772) (decisão do
+- **Regra:** revisa a [RN-758](#rn-758) e a [RN-772](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-772) (decisão do
   dono). O piso do Arquiteto ganha `listar_adrs_propostas` e `listar_backlog`:
   o recorte do Jev nunca as tira, para o Arquiteto não afirmar status de ADR
-  nem tarefas do backlog sem poder consultá-los ([RN-773](../engine.md#rn-773)). Continua
+  nem tarefas do backlog sem poder consultá-los ([RN-773](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-773)). Continua
   valendo que o piso só devolve o que está no catálogo do passo.
 - **Onde:** `src/domain/llm/tool-router.ts:315` (`PISO_DO_MENU`)
 - **Teste:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
@@ -486,7 +486,7 @@ keywords: [regras de negócio, api]
 
 ### RN-785 — Requisito que depende de outra história ainda não feita é observação no gate de QA {#rn-785}
 
-- **Regra:** além das tarefas irmãs ([RN-765](../engine.md#rn-765)), o recorte que a
+- **Regra:** além das tarefas irmãs ([RN-765](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-765)), o recorte que a
   QA-estratégia e a QA-automação recebem traz as tarefas NÃO concluídas das
   OUTRAS histórias do mesmo módulo, com o título da história
   (`moduleOpenTasks` em `GET .../dev-context`). O módulo é o da tarefa, senão
@@ -518,7 +518,7 @@ keywords: [regras de negócio, api]
   (rota, função, evento), a entrega que segue o contrato não é reprovada por
   isso: o parecer nomeia a DIVERGÊNCIA no `resumo` (história diz X, contrato
   diz Y), para o usuário e o Arquiteto. Régua de PROMPT, como a
-  [RN-765](../engine.md#rn-765). Desde a [RN-792](../engine.md#rn-792) o Arquiteto confere o contrato
+  [RN-765](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-765). Desde a [RN-792](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-792) o Arquiteto confere o contrato
   contra as rotas citadas nas histórias ao declará-lo.
 - **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:280`
   (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:66`
@@ -585,7 +585,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   o push da task já a atualizou. No uso real a task reaberta depois de
   bloqueio abriu a pr-9 da mesma branch com a pr-8 aberta, e a aba PRs mostrou
   as duas. Provider sem a listagem, ou listagem que falha, não impede abrir: o
-  caminho de sempre segue. Fica como estava a PR da branch que a [RN-797](../engine.md#rn-797)
+  caminho de sempre segue. Fica como estava a PR da branch que a [RN-797](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-797)
   fecha como "já na dev": essa não é fechada no provider.
 - **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:33`
   (`prAbertaDaBranch`), `src/application/use-cases/actions/execute-git-action.use-case.ts:206`
@@ -601,15 +601,15 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   decisões registradas e artefatos por agente — vêm de um agregado da sessão
   INTEIRA contado no servidor (`GET .../sessions/:sessionId/context-summary`,
   `viewer`, leitura sem tabela nova), SOMADO à janela de eventos que a tela já
-  carregou pelo molde da [RN-568](../web.md#rn-568): as contagens são monótonas, então
+  carregou pelo molde da [RN-568](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-568): as contagens são monótonas, então
   vale o maior dos dois. O DETALHE (o cartão da regra, a decisão, a árvore do
   backlog) continua sendo o da janela, e o aviso de recorte ("Mostrando N de
   M") aparece só na seção cujo detalhe é parcial; o agente cujos artefatos
   ficaram todos antes da janela ganha o grupo com o total. Agregado AUSENTE
   (carregando ou falhou) é "não li": o painel cai no recorte declarado da
-  [RN-180](../web.md#rn-180)/[RN-701](../web.md#rn-701), e "Arquivos tocados" vazio diz que não
-  leu, nunca "Nada ainda". O agregado NÃO polla ([RN-579](../engine.md#rn-579),
-  [RN-632](../web.md#rn-632)): é relido quando a janela vê um artefato ou uma ação de
+  [RN-180](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-180)/[RN-701](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-701), e "Arquivos tocados" vazio diz que não
+  leu, nunca "Nada ainda". O agregado NÃO polla ([RN-579](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-579),
+  [RN-632](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-632)): é relido quando a janela vê um artefato ou uma ação de
   commit/PR nova (a chave da query), no foco e na remontagem.
 - **Onde:** `src/infrastructure/persistence/drizzle/session-context-summary.repository.ts:24`
   (`resumir`), `apps/web/src/lib/contexto-da-sessao.ts:15`
@@ -705,7 +705,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `pullRequestId`) da sessão e da sessão de execução ligada, lidos do MESMO
   diff da aba PRs (`ReadProjectCodeUseCase.pullRequestDiff`), antes dos
   arquivos de payload de commit, no teto de 100 com o total real. Leitura
-  contida ([ADR 0060](../../adr/0060-superficie-de-leitura-de-codigo.md)): sem parâmetro
+  contida ([ADR 0060](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0060-superficie-de-leitura-de-codigo.md)): sem parâmetro
   livre, no máximo 20 diffs por chamada (`TETO_DE_PRS_LIDAS`); PR além do teto
   ou cujo diff falhou entra em `prsNaoLidas`, e a tela diz quantas ficaram de
   fora. Com o agregado e nada a listar, o vazio diz o que não houve (nenhum
@@ -744,7 +744,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   a mergeada por fast-forward sem os campos não tem como ser reconstruída e
   segue vazia (lacuna declarada). GitHub e GitLab já devolvem o diff da PR
   mergeada pela própria plataforma. Na tela, o resumo do contexto é relido
-  nos MESMOS gatilhos que releem a lista de PRs ([RN-841](../web.md#rn-841)): o alvo
+  nos MESMOS gatilhos que releem a lista de PRs ([RN-841](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-841)): o alvo
   `prs` do canal (com a janela de 2 s dele, sem busca a mais) e a mudança da
   assinatura do backlog, por prefixo `['session-context-summary', projectId]`.
 - **Onde:** `src/infrastructure/git/local-git-provider.ts:374`
@@ -768,7 +768,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 
 ### RN-848 — O efeito de ação executada dentro de um pedido interno avisa o canal da sessão {#rn-848}
 
-- **Regra:** extensão da [RN-579](../engine.md#rn-579) (AT-157). A api não avisa o canal
+- **Regra:** extensão da [RN-579](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-579) (AT-157). A api não avisa o canal
   da escrita que veio do engine (`/internal/*`), porque a fachada dele avisa o
   evento que ELE pediu para gravar. O que a api grava por conta própria como
   EFEITO de uma ação auto-aprovada executada dentro desse pedido
@@ -833,7 +833,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
 
 - **Regra:** três metades de um defeito só (o TP-01 mediu 1 s entre o
   "Desbloquear" e o claim do dev, e o heartbeat encerrou a sessão nele). (1) O
-  sexto sinal da [RN-064](../web.md#rn-064) ([RN-776](#rn-776))
+  sexto sinal da [RN-064](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-064) ([RN-776](#rn-776))
   conta também, na sessão de execução vigente, a tarefa `todo` de história
   `ready` cujo módulo é de um dev agent DESTA execução (ator de evento `dev.*`
   na sessão) e a tarefa `in_progress` atribuída a um deles — sem teto, como os
@@ -841,7 +841,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   já é do agente (mesmo `assigned_to`, fora de gate, não bloqueada); a branch
   dela, se existir e não estiver mergeada, é o ponto de partida do worktree
   (a retomada do `WorktreeManager`). (3) Encerrar a sessão de execução
-  ([RN-763](../engine.md#rn-763)) bloqueia também a tarefa `in_progress` de dono `dev-*`
+  ([RN-763](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-763)) bloqueia também a tarefa `in_progress` de dono `dev-*`
   que nenhuma linha de `dev_agent_states` segura, com o mesmo motivo e origem
   `politica`; a lista só vem para sessão de EXECUÇÃO, então encerrar uma
   consultiva do mesmo projeto não bloqueia nada.
@@ -1236,7 +1236,7 @@ acerto de cache caindo. O Brabo agora manda a chave.
   `src/domain/llm/routing-preference.ts:88` (`chaveDeSessao`);
   `src/application/use-cases/llm/run-llm-turn.use-case.ts:243` (`chaveDeSessao`)
 - **Teste:** `test/infrastructure/llm/openrouter-provider.contract.spec.ts` ("chave de sessão (ADR 0221, RN-907)": com capability e chave leva `session_id`; sem chave ou desligada não leva; capability sem hook falha — caso de falha); `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts`; `run-llm-turn.use-case.spec.ts`; smoke `openrouter-provider.sessao.smoke.spec.ts`
-- **Origem:** AT-580; ADR [0221](../../adr/0221-upstream-preso-por-sessao.md)
+- **Origem:** AT-580; ADR [0221](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0221-upstream-preso-por-sessao.md)
 
 ### RN-909 — O 9Router é o 10º provider: URL por instalação, credencial obrigatória, preço público de curadoria {#rn-909}
 
@@ -1276,14 +1276,14 @@ propósito se perde.
 
 ### RN-914 — O orçamento de raciocínio é por modelo, só para quem o respeita {#rn-914}
 
-- **Regra:** revisa a [RN-782](#rn-782) ([ADR 0223](../../adr/0223-orcamento-de-raciocinio-por-modelo.md)). Modelo com `models.reasoning_budget` preenchido (curado à mão, nunca pelo sync) e `supportsReasoning` manda `reasoning: { max_tokens: N }` e `max_tokens` = saída visível + N ([RN-741](#rn-741)); só no provider que sabe controlar o raciocínio (hoje o OpenRouter) e nunca no agente com raciocínio desligado ([RN-783](#rn-783)). Hoje só `qwen/qwen3.7-flash` (N = 2048), provado em 22/10: 1024 pedidos, 1024 gastos. Modelo sem orçamento segue a RN-782, corpo byte a byte. `deepseek/deepseek-v4.1-flash` fica sem orçamento: `reasoning.max_tokens`, `effort` e `reasoning_effort` foram ignorados (8192 de raciocínio). `effort` nunca é enviado. O limite contém o raciocínio mas não garante a tool call.
+- **Regra:** revisa a [RN-782](#rn-782) ([ADR 0223](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0223-orcamento-de-raciocinio-por-modelo.md)). Modelo com `models.reasoning_budget` preenchido (curado à mão, nunca pelo sync) e `supportsReasoning` manda `reasoning: { max_tokens: N }` e `max_tokens` = saída visível + N ([RN-741](#rn-741)); só no provider que sabe controlar o raciocínio (hoje o OpenRouter) e nunca no agente com raciocínio desligado ([RN-783](#rn-783)). Hoje só `qwen/qwen3.7-flash` (N = 2048), provado em 22/10: 1024 pedidos, 1024 gastos. Modelo sem orçamento segue a RN-782, corpo byte a byte. `deepseek/deepseek-v4.1-flash` fica sem orçamento: `reasoning.max_tokens`, `effort` e `reasoning_effort` foram ignorados (8192 de raciocínio). `effort` nunca é enviado. O limite contém o raciocínio mas não garante a tool call.
 - **Onde:** `src/domain/llm/raciocinio-do-agente.ts:18` (`opcoesDeRaciocinio`), `src/infrastructure/llm/openai-compatible-provider.ts:640` (`controla`), `src/db/schema/llm.ts:159` (`reasoningBudget`), `src/db/migrations/0074_orcamento_de_raciocinio.sql`
 - **Teste:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts` (`modelo com orçamento de raciocínio (RN-914)`), `test/domain/llm/raciocinio-do-agente.spec.ts`
 - **Origem:** AT-569 (medição paga de 22/10, `~/brabo-gravacoes/raciocinio-smoke-2026-10-22/resultados.jsonl`)
 
 ### RN-915 — O raciocínio é contado no stream e abortado no limite; o custo abortado é estimado e depois reconciliado {#rn-915}
 
-Complementa a [RN-914](#rn-914) ([ADR 0224](../../adr/0224-raciocinio-abortado-no-stream.md)).
+Complementa a [RN-914](#rn-914) ([ADR 0224](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0224-raciocinio-abortado-no-stream.md)).
 
 1. **Aborto.** Com `reasoning_budget` e raciocínio ligado, o provider soma os
    caracteres de `delta.reasoning`; passando de `caracteres/4 > N` ele destrói a conexão
@@ -1302,4 +1302,4 @@ Complementa a [RN-914](#rn-914) ([ADR 0224](../../adr/0224-raciocinio-abortado-n
 - **Teste:** `test/infrastructure/llm/raciocinio-abortado.spec.ts` (aborta e estima; sem orçamento não conta);
   `test/application/use-cases/llm/reconciliar-custo-estimado.use-case.spec.ts` (200 troca, 404 mantém);
   `test/infrastructure/persistence/token-usage.repository.spec.ts` (troca uma única vez)
-- **Origem:** AT-589; ADR [0224](../../adr/0224-raciocinio-abortado-no-stream.md)
+- **Origem:** AT-589; ADR [0224](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0224-raciocinio-abortado-no-stream.md)

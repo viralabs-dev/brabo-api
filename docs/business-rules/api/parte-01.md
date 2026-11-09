@@ -29,7 +29,7 @@ loop de agente de virar prejuízo.
 | **Agente** | processo de longa duração com um papel (Criativo, PO, Arquiteto, Dev, Infra, QA, SecOps, Psicólogo, Anamnese) | propõe; nunca decide sozinho o que a política não permite |
 | **Sistema** | api e engine | aplica a política, registra o evento, mede o custo |
 
-O vocabulário está no [glossário](../../glossary.md).
+O vocabulário está no [glossário](https://github.com/viralabs-dev/brabo/blob/dev/docs/glossary.md).
 
 ---
 
@@ -58,7 +58,7 @@ stateDiagram-v2
 - **Teste:** `test/domain/sessions/session-state-machine.spec.ts`
 - **Caso de borda:** `closing` é um estado **transitório**. Uma sessão presa
   nele significa que o dreno começou e não terminou — há alerta para isso,
-  ver o [runbook](../../runbook.md).
+  ver o [runbook](https://github.com/viralabs-dev/brabo-infra/blob/dev/deploy/docs/runbook.md).
 
 ### RN-002 — Todo evento de sessão é imutável e o `seq` é denso {#rn-002}
 
@@ -126,7 +126,7 @@ política rodou. Nem `agent_autonomy` nem `permissions.json` conseguem
 promovê-lo.
 
 `rc` continua na lista mesmo depois que a etapa saiu da política
-([ADR 0030](../../adr/0030-politica-de-branches-mecanizada.md)) e o bootstrap
+([ADR 0030](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0030-politica-de-branches-mecanizada.md)) e o bootstrap
 deixou de criá-la ([RN-029](#rn-029)). Esta lista decide o que a trava
 **recusa**, e repositórios criados por versões anteriores ainda têm a
 branch: proteger uma que não existe não custa nada; desproteger uma que
@@ -134,10 +134,10 @@ existe custa caro.
 
 - **Onde:** `src/domain/actions/decide.ts:523` (`isProtectedBranch`, o teto da trava de merge) + `protected-branches.ts:4`
 - **Teste:** `test/domain/actions/decide.spec.ts`
-- **Origem:** [ADR 0011](../../adr/0011-infra-dev-agents-worktrees-merge-lock.md) §1
+- **Origem:** [ADR 0011](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0011-infra-dev-agents-worktrees-merge-lock.md) §1
 - **Nota:** a proteção equivalente **na plataforma** (GitHub/GitLab)
   diverge entre os providers e não é o portão — ver
-  [ADR 0028](../../adr/0028-protecao-de-branch-divergencia-entre-providers.md).
+  [ADR 0028](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0028-protecao-de-branch-divergencia-entre-providers.md).
 
 ### RN-007 — Teto: patch de instrução nunca é auto-aprovável {#rn-007}
 
@@ -147,7 +147,7 @@ reescrevendo.
 
 - **Onde:** `src/domain/actions/decide.ts:170`
 - **Teste:** `test/domain/actions/decide.spec.ts`
-- **Origem:** [ADR 0016](../../adr/0016-anamnese-proficiencia-patches-instrucao.md) §8
+- **Origem:** [ADR 0016](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0016-anamnese-proficiencia-patches-instrucao.md) §8
 
 ### RN-008 — O casamento de comando é por padrão, não por substring {#rn-008}
 
@@ -193,7 +193,7 @@ O erro nomeia **exatamente o que falta**, não um "inválido" genérico.
 
 - **Onde:** `src/domain/backlog/story-readiness.ts:39`
 - **Teste:** `test/domain/backlog/story-readiness.spec.ts`
-- **Origem:** [ADR 0009](../../adr/0009-agente-po-backlog-rastreabilidade.md) §3
+- **Origem:** [ADR 0009](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0009-agente-po-backlog-rastreabilidade.md) §3
 - **Por quê:** é o que impede o PO de despejar uma história vaga na fila do
   dev.
 
@@ -232,7 +232,7 @@ stateDiagram-v2
 
 - **Onde:** `src/domain/execution/pr-gate-state-machine.ts:24`
 - **Teste:** `test/domain/execution/pr-gate-state-machine.spec.ts`
-- **Origem:** [ADR 0013](../../adr/0013-gates-qa-secops-pr.md) §1
+- **Origem:** [ADR 0013](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0013-gates-qa-secops-pr.md) §1
 - **Caso de borda:** `awaiting_user` é terminal **por desenho** — o sistema
   nunca faz merge (RN-006).
 
@@ -246,7 +246,7 @@ Desde a Fase 8b o teto vale também para a ÁREA de QA, sem mudança de
 código: o `QaLeadServer` é o único chamador de `record_gate_verdict`, então
 uma rodada de gate — não importa quantas especializações ela consultou por
 baixo — continua consumindo exatamente UMA rodada. Ver
-[RN-036](../engine.md#rn-036).
+[RN-036](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-036).
 
 - **Onde:** `DEFAULT_MAX_GATE_CORRECTIONS = 3` em
   `src/application/use-cases/execution/record-gate-verdict.use-case.ts:21`;
@@ -257,7 +257,7 @@ baixo — continua consumindo exatamente UMA rodada. Ver
   e `qa_lead_server_test.exs` (o Lead NUNCA chama
   `record_gate_verdict` nesse caso — é isso que impede a correção de ser
   queimada)
-- **Origem:** [ADR 0017](../../adr/0017-lock-de-workspace-e-monitor-de-dev-agents.md) §4
+- **Origem:** [ADR 0017](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0017-lock-de-workspace-e-monitor-de-dev-agents.md) §4
 
 ### RN-017 — Orçamento tem escopo exclusivo: projeto **ou** sessão {#rn-017}
 
@@ -280,7 +280,7 @@ Cada limiar dispara **uma vez**; o último notificado fica persistido em
 - **Onde:** `src/domain/llm/budget-threshold.ts:4`
 - **Caso de borda:** um projeto em `allow` **não se detém** no teto. É a
   causa mais comum de "o orçamento não segurou" — veja o
-  [runbook](../../runbook.md).
+  [runbook](https://github.com/viralabs-dev/brabo-infra/blob/dev/deploy/docs/runbook.md).
 
 ### RN-020 — O modelo é resolvido em cascata, do mais específico ao mais geral {#rn-020}
 
@@ -301,7 +301,7 @@ lote inteiro.
 
 - **Onde:** `src/domain/psychologist/hypothesis-evidence.ts`
 - **Teste:** `test/domain/psychologist/hypothesis-evidence.spec.ts`
-- **Origem:** [ADR 0015](../../adr/0015-psicologo-real-toolloop-hipoteses-evidencia.md) §3
+- **Origem:** [ADR 0015](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0015-psicologo-real-toolloop-hipoteses-evidencia.md) §3
 
 ### RN-022 — O ciclo de vida da hipótese é compare-and-swap {#rn-022}
 
@@ -310,7 +310,7 @@ hipótese: uma vence, a outra recebe conflito — não 500, não silêncio.
 
 - **Onde:** `src/domain/psychologist/hypothesis-lifecycle.ts`
 - **Teste:** `test/domain/psychologist/hypothesis-lifecycle.spec.ts`
-- **Origem:** [ADR 0022](../../adr/0022-fechamento-4b-psicologo.md) §7
+- **Origem:** [ADR 0022](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0022-fechamento-4b-psicologo.md) §7
 
 ### RN-024 — A Anamnese só perfila competência do catálogo — guarda-corpo estrutural {#rn-024}
 
@@ -321,7 +321,7 @@ caminho de escrita**: é erro no domínio, não instrução de prompt.
 
 - **Onde:** `src/domain/anamnese/competency-catalog.ts:16`
 - **Teste:** `test/domain/anamnese/competency-catalog.spec.ts`
-- **Origem:** [ADR 0016](../../adr/0016-anamnese-proficiencia-patches-instrucao.md) §1
+- **Origem:** [ADR 0016](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0016-anamnese-proficiencia-patches-instrucao.md) §1
 - **Por quê:** a Anamnese perfila **competência técnica**, não pessoa. O limite
   é estrutural porque uma instrução de prompt não é garantia.
 
@@ -329,7 +329,7 @@ caminho de escrita**: é erro no domínio, não instrução de prompt.
 
 - **Onde:** `src/domain/anamnese/proficiency-profile.entity.ts` +
   tabela `anamnese_opt_outs`
-- **Origem:** [ADR 0016](../../adr/0016-anamnese-proficiencia-patches-instrucao.md) §2
+- **Origem:** [ADR 0016](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0016-anamnese-proficiencia-patches-instrucao.md) §2
 
 ### RN-026 — Patch de instrução negado não é reproposto {#rn-026}
 
@@ -347,7 +347,7 @@ Reverter cria uma versão nova com o conteúdo antigo; não apaga histórico. A
 tabela de versões é append-only.
 
 - **Onde:** `src/domain/instructions/`
-- **Origem:** [ADR 0016](../../adr/0016-anamnese-proficiencia-patches-instrucao.md) §4
+- **Origem:** [ADR 0016](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0016-anamnese-proficiencia-patches-instrucao.md) §4
 
 ---
 
@@ -359,7 +359,7 @@ Cinco passos; cada um verifica antes de agir e pode ser retomado do ponto que
 falhou. `skip` é sucesso, não erro.
 
 Eram seis. O sexto criava a branch `rc`, degrau que o
-[ADR 0030](../../adr/0030-politica-de-branches-mecanizada.md) removeu da política —
+[ADR 0030](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0030-politica-de-branches-mecanizada.md) removeu da política —
 o bootstrap continuou criando, protegendo e **documentando no repositório do
 usuário** uma escada que o produto já tinha abandonado (achado #3 do primeiro
 dogfooding). O valor `create_rc_branch` continua no enum `bootstrap_step`:
@@ -369,7 +369,7 @@ histórico.
 - **Onde:** `src/application/use-cases/git/bootstrap-steps.ts` +
   `domain/git/repo-bootstrap.entity.ts` (`RETIRED_BOOTSTRAP_STEPS`)
 - **Teste:** `test/domain/git/repo-bootstrap-status.spec.ts`
-- **Origem:** [ADR 0005](../../adr/0005-repo-bootstrap-idempotent-steps.md)
+- **Origem:** [ADR 0005](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0005-repo-bootstrap-idempotent-steps.md)
 
 ---
 
@@ -392,7 +392,7 @@ são idênticos.
   jusante, não novo roubo: registra `refresh_revoked` e **não** dispara segunda
   cascata. Sem essa distinção, cada aba do usuário legítimo geraria um alarme
   falso durante o incidente.
-- **Origem:** [ADR 0031](../../adr/0031-auth-first-party-argon2id-e-rotacao-de-refresh.md)
+- **Origem:** [ADR 0031](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0031-auth-first-party-argon2id-e-rotacao-de-refresh.md)
 
 ### RN-031 — Falha de login é contada por e-mail e por IP, e o bloqueio escala {#rn-031}
 
@@ -413,7 +413,7 @@ oráculo de existência.
   tentar — o lockout viraria negação de serviço contra quem ele protege.
 - **Por quê:** o balde de IP não pode ser limpo no sucesso; quem tem uma conta
   válida zeraria a janela à vontade e pulverizaria palpites sem limite.
-- **Origem:** [ADR 0031](../../adr/0031-auth-first-party-argon2id-e-rotacao-de-refresh.md)
+- **Origem:** [ADR 0031](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0031-auth-first-party-argon2id-e-rotacao-de-refresh.md)
 
 ### RN-032 — Nenhuma resposta distingue conta existente de inexistente {#rn-032}
 
@@ -438,9 +438,9 @@ registro e no pedido de reset, endereço conhecido e desconhecido devolvem 202.
 - **Por quê:** o que se afirma é "nenhum ramo pula o trabalho caro e nenhum
   produz resposta distinguível", **não** tempo constante. Ver as consequências
   no ADR.
-- **Origem:** [ADR 0031](../../adr/0031-auth-first-party-argon2id-e-rotacao-de-refresh.md),
+- **Origem:** [ADR 0031](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0031-auth-first-party-argon2id-e-rotacao-de-refresh.md),
   borda do migrado em
-  [ADR 0032](../../adr/0032-corte-do-keycloak-e-sessao-em-cookie.md)
+  [ADR 0032](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0032-corte-do-keycloak-e-sessao-em-cookie.md)
 
 ### RN-033 — Token de verificação e de reset vale uma vez só {#rn-033}
 
@@ -457,7 +457,7 @@ Concluir um reset revoga **todas** as sessões do usuário e não emite tokens.
 - **Por quê:** o reset não emite sessão de propósito — logar direto a partir de
   um link recebido por e-mail faria comprometer o e-mail equivaler a tomar a
   conta, sem segundo passo.
-- **Origem:** [ADR 0031](../../adr/0031-auth-first-party-argon2id-e-rotacao-de-refresh.md)
+- **Origem:** [ADR 0031](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0031-auth-first-party-argon2id-e-rotacao-de-refresh.md)
 
 ### RN-034 — A sessão da web vive em cookie httpOnly, com CSRF {#rn-034}
 
@@ -478,7 +478,7 @@ resposta. O access token, de 15 minutos, fica em memória no cliente e viaja no
 - **Por quê:** devolver o refresh também no corpo anularia o `httpOnly` —
   bastaria um XSS ler a resposta do login, e levaria a sessão longa em vez dos
   15 minutos do access.
-- **Origem:** [ADR 0032](../../adr/0032-corte-do-keycloak-e-sessao-em-cookie.md)
+- **Origem:** [ADR 0032](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0032-corte-do-keycloak-e-sessao-em-cookie.md)
 
 ### RN-035 — O tráfego interno engine ↔ api exige o segredo de serviço {#rn-035}
 
@@ -500,7 +500,7 @@ verificação, para a rotação não ter janela de indisponibilidade.
 - **Borda:** a isenção de rate limit vem do METADADO da rota, não do guard. O
   `RateLimitGuard` é `APP_GUARD` e roda antes de qualquer guard de controller —
   quando ele decide, o `EngineServiceGuard` ainda não rodou.
-- **Origem:** [ADR 0032](../../adr/0032-corte-do-keycloak-e-sessao-em-cookie.md)
+- **Origem:** [ADR 0032](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0032-corte-do-keycloak-e-sessao-em-cookie.md)
 
 ### RN-038 — Agente contado no resumo do workspace = gastou tokens este mês {#rn-038}
 
@@ -529,7 +529,7 @@ modelo tiver `supports_tool_calling`. Um agente só existe dentro do
 ToolLoop, e o ToolLoop só funciona se o modelo souber **pedir** ferramentas;
 sem isso, a falha apareceria adiante como "o agente parou sem terminar",
 que é exatamente o diagnóstico por eliminação que o
-[ADR 0020](../../adr/0020-destravar-gates-qa-secops.md) proibiu. A recusa é um
+[ADR 0020](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0020-destravar-gates-qa-secops.md) proibiu. A recusa é um
 422 e a mensagem aponta para o filtro **"aptos para agentes"** — sem esse
 apontamento a regra vira um beco sem saída.
 
@@ -556,7 +556,7 @@ filtro — marcar ali esconderia modelo que a api aceita. **Isto não elimina o
 422**: o filtro cobre uma das três causas, e as outras duas
 ([RN-043](#rn-043) — desativado no workspace, sumido do provider) seguem
 alcançáveis, com o indisponível ainda LISTADO e marcado; o desfecho de recusa da
-[RN-470](../web.md#rn-470) continua sendo o que conta o que houve. E é estado INICIAL de
+[RN-470](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-470) continua sendo o que conta o que houve. E é estado INICIAL de
 um checkbox, não trava: desmarcar volta a listar tudo.
 
 **A consequência: o vigente que o filtro esconde é DITO.** `workspace` e
@@ -571,7 +571,7 @@ lista vazia, que já manda desmarcar — dois avisos sobre o mesmo checkbox seri
 ruído.
 
 **Correção de fato, não do texto acima:** "Only `agent` validates" descreve a
-Fase 9a. Desde o [ADR 0064](../../adr/0064-escopo-de-area-na-cascata-e-o-binding-de-agente-global.md)
+Fase 9a. Desde o [ADR 0064](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0064-escopo-de-area-na-cascata-e-o-binding-de-agente-global.md)
 `area` entra na MESMA validação — ela não é fallback genérico, o único consumidor
 do modelo de uma área é um agente dela ([RN-102](parte-03.md#rn-102)) —, e é por isso que
 são DUAS as telas que ligam o filtro.
@@ -585,7 +585,7 @@ são DUAS as telas que ligam o filtro.
   `apps/web/src/routes/settings/filtro-de-aptos.test.tsx` e
   `apps/web/src/routes/SessionPage.filtro-de-aptos.test.tsx` (as duas telas que
   ligam, e a que não liga)
-- **Origem:** [ADR 0041](../../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
+- **Origem:** [ADR 0041](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
 
 ### RN-041 — Contagem de tokens que o provider não deu é marcada como estimada {#rn-041}
 
@@ -605,7 +605,7 @@ Anthropic não pode omitir a contagem, porque `usage` é obrigatório no
 - **Onde:** `src/infrastructure/llm/openai-compatible-provider.ts:167`
 - **Teste:** `test/contract/llm-provider.contract.ts` (cenário
   `sem_usage`, rodado contra os três providers)
-- **Origem:** [ADR 0041](../../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
+- **Origem:** [ADR 0041](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
 
 ### RN-042 — O metering registra quem ATENDEU a chamada, não só por onde ela entrou {#rn-042}
 
@@ -621,7 +621,7 @@ custo inteiro.
 
 - **Onde:** `src/application/use-cases/llm/record-llm-usage.use-case.ts:73`
 - **Teste:** `test/application/use-cases/llm/record-llm-usage.use-case.spec.ts`
-- **Origem:** [ADR 0041](../../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
+- **Origem:** [ADR 0041](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
 
 ### RN-043 — Um modelo descoberto entra desabilitado; um modelo que desaparece é marcado, nunca apagado {#rn-043}
 
@@ -642,7 +642,7 @@ A sincronização do catálogo tem três desfechos, e nenhum é destrutivo:
 
 Os dois eixos são deliberadamente independentes: a curadoria é decisão de
 uma pessoa, `availability` é uma observação do provider. Nenhum escreve no
-outro — e desde o [ADR 0049](../../adr/0049-curadoria-de-modelo-por-workspace.md)
+outro — e desde o [ADR 0049](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0049-curadoria-de-modelo-por-workspace.md)
 eles nem moram na mesma tabela, então a sincronização não tem campo de
 curadoria para atropelar, mesmo que quisesse.
 
@@ -666,7 +666,7 @@ Três consequências no resto do sistema:
 - **Teste:** `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts`,
   `test/domain/llm/binding-resolver.spec.ts`,
   `test/application/use-cases/llm/set-model-binding.use-case.spec.ts`
-- **Origem:** [ADR 0042](../../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
+- **Origem:** [ADR 0042](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
 
 ### RN-044 — O preço vale daqui para a frente, e o custo antigo continua conferindo {#rn-044}
 
@@ -696,7 +696,7 @@ em silêncio). Ambos agora auditam, com o seed reaproveitando o próprio
   `src/db/seed.ts:376`
 - **Teste:** `test/application/use-cases/llm/update-model-pricing.use-case.spec.ts`,
   `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts`
-- **Origem:** [ADR 0042](../../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
+- **Origem:** [ADR 0042](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
 
 ### RN-045 — Um repositório adotado só é alterado por um plano aprovado {#rn-045}
 
@@ -732,7 +732,7 @@ terceiros sem plano nenhum.
 
 **Limite conhecido:** "proteção divergente" aqui é presença × ausência,
 porque é só isso que o contrato expõe (`GitBranch.protected` é um booleano, e
-o [ADR 0028](../../adr/0028-protecao-de-branch-divergencia-entre-providers.md)
+o [ADR 0028](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0028-protecao-de-branch-divergencia-entre-providers.md)
 adiou uma `ProtectionPolicy` normalizada). Uma branch com proteção PARCIAL
 conta como "desprotegida" e pode ser sobrescrita — mas só dentro de um plano
 aprovado.
@@ -742,7 +742,7 @@ aprovado.
   `src/application/use-cases/git/bootstrap-steps.ts:74`
 - **Teste:** `test/application/use-cases/git/decide-bootstrap-plan.use-case.spec.ts`,
   `test/application/use-cases/git/bootstrap-plan.spec.ts`
-- **Origem:** [ADR 0044](../../adr/0044-adocao-de-repositorio-existente.md)
+- **Origem:** [ADR 0044](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0044-adocao-de-repositorio-existente.md)
 
 ### RN-046 — Todo repositório de projeto declara a sua origem {#rn-046}
 
@@ -764,7 +764,7 @@ linha adotada para classificar errado.
 - **Onde:** `src/db/schema/git.ts`, `src/db/migrations/0031_special_winter_soldier.sql`,
   `src/domain/git/repo-bootstrap.entity.ts`
 - **Teste:** `test/application/use-cases/git/adopt-repository.use-case.spec.ts`
-- **Origem:** [ADR 0044](../../adr/0044-adocao-de-repositorio-existente.md)
+- **Origem:** [ADR 0044](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0044-adocao-de-repositorio-existente.md)
 
 ### RN-048 — A promoção de story é do usuário por padrão; o modo muda quem dispara, nunca o que se valida {#rn-048}
 
@@ -801,7 +801,7 @@ desliga `proposed_ready`, emite `backlog.story_promotion_returned` e injeta o
 motivo como mensagem FIXADA na sessão do PO, com a mesma redação de
 precedência de um gate devolvido ao dev (lição do ADR 0020). A recusa é
 gravada **antes** de falar com o engine, e o engine falhar não a desfaz — é o
-inverso da ordem do rearme na [RN-047](../engine.md#rn-047), e por um motivo: lá o evento
+inverso da ordem do rearme na [RN-047](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-047), e por um motivo: lá o evento
 afirma algo SOBRE o engine, aqui ele afirma algo sobre o usuário, o que é
 verdade haja ou não um PO de plantão para ouvir.
 
@@ -830,7 +830,7 @@ produzir por causa de um deploy.
   `test/application/use-cases/backlog/promote-stories.use-case.spec.ts`,
   `test/application/use-cases/backlog/return-story.use-case.spec.ts`,
   `apps/engine/test/engine/agents/po_server_test.exs` (describe `revise/2`)
-- **Origem:** [ADR 0046](../../adr/0046-promocao-de-story-com-autoridade-do-usuario.md)
+- **Origem:** [ADR 0046](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0046-promocao-de-story-com-autoridade-do-usuario.md)
 
 ### RN-049 — Toda decisão sobre uma ação proposta fica no event log, com quem decidiu {#rn-049}
 
@@ -859,7 +859,7 @@ vezes numa métrica de aprovação.
   `.../approve-action.use-case.ts`, `.../deny-action.use-case.ts`
 - **Teste:** `test/application/use-cases/actions/approve-deny-action.use-case.spec.ts`
   (describe `the decision in the event log`)
-- **Origem:** [ADR 0048](../../adr/0048-decisao-no-log-e-a-ordem-do-gate.md)
+- **Origem:** [ADR 0048](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0048-decisao-no-log-e-a-ordem-do-gate.md)
 
 ### RN-051 — Um preço digitado à mão vence o catálogo do provider {#rn-051}
 
@@ -888,7 +888,7 @@ primeiro catálogo que resolver informar um preço.
   (`resolverPreco`), `src/db/schema/llm.ts:137`
 - **Teste:** `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts`
   (`manually typed price beats a catalog that REPORTS a price`)
-- **Origem:** [ADR 0042](../../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
+- **Origem:** [ADR 0042](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
 
 ### RN-052 — A curadoria de modelos vale só no workspace que a decidiu {#rn-052}
 
@@ -923,7 +923,7 @@ Três regras derivadas:
   (`workspaceDoEscopo`)
 - **Teste:** `test/application/use-cases/llm/set-models-active.use-case.spec.ts`
   (`activating in one workspace does NOT turn on the model in its neighbor`)
-- **Origem:** [ADR 0049](../../adr/0049-curadoria-de-modelo-por-workspace.md)
+- **Origem:** [ADR 0049](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0049-curadoria-de-modelo-por-workspace.md)
 
 ### RN-053 — Reativar a execução acorda quem está parado, dentro da sessão que já existe {#rn-053}
 
@@ -952,7 +952,7 @@ do servidor:
 |---|---|
 | `idle` | pega a próxima tarefa |
 | `working`, `awaiting_gate`, `awaiting_approval` | nada — a tarefa em andamento não é abandonada |
-| `idle_tripped` | nada — só o rearme explícito o destrava ([RN-047](../engine.md#rn-047)) |
+| `idle_tripped` | nada — só o rearme explícito o destrava ([RN-047](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-047)) |
 
 Disparar `:work` para todos seria pior que o defeito: ele pega tarefa
 incondicionalmente, e para um agente em `awaiting_gate` significaria largar o
@@ -970,7 +970,7 @@ um clique.
   `apps/engine/test/engine_web/controllers/execution_command_controller_test.exs`
   (describe `reactivation`)
 - **Origem:** achado #11 do
-  [primeiro dogfooding](../../explanation/primeiro-dogfooding.md)
+  [primeiro dogfooding](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/primeiro-dogfooding.md)
 
 ## Gates de PR
 
@@ -1016,7 +1016,7 @@ A lista continua sendo o CATÁLOGO; `agent_areas` é o ESTADO por projeto
   de que as cópias derivadas não divergem da fonte),
   `test/application/use-cases/agents/create-handoff.use-case.spec.ts`
   (recusa sem linha e sem evento)
-- **Origem:** [ADR 0038](../../adr/0038-hierarquia-de-agentes.md), fechado a
-  partir do achado #12 do [primeiro dogfooding](../../explanation/primeiro-dogfooding.md)
+- **Origem:** [ADR 0038](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0038-hierarquia-de-agentes.md), fechado a
+  partir do achado #12 do [primeiro dogfooding](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/primeiro-dogfooding.md)
 
 ---

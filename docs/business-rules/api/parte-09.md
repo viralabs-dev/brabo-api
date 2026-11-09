@@ -12,10 +12,10 @@ keywords: [regras de negócio, api]
 
 ### RN-677 — Aceitar o Dev Lead só o traz para planejar; APROVAR o plano dele é o que ativa a execução {#rn-677}
 
-> **Revisa a [RN-161](../web.md#rn-161)** (decisão do
+> **Revisa a [RN-161](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-161)** (decisão do
 > dono, 01/10): aceitar o handoff ao Dev Lead deixou de encadear
 > `POST .../execution/activate`, para TODO papel. O atalho explícito "Ativar
-> execução" do card ([RN-137](../web.md#rn-137)) e o da Visão Geral continuam — são um
+> execução" do card ([RN-137](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-137)) e o da Visão Geral continuam — são um
 > clique próprio, não o aceite.
 
 O uso real de 29/09 mediu a inversão: a execução foi ativada no aceite do
@@ -77,7 +77,7 @@ handoff às 06:45:01 — o web encadeava a ativação para `maintainer`/`owner`
   `apps/web/src/lib/aprovacoes.test.ts:118` (a frase diz que aprovar ativa);
   `apps/engine/test/engine/agents/dev_lead_tools_test.exs:134`, `:141`;
   `apps/engine/test/engine/agents/dev_lead_server_test.exs:426`, `:457`
-- **Decisão arquitetural:** [ADR 0194](../../adr/0194-aprovar-o-plano-ativa-a-execucao.md)
+- **Decisão arquitetural:** [ADR 0194](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0194-aprovar-o-plano-ativa-a-execucao.md)
 - **Origem:** AT-263 (item A17 da análise do uso real de 29/09)
 
 ### RN-678 — A tarefa pertence a um módulo, atribuído pelo Dev Lead no plano, e só o dev daquele módulo a pega {#rn-678}
@@ -101,7 +101,7 @@ qualquer módulo da história pegar qualquer tarefa dela (`s.module_ids ? $1`).
    (da tarefa ou do plano) está **fora do `module_map`**; a tarefa aparece duas
    vezes; ou não existe neste projeto. A frase nomeia a tarefa, o módulo e os
    módulos válidos, e volta ao Dev Lead como erro da ferramenta (entrada do
-   laço, [RN-163](../engine.md#rn-163)), para ele corrigir.
+   laço, [RN-163](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-163)), para ele corrigir.
 3. **A aprovação relê** o plano contra o `module_map` daquele momento (ele pode
    ter mudado): recusa vira `failed` sem gravar nada e sem ativar. Passando,
    os módulos são gravados ANTES da ativação, para nenhum dev agent recém-subido
@@ -142,7 +142,7 @@ módulo do `module_map`, como antes, e o paralelismo extra continua pelo
   (módulo fora do mapa na aprovação: nada gravado, nada ativado);
   `apps/engine/test/engine/agents/dev_lead_tools_test.exs:110`, `:118`;
   `apps/engine/test/engine/agents/dev_lead_server_test.exs:131`
-- **Decisão arquitetural:** [ADR 0194](../../adr/0194-aprovar-o-plano-ativa-a-execucao.md)
+- **Decisão arquitetural:** [ADR 0194](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0194-aprovar-o-plano-ativa-a-execucao.md)
 - **Origem:** AT-274 (item A28 / extra E5 da análise do uso real de 29/09)
 
 ### RN-679 — A curadoria recusa o alias de roteamento livre do OpenRouter {#rn-679}
@@ -153,7 +153,7 @@ com `~`, como `~deepseek/deepseek-flash-latest`) "sempre redireciona para o
 último da família": o catálogo publica um preço de VITRINE (no uso real de
 29/09, o do endpoint mais barato da família), a lista de endpoints vem vazia,
 e quem cobra é o upstream que atendeu. Não há upstream contra o qual o preço
-congelado do [ADR 0042](../../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
+congelado do [ADR 0042](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md)
 signifique alguma coisa. A alternativa — preçar por upstream — foi recusada.
 
 1. **A régua é do provider.** `ehAliasDeRoteamentoLivre` é `provider =
@@ -204,10 +204,10 @@ embedding do RAG, e AVISA quando a mais próxima está a partir do limiar.
 1. **Aviso, nunca recusa.** O item já existe quando a checagem roda. O aviso
    volta ao agente no resultado da ferramenta — a frase nomeia o parecido, o
    id e o número — e fica no log como `backlog.semantic_duplicate_warned`. A
-   duplicata EXATA continua recusada antes, pela [RN-080](../engine.md#rn-080) e pela
+   duplicata EXATA continua recusada antes, pela [RN-080](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-080) e pela
    [RN-081](parte-02.md#rn-081), e por isso título normalizado igual sai da comparação.
 2. **O limiar é 0,80 e é PONTO DE PARTIDA, não calibrado** (ADR 0198, como os
-   pesos do [ADR 0080](../../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)):
+   pesos do [ADR 0080](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)):
    os vetores reais do par do achado R e dos pares que não são duplicata não
    puderam ser gravados no ambiente em que a regra nasceu. A prova roda sozinha
    quando `vetores.json` for gravado; até lá ela é PULADA com aviso.
@@ -217,7 +217,7 @@ embedding do RAG, e AVISA quando a mais próxima está a partir do limiar.
 4. **O gasto entra no metering como linha própria**: ator
    `system`/`duplicata-semantica`, provider e modelo do RAG, saída zero, preço
    do catálogo quando o modelo está nele. É a ÚNICA exceção ao corte do
-   [ADR 0075](../../adr/0075-embeddings-no-contrato-de-llm-provider.md) — a
+   [ADR 0075](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0075-embeddings-no-contrato-de-llm-provider.md) — a
    indexação e a busca do RAG seguem fora —, e cabe porque a emissão acontece
    dentro de sessão.
 5. **Tetos:** as 100 existentes mais recentes (o resultado diz quantas de
@@ -243,7 +243,7 @@ embedding do RAG, e AVISA quando a mais próxima está a partir do limiar.
   pulada até os vetores serem gravados),
   `apps/engine/test/engine/harness/duplicata_semantica_test.exs`,
   `apps/web/src/lib/activity.test.ts` (`duplicata semântica (RN-681)`)
-- **Origem:** [ADR 0198](../../adr/0198-duplicata-semantica-por-embedding-com-limiar-que-so-avisa.md)
+- **Origem:** [ADR 0198](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0198-duplicata-semantica-por-embedding-com-limiar-que-so-avisa.md)
   (AT-171, achado R)
 
 ## A Anamnese religada: sujeito elegível e fato do perfil (RN-680) {#a-anamnese-religada-sujeito-elegivel-e-fato-do-perfil-rn-680}
@@ -256,12 +256,12 @@ texto atual — sem histórico, sem prompt de sistema, sem ferramenta — e grav
 resposta com o NOME DO MODELO como ator. Medido no uso real de 29/09: a sessão
 5d66 respondeu "não tenho acesso a conversas anteriores". A decisão do dono
 (01/10) é que, sem agente ativo, a consultiva **pede para escolher um agente**
-— a mesma régua da [RN-584](../engine.md#rn-584) (nenhum destinatário padrão) chegando ao
+— a mesma régua da [RN-584](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-584) (nenhum destinatário padrão) chegando ao
 último caso que ainda tinha um: o modelo cru.
 
 **A medição, antes do conserto:** a rota de chat tinha UM cliente, a tela
 (`handleSend`, só quando não havia destinatário — o que, desde a
-[RN-631](../web.md#rn-631), só acontecia na consultiva sem agente: a criativa sempre tem
+[RN-631](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-631), só acontecia na consultiva sem agente: a criativa sempre tem
 o Criativo como opção). O `curl` que o seed imprime é dica de desenvolvimento,
 numa sessão criativa. O caso de uso tem um SEGUNDO consumidor legítimo: os
 smokes de provider (`*-provider.smoke.spec.ts`) o usam direto como instrumento
@@ -321,7 +321,7 @@ isso a recusa da api mora na ROTA, e o caso de uso não muda.
 
 ### RN-683 — A Infra sobe o container com o MENOR recurso elegível, derivado do que o Arquiteto declara por módulo no `module_map` {#rn-683}
 
-Decisão do dono em 01/10 ([ADR 0199](../../adr/0199-recurso-minimo-derivado-do-module-map.md),
+Decisão do dono em 01/10 ([ADR 0199](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0199-recurso-minimo-derivado-do-module-map.md),
 AT-261). Até aqui `resources` omitido virava `RECURSOS_PADRAO` (2 cpus,
 4096 MiB, 512 pids) e a subida do servidor no aceite ([RN-671](parte-08.md#rn-671)) o
 omitia sempre: todo container nascia no padrão, sem noção de mínimo.
@@ -381,11 +381,11 @@ mudam; a recusa abaixo do mínimo acontece na execução, não ao propor.
 ### RN-684 — O contrato entre módulos é artefato versionado do Arquiteto, e o dev agent o lê pela ferramenta, nunca no worktree de outro dev {#rn-684}
 
 Decisão do dono (01/10), registrada no
-[ADR 0200](../../adr/0200-contrato-entre-modulos-artefato-do-arquiteto.md). No uso
+[ADR 0200](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0200-contrato-entre-modulos-artefato-do-arquiteto.md). No uso
 real de 29/09, `dev-board-engine` gastou 5 dos seus 24 passos com ferramenta
 lendo o worktree de outros módulos para descobrir a interface deles: o
 `module_map` diz quem depende de quem, nunca o que um módulo expõe. Aplica a
-[RN-164](../engine.md#rn-164) aos dev agents.
+[RN-164](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-164) aos dev agents.
 
 1. **O artefato é `artifact.module_contracts`**, sem tabela, como o
    `module_routing` e o `c4_diagram`: o vigente é o de maior `version`, com
@@ -447,12 +447,12 @@ Revisa a [RN-520](parte-06.md#rn-520). Até aqui, revogar uma chave de dispositi
 a conexão viva do runner pelo par `{projeto, usuário}`, porque a identidade da
 credencial morria no `PatAuthGuard`: um runner do MESMO usuário conectado com
 PAT ou com outra chave caía junto, e a chave de MÁQUINA
-([RN-543](../produto.md#rn-543)) multiplicava isso por projeto. Revogar um PAT não derrubava
+([RN-543](https://github.com/viralabs-dev/brabo/blob/dev/docs/business-rules/produto.md#rn-543)) multiplicava isso por projeto. Revogar um PAT não derrubava
 nada.
 
 **O ticket guarda QUAL credencial o pediu.** `runner_socket_tickets` (tabela do
 engine) ganha `credential_kind` (`device_key` | `pat`) e `credential_id` (o
-`kid`, que é o id do registro — [RN-475](../web.md#rn-475) —, ou o id do PAT), as duas
+`kid`, que é o id do registro — [RN-475](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-475) —, ou o id do PAT), as duas
 NULÁVEIS: o ticket de `terminal` é da aba da web e não tem credencial de
 dispositivo, e o de `runner` emitido por uma api anterior chega sem ela. O
 `PatAuthGuard` anota a credencial DEPOIS de autorizar
@@ -495,7 +495,7 @@ revogação de chave volta ao par, `disconnectRunnerOfUser`, projeto a projeto.
 **O par `{projeto, usuário}` continua, com outro dono:** é o alvo da remoção de
 membro ([RN-615](parte-07.md#rn-615)), que tira a PESSOA, com a credencial que for.
 
-**A tela diz a precisão** ([RN-561](../web.md#rn-561)): a confirmação de revogar — chaves
+**A tela diz a precisão** ([RN-561](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-561)): a confirmação de revogar — chaves
 de dispositivo em Configurações e chaves de máquina na Conta — troca *"outro
 runner seu também cai"* por *"só cai o que se conectou com ESTA chave"*. Muda o
 rótulo, não o comportamento.
@@ -552,7 +552,7 @@ rótulo, não o comportamento.
   `apps/web/src/routes/settings/chaves-de-dispositivo.test.tsx`,
   `apps/web/src/routes/MachineDeviceKeysSection.test.tsx` (a frase da precisão,
   e a do alvo antigo que não volta)
-- **ADR:** [0201](../../adr/0201-revogacao-por-chave.md)
+- **ADR:** [0201](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0201-revogacao-por-chave.md)
 - **Origem:** AT-013 (HS-008, EP-003), decisão do dono em 01/10. Fica
   declarado e NÃO feito: o ticket SEM credencial (de api anterior) não é
   anulado na revogação — não há o que comparar, e a janela é de 30 s, só no
@@ -590,7 +590,7 @@ metade que impede o teto de ser decorativo.
 — na ativação e no aceite de paralelização. Semear push e PR seria gravar uma
 autonomia que `decide()` nunca honra, a tela prometendo o que não acontece (o
 argumento da RN-642). Linhas já gravadas ficam no banco, inertes. O dev agent
-segue o caminho da [RN-050](../engine.md#rn-050): commit executado,
+segue o caminho da [RN-050](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-050): commit executado,
 push e PR `pending`, agente em `awaiting_approval` retendo o worktree até o
 `task.pr_settled`; só então o gate abre.
 
@@ -623,7 +623,7 @@ existe como destino da mensagem do comando de terminal.
 
 Medido no código: até aqui o `proficiency_profiles` que a Anamnese grava não
 chegava a agente nenhum — só os FATOS do Psicólogo aceitos pela pessoa
-([RN-680](../engine.md#rn-680)) iam no turno. O perfil era só tela.
+([RN-680](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-680)) iam no turno. O perfil era só tela.
 
 **A regra:** a api lê o nível por competência do AUTOR da mensagem neste
 projeto (`listByUser`) e o acrescenta ao MESMO texto `perfilDoAutor` que o
@@ -786,7 +786,7 @@ restaura a aprovação.
   sozinha nasce `pending`); `apps/web/src/components/ModoAutomaticoDoTime.test.tsx`,
   `AgentCard.test.tsx`, `ApprovalCard.test.tsx` (a tela diz que push e PR são
   liberados)
-- **Decisão arquitetural:** [ADR 0204](../../adr/0204-modo-automatico-libera-push-e-pr.md)
+- **Decisão arquitetural:** [ADR 0204](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0204-modo-automatico-libera-push-e-pr.md)
 - **Origem:** AT-385, decisão do dono em 02/10
 
 ## O instalador oferece os modelos locais, e não confunde o dev com uma instalação (RN-691, RN-692) {#o-instalador-oferece-os-modelos-locais-e-nao-confunde-o-dev-com-uma-instalacao-rn-691-rn-692-1}
@@ -853,7 +853,7 @@ restaura a aprovação.
   nenhum `anamnese.profile_updated` nasce. Aprovação ao lado de uma interação
   da pessoa continua aceita. A mensagem da pessoa que repara falha de agente é
   desvio do AGENTE e não traço dela: o prompt diz isso, e o registro mora na
-  [RN-717](../engine.md#rn-717).
+  [RN-717](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-717).
 - **Medição (AT-376):** na loja-teste de 02/10, "Git → iniciante" e "Infra →
   iniciante" sem a pessoa ter interagido com nenhum dos dois, e "aprova 2 ADRs
   sem hesitar" como arquitetura avançada.

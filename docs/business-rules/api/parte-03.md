@@ -100,7 +100,7 @@ que a tabela não tem. Gasto de agente aparece no relatório do owner, de quem �
 chave.
 
 **O eixo de `provider` existe, e o membro não o alcança.** Até o
-[ADR 0076](../../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md) ele simplesmente
+[ADR 0076](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0076-provider-volta-a-ser-dimensao-de-gasto.md) ele simplesmente
 não existia na agregação, e era a ausência que continha a visão do membro. Hoje
 `sumGroupedBy` tem seis dimensões (`model`, `provider`, `project`, `actor`,
 `session`, `day`) e a contenção mudou de forma, não de força: quem contém é o
@@ -118,8 +118,8 @@ dimensão `model`.
   (o membro não enxerga linha de outro ator, nem de agente, nem do owner; o
   filtro é pelo par `(kind, id)`; a resposta não carrega provider);
   `apps/web/src/routes/ProjectSpendTab.test.tsx`
-- **Origem:** [ADR 0063](../../adr/0063-duas-audiencias-para-o-mesmo-gasto.md) (FASE 22),
-  revisto pelo [ADR 0076](../../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
+- **Origem:** [ADR 0063](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0063-duas-audiencias-para-o-mesmo-gasto.md) (FASE 22),
+  revisto pelo [ADR 0076](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
 
 ### RN-102 — O modelo da área é padrão herdável; divergir é decisão do agente, e voltar a herdar apaga a decisão {#rn-102}
 
@@ -174,7 +174,7 @@ recarregando.
 
 **Some o CONTROLE, nunca a INFORMAÇÃO** (ADR 0064). Quem não pode editar
 continua vendo o modelo vigente no gatilho e a cadeia de origem inteira
-([RN-470](../web.md#rn-470)), e o "voltar a herdar" continua na linha, inerte — ele é o
+([RN-470](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-470)), e o "voltar a herdar" continua na linha, inerte — ele é o
 que DIZ que aquele agente divergiu, e escondê-lo apagaria um estado que dá para
 ler sem poder mudar. O motivo de estarem apagados é dito UMA vez, em texto, na
 legenda da seção, e não por `title` em cada linha: tooltip em elemento
@@ -192,7 +192,7 @@ exigiria uma consulta de papel POR PROJETO que o web ainda não tem, e é a mesm
 lacuna que a caixa da área (RN-912) também carrega; inventar uma segunda fonte de papel
 só numa seção seria pior que a lacuna.
 
-> **Nota aditiva ([RN-471](../web.md#rn-471)):** a lacuna do parágrafo
+> **Nota aditiva ([RN-471](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-471)):** a lacuna do parágrafo
 > acima é UMA, não uma por seção, e onde a tela JÁ faz a consulta de papel por
 > projeto ela se fecha em vez de se declarar. A seção de **Membros** busca
 > `listProjectMembers`, que é `findMemberRole` para todo mundo de uma vez, e
@@ -232,7 +232,7 @@ só numa seção seria pior que a lacuna.
   controle apagado; e o caso que impede "uniformizar" as duas seções — o mesmo
   `developer` vê a tabela de agentes habilitada e a de áreas desabilitada, ao
   mesmo tempo)
-- **Origem:** [ADR 0064](../../adr/0064-escopo-de-area-na-cascata-e-o-binding-de-agente-global.md) (FASE 23)
+- **Origem:** [ADR 0064](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0064-escopo-de-area-na-cascata-e-o-binding-de-agente-global.md) (FASE 23)
 
 ### RN-103 — O binding de agente é POR PROJETO, não mais global {#rn-103}
 
@@ -270,11 +270,11 @@ inventar um projeto dono seria inventar dado que não existia.
   `test/application/use-cases/llm/set-model-binding.use-case.spec.ts`,
   `test/application/use-cases/llm/resolve-model-binding.use-case.spec.ts`
   ("o binding de agente é POR PROJETO: o vizinho não o enxerga")
-- **Origem:** [ADR 0064](../../adr/0064-escopo-de-area-na-cascata-e-o-binding-de-agente-global.md) (FASE 23)
+- **Origem:** [ADR 0064](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0064-escopo-de-area-na-cascata-e-o-binding-de-agente-global.md) (FASE 23)
 
 ### RN-105 — Sem imagem decidida pelo Arquiteto, o container não sobe e o Code não abre {#rn-105}
 
-A aba Code (`GET /projects/:id/code/*`, [ADR 0060](../../adr/0060-superficie-de-leitura-de-codigo.md))
+A aba Code (`GET /projects/:id/code/*`, [ADR 0060](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0060-superficie-de-leitura-de-codigo.md))
 responde **409** enquanto o projeto estiver em `sem_decisao` — o estado inicial
 de todo projeto. `sem_decisao` vira `decidido` só quando o Arquiteto emite
 `artifact.project_image` pela ferramenta `choose_project_image`, com imagem OCI
@@ -282,10 +282,10 @@ de tag explícita (`latest` recusado), `rationale` e postura de rede.
 
 A checagem mora no MESMO funil que a contenção de caminho da
 [RN-095](parte-02.md#rn-095) (`ReadProjectCodeUseCase.alvo`), e não em cada uma das sete
-rotas (árvore, arquivo, busca, diff de PR, [blame](../contracts.md#rn-110), [lista de
-PRs](../contracts.md#rn-111) e [branches detalhadas](../contracts.md#rn-112), FASE 26b) — checagem
+rotas (árvore, arquivo, busca, diff de PR, [blame](https://github.com/viralabs-dev/brabo-contracts/blob/dev/packages/docs/business-rules/contracts.md#rn-110), [lista de
+PRs](https://github.com/viralabs-dev/brabo-contracts/blob/dev/packages/docs/business-rules/contracts.md#rn-111) e [branches detalhadas](https://github.com/viralabs-dev/brabo-contracts/blob/dev/packages/docs/business-rules/contracts.md#rn-112), FASE 26b) — checagem
 duplicada em sete chamadores é checagem que um dia diverge em um deles
-([ADR 0058](../../adr/0058-csp-fechado-na-api-e-escopo-de-projeto-contido.md)).
+([ADR 0058](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0058-csp-fechado-na-api-e-escopo-de-projeto-contido.md)).
 Contagem corrigida aqui: este registro dizia "quatro rotas" desde a FASE 26,
 e ficou desatualizado quando a FASE 26b acrescentou as três últimas ao mesmo
 funil sem que ninguém revisasse este número.
@@ -311,7 +311,7 @@ nunca sobrescrever a anterior.
   permissão dele; o recurso ainda não existe NESTE ESTADO. E não é 404: a aba
   existe, só não está liberada. A mensagem diz o que falta, para a tela mostrar
   o motivo em vez de um erro mudo (RN-088).
-- **Origem:** [ADR 0065](../../adr/0065-container-por-projeto-a-fronteira-deixa-de-ser-politica.md)
+- **Origem:** [ADR 0065](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0065-container-por-projeto-a-fronteira-deixa-de-ser-politica.md)
 
 ### RN-106 — `git push`, PR e deploy não saem pelo terminal — mesmo dentro do escopo do projeto {#rn-106}
 
@@ -321,7 +321,7 @@ produto)**: o `deny` que este registro descreve virou TETO ABSOLUTO
 fiel ao que valia até a revisão.
 
 Dentro do container do projeto o agente é livre (ADR 0065): o allowlist de
-verbos do [ADR 0055](../../adr/0055-escopo-de-caminho-na-politica-de-terminal.md) não
+verbos do [ADR 0055](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0055-escopo-de-caminho-na-politica-de-terminal.md) não
 converge (achados Z e AD — verbo, forma e invocação são espaços distintos), e a
 saída é a parede, não uma lista mais longa. Mas três efeitos atravessam a
 parede e chegam no mundo, e a decisão do usuário foi textual: *"agente livre
@@ -352,7 +352,7 @@ que agora está garantido por `deny`, não só combinado por convenção.
 - **Borda:** a fronteira NÃO se sobrepõe à trava de merge em branch protegida
   (RN-014, sempre manual) nem ao escopo de caminho (RN-095/ADR 0055) — as três
   regras coexistem, cada uma vetando por um motivo diferente.
-- **Origem:** [ADR 0065](../../adr/0065-container-por-projeto-a-fronteira-deixa-de-ser-politica.md)
+- **Origem:** [ADR 0065](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0065-container-por-projeto-a-fronteira-deixa-de-ser-politica.md)
 
 ### RN-109 — O nome de pasta do workspace é congelado na criação, e projeto antigo mantém o UUID {#rn-109}
 
@@ -415,7 +415,7 @@ pasta que o engine realmente usa.
 
 ### RN-114 — Os quatro segredos irmãos do `GIT_OAUTH_STATE_SECRET` também não sobem em produção com o valor de exemplo {#rn-114}
 
-O [ADR 0059](../../adr/0059-segredo-do-state-de-oauth-sem-default.md) fechou o
+O [ADR 0059](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0059-segredo-do-state-de-oauth-sem-default.md) fechou o
 padrão para `GIT_OAUTH_STATE_SECRET` e deixou declaradamente aberto que o
 mesmo modo de falha valia para quatro segredos irmãos, todos com default de
 desenvolvimento no `docker-compose.prod.yml`: `AUTH_JWT_SECRET`,
@@ -464,7 +464,7 @@ caminho real de erro as variáveis estavam **definidas** — uma verificação d
   `test/infrastructure/security/service-token.spec.ts` e o describe
   `validação de produção` em
   `test/infrastructure/security/envelope-encryption.service.spec.ts`
-- **Origem:** [ADR 0059](../../adr/0059-segredo-do-state-de-oauth-sem-default.md)
+- **Origem:** [ADR 0059](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0059-segredo-do-state-de-oauth-sem-default.md)
 
 ### RN-127 — `ref`/`path` da aba Code recusam chegar como ARRAY, não só como caminho fora do escopo {#rn-127}
 
@@ -566,7 +566,7 @@ método (depois de tudo o mais ter acontecido: module_map, áreas, autonomia,
 - **só fecha o que está `active`** — a mesma cautela de
   `decide-bootstrap-plan.use-case.ts#fecharSessao`, nada a fazer se a sessão
   não existe mais ou já não está aberta;
-- **reaproveita o `GetSessionPendingWorkUseCase`** ([RN-073](../engine.md#rn-073)) — a
+- **reaproveita o `GetSessionPendingWorkUseCase`** ([RN-073](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-073)) — a
   MESMA guarda que segura o fechamento por heartbeat de inatividade: um
   handoff oferecido, uma `proposed_action` pendente ou um agente `working` sem
   `idle` posterior impedem o fechamento;
@@ -612,7 +612,7 @@ o MESMO critério por HTTP, em vez de duplicá-lo no front:
 - o cabeçalho da aba sempre mostra QUAL sessão está sendo exibida — o rótulo
   dela (hashtag + nome) linkando para `SessionPage`, ou "Nenhuma execução
   ativa" quando `null` — nunca mais implícito. Os três estados da
-  [RN-088](../web.md#rn-088) se aplicam à própria busca da sessão: carregando, erro
+  [RN-088](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-088) se aplicam à própria busca da sessão: carregando, erro
   (com `trace_id`) e vazio (`null`) são três renders distintos, nunca um
   `if (!sessão) return null` que os colapsa.
 
@@ -690,9 +690,9 @@ engine, que oferece o handoff ao Infra e, na MESMA confirmação, ao Dev Lead
 (FASE 14d/ADR 0053). O que faltava era o jeito de chegar até ele: nenhum
 lugar do frontend chamava o endpoint. O botão "Confirmar arquitetura pronta"
 existe pro Criativo desde sempre ("Estou pronto para produzir",
-[RN-131](../web.md#rn-131)/[RN-142](../engine.md#rn-142)) — o Arquiteto não tinha equivalente
+[RN-131](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-131)/[RN-142](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-142)) — o Arquiteto não tinha equivalente
 nenhum, e sem o clique o handoff nunca nascia: a correção de prioridade do
-card no fio ([RN-125](../web.md#rn-125)) ficava sem efeito prático, porque não havia o
+card no fio ([RN-125](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-125)) ficava sem efeito prático, porque não havia o
 que mostrar.
 
 `arquitetoActive` espelha `criativoActive` (existe um `agent.activated` pro
@@ -706,10 +706,10 @@ pelo mesmo motivo que o do Criativo some depois da prontidão.
 Ao contrário do Criativo, o Arquiteto NÃO tem guardrail de servidor
 bloqueando a confirmação sem `module_map` — `ArquitetoServer.offer_infra_handoff`
 não recusa nada, diferente de `CriativoServer.confirm_readiness`
-([RN-142](../engine.md#rn-142)). O botão só desabilita durante `streaming`; não replicar
+([RN-142](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-142)). O botão só desabilita durante `streaming`; não replicar
 aqui o `disabled={!hasModuleMap}` da Visão Geral é decisão deliberada, pelo
 mesmo raciocínio que já vale para "Ativar execução" no card do Dev Lead
-([RN-137](../web.md#rn-137)) — quando este card existe, o Arquiteto já decidiu a
+([RN-137](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-137)) — quando este card existe, o Arquiteto já decidiu a
 arquitetura.
 
 - **Onde:** `src/interfaces/http/agents/agents.controller.ts`
@@ -1039,13 +1039,13 @@ inicial, que é inequívoca porque o nome de pasta é validado contra
 Duas consequências explícitas do modo `local`:
 
 1. **O portão da imagem do Arquiteto ([RN-105](#rn-105)) NÃO vale.**
-   **REVOGADO pela [RN-494](../broker.md#rn-494) (ADR 0135)**: a
+   **REVOGADO pela [RN-494](https://github.com/viralabs-dev/brabo-broker/blob/dev/docs/business-rules/broker.md#rn-494) (ADR 0135)**: a
    dispensa terminou — os três modos passam a exigir a decisão de imagem
    antes de abrir a aba Code. O resto deste item é histórico. Projeto
    Local não sobe container, então a aba Code liberava sem esperar decisão
    que nunca ia acontecer. A dispensa morava no mesmo funil do portão na
    api, e a tela concordava: `ProjectCodeTab` nem chegava a perguntar o
-   estado do container ([RN-107](../web.md#rn-107)) quando o projeto era Local — se
+   estado do container ([RN-107](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-107)) quando o projeto era Local — se
    só a api dispensasse, a aba continuaria bloqueada na tela por uma
    decisão inexistente.
 2. **O `permissions.json` mora na pasta do usuário**, junto com o código —
@@ -1079,7 +1079,7 @@ são ortogonais.
   `apps/engine/test/engine/actions/workspace_test.exs`
   (describe "workspace_dir/2 com o localizador já resolvido"),
   `apps/web/src/routes/NewProjectWizard.test.tsx`
-- **Decisão arquitetural:** [ADR 0072](../../adr/0072-projeto-local-ou-container.md)
+- **Decisão arquitetural:** [ADR 0072](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0072-projeto-local-ou-container.md)
 - **Origem:** pedido do usuário (decisão dele, com a variante de caminho livre
   escolhida explicitamente)
 
@@ -1101,11 +1101,11 @@ O caminho precisa ser:
    caminho que se lê; `/srv/app/../../etc` é `/etc` e não parece);
 2. **existente e uma pasta** dentro do container da api;
 3. **gravável pelo processo** (`access(W_OK|X_OK)`) — as imagens rodam non-root
-   ([ADR 0024](../../adr/0024-fase5-imagens-producao-ci.md)), e pasta do host com
+   ([ADR 0024](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0024-fase5-imagens-producao-ci.md)), e pasta do host com
    outro dono chega montada como somente leitura na prática;
 4. **fora da raiz e das pastas de sistema** (`/`, `/etc`, `/usr`, `/var`,
    `/data`… e tudo abaixo delas): a raiz do projeto é o escopo que AUTORIZA o
-   terminal do agente ([ADR 0055](../../adr/0055-escopo-de-caminho-na-politica-de-terminal.md)),
+   terminal do agente ([ADR 0055](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0055-escopo-de-caminho-na-politica-de-terminal.md)),
    e um projeto com raiz em `/etc` transforma "o agente escreve no projeto dele"
    em "o agente reescreve o container";
 5. **sem sobreposição com o checkout do Brabo, nos DOIS sentidos** — a pasta que
@@ -1124,7 +1124,7 @@ banco, e o que se ganha ali é escopo de terminal em `/`. A parte de DISCO
 
 A recusa por pasta ausente traz a instrução de montagem — o arquivo, os dois
 serviços e a linha (`- <caminho>:<caminho>`), com o ponteiro para
-[o runbook](../../runbook.md). Montar só na api produz um projeto que a api aceita e o
+[o runbook](https://github.com/viralabs-dev/brabo-infra/blob/dev/deploy/docs/runbook.md). Montar só na api produz um projeto que a api aceita e o
 engine não enxerga: ela valida o que ela vê, e não tem como saber o que está
 montado no outro container.
 
@@ -1138,7 +1138,7 @@ montado no outro container.
   `test/application/use-cases/iam/create-project-modo-de-workspace.spec.ts`
   (describe "a criação RECUSA o caminho que travaria depois"),
   `apps/web/src/lib/wizard.test.ts`, `apps/web/src/routes/NewProjectWizard.test.tsx`
-- **Decisão arquitetural:** [ADR 0072](../../adr/0072-projeto-local-ou-container.md)
+- **Decisão arquitetural:** [ADR 0072](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0072-projeto-local-ou-container.md)
 - **Origem:** guarda exigida pela variante de caminho livre (ADR 0072)
 
 ---
@@ -1147,8 +1147,8 @@ montado no outro container.
 
 `sumGroupedBy` aceita `provider` como dimensão, e
 `GET /workspaces/:id/spend-report` devolve a lista `porProvider` ao lado de
-modelo, projeto, ator e dia. O [ADR 0063](../../adr/0063-duas-audiencias-para-o-mesmo-gasto.md)
-tinha deixado o eixo de fora; o [ADR 0076](../../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
+modelo, projeto, ator e dia. O [ADR 0063](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0063-duas-audiencias-para-o-mesmo-gasto.md)
+tinha deixado o eixo de fora; o [ADR 0076](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
 o devolveu **sem revogar o argumento**: quebrar gasto por provider continua
 sendo quebrar por CREDENCIAL, e por isso o eixo mora numa rota que já exige
 `owner` ([RN-060](parte-02.md#rn-060)) — a mesma régua de `credential-spend`, que segue
@@ -1171,7 +1171,7 @@ pergunta que as duas listas separadas já não respondam.
 - **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
   ("quebra por PROVIDER, e o mesmo nome de modelo em dois providers segue UMA
   linha")
-- **Origem:** [ADR 0076](../../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
+- **Origem:** [ADR 0076](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
 
 ### RN-187 — A visão do membro não alcança `provider`, e quem garante é o TIPO {#rn-187}
 
@@ -1206,7 +1206,7 @@ explícito **neste ponto** — nunca um esquecimento em outro arquivo.
   dimensões `session` e `day`"),
   `test/interfaces/spend.controller.spec.ts` (a rota do membro aceita
   `dias` e mais nada)
-- **Origem:** [ADR 0076](../../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
+- **Origem:** [ADR 0076](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
 
 ### RN-188 — Pessoa e agente são partição da lista por ator, sem consulta a mais {#rn-188}
 
@@ -1214,7 +1214,7 @@ O relatório do owner traz `porOwner` (linhas de `actor_kind = 'user'`) e
 `porAgente` (`actor_kind = 'agent'`) além de `porAtor`, que continua inteira.
 Os dois blocos são **derivados** de `porAtor` no caso de uso — `actorKind` já
 vem na linha desde a FASE 22 —, e não duas consultas com `where actor_kind`.
-O motivo é medido: o [ADR 0063](../../adr/0063-duas-audiencias-para-o-mesmo-gasto.md)
+O motivo é medido: o [ADR 0063](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0063-duas-audiencias-para-o-mesmo-gasto.md)
 mostrou que o custo destas consultas cresce com o tamanho de `token_usage` e
 não com o do pedido, então varrer a janela duas vezes a mais para separar o que
 já está separado em memória seria caro pelo motivo errado.
@@ -1230,7 +1230,7 @@ continua sendo o campo `ownerId`, não o `actorKind` de cada linha.
 - **Onde:** `src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:120`
 - **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts`
   ("separa PESSOA de AGENTE em dois blocos, sem perder a lista por ator")
-- **Origem:** [ADR 0076](../../adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
+- **Origem:** [ADR 0076](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0076-provider-volta-a-ser-dimensao-de-gasto.md)
 
 ### RN-189 — O embedding devolve um vetor por entrada, ou um erro {#rn-189}
 
@@ -1264,7 +1264,7 @@ taxonomia é a mesma: nenhum `LLMErrorCode` novo.
   `src/infrastructure/llm/embedding-result.ts:26`
 - **Teste:** `test/contract/llm-provider.contract.ts` (cinco casos, rodados
   contra todo provider que declara a capability)
-- **Origem:** [ADR 0075](../../adr/0075-embeddings-no-contrato-de-llm-provider.md)
+- **Origem:** [ADR 0075](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0075-embeddings-no-contrato-de-llm-provider.md)
 
 ### RN-190 — O embedding tem uma capability em duas camadas, e a do modelo é exclusão {#rn-190}
 
@@ -1284,7 +1284,7 @@ regra existe para afirmar:
 provider, porque trocar de modelo não conserta um provider que não faz
 embedding. Um modelo **sem declaração** também é recusado, com mensagem
 diferente — ausência significa "o provider não disse"
-([ADR 0041](../../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)),
+([ADR 0041](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)),
 nunca permissão, e a ação certa para quem lê é sincronizar o catálogo em vez
 de trocar de modelo. Deduzir a capability pelo NOME do modelo é proibido:
 seria um palpite vestido de dado.
@@ -1293,11 +1293,11 @@ seria um palpite vestido de dado.
   `src/infrastructure/llm/ollama-provider.ts:319`
 - **Teste:** `test/domain/llm/embedding-capability.spec.ts`,
   `test/infrastructure/llm/ollama-provider.spec.ts`
-- **Origem:** [ADR 0075](../../adr/0075-embeddings-no-contrato-de-llm-provider.md)
+- **Origem:** [ADR 0075](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0075-embeddings-no-contrato-de-llm-provider.md)
 
 ### RN-191 — `embeddings: true` exige execução, não documentação {#rn-191}
 
-A regra da casa ([ADR 0041](../../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)/[ADR 0043](../../adr/0043-seis-providers-de-llm-e-o-fechamento-da-fase-9b.md))
+A regra da casa ([ADR 0041](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)/[ADR 0043](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0043-seis-providers-de-llm-e-o-fechamento-da-fase-9b.md))
 aplicada à nova capability: **só o `ollama` declara `true`**, e a prova é o
 `POST /api/embed` rodado contra o daemon real 0.32.1 com `nomic-embed-text` —
 duas entradas, dois vetores de 768 dimensões, `prompt_eval_count: 10`.
@@ -1325,7 +1325,7 @@ antes de tocar a rede.
   `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`,
   `test/infrastructure/llm/ollama-provider.embeddings.smoke.spec.ts`
   (manual, contra o daemon real)
-- **Origem:** [ADR 0075](../../adr/0075-embeddings-no-contrato-de-llm-provider.md)
+- **Origem:** [ADR 0075](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0075-embeddings-no-contrato-de-llm-provider.md)
 
 ### RN-198 — Atividades agrupa por agente-base/instância REAL, nunca por contador inventado {#rn-198}
 
@@ -1403,7 +1403,7 @@ pelo mesmo caso de uso toda vez.
 - **Teste:** `test/infrastructure/persistence/chunk.repository.spec.ts`
   ("recusa chunk de docs sem source_path — o CHECK da migração 0045, não
   validação de aplicação")
-- **ADR:** [0079](../../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
+- **ADR:** [0079](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
 
 ### RN-220 — Vetor e busca léxica vivem na mesma linha, nunca em tabelas separadas {#rn-220}
 
@@ -1417,7 +1417,7 @@ de verdade para as duas metades da busca.
 - **Onde:** `src/db/schema/rag.ts` (tabela `chunks`)
 - **Teste:** `test/infrastructure/persistence/chunk.repository.spec.ts`
   (as três specs escrevem e leem as duas colunas na mesma linha)
-- **ADR:** [0079](../../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
+- **ADR:** [0079](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
 
 ### RN-221 — `search_vector` nunca é escrita pela aplicação — é coluna GENERATED {#rn-221}
 
@@ -1432,7 +1432,7 @@ existir).
 - **Teste:** `test/infrastructure/persistence/chunk.repository.spec.ts`
   ("grava um chunk de docs com vetor e devolve o search_vector gerado pela
   GENERATED ALWAYS AS")
-- **ADR:** [0079](../../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
+- **ADR:** [0079](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
 
 ### RN-222 — A dimensão do vetor é documentada, não adivinhada, e `embedding` chega depois do chunk {#rn-222}
 
@@ -1450,7 +1450,7 @@ chamada de rede a um provider) numa escrita atômica só.
 - **Teste:** `test/infrastructure/persistence/chunk.repository.spec.ts`
   ("grava um chunk de docs com vetor..." grava com `embedding` preenchido;
   as outras duas specs gravam sem ele, confirmando a nulabilidade)
-- **ADR:** [0079](../../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md); [RN-191](#rn-191)
+- **ADR:** [0079](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md); [RN-191](#rn-191)
 
 ### RN-223 — O índice vetorial é HNSW, não IVFFlat, porque a tabela nasce vazia {#rn-223}
 
@@ -1464,7 +1464,7 @@ similaridade não deveria mudar com a magnitude do vetor).
 
 - **Onde:** `src/db/migrations/0045_shallow_randall.sql`
   (`chunks_embedding_idx`)
-- **ADR:** [0079](../../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
+- **ADR:** [0079](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
 
 ### RN-225 — Migração que pode exigir privilégio de operador nasce em `breaking/` {#rn-225}
 
@@ -1480,7 +1480,7 @@ critério do CLAUDE.md para nascer em `breaking/` em vez de
 - **Onde:** branch `breaking/tabela-de-chunks`,
   `src/db/migrations/0045_shallow_randall.sql` (comentário que
   documenta a decisão dentro da própria migration)
-- **ADR:** [0079](../../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
+- **ADR:** [0079](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
 
 ### RN-226 — `ChunkRepository` cobre só escrita/leitura básica; `createMany` é operação de lote {#rn-226}
 
@@ -1496,4 +1496,4 @@ indexado.
 - **Teste:** `test/infrastructure/persistence/chunk.repository.spec.ts`
   ("createMany grava um lote e listByProject filtra por escopo, sem
   misturar docs e session")
-- **ADR:** [0079](../../adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)
+- **ADR:** [0079](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0079-tabela-de-chunks-vetor-e-tsvector-juntos.md)

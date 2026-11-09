@@ -11,7 +11,7 @@ keywords: [regras de negócio, api]
 ## PROGRAMA 28 — Onda 4, frente G2: pipeline de indexação e busca híbrida do Chat RAG (RN-231..238, ADR 0080) {#programa-28-onda-4-frente-g2-pipeline-de-indexacao-e-busca-hibrida-do-chat-rag-rn-231-238-adr-0080}
 
 As RNs do auth first-party moram em
-**[Regras de negócio — Autenticação](../autenticacao.md)**.
+**[Regras de negócio — Autenticação](https://github.com/viralabs-dev/brabo/blob/dev/docs/business-rules/autenticacao.md)**.
 
 Saíram daqui por TAMANHO, não por assunto: junto com Custo elas eram
 metade de uma página de 640 KB. O conteúdo não mudou, e as âncoras
@@ -35,7 +35,7 @@ reindexadas agora, então sessão só apaga por `deleteBySession`.
 - **Teste:** `test/infrastructure/persistence/chunk.repository.spec.ts`
   — describes "Onda 4 (G2)" (delete por escopo/sessão, busca por
   vetor/léxico, caso feliz e vazio de cada um)
-- **ADR:** [0080](../../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
+- **ADR:** [0080](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
 ### RN-232 — Origem do texto indexado: `docs`/`adr` do repositório do PRÓPRIO projeto, `session` só de `chat.message`/`agent.response` {#rn-232}
 
@@ -55,7 +55,7 @@ citável.
   `test/application/use-cases/rag/index-session.use-case.spec.ts`
   (casos felizes + "projeto sem docs/" + "evento sem payload.text é
   ignorado")
-- **ADR:** [0080](../../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
+- **ADR:** [0080](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
 ### RN-233 — Provider de embedding indisponível: grava sem vetor e declara a lacuna, nunca finge indexação completa {#rn-233}
 
@@ -75,7 +75,7 @@ com o sinal léxico e `vectorAvailable: false` avisa.
   `index-session.use-case.spec.ts` — "CASO DE FALHA: provider de embedding
   indisponível grava os chunks SEM vetor..."; `hybrid-search.use-case.spec.ts`
   — "quando o embedding está indisponível, degrada para busca só léxica"
-- **ADR:** [0080](../../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
+- **ADR:** [0080](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
 ### RN-234 — Busca híbrida: duas consultas independentes, fusão por peso (0.6/0.4), limiar 0.2, e o contrato de citação {#rn-234}
 
@@ -97,7 +97,7 @@ achou o chunk)/`origin` como união discriminada por `kind` (`file` com
   (fusão/ordenação/limiar, query fora da faixa, degradação léxico-only,
   origin de sessão) e `test/infrastructure/persistence/chunk.repository.spec.ts`
   (as consultas SQL de fato, contra pgvector/tsvector real)
-- **ADR:** [0080](../../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
+- **ADR:** [0080](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
 ### RN-1046 — A busca híbrida devolve no máximo N trechos do mesmo arquivo {#rn-1046}
 
@@ -118,7 +118,7 @@ esperado entre os candidatos antes do corte.
   (`limitarPorArquivo`), `src/domain/rag/rag-search-limits.ts`,
   `src/domain/rag/rag-telemetry.ts`, `scripts/seed-golden-set-rag.ts`
 - **Teste:** `test/application/use-cases/rag/hybrid-search.use-case.spec.ts`
-- **ADR:** [0080](../../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
+- **ADR:** [0080](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
   (a decisão sobre diversidade fica no ADR 0272)
 
 ### RN-235 — Chunking: 1200 caracteres, 150 de sobreposição, por parágrafo/heading {#rn-235}
@@ -137,7 +137,7 @@ este índice).
 - **Teste:** `test/domain/rag/chunking.spec.ts` (texto que
   cabe/não cabe, texto vazio, sobreposição real, texto patológico sem
   espaço, headings aninhados, markdown sem heading)
-- **ADR:** [0080](../../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
+- **ADR:** [0080](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
 ### RN-236 — Reindexação é sempre MANUAL, full rebuild idempotente {#rn-236}
 
@@ -152,7 +152,7 @@ seguidas não duplica. Disparado por `POST /projects/:projectId/rag/reindex`,
 - **Teste:** `test/application/use-cases/rag/reindex-project.use-case.spec.ts`
   (agrega docs+sessões, embeddingAvailable falso quando qualquer rodada
   falha, projeto inexistente)
-- **ADR:** [0080](../../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
+- **ADR:** [0080](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
 ### RN-237 — Cobertura do índice é contagem REAL, nunca "há N minutos" inventado {#rn-237}
 
@@ -171,7 +171,7 @@ apresenta mais como inteiro.
 - **Onde:** `src/application/use-cases/rag/get-rag-coverage.use-case.ts`
   (linha 47)
 - **Teste:** `test/application/use-cases/rag/get-rag-coverage.use-case.spec.ts`
-- **ADR:** [0080](../../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
+- **ADR:** [0080](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
 ### RN-1036 — A indexação de docs nunca descarta em silêncio o conteúdo de um arquivo {#rn-1036}
 
@@ -212,7 +212,7 @@ régua "muda o que o produto gasta sem perguntar" do teto de paralelismo de
 - **Teste:** `test/interfaces/route-surface.spec.ts`
   (classificação de papel, tags fechadas, metadados OpenAPI das três
   rotas)
-- **ADR:** [0080](../../adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
+- **ADR:** [0080](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0080-busca-hibrida-pesos-limiar-e-citacao.md)
 
 ## PROGRAMA 28 — Onda 4, frente E2: virtualização de linha e minimapa na aba Code (RN-239..242) {#programa-28-onda-4-frente-e2-virtualizacao-de-linha-e-minimapa-na-aba-code-rn-239-242}
 
@@ -231,7 +231,7 @@ de verdade — nunca o contrário.
 - **Onde:** `src/domain/containers/container-lifecycle.ts`,
   `src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
 - **Teste:** `test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
-- **ADR:** [0081](../../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
+- **ADR:** [0081](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
 ### RN-244 — A máquina de estados do container: só `removed` sai reprovisionando {#rn-244}
 
@@ -246,7 +246,7 @@ e `pr-gate-state-machine.ts`.
 - **Onde:** `src/domain/containers/container-lifecycle.ts`
   (`ALLOWED_TRANSITIONS`)
 - **Teste:** `test/domain/containers/container-lifecycle.spec.ts`
-- **ADR:** [0081](../../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
+- **ADR:** [0081](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
 ### RN-245 — A primeira transição exige a imagem já decidida, e CONGELA versão e recursos {#rn-245}
 
@@ -262,7 +262,7 @@ retroativamente o que uma instância já provisionada promete.
 - **Teste:** `test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
   — "a primeira transição (provisioning) cria a linha…" e "sem decisão de
   imagem do Arquiteto, não há o que provisionar"
-- **ADR:** [0081](../../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
+- **ADR:** [0081](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
 ### RN-246 — Projeto em modo `local` não tem ciclo de vida de container {#rn-246}
 
@@ -274,7 +274,7 @@ tocar a tabela, na origem, não filtrado depois na UI.
 - **Onde:** `src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
 - **Teste:** `test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
   — "projeto em modo `local` não tem ciclo de vida de container (ADR 0072)"
-- **ADR:** [0081](../../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
+- **ADR:** [0081](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
 ### RN-247 — Uma linha por projeto: `project_id` é único {#rn-247}
 
@@ -287,7 +287,7 @@ produz uma segunda linha silenciosa.
 - **Onde:** `src/db/migrations/0046_chilly_forgotten_one.sql`
 - **Teste:** `test/infrastructure/persistence/drizzle/container.repository.spec.ts`
   — "só uma linha por projeto — create duplicado viola a constraint única"
-- **ADR:** [0081](../../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
+- **ADR:** [0081](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
 ### RN-248 — Teto de recursos DECLARADO, não aplicado — o campo existe para quando houver orquestrador {#rn-248}
 
@@ -304,7 +304,7 @@ registrada era X").
 - **Onde:** `src/db/schema/containers.ts` (`projectContainers`)
 - **Teste:** `test/infrastructure/persistence/drizzle/container.repository.spec.ts`
   — "create nasce em `provisioning`, com a versão e os recursos passados"
-- **ADR:** [0081](../../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
+- **ADR:** [0081](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md)
 
 ## PROGRAMA 28 — Onda 5, frente G3: a tela do Chat RAG (RN-252..254, ADR 0082) {#programa-28-onda-5-frente-g3-a-tela-do-chat-rag-rn-252-254-adr-0082}
 
@@ -329,8 +329,8 @@ transicionaria o ciclo de vida é um orquestrador que ainda não existe.
 - **Teste:** `test/interfaces/http/containers/containers.controller.spec.ts`
 - **Borda:** `id`/`projectId`/`containerId` da linha interna NÃO vazam na
   resposta — o contrato HTTP não é a mesma forma que a linha do banco.
-- **ADR:** [0083](../../adr/0083-terminal-mostra-estado-real-do-container.md)
-  (revisa o [0081](../../adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md))
+- **ADR:** [0083](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0083-terminal-mostra-estado-real-do-container.md)
+  (revisa o [0081](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0081-ciclo-de-vida-do-container-tabela-sem-orquestrador.md))
 
 ### RN-272 — O callback do login social decide em ORDEM: identidade conhecida, depois vínculo por e-mail, depois conta nova {#rn-272}
 
@@ -345,7 +345,7 @@ o e-mail no provider "perca" o vínculo.
 - **Onde:** `src/application/use-cases/auth/social-login-callback.use-case.ts`
 - **Teste:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — os sete casos de `SocialLoginCallbackUseCase`
-- **ADR:** [0084](../../adr/0084-login-social-github-e-gitlab.md)
+- **ADR:** [0084](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0084-login-social-github-e-gitlab.md)
 
 ### RN-273 — O `state` do login social tem propósito PRÓPRIO, mesmo assinado pela mesma chave do fluxo de conexão de git {#rn-273}
 
@@ -360,7 +360,7 @@ recusado aqui: sem o discriminante, aceitá-lo equivaleria a logar como o
 - **Onde:** `src/domain/auth/social-oauth-state.ts`
 - **Teste:** `test/domain/auth/social-oauth-state.spec.ts`
   — "RN-273: rejeita um state do fluxo de CONEXÃO de git, mesma chave"
-- **ADR:** [0084](../../adr/0084-login-social-github-e-gitlab.md)
+- **ADR:** [0084](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0084-login-social-github-e-gitlab.md)
 
 ### RN-274 — Vincular identidade social a conta existente exige e-mail VERIFICADO pelo provider {#rn-274}
 
@@ -378,7 +378,7 @@ alheio, com aquele endereço só DIGITADO, herdar a conta. A recusa é
   (`vincularAContaExistente`)
 - **Teste:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — "RECUSA vincular quando o e-mail bate mas NÃO está verificado pelo provider"
-- **ADR:** [0084](../../adr/0084-login-social-github-e-gitlab.md)
+- **ADR:** [0084](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0084-login-social-github-e-gitlab.md)
 
 ### RN-275 — Provisionar conta NOVA não exige e-mail verificado — só vincular a uma existente exige {#rn-275}
 
@@ -395,7 +395,7 @@ aceita implicitamente até o clique no link de verificação.
   (`provisionarContaNova`)
 - **Teste:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — "provisiona conta nova mesmo com e-mail NÃO verificado"
-- **ADR:** [0084](../../adr/0084-login-social-github-e-gitlab.md)
+- **ADR:** [0084](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0084-login-social-github-e-gitlab.md)
 
 ### RN-276 — `providerUserId`, nunca e-mail ou login, é a chave de identidade social {#rn-276}
 
@@ -410,7 +410,7 @@ reusou aquele endereço depois.
   `src/application/ports/social-identity-repository.port.ts`
 - **Teste:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — "identidade já conhecida: login direto, sem criar segunda linha"
-- **ADR:** [0084](../../adr/0084-login-social-github-e-gitlab.md)
+- **ADR:** [0084](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0084-login-social-github-e-gitlab.md)
 
 ### RN-277 — Login social pede escopo MÍNIMO, nunca o de conexão de repositório {#rn-277}
 
@@ -425,7 +425,7 @@ diferentes, decididas na hora da autorização, não na configuração do app.
   (`buildLoginAuthorizeUrl`)
 - **Teste:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — "StartSocialLoginUseCase › caminho feliz"
-- **ADR:** [0084](../../adr/0084-login-social-github-e-gitlab.md)
+- **ADR:** [0084](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0084-login-social-github-e-gitlab.md)
 
 ### RN-278 — Conta provisionada por login social nasce SEM senha — mesmo estado "pendente" da migração do Keycloak {#rn-278}
 
@@ -440,7 +440,7 @@ necessário um segundo mecanismo de "senha pendente" para o login social.
   `src/infrastructure/persistence/drizzle/auth-credential.repository.ts`
 - **Teste:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — "caminho feliz: provisiona um usuário NOVO, sem senha (RN-278)"
-- **ADR:** [0084](../../adr/0084-login-social-github-e-gitlab.md)
+- **ADR:** [0084](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0084-login-social-github-e-gitlab.md)
 
 ### RN-279 — Vincular por e-mail verificado também verifica o e-mail da conta existente {#rn-279}
 
@@ -456,7 +456,7 @@ do e-mail por outro caminho igualmente forte.
   (`vincularAContaExistente`)
 - **Teste:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — "vincula a conta existente (…) e marca o e-mail dela como verificado (RN-274/279)"
-- **ADR:** [0084](../../adr/0084-login-social-github-e-gitlab.md)
+- **ADR:** [0084](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0084-login-social-github-e-gitlab.md)
 
 ### RN-280 — Login social recusa conta DESABILITADA, mesma régua do login por senha {#rn-280}
 
@@ -469,7 +469,7 @@ pode ser contornado trocando de método de entrada.
   (`entrarComIdentidadeConhecida`, `vincularAContaExistente`)
 - **Teste:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — "recusa login de identidade vinculada a conta DESABILITADA"
-- **ADR:** [0084](../../adr/0084-login-social-github-e-gitlab.md)
+- **ADR:** [0084](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0084-login-social-github-e-gitlab.md)
 
 ### RN-281 — O login social reusa o MESMO app OAuth da conexão de git — sem variável de ambiente nova {#rn-281}
 
@@ -486,7 +486,7 @@ o branch nascer `breaking/`.
   `src/application/use-cases/auth/start-social-login.use-case.ts`
 - **Teste:** manual (cadastro no app OAuth) — não há como testar
   automaticamente uma configuração externa ao produto
-- **ADR:** [0084](../../adr/0084-login-social-github-e-gitlab.md)
+- **ADR:** [0084](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0084-login-social-github-e-gitlab.md)
 
 ### RN-282 — O access token do login social nunca viaja na URL nem no corpo do callback {#rn-282}
 
@@ -502,7 +502,7 @@ alias de rota de erro.
 - **Teste:** `test/interfaces/route-surface.spec.ts` — cobre a
   classificação pública e os metadados OpenAPI da rota; o fluxo completo
   de cookie→boot é E2E, fora do escopo de teste de unidade
-- **ADR:** [0084](../../adr/0084-login-social-github-e-gitlab.md)
+- **ADR:** [0084](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0084-login-social-github-e-gitlab.md)
 
 ### RN-283 — Falha do callback de login social não vaza o motivo na URL {#rn-283}
 
@@ -517,7 +517,7 @@ motivo real. Mesmo padrão do callback de conexão de git
 - **Teste:** `test/application/use-cases/auth/social-login-callback.use-case.spec.ts`
   — cobre os desfechos de falha que o controller mapeia para o mesmo
   redirect genérico
-- **ADR:** [0084](../../adr/0084-login-social-github-e-gitlab.md)
+- **ADR:** [0084](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0084-login-social-github-e-gitlab.md)
 
 ---
 
@@ -548,7 +548,7 @@ parser de argumentos.
 - **Teste:** `test/scripts/analise-funil.spec.ts` (só as funções
   puras — a parte que fala com o banco é exercitada por execução real,
   mesmo padrão de `medir-execucao.spec.ts`)
-- **ADR:** [0089](../../adr/0089-analytics-e-delivery-metricas-como-relatorio.md)
+- **ADR:** [0089](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0089-analytics-e-delivery-metricas-como-relatorio.md)
 
 ### RN-321 — O funil conta SESSÃO por etapa, só ação `executed`, e o lead time usa `updated_at` da execução {#rn-321}
 
@@ -570,7 +570,7 @@ time negativo.
   `:170-193` (`calcularLeadTimes`)
 - **Teste:** `test/scripts/analise-funil.spec.ts` (describe
   "calcularFunil", "calcularLeadTimes")
-- **ADR:** [0089](../../adr/0089-analytics-e-delivery-metricas-como-relatorio.md)
+- **ADR:** [0089](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0089-analytics-e-delivery-metricas-como-relatorio.md)
 
 ### RN-322 — Deployment frequency real filtra merge em branch PROTEGIDA; três métricas ficam DECLARADAS ausentes, nunca aproximadas {#rn-322}
 
@@ -586,7 +586,7 @@ Três métricas saem do relatório com uma seção "Não medido, de propósito" 
 vez de um número aproximado:
 
 1. **Funil de produto completo (ideação → commit).** `sessions` não tem
-   `storyId` — [RN-230](../web.md#rn-230) já declara a lacuna na aba Criativo.
+   `storyId` — [RN-230](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-230) já declara a lacuna na aba Criativo.
    Fechá-la exige schema novo, fora do escopo desta frente (nenhuma
    migration).
 2. **Evidência de adoção por feature.** Não é dado que falta coletar: o
@@ -601,7 +601,7 @@ vez de um número aproximado:
   (`deploymentFrequencyPorDia`), `:372-386` (seção "Não medido" impressa)
 - **Teste:** `test/scripts/analise-funil.spec.ts` (describe
   "deploymentFrequencyPorDia")
-- **ADR:** [0089](../../adr/0089-analytics-e-delivery-metricas-como-relatorio.md)
+- **ADR:** [0089](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0089-analytics-e-delivery-metricas-como-relatorio.md)
 
 ---
 
@@ -610,11 +610,11 @@ vez de um número aproximado:
 ### RN-340 — O gate `implementavel` decide a story ANTES do dev agent escrever código {#rn-340}
 
 `config/gates.yml` declarava o gate `implementavel` (dono `dev-lead`) desde a
-FASE 14d com `status: planned` — nunca ativado. O [ADR 0090](../../adr/0090-qa-estrategia-e-appsec-segundo-momento.md)
+FASE 14d com `status: planned` — nunca ativado. O [ADR 0090](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0090-qa-estrategia-e-appsec-segundo-momento.md)
 ativa: a ferramenta `assess_implementability` do Dev Lead propõe o **parecer
 de implementabilidade** de uma story (`implementavel`/`inviavel` +
 justificativa) como `proposed_action`, MESMO padrão de
-`propose_execution_plan` ([RN-284](../engine.md#rn-284)) — três desfechos
+`propose_execution_plan` ([RN-284](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-284)) — três desfechos
 (`{:ok, texto} | {:pending, action_id} | {:error, texto}`), papel mínimo
 `maintainer` em `decide.ts`, e DELIBERADAMENTE fora do bloco de tetos
 absolutos (é decisão inicial, não ultrapassagem de teto).
@@ -622,12 +622,12 @@ absolutos (é decisão inicial, não ultrapassagem de teto).
 **O parecer depende do plano de teste, que é um PRÉ-REQUISITO, não um
 argumento.** `run_assessment/2` lê o `artifact.plano_de_teste` mais recente
 da story no HISTÓRICO da própria sessão do Dev Lead (emitido pela
-QA-estratégia, [RN-341](../contracts.md#rn-341)):
+QA-estratégia, [RN-341](https://github.com/viralabs-dev/brabo-contracts/blob/dev/packages/docs/business-rules/contracts.md#rn-341)):
 
 1. **Sem plano ainda** — dispara `Engine.Gates.Dispatcher.run_qa_estrategia/3`
    (mesma indireção trocável em teste que `run_qa/2`/`run_secops/2` já usam)
    e devolve `{:error, texto}` pedindo para tentar de novo em instantes. Erro
-   de ferramenta é ENTRADA do laço, não fim de linha ([RN-163](../engine.md#rn-163)): o
+   de ferramenta é ENTRADA do laço, não fim de linha ([RN-163](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-163)): o
    Dev Lead tem teto de 14 iterações para tentar de novo. A janela de espera
    é aceita e declarada — a QA-estratégia roda em processo separado
    (`qa-lead`), e um `run/2` síncrono não pode bloquear esperando o
@@ -636,7 +636,7 @@ QA-estratégia, [RN-341](../contracts.md#rn-341)):
    (síntese e critérios executáveis), para o usuário decidir sem precisar
    abrir dois eventos, e propõe a ação.
 
-**Desde a [RN-674](../engine.md#rn-674) (ADR 0192) os dois passos acima NÃO valem mais.**
+**Desde a [RN-674](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-674) (ADR 0192) os dois passos acima NÃO valem mais.**
 O plano de teste nasce DEPOIS da entrega do dev e alimenta o `qa-verificada`;
 `run_assessment/2` não lê nem dispara plano, propõe o parecer na PRIMEIRA
 chamada, sobre a história e o `module_map` que o Dev Lead já tem no contexto,
@@ -654,7 +654,7 @@ desfechos, papel mínimo, fora dos tetos absolutos) segue igual.
   (describe "suspensão em aprovação" — os dois testes novos),
   `test/domain/actions/decide.spec.ts` (describe "parecer de
   implementabilidade do Dev Lead")
-- **Origem:** [ADR 0090](../../adr/0090-qa-estrategia-e-appsec-segundo-momento.md)
+- **Origem:** [ADR 0090](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0090-qa-estrategia-e-appsec-segundo-momento.md)
 
 ## `secops-runtime` — relatório de abuso sobre `rate_limit_hits` (RN-375..377, ADR 0091) {#secops-runtime-relatorio-de-abuso-sobre-rate-limit-hits-rn-375-377-adr-0091}
 
@@ -718,7 +718,7 @@ frase que descreve por que ele não foi usado.
 - **Teste:** `test/scripts/lint-migracao.spec.ts` — cada padrão
   individualmente, combinação de vários na mesma migration, e "ignora o
   padrão de risco quando ele aparece só em COMENTÁRIO"
-- **ADR:** [0093](../../adr/0093-dbre-linter-de-migracao-e-relatorio-de-backup.md)
+- **ADR:** [0093](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0093-dbre-linter-de-migracao-e-relatorio-de-backup.md)
 
 ## Auditoria fluxo.yml × código — Onda 2: RN-160 no backend e delegação Dev Lead → dev (RN-404/405, ADR 0094) {#auditoria-fluxo-yml-codigo-onda-2-rn-160-no-backend-e-delegacao-dev-lead-dev-rn-404-405-adr-0094}
 
@@ -729,7 +729,7 @@ item 5 e nunca implementada).
 
 ### RN-404 — "Confirmar arquitetura pronta" (RN-160) é revalidada no BACKEND, não só desabilitada na UI {#rn-404}
 
-[RN-160](../web.md#rn-160) garantia a regra ("pelo menos 1 história promovida antes do
+[RN-160](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-160) garantia a regra ("pelo menos 1 história promovida antes do
 handoff duplo Arquiteto→Dev Lead/Infra") só desabilitando o botão em
 `SessionPage.tsx` — uma chamada HTTP direta a
 `POST /agents/arquiteto/handoff-infra`, sem passar pela UI, ignorava a regra
@@ -749,13 +749,13 @@ leve — não precisa montar a árvore épico→história→tarefa para responde
 - **Teste:** `test/application/use-cases/agents/offer-infra-handoff.use-case.spec.ts`
   — zero história promovida recusa com ZERO chamada ao engine e ZERO evento
   gravado; com ao menos uma `ready`/`in_progress`/`done`, segue o fluxo normal
-- **ADR:** [0094](../../adr/0094-delegacao-dev-lead-vira-dado.md)
+- **ADR:** [0094](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0094-delegacao-dev-lead-vira-dado.md)
 
 ## Auditoria fluxo.yml × código — Onda 6 (última): o gate `necessidade-validada` (RN-406, ADR 0095) {#auditoria-fluxo-yml-codigo-onda-6-ultima-o-gate-necessidade-validada-rn-406-adr-0095}
 
 ### RN-408 — `MAIL_TRANSPORT=smtp` deriva o boot pelo padrão da RN-114, sem o default público {#rn-408}
 
-Fecha o item de backlog "SMTP real no MailSender" ([ADR 0096](../../adr/0096-smtp-real-no-mailsender.md)).
+Fecha o item de backlog "SMTP real no MailSender" ([ADR 0096](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0096-smtp-real-no-mailsender.md)).
 `resolverConfigSmtp()` valida `SMTP_HOST`/`SMTP_USER`/`SMTP_PASSWORD`/
 `SMTP_FROM` no MESMO formato da [RN-114](parte-03.md#rn-114) — em produção
 (`NODE_ENV === 'production'`), cada um derruba o boot se estiver ausente, só
@@ -798,9 +798,9 @@ mesma montagem de grafo).
 - **Teste:** `test/infrastructure/mail/smtp-config.spec.ts`
   (mesmo padrão de `auth-key-material.spec.ts`/`service-token.spec.ts`),
   `test/infrastructure/mail/smtp-mail-sender.spec.ts`
-- **Origem:** [ADR 0096](../../adr/0096-smtp-real-no-mailsender.md), estendendo o
+- **Origem:** [ADR 0096](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0096-smtp-real-no-mailsender.md), estendendo o
   padrão da [RN-114](parte-03.md#rn-114) (que por sua vez estende o
-  [ADR 0059](../../adr/0059-segredo-do-state-de-oauth-sem-default.md))
+  [ADR 0059](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0059-segredo-do-state-de-oauth-sem-default.md))
 
 ---
 
@@ -871,13 +871,13 @@ Achado por USO real ("nas PRs sempre está estourando entity too
 large"), com dois defeitos que se encadeiam. O gate de QA/SecOps
 morria com `413 request entity too large` → o dev agent que esperava o
 veredito ficava preso em `dev.awaiting_gate` indefinidamente → esse
-estado NÃO era um dos três que a [RN-411](../ci.md#rn-411) segurava → o
+estado NÃO era um dos três que a [RN-411](https://github.com/viralabs-dev/brabo-ci/blob/dev/scripts/ci/docs/business-rules/ci.md#rn-411) segurava → o
 heartbeat de 30s fechava a sessão por baixo → a aba Executores exigia
 sessão ativa (`findActiveExecutionSession`) e apagava o roster inteiro,
 mesmo com trabalho real pendurado.
 
 **A causa do 413 era da própria api do Brabo, nunca do provider de
-LLM** — ver [ADR 0098](../../adr/0098-limites-de-transporte-e-janela-efetiva-de-compactacao.md).
+LLM** — ver [ADR 0098](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0098-limites-de-transporte-e-janela-efetiva-de-compactacao.md).
 Duas correções, as duas necessárias (uma sem a outra só adia o
 estouro):
 
@@ -986,7 +986,7 @@ tenta de novo sozinha no próximo ciclo, sem intervenção.
   testes novos em `append-session-event.use-case.spec.ts`/
   `transition-session.use-case.spec.ts` (tipo projetável grava a segunda
   linha; tipo não-projetável não grava nada extra)
-- **Origem:** ver [ADR 0101](../../adr/0101-memoria-relacional-como-projecao-do-event-log.md)
+- **Origem:** ver [ADR 0101](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0101-memoria-relacional-como-projecao-do-event-log.md)
 
 ---
 
@@ -1037,7 +1037,7 @@ explicitamente, depois de revisar, que a decisão era essa.
   completa); `approve-always-action.use-case.spec.ts` ("sempre permitir"
   sobre git com efeito externo/sudo não grava padrão; comando comum
   continua gravando normalmente — regressão); `external-effect.spec.ts`
-- **Origem:** ver [ADR 0102](../../adr/0102-revisao-do-adr-0065-teto-absoluto-substitui-deny.md)
+- **Origem:** ver [ADR 0102](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0102-revisao-do-adr-0065-teto-absoluto-substitui-deny.md)
 
 ---
 
@@ -1066,7 +1066,7 @@ RENOMEADO — mesmo comportamento, mesma validação de disco na criação) e
 raiz pela MESMA regra nos dois modos não-`container`: o caminho do usuário
 é a raiz, distinguido do nome de pasta gerenciada pela barra inicial. O que
 muda entre `mounted` e `runner` não é ONDE a raiz fica — é QUANDO/QUEM
-confirma que ela existe de verdade ([RN-422](#rn-422)/[RN-423](../runner.md#rn-423)).
+confirma que ela existe de verdade ([RN-422](#rn-422)/[RN-423](https://github.com/viralabs-dev/brabo-runner/blob/dev/docs/business-rules/runner.md#rn-423)).
 
 - **Onde:** `src/db/migrations/0048_quiet_iron_fist.sql`,
   `src/db/schema/iam.ts` (`projectExecutionModeEnum`),
@@ -1077,7 +1077,7 @@ confirma que ela existe de verdade ([RN-422](#rn-422)/[RN-423](../runner.md#rn-4
   (describe "projectScopeRoot nos modos mounted/runner"),
   `apps/engine/test/engine/projects/project_test.exs`
 - **Decisão arquitetural:**
-  [ADR 0104](../../adr/0104-execution-mode-tres-valores-e-workspace-verificado-pelo-runner.md)
+  [ADR 0104](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0104-execution-mode-tres-valores-e-workspace-verificado-pelo-runner.md)
 - **Origem:** reconciliação pedida pelo dono do produto, entre os ADRs 0072
   e 0103
 
@@ -1095,7 +1095,7 @@ a pasta existe. O projeto nasce com `workspace_verified_at: null`.
 `caminhoDeWorkspaceLocalValido` (o predicado léxico) foi EXPORTADO de
 `project-workspaces-root.ts` para ser reusado nos dois lados que precisam
 dele sem tocar disco: a criação de projeto `runner` e a confirmação do
-runner ([RN-423](../runner.md#rn-423)) — a mesma função, nunca duas cópias que um dia
+runner ([RN-423](https://github.com/viralabs-dev/brabo-runner/blob/dev/docs/business-rules/runner.md#rn-423)) — a mesma função, nunca duas cópias que um dia
 divergem.
 
 - **Onde:** `src/application/use-cases/iam/create-project.use-case.ts`
@@ -1105,7 +1105,7 @@ divergem.
   (bloco `runner`), `test/interfaces/http/iam/project-dto-modo-de-workspace.spec.ts`,
   `apps/web/src/lib/wizard.test.ts` (`canAdvanceFromWorkspace` para `runner`)
 - **Decisão arquitetural:**
-  [ADR 0104](../../adr/0104-execution-mode-tres-valores-e-workspace-verificado-pelo-runner.md)
+  [ADR 0104](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0104-execution-mode-tres-valores-e-workspace-verificado-pelo-runner.md)
 - **Origem:** reconciliação do ADR 0104
 
 ### RN-424 — PAT autentica SÓ `runner-ticket`, por construção — nunca dual-auth com JWT nessa rota {#rn-424}
@@ -1144,7 +1144,7 @@ o escopo "só pede ticket de runner" viraria decorativo.
   passa sem tentar `verify()`), `test/interfaces/http/runner/runner-tickets.controller.spec.ts`
   (`runnerTicket` tem o decorator, `terminalTicket` não)
 - **Decisão arquitetural:**
-  [ADR 0105](../../adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
+  [ADR 0105](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
 
 ### RN-425 — Validação de PAT colapsa inexistente/revogado/expirado numa resposta só; escopo errado é 403; `last_used_at` nunca throttla {#rn-425}
 
@@ -1180,7 +1180,7 @@ pior caso real (até 10 tentativas seguidas, teto do runner).
   `test/interfaces/pat-auth.guard.spec.ts` (escopo errado → 403,
   não 401)
 - **Decisão arquitetural:**
-  [ADR 0105](../../adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
+  [ADR 0105](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
 
 ### RN-426 — Listar/revogar PAT é escopado ao PRÓPRIO usuário, no WHERE da query — sem admin cross-user nesta onda {#rn-426}
 
@@ -1212,7 +1212,7 @@ Esta régua (autorevogação, escopo por `userId`) não mudou em nada.
   `test/infrastructure/persistence/personal-access-token.repository.spec.ts`
   (revogar token de outro usuário → `null`)
 - **Decisão arquitetural:**
-  [ADR 0105](../../adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
+  [ADR 0105](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
 
 ---
 
@@ -1263,7 +1263,7 @@ existência que a RN-426 já aplicava.
   `test/interfaces/http/runner/personal-access-tokens.controller.spec.ts`,
   `apps/web/src/routes/ProjectSettingsTab.test.tsx`
 - **Decisão arquitetural:**
-  [ADR 0105](../../adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
+  [ADR 0105](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0105-personal-access-token-do-runner-escopado-por-construcao.md)
   (extensão do modelo existente, sem ADR novo)
 
 ---

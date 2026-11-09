@@ -13,7 +13,7 @@ keywords: [regras de negócio, api]
 O épico EP-028 nasceu de uma conversa em português respondida em espanhol. As
 decisões do mantenedor de 2026-09-28 (AT-168, AT-169) fixaram onde o idioma
 das RESPOSTAS mora — conta, sessão e projeto — e a precedência entre as
-fontes. Nenhuma destas regras toca o idioma da INTERFACE ([RN-432](../web.md#rn-432)).
+fontes. Nenhuma destas regras toca o idioma da INTERFACE ([RN-432](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-432)).
 
 ### RN-618 — O idioma das respostas é da PESSOA: escolha na conta, override por sessão, e a precedência que termina sempre num idioma {#rn-618}
 
@@ -48,7 +48,7 @@ fontes. Nenhuma destas regras toca o idioma da INTERFACE ([RN-432](../web.md#rn-
    dentro de uma mensagem ("traduza para o inglês") não é degrau: quem o
    atende é o modelo.
 
-**Quem consome:** desde a [RN-622](../engine.md#rn-622) o efetivo chega ao modelo — a
+**Quem consome:** desde a [RN-622](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-622) o efetivo chega ao modelo — a
 api chama `ResolverIdiomaDaRespostaUseCase` com o AUTOR de cada mensagem a um
 agente e a sessão, e o engine põe a orientação no fim de cada chamada de LLM
 daquele turno. A Conta deixou de dizer que o valor "ainda não chega".
@@ -111,9 +111,9 @@ daquele turno. A Conta deixou de dizer que o valor "ainda não chega".
    default `pt-BR` da coluna é só a rede de quem insere por fora do caso de
    uso (seed, script, fixture).
 
-**Quem consome, e o que sobra:** desde a [RN-622](../engine.md#rn-622) o engine lê a
+**Quem consome, e o que sobra:** desde a [RN-622](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-622) o engine lê a
 coluna (`Engine.Projects.Project`, direto do Postgres) e a manda ao modelo em
-toda chamada de LLM de turno SEM autor humano, e desde a [RN-623](../engine.md#rn-623)
+toda chamada de LLM de turno SEM autor humano, e desde a [RN-623](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-623)
 também como idioma do artefato compartilhado que um agente grava DURANTE um
 turno com autor humano — a divergência que esta regra declarava fechou.
 
@@ -189,7 +189,7 @@ pergunta na tela onde o idioma já é mostrado e corrigido.
    novo. O que se guarda é o idioma e a decisão da pessoa — nunca país,
    nacionalidade ou proficiência.
 6. **Onde a pergunta aparece.** Num cartão pequeno ancorado logo abaixo do
-   indicador de idioma da barra da sessão ([RN-620](../web.md#rn-620)): "Detectamos que
+   indicador de idioma da barra da sessão ([RN-620](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-620)): "Detectamos que
    você escreve em espanhol (es) — usar espanhol (es) nas respostas?", com
    "Usar", "Não" e "Agora não". Sem modal, sem cobrir o composer; "Agora não"
    só esconde nesta tela, sem gravar, e a pergunta volta na próxima leitura.
@@ -293,7 +293,7 @@ Arquiteto e da Infra saíam da janela; as ofertas de handoff endereçadas a eles
 voltavam a parecer aceitáveis e o "oi" ia para o último agente que ainda
 aparecia. É a classe de defeito da RN-180 (teto silencioso faz a
 tela afirmar sobre o que não leu), já fechada para a presença de QA/SecOps na
-[RN-568](../web.md#rn-568).
+[RN-568](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-568).
 
 **A regra:** o resumo do projeto ([RN-090](parte-02.md#rn-090)) devolve
 `roster.activatedAgents` — os agentes com ao menos um `agent.activated` na
@@ -306,7 +306,7 @@ primeiro. Quatro decisões:
    então o número de idas ao banco do resumo não muda (o spec de contagem
    constante segue valendo). A migration 0066 reservada não foi usada.
 2. **Sem HTTP novo por poll.** O campo viaja no resumo que as telas já leem
-   ([RN-579](../engine.md#rn-579)).
+   ([RN-579](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-579)).
 3. **O cliente SOMA à janela e só confia com o resumo da MESMA sessão**
    (`latestSessionId === sessionId`), como na RN-568: ativação é monótona
    (agente ativado não se desativa), então a janela só dá falso negativo. Resumo
@@ -319,7 +319,7 @@ primeiro. Quatro decisões:
 (`session-readiness.ts`, `session-handoffs.ts`) segue lendo a janela até a
 AT-251/AT-253 passarem a consumir `roster.activatedAgents`.
 
-> **Fechada na [RN-631](../web.md#rn-631) (AT-251):** o destinatário do composer e as
+> **Fechada na [RN-631](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-631) (AT-251):** o destinatário do composer e as
 > ofertas de handoff da tela de Sessão SOMAM `roster.activatedAgents` à janela,
 > com a guarda da mesma sessão. `criativoActive`/`arquitetoActive`
 > (`session-readiness.ts`) seguem lendo só a janela.
@@ -337,7 +337,7 @@ AT-251/AT-253 passarem a consumir `roster.activatedAgents`.
 `handoffs` só gravava `offered`/`accepted`, sem expiração, supersessão nem
 dedupe: duplo clique em "arquitetura pronta" dava 2× Infra e 2× Dev Lead, e
 oferta a agente já ativo ficava acionável para sempre (AT-291,
-[ADR 0182](../../adr/0182-ciclo-de-vida-do-handoff.md)).
+[ADR 0182](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0182-ciclo-de-vida-do-handoff.md)).
 
 1. **No máximo UMA `offered` por (projeto, destino).** `decidirOferta` decide:
    sem pendente, cria; pendente na MESMA sessão e sem artefato novo (o novo é
@@ -428,7 +428,7 @@ quando havia alguém esperando por ela.
 antigas além delas ficam fora (o teto é o mesmo `limit`); e o que o fio mostra
 de DECIDIDO continua sendo a cauda — ação decidida antiga, fora das 200 mais
 novas, não aparece no fio. Pendentes do PROJETO inteiro são outra leitura
-([RN-638](../web.md#rn-638)).
+([RN-638](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-638)).
 
 - **Código:** `src/infrastructure/persistence/drizzle/proposed-action.repository.ts:96`
   (`listPaginated`), `:113` (o ramo `latest`);
@@ -519,7 +519,7 @@ lançava 409 com o padrão JÁ gravado e SEM o evento `permission.granted`.
 ### RN-649 — Sessão `closed`/`closed_abnormally` reabre para `active` com o log intacto, e o fechamento anterior vira evento novo {#rn-649}
 
 A [RN-001](parte-01.md#rn-001) dizia que os estados terminais não têm saída. Desde o
-[ADR 0183](../../adr/0183-reabrir-sessao-encerrada.md) há UMA, e só uma: a
+[ADR 0183](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0183-reabrir-sessao-encerrada.md) há UMA, e só uma: a
 reabertura, de `closed` ou `closed_abnormally` para `active`, por caminho
 próprio. A transição GENÉRICA continua recusando `closed → active` com 409, e
 `closing → active` segue proibido por qualquer caminho.
@@ -528,7 +528,7 @@ próprio. A transição GENÉRICA continua recusando `closed → active` com 409
    as regras de negócio, as perguntas respondidas, as ofertas e aceites de
    handoff. Um agente conversacional parado no fechamento volta pelo
    `start_agent` idempotente na primeira mensagem e reconstrói o histórico
-   ([RN-580](../engine.md#rn-580)). A conversa volta a entrar porque a recusa da
+   ([RN-580](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-580)). A conversa volta a entrar porque a recusa da
    [RN-581](parte-07.md#rn-581) lê o estado da sessão, que agora é `active`.
 2. **O fechamento anterior não se apaga.** A linha de `sessions` perde
    `closed_at` e `termination_reason`; o evento NOVO `session.reopened`, no
@@ -538,7 +538,7 @@ próprio. A transição GENÉRICA continua recusando `closed → active` com 409
 3. **Sessão com execução não reabre** — 409 `sessao_com_execucao`. Reabrir uma
    sessão com `execution.activated` a devolveria a `findActiveExecutionSession`
    ([RN-139](parte-03.md#rn-139)). Decisão do dono,
-   confirmada no [ADR 0184](../../adr/0184-reabrir-sessao-decisoes-do-dono.md).
+   confirmada no [ADR 0184](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0184-reabrir-sessao-decisoes-do-dono.md).
 4. **Sem prazo.** Toda sessão encerrada é reabrível (decisão do dono, ADR 0184).
 5. **O engine é chamado antes da transação**, como na ativação: falha dele
    deixa a sessão encerrada, sem evento. Outro estado que não terminal é 409
@@ -579,15 +579,15 @@ próprio. A transição GENÉRICA continua recusando `closed → active` com 409
 `POST projects/:projectId/sessions/:sessionId/reopen` exige `developer` — o
 MESMO papel da transição genérica que encerra a sessão: quem pode dá-la por
 terminada pode trazê-la de volta. Responde 200 com a sessão. `viewer` é 403.
-O [ADR 0183](../../adr/0183-reabrir-sessao-encerrada.md) tinha fixado `maintainer`
+O [ADR 0183](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0183-reabrir-sessao-encerrada.md) tinha fixado `maintainer`
 como padrão provisório; o dono decidiu `developer` em 2026-09-30
-([ADR 0184](../../adr/0184-reabrir-sessao-decisoes-do-dono.md)), confirmando junto
+([ADR 0184](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0184-reabrir-sessao-decisoes-do-dono.md)), confirmando junto
 as outras duas decisões — sem prazo, e sessão com `execution.activated`
 recusada.
 
 Na tela de Sessão, a faixa da sessão encerrada mostra "Reabrir sessão" com uma
 frase do que volta. Abaixo de `developer` (`roleAtLeast`, papel de WORKSPACE —
-a lacuna da [RN-471](../web.md#rn-471) já declarada na tela) o botão fica inerte e o
+a lacuna da [RN-471](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-471) já declarada na tela) o botão fica inerte e o
 motivo é dito em TEXTO. A recusa da api (409 de sessão com execução, 403) vira
 toast com a frase dela. O fio narra `session.reopened` como "sessão reaberta",
 com a causa do fechamento anterior quando ela foi gravada.
@@ -611,11 +611,11 @@ com a causa do fechamento anterior quando ela foi gravada.
 
 ### RN-654 — Os bindings resolvidos de todos os agentes e áreas vêm numa leitura só {#rn-654}
 
-A [RN-645](../web.md#rn-645) mediu 49 requisições na carga da aba Configurações, e 20
+A [RN-645](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-645) mediu 49 requisições na carga da aba Configurações, e 20
 delas eram o binding RESOLVIDO de cada agente (17) e de cada área (3), uma rota
 por chave. Três seções liam essas chaves — modelos por agente, modelos por área
 e melhores modelos por capacidade —, e o teto de 300 req/min é do USUÁRIO
-([RN-579](../engine.md#rn-579)).
+([RN-579](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-579)).
 
 **A regra:**
 
@@ -625,13 +625,13 @@ e melhores modelos por capacidade —, e o teto de 300 req/min é do USUÁRIO
    individual responderia para aquela chave (`GET .../agent-bindings/:slug`,
    `GET .../area-bindings/:key`): a mesma cascata `workspace › projeto › área ›
    agente` sem sessão, as mesmas origens que a tela transforma em cadeia
-   ([RN-470](../web.md#rn-470)), a herança do Criativo, e `null` quando nenhum nível tem
+   ([RN-470](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-470)), a herança do Criativo, e `null` quando nenhum nível tem
    modelo. Não há cascata nova: o caso de uso chama `ResolveModelBindingUseCase`
    chave a chave, com a entrada que a rota individual passaria.
 2. **O papel mínimo é o das rotas individuais de leitura, `viewer`.** Quem não
    alcança o projeto recebe o MESMO 403.
 3. **A leitura é contida**
-   ([ADR 0060](../../adr/0060-superficie-de-leitura-de-codigo.md)): as chaves vêm em
+   ([ADR 0060](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0060-superficie-de-leitura-de-codigo.md)): as chaves vêm em
    lista separada por vírgula, com o alfabeto dos slugs (minúsculas, dígitos, `-`, `_`), e são no
    máximo 64 somadas (`TETO_DE_CHAVES_NO_LOTE`). Chave malformada ou lote acima
    do teto é 400 nomeando o motivo, nunca chave descartada calada — a resposta
@@ -695,13 +695,13 @@ não medido em projeto real, e declarado.
   deixam o cartão sem modelo); `apps/web/src/routes/duas-abas.orcamento.test.tsx:334`
   (a carga das duas abas lê o lote uma vez e cabe em 27 e 31)
 - **Origem:** AT-334 (decisão do dono sobre a lacuna declarada na
-  [RN-645](../web.md#rn-645)); AT-339 (a Visão geral e a aba Executores no lote)
+  [RN-645](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-645)); AT-339 (a Visão geral e a aba Executores no lote)
 
 ## A leitura dos membros do workspace (RN-655) {#a-leitura-dos-membros-do-workspace-rn-655}
 
 ### RN-655 — `GET workspaces/:id/members` é `viewer`, e devolve só id, nome, e-mail e papel {#rn-655}
 
-O fio da sessão ([RN-652](../web.md#rn-652)) nomeava só quem tinha linha em
+O fio da sessão ([RN-652](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-652)) nomeava só quem tinha linha em
 `project_members`; quem entra no projeto só pelo papel de WORKSPACE virava
 "Outro membro", porque não havia rota que lesse os membros do workspace
 (decisão do dono, AT-335). A rota nasce ao lado das três de ESCRITA de membro
@@ -737,8 +737,8 @@ leitura existe para nomear, e as rotas de escrita seguem sendo de API.
 
 A ação não guarda o motivo da política: ele mora no `proposed_action.created`
 ([RN-567](parte-07.md#rn-567), [RN-609](parte-07.md#rn-609)). A aba Aprovações lê a fila do
-PROJETO ([RN-638](../web.md#rn-638)) e o log de UMA sessão, então desde a AT-333 ela
-dizia numa nota única quantas ações ficavam sem motivo ([RN-614](../web.md#rn-614)).
+PROJETO ([RN-638](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-638)) e o log de UMA sessão, então desde a AT-333 ela
+dizia numa nota única quantas ações ficavam sem motivo ([RN-614](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-614)).
 Decisão do dono (AT-336): cada cartão mostra o PRÓPRIO.
 
 **O que se mediu.** As duas saídas do card eram um filtro `actionId` na
@@ -754,7 +754,7 @@ cartão já conhece.
 aquela ação, na sessão pedida — nunca atravessa sessões. Combina com os outros
 parâmetros e o `limit` conta só os que casam; o `seq` deixa de ser contíguo na
 página, então quem filtra NÃO deriva omitidos por subtração
-([RN-180](../web.md#rn-180)). Vazio é 400: um filtro que some com a string errada
+([RN-180](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-180)). Vazio é 400: um filtro que some com a string errada
 devolveria o log inteiro a quem pediu o motivo de uma ação.
 
 **A regra na tela.** `useDecisoesDaPolitica`: a ação cujo evento está no log
@@ -765,7 +765,7 @@ Nada é pedido enquanto a aba ainda carrega o próprio log. A leitura que
 responde SEM o evento dá a frase de "motivo não registrado" (nunca cala); só a
 leitura que FALHA deixa o cartão calado, e é essa, e só essa, que a nota do
 topo conta (*"de N das M ações abaixo"*). Desde a AT-340 os cartões das
-pendências de OUTRAS sessões no chat ([RN-626](../web.md#rn-626),
+pendências de OUTRAS sessões no chat ([RN-626](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-626),
 `PendenciasDeOutrasSessoes`, também na aba Executores) passam pelo MESMO hook e
 pelo MESMO cache: toda ação ali é de outra sessão, então nenhuma é coberta
 pelo log da tela e cada uma lê pela ação — só as DESENHADAS, dentro do teto de
@@ -773,7 +773,7 @@ cards do bloco, e a que a aba Aprovações já leu não custa nada ali (e
 vice-versa). A leitura que falha também cala o cartão e é dita uma vez, no topo
 do bloco. O painel "precisa de você" NÃO usa este caminho: ele não lê log
 nenhum e abrir não dispara consulta, então o cartão ali segue calado, como a
-[RN-614](../web.md#rn-614) já dizia — decisão, não lacuna. Nenhum teto muda.
+[RN-614](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-614) já dizia — decisão, não lacuna. Nenhum teto muda.
 
 - **Código:** `src/interfaces/http/sessions/sessions.controller.ts:260`
   (`listEvents`);
@@ -804,10 +804,10 @@ nenhum e abrir não dispara consulta, então o cartão ali segue calado, como a
 
 ### RN-657 — "Estou pronto — a necessidade está validada" fecha os DOIS gates num POST, com o `product_brief` produzido depois do clique {#rn-657}
 
-Revisa a [RN-406](../contracts.md#rn-406) por decisão do dono (30/09, AT-311): o botão do
+Revisa a [RN-406](https://github.com/viralabs-dev/brabo-contracts/blob/dev/packages/docs/business-rules/contracts.md#rn-406) por decisão do dono (30/09, AT-311): o botão do
 Criativo passou a se chamar **"Estou pronto — a necessidade está validada"**
 (en: "I'm ready — the need is validated"), e é o rótulo que faz do clique o
-julgamento de MÉRITO que o [ADR 0095](../../adr/0095-gate-necessidade-validada.md)
+julgamento de MÉRITO que o [ADR 0095](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0095-gate-necessidade-validada.md)
 exigia separado — a pessoa declara as duas coisas, com as palavras das duas.
 `POST .../sessions/:id/readiness` grava, nesta ordem:
 
@@ -815,7 +815,7 @@ exigia separado — a pessoa declara as duas coisas, com as palavras das duas.
    `{ necessidadeValidada: true, aceiteImplicitoDoPo: true }` (a marca é o
    que a [RN-658](#rn-658) lê; evento antigo, com payload `{}`, não aceita
    nada);
-2. o comando ao engine (o turno que consolida o `product_brief`, [RN-142](../engine.md#rn-142));
+2. o comando ao engine (o turno que consolida o `product_brief`, [RN-142](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-142));
 3. só se o engine ACEITOU o turno, `necessity.validated`, ator a mesma
    pessoa, com `productBriefId: null` (o brief ainda não existe — nasce do
    turno que o clique dispara), `via: 'readiness.confirmed'` e o
@@ -839,8 +839,8 @@ entra quando o resumo ficar pronto.
   `apps/web/src/routes/SessionPage.estou-pronto.test.tsx:150` (um clique,
   aviso de necessidade validada, sem botão separado), `:169` (recusa: nada é
   dito como validado)
-- **ADR:** [0185](../../adr/0185-estou-pronto-fecha-os-dois-gates.md), que revisa o
-  [0095](../../adr/0095-gate-necessidade-validada.md)
+- **ADR:** [0185](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0185-estou-pronto-fecha-os-dois-gates.md), que revisa o
+  [0095](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0095-gate-necessidade-validada.md)
 - **Origem:** AT-311 (levantamento da AT-309, achado 1)
 
 ### RN-658 — O aceite do handoff Criativo→PO é implícito no "Estou pronto": os MESMOS eventos, com a pessoa como ator e a marca `implicito` {#rn-658}
@@ -867,14 +867,14 @@ Aceita-se só quando TODAS valem (`decidirAceiteImplicitoDoPo`): a oferta é
 `product_brief` nascido DEPOIS do `readiness.confirmed` marcado mais recente.
 Fora disso a oferta fica `offered` e o card aparece como sempre: sessão
 anterior ao ADR 0185 (sem marca), brief anterior ao clique, e o handoff
-MANUAL, que nunca leva artefato ([RN-633](../web.md#rn-633) — o "Estou pronto" segue
+MANUAL, que nunca leva artefato ([RN-633](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-633) — o "Estou pronto" segue
 na tela depois dele). A falha do aceite NÃO sobe para o engine (a oferta foi
 criada, e o Criativo diria "não consegui oferecer" — falso): vira
 `agent.error` durável, ator `system`/`aceite-implicito`, com origem (`infra`
 ou `politica`) e `reason: aceite_implicito_falhou`. O 400 de "não está
 `offered`" não é falha: alguém decidiu a oferta por outro caminho no intervalo,
 e isso já está no log. A tela passa o destinatário do composer ao PO no clique
-(o gesto de chamá-lo, [RN-631](../web.md#rn-631)); enquanto ele não entra, a escolha não
+(o gesto de chamá-lo, [RN-631](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-631)); enquanto ele não entra, a escolha não
 vale e o Criativo segue recebendo. Nenhum teto se move: aceitar o PO não
 provisiona repositório (só o Arquiteto e o Dev Lead, [RN-582](parte-07.md#rn-582)), não
 faz merge nem push.
@@ -891,7 +891,7 @@ faz merge nem push.
   `test/domain/sessions/estou-pronto.spec.ts:58`, `:72`, `:83`, `:94`;
   `test/application/use-cases/agents/accept-handoff.use-case.spec.ts:318`
   (mesmos eventos, ator humano e marca), `:338` (sem marca pelo card)
-- **ADR:** [0185](../../adr/0185-estou-pronto-fecha-os-dois-gates.md)
+- **ADR:** [0185](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0185-estou-pronto-fecha-os-dois-gates.md)
 - **Origem:** AT-312 (levantamento da AT-309, passo 4)
 
 ## O motivo da política em cada cartão de Aprovações (RN-656) {#o-motivo-da-politica-em-cada-cartao-de-aprovacoes-rn-656-1}
@@ -979,7 +979,7 @@ handoff manual (ADR 0109) também.
   `apps/web/src/routes/SessionPage.handoff-aceite-automatico.test.tsx:174`,
   `:196`; `apps/engine/test/engine/harness/tools/offer_handoff_test.exs:38`
   (não rodado nesta sessão: sem Elixir no ambiente)
-- **Origem:** AT-314, [ADR 0186](../../adr/0186-aceite-automatico-do-handoff-ao-arquiteto.md)
+- **Origem:** AT-314, [ADR 0186](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0186-aceite-automatico-do-handoff-ao-arquiteto.md)
 
 ## O Infra Lead não anuncia subida que não fez (RN-668) {#o-infra-lead-nao-anuncia-subida-que-nao-fez-rn-668}
 
@@ -1047,7 +1047,7 @@ no frame final do stream —, esse valor é o `token_usage.cost_micros` da linha
 o que o turno devolve ao engine (e o laço soma ao orçamento local), o que
 incrementa os budgets de projeto, sessão e área, e o que os relatórios de
 gasto somam. Sem ele, o preço congelado do catálogo produz o número, como no
-[ADR 0042](../../adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md).
+[ADR 0042](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0042-catalogo-vivo-ciclo-de-vida-do-modelo-e-preco-auditavel.md).
 
 1. **Uma regra, três caminhos.** `RunLlmTurnUseCase`, `StreamLlmTurnUseCase`
    e `SendChatMessageUseCase` passam pela mesma `custoDaChamada`; não há
@@ -1087,7 +1087,7 @@ gasto somam. Sem ele, o preço congelado do catálogo produz o número, como no
   `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts`,
   `test/application/use-cases/llm/send-chat-message.use-case.spec.ts`; com
   credencial, o smoke manual `openrouter-provider.smoke.spec.ts`
-- **Origem:** [ADR 0188](../../adr/0188-o-custo-real-do-provider-vira-o-numero-do-metering.md)
+- **Origem:** [ADR 0188](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0188-o-custo-real-do-provider-vira-o-numero-do-metering.md)
   (AT-270)
 
 ### RN-666 — O metering grava quanto da entrada veio de cache e quanto da saída foi raciocínio {#rn-666}
@@ -1125,7 +1125,7 @@ foram raciocínio).
   (resposta gravada com as duas partes; sem os detalhes; valor inválido e
   zero), `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts`,
   `test/scripts/medir-execucao.spec.ts` (`formatarParteMedida`)
-- **Origem:** [ADR 0188](../../adr/0188-o-custo-real-do-provider-vira-o-numero-do-metering.md)
+- **Origem:** [ADR 0188](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0188-o-custo-real-do-provider-vira-o-numero-do-metering.md)
   (AT-272)
 
 ### RN-669 — O escopo de caminho compara com a pasta REAL de execução: `/work` e o `/tmp` do container quando ele está de pé {#rn-669}
@@ -1169,11 +1169,11 @@ existe.
   `test/application/use-cases/actions/propose-action.use-case.spec.ts:1169`
   (o modo `mounted` com e sem container, e sem o piso)
 - **Origem:** AT-258 (item A12 da análise do uso real de 29/09), decisão do
-  dono de 01/10, [ADR 0189](../../adr/0189-o-piloto-automatico.md)
+  dono de 01/10, [ADR 0189](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0189-o-piloto-automatico.md)
 
 ### RN-670 — O modo automático é o PILOTO AUTOMÁTICO, e "Sempre permitir" não o desliga {#rn-670}
 
-Decisão do dono de 01/10 ([ADR 0189](../../adr/0189-o-piloto-automatico.md)): a
+Decisão do dono de 01/10 ([ADR 0189](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0189-o-piloto-automatico.md)): a
 [RN-603](parte-07.md#rn-603) NÃO é revogada. A curinga
 `*: auto_approve` aprova TUDO, inclusive o composto sintetizado do
 `permissions.json`, caminho fora da pasta, `git commit` e criação de branch
@@ -1199,7 +1199,7 @@ clique continua gravando a específica; quem decide se ela já existe é o campo
 
 **A tela diz o que o piloto libera e o que não libera**, com UMA lista nos três
 lugares onde o modo é ligado: o cartão de lote dos Executores
-([RN-661](../web.md#rn-661), aberta), o `ApprovalCard` e o toggle do card do agente
+([RN-661](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-661), aberta), o `ApprovalCard` e o toggle do card do agente
 (recolhida). O "não libera" é o texto que a RN-661 já tinha, reusado.
 
 - **Código:** `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
@@ -1227,8 +1227,8 @@ lugares onde o modo é ligado: o cartão de lote dos Executores
 
 ### RN-671 — A Infra sobe o container no aceite do handoff: o servidor propõe, e a autonomia semeada aprova {#rn-671}
 
-Decisão do dono em 01/10 ([ADR 0190](../../adr/0190-a-infra-sobe-o-container-no-aceite.md)),
-revisando o "nunca semeado" da [RN-491](../web.md#rn-491). No uso real de 29/09 a Infra
+Decisão do dono em 01/10 ([ADR 0190](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0190-a-infra-sobe-o-container-no-aceite.md)),
+revisando o "nunca semeado" da [RN-491](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-491). No uso real de 29/09 a Infra
 anunciou a subida "em paralelo" e não a propôs; o container só subiu pela
 `/containers` (AT-260).
 
@@ -1241,11 +1241,11 @@ anunciou a subida "em paralelo" e não a propôs; o container só subiu pela
    ao modelo, havendo roteamento vigente (`artifact.module_routing` `roteado`,
    com candidata) e projeto `container`/`mounted`, o servidor propõe
    `container_start` pelo MESMO caminho da tool `propose_container_start`: as
-   recusas locais por modo e estado ([RN-566](../engine.md#rn-566), [RN-610](../engine.md#rn-610)),
+   recusas locais por modo e estado ([RN-566](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-566), [RN-610](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-610)),
    depois `propose_action`, onde a api recusa sem broker ([RN-591](parte-07.md#rn-591)),
    resolve a autonomia e, auto-aprovada, executa a subida, elegendo a imagem
    por `DecidirImagemDoProjetoUseCase` com `decidedBy: 'infra-lead'`
-   ([RN-491](../web.md#rn-491)). `runner` não tem passo do servidor: segue pelo
+   ([RN-491](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-491)). `runner` não tem passo do servidor: segue pelo
    `container_start_via_runner`, proposto pelo modelo e decidido por humano.
 3. **A eleição é determinística.** A candidata do maior número de módulos; no
    empate, a primeira do roteamento. Rede `none`, recursos padrão, e um
@@ -1256,7 +1256,7 @@ anunciou a subida "em paralelo" e não a propôs; o container só subiu pela
    `tool.result` duráveis, e nenhuma mensagem de ferramenta no histórico do
    modelo; o kickoff diz em texto o que JÁ aconteceu (status devolvido, ou o
    motivo da recusa).
-5. **O fecho da [RN-668](../engine.md#rn-668) segue verdadeiro.** A subida do servidor marca
+5. **O fecho da [RN-668](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-668) segue verdadeiro.** A subida do servidor marca
    o turno como a da tool: proposta, o fecho não fala; recusada, ele diz que foi
    recusada. Proposta NEGADA pela política (status `denied`, como uma sessão
    aberta por quem não é `maintainer`) conta como recusa, nas duas origens.
@@ -1287,11 +1287,11 @@ vence — pôr a Infra em "manual" não desliga esta semente.
 
 ### RN-672 — O handoff ao Dev Lead sai da Infra, e só com o container do projeto `running` {#rn-672}
 
-Decisão do dono em 01/10 ([ADR 0190](../../adr/0190-a-infra-sobe-o-container-no-aceite.md),
+Decisão do dono em 01/10 ([ADR 0190](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0190-a-infra-sobe-o-container-no-aceite.md),
 AT-262). Até aqui "Confirmar arquitetura pronta" oferecia DOIS handoffs — à
 Infra e ao Dev Lead (FASE 14d, `handoff-duplo` em `packages/contracts/fluxo.yml`) —, e o Dev
 Lead podia ser aceito antes de existir o container em que os dev agents
-trabalham ([RN-502](../engine.md#rn-502)). No uso real de 29/09 os dois nasceram da mesma
+trabalham ([RN-502](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-502)). No uso real de 29/09 os dois nasceram da mesma
 confirmação (sessão `be70`, seq 252/254).
 
 1. **A confirmação de arquitetura oferece só à Infra.** `OfferInfraHandoffUseCase`
@@ -1314,7 +1314,7 @@ confirmação (sessão `be70`, seq 252/254).
    passa a enfileirar também o `Engine.Workers.InfraOfereceDevLeadWorker`, que
    avisa por PubSub o Infra Lead do projeto.
 4. **Falha que não é "já atendido" é `agent.error` durável** com origem
-   ([RN-116](../engine.md#rn-116)), sem derrubar o turno; o fim do
+   ([RN-116](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-116)), sem derrubar o turno; o fim do
    próximo turno da Infra tenta de novo.
 
 Fica como estava: a segunda porta do repositório no aceite ao Dev Lead
@@ -1350,7 +1350,7 @@ instante, a oferta espera o fim do próximo turno dele.
 ### RN-675 — "Sempre permitir" grava VERBO + SUBCOMANDO, um padrão por segmento do comando {#rn-675}
 
 Decisão do dono de 01/10 (AT-257, que fecha a AT-170 — o ponto 6 do ADR 0055,
-a unidade da generalização; [ADR 0189](../../adr/0189-o-piloto-automatico.md)). Até
+a unidade da generalização; [ADR 0189](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0189-o-piloto-automatico.md)). Até
 aqui o clique gravava o comando INTEIRO, byte a byte (`Terminal(<comando>)`):
 o próximo comando quase nunca era igual — 173 cliques no uso real de 29/09 —, e
 o composto virava UM padrão cujo conteúdo só casava o PRIMEIRO segmento, então

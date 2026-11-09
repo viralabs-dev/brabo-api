@@ -14,7 +14,7 @@ keywords: [regras de negócio, api]
 
 `decide()` sempre devolveu um par — `policy` e `reason` —, e a razão é
 escrita em todos os pontos de retorno: o IAM insuficiente, o piso do
-container ([RN-492](../engine.md#rn-492)), `agent_autonomy`, as linhas do
+container ([RN-492](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-492)), `agent_autonomy`, as linhas do
 `permissions.json`, o comando composto, e cada teto absoluto. Mas
 `ProposeActionUseCase` só a guardava num lugar: `rejectionReason`, que
 `initialStatusFor` preenche **só** quando a política nega. Numa
@@ -33,7 +33,7 @@ primeiro teto novo. No `denied` o valor é o MESMO que vira
 **O outbox NÃO ganha o campo, e isso é decisão.** A linha de outbox
 `proposed_action.created` é contrato api↔engine, e nenhum consumidor do
 engine lê o motivo; alargar contrato sem consumidor é o corte que o
-[ADR 0153](../../adr/0153-deploy-enabled-o-gatilho-que-ninguem-cria.md) nomeia. A
+[ADR 0153](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0153-deploy-enabled-o-gatilho-que-ninguem-cria.md) nomeia. A
 linha `session_event.appended` que `AppendSessionEventUseCase` grava para o
 mesmo evento carrega só `eventId`/`seq`/`type`, então o motivo também não
 vaza por ela.
@@ -45,11 +45,11 @@ ausente como "não registrado". Todo evento novo tem o campo, porque
 
 Nada em `decide()` muda — nenhum teto, nenhum veredito, nenhuma string. A
 tela também não muda nesta regra: o motivo passa a EXISTIR no log, e
-mostrá-lo é outra entrega. (Desde a [RN-614](../web.md#rn-614) a tela o mostra na
+mostrá-lo é outra entrega. (Desde a [RN-614](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-614) a tela o mostra na
 linha do evento no painel de log e no `ApprovalCard`, pela mesma frase.)
 
 **O que o motivo NÃO diz, declarado:** ele nomeia a regra, não a RAIZ do
-escopo — o ponto 7 do [ADR 0055](../../adr/0055-escopo-de-caminho-na-politica-de-terminal.md)
+escopo — o ponto 7 do [ADR 0055](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0055-escopo-de-caminho-na-politica-de-terminal.md)
 pedia *qual raiz* autorizou, e `escopo: cd dentro da pasta do projeto` não
 carrega o caminho. (A raiz passou a ir no evento em campo PRÓPRIO desde a
 [RN-609](#rn-609), relativa e nunca absoluta.) No comando composto, a razão diz que todos os segmentos
@@ -68,14 +68,14 @@ do `permissions.json` repetem os TOKENS do comando no texto (o `label` de
   `:959` (`require_approval` pelo default e pelo teto da trava de merge),
   `:1058` (`deny` com o mesmo texto do `rejectionReason`), `:999` (o outbox
   sem `reason`)
-- **ADR:** [0048](../../adr/0048-decisao-no-log-e-a-ordem-do-gate.md),
-  [0055](../../adr/0055-escopo-de-caminho-na-politica-de-terminal.md) (ponto 7,
+- **ADR:** [0048](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0048-decisao-no-log-e-a-ordem-do-gate.md),
+  [0055](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0055-escopo-de-caminho-na-politica-de-terminal.md) (ponto 7,
   parcialmente)
 - **Origem:** AT-066
 
 ### RN-569 — O grafo é reconstruído do event log pelo MESMO tradutor do projetor vivo, sem tocar a outbox, e nunca sai como sucesso calado {#rn-569}
 
-O [ADR 0152](../../adr/0152-backup-de-volumes-contra-compose.md) (decisão 4) recusou
+O [ADR 0152](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0152-backup-de-volumes-contra-compose.md) (decisão 4) recusou
 backup de `neo4j_data` apoiado numa premissa — *o grafo pode ser descartado
 porque pode ser reconstruído* — cujo mecanismo não existia: `grep` por
 `reprojet`/`reproject` em `apps/` e `scripts/` voltava vazio, e
@@ -150,14 +150,14 @@ no cluster local que o BRB-018 pede não foi feita — ele segue aberto.
 
 Numa instalação real da v6.1.0 (AT-085), o assistente pré-selecionou `mounted`
 — o `install.sh` sempre grava `BRABO_PROJECTS_BASE`, e com base conhecida a
-[RN-513](../web.md#rn-513) pré-selecionava o modo. Mas a instalação por Release não tem
+[RN-513](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-513) pré-selecionava o modo. Mas a instalação por Release não tem
 broker de container (a imagem não é publicada, decisão 7 do
-[ADR 0150](../../adr/0150-instalador-de-uma-linha.md)), e `container`/`mounted` só
+[ADR 0150](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0150-instalador-de-uma-linha.md)), e `container`/`mounted` só
 sobem container pelo broker ([RN-503](parte-06.md#rn-503)). Resultado: seis
 `dev.blocked_by_container` e duas `container.start_failed` — ninguém trabalha
-no projeto, para sempre ([RN-502](../engine.md#rn-502)).
+no projeto, para sempre ([RN-502](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-502)).
 
-**A regra ([ADR 0161](../../adr/0161-a-tela-so-oferece-o-modo-que-a-instalacao-executa.md)):**
+**A regra ([ADR 0161](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0161-a-tela-so-oferece-o-modo-que-a-instalacao-executa.md)):**
 
 1. **A api diz se há broker, na rota que o assistente já lê.**
    `GET workspaces/:workspaceId/projects-base` passa a devolver
@@ -179,10 +179,10 @@ no projeto, para sempre ([RN-502](../engine.md#rn-502)).
    some.
 
 **O que esta regra NÃO fecha:** a conversão de modo
-([RN-559](../web.md#rn-559)) continua oferecendo `container`/`mounted` numa instalação
+([RN-559](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-559)) continua oferecendo `container`/`mounted` numa instalação
 sem broker; o instalador não pergunta se liga o broker, porque a imagem dele
 não é obtível por uma instalação de Release (medido — ver o ADR 0161); e no
-compose de desenvolvimento, que sobe o broker por padrão ([RN-512](../infra.md#rn-512)) mas
+compose de desenvolvimento, que sobe o broker por padrão ([RN-512](https://github.com/viralabs-dev/brabo-infra/blob/dev/deploy/docs/business-rules/infra.md#rn-512)) mas
 deixa `BROKER_URL` vazia até alguém a pôr no `.env`, o aviso aparece — e está
 certo, porque sem a variável a api nunca chama o broker.
 
@@ -214,7 +214,7 @@ A mesma instalação do AT-085 deixou aprovar, pela página de containers
 falhar — sem imagem, `runner` sem pasta confirmada, papel abaixo de
 `maintainer` — e não sabia desta.
 
-**A regra ([ADR 0161](../../adr/0161-a-tela-so-oferece-o-modo-que-a-instalacao-executa.md)):**
+**A regra ([ADR 0161](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0161-a-tela-so-oferece-o-modo-que-a-instalacao-executa.md)):**
 
 1. **A lista diz se há broker, em toda linha.**
    `GET workspaces/:workspaceId/containers` ganha `brokerConfigurado` por linha,
@@ -234,7 +234,7 @@ falhar — sem imagem, `runner` sem pasta confirmada, papel abaixo de
 **O que esta regra NÃO fecha:** parar e remover não ganharam a recusa (sem
 broker não há container de `container`/`mounted` registrado de pé para parar,
 e o caso não foi medido), e o Infra Lead continua sem saber de broker ausente
-— ele recusa por MODO ([RN-566](../engine.md#rn-566)), e propor `container_start` numa
+— ele recusa por MODO ([RN-566](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-566)), e propor `container_start` numa
 instalação sem broker continua possível pelo agente.
 
 - **Código:** `src/application/use-cases/containers/obter-visao-geral-de-containers.use-case.ts:71`
@@ -264,7 +264,7 @@ No `exp001` o heartbeat fechou a sessão 30 segundos depois de a aba parar, com
 o Criativo tendo acabado de perguntar — e o event log continuou recebendo
 eventos por quatro minutos depois do `closed_at`. Dois defeitos, um de cada
 lado do fechamento: nenhum dos sinais de trabalho pendente da
-[RN-064](../web.md#rn-064) via uma conversa esperando o usuário
+[RN-064](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-064) via uma conversa esperando o usuário
 (um Criativo que terminou o turno está `idle`, sem handoff, sem ação, sem
 `dev.*`), e nada — nem o funil de eventos, nem os casos de uso da conversa, nem
 o engine — olhava o estado da sessão antes de gravar.
@@ -276,7 +276,7 @@ o engine — olhava o estado da sessão antes de gravar.
    (`agent.response`, `chat.structured_question` ou `agent.error` do lado do
    agente; `chat.message` ou `chat.structured_question_answered` do lado do
    usuário) é do AGENTE, e o ator é um conversacional. `agent.error` conta como
-   fim de turno de propósito: pela [RN-059](../engine.md#rn-059) o
+   fim de turno de propósito: pela [RN-059](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-059) o
    agente diz no fio o que houve, e a próxima jogada é do usuário. Fala de quem
    não conversa (Psicólogo, dev agent) não segura.
 2. **É o único sinal com TETO: 8 horas**, contadas do FIM do turno do agente
@@ -341,7 +341,7 @@ o engine — olhava o estado da sessão antes de gravar.
    curso é ABANDONADO no `terminate/2` dos seis servidores
    (`TurnoAssincrono.abandonar/1`): a task morre sem gravar nem transmitir nada,
    porque gravar seria pedir à api o que ela recusa. Não há resposta a dar:
-   desde a [RN-578](../engine.md#rn-578) (ADR 0163) quem disparou o turno já recebeu `:ok`
+   desde a [RN-578](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-578) (ADR 0163) quem disparou o turno já recebeu `:ok`
    no aceite. Pelo mesmo motivo o `offer_dev_handoff` que o Arquiteto guardou
    para o fecho do turno NÃO roda quando o fecho é o da sessão — o handoff
    seria recusado (desde a [RN-672](parte-08.md#rn-672) não há mais o que guardar: o
@@ -438,10 +438,10 @@ fechada seguem mostrando a mensagem da api.
 ### RN-582 — O aceite do handoff ao Arquiteto provisiona o repositório; o aceite ao Dev Lead é a segunda porta, idempotente; e `execution/activate` sem repositório é 409 nomeado {#rn-582}
 
 Revisa o GATILHO da [RN-522](parte-06.md#rn-522), que cumpria a promessa da
-[RN-541](../web.md#rn-541). O mecanismo não muda — o mesmo `ProvisionRepositoryUseCase`,
+[RN-541](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-541). O mecanismo não muda — o mesmo `ProvisionRepositoryUseCase`,
 chamado pelo mesmo `AcceptHandoffUseCase`, sempre `local`, com a falha virando
 `repository.provision_failed` e nunca derrubando o aceite. Decisão estrutural
-no [ADR 0165](../../adr/0165-o-repositorio-nasce-no-handoff-ao-arquiteto.md).
+no [ADR 0165](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0165-o-repositorio-nasce-no-handoff-ao-arquiteto.md).
 
 **O que a instalação real mostrou (AT-092, v6.1.0, 2026-09-14).** O Arquiteto
 propôs `open_adr_pr` três vezes antes de o repositório existir; os handoffs a
@@ -485,7 +485,7 @@ ativação esconderia um efeito de git, e os agentes anteriores a ela seguiriam
 sem repositório.
 
 **4. A tela tira o controle e diz o motivo uma vez, em texto** (a régua da
-[RN-102](parte-03.md#rn-102) e do [ADR 0064](../../adr/0064-escopo-de-area-na-cascata-e-o-binding-de-agente-global.md)). Na seção de Execução da Visão Geral, com o
+[RN-102](parte-03.md#rn-102) e do [ADR 0064](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0064-escopo-de-area-na-cascata-e-o-binding-de-agente-global.md)). Na seção de Execução da Visão Geral, com o
 `GET .../git/repository` respondendo `null` CONFIRMADO, "Ativar execução" fica
 inerte no lugar, o texto diz onde o repositório nasce, e há um link para
 provisionar. No card do handoff ao Dev Lead, dentro da sessão, o atalho
@@ -536,7 +536,7 @@ repositório, não o de cada sessão, e não mudaram.
   `apps/web/src/routes/SessionPage.tsx:147`; `apps/web/src/routes/session-timeline-montagem.tsx:495`;
   `apps/web/src/lib/session-acoes-de-handoff.ts:122`;
   `apps/engine/lib/engine/projects/project_repository.ex:74` (o texto da recusa
-  da [RN-577](../engine.md#rn-577), que nomeava o gatilho antigo e muda junto)
+  da [RN-577](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-577), que nomeava o gatilho antigo e muda junto)
 - **Teste:**
   `test/application/use-cases/agents/accept-handoff.use-case.spec.ts`
   ("aceitar para o Arquiteto provisiona `local` com o slug do projeto", "o
@@ -609,11 +609,11 @@ comportamento de sempre, nada vai ao fio e o hub decide sozinho.
   `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts`,
   `test/infrastructure/llm/openrouter-provider.contract.spec.ts`; a prova
   manual da capability é `test/infrastructure/llm/openrouter-provider.roteamento.smoke.spec.ts`
-- **Origem:** [ADR 0166](../../adr/0166-preferencia-de-roteamento-no-binding-de-modelo.md) (AT-090)
+- **Origem:** [ADR 0166](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0166-preferencia-de-roteamento-no-binding-de-modelo.md) (AT-090)
 
 ### RN-590 — A pasta `docs/` dos artefatos é reconstruída do event log pelo MESMO tradutor do projetor vivo, sem tocar a outbox, e nunca sai como sucesso calado {#rn-590}
 
-O [ADR 0148](../../adr/0148-artefatos-projetados-em-arquivo.md) chamou a pasta `docs/`
+O [ADR 0148](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0148-artefatos-projetados-em-arquivo.md) chamou a pasta `docs/`
 de reconstruível e declarou, no custo 3, que **não existia comando de
 reprojeção**: apagar a pasta não a reconstruía, porque as linhas de outbox já
 estavam marcadas. É a mesma lacuna que a [RN-569](#rn-569) fechou para o grafo,
@@ -650,7 +650,7 @@ mais antiga — só a rodada completa garante o vigente; (b) escreve na localiza
 ATUAL do projeto, e precisa enxergar o mesmo disco que a api; (c) não recria
 `qa_verdict`/`secops_verdict`/`task_blocked`/`infra_delegation_files`, que nunca
 foram arquivo; (d) sem medição de tempo em event log grande; (e) NÃO entra em
-backup — é derivada, o argumento do [ADR 0152](../../adr/0152-backup-de-volumes-contra-compose.md).
+backup — é derivada, o argumento do [ADR 0152](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0152-backup-de-volumes-contra-compose.md).
 
 - **Código:** `src/application/artifact-projection/artifact-event-translator.ts:21`
   (`ArtifactEventTranslator`), `:24` (`projetarEvento`);
@@ -700,11 +700,11 @@ a variável EXISTE, nunca que o broker responde (isso segue sendo
    divergiria da `configurado()`), e a chamada que a tool JÁ fazia devolve a
    recusa. `dispatch_container_start/2` passou a entregar ao modelo o TEXTO da
    mensagem da api (`container_start recusado: …`), como resultado de
-   ferramenta ([RN-163](../engine.md#rn-163)), e não a tupla
-   crua. A [RN-566](../engine.md#rn-566) segue como estava: recusa por MODO, local.
+   ferramenta ([RN-163](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-163)), e não a tupla
+   crua. A [RN-566](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-566) segue como estava: recusa por MODO, local.
 
 **O que NÃO fecha:** a proposta às cegas por ausência de IMAGEM continua
-possível (a [RN-566](../engine.md#rn-566) já declarava); a recusa da api vale também para
+possível (a [RN-566](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-566) já declarava); a recusa da api vale também para
 quem chama sem ser o agente, o que é o desejado — a aprovação só terminaria
 `failed`; e o `PUT execution-mode` continua aceitando a conversão por chamada
 direta.
@@ -730,7 +730,7 @@ A [RN-582](#rn-582) (AT-131) fez a sessão técnica do provisionamento — a de
 `repo_bootstraps.session_id` — deixar de deslocar a sessão de trabalho como "a
 mais recente", mas com DOIS critérios: a api a reconhecia pelo vínculo em
 `repo_bootstraps`, e a web pelo NOME (`git-bootstrap`). O nome é rótulo que o
-usuário renomeia ([RN-098](../web.md#rn-098)), então renomear a sessão fazia a Visão Geral
+usuário renomeia ([RN-098](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-098)), então renomear a sessão fazia a Visão Geral
 e o resumo do workspace discordarem de qual era a sessão de trabalho.
 
 1. **A api devolve o marcador.** Cada item de `GET /projects/:projectId/sessions`
@@ -825,7 +825,7 @@ emprestado do JWT.
 - **Borda:** o ALVO de "trocar" inclui o erro de quem separa o pepper do JWT
   gerando um valor novo em vez de copiar o atual — é a mesma troca, e desloga
   do mesmo jeito (fixado no mesmo spec, "a ordem errada").
-- **Origem:** [ADR 0031](../../adr/0031-auth-first-party-argon2id-e-rotacao-de-refresh.md),
+- **Origem:** [ADR 0031](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0031-auth-first-party-argon2id-e-rotacao-de-refresh.md),
   AT-196
 
 ### RN-598 — O token de serviço ANTERIOR passa pela mesma régua do atual {#rn-598}
@@ -849,13 +849,13 @@ trim) continua não contando como rotação.
 - **Teste:** `test/infrastructure/security/service-token.spec.ts` (describe
   "tokenDeServicoAnterior (RN-598)")
 - **Borda:** esta RN é o lado da api. O engine e o broker aplicam a mesma
-  régua desde a [RN-601](../engine.md#rn-601).
+  régua desde a [RN-601](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-601).
 - **Origem:** AT-205 (achado da AT-196)
 
 ### RN-603 — O modo automático libera o escopo de caminho, e só ele {#rn-603}
 
 Decisão do dono do produto em 2026-09-26 (AT-226,
-[ADR 0167](../../adr/0167-modo-automatico-libera-o-escopo-de-caminho.md)): com o
+[ADR 0167](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0167-modo-automatico-libera-o-escopo-de-caminho.md)): com o
 "Modo automático" ligado num agente — a curinga `"*"` da
 [RN-153](parte-03.md#rn-153) resolvida como `auto_approve` —, o agente roda QUALQUER
 comando de terminal sem pedir aprovação, INCLUSIVE fora da pasta do projeto.
@@ -927,7 +927,7 @@ Reproduzido na AT-233: um broker falso que responde um `exec` em 6 s, com
 `timeoutMs` de 8 s, voltava como `BrokerIndisponivelError('sem-resposta')` —
 "o broker de container não respondeu … The operation was aborted due to
 timeout". Ou seja, todo comando de terminal com mais de 5 s num projeto
-`container`/`mounted` com container `running` ([RN-492](../engine.md#rn-492)) falhava
+`container`/`mounted` com container `running` ([RN-492](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-492)) falhava
 dizendo que o broker estava fora do ar, enquanto o comando seguia rodando.
 
 E o engine cortava também: a chamada `container-exec` não passava
@@ -952,7 +952,7 @@ A regra:
    margem. Esperar isso é esperar a RESPOSTA do broker, inclusive a recusa
    nomeada dele. A conta nasceu com 105 s e esquecia o SEGUNDO `ps` do
    `resolver` (o gerenciado e o homônimo): o pior caso real era 130 s. Desde a
-   [RN-605](../contracts.md#rn-605) ela conta as seis chamadas de controle do `start` e dá
+   [RN-605](https://github.com/viralabs-dev/brabo-contracts/blob/dev/packages/docs/business-rules/contracts.md#rn-605) ela conta as seis chamadas de controle do `start` e dá
    195 s.
 4. **O engine espera mais que a api**: `timeoutMs` + 90 s. A cadeia é broker <
    api < engine, e os testes dos dois lados a conferem (a api espelha a folga
@@ -970,14 +970,14 @@ Os números do outro lado (`TIMEOUT_DE_CONTROLE_MS`,
 `TIMEOUT_DE_EXEC_PADRAO_MS`, o `TIMEOUT_MS` do cliente de contexto do broker)
 são ESPELHADOS em constantes nomeadas, não importados: a api não consome o
 pacote da porta de Docker. Nada muda na contenção do broker ([ADR
-0130](../../adr/0130-broker-de-container.md)), na `DockerPort` nem na
-[RN-502](../engine.md#rn-502).
+0130](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0130-broker-de-container.md)), na `DockerPort` nem na
+[RN-502](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-502).
 
 **Declarado, não fechado:**
 
 - **Pull de mais de 30 s continua falhando — no broker.** O pull roda sob o
   `TIMEOUT_DE_CONTROLE_MS` (30 s) da porta de Docker, e uma imagem grande não
-  sobe na primeira tentativa. Desde a [RN-605](../contracts.md#rn-605) o estouro tem NOME
+  sobe na primeira tentativa. Desde a [RN-605](https://github.com/viralabs-dev/brabo-contracts/blob/dev/packages/docs/business-rules/contracts.md#rn-605) o estouro tem NOME
   (`PullExcedeuTetoError`, origem `infra`) em vez de "código -1" com
   `origem: null`; o teto em si não subiu, por decisão do mantenedor.
 - **O `fetch` do Node espera cabeçalhos por no máximo 300 s.** Um `exec` com
@@ -1015,7 +1015,7 @@ pacote da porta de Docker. Nada muda na contenção do broker ([ADR
 
 A [RN-567](#rn-567) pôs no evento a REGRA que decidiu (`reason`) e declarou o
 que ficava de fora: o ponto 7 do
-[ADR 0055](../../adr/0055-escopo-de-caminho-na-politica-de-terminal.md) pede *qual
+[ADR 0055](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0055-escopo-de-caminho-na-politica-de-terminal.md) pede *qual
 escopo* autorizou, e `escopo: cd dentro da pasta do projeto` não diz qual
 pasta era o escopo naquele dia. A raiz muda — conversão de modo, base
 nova —, e o evento é o único lugar que guarda o que valia no instante da
@@ -1052,7 +1052,7 @@ de outro tipo, não tem o campo; não há reprocessamento nem coluna nova. O
 outbox não o carrega, pelo mesmo motivo da [RN-567](#rn-567) (sem
 consumidor no engine). Nada em `decide()` muda, nenhum teto, e a tela não
 muda — onde ele aparece é outra entrega (AT-148). (Desde a
-[RN-614](../web.md#rn-614) a raiz aparece junto do motivo, na linha do evento no painel
+[RN-614](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-614) a raiz aparece junto do motivo, na linha do evento no painel
 de log e no `ApprovalCard`, sempre relativa e com texto próprio para
 `indisponivel`.) A web lê o payload como
 registro genérico, então evento antigo e novo passam pela mesma leitura.
@@ -1077,15 +1077,15 @@ raiz do ESCOPO, nunca onde o arquivo de política mora.
   campo), `:1183` (evento anterior, sem o campo, pela mesma leitura);
   `test/infrastructure/filesystem/project-workspaces-root.spec.ts:772`
   (a função pura, nos três modos e nos três casos de `indisponivel`)
-- **ADR:** [0055](../../adr/0055-escopo-de-caminho-na-politica-de-terminal.md) (ponto 7)
+- **ADR:** [0055](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0055-escopo-de-caminho-na-politica-de-terminal.md) (ponto 7)
 - **Origem:** AT-147 (EP-025/HS-043)
 
 ### RN-611 — A chave de MÁQUINA ganha listagem e revogação por CONTA, sem `:projectId`: só as de máquina, só as do próprio usuário, e a revogação é a MESMA de sempre {#rn-611}
 
-A lacuna que a [RN-552](parte-06.md#rn-552) e a [RN-561](../web.md#rn-561) declararam por escrito:
+A lacuna que a [RN-552](parte-06.md#rn-552) e a [RN-561](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-561) declararam por escrito:
 *"numa instalação que ainda não tem PROJETO, a listagem e a revogação — as duas
 por `/projects/:projectId/runner-device-keys` — não têm projeto contra o que
-responder"*. A instalação de uma linha ([RN-547](../produto.md#rn-547)) cria EXATAMENTE essa
+responder"*. A instalação de uma linha ([RN-547](https://github.com/viralabs-dev/brabo/blob/dev/docs/business-rules/produto.md#rn-547)) cria EXATAMENTE essa
 situação: a conta e a chave de máquina nascem **antes** de qualquer projeto, e a
 chave ficava viva e inalcançável. Decisão do mantenedor (AT-118): **sim, na
 Conta**.
@@ -1114,12 +1114,12 @@ perguntar pela chave alheia e aprender que ela existe.
 entre as de máquina do chamador e DELEGA a `RevokeRunnerDeviceKeyUseCase`, byte
 a byte. Ele grava a linha e, para a chave de máquina, pede ao engine um
 `disconnectRunnerOfUser` por projeto em modo `runner` que o dono alcança
-([RN-520](parte-06.md#rn-520)/[RN-543](../produto.md#rn-543)). O alvo continua `{projeto, usuário}` e
+([RN-520](parte-06.md#rn-520)/[RN-543](https://github.com/viralabs-dev/brabo/blob/dev/docs/business-rules/produto.md#rn-543)). O alvo continua `{projeto, usuário}` e
 **nunca** `{chave}`: outro runner do mesmo usuário nesses projetos cai junto,
 mesmo com PAT ou outra chave, e reconecta se a credencial dele ainda valer.
 Numa instalação **sem projeto**, a lista de projetos é vazia e a revogação só
 grava a linha — e é o que basta: o agente de máquina que espera o primeiro
-projeto ([RN-550](../runner.md#rn-550)) não tem conexão nenhuma a derrubar, e o próximo
+projeto ([RN-550](https://github.com/viralabs-dev/brabo-runner/blob/dev/docs/business-rules/runner.md#rn-550)) não tem conexão nenhuma a derrubar, e o próximo
 ticket que ele pedir é recusado. Mudar o alvo continua sendo frente própria,
 com ADR (AT-013).
 
@@ -1134,7 +1134,7 @@ revoga a anterior, para a linha não ser lida como incidente.
 
 **A tela mora na Conta** (`/account`), a página que já existia para o que segue a
 pessoa entre projetos. Ela lista nome, data de criação, último uso e status, e
-herda o vocabulário INTEIRO da [RN-561](../web.md#rn-561)/[RN-548](../web.md#rn-548):
+herda o vocabulário INTEIRO da [RN-561](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-561)/[RN-548](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-548):
 `lastUsedAt` é uso REGISTRADO, nunca conexão, e nulo tem texto próprio ("nunca
 usada"); "ativa"/"revogada" fala da LINHA e nunca de agente de pé — e "ativa"
 **não** é verde, porque a espécie de máquina nunca ganha verde e ali só há
@@ -1144,7 +1144,7 @@ dito na legenda e na confirmação ("derruba o agente local em TODOS os seus
 projetos em modo runner; sem projeto nenhum, só impede a chave de ser usada de
 novo"), junto com o custo colateral da RN-520. Carregando, falhou, vazio,
 revogada e nunca usada são cinco estados com cinco textos
-([RN-088](../web.md#rn-088)/[RN-470](../web.md#rn-470)). Sem papel mínimo
+([RN-088](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-088)/[RN-470](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-470)). Sem papel mínimo
 no endpoint, a tela não inventa um: `roleAtLeast` aqui trancaria quem pode, o
 defeito pior dos dois.
 
@@ -1242,8 +1242,8 @@ sobrescrito, e o pepper dele é mantido — ou, sem pepper, nasce com o
 ### RN-615 — A remoção de membro de WORKSPACE nasce com o teto 2 herdado: remover a si mesmo é 403, e é essa cláusula que segura o último owner, sem contar {#rn-615}
 
 A quinta porta da linha dos tetos ([RN-472](parte-05.md#rn-472), [RN-556](parte-06.md#rn-556),
-[RN-557](../produto.md#rn-557)), e a rota que o
-[ADR 0157](../../adr/0157-teto-de-auto-movimento-no-upsert-de-workspace.md) recusou
+[RN-557](https://github.com/viralabs-dev/brabo/blob/dev/docs/business-rules/produto.md#rn-557)), e a rota que o
+[ADR 0157](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0157-teto-de-auto-movimento-no-upsert-de-workspace.md) recusou
 abrir de passagem. Até aqui `WorkspacesController` não tinha `@Delete` de
 membro, e offboarding era escrita no banco. Decisão do mantenedor
 (AT-115/HS-006): **a rota nasce, protegida por CLÁUSULA.**
@@ -1277,7 +1277,7 @@ da prova, e por isso é asserido em teste.
 
 **A cascata, numa transação.** A linha de `workspace_members`; as linhas de
 `project_members` do removido nos projetos DESTE workspace (sem elas a
-sobreposição `projectRole ?? workspaceRole` da [RN-471](../web.md#rn-471) o manteria
+sobreposição `projectRole ?? workspaceRole` da [RN-471](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-471) o manteria
 dentro de todo projeto em que tivesse linha própria); e as credenciais dele
 presas a esses projetos — chaves de dispositivo de PROJETO e PATs —, revogadas
 com o motivo `workspace_member_removed`. Depois do commit, a conexão viva do
@@ -1317,7 +1317,7 @@ o ticket novo é recusado); tela (não existe seção de membros de workspace no
   (`owner` nas duas rotas de membro, 204, a ordem ator/alvo, o 403 propagado);
   `test/interfaces/route-surface.spec.ts` (a rota classificada em
   `docs/security-surface.md`)
-- **ADR:** [0173](../../adr/0173-remocao-de-membro-de-workspace.md)
+- **ADR:** [0173](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0173-remocao-de-membro-de-workspace.md)
 - **Origem:** AT-115 (EP-002/HS-006)
 
 ---
@@ -1325,7 +1325,7 @@ o ticket novo é recusado); tela (não existe seção de membros de workspace no
 ### RN-616 — O TITULAR do workspace não sai pela remoção de membro: 409 `criador_do_workspace` até transferir, e a titularidade só vai para outro `owner` {#rn-616}
 
 Decisão do mantenedor sobre a questão que a [RN-615](#rn-615) deixou aberta
-(AT-115, [ADR 0173](../../adr/0173-remocao-de-membro-de-workspace.md), ponto 7).
+(AT-115, [ADR 0173](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0173-remocao-de-membro-de-workspace.md), ponto 7).
 `workspaces.created_by` não autoriza nada — quem autoriza é o papel
 ([RN-472](parte-05.md#rn-472)) —, mas é por ele que se resolve a credencial de LLM que os
 agentes gastam e a de git das ações de agente
@@ -1381,7 +1381,7 @@ uma linha de log com de/para/quem.
   titular atual é idempotente);
   `test/interfaces/http/iam/workspaces-members.controller.spec.ts`
   (`owner` e a delegação da transferência)
-- **ADR:** [0173](../../adr/0173-remocao-de-membro-de-workspace.md), ponto 7
+- **ADR:** [0173](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0173-remocao-de-membro-de-workspace.md), ponto 7
 - **Origem:** AT-115 (EP-002/HS-006)
 
 ---

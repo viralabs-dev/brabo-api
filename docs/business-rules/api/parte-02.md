@@ -22,7 +22,7 @@ gravada** — a api decifra, chama o provider e devolve só o veredito. O texto
 plano nunca volta em resposta nenhuma, nem em pedaço, nem no motivo da recusa.
 
 Era o contrário: o cadastro testava antes de persistir e recusava a gravação
-([ADR 0004](../../adr/0004-git-credential-registration.md), estendido às chaves de
+([ADR 0004](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0004-git-credential-registration.md), estendido às chaves de
 LLM na Fase 11a). O modo de falha real foi o oposto do previsto — como o campo
 é write-only e a tela nunca reexibe o que foi digitado, uma recusa deixava o
 usuário **sem credencial e sem o texto para corrigir**.
@@ -37,7 +37,7 @@ O veredito tem **três** valores, e o terceiro é obrigatório:
 
 Sem `nao_suportado`, um provider cujo tester é NO-OP voltaria `ok` e a tela
 afirmaria uma verificação que nunca aconteceu. É a regra de capability do
-[ADR 0041](../../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
+[ADR 0041](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)
 aplicada aqui: só se declara o que foi provado. Por isso o port declara
 `supports()` — o silêncio de `test()` sozinho é ambíguo.
 
@@ -58,7 +58,7 @@ e devolve resultado, com 200. A única exceção é não existir credencial para
   resposta); `test/application/use-cases/llm/upsert-user-credential.use-case.spec.ts`
   e `test/application/use-cases/git/register-git-credential.use-case.spec.ts`
   (a gravação incondicional, que é a inversão)
-- **Origem:** [ADR 0050](../../adr/0050-credencial-sempre-cifrada-verificacao-explicita.md)
+- **Origem:** [ADR 0050](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0050-credencial-sempre-cifrada-verificacao-explicita.md)
 
 ---
 
@@ -80,7 +80,7 @@ Os 338 modelos do primeiro sync real ficaram todos `false`, incluindo 181 que o
 provider declara como multimodais.
 
 **Ausência de declaração não é declaração de ausência**
-([ADR 0041](../../adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)): o
+([ADR 0041](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0041-base-openai-compativel-e-contrato-de-llm-providers.md)): o
 parser OMITE o campo quando o provider se cala, e `undefined` preserva o valor
 local. Por isso a tela usa as facetas só como filtro POSITIVO e nunca escreve
 "não lê imagem" — `false` aqui quer dizer "o provider não declarou".
@@ -94,7 +94,7 @@ local. Por isso a tela usa as facetas só como filtro POSITIVO e nunca escreve
   (`modalidade não declarada OMITE o campo em vez de afirmar false`);
   `test/application/use-cases/llm/sync-model-catalog.use-case.spec.ts`
   (`catálogo que se cala sobre modalidade preserva a faceta gravada`)
-- **Origem:** [ADR 0051](../../adr/0051-facetas-de-capability-e-curadoria-por-uso.md)
+- **Origem:** [ADR 0051](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0051-facetas-de-capability-e-curadoria-por-uso.md)
 
 ### RN-057 — "Para que serve" é curadoria do workspace, e marcar uso não liga o modelo {#rn-057}
 
@@ -127,7 +127,7 @@ desmarca tudo, e é um estado legítimo — "ninguém opinou" não é "não serv
   (`marcar uso NÃO liga o modelo — a linha nova nasce inativa`,
   `trocar o uso não desliga o que já estava ligado`,
   `o uso vale só neste workspace`)
-- **Origem:** [ADR 0051](../../adr/0051-facetas-de-capability-e-curadoria-por-uso.md)
+- **Origem:** [ADR 0051](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0051-facetas-de-capability-e-curadoria-por-uso.md)
 
 ### RN-058 — A chave que o AGENTE gasta é a do owner do workspace {#rn-058}
 
@@ -182,7 +182,7 @@ Gasto de credencial **já removida** continua no relatório, marcado: o consumo
 aconteceu, e escondê-lo daria um total que não fecha com o extrato do provider.
 
 Nenhum segredo atravessa: a resposta tem provider, tokens e custo — nunca a
-chave, nem cifrada ([ADR 0050](../../adr/0050-credencial-sempre-cifrada-verificacao-explicita.md)).
+chave, nem cifrada ([ADR 0050](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0050-credencial-sempre-cifrada-verificacao-explicita.md)).
 
 - **Onde:**
   `src/application/use-cases/llm/get-credential-spend.use-case.ts`,
@@ -206,7 +206,7 @@ Arquiteto emitiu quatro mapas seguidos, com nomes e recortes diferentes a
 cada vez — `greeting`, `hello_core`, `greeting`, `hello-api-core` — e o laço
 só terminou porque a rede caiu (`%Req.TransportError{reason: :timeout}`).
 
-A recusa volta ao modelo pelo tool-result ([RN-061](../engine.md#rn-061)): ele lê que já
+A recusa volta ao modelo pelo tool-result ([RN-061](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-061)): ele lê que já
 existe um e segue para `assign_story_modules`, que é o passo 2 do kickoff
 dele. É por isso que o turno **não** termina quando o mapa é emitido — o
 Arquiteto ainda tem três passos pela frente (vincular histórias, propor um
@@ -275,7 +275,7 @@ engine nunca conheceu. O efeito é uma cascata silenciosa:
 - sem canal não há atualização ao vivo: o fio fica preso no indicador de
   digitação, mesmo com o agente já `idle`;
 - ninguém bate o heartbeat, e como é o heartbeat que fecha a sessão
-  ([RN-064](../web.md#rn-064)), ela fica `active` **para sempre**.
+  ([RN-064](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-064)), ela fica `active` **para sempre**.
 
 Três caminhos faziam isso: `provision-repository` (duas chamadas),
 `adopt-repository` e `activate-execution` — este último cria a sessão onde
@@ -325,7 +325,7 @@ do `ls`.
 A allowlist é mitigação, não solução: é uma lista de comandos previstos e o
 modelo inventa comandos. A correção estrutural — o agente ESPERAR a decisão em
 vez de queimar iterações — está no
-[ADR 0052](../../adr/0052-dev-agent-espera-aprovacao-no-meio-do-laco.md).
+[ADR 0052](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0052-dev-agent-espera-aprovacao-no-meio-do-laco.md).
 
 - **Onde:** `src/domain/actions/dev-terminal-patterns.ts`,
   semeado por `application/use-cases/execution/activate-execution.use-case.ts`
@@ -445,7 +445,7 @@ que a cascata os pula ([RN-043](parte-01.md#rn-043)).
 
 O que isto conserta: o default do workspace é global e tende a ser um modelo
 local pequeno. Uma sessão nova e um dev agent — que não têm binding próprio —
-nasciam nele, e o [ADR 0020](../../adr/0020-destravar-gates-qa-secops.md) proíbe
+nasciam nele, e o [ADR 0020](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0020-destravar-gates-qa-secops.md) proíbe
 um modelo local pequeno no passo semântico. Numa execução real foi preciso
 trocar o modelo à mão em cada sessão aberta, e os três dev agents subiram em
 `llama3.2:1b` sem que ninguém tivesse pedido.
@@ -506,8 +506,8 @@ Quem for "simplificar" de volta para regex reabre o alerta.
 - **Teste:** `test/domain/actions/path-scope.spec.ts` e
   `test/domain/actions/decide.spec.ts`
   (describe `decide — escopo de caminho`)
-- **Origem:** [ADR 0055](../../adr/0055-escopo-de-caminho-na-politica-de-terminal.md),
-  achado U, Fase F do [backlog](../../explanation/backlog.md)
+- **Origem:** [ADR 0055](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0055-escopo-de-caminho-na-politica-de-terminal.md),
+  achado U, Fase F do [backlog](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/backlog.md)
 
 O escopo só vale enquanto ele próprio estiver dentro da raiz — quem garante isso
 é a [RN-092](#rn-092).
@@ -545,7 +545,7 @@ que exatamente foi dispensado.
   `apps/web/src/routes/ProvisioningPage.tsx`
 - **Teste:** `test/application/use-cases/git/acknowledge-protection-failure.use-case.spec.ts`
   (destrava; a decisão no log com o ator; e a recusa para falha anterior)
-- **Origem:** achado D, Fase D do [backlog](../../explanation/backlog.md)
+- **Origem:** achado D, Fase D do [backlog](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/backlog.md)
 
 ### RN-081 — História repetida: título igual recusa, justificativa igual avisa {#rn-081}
 
@@ -564,7 +564,7 @@ avisar disso viraria ruído que ninguém lê. O sinal só existe quando a nova n
 acrescenta cobertura nenhuma. História que não cita regra alguma não gera aviso:
 tratar o conjunto vazio como subconjunto de tudo acusaria todas.
 
-**O limite é o mesmo da [RN-080](../engine.md#rn-080), e o par do achado o atravessa:**
+**O limite é o mesmo da [RN-080](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-080), e o par do achado o atravessa:**
 "Endpoint público de saudação determinística" e "Endpoint público GET /hello que
 responde saudação imediata" cobrem o mesmo endpoint com títulos e justificativas
 diferentes — nada mecânico os liga, e eles continuam passando. Há teste
@@ -576,7 +576,7 @@ e o teste que afirma o limite DESTE mecanismo segue valendo.
   `src/application/use-cases/backlog/create-story.use-case.ts`
 - **Teste:** `test/domain/backlog/story-overlap.spec.ts`,
   `test/application/use-cases/backlog/create-story.use-case.spec.ts`
-- **Origem:** achado R, Fase E do [backlog](../../explanation/backlog.md)
+- **Origem:** achado R, Fase E do [backlog](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/backlog.md)
 
 ### RN-082 — A credencial de git de uma ação é a do OWNER do workspace {#rn-082}
 
@@ -593,7 +593,7 @@ com autonomia ligada — que é o modo que o ADR 0055 existe para viabilizar —
 **O contraste que expôs o defeito** aconteceu dentro de uma execução só: no
 mesmo run, `git_push` passou e `pr_open` falhou. O push é executado pelo
 ENGINE, que já injetava a credencial do owner
-([RN-076](../engine.md#rn-076)); a PR é aberta pela API, que estava fora de simetria.
+([RN-076](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-076)); a PR é aberta pela API, que estava fora de simetria.
 
 Não apareceu antes porque toda validação anterior usou o `LocalGitProvider`,
 onde o token nem é consultado.
@@ -607,7 +607,7 @@ reimplementado.
   reusando `application/use-cases/llm/resolve-credential-owner.use-case.ts`
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   (`pr_open` auto-aprovado, com `decidedBy: null`, pede a credencial do owner)
-- **Origem:** achado AA, [validação real da 13b](../../explanation/validacao-real.md)
+- **Origem:** achado AA, [validação real da 13b](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/validacao-real.md)
 
 ### RN-083 — O lead decide o paralelismo; acima do teto, você autoriza {#rn-083}
 
@@ -628,7 +628,7 @@ oposto do que o pipeline existe para fazer.
 
 **Quem PEDE é o lead; quem DECIDE é você.** A `proposed_action` nasce com o
 lead como ator, e a decisão fica no event log com o seu nome — é essa distinção
-que faz a história ser reconstituível depois ([ADR 0048](../../adr/0048-decisao-no-log-e-a-ordem-do-gate.md)).
+que faz a história ser reconstituível depois ([ADR 0048](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0048-decisao-no-log-e-a-ordem-do-gate.md)).
 
 O motivo viaja no payload IMUTÁVEL, com os três números (quantos há, quantos
 pede, qual o teto): quem ler daqui a seis meses precisa entender o que foi
@@ -665,8 +665,8 @@ depois de ler.
 - **Gate:** `config/gates.yml` (`paralelismo-autorizado`) — `status: active`
   desde a auditoria fluxo.yml × código (achado A1/B5); o mecanismo em si não
   mudou, só o registro que ficou `planned` por engano desde a FASE 14d, ver
-  [gates.md](../../explanation/gates.md#a-registry-can-age-in-the-wrong-direction--stale-not-inactive)
-- **Origem:** [ADR 0053](../../adr/0053-dev-lead-e-paralelismo-autorizado.md), FASE 14d
+  [gates.md](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/gates.md#a-registry-can-age-in-the-wrong-direction--stale-not-inactive)
+- **Origem:** [ADR 0053](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0053-dev-lead-e-paralelismo-autorizado.md), FASE 14d
 
 ### RN-084 — A esteira exibida deriva do registro de gates {#rn-084}
 
@@ -696,7 +696,7 @@ Três decisões de borda, todas para a tela **degradar** em vez de sumir:
 - **Teste:** `apps/web/src/components/PrGateTimeline.test.ts`
   (`gate que SAI do registro some da tela`, `gate de PR que a tela ainda não
   sabe desenhar é IGNORADO`, `sem registro, mostra a esteira completa`)
-- **Origem:** [ADR 0054](../../adr/0054-gates-como-registro-declarativo.md), FASE 15b
+- **Origem:** [ADR 0054](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0054-gates-como-registro-declarativo.md), FASE 15b
 
 ### RN-086 — Gastar com mais agentes nunca se auto-aprova {#rn-086}
 
@@ -744,7 +744,7 @@ que você leu ao decidir.
   `apps/engine/test/engine/anamnese/tools_test.exs` e
   `test/engine/workers/anamnese_worker_test.exs` (`duas aprovacoes NAO sao
   rotina`, `uma NEGACAO derruba o sinal`)
-- **Origem:** [ADR 0053](../../adr/0053-dev-lead-e-paralelismo-autorizado.md), FASE 14d
+- **Origem:** [ADR 0053](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0053-dev-lead-e-paralelismo-autorizado.md), FASE 14d
 
 ## Painel de projetos {#painel-de-projetos}
 
@@ -759,7 +759,7 @@ agentes e última atividade; a sidebar mostra o dot de status e o contador de
 não lidos. Tudo isso vinha de sete consultas em POLL por projeto, o que fazia
 23 projetos custarem 3.824 requisições por minuto contra um limite de 300
 (`RateLimitGuard`) — a tela derrubava a si mesma em 429 antes de terminar de
-carregar. A [RN-088](../web.md#rn-088) fez a app parar de insistir quando isso acontece;
+carregar. A [RN-088](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-088) fez a app parar de insistir quando isso acontece;
 esta reduz o pedido.
 
 Duas fronteiras que a regra fixa, e que não são detalhe de implementação:
@@ -779,7 +779,7 @@ Duas fronteiras que a regra fixa, e que não são detalhe de implementação:
 Efeito colateral aceito e desejado: `gatesEverOpened` e `delegatedSubagents`
 passam a cobrir a sessão INTEIRA. O cliente derivava dos últimos 200 eventos e
 perdia chips em sessão longa (ver
-[ADR 0021](../../adr/0021-fechamento-4a-infra-e-painel.md)) — o texto de
+[ADR 0021](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0021-fechamento-4a-infra-e-painel.md)) — o texto de
 `deriveAgentRoster` sempre disse "já abriu alguma vez".
 
 - **Onde:**
@@ -882,7 +882,7 @@ O caminho feliz não muda — todo id real é UUID vindo do banco.
 - **Onde:** `src/infrastructure/filesystem/project-workspaces-root.ts`
   (`projectScopeRoot`)
 - **Teste:** `test/infrastructure/filesystem/project-workspaces-root.spec.ts`
-- **Origem:** [ADR 0058](../../adr/0058-csp-fechado-na-api-e-escopo-de-projeto-contido.md),
+- **Origem:** [ADR 0058](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0058-csp-fechado-na-api-e-escopo-de-projeto-contido.md),
   alertas `js/path-injection` do CodeQL
 
 ### RN-093 — Em produção, a api não sobe com a chave de exemplo do `state` de OAuth {#rn-093}
@@ -911,7 +911,7 @@ Divergindo aqui, o callback recusaria todo `state` legítimo.
 - **Onde:** `src/infrastructure/security/oauth-state-secret.ts`
   (`resolveOauthStateSecret`), chamada no boot em `src/main.ts`
 - **Teste:** `test/infrastructure/security/oauth-state-secret.spec.ts`
-- **Origem:** [ADR 0059](../../adr/0059-segredo-do-state-de-oauth-sem-default.md)
+- **Origem:** [ADR 0059](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0059-segredo-do-state-de-oauth-sem-default.md)
 
 ### RN-094 — A área de agentes nasce com o projeto {#rn-094}
 
@@ -961,7 +961,7 @@ para quem começasse do zero.
   vezes) e `test/application/use-cases/execution/activate-execution.use-case.spec.ts`
   (os membros de dev, e o teto nunca enviado)
 - **Origem:** FASE 18, defeito achado na investigação do programa 16–26;
-  a tabela vem do [ADR 0053](../../adr/0053-dev-lead-e-paralelismo-autorizado.md)
+  a tabela vem do [ADR 0053](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0053-dev-lead-e-paralelismo-autorizado.md)
 
 ### RN-095 — A leitura de repositório é contida ao projeto e limitada {#rn-095}
 
@@ -1029,7 +1029,7 @@ escrita — quando vier — nasce `proposed_action`.
   chamado, e cada um dos três orçamentos parando a busca),
   `test/domain/git/git-read-cache.spec.ts`
 - **Origem:** FASE 26b, item 34 do programa 16–26; a contenção estende a
-  [RN-092](#rn-092) ([ADR 0058](../../adr/0058-csp-fechado-na-api-e-escopo-de-projeto-contido.md))
+  [RN-092](#rn-092) ([ADR 0058](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0058-csp-fechado-na-api-e-escopo-de-projeto-contido.md))
 
 ## Sessão
 
@@ -1077,4 +1077,4 @@ falhar sem ninguém ter decidido nada.
   `src/application/use-cases/sessions/append-session-event.use-case.ts:54`
   (a guarda)
 - **Teste:** `test/application/use-cases/sessions/session-kind-e-nome.spec.ts`
-- **Origem:** [ADR 0061](../../adr/0061-tipo-da-sessao-na-criacao.md)
+- **Origem:** [ADR 0061](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0061-tipo-da-sessao-na-criacao.md)
