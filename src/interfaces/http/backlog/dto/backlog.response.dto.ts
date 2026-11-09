@@ -403,7 +403,7 @@ export class AdrRefResponseDto implements Wire<AdrRef> {
   status!: string;
 
   @ApiProperty({
-    example: 'https://github.com/daneiel/brabo/pull/42',
+    example: 'https://github.com/viralabs-dev/brabo/pull/42',
     nullable: true,
     description: '`null` while the PR has not actually been opened.',
   })

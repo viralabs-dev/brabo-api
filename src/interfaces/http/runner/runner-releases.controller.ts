@@ -25,7 +25,7 @@ import {
 // Lida a cada chamada: o repositório da Release do runner vem do ambiente
 // (AT-691); o padrão é o repositório de hoje.
 const urlDasReleases = (): string =>
-  `https://api.github.com/repos/${process.env.BRABO_RUNNER_RELEASES_REPO ?? 'daneiel/brabo'}/releases/latest`;
+  `https://api.github.com/repos/${process.env.BRABO_RUNNER_RELEASES_REPO ?? 'viralabs-dev/brabo-runner'}/releases/latest`;
 
 /**
  * Os TRÊS alvos que `build-runner-binaries.yml` constrói — a mesma lista da
