@@ -96,6 +96,20 @@ describe('RunnerReleasesController', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it('sem BRABO_RUNNER_RELEASES_REPO, busca a release em viralabs-dev/brabo-runner', async () => {
+    vi.stubEnv('BRABO_RUNNER_RELEASES_REPO', undefined);
+    const fetchMock = vi.fn().mockRejectedValue(new Error('para aqui'));
+    vi.stubGlobal('fetch', fetchMock);
+    const { res } = fakeResponse();
+
+    await new RunnerReleasesController()
+      .binary('linux-x64', res)
+      .catch(() => undefined);
+
+    expect(fetchMock.mock.calls[0][0]).toContain('viralabs-dev/brabo-runner');
   });
 
   it('caminho feliz: confere o hash contra o manifesto e streama os bytes de volta', async () => {
