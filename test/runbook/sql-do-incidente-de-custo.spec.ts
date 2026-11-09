@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { eq } from 'drizzle-orm';
 import { createTestDb, truncateAll } from '../support/test-db';
 import {
@@ -31,28 +31,49 @@ import {
 // baixado por `actions/checkout` e apontado por `BRABO_INFRA_DIR`; local, o
 // padrão é o repo irmão. Sem o arquivo o teste REPROVA nomeando o caminho:
 // pular em CI esconderia o runbook que deixou de ser provado.
+//
+// AT-869: o runbook pode estar inteiro no índice (`runbook.md`) ou dividido em
+// partes (`runbook/<tema>.md`, a seção do incidente de custo fica em
+// `runbook/operacao.md`). A seção é procurada nos dois lugares.
 const INFRA =
   process.env.BRABO_INFRA_DIR ??
   join(__dirname, '..', '..', '..', 'brabo-infra');
-const RUNBOOK = join(INFRA, 'deploy', 'docs', 'runbook.md');
-const ARQUIVOS = { fonte: RUNBOOK } as const;
+const DOCS = join(INFRA, 'deploy', 'docs');
+const INDICE = join(DOCS, 'runbook.md');
+const PASTA_PARTES = join(DOCS, 'runbook');
 
-function lerRunbook(arquivo: string): string {
-  if (!existsSync(arquivo)) {
-    throw new Error(
-      `runbook não encontrado em ${arquivo} — aponte BRABO_INFRA_DIR para o checkout do brabo-infra (branch dev)`,
-    );
-  }
-  return readFileSync(arquivo, 'utf8');
+/** O índice primeiro, depois as partes em ordem. */
+function arquivosDoRunbook(): string[] {
+  const partes = existsSync(PASTA_PARTES)
+    ? readdirSync(PASTA_PARTES)
+        .filter((f) => f.endsWith('.md'))
+        .sort()
+        .map((f) => join(PASTA_PARTES, f))
+    : [];
+  return [INDICE, ...partes].filter((a) => existsSync(a));
 }
 
-/** Os blocos ```sql da seção `{#incidente-de-custo}`, em ordem. */
-function blocosSqlDoIncidenteDeCusto(markdown: string): string[] {
+/** Acha a seção do incidente de custo no índice ou numa parte. */
+function localizarSecao(): { arquivo: string; blocos: string[] } {
+  for (const arquivo of arquivosDoRunbook()) {
+    const blocos = blocosSqlDoIncidenteDeCusto(readFileSync(arquivo, 'utf8'));
+    if (blocos !== null) return { arquivo, blocos };
+  }
+  throw new Error(
+    `seção {#incidente-de-custo} não encontrada em ${INDICE} nem em ${PASTA_PARTES}/*.md — aponte BRABO_INFRA_DIR para o checkout do brabo-infra (branch dev)`,
+  );
+}
+
+/**
+ * Os blocos ```sql da seção `{#incidente-de-custo}`, em ordem; `null` se o
+ * arquivo não tem essa seção (um H2 com a âncora).
+ */
+function blocosSqlDoIncidenteDeCusto(markdown: string): string[] | null {
   const linhas = markdown.split('\n');
   const inicio = linhas.findIndex(
     (l) => l.startsWith('## ') && l.includes('{#incidente-de-custo}'),
   );
-  if (inicio < 0) throw new Error('seção {#incidente-de-custo} não encontrada');
+  if (inicio < 0) return null;
   const fimRelativo = linhas
     .slice(inicio + 1)
     .findIndex((l) => l.startsWith('## '));
@@ -72,6 +93,8 @@ function blocosSqlDoIncidenteDeCusto(markdown: string): string[] {
   }
   return blocos;
 }
+
+const { arquivo: ARQUIVO_DA_SECAO, blocos: BLOCOS } = localizarSecao();
 
 const { db, pool } = createTestDb();
 
@@ -131,65 +154,62 @@ async function executar(bloco: string, projectId: string) {
   return pool.query(bloco.replaceAll('<projeto>', projectId));
 }
 
-describe.each(Object.entries(ARQUIVOS))(
-  'runbook (%s) — SQL do incidente de custo',
-  (_idioma, arquivo) => {
-    const blocos = blocosSqlDoIncidenteDeCusto(lerRunbook(arquivo));
-    let projectId: string;
+describe(`runbook (${relative(INFRA, ARQUIVO_DA_SECAO)}) — SQL do incidente de custo`, () => {
+  const blocos = BLOCOS;
+  let projectId: string;
 
-    beforeEach(async () => {
-      await truncateAll(db);
-      projectId = await semear();
+  beforeEach(async () => {
+    await truncateAll(db);
+    projectId = await semear();
+  });
+
+  it('a seção tem os cinco blocos que o procedimento descreve', () => {
+    // Se um bloco sumir ou nascer, este número muda de propósito: é o
+    // aviso de que o teste abaixo passou a cobrir outra coisa.
+    expect(blocos).toHaveLength(5);
+  });
+
+  it('todo bloco executa contra o schema migrado', async () => {
+    for (const bloco of blocos) {
+      await expect(executar(bloco, projectId)).resolves.toBeDefined();
+    }
+  });
+
+  it('3(a) tira do auto_approve, inclusive o curinga, e não afrouxa o deny', async () => {
+    const passoA = blocos.find((b) => b.includes('update agent_autonomy'));
+    expect(passoA).toBeDefined();
+    await executar(passoA!, projectId);
+
+    const linhas = await db
+      .select({
+        actionType: agentAutonomy.actionType,
+        mode: agentAutonomy.mode,
+      })
+      .from(agentAutonomy)
+      .where(eq(agentAutonomy.projectId, projectId));
+    const porTipo = Object.fromEntries(
+      linhas.map((l) => [l.actionType, l.mode]),
+    );
+    expect(porTipo).toEqual({
+      terminal: 'require_approval',
+      '*': 'require_approval',
+      git_push: 'deny',
     });
+  });
 
-    it('a seção tem os cinco blocos que o procedimento descreve', () => {
-      // Se um bloco sumir ou nascer, este número muda de propósito: é o
-      // aviso de que o teste abaixo passou a cobrir outra coisa.
-      expect(blocos).toHaveLength(5);
-    });
+  it('3(c) põe o teto em block e a um dólar do gasto', async () => {
+    const passoC = blocos.find((b) => b.includes('update budgets'));
+    expect(passoC).toBeDefined();
+    await executar(passoC!, projectId);
 
-    it('todo bloco executa contra o schema migrado', async () => {
-      for (const bloco of blocos) {
-        await expect(executar(bloco, projectId)).resolves.toBeDefined();
-      }
-    });
-
-    it('3(a) tira do auto_approve, inclusive o curinga, e não afrouxa o deny', async () => {
-      const passoA = blocos.find((b) => b.includes('update agent_autonomy'));
-      expect(passoA).toBeDefined();
-      await executar(passoA!, projectId);
-
-      const linhas = await db
-        .select({
-          actionType: agentAutonomy.actionType,
-          mode: agentAutonomy.mode,
-        })
-        .from(agentAutonomy)
-        .where(eq(agentAutonomy.projectId, projectId));
-      const porTipo = Object.fromEntries(
-        linhas.map((l) => [l.actionType, l.mode]),
-      );
-      expect(porTipo).toEqual({
-        terminal: 'require_approval',
-        '*': 'require_approval',
-        git_push: 'deny',
-      });
-    });
-
-    it('3(c) põe o teto em block e a um dólar do gasto', async () => {
-      const passoC = blocos.find((b) => b.includes('update budgets'));
-      expect(passoC).toBeDefined();
-      await executar(passoC!, projectId);
-
-      const [orcamento] = await db
-        .select()
-        .from(budgets)
-        .where(eq(budgets.projectId, projectId));
-      expect(orcamento.policy).toBe('block');
-      expect(orcamento.limitMicros).toBe(11_000_000);
-    });
-  },
-);
+    const [orcamento] = await db
+      .select()
+      .from(budgets)
+      .where(eq(budgets.projectId, projectId));
+    expect(orcamento.policy).toBe('block');
+    expect(orcamento.limitMicros).toBe(11_000_000);
+  });
+});
 
 afterAll(async () => {
   await pool.end();
