@@ -192,7 +192,7 @@ compose de desenvolvimento, que sobe o broker por padrão ([RN-512](https://gith
 deixa `BROKER_URL` vazia até alguém a pôr no `.env`, o aviso aparece — e está
 certo, porque sem a variável a api nunca chama o broker.
 
-- **Código:** `src/interfaces/http/iam/workspaces.controller.ts:404`
+- **Código:** `src/interfaces/http/iam/workspaces.controller.ts:431`
   (`getProjectsBase`, `:256` o campo novo),
   `src/interfaces/http/iam/dto/iam.response.dto.ts:554`,
   `src/interfaces/http/iam/iam-http.module.ts` (o módulo do broker
@@ -1330,7 +1330,7 @@ o ticket novo é recusado); tela (não existe seção de membros de workspace no
 `apps/web`). O TITULAR (`workspaces.created_by`) não sai por esta rota — é a
 [RN-616](#rn-616).
 
-- **Código:** `src/interfaces/http/iam/workspaces.controller.ts:262`
+- **Código:** `src/interfaces/http/iam/workspaces.controller.ts:268`
   (`removeMember`);
   `src/application/use-cases/iam/remove-workspace-member.use-case.ts:79`
   (`RemoveWorkspaceMemberUseCase`);
@@ -1409,7 +1409,7 @@ uma linha de log com de/para/quem.
   (`TransferWorkspaceOwnershipUseCase`);
   `src/infrastructure/persistence/drizzle/workspace.repository.ts:98`
   (`transferirTitularidade`);
-  `src/interfaces/http/iam/workspaces.controller.ts:324`
+  `src/interfaces/http/iam/workspaces.controller.ts:351`
   (`transferOwnership`)
 - **Teste:**
   `test/application/use-cases/iam/remove-workspace-member.use-case.spec.ts`

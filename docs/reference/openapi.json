@@ -14870,8 +14870,55 @@
       }
     },
     "/workspaces/{workspaceId}/tool-router": {
+      "get": {
+        "description": "The workspace choice (`jev`, `laya` or `desligado`) and the state of the local Laya service: `nao_configurado`, `sem_resposta`, `sem_gpu`, `lento` or `proficiente`, with the reason and since when. Cached for 30 s with a 1 s cap; an agent turn never calls it.",
+        "operationId": "WorkspacesController_getToolRouter",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToolRouterResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "Insufficient role in the workspace."
+          },
+          "404": {
+            "description": "Workspace doesn't exist or is invisible to the caller."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reads who routes the tool of each agent step, and the Laya state",
+        "tags": [
+          "workspaces"
+        ]
+      },
       "put": {
-        "description": "On by default. When on AND the turn model is from OpenRouter, an agent step with two or more tools first asks the Jev which tool fits, and the chat model is offered only that tool and the previous one. The Jev never approves or denies anything: an action that needs approval still does. Any failure of the Jev falls back to the whole catalog. Turning it off stops every call to the Jev, and its cost with them.",
+        "description": "Send `roteador`: `jev` (default), `laya` or `desligado`. `laya` is recorded only if the local service is proficient right now (409 `roteador_local_indisponivel`); with it, every provider is routed and a Laya failure leaves the whole catalog. The legacy `enabled` boolean still works (`true` is `jev`). With `jev`: when on AND the turn model is from OpenRouter, an agent step with two or more tools first asks the Jev which tool fits, and the chat model is offered only that tool and the previous one. The Jev never approves or denies anything: an action that needs approval still does. Any failure of the Jev falls back to the whole catalog. Turning it off stops every call to the Jev, and its cost with them.",
         "operationId": "WorkspacesController_setToolRouter",
         "parameters": [
           {
@@ -14916,6 +14963,9 @@
           "404": {
             "description": "Workspace doesn't exist or is invisible to the caller."
           },
+          "409": {
+            "description": "`roteador_local_indisponivel`: `laya` was asked for but the service is not proficient now (the body names the state)."
+          },
           "429": {
             "description": "Rate limit per user or per IP."
           }
@@ -14925,7 +14975,7 @@
             "bearer": []
           }
         ],
-        "summary": "Turns the Jev tool routing on or off for the workspace",
+        "summary": "Chooses who routes the tool of each agent step",
         "tags": [
           "workspaces"
         ]
@@ -21205,6 +21255,55 @@
           "inputTokens",
           "modelName",
           "contextWindow"
+        ]
+      },
+      "LayaSituacaoResponseDto": {
+        "type": "object",
+        "properties": {
+          "estado": {
+            "type": "string",
+            "enum": [
+              "nao_configurado",
+              "sem_resposta",
+              "sem_gpu",
+              "lento",
+              "proficiente"
+            ],
+            "example": "proficiente"
+          },
+          "motivo": {
+            "type": "string",
+            "nullable": true,
+            "example": "vram_insuficiente"
+          },
+          "desde": {
+            "type": "string",
+            "example": "2026-11-09T12:00:00.000Z",
+            "format": "date-time"
+          },
+          "dispositivo": {
+            "type": "string",
+            "nullable": true,
+            "example": "cuda"
+          },
+          "vramLivreMiB": {
+            "type": "number",
+            "nullable": true,
+            "example": 5673
+          },
+          "p95Ms": {
+            "type": "number",
+            "nullable": true,
+            "example": 59
+          }
+        },
+        "required": [
+          "estado",
+          "motivo",
+          "desde",
+          "dispositivo",
+          "vramLivreMiB",
+          "p95Ms"
         ]
       },
       "LlmMessageResponseDto": {
@@ -27559,15 +27658,22 @@
       "SetToolRouterDto": {
         "type": "object",
         "properties": {
+          "roteador": {
+            "type": "string",
+            "enum": [
+              "jev",
+              "laya",
+              "desligado"
+            ],
+            "example": "jev",
+            "description": "Who chooses the tool of each agent step. `laya` needs the local GPU service to be proficient right now (409 `roteador_local_indisponivel` otherwise)."
+          },
           "enabled": {
             "type": "boolean",
             "example": false,
-            "description": "Whether the Jev chooses the tool of each agent step. On by default; it only acts when the turn model is from OpenRouter."
+            "description": "Legacy switch (AT-236): `true` is `jev`, `false` is `desligado`. `roteador` wins when both are sent."
           }
-        },
-        "required": [
-          "enabled"
-        ]
+        }
       },
       "SkippedBindingResponseDto": {
         "type": "object",
@@ -28395,6 +28501,27 @@
           "arguments"
         ]
       },
+      "ToolRouterResponseDto": {
+        "type": "object",
+        "properties": {
+          "roteador": {
+            "type": "string",
+            "enum": [
+              "jev",
+              "laya",
+              "desligado"
+            ],
+            "example": "jev"
+          },
+          "laya": {
+            "$ref": "#/components/schemas/LayaSituacaoResponseDto"
+          }
+        },
+        "required": [
+          "roteador",
+          "laya"
+        ]
+      },
       "ToolRoutingResponseDto": {
         "type": "object",
         "properties": {
@@ -29113,6 +29240,16 @@
             "example": true,
             "description": "Whether the tool-routing step by the Jev (ADR 0179) runs for this workspace. On by default; it only acts when the turn model is from OpenRouter, so `true` on a workspace without OpenRouter does nothing."
           },
+          "toolRouter": {
+            "type": "string",
+            "enum": [
+              "jev",
+              "laya",
+              "desligado"
+            ],
+            "example": "jev",
+            "description": "Who chooses the tool of each agent step (ADR 0179, ADR 0290): `jev` (default, OpenRouter turns only), `laya` (the local ensemble, any provider; needs the GPU service) or `desligado`."
+          },
           "createdAt": {
             "type": "string",
             "example": "2026-07-20T09:12:00.000Z",
@@ -29130,6 +29267,7 @@
           "slug",
           "createdBy",
           "toolRouterEnabled",
+          "toolRouter",
           "createdAt",
           "updatedAt"
         ]

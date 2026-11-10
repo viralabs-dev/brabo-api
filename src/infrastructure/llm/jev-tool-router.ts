@@ -6,6 +6,7 @@ import {
 } from '../../application/ports/tool-router.port';
 import {
   ENDPOINT_DO_JEV,
+  MODELO_DO_JEV,
   lerRespostaDoJev,
 } from '../../domain/llm/tool-router';
 import { timeoutFromEnv } from './http-stream';
@@ -57,6 +58,7 @@ export class JevToolRouter extends ToolRouter {
           motivo: 'erro_http',
           detalhe: `${r.status} ${texto.slice(0, 200)}`,
           latenciaMs: latencia(),
+          modelo: MODELO_DO_JEV,
           ...semGasto,
         };
       }
@@ -69,6 +71,7 @@ export class JevToolRouter extends ToolRouter {
           motivo: 'resposta_invalida',
           detalhe: texto.slice(0, 200),
           latenciaMs: latencia(),
+          modelo: MODELO_DO_JEV,
           ...semGasto,
         };
       }
@@ -79,12 +82,18 @@ export class JevToolRouter extends ToolRouter {
           motivo: lida.status,
           detalhe: lida.detalhe,
           latenciaMs: latencia(),
+          modelo: MODELO_DO_JEV,
           custoUsd: lida.custoUsd,
           tokensDeEntrada: lida.tokensDeEntrada,
           tokensDeSaida: lida.tokensDeSaida,
         };
       }
-      return { status: 'decidido', resposta: lida, latenciaMs: latencia() };
+      return {
+        status: 'decidido',
+        resposta: lida,
+        latenciaMs: latencia(),
+        modelo: MODELO_DO_JEV,
+      };
     } catch (erro) {
       const nome = (erro as Error).name;
       return {
@@ -96,6 +105,7 @@ export class JevToolRouter extends ToolRouter {
         // Só o NOME do erro: a mensagem de um erro de rede pode carregar a URL.
         detalhe: nome,
         latenciaMs: latencia(),
+        modelo: MODELO_DO_JEV,
         ...semGasto,
       };
     }

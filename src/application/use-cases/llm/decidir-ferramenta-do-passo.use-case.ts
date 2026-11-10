@@ -4,11 +4,12 @@ import { ProjectRepository } from '../../ports/project-repository.port';
 import { WorkspaceRepository } from '../../ports/workspace-repository.port';
 import { TokenEstimator } from '../../ports/token-estimator.port';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
-import { ToolRouter } from '../../ports/tool-router.port';
+import { ToolRouter, ToolRouterLocal } from '../../ports/tool-router.port';
 import { RecordLlmUsageUseCase } from './record-llm-usage.use-case';
 import {
   AGENTES_FORA_DO_ROTEAMENTO,
   MODELO_DO_JEV,
+  MODELO_DO_LAYA,
   ORIGEM_DA_QUEDA,
   TETO_DO_ESTADO_EM_TOKENS,
   avisoDeRecorte,
@@ -66,7 +67,9 @@ export interface ToolRouting {
 /** As condições passaram: o roteador vai ser consultado. */
 export interface PlanoDoRoteamento {
   tools: ToolDef[];
-  apiKey: string;
+  /** A chave OpenRouter; só o Jev a exige (o Laya é local). */
+  apiKey?: string;
+  roteador: 'jev' | 'laya';
   agentId: string;
 }
 
@@ -101,6 +104,7 @@ export class DecidirFerramentaDoPassoUseCase {
     private readonly projects: ProjectRepository,
     private readonly workspaces: WorkspaceRepository,
     private readonly router: ToolRouter,
+    private readonly laya: ToolRouterLocal,
     private readonly tokenEstimator: TokenEstimator,
     private readonly unitOfWork: UnitOfWork,
     private readonly recordLlmUsage: RecordLlmUsageUseCase,
@@ -109,17 +113,17 @@ export class DecidirFerramentaDoPassoUseCase {
   /**
    * As condições, nesta ordem (nenhuma gera evento quando falha — o evento
    * existe para medir o roteamento, não para poluir o log de todo turno):
-   * (a) provider do turno é `openrouter`, com credencial; (b) o pedido traz
-   * duas ou mais ferramentas; (c) há agente, e não é um dos fora do
-   * roteamento; (d) o engine não pediu o catálogo inteiro; (e) o workspace não
-   * desligou. `null` = não roteia. A leitura do workspace vai por último para
-   * que provider ≠ openrouter não custe nenhuma consulta.
+   * (a) o pedido traz duas ou mais ferramentas; (b) há agente, e não é um dos
+   * fora do roteamento; (c) o engine não pediu o catálogo inteiro; (d) o
+   * workspace não desligou, e o roteador dele (`tool_router`) decide o resto:
+   * `jev` só com provider `openrouter` e credencial; `laya` com QUALQUER
+   * provider (AT-626, ADR 0290, que revisa o item 1 da RN-625). `null` = não
+   * roteia.
    */
   async preparar(
     input: DecidirFerramentaDoPassoInput,
   ): Promise<PlanoDoRoteamento | null> {
     try {
-      if (input.provider !== 'openrouter' || !input.apiKey) return null;
       const tools = input.tools ?? [];
       if (tools.length < 2) return null;
       if (!input.agentId || AGENTES_FORA_DO_ROTEAMENTO.has(input.agentId)) {
@@ -129,8 +133,18 @@ export class DecidirFerramentaDoPassoUseCase {
       const projeto = await this.projects.findById(input.projectId);
       if (!projeto) return null;
       const workspace = await this.workspaces.findById(projeto.workspaceId);
-      if (!workspace?.toolRouterEnabled) return null;
-      return { tools, apiKey: input.apiKey, agentId: input.agentId };
+      const roteador = workspace?.toolRouter;
+      if (roteador === 'laya') {
+        return { tools, roteador, agentId: input.agentId };
+      }
+      if (
+        roteador !== 'jev' ||
+        input.provider !== 'openrouter' ||
+        !input.apiKey
+      ) {
+        return null;
+      }
+      return { tools, apiKey: input.apiKey, roteador, agentId: input.agentId };
     } catch (erro) {
       // Ler a flag que falha não derruba o turno: sem Jev, como antes.
       this.logger.warn(
@@ -154,7 +168,7 @@ export class DecidirFerramentaDoPassoUseCase {
   ): Promise<DecisaoDoPasso> {
     const nomes = plano.tools.map((t) => t.name);
     const base = {
-      modelo: MODELO_DO_JEV,
+      modelo: plano.roteador === 'laya' ? MODELO_DO_LAYA : MODELO_DO_JEV,
       ofertadas: nomes.length,
       menuAntes: nomes,
       menuDepois: nomes,
@@ -210,7 +224,9 @@ export class DecidirFerramentaDoPassoUseCase {
         return queda('estado_grande', null, anterior);
       }
 
-      const r = await this.router.decidir({
+      const r = await (
+        plano.roteador === 'laya' ? this.laya : this.router
+      ).decidir({
         apiKey: plano.apiKey,
         pedido,
         opcoes: nomes,
@@ -239,6 +255,7 @@ export class DecidirFerramentaDoPassoUseCase {
 
       if (r.status === 'queda') {
         return queda(r.motivo, r.detalhe, anterior, {
+          modelo: r.modelo,
           latenciaMs: r.latenciaMs,
           custoMicros,
           gastoNaoRegistrado,
@@ -266,6 +283,7 @@ export class DecidirFerramentaDoPassoUseCase {
           : input.messages,
         toolRouting: {
           ...base,
+          modelo: r.modelo,
           menuDepois: efetivas.map((t) => t.name),
           escolha: r.resposta.escolha,
           confianca: r.resposta.confianca,

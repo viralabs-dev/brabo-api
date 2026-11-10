@@ -1,20 +1,57 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { WorkspaceRepository } from '../../ports/workspace-repository.port';
+import { RoteadorLocal } from '../../ports/roteador-local.port';
+import type { Workspace } from '../../../domain/iam/workspace.entity';
+
+export const CODIGO_ROTEADOR_LOCAL_INDISPONIVEL = 'roteador_local_indisponivel';
 
 /**
- * Liga ou desliga o roteamento de ferramenta pelo Jev no workspace (ADR 0179,
- * AT-236 resposta 3). É o desligador de emergência se o endpoint alpha do
- * Decisions API mudar: desligado, nenhuma chamada ao Jev sai e nenhum evento
- * `tool_router.decided` é gravado — o passo é o de antes.
+ * Escolhe quem roteia a ferramenta do passo no workspace (ADR 0179, ADR 0290).
+ * `desligado` é o desligador de emergência se o endpoint alpha do Decisions API
+ * mudar. `laya` só grava com o serviço PROFICIENTE confirmado na hora (sem
+ * cache): senão 409 `roteador_local_indisponivel`, com o estado nomeado. O
+ * booleano `enabled` de antes (AT-236) segue aceito: `true` = `jev`.
  */
 @Injectable()
 export class SetWorkspaceToolRouterUseCase {
-  constructor(private readonly workspaces: WorkspaceRepository) {}
+  constructor(
+    private readonly workspaces: WorkspaceRepository,
+    private readonly local: RoteadorLocal,
+  ) {}
 
-  async execute(workspaceId: string, enabled: boolean) {
-    const workspace = await this.workspaces.setToolRouterEnabled(
+  async execute(
+    workspaceId: string,
+    escolha: { roteador?: Workspace['toolRouter']; enabled?: boolean },
+  ) {
+    const roteador =
+      escolha.roteador ??
+      (escolha.enabled === undefined
+        ? undefined
+        : escolha.enabled
+          ? 'jev'
+          : 'desligado');
+    if (!roteador) {
+      throw new BadRequestException('Informe `roteador` (ou `enabled`).');
+    }
+    if (roteador === 'laya') {
+      const s = await this.local.situacao(true);
+      if (s.estado !== 'proficiente') {
+        throw new ConflictException({
+          code: CODIGO_ROTEADOR_LOCAL_INDISPONIVEL,
+          message: `O Laya não está proficiente (${s.estado}${s.motivo ? `: ${s.motivo}` : ''}).`,
+          estado: s.estado,
+          motivo: s.motivo,
+        });
+      }
+    }
+    const workspace = await this.workspaces.setToolRouter(
       workspaceId,
-      enabled,
+      roteador,
     );
     if (!workspace) throw new NotFoundException('Workspace não encontrado');
     return workspace;
