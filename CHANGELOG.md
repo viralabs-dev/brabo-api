@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Doc (refs do instalador): as três refs `install.sh:N` da RN do pepper (`parte-07.md`, ~1255) viram refs só pelo símbolo (`install.sh` (`valor_no_env_anterior`), `gerar_segredos`, `dizer_a_origem_do_pepper`). Sem número, o `refs` do `brabo` e o do irmão não conferem a linha, então a PR do instalador (brabo#123) e a trava de SHA não ficam presas à ordem de merge.
+
 - CI: repina o brabo-ci na release final `v1.4.0` (`5320046`), para a promoção `dev → main` de 09/11/2026.
 
 - Doc (AT-871): cada parte de RN (`docs/business-rules/*/parte-NN.md`) ganha `<a id="rn-NNN"></a>` antes de cada RN, pelo `ancorar-rn.mjs` do brabo, para o link `parte-NN.md#rn-NNN` abrir na RN também no GitHub. Só acréscimo de âncoras: o texto das RNs e as refs `caminho:N` ficam iguais.
