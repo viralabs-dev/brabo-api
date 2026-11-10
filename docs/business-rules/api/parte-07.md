@@ -1252,8 +1252,8 @@ sobrescrito, e o pepper dele é mantido — ou, sem pepper, nasce com o
 
 - **Onde:** `src/infrastructure/security/auth-key-material.ts:168`
   (`pepperAtual`), `:212` (`pepper`); `src/main.ts:46` (a checagem de
-  boot); `install.sh:702` (`valor_no_env_anterior`), `:734` (`gerar_segredos`),
-  `:831` (`dizer_a_origem_do_pepper`); a variável nos três composes
+  boot); `install.sh` (`valor_no_env_anterior`), `install.sh` (`gerar_segredos`),
+  `install.sh` (`dizer_a_origem_do_pepper`); a variável nos três composes
   (`docker/docker-compose.yml`, `docker-compose.prod.yml`,
   `docker-compose.install.yml`), no `docker/smoke.sh` e no `.env.example`
 - **Teste:** `test/infrastructure/security/auth-key-material.spec.ts`
