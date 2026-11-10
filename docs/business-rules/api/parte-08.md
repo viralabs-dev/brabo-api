@@ -121,14 +121,14 @@ toda chamada de LLM de turno SEM autor humano, e desde a [RN-623](https://github
 também como idioma do artefato compartilhado que um agente grava DURANTE um
 turno com autor humano — a divergência que esta regra declarava fechou.
 
-- **Código:** `src/db/schema/iam.ts:262` (`language`);
+- **Código:** `src/db/schema/iam.ts:271` (`language`);
   `src/db/migrations/0062_idioma_do_projeto.sql` (o backfill);
   `src/application/use-cases/iam/idioma-do-projeto.ts:13`
   (`idiomaDoProjetoOuRecusa`);
   `src/application/use-cases/iam/create-project.use-case.ts:72`
   (`language`); `src/application/use-cases/iam/update-project.use-case.ts:18`
   (`idiomaDoProjetoOuRecusa`);
-  `src/interfaces/http/iam/dto/iam.response.dto.ts:233`
+  `src/interfaces/http/iam/dto/iam.response.dto.ts:271`
   (`language`); `apps/web/src/routes/settings/ProjectLanguageSection.tsx`
 - **Teste:** `test/application/use-cases/iam/idioma-do-projeto.use-case.spec.ts:63`
   (nasce com o idioma de quem cria), `:74` (a escolha da conta vence a
@@ -742,7 +742,7 @@ estado de conta. Workspace inexistente é 404, e quem não é membro é recusado
 pelo `RolesGuard` (403). Continua não havendo TELA de membros de workspace: a
 leitura existe para nomear, e as rotas de escrita seguem sendo de API.
 
-- **Código:** `src/interfaces/http/iam/workspaces.controller.ts:216`
+- **Código:** `src/interfaces/http/iam/workspaces.controller.ts:222`
   (`listMembers`);
   `src/application/use-cases/iam/list-workspace-members.use-case.ts:16`
   (`execute`);
@@ -946,7 +946,7 @@ vale só para aquele projeto. Os dois scripts de validação que exercitam o flu
 manual (`validacao-fase-12.ts`, `validacao-real.ts`) passam a pedir `manual`
 explícito.
 
-- **Código:** `src/db/schema/iam.ts:287` (`storyPromotion`);
+- **Código:** `src/db/schema/iam.ts:296` (`storyPromotion`);
   `src/db/migrations/0065_default_de_promocao_auto.sql`;
   `apps/web/src/routes/NewProjectWizard.tsx:978` (a linha do Confirmar);
   `apps/web/src/routes/settings/PromotionSection.tsx:75` (a nota do default)

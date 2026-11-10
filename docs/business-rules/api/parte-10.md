@@ -289,7 +289,7 @@ keywords: [regras de negócio, api]
   sem piso, de propósito (a obrigação deles muda a cada passo; para eles vale
   só a [RN-759](#rn-759)) — salvo `report_done`/`report_blocked`, que entram no piso deles desde a [RN-839](#rn-839).
 - **Onde:** `src/domain/llm/tool-router.ts:401` (`menuComPiso`) e
-  `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:248`
+  `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:265`
   (`menuComPiso`)
 - **Teste:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
   (o PO com o menu `["listar_backlog","create_story"]` mantém `create_task`;
@@ -313,7 +313,7 @@ keywords: [regras de negócio, api]
   que fecha o turno foi avaliado e não feito: a api não sabe antes da
   resposta que a volta será a última.
 - **Onde:** `src/domain/llm/tool-router.ts:420` (`avisoDeRecorte`) e
-  `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:263`
+  `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:281`
   (`avisoDeRecorte`)
 - **Teste:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
   (o aviso chega como última mensagem com recorte; sem recorte e em queda, as
@@ -943,7 +943,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   acrescenta o que está no catálogo do passo (P3).
 - **Onde:** `src/domain/llm/tool-router.ts:377` (`PISO_DA_CORRECAO_DO_DEV`),
   `:388` (`ehPassoDeCorrecao`), `:401` (`menuComPiso`),
-  `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:248` (`menuComPiso`)
+  `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:265` (`menuComPiso`)
 - **Teste:** `test/domain/llm/tool-router-correcao-do-dev.spec.ts`
   ("dev agent em correção recebe write_file e terminal"; "passo comum de
   leitura do dev não alarga"; "outro agente com a mesma mensagem não ganha";
