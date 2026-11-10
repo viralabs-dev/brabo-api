@@ -81,6 +81,11 @@ const decidirFerramenta = new DecidirFerramentaDoPassoUseCase(
       throw new Error('o Jev não deve ser chamado com provider != openrouter');
     },
   },
+  {
+    decidir: () => {
+      throw new Error('o Laya não deve ser chamado com workspace sem laya');
+    },
+  },
   tokenEstimator,
   unitOfWork,
   recordLlmUsage,

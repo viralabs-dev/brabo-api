@@ -157,6 +157,10 @@ export const detectedLanguageDeclines = pgTable(
   (table) => [primaryKey({ columns: [table.userId, table.language] })],
 );
 
+export const TOOL_ROUTERS = ['jev', 'laya', 'desligado'] as const;
+export type ToolRouterEscolhido = (typeof TOOL_ROUTERS)[number];
+export const toolRouterEnum = pgEnum('tool_router', TOOL_ROUTERS);
+
 export const workspaces = pgTable('workspaces', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
@@ -164,9 +168,14 @@ export const workspaces = pgTable('workspaces', {
   createdBy: uuid('created_by')
     .notNull()
     .references(() => users.id),
-  // O desligador do roteamento de ferramenta pelo Jev (ADR 0179, AT-236
-  // resposta 3): ligado por padrão, e só age com provider OpenRouter.
-  toolRouterEnabled: boolean('tool_router_enabled').notNull().default(true),
+  // Quem escolhe a ferramenta de cada passo (ADR 0179, ADR 0290): `jev` é o
+  // padrão e só age com provider OpenRouter; `laya` é o ensemble local (todo
+  // provider); `desligado` é o desligador de emergência.
+  toolRouter: toolRouterEnum('tool_router').notNull().default('jev'),
+  // Derivada, para o DTO e os clientes que leem o booleano de antes (AT-236).
+  toolRouterEnabled: boolean('tool_router_enabled')
+    .notNull()
+    .generatedAlwaysAs(sql`tool_router <> 'desligado'`),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),

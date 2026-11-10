@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { FilesystemModule } from '../../../infrastructure/filesystem/filesystem.module';
+import { LlmInfrastructureModule } from '../../../infrastructure/llm/llm-infrastructure.module';
 import { EngineHttpClientsModule } from '../../../infrastructure/http-clients/engine-http-clients.module';
 import { SessionsUseCasesModule } from '../sessions/sessions-use-cases.module';
 import { ContainersUseCasesModule } from '../containers/containers-use-cases.module';
@@ -42,6 +43,7 @@ import { DetectarIdiomaDoAutorUseCase } from './detectar-idioma-do-autor.use-cas
 // módulo de agentes traria sessões e o cliente do engine junto — aresta nova
 // entre IAM e agentes por causa de uma classe sem estado.
 import { SetWorkspaceToolRouterUseCase } from './set-workspace-tool-router.use-case';
+import { GetWorkspaceToolRouterUseCase } from './get-workspace-tool-router.use-case';
 import { SeedAgentAreasUseCase } from '../agents/seed-agent-areas.use-case';
 
 const USE_CASES = [
@@ -55,6 +57,7 @@ const USE_CASES = [
   RemoveWorkspaceMemberUseCase,
   TransferWorkspaceOwnershipUseCase,
   SetWorkspaceToolRouterUseCase,
+  GetWorkspaceToolRouterUseCase,
   CreateProjectUseCase,
   ConfirmProjectWorkspaceUseCase,
   ConvertProjectExecutionModeUseCase,
@@ -91,6 +94,8 @@ const USE_CASES = [
     // A cascata da remoção de membro de workspace derruba o runner vivo do
     // removido (ADR 0173, RN-615), pelo mesmo cliente da RN-520.
     EngineHttpClientsModule,
+    // O `RoteadorLocal` (estado do Laya) para o GET e o PUT do roteador (AT-626).
+    LlmInfrastructureModule,
   ],
   providers: USE_CASES,
   exports: USE_CASES,

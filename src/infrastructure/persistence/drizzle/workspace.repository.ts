@@ -111,14 +111,14 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
     return row ?? null;
   }
 
-  async setToolRouterEnabled(
+  async setToolRouter(
     id: string,
-    enabled: boolean,
+    roteador: Workspace['toolRouter'],
   ): Promise<Workspace | null> {
     const db = currentDb(this.rootDb);
     const [row] = await db
       .update(workspaces)
-      .set({ toolRouterEnabled: enabled, updatedAt: new Date() })
+      .set({ toolRouter: roteador, updatedAt: new Date() })
       .where(eq(workspaces.id, id))
       .returning();
     return row ?? null;
