@@ -44,6 +44,7 @@ import {
   raizDoEscopoNoEvento,
 } from '../../../infrastructure/filesystem/project-workspaces-root';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
+import type { Project } from '../../../domain/iam/project.entity';
 import type { Actor } from '../../../domain/sessions/session-event.entity';
 import type { ActionStatus } from '../../../domain/actions/action-state-machine';
 import type { PermissionPolicy } from '../../../domain/actions/permissions-file';
@@ -191,70 +192,12 @@ export class ProposeActionUseCase {
       }
     }
 
-    // Contexto todo buscado ANTES de chamar decide() — a função em si é
-    // pura (ver domain/actions/decide.ts), zero IO.
-    //
-    // O ciclo de vida do container só é consultado quando a pergunta pode
-    // fazer diferença — terminal num projeto `container` ou `mounted` —,
-    // poupando a query em todo o resto (git_push, container_start, `runner`).
-    // Dele saem DOIS fatos distintos: ONDE o comando roda
-    // (`execucaoNoContainer`, a raiz do escopo — RN-669, os dois modos que o
-    // engine executa pelo broker, RN-502) e o PISO de auto-aprovação
-    // (`containerExecutionActive`, ADR 0134/RN-493 — só `container`).
-    const [effectiveRole, autonomia, permissionsFile, execucaoNoContainer] =
-      await Promise.all([
-        this.resolveEffectiveRole.forProject(session.createdBy, projectId),
-        input.actor.kind === 'agent'
-          ? this.agentAutonomy.resolve(projectId, input.actor.id, actionType)
-          : Promise.resolve(null),
-        this.permissionsFileStore.read(project),
-        actionType === 'terminal' &&
-        (project.executionMode === 'container' ||
-          project.executionMode === 'mounted')
-          ? this.obterCicloDeVidaDoContainer
-              .execute(projectId)
-              .then((ciclo) => ciclo?.status === 'running')
-          : Promise.resolve(false),
-      ]);
-    const containerExecutionActive =
-      execucaoNoContainer && project.executionMode === 'container';
-
-    const command =
-      actionType === 'terminal' ? commandFromPayload(input.payload) : undefined;
-    const rawTargetBranch = (input.payload as { targetBranch?: unknown })
-      .targetBranch;
-    const targetBranch =
-      actionType === 'git_merge' && typeof rawTargetBranch === 'string'
-        ? rawTargetBranch
-        : undefined;
-
-    const decision = decide(
-      {
-        actionType,
-        command,
-        targetBranch,
-        comAppDeclarado:
-          actionType === 'open_infra_pr' &&
-          Boolean(
-            (input.payload as { run?: { app?: unknown } } | null)?.run?.app,
-          ),
-        cwd:
-          actionType === 'terminal' ? cwdFromPayload(input.payload) : undefined,
-      },
-      {
-        effectiveRole,
-        autonomyMode: autonomia?.mode ?? null,
-        // A origem (específica ou curinga) é o que deixa `decide()` reconhecer
-        // o modo automático (RN-603, ADR 0167) sem resolver precedência de novo.
-        autonomyOrigin: autonomia?.origem,
-        permissionsFile,
-        // A raiz do escopo de terminal (ADR 0055) deriva do MODO do projeto
-        // desde o ADR 0072: pasta gerenciada no `container`, a pasta do usuário
-        // no `local` (RN-169).
-        projectScopeRoot: projectScopeRoot(project),
-        containerExecutionActive,
-        execucaoNoContainer,
-      },
+    const decision = await this.decidir(
+      project,
+      session.createdBy,
+      actionType,
+      input.payload,
+      input.actor,
     );
 
     // AT-381 (RN-709): o plano leva o orçamento por tarefa VIGENTE — o mesmo
@@ -353,6 +296,84 @@ export class ProposeActionUseCase {
         actionType,
       ),
     );
+  }
+
+  /**
+   * A régua da proposta (`decide()` + o contexto que ela busca). Pública para
+   * que ligar o piloto automático reavalie as pendentes pela MESMA régua
+   * (RN-1103), sem uma segunda.
+   */
+  async decidir(
+    project: Project,
+    createdBy: string,
+    actionType: ActionType,
+    payload: Record<string, unknown>,
+    actor: Actor,
+  ) {
+    // Contexto todo buscado ANTES de chamar decide() — a função em si é
+    // pura (ver domain/actions/decide.ts), zero IO.
+    //
+    // O ciclo de vida do container só é consultado quando a pergunta pode
+    // fazer diferença — terminal num projeto `container` ou `mounted` —,
+    // poupando a query em todo o resto (git_push, container_start, `runner`).
+    // Dele saem DOIS fatos distintos: ONDE o comando roda
+    // (`execucaoNoContainer`, a raiz do escopo — RN-669, os dois modos que o
+    // engine executa pelo broker, RN-502) e o PISO de auto-aprovação
+    // (`containerExecutionActive`, ADR 0134/RN-493 — só `container`).
+    const [effectiveRole, autonomia, permissionsFile, execucaoNoContainer] =
+      await Promise.all([
+        this.resolveEffectiveRole.forProject(createdBy, project.id),
+        actor.kind === 'agent'
+          ? this.agentAutonomy.resolve(project.id, actor.id, actionType)
+          : Promise.resolve(null),
+        this.permissionsFileStore.read(project),
+        actionType === 'terminal' &&
+        (project.executionMode === 'container' ||
+          project.executionMode === 'mounted')
+          ? this.obterCicloDeVidaDoContainer
+              .execute(project.id)
+              .then((ciclo) => ciclo?.status === 'running')
+          : Promise.resolve(false),
+      ]);
+    const containerExecutionActive =
+      execucaoNoContainer && project.executionMode === 'container';
+
+    const command =
+      actionType === 'terminal' ? commandFromPayload(payload) : undefined;
+    const rawTargetBranch = (payload as { targetBranch?: unknown })
+      .targetBranch;
+    const targetBranch =
+      actionType === 'git_merge' && typeof rawTargetBranch === 'string'
+        ? rawTargetBranch
+        : undefined;
+
+    const decision = decide(
+      {
+        actionType,
+        command,
+        targetBranch,
+        comAppDeclarado:
+          actionType === 'open_infra_pr' &&
+          Boolean((payload as { run?: { app?: unknown } } | null)?.run?.app),
+        cwd: actionType === 'terminal' ? cwdFromPayload(payload) : undefined,
+      },
+      {
+        effectiveRole,
+        autonomyMode: autonomia?.mode ?? null,
+        // A origem (específica ou curinga) é o que deixa `decide()` reconhecer
+        // o modo automático (RN-603, ADR 0167) sem resolver precedência de novo.
+        autonomyOrigin: autonomia?.origem,
+        permissionsFile,
+        // A raiz do escopo de terminal (ADR 0055) deriva do MODO do projeto
+        // desde o ADR 0072: pasta gerenciada no `container`, a pasta do usuário
+        // no `local` (RN-169).
+        projectScopeRoot: projectScopeRoot(project),
+        containerExecutionActive,
+        execucaoNoContainer,
+      },
+    );
+
+    return decision;
   }
 
   private async executarSeAutoAprovada(

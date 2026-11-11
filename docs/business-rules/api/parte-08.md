@@ -285,7 +285,7 @@ seguiram em `in_review` (AT-275).
    outbox `project.trunk_merged` ([RN-1022](parte-11.md#rn-1022)), para PRs de tarefa, de
    infra e de ADR igualmente.
 
-- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:374`
+- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:381`
   (`settleMerge`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:507`
   (`markDoneIfNotDone`)
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
@@ -389,7 +389,7 @@ oferta a agente já ativo ficava acionável para sempre (AT-291,
   (`travarOfertasDoDestino`);
   `src/application/use-cases/agents/activate-agent.use-case.ts:88`
   (`substituirOfertasAoAtivar`);
-  `src/application/use-cases/execution/activate-execution.use-case.ts:327`
+  `src/application/use-cases/execution/activate-execution.use-case.ts:338`
   (`substituirOfertasAoAtivar`);
   `src/application/use-cases/agents/offer-infra-handoff.use-case.ts:96`
   (`jaAtendido`);
@@ -1201,7 +1201,7 @@ existe.
   várias raízes), `:137` (`PONTO_DE_MONTAGEM_DO_CONTAINER`);
   `src/domain/actions/decide.ts:291` (`execucaoNoContainer`), `:660`
   (`execucaoNoContainer`, em `terminalNoEscopo`);
-  `src/application/use-cases/actions/propose-action.use-case.ts:203`
+  `src/application/use-cases/actions/propose-action.use-case.ts:338`
   (`containerExecutionActive`, separado de `execucaoNoContainer`)
 - **Teste:** `test/domain/actions/decide.spec.ts:1274` (com container
   `/work`, `.worktrees`, `/tmp` e `..` dentro — caminho feliz; `/etc`, outro
