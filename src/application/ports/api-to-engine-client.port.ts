@@ -275,6 +275,15 @@ export abstract class ApiToEngineClient {
     agentId: string,
   ): Promise<void>;
 
+  // AT-906: manda o dev agent OCIOSO procurar tarefa de novo (o engine entrega
+  // `{:wake, :became_claimable}`). 404 se o agente não existe; 409 nomeado se
+  // ele não está ocioso (a api o repassa como 409).
+  abstract acordarDevAgent(
+    projectId: string,
+    sessionId: string,
+    agentId: string,
+  ): Promise<void>;
+
   // Devolve ao PO uma história que o usuário RECUSOU promover (Fase 12c —
   // RN-048). Espelha a devolução de gate ao dev: o motivo vira uma mensagem
   // fixada na sessão do PO, que decide o que fazer e registra. Lança (404 do

@@ -62,6 +62,9 @@ export interface Task {
   // AT-274 (RN-678): o módulo que o Dev Lead atribuiu no plano aprovado —
   // `null` enquanto nenhum plano a atribuiu.
   module: string | null;
+  // AT-912: arquivada com motivo; sai do claim, da contagem e das dependências.
+  archivedAt: Date | null;
+  archivedReason: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

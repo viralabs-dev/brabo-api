@@ -763,6 +763,25 @@ describe('HttpApiToEngineClient — comando de turno: aceite e recusa (ADR 0163)
     await engine.fechar();
   });
 
+  it('AT-906: rearm e wake de agente que não está no estado certo: 409 do engine vira ConflictException com a frase dele', async () => {
+    const engine = await engineQueResponde(409, {
+      error: 'O agente dev-api não está travado (status: idle).',
+    });
+    const client = new HttpApiToEngineClient();
+
+    const rearm = await client
+      .rearmDevAgent(PROJETO, SESSAO, 'dev-api')
+      .catch((e: unknown) => e);
+    expect(rearm).toBeInstanceOf(ConflictException);
+    expect((rearm as ConflictException).message).toMatch(/não está travado/);
+
+    await expect(
+      client.acordarDevAgent(PROJETO, SESSAO, 'dev-api'),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    await engine.fechar();
+  });
+
   it('422 sem_regra_de_negocio na prontidão vira UnprocessableEntityException', async () => {
     const engine = await engineQueResponde(422, {
       error: 'Nenhuma regra de negócio foi capturada nesta conversa.',

@@ -50,7 +50,14 @@ class FakeStories {
 }
 
 class FakeTasks {
-  create(input: { storyId: string; title: string; description?: string }) {
+  criadas: Array<{ module?: string | null }> = [];
+  create(input: {
+    storyId: string;
+    title: string;
+    description?: string;
+    module?: string | null;
+  }) {
+    this.criadas.push(input);
     return Promise.resolve({
       id: 'task-1',
       storyId: input.storyId,
@@ -136,6 +143,49 @@ describe('CreateTaskUseCase', () => {
     await expect(
       useCase.execute(PROJECT, SESSION, { storyId: 'story-x', title: 't' }),
     ).rejects.toThrow();
+  });
+
+  describe('módulo gravado na criação (AT-912, RN-NOVA-5)', () => {
+    it('com module da história: grava e o wake vai SÓ a esse módulo', async () => {
+      stories.story = makeStory({ status: 'ready', moduleIds: ['api', 'web'] });
+      await useCase.execute(PROJECT, SESSION, {
+        storyId: 'story-1',
+        title: 't',
+        module: 'web',
+      });
+      expect(tasks.criadas[0].module).toBe('web');
+      expect(outbox.calls[0]).toMatchObject({ payload: { modules: ['web'] } });
+    });
+
+    it('module fora da história: 400 nomeado e nada gravado', async () => {
+      stories.story = makeStory({ moduleIds: ['api'] });
+      await expect(
+        useCase.execute(PROJECT, SESSION, {
+          storyId: 'story-1',
+          title: 't',
+          module: 'db',
+        }),
+      ).rejects.toThrow(/módulo "db" não é da história/);
+      expect(tasks.criadas).toEqual([]);
+    });
+
+    it('sem module e história de UM módulo: herda', async () => {
+      stories.story = makeStory({ moduleIds: ['api'] });
+      await useCase.execute(PROJECT, SESSION, {
+        storyId: 'story-1',
+        title: 't',
+      });
+      expect(tasks.criadas[0].module).toBe('api');
+    });
+
+    it('sem module e história de vários (o caso do PO): segue sem módulo', async () => {
+      stories.story = makeStory({ moduleIds: ['api', 'web'] });
+      await useCase.execute(PROJECT, SESSION, {
+        storyId: 'story-1',
+        title: 't',
+      });
+      expect(tasks.criadas[0].module).toBeNull();
+    });
   });
 
   describe('outbox task.became_claimable (Fase 12b — RN-047)', () => {

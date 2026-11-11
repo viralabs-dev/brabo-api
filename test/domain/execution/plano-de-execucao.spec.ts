@@ -153,5 +153,14 @@ describe('lerPlanoDeExecucao (RN-678)', () => {
       );
       expect(r.ok).toBe(true);
     });
+
+    // RN-NOVA-3 (AT-913): módulo ENTREGUE satisfaz a dependência.
+    it('dependência entregue (tudo done) fora do plano passa; sem tarefa nenhuma segue recusada', () => {
+      const so = plano([{ taskId: T1, modulo: 'deploy' }], []);
+      const entregue = lerPlanoDeExecucao(so, MAPA_25, TODAS, new Set(['api']));
+      expect(entregue.ok).toBe(true);
+      const nunca = lerPlanoDeExecucao(so, MAPA_25, TODAS, new Set(['db']));
+      expect(nunca.ok).toBe(false);
+    });
   });
 });

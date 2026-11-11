@@ -43,6 +43,7 @@ function harness(
   const resultados: Array<{ status: string; executionResult: unknown }> = [];
   const eventos: Array<{ type: string; payload: unknown }> = [];
   const atribuicoes: unknown[] = [];
+  const outbox: Array<{ eventType: string; payload: unknown }> = [];
   const activate = vi.fn((_projectId: string, _userId: string) =>
     opts.ativacaoFalha
       ? Promise.reject(opts.ativacaoFalha)
@@ -66,7 +67,12 @@ function harness(
         });
       },
     } as never,
-    { append: () => Promise.resolve() } as never,
+    {
+      append: (l: { eventType: string; payload: unknown }) => {
+        outbox.push(l);
+        return Promise.resolve();
+      },
+    } as never,
     {
       execute: (
         _p: string,
@@ -86,6 +92,7 @@ function harness(
     {
       findInProjectByIds: (_p: string, ids: string[]) =>
         Promise.resolve(ids.filter((id) => id === T1).map((id) => ({ id }))),
+      modulosEntregues: () => Promise.resolve([]),
       assignModules: (a: unknown[]) => {
         atribuicoes.push(...a);
         return Promise.resolve();
@@ -99,7 +106,7 @@ function harness(
     } as never,
     { execute: activate } as never,
   );
-  return { useCase, resultados, eventos, atribuicoes, activate };
+  return { useCase, resultados, eventos, atribuicoes, activate, outbox };
 }
 
 describe('ExecuteExecutionPlanUseCase (RN-677/RN-678)', () => {
@@ -191,5 +198,26 @@ describe('ExecuteExecutionPlanUseCase (RN-677/RN-678)', () => {
         tarefas: [{ taskId: T1 }],
       }),
     ).toContain('sem módulo');
+  });
+
+  it('RN-NOVA-1: depois de atribuir e ativar, grava o wake plan_applied com os módulos atribuídos', async () => {
+    const h = harness();
+    await h.useCase.execute('proj-1', 'sess-dev-lead', acao(PLANO_BOM));
+    expect(
+      h.outbox.filter((l) => l.eventType === 'task.became_claimable'),
+    ).toEqual([
+      {
+        aggregateType: 'task',
+        aggregateId: T1,
+        eventType: 'task.became_claimable',
+        payload: {
+          projectId: 'proj-1',
+          sessionId: 'sess-exec',
+          taskId: T1,
+          modules: ['board-engine'],
+          cause: 'plan_applied',
+        },
+      },
+    ]);
   });
 });

@@ -1404,6 +1404,7 @@ detalhar o motivo na URL.
 | POST | `/internal/sessions/:sessionId/tasks/:taskId/gate/open` | engine-service |
 | POST | `/internal/sessions/:sessionId/tasks/:taskId/status` | engine-service |
 | POST | `/internal/sessions/:sessionId/tasks/:taskId/update` | engine-service |
+| POST | `/internal/sessions/:sessionId/tasks/:taskId/archive` | engine-service |
 | POST | `/internal/sessions/:sessionId/tasks/claim` | engine-service |
 | GET | `/internal/sessions/:sessionId/tasks/in-progress-by-dev` | engine-service |
 | POST | `/internal/sessions/:sessionId/termination` | engine-service |
@@ -1527,6 +1528,7 @@ detalhar o motivo na URL.
 | POST | `/projects/:projectId/sessions/:sessionId/agents/:agent/start` | role:developer |
 | POST | `/projects/:projectId/sessions/:sessionId/agents/:agent/structured-question/:questionSetId/answer` | role:developer |
 | POST | `/projects/:projectId/sessions/:sessionId/agents/:agentId/rearm` | role:developer |
+| POST | `/projects/:projectId/sessions/:sessionId/agents/:agentId/wake` | role:developer |
 | POST | `/projects/:projectId/sessions/:sessionId/agents/arquiteto/handoff-infra` | role:developer |
 | POST | `/projects/:projectId/sessions/:sessionId/agents/criativo/validate-necessity` | role:developer |
 | POST | `/projects/:projectId/sessions/:sessionId/attachments` | role:developer |
@@ -1561,6 +1563,7 @@ detalhar o motivo na URL.
 | POST | `/projects/:projectId/stories/:storyId/return` | role:developer |
 | PATCH | `/projects/:projectId/stories/:storyId/title` | role:developer |
 | POST | `/projects/:projectId/stories/:storyId/archive` | role:developer |
+| POST | `/projects/:projectId/tasks/:taskId/archive` | role:developer |
 | POST | `/projects/:projectId/stories/promote` | role:developer |
 | DELETE | `/workspaces/:workspaceId` | role:owner |
 | GET | `/workspaces/:workspaceId` | role:viewer |

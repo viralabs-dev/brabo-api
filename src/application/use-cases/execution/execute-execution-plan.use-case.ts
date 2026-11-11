@@ -82,6 +82,7 @@ export class ExecuteExecutionPlanUseCase {
       payload,
       moduleMap?.modules ?? [],
       new Set(encontradas.map((t) => t.id)),
+      new Set(await this.tasks.modulosEntregues(projectId)),
     );
   }
 
@@ -144,6 +145,24 @@ export class ExecuteExecutionPlanUseCase {
         // Plano sem `tarefas` (forma anterior à RN-678) sobe o mapa inteiro.
         plano.tarefas.length > 0 ? Object.keys(tarefasPorModulo) : undefined,
       );
+
+      // RN-NOVA-1 (AT-906): o engine só acorda o agente BASE de cada módulo na
+      // ativação; o wake por módulo alcança também os extras (`dev-x-2`...),
+      // e só vale DEPOIS de atribuir (acima) e de ativar.
+      if (plano.tarefas.length > 0) {
+        await this.outbox.append({
+          aggregateType: 'task',
+          aggregateId: plano.tarefas[0].taskId,
+          eventType: 'task.became_claimable',
+          payload: {
+            projectId,
+            sessionId: ativacao.sessionId,
+            taskId: plano.tarefas[0].taskId,
+            modules: Object.keys(tarefasPorModulo),
+            cause: 'plan_applied',
+          },
+        });
+      }
 
       return this.registrar(projectId, sessionId, action.id, 'executed', {
         sessaoDeExecucao: ativacao.sessionId,

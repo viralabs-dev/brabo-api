@@ -23,6 +23,17 @@ export class CreateTaskInternalDto {
   description?: string;
 
   @ApiPropertyOptional({
+    example: 'api',
+    description:
+      'Module of the task; must be one of the story modules (400 otherwise). ' +
+      'Omitted, a story with a single module lends it; with several the task ' +
+      'is born without a module and waits for the execution plan.',
+  })
+  @IsOptional()
+  @IsString()
+  module?: string;
+
+  @ApiPropertyOptional({
     enum: ['po', 'dev_lead'],
     default: 'po',
     description: 'Agent creating the task; becomes the actor of the event.',
