@@ -113,5 +113,40 @@ keywords: [regras de negócio, api]
 - **Onde:** `src/domain/llm/raciocinio-do-agente.ts` (`devoRetentarSemRaciocinio`).
 - **Teste:** `test/domain/llm/raciocinio-do-agente.spec.ts`.
 - **Origem:** AT-920 (EP-036), rodada 366, lane AA2.
+<a id="rn-1101"></a>
+
+### RN-1101 — A ativação da execução recusa o projeto sem container `running`, salvo o dev Noop {#rn-1101}
+
+- **Regra:** `POST /projects/:projectId/execution/activate` responde 409 `execucao_sem_container` quando o container registrado do projeto não está `running`, depois da guarda do repositório ([RN-582](parte-05.md#rn-582)) e antes de qualquer efeito. Sem isso cada dev bloqueava em `dev.blocked_by_container` ([RN-502](parte-05.md#rn-502)) no mesmo segundo, sem aviso. A frase diz o próximo passo: aprovar a subida proposta pela Infra, ou pedi-la. O dev `noop` (`devAgentImpl: 'noop'`) é isento, como no engine.
+- **Onde:** `src/application/use-cases/execution/activate-execution.use-case.ts` (`execute`, `containerRodando`)
+- **Teste:** `test/application/use-cases/execution/activate-execution.use-case.spec.ts` (`RN-1101`: recusa sem container, recusa em `provisioning`, passa com `running`, Noop isento).
+- **Origem:** AT-899 (EP-036), parte da api; rodada 366, lane AA1.
+
+<a id="rn-1102"></a>
+
+### RN-1102 — O dev extra de paralelização nasce com o modo do agente base {#rn-1102}
+
+- **Regra:** No aceite da paralelização, se o agente base do módulo (`dev-<módulo>`) está no piloto automático (curinga `agent_autonomy (agente, "*") = auto_approve`), o extra (`dev-<módulo>-2`) recebe a mesma curinga. Base manual não semeia curinga: o extra segue só com as linhas de `DEV_AUTO_GIT_ACTIONS`.
+- **Onde:** `src/application/use-cases/execution/accept-parallelization.use-case.ts` (`execute`)
+- **Teste:** `test/application/use-cases/execution/accept-parallelization.use-case.spec.ts` (`RN-1102`: base automático herdado, base manual sem curinga).
+- **Origem:** AT-908 (EP-036); rodada 366, lane AA1.
+
+<a id="rn-1103"></a>
+
+### RN-1103 — Ligar o piloto automático de um agente reavalia as ações pendentes dele pela régua da proposta {#rn-1103}
+
+- **Regra:** `PUT /projects/:projectId/agent-autonomy` com `actionType "*"` e `mode auto_approve` lista as ações `pending` do agente no projeto e roda, para cada uma, o MESMO `decide()` da proposta (`ProposeActionUseCase.decidir`, sem segunda régua). A que agora resolve `auto_approve` é aprovada pelo `ApproveActionUseCase` em nome de quem ligou o piloto; os tetos (`git_push`, `pr_open`, `git_merge`) seguem pendentes. Falha em uma ação é registrada em log e não desfaz a regra gravada nem barra as outras. Rota, DTO e papel (`maintainer`) não mudam.
+- **Onde:** `src/application/use-cases/actions/set-agent-autonomy.use-case.ts` (`reavaliarPendentes`), `src/application/use-cases/actions/propose-action.use-case.ts` (`decidir`), `src/interfaces/http/actions/agent-autonomy.controller.ts` (`set`)
+- **Teste:** `test/application/use-cases/actions/set-agent-autonomy.use-case.spec.ts` (libera o `terminal` pendente, mantém o `git_push`, ignora outro agente, regra específica ou modo manual não reavalia).
+- **Origem:** AT-908 (EP-036); rodada 366, lane AA1.
+
+<a id="rn-1104"></a>
+
+### RN-1104 — O merge que não move o alvo fica registrado como `jaContida` {#rn-1104}
+
+- **Regra:** Quando o merge de uma PR termina `merged` mas a ponta da branch alvo é a mesma de antes (a fonte já estava contida), o `execution_result` da ação `git_merge` e o evento `action.git_merge` levam `jaContida: true`, e a tela diz "nada a mergear". As pontas vêm de `listBranches` antes e depois do merge, em melhor esforço: sem leitura, nada é afirmado. Vale para os providers local e remoto; o contrato `@brabo/shared` não muda. O claim da fundação do módulo (AT-901, primeira parte) NÃO está aqui.
+- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts` (`executeProviderAction`, ramo `git_merge`), `src/domain/git/git-action-execution-result.ts` (`GitMergeExecutionResult.jaContida`)
+- **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` (`RN-1104`: pontas iguais gravam `jaContida`, pontas diferentes não).
+- **Origem:** AT-901 (EP-036), só o merge sem efeito; rodada 366, lane AA1.
 
 A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em `ARG`/`ENV`; só como secret do BuildKit), definida no [brabo-broker](https://github.com/viralabs-dev/brabo-broker/blob/dev/docs/business-rules/broker.md). Quem prova na api é `test/dockerfile-sem-token.spec.ts:13` (todo `pnpm install` do `Dockerfile` monta o secret, nenhum `ARG`/`ENV` com token, `.npmrc` só com o registry).

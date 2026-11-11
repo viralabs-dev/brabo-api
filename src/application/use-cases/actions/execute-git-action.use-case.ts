@@ -247,6 +247,20 @@ export class ExecuteGitActionUseCase {
     }
 
     // git_merge (aprovação manual — a trava garante que nunca é auto).
+    // RN-1104 (AT-901): as pontas ANTES do merge, para saber se ele moveu o
+    // alvo. Melhor esforço, como o `mergedSha`: sem leitura, nada é afirmado.
+    const pontas = async () => {
+      try {
+        const branches = await provider.listBranches({
+          externalId: repo.externalId,
+          accessToken,
+        });
+        return new Map(branches.map((b) => [b.name, b.commitSha]));
+      } catch {
+        return undefined;
+      }
+    };
+    const antes = await pontas();
     const merged = await provider.mergePullRequest({
       externalId: repo.externalId,
       pullRequestId: String(payload.pullRequestId),
@@ -256,21 +270,12 @@ export class ExecuteGitActionUseCase {
     // `project.trunk_merged`. Melhor esforço — a pasta avança por `fetch`, o
     // sha só informa.
     let mergedSha: string | undefined;
-    if (
-      merged.state === 'merged' &&
-      merged.targetBranch === BRANCH_DE_TRABALHO
-    ) {
-      try {
-        const branches = await provider.listBranches({
-          externalId: repo.externalId,
-          accessToken,
-        });
-        mergedSha = branches.find(
-          (b) => b.name === merged.targetBranch,
-        )?.commitSha;
-      } catch {
-        mergedSha = undefined;
-      }
+    let jaContida = false;
+    if (merged.state === 'merged') {
+      const depois = (await pontas())?.get(merged.targetBranch);
+      if (merged.targetBranch === BRANCH_DE_TRABALHO) mergedSha = depois;
+      jaContida =
+        depois !== undefined && antes?.get(merged.targetBranch) === depois;
     }
     return {
       kind: 'git_merge',
@@ -278,6 +283,7 @@ export class ExecuteGitActionUseCase {
       state: merged.state,
       targetBranch: merged.targetBranch,
       ...(mergedSha ? { mergedSha } : {}),
+      ...(jaContida ? { jaContida: true } : {}),
     };
   }
 

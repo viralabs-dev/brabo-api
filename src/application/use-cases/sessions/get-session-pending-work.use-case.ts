@@ -48,6 +48,9 @@ const MOTIVO_DA_TAREFA = {
   // instante depois — entre os dois, nada mais segurava a sessão.
   em_curso_de_dev: 'em curso com um dev agent da execução',
   a_fazer_de_modulo_com_dev: 'a fazer no módulo de um dev agent da execução',
+  // AT-912: ninguém a pega até o plano atribuir o módulo, ou até ser arquivada.
+  sem_modulo:
+    'sem módulo: nenhum dev vai pegar (atribua pelo plano ou arquive a tarefa)',
 } as const;
 
 const NADA_PENDENTE: SessionPendingWork = {

@@ -4473,7 +4473,7 @@
         ]
       },
       "put": {
-        "description": "Upsert by (agent, type). It does NOT override `permissions.json`: a pattern already in `deny` stays blocked no matter how much autonomy is granted here. `actionType: \"*\"` is \"auto mode\" (RN-153) — autonomy for ANY action type of this agent; a specific rule recorded afterwards still wins over the wildcard for that type.",
+        "description": "Upsert by (agent, type). It does NOT override `permissions.json`: a pattern already in `deny` stays blocked no matter how much autonomy is granted here. `actionType: \"*\"` is \"auto mode\" (RN-153) — autonomy for ANY action type of this agent; a specific rule recorded afterwards still wins over the wildcard for that type. Turning on the wildcard `auto_approve` re-evaluates the agent's pending actions (RN-1103).",
         "operationId": "AgentAutonomyController_set",
         "parameters": [
           {

@@ -701,6 +701,27 @@ describe('GetSessionPendingWorkUseCase — conversa esperando o usuário (RN-581
       );
     });
 
+    // AT-912: a tarefa do PO (sem módulo, história de vários) ninguém pega.
+    it('tarefa todo SEM módulo em história de vários módulos aparece como pendência; arquivada, não', async () => {
+      const { session, task } = await execucaoComTarefa({});
+      await db
+        .update(stories)
+        .set({ moduleIds: ['api', 'web'] })
+        .where(eq(stories.id, task.storyId));
+
+      const r = await useCase.execute(session.id);
+      expect(r.pending).toBe(true);
+      expect(r.motivo).toBe(
+        `tarefa ${task.id} sem módulo: nenhum dev vai pegar (atribua pelo plano ou arquive a tarefa)`,
+      );
+
+      await db
+        .update(tasks)
+        .set({ archivedAt: new Date(), archivedReason: 'x' })
+        .where(eq(tasks.id, task.id));
+      expect((await useCase.execute(session.id)).pending).toBe(false);
+    });
+
     it('tarefa todo de módulo SEM dev na execução não segura', async () => {
       const { session } = await execucaoComTarefa({ module: 'web' });
 

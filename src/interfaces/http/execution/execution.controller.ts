@@ -1,5 +1,15 @@
-import { Body, Controller, Get, Param, Patch, Post, Put } from '@nestjs/common';
 import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Put,
+} from '@nestjs/common';
+import {
+  ApiAcceptedResponse,
   ApiBearerAuth,
   ApiConflictResponse,
   ApiBadRequestResponse,
@@ -17,6 +27,7 @@ import { ActivateExecutionUseCase } from '../../../application/use-cases/executi
 import { GetActiveExecutionSessionUseCase } from '../../../application/use-cases/execution/get-active-execution-session.use-case';
 import { RequestParallelizationUseCase } from '../../../application/use-cases/execution/request-parallelization.use-case';
 import { UnblockTaskUseCase } from '../../../application/use-cases/execution/unblock-task.use-case';
+import { AcordarDevAgentUseCase } from '../../../application/use-cases/execution/acordar-dev-agent.use-case';
 import { RearmDevAgentUseCase } from '../../../application/use-cases/execution/rearm-dev-agent.use-case';
 import { ListAgentAreasUseCase } from '../../../application/use-cases/execution/list-agent-areas.use-case';
 import { SetAreaMaxParallelUseCase } from '../../../application/use-cases/execution/set-area-max-parallel.use-case';
@@ -54,6 +65,7 @@ export class ExecutionController {
     private readonly requestParallelization: RequestParallelizationUseCase,
     private readonly unblockTask: UnblockTaskUseCase,
     private readonly rearmDevAgent: RearmDevAgentUseCase,
+    private readonly acordarDevAgent: AcordarDevAgentUseCase,
     private readonly listAgentAreas: ListAgentAreasUseCase,
     private readonly setAreaMaxParallel: SetAreaMaxParallelUseCase,
     private readonly setAreaBudget: SetAreaBudgetUseCase,
@@ -248,5 +260,26 @@ export class ExecutionController {
     @CurrentUser() user: User,
   ) {
     return this.rearmDevAgent.execute(projectId, sessionId, agentId, user.id);
+  }
+
+  @Post('sessions/:sessionId/agents/:agentId/wake')
+  @HttpCode(202)
+  @RequireRole('developer')
+  @ApiOperation({
+    summary: 'Makes an idle dev agent look for a task again',
+    description:
+      'The engine delivers the wake to the agent and `dev.wake_requested` is ' +
+      'recorded. Only an `idle` agent: any other state is a named 409 with the ' +
+      "engine's sentence (never a 500).",
+  })
+  @ApiAcceptedResponse({ type: OkResponseDto })
+  @ApiConflictResponse({ description: 'The agent is not idle.' })
+  wake(
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @Param('agentId') agentId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.acordarDevAgent.execute(projectId, sessionId, agentId, user.id);
   }
 }

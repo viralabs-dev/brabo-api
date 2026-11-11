@@ -62,7 +62,7 @@ handoff às 06:45:01 — o web encadeava a ativação para `maintainer`/`owner`
 
 - **Onde:** `src/application/use-cases/execution/execute-execution-plan.use-case.ts:89`
   (`execute`); `src/application/use-cases/actions/approve-action.use-case.ts:221`
-  (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:427`
+  (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:448`
   (`executeExecutionPlan`); `apps/web/src/lib/session-acoes-de-handoff.ts:91`
   (`handleAcceptHandoff`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:274`
   (`classificar`); `apps/engine/lib/engine/agents/dev_lead_server.ex:811`
@@ -126,8 +126,8 @@ módulo do `module_map`, como antes, e o paralelismo extra continua pelo
 `parallelize` ([RN-083](parte-02.md#rn-083)).
 
 - **Onde:** `src/domain/execution/plano-de-execucao.ts:39`
-  (`lerPlanoDeExecucao`); `src/infrastructure/persistence/drizzle/backlog.repository.ts:720`
-  (`daTarefaDoModulo`), `:403` (`claimNext`), `:391` (`assignModules`);
+  (`lerPlanoDeExecucao`); `src/infrastructure/persistence/drizzle/backlog.repository.ts:784`
+  (`daTarefaDoModulo`), `:413` (`claimNext`), `:401` (`assignModules`);
   `src/application/use-cases/actions/propose-action.use-case.ts:141`
   (`recusaNaProposta`); `src/application/use-cases/execution/execute-execution-plan.use-case.ts:67`
   (`recusaNaProposta`); `src/db/schema/backlog.ts:187` (`module`);
@@ -148,6 +148,7 @@ módulo do `module_map`, como antes, e o paralelismo extra continua pelo
   `apps/engine/test/engine/agents/dev_lead_server_test.exs:131`
 - **Decisão arquitetural:** [ADR 0194](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0194-aprovar-o-plano-ativa-a-execucao.md)
 - **Origem:** AT-274 (item A28 / extra E5 da análise do uso real de 29/09)
+- **Revisão (AT-906, AT-912):** a aprovação do plano acorda os agentes DEPOIS de atribuir ([RN-1081](parte-11.md#rn-1081)); a tarefa criada com módulo nasce com ele ([RN-1085](parte-11.md#rn-1085)).
 
 <a id="rn-679"></a>
 
@@ -237,7 +238,7 @@ embedding do RAG, e AVISA quando a mais próxima está a partir do limiar.
   `src/application/use-cases/backlog/verificar-duplicata-semantica.use-case.ts:112` (`VerificarDuplicataSemanticaUseCase`),
   `:247` (`medir`), `:291` (`narrar`), `:355` (`fraseParaOAgente`),
   `src/application/use-cases/backlog/create-story.use-case.ts:199` (`semanticDuplicate`),
-  `src/interfaces/http/internal/internal-sessions.controller.ts:678` (`semanticDuplicateCheck`),
+  `src/interfaces/http/internal/internal-sessions.controller.ts:710` (`semanticDuplicateCheck`),
   `src/application/use-cases/rag/rag-embedding.service.ts:106` (`uso`),
   `apps/engine/lib/engine/harness/tools/emit_artifact.ex` (`aviso_semantico`),
   `apps/engine/lib/engine/harness/tools/create_story.ex` (`aviso_semantico`)
@@ -433,7 +434,7 @@ lendo o worktree de outros módulos para descobrir a interface deles: o
   (`execute`);
   `src/application/use-cases/architecture/list-module-contracts.use-case.ts:42`
   (`execute`);
-  `src/interfaces/http/internal/internal-sessions.controller.ts:818`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:851`
   (`moduleContracts`);
   `src/interfaces/http/internal/internal-projects.controller.ts:181`
   (`moduleContracts`);
@@ -527,7 +528,7 @@ rótulo, não o comportamento.
   (`execute`), `:109` (`derrubarConexoesDaChave`);
   `src/application/use-cases/auth/derrubar-conexoes-do-pat.ts:21`
   (`derrubarConexoesDoPat`);
-  `src/infrastructure/http-clients/api-to-engine-client.ts:693`
+  `src/infrastructure/http-clients/api-to-engine-client.ts:708`
   (`disconnectRunnerCredential`);
   `apps/engine/lib/engine/runners/socket_ticket.ex:107` (`emitir`), `:207`
   (`anular_pendentes_da_credencial`);
@@ -848,8 +849,8 @@ restaura a aprovação.
   PR aberta por humano não tem dono a acordar.
 - **Medição (AT-383, 02/10, loja-teste):** a #6 terminou `failed` por conflito
   em `package.json`, e a tarefa ficou `in_review` sem ninguém para resolvê-lo.
-- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:460` (`devolverAoDono`),
-  `src/infrastructure/persistence/drizzle/backlog.repository.ts:504` (`reabrirPorConflitoDeMerge`),
+- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:467` (`devolverAoDono`),
+  `src/infrastructure/persistence/drizzle/backlog.repository.ts:517` (`reabrirPorConflitoDeMerge`),
   `apps/engine/lib/engine/workers/dev_agent_wake_worker.ex:151` (`task.merge_conflict`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:350` (`handle_info`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:851` (`trigger_gate_recheck`),
@@ -947,7 +948,7 @@ O kickoff do PO diz as três coisas.
 
 - **Onde:** `src/application/use-cases/backlog/complete-story.use-case.ts:53`
   (`CompleteStoryUseCase`);
-  `src/interfaces/http/internal/internal-sessions.controller.ts:541`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:545`
   (`completeStoryRoute`); `apps/engine/lib/engine/harness/tools/complete_story.ex:47`
   (`run`); `apps/engine/lib/engine/harness/tools/offer_handoff.ex:52`
   (`recusa_por_cobertura`); `apps/engine/lib/engine/harness/tools/emit_artifact.ex:188`

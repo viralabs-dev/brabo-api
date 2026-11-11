@@ -29,6 +29,8 @@ export interface GitMergeExecutionResult {
   targetBranch: string;
   /** RN-1022: ponta da branch de trabalho após o merge (melhor esforço). */
   mergedSha?: string;
+  /** RN-1104: o merge não moveu o alvo (a fonte já estava contida): "nada a mergear". */
+  jaContida?: true;
 }
 
 /**
