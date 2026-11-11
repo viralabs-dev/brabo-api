@@ -680,7 +680,7 @@ chave.
 
 - **Onde:** `src/application/use-cases/auth/revoke-runner-device-key.use-case.ts:63`
   (a ordem, o projeto da linha e o `try/catch` que só loga);
-  `src/application/ports/api-to-engine-client.port.ts:433`
+  `src/application/ports/api-to-engine-client.port.ts:442`
   (`disconnectRunnerOfUser`, `DesfechoDeDesconexaoDeRunner`);
   `src/infrastructure/http-clients/api-to-engine-client.ts:477`;
   `apps/engine/lib/engine/runners/revogacao.ex:92` (`derrubar/3`);
