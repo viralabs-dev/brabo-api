@@ -44,7 +44,7 @@ function build(opts?: {
   sessaoOrigem?: { id: string; status: string } | null;
   /** O que `GetSessionPendingWorkUseCase` devolve para a sessão de origem. */
   pendingWork?: { pending: boolean; motivo: string | null };
-  /** Estado registrado do container do projeto (AT-104). Default: nenhum. */
+  /** Estado registrado do container do projeto (AT-104). Default: `running` (RN-1101 recusa sem ele). */
   container?: 'running' | 'provisioning' | null;
   /** Tasks pegáveis por módulo (AT-104). Default: 0. */
   pegaveis?: number;
@@ -239,7 +239,11 @@ function build(opts?: {
 
   const containers = {
     findByProject: () =>
-      Promise.resolve(opts?.container ? { status: opts.container } : null),
+      Promise.resolve(
+        opts?.container === null
+          ? null
+          : { status: opts?.container ?? 'running' },
+      ),
   } as unknown as ContainerRepository;
 
   return {
@@ -841,8 +845,9 @@ describe('ActivateExecutionUseCase — sugestão de paralelização (AT-104)', (
     eventos.filter((e) => e.type === 'execution.parallelization_suggested');
 
   it('agentes bloqueados (sem container running) e tasks pegáveis: NÃO sugere +1 agente', async () => {
+    // Só o Noop ativa sem container (RN-1101); o resto é recusado antes.
     const { useCase, eventos } = build({ pegaveis: 6, container: null });
-    await useCase.execute('proj-1', 'user-1');
+    await useCase.execute('proj-1', 'user-1', undefined, undefined, 'noop');
     expect(sugestoes(eventos)).toHaveLength(0);
   });
 
@@ -851,7 +856,7 @@ describe('ActivateExecutionUseCase — sugestão de paralelização (AT-104)', (
       pegaveis: 6,
       container: 'provisioning',
     });
-    await useCase.execute('proj-1', 'user-1');
+    await useCase.execute('proj-1', 'user-1', undefined, undefined, 'noop');
     expect(sugestoes(eventos)).toHaveLength(0);
   });
 
@@ -923,5 +928,35 @@ describe('ActivateExecutionUseCase — módulos do plano (AT-381, RN-709)', () =
       /nenhum dev agent subiria/,
     );
     expect(autonomias).toEqual([]);
+  });
+
+  describe('RN-1101: sem container `running`', () => {
+    it('recusa com 409 execucao_sem_container, sem efeito algum', async () => {
+      const { useCase, autonomias } = build({ container: null });
+      await expect(useCase.execute('proj-1', 'user-1')).rejects.toMatchObject({
+        status: 409,
+        response: { code: 'execucao_sem_container' },
+      });
+      expect(autonomias).toEqual([]);
+    });
+
+    it('container em provisioning também recusa', async () => {
+      const { useCase } = build({ container: 'provisioning' });
+      await expect(useCase.execute('proj-1', 'user-1')).rejects.toMatchObject({
+        status: 409,
+      });
+    });
+
+    it('com `running` passa', async () => {
+      const { useCase } = build({ container: 'running' });
+      await expect(useCase.execute('proj-1', 'user-1')).resolves.toBeDefined();
+    });
+
+    it('o dev Noop é isento', async () => {
+      const { useCase } = build({ container: null });
+      await expect(
+        useCase.execute('proj-1', 'user-1', undefined, undefined, 'noop'),
+      ).resolves.toBeDefined();
+    });
   });
 });

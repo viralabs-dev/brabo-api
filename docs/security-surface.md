@@ -1185,6 +1185,18 @@ detalhar o motivo na URL.
   handoff existe e o status dele, que qualquer `viewer` do projeto já lê
   por `GET .../sessions/:sessionId/handoffs`; ela nunca nomeia sessão nem
   usuário.
+- **`POST /projects/:projectId/execution/activate` recusa com `409`
+  `execucao_sem_container` quando o container não está `running`, e a
+  classificação não mudou** — continua `role:maintainer`
+  ([RN-1101](business-rules/api/parte-12.md#rn-1101)). Recusa por ESTADO, antes
+  de qualquer efeito; a mensagem só diz o próximo passo e não revela nada além
+  do que `GET .../container` já mostra a um `viewer`.
+- **`PUT /projects/:projectId/agent-autonomy` com a curinga `auto_approve`
+  reavalia as pendentes do agente, e a classificação não mudou** — continua
+  `role:maintainer` ([RN-1103](business-rules/api/parte-12.md#rn-1103)). A
+  aprovação em nome de quem ligou usa a MESMA régua de `decide()`, com os
+  tetos de `git_push`, `pr_open` e `git_merge` intactos e `deny` de
+  `permissions.json` ainda vencendo.
 - **Oferecer handoff a um agente já ativo no projeto é `409`
   `agente_ja_ativo`, e a classificação não mudou** — a rota humana
   `POST .../sessions/:sessionId/handoffs` continua `role:developer` e a
