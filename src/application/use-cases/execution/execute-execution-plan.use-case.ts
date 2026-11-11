@@ -146,7 +146,7 @@ export class ExecuteExecutionPlanUseCase {
         plano.tarefas.length > 0 ? Object.keys(tarefasPorModulo) : undefined,
       );
 
-      // RN-NOVA-1 (AT-906): o engine só acorda o agente BASE de cada módulo na
+      // RN-1081 (AT-906): o engine só acorda o agente BASE de cada módulo na
       // ativação; o wake por módulo alcança também os extras (`dev-x-2`...),
       // e só vale DEPOIS de atribuir (acima) e de ativar.
       if (plano.tarefas.length > 0) {

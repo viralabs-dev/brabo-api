@@ -148,7 +148,7 @@ módulo do `module_map`, como antes, e o paralelismo extra continua pelo
   `apps/engine/test/engine/agents/dev_lead_server_test.exs:131`
 - **Decisão arquitetural:** [ADR 0194](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0194-aprovar-o-plano-ativa-a-execucao.md)
 - **Origem:** AT-274 (item A28 / extra E5 da análise do uso real de 29/09)
-- **Revisão (AT-906, AT-912):** a aprovação do plano acorda os agentes DEPOIS de atribuir ([RN-NOVA-1](parte-11.md#rn-nova-1)); a tarefa criada com módulo nasce com ele ([RN-NOVA-5](parte-11.md#rn-nova-5)).
+- **Revisão (AT-906, AT-912):** a aprovação do plano acorda os agentes DEPOIS de atribuir ([RN-1081](parte-11.md#rn-1081)); a tarefa criada com módulo nasce com ele ([RN-1085](parte-11.md#rn-1085)).
 
 <a id="rn-679"></a>
 

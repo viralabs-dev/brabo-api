@@ -54,7 +54,7 @@ function build(opts: {
 const DONO = { kind: 'user', id: 'u1' } as const;
 const DEVLEAD = { kind: 'agent', id: 'dev-lead' } as const;
 
-describe('ArchiveTaskUseCase (AT-912, RN-NOVA-4)', () => {
+describe('ArchiveTaskUseCase (AT-912, RN-1084)', () => {
   it('o dono arquiva a tarefa todo com motivo e grava backlog.task_archived', async () => {
     const { useCase, eventos } = build({ criadaPor: 'po' });
     await useCase.execute('p', 't1', ' duplicada ', DONO);

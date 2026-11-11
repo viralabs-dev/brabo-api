@@ -467,7 +467,7 @@ na instalação responde 409.
 - **Código:** `apps/api/src/domain/execution/plano-de-execucao.ts` (`lerPlanoDeExecucao`), `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts` (`lerPlano`)
 - **Teste:** `apps/api/test/domain/execution/plano-de-execucao.spec.ts` (`fundação com dono`: o plano sem `db`/`api` é recusado nomeando `deploy` -> `api`; com tarefa em `db`, `api` e `deploy` ele passa)
 - **Origem:** AT-742 (EP-030), achado 9 do TP-01 de 05/11; ADR 0259.
-- **Revisão (AT-913):** o módulo ENTREGUE (todas as tarefas `done`) satisfaz a dependência: ver a [RN-NOVA-3](#rn-nova-3), `apps/api/src/domain/execution/plano-de-execucao.ts:134` (`lerPlanoDeExecucao`).
+- **Revisão (AT-913):** o módulo ENTREGUE (todas as tarefas `done`) satisfaz a dependência: ver a [RN-1083](#rn-1083), `apps/api/src/domain/execution/plano-de-execucao.ts:134` (`lerPlanoDeExecucao`).
 
 <a id="rn-1005"></a>
 
@@ -477,7 +477,7 @@ na instalação responde 409.
 - **Código:** `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts` (`claimNext`, `semDependenciaAberta`)
 - **Teste:** `apps/api/test/infrastructure/persistence/drizzle/backlog-claim-depends-on.repository.spec.ts` (tarefa aberta em `api` -> `deploy` não recebe nada; `api` concluída -> recebe a tarefa; só a direta; sem mapa)
 - **Origem:** AT-742 (EP-030); ADR 0259.
-- **Revisão (AT-906, AT-912):** a tarefa arquivada não segura o dependente ([RN-NOVA-4](#rn-nova-4)), e `countClaimableByModule` usa o MESMO predicado: `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:751` (`semDependenciaAberta`), usado em `:454` (`claimNext`) e `:547` (`countClaimableByModule`).
+- **Revisão (AT-906, AT-912):** a tarefa arquivada não segura o dependente ([RN-1084](#rn-1084)), e `countClaimableByModule` usa o MESMO predicado: `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:751` (`semDependenciaAberta`), usado em `:454` (`claimNext`) e `:547` (`countClaimableByModule`).
 
 <a id="rn-1007"></a>
 
@@ -506,7 +506,7 @@ na instalação responde 409.
 - **Código:** `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts` (`settleMerge`, `acordarDependentes`)
 - **Teste:** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("acorda os dependentes (RN-1009)": uma linha com `cause: dependency_done`, merge repetido não grava nada, sem mapa não grava nada), `apps/api/test/infrastructure/persistence/drizzle/dependente-acorda-no-merge.spec.ts` (Postgres real: `auth` não pega nada antes do merge, a linha existe depois dele e `auth` pega a tarefa)
 - **Origem:** AT-746 (EP-030); o lado do engine (outbox -> drain -> acordar -> agente ocioso faz o claim) já existe e é provado por `dev_agent_chain_test.exs`.
-- **Revisão (AT-906):** o fechamento por `mark_task done` (RN-797) também acorda: [RN-NOVA-1](#rn-nova-1), `apps/api/src/application/use-cases/execution/mark-task.use-case.ts:45` (`execute`).
+- **Revisão (AT-906):** o fechamento por `mark_task done` (RN-797) também acorda: [RN-1081](#rn-1081), `apps/api/src/application/use-cases/execution/mark-task.use-case.ts:45` (`execute`).
 
 
 <a id="rn-1018"></a>
@@ -577,45 +577,45 @@ na instalação responde 409.
 - **Teste:** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("project.trunk_merged (RN-1022)"), `apps/api/test/application/use-cases/git/provision-repository.use-case.spec.ts`, `apps/api/test/application/use-cases/git/bootstrap-plan.spec.ts`, `apps/api/test/scripts/migrar-projeto-para-trunk.spec.ts`
 - **Origem:** AT-617 (EP-030), decisão do dono de 06/11/2026; rodada 208, lane L2.
 
-<a id="rn-nova-1"></a>
+<a id="rn-1081"></a>
 
-### RN-NOVA-1 — Toda tarefa que vira `done` acorda os dev agents dos módulos com `dependsOn`, e a aprovação do plano acorda os agentes dos módulos atribuídos, sempre depois de atribuir {#rn-nova-1}
+### RN-1081 — Toda tarefa que vira `done` acorda os dev agents dos módulos com `dependsOn`, e a aprovação do plano acorda os agentes dos módulos atribuídos, sempre depois de atribuir {#rn-1081}
 
 - **Regra:** generaliza a [RN-1009](#rn-1009) (que só cobria o merge da PR). A tarefa que fecha por "já na main" (RN-797 do engine) passa por `POST /internal/sessions/:sessionId/tasks/:taskId/status`, e sem wake o dev dependente reavaliava o claim antes de a dependência virar `done` e ficava `idle` para sempre (TP-01 28ª, achados 15, 17 e 25). `MarkTaskUseCase` com `status === 'done'` grava, na MESMA transação do status, uma linha `task.became_claimable` com `cause: 'dependency_done'` e os módulos do `module_map` corrente que têm `dependsOn` (a mesma regra do `acordarDependentes`); outro status não grava. A aprovação do plano (`ExecuteExecutionPlanUseCase`) grava `task.became_claimable` com `cause: 'plan_applied'` e os módulos das tarefas atribuídas DEPOIS de atribuir os módulos e de ativar a execução; como o engine só acorda o agente BASE de cada módulo na ativação, é esse wake (`list_by_module` no `DevAgentWakeWorker`) que alcança `dev-x-2` e `dev-x-3`.
 - **Código:** `apps/api/src/application/use-cases/execution/mark-task.use-case.ts:45` (`execute`), `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts:149` (`execute`)
 - **Teste:** `apps/api/test/application/use-cases/execution/mark-task.use-case.spec.ts` (`done` grava, outro status não, sem `dependsOn` não), `apps/api/test/application/use-cases/execution/execute-execution-plan.use-case.spec.ts` (wake `plan_applied` com os módulos atribuídos)
 - **Origem:** AT-906 (EP-036); o lado do engine é a lane X2.
 
-<a id="rn-nova-2"></a>
+<a id="rn-1082"></a>
 
-### RN-NOVA-2 — O usuário manda o dev agent ocioso procurar tarefa de novo, e o 409 do engine é repassado, nunca 500 {#rn-nova-2}
+### RN-1082 — O usuário manda o dev agent ocioso procurar tarefa de novo, e o 409 do engine é repassado, nunca 500 {#rn-1082}
 
 - **Regra:** `POST /projects/:projectId/sessions/:sessionId/agents/:agentId/wake` (`developer`, 202) chama o engine primeiro (`ApiToEngineClient.acordarDevAgent`, que entrega o wake ao agente `idle`) e só então grava `dev.wake_requested` com `actor: user` (o log é imutável: pedido recusado não deixa evento). O agente que não está ocioso é 409 nomeado do engine. `postCommand` passou a converter todo 409 do engine em `ConflictException` com a frase dele, o que corrige também o `rearm` de agente ocioso, que devolvia 500 (correção D8 da [RN-047](parte-04.md#rn-047)). O erro que não é 409 segue `Error` genérico. A rota entra no `security-surface.md` e no `openapi.json`.
 - **Código:** `apps/api/src/application/use-cases/execution/acordar-dev-agent.use-case.ts:18` (`execute`), `apps/api/src/interfaces/http/execution/execution.controller.ts:277` (`wake`), `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts:866` (`postCommand`)
 - **Teste:** `apps/api/test/application/use-cases/execution/acordar-dev-agent.use-case.spec.ts` (engine primeiro, ator usuário, 409 sem evento), `apps/api/test/infrastructure/http-clients/api-to-engine-client.spec.ts` (409 de rearm e wake vira `ConflictException`)
 - **Origem:** AT-906 (EP-036).
 
-<a id="rn-nova-3"></a>
+<a id="rn-1083"></a>
 
-### RN-NOVA-3 — Um módulo cujas tarefas estão todas `done` satisfaz a dependência no plano {#rn-nova-3}
+### RN-1083 — Um módulo cujas tarefas estão todas `done` satisfaz a dependência no plano {#rn-1083}
 
 - **Regra:** revisa a [RN-1004](#rn-1004). `lerPlanoDeExecucao` ganha o 4º parâmetro `modulosEntregues`, e a "órfã" passa a ser `!comTarefa.has(d) && !modulosEntregues.has(d)`: só o módulo que NUNCA teve tarefa, ou que tem tarefa aberta fora do plano, continua exigindo a tarefa de fundação. `TaskRepository.modulosEntregues(projectId)` devolve os módulos com ≥ 1 tarefa (do módulo, ou sem módulo em história de um módulo só, história não arquivada) e nenhuma não-`done`; tarefa arquivada não conta nem a favor nem contra. É o predicado de `semDependenciaAberta` ([RN-1005](#rn-1005)) invertido.
 - **Código:** `apps/api/src/domain/execution/plano-de-execucao.ts:134` (`lerPlanoDeExecucao`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:575` (`modulosEntregues`), `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts:85` (`lerPlano`)
 - **Teste:** `apps/api/test/domain/execution/plano-de-execucao.spec.ts` (`fundação com dono`: entregue passa, sem tarefa nenhuma segue recusada), `apps/api/test/infrastructure/persistence/drizzle/backlog-arquivar-tarefa.repository.spec.ts` (`modulosEntregues`)
 - **Origem:** AT-913 (EP-036); a detecção de ciclo é do engine.
 
-<a id="rn-nova-4"></a>
+<a id="rn-1084"></a>
 
-### RN-NOVA-4 — Uma tarefa `todo` pode ser arquivada com motivo, pelo dono ou pelo Dev Lead, e sai do claim, da contagem e das dependências {#rn-nova-4}
+### RN-1084 — Uma tarefa `todo` pode ser arquivada com motivo, pelo dono ou pelo Dev Lead, e sai do claim, da contagem e das dependências {#rn-1084}
 
-- **Regra:** decisão do dono de 11/11/2026: arquivar e cancelar são UM gesto, com motivo obrigatório. `tasks.archived_at` e `archived_reason` (migração `0085_arquivar_tarefa`), no molde da história ([RN-727](parte-09.md#rn-727)), nunca um valor de `task_status`. `POST /projects/:projectId/tasks/:taskId/archive` (`developer`) arquiva qualquer tarefa `todo` (bloqueada ou não); `POST /internal/sessions/:sessionId/tasks/:taskId/archive` (engine-service) é a ferramenta do Dev Lead e só aceita a tarefa que ELE criou (`backlog.task_created` com ator `dev_lead`), senão 409 `tarefa_de_outro_autor`. Tarefa com agente (`in_progress`/`in_review`) é 409 `tarefa_em_execucao` nomeando o agente; já arquivada é 409 `tarefa_arquivada`; motivo vazio é 400. `TaskRepository.archive` é atômico (`WHERE status = 'todo' AND archived_at IS NULL`), então o claim concorrente nunca perde para um arquivamento aceito. Grava `backlog.task_archived { taskId, storyId, title, reason }`. A arquivada é ignorada por `claimNext`, `countClaimableByModule`, `semDependenciaAberta`, `findPendenteDaExecucao` e `findInProjectByIds` (o plano a recusa como inexistente).
+- **Regra:** decisão do dono de 11/11/2026: arquivar e cancelar são UM gesto, com motivo obrigatório. `tasks.archived_at` e `archived_reason` (migração `0086_arquivar_tarefa`), no molde da história ([RN-727](parte-09.md#rn-727)), nunca um valor de `task_status`. `POST /projects/:projectId/tasks/:taskId/archive` (`developer`) arquiva qualquer tarefa `todo` (bloqueada ou não); `POST /internal/sessions/:sessionId/tasks/:taskId/archive` (engine-service) é a ferramenta do Dev Lead e só aceita a tarefa que ELE criou (`backlog.task_created` com ator `dev_lead`), senão 409 `tarefa_de_outro_autor`. Tarefa com agente (`in_progress`/`in_review`) é 409 `tarefa_em_execucao` nomeando o agente; já arquivada é 409 `tarefa_arquivada`; motivo vazio é 400. `TaskRepository.archive` é atômico (`WHERE status = 'todo' AND archived_at IS NULL`), então o claim concorrente nunca perde para um arquivamento aceito. Grava `backlog.task_archived { taskId, storyId, title, reason }`. A arquivada é ignorada por `claimNext`, `countClaimableByModule`, `semDependenciaAberta`, `findPendenteDaExecucao` e `findInProjectByIds` (o plano a recusa como inexistente).
 - **Código:** `apps/api/src/application/use-cases/backlog/archive-task.use-case.ts:39` (`execute`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:552` (`archive`), `apps/api/src/interfaces/http/backlog/backlog.controller.ts` (`archiveTaskRoute`), `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts` (`archiveTaskRoute`)
 - **Teste:** `apps/api/test/application/use-cases/backlog/archive-task.use-case.spec.ts` (dono, motivo, `in_progress`, já arquivada, autoria do Dev Lead, corrida com o claim), `apps/api/test/infrastructure/persistence/drizzle/backlog-arquivar-tarefa.repository.spec.ts` (sai do claim, da contagem e da dependência)
 - **Origem:** AT-912 (EP-036).
 
-<a id="rn-nova-5"></a>
+<a id="rn-1085"></a>
 
-### RN-NOVA-5 — A tarefa nasce com o módulo; sem módulo numa história de vários, as pendências a mostram como "sem dev" {#rn-nova-5}
+### RN-1085 — A tarefa nasce com o módulo; sem módulo numa história de vários, as pendências a mostram como "sem dev" {#rn-1085}
 
 - **Regra:** completa a [RN-678](parte-09.md#rn-678) (o módulo atribuído pelo plano segue valendo para as tarefas do PO). `CreateTaskInput.module` e `module` no DTO interno: o módulo precisa estar nos `moduleIds` da história (senão 400 nomeado) e é gravado em `tasks.module`; sem `module` e com a história de UM módulo, herda esse módulo (o efeito que o `daTarefaDoModulo` já tinha); com vários (o caso do PO), segue `NULL` e espera o plano. O wake da criação vai a `[module]` quando há módulo. Antes o `create_task` do Dev Lead exigia o módulo mas o engine o descartava, e a tarefa ficava órfã. `findPendenteDaExecucao` ganha o motivo `sem_modulo` (tarefa `todo`, sem módulo, de história `ready` com mais de um módulo): `GetSessionPendingWorkUseCase` o devolve como "sem módulo: nenhum dev vai pegar (atribua pelo plano ou arquive a tarefa)" e a sessão não fecha por inatividade enquanto houver uma.
 - **Código:** `apps/api/src/application/use-cases/backlog/create-task.use-case.ts:60` (`execute`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:291` (`findPendenteDaExecucao`), `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts:52` (`MOTIVO_DA_TAREFA`)

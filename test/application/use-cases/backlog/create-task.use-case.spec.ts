@@ -145,7 +145,7 @@ describe('CreateTaskUseCase', () => {
     ).rejects.toThrow();
   });
 
-  describe('módulo gravado na criação (AT-912, RN-NOVA-5)', () => {
+  describe('módulo gravado na criação (AT-912, RN-1085)', () => {
     it('com module da história: grava e o wake vai SÓ a esse módulo', async () => {
       stories.story = makeStory({ status: 'ready', moduleIds: ['api', 'web'] });
       await useCase.execute(PROJECT, SESSION, {

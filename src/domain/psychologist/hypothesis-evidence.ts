@@ -64,10 +64,8 @@ export function validateHypothesisBatch(
   knownEventIds: Set<string>,
   requiresTermination: boolean,
 ): HypothesisBatchValidation {
-  if (drafts.length === 0) {
-    return { ok: false, reason: 'lote de hipóteses vazio' };
-  }
-
+  // Lote vazio é válido (RN-1076): sessão analisada sem nada errado no
+  // produto termina com análise de zero hipóteses.
   for (let i = 0; i < drafts.length; i++) {
     const draft = drafts[i];
     const label = `hipótese #${i + 1} (${draft.agenteAlvo || '?'})`;
@@ -103,6 +101,7 @@ export function validateHypothesisBatch(
 
   if (
     requiresTermination &&
+    drafts.length > 0 &&
     !drafts.some((d) => d.terminationAnalysis != null)
   ) {
     return {

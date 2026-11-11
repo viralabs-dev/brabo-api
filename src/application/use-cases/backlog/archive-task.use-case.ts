@@ -18,7 +18,7 @@ export type AtorDoArquivamento =
   { kind: 'user'; id: string } | { kind: 'agent'; id: 'dev-lead' };
 
 /**
- * Arquivar tarefa (AT-912, RN-NOVA-4, decisão do dono de 11/11): um gesto só,
+ * Arquivar tarefa (AT-912, RN-1084, decisão do dono de 11/11): um gesto só,
  * com motivo OBRIGATÓRIO — cancelar e arquivar são a mesma coisa. Só tarefa
  * `todo` (bloqueada ou não); a que tem agente (`in_progress`/`in_review`) é 409
  * nomeado. O dono arquiva qualquer uma pela tela; o Dev Lead, só a que ELE

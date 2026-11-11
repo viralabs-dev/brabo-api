@@ -23,7 +23,7 @@ const MAPA = [
   { name: 'api', dependsOn: ['db'] },
 ];
 
-describe('MarkTaskUseCase — wake dos dependentes (AT-906, RN-NOVA-1)', () => {
+describe('MarkTaskUseCase — wake dos dependentes (AT-906, RN-1081)', () => {
   it('done grava task.became_claimable com os módulos que têm dependsOn', async () => {
     const { useCase, outbox } = build(MAPA);
     await useCase.execute('p', 's', 't1', 'done', 'dev-db');

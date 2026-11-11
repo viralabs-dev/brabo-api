@@ -34,12 +34,12 @@ paths:
   tem cliques de aprovação (`proposed_action.approved`, `handoff.accepted`,
   `readiness.confirmed`), é recusado pela api como "não observado", sem
   `profile_updated`. A regra é de CÓDIGO (`validateProficiencyBatch`), não só
-  de prompt; não a afrouxe para o lote passar. E o que a pessoa faz para
-  reparar falha de agente não é traço dela: desde a RN-717 (ADR 0205) vira
-  `anamnese.agent_deviation`, sinal do PRODUTO, com payload por lista de
-  permitidos (agente, tipo fechado, `eventId`s), sem texto livre nem dado
-  pessoal, e FORA do grafo do usuário — não o projete no
-  `GraphEventTranslator`.
+  de prompt; não a afrouxe para o lote passar. O que a pessoa faz para
+  reparar falha de agente não é traço dela, e a Anamnese NÃO o registra: a
+  RN-717 (ADR 0205, `anamnese.agent_deviation`) foi REVOGADA pela RN-1076
+  (ADR 0291, AT-898). Não recrie o evento nem a ferramenta
+  `report_agent_deviation`; a falha técnica da plataforma é assunto do TP-01
+  (ver o Psicólogo, abaixo).
   Desde a RN-722 (decisões do dono de 02/10) a rodada que avalia a janela e
   encerra sem perfil a FECHA (`anamnese_runs` com zero perfis) — antes ela
   rodava paga a cada 15 min sobre a mesma janela, para sempre (~US$ 8,90/dia
@@ -74,3 +74,19 @@ paths:
   COERÊNCIA e não omissão: um Deployment/ConfigMap não intercepta nada, e o
   `brabo-config` nunca carregou nenhuma destas variáveis; Staff dormente para
   disparo automático (acionável manual)
+
+- O Psicólogo olha o PRODUTO do usuário (RN-1076, ADR 0291, AT-898). Cada item
+  do lote traz `escopo`: `produto` vira hipótese em Percepções, como antes;
+  `plataforma` (agente ocioso, teto, worktree, validador) NUNCA vira hipótese.
+  Em projeto marcado como teste (`projects.sessao_de_teste`, ligada por
+  `pnpm projeto:marcar-teste <projectId>`, sem tela) o item de plataforma vira
+  `psychologist.platform_signal` no log da sessão; em qualquer outro projeto é
+  descartado sem evento. O lote INTEIRO passa pela validação de evidência
+  (id inválido em item de plataforma reprova tudo), lote vazio é válido e a
+  `terminationAnalysis` só é exigida em sessão de teste. O
+  `psychologist.analysis_completed` traz `hypothesisCount` e
+  `platformSignalCount`. O sinal NÃO entra em `EVENTOS_DO_LOG_PROJETAVEIS`
+  (fora do grafo e da fila da Anamnese; o spec
+  `sinal-de-plataforma-fora-do-grafo.spec.ts` guarda isso) — não o projete no
+  `GraphEventTranslator`. Hipóteses e eventos antigos ficam como estão, sem
+  migração.

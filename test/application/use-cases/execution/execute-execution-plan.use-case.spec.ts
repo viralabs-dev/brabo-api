@@ -200,7 +200,7 @@ describe('ExecuteExecutionPlanUseCase (RN-677/RN-678)', () => {
     ).toContain('sem módulo');
   });
 
-  it('RN-NOVA-1: depois de atribuir e ativar, grava o wake plan_applied com os módulos atribuídos', async () => {
+  it('RN-1081: depois de atribuir e ativar, grava o wake plan_applied com os módulos atribuídos', async () => {
     const h = harness();
     await h.useCase.execute('proj-1', 'sess-dev-lead', acao(PLANO_BOM));
     expect(

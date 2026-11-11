@@ -9,7 +9,7 @@ import type { TaskStatus } from '../../../domain/backlog/backlog.entity';
 /**
  * Atualiza o status de uma task (o dev "atualiza o backlog" ao longo do ciclo).
  *
- * RN-NOVA-1 (AT-906): `done` também acorda os dev agents dos módulos com
+ * RN-1081 (AT-906): `done` também acorda os dev agents dos módulos com
  * `dependsOn`, como o merge da PR (RN-1009) — a tarefa que fecha por "já na
  * main" (RN-797) passa por aqui, e sem o wake o dependente ficava ocioso.
  */

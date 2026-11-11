@@ -1068,6 +1068,7 @@ export class InternalSessionsController {
       triggeredBy: dto.triggeredBy,
       eventCount: dto.eventCount,
       cause: dto.cause,
+      sessaoDeTeste: dto.sessaoDeTeste,
       hypotheses: dto.hypotheses,
     });
   }

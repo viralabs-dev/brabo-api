@@ -1321,6 +1321,17 @@ detalhar o motivo na URL.
   raciocínio provado por smoke), não dado do usuário nem segredo; a escrita é só
   por migration, sem rota nova.
 
+### O Psicólogo separa produto de plataforma (RN-1076, AT-898) {#psicologo-escopo}
+
+Duas rotas `engine-service` mudaram de corpo, sem rota nova e sem mudar o guard.
+`GET /internal/sessions/:sessionId/psychologist-context` devolve
+`sessaoDeTeste` (`projects.sessao_de_teste`). `POST
+/internal/sessions/:sessionId/hypotheses` passa a exigir `escopo` (`produto` |
+`plataforma`) por item e `sessaoDeTeste` no corpo, e aceita lote vazio. O item
+de plataforma vira o evento `psychologist.platform_signal` só em projeto
+marcado, fora do grafo; nos demais é descartado sem evento. A marca é ligada por
+`pnpm projeto:marcar-teste <projectId>` (operador, sem rota pública).
+
 ## Tabela {#table}
 
 <!-- INÍCIO DA TABELA — o teste parseia daqui até o fim do documento. -->
