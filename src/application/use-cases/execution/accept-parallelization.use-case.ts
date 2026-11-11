@@ -8,6 +8,7 @@ import { UpsertAgentInstructionUseCase } from '../agents/upsert-agent-instructio
 import { RecordDelegationUseCase } from './record-delegation.use-case';
 import {
   DEV_AUTO_GIT_ACTIONS,
+  devAgentId,
   devAgentInstruction,
   extraDevAgentId,
 } from './activate-execution.use-case';
@@ -53,6 +54,17 @@ export class AcceptParallelizationUseCase {
     }
     for (const type of DEV_AUTO_GIT_ACTIONS) {
       await this.agentAutonomy.upsert(projectId, agentId, type, 'auto_approve');
+    }
+    // RN-1102 (AT-908): o extra nasce com o modo do base. Piloto automático
+    // (curinga `auto_approve`) ligado no base vale também para ele; sem isso a
+    // primeira ação do extra ficava pendente e parava a execução.
+    const autonomiaDoBase = await this.agentAutonomy.resolve(
+      projectId,
+      devAgentId(module),
+      '*',
+    );
+    if (autonomiaDoBase?.mode === 'auto_approve') {
+      await this.agentAutonomy.upsert(projectId, agentId, '*', 'auto_approve');
     }
 
     // O engine vem PRIMEIRO: ele recusa (409) quando não há agente base de

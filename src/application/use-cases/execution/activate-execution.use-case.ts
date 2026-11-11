@@ -182,6 +182,17 @@ export class ActivateExecutionUseCase {
       );
     }
 
+    // RN-1101 (AT-899): sem container `running` cada dev cairia em
+    // `dev.blocked_by_container` (RN-502) no mesmo segundo, sem aviso. A recusa
+    // é nomeada e diz o próximo passo. O dev Noop não usa container (AT-833).
+    if (impl !== 'noop' && !(await this.containerRodando(projectId))) {
+      throw new ConflictException({
+        code: 'execucao_sem_container',
+        message:
+          'O container do projeto não está `running`: os dev agents não teriam onde trabalhar. Aprove a subida do container proposta pela Infra, ou peça a subida à Infra, e ative a execução de novo.',
+      });
+    }
+
     // Orçamento por task e teto do circuit breaker: parâmetro → setting do
     // projeto → default. Quando vem no parâmetro, PERSISTE — senão o valor
     // escolhido se perderia na próxima ativação (o engine é quem os

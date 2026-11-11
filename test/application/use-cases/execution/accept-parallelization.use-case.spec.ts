@@ -12,6 +12,7 @@ interface BuildOptions {
   moduleFound?: boolean;
   moduleMapEventIds?: string[] | null;
   recordDelegationFails?: boolean;
+  baseAutomatico?: boolean;
 }
 
 function build(engineFails: boolean, opts: BuildOptions = {}) {
@@ -19,6 +20,7 @@ function build(engineFails: boolean, opts: BuildOptions = {}) {
     moduleFound = true,
     moduleMapEventIds = ['event-module-map-1'],
     recordDelegationFails = false,
+    baseAutomatico = false,
   } = opts;
 
   const ordem: string[] = [];
@@ -54,6 +56,14 @@ function build(engineFails: boolean, opts: BuildOptions = {}) {
   } as unknown as ModuleMapRepository;
 
   const agentAutonomy = {
+    resolve: (_p: string, agentId: string, type: string) => {
+      expect([agentId, type]).toEqual(['dev-api', '*']);
+      return Promise.resolve(
+        baseAutomatico
+          ? { mode: 'auto_approve', origem: 'curinga', especifica: null }
+          : null,
+      );
+    },
     upsert: (_p: string, agentId: string, type: string, mode: string) => {
       ordem.push('autonomia');
       autonomias.push({ agentId, type, mode });
@@ -220,5 +230,21 @@ describe('AcceptParallelizationUseCase', () => {
         useCase.execute('proj-1', 'sess-1', 'api', 'user-1'),
       ).resolves.toEqual({ ok: true });
     });
+  });
+
+  it('RN-1102: base no piloto automático → o extra nasce com a curinga', async () => {
+    const { useCase, autonomias } = build(false, { baseAutomatico: true });
+    await useCase.execute('proj-1', 'sess-1', 'api', 'user-1');
+    expect(autonomias).toContainEqual({
+      agentId: 'dev-api-2',
+      type: '*',
+      mode: 'auto_approve',
+    });
+  });
+
+  it('RN-1102: base manual → o extra não ganha curinga', async () => {
+    const { useCase, autonomias } = build(false);
+    await useCase.execute('proj-1', 'sess-1', 'api', 'user-1');
+    expect(autonomias.map((a) => a.type)).not.toContain('*');
   });
 });
