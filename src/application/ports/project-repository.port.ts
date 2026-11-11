@@ -59,6 +59,8 @@ export abstract class ProjectRepository {
     },
   ): Promise<Project>;
   abstract findById(id: string): Promise<Project | null>;
+  /** `projects.sessao_de_teste` (RN-1076); projeto inexistente = false. */
+  abstract isSessaoDeTeste(id: string): Promise<boolean>;
   abstract listForWorkspace(workspaceId: string): Promise<Project[]>;
   /**
    * Os projetos em `execution_mode: 'runner'` que o usuário ALCANÇA — tem

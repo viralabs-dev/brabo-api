@@ -389,6 +389,14 @@ export class PsychologistContextResponseDto implements Wire<PsychologistContext>
   @ApiProperty({ example: 'heartbeat_timeout', nullable: true })
   terminationReason!: string | null;
 
+  @ApiProperty({
+    example: false,
+    description:
+      'The project is marked as a TP-01 test project (`projects.sessao_de_teste`, ' +
+      'RN-1076). Only then does the engine turn platform items into signals.',
+  })
+  sessaoDeTeste!: boolean;
+
   @ApiProperty({ type: [PsychologistContextBusinessRuleResponseDto] })
   businessRules!: PsychologistContextBusinessRuleResponseDto[];
 

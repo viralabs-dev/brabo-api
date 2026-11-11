@@ -20334,6 +20334,15 @@
       "HypothesisDraftDto": {
         "type": "object",
         "properties": {
+          "escopo": {
+            "type": "string",
+            "enum": [
+              "produto",
+              "plataforma"
+            ],
+            "example": "produto",
+            "description": "RN-1076: `produto` becomes a hypothesis; `plataforma` never does — it becomes `psychologist.platform_signal` in a test session and is dropped otherwise."
+          },
           "agenteAlvo": {
             "type": "string",
             "example": "dev-api"
@@ -20377,6 +20386,7 @@
           }
         },
         "required": [
+          "escopo",
           "agenteAlvo",
           "observacao",
           "hipotese",
@@ -24738,7 +24748,12 @@
             "example": "timeout",
             "description": "Cause CLASSIFIED by the engine. It, not the terminal status, decides whether `terminationAnalysis` is required. Optional so as not to break an older engine during a rolling deploy."
           },
+          "sessaoDeTeste": {
+            "type": "boolean",
+            "description": "Project marked as a TP-01 test project (`projects.sessao_de_teste`). Only then are platform items recorded as signals."
+          },
           "hypotheses": {
+            "description": "May be empty: an analysis with zero hypotheses is valid.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/HypothesisDraftDto"
@@ -24750,6 +24765,7 @@
           "tier",
           "triggeredBy",
           "eventCount",
+          "sessaoDeTeste",
           "hypotheses"
         ]
       },
@@ -25122,6 +25138,11 @@
             "example": "heartbeat_timeout",
             "nullable": true
           },
+          "sessaoDeTeste": {
+            "type": "boolean",
+            "example": false,
+            "description": "The project is marked as a TP-01 test project (`projects.sessao_de_teste`, RN-1076). Only then does the engine turn platform items into signals."
+          },
           "businessRules": {
             "type": "array",
             "items": {
@@ -25140,6 +25161,7 @@
           "alreadyAnalyzed",
           "sessionStatus",
           "terminationReason",
+          "sessaoDeTeste",
           "businessRules",
           "priorHypotheses"
         ]

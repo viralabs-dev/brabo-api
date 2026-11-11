@@ -41,6 +41,7 @@
     "gerar:areas": "ts-node scripts/gerar-areas.ts",
     "lint:migracao": "ts-node scripts/lint-migracao.ts",
     "relatorio:backup": "ts-node scripts/relatorio-backup.ts",
+    "projeto:marcar-teste": "ts-node src/scripts/marcar-projeto-de-teste.ts",
     "migrar-projeto-para-trunk": "ts-node src/scripts/migrar-projeto-para-trunk.ts",
     "grafo:reprojetar": "ts-node src/scripts/reprojetar-grafo.ts",
     "artefatos:reprojetar": "ts-node src/scripts/reprojetar-artefatos.ts",
