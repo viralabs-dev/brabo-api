@@ -1,3 +1,4 @@
+import { raciocinioDesligado } from '../../../src/infrastructure/llm/anthropic-provider';
 import { describe, expect, it } from 'vitest';
 import {
   devoRetentarSemRaciocinio,
@@ -99,12 +100,23 @@ describe('devoRetentarSemRaciocinio (AT-587, RN-916)', () => {
     expect(
       devoRetentarSemRaciocinio({ ...base, aceitaRaciocinioDesligado: false }),
     ).toBe(false);
+    // AT-920 / RN-1107: com reasoningOff o provider pode só ter reduzido; a retentativa vale.
     expect(
       devoRetentarSemRaciocinio({
         ...base,
         opcoes: { reasoning: true, reasoningOff: true },
       }),
-    ).toBe(false);
+    ).toBe(true);
     expect(devoRetentarSemRaciocinio({ ...base, opcoes: {} })).toBe(false);
+  });
+});
+
+describe('raciocinioDesligado (AT-920, RN-1106)', () => {
+  it('claude-sonnet-5 reduz o esforço; o 5-5 segue com between_tools', () => {
+    expect(raciocinioDesligado('claude-sonnet-5')).toEqual({
+      output_config: { effort: 'low' },
+      pensaAinda: true,
+    });
+    expect(raciocinioDesligado('claude-sonnet-5-5').thinking).toBeDefined();
   });
 });

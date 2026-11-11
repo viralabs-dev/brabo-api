@@ -84,4 +84,34 @@ keywords: [regras de negócio, api]
 - **Teste:** `test/infrastructure/llm/laya-tool-router.spec.ts` (uma chamada sem a reservada, Bearer opcional, limiar, seis quedas nomeadas) e `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts` (`workspace em laya`: qualquer provider sem chave, queda para o catálogo inteiro sem chamar o Jev, sem `token_usage`).
 - **Origem:** AT-626 (EP-026), decisões do dono de 31/10 e 07/11/2026; ADR 0290; rodada 354, lane L2.
 
+<a id="rn-1105"></a>
+
+### RN-1105 — Cadastrar ou testar com sucesso uma credencial de LLM sincroniza o catálogo daquele provider {#rn-1105}
+
+- **Regra:** Depois do `upsert` (ou de um teste `ok`), a api roda a sincronização só daquele provider. A falha da sincronização não desfaz o cadastro (ADR 0050) e fica no log com a origem. Modelo novo continua entrando inativo (RN-043).
+
+- **Onde:** `src/application/use-cases/llm/sync-model-catalog.use-case.ts` (`executarProvider`), `upsert-user-credential.use-case.ts` (`execute`), `credentials/test-stored-credential.use-case.ts` (`execute`).
+- **Teste:** `test/application/use-cases/llm/upsert-user-credential.use-case.spec.ts` e `test/application/use-cases/credentials/test-stored-credential.use-case.spec.ts`.
+- **Origem:** AT-900 (EP-036), rodada 366, lane AA2.
+
+<a id="rn-1106"></a>
+
+### RN-1106 — O `claude-sonnet-5` tem o raciocínio reduzido no pedido de `reasoningOff` {#rn-1106}
+
+- **Regra:** O mapa de `raciocinioDesligado` ganha `claude-sonnet-5` com `output_config.effort: low` e `pensaAinda: true`. A forma ainda NÃO foi provada por smoke pago (pendente, com aviso ao dono antes de usar a chave de teste).
+
+- **Onde:** `src/infrastructure/llm/anthropic-provider.ts` (`raciocinioDesligado`).
+- **Teste:** `test/domain/llm/raciocinio-do-agente.spec.ts`.
+- **Origem:** AT-920 (EP-036), rodada 366, lane AA2.
+
+<a id="rn-1107"></a>
+
+### RN-1107 — A retentativa sem raciocínio vale também quando o raciocínio só foi reduzido {#rn-1107}
+
+- **Regra:** `devoRetentarSemRaciocinio` não sai mais cedo por `reasoningOff`: se a resposta veio cortada, vazia e o raciocínio comeu o orçamento, retenta uma vez sem raciocínio.
+
+- **Onde:** `src/domain/llm/raciocinio-do-agente.ts` (`devoRetentarSemRaciocinio`).
+- **Teste:** `test/domain/llm/raciocinio-do-agente.spec.ts`.
+- **Origem:** AT-920 (EP-036), rodada 366, lane AA2.
+
 A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em `ARG`/`ENV`; só como secret do BuildKit), definida no [brabo-broker](https://github.com/viralabs-dev/brabo-broker/blob/dev/docs/business-rules/broker.md). Quem prova na api é `test/dockerfile-sem-token.spec.ts:13` (todo `pnpm install` do `Dockerfile` monta o secret, nenhum `ARG`/`ENV` com token, `.npmrc` só com o registry).

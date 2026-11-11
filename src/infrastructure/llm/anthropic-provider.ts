@@ -626,6 +626,10 @@ export function raciocinioDesligado(modelo: string): {
       } as unknown as Anthropic.ThinkingConfigParam,
       pensaAinda: true,
     };
+  // AT-920: forma NÃO provada por smoke (pendente, com aviso ao dono) — `effort: low`
+  // é a mesma do Opus 5.5; a retentativa sem raciocínio cobre se pensar demais.
+  if (/^claude-sonnet-5(?!-5)/.test(modelo))
+    return { output_config: { effort: 'low' }, pensaAinda: true };
   if (/^claude-opus-5-5/.test(modelo))
     return { output_config: { effort: 'low' }, pensaAinda: true };
   return { pensaAinda: true };
