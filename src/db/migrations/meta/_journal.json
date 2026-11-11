@@ -603,6 +603,13 @@
       "when": 1794429508232,
       "tag": "0085_sessao_de_teste_do_projeto",
       "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1794437202950,
+      "tag": "0086_arquivar_tarefa",
+      "breakpoints": true
     }
   ]
 }

@@ -286,7 +286,7 @@ seguiram em `in_review` (AT-275).
    infra e de ADR igualmente.
 
 - **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:381`
-  (`settleMerge`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:494`
+  (`settleMerge`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:507`
   (`markDoneIfNotDone`)
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   ("git_merge marca a tarefa como done": feliz, repetido, PR aberta/merge
@@ -912,7 +912,7 @@ faz merge nem push.
 - **Código:** `src/domain/sessions/estou-pronto.ts:62` (`decidirAceiteImplicitoDoPo`);
   `src/application/use-cases/agents/aceite-implicito-do-po.use-case.ts:37` (`AceiteImplicitoDoPoUseCase`),
   `:45` (`seCouber`);
-  `src/interfaces/http/internal/internal-sessions.controller.ts:439` (`handoff`);
+  `src/interfaces/http/internal/internal-sessions.controller.ts:443` (`handoff`);
   `src/application/use-cases/agents/accept-handoff.use-case.ts:135` (`implicito` no `handoff.accepted`);
   `src/application/use-cases/agents/activate-agent.use-case.ts:80` (`implicito` no `agent.activated`)
 - **Teste:** `test/application/use-cases/agents/aceite-implicito-do-po.use-case.spec.ts:105`
@@ -998,7 +998,7 @@ handoff manual (ADR 0109) também.
   (`AceitarHandoffAutomaticamenteUseCase`);
   `src/application/use-cases/agents/accept-handoff.use-case.ts:91`
   (`AceitePeloSistema`);
-  `src/interfaces/http/internal/internal-sessions.controller.ts:439`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:443`
   (`handoff`); `apps/engine/lib/engine/harness/tools/offer_handoff.ex:59`;
   `apps/web/src/routes/session-timeline-montagem.tsx:604` (o aviso no fio)
 - **Teste:** `test/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.spec.ts:73`

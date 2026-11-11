@@ -185,6 +185,10 @@ export const tasks = pgTable(
     // vários), que decide QUAL `dev-<modulo>` pega a tarefa — ver `claimNext`.
     // NULLABLE: tarefa criada antes de um plano não tem módulo até o próximo.
     module: text('module'),
+    // AT-912: tarefa ARQUIVADA (decisão do dono, 11/11) — coluna e não um valor
+    // de `task_status`, como a história (RN-727): o status decide o claim.
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+    archivedReason: text('archived_reason'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

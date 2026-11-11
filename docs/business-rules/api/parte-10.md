@@ -40,10 +40,10 @@ keywords: [regras de negócio, api]
   `src/application/use-cases/backlog/corrigir-historia.use-case.ts:52`
   (`editar`), `:162` (`arquivar`),
   `src/infrastructure/persistence/drizzle/backlog.repository.ts:97`
-  (`findByProject`), `:403` (`claimNext`),
-  `src/interfaces/http/backlog/backlog.controller.ts:205`
-  (`updateTitle`), `:219` (`archive`),
-  `src/interfaces/http/internal/internal-sessions.controller.ts:579`
+  (`findByProject`), `:413` (`claimNext`),
+  `src/interfaces/http/backlog/backlog.controller.ts:209`
+  (`updateTitle`), `:223` (`archive`),
+  `src/interfaces/http/internal/internal-sessions.controller.ts:583`
   (`updateStoryRoute`), `:647` (`archiveStoryRoute`),
   `apps/engine/lib/engine/harness/tools/update_story.ex:45` (`run`),
   `apps/engine/lib/engine/harness/tools/archive_story.ex:38` (`run`),
@@ -912,7 +912,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `politica`; a lista só vem para sessão de EXECUÇÃO, então encerrar uma
   consultiva do mesmo projeto não bloqueia nada.
 - **Onde:** `src/infrastructure/persistence/drizzle/backlog.repository.ts:252`
-  (`findPendenteDaExecucao`), `:403` (`claimNext`), `:221` (`listEmCursoDeDev`),
+  (`findPendenteDaExecucao`), `:413` (`claimNext`), `:221` (`listEmCursoDeDev`),
   `src/application/use-cases/sessions/get-session-pending-work.use-case.ts:49`
   (`em_curso_de_dev`),
   `apps/engine/lib/engine/dev/encerramento_da_sessao.ex:133` (`bloquear_orfas`)

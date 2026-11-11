@@ -25,6 +25,7 @@ import { ListBacklogUseCase } from '../../../application/use-cases/backlog/list-
 import { GetCoverageUseCase } from '../../../application/use-cases/backlog/get-coverage.use-case';
 import { PromoteStoriesUseCase } from '../../../application/use-cases/backlog/promote-stories.use-case';
 import { ReturnStoryUseCase } from '../../../application/use-cases/backlog/return-story.use-case';
+import { ArchiveTaskUseCase } from '../../../application/use-cases/backlog/archive-task.use-case';
 import { CorrigirHistoriaUseCase } from '../../../application/use-cases/backlog/corrigir-historia.use-case';
 import { GetArchitectureUseCase } from '../../../application/use-cases/architecture/get-architecture.use-case';
 import { ListInfraArtifactsUseCase } from '../../../application/use-cases/execution/list-infra-artifacts.use-case';
@@ -37,6 +38,7 @@ import {
   InfraArtifactResponseDto,
   RunInstructionsResponseDto,
   StoryResponseDto,
+  TaskResponseDto,
 } from './dto/backlog.response.dto';
 import { GetRunInstructionsUseCase } from '../../../application/use-cases/execution/get-run-instructions.use-case';
 import {
@@ -44,6 +46,7 @@ import {
   PromoteStoriesResponseDto,
   ReturnStoryDto,
   ArchiveStoryDto,
+  ArchiveTaskDto,
   UpdateStoryTitleDto,
 } from './dto/promote-stories.dto';
 
@@ -72,6 +75,7 @@ export class BacklogController {
     private readonly promoteStories: PromoteStoriesUseCase,
     private readonly returnStory: ReturnStoryUseCase,
     private readonly corrigirHistoria: CorrigirHistoriaUseCase,
+    private readonly archiveTask: ArchiveTaskUseCase,
     private readonly getRunInstructions: GetRunInstructionsUseCase,
   ) {}
 
@@ -245,5 +249,35 @@ export class BacklogController {
       dto.reason ?? null,
       { kind: 'user', id: user.id },
     );
+  }
+
+  @Post('tasks/:taskId/archive')
+  @HttpCode(200)
+  @RequireRole('developer')
+  @ApiOperation({
+    summary: 'Archives a `todo` task, with a required reason (AT-912)',
+    description:
+      'The task leaves the claim, the parallelization count, the stalled-execution ' +
+      'check and the dependencies; nothing is deleted and `backlog.task_archived` ' +
+      'records who and why. Only a `todo` task (blocked or not).',
+  })
+  @ApiOkResponse({ type: TaskResponseDto })
+  @ApiBadRequestResponse({ description: 'Empty reason.' })
+  @ApiNotFoundResponse({ description: 'Task is not in this project.' })
+  @ApiConflictResponse({
+    description:
+      'Named refusal (`reason`): `tarefa_arquivada`, `tarefa_em_execucao` ' +
+      '(the task has an agent: unblock it or wait for the gate).',
+  })
+  archiveTaskRoute(
+    @Param('projectId') projectId: string,
+    @Param('taskId') taskId: string,
+    @Body() dto: ArchiveTaskDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.archiveTask.execute(projectId, taskId, dto.reason, {
+      kind: 'user',
+      id: user.id,
+    });
   }
 }
