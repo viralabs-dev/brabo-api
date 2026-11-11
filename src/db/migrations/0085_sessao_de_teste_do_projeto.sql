@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "sessao_de_teste" boolean DEFAULT false NOT NULL;

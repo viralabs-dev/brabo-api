@@ -24,6 +24,11 @@ import type {
 } from '../../../domain/psychologist/psychologist-analysis.entity';
 import type { PsychologistHypothesis } from '../../../domain/psychologist/psychologist-hypothesis.entity';
 
+// RN-1076: cada item traz o ESCOPO. `produto` vira hipótese; `plataforma`
+// vira sinal interno (só em sessão de teste) ou some.
+export type EscopoDaHipotese = 'produto' | 'plataforma';
+export type HypothesisProposal = HypothesisDraft & { escopo: EscopoDaHipotese };
+
 export interface ProposeHypothesesInput {
   tier: PsychologistAnalysisTier;
   triggeredBy: PsychologistAnalysisTrigger;
@@ -32,7 +37,10 @@ export interface ProposeHypothesesInput {
   // Ausente = engine antigo; cai no status terminal (ver
   // requiresTerminationAnalysis).
   cause?: TerminationCause;
-  hypotheses: HypothesisDraft[];
+  // `projects.sessao_de_teste`, enviada pelo engine (RN-1076).
+  sessaoDeTeste: boolean;
+  // Pode ser vazio: análise com zero hipóteses é válida.
+  hypotheses: HypothesisProposal[];
 }
 
 export interface ProposeHypothesesResult {
@@ -81,10 +89,12 @@ export class ProposeHypothesesUseCase {
     const validation = validateHypothesisBatch(
       input.hypotheses,
       knownEventIds,
-      requiresTerminationAnalysis(
-        input.cause,
-        session.status === 'closed_abnormally',
-      ),
+      // A análise de término só é exigida em sessão de teste (RN-1076).
+      input.sessaoDeTeste &&
+        requiresTerminationAnalysis(
+          input.cause,
+          session.status === 'closed_abnormally',
+        ),
     );
     if (!validation.ok) throw new BadRequestException(validation.reason);
 
@@ -130,20 +140,30 @@ export class ProposeHypothesesUseCase {
         eventCountAtAnalysis: input.eventCount,
       });
 
-      const hypotheses = await this.psychologistHypotheses.createMany(
-        input.hypotheses.map((draft) => ({
-          projectId,
-          sessionId,
-          analysisId: analysis.id,
-          agenteAlvo: draft.agenteAlvo,
-          observacao: draft.observacao,
-          hipotese: draft.hipotese,
-          sugestao: draft.sugestao,
-          confiancaPercent: draft.confiancaPercent,
-          evidenceEventIds: draft.evidenceEventIds,
-          terminationAnalysis: draft.terminationAnalysis ?? null,
-        })),
-      );
+      const produto = input.hypotheses.filter((d) => d.escopo === 'produto');
+      // Item de plataforma nunca vira hipótese; fora de sessão de teste some.
+      const plataforma = input.sessaoDeTeste
+        ? input.hypotheses.filter((d) => d.escopo === 'plataforma')
+        : [];
+
+      // Lote só de plataforma (ou vazio) não chama o repositório.
+      const hypotheses =
+        produto.length === 0
+          ? []
+          : await this.psychologistHypotheses.createMany(
+              produto.map((draft) => ({
+                projectId,
+                sessionId,
+                analysisId: analysis.id,
+                agenteAlvo: draft.agenteAlvo,
+                observacao: draft.observacao,
+                hipotese: draft.hipotese,
+                sugestao: draft.sugestao,
+                confiancaPercent: draft.confiancaPercent,
+                evidenceEventIds: draft.evidenceEventIds,
+                terminationAnalysis: draft.terminationAnalysis ?? null,
+              })),
+            );
 
       for (const hypothesis of hypotheses) {
         await this.appendSessionEvent.execute(projectId, sessionId, {
@@ -161,6 +181,24 @@ export class ProposeHypothesesUseCase {
         });
       }
 
+      // Sinal interno do TP-01: no log da sessão, fora do grafo e da fila da
+      // Anamnese (não é linha de psychologist_hypotheses).
+      for (const sinal of plataforma) {
+        await this.appendSessionEvent.execute(projectId, sessionId, {
+          type: 'psychologist.platform_signal',
+          actor: { kind: 'agent', id: actorId },
+          payload: {
+            agenteAlvo: sinal.agenteAlvo,
+            observacao: sinal.observacao,
+            hipotese: sinal.hipotese,
+            sugestao: sinal.sugestao,
+            confiancaPercent: sinal.confiancaPercent,
+            evidenceEventIds: sinal.evidenceEventIds,
+            terminationAnalysis: sinal.terminationAnalysis ?? null,
+          },
+        });
+      }
+
       await this.appendSessionEvent.execute(projectId, sessionId, {
         type: 'psychologist.analysis_completed',
         actor: { kind: 'agent', id: actorId },
@@ -168,6 +206,7 @@ export class ProposeHypothesesUseCase {
           analysisId: analysis.id,
           tier: input.tier,
           hypothesisCount: hypotheses.length,
+          platformSignalCount: plataforma.length,
           supersedesPrevious: existing !== null,
         },
       });
@@ -181,7 +220,7 @@ export class ProposeHypothesesUseCase {
   // set, e o validador de domínio rejeita a hipótese que os referencia.
   private async resolveKnownEventIds(
     sessionId: string,
-    drafts: HypothesisDraft[],
+    drafts: HypothesisProposal[],
   ): Promise<Set<string>> {
     const referencedIds = new Set<string>();
     for (const draft of drafts) {

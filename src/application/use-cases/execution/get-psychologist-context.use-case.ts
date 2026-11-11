@@ -3,6 +3,7 @@ import { SessionRepository } from '../../ports/session-repository.port';
 import { SessionEventRepository } from '../../ports/session-event-repository.port';
 import { PsychologistAnalysisRepository } from '../../ports/psychologist-analysis-repository.port';
 import { PsychologistHypothesisRepository } from '../../ports/psychologist-hypothesis-repository.port';
+import { ProjectRepository } from '../../ports/project-repository.port';
 import type { SessionStatus } from '../../../domain/sessions/session-state-machine';
 import { idsDeRegrasRetiradas } from '../backlog/regras-retiradas';
 
@@ -25,6 +26,8 @@ export interface PsychologistContext {
   alreadyAnalyzed: boolean;
   sessionStatus: SessionStatus;
   terminationReason: string | null;
+  // `projects.sessao_de_teste` (RN-1076): só nela o engine liga o sinal de plataforma.
+  sessaoDeTeste: boolean;
   businessRules: PsychologistContextBusinessRule[];
   priorHypotheses: PsychologistContextPriorHypothesis[];
 }
@@ -46,6 +49,7 @@ export class GetPsychologistContextUseCase {
     private readonly sessionEvents: SessionEventRepository,
     private readonly psychologistAnalyses: PsychologistAnalysisRepository,
     private readonly psychologistHypotheses: PsychologistHypothesisRepository,
+    private readonly projects: ProjectRepository,
   ) {}
 
   async execute(
@@ -55,16 +59,22 @@ export class GetPsychologistContextUseCase {
     const session = await this.sessions.findInProject(projectId, sessionId);
     if (!session) throw new NotFoundException('Sessão não encontrada');
 
-    const [currentAnalysis, todasAsRegras, priorHypotheses, retiradas] =
-      await Promise.all([
-        this.psychologistAnalyses.findCurrentBySession(sessionId),
-        this.sessionEvents.listByTypeForProject(
-          projectId,
-          'artifact.business_rule',
-        ),
-        this.psychologistHypotheses.listNonDismissedByProject(projectId),
-        idsDeRegrasRetiradas(this.sessionEvents, projectId),
-      ]);
+    const [
+      currentAnalysis,
+      todasAsRegras,
+      priorHypotheses,
+      retiradas,
+      sessaoDeTeste,
+    ] = await Promise.all([
+      this.psychologistAnalyses.findCurrentBySession(sessionId),
+      this.sessionEvents.listByTypeForProject(
+        projectId,
+        'artifact.business_rule',
+      ),
+      this.psychologistHypotheses.listNonDismissedByProject(projectId),
+      idsDeRegrasRetiradas(this.sessionEvents, projectId),
+      this.projects.isSessaoDeTeste(projectId),
+    ]);
     const businessRuleEvents = todasAsRegras.filter(
       (e) => !retiradas.has(e.id), // RN-1018
     );
@@ -79,6 +89,7 @@ export class GetPsychologistContextUseCase {
       alreadyAnalyzed: currentAnalysis !== null,
       sessionStatus: session.status,
       terminationReason: session.terminationReason,
+      sessaoDeTeste: sessaoDeTeste,
       businessRules,
       priorHypotheses: priorHypotheses.map((h) => ({
         agenteAlvo: h.agenteAlvo,

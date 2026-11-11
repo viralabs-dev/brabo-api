@@ -596,6 +596,13 @@
       "when": 1794267984072,
       "tag": "0084_laya_no_lugar_do_jev",
       "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1794429508232,
+      "tag": "0085_sessao_de_teste_do_projeto",
+      "breakpoints": true
     }
   ]
 }

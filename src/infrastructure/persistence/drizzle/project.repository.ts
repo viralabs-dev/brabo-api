@@ -43,6 +43,15 @@ export class DrizzleProjectRepository implements ProjectRepository {
     return row ?? null;
   }
 
+  async isSessaoDeTeste(id: string): Promise<boolean> {
+    const db = currentDb(this.rootDb);
+    const [row] = await db
+      .select({ marca: projects.sessaoDeTeste })
+      .from(projects)
+      .where(eq(projects.id, id));
+    return row?.marca ?? false;
+  }
+
   async listForWorkspace(workspaceId: string): Promise<Project[]> {
     const db = currentDb(this.rootDb);
     return db

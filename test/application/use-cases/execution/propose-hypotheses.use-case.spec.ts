@@ -9,7 +9,7 @@ import type { AppendSessionEventUseCase } from '../../../../src/application/use-
 import type { Session } from '../../../../src/domain/sessions/session.entity';
 import type { SessionEvent } from '../../../../src/domain/sessions/session-event.entity';
 import type { PsychologistAnalysis } from '../../../../src/domain/psychologist/psychologist-analysis.entity';
-import type { HypothesisDraft } from '../../../../src/domain/psychologist/hypothesis-evidence';
+import type { HypothesisProposal } from '../../../../src/application/use-cases/execution/propose-hypotheses.use-case';
 
 const now = new Date();
 
@@ -44,8 +44,11 @@ function buildEvent(overrides: Partial<SessionEvent> = {}): SessionEvent {
   };
 }
 
-function buildDraft(overrides: Partial<HypothesisDraft> = {}): HypothesisDraft {
+function buildDraft(
+  overrides: Partial<HypothesisProposal> = {},
+): HypothesisProposal {
   return {
+    escopo: 'produto',
     agenteAlvo: 'dev-api',
     observacao: 'observação',
     hipotese: 'hipótese',
@@ -160,6 +163,7 @@ describe('ProposeHypothesesUseCase', () => {
       tier: 'pesada',
       triggeredBy: 'auto',
       eventCount: 25,
+      sessaoDeTeste: false,
       hypotheses: [buildDraft()],
     });
 
@@ -194,6 +198,7 @@ describe('ProposeHypothesesUseCase', () => {
         tier: 'pesada',
         triggeredBy: 'auto',
         eventCount: 25,
+        sessaoDeTeste: false,
         hypotheses: [buildDraft({ evidenceEventIds: ['evt-fantasma'] })],
       }),
     ).rejects.toThrow();
@@ -213,6 +218,7 @@ describe('ProposeHypothesesUseCase', () => {
         tier: 'pesada',
         triggeredBy: 'auto',
         eventCount: 25,
+        sessaoDeTeste: false,
         hypotheses: [buildDraft()],
       }),
     ).rejects.toThrow();
@@ -229,6 +235,7 @@ describe('ProposeHypothesesUseCase', () => {
         tier: 'pesada',
         triggeredBy: 'auto',
         eventCount: 25,
+        sessaoDeTeste: true,
         hypotheses: [buildDraft({ terminationAnalysis: null })],
       }),
     ).rejects.toThrow();
@@ -256,6 +263,7 @@ describe('ProposeHypothesesUseCase', () => {
       tier: 'pesada',
       triggeredBy: 'manual',
       eventCount: 30,
+      sessaoDeTeste: false,
       hypotheses: [buildDraft()],
     });
 
@@ -291,6 +299,7 @@ describe('ProposeHypothesesUseCase', () => {
         tier: 'leve',
         triggeredBy: 'auto',
         eventCount: 4,
+        sessaoDeTeste: true,
         cause: 'timeout',
         hypotheses: [buildDraft({ terminationAnalysis: null })],
       }),
@@ -307,6 +316,7 @@ describe('ProposeHypothesesUseCase', () => {
       tier: 'leve',
       triggeredBy: 'auto',
       eventCount: 4,
+      sessaoDeTeste: false,
       cause: 'normal',
       hypotheses: [buildDraft({ terminationAnalysis: null })],
     });
@@ -328,8 +338,164 @@ describe('ProposeHypothesesUseCase', () => {
         tier: 'pesada',
         triggeredBy: 'auto',
         eventCount: 25,
+        sessaoDeTeste: false,
         hypotheses: [buildDraft()],
       }),
     ).rejects.toThrow(/análise current/i);
+  });
+
+  describe('escopo (RN-1076)', () => {
+    const base = {
+      tier: 'pesada' as const,
+      triggeredBy: 'auto' as const,
+      eventCount: 25,
+    };
+    const tipos = (appendEvent: ReturnType<typeof vi.fn>) =>
+      appendEvent.mock.calls.map(
+        (c) => (c as unknown as [string, string, { type: string }])[2].type,
+      );
+
+    it('lote misto em sessão de teste: produto vira hipótese, plataforma vira sinal e não linha', async () => {
+      const { useCase, createMany, appendEvent } = buildHarness({});
+
+      const result = await useCase.execute('proj-1', 'sess-1', {
+        ...base,
+        sessaoDeTeste: true,
+        hypotheses: [
+          buildDraft(),
+          buildDraft({ escopo: 'plataforma', agenteAlvo: 'dev-web' }),
+        ],
+      });
+
+      expect(result.hypotheses).toHaveLength(1);
+      expect(createMany.mock.calls[0][0]).toHaveLength(1);
+      expect(tipos(appendEvent)).toEqual([
+        'psychologist.hypothesis_proposed',
+        'psychologist.platform_signal',
+        'psychologist.analysis_completed',
+      ]);
+      expect(appendEvent).toHaveBeenCalledWith(
+        'proj-1',
+        'sess-1',
+        expect.objectContaining({
+          type: 'psychologist.platform_signal',
+          payload: expect.objectContaining({
+            agenteAlvo: 'dev-web',
+            evidenceEventIds: ['evt-1'],
+          }) as unknown,
+        }),
+      );
+      expect(appendEvent).toHaveBeenCalledWith(
+        'proj-1',
+        'sess-1',
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            hypothesisCount: 1,
+            platformSignalCount: 1,
+          }) as unknown,
+        }),
+      );
+    });
+
+    it('o mesmo lote fora de teste: plataforma some sem evento', async () => {
+      const { useCase, appendEvent } = buildHarness({});
+
+      await useCase.execute('proj-1', 'sess-1', {
+        ...base,
+        sessaoDeTeste: false,
+        hypotheses: [buildDraft(), buildDraft({ escopo: 'plataforma' })],
+      });
+
+      expect(tipos(appendEvent)).toEqual([
+        'psychologist.hypothesis_proposed',
+        'psychologist.analysis_completed',
+      ]);
+      expect(appendEvent).toHaveBeenCalledWith(
+        'proj-1',
+        'sess-1',
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            hypothesisCount: 1,
+            platformSignalCount: 0,
+          }) as unknown,
+        }),
+      );
+    });
+
+    it('só plataforma, fora de teste: zero hipóteses, sem createMany e sem sinal', async () => {
+      const { useCase, createMany, appendEvent } = buildHarness({});
+
+      const result = await useCase.execute('proj-1', 'sess-1', {
+        ...base,
+        sessaoDeTeste: false,
+        hypotheses: [buildDraft({ escopo: 'plataforma' })],
+      });
+
+      expect(result.hypotheses).toEqual([]);
+      expect(createMany).not.toHaveBeenCalled();
+      expect(tipos(appendEvent)).toEqual(['psychologist.analysis_completed']);
+    });
+
+    it('lote vazio grava a análise com zero, mesmo em sessão de teste anormal', async () => {
+      const { useCase, create, createMany, appendEvent } = buildHarness({
+        session: buildSession({ status: 'closed_abnormally' }),
+      });
+
+      const result = await useCase.execute('proj-1', 'sess-1', {
+        ...base,
+        sessaoDeTeste: true,
+        hypotheses: [],
+      });
+
+      expect(result.hypotheses).toEqual([]);
+      expect(create).toHaveBeenCalledTimes(1);
+      expect(createMany).not.toHaveBeenCalled();
+      expect(appendEvent).toHaveBeenCalledWith(
+        'proj-1',
+        'sess-1',
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            hypothesisCount: 0,
+            platformSignalCount: 0,
+          }) as unknown,
+        }),
+      );
+    });
+
+    it('evidência inválida em item de plataforma recusa o lote inteiro', async () => {
+      const { useCase, create, createMany, appendEvent } = buildHarness({});
+
+      await expect(
+        useCase.execute('proj-1', 'sess-1', {
+          ...base,
+          sessaoDeTeste: false,
+          hypotheses: [
+            buildDraft(),
+            buildDraft({
+              escopo: 'plataforma',
+              evidenceEventIds: ['evt-fantasma'],
+            }),
+          ],
+        }),
+      ).rejects.toThrow(/evt-fantasma/);
+
+      expect(create).not.toHaveBeenCalled();
+      expect(createMany).not.toHaveBeenCalled();
+      expect(appendEvent).not.toHaveBeenCalled();
+    });
+
+    it('terminationAnalysis só é exigida em sessão de teste', async () => {
+      const { useCase, create } = buildHarness({
+        session: buildSession({ status: 'closed_abnormally' }),
+      });
+
+      await useCase.execute('proj-1', 'sess-1', {
+        ...base,
+        sessaoDeTeste: false,
+        hypotheses: [buildDraft({ terminationAnalysis: null })],
+      });
+
+      expect(create).toHaveBeenCalledTimes(1);
+    });
   });
 });

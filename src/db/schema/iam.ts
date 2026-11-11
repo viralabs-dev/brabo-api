@@ -296,6 +296,10 @@ export const projects = pgTable(
     storyPromotion: storyPromotionModeEnum('story_promotion')
       .notNull()
       .default('auto'),
+    // Marca de PROJETO DE TESTE do TP-01 (RN-1076, ADR 0291, AT-898): só nela o
+    // Psicólogo grava `psychologist.platform_signal`. Sem tela e sem rota
+    // pública: quem liga é o operador, por `pnpm projeto:marcar-teste <id>`.
+    sessaoDeTeste: boolean('sessao_de_teste').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

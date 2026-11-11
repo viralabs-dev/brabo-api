@@ -1339,7 +1339,7 @@ o ticket novo é recusado); tela (não existe seção de membros de workspace no
   (`remocaoEhAutoRebaixamento`);
   `src/infrastructure/persistence/drizzle/workspace.repository.ts:84`
   (`removeMember`);
-  `src/infrastructure/persistence/drizzle/project.repository.ts:167`
+  `src/infrastructure/persistence/drizzle/project.repository.ts:177`
   (`removeMemberFromWorkspaceProjects`);
   `src/infrastructure/persistence/drizzle/runner-device-key.repository.ts:169`
   (`revogarChavesDeProjetoNoWorkspace`);
