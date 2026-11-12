@@ -2,7 +2,14 @@ import { Pool } from 'pg';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { and, asc, eq, gt, inArray } from 'drizzle-orm';
 import * as schema from '../db/schema';
-import { projects, sessionEvents, sessions } from '../db/schema';
+import {
+  outboxEvents,
+  projectRepositories,
+  projects,
+  sessionEvents,
+  sessions,
+} from '../db/schema';
+import { GRAPH_PROJECTION_AGGREGATE_TYPE } from '../domain/graph/graph-projection-events';
 import { GraphStore } from '../infrastructure/graph/graph-store';
 import { GraphUnavailableError } from '../domain/graph/graph-errors';
 import {
@@ -44,7 +51,11 @@ import { RecordProfileFactUseCase } from '../application/use-cases/graph/record-
  *   (ULID, ordenado por tempo, e a chave primária — o índice que já existe),
  *   um lote por vez; nunca a tabela inteira na memória. `sessions` terminais
  *   idem, por `id`.
- * - **Não toca na outbox.** O projetor vivo guarda o progresso dele em
+ * - **Memória dos projetos (RN-1152).** A leitura do git precisa do Nest
+ *   (credencial, cache), então a fase 3 só ENFILEIRA uma linha
+ *   `graph_projection` `project.trunk_merged` (sem `mergedSha` = ponta da
+ *   `main`) por projeto com repositório; o projetor vivo as drena.
+ * - **Fora a fase 3, não toca na outbox.** O projetor vivo guarda o progresso dele em
  *   `outbox_events.processed_at` (`aggregate_type = 'graph_projection'`), e
  *   esta varredura nem lê nem escreve essa tabela — rodar com a api de pé não
  *   rouba, não reabre e não marca linha nenhuma. As duas escritas concorrentes
@@ -86,6 +97,8 @@ export interface OpcoesDeReprojecao {
 export interface ResultadoDaReprojecao {
   eventosProjetados: number;
   fechamentosProjetados: number;
+  /** Projetos com repositório cuja memória foi enfileirada para o projetor. */
+  memoriasEnfileiradas: number;
   falhas: number;
   /** O último evento lido — o cursor para `--after-event` numa retomada. */
   ultimoEvento: string | null;
@@ -175,6 +188,7 @@ export async function reprojetarGrafo(
   const resultado: ResultadoDaReprojecao = {
     eventosProjetados: 0,
     fechamentosProjetados: 0,
+    memoriasEnfileiradas: 0,
     falhas: 0,
     ultimoEvento: opcoes.aposEvento ?? null,
   };
@@ -271,6 +285,26 @@ export async function reprojetarGrafo(
     );
   }
 
+  // Fase 3 — a memória de cada projeto (`.brabo/memoria/` na ponta da `main`).
+  const comRepositorio = await db
+    .select({ projectId: projectRepositories.projectId })
+    .from(projectRepositories)
+    .where(
+      projectId ? eq(projectRepositories.projectId, projectId) : undefined,
+    );
+  for (const { projectId: id } of comRepositorio) {
+    await db.insert(outboxEvents).values({
+      aggregateType: GRAPH_PROJECTION_AGGREGATE_TYPE,
+      aggregateId: id,
+      eventType: 'project.trunk_merged',
+      payload: { projectId: id, sessionId: null, mergedSha: '' },
+    });
+    resultado.memoriasEnfileiradas += 1;
+  }
+  progresso(
+    `[reprojetar] memória: ${resultado.memoriasEnfileiradas} projeto(s) enfileirados para o projetor`,
+  );
+
   return resultado;
 }
 
@@ -352,6 +386,7 @@ async function main(): Promise<void> {
   console.log(
     `  eventos projetados=${resultado.eventosProjetados}  ` +
       `sessões fechadas projetadas=${resultado.fechamentosProjetados}  ` +
+      `memórias enfileiradas=${resultado.memoriasEnfileiradas}  ` +
       `falhas=${resultado.falhas}`,
   );
   console.log(

@@ -1,5 +1,9 @@
 import { Module } from '@nestjs/common';
+import { Neo4jModule } from '../../infrastructure/graph/neo4j.module';
 import { GraphUseCasesModule } from '../use-cases/graph/graph-use-cases.module';
+import { ArchitectureUseCasesModule } from '../use-cases/architecture/architecture-use-cases.module';
+import { GitUseCasesModule } from '../use-cases/git/git-use-cases.module';
+import { MemoriaDoProjetoTranslator } from './memoria-do-projeto-translator';
 import { GraphProjector } from './graph-projector';
 
 /**
@@ -11,8 +15,8 @@ import { GraphProjector } from './graph-projector';
  * embute `Neo4jModule`) precisam ser importados aqui.
  */
 @Module({
-  imports: [GraphUseCasesModule],
-  providers: [GraphProjector],
+  imports: [Neo4jModule, GraphUseCasesModule, GitUseCasesModule, ArchitectureUseCasesModule],
+  providers: [GraphProjector, MemoriaDoProjetoTranslator],
   exports: [GraphProjector],
 })
 export class GraphProjectionModule {}

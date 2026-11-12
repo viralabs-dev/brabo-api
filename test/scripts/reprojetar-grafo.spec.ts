@@ -24,6 +24,7 @@ import {
   FECHAMENTOS_DE_SESSAO,
 } from '../../src/application/graph-projection/graph-event-translator';
 import { GRAPH_PROJECTABLE_EVENT_TYPES } from '../../src/domain/graph/graph-projection-events';
+import type { MemoriaDoProjetoTranslator } from '../../src/application/graph-projection/memoria-do-projeto-translator';
 import { GraphProjector } from '../../src/application/graph-projection/graph-projector';
 import { DrizzleOutboxRepository } from '../../src/infrastructure/persistence/drizzle/outbox.repository';
 import { DrizzleSessionEventRepository } from '../../src/infrastructure/persistence/drizzle/session-event.repository';
@@ -298,6 +299,7 @@ async function projetarParaFrente(grafo: GraphStore): Promise<void> {
     new RecordAnamneseProfileUseCase(grafo),
     new RecordInteractionUseCase(grafo),
     new RecordProfileFactUseCase(grafo),
+    {} as MemoriaDoProjetoTranslator,
   );
   await projetor.drainOnce();
   const pendentes = await db
@@ -405,6 +407,7 @@ describe('reprojeção do grafo a partir do event log (RN-569)', () => {
     expect(resultado).toMatchObject({
       eventosProjetados: 4,
       fechamentosProjetados: 1,
+      memoriasEnfileiradas: 0, // RN-1152: o projeto semeado não tem repositório
       falhas: 0,
     });
 

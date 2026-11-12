@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Post,
   Query,
   UseGuards,
@@ -22,9 +23,11 @@ import { EngineServiceGuard } from '../auth/engine-service.guard';
 import { ServiceRoute } from '../auth/service-route.decorator';
 import { UpsertPromptTemplateUseCase } from '../../../application/use-cases/graph/upsert-prompt-template.use-case';
 import { GetPromptTemplateUseCase } from '../../../application/use-cases/graph/get-prompt-template.use-case';
+import { ConsultarImpactoDoModuloUseCase } from '../../../application/use-cases/graph/consultar-impacto-do-modulo.use-case';
 import { SERVICE_TOKEN } from '../../../infrastructure/openapi/documento';
 import { UpsertPromptTemplateInternalDto } from './dto/upsert-prompt-template-internal.dto';
 import {
+  ImpactoDoModuloResponseDto,
   PromptTemplateReadResponseDto,
   PromptTemplateResponseDto,
 } from './dto/graph.response.dto';
@@ -68,6 +71,7 @@ export class InternalGraphController {
   constructor(
     private readonly upsertTemplate: UpsertPromptTemplateUseCase,
     private readonly getTemplate: GetPromptTemplateUseCase,
+    private readonly impacto: ConsultarImpactoDoModuloUseCase,
   ) {}
 
   @Get('prompt-templates/:name')
@@ -94,6 +98,23 @@ export class InternalGraphController {
       body: template.body,
       hash: template.hash,
     };
+  }
+
+  @Get('projects/:projectId/modules/:nome/impacto')
+  @ApiOperation({
+    summary: 'Impact of a module, from the project memory graph',
+    description:
+      'Who depends on the module, what it depends on, what it exposes, ' +
+      'which decisions cite it and the contract version (RN-1153). 404 if ' +
+      'the module is not in the graph; 503 if the graph is off.',
+  })
+  @ApiOkResponse({ type: ImpactoDoModuloResponseDto })
+  @ApiNotFoundResponse({ description: 'Module not in the project graph.' })
+  async impactoDoModulo(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('nome') nome: string,
+  ): Promise<ImpactoDoModuloResponseDto> {
+    return this.impacto.execute(projectId, nome);
   }
 
   @Post('prompt-templates')

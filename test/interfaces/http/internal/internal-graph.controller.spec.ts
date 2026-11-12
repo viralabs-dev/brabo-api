@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { InternalGraphController } from '../../../../src/interfaces/http/internal/internal-graph.controller';
 import type { UpsertPromptTemplateUseCase } from '../../../../src/application/use-cases/graph/upsert-prompt-template.use-case';
 import type { GetPromptTemplateUseCase } from '../../../../src/application/use-cases/graph/get-prompt-template.use-case';
+
+import type { ConsultarImpactoDoModuloUseCase } from '../../../../src/application/use-cases/graph/consultar-impacto-do-modulo.use-case';
 
 const VERSAO = {
   name: 'dev-agent-kickoff',
@@ -27,6 +29,7 @@ describe('InternalGraphController', () => {
     const controller = new InternalGraphController(
       {} as UpsertPromptTemplateUseCase,
       getTemplate,
+      {} as ConsultarImpactoDoModuloUseCase,
     );
 
     const resposta = await controller.getByName('dev-agent-kickoff', '3');
@@ -48,6 +51,7 @@ describe('InternalGraphController', () => {
     const controller = new InternalGraphController(
       upsertTemplate,
       {} as GetPromptTemplateUseCase,
+      {} as ConsultarImpactoDoModuloUseCase,
     );
 
     const resposta = await controller.upsert({
@@ -65,5 +69,20 @@ describe('InternalGraphController', () => {
       active: true,
     });
     expect(resposta).not.toHaveProperty('createdAt');
+  });
+
+  it('GET impacto: delega ao caso de uso com projeto e módulo (RN-1153)', async () => {
+    const impacto = { modulo: 'api', dependentes: ['web'] };
+    const execute = vi.fn().mockResolvedValue(impacto);
+    const controller = new InternalGraphController(
+      {} as UpsertPromptTemplateUseCase,
+      {} as GetPromptTemplateUseCase,
+      { execute } as unknown as ConsultarImpactoDoModuloUseCase,
+    );
+
+    await expect(controller.impactoDoModulo('p-1', 'api')).resolves.toBe(
+      impacto,
+    );
+    expect(execute).toHaveBeenCalledWith('p-1', 'api');
   });
 });

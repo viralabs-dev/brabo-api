@@ -13,13 +13,17 @@ import { RecordAnamneseProfileUseCase } from '../use-cases/graph/record-anamnese
 import { RecordInteractionUseCase } from '../use-cases/graph/record-interaction.use-case';
 import { RecordProfileFactUseCase } from '../use-cases/graph/record-profile-fact.use-case';
 import { GraphUnavailableError } from '../../domain/graph/graph-errors';
-import { GRAPH_PROJECTION_AGGREGATE_TYPE } from '../../domain/graph/graph-projection-events';
+import {
+  GRAPH_PROJECTION_AGGREGATE_TYPE,
+  MERGES_PROJETAVEIS,
+} from '../../domain/graph/graph-projection-events';
 import { grafoConfigurado } from '../../infrastructure/graph/neo4j-config';
 import {
   EVENTOS_DO_LOG_PROJETAVEIS,
   FECHAMENTOS_DE_SESSAO,
   GraphEventTranslator,
 } from './graph-event-translator';
+import { MemoriaDoProjetoTranslator } from './memoria-do-projeto-translator';
 import type { OutboxEvent } from '../../domain/shared/outbox-event.entity';
 
 /** Mesmo tamanho de lote que `Engine.Outbox.Drain.run_once/0` usa do lado Elixir. */
@@ -74,6 +78,7 @@ export class GraphProjector implements OnModuleInit, OnModuleDestroy {
     recordAnamneseProfile: RecordAnamneseProfileUseCase,
     recordInteraction: RecordInteractionUseCase,
     recordProfileFact: RecordProfileFactUseCase,
+    private readonly memoria: MemoriaDoProjetoTranslator,
   ) {
     // A superfície de injeção NÃO mudou quando a tradução saiu daqui: o
     // tradutor é montado com as mesmas dependências, e a reprojeção monta
@@ -164,6 +169,16 @@ export class GraphProjector implements OnModuleInit, OnModuleDestroy {
    * reprojeção a partir do event log (`scripts/reprojetar-grafo.ts`, RN-569).
    */
   private async project(row: OutboxEvent): Promise<void> {
+    if (MERGES_PROJETAVEIS.has(row.eventType)) {
+      // RN-1150: o merge projeta `.brabo/memoria/` da `mergedSha`. Falha de
+      // leitura do git lança e a linha fica para retry (ciclo logado).
+      const { projectId, mergedSha } = row.payload as {
+        projectId: string;
+        mergedSha?: string;
+      };
+      await this.memoria.projetar(projectId, mergedSha);
+      return;
+    }
     if (FECHAMENTOS_DE_SESSAO.has(row.eventType)) {
       return this.projectSessionClosed(row);
     }
