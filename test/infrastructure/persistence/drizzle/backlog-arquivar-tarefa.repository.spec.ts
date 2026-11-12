@@ -73,11 +73,18 @@ async function seed(moduleIds: string[] = ['db', 'api']) {
   const nova = async (
     module: string | null,
     status: 'todo' | 'in_progress' | 'done' = 'todo',
+    fundacao = false,
   ) =>
     (
       await db
         .insert(tasks)
-        .values({ storyId: story.id, title: `t-${module}`, module, status })
+        .values({
+          storyId: story.id,
+          title: `t-${module}`,
+          module,
+          status,
+          fundacao,
+        })
         .returning()
     )[0];
   return { projectId: project.id, nova };
@@ -141,5 +148,31 @@ describe('modulosEntregues (AT-913)', () => {
     const { projectId, nova } = await seed(['db']);
     await nova(null, 'done');
     expect(await repo.modulosEntregues(projectId)).toEqual(['db']);
+  });
+});
+
+describe('a fundação do módulo vem primeiro (AT-901, RN-1138)', () => {
+  it('a funcionalidade criada ANTES espera a fundação, que sai primeiro', async () => {
+    const { projectId, nova } = await seed();
+    const func = await nova('db');
+    const fund = await nova('db', 'todo', true);
+
+    expect(await repo.countClaimableByModule(projectId, 'db')).toBe(1);
+    expect((await repo.claimNext(projectId, 'db', 'dev-db'))?.id).toBe(fund.id);
+    // fundação em curso: as outras seguem seguradas
+    expect(await repo.claimNext(projectId, 'db', 'dev-db-2')).toBeNull();
+    await repo.markDoneIfNotDone(fund.id);
+    expect(await repo.countClaimableByModule(projectId, 'db')).toBe(1);
+    expect((await repo.claimNext(projectId, 'db', 'dev-db'))?.id).toBe(func.id);
+  });
+
+  it('a fundação arquivada ou de outro módulo não segura', async () => {
+    const { projectId, nova } = await seed();
+    const func = await nova('db');
+    const arq = await nova('db', 'todo', true);
+    await repo.archive(arq.id, 'x');
+    await nova('api', 'todo', true);
+
+    expect((await repo.claimNext(projectId, 'db', 'dev-db'))?.id).toBe(func.id);
   });
 });

@@ -40,7 +40,7 @@ keywords: [regras de negócio, api]
   `src/application/use-cases/backlog/corrigir-historia.use-case.ts:52`
   (`editar`), `:162` (`arquivar`),
   `src/infrastructure/persistence/drizzle/backlog.repository.ts:97`
-  (`findByProject`), `:413` (`claimNext`),
+  (`findByProject`), `:404` (`claimNext`),
   `src/interfaces/http/backlog/backlog.controller.ts:209`
   (`updateTitle`), `:223` (`archive`),
   `src/interfaces/http/internal/internal-sessions.controller.ts:583`
@@ -431,7 +431,7 @@ keywords: [regras de negócio, api]
   vem antes do sinal da conversa ociosa ([RN-581](parte-07.md#rn-581)), que continua
   o único com teto. Sessão de execução ANTIGA do mesmo projeto não é segurada
   pela tarefa: a tarefa é do projeto, e sem esse recorte ela ficaria imortal.
-- **Onde:** `src/application/use-cases/sessions/get-session-pending-work.use-case.ts:242`
+- **Onde:** `src/application/use-cases/sessions/get-session-pending-work.use-case.ts:247`
   (`findPendenteDaExecucao`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:252`
   (`findPendenteDaExecucao`)
 - **Teste:** `test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts`
@@ -912,7 +912,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `politica`; a lista só vem para sessão de EXECUÇÃO, então encerrar uma
   consultiva do mesmo projeto não bloqueia nada.
 - **Onde:** `src/infrastructure/persistence/drizzle/backlog.repository.ts:252`
-  (`findPendenteDaExecucao`), `:413` (`claimNext`), `:221` (`listEmCursoDeDev`),
+  (`findPendenteDaExecucao`), `:404` (`claimNext`), `:221` (`listEmCursoDeDev`),
   `src/application/use-cases/sessions/get-session-pending-work.use-case.ts:49`
   (`em_curso_de_dev`),
   `apps/engine/lib/engine/dev/encerramento_da_sessao.ex:133` (`bloquear_orfas`)
