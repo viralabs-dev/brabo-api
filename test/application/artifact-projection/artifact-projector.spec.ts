@@ -45,6 +45,18 @@ class FakeOutbox implements OutboxRepository {
     return Promise.resolve();
   }
 
+  listByEventTypeAfter(
+    eventType: string,
+    after: Date,
+    limit: number,
+  ): Promise<OutboxEvent[]> {
+    return Promise.resolve(
+      this.rows
+        .filter((r) => r.eventType === eventType && r.createdAt > after)
+        .slice(0, limit),
+    );
+  }
+
   listUnprocessed(
     aggregateType: string,
     limit: number,
