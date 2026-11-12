@@ -624,6 +624,13 @@
       "when": 1794600000000,
       "tag": "0088_escada_de_modelos",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1794464318536,
+      "tag": "0089_teto_mensal_e_do_workspace",
+      "breakpoints": true
     }
   ]
 }

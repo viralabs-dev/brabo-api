@@ -552,6 +552,27 @@ export const _chavesMudancaDePreco: MesmasChaves<
   ModelPriceChange
 > = true;
 
+export class PeriodoDoTetoResponseDto {
+  @ApiProperty({ example: '2026-11-01' })
+  inicio!: string;
+
+  @ApiProperty({
+    example: '2026-12-01',
+    description: 'First day of the next month (UTC).',
+  })
+  fim!: string;
+
+  @ApiProperty({ example: 18 })
+  diasRestantes!: number;
+
+  @ApiProperty({
+    example: 31000000,
+    description:
+      'Linear forecast of the month-end spend (micro-USD); derived, never stored.',
+  })
+  previsaoMicros!: number;
+}
+
 export class BudgetResponseDto implements Wire<Budget> {
   @ApiProperty({ example: '01JC4Z0000ORCAMENTO000000001' })
   id!: string;
@@ -571,6 +592,21 @@ export class BudgetResponseDto implements Wire<Budget> {
   sessionId!: string | null;
 
   @ApiProperty({
+    example: null,
+    nullable: true,
+    description: 'Filled in for a workspace budget (ADR 0296).',
+  })
+  workspaceId!: string | null;
+
+  @ApiProperty({
+    example: '2026-11-01',
+    nullable: true,
+    description:
+      'First day (UTC) of the month `spentMicros` refers to; `null` for a session budget.',
+  })
+  periodoInicio!: string | null;
+
+  @ApiProperty({
     example: 50000000,
     description: 'Cap in micro-USD (50 USD).',
   })
@@ -578,7 +614,8 @@ export class BudgetResponseDto implements Wire<Budget> {
 
   @ApiProperty({
     example: 12400000,
-    description: 'Accumulated spend, in micro-USD.',
+    description:
+      'Spend in the current month (UTC) in micro-USD; accumulated for a session budget. A stale period reads as 0.',
   })
   spentMicros!: number;
 
@@ -607,6 +644,12 @@ export class BudgetResponseDto implements Wire<Budget> {
   updatedAt!: string;
 }
 export const _chavesOrcamento: MesmasChaves<BudgetResponseDto, Budget> = true;
+
+/** Teto mensal (projeto e workspace): o orçamento mais o período e a previsão (ADR 0296). */
+export class BudgetMensalResponseDto extends BudgetResponseDto {
+  @ApiProperty({ type: () => PeriodoDoTetoResponseDto })
+  periodo!: PeriodoDoTetoResponseDto;
+}
 
 /** Quanto cada agente da sessão gastou — o que cada card do painel mostra. */
 export class AgentTokenUsageResponseDto implements Wire<AgentTokenUsage> {

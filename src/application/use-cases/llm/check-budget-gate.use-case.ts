@@ -14,7 +14,7 @@ export interface BudgetGateResult {
  * Checagem PRÉ-chamada, fail-closed: se não der pra confirmar o estado
  * do budget (erro no repositório), a chamada é recusada — nunca
  * liberada por omissão. Projeto, sessão e ÁREA (ADR 0110) são verificados
- * INDEPENDENTEMENTE; qualquer um dos três bloqueado já recusa. Aditivo, não
+ * INDEPENDENTEMENTE; qualquer um dos quatro bloqueado já recusa. Aditivo, não
  * cascata — não é "o mais específico vence" (isso é o binding de modelo do
  * ADR 0064, mecanismo diferente).
  */
@@ -36,11 +36,27 @@ export class CheckBudgetGateUseCase {
       // que vale a pena buscar a linha (que traz o teto de verdade).
       const area = agentId ? areaDo(agentId) : undefined;
 
-      const [projectBudget, sessionBudget, areaRow] = await Promise.all([
-        this.budgets.findForProject(projectId),
-        this.budgets.findForSession(sessionId),
-        area ? this.areas.findByKey(projectId, area.key) : null,
-      ]);
+      const [workspaceBudget, projectBudget, sessionBudget, areaRow] =
+        await Promise.all([
+          this.budgets.findForWorkspaceOfProject(projectId),
+          this.budgets.findForProject(projectId),
+          this.budgets.findForSession(sessionId),
+          area ? this.areas.findByKey(projectId, area.key) : null,
+        ]);
+
+      if (
+        workspaceBudget &&
+        isBlocked(
+          workspaceBudget.spentMicros,
+          workspaceBudget.limitMicros,
+          workspaceBudget.policy,
+        )
+      ) {
+        return {
+          blocked: true,
+          reason: 'Budget do workspace atingiu o teto do mês',
+        };
+      }
 
       if (
         projectBudget &&
@@ -50,7 +66,10 @@ export class CheckBudgetGateUseCase {
           projectBudget.policy,
         )
       ) {
-        return { blocked: true, reason: 'Budget do projeto atingiu o limite' };
+        return {
+          blocked: true,
+          reason: 'Budget do projeto atingiu o teto do mês',
+        };
       }
 
       if (

@@ -10,6 +10,8 @@ export class UpsertBudgetUseCase {
   constructor(private readonly budgets: BudgetRepository) {}
 
   execute(scope: BudgetScope, scopeId: string, input: BudgetInput) {
+    if (scope === 'workspace')
+      return this.budgets.upsertForWorkspace(scopeId, input);
     return scope === 'project'
       ? this.budgets.upsertForProject(scopeId, input)
       : this.budgets.upsertForSession(scopeId, input);

@@ -230,7 +230,10 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
         and(
           eq(projects.workspaceId, workspaceId),
           eq(tokenUsage.actorKind, 'agent'),
-          gte(tokenUsage.createdAt, sql`date_trunc('month', now())`),
+          gte(
+            tokenUsage.createdAt,
+            sql`date_trunc('month', now() at time zone 'UTC') at time zone 'UTC'`,
+          ),
         ),
       );
 
