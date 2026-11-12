@@ -14,6 +14,7 @@ import { RecordInteractionUseCase } from '../use-cases/graph/record-interaction.
 import { RecordProfileFactUseCase } from '../use-cases/graph/record-profile-fact.use-case';
 import { GraphUnavailableError } from '../../domain/graph/graph-errors';
 import { GRAPH_PROJECTION_AGGREGATE_TYPE } from '../../domain/graph/graph-projection-events';
+import { grafoConfigurado } from '../../infrastructure/graph/neo4j-config';
 import {
   EVENTOS_DO_LOG_PROJETAVEIS,
   FECHAMENTOS_DE_SESSAO,
@@ -61,6 +62,7 @@ export class GraphProjector implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(GraphProjector.name);
   private timer?: NodeJS.Timeout;
   private draining = false;
+  private indisponivelAvisado = false;
   private readonly tradutor: GraphEventTranslator;
 
   constructor(
@@ -107,6 +109,21 @@ export class GraphProjector implements OnModuleInit, OnModuleDestroy {
     if (this.draining) return;
     this.draining = true;
     try {
+      // RN-1148: grafo sem configuração não tem para onde projetar. Descarta
+      // o que sobrou de antes (uma vez, com a contagem no log) e não lê mais.
+      if (!grafoConfigurado()) {
+        const descartadas = await this.outbox.markAllProcessed(
+          GRAPH_PROJECTION_AGGREGATE_TYPE,
+        );
+        if (descartadas > 0) {
+          this.logger.log(
+            `Grafo desligado: ${descartadas} linhas da outbox graph_projection descartadas. ` +
+              'Para ligar o grafo depois, rode `pnpm --filter api grafo:reprojetar` (RN-569).',
+          );
+        }
+        return;
+      }
+
       const rows = await this.outbox.listUnprocessed(
         GRAPH_PROJECTION_AGGREGATE_TYPE,
         BATCH_LIMIT,
@@ -118,11 +135,14 @@ export class GraphProjector implements OnModuleInit, OnModuleDestroy {
           await this.outbox.markProcessed(row.id);
         } catch (error) {
           if (error instanceof GraphUnavailableError) {
-            this.logger.warn(
-              `Neo4j indisponível (${describeError(error.cause ?? error)}) — outbox ${row.id} (${row.eventType}) ` +
-                'permanece para retry; parando o ciclo (o resto do lote ' +
-                'falharia pelo mesmo motivo).',
-            );
+            // RN-1149: um aviso por indisponibilidade, não um a cada ciclo.
+            if (!this.indisponivelAvisado) {
+              this.logger.warn(
+                `Neo4j indisponível (${describeError(error.cause ?? error)}) — outbox ${row.id} (${row.eventType}) ` +
+                  'permanece para retry; o ciclo para e o aviso só volta quando o grafo se recuperar.',
+              );
+              this.indisponivelAvisado = true;
+            }
             return;
           }
           this.logger.error(
@@ -131,6 +151,8 @@ export class GraphProjector implements OnModuleInit, OnModuleDestroy {
           );
         }
       }
+      // Ciclo chegou ao fim sem o grafo cair: o próximo aviso de queda é novo.
+      this.indisponivelAvisado = false;
     } finally {
       this.draining = false;
     }

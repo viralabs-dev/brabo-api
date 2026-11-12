@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll, afterEach } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
 import { and, asc, eq } from 'drizzle-orm';
 import { createTestDb, truncateAll } from '../../../support/test-db';
@@ -69,6 +69,36 @@ afterAll(async () => {
 });
 
 describe('AppendSessionEventUseCase', () => {
+  // RN-1148: a linha graph_projection só é gravada com o grafo configurado.
+  const envOriginal = { ...process.env };
+  beforeEach(() => {
+    process.env.NEO4J_URI = 'bolt://grafo-de-teste:7687';
+    process.env.NEO4J_USER = 'neo4j';
+    process.env.NEO4J_PASSWORD = 'senha-de-teste';
+  });
+  afterEach(() => {
+    process.env = { ...envOriginal };
+  });
+
+  it('RN-1148: tipo projetável com o grafo NÃO configurado não grava a linha graph_projection', async () => {
+    delete process.env.NEO4J_URI;
+    delete process.env.NEO4J_USER;
+    delete process.env.NEO4J_PASSWORD;
+    const { project, session } = await setupSession();
+
+    await appendSessionEvent.execute(project.id, session.id, {
+      type: 'handoff.offered',
+      actor: { kind: 'agent', id: 'po' },
+      payload: { handoffId: 'h-1', toAgent: 'arquiteto' },
+    });
+
+    const rows = await db
+      .select()
+      .from(outboxEvents)
+      .where(eq(outboxEvents.aggregateType, GRAPH_PROJECTION_AGGREGATE_TYPE));
+    expect(rows).toHaveLength(0);
+  });
+
   it('caminho feliz: anexa um evento com seq 1 e envelope correto', async () => {
     const { project, session, user } = await setupSession();
 
