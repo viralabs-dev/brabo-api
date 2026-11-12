@@ -1510,7 +1510,7 @@
         },
         "budgets_periodo_check": {
           "name": "budgets_periodo_check",
-          "value": "(\"budgets\".\"periodo_inicio\" is null) = (\"budgets\".\"session_id\" is not null)"
+          "value": "(\"budgets\".\"session_id\" is null) or (\"budgets\".\"periodo_inicio\" is null)"
         }
       },
       "isRLSEnabled": false

@@ -151,7 +151,7 @@ export class DrizzleBudgetRepository implements BudgetRepository {
       .set({
         spentMicros: sql`case when ${vencido} then ${deltaMicros} else ${budgets.spentMicros} + ${deltaMicros} end`,
         lastThresholdNotified: sql`case when ${vencido} then 0 else ${budgets.lastThresholdNotified} end`,
-        periodoInicio: sql`case when ${budgets.periodoInicio} is null then null else ${mes}::date end`,
+        periodoInicio: sql`case when ${budgets.sessionId} is not null then null else ${mes}::date end`,
         updatedAt: new Date(),
       })
       .where(eq(budgets.id, budgetId))

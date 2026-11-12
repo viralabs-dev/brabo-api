@@ -40,5 +40,5 @@ UPDATE "budgets" SET "last_threshold_notified" = CASE
   WHEN "spent_micros" * 100 >= "limit_micros" * 70 THEN 70
   ELSE 0 END
 WHERE "project_id" IS NOT NULL;--> statement-breakpoint
-ALTER TABLE "budgets" ADD CONSTRAINT "budgets_periodo_check" CHECK (("budgets"."periodo_inicio" is null) = ("budgets"."session_id" is not null));--> statement-breakpoint
+ALTER TABLE "budgets" ADD CONSTRAINT "budgets_periodo_check" CHECK (("budgets"."session_id" is null) or ("budgets"."periodo_inicio" is null));--> statement-breakpoint
 ALTER TABLE "budgets" ADD CONSTRAINT "budgets_scope_check" CHECK (num_nonnulls("budgets"."project_id", "budgets"."session_id", "budgets"."workspace_id") = 1);

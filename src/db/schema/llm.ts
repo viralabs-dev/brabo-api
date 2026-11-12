@@ -472,7 +472,7 @@ export const budgets = pgTable(
     ),
     check(
       'budgets_periodo_check',
-      sql`(${table.periodoInicio} is null) = (${table.sessionId} is not null)`,
+      sql`(${table.sessionId} is null) or (${table.periodoInicio} is null)`,
     ),
   ],
 );
