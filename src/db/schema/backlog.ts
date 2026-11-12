@@ -189,6 +189,9 @@ export const tasks = pgTable(
     // de `task_status`, como a história (RN-727): o status decide o claim.
     archivedAt: timestamp('archived_at', { withTimezone: true }),
     archivedReason: text('archived_reason'),
+    // AT-901 (RN-1138): a FUNDAÇÃO do módulo (criada pelo Dev Lead) sai antes
+    // das outras tarefas dele no claim.
+    fundacao: boolean('fundacao').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

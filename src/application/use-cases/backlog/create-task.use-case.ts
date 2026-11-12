@@ -68,6 +68,7 @@ export class CreateTaskUseCase {
         title: input.title,
         description: input.description,
         module,
+        fundacao: input.actorId === 'dev_lead',
       });
 
       await this.appendEvent.execute(projectId, sessionId, {
