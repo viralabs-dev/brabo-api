@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { CredentialProviderName } from '@brabo/shared';
 import { UserCredentialRepository } from '../../ports/user-credential-repository.port';
 import { EncryptionService } from '../../ports/encryption.port';
@@ -6,6 +6,7 @@ import { LLMCredentialConnectionTester } from '../../ports/llm-credential-connec
 import { GitCredentialConnectionTester } from '../../ports/git-credential-connection-tester.port';
 import { LLMCredentialConnectionTestFailedError } from '../../../domain/llm/llm-credential-errors';
 import { GitCredentialConnectionTestFailedError } from '../../../domain/git/git-errors';
+import { SyncModelCatalogUseCase } from '../llm/sync-model-catalog.use-case';
 import { isGitCredentialProvider } from '../../../domain/git/git-credential-provider-names';
 
 /**
@@ -39,7 +40,11 @@ export class TestStoredCredentialUseCase {
     private readonly encryption: EncryptionService,
     private readonly llmTester: LLMCredentialConnectionTester,
     private readonly gitTester: GitCredentialConnectionTester,
+    // shortcut: opcional para não mexer nos specs que montam o caso de uso à mão.
+    private readonly catalogo?: SyncModelCatalogUseCase,
   ) {}
+
+  private readonly logger = new Logger(TestStoredCredentialUseCase.name);
 
   async execute(
     userId: string,
@@ -69,6 +74,14 @@ export class TestStoredCredentialUseCase {
         await this.gitTester.test(provider, plaintext);
       } else {
         await this.llmTester.test(provider, plaintext);
+        // RN-1105: chave que passou no teste atualiza o catálogo; a falha só vai ao log.
+        await this.catalogo
+          ?.executarProvider(provider)
+          .catch((e: Error) =>
+            this.logger.warn(
+              `sync do catálogo de ${provider} após o teste falhou (origem: teste): ${e.message}`,
+            ),
+          );
       }
       return { resultado: 'ok' };
     } catch (error) {

@@ -92,6 +92,34 @@ afterAll(async () => {
 });
 
 describe('TestStoredCredentialUseCase (ADR 0050)', () => {
+  it('RN-1105: teste ok sincroniza o provider; recusado não; falha da sincronização não vira erro', async () => {
+    const user = await setupUser();
+    await upsert.execute(user.id, 'openrouter', CHAVE);
+    const chamadas: string[] = [];
+    const catalogo = {
+      executarProvider: (n: string) => {
+        chamadas.push(n);
+        return Promise.reject(new Error('sync caiu'));
+      },
+    };
+    const uc = (t: LLMCredentialConnectionTester) =>
+      new TestStoredCredentialUseCase(
+        credentialRepo,
+        encryption,
+        t,
+        new GitTesterFalso(),
+        catalogo as never,
+      );
+    expect(
+      await uc(new LlmTesterFalso(true, true)).execute(user.id, 'openrouter'),
+    ).toMatchObject({ resultado: 'recusado' });
+    expect(chamadas).toEqual([]);
+    expect(
+      await uc(new LlmTesterFalso(true)).execute(user.id, 'openrouter'),
+    ).toEqual({ resultado: 'ok' });
+    expect(chamadas).toEqual(['openrouter']);
+  });
+
   it('provider aceita: devolve ok, e o que foi testado é a chave DECIFRADA do banco', async () => {
     const user = await setupUser();
     await upsert.execute(user.id, 'openrouter', CHAVE);
