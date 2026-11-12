@@ -43,6 +43,8 @@ export interface NewTask {
   description?: string;
   // AT-912: o módulo gravado na criação (Dev Lead, ou herdado da história).
   module?: string | null;
+  // AT-901 (RN-1138): a tarefa criada pelo Dev Lead é a fundação do módulo.
+  fundacao?: boolean;
 }
 
 export abstract class EpicRepository {
@@ -92,7 +94,9 @@ export interface TarefaPendenteDaExecucao {
     | 'em_curso_de_dev'
     | 'a_fazer_de_modulo_com_dev'
     // AT-912: `todo` sem módulo numa história de vários — nenhum dev a pega.
-    | 'sem_modulo';
+    | 'sem_modulo'
+    // AT-919 (RN-1141): qualquer outra tarefa aberta da execução vigente.
+    | 'aberta_na_execucao';
 }
 
 export interface TarefaEmCursoDeDev {

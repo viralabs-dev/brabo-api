@@ -29,7 +29,7 @@ keywords: [regras de negócio, api]
 
 - **Regra:** refina a [RN-569](parte-07.md#rn-569). `Handoff (sessionId, seq)`, `Evento (sessionId, seq)`, `PerfilAnamnese (userId, dimensao)` e `Hipotese (id)` não tinham restrição, então dois `MERGE`s concorrentes (o projetor vivo e uma reprojeção, ou duas réplicas da api) criavam dois nós: a prova de reprojeção no k3d mediu `12|9` em vez de `9|6`. Agora eles têm restrição de unicidade, e os casos de uso continuam fazendo `MERGE` exatamente na chave restrita. Restrição de unicidade composta é aceita pelo Neo4j 5.26 Community (medido; só `NODE KEY` e restrições de existência são Enterprise), então não existe propriedade de chave sintética.
 - **Subida:** antes do `CREATE CONSTRAINT`, o `GraphStore` funde as duplicatas desses quatro rótulos já presentes num grafo instalado (fica o nó mais antigo por `elementId`, toda aresta dos outros é movida para ele sem duplicar uma existente, e os outros são apagados). É idempotente (sem duplicatas não grava nada), roda numa transação por rótulo e registra no log só o número de nós fundidos, nunca o conteúdo deles. Uma falha mantém o grafo desligado, como qualquer outra falha de bootstrap ([RN-960](parte-11.md#rn-960)).
-- **Onde:** `apps/api/src/infrastructure/graph/graph-store.ts:51` (`CONSTRAINTS`), `apps/api/src/infrastructure/graph/graph-store.ts:160` (`bootstrapConstraints`), `apps/api/src/infrastructure/graph/graph-dedup.ts:34` (`deduplicarNos`).
+- **Onde:** `apps/api/src/infrastructure/graph/graph-store.ts:51` (`CONSTRAINTS`), `apps/api/src/infrastructure/graph/graph-store.ts:165` (`bootstrapConstraints`), `apps/api/src/infrastructure/graph/graph-dedup.ts:34` (`deduplicarNos`).
 - **Teste:** `apps/api/test/infrastructure/graph/neo4j-integration.spec.ts` (contra um Neo4j real: escritas concorrentes do mesmo nó dão um nó; as duplicatas são fundidas com as arestas mantidas, as restrições são criadas depois, uma segunda subida não muda nada), `apps/api/test/infrastructure/graph/graph-store.spec.ts` (a deduplicação roda antes das restrições).
 - **Origem:** AT-762 parte B (EP-033), decisão do dono de 06/11/2026; rodada 214, lane L1.
 
@@ -84,6 +84,36 @@ keywords: [regras de negócio, api]
 - **Teste:** `test/infrastructure/llm/laya-tool-router.spec.ts` (uma chamada sem a reservada, Bearer opcional, limiar, seis quedas nomeadas) e `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts` (`workspace em laya`: qualquer provider sem chave, queda para o catálogo inteiro sem chamar o Jev, sem `token_usage`).
 - **Origem:** AT-626 (EP-026), decisões do dono de 31/10 e 07/11/2026; ADR 0290; rodada 354, lane L2.
 
+<a id="rn-1105"></a>
+
+### RN-1105 — Cadastrar ou testar com sucesso uma credencial de LLM sincroniza o catálogo daquele provider {#rn-1105}
+
+- **Regra:** Depois do `upsert` (ou de um teste `ok`), a api roda a sincronização só daquele provider. A falha da sincronização não desfaz o cadastro (ADR 0050) e fica no log com a origem. Modelo novo continua entrando inativo (RN-043).
+
+- **Onde:** `src/application/use-cases/llm/sync-model-catalog.use-case.ts` (`executarProvider`), `upsert-user-credential.use-case.ts` (`execute`), `credentials/test-stored-credential.use-case.ts` (`execute`).
+- **Teste:** `test/application/use-cases/llm/upsert-user-credential.use-case.spec.ts` e `test/application/use-cases/credentials/test-stored-credential.use-case.spec.ts`.
+- **Origem:** AT-900 (EP-036), rodada 366, lane AA2.
+
+<a id="rn-1106"></a>
+
+### RN-1106 — O `claude-sonnet-5` tem o raciocínio reduzido no pedido de `reasoningOff` {#rn-1106}
+
+- **Regra:** O mapa de `raciocinioDesligado` ganha `claude-sonnet-5` com `output_config.effort: low` e `pensaAinda: true`. A forma ainda NÃO foi provada por smoke pago (pendente, com aviso ao dono antes de usar a chave de teste).
+
+- **Onde:** `src/infrastructure/llm/anthropic-provider.ts` (`raciocinioDesligado`).
+- **Teste:** `test/domain/llm/raciocinio-do-agente.spec.ts`.
+- **Origem:** AT-920 (EP-036), rodada 366, lane AA2.
+
+<a id="rn-1107"></a>
+
+### RN-1107 — A retentativa sem raciocínio vale também quando o raciocínio só foi reduzido {#rn-1107}
+
+- **Regra:** `devoRetentarSemRaciocinio` não sai mais cedo por `reasoningOff`: se a resposta veio cortada, vazia e o raciocínio comeu o orçamento, retenta uma vez sem raciocínio.
+
+- **Onde:** `src/domain/llm/raciocinio-do-agente.ts` (`devoRetentarSemRaciocinio`).
+- **Teste:** `test/domain/llm/raciocinio-do-agente.spec.ts`.
+- **Origem:** AT-920 (EP-036), rodada 366, lane AA2.
+
 <a id="rn-1108"></a>
 
 ### RN-1108 — O índice RAG do projeto inclui `.brabo/memoria/`, e o merge na trunk o reindexa sozinho {#rn-1108}
@@ -130,6 +160,42 @@ keywords: [regras de negócio, api]
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` (`RN-1104`: pontas iguais gravam `jaContida`, pontas diferentes não).
 - **Origem:** AT-901 (EP-036), só o merge sem efeito; rodada 366, lane AA1.
 
+<a id="rn-1138"></a>
+
+### RN-1138 — A tarefa criada pelo Dev Lead é a FUNDAÇÃO do módulo {#rn-1138}
+
+- **Regra:** `create_task` com `agentRole: dev_lead` grava `tasks.fundacao = true` (migração 0087); a do PO nasce `false`. A coluna aparece em `TaskResponseDto.fundacao`.
+- **Onde:** `src/application/use-cases/backlog/create-task.use-case.ts` (`execute`), `src/db/schema/backlog.ts` (`tasks.fundacao`)
+- **Teste:** `test/application/use-cases/backlog/create-task.use-case.spec.ts` (`RN-1138`).
+- **Origem:** AT-901 (EP-036), parte do claim; rodada 372, lane L1.
+
+<a id="rn-1139"></a>
+
+### RN-1139 — A fundação do módulo sai primeiro no claim e segura as outras tarefas dele {#rn-1139}
+
+- **Regra:** `claimNext` ordena `fundacao DESC` antes de `created_at`, e a tarefa que não é fundação só é pegável sem fundação do mesmo módulo aberta (não `done`, não arquivada, de história não arquivada). Quem arquiva a fundação a libera.
+- **Onde:** `src/infrastructure/persistence/drizzle/backlog.repository.ts` (`claimNext`, `semFundacaoAberta`)
+- **Teste:** `test/infrastructure/persistence/drizzle/backlog-arquivar-tarefa.repository.spec.ts` (`a fundação do módulo vem primeiro`).
+- **Origem:** AT-901 (EP-036); rodada 372, lane L1.
+
+<a id="rn-1140"></a>
+
+### RN-1140 — A contagem de tarefas pegáveis usa a mesma guarda da fundação {#rn-1140}
+
+- **Regra:** `countClaimableByModule` aplica `semFundacaoAberta`, o mesmo predicado do claim (AT-274), para a sugestão de paralelização nunca contar o que o claim segura.
+- **Onde:** `src/infrastructure/persistence/drizzle/backlog.repository.ts` (`countClaimableByModule`)
+- **Teste:** o mesmo spec da RN-1139 (a contagem concorda com o claim).
+- **Origem:** AT-901 (EP-036); rodada 372, lane L1.
+
+<a id="rn-1141"></a>
+
+### RN-1141 — Tarefa aberta da execução vigente segura a sessão, sem teto {#rn-1141}
+
+- **Regra:** na sessão de execução vigente, toda tarefa não `done` e não arquivada, de história não arquivada, é pendência sem teto (`aguardandoUsuarioDesde: null`), com o motivo `aberta_na_execucao` quando nenhum motivo específico (RN-776, RN-856, AT-912) vale. O teto de 8 h da conversa ociosa não fecha essa sessão; ela fecha quando o backlog termina ou o usuário encerra. Amplia a [RN-776](parte-10.md#rn-776).
+- **Onde:** `src/infrastructure/persistence/drizzle/backlog.repository.ts` (`findPendenteDaExecucao`), `src/application/use-cases/sessions/get-session-pending-work.use-case.ts` (`MOTIVO_DA_TAREFA`)
+- **Teste:** `test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts` (`aberta na execução em curso`, `in_review`, `tudo done`).
+- **Origem:** AT-919 (EP-036); rodada 372, lane L1.
+
 <a id="rn-1148"></a>
 
 ### RN-1148 — Sem grafo configurado, nenhuma linha de projeção do grafo entra na outbox {#rn-1148}
@@ -147,6 +213,43 @@ keywords: [regras de negócio, api]
 - **Onde:** `src/infrastructure/observability/brabo-metrics.ts` (`outboxPending`), `src/infrastructure/observability/domain-gauges.collector.ts` (`collectOutboxPending`), `src/application/graph-projection/graph-projector.ts` (`drainOnce`, `indisponivelAvisado`)
 - **Teste:** `test/application/graph-projection/graph-projector.spec.ts` (`RN-1149`: três ciclos com o grafo fora do ar geram um aviso só).
 - **Origem:** AT-925 (EP-036); rodada 373, lane L4.
+
+<a id="rn-1163"></a>
+
+### RN-1163 — Todo merge na branch de trabalho projeta no grafo a memória do projeto daquele commit {#rn-1163}
+
+- **Regra:** O merge na branch de trabalho (`project.trunk_merged`) grava uma SEGUNDA linha de outbox `graph_projection`, na mesma transação e só com o grafo configurado (RN-1148), com o mesmo payload (`projectId`, `sessionId`, `mergedSha`). O projetor lê `.brabo/memoria/modulos/*.md` e `.brabo/memoria/decisoes.md` na `mergedSha` (pela leitura de código do projeto, com a credencial do owner) e grava, por `MERGE` em chave natural: `(:Projeto)-[:TEM_MODULO]->(:Modulo {projectId, nome, stack, commit})`, `(:Modulo)-[:DEPENDE_DE]->(:Modulo)`, `(:Modulo)-[:EXPOE]->(:Interface {projectId, modulo, assinatura, tipo})`, `(:Modulo)-[:TEM_CONTRATO]->(:Contrato {projectId, modulo, versao})` (versão lida do BANCO, nunca do texto do cartão) e `(:Decisao {projectId, id, titulo})-[:CITA]->(:Modulo)`. A projeção converge para a `main`: dependência, interface, contrato, decisão e módulo que saíram do cartão saem do grafo, e repetir o mesmo merge não muda nada. Constraints compostas (`IF NOT EXISTS`): `modulo_projeto_nome_unico`, `interface_unica`, `contrato_unico`, `decisao_unica`.
+- **Formato lido (engine, `MemoriaExtrator`):** front-matter `modulo`, `stack`, `depende_de: [a, b]`, `commit`, e a seção `## Expõe` (`- \`nome\` (tipo)`). `decisoes.md` não tem formato fixado em código: a projeção lê uma linha por ADR (`- ADR 0123 — título`) e considera que ela cita o módulo cujo nome aparece na linha.
+- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts` (`settleMerge`), `src/domain/graph/graph-projection-events.ts` (`MERGES_PROJETAVEIS`), `src/application/graph-projection/graph-projector.ts` (`project`), `src/application/graph-projection/memoria-do-projeto-translator.ts` (`MemoriaDoProjetoTranslator.projetar`, `interpretarCartao`, `interpretarDecisoes`), `src/infrastructure/graph/graph-store.ts` (`CONSTRAINTS`)
+- **Teste:** `test/application/graph-projection/memoria-do-projeto-translator.spec.ts`, `test/application/graph-projection/graph-projector.spec.ts` (`merge na branch de trabalho`), `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` (linha `graph_projection` só com o grafo configurado).
+- **Origem:** AT-924 (EP-036); rodada 373, lane G1.
+
+<a id="rn-1164"></a>
+
+### RN-1164 — A memória ausente não é falha, o cartão malformado é pulado e o grafo fora do ar mantém a linha {#rn-1164}
+
+- **Regra:** Projeto sem `.brabo/memoria/` faz merge sem erro e sem nó (não há pasta nem `decisoes.md`: nada é gravado nem apagado). Cartão sem front-matter ou sem `modulo` é logado e pulado, sem travar os outros. Falha de leitura do git que não seja "não encontrado" (credencial, limite de taxa) e `GraphUnavailableError` mantêm a linha da outbox para retry (RN-1149).
+- **Onde:** `src/application/graph-projection/memoria-do-projeto-translator.ts` (`projetar`, `listarCartoes`, `lerOuNulo`), `src/application/graph-projection/graph-projector.ts` (`drainOnce`)
+- **Teste:** `test/application/graph-projection/memoria-do-projeto-translator.spec.ts` (pasta ausente, cartão malformado, erro de leitura propaga), `test/application/graph-projection/graph-projector.spec.ts` (grafo indisponível mantém a linha).
+- **Origem:** AT-924 (EP-036); rodada 373, lane G1.
+
+<a id="rn-1165"></a>
+
+### RN-1165 — A reconstrução do grafo também reprojeta a memória de cada projeto {#rn-1165}
+
+- **Regra:** `grafo:reprojetar` (RN-569) ganha a fase 3: para cada projeto com repositório (ou só o de `--project`), enfileira uma linha `graph_projection` `project.trunk_merged` sem `mergedSha`, que o projetor vivo drena lendo a ponta da `main`. A leitura do git precisa do contexto da api (credencial, cache), por isso o script não lê o repositório sozinho: com a api de pé, os módulos voltam em alguns ciclos do projetor. É a única escrita do script na outbox.
+- **Onde:** `src/scripts/reprojetar-grafo.ts` (`reprojetarGrafo`, fase 3)
+- **Teste:** `test/scripts/reprojetar-grafo.spec.ts` (o resultado carrega `memoriasEnfileiradas`).
+- **Origem:** AT-924 (EP-036); rodada 373, lane G1.
+
+<a id="rn-1166"></a>
+
+### RN-1166 — A consulta de impacto de um módulo responde pelo grafo, e 503 com o grafo desligado {#rn-1166}
+
+- **Regra:** `GET /internal/graph/projects/:projectId/modules/:nome/impacto` (service token do engine) devolve `{ projectId, modulo, stack, commit, contratoVersao, dependentes, dependeDe, expoe: [{assinatura, tipo}], decisoes: [{id, titulo}] }`: quem depende do módulo, de quem ele depende, o que expõe, que decisões o citam e a versão do contrato gravada na projeção (do banco; `null` sem contrato declarado). Leitura contida: escopo no projeto, chave natural, sem parâmetro livre. Módulo sem nó é 404; grafo desligado ou fora do ar é 503 (`GraphUnavailableError`), nunca uma lista vazia que pareça verdade.
+- **Onde:** `src/interfaces/http/internal/internal-graph.controller.ts` (`impactoDoModulo`), `src/application/use-cases/graph/consultar-impacto-do-modulo.use-case.ts` (`ConsultarImpactoDoModuloUseCase.execute`), `src/interfaces/http/internal/dto/graph.response.dto.ts` (`ImpactoDoModuloResponseDto`)
+- **Teste:** `test/interfaces/http/internal/internal-graph.controller.spec.ts` (delega com projeto e módulo). A consulta contra Neo4j real fica fora do CI da api (sem Neo4j no job).
+- **Origem:** AT-924 (EP-036); rodada 373, lane G1.
 
 A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em `ARG`/`ENV`; só como secret do BuildKit), definida no [brabo-broker](https://github.com/viralabs-dev/brabo-broker/blob/dev/docs/business-rules/broker.md). Quem prova na api é `test/dockerfile-sem-token.spec.ts:13` (todo `pnpm install` do `Dockerfile` monta o secret, nenhum `ARG`/`ENV` com token, `.npmrc` só com o registry).
 
@@ -194,3 +297,44 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Código:** `apps/api/src/infrastructure/persistence/drizzle/proposed-action.repository.ts:187` (`listDecidedByProject`), `apps/api/src/application/use-cases/actions/list-project-pending-actions.use-case.ts:22` (`execute`), `apps/api/src/interfaces/http/actions/project-actions.controller.ts:60` (`list`)
 - **Teste:** `apps/api/test/application/use-cases/actions/list-project-pending-actions.use-case.spec.ts` (negada com motivo e automática entram; pendente e velha não)
 - **Origem:** AT-932 (EP-035).
+<a id="rn-1142"></a>
+
+### RN-1142 — O teto por tarefa é do projeto, editável pelo PATCH, e chega aos agentes vivos {#rn-1142}
+
+- **Regra:** `PATCH /projects/:projectId` aceita `taskBudgetMicros` (inteiro positivo, micro-USD). Ao mudar o teto, a api chama o engine em `POST /internal/projects/:projectId/execution/task-budget` (RN-1090 do engine); vale a partir da próxima volta de cada tarefa. Se o engine falhar, a mudança do projeto NÃO é desfeita e a falha vira log (`teto_nao_propagado`).
+- **Onde:** `src/application/use-cases/iam/update-project.use-case.ts` (`UpdateProjectUseCase.execute`), `src/infrastructure/http-clients/api-to-engine-client.ts` (`setTaskBudget`), `src/interfaces/http/iam/dto/create-project.dto.ts` (`taskBudgetMicros`).
+- **Teste:** `test/application/use-cases/iam/update-project-teto.use-case.spec.ts`, `test/infrastructure/http-clients/api-to-engine-client.spec.ts` (`RN-1142`).
+- **Origem:** AT-917 (EP-036), rodada 372, lane L2.
+
+<a id="rn-1143"></a>
+
+### RN-1143 — Depois de 2 bloqueios por limite de iterações na mesma tarefa, o agente sobe um degrau da escada do projeto {#rn-1143}
+
+- **Regra:** a escada é `projects.model_escalation` (`{ ladder: [{ modelId, taskBudgetMicros }] }`, do menor ao maior; nulo usa o padrão Haiku 5.5 → Sonnet 5, tetos US$ 0,50 e US$ 2,00, FIXOS por degrau). No 2º `backlog.task_blocked` por limite de iterações (origem `modelo`) da mesma tarefa, a api troca o `agent-binding` do dono da tarefa para o degrau seguinte, aplica o teto do degrau (RN-1142), emite `agent.model_escalated { agentId, taskId, de, para, tetoMicros }` e desbloqueia a tarefa sozinha (`UnblockTaskUseCase`, ator `system`). O engine não muda: o binding é resolvido pela api a cada `llm-turn`.
+- **Onde:** `src/application/use-cases/execution/escalar-modelo-da-tarefa.use-case.ts` (`aoBloquearPorLimite`), chamado por `mark-task-blocked.use-case.ts` (`MarkTaskBlockedUseCase.execute`) FORA da transação; `src/domain/execution/escada-de-modelos.ts`.
+- **Teste:** `test/application/use-cases/execution/escalar-modelo-da-tarefa.use-case.spec.ts`.
+
+<a id="rn-1144"></a>
+
+### RN-1144 — O agente volta ao modelo base quando a tarefa fecha {#rn-1144}
+
+- **Regra:** `task_model_escalations` guarda por tarefa o contador de bloqueios e a base (o binding próprio anterior, ou nenhum). Ao fechar a tarefa (merge da PR), `restaurar` devolve o binding base (ou o remove, voltando a herdar) e reaplica o teto do projeto; a linha some.
+- **Onde:** `escalar-modelo-da-tarefa.use-case.ts` (`restaurar`), chamado por `execute-git-action.use-case.ts` ao fechar as tarefas da PR; `src/db/schema/backlog.ts` (`taskModelEscalations`).
+- **Teste:** `escalar-modelo-da-tarefa.use-case.spec.ts` (tarefa fechada volta ao base).
+
+<a id="rn-1145"></a>
+
+### RN-1145 — Escada esgotada: a tarefa fica bloqueada para o dono {#rn-1145}
+
+- **Regra:** no último degrau (ou com o modelo atual fora da escada) a api não escala nem desbloqueia. No último degrau grava `agent.model_escalation_exhausted` ("escada esgotada"). Falha da escalada nunca desfaz o bloqueio; falha do engine nunca desfaz a escalada.
+- **Onde:** `escalar-modelo-da-tarefa.use-case.ts`.
+- **Teste:** `escalar-modelo-da-tarefa.use-case.spec.ts` (último degrau, falha do engine).
+
+<a id="rn-1146"></a>
+
+### RN-1146 — A escada é configurável por projeto pelo PATCH {#rn-1146}
+
+- **Regra:** `PATCH /projects/:projectId` aceita `modelEscalation` (`ladder` com ao menos 1 degrau, `modelId` e `taskBudgetMicros` positivo); a resposta do projeto o devolve (`null` = padrão). Contrato para o web: `ProjectResponseDto.modelEscalation`.
+- **Onde:** `create-project.dto.ts` (`EscadaDeModelosDto`), `iam.response.dto.ts`.
+- **Teste:** coberto pelo `openapi.json` versionado (`pnpm openapi:export` sem diff).
+- **Nota:** o teto do degrau vale para o PROJETO inteiro (o endpoint do engine é por projeto) enquanto a tarefa escalada não fecha; RN-1146 reservada.

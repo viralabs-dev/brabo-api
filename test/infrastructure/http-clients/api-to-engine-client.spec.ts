@@ -763,6 +763,24 @@ describe('HttpApiToEngineClient — comando de turno: aceite e recusa (ADR 0163)
     await engine.fechar();
   });
 
+  it('RN-1142: setTaskBudget posta o teto na rota de projeto do engine', async () => {
+    const engine = await engineQueResponde(202);
+    await new HttpApiToEngineClient().setTaskBudget(PROJETO, 2_000_000);
+    expect(engine.urls).toEqual([
+      `/internal/projects/${PROJETO}/execution/task-budget`,
+    ]);
+    expect(engine.corpos[0]).toBe(
+      JSON.stringify({ taskBudgetMicros: 2000000 }),
+    );
+    await engine.fechar();
+  });
+
+  it('RN-1142: setTaskBudget com projectId malformado é recusado antes da rede', async () => {
+    await expect(
+      new HttpApiToEngineClient().setTaskBudget('a/b', 1),
+    ).rejects.toThrow();
+  });
+
   it('AT-906: rearm e wake de agente que não está no estado certo: 409 do engine vira ConflictException com a frase dele', async () => {
     const engine = await engineQueResponde(409, {
       error: 'O agente dev-api não está travado (status: idle).',

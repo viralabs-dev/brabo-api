@@ -606,7 +606,7 @@ export function corpoDeRaciocinio(options: ChatOptions): {
  *
  * - Haiku 5.5: `disabled` — desligado de verdade.
  * - Sonnet 5.5: `between_tools` — pensa só entre chamadas de ferramenta.
- * - Opus 5.5: `effort: low` — REDUZIDO, não desligado (declarado).
+ * - Opus 5.5 e Sonnet 5 (AT-920, forma sem smoke): `effort: low` — REDUZIDO, não desligado.
  * - Desconhecido: nada (o padrão do modelo), com a folga — reduzir exige prova.
  *
  * `pensaAinda` diz se o modelo ainda pode pensar, e decide a folga.
@@ -626,7 +626,7 @@ export function raciocinioDesligado(modelo: string): {
       } as unknown as Anthropic.ThinkingConfigParam,
       pensaAinda: true,
     };
-  if (/^claude-opus-5-5/.test(modelo))
+  if (/^claude-(opus-5-5|sonnet-5(?!-5))/.test(modelo))
     return { output_config: { effort: 'low' }, pensaAinda: true };
   return { pensaAinda: true };
 }

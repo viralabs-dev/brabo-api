@@ -519,6 +519,17 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     );
   }
 
+  async setTaskBudget(
+    projectId: string,
+    taskBudgetMicros: number,
+  ): Promise<void> {
+    await this.postCommand(
+      `/internal/projects/${projectId}/execution/task-budget`,
+      { taskBudgetMicros },
+      [['projectId', projectId]],
+    );
+  }
+
   async acceptParallelization(
     projectId: string,
     sessionId: string,

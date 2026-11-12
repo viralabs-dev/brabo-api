@@ -132,11 +132,11 @@ no cluster local que o BRB-018 pede não foi feita — ele segue aberto.
   tradutor), `:75` (`projetarEvento`), `:99` (`projetarFechamentoDeSessao`);
   `src/application/graph-projection/graph-projector.ts:77` (o projetor
   monta o MESMO tradutor), `:141` (chega à fonte pela outbox e delega);
-  `src/scripts/reprojetar-grafo.ts:124` (`montarTradutor`), `:145`
+  `src/scripts/reprojetar-grafo.ts:138` (`montarTradutor`), `:160`
   (`reprojetarGrafo`), `:154` (a recusa antes de ler), `:163` e `:169` (projeto
   inexistente), `:187` (a fase dos eventos, por cursor), `:213` (a interrupção
   nomeada), `:218` (a falha contada sem abortar o resto), `:230` (a fase das
-  sessões fechadas), `:301` (`lerArgumentos`), `:370` (só a invocação direta
+  sessões fechadas), `:337` (`lerArgumentos`), `:370` (só a invocação direta
   reprojeta); `package.json:44` (`grafo:reprojetar`); `Makefile:61`
   (`test-reprojecao`)
 - **Teste:** `test/scripts/reprojetar-grafo.spec.ts:349` (projetor para

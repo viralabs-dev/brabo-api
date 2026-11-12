@@ -6,6 +6,7 @@
 // a tabela que o chama, senão o grafo de módulos ganha um ciclo em que o enum
 // é avaliado antes de existir (ADR 0121).
 
+import type { EscadaDeModelos } from '../../domain/execution/escada-de-modelos';
 import {
   pgTable,
   pgEnum,
@@ -13,6 +14,7 @@ import {
   text,
   integer,
   bigint,
+  jsonb,
   boolean,
   timestamp,
   primaryKey,
@@ -286,6 +288,8 @@ export const projects = pgTable(
     // Nulo usa o default do domínio. Mesmo motivo do campo acima: precisa
     // sobreviver à reativação, não só existir como parâmetro dela.
     maxConsecutiveBlocked: integer('max_consecutive_blocked'),
+    // RN-1143 (AT-916): escada de modelos do projeto; nulo usa ESCADA_PADRAO.
+    modelEscalation: jsonb('model_escalation').$type<EscadaDeModelos>(),
     // Quem promove story a `ready` (Fase 12c, RN-048). NOT NULL com default
     // — diferente dos dois tetos acima, que são nullable porque "nulo =
     // default do domínio". Aqui o valor É a decisão, e uma decisão de

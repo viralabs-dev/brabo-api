@@ -60,8 +60,7 @@ export const FOLGA_DO_ORCAMENTO_DE_RACIOCINIO = 256;
 /**
  * Retenta UMA vez com o raciocínio desligado (AT-587, RN-916)? Só quando a
  * resposta foi cortada, sem texto e sem tool call, e o raciocínio comeu o
- * orçamento (medido, ou o aborto da RN-915). Nunca no segundo ciclo, nunca se
- * o raciocínio já ia desligado nem se o provider não sabe desligá-lo.
+ * orçamento (medido, ou o aborto da RN-915). Nunca no segundo ciclo nem se o provider não sabe desligá-lo.
  */
 export function devoRetentarSemRaciocinio(a: {
   opcoes: { reasoning?: true; reasoningOff?: true; reasoningBudget?: number };
@@ -72,7 +71,8 @@ export function devoRetentarSemRaciocinio(a: {
   abortado: boolean;
   reasoningTokens: number | null;
 }): boolean {
-  if (!a.opcoes.reasoning || a.opcoes.reasoningOff) return false;
+  // `reasoningOff` não impede: o provider pode só ter REDUZIDO o raciocínio (AT-920).
+  if (!a.opcoes.reasoning) return false;
   if (!a.aceitaRaciocinioDesligado) return false;
   if (!a.truncated || a.texto !== '' || a.toolCalls > 0) return false;
   const limite =

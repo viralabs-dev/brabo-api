@@ -1,3 +1,4 @@
+import type { EscadaDeModelos } from '../../domain/execution/escada-de-modelos';
 import type {
   Project,
   ProjectExecutionMode,
@@ -18,6 +19,8 @@ export interface ProjectInput {
   // Circuit breaker por dev agent (Fase 12b — RN-047); nulo/omitido usa o
   // default do domínio.
   maxConsecutiveBlocked?: number | null;
+  // RN-1143 (AT-916): escada de modelos; nulo volta ao padrão.
+  modelEscalation?: EscadaDeModelos | null;
   // Quem promove story a `ready` (Fase 12c — RN-048). Omitido na criação usa
   // o default da coluna (`manual`).
   storyPromotion?: StoryPromotionMode;
