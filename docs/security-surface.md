@@ -1393,6 +1393,7 @@ marcado, fora do grafo; nos demais é descartado sem evento. A marca é ligada p
 | POST | `/internal/sessions/:sessionId/proficiency` | engine-service |
 | POST | `/internal/models/sync` | engine-service |
 | GET | `/internal/graph/prompt-templates/:name` | engine-service |
+| GET | `/internal/graph/projects/:projectId/modules/:nome/impacto` | engine-service |
 | POST | `/internal/graph/prompt-templates` | engine-service |
 | POST | `/internal/rag/search` | engine-service |
 | POST | `/internal/rag/feedback` | engine-service |

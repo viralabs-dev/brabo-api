@@ -540,6 +540,60 @@
         ]
       }
     },
+    "/internal/graph/projects/{projectId}/modules/{nome}/impacto": {
+      "get": {
+        "description": "Who depends on the module, what it depends on, what it exposes, which decisions cite it and the contract version (RN-1166). 404 if the module is not in the graph; 503 if the graph is off.",
+        "operationId": "InternalGraphController_impactoDoModulo",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "nome",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImpactoDoModuloResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Service token missing or different from the shared one."
+          },
+          "404": {
+            "description": "Module not in the project graph."
+          },
+          "503": {
+            "description": "Neo4j not configured or unreachable — no fallback possible for reading/writing a template."
+          }
+        },
+        "security": [
+          {
+            "service-token": []
+          }
+        ],
+        "summary": "Impact of a module, from the project memory graph",
+        "tags": [
+          "internal"
+        ]
+      }
+    },
     "/internal/graph/prompt-templates": {
       "post": {
         "description": "If a version with the SAME hash already exists for the same `name`, no new version is created — the existing one is returned (the idempotency hit does not change the HTTP status: always 201, for simplicity — the body is identical to what would have been created).",
@@ -19304,6 +19358,23 @@
           "rationale"
         ]
       },
+      "DecisaoCitandoDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "0123"
+          },
+          "titulo": {
+            "type": "string",
+            "example": "ADR 0123 — pedidos em fila"
+          }
+        },
+        "required": [
+          "id",
+          "titulo"
+        ]
+      },
       "DecisaoDeImagemResponseDto": {
         "type": "object",
         "properties": {
@@ -20843,6 +20914,69 @@
           "resources"
         ]
       },
+      "ImpactoDoModuloResponseDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "modulo": {
+            "type": "string",
+            "example": "pedidos"
+          },
+          "stack": {
+            "type": "string",
+            "nullable": true,
+            "example": "node-ts"
+          },
+          "commit": {
+            "type": "string",
+            "nullable": true
+          },
+          "contratoVersao": {
+            "type": "number",
+            "nullable": true,
+            "description": "Versão do contrato (do banco); null sem contrato declarado."
+          },
+          "dependentes": {
+            "description": "Módulos que dependem deste.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "dependeDe": {
+            "description": "Módulos de que este depende.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expoe": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InterfaceExpostaDto"
+            }
+          },
+          "decisoes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DecisaoCitandoDto"
+            }
+          }
+        },
+        "required": [
+          "projectId",
+          "modulo",
+          "stack",
+          "commit",
+          "contratoVersao",
+          "dependentes",
+          "dependeDe",
+          "expoe",
+          "decisoes"
+        ]
+      },
       "ImportLlmCredentialDto": {
         "type": "object",
         "properties": {
@@ -21260,6 +21394,24 @@
           "createdAt",
           "isCurrent",
           "diff"
+        ]
+      },
+      "InterfaceExpostaDto": {
+        "type": "object",
+        "properties": {
+          "assinatura": {
+            "type": "string",
+            "example": "criarPedido"
+          },
+          "tipo": {
+            "type": "string",
+            "example": "function",
+            "nullable": true
+          }
+        },
+        "required": [
+          "assinatura",
+          "tipo"
         ]
       },
       "IssuePatRequestDto": {
