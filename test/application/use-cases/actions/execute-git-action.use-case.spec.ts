@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { ExecuteGitActionUseCase } from '../../../../src/application/use-cases/actions/execute-git-action.use-case';
 import type { ResolveCredentialOwnerUseCase } from '../../../../src/application/use-cases/llm/resolve-credential-owner.use-case';
 import type { ProposedActionRepository } from '../../../../src/application/ports/proposed-action-repository.port';
@@ -43,7 +43,11 @@ function action(
 const unitOfWork = {
   runInTransaction: <T>(fn: () => Promise<T>) => fn(),
 } as never;
-let outboxRows: Array<{ eventType: string; payload: unknown }> = [];
+let outboxRows: Array<{
+  aggregateType?: string;
+  eventType: string;
+  payload: unknown;
+}> = [];
 const outbox = {
   append: (row: { eventType: string; payload: unknown }) => {
     outboxRows.push(row);
@@ -544,7 +548,13 @@ describe('ExecuteGitActionUseCase', () => {
     // RN-1022: o merge na branch de trabalho (`main`, trunk) avisa o engine.
     describe('project.trunk_merged (RN-1022)', () => {
       const trunk = () =>
-        outboxRows.filter((r) => r.eventType === 'project.trunk_merged');
+        outboxRows.filter(
+          (r) =>
+            r.eventType === 'project.trunk_merged' &&
+            r.aggregateType === 'project',
+        );
+      const grafoRows = () =>
+        outboxRows.filter((r) => r.aggregateType === 'graph_projection');
       const mergeCom = (state: string, targetBranch: string) => ({
         mergePullRequest: () =>
           Promise.resolve({ id: 'pr-6', state, targetBranch }),
@@ -567,6 +577,44 @@ describe('ExecuteGitActionUseCase', () => {
           sessionId: SESSION,
           mergedSha: 'abc123',
         });
+      });
+
+      // RN-1163: a linha do grafo só existe com o grafo configurado (RN-1148).
+      it('com o grafo configurado, grava também a linha graph_projection do merge', async () => {
+        vi.stubEnv('NEO4J_URI', 'bolt://grafo:7687');
+        vi.stubEnv('NEO4J_USER', 'neo4j');
+        vi.stubEnv('NEO4J_PASSWORD', 'x');
+        try {
+          const uc = build({ provider: mergeCom('merged', 'main') });
+          await uc.execute(
+            PROJECT,
+            SESSION,
+            action('git_merge', { pullRequestId: 'pr-6' }),
+          );
+          expect(grafoRows()).toHaveLength(1);
+          expect(grafoRows()[0]).toMatchObject({
+            eventType: 'project.trunk_merged',
+            payload: { projectId: PROJECT, mergedSha: 'abc123' },
+          });
+        } finally {
+          vi.unstubAllEnvs();
+        }
+      });
+
+      it('sem grafo configurado, não grava linha graph_projection', async () => {
+        vi.stubEnv('NEO4J_URI', '');
+        try {
+          const uc = build({ provider: mergeCom('merged', 'main') });
+          await uc.execute(
+            PROJECT,
+            SESSION,
+            action('git_merge', { pullRequestId: 'pr-6' }),
+          );
+          expect(trunk()).toHaveLength(1);
+          expect(grafoRows()).toHaveLength(0);
+        } finally {
+          vi.unstubAllEnvs();
+        }
       });
 
       it('vale também para PR sem tarefa (infra/ADR)', async () => {

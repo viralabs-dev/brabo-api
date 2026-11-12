@@ -20,6 +20,8 @@ import type {
 } from '../../../domain/git/git-action-execution-result';
 import { GitMergeConflictError } from '../../../domain/git/git-errors';
 import { BRANCH_DE_TRABALHO } from '../../../domain/actions/protected-branches';
+import { GRAPH_PROJECTION_AGGREGATE_TYPE } from '../../../domain/graph/graph-projection-events';
+import { grafoConfigurado } from '../../../infrastructure/graph/neo4j-config';
 
 // Coerção segura de campos `unknown` (payload/resultado do engine) para
 // string — evita o `[object Object]` que o String(unknown) permitiria.
@@ -402,6 +404,17 @@ export class ExecuteGitActionUseCase {
         eventType: 'project.trunk_merged',
         payload: { projectId, sessionId, mergedSha: result.mergedSha ?? '' },
       });
+      // RN-1163: segunda linha, MESMA transação, para o grafo projetar a
+      // memória do projeto — só com o grafo configurado (RN-1148). Agregado
+      // distinto do `project` acima: o engine não drena este.
+      if (grafoConfigurado()) {
+        await this.outbox.append({
+          aggregateType: GRAPH_PROJECTION_AGGREGATE_TYPE,
+          aggregateId: projectId,
+          eventType: 'project.trunk_merged',
+          payload: { projectId, sessionId, mergedSha: result.mergedSha ?? '' },
+        });
+      }
     }
 
     const taskIds = await this.tarefasDaPr(projectId, result.pullRequestId);

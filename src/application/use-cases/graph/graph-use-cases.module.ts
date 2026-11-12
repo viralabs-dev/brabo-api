@@ -8,6 +8,7 @@ import { RecordAnamneseProfileUseCase } from './record-anamnese-profile.use-case
 import { RecordHandoffUseCase } from './record-handoff.use-case';
 import { QueryUserContextUseCase } from './query-user-context.use-case';
 import { RecordProfileFactUseCase } from './record-profile-fact.use-case';
+import { ConsultarImpactoDoModuloUseCase } from './consultar-impacto-do-modulo.use-case';
 
 const USE_CASES = [
   UpsertPromptTemplateUseCase,
@@ -18,6 +19,7 @@ const USE_CASES = [
   RecordHandoffUseCase,
   QueryUserContextUseCase,
   RecordProfileFactUseCase,
+  ConsultarImpactoDoModuloUseCase,
 ];
 
 /**
