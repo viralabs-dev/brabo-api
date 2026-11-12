@@ -114,6 +114,16 @@ keywords: [regras de negócio, api]
 - **Teste:** `test/domain/llm/raciocinio-do-agente.spec.ts`.
 - **Origem:** AT-920 (EP-036), rodada 366, lane AA2.
 
+<a id="rn-1108"></a>
+
+### RN-1108 — O índice RAG do projeto inclui `.brabo/memoria/`, e o merge na trunk o reindexa sozinho {#rn-1108}
+
+- **Regra:** além de `docs/` e `docs/adr/`, a indexação varre `.brabo/memoria/**/*.md` do repositório do PRÓPRIO projeto (a memória em markdown da AT-923). Os chunks entram no escopo `docs`, sem migração; o caminho (`.brabo/memoria/...`) os distingue, e a cobertura os conta junto. Cada `project.trunk_merged` na outbox dispara a mesma reindexação de `docs`/`adr` (`IndexProjectDocsUseCase`) do botão "Reindexar agora", sem as sessões. Falha na reindexação só loga: não desfaz nem atrasa o merge, que já aconteceu. Mesma ideia da [RN-455](parte-05.md#rn-455): o índice cobre fontes que o servidor consegue revisitar.
+- **Como lê:** quem drena `project.trunk_merged` é o engine (`TrunkMergedWorker`), que marca a linha como processada; por isso o consumidor da api só LÊ a outbox (`listByEventTypeAfter`) e guarda a própria marca d'água, em memória, iniciada no boot. Um merge com a api fora do ar só é reindexado no próximo merge ou pelo botão.
+- **Onde:** `src/application/use-cases/rag/index-project-docs.use-case.ts` (`MEMORIA_ROOT`), `src/application/rag-reindex/trunk-merged-reindexer.ts` (`TrunkMergedReindexer`), `src/infrastructure/persistence/drizzle/outbox.repository.ts` (`listByEventTypeAfter`)
+- **Teste:** `test/application/use-cases/rag/index-project-docs.use-case.spec.ts` (`RN-1108`) e `test/application/rag-reindex/trunk-merged-reindexer.spec.ts` (um projeto por ciclo, sem `markProcessed`, marca d'água, falha só loga).
+- **Origem:** AT-923 (EP-036), lane A3 da rodada 371; ADR 0293 (a memória do projeto é markdown versionado; o RAG e o grafo são índices).
+
 <a id="rn-1101"></a>
 
 ### RN-1101 — A ativação da execução recusa o projeto sem container `running`, salvo o dev Noop {#rn-1101}

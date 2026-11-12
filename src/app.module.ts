@@ -30,6 +30,7 @@ import { PsychologistHttpModule } from './interfaces/http/psychologist/psycholog
 import { AnamneseHttpModule } from './interfaces/http/anamnese/anamnese-http.module';
 import { GraphProjectionModule } from './application/graph-projection/graph-projection.module';
 import { ArtifactProjectionModule } from './application/artifact-projection/artifact-projection.module';
+import { RagReindexModule } from './application/rag-reindex/rag-reindex.module';
 
 @Module({
   // Ordem importa: AuthHttpModule antes de IamHttpModule, para o
@@ -69,6 +70,7 @@ import { ArtifactProjectionModule } from './application/artifact-projection/arti
     // rota HTTP própria (ver graph-projection.module.ts).
     GraphProjectionModule,
     ArtifactProjectionModule,
+    RagReindexModule,
   ],
   controllers: [AppController],
   providers: [
