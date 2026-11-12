@@ -3,7 +3,7 @@ import { UpdateProjectUseCase } from '../../../../src/application/use-cases/iam/
 
 const projetos = { update: () => Promise.resolve({ id: 'p1' }) } as never;
 
-describe('UpdateProjectUseCase — teto por tarefa (RN-1141)', () => {
+describe('UpdateProjectUseCase — teto por tarefa (RN-1155)', () => {
   it('mudar o teto chama o engine', async () => {
     const setTaskBudget = vi.fn().mockResolvedValue(undefined);
     const uc = new UpdateProjectUseCase(projetos, { setTaskBudget } as never);

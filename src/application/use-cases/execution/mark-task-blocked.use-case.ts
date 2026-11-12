@@ -95,7 +95,7 @@ export class MarkTaskBlockedUseCase {
       return { task, owner };
     });
 
-    // RN-1142 (AT-916): FORA da transação — falha da escalada nunca desfaz o
+    // RN-1156 (AT-916): FORA da transação — falha da escalada nunca desfaz o
     // bloqueio, que é o desfecho seguro.
     if (ehBloqueioPorLimiteDeIteracoes(reason, origin)) {
       try {

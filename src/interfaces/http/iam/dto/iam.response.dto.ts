@@ -306,7 +306,7 @@ export class ProjectResponseDto implements Wire<Project> {
     type: EscadaDeModelosDto,
     nullable: true,
     description:
-      'Model ladder (RN-1142). `null` uses the default Haiku 5.5 → Sonnet 5.',
+      'Model ladder (RN-1156). `null` uses the default Haiku 5.5 → Sonnet 5.',
   })
   modelEscalation!: EscadaDeModelosDto | null;
 

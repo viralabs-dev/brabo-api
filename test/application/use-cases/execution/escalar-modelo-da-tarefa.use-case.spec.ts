@@ -85,7 +85,7 @@ function build(modeloAtual: string, opts: { engineFalha?: boolean } = {}) {
   return { uc, log };
 }
 
-describe('EscalarModeloDaTarefaUseCase (RN-1142/RN-1143)', () => {
+describe('EscalarModeloDaTarefaUseCase (RN-1156/RN-1157)', () => {
   it('1º bloqueio só conta; 2º sobe Haiku → Sonnet com o teto do degrau e desbloqueia', async () => {
     const { uc, log } = build(HAIKU);
     expect(await uc.aoBloquearPorLimite('p', 's', 't', 'dev-x')).toBe(

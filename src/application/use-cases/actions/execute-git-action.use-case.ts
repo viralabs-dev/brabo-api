@@ -411,7 +411,7 @@ export class ExecuteGitActionUseCase {
       const task = await this.tasks.markDoneIfNotDone(taskId);
       if (!task) continue;
       fechadas.push(taskId);
-      // RN-1143 (AT-916): tarefa fechada devolve o agente ao modelo base.
+      // RN-1157 (AT-916): tarefa fechada devolve o agente ao modelo base.
       await this.escalada.restaurar(projectId, taskId).catch(() => undefined);
       await this.appendSessionEvent.execute(projectId, sessionId, {
         type: 'backlog.task_status_changed',

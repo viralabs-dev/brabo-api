@@ -8,7 +8,7 @@ export interface TaskModelEscalation {
   baseRoutingPreference: string | null;
 }
 
-/** RN-1143 (AT-916): o estado da escalada de modelo por tarefa. */
+/** RN-1157 (AT-916): o estado da escalada de modelo por tarefa. */
 export abstract class TaskModelEscalationRepository {
   /** Soma 1 bloqueio por limite (cria a linha se for o primeiro). */
   abstract registrarBloqueio(

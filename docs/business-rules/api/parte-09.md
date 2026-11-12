@@ -126,8 +126,8 @@ módulo do `module_map`, como antes, e o paralelismo extra continua pelo
 `parallelize` ([RN-083](parte-02.md#rn-083)).
 
 - **Onde:** `src/domain/execution/plano-de-execucao.ts:39`
-  (`lerPlanoDeExecucao`); `src/infrastructure/persistence/drizzle/backlog.repository.ts:784`
-  (`daTarefaDoModulo`), `:413` (`claimNext`), `:401` (`assignModules`);
+  (`lerPlanoDeExecucao`); `src/infrastructure/persistence/drizzle/backlog.repository.ts:797`
+  (`daTarefaDoModulo`), `:404` (`claimNext`), `:392` (`assignModules`);
   `src/application/use-cases/actions/propose-action.use-case.ts:141`
   (`recusaNaProposta`); `src/application/use-cases/execution/execute-execution-plan.use-case.ts:67`
   (`recusaNaProposta`); `src/db/schema/backlog.ts:187` (`module`);
@@ -850,7 +850,7 @@ restaura a aprovação.
 - **Medição (AT-383, 02/10, loja-teste):** a #6 terminou `failed` por conflito
   em `package.json`, e a tarefa ficou `in_review` sem ninguém para resolvê-lo.
 - **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:471` (`devolverAoDono`),
-  `src/infrastructure/persistence/drizzle/backlog.repository.ts:517` (`reabrirPorConflitoDeMerge`),
+  `src/infrastructure/persistence/drizzle/backlog.repository.ts:510` (`reabrirPorConflitoDeMerge`),
   `apps/engine/lib/engine/workers/dev_agent_wake_worker.ex:151` (`task.merge_conflict`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:350` (`handle_info`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:851` (`trigger_gate_recheck`),

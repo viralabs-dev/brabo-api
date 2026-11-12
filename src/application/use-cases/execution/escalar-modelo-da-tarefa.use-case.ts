@@ -19,7 +19,7 @@ export type DesfechoDaEscalada =
   'contado' | 'escalado' | 'escada_esgotada' | 'fora_da_escada';
 
 /**
- * RN-1142/RN-1143 (AT-916): depois de N=2 bloqueios por limite de iterações na
+ * RN-1156/RN-1157 (AT-916): depois de N=2 bloqueios por limite de iterações na
  * MESMA tarefa, o agente sobe um degrau da escada do projeto: troca o
  * `agent-binding`, aplica o teto do degrau e desbloqueia a tarefa. Quando a
  * tarefa fecha, `restaurar` devolve o modelo base e o teto do projeto. O

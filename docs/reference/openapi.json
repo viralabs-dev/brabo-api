@@ -18824,10 +18824,10 @@
           "taskBudgetMicros": {
             "type": "number",
             "example": 500000,
-            "description": "Cap per dev agent task, in micro-USD. Changing it on PATCH also reaches the live dev agents, from the next lap of each task, with no reactivation (RN-1141). The engine call is best-effort: if it fails the project change stands."
+            "description": "Cap per dev agent task, in micro-USD. Changing it on PATCH also reaches the live dev agents, from the next lap of each task, with no reactivation (RN-1155). The engine call is best-effort: if it fails the project change stands."
           },
           "modelEscalation": {
-            "description": "Model ladder of the project (RN-1142). Omitted uses the default (Haiku 5.5 → Sonnet 5).",
+            "description": "Model ladder of the project (RN-1156). Omitted uses the default (Haiku 5.5 → Sonnet 5).",
             "allOf": [
               {
                 "$ref": "#/components/schemas/EscadaDeModelosDto"
@@ -19871,7 +19871,7 @@
         "type": "object",
         "properties": {
           "ladder": {
-            "description": "Steps from the smallest model to the largest. The agent climbs one step after 2 iteration-limit blocks on the same task (RN-1142).",
+            "description": "Steps from the smallest model to the largest. The agent climbs one step after 2 iteration-limit blocks on the same task (RN-1156).",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/DegrauDaEscadaDto"
@@ -24527,7 +24527,7 @@
           },
           "modelEscalation": {
             "nullable": true,
-            "description": "Model ladder (RN-1142). `null` uses the default Haiku 5.5 → Sonnet 5.",
+            "description": "Model ladder (RN-1156). `null` uses the default Haiku 5.5 → Sonnet 5.",
             "type": "object",
             "allOf": [
               {
@@ -28751,6 +28751,11 @@
             "nullable": true,
             "description": "Why the task was archived (required when archiving)."
           },
+          "fundacao": {
+            "type": "boolean",
+            "example": false,
+            "description": "The module FOUNDATION task (AT-901, RN-1138): created by the Dev Lead; the claim hands it out before the other tasks of the module."
+          },
           "createdAt": {
             "type": "string",
             "example": "2026-07-25T10:00:00.000Z",
@@ -28777,6 +28782,7 @@
           "module",
           "archivedAt",
           "archivedReason",
+          "fundacao",
           "createdAt",
           "updatedAt"
         ]
@@ -29127,10 +29133,10 @@
           "taskBudgetMicros": {
             "type": "number",
             "example": 500000,
-            "description": "Cap per dev agent task, in micro-USD. Changing it on PATCH also reaches the live dev agents, from the next lap of each task, with no reactivation (RN-1141). The engine call is best-effort: if it fails the project change stands."
+            "description": "Cap per dev agent task, in micro-USD. Changing it on PATCH also reaches the live dev agents, from the next lap of each task, with no reactivation (RN-1155). The engine call is best-effort: if it fails the project change stands."
           },
           "modelEscalation": {
-            "description": "Model ladder of the project (RN-1142). Omitted uses the default (Haiku 5.5 → Sonnet 5).",
+            "description": "Model ladder of the project (RN-1156). Omitted uses the default (Haiku 5.5 → Sonnet 5).",
             "allOf": [
               {
                 "$ref": "#/components/schemas/EscadaDeModelosDto"

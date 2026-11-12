@@ -286,7 +286,7 @@ seguiram em `in_review` (AT-275).
    infra e de ADR igualmente.
 
 - **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:381`
-  (`settleMerge`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:507`
+  (`settleMerge`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:500`
   (`markDoneIfNotDone`)
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   ("git_merge marca a tarefa como done": feliz, repetido, PR aberta/merge
