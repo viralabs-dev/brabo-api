@@ -285,7 +285,7 @@ seguiram em `in_review` (AT-275).
    outbox `project.trunk_merged` ([RN-1022](parte-11.md#rn-1022)), para PRs de tarefa, de
    infra e de ADR igualmente.
 
-- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:381`
+- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:385`
   (`settleMerge`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:500`
   (`markDoneIfNotDone`)
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
