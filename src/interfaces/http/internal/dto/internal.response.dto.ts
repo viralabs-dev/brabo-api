@@ -665,6 +665,15 @@ export class LlmUsageResponseDto {
       'be able to say so.',
   })
   estimated!: boolean;
+
+  @ApiPropertyOptional({
+    example: 4120,
+    description:
+      'Reasoning tokens of the step, when the provider counted them ' +
+      '(`token_usage.reasoning_tokens`, RN-1150). Absent otherwise: the ' +
+      'screen shows a dash, never zero.',
+  })
+  reasoningTokens?: number;
 }
 
 export class ToolRoutingResponseDto {

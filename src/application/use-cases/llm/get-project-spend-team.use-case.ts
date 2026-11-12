@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   TokenUsageRepository,
+  type SpendDiaDoAgente,
   type SpendScopeAmplo,
 } from '../../ports/token-usage-repository.port';
 import { areaDo } from '../../../domain/agents/agent-areas';
@@ -17,6 +18,12 @@ export interface ProjectSpendTeam {
   porAgente: SpendLinha[];
   /** Agentes agrupados pela área do catálogo; sem área, `chave: 'sem-area'`. */
   porArea: SpendLinha[];
+  /** Por modelo (RN-1152). Modelo não é credencial; provider segue só do owner (RN-186). */
+  porModelo: SpendLinha[];
+  /** Por sessão, do projeto inteiro (RN-1152). */
+  porSessao: SpendLinha[];
+  /** Por dia e agente, esparso: só dias com chamada (RN-1153). */
+  porDiaEAgente: SpendDiaDoAgente[];
 }
 
 /**
@@ -31,7 +38,12 @@ export class GetProjectSpendTeamUseCase {
 
   async execute(projectId: string, dias: number): Promise<ProjectSpendTeam> {
     const escopo: SpendScopeAmplo = { projectId, dias };
-    const porAtor = await this.tokenUsage.sumGroupedBy('actor', escopo);
+    const [porAtor, porModelo, porSessao, porDiaEAgente] = await Promise.all([
+      this.tokenUsage.sumGroupedBy('actor', escopo),
+      this.tokenUsage.sumGroupedBy('model', escopo),
+      this.tokenUsage.sumGroupedBy('session', escopo),
+      this.tokenUsage.sumByDayAndAgent(escopo),
+    ]);
     const agentes = comoLinhas(porAtor.filter((l) => l.actorKind === 'agent'));
     const totais = somarTotais(porAtor);
 
@@ -66,6 +78,9 @@ export class GetProjectSpendTeamUseCase {
       chamadas: totais.chamadas,
       porAgente: agentes,
       porArea: [...areas.values()].sort((x, y) => y.costMicros - x.costMicros),
+      porModelo: comoLinhas(porModelo),
+      porSessao: comoLinhas(porSessao),
+      porDiaEAgente,
     };
   }
 }

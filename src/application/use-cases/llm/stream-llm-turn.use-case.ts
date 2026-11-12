@@ -60,6 +60,8 @@ export interface LlmTurnUsage {
   outputTokens: number;
   costMicros: number;
   estimated: boolean;
+  /** Tokens de raciocínio do passo, quando o provider os contou (RN-1150). */
+  reasoningTokens?: number;
 }
 
 export type LlmTurnStreamEvent =
@@ -391,7 +393,13 @@ export class StreamLlmTurnUseCase {
         yield {
           ...falhaDeChamadaEmTexto(model.name, marcador),
           type: 'final',
-          usage: { inputTokens, outputTokens, costMicros, estimated },
+          usage: {
+            inputTokens,
+            outputTokens,
+            costMicros,
+            estimated,
+            ...(reasoningTokens !== null ? { reasoningTokens } : {}),
+          },
         };
         return;
       }
@@ -419,7 +427,13 @@ export class StreamLlmTurnUseCase {
           ...(thinkingBlocks.length > 0 ? { thinkingBlocks } : {}),
         },
         ...(raciocinio ? { raciocinio } : {}),
-        usage: { inputTokens, outputTokens, costMicros, estimated },
+        usage: {
+          inputTokens,
+          outputTokens,
+          costMicros,
+          estimated,
+          ...(reasoningTokens !== null ? { reasoningTokens } : {}),
+        },
         error: streamError,
         errorCode: streamErrorCode,
         modelName: model.name,

@@ -35,6 +35,7 @@ import type { UserCredentialMetadata } from '../../../../domain/llm/user-credent
 import type {
   AgentTokenUsage,
   SessionAgentTokenUsage,
+  SpendDiaDoAgente,
 } from '../../../../application/ports/token-usage-repository.port';
 import type {
   SpendLinha,
@@ -651,6 +652,12 @@ export class SessionAgentTokenUsageResponseDto
   implements Wire<SessionAgentTokenUsage>
 {
   @ApiProperty({
+    example: 35,
+    description: "The agent's LLM calls in the session (RN-1151).",
+  })
+  chamadas!: number;
+
+  @ApiProperty({
     type: LastCallResponseDto,
     nullable: true,
     description:
@@ -1049,6 +1056,20 @@ export class MySpendResponseDto implements Wire<MySpend> {
 }
 export const _chavesMySpend: MesmasChaves<MySpendResponseDto, MySpend> = true;
 
+export class SpendDiaDoAgenteResponseDto implements Wire<SpendDiaDoAgente> {
+  @ApiProperty({ example: '2026-11-11', description: 'UTC day.' })
+  dia!: string;
+
+  @ApiProperty({ example: 'criativo' })
+  agente!: string;
+
+  @ApiProperty({ example: 52_700 })
+  costMicros!: number;
+
+  @ApiProperty({ example: 4 })
+  chamadas!: number;
+}
+
 /** O gasto do PROJETO para o membro: total e por agente/área, sem provider (RN-953). */
 export class ProjectSpendTeamResponseDto implements Wire<ProjectSpendTeam> {
   @ApiProperty({ format: 'uuid' })
@@ -1080,6 +1101,25 @@ export class ProjectSpendTeamResponseDto implements Wire<ProjectSpendTeam> {
     description: 'By catalog AREA of the agent; `sem-area` when none.',
   })
   porArea!: SpendLinhaResponseDto[];
+
+  @ApiProperty({
+    type: [SpendLinhaResponseDto],
+    description: 'By MODEL name (RN-1152). Never by provider (RN-186).',
+  })
+  porModelo!: SpendLinhaResponseDto[];
+
+  @ApiProperty({
+    type: [SpendLinhaResponseDto],
+    description: 'By SESSION of the whole project (RN-1152).',
+  })
+  porSessao!: SpendLinhaResponseDto[];
+
+  @ApiProperty({
+    type: [SpendDiaDoAgenteResponseDto],
+    description:
+      'By day and AGENT (RN-1153). Sparse: only days with a call; the client densifies.',
+  })
+  porDiaEAgente!: SpendDiaDoAgenteResponseDto[];
 }
 export const _chavesProjectSpendTeam: MesmasChaves<
   ProjectSpendTeamResponseDto,

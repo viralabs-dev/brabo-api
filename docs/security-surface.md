@@ -972,6 +972,12 @@ detalhar o motivo na URL.
   (`role:owner`, o nível de `…/pricing`) grava a marca curada. O
   `?projectId=` do `spend-report` segue `owner` e responde 404 para projeto de
   outro workspace.
+- **Fontes da v9 (AT-929..932, [RN-1150](business-rules/api.md#rn-1150)..[RN-1154](business-rules/api.md#rn-1154)): sem rota nova, papéis intactos.**
+  `GET /projects/:projectId/spend/team` (`viewer`) ganhou `porModelo`, `porSessao` e
+  `porDiaEAgente`; modelo não é credencial e `provider` segue só do owner.
+  `GET /projects/:projectId/actions` (`developer`) aceita `status=decided` e `since`,
+  sempre escopado ao projeto, com teto de 100. O listar sessões (`viewer`) ganhou
+  custo e contagens agregados do próprio projeto.
 - **`GET /workspaces/:workspaceId/spend-report` passou a devolver o recorte
   por provider, que é um recorte por CREDENCIAL**
   ([ADR 0076](adr/0076-provider-volta-a-ser-dimensao-de-gasto.md),
