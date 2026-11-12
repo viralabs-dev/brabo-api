@@ -257,7 +257,7 @@ Completa a [RN-666](parte-08.md#rn-666) (item 4) para o 9Router. A 0.5.112 SOMA 
 ### RN-960 — O `GraphStore` reconecta depois de boot sem Neo4j, e o aviso diz a causa {#rn-960}
 
 - **Regra:** refina o ADR 0099. Boot em que o Neo4j ainda não respondia deixava o driver `null` para a vida do processo. Agora, com config presente, a operação seguinte tenta conectar de novo, no máximo uma vez a cada 30 s; sem config nunca tenta, e `onModuleInit` segue sem lançar. O aviso do `GraphProjector` inclui a causa do erro do driver.
-- **Onde:** `src/infrastructure/graph/graph-store.ts:114` (`reconectarSeNecessario`), `src/application/graph-projection/graph-projector.ts:106` (`drainOnce`).
+- **Onde:** `src/infrastructure/graph/graph-store.ts:119` (`reconectarSeNecessario`), `src/application/graph-projection/graph-projector.ts:113` (`drainOnce`).
 - **Teste:** `test/infrastructure/graph/graph-store.spec.ts` ("RN-960"), `test/application/graph-projection/graph-projector.spec.ts` ("RN-960").
 - **Origem:** AT-642 (EP-030).
 
