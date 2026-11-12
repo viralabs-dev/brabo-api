@@ -131,3 +131,48 @@ keywords: [regras de negócio, api]
 - **Origem:** AT-901 (EP-036), só o merge sem efeito; rodada 366, lane AA1.
 
 A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em `ARG`/`ENV`; só como secret do BuildKit), definida no [brabo-broker](https://github.com/viralabs-dev/brabo-broker/blob/dev/docs/business-rules/broker.md). Quem prova na api é `test/dockerfile-sem-token.spec.ts:13` (todo `pnpm install` do `Dockerfile` monta o secret, nenhum `ARG`/`ENV` com token, `.npmrc` só com o registry).
+
+<a id="rn-1150"></a>
+
+### RN-1150 — O `usage` do turno de LLM devolve `reasoningTokens` quando o provider os contou {#rn-1150}
+
+- **Regra:** `LlmUsageResponseDto.reasoningTokens` é opcional e vem do mesmo valor que o `token_usage.reasoning_tokens` grava ([RN-666](parte-09.md#rn-666)). Provider que não contou: o campo some, nunca vira `0` (a tela mostra traço).
+- **Código:** `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:393` (`execute`), `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:435` (`execute`), `apps/api/src/interfaces/http/internal/dto/internal.response.dto.ts:611` (`LlmUsageResponseDto`)
+- **Teste:** `apps/api/test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` (presente com 120, ausente sem contagem)
+- **Origem:** AT-929 (EP-035).
+
+<a id="rn-1151"></a>
+
+### RN-1151 — A lista de sessões do projeto traz custo, chamadas, agentes e passos {#rn-1151}
+
+- **Regra:** `GET /projects/:projectId/sessions` ganha, por item, `costMicros`, `chamadas`, `agentes[]` (ids com gasto de `actor_kind = 'agent'`) e `passos` (eventos `tool.call`); sessão sem uso devolve zeros e lista vazia. Duas queries agregadas por projeto, sem N+1. O uso por agente da sessão (`GET .../token-usage`) ganha `chamadas`.
+- **Código:** `apps/api/src/infrastructure/persistence/drizzle/session.repository.ts:49` (`usoPorSessaoDoProjeto`), `apps/api/src/application/use-cases/sessions/list-sessions-for-project.use-case.ts:30` (`execute`)
+- **Teste:** `apps/api/test/application/use-cases/sessions/list-sessions-for-project.use-case.spec.ts` (soma, agentes, passos e sessão sem uso)
+- **Origem:** AT-930 (EP-035).
+
+<a id="rn-1152"></a>
+
+### RN-1152 — O gasto do projeto para o membro vem quebrado por modelo e por sessão, nunca por provider {#rn-1152}
+
+- **Regra:** `GET /projects/:projectId/spend/team` ganha `porModelo` e `porSessao` (mesmas linhas de `porAgente`). Modelo não é credencial; o eixo `provider` segue só do owner ([RN-186](parte-01.md#rn-186)/[RN-187](parte-01.md#rn-187)).
+- **Código:** `apps/api/src/application/use-cases/llm/get-project-spend-team.use-case.ts:46` (`execute`)
+- **Teste:** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (o membro vê total e custo por agente/área; sem `provider` no JSON)
+- **Origem:** AT-931 (EP-035).
+
+<a id="rn-1153"></a>
+
+### RN-1153 — O gasto do projeto traz a série por dia e por agente, esparsa {#rn-1153}
+
+- **Regra:** `porDiaEAgente` em `spend/team`: `{ dia (UTC), agente, costMicros, chamadas }`, só `actor_kind = 'agent'` e só dias com chamada, em ordem de dia; o cliente densifica.
+- **Código:** `apps/api/src/infrastructure/persistence/drizzle/token-usage.repository.ts:243` (`sumByDayAndAgent`)
+- **Teste:** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (só o agente, só o projeto)
+- **Origem:** AT-931 (EP-035).
+
+<a id="rn-1154"></a>
+
+### RN-1154 — As ações do projeto listam as decididas recentes, com o motivo {#rn-1154}
+
+- **Regra:** `GET /projects/:projectId/actions?status=decided&since=<ISO>` devolve o que deixou de ser `pending` (aprovadas, negadas com `rejectionReason`, `auto_approved`, executadas, falhas) mudado desde `since` (padrão 24 h), mais recentes primeiro, teto 100, `actionType` opcional; `since` inválido é 400. A recência é `updated_at` (`decided_at` é nulo nas automáticas).
+- **Código:** `apps/api/src/infrastructure/persistence/drizzle/proposed-action.repository.ts:187` (`listDecidedByProject`), `apps/api/src/application/use-cases/actions/list-project-pending-actions.use-case.ts:30` (`execute`), `apps/api/src/interfaces/http/actions/project-actions.controller.ts:60` (`list`)
+- **Teste:** `apps/api/test/application/use-cases/actions/list-project-pending-actions.use-case.spec.ts` (negada com motivo e automática entram; pendente e velha não)
+- **Origem:** AT-932 (EP-035).

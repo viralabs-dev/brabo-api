@@ -2,6 +2,16 @@ import type { Session } from '../../domain/sessions/session.entity';
 import type { SessionKind } from '../../domain/sessions/session-kind';
 import type { SessionStatus } from '../../domain/sessions/session-state-machine';
 
+/** O uso agregado de uma sessão, para a listagem (RN-1151). */
+export interface UsoDaSessao {
+  costMicros: number;
+  chamadas: number;
+  /** Ids dos agentes (`token_usage.actor_id`, `actor_kind = 'agent'`) que gastaram. */
+  agentes: string[];
+  /** Eventos `tool.call` da sessão. */
+  passos: number;
+}
+
 export abstract class SessionRepository {
   abstract create(input: {
     projectId: string;
@@ -25,6 +35,11 @@ export abstract class SessionRepository {
   ): Promise<Session | null>;
 
   abstract listForProject(projectId: string): Promise<Session[]>;
+
+  /** Uso de todas as sessões do projeto em 2 queries (sem N+1); sessão sem uso fica de fora. */
+  abstract usoPorSessaoDoProjeto(
+    projectId: string,
+  ): Promise<Map<string, UsoDaSessao>>;
 
   /**
    * Sessão de execução VIGENTE do projeto: a `active` mais recente que já

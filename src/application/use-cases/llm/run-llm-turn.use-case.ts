@@ -67,6 +67,8 @@ export interface RunLlmTurnResult {
     outputTokens: number;
     costMicros: number;
     estimated: boolean;
+    /** Tokens de raciocínio do passo, quando o provider os contou (RN-1150). */
+    reasoningTokens?: number;
   };
   error: string | null;
   /**
@@ -351,7 +353,13 @@ export class RunLlmTurnUseCase {
       if (marcador) {
         return {
           ...falhaDeChamadaEmTexto(model.name, marcador),
-          usage: { inputTokens, outputTokens, costMicros, estimated },
+          usage: {
+            inputTokens,
+            outputTokens,
+            costMicros,
+            estimated,
+            ...(reasoningTokens !== null ? { reasoningTokens } : {}),
+          },
         };
       }
       if (
@@ -377,7 +385,13 @@ export class RunLlmTurnUseCase {
           ...(thinkingBlocks.length > 0 ? { thinkingBlocks } : {}),
         },
         ...(raciocinio ? { raciocinio } : {}),
-        usage: { inputTokens, outputTokens, costMicros, estimated },
+        usage: {
+          inputTokens,
+          outputTokens,
+          costMicros,
+          estimated,
+          ...(reasoningTokens !== null ? { reasoningTokens } : {}),
+        },
         error: streamError,
         errorCode: streamErrorCode,
         modelName: model.name,

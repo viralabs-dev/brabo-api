@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Feature (AT-929 a AT-932, EP-035, RN-1150 a RN-1154): fontes da v9, só campos e filtros opcionais. O `usage` do turno de LLM devolve `reasoningTokens`; `GET /projects/:id/sessions` traz `costMicros`, `chamadas`, `agentes` e `passos` por sessão, e `.../token-usage` traz `chamadas` por agente; `GET /projects/:id/spend/team` traz `porModelo`, `porSessao` e `porDiaEAgente`; `GET /projects/:id/actions` aceita `status=decided` e `since`. `openapi.json` e `security-surface.md` atualizados.
 - Feature (AT-923, RN-1108, ADR 0293): o índice RAG do projeto indexa `.brabo/memoria/**/*.md` (escopo `docs`) e é reindexado a cada `project.trunk_merged`, por um consumidor que só lê a outbox (o engine é quem a drena). Falha na reindexação só loga. `OutboxRepository` ganha `listByEventTypeAfter`. Sem rota nova e sem mudança no `openapi.json`.
 - CI (AT-926): `openapi.json` regenerado (inclui as rotas `wake` e `archive` da api#97) e um passo no job `lint` do `ci.yml` que exporta o openapi e reprova o PR se o `docs/reference/openapi.json` versionado diferir, mostrando o diff. Rota nova sem o arquivo regenerado passa a reprovar o CI.
 

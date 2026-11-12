@@ -4220,7 +4220,7 @@
     },
     "/projects/{projectId}/actions": {
       "get": {
-        "description": "`status` is `pending` (the default) or `failed`. `actionType` filters by type — e.g. `git_merge`, for the PRs tab to find the merge proposal for a PR without knowing which session created it. `status=failed` REQUIRES `actionType` and lists the actions whose execution failed — the PRs tab reads the last refused merge of each PR from it (a merge conflict carries `executionResult.conflictingFiles`).",
+        "description": "`status` is `pending` (the default), `failed` or `decided`. `decided` lists what is no longer pending (approved, denied with `rejectionReason`, `auto_approved`, executed, failed) changed since `since` (ISO date, default 24 h ago), newest first, max 100 (RN-1154). `actionType` filters by type — e.g. `git_merge`, for the PRs tab to find the merge proposal for a PR without knowing which session created it. `status=failed` REQUIRES `actionType` and lists the actions whose execution failed — the PRs tab reads the last refused merge of each PR from it (a merge conflict carries `executionResult.conflictingFiles`).",
         "operationId": "ProjectActionsController_list",
         "parameters": [
           {
@@ -4246,6 +4246,15 @@
             "in": "query",
             "schema": {
               "example": "git_merge",
+              "type": "string"
+            }
+          },
+          {
+            "name": "since",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-11-10T12:00:00Z",
               "type": "string"
             }
           }
@@ -21774,6 +21783,11 @@
             "type": "boolean",
             "example": false,
             "description": "`true` when the provider did not return a count and the cost was ESTIMATED. The number is worth less, and whoever consumes it needs to be able to say so."
+          },
+          "reasoningTokens": {
+            "type": "number",
+            "example": 4120,
+            "description": "Reasoning tokens of the step, when the provider counted them (`token_usage.reasoning_tokens`, RN-1150). Absent otherwise: the screen shows a dash, never zero."
           }
         },
         "required": [
@@ -24583,6 +24597,27 @@
             "items": {
               "$ref": "#/components/schemas/SpendLinhaResponseDto"
             }
+          },
+          "porModelo": {
+            "description": "By MODEL name (RN-1152). Never by provider (RN-186).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpendLinhaResponseDto"
+            }
+          },
+          "porSessao": {
+            "description": "By SESSION of the whole project (RN-1152).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpendLinhaResponseDto"
+            }
+          },
+          "porDiaEAgente": {
+            "description": "By day and AGENT (RN-1153). Sparse: only days with a call; the client densifies.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpendDiaDoAgenteResponseDto"
+            }
           }
         },
         "required": [
@@ -24594,7 +24629,10 @@
           "outputTokens",
           "chamadas",
           "porAgente",
-          "porArea"
+          "porArea",
+          "porModelo",
+          "porSessao",
+          "porDiaEAgente"
         ]
       },
       "ProjectUnreadEventsResponseDto": {
@@ -27259,6 +27297,11 @@
             "type": "number",
             "example": 14200
           },
+          "chamadas": {
+            "type": "number",
+            "example": 35,
+            "description": "The agent's LLM calls in the session (RN-1151)."
+          },
           "lastCall": {
             "nullable": true,
             "description": "The agent's latest call in the session (Jev excluded); null when none.",
@@ -27275,6 +27318,7 @@
           "costMicros",
           "inputTokens",
           "outputTokens",
+          "chamadas",
           "lastCall"
         ]
       },
@@ -27469,6 +27513,32 @@
             "type": "boolean",
             "example": false,
             "description": "Whether this is the TECHNICAL session opened by repository provisioning (the one linked from `repo_bootstraps`), as opposed to a work session. It is the link, never the name: renaming the session does not change it. Screens that pick \"the most recent session\" skip it unless it is the only one."
+          },
+          "costMicros": {
+            "type": "number",
+            "example": 47000,
+            "description": "Total cost of the session in micro-USD (`token_usage`, RN-1151). 0 when it never spent."
+          },
+          "chamadas": {
+            "type": "number",
+            "example": 35,
+            "description": "LLM calls of the session."
+          },
+          "agentes": {
+            "example": [
+              "criativo",
+              "po"
+            ],
+            "description": "Ids of the agents that spent in the session.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "passos": {
+            "type": "number",
+            "example": 12,
+            "description": "Tool-call steps (`tool.call` events) of the session."
           }
         },
         "required": [
@@ -27484,7 +27554,11 @@
           "closedAt",
           "terminationReason",
           "traceParent",
-          "technical"
+          "technical",
+          "costMicros",
+          "chamadas",
+          "agentes",
+          "passos"
         ]
       },
       "SessionPendingWorkResponseDto": {
@@ -28037,6 +28111,34 @@
         },
         "required": [
           "id"
+        ]
+      },
+      "SpendDiaDoAgenteResponseDto": {
+        "type": "object",
+        "properties": {
+          "dia": {
+            "type": "string",
+            "example": "2026-11-11",
+            "description": "UTC day."
+          },
+          "agente": {
+            "type": "string",
+            "example": "criativo"
+          },
+          "costMicros": {
+            "type": "number",
+            "example": 52700
+          },
+          "chamadas": {
+            "type": "number",
+            "example": 4
+          }
+        },
+        "required": [
+          "dia",
+          "agente",
+          "costMicros",
+          "chamadas"
         ]
       },
       "SpendLinhaResponseDto": {

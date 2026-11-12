@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, desc, eq, gt, gte, isNotNull, lt } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, isNotNull, lt, ne } from 'drizzle-orm';
 import {
   ProposedActionRepository,
   type DecideProposedAction,
@@ -181,6 +181,29 @@ export class DrizzleProposedActionRepository implements ProposedActionRepository
         ),
       )
       .orderBy(asc(proposedActions.decidedAt));
+    return rows.map(toEntity);
+  }
+
+  async listDecidedByProject(
+    projectId: string,
+    desde: Date,
+    actionType?: string,
+  ): Promise<ProposedAction[]> {
+    const db = currentDb(this.rootDb);
+    // shortcut: recência por `updated_at` (decided_at é nulo em auto_approved); upgrade se a execução passar a reescrever a linha.
+    const rows = await db
+      .select()
+      .from(proposedActions)
+      .where(
+        and(
+          eq(proposedActions.projectId, projectId),
+          ne(proposedActions.status, 'pending'),
+          gte(proposedActions.updatedAt, desde),
+          ...(actionType ? [eq(proposedActions.actionType, actionType)] : []),
+        ),
+      )
+      .orderBy(desc(proposedActions.updatedAt))
+      .limit(100);
     return rows.map(toEntity);
   }
 

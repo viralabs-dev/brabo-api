@@ -144,6 +144,10 @@ export abstract class TokenUsageRepository {
    * Sem filtro implícito de `actor_kind`: quem restringe é o `escopo`. A
    * RN-038 vale para os agregados que dizem "agentes"; este diz "gasto".
    */
+  /** O gasto do PROJETO por dia e por agente (`actor_kind = 'agent'`), RN-1153. */
+  abstract sumByDayAndAgent(
+    escopo: SpendScopeAmplo,
+  ): Promise<SpendDiaDoAgente[]>;
   abstract sumGroupedBy(
     dimensao: SpendDimensionDoAtor,
     escopo: SpendScopeDeAtor,
@@ -202,6 +206,15 @@ export interface SpendScopeDeAtor extends SpendScopeBase {
 
 export type SpendScope = SpendScopeAmplo | SpendScopeDeAtor;
 
+/** Um ponto do gasto por dia e agente (RN-1153): só dias com chamada. */
+export interface SpendDiaDoAgente {
+  /** `YYYY-MM-DD`, UTC. */
+  dia: string;
+  agente: string;
+  costMicros: number;
+  chamadas: number;
+}
+
 export interface SpendBucket {
   /**
    * A chave do agrupamento: nome do modelo, nome do provider, id do
@@ -240,6 +253,8 @@ export interface AgentTokenUsage {
 
 /** A soma do agente na sessão + a última chamada dele (fora o Jev), AT-654. */
 export interface SessionAgentTokenUsage extends AgentTokenUsage {
+  /** Chamadas de LLM do agente na sessão (RN-1151). */
+  chamadas: number;
   lastCall: {
     inputTokens: number;
     modelName: string;

@@ -138,6 +138,9 @@ class FakeSessions implements SessionRepository {
   listForProject(): Promise<Session[]> {
     return Promise.reject(new Error('não usado neste teste'));
   }
+  usoPorSessaoDoProjeto() {
+    return Promise.reject(new Error('não usado neste teste'));
+  }
   findActiveExecutionSession(): Promise<Session | null> {
     return Promise.reject(new Error('não usado neste teste'));
   }

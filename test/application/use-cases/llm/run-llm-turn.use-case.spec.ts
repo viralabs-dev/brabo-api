@@ -354,7 +354,11 @@ describe('RunLlmTurnUseCase — o custo real vira o número (ADR 0188, RN-665)',
     });
 
     // O número que o engine soma ao orçamento local do laço é o REAL.
-    expect(result.usage).toMatchObject({ costMicros: 1_850, estimated: false });
+    expect(result.usage).toMatchObject({
+      costMicros: 1_850,
+      estimated: false,
+      reasoningTokens: 120, // RN-1150
+    });
 
     const [linha] = await db
       .select()
@@ -403,6 +407,7 @@ describe('RunLlmTurnUseCase — o custo real vira o número (ADR 0188, RN-665)',
     });
 
     expect(result.usage.costMicros).toBe(500);
+    expect(result.usage).not.toHaveProperty('reasoningTokens'); // RN-1150: ausente, nunca 0
     const [linha] = await db
       .select()
       .from(tokenUsage)

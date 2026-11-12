@@ -133,6 +133,17 @@ export abstract class ProposedActionRepository {
    * sem depender de qual sessão a propôs. `actionType` opcional filtra por
    * tipo — a aba PRs pede só `git_merge`.
    */
+  /**
+   * Ações já DECIDIDAS do projeto (tudo menos `pending`) mudadas desde `desde`,
+   * mais recentes primeiro, com teto de 100 (RN-1154). Inclui as automáticas
+   * da política (`auto_approved`) e as negadas (`rejectionReason`).
+   */
+  abstract listDecidedByProject(
+    projectId: string,
+    desde: Date,
+    actionType?: string,
+  ): Promise<ProposedAction[]>;
+
   abstract findPendingByProject(
     projectId: string,
     actionType?: string,
