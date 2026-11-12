@@ -28694,6 +28694,11 @@
             "nullable": true,
             "description": "Why the task was archived (required when archiving)."
           },
+          "fundacao": {
+            "type": "boolean",
+            "example": false,
+            "description": "The module FOUNDATION task (AT-901, RN-1138): created by the Dev Lead; the claim hands it out before the other tasks of the module."
+          },
           "createdAt": {
             "type": "string",
             "example": "2026-07-25T10:00:00.000Z",
@@ -28720,6 +28725,7 @@
           "module",
           "archivedAt",
           "archivedReason",
+          "fundacao",
           "createdAt",
           "updatedAt"
         ]

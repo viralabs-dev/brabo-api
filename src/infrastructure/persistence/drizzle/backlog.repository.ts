@@ -287,34 +287,24 @@ export class DrizzleTaskRepository implements TaskRepository {
                          AND e.type = 'backlog.task_merge_conflict'
                          AND e.payload->>'taskId' = t.id::text)
                  THEN 'conflito_de_merge'
-               WHEN t.status = 'in_progress' THEN 'em_curso_de_dev'
-               WHEN t.module IS NULL THEN 'sem_modulo'
-               ELSE 'a_fazer_de_modulo_com_dev'
+               WHEN t.status = 'in_progress'
+                    AND t.assigned_to IN (SELECT actor_id FROM devs)
+                 THEN 'em_curso_de_dev'
+               WHEN t.status = 'todo' AND st.status = 'ready'
+                    AND t.module IS NULL
+                    AND jsonb_array_length(st.module_ids) > 1
+                 THEN 'sem_modulo'
+               WHEN t.status = 'todo' AND st.status = 'ready'
+                    AND t.module IS NOT NULL
+                    AND 'dev-' || t.module IN (SELECT actor_id FROM devs)
+                 THEN 'a_fazer_de_modulo_com_dev'
+               ELSE 'aberta_na_execucao'
              END AS motivo
         FROM tasks t
         JOIN stories st ON st.id = t.story_id AND st.archived_at IS NULL
         JOIN vigente v ON v.project_id = st.project_id AND v.id = ${sessionId}
        WHERE t.status <> 'done'
          AND t.archived_at IS NULL
-         AND (
-           t.blocked
-           OR t.gate_status = 'awaiting_user'
-           OR (t.status = 'in_progress' AND EXISTS (
-                SELECT 1 FROM session_events e
-                 WHERE e.session_id = v.id
-                   AND e.type = 'backlog.task_merge_conflict'
-                   AND e.payload->>'taskId' = t.id::text))
-           OR (t.status = 'in_progress'
-               AND t.assigned_to IN (SELECT actor_id FROM devs))
-           OR (t.status = 'todo' AND st.status = 'ready'
-               AND t.module IS NOT NULL
-               AND 'dev-' || t.module IN (SELECT actor_id FROM devs))
-           -- AT-912: tarefa todo sem módulo numa história de vários módulos
-           -- (a do PO): daTarefaDoModulo não a dá a dev nenhum.
-           OR (t.status = 'todo' AND st.status = 'ready'
-               AND t.module IS NULL
-               AND jsonb_array_length(st.module_ids) > 1)
-         )
        ORDER BY t.blocked DESC, t.created_at ASC
        LIMIT 1
     `);
@@ -333,6 +323,7 @@ export class DrizzleTaskRepository implements TaskRepository {
         title: input.title,
         description: input.description ?? '',
         module: input.module ?? null,
+        fundacao: input.fundacao ?? false,
       })
       .returning();
     return taskToEntity(row);
@@ -451,13 +442,14 @@ export class DrizzleTaskRepository implements TaskRepository {
             OR (s.status = 'ready'
               AND ${daTarefaDoModulo(module)}
               AND t.status = 'todo'
-              AND ${semDependenciaAberta(projectId, module)})
+              AND ${semDependenciaAberta(projectId, module)}
+              AND ${semFundacaoAberta(projectId, module)})
           )
-        ORDER BY (t.status = 'in_progress') DESC, t.created_at
+        ORDER BY (t.status = 'in_progress') DESC, t.fundacao DESC, t.created_at
         FOR UPDATE OF t SKIP LOCKED
         LIMIT 1
       )
-      RETURNING id, story_id, title, description, status, assigned_to, blocked, blocked_reason, blocked_origin, gate_status, gate_correction_count, module, archived_at, archived_reason, created_at, updated_at
+      RETURNING id, story_id, title, description, status, assigned_to, blocked, blocked_reason, blocked_origin, gate_status, gate_correction_count, module, archived_at, archived_reason, fundacao, created_at, updated_at
     `);
     const row = result.rows[0] as Record<string, unknown> | undefined;
     if (!row) return null;
@@ -476,6 +468,7 @@ export class DrizzleTaskRepository implements TaskRepository {
       module: (row.module as string | null) ?? null,
       archivedAt: (row.archived_at as Date | null) ?? null,
       archivedReason: (row.archived_reason as string | null) ?? null,
+      fundacao: row.fundacao as boolean,
       createdAt: row.created_at as Date,
       updatedAt: row.updated_at as Date,
     };
@@ -545,6 +538,7 @@ export class DrizzleTaskRepository implements TaskRepository {
         AND t.status = 'todo'
         AND t.blocked = false
         AND ${semDependenciaAberta(projectId, module)}
+        AND ${semFundacaoAberta(projectId, module)}
     `);
     return Number(result.rows[0]?.n ?? 0);
   }
@@ -738,6 +732,7 @@ function taskToEntity(row: typeof tasks.$inferSelect): Task {
     module: row.module,
     archivedAt: row.archivedAt,
     archivedReason: row.archivedReason,
+    fundacao: row.fundacao,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -768,6 +763,24 @@ function semDependenciaAberta(projectId: string, module: string) {
       AND dt.status <> 'done'
       AND (dt.module = dep OR (dt.module IS NULL AND jsonb_array_length(ds.module_ids) = 1 AND ds.module_ids ? dep))
   )`;
+}
+
+/**
+ * AT-901 (RN-1138): a fundação do módulo vem antes — a tarefa que NÃO é
+ * fundação só é pegável sem fundação aberta (não `done`, não arquivada) do
+ * mesmo módulo. Mesmo predicado no claim e na contagem (AT-274).
+ */
+function semFundacaoAberta(projectId: string, module: string) {
+  return sql`(t.fundacao OR NOT EXISTS (
+    SELECT 1 FROM tasks ft
+    JOIN stories fs ON fs.id = ft.story_id
+    WHERE fs.project_id = ${projectId}
+      AND fs.archived_at IS NULL
+      AND ft.archived_at IS NULL
+      AND ft.fundacao
+      AND ft.module = ${module}
+      AND ft.status <> 'done'
+  ))`;
 }
 
 /**

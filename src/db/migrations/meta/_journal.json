@@ -610,6 +610,13 @@
       "when": 1794437202950,
       "tag": "0086_arquivar_tarefa",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1794523600000,
+      "tag": "0087_fundacao_do_modulo",
+      "breakpoints": true
     }
   ]
 }

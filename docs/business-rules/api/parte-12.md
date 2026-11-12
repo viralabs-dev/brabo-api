@@ -130,6 +130,42 @@ keywords: [regras de negócio, api]
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` (`RN-1104`: pontas iguais gravam `jaContida`, pontas diferentes não).
 - **Origem:** AT-901 (EP-036), só o merge sem efeito; rodada 366, lane AA1.
 
+<a id="rn-1138"></a>
+
+### RN-1138 — A tarefa criada pelo Dev Lead é a FUNDAÇÃO do módulo {#rn-1138}
+
+- **Regra:** `create_task` com `agentRole: dev_lead` grava `tasks.fundacao = true` (migração 0087); a do PO nasce `false`. A coluna aparece em `TaskResponseDto.fundacao`.
+- **Onde:** `src/application/use-cases/backlog/create-task.use-case.ts` (`execute`), `src/db/schema/backlog.ts` (`tasks.fundacao`)
+- **Teste:** `test/application/use-cases/backlog/create-task.use-case.spec.ts` (`RN-1138`).
+- **Origem:** AT-901 (EP-036), parte do claim; rodada 372, lane L1.
+
+<a id="rn-1139"></a>
+
+### RN-1139 — A fundação do módulo sai primeiro no claim e segura as outras tarefas dele {#rn-1139}
+
+- **Regra:** `claimNext` ordena `fundacao DESC` antes de `created_at`, e a tarefa que não é fundação só é pegável sem fundação do mesmo módulo aberta (não `done`, não arquivada, de história não arquivada). Quem arquiva a fundação a libera.
+- **Onde:** `src/infrastructure/persistence/drizzle/backlog.repository.ts` (`claimNext`, `semFundacaoAberta`)
+- **Teste:** `test/infrastructure/persistence/drizzle/backlog-arquivar-tarefa.repository.spec.ts` (`a fundação do módulo vem primeiro`).
+- **Origem:** AT-901 (EP-036); rodada 372, lane L1.
+
+<a id="rn-1140"></a>
+
+### RN-1140 — A contagem de tarefas pegáveis usa a mesma guarda da fundação {#rn-1140}
+
+- **Regra:** `countClaimableByModule` aplica `semFundacaoAberta`, o mesmo predicado do claim (AT-274), para a sugestão de paralelização nunca contar o que o claim segura.
+- **Onde:** `src/infrastructure/persistence/drizzle/backlog.repository.ts` (`countClaimableByModule`)
+- **Teste:** o mesmo spec da RN-1139 (a contagem concorda com o claim).
+- **Origem:** AT-901 (EP-036); rodada 372, lane L1.
+
+<a id="rn-1141"></a>
+
+### RN-1141 — Tarefa aberta da execução vigente segura a sessão, sem teto {#rn-1141}
+
+- **Regra:** na sessão de execução vigente, toda tarefa não `done` e não arquivada, de história não arquivada, é pendência sem teto (`aguardandoUsuarioDesde: null`), com o motivo `aberta_na_execucao` quando nenhum motivo específico (RN-776, RN-856, AT-912) vale. O teto de 8 h da conversa ociosa não fecha essa sessão; ela fecha quando o backlog termina ou o usuário encerra. Amplia a [RN-776](parte-10.md#rn-776).
+- **Onde:** `src/infrastructure/persistence/drizzle/backlog.repository.ts` (`findPendenteDaExecucao`), `src/application/use-cases/sessions/get-session-pending-work.use-case.ts` (`MOTIVO_DA_TAREFA`)
+- **Teste:** `test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts` (`aberta na execução em curso`, `in_review`, `tudo done`).
+- **Origem:** AT-919 (EP-036); rodada 372, lane L1.
+
 <a id="rn-1148"></a>
 
 ### RN-1148 — Sem grafo configurado, nenhuma linha de projeção do grafo entra na outbox {#rn-1148}
