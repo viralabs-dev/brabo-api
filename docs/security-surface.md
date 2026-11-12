@@ -218,9 +218,9 @@ detalhar o motivo na URL.
   `UpdateProjectDto` omite os dois campos de propósito, senão
   `PartialType(CreateProjectDto)` os exporia num `PATCH` sem guarda
   nenhuma. O mesmo `PATCH /projects/:projectId` (`maintainer`, sem mudança de
-  papel) passou a aceitar `taskBudgetMicros` (RN-1155, propagado ao engine por
+  papel) passou a aceitar `taskBudgetMicros` (RN-1142, propagado ao engine por
   chamada interna best-effort) e `modelEscalation` (a escada de modelos,
-  RN-1156/RN-1159).
+  RN-1143/RN-1146).
 - **`GET /workspaces/:workspaceId/containers` agora lista TODO projeto do
   workspace, e a página que ele alimenta virou o caminho humano para SUBIR um
   container**

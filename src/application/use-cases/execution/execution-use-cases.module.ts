@@ -100,7 +100,7 @@ const USE_CASES = [
     SessionsUseCasesModule,
     AgentsUseCasesModule,
     EngineHttpClientsModule,
-    // RN-1156: a escalada resolve e grava o binding do agente.
+    // RN-1143: a escalada resolve e grava o binding do agente.
     LlmUseCasesModule,
     GitInfrastructureModule,
     FilesystemModule,

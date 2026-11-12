@@ -763,7 +763,7 @@ describe('HttpApiToEngineClient — comando de turno: aceite e recusa (ADR 0163)
     await engine.fechar();
   });
 
-  it('RN-1155: setTaskBudget posta o teto na rota de projeto do engine', async () => {
+  it('RN-1142: setTaskBudget posta o teto na rota de projeto do engine', async () => {
     const engine = await engineQueResponde(202);
     await new HttpApiToEngineClient().setTaskBudget(PROJETO, 2_000_000);
     expect(engine.urls).toEqual([
@@ -775,7 +775,7 @@ describe('HttpApiToEngineClient — comando de turno: aceite e recusa (ADR 0163)
     await engine.fechar();
   });
 
-  it('RN-1155: setTaskBudget com projectId malformado é recusado antes da rede', async () => {
+  it('RN-1142: setTaskBudget com projectId malformado é recusado antes da rede', async () => {
     await expect(
       new HttpApiToEngineClient().setTaskBudget('a/b', 1),
     ).rejects.toThrow();

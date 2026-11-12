@@ -41,7 +41,7 @@ export class EscadaDeModelosDto {
     type: [DegrauDaEscadaDto],
     description:
       'Steps from the smallest model to the largest. The agent climbs one ' +
-      'step after 2 iteration-limit blocks on the same task (RN-1156).',
+      'step after 2 iteration-limit blocks on the same task (RN-1143).',
   })
   @IsArray()
   @ArrayMinSize(1)
@@ -154,7 +154,7 @@ export class CreateProjectDto {
     description:
       'Cap per dev agent task, in micro-USD. Changing it on PATCH also ' +
       'reaches the live dev agents, from the next lap of each task, with no ' +
-      'reactivation (RN-1155). The engine call is best-effort: if it fails ' +
+      'reactivation (RN-1142). The engine call is best-effort: if it fails ' +
       'the project change stands.',
   })
   @IsOptional()
@@ -165,7 +165,7 @@ export class CreateProjectDto {
   @ApiPropertyOptional({
     type: EscadaDeModelosDto,
     description:
-      'Model ladder of the project (RN-1156). Omitted uses the default ' +
+      'Model ladder of the project (RN-1143). Omitted uses the default ' +
       '(Haiku 5.5 → Sonnet 5).',
   })
   @IsOptional()

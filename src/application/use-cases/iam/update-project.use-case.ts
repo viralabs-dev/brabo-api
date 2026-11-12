@@ -25,7 +25,7 @@ export class UpdateProjectUseCase {
     const row = await this.projects.update(id, alteracao);
     if (!row) throw new NotFoundException('Projeto não encontrado');
 
-    // RN-1155 (AT-917): o teto novo chega aos dev agents vivos. A falha do
+    // RN-1142 (AT-917): o teto novo chega aos dev agents vivos. A falha do
     // engine NÃO desfaz a mudança do projeto: o valor já está no banco e o
     // agente o relê na próxima ativação/reidratação.
     if (typeof input.taskBudgetMicros === 'number') {

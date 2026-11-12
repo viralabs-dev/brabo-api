@@ -211,7 +211,7 @@ export const tasks = pgTable(
   ],
 );
 
-// RN-1157 (AT-916): o estado da escalada de modelo POR TAREFA — quantos
+// RN-1144 (AT-916): o estado da escalada de modelo POR TAREFA — quantos
 // bloqueios por limite de iterações ela já teve e o que restaurar quando
 // fechar. `base_model_id` nulo = o agente não tinha binding próprio (volta a
 // herdar, removendo o binding). A linha some quando a tarefa fecha.

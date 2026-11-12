@@ -1,5 +1,5 @@
 /**
- * RN-1156 (AT-916): a ESCADA de modelos do projeto — os degraus, do menor ao
+ * RN-1143 (AT-916): a ESCADA de modelos do projeto — os degraus, do menor ao
  * maior, cada um com o teto de gasto por tarefa que vale enquanto o agente
  * está nele. O padrão é Haiku 5.5 → Sonnet 5 (decisão do dono, 11/11/2026).
  */
