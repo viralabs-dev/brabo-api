@@ -136,6 +136,13 @@ export class TaskResponseDto implements Wire<Task> {
   })
   archivedReason!: string | null;
 
+  @ApiProperty({
+    example: false,
+    description:
+      'The module FOUNDATION task (AT-901, RN-1138): created by the Dev Lead; the claim hands it out before the other tasks of the module.',
+  })
+  fundacao!: boolean;
+
   @ApiProperty({ example: '2026-07-25T10:00:00.000Z', format: 'date-time' })
   createdAt!: string;
 
