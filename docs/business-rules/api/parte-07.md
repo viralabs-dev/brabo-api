@@ -396,7 +396,7 @@ fechada seguem mostrando a mensagem da api.
   `src/application/use-cases/sessions/append-session-event.use-case.ts:45`
   (`conflitoDeSessaoEncerrada`), `:114` (o estado no mesmo `UPDATE` do `seq`),
   `:248` (`garantirQueAceita`);
-  `src/infrastructure/persistence/drizzle/session.repository.ts:117`
+  `src/infrastructure/persistence/drizzle/session.repository.ts:175`
   (`incrementSeq`);
   `src/application/use-cases/llm/send-chat-message.use-case.ts:78`
   (o chat humano); `src/application/use-cases/agents/create-handoff.use-case.ts:67`,
