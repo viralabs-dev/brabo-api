@@ -165,7 +165,7 @@ keywords: [regras de negócio, api]
 ### RN-1124 — O Desbloquear aceita uma orientação opcional que vai ao dev {#rn-1124}
 
 - **Regra:** `POST /projects/:projectId/sessions/:sessionId/tasks/:taskId/unblock` aceita o corpo opcional `{ orientacao }` (texto, até 2000 caracteres, 400 acima). A orientação aparada é gravada em `backlog.task_unblocked` e o dev-context da tarefa devolve `desbloqueio: { orientacao, em }` (o último com orientação), que o dev segue acima do último parecer. Sem corpo, nada muda.
-- **Onde:** `src/application/use-cases/execution/unblock-task.use-case.ts:35` (`execute`), `src/interfaces/http/execution/dto/unblock-task.dto.ts` (`UnblockTaskDto`)
+- **Onde:** `src/application/use-cases/execution/unblock-task.use-case.ts:24` (`execute`), `src/interfaces/http/execution/dto/unblock-task.dto.ts` (`UnblockTaskDto`)
 - **Teste:** `test/application/use-cases/execution/unblock-task.use-case.spec.ts` (RN-1124); `test/interfaces/http/execution/orientacao-e-melhorias.dto.spec.ts`
 - **Origem:** AT-909 (EP-036); rodada 368, lane api.
 
@@ -174,7 +174,7 @@ keywords: [regras de negócio, api]
 ### RN-1125 — O bloqueio por ciclo esgotado grava os itens do parecer no diagnóstico {#rn-1125}
 
 - **Regra:** O diagnóstico de `backlog.task_blocked` por teto de correção passa a ser o `resumo` seguido dos `itens` (um por linha), e não só o resumo.
-- **Onde:** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:213` (`execute`, ramo `blocked`)
+- **Onde:** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:208` (`execute`, ramo `blocked`)
 - **Teste:** `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts` (estourando o teto)
 - **Origem:** AT-909 (EP-036); rodada 368, lane api.
 
@@ -210,7 +210,7 @@ keywords: [regras de negócio, api]
 ### RN-1129 — `search_workspace` está no piso do menu do Arquiteto {#rn-1129}
 
 - **Regra:** O recorte do Jev nunca tira `search_workspace` do Arquiteto (RN-758): ele lê o código mergeado antes de declarar contrato.
-- **Onde:** `src/domain/llm/tool-router.ts:336` (`PISO_DO_MENU`)
+- **Onde:** `src/domain/llm/tool-router.ts:317` (`PISO_DO_MENU`)
 - **Teste:** `test/interfaces/http/execution/orientacao-e-melhorias.dto.spec.ts` (RN-1129)
 - **Origem:** AT-918 (EP-036).
 <a id="rn-1138"></a>
