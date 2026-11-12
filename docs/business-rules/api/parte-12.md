@@ -155,7 +155,7 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 ### RN-1150 — O `usage` do turno de LLM devolve `reasoningTokens` quando o provider os contou {#rn-1150}
 
 - **Regra:** `LlmUsageResponseDto.reasoningTokens` é opcional e vem do mesmo valor que o `token_usage.reasoning_tokens` grava ([RN-666](parte-09.md#rn-666)). Provider que não contou: o campo some, nunca vira `0` (a tela mostra traço).
-- **Código:** `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:393` (`execute`), `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:435` (`execute`), `apps/api/src/interfaces/http/internal/dto/internal.response.dto.ts:611` (`LlmUsageResponseDto`)
+- **Código:** `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:124` (`execute`), `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:133` (`execute`), `apps/api/src/interfaces/http/internal/dto/internal.response.dto.ts:611` (`LlmUsageResponseDto`)
 - **Teste:** `apps/api/test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` (presente com 120, ausente sem contagem)
 - **Origem:** AT-929 (EP-035).
 
