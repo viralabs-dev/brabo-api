@@ -591,7 +591,7 @@ na instalação responde 409.
 ### RN-1082 — O usuário manda o dev agent ocioso procurar tarefa de novo, e o 409 do engine é repassado, nunca 500 {#rn-1082}
 
 - **Regra:** `POST /projects/:projectId/sessions/:sessionId/agents/:agentId/wake` (`developer`, 202) chama o engine primeiro (`ApiToEngineClient.acordarDevAgent`, que entrega o wake ao agente `idle`) e só então grava `dev.wake_requested` com `actor: user` (o log é imutável: pedido recusado não deixa evento). O agente que não está ocioso é 409 nomeado do engine. `postCommand` passou a converter todo 409 do engine em `ConflictException` com a frase dele, o que corrige também o `rearm` de agente ocioso, que devolvia 500 (correção D8 da [RN-047](parte-04.md#rn-047)). O erro que não é 409 segue `Error` genérico. A rota entra no `security-surface.md` e no `openapi.json`.
-- **Código:** `apps/api/src/application/use-cases/execution/acordar-dev-agent.use-case.ts:18` (`execute`), `apps/api/src/interfaces/http/execution/execution.controller.ts:277` (`wake`), `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts:841` (`postCommand`)
+- **Código:** `apps/api/src/application/use-cases/execution/acordar-dev-agent.use-case.ts:18` (`execute`), `apps/api/src/interfaces/http/execution/execution.controller.ts:277` (`wake`), `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts:852` (`postCommand`)
 - **Teste:** `apps/api/test/application/use-cases/execution/acordar-dev-agent.use-case.spec.ts` (engine primeiro, ator usuário, 409 sem evento), `apps/api/test/infrastructure/http-clients/api-to-engine-client.spec.ts` (409 de rearm e wake vira `ConflictException`)
 - **Origem:** AT-906 (EP-036).
 
