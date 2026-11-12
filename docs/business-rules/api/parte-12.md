@@ -437,7 +437,7 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 ### RN-1196 — As filas da Caixa nunca se somam: nenhum total na raiz {#rn-1196}
 
 - **Regra:** A resposta não tem `total` na raiz nem campo que some filas; cada fila traz o próprio `total` e `projetos[]` traz cinco números separados por projeto (RN-467).
-- **Onde:** `src/application/use-cases/actions/get-decision-inbox.use-case.ts:96` (`GetDecisionInboxUseCase`); `src/interfaces/http/actions/dto/decision-inbox.response.dto.ts:1` (`DecisionInboxResponseDto`).
+- **Onde:** `src/application/use-cases/actions/get-decision-inbox.use-case.ts:96` (`GetDecisionInboxUseCase`); `src/interfaces/http/actions/dto/decision-inbox.response.dto.ts:118` (`DecisionInboxResponseDto`).
 - **Teste:** `get-decision-inbox.use-case.spec.ts` (a raiz não tem `total`).
 
 <a id="rn-1197"></a>
