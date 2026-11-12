@@ -281,7 +281,7 @@ Completa a [RN-044](parte-01.md#rn-044) (o caminho manual passa a marcar `manual
 3. **Preço igual ao vigente segue no-op** (RN-044): não grava marca nova nem linha de auditoria.
 4. **Escopo.** `models` é GLOBAL da instalação: o preço vale para todos os workspaces. A tela diz isso em texto.
 
-- **Código:** `src/application/use-cases/llm/update-model-pricing.use-case.ts:51` (`manualPricing`); `src/application/use-cases/llm/sync-model-catalog.use-case.ts:286` (`resolverPreco`)
+- **Código:** `src/application/use-cases/llm/update-model-pricing.use-case.ts:51` (`manualPricing`); `src/application/use-cases/llm/sync-model-catalog.use-case.ts:291` (`resolverPreco`)
 - **Teste:** `test/application/use-cases/llm/update-model-pricing.use-case.spec.ts` (edição manual marca `manualPricing`; origem sync não marca)
 - **Origem:** AT-634
 
