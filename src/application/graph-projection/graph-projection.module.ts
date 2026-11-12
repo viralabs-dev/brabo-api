@@ -15,7 +15,12 @@ import { GraphProjector } from './graph-projector';
  * embute `Neo4jModule`) precisam ser importados aqui.
  */
 @Module({
-  imports: [Neo4jModule, GraphUseCasesModule, GitUseCasesModule, ArchitectureUseCasesModule],
+  imports: [
+    Neo4jModule,
+    GraphUseCasesModule,
+    GitUseCasesModule,
+    ArchitectureUseCasesModule,
+  ],
   providers: [GraphProjector, MemoriaDoProjetoTranslator],
   exports: [GraphProjector],
 })
