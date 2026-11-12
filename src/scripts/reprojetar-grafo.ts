@@ -51,7 +51,7 @@ import { RecordProfileFactUseCase } from '../application/use-cases/graph/record-
  *   (ULID, ordenado por tempo, e a chave primária — o índice que já existe),
  *   um lote por vez; nunca a tabela inteira na memória. `sessions` terminais
  *   idem, por `id`.
- * - **Memória dos projetos (RN-1152).** A leitura do git precisa do Nest
+ * - **Memória dos projetos (RN-1165).** A leitura do git precisa do Nest
  *   (credencial, cache), então a fase 3 só ENFILEIRA uma linha
  *   `graph_projection` `project.trunk_merged` (sem `mergedSha` = ponta da
  *   `main`) por projeto com repositório; o projetor vivo as drena.

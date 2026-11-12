@@ -48,7 +48,7 @@ class DecisaoCitandoDto {
   @ApiProperty({ example: 'ADR 0123 — pedidos em fila' }) titulo!: string;
 }
 
-/** `GET /internal/graph/projects/:projectId/modules/:nome/impacto` (RN-1153). */
+/** `GET /internal/graph/projects/:projectId/modules/:nome/impacto` (RN-1166). */
 export class ImpactoDoModuloResponseDto {
   @ApiProperty() projectId!: string;
   @ApiProperty({ example: 'pedidos' }) modulo!: string;

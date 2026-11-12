@@ -170,7 +170,7 @@ export class GraphProjector implements OnModuleInit, OnModuleDestroy {
    */
   private async project(row: OutboxEvent): Promise<void> {
     if (MERGES_PROJETAVEIS.has(row.eventType)) {
-      // RN-1150: o merge projeta `.brabo/memoria/` da `mergedSha`. Falha de
+      // RN-1163: o merge projeta `.brabo/memoria/` da `mergedSha`. Falha de
       // leitura do git lança e a linha fica para retry (ciclo logado).
       const { projectId, mergedSha } = row.payload as {
         projectId: string;

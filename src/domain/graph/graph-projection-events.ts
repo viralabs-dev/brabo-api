@@ -43,7 +43,7 @@ export const GRAPH_PROJECTABLE_EVENT_TYPES: ReadonlySet<string> = new Set([
 
 /**
  * Eventos de domínio que NÃO moram em `session_events` e também projetam no
- * grafo: o merge na branch de trabalho (`project.trunk_merged`, RN-1150) lê
+ * grafo: o merge na branch de trabalho (`project.trunk_merged`, RN-1163) lê
  * `.brabo/memoria/` daquele commit. `aggregateId` da linha é o PROJETO.
  */
 export const MERGES_PROJETAVEIS: ReadonlySet<string> = new Set([

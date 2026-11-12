@@ -578,7 +578,7 @@ describe('ExecuteGitActionUseCase', () => {
         });
       });
 
-      // RN-1150: a linha do grafo só existe com o grafo configurado (RN-1148).
+      // RN-1163: a linha do grafo só existe com o grafo configurado (RN-1148).
       it('com o grafo configurado, grava também a linha graph_projection do merge', async () => {
         vi.stubEnv('NEO4J_URI', 'bolt://grafo:7687');
         vi.stubEnv('NEO4J_USER', 'neo4j');

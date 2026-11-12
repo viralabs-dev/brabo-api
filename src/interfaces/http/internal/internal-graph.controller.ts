@@ -105,7 +105,7 @@ export class InternalGraphController {
     summary: 'Impact of a module, from the project memory graph',
     description:
       'Who depends on the module, what it depends on, what it exposes, ' +
-      'which decisions cite it and the contract version (RN-1153). 404 if ' +
+      'which decisions cite it and the contract version (RN-1166). 404 if ' +
       'the module is not in the graph; 503 if the graph is off.',
   })
   @ApiOkResponse({ type: ImpactoDoModuloResponseDto })

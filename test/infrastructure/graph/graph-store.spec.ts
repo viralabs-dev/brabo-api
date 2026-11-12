@@ -135,7 +135,7 @@ describe('GraphStore', () => {
     await store.onModuleInit();
 
     expect(store.disponivel).toBe(true);
-    // As 14 constraints (6 anteriores + 4 da RN-1030 + 4 da RN-1150) rodaram.
+    // As 14 constraints (6 anteriores + 4 da RN-1030 + 4 da RN-1163) rodaram.
     expect(sessionRun).toHaveBeenCalledTimes(14);
     expect(sessionClose).toHaveBeenCalled();
   });

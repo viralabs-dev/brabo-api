@@ -776,7 +776,7 @@ describe('GraphProjector', () => {
     expect(outbox.rows[0].processedAt).not.toBeNull();
   });
 
-  describe('merge na branch de trabalho (RN-1150)', () => {
+  describe('merge na branch de trabalho (RN-1163)', () => {
     const linhaDeMerge = async (outbox: FakeOutbox) =>
       outbox.append({
         aggregateType: GRAPH_PROJECTION_AGGREGATE_TYPE,

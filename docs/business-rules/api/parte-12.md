@@ -148,9 +148,9 @@ keywords: [regras de negócio, api]
 - **Teste:** `test/application/graph-projection/graph-projector.spec.ts` (`RN-1149`: três ciclos com o grafo fora do ar geram um aviso só).
 - **Origem:** AT-925 (EP-036); rodada 373, lane L4.
 
-<a id="rn-1150"></a>
+<a id="rn-1163"></a>
 
-### RN-1150 — Todo merge na branch de trabalho projeta no grafo a memória do projeto daquele commit {#rn-1150}
+### RN-1163 — Todo merge na branch de trabalho projeta no grafo a memória do projeto daquele commit {#rn-1163}
 
 - **Regra:** O merge na branch de trabalho (`project.trunk_merged`) grava uma SEGUNDA linha de outbox `graph_projection`, na mesma transação e só com o grafo configurado (RN-1148), com o mesmo payload (`projectId`, `sessionId`, `mergedSha`). O projetor lê `.brabo/memoria/modulos/*.md` e `.brabo/memoria/decisoes.md` na `mergedSha` (pela leitura de código do projeto, com a credencial do owner) e grava, por `MERGE` em chave natural: `(:Projeto)-[:TEM_MODULO]->(:Modulo {projectId, nome, stack, commit})`, `(:Modulo)-[:DEPENDE_DE]->(:Modulo)`, `(:Modulo)-[:EXPOE]->(:Interface {projectId, modulo, assinatura, tipo})`, `(:Modulo)-[:TEM_CONTRATO]->(:Contrato {projectId, modulo, versao})` (versão lida do BANCO, nunca do texto do cartão) e `(:Decisao {projectId, id, titulo})-[:CITA]->(:Modulo)`. A projeção converge para a `main`: dependência, interface, contrato, decisão e módulo que saíram do cartão saem do grafo, e repetir o mesmo merge não muda nada. Constraints compostas (`IF NOT EXISTS`): `modulo_projeto_nome_unico`, `interface_unica`, `contrato_unico`, `decisao_unica`.
 - **Formato lido (engine, `MemoriaExtrator`):** front-matter `modulo`, `stack`, `depende_de: [a, b]`, `commit`, e a seção `## Expõe` (`- \`nome\` (tipo)`). `decisoes.md` não tem formato fixado em código: a projeção lê uma linha por ADR (`- ADR 0123 — título`) e considera que ela cita o módulo cujo nome aparece na linha.
@@ -158,27 +158,27 @@ keywords: [regras de negócio, api]
 - **Teste:** `test/application/graph-projection/memoria-do-projeto-translator.spec.ts`, `test/application/graph-projection/graph-projector.spec.ts` (`merge na branch de trabalho`), `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` (linha `graph_projection` só com o grafo configurado).
 - **Origem:** AT-924 (EP-036); rodada 373, lane G1.
 
-<a id="rn-1151"></a>
+<a id="rn-1164"></a>
 
-### RN-1151 — A memória ausente não é falha, o cartão malformado é pulado e o grafo fora do ar mantém a linha {#rn-1151}
+### RN-1164 — A memória ausente não é falha, o cartão malformado é pulado e o grafo fora do ar mantém a linha {#rn-1164}
 
 - **Regra:** Projeto sem `.brabo/memoria/` faz merge sem erro e sem nó (não há pasta nem `decisoes.md`: nada é gravado nem apagado). Cartão sem front-matter ou sem `modulo` é logado e pulado, sem travar os outros. Falha de leitura do git que não seja "não encontrado" (credencial, limite de taxa) e `GraphUnavailableError` mantêm a linha da outbox para retry (RN-1149).
 - **Onde:** `src/application/graph-projection/memoria-do-projeto-translator.ts` (`projetar`, `listarCartoes`, `lerOuNulo`), `src/application/graph-projection/graph-projector.ts` (`drainOnce`)
 - **Teste:** `test/application/graph-projection/memoria-do-projeto-translator.spec.ts` (pasta ausente, cartão malformado, erro de leitura propaga), `test/application/graph-projection/graph-projector.spec.ts` (grafo indisponível mantém a linha).
 - **Origem:** AT-924 (EP-036); rodada 373, lane G1.
 
-<a id="rn-1152"></a>
+<a id="rn-1165"></a>
 
-### RN-1152 — A reconstrução do grafo também reprojeta a memória de cada projeto {#rn-1152}
+### RN-1165 — A reconstrução do grafo também reprojeta a memória de cada projeto {#rn-1165}
 
 - **Regra:** `grafo:reprojetar` (RN-569) ganha a fase 3: para cada projeto com repositório (ou só o de `--project`), enfileira uma linha `graph_projection` `project.trunk_merged` sem `mergedSha`, que o projetor vivo drena lendo a ponta da `main`. A leitura do git precisa do contexto da api (credencial, cache), por isso o script não lê o repositório sozinho: com a api de pé, os módulos voltam em alguns ciclos do projetor. É a única escrita do script na outbox.
 - **Onde:** `src/scripts/reprojetar-grafo.ts` (`reprojetarGrafo`, fase 3)
 - **Teste:** `test/scripts/reprojetar-grafo.spec.ts` (o resultado carrega `memoriasEnfileiradas`).
 - **Origem:** AT-924 (EP-036); rodada 373, lane G1.
 
-<a id="rn-1153"></a>
+<a id="rn-1166"></a>
 
-### RN-1153 — A consulta de impacto de um módulo responde pelo grafo, e 503 com o grafo desligado {#rn-1153}
+### RN-1166 — A consulta de impacto de um módulo responde pelo grafo, e 503 com o grafo desligado {#rn-1166}
 
 - **Regra:** `GET /internal/graph/projects/:projectId/modules/:nome/impacto` (service token do engine) devolve `{ projectId, modulo, stack, commit, contratoVersao, dependentes, dependeDe, expoe: [{assinatura, tipo}], decisoes: [{id, titulo}] }`: quem depende do módulo, de quem ele depende, o que expõe, que decisões o citam e a versão do contrato gravada na projeção (do banco; `null` sem contrato declarado). Leitura contida: escopo no projeto, chave natural, sem parâmetro livre. Módulo sem nó é 404; grafo desligado ou fora do ar é 503 (`GraphUnavailableError`), nunca uma lista vazia que pareça verdade.
 - **Onde:** `src/interfaces/http/internal/internal-graph.controller.ts` (`impactoDoModulo`), `src/application/use-cases/graph/consultar-impacto-do-modulo.use-case.ts` (`ConsultarImpactoDoModuloUseCase.execute`), `src/interfaces/http/internal/dto/graph.response.dto.ts` (`ImpactoDoModuloResponseDto`)

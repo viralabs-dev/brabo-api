@@ -407,7 +407,7 @@ describe('reprojeção do grafo a partir do event log (RN-569)', () => {
     expect(resultado).toMatchObject({
       eventosProjetados: 4,
       fechamentosProjetados: 1,
-      memoriasEnfileiradas: 0, // RN-1152: o projeto semeado não tem repositório
+      memoriasEnfileiradas: 0, // RN-1165: o projeto semeado não tem repositório
       falhas: 0,
     });
 

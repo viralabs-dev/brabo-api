@@ -17,7 +17,7 @@ export interface ImpactoDoModulo {
 }
 
 /**
- * Consulta de impacto de um módulo pelo grafo (RN-1153). Leitura CONTIDA
+ * Consulta de impacto de um módulo pelo grafo (RN-1166). Leitura CONTIDA
  * (ADR 0060): escopo no projeto, chave natural, sem parâmetro livre. Grafo
  * desligado lança `GraphUnavailableError` (503), nunca uma lista vazia que
  * pareça verdade; módulo sem nó é 404.

@@ -115,7 +115,7 @@ describe('interpretarDecisoes', () => {
   });
 });
 
-describe('MemoriaDoProjetoTranslator (RN-1150..1152)', () => {
+describe('MemoriaDoProjetoTranslator (RN-1163..1152)', () => {
   it('projeta módulo, dependências, interfaces, contrato do banco e decisões', async () => {
     const { run, tradutor } = montar({
       versao: 4,

@@ -71,7 +71,7 @@ describe('InternalGraphController', () => {
     expect(resposta).not.toHaveProperty('createdAt');
   });
 
-  it('GET impacto: delega ao caso de uso com projeto e módulo (RN-1153)', async () => {
+  it('GET impacto: delega ao caso de uso com projeto e módulo (RN-1166)', async () => {
     const impacto = { modulo: 'api', dependentes: ['web'] };
     const execute = vi.fn().mockResolvedValue(impacto);
     const controller = new InternalGraphController(

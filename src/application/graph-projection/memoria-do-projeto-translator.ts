@@ -87,7 +87,7 @@ export function interpretarDecisoes(
 }
 
 /**
- * Projeta `.brabo/memoria/` no grafo (RN-1150..1153, ADR 0293): módulos,
+ * Projeta `.brabo/memoria/` no grafo (RN-1163..1153, ADR 0293): módulos,
  * dependências, interfaces, versão do contrato (do BANCO) e decisões. `MERGE`
  * em chave natural; o grafo converge para a `main` (o que sumiu do cartão sai).
  * Pasta ausente = nada a fazer. Cartão malformado = pulado com log.

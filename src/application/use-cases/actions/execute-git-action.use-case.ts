@@ -402,7 +402,7 @@ export class ExecuteGitActionUseCase {
         eventType: 'project.trunk_merged',
         payload: { projectId, sessionId, mergedSha: result.mergedSha ?? '' },
       });
-      // RN-1150: segunda linha, MESMA transação, para o grafo projetar a
+      // RN-1163: segunda linha, MESMA transação, para o grafo projetar a
       // memória do projeto — só com o grafo configurado (RN-1148). Agregado
       // distinto do `project` acima: o engine não drena este.
       if (grafoConfigurado()) {
