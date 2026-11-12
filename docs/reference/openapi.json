@@ -3440,6 +3440,65 @@
         ]
       }
     },
+    "/internal/sessions/{sessionId}/tasks/{taskId}/archive": {
+      "post": {
+        "description": "Required reason; writes `backlog.task_archived` with the Dev Lead as actor. A task created by someone else (the PO, the user) is a named 409.",
+        "operationId": "InternalSessionsController_archiveTaskRoute",
+        "parameters": [
+          {
+            "name": "taskId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArchiveTaskInternalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body."
+          },
+          "403": {
+            "description": "Service token missing or different from the shared one."
+          },
+          "404": {
+            "description": "Task is not in this project."
+          },
+          "409": {
+            "description": "Named refusal (`reason`): `tarefa_arquivada`, `tarefa_em_execucao` or `tarefa_de_outro_autor`."
+          }
+        },
+        "security": [
+          {
+            "service-token": []
+          }
+        ],
+        "summary": "Archives a `todo` task the Dev Lead created",
+        "tags": [
+          "internal"
+        ]
+      }
+    },
     "/internal/sessions/{sessionId}/tasks/{taskId}/block": {
       "post": {
         "description": "There is no automatic unblocking: whoever unblocks it is a person, via the human route. That is what stops an agent from spinning indefinitely.",
@@ -10110,6 +10169,74 @@
         ]
       }
     },
+    "/projects/{projectId}/sessions/{sessionId}/agents/{agentId}/wake": {
+      "post": {
+        "description": "The engine delivers the wake to the agent and `dev.wake_requested` is recorded. Only an `idle` agent: any other state is a named 409 with the engine's sentence (never a 500).",
+        "operationId": "ExecutionController_wake",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "agentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "Insufficient role on the project."
+          },
+          "404": {
+            "description": "Project, session, or task not found."
+          },
+          "409": {
+            "description": "The agent is not idle."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Makes an idle dev agent look for a task again",
+        "tags": [
+          "execution"
+        ]
+      }
+    },
     "/projects/{projectId}/sessions/{sessionId}/agents/arquiteto/handoff-infra": {
       "post": {
         "description": "Dedicated endpoint instead of reusing `readiness`, which belongs to the Criativo: they are two different milestones of the session, and conflating them would make the event log ambiguous. Returns on ACCEPTANCE, before the agent's turn ends (ADR 0163): the turn keeps running in the engine and its narration, end and failures arrive through the session channel and the event log (`agent.status`, `agent.response`, `agent.error`) — never through this response. The Dev Lead handoff still comes AFTER the Infra one: the engine holds it until the closing turn ends. Idempotent (ADR 0182, RN-635): a target that already has a pending offer or is active in the project is not triggered again, and with both like that nothing is recorded.",
@@ -12331,6 +12458,79 @@
           }
         ],
         "summary": "Promotes stories the PO proposed to `ready`",
+        "tags": [
+          "backlog"
+        ]
+      }
+    },
+    "/projects/{projectId}/tasks/{taskId}/archive": {
+      "post": {
+        "description": "The task leaves the claim, the parallelization count, the stalled-execution check and the dependencies; nothing is deleted and `backlog.task_archived` records who and why. Only a `todo` task (blocked or not).",
+        "operationId": "BacklogController_archiveTaskRoute",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArchiveTaskDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Empty reason."
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "Insufficient role on the project."
+          },
+          "404": {
+            "description": "Task is not in this project."
+          },
+          "409": {
+            "description": "Named refusal (`reason`): `tarefa_arquivada`, `tarefa_em_execucao` (the task has an agent: unblock it or wait for the gate)."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Archives a `todo` task, with a required reason (AT-912)",
         "tags": [
           "backlog"
         ]
@@ -16208,6 +16408,37 @@
           "projectId"
         ]
       },
+      "ArchiveTaskDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Duplicate foundation task.",
+            "description": "Required; recorded in `backlog.task_archived`."
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "ArchiveTaskInternalDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "01JC4Z0000PROJETO0000000001"
+          },
+          "reason": {
+            "type": "string",
+            "example": "Duplicate foundation task."
+          }
+        },
+        "required": [
+          "projectId",
+          "reason"
+        ]
+      },
       "AreaDeAgentesResponseDto": {
         "type": "object",
         "properties": {
@@ -18730,6 +18961,11 @@
           "description": {
             "type": "string",
             "example": "Accepts SKU and quantity; validates stock."
+          },
+          "module": {
+            "type": "string",
+            "example": "api",
+            "description": "Module of the task; must be one of the story modules (400 otherwise). Omitted, a story with a single module lends it; with several the task is born without a module and waits for the execution plan."
           },
           "agentRole": {
             "type": "string",
@@ -28445,6 +28681,19 @@
             "nullable": true,
             "description": "The module the task belongs to, assigned by the Dev Lead in the approved execution plan (RN-678). Only the dev agent of that module claims it. `null` while no plan assigned one — such a task is claimable only when its story has exactly one module."
           },
+          "archivedAt": {
+            "type": "object",
+            "example": null,
+            "nullable": true,
+            "format": "date-time",
+            "description": "When the task was archived (AT-912). An archived task leaves the claim, the parallelization count and the dependencies, and stays in the history."
+          },
+          "archivedReason": {
+            "type": "object",
+            "example": null,
+            "nullable": true,
+            "description": "Why the task was archived (required when archiving)."
+          },
           "createdAt": {
             "type": "string",
             "example": "2026-07-25T10:00:00.000Z",
@@ -28469,6 +28718,8 @@
           "gateStatus",
           "gateCorrectionCount",
           "module",
+          "archivedAt",
+          "archivedReason",
           "createdAt",
           "updatedAt"
         ]
