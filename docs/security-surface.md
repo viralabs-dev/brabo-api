@@ -217,7 +217,10 @@ detalhar o motivo na URL.
   `workspace_verified_at` do mesmo jeito. O modo fica **congelado** depois:
   `UpdateProjectDto` omite os dois campos de propósito, senão
   `PartialType(CreateProjectDto)` os exporia num `PATCH` sem guarda
-  nenhuma.
+  nenhuma. O mesmo `PATCH /projects/:projectId` (`maintainer`, sem mudança de
+  papel) passou a aceitar `taskBudgetMicros` (RN-1142, propagado ao engine por
+  chamada interna best-effort) e `modelEscalation` (a escada de modelos,
+  RN-1143/RN-1146).
 - **`GET /workspaces/:workspaceId/containers` agora lista TODO projeto do
   workspace, e a página que ele alimenta virou o caminho humano para SUBIR um
   container**
@@ -1393,6 +1396,7 @@ marcado, fora do grafo; nos demais é descartado sem evento. A marca é ligada p
 | POST | `/internal/sessions/:sessionId/proficiency` | engine-service |
 | POST | `/internal/models/sync` | engine-service |
 | GET | `/internal/graph/prompt-templates/:name` | engine-service |
+| GET | `/internal/graph/projects/:projectId/modules/:nome/impacto` | engine-service |
 | POST | `/internal/graph/prompt-templates` | engine-service |
 | POST | `/internal/rag/search` | engine-service |
 | POST | `/internal/rag/feedback` | engine-service |

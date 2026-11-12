@@ -50,12 +50,13 @@ class FakeStories {
 }
 
 class FakeTasks {
-  criadas: Array<{ module?: string | null }> = [];
+  criadas: Array<{ module?: string | null; fundacao?: boolean }> = [];
   create(input: {
     storyId: string;
     title: string;
     description?: string;
     module?: string | null;
+    fundacao?: boolean;
   }) {
     this.criadas.push(input);
     return Promise.resolve({
@@ -123,6 +124,17 @@ describe('CreateTaskUseCase', () => {
 
     expect(task.storyId).toBe('story-1');
     expect(append.calls).toEqual(['backlog.task_created']);
+  });
+
+  it('RN-1138: a tarefa do Dev Lead nasce fundação; a do PO não', async () => {
+    await useCase.execute(PROJECT, SESSION, {
+      storyId: 'story-1',
+      title: 'a',
+      actorId: 'dev_lead',
+    });
+    await useCase.execute(PROJECT, SESSION, { storyId: 'story-1', title: 'b' });
+
+    expect(tasks.criadas.map((c) => c.fundacao)).toEqual([true, false]);
   });
 
   it('o ator do evento é po por padrão e dev_lead quando informado', async () => {

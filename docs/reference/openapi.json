@@ -540,6 +540,60 @@
         ]
       }
     },
+    "/internal/graph/projects/{projectId}/modules/{nome}/impacto": {
+      "get": {
+        "description": "Who depends on the module, what it depends on, what it exposes, which decisions cite it and the contract version (RN-1166). 404 if the module is not in the graph; 503 if the graph is off.",
+        "operationId": "InternalGraphController_impactoDoModulo",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "nome",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImpactoDoModuloResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Service token missing or different from the shared one."
+          },
+          "404": {
+            "description": "Module not in the project graph."
+          },
+          "503": {
+            "description": "Neo4j not configured or unreachable — no fallback possible for reading/writing a template."
+          }
+        },
+        "security": [
+          {
+            "service-token": []
+          }
+        ],
+        "summary": "Impact of a module, from the project memory graph",
+        "tags": [
+          "internal"
+        ]
+      }
+    },
     "/internal/graph/prompt-templates": {
       "post": {
         "description": "If a version with the SAME hash already exists for the same `name`, no new version is created — the existing one is returned (the idempotency hit does not change the HTTP status: always 201, for simplicity — the body is identical to what would have been created).",
@@ -18833,6 +18887,19 @@
             "example": "pt-BR",
             "maxLength": 35,
             "description": "The PROJECT's language (RN-619) — shared artifacts and turns with no human author use it. Any BCP-47 code the server recognizes, stored canonical; an unrecognized one is a 400. Omitted, the project starts with its creator's effective response language (RN-618: account choice > confirmed detection > interface language)."
+          },
+          "taskBudgetMicros": {
+            "type": "number",
+            "example": 500000,
+            "description": "Cap per dev agent task, in micro-USD. Changing it on PATCH also reaches the live dev agents, from the next lap of each task, with no reactivation (RN-1142). The engine call is best-effort: if it fails the project change stands."
+          },
+          "modelEscalation": {
+            "description": "Model ladder of the project (RN-1143). Omitted uses the default (Haiku 5.5 → Sonnet 5).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EscadaDeModelosDto"
+              }
+            ]
           }
         },
         "required": [
@@ -19317,6 +19384,23 @@
           "rationale"
         ]
       },
+      "DecisaoCitandoDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "0123"
+          },
+          "titulo": {
+            "type": "string",
+            "example": "ADR 0123 — pedidos em fila"
+          }
+        },
+        "required": [
+          "id",
+          "titulo"
+        ]
+      },
       "DecisaoDeImagemResponseDto": {
         "type": "object",
         "properties": {
@@ -19394,6 +19478,24 @@
         "required": [
           "projectId",
           "contratos"
+        ]
+      },
+      "DegrauDaEscadaDto": {
+        "type": "object",
+        "properties": {
+          "modelId": {
+            "type": "string",
+            "example": "claude-sonnet-5"
+          },
+          "taskBudgetMicros": {
+            "type": "number",
+            "example": 2000000,
+            "description": "Fixed per-task cap (micro-USD) while the agent is on this step."
+          }
+        },
+        "required": [
+          "modelId",
+          "taskBudgetMicros"
         ]
       },
       "DelegationResponseDto": {
@@ -19922,6 +20024,21 @@
           "description",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "EscadaDeModelosDto": {
+        "type": "object",
+        "properties": {
+          "ladder": {
+            "description": "Steps from the smallest model to the largest. The agent climbs one step after 2 iteration-limit blocks on the same task (RN-1143).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DegrauDaEscadaDto"
+            }
+          }
+        },
+        "required": [
+          "ladder"
         ]
       },
       "EstadoDoC4DiagramaResponseDto": {
@@ -20931,6 +21048,69 @@
           "resources"
         ]
       },
+      "ImpactoDoModuloResponseDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "modulo": {
+            "type": "string",
+            "example": "pedidos"
+          },
+          "stack": {
+            "type": "string",
+            "nullable": true,
+            "example": "node-ts"
+          },
+          "commit": {
+            "type": "string",
+            "nullable": true
+          },
+          "contratoVersao": {
+            "type": "number",
+            "nullable": true,
+            "description": "Versão do contrato (do banco); null sem contrato declarado."
+          },
+          "dependentes": {
+            "description": "Módulos que dependem deste.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "dependeDe": {
+            "description": "Módulos de que este depende.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expoe": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InterfaceExpostaDto"
+            }
+          },
+          "decisoes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DecisaoCitandoDto"
+            }
+          }
+        },
+        "required": [
+          "projectId",
+          "modulo",
+          "stack",
+          "commit",
+          "contratoVersao",
+          "dependentes",
+          "dependeDe",
+          "expoe",
+          "decisoes"
+        ]
+      },
       "ImportLlmCredentialDto": {
         "type": "object",
         "properties": {
@@ -21348,6 +21528,24 @@
           "createdAt",
           "isCurrent",
           "diff"
+        ]
+      },
+      "InterfaceExpostaDto": {
+        "type": "object",
+        "properties": {
+          "assinatura": {
+            "type": "string",
+            "example": "criarPedido"
+          },
+          "tipo": {
+            "type": "string",
+            "example": "function",
+            "nullable": true
+          }
+        },
+        "required": [
+          "assinatura",
+          "tipo"
         ]
       },
       "IssuePatRequestDto": {
@@ -24567,6 +24765,16 @@
             "nullable": true,
             "description": "Circuit breaker per dev agent (Phase 12b — RN-047): consecutive tasks ending blocked before stopping at idle_tripped. `null` uses the domain default."
           },
+          "modelEscalation": {
+            "nullable": true,
+            "description": "Model ladder (RN-1143). `null` uses the default Haiku 5.5 → Sonnet 5.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EscadaDeModelosDto"
+              }
+            ]
+          },
           "storyPromotion": {
             "type": "string",
             "enum": [
@@ -24601,6 +24809,7 @@
           "createdBy",
           "taskBudgetMicros",
           "maxConsecutiveBlocked",
+          "modelEscalation",
           "storyPromotion",
           "createdAt",
           "updatedAt"
@@ -28792,6 +29001,11 @@
             "nullable": true,
             "description": "Why the task was archived (required when archiving)."
           },
+          "fundacao": {
+            "type": "boolean",
+            "example": false,
+            "description": "The module FOUNDATION task (AT-901, RN-1138): created by the Dev Lead; the claim hands it out before the other tasks of the module."
+          },
           "createdAt": {
             "type": "string",
             "example": "2026-07-25T10:00:00.000Z",
@@ -28818,6 +29032,7 @@
           "module",
           "archivedAt",
           "archivedReason",
+          "fundacao",
           "createdAt",
           "updatedAt"
         ]
@@ -29175,6 +29390,19 @@
             "example": "pt-BR",
             "maxLength": 35,
             "description": "The PROJECT's language (RN-619) — shared artifacts and turns with no human author use it. Any BCP-47 code the server recognizes, stored canonical; an unrecognized one is a 400. Omitted, the project starts with its creator's effective response language (RN-618: account choice > confirmed detection > interface language)."
+          },
+          "taskBudgetMicros": {
+            "type": "number",
+            "example": 500000,
+            "description": "Cap per dev agent task, in micro-USD. Changing it on PATCH also reaches the live dev agents, from the next lap of each task, with no reactivation (RN-1142). The engine call is best-effort: if it fails the project change stands."
+          },
+          "modelEscalation": {
+            "description": "Model ladder of the project (RN-1143). Omitted uses the default (Haiku 5.5 → Sonnet 5).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EscadaDeModelosDto"
+              }
+            ]
           }
         }
       },

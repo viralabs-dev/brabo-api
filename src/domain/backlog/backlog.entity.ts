@@ -65,6 +65,8 @@ export interface Task {
   // AT-912: arquivada com motivo; sai do claim, da contagem e das dependências.
   archivedAt: Date | null;
   archivedReason: string | null;
+  // AT-901 (RN-1138): tarefa de fundação do módulo (criada pelo Dev Lead).
+  fundacao: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -70,6 +70,11 @@ const CONSTRAINTS: readonly string[] = [
   'CREATE CONSTRAINT handoff_sessionid_seq_unico IF NOT EXISTS FOR (h:Handoff) REQUIRE (h.sessionId, h.seq) IS UNIQUE',
   'CREATE CONSTRAINT evento_sessionid_seq_unico IF NOT EXISTS FOR (e:Evento) REQUIRE (e.sessionId, e.seq) IS UNIQUE',
   'CREATE CONSTRAINT perfil_anamnese_userid_dimensao_unico IF NOT EXISTS FOR (p:PerfilAnamnese) REQUIRE (p.userId, p.dimensao) IS UNIQUE',
+  // RN-1163 (AT-924): a memória do projeto, por MERGE em chave natural.
+  'CREATE CONSTRAINT modulo_projeto_nome_unico IF NOT EXISTS FOR (m:Modulo) REQUIRE (m.projectId, m.nome) IS UNIQUE',
+  'CREATE CONSTRAINT interface_unica IF NOT EXISTS FOR (i:Interface) REQUIRE (i.projectId, i.modulo, i.assinatura) IS UNIQUE',
+  'CREATE CONSTRAINT contrato_unico IF NOT EXISTS FOR (c:Contrato) REQUIRE (c.projectId, c.modulo, c.versao) IS UNIQUE',
+  'CREATE CONSTRAINT decisao_unica IF NOT EXISTS FOR (d:Decisao) REQUIRE (d.projectId, d.id) IS UNIQUE',
 ];
 
 /**

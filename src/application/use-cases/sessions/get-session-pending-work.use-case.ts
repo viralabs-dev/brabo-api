@@ -51,6 +51,8 @@ const MOTIVO_DA_TAREFA = {
   // AT-912: ninguém a pega até o plano atribuir o módulo, ou até ser arquivada.
   sem_modulo:
     'sem módulo: nenhum dev vai pegar (atribua pelo plano ou arquive a tarefa)',
+  // AT-919 (RN-1141): tarefa aberta da execução vigente segura a sessão, sem teto.
+  aberta_na_execucao: 'aberta na execução em curso',
 } as const;
 
 const NADA_PENDENTE: SessionPendingWork = {

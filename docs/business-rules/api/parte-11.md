@@ -257,7 +257,7 @@ Completa a [RN-666](parte-08.md#rn-666) (item 4) para o 9Router. A 0.5.112 SOMA 
 ### RN-960 — O `GraphStore` reconecta depois de boot sem Neo4j, e o aviso diz a causa {#rn-960}
 
 - **Regra:** refina o ADR 0099. Boot em que o Neo4j ainda não respondia deixava o driver `null` para a vida do processo. Agora, com config presente, a operação seguinte tenta conectar de novo, no máximo uma vez a cada 30 s; sem config nunca tenta, e `onModuleInit` segue sem lançar. O aviso do `GraphProjector` inclui a causa do erro do driver.
-- **Onde:** `src/infrastructure/graph/graph-store.ts:114` (`reconectarSeNecessario`), `src/application/graph-projection/graph-projector.ts:106` (`drainOnce`).
+- **Onde:** `src/infrastructure/graph/graph-store.ts:119` (`reconectarSeNecessario`), `src/application/graph-projection/graph-projector.ts:113` (`drainOnce`).
 - **Teste:** `test/infrastructure/graph/graph-store.spec.ts` ("RN-960"), `test/application/graph-projection/graph-projector.spec.ts` ("RN-960").
 - **Origem:** AT-642 (EP-030).
 
@@ -281,7 +281,7 @@ Completa a [RN-044](parte-01.md#rn-044) (o caminho manual passa a marcar `manual
 3. **Preço igual ao vigente segue no-op** (RN-044): não grava marca nova nem linha de auditoria.
 4. **Escopo.** `models` é GLOBAL da instalação: o preço vale para todos os workspaces. A tela diz isso em texto.
 
-- **Código:** `src/application/use-cases/llm/update-model-pricing.use-case.ts:51` (`manualPricing`); `src/application/use-cases/llm/sync-model-catalog.use-case.ts:286` (`resolverPreco`)
+- **Código:** `src/application/use-cases/llm/update-model-pricing.use-case.ts:51` (`manualPricing`); `src/application/use-cases/llm/sync-model-catalog.use-case.ts:291` (`resolverPreco`)
 - **Teste:** `test/application/use-cases/llm/update-model-pricing.use-case.spec.ts` (edição manual marca `manualPricing`; origem sync não marca)
 - **Origem:** AT-634
 
@@ -477,7 +477,7 @@ na instalação responde 409.
 - **Código:** `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts` (`claimNext`, `semDependenciaAberta`)
 - **Teste:** `apps/api/test/infrastructure/persistence/drizzle/backlog-claim-depends-on.repository.spec.ts` (tarefa aberta em `api` -> `deploy` não recebe nada; `api` concluída -> recebe a tarefa; só a direta; sem mapa)
 - **Origem:** AT-742 (EP-030); ADR 0259.
-- **Revisão (AT-906, AT-912):** a tarefa arquivada não segura o dependente ([RN-1084](#rn-1084)), e `countClaimableByModule` usa o MESMO predicado: `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:751` (`semDependenciaAberta`), usado em `:413` (`claimNext`) e `:532` (`countClaimableByModule`).
+- **Revisão (AT-906, AT-912):** a tarefa arquivada não segura o dependente ([RN-1084](#rn-1084)), e `countClaimableByModule` usa o MESMO predicado: `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:746` (`semDependenciaAberta`), usado em `:404` (`claimNext`) e `:525` (`countClaimableByModule`).
 
 <a id="rn-1007"></a>
 
@@ -573,7 +573,7 @@ na instalação responde 409.
   3. **A proteção não muda.** `isProtectedBranch` mantém `dev`, `qa`, `rc` e `main` ([RN-1017](#rn-1017), [RN-1019](#rn-1019)): projetos antigos ainda têm as três primeiras, e desproteger uma branch que existe custa mais que proteger uma que não existe.
   4. **Gancho.** Depois de um merge com `state: 'merged'` na `main`, `settleMerge` anexa o evento de outbox `project.trunk_merged` (`aggregateType: 'project'`) com payload `{ projectId, sessionId, mergedSha }`. `mergedSha` é a ponta da `main` depois do merge, em melhor esforço (`''` quando o provider não consegue listar branches). Merge que não é `merged`, que falha ou que mira outra branch não grava nada. O engine o consome para avançar a pasta do projeto.
   5. **Migração de projetos antigos.** `pnpm migrar-projeto-para-trunk [--dry-run] [--root <dir>] [<bare>...]` (`src/scripts/migrar-projeto-para-trunk.ts`) faz fast-forward da `main` para a `dev` em cada repositório bare. Ele recusa, sem mudar nada e saindo com 1, quando a `main` não é ancestral da `dev`; `--dry-run` só relata; ele nunca apaga `dev` nem `qa`. Não redireciona PRs abertas que miram `dev`. É rodado pelo dono, porque escrever na `main` é escrever numa branch protegida ([RN-418](parte-04.md#rn-418)).
-- **Código:** `apps/api/src/domain/actions/protected-branches.ts:26` (`BRANCH_DE_TRABALHO`), `apps/api/src/application/use-cases/git/bootstrap-steps.ts:161` (`BOOTSTRAP_STEP_SEQUENCE`), `apps/api/src/application/use-cases/git/bootstrap-templates.ts:66` (`branchingPolicyContent`), `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:381` (`settleMerge`), `apps/api/src/scripts/migrar-projeto-para-trunk.ts` (`migrarParaTrunk`)
+- **Código:** `apps/api/src/domain/actions/protected-branches.ts:26` (`BRANCH_DE_TRABALHO`), `apps/api/src/application/use-cases/git/bootstrap-steps.ts:161` (`BOOTSTRAP_STEP_SEQUENCE`), `apps/api/src/application/use-cases/git/bootstrap-templates.ts:66` (`branchingPolicyContent`), `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:385` (`settleMerge`), `apps/api/src/scripts/migrar-projeto-para-trunk.ts` (`migrarParaTrunk`)
 - **Teste:** `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts` ("project.trunk_merged (RN-1022)"), `apps/api/test/application/use-cases/git/provision-repository.use-case.spec.ts`, `apps/api/test/application/use-cases/git/bootstrap-plan.spec.ts`, `apps/api/test/scripts/migrar-projeto-para-trunk.spec.ts`
 - **Origem:** AT-617 (EP-030), decisão do dono de 06/11/2026; rodada 208, lane L2.
 
@@ -591,7 +591,7 @@ na instalação responde 409.
 ### RN-1082 — O usuário manda o dev agent ocioso procurar tarefa de novo, e o 409 do engine é repassado, nunca 500 {#rn-1082}
 
 - **Regra:** `POST /projects/:projectId/sessions/:sessionId/agents/:agentId/wake` (`developer`, 202) chama o engine primeiro (`ApiToEngineClient.acordarDevAgent`, que entrega o wake ao agente `idle`) e só então grava `dev.wake_requested` com `actor: user` (o log é imutável: pedido recusado não deixa evento). O agente que não está ocioso é 409 nomeado do engine. `postCommand` passou a converter todo 409 do engine em `ConflictException` com a frase dele, o que corrige também o `rearm` de agente ocioso, que devolvia 500 (correção D8 da [RN-047](parte-04.md#rn-047)). O erro que não é 409 segue `Error` genérico. A rota entra no `security-surface.md` e no `openapi.json`.
-- **Código:** `apps/api/src/application/use-cases/execution/acordar-dev-agent.use-case.ts:18` (`execute`), `apps/api/src/interfaces/http/execution/execution.controller.ts:277` (`wake`), `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts:841` (`postCommand`)
+- **Código:** `apps/api/src/application/use-cases/execution/acordar-dev-agent.use-case.ts:18` (`execute`), `apps/api/src/interfaces/http/execution/execution.controller.ts:277` (`wake`), `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts:852` (`postCommand`)
 - **Teste:** `apps/api/test/application/use-cases/execution/acordar-dev-agent.use-case.spec.ts` (engine primeiro, ator usuário, 409 sem evento), `apps/api/test/infrastructure/http-clients/api-to-engine-client.spec.ts` (409 de rearm e wake vira `ConflictException`)
 - **Origem:** AT-906 (EP-036).
 
@@ -600,7 +600,7 @@ na instalação responde 409.
 ### RN-1083 — Um módulo cujas tarefas estão todas `done` satisfaz a dependência no plano {#rn-1083}
 
 - **Regra:** revisa a [RN-1004](#rn-1004). `lerPlanoDeExecucao` ganha o 4º parâmetro `modulosEntregues`, e a "órfã" passa a ser `!comTarefa.has(d) && !modulosEntregues.has(d)`: só o módulo que NUNCA teve tarefa, ou que tem tarefa aberta fora do plano, continua exigindo a tarefa de fundação. `TaskRepository.modulosEntregues(projectId)` devolve os módulos com ≥ 1 tarefa (do módulo, ou sem módulo em história de um módulo só, história não arquivada) e nenhuma não-`done`; tarefa arquivada não conta nem a favor nem contra. É o predicado de `semDependenciaAberta` ([RN-1005](#rn-1005)) invertido.
-- **Código:** `apps/api/src/domain/execution/plano-de-execucao.ts:39` (`lerPlanoDeExecucao`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:575` (`modulosEntregues`), `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts:75` (`lerPlano`)
+- **Código:** `apps/api/src/domain/execution/plano-de-execucao.ts:39` (`lerPlanoDeExecucao`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:569` (`modulosEntregues`), `apps/api/src/application/use-cases/execution/execute-execution-plan.use-case.ts:75` (`lerPlano`)
 - **Teste:** `apps/api/test/domain/execution/plano-de-execucao.spec.ts` (`fundação com dono`: entregue passa, sem tarefa nenhuma segue recusada), `apps/api/test/infrastructure/persistence/drizzle/backlog-arquivar-tarefa.repository.spec.ts` (`modulosEntregues`)
 - **Origem:** AT-913 (EP-036); a detecção de ciclo é do engine.
 
@@ -609,7 +609,7 @@ na instalação responde 409.
 ### RN-1084 — Uma tarefa `todo` pode ser arquivada com motivo, pelo dono ou pelo Dev Lead, e sai do claim, da contagem e das dependências {#rn-1084}
 
 - **Regra:** decisão do dono de 11/11/2026: arquivar e cancelar são UM gesto, com motivo obrigatório. `tasks.archived_at` e `archived_reason` (migração `0086_arquivar_tarefa`), no molde da história ([RN-727](parte-09.md#rn-727)), nunca um valor de `task_status`. `POST /projects/:projectId/tasks/:taskId/archive` (`developer`) arquiva qualquer tarefa `todo` (bloqueada ou não); `POST /internal/sessions/:sessionId/tasks/:taskId/archive` (engine-service) é a ferramenta do Dev Lead e só aceita a tarefa que ELE criou (`backlog.task_created` com ator `dev_lead`), senão 409 `tarefa_de_outro_autor`. Tarefa com agente (`in_progress`/`in_review`) é 409 `tarefa_em_execucao` nomeando o agente; já arquivada é 409 `tarefa_arquivada`; motivo vazio é 400. `TaskRepository.archive` é atômico (`WHERE status = 'todo' AND archived_at IS NULL`), então o claim concorrente nunca perde para um arquivamento aceito. Grava `backlog.task_archived { taskId, storyId, title, reason }`. A arquivada é ignorada por `claimNext`, `countClaimableByModule`, `semDependenciaAberta`, `findPendenteDaExecucao` e `findInProjectByIds` (o plano a recusa como inexistente).
-- **Código:** `apps/api/src/application/use-cases/backlog/archive-task.use-case.ts:39` (`execute`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:552` (`archive`), `apps/api/src/interfaces/http/backlog/backlog.controller.ts` (`archiveTaskRoute`), `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts` (`archiveTaskRoute`)
+- **Código:** `apps/api/src/application/use-cases/backlog/archive-task.use-case.ts:39` (`execute`), `apps/api/src/infrastructure/persistence/drizzle/backlog.repository.ts:546` (`archive`), `apps/api/src/interfaces/http/backlog/backlog.controller.ts` (`archiveTaskRoute`), `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts` (`archiveTaskRoute`)
 - **Teste:** `apps/api/test/application/use-cases/backlog/archive-task.use-case.spec.ts` (dono, motivo, `in_progress`, já arquivada, autoria do Dev Lead, corrida com o claim), `apps/api/test/infrastructure/persistence/drizzle/backlog-arquivar-tarefa.repository.spec.ts` (sai do claim, da contagem e da dependência)
 - **Origem:** AT-912 (EP-036).
 

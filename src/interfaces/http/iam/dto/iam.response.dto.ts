@@ -30,6 +30,7 @@ import type {
 import type { ProvisioningStatus } from '../../../../domain/git/repo-bootstrap-status';
 import type { SessionEvent } from '../../../../domain/sessions/session-event.entity';
 import { SessionEventResponseDto } from '../../sessions/dto/sessions.response.dto';
+import { EscadaDeModelosDto } from './create-project.dto';
 
 /**
  * Respostas de workspaces, projetos e associações (Fase 7b, item 6).
@@ -300,6 +301,14 @@ export class ProjectResponseDto implements Wire<Project> {
       'the domain default.',
   })
   maxConsecutiveBlocked!: number | null;
+
+  @ApiProperty({
+    type: EscadaDeModelosDto,
+    nullable: true,
+    description:
+      'Model ladder (RN-1143). `null` uses the default Haiku 5.5 → Sonnet 5.',
+  })
+  modelEscalation!: EscadaDeModelosDto | null;
 
   @ApiProperty({
     enum: STORY_PROMOTION_MODES,
