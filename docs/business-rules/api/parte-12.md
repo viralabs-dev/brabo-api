@@ -113,6 +113,7 @@ keywords: [regras de negócio, api]
 - **Onde:** `src/domain/llm/raciocinio-do-agente.ts` (`devoRetentarSemRaciocinio`).
 - **Teste:** `test/domain/llm/raciocinio-do-agente.spec.ts`.
 - **Origem:** AT-920 (EP-036), rodada 366, lane AA2.
+
 <a id="rn-1101"></a>
 
 ### RN-1101 — A ativação da execução recusa o projeto sem container `running`, salvo o dev Noop {#rn-1101}
