@@ -207,3 +207,24 @@ export const tasks = pgTable(
       .where(sql`${table.blocked}`),
   ],
 );
+
+// RN-1143 (AT-916): o estado da escalada de modelo POR TAREFA — quantos
+// bloqueios por limite de iterações ela já teve e o que restaurar quando
+// fechar. `base_model_id` nulo = o agente não tinha binding próprio (volta a
+// herdar, removendo o binding). A linha some quando a tarefa fecha.
+export const taskModelEscalations = pgTable('task_model_escalations', {
+  taskId: uuid('task_id')
+    .primaryKey()
+    .references(() => tasks.id, { onDelete: 'cascade' }),
+  projectId: uuid('project_id')
+    .notNull()
+    .references(() => projects.id, { onDelete: 'cascade' }),
+  agentId: text('agent_id').notNull(),
+  limitBlocks: integer('limit_blocks').notNull().default(0),
+  escalated: boolean('escalated').notNull().default(false),
+  baseModelId: text('base_model_id'),
+  baseRoutingPreference: text('base_routing_preference'),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});

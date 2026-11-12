@@ -43,6 +43,7 @@ const markBlocked = new MarkTaskBlockedUseCase(
   appendStub,
   outboxStub,
   uowStub,
+  { aoBloquearPorLimite: () => Promise.resolve('contado') } as never,
 );
 const unblock = new UnblockTaskUseCase(
   taskRepo,

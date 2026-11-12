@@ -11,6 +11,7 @@ import { ResolveCredentialOwnerUseCase } from '../llm/resolve-credential-owner.u
 import { TaskRepository } from '../../ports/backlog-repository.port';
 import { ModuleMapRepository } from '../../ports/module-map-repository.port';
 import { EncryptionService } from '../../ports/encryption.port';
+import { EscalarModeloDaTarefaUseCase } from '../execution/escalar-modelo-da-tarefa.use-case';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
 import type { ProposedAction } from '../../../domain/actions/proposed-action.entity';
 import type {
@@ -113,6 +114,7 @@ export class ExecuteGitActionUseCase {
     private readonly resolveOwner: ResolveCredentialOwnerUseCase,
     private readonly tasks: TaskRepository,
     private readonly moduleMaps: ModuleMapRepository,
+    private readonly escalada: EscalarModeloDaTarefaUseCase,
   ) {}
 
   async execute(
@@ -409,6 +411,8 @@ export class ExecuteGitActionUseCase {
       const task = await this.tasks.markDoneIfNotDone(taskId);
       if (!task) continue;
       fechadas.push(taskId);
+      // RN-1143 (AT-916): tarefa fechada devolve o agente ao modelo base.
+      await this.escalada.restaurar(projectId, taskId).catch(() => undefined);
       await this.appendSessionEvent.execute(projectId, sessionId, {
         type: 'backlog.task_status_changed',
         actor: { kind: 'system', id: 'git-executor' },

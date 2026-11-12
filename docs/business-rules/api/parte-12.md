@@ -131,3 +131,35 @@ keywords: [regras de negócio, api]
 - **Origem:** AT-901 (EP-036), só o merge sem efeito; rodada 366, lane AA1.
 
 A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em `ARG`/`ENV`; só como secret do BuildKit), definida no [brabo-broker](https://github.com/viralabs-dev/brabo-broker/blob/dev/docs/business-rules/broker.md). Quem prova na api é `test/dockerfile-sem-token.spec.ts:13` (todo `pnpm install` do `Dockerfile` monta o secret, nenhum `ARG`/`ENV` com token, `.npmrc` só com o registry).
+
+### RN-1141 — O teto por tarefa é do projeto, editável pelo PATCH, e chega aos agentes vivos {#rn-1141}
+
+- **Regra:** `PATCH /projects/:projectId` aceita `taskBudgetMicros` (inteiro positivo, micro-USD). Ao mudar o teto, a api chama o engine em `POST /internal/projects/:projectId/execution/task-budget` (RN-1090 do engine); vale a partir da próxima volta de cada tarefa. Se o engine falhar, a mudança do projeto NÃO é desfeita e a falha vira log (`teto_nao_propagado`).
+- **Onde:** `src/application/use-cases/iam/update-project.use-case.ts` (`UpdateProjectUseCase.execute`), `src/infrastructure/http-clients/api-to-engine-client.ts` (`setTaskBudget`), `src/interfaces/http/iam/dto/create-project.dto.ts` (`taskBudgetMicros`).
+- **Teste:** `test/application/use-cases/iam/update-project-teto.use-case.spec.ts`, `test/infrastructure/http-clients/api-to-engine-client.spec.ts` (`RN-1141`).
+- **Origem:** AT-917 (EP-036), rodada 372, lane L2.
+
+### RN-1142 — Depois de 2 bloqueios por limite de iterações na mesma tarefa, o agente sobe um degrau da escada do projeto {#rn-1142}
+
+- **Regra:** a escada é `projects.model_escalation` (`{ ladder: [{ modelId, taskBudgetMicros }] }`, do menor ao maior; nulo usa o padrão Haiku 5.5 → Sonnet 5, tetos US$ 0,50 e US$ 2,00, FIXOS por degrau). No 2º `backlog.task_blocked` por limite de iterações (origem `modelo`) da mesma tarefa, a api troca o `agent-binding` do dono da tarefa para o degrau seguinte, aplica o teto do degrau (RN-1141), emite `agent.model_escalated { agentId, taskId, de, para, tetoMicros }` e desbloqueia a tarefa sozinha (`UnblockTaskUseCase`, ator `system`). O engine não muda: o binding é resolvido pela api a cada `llm-turn`.
+- **Onde:** `src/application/use-cases/execution/escalar-modelo-da-tarefa.use-case.ts` (`aoBloquearPorLimite`), chamado por `mark-task-blocked.use-case.ts` (`MarkTaskBlockedUseCase.execute`) FORA da transação; `src/domain/execution/escada-de-modelos.ts`.
+- **Teste:** `test/application/use-cases/execution/escalar-modelo-da-tarefa.use-case.spec.ts`.
+
+### RN-1143 — O agente volta ao modelo base quando a tarefa fecha {#rn-1143}
+
+- **Regra:** `task_model_escalations` guarda por tarefa o contador de bloqueios e a base (o binding próprio anterior, ou nenhum). Ao fechar a tarefa (merge da PR), `restaurar` devolve o binding base (ou o remove, voltando a herdar) e reaplica o teto do projeto; a linha some.
+- **Onde:** `escalar-modelo-da-tarefa.use-case.ts` (`restaurar`), chamado por `execute-git-action.use-case.ts` ao fechar as tarefas da PR; `src/db/schema/backlog.ts` (`taskModelEscalations`).
+- **Teste:** `escalar-modelo-da-tarefa.use-case.spec.ts` (tarefa fechada volta ao base).
+
+### RN-1144 — Escada esgotada: a tarefa fica bloqueada para o dono {#rn-1144}
+
+- **Regra:** no último degrau (ou com o modelo atual fora da escada) a api não escala nem desbloqueia. No último degrau grava `agent.model_escalation_exhausted` ("escada esgotada"). Falha da escalada nunca desfaz o bloqueio; falha do engine nunca desfaz a escalada.
+- **Onde:** `escalar-modelo-da-tarefa.use-case.ts`.
+- **Teste:** `escalar-modelo-da-tarefa.use-case.spec.ts` (último degrau, falha do engine).
+
+### RN-1145 — A escada é configurável por projeto pelo PATCH {#rn-1145}
+
+- **Regra:** `PATCH /projects/:projectId` aceita `modelEscalation` (`ladder` com ao menos 1 degrau, `modelId` e `taskBudgetMicros` positivo); a resposta do projeto o devolve (`null` = padrão). Contrato para o web: `ProjectResponseDto.modelEscalation`.
+- **Onde:** `create-project.dto.ts` (`EscadaDeModelosDto`), `iam.response.dto.ts`.
+- **Teste:** coberto pelo `openapi.json` versionado (`pnpm openapi:export` sem diff).
+- **Nota:** o teto do degrau vale para o PROJETO inteiro (o endpoint do engine é por projeto) enquanto a tarefa escalada não fecha; RN-1146 reservada.

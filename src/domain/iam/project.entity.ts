@@ -1,3 +1,4 @@
+import type { EscadaDeModelos } from '../execution/escada-de-modelos';
 // QUEM promove uma story de draft para ready (Fase 12c, RN-048). Espelha o
 // enum `story_promotion_mode` do banco.
 export const STORY_PROMOTION_MODES = ['manual', 'auto'] as const;
@@ -106,6 +107,8 @@ export interface Project {
   // blocked em sequência até parar em idle_tripped. Nulo = default do
   // domínio (ver DEFAULT_MAX_CONSECUTIVE_BLOCKED em ActivateExecutionUseCase).
   maxConsecutiveBlocked: number | null;
+  // RN-1142 (AT-916): escada de modelos; nulo = ESCADA_PADRAO.
+  modelEscalation: EscadaDeModelos | null;
   // Quem promove story a `ready` (Fase 12c, RN-048). NOT NULL: ao contrário
   // dos tetos acima, aqui não existe "nulo = default do domínio" — o valor É
   // a decisão de autoridade, e ela não fica implícita.
