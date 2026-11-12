@@ -1021,7 +1021,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   (`apps/engine/lib/engine/harness/decisoes_do_projeto.ex`), para o PO achar o
   id.
 - **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:157`
-  (`decisoesDaTarefa`), `:402` (`decisoesDoContexto`),
+  (`decisoesDaTarefa`), `:169` (`decisoesDoContexto`),
   `src/domain/backlog/correcao-de-historia.ts:33`
   (`recusaDeCorrecaoDeHistoria`),
   `src/application/use-cases/backlog/corrigir-historia.use-case.ts:130`

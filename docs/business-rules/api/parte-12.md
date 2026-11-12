@@ -192,7 +192,7 @@ keywords: [regras de negócio, api]
 ### RN-1127 — O Dev Lead e o dev leem o último parecer de gate da tarefa {#rn-1127}
 
 - **Regra:** O dev-context da tarefa devolve `ultimoParecer: { gate, veredito, resumo, itens, melhorias }`, do `artifact.qa_verdict` ou `artifact.secops_verdict` mais recente da tarefa no PROJETO (o desbloqueio e o parecer moram em sessões diferentes); `null` sem parecer.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:473` (`execute`)
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:348` (`execute`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts` (RN-1124/1125/1127)
 - **Origem:** AT-909 (EP-036).
 
