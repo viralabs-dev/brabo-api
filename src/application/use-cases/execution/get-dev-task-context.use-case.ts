@@ -95,7 +95,26 @@ export interface DevTaskContext {
    * teto de 10 (as da tarefa vêm primeiro e comem o teto antes).
    */
   decisoesDoProjeto: DevContextDecisao[];
+  /** Último desbloqueio COM orientação (o dev a segue acima do parecer). */
+  desbloqueio: DevContextDesbloqueio | null;
+  /** Último parecer de QA/SecOps da tarefa; `null` sem parecer. */
+  ultimoParecer: DevContextUltimoParecer | null;
 }
+
+type EventoDaTarefa = { payload: unknown; createdAt: Date };
+
+/** O evento mais recente cujo `payload.taskId` é a tarefa. Pura. */
+function maisRecenteDaTarefa<T extends EventoDaTarefa>(
+  eventos: ReadonlyArray<T>,
+  taskId: string,
+): T | undefined {
+  return eventos
+    .filter((e) => (e.payload as { taskId?: unknown })?.taskId === taskId)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+}
+
+const textos = (v: unknown): string[] =>
+  Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
 
 export interface DevContextDecisao {
   id: string;
@@ -103,6 +122,21 @@ export interface DevContextDecisao {
   pergunta: string;
   decisao: string;
   decididaEm: string;
+}
+
+/** RN-1124/1125 (AT-909): o último desbloqueio com orientação da tarefa. */
+export interface DevContextDesbloqueio {
+  orientacao: string;
+  em: string;
+}
+
+/** RN-1125/1127: o último parecer de gate da tarefa, com os itens. */
+export interface DevContextUltimoParecer {
+  gate: 'qa' | 'secops';
+  veredito: string;
+  resumo: string;
+  itens: string[];
+  melhorias: string[];
 }
 
 export const TETO_DE_DECISOES_NO_CONTEXTO = 10;
@@ -328,25 +362,57 @@ export class GetDevTaskContextUseCase {
       );
     }
 
-    const [businessRules, adrActions, daHistoria, claims, decisoes] =
-      await Promise.all([
-        this.resolveBusinessRules(
-          story.businessRuleIds,
-          await idsDeRegrasRetiradas(this.sessionEvents, projectId), // RN-1018
-        ),
-        this.proposedActions.listByProjectAndType(projectId, 'open_adr_pr'),
-        this.tasks.findByStoryIds([story.id]),
-        module
-          ? this.sessionEvents.listByTypeForProject(
-              projectId,
-              'backlog.task_claimed',
-            )
-          : Promise.resolve([]),
-        this.sessionEvents.listByTypeForProject(
-          projectId,
-          'artifact.decision_record',
-        ),
-      ]);
+    const [
+      businessRules,
+      adrActions,
+      daHistoria,
+      claims,
+      decisoes,
+      desbloqueios,
+      pareceresQa,
+      pareceresSecops,
+    ] = await Promise.all([
+      this.resolveBusinessRules(
+        story.businessRuleIds,
+        await idsDeRegrasRetiradas(this.sessionEvents, projectId), // RN-1018
+      ),
+      this.proposedActions.listByProjectAndType(projectId, 'open_adr_pr'),
+      this.tasks.findByStoryIds([story.id]),
+      module
+        ? this.sessionEvents.listByTypeForProject(
+            projectId,
+            'backlog.task_claimed',
+          )
+        : Promise.resolve([]),
+      this.sessionEvents.listByTypeForProject(
+        projectId,
+        'artifact.decision_record',
+      ),
+      this.sessionEvents.listByTypeForProject(
+        projectId,
+        'backlog.task_unblocked',
+      ),
+      this.sessionEvents.listByTypeForProject(projectId, 'artifact.qa_verdict'),
+      this.sessionEvents.listByTypeForProject(
+        projectId,
+        'artifact.secops_verdict',
+      ),
+    ]);
+    const unblock = maisRecenteDaTarefa(
+      desbloqueios.filter(
+        (e) => (e.payload as { orientacao?: unknown }).orientacao,
+      ),
+      task.id,
+    );
+    const parecer = [
+      ...pareceresQa.map((e) => ({ e, gate: 'qa' as const })),
+      ...pareceresSecops.map((e) => ({ e, gate: 'secops' as const })),
+    ]
+      .filter(
+        ({ e }) => (e.payload as { taskId?: unknown })?.taskId === task.id,
+      )
+      .sort((a, b) => b.e.createdAt.getTime() - a.e.createdAt.getTime())[0];
+    const pp = parecer?.e.payload as Record<string, unknown> | undefined;
 
     const modulo = moduloDoContrato(task, story, module);
     const contratos = modulo
@@ -398,6 +464,21 @@ export class GetDevTaskContextUseCase {
       moduleOpenTasks: doModulo.itens,
       moduleOpenTasksTotal: doModulo.total,
       moduleContract,
+      desbloqueio: unblock
+        ? {
+            orientacao: (unblock.payload as { orientacao: string }).orientacao,
+            em: unblock.createdAt.toISOString(),
+          }
+        : null,
+      ultimoParecer: parecer
+        ? {
+            gate: parecer.gate,
+            veredito: typeof pp?.veredito === 'string' ? pp.veredito : '',
+            resumo: typeof pp?.resumo === 'string' ? pp.resumo : '',
+            itens: textos(pp?.itens),
+            melhorias: textos(pp?.melhorias),
+          }
+        : null,
       primeiraDoModulo: ehPrimeiraTarefaDoModulo(claims, task.id, module),
       ...decisoesDoContexto(
         decisoes,

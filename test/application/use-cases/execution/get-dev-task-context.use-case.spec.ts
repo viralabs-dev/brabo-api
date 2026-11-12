@@ -119,6 +119,7 @@ function buildUseCase(overrides?: {
   tarefasDeOutras?: Task[];
   contratos?: SessionEvent[];
   decisoes?: Array<{ id: string; payload: unknown; createdAt: Date }>;
+  porTipo?: Record<string, SessionEvent[]>;
 }) {
   const tasks = {
     findById: (id: string) =>
@@ -158,11 +159,14 @@ function buildUseCase(overrides?: {
       Promise.resolve(id === ruleEvent.id ? ruleEvent : null),
     listByTypeForProject: (_p: string, tipo: string) =>
       Promise.resolve(
-        tipo === 'artifact.module_contracts'
-          ? (overrides?.contratos ?? [])
-          : tipo === 'artifact.decision_record'
-            ? (overrides?.decisoes ?? [])
-            : (overrides?.claims ?? []),
+        overrides?.porTipo?.[tipo] ??
+          (tipo === 'backlog.task_unblocked' || tipo.endsWith('_verdict')
+            ? []
+            : tipo === 'artifact.module_contracts'
+              ? (overrides?.contratos ?? [])
+              : tipo === 'artifact.decision_record'
+                ? (overrides?.decisoes ?? [])
+                : (overrides?.claims ?? [])),
       ),
   } as unknown as SessionEventRepository;
 
@@ -179,6 +183,58 @@ function buildUseCase(overrides?: {
 }
 
 describe('GetDevTaskContextUseCase', () => {
+  describe('RN-1124/1125/1127: desbloqueio e último parecer', () => {
+    const ev = (payload: unknown, min: number) =>
+      ({ payload, createdAt: new Date(2026, 0, 1, 0, min) }) as SessionEvent;
+
+    it('devolve a última orientação e o último parecer da tarefa, com itens', async () => {
+      const ctx = await buildUseCase({
+        porTipo: {
+          'backlog.task_unblocked': [
+            ev({ taskId: 'task-1', orientacao: 'velha' }, 1),
+            ev({ taskId: 'task-1', orientacao: 'nova' }, 5),
+            ev({ taskId: 'outra', orientacao: 'x' }, 9),
+          ],
+          'artifact.qa_verdict': [
+            ev(
+              {
+                taskId: 'task-1',
+                veredito: 'changes_requested',
+                resumo: 'r1',
+                itens: ['a'],
+              },
+              2,
+            ),
+            ev(
+              {
+                taskId: 'task-1',
+                veredito: 'changes_requested',
+                resumo: 'r2',
+                itens: ['b', 'c'],
+                melhorias: ['m'],
+              },
+              4,
+            ),
+          ],
+        },
+      }).execute('proj-1', 'task-1');
+      expect(ctx.desbloqueio?.orientacao).toBe('nova');
+      expect(ctx.ultimoParecer).toEqual({
+        gate: 'qa',
+        veredito: 'changes_requested',
+        resumo: 'r2',
+        itens: ['b', 'c'],
+        melhorias: ['m'],
+      });
+    });
+
+    it('sem desbloqueio nem parecer: null', async () => {
+      const ctx = await buildUseCase().execute('proj-1', 'task-1');
+      expect(ctx.desbloqueio).toBeNull();
+      expect(ctx.ultimoParecer).toBeNull();
+    });
+  });
+
   describe('RN-774: primeira tarefa do módulo', () => {
     const claim = (taskId: string, module: string) => ({
       payload: { taskId, module, title: 't' },

@@ -150,10 +150,13 @@ export class UpdateTaskInternalDto {
   @IsUUID()
   projectId!: string;
 
-  @ApiPropertyOptional({ enum: ['po', 'dev-lead'], default: 'po' })
+  @ApiPropertyOptional({
+    enum: ['po', 'dev-lead', 'arquiteto'],
+    default: 'po',
+  })
   @IsOptional()
-  @IsIn(['po', 'dev-lead'])
-  agentId?: 'po' | 'dev-lead';
+  @IsIn(['po', 'dev-lead', 'arquiteto'])
+  agentId?: 'po' | 'dev-lead' | 'arquiteto';
 
   @ApiPropertyOptional({ example: 'Return 200 for a past date' })
   @IsOptional()

@@ -11888,7 +11888,7 @@
     },
     "/projects/{projectId}/sessions/{sessionId}/tasks/{taskId}/unblock": {
       "post": {
-        "description": "Resets the gate correction counter and hands the task back to the agent. It is the human escape hatch for the correction cap — there is no automatic unblock.",
+        "description": "Resets the gate correction counter and hands the task back to the agent. It is the human escape hatch for the correction cap — there is no automatic unblock. The optional body `orientacao` (up to 2000 characters, RN-1124) goes to the dev with the task and wins over the last gate report.",
         "operationId": "ExecutionController_unblock",
         "parameters": [
           {
@@ -11916,6 +11916,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnblockTaskDto"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "",
@@ -11926,6 +11936,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "`orientacao` is over 2000 characters."
           },
           "401": {
             "description": "No token, expired token, or invalid signature."
@@ -19668,6 +19681,22 @@
           "decididaEm"
         ]
       },
+      "DevContextDesbloqueioResponseDto": {
+        "type": "object",
+        "properties": {
+          "orientacao": {
+            "type": "string"
+          },
+          "em": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "orientacao",
+          "em"
+        ]
+      },
       "DevContextModuleOpenTaskResponseDto": {
         "type": "object",
         "properties": {
@@ -19715,6 +19744,43 @@
           "id",
           "title",
           "status"
+        ]
+      },
+      "DevContextUltimoParecerResponseDto": {
+        "type": "object",
+        "properties": {
+          "gate": {
+            "type": "string",
+            "enum": [
+              "qa",
+              "secops"
+            ]
+          },
+          "veredito": {
+            "type": "string"
+          },
+          "resumo": {
+            "type": "string"
+          },
+          "itens": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "melhorias": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "gate",
+          "veredito",
+          "resumo",
+          "itens",
+          "melhorias"
         ]
       },
       "DevTaskContextResponseDto": {
@@ -19784,6 +19850,26 @@
             "items": {
               "$ref": "#/components/schemas/DevContextDecisaoResponseDto"
             }
+          },
+          "desbloqueio": {
+            "nullable": true,
+            "description": "The last unblock WITH guidance for this task (RN-1124). The dev follows it over the last gate report. `null` without one.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DevContextDesbloqueioResponseDto"
+              }
+            ]
+          },
+          "ultimoParecer": {
+            "nullable": true,
+            "description": "The task's last QA/SecOps report with its items (RN-1125/1127); the Dev Lead reads it here. `null` without a report.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DevContextUltimoParecerResponseDto"
+              }
+            ]
           }
         },
         "required": [
@@ -19797,7 +19883,9 @@
           "moduleContract",
           "primeiraDoModulo",
           "decisoes",
-          "decisoesDoProjeto"
+          "decisoesDoProjeto",
+          "desbloqueio",
+          "ultimoParecer"
         ]
       },
       "DiffLineResponseDto": {
@@ -26129,6 +26217,16 @@
               "type": "string"
             }
           },
+          "melhorias": {
+            "example": [
+              "Extract the date parsing into a helper"
+            ],
+            "description": "Non-blocking suggestions (RN-1126): they do not reject the PR and do not count as a correction.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "pergunta": {
             "type": "string",
             "example": "Should a nonexistent code answer 404?",
@@ -29259,6 +29357,17 @@
           "status"
         ]
       },
+      "UnblockTaskDto": {
+        "type": "object",
+        "properties": {
+          "orientacao": {
+            "type": "string",
+            "example": "The module is composed by another one: do not boot it alone.",
+            "maxLength": 2000,
+            "description": "Guidance for the dev that takes the task back. It reaches the dev in the task context and wins over the last gate report."
+          }
+        }
+      },
       "UnblockTaskInternalDto": {
         "type": "object",
         "properties": {
@@ -29450,7 +29559,8 @@
             "type": "string",
             "enum": [
               "po",
-              "dev-lead"
+              "dev-lead",
+              "arquiteto"
             ],
             "default": "po"
           },

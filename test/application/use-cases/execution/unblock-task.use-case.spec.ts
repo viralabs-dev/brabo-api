@@ -85,8 +85,10 @@ class FakeStories {
 
 class FakeAppend {
   calls: string[] = [];
-  execute(_p: string, _s: string, input: { type: string }) {
+  payloads: unknown[] = [];
+  execute(_p: string, _s: string, input: { type: string; payload: unknown }) {
     this.calls.push(input.type);
+    this.payloads.push(input.payload);
     return Promise.resolve({} as never);
   }
 }
@@ -125,6 +127,22 @@ describe('UnblockTaskUseCase', () => {
 
     expect(task.id).toBe('task-1');
     expect(append.calls).toEqual(['backlog.task_unblocked']);
+  });
+
+  it('RN-1124: grava a orientação (aparada) no evento; sem ela, o payload não muda', async () => {
+    await useCase.execute(
+      PROJECT,
+      SESSION,
+      'task-1',
+      USER,
+      { kind: 'user' },
+      '  siga o contrato  ',
+    );
+    await useCase.execute(PROJECT, SESSION, 'task-1', USER);
+    expect(append.payloads).toEqual([
+      { taskId: 'task-1', orientacao: 'siga o contrato' },
+      { taskId: 'task-1' },
+    ]);
   });
 
   describe('outbox task.became_claimable (Fase 12b — RN-047)', () => {

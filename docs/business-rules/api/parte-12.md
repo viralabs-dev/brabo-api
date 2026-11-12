@@ -160,6 +160,59 @@ keywords: [regras de negócio, api]
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts` (`RN-1104`: pontas iguais gravam `jaContida`, pontas diferentes não).
 - **Origem:** AT-901 (EP-036), só o merge sem efeito; rodada 366, lane AA1.
 
+<a id="rn-1124"></a>
+
+### RN-1124 — O Desbloquear aceita uma orientação opcional que vai ao dev {#rn-1124}
+
+- **Regra:** `POST /projects/:projectId/sessions/:sessionId/tasks/:taskId/unblock` aceita o corpo opcional `{ orientacao }` (texto, até 2000 caracteres, 400 acima). A orientação aparada é gravada em `backlog.task_unblocked` e o dev-context da tarefa devolve `desbloqueio: { orientacao, em }` (o último com orientação), que o dev segue acima do último parecer. Sem corpo, nada muda.
+- **Onde:** `src/application/use-cases/execution/unblock-task.use-case.ts:24` (`execute`), `src/interfaces/http/execution/dto/unblock-task.dto.ts` (`UnblockTaskDto`)
+- **Teste:** `test/application/use-cases/execution/unblock-task.use-case.spec.ts` (RN-1124); `test/interfaces/http/execution/orientacao-e-melhorias.dto.spec.ts`
+- **Origem:** AT-909 (EP-036); rodada 368, lane api.
+
+<a id="rn-1125"></a>
+
+### RN-1125 — O bloqueio por ciclo esgotado grava os itens do parecer no diagnóstico {#rn-1125}
+
+- **Regra:** O diagnóstico de `backlog.task_blocked` por teto de correção passa a ser o `resumo` seguido dos `itens` (um por linha), e não só o resumo.
+- **Onde:** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:208` (`execute`, ramo `blocked`)
+- **Teste:** `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts` (estourando o teto)
+- **Origem:** AT-909 (EP-036); rodada 368, lane api.
+
+<a id="rn-1126"></a>
+
+### RN-1126 — `melhorias` do parecer não reprovam, não contam correção e vão à PR e ao evento {#rn-1126}
+
+- **Regra:** `POST /internal/sessions/:sessionId/gates/verdict` aceita `melhorias: [string]` opcional (o `forbidNonWhitelisted` não a recusa). Elas não entram em `nextGateStatus` (só o `veredito` conta), aparecem no comentário da PR na seção "Melhorias (não bloqueiam)" e em `pr.gate_changed`.
+- **Onde:** `src/application/use-cases/execution/record-gate-verdict.use-case.ts:45` (`melhorias`), `src/interfaces/http/internal/dto/record-gate-verdict-internal.dto.ts` (`melhorias`)
+- **Teste:** `test/application/use-cases/execution/record-gate-verdict.use-case.spec.ts` (RN-1126); `test/interfaces/http/execution/orientacao-e-melhorias.dto.spec.ts` (verdict com `melhorias` aceito)
+- **Origem:** AT-905 (EP-036); formato do evento `artifact.qa_verdict` da engine#87.
+
+<a id="rn-1127"></a>
+
+### RN-1127 — O Dev Lead e o dev leem o último parecer de gate da tarefa {#rn-1127}
+
+- **Regra:** O dev-context da tarefa devolve `ultimoParecer: { gate, veredito, resumo, itens, melhorias }`, do `artifact.qa_verdict` ou `artifact.secops_verdict` mais recente da tarefa no PROJETO (o desbloqueio e o parecer moram em sessões diferentes); `null` sem parecer.
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:348` (`execute`)
+- **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts` (RN-1124/1125/1127)
+- **Origem:** AT-909 (EP-036).
+
+<a id="rn-1128"></a>
+
+### RN-1128 — O `update_task` interno aceita o Arquiteto como autor {#rn-1128}
+
+- **Regra:** `update_task` interno aceita `agentId: "arquiteto"` e grava esse ator no evento, em vez de cair em `po`.
+- **Onde:** `src/interfaces/http/internal/dto/create-story-internal.dto.ts` (`UpdateTaskInternalDto`), `src/application/use-cases/backlog/corrigir-historia.use-case.ts:20` (`AtorDaCorrecao`)
+- **Teste:** `test/interfaces/http/execution/orientacao-e-melhorias.dto.spec.ts` (RN-1128)
+- **Origem:** AT-918 (EP-036); engine#83.
+
+<a id="rn-1129"></a>
+
+### RN-1129 — `search_workspace` está no piso do menu do Arquiteto {#rn-1129}
+
+- **Regra:** O recorte do Jev nunca tira `search_workspace` do Arquiteto (RN-758): ele lê o código mergeado antes de declarar contrato.
+- **Onde:** `src/domain/llm/tool-router.ts:317` (`PISO_DO_MENU`)
+- **Teste:** `test/interfaces/http/execution/orientacao-e-melhorias.dto.spec.ts` (RN-1129)
+- **Origem:** AT-918 (EP-036).
 <a id="rn-1138"></a>
 
 ### RN-1138 — A tarefa criada pelo Dev Lead é a FUNDAÇÃO do módulo {#rn-1138}

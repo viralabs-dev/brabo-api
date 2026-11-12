@@ -288,7 +288,7 @@ keywords: [regras de negócio, api]
   naquele passo, então ele vale sempre que há recorte. Os dev agents ficam
   sem piso, de propósito (a obrigação deles muda a cada passo; para eles vale
   só a [RN-759](#rn-759)) — salvo `report_done`/`report_blocked`, que entram no piso deles desde a [RN-839](#rn-839).
-- **Onde:** `src/domain/llm/tool-router.ts:401` (`menuComPiso`) e
+- **Onde:** `src/domain/llm/tool-router.ts:405` (`menuComPiso`) e
   `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:265`
   (`menuComPiso`)
 - **Teste:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
@@ -312,7 +312,7 @@ keywords: [regras de negócio, api]
   porque só a api sabe o menu depois do Jev. Não aplicar o recorte na volta
   que fecha o turno foi avaliado e não feito: a api não sabe antes da
   resposta que a volta será a última.
-- **Onde:** `src/domain/llm/tool-router.ts:420` (`avisoDeRecorte`) e
+- **Onde:** `src/domain/llm/tool-router.ts:424` (`avisoDeRecorte`) e
   `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:281`
   (`avisoDeRecorte`)
 - **Teste:** `test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts`
@@ -533,7 +533,7 @@ keywords: [regras de negócio, api]
   `moduleOpenTasksTotal` e o corte dito no recorte. Requisito da entrega que
   depende do que outra história ainda vai entregar (uma rota, uma tela) vai ao
   `resumo` como observação e não reprova. A régua é de PROMPT, como na RN-765.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:235`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:269`
   (`tarefasAbertasDoModulo`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
   (`texto`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
@@ -560,10 +560,10 @@ keywords: [regras de negócio, api]
   diz Y), para o usuário e o Arquiteto. Régua de PROMPT, como a
   [RN-765](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-765). Desde a [RN-792](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-792) o Arquiteto confere o contrato
   contra as rotas citadas nas histórias ao declará-lo.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:280`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:314`
   (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:66`
 
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:280`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:314`
   (`moduloDoContrato`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:70`
   (`secao_do_contrato`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
@@ -719,7 +719,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   o recorte do Jev nunca tira `report_done` nem `report_blocked`. O resto do
   passo deles segue recortável, com o aviso de recorte da RN-759. Como todo
   piso, ele só devolve o que está no catálogo do passo.
-- **Onde:** `src/domain/llm/tool-router.ts:360` (`pisoDoMenu`)
+- **Onde:** `src/domain/llm/tool-router.ts:364` (`pisoDoMenu`)
 - **Teste:** `test/domain/llm/piso-dos-dev-agents.spec.ts`
   (`recorte que deixa só \`terminal\` para dev-api: report_done e
   report_blocked continuam`; `falha: dev-lead e outro agente não ganham as
@@ -941,8 +941,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   (RN-839). O critério é o texto que a api já recebe, sem campo novo; o piso
   fixo de todo passo não alarga (RN-759), outro agente não ganha, e o piso só
   acrescenta o que está no catálogo do passo (P3).
-- **Onde:** `src/domain/llm/tool-router.ts:377` (`PISO_DA_CORRECAO_DO_DEV`),
-  `:388` (`ehPassoDeCorrecao`), `:401` (`menuComPiso`),
+- **Onde:** `src/domain/llm/tool-router.ts:381` (`PISO_DA_CORRECAO_DO_DEV`),
+  `:392` (`ehPassoDeCorrecao`), `:405` (`menuComPiso`),
   `src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:265` (`menuComPiso`)
 - **Teste:** `test/domain/llm/tool-router-correcao-do-dev.spec.ts`
   ("dev agent em correção recebe write_file e terminal"; "passo comum de
@@ -1020,8 +1020,8 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   engine lista cada decisão com o `questionId` e as histórias afetadas
   (`apps/engine/lib/engine/harness/decisoes_do_projeto.ex`), para o PO achar o
   id.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:123`
-  (`decisoesDaTarefa`), `:402` (`decisoesDoContexto`),
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:157`
+  (`decisoesDaTarefa`), `:169` (`decisoesDoContexto`),
   `src/domain/backlog/correcao-de-historia.ts:33`
   (`recusaDeCorrecaoDeHistoria`),
   `src/application/use-cases/backlog/corrigir-historia.use-case.ts:130`
@@ -1107,7 +1107,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   decisões gravadas antes desta regra.
 - **Onde:** `src/domain/open-questions/pergunta-em-aberto.ts:179`
   (`resolverRegrasDoAfeta`), `src/application/use-cases/sessions/append-session-event.use-case.ts:122`
-  (`resolverRegrasDoAfeta`), `src/application/use-cases/execution/get-dev-task-context.use-case.ts:135`
+  (`resolverRegrasDoAfeta`), `src/application/use-cases/execution/get-dev-task-context.use-case.ts:161`
   (`decisoesDoContexto`)
 - **Teste:** `test/application/use-cases/backlog/perguntas-em-aberto.use-case.spec.ts`
   ("título exato é convertido para o id da regra"; falha: "texto que não é id
@@ -1131,7 +1131,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   `dev-<módulo>` (com borda: `catalogo` não casa `catalogo-admin`). Exemplo: a
   orientação do Dev Lead "documentar em `modules/catalogo/README.md`" chega ao
   `dev-catalogo` em `decisoes`, mesmo entre mais de 10 decisões.
-- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:135`
+- **Onde:** `src/application/use-cases/execution/get-dev-task-context.use-case.ts:161`
   (`decisoesDoContexto`), `src/interfaces/http/internal/dto/internal.response.dto.ts:237`
   (`decisoesDoProjeto`)
 - **Teste:** `test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
