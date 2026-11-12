@@ -13,6 +13,7 @@ import {
   integer,
   real,
   bigint,
+  date,
   boolean,
   timestamp,
   primaryKey,
@@ -437,6 +438,13 @@ export const budgets = pgTable(
     sessionId: uuid('session_id').references(() => sessions.id, {
       onDelete: 'cascade',
     }),
+    // ADR 0296: teto de workspace (um por workspace, mensal como o de projeto).
+    workspaceId: uuid('workspace_id').references(() => workspaces.id, {
+      onDelete: 'cascade',
+    }),
+    // 1º dia do mês UTC a que `spent_micros` se refere; NULL no teto de sessão
+    // (acumulado). Vencido = o gasto vale 0 (virada preguiçosa, sem cron).
+    periodoInicio: date('periodo_inicio', { mode: 'string' }),
     limitMicros: bigint('limit_micros', { mode: 'number' }).notNull(),
     spentMicros: bigint('spent_micros', { mode: 'number' })
       .notNull()
@@ -457,9 +465,14 @@ export const budgets = pgTable(
     // Postgres — exatamente "no máximo um budget por projeto/sessão".
     unique('budgets_project_id_unique').on(table.projectId),
     unique('budgets_session_id_unique').on(table.sessionId),
+    unique('budgets_workspace_id_unique').on(table.workspaceId),
     check(
       'budgets_scope_check',
-      sql`(${table.projectId} is not null) <> (${table.sessionId} is not null)`,
+      sql`num_nonnulls(${table.projectId}, ${table.sessionId}, ${table.workspaceId}) = 1`,
+    ),
+    check(
+      'budgets_periodo_check',
+      sql`(${table.periodoInicio} is null) = (${table.sessionId} is not null)`,
     ),
   ],
 );

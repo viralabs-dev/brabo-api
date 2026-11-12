@@ -5,6 +5,7 @@ import {
   type AgentArea,
   type UpsertAreaInput,
 } from '../../../application/ports/agent-area-repository.port';
+import { gastoVigente, inicioDoMes } from '../../../domain/llm/periodo-do-teto';
 import { agentAreaMembers, agentAreas } from '../../../db/schema';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
@@ -41,7 +42,7 @@ export class DrizzleAgentAreaRepository implements AgentAreaRepository {
       leadAgentId: a.leadAgentId,
       maxParallel: a.maxParallel,
       budgetMicros: a.budgetMicros,
-      spentMicros: a.spentMicros,
+      spentMicros: gastoVigente(a.periodoInicio, a.spentMicros, new Date()),
       members: membros.filter((m) => m.areaId === a.id).map((m) => m.agentId),
     }));
   }
@@ -153,10 +154,13 @@ export class DrizzleAgentAreaRepository implements AgentAreaRepository {
     deltaMicros: number,
   ): Promise<AgentArea> {
     const db = currentDb(this.rootDb);
+    const mes = inicioDoMes(new Date());
     const [row] = await db
       .update(agentAreas)
       .set({
-        spentMicros: sql`${agentAreas.spentMicros} + ${deltaMicros}`,
+        // Mensal (ADR 0296): período vencido recomeça do delta.
+        spentMicros: sql`case when ${agentAreas.periodoInicio} is not distinct from ${mes}::date then ${agentAreas.spentMicros} + ${deltaMicros} else ${deltaMicros} end`,
+        periodoInicio: sql`${mes}::date`,
         updatedAt: new Date(),
       })
       .where(and(eq(agentAreas.projectId, projectId), eq(agentAreas.key, key)))

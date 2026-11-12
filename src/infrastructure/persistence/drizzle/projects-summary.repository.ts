@@ -24,6 +24,7 @@ import {
   sessions,
   stories,
 } from '../../../db/schema';
+import { gastoVigente } from '../../../domain/llm/periodo-do-teto';
 import { DRIZZLE, type DrizzleDb } from './drizzle-client';
 import { currentDb } from './drizzle-context';
 
@@ -132,6 +133,7 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
           projectId: budgets.projectId,
           limitMicros: budgets.limitMicros,
           spentMicros: budgets.spentMicros,
+          periodoInicio: budgets.periodoInicio,
         })
         .from(budgets)
         .where(inArray(budgets.projectId, projectIds)),
@@ -402,7 +404,14 @@ export class DrizzleProjectsSummaryRepository implements ProjectsSummaryReposito
           falhaDeCriacaoDe.has(projectId) ? 'falhou' : null,
         ),
         budget: budget
-          ? { limitMicros: budget.limitMicros, spentMicros: budget.spentMicros }
+          ? {
+              limitMicros: budget.limitMicros,
+              spentMicros: gastoVigente(
+                budget.periodoInicio,
+                budget.spentMicros,
+                new Date(),
+              ),
+            }
           : null,
         latestSessionId: sessionId,
         // `nextSeq - 1` é o último seq JÁ gravado — mesma conta que o cliente

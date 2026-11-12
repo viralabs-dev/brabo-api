@@ -13,19 +13,27 @@ import { GetBudgetUseCase } from '../../../application/use-cases/llm/get-budget.
 import { GetSessionTokenUsageUseCase } from '../../../application/use-cases/llm/get-session-token-usage.use-case';
 import { GetProjectAgentCostsUseCase } from '../../../application/use-cases/llm/get-project-agent-costs.use-case';
 import { GetCredentialSpendUseCase } from '../../../application/use-cases/llm/get-credential-spend.use-case';
+import { periodoDoTeto } from '../../../domain/llm/periodo-do-teto';
+import type { Budget } from '../../../domain/llm/budget.entity';
 import { UpsertBudgetDto } from './dto/upsert-budget.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
 import {
   AgentTokenUsageResponseDto,
   SessionAgentTokenUsageResponseDto,
   BudgetResponseDto,
+  BudgetMensalResponseDto,
   CredentialSpendResponseDto,
 } from './dto/llm.response.dto';
 
 const MICROS_PER_USD = 1_000_000;
 
+/** Teto de projeto/workspace é mensal (ADR 0296): a resposta leva o período e a previsão. */
+function comPeriodo(b: Budget | null) {
+  return b ? { ...b, periodo: periodoDoTeto(b.spentMicros, new Date()) } : b;
+}
+
 /**
- * Teto de gasto por projeto e por sessão.
+ * Teto de gasto por workspace, projeto (mensais, UTC) e sessão (acumulado).
  *
  * A ENTRADA fala em dólar (é o que uma pessoa digita); tudo o mais fala em
  * micro-USD. Preço de token é da ordem de 10⁻⁶ e somar float nessa escala
@@ -52,9 +60,9 @@ export class BudgetsController {
     description:
       'Values in micro-USD. Requires `maintainer` — it is cost information.',
   })
-  @ApiOkResponse({ type: BudgetResponseDto })
-  getProjectBudget(@Param('projectId') projectId: string) {
-    return this.getBudget.execute('project', projectId);
+  @ApiOkResponse({ type: BudgetMensalResponseDto })
+  async getProjectBudget(@Param('projectId') projectId: string) {
+    return comPeriodo(await this.getBudget.execute('project', projectId));
   }
 
   @Put('projects/:projectId/budget')
@@ -65,15 +73,53 @@ export class BudgetsController {
       'The limit comes in as DOLLARS and is converted to micro-USD. With ' +
       '`policy=block` the call that would exceed the cap is REFUSED, not just recorded.',
   })
-  @ApiOkResponse({ type: BudgetResponseDto })
-  setProjectBudget(
+  @ApiOkResponse({ type: BudgetMensalResponseDto })
+  async setProjectBudget(
     @Param('projectId') projectId: string,
     @Body() dto: UpsertBudgetDto,
   ) {
-    return this.upsertBudget.execute('project', projectId, {
-      limitMicros: Math.round(dto.limitUsd * MICROS_PER_USD),
-      policy: dto.policy,
-    });
+    return comPeriodo(
+      await this.upsertBudget.execute('project', projectId, {
+        limitMicros: Math.round(dto.limitUsd * MICROS_PER_USD),
+        policy: dto.policy,
+      }),
+    );
+  }
+
+  @Get('workspaces/:workspaceId/budget')
+  @RequireRole('owner')
+  @ApiOperation({
+    summary: 'Reads the workspace monthly spend cap and the month spend',
+    description:
+      "Owner only (RN-060): the bill is the owner's. Sums every LLM call of " +
+      'every project of the workspace, any actor. Month is UTC (ADR 0296).',
+  })
+  @ApiOkResponse({ type: BudgetMensalResponseDto })
+  @ApiForbiddenResponse({ description: 'Requires `owner` on the workspace.' })
+  async getWorkspaceBudget(@Param('workspaceId') workspaceId: string) {
+    return comPeriodo(await this.getBudget.execute('workspace', workspaceId));
+  }
+
+  @Put('workspaces/:workspaceId/budget')
+  @RequireRole('owner')
+  @ApiOperation({
+    summary: 'Sets the workspace monthly spend cap',
+    description:
+      'Dollars in, micro-USD stored. Independent of the project, session and ' +
+      'area caps: any one at its limit with `policy=block` refuses the call.',
+  })
+  @ApiOkResponse({ type: BudgetMensalResponseDto })
+  @ApiForbiddenResponse({ description: 'Requires `owner` on the workspace.' })
+  async setWorkspaceBudget(
+    @Param('workspaceId') workspaceId: string,
+    @Body() dto: UpsertBudgetDto,
+  ) {
+    return comPeriodo(
+      await this.upsertBudget.execute('workspace', workspaceId, {
+        limitMicros: Math.round(dto.limitUsd * MICROS_PER_USD),
+        policy: dto.policy,
+      }),
+    );
   }
 
   @Get('projects/:projectId/sessions/:sessionId/budget')

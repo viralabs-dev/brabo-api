@@ -391,3 +391,35 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Onde:** `create-project.dto.ts` (`EscadaDeModelosDto`), `iam.response.dto.ts`.
 - **Teste:** coberto pelo `openapi.json` versionado (`pnpm openapi:export` sem diff).
 - **Nota:** o teto do degrau vale para o PROJETO inteiro (o endpoint do engine é por projeto) enquanto a tarefa escalada não fecha; RN-1146 reservada.
+
+<a id="rn-1168"></a>
+
+### RN-1168 — O teto de gasto do projeto é mensal, em UTC, e zera sem tarefa agendada {#rn-1168}
+
+- **Regra:** o teto de projeto (e o de workspace, RN-1170, e o de área, RN-1169) conta o gasto do MÊS CIVIL EM UTC (ADR 0296). `budgets.periodo_inicio` guarda o 1º dia do mês a que `spent_micros` se refere; a virada é preguiçosa: a leitura de um período vencido devolve gasto 0 e limiar 0, e o `incrementSpent` do mês novo recomeça de `spent = delta`, `last_threshold_notified = 0`, numa só instrução. A chamada conta no mês em que é REGISTRADA. Os avisos 70/90/100 se rearmam a cada mês (revisa a RN-018) e `budget.threshold_crossed` ganha `periodo` (`YYYY-MM`). A tarefa já bloqueada pelo teto do mês NÃO retoma sozinha na virada: quem a retoma é o Desbloquear. A recusa diz "Budget do projeto atingiu o teto do mês" (o engine a classifica como `politica` pelo texto, sem mudança).
+- **Onde:** `src/infrastructure/persistence/drizzle/budget.repository.ts:144` (`incrementSpent`), `:14` (`vigente`); `src/domain/llm/periodo-do-teto.ts:8` (`inicioDoMes`), `:15` (`gastoVigente`); `src/application/use-cases/llm/check-budget-gate.use-case.ts:28` (`execute`).
+- **Teste:** `test/infrastructure/persistence/drizzle/teto-mensal.repository.spec.ts` (período vencido; mês corrente bloqueia).
+
+<a id="rn-1169"></a>
+
+### RN-1169 — Sessão continua acumulada, a área vira mensal, e a previsão de fim de mês é derivada {#rn-1169}
+
+- **Regra:** só os tetos de projeto, de área e de workspace têm mês; o de SESSÃO continua acumulado (`periodo_inicio` nulo, imposto por `budgets_periodo_check`). O teto de área usa o mesmo mecanismo (`agent_areas.periodo_inicio`; revisa a RN-443). `GET projects/:id/budget` e as rotas do workspace devolvem `periodo { inicio, fim, diasRestantes, previsaoMicros }`; a previsão é linear (`gasto × duração do mês ÷ decorrido`, mínimo 1 dia), derivada na leitura e nunca gravada.
+- **Onde:** `src/domain/llm/periodo-do-teto.ts:31` (`periodoDoTeto`); `src/infrastructure/persistence/drizzle/agent-area.repository.ts:151` (`incrementSpent`); `src/interfaces/http/llm/budgets.controller.ts:31` (`comPeriodo`).
+- **Teste:** `teto-mensal.repository.spec.ts` (sessão nunca zera; área vencida; previsão pura).
+
+<a id="rn-1170"></a>
+
+### RN-1170 — O workspace tem teto de gasto mensal, só do owner, independente dos demais {#rn-1170}
+
+- **Regra:** `budgets` aceita um terceiro escopo, `workspace_id` (unique), e `budgets_scope_check` exige exatamente um escopo (revisa a RN-017). O teto soma toda chamada de LLM de todos os projetos do workspace, de qualquer ator. Os tetos de workspace, projeto, sessão e área são independentes: basta UM no limite, com `policy: block`, para recusar ("Budget do workspace atingiu o teto do mês"); nenhum herda nem limita o valor do outro, e `allow` só avisa. `GET`/`PUT workspaces/:workspaceId/budget` são `owner` (mesma régua da RN-060).
+- **Onde:** `src/infrastructure/persistence/drizzle/budget.repository.ts:46` (`findForWorkspaceOfProject`), `:90` (`upsertForWorkspace`); `check-budget-gate.use-case.ts:28` (`execute`); `record-llm-usage.use-case.ts:136` (`applyToBudget`); `src/interfaces/http/llm/budgets.controller.ts:99` (`getWorkspaceBudget`), `:113` (`setWorkspaceBudget`).
+- **Teste:** `teto-mensal.repository.spec.ts` (soma de projetos bloqueia; `allow`; dois escopos recusados); a superfície `owner` em `test/interfaces/route-surface.spec.ts`.
+
+<a id="rn-1171"></a>
+
+### RN-1171 — A migração 0089 recalcula o gasto do mês e o fuso do mês é UTC explícito {#rn-1171}
+
+- **Regra:** a migração 0089 põe `periodo_inicio` do mês corrente nos tetos de projeto e de área e recalcula `spent_micros` como a soma de `token_usage` do mês (todos os atores no projeto; só `agent` na área, com o mapa ator → área congelado no SQL), e `last_threshold_notified` como o maior limiar já cruzado (sem reavisar). Sessão apagada leva o `token_usage` junto, então o recálculo pode ficar abaixo do real. O "gasto do workspace no mês" (RN-038) passa a usar `date_trunc` em UTC explícito, sem depender do `TimeZone` do servidor.
+- **Onde:** `src/db/migrations/0089_teto_mensal_e_do_workspace.sql`; `src/infrastructure/persistence/drizzle/token-usage.repository.ts:233`.
+- **Teste:** `teto-mensal.repository.spec.ts` (migração 0089: recálculo do mês).

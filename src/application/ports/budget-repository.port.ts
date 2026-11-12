@@ -9,6 +9,13 @@ export interface BudgetInput {
 export abstract class BudgetRepository {
   abstract findForProject(projectId: string): Promise<Budget | null>;
   abstract findForSession(sessionId: string): Promise<Budget | null>;
+  abstract findForWorkspace(workspaceId: string): Promise<Budget | null>;
+  /** O teto do workspace dono do projeto (join numa consulta só). */
+  abstract findForWorkspaceOfProject(projectId: string): Promise<Budget | null>;
+  abstract upsertForWorkspace(
+    workspaceId: string,
+    input: BudgetInput,
+  ): Promise<Budget>;
   abstract upsertForProject(
     projectId: string,
     input: BudgetInput,

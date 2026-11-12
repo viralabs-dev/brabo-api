@@ -1609,6 +1609,8 @@ marcado, fora do grafo; nos demais é descartado sem evento. A marca é ligada p
 | PUT | `/workspaces/:workspaceId/tool-router` | role:owner |
 | GET | `/workspaces/:workspaceId/model-binding` | role:viewer |
 | PUT | `/workspaces/:workspaceId/model-binding` | role:maintainer |
+| GET | `/workspaces/:workspaceId/budget` | role:owner |
+| PUT | `/workspaces/:workspaceId/budget` | role:owner |
 | GET | `/workspaces/:workspaceId/credential-spend` | role:owner |
 | GET | `/workspaces/:workspaceId/spend-report` | role:owner |
 | GET | `/workspaces/:workspaceId/spend/me` | role:viewer |

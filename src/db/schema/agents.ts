@@ -12,6 +12,7 @@ import {
   text,
   integer,
   bigint,
+  date,
   timestamp,
   primaryKey,
   unique,
@@ -122,6 +123,8 @@ export const agentAreas = pgTable(
     spentMicros: bigint('spent_micros', { mode: 'number' })
       .notNull()
       .default(0),
+    /** ADR 0296: mês UTC de `spent_micros`; vencido = gasto 0 (virada preguiçosa). */
+    periodoInicio: date('periodo_inicio', { mode: 'string' }),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

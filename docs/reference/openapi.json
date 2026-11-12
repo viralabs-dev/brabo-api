@@ -5403,7 +5403,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BudgetResponseDto"
+                  "$ref": "#/components/schemas/BudgetMensalResponseDto"
                 }
               }
             }
@@ -5460,7 +5460,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BudgetResponseDto"
+                  "$ref": "#/components/schemas/BudgetMensalResponseDto"
                 }
               }
             }
@@ -13524,6 +13524,115 @@
         ]
       }
     },
+    "/workspaces/{workspaceId}/budget": {
+      "get": {
+        "description": "Owner only (RN-060): the bill is the owner's. Sums every LLM call of every project of the workspace, any actor. Month is UTC (ADR 0296).",
+        "operationId": "BudgetsController_getWorkspaceBudget",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetMensalResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "Requires `owner` on the workspace."
+          },
+          "404": {
+            "description": "Project or session not found."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reads the workspace monthly spend cap and the month spend",
+        "tags": [
+          "llm"
+        ]
+      },
+      "put": {
+        "description": "Dollars in, micro-USD stored. Independent of the project, session and area caps: any one at its limit with `policy=block` refuses the call.",
+        "operationId": "BudgetsController_setWorkspaceBudget",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertBudgetDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetMensalResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body. The `ValidationPipe` runs with `whitelist` and `forbidNonWhitelisted`, so an unknown field also fails."
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "Requires `owner` on the workspace."
+          },
+          "404": {
+            "description": "Project or session not found."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sets the workspace monthly spend cap",
+        "tags": [
+          "llm"
+        ]
+      }
+    },
     "/workspaces/{workspaceId}/containers": {
       "get": {
         "description": "One row per project of the workspace — since RN-521 a project that never provisioned a container is PRESENT with `registrado: null` instead of absent, because this page is the human path to start the first one. The observed state is asked of the broker only for rows `provisioning`/`running`, and only up to a per-load budget — see `naoVerificado` on rows that were skipped, and ADR 0136 for the reasoning.",
@@ -16951,6 +17060,90 @@
           "payload"
         ]
       },
+      "BudgetMensalResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "01JC4Z0000ORCAMENTO000000001"
+          },
+          "projectId": {
+            "type": "object",
+            "example": "01JC4Z0000PROJETO0000000001",
+            "nullable": true,
+            "description": "Filled in for a project budget; `null` for a session one."
+          },
+          "sessionId": {
+            "type": "object",
+            "example": null,
+            "nullable": true,
+            "description": "The opposite of the above."
+          },
+          "workspaceId": {
+            "type": "object",
+            "example": null,
+            "nullable": true,
+            "description": "Filled in for a workspace budget (ADR 0296)."
+          },
+          "periodoInicio": {
+            "type": "object",
+            "example": "2026-11-01",
+            "nullable": true,
+            "description": "First day (UTC) of the month `spentMicros` refers to; `null` for a session budget."
+          },
+          "limitMicros": {
+            "type": "number",
+            "example": 50000000,
+            "description": "Cap in micro-USD (50 USD)."
+          },
+          "spentMicros": {
+            "type": "number",
+            "example": 12400000,
+            "description": "Spend in the current month (UTC) in micro-USD; accumulated for a session budget. A stale period reads as 0."
+          },
+          "policy": {
+            "type": "string",
+            "enum": [
+              "block",
+              "allow"
+            ],
+            "example": "block",
+            "description": "`block` refuses the call when it would exceed the cap; `allow` lets it through and only warns."
+          },
+          "lastThresholdNotified": {
+            "type": "number",
+            "example": 70,
+            "description": "Highest threshold (70/90/100) already notified. It, not the previous spend, serves as the floor — using the spend would make the same warning fire again on every call after it was crossed."
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-07-12T08:00:00.000Z",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-07-27T15:00:00.000Z",
+            "format": "date-time"
+          },
+          "periodo": {
+            "$ref": "#/components/schemas/PeriodoDoTetoResponseDto"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "sessionId",
+          "workspaceId",
+          "periodoInicio",
+          "limitMicros",
+          "spentMicros",
+          "policy",
+          "lastThresholdNotified",
+          "createdAt",
+          "updatedAt",
+          "periodo"
+        ]
+      },
       "BudgetResponseDto": {
         "type": "object",
         "properties": {
@@ -16970,6 +17163,18 @@
             "nullable": true,
             "description": "The opposite of the above."
           },
+          "workspaceId": {
+            "type": "object",
+            "example": null,
+            "nullable": true,
+            "description": "Filled in for a workspace budget (ADR 0296)."
+          },
+          "periodoInicio": {
+            "type": "object",
+            "example": "2026-11-01",
+            "nullable": true,
+            "description": "First day (UTC) of the month `spentMicros` refers to; `null` for a session budget."
+          },
           "limitMicros": {
             "type": "number",
             "example": 50000000,
@@ -16978,7 +17183,7 @@
           "spentMicros": {
             "type": "number",
             "example": 12400000,
-            "description": "Accumulated spend, in micro-USD."
+            "description": "Spend in the current month (UTC) in micro-USD; accumulated for a session budget. A stale period reads as 0."
           },
           "policy": {
             "type": "string",
@@ -17009,6 +17214,8 @@
           "id",
           "projectId",
           "sessionId",
+          "workspaceId",
+          "periodoInicio",
           "limitMicros",
           "spentMicros",
           "policy",
@@ -23753,6 +23960,35 @@
         },
         "required": [
           "optedOut"
+        ]
+      },
+      "PeriodoDoTetoResponseDto": {
+        "type": "object",
+        "properties": {
+          "inicio": {
+            "type": "string",
+            "example": "2026-11-01"
+          },
+          "fim": {
+            "type": "string",
+            "example": "2026-12-01",
+            "description": "First day of the next month (UTC)."
+          },
+          "diasRestantes": {
+            "type": "number",
+            "example": 18
+          },
+          "previsaoMicros": {
+            "type": "number",
+            "example": 31000000,
+            "description": "Linear forecast of the month-end spend (micro-USD); derived, never stored."
+          }
+        },
+        "required": [
+          "inicio",
+          "fim",
+          "diasRestantes",
+          "previsaoMicros"
         ]
       },
       "PermissionsFileResponseDto": {
