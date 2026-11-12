@@ -55,6 +55,7 @@ export class BraboMetrics {
   readonly sessionsActive: Gauge<'project'>;
   readonly sessionsClosing: Gauge<string>;
   readonly tasksBlocked: Gauge<'project'>;
+  readonly outboxPending: Gauge<'aggregate_type'>;
 
   // Backup (Fase 5, item 6). Alimentados pelo DomainGaugesCollector a partir
   // da tabela `backup_runs`, que o CronJob escreve.
@@ -123,6 +124,15 @@ export class BraboMetrics {
       name: 'brabo_tasks_blocked',
       help: 'Tasks com blocked = true, por projeto',
       labelNames: ['project'],
+      registers: [this.registry],
+    });
+
+    // RN-1149: fila da outbox por tipo de agregado. Mora no /metrics, não no
+    // /health (a readiness é pública e não expõe topologia).
+    this.outboxPending = new Gauge({
+      name: 'brabo_outbox_pending',
+      help: 'Linhas não processadas da outbox, por aggregate_type',
+      labelNames: ['aggregate_type'],
       registers: [this.registry],
     });
 

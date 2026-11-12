@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll, afterEach } from 'vitest';
 import { and, eq } from 'drizzle-orm';
 import { createTestDb, truncateAll } from '../../../support/test-db';
 import {
@@ -81,6 +81,33 @@ afterAll(async () => {
 });
 
 describe('TransitionSessionUseCase — projeção do grafo (Onda 2)', () => {
+  // RN-1148: a linha do grafo só é gravada com o grafo configurado.
+  const envOriginal = { ...process.env };
+  beforeEach(() => {
+    process.env.NEO4J_URI = 'bolt://grafo-de-teste:7687';
+    process.env.NEO4J_USER = 'neo4j';
+    process.env.NEO4J_PASSWORD = 'senha-de-teste';
+  });
+  afterEach(() => {
+    process.env = { ...envOriginal };
+  });
+
+  it('RN-1148: com o grafo não configurado, o fechamento NÃO grava a linha graph_projection', async () => {
+    delete process.env.NEO4J_URI;
+    delete process.env.NEO4J_USER;
+    delete process.env.NEO4J_PASSWORD;
+    const { project, session } = await setupActiveSession();
+
+    await transitionSession.execute(project.id, session.id, 'closing');
+    await transitionSession.execute(project.id, session.id, 'closed');
+
+    const rows = await db
+      .select()
+      .from(outboxEvents)
+      .where(eq(outboxEvents.aggregateType, GRAPH_PROJECTION_AGGREGATE_TYPE));
+    expect(rows).toHaveLength(0);
+  });
+
   it('closed: grava, na MESMA transação, uma segunda linha de outbox (graph_projection) para o GraphProjector consolidar a Interacao', async () => {
     const { project, session } = await setupActiveSession();
 
