@@ -94,6 +94,8 @@ import { DrizzleUserCredentialRepository } from './user-credential.repository';
 import { DrizzleTokenUsageRepository } from './token-usage.repository';
 import { DrizzleBudgetRepository } from './budget.repository';
 import { DrizzleProposedActionRepository } from './proposed-action.repository';
+import { DecisionInboxRepository } from '../../../application/ports/decision-inbox-repository.port';
+import { DrizzleDecisionInboxRepository } from './decision-inbox.repository';
 import { DrizzleModelPullRequestRepository } from './model-pull-request.repository';
 import { DrizzleAgentAutonomyRepository } from './agent-autonomy.repository';
 import { DrizzleGitConnectionRepository } from './git-connection.repository';
@@ -208,6 +210,10 @@ const { db, pool } = createDrizzleClient();
     },
     { provide: TokenUsageRepository, useClass: DrizzleTokenUsageRepository },
     { provide: BudgetRepository, useClass: DrizzleBudgetRepository },
+    {
+      provide: DecisionInboxRepository,
+      useClass: DrizzleDecisionInboxRepository,
+    },
     {
       provide: ProposedActionRepository,
       useClass: DrizzleProposedActionRepository,
@@ -345,6 +351,7 @@ const { db, pool } = createDrizzleClient();
     StoryRepository,
     TaskRepository,
     ProjectsSummaryRepository,
+    DecisionInboxRepository,
     DevAgentActivityPort,
     AgentAreaRepository,
     ModuleMapRepository,

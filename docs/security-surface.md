@@ -1236,6 +1236,13 @@ detalhar o motivo na URL.
   `null`; nunca a sessão mais recente do projeto, que era o que a
   aba Executores lia e que trocava de sessão em silêncio no
   instante em que outra sessão nascia depois dela.
+- **`GET /workspaces/:workspaceId/decision-inbox` (AT-928, [RN-1195](business-rules/api.md#rn-1195)..[RN-1199](business-rules/api.md#rn-1199)): `role:viewer` é só a porta do workspace.**
+  O papel EFETIVO de cada projeto (`projectRole ?? workspaceRole`, RN-471) é
+  aplicado em lote pelo caso de uso, e o mínimo de cada fila é o papel de
+  DECIDIR (`developer`; arquitetura, que só se lê, `viewer`): projeto abaixo do
+  mínimo não contribui com a fila, nem com item nem com contagem. Quem não tem
+  papel de workspace recebe 403. A rota só lê, expõe o `payload` da ação como o
+  `GET .../actions` já expõe, e nenhum teto muda.
 - **`GET /workspaces/:workspaceId/projects-summary` ganhou
   `roster.activatedAgents`, e a classificação não mudou** — continua
   `role:viewer`. O campo é a lista de ids de agente com um `agent.activated`
@@ -1632,6 +1639,7 @@ marcado, fora do grafo; nos demais é descartado sem evento. A marca é ligada p
 | GET | `/workspaces/:workspaceId/project-folders` | role:maintainer |
 | GET | `/workspaces/:workspaceId/projects-status` | role:viewer |
 | GET | `/workspaces/:workspaceId/projects-summary` | role:viewer |
+| GET | `/workspaces/:workspaceId/decision-inbox` | role:viewer |
 | GET | `/workspaces/:workspaceId/summary` | role:viewer |
 | POST | `/workspaces/:workspaceId/unread-events` | role:viewer |
 | GET | `/workspaces/:workspaceId/containers` | role:viewer |
