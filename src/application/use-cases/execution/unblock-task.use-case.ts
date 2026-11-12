@@ -31,7 +31,10 @@ export class UnblockTaskUseCase {
     // Só desbloqueia o que ainda está bloqueado: se uma pessoa já desbloqueou
     // (e a task foi reivindicada), a retomada não emite evento nem wake.
     ator: { kind: 'user' | 'system' } = { kind: 'user' },
+    // RN-1124 (AT-909): texto livre da pessoa, gravado no evento.
+    orientacao?: string,
   ) {
+    const texto = orientacao?.trim();
     // Desbloqueio e wake na MESMA transação (D7): destravar a task e perder o
     // wake devolve o problema que o usuário acabou de resolver — a task fica
     // pegável e o agente idle não fica sabendo.
@@ -47,7 +50,7 @@ export class UnblockTaskUseCase {
         payload:
           ator.kind === 'system'
             ? { taskId, retomadaAutomatica: true }
-            : { taskId },
+            : { taskId, ...(texto ? { orientacao: texto } : {}) },
       });
 
       // Fase 12b (RN-047, ADR 0045): só emite se a story já estiver `ready` —
