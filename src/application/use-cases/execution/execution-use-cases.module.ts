@@ -21,6 +21,8 @@ import { ListTarefasEmCursoDeDevUseCase } from './list-tarefas-em-curso-de-dev.u
 import { MarkTaskUseCase } from './mark-task.use-case';
 import { GetDevTaskContextUseCase } from './get-dev-task-context.use-case';
 import { MarkTaskBlockedUseCase } from './mark-task-blocked.use-case';
+import { EscalarModeloDaTarefaUseCase } from './escalar-modelo-da-tarefa.use-case';
+import { LlmUseCasesModule } from '../llm/llm-use-cases.module';
 import { UnblockTaskUseCase } from './unblock-task.use-case';
 import { RearmDevAgentUseCase } from './rearm-dev-agent.use-case';
 import { AcordarDevAgentUseCase } from './acordar-dev-agent.use-case';
@@ -70,6 +72,7 @@ const USE_CASES = [
   GetDevTaskContextUseCase,
   MarkTaskBlockedUseCase,
   UnblockTaskUseCase,
+  EscalarModeloDaTarefaUseCase,
   RearmDevAgentUseCase,
   AcordarDevAgentUseCase,
   RecordGateVerdictUseCase,
@@ -97,6 +100,8 @@ const USE_CASES = [
     SessionsUseCasesModule,
     AgentsUseCasesModule,
     EngineHttpClientsModule,
+    // RN-1143: a escalada resolve e grava o binding do agente.
+    LlmUseCasesModule,
     GitInfrastructureModule,
     FilesystemModule,
     AnamneseUseCasesModule,

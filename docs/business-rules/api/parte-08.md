@@ -126,7 +126,7 @@ turno com autor humano — a divergência que esta regra declarava fechou.
   `src/application/use-cases/iam/idioma-do-projeto.ts:13`
   (`idiomaDoProjetoOuRecusa`);
   `src/application/use-cases/iam/create-project.use-case.ts:72`
-  (`language`); `src/application/use-cases/iam/update-project.use-case.ts:18`
+  (`language`); `src/application/use-cases/iam/update-project.use-case.ts:24`
   (`idiomaDoProjetoOuRecusa`);
   `src/interfaces/http/iam/dto/iam.response.dto.ts:271`
   (`language`); `apps/web/src/routes/settings/ProjectLanguageSection.tsx`
@@ -285,7 +285,7 @@ seguiram em `in_review` (AT-275).
    outbox `project.trunk_merged` ([RN-1022](parte-11.md#rn-1022)), para PRs de tarefa, de
    infra e de ADR igualmente.
 
-- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:381`
+- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:385`
   (`settleMerge`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:500`
   (`markDoneIfNotDone`)
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
@@ -946,7 +946,7 @@ vale só para aquele projeto. Os dois scripts de validação que exercitam o flu
 manual (`validacao-fase-12.ts`, `validacao-real.ts`) passam a pedir `manual`
 explícito.
 
-- **Código:** `src/db/schema/iam.ts:296` (`storyPromotion`);
+- **Código:** `src/db/schema/iam.ts:300` (`storyPromotion`);
   `src/db/migrations/0065_default_de_promocao_auto.sql`;
   `apps/web/src/routes/NewProjectWizard.tsx:978` (a linha do Confirmar);
   `apps/web/src/routes/settings/PromotionSection.tsx:75` (a nota do default)

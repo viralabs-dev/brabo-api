@@ -528,7 +528,7 @@ rótulo, não o comportamento.
   (`execute`), `:109` (`derrubarConexoesDaChave`);
   `src/application/use-cases/auth/derrubar-conexoes-do-pat.ts:21`
   (`derrubarConexoesDoPat`);
-  `src/infrastructure/http-clients/api-to-engine-client.ts:708`
+  `src/infrastructure/http-clients/api-to-engine-client.ts:719`
   (`disconnectRunnerCredential`);
   `apps/engine/lib/engine/runners/socket_ticket.ex:107` (`emitir`), `:207`
   (`anular_pendentes_da_credencial`);
@@ -849,7 +849,7 @@ restaura a aprovação.
   PR aberta por humano não tem dono a acordar.
 - **Medição (AT-383, 02/10, loja-teste):** a #6 terminou `failed` por conflito
   em `package.json`, e a tarefa ficou `in_review` sem ninguém para resolvê-lo.
-- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:480` (`devolverAoDono`),
+- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:484` (`devolverAoDono`),
   `src/infrastructure/persistence/drizzle/backlog.repository.ts:510` (`reabrirPorConflitoDeMerge`),
   `apps/engine/lib/engine/workers/dev_agent_wake_worker.ex:151` (`task.merge_conflict`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:350` (`handle_info`),

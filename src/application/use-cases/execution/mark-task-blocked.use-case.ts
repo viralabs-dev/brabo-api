@@ -1,8 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { TaskRepository } from '../../ports/backlog-repository.port';
 import { OutboxRepository } from '../../ports/outbox-repository.port';
 import { UnitOfWork } from '../../ports/unit-of-work.port';
 import { AppendSessionEventUseCase } from '../sessions/append-session-event.use-case';
+import { EscalarModeloDaTarefaUseCase } from './escalar-modelo-da-tarefa.use-case';
+import { ehBloqueioPorLimiteDeIteracoes } from '../../../domain/execution/escada-de-modelos';
 import type { FailureOrigin } from '../../../domain/agents/failure-origin';
 
 /**
@@ -25,9 +27,12 @@ export class MarkTaskBlockedUseCase {
     private readonly appendEvent: AppendSessionEventUseCase,
     private readonly outbox: OutboxRepository,
     private readonly unitOfWork: UnitOfWork,
+    private readonly escalada: EscalarModeloDaTarefaUseCase,
   ) {}
 
-  execute(
+  private readonly logger = new Logger(MarkTaskBlockedUseCase.name);
+
+  async execute(
     projectId: string,
     sessionId: string,
     taskId: string,
@@ -41,7 +46,7 @@ export class MarkTaskBlockedUseCase {
     // em `awaiting_gate` sem saída — e não existe sweeper que resgate.
     // `runInTransaction` é reentrante, então o `appendEvent` aqui dentro
     // reusa esta transação em vez de abrir outra.
-    return this.unitOfWork.runInTransaction(async () => {
+    const { task, owner } = await this.unitOfWork.runInTransaction(async () => {
       // O DONO da task, lido ANTES de `markBlocked` zerar `assignedTo`. NÃO é
       // o mesmo que o `agentId` do parâmetro, que é QUEM BLOQUEOU
       // (`qa-lead`, `qa-agent`, o próprio dev...). É o dono que precisa ser
@@ -87,7 +92,25 @@ export class MarkTaskBlockedUseCase {
         });
       }
 
-      return task;
+      return { task, owner };
     });
+
+    // RN-1143 (AT-916): FORA da transação — falha da escalada nunca desfaz o
+    // bloqueio, que é o desfecho seguro.
+    if (ehBloqueioPorLimiteDeIteracoes(reason, origin)) {
+      try {
+        await this.escalada.aoBloquearPorLimite(
+          projectId,
+          sessionId,
+          taskId,
+          owner ?? agentId,
+        );
+      } catch (err) {
+        this.logger.warn(
+          `escalada_falhou taskId=${taskId}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+    return task;
   }
 }

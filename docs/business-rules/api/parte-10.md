@@ -634,7 +634,7 @@ um espelho declarado, porque a tela não deve copiar a constante e o engine não
   caminho de sempre segue. Fica como estava a PR da branch que a [RN-797](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-797)
   fecha como "já na dev": essa não é fechada no provider.
 - **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:33`
-  (`prAbertaDaBranch`), `src/application/use-cases/actions/execute-git-action.use-case.ts:206`
+  (`prAbertaDaBranch`), `src/application/use-cases/actions/execute-git-action.use-case.ts:210`
   (`prAbertaDaBranch`)
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   ("pr_open com PR aberta da mesma branch → reaproveita, sem abrir outra";

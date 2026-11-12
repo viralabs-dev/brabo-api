@@ -18874,6 +18874,19 @@
             "example": "pt-BR",
             "maxLength": 35,
             "description": "The PROJECT's language (RN-619) — shared artifacts and turns with no human author use it. Any BCP-47 code the server recognizes, stored canonical; an unrecognized one is a 400. Omitted, the project starts with its creator's effective response language (RN-618: account choice > confirmed detection > interface language)."
+          },
+          "taskBudgetMicros": {
+            "type": "number",
+            "example": 500000,
+            "description": "Cap per dev agent task, in micro-USD. Changing it on PATCH also reaches the live dev agents, from the next lap of each task, with no reactivation (RN-1142). The engine call is best-effort: if it fails the project change stands."
+          },
+          "modelEscalation": {
+            "description": "Model ladder of the project (RN-1143). Omitted uses the default (Haiku 5.5 → Sonnet 5).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EscadaDeModelosDto"
+              }
+            ]
           }
         },
         "required": [
@@ -19454,6 +19467,24 @@
           "contratos"
         ]
       },
+      "DegrauDaEscadaDto": {
+        "type": "object",
+        "properties": {
+          "modelId": {
+            "type": "string",
+            "example": "claude-sonnet-5"
+          },
+          "taskBudgetMicros": {
+            "type": "number",
+            "example": 2000000,
+            "description": "Fixed per-task cap (micro-USD) while the agent is on this step."
+          }
+        },
+        "required": [
+          "modelId",
+          "taskBudgetMicros"
+        ]
+      },
       "DelegationResponseDto": {
         "type": "object",
         "properties": {
@@ -19905,6 +19936,21 @@
           "description",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "EscadaDeModelosDto": {
+        "type": "object",
+        "properties": {
+          "ladder": {
+            "description": "Steps from the smallest model to the largest. The agent climbs one step after 2 iteration-limit blocks on the same task (RN-1143).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DegrauDaEscadaDto"
+            }
+          }
+        },
+        "required": [
+          "ladder"
         ]
       },
       "EstadoDoC4DiagramaResponseDto": {
@@ -24631,6 +24677,16 @@
             "nullable": true,
             "description": "Circuit breaker per dev agent (Phase 12b — RN-047): consecutive tasks ending blocked before stopping at idle_tripped. `null` uses the domain default."
           },
+          "modelEscalation": {
+            "nullable": true,
+            "description": "Model ladder (RN-1143). `null` uses the default Haiku 5.5 → Sonnet 5.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EscadaDeModelosDto"
+              }
+            ]
+          },
           "storyPromotion": {
             "type": "string",
             "enum": [
@@ -24665,6 +24721,7 @@
           "createdBy",
           "taskBudgetMicros",
           "maxConsecutiveBlocked",
+          "modelEscalation",
           "storyPromotion",
           "createdAt",
           "updatedAt"
@@ -29224,6 +29281,19 @@
             "example": "pt-BR",
             "maxLength": 35,
             "description": "The PROJECT's language (RN-619) — shared artifacts and turns with no human author use it. Any BCP-47 code the server recognizes, stored canonical; an unrecognized one is a 400. Omitted, the project starts with its creator's effective response language (RN-618: account choice > confirmed detection > interface language)."
+          },
+          "taskBudgetMicros": {
+            "type": "number",
+            "example": 500000,
+            "description": "Cap per dev agent task, in micro-USD. Changing it on PATCH also reaches the live dev agents, from the next lap of each task, with no reactivation (RN-1142). The engine call is best-effort: if it fails the project change stands."
+          },
+          "modelEscalation": {
+            "description": "Model ladder of the project (RN-1143). Omitted uses the default (Haiku 5.5 → Sonnet 5).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EscadaDeModelosDto"
+              }
+            ]
           }
         }
       },

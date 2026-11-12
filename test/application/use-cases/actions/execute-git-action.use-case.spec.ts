@@ -150,6 +150,7 @@ function build(overrides: {
       findCurrent: () =>
         Promise.resolve(overrides.mapa ? { modules: overrides.mapa } : null),
     } as unknown as ModuleMapRepository,
+    { restaurar: () => Promise.resolve() } as never,
   );
 }
 

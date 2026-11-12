@@ -31,7 +31,7 @@ const criarProjeto = new CreateProjectUseCase(
     new DrizzleSessionLanguageOverrideRepository(db),
   ),
 );
-const atualizarProjeto = new UpdateProjectUseCase(projetos);
+const atualizarProjeto = new UpdateProjectUseCase(projetos, {} as never);
 
 beforeEach(async () => {
   await truncateAll(db);

@@ -88,6 +88,8 @@ import { DrizzleModelRepository } from './model.repository';
 import { DrizzleWorkspaceModelRepository } from './workspace-model.repository';
 import { DrizzleModelPriceChangeRepository } from './model-price-change.repository';
 import { DrizzleModelBindingRepository } from './model-binding.repository';
+import { TaskModelEscalationRepository } from '../../../application/ports/task-model-escalation-repository.port';
+import { DrizzleTaskModelEscalationRepository } from './task-model-escalation.repository';
 import { DrizzleUserCredentialRepository } from './user-credential.repository';
 import { DrizzleTokenUsageRepository } from './token-usage.repository';
 import { DrizzleBudgetRepository } from './budget.repository';
@@ -195,6 +197,10 @@ const { db, pool } = createDrizzleClient();
     {
       provide: ModelBindingRepository,
       useClass: DrizzleModelBindingRepository,
+    },
+    {
+      provide: TaskModelEscalationRepository,
+      useClass: DrizzleTaskModelEscalationRepository,
     },
     {
       provide: UserCredentialRepository,
@@ -322,6 +328,7 @@ const { db, pool } = createDrizzleClient();
     WorkspaceModelRepository,
     ModelPriceChangeRepository,
     ModelBindingRepository,
+    TaskModelEscalationRepository,
     UserCredentialRepository,
     TokenUsageRepository,
     BudgetRepository,
