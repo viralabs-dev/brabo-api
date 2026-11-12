@@ -16,6 +16,11 @@ import {
 
 /** A raiz onde a indexação de `docs`/`adr` procura Markdown, no repositório do PRÓPRIO projeto. */
 const DOCS_ROOT = 'docs';
+/**
+ * A memória do projeto em markdown (AT-923, RN-1108): entra no escopo `docs`
+ * (sem migração; o caminho a distingue) e é reindexada a cada merge na trunk.
+ */
+const MEMORIA_ROOT = '.brabo/memoria';
 const ADR_DIR_PREFIX = 'docs/adr/';
 
 /** Arquivo que a indexação NÃO leu inteiro (RN-1036). */
@@ -199,7 +204,7 @@ export class IndexProjectDocsUseCase {
   }> {
     const paths: string[] = [];
     const sizes: Record<string, number> = {};
-    const fila: string[] = [DOCS_ROOT];
+    const fila: string[] = [DOCS_ROOT, MEMORIA_ROOT];
     let diretorios = 0;
     let truncated = false;
 

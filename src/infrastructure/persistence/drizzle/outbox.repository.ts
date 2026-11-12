@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, eq, gt, isNull } from 'drizzle-orm';
 import { OutboxRepository } from '../../../application/ports/outbox-repository.port';
 import type {
   NewOutboxEvent,
@@ -52,6 +52,34 @@ export class DrizzleOutboxRepository implements OutboxRepository {
       .orderBy(asc(outboxEvents.createdAt))
       .limit(limit);
 
+    return rows.map((row) => ({
+      id: row.id,
+      aggregateType: row.aggregateType,
+      aggregateId: row.aggregateId,
+      eventType: row.eventType,
+      payload: row.payload,
+      createdAt: row.createdAt,
+      processedAt: row.processedAt,
+    }));
+  }
+
+  @Traced('infrastructure')
+  async listByEventTypeAfter(
+    eventType: string,
+    after: Date,
+    limit: number,
+  ): Promise<OutboxEvent[]> {
+    const rows = await currentDb(this.rootDb)
+      .select()
+      .from(outboxEvents)
+      .where(
+        and(
+          eq(outboxEvents.eventType, eventType),
+          gt(outboxEvents.createdAt, after),
+        ),
+      )
+      .orderBy(asc(outboxEvents.createdAt))
+      .limit(limit);
     return rows.map((row) => ({
       id: row.id,
       aggregateType: row.aggregateType,

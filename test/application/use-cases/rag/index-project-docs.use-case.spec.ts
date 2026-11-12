@@ -138,6 +138,49 @@ const ARVORE_ADR: GitTree = {
 };
 
 describe('IndexProjectDocsUseCase', () => {
+  it('RN-1108: indexa .brabo/memoria/**/*.md e ignora o resto', async () => {
+    const f = (path: string, type: 'dir' | 'file') => ({
+      path,
+      name: path.split('/').pop()!,
+      type,
+      size: type === 'dir' ? null : 20,
+    });
+    const arvore = (
+      path: string,
+      entries: ReturnType<typeof f>[],
+    ): GitTree => ({ ref: 'dev', path, truncated: false, entries });
+    const repo = new FakeChunkRepository();
+    const readCode = fakeReadCode({
+      trees: {
+        '.brabo/memoria': arvore('.brabo/memoria', [
+          f('.brabo/memoria/modulos', 'dir'),
+          f('.brabo/memoria/decisoes.md', 'file'),
+        ]),
+        '.brabo/memoria/modulos': arvore('.brabo/memoria/modulos', [
+          f('.brabo/memoria/modulos/api.md', 'file'),
+          f('.brabo/memoria/modulos/api.json', 'file'),
+        ]),
+      },
+      files: {
+        '.brabo/memoria/decisoes.md': '# Decisões\numa linha.',
+        '.brabo/memoria/modulos/api.md': '# api\nExpõe GET /x.',
+      },
+    });
+    const useCase = new IndexProjectDocsUseCase(
+      readCode,
+      repo,
+      embeddingServiceQueVetoriza(true),
+    );
+
+    const relatorio = await useCase.execute('proj-1');
+
+    expect(relatorio.filesScanned).toBe(2);
+    expect(repo.created.map((c) => c.sourcePath).sort()).toEqual([
+      '.brabo/memoria/decisoes.md',
+      '.brabo/memoria/modulos/api.md',
+    ]);
+  });
+
   it('indexa docs e adr por prefixo de caminho, com vetor quando o provider está disponível', async () => {
     const repo = new FakeChunkRepository();
     const readCode = fakeReadCode({

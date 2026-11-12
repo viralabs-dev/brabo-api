@@ -21,4 +21,16 @@ export abstract class OutboxRepository {
 
   /** Marca uma linha como processada — só depois da gravação no destino ter sucesso. */
   abstract markProcessed(id: string): Promise<void>;
+
+  /**
+   * Linhas de um `eventType` criadas DEPOIS de `after`, processadas ou não, em
+   * ordem de chegada. Para o consumidor que NÃO é dono da linha (o engine drena
+   * e marca `project.trunk_merged`): ele lê sem marcar e guarda a própria marca
+   * d'água. Nunca chame `markProcessed` sobre o que sair daqui.
+   */
+  abstract listByEventTypeAfter(
+    eventType: string,
+    after: Date,
+    limit: number,
+  ): Promise<OutboxEvent[]>;
 }
