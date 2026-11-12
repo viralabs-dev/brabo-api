@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix (AT-925, RN-1148 e RN-1149, EP-036): com o grafo de conhecimento não configurado (sem `NEO4J_URI`, fora de produção), a outbox `graph_projection` deixa de acumular linhas que ninguém consome. As pendentes são descartadas de uma vez, com a contagem em um log só, e o caminho de volta é `grafo:reprojetar`. Com o grafo configurado e fora do ar, o aviso de indisponível sai uma vez por queda, e não a cada 2 s. `/metrics` ganha `brabo_outbox_pending{aggregate_type}`. O `/health` e o `openapi.json` não mudam.
+
 - Feature (AT-923, RN-1108, ADR 0293): o índice RAG do projeto indexa `.brabo/memoria/**/*.md` (escopo `docs`) e é reindexado a cada `project.trunk_merged`, por um consumidor que só lê a outbox (o engine é quem a drena). Falha na reindexação só loga. `OutboxRepository` ganha `listByEventTypeAfter`. Sem rota nova e sem mudança no `openapi.json`.
 - CI (AT-926): `openapi.json` regenerado (inclui as rotas `wake` e `archive` da api#97) e um passo no job `lint` do `ci.yml` que exporta o openapi e reprova o PR se o `docs/reference/openapi.json` versionado diferir, mostrando o diff. Rota nova sem o arquivo regenerado passa a reprovar o CI.
 

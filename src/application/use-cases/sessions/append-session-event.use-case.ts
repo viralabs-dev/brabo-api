@@ -21,6 +21,7 @@ import {
   GRAPH_PROJECTABLE_EVENT_TYPES,
   GRAPH_PROJECTION_AGGREGATE_TYPE,
 } from '../../../domain/graph/graph-projection-events';
+import { grafoConfigurado } from '../../../infrastructure/graph/neo4j-config';
 import {
   ARTIFACT_PROJECTABLE_EVENT_TYPES,
   ARTIFACT_PROJECTION_AGGREGATE_TYPE,
@@ -203,7 +204,7 @@ export class AppendSessionEventUseCase {
       // `graph-projection-events.ts`. Payload mínimo (só o id do evento):
       // o projetor relê o envelope completo do event log na hora de
       // projetar, nunca confia numa cópia estale aqui.
-      if (GRAPH_PROJECTABLE_EVENT_TYPES.has(input.type)) {
+      if (GRAPH_PROJECTABLE_EVENT_TYPES.has(input.type) && grafoConfigurado()) {
         await this.outbox.append({
           aggregateType: GRAPH_PROJECTION_AGGREGATE_TYPE,
           aggregateId: sessionId,

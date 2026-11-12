@@ -9,6 +9,7 @@ import {
   type SessionStatus,
 } from '../../../domain/sessions/session-state-machine';
 import { GRAPH_PROJECTION_AGGREGATE_TYPE } from '../../../domain/graph/graph-projection-events';
+import { grafoConfigurado } from '../../../infrastructure/graph/neo4j-config';
 import { Traced } from '../../../infrastructure/observability/traced.decorator';
 
 @Injectable()
@@ -70,12 +71,15 @@ export class TransitionSessionUseCase {
         // graph-projection-events.ts. Fechamento de sessão não passa por
         // `session_events` (é transição pura), então o payload carrega o
         // que o projetor precisa direto, em vez de um `eventId` para reler.
-        await this.outbox.append({
-          aggregateType: GRAPH_PROJECTION_AGGREGATE_TYPE,
-          aggregateId: sessionId,
-          eventType,
-          payload: { sessionId, projectId },
-        });
+        // RN-1148: sem grafo configurado não há consumidor; não grava a linha.
+        if (grafoConfigurado()) {
+          await this.outbox.append({
+            aggregateType: GRAPH_PROJECTION_AGGREGATE_TYPE,
+            aggregateId: sessionId,
+            eventType,
+            payload: { sessionId, projectId },
+          });
+        }
       }
 
       return updated;

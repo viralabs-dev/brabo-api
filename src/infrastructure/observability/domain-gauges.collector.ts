@@ -5,12 +5,13 @@ import {
   type OnModuleDestroy,
   type OnModuleInit,
 } from '@nestjs/common';
-import { and, desc, eq, isNotNull, sql } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { BraboMetrics } from './brabo-metrics';
 import { DRIZZLE } from '../persistence/drizzle/drizzle-client';
 import type { DrizzleDb } from '../persistence/drizzle/drizzle-client';
 import {
   backupRuns,
+  outboxEvents,
   rateLimitHits,
   sessions,
   stories,
@@ -60,6 +61,7 @@ export class DomainGaugesCollector implements OnModuleInit, OnModuleDestroy {
       await Promise.all([
         this.collectSessions(),
         this.collectBlockedTasks(),
+        this.collectOutboxPending(),
         this.collectBackup(),
         this.pruneRateLimit(),
       ]);
@@ -115,6 +117,26 @@ export class DomainGaugesCollector implements OnModuleInit, OnModuleDestroy {
     this.metrics.tasksBlocked.reset();
     for (const row of rows) {
       this.metrics.tasksBlocked.set({ project: row.projectId }, row.total);
+    }
+  }
+
+  /** Fila da outbox por `aggregate_type` (RN-1149). `reset()` pelo mesmo motivo dos demais. */
+  private async collectOutboxPending(): Promise<void> {
+    const rows = await this.db
+      .select({
+        aggregateType: outboxEvents.aggregateType,
+        total: sql<number>`count(*)::int`,
+      })
+      .from(outboxEvents)
+      .where(isNull(outboxEvents.processedAt))
+      .groupBy(outboxEvents.aggregateType);
+
+    this.metrics.outboxPending.reset();
+    for (const row of rows) {
+      this.metrics.outboxPending.set(
+        { aggregate_type: row.aggregateType },
+        row.total,
+      );
     }
   }
 
