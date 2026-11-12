@@ -1179,6 +1179,7 @@ export class InternalSessionsController {
         veredito: dto.veredito,
         resumo: dto.resumo,
         itens: dto.itens,
+        melhorias: dto.melhorias,
         pergunta: dto.pergunta,
         sugestao: dto.sugestao,
         openQuestionId: dto.openQuestionId,

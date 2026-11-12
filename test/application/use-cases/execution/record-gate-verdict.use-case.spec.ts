@@ -324,12 +324,44 @@ describe('RecordGateVerdictUseCase', () => {
       'sess-1',
       'task-1',
       'ciclo de correção esgotado (gate)',
-      'ainda falhando',
+      'ainda falhando\n- x',
       'qa-agent',
       // RN-762 (AT-450): sem isto o `backlog.task_blocked` saía `origin: null`.
       'politica',
     );
     expect(updateGateStatus).not.toHaveBeenCalled();
+  });
+
+  it('RN-1126: melhorias entram no comentário e no evento e NÃO contam correção', async () => {
+    const { useCase, updateGateStatus, commentOnPullRequest, appendEvent } =
+      buildHarness({ task: buildTask({ gateCorrectionCount: 1 }) });
+
+    const result = await useCase.execute('proj-1', 'sess-1', {
+      taskId: 'task-1',
+      gate: 'qa',
+      veredito: 'approved',
+      resumo: 'ok',
+      itens: [],
+      melhorias: ['extrair helper'],
+    });
+
+    expect(result.nextAction).toBe('run_secops');
+    expect(updateGateStatus).toHaveBeenCalledWith(
+      'task-1',
+      'awaiting_secops',
+      0, // aprovar zera o contador; melhorias não o mexem
+    );
+    const chamadas = commentOnPullRequest.mock.calls as unknown as Array<
+      [{ body: string }]
+    >;
+    expect(chamadas[0][0].body).toContain(
+      'Melhorias (não bloqueiam)\n- extrair helper',
+    );
+    const eventos = (appendEvent.execute as ReturnType<typeof vi.fn>).mock
+      .calls;
+    expect(eventos[0][2]).toMatchObject({
+      payload: { melhorias: ['extrair helper'] },
+    });
   });
 
   it('falha ao comentar na PR não impede a decisão do gate (best-effort)', async () => {

@@ -41,6 +41,8 @@ export interface RecordGateVerdictInput {
   veredito: GateVerdict;
   resumo: string;
   itens: string[];
+  /** RN-1126 (AT-905): sugestões que NÃO reprovam nem contam correção. */
+  melhorias?: string[];
   /** RN-860: com `needs_user_decision`, a pergunta nova… */
   pergunta?: string;
   sugestao?: string;
@@ -208,7 +210,8 @@ export class RecordGateVerdictUseCase {
           sessionId,
           task.id,
           'ciclo de correção esgotado (gate)',
-          input.resumo,
+          // RN-1125 (AT-909): o diagnóstico leva os ITENS, não só o resumo.
+          [input.resumo, ...input.itens.map((i) => `- ${i}`)].join('\n'),
           `${input.gate}-agent`,
           // RN-762 (AT-450): o teto de correções é decisão de configuração,
           // não falha real — origem `politica` (RN-059, ADR 0020).
@@ -238,6 +241,7 @@ export class RecordGateVerdictUseCase {
           veredito: input.veredito,
           gateStatus: updatedTask.gateStatus,
           blocked: updatedTask.blocked,
+          ...(input.melhorias?.length ? { melhorias: input.melhorias } : {}),
           // RN-860: a tela mostra a tarefa como "esperando você".
           ...(esperaUsuario ? { esperandoUsuario: true, openQuestionId } : {}),
         },
@@ -334,5 +338,9 @@ function commentBody(input: RecordGateVerdictInput): string {
     input.itens.length > 0
       ? '\n' + input.itens.map((i) => `- ${i}`).join('\n')
       : '';
-  return `### Parecer ${gateLabel}: ${veredictoLabel}\n\n${input.resumo}${itens}`;
+  const melhorias = input.melhorias?.length
+    ? '\n\n#### Melhorias (não bloqueiam)\n' +
+      input.melhorias.map((i) => `- ${i}`).join('\n')
+    : '';
+  return `### Parecer ${gateLabel}: ${veredictoLabel}\n\n${input.resumo}${itens}${melhorias}`;
 }

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Feature (AT-909, AT-905, AT-918, RN-1124 a RN-1129): o Desbloquear aceita `orientacao` opcional (até 2000 caracteres) no corpo, gravada em `backlog.task_unblocked`; o dev-context ganha `desbloqueio` e `ultimoParecer` (com `itens` e `melhorias`), que o dev e o Dev Lead leem; o bloqueio por ciclo esgotado grava os itens no diagnóstico; o `gates/verdict` interno aceita `melhorias` (não reprovam, não contam correção, vão ao comentário da PR e ao evento); o `update_task` interno aceita `agentId: "arquiteto"`; `search_workspace` entra no piso do Arquiteto. `openapi.json` regenerado.
 - Feature (AT-923, RN-1108, ADR 0293): o índice RAG do projeto indexa `.brabo/memoria/**/*.md` (escopo `docs`) e é reindexado a cada `project.trunk_merged`, por um consumidor que só lê a outbox (o engine é quem a drena). Falha na reindexação só loga. `OutboxRepository` ganha `listByEventTypeAfter`. Sem rota nova e sem mudança no `openapi.json`.
 - CI (AT-926): `openapi.json` regenerado (inclui as rotas `wake` e `archive` da api#97) e um passo no job `lint` do `ci.yml` que exporta o openapi e reprova o PR se o `docs/reference/openapi.json` versionado diferir, mostrando o diff. Rota nova sem o arquivo regenerado passa a reprovar o CI.
 

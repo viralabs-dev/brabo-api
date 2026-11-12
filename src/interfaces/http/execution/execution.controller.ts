@@ -34,6 +34,7 @@ import { SetAreaMaxParallelUseCase } from '../../../application/use-cases/execut
 import { SetAreaBudgetUseCase } from '../../../application/use-cases/execution/set-area-budget.use-case';
 import { AcceptParallelizationDto } from './dto/accept-parallelization.dto';
 import { ActivateExecutionDto } from './dto/activate-execution.dto';
+import { UnblockTaskDto } from './dto/unblock-task.dto';
 import { SetMaxParallelDto } from './dto/set-max-parallel.dto';
 import { SetAreaBudgetDto } from './dto/set-area-budget.dto';
 import { BEARER } from '../../../infrastructure/openapi/documento';
@@ -231,16 +232,29 @@ export class ExecutionController {
     description:
       'Resets the gate correction counter and hands the task back to the ' +
       'agent. It is the human escape hatch for the correction cap — there is ' +
-      'no automatic unblock.',
+      'no automatic unblock. The optional body `orientacao` (up to 2000 ' +
+      'characters, RN-1124) goes to the dev with the task and wins over the ' +
+      'last gate report.',
   })
   @ApiCreatedResponse({ type: OkResponseDto })
+  @ApiBadRequestResponse({
+    description: '`orientacao` is over 2000 characters.',
+  })
   unblock(
     @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
     @Param('taskId') taskId: string,
     @CurrentUser() user: User,
+    @Body() dto: UnblockTaskDto,
   ) {
-    return this.unblockTask.execute(projectId, sessionId, taskId, user.id);
+    return this.unblockTask.execute(
+      projectId,
+      sessionId,
+      taskId,
+      user.id,
+      { kind: 'user' },
+      dto.orientacao,
+    );
   }
 
   @Post('sessions/:sessionId/agents/:agentId/rearm')

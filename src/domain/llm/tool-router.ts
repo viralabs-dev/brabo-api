@@ -332,6 +332,8 @@ export const PISO_DO_MENU: Readonly<Record<string, readonly string[]>> = {
     // Arquiteto afirmava ADR "pendente" e backlog "sem tarefas" de memória.
     'listar_adrs_propostas',
     'listar_backlog',
+    // AT-918 (RN-1129): ler o código mergeado antes de declarar contrato.
+    'search_workspace',
     // AT-614 (RN-809 revista): o kickoff manda registrar tensão e dúvida; o
     // recorte as tirava e o Arquiteto narrava "não está disponível".
     'emit_insight',

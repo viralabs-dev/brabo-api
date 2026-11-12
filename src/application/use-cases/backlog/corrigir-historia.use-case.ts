@@ -18,7 +18,8 @@ import {
 import type { Story, Task } from '../../../domain/backlog/backlog.entity';
 
 export type AtorDaCorrecao =
-  { kind: 'user'; id: string } | { kind: 'agent'; id: 'po' | 'dev-lead' };
+  | { kind: 'user'; id: string }
+  | { kind: 'agent'; id: 'po' | 'dev-lead' | 'arquiteto' };
 
 export const TETO_DO_TITULO = 200;
 

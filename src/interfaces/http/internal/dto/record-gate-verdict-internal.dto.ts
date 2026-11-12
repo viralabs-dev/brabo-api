@@ -48,6 +48,17 @@ export class RecordGateVerdictInternalDto {
   itens!: string[];
 
   @ApiPropertyOptional({
+    example: ['Extract the date parsing into a helper'],
+    description:
+      'Non-blocking suggestions (RN-1126): they do not reject the PR and ' +
+      'do not count as a correction.',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  melhorias?: string[];
+
+  @ApiPropertyOptional({
     example: 'Should a nonexistent code answer 404?',
     description:
       'With `needs_user_decision`: the new open question (up to 500 chars).',
