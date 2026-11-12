@@ -408,6 +408,37 @@ describe('ExecuteGitActionUseCase', () => {
       });
     });
 
+    it('RN-1104: merge que não move o alvo grava jaContida; o que move, não', async () => {
+      const comPontas = (antes: string, depois: string) => {
+        let chamadas = 0;
+        return {
+          ...merge(),
+          listBranches: () =>
+            Promise.resolve([
+              { name: 'main', commitSha: chamadas++ === 0 ? antes : depois },
+            ]),
+        };
+      };
+      const contida = build({ provider: comPontas('aaa', 'aaa') });
+      await contida.execute(
+        PROJECT,
+        SESSION,
+        action('git_merge', { pullRequestId: 'pr-6' }),
+      );
+      expect(proposedActions.saved?.result).toMatchObject({
+        kind: 'git_merge',
+        jaContida: true,
+      });
+
+      const efetiva = build({ provider: comPontas('aaa', 'bbb') });
+      await efetiva.execute(
+        PROJECT,
+        SESSION,
+        action('git_merge', { pullRequestId: 'pr-6' }),
+      );
+      expect(proposedActions.saved?.result).not.toHaveProperty('jaContida');
+    });
+
     it('merge repetido da mesma PR não move de novo nem duplica evento', async () => {
       const uc = build({ provider: merge() });
       proposedActions.prOpens = [prOpenDaTarefa('t1', 'pr-6')];

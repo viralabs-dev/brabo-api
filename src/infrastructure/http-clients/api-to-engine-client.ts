@@ -546,6 +546,21 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     );
   }
 
+  async acordarDevAgent(
+    projectId: string,
+    sessionId: string,
+    agentId: string,
+  ): Promise<void> {
+    await this.postCommand(
+      `/internal/sessions/${sessionId}/dev-agents/${agentId}/wake`,
+      { projectId },
+      [
+        ['sessionId', sessionId],
+        ['agentId', agentId],
+      ],
+    );
+  }
+
   async reviseStory(
     projectId: string,
     sessionId: string,
@@ -845,8 +860,14 @@ export class HttpApiToEngineClient implements ApiToEngineClient {
     });
 
     if (!res.ok) {
+      const texto = await res.text();
+      // AT-906: o 409 nomeado do engine (ex.: rearm/wake de agente que não está
+      // no estado certo) chega ao cliente com a frase dele, nunca como 500.
+      if (res.status === 409) {
+        throw new ConflictException(mensagemDaRecusaDoEngine(texto));
+      }
       throw new Error(
-        `Falha no comando ao engine (${path}): ${res.status} ${await res.text()}`,
+        `Falha no comando ao engine (${path}): ${res.status} ${texto}`,
       );
     }
   }

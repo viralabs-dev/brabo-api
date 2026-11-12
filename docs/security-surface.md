@@ -1185,6 +1185,18 @@ detalhar o motivo na URL.
   handoff existe e o status dele, que qualquer `viewer` do projeto já lê
   por `GET .../sessions/:sessionId/handoffs`; ela nunca nomeia sessão nem
   usuário.
+- **`POST /projects/:projectId/execution/activate` recusa com `409`
+  `execucao_sem_container` quando o container não está `running`, e a
+  classificação não mudou** — continua `role:maintainer`
+  ([RN-1101](business-rules/api/parte-12.md#rn-1101)). Recusa por ESTADO, antes
+  de qualquer efeito; a mensagem só diz o próximo passo e não revela nada além
+  do que `GET .../container` já mostra a um `viewer`.
+- **`PUT /projects/:projectId/agent-autonomy` com a curinga `auto_approve`
+  reavalia as pendentes do agente, e a classificação não mudou** — continua
+  `role:maintainer` ([RN-1103](business-rules/api/parte-12.md#rn-1103)). A
+  aprovação em nome de quem ligou usa a MESMA régua de `decide()`, com os
+  tetos de `git_push`, `pr_open` e `git_merge` intactos e `deny` de
+  `permissions.json` ainda vencendo.
 - **Oferecer handoff a um agente já ativo no projeto é `409`
   `agente_ja_ativo`, e a classificação não mudou** — a rota humana
   `POST .../sessions/:sessionId/handoffs` continua `role:developer` e a
@@ -1415,6 +1427,7 @@ marcado, fora do grafo; nos demais é descartado sem evento. A marca é ligada p
 | POST | `/internal/sessions/:sessionId/tasks/:taskId/gate/open` | engine-service |
 | POST | `/internal/sessions/:sessionId/tasks/:taskId/status` | engine-service |
 | POST | `/internal/sessions/:sessionId/tasks/:taskId/update` | engine-service |
+| POST | `/internal/sessions/:sessionId/tasks/:taskId/archive` | engine-service |
 | POST | `/internal/sessions/:sessionId/tasks/claim` | engine-service |
 | GET | `/internal/sessions/:sessionId/tasks/in-progress-by-dev` | engine-service |
 | POST | `/internal/sessions/:sessionId/termination` | engine-service |
@@ -1538,6 +1551,7 @@ marcado, fora do grafo; nos demais é descartado sem evento. A marca é ligada p
 | POST | `/projects/:projectId/sessions/:sessionId/agents/:agent/start` | role:developer |
 | POST | `/projects/:projectId/sessions/:sessionId/agents/:agent/structured-question/:questionSetId/answer` | role:developer |
 | POST | `/projects/:projectId/sessions/:sessionId/agents/:agentId/rearm` | role:developer |
+| POST | `/projects/:projectId/sessions/:sessionId/agents/:agentId/wake` | role:developer |
 | POST | `/projects/:projectId/sessions/:sessionId/agents/arquiteto/handoff-infra` | role:developer |
 | POST | `/projects/:projectId/sessions/:sessionId/agents/criativo/validate-necessity` | role:developer |
 | POST | `/projects/:projectId/sessions/:sessionId/attachments` | role:developer |
@@ -1572,6 +1586,7 @@ marcado, fora do grafo; nos demais é descartado sem evento. A marca é ligada p
 | POST | `/projects/:projectId/stories/:storyId/return` | role:developer |
 | PATCH | `/projects/:projectId/stories/:storyId/title` | role:developer |
 | POST | `/projects/:projectId/stories/:storyId/archive` | role:developer |
+| POST | `/projects/:projectId/tasks/:taskId/archive` | role:developer |
 | POST | `/projects/:projectId/stories/promote` | role:developer |
 | DELETE | `/workspaces/:workspaceId` | role:owner |
 | GET | `/workspaces/:workspaceId` | role:viewer |

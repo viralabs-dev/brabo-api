@@ -288,12 +288,14 @@ export class DrizzleTaskRepository implements TaskRepository {
                          AND e.payload->>'taskId' = t.id::text)
                  THEN 'conflito_de_merge'
                WHEN t.status = 'in_progress' THEN 'em_curso_de_dev'
+               WHEN t.module IS NULL THEN 'sem_modulo'
                ELSE 'a_fazer_de_modulo_com_dev'
              END AS motivo
         FROM tasks t
         JOIN stories st ON st.id = t.story_id AND st.archived_at IS NULL
         JOIN vigente v ON v.project_id = st.project_id AND v.id = ${sessionId}
        WHERE t.status <> 'done'
+         AND t.archived_at IS NULL
          AND (
            t.blocked
            OR t.gate_status = 'awaiting_user'
@@ -307,6 +309,11 @@ export class DrizzleTaskRepository implements TaskRepository {
            OR (t.status = 'todo' AND st.status = 'ready'
                AND t.module IS NOT NULL
                AND 'dev-' || t.module IN (SELECT actor_id FROM devs))
+           -- AT-912: tarefa todo sem módulo numa história de vários módulos
+           -- (a do PO): daTarefaDoModulo não a dá a dev nenhum.
+           OR (t.status = 'todo' AND st.status = 'ready'
+               AND t.module IS NULL
+               AND jsonb_array_length(st.module_ids) > 1)
          )
        ORDER BY t.blocked DESC, t.created_at ASC
        LIMIT 1
@@ -325,6 +332,7 @@ export class DrizzleTaskRepository implements TaskRepository {
         storyId: input.storyId,
         title: input.title,
         description: input.description ?? '',
+        module: input.module ?? null,
       })
       .returning();
     return taskToEntity(row);
@@ -381,8 +389,10 @@ export class DrizzleTaskRepository implements TaskRepository {
         and(
           eq(stories.projectId, projectId),
           inArray(tasks.id, ids),
-          // RN-727: tarefa de história arquivada não entra no plano.
+          // RN-727: tarefa de história arquivada não entra no plano; AT-912,
+          // nem a tarefa arquivada.
           isNull(stories.archivedAt),
+          isNull(tasks.archivedAt),
         ),
       );
     return rows.map((r) => taskToEntity(r.task));
@@ -432,6 +442,7 @@ export class DrizzleTaskRepository implements TaskRepository {
         JOIN stories s ON s.id = t.story_id
         WHERE s.project_id = ${projectId}
           AND s.archived_at IS NULL
+          AND t.archived_at IS NULL
           AND t.blocked = false
           AND (
             (t.status = 'in_progress'
@@ -446,7 +457,7 @@ export class DrizzleTaskRepository implements TaskRepository {
         FOR UPDATE OF t SKIP LOCKED
         LIMIT 1
       )
-      RETURNING id, story_id, title, description, status, assigned_to, blocked, blocked_reason, blocked_origin, gate_status, gate_correction_count, module, created_at, updated_at
+      RETURNING id, story_id, title, description, status, assigned_to, blocked, blocked_reason, blocked_origin, gate_status, gate_correction_count, module, archived_at, archived_reason, created_at, updated_at
     `);
     const row = result.rows[0] as Record<string, unknown> | undefined;
     if (!row) return null;
@@ -463,6 +474,8 @@ export class DrizzleTaskRepository implements TaskRepository {
       gateStatus: (row.gate_status as PrGateStatus | null) ?? null,
       gateCorrectionCount: Number(row.gate_correction_count ?? 0),
       module: (row.module as string | null) ?? null,
+      archivedAt: (row.archived_at as Date | null) ?? null,
+      archivedReason: (row.archived_reason as string | null) ?? null,
       createdAt: row.created_at as Date,
       updatedAt: row.updated_at as Date,
     };
@@ -527,11 +540,59 @@ export class DrizzleTaskRepository implements TaskRepository {
       WHERE s.project_id = ${projectId}
         AND s.status = 'ready'
         AND s.archived_at IS NULL
+        AND t.archived_at IS NULL
         AND ${daTarefaDoModulo(module)}
         AND t.status = 'todo'
         AND t.blocked = false
+        AND ${semDependenciaAberta(projectId, module)}
     `);
     return Number(result.rows[0]?.n ?? 0);
+  }
+
+  async archive(id: string, reason: string): Promise<Task | null> {
+    const db = currentDb(this.rootDb);
+    // Só `todo` e ainda não arquivada: atômico, para o claim concorrente nunca
+    // ganhar de um arquivamento que já foi aceito (a tarefa que virou
+    // `in_progress` no meio não casa o WHERE e devolve `null`).
+    const [row] = await db
+      .update(tasks)
+      .set({
+        archivedAt: new Date(),
+        archivedReason: reason,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(tasks.id, id),
+          eq(tasks.status, 'todo'),
+          isNull(tasks.archivedAt),
+        ),
+      )
+      .returning();
+    return row ? taskToEntity(row) : null;
+  }
+
+  async modulosEntregues(projectId: string): Promise<string[]> {
+    const db = currentDb(this.rootDb);
+    // O inverso de `semDependenciaAberta`: o módulo da tarefa é o dela, ou o
+    // único da história; arquivada não conta nem a favor nem contra.
+    const result = await db.execute<{ m: string }>(sql`
+      SELECT m FROM (
+        SELECT COALESCE(t.module,
+                 CASE WHEN jsonb_array_length(s.module_ids) = 1
+                      THEN s.module_ids->>0 END) AS m,
+               t.status
+          FROM tasks t
+          JOIN stories s ON s.id = t.story_id
+         WHERE s.project_id = ${projectId}
+           AND s.archived_at IS NULL
+           AND t.archived_at IS NULL
+      ) x
+      WHERE m IS NOT NULL
+      GROUP BY m
+      HAVING bool_and(status = 'done')
+    `);
+    return result.rows.map((r) => r.m);
   }
 
   async markBlocked(
@@ -675,6 +736,8 @@ function taskToEntity(row: typeof tasks.$inferSelect): Task {
     gateStatus: row.gateStatus as PrGateStatus | null,
     gateCorrectionCount: row.gateCorrectionCount,
     module: row.module,
+    archivedAt: row.archivedAt,
+    archivedReason: row.archivedReason,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -701,6 +764,7 @@ function semDependenciaAberta(projectId: string, module: string) {
     WHERE me->>'name' = ${module}
       AND ds.project_id = ${projectId}
       AND ds.archived_at IS NULL
+      AND dt.archived_at IS NULL
       AND dt.status <> 'done'
       AND (dt.module = dep OR (dt.module IS NULL AND jsonb_array_length(ds.module_ids) = 1 AND ds.module_ids ? dep))
   )`;

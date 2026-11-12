@@ -285,8 +285,8 @@ seguiram em `in_review` (AT-275).
    outbox `project.trunk_merged` ([RN-1022](parte-11.md#rn-1022)), para PRs de tarefa, de
    infra e de ADR igualmente.
 
-- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:374`
-  (`settleMerge`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:494`
+- **Onde:** `src/application/use-cases/actions/execute-git-action.use-case.ts:381`
+  (`settleMerge`), `src/infrastructure/persistence/drizzle/backlog.repository.ts:507`
   (`markDoneIfNotDone`)
 - **Teste:** `test/application/use-cases/actions/execute-git-action.use-case.spec.ts`
   ("git_merge marca a tarefa como done": feliz, repetido, PR aberta/merge
@@ -389,7 +389,7 @@ oferta a agente já ativo ficava acionável para sempre (AT-291,
   (`travarOfertasDoDestino`);
   `src/application/use-cases/agents/activate-agent.use-case.ts:88`
   (`substituirOfertasAoAtivar`);
-  `src/application/use-cases/execution/activate-execution.use-case.ts:327`
+  `src/application/use-cases/execution/activate-execution.use-case.ts:338`
   (`substituirOfertasAoAtivar`);
   `src/application/use-cases/agents/offer-infra-handoff.use-case.ts:96`
   (`jaAtendido`);
@@ -912,7 +912,7 @@ faz merge nem push.
 - **Código:** `src/domain/sessions/estou-pronto.ts:62` (`decidirAceiteImplicitoDoPo`);
   `src/application/use-cases/agents/aceite-implicito-do-po.use-case.ts:37` (`AceiteImplicitoDoPoUseCase`),
   `:45` (`seCouber`);
-  `src/interfaces/http/internal/internal-sessions.controller.ts:439` (`handoff`);
+  `src/interfaces/http/internal/internal-sessions.controller.ts:443` (`handoff`);
   `src/application/use-cases/agents/accept-handoff.use-case.ts:135` (`implicito` no `handoff.accepted`);
   `src/application/use-cases/agents/activate-agent.use-case.ts:80` (`implicito` no `agent.activated`)
 - **Teste:** `test/application/use-cases/agents/aceite-implicito-do-po.use-case.spec.ts:105`
@@ -998,7 +998,7 @@ handoff manual (ADR 0109) também.
   (`AceitarHandoffAutomaticamenteUseCase`);
   `src/application/use-cases/agents/accept-handoff.use-case.ts:91`
   (`AceitePeloSistema`);
-  `src/interfaces/http/internal/internal-sessions.controller.ts:439`
+  `src/interfaces/http/internal/internal-sessions.controller.ts:443`
   (`handoff`); `apps/engine/lib/engine/harness/tools/offer_handoff.ex:59`;
   `apps/web/src/routes/session-timeline-montagem.tsx:604` (o aviso no fio)
 - **Teste:** `test/application/use-cases/agents/aceitar-handoff-automaticamente.use-case.spec.ts:73`
@@ -1201,7 +1201,7 @@ existe.
   várias raízes), `:137` (`PONTO_DE_MONTAGEM_DO_CONTAINER`);
   `src/domain/actions/decide.ts:291` (`execucaoNoContainer`), `:660`
   (`execucaoNoContainer`, em `terminalNoEscopo`);
-  `src/application/use-cases/actions/propose-action.use-case.ts:203`
+  `src/application/use-cases/actions/propose-action.use-case.ts:338`
   (`containerExecutionActive`, separado de `execucaoNoContainer`)
 - **Teste:** `test/domain/actions/decide.spec.ts:1274` (com container
   `/work`, `.worktrees`, `/tmp` e `..` dentro — caminho feliz; `/etc`, outro

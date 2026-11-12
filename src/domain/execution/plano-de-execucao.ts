@@ -40,6 +40,8 @@ export function lerPlanoDeExecucao(
   payload: unknown,
   mapa: readonly ModuloDoMapa[],
   tarefasDoProjeto: ReadonlySet<string>,
+  // AT-913: módulos com tarefa e todas `done` — satisfazem a dependência.
+  modulosEntregues: ReadonlySet<string> = new Set(),
 ): LeituraDoPlano {
   const modulosDoMapa = mapa.map((m) => m.name);
   const p = (payload ?? {}) as { tarefas?: unknown; modulos?: unknown };
@@ -119,12 +121,17 @@ export function lerPlanoDeExecucao(
 
   // RN-1004 (AT-742, ADR 0259): módulo sem tarefa de que outro módulo COM
   // tarefa depende fica sem dono — o consumidor bloqueia sem contrato. Módulo
-  // folha sem tarefa segue legítimo (RN-709).
+  // folha sem tarefa segue legítimo (RN-709). Módulo ENTREGUE (todas as
+  // tarefas `done`, AT-913) satisfaz a dependência: só o que nunca teve tarefa
+  // precisa da de fundação.
   const comTarefa = new Set(tarefas.map((t) => t.modulo));
   for (const m of mapa) {
     if (!comTarefa.has(m.name)) continue;
     const orfa = (m.dependsOn ?? []).find(
-      (d) => modulosDoMapa.includes(d) && !comTarefa.has(d),
+      (d) =>
+        modulosDoMapa.includes(d) &&
+        !comTarefa.has(d) &&
+        !modulosEntregues.has(d),
     );
     if (orfa !== undefined) {
       return {

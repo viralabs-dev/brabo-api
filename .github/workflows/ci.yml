@@ -49,6 +49,15 @@ jobs:
         run: pnpm exec eslint "src/**/*.ts" "test/**/*.ts" --max-warnings 0
       - name: Typecheck (o do build)
         run: pnpm typecheck
+      # Drift do openapi.json (AT-926): o versionado tem de ser o exportado agora, sem banco.
+      - name: openapi.json em dia com as rotas
+        run: |
+          set -euo pipefail
+          pnpm openapi:export > "$RUNNER_TEMP/openapi.json"
+          if ! diff -u docs/reference/openapi.json "$RUNNER_TEMP/openapi.json"; then
+            echo "::error::docs/reference/openapi.json desatualizado. Rode pnpm openapi:export > docs/reference/openapi.json e commite."
+            exit 1
+          fi
 
   testes:
     name: Testes TS (api)

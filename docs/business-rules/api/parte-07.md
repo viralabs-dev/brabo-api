@@ -60,7 +60,7 @@ do `permissions.json` repetem os TOKENS do comando no texto (o `label` de
 `matchAgainstFile`) — o mesmo comando que já mora em
 `proposed_actions.payload` e no card de aprovação.
 
-- **Código:** `src/application/use-cases/actions/propose-action.use-case.ts:277`
+- **Código:** `src/application/use-cases/actions/propose-action.use-case.ts:272`
   (`reason` no payload do evento de sessão), `:223` (o comentário do outbox
   sem o campo), `:227` (o payload do outbox, intacto), `:356` (o
   `rejectionReason`, que continua só no `deny`);
@@ -929,7 +929,7 @@ que não libera o escopo.
   escopo pulado),
   `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
   (`resolve`, com a origem),
-  `src/application/use-cases/actions/propose-action.use-case.ts:249`
+  `src/application/use-cases/actions/propose-action.use-case.ts:365`
   (`autonomyOrigin`), `apps/web/src/components/AgentTeamGrid.tsx:114`
   (`autonomyHint`), `apps/web/src/components/ApprovalCard.tsx:313` (a nota
   nas duas variantes)
@@ -1098,7 +1098,7 @@ raiz do ESCOPO, nunca onde o arquivo de política mora.
 - **Código:** `src/infrastructure/filesystem/project-workspaces-root.ts:907`
   (`raizDoEscopoNoEvento`), `:901` (`RaizDoEscopoNoEvento`), `:117`
   (`segmentoSobABaseDeProjetos`, reusada);
-  `src/application/use-cases/actions/propose-action.use-case.ts:330`
+  `src/application/use-cases/actions/propose-action.use-case.ts:280`
   (`scopeRoot` só em `terminal`);
   `src/domain/actions/decide.ts:648` (`terminalNoEscopo`, o único
   consumidor do escopo)
