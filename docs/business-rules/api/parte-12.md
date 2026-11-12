@@ -166,4 +166,22 @@ keywords: [regras de negócio, api]
 - **Teste:** `test/application/use-cases/sessions/get-session-pending-work.use-case.spec.ts` (`aberta na execução em curso`, `in_review`, `tudo done`).
 - **Origem:** AT-919 (EP-036); rodada 372, lane L1.
 
+<a id="rn-1148"></a>
+
+### RN-1148 — Sem grafo configurado, nenhuma linha de projeção do grafo entra na outbox {#rn-1148}
+
+- **Regra:** A linha `graph_projection` só é gravada quando `grafoConfigurado()` (`resolverConfigNeo4j() !== null`). Com o grafo não configurado (sem `NEO4J_URI`, permitido só fora de produção), não há consumidor possível: a fila não cresce. Configurado e fora do ar continua gravando, e a linha fica para retry (RN-960). As linhas que já estavam pendentes são marcadas processadas de uma vez pelo projetor, que loga a contagem uma única vez. O grafo ligado depois se reconstrói pelo event log (RN-569).
+- **Onde:** `src/infrastructure/graph/neo4j-config.ts` (`grafoConfigurado`), `src/application/use-cases/sessions/append-session-event.use-case.ts` (`execute`), `src/application/use-cases/sessions/transition-session.use-case.ts` (`execute`), `src/application/graph-projection/graph-projector.ts` (`drainOnce`), `src/infrastructure/persistence/drizzle/outbox.repository.ts` (`markAllProcessed`)
+- **Teste:** `test/infrastructure/graph/neo4j-config.spec.ts` (`grafoConfigurado`), `test/application/use-cases/sessions/append-session-event.use-case.spec.ts` (grafo não configurado não grava), `test/application/use-cases/sessions/transition-session.use-case.spec.ts` (fechamento não configurado não grava), `test/application/graph-projection/graph-projector.spec.ts` (`RN-1148`: descarte de uma vez e um log só).
+- **Origem:** AT-925 (EP-036); rodada 373, lane L4.
+
+<a id="rn-1149"></a>
+
+### RN-1149 — A fila da outbox aparece no `/metrics`, e a queda do grafo avisa uma vez {#rn-1149}
+
+- **Regra:** O gauge `brabo_outbox_pending{aggregate_type}` publica as linhas não processadas da `outbox_events`, por tipo de agregado, atualizado pelo `DomainGaugesCollector` com `reset()` antes de reescrever. O `/health` não muda: ele não expõe fila nem topologia. Com o grafo configurado e fora do ar, o projetor avisa uma vez (`warn`) por indisponibilidade, e o aviso só volta depois de um ciclo completo sem queda; antes, o aviso repetia a cada 2 s.
+- **Onde:** `src/infrastructure/observability/brabo-metrics.ts` (`outboxPending`), `src/infrastructure/observability/domain-gauges.collector.ts` (`collectOutboxPending`), `src/application/graph-projection/graph-projector.ts` (`drainOnce`, `indisponivelAvisado`)
+- **Teste:** `test/application/graph-projection/graph-projector.spec.ts` (`RN-1149`: três ciclos com o grafo fora do ar geram um aviso só).
+- **Origem:** AT-925 (EP-036); rodada 373, lane L4.
+
 A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em `ARG`/`ENV`; só como secret do BuildKit), definida no [brabo-broker](https://github.com/viralabs-dev/brabo-broker/blob/dev/docs/business-rules/broker.md). Quem prova na api é `test/dockerfile-sem-token.spec.ts:13` (todo `pnpm install` do `Dockerfile` monta o secret, nenhum `ARG`/`ENV` com token, `.npmrc` só com o registry).

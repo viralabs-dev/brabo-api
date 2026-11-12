@@ -92,6 +92,21 @@ export class DrizzleOutboxRepository implements OutboxRepository {
   }
 
   @Traced('infrastructure')
+  async markAllProcessed(aggregateType: string): Promise<number> {
+    const linhas = await currentDb(this.rootDb)
+      .update(outboxEvents)
+      .set({ processedAt: new Date() })
+      .where(
+        and(
+          eq(outboxEvents.aggregateType, aggregateType),
+          isNull(outboxEvents.processedAt),
+        ),
+      )
+      .returning({ id: outboxEvents.id });
+    return linhas.length;
+  }
+
+  @Traced('infrastructure')
   async markProcessed(id: string): Promise<void> {
     const db = currentDb(this.rootDb);
     await db
