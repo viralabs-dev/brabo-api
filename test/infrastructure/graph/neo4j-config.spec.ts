@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { resolverConfigNeo4j } from '../../../src/infrastructure/graph/neo4j-config';
+import {
+  grafoConfigurado,
+  resolverConfigNeo4j,
+} from '../../../src/infrastructure/graph/neo4j-config';
 
 /**
  * Fundação do grafo de conhecimento (Neo4j) — o toggle é mais SIMPLES que o
@@ -20,6 +23,23 @@ function limpar() {
 
 afterEach(() => {
   process.env = { ...ENV_ORIGINAIS };
+});
+
+describe('grafoConfigurado (RN-1148)', () => {
+  afterEach(limpar);
+
+  it('sem configuração, devolve false: a outbox graph_projection não é gravada', () => {
+    limpar();
+    expect(grafoConfigurado()).toBe(false);
+  });
+
+  it('com as três variáveis, devolve true (mesmo que o Neo4j esteja fora do ar)', () => {
+    limpar();
+    process.env.NEO4J_URI = 'bolt://grafo-de-teste:7687';
+    process.env.NEO4J_USER = 'neo4j';
+    process.env.NEO4J_PASSWORD = 'senha-de-teste';
+    expect(grafoConfigurado()).toBe(true);
+  });
 });
 
 describe('resolverConfigNeo4j', () => {
