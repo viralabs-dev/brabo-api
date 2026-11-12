@@ -16,6 +16,7 @@ import { ExecuteInstructionPatchUseCase } from './execute-instruction-patch.use-
 import { ExecuteGitActionUseCase } from './execute-git-action.use-case';
 import { ProporRecriacaoDoAppUseCase } from './propor-recriacao-do-app.use-case';
 import { ListProposedActionsUseCase } from './list-proposed-actions.use-case';
+import { GetDecisionInboxUseCase } from './get-decision-inbox.use-case';
 import { ListProjectPendingActionsUseCase } from './list-project-pending-actions.use-case';
 import { GetAgentAutonomyUseCase } from './get-agent-autonomy.use-case';
 import { SetAgentAutonomyUseCase } from './set-agent-autonomy.use-case';
@@ -52,6 +53,7 @@ const USE_CASES = [
   ProporRecriacaoDoAppUseCase,
   ListProposedActionsUseCase,
   ListProjectPendingActionsUseCase,
+  GetDecisionInboxUseCase,
   GetAgentAutonomyUseCase,
   SetAgentAutonomyUseCase,
 ];

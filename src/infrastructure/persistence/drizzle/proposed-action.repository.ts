@@ -246,7 +246,9 @@ export class DrizzleProposedActionRepository implements ProposedActionRepository
   }
 }
 
-function toEntity(row: typeof proposedActions.$inferSelect): ProposedAction {
+export function toEntity(
+  row: typeof proposedActions.$inferSelect,
+): ProposedAction {
   return {
     id: row.id,
     projectId: row.projectId,

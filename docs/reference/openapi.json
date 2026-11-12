@@ -13742,6 +13742,70 @@
         ]
       }
     },
+    "/workspaces/{workspaceId}/decision-inbox": {
+      "get": {
+        "description": "Approvals (all pending actions except `git_merge`), PRs (`git_merge`), story promotions, architecture pendencies and Psychologist hypotheses. Each queue is separate and carries its own real `total`; there is no total at the root (RN-467). A queue holds at most `tetoPorFila` items (oldest first for `pending`, newest first for `decided`) and says `truncada` when it cuts. `status=decided` lists what was decided since `since` (ISO date, default 24 h ago), the mold of RN-1154; architecture has no decided side. A project only contributes to a queue when the caller's effective role there is enough to DECIDE it (`developer`; architecture needs `viewer`).",
+        "operationId": "DecisionInboxController_get",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "pending",
+              "type": "string"
+            }
+          },
+          {
+            "name": "since",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-11-11T12:00:00Z",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionInboxResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token, expired token, or invalid signature."
+          },
+          "403": {
+            "description": "No role on the workspace."
+          },
+          "429": {
+            "description": "Rate limit per user or per IP."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The five decision queues of every project, in one read",
+        "tags": [
+          "actions"
+        ]
+      }
+    },
     "/workspaces/{workspaceId}/huggingface/models": {
       "get": {
         "description": "Filters to OFFICIAL publishers only by default (the allowlist in `domain/llm/huggingface-official-publishers.ts`) — same \"manual curation always\" spirit as the LLM catalog (ADR 0042), applied to the \"official\" badge instead of to activation. `includeCommunity=true` brings in every publisher, each one tagged `official: false` for the screen to render the security warning — never hidden.",
@@ -19650,6 +19714,47 @@
           "resources"
         ]
       },
+      "DecisionInboxResponseDto": {
+        "type": "object",
+        "properties": {
+          "geradoEm": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "decided"
+            ]
+          },
+          "desde": {
+            "type": "string",
+            "nullable": true,
+            "description": "Início da janela, só no modo `decided`."
+          },
+          "tetoPorFila": {
+            "type": "number",
+            "example": 50
+          },
+          "filas": {
+            "$ref": "#/components/schemas/FilasDto"
+          },
+          "projetos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjetoDaCaixaDto"
+            }
+          }
+        },
+        "required": [
+          "geradoEm",
+          "status",
+          "desde",
+          "tetoPorFila",
+          "filas",
+          "projetos"
+        ]
+      },
       "DeclararRedeDto": {
         "type": "object",
         "properties": {
@@ -20430,6 +20535,168 @@
         "required": [
           "nome",
           "descricao"
+        ]
+      },
+      "FilaDeAcoesDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "description": "Total REAL da fila, mesmo quando `itens` é truncada (RN-1197)."
+          },
+          "truncada": {
+            "type": "boolean",
+            "description": "`true` quando `total` passa do teto de itens."
+          },
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemDeAcaoDto"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "truncada",
+          "itens"
+        ]
+      },
+      "FilaDeArquiteturaDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "description": "Total REAL da fila, mesmo quando `itens` é truncada (RN-1197)."
+          },
+          "truncada": {
+            "type": "boolean",
+            "description": "`true` quando `total` passa do teto de itens."
+          },
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemDeArquiteturaDto"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "truncada",
+          "itens"
+        ]
+      },
+      "FilaDeHipotesesDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "description": "Total REAL da fila, mesmo quando `itens` é truncada (RN-1197)."
+          },
+          "truncada": {
+            "type": "boolean",
+            "description": "`true` quando `total` passa do teto de itens."
+          },
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemDeHipoteseDto"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "truncada",
+          "itens"
+        ]
+      },
+      "FilaDePromocoesDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "description": "Total REAL da fila, mesmo quando `itens` é truncada (RN-1197)."
+          },
+          "truncada": {
+            "type": "boolean",
+            "description": "`true` quando `total` passa do teto de itens."
+          },
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemDePromocaoDto"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "truncada",
+          "itens"
+        ]
+      },
+      "FilaDePrsDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "description": "Total REAL da fila, mesmo quando `itens` é truncada (RN-1197)."
+          },
+          "truncada": {
+            "type": "boolean",
+            "description": "`true` quando `total` passa do teto de itens."
+          },
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemDeAcaoDto"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "truncada",
+          "itens"
+        ]
+      },
+      "FilasDto": {
+        "type": "object",
+        "properties": {
+          "aprovacoes": {
+            "description": "Ações pendentes EXCETO `git_merge`.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FilaDeAcoesDto"
+              }
+            ]
+          },
+          "prs": {
+            "description": "Só `git_merge`.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FilaDePrsDto"
+              }
+            ]
+          },
+          "promocoes": {
+            "$ref": "#/components/schemas/FilaDePromocoesDto"
+          },
+          "arquitetura": {
+            "description": "Derivada: vazia no modo `decided` (não há decisão humana a listar).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FilaDeArquiteturaDto"
+              }
+            ]
+          },
+          "hipoteses": {
+            "$ref": "#/components/schemas/FilaDeHipotesesDto"
+          }
+        },
+        "required": [
+          "aprovacoes",
+          "prs",
+          "promocoes",
+          "arquitetura",
+          "hipoteses"
         ]
       },
       "FirstAccountInternalDto": {
@@ -21836,6 +22103,73 @@
           "token"
         ]
       },
+      "ItemDeAcaoDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "acao": {
+            "$ref": "#/components/schemas/ProposedActionResponseDto"
+          }
+        },
+        "required": [
+          "projectId",
+          "projectName",
+          "acao"
+        ]
+      },
+      "ItemDeArquiteturaDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "storyId": {
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "motivo": {
+            "type": "string",
+            "enum": [
+              "no_module",
+              "missing_module"
+            ]
+          },
+          "faltando": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "desde": {
+            "type": "string",
+            "description": "Emprestada da história (`updatedAt`): a pendência é derivada e não tem data."
+          },
+          "dataEmprestada": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "projectId",
+          "projectName",
+          "storyId",
+          "titulo",
+          "motivo",
+          "faltando",
+          "desde",
+          "dataEmprestada"
+        ]
+      },
       "ItemDeContratoInternalDto": {
         "type": "object",
         "properties": {
@@ -21924,6 +22258,82 @@
           "actorId",
           "escolha",
           "contexto"
+        ]
+      },
+      "ItemDeHipoteseDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "hipoteseId": {
+            "type": "string"
+          },
+          "hipotese": {
+            "type": "string"
+          },
+          "agenteAlvo": {
+            "type": "string"
+          },
+          "situacao": {
+            "type": "string",
+            "example": "proposed",
+            "description": "`proposed`, ou o desfecho no modo `decided`."
+          },
+          "desde": {
+            "type": "string"
+          },
+          "decididaEm": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "projectId",
+          "projectName",
+          "hipoteseId",
+          "hipotese",
+          "agenteAlvo",
+          "situacao",
+          "desde",
+          "decididaEm"
+        ]
+      },
+      "ItemDePromocaoDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "storyId": {
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "desde": {
+            "type": "string",
+            "description": "Data da última alteração da história (a promoção não grava data própria)."
+          },
+          "decididaEm": {
+            "type": "string",
+            "nullable": true,
+            "description": "Só no modo `decided`: quando o usuário recusou (devolveu ao PO)."
+          }
+        },
+        "required": [
+          "projectId",
+          "projectName",
+          "storyId",
+          "titulo",
+          "desde",
+          "decididaEm"
         ]
       },
       "ItemDeRegraResponseDto": {
@@ -25192,6 +25602,49 @@
           "projectId",
           "sessionId",
           "events"
+        ]
+      },
+      "ProjetoDaCaixaDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "aprovacoes": {
+            "type": "number"
+          },
+          "prs": {
+            "type": "number"
+          },
+          "promocoes": {
+            "type": "number"
+          },
+          "arquitetura": {
+            "type": "number"
+          },
+          "hipoteses": {
+            "type": "number"
+          },
+          "agentesAguardando": {
+            "description": "Agentes com ação pendente (aprovações + PRs); não afetado pelo teto de itens.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "projectId",
+          "nome",
+          "aprovacoes",
+          "prs",
+          "promocoes",
+          "arquitetura",
+          "hipoteses",
+          "agentesAguardando"
         ]
       },
       "PromocaoRecusadaResponseDto": {

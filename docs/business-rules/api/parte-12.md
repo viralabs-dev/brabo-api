@@ -423,3 +423,43 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Regra:** a migração 0089 põe `periodo_inicio` do mês corrente nos tetos de projeto e de área e recalcula `spent_micros` como a soma de `token_usage` do mês (todos os atores no projeto; só `agent` na área, com o mapa ator → área congelado no SQL), e `last_threshold_notified` como o maior limiar já cruzado (sem reavisar). Sessão apagada leva o `token_usage` junto, então o recálculo pode ficar abaixo do real. O "gasto do workspace no mês" (RN-038) passa a usar `date_trunc` em UTC explícito, sem depender do `TimeZone` do servidor.
 - **Onde:** `src/db/migrations/0089_teto_mensal_e_do_workspace.sql`; `src/infrastructure/persistence/drizzle/token-usage.repository.ts:233`.
 - **Teste:** `teto-mensal.repository.spec.ts` (migração 0089: recálculo do mês).
+
+<a id="rn-1195"></a>
+
+### RN-1195 — A Caixa de decisões lê as cinco filas de todos os projetos numa leitura do workspace {#rn-1195}
+
+- **Regra:** `GET /workspaces/:workspaceId/decision-inbox` (`viewer`, só leitura) devolve as cinco filas separadas, `aprovacoes` (pendentes EXCETO `git_merge`), `prs` (só `git_merge`, a mesma partição do painel do projeto), `promocoes`, `arquitetura` e `hipoteses` (do Psicólogo, análise não `superseded`; as perguntas abertas do ADR 0214 e o `platform_signal` ficam fora), mais `projetos[]` com os cinco números de cada projeto e os `agentesAguardando`. Arquivadas ficam fora (RN-727). A decisão em si segue nos endpoints de hoje e nenhum teto muda (ADR 0295).
+- **Onde:** `src/interfaces/http/actions/decision-inbox.controller.ts:53` (`get`); `src/application/use-cases/actions/get-decision-inbox.use-case.ts:102` (`execute`).
+- **Teste:** `test/application/use-cases/actions/get-decision-inbox.use-case.spec.ts` (separa as cinco filas, respeita arquivadas e `superseded`).
+
+<a id="rn-1196"></a>
+
+### RN-1196 — As filas da Caixa nunca se somam: nenhum total na raiz {#rn-1196}
+
+- **Regra:** A resposta não tem `total` na raiz nem campo que some filas; cada fila traz o próprio `total` e `projetos[]` traz cinco números separados por projeto (RN-467).
+- **Onde:** `src/application/use-cases/actions/get-decision-inbox.use-case.ts:96` (`GetDecisionInboxUseCase`); `src/interfaces/http/actions/dto/decision-inbox.response.dto.ts:118` (`DecisionInboxResponseDto`).
+- **Teste:** `get-decision-inbox.use-case.spec.ts` (a raiz não tem `total`).
+
+<a id="rn-1197"></a>
+
+### RN-1197 — A Caixa tem teto por fila e diz o total real quando trunca {#rn-1197}
+
+- **Regra:** Cada fila devolve até `TETO_DE_ITENS_POR_FILA` (50, ponto de partida a medir) itens, o `total` REAL e `truncada` (ADR 0060). Pendentes saem das mais antigas para as mais novas; decididas, das mais novas para as mais antigas. As contagens de `projetos[]` e `agentesAguardando` vêm do `GROUP BY`, nunca dos itens truncados.
+- **Onde:** `src/application/use-cases/actions/get-decision-inbox.use-case.ts:10` (`TETO_DE_ITENS_POR_FILA`); `src/infrastructure/persistence/drizzle/decision-inbox.repository.ts:85` (`ler`).
+- **Teste:** `get-decision-inbox.use-case.spec.ts` (60 pendências: 50 itens, total 60, `truncada`, mais antigas primeiro).
+
+<a id="rn-1198"></a>
+
+### RN-1198 — A Caixa lê com orçamento de consultas constante em N projetos {#rn-1198}
+
+- **Regra:** O número de idas ao banco é o mesmo com 1 ou com 100 projetos: `inArray(project_id, ids)` + `GROUP BY`, sem laço sobre projetos (ADR 0060, molde da RN-090). O papel de projeto vem de UMA leitura de `project_members` do usuário no workspace. A arquitetura é derivada em memória das histórias não arquivadas, pela mesma função pura da aba do projeto (`derivarPendenciasDeArquitetura`), e a data dela é emprestada da história (`dataEmprestada`).
+- **Onde:** `src/infrastructure/persistence/drizzle/decision-inbox.repository.ts:68` (`papeisDeProjeto`); `src/domain/architecture/pendencias-de-arquitetura.ts:23` (`derivarPendenciasDeArquitetura`).
+- **Teste:** `get-decision-inbox.use-case.spec.ts` (o mesmo número de consultas com 1 e com 25 projetos).
+
+<a id="rn-1199"></a>
+
+### RN-1199 — A Caixa aplica o papel efetivo de cada projeto, com o papel de decidir como mínimo da fila, e lista também as decididas {#rn-1199}
+
+- **Regra:** O papel por projeto é `papelEfetivo(projectRole, workspaceRole)` (RN-471, a mesma função pura de `ResolveEffectiveRoleUseCase.forProject`). O mínimo é o do endpoint de decidir (RN-102): `developer` em aprovações, PRs, promoções e hipóteses; `viewer` em arquitetura, que só se lê. Projeto abaixo do mínimo não contribui com a fila (nem item nem contagem); sem papel de workspace, 403. `?status=decided&since=` (padrão 24 h, o molde da RN-1154) lista o decidido: ações não pendentes, promoções recusadas, hipóteses decididas; a arquitetura não tem lado decidido e vem vazia. Promoção aceita não grava data própria e fica fora.
+- **Onde:** `src/domain/iam/papel-efetivo.ts:9` (`papelEfetivo`); `src/application/use-cases/actions/get-decision-inbox.use-case.ts:18` (`PAPEL_MINIMO_POR_FILA`).
+- **Teste:** `get-decision-inbox.use-case.spec.ts` (RN-471 nos dois sentidos; 403; modo `decided`).

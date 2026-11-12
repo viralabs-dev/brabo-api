@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ProjectRepository } from '../../ports/project-repository.port';
 import { WorkspaceRepository } from '../../ports/workspace-repository.port';
+import { papelEfetivo } from '../../../domain/iam/papel-efetivo';
 import type { Role } from '../../../domain/iam/role';
 
 /** Núcleo do RBAC: papel de projeto sobrepõe o de workspace. */
@@ -16,7 +17,7 @@ export class ResolveEffectiveRoleUseCase {
     if (!project) return null;
 
     const projectRole = await this.projects.findMemberRole(projectId, userId);
-    if (projectRole) return projectRole;
+    if (projectRole) return papelEfetivo(projectRole, null);
 
     return this.forWorkspace(userId, project.workspaceId);
   }
