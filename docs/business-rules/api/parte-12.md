@@ -164,7 +164,7 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 ### RN-1151 — A lista de sessões do projeto traz custo, chamadas, agentes e passos {#rn-1151}
 
 - **Regra:** `GET /projects/:projectId/sessions` ganha, por item, `costMicros`, `chamadas`, `agentes[]` (ids com gasto de `actor_kind = 'agent'`) e `passos` (eventos `tool.call`); sessão sem uso devolve zeros e lista vazia. Duas queries agregadas por projeto, sem N+1. O uso por agente da sessão (`GET .../token-usage`) ganha `chamadas`.
-- **Código:** `apps/api/src/infrastructure/persistence/drizzle/session.repository.ts:49` (`usoPorSessaoDoProjeto`), `apps/api/src/application/use-cases/sessions/list-sessions-for-project.use-case.ts:30` (`execute`)
+- **Código:** `apps/api/src/infrastructure/persistence/drizzle/session.repository.ts:49` (`usoPorSessaoDoProjeto`), `apps/api/src/application/use-cases/sessions/list-sessions-for-project.use-case.ts:37` (`execute`)
 - **Teste:** `apps/api/test/application/use-cases/sessions/list-sessions-for-project.use-case.spec.ts` (soma, agentes, passos e sessão sem uso)
 - **Origem:** AT-930 (EP-035).
 
@@ -173,7 +173,7 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 ### RN-1152 — O gasto do projeto para o membro vem quebrado por modelo e por sessão, nunca por provider {#rn-1152}
 
 - **Regra:** `GET /projects/:projectId/spend/team` ganha `porModelo` e `porSessao` (mesmas linhas de `porAgente`). Modelo não é credencial; o eixo `provider` segue só do owner ([RN-186](parte-01.md#rn-186)/[RN-187](parte-01.md#rn-187)).
-- **Código:** `apps/api/src/application/use-cases/llm/get-project-spend-team.use-case.ts:46` (`execute`)
+- **Código:** `apps/api/src/application/use-cases/llm/get-project-spend-team.use-case.ts:39` (`execute`)
 - **Teste:** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (o membro vê total e custo por agente/área; sem `provider` no JSON)
 - **Origem:** AT-931 (EP-035).
 
@@ -191,6 +191,6 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 ### RN-1154 — As ações do projeto listam as decididas recentes, com o motivo {#rn-1154}
 
 - **Regra:** `GET /projects/:projectId/actions?status=decided&since=<ISO>` devolve o que deixou de ser `pending` (aprovadas, negadas com `rejectionReason`, `auto_approved`, executadas, falhas) mudado desde `since` (padrão 24 h), mais recentes primeiro, teto 100, `actionType` opcional; `since` inválido é 400. A recência é `updated_at` (`decided_at` é nulo nas automáticas).
-- **Código:** `apps/api/src/infrastructure/persistence/drizzle/proposed-action.repository.ts:187` (`listDecidedByProject`), `apps/api/src/application/use-cases/actions/list-project-pending-actions.use-case.ts:30` (`execute`), `apps/api/src/interfaces/http/actions/project-actions.controller.ts:60` (`list`)
+- **Código:** `apps/api/src/infrastructure/persistence/drizzle/proposed-action.repository.ts:187` (`listDecidedByProject`), `apps/api/src/application/use-cases/actions/list-project-pending-actions.use-case.ts:22` (`execute`), `apps/api/src/interfaces/http/actions/project-actions.controller.ts:60` (`list`)
 - **Teste:** `apps/api/test/application/use-cases/actions/list-project-pending-actions.use-case.spec.ts` (negada com motivo e automática entram; pendente e velha não)
 - **Origem:** AT-932 (EP-035).

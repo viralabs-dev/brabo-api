@@ -772,7 +772,7 @@ e o resumo do workspace discordarem de qual era a sessão de trabalho.
 consultar o estado da sessão de cada handoff (a lacuna que a RN-582 declarou);
 decidir se passam a consultá-lo é decisão à parte, fora desta regra.
 
-- **Código:** `src/application/use-cases/sessions/list-sessions-for-project.use-case.ts:30`
+- **Código:** `src/application/use-cases/sessions/list-sessions-for-project.use-case.ts:37`
   (`execute`), `src/interfaces/http/sessions/dto/sessions.response.dto.ts:110`
   (`SessionListItemResponseDto`), `apps/web/src/lib/hooks.ts:147`
   (`sessaoMaisRecente`)

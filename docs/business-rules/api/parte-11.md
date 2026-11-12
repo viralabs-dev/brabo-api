@@ -21,7 +21,7 @@ Revisa a [RN-782](parte-10.md#rn-782) e a [RN-783](parte-10.md#rn-783) (o deslig
 4. **Não retenta** sem raciocínio pedido, com o raciocínio já desligado (dev agents, RN-783) ou com provider que não sabe desligá-lo (`aceitaRaciocinioDesligado`, OpenRouter e Anthropic; ver a [RN-1001](#rn-1001), que corrige o decorator que escondia a flag): ali o desfecho segue o de antes.
 
 - **Código:** `src/domain/llm/raciocinio-do-agente.ts:66` (`devoRetentarSemRaciocinio`);
-  `src/application/use-cases/llm/run-llm-turn.use-case.ts:359` (`devoRetentarSemRaciocinio`)
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:367` (`devoRetentarSemRaciocinio`)
 - **Teste:** `test/domain/llm/raciocinio-do-agente.spec.ts` (folga, aborto e as recusas); `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` (com a capability lida do `AnthropicProvider` real, AT-757: retenta e grava duas linhas; segunda truncada não tem terceira; truncada com texto não retenta); `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` (idem no stream)
 - **Origem:** AT-587, AT-757 (o provider Anthropic declara a capability, o que passa a ser coberto por um spec de caso de uso)
 
@@ -198,7 +198,7 @@ Revisa a [RN-101](parte-03.md#rn-101) (o membro deixa de ver SÓ o próprio cons
 1. **Recorte.** `GET workspaces/:workspaceId/spend-report?projectId=` (`owner`) limita o relatório a UM projeto e devolve também `porSessao`. Projeto de outro workspace é 404, igual a inexistente: o filtro nunca vira leitura entre workspaces.
 2. **Membro.** `GET projects/:projectId/spend/team` (`viewer`) devolve o total do projeto e o custo por agente (`porAgente`) e por área do catálogo (`porArea`, `sem-area` quando não há). Nunca provider nem credencial: a rota não tem parâmetro de dimensão e o caso de uso só pede `actor` (ADR [0233](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0233-membro-ve-o-gasto-do-projeto-sem-credencial.md), que revisa o [0063](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0063-duas-audiencias-para-o-mesmo-gasto.md)).
 
-- **Código:** `src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:98` (`NotFoundException`); `src/application/use-cases/llm/get-project-spend-team.use-case.ts:29` (`GetProjectSpendTeamUseCase`); `src/interfaces/http/llm/spend.controller.ts:147` (`getProjectSpendTeam`)
+- **Código:** `src/application/use-cases/llm/get-workspace-spend-report.use-case.ts:98` (`NotFoundException`); `src/application/use-cases/llm/get-project-spend-team.use-case.ts:36` (`GetProjectSpendTeamUseCase`); `src/interfaces/http/llm/spend.controller.ts:147` (`getProjectSpendTeam`)
 - **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (recorte por projeto com sessão, 404 entre workspaces, membro sem provider); `test/interfaces/spend.controller.spec.ts` (papéis das rotas)
 - **Origem:** AT-632
 
@@ -223,7 +223,7 @@ Convive com a [RN-665](parte-08.md#rn-665) (custo real do OpenRouter) e o preço
 1. **Marca.** `models.billing` é `api` (padrão), `subscription` ou `free`, gravada pela curadoria em `PATCH workspaces/:workspaceId/models/:modelId/billing` (`owner`, o nível de `…/pricing`). O sync nunca a toca e a linha de `token_usage` não muda.
 2. **Relatório.** Todo bucket e o total ganham `assinaturaMicros` = soma do custo dos modelos `subscription`, contida em `costMicros`; o pago em US$ é `costMicros − assinaturaMicros`.
 
-- **Código:** `src/db/schema/llm.ts:175` (`modelBillingEnum`); `src/infrastructure/persistence/drizzle/token-usage.repository.ts:394` (`assinaturaMicros`); `src/interfaces/http/llm/models.controller.ts:302` (`updateBilling`)
+- **Código:** `src/db/schema/llm.ts:175` (`modelBillingEnum`); `src/infrastructure/persistence/drizzle/token-usage.repository.ts:430` (`assinaturaMicros`); `src/interfaces/http/llm/models.controller.ts:302` (`updateBilling`)
 - **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (assinatura separada do pago)
 - **Origem:** AT-632
 
