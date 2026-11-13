@@ -116,7 +116,7 @@ Fora de PR, `carimbo.yml` carimba a tag a cada push em `dev` e `main`. Na tag `v
 ## Documentação
 
 - [`docs/business-rules/api.md`](docs/business-rules/api.md): o índice das regras de negócio hospedadas na api, em 12 partes (`docs/business-rules/api/parte-NN.md`), cada regra com o código e o teste que a cobrem.
-- [`docs/security-surface.md`](docs/security-surface.md): o inventário das rotas com a classificação de autenticação. `test/interfaces/route-surface.spec.ts` confere com as rotas registradas.
+- [`docs/security-surface.md`](docs/security-surface.md) e [`parte 2`](docs/security-surface-parte-2.md): o inventário das rotas com a classificação de autenticação. `test/interfaces/route-surface.spec.ts` confere com as rotas registradas.
 - [`docs/reference/`](docs/reference/): providers de LLM e de git, permissões, artefatos e o `openapi.json`.
 - [`docs/reference/contratos-e-imagem.md`](docs/reference/contratos-e-imagem.md): o `@brabo/shared`, o `areas.json` e como a imagem é construída e publicada.
 - [`docs/explanation/aceite-providers.md`](docs/explanation/aceite-providers.md): o aceite dos providers com credencial real.

@@ -84,11 +84,14 @@ interface Rota {
   statusReal?: number;
 }
 
-const DOC = join(__dirname, '../../docs/security-surface.md');
+// A fonte é dividida em duas partes (orçamento de página do site); lidas como uma só.
+const DOCS = ['security-surface.md', 'security-surface-parte-2.md'].map((n) =>
+  join(__dirname, '../../docs', n),
+);
 
 /** Lê a tabela do markdown. O documento é a fonte de verdade. */
 function rotasDocumentadas(): Map<string, Rota> {
-  const conteudo = readFileSync(DOC, 'utf8');
+  const conteudo = DOCS.map((d) => readFileSync(d, 'utf8')).join('\n');
   const linha =
     /^\|\s*(GET|POST|PUT|PATCH|DELETE|ALL|OPTIONS|HEAD)\s*\|\s*`([^`]+)`\s*\|\s*([a-z-]+(?::[a-z-]+)?)\s*\|/gm;
 
@@ -340,7 +343,7 @@ describe('superfície exposta da api', () => {
 
     expect(
       faltando,
-      `Rota(s) sem classificação em apps/api/docs/security-surface.md. Acrescente uma linha ` +
+      `Rota(s) sem classificação em apps/api/docs/security-surface*.md. Acrescente uma linha ` +
         `para cada uma decidindo conscientemente a exposição:\n  ${faltando.join('\n  ')}`,
     ).toEqual([]);
   });
@@ -352,7 +355,7 @@ describe('superfície exposta da api', () => {
 
     expect(
       orfas,
-      `Linha(s) em apps/api/docs/security-surface.md sem rota correspondente — remova:\n  ${orfas.join('\n  ')}`,
+      `Linha(s) em apps/api/docs/security-surface*.md sem rota correspondente — remova:\n  ${orfas.join('\n  ')}`,
     ).toEqual([]);
   });
 
