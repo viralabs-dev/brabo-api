@@ -471,6 +471,6 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 ### RN-1304 — A volta retentada por corte de saída pede o dobro do teto {#rn-1304}
 
 - **Regra:** `llm-turn` e `llm-turn-stream` internos aceitam `saidaAmpliada` (booleano, opcional; outro tipo é 400). Com a flag, o provider recebe `maxTokens` = 8192, o dobro do padrão de 4096; sem ela nada muda. O engine liga a flag na volta retentada de uma resposta só de raciocínio cortada pelo teto (ajuste da RN-780).
-- **Código:** `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:1` (`execute`), `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:1` (`execute`), `apps/api/src/domain/llm/raciocinio-do-agente.ts:20` (`TETO_DE_SAIDA_AMPLIADO`)
+- **Código:** `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:127` (`execute`), `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:136` (`execute`), `apps/api/src/domain/llm/raciocinio-do-agente.ts:21` (`TETO_DE_SAIDA_AMPLIADO`)
 - **Teste:** `apps/api/test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` (a flag dobra o teto; sem ela, nada), `apps/api/test/interfaces/saida-ampliada-dto.spec.ts` (booleano aceito, outro tipo recusado)
 - **Origem:** AT-920 (EP-036).
