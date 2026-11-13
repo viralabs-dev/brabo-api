@@ -17,9 +17,11 @@ import {
 } from '@nestjs/swagger';
 import { EngineServiceGuard } from '../auth/engine-service.guard';
 import { ServiceRoute } from '../auth/service-route.decorator';
+import { ProvarComposeDeQaUseCase } from '../../../application/use-cases/containers/provar-compose-de-qa.use-case';
 import { InstanciaDeQaUseCase } from '../../../application/use-cases/containers/instancia-de-qa.use-case';
 import { SERVICE_TOKEN } from '../../../infrastructure/openapi/documento';
 import {
+  QaComposeProofResponseDto,
   QaEnvironmentResponseDto,
   SweepQaEnvironmentsInternalDto,
   SweepQaEnvironmentsResponseDto,
@@ -38,7 +40,10 @@ import {
 @ServiceRoute()
 @UseGuards(EngineServiceGuard)
 export class InternalQaEnvironmentsController {
-  constructor(private readonly qa: InstanciaDeQaUseCase) {}
+  constructor(
+    private readonly qa: InstanciaDeQaUseCase,
+    private readonly compose: ProvarComposeDeQaUseCase,
+  ) {}
 
   @Post('projects/:projectId/qa-environments/:taskId/start')
   @HttpCode(200)
@@ -77,6 +82,25 @@ export class InternalQaEnvironmentsController {
     @Param('taskId') taskId: string,
   ) {
     return this.qa.remove(projectId, taskId);
+  }
+
+  @Post('projects/:projectId/qa-environments/:taskId/compose')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Proves the clean clone with a real `docker compose up` (RN-1328)',
+    description:
+      'Asks the broker (ADR 0297; up to 10 min). Never an error for lack of proof: no broker, `runner` project, infra origin or ceiling -> `veredito: aprova_com_aviso` with `aviso: "sem prova de compose"`. `falhou` is the project\'s own failure. Auto-approved QA step, outside the RN-418 ceiling.',
+  })
+  @ApiOkResponse({ type: QaComposeProofResponseDto })
+  @ApiNotFoundResponse({
+    description: 'Project or task (of that project) not found.',
+  })
+  @ApiConflictResponse({ description: 'Ambiguous task key.' })
+  provarCompose(
+    @Param('projectId') projectId: string,
+    @Param('taskId') taskId: string,
+  ) {
+    return this.compose.execute(projectId, taskId);
   }
 
   @Post('qa-environments/sweep')

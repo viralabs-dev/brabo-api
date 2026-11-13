@@ -78,6 +78,18 @@ export type ResultadoDoReinicioDoApp =
   | { reiniciou: false; motivo: 'app_saiu'; exitCode: number };
 
 /**
+ * Espelho de `ResultadoDaProvaDeCompose` (`brabo-contracts:packages/docker-port`,
+ * `prova-de-compose.ts`, AT-922): a api não importa o pacote. `origem` é quem
+ * falhou: `projeto` vira item do parecer, `infra` vira "sem prova de compose".
+ */
+export interface ResultadoDaProvaDeCompose {
+  subiu: boolean;
+  sondas: Array<{ caminho: string; status: number }>;
+  recusas?: Array<{ campo: string; motivo: string }>;
+  origem: 'projeto' | 'infra';
+}
+
+/**
  * O broker recusou, ou não respondeu. `origem` vem DELE — cada erro do broker
  * declara a própria (`infra | politica | codigo`), e `null` é a resposta
  * honesta de `ComandoDeDockerFalhouError`, que o ADR 0128 deixou sem origem de
@@ -155,4 +167,10 @@ export abstract class ContainerBrokerPort {
     cwd?: string,
     timeoutMs?: number,
   ): Promise<ResultadoDeExecNoContainer>;
+
+  /** AT-922 (ADR 0297): `docker compose up --build` do clone limpo, num projeto compose descartável. Dura até 10 min. */
+  abstract provaDeCompose(
+    projectId: string,
+    chave: string,
+  ): Promise<ResultadoDaProvaDeCompose>;
 }

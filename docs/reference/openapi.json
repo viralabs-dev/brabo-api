@@ -1325,6 +1325,60 @@
         ]
       }
     },
+    "/internal/projects/{projectId}/qa-environments/{taskId}/compose": {
+      "post": {
+        "description": "Asks the broker (ADR 0297; up to 10 min). Never an error for lack of proof: no broker, `runner` project, infra origin or ceiling -> `veredito: aprova_com_aviso` with `aviso: \"sem prova de compose\"`. `falhou` is the project's own failure. Auto-approved QA step, outside the RN-418 ceiling.",
+        "operationId": "InternalQaEnvironmentsController_provarCompose",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QaComposeProofResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Service token missing or different from the shared one."
+          },
+          "404": {
+            "description": "Project or task (of that project) not found."
+          },
+          "409": {
+            "description": "Ambiguous task key."
+          }
+        },
+        "security": [
+          {
+            "service-token": []
+          }
+        ],
+        "summary": "Proves the clean clone with a real `docker compose up` (RN-1328)",
+        "tags": [
+          "internal"
+        ]
+      }
+    },
     "/internal/projects/{projectId}/qa-environments/{taskId}/remove": {
       "post": {
         "description": "Automatic, no proposal: it only reaches what carries the QA label (the broker guarantees it). Idempotent.",
@@ -18310,6 +18364,71 @@
           "projectId"
         ]
       },
+      "ComposeProofRecusaDto": {
+        "type": "object",
+        "properties": {
+          "campo": {
+            "type": "string",
+            "example": "privileged"
+          },
+          "motivo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "campo",
+          "motivo"
+        ]
+      },
+      "ComposeProofResultadoDto": {
+        "type": "object",
+        "properties": {
+          "subiu": {
+            "type": "boolean"
+          },
+          "sondas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComposeProofSondaDto"
+            }
+          },
+          "recusas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComposeProofRecusaDto"
+            }
+          },
+          "origem": {
+            "type": "string",
+            "enum": [
+              "projeto",
+              "infra"
+            ]
+          }
+        },
+        "required": [
+          "subiu",
+          "sondas",
+          "origem"
+        ]
+      },
+      "ComposeProofSondaDto": {
+        "type": "object",
+        "properties": {
+          "caminho": {
+            "type": "string",
+            "example": "/docs"
+          },
+          "status": {
+            "type": "number",
+            "description": "HTTP status; 0 when the probe got no answer."
+          }
+        },
+        "required": [
+          "caminho",
+          "status"
+        ]
+      },
       "ConfirmacaoDeArquiteturaResponseDto": {
         "type": "object",
         "properties": {
@@ -26584,6 +26703,50 @@
         },
         "required": [
           "enabled"
+        ]
+      },
+      "QaComposeProofResponseDto": {
+        "type": "object",
+        "properties": {
+          "veredito": {
+            "type": "string",
+            "enum": [
+              "provou",
+              "falhou",
+              "aprova_com_aviso"
+            ],
+            "description": "`falhou` is the PROJECT's fault (a verdict item); `aprova_com_aviso` means the proof could not run (no broker, runner, infra origin, ceiling)."
+          },
+          "aviso": {
+            "type": "string",
+            "nullable": true,
+            "example": "sem prova de compose",
+            "description": "The warning the verdict must carry; `null` otherwise."
+          },
+          "motivo": {
+            "type": "string",
+            "nullable": true
+          },
+          "chave": {
+            "type": "string",
+            "example": "a1b2c3d4"
+          },
+          "resultado": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ComposeProofResultadoDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "veredito",
+          "aviso",
+          "motivo",
+          "chave",
+          "resultado"
         ]
       },
       "QaEnvironmentResponseDto": {

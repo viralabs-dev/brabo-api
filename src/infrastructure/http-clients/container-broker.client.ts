@@ -8,6 +8,7 @@ import {
   ContainerBrokerPort,
   type ContainerIniciadoPeloBroker,
   type ObservacaoDeContainer,
+  type ResultadoDaProvaDeCompose,
   type ResultadoDoReinicioDoApp,
   type ResultadoDeExecNoContainer,
 } from '../../application/ports/container-broker.port';
@@ -143,6 +144,19 @@ export class HttpContainerBrokerClient extends ContainerBrokerPort {
     );
   }
 
+  @Traced('infrastructure')
+  async provaDeCompose(
+    projectId: string,
+    chave: string,
+  ): Promise<ResultadoDaProvaDeCompose> {
+    return this.chamar<ResultadoDaProvaDeCompose>(
+      'compose',
+      'POST',
+      `/containers/${segmento(projectId)}/qa/${segmento(chave)}/compose`,
+      {},
+    );
+  }
+
   private async chamar<T>(
     operacao: OperacaoDoBroker,
     metodo: string,
@@ -197,7 +211,7 @@ export class HttpContainerBrokerClient extends ContainerBrokerPort {
 }
 
 export type OperacaoDoBroker =
-  'inspect' | 'exec' | 'start' | 'stop' | 'remove' | 'restart';
+  'inspect' | 'exec' | 'start' | 'stop' | 'remove' | 'restart' | 'compose';
 
 /*
  * Os números do OUTRO lado de que os tetos daqui derivam. São ESPELHOS, e não
@@ -254,6 +268,9 @@ export const TETO_DE_MUTACAO_MS =
   CHAMADAS_DE_CONTROLE_NO_START * CONTROLE_DO_DOCKER_MS +
   MARGEM_DE_TRANSPORTE_MS;
 
+/** `LIMITES_DA_PROVA_DE_COMPOSE.tempoMaximoMs` (`packages/docker-port/src/prova-de-compose.ts`, ADR 0297): o teto de `up --build --wait` + sondas + limpeza no broker, 10 min. */
+export const PROVA_DE_COMPOSE_NO_BROKER_MS = 10 * 60 * 1000;
+
 /**
  * O engine espera, na chamada `container-exec` a esta api, o `timeoutMs` do
  * comando MAIS esta folga (`@folga_do_exec_no_container_ms`,
@@ -300,6 +317,17 @@ export function tetoDaOperacao(
         MARGEM_DE_TRANSPORTE_MS
       );
     }
+    case 'compose':
+      // contexto + o teto da prova no broker + o `docker version` de diagnóstico + margem.
+      // shortcut: o `fetch` do Node corta os cabeçalhos em 300s (ver `erroDeTransporte`),
+      // então uma prova acima de 5 min vira `teto-excedido` (aviso) aqui, mesmo com o
+      // teto de 645s; sem `undici` direto na api, subir o limite fica para quando houver.
+      return (
+        CONTEXTO_DO_BROKER_MS +
+        PROVA_DE_COMPOSE_NO_BROKER_MS +
+        CONTROLE_DO_DOCKER_MS +
+        MARGEM_DE_TRANSPORTE_MS
+      );
     case 'restart':
       // contexto + os dois `ps` + o `exec` do reinício (mata, relança, espera ~10s) + margem.
       return (
@@ -362,6 +390,7 @@ function consequenciaDoTeto(operacao: OperacaoDoBroker): string {
         '. O comando pode seguir rodando dentro do container: parar de ' +
         'esperar não o mata.'
       );
+    case 'compose':
     case 'restart':
     case 'start':
     case 'stop':

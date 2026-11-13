@@ -543,6 +543,11 @@ detalhar o motivo na URL.
   precisa citar a regra que substitui e/ou uma pergunta respondida. Ela anexa
   um evento `artifact.business_rule_retired` e troca o id da regra nas
   histórias que a citam; nada é apagado e nenhuma credencial entra.
+- **`POST /internal/projects/:projectId/qa-environments/:taskId/compose`**
+  ([RN-1328](business-rules/api.md#rn-1328), ADR 0297) é chamada só pelo engine
+  (`engine-service`). O corpo é vazio e a api não manda especificação ao broker
+  (a allowlist do compose mora no broker); a resposta traz só status de sonda e
+  nomes de campo recusados, nunca o conteúdo do compose nem saída de build.
 - **`POST /internal/projects/:projectId/qa-environments/:taskId/start`**,
   **`POST /internal/projects/:projectId/qa-environments/:taskId/remove`** e
   **`POST /internal/qa-environments/sweep`** ([RN-935](business-rules/api.md#rn-935),
@@ -1441,6 +1446,7 @@ marcado, fora do grafo; nos demais é descartado sem evento. A marca é ligada p
 | GET | `/internal/projects/:projectId/container-spec` | engine-service |
 | POST | `/internal/projects/:projectId/qa-environments/:taskId/start` | engine-service |
 | POST | `/internal/projects/:projectId/qa-environments/:taskId/remove` | engine-service |
+| POST | `/internal/projects/:projectId/qa-environments/:taskId/compose` | engine-service |
 | POST | `/internal/qa-environments/sweep` | engine-service |
 | POST | `/internal/projects/:projectId/open-questions/:questionId/answer` | engine-service |
 | POST | `/internal/projects/:projectId/business-rules/:ruleId/retire` | engine-service |
