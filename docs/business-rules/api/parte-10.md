@@ -91,7 +91,7 @@ keywords: [regras de negócio, api]
 - **Onde:** `src/application/use-cases/actions/execute-infra-pr.use-case.ts:71`
   (`ExecuteInfraPrUseCase`),
   `apps/web/src/routes/ProjectApprovalsTab.tsx:98` (`ProjectApprovalsTab`),
-  `apps/web/src/routes/Shell.tsx:429` (`idDoProjetoAtual`),
+  `apps/web/src/routes/Shell.tsx:379` (`currentProject`),
   `apps/web/src/routes/NewProjectWizard.tsx:155` (`NewProjectWizard`),
   `apps/web/src/routes/ProjectPrsTab.tsx:150` (`invalidateMergeActions`),
   `apps/web/src/lib/agent-status.ts:254` (`gateStatus`)
