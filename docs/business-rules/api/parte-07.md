@@ -930,7 +930,7 @@ que não libera o escopo.
   `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
   (`resolve`, com a origem),
   `src/application/use-cases/actions/propose-action.use-case.ts:365`
-  (`autonomyOrigin`), `apps/web/src/components/AgentTeamGrid.tsx:114`
+  (`autonomyOrigin`), `apps/web/src/components/AgentTeamGrid.tsx:121`
   (`autonomyHint`), `apps/web/src/components/ApprovalCard.tsx:313` (a nota
   nas duas variantes)
 - **Teste:** `test/domain/actions/decide.spec.ts` ("modo automático
@@ -1203,7 +1203,7 @@ projeto aberto, e as outras listas seguiam anunciando a revogada.
   (`MachineDeviceKeysSection`);
   `apps/web/src/lib/chaves-de-dispositivo-queries.ts:31`
   (`invalidarChavesDeDispositivo`);
-  `apps/web/src/lib/api-client.ts:461` (`listMachineDeviceKeys`);
+  `apps/web/src/lib/api-client.ts:465` (`listMachineDeviceKeys`);
   `apps/web/src/locales/{en,pt-BR}/machineKeys.json`
 - **Teste:** `test/application/use-cases/auth/machine-device-keys.use-case.spec.ts`
   (a lista só pelo usuário, a revogada incluída; a revogação REAL derrubando
