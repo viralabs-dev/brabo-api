@@ -410,11 +410,11 @@ fechada seguem mostrando a mensagem da api.
   (`conversa_ociosa`), `:193` (`encerrar`), `:222`
   (`conversation_idle_timeout_ms`); `apps/engine/lib/engine/sessions/monitor.ex:185`
   (`classify`); `apps/engine/lib/engine/psychologist/termination_classifier.ex:46`;
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:1227`
-  (`narrar_recusa_de_sessao_encerrada`), `:1592` (`pendencia_da_resposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:1259`
+  (`narrar_recusa_de_sessao_encerrada`), `:1632` (`pendencia_da_resposta`);
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:1227`
-  (`narrar_recusa_de_sessao_encerrada`), `:1592` (`pendencia_da_resposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:1259`
+  (`narrar_recusa_de_sessao_encerrada`), `:1632` (`pendencia_da_resposta`);
   `apps/engine/lib/engine/agents/conversacionais.ex:49` (`parar_da_sessao`),
   `:69` (`parar_da_sessao_no_cluster`);
   `apps/engine/lib/engine/agents/turno_assincrono.ex:471` (`abandonar`);
@@ -731,7 +731,7 @@ direta.
   (recusa 409), `apps/web/src/routes/containers-subida.ts:181`
   (`semBrokerParaCicloDeVida`) e `:192` (`conversaoSemBroker`),
   `apps/web/src/routes/settings/ExecutionModeSection.tsx` (botão inerte),
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:886`
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:899`
   (`motivo_da_recusa_da_api`)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:207`
   (409 nas três ações, e `container_stop` segue `pending` com broker),
@@ -774,7 +774,7 @@ decidir se passam a consultá-lo é decisão à parte, fora desta regra.
 
 - **Código:** `src/application/use-cases/sessions/list-sessions-for-project.use-case.ts:37`
   (`execute`), `src/interfaces/http/sessions/dto/sessions.response.dto.ts:110`
-  (`SessionListItemResponseDto`), `apps/web/src/lib/hooks.ts:147`
+  (`SessionListItemResponseDto`), `apps/web/src/lib/hooks.ts:173`
   (`sessaoMaisRecente`)
 - **Teste:** `test/application/use-cases/sessions/list-sessions-for-project.use-case.spec.ts:81`
   (vínculo e não nome; técnica de outro projeto não marca),
@@ -1025,9 +1025,9 @@ pacote da porta de Docker. Nada muda na contenção do broker ([ADR
   `:252` (`TETO_DE_MUTACAO_MS`), `:264` (`FOLGA_DO_EXEC_NO_ENGINE_MS`),
   `:324` (`erroDeTransporte`);
   `src/application/ports/container-broker.port.ts:110` (`MotivoDeBrokerIndisponivel`);
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:2120` (`teto_do_container_exec_ms`)
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:2168` (`teto_do_container_exec_ms`)
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:2120` (`teto_do_container_exec_ms`)
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:2168` (`teto_do_container_exec_ms`)
 - **Teste:** `test/infrastructure/http-clients/container-broker.client.spec.ts:286`
   (a reprodução, contra um broker `node:http` que demora 6 s), `:182` (o
   teto de cada operação no `AbortSignal`), `:204` e `:229` (`teto-excedido`
@@ -1203,7 +1203,7 @@ projeto aberto, e as outras listas seguiam anunciando a revogada.
   (`MachineDeviceKeysSection`);
   `apps/web/src/lib/chaves-de-dispositivo-queries.ts:31`
   (`invalidarChavesDeDispositivo`);
-  `apps/web/src/lib/api-client.ts:455` (`listMachineDeviceKeys`);
+  `apps/web/src/lib/api-client.ts:461` (`listMachineDeviceKeys`);
   `apps/web/src/locales/{en,pt-BR}/machineKeys.json`
 - **Teste:** `test/application/use-cases/auth/machine-device-keys.use-case.spec.ts`
   (a lista só pelo usuário, a revogada incluída; a revogação REAL derrubando

@@ -817,7 +817,7 @@ caminho que a execução em container substitui; o que muda agora é só a
   `src/application/use-cases/execution/activate-execution.use-case.ts:176`
   (o 400), `src/interfaces/http/execution/execution.controller.ts:74`
   (a anotação de OpenAPI, que prometia 409 para dois casos que nunca foram
-  409), `apps/web/src/routes/ProjectOverviewTab.tsx:485`
+  409), `apps/web/src/routes/ProjectOverviewTab.tsx:250`
   (`mensagemDaApi`), `apps/engine/lib/engine/actions/workspace.ex:61`
   (a mensagem da lacuna que fica)
 - **Teste:**
