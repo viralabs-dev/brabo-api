@@ -1222,7 +1222,9 @@ Decisão do dono de 01/10 ([ADR 0189](https://github.com/viralabs-dev/brabo/blob
 `*: auto_approve` aprova TUDO, inclusive o composto sintetizado do
 `permissions.json`, caminho fora da pasta, `git commit` e criação de branch
 LOCAL. Seguem fora, nunca auto-aprováveis: push/PR/merge/deploy pelo terminal
-e `sudo`/`doas` ([RN-418](parte-04.md#rn-418)), merge em branch protegida,
+e `sudo`/`doas` ([RN-418](parte-04.md#rn-418)), merge em branch protegida
+(salvo a chave de merge automático do projeto na branch de trabalho, só pela
+origem do gatilho: [RN-1316](parte-12.md#rn-1316)),
 `container_remove`, `instruction_patch` e paralelismo. `deny` explícito vence, e
 `ask` escrito no arquivo pede. A garantia de que isso não alcança o código do
 Brabo é a contenção do container — uma pasta só, em `/work`, estritamente

@@ -502,6 +502,20 @@ detalhar o motivo na URL.
   inalcançável (`{ sucesso: false, motivo }` é a forma normal, pela RN-486 —
   uma linha `running` nunca garante que o container está de pé agora), então
   um container morto é um comando falho comum, não um 5xx.
+- **`PUT /projects/:projectId/auto-merge` e `POST /internal/projects/:projectId/tasks/:taskId/auto-merge`
+  abrem a ÚNICA exceção do teto de merge** ([RN-1316](business-rules/api.md#rn-1316),
+  [ADR 0292](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0292-merge-automatico-opcional.md)).
+  A chave `projects.merge_automatico` (padrão `false`) só muda pela rota
+  própria, nunca pelo `PATCH`: ligar exige `owner` do workspace (a rota exige
+  `maintainer` e o caso de uso recusa o resto com 403), desligar basta
+  `maintainer` e vale na proposta seguinte; cada mudança grava uma linha
+  imutável em `merge_automatico_eventos`. A rota interna é só do engine
+  (service token) e confere TUDO na api (chave, gates, PR, merge duplicado da
+  RN-663) antes de propor o `git_merge` com `origem: merge_automatico`. Em
+  `decide()` a exceção exige as TRÊS condições juntas (chave ligada, origem do
+  gatilho, destino na branch de trabalho): `ProposeActionInput.origem` não vem
+  de DTO nenhum, então pessoa, agente, "sempre permitir" e `permissions.json`
+  nunca a carregam; `git_merge` continua em `TIPOS_SEM_SEMPRE_PERMITIR`.
 - **`POST /internal/projects/:projectId/mirror-sync-result`** ([RN-517](business-rules/api.md#rn-517),
   [ADR 0147](adr/0147-agente-local-com-capacidades.md), ponto 7) é chamada
   só pelo engine, depois que o runner empurra `mirror_sync_result` pelo
@@ -1423,6 +1437,7 @@ marcado, fora do grafo; nos demais é descartado sem evento. A marca é ligada p
 | POST | `/internal/projects/:projectId/container-exec` | engine-service |
 | POST | `/internal/projects/:projectId/app/restart` | engine-service |
 | POST | `/internal/projects/:projectId/mirror-sync-result` | engine-service |
+| POST | `/internal/projects/:projectId/tasks/:taskId/auto-merge` | engine-service |
 | GET | `/internal/projects/:projectId/container-spec` | engine-service |
 | POST | `/internal/projects/:projectId/qa-environments/:taskId/start` | engine-service |
 | POST | `/internal/projects/:projectId/qa-environments/:taskId/remove` | engine-service |
@@ -1469,6 +1484,7 @@ marcado, fora do grafo; nos demais é descartado sem evento. A marca é ligada p
 | PATCH | `/projects/:projectId` | role:maintainer |
 | PUT | `/projects/:projectId/execution-mode` | role:maintainer |
 | PUT | `/projects/:projectId/mirror-path` | role:maintainer |
+| PUT | `/projects/:projectId/auto-merge` | role:maintainer |
 | PUT | `/projects/:projectId/container/network` | role:maintainer |
 | GET | `/projects/:projectId/mirror-state` | role:viewer |
 | GET | `/projects/:projectId/models` | role:viewer |

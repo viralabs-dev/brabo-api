@@ -26,6 +26,7 @@ import type { User } from '../../../domain/iam/user.entity';
 import { GetProjectUseCase } from '../../../application/use-cases/iam/get-project.use-case';
 import { UpdateProjectUseCase } from '../../../application/use-cases/iam/update-project.use-case';
 import { ConvertProjectExecutionModeUseCase } from '../../../application/use-cases/iam/convert-project-execution-mode.use-case';
+import { SetProjectAutoMergeUseCase } from '../../../application/use-cases/iam/set-project-auto-merge.use-case';
 import { SetProjectMirrorPathUseCase } from '../../../application/use-cases/iam/set-project-mirror-path.use-case';
 import { GetProjectMirrorStateUseCase } from '../../../application/use-cases/iam/get-project-mirror-state.use-case';
 import { DeleteProjectUseCase } from '../../../application/use-cases/iam/delete-project.use-case';
@@ -36,6 +37,7 @@ import { GetProjectPermissionsUseCase } from '../../../application/use-cases/iam
 import { SetProjectPermissionsUseCase } from '../../../application/use-cases/iam/set-project-permissions.use-case';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ConvertExecutionModeDto } from './dto/convert-execution-mode.dto';
+import { SetAutoMergeDto } from './dto/set-auto-merge.dto';
 import { SetMirrorPathDto } from './dto/set-mirror-path.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { SetProjectPermissionsDto } from './dto/set-project-permissions.dto';
@@ -68,6 +70,7 @@ export class ProjectsController {
     private readonly listProjectMembers: ListProjectMembersUseCase,
     private readonly getProjectPermissions: GetProjectPermissionsUseCase,
     private readonly setProjectPermissions: SetProjectPermissionsUseCase,
+    private readonly setProjectAutoMerge: SetProjectAutoMergeUseCase,
   ) {}
 
   @Get(':projectId')
@@ -111,6 +114,29 @@ export class ProjectsController {
     @Body() dto: ConvertExecutionModeDto,
   ) {
     return this.convertExecutionMode.execute(projectId, dto);
+  }
+
+  @Put(':projectId/auto-merge')
+  @RequireRole('maintainer')
+  @ApiOperation({
+    summary: "Turns the project's auto-merge switch on or off",
+    description:
+      'RN-1316 (AT-902, ADR 0292). When ON, a PR of the project with every ' +
+      "gate approved merges by itself into the project's working branch " +
+      '(trunk `main`); `dev`/`qa`/`rc` of legacy projects stay manual. ' +
+      'Dedicated route, never `PATCH`, because it lifts a security ceiling. ' +
+      'Turning it ON requires the workspace `owner` (403 otherwise); turning ' +
+      'it OFF needs `maintainer` and takes effect on the next proposal. ' +
+      'Every change is appended to an immutable log; repeating the current ' +
+      'value changes nothing.',
+  })
+  @ApiOkResponse({ type: ProjectResponseDto })
+  setAutoMergeRoute(
+    @Param('projectId') projectId: string,
+    @CurrentUser() user: User,
+    @Body() dto: SetAutoMergeDto,
+  ) {
+    return this.setProjectAutoMerge.execute(projectId, user.id, dto.habilitado);
   }
 
   @Put(':projectId/mirror-path')

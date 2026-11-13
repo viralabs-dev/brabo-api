@@ -631,6 +631,13 @@
       "when": 1794464318536,
       "tag": "0089_teto_mensal_e_do_workspace",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1794532381000,
+      "tag": "0090_merge_automatico",
+      "breakpoints": true
     }
   ]
 }

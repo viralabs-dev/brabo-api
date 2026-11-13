@@ -15,6 +15,7 @@ import { TransferWorkspaceOwnershipUseCase } from './transfer-workspace-ownershi
 import { CreateProjectUseCase } from './create-project.use-case';
 import { ConfirmProjectWorkspaceUseCase } from './confirm-project-workspace.use-case';
 import { ConvertProjectExecutionModeUseCase } from './convert-project-execution-mode.use-case';
+import { SetProjectAutoMergeUseCase } from './set-project-auto-merge.use-case';
 import { SetProjectMirrorPathUseCase } from './set-project-mirror-path.use-case';
 import { RecordMirrorSyncUseCase } from './record-mirror-sync.use-case';
 import { GetProjectMirrorStateUseCase } from './get-project-mirror-state.use-case';
@@ -62,6 +63,7 @@ const USE_CASES = [
   ConfirmProjectWorkspaceUseCase,
   ConvertProjectExecutionModeUseCase,
   SetProjectMirrorPathUseCase,
+  SetProjectAutoMergeUseCase,
   RecordMirrorSyncUseCase,
   GetProjectMirrorStateUseCase,
   GetProjectUseCase,

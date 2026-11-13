@@ -234,7 +234,9 @@ API do Brabo: NestJS 11 + Drizzle + PostgreSQL 16/pgvector. Dona do schema, do R
   pasta do host, com o `/tmp` do host fora. `runner` fica na raiz do host, de
   propósito (a api não sabe se o runner roteia para o container). Os DEMAIS tetos continuam absolutos MESMO com auto
   mode ligado, e não têm exceção configurável em lugar nenhum — merge em
-  branch protegida,
+  branch protegida (única exceção: a chave `merge_automatico` do PROJETO,
+  ligada pelo `owner`, só para o gatilho do engine e só na branch de trabalho,
+  RN-1316),
   `instruction_patch`, `parallelize`/`raise_max_parallel` (RN-154), e o
   teto de efeito externo/comando privilegiado — deploy e sudo/doas (git
   push e PR saíram dele PARA O MODO AUTOMÁTICO desde a RN-713/ADR 0204) —

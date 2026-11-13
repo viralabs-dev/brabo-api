@@ -137,6 +137,11 @@ mínimo. Sem ele, `deny` com motivo explícito.
 política rodou. Nem `agent_autonomy` nem `permissions.json` conseguem
 promovê-lo.
 
+**Exceção (RN-1316, AT-902):** com a chave `merge_automatico` do projeto ligada,
+o `git_merge` proposto pelo gatilho do engine (`origem: merge_automatico`) com
+destino na branch de trabalho (`main`, trunk) é auto-aprovado. Qualquer outro
+caminho, e `dev`/`qa`/`rc`, segue rebaixado como acima.
+
 `rc` continua na lista mesmo depois que a etapa saiu da política
 ([ADR 0030](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0030-politica-de-branches-mecanizada.md)) e o bootstrap
 deixou de criá-la ([RN-029](#rn-029)). Esta lista decide o que a trava

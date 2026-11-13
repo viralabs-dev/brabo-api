@@ -1,5 +1,6 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { ExecutionUseCasesModule } from '../execution/execution-use-cases.module';
+import { AcionarMergeAutomaticoUseCase } from './acionar-merge-automatico.use-case';
 import { ProposeActionUseCase } from './propose-action.use-case';
 import { ApproveActionUseCase } from './approve-action.use-case';
 import { DenyActionUseCase } from './deny-action.use-case';
@@ -36,6 +37,7 @@ import { ExecuteQaEnvironmentStartUseCase } from './execute-qa-environment-start
 
 const USE_CASES = [
   ProposeActionUseCase,
+  AcionarMergeAutomaticoUseCase,
   ApproveActionUseCase,
   DenyActionUseCase,
   ApproveAlwaysActionUseCase,
