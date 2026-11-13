@@ -68,6 +68,8 @@ keywords: [regras de negócio, api]
 
 ### RN-729 — A PR de infra mira `main` e diz onde mergear; a sidebar abre só o projeto aberto {#rn-729}
 
+> **Revogada pela [RN-1329](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web/parte-07.md#rn-1329)** (AT-939, web#105, 13/11/2026): a sidebar mostra um projeto por vez, com seletor. Não existe mais o estado de expansão por projeto do qual a cláusula (2) dependia. O texto abaixo é histórico.
+
 - **Regra:** quatro cláusulas medidas no TP-01 (03/10).
   (1) A PR de infra (`open_infra_pr`) segue a [RN-664](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-664): a branch
   `feature/infra-setup` nasce de `main` e a PR mira `main` (a branch de
