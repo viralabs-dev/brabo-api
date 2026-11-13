@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   TokenUsageRepository,
+  type SpendDiaDoAgente,
   type SpendScopeAmplo,
 } from '../../ports/token-usage-repository.port';
 import { ProjectRepository } from '../../ports/project-repository.port';
@@ -45,6 +46,8 @@ export interface WorkspaceSpendReport {
   /** As linhas de AGENTE (`actor_kind = 'agent'`). */
   porAgente: SpendLinha[];
   porDia: SpendPorDia[];
+  /** Por dia e agente, esparso: só dias com chamada (RN-1153). Sem provider (ADR 0233). */
+  porDiaEAgente: SpendDiaDoAgente[];
 }
 
 /**
@@ -110,6 +113,7 @@ export class GetWorkspaceSpendReportUseCase {
       porSessao,
       porAtor,
       porDia,
+      porDiaEAgente,
     ] = await Promise.all([
       this.workspaces.findById(workspaceId),
       this.tokenUsage.sumGroupedBy('model', escopo),
@@ -118,6 +122,7 @@ export class GetWorkspaceSpendReportUseCase {
       this.tokenUsage.sumGroupedBy('session', escopo),
       this.tokenUsage.sumGroupedBy('actor', escopo),
       this.tokenUsage.sumGroupedBy('day', escopo),
+      this.tokenUsage.sumByDayAndAgent(escopo),
     ]);
 
     // O total sai do recorte por ATOR e não da soma das quatro: qualquer um dos
@@ -148,6 +153,7 @@ export class GetWorkspaceSpendReportUseCase {
       porOwner: comoLinhas(porAtor.filter((l) => l.actorKind === 'user')),
       porAgente: comoLinhas(porAtor.filter((l) => l.actorKind === 'agent')),
       porDia: densificarPorDia(porDia, dias, agora),
+      porDiaEAgente,
     };
   }
 }

@@ -371,6 +371,7 @@ export class InternalSessionsController {
       messages: dto.messages,
       tools: dto.tools,
       catalogoCompleto: dto.catalogoCompleto,
+      saidaAmpliada: dto.saidaAmpliada,
     });
   }
 
@@ -410,6 +411,7 @@ export class InternalSessionsController {
         messages: dto.messages,
         tools: dto.tools,
         catalogoCompleto: dto.catalogoCompleto,
+        saidaAmpliada: dto.saidaAmpliada,
       }),
     ).pipe(map((event) => ({ data: event })));
   }

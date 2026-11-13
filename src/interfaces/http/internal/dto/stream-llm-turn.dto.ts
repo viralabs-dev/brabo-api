@@ -46,4 +46,14 @@ export class StreamLlmTurnDto {
   @IsOptional()
   @IsBoolean()
   catalogoCompleto?: boolean;
+
+  @ApiPropertyOptional({
+    example: true,
+    description:
+      'Asks for DOUBLE the output ceiling. The engine sets it on the retry of a ' +
+      'step whose answer was only reasoning cut by the ceiling (RN-780).',
+  })
+  @IsOptional()
+  @IsBoolean()
+  saidaAmpliada?: boolean;
 }

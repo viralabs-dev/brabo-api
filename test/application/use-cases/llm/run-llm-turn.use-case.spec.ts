@@ -542,7 +542,10 @@ describe('RunLlmTurnUseCase — retentativa sem raciocínio (AT-587, RN-916)', (
       reasoningTokens: 4096,
     },
   ];
-  const rodar = async (chamadas: ChatStreamChunk[][]) => {
+  const rodar = async (
+    chamadas: ChatStreamChunk[][],
+    extra: { saidaAmpliada?: boolean } = {},
+  ) => {
     const { project, session, model } = await setup();
     await db
       .update(models)
@@ -554,6 +557,7 @@ describe('RunLlmTurnUseCase — retentativa sem raciocínio (AT-587, RN-916)', (
       sessionId: session.id,
       agentId: 'po',
       messages: [{ role: 'user', content: 'oi' }],
+      ...extra,
     });
     const linhas = await db
       .select()
@@ -587,6 +591,25 @@ describe('RunLlmTurnUseCase — retentativa sem raciocínio (AT-587, RN-916)', (
     expect(provider.opcoesRecebidas).toHaveLength(2);
     expect(result.truncated).toBe(true);
     expect(linhas).toHaveLength(2);
+  });
+
+  it('saidaAmpliada (AT-920): dobra o teto de saída; sem a flag o teto fica o do provider', async () => {
+    const ok: ChatStreamChunk[] = [
+      { type: 'text_delta', text: 'pronto' },
+      { type: 'usage', inputTokens: 1, outputTokens: 1, estimated: false },
+    ];
+    const com = await rodar([ok], { saidaAmpliada: true });
+    expect(com.provider.opcoesRecebidas[0].maxTokens).toBe(8192);
+  });
+
+  it('sem saidaAmpliada: nenhum maxTokens vai ao provider', async () => {
+    const sem = await rodar([
+      [
+        { type: 'text_delta', text: 'ok' },
+        { type: 'usage', inputTokens: 1, outputTokens: 1, estimated: false },
+      ],
+    ]);
+    expect(sem.provider.opcoesRecebidas[0].maxTokens).toBeUndefined();
   });
 
   it('falha: truncada COM texto não retenta', async () => {

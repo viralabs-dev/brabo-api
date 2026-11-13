@@ -255,9 +255,15 @@ export class DrizzleTokenUsageRepository implements TokenUsageRepository {
       })
       .from(tokenUsage)
       .innerJoin(sessions, eq(sessions.id, tokenUsage.sessionId))
+      .innerJoin(projects, eq(projects.id, sessions.projectId))
       .where(
         and(
-          eq(sessions.projectId, escopo.projectId ?? ''),
+          // Projeto OU workspace (RN-1153): o relatório do owner usa o segundo.
+          escopo.projectId
+            ? eq(sessions.projectId, escopo.projectId)
+            : escopo.workspaceId
+              ? eq(projects.workspaceId, escopo.workspaceId)
+              : sql`false`,
           eq(tokenUsage.actorKind, 'agent'),
           gte(
             tokenUsage.createdAt,

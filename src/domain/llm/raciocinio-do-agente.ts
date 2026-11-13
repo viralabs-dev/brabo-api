@@ -17,6 +17,9 @@ export const QA_AUTOMACAO = 'qa-automacao';
  *   de Automação (`qa-automacao`, RN-838): além disso, `reasoningOff: true` —
  *   o raciocínio vai DESLIGADO (RN-783).
  */
+/** O dobro do teto de saída padrão dos providers (4096): a volta retentada por corte (RN-780). */
+export const TETO_DE_SAIDA_AMPLIADO = 8192;
+
 export function opcoesDeRaciocinio(
   supportsReasoning: boolean,
   agentId: string | undefined,
