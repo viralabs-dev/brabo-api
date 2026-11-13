@@ -451,7 +451,7 @@ novas, não aparece no fio. Pendentes do PROJETO inteiro são outra leitura
   `src/application/ports/proposed-action-repository.port.ts`
   (`ListProposedActionsOptions`);
   `apps/web/src/lib/acoes-da-sessao.ts:48` (`buscarAcoesDaSessao`), `:30`
-  (`juntarCaudaEPendentes`); `apps/web/src/lib/hooks.ts:432`
+  (`juntarCaudaEPendentes`); `apps/web/src/lib/hooks.ts:461`
   (`usePendingActions`)
 - **Teste:** `test/infrastructure/persistence/proposed-action-latest.repository.spec.ts`
   (sem `latest` a pendente nova fica de fora — o defeito; com `latest` ela
@@ -613,7 +613,7 @@ toast com a frase dela. O fio narra `session.reopened` como "sessão reaberta",
 com a causa do fechamento anterior quando ela foi gravada.
 
 - **Onde:** `src/interfaces/http/sessions/sessions.controller.ts:214`
-  (`reopen`); `apps/web/src/lib/api-client.ts:634` (`reopenSession`);
+  (`reopen`); `apps/web/src/lib/api-client.ts:644` (`reopenSession`);
   `apps/web/src/routes/SessionPage.tsx:147` (`podeReabrir`);
   `apps/web/src/lib/session-acoes-da-sessao.ts:77` (`handleReopen`); `apps/web/src/routes/SessionComposer.tsx:383` (o botão);
   `apps/web/src/lib/activity.ts:633` (a frase do fio)
@@ -692,7 +692,7 @@ não medido em projeto real, e declarado.
   (`TETO_DE_CHAVES_NO_LOTE`), `:37` (`lerListaDeChaves`), `:77`
   (`ResolveModelBindingsEmLoteUseCase`);
   `src/interfaces/http/llm/model-bindings.controller.ts:233`
-  (`getResolvedBindings`); `apps/web/src/lib/api-client.ts:1217`
+  (`getResolvedBindings`); `apps/web/src/lib/api-client.ts:1238`
   (`getResolvedModelBindings`); `apps/web/src/lib/bindings-resolvidos.ts:43`
   (`invalidarBindingsResolvidos`), `:69` (`useBindingsResolvidos`), `:111`
   (`useBindingsDosAgentes`); `apps/web/src/routes/ProjectOverviewTab.tsx:144`
@@ -1057,14 +1057,14 @@ segundo `executed` para o mesmo merge.
   `src/application/use-cases/actions/approve-action.use-case.ts:327` (`recusaDeMerge`);
   `src/infrastructure/git/local-git-provider.ts:339` (`GitPullRequestAlreadyMergedError`);
   `apps/web/src/lib/gate-do-merge.ts:19` (`gatePendenteNoMerge`);
-  `apps/web/src/routes/ProjectPrsTab.tsx:214` (`gatePendenteNoMerge`);
-  `apps/web/src/routes/session-timeline-montagem.tsx:1288` (`gatePendenteNoMerge`)
-  `apps/web/src/routes/ProjectPrsTab.tsx:214` (`gatePendenteNoMerge`);
-  `apps/web/src/routes/session-timeline-montagem.tsx:1288` (`gatePendenteNoMerge`)
+  `apps/web/src/routes/ProjectPrsTab.tsx:225` (`gatePendenteNoMerge`);
+  `apps/web/src/routes/session-timeline-montagem.tsx:1316` (`gatePendenteNoMerge`)
+  `apps/web/src/routes/ProjectPrsTab.tsx:225` (`gatePendenteNoMerge`);
+  `apps/web/src/routes/session-timeline-montagem.tsx:1316` (`gatePendenteNoMerge`)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:675`
   (`merge_ja_proposto`), `:698` (`pr_ja_mergeado` — caso de falha), `:696`
 
-  `apps/web/src/routes/session-timeline-montagem.tsx:1288` (`gatePendenteNoMerge`)
+  `apps/web/src/routes/session-timeline-montagem.tsx:1316` (`gatePendenteNoMerge`)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:675`
   (`merge_ja_proposto`), `:698` (`pr_ja_mergeado` — caso de falha), `:696`
   (negada não bloqueia, outra PR não colide — caminho feliz);
@@ -1317,9 +1317,9 @@ vence — pôr a Infra em "manual" não desliga esta semente.
 
 - **Código:** `src/application/use-cases/agents/accept-handoff.use-case.ts:38`
   (`INFRA_AUTONOMY_SEEDS`);
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:259` (`handle_cast`),
-  `:710` (`propor_container_start`), `:791` (`subir_no_aceite`), `:794`
-  (`eleger_candidata`), `:1435` (`passo_da_subida`)
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:263` (`handle_cast`),
+  `:729` (`propor_container_start`), `:810` (`subir_no_aceite`), `:813`
+  (`eleger_candidata`), `:1469` (`passo_da_subida`)
 
   `:626` (`propor_container_start`), `:707` (`subir_no_aceite`), `:759`
   (`eleger_candidata`), `:1319` (`passo_da_subida`)
@@ -1327,10 +1327,10 @@ vence — pôr a Infra em "manual" não desliga esta semente.
   (a semente, e só ela — caminho feliz), `:267` (outro agente não semeia —
   caso de falha);
   `apps/engine/test/engine/infra/infra_lead_server_test.exs:1263` (o servidor
-  elege e propõe antes do modelo — caminho feliz), `:1458` (`mounted`), `:1468`
+  elege e propõe antes do modelo — caminho feliz), `:1469` (`mounted`), `:1479`
   (`runner` não sobe pelo servidor), `:1377` (sem roteamento), `:1387` (a api
   recusa sem broker — caso de falha), `:1427` (container já `running`), `:1439`
-  (negada pela política), `:1580` (`eleger_candidata/1`)
+  (negada pela política), `:1591` (`eleger_candidata/1`)
 - **Origem:** AT-260 (item A14 da análise do uso real de 29/09)
 
 <a id="rn-672"></a>
@@ -1375,8 +1375,8 @@ instante, a oferta espera o fim do próximo turno dele.
 
 - **Código:** `src/application/use-cases/agents/offer-infra-handoff.use-case.ts:15`
   (`ALVOS_DA_CONFIRMACAO`);
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:1169` (`oferecer_ao_dev_lead`),
-  `:1164` (`concluir`), `:368` (`handle_info`), `:1075`
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:1180` (`oferecer_ao_dev_lead`),
+  `:1175` (`concluir`), `:368` (`handle_info`), `:1075`
 
   `:1057` (`concluir`), `:345` (`handle_info`), `:1074`
   (`topico_do_container`);

@@ -1310,7 +1310,7 @@ detalhar o motivo na URL.
   ferramentas e nada mais: não consegue aprovar, negar nem alargar nada, e uma
   chamada que o modelo faça fora do menu continua virando Proposed Action sob
   a mesma política. Qualquer falha da chamada cai no catálogo inteiro.
-- **O Laya (AT-626, [ADR 0290](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0290-laya-no-lugar-do-jev.md)) é a alternativa LOCAL ao Jev:
+- **O Laya (AT-626, [ADR 0290](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0290-o-usuario-escolhe-o-laya-no-lugar-do-jev-quando-a-maquina-tem-gpu.md)) é a alternativa LOCAL ao Jev:
   com `tool_router = laya` o mesmo `state` vai ao serviço da 6ª imagem
   (`TOOL_ROUTER_URL`, rede interna do compose, sem porta publicada) em vez de sair
   para o OpenRouter.** Nenhum dado de agente sai da máquina nesse caminho, não há chave

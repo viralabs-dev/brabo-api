@@ -72,7 +72,7 @@ keywords: [regras de negócio, api]
 - **Configuração:** `TOOL_ROUTER_URL` (base do serviço, rede interna, sem porta publicada), `TOOL_ROUTER_API_KEY` (opcional), `TOOL_ROUTER_LAYA_LIMIAR` (padrão 0,72), `TOOL_ROUTER_LAYA_P95_MAX_MS`, `TOOL_ROUTER_LAYA_VRAM_MIN_MIB`, `TOOL_ROUTER_LAYA_TIMEOUT_MS` (padrão 2000), `TOOL_ROUTER_LAYA_MODELO` e `TOOL_ROUTER_LAYA_MAX_LEN`. Os padrões são os do levantamento de 09/11/2026; VRAM e RAM do ensemble de 4 (RAM mínima do serviço de 6 GiB) saem da medição da AT-630 e entram trocando a variável.
 - **Onde:** `src/db/schema/iam.ts` e `src/db/migrations/0084_laya_no_lugar_do_jev.sql` (`tool_router`), `src/application/use-cases/iam/set-workspace-tool-router.use-case.ts:27` (`execute`), `src/application/use-cases/iam/get-workspace-tool-router.use-case.ts:13` (`execute`), `src/infrastructure/llm/laya-status.ts:24` (`situacao`), `src/infrastructure/llm/laya-config.ts:8` (`configDoLaya`), `src/interfaces/http/iam/workspaces.controller.ts:296` (`getToolRouter`)
 - **Teste:** `test/application/use-cases/iam/set-workspace-tool-router.use-case.spec.ts` (409 sem serviço proficiente, grava sem cache, `enabled` legado, 400) e `test/infrastructure/llm/laya-tool-router.spec.ts` (`LayaStatus`: os cinco estados, cache e `desde`).
-- **Origem:** AT-626 (EP-026), decisões do dono de 31/10 e 07/11/2026; [ADR 0290](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0290-laya-no-lugar-do-jev.md); rodada 354, lane L2.
+- **Origem:** AT-626 (EP-026), decisões do dono de 31/10 e 07/11/2026; [ADR 0290](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0290-o-usuario-escolhe-o-laya-no-lugar-do-jev-quando-a-maquina-tem-gpu.md); rodada 354, lane L2.
 
 <a id="rn-1302"></a>
 
@@ -128,7 +128,7 @@ keywords: [regras de negócio, api]
 
 ### RN-1101 — A ativação da execução recusa o projeto sem container `running`, salvo o dev Noop {#rn-1101}
 
-- **Regra:** `POST /projects/:projectId/execution/activate` responde 409 `execucao_sem_container` quando o container registrado do projeto não está `running`, depois da guarda do repositório ([RN-582](parte-05.md#rn-582)) e antes de qualquer efeito. Sem isso cada dev bloqueava em `dev.blocked_by_container` ([RN-502](parte-05.md#rn-502)) no mesmo segundo, sem aviso. A frase diz o próximo passo: aprovar a subida proposta pela Infra, ou pedi-la. O dev `noop` (`devAgentImpl: 'noop'`) é isento, como no engine.
+- **Regra:** `POST /projects/:projectId/execution/activate` responde 409 `execucao_sem_container` quando o container registrado do projeto não está `running`, depois da guarda do repositório ([RN-582](parte-07.md#rn-582)) e antes de qualquer efeito. Sem isso cada dev bloqueava em `dev.blocked_by_container` ([RN-502](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-502)) no mesmo segundo, sem aviso. A frase diz o próximo passo: aprovar a subida proposta pela Infra, ou pedi-la. O dev `noop` (`devAgentImpl: 'noop'`) é isento, como no engine.
 - **Onde:** `src/application/use-cases/execution/activate-execution.use-case.ts` (`execute`, `containerRodando`)
 - **Teste:** `test/application/use-cases/execution/activate-execution.use-case.spec.ts` (`RN-1101`: recusa sem container, recusa em `provisioning`, passa com `running`, Noop isento).
 - **Origem:** AT-899 (EP-036), parte da api; rodada 366, lane AA1.
@@ -311,7 +311,7 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 
 ### RN-1150 — O `usage` do turno de LLM devolve `reasoningTokens` quando o provider os contou {#rn-1150}
 
-- **Regra:** `LlmUsageResponseDto.reasoningTokens` é opcional e vem do mesmo valor que o `token_usage.reasoning_tokens` grava ([RN-666](parte-09.md#rn-666)). Provider que não contou: o campo some, nunca vira `0` (a tela mostra traço).
+- **Regra:** `LlmUsageResponseDto.reasoningTokens` é opcional e vem do mesmo valor que o `token_usage.reasoning_tokens` grava ([RN-666](parte-08.md#rn-666)). Provider que não contou: o campo some, nunca vira `0` (a tela mostra traço).
 - **Código:** `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:124` (`execute`), `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:133` (`execute`), `src/interfaces/http/internal/dto/internal.response.dto.ts:644` (`LlmUsageResponseDto`)
 - **Teste:** `apps/api/test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` (presente com 120, ausente sem contagem)
 - **Origem:** AT-929 (EP-035).
@@ -329,7 +329,7 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 
 ### RN-1152 — O gasto do projeto para o membro vem quebrado por modelo e por sessão, nunca por provider {#rn-1152}
 
-- **Regra:** `GET /projects/:projectId/spend/team` ganha `porModelo` e `porSessao` (mesmas linhas de `porAgente`). Modelo não é credencial; o eixo `provider` segue só do owner ([RN-186](parte-01.md#rn-186)/[RN-187](parte-01.md#rn-187)).
+- **Regra:** `GET /projects/:projectId/spend/team` ganha `porModelo` e `porSessao` (mesmas linhas de `porAgente`). Modelo não é credencial; o eixo `provider` segue só do owner ([RN-186](parte-03.md#rn-186)/[RN-187](parte-03.md#rn-187)).
 - **Código:** `apps/api/src/application/use-cases/llm/get-project-spend-team.use-case.ts:39` (`execute`)
 - **Teste:** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (o membro vê total e custo por agente/área; sem `provider` no JSON)
 - **Origem:** AT-931 (EP-035).
