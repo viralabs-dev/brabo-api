@@ -187,3 +187,62 @@ describe('LayaStatus — os cinco estados', () => {
     expect((await st.situacao(true)).estado).toBe('sem_gpu');
   });
 });
+
+describe('LayaStatus — o motivo do serviço vem antes da régua do p95', () => {
+  const saude = (h: object): typeof fetch => devolve(JSON.stringify(h));
+  const BOM = { dispositivo: 'cuda', vramLivreMiB: 5600, p95Ms: 251 };
+  const NAO = { ...BOM, proficiente: false };
+
+  it.each([
+    [
+      'sem_gpu',
+      {
+        dispositivo: 'cpu',
+        vramLivreMiB: null,
+        p95Ms: 3800,
+        proficiente: false,
+        motivo: 'sem_gpu',
+      },
+      'sem_gpu',
+    ],
+    [
+      'sem_gpu',
+      { ...NAO, vramLivreMiB: 1500, motivo: 'vram_insuficiente' },
+      'vram_insuficiente',
+    ],
+    [
+      'lento',
+      { ...NAO, p95Ms: 900, motivo: 'p95_acima_do_teto' },
+      'p95_acima_do_teto',
+    ],
+    [
+      'lento',
+      { ...NAO, p95Ms: null, motivo: 'sonda_em_andamento' },
+      'sonda_em_andamento',
+    ],
+    ['lento', { ...NAO, p95Ms: null, motivo: 'sonda_falhou' }, 'sonda_falhou'],
+  ])(
+    '%s (%s): o motivo do serviço sai antes da régua',
+    async (estado, h, motivo) => {
+      process.env.TOOL_ROUTER_URL = 'http://laya:8000';
+      const s = await new LayaStatus(saude(h)).situacao();
+      expect(s).toMatchObject({ estado, motivo });
+    },
+  );
+
+  it('proficiente com p95 acima do teto segue na régua do p95', async () => {
+    process.env.TOOL_ROUTER_URL = 'http://laya:8000';
+    const s = await new LayaStatus(
+      saude({ ...BOM, p95Ms: 900, proficiente: true, motivo: null }),
+    ).situacao();
+    expect(s).toMatchObject({ estado: 'lento', motivo: 'p95_acima_do_teto' });
+  });
+
+  it('proficiente (caso feliz): estado proficiente, motivo null', async () => {
+    process.env.TOOL_ROUTER_URL = 'http://laya:8000';
+    const s = await new LayaStatus(
+      saude({ ...BOM, proficiente: true, motivo: null }),
+    ).situacao();
+    expect(s).toMatchObject({ estado: 'proficiente', motivo: null });
+  });
+});

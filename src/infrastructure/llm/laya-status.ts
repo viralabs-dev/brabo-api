@@ -78,19 +78,19 @@ export class LayaStatus extends RoteadorLocal {
       vramLivreMiB: num(h.vramLivreMiB),
       p95Ms: num(h.p95Ms),
     };
+    // O serviço sabe por que não está proficiente: o motivo dele vem antes da régua local.
+    if (h.proficiente === false) {
+      const motivo =
+        typeof h.motivo === 'string' ? h.motivo : 'serviço não proficiente';
+      const sem = motivo === 'sem_gpu' || motivo === 'vram_insuficiente';
+      return de(sem ? 'sem_gpu' : 'lento', motivo, extra);
+    }
     if (dispositivo !== 'cuda') return de('sem_gpu', 'sem_gpu', extra);
     if (extra.vramLivreMiB === null || extra.vramLivreMiB < cfg.vramMinMiB) {
       return de('sem_gpu', 'vram_insuficiente', extra);
     }
     if (extra.p95Ms === null || extra.p95Ms > cfg.p95MaxMs) {
       return de('lento', 'p95_acima_do_teto', extra);
-    }
-    if (h.proficiente === false) {
-      return de(
-        'lento',
-        typeof h.motivo === 'string' ? h.motivo : 'serviço não proficiente',
-        extra,
-      );
     }
     return de('proficiente', null, extra);
   }
