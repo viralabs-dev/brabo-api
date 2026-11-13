@@ -410,11 +410,11 @@ fechada seguem mostrando a mensagem da api.
   (`conversa_ociosa`), `:193` (`encerrar`), `:222`
   (`conversation_idle_timeout_ms`); `apps/engine/lib/engine/sessions/monitor.ex:185`
   (`classify`); `apps/engine/lib/engine/psychologist/termination_classifier.ex:46`;
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:1259`
-  (`narrar_recusa_de_sessao_encerrada`), `:1632` (`pendencia_da_resposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:1273`
+  (`narrar_recusa_de_sessao_encerrada`), `:1653` (`pendencia_da_resposta`);
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:1259`
-  (`narrar_recusa_de_sessao_encerrada`), `:1632` (`pendencia_da_resposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:1273`
+  (`narrar_recusa_de_sessao_encerrada`), `:1653` (`pendencia_da_resposta`);
   `apps/engine/lib/engine/agents/conversacionais.ex:49` (`parar_da_sessao`),
   `:69` (`parar_da_sessao_no_cluster`);
   `apps/engine/lib/engine/agents/turno_assincrono.ex:471` (`abandonar`);
@@ -1025,9 +1025,9 @@ pacote da porta de Docker. Nada muda na contenção do broker ([ADR
   `:252` (`TETO_DE_MUTACAO_MS`), `:264` (`FOLGA_DO_EXEC_NO_ENGINE_MS`),
   `:324` (`erroDeTransporte`);
   `src/application/ports/container-broker.port.ts:110` (`MotivoDeBrokerIndisponivel`);
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:2168` (`teto_do_container_exec_ms`)
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:2189` (`teto_do_container_exec_ms`)
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:2168` (`teto_do_container_exec_ms`)
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:2189` (`teto_do_container_exec_ms`)
 - **Teste:** `test/infrastructure/http-clients/container-broker.client.spec.ts:286`
   (a reprodução, contra um broker `node:http` que demora 6 s), `:182` (o
   teto de cada operação no `AbortSignal`), `:204` e `:229` (`teto-excedido`
@@ -1203,7 +1203,7 @@ projeto aberto, e as outras listas seguiam anunciando a revogada.
   (`MachineDeviceKeysSection`);
   `apps/web/src/lib/chaves-de-dispositivo-queries.ts:31`
   (`invalidarChavesDeDispositivo`);
-  `apps/web/src/lib/api-client.ts:465` (`listMachineDeviceKeys`);
+  `apps/web/src/lib/api-client.ts:469` (`listMachineDeviceKeys`);
   `apps/web/src/locales/{en,pt-BR}/machineKeys.json`
 - **Teste:** `test/application/use-cases/auth/machine-device-keys.use-case.spec.ts`
   (a lista só pelo usuário, a revogada incluída; a revogação REAL derrubando
