@@ -121,14 +121,14 @@ toda chamada de LLM de turno SEM autor humano, e desde a [RN-623](https://github
 também como idioma do artefato compartilhado que um agente grava DURANTE um
 turno com autor humano — a divergência que esta regra declarava fechou.
 
-- **Código:** `src/db/schema/iam.ts:271` (`language`);
+- **Código:** `src/db/schema/iam.ts:277` (`language`);
   `src/db/migrations/0062_idioma_do_projeto.sql` (o backfill);
   `src/application/use-cases/iam/idioma-do-projeto.ts:13`
   (`idiomaDoProjetoOuRecusa`);
   `src/application/use-cases/iam/create-project.use-case.ts:72`
   (`language`); `src/application/use-cases/iam/update-project.use-case.ts:24`
   (`idiomaDoProjetoOuRecusa`);
-  `src/interfaces/http/iam/dto/iam.response.dto.ts:271`
+  `src/interfaces/http/iam/dto/iam.response.dto.ts:282`
   (`language`); `apps/web/src/routes/settings/ProjectLanguageSection.tsx`
 - **Teste:** `test/application/use-cases/iam/idioma-do-projeto.use-case.spec.ts:63`
   (nasce com o idioma de quem cria), `:74` (a escolha da conta vence a
@@ -946,7 +946,7 @@ vale só para aquele projeto. Os dois scripts de validação que exercitam o flu
 manual (`validacao-fase-12.ts`, `validacao-real.ts`) passam a pedir `manual`
 explícito.
 
-- **Código:** `src/db/schema/iam.ts:300` (`storyPromotion`);
+- **Código:** `src/db/schema/iam.ts:304` (`storyPromotion`);
   `src/db/migrations/0065_default_de_promocao_auto.sql`;
   `apps/web/src/routes/NewProjectWizard.tsx:978` (a linha do Confirmar);
   `apps/web/src/routes/settings/PromotionSection.tsx:75` (a nota do default)
@@ -1053,7 +1053,7 @@ segundo `executed` para o mesmo merge.
 
 - **Código:** `src/domain/actions/merge-de-pr.ts:56` (`recusaDeMerge`),
   `:40` (`mergeouAPr`);
-  `src/application/use-cases/actions/propose-action.use-case.ts:124` (`recusaDeMerge`);
+  `src/application/use-cases/actions/propose-action.use-case.ts:132` (`recusaDeMerge`);
   `src/application/use-cases/actions/approve-action.use-case.ts:327` (`recusaDeMerge`);
   `src/infrastructure/git/local-git-provider.ts:339` (`GitPullRequestAlreadyMergedError`);
   `apps/web/src/lib/gate-do-merge.ts:19` (`gatePendenteNoMerge`);
@@ -1199,7 +1199,7 @@ existe.
 - **Código:** `src/domain/actions/path-scope.ts:153` (`cwdNoContainer`),
   `:174` (`comandoNoEscopoDoContainer`), `:112` (`comandoNoEscopo`, agora com
   várias raízes), `:137` (`PONTO_DE_MONTAGEM_DO_CONTAINER`);
-  `src/domain/actions/decide.ts:291` (`execucaoNoContainer`), `:660`
+  `src/domain/actions/decide.ts:285` (`execucaoNoContainer`), `:689`
   (`execucaoNoContainer`, em `terminalNoEscopo`);
   `src/application/use-cases/actions/propose-action.use-case.ts:338`
   (`containerExecutionActive`, separado de `execucaoNoContainer`)
@@ -1253,7 +1253,7 @@ lugares onde o modo é ligado: o cartão de lote dos Executores
   `src/application/ports/agent-autonomy-repository.port.ts:5`
   (`AutonomiaResolvida`, com `especifica`);
   `src/application/use-cases/actions/approve-always-action.use-case.ts:263`
-  (`especifica`); `src/domain/actions/decide.ts:311`
+  (`especifica`); `src/domain/actions/decide.ts:324`
   (`modoAutomaticoDoAgente`); `apps/web/src/components/OQueOPilotoLibera.tsx:16`
   (`OQueOPilotoLibera`); `apps/web/src/components/ApprovalCard.tsx:434`,
   `apps/web/src/components/AgentCard.tsx:164`,

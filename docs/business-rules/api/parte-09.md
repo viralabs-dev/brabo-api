@@ -62,7 +62,7 @@ handoff às 06:45:01 — o web encadeava a ativação para `maintainer`/`owner`
 
 - **Onde:** `src/application/use-cases/execution/execute-execution-plan.use-case.ts:89`
   (`execute`); `src/application/use-cases/actions/approve-action.use-case.ts:221`
-  (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:448`
+  (`executeExecutionPlan`); `src/application/use-cases/actions/propose-action.use-case.ts:459`
   (`executeExecutionPlan`); `apps/web/src/lib/session-acoes-de-handoff.ts:91`
   (`handleAcceptHandoff`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:274`
   (`classificar`); `apps/engine/lib/engine/agents/dev_lead_server.ex:811`
@@ -128,7 +128,7 @@ módulo do `module_map`, como antes, e o paralelismo extra continua pelo
 - **Onde:** `src/domain/execution/plano-de-execucao.ts:39`
   (`lerPlanoDeExecucao`); `src/infrastructure/persistence/drizzle/backlog.repository.ts:797`
   (`daTarefaDoModulo`), `:404` (`claimNext`), `:392` (`assignModules`);
-  `src/application/use-cases/actions/propose-action.use-case.ts:141`
+  `src/application/use-cases/actions/propose-action.use-case.ts:149`
   (`recusaNaProposta`); `src/application/use-cases/execution/execute-execution-plan.use-case.ts:67`
   (`recusaNaProposta`); `src/db/schema/backlog.ts:187` (`module`);
   `apps/engine/lib/engine/agents/dev_lead_tools.ex:460`
@@ -436,7 +436,7 @@ lendo o worktree de outros módulos para descobrir a interface deles: o
   (`execute`);
   `src/interfaces/http/internal/internal-sessions.controller.ts:851`
   (`moduleContracts`);
-  `src/interfaces/http/internal/internal-projects.controller.ts:181`
+  `src/interfaces/http/internal/internal-projects.controller.ts:186`
   (`moduleContracts`);
   `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex:91` (`run`);
   `apps/engine/lib/engine/harness/tools/listar_contratos_de_modulos.ex:43`
@@ -621,7 +621,7 @@ bootstrap (`git_repo_create`/`git_branch_create`/`git_branch_protect`, que não
 passam por `decide()`); e `deploy`, que não é tipo de `proposed_action` — só
 existe como destino da mensagem do comando de terminal.
 
-- **Onde:** `src/domain/actions/decide.ts:429` (`ehAcaoTipadaComEfeitoExterno`);
+- **Onde:** `src/domain/actions/decide.ts:442` (`ehAcaoTipadaComEfeitoExterno`);
   `src/domain/actions/external-effect.ts:318`
   (`ACOES_TIPADAS_COM_EFEITO_EXTERNO`), `:326` (`ehAcaoTipadaComEfeitoExterno`),
   `:340` (`mensagemDoTetoDaAcaoTipada`);
@@ -802,8 +802,8 @@ protegida, e `git merge`/`gh pr merge` pelo terminal), deploy, `sudo`/`doas`,
 `container_remove`, `instruction_patch` e paralelismo. O toggle em manual
 restaura a aprovação.
 
-- **Onde:** `src/domain/actions/decide.ts:311` (`modoAutomaticoDoAgente`),
-  `:326` (`decide`); `src/domain/actions/external-effect.ts:354`
+- **Onde:** `src/domain/actions/decide.ts:324` (`modoAutomaticoDoAgente`),
+  `:339` (`decide`); `src/domain/actions/external-effect.ts:354`
   (`mensagemDoModoAutomaticoNoEfeitoExterno`);
   `apps/web/src/components/OQueOPilotoLibera.tsx`
 - **Teste:** `test/domain/actions/decide.spec.ts` (o piloto libera

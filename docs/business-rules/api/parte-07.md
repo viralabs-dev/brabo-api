@@ -64,7 +64,7 @@ do `permissions.json` repetem os TOKENS do comando no texto (o `label` de
   (`reason` no payload do evento de sessão), `:223` (o comentário do outbox
   sem o campo), `:227` (o payload do outbox, intacto), `:356` (o
   `rejectionReason`, que continua só no `deny`);
-  `src/domain/actions/decide.ts:294` (`Decision`, a fonte da string)
+  `src/domain/actions/decide.ts:307` (`Decision`, a fonte da string)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:902`
   (caminho feliz: auto-aprovação grava `agent_autonomy: auto_approve`),
   `:959` (`require_approval` pelo default e pelo teto da trava de merge),
@@ -923,13 +923,13 @@ e o card do agente mostra uma frase sob o toggle — só quando a CURINGA está
 ligada, porque o toggle sobre o tipo representativo grava regra específica,
 que não libera o escopo.
 
-- **Onde:** `src/domain/actions/decide.ts:311` (`modoAutomaticoDoAgente`),
+- **Onde:** `src/domain/actions/decide.ts:324` (`modoAutomaticoDoAgente`),
   `src/domain/actions/decide.ts:386` (o veredito sintetizado do
   composto ignorado), `src/domain/actions/decide.ts:504` (o teto de
   escopo pulado),
   `src/infrastructure/persistence/drizzle/agent-autonomy.repository.ts:25`
   (`resolve`, com a origem),
-  `src/application/use-cases/actions/propose-action.use-case.ts:365`
+  `src/application/use-cases/actions/propose-action.use-case.ts:376`
   (`autonomyOrigin`), `apps/web/src/components/AgentTeamGrid.tsx:114`
   (`autonomyHint`), `apps/web/src/components/ApprovalCard.tsx:313` (a nota
   nas duas variantes)
@@ -1100,7 +1100,7 @@ raiz do ESCOPO, nunca onde o arquivo de política mora.
   (`segmentoSobABaseDeProjetos`, reusada);
   `src/application/use-cases/actions/propose-action.use-case.ts:280`
   (`scopeRoot` só em `terminal`);
-  `src/domain/actions/decide.ts:648` (`terminalNoEscopo`, o único
+  `src/domain/actions/decide.ts:677` (`terminalNoEscopo`, o único
   consumidor do escopo)
 - **Teste:** `test/application/use-cases/actions/propose-action.use-case.spec.ts:1154`
   (`container`), `:1134` (`mounted`), `:1134` (`runner`), `:1123` (o caminho

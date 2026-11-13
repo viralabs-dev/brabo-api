@@ -149,7 +149,7 @@ deixou de criá-la ([RN-029](#rn-029)). Esta lista decide o que a trava
 branch: proteger uma que não existe não custa nada; desproteger uma que
 existe custa caro.
 
-- **Onde:** `src/domain/actions/decide.ts:523` (`isProtectedBranch`, o teto da trava de merge) + `protected-branches.ts:4`
+- **Onde:** `src/domain/actions/decide.ts:552` (`isProtectedBranch`, o teto da trava de merge) + `protected-branches.ts:4`
 - **Teste:** `test/domain/actions/decide.spec.ts`
 - **Origem:** [ADR 0011](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0011-infra-dev-agents-worktrees-merge-lock.md) §1
 - **Nota:** a proteção equivalente **na plataforma** (GitHub/GitLab)
