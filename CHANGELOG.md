@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Docs: `docs/security-surface.md` dividido em duas partes (`security-surface-parte-2.md` leva o resto das notas e a tabela de rotas) para caber no orçamento de página do site; `route-surface.spec.ts` lê as duas como uma tabela só, com a mesma semântica.
+
 - Fix (AT-626, RN-1301): o `/workspaces/:id/tool-router` mostra o motivo que o serviço do Laya manda quando ele não está proficiente (`sonda_em_andamento`, `sonda_falhou`, `p95_acima_do_teto`, `sem_gpu`, `vram_insuficiente`). Antes a régua do p95 vinha primeiro e, durante a sonda de boot (p95 nulo), a api respondia `lento`/`p95_acima_do_teto`. A régua local do p95 segue valendo quando o serviço diz `proficiente` e o p95 passa do teto.
 
 - Feature (AT-922, EP-036, RN-1328, ADR 0297): `POST /internal/projects/:projectId/qa-environments/:taskId/compose` (só o engine) pede ao broker a prova de compose do clone limpo (`ContainerBrokerPort.provaDeCompose`, teto da chamada 645 s, acima dos 10 min do broker). Devolve `provou`, `falhou` (culpa do projeto) ou `aprova_com_aviso` "sem prova de compose" (broker ausente, 503/origem infra, 409, `runner`, teto). A api segue sem consumir o `docker-port`: o resultado é espelhado.
