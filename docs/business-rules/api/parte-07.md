@@ -60,7 +60,7 @@ do `permissions.json` repetem os TOKENS do comando no texto (o `label` de
 `matchAgainstFile`) — o mesmo comando que já mora em
 `proposed_actions.payload` e no card de aprovação.
 
-- **Código:** `src/application/use-cases/actions/propose-action.use-case.ts:272`
+- **Código:** `src/application/use-cases/actions/propose-action.use-case.ts:279`
   (`reason` no payload do evento de sessão), `:223` (o comentário do outbox
   sem o campo), `:227` (o payload do outbox, intacto), `:356` (o
   `rejectionReason`, que continua só no `deny`);
