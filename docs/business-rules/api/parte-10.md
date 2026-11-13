@@ -44,7 +44,7 @@ keywords: [regras de negócio, api]
   `src/interfaces/http/backlog/backlog.controller.ts:209`
   (`updateTitle`), `:223` (`archive`),
   `src/interfaces/http/internal/internal-sessions.controller.ts:583`
-  (`updateStoryRoute`), `:647` (`archiveStoryRoute`),
+  (`updateStoryRoute`), `:652` (`archiveStoryRoute`),
   `apps/engine/lib/engine/harness/tools/update_story.ex:45` (`run`),
   `apps/engine/lib/engine/harness/tools/archive_story.ex:38` (`run`),
   `apps/web/src/lib/correcao-de-historia.ts:10` (`motivoDeCorrecaoInerte`)
@@ -120,9 +120,9 @@ keywords: [regras de negócio, api]
   ao campo, e caminho que só leva a mensagem.
 - **Onde:** `src/domain/llm/llm-provider-errors.ts:38`
   (`LLMInsufficientCreditError`), `:86` (`normalizeHttpStatus`),
-  `src/application/use-cases/llm/run-llm-turn.use-case.ts:270`
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:276`
   (`streamErrorCode`),
-  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:305`
+  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:311`
   (`streamErrorCode`),
   `apps/engine/lib/engine/agents/falha_de_turno.ex:91` (`credito_esgotado?`),
   `:71` (`origem`), `apps/engine/lib/engine/harness/tool_loop.ex:168`
@@ -185,9 +185,9 @@ keywords: [regras de negócio, api]
 - **Onde:** `src/infrastructure/llm/openai-compatible-provider.ts:314`
   (`cortadaPeloTeto`),
   `src/infrastructure/llm/anthropic-provider.ts:228` (`finalMessage`),
-  `src/application/use-cases/llm/run-llm-turn.use-case.ts:234`
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:239`
   (`truncated`),
-  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:301`
+  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:307`
   (`truncated`),
   `apps/engine/lib/engine/harness/resposta_cortada.ex:43` (`registrar`),
   `:89` (`descarregar`),
@@ -473,9 +473,9 @@ keywords: [regras de negócio, api]
   raciocínio). A decisão do que pedir mora num ponto só, `opcoesDeRaciocinio`,
   chamado pelos três casos de uso de turno. O TODO(humano) da RN-741 fecha com
   essa medição.
-- **Onde:** `src/domain/llm/raciocinio-do-agente.ts:18`
+- **Onde:** `src/domain/llm/raciocinio-do-agente.ts:23`
   (`opcoesDeRaciocinio`), `src/infrastructure/llm/openai-compatible-provider.ts:640`
-  (`controla`), `src/application/use-cases/llm/run-llm-turn.use-case.ts:200`
+  (`controla`), `src/application/use-cases/llm/run-llm-turn.use-case.ts:205`
   (`opcoesDeRaciocinio`)
 - **Teste:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
   (`modelo que raciocina: folga no teto e NENHUM campo de raciocínio (RN-782)`,
@@ -495,7 +495,7 @@ keywords: [regras de negócio, api]
   modelo sem `supportsReasoning` não manda nada. Não é silencioso: a ajuda da
   faceta "thinking" do catálogo de modelos diz que nos dev agents de execução e,
   desde a RN-838, no QA de Automação o raciocínio vai desligado (o mínimo escolhido; o seletor e a bolha não mudam).
-- **Onde:** `src/domain/llm/raciocinio-do-agente.ts:23`
+- **Onde:** `src/domain/llm/raciocinio-do-agente.ts:29`
   (`raciocinioDesligadoParaOAgente`), `src/infrastructure/llm/openrouter-provider.ts:251`
   (`campoDeRaciocinioDesligadoOpenRouter`)
 - **Teste:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts`
@@ -1328,7 +1328,7 @@ acerto de cache caindo. O Brabo agora manda a chave.
 
 - **Código:** `src/infrastructure/llm/openrouter-provider.ts:236` (`campoDeSessaoOpenRouter`);
   `src/domain/llm/routing-preference.ts:88` (`chaveDeSessao`);
-  `src/application/use-cases/llm/run-llm-turn.use-case.ts:243` (`chaveDeSessao`)
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:248` (`chaveDeSessao`)
 - **Teste:** `test/infrastructure/llm/openrouter-provider.contract.spec.ts` ("chave de sessão (ADR 0221, RN-907)": com capability e chave leva `session_id`; sem chave ou desligada não leva; capability sem hook falha — caso de falha); `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts`; `run-llm-turn.use-case.spec.ts`; smoke `openrouter-provider.sessao.smoke.spec.ts`
 - **Origem:** AT-580; ADR [0221](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0221-upstream-preso-por-sessao.md)
 
@@ -1377,7 +1377,7 @@ propósito se perde.
 ### RN-914 — O orçamento de raciocínio é por modelo, só para quem o respeita {#rn-914}
 
 - **Regra:** revisa a [RN-782](#rn-782) ([ADR 0223](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0223-orcamento-de-raciocinio-por-modelo.md)). Modelo com `models.reasoning_budget` preenchido (curado à mão, nunca pelo sync) e `supportsReasoning` manda `reasoning: { max_tokens: N }` e `max_tokens` = saída visível + N ([RN-741](#rn-741)); só no provider que sabe controlar o raciocínio (hoje o OpenRouter) e nunca no agente com raciocínio desligado ([RN-783](#rn-783)). Hoje só `qwen/qwen3.7-flash` (N = 2048), provado em 22/10: 1024 pedidos, 1024 gastos. Modelo sem orçamento segue a RN-782, corpo byte a byte. `deepseek/deepseek-v4.1-flash` fica sem orçamento: `reasoning.max_tokens`, `effort` e `reasoning_effort` foram ignorados (8192 de raciocínio). `effort` nunca é enviado. O limite contém o raciocínio mas não garante a tool call.
-- **Onde:** `src/domain/llm/raciocinio-do-agente.ts:18` (`opcoesDeRaciocinio`), `src/infrastructure/llm/openai-compatible-provider.ts:640` (`controla`), `src/db/schema/llm.ts:159` (`reasoningBudget`), `src/db/migrations/0074_orcamento_de_raciocinio.sql`
+- **Onde:** `src/domain/llm/raciocinio-do-agente.ts:23` (`opcoesDeRaciocinio`), `src/infrastructure/llm/openai-compatible-provider.ts:640` (`controla`), `src/db/schema/llm.ts:159` (`reasoningBudget`), `src/db/migrations/0074_orcamento_de_raciocinio.sql`
 - **Teste:** `test/infrastructure/llm/openai-compatible-provider.contract.spec.ts` (`modelo com orçamento de raciocínio (RN-914)`), `test/domain/llm/raciocinio-do-agente.spec.ts`
 - **Origem:** AT-569 (medição paga de 22/10, `~/brabo-gravacoes/raciocinio-smoke-2026-10-22/resultados.jsonl`)
 

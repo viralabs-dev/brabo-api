@@ -1112,8 +1112,8 @@ gasto somam. Sem ele, o preço congelado do catálogo produz o número, como no
    cobrada por fora — a linha cai no catálogo.
 
 - **Onde:** `src/domain/llm/custo-da-chamada.ts:43` (`custoDaChamada`),
-  `src/application/use-cases/llm/run-llm-turn.use-case.ts:288` (`custoDaChamada`),
-  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:327` (`custoDaChamada`),
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:294` (`custoDaChamada`),
+  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:333` (`custoDaChamada`),
   `src/application/use-cases/llm/send-chat-message.use-case.ts:286` (`custoDaChamada`),
   `src/infrastructure/llm/openai-compatible-provider.ts:410` (`extrairCustoReal`),
   `src/infrastructure/llm/openrouter-provider.ts:272` (`extrairCustoRealOpenRouter`),
@@ -1157,7 +1157,7 @@ foram raciocínio).
 
 - **Onde:** `src/infrastructure/llm/openai-compatible-provider.ts:414` (`cachedInputTokens`),
   `src/infrastructure/llm/openai-compatible-provider.ts:817` (`contagem`),
-  `src/application/use-cases/llm/run-llm-turn.use-case.ts:230` (`cachedInputTokens`),
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:235` (`cachedInputTokens`),
   `src/application/use-cases/llm/record-llm-usage.use-case.ts:121` (`cachedInputTokens`),
   `src/db/schema/llm.ts:395` (`cachedInputTokens`),
   `scripts/medir-execucao.ts:89` (`formatarParteMedida`)

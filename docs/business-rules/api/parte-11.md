@@ -21,7 +21,7 @@ Revisa a [RN-782](parte-10.md#rn-782) e a [RN-783](parte-10.md#rn-783) (o deslig
 4. **Não retenta** sem raciocínio pedido, com o raciocínio já desligado (dev agents, RN-783) ou com provider que não sabe desligá-lo (`aceitaRaciocinioDesligado`, OpenRouter e Anthropic; ver a [RN-1001](#rn-1001), que corrige o decorator que escondia a flag): ali o desfecho segue o de antes.
 
 - **Código:** `src/domain/llm/raciocinio-do-agente.ts:66` (`devoRetentarSemRaciocinio`);
-  `src/application/use-cases/llm/run-llm-turn.use-case.ts:367` (`devoRetentarSemRaciocinio`)
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:371` (`devoRetentarSemRaciocinio`)
 - **Teste:** `test/domain/llm/raciocinio-do-agente.spec.ts` (folga, aborto e as recusas); `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` (com a capability lida do `AnthropicProvider` real, AT-757: retenta e grava duas linhas; segunda truncada não tem terceira; truncada com texto não retenta); `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` (idem no stream)
 - **Origem:** AT-587, AT-757 (o provider Anthropic declara a capability, o que passa a ser coberto por um spec de caso de uso)
 
@@ -36,7 +36,7 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
 3. **Sem upstream no teto.** O 404 de uma chamada que levava teto é o erro `LLMPriceCeilingError` (`code: price_ceiling`), nunca `LLMModelNotFoundError`. Os três caminhos de turno (`run-llm-turn`, `stream-llm-turn`, `send-chat-message`) repetem a chamada UMA vez sem teto, avisam no log e não falham o turno; nunca há terceira por este motivo.
 4. **Metering.** `token_usage.price_ceiling_factor` congela o fator que FOI AO FIO (`null` = nada enviado, inclusive na repetição sem teto), no molde do `routing_preference`.
 
-- **Código:** `src/domain/llm/routing-preference.ts:108` (`tetoDePreco`); `src/domain/llm/routing-preference.ts:132` (`devoRetentarSemTeto`); `src/infrastructure/llm/openrouter-provider.ts:221` (`campoDeTetoDePrecoOpenRouter`); `src/infrastructure/llm/openai-compatible-provider.ts:604` (`camposDoHub`); `src/application/use-cases/llm/stream-llm-turn.use-case.ts:372` (`devoRetentarSemTeto`); `src/db/schema/llm.ts:414` (`priceCeilingFactor`)
+- **Código:** `src/domain/llm/routing-preference.ts:108` (`tetoDePreco`); `src/domain/llm/routing-preference.ts:132` (`devoRetentarSemTeto`); `src/infrastructure/llm/openrouter-provider.ts:221` (`campoDeTetoDePrecoOpenRouter`); `src/infrastructure/llm/openai-compatible-provider.ts:604` (`camposDoHub`); `src/application/use-cases/llm/stream-llm-turn.use-case.ts:378` (`devoRetentarSemTeto`); `src/db/schema/llm.ts:414` (`priceCeilingFactor`)
 - **Teste:** `test/domain/llm/routing-preference.spec.ts` (fator, preço 0, só o OpenRouter declara); `test/infrastructure/llm/openrouter-provider.contract.spec.ts` (`sort` e teto mesclados no corpo, sem capability nada vai, 404 com teto é `price_ceiling` e sem teto segue `model_not_found`); `test/application/use-cases/llm/stream-llm-turn.use-case.spec.ts` (repete uma vez sem teto, fator `[1.5, null]` no metering); `test/infrastructure/llm/openrouter-provider.teto.smoke.spec.ts` (manual, API real)
 - **Origem:** AT-606; ADR [0225](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0225-teto-de-preco-do-upstream-no-openrouter.md)
 
@@ -169,9 +169,9 @@ Revisa a [RN-583](parte-07.md#rn-583) (o `sort` deixa de ser o único campo de `
   turno fechar.
 - **Onde:** `src/domain/llm/chamada-em-texto.ts:10`
   (`marcacaoDeChamadaEmTexto`),
-  `src/application/use-cases/llm/run-llm-turn.use-case.ts:347`
+  `src/application/use-cases/llm/run-llm-turn.use-case.ts:353`
   (`semChamadaEmTexto`),
-  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:386`
+  `src/application/use-cases/llm/stream-llm-turn.use-case.ts:392`
   (`semChamadaEmTexto`)
 - **Teste:** `test/domain/llm/chamada-em-texto.spec.ts`,
   `test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` e
@@ -223,7 +223,7 @@ Convive com a [RN-665](parte-08.md#rn-665) (custo real do OpenRouter) e o preço
 1. **Marca.** `models.billing` é `api` (padrão), `subscription` ou `free`, gravada pela curadoria em `PATCH workspaces/:workspaceId/models/:modelId/billing` (`owner`, o nível de `…/pricing`). O sync nunca a toca e a linha de `token_usage` não muda.
 2. **Relatório.** Todo bucket e o total ganham `assinaturaMicros` = soma do custo dos modelos `subscription`, contida em `costMicros`; o pago em US$ é `costMicros − assinaturaMicros`.
 
-- **Código:** `src/db/schema/llm.ts:175` (`modelBillingEnum`); `src/infrastructure/persistence/drizzle/token-usage.repository.ts:430` (`assinaturaMicros`); `src/interfaces/http/llm/models.controller.ts:302` (`updateBilling`)
+- **Código:** `src/db/schema/llm.ts:175` (`modelBillingEnum`); `src/infrastructure/persistence/drizzle/token-usage.repository.ts:439` (`assinaturaMicros`); `src/interfaces/http/llm/models.controller.ts:302` (`updateBilling`)
 - **Teste:** `test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (assinatura separada do pago)
 - **Origem:** AT-632
 
@@ -390,7 +390,7 @@ na instalação responde 409.
 ### RN-989 — Imagem só vai a modelo com visão provada; sem ela, o agente é avisado {#rn-989}
 
 - **Regra:** o `llm-turn` aceita no `content` de uma mensagem uma lista de partes `{type:'text',text}` e `{type:'anexo',id}` (o engine manda o id, nunca bytes). A api troca o id pelo anexo da MESMA sessão (`ChatAttachmentRepository.find`): imagem vira parte `image` (data URL no formato OpenAI) SÓ quando o provider declara `capabilities.vision` E o modelo tem `supports_vision` — as duas camadas do ADR 0041; `vision` nasce `false` em todos e só vira `true` com smoke real: hoje é `true` SÓ no OpenRouter, PROVADO em 2026-11-03 por `test/infrastructure/llm/openrouter-provider.visao.smoke.spec.ts` (AT-715) com `google/gemini-2.5-flash` e um PNG 8x8 vermelho — o modelo respondeu "red". Os outros dez seguem `false`. Sem as duas, a imagem não sai da api e entra no lugar o texto `[imagem <nome> não enviada: o modelo atual não lê imagem]`, que é o aviso ao agente. Anexo de texto vai delimitado (`[anexo: <nome>]` … `[fim do anexo: <nome>]`) com ou sem visão; id que não resolve vira `[anexo <id> indisponível]`. Texto puro continua `string`. Os tokens da imagem entram no metering pelo `usage` do provider (ADR 0188), sem código novo.
-- **Onde:** `src/domain/llm/anexos-no-turno.ts:23` (`resolverAnexos`), `src/application/use-cases/llm/run-llm-turn.use-case.ts:173` (`resolverAnexos`), `src/application/use-cases/llm/stream-llm-turn.use-case.ts:186` (`resolverAnexos`).
+- **Onde:** `src/domain/llm/anexos-no-turno.ts:23` (`resolverAnexos`), `src/application/use-cases/llm/run-llm-turn.use-case.ts:178` (`resolverAnexos`), `src/application/use-cases/llm/stream-llm-turn.use-case.ts:191` (`resolverAnexos`).
 - **Teste:** `test/domain/llm/anexos-no-turno.spec.ts`, `test/infrastructure/llm/openai-compatible-provider.visao.spec.ts`; prova da capability: `test/infrastructure/llm/openrouter-provider.visao.smoke.spec.ts` (manual, com credencial).
 - **Origem:** AT-715 fatia 1, lane L2 (EP-031), ADR 0246.
 
