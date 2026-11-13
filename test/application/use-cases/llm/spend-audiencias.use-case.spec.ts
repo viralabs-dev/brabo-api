@@ -203,6 +203,22 @@ describe('GetWorkspaceSpendReportUseCase — a audiência do owner', () => {
     expect(relatorio.ownerId).toBe(dono.id);
     expect(relatorio.totalMicros).toBe(1_500);
 
+    // RN-1153: série por dia e agente (só agentes), no workspace e por projeto.
+    expect(relatorio.porDiaEAgente).toEqual([
+      expect.objectContaining({
+        agente: 'criativo',
+        costMicros: 1_000,
+        chamadas: 1,
+      }),
+    ]);
+    const soPortal = await relatorioDoOwner.execute(
+      ws.id,
+      30,
+      new Date(),
+      portal.id,
+    );
+    expect(soPortal.porDiaEAgente).toEqual([]);
+
     // Por MODELO — a agregação que não existia. Duas linhas, a mais cara antes.
     expect(relatorio.porModelo.map((l) => [l.chave, l.costMicros])).toEqual([
       ['caro/modelo', 1_200],

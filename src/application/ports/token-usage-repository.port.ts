@@ -144,7 +144,7 @@ export abstract class TokenUsageRepository {
    * Sem filtro implícito de `actor_kind`: quem restringe é o `escopo`. A
    * RN-038 vale para os agregados que dizem "agentes"; este diz "gasto".
    */
-  /** O gasto do PROJETO por dia e por agente (`actor_kind = 'agent'`), RN-1153. */
+  /** O gasto do PROJETO (ou, sem projeto, do workspace) por dia e por agente (`actor_kind = 'agent'`), RN-1153. */
   abstract sumByDayAndAgent(
     escopo: SpendScopeAmplo,
   ): Promise<SpendDiaDoAgente[]>;

@@ -1047,6 +1047,13 @@ export class WorkspaceSpendReportResponseDto implements Wire<WorkspaceSpendRepor
 
   @ApiProperty({ type: [SpendPorDiaResponseDto] })
   porDia!: SpendPorDiaResponseDto[];
+
+  @ApiProperty({
+    type: () => [SpendDiaDoAgenteResponseDto], // declarada adiante
+    description:
+      'By day and AGENT (RN-1153). Sparse: only days with a call; the client densifies.',
+  })
+  porDiaEAgente!: SpendDiaDoAgenteResponseDto[];
 }
 export const _chavesWorkspaceSpend: MesmasChaves<
   WorkspaceSpendReportResponseDto,

@@ -50,7 +50,7 @@ keywords: [regras de negócio, api]
 ### RN-1068 — O PO e o Dev Lead corrigem o texto de uma tarefa `todo`, com a régua da história {#rn-1068}
 
 - **Regra:** `POST /internal/sessions/:sessionId/tasks/:taskId/update` (ferramenta `update_task` do PO e do Dev Lead) corrige título e/ou descrição de uma tarefa. Estende a [RN-727](parte-10.md#rn-727) e a [RN-859](parte-10.md#rn-859) à tarefa. Recusa em 409 nomeado: `tarefa_em_execucao` (status diferente de `todo`), `historia_arquivada` e `historia_nao_draft` (a história `ready` só aceita com `questionId` de pergunta já respondida pelo usuário). 400 sem campo ou com título vazio ou acima de 200; 404 para tarefa de outro projeto. Grava `backlog.task_updated` na sessão da história, com `taskId`, `storyId`, `previousTitle`, `title`, `descriptionChanged` e, quando houver, `questionId`; o ator é `agent` `po` (padrão) ou `dev-lead` (campo `agentId`). Nada mudou, nenhum evento.
-- **Onde:** `src/application/use-cases/backlog/corrigir-historia.use-case.ts:103` (`editarTarefa`), `src/domain/backlog/correcao-de-historia.ts:82` (`recusaDeCorrecaoDeTarefa`), `src/interfaces/http/internal/internal-sessions.controller.ts:614` (`updateTaskRoute`)
+- **Onde:** `src/application/use-cases/backlog/corrigir-historia.use-case.ts:103` (`editarTarefa`), `src/domain/backlog/correcao-de-historia.ts:82` (`recusaDeCorrecaoDeTarefa`), `src/interfaces/http/internal/internal-sessions.controller.ts:619` (`updateTaskRoute`)
 - **Teste:** `test/application/use-cases/backlog/corrigir-historia.use-case.spec.ts` (`CorrigirHistoriaUseCase.editarTarefa`: feliz com evento; `in_progress`/`in_review`/`done` recusadas; história `ready` com e sem resposta; arquivada; 404 e 400).
 - **Origem:** AT-805 (EP-030), achado 5 do TP-01 27ª; rodada 271, lane L2.
 
@@ -63,9 +63,9 @@ keywords: [regras de negócio, api]
 - **Teste:** `test/domain/actions/adr-supersedes.spec.ts`, `test/application/use-cases/actions/propose-action.use-case.spec.ts` (`open_adr_pr com supersedes`, contra Postgres).
 - **Origem:** AT-806 (EP-030), decisão do dono (b) de 08/11/2026; ADR 0283; rodada 271, lane L2.
 
-<a id="rn-1070"></a>
+<a id="rn-1301"></a>
 
-### RN-1070 — O workspace escolhe quem roteia a ferramenta (`jev`, `laya` ou `desligado`), e `laya` só grava com o serviço proficiente na hora {#rn-1070}
+### RN-1301 — O workspace escolhe quem roteia a ferramenta (`jev`, `laya` ou `desligado`), e `laya` só grava com o serviço proficiente na hora {#rn-1301}
 
 - **Regra:** `workspaces.tool_router` (enum `jev` padrão, `laya`, `desligado`) substitui o liga/desliga da [RN-625](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-625); `tool_router_enabled` segue existindo como coluna GERADA (`tool_router <> 'desligado'`), então o DTO do workspace e quem lê o booleano não mudam, e o `false` de antes migrou para `desligado`. `PUT /workspaces/:workspaceId/tool-router` (`owner`) aceita `{roteador}` e, por compatibilidade, `{enabled}` (`true` = `jev`); sem nenhum, 400. `roteador: "laya"` consulta o `/health` do serviço SEM cache e só grava com `estado = proficiente`; senão 409 `roteador_local_indisponivel`, com o estado e o motivo no corpo, e nada é gravado. `GET /workspaces/:workspaceId/tool-router` (`viewer`) devolve `{roteador, laya: {estado, motivo, desde, dispositivo, vramLivreMiB, p95Ms}}`, com cache de 30 s e teto de 1 s; o turno do agente NUNCA passa por ele.
 - **Estados do Laya (nunca colapsados):** `nao_configurado` (sem `TOOL_ROUTER_URL`), `sem_resposta` (rede, HTTP não 2xx ou corpo inválido), `sem_gpu` (dispositivo diferente de `cuda` ou VRAM livre abaixo de `TOOL_ROUTER_LAYA_VRAM_MIN_MIB`, padrão 2048), `lento` (p95 da sonda de boot acima de `TOOL_ROUTER_LAYA_P95_MAX_MS`, padrão 500, decisão do dono de 31/10/2026) e `proficiente`. `desde` só anda quando o estado muda.
@@ -74,9 +74,9 @@ keywords: [regras de negócio, api]
 - **Teste:** `test/application/use-cases/iam/set-workspace-tool-router.use-case.spec.ts` (409 sem serviço proficiente, grava sem cache, `enabled` legado, 400) e `test/infrastructure/llm/laya-tool-router.spec.ts` (`LayaStatus`: os cinco estados, cache e `desde`).
 - **Origem:** AT-626 (EP-026), decisões do dono de 31/10 e 07/11/2026; [ADR 0290](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0290-laya-no-lugar-do-jev.md); rodada 354, lane L2.
 
-<a id="rn-1071"></a>
+<a id="rn-1302"></a>
 
-### RN-1071 — Com o workspace em `laya`, todo provider é roteado por UMA chamada ao serviço local, e qualquer falha deixa o catálogo inteiro {#rn-1071}
+### RN-1302 — Com o workspace em `laya`, todo provider é roteado por UMA chamada ao serviço local, e qualquer falha deixa o catálogo inteiro {#rn-1302}
 
 - **Regra:** estende a [RN-625](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine.md#rn-625) e revisa o item 1 dela por ADR: com `tool_router = laya` o passo é roteado com QUALQUER provider e SEM credencial (o Laya é local e não cobra); com `jev` continua só com `openrouter` e chave. `LayaToolRouter` faz `POST {TOOL_ROUTER_URL}/v1/systemone` com o formato do Decisions API, SEM a opção reservada `responder_sem_ferramenta` (o Laya não a viu no treino), e o serviço devolve a distribuição já em média do ensemble. Regra p3 + limiar: confiança abaixo de `TOOL_ROUTER_LAYA_LIMIAR` vira `responder_sem_ferramenta`, que deixa o catálogo inteiro. O `tool_router.decided` grava `modelo = laya-multilingual`; não há linha em `token_usage`.
 - **Queda:** timeout (2 s), rede, HTTP, corpo inválido, escolha fora das opções ou URL ausente voltam como queda NOMEADA e o passo segue com o catálogo inteiro (decisão do dono de 31/10/2026): NUNCA cai para o Jev, e o turno nunca falha por causa do Laya.
@@ -213,6 +213,7 @@ keywords: [regras de negócio, api]
 - **Onde:** `src/domain/llm/tool-router.ts:317` (`PISO_DO_MENU`)
 - **Teste:** `test/interfaces/http/execution/orientacao-e-melhorias.dto.spec.ts` (RN-1129)
 - **Origem:** AT-918 (EP-036).
+
 <a id="rn-1138"></a>
 
 ### RN-1138 — A tarefa criada pelo Dev Lead é a FUNDAÇÃO do módulo {#rn-1138}
@@ -337,10 +338,10 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 
 ### RN-1153 — O gasto do projeto traz a série por dia e por agente, esparsa {#rn-1153}
 
-- **Regra:** `porDiaEAgente` em `spend/team`: `{ dia (UTC), agente, costMicros, chamadas }`, só `actor_kind = 'agent'` e só dias com chamada, em ordem de dia; o cliente densifica.
+- **Regra:** `porDiaEAgente` em `spend/team` e em `GET /workspaces/:wid/spend-report` (owner, também com `?projectId=`): `{ dia (UTC), agente, costMicros, chamadas }`, só `actor_kind = 'agent'` e só dias com chamada, em ordem de dia; o cliente densifica.
 - **Código:** `apps/api/src/infrastructure/persistence/drizzle/token-usage.repository.ts:243` (`sumByDayAndAgent`)
-- **Teste:** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (só o agente, só o projeto)
-- **Origem:** AT-931 (EP-035).
+- **Teste:** `apps/api/test/application/use-cases/llm/spend-audiencias.use-case.spec.ts` (só o agente, só o projeto; o owner também, com e sem `projectId`)
+- **Origem:** AT-931, AT-896 (EP-035).
 
 <a id="rn-1154"></a>
 
@@ -350,6 +351,7 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Código:** `apps/api/src/infrastructure/persistence/drizzle/proposed-action.repository.ts:187` (`listDecidedByProject`), `apps/api/src/application/use-cases/actions/list-project-pending-actions.use-case.ts:22` (`execute`), `apps/api/src/interfaces/http/actions/project-actions.controller.ts:60` (`list`)
 - **Teste:** `apps/api/test/application/use-cases/actions/list-project-pending-actions.use-case.spec.ts` (negada com motivo e automática entram; pendente e velha não)
 - **Origem:** AT-932 (EP-035).
+
 <a id="rn-1142"></a>
 
 ### RN-1142 — O teto por tarefa é do projeto, editável pelo PATCH, e chega aos agentes vivos {#rn-1142}
@@ -463,3 +465,12 @@ A api cumpre a RN-1039 (o token do GitHub Packages nunca entra em camada nem em 
 - **Regra:** O papel por projeto é `papelEfetivo(projectRole, workspaceRole)` (RN-471, a mesma função pura de `ResolveEffectiveRoleUseCase.forProject`). O mínimo é o do endpoint de decidir (RN-102): `developer` em aprovações, PRs, promoções e hipóteses; `viewer` em arquitetura, que só se lê. Projeto abaixo do mínimo não contribui com a fila (nem item nem contagem); sem papel de workspace, 403. `?status=decided&since=` (padrão 24 h, o molde da RN-1154) lista o decidido: ações não pendentes, promoções recusadas, hipóteses decididas; a arquitetura não tem lado decidido e vem vazia. Promoção aceita não grava data própria e fica fora.
 - **Onde:** `src/domain/iam/papel-efetivo.ts:9` (`papelEfetivo`); `src/application/use-cases/actions/get-decision-inbox.use-case.ts:18` (`PAPEL_MINIMO_POR_FILA`).
 - **Teste:** `get-decision-inbox.use-case.spec.ts` (RN-471 nos dois sentidos; 403; modo `decided`).
+
+<a id="rn-1304"></a>
+
+### RN-1304 — A volta retentada por corte de saída pede o dobro do teto {#rn-1304}
+
+- **Regra:** `llm-turn` e `llm-turn-stream` internos aceitam `saidaAmpliada` (booleano, opcional; outro tipo é 400). Com a flag, o provider recebe `maxTokens` = 8192, o dobro do padrão de 4096; sem ela nada muda. O engine liga a flag na volta retentada de uma resposta só de raciocínio cortada pelo teto (ajuste da RN-780).
+- **Código:** `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:127` (`execute`), `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:136` (`execute`), `apps/api/src/domain/llm/raciocinio-do-agente.ts:21` (`TETO_DE_SAIDA_AMPLIADO`)
+- **Teste:** `apps/api/test/application/use-cases/llm/run-llm-turn.use-case.spec.ts` (a flag dobra o teto; sem ela, nada), `apps/api/test/interfaces/saida-ampliada-dto.spec.ts` (booleano aceito, outro tipo recusado)
+- **Origem:** AT-920 (EP-036).

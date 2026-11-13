@@ -38,6 +38,7 @@ import { custoDaChamada } from '../../../domain/llm/custo-da-chamada';
 import {
   devoRetentarSemRaciocinio,
   opcoesDeRaciocinio,
+  TETO_DE_SAIDA_AMPLIADO,
 } from '../../../domain/llm/raciocinio-do-agente';
 import {
   caudaQuePodeSerMarcador,
@@ -53,6 +54,8 @@ export interface StreamLlmTurnInput {
   tools?: ToolDef[];
   /** O engine repete o passo com o catálogo inteiro quando o menu do Jev estava errado (ADR 0179). */
   catalogoCompleto?: boolean;
+  /** Volta retentada por corte de saída: pede o dobro do teto (RN-780, AT-920). */
+  saidaAmpliada?: boolean;
 }
 
 export interface LlmTurnUsage {
@@ -263,6 +266,7 @@ export class StreamLlmTurnUseCase {
           ...(routingPreference ? { routingPreference } : {}),
           sessionKey: chaveDeSessao(input.sessionId, input.agentId),
           ...opcoes,
+          ...(input.saidaAmpliada ? { maxTokens: TETO_DE_SAIDA_AMPLIADO } : {}),
           ...(semRaciocinio ? { reasoningOff: true as const } : {}),
           ...(comTeto ? { priceCeiling: teto } : {}),
         })) {

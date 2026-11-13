@@ -27947,6 +27947,11 @@
             "type": "boolean",
             "example": true,
             "description": "Asks for the WHOLE tool catalog: the Jev tool router (ADR 0179) is skipped for this call. The engine sets it when it repeats a step whose restricted menu made the model answer without calling a tool."
+          },
+          "saidaAmpliada": {
+            "type": "boolean",
+            "example": true,
+            "description": "Asks for DOUBLE the output ceiling. The engine sets it on the retry of a step whose answer was only reasoning cut by the ceiling (RN-780)."
           }
         },
         "required": [
@@ -29578,6 +29583,11 @@
             "type": "boolean",
             "example": true,
             "description": "Asks for the WHOLE tool catalog: the Jev tool router (ADR 0179) is skipped for this call. The engine sets it when it repeats a step whose restricted menu made the model answer without calling a tool."
+          },
+          "saidaAmpliada": {
+            "type": "boolean",
+            "example": true,
+            "description": "Asks for DOUBLE the output ceiling. The engine sets it on the retry of a step whose answer was only reasoning cut by the ceiling (RN-780)."
           }
         },
         "required": [
@@ -30774,6 +30784,13 @@
             "items": {
               "$ref": "#/components/schemas/SpendPorDiaResponseDto"
             }
+          },
+          "porDiaEAgente": {
+            "description": "By day and AGENT (RN-1153). Sparse: only days with a call; the client densifies.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpendDiaDoAgenteResponseDto"
+            }
           }
         },
         "required": [
@@ -30793,7 +30810,8 @@
           "porAtor",
           "porOwner",
           "porAgente",
-          "porDia"
+          "porDia",
+          "porDiaEAgente"
         ]
       },
       "WorkspaceSummaryResponseDto": {
